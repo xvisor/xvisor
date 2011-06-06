@@ -1,0 +1,80 @@
+/**
+ * Copyright (c) 2010 Himanshu Chauhan.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file vmm_netdev.h
+ * @version 1.0
+ * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @brief Network Device framework header
+ */
+
+#ifndef __VMM_NETDEV_H_
+#define __VMM_NETDEV_H_
+
+#include <vmm_types.h>
+#include <vmm_spinlocks.h>
+#include <vmm_devdrv.h>
+
+#define VMM_NETDEV_CLASS_NAME				"network"
+
+typedef struct vmm_netdev vmm_netdev_t;
+typedef int (*vmm_netdev_ioctl_t) (vmm_netdev_t * ndev,
+				   int cmd, void *buf, size_t buf_len);
+typedef int (*vmm_netdev_read_t) (vmm_netdev_t * ndev,
+				  char *dest, size_t offset, size_t len);
+typedef int (*vmm_netdev_write_t) (vmm_netdev_t * ndev,
+				   char *src, size_t offset, size_t len);
+
+struct vmm_netdev {
+	char name[32];
+	vmm_device_t *dev;
+	vmm_netdev_ioctl_t ioctl;
+	vmm_netdev_read_t read;
+	vmm_netdev_write_t write;
+	void *priv;
+};
+
+/** Do ioctl operation on a character device */
+int vmm_netdev_doioctl(vmm_netdev_t * ndev, int cmd, void *buf, size_t buf_len);
+
+/** Do read operation on a character device */
+int vmm_netdev_doread(vmm_netdev_t * ndev,
+		      char *dest, size_t offset, size_t len);
+
+/** Do write operation on a character device */
+int vmm_netdev_dowrite(vmm_netdev_t * ndev,
+		       char *src, size_t offset, size_t len);
+
+/** Register character device to device driver framework */
+int vmm_netdev_register(vmm_netdev_t * ndev);
+
+/** Unregister character device from device driver framework */
+int vmm_netdev_unregister(vmm_netdev_t * ndev);
+
+/** Find a character device in device driver framework */
+vmm_netdev_t *vmm_netdev_find(const char *name);
+
+/** Get character device with given number */
+vmm_netdev_t *vmm_netdev_get(int num);
+
+/** Count number of character devices */
+u32 vmm_netdev_count(void);
+
+/** Initalize character device framework */
+int vmm_netdev_init(void);
+
+#endif /* __VMM_NETDEV_H_ */

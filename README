@@ -1,0 +1,127 @@
+		Xvisor release 0.1.xx <http://www.gnu.org/>
+
+These are the release notes for Xvisor version 0.1. Please read them 
+carefully, as they tell you what this is all about, explain how to 
+build and use the hypervisor, and what to do if something goes wrong.
+
+WHAT IS XVISOR?
+
+  The term Xvisor can stand for: "eXtensible Versatile hypervISOR".
+
+  Xvisor aims towards providing an open source virtualization solution,
+  which is light-weight, portable, and flexible. It tries to ensure 
+  small memory foot print and less virtualization overhead in every 
+  functionality. Open source projects such as: Linux, NetBSD, FreeBSD,
+  and QEMU have made a great impact in Xvisor design & development.
+
+  Xvisor has most of the features expected from a modern fully-fledged 
+  hypervisor, such as:
+	- CPU virtualization (Guest, Virtual CPUs, Virtual IRQs)
+	- MMU virtualization (Virtual MMU, Guest Address Space)
+	- IO virtualization (Virtual Bus, Virtual Devices)
+	- Device Driver Framework (Host Drivers)
+	- Threading Framework (Hyperthreads)
+	- Managment Terminal (Mterm)
+	- Tree based Configuration (Device Tree)
+
+  It is distributed under the GNU General Public License - see the
+  accompanying COPYING file for more details.
+
+ON WHAT HARDWARE DOES IT RUN?
+
+  Xvisor is a highly portable source code. In fact, its development was
+  initiated in 2 different architectures (ARM and MIPS) simultaneously,
+  to ensure flexiblity and portablity from the begining itself. It is 
+  easily portable to most general-purpose 32- or 64-bit architectures as
+  long as they have a paged memory management unit (PMMU) and a port of
+  the GNU C compiler (gcc) (part of The GNU Compiler Collection, GCC).
+
+  The list of currently supported hardware is below:
+	- ARM
+		CPUs:   Cortex-A8, OMAP3
+		Boards: Realview-PB-A8, Beagle
+	- MIPS
+		CPUs:   24K
+		Boards: QEMU-MIPS
+
+  NOTE: The Xvisor development & testing is done currently on QEMU. For 
+	all the above mentioned hardwares QEMU support is available.
+
+INITIATORS:
+
+  - Anup Patel (Aka - Ravan)
+  - Himanshu Chauhan (Aka - Gadadhari Bhim)
+  - Sukanto Ghosh (Aka - Sukki)
+  - Pranav Sawargaonkar (Aka - Samphy)
+  - Inderpal Saluja (Aka - Inderpal)
+
+DOCUMENTATION:
+
+  There are various README files in the docs/ subdirectory:
+  these typically contain hypervisor-specific installation notes for some 
+  drivers for example. See docs/INDEX for a list of what is contained in 
+  each file.
+
+OUTPUT DIRECTORY:
+
+  When compiling/configuring hypervisor all output files will by default be
+  stored in a directory called "build" in hypervisor source directory. Using
+  the option "make O=<output_dir>" allow you to specify an alternate place
+  for the output files (including .config).
+
+  NOTE: If the 'O=<output_dir>' option is to be used then it must be used for 
+  all invocations of make.
+
+CONFIGURING:
+
+  Do not skip this step even if you are only upgrading one minor
+  version. New configuration options are added in each release, and
+  odd problems will turn up if the configuration files are not set up
+  as expected. If you want to carry your existing configuration to a
+  new version with minimal work, use "make oldconfig", which will
+  only ask you for the answers to new questions.
+
+  To configure hypervisor use one the following command:
+	"make <configuration_command>"
+		or
+	"make O=<output_dir> <configuration_command>"
+
+  Various configuration commands (<configuration_command>) are:
+	"config"      Plain text interface.
+	"menuconfig"  Text based color menus, radiolists & dialogs.
+	"oldconfig"   Default all questions based on the contents of
+			your existing ./.config file and asking about
+			new config symbols.
+	"defconfig"   Create a ./.config file by using the default
+			values from arch/$ARCH/board/$BOARD/defconfig.
+
+  For configuration Xvisor uses Openconf, which is a modified version of 
+  Linux Kconfig. The motivation behing Openconf is to get Xvisor specific 
+  information from environment variables, and to later extend the syntax of
+  Kconfig to check for dependent libraries & tools at configuration time. 
+
+  For information on Openconf syntax read: tools/openconf/openconf_syntax.txt
+
+COMPILING:
+
+  Make sure you have at least gcc 4.x available.
+
+  To compile hypervisor use one the following command:
+	"make"
+	  or
+	"make O=<output_dir>"
+
+  Verbose compile/build output:
+	Normally the hypervisor build system runs in a fairly quiet mode 
+	(but not totally silent).  However, sometimes you or other hypervisor 
+	developers need to see compile, link, or other commands exactly as 
+	they are executed. For this, use "verbose" build mode.  This is done
+	by inserting "VERBOSE=y" in the "make" command.
+	E.g.: "make VERBOSE=y"
+
+REMEMBER:
+
+  Its all JUST FOR FUN....
+
+                            .:: HAPPY HACKING ::.
+

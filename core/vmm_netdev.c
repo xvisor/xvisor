@@ -1,0 +1,182 @@
+/**
+ * Copyright (c) 2010 Himanshu Chauhan.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file vmm_netdev.c
+ * @version 1.0
+ * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @brief Network Device framework source
+ */
+
+#include <vmm_error.h>
+#include <vmm_list.h>
+#include <vmm_heap.h>
+#include <vmm_string.h>
+#include <vmm_netdev.h>
+
+int vmm_netdev_doioctl(vmm_netdev_t * ndev, int cmd, void *buf, size_t buf_len)
+{
+	int ret;
+
+	if (!ndev) {
+		return VMM_EFAIL;
+	}
+	if (!(ndev->ioctl)) {
+		return VMM_EFAIL;
+	}
+
+	ret = ndev->ioctl(ndev, cmd, buf, buf_len);
+
+	return ret;
+}
+
+int vmm_netdev_doread(vmm_netdev_t * ndev,
+		      char *dest, size_t offset, size_t len)
+{
+	int ret;
+
+	if (!ndev) {
+		return 0;
+	}
+	if (!(ndev->read)) {
+		return 0;
+	}
+
+	ret = ndev->read(ndev, dest, offset, len);
+
+	return ret;
+}
+
+int vmm_netdev_dowrite(vmm_netdev_t * ndev,
+		       char *src, size_t offset, size_t len)
+{
+	int ret;
+
+	if (!ndev) {
+		return 0;
+	}
+	if (!(ndev->write)) {
+		return 0;
+	}
+
+	ret = ndev->write(ndev, src, offset, len);
+
+	return ret;
+}
+
+int vmm_netdev_register(vmm_netdev_t * ndev)
+{
+	vmm_classdev_t *cd;
+
+	if (ndev == NULL) {
+		return VMM_EFAIL;
+	}
+	if (ndev->read == NULL || ndev->write == NULL) {
+		return VMM_EFAIL;
+	}
+
+	cd = vmm_malloc(sizeof(vmm_classdev_t));
+	if (!cd) {
+		return VMM_EFAIL;
+	}
+
+	INIT_LIST_HEAD(&cd->head);
+	vmm_strcpy(cd->name, ndev->name);
+	cd->dev = ndev->dev;
+	cd->priv = ndev;
+
+	vmm_devdrv_register_classdev(VMM_NETDEV_CLASS_NAME, cd);
+
+	return VMM_OK;
+}
+
+int vmm_netdev_unregister(vmm_netdev_t * ndev)
+{
+	int rc;
+	vmm_classdev_t *cd;
+
+	if (ndev == NULL) {
+		return VMM_EFAIL;
+	}
+
+	cd = vmm_devdrv_find_classdev(VMM_NETDEV_CLASS_NAME, ndev->name);
+	if (!cd) {
+		return VMM_EFAIL;
+	}
+
+	rc = vmm_devdrv_unregister_classdev(VMM_NETDEV_CLASS_NAME, cd);
+
+	if (!rc) {
+		vmm_free(cd);
+	}
+
+	return rc;
+}
+
+vmm_netdev_t *vmm_netdev_find(const char *name)
+{
+	vmm_classdev_t *cd;
+
+	cd = vmm_devdrv_find_classdev(VMM_NETDEV_CLASS_NAME, name);
+
+	if (!cd) {
+		return NULL;
+	}
+
+	return cd->priv;
+}
+
+vmm_netdev_t *vmm_netdev_get(int num)
+{
+	vmm_classdev_t *cd;
+
+	cd = vmm_devdrv_classdev(VMM_NETDEV_CLASS_NAME, num);
+
+	if (!cd) {
+		return NULL;
+	}
+
+	return cd->priv;
+}
+
+u32 vmm_netdev_count(void)
+{
+	return vmm_devdrv_classdev_count(VMM_NETDEV_CLASS_NAME);
+}
+
+int vmm_netdev_init(void)
+{
+	int rc;
+	vmm_class_t *c;
+
+	c = vmm_malloc(sizeof(vmm_class_t));
+	if (!c) {
+		return VMM_EFAIL;
+	}
+
+	INIT_LIST_HEAD(&c->head);
+	vmm_strcpy(c->name, VMM_NETDEV_CLASS_NAME);
+	INIT_LIST_HEAD(&c->classdev_list);
+
+	rc = vmm_devdrv_register_class(c);
+	if (rc) {
+		vmm_free(c);
+		return rc;
+	}
+
+	return VMM_OK;
+}

@@ -1,0 +1,46 @@
+#
+# Automatically generated make config: don't edit
+# Project: Xvisor (eXtensible Versatile hypervISOR)
+# Version: 0.1
+# Wed Apr  6 21:26:50 2011
+#
+CONFIG_ARCH_ARM=y
+# CONFIG_ARCH_MIPS is not set
+CONFIG_ARCH="arm"
+CROSS_COMPILE="arm-none-eabi-"
+CONFIG_CPU="arm7a"
+CONFIG_BOARD="pb-a8"
+CONFIG_CPU_CORTEX_A8=y
+# CONFIG_CPU_OMAP3 is not set
+CONFIG_BOARD_PB_A8=y
+CONFIG_REALVIEW=y
+
+#
+# General Setup
+#
+
+#
+# Memory Management
+#
+CONFIG_HEAP_SIZE=131072
+CONFIG_VMM_STACK_SIZE=8192
+CONFIG_VMM_INTERRUPT_STACK_SIZE=4096
+CONFIG_MM_TRIVIAL=y
+# CONFIG_MM_BUDDY is not set
+
+#
+# Networking
+#
+# CONFIG_NET is not set
+
+#
+# Device Drivers
+#
+CONFIG_SERIAL=y
+
+#
+# Serial Port Drivers
+#
+# CONFIG_SERIAL_UART is not set
+CONFIG_SERIAL_PL01X=y
+# CONFIG_PIC is not set

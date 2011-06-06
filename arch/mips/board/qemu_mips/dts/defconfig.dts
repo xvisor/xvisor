@@ -1,0 +1,103 @@
+
+/dts-v1/;
+
+/ {
+	vmm {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		max_vcpu_count = <4>;
+		max_guest_count = <2>;
+		tick_delay_usecs = <100>;
+		vcpu_timer_mhz = <10>;
+		hypercore_tick_count = <20>;
+	};
+
+	host {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		model = "qemu-mips";
+		device_type = "host";
+		host_irq_count = <8>;
+		virt-addr-start = <0xC0000000>; /* Kseg1 region */
+		virt-addr-size = <0x80000>;
+		virt-addr-frame-size = <0x1000>; /* 4K minimum page maps */
+		
+		cpus {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cpu_freq_mhz = <100>;
+			cpu_irq_count = <8>;
+			cpu_irq_priority = <0 1 2 2 2 2 2 2>;
+
+			cpu@0 {
+				device_type = "cpu";
+				model = "MIPS,24Kf";
+			};
+		};
+
+		plb {
+			#address-cells = <1>;
+			#size-cells = <0>;
+		
+			uart0 {
+			      device_type = "serial";
+			      compatible = "ns8250";
+			      reg = <0x14000000 0x00000008>;
+			      reg_offset = <0x3F8>;
+			      baudrate = <115200>;
+			};
+
+			network-card {
+			       device_type = "nic";
+			       compatible = "ne2000";
+			       reg = <0x14000000 0x000000008>;
+			};
+		};
+	};
+
+	guests {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		guest@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			model = "vqemu-mips";
+			device_type = "guest";
+
+			vcpus {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				vcpu@0 {
+					device_type = "vcpu";
+					model = "MIPS,24Kf";
+					tick_count = <200>;
+					start_pc = <0x0000000>;
+				};
+			};
+			
+			addrspace {
+				#address-cells = <1>;
+				#size-cells = <0>;
+		
+				mem@0 {
+					device_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x81000000>;
+					host_physical_addr = <0x0 0x00000000>;
+					physical_size = <0x0 0x01000000>;
+				};
+
+				uart@2 {
+					device_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x140003F8>;
+					host_physical_addr = <0x140003F8>;
+					physical_size = <0x0 0x500>;
+				};
+			};
+		};
+
+	};
+};

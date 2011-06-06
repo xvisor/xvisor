@@ -1,0 +1,31 @@
+#
+# Files to be excluded
+#
+.*
+*.o
+*.elf
+*.bin
+*.lnk
+*.dis
+*.txt
+gdbinit0
+gdbinit1
+build/
+test_*objs/
+cscope.*
+*~
+tools/openconf/lex.zconf.c
+tools/openconf/conf
+tools/openconf/mconf
+tools/openconf/zconf.hash.c
+patches
+create-flash-image
+flash
+#
+# Exceptions
+#
+!.mambacfg
+!.gitignore
+
+tags
+.*.swp
