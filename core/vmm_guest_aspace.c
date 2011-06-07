@@ -195,7 +195,7 @@ int vmm_guest_aspace_initguest(vmm_guest_t *guest)
 
 		reg->priv = NULL;
 
-		list_add(&guest->aspace.reg_list, &reg->head);
+		list_add_tail(&guest->aspace.reg_list, &reg->head);
 	}
 
 	return VMM_OK;

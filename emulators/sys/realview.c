@@ -19,13 +19,15 @@
  * @file realview.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for Realview System emulator.
+ * @brief source file for Realview Sysctl emulator.
  */
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_modules.h>
+#include <vmm_host_io.h>
+#include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_devemu.h>
 
@@ -43,9 +45,18 @@
 
 struct realview_sysctl {
 	vmm_guest_t *guest;
+	vmm_emuclk_t *clk;
+	vmm_spinlock_t lock;
+	u32 clk_count;
+	u32 mod_100hz;
+	u32 inc_100hz;
+	u32 mod_24mhz;
+	u32 inc_24mhz;
+
 	u32 sys_id;
 	u32 leds;
 	u32 lockval;
+	u32 sys_100hz;
 	u32 cfgdata1;
 	u32 cfgdata2;
 	u32 flags;
@@ -56,7 +67,26 @@ struct realview_sysctl {
 	u32 sys_cfgdata;
 	u32 sys_cfgctrl;
 	u32 sys_cfgstat;
+	u32 sys_24mhz;
 };
+
+static void realview_emulator_tick(vmm_emuclk_t *eclk) 
+{
+	struct realview_sysctl * s = eclk->priv;
+
+	vmm_spin_lock(&s->lock);
+
+	s->clk_count++;
+
+	if (s->clk_count % s->mod_100hz == 0) {
+		s->sys_100hz += s->inc_100hz;
+	}
+	if (s->clk_count % s->mod_24mhz == 0) {
+		s->sys_24mhz += s->inc_24mhz;
+	}
+
+	vmm_spin_unlock(&s->lock);
+}
 
 static int realview_emulator_read(vmm_emudev_t *edev,
 			    	  physical_addr_t offset, 
@@ -66,11 +96,7 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 	u32 regval = 0x0;
 	struct realview_sysctl * s = edev->priv;
 
-	if ((dst_len != 1) &&
-	    (dst_len != 2) &&
-	    (dst_len != 4)) {
-		return VMM_EFAIL;
-	}
+	vmm_spin_lock(&s->lock);
 
 	switch (offset) {
 	case 0x00: /* ID */
@@ -92,9 +118,10 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 	case 0x14: /* OSC2 */
 	case 0x18: /* OSC3 */
 	case 0x1c: /* OSC4 */
-	case 0x24: /* 100HZ */
-		/* ??? Implement these.  */
 		regval = 0;
+		break;
+	case 0x24: /* 100HZ */
+		regval = s->sys_100hz;
 		break;
 	case 0x28: /* CFGDATA1 */
 		regval = s->cfgdata1;
@@ -135,10 +162,7 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		regval = 0;
 		break;
 	case 0x5c: /* 24MHz */
-		/* FIXME */
-		/* regval = muldiv64(qemu_get_clock_ns(vm_clock), 
-				24000000, get_ticks_per_sec()); */
-		regval = 0;
+		regval = s->sys_24mhz;
 		break;
 	case 0x60: /* MISC */
 		regval = 0;
@@ -193,6 +217,25 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		break;
 	}
 
+	vmm_spin_unlock(&s->lock);
+
+	if (!rc) {
+		switch (dst_len) {
+		case 1:
+			vmm_out_8(dst, regval);
+			break;
+		case 2:
+			vmm_out_le16(dst, regval);
+			break;
+		case 4:
+			vmm_out_le32(dst, regval);
+			break;
+		default:
+			rc = VMM_EFAIL;
+			break;
+		};
+	}
+
 	return rc;
 }
 
@@ -200,21 +243,167 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 				   physical_addr_t offset, 
 				   void *src, u32 src_len)
 {
-//	struct realview_sysctl * s = edev->priv;
+	int rc = VMM_OK;
+	u32 regmask = 0x0, regval = 0x0;
+	struct realview_sysctl * s = edev->priv;
 
-	return VMM_OK;
+	switch (src_len) {
+	case 1:
+		regmask = 0xFFFFFF00;
+		regval = vmm_in_8(src);
+		break;
+	case 2:
+		regmask = 0xFFFF0000;
+		regval = vmm_in_le16(src);
+		break;
+	case 4:
+		regmask = 0x00000000;
+		regval = vmm_in_le32(src);
+		break;
+	default:
+		return VMM_EFAIL;
+		break;
+	};
+
+	vmm_spin_lock(&s->lock);
+
+	switch (offset) {
+	case 0x08: /* LED */
+		s->leds &= regmask;
+		s->leds |= regval;
+	case 0x0c: /* OSC0 */
+	case 0x10: /* OSC1 */
+	case 0x14: /* OSC2 */
+	case 0x18: /* OSC3 */
+	case 0x1c: /* OSC4 */
+		/* ??? */
+		break;
+	case 0x20: /* LOCK */
+		s->lockval &= regmask;
+		if (regval == REALVIEW_LOCK_VAL) {
+			s->lockval |= regval;
+		} else {
+			s->lockval |= (regval & 0x7fff);
+		}
+		break;
+	case 0x28: /* CFGDATA1 */
+		/* ??? Need to implement this.  */
+		s->cfgdata1 &= regmask;
+		s->cfgdata1 |= regval;
+		break;
+	case 0x2c: /* CFGDATA2 */
+		/* ??? Need to implement this.  */
+		s->cfgdata2 &= regmask;
+		s->cfgdata2 |= regval;
+		break;
+	case 0x30: /* FLAGSSET */
+		s->flags |= regval;
+		break;
+	case 0x34: /* FLAGSCLR */
+		s->flags &= ~regval;
+		break;
+	case 0x38: /* NVFLAGSSET */
+		s->nvflags |= regval;
+		break;
+	case 0x3c: /* NVFLAGSCLR */
+		s->nvflags &= ~regval;
+		break;
+	case 0x40: /* RESETCTL */
+		if (s->sys_id == REALVIEW_SYSID_VEXPRESS) {
+			/* reserved: RAZ/WI */
+			break;
+		}
+		if (s->lockval == REALVIEW_LOCK_VAL) {
+			s->resetlevel &= regmask;
+			s->resetlevel |= regval;
+			if (regval & 0x100) {
+				/* FIXME: system_reset_request (); */
+			}
+		}
+		break;
+	case 0x44: /* PCICTL */
+		/* nothing to do.  */
+		break;
+	case 0x4c: /* FLASH */
+	case 0x50: /* CLCD */
+	case 0x54: /* CLCDSER */
+	case 0x64: /* DMAPSR0 */
+	case 0x68: /* DMAPSR1 */
+	case 0x6c: /* DMAPSR2 */
+	case 0x70: /* IOSEL */
+	case 0x74: /* PLDCTL */
+	case 0x80: /* BUSID */
+	case 0x84: /* PROCID0 */
+	case 0x88: /* PROCID1 */
+	case 0x8c: /* OSCRESET0 */
+	case 0x90: /* OSCRESET1 */
+	case 0x94: /* OSCRESET2 */
+	case 0x98: /* OSCRESET3 */
+	case 0x9c: /* OSCRESET4 */
+		break;
+	case 0xa0: /* SYS_CFGDATA */
+		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+			rc =  VMM_EFAIL;
+			break;
+		}
+		s->sys_cfgdata &= regmask;
+		s->sys_cfgdata |= regval;
+		break;
+	case 0xa4: /* SYS_CFGCTRL */
+		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+			rc =  VMM_EFAIL;
+			break;
+		}
+		s->sys_cfgctrl &= regmask;
+		s->sys_cfgctrl |= regval & ~(3 << 18);
+		s->sys_cfgstat = 1;            /* complete */
+		switch (s->sys_cfgctrl) {
+		case 0xc0800000: /* SYS_CFG_SHUTDOWN to motherboard */
+			/* FIXME: system_shutdown_request(); */
+			break;
+		case 0xc0900000: /* SYS_CFG_REBOOT to motherboard */
+			/* FIXME: system_reset_request(); */
+			break;
+		default:
+			s->sys_cfgstat |= 2;        /* error */
+		}
+		break;
+	case 0xa8: /* SYS_CFGSTAT */
+		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+			rc =  VMM_EFAIL;
+			break;
+		}
+		s->sys_cfgstat &= regmask;
+		s->sys_cfgstat |= regval & 3;
+		break;
+	default:
+		rc = VMM_EFAIL;
+		break;
+	}
+
+	vmm_spin_unlock(&s->lock);
+
+	return rc;
 }
 
 static int realview_emulator_reset(vmm_emudev_t *edev)
 {
 	struct realview_sysctl * s = edev->priv;
 
+	vmm_spin_lock(&s->lock);
+
+	s->clk_count = 0;
+
 	s->leds = 0;
 	s->lockval = 0;
+	s->sys_100hz = 0;
 	s->cfgdata1 = 0;
 	s->cfgdata2 = 0;
 	s->flags = 0;
 	s->resetlevel = 0;
+	s->sys_24mhz = 0;
+
+	vmm_spin_unlock(&s->lock);
 
 	return VMM_OK;
 }
@@ -223,26 +412,59 @@ static int realview_emulator_probe(vmm_guest_t *guest,
 				   vmm_emudev_t *edev,
 				   const vmm_emuid_t *eid)
 {
+	int rc = VMM_OK;
 	struct realview_sysctl * s;
 
 	s = vmm_malloc(sizeof(struct realview_sysctl));
-
+	if (!s) {
+		rc = VMM_EFAIL;
+		goto realview_emulator_probe_done;
+	}
 	vmm_memset(s, 0x0, sizeof(struct realview_sysctl));
+
+	s->clk = vmm_malloc(sizeof(vmm_emuclk_t));
+	if (!s->clk) {
+		rc = VMM_EFAIL;
+		goto realview_emulator_probe_freesys_fail;
+	}
+	vmm_strcpy(s->clk->name, "realview-clk");
+	s->clk->tick = realview_emulator_tick;
+	s->clk->priv = s;
+	if ((rc = vmm_devemu_register_clk(guest, s->clk))) {
+		rc = VMM_EFAIL;
+		goto realview_emulator_probe_freeclk_fail;
+	}
 
 	edev->priv = s;
 
 	s->guest = guest;
+	INIT_SPIN_LOCK(&s->lock);
+	s->clk_count = 0;
+	s->mod_100hz = 10000 / vmm_devemu_clk_microsecs();
+	s->inc_100hz = 1;
+	s->mod_24mhz = 1;
+	s->inc_24mhz = vmm_devemu_clk_microsecs() * 24;
 	if (eid->data) {
 		s->sys_id = ((u32 *)eid->data)[0];
 		s->proc_id = ((u32 *)eid->data)[1];
 	}
 
-	return VMM_OK;
+	goto realview_emulator_probe_done;
+
+realview_emulator_probe_freeclk_fail:
+	vmm_free(s->clk);
+realview_emulator_probe_freesys_fail:
+	vmm_free(s);
+realview_emulator_probe_done:
+	return rc;
 }
 
 static int realview_emulator_remove(vmm_emudev_t *edev)
 {
-	vmm_free(edev->priv);
+	struct realview_sysctl * s = edev->priv;
+
+	vmm_free(s->clk);
+	vmm_free(s);
 
 	return VMM_OK;
 }

@@ -86,7 +86,7 @@ int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num)
 
 	list_for_each(l, &eg->emupic_list) {
 		ep = list_entry(l, vmm_emupic_t, head);
-		ep->hndl(guest, ep, irq_num);
+		ep->hndl(ep, irq_num);
 	}
 
 	return VMM_OK;
@@ -244,7 +244,7 @@ u32 vmm_devemu_pic_count(vmm_guest_t *guest)
 	return retval;
 }
 
-void devemu_clk_tick(vmm_user_regs_t * regs, u32 ticks_left)
+static void devemu_clk_tick(vmm_user_regs_t * regs, u32 ticks_left)
 {
 	struct dlist *l;
 	vmm_guest_t *guest = vmm_scheduler_current_guest();
@@ -259,8 +259,14 @@ void devemu_clk_tick(vmm_user_regs_t * regs, u32 ticks_left)
 	
 	list_for_each(l, &eg->emuclk_list) {
 		ec = list_entry(l, vmm_emuclk_t, head);
-		ec->tick(guest, ec);
+		ec->tick(ec);
 	}
+}
+
+u32 vmm_devemu_clk_microsecs(void)
+{
+	/* FIXME: */
+	return 100;
 }
 
 int vmm_devemu_register_clk(vmm_guest_t *guest, vmm_emuclk_t * clk)

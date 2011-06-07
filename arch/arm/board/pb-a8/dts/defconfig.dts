@@ -61,7 +61,7 @@
 		guest0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			model = "vpb-a8";
+			model = "versatile,pb-a8";
 			device_type = "guest";
 
 			vcpus {
@@ -99,6 +99,16 @@
 					compatible = "realview,pb-a8";
 				};
 
+				sysctrl0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10001000>;
+					host_physical_addr = <0x00000000>;
+					physical_size = <0x1000>;
+					device_type = "sys";
+					compatible = "primecell,sp810";
+				};
+
 				uart {
 					manifest_type = "virtual";
 					address_type = "memory";
@@ -107,6 +117,17 @@
 					physical_size = <0x1000>;
 					device_type = "serial";
 				};
+
+				sysctrl1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1001A000>;
+					host_physical_addr = <0x00000000>;
+					physical_size = <0x1000>;
+					device_type = "sys";
+					compatible = "primecell,sp810";
+				};
+
 			};
 		};
 

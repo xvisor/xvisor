@@ -36,12 +36,10 @@ typedef struct vmm_emuguest vmm_emuguest_t;
 typedef struct vmm_emulator vmm_emulator_t;
 typedef struct vmm_devemu_ctrl vmm_devemu_ctrl_t;
 
-typedef void (*vmm_emupic_hndl_t) (vmm_guest_t *guest,
-				   vmm_emupic_t *pic,
+typedef void (*vmm_emupic_hndl_t) (vmm_emupic_t *epic,
 				   u32 irq_num);
 
-typedef void (*vmm_emuclk_tick_t) (vmm_guest_t *guest,
-				   vmm_emuclk_t *clk);
+typedef void (*vmm_emuclk_tick_t) (vmm_emuclk_t *eclk);
 
 typedef int (*vmm_emulator_probe_t) (vmm_guest_t *guest,
 				     vmm_emudev_t *edev,
@@ -138,6 +136,9 @@ vmm_emupic_t *vmm_devemu_pic(vmm_guest_t *guest, int index);
 
 /** Count available emulated pic */
 u32 vmm_devemu_pic_count(vmm_guest_t *guest);
+
+/** Get granularity of emulated clk ticks in microseconds */
+u32 vmm_devemu_clk_microsecs(void);
 
 /** Register emulated clock */
 int vmm_devemu_register_clk(vmm_guest_t *guest, vmm_emuclk_t * clk);
