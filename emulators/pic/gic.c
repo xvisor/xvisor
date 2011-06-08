@@ -557,6 +557,8 @@ static int gic_dist_write(struct gic_state * s, int cpu, u32 offset,
 	}
 
 	if (offset == 0xF00) {
+		/* Software Interrupt */
+		vmm_spin_lock(&s->lock);
 		irq = src & 0x3ff;
 		switch ((src >> 24) & 3) {
 		case 0:
@@ -574,6 +576,7 @@ static int gic_dist_write(struct gic_state * s, int cpu, u32 offset,
 		};
 		GIC_SET_PENDING(s, irq, mask);
 		gic_update(s);
+		vmm_spin_unlock(&s->lock);
 	} else {
 		src_mask = ~src_mask;
 		for (i = 0; i < 4; i++) {
@@ -775,8 +778,6 @@ static int gic_emulator_write(vmm_emudev_t *edev,
 		/* Write Distribution Control */
 		rc = gic_dist_write(s, cpu, offset - 0x1000, regmask, regval);
 	}
-
-	vmm_spin_unlock(&s->lock);
 
 	return rc;
 }
