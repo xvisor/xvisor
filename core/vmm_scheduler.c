@@ -73,6 +73,42 @@ vmm_guest_t * vmm_scheduler_guest(s32 guest_no)
 	return NULL;
 }
 
+u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest)
+{
+	u32 ret = 0;
+	struct dlist *l;
+
+	if (!guest) {
+		return 0;
+	}
+
+	list_for_each(l, &guest->vcpu_list) {
+		ret++;
+	}
+	
+	return ret;
+}
+
+vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index)
+{
+	vmm_vcpu_t *vcpu = NULL;
+	struct dlist *l;
+
+	if (!guest || (index < 0)) {
+		return NULL;
+	}
+
+	list_for_each(l, &guest->vcpu_list) {
+		if (!index) {
+			vcpu = list_entry(l, vmm_vcpu_t, head);
+			break;
+		}
+		index--;
+	}
+
+	return vcpu;
+}
+
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void)
 {
 	if (sched.vcpu_current != -1)

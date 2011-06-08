@@ -64,6 +64,12 @@ u32 vmm_scheduler_guest_count(void);
 /** Retrive guest */
 vmm_guest_t * vmm_scheduler_guest(s32 guest_no);
 
+/** Number of vcpus belonging to a given guest */
+u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest);
+
+/** Retrive vcpu belonging to a given guest */
+vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index);
+
 /** Retrive current vcpu number */
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void);
 

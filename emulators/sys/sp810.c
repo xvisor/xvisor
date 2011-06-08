@@ -19,7 +19,7 @@
  * @file sp810.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for SP810 System Controller.
+ * @brief PrimeCell SP810 System Controller Emulator.
  */
 
 #include <vmm_error.h>
@@ -115,6 +115,7 @@ static int sp810_emulator_write(vmm_emudev_t *edev,
 	case 0x00: /* SYSCTRL */
 		s->sysctrl &= regmask;
 		s->sysctrl |= regval;
+		break;
 	default:
 		rc = VMM_EFAIL;
 		break;

@@ -37,7 +37,8 @@ typedef struct vmm_emulator vmm_emulator_t;
 typedef struct vmm_devemu_ctrl vmm_devemu_ctrl_t;
 
 typedef void (*vmm_emupic_hndl_t) (vmm_emupic_t *epic,
-				   u32 irq_num);
+				   u32 irq_num,
+				   int irq_level);
 
 typedef void (*vmm_emuclk_tick_t) (vmm_emuclk_t *eclk);
 
@@ -120,7 +121,7 @@ int vmm_devemu_emulate_write(vmm_guest_t *guest,
 			     void *src, u32 src_len);
 
 /** Emulate irq for guest */
-int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num);
+int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num, int irq_level);
 
 /** Register emulated pic */
 int vmm_devemu_register_pic(vmm_guest_t *guest, vmm_emupic_t * emu);

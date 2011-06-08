@@ -19,7 +19,7 @@
  * @file realview.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for Realview Sysctl emulator.
+ * @brief Realview Sysctl emulator.
  */
 
 #include <vmm_error.h>
@@ -271,6 +271,7 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 	case 0x08: /* LED */
 		s->leds &= regmask;
 		s->leds |= regval;
+		break;
 	case 0x0c: /* OSC0 */
 	case 0x10: /* OSC1 */
 	case 0x14: /* OSC2 */

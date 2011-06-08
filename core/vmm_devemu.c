@@ -72,7 +72,7 @@ int vmm_devemu_emulate_write(vmm_guest_t *guest,
 	return edev->write(edev, gphys_addr - reg->gphys_addr, src, src_len);
 }
 
-int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num)
+int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num, int irq_level)
 {
 	struct dlist *l;
 	vmm_emupic_t *ep;
@@ -86,7 +86,7 @@ int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num)
 
 	list_for_each(l, &eg->emupic_list) {
 		ep = list_entry(l, vmm_emupic_t, head);
-		ep->hndl(ep, irq_num);
+		ep->hndl(ep, irq_num, irq_level);
 	}
 
 	return VMM_OK;
@@ -666,9 +666,6 @@ int vmm_devemu_probe(void)
 						  VMM_DEVTREE_NODETYPE_UNKNOWN;
 						reg->node->priv = NULL;
 					}
-					vmm_printf("Reset edevice %s/%s\n",
-						   guest->node->name,
-						   reg->node->name);
 					rc = einst->reset(einst);
 					if (rc) {
 						vmm_printf("Error %d\n", rc);
