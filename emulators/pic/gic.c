@@ -529,18 +529,19 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 static int gic_dist_read(struct gic_state * s, int cpu, u32 offset, u32 *dst)
 {
 	int rc = VMM_OK, i;
+	u8 val;
 
 	if (!s || !dst) {
 		return VMM_EFAIL;
 	}
 
-	/* Read byte-by-byte assuming little endian format */
+	*dst = 0;
 	for (i = 0; i < 4; i++) {
 		if ((rc = gic_dist_readb(s, cpu, 
-					 offset + i, ((u8 *)dst) + i))) {
+					 offset + i, &val))) {
 				break;
 		}
-		
+		*dst |= val << (i * 8);
 	}
 
 	return VMM_OK;
@@ -549,23 +550,42 @@ static int gic_dist_read(struct gic_state * s, int cpu, u32 offset, u32 *dst)
 static int gic_dist_write(struct gic_state * s, int cpu, u32 offset, 
 			  u32 src_mask, u32 src)
 {
-	int rc = VMM_OK, i;
+	int rc = VMM_OK, irq, mask, i;
 
 	if (!s) {
 		return VMM_EFAIL;
 	}
 
-	/* Write byte-by-byte assuming little endian format */
-	src_mask = ~src_mask;
-	for (i = 0; i < 4; i++) {
-		if (src_mask & 0xFF) {
-			if ((rc = gic_dist_writeb(s, cpu, 
-						  offset + i, src & 0xFF))) {
-				break;
+	if (offset == 0xF00) {
+		irq = src & 0x3ff;
+		switch ((src >> 24) & 3) {
+		case 0:
+			mask = (src >> 16) & GIC_ALL_CPU_MASK(s);
+			break;
+		case 1:
+			mask = GIC_ALL_CPU_MASK(s) ^ (1 << cpu);
+			break;
+		case 2:
+			mask = 1 << cpu;
+			break;
+		default:
+			mask = GIC_ALL_CPU_MASK(s);
+			break;
+		};
+		GIC_SET_PENDING(s, irq, mask);
+		gic_update(s);
+	} else {
+		src_mask = ~src_mask;
+		for (i = 0; i < 4; i++) {
+			if (src_mask & 0xFF) {
+				if ((rc = gic_dist_writeb(s, cpu, 
+						offset + i, src & 0xFF))) {
+					break;
+				}
 			}
+			src_mask = src_mask >> 8;
+			src = src >> 8;
 		}
-		src_mask = src_mask >> 8;
-		src = src >> 8;
 	}
 
 	return rc;
