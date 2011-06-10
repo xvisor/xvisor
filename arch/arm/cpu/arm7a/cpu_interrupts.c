@@ -39,8 +39,6 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 {
 	vmm_vcpu_t * vcpu;
 
-	vmm_host_irq_exec(CPU_UNDEF_INST_IRQ, uregs);
-
 	vcpu = vmm_scheduler_current_vcpu();
 
 	if (!vcpu) {
@@ -65,8 +63,6 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 void do_software_interrupt(vmm_user_regs_t * uregs)
 {
 	vmm_vcpu_t * vcpu;
-
-	vmm_host_irq_exec(CPU_SOFT_IRQ, uregs);
 
 	vcpu = vmm_scheduler_current_vcpu();
 
@@ -97,8 +93,6 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	ifsr = read_ifsr();
 	ifar = read_ifar();	
 
-	vmm_host_irq_exec(CPU_PREFETCH_ABORT_IRQ, uregs);
-
 	vcpu = vmm_scheduler_current_vcpu();
 
 	if (!vcpu) {
@@ -121,8 +115,6 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	dfsr = read_dfsr();
 	dfar = read_dfar();	
 
-	vmm_host_irq_exec(CPU_DATA_ABORT_IRQ, uregs);
-
 	vcpu = vmm_scheduler_current_vcpu();
 
 	if (!vcpu) {
@@ -139,9 +131,7 @@ void do_data_abort(vmm_user_regs_t * uregs)
 
 void do_not_used(vmm_user_regs_t * uregs)
 {
-	vmm_host_irq_exec(CPU_NOT_USED_IRQ, uregs);
-
-	vmm_vcpu_irq_process(uregs);
+	vmm_panic("%s: Unused interrupt\n", __func__);
 }
 
 void do_irq(vmm_user_regs_t * uregs)

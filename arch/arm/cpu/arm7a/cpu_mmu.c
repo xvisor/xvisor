@@ -638,6 +638,8 @@ int cpu_mmu_unmap_reserved_page(cpu_page_t * pg)
 		}
 	}
 
+	invalid_tlb_line(pg->va);
+
 	return VMM_OK;
 }
 

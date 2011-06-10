@@ -146,7 +146,7 @@ static void gic_update(struct gic_state *s)
 			/* Assert irq to Parent PIC */
 			vmm_devemu_emulate_irq(s->guest, 
 					       s->parent_irq[cpu], level);
-		} else {
+		} else if (level) {
 			/* Assert irq to VCPU */
 			vcpu = vmm_scheduler_guest_vcpu(s->guest, cpu);
 			if (vcpu) {
@@ -276,7 +276,7 @@ static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 		} else {
 			irq = (offset - 0x280) * 8;
 		}
-		mask = GIC_ALL_CPU_MASK(s);
+		mask = (irq < 32) ? (1 << cpu) : GIC_ALL_CPU_MASK(s);
 		*dst = 0;
 		for (i = 0; i < 8; i++) {
 			*dst |= GIC_TEST_PENDING(s, irq + i, mask) ? 
@@ -287,7 +287,7 @@ static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 	case 0x304: /* Active1 */
 	case 0x308: /* Active2 */
 		irq = (offset - 0x300) * 8;
-		mask = GIC_ALL_CPU_MASK(s);
+		mask = (irq < 32) ? (1 << cpu) : GIC_ALL_CPU_MASK(s);
 		*dst = 0;
 		for (i = 0; i < 8; i++) {
 			*dst |= GIC_TEST_ACTIVE(s, irq + i, mask) ? 
@@ -316,10 +316,18 @@ static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 				done = 0;
 				break;
 			}
-			*dst = GIC_TARGET(s, irq);
+			if (29 <= irq && irq < 32) {
+				*dst = 1 << cpu;
+			} else {
+				*dst = GIC_TARGET(s, irq);
+			}
 			break;
 		case 0xC: /* Configuration */
 			irq = (offset - 0xC00) * 4;
+			if (GIC_NUM_IRQ(s) <= irq) {
+				done = 0;
+				break;
+			}
 			*dst = 0;
 			for (i = 0; i < 4; i++) {
 				if (GIC_TEST_MODEL(s, irq + i)) {

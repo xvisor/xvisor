@@ -138,7 +138,7 @@ vmm_emupic_t *vmm_devemu_pic(vmm_guest_t *guest, int index);
 /** Count available emulated pic */
 u32 vmm_devemu_pic_count(vmm_guest_t *guest);
 
-/** Get granularity of emulated clk ticks in microseconds */
+/** Get period emulated clk in microseconds */
 u32 vmm_devemu_clk_microsecs(void);
 
 /** Register emulated clock */
