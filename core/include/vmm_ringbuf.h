@@ -19,6 +19,7 @@
  * @file vmm_ringbuf.h
  * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @brief header file for generic ring buffer.
  */
 
 #ifndef __VMM_RINGBUF_H__
@@ -28,20 +29,24 @@
 #include <vmm_spinlocks.h>
 
 struct vmm_ringbuf {
-	u8 *rb_data;
-	u32 rb_size;
-	u32 overrun;
-	u32 head;		/* read here. */
-	u32 tail;		/* write here */
-	vmm_spinlock_t head_lock;	/* lock this for head */
-	vmm_spinlock_t tail_lock;	/* lock this for tail. */
+	vmm_spinlock_t lock;
+	void *keys;
+	u32 key_size;
+	u32 key_count;
+	u32 read_pos;
+	u32 write_pos;
+	u32 avail_count;
 };
 
 typedef struct vmm_ringbuf vmm_ringbuf_t;
 
-void *vmm_ringbuf_init(u32 size);
-u32 vmm_ringbuf_write(vmm_ringbuf_t *rb, void *data, u32 len);
-u32 vmm_ringbuf_read(vmm_ringbuf_t *rb, void *dest, u32 len);
-u32 vmm_ringbuf_free(vmm_ringbuf_t *rb);
+vmm_ringbuf_t *vmm_ringbuf_alloc(u32 key_size, u32 key_count);
+bool vmm_ringbuf_isempty(vmm_ringbuf_t *rb);
+bool vmm_ringbuf_isfull(vmm_ringbuf_t *rb);
+bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite);
+bool vmm_ringbuf_dequeue(vmm_ringbuf_t *rb, void *dstkey);
+bool vmm_ringbuf_getkey(vmm_ringbuf_t *rb, u32 index, void *dstkey);
+u32 vmm_ringbuf_avail(vmm_ringbuf_t *rb);
+int vmm_ringbuf_free(vmm_ringbuf_t *rb);
 
 #endif /* __VMM_RINGBUF_H__ */

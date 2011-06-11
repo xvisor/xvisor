@@ -19,7 +19,7 @@
  * @file vmm_ringbuf.c
  * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
- * @brief Source file for ring buffer implementation.
+ * @brief source file for generic ring buffer.
  */
 
 #include <vmm_types.h>
@@ -29,7 +29,7 @@
 #include <vmm_string.h>
 #include <vmm_ringbuf.h>
 
-void *vmm_ringbuf_init(u32 size)
+vmm_ringbuf_t *vmm_ringbuf_alloc(u32 key_size, u32 key_count)
 {
 	vmm_ringbuf_t *rb;
 
@@ -38,90 +38,197 @@ void *vmm_ringbuf_init(u32 size)
 		return NULL;
 	}
 
-	rb->rb_data = vmm_malloc(size);
-	if (!rb->rb_data) {
-		goto rb_data_fail;
+	INIT_SPIN_LOCK(&rb->lock);
+	rb->keys = vmm_malloc(key_size * key_count);
+	if (!rb->keys) {
+		goto rb_init_fail;
 	}
+	rb->key_size = key_size;
+	rb->key_count = key_count;
+	rb->read_pos = 0;
+	rb->write_pos = 0;
+	rb->avail_count = 0;
 
-	/* Simultaneous read/writes are lock free. Updates need lock */
-	INIT_SPIN_LOCK(&rb->head_lock);
-	INIT_SPIN_LOCK(&rb->tail_lock);
-	rb->head = 0;
-	rb->tail = 0;
-	rb->overrun = 0;
-	rb->rb_size = size;
+	return rb;
 
-	return (void *)rb;
-
-rb_data_fail:
+rb_init_fail:
 	vmm_free(rb);
 	return NULL;
 }
 
-u32 vmm_ringbuf_write(vmm_ringbuf_t *rb, void *data, u32 len)
+bool vmm_ringbuf_isempty(vmm_ringbuf_t *rb)
 {
-	/* latch the tail */
-	u32 ctail = rb->tail, wrapped = 0;
-	u32 behind = (rb->head < ctail ? 1 : 0);
+	bool isempty;
 
-	vmm_spin_lock(&rb->head_lock);
-
-	if ((rb->rb_size - rb->head) > len) {
-		vmm_memcpy(rb->rb_data + rb->head, data, len);
-		rb->head += len;
-		rb->head = (rb->head >= rb->rb_size ? 0 : rb->head);
-	} else {
-		wrapped = 1;
-		vmm_memcpy(rb->rb_data + rb->head, data,
-			   (rb->rb_size - rb->head));
-		vmm_memcpy(rb->rb_data, data + (rb->rb_size - rb->head),
-			   (len - (rb->rb_size - rb->head)));
-		rb->head = len - (rb->rb_size - rb->head);
-	}
-	if (behind) {
-		if (rb->head > ctail)
-			rb->overrun++;
-	} else {
-		if (wrapped && rb->head > ctail)
-			rb->overrun++;
+	if (!rb) {
+		return TRUE;
 	}
 
-	vmm_spin_unlock(&rb->head_lock);
+	vmm_spin_lock(&rb->lock);
 
-	return 0;
+	isempty = (rb->read_pos == rb->write_pos);
+
+	vmm_spin_unlock(&rb->lock);
+
+	return isempty;
 }
 
-u32 vmm_ringbuf_read(vmm_ringbuf_t *rb, void *dest, u32 len)
+bool vmm_ringbuf_isfull(vmm_ringbuf_t *rb)
 {
-	u32 to_read = 0, avail;
-	u32 chead;
+	bool isfull;
 
-	/* latch the head */
-	chead = rb->head;
-
-	vmm_spin_lock(&rb->tail_lock);
-	if (rb->tail < rb->head) {
-		/* case when head hasn't wrapped. */
-		avail = chead - rb->tail;
-		to_read = (avail > len ? len : avail);
-		memcpy(dest, rb->rb_data + rb->tail, to_read);
-		rb->tail += to_read;
-	} else {
-		/* case when head had wrapped around since last we read */
-		vmm_memcpy(dest, rb->rb_data + rb->tail,
-			   (rb->rb_size - rb->tail));
-		vmm_memcpy(dest + (rb->rb_size - rb->tail), rb->rb_data,
-			   (to_read - (rb->rb_size - rb->tail)));
-		rb->tail = (to_read - (rb->rb_size - rb->tail));
+	if (!rb) {
+		return FALSE;
 	}
-	vmm_spin_unlock(&rb->tail_lock);
 
-	return to_read;
+	vmm_spin_lock(&rb->lock);
+
+	isfull = (rb->read_pos == ((rb->write_pos + 1) % rb->key_count));
+
+	vmm_spin_unlock(&rb->lock);
+
+	return isfull;
 }
 
-u32 vmm_ringbuf_free(vmm_ringbuf_t *rb)
+bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
 {
-	vmm_free(rb->rb_data);
+	bool isfull, update;
+
+	if (!rb || !srckey) {
+		return FALSE;
+	}
+
+	vmm_spin_lock(&rb->lock);
+
+	isfull = (rb->read_pos == ((rb->write_pos + 1) % rb->key_count));
+	update = FALSE;
+	if (overwrite) {
+		if (isfull) {
+			rb->read_pos = (rb->read_pos + 1) % rb->key_count;
+			rb->avail_count--;
+		}
+		update = TRUE;
+	} else {
+		if (!isfull) {
+			update = TRUE;
+		}
+	}
+	if(update) {
+		switch(rb->key_size) {
+		case 1:
+			*((u8 *)(rb->keys + (rb->write_pos * rb->key_size)))
+			= *((u8 *)srckey);
+			break;
+		case 2:
+			*((u16 *)(rb->keys + (rb->write_pos * rb->key_size)))
+			= *((u16 *)srckey);
+			break;
+		case 4:
+			*((u32 *)(rb->keys + (rb->write_pos * rb->key_size)))
+			= *((u32 *)srckey);
+			break;
+		default:
+			vmm_memcpy(rb->keys + (rb->write_pos * rb->key_size), 
+				   srckey, 
+				   rb->key_size);
+			break;
+		};
+		rb->write_pos = (rb->write_pos + 1) % rb->key_count;
+		rb->avail_count++;
+	}
+
+	vmm_spin_unlock(&rb->lock);
+
+	return update;
+}
+
+bool vmm_ringbuf_dequeue(vmm_ringbuf_t *rb, void *dstkey)
+{
+	bool isempty;
+
+	if (!rb || !dstkey) {
+		return FALSE;
+	}
+
+	vmm_spin_lock(&rb->lock);
+
+	isempty = (rb->read_pos == rb->write_pos);
+
+	if (!isempty) {
+		switch(rb->key_size) {
+		case 1:
+			*((u8 *)dstkey) =
+			*((u8 *)(rb->keys + (rb->read_pos * rb->key_size)));
+			break;
+		case 2:
+			*((u16 *)dstkey) =
+			*((u16 *)(rb->keys + (rb->read_pos * rb->key_size)));
+			break;
+		case 4:
+			*((u32 *)dstkey) = 
+			*((u32 *)(rb->keys + (rb->read_pos * rb->key_size)));
+			break;
+		default:
+			vmm_memcpy(dstkey, 
+				   rb->keys + (rb->read_pos * rb->key_size),
+				   rb->key_size);
+			break;
+		};
+		rb->read_pos = (rb->read_pos + 1) % rb->key_count;
+		rb->avail_count--;
+	}
+
+	vmm_spin_unlock(&rb->lock);
+
+	return !isempty;
+}
+
+bool vmm_ringbuf_getkey(vmm_ringbuf_t *rb, u32 index, void *dstkey)
+{
+	if (!rb || !dstkey) {
+		return FALSE;
+	}
+	
+	vmm_spin_lock(&rb->lock);
+
+	index = (index + rb->read_pos) % rb->key_count;
+	switch(rb->key_size) {
+	case 1:
+		*((u8 *)dstkey) =
+		*((u8 *)(rb->keys + (index * rb->key_size)));
+		break;
+	case 2:
+		*((u16 *)dstkey) =
+		*((u16 *)(rb->keys + (index * rb->key_size)));
+		break;
+	case 4:
+		*((u32 *)dstkey) = 
+		*((u32 *)(rb->keys + (index * rb->key_size)));
+		break;
+	default:
+		vmm_memcpy(dstkey, 
+			   rb->keys + (index * rb->key_size),
+			   rb->key_size);
+		break;
+	};
+
+	vmm_spin_unlock(&rb->lock);
+
+	return TRUE;
+}
+
+u32 vmm_ringbuf_avail(vmm_ringbuf_t *rb)
+{
+	if (!rb) {
+		return 0;
+	}
+	return rb->avail_count;
+}
+
+int vmm_ringbuf_free(vmm_ringbuf_t *rb)
+{
+	vmm_free(rb->keys);
 	vmm_free(rb);
-	return 0;
+
+	return VMM_OK;
 }
