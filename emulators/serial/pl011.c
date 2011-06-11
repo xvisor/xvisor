@@ -37,13 +37,13 @@
 #define	MODULE_INIT			pl011_emulator_init
 #define	MODULE_EXIT			pl011_emulator_exit
 
-#define PL011_INT_TX 0x20
-#define PL011_INT_RX 0x10
+#define PL011_INT_TX			0x20
+#define PL011_INT_RX			0x10
 
-#define PL011_FLAG_TXFE 0x80
-#define PL011_FLAG_RXFF 0x40
-#define PL011_FLAG_TXFF 0x20
-#define PL011_FLAG_RXFE 0x10
+#define PL011_FLAG_TXFE			0x80
+#define PL011_FLAG_RXFF			0x40
+#define PL011_FLAG_TXFF			0x20
+#define PL011_FLAG_RXFE			0x10
 
 struct pl011_state {
 	vmm_guest_t *guest;
@@ -67,20 +67,67 @@ struct pl011_state {
 	int read_trigger;
 };
 
-static int pl011_emulator_read(vmm_emudev_t *edev,
-			       physical_addr_t offset, 
-			       void *dst, u32 dst_len)
+static void pl011_set_irq(struct pl011_state * s)
+{
+	if (s->int_level & s->int_enabled) {
+		vmm_devemu_emulate_irq(s->guest, s->irq, 1);
+	} else {
+		vmm_devemu_emulate_irq(s->guest, s->irq, 0);
+	}
+}
+
+static void pl011_set_read_trigger(struct pl011_state *s)
+{
+#if 0
+    /* The docs say the RX interrupt is triggered when the FIFO exceeds
+       the threshold.  However linux only reads the FIFO in response to an
+       interrupt.  Triggering the interrupt when the FIFO is non-empty seems
+       to make things work.  */
+    if (s->lcr & 0x10)
+        s->read_trigger = (s->ifl >> 1) & 0x1c;
+    else
+#endif
+        s->read_trigger = 1;
+}
+
+static int pl011_can_receive(struct pl011_state *s)
+{
+	if (s->lcr & 0x10) {
+		return s->read_count < 16;
+	} else {
+		return s->read_count < 1;
+	}
+}
+
+static void pl011_put_fifo(struct pl011_state *s, u32 value)
+{
+	int slot;
+
+	slot = s->read_pos + s->read_count;
+	if (slot >= 16)
+		slot -= 16;
+	s->read_fifo[slot] = value;
+	s->read_count++;
+	s->flags &= ~PL011_FLAG_RXFE;
+	if (s->cr & 0x10 || s->read_count == 16) {
+		s->flags |= PL011_FLAG_RXFF;
+	}
+	if (s->read_count == s->read_trigger) {
+		s->int_level |= PL011_INT_RX;
+		pl011_set_irq(s);;
+	}
+}
+
+static int pl011_reg_read(struct pl011_state * s, u32 offset, u32 *dst)
 {
 	int rc = VMM_OK;
-	u32 regval = 0x0;
-	struct pl011_state * s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
 	switch (offset >> 2) {
 	case 0: /* UARTDR */
 		s->flags &= ~PL011_FLAG_RXFF;
-		regval = s->read_fifo[s->read_pos];
+		*dst = s->read_fifo[s->read_pos];
 		if (s->read_count > 0) {
 			s->read_count--;
 		if (++s->read_pos == 16)
@@ -90,50 +137,50 @@ static int pl011_emulator_read(vmm_emudev_t *edev,
 			s->flags |= PL011_FLAG_RXFE;
 		}
 		if (s->read_count == s->read_trigger - 1)
-			s->int_level &= ~ PL011_INT_RX;
-		/*pl011_update(s);
-		qemu_chr_accept_input(s->chr);
+			s->int_level &= ~PL011_INT_RX;
+		pl011_set_irq(s);
+		/*qemu_chr_accept_input(s->chr);
 		return c;*/
 		break;
 	case 1: /* UARTCR */
-		regval = 0;
+		*dst = 0;
 		break;
 	case 6: /* UARTFR */
-		regval = s->flags;
+		*dst = s->flags;
 		break;
 	case 8: /* UARTILPR */
-		regval = s->ilpr;
+		*dst = s->ilpr;
 		break;
 	case 9: /* UARTIBRD */
-        	regval = s->ibrd;
+        	*dst = s->ibrd;
 		break;
 	case 10: /* UARTFBRD */
-		regval = s->fbrd;
+		*dst = s->fbrd;
 		break;
 	case 11: /* UARTLCR_H */
-		regval = s->lcr;
+		*dst = s->lcr;
 		break;
 	case 12: /* UARTCR */
-		regval = s->cr;
+		*dst = s->cr;
 		break;
 	case 13: /* UARTIFLS */
-		regval = s->ifl;
+		*dst = s->ifl;
 		break;
 	case 14: /* UARTIMSC */
-		regval = s->int_enabled;
+		*dst = s->int_enabled;
 		break;
 	case 15: /* UARTRIS */
-		regval = s->int_level;
+		*dst = s->int_level;
 		break;
 	case 16: /* UARTMIS */
- 		regval = s->int_level & s->int_enabled;
+ 		*dst = s->int_level & s->int_enabled;
 		break;
 	case 18: /* UARTDMACR */
-		regval = s->dmacr;
+		*dst = s->dmacr;
 		break;
 	default:
 		if (offset >= 0xfe0 && offset < 0x1000) {
-			regval = s->id[(offset - 0xfe0) >> 2];
+			*dst = s->id[(offset - 0xfe0) >> 2];
 		} else {
 			rc = VMM_EFAIL;
 		}
@@ -141,6 +188,87 @@ static int pl011_emulator_read(vmm_emudev_t *edev,
 	};
 
 	vmm_spin_unlock(&s->lock);
+
+	return rc;
+}
+
+static int pl011_reg_write(struct pl011_state * s, u32 offset, 
+			   u32 src_mask, u32 src)
+{
+	int rc = VMM_OK;
+
+	vmm_spin_lock(&s->lock);
+
+	switch (offset >> 2) {
+	case 0: /* UARTDR */
+		/* ??? Check if transmitter is enabled.  */
+		/* ch = src; */
+		/*if (s->chr)
+			qemu_chr_write(s->chr, &ch, 1);*/
+		s->int_level |= PL011_INT_TX;
+		pl011_set_irq(s);
+		break;
+	case 1: /* UARTCR */
+		s->cr = (s->cr & src_mask) | (src & ~src_mask);
+		break;
+	case 6: /* UARTFR */
+		/* Writes to Flag register are ignored.  */
+		break;
+	case 8: /* UARTUARTILPR */
+		s->ilpr = (s->ilpr & src_mask) | (src & ~src_mask);
+		break;
+	case 9: /* UARTIBRD */
+		s->ibrd = (s->ibrd & src_mask) | (src & ~src_mask);
+		break;
+	case 10: /* UARTFBRD */
+		s->fbrd = (s->fbrd & src_mask) | (src & ~src_mask);
+		break;
+	case 11: /* UARTLCR_H */
+		s->lcr = src;
+		pl011_set_read_trigger(s);
+		break;
+	case 12: /* UARTCR */
+		/* ??? Need to implement the enable and loopback bits.  */
+		s->cr = (s->cr & src_mask) | (src & ~src_mask);
+		break;
+	case 13: /* UARTIFS */
+		s->ifl = (s->ifl & src_mask) | (src & ~src_mask);
+		pl011_set_read_trigger(s);
+		break;
+	case 14: /* UARTIMSC */
+		s->int_enabled = (s->int_enabled & src_mask) | 
+				 (src & ~src_mask);
+		pl011_set_irq(s);
+		break;
+	case 17: /* UARTICR */
+		s->int_level &= ~(src & ~src_mask);
+		pl011_set_irq(s);
+		break;
+	case 18: /* UARTDMACR */
+		/* ??? DMA not implemented */
+		s->dmacr = (s->dmacr & src_mask) | (src & ~src_mask);
+		s->dmacr &= ~0x3;
+		break;
+	default:
+		rc = VMM_EFAIL;
+		break;
+	};
+
+	vmm_spin_unlock(&s->lock);
+
+	return rc;
+}
+
+
+static int pl011_emulator_read(vmm_emudev_t *edev,
+			       physical_addr_t offset, 
+			       void *dst, u32 dst_len)
+{
+	int rc = VMM_OK;
+	u32 regval = 0x0;
+	struct pl011_state * s = edev->priv;
+
+	rc = pl011_reg_read(s, offset, &regval);
 
 	if (!rc) {
 		switch (dst_len) {
@@ -184,25 +312,13 @@ static int pl011_emulator_write(vmm_emudev_t *edev,
 		regval = vmm_in_le32(src);
 		break;
 	default:
-		return VMM_EFAIL;
+		rc = VMM_EFAIL;
 		break;
 	};
 
-	vmm_spin_lock(&s->lock);
-
-#if 0
-	switch (offset) {
-	case 0x00: /* SYSCTRL */
-		s->sysctrl &= regmask;
-		s->sysctrl |= regval;
-		break;
-	default:
-		rc = VMM_EFAIL;
-		break;
+	if (!rc) {
+		rc = pl011_reg_write(s, offset, regmask, regval);
 	}
-#endif
-
-	vmm_spin_unlock(&s->lock);
 
 	return rc;
 }

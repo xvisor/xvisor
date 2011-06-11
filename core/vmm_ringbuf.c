@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_ringbuffer.c
+ * @file vmm_ringbuf.c
  * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief Source file for ring buffer implementation.
@@ -27,12 +27,13 @@
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
-#include <vmm_ringbuffer.h>
+#include <vmm_ringbuf.h>
 
-void *vmm_ringbuffer_init(u32 size)
+void *vmm_ringbuf_init(u32 size)
 {
-	rb_info_t *rb;
-	rb = vmm_malloc(sizeof(rb_info_t));
+	vmm_ringbuf_t *rb;
+
+	rb = vmm_malloc(sizeof(vmm_ringbuf_t));
 	if (!rb) {
 		return NULL;
 	}
@@ -57,10 +58,8 @@ rb_data_fail:
 	return NULL;
 }
 
-u32 vmm_ringbuffer_write(void *handle, void *data, u32 len)
+u32 vmm_ringbuf_write(vmm_ringbuf_t *rb, void *data, u32 len)
 {
-	rb_info_t *rb = (rb_info_t *) handle;
-
 	/* latch the tail */
 	u32 ctail = rb->tail, wrapped = 0;
 	u32 behind = (rb->head < ctail ? 1 : 0);
@@ -92,9 +91,8 @@ u32 vmm_ringbuffer_write(void *handle, void *data, u32 len)
 	return 0;
 }
 
-u32 vmm_ringbuffer_read(void *handle, void *dest, u32 len)
+u32 vmm_ringbuf_read(vmm_ringbuf_t *rb, void *dest, u32 len)
 {
-	rb_info_t *rb = (rb_info_t *) handle;
 	u32 to_read = 0, avail;
 	u32 chead;
 
@@ -121,9 +119,8 @@ u32 vmm_ringbuffer_read(void *handle, void *dest, u32 len)
 	return to_read;
 }
 
-u32 vmm_ringbuffer_free(void *handle)
+u32 vmm_ringbuf_free(vmm_ringbuf_t *rb)
 {
-	rb_info_t *rb = (rb_info_t *) handle;
 	vmm_free(rb->rb_data);
 	vmm_free(rb);
 	return 0;

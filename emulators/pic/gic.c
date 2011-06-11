@@ -652,6 +652,8 @@ static int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset,
 		return VMM_EFAIL;
 	}
 
+	src = src & ~src_mask;
+
 	vmm_spin_lock(&s->lock);
 
 	switch (offset) {

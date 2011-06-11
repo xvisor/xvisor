@@ -16,18 +16,18 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_ringbuffer.h
+ * @file vmm_ringbuf.h
  * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  */
 
-#ifndef __VMM_RINGBUFFER_H__
-#define __VMM_RINGBUFFER_H__
+#ifndef __VMM_RINGBUF_H__
+#define __VMM_RINGBUF_H__
 
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 
-typedef struct rb_info {
+struct vmm_ringbuf {
 	u8 *rb_data;
 	u32 rb_size;
 	u32 overrun;
@@ -35,11 +35,13 @@ typedef struct rb_info {
 	u32 tail;		/* write here */
 	vmm_spinlock_t head_lock;	/* lock this for head */
 	vmm_spinlock_t tail_lock;	/* lock this for tail. */
-} rb_info_t;
+};
 
-void *vmm_ringbuffer_init(u32 size);
-u32 vmm_ringbuffer_write(void *handle, void *data, u32 len);
-u32 vmm_ringbuffer_read(void *handle, void *dest, u32 len);
-u32 vmm_ringbuffer_free(void *handle);
+typedef struct vmm_ringbuf vmm_ringbuf_t;
 
-#endif /* __VMM_RINGBUFFER_H__ */
+void *vmm_ringbuf_init(u32 size);
+u32 vmm_ringbuf_write(vmm_ringbuf_t *rb, void *data, u32 len);
+u32 vmm_ringbuf_read(vmm_ringbuf_t *rb, void *dest, u32 len);
+u32 vmm_ringbuf_free(vmm_ringbuf_t *rb);
+
+#endif /* __VMM_RINGBUF_H__ */
