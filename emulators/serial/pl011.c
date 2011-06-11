@@ -23,13 +23,12 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_host_io.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_modules.h>
+#include <vmm_host_io.h>
 #include <vmm_devtree.h>
-#include <vmm_devdrv.h>
-#include <vmm_chardev.h>
+#include <vmm_devemu.h>
 
 #define MODULE_VARID			pl011_emulator_module
 #define MODULE_NAME			"PL011 Serial Emulator"
@@ -38,13 +37,299 @@
 #define	MODULE_INIT			pl011_emulator_init
 #define	MODULE_EXIT			pl011_emulator_exit
 
+#define PL011_INT_TX 0x20
+#define PL011_INT_RX 0x10
+
+#define PL011_FLAG_TXFE 0x80
+#define PL011_FLAG_RXFF 0x40
+#define PL011_FLAG_TXFF 0x20
+#define PL011_FLAG_RXFE 0x10
+
+struct pl011_state {
+	vmm_guest_t *guest;
+	vmm_spinlock_t lock;
+	u8 id[8];
+	u32 irq;
+	u32 readbuff;
+	u32 flags;
+	u32 lcr;
+	u32 cr;
+	u32 dmacr;
+	u32 int_enabled;
+	u32 int_level;
+	u32 read_fifo[16];
+	u32 ilpr;
+	u32 ibrd;
+	u32 fbrd;
+	u32 ifl;
+	int read_pos;
+	int read_count;
+	int read_trigger;
+};
+
+static int pl011_emulator_read(vmm_emudev_t *edev,
+			       physical_addr_t offset, 
+			       void *dst, u32 dst_len)
+{
+	int rc = VMM_OK;
+	u32 regval = 0x0;
+	struct pl011_state * s = edev->priv;
+
+	vmm_spin_lock(&s->lock);
+
+	switch (offset >> 2) {
+	case 0: /* UARTDR */
+		s->flags &= ~PL011_FLAG_RXFF;
+		regval = s->read_fifo[s->read_pos];
+		if (s->read_count > 0) {
+			s->read_count--;
+		if (++s->read_pos == 16)
+			s->read_pos = 0;
+		}
+		if (s->read_count == 0) {
+			s->flags |= PL011_FLAG_RXFE;
+		}
+		if (s->read_count == s->read_trigger - 1)
+			s->int_level &= ~ PL011_INT_RX;
+		/*pl011_update(s);
+		qemu_chr_accept_input(s->chr);
+		return c;*/
+		break;
+	case 1: /* UARTCR */
+		regval = 0;
+		break;
+	case 6: /* UARTFR */
+		regval = s->flags;
+		break;
+	case 8: /* UARTILPR */
+		regval = s->ilpr;
+		break;
+	case 9: /* UARTIBRD */
+        	regval = s->ibrd;
+		break;
+	case 10: /* UARTFBRD */
+		regval = s->fbrd;
+		break;
+	case 11: /* UARTLCR_H */
+		regval = s->lcr;
+		break;
+	case 12: /* UARTCR */
+		regval = s->cr;
+		break;
+	case 13: /* UARTIFLS */
+		regval = s->ifl;
+		break;
+	case 14: /* UARTIMSC */
+		regval = s->int_enabled;
+		break;
+	case 15: /* UARTRIS */
+		regval = s->int_level;
+		break;
+	case 16: /* UARTMIS */
+ 		regval = s->int_level & s->int_enabled;
+		break;
+	case 18: /* UARTDMACR */
+		regval = s->dmacr;
+		break;
+	default:
+		if (offset >= 0xfe0 && offset < 0x1000) {
+			regval = s->id[(offset - 0xfe0) >> 2];
+		} else {
+			rc = VMM_EFAIL;
+		}
+		break;
+	};
+
+	vmm_spin_unlock(&s->lock);
+
+	if (!rc) {
+		switch (dst_len) {
+		case 1:
+			vmm_out_8(dst, regval);
+			break;
+		case 2:
+			vmm_out_le16(dst, regval);
+			break;
+		case 4:
+			vmm_out_le32(dst, regval);
+			break;
+		default:
+			rc = VMM_EFAIL;
+			break;
+		};
+	}
+
+	return rc;
+}
+
+static int pl011_emulator_write(vmm_emudev_t *edev,
+				physical_addr_t offset, 
+				void *src, u32 src_len)
+{
+	int rc = VMM_OK;
+	u32 regmask = 0x0, regval = 0x0;
+	struct pl011_state * s = edev->priv;
+
+	switch (src_len) {
+	case 1:
+		regmask = 0xFFFFFF00;
+		regval = vmm_in_8(src);
+		break;
+	case 2:
+		regmask = 0xFFFF0000;
+		regval = vmm_in_le16(src);
+		break;
+	case 4:
+		regmask = 0x00000000;
+		regval = vmm_in_le32(src);
+		break;
+	default:
+		return VMM_EFAIL;
+		break;
+	};
+
+	vmm_spin_lock(&s->lock);
+
+#if 0
+	switch (offset) {
+	case 0x00: /* SYSCTRL */
+		s->sysctrl &= regmask;
+		s->sysctrl |= regval;
+		break;
+	default:
+		rc = VMM_EFAIL;
+		break;
+	}
+#endif
+
+	vmm_spin_unlock(&s->lock);
+
+	return rc;
+}
+
+static int pl011_emulator_reset(vmm_emudev_t *edev)
+{
+	struct pl011_state * s = edev->priv;
+
+	vmm_spin_lock(&s->lock);
+
+	s->read_trigger = 1;
+	s->ifl = 0x12;
+	s->cr = 0x300;
+	s->flags = 0x90;
+
+	vmm_spin_unlock(&s->lock);
+
+	return VMM_OK;
+}
+
+static int pl011_emulator_probe(vmm_guest_t *guest,
+				vmm_emudev_t *edev,
+				const vmm_emuid_t *eid)
+{
+	int rc = VMM_OK;
+	const char *attr;
+	struct pl011_state * s;
+
+	s = vmm_malloc(sizeof(struct pl011_state));
+	if (!s) {
+		rc = VMM_EFAIL;
+		goto pl011_emulator_probe_done;
+	}
+	vmm_memset(s, 0x0, sizeof(struct pl011_state));
+
+	s->guest = guest;
+	INIT_SPIN_LOCK(&s->lock);
+
+	if (eid->data) {
+		s->id[0] = ((u32 *)eid->data)[0];
+		s->id[1] = ((u32 *)eid->data)[1];
+		s->id[2] = ((u32 *)eid->data)[2];
+		s->id[3] = ((u32 *)eid->data)[3];
+		s->id[4] = ((u32 *)eid->data)[4];
+		s->id[5] = ((u32 *)eid->data)[5];
+		s->id[6] = ((u32 *)eid->data)[6];
+		s->id[7] = ((u32 *)eid->data)[7];
+	}
+
+	attr = vmm_devtree_attrval(edev->node, "irq");
+	if (attr) {
+		s->irq = *((u32 *)attr);
+	} else {
+		rc = VMM_EFAIL;
+		goto pl011_emulator_probe_freestate_fail;
+	}
+
+	edev->priv = s;
+
+	goto pl011_emulator_probe_done;
+
+pl011_emulator_probe_freestate_fail:
+	vmm_free(s);
+pl011_emulator_probe_done:
+	return rc;
+}
+
+static int pl011_emulator_remove(vmm_emudev_t *edev)
+{
+	struct pl011_state * s = edev->priv;
+
+	vmm_free(s);
+
+	return VMM_OK;
+}
+
+static u32 pl011_configs[] = {
+	/* === arm === */
+	/* id0 */ 0x11,  
+	/* id1 */ 0x10, 
+	/* id2 */ 0x14, 
+	/* id3 */ 0x00, 
+	/* id4 */ 0x0d, 
+	/* id5 */ 0xf0, 
+	/* id6 */ 0x05, 
+	/* id7 */ 0xb1,
+	/* === luminary === */
+	/* id0 */ 0x11, 
+	/* id1 */ 0x00, 
+	/* id2 */ 0x18, 
+	/* id3 */ 0x01, 
+	/* id4 */ 0x0d, 
+	/* id5 */ 0xf0, 
+	/* id6 */ 0x05, 
+	/* id7 */ 0xb1,
+};
+
+static vmm_emuid_t pl011_emuid_table[] = {
+	{ .type = "serial", 
+	  .compatible = "primecell,arm,pl011", 
+	  .data = &pl011_configs[0],
+	},
+	{ .type = "serial", 
+	  .compatible = "primecell,luminary,pl011", 
+	  .data = &pl011_configs[8],
+	},
+	{ /* end of list */ },
+};
+
+static vmm_emulator_t pl011_emulator = {
+	.name = "pl011",
+	.match_table = pl011_emuid_table,
+	.probe = pl011_emulator_probe,
+	.read = pl011_emulator_read,
+	.write = pl011_emulator_write,
+	.reset = pl011_emulator_reset,
+	.remove = pl011_emulator_remove,
+};
+
 static int pl011_emulator_init(void)
 {
-	return 0;
+	return vmm_devemu_register_emulator(&pl011_emulator);
 }
 
 static void pl011_emulator_exit(void)
 {
+	vmm_devemu_unregister_emulator(&pl011_emulator);
 }
 
 VMM_DECLARE_MODULE(MODULE_VARID, 

@@ -153,10 +153,10 @@ static int sp810_emulator_probe(vmm_guest_t *guest,
 	}
 	vmm_memset(s, 0x0, sizeof(struct sp810_state));
 
-	edev->priv = s;
-
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
+
+	edev->priv = s;
 
 sp810_emulator_probe_done:
 	return rc;
