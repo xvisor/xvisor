@@ -89,7 +89,7 @@ u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest)
 	return ret;
 }
 
-vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index)
+vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, int index)
 {
 	vmm_vcpu_t *vcpu = NULL;
 	struct dlist *l;
@@ -107,6 +107,28 @@ vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index)
 	}
 
 	return vcpu;
+}
+
+int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu)
+{
+	int ret = -1, index = 0;
+	vmm_vcpu_t *tvcpu = NULL;
+	struct dlist *l;
+
+	if (!guest || !vcpu) {
+		return -1;
+	}
+
+	list_for_each(l, &guest->vcpu_list) {
+		tvcpu = list_entry(l, vmm_vcpu_t, head);
+		if (tvcpu->num == vcpu->num) {
+			ret = index;
+			break;
+		}
+		index++;
+	}
+
+	return ret;
 }
 
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void)

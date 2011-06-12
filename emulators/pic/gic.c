@@ -721,8 +721,11 @@ static int gic_emulator_read(vmm_emudev_t *edev,
 	u32 regval = 0x0;
 	struct gic_state * s = edev->priv;
 
-	/* FIXME: */
-	cpu = 0;
+	cpu = vmm_scheduler_guest_vcpu_index(s->guest,
+					     vmm_scheduler_current_vcpu());
+	if (cpu < 0) {
+		return VMM_EFAIL;
+	}
 
 	if (offset < 0x1000) {
 		/* Read CPU Interface */
@@ -778,8 +781,11 @@ static int gic_emulator_write(vmm_emudev_t *edev,
 		break;
 	};
 
-	/* FIXME: */
-	cpu = 0;
+	cpu = vmm_scheduler_guest_vcpu_index(s->guest,
+					     vmm_scheduler_current_vcpu());
+	if (cpu < 0) {
+		return VMM_EFAIL;
+	}
 
 	if (offset < 0x1000) {
 		/* Write CPU Interface */
