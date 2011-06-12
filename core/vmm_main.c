@@ -35,6 +35,7 @@
 #include <vmm_hyperthreads.h>
 #include <vmm_mterm.h>
 #include <vmm_devemu.h>
+#include <vmm_vserial.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
@@ -159,6 +160,14 @@ void vmm_init(void)
 	/* Initialize device emulation framework */
 	vmm_printf("Initialize Device Emulation Framework\n");
 	ret = vmm_devemu_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize character device framework */
+	vmm_printf("Initialize Virtual Serial Port Framework\n");
+	ret = vmm_vserial_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();

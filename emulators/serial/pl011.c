@@ -28,6 +28,8 @@
 #include <vmm_modules.h>
 #include <vmm_host_io.h>
 #include <vmm_devtree.h>
+#include <vmm_ringbuf.h>
+#include <vmm_vserial.h>
 #include <vmm_devemu.h>
 
 #define MODULE_VARID			pl011_emulator_module
@@ -47,24 +49,24 @@
 
 struct pl011_state {
 	vmm_guest_t *guest;
+	vmm_vserial_t *vser;
 	vmm_spinlock_t lock;
 	u8 id[8];
 	u32 irq;
-	u32 readbuff;
+	u32 fifo_sz;	
 	u32 flags;
 	u32 lcr;
 	u32 cr;
 	u32 dmacr;
 	u32 int_enabled;
 	u32 int_level;
-	u32 read_fifo[16];
 	u32 ilpr;
 	u32 ibrd;
 	u32 fbrd;
 	u32 ifl;
-	int read_pos;
-	int read_count;
-	int read_trigger;
+	int rd_trig;
+	vmm_ringbuf_t *rd_fifo;
+	vmm_ringbuf_t *wr_fifo;
 };
 
 static void pl011_set_irq(struct pl011_state * s)
@@ -87,60 +89,30 @@ static void pl011_set_read_trigger(struct pl011_state *s)
         s->read_trigger = (s->ifl >> 1) & 0x1c;
     else
 #endif
-        s->read_trigger = 1;
-}
-
-static int pl011_can_receive(struct pl011_state *s)
-{
-	if (s->lcr & 0x10) {
-		return s->read_count < 16;
-	} else {
-		return s->read_count < 1;
-	}
-}
-
-static void pl011_put_fifo(struct pl011_state *s, u32 value)
-{
-	int slot;
-
-	slot = s->read_pos + s->read_count;
-	if (slot >= 16)
-		slot -= 16;
-	s->read_fifo[slot] = value;
-	s->read_count++;
-	s->flags &= ~PL011_FLAG_RXFE;
-	if (s->cr & 0x10 || s->read_count == 16) {
-		s->flags |= PL011_FLAG_RXFF;
-	}
-	if (s->read_count == s->read_trigger) {
-		s->int_level |= PL011_INT_RX;
-		pl011_set_irq(s);;
-	}
+        s->rd_trig = 1;
 }
 
 static int pl011_reg_read(struct pl011_state * s, u32 offset, u32 *dst)
 {
 	int rc = VMM_OK;
+	u8 val = 0x0;
+	u32 read_count = 0x0;
 
 	vmm_spin_lock(&s->lock);
 
 	switch (offset >> 2) {
 	case 0: /* UARTDR */
 		s->flags &= ~PL011_FLAG_RXFF;
-		*dst = s->read_fifo[s->read_pos];
-		if (s->read_count > 0) {
-			s->read_count--;
-		if (++s->read_pos == 16)
-			s->read_pos = 0;
-		}
-		if (s->read_count == 0) {
+		vmm_ringbuf_dequeue(s->rd_fifo, &val);
+		*dst = val;
+		read_count = vmm_ringbuf_avail(s->rd_fifo);
+		if (read_count == 0) {
 			s->flags |= PL011_FLAG_RXFE;
 		}
-		if (s->read_count == s->read_trigger - 1)
+		if (read_count == (s->rd_trig - 1)) {
 			s->int_level &= ~PL011_INT_RX;
+		}
 		pl011_set_irq(s);
-		/*qemu_chr_accept_input(s->chr);
-		return c;*/
 		break;
 	case 1: /* UARTCR */
 		*dst = 0;
@@ -196,15 +168,15 @@ static int pl011_reg_write(struct pl011_state * s, u32 offset,
 			   u32 src_mask, u32 src)
 {
 	int rc = VMM_OK;
+	u8 val;
 
 	vmm_spin_lock(&s->lock);
 
 	switch (offset >> 2) {
 	case 0: /* UARTDR */
 		/* ??? Check if transmitter is enabled.  */
-		/* ch = src; */
-		/*if (s->chr)
-			qemu_chr_write(s->chr, &ch, 1);*/
+		val = src;
+		vmm_ringbuf_enqueue(s->wr_fifo, &val, TRUE);
 		s->int_level |= PL011_INT_TX;
 		pl011_set_irq(s);
 		break;
@@ -259,6 +231,61 @@ static int pl011_reg_write(struct pl011_state * s, u32 offset,
 	return rc;
 }
 
+static bool pl011_vserial_can_send(vmm_vserial_t *vser)
+{
+	struct pl011_state * s = vser->priv;
+	u32 rd_count;
+
+	rd_count = vmm_ringbuf_avail(s->rd_fifo);
+	if (s->lcr & 0x10) {
+		return (rd_count < s->fifo_sz);
+	} else {
+		return (rd_count < 1);
+	}
+	
+	return FALSE;
+}
+
+static int pl011_vserial_send(vmm_vserial_t *vser, u32 data)
+{
+	struct pl011_state * s = vser->priv;
+	u32 rd_count;
+
+	vmm_ringbuf_enqueue(s->rd_fifo, &data, TRUE);
+	rd_count = vmm_ringbuf_avail(s->rd_fifo);
+	s->flags &= ~PL011_FLAG_RXFE;
+	if (s->cr & 0x10 || rd_count == s->fifo_sz) {
+		s->flags |= PL011_FLAG_RXFF;
+	}
+	if (rd_count == s->rd_trig) {
+		s->int_level |= PL011_INT_RX;
+		pl011_set_irq(s);
+	}
+
+	return VMM_OK;
+}
+
+static bool pl011_vserial_can_recv(vmm_vserial_t *vser)
+{
+	struct pl011_state * s = vser->priv;
+
+	return (vmm_ringbuf_avail(s->wr_fifo) < s->fifo_sz);
+}
+
+static int pl011_vserial_recv(vmm_vserial_t *vser, u32 *data)
+{
+	int rc = VMM_OK;
+	u8 val;
+	struct pl011_state * s = vser->priv;
+
+	if (vmm_ringbuf_dequeue(s->wr_fifo, &val)) {
+		*data = val;
+	} else {
+		rc = VMM_EFAIL;
+	}
+	
+	return rc;
+}
 
 static int pl011_emulator_read(vmm_emudev_t *edev,
 			       physical_addr_t offset, 
@@ -329,7 +356,7 @@ static int pl011_emulator_reset(vmm_emudev_t *edev)
 
 	vmm_spin_lock(&s->lock);
 
-	s->read_trigger = 1;
+	s->rd_trig = 1;
 	s->ifl = 0x12;
 	s->cr = 0x300;
 	s->flags = 0x90;
@@ -376,10 +403,45 @@ static int pl011_emulator_probe(vmm_guest_t *guest,
 		goto pl011_emulator_probe_freestate_fail;
 	}
 
+	attr = vmm_devtree_attrval(edev->node, "fifo_size");
+	if (attr) {
+		s->fifo_sz = *((u32 *)attr);
+	} else {
+		rc = VMM_EFAIL;
+		goto pl011_emulator_probe_freestate_fail;
+	}
+
+	s->rd_fifo = vmm_ringbuf_alloc(1, s->fifo_sz);
+	if (!s->rd_fifo) {
+		rc = VMM_EFAIL;
+		goto pl011_emulator_probe_freestate_fail;
+	}
+
+	s->wr_fifo = vmm_ringbuf_alloc(1, s->fifo_sz);
+	if (!s->wr_fifo) {
+		rc = VMM_EFAIL;
+		goto pl011_emulator_probe_freestate_fail;
+	}
+
+	s->vser = vmm_malloc(sizeof(vmm_vserial_t));
+	vmm_strcpy(s->vser->name, guest->node->name);
+	vmm_strcat(s->vser->name, "/");
+	vmm_strcat(s->vser->name, edev->node->name);
+	s->vser->can_send = &pl011_vserial_can_send;
+	s->vser->send = &pl011_vserial_send;
+	s->vser->can_recv = &pl011_vserial_can_recv;
+	s->vser->recv = &pl011_vserial_recv;
+	s->vser->priv = s;
+	if ((rc = vmm_vserial_register(s->vser))) {
+		goto pl011_emulator_probe_freevser_fail;
+	}
+
 	edev->priv = s;
 
 	goto pl011_emulator_probe_done;
 
+pl011_emulator_probe_freevser_fail:
+	vmm_free(s->vser);
 pl011_emulator_probe_freestate_fail:
 	vmm_free(s);
 pl011_emulator_probe_done:
@@ -390,6 +452,10 @@ static int pl011_emulator_remove(vmm_emudev_t *edev)
 {
 	struct pl011_state * s = edev->priv;
 
+	vmm_vserial_unregister(s->vser);
+	vmm_free(s->vser);
+	vmm_ringbuf_free(s->rd_fifo);
+	vmm_ringbuf_free(s->wr_fifo);
 	vmm_free(s);
 
 	return VMM_OK;
