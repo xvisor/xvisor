@@ -25,7 +25,6 @@
 #include <vmm_cpu.h>
 #include <vmm_board.h>
 #include <vmm_error.h>
-#include <vmm_devtree.h>
 #include <vmm_scheduler.h>
 #include <vmm_host_aspace.h>
 #include <pba8_board.h>
@@ -52,28 +51,11 @@ int pba8_timer_handler(u32 irq_no, vmm_user_regs_t * regs)
 	return VMM_OK;
 }
 
-int vmm_cpu_timer_setup(void)
+int vmm_cpu_timer_setup(u32 tick_usecs)
 {
-	u32 tick_delay_usecs;
-	vmm_devtree_node_t *node;
-	const char *attrval;
-
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				   VMM_DEVTREE_VMMINFO_NODE_NAME);
-	if (!node) {
-		return VMM_EFAIL;
-	}
-
-	attrval = vmm_devtree_attrval(node,
-				      VMM_DEVTREE_TICK_DELAY_USECS_ATTR_NAME);
-	if (!attrval) {
-		return VMM_EFAIL;
-	}
-	tick_delay_usecs = *((u32 *) attrval);
-
 	pba8_cpu_timer_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE,
 					     0x1000);
 	return realview_timer_setup(pba8_cpu_timer_base,
-				    tick_delay_usecs,
+				    tick_usecs,
 				    IRQ_PBA8_TIMER0_1, &pba8_timer_handler);
 }

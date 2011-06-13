@@ -25,7 +25,6 @@
 
 #include <vmm_error.h>
 #include <vmm_main.h>
-#include <vmm_devtree.h>
 #include <vmm_scheduler.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
@@ -61,27 +60,10 @@ int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs)
 	return VMM_OK;
 }
 
-int vmm_cpu_timer_setup(void)
+int vmm_cpu_timer_setup(u32 tick_usecs)
 {
 	int ret;
-	u32 regval, tick_delay_usecs;
-	vmm_devtree_node_t *node;
-	const char *attrval;
-
-	/* Get the vmm information node */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				   VMM_DEVTREE_VMMINFO_NODE_NAME);
-	if (!node) {
-		return VMM_EFAIL;
-	}
-
-	/* Determine VMM tick delay */
-	attrval = vmm_devtree_attrval(node,
-				      VMM_DEVTREE_TICK_DELAY_USECS_ATTR_NAME);
-	if (!attrval) {
-		return VMM_EFAIL;
-	}
-	tick_delay_usecs = *((u32 *) attrval);
+	u32 regval;
 
 	/* Register interrupt handler */
 	ret = vmm_host_irq_register(OMAP3_SYS_TIMER_IRQ,
@@ -97,7 +79,7 @@ int vmm_cpu_timer_setup(void)
 	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
 			OMAP3_GPT_TLDR,
 			0xFFFFFFFF -
-			tick_delay_usecs * (OMAP3_SYS_TIMER_CLK / 1000000));
+			tick_usecs * (OMAP3_SYS_TIMER_CLK / 1000000));
 	regval = omap3_gpt_read(OMAP3_SYS_TIMER_BASE, OMAP3_GPT_TCLR);
 	regval &= ~OMAP3_GPT_TCLR_ST_M;
 	regval &= ~OMAP3_GPT_TCLR_PTV_M;

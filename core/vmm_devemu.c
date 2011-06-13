@@ -265,8 +265,8 @@ static void devemu_clk_tick(vmm_user_regs_t * regs, u32 ticks_left)
 
 u32 vmm_devemu_clk_microsecs(void)
 {
-	/* FIXME: */
-	return 100;
+	/* FIXME: Need more fine tuning here */
+	return vmm_scheduler_tick_usecs();
 }
 
 int vmm_devemu_register_clk(vmm_guest_t *guest, vmm_emuclk_t * clk)

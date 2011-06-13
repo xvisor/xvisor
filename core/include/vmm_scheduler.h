@@ -34,6 +34,7 @@ typedef struct vmm_scheduler_ctrl vmm_scheduler_ctrl_t;
 struct vmm_scheduler_ctrl {
 	s32 vcpu_current;
 	u32 scheduler_count;
+	u32 tick_usecs;
 
 	vmm_spinlock_t lock;
 	u32 max_vcpu_count;
@@ -108,6 +109,9 @@ void vmm_scheduler_start(void);
 
 /** Stop scheduler */
 void vmm_scheduler_stop(void);
+
+/** Get scheduler tick delay in micorseconds */
+u32 vmm_scheduler_tick_usecs(void);
 
 /** Initialize scheduler */
 int vmm_scheduler_init(void);
