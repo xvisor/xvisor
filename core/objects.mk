@@ -23,10 +23,11 @@
 # */
 
 core-objs-y+= vmm_main.o
-core-objs-y+= vmm_spinlocks.o
+core-objs-y+= vmm_ringbuf.o
 core-objs-y+= vmm_stdio.o
 core-objs-y+= vmm_string.o
 core-objs-y+= vmm_libfdt.o
+core-objs-y+= vmm_spinlocks.o
 core-objs-y+= vmm_devtree.o
 core-objs-y+= vmm_host_io.o
 core-objs-y+= vmm_host_irq.o
@@ -40,7 +41,7 @@ core-objs-y+= vmm_chardev.o
 core-objs-y+= vmm_blockdev.o
 core-objs-y+= vmm_netdev.o
 core-objs-y+= vmm_devemu.o
+core-objs-y+= vmm_vserial.o
 core-objs-y+= vmm_modules.o
-core-objs-y+= vmm_ringbuffer.o
 core-objs-y+= vmm_hyperthreads.o
 core-objs-y+= vmm_wait.o

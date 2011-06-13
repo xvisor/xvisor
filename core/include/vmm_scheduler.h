@@ -34,6 +34,7 @@ typedef struct vmm_scheduler_ctrl vmm_scheduler_ctrl_t;
 struct vmm_scheduler_ctrl {
 	s32 vcpu_current;
 	u32 scheduler_count;
+	u32 tick_usecs;
 
 	vmm_spinlock_t lock;
 	u32 max_vcpu_count;
@@ -70,6 +71,9 @@ u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest);
 /** Retrive vcpu belonging to a given guest */
 vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index);
 
+/** Find the relative index of a vcpu under a given guest */
+int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu);
+
 /** Retrive current vcpu number */
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void);
 
@@ -105,6 +109,9 @@ void vmm_scheduler_start(void);
 
 /** Stop scheduler */
 void vmm_scheduler_stop(void);
+
+/** Get scheduler tick delay in micorseconds */
+u32 vmm_scheduler_tick_usecs(void);
 
 /** Initialize scheduler */
 int vmm_scheduler_init(void);

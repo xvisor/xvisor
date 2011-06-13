@@ -89,7 +89,7 @@ u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest)
 	return ret;
 }
 
-vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index)
+vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, int index)
 {
 	vmm_vcpu_t *vcpu = NULL;
 	struct dlist *l;
@@ -107,6 +107,28 @@ vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index)
 	}
 
 	return vcpu;
+}
+
+int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu)
+{
+	int ret = -1, index = 0;
+	vmm_vcpu_t *tvcpu = NULL;
+	struct dlist *l;
+
+	if (!guest || !vcpu) {
+		return -1;
+	}
+
+	list_for_each(l, &guest->vcpu_list) {
+		tvcpu = list_entry(l, vmm_vcpu_t, head);
+		if (tvcpu->num == vcpu->num) {
+			ret = index;
+			break;
+		}
+		index++;
+	}
+
+	return ret;
 }
 
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void)
@@ -280,13 +302,14 @@ vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
 
 int vmm_scheduler_vcpu_orphan_destroy(vmm_vcpu_t * vcpu)
 {
+	/* FIXME: TBD */
 	return VMM_OK;
 }
 
 void vmm_scheduler_start(void)
 {
 	/** Setup timer */
-	vmm_cpu_timer_setup();
+	vmm_cpu_timer_setup(sched.tick_usecs);
 
 	/** Enable timer */
 	vmm_cpu_timer_enable();
@@ -296,6 +319,11 @@ void vmm_scheduler_stop(void)
 {
 	/** Disable timer */
 	vmm_cpu_timer_disable();
+}
+
+u32 vmm_scheduler_tick_usecs(void)
+{
+	return sched.tick_usecs;
 }
 
 int vmm_scheduler_init(void)
@@ -519,6 +547,19 @@ int vmm_scheduler_init(void)
 			vnum++;
 		}
 	}
+
+	/* Find out tick delay in microseconds */
+	vnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
+				   VMM_DEVTREE_VMMINFO_NODE_NAME);
+	if (!vnode) {
+		return VMM_EFAIL;
+	}
+	attrval = vmm_devtree_attrval(vnode,
+				      VMM_DEVTREE_TICK_DELAY_USECS_ATTR_NAME);
+	if (!attrval) {
+		return VMM_EFAIL;
+	}
+	sched.tick_usecs = *((u32 *) attrval);
 
 	return VMM_OK;
 }
