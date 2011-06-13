@@ -29,6 +29,7 @@ core-objs-y+= commands/vmm_cmd_guest.o
 core-objs-y+= commands/vmm_cmd_hyperthreads.o
 core-objs-y+= commands/vmm_cmd_chardev.o
 core-objs-y+= commands/vmm_cmd_blockdev.o
+core-objs-y+= commands/vmm_cmd_vserial.o
 core-objs-y+= commands/vmm_cmd_stdio.o
 core-objs-$(CONFIG_MM_BUDDY)+= commands/vmm_cmd_buddy.o
 core-objs-$(CONFIG_NET)+= commands/vmm_cmd_ping.o
