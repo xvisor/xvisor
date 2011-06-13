@@ -16,30 +16,37 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_ringbuffer.h
+ * @file vmm_ringbuf.h
  * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @brief header file for generic ring buffer.
  */
 
-#ifndef __VMM_RINGBUFFER_H__
-#define __VMM_RINGBUFFER_H__
+#ifndef __VMM_RINGBUF_H__
+#define __VMM_RINGBUF_H__
 
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 
-typedef struct rb_info {
-	u8 *rb_data;
-	u32 rb_size;
-	u32 overrun;
-	u32 head;		/* read here. */
-	u32 tail;		/* write here */
-	vmm_spinlock_t head_lock;	/* lock this for head */
-	vmm_spinlock_t tail_lock;	/* lock this for tail. */
-} rb_info_t;
+struct vmm_ringbuf {
+	vmm_spinlock_t lock;
+	void *keys;
+	u32 key_size;
+	u32 key_count;
+	u32 read_pos;
+	u32 write_pos;
+	u32 avail_count;
+};
 
-void *vmm_ringbuffer_init(u32 size);
-u32 vmm_ringbuffer_write(void *handle, void *data, u32 len);
-u32 vmm_ringbuffer_read(void *handle, void *dest, u32 len);
-u32 vmm_ringbuffer_free(void *handle);
+typedef struct vmm_ringbuf vmm_ringbuf_t;
 
-#endif /* __VMM_RINGBUFFER_H__ */
+vmm_ringbuf_t *vmm_ringbuf_alloc(u32 key_size, u32 key_count);
+bool vmm_ringbuf_isempty(vmm_ringbuf_t *rb);
+bool vmm_ringbuf_isfull(vmm_ringbuf_t *rb);
+bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite);
+bool vmm_ringbuf_dequeue(vmm_ringbuf_t *rb, void *dstkey);
+bool vmm_ringbuf_getkey(vmm_ringbuf_t *rb, u32 index, void *dstkey);
+u32 vmm_ringbuf_avail(vmm_ringbuf_t *rb);
+int vmm_ringbuf_free(vmm_ringbuf_t *rb);
+
+#endif /* __VMM_RINGBUF_H__ */

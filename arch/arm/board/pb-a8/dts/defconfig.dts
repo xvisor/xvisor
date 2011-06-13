@@ -156,6 +156,7 @@
 					physical_size = <0x1000>;
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
+					fifo_size = <256>;
 					irq = <45>;
 				};
 			};
