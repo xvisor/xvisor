@@ -29,11 +29,13 @@
 
 /** Read from memory using VCPU CP15 */
 int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 
+			   vmm_user_regs_t * regs,
 			   virtual_addr_t addr, 
 			   void *dst, u32 dst_len);
 
 /** Write to memory using VCPU CP15 */
 int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu, 
+			    vmm_user_regs_t * regs,
 			    virtual_addr_t addr, 
 			    void *src, u32 src_len);
 
@@ -48,14 +50,14 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 			 u32 data);
 
 /** Handle instruction fault for a VCPU */
-int cpu_vcpu_cp15_ifault(u32 ifsr, u32 ifar, 
-			 vmm_vcpu_t * vcpu, 
-			 vmm_user_regs_t * regs);
+int cpu_vcpu_cp15_ifault(vmm_vcpu_t * vcpu, 
+			 vmm_user_regs_t * regs,
+			 u32 ifsr, u32 ifar);
 
 /** Handle data fault for a VCPU */
-int cpu_vcpu_cp15_dfault(u32 dfsr, u32 dfar, 
-			 vmm_vcpu_t * vcpu, 
-			 vmm_user_regs_t * regs);
+int cpu_vcpu_cp15_dfault(vmm_vcpu_t * vcpu, 
+			 vmm_user_regs_t * regs,
+			 u32 dfsr, u32 dfar);
 
 /* Read from memory using VCPU CP15 */
 virtual_addr_t cpu_vcpu_cp15_vector_addr(vmm_vcpu_t * vcpu, 

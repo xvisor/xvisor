@@ -35,10 +35,11 @@
 #include <cpu_vcpu_cp15.h>
 
 int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 
+			   vmm_user_regs_t * regs,
 			   virtual_addr_t addr, 
 			   void *dst, u32 dst_len)
 {
-	int rc = VMM_OK;
+	int rc = VMM_OK, halt_vcpu = 0;
 	u32 vind;
 	cpu_page_t pg;
 	if ((addr & ~(sizeof(vcpu->sregs.cp15.ovect) - 1)) == 
@@ -59,11 +60,16 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 			*((u8 *)dst) = ((u8 *)vcpu->sregs.cp15.ovect)[vind];
 			break;
 		default:
+			halt_vcpu = 1;
 			rc = VMM_EFAIL;
 			break;
 		};
 	} else {
-		if (!(rc = cpu_mmu_get_page(vcpu->sregs.cp15.l1, addr, &pg))) {
+		rc = cpu_mmu_get_page(vcpu->sregs.cp15.l1, addr, &pg);
+		if (rc) {
+			/* FIXME: Traverse VCPU L1 Page Table */
+		}
+		if (!rc) {
 			switch(pg.ap) {
 			case TTBL_AP_SR_U:
 			case TTBL_AP_SRW_U:
@@ -84,24 +90,31 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 					*((u8 *)dst) = *((u8 *)addr);
 					break;
 				default:
+					halt_vcpu = 1;
 					rc = VMM_EFAIL;
 					break;
 				};
 				break;
 			default:
+				halt_vcpu = 1;
 				rc = VMM_EFAIL;
 				break;
 			};
 		}
 	}
+	if (halt_vcpu) {
+		vmm_scheduler_vcpu_halt(vcpu);
+		vmm_scheduler_next(regs);
+	}
 	return rc;
 }
 
 int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu, 
+			    vmm_user_regs_t * regs,
 			    virtual_addr_t addr, 
 			    void *src, u32 src_len)
 {
-	int rc = VMM_OK;
+	int rc = VMM_OK, halt_vcpu = 0;
 	u32 vind;
 	cpu_page_t pg;
 	if ((addr & ~(sizeof(vcpu->sregs.cp15.ovect) - 1)) == 
@@ -122,11 +135,16 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 			((u8 *)vcpu->sregs.cp15.ovect)[vind] = *((u8 *)src);
 			break;
 		default:
+			halt_vcpu = 1;
 			rc = VMM_EFAIL;
 			break;
 		};
 	} else {
-		if (!(rc = cpu_mmu_get_page(vcpu->sregs.cp15.l1, addr, &pg))) {
+		rc = cpu_mmu_get_page(vcpu->sregs.cp15.l1, addr, &pg);
+		if (rc) {
+			/* FIXME: Traverse VCPU L1 Page Table */
+		}
+		if (!rc) {
 			switch(pg.ap) {
 			case TTBL_AP_SRW_U:
 				rc = vmm_devemu_emulate_write(vcpu->guest, 
@@ -145,15 +163,21 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 					*((u8 *)addr) = *((u8 *)src);
 					break;
 				default:
+					halt_vcpu = 1;
 					rc = VMM_EFAIL;
 					break;
 				};
 				break;
 			default:
+				halt_vcpu = 1;
 				rc = VMM_EFAIL;
 				break;
 			};
 		}
+	}
+	if (halt_vcpu) {
+		vmm_scheduler_vcpu_halt(vcpu);
+		vmm_scheduler_next(regs);
 	}
 	return rc;
 }
@@ -268,8 +292,9 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 	return VMM_OK;
 }
 
-int cpu_vcpu_cp15_ifault(u32 ifsr, u32 ifar, vmm_vcpu_t * vcpu, 
-						vmm_user_regs_t * regs)
+int cpu_vcpu_cp15_ifault(vmm_vcpu_t * vcpu, 
+			 vmm_user_regs_t * regs,
+			 u32 ifsr, u32 ifar)
 {
 	int rc = VMM_EFAIL;
 	u32 fs;
@@ -328,9 +353,9 @@ int cpu_vcpu_cp15_ifault(u32 ifsr, u32 ifar, vmm_vcpu_t * vcpu,
 	return rc;
 }
 
-int cpu_vcpu_cp15_dfault(u32 dfsr, u32 dfar, 
-			 vmm_vcpu_t * vcpu, 
-			 vmm_user_regs_t * regs)
+int cpu_vcpu_cp15_dfault(vmm_vcpu_t * vcpu, 
+			 vmm_user_regs_t * regs,
+			 u32 dfsr, u32 dfar)
 {
 	int rc = VMM_EFAIL;
 	u32 fs;

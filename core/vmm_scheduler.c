@@ -49,6 +49,42 @@ void vmm_scheduler_tick(vmm_user_regs_t * regs)
 	}
 }
 
+void vmm_scheduler_next(vmm_user_regs_t * regs)
+{
+	u32 vcpu_next;
+
+	/* Save the state of current running vcpu */
+	if (-1 < sched.vcpu_current) {
+		sched.vcpu_array[sched.vcpu_current].state =
+		    VMM_VCPU_STATE_READY;
+	}
+
+	/* Determine the next ready vcpu to schedule */
+	vcpu_next = (sched.vcpu_current + 1) % (sched.vcpu_count);
+	while (sched.vcpu_array[vcpu_next].state != VMM_VCPU_STATE_READY) {
+		vcpu_next = (vcpu_next + 1) % (sched.vcpu_count);
+	}
+
+	/* Restore the state of next vcpu */
+	if (sched.vcpu_current != vcpu_next) {
+		if (-1 < sched.vcpu_current) {
+			vmm_vcpu_regs_switch(&sched.
+					     vcpu_array[sched.vcpu_current],
+					     &sched.vcpu_array[vcpu_next],
+					     regs);
+		} else {
+			vmm_vcpu_regs_switch(NULL,
+					     &sched.vcpu_array[vcpu_next],
+					     regs);
+		}
+		sched.vcpu_array[vcpu_next].state = VMM_VCPU_STATE_RUNNING;
+		sched.vcpu_current = vcpu_next;
+	}
+
+	/* Reload tick count from current vcpu */
+	sched.scheduler_count = sched.vcpu_array[sched.vcpu_current].tick_count;
+}
+
 u32 vmm_scheduler_vcpu_count(void)
 {
 	return sched.vcpu_count;
@@ -143,42 +179,6 @@ vmm_guest_t * vmm_scheduler_current_guest(void)
 	if (sched.vcpu_current != -1)
 		return sched.vcpu_array[sched.vcpu_current].guest;
 	return NULL;
-}
-
-void vmm_scheduler_next(vmm_user_regs_t * regs)
-{
-	u32 vcpu_next;
-
-	/* Save the state of current running vcpu */
-	if (-1 < sched.vcpu_current) {
-		sched.vcpu_array[sched.vcpu_current].state =
-		    VMM_VCPU_STATE_READY;
-	}
-
-	/* Determine the next ready vcpu to schedule */
-	vcpu_next = (sched.vcpu_current + 1) % (sched.vcpu_count);
-	while (sched.vcpu_array[vcpu_next].state != VMM_VCPU_STATE_READY) {
-		vcpu_next = (vcpu_next + 1) % (sched.vcpu_count);
-	}
-
-	/* Restore the state of next vcpu */
-	if (sched.vcpu_current != vcpu_next) {
-		if (-1 < sched.vcpu_current) {
-			vmm_vcpu_regs_switch(&sched.
-					     vcpu_array[sched.vcpu_current],
-					     &sched.vcpu_array[vcpu_next],
-					     regs);
-		} else {
-			vmm_vcpu_regs_switch(NULL,
-					     &sched.vcpu_array[vcpu_next],
-					     regs);
-		}
-		sched.vcpu_array[vcpu_next].state = VMM_VCPU_STATE_RUNNING;
-		sched.vcpu_current = vcpu_next;
-	}
-
-	/* Reload tick count from current vcpu */
-	sched.scheduler_count = sched.vcpu_array[sched.vcpu_current].tick_count;
 }
 
 int vmm_scheduler_vcpu_kick(vmm_vcpu_t * vcpu)

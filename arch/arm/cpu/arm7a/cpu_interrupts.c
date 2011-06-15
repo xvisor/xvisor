@@ -102,7 +102,7 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 		vmm_panic("%s: Orphan vcpu\n", __func__);
 	}
 
-	cpu_vcpu_cp15_ifault(ifsr, ifar, vcpu, uregs);
+	cpu_vcpu_cp15_ifault(vcpu, uregs, ifsr, ifar);
 
 	vmm_vcpu_irq_process(uregs);
 }
@@ -124,7 +124,7 @@ void do_data_abort(vmm_user_regs_t * uregs)
 		vmm_panic("%s: Orphan vcpu\n", __func__);
 	}
 
-	cpu_vcpu_cp15_dfault(dfsr, dfar, vcpu, uregs);
+	cpu_vcpu_cp15_dfault(vcpu, uregs, dfsr, dfar);
 
 	vmm_vcpu_irq_process(uregs);
 }
