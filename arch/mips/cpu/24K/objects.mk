@@ -38,3 +38,4 @@ cpu-objs-y+= cpu_timer.o
 cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_host_aspace.o
 cpu-objs-y+= cpu_hyperthreads.o
+cpu-objs-y+= cpu_vcpu_irq.o

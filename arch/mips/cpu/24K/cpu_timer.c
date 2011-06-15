@@ -42,7 +42,7 @@
 
 unsigned long long jiffies;
 
-void vmm_cpu_timer_setup(void)
+void vmm_cpu_timer_setup(u32 tick_usecs)
 {
         jiffies = 0;
 }
