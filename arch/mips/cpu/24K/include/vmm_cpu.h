@@ -59,9 +59,12 @@ s32 vmm_vcpu_irq_execute(vmm_vcpu_t *vcpu,vmm_user_regs_t *regs,
 irq_flags_t vmm_interrupts_save(void);
 void vmm_interrupts_restore(irq_flags_t flags);
 s32 vmm_vcpu_irq_execute(vmm_vcpu_t *vcpu,vmm_user_regs_t *regs,u32 interrupt_no,u32 reason);
+u32 vmm_vcpu_irq_priority(vmm_vcpu_t * vcpu, u32 irq_no);
+u32 vmm_vcpu_irq_count(vmm_vcpu_t * vcpu);
+
 
 /** Timer related functions required by VMM core */
-void vmm_cpu_timer_setup(void);
+void vmm_cpu_timer_setup(u32 tick_usecs);
 void vmm_cpu_timer_enable(void);
 void vmm_cpu_timer_disable(void);
 
