@@ -81,61 +81,61 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
- 	.heap :
-        {
-                PROVIDE(_heap_start = .);
-                . = . + CONFIG_HEAP_SIZE;
-                . = ALIGN(4);
-                PROVIDE(_heap_end = .);
+	.heap :
+	{
+		PROVIDE(_heap_start = .);
+		. = . + CONFIG_HEAP_SIZE;
+		. = ALIGN(4);
+		PROVIDE(_heap_end = .);
+	}
+
+	.svc_stack :
+	{
+		PROVIDE(_svc_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(4);
+		PROVIDE(_svc_stack_end = .);
         }
 
- 	.svc_stack :
-        {
-                PROVIDE(_svc_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_svc_stack_end = .);
-        }
+	.mon_stack :
+	{
+		PROVIDE(_mon_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(4);
+		PROVIDE(_mon_stack_end = .);
+	}
 
- 	.mon_stack :
-        {
-                PROVIDE(_mon_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_mon_stack_end = .);
-        }
+	.abt_stack :
+	{
+		PROVIDE(_abt_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(4);
+		PROVIDE(_abt_stack_end = .);
+	}
 
- 	.abt_stack :
-        {
-                PROVIDE(_abt_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_abt_stack_end = .);
-        }
+	.und_stack :
+	{
+		PROVIDE(_und_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(4);
+		PROVIDE(_und_stack_end = .);
+	}
 
- 	.und_stack :
-        {
-                PROVIDE(_und_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_und_stack_end = .);
-        }
+	.irq_stack :
+	{
+		PROVIDE(_irq_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(4);
+		PROVIDE(_irq_stack_end = .);
+	}
 
- 	.irq_stack :
-        {
-                PROVIDE(_irq_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_irq_stack_end = .);
-        }
-
- 	.fiq_stack :
-        {
-                PROVIDE(_fiq_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_fiq_stack_end = .);
-        }
+	.fiq_stack :
+	{
+		PROVIDE(_fiq_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(4);
+		PROVIDE(_fiq_stack_end = .);
+	}
 
 	. = ALIGN(16384);
 	
