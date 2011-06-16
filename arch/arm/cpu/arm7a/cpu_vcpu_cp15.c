@@ -34,6 +34,246 @@
 #include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_cp15.h>
 
+int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu, 
+			      vmm_user_regs_t * regs, 
+			      u32 far, u32 wnr, u32 page, u32 xn)
+{
+	int rc;
+	u32 victim;
+	vmm_guest_region_t *reg;
+	cpu_page_t *p;
+
+	/* Find out next victim page from shadow TLB */
+	victim = vcpu->sregs.cp15.vtlb.victim;
+	p = &vcpu->sregs.cp15.vtlb.page[victim];
+	if (vcpu->sregs.cp15.vtlb.valid[victim]) {
+		/* Remove valid victim page from L1 Page Table */
+		if ((rc = cpu_mmu_unmap_page(vcpu->sregs.cp15.l1, p))) {
+			return rc;
+		}
+		vcpu->sregs.cp15.vtlb.valid[victim] = 0;
+	}
+
+	/* Get the required page for vcpu */
+	if (vcpu->sregs.cp15.c1_sctlr & SCTLR_M_MASK) {
+		/* FIXME: MMU enabled for VCPU */
+	} else {
+		/* MMU disabled for VCPU */
+		reg = vmm_guest_aspace_getregion(vcpu->guest, far);
+		if (!reg) {
+			return VMM_EFAIL;
+		}
+		p->pa = reg->hphys_addr + (far - reg->gphys_addr);
+		p->va = far;
+		p->sz = reg->phys_size - (far - reg->gphys_addr);
+		if (TTBL_L1TBL_SECTION_PAGE_SIZE <= p->sz) {
+			p->sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
+		} else if (TTBL_L2TBL_LARGE_PAGE_SIZE <= p->sz) {
+			p->sz = TTBL_L2TBL_LARGE_PAGE_SIZE;
+		} else {
+			p->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+		}
+		p->imp = 0;
+		p->dom = TTBL_L1TBL_TTE_DOM_VCPU_NOMMU;
+		if (reg->is_virtual) {
+			p->ap = TTBL_AP_SRW_U;
+		} else {
+			p->ap = TTBL_AP_SRW_URW;
+		}
+		p->xn = 0;
+		p->c = 0;
+		p->b = 0;
+	}
+
+	/* Add victim page to L1 page table */
+	if ((rc = cpu_mmu_map_page(vcpu->sregs.cp15.l1, p))) {
+		return rc;
+	}
+
+	/* Mark current victim as valid and 
+	 * point to next victim page in shadow TLB */
+	vcpu->sregs.cp15.vtlb.valid[victim] = 1;
+	victim = (victim + 1) % vcpu->sregs.cp15.vtlb.count;
+	vcpu->sregs.cp15.vtlb.victim = victim;
+
+	return VMM_OK;
+}
+
+/* FIXME: */
+int cpu_vcpu_cp15_access_fault(vmm_vcpu_t * vcpu, 
+			       vmm_user_regs_t * regs, 
+			       u32 far, u32 wnr, u32 page, u32 xn)
+{
+	return VMM_OK;
+}
+
+/* FIXME: */
+int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu, 
+			       vmm_user_regs_t * regs, 
+			       u32 far, u32 wnr, u32 page, u32 xn)
+{
+	return VMM_OK;
+}
+
+/* FIXME: */
+int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu, 
+			     vmm_user_regs_t * regs, 
+			     u32 far, u32 wnr, u32 page, u32 xn)
+{
+	if ((vcpu->sregs.cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+		return cpu_vcpu_emulate_inst(vcpu, regs, FALSE);
+	} else {
+		/* FIXME: Permission fault to VCPU */
+	}
+
+	return VMM_OK;
+}
+
+/* FIXME: */
+bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
+			u32 opc1, u32 opc2, u32 CRm, 
+			u32 *data)
+{
+	return TRUE;
+}
+
+/* FIXME: */
+bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu, 
+			 u32 opc1, u32 opc2, u32 CRm, 
+			 u32 data)
+{
+	return TRUE;
+}
+
+int cpu_vcpu_cp15_ifault(vmm_vcpu_t * vcpu, 
+			 vmm_user_regs_t * regs,
+			 u32 ifsr, u32 ifar)
+{
+	int rc = VMM_EFAIL;
+	u32 fs;
+
+	if (!vcpu) {
+		return rc;
+	}
+	if (!vcpu->guest) {
+		return rc;
+	}
+
+	fs = (ifsr & IFSR_FS4_MASK) >> IFSR_FS4_SHIFT;
+	fs = (fs << 4) | (ifsr & IFSR_FS_MASK);
+
+	switch(fs) {
+	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
+	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_2:
+		break;
+	case IFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_1:
+	case IFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
+		break;
+	case IFSR_FS_TRANS_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, ifar, 0, 0, 0);
+		break;
+	case IFSR_FS_TRANS_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, ifar, 0, 1, 0);
+		break;
+	case IFSR_FS_ACCESS_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, ifar, 0, 0, 0);
+		break;
+	case IFSR_FS_ACCESS_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, ifar, 0, 1, 0);
+		break;
+	case IFSR_FS_DOMAIN_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, ifar, 0, 0, 0);
+		break;
+	case IFSR_FS_DOMAIN_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, ifar, 0, 1, 0);
+		break;
+	case IFSR_FS_PERM_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, ifar, 0, 0, 0);
+		break;
+	case IFSR_FS_PERM_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, ifar, 0, 1, 0);
+		break;
+	case IFSR_FS_DEBUG_EVENT:
+	case IFSR_FS_SYNC_EXT_ABORT:
+	case IFSR_FS_IMP_VALID_LOCKDOWN:
+	case IFSR_FS_IMP_VALID_COPROC_ABORT:
+	case IFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
+		break;
+	default:
+		break; 
+	};
+
+	return rc;
+}
+
+int cpu_vcpu_cp15_dfault(vmm_vcpu_t * vcpu, 
+			 vmm_user_regs_t * regs,
+			 u32 dfsr, u32 dfar)
+{
+	int rc = VMM_EFAIL;
+	u32 fs, wnr;
+
+	if (!vcpu) {
+		return rc;
+	}
+	if (!vcpu->guest) {
+		return rc;
+	}
+
+	fs = (dfsr & DFSR_FS4_MASK) >> DFSR_FS4_SHIFT;
+	fs = (fs << 4) | (dfsr & DFSR_FS_MASK);
+	wnr = (dfsr & DFSR_WNR_MASK) >> DFSR_WNR_SHIFT;
+
+	switch(fs) {
+	case DFSR_FS_ALIGN_FAULT:
+		break;
+	case DFSR_FS_ICACHE_MAINT_FAULT:
+		break;
+	case DFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
+	case DFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_2:
+		break;
+	case DFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_1:
+	case DFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
+		break;
+	case DFSR_FS_TRANS_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, dfar, wnr, 0, 1);
+		break;
+	case DFSR_FS_TRANS_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, dfar, wnr, 1, 1);
+		break;
+	case DFSR_FS_ACCESS_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, dfar, wnr, 0, 1);
+		break;
+	case DFSR_FS_ACCESS_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, dfar, wnr, 1, 1);
+		break;
+	case DFSR_FS_DOMAIN_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, dfar, wnr, 0, 1);
+		break;
+	case DFSR_FS_DOMAIN_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, dfar, wnr, 1, 1);
+		break;
+	case DFSR_FS_PERM_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, dfar, wnr, 0, 1);
+		break;
+	case DFSR_FS_PERM_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, dfar, wnr, 1, 1);
+		break;
+	case DFSR_FS_DEBUG_EVENT:
+	case DFSR_FS_SYNC_EXT_ABORT:
+	case DFSR_FS_IMP_VALID_LOCKDOWN:
+	case DFSR_FS_IMP_VALID_COPROC_ABORT:
+	case DFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
+	case DFSR_FS_ASYNC_EXT_ABORT:
+	case DFSR_FS_MEM_ACCESS_ASYNC_PARITY_ERROR:
+		break;
+	default:
+		break;
+	};
+
+	return rc;
+}
+
 int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 
 			   vmm_user_regs_t * regs,
 			   virtual_addr_t addr, 
@@ -66,8 +306,9 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 		};
 	} else {
 		rc = cpu_mmu_get_page(vcpu->sregs.cp15.l1, addr, &pg);
-		if (rc) {
-			/* FIXME: Traverse VCPU L1 Page Table */
+		if (rc == VMM_ENOTAVAIL) {
+			rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
+						addr, 0, (pg.va) ? 1 : 0, 1);
 		}
 		if (!rc) {
 			switch(pg.ap) {
@@ -141,8 +382,9 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 		};
 	} else {
 		rc = cpu_mmu_get_page(vcpu->sregs.cp15.l1, addr, &pg);
-		if (rc) {
-			/* FIXME: Traverse VCPU L1 Page Table */
+		if (rc == VMM_ENOTAVAIL) {
+			rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
+						addr, 1, (pg.va) ? 1 : 0, 1);
 		}
 		if (!rc) {
 			switch(pg.ap) {
@@ -179,244 +421,6 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 		vmm_scheduler_vcpu_halt(vcpu);
 		vmm_scheduler_next(regs);
 	}
-	return rc;
-}
-
-/* FIXME: */
-bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
-			u32 opc1, u32 opc2, u32 CRm, 
-			u32 *data)
-{
-	return TRUE;
-}
-
-/* FIXME: */
-bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu, 
-			 u32 opc1, u32 opc2, u32 CRm, 
-			 u32 data)
-{
-	return TRUE;
-}
-
-int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu, 
-			      vmm_user_regs_t * regs, 
-			      u32 fsr, u32 far, u32 page, u32 xn)
-{
-	int rc;
-	u32 victim;
-	vmm_guest_region_t *reg;
-	cpu_page_t *p;
-
-	/* Find out next victim page from shadow TLB */
-	victim = vcpu->sregs.cp15.vtlb.victim;
-	p = &vcpu->sregs.cp15.vtlb.page[victim];
-	if (vcpu->sregs.cp15.vtlb.valid[victim]) {
-		/* Remove valid victim page from L1 Page Table */
-		if ((rc = cpu_mmu_unmap_page(vcpu->sregs.cp15.l1, p))) {
-			return rc;
-		}
-		vcpu->sregs.cp15.vtlb.valid[victim] = 0;
-	}
-
-	/* Get the required page for vcpu */
-	if (vcpu->sregs.cp15.c1_sctlr & SCTLR_M_MASK) {
-		/* FIXME: MMU enabled for VCPU */
-	} else {
-		/* MMU disabled for VCPU */
-		reg = vmm_guest_aspace_getregion(vcpu->guest, far);
-		if (!reg) {
-			return VMM_EFAIL;
-		}
-		p->pa = reg->hphys_addr + (far - reg->gphys_addr);
-		p->va = far;
-		p->sz = reg->phys_size - (far - reg->gphys_addr);
-		if (TTBL_L1TBL_SECTION_PAGE_SIZE <= p->sz) {
-			p->sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
-		} else if (TTBL_L2TBL_LARGE_PAGE_SIZE <= p->sz) {
-			p->sz = TTBL_L2TBL_LARGE_PAGE_SIZE;
-		} else {
-			p->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
-		}
-		p->imp = 0;
-		p->dom = TTBL_L1TBL_TTE_DOM_VCPU_NOMMU;
-		if (reg->is_virtual) {
-			p->ap = TTBL_AP_SRW_U;
-		} else {
-			p->ap = TTBL_AP_SRW_URW;
-		}
-		p->xn = 0;
-		p->c = 0;
-		p->b = 0;
-	}
-
-	/* Add victim page to L1 page table */
-	if ((rc = cpu_mmu_map_page(vcpu->sregs.cp15.l1, p))) {
-		return rc;
-	}
-
-	/* Mark current victim as valid and 
-	 * point to next victim page in shadow TLB */
-	vcpu->sregs.cp15.vtlb.valid[victim] = 1;
-	victim = (victim + 1) % vcpu->sregs.cp15.vtlb.count;
-	vcpu->sregs.cp15.vtlb.victim = victim;
-
-	return VMM_OK;
-}
-
-/* FIXME: */
-int cpu_vcpu_cp15_access_fault(vmm_vcpu_t * vcpu, 
-			       vmm_user_regs_t * regs, 
-			       u32 fsr, u32 far, u32 page, u32 xn)
-{
-	return VMM_OK;
-}
-
-/* FIXME: */
-int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu, 
-			       vmm_user_regs_t * regs, 
-			       u32 fsr, u32 far, u32 page, u32 xn)
-{
-	return VMM_OK;
-}
-
-int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu, 
-			     vmm_user_regs_t * regs, 
-			     u32 fsr, u32 far, u32 page, u32 xn)
-{
-	if ((vcpu->sregs.cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
-		return cpu_vcpu_emulate_inst(vcpu, regs, FALSE);
-	} else {
-		/* FIXME: Permission fault to VCPU */
-	}
-
-	return VMM_OK;
-}
-
-int cpu_vcpu_cp15_ifault(vmm_vcpu_t * vcpu, 
-			 vmm_user_regs_t * regs,
-			 u32 ifsr, u32 ifar)
-{
-	int rc = VMM_EFAIL;
-	u32 fs;
-
-	if (!vcpu) {
-		return rc;
-	}
-	if (!vcpu->guest) {
-		return rc;
-	}
-
-	fs = (ifsr & IFSR_FS4_MASK) >> IFSR_FS4_SHIFT;
-	fs = (fs << 4) | (ifsr & IFSR_FS_MASK);
-
-	switch(fs) {
-	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
-	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_2:
-		break;
-	case IFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_1:
-	case IFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
-		break;
-	case IFSR_FS_TRANS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, ifsr, ifar, 0, 0);
-		break;
-	case IFSR_FS_TRANS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, ifsr, ifar, 1, 0);
-		break;
-	case IFSR_FS_ACCESS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, ifsr, ifar, 0, 0);
-		break;
-	case IFSR_FS_ACCESS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, ifsr, ifar, 1, 0);
-		break;
-	case IFSR_FS_DOMAIN_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, ifsr, ifar, 0, 0);
-		break;
-	case IFSR_FS_DOMAIN_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, ifsr, ifar, 1, 0);
-		break;
-	case IFSR_FS_PERM_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, ifsr, ifar, 0, 0);
-		break;
-	case IFSR_FS_PERM_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, ifsr, ifar, 1, 0);
-		break;
-	case IFSR_FS_DEBUG_EVENT:
-	case IFSR_FS_SYNC_EXT_ABORT:
-	case IFSR_FS_IMP_VALID_LOCKDOWN:
-	case IFSR_FS_IMP_VALID_COPROC_ABORT:
-	case IFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
-		break;
-	default:
-		break; 
-	};
-
-	return rc;
-}
-
-int cpu_vcpu_cp15_dfault(vmm_vcpu_t * vcpu, 
-			 vmm_user_regs_t * regs,
-			 u32 dfsr, u32 dfar)
-{
-	int rc = VMM_EFAIL;
-	u32 fs;
-
-	if (!vcpu) {
-		return rc;
-	}
-	if (!vcpu->guest) {
-		return rc;
-	}
-
-	fs = (dfsr & DFSR_FS4_MASK) >> DFSR_FS4_SHIFT;
-	fs = (fs << 4) | (dfsr & DFSR_FS_MASK);
-
-	switch(fs) {
-	case DFSR_FS_ALIGN_FAULT:
-		break;
-	case DFSR_FS_ICACHE_MAINT_FAULT:
-		break;
-	case DFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
-	case DFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_2:
-		break;
-	case DFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_1:
-	case DFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
-		break;
-	case DFSR_FS_TRANS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, dfsr, dfar, 0, 1);
-		break;
-	case DFSR_FS_TRANS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, dfsr, dfar, 1, 1);
-		break;
-	case DFSR_FS_ACCESS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, dfsr, dfar, 0, 1);
-		break;
-	case DFSR_FS_ACCESS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, dfsr, dfar, 1, 1);
-		break;
-	case DFSR_FS_DOMAIN_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, dfsr, dfar, 0, 1);
-		break;
-	case DFSR_FS_DOMAIN_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, dfsr, dfar, 1, 1);
-		break;
-	case DFSR_FS_PERM_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, dfsr, dfar, 0, 1);
-		break;
-	case DFSR_FS_PERM_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, dfsr, dfar, 1, 1);
-		break;
-	case DFSR_FS_DEBUG_EVENT:
-	case DFSR_FS_SYNC_EXT_ABORT:
-	case DFSR_FS_IMP_VALID_LOCKDOWN:
-	case DFSR_FS_IMP_VALID_COPROC_ABORT:
-	case DFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
-	case DFSR_FS_ASYNC_EXT_ABORT:
-	case DFSR_FS_MEM_ACCESS_ASYNC_PARITY_ERROR:
-		break;
-	default:
-		break;
-	};
-
 	return rc;
 }
 

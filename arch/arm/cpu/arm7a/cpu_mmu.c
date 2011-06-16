@@ -376,11 +376,13 @@ int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
 				ret = VMM_OK;
 				break;
 			default:
+				ret = VMM_ENOTAVAIL;
 				break;
 			}
 		}
 		break;
 	default:
+		ret = VMM_ENOTAVAIL;
 		break;
 	};
 

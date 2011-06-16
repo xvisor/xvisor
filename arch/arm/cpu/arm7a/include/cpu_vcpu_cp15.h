@@ -27,18 +27,6 @@
 #include <vmm_types.h>
 #include <vmm_guest.h>
 
-/** Read from memory using VCPU CP15 */
-int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 
-			   vmm_user_regs_t * regs,
-			   virtual_addr_t addr, 
-			   void *dst, u32 dst_len);
-
-/** Write to memory using VCPU CP15 */
-int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu, 
-			    vmm_user_regs_t * regs,
-			    virtual_addr_t addr, 
-			    void *src, u32 src_len);
-
 /** Read one registers from CP15 */
 bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
 			u32 opc1, u32 opc2, u32 CRm, 
@@ -58,6 +46,18 @@ int cpu_vcpu_cp15_ifault(vmm_vcpu_t * vcpu,
 int cpu_vcpu_cp15_dfault(vmm_vcpu_t * vcpu, 
 			 vmm_user_regs_t * regs,
 			 u32 dfsr, u32 dfar);
+
+/** Read from memory using VCPU CP15 */
+int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 
+			   vmm_user_regs_t * regs,
+			   virtual_addr_t addr, 
+			   void *dst, u32 dst_len);
+
+/** Write to memory using VCPU CP15 */
+int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu, 
+			    vmm_user_regs_t * regs,
+			    virtual_addr_t addr, 
+			    void *src, u32 src_len);
 
 /* Read from memory using VCPU CP15 */
 virtual_addr_t cpu_vcpu_cp15_vector_addr(vmm_vcpu_t * vcpu, 
