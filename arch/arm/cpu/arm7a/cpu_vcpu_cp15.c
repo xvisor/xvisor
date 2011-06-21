@@ -131,7 +131,7 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 
 /* FIXME: */
 bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
-			u32 opc1, u32 opc2, u32 CRm, 
+			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			u32 *data)
 {
 	return TRUE;
@@ -139,7 +139,7 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 
 /* FIXME: */
 bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu, 
-			 u32 opc1, u32 opc2, u32 CRm, 
+			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data)
 {
 	return TRUE;
@@ -341,6 +341,8 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 				rc = VMM_EFAIL;
 				break;
 			};
+		} else {
+			halt_vcpu = 1;
 		}
 	}
 	if (halt_vcpu) {
@@ -415,6 +417,8 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 				rc = VMM_EFAIL;
 				break;
 			};
+		} else {
+			halt_vcpu = 1;
 		}
 	}
 	if (halt_vcpu) {
@@ -495,8 +499,6 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 	vcpu->sregs.cp15.dacr = 0x0;
 	vcpu->sregs.cp15.dacr |= (TTBL_DOM_CLIENT << 
 					(TTBL_L1TBL_TTE_DOM_VCPU_NOMMU * 2));
-	vcpu->sregs.cp15.dacr |= (TTBL_DOM_NOACCESS << 
-					(TTBL_L1TBL_TTE_DOM_VCPU_NOACCESS * 2));
 	vcpu->sregs.cp15.dacr |= (TTBL_DOM_CLIENT << 
 					(TTBL_L1TBL_TTE_DOM_VCPU_SUPER * 2));
 	vcpu->sregs.cp15.dacr |= (TTBL_DOM_CLIENT << 

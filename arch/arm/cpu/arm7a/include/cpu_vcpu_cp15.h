@@ -29,12 +29,12 @@
 
 /** Read one registers from CP15 */
 bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
-			u32 opc1, u32 opc2, u32 CRm, 
+			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			u32 *data);
 
 /** Write one registers to CP15 */
 bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu, 
-			 u32 opc1, u32 opc2, u32 CRm, 
+			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data);
 
 /** Handle instruction fault for a VCPU */
