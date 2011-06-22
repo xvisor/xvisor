@@ -1670,7 +1670,6 @@ int arm_instgrp_ldrstr(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			return VMM_EFAIL;
 		}
 	}
-
 	arm_unpredictable(regs, vcpu);
 	return VMM_EFAIL;
 }
@@ -2184,7 +2183,6 @@ int arm_instgrp_coproc(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		/* Supervisor Call SVC (previously SWI) */
 		return arm_instgrp_hypercall(inst, regs, vcpu);
 	}
-
 	arm_unpredictable(regs, vcpu);
 	return VMM_EFAIL;
 }
@@ -2244,6 +2242,8 @@ int cpu_vcpu_emulate_arm_inst(vmm_vcpu_t *vcpu,
 	default:
 		break;
 	};
+
+	arm_unpredictable(regs, vcpu);
 
 	return VMM_EFAIL;
 }
