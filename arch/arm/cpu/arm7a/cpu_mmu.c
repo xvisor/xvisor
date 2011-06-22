@@ -221,6 +221,10 @@ cpu_l2tbl_t *cpu_mmu_l2tbl_alloc(void)
 	virtual_addr_t l2_va;
 	cpu_l2tbl_t *l2;
 
+	if (!list_empty(&mmuctrl.l2tbl_list)) {
+		return list_entry(mmuctrl.l2tbl_list.next, cpu_l2tbl_t, head);
+	}
+
 	if (cpu_mmu_pool_alloc(TTBL_L2TBL_SIZE, &l2_pa, &l2_va)) {
 		return NULL;
 	}
@@ -372,11 +376,13 @@ int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
 				ret = VMM_OK;
 				break;
 			default:
+				ret = VMM_ENOTAVAIL;
 				break;
 			}
 		}
 		break;
 	default:
+		ret = VMM_ENOTAVAIL;
 		break;
 	};
 
@@ -459,6 +465,15 @@ int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 		break;
 	default:
 		break;
+	}
+
+	if (!ret) {
+		/* If given L1 page table is current then 
+		 * invalidate tlb line 
+		 */
+		if(read_ttbr0() == l1->tbl_pa) {
+			invalid_tlb_line(pg->va);
+		}
 	}
 
 	return ret;
@@ -637,8 +652,6 @@ int cpu_mmu_unmap_reserved_page(cpu_page_t * pg)
 			return rc;
 		}
 	}
-
-	invalid_tlb_line(pg->va);
 
 	return VMM_OK;
 }
@@ -821,6 +834,7 @@ int cpu_mmu_init(void)
 	mmuctrl.pool_va = mmuctrl.pool_pa;
 	mmuctrl.pool_sz = 0;
 	INIT_LIST_HEAD(&mmuctrl.l1tbl_list);
+	INIT_LIST_HEAD(&mmuctrl.l2tbl_list);
 	mmuctrl.defl1 = NULL;
 
 	/* Get the vmm information node */

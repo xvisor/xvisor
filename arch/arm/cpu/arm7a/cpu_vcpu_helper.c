@@ -234,12 +234,14 @@ void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu,
 	vcpu->sregs.cpsr &= ~CPSR_PRIVBITS_MASK;
 	vcpu->sregs.cpsr |= new_cpsr & CPSR_PRIVBITS_MASK;
 	/* Set the new user bits of CPSR */
-	vcpu->uregs.cpsr &= ~CPSR_USERBITS_MASK;
-	vcpu->uregs.cpsr |= new_cpsr & CPSR_USERBITS_MASK;
+	regs->cpsr &= ~CPSR_USERBITS_MASK;
+	regs->cpsr |= new_cpsr & CPSR_USERBITS_MASK;
 	/* If mode is changing then */
 	if ((old_cpsr & CPSR_MODE_MASK) != (new_cpsr & CPSR_MODE_MASK)) {
 		/* Restore values of banked registers for new CPSR */
 		cpu_vcpu_banked_regs_restore(vcpu, regs);
+		/* Synchronize CP15 state to change in mode */
+		cpu_vcpu_cp15_sync_cpsr(vcpu);
 	}
 	return;
 }
@@ -656,7 +658,7 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 {
 	u32 ite;
 	/* Save user registers & banked registers */
-	if(tvcpu) {
+	if (tvcpu) {
 		tvcpu->uregs.pc = regs->pc;
 		tvcpu->uregs.lr = regs->lr;
 		tvcpu->uregs.sp = regs->sp;
@@ -667,8 +669,10 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 			cpu_vcpu_banked_regs_save(tvcpu, regs);
 		}
 	}
-	/* Switch CP15 context */
-	cpu_vcpu_cp15_context_switch(tvcpu, vcpu, regs);
+	if (vcpu->guest) {
+		/* Switch CP15 context */
+		cpu_vcpu_cp15_context_switch(tvcpu, vcpu, regs);
+	}
 	/* Restore user registers  & banked registers */
 	regs->pc = vcpu->uregs.pc;
 	regs->lr = vcpu->uregs.lr;
@@ -676,7 +680,7 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 	for (ite = 0; ite < CPU_GPR_COUNT; ite++)
 		regs->gpr[ite] = vcpu->uregs.gpr[ite];
 	regs->cpsr = vcpu->uregs.cpsr;
-	if(vcpu->guest) {
+	if (vcpu->guest) {
 		cpu_vcpu_banked_regs_restore(vcpu, regs);
 	}
 }
