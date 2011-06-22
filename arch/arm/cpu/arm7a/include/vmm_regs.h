@@ -93,7 +93,8 @@ struct vmm_super_regs {
 		/* Virtual TLB */
 		struct {
 			u8 *valid;
-			u8 *asid;
+			u8 *page_asid;
+			u8 *page_dom;
 			cpu_page_t *page;
 			u32 victim;
 			u32 count;
@@ -121,10 +122,12 @@ struct vmm_super_regs {
 		u32 c2_insn; /* MPU instruction cachable bits. */
 		u32 c3; /* MMU domain access control register
 				MPU write buffer control. */
-		u32 c5_insn; /* Fault status registers. */
+		u32 c5_ifsr; /* Fault status registers. */
+		u32 c5_dfsr; /* Fault status registers. */
 		u32 c5_data;
 		u32 c6_region[8]; /* MPU base/size registers. */
-		u32 c6_insn; /* Fault address registers. */
+		u32 c6_ifar; /* Fault address registers. */
+		u32 c6_dfar; /* Fault address registers. */
 		u32 c6_data;
 		u32 c9_insn; /* Cache lockdown registers. */
 		u32 c9_data;

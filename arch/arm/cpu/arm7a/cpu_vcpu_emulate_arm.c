@@ -416,13 +416,14 @@ int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 		address = (increment) ? address : (address - 8);
 		address = (wordhigher) ? (address + 4) : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, address + 4, 
-						 &data, 4))) {
+		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+						 address + 4, &data, 4))) {
 			return rc;
 		}
 		cpu_vcpu_cpsr_update(vcpu, regs, data);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, address, &data, 4))) {
+		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+						 address, &data, 4))) {
 			return rc;
 		}
 		regs->pc = data;
@@ -475,12 +476,14 @@ int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 		address = (increment) ? base : (base - 8);
 		address = (wordhigher) ? (address + 4) : address;
 		data = regs->lr;
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, address, &data, 4))) {
+		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
+						  address, &data, 4))) {
 			return rc;
 		}
 		address += 4;
 		data = cpu_vcpu_spsr_retrive(vcpu);
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, address, &data, 4))) {
+		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
+						  address, &data, 4))) {
 			return rc;
 		}
 		if (wback) {
@@ -567,7 +570,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 				if (reg_list & mask) {
 					data = 0x0;
 					if ((rc = cpu_vcpu_cp15_mem_read(vcpu, 
-						address, &data, 4))) {
+						regs, address, &data, 4))) {
 						return rc;
 					}
 					cpu_vcpu_reg_write(regs, i, data);
@@ -576,8 +579,8 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 				mask = mask << 1;
 			}
 			data = 0x0;
-			if ((rc = cpu_vcpu_cp15_mem_read(vcpu, address, 
-						     &data, 4))) {
+			if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+							address, &data, 4))) {
 				return rc;
 			}
 			if (wback && !(reg_list & (0x1 << Rn))) {
@@ -624,7 +627,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 				if (reg_list & mask) {
 					data = 0x0;
 					if ((rc = cpu_vcpu_cp15_mem_read(vcpu, 
-						address, &data, 4))) {
+						regs, address, &data, 4))) {
 						return rc;
 					}
 					cpu_vcpu_regmode_write(vcpu, regs, 
@@ -708,8 +711,8 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 			if (reg_list & mask) {
 				data = cpu_vcpu_regmode_read(vcpu, regs, 
 							CPSR_MODE_USER, i);
-				if ((rc = cpu_vcpu_cp15_mem_write(vcpu, 
-					address, &data, 4))) {
+				if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
+							address, &data, 4))) {
 					return rc;
 				}
 				address += 4;
@@ -1027,7 +1030,8 @@ int arm_inst_str_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		offset_addr = (add) ? (data + imm32) : (data - imm32);
 		address = (index) ? offset_addr : data;
 		data = cpu_vcpu_reg_read(regs, Rt);
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, address, &data, 4))) {
+		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
+						  address, &data, 4))) {
 			return rc;
 		}
 		if (wback) {
@@ -1095,7 +1099,8 @@ int arm_inst_str_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		offset_addr = (add) ? (data + offset) : (data - offset);
 		address = (index) ? offset_addr : data;
 		data = cpu_vcpu_reg_read(regs, Rt);
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, address, &data, 4))) {
+		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
+						  address, &data, 4))) {
 			return rc;
 		}
 		if (wback) {
@@ -1153,7 +1158,8 @@ int arm_inst_strb_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		offset_addr = (add) ? (data + imm32) : (data - imm32);
 		address = (index) ? offset_addr : data;
 		data = cpu_vcpu_reg_read(regs, Rt) & 0xFF;
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, address, &data, 1))) {
+		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
+						  address, &data, 1))) {
 			return rc;
 		}
 		if (wback) {
@@ -1222,7 +1228,8 @@ int arm_inst_strb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 					(data - offset);
 		address = (index) ? offset_addr : data;
 		data = cpu_vcpu_reg_read(regs, Rt) & 0xFF;
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, address, &data, 1))) {
+		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs,
+						  address, &data, 1))) {
 			return rc;
 		}
 		if (wback) {
@@ -1277,7 +1284,8 @@ int arm_inst_ldr_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 					(data - imm32);
 		address = (index) ? offset_addr : data;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, address, &data, 4))) {
+		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+						 address, &data, 4))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(regs, Rt, data);
@@ -1312,7 +1320,8 @@ int arm_inst_ldr_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		base = arm_align(regs->pc, 4);
 		address = (add) ? (base + imm32) : (base - imm32);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, address, &data, 4))) {
+		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+						 address, &data, 4))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(regs, Rt, data);
@@ -1379,7 +1388,8 @@ int arm_inst_ldr_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 					(data - offset);
 		address = (index) ? offset_addr : data;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, address, &data, 4))) {
+		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+						 address, &data, 4))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(regs, Rt, data);
@@ -1439,7 +1449,8 @@ int arm_inst_ldrb_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 					(data - imm32);
 		address = (index) ? offset_addr : data;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, address, &data, 1))) {
+		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+						 address, &data, 1))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(regs, Rt, arm_zero_extend(data, 32));
@@ -1478,7 +1489,8 @@ int arm_inst_ldrb_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		base = arm_align(regs->pc, 4);
 		address = (add) ? (base + imm32) : (base - imm32);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, address, &data, 1))) {
+		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+						 address, &data, 1))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(regs, Rt, arm_zero_extend(data, 32));
@@ -1545,7 +1557,8 @@ int arm_inst_ldrb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 					(data - offset);
 		address = (index) ? offset_addr : data;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, address, &data, 1))) {
+		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+						 address, &data, 1))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(regs, Rt, arm_zero_extend(data, 32));
@@ -1657,7 +1670,6 @@ int arm_instgrp_ldrstr(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			return VMM_EFAIL;
 		}
 	}
-
 	arm_unpredictable(regs, vcpu);
 	return VMM_EFAIL;
 }
@@ -1726,8 +1738,8 @@ int arm_inst_stcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 							CRd, uopt, imm8)) {
 				data = cp->ldcstc_read(vcpu, i, D, 
 								CRd, uopt, imm8);
-				if ((rc = cpu_vcpu_cp15_mem_write(vcpu, 
-					address, &data, 4))) {
+				if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs,
+							address, &data, 4))) {
 					return rc;
 				}
 				address += 4;
@@ -1792,8 +1804,8 @@ int arm_inst_ldcx_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			while (!cp->ldcstc_done(vcpu, i, D, 
 							CRd, uopt, imm8)) {
 				data = 0x0;
-				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, 
-					address, &data, 4))) {
+				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
+							address, &data, 4))) {
 					return rc;
 				}
 				cp->ldcstc_write(vcpu, i, D, 
@@ -1857,8 +1869,8 @@ int arm_inst_ldcx_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			while (!cp->ldcstc_done(vcpu, i, D, 
 							CRd, uopt, imm8)) {
 				data = 0x0;
-				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, 
-					address, &data, 4))) {
+				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
+							address, &data, 4))) {
 					return rc;
 				}
 				cp->ldcstc_write(vcpu, i, D, 
@@ -2020,7 +2032,7 @@ int arm_inst_mcrx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	}
 	if (arm_condition_passed(cond, regs)) {
 		data = cpu_vcpu_reg_read(regs, Rt);
-		if (!cp->write(vcpu, opc1, opc2, CRm, data)) {
+		if (!cp->write(vcpu, opc1, opc2, CRn, CRm, data)) {
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_EFAIL;
 		}
@@ -2056,7 +2068,7 @@ int arm_inst_mrcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	}
 	if (arm_condition_passed(cond, regs)) {
 		data = 0x0;
-		if (!cp->read(vcpu, opc1, opc2, CRm, &data)) {
+		if (!cp->read(vcpu, opc1, opc2, CRn, CRm, &data)) {
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_EFAIL;
 		}
@@ -2171,7 +2183,6 @@ int arm_instgrp_coproc(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		/* Supervisor Call SVC (previously SWI) */
 		return arm_instgrp_hypercall(inst, regs, vcpu);
 	}
-
 	arm_unpredictable(regs, vcpu);
 	return VMM_EFAIL;
 }
@@ -2231,6 +2242,8 @@ int cpu_vcpu_emulate_arm_inst(vmm_vcpu_t *vcpu,
 	default:
 		break;
 	};
+
+	arm_unpredictable(regs, vcpu);
 
 	return VMM_EFAIL;
 }

@@ -39,14 +39,11 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 {
 	vmm_vcpu_t * vcpu;
 
-	vcpu = vmm_scheduler_current_vcpu();
+	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+		vmm_panic("%s: Unexpected exception\n", __func__);
+	}
 
-	if (!vcpu) {
-		vmm_panic("%s: Null vcpu\n", __func__);
-	}
-	if (!vcpu->guest) {
-		vmm_panic("%s: Orphan vcpu\n", __func__);
-	}
+	vcpu = vmm_scheduler_current_vcpu();
 
 	/* If vcpu priviledge is user then generate exception 
 	 * and return without emulating instruction 
@@ -64,14 +61,11 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 {
 	vmm_vcpu_t * vcpu;
 
-	vcpu = vmm_scheduler_current_vcpu();
+	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+		vmm_panic("%s: Unexpected exception\n", __func__);
+	}
 
-	if (!vcpu) {
-		vmm_panic("%s: Null vcpu\n", __func__);
-	}
-	if (!vcpu->guest) {
-		vmm_panic("%s: Orphan vcpu\n", __func__);
-	}
+	vcpu = vmm_scheduler_current_vcpu();
 
 	/* If vcpu priviledge is user then generate exception 
 	 * and return without emulating instruction 
@@ -93,16 +87,13 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	ifsr = read_ifsr();
 	ifar = read_ifar();	
 
+	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+		vmm_panic("%s: Unexpected exception\n", __func__);
+	}
+
 	vcpu = vmm_scheduler_current_vcpu();
 
-	if (!vcpu) {
-		vmm_panic("%s: Null vcpu\n", __func__);
-	}
-	if (!vcpu->guest) {
-		vmm_panic("%s: Orphan vcpu\n", __func__);
-	}
-
-	cpu_vcpu_cp15_ifault(ifsr, ifar, vcpu, uregs);
+	cpu_vcpu_cp15_ifault(vcpu, uregs, ifsr, ifar);
 
 	vmm_vcpu_irq_process(uregs);
 }
@@ -115,23 +106,20 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	dfsr = read_dfsr();
 	dfar = read_dfar();	
 
+	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+		vmm_panic("%s: Unexpected exception\n", __func__);
+	}
+
 	vcpu = vmm_scheduler_current_vcpu();
 
-	if (!vcpu) {
-		vmm_panic("%s: Null vcpu\n", __func__);
-	}
-	if (!vcpu->guest) {
-		vmm_panic("%s: Orphan vcpu\n", __func__);
-	}
-
-	cpu_vcpu_cp15_dfault(dfsr, dfar, vcpu, uregs);
+	cpu_vcpu_cp15_dfault(vcpu, uregs, dfsr, dfar);
 
 	vmm_vcpu_irq_process(uregs);
 }
 
 void do_not_used(vmm_user_regs_t * uregs)
 {
-	vmm_panic("%s: Unused interrupt\n", __func__);
+	vmm_panic("%s: Unexpected exception\n", __func__);
 }
 
 void do_irq(vmm_user_regs_t * uregs)
