@@ -40,7 +40,7 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 	vmm_vcpu_t * vcpu;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
-		vmm_panic("%s: Unexpected exception\n", __func__);
+		vmm_panic("%s: unexpected exception\n", __func__);
 	}
 
 	vcpu = vmm_scheduler_current_vcpu();
@@ -62,7 +62,7 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 	vmm_vcpu_t * vcpu;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
-		vmm_panic("%s: Unexpected exception\n", __func__);
+		vmm_panic("%s: unexpected exception\n", __func__);
 	}
 
 	vcpu = vmm_scheduler_current_vcpu();
@@ -81,45 +81,144 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 
 void do_prefetch_abort(vmm_user_regs_t * uregs)
 {
-	u32 ifsr, ifar;
+	int rc = VMM_EFAIL;
+	u32 ifsr, ifar, fs;
 	vmm_vcpu_t * vcpu;
 
-	ifsr = read_ifsr();
-	ifar = read_ifar();	
-
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
-		vmm_panic("%s: Unexpected exception\n", __func__);
+		vmm_panic("%s: unexpected exception\n", __func__);
 	}
 
+	ifsr = read_ifsr();
+	ifar = read_ifar();
 	vcpu = vmm_scheduler_current_vcpu();
 
-	cpu_vcpu_cp15_ifault(vcpu, uregs, ifsr, ifar);
+	fs = (ifsr & IFSR_FS4_MASK) >> IFSR_FS4_SHIFT;
+	fs = (fs << 4) | (ifsr & IFSR_FS_MASK);
+
+	switch(fs) {
+	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
+	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_2:
+		break;
+	case IFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_1:
+	case IFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
+		break;
+	case IFSR_FS_TRANS_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, ifar, 0, 0, 0);
+		break;
+	case IFSR_FS_TRANS_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, ifar, 0, 1, 0);
+		break;
+	case IFSR_FS_ACCESS_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, ifar, 0, 0, 0);
+		break;
+	case IFSR_FS_ACCESS_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, ifar, 0, 1, 0);
+		break;
+	case IFSR_FS_DOMAIN_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, ifar, 0, 0, 0);
+		break;
+	case IFSR_FS_DOMAIN_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, ifar, 0, 1, 0);
+		break;
+	case IFSR_FS_PERM_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, ifar, 0, 0, 0);
+		break;
+	case IFSR_FS_PERM_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, ifar, 0, 1, 0);
+		break;
+	case IFSR_FS_DEBUG_EVENT:
+	case IFSR_FS_SYNC_EXT_ABORT:
+	case IFSR_FS_IMP_VALID_LOCKDOWN:
+	case IFSR_FS_IMP_VALID_COPROC_ABORT:
+	case IFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
+		break;
+	default:
+		break; 
+	};
+
+	if (rc) {
+		vmm_printf("%s: error %d\n", __func__, rc);
+	}
 
 	vmm_vcpu_irq_process(uregs);
 }
 
 void do_data_abort(vmm_user_regs_t * uregs)
 {
-	u32 dfsr, dfar;
+	int rc = VMM_EFAIL;
+	u32 dfsr, dfar, fs, wnr;
 	vmm_vcpu_t * vcpu;
 
-	dfsr = read_dfsr();
-	dfar = read_dfar();	
-
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
-		vmm_panic("%s: Unexpected exception\n", __func__);
+		vmm_panic("%s: unexpected exception\n", __func__);
 	}
 
+	dfsr = read_dfsr();
+	dfar = read_dfar();
 	vcpu = vmm_scheduler_current_vcpu();
 
-	cpu_vcpu_cp15_dfault(vcpu, uregs, dfsr, dfar);
+	fs = (dfsr & DFSR_FS4_MASK) >> DFSR_FS4_SHIFT;
+	fs = (fs << 4) | (dfsr & DFSR_FS_MASK);
+	wnr = (dfsr & DFSR_WNR_MASK) >> DFSR_WNR_SHIFT;
+
+	switch(fs) {
+	case DFSR_FS_ALIGN_FAULT:
+		break;
+	case DFSR_FS_ICACHE_MAINT_FAULT:
+		break;
+	case DFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
+	case DFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_2:
+		break;
+	case DFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_1:
+	case DFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
+		break;
+	case DFSR_FS_TRANS_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, dfar, wnr, 0, 1);
+		break;
+	case DFSR_FS_TRANS_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, dfar, wnr, 1, 1);
+		break;
+	case DFSR_FS_ACCESS_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, dfar, wnr, 0, 1);
+		break;
+	case DFSR_FS_ACCESS_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, dfar, wnr, 1, 1);
+		break;
+	case DFSR_FS_DOMAIN_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, dfar, wnr, 0, 1);
+		break;
+	case DFSR_FS_DOMAIN_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, dfar, wnr, 1, 1);
+		break;
+	case DFSR_FS_PERM_FAULT_SECTION:
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, dfar, wnr, 0, 1);
+		break;
+	case DFSR_FS_PERM_FAULT_PAGE:
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, dfar, wnr, 1, 1);
+		break;
+	case DFSR_FS_DEBUG_EVENT:
+	case DFSR_FS_SYNC_EXT_ABORT:
+	case DFSR_FS_IMP_VALID_LOCKDOWN:
+	case DFSR_FS_IMP_VALID_COPROC_ABORT:
+	case DFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
+	case DFSR_FS_ASYNC_EXT_ABORT:
+	case DFSR_FS_MEM_ACCESS_ASYNC_PARITY_ERROR:
+		break;
+	default:
+		break;
+	};
+
+	if (rc) {
+		vmm_printf("%s: error %d\n", __func__, rc);
+	}
 
 	vmm_vcpu_irq_process(uregs);
 }
 
 void do_not_used(vmm_user_regs_t * uregs)
 {
-	vmm_panic("%s: Unexpected exception\n", __func__);
+	vmm_panic("%s: unexpected exception\n", __func__);
 }
 
 void do_irq(vmm_user_regs_t * uregs)

@@ -38,8 +38,8 @@
 
 void arm_unpredictable(vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	vmm_scheduler_vcpu_halt(vcpu);
 	vmm_scheduler_next(regs);
+	vmm_scheduler_vcpu_halt(vcpu);
 }
 
 bool arm_condition_passed(u32 cond, vmm_user_regs_t * regs)
@@ -1659,10 +1659,10 @@ int arm_instgrp_ldrstr(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		} else if (is_xx1x1 && !is_0x111) {
 			if (rn == 0xF) {
 				/* LDRB (literal) */
-				arm_inst_ldrb_l(inst, regs, vcpu);
+				return arm_inst_ldrb_l(inst, regs, vcpu);
 			} else {
 				/* LDRB (immediate) */
-				arm_inst_ldrb_i(inst, regs, vcpu);
+				return arm_inst_ldrb_i(inst, regs, vcpu);
 			}
 		} else if (is_0x111) {
 			/* LDRBT */

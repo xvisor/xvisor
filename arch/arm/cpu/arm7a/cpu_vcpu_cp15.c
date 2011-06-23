@@ -44,8 +44,8 @@ enum cpu_vcpu_cp15_fault_types {
 
 void cpu_vcpu_cp15_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 {
-	vmm_scheduler_vcpu_halt(vcpu);
 	vmm_scheduler_next(regs);
+	vmm_scheduler_vcpu_halt(vcpu);
 }
 
 int cpu_vcpu_cp15_assert_fault(vmm_vcpu_t * vcpu, 
@@ -255,141 +255,12 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 	return TRUE;
 }
 
-int cpu_vcpu_cp15_ifault(vmm_vcpu_t * vcpu, 
-			 vmm_user_regs_t * regs,
-			 u32 ifsr, u32 ifar)
-{
-	int rc = VMM_EFAIL;
-	u32 fs;
-
-	if (!vcpu) {
-		return rc;
-	}
-	if (!vcpu->guest) {
-		return rc;
-	}
-
-	fs = (ifsr & IFSR_FS4_MASK) >> IFSR_FS4_SHIFT;
-	fs = (fs << 4) | (ifsr & IFSR_FS_MASK);
-
-	switch(fs) {
-	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
-	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_2:
-		break;
-	case IFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_1:
-	case IFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
-		break;
-	case IFSR_FS_TRANS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, ifar, 0, 0, 0);
-		break;
-	case IFSR_FS_TRANS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, ifar, 0, 1, 0);
-		break;
-	case IFSR_FS_ACCESS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, ifar, 0, 0, 0);
-		break;
-	case IFSR_FS_ACCESS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, ifar, 0, 1, 0);
-		break;
-	case IFSR_FS_DOMAIN_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, ifar, 0, 0, 0);
-		break;
-	case IFSR_FS_DOMAIN_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, ifar, 0, 1, 0);
-		break;
-	case IFSR_FS_PERM_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, ifar, 0, 0, 0);
-		break;
-	case IFSR_FS_PERM_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, ifar, 0, 1, 0);
-		break;
-	case IFSR_FS_DEBUG_EVENT:
-	case IFSR_FS_SYNC_EXT_ABORT:
-	case IFSR_FS_IMP_VALID_LOCKDOWN:
-	case IFSR_FS_IMP_VALID_COPROC_ABORT:
-	case IFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
-		break;
-	default:
-		break; 
-	};
-
-	return rc;
-}
-
-int cpu_vcpu_cp15_dfault(vmm_vcpu_t * vcpu, 
-			 vmm_user_regs_t * regs,
-			 u32 dfsr, u32 dfar)
-{
-	int rc = VMM_EFAIL;
-	u32 fs, wnr;
-
-	if (!vcpu) {
-		return rc;
-	}
-	if (!vcpu->guest) {
-		return rc;
-	}
-
-	fs = (dfsr & DFSR_FS4_MASK) >> DFSR_FS4_SHIFT;
-	fs = (fs << 4) | (dfsr & DFSR_FS_MASK);
-	wnr = (dfsr & DFSR_WNR_MASK) >> DFSR_WNR_SHIFT;
-
-	switch(fs) {
-	case DFSR_FS_ALIGN_FAULT:
-		break;
-	case DFSR_FS_ICACHE_MAINT_FAULT:
-		break;
-	case DFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
-	case DFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_2:
-		break;
-	case DFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_1:
-	case DFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
-		break;
-	case DFSR_FS_TRANS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, dfar, wnr, 0, 1);
-		break;
-	case DFSR_FS_TRANS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, dfar, wnr, 1, 1);
-		break;
-	case DFSR_FS_ACCESS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, dfar, wnr, 0, 1);
-		break;
-	case DFSR_FS_ACCESS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, dfar, wnr, 1, 1);
-		break;
-	case DFSR_FS_DOMAIN_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, dfar, wnr, 0, 1);
-		break;
-	case DFSR_FS_DOMAIN_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, dfar, wnr, 1, 1);
-		break;
-	case DFSR_FS_PERM_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, dfar, wnr, 0, 1);
-		break;
-	case DFSR_FS_PERM_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, dfar, wnr, 1, 1);
-		break;
-	case DFSR_FS_DEBUG_EVENT:
-	case DFSR_FS_SYNC_EXT_ABORT:
-	case DFSR_FS_IMP_VALID_LOCKDOWN:
-	case DFSR_FS_IMP_VALID_COPROC_ABORT:
-	case DFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
-	case DFSR_FS_ASYNC_EXT_ABORT:
-	case DFSR_FS_MEM_ACCESS_ASYNC_PARITY_ERROR:
-		break;
-	default:
-		break;
-	};
-
-	return rc;
-}
-
 int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 
 			   vmm_user_regs_t * regs,
 			   virtual_addr_t addr, 
 			   void *dst, u32 dst_len)
 {
-	int rc = VMM_OK, halt_vcpu = 0;
+	int rc = VMM_OK;
 	u32 vind;
 	cpu_page_t pg;
 	if ((addr & ~(sizeof(vcpu->sregs.cp15.ovect) - 1)) == 
@@ -410,7 +281,6 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 			*((u8 *)dst) = ((u8 *)vcpu->sregs.cp15.ovect)[vind];
 			break;
 		default:
-			halt_vcpu = 1;
 			rc = VMM_EFAIL;
 			break;
 		};
@@ -429,8 +299,7 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 			case TTBL_AP_SR_U:
 			case TTBL_AP_SRW_U:
 				rc = vmm_devemu_emulate_read(vcpu->guest, 
-							     pg.pa, 
-							     dst, dst_len);
+					(addr - pg.va) + pg.pa, dst, dst_len);
 				break;
 			case TTBL_AP_SRW_UR:
 			case TTBL_AP_SRW_URW:
@@ -445,21 +314,17 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 					*((u8 *)dst) = *((u8 *)addr);
 					break;
 				default:
-					halt_vcpu = 1;
 					rc = VMM_EFAIL;
 					break;
 				};
 				break;
 			default:
-				halt_vcpu = 1;
 				rc = VMM_EFAIL;
 				break;
 			};
-		} else {
-			halt_vcpu = 1;
 		}
 	}
-	if (halt_vcpu) {
+	if (rc) {
 		cpu_vcpu_cp15_halt(vcpu, regs);
 	}
 	return rc;
@@ -470,7 +335,7 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 			    virtual_addr_t addr, 
 			    void *src, u32 src_len)
 {
-	int rc = VMM_OK, halt_vcpu = 0;
+	int rc = VMM_OK;
 	u32 vind;
 	cpu_page_t pg;
 	if ((addr & ~(sizeof(vcpu->sregs.cp15.ovect) - 1)) == 
@@ -491,7 +356,6 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 			((u8 *)vcpu->sregs.cp15.ovect)[vind] = *((u8 *)src);
 			break;
 		default:
-			halt_vcpu = 1;
 			rc = VMM_EFAIL;
 			break;
 		};
@@ -509,8 +373,7 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 			switch(pg.ap) {
 			case TTBL_AP_SRW_U:
 				rc = vmm_devemu_emulate_write(vcpu->guest, 
-							      pg.pa, 
-							      src, src_len);
+					(addr - pg.va) + pg.pa, src, src_len);
 				break;
 			case TTBL_AP_SRW_URW:
 				switch (src_len) {
@@ -524,21 +387,17 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 					*((u8 *)addr) = *((u8 *)src);
 					break;
 				default:
-					halt_vcpu = 1;
 					rc = VMM_EFAIL;
 					break;
 				};
 				break;
 			default:
-				halt_vcpu = 1;
 				rc = VMM_EFAIL;
 				break;
 			};
-		} else {
-			halt_vcpu = 1;
 		}
 	}
-	if (halt_vcpu) {
+	if (rc) {
 		cpu_vcpu_cp15_halt(vcpu, regs);
 	}
 	return rc;

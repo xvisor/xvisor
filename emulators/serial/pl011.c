@@ -26,7 +26,6 @@
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_modules.h>
-#include <vmm_host_io.h>
 #include <vmm_devtree.h>
 #include <vmm_ringbuf.h>
 #include <vmm_vserial.h>
@@ -295,18 +294,23 @@ static int pl011_emulator_read(vmm_emudev_t *edev,
 	u32 regval = 0x0;
 	struct pl011_state * s = edev->priv;
 
-	rc = pl011_reg_read(s, offset, &regval);
+	rc = pl011_reg_read(s, offset & ~0x3, &regval);
 
 	if (!rc) {
+		regval = (regval >> ((offset & 0x3) * 8));
 		switch (dst_len) {
 		case 1:
-			vmm_out_8(dst, regval);
+			((u8 *)dst)[0] = regval & 0xFF;
 			break;
 		case 2:
-			vmm_out_le16(dst, regval);
+			((u8 *)dst)[0] = regval & 0xFF;
+			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
 			break;
 		case 4:
-			vmm_out_le32(dst, regval);
+			((u8 *)dst)[0] = regval & 0xFF;
+			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
+			((u8 *)dst)[2] = (regval >> 16) & 0xFF;
+			((u8 *)dst)[3] = (regval >> 24) & 0xFF;
 			break;
 		default:
 			rc = VMM_EFAIL;
@@ -321,30 +325,39 @@ static int pl011_emulator_write(vmm_emudev_t *edev,
 				physical_addr_t offset, 
 				void *src, u32 src_len)
 {
-	int rc = VMM_OK;
+	int rc = VMM_OK, i;
 	u32 regmask = 0x0, regval = 0x0;
 	struct pl011_state * s = edev->priv;
 
 	switch (src_len) {
 	case 1:
 		regmask = 0xFFFFFF00;
-		regval = vmm_in_8(src);
+		regval = ((u8 *)src)[0];
 		break;
 	case 2:
 		regmask = 0xFFFF0000;
-		regval = vmm_in_le16(src);
+		regval = ((u8 *)src)[0];
+		regval |= (((u8 *)src)[1] << 8);
 		break;
 	case 4:
 		regmask = 0x00000000;
-		regval = vmm_in_le32(src);
+		regval = ((u8 *)src)[0];
+		regval |= (((u8 *)src)[1] << 8);
+		regval |= (((u8 *)src)[2] << 16);
+		regval |= (((u8 *)src)[3] << 24);
 		break;
 	default:
-		rc = VMM_EFAIL;
+		return VMM_EFAIL;
 		break;
 	};
 
+	for (i = 0; i < (offset & 0x3); i++) {
+		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
+	}
+	regval = (regval << ((offset & 0x3) * 8));
+
 	if (!rc) {
-		rc = pl011_reg_write(s, offset, regmask, regval);
+		rc = pl011_reg_write(s, offset & ~0x3, regmask, regval);
 	}
 
 	return rc;
