@@ -31,12 +31,14 @@
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 #include <cpu_inline_asm.h>
-#include <cpu_vcpu_emulate.h>
+#include <cpu_vcpu_emulate_arm.h>
+#include <cpu_vcpu_emulate_thumb.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_defines.h>
 
 void do_undefined_instruction(vmm_user_regs_t * uregs)
 {
+	int rc = VMM_OK;
 	vmm_vcpu_t * vcpu;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
@@ -51,7 +53,15 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 	if ((vcpu->sregs.cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 	} else {
-		cpu_vcpu_emulate_inst(vcpu, uregs, FALSE);
+		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
+			rc = cpu_vcpu_emulate_thumb_inst(vcpu, uregs, FALSE);
+		} else {
+			rc = cpu_vcpu_emulate_arm_inst(vcpu, uregs, FALSE);
+		}
+	}
+
+	if (rc) {
+		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
 	vmm_vcpu_irq_process(uregs);
@@ -59,6 +69,7 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 
 void do_software_interrupt(vmm_user_regs_t * uregs)
 {
+	int rc = VMM_OK;
 	vmm_vcpu_t * vcpu;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
@@ -73,7 +84,15 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 	if ((vcpu->sregs.cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_SOFT_IRQ, 0x0);
 	} else {
-		cpu_vcpu_emulate_inst(vcpu, uregs, TRUE);
+		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
+			rc = cpu_vcpu_emulate_thumb_inst(vcpu, uregs, TRUE);
+		} else {
+			rc = cpu_vcpu_emulate_arm_inst(vcpu, uregs, TRUE);
+		}
+	}
+
+	if (rc) {
+		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
 	vmm_vcpu_irq_process(uregs);

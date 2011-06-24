@@ -32,7 +32,8 @@
 #include <vmm_vcpu_irq.h>
 #include <cpu_mmu.h>
 #include <cpu_inline_asm.h>
-#include <cpu_vcpu_emulate.h>
+#include <cpu_vcpu_emulate_arm.h>
+#include <cpu_vcpu_emulate_thumb.h>
 #include <cpu_vcpu_cp15.h>
 
 enum cpu_vcpu_cp15_fault_types {
@@ -232,7 +233,11 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 	/* Check if vcpu was trying read/write to virtual space */
 	if (xn && (pg.ap == TTBL_AP_SRW_U)) {
 		/* Emulate load/store instructions */
-		return cpu_vcpu_emulate_inst(vcpu, regs, FALSE);
+		if (regs->cpsr & CPSR_THUMB_ENABLED) {
+			return cpu_vcpu_emulate_thumb_inst(vcpu, regs, FALSE);
+		} else {
+			return cpu_vcpu_emulate_arm_inst(vcpu, regs, FALSE);
+		}
 	} 
 	/* Assert permission fault to vcpu */
 	return cpu_vcpu_cp15_assert_fault(vcpu, regs, CP15_PERM_FAULT, 
