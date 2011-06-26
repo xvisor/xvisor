@@ -30,7 +30,7 @@ endif
 ARM_CPPFLAGS=-I. -DTEXT_START=0x100000
 ARM_CFLAGS=-g -Wall -Werror -nostdlib -mcpu=cortex-a8 $(ARM_CPPFLAGS)
 ARM_ASFLAGS=-g -Wall -Werror -nostdlib -mcpu=cortex-a8 $(ARM_CPPFLAGS) -D__ASSEMBLY__
-ARM_LDFLAGS=$(ARM_CFLAGS) $(ARM_CPPFLAGS)
+ARM_LDFLAGS=$(ARM_CFLAGS) -static-libgcc -lgcc
 ARM_AS=$(ARM_CROSS_COMPILE)gcc
 ARM_CC=$(ARM_CROSS_COMPILE)gcc
 ARM_CPP=$(ARM_CROSS_COMPILE)cpp
@@ -39,7 +39,8 @@ ARM_OBJCOPY=$(ARM_CROSS_COMPILE)objcopy
 ARM_TEST_OBJ_DIR=./test_objs
 ARM_TEST_OBJS=$(ARM_TEST_OBJ_DIR)/arm_entry.o \
 		$(ARM_TEST_OBJ_DIR)/arm_main.o \
-		$(ARM_TEST_OBJ_DIR)/arm_interrupts.o
+		$(ARM_TEST_OBJ_DIR)/arm_interrupts.o \
+		$(ARM_TEST_OBJ_DIR)/arm_pl01x.o
 ARM_TEST_CPPFLAGS=-DARM_TEST_BOOT
 ARM_TEST_CFLAGS=$(ARM_TEST_CPPFLAGS)
 ARM_TEST_ASFLAGS=$(ARM_TEST_CPPFLAGS)
@@ -58,7 +59,7 @@ arm_test.bin: arm_test.elf
 
 arm_test.elf: $(ARM_TEST_OBJS) $(ARM_TEST_LINK_SCRIPT)
 	@echo "   (LD)      $@"
-	@$(ARM_CC) $(ARM_LDFLAGS) $(ARM_TEST_LDFLAGS) $(ARM_TEST_OBJS) -o $@ 
+	@$(ARM_CC) $(ARM_TEST_OBJS) $(ARM_LDFLAGS) $(ARM_TEST_LDFLAGS) -o $@ 
 
 $(ARM_TEST_OBJ_DIR)/%.lnk: %.ld
 	@mkdir -p `dirname $@`

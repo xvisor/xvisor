@@ -38,7 +38,8 @@ vmm_ringbuf_t *vmm_ringbuf_alloc(u32 key_size, u32 key_count)
 		return NULL;
 	}
 
-	INIT_SPIN_LOCK(&rb->lock);
+	INIT_SPIN_LOCK(&rb->read_lock);
+	INIT_SPIN_LOCK(&rb->write_lock);
 	rb->keys = vmm_malloc(key_size * key_count);
 	if (!rb->keys) {
 		goto rb_init_fail;
@@ -58,36 +59,20 @@ rb_init_fail:
 
 bool vmm_ringbuf_isempty(vmm_ringbuf_t *rb)
 {
-	bool isempty;
-
 	if (!rb) {
 		return TRUE;
 	}
 
-	vmm_spin_lock(&rb->lock);
-
-	isempty = (rb->read_pos == rb->write_pos);
-
-	vmm_spin_unlock(&rb->lock);
-
-	return isempty;
+	return (rb->read_pos == rb->write_pos);
 }
 
 bool vmm_ringbuf_isfull(vmm_ringbuf_t *rb)
 {
-	bool isfull;
-
 	if (!rb) {
 		return FALSE;
 	}
 
-	vmm_spin_lock(&rb->lock);
-
-	isfull = (rb->read_pos == ((rb->write_pos + 1) % rb->key_count));
-
-	vmm_spin_unlock(&rb->lock);
-
-	return isfull;
+	return (rb->read_pos == ((rb->write_pos + 1) % rb->key_count));
 }
 
 bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
@@ -98,7 +83,7 @@ bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
 		return FALSE;
 	}
 
-	vmm_spin_lock(&rb->lock);
+	vmm_spin_lock(&rb->write_lock);
 
 	isfull = (rb->read_pos == ((rb->write_pos + 1) % rb->key_count));
 	update = FALSE;
@@ -137,7 +122,7 @@ bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
 		rb->avail_count++;
 	}
 
-	vmm_spin_unlock(&rb->lock);
+	vmm_spin_unlock(&rb->write_lock);
 
 	return update;
 }
@@ -150,7 +135,7 @@ bool vmm_ringbuf_dequeue(vmm_ringbuf_t *rb, void *dstkey)
 		return FALSE;
 	}
 
-	vmm_spin_lock(&rb->lock);
+	vmm_spin_lock(&rb->read_lock);
 
 	isempty = (rb->read_pos == rb->write_pos);
 
@@ -178,7 +163,7 @@ bool vmm_ringbuf_dequeue(vmm_ringbuf_t *rb, void *dstkey)
 		rb->avail_count--;
 	}
 
-	vmm_spin_unlock(&rb->lock);
+	vmm_spin_unlock(&rb->read_lock);
 
 	return !isempty;
 }
@@ -189,7 +174,7 @@ bool vmm_ringbuf_getkey(vmm_ringbuf_t *rb, u32 index, void *dstkey)
 		return FALSE;
 	}
 	
-	vmm_spin_lock(&rb->lock);
+	vmm_spin_lock(&rb->read_lock);
 
 	index = (index + rb->read_pos) % rb->key_count;
 	switch(rb->key_size) {
@@ -212,7 +197,7 @@ bool vmm_ringbuf_getkey(vmm_ringbuf_t *rb, u32 index, void *dstkey)
 		break;
 	};
 
-	vmm_spin_unlock(&rb->lock);
+	vmm_spin_unlock(&rb->read_lock);
 
 	return TRUE;
 }
