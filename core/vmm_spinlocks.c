@@ -27,7 +27,7 @@
 
 void __lock_section vmm_spin_lock(vmm_spinlock_t * lock)
 {
-	return vmm_cpu_spin_lock(&lock->__the_lock);
+	vmm_cpu_spin_lock(&lock->__the_lock);
 }
 
 void __lock_section vmm_spin_unlock(vmm_spinlock_t * lock)
