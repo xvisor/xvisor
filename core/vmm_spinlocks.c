@@ -27,12 +27,18 @@
 
 void __lock_section vmm_spin_lock(vmm_spinlock_t * lock)
 {
+	/* Disable irq on current CPU */
+	vmm_cpu_irq_disable();
+	/* Call CPU specific locking routine */
 	vmm_cpu_spin_lock(&lock->__the_lock);
 }
 
 void __lock_section vmm_spin_unlock(vmm_spinlock_t * lock)
 {
+	/* Call CPU specific unlocking routine */
 	vmm_cpu_spin_unlock(&lock->__the_lock);
+	/* Enable irq on current CPU */
+	vmm_cpu_irq_enable();
 }
 
 irq_flags_t __lock_section vmm_spin_lock_irqsave(vmm_spinlock_t * lock)
