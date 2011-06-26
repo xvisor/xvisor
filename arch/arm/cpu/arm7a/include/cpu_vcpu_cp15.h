@@ -27,6 +27,26 @@
 #include <vmm_types.h>
 #include <vmm_guest.h>
 
+/** Handle translation fault for a VCPU */
+int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu, 
+			      vmm_user_regs_t * regs, 
+			      u32 far, u32 wnr, u32 page, u32 xn);
+
+/** Handle access fault for a VCPU */
+int cpu_vcpu_cp15_access_fault(vmm_vcpu_t * vcpu, 
+			       vmm_user_regs_t * regs, 
+			       u32 far, u32 wnr, u32 page, u32 xn);
+
+/** Handle domain fault for a VCPU */
+int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu, 
+			       vmm_user_regs_t * regs, 
+			       u32 far, u32 wnr, u32 page, u32 xn);
+
+/** Handle permission fault for a VCPU */
+int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu, 
+			     vmm_user_regs_t * regs, 
+			     u32 far, u32 wnr, u32 page, u32 xn);
+
 /** Read one registers from CP15 */
 bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
@@ -36,16 +56,6 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu, 
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data);
-
-/** Handle instruction fault for a VCPU */
-int cpu_vcpu_cp15_ifault(vmm_vcpu_t * vcpu, 
-			 vmm_user_regs_t * regs,
-			 u32 ifsr, u32 ifar);
-
-/** Handle data fault for a VCPU */
-int cpu_vcpu_cp15_dfault(vmm_vcpu_t * vcpu, 
-			 vmm_user_regs_t * regs,
-			 u32 dfsr, u32 dfar);
 
 /** Read from memory using VCPU CP15 */
 int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 

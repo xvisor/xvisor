@@ -29,11 +29,12 @@
 #include <vmm_spinlocks.h>
 
 struct vmm_ringbuf {
-	vmm_spinlock_t lock;
 	void *keys;
 	u32 key_size;
 	u32 key_count;
+	vmm_spinlock_t read_lock;
 	u32 read_pos;
+	vmm_spinlock_t write_lock;
 	u32 write_pos;
 	u32 avail_count;
 };

@@ -27,7 +27,6 @@
 #include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_scheduler.h>
-#include <vmm_host_io.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_devemu.h>
 
@@ -729,22 +728,27 @@ static int gic_emulator_read(vmm_emudev_t *edev,
 
 	if (offset < 0x1000) {
 		/* Read CPU Interface */
-		rc = gic_cpu_read(s, cpu, offset, &regval);
+		rc = gic_cpu_read(s, cpu, offset & ~0x3, &regval);
 	} else {
 		/* Read Distribution Control */
-		rc = gic_dist_read(s, cpu, offset - 0x1000, &regval);
+		rc = gic_dist_read(s, cpu, (offset & ~0x3) - 0x1000, &regval);
 	}
 
 	if (!rc) {
+		regval = (regval >> ((offset & 0x3) * 8));
 		switch (dst_len) {
 		case 1:
-			vmm_out_8(dst, regval);
+			((u8 *)dst)[0] = regval & 0xFF;
 			break;
 		case 2:
-			vmm_out_le16(dst, regval);
+			((u8 *)dst)[0] = regval & 0xFF;
+			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
 			break;
 		case 4:
-			vmm_out_le32(dst, regval);
+			((u8 *)dst)[0] = regval & 0xFF;
+			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
+			((u8 *)dst)[2] = (regval >> 16) & 0xFF;
+			((u8 *)dst)[3] = (regval >> 24) & 0xFF;
 			break;
 		default:
 			rc = VMM_EFAIL;
@@ -759,27 +763,36 @@ static int gic_emulator_write(vmm_emudev_t *edev,
 			      physical_addr_t offset, 
 			      void *src, u32 src_len)
 {
-	int rc = VMM_OK, cpu;
+	int rc = VMM_OK, i, cpu;
 	u32 regmask = 0x0, regval = 0x0;
 	struct gic_state * s = edev->priv;
 
 	switch (src_len) {
 	case 1:
 		regmask = 0xFFFFFF00;
-		regval = vmm_in_8(src);
+		regval = ((u8 *)src)[0];
 		break;
 	case 2:
 		regmask = 0xFFFF0000;
-		regval = vmm_in_le16(src);
+		regval = ((u8 *)src)[0];
+		regval |= (((u8 *)src)[1] << 8);
 		break;
 	case 4:
 		regmask = 0x00000000;
-		regval = vmm_in_le32(src);
+		regval = ((u8 *)src)[0];
+		regval |= (((u8 *)src)[1] << 8);
+		regval |= (((u8 *)src)[2] << 16);
+		regval |= (((u8 *)src)[3] << 24);
 		break;
 	default:
 		return VMM_EFAIL;
 		break;
 	};
+
+	for (i = 0; i < (offset & 0x3); i++) {
+		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
+	}
+	regval = (regval << ((offset & 0x3) * 8));
 
 	cpu = vmm_scheduler_guest_vcpu_index(s->guest,
 					     vmm_scheduler_current_vcpu());
@@ -789,10 +802,12 @@ static int gic_emulator_write(vmm_emudev_t *edev,
 
 	if (offset < 0x1000) {
 		/* Write CPU Interface */
-		rc = gic_cpu_write(s, cpu, offset, regmask, regval);
+		rc = gic_cpu_write(s, cpu, 
+				   offset & ~0x3, regmask, regval);
 	} else {
 		/* Write Distribution Control */
-		rc = gic_dist_write(s, cpu, offset - 0x1000, regmask, regval);
+		rc = gic_dist_write(s, cpu, 
+				    (offset & ~0x3) - 0x1000, regmask, regval);
 	}
 
 	return rc;

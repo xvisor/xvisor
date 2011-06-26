@@ -23,6 +23,12 @@
  */
 
 #include <arm_interrupts.h>
+#include <arm_pl01x.h>
+
+#define	PBA8_UART_BASE			0x10009000
+#define	PBA8_UART_TYPE			PL01X_TYPE_1
+#define	PBA8_UART_INCLK			24000000
+#define	PBA8_UART_BAUD			115200
 
 /* Works in supervisor mode */
 void arm_init(void)
@@ -30,10 +36,18 @@ void arm_init(void)
 	arm_irq_setup();
 
 	arm_irq_enable();
+
+	arm_pl01x_init(PBA8_UART_BASE, 
+			PBA8_UART_TYPE, 
+			PBA8_UART_BAUD, 
+			PBA8_UART_INCLK);
 }
 
 /* Works in user mode */
 void arm_main(void)
 {
+	arm_pl01x_puts(PBA8_UART_BASE,
+			PBA8_UART_TYPE,
+			"Hello World\n");
 	while(1);
 }
