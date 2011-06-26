@@ -94,6 +94,7 @@ struct vmm_vcpu {
 	vmm_devtree_node_t *node;
 	vmm_guest_t *guest;
 	u32 state;
+	u32 preempt_count;
 	u32 tick_count;
 	vmm_vcpu_tick_t tick_func;
 	virtual_addr_t start_pc;

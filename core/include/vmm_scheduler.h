@@ -104,6 +104,12 @@ vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
 /** Destroy an orphan vcpu */
 int vmm_scheduler_vcpu_orphan_destroy(vmm_vcpu_t * vcpu);
 
+/** Disable pre-emption */
+void vmm_scheduler_preempt_disable(void);
+
+/** Enable pre-emption */
+void vmm_scheduler_preempt_enable(void);
+
 /** Start scheduler */
 void vmm_scheduler_start(void);
 

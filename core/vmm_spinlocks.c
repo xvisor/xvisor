@@ -22,13 +22,15 @@
  * @brief header file for spinlock synchronization mechanisms.
  */
 
+#include <vmm_error.h>
 #include <vmm_cpu.h>
+#include <vmm_scheduler.h>
 #include <vmm_spinlocks.h>
 
 void __lock_section vmm_spin_lock(vmm_spinlock_t * lock)
 {
-	/* Disable irq on current CPU */
-	vmm_cpu_irq_disable();
+	/* Disable preemption in scheduler */
+	vmm_scheduler_preempt_disable();
 	/* Call CPU specific locking routine */
 	vmm_cpu_spin_lock(&lock->__the_lock);
 }
@@ -37,8 +39,8 @@ void __lock_section vmm_spin_unlock(vmm_spinlock_t * lock)
 {
 	/* Call CPU specific unlocking routine */
 	vmm_cpu_spin_unlock(&lock->__the_lock);
-	/* Enable irq on current CPU */
-	vmm_cpu_irq_enable();
+	/* Enable preemption in scheduler */
+	vmm_scheduler_preempt_enable();
 }
 
 irq_flags_t __lock_section vmm_spin_lock_irqsave(vmm_spinlock_t * lock)
@@ -51,3 +53,4 @@ void __lock_section vmm_spin_unlock_irqrestore(vmm_spinlock_t * lock,
 {
 	vmm_cpu_spin_unlock_irqrestore(&lock->__the_lock, flags);
 }
+
