@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arch/powerpc/cpu/include/cpu_atomic.h
+ * @file arch/mips/cpu/24K/include/cpu_atomic.h
  * @version 0.01
  * @author Himanshu Chauhan (hchauhan@nulltrace.org)
  * @brief Architecture specific implementation of synchronization mechanisms.
