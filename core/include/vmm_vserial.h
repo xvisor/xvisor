@@ -30,9 +30,9 @@
 typedef struct vmm_vserial vmm_vserial_t;
 typedef struct vmm_vserial_ctrl vmm_vserial_ctrl_t;
 typedef bool (*vmm_vserial_can_send_t) (vmm_vserial_t *vser);
-typedef int (*vmm_vserial_send_t) (vmm_vserial_t *vser, u32 data);
+typedef int (*vmm_vserial_send_t) (vmm_vserial_t *vser, u8 data);
 typedef bool (*vmm_vserial_can_recv_t) (vmm_vserial_t *vser);
-typedef int (*vmm_vserial_recv_t) (vmm_vserial_t *vser, u32 *data);
+typedef int (*vmm_vserial_recv_t) (vmm_vserial_t *vser, u8 *data);
 
 struct vmm_vserial {
 	struct dlist head;
@@ -47,6 +47,12 @@ struct vmm_vserial {
 struct vmm_vserial_ctrl {
 	struct dlist vser_list;
 };
+
+/** Send bytes to virtual serial port */
+u32 vmm_vserial_send(vmm_vserial_t * vser, u8 *src, u32 len);
+
+/** Receive bytes from virtual serial port */
+u32 vmm_vserial_receive(vmm_vserial_t * vser, u8 *dst, u32 len);
 
 /** Register a virtual serial port */
 int vmm_vserial_register(vmm_vserial_t * vser);
