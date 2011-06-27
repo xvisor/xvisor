@@ -42,25 +42,6 @@ char arm_pl01x_dprobe(u32 base, u32 type)
 	return 0;
 }
 
-char arm_pl01x_getc(u32 base, u32 type)
-{
-	unsigned int data;
-
-	/* Wait until there is data in the FIFO */
-	while (arm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE);
-
-	data = arm_readl((void*)(base + UART_PL01x_DR));
-
-	/* Check for an error flag */
-	if (data & 0xFFFFFF00) {
-		/* Clear the error */
-		arm_writel(0xFFFFFFFF, (void*)(base + UART_PL01x_ECR));
-		return -1;
-	}
-
-	return (char)data;
-}
-
 void arm_pl01x_putc(u32 base, u32 type, char ch)
 {
 	if(ch=='\n') {
@@ -84,6 +65,50 @@ void arm_pl01x_puts(u32 base, u32 type, const char * str)
 		arm_pl01x_putc(base, type, *str);
 		str++;
 	}
+}
+
+char arm_pl01x_getc(u32 base, u32 type)
+{
+	char data;
+
+	/* Wait until there is data in the FIFO */
+	while (arm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE);
+
+	data = arm_readl((void*)(base + UART_PL01x_DR));
+
+	/* Check for an error flag */
+	if (data & 0xFFFFFF00) {
+		/* Clear the error */
+		arm_writel(0xFFFFFFFF, (void*)(base + UART_PL01x_ECR));
+		return -1;
+	}
+
+	/* FIXME: Hack required for qemu */
+	if (data == '\r')
+		data = '\n';
+
+	/* FIXME: Hack required for qemu */
+	arm_pl01x_putc(base, type, data);
+
+	return data;
+}
+
+void arm_pl01x_gets(u32 base, u32 type, char *s, int maxwidth, char endchar)
+{
+	char *retval;
+	char ch;
+	retval = s;
+	ch = arm_pl01x_getc(base, type);
+	while (ch != endchar && maxwidth > 0) {
+		*retval = ch;
+		retval++;
+		maxwidth--;
+		if (maxwidth == 0)
+			break;
+		ch = arm_pl01x_getc(base, type);
+	}
+	*retval = '\0';
+	return;
 }
 
 void arm_pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock)

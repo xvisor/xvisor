@@ -58,6 +58,8 @@ int cmd_vserial_send(const char *name)
 		if (line[line_pos] == '\0') {
 			break;
 		}
+		vmm_strcat(line, "\n");
+		line_sz++;
 		while (line_sz) {
 			bytes_send = vmm_vserial_send(vser, 
 						      (u8 *)&line[line_pos], 
