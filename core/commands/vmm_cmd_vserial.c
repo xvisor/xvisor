@@ -29,11 +29,71 @@
 #include <vmm_vserial.h>
 #include <vmm_mterm.h>
 
+#define VMM_VSERIAL_MAX_LINE_SIZE	256
+
 void cmd_vserial_usage(void)
 {
 	vmm_printf("Usage:\n");
+	vmm_printf("   vserial send <name>\n");
+	vmm_printf("   vserial recv <name> [<byte_count>]\n");
 	vmm_printf("   vserial help\n");
 	vmm_printf("   vserial list\n");
+}
+
+int cmd_vserial_send(const char *name)
+{
+	char line[VMM_VSERIAL_MAX_LINE_SIZE];
+	u32 line_sz, line_pos, bytes_send;
+	vmm_vserial_t *vser = vmm_vserial_find(name);
+
+	if (!vser) {
+		vmm_printf("Failed to find virtual serial port\n");
+		return VMM_EFAIL;
+	}
+
+	while(1) {
+		vmm_gets(line, VMM_VSERIAL_MAX_LINE_SIZE, '\n');
+		line_pos = 0;
+		line_sz = vmm_strlen(line);
+		if (line[line_pos] == '\0') {
+			break;
+		}
+		while (line_sz) {
+			bytes_send = vmm_vserial_send(vser, 
+						      (u8 *)&line[line_pos], 
+						      line_sz);
+			line_sz -= bytes_send;
+			line_pos += bytes_send;
+		}
+	}
+
+	return VMM_OK;
+}
+
+int cmd_vserial_recv(const char *name, int bcount)
+{
+	u8 ch;
+	vmm_vserial_t *vser = vmm_vserial_find(name);
+
+	if (!vser) {
+		vmm_printf("Failed to find virtual serial port\n");
+		return VMM_EFAIL;
+	}
+
+	if (bcount < 0) {
+		while (vmm_vserial_receive(vser, &ch, 1)) {
+			vmm_putc(ch);
+		}
+	} else {
+		while (bcount > 0 && vmm_vserial_receive(vser, &ch, 1)) {
+			vmm_putc(ch);
+			bcount--;
+		}
+	}
+
+	vmm_printf("\n");
+
+	return VMM_OK;
 }
 
 void cmd_vserial_list()
@@ -49,6 +109,7 @@ void cmd_vserial_list()
 
 int cmd_vserial_exec(int argc, char **argv)
 {
+	int bcount = -1;
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
 			cmd_vserial_usage();
@@ -59,6 +120,17 @@ int cmd_vserial_exec(int argc, char **argv)
 		}
 	}
 	if (argc < 3) {
+		cmd_vserial_usage();
+		return VMM_EFAIL;
+	}
+	if (vmm_strcmp(argv[1], "send") == 0) {
+		return cmd_vserial_send(argv[2]);
+	} else if (vmm_strcmp(argv[1], "recv") == 0) {
+		if (4 <= argc) {
+			bcount = vmm_str2int(argv[3], 10);
+		}
+		return cmd_vserial_recv(argv[2], bcount);
+	} else {
 		cmd_vserial_usage();
 		return VMM_EFAIL;
 	}

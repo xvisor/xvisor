@@ -29,6 +29,48 @@
 
 vmm_vserial_ctrl_t vsctrl;
 
+u32 vmm_vserial_send(vmm_vserial_t * vser, u8 *src, u32 len)
+{
+	u32 i;
+
+	if (!vser || !src) {
+		return 0;
+	}
+	if (!vser->can_send || !vser->send) {
+		return 0;
+	}
+
+	for (i = 0; i < len ; i++) {
+		if (!vser->can_send(vser)) {
+			break;
+		}
+		vser->send(vser, src[i]);
+	}
+
+	return i;
+}
+
+u32 vmm_vserial_receive(vmm_vserial_t * vser, u8 *dst, u32 len)
+{
+	u32 i;
+
+	if (!vser || !dst) {
+		return 0;
+	}
+	if (!vser->can_recv || !vser->recv) {
+		return 0;
+	}
+
+	for (i = 0; i < len ; i++) {
+		if (!vser->can_recv(vser)) {
+			break;
+		}
+		vser->recv(vser, &dst[i]);
+	}
+
+	return i;
+}
+
 int vmm_vserial_register(vmm_vserial_t * vser)
 {
 	bool found;

@@ -29,7 +29,7 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_modules.h>
-#include <vmm_ringbuffer.h>
+#include <vmm_ringbuf.h>
 
 #include <vmm_hyperthreads.h>
 #include <vmm_wait.h>
@@ -410,7 +410,7 @@ static void dp83902a_recv(nic_priv_data_t *dp, int len)
 		while (0 < mlen) {
 			/* Saved byte from previous loop? */
 			if (saved) {
-				vmm_ringbuffer_write(dp->rx_rb, &saved_char, 1);
+				vmm_ringbuf_enqueue(dp->rx_rb, &saved_char, TRUE);
 				mlen--;
 				saved = false;
 				continue;
@@ -419,7 +419,7 @@ static void dp83902a_recv(nic_priv_data_t *dp, int len)
 			{
 				u8 tmp;
 				DP_IN_DATA(dp->data, tmp);
-				vmm_ringbuffer_write(dp->rx_rb, &tmp, 1);
+				vmm_ringbuf_enqueue(dp->rx_rb, &tmp, TRUE);
 				mlen--;
 			}
 		}
@@ -594,7 +594,7 @@ int ne2k_init(nic_priv_data_t *nic_data)
 	}
 
 	if (!nic_data->rx_rb) {
-		nic_data->rx_rb = vmm_ringbuffer_init(2000);
+		nic_data->rx_rb = vmm_ringbuf_alloc(1, 2000);
 		if (!nic_data->rx_rb) {
 			vmm_printf("Cannot allocate receive buffer\n");
 			return VMM_EFAIL;
@@ -757,7 +757,7 @@ static int ne2k_driver_remove(vmm_device_t *dev)
 	ndev = (vmm_netdev_t *)dev->priv;
 	priv_data = (nic_priv_data_t *)ndev->priv;
 
-	vmm_ringbuffer_free(priv_data->rx_rb);
+	vmm_ringbuf_free(priv_data->rx_rb);
 	vmm_free(priv_data);
 	vmm_free(ndev);
 

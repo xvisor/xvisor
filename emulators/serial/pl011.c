@@ -233,6 +233,7 @@ static int pl011_reg_write(struct pl011_state * s, u32 offset,
 static bool pl011_vserial_can_send(vmm_vserial_t *vser)
 {
 	struct pl011_state * s = vser->priv;
+#if 0
 	u32 rd_count;
 
 	rd_count = vmm_ringbuf_avail(s->rd_fifo);
@@ -241,17 +242,18 @@ static bool pl011_vserial_can_send(vmm_vserial_t *vser)
 	} else {
 		return (rd_count < 1);
 	}
-	
-	return FALSE;
+#endif
+	return !vmm_ringbuf_isfull(s->rd_fifo);
 }
 
-static int pl011_vserial_send(vmm_vserial_t *vser, u32 data)
+static int pl011_vserial_send(vmm_vserial_t *vser, u8 data)
 {
 	struct pl011_state * s = vser->priv;
 	u32 rd_count;
 
 	vmm_ringbuf_enqueue(s->rd_fifo, &data, TRUE);
 	rd_count = vmm_ringbuf_avail(s->rd_fifo);
+	vmm_spin_lock(&s->lock);
 	s->flags &= ~PL011_FLAG_RXFE;
 	if (s->cr & 0x10 || rd_count == s->fifo_sz) {
 		s->flags |= PL011_FLAG_RXFF;
@@ -260,6 +262,7 @@ static int pl011_vserial_send(vmm_vserial_t *vser, u32 data)
 		s->int_level |= PL011_INT_RX;
 		pl011_set_irq(s);
 	}
+	vmm_spin_unlock(&s->lock);
 
 	return VMM_OK;
 }
@@ -268,10 +271,10 @@ static bool pl011_vserial_can_recv(vmm_vserial_t *vser)
 {
 	struct pl011_state * s = vser->priv;
 
-	return (vmm_ringbuf_avail(s->wr_fifo) < s->fifo_sz);
+	return !vmm_ringbuf_isempty(s->wr_fifo);
 }
 
-static int pl011_vserial_recv(vmm_vserial_t *vser, u32 *data)
+static int pl011_vserial_recv(vmm_vserial_t *vser, u8 *data)
 {
 	int rc = VMM_OK;
 	u8 val;

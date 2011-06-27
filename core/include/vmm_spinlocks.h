@@ -33,9 +33,11 @@
  * more information like which core is holding the
  * lock.
  */
-typedef struct {
+struct vmm_spinlock {
 	vmm_cpu_spinlock_t __the_lock;
-} vmm_spinlock_t;
+};
+
+typedef struct vmm_spinlock vmm_spinlock_t;
 
 #define __INIT_SPIN_LOCK_UNLOCKED 	{ .__the_lock = __CPU_INIT_SPIN_LOCK_UNLOCKED }
 #define __SPIN_LOCK_INITIALIZER(_lptr) 	__CPU_SPIN_LOCK_UNLOCKED(&((_lptr)->__the_lock))
@@ -50,4 +52,4 @@ irq_flags_t __lock_section vmm_spin_lock_irqsave(vmm_spinlock_t * lock);
 void __lock_section vmm_spin_unlock_irqrestore(vmm_spinlock_t * lock,
 					       irq_flags_t flags);
 
-#endif /* __VMM_LOCKS_H__ */
+#endif /* __VMM_SPINLOCKS_H__ */
