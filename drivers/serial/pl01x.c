@@ -48,12 +48,12 @@ struct pl01x_port {
 
 typedef struct pl01x_port pl01x_port_t;
 
-char pl01x_lowlevel_dprobe(virtual_addr_t base, u32 type)
+bool pl01x_lowlevel_can_getc(virtual_addr_t base, u32 type)
 {
-	if(vmm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF) {
-		return 1;
+	if(vmm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE) {
+		return FALSE;
 	}
-	return 0;
+	return TRUE;
 }
 
 char pl01x_lowlevel_getc(virtual_addr_t base, u32 type)
@@ -73,6 +73,14 @@ char pl01x_lowlevel_getc(virtual_addr_t base, u32 type)
 	}
 
 	return (char)data;
+}
+
+bool pl01x_lowlevel_can_putc(virtual_addr_t base, u32 type)
+{
+	if(vmm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF) {
+		return FALSE;
+	}
+	return TRUE;
 }
 
 void pl01x_lowlevel_putc(virtual_addr_t base, u32 type, char ch)
@@ -176,10 +184,10 @@ void pl01x_lowlevel_init(virtual_addr_t base, u32 type,
 	}
 }
 
-static int pl01x_read(vmm_chardev_t *cdev, 
+static u32 pl01x_read(vmm_chardev_t *cdev, 
 				char *dest, size_t offset, size_t len)
 {
-	int i;
+	u32 i;
 	pl01x_port_t *port;
 
 	if(!cdev || !dest) {
@@ -191,17 +199,20 @@ static int pl01x_read(vmm_chardev_t *cdev,
 
 	port = cdev->priv;
 
-	for(i=0;i<len;i++) {
+	for(i = 0; i < len; i++) {
+		if (!pl01x_lowlevel_can_getc(port->base, port->type)) {
+			break;
+		}
 		dest[i] = pl01x_lowlevel_getc(port->base, port->type);
 	}
 
-	return len;
+	return i;
 }
 
-static int pl01x_write(vmm_chardev_t *cdev, 
+static u32 pl01x_write(vmm_chardev_t *cdev, 
 				char *src, size_t offset, size_t len)
 {
-	int i;
+	u32 i;
 	pl01x_port_t *port;
 
 	if(!cdev || !src) {
@@ -213,11 +224,14 @@ static int pl01x_write(vmm_chardev_t *cdev,
 
 	port = cdev->priv;
 
-	for(i=0;i<len;i++) {
+	for(i = 0; i < len; i++) {
+		if (!pl01x_lowlevel_can_putc(port->base, port->type)) {
+			break;
+		}
 		pl01x_lowlevel_putc(port->base, port->type, src[i]);
 	}
 
-	return len;
+	return i;
 }
 
 static int pl01x_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)

@@ -28,14 +28,22 @@
 #include <serial/uart.h>
 #include <omap3/omap3_config.h>
 
-s8 vmm_defterm_getc(void)
+int vmm_defterm_putc(char ch)
 {
-	return uart_lowlevel_getc(OMAP3_UART_BASE, 4);
+	if (!uart_lowlevel_can_putc(OMAP3_UART_BASE, 4)) {
+		return VMM_EFAIL;
+	}
+	uart_lowlevel_putc(OMAP3_UART_BASE, 4, ch);
+	return VMM_OK;
 }
 
-void vmm_defterm_putc(s8 ch)
+int vmm_defterm_getc(char *ch)
 {
-	uart_lowlevel_putc(OMAP3_UART_BASE, 4, ch);
+	if (!uart_lowlevel_can_getc(OMAP3_UART_BASE, 4)) {
+		return VMM_EFAIL;
+	}
+	*ch = uart_lowlevel_getc(OMAP3_UART_BASE, 4);
+	return VMM_OK;
 }
 
 int vmm_defterm_init(void)

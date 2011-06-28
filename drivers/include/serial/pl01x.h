@@ -144,9 +144,10 @@
 #define UART_PL011_IMSC_CTSMIM          (1 << 1)
 #define UART_PL011_IMSC_RIMIM           (1 << 0)
 
-s8 pl01x_lowlevel_dprobe(virtual_addr_t base, u32 type);
-s8 pl01x_lowlevel_getc(virtual_addr_t base, u32 type);
-void pl01x_lowlevel_putc(virtual_addr_t base, u32 type, s8 ch);
+bool pl01x_lowlevel_can_getc(virtual_addr_t base, u32 type);
+char pl01x_lowlevel_getc(virtual_addr_t base, u32 type);
+bool pl01x_lowlevel_can_putc(virtual_addr_t base, u32 type);
+void pl01x_lowlevel_putc(virtual_addr_t base, u32 type, char ch);
 void pl01x_lowlevel_init(virtual_addr_t base, u32 type, u32 baudrate, u32 input_clock);
 
 #endif /* __PL01X_H_ */

@@ -30,6 +30,18 @@
 #define	PBA8_UART_INCLK			24000000
 #define	PBA8_UART_BAUD			115200
 
+int arm_strcmp(const char *a, const char *b)
+{
+	while (*a == *b) {
+		if (*a == '\0' || *b == '\0') {
+			return (unsigned char)*a - (unsigned char)*b;
+		}
+		++a;
+		++b;
+	}
+	return (unsigned char)*a - (unsigned char)*b;
+}
+
 /* Works in supervisor mode */
 void arm_init(void)
 {
@@ -46,8 +58,27 @@ void arm_init(void)
 /* Works in user mode */
 void arm_main(void)
 {
+	char line[256];
 	arm_pl01x_puts(PBA8_UART_BASE,
 			PBA8_UART_TYPE,
-			"Hello World\n");
-	while(1);
+			"ARM Realview PB-A8 Test Code\n\n");
+	while(1) {
+		arm_pl01x_puts(PBA8_UART_BASE,
+				PBA8_UART_TYPE,
+				"arm-test# ");
+
+		arm_pl01x_gets(PBA8_UART_BASE,
+				PBA8_UART_TYPE,
+				line, 256, '\n');
+
+		if (arm_strcmp(line, "hi") == 0) {
+			arm_pl01x_puts(PBA8_UART_BASE,
+					PBA8_UART_TYPE,
+					"hello\n");
+		} else if (arm_strcmp(line, "hello") == 0) {
+			arm_pl01x_puts(PBA8_UART_BASE,
+					PBA8_UART_TYPE,
+					"hi\n");
+		}
+	}
 }

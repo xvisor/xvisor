@@ -146,6 +146,7 @@
 
 s8 arm_pl01x_dprobe(u32 base, u32 type);
 s8 arm_pl01x_getc(u32 base, u32 type);
+void arm_pl01x_gets(u32 base, u32 type, char *str, int maxwidth, char endchar);
 void arm_pl01x_putc(u32 base, u32 type, s8 ch);
 void arm_pl01x_puts(u32 base, u32 type, const char * str);
 void arm_pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock);
