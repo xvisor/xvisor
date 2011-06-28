@@ -56,9 +56,10 @@
 #define REG_UART_MSR(base,align)	((base)+UART_MSR_OFFSET*(align))
 #define REG_UART_SCR(base,align)	((base)+UART_SCR_OFFSET*(align))
 
-s8 uart_lowlevel_dprobe(virtual_addr_t base, u32 reg_align);
-s8 uart_lowlevel_getc(virtual_addr_t base, u32 reg_align);
-void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, s8 ch);
+bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align);
+char uart_lowlevel_getc(virtual_addr_t base, u32 reg_align);
+bool uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align);
+void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, char ch);
 void uart_lowlevel_init(virtual_addr_t base, u32 reg_align, u32 baudrate, u32 input_clock);
 
 #endif /* __UART_H_ */

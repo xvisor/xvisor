@@ -34,9 +34,9 @@
 typedef struct vmm_chardev vmm_chardev_t;
 typedef int (*vmm_chardev_ioctl_t) (vmm_chardev_t * cdev,
 				    int cmd, void *buf, size_t buf_len);
-typedef int (*vmm_chardev_read_t) (vmm_chardev_t * cdev,
+typedef u32 (*vmm_chardev_read_t) (vmm_chardev_t * cdev,
 				   char *dest, size_t offset, size_t len);
-typedef int (*vmm_chardev_write_t) (vmm_chardev_t * cdev,
+typedef u32 (*vmm_chardev_write_t) (vmm_chardev_t * cdev,
 				    char *src, size_t offset, size_t len);
 
 struct vmm_chardev {
@@ -53,11 +53,11 @@ int vmm_chardev_doioctl(vmm_chardev_t * cdev,
 			int cmd, void *buf, size_t buf_len);
 
 /** Do read operation on a character device */
-int vmm_chardev_doread(vmm_chardev_t * cdev,
+u32 vmm_chardev_doread(vmm_chardev_t * cdev,
 		       char *dest, size_t offset, size_t len);
 
 /** Do write operation on a character device */
-int vmm_chardev_dowrite(vmm_chardev_t * cdev,
+u32 vmm_chardev_dowrite(vmm_chardev_t * cdev,
 			char *src, size_t offset, size_t len);
 
 /** Register character device to device driver framework */
