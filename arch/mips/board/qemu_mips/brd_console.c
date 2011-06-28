@@ -30,32 +30,28 @@
 static virtual_addr_t uart_base = 0;
 extern virtual_addr_t isa_vbase;
 
-s8 vmm_defterm_dprobe(void)
+int vmm_defterm_getc(char *ch)
 {
-	return uart_lowlevel_dprobe(uart_base, 1);
-}
-
-s8 vmm_defterm_getc(void)
-{
-        s8 read = 0;
-
 	if (uart_base) {
-		read = uart_lowlevel_getc(uart_base, 1);	
-		if (read == '\r') read = '\n';
-
-		uart_lowlevel_putc(uart_base, 1, read);
-
-		return read;
+		if (!uart_lowlevel_can_getc(uart_base, 1)) {
+			return VMM_EFAIL;
+		}
+		*ch = uart_lowlevel_getc(uart_base, 1);	
+		if (*ch == '\r') *ch = '\n';
+		uart_lowlevel_putc(uart_base, 1, *ch);
 	}
-
-	return 0;
+	return VMM_OK;
 }
 
-void vmm_defterm_putc(s8 ch)
+int vmm_defterm_putc(char ch)
 {
 	if (uart_base) {
+		if (!uart_lowlevel_can_putc(uart_base, 1)) {
+			return VMM_EFAIL;
+		}
 		uart_lowlevel_putc(uart_base, 1, ch);
 	}
+	return VMM_OK;
 }
 
 int vmm_defterm_init(void)

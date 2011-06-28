@@ -29,21 +29,19 @@
 #include <vmm_vserial.h>
 #include <vmm_mterm.h>
 
-#define VMM_VSERIAL_MAX_LINE_SIZE	256
-
 void cmd_vserial_usage(void)
 {
 	vmm_printf("Usage:\n");
-	vmm_printf("   vserial send <name>\n");
-	vmm_printf("   vserial recv <name> [<byte_count>]\n");
+	vmm_printf("   vserial bind <name>\n");
+	vmm_printf("   vserial dump <name> [<byte_count>]\n");
 	vmm_printf("   vserial help\n");
 	vmm_printf("   vserial list\n");
 }
 
-int cmd_vserial_send(const char *name)
+int cmd_vserial_bind(const char *name)
 {
-	char line[VMM_VSERIAL_MAX_LINE_SIZE];
-	u32 line_sz, line_pos, bytes_send;
+	char ch;
+	u32 in_sz;
 	vmm_vserial_t *vser = vmm_vserial_find(name);
 
 	if (!vser) {
@@ -51,28 +49,37 @@ int cmd_vserial_send(const char *name)
 		return VMM_EFAIL;
 	}
 
+	vmm_printf("[%s] ", name);
+
+	in_sz = 0;
 	while(1) {
-		vmm_gets(line, VMM_VSERIAL_MAX_LINE_SIZE, '\n');
-		line_pos = 0;
-		line_sz = vmm_strlen(line);
-		if (line[line_pos] == '\0') {
-			break;
+		while (vmm_vserial_receive(vser, (u8 *)&ch, 1)) {
+			vmm_putc(ch);
+			if (ch == '\n') {
+				vmm_printf("[%s] ", name);
+			}
 		}
-		vmm_strcat(line, "\n");
-		line_sz++;
-		while (line_sz) {
-			bytes_send = vmm_vserial_send(vser, 
-						      (u8 *)&line[line_pos], 
-						      line_sz);
-			line_sz -= bytes_send;
-			line_pos += bytes_send;
+
+		if (!vmm_getc_noblock(&ch)) {
+			if (ch == '\n' && in_sz == 0) {
+				break;
+			}
+			while (!vmm_vserial_send(vser, (u8 *)&ch, 1)) ;
+			if (ch != '\n') {
+				in_sz++;
+			} else {
+				in_sz = 0;
+				vmm_printf("[%s] ", name);
+			}
 		}
 	}
+
+	vmm_printf("\n");
 
 	return VMM_OK;
 }
 
-int cmd_vserial_recv(const char *name, int bcount)
+int cmd_vserial_dump(const char *name, int bcount)
 {
 	u8 ch;
 	vmm_vserial_t *vser = vmm_vserial_find(name);
@@ -125,13 +132,13 @@ int cmd_vserial_exec(int argc, char **argv)
 		cmd_vserial_usage();
 		return VMM_EFAIL;
 	}
-	if (vmm_strcmp(argv[1], "send") == 0) {
-		return cmd_vserial_send(argv[2]);
-	} else if (vmm_strcmp(argv[1], "recv") == 0) {
+	if (vmm_strcmp(argv[1], "bind") == 0) {
+		return cmd_vserial_bind(argv[2]);
+	} else if (vmm_strcmp(argv[1], "dump") == 0) {
 		if (4 <= argc) {
 			bcount = vmm_str2int(argv[3], 10);
 		}
-		return cmd_vserial_recv(argv[2], bcount);
+		return cmd_vserial_dump(argv[2], bcount);
 	} else {
 		cmd_vserial_usage();
 		return VMM_EFAIL;

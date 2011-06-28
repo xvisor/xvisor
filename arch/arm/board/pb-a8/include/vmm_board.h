@@ -28,8 +28,8 @@
 #include <vmm_devtree.h>
 
 /** Default Terminal related function required by VMM core */
-s8 vmm_defterm_getc(void);
-void vmm_defterm_putc(s8 ch);
+int vmm_defterm_getc(char *ch);
+int vmm_defterm_putc(char ch);
 int vmm_defterm_init(void);
 
 /** Interrupt controller related function required by VMM core */

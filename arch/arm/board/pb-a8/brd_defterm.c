@@ -35,19 +35,24 @@
 
 virtual_addr_t pba8_defterm_base;
 
-s8 vmm_defterm_getc(void)
+int vmm_defterm_putc(char ch)
 {
-	s8 ch;
-	ch = pl01x_lowlevel_getc(pba8_defterm_base, PBA8_DEFAULT_UART_TYPE);
-	if (ch == '\r')
-		ch = '\n';
+	if (!pl01x_lowlevel_can_putc(pba8_defterm_base, PBA8_DEFAULT_UART_TYPE)) {
+		return VMM_EFAIL;
+	}
 	pl01x_lowlevel_putc(pba8_defterm_base, PBA8_DEFAULT_UART_TYPE, ch);
-	return ch;
+	return VMM_OK;
 }
 
-void vmm_defterm_putc(s8 ch)
+int vmm_defterm_getc(char *ch)
 {
-	pl01x_lowlevel_putc(pba8_defterm_base, PBA8_DEFAULT_UART_TYPE, ch);
+	if (!pl01x_lowlevel_can_getc(pba8_defterm_base, PBA8_DEFAULT_UART_TYPE)) {
+		return VMM_EFAIL;
+	}
+	*ch = pl01x_lowlevel_getc(pba8_defterm_base, PBA8_DEFAULT_UART_TYPE);
+	if (*ch == '\r')
+		*ch = '\n';
+	return vmm_defterm_putc(*ch);
 }
 
 int vmm_defterm_init(void)

@@ -50,6 +50,9 @@ int vmm_panic(const char *format, ...);
 /** getc for VMM */
 char vmm_getc(void);
 
+/** non-blocking verison getc for VMM */
+int vmm_getc_noblock(char *ch);
+
 /** gets for VMM */
 char *vmm_gets(char *s, int maxwidth, char endchar);
 

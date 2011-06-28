@@ -45,11 +45,9 @@ int vmm_chardev_doioctl(vmm_chardev_t * cdev,
 	return ret;
 }
 
-int vmm_chardev_doread(vmm_chardev_t * cdev,
+u32 vmm_chardev_doread(vmm_chardev_t * cdev,
 		       char *dest, size_t offset, size_t len)
 {
-	int ret;
-
 	if (!cdev) {
 		return 0;
 	}
@@ -57,16 +55,12 @@ int vmm_chardev_doread(vmm_chardev_t * cdev,
 		return 0;
 	}
 
-	ret = cdev->read(cdev, dest, offset, len);
-
-	return ret;
+	return cdev->read(cdev, dest, offset, len);
 }
 
-int vmm_chardev_dowrite(vmm_chardev_t * cdev,
+u32 vmm_chardev_dowrite(vmm_chardev_t * cdev,
 			char *src, size_t offset, size_t len)
 {
-	int ret;
-
 	if (!cdev) {
 		return 0;
 	}
@@ -74,9 +68,7 @@ int vmm_chardev_dowrite(vmm_chardev_t * cdev,
 		return 0;
 	}
 
-	ret = cdev->write(cdev, src, offset, len);
-
-	return ret;
+	return cdev->write(cdev, src, offset, len);
 }
 
 int vmm_chardev_register(vmm_chardev_t * cdev)

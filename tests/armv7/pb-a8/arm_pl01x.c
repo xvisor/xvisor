@@ -83,13 +83,6 @@ char arm_pl01x_getc(u32 base, u32 type)
 		return -1;
 	}
 
-	/* FIXME: Hack required for qemu */
-	if (data == '\r')
-		data = '\n';
-
-	/* FIXME: Hack required for qemu */
-	arm_pl01x_putc(base, type, data);
-
 	return data;
 }
 

@@ -48,26 +48,37 @@ struct uart_port {
 
 typedef struct uart_port uart_port_t;
 
-char uart_lowlevel_dprobe(virtual_addr_t base, u32 reg_align)
+bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align)
 {
-	return vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & 0x01;
+	if (vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & UART_LSR_DR) {
+		return TRUE;
+	}
+	return FALSE;
 }
 
 char uart_lowlevel_getc(virtual_addr_t base, u32 reg_align)
 {
-	while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & 0x01));
-	return(vmm_in_8((u8 *)REG_UART_RBR(base,reg_align)));
+	while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & UART_LSR_DR));
+	return (vmm_in_8((u8 *)REG_UART_RBR(base,reg_align)));
+}
+
+bool uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align)
+{
+	if (vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & UART_LSR_THRE) {
+		return TRUE;
+	}
+	return FALSE;
 }
 
 void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, char ch)
 {
 	if(ch=='\n') {
-		while ((vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & 
-							UART_LSR_THRE) == 0);
+		while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & 
+							UART_LSR_THRE));
 		vmm_out_8((u8 *)REG_UART_THR(base,reg_align), '\r');
 	}
-	while ((vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & 
-							UART_LSR_THRE) == 0);
+	while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & 
+							UART_LSR_THRE));
 	vmm_out_8((u8 *)REG_UART_THR(base,reg_align), ch);
 }
 
@@ -99,10 +110,10 @@ void uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 	vmm_out_8((u8 *)REG_UART_IER(base,reg_align), 0x0F);
 }
 
-static int uart_read(vmm_chardev_t *cdev, 
+static u32 uart_read(vmm_chardev_t *cdev, 
 				char *dest, size_t offset, size_t len)
 {
-	int i;
+	u32 i;
 	uart_port_t *port;
 
 	if(!cdev || !dest) {
@@ -114,17 +125,20 @@ static int uart_read(vmm_chardev_t *cdev,
 
 	port = cdev->priv;
 
-	for(i=0;i<len;i++) {
+	for(i = 0; i < len; i++) {
+		if (!uart_lowlevel_can_getc(port->base, port->reg_align)) {
+			break;
+		}
 		dest[i] = uart_lowlevel_getc(port->base, port->reg_align);
 	}
 
-	return len;
+	return i;
 }
 
-static int uart_write(vmm_chardev_t *cdev, 
+static u32 uart_write(vmm_chardev_t *cdev, 
 				char *src, size_t offset, size_t len)
 {
-	int i;
+	u32 i;
 	uart_port_t *port;
 
 	if(!cdev || !src) {
@@ -136,11 +150,14 @@ static int uart_write(vmm_chardev_t *cdev,
 
 	port = cdev->priv;
 
-	for(i=0;i<len;i++) {
+	for(i = 0; i < len; i++) {
+		if (!uart_lowlevel_can_putc(port->base, port->reg_align)) {
+			break;
+		}
 		uart_lowlevel_putc(port->base, port->reg_align, src[i]);
 	}
 
-	return len;
+	return i;
 }
 
 static int uart_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
