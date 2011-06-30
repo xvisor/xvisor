@@ -144,11 +144,8 @@
 #define UART_PL011_IMSC_CTSMIM          (1 << 1)
 #define UART_PL011_IMSC_RIMIM           (1 << 0)
 
-s8 arm_pl01x_dprobe(u32 base, u32 type);
-s8 arm_pl01x_getc(u32 base, u32 type);
-void arm_pl01x_gets(u32 base, u32 type, char *str, int maxwidth, char endchar);
-void arm_pl01x_putc(u32 base, u32 type, s8 ch);
-void arm_pl01x_puts(u32 base, u32 type, const char * str);
+char arm_pl01x_getc(u32 base, u32 type);
+void arm_pl01x_putc(u32 base, u32 type, char ch);
 void arm_pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock);
 
 #endif /* __ARM_PL01X_H_ */

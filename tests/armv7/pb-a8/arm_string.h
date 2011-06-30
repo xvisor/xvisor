@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Anup Patel.
+ * Copyright (c) 2011 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,42 +16,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_main.c
+ * @file arm_string.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief ARM test code main file
+ * @brief Header file for common string functions
  */
 
-#include <arm_interrupts.h>
-#include <arm_string.h>
-#include <arm_stdio.h>
+#ifndef __ARM_STRING_H_
+#define __ARM_STRING_H_
 
-/* Works in supervisor mode */
-void arm_init(void)
-{
-	arm_irq_setup();
+#include <arm_types.h>
 
-	arm_irq_enable();
+int arm_strcmp(const char *a, const char *b);
 
-	arm_stdio_init();
-}
-
-/* Works in user mode */
-void arm_main(void)
-{
-	char line[256];
-
-	arm_puts("ARM Realview PB-A8 Test Code\n\n");
-
-	while(1) {
-		arm_puts("arm-test# ");
-
-		arm_gets(line, 256, '\n');
-
-		if (arm_strcmp(line, "hi") == 0) {
-			arm_puts("hello\n");
-		} else if (arm_strcmp(line, "hello") == 0) {
-			arm_puts("hi\n");
-		}
-	}
-}
+#endif /* __ARM_STRING_H_ */

@@ -34,14 +34,6 @@ void arm_writel(u32 data, void * addr)
 	*((u32 *)addr) = data;
 }
 
-char arm_pl01x_dprobe(u32 base, u32 type)
-{
-	if(arm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF) {
-		return 1;
-	}
-	return 0;
-}
-
 void arm_pl01x_putc(u32 base, u32 type, char ch)
 {
 	if(ch=='\n') {
@@ -57,14 +49,6 @@ void arm_pl01x_putc(u32 base, u32 type, char ch)
 
 	/* Send the character */
 	arm_writel(ch, (void*)(base + UART_PL01x_DR));
-}
-
-void arm_pl01x_puts(u32 base, u32 type, const char * str)
-{
-	while (*str) {
-		arm_pl01x_putc(base, type, *str);
-		str++;
-	}
 }
 
 char arm_pl01x_getc(u32 base, u32 type)
@@ -84,24 +68,6 @@ char arm_pl01x_getc(u32 base, u32 type)
 	}
 
 	return data;
-}
-
-void arm_pl01x_gets(u32 base, u32 type, char *s, int maxwidth, char endchar)
-{
-	char *retval;
-	char ch;
-	retval = s;
-	ch = arm_pl01x_getc(base, type);
-	while (ch != endchar && maxwidth > 0) {
-		*retval = ch;
-		retval++;
-		maxwidth--;
-		if (maxwidth == 0)
-			break;
-		ch = arm_pl01x_getc(base, type);
-	}
-	*retval = '\0';
-	return;
 }
 
 void arm_pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock)

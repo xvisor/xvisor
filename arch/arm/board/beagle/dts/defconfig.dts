@@ -11,8 +11,7 @@
 		arm7a_tlbent_per_vcpu = <16>;
 		max_vcpu_count = <4>;
 		max_guest_count = <2>;
-		tick_delay_usecs = <100>;
-		vcpu_timer_mhz = <10>;
+		tick_delay_usecs = <200>;
 		hypercore_tick_count = <20>;
 	};
 
@@ -69,8 +68,8 @@
 
 				vcpu@0 {
 					device_type = "vcpu";
-					model = "MIPS,24Kf";
-					tick_count = <200>;
+					model = "ARMv7a,cortex-a8";
+					tick_count = <80>;
 					start_pc = <0x0000000>;
 				};
 			};

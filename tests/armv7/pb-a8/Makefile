@@ -40,6 +40,8 @@ ARM_TEST_OBJ_DIR=./test_objs
 ARM_TEST_OBJS=$(ARM_TEST_OBJ_DIR)/arm_entry.o \
 		$(ARM_TEST_OBJ_DIR)/arm_main.o \
 		$(ARM_TEST_OBJ_DIR)/arm_interrupts.o \
+		$(ARM_TEST_OBJ_DIR)/arm_stdio.o \
+		$(ARM_TEST_OBJ_DIR)/arm_string.o \
 		$(ARM_TEST_OBJ_DIR)/arm_pl01x.o
 ARM_TEST_CPPFLAGS=-DARM_TEST_BOOT
 ARM_TEST_CFLAGS=$(ARM_TEST_CPPFLAGS)
