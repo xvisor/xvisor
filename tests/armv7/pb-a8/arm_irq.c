@@ -22,9 +22,7 @@
  * @brief source code for handling ARM test code interrupts
  */
 
-#include <arm_types.h>
-#include <arm_regs.h>
-#include <arm_interrupts.h>
+#include <arm_irq.h>
 
 void do_undefined_instruction(pt_regs_t *regs)
 {

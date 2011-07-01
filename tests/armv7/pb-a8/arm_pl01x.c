@@ -22,17 +22,8 @@
  * @brief source file for PrimeCell PL011/PL010 serial port driver.
  */
 
+#include <arm_io.h>
 #include <arm_pl01x.h>
-
-u32 arm_readl(void * addr)
-{
-	return *((u32 *)addr);
-}
-
-void arm_writel(u32 data, void * addr)
-{
-	*((u32 *)addr) = data;
-}
 
 void arm_pl01x_putc(u32 base, u32 type, char ch)
 {
