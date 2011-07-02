@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Anup Patel.
+ * Copyright (c) 2011 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,30 +16,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_interrupts.h
+ * @file arm_string.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief header file for ARM interrupts
+ * @brief source file for common string functions
  */
-#ifndef _ARM_INTERRUPTS_H__
-#define _ARM_INTERRUPTS_H__
 
-#include <arm_types.h>
+#include <arm_string.h>
 
-#define CPU_IRQ_NR					8
+int arm_strcmp(const char *a, const char *b)
+{
+	while (*a == *b) {
+		if (*a == '\0' || *b == '\0') {
+			return (unsigned char)*a - (unsigned char)*b;
+		}
+		++a;
+		++b;
+	}
+	return (unsigned char)*a - (unsigned char)*b;
+}
 
-/** IRQ Numbers */
-#define ARM_RESET_IRQ					0
-#define ARM_UNDEF_INST_IRQ				1
-#define ARM_SOFT_IRQ					2
-#define ARM_PREFETCH_ABORT_IRQ				3
-#define ARM_DATA_ABORT_IRQ				4
-#define ARM_NOT_USED_IRQ				5
-#define ARM_EXTERNAL_IRQ				6
-#define ARM_EXTERNAL_FIQ				7
-
-void arm_irq_setup(void);
-void arm_irq_enable(void);
-void arm_irq_disable(void);
-
-#endif

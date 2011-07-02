@@ -16,16 +16,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file realview_gic.c
+ * @file arm_gic.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief Realview Generic Interrupt Controller source
+ * @brief ARM Generic Interrupt Controller
  */
 
-#include <vmm_error.h>
-#include <vmm_host_io.h>
-#include <realview_config.h>
-#include <realview/realview_gic.h>
+#include <arm_config.h>
+#include <arm_io.h>
+#include <arm_gic.h>
 
 #define max(a,b)	((a) < (b) ? (b) : (a))
 
@@ -35,106 +34,106 @@ struct gic_chip_data {
 	virtual_addr_t cpu_base;
 };
 
-static struct gic_chip_data gic_data[REALVIEW_GIC_MAX_NR];
+static struct gic_chip_data gic_data[ARM_GIC_MAX_NR];
 
-static inline void realview_gic_write(u32 val, virtual_addr_t addr)
+static inline void arm_gic_write(u32 val, virtual_addr_t addr)
 {
-	vmm_writel(val, (void *)(addr));
+	arm_writel(val, (void *)(addr));
 }
 
-static inline u32 realview_gic_read(virtual_addr_t addr)
+static inline u32 arm_gic_read(virtual_addr_t addr)
 {
-	return vmm_readl((void *)(addr));
+	return arm_readl((void *)(addr));
 }
 
-int realview_gic_active_irq(u32 gic_nr)
+int arm_gic_active_irq(u32 gic_nr)
 {
 	int ret = -1;
 
-	if (REALVIEW_GIC_MAX_NR <= gic_nr) {
-		return VMM_EFAIL;
+	if (ARM_GIC_MAX_NR <= gic_nr) {
+		return -1;
 	}
 
-	ret = realview_gic_read(gic_data[gic_nr].cpu_base +
+	ret = arm_gic_read(gic_data[gic_nr].cpu_base +
 				GIC_CPU_INTACK) & 0x3FF;
 	ret += gic_data[gic_nr].irq_offset;
 
 	return ret;
 }
 
-int realview_gic_ack_irq(u32 gic_nr, u32 irq)
+int arm_gic_ack_irq(u32 gic_nr, u32 irq)
 {
 	u32 mask = 1 << (irq % 32);
 	u32 gic_irq;
 
-	if (REALVIEW_GIC_MAX_NR <= gic_nr) {
-		return VMM_EFAIL;
+	if (ARM_GIC_MAX_NR <= gic_nr) {
+		return -1;
 	}
 
 	if (irq < gic_data[gic_nr].irq_offset) {
-		return VMM_EFAIL;
+		return -1;
 	}
 
 	gic_irq = irq - gic_data[gic_nr].irq_offset;
 
-	realview_gic_write(mask, gic_data[gic_nr].dist_base + 
+	arm_gic_write(mask, gic_data[gic_nr].dist_base + 
 				GIC_DIST_ENABLE_CLEAR + (gic_irq / 32) * 4);
-	realview_gic_write(gic_irq, gic_data[gic_nr].cpu_base + GIC_CPU_EOI);
-	realview_gic_write(mask, gic_data[gic_nr].dist_base + 
+	arm_gic_write(gic_irq, gic_data[gic_nr].cpu_base + GIC_CPU_EOI);
+	arm_gic_write(mask, gic_data[gic_nr].dist_base + 
 				GIC_DIST_ENABLE_SET + (gic_irq / 32) * 4);
 
-	return VMM_OK;
+	return 0;
 }
 
-int realview_gic_mask(u32 gic_nr, u32 irq)
+int arm_gic_mask(u32 gic_nr, u32 irq)
 {
 	u32 mask = 1 << (irq % 32);
 	u32 gic_irq;
 
-	if (REALVIEW_GIC_MAX_NR <= gic_nr) {
-		return VMM_EFAIL;
+	if (ARM_GIC_MAX_NR <= gic_nr) {
+		return -1;
 	}
 
 	if (irq < gic_data[gic_nr].irq_offset) {
-		return VMM_EFAIL;
+		return -1;
 	}
 
 	gic_irq = irq - gic_data[gic_nr].irq_offset;
 
-	realview_gic_write(mask, gic_data[gic_nr].dist_base +
+	arm_gic_write(mask, gic_data[gic_nr].dist_base +
 			   GIC_DIST_ENABLE_CLEAR + (gic_irq / 32) * 4);
 
-	return VMM_OK;
+	return 0;
 }
 
-int realview_gic_unmask(u32 gic_nr, u32 irq)
+int arm_gic_unmask(u32 gic_nr, u32 irq)
 {
 	u32 mask = 1 << (irq % 32);
 	u32 gic_irq;
 
-	if (REALVIEW_GIC_MAX_NR <= gic_nr) {
-		return VMM_EFAIL;
+	if (ARM_GIC_MAX_NR <= gic_nr) {
+		return -1;
 	}
 
 	if (irq < gic_data[gic_nr].irq_offset) {
-		return VMM_EFAIL;
+		return -1;
 	}
 
 	gic_irq = irq - gic_data[gic_nr].irq_offset;
 
-	realview_gic_write(mask, gic_data[gic_nr].dist_base +
+	arm_gic_write(mask, gic_data[gic_nr].dist_base +
 			   GIC_DIST_ENABLE_SET + (gic_irq / 32) * 4);
 
-	return VMM_OK;
+	return 0;
 }
 
-int realview_gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start)
+int arm_gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start)
 {
 	unsigned int max_irq, i;
 	u32 cpumask = 1 << 0;	/*smp_processor_id(); */
 
-	if (REALVIEW_GIC_MAX_NR <= gic_nr) {
-		return VMM_EFAIL;
+	if (ARM_GIC_MAX_NR <= gic_nr) {
+		return -1;
 	}
 
 	cpumask |= cpumask << 8;
@@ -143,12 +142,12 @@ int realview_gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start)
 	gic_data[gic_nr].dist_base = base;
 	gic_data[gic_nr].irq_offset = (irq_start - 1) & ~31;
 
-	realview_gic_write(0, base + GIC_DIST_CTRL);
+	arm_gic_write(0, base + GIC_DIST_CTRL);
 
 	/*
 	 * Find out how many interrupts are supported.
 	 */
-	max_irq = realview_gic_read(base + GIC_DIST_CTR) & 0x1f;
+	max_irq = arm_gic_read(base + GIC_DIST_CTR) & 0x1f;
 	max_irq = (max_irq + 1) * 32;
 
 	/*
@@ -156,49 +155,49 @@ int realview_gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start)
 	 * Limit this to either the architected maximum, or the
 	 * platform maximum.
 	 */
-	if (max_irq > max(1020, REALVIEW_GIC_NR_IRQS))
-		max_irq = max(1020, REALVIEW_GIC_NR_IRQS);
+	if (max_irq > max(1020, ARM_GIC_NR_IRQS))
+		max_irq = max(1020, ARM_GIC_NR_IRQS);
 
 	/*
 	 * Set all global interrupts to be level triggered, active low.
 	 */
 	for (i = 32; i < max_irq; i += 16)
-		realview_gic_write(0, base + GIC_DIST_CONFIG + i * 4 / 16);
+		arm_gic_write(0, base + GIC_DIST_CONFIG + i * 4 / 16);
 
 	/*
 	 * Set all global interrupts to this CPU only.
 	 */
 	for (i = 32; i < max_irq; i += 4)
-		realview_gic_write(cpumask, base + GIC_DIST_TARGET + i * 4 / 4);
+		arm_gic_write(cpumask, base + GIC_DIST_TARGET + i * 4 / 4);
 
 	/*
 	 * Set priority on all interrupts.
 	 */
 	for (i = 0; i < max_irq; i += 4)
-		realview_gic_write(0xa0a0a0a0, base + GIC_DIST_PRI + i * 4 / 4);
+		arm_gic_write(0xa0a0a0a0, base + GIC_DIST_PRI + i * 4 / 4);
 
 	/*
 	 * Disable all interrupts.
 	 */
 	for (i = 0; i < max_irq; i += 32)
-		realview_gic_write(0xffffffff,
+		arm_gic_write(0xffffffff,
 				   base + GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
 
-	realview_gic_write(1, base + GIC_DIST_CTRL);
+	arm_gic_write(1, base + GIC_DIST_CTRL);
 
-	return VMM_OK;
+	return 0;
 }
 
-int realview_gic_cpu_init(u32 gic_nr, virtual_addr_t base)
+int arm_gic_cpu_init(u32 gic_nr, virtual_addr_t base)
 {
-	if (REALVIEW_GIC_MAX_NR <= gic_nr) {
-		return VMM_EFAIL;
+	if (ARM_GIC_MAX_NR <= gic_nr) {
+		return -1;
 	}
 
 	gic_data[gic_nr].cpu_base = base;
 
-	realview_gic_write(0xf0, base + GIC_CPU_PRIMASK);
-	realview_gic_write(1, base + GIC_CPU_CTRL);
+	arm_gic_write(0xf0, base + GIC_CPU_PRIMASK);
+	arm_gic_write(1, base + GIC_CPU_CTRL);
 
-	return VMM_OK;
+	return 0;
 }

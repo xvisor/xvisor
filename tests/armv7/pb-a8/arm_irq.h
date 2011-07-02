@@ -16,47 +16,34 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_main.c
+ * @file arm_irq.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief ARM test code main file
+ * @brief header file for ARM interrupts
  */
+#ifndef _ARM_IRQ_H__
+#define _ARM_IRQ_H__
 
-#include <arm_irq.h>
-#include <arm_timer.h>
-#include <arm_string.h>
-#include <arm_stdio.h>
+#include <arm_types.h>
+#include <arm_regs.h>
 
-/* Works in supervisor mode */
-void arm_init(void)
-{
-	arm_irq_setup();
+typedef int (*arm_irq_handler_t) (u32 irq_no, pt_regs_t * regs);
 
-	arm_irq_enable();
+#define CPU_IRQ_NR					8
 
-	arm_stdio_init();
+/** IRQ Numbers */
+#define ARM_RESET_IRQ					0
+#define ARM_UNDEF_INST_IRQ				1
+#define ARM_SOFT_IRQ					2
+#define ARM_PREFETCH_ABORT_IRQ				3
+#define ARM_DATA_ABORT_IRQ				4
+#define ARM_NOT_USED_IRQ				5
+#define ARM_EXTERNAL_IRQ				6
+#define ARM_EXTERNAL_FIQ				7
 
-	arm_timer_init(1000, 1);
+void arm_irq_setup(void);
+void arm_irq_register(u32 irq_no, arm_irq_handler_t hndl);
+void arm_irq_enable(void);
+void arm_irq_disable(void);
 
-	arm_timer_enable();
-}
-
-/* Works in user mode */
-void arm_main(void)
-{
-	char line[256];
-
-	arm_puts("ARM Realview PB-A8 Test Code\n\n");
-
-	while(1) {
-		arm_puts("arm-test# ");
-
-		arm_gets(line, 256, '\n');
-
-		if (arm_strcmp(line, "hi") == 0) {
-			arm_puts("hello\n");
-		} else if (arm_strcmp(line, "hello") == 0) {
-			arm_puts("hi\n");
-		}
-	}
-}
+#endif
