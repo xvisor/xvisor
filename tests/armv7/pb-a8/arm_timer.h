@@ -45,13 +45,9 @@
 #define TIMER_MIS	0x14
 #define TIMER_BGLOAD	0x18
 
-void arm_timer_enable(virtual_addr_t base);
-void arm_timer_disable(virtual_addr_t base);
-void arm_timer_clearirq(virtual_addr_t base);
-int arm_timer_setup(virtual_addr_t base,
-			 u32 usecs,
-			 u32 hirq, arm_irq_handler_t hirq_handler);
-int arm_timer_init(virtual_addr_t sctl_base,
-			virtual_addr_t base, u32 ensel);
+void arm_timer_enable(void);
+void arm_timer_disable(void);
+void arm_timer_clearirq(void);
+int arm_timer_init(u32 usecs, u32 ensel);
 
 #endif

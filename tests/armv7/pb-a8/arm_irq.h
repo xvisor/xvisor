@@ -42,6 +42,7 @@ typedef int (*arm_irq_handler_t) (u32 irq_no, pt_regs_t * regs);
 #define ARM_EXTERNAL_FIQ				7
 
 void arm_irq_setup(void);
+void arm_irq_register(u32 irq_no, arm_irq_handler_t hndl);
 void arm_irq_enable(void);
 void arm_irq_disable(void);
 

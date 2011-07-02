@@ -241,11 +241,19 @@ static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 	done = 1;
 	switch (offset - (offset & 0x3)) {
 	case 0x000: /* Distributor control */
-		*dst = s->enabled;
+		if (offset == 0x000) {
+			*dst = s->enabled;
+		} else {
+			*dst = 0x0;
+		}
 		break;
 	case 0x004: /* Controller type */
-		*dst = (GIC_NUM_CPU(s) - 1) << 5;
-		*dst |= (GIC_NUM_IRQ(s) / 32) - 1;
+		if (offset == 0x004) {
+			*dst = (GIC_NUM_CPU(s) - 1) << 5;
+			*dst |= (GIC_NUM_IRQ(s) / 32) - 1;
+		} else {
+			*dst = 0x0;
+		}
 		break;
 	case 0x100: /* Set-enable0 */
 	case 0x104: /* Set-enable1 */
@@ -376,7 +384,9 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 	done = 1;
 	switch (offset - (offset & 0x3)) {
 	case 0x000: /* Distributor control */
-		s->enabled = src & 0x1;
+		if (offset == 0x000) {
+			s->enabled = src & 0x1;
+		}
 		break;
 	case 0x004: /* Controller type */
 		/* Ignored. */

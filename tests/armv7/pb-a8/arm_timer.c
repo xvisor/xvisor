@@ -23,58 +23,43 @@
  */
 
 #include <arm_io.h>
+#include <arm_irq.h>
 #include <arm_config.h>
 #include <arm_plat.h>
 #include <arm_timer.h>
 
-void arm_timer_enable(virtual_addr_t base)
+void arm_timer_enable(void)
 {
 	u32 ctrl;
 
-	ctrl = arm_readl((void *)(base + TIMER_CTRL));
+	ctrl = arm_readl((void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
 	ctrl |= TIMER_CTRL_ENABLE;
-	arm_writel(ctrl, (void *)(base + TIMER_CTRL));
+	arm_writel(ctrl, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
 }
 
-void arm_timer_disable(virtual_addr_t base)
+void arm_timer_disable(void)
 {
 	u32 ctrl;
 
-	ctrl = arm_readl((void *)(base + TIMER_CTRL));
+	ctrl = arm_readl((void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
 	ctrl &= ~TIMER_CTRL_ENABLE;
-	arm_writel(ctrl, (void *)(base + TIMER_CTRL));
+	arm_writel(ctrl, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
 }
 
-void arm_timer_clearirq(virtual_addr_t base)
+void arm_timer_clearirq(void)
 {
-	arm_writel(1, (void *)(base + TIMER_INTCLR));
+	arm_writel(1, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_INTCLR));
 }
 
-int arm_timer_setup(virtual_addr_t base,
-			 u32 usecs,
-			 u32 hirq, arm_irq_handler_t hirq_handler)
+#include <arm_stdio.h>
+
+int arm_timer_irqhndl(u32 irq_no, pt_regs_t * regs)
 {
-#if 0
-	int ret;
-
-	/* Register interrupt handler */
-	ret = vmm_host_irq_register(hirq, hirq_handler);
-	if (ret) {
-		return ret;
-	}
-#endif
-
-	arm_writel(0, (void *)(base + TIMER_CTRL));
-	arm_writel(usecs, (void *)(base + TIMER_LOAD));
-	arm_writel(usecs, (void *)(base + TIMER_VALUE));
-	arm_writel(TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE,
-		   (void *)(base + TIMER_CTRL));
-
+	arm_puts("\nTimer IRQ\n");
 	return 0;
 }
 
-int arm_timer_init(virtual_addr_t sctl_base,
-			virtual_addr_t base, u32 ensel)
+int arm_timer_init(u32 usecs, u32 ensel)
 {
 	u32 val;
 
@@ -83,13 +68,22 @@ int arm_timer_init(virtual_addr_t sctl_base,
 	 *      REALVIEW_REFCLK is 32KHz
 	 *      REALVIEW_TIMCLK is 1MHz
 	 */
-	val = arm_readl((void *)sctl_base) | (REALVIEW_TIMCLK << ensel);
-	arm_writel(val, (void *)sctl_base);
+	val = arm_readl((void *)REALVIEW_SCTL_BASE) | (REALVIEW_TIMCLK << ensel);
+	arm_writel(val, (void *)REALVIEW_SCTL_BASE);
 
 	/*
 	 * Initialise to a known state (all timers off)
 	 */
-	arm_writel(0, (void *)(base + TIMER_CTRL));
+	arm_writel(0, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
+
+	/* Register interrupt handler */
+	arm_irq_register(IRQ_PBA8_TIMER0_1, &arm_timer_irqhndl);
+
+	arm_writel(0, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
+	arm_writel(usecs, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_LOAD));
+	arm_writel(usecs, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_VALUE));
+	arm_writel(TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE,
+		   (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
 
 	return 0;
 }
