@@ -37,7 +37,14 @@ void arm_putc(char ch)
 
 char arm_getc(void)
 {
-	return arm_pl01x_getc(PBA8_UART_BASE, PBA8_UART_TYPE);
+	char ret = arm_pl01x_getc(PBA8_UART_BASE, PBA8_UART_TYPE);
+#if 0
+	/* Hack code to run test code directly on QEMU */
+	if (ret == '\r')
+		ret = '\n';
+	arm_putc(ret);
+#endif
+	return ret;
 }
 
 void arm_stdio_init(void)

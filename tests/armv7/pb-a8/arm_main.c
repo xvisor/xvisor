@@ -23,6 +23,7 @@
  */
 
 #include <arm_irq.h>
+#include <arm_timer.h>
 #include <arm_string.h>
 #include <arm_stdio.h>
 
@@ -34,6 +35,10 @@ void arm_init(void)
 	arm_irq_enable();
 
 	arm_stdio_init();
+
+	arm_timer_init(1000, 1);
+
+	arm_timer_enable();
 }
 
 /* Works in user mode */
