@@ -56,6 +56,7 @@ int realview_timer_setup(virtual_addr_t base,
 			 u32 hirq, vmm_host_irq_handler_t hirq_handler)
 {
 	int ret;
+	u32 ctrl;
 
 	/* Register interrupt handler */
 	ret = vmm_host_irq_register(hirq, hirq_handler);
@@ -63,11 +64,12 @@ int realview_timer_setup(virtual_addr_t base,
 		return ret;
 	}
 
-	vmm_writel(0, (void *)(base + TIMER_CTRL));
+	ctrl = vmm_readl((void *)(base + TIMER_CTRL));
+	ctrl &= ~TIMER_CTRL_ENABLE;
+	ctrl |= (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE);
+	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 	vmm_writel(usecs, (void *)(base + TIMER_LOAD));
 	vmm_writel(usecs, (void *)(base + TIMER_VALUE));
-	vmm_writel(TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE,
-		   (void *)(base + TIMER_CTRL));
 
 	return VMM_OK;
 }
