@@ -17,9 +17,9 @@ WHAT IS XVISOR?
   Xvisor has most of the features expected from a modern fully-fledged 
   hypervisor, such as:
 	- CPU virtualization (Guest, Virtual CPUs, Virtual IRQs)
-	- MMU virtualization (Virtual MMU, Guest Address Space)
-	- IO virtualization (Virtual Bus, Virtual Devices)
-	- Device Driver Framework (Host Drivers)
+	- MMU virtualization (Virtual MMU, Virtual Guest Address Space)
+	- IO virtualization (Device Emulation Framework, Emulated Devices)
+	- Device Driver Framework (Device Driver Framework, Host Drivers)
 	- Threading Framework (Hyperthreads)
 	- Managment Terminal (Mterm)
 	- Tree based Configuration (Device Tree)
@@ -53,7 +53,6 @@ INITIATORS:
   - Himanshu Chauhan (Aka - Gadadhari Bhim)
   - Sukanto Ghosh (Aka - Sukki)
   - Pranav Sawargaonkar (Aka - Samphy)
-  - Inderpal Saluja (Aka - Inderpal)
 
 DOCUMENTATION:
 
