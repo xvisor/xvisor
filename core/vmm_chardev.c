@@ -46,7 +46,7 @@ int vmm_chardev_doioctl(vmm_chardev_t * cdev,
 }
 
 u32 vmm_chardev_doread(vmm_chardev_t * cdev,
-		       char *dest, size_t offset, size_t len)
+		       u8 *dest, size_t offset, size_t len)
 {
 	if (!cdev) {
 		return 0;
@@ -59,7 +59,7 @@ u32 vmm_chardev_doread(vmm_chardev_t * cdev,
 }
 
 u32 vmm_chardev_dowrite(vmm_chardev_t * cdev,
-			char *src, size_t offset, size_t len)
+			u8 *src, size_t offset, size_t len)
 {
 	if (!cdev) {
 		return 0;

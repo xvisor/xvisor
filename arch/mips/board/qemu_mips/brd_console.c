@@ -30,7 +30,7 @@
 static virtual_addr_t uart_base = 0;
 extern virtual_addr_t isa_vbase;
 
-int vmm_defterm_getc(char *ch)
+int vmm_defterm_getc(u8 *ch)
 {
 	if (uart_base) {
 		if (!uart_lowlevel_can_getc(uart_base, 1)) {
@@ -43,7 +43,7 @@ int vmm_defterm_getc(char *ch)
 	return VMM_OK;
 }
 
-int vmm_defterm_putc(char ch)
+int vmm_defterm_putc(u8 ch)
 {
 	if (uart_base) {
 		if (!uart_lowlevel_can_putc(uart_base, 1)) {
