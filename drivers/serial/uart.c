@@ -56,7 +56,7 @@ bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align)
 	return FALSE;
 }
 
-char uart_lowlevel_getc(virtual_addr_t base, u32 reg_align)
+u8 uart_lowlevel_getc(virtual_addr_t base, u32 reg_align)
 {
 	while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & UART_LSR_DR));
 	return (vmm_in_8((u8 *)REG_UART_RBR(base,reg_align)));
@@ -70,7 +70,7 @@ bool uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align)
 	return FALSE;
 }
 
-void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, char ch)
+void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, u8 ch)
 {
 	if(ch=='\n') {
 		while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & 
@@ -111,7 +111,7 @@ void uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 }
 
 static u32 uart_read(vmm_chardev_t *cdev, 
-				char *dest, size_t offset, size_t len)
+				u8 *dest, size_t offset, size_t len)
 {
 	u32 i;
 	uart_port_t *port;
@@ -136,7 +136,7 @@ static u32 uart_read(vmm_chardev_t *cdev,
 }
 
 static u32 uart_write(vmm_chardev_t *cdev, 
-				char *src, size_t offset, size_t len)
+				u8 *src, size_t offset, size_t len)
 {
 	u32 i;
 	uart_port_t *port;

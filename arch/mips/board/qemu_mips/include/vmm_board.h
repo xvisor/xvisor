@@ -27,8 +27,8 @@
 #include "vmm_types.h"
 #include "vmm_devtree.h"
 
-int vmm_defterm_getc(char *ch);
-int vmm_defterm_putc(char ch);
+int vmm_defterm_getc(u8 *ch);
+int vmm_defterm_putc(u8 ch);
 int vmm_defterm_init(void);
 
 /** Interrupt controller related function required by VMM core */

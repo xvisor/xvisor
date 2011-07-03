@@ -48,14 +48,14 @@ static int printchar(char **str, char c, bool block)
 	} else {
 		if (stdio_ctrl.cdev) {
 			while (!vmm_chardev_dowrite(stdio_ctrl.cdev, 
-							&c, 0, sizeof(c))) {
+							(u8 *)&c, 0, sizeof(c))) {
 				if (!block) {
 					rc = VMM_EFAIL;
 					break;
 				}
 			}
 		} else {
-			while ((rc = vmm_defterm_putc(c))) {
+			while ((rc = vmm_defterm_putc((u8)c))) {
 				if (!block) {
 					break;
 				}
@@ -254,16 +254,17 @@ int vmm_panic(const char *format, ...)
 
 static int scanchar(char **str, char *c, bool block)
 {
+	u8 ch = 0;
 	int rc = VMM_OK;
 	if (str) {
 		*c = **str;
 		++(*str);
 	} else {
 		if (stdio_ctrl.cdev) {
-			*c = 128;
-			while (*c > 127) {
+			ch = 128;
+			while (ch > 127) {
 				if (!vmm_chardev_doread(stdio_ctrl.cdev,
-							c, 0, sizeof(*c))) {
+						&ch, 0, sizeof(ch))) {
 					if (!block) {
 						rc = VMM_EFAIL;
 						break;
@@ -271,15 +272,19 @@ static int scanchar(char **str, char *c, bool block)
 				}
 			}
 		} else {
-			*c = 128;
-			while (*c > 127) {
-				if ((rc = vmm_defterm_getc(c))) {
+			ch = 128;
+			while (ch > 127) {
+				if ((rc = vmm_defterm_getc(&ch))) {
 					if (!block) {
 						break;
 					}
 				}
 			}
 		}
+		if (ch == 128) {
+			ch = 0;
+		}
+		*c = ch;
 	}
 	return rc;
 }
