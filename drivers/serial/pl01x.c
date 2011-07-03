@@ -56,7 +56,7 @@ bool pl01x_lowlevel_can_getc(virtual_addr_t base, u32 type)
 	return TRUE;
 }
 
-char pl01x_lowlevel_getc(virtual_addr_t base, u32 type)
+u8 pl01x_lowlevel_getc(virtual_addr_t base, u32 type)
 {
 	unsigned int data;
 
@@ -83,7 +83,7 @@ bool pl01x_lowlevel_can_putc(virtual_addr_t base, u32 type)
 	return TRUE;
 }
 
-void pl01x_lowlevel_putc(virtual_addr_t base, u32 type, char ch)
+void pl01x_lowlevel_putc(virtual_addr_t base, u32 type, u8 ch)
 {
 	if(ch=='\n') {
 		/* Wait until there is space in the FIFO */
@@ -185,7 +185,7 @@ void pl01x_lowlevel_init(virtual_addr_t base, u32 type,
 }
 
 static u32 pl01x_read(vmm_chardev_t *cdev, 
-				char *dest, size_t offset, size_t len)
+				u8 *dest, size_t offset, size_t len)
 {
 	u32 i;
 	pl01x_port_t *port;
@@ -210,7 +210,7 @@ static u32 pl01x_read(vmm_chardev_t *cdev,
 }
 
 static u32 pl01x_write(vmm_chardev_t *cdev, 
-				char *src, size_t offset, size_t len)
+				u8 *src, size_t offset, size_t len)
 {
 	u32 i;
 	pl01x_port_t *port;
