@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2011 Pranav Sawargaonkar.
+ * Copyright (c) 2011 Jim Huang.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,7 +20,7 @@
  * @file cpu_locks.c
  * @version 0.01
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief Architecture specific implementation of synchronization mechanisms.
+ * @brief ARM specific synchronization mechanisms.
  */
 
 #include <vmm_cpu.h>
@@ -27,28 +28,50 @@
 
 void __lock_section __cpu_spin_lock(vmm_cpu_spinlock_t * lock)
 {
-	while (__cpu_atomic_testnset(&lock->__cpu_lock, 0, 1)) ;
+	unsigned int tmp;
+	__asm__ __volatile__("@ __cpu_spin_lock\n"
+			     "1:\n"
+			     "       ldrex   %0, [%2]\n"
+				/* Load lock->__cpu_lock([%2]) to tmp (%0) */
+			     "       teq     %0, #0\n"
+				/* If the physical address is tagged as exclusive access,
+				 * lock->__cpu_lock should equal to 0  */
+			     "       strexeq %0, %1, [%2]\n"
+				/* Save 1 to lock->__cpu_lock
+				 * Result of this operation would be in tmp (%0).
+				 * if store operation success, result will be 0 or else 1
+				 */
+			     "       teq     %0, #0\n"
+				/* Compare result with 0 again */
+			     "       bne     1b\n"
+				/* If fails go back to 1 and retry else return */
+			     :"=&r"(tmp)
+			     :"r"(1), "r"(&lock->__cpu_lock)
+			     :"cc", "memory");
 }
 
 void __lock_section __cpu_spin_unlock(vmm_cpu_spinlock_t * lock)
 {
-	while (__cpu_atomic_testnset(&lock->__cpu_lock, 1, 0)) ;
+	__asm__ __volatile__("@ __cpu_spin_unlock\n"
+			     "       str     %0, [%1]\n"
+				/* Save 0 to lock->__cpu_lock in order to unlock */
+			     :
+			     :"r"(0), "r"(&lock->__cpu_lock)
+			     :"memory");
 }
 
 irq_flags_t __lock_section __cpu_spin_lock_irqsave(vmm_cpu_spinlock_t * lock)
 {
 	irq_flags_t flags;
-
-	while (__cpu_atomic_testnset(&lock->__cpu_lock, 0, 1)) ;
 	flags = vmm_cpu_irq_save();
-
+	__cpu_spin_lock(lock);
 	return flags;
 }
 
 void __lock_section __cpu_spin_unlock_irqrestore(vmm_cpu_spinlock_t * lock,
 						 irq_flags_t flags)
 {
-	while (__cpu_atomic_testnset(&lock->__cpu_lock, 1, 0)) ;
+	__cpu_spin_unlock(lock);
 	vmm_cpu_irq_restore(flags);
 }
 

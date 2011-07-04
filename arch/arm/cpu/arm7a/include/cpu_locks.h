@@ -19,7 +19,7 @@
  * @file cpu_locks.h
  * @version 0.01
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief Architecture specific implementation of synchronization mechanisms.
+ * @brief ARM specific synchronization mechanisms.
  */
 
 #ifndef __CPU_LOCKS_H__

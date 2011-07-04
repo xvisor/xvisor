@@ -19,7 +19,7 @@
  * @file cpu_atomic.h
  * @version 0.01
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief Architecture specific implementation of synchronization mechanisms.
+ * @brief ARM specific synchronization mechanisms.
  */
 
 #ifndef __CPU_ATOMIC_H__
@@ -30,6 +30,5 @@
 
 void __lock_section __cpu_atomic_inc(atomic_t * atom);
 void __lock_section __cpu_atomic_dec(atomic_t * atom);
-int __lock_section __cpu_atomic_testnset(atomic_t * atom, u32 test, u32 val);
 
 #endif /* __VMM_ATOMIC_H__ */
