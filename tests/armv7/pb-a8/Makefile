@@ -22,6 +22,16 @@
 # @brief toplevel makefile to build ARM test code
 # */
 
+# Include top-level configuration file if present
+top_dir=$(CURDIR)/../../..
+ifdef O
+ build_dir=$(shell readlink -f $(O))
+else
+ build_dir=$(top_dir)/build
+endif
+-include $(build_dir)/.config
+obj_dir=$(build_dir)/tests/armv7/pb-a8
+
 ifdef CROSS_COMPILE
 ARM_CROSS_COMPILE=$(CROSS_COMPILE)
 else
@@ -36,56 +46,74 @@ ARM_CC=$(ARM_CROSS_COMPILE)gcc
 ARM_CPP=$(ARM_CROSS_COMPILE)cpp
 ARM_OBJCOPY=$(ARM_CROSS_COMPILE)objcopy
 
-ARM_TEST_OBJ_DIR=./test_objs
-ARM_TEST_OBJS=$(ARM_TEST_OBJ_DIR)/arm_entry.o \
-		$(ARM_TEST_OBJ_DIR)/arm_main.o \
-		$(ARM_TEST_OBJ_DIR)/arm_irq.o \
-		$(ARM_TEST_OBJ_DIR)/arm_stdio.o \
-		$(ARM_TEST_OBJ_DIR)/arm_string.o \
-		$(ARM_TEST_OBJ_DIR)/arm_gic.o \
-		$(ARM_TEST_OBJ_DIR)/arm_timer.o \
-		$(ARM_TEST_OBJ_DIR)/arm_pl01x.o
+ARM_TEST_OBJS=$(obj_dir)/arm_entry.o \
+		$(obj_dir)/arm_main.o \
+		$(obj_dir)/arm_irq.o \
+		$(obj_dir)/arm_stdio.o \
+		$(obj_dir)/arm_string.o \
+		$(obj_dir)/arm_gic.o \
+		$(obj_dir)/arm_timer.o \
+		$(obj_dir)/arm_pl01x.o
 ARM_TEST_CPPFLAGS=-DARM_TEST_BOOT
 ARM_TEST_CFLAGS=$(ARM_TEST_CPPFLAGS)
 ARM_TEST_ASFLAGS=$(ARM_TEST_CPPFLAGS)
-ARM_TEST_LINK_SCRIPT=$(ARM_TEST_OBJ_DIR)/arm_test.lnk
+ARM_TEST_LINK_SCRIPT=$(obj_dir)/arm_test.lnk
 ARM_TEST_LDFLAGS=-Wl,-T$(ARM_TEST_LINK_SCRIPT) $(ARM_TEST_CPPFLAGS)
 
 ARM_COMMON_DEPS=arm_asm_macro.h arm_regs.h arm_types.h
 
+CPATCH32=$(build_dir)/tools/cpatch/cpatch32
+ELF2CPATCH=$(top_dir)/arch/arm/cpu/arm7a/elf2cpatch.py
+
+cmd_patch_elf = CROSS_COMPILE=$(ARM_CROSS_COMPILE) \
+		$(ELF2CPATCH) -f $@ .text | $(CPATCH32) $@ 0
+
 .PHONY: all
-all: arm_test.bin 
+all: $(obj_dir)/arm_test.bin $(obj_dir)/arm_test.bin.patched 
 
 # Generate ARM_TEST code
-arm_test.bin: arm_test.elf
-	@echo "   (OBJCOPY) $@"
+$(obj_dir)/arm_test.bin.patched: $(obj_dir)/arm_test.elf.patched
+	@mkdir -p `dirname $@`
+	@echo "   (OBJCOPY) $(subst $(obj_dir)/,,$@)"
 	@$(ARM_OBJCOPY) -O binary $< $@
 
-arm_test.elf: $(ARM_TEST_OBJS) $(ARM_TEST_LINK_SCRIPT)
-	@echo "   (LD)      $@"
-	@$(ARM_CC) $(ARM_TEST_OBJS) $(ARM_LDFLAGS) $(ARM_TEST_LDFLAGS) -o $@ 
-
-$(ARM_TEST_OBJ_DIR)/%.lnk: %.ld
+$(obj_dir)/arm_test.elf.patched: $(obj_dir)/arm_test.elf
 	@mkdir -p `dirname $@`
-	@echo "   (CPP)     $@"
+	@cp $< $@
+	@echo "   (PATCH)   $(subst $(obj_dir)/,,$@)"
+	@$(call cmd_patch_elf)
+
+$(obj_dir)/arm_test.bin: $(obj_dir)/arm_test.elf
+	@mkdir -p `dirname $@`
+	@echo "   (OBJCOPY) $(subst $(obj_dir)/,,$@)"
+	@$(ARM_OBJCOPY) -O binary $< $@
+
+$(obj_dir)/arm_test.elf: $(ARM_TEST_OBJS) $(ARM_TEST_LINK_SCRIPT)
+	@mkdir -p `dirname $@`
+	@echo "   (LD)      $(subst $(obj_dir)/,,$@)"
+	@$(ARM_CC) $(ARM_TEST_OBJS) $(ARM_LDFLAGS) $(ARM_TEST_LDFLAGS) -o $@
+
+$(obj_dir)/%.lnk: %.ld
+	@mkdir -p `dirname $@`
+	@echo "   (CPP)     $(subst $(obj_dir)/,,$@)"
 	@$(ARM_CPP) $(ARM_CPPFLAGS) $(ARM_TEST_CPPFLAGS) $< | grep -v "\#" > $@
 
-$(ARM_TEST_OBJ_DIR)/%.o: %.c $(ARM_COMMON_DEPS)
+$(obj_dir)/%.o: %.c $(ARM_COMMON_DEPS)
 	@mkdir -p `dirname $@`
-	@echo "   (CC)      $@"
+	@echo "   (CC)      $(subst $(obj_dir)/,,$@)"
 	@$(ARM_CC) $(ARM_CFLAGS) $(ARM_TEST_CFLAGS) -c $< -o $@
 
-$(ARM_TEST_OBJ_DIR)/%.o: %.S $(ARM_COMMON_DEPS)
+$(obj_dir)/%.o: %.S $(ARM_COMMON_DEPS)
 	@mkdir -p `dirname $@`
-	@echo "   (AS)      $@"
+	@echo "   (AS)      $(subst $(obj_dir)/,,$@)"
 	@$(ARM_AS) $(ARM_ASFLAGS) $(ARM_TEST_ASFLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:
-	@echo "   (RM)      arm_test.elf"
-	@rm -f arm_test.elf
-	@echo "   (RM)      arm_test.bin"
-	@rm -f arm_test.bin
-	@echo "   (RM)      $(ARM_TEST_OBJ_DIR)"
-	@rm -rf $(ARM_TEST_OBJ_DIR)
+	@echo "   (RM)      arm_test.elf*"
+	@rm -f $(obj_dir)/arm_test.elf*
+	@echo "   (RM)      arm_test.bin*"
+	@rm -f $(obj_dir)/arm_test.bin*
+	@echo "   (RM)      $(obj_dir)"
+	@rm -rf $(obj_dir)
 
