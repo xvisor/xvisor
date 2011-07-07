@@ -108,6 +108,11 @@ $(obj_dir)/%.o: %.S $(ARM_COMMON_DEPS)
 	@echo "   (AS)      $(subst $(obj_dir)/,,$@)"
 	@$(ARM_AS) $(ARM_ASFLAGS) $(ARM_TEST_ASFLAGS) -c $< -o $@
 
+.PHONY: check
+check: $(build_dir)/vmm.elf all
+	@echo "   (QEMU)    $(subst $(build_dir)/,,$<)"
+	@bash emulate.sh $(build_dir)
+
 .PHONY: clean
 clean:
 	@echo "   (RM)      arm_test.elf*"
