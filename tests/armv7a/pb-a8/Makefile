@@ -63,7 +63,7 @@ ARM_TEST_LDFLAGS=-Wl,-T$(ARM_TEST_LINK_SCRIPT) $(ARM_TEST_CPPFLAGS)
 ARM_COMMON_DEPS=arm_asm_macro.h arm_regs.h arm_types.h
 
 CPATCH32=$(build_dir)/tools/cpatch/cpatch32
-ELF2CPATCH=$(top_dir)/arch/arm/cpu/arm7a/elf2cpatch.py
+ELF2CPATCH=$(top_dir)/arch/arm/cpu/armv7a/elf2cpatch.py
 
 cmd_patch_elf = CROSS_COMPILE=$(ARM_CROSS_COMPILE) \
 		$(ELF2CPATCH) -f $@ .text | $(CPATCH32) $@ 0

@@ -35,7 +35,7 @@
 #define CPU_IRQ_NR					8
 #define CPU_IRQ_LOWVEC_BASE				0x00000000
 #define CPU_IRQ_HIGHVEC_BASE				0xFFFF0000
-#define CPU_HIGHVEC_ENABLE_ATTR_NAME			"arm7a_highvec_enable"
+#define CPU_HIGHVEC_ENABLE_ATTR_NAME			"armv7a_highvec_enable"
 #define CPU_RESET_IRQ					0
 #define CPU_UNDEF_INST_IRQ				1
 #define CPU_SOFT_IRQ					2
@@ -126,9 +126,9 @@
 #define SCTLR_M_MASK					0x00000001
 
 /* MMU related macros & defines */
-#define MMU_POOL_SIZE_ATTR_NAME				"arm7a_ttbl_pool_size"
-#define MMU_L2TBL_PER_VCPU_ATTR_NAME			"arm7a_l2tbl_per_vcpu"
-#define MMU_TLBENT_PER_VCPU_ATTR_NAME			"arm7a_tlbent_per_vcpu"
+#define MMU_POOL_SIZE_ATTR_NAME				"armv7a_ttbl_pool_size"
+#define MMU_L2TBL_PER_VCPU_ATTR_NAME			"armv7a_l2tbl_per_vcpu"
+#define MMU_TLBENT_PER_VCPU_ATTR_NAME			"armv7a_tlbent_per_vcpu"
 
 /* Translation table related macors & defines */
 #define TTBL_MIN_SIZE					0x1000

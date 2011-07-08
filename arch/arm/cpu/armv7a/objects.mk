@@ -19,7 +19,7 @@
 # @file objects.mk
 # @version 1.0
 # @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
-# @brief list of ARM7a cpu objects.
+# @brief list of ARMv7a cpu objects.
 # */
 
 cpu-cflags+= -mcpu=cortex-a8
