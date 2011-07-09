@@ -113,6 +113,7 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 		}
 		new_mode = CPSR_MODE_IRQ;
 		new_flags = CPSR_ASYNC_ABORT_DISABLED;
+		new_flags |= (CPSR_IRQ_DISABLED);
 		lr_off = 4;
 		break;
 	case CPU_EXTERNAL_FIQ:
@@ -120,7 +121,8 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 			return VMM_EFAIL;
 		}
 		new_mode = CPSR_MODE_FIQ;
-		new_flags = CPSR_ASYNC_ABORT_DISABLED | CPSR_FIQ_DISABLED;
+		new_flags = CPSR_ASYNC_ABORT_DISABLED;
+		new_flags |= (CPSR_FIQ_DISABLED | CPSR_IRQ_DISABLED);
 		lr_off = 4;
 		break;
 	default:
@@ -130,7 +132,7 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 
 	new_pc = cpu_vcpu_cp15_vector_addr(vcpu, irq_no);
 	cpu_vcpu_cpsr_update(vcpu, regs, 
-				((old_cpsr & ~CPSR_MODE_MASK) | 
+				((old_cpsr & ~0x3FF) | 
 				new_mode | 
 				new_flags));
 	cpu_vcpu_spsr_update(vcpu, old_cpsr);
