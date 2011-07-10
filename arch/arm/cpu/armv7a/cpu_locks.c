@@ -36,6 +36,7 @@ void __lock_section __cpu_spin_lock(vmm_cpu_spinlock_t * lock)
 			     "       teq     %0, #0\n"
 				/* If the physical address is tagged as exclusive access,
 				 * lock->__cpu_lock should equal to 0  */
+			     "       it      eq\n"
 			     "       strexeq %0, %1, [%2]\n"
 				/* Save 1 to lock->__cpu_lock
 				 * Result of this operation would be in tmp (%0).
