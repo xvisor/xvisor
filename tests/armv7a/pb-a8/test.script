@@ -1,0 +1,8 @@
+# Run ARM test code on Xvisor
+guest kick -1
+# List virtual guests
+guest list
+# View ARM test code virtual serial Port
+vserial bind guest0/uart0
+# Input in ARM test code
+hi

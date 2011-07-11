@@ -5,10 +5,10 @@
 	vmm {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		arm7a_highvec_enable = <0>;
-		arm7a_ttbl_pool_size = <0x20000>;
-		arm7a_l2tbl_per_vcpu = <4>;
-		arm7a_tlbent_per_vcpu = <64>;
+		armv7a_highvec_enable = <0>;
+		armv7a_ttbl_pool_size = <0x20000>;
+		armv7a_l2tbl_per_vcpu = <4>;
+		armv7a_tlbent_per_vcpu = <64>;
 		max_vcpu_count = <4>;
 		max_guest_count = <2>;
 		tick_delay_usecs = <200>;

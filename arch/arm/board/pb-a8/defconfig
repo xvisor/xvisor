@@ -8,7 +8,7 @@ CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 CONFIG_ARCH="arm"
 CROSS_COMPILE="arm-none-eabi-"
-CONFIG_CPU="arm7a"
+CONFIG_CPU="armv7a"
 CONFIG_BOARD="pb-a8"
 CONFIG_CPU_CORTEX_A8=y
 # CONFIG_CPU_OMAP3 is not set

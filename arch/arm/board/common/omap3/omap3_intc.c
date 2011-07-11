@@ -40,13 +40,13 @@ static inline u32 omap3_intc_read(u32 base, u32 reg)
 int omap3_intc_active_irq(u32 cpu_irq)
 {
 	int ret = -1;
-	if (cpu_irq == CPU_EXTERNAL_IRQ) {	/* arm7a IRQ */
+	if (cpu_irq == CPU_EXTERNAL_IRQ) {	/* armv7a IRQ */
 		ret = omap3_intc_read(OMAP3_MPU_INTC_BASE, OMAP3_INTC_SIR_IRQ);
 		ret = ((u32) ret & OMAP3_INTC_SIR_IRQ_ACTIVEIRQ_M);
 		if (OMAP3_MPU_INTC_NRIRQ <= ret) {
 			ret = -1;
 		}
-	} else if (cpu_irq == CPU_EXTERNAL_FIQ) {	/* arm7a FIQ */
+	} else if (cpu_irq == CPU_EXTERNAL_FIQ) {	/* armv7a FIQ */
 		ret = omap3_intc_read(OMAP3_MPU_INTC_BASE, OMAP3_INTC_SIR_FIQ);
 		ret = ((u32) ret & OMAP3_INTC_SIR_FIQ_ACTIVEIRQ_M);
 		if (OMAP3_MPU_INTC_NRIRQ <= ret) {
