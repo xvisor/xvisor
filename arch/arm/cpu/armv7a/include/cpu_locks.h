@@ -16,20 +16,24 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_atomic.h
+ * @file cpu_locks.h
  * @version 0.01
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief Architecture specific implementation of synchronization mechanisms.
+ * @brief ARM specific synchronization mechanisms.
  */
 
-#ifndef __CPU_ATOMIC_H__
-#define __CPU_ATOMIC_H__
+#ifndef __CPU_LOCKS_H__
+#define __CPU_LOCKS_H__
 
 #include <vmm_types.h>
 #include <vmm_sections.h>
+#include <cpu_atomic.h>
 
-void __lock_section __cpu_atomic_inc(atomic_t * atom);
-void __lock_section __cpu_atomic_dec(atomic_t * atom);
-int __lock_section __cpu_atomic_testnset(atomic_t * atom, u32 test, u32 val);
+void __lock_section __cpu_spin_lock(vmm_cpu_spinlock_t * lock);
+void __lock_section __cpu_spin_unlock(vmm_cpu_spinlock_t * lock);
 
-#endif /* __VMM_ATOMIC_H__ */
+irq_flags_t __lock_section __cpu_spin_lock_irqsave(vmm_cpu_spinlock_t * lock);
+void __lock_section __cpu_spin_unlock_irqrestore(vmm_cpu_spinlock_t * lock,
+						 irq_flags_t flags);
+
+#endif /* __CPU_LOCKS_H__ */

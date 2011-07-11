@@ -51,11 +51,13 @@ int cpu_vcpu_spsr_update(vmm_vcpu_t * vcpu,
 			 u32 new_spsr);
 
 /* Function to read a VCPU register of current mode */
-u32 cpu_vcpu_reg_read(vmm_user_regs_t * regs, 
+u32 cpu_vcpu_reg_read(vmm_vcpu_t * vcpu, 
+		      vmm_user_regs_t * regs, 
 		      u32 reg_num);
 
 /* Function to write a VCPU register of current mode */
-void cpu_vcpu_reg_write(vmm_user_regs_t * regs, 
+void cpu_vcpu_reg_write(vmm_vcpu_t * vcpu, 
+			vmm_user_regs_t * regs, 
 			u32 reg_num, 
 			u32 reg_val);
 
@@ -71,5 +73,8 @@ void cpu_vcpu_regmode_write(vmm_vcpu_t * vcpu,
 			     u32 mode,
 			     u32 reg_num,
 			     u32 reg_val);
+
+/* Function to dump user registers */
+void cpu_vcpu_dump_user_reg(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs);
 
 #endif

@@ -73,7 +73,6 @@ void vmm_cpu_timer_disable(void);
 /** Atomic Operations and spinlock */
 void vmm_cpu_atomic_inc(atomic_t * atom);
 void vmm_cpu_atomic_dec(atomic_t * atom);
-int vmm_cpu_atomic_testnset(atomic_t * atom, u32 test, u32 val);
 void vmm_cpu_spin_lock(vmm_cpu_spinlock_t * lock);
 void vmm_cpu_spin_unlock(vmm_cpu_spinlock_t * lock);
 irq_flags_t vmm_cpu_spin_lock_irqsave(vmm_cpu_spinlock_t * lock);
