@@ -26,12 +26,12 @@
 
 #include <vmm_types.h>
 
-static inline u16 cpu_bswap16(u16 data)
+static inline u16 vmm_cpu_bswap16(u16 data)
 {
 	return (((data & 0xFF) << 8) | ((data & 0xFF00) >> 8));
 }
 
-static inline u32 cpu_bswap32(u32 data)
+static inline u32 vmm_cpu_bswap32(u32 data)
 {
 	return (((data & 0xFF) << 24) |
 		((data & 0xFF00) << 8) |
@@ -98,13 +98,13 @@ static inline void vmm_cpu_out_le16(volatile u16 * addr, u16 data)
 /** FIXME: */
 static inline u16 vmm_cpu_in_be16(volatile u16 * addr)
 {
-	return cpu_bswap16(*addr);
+	return vmm_cpu_bswap16(*addr);
 }
 
 /** FIXME: */
 static inline void vmm_cpu_out_be16(volatile u16 * addr, u16 data)
 {
-	*addr = cpu_bswap16(data);
+	*addr = vmm_cpu_bswap16(data);
 }
 
 /** FIXME: */
@@ -122,13 +122,13 @@ static inline void vmm_cpu_out_le32(volatile u32 * addr, u32 data)
 /** FIXME: */
 static inline u32 vmm_cpu_in_be32(volatile u32 * addr)
 {
-	return cpu_bswap32(*addr);
+	return vmm_cpu_bswap32(*addr);
 }
 
 /** FIXME: */
 static inline void vmm_cpu_out_be32(volatile u32 * addr, u32 data)
 {
-	*addr = cpu_bswap32(data);
+	*addr = vmm_cpu_bswap32(data);
 }
 
 #endif
