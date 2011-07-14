@@ -19,6 +19,7 @@
  * @file vmm_cpu_io.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
+ * @author Jim Huang (jserv@0xlab.org)
  * @brief header file for CPU I/O or Memory read/write functions
  */
 #ifndef _VMM_CPU_IO_H__
@@ -28,14 +29,18 @@
 
 static inline u16 vmm_cpu_bswap16(u16 data)
 {
-	return (((data & 0xFF) << 8) | ((data & 0xFF00) >> 8));
+	register u16 tmp = data;
+	__asm__ __volatile__("rev16 %0, %0"
+			     :"+l"(tmp));
+	return tmp;
 }
 
 static inline u32 vmm_cpu_bswap32(u32 data)
 {
-	return (((data & 0xFF) << 24) |
-		((data & 0xFF00) << 8) |
-		((data & 0xFF0000) >> 8) | ((data & 0xFF000000) >> 24));
+	register u32 tmp = data;
+	__asm__ __volatile__("rev %0, %0"
+			     :"+l"(tmp));
+	return tmp;
 }
 
 /** FIXME: */
