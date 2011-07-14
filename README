@@ -16,13 +16,14 @@ WHAT IS XVISOR?
 
   Xvisor has most of the features expected from a modern fully-fledged 
   hypervisor, such as:
+	- Tree based Configuration (Device Tree)
 	- CPU virtualization (Guest, Virtual CPUs, Virtual IRQs)
 	- MMU virtualization (Virtual MMU, Virtual Guest Address Space)
-	- IO virtualization (Device Emulation Framework, Emulated Devices)
-	- Device Driver Framework (Device Driver Framework, Host Drivers)
-	- Threading Framework (Hyperthreads)
-	- Managment Terminal (Mterm)
-	- Tree based Configuration (Device Tree)
+	- IO virtualization (Device Emulation Framework, Emulators)
+	- Device Driver Framework (Host Address Space, Host IRQs, Drivers)
+	- Threading Framework (hyperthreads)
+	- Managment Terminal (mterm)
+	- Serial Port Virtualization (vserial)
 
   It is distributed under the GNU General Public License - see the
   accompanying COPYING file for more details.
@@ -49,10 +50,10 @@ ON WHAT HARDWARE DOES IT RUN?
 
 INITIATORS:
 
-  - Anup Patel (Aka - Ravan)
-  - Himanshu Chauhan (Aka - Gadadhari Bhim)
-  - Sukanto Ghosh (Aka - Sukki)
-  - Pranav Sawargaonkar (Aka - Samphy)
+  - Anup Patel
+  - Himanshu Chauhan
+  - Sukanto Ghosh
+  - Pranav Sawargaonkar
 
 DOCUMENTATION:
 
@@ -117,6 +118,23 @@ COMPILING:
 	they are executed. For this, use "verbose" build mode.  This is done
 	by inserting "VERBOSE=y" in the "make" command.
 	E.g.: "make VERBOSE=y"
+
+TESTING:
+
+  The above steps of configuring and/or compiling are common steps for any 
+  architecture but, this is not sufficient for running hypervisor. We also
+  need guidelines for configuring/compiling/running a guest OS in hypervisor 
+  environment. Some guest OS may even expect specific type of hypervisor 
+  configuration at compile time. Sometimes we may also need to patch a 
+  guest OS for proper functioning under hypervisor environment.
+
+  The guidelines required for running a guest OS on a particular type of 
+  guest (Guest CPU + Guest Board) can be found under directory:
+
+  tests/<Guest CPU>/<Guest Board>/README
+
+  Please refer to this README for getting detailed information on running a 
+  particular type of OS on particular type of guest in hypervisor.
 
 REMEMBER:
 

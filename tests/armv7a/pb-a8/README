@@ -1,0 +1,13 @@
+			Realview PB-A8 Guest
+
+  This guest has Cortex-A8 (Single Core ARMv7a) CPU and various peripherals
+  expected on a Realview Platform Base Board.
+
+  We have following guest OSes tested for this guest:
+
+  1. basic - Test code used by hypervior developers.
+  2. atomthreads - Atomthreads RTOS. 
+
+  Please follow the README under specific guest OS directory for detailed
+  steps to configure, compile and run.
+

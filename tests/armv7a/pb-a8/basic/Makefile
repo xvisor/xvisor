@@ -23,14 +23,14 @@
 # */
 
 # Include top-level configuration file if present
-top_dir=$(CURDIR)/../../..
+top_dir=$(CURDIR)/../../../..
 ifdef O
  build_dir=$(shell readlink -f $(O))
 else
  build_dir=$(top_dir)/build
 endif
 -include $(build_dir)/.config
-obj_dir=$(build_dir)/tests/armv7/pb-a8
+obj_dir=$(build_dir)/tests/armv7a/pb-a8/basic
 
 ifdef CROSS_COMPILE
 ARM_CROSS_COMPILE=$(CROSS_COMPILE)
@@ -68,8 +68,17 @@ ELF2CPATCH=$(top_dir)/arch/arm/cpu/armv7a/elf2cpatch.py
 cmd_patch_elf = CROSS_COMPILE=$(ARM_CROSS_COMPILE) \
 		$(ELF2CPATCH) -f $@ .text | $(CPATCH32) $@ 0
 
+memimg = $(top_dir)/tools/scripts/memimg.py
+
 .PHONY: all
-all: $(obj_dir)/arm_test.bin $(obj_dir)/arm_test.bin.patched 
+all: $(obj_dir)/qemu.img
+
+$(obj_dir)/qemu.img: $(build_dir)/vmm.bin $(obj_dir)/arm_test.bin.patched
+	@echo "   (MEMIMG)  $(subst $(obj_dir)/,,$@)"
+	@$(call memimg) \
+		-a 0x10000 -o $(obj_dir)/qemu.img \
+		$(build_dir)/vmm.bin@0x10000 \
+		$(obj_dir)/arm_test.bin.patched@0x100000
 
 # Generate ARM_TEST code
 $(obj_dir)/arm_test.bin.patched: $(obj_dir)/arm_test.elf.patched
@@ -109,9 +118,9 @@ $(obj_dir)/%.o: %.S $(ARM_COMMON_DEPS)
 	@$(ARM_AS) $(ARM_ASFLAGS) $(ARM_TEST_ASFLAGS) -c $< -o $@
 
 .PHONY: check
-check: $(build_dir)/vmm.elf all
+check: $(obj_dir)/qemu.img
 	@echo "   (QEMU)    $(subst $(build_dir)/,,$<)"
-	@bash emulate.sh $(build_dir)
+	@bash emulate.sh $<
 
 .PHONY: clean
 clean:
@@ -119,6 +128,8 @@ clean:
 	@rm -f $(obj_dir)/arm_test.elf*
 	@echo "   (RM)      arm_test.bin*"
 	@rm -f $(obj_dir)/arm_test.bin*
+	@echo "   (RM)      qemu.img"
+	@rm -f $(obj_dir)/qemu.img
 	@echo "   (RM)      $(obj_dir)"
 	@rm -rf $(obj_dir)
 

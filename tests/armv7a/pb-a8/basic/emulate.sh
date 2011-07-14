@@ -26,10 +26,9 @@ CUR=`dirname $0`
 CMDS=`sed -n -e 's/\(^[^#].*\)/\1/p' test.script`
 
 emulate () {
-	cd $CUR/../../../build
 	qemu-system-arm \
 		-M realview-pb-a8 \
-		-kernel vmm.elf \
+		-kernel $1 \
 		-serial stdio \
 		-parallel none \
 		-display none \
@@ -37,18 +36,18 @@ emulate () {
 }
 
 xvisor_qemu () {
-	emulate <<< "
+	emulate $1 <<< "
 $CMDS
 "
 	echo "Executing Xvisor in QEMU..."
-	(sleep $1; kill $pid; sleep 1; kill -KILL $pid)& timer=$!
+	(sleep 5; kill $pid; sleep 5; kill -KILL $pid)& timer=$!
 	if ! wait $pid; then
 		kill $timer 2>/dev/null
 		echo
-		echo "Xvisor failed to execute in $1 seconds, giving up."
+		echo "Xvisor failed to execute in $2 seconds, giving up."
 		exit -1
 	fi
 	kill $timer
 }
 
-xvisor_qemu 5
+xvisor_qemu $1
