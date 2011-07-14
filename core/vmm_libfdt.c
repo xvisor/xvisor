@@ -27,15 +27,9 @@
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_libfdt.h>
+#include <vmm_cpu_io.h>
 
 #define LIBFDT_DATA32(ptr)	(*((u32*)ptr))
-
-u32 libfdt_bswap32(u32 data)
-{
-	return (((data & 0xFF) << 24) |
-		((data & 0xFF00) << 8) |
-		((data & 0xFF0000) >> 8) | ((data & 0xFF000000) >> 24));
-}
 
 int libfdt_is_cpu_le(void)
 {
@@ -57,7 +51,7 @@ void libfdt_copy_value(char *attr, char *dst, char *src, u32 len)
 	}
 	if (libfdt_is_cpu_le() && is_string_attr) {
 		while (sizeof(u32) <= len) {
-			*((u32 *) dst) = libfdt_bswap32(*((u32 *) src));
+			*((u32 *) dst) = vmm_cpu_bswap32(*((u32 *) src));
 			src += sizeof(u32);
 			dst += sizeof(u32);
 			len -= sizeof(u32);
