@@ -1,3 +1,47 @@
-			Basic Test on Realview PB-A8 Guest
+		Basic Test on Realview PB-A8 Guest
 
-  TBD.
+  The basic test code currently sets up PIC, Timer, and UART and emulates a
+  dummy terminal which reponds to 'hi' and 'hello' commands.
+
+  Hardware features tested by Basic Test:
+  - Sensitive non-priviledged instructions (not all but most of them)
+  - Virtual IRQs
+  - Generic Interrupt Controller (GIC)
+  - PrimeCell Dual-Mode Timer (SP804)
+  - Serial Port (PL011)  
+
+  Please follow the steps below to build & run Basic Test on Realview PB-A8:
+
+  [1. Build environment]
+  # CROSS_COMPILE=arm-none-eabi-; cd <xvisor_source_directory>
+
+  [2. Configure Xvisor]
+  # make menuconfig 
+    (In this step select ARCH=arm, CPU=cortex-a8, and BOARD=pb-a8)
+
+  [3. Build Xvisor]
+  # make
+
+  [4. Build Basic Test Code]
+  # make -C tests/armv7a/pb-a8/basic
+
+  [5. Launch QEMU]
+  # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel build/tests/armv7a/pb-a8/basic/qemu.img
+
+  [6. Kick Guest for starting Basic Test]
+  XVisor# guest kick -1
+
+  [7. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [8. Say 'hi' to Basic Test Code]
+  arm-test# hi
+
+  [9. Say 'hello' to Basic Test Code]
+  arm-test# hello
+
+  [10. Enter empty line to return to Xvisor prompt]
+  arm-test# 
+
+  (Note: replace all <> brackets based on your workspace)
+
