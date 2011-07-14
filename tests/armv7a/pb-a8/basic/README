@@ -17,7 +17,7 @@
 
   [2. Configure Xvisor]
   # make menuconfig 
-    (In this step select ARCH=arm, CPU=cortex-a8, and BOARD=pb-a8)
+  (In this step select ARCH=arm, CPU=cortex-a8, and BOARD=pb-a8)
 
   [3. Build Xvisor]
   # make

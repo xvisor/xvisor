@@ -208,7 +208,7 @@ $(build_dir)/%.o: $(build_dir)/%.c
 .PHONY: clean
 clean: $(CONFIG_FILE)
 ifeq ($(build_dir),$(CURDIR)/build)
-	$(if $(V), @echo " (rm)          $(build_dir)")
+	$(if $(V), @echo " (rm)        $(build_dir)")
 	$(V)rm -rf $(build_dir)
 endif
 	$(V)$(MAKE) -C $(src_dir)/tools/dtc clean
