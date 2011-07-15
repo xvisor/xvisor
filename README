@@ -57,10 +57,15 @@ INITIATORS:
 
 DOCUMENTATION:
 
-  There are various README files in the docs/ subdirectory:
-  these typically contain hypervisor-specific installation notes for some 
-  drivers for example. See docs/INDEX for a list of what is contained in 
-  each file.
+  For Xvisor we prefer source level documentation more, so wherever possible
+  we describe stuff directly in the source code. This helps us maintain source
+  and its documentation at the same place. For source level documentation we
+  strictly follow Doxygen style. Please refer Doxygen manual for details.
+  (Doxygen manual: http://www.stack.nl/~dimitri/doxygen/manual.html)
+
+  In addition, we also have various README files in the docs/ subdirectory. 
+  Please refer docs/00-INDEX for a list of what is contained in each file or 
+  sub-directory.
 
 OUTPUT DIRECTORY:
 
