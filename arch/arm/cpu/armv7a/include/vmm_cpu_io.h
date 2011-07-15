@@ -19,6 +19,7 @@
  * @file vmm_cpu_io.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
+ * @author Jim Huang (jserv@0xlab.org)
  * @brief header file for CPU I/O or Memory read/write functions
  */
 #ifndef _VMM_CPU_IO_H__
@@ -26,16 +27,20 @@
 
 #include <vmm_types.h>
 
-static inline u16 cpu_bswap16(u16 data)
+static inline u16 vmm_cpu_bswap16(u16 data)
 {
-	return (((data & 0xFF) << 8) | ((data & 0xFF00) >> 8));
+	register u16 tmp = data;
+	__asm__ __volatile__("rev16 %0, %0"
+			     :"+l"(tmp));
+	return tmp;
 }
 
-static inline u32 cpu_bswap32(u32 data)
+static inline u32 vmm_cpu_bswap32(u32 data)
 {
-	return (((data & 0xFF) << 24) |
-		((data & 0xFF00) << 8) |
-		((data & 0xFF0000) >> 8) | ((data & 0xFF000000) >> 24));
+	register u32 tmp = data;
+	__asm__ __volatile__("rev %0, %0"
+			     :"+l"(tmp));
+	return tmp;
 }
 
 /** FIXME: */
@@ -98,13 +103,13 @@ static inline void vmm_cpu_out_le16(volatile u16 * addr, u16 data)
 /** FIXME: */
 static inline u16 vmm_cpu_in_be16(volatile u16 * addr)
 {
-	return cpu_bswap16(*addr);
+	return vmm_cpu_bswap16(*addr);
 }
 
 /** FIXME: */
 static inline void vmm_cpu_out_be16(volatile u16 * addr, u16 data)
 {
-	*addr = cpu_bswap16(data);
+	*addr = vmm_cpu_bswap16(data);
 }
 
 /** FIXME: */
@@ -122,13 +127,13 @@ static inline void vmm_cpu_out_le32(volatile u32 * addr, u32 data)
 /** FIXME: */
 static inline u32 vmm_cpu_in_be32(volatile u32 * addr)
 {
-	return cpu_bswap32(*addr);
+	return vmm_cpu_bswap32(*addr);
 }
 
 /** FIXME: */
 static inline void vmm_cpu_out_be32(volatile u32 * addr, u32 data)
 {
-	*addr = cpu_bswap32(data);
+	*addr = vmm_cpu_bswap32(data);
 }
 
 #endif

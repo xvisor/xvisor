@@ -116,12 +116,8 @@ void vmm_mterm_main(void *udata)
 	size_t cmds_len;
 	char cmds[VMM_CMD_STRING_SIZE];
 
-	/* Leave empty line */
-	vmm_printf("\n");
-
 	/* Print Banner */
-	vmm_printf("%s\n", VMM_BANNER_STRING);
-	vmm_printf("\n");
+	vmm_printf("%s", VMM_BANNER_STRING);
 
 	/* Main loop of VMM */
 	while (1) {

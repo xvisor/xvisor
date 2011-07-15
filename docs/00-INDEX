@@ -1,0 +1,11 @@
+
+Below is a brief list of all the files in ./xvisor/docs and what
+they contain. If you add a documentation file/directory under
+./xvisor/docs then please list it here in alphabetical order.
+Please try and keep the descriptions small enough to fit on one line.
+							 Thanks --Anup Patel
+
+00-INDEX
+	- This file.
+CodingStyle
+	- Expected C coding style in Xvisor.

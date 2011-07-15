@@ -28,15 +28,20 @@
 #define VMM_PROJECT_VER_MAJOR	1
 #define VMM_PROJECT_VER_MINOR	0
 
+#if defined(CONFIG_BANNER_DEFAULT)
 /** Banner string in ASCII colossal font */
-#define VMM_BANNER_STRING	"" \
-"Y88b   d88P 888     888 8888888 .d8888b.   .d88888b.  8888888b.  \r\n" \
-" Y88b d88P  888     888   888  d88P  Y88b d88P   Y88b 888   Y88b \r\n" \
-"  Y88o88P   888     888   888  Y88b.      888     888 888    888 \r\n" \
-"   Y888P    Y88b   d88P   888    Y888b.   888     888 888   d88P \r\n" \
-"   d888b     Y88b d88P    888       Y88b. 888     888 8888888P   \r\n" \
-"  d88888b     Y88o88P     888         888 888     888 888 T88b   \r\n" \
-" d88P Y88b     Y888P      888  Y88b  d88P Y88b. .d88P 888  T88b  \r\n" \
-"d88P   Y88b     Y8P     8888888  Y8888P     Y88888P   888   T88b "
+#define VMM_BANNER_STRING	"\n" \
+"Y88b   d88P 888     888 8888888 .d8888b.   .d88888b.  8888888b.  \n" \
+" Y88b d88P  888     888   888  d88P  Y88b d88P   Y88b 888   Y88b \n" \
+"  Y88o88P   888     888   888  Y88b.      888     888 888    888 \n" \
+"   Y888P    Y88b   d88P   888    Y888b.   888     888 888   d88P \n" \
+"   d888b     Y88b d88P    888       Y88b. 888     888 8888888P   \n" \
+"  d88888b     Y88o88P     888         888 888     888 888 T88b   \n" \
+" d88P Y88b     Y888P      888  Y88b  d88P Y88b. .d88P 888  T88b  \n" \
+"d88P   Y88b     Y8P     8888888  Y8888P     Y88888P   888   T88b \n" \
+"\n"
+#else
+#define VMM_BANNER_STRING	"\n"
+#endif
 
 #endif

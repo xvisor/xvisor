@@ -1,23 +1,23 @@
 		Basic Test on Realview PB-A8 Guest
 
-  The basic test code currently sets up PIC, Timer, and UART and emulates a
-  dummy terminal which reponds to 'hi' and 'hello' commands.
+The basic test code currently sets up PIC, Timer, and UART and emulates a
+dummy terminal which reponds to 'hi' and 'hello' commands.
 
-  Hardware features tested by Basic Test:
+Hardware features tested by Basic Test:
   - Sensitive non-priviledged instructions (not all but most of them)
   - Virtual IRQs
   - Generic Interrupt Controller (GIC)
   - PrimeCell Dual-Mode Timer (SP804)
   - Serial Port (PL011)  
 
-  Please follow the steps below to build & run Basic Test on Realview PB-A8:
+Please follow the steps below to build & run Basic Test on Realview PB-A8:
 
   [1. Build environment]
   # CROSS_COMPILE=arm-none-eabi-; cd <xvisor_source_directory>
 
   [2. Configure Xvisor]
   # make menuconfig 
-    (In this step select ARCH=arm, CPU=cortex-a8, and BOARD=pb-a8)
+  (In this step select ARCH=arm, CPU=cortex-a8, and BOARD=pb-a8)
 
   [3. Build Xvisor]
   # make
