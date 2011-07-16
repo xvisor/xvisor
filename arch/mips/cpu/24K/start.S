@@ -157,11 +157,6 @@ LEAF(tlb_init)
 END(tlb_init)
 
 LEAF(_handle_tlbmiss)
-	//move K0, SP
-	//SAVE_INT_CONTEXT(_int_stack)
-	//bal vmm_regs_dump
-	//move A0, SP
-
 	b _handle_tlbmiss
 	nop
 END(_handle_tlbmiss)
@@ -170,13 +165,11 @@ END(_handle_tlbmiss)
 .extern _int_stack
 .extern vmm_regs_dump
 LEAF(_handle_interrupt)
-	disable_global_interrupts
 	SAVE_INT_CONTEXT(_int_stack)
 	move A0, SP
 	bal generic_int_handler
 	nop
 	RESTORE_INT_CONTEXT(SP)
-	enable_global_interrupts
 	eret
 END(_handle_interrupt)
 
@@ -186,11 +179,6 @@ LEAF(_handle_cache_error)
 END(_handle_cache_error)
 
 LEAF(_handle_general_exception)
-	//move K0, SP
-	//SAVE_INT_CONTEXT(_int_stack)
-	//bal vmm_regs_dump
-	//move A0, SP
-
 	b _handle_general_exception
 	nop
 END(_handle_general_exception)
