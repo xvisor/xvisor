@@ -84,7 +84,7 @@
 #define GP_IDX		25
 #define S8_IDX		26
 #define RA_IDX		27
-#define CP0_EPC_IDX	28
+#define U_CP0_EPC_IDX	28
 
 #define CPU_USER_REG_COUNT	28
 #define	CPU_GPR_COUNT	32
@@ -128,6 +128,45 @@
 #define	CP0_TAGHI	$29
 #define	CP0_DATAHI	$29,1
 #define	CP0_ERRORPC	$30
+
+#define	CP0_INDEX_IDX		0
+#define	CP0_RANDOM_IDX		1
+#define	CP0_ENTRYLO0_IDX	2
+#define	CP0_ENTRYLO1_IDX	3
+#define	CP0_CONTEXT_IDX		4
+#define	CP0_PAGEMASK_IDX	5
+#define	CP0_WIRED_IDX		6
+#define	CP0_HWRENA_IDX		7
+#define	CP0_BADVADDR_IDX	8
+#define	CP0_COUNT_IDX		9
+#define	CP0_ENTRYHI_IDX		10
+#define	CP0_COMPARE_IDX		11
+#define	CP0_STATUS_IDX		12
+#define	CP0_INTCTL_IDX		13
+#define	CP0_SRSCTL_IDX		14
+#define	CP0_SRSMAP_IDX		15
+#define	CP0_CAUSE_IDX		16
+#define	CP0_EPC_IDX		17
+#define	CP0_PRID_IDX		18
+#define	CP0_EBASE_IDX		19
+#define	CP0_CONFIG_IDX		20
+#define	CP0_CONFIG1_IDX		21
+#define	CP0_CONFIG2_IDX		22
+#define	CP0_CONFIG3_IDX		23
+#define	CP0_LLADDR_IDX		24
+#define	CP0_WATCHLO_IDX		25
+#define	CP0_WATCHHI_IDX		26
+#define	CP0_DEBUG_IDX		27
+#define	CP0_DEPC_IDX		28
+#define	CP0_PERFCTL_IDX		29
+#define	CP0_PERFCNT_IDX		30
+#define	CP0_ECC_IDX		31
+#define	CP0_CACHEERR_IDX	32
+#define	CP0_TAGLO_IDX		33
+#define	CP0_DATALO_IDX		34
+#define	CP0_TAGHI_IDX		35
+#define	CP0_DATAHI_IDX		36
+#define	CP0_ERRORPC_IDX		37
 
 #define	CP0_REG_COUNT	38
 
