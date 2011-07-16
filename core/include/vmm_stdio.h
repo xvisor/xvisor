@@ -35,6 +35,9 @@ struct vmm_stdio_ctrl {
 
 typedef struct vmm_stdio_ctrl vmm_stdio_ctrl_t;
 
+/** Low-level print char function */
+int vmm_printchar(char **str, char c, bool block);
+
 /** putc for VMM */
 void vmm_putc(char ch);
 
@@ -50,8 +53,8 @@ int vmm_panic(const char *format, ...);
 /** getc for VMM */
 char vmm_getc(void);
 
-/** non-blocking verison getc for VMM */
-int vmm_getc_noblock(char *ch);
+/** Low-level scan character function */
+int vmm_scanchar(char **str, char *c, bool block);
 
 /** gets for VMM */
 char *vmm_gets(char *s, int maxwidth, char endchar);

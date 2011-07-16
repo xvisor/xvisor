@@ -85,14 +85,6 @@ bool pl01x_lowlevel_can_putc(virtual_addr_t base, u32 type)
 
 void pl01x_lowlevel_putc(virtual_addr_t base, u32 type, u8 ch)
 {
-	if(ch=='\n') {
-		/* Wait until there is space in the FIFO */
-		while (vmm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF);
-
-		/* Send the character */
-		vmm_writel('\r', (void*)(base + UART_PL01x_DR));
-	}
-
 	/* Wait until there is space in the FIFO */
 	while (vmm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF);
 
