@@ -307,30 +307,45 @@ int vmm_scanchar(char **str, char *c, bool block)
 
 char vmm_getc(void)
 {
+	bool printable = TRUE;
 	char ch = 0;
 	vmm_scanchar(NULL, &ch, TRUE);
 	if (ch == '\r') {
 		ch = '\n';
+	} else if (ch == 127) {
+		printable = FALSE;
 	}
-	vmm_putc(ch);
+	if (printable) {
+		vmm_putc(ch);
+	}
 	return ch;
 }
 
 char *vmm_gets(char *s, int maxwidth, char endchar)
 {
-	char *ret;
+	u32 count = 0;
 	char ch;
-	ret = s;
+	if (!s) {
+		return NULL;
+	}
 	ch = vmm_getc();
-	while (ch != endchar && maxwidth > 0) {
-		*ret = ch;
-		ret++;
-		maxwidth--;
-		if (maxwidth == 0)
-			break;
+	while ((ch != endchar) && (count < maxwidth)) {
+		if (ch == 127) {
+			if (count > 0) {
+				vmm_putc('\b');
+				vmm_putc(' ');
+				vmm_putc('\b');
+				s--;
+				count--;
+			}
+		} else {
+			*s = ch;
+			s++;
+			count++;
+		}
 		ch = vmm_getc();
 	}
-	*ret = '\0';
+	*s = '\0';
 	return s;
 }
 
