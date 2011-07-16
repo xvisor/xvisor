@@ -120,10 +120,10 @@ _name:						\
 	SAVE_REG(S8,SP);				\
 	SAVE_REG(RA,SP);				\
         sw K0, (SP_IDX * 4)(SP);			\
-        sw K1, (CP0_EPC_IDX * 4)(SP);
+        sw K1, (U_CP0_EPC_IDX * 4)(SP);
 
 #define RESTORE_INT_CONTEXT(treg)			\
-        lw K1, (CP0_EPC_IDX * 4)(treg);			\
+        lw K1, (U_CP0_EPC_IDX * 4)(treg);		\
         mtc0 K1, CP0_EPC;				\
 	LOAD_REG(V0,treg);				\
 	LOAD_REG(V1,treg);				\
