@@ -39,7 +39,23 @@
 
 vmm_stdio_ctrl_t stdio_ctrl;
 
-static int printchar(char **str, char c, bool block)
+bool vmm_iscontrol(char c)
+{
+	return ((0 <= c) && (c < 32)) ? TRUE : FALSE;
+}
+
+bool vmm_isprintable(char c)
+{
+	if (((31 < c) && (c < 127)) || 
+	   (c == '\r') ||
+	   (c == '\n') ||
+	   (c == '\t')) {
+		return TRUE;
+	}
+	return FALSE;
+}
+
+int vmm_printchar(char **str, char c, bool block)
 {
 	int rc = VMM_OK;
 	if (str) {
@@ -65,6 +81,23 @@ static int printchar(char **str, char c, bool block)
 	return rc;
 }
 
+void vmm_putc(char ch)
+{
+	if (ch == '\n') {
+		vmm_printchar(NULL, '\r', TRUE);
+	}
+	vmm_printchar(NULL, ch, TRUE);
+}
+
+static void printc(char **str, char ch)
+{
+	if (str) {
+		vmm_printchar(str, ch, TRUE);
+	} else {
+		vmm_putc(ch);
+	}
+}
+
 static int prints(char **out, const char *string, int width, int pad)
 {
 	int pc = 0;
@@ -84,16 +117,16 @@ static int prints(char **out, const char *string, int width, int pad)
 	}
 	if (!(pad & PAD_RIGHT)) {
 		for (; width > 0; --width) {
-			printchar(out, padchar, TRUE);
+			printc(out, padchar);
 			++pc;
 		}
 	}
 	for (; *string; ++string) {
-		printchar(out, *string, TRUE);
+		printc(out, *string);
 		++pc;
 	}
 	for (; width > 0; --width) {
-		printchar(out, padchar, TRUE);
+		printc(out, padchar);
 		++pc;
 	}
 
@@ -132,7 +165,7 @@ static int printi(char **out, int i, int b, int sg, int width, int pad,
 
 	if (neg) {
 		if (width && (pad & PAD_ZERO)) {
-			printchar(out, '-', TRUE);
+			printc(out, '-');
 			++pc;
 			--width;
 		} else {
@@ -207,18 +240,13 @@ static int print(char **out, const char *format, va_list args)
 			}
 		} else {
 out:
-			printchar(out, *format, TRUE);
+			printc(out, *format);
 			++pc;
 		}
 	}
 	if (out)
 		**out = '\0';
 	return pc;
-}
-
-void vmm_putc(char ch)
-{
-	printchar(NULL, ch, TRUE);
 }
 
 int vmm_printf(const char *format, ...)
@@ -252,36 +280,40 @@ int vmm_panic(const char *format, ...)
 	return retval;
 }
 
-static int scanchar(char **str, char *c, bool block)
+int vmm_scanchar(char **str, char *c, bool block)
 {
 	u8 ch = 0;
+	bool got_input = FALSE;
 	int rc = VMM_OK;
 	if (str) {
 		*c = **str;
 		++(*str);
 	} else {
+		got_input = FALSE;
 		if (stdio_ctrl.cdev) {
-			ch = 128;
-			while (ch > 127) {
+			while (!got_input) {
 				if (!vmm_chardev_doread(stdio_ctrl.cdev,
 						&ch, 0, sizeof(ch))) {
 					if (!block) {
 						rc = VMM_EFAIL;
 						break;
 					}
+				} else {
+					got_input = TRUE;
 				}
 			}
 		} else {
-			ch = 128;
-			while (ch > 127) {
+			while (!got_input) {
 				if ((rc = vmm_defterm_getc(&ch))) {
 					if (!block) {
 						break;
 					}
+				} else {
+					got_input = TRUE;
 				}
 			}
 		}
-		if (ch == 128) {
+		if (!got_input) {
 			ch = 0;
 		}
 		*c = ch;
@@ -291,34 +323,115 @@ static int scanchar(char **str, char *c, bool block)
 
 char vmm_getc(void)
 {
-	char retval;
-	scanchar(NULL, &retval, TRUE);
-	return retval;
-}
-
-int vmm_getc_noblock(char *ch)
-{
-	if (!ch) {
-		return VMM_EFAIL;
+	char ch = 0;
+	vmm_scanchar(NULL, &ch, TRUE);
+	if (ch == '\r') {
+		ch = '\n';
 	}
-	return scanchar(NULL, ch, FALSE);
+	if (vmm_isprintable(ch)) {
+		vmm_putc(ch);
+	}
+	return ch;
 }
 
 char *vmm_gets(char *s, int maxwidth, char endchar)
 {
-	char *retval;
-	char ch;
-	retval = s;
-	scanchar(NULL, &ch, TRUE);
-	while (ch != endchar && maxwidth > 0) {
-		*retval = ch;
-		retval++;
-		maxwidth--;
-		if (maxwidth == 0)
-			break;
-		scanchar(NULL, &ch, TRUE);
+	char ch, ch1;
+	bool add_ch, del_ch;
+	u32 ite, pos = 0, count = 0;
+	if (!s) {
+		return NULL;
 	}
-	*retval = '\0';
+	vmm_memset(s, 0, maxwidth);
+	while (count < maxwidth) {
+		add_ch = FALSE;
+		del_ch = FALSE;
+		if ((ch = vmm_getc()) == endchar) {
+			break;
+		}
+		if (vmm_isprintable(ch)) {
+			add_ch = TRUE;
+		} else if (ch == '\e') { /* Escape character */
+			vmm_scanchar(NULL, &ch, TRUE);
+			vmm_scanchar(NULL, &ch1, TRUE);
+			if (ch == '[') {
+				if (ch1 == 'A') { /* Up Key */
+					/* Ignore it. */ 
+					/* We will take care of it later. */
+				} else if (ch1 == 'B') { /* Down Key */
+					/* Ignore it. */
+					/* We will take care of it later. */
+				} else if (ch1 == 'C') { /* Right Key */
+					if (pos < count) {
+						vmm_putc('\e');
+						vmm_putc('[');
+						vmm_putc('C');
+						pos++;
+					}
+				} else if (ch1 == 'D') { /* Left Key */
+					if (pos > 0) {
+						vmm_putc('\e');
+						vmm_putc('[');
+						vmm_putc('D');
+						pos--;
+					}
+				} else if (ch1 == '3') {
+					vmm_scanchar(NULL, &ch, TRUE);
+					if (ch == '~') { /* Delete Key */
+						if (pos < count) {
+							vmm_putc('\e');
+							vmm_putc('[');
+							vmm_putc('C');
+							pos++;
+							del_ch = TRUE;
+						}
+					}
+				}
+			}
+		} else if (ch == 127){ /* Delete character */
+			if (pos > 0) {
+				del_ch = TRUE;
+			}
+		}
+		if (add_ch) {
+			for (ite = 0; ite < (count - pos); ite++) {
+				s[count - ite] = s[(count - 1) - ite];
+			}
+			for (ite = pos; ite < count; ite++) {
+				vmm_putc(s[ite + 1]);
+			}
+			for (ite = pos; ite < count; ite++) {
+				vmm_putc('\e');
+				vmm_putc('[');
+				vmm_putc('D');
+			}
+			s[pos] = ch;
+			count++;
+			pos++;
+		}
+		if (del_ch) {
+			if (pos > 0) {
+				for (ite = pos; ite < count; ite++) {
+					s[ite - 1] = s[ite];
+				}
+				pos--;
+				count--;
+			}
+			vmm_putc('\e');
+			vmm_putc('[');
+			vmm_putc('D');
+			for (ite = pos; ite < count; ite++) {
+				vmm_putc(s[ite]);
+			}
+			vmm_putc(' ');
+			for (ite = pos; ite <= count; ite++) {
+				vmm_putc('\e');
+				vmm_putc('[');
+				vmm_putc('D');
+			}
+		}
+	}
+	s[count] = '\0';
 	return s;
 }
 

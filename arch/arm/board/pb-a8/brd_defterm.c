@@ -50,9 +50,7 @@ int vmm_defterm_getc(u8 *ch)
 		return VMM_EFAIL;
 	}
 	*ch = pl01x_lowlevel_getc(pba8_defterm_base, PBA8_DEFAULT_UART_TYPE);
-	if (*ch == '\r')
-		*ch = '\n';
-	return vmm_defterm_putc(*ch);
+	return VMM_OK;
 }
 
 int vmm_defterm_init(void)

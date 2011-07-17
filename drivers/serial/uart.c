@@ -72,11 +72,6 @@ bool uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align)
 
 void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, u8 ch)
 {
-	if(ch=='\n') {
-		while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & 
-							UART_LSR_THRE));
-		vmm_out_8((u8 *)REG_UART_THR(base,reg_align), '\r');
-	}
 	while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & 
 							UART_LSR_THRE));
 	vmm_out_8((u8 *)REG_UART_THR(base,reg_align), ch);
