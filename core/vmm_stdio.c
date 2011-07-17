@@ -351,7 +351,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 		}
 		if (vmm_isprintable(ch)) {
 			add_ch = TRUE;
-		} else if (ch == 27) { /* Escape character */
+		} else if (ch == '\e') { /* Escape character */
 			vmm_scanchar(NULL, &ch, TRUE);
 			vmm_scanchar(NULL, &ch1, TRUE);
 			if (ch == '[') {
@@ -363,14 +363,14 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 					/* We will take care of it later. */
 				} else if (ch1 == 'C') { /* Right Key */
 					if (pos < count) {
-						vmm_putc(27);
+						vmm_putc('\e');
 						vmm_putc('[');
 						vmm_putc('C');
 						pos++;
 					}
 				} else if (ch1 == 'D') { /* Left Key */
 					if (pos > 0) {
-						vmm_putc(27);
+						vmm_putc('\e');
 						vmm_putc('[');
 						vmm_putc('D');
 						pos--;
@@ -379,7 +379,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 					vmm_scanchar(NULL, &ch, TRUE);
 					if (ch == '~') { /* Delete Key */
 						if (pos < count) {
-							vmm_putc(27);
+							vmm_putc('\e');
 							vmm_putc('[');
 							vmm_putc('C');
 							pos++;
@@ -401,7 +401,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 				vmm_putc(s[ite + 1]);
 			}
 			for (ite = pos; ite < count; ite++) {
-				vmm_putc(27);
+				vmm_putc('\e');
 				vmm_putc('[');
 				vmm_putc('D');
 			}
@@ -417,7 +417,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 				pos--;
 				count--;
 			}
-			vmm_putc(27);
+			vmm_putc('\e');
 			vmm_putc('[');
 			vmm_putc('D');
 			for (ite = pos; ite < count; ite++) {
@@ -425,7 +425,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 			}
 			vmm_putc(' ');
 			for (ite = pos; ite <= count; ite++) {
-				vmm_putc(27);
+				vmm_putc('\e');
 				vmm_putc('[');
 				vmm_putc('D');
 			}
