@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Himanshu Chauhan.
+ * Copyright (c) Himanshu Chauhan.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -27,38 +27,7 @@
 #include "vmm_stdio.h"
 #include "vmm_error.h"
 #include "vmm_main.h"
-#include "cpu_interrupts.h"
-#include "cpu_mmu.h"
 #include "cpu_asm_macros.h"
-
-extern char _stack_start;
-extern void vmm_hang();
-
-void vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
-{
-        if (vcpu->guest == NULL) {
-                vmm_memset(&vcpu->uregs, 0, sizeof(vmm_user_regs_t));
-                vcpu->uregs.cp0_epc = vcpu->start_pc;
-                vcpu->uregs.regs[SP_IDX] = (virtual_addr_t)&_stack_start;
-		vcpu->uregs.regs[S8_IDX] = vcpu->uregs.regs[SP_IDX];
-        }
-}
-
-void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
-			  vmm_user_regs_t *regs)
-{
-	if (tvcpu) {
-		if (tvcpu->guest == NULL) {
-			vmm_memcpy(&tvcpu->uregs, regs, sizeof(vmm_user_regs_t));
-		}
-	}
-
-	if (vcpu) {
-		if (vcpu->guest == NULL) {
-			vmm_memcpy(regs, &vcpu->uregs, sizeof(vmm_user_regs_t));
-		}
-	}
-}
 
 void vmm_regs_dump(vmm_user_regs_t *tregs)
 {
@@ -92,10 +61,6 @@ void vmm_regs_dump(vmm_user_regs_t *tregs)
 	vmm_printf("EPC: 0x%X\n", tregs->cp0_epc);
 
 	while(1);
-}
-
-void vmm_vcpu_regs_dump(vmm_vcpu_t *vcpu) 
-{
 }
 
 int vmm_cpu_early_init(void)
