@@ -27,14 +27,6 @@
 
 void arm_pl01x_putc(u32 base, u32 type, char ch)
 {
-	if(ch=='\n') {
-		/* Wait until there is space in the FIFO */
-		while (arm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF);
-
-		/* Send the character */
-		arm_writel('\r', (void*)(base + UART_PL01x_DR));
-	}
-
 	/* Wait until there is space in the FIFO */
 	while (arm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF);
 

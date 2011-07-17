@@ -59,8 +59,7 @@ int cmd_vserial_bind(const char *name)
 				vmm_printf("[%s] ", name);
 			}
 		}
-
-		if (!vmm_getc_noblock(&ch)) {
+		if (!vmm_scanchar(NULL, &ch, FALSE)) {
 			if (ch == '\n' && in_sz == 0) {
 				break;
 			}

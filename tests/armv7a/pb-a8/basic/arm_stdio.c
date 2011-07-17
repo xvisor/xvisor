@@ -32,19 +32,20 @@
 
 void arm_putc(char ch)
 {
+	if (ch == '\n') {
+		arm_pl01x_putc(PBA8_UART_BASE, PBA8_UART_TYPE, '\r');
+	}
 	arm_pl01x_putc(PBA8_UART_BASE, PBA8_UART_TYPE, ch);
 }
 
 char arm_getc(void)
 {
-	char ret = arm_pl01x_getc(PBA8_UART_BASE, PBA8_UART_TYPE);
-#if 0
-	/* Hack code to run test code directly on QEMU */
-	if (ret == '\r')
-		ret = '\n';
-	arm_putc(ret);
-#endif
-	return ret;
+	char ch = arm_pl01x_getc(PBA8_UART_BASE, PBA8_UART_TYPE);
+	if (ch == '\r') {
+		ch = '\n';
+	}
+	arm_putc(ch);
+	return ch;
 }
 
 void arm_stdio_init(void)

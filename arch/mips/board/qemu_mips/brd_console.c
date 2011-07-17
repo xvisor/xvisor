@@ -37,8 +37,6 @@ int vmm_defterm_getc(u8 *ch)
 			return VMM_EFAIL;
 		}
 		*ch = uart_lowlevel_getc(uart_base, 1);	
-		if (*ch == '\r') *ch = '\n';
-		uart_lowlevel_putc(uart_base, 1, *ch);
 	}
 	return VMM_OK;
 }

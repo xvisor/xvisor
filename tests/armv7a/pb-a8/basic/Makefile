@@ -74,7 +74,7 @@ memimg = $(top_dir)/tools/scripts/memimg.py
 all: $(obj_dir)/qemu.img
 
 $(obj_dir)/qemu.img: $(build_dir)/vmm.bin $(obj_dir)/arm_test.bin.patched
-	@echo "   (MEMIMG)  $(subst $(obj_dir)/,,$@)"
+	@echo " (MEMIMG)    $(subst $(obj_dir)/,,$@)"
 	@$(call memimg) \
 		-a 0x10000 -o $(obj_dir)/qemu.img \
 		$(build_dir)/vmm.bin@0x10000 \
@@ -83,53 +83,53 @@ $(obj_dir)/qemu.img: $(build_dir)/vmm.bin $(obj_dir)/arm_test.bin.patched
 # Generate ARM_TEST code
 $(obj_dir)/arm_test.bin.patched: $(obj_dir)/arm_test.elf.patched
 	@mkdir -p `dirname $@`
-	@echo "   (OBJCOPY) $(subst $(obj_dir)/,,$@)"
+	@echo " (OBJCOPY)   $(subst $(obj_dir)/,,$@)"
 	@$(ARM_OBJCOPY) -O binary $< $@
 
 $(obj_dir)/arm_test.elf.patched: $(obj_dir)/arm_test.elf
 	@mkdir -p `dirname $@`
 	@cp $< $@
-	@echo "   (PATCH)   $(subst $(obj_dir)/,,$@)"
+	@echo " (PATCH)     $(subst $(obj_dir)/,,$@)"
 	@$(call cmd_patch_elf)
 
 $(obj_dir)/arm_test.bin: $(obj_dir)/arm_test.elf
 	@mkdir -p `dirname $@`
-	@echo "   (OBJCOPY) $(subst $(obj_dir)/,,$@)"
+	@echo " (OBJCOPY)   $(subst $(obj_dir)/,,$@)"
 	@$(ARM_OBJCOPY) -O binary $< $@
 
 $(obj_dir)/arm_test.elf: $(ARM_TEST_OBJS) $(ARM_TEST_LINK_SCRIPT)
 	@mkdir -p `dirname $@`
-	@echo "   (LD)      $(subst $(obj_dir)/,,$@)"
+	@echo " (LD)        $(subst $(obj_dir)/,,$@)"
 	@$(ARM_CC) $(ARM_TEST_OBJS) $(ARM_LDFLAGS) $(ARM_TEST_LDFLAGS) -o $@
 
 $(obj_dir)/%.lnk: %.ld
 	@mkdir -p `dirname $@`
-	@echo "   (CPP)     $(subst $(obj_dir)/,,$@)"
+	@echo " (CPP)       $(subst $(obj_dir)/,,$@)"
 	@$(ARM_CPP) $(ARM_CPPFLAGS) $(ARM_TEST_CPPFLAGS) $< | grep -v "\#" > $@
 
 $(obj_dir)/%.o: %.c $(ARM_COMMON_DEPS)
 	@mkdir -p `dirname $@`
-	@echo "   (CC)      $(subst $(obj_dir)/,,$@)"
+	@echo " (CC)        $(subst $(obj_dir)/,,$@)"
 	@$(ARM_CC) $(ARM_CFLAGS) $(ARM_TEST_CFLAGS) -c $< -o $@
 
 $(obj_dir)/%.o: %.S $(ARM_COMMON_DEPS)
 	@mkdir -p `dirname $@`
-	@echo "   (AS)      $(subst $(obj_dir)/,,$@)"
+	@echo " (AS)        $(subst $(obj_dir)/,,$@)"
 	@$(ARM_AS) $(ARM_ASFLAGS) $(ARM_TEST_ASFLAGS) -c $< -o $@
 
 .PHONY: check
 check: $(obj_dir)/qemu.img
-	@echo "   (QEMU)    $(subst $(build_dir)/,,$<)"
+	@echo " (QEMU)      $(subst $(build_dir)/,,$<)"
 	@bash emulate.sh $<
 
 .PHONY: clean
 clean:
-	@echo "   (RM)      arm_test.elf*"
+	@echo " (RM)        arm_test.elf*"
 	@rm -f $(obj_dir)/arm_test.elf*
-	@echo "   (RM)      arm_test.bin*"
+	@echo " (RM)        arm_test.bin*"
 	@rm -f $(obj_dir)/arm_test.bin*
-	@echo "   (RM)      qemu.img"
+	@echo " (RM)        qemu.img"
 	@rm -f $(obj_dir)/qemu.img
-	@echo "   (RM)      $(obj_dir)"
+	@echo " (RM)        $(obj_dir)"
 	@rm -rf $(obj_dir)
 
