@@ -39,6 +39,22 @@
 
 vmm_stdio_ctrl_t stdio_ctrl;
 
+bool vmm_iscontrol(char c)
+{
+	return ((0 <= c) && (c < 32)) ? TRUE : FALSE;
+}
+
+bool vmm_isprintable(char c)
+{
+	if (((31 < c) && (c < 127)) || 
+	   (c == '\r') ||
+	   (c == '\n') ||
+	   (c == '\t')) {
+		return TRUE;
+	}
+	return FALSE;
+}
+
 int vmm_printchar(char **str, char c, bool block)
 {
 	int rc = VMM_OK;
@@ -307,15 +323,12 @@ int vmm_scanchar(char **str, char *c, bool block)
 
 char vmm_getc(void)
 {
-	bool printable = TRUE;
 	char ch = 0;
 	vmm_scanchar(NULL, &ch, TRUE);
 	if (ch == '\r') {
 		ch = '\n';
-	} else if (ch == 127) {
-		printable = FALSE;
 	}
-	if (printable) {
+	if (vmm_isprintable(ch)) {
 		vmm_putc(ch);
 	}
 	return ch;
@@ -323,29 +336,102 @@ char vmm_getc(void)
 
 char *vmm_gets(char *s, int maxwidth, char endchar)
 {
-	u32 count = 0;
-	char ch;
+	char ch, ch1;
+	bool add_ch, del_ch;
+	u32 ite, pos = 0, count = 0;
 	if (!s) {
 		return NULL;
 	}
-	ch = vmm_getc();
-	while ((ch != endchar) && (count < maxwidth)) {
-		if (ch == 127) {
-			if (count > 0) {
-				vmm_putc('\b');
-				vmm_putc(' ');
-				vmm_putc('\b');
-				s--;
+	vmm_memset(s, 0, maxwidth);
+	while (count < maxwidth) {
+		add_ch = FALSE;
+		del_ch = FALSE;
+		if ((ch = vmm_getc()) == endchar) {
+			break;
+		}
+		if (vmm_isprintable(ch)) {
+			add_ch = TRUE;
+		} else if (ch == 27) { /* Escape character */
+			vmm_scanchar(NULL, &ch, TRUE);
+			vmm_scanchar(NULL, &ch1, TRUE);
+			if (ch == '[') {
+				if (ch1 == 'A') { /* Up Key */
+					/* Ignore it. */ 
+					/* We will take care of it later. */
+				} else if (ch1 == 'B') { /* Down Key */
+					/* Ignore it. */
+					/* We will take care of it later. */
+				} else if (ch1 == 'C') { /* Right Key */
+					if (pos < count) {
+						vmm_putc(27);
+						vmm_putc('[');
+						vmm_putc('C');
+						pos++;
+					}
+				} else if (ch1 == 'D') { /* Left Key */
+					if (pos > 0) {
+						vmm_putc(27);
+						vmm_putc('[');
+						vmm_putc('D');
+						pos--;
+					}
+				} else if (ch1 == '3') {
+					vmm_scanchar(NULL, &ch, TRUE);
+					if (ch == '~') { /* Delete Key */
+						if (pos < count) {
+							vmm_putc(27);
+							vmm_putc('[');
+							vmm_putc('C');
+							pos++;
+							del_ch = TRUE;
+						}
+					}
+				}
+			}
+		} else if (ch == 127){ /* Delete character */
+			if (pos > 0) {
+				del_ch = TRUE;
+			}
+		}
+		if (add_ch) {
+			for (ite = 0; ite < (count - pos); ite++) {
+				s[count - ite] = s[(count - 1) - ite];
+			}
+			for (ite = pos; ite < count; ite++) {
+				vmm_putc(s[ite + 1]);
+			}
+			for (ite = pos; ite < count; ite++) {
+				vmm_putc(27);
+				vmm_putc('[');
+				vmm_putc('D');
+			}
+			s[pos] = ch;
+			count++;
+			pos++;
+		}
+		if (del_ch) {
+			if (pos > 0) {
+				for (ite = pos; ite < count; ite++) {
+					s[ite - 1] = s[ite];
+				}
+				pos--;
 				count--;
 			}
-		} else {
-			*s = ch;
-			s++;
-			count++;
+			vmm_putc(27);
+			vmm_putc('[');
+			vmm_putc('D');
+			for (ite = pos; ite < count; ite++) {
+				vmm_putc(s[ite]);
+			}
+			vmm_putc(' ');
+			for (ite = pos; ite <= count; ite++) {
+				vmm_putc(27);
+				vmm_putc('[');
+				vmm_putc('D');
+			}
 		}
-		ch = vmm_getc();
 	}
-	*s = '\0';
+	s[count] = '\0';
 	return s;
 }
 

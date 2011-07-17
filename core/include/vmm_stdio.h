@@ -35,37 +35,43 @@ struct vmm_stdio_ctrl {
 
 typedef struct vmm_stdio_ctrl vmm_stdio_ctrl_t;
 
+/** Check if a character is a control character */
+bool vmm_iscontrol(char c);
+
+/** Check if a character is printable */
+bool vmm_isprintable(char c);
+
 /** Low-level print char function */
 int vmm_printchar(char **str, char c, bool block);
 
-/** putc for VMM */
+/** Put character to standerd IO */
 void vmm_putc(char ch);
 
-/** printf for VMM */
+/** Print formatted string to standerd IO */
 int vmm_printf(const char *format, ...);
 
-/** sprintf for VMM */
+/** Print formatted string to another string */
 int vmm_sprintf(char *out, const char *format, ...);
 
-/** panic function for VMM */
+/** Panic & Print formatted message */
 int vmm_panic(const char *format, ...);
-
-/** getc for VMM */
-char vmm_getc(void);
 
 /** Low-level scan character function */
 int vmm_scanchar(char **str, char *c, bool block);
 
-/** gets for VMM */
+/** Get character from standerd IO */
+char vmm_getc(void);
+
+/** Get string from standerd IO */
 char *vmm_gets(char *s, int maxwidth, char endchar);
 
-/** Get character device used by stdio for input/output */
+/** Get character device used for standerd IO */
 vmm_chardev_t *vmm_stdio_device(void);
 
-/** Change character device used by stdio for input/output */
+/** Change character device used for standerd IO */
 int vmm_stdio_change_device(vmm_chardev_t * cdev);
 
-/** Initialize stdio library */
+/** Initialize standerd IO library */
 int vmm_stdio_init(void);
 
 #endif
