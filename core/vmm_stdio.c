@@ -353,6 +353,8 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 		if ((ch = vmm_getc()) == endchar) {
 			break;
 		}
+		/* Note: we have to process all the required 
+		 * ANSI escape seqences for special keyboard keys */
 		if (vmm_isprintable(ch)) {
 			add_ch = TRUE;
 		} else if (ch == '\e') { /* Escape character */
