@@ -337,13 +337,17 @@ char vmm_getc(void)
 char *vmm_gets(char *s, int maxwidth, char endchar)
 {
 	char ch, ch1;
-	bool add_ch, del_ch;
+	bool add_ch, del_ch, to_left, to_right, to_start, to_end;
 	u32 ite, pos = 0, count = 0;
 	if (!s) {
 		return NULL;
 	}
 	vmm_memset(s, 0, maxwidth);
 	while (count < maxwidth) {
+		to_left = FALSE;
+		to_right = FALSE;
+		to_start = FALSE;
+		to_end = FALSE;
 		add_ch = FALSE;
 		del_ch = FALSE;
 		if ((ch = vmm_getc()) == endchar) {
@@ -362,36 +366,65 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 					/* Ignore it. */
 					/* We will take care of it later. */
 				} else if (ch1 == 'C') { /* Right Key */
-					if (pos < count) {
-						vmm_putc('\e');
-						vmm_putc('[');
-						vmm_putc('C');
-						pos++;
-					}
+					to_right = TRUE;
 				} else if (ch1 == 'D') { /* Left Key */
-					if (pos > 0) {
-						vmm_putc('\e');
-						vmm_putc('[');
-						vmm_putc('D');
-						pos--;
-					}
+					to_left = TRUE;
+				} else if (ch1 == 'H') { /* Home Key */
+					to_start = TRUE;
+				} else if (ch1 == 'F') { /* End Key */
+					to_end = TRUE;
 				} else if (ch1 == '3') {
 					vmm_scanchar(NULL, &ch, TRUE);
 					if (ch == '~') { /* Delete Key */
 						if (pos < count) {
-							vmm_putc('\e');
-							vmm_putc('[');
-							vmm_putc('C');
-							pos++;
+							to_right = TRUE;
 							del_ch = TRUE;
 						}
 					}
+				}
+			} else if (ch == 'O') {
+				if (ch1 == 'H') { /* Home Key */
+					to_start = TRUE;
+				} else if (ch1 == 'F') { /* End Key */
+					to_end = TRUE;
 				}
 			}
 		} else if (ch == 127){ /* Delete character */
 			if (pos > 0) {
 				del_ch = TRUE;
 			}
+		}
+		if (to_left) {
+			if (pos > 0) {
+				vmm_putc('\e');
+				vmm_putc('[');
+				vmm_putc('D');
+				pos--;
+			}
+		}
+		if (to_right) {
+			if (pos < count) {
+				vmm_putc('\e');
+				vmm_putc('[');
+				vmm_putc('C');
+				pos++;
+			}
+		}
+		if (to_start) {
+			for (ite = 0; ite < pos; ite++) {
+				vmm_putc('\e');
+				vmm_putc('[');
+				vmm_putc('D');
+			}
+			pos = 0;
+		}
+		if (to_end) {
+			for (ite = pos; ite < count; ite++) {
+				vmm_putc('\e');
+				vmm_putc('[');
+				vmm_putc('C');
+			}
+			pos = count;
 		}
 		if (add_ch) {
 			for (ite = 0; ite < (count - pos); ite++) {
