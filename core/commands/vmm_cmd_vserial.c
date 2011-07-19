@@ -40,8 +40,8 @@ void cmd_vserial_usage(void)
 
 int cmd_vserial_bind(const char *name)
 {
-	char ch;
-	u32 in_sz;
+	u32 ite, epos = 0;
+	char ch, estr[3] = {'\e', 'x', 'q'}; /* estr is escape string. */
 	vmm_vserial_t *vser = vmm_vserial_find(name);
 
 	if (!vser) {
@@ -51,7 +51,7 @@ int cmd_vserial_bind(const char *name)
 
 	vmm_printf("[%s] ", name);
 
-	in_sz = 0;
+	epos = 0;
 	while(1) {
 		while (vmm_vserial_receive(vser, (u8 *)&ch, 1)) {
 			vmm_putc(ch);
@@ -60,15 +60,20 @@ int cmd_vserial_bind(const char *name)
 			}
 		}
 		if (!vmm_scanchar(NULL, &ch, FALSE)) {
-			if (ch == '\n' && in_sz == 0) {
+			if (epos < sizeof(estr)) {
+				if (estr[epos] == ch) {
+					epos++;
+				} else {
+					for (ite = 0; ite < epos; ite++) {
+						while (!vmm_vserial_send(vser, (u8 *)&estr[ite], 1)) ;
+					}
+					epos = 0;
+					while (!vmm_vserial_send(vser, (u8 *)&ch, 1)) ;
+				}
+			} 
+			if (epos == sizeof(estr)) {
+				epos = 0;
 				break;
-			}
-			while (!vmm_vserial_send(vser, (u8 *)&ch, 1)) ;
-			if (ch != '\n') {
-				in_sz++;
-			} else {
-				in_sz = 0;
-				vmm_printf("[%s] ", name);
 			}
 		}
 	}
