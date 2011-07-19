@@ -26,6 +26,7 @@
 
 #include "vmm_types.h"
 #include "cpu_regs.h"
+#include "cpu_mmu.h"
 
 struct vmm_user_regs {
         u32 regs[CPU_USER_REG_COUNT];
@@ -33,31 +34,6 @@ struct vmm_user_regs {
 };
 
 typedef struct vmm_user_regs vmm_user_regs_t;
-
-typedef union mips32_entryhi  {
-	u32 _entryhi;
-	struct {
-		u32 asid:20;
-		u32 global:1;
-		u32 vpn2:11;
-	}_s_entryhi;
-} mips32_entryhi_t;
-
-typedef union mips32_entrylo {
-	u32 _entrylo;
-	struct {
-		u32 valid:1;
-		u32 dirty:1;
-		u32 pfn:30;
-	}_s_entrylo;
-} mips32_entrylo_t;
-
-typedef struct mips32_tlb_entry {
-	u32 page_mask;
-	mips32_entrylo_t entrylo0;
-	mips32_entrylo_t entrylo1;
-	mips32_entryhi_t entryhi;
-} mips32_tlb_entry_t;
 
 struct vmm_super_regs {
 	/**
