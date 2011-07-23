@@ -244,7 +244,6 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 					  far, wnr, page, xn);
 }
 
-/* FIXME: */
 bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
 			vmm_user_regs_t *regs,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
@@ -461,13 +460,225 @@ bad_reg:
 	return FALSE;
 }
 
-/* FIXME: */
 bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu, 
 			 vmm_user_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data)
 {
+	switch (CRn) {
+	case 0:
+		/* ID codes.  */
+		if (arm_feature(vcpu, ARM_FEATURE_V7) && 
+		    (opc1 == 2) && (CRm == 0) && (opc2 == 0)) {
+			vcpu->sregs.cp15.c0_cssel = data & 0xf;
+			break;
+		}
+		goto bad_reg;
+	case 1: /* System configuration.  */
+		switch (opc2) {
+		case 0:
+			vcpu->sregs.cp15.c1_sctlr = data;
+			/* ??? Lots of these bits are not implemented.  */
+			/* This may enable/disable the MMU, so do a TLB flush. */
+			/* FIXME: tlb_flush(vcpu, 1); */
+			break;
+		case 1: /* Auxiliary control register.  */
+			/* Not implemented.  */
+			break;
+		case 2:
+			if (vcpu->sregs.cp15.c1_coproc != data) {
+				vcpu->sregs.cp15.c1_coproc = data;
+				/* ??? Is this safe when called from within a TB? */
+				/* FIXME: tb_flush(vcpu); */
+			}
+			break;
+		default:
+			goto bad_reg;
+		}
+		break;
+	case 2: /* MMU Page table control / MPU cache control.  */
+		switch (opc2) {
+		case 0:
+			vcpu->sregs.cp15.c2_base0 = data;
+			break;
+		case 1:
+			vcpu->sregs.cp15.c2_base1 = data;
+			break;
+		case 2:
+			data &= 7;
+			vcpu->sregs.cp15.c2_control = data;
+			vcpu->sregs.cp15.c2_mask = ~(((u32)0xffffffffu) >> data);
+			vcpu->sregs.cp15.c2_base_mask = ~((u32)0x3fffu >> data);
+			break;
+		default:
+			goto bad_reg;
+		}
+		break;
+	case 3: /* MMU Domain access control / MPU write buffer control.  */
+		vcpu->sregs.cp15.c3 = data;
+		/* Flush TLB as domain not tracked in TLB */
+		/* FIXME: tlb_flush(vcpu, 1); */
+		break;
+	case 4: /* Reserved.  */
+		goto bad_reg;
+	case 5: /* MMU Fault status / MPU access permission.  */
+		switch (opc2) {
+		case 0:
+			vcpu->sregs.cp15.c5_dfsr = data;
+			break;
+		case 1:
+			vcpu->sregs.cp15.c5_ifsr = data;
+			break;
+		default:
+			goto bad_reg;
+		}
+		break;
+	case 6: /* MMU Fault address / MPU base/size.  */
+		switch (opc2) {
+		case 0:
+			vcpu->sregs.cp15.c6_dfar = data;
+			break;
+		case 1: /* ??? This is WFAR on armv6 */
+		case 2:
+			vcpu->sregs.cp15.c6_ifar = data;
+			break;
+		default:
+			goto bad_reg;
+		}
+		break;
+	case 7: /* Cache control.  */
+		vcpu->sregs.cp15.c15_i_max = 0x000;
+		vcpu->sregs.cp15.c15_i_min = 0xff0;
+		if (opc1 != 0) {
+			goto bad_reg;
+		}
+		/* No cache, so nothing to do except VA->PA translations. */
+		if (arm_feature(vcpu, ARM_FEATURE_V6K)) {
+			switch (CRm) {
+			case 4:
+				if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+					vcpu->sregs.cp15.c7_par = data & 0xfffff6ff;
+				} else {
+					vcpu->sregs.cp15.c7_par = data & 0xfffff1ff;
+				}
+				break;
+			case 8:
+				/* FIXME: */
+#if 0
+				uint32_t phys_addr;
+				target_ulong page_size;
+				int prot;
+				int ret, is_user = opc2 & 2;
+				int access_type = opc2 & 1;
+				if (opc2 & 4) {
+					/* Other states are only available with TrustZone */
+					goto bad_reg;
+				}
+				ret = get_phys_addr(vcpu, data, access_type, is_user,
+						&phys_addr, &prot, &page_size);
+				if (ret == 0) {
+					/* We do not set any attribute bits in the PAR */
+					if (page_size == (1 << 24) && 
+					    arm_feature(vcpu, ARM_FEATURE_V7)) {
+						vcpu->sregs.cp15.c7_par = (phys_addr & 0xff000000) | 1 << 1;
+					} else {
+						vcpu->sregs.cp15.c7_par = phys_addr & 0xfffff000;
+					}
+				} else {
+					vcpu->sregs.cp15.c7_par = ((ret & (10 << 1)) >> 5) |
+							   ((ret & (12 << 1)) >> 6) |
+							   ((ret & 0xf) << 1) | 1;
+				}
+#endif
+				break;
+			}
+		}
+		break;
+	case 8: /* MMU TLB control.  */
+		switch (opc2) {
+		case 0: /* Invalidate all.  */
+			/* FIXME: tlb_flush(vcpu, 0); */
+			break;
+		case 1: /* Invalidate single TLB entry.  */
+			/* FIXME: tlb_flush_page(vcpu, data & TARGET_PAGE_MASK); */
+			break;
+		case 2: /* Invalidate on ASID.  */
+			/* FIXME: tlb_flush(vcpu, data == 0); */
+			break;
+		case 3: /* Invalidate single entry on MVA.  */
+			/* ??? This is like case 1, but ignores ASID.  */
+			/* FIXME: tlb_flush(vcpu, 1); */
+			break;
+		default:
+			goto bad_reg;
+		}
+		break;
+	case 9:
+		switch (CRm) {
+		case 0: /* Cache lockdown.  */
+			switch (opc1) {
+			case 0: /* L1 cache.  */
+				switch (opc2) {
+				case 0:
+					vcpu->sregs.cp15.c9_data = data;
+					break;
+				case 1:
+					vcpu->sregs.cp15.c9_insn = data;
+					break;
+				default:
+					goto bad_reg;
+				}
+				break;
+			case 1: /* L2 cache.  */
+				/* Ignore writes to L2 lockdown/auxiliary registers.  */
+				break;
+			default:
+				goto bad_reg;
+			}
+			break;
+		case 1: /* TCM memory region registers.  */
+			/* Not implemented.  */
+			goto bad_reg;
+		default:
+			goto bad_reg;
+		}
+		break;
+	case 10: /* MMU TLB lockdown.  */
+		/* ??? TLB lockdown not implemented.  */
+		break;
+	case 12: /* Reserved.  */
+		goto bad_reg;
+	case 13: /* Process ID.  */
+		switch (opc2) {
+		case 0:
+			/* Unlike real hardware the qemu TLB uses virtual addresses,
+			 * not modified virtual addresses, so this causes a TLB flush.
+			 */
+			if (vcpu->sregs.cp15.c13_fcse != data) {
+				/* FIXME: tlb_flush(vcpu, 1); */
+			}
+			vcpu->sregs.cp15.c13_fcse = data;
+			break;
+		case 1:
+			/* This changes the ASID, so do a TLB flush.  */
+			if (vcpu->sregs.cp15.c13_context != data && 
+			    !arm_feature(vcpu, ARM_FEATURE_MPU)) {
+				/* FIXME: tlb_flush(vcpu, 0); */
+			}
+			vcpu->sregs.cp15.c13_context = data;
+			break;
+		default:
+			goto bad_reg;
+		}
+		break;
+	case 14: /* Reserved.  */
+		goto bad_reg;
+	case 15: /* Implementation specific.  */
+		break;
+	}
 	return TRUE;
+bad_reg:
+	return FALSE;
 }
 
 int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 
@@ -685,7 +896,6 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 
 	vmm_memset(&vcpu->sregs.cp15, 0, sizeof(vcpu->sregs.cp15));
 
-	vcpu->sregs.features = 0x0;
 	vcpu->sregs.cp15.l1 = cpu_mmu_l1tbl_alloc();
 	vcpu->sregs.cp15.dacr = 0x0;
 	vcpu->sregs.cp15.dacr |= (TTBL_DOM_CLIENT << 
@@ -727,17 +937,6 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 	vcpu->sregs.cp15.c0_cpuid = cpuid;
 	switch (cpuid) {
 	case ARM_CPUID_CORTEXA8:
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V4T;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V5;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V6;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V6K;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V7;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_AUXCR;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_THUMB2;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_VFP;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_VFP3;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_NEON;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_THUMB2EE;
 		vmm_memcpy(vcpu->sregs.cp15.c0_c1, cortexa8_cp15_c0_c1, 
 							8 * sizeof(u32));
 		vmm_memcpy(vcpu->sregs.cp15.c0_c2, cortexa8_cp15_c0_c2, 
@@ -750,19 +949,6 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 		vcpu->sregs.cp15.c1_sctlr = 0x00c50078;
 		break;
 	case ARM_CPUID_CORTEXA9:
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V4T;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V5;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V6;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V6K;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V7;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_AUXCR;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_THUMB2;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_VFP;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_VFP3;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_VFP_FP16;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_NEON;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_THUMB2EE;
-		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V7MP;
 		vmm_memcpy(vcpu->sregs.cp15.c0_c1, cortexa9_cp15_c0_c1, 
 							8 * sizeof(u32));
 		vmm_memcpy(vcpu->sregs.cp15.c0_c2, cortexa9_cp15_c0_c2, 

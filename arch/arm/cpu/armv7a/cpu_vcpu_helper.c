@@ -648,11 +648,6 @@ void cpu_vcpu_regmode_write(vmm_vcpu_t * vcpu,
 	}
 }
 
-void cpu_vcpu_set_feature(vmm_vcpu_t * vcpu, int feature)
-{
-    vcpu->sregs.features |= 1u << feature;
-}
-
 void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 {
 	u32 cpuid = ARM_CPUID_CORTEXA8;
@@ -676,29 +671,35 @@ void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	vmm_memset(&vcpu->sregs, 0, sizeof(vmm_super_regs_t));
 	vcpu->sregs.cpsr = CPSR_ASYNC_ABORT_DISABLED | CPSR_IRQ_DISABLED |
 				CPSR_FIQ_DISABLED | CPSR_MODE_SUPERVISOR;
+	vcpu->sregs.features = 0;
 	switch (cpuid) {
 	case ARM_CPUID_CORTEXA8:
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6K);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V7);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_AUXCR);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP3);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_NEON);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+		arm_set_feature(vcpu, ARM_FEATURE_V4T);
+		arm_set_feature(vcpu, ARM_FEATURE_V5);
+		arm_set_feature(vcpu, ARM_FEATURE_V6);
+		arm_set_feature(vcpu, ARM_FEATURE_V6K);
+		arm_set_feature(vcpu, ARM_FEATURE_V7);
+		arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
+		arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
+		arm_set_feature(vcpu, ARM_FEATURE_VFP);
+		arm_set_feature(vcpu, ARM_FEATURE_VFP3);
+		arm_set_feature(vcpu, ARM_FEATURE_NEON);
+		arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
 		break;
 	case ARM_CPUID_CORTEXA9:
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6K);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V7);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_AUXCR);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP3);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_NEON);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+		arm_set_feature(vcpu, ARM_FEATURE_V4T);
+		arm_set_feature(vcpu, ARM_FEATURE_V5);
+		arm_set_feature(vcpu, ARM_FEATURE_V6);
+		arm_set_feature(vcpu, ARM_FEATURE_V6K);
+		arm_set_feature(vcpu, ARM_FEATURE_V7);
+		arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
+		arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
+		arm_set_feature(vcpu, ARM_FEATURE_VFP);
+		arm_set_feature(vcpu, ARM_FEATURE_VFP3);
+		arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
+		arm_set_feature(vcpu, ARM_FEATURE_NEON);
+		arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+		arm_set_feature(vcpu, ARM_FEATURE_V7MP);
 		break;
 	default:
 		break;

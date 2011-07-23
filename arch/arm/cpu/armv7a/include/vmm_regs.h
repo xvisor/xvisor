@@ -116,6 +116,8 @@ struct vmm_super_regs {
 	u32 sp_fiq;
 	u32 lr_fiq;
 	u32 spsr_fiq;
+	/* Internal CPU feature flags. */
+	u32 features;
 	/* System control coprocessor (cp15) */
 	struct {
 		/* Shadow L1 */
@@ -144,16 +146,12 @@ struct vmm_super_regs {
 		u32 c0_c2[8]; /* Instruction set registers. */
 		u32 c1_sctlr; /* System control register. */
 		u32 c1_coproc; /* Coprocessor access register.  */
-		u32 c1_xscaleauxcr; /* XScale auxiliary control register. */
 		u32 c2_base0; /* MMU translation table base 0. */
 		u32 c2_base1; /* MMU translation table base 1. */
 		u32 c2_control; /* MMU translation table base control. */
 		u32 c2_mask; /* MMU translation table base selection mask. */
 		u32 c2_base_mask; /* MMU translation table base 0 mask. */
-		u32 c2_data; /* MPU data cachable bits. */
-		u32 c2_insn; /* MPU instruction cachable bits. */
-		u32 c3; /* MMU domain access control register
-				MPU write buffer control. */
+		u32 c3; /* MMU domain access control register */
 		u32 c5_ifsr; /* Fault status registers. */
 		u32 c5_dfsr; /* Fault status registers. */
 		u32 c6_ifar; /* Fault address registers. */
@@ -166,19 +164,15 @@ struct vmm_super_regs {
 		u32 c13_tls1; /* User RW Thread register. */
 		u32 c13_tls2; /* User RO Thread register. */
 		u32 c13_tls3; /* Privileged Thread register. */
-		u32 c15_cpar; /* XScale Coprocessor Access Register */
-		u32 c15_ticonfig; /* TI925T configuration byte. */
 		u32 c15_i_max; /* Maximum D-cache dirty line index. */
 		u32 c15_i_min; /* Minimum D-cache dirty line index. */
-		u32 c15_threadid; /* TI debugger thread-ID. */
 	} cp15;
-	/* Internal CPU feature flags. */
-	u32 features;
 } __attribute((packed));
 
 typedef struct vmm_super_regs vmm_super_regs_t;
 
 #define arm_cpuid(vcpu) ((vcpu)->sregs.cp15.c0_cpuid)
+#define arm_set_feature(vcpu, feat) ((vcpu)->sregs.features |= (0x1 << (feat)))
 #define arm_feature(vcpu, feat) ((vcpu)->sregs.features & (0x1 << (feat)))
 
 #endif
