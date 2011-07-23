@@ -246,14 +246,224 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 
 /* FIXME: */
 bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
+			vmm_user_regs_t *regs,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			u32 *data)
 {
+	*data = 0x0;
+	switch (CRn) {
+	case 0: /* ID codes.  */
+		switch (opc1) {
+		case 0:
+			switch (CRm) {
+			case 0:
+				switch (opc2) {
+				case 0: /* Device ID.  */
+					*data = vcpu->sregs.cp15.c0_cpuid;
+				case 1: /* Cache Type.  */
+					*data = vcpu->sregs.cp15.c0_cachetype;
+				case 2: /* TCM status.  */
+					*data = 0;
+				case 3: /* TLB type register.  */
+					*data = 0; /* No lockable TLB entries.  */
+				case 5: /* MPIDR */
+					/* The MPIDR was standardised in v7; prior to
+					 * this it was implemented only in the 11MPCore.
+					 * For all other pre-v7 cores it does not exist.
+					 */
+					if (arm_feature(vcpu, ARM_FEATURE_V7) ||
+						arm_cpuid(vcpu) == ARM_CPUID_ARM11MPCORE) {
+						int mpidr = vmm_scheduler_guest_vcpu_index(vcpu->guest, vcpu);
+						/* We don't support setting cluster ID ([8..11])
+						 * so these bits always RAZ.
+						 */
+						if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
+							mpidr |= (1 << 31);
+							/* Cores which are uniprocessor (non-coherent)
+							 * but still implement the MP extensions set
+							 * bit 30. (For instance, A9UP.) However we do
+							 * not currently model any of those cores.
+							 */
+						}
+						*data = mpidr;
+					}
+					/* otherwise fall through to the unimplemented-reg case */
+				default:
+					goto bad_reg;
+				}
+			case 1:
+				if (!arm_feature(vcpu, ARM_FEATURE_V6))
+					goto bad_reg;
+				*data =  vcpu->sregs.cp15.c0_c1[opc2];
+			case 2:
+				if (!arm_feature(vcpu, ARM_FEATURE_V6))
+					goto bad_reg;
+				*data = vcpu->sregs.cp15.c0_c2[opc2];
+			case 3:
+			case 4: 
+			case 5: 
+			case 6: 
+			case 7:
+		                *data = 0;
+			default:
+				goto bad_reg;
+			}
+		case 1:
+			/* These registers aren't documented on arm11 cores.  However
+			 * Linux looks at them anyway.  */
+			if (!arm_feature(vcpu, ARM_FEATURE_V6))
+				goto bad_reg;
+			if (CRm != 0)
+				goto bad_reg;
+			if (!arm_feature(vcpu, ARM_FEATURE_V7))
+				*data = 0;
+			switch (opc2) {
+			case 0:
+				*data = vcpu->sregs.cp15.c0_ccsid[vcpu->sregs.cp15.c0_cssel];
+			case 1:
+				*data = vcpu->sregs.cp15.c0_clid;
+			case 7:
+				*data = 0;
+			}
+			goto bad_reg;
+		case 2:
+			if (opc2 != 0 || CRm != 0)
+				goto bad_reg;
+			*data = vcpu->sregs.cp15.c0_cssel;
+		default:
+			goto bad_reg;
+		}
+	case 1: /* System configuration.  */
+		switch (opc2) {
+		case 0: /* Control register.  */
+			*data = vcpu->sregs.cp15.c1_sctlr;
+		case 1: /* Auxiliary control register.  */
+			if (!arm_feature(vcpu, ARM_FEATURE_AUXCR))
+				goto bad_reg;
+			switch (arm_cpuid(vcpu)) {
+			case ARM_CPUID_ARM1026:
+				*data = 1;
+			case ARM_CPUID_ARM1136:
+			case ARM_CPUID_ARM1136_R2:
+				*data = 7;
+			case ARM_CPUID_ARM11MPCORE:
+				*data = 1;
+			case ARM_CPUID_CORTEXA8:
+				*data = 2;
+			case ARM_CPUID_CORTEXA9:
+				*data = 0;
+			default:
+				goto bad_reg;
+			}
+		case 2: /* Coprocessor access register.  */
+			*data = vcpu->sregs.cp15.c1_coproc;
+		default:
+			goto bad_reg;
+		}
+	case 2: /* MMU Page table control / MPU cache control.  */
+		switch (opc2) {
+		case 0:
+			*data = vcpu->sregs.cp15.c2_base0;
+		case 1:
+			*data = vcpu->sregs.cp15.c2_base1;
+		case 2:
+			*data = vcpu->sregs.cp15.c2_control;
+		default:
+			goto bad_reg;
+		}
+	case 3: /* MMU Domain access control / MPU write buffer control.  */
+		*data = vcpu->sregs.cp15.c3;
+	case 4: /* Reserved.  */
+		goto bad_reg;
+	case 5: /* MMU Fault status / MPU access permission.  */
+		switch (opc2) {
+		case 0:
+			*data = vcpu->sregs.cp15.c5_dfsr;
+		case 1:
+			*data = vcpu->sregs.cp15.c5_ifsr;
+		default:
+			goto bad_reg;
+		}
+	case 6: /* MMU Fault address.  */
+		switch (opc2) {
+		case 0:
+			*data = vcpu->sregs.cp15.c6_dfar;
+		case 1:
+			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+				/* Watchpoint Fault Adrress.  */
+				*data = 0; /* Not implemented.  */
+			} else {
+				/* Instruction Fault Adrress.  */
+				/* Arm9 doesn't have an IFAR, but implementing it anyway
+				 * shouldn't do any harm.  */
+				*data = vcpu->sregs.cp15.c6_ifar;
+			}
+		case 2:
+			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+				/* Instruction Fault Adrress.  */
+				*data = vcpu->sregs.cp15.c6_ifar;
+			} else {
+				goto bad_reg;
+			}
+		default:
+			goto bad_reg;
+		}
+	case 7: /* Cache control.  */
+		if (CRm == 4 && opc1 == 0 && opc2 == 0) {
+			*data = vcpu->sregs.cp15.c7_par;
+		}
+		/* FIXME: Should only clear Z flag if destination is r15.  */
+		regs->cpsr &= ~CPSR_COND_ZERO_MASK;
+		*data = 0;
+	case 8: /* MMU TLB control.  */
+		goto bad_reg;
+	case 9: /* Cache lockdown.  */
+		switch (opc1) {
+		case 0: /* L1 cache.  */
+			switch (opc2) {
+			case 0:
+				*data = vcpu->sregs.cp15.c9_data;
+			case 1:
+				*data = vcpu->sregs.cp15.c9_insn;
+			default:
+				goto bad_reg;
+			}
+		case 1: /* L2 cache */
+			if (CRm != 0)
+				goto bad_reg;
+			/* L2 Lockdown and Auxiliary control.  */
+			*data = 0;
+		default:
+			goto bad_reg;
+		}
+	case 10: /* MMU TLB lockdown.  */
+		/* ??? TLB lockdown not implemented.  */
+		*data = 0;
+	case 11: /* TCM DMA control.  */
+	case 12: /* Reserved.  */
+		goto bad_reg;
+	case 13: /* Process ID.  */
+		switch (opc2) {
+		case 0:
+			*data = vcpu->sregs.cp15.c13_fcse;
+		case 1:
+			*data = vcpu->sregs.cp15.c13_context;
+		default:
+			goto bad_reg;
+		}
+	case 14: /* Reserved.  */
+		goto bad_reg;
+	case 15: /* Implementation specific.  */
+		*data = 0;
+	}
 	return TRUE;
+bad_reg:
+	return FALSE;
 }
 
 /* FIXME: */
 bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu, 
+			 vmm_user_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data)
 {
@@ -475,6 +685,7 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 
 	vmm_memset(&vcpu->sregs.cp15, 0, sizeof(vcpu->sregs.cp15));
 
+	vcpu->sregs.features = 0x0;
 	vcpu->sregs.cp15.l1 = cpu_mmu_l1tbl_alloc();
 	vcpu->sregs.cp15.dacr = 0x0;
 	vcpu->sregs.cp15.dacr |= (TTBL_DOM_CLIENT << 
@@ -515,7 +726,18 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 
 	vcpu->sregs.cp15.c0_cpuid = cpuid;
 	switch (cpuid) {
-	case CPUID_CORTEXA8:
+	case ARM_CPUID_CORTEXA8:
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V4T;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V5;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V6;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V6K;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V7;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_AUXCR;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_THUMB2;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_VFP;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_VFP3;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_NEON;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_THUMB2EE;
 		vmm_memcpy(vcpu->sregs.cp15.c0_c1, cortexa8_cp15_c0_c1, 
 							8 * sizeof(u32));
 		vmm_memcpy(vcpu->sregs.cp15.c0_c2, cortexa8_cp15_c0_c2, 
@@ -527,7 +749,20 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 		vcpu->sregs.cp15.c0_ccsid[2] = 0xf0000000; /* No L2 icache. */
 		vcpu->sregs.cp15.c1_sctlr = 0x00c50078;
 		break;
-	case CPUID_CORTEXA9:
+	case ARM_CPUID_CORTEXA9:
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V4T;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V5;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V6;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V6K;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V7;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_AUXCR;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_THUMB2;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_VFP;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_VFP3;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_VFP_FP16;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_NEON;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_THUMB2EE;
+		vcpu->sregs.features |= 0x1 << ARM_FEATURE_V7MP;
 		vmm_memcpy(vcpu->sregs.cp15.c0_c1, cortexa9_cp15_c0_c1, 
 							8 * sizeof(u32));
 		vmm_memcpy(vcpu->sregs.cp15.c0_c2, cortexa9_cp15_c0_c2, 

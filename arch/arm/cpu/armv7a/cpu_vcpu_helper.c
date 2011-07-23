@@ -655,7 +655,7 @@ void cpu_vcpu_set_feature(vmm_vcpu_t * vcpu, int feature)
 
 void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 {
-	u32 cpuid = CPUID_CORTEXA8;
+	u32 cpuid = ARM_CPUID_CORTEXA8;
 	/* Initialize User Mode Registers */
 	/* For both Orphan & Normal VCPUs */
 	vmm_memset(&vcpu->uregs, 0, sizeof(vmm_user_regs_t));
@@ -677,7 +677,7 @@ void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	vcpu->sregs.cpsr = CPSR_ASYNC_ABORT_DISABLED | CPSR_IRQ_DISABLED |
 				CPSR_FIQ_DISABLED | CPSR_MODE_SUPERVISOR;
 	switch (cpuid) {
-	case CPUID_CORTEXA8:
+	case ARM_CPUID_CORTEXA8:
 		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6);
 		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6K);
 		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V7);
@@ -688,7 +688,7 @@ void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_NEON);
 		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
 		break;
-	case CPUID_CORTEXA9:
+	case ARM_CPUID_CORTEXA9:
 		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6);
 		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6K);
 		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V7);
@@ -699,18 +699,6 @@ void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
 		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_NEON);
 		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
-		break;
-	case CPUID_ANY: /* For userspace emulation.  */
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6K);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V7);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP3);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_NEON);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_DIV);
 		break;
 	default:
 		break;

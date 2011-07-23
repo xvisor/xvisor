@@ -2794,7 +2794,7 @@ int arm_inst_stcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		return VMM_OK;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		if (!cp->ldcstc_accept(vcpu, D, CRd, uopt, imm8)) {
+		if (!cp->ldcstc_accept(vcpu, regs, D, CRd, uopt, imm8)) {
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_OK;
 		} else {
@@ -2802,9 +2802,9 @@ int arm_inst_stcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			offset_addr = (add) ? (data + imm32) : (data - imm32);
 			address = (index) ? offset_addr : data;
 			i = 0;
-			while (!cp->ldcstc_done(vcpu, i, D, 
+			while (!cp->ldcstc_done(vcpu, regs, i, D, 
 							CRd, uopt, imm8)) {
-				data = cp->ldcstc_read(vcpu, i, D, 
+				data = cp->ldcstc_read(vcpu, regs, i, D, 
 								CRd, uopt, imm8);
 				if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs,
 							address, &data, 4))) {
@@ -2861,7 +2861,7 @@ int arm_inst_ldcx_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		return VMM_OK;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		if (!cp->ldcstc_accept(vcpu, D, CRd, uopt, imm8)) {
+		if (!cp->ldcstc_accept(vcpu, regs, D, CRd, uopt, imm8)) {
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_OK;
 		} else {
@@ -2869,14 +2869,14 @@ int arm_inst_ldcx_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			offset_addr = (add) ? (data + imm32) : (data - imm32);
 			address = (index) ? offset_addr : data;
 			i = 0;
-			while (!cp->ldcstc_done(vcpu, i, D, 
+			while (!cp->ldcstc_done(vcpu, regs, i, D, 
 							CRd, uopt, imm8)) {
 				data = 0x0;
 				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
 							address, &data, 4))) {
 					return rc;
 				}
-				cp->ldcstc_write(vcpu, i, D, 
+				cp->ldcstc_write(vcpu, regs, i, D, 
 							CRd, uopt, imm8, data);
 				address += 4;
 			}
@@ -2926,7 +2926,7 @@ int arm_inst_ldcx_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		return VMM_OK;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		if (!cp->ldcstc_accept(vcpu, D, CRd, uopt, imm8)) {
+		if (!cp->ldcstc_accept(vcpu, regs, D, CRd, uopt, imm8)) {
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_OK;
 		} else {
@@ -2934,14 +2934,14 @@ int arm_inst_ldcx_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 					      (arm_align(regs->pc, 4) - imm32);
 			address = (index) ? offset_addr : arm_align(regs->pc, 4);
 			i = 0;
-			while (!cp->ldcstc_done(vcpu, i, D, 
+			while (!cp->ldcstc_done(vcpu, regs, i, D, 
 							CRd, uopt, imm8)) {
 				data = 0x0;
 				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
 							address, &data, 4))) {
 					return rc;
 				}
-				cp->ldcstc_write(vcpu, i, D, 
+				cp->ldcstc_write(vcpu, regs, i, D, 
 							CRd, uopt, imm8, data);
 				address += 4;
 			}
@@ -2985,7 +2985,7 @@ int arm_inst_mcrrx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	if (arm_condition_passed(cond, regs)) {
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt);
 		data2 = cpu_vcpu_reg_read(vcpu, regs, Rt2);
-		if (!cp->write2(vcpu, opc1, CRm, data, data2)) {
+		if (!cp->write2(vcpu, regs, opc1, CRm, data, data2)) {
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_OK;
 		}
@@ -3028,7 +3028,7 @@ int arm_inst_mrrcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	if (arm_condition_passed(cond, regs)) {
 		data = 0x0;
 		data2 = 0x0;
-		if (!cp->read2(vcpu, opc1, CRm, &data, &data2)) {
+		if (!cp->read2(vcpu, regs, opc1, CRm, &data, &data2)) {
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_OK;
 		}
@@ -3064,7 +3064,7 @@ int arm_inst_cdpx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		return VMM_OK;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		if (!cp->data_process(vcpu, opc1, opc2, CRd, CRn, CRm)) {
+		if (!cp->data_process(vcpu, regs, opc1, opc2, CRd, CRn, CRm)) {
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_OK;
 		}
@@ -3100,7 +3100,7 @@ int arm_inst_mcrx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	}
 	if (arm_condition_passed(cond, regs)) {
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt);
-		if (!cp->write(vcpu, opc1, opc2, CRn, CRm, data)) {
+		if (!cp->write(vcpu, regs, opc1, opc2, CRn, CRm, data)) {
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_OK;
 		}
@@ -3136,7 +3136,7 @@ int arm_inst_mrcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	}
 	if (arm_condition_passed(cond, regs)) {
 		data = 0x0;
-		if (!cp->read(vcpu, opc1, opc2, CRn, CRm, &data)) {
+		if (!cp->read(vcpu, regs, opc1, opc2, CRn, CRm, &data)) {
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_OK;
 		}
