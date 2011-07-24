@@ -85,6 +85,7 @@
 #define S8_IDX		26
 #define RA_IDX		27
 #define U_CP0_EPC_IDX	28
+#define U_CP0_STATUS_IDX 29
 
 #define CPU_USER_REG_COUNT	28
 #define	CPU_GPR_COUNT	32
@@ -172,5 +173,7 @@
 
 #define	S_EntryHiVPN2 	13 /* VPN/2 (R/W) */
 #define	ST0_CU0		0x10000000
+
+#define CP0_STATUS_UM_SHIFT	4
 
 #endif /* _MIPS_REGISTERS_H */

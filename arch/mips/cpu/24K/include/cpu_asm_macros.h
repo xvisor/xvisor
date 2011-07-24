@@ -90,7 +90,7 @@ _name:						\
 #define SAVE_INT_CONTEXT(_int_sp)			\
 	move K0, SP;					\
 	la SP, _int_sp;					\
-	addiu SP, SP, -((CPU_USER_REG_COUNT + 1)* 4);   \
+	addiu SP, SP, -((CPU_USER_REG_COUNT + 2)* 4);   \
         mfc0 K1, CP0_EPC;				\
 	SAVE_REG(V0,SP);				\
 	SAVE_REG(V1,SP);				\
@@ -101,9 +101,11 @@ _name:						\
 	SAVE_REG(T0,SP);				\
 	SAVE_REG(T1,SP);				\
 	SAVE_REG(T2,SP);				\
+        sw K1, (U_CP0_EPC_IDX * 4)(SP);			\
 	SAVE_REG(T3,SP);				\
 	SAVE_REG(T4,SP);				\
 	SAVE_REG(T5,SP);				\
+	mfc0 K1, CP0_STATUS;				\
 	SAVE_REG(T6,SP);				\
 	SAVE_REG(T7,SP);				\
 	SAVE_REG(S0,SP);				\
@@ -120,11 +122,12 @@ _name:						\
 	SAVE_REG(S8,SP);				\
 	SAVE_REG(RA,SP);				\
         sw K0, (SP_IDX * 4)(SP);			\
-        sw K1, (U_CP0_EPC_IDX * 4)(SP);
+	sw K1, (U_CP0_STATUS_IDX * 4)(SP)
 
 #define RESTORE_INT_CONTEXT(treg)			\
         lw K1, (U_CP0_EPC_IDX * 4)(treg);		\
         mtc0 K1, CP0_EPC;				\
+	ehb;						\
 	LOAD_REG(V0,treg);				\
 	LOAD_REG(V1,treg);				\
 	LOAD_REG(A0,treg);				\
@@ -136,6 +139,9 @@ _name:						\
 	LOAD_REG(T2,treg);				\
 	LOAD_REG(T3,treg);				\
 	LOAD_REG(T4,treg);				\
+	lw K1, (U_CP0_STATUS_IDX * 4)(treg);		\
+	mtc0 K1, CP0_STATUS;				\
+	ehb;						\
 	LOAD_REG(T5,treg);				\
 	LOAD_REG(T6,treg);				\
 	LOAD_REG(T7,treg);				\
