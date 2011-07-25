@@ -31,6 +31,14 @@
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
 
+void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
+{
+	vmm_printf("\n");
+	cpu_vcpu_dump_user_reg(vcpu, regs);
+	vmm_scheduler_next(regs);
+	vmm_scheduler_vcpu_halt(vcpu);
+}
+
 u32 cpu_vcpu_cpsr_retrive(vmm_vcpu_t * vcpu,
 			  vmm_user_regs_t * regs)
 {

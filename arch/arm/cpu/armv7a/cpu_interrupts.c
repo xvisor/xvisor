@@ -162,7 +162,6 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 		vmm_printf("%s: vcpu_num = %d, ifar = 0x%x, ifsr = 0x%x\n", 
 				__func__, vcpu->num, ifar, ifsr);
-		cpu_vcpu_dump_user_reg(vcpu, uregs);
 	}
 
 	vmm_vcpu_irq_process(uregs);
@@ -238,7 +237,6 @@ void do_data_abort(vmm_user_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 		vmm_printf("%s: vcpu_num = %d, dfar = 0x%x, dfsr = 0x%x\n", 
 				__func__, vcpu->num, dfar, dfsr);
-		cpu_vcpu_dump_user_reg(vcpu, uregs);
 	}
 
 	vmm_vcpu_irq_process(uregs);

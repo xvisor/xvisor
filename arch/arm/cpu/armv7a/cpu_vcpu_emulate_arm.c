@@ -33,6 +33,7 @@
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_emulate_arm.h>
 
+#define arm_unpredictable(regs, vcpu)		cpu_vcpu_halt(vcpu, regs)
 #define arm_zero_extend(imm, bits)		((u32)(imm))
 #define arm_align(addr, nbytes)			((addr) - ((addr) % (nbytes)))
 
@@ -42,12 +43,6 @@ static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
 		imm = imm | (~((1 << len) - 1));
 	}
 	return imm & ((1 << bits) - 1);
-}
-
-void arm_unpredictable(vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	vmm_scheduler_next(regs);
-	vmm_scheduler_vcpu_halt(vcpu);
 }
 
 bool arm_condition_passed(u32 cond, vmm_user_regs_t * regs)

@@ -43,19 +43,13 @@ enum cpu_vcpu_cp15_fault_types {
 	CP15_PERM_FAULT=3,
 };
 
-void cpu_vcpu_cp15_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
-{
-	vmm_scheduler_next(regs);
-	vmm_scheduler_vcpu_halt(vcpu);
-}
-
 int cpu_vcpu_cp15_assert_fault(vmm_vcpu_t * vcpu, 
 				vmm_user_regs_t * regs, 
 				u32 type, u32 far, u32 wnr, u32 page, u32 xn)
 {
 	u32 fs = 0x0, fsr = 0x0;
 	if (!(vcpu->sregs.cp15.c1_sctlr & SCTLR_M_MASK)) {
-		cpu_vcpu_cp15_halt(vcpu, regs);
+		cpu_vcpu_halt(vcpu, regs);
 		return VMM_EFAIL;
 	}
 	if (xn) {
@@ -145,7 +139,7 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 		/* MMU disabled for vcpu */
 		reg = vmm_guest_aspace_getregion(vcpu->guest, far);
 		if (!reg) {
-			cpu_vcpu_cp15_halt(vcpu, regs);
+			cpu_vcpu_halt(vcpu, regs);
 			return VMM_EFAIL;
 		}
 		p->pa = reg->hphys_addr + (far - reg->gphys_addr);
@@ -204,7 +198,7 @@ int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu,
 	cpu_page_t pg;
 	/* Try to retrive the faulting page */
 	if ((rc = cpu_mmu_get_page(vcpu->sregs.cp15.l1, far, &pg))) {
-		cpu_vcpu_cp15_halt(vcpu, regs);
+		cpu_vcpu_halt(vcpu, regs);
 		return rc;
 	}
 	if (((vcpu->sregs.cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) &&
@@ -213,7 +207,7 @@ int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu,
 		rc = cpu_vcpu_cp15_assert_fault(vcpu, regs, CP15_PERM_FAULT, 
 						far, wnr, page, xn);
 	} else {
-		cpu_vcpu_cp15_halt(vcpu, regs);
+		cpu_vcpu_halt(vcpu, regs);
 		rc = VMM_EFAIL;
 	}
 	return rc;
@@ -227,7 +221,7 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 	cpu_page_t pg;
 	/* Try to retrive the faulting page */
 	if ((rc = cpu_mmu_get_page(vcpu->sregs.cp15.l1, far, &pg))) {
-		cpu_vcpu_cp15_halt(vcpu, regs);
+		cpu_vcpu_halt(vcpu, regs);
 		return rc;
 	}
 	/* Check if vcpu was trying read/write to virtual space */
@@ -751,7 +745,7 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 		}
 	}
 	if (rc) {
-		cpu_vcpu_cp15_halt(vcpu, regs);
+		cpu_vcpu_halt(vcpu, regs);
 	}
 	return rc;
 }
@@ -824,7 +818,7 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 		}
 	}
 	if (rc) {
-		cpu_vcpu_cp15_halt(vcpu, regs);
+		cpu_vcpu_halt(vcpu, regs);
 	}
 	return rc;
 }
