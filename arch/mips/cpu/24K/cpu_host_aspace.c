@@ -25,6 +25,7 @@
 #include <vmm_string.h>
 #include <vmm_error.h>
 #include <cpu_mmu.h>
+#include <cpu_asm_macros.h>
 
 int vmm_cpu_aspace_init(void)
 {
@@ -59,14 +60,14 @@ int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz,
 
 	if (tlb_info) {
 		/* Create TLB Hi Entry */
-		tlb_entry.entryhi._s_entryhi.asid = 0;
+		tlb_entry.entryhi._s_entryhi.asid = (0x01UL << 7);
 		tlb_entry.entryhi._s_entryhi.reserved = 0;
 		tlb_entry.entryhi._s_entryhi.vpn2 = (va >> VPN2_SHIFT);
 		tlb_entry.entryhi._s_entryhi.vpn2x = 0;
 		tlb_entry.page_mask = PAGE_MASK;
 
 		/* TLB Low entry. Mapping two physical addresses */
-		tlb_entry.entrylo0._s_entrylo.global = 1; /* not global */
+		tlb_entry.entrylo0._s_entrylo.global = 0; /* not global */
 		tlb_entry.entrylo0._s_entrylo.valid = 1; /* valid */
 		tlb_entry.entrylo0._s_entrylo.dirty = 1; /* writeable */
 		tlb_entry.entrylo0._s_entrylo.cacheable = 0; /* Dev map, no cache */
@@ -75,7 +76,7 @@ int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz,
 		/* We'll map to consecutive physical addresses */
 		/* Needed? */
 		pa += PAGE_SIZE;
-		tlb_entry.entrylo1._s_entrylo.global = 1; /* not global */
+		tlb_entry.entrylo1._s_entrylo.global = 0; /* not global */
 		tlb_entry.entrylo1._s_entrylo.valid = 1; /* valid */
 		tlb_entry.entrylo1._s_entrylo.dirty = 1; /* writeable */
 		tlb_entry.entrylo1._s_entrylo.cacheable = 0; /* Dev map, no cache */
@@ -85,6 +86,7 @@ int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz,
 		tlb_info->vaddr = va;
 		tlb_info->paddr = pa;
 		tlb_info->free = 0;
+
 		return VMM_OK;
 	}
 
