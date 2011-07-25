@@ -38,6 +38,13 @@ void vmm_hyperthread_regs_switch(vmm_hyperthread_t *tthread,
 	if (thread) {
 		vmm_memcpy((void *)regs, (void *)&thread->tregs, sizeof(vmm_user_regs_t));
 	}
+
+	/*
+	 * Hyperthreads should always be in kernel mode. As per design, switching
+	 * routines are always called in interrupt context. So CP0_Status says we are
+	 * in kernel mode. Reading and storing should do the trick.
+	 */
+	regs->cp0_status = read_c0_status();
 }
 
 s32 vmm_hyperthread_regs_init(vmm_hyperthread_t *tinfo, void *udata)
