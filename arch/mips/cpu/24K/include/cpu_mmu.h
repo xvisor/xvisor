@@ -25,21 +25,32 @@
 
 #include <vmm_types.h>
 
+#define MAX_HOST_TLB_ENTRIES 6
+
+#define PAGE_SHIFT	12
+#define PAGE_SIZE	(0x01UL << PAGE_SHIFT)
+#define PAGE_MASK	~(PAGE_SIZE - 1)
+#define PFN_SHIFT	6
+#define VPN2_SHIFT	13
+
 typedef union mips32_entryhi  {
 	u32 _entryhi;
 	struct {
-		u32 asid:20;
-		u32 global:1;
-		u32 vpn2:11;
+		u32 vpn2:19;
+		u32 vpn2x:2;
+		u32 reserved:3; /* Must be written as zero */
+		u32 asid:8;
 	}_s_entryhi;
 } mips32_entryhi_t;
 
 typedef union mips32_entrylo {
 	u32 _entrylo;
 	struct {
-		u32 valid:1;
+		u32 pfn:26;
+		u32 cacheable:3;
 		u32 dirty:1;
-		u32 pfn:30;
+		u32 valid:1;
+		u32 global:1;
 	}_s_entrylo;
 } mips32_entrylo_t;
 
@@ -49,5 +60,14 @@ typedef struct mips32_tlb_entry {
 	mips32_entrylo_t entrylo1;
 	mips32_entryhi_t entryhi;
 } mips32_tlb_entry_t;
+
+struct host_tlb_entries_info {
+	virtual_addr_t vaddr;
+	physical_addr_t paddr;
+	s32 free;
+	s32 tlb_index;
+} host_tlb_entries[MAX_HOST_TLB_ENTRIES];
+
+void fill_tlb_entry(struct mips32_tlb_entry *tlb_entry, int index);
 
 #endif /* __CPU_MMU_H_ */
