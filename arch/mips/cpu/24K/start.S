@@ -184,33 +184,25 @@ LEAF(_handle_general_exception)
 END(_handle_general_exception)
 
 /**
- * A0 -> Contains virtual address.
- * A1 -> Contains physical address.
- * A2 -> TLB index: If -1 select automatically.
+ * A0 -> Contains pointer to struct mips32_tlb_entry.
+ * A1 -> Contains Index..
  */
-.globl create_tlb_entry
-LEAF(create_tlb_entry)
-	mtc0 A2, CP0_INDEX /* load the tlb index to be programmed. */
-	srl A0, A0, 12 /* get the VPN */
-	sll A0, A0, 12
-	nop
-	mtc0 A0, CP0_ENTRYHI /* load VPN in entry hi */
-	addi T0, A1, 0x1000 /* next PFN for entry lo1 in T0 */
-	srl A1, A1, 12 /* get the PFN */
-	sll A1, A1, 6 /* get the PFN */
-	srl T0, T0, 12
-	sll T0, T0, 6
-	ori A1, A1, 0x7 /* mark the page writable, global and valid */
-	mtc0 A1, CP0_ENTRYLO0
-	ori T0, T0, 0x7 /* mark the next physical page writable, global and valid */
-	nop
-	nop
-	mtc0 T0, CP0_ENTRYLO1
+.globl fill_tlb_entry
+LEAF(fill_tlb_entry)
+	mtc0 A1, CP0_INDEX /* load the tlb index to be programmed. */
+	lw T0, 0(A0) /* load page mask */
+	lw T1, 4(A0) /* entry lo 0 */
+	lw T2, 8(A0) /* entry lo 1 */
+	lw T3, 12(A0) /* entry hi */
+	mtc0 T3, CP0_ENTRYHI /* load VPN in entry hi */
+	mtc0 T1, CP0_ENTRYLO0
+	mtc0 T2, CP0_ENTRYLO1
 	nop
 	nop
 	nop
+	ehb
 	tlbwi
 	ehb
 	j RA
 	nop
-END(create_tlb_entry)
+END(fill_tlb_entry)
