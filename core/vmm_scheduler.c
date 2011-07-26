@@ -437,10 +437,105 @@ int vmm_scheduler_guest_dumpreg(vmm_guest_t * guest)
 	return rc;
 }
 
-vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * node)
+vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 {
-	/* FIXME: TBD */
-	return NULL;
+	const char *attrval;
+	struct dlist *l1;
+	vmm_devtree_node_t *vsnode;
+	vmm_devtree_node_t *vnode;
+	vmm_guest_t * guest = NULL;
+	vmm_vcpu_t * vcpu = NULL;
+
+	/* Sanity checks */
+	if (!gnode) {
+		return NULL;
+	}
+	if (sched.guest_count > sched.max_guest_count) {
+		return NULL;
+	}
+	attrval = vmm_devtree_attrval(gnode,
+				      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
+	if (!attrval) {
+		return NULL;
+	}
+	if (vmm_strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_GUEST) != 0) {
+		return NULL;
+	}
+
+	/* Initialize guest instance */
+	guest = &sched.guest_array[sched.guest_count];
+	list_add_tail(&sched.guest_list, &guest->head);
+	guest->node = gnode;
+	INIT_LIST_HEAD(&guest->vcpu_list);
+	vmm_guest_aspace_initguest(guest);
+
+	/* Increment guest count */
+	sched.guest_count++;
+
+	vsnode = vmm_devtree_getchildnode(gnode,
+					  VMM_DEVTREE_VCPUS_NODE_NAME);
+	if (!vsnode) {
+		return guest;
+	}
+	list_for_each(l1, &vsnode->child_list) {
+		vnode = list_entry(l1, vmm_devtree_node_t, head);
+
+		/* Sanity checks */
+		if (sched.max_vcpu_count <= sched.vcpu_count) {
+			break;
+		}
+		attrval = vmm_devtree_attrval(vnode,
+					      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
+		if (!attrval) {
+			continue;
+		}
+		if (vmm_strcmp(attrval,
+			       VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU) != 0) {
+			continue;
+		}
+
+		/* Initialize vcpu instance */
+		vcpu = &sched.vcpu_array[sched.vcpu_count];
+		list_add_tail(&guest->vcpu_list, &vcpu->head);
+		vmm_strcpy(vcpu->name, gnode->name);
+		vmm_strcat(vcpu->name,
+			   VMM_DEVTREE_PATH_SEPRATOR_STRING);
+		vmm_strcat(vcpu->name, vnode->name);
+		vcpu->node = vnode;
+		vcpu->state = VMM_VCPU_STATE_RESET;
+		vcpu->preempt_count = 0;
+		attrval = vmm_devtree_attrval(vnode,
+					      VMM_DEVTREE_TICK_COUNT_ATTR_NAME);
+		if (attrval) {
+			vcpu->tick_count =
+			    *((virtual_addr_t *) attrval);
+		}
+		attrval = vmm_devtree_attrval(vnode,
+					      VMM_DEVTREE_START_PC_ATTR_NAME);
+		if (attrval) {
+			vcpu->start_pc = *((virtual_addr_t *) attrval);
+		}
+		attrval = vmm_devtree_attrval(vnode,
+					      VMM_DEVTREE_BOOTPG_ADDR_ATTR_NAME);
+		if (attrval) {
+			vcpu->bootpg_addr =
+			    *((physical_addr_t *) attrval);
+		}
+		attrval = vmm_devtree_attrval(vnode,
+					      VMM_DEVTREE_BOOTPG_SIZE_ATTR_NAME);
+		if (attrval) {
+			vcpu->bootpg_size =
+			    *((physical_addr_t *) attrval);
+		}
+		vcpu->guest = guest;
+		vmm_vcpu_regs_init(vcpu);
+		vmm_vcpu_irq_initvcpu(vcpu);
+
+		/* Increment vcpu count */
+		sched.vcpu_count++;
+	}
+
+	return guest;
 }
 
 int vmm_scheduler_guest_destroy(vmm_guest_t * guest)
@@ -453,13 +548,7 @@ int vmm_scheduler_init(void)
 {
 	u32 vnum, gnum;
 	const char *attrval;
-	struct dlist *l, *l1;
-	vmm_devtree_node_t *gsnode;
-	vmm_devtree_node_t *gnode;
-	vmm_devtree_node_t *vsnode;
 	vmm_devtree_node_t *vnode;
-	vmm_guest_t *guest;
-	vmm_vcpu_t *vcpu;
 
 	/* Reset the scheduler control structure */
 	vmm_memset(&sched, 0, sizeof(sched));
@@ -527,149 +616,6 @@ int vmm_scheduler_init(void)
 		vmm_strcpy(sched.vcpu_array[vnum].name, "");
 		sched.vcpu_array[vnum].node = NULL;
 		sched.vcpu_array[vnum].state = VMM_VCPU_STATE_UNKNOWN;
-	}
-
-	/* Retrive the guest information node */
-	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
-	if (!gsnode) {
-		return VMM_EFAIL;
-	}
-
-	/* Count vcpu and guest instances from device tree */
-	sched.guest_count = 0;
-	sched.vcpu_count = 0;
-	list_for_each(l, &gsnode->child_list) {
-		gnode = list_entry(l, vmm_devtree_node_t, head);
-
-		/* Sanity checks */
-		attrval = vmm_devtree_attrval(gnode,
-					      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
-		if (!attrval) {
-			continue;
-		}
-		if (vmm_strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_GUEST) != 0) {
-			continue;
-		}
-
-		/* Increment guest count */
-		sched.guest_count++;
-
-		vsnode = vmm_devtree_getchildnode(gnode,
-						  VMM_DEVTREE_VCPUS_NODE_NAME);
-		if (!vsnode) {
-			continue;
-		}
-		list_for_each(l1, &vsnode->child_list) {
-			vnode = list_entry(l1, vmm_devtree_node_t, head);
-
-			/* Sanity checks */
-			attrval = vmm_devtree_attrval(vnode,
-						      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
-			if (!attrval) {
-				continue;
-			}
-			if (vmm_strcmp(attrval,
-				       VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU) != 0) {
-				continue;
-			}
-
-			/* Increment vcpu count */
-			sched.vcpu_count++;
-		}
-	}
-	if (sched.vcpu_count > sched.max_vcpu_count) {
-		return VMM_EFAIL;
-	}
-	if (sched.guest_count > sched.max_guest_count) {
-		return VMM_EFAIL;
-	}
-
-	/* Populate vcpu and guest instances from device tree */
-	gnum = 0;
-	vnum = 0;
-	list_for_each(l, &gsnode->child_list) {
-		gnode = list_entry(l, vmm_devtree_node_t, head);
-
-		/* Sanity checks */
-		attrval = vmm_devtree_attrval(gnode,
-					      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
-		if (!attrval) {
-			continue;
-		}
-		if (vmm_strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_GUEST) != 0) {
-			continue;
-		}
-
-		/* Initialize guest instance */
-		guest = &sched.guest_array[gnum];
-		list_add_tail(&sched.guest_list, &guest->head);
-		guest->node = gnode;
-		INIT_LIST_HEAD(&guest->vcpu_list);
-		vmm_guest_aspace_initguest(guest);
-
-		/* Increment guest number */
-		gnum++;
-
-		vsnode = vmm_devtree_getchildnode(gnode,
-						  VMM_DEVTREE_VCPUS_NODE_NAME);
-		if (!vsnode) {
-			continue;
-		}
-		list_for_each(l1, &vsnode->child_list) {
-			vnode = list_entry(l1, vmm_devtree_node_t, head);
-
-			/* Sanity checks */
-			attrval = vmm_devtree_attrval(vnode,
-						      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
-			if (!attrval) {
-				continue;
-			}
-			if (vmm_strcmp(attrval,
-				       VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU) != 0) {
-				continue;
-			}
-
-			/* Initialize vcpu instance */
-			vcpu = &sched.vcpu_array[vnum];
-			list_add_tail(&guest->vcpu_list, &vcpu->head);
-			vmm_strcpy(vcpu->name, gnode->name);
-			vmm_strcat(vcpu->name,
-				   VMM_DEVTREE_PATH_SEPRATOR_STRING);
-			vmm_strcat(vcpu->name, vnode->name);
-			vcpu->node = vnode;
-			vcpu->state = VMM_VCPU_STATE_RESET;
-			vcpu->preempt_count = 0;
-			attrval = vmm_devtree_attrval(vnode,
-						      VMM_DEVTREE_TICK_COUNT_ATTR_NAME);
-			if (attrval) {
-				vcpu->tick_count =
-				    *((virtual_addr_t *) attrval);
-			}
-			attrval = vmm_devtree_attrval(vnode,
-						      VMM_DEVTREE_START_PC_ATTR_NAME);
-			if (attrval) {
-				vcpu->start_pc = *((virtual_addr_t *) attrval);
-			}
-			attrval = vmm_devtree_attrval(vnode,
-						      VMM_DEVTREE_BOOTPG_ADDR_ATTR_NAME);
-			if (attrval) {
-				vcpu->bootpg_addr =
-				    *((physical_addr_t *) attrval);
-			}
-			attrval = vmm_devtree_attrval(vnode,
-						      VMM_DEVTREE_BOOTPG_SIZE_ATTR_NAME);
-			if (attrval) {
-				vcpu->bootpg_size =
-				    *((physical_addr_t *) attrval);
-			}
-			vcpu->guest = guest;
-			vmm_vcpu_regs_init(vcpu);
-			vmm_vcpu_irq_initvcpu(vcpu);
-
-			/* Increment vcpu number */
-			vnum++;
-		}
 	}
 
 	/* Find out tick delay in microseconds */

@@ -90,7 +90,7 @@ enum vmm_vcpu_states {
 struct vmm_vcpu {
 	struct dlist head;
 	u32 num;
-	char name[32];
+	char name[64];
 	vmm_devtree_node_t *node;
 	vmm_guest_t *guest;
 	u32 state;

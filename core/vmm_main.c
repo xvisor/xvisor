@@ -50,6 +50,9 @@ void vmm_hang(void)
 void vmm_init(void)
 {
 	int ret;
+	struct dlist *l;
+	vmm_devtree_node_t *gnode, *gsnode;
+	vmm_guest_t *guest = NULL;
 
 	/* Initialize Heap */
 	ret = vmm_heap_init();
@@ -203,10 +206,21 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
-	/* Probe device emulators */
-	ret = vmm_devemu_probe();
-	if (ret) {
+	/* Populate guest instances */
+	vmm_printf("Populating Guest Instances\n");
+	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
+				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	if (!gsnode) {
+		vmm_printf("Error %d\n", ret);
 		vmm_hang();
+	}
+	list_for_each(l, &gsnode->child_list) {
+		gnode = list_entry(l, vmm_devtree_node_t, head);
+		vmm_printf("Creating %s\n", gnode->name);
+		guest = vmm_scheduler_guest_create(gnode);
+		if (!guest) {
+			vmm_printf("Error: Failed to create guest\n");
+		}
 	}
 }
 

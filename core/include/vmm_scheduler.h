@@ -135,7 +135,7 @@ int vmm_scheduler_guest_halt(vmm_guest_t * guest);
 int vmm_scheduler_guest_dumpreg(vmm_guest_t * guest);
 
 /** Create a guest based on device tree configuration */
-vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * node);
+vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode);
 
 /** Destroy a guest */
 int vmm_scheduler_guest_destroy(vmm_guest_t * guest);
