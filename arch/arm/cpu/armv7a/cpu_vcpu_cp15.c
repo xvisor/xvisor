@@ -32,6 +32,7 @@
 #include <vmm_vcpu_irq.h>
 #include <cpu_mmu.h>
 #include <cpu_inline_asm.h>
+#include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate_arm.h>
 #include <cpu_vcpu_emulate_thumb.h>
 #include <cpu_vcpu_cp15.h>

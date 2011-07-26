@@ -27,6 +27,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_guest.h>
+#include <vmm_scheduler.h>
 #include <cpu_defines.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
