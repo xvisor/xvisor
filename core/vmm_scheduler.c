@@ -159,7 +159,7 @@ vmm_vcpu_t * vmm_scheduler_vcpu(s32 vcpu_no)
 int vmm_scheduler_vcpu_kick(vmm_vcpu_t * vcpu)
 {
 	irq_flags_t flags;
-	if (vcpu) {
+	if (vcpu && vcpu->guest) {
 		if (vcpu->state == VMM_VCPU_STATE_RESET) {
 			/* Acquire lock */
 			flags = vmm_spin_lock_irqsave(&sched.lock);
@@ -175,7 +175,7 @@ int vmm_scheduler_vcpu_kick(vmm_vcpu_t * vcpu)
 int vmm_scheduler_vcpu_pause(vmm_vcpu_t * vcpu)
 {
 	irq_flags_t flags;
-	if (vcpu) {
+	if (vcpu && vcpu->guest) {
 		if (vcpu->state == VMM_VCPU_STATE_READY) {
 			/* Acquire lock */
 			flags = vmm_spin_lock_irqsave(&sched.lock);
@@ -191,7 +191,7 @@ int vmm_scheduler_vcpu_pause(vmm_vcpu_t * vcpu)
 int vmm_scheduler_vcpu_resume(vmm_vcpu_t * vcpu)
 {
 	irq_flags_t flags;
-	if (vcpu) {
+	if (vcpu && vcpu->guest) {
 		if (vcpu->state == VMM_VCPU_STATE_PAUSED) {
 			/* Acquire lock */
 			flags = vmm_spin_lock_irqsave(&sched.lock);
@@ -207,7 +207,7 @@ int vmm_scheduler_vcpu_resume(vmm_vcpu_t * vcpu)
 int vmm_scheduler_vcpu_halt(vmm_vcpu_t * vcpu)
 {
 	irq_flags_t flags;
-	if (vcpu) {
+	if (vcpu && vcpu->guest) {
 		if (vcpu->state != VMM_VCPU_STATE_RUNNING &&
 		    vcpu->state != VMM_VCPU_STATE_HALTED) {
 			/* Acquire lock */
