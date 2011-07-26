@@ -39,8 +39,6 @@ void cmd_vcpu_usage(void)
 	vmm_printf("   vcpu resume  <vcpu_num>\n");
 	vmm_printf("   vcpu halt    <vcpu_num>\n");
 	vmm_printf("   vcpu dumpreg <vcpu_num>\n");
-	vmm_printf("Note:\n");
-	vmm_printf("   if vcpu_num is -1 then it means all vcpus\n");
 }
 
 void cmd_vcpu_list()
@@ -51,8 +49,8 @@ void cmd_vcpu_list()
 	vmm_vcpu_t *vcpu;
 	vmm_printf("----------------------------------------"
 		   "----------------------------------------\n");
-	vmm_printf("| %-5s| %-9s| %-16s| %-41s|\n", "Num",
-		   "State", "Name", "Device Path");
+	vmm_printf("| %-5s| %-9s| %-16s| %-41s|\n", 
+		   "Num", "State", "Name", "Device Path");
 	vmm_printf("----------------------------------------"
 		   "----------------------------------------\n");
 	count = vmm_scheduler_vcpu_count();
@@ -81,13 +79,13 @@ void cmd_vcpu_list()
 			vmm_strcpy(state, "Invalid");
 			break;
 		}
-		if (vcpu->node) {
+		if (vcpu->guest) {
 			vmm_devtree_getpath(path, vcpu->node);
-			vmm_printf("| %-5d| %-9s| %-16s| %-41s|\n", num,
-				   state, vcpu->name, path);
+			vmm_printf("| %-5d| %-9s| %-16s| %-41s|\n", 
+				   num, state, vcpu->name, path);
 		} else {
-			vmm_printf("| %-5d| %-9s| %-16s| %-41s|\n", num,
-				   state, vcpu->name, "(Not Available)");
+			vmm_printf("| %-5d| %-9s| %-16s| %-41s|\n", 
+				   num, state, vcpu->name, "(NA)");
 		}
 	}
 	vmm_printf("----------------------------------------"
@@ -96,97 +94,86 @@ void cmd_vcpu_list()
 
 int cmd_vcpu_kick(int num)
 {
-	int ret;
-	vmm_vcpu_t *vcpu;
-	vcpu = vmm_scheduler_vcpu(num);
-	if (!vcpu) {
-		vmm_printf("Failed to find vcpu\n");
-		return VMM_EFAIL;
-	}
-	ret = vmm_scheduler_vcpu_kick(vcpu);
-	if (ret) {
-		vmm_printf("%s: Failed to kick\n", vcpu->name);
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	if (vcpu) {
+		if ((ret = vmm_scheduler_vcpu_kick(vcpu))) {
+			vmm_printf("%s: Failed to kick\n", vcpu->name);
+		} else {
+			vmm_printf("%s: Kicked\n", vcpu->name);
+		}
 	} else {
-		vmm_printf("%s: Kicked\n", vcpu->name);
+		vmm_printf("Failed to find vcpu\n");
 	}
 	return ret;
 }
 
 int cmd_vcpu_pause(int num)
 {
-	int ret;
-	vmm_vcpu_t *vcpu;
-	vcpu = vmm_scheduler_vcpu(num);
-	if (!vcpu) {
-		vmm_printf("Failed to find vcpu\n");
-		return VMM_EFAIL;
-	}
-	ret = vmm_scheduler_vcpu_pause(vcpu);
-	if (ret) {
-		vmm_printf("%s: Failed to pause\n", vcpu->name);
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	if (vcpu) {
+		;
+		if ((ret = vmm_scheduler_vcpu_pause(vcpu))) {
+			vmm_printf("%s: Failed to pause\n", vcpu->name);
+		} else {
+			vmm_printf("%s: Paused\n", vcpu->name);
+		}
 	} else {
-		vmm_printf("%s: Paused\n", vcpu->name);
+		vmm_printf("Failed to find vcpu\n");
 	}
 	return ret;
 }
 
 int cmd_vcpu_resume(int num)
 {
-	int ret;
-	vmm_vcpu_t *vcpu;
-	vcpu = vmm_scheduler_vcpu(num);
-	if (!vcpu) {
-		vmm_printf("Failed to find vcpu\n");
-		return VMM_EFAIL;
-	}
-	ret = vmm_scheduler_vcpu_resume(vcpu);
-	if (ret) {
-		vmm_printf("%s: Failed to resume\n", vcpu->name);
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	if (vcpu) {
+		if ((ret = vmm_scheduler_vcpu_resume(vcpu))) {
+			vmm_printf("%s: Failed to resume\n", vcpu->name);
+		} else {
+			vmm_printf("%s: Resumed\n", vcpu->name);
+		}
 	} else {
-		vmm_printf("%s: Resumed\n", vcpu->name);
+		vmm_printf("Failed to find vcpu\n");
 	}
 	return ret;
 }
 
 int cmd_vcpu_halt(int num)
 {
-	int ret;
-	vmm_vcpu_t *vcpu;
-	vcpu = vmm_scheduler_vcpu(num);
-	if (!vcpu) {
-		vmm_printf("Failed to find vcpu\n");
-		return VMM_EFAIL;
-	}
-	ret = vmm_scheduler_vcpu_halt(vcpu);
-	if (ret) {
-		vmm_printf("%s: Failed to halt\n", vcpu->name);
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	if (vcpu) {
+		if ((ret = vmm_scheduler_vcpu_halt(vcpu))) {
+			vmm_printf("%s: Failed to halt\n", vcpu->name);
+		} else {
+			vmm_printf("%s: Halted\n", vcpu->name);
+		}
 	} else {
-		vmm_printf("%s: Halted\n", vcpu->name);
+		vmm_printf("Failed to find vcpu\n");
 	}
 	return ret;
 }
 
 int cmd_vcpu_dumpreg(int num)
 {
-	int ret;
-	vmm_vcpu_t *vcpu;
-	vcpu = vmm_scheduler_vcpu(num);
-	if (!vcpu) {
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	if (vcpu) {
+		if ((ret = vmm_scheduler_vcpu_dumpreg(vcpu))) {
+			vmm_printf("%s: Failed to dumpreg\n", vcpu->name);
+		}
+	} else {
 		vmm_printf("Failed to find vcpu\n");
-		return VMM_EFAIL;
-	}
-	vmm_printf("%s: Register dump\n", vcpu->name);
-	ret = vmm_scheduler_vcpu_dumpreg(vcpu);
-	if (ret) {
-		vmm_printf("%s: Failed to dump registers\n", vcpu->name);
 	}
 	return ret;
 }
 
 int cmd_vcpu_exec(int argc, char **argv)
 {
-	int num, count;
-	int ret;
+	int num;
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
 			cmd_vcpu_usage();
@@ -201,62 +188,16 @@ int cmd_vcpu_exec(int argc, char **argv)
 		return VMM_EFAIL;
 	}
 	num = vmm_str2int(argv[2], 10);
-	count = vmm_scheduler_vcpu_count();
 	if (vmm_strcmp(argv[1], "kick") == 0) {
-		if (num == -1) {
-			for (num = 0; num < count; num++) {
-				ret = cmd_vcpu_kick(num);
-				if (ret) {
-					return ret;
-				}
-			}
-		} else {
-			return cmd_vcpu_kick(num);
-		}
+		return cmd_vcpu_kick(num);
 	} else if (vmm_strcmp(argv[1], "pause") == 0) {
-		if (num == -1) {
-			for (num = 0; num < count; num++) {
-				ret = cmd_vcpu_pause(num);
-				if (ret) {
-					return ret;
-				}
-			}
-		} else {
-			return cmd_vcpu_pause(num);
-		}
+		return cmd_vcpu_pause(num);
 	} else if (vmm_strcmp(argv[1], "resume") == 0) {
-		if (num == -1) {
-			for (num = 0; num < count; num++) {
-				ret = cmd_vcpu_resume(num);
-				if (ret) {
-					return ret;
-				}
-			}
-		} else {
-			return cmd_vcpu_resume(num);
-		}
+		return cmd_vcpu_resume(num);
 	} else if (vmm_strcmp(argv[1], "halt") == 0) {
-		if (num == -1) {
-			for (num = 0; num < count; num++) {
-				ret = cmd_vcpu_halt(num);
-				if (ret) {
-					return ret;
-				}
-			}
-		} else {
-			return cmd_vcpu_halt(num);
-		}
+		return cmd_vcpu_halt(num);
 	} else if (vmm_strcmp(argv[1], "dumpreg") == 0) {
-		if (num == -1) {
-			for (num = 0; num < count; num++) {
-				ret = cmd_vcpu_dumpreg(num);
-				if (ret) {
-					return ret;
-				}
-			}
-		} else {
-			return cmd_vcpu_dumpreg(num);
-		}
+		return cmd_vcpu_dumpreg(num);
 	} else {
 		cmd_vcpu_usage();
 		return VMM_EFAIL;

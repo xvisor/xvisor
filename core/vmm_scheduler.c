@@ -90,99 +90,69 @@ void vmm_scheduler_next(vmm_user_regs_t * regs)
 	sched.scheduler_count = sched.vcpu_array[sched.vcpu_current].tick_count;
 }
 
+vmm_vcpu_t * vmm_scheduler_current_vcpu(void)
+{
+	if (sched.vcpu_current != -1) {
+		return &sched.vcpu_array[sched.vcpu_current];
+	}
+	return NULL;
+}
+
+vmm_guest_t * vmm_scheduler_current_guest(void)
+{
+	if (sched.vcpu_current != -1) {
+		return sched.vcpu_array[sched.vcpu_current].guest;
+	}
+	return NULL;
+}
+
+void vmm_scheduler_preempt_disable(void)
+{
+	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
+
+	if (vcpu) {
+		vcpu->preempt_count++;
+	}
+}
+
+void vmm_scheduler_preempt_enable(void)
+{
+	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
+
+	if (vcpu && vcpu->preempt_count) {
+		vcpu->preempt_count--;
+	}
+}
+
+void vmm_scheduler_start(void)
+{
+	/** Setup timer */
+	vmm_cpu_timer_setup(sched.tick_usecs);
+
+	/** Enable timer */
+	vmm_cpu_timer_enable();
+}
+
+void vmm_scheduler_stop(void)
+{
+	/** Disable timer */
+	vmm_cpu_timer_disable();
+}
+
+u32 vmm_scheduler_tick_usecs(void)
+{
+	return sched.tick_usecs;
+}
+
 u32 vmm_scheduler_vcpu_count(void)
 {
 	return sched.vcpu_count;
-}
-
-u32 vmm_scheduler_guest_count(void)
-{
-	return sched.guest_count;
 }
 
 vmm_vcpu_t * vmm_scheduler_vcpu(s32 vcpu_no)
 {
 	if (-1 < vcpu_no && vcpu_no < sched.vcpu_count)
 		return &sched.vcpu_array[vcpu_no];
-	return NULL;
-}
-
-vmm_guest_t * vmm_scheduler_guest(s32 guest_no)
-{
-	if (-1 < guest_no && guest_no < sched.guest_count)
-		return &sched.guest_array[guest_no];
-	return NULL;
-}
-
-u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest)
-{
-	u32 ret = 0;
-	struct dlist *l;
-
-	if (!guest) {
-		return 0;
-	}
-
-	list_for_each(l, &guest->vcpu_list) {
-		ret++;
-	}
-	
-	return ret;
-}
-
-vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, int index)
-{
-	vmm_vcpu_t *vcpu = NULL;
-	struct dlist *l;
-
-	if (!guest || (index < 0)) {
-		return NULL;
-	}
-
-	list_for_each(l, &guest->vcpu_list) {
-		if (!index) {
-			vcpu = list_entry(l, vmm_vcpu_t, head);
-			break;
-		}
-		index--;
-	}
-
-	return vcpu;
-}
-
-int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu)
-{
-	int ret = -1, index = 0;
-	vmm_vcpu_t *tvcpu = NULL;
-	struct dlist *l;
-
-	if (!guest || !vcpu) {
-		return -1;
-	}
-
-	list_for_each(l, &guest->vcpu_list) {
-		tvcpu = list_entry(l, vmm_vcpu_t, head);
-		if (tvcpu->num == vcpu->num) {
-			ret = index;
-			break;
-		}
-		index++;
-	}
-
-	return ret;
-}
-
-vmm_vcpu_t * vmm_scheduler_current_vcpu(void)
-{
-	if (sched.vcpu_current != -1)
-		return &sched.vcpu_array[sched.vcpu_current];
-	return NULL;
-}
-
-vmm_guest_t * vmm_scheduler_current_guest(void)
-{
-	if (sched.vcpu_current != -1)
-		return sched.vcpu_array[sched.vcpu_current].guest;
 	return NULL;
 }
 
@@ -312,42 +282,171 @@ int vmm_scheduler_vcpu_orphan_destroy(vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
-void vmm_scheduler_preempt_disable(void)
+u32 vmm_scheduler_guest_count(void)
 {
-	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
+	return sched.guest_count;
+}
 
-	if (vcpu) {
-		vcpu->preempt_count++;
+vmm_guest_t * vmm_scheduler_guest(s32 guest_no)
+{
+	if (-1 < guest_no && guest_no < sched.guest_count)
+		return &sched.guest_array[guest_no];
+	return NULL;
+}
+
+u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest)
+{
+	u32 ret = 0;
+	struct dlist *l;
+
+	if (!guest) {
+		return 0;
 	}
-}
 
-void vmm_scheduler_preempt_enable(void)
-{
-	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
-
-	if (vcpu && vcpu->preempt_count) {
-		vcpu->preempt_count--;
+	list_for_each(l, &guest->vcpu_list) {
+		ret++;
 	}
+	
+	return ret;
 }
 
-void vmm_scheduler_start(void)
+vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, int index)
 {
-	/** Setup timer */
-	vmm_cpu_timer_setup(sched.tick_usecs);
+	vmm_vcpu_t *vcpu = NULL;
+	struct dlist *l;
 
-	/** Enable timer */
-	vmm_cpu_timer_enable();
+	if (!guest || (index < 0)) {
+		return NULL;
+	}
+
+	list_for_each(l, &guest->vcpu_list) {
+		if (!index) {
+			vcpu = list_entry(l, vmm_vcpu_t, head);
+			break;
+		}
+		index--;
+	}
+
+	return vcpu;
 }
 
-void vmm_scheduler_stop(void)
+int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu)
 {
-	/** Disable timer */
-	vmm_cpu_timer_disable();
+	int ret = -1, index = 0;
+	vmm_vcpu_t *tvcpu = NULL;
+	struct dlist *l;
+
+	if (!guest || !vcpu) {
+		return -1;
+	}
+
+	list_for_each(l, &guest->vcpu_list) {
+		tvcpu = list_entry(l, vmm_vcpu_t, head);
+		if (tvcpu->num == vcpu->num) {
+			ret = index;
+			break;
+		}
+		index++;
+	}
+
+	return ret;
 }
 
-u32 vmm_scheduler_tick_usecs(void)
+int vmm_scheduler_guest_kick(vmm_guest_t * guest)
 {
-	return sched.tick_usecs;
+	int rc = VMM_EFAIL;
+	struct dlist *lentry;
+	vmm_vcpu_t *vcpu;
+	if (guest) {
+		rc = VMM_OK;
+		list_for_each(lentry, &guest->vcpu_list) {
+			vcpu = list_entry(lentry, vmm_vcpu_t, head);
+			if ((rc = vmm_scheduler_vcpu_kick(vcpu))) {
+				break;
+			}
+		}
+	}
+	return rc;
+}
+
+int vmm_scheduler_guest_pause(vmm_guest_t * guest)
+{
+	int rc = VMM_EFAIL;
+	struct dlist *lentry;
+	vmm_vcpu_t *vcpu;
+	if (guest) {
+		rc = VMM_OK;
+		list_for_each(lentry, &guest->vcpu_list) {
+			vcpu = list_entry(lentry, vmm_vcpu_t, head);
+			if ((rc = vmm_scheduler_vcpu_pause(vcpu))) {
+				break;
+			}
+		}
+	}
+	return rc;
+}
+
+int vmm_scheduler_guest_resume(vmm_guest_t * guest)
+{
+	int rc = VMM_EFAIL;
+	struct dlist *lentry;
+	vmm_vcpu_t *vcpu;
+	if (guest) {
+		rc = VMM_OK;
+		list_for_each(lentry, &guest->vcpu_list) {
+			vcpu = list_entry(lentry, vmm_vcpu_t, head);
+			if ((rc = vmm_scheduler_vcpu_resume(vcpu))) {
+				break;
+			}
+		}
+	}
+	return rc;
+}
+
+int vmm_scheduler_guest_halt(vmm_guest_t * guest)
+{
+	int rc = VMM_EFAIL;
+	struct dlist *lentry;
+	vmm_vcpu_t *vcpu;
+	if (guest) {
+		rc = VMM_OK;
+		list_for_each(lentry, &guest->vcpu_list) {
+			vcpu = list_entry(lentry, vmm_vcpu_t, head);
+			if ((rc = vmm_scheduler_vcpu_halt(vcpu))) {
+				break;
+			}
+		}
+	}
+	return rc;
+}
+
+int vmm_scheduler_guest_dumpreg(vmm_guest_t * guest)
+{
+	int rc = VMM_EFAIL;
+	struct dlist *lentry;
+	vmm_vcpu_t *vcpu;
+	if (guest) {
+		rc = VMM_OK;
+		list_for_each(lentry, &guest->vcpu_list) {
+			vcpu = list_entry(lentry, vmm_vcpu_t, head);
+			if ((rc = vmm_scheduler_vcpu_dumpreg(vcpu))) {
+				break;
+			}
+		}
+	}
+	return rc;
+}
+
+vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * node)
+{
+	/* FIXME: TBD */
+	return NULL;
+}
+
+int vmm_scheduler_guest_destroy(vmm_guest_t * guest)
+{
+	/* FIXME: TBD */
+	return VMM_OK;
 }
 
 int vmm_scheduler_init(void)
