@@ -28,25 +28,19 @@
 #include <vmm_cpu.h>
 #include <vmm_mterm.h>
 #include <vmm_devtree.h>
-#include <vmm_host_irq.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 
-/** Scheduler control structure */
 vmm_scheduler_ctrl_t sched;
 
-void vmm_scheduler_irq_process(u32 cpu_irq_no, 
-				vmm_user_regs_t * regs, 
-				bool host_irq,
-				bool vcpu_irq)
+void vmm_scheduler_irq_process(vmm_user_regs_t * regs)
 {
-	if (host_irq) {
-		vmm_host_irq_exec(cpu_irq_no, regs);
-	}
-	if (vcpu_irq) {
-		vmm_vcpu_irq_process(regs);
-	}
+	/* VCPU irq processing */
+	vmm_vcpu_irq_process(regs);
+
+	/* FIXME: Reset processing */
+
 }
 
 void vmm_scheduler_tick(vmm_user_regs_t * regs)
@@ -170,6 +164,12 @@ vmm_vcpu_t * vmm_scheduler_vcpu(s32 vcpu_no)
 	return NULL;
 }
 
+int vmm_scheduler_vcpu_reset(vmm_vcpu_t * vcpu)
+{
+	/* FIXME: TBD */
+	return VMM_OK;
+}
+
 int vmm_scheduler_vcpu_kick(vmm_vcpu_t * vcpu)
 {
 	irq_flags_t flags;
@@ -279,7 +279,11 @@ vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
 	vcpu->bootpg_addr = 0;
 	vcpu->bootpg_size = 0;
 	vcpu->guest = NULL;
-	vmm_vcpu_regs_init(vcpu);
+
+	/* Initialize registers */
+	if (vmm_vcpu_regs_init(vcpu)) {
+		return NULL;
+	}
 
 	/* Increment vcpu count */
 	sched.vcpu_count++;
@@ -364,6 +368,12 @@ int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu)
 	}
 
 	return ret;
+}
+
+int vmm_scheduler_guest_reset(vmm_guest_t * guest)
+{
+	/* FIXME: TBD */
+	return VMM_OK;
 }
 
 int vmm_scheduler_guest_kick(vmm_guest_t * guest)
@@ -542,7 +552,9 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 			    *((physical_addr_t *) attrval);
 		}
 		vcpu->guest = guest;
-		vmm_vcpu_regs_init(vcpu);
+		if (vmm_vcpu_regs_init(vcpu)) {
+			continue;
+		}
 		vmm_vcpu_irq_initvcpu(vcpu);
 
 		/* Increment vcpu count */

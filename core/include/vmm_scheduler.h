@@ -47,11 +47,8 @@ struct vmm_scheduler_ctrl {
 	struct dlist guest_list;
 };
 
-/** IRQ Processing */
-void vmm_scheduler_irq_process(u32 cpu_irq_no, 
-				vmm_user_regs_t * regs, 
-				bool host_irq,
-				bool vcpu_irq);
+/** IRQ Processing (Must be called from somewhere) */
+void vmm_scheduler_irq_process(vmm_user_regs_t * regs);
 
 /** Tick handler (Must be called from somewhere) */
 void vmm_scheduler_tick(vmm_user_regs_t * regs);
@@ -89,6 +86,9 @@ vmm_vcpu_t * vmm_scheduler_vcpu(s32 vcpu_no);
 /** Number of vcpus belonging to a given guest */
 u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest);
 
+/** Reset a vcpu */
+int vmm_scheduler_vcpu_reset(vmm_vcpu_t * vcpu);
+
 /** Kick a vcpu out of reset state */
 int vmm_scheduler_vcpu_kick(vmm_vcpu_t * vcpu);
 
@@ -124,6 +124,9 @@ vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index);
 
 /** Find the relative index of a vcpu under a given guest */
 int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu);
+
+/** Reset a guest */
+int vmm_scheduler_guest_reset(vmm_guest_t * guest);
 
 /** Kick a guest out of reset state */
 int vmm_scheduler_guest_kick(vmm_guest_t * guest);
