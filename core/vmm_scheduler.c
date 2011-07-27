@@ -28,12 +28,26 @@
 #include <vmm_cpu.h>
 #include <vmm_mterm.h>
 #include <vmm_devtree.h>
+#include <vmm_host_irq.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 
 /** Scheduler control structure */
 vmm_scheduler_ctrl_t sched;
+
+void vmm_scheduler_irq_process(u32 cpu_irq_no, 
+				vmm_user_regs_t * regs, 
+				bool host_irq,
+				bool vcpu_irq)
+{
+	if (host_irq) {
+		vmm_host_irq_exec(cpu_irq_no, regs);
+	}
+	if (vcpu_irq) {
+		vmm_vcpu_irq_process(regs);
+	}
+}
 
 void vmm_scheduler_tick(vmm_user_regs_t * regs)
 {

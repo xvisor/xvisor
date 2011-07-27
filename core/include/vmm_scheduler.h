@@ -47,7 +47,13 @@ struct vmm_scheduler_ctrl {
 	struct dlist guest_list;
 };
 
-/** Scheduler tick handler (Must be called from somewhere) */
+/** IRQ Processing */
+void vmm_scheduler_irq_process(u32 cpu_irq_no, 
+				vmm_user_regs_t * regs, 
+				bool host_irq,
+				bool vcpu_irq);
+
+/** Tick handler (Must be called from somewhere) */
 void vmm_scheduler_tick(vmm_user_regs_t * regs);
 
 /** Schedule next vcpu */
