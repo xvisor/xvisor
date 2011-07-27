@@ -27,6 +27,8 @@
 #include <vmm_stdio.h>
 #include <vmm_guest.h>
 #include <vmm_devtree.h>
+#include <vmm_host_irq.h>
+#include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_emulate_arm.h>
@@ -63,7 +65,7 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
-	vmm_scheduler_irq_process(CPU_UNDEF_INST_IRQ, uregs, FALSE, TRUE);
+	vmm_scheduler_irq_process(uregs);
 }
 
 void do_software_interrupt(vmm_user_regs_t * uregs)
@@ -94,7 +96,7 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
-	vmm_scheduler_irq_process(CPU_SOFT_IRQ, uregs, FALSE, TRUE);
+	vmm_scheduler_irq_process(uregs);
 }
 
 void do_prefetch_abort(vmm_user_regs_t * uregs)
@@ -162,7 +164,7 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 				__func__, vcpu->num, ifar, ifsr);
 	}
 
-	vmm_scheduler_irq_process(CPU_PREFETCH_ABORT_IRQ, uregs, FALSE, TRUE);
+	vmm_scheduler_irq_process(uregs);
 }
 
 void do_data_abort(vmm_user_regs_t * uregs)
@@ -237,7 +239,7 @@ void do_data_abort(vmm_user_regs_t * uregs)
 				__func__, vcpu->num, dfar, dfsr);
 	}
 
-	vmm_scheduler_irq_process(CPU_DATA_ABORT_IRQ, uregs, FALSE, TRUE);
+	vmm_scheduler_irq_process(uregs);
 }
 
 void do_not_used(vmm_user_regs_t * uregs)
@@ -247,12 +249,16 @@ void do_not_used(vmm_user_regs_t * uregs)
 
 void do_irq(vmm_user_regs_t * uregs)
 {
-	vmm_scheduler_irq_process(CPU_EXTERNAL_IRQ, uregs, TRUE, TRUE);
+	vmm_host_irq_exec(CPU_EXTERNAL_IRQ, uregs);
+
+	vmm_scheduler_irq_process(uregs);
 }
 
 void do_fiq(vmm_user_regs_t * uregs)
 {
-	vmm_scheduler_irq_process(CPU_EXTERNAL_FIQ, uregs, TRUE, TRUE);
+	vmm_host_irq_exec(CPU_EXTERNAL_FIQ, uregs);
+
+	vmm_scheduler_irq_process(uregs);
 }
 
 int vmm_cpu_irq_setup(void)

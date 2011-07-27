@@ -83,6 +83,9 @@ void cpu_vcpu_cp15_context_switch(vmm_vcpu_t * tvcpu,
 				  vmm_vcpu_t * vcpu, 
 				  vmm_user_regs_t * regs);
 
+/** Reset CP15 subsystem for a VCPU */
+int cpu_vcpu_cp15_reset(vmm_vcpu_t * vcpu);
+
 /** Initialize CP15 subsystem for a VCPU */
 int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid);
 

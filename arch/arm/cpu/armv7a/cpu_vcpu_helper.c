@@ -657,7 +657,7 @@ void cpu_vcpu_regmode_write(vmm_vcpu_t * vcpu,
 	}
 }
 
-void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
+int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 {
 	u32 cpuid = ARM_CPUID_CORTEXA8;
 	/* Initialize User Mode Registers */
@@ -675,7 +675,7 @@ void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	/* Initialize Supervisor Mode Registers */
 	/* For only Normal VCPUs */
 	if (!vcpu->guest) {
-		return;
+		return VMM_OK;
 	}
 	vmm_memset(&vcpu->sregs, 0, sizeof(vmm_super_regs_t));
 	vcpu->sregs.cpsr = CPSR_ASYNC_ABORT_DISABLED | CPSR_IRQ_DISABLED |
@@ -713,7 +713,26 @@ void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	default:
 		break;
 	};
-	cpu_vcpu_cp15_init(vcpu, cpuid);
+	return cpu_vcpu_cp15_init(vcpu, cpuid);
+}
+
+int vmm_vcpu_regs_reset(vmm_vcpu_t * vcpu, vmm_user_regs_t *regs)
+{
+	/* For only Normal VCPUs */
+	if (!vcpu->guest) {
+		return VMM_OK;
+	}
+	/* Reset User Mode Registers */
+	vmm_memset(regs, 0, sizeof(vmm_user_regs_t));
+	regs->pc = vcpu->start_pc;
+	regs->cpsr = CPSR_ASYNC_ABORT_DISABLED | CPSR_MODE_USER;
+	/* Reset Supervisor Mode Registers */
+	cpu_vcpu_cpsr_update(vcpu, regs, (CPSR_COND_ZERO_MASK |
+					  CPSR_ASYNC_ABORT_DISABLED | 
+					  CPSR_IRQ_DISABLED |
+					  CPSR_FIQ_DISABLED | 
+					  CPSR_MODE_SUPERVISOR));
+	return cpu_vcpu_cp15_reset(vcpu);
 }
 
 void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,

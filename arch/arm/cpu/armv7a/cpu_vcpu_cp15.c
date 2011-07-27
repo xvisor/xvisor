@@ -871,6 +871,24 @@ void cpu_vcpu_cp15_context_switch(vmm_vcpu_t * tvcpu,
 	cpu_mmu_chttbr(vcpu->sregs.cp15.l1);
 }
 
+int cpu_vcpu_cp15_reset(vmm_vcpu_t * vcpu)
+{
+	int rc = VMM_OK;
+	u32 vtlb;
+	cpu_page_t *p = NULL;
+	/* Flush the shadow TLB */
+	for (vtlb = 0; vtlb < vcpu->sregs.cp15.vtlb.count; vtlb++) {
+		if (vcpu->sregs.cp15.vtlb.valid[vtlb]) {
+			p = &vcpu->sregs.cp15.vtlb.page[vtlb];
+			rc = cpu_mmu_unmap_page(vcpu->sregs.cp15.l1, p);
+			if (rc) {
+				return rc;
+			}
+		}
+	}
+	return rc;
+}
+
 static u32 cortexa9_cp15_c0_c1[8] =
 { 0x1031, 0x11, 0x000, 0, 0x00100103, 0x20000000, 0x01230000, 0x00002111 };
 
