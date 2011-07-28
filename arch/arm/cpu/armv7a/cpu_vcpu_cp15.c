@@ -871,24 +871,6 @@ void cpu_vcpu_cp15_context_switch(vmm_vcpu_t * tvcpu,
 	cpu_mmu_chttbr(vcpu->sregs.cp15.l1);
 }
 
-int cpu_vcpu_cp15_reset(vmm_vcpu_t * vcpu)
-{
-	int rc = VMM_OK;
-	u32 vtlb;
-	cpu_page_t *p = NULL;
-	/* Flush the shadow TLB */
-	for (vtlb = 0; vtlb < vcpu->sregs.cp15.vtlb.count; vtlb++) {
-		if (vcpu->sregs.cp15.vtlb.valid[vtlb]) {
-			p = &vcpu->sregs.cp15.vtlb.page[vtlb];
-			rc = cpu_mmu_unmap_page(vcpu->sregs.cp15.l1, p);
-			if (rc) {
-				return rc;
-			}
-		}
-	}
-	return rc;
-}
-
 static u32 cortexa9_cp15_c0_c1[8] =
 { 0x1031, 0x11, 0x000, 0, 0x00100103, 0x20000000, 0x01230000, 0x00002111 };
 
@@ -900,6 +882,55 @@ static u32 cortexa8_cp15_c0_c1[8] =
 
 static u32 cortexa8_cp15_c0_c2[8] =
 { 0x00101111, 0x12112111, 0x21232031, 0x11112131, 0x00111142, 0, 0, 0 };
+
+int cpu_vcpu_cp15_reset(vmm_vcpu_t * vcpu)
+{
+	int rc = VMM_OK;
+	u32 vtlb;
+	cpu_page_t *p = NULL;
+
+	/* Flush the shadow TLB */
+	for (vtlb = 0; vtlb < vcpu->sregs.cp15.vtlb.count; vtlb++) {
+		if (vcpu->sregs.cp15.vtlb.valid[vtlb]) {
+			p = &vcpu->sregs.cp15.vtlb.page[vtlb];
+			rc = cpu_mmu_unmap_page(vcpu->sregs.cp15.l1, p);
+			if (rc) {
+				return rc;
+			}
+		}
+	}
+
+	/* Reset values of important registers */
+	switch (vcpu->sregs.cp15.c0_cpuid) {
+	case ARM_CPUID_CORTEXA8:
+		vmm_memcpy(vcpu->sregs.cp15.c0_c1, cortexa8_cp15_c0_c1, 
+							8 * sizeof(u32));
+		vmm_memcpy(vcpu->sregs.cp15.c0_c2, cortexa8_cp15_c0_c2, 
+							8 * sizeof(u32));
+		vcpu->sregs.cp15.c0_cachetype = 0x82048004;
+		vcpu->sregs.cp15.c0_clid = (1 << 27) | (2 << 24) | 3;
+		vcpu->sregs.cp15.c0_ccsid[0] = 0xe007e01a; /* 16k L1 dcache. */
+		vcpu->sregs.cp15.c0_ccsid[1] = 0x2007e01a; /* 16k L1 icache. */
+		vcpu->sregs.cp15.c0_ccsid[2] = 0xf0000000; /* No L2 icache. */
+		vcpu->sregs.cp15.c1_sctlr = 0x00c50078;
+		break;
+	case ARM_CPUID_CORTEXA9:
+		vmm_memcpy(vcpu->sregs.cp15.c0_c1, cortexa9_cp15_c0_c1, 
+							8 * sizeof(u32));
+		vmm_memcpy(vcpu->sregs.cp15.c0_c2, cortexa9_cp15_c0_c2, 
+							8 * sizeof(u32));
+		vcpu->sregs.cp15.c0_cachetype = 0x80038003;
+		vcpu->sregs.cp15.c0_clid = (1 << 27) | (1 << 24) | 3;
+		vcpu->sregs.cp15.c0_ccsid[0] = 0xe00fe015; /* 16k L1 dcache. */
+		vcpu->sregs.cp15.c0_ccsid[1] = 0x200fe015; /* 16k L1 icache. */
+		vcpu->sregs.cp15.c1_sctlr = 0x00c50078;
+		break;
+	default:
+		break;
+	};
+
+	return rc;
+}
 
 int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 {
@@ -948,34 +979,7 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 	}
 
 	vcpu->sregs.cp15.c0_cpuid = cpuid;
-	switch (cpuid) {
-	case ARM_CPUID_CORTEXA8:
-		vmm_memcpy(vcpu->sregs.cp15.c0_c1, cortexa8_cp15_c0_c1, 
-							8 * sizeof(u32));
-		vmm_memcpy(vcpu->sregs.cp15.c0_c2, cortexa8_cp15_c0_c2, 
-							8 * sizeof(u32));
-		vcpu->sregs.cp15.c0_cachetype = 0x82048004;
-		vcpu->sregs.cp15.c0_clid = (1 << 27) | (2 << 24) | 3;
-		vcpu->sregs.cp15.c0_ccsid[0] = 0xe007e01a; /* 16k L1 dcache. */
-		vcpu->sregs.cp15.c0_ccsid[1] = 0x2007e01a; /* 16k L1 icache. */
-		vcpu->sregs.cp15.c0_ccsid[2] = 0xf0000000; /* No L2 icache. */
-		vcpu->sregs.cp15.c1_sctlr = 0x00c50078;
-		break;
-	case ARM_CPUID_CORTEXA9:
-		vmm_memcpy(vcpu->sregs.cp15.c0_c1, cortexa9_cp15_c0_c1, 
-							8 * sizeof(u32));
-		vmm_memcpy(vcpu->sregs.cp15.c0_c2, cortexa9_cp15_c0_c2, 
-							8 * sizeof(u32));
-		vcpu->sregs.cp15.c0_cachetype = 0x80038003;
-		vcpu->sregs.cp15.c0_clid = (1 << 27) | (1 << 24) | 3;
-		vcpu->sregs.cp15.c0_ccsid[0] = 0xe00fe015; /* 16k L1 dcache. */
-		vcpu->sregs.cp15.c0_ccsid[1] = 0x200fe015; /* 16k L1 icache. */
-		vcpu->sregs.cp15.c1_sctlr = 0x00c50078;
-		break;
-	default:
-		break;
-	};
 
-	return VMM_OK;
+	return cpu_vcpu_cp15_reset(vcpu);
 }
 
