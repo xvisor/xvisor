@@ -40,3 +40,5 @@ cpu-objs-y+= cpu_host_aspace.o
 cpu-objs-y+= cpu_hyperthreads.o
 cpu-objs-y+= cpu_vcpu_irq.o
 cpu-objs-y+= cpu_vcpu_helper.o
+cpu-objs-y+= cpu_mmu.o
+cpu-objs-y+= cpu_vcpu_mmu.o

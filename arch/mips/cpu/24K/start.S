@@ -156,9 +156,14 @@ LEAF(tlb_init)
 	nop
 END(tlb_init)
 
+.extern	do_tlbmiss
 LEAF(_handle_tlbmiss)
-	b _handle_tlbmiss
+	SAVE_INT_CONTEXT(_int_stack)
+	move A0, SP
+	bal do_tlbmiss
 	nop
+	RESTORE_INT_CONTEXT(SP)
+	eret
 END(_handle_tlbmiss)
 
 .extern generic_int_handler
