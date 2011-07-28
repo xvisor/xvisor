@@ -224,11 +224,6 @@ void vmm_init(void)
 	}
 }
 
-void vmm_exit(void)
-{
-	/* FIXME: Stop all functionality and exit */
-}
-
 void vmm_start(void)
 {
 	int ret;
@@ -246,5 +241,48 @@ void vmm_start(void)
 	vmm_scheduler_start();
 
 	/* Wait here till scheduler gets invoked by timer */
+	vmm_hang();
+}
+
+static void vmm_stop(void)
+{
+	/* Stop scheduler */
+	vmm_printf("Stopping Scheduler\n");
+	vmm_scheduler_stop();
+
+	/* FIXME: Do other cleanup stuff. */
+}
+
+void vmm_reset(void)
+{
+	int rc;
+
+	/* Stop all functionality */
+	vmm_stop();
+
+	/* Issue board reset */
+	vmm_printf("Issuing Board Reset\n");
+	if ((rc = vmm_board_reset())) {
+		vmm_panic("Error: Board reset failed.\n");
+	}
+
+	/* Wait here. Nothing else to do. */
+	vmm_hang();
+}
+
+void vmm_shutdown(void)
+{
+	int rc;
+
+	/* Stop all functionality */
+	vmm_stop();
+
+	/* Issue board shutdown */
+	vmm_printf("Issuing Board Shutdown\n");
+	if ((rc = vmm_board_shutdown())) {
+		vmm_panic("Error: Board shutdown failed.\n");
+	}
+
+	/* Wait here. Nothing else to do. */
 	vmm_hang();
 }

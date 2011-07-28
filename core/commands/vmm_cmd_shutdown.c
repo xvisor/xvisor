@@ -16,29 +16,22 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_main.h
- * @version 1.0
+ * @file vmm_cmd_shutdown.c
+ * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
- * @brief main header file for vmm
+ * @brief Implementation of shutdown command
  */
-#ifndef _VMM_MAIN_H__
-#define _VMM_MAIN_H__
 
-#include <vmm_types.h>
+#include <vmm_error.h>
+#include <vmm_stdio.h>
+#include <vmm_main.h>
+#include <vmm_mterm.h>
 
-/** Hang hypervisor */
-void vmm_hang(void);
+int cmd_shutdown_exec(int argc, char **argv)
+{
+	/* Reset the hypervisor */
+	vmm_shutdown();
+	return VMM_OK;
+}
 
-/** Initialize hypervisor */
-void vmm_init(void);
-
-/** Start hypervisor */
-void vmm_start(void);
-
-/** Reset hypervisor */
-void vmm_reset(void);
-
-/** Shutdown hypervisor */
-void vmm_shutdown(void);
-
-#endif
+VMM_DECLARE_CMD(shutdown, "shutdown hypervisor", cmd_shutdown_exec, NULL);
