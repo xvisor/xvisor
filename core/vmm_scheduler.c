@@ -100,35 +100,44 @@ void vmm_scheduler_next(vmm_user_regs_t * regs)
 
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void)
 {
+	irq_flags_t flags;
+	vmm_vcpu_t * vcpu = NULL;
+	flags = vmm_spin_lock_irqsave(&sched.lock);
 	if (sched.vcpu_current != -1) {
-		return &sched.vcpu_array[sched.vcpu_current];
+		vcpu = &sched.vcpu_array[sched.vcpu_current];
 	}
-	return NULL;
+	vmm_spin_unlock_irqrestore(&sched.lock, flags);
+	return vcpu;
 }
 
 vmm_guest_t * vmm_scheduler_current_guest(void)
 {
-	if (sched.vcpu_current != -1) {
-		return sched.vcpu_array[sched.vcpu_current].guest;
+	vmm_vcpu_t *vcpu = vmm_scheduler_current_vcpu();
+	if (vcpu) {
+		return vcpu->guest;
 	}
 	return NULL;
 }
 
 void vmm_scheduler_preempt_disable(void)
 {
+	irq_flags_t flags;
 	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
-
 	if (vcpu) {
+		flags = vmm_cpu_irq_save();
 		vcpu->preempt_count++;
+		vmm_cpu_irq_restore(flags);
 	}
 }
 
 void vmm_scheduler_preempt_enable(void)
 {
+	irq_flags_t flags;
 	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
-
 	if (vcpu && vcpu->preempt_count) {
+		flags = vmm_cpu_irq_save();
 		vcpu->preempt_count--;
+		vmm_cpu_irq_restore(flags);
 	}
 }
 
@@ -159,8 +168,9 @@ u32 vmm_scheduler_vcpu_count(void)
 
 vmm_vcpu_t * vmm_scheduler_vcpu(s32 vcpu_no)
 {
-	if (-1 < vcpu_no && vcpu_no < sched.vcpu_count)
+	if (-1 < vcpu_no && vcpu_no < sched.vcpu_count) {
 		return &sched.vcpu_array[vcpu_no];
+	}
 	return NULL;
 }
 
@@ -172,78 +182,77 @@ int vmm_scheduler_vcpu_reset(vmm_vcpu_t * vcpu)
 
 int vmm_scheduler_vcpu_kick(vmm_vcpu_t * vcpu)
 {
+	int rc = VMM_EFAIL;
 	irq_flags_t flags;
 	if (vcpu && vcpu->guest) {
+		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state == VMM_VCPU_STATE_RESET) {
-			/* Acquire lock */
-			flags = vmm_spin_lock_irqsave(&sched.lock);
 			vcpu->state = VMM_VCPU_STATE_READY;
-			/* Release lock */
-			vmm_spin_unlock_irqrestore(&sched.lock, flags);
-			return VMM_OK;
+			rc = VMM_OK;
 		}
+		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
 	}
-	return VMM_EFAIL;
+	return rc;
 }
 
 int vmm_scheduler_vcpu_pause(vmm_vcpu_t * vcpu)
 {
+	int rc = VMM_EFAIL;
 	irq_flags_t flags;
 	if (vcpu && vcpu->guest) {
+		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state == VMM_VCPU_STATE_READY) {
-			/* Acquire lock */
-			flags = vmm_spin_lock_irqsave(&sched.lock);
 			vcpu->state = VMM_VCPU_STATE_PAUSED;
-			/* Release lock */
-			vmm_spin_unlock_irqrestore(&sched.lock, flags);
-			return VMM_OK;
+			rc = VMM_OK;
 		}
+		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
 	}
-	return VMM_EFAIL;
+	return rc;
 }
 
 int vmm_scheduler_vcpu_resume(vmm_vcpu_t * vcpu)
 {
+	int rc = VMM_EFAIL;
 	irq_flags_t flags;
 	if (vcpu && vcpu->guest) {
+		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state == VMM_VCPU_STATE_PAUSED) {
-			/* Acquire lock */
-			flags = vmm_spin_lock_irqsave(&sched.lock);
 			vcpu->state = VMM_VCPU_STATE_READY;
-			/* Release lock */
-			vmm_spin_unlock_irqrestore(&sched.lock, flags);
-			return VMM_OK;
+			rc = VMM_OK;
 		}
+		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
 	}
-	return VMM_EFAIL;
+	return rc;
 }
 
 int vmm_scheduler_vcpu_halt(vmm_vcpu_t * vcpu)
 {
+	int rc = VMM_EFAIL;
 	irq_flags_t flags;
 	if (vcpu && vcpu->guest) {
-		if (vcpu->state != VMM_VCPU_STATE_RUNNING &&
-		    vcpu->state != VMM_VCPU_STATE_HALTED) {
-			/* Acquire lock */
-			flags = vmm_spin_lock_irqsave(&sched.lock);
+		flags = vmm_spin_lock_irqsave(&vcpu->lock);
+		if (vcpu->state != VMM_VCPU_STATE_HALTED) {
 			vcpu->state = VMM_VCPU_STATE_HALTED;
-			/* Release lock */
-			vmm_spin_unlock_irqrestore(&sched.lock, flags);
-			return VMM_OK;
+			rc = VMM_OK;
 		}
+		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
 	}
-	return VMM_EFAIL;
+	return rc;
 }
 
 int vmm_scheduler_vcpu_dumpreg(vmm_vcpu_t * vcpu)
 {
+	int rc = VMM_EFAIL;
+	irq_flags_t flags;
 	if (vcpu) {
+		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
 			vmm_vcpu_regs_dump(vcpu);
-			return VMM_OK;
+			rc = VMM_OK;
 		}
+		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
 	}
-	return VMM_EFAIL;
+	return rc;
 }
 
 vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
@@ -251,7 +260,7 @@ vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
 					      u32 tick_count,
 					      vmm_vcpu_tick_t tick_func)
 {
-	vmm_vcpu_t *vcpu;
+	vmm_vcpu_t * vcpu;
 	irq_flags_t flags;
 
 	/* Sanity checks */
@@ -269,6 +278,7 @@ vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
 	list_add_tail(&sched.orphan_vcpu_list, &vcpu->head);
 
 	/* Update vcpu attributes */
+	INIT_SPIN_LOCK(&vcpu->lock);
 	vmm_strcpy(vcpu->name, name);
 	vcpu->node = NULL;
 	vcpu->state = VMM_VCPU_STATE_READY;
@@ -282,11 +292,13 @@ vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
 
 	/* Initialize registers */
 	if (vmm_vcpu_regs_init(vcpu)) {
-		return NULL;
+		vcpu = NULL;
 	}
 
 	/* Increment vcpu count */
-	sched.vcpu_count++;
+	if (vcpu) {
+		sched.vcpu_count++;
+	}
 
 	/* Release lock */
 	vmm_spin_unlock_irqrestore(&sched.lock, flags);
@@ -307,8 +319,9 @@ u32 vmm_scheduler_guest_count(void)
 
 vmm_guest_t * vmm_scheduler_guest(s32 guest_no)
 {
-	if (-1 < guest_no && guest_no < sched.guest_count)
+	if (-1 < guest_no && guest_no < sched.guest_count) {
 		return &sched.guest_array[guest_no];
+	}
 	return NULL;
 }
 
@@ -489,6 +502,7 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 	/* Initialize guest instance */
 	guest = &sched.guest_array[sched.guest_count];
 	list_add_tail(&sched.guest_list, &guest->head);
+	INIT_SPIN_LOCK(&guest->lock);
 	guest->node = gnode;
 	INIT_LIST_HEAD(&guest->vcpu_list);
 	vmm_guest_aspace_initguest(guest);
@@ -521,6 +535,7 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 		/* Initialize vcpu instance */
 		vcpu = &sched.vcpu_array[sched.vcpu_count];
 		list_add_tail(&guest->vcpu_list, &vcpu->head);
+		INIT_SPIN_LOCK(&vcpu->lock);
 		vmm_strcpy(vcpu->name, gnode->name);
 		vmm_strcat(vcpu->name,
 			   VMM_DEVTREE_PATH_SEPRATOR_STRING);
@@ -625,6 +640,7 @@ int vmm_scheduler_init(void)
 	for (gnum = 0; gnum < sched.max_guest_count; gnum++) {
 		vmm_memset(&sched.guest_array[gnum], 0, sizeof(vmm_guest_t));
 		INIT_LIST_HEAD(&sched.guest_array[gnum].head);
+		INIT_SPIN_LOCK(&sched.guest_array[gnum].lock);
 		sched.guest_array[gnum].num = gnum;
 		sched.guest_array[gnum].node = NULL;
 		INIT_LIST_HEAD(&sched.guest_array[gnum].vcpu_list);
@@ -638,6 +654,7 @@ int vmm_scheduler_init(void)
 	for (vnum = 0; vnum < sched.max_vcpu_count; vnum++) {
 		vmm_memset(&sched.vcpu_array[vnum], 0, sizeof(vmm_vcpu_t));
 		INIT_LIST_HEAD(&sched.vcpu_array[vnum].head);
+		INIT_SPIN_LOCK(&sched.vcpu_array[vnum].lock);
 		sched.vcpu_array[vnum].num = vnum;
 		vmm_strcpy(sched.vcpu_array[vnum].name, "");
 		sched.vcpu_array[vnum].node = NULL;

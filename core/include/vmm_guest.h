@@ -26,8 +26,9 @@
 #define __VMM_GUEST_H__
 
 #include <vmm_types.h>
-#include <vmm_list.h>
 #include <vmm_regs.h>
+#include <vmm_list.h>
+#include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 
 typedef struct vmm_guest_region vmm_guest_region_t;
@@ -69,6 +70,7 @@ struct vmm_vcpu_irqs {
 
 struct vmm_guest {
 	struct dlist head;
+	vmm_spinlock_t lock;
 	u32 num;
 	vmm_devtree_node_t *node;
 	struct dlist vcpu_list;
@@ -89,6 +91,7 @@ enum vmm_vcpu_states {
 
 struct vmm_vcpu {
 	struct dlist head;
+	vmm_spinlock_t lock;
 	u32 num;
 	char name[64];
 	vmm_devtree_node_t *node;
