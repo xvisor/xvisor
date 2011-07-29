@@ -90,7 +90,7 @@ _name:						\
 #define SAVE_INT_CONTEXT(_int_sp)			\
 	move K0, SP;					\
 	la SP, _int_sp;					\
-	addiu SP, SP, -((CPU_USER_REG_COUNT + 2)* 4);   \
+	addiu SP, SP, -((CPU_USER_REG_COUNT + 3)* 4);   \
         mfc0 K1, CP0_EPC;				\
 	SAVE_REG(V0,SP);				\
 	SAVE_REG(V1,SP);				\
@@ -111,18 +111,20 @@ _name:						\
 	SAVE_REG(S0,SP);				\
 	SAVE_REG(S1,SP);				\
 	SAVE_REG(S2,SP);				\
+	sw K1, (U_CP0_STATUS_IDX * 4)(SP);		\
 	SAVE_REG(S3,SP);				\
 	SAVE_REG(S4,SP);				\
 	SAVE_REG(S5,SP);				\
+	mfc0 K1, CP0_ENTRYHI;				\
 	SAVE_REG(S6,SP);				\
 	SAVE_REG(S7,SP);				\
 	SAVE_REG(T8,SP);				\
 	SAVE_REG(T9,SP);				\
+	sw K1, (U_CP0_ENTRYHI_IDX * 4)(SP);		\
 	SAVE_REG(GP,SP);				\
 	SAVE_REG(S8,SP);				\
 	SAVE_REG(RA,SP);				\
-        sw K0, (SP_IDX * 4)(SP);			\
-	sw K1, (U_CP0_STATUS_IDX * 4)(SP)
+        sw K0, (SP_IDX * 4)(SP)
 
 #define RESTORE_INT_CONTEXT(treg)			\
         lw K1, (U_CP0_EPC_IDX * 4)(treg);		\
@@ -149,6 +151,9 @@ _name:						\
 	LOAD_REG(S1,treg);				\
 	LOAD_REG(S2,treg);				\
 	LOAD_REG(S3,treg);				\
+	lw K1, (U_CP0_ENTRYHI_IDX * 4)(treg);		\
+	mtc0 K1, CP0_ENTRYHI;				\
+	ehb;						\
 	LOAD_REG(S4,treg);				\
 	LOAD_REG(S5,treg);				\
 	LOAD_REG(S6,treg);				\
@@ -158,7 +163,7 @@ _name:						\
 	LOAD_REG(GP,treg);				\
 	LOAD_REG(RA,treg);				\
 	LOAD_REG(S8,treg);				\
-	lw SP, (SP_IDX * 4)(treg);
+	lw SP, (SP_IDX * 4)(treg)
 
 #endif /* __ASSEMBLY__ */
 
@@ -311,5 +316,9 @@ do {									\
 
 #define read_c0_ebase()		__read_32bit_c0_register($15, 1)
 #define write_c0_ebase(val)	__write_32bit_c0_register($15, 1, val)
+
+#define CP0_STATUS_UM_MASK	0x10UL
+#define CP0_STATUS_UM_SHIFT	4
+#define CPU_IN_USER_MODE(__status)	(__status & CP0_STATUS_UM_MASK)
 
 #endif /* __CPU_MACROS_H_ */

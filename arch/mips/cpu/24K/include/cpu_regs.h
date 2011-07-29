@@ -86,6 +86,7 @@
 #define RA_IDX		27
 #define U_CP0_EPC_IDX	28
 #define U_CP0_STATUS_IDX 29
+#define U_CP0_ENTRYHI_IDX 30
 
 #define CPU_USER_REG_COUNT	28
 #define	CPU_GPR_COUNT	32

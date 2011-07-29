@@ -45,6 +45,8 @@ void vmm_hyperthread_regs_switch(vmm_hyperthread_t *tthread,
 	 * in kernel mode. Reading and storing should do the trick.
 	 */
 	regs->cp0_status = read_c0_status();
+	regs->cp0_entryhi = read_c0_entryhi() & ASID_MASK;
+	regs->cp0_entryhi |= (0x1 << ASID_SHIFT);
 }
 
 s32 vmm_hyperthread_regs_init(vmm_hyperthread_t *tinfo, void *udata)
