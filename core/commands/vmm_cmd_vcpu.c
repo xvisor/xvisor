@@ -34,6 +34,7 @@ void cmd_vcpu_usage(void)
 	vmm_printf("Usage:\n");
 	vmm_printf("   vcpu help\n");
 	vmm_printf("   vcpu list\n");
+	vmm_printf("   vcpu reset   <vcpu_num>\n");
 	vmm_printf("   vcpu kick    <vcpu_num>\n");
 	vmm_printf("   vcpu pause   <vcpu_num>\n");
 	vmm_printf("   vcpu resume  <vcpu_num>\n");
@@ -90,6 +91,22 @@ void cmd_vcpu_list()
 	}
 	vmm_printf("----------------------------------------"
 		   "----------------------------------------\n");
+}
+
+int cmd_vcpu_reset(int num)
+{
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	if (vcpu) {
+		if ((ret = vmm_scheduler_vcpu_reset(vcpu))) {
+			vmm_printf("%s: Failed to reset\n", vcpu->name);
+		} else {
+			vmm_printf("%s: Reset done\n", vcpu->name);
+		}
+	} else {
+		vmm_printf("Failed to find vcpu\n");
+	}
+	return ret;
 }
 
 int cmd_vcpu_kick(int num)
@@ -188,7 +205,9 @@ int cmd_vcpu_exec(int argc, char **argv)
 		return VMM_EFAIL;
 	}
 	num = vmm_str2int(argv[2], 10);
-	if (vmm_strcmp(argv[1], "kick") == 0) {
+	if (vmm_strcmp(argv[1], "reset") == 0) {
+		return cmd_vcpu_reset(num);
+	} else if (vmm_strcmp(argv[1], "kick") == 0) {
 		return cmd_vcpu_kick(num);
 	} else if (vmm_strcmp(argv[1], "pause") == 0) {
 		return cmd_vcpu_pause(num);
