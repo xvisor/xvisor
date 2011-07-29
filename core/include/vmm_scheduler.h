@@ -33,7 +33,6 @@ typedef struct vmm_scheduler_ctrl vmm_scheduler_ctrl_t;
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
 	s32 vcpu_current;
-	u32 scheduler_count;
 	u32 tick_usecs;
 
 	vmm_spinlock_t lock;
@@ -48,13 +47,12 @@ struct vmm_scheduler_ctrl {
 };
 
 /** IRQ Processing (Must be called from somewhere) */
-void vmm_scheduler_irq_process(vmm_user_regs_t * regs);
+void vmm_scheduler_irq_process(u32 cpu_irq_num, 
+				vmm_user_regs_t * regs, 
+				bool host_irq);
 
 /** Tick handler (Must be called from somewhere) */
 void vmm_scheduler_tick(vmm_user_regs_t * regs);
-
-/** Schedule next vcpu */
-void vmm_scheduler_next(vmm_user_regs_t * regs);
 
 /** Retrive current vcpu number */
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void);

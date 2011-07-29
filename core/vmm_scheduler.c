@@ -28,59 +28,32 @@
 #include <vmm_cpu.h>
 #include <vmm_mterm.h>
 #include <vmm_devtree.h>
+#include <vmm_host_irq.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 
 vmm_scheduler_ctrl_t sched;
 
-void vmm_scheduler_irq_process(vmm_user_regs_t * regs)
-{
-	/* VCPU irq processing */
-	vmm_vcpu_irq_process(regs);
-
-	/* FIXME: Reset processing */
-
-}
-
-void vmm_scheduler_tick(vmm_user_regs_t * regs)
-{
-	if (!sched.scheduler_count) {
-		if (-1 < sched.vcpu_current &&
-		    sched.vcpu_array[sched.vcpu_current].preempt_count) {
-			return;
-		}
-		vmm_scheduler_next(regs);
-	} else {
-		sched.scheduler_count--;
-		if (-1 < sched.vcpu_current &&
-		    !sched.vcpu_array[sched.vcpu_current].preempt_count &&
-		    sched.vcpu_array[sched.vcpu_current].tick_func) {
-			sched.vcpu_array[sched.vcpu_current].
-					tick_func(regs, sched.scheduler_count);
-		}
-	}
-}
-
 void vmm_scheduler_next(vmm_user_regs_t * regs)
 {
-	u32 vcpu_next;
-
-	/* Change the state of current running vcpu */
-	if (-1 < sched.vcpu_current) {
-		sched.vcpu_array[sched.vcpu_current].state =
-		    VMM_VCPU_STATE_READY;
-	}
+	s32 vcpu_next;
 
 	/* Determine the next ready vcpu to schedule */
 	vcpu_next = (sched.vcpu_current + 1) % (sched.vcpu_count);
-	while (sched.vcpu_array[vcpu_next].state != VMM_VCPU_STATE_READY) {
+	while ((sched.vcpu_array[vcpu_next].state != VMM_VCPU_STATE_READY) &&
+		(vcpu_next != sched.vcpu_current)) {
 		vcpu_next = (vcpu_next + 1) % (sched.vcpu_count);
 	}
 
 	/* Restore the state of next vcpu */
 	if (sched.vcpu_current != vcpu_next) {
 		if (-1 < sched.vcpu_current) {
+			if (sched.vcpu_array[sched.vcpu_current].state == 
+			    VMM_VCPU_STATE_RUNNING) {
+				sched.vcpu_array[sched.vcpu_current].state =
+							    VMM_VCPU_STATE_READY;
+			}
 			vmm_vcpu_regs_switch(&sched.
 					     vcpu_array[sched.vcpu_current],
 					     &sched.vcpu_array[vcpu_next],
@@ -90,12 +63,63 @@ void vmm_scheduler_next(vmm_user_regs_t * regs)
 					     &sched.vcpu_array[vcpu_next],
 					     regs);
 		}
+		sched.vcpu_array[vcpu_next].tick_pending = 
+					sched.vcpu_array[vcpu_next].tick_count;
 		sched.vcpu_array[vcpu_next].state = VMM_VCPU_STATE_RUNNING;
 		sched.vcpu_current = vcpu_next;
 	}
+}
 
-	/* Reload tick count from current vcpu */
-	sched.scheduler_count = sched.vcpu_array[sched.vcpu_current].tick_count;
+void vmm_scheduler_irq_process(u32 cpu_irq_num, 
+				vmm_user_regs_t * regs, 
+				bool host_irq)
+{
+	vmm_vcpu_t * vcpu;
+
+	/* Process host irq if required */
+	if (host_irq) {
+		vmm_host_irq_exec(cpu_irq_num, regs);
+	}
+
+	/* Determine current vcpu */
+	vcpu = (-1 < sched.vcpu_current) ? 
+		&sched.vcpu_array[sched.vcpu_current] : NULL;
+	if (!vcpu) {
+		return;
+	}
+
+	/* Schedule next vcpu if state of 
+	 * current vcpu is not RUNNING */
+	if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
+		vmm_scheduler_next(regs);
+		return;
+	}
+
+	/* VCPU irq processing */
+	vmm_vcpu_irq_process(regs);
+
+	/* FIXME: Reset processing */
+
+}
+
+void vmm_scheduler_tick(vmm_user_regs_t * regs)
+{
+	vmm_vcpu_t * vcpu = (-1 < sched.vcpu_current) ? 
+			    &sched.vcpu_array[sched.vcpu_current] : NULL;
+	if (!vcpu) {
+		vmm_scheduler_next(regs);
+		return;
+	} 
+	if (!vcpu->preempt_count) {
+		if (!vcpu->tick_pending) {
+			vmm_scheduler_next(regs);
+		} else {
+			vcpu->tick_pending--;
+			if (vcpu->tick_func && !vcpu->preempt_count) {
+				vcpu->tick_func(regs, vcpu->tick_pending);
+			}
+		}
+	}
 }
 
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void)
@@ -188,6 +212,7 @@ int vmm_scheduler_vcpu_kick(vmm_vcpu_t * vcpu)
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state == VMM_VCPU_STATE_RESET) {
 			vcpu->state = VMM_VCPU_STATE_READY;
+			vcpu->tick_pending = vcpu->tick_count;
 			rc = VMM_OK;
 		}
 		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
@@ -283,6 +308,7 @@ vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
 	vcpu->node = NULL;
 	vcpu->state = VMM_VCPU_STATE_READY;
 	vcpu->preempt_count = 0;
+	vcpu->tick_pending = 0;
 	vcpu->tick_count = tick_count;
 	vcpu->tick_func = tick_func;
 	vcpu->start_pc = start_pc;
@@ -543,6 +569,7 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 		vcpu->node = vnode;
 		vcpu->state = VMM_VCPU_STATE_RESET;
 		vcpu->preempt_count = 0;
+		vcpu->tick_pending = 0;
 		attrval = vmm_devtree_attrval(vnode,
 					      VMM_DEVTREE_TICK_COUNT_ATTR_NAME);
 		if (attrval) {
@@ -596,7 +623,6 @@ int vmm_scheduler_init(void)
 
 	/* Initialize scheduling parameters */
 	sched.vcpu_current = -1;
-	sched.scheduler_count = 0;
 
 	/* Intialize guest & vcpu managment parameters */
 	INIT_SPIN_LOCK(&sched.lock);
