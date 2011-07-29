@@ -36,7 +36,6 @@ void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 {
 	vmm_printf("\n");
 	cpu_vcpu_dump_user_reg(vcpu, regs);
-	vmm_scheduler_next(regs);
 	vmm_scheduler_vcpu_halt(vcpu);
 }
 
@@ -716,22 +715,47 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
-int vmm_vcpu_regs_reset(vmm_vcpu_t * vcpu, vmm_user_regs_t *regs)
+int vmm_vcpu_regs_reset(vmm_vcpu_t * vcpu)
 {
+	u32 ite;
 	/* For only Normal VCPUs */
 	if (!vcpu->guest) {
 		return VMM_OK;
 	}
-	/* Reset User Mode Registers */
-	vmm_memset(regs, 0, sizeof(vmm_user_regs_t));
-	regs->pc = vcpu->start_pc;
-	regs->cpsr = CPSR_ASYNC_ABORT_DISABLED | CPSR_MODE_USER;
-	/* Reset Supervisor Mode Registers */
-	cpu_vcpu_cpsr_update(vcpu, regs, (CPSR_COND_ZERO_MASK |
-					  CPSR_ASYNC_ABORT_DISABLED | 
-					  CPSR_IRQ_DISABLED |
-					  CPSR_FIQ_DISABLED | 
-					  CPSR_MODE_SUPERVISOR));
+	/* Reset User Registers */
+	vmm_memset(&vcpu->uregs, 0, sizeof(vmm_user_regs_t));
+	vcpu->uregs.pc = vcpu->start_pc;
+	vcpu->uregs.cpsr = CPSR_ASYNC_ABORT_DISABLED | CPSR_MODE_USER;
+	/* Reset Super Registers */
+	for (ite = 0; ite < CPU_FIQ_GPR_COUNT; ite++) {
+		vcpu->sregs.gpr_usr[ite] = 0x0;
+		vcpu->sregs.gpr_fiq[ite] = 0x0;
+	}
+	vcpu->sregs.sp_usr = 0x0;
+	vcpu->sregs.lr_usr = 0x0;
+	vcpu->sregs.sp_svc = 0x0;
+	vcpu->sregs.lr_svc = 0x0;
+	vcpu->sregs.spsr_svc = 0x0;
+	vcpu->sregs.sp_mon = 0x0;
+	vcpu->sregs.lr_mon = 0x0;
+	vcpu->sregs.spsr_mon = 0x0;
+	vcpu->sregs.sp_abt = 0x0;
+	vcpu->sregs.lr_abt = 0x0;
+	vcpu->sregs.spsr_abt = 0x0;
+	vcpu->sregs.sp_und = 0x0;
+	vcpu->sregs.lr_und = 0x0;
+	vcpu->sregs.spsr_und = 0x0;
+	vcpu->sregs.sp_irq = 0x0;
+	vcpu->sregs.lr_irq = 0x0;
+	vcpu->sregs.spsr_irq = 0x0;
+	vcpu->sregs.sp_fiq = 0x0;
+	vcpu->sregs.lr_fiq = 0x0;
+	vcpu->sregs.spsr_fiq = 0x0;
+	cpu_vcpu_cpsr_update(vcpu, &vcpu->uregs, (CPSR_COND_ZERO_MASK |
+						  CPSR_ASYNC_ABORT_DISABLED | 
+						  CPSR_IRQ_DISABLED |
+						  CPSR_FIQ_DISABLED | 
+						  CPSR_MODE_SUPERVISOR));
 	return cpu_vcpu_cp15_reset(vcpu);
 }
 

@@ -27,6 +27,7 @@
 #include <vmm_regs.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
+#include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate_thumb.h>
 
 /** FIXME: Emulate Priviledged Thumb instructions */
@@ -43,8 +44,7 @@ int cpu_vcpu_emulate_thumb_inst(vmm_vcpu_t *vcpu,
 	}
 
 	/* Thumb mode emulation not supported so halt the VCPU */
-	vmm_scheduler_next(regs);
-	vmm_scheduler_vcpu_halt(vcpu);
+	cpu_vcpu_halt(vcpu, regs);
 
 	return VMM_OK;
 }
