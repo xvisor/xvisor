@@ -897,6 +897,7 @@ int cpu_vcpu_cp15_reset(vmm_vcpu_t * vcpu)
 			if (rc) {
 				return rc;
 			}
+			vcpu->sregs.cp15.vtlb.valid[vtlb] = 0;
 		}
 	}
 
