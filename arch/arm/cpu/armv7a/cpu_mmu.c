@@ -447,14 +447,14 @@ int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 
 	switch (found) {
 	case 1:
-		if (pg->pa == chkpa && pg->sz == chksz && pg->imp == chkimp) {
+		if (pg->sz == chksz && pg->imp == chkimp) {
 			*l1_tte = 0x0;
 			l1->tte_cnt--;
 			ret = VMM_OK;
 		}
 		break;
 	case 2:
-		if (pg->pa == chkpa && pg->sz == chksz && pg->imp == chkimp) {
+		if (pg->sz == chksz && pg->imp == chkimp) {
 			*l2_tte = 0x0;
 			l2->tte_cnt--;
 			if (!l2->tte_cnt) {

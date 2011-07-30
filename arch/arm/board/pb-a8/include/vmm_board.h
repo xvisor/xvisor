@@ -44,13 +44,11 @@ int vmm_pic_init(void);
 int vmm_devtree_populate(vmm_devtree_node_t ** root,
 			 char **string_buffer, size_t * string_buffer_size);
 
-/** Get clock for given device name */
+/** Board specific functions */
 int vmm_board_getclock(vmm_devtree_node_t * node, u32 * clock);
-
-/** Do early board initialization */
+int vmm_board_reset(void);
+int vmm_board_shutdown(void);
 int vmm_board_early_init(void);
-
-/** Initialize board function required by VMM core */
 int vmm_board_final_init(void);
 
 #endif

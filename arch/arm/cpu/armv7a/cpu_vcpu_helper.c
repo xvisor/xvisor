@@ -27,9 +27,17 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_guest.h>
+#include <vmm_scheduler.h>
 #include <cpu_defines.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
+
+void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
+{
+	vmm_printf("\n");
+	cpu_vcpu_dump_user_reg(vcpu, regs);
+	vmm_scheduler_vcpu_halt(vcpu);
+}
 
 u32 cpu_vcpu_cpsr_retrive(vmm_vcpu_t * vcpu,
 			  vmm_user_regs_t * regs)
@@ -648,14 +656,9 @@ void cpu_vcpu_regmode_write(vmm_vcpu_t * vcpu,
 	}
 }
 
-void cpu_vcpu_set_feature(vmm_vcpu_t * vcpu, int feature)
+int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 {
-    vcpu->sregs.features |= 1u << feature;
-}
-
-void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
-{
-	u32 cpuid = CPUID_CORTEXA8;
+	u32 ite, cpuid = ARM_CPUID_CORTEXA8;
 	/* Initialize User Mode Registers */
 	/* For both Orphan & Normal VCPUs */
 	vmm_memset(&vcpu->uregs, 0, sizeof(vmm_user_regs_t));
@@ -671,51 +674,81 @@ void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	/* Initialize Supervisor Mode Registers */
 	/* For only Normal VCPUs */
 	if (!vcpu->guest) {
-		return;
+		return VMM_OK;
 	}
-	vmm_memset(&vcpu->sregs, 0, sizeof(vmm_super_regs_t));
-	vcpu->sregs.cpsr = CPSR_ASYNC_ABORT_DISABLED | CPSR_IRQ_DISABLED |
-				CPSR_FIQ_DISABLED | CPSR_MODE_SUPERVISOR;
-	switch (cpuid) {
-	case CPUID_CORTEXA8:
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6K);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V7);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_AUXCR);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP3);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_NEON);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
-		break;
-	case CPUID_CORTEXA9:
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6K);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V7);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_AUXCR);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP3);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_NEON);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
-		break;
-	case CPUID_ANY: /* For userspace emulation.  */
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V6K);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_V7);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP3);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_NEON);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
-		cpu_vcpu_set_feature(vcpu, ARM_FEATURE_DIV);
-		break;
-	default:
-		break;
-	};
-	cpu_vcpu_cp15_init(vcpu, cpuid);
+	if (!vcpu->reset_count) {
+		vmm_memset(&vcpu->sregs, 0, sizeof(vmm_super_regs_t));
+		vcpu->sregs.cpsr = CPSR_ASYNC_ABORT_DISABLED | 
+				   CPSR_IRQ_DISABLED |
+				   CPSR_FIQ_DISABLED | 
+				   CPSR_MODE_SUPERVISOR;
+	} else {
+		for (ite = 0; ite < CPU_FIQ_GPR_COUNT; ite++) {
+			vcpu->sregs.gpr_usr[ite] = 0x0;
+			vcpu->sregs.gpr_fiq[ite] = 0x0;
+		}
+		vcpu->sregs.sp_usr = 0x0;
+		vcpu->sregs.lr_usr = 0x0;
+		vcpu->sregs.sp_svc = 0x0;
+		vcpu->sregs.lr_svc = 0x0;
+		vcpu->sregs.spsr_svc = 0x0;
+		vcpu->sregs.sp_mon = 0x0;
+		vcpu->sregs.lr_mon = 0x0;
+		vcpu->sregs.spsr_mon = 0x0;
+		vcpu->sregs.sp_abt = 0x0;
+		vcpu->sregs.lr_abt = 0x0;
+		vcpu->sregs.spsr_abt = 0x0;
+		vcpu->sregs.sp_und = 0x0;
+		vcpu->sregs.lr_und = 0x0;
+		vcpu->sregs.spsr_und = 0x0;
+		vcpu->sregs.sp_irq = 0x0;
+		vcpu->sregs.lr_irq = 0x0;
+		vcpu->sregs.spsr_irq = 0x0;
+		vcpu->sregs.sp_fiq = 0x0;
+		vcpu->sregs.lr_fiq = 0x0;
+		vcpu->sregs.spsr_fiq = 0x0;
+		cpu_vcpu_cpsr_update(vcpu, &vcpu->uregs, (CPSR_COND_ZERO_MASK |
+						  CPSR_ASYNC_ABORT_DISABLED | 
+						  CPSR_IRQ_DISABLED |
+						  CPSR_FIQ_DISABLED | 
+						  CPSR_MODE_SUPERVISOR));
+	}
+	if (!vcpu->reset_count) {
+		vcpu->sregs.features = 0;
+		switch (cpuid) {
+		case ARM_CPUID_CORTEXA8:
+			arm_set_feature(vcpu, ARM_FEATURE_V4T);
+			arm_set_feature(vcpu, ARM_FEATURE_V5);
+			arm_set_feature(vcpu, ARM_FEATURE_V6);
+			arm_set_feature(vcpu, ARM_FEATURE_V6K);
+			arm_set_feature(vcpu, ARM_FEATURE_V7);
+			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
+			arm_set_feature(vcpu, ARM_FEATURE_NEON);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			break;
+		case ARM_CPUID_CORTEXA9:
+			arm_set_feature(vcpu, ARM_FEATURE_V4T);
+			arm_set_feature(vcpu, ARM_FEATURE_V5);
+			arm_set_feature(vcpu, ARM_FEATURE_V6);
+			arm_set_feature(vcpu, ARM_FEATURE_V6K);
+			arm_set_feature(vcpu, ARM_FEATURE_V7);
+			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
+			arm_set_feature(vcpu, ARM_FEATURE_NEON);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			break;
+		default:
+			break;
+		};
+	}
+	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
 void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
@@ -727,8 +760,9 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 		tvcpu->uregs.pc = regs->pc;
 		tvcpu->uregs.lr = regs->lr;
 		tvcpu->uregs.sp = regs->sp;
-		for (ite = 0; ite < CPU_GPR_COUNT; ite++)
+		for (ite = 0; ite < CPU_GPR_COUNT; ite++) {
 			tvcpu->uregs.gpr[ite] = regs->gpr[ite];
+		}
 		tvcpu->uregs.cpsr = regs->cpsr;
 		if(tvcpu->guest) {
 			cpu_vcpu_banked_regs_save(tvcpu, regs);
@@ -738,12 +772,13 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 		/* Switch CP15 context */
 		cpu_vcpu_cp15_context_switch(tvcpu, vcpu, regs);
 	}
-	/* Restore user registers  & banked registers */
+	/* Restore user registers & banked registers */
 	regs->pc = vcpu->uregs.pc;
 	regs->lr = vcpu->uregs.lr;
 	regs->sp = vcpu->uregs.sp;
-	for (ite = 0; ite < CPU_GPR_COUNT; ite++)
+	for (ite = 0; ite < CPU_GPR_COUNT; ite++) {
 		regs->gpr[ite] = vcpu->uregs.gpr[ite];
+	}
 	regs->cpsr = vcpu->uregs.cpsr;
 	if (vcpu->guest) {
 		cpu_vcpu_banked_regs_restore(vcpu, regs);

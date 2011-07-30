@@ -50,6 +50,9 @@ void vmm_hang(void)
 void vmm_init(void)
 {
 	int ret;
+	struct dlist *l;
+	vmm_devtree_node_t *gnode, *gsnode;
+	vmm_guest_t *guest = NULL;
 
 	/* Initialize Heap */
 	ret = vmm_heap_init();
@@ -203,16 +206,22 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
-	/* Probe device emulators */
-	ret = vmm_devemu_probe();
-	if (ret) {
+	/* Populate guest instances */
+	vmm_printf("Populating Guest Instances\n");
+	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
+				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	if (!gsnode) {
+		vmm_printf("Error %d\n", ret);
 		vmm_hang();
 	}
-}
-
-void vmm_exit(void)
-{
-	/* FIXME: Stop all functionality and exit */
+	list_for_each(l, &gsnode->child_list) {
+		gnode = list_entry(l, vmm_devtree_node_t, head);
+		vmm_printf("Creating %s\n", gnode->name);
+		guest = vmm_scheduler_guest_create(gnode);
+		if (!guest) {
+			vmm_printf("Error: Failed to create guest\n");
+		}
+	}
 }
 
 void vmm_start(void)
@@ -232,5 +241,48 @@ void vmm_start(void)
 	vmm_scheduler_start();
 
 	/* Wait here till scheduler gets invoked by timer */
+	vmm_hang();
+}
+
+static void vmm_stop(void)
+{
+	/* Stop scheduler */
+	vmm_printf("Stopping Scheduler\n");
+	vmm_scheduler_stop();
+
+	/* FIXME: Do other cleanup stuff. */
+}
+
+void vmm_reset(void)
+{
+	int rc;
+
+	/* Stop all functionality */
+	vmm_stop();
+
+	/* Issue board reset */
+	vmm_printf("Issuing Board Reset\n");
+	if ((rc = vmm_board_reset())) {
+		vmm_panic("Error: Board reset failed.\n");
+	}
+
+	/* Wait here. Nothing else to do. */
+	vmm_hang();
+}
+
+void vmm_shutdown(void)
+{
+	int rc;
+
+	/* Stop all functionality */
+	vmm_stop();
+
+	/* Issue board shutdown */
+	vmm_printf("Issuing Board Shutdown\n");
+	if ((rc = vmm_board_shutdown())) {
+		vmm_panic("Error: Board shutdown failed.\n");
+	}
+
+	/* Wait here. Nothing else to do. */
 	vmm_hang();
 }

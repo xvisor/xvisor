@@ -29,23 +29,55 @@
 #include <cpu_defines.h>
 #include <cpu_mmu.h>
 
+/* CPUID related macors & defines */
+#define ARM_CPUID_ARM1026     0x4106a262
+#define ARM_CPUID_ARM926      0x41069265
+#define ARM_CPUID_ARM946      0x41059461
+#define ARM_CPUID_TI915T      0x54029152
+#define ARM_CPUID_TI925T      0x54029252
+#define ARM_CPUID_SA1100      0x4401A11B
+#define ARM_CPUID_SA1110      0x6901B119
+#define ARM_CPUID_PXA250      0x69052100
+#define ARM_CPUID_PXA255      0x69052d00
+#define ARM_CPUID_PXA260      0x69052903
+#define ARM_CPUID_PXA261      0x69052d05
+#define ARM_CPUID_PXA262      0x69052d06
+#define ARM_CPUID_PXA270      0x69054110
+#define ARM_CPUID_PXA270_A0   0x69054110
+#define ARM_CPUID_PXA270_A1   0x69054111
+#define ARM_CPUID_PXA270_B0   0x69054112
+#define ARM_CPUID_PXA270_B1   0x69054113
+#define ARM_CPUID_PXA270_C0   0x69054114
+#define ARM_CPUID_PXA270_C5   0x69054117
+#define ARM_CPUID_ARM1136     0x4117b363
+#define ARM_CPUID_ARM1136_R2  0x4107b362
+#define ARM_CPUID_ARM11MPCORE 0x410fb022
+#define ARM_CPUID_CORTEXA8    0x410fc080
+#define ARM_CPUID_CORTEXA9    0x410fc090
+#define ARM_CPUID_CORTEXM3    0x410fc231
+#define ARM_CPUID_ANY         0xffffffff
+
 enum arm_features {
     ARM_FEATURE_VFP,
-    ARM_FEATURE_AUXCR, /* ARM1026 Auxiliary control register. */
-    ARM_FEATURE_XSCALE, /* Intel XScale extensions. */
-    ARM_FEATURE_IWMMXT, /* Intel iwMMXt extension. */
+    ARM_FEATURE_AUXCR,  /* ARM1026 Auxiliary control register.  */
+    ARM_FEATURE_XSCALE, /* Intel XScale extensions.  */
+    ARM_FEATURE_IWMMXT, /* Intel iwMMXt extension.  */
     ARM_FEATURE_V6,
     ARM_FEATURE_V6K,
     ARM_FEATURE_V7,
     ARM_FEATURE_THUMB2,
-    ARM_FEATURE_MPU, /* Only has Memory Protection Unit, not full MMU. */
+    ARM_FEATURE_MPU,    /* Only has Memory Protection Unit, not full MMU.  */
     ARM_FEATURE_VFP3,
     ARM_FEATURE_VFP_FP16,
     ARM_FEATURE_NEON,
     ARM_FEATURE_DIV,
-    ARM_FEATURE_M, /* Microcontroller profile. */
-    ARM_FEATURE_OMAPCP, /* OMAP specific CP15 ops handling. */
-    ARM_FEATURE_THUMB2EE
+    ARM_FEATURE_M, /* Microcontroller profile.  */
+    ARM_FEATURE_OMAPCP, /* OMAP specific CP15 ops handling.  */
+    ARM_FEATURE_THUMB2EE,
+    ARM_FEATURE_V7MP,    /* v7 Multiprocessing Extensions */
+    ARM_FEATURE_V4T,
+    ARM_FEATURE_V5,
+    ARM_FEATURE_STRONGARM,
 };
 
 struct vmm_user_regs {
@@ -84,6 +116,8 @@ struct vmm_super_regs {
 	u32 sp_fiq;
 	u32 lr_fiq;
 	u32 spsr_fiq;
+	/* Internal CPU feature flags. */
+	u32 features;
 	/* System control coprocessor (cp15) */
 	struct {
 		/* Shadow L1 */
@@ -112,23 +146,17 @@ struct vmm_super_regs {
 		u32 c0_c2[8]; /* Instruction set registers. */
 		u32 c1_sctlr; /* System control register. */
 		u32 c1_coproc; /* Coprocessor access register.  */
-		u32 c1_xscaleauxcr; /* XScale auxiliary control register. */
 		u32 c2_base0; /* MMU translation table base 0. */
 		u32 c2_base1; /* MMU translation table base 1. */
 		u32 c2_control; /* MMU translation table base control. */
 		u32 c2_mask; /* MMU translation table base selection mask. */
 		u32 c2_base_mask; /* MMU translation table base 0 mask. */
-		u32 c2_data; /* MPU data cachable bits. */
-		u32 c2_insn; /* MPU instruction cachable bits. */
-		u32 c3; /* MMU domain access control register
-				MPU write buffer control. */
+		u32 c3; /* MMU domain access control register */
 		u32 c5_ifsr; /* Fault status registers. */
 		u32 c5_dfsr; /* Fault status registers. */
-		u32 c5_data;
-		u32 c6_region[8]; /* MPU base/size registers. */
 		u32 c6_ifar; /* Fault address registers. */
 		u32 c6_dfar; /* Fault address registers. */
-		u32 c6_data;
+		u32 c7_par; /* Translation result. */
 		u32 c9_insn; /* Cache lockdown registers. */
 		u32 c9_data;
 		u32 c13_fcse; /* FCSE PID. */
@@ -136,16 +164,15 @@ struct vmm_super_regs {
 		u32 c13_tls1; /* User RW Thread register. */
 		u32 c13_tls2; /* User RO Thread register. */
 		u32 c13_tls3; /* Privileged Thread register. */
-		u32 c15_cpar; /* XScale Coprocessor Access Register */
-		u32 c15_ticonfig; /* TI925T configuration byte. */
 		u32 c15_i_max; /* Maximum D-cache dirty line index. */
 		u32 c15_i_min; /* Minimum D-cache dirty line index. */
-		u32 c15_threadid; /* TI debugger thread-ID. */
 	} cp15;
-	/* Internal CPU feature flags. */
-	u32 features;
 } __attribute((packed));
 
 typedef struct vmm_super_regs vmm_super_regs_t;
+
+#define arm_cpuid(vcpu) ((vcpu)->sregs.cp15.c0_cpuid)
+#define arm_set_feature(vcpu, feat) ((vcpu)->sregs.features |= (0x1 << (feat)))
+#define arm_feature(vcpu, feat) ((vcpu)->sregs.features & (0x1 << (feat)))
 
 #endif

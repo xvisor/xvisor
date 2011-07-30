@@ -28,6 +28,7 @@
 #include <vmm_modules.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
+#include <vmm_scheduler.h>
 #include <vmm_devemu.h>
 
 #define MODULE_VARID			realview_emulator_module
@@ -330,8 +331,10 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 		if (s->lockval == REALVIEW_LOCK_VAL) {
 			s->resetlevel &= regmask;
 			s->resetlevel |= regval;
+			/* FIXME: comparision does not work with linux */
 			if (regval & 0x100) {
-				/* FIXME: system_reset_request (); */
+				vmm_scheduler_guest_reset(s->guest);
+				vmm_scheduler_guest_kick(s->guest);
 			}
 		}
 		break;

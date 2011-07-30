@@ -26,8 +26,9 @@
 #define __VMM_GUEST_H__
 
 #include <vmm_types.h>
-#include <vmm_list.h>
 #include <vmm_regs.h>
+#include <vmm_list.h>
+#include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 
 typedef struct vmm_guest_region vmm_guest_region_t;
@@ -69,6 +70,7 @@ struct vmm_vcpu_irqs {
 
 struct vmm_guest {
 	struct dlist head;
+	vmm_spinlock_t lock;
 	u32 num;
 	vmm_devtree_node_t *node;
 	struct dlist vcpu_list;
@@ -79,22 +81,27 @@ struct vmm_guest {
 			list_for_each(curr, &(guest->vcpu_list))
 
 enum vmm_vcpu_states {
-	VMM_VCPU_STATE_UNKNOWN = 0x00,
-	VMM_VCPU_STATE_RESET = 0x01,
-	VMM_VCPU_STATE_READY = 0x02,
-	VMM_VCPU_STATE_RUNNING = 0x04,
-	VMM_VCPU_STATE_PAUSED = 0x08,
-	VMM_VCPU_STATE_HALTED = 0x10
+	VMM_VCPU_STATE_UNKNOWN = 0x01,
+	VMM_VCPU_STATE_RESET = 0x02,
+	VMM_VCPU_STATE_READY = 0x04,
+	VMM_VCPU_STATE_RUNNING = 0x08,
+	VMM_VCPU_STATE_PAUSED = 0x10,
+	VMM_VCPU_STATE_HALTED = 0x20
 };
+
+#define VMM_VCPU_STATE_SAVEABLE		0x38
 
 struct vmm_vcpu {
 	struct dlist head;
+	vmm_spinlock_t lock;
 	u32 num;
 	char name[64];
 	vmm_devtree_node_t *node;
 	vmm_guest_t *guest;
 	u32 state;
+	u32 reset_count;
 	u32 preempt_count;
+	u32 tick_pending;
 	u32 tick_count;
 	vmm_vcpu_tick_t tick_func;
 	virtual_addr_t start_pc;

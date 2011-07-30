@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Anup Patel.
+ * Copyright (c) 2010 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,35 +16,22 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_vcpu_emulate_thumb.c
- * @version 1.0
+ * @file vmm_cmd_reset.c
+ * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
- * @brief source code to emulate Thumb instructions
+ * @brief Implementation of reset command
  */
 
 #include <vmm_error.h>
-#include <vmm_cpu.h>
-#include <vmm_regs.h>
-#include <vmm_vcpu_irq.h>
-#include <vmm_scheduler.h>
-#include <cpu_vcpu_helper.h>
-#include <cpu_vcpu_emulate_thumb.h>
+#include <vmm_stdio.h>
+#include <vmm_main.h>
+#include <vmm_mterm.h>
 
-/** FIXME: Emulate Priviledged Thumb instructions */
-int cpu_vcpu_emulate_thumb_inst(vmm_vcpu_t *vcpu, 
-				vmm_user_regs_t * regs,
-				bool is_hypercall)
+int cmd_reset_exec(int argc, char **argv)
 {
-	/* Sanity check */
-	if (!vcpu) {
-		return VMM_EFAIL;
-	}
-	if (!vcpu->guest) {
-		return VMM_EFAIL;
-	}
-
-	/* Thumb mode emulation not supported so halt the VCPU */
-	cpu_vcpu_halt(vcpu, regs);
-
+	/* Reset the hypervisor */
+	vmm_reset();
 	return VMM_OK;
 }
+
+VMM_DECLARE_CMD(reset, "reset hypervisor", cmd_reset_exec, NULL);

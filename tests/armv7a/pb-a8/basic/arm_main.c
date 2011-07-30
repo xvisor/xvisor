@@ -22,6 +22,7 @@
  * @brief ARM test code main file
  */
 
+#include <arm_io.h>
 #include <arm_irq.h>
 #include <arm_timer.h>
 #include <arm_string.h>
@@ -41,6 +42,20 @@ void arm_init(void)
 	arm_timer_enable();
 }
 
+void arm_reset(void)
+{
+	/* Unlock Lockable reigsters */
+	arm_writel(REALVIEW_SYS_LOCKVAL, 
+		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_LOCK_OFFSET));
+#if 0
+	arm_writel(REALVIEW_SYS_CTRL_RESET_CONFIGCLR, 
+		   (void *)(pba8_csr_base + REALVIEW_SYS_RESETCTL_OFFSET));
+#else
+	arm_writel(0x100, 
+		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
+#endif
+}
+
 /* Works in user mode */
 void arm_main(void)
 {
@@ -57,6 +72,16 @@ void arm_main(void)
 			arm_puts("hello\n");
 		} else if (arm_strcmp(line, "hello") == 0) {
 			arm_puts("hi\n");
+		} else if (arm_strcmp(line, "reset") == 0) {
+			arm_puts("System reset ...\n\n");
+			arm_reset();
+			while (1);
+		} else if (arm_strcmp(line, "help") == 0) {
+			arm_puts("List of commands: \n");
+			arm_puts("hi    - Say hi to ARM test code\n");
+			arm_puts("hello - Say hello to ARM test code\n");
+			arm_puts("reset - Reset the system\n");
+			arm_puts("help  - List commands and their usage\n");
 		}
 	}
 }

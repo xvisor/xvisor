@@ -610,74 +610,59 @@ const vmm_emuid_t *devemu_match_node(const vmm_emuid_t * matches,
 	return NULL;
 }
 
-int vmm_devemu_probe(void)
+int vmm_devemu_probe(vmm_guest_t *guest, vmm_guest_region_t *reg)
 {
-	int rc, num, count;
-	struct dlist *l, *l1;
-	vmm_guest_t *guest;
-	vmm_guest_region_t *reg;
+	int rc;
+	struct dlist *l1;
 	vmm_emudev_t *einst;
 	vmm_emuguest_t *eginst;
 	vmm_emulator_t *emu;
 	const vmm_emuid_t *matches;
 	const vmm_emuid_t *match;
 
-	count = vmm_scheduler_guest_count();
-	for (num = 0; num < count; num++) {
-		guest = vmm_scheduler_guest(num);
-		/* Setup emulated guest instance */
+	if (!guest->aspace.priv) {
 		eginst = vmm_malloc(sizeof(vmm_emuguest_t));
 		INIT_LIST_HEAD(&eginst->emupic_list);
 		INIT_LIST_HEAD(&eginst->emuclk_list);
 		guest->aspace.priv = eginst;
-		list_for_each(l, &guest->aspace.reg_list) {
-			reg = list_entry(l, vmm_guest_region_t, head);
-			if (!reg->is_virtual) {
-				continue;
+	} else {
+		eginst = guest->aspace.priv;
+	}
+
+	list_for_each(l1, &dectrl.emu_list) {
+		emu = list_entry(l1, vmm_emulator_t, head);
+		matches = emu->match_table;
+		match = devemu_match_node(matches, reg->node);
+		if (match) {
+			einst = vmm_malloc(sizeof(vmm_emudev_t));
+			INIT_SPIN_LOCK(&einst->lock);
+			einst->node = reg->node;
+			einst->probe = emu->probe;
+			einst->read = emu->read;
+			einst->write = emu->write;
+			einst->reset = emu->reset;
+			einst->remove = emu->remove;
+			einst->priv = NULL;
+			reg->priv = einst;
+			reg->node->type = VMM_DEVTREE_NODETYPE_EDEVICE;
+			reg->node->priv = einst;
+			vmm_printf("Probe edevice %s/%s\n",
+				   guest->node->name, reg->node->name);
+			if ((rc = einst->probe(guest, einst, match))) {
+				vmm_printf("Error %d\n", rc);
+				vmm_free(einst);
+				reg->priv = NULL;
+				reg->node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
+				reg->node->priv = NULL;
 			}
-			list_for_each(l1, &dectrl.emu_list) {
-				emu = list_entry(l1, vmm_emulator_t, head);
-				matches = emu->match_table;
-				match = devemu_match_node(matches, reg->node);
-				if (match) {
-					einst = vmm_malloc(
-							sizeof(vmm_emudev_t));
-					INIT_SPIN_LOCK(&einst->lock);
-					einst->node = reg->node;
-					einst->probe = emu->probe;
-					einst->read = emu->read;
-					einst->write = emu->write;
-					einst->reset = emu->reset;
-					einst->remove = emu->remove;
-					einst->priv = NULL;
-					reg->priv = einst;
-					reg->node->type = 
-						VMM_DEVTREE_NODETYPE_EDEVICE;
-					reg->node->priv = einst;
-					vmm_printf("Probe edevice %s/%s\n",
-						   guest->node->name,
-						   reg->node->name);
-					rc = einst->probe(guest, einst, match);
-					if (rc) {
-						vmm_printf("Error %d\n", rc);
-						vmm_free(einst);
-						reg->priv = NULL;
-						reg->node->type =
-						  VMM_DEVTREE_NODETYPE_UNKNOWN;
-						reg->node->priv = NULL;
-					}
-					rc = einst->reset(einst);
-					if (rc) {
-						vmm_printf("Error %d\n", rc);
-						vmm_free(einst);
-						reg->priv = NULL;
-						reg->node->type =
-						  VMM_DEVTREE_NODETYPE_UNKNOWN;
-						reg->node->priv = NULL;
-					}
-					break;
-				}
+			if ((rc = einst->reset(einst))) {
+				vmm_printf("Error %d\n", rc);
+				vmm_free(einst);
+				reg->priv = NULL;
+				reg->node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
+				reg->node->priv = NULL;
 			}
+			break;
 		}
 	}
 

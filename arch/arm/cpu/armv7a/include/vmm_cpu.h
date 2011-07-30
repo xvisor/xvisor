@@ -34,7 +34,7 @@ int vmm_cpu_early_init(void);
 int vmm_cpu_final_init(void);
 
 /** Register related functions required by VMM core */
-void vmm_vcpu_regs_init(vmm_vcpu_t * vcpu);
+int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu);
 void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 			  vmm_vcpu_t * vcpu, vmm_user_regs_t * regs);
 void vmm_vcpu_regs_dump(vmm_vcpu_t * vcpu);

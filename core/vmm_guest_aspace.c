@@ -27,6 +27,7 @@
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_devtree.h>
+#include <vmm_devemu.h>
 #include <vmm_guest_aspace.h>
 
 bool vmm_guest_aspace_isvirtual(vmm_guest_t *guest,
@@ -207,6 +208,10 @@ int vmm_guest_aspace_initguest(vmm_guest_t *guest)
 		reg->priv = NULL;
 
 		list_add_tail(&guest->aspace.reg_list, &reg->head);
+
+		if (reg->is_virtual) {
+			vmm_devemu_probe(guest, reg);
+		}
 	}
 
 	return VMM_OK;

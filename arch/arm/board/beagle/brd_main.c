@@ -57,6 +57,18 @@ int vmm_board_getclock(vmm_devtree_node_t * node, u32 * clock)
 	return VMM_OK;
 }
 
+int vmm_board_reset(void)
+{
+	/* FIXME: TBD */
+	return VMM_OK;
+}
+
+int vmm_board_shutdown(void)
+{
+	/* FIXME: TBD */
+	return VMM_OK;
+}
+
 int vmm_board_early_init(void)
 {
 	/*

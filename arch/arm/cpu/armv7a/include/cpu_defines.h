@@ -81,11 +81,6 @@
 #define CPSR_COND_NEGATIVE_MASK				(1 << 31)
 #define CPSR_COND_NEGATIVE_SHIFT			31
 
-/* CPUID related macors & defines */
-#define CPUID_CORTEXA8					0x410fc080
-#define CPUID_CORTEXA9					0x410fc090
-#define CPUID_ANY					0xffffffff
-
 /* VFP system registers.  */
 #define VFP_FPSID					0
 #define VFP_FPSCR					1

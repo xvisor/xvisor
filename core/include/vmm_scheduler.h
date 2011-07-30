@@ -33,7 +33,6 @@ typedef struct vmm_scheduler_ctrl vmm_scheduler_ctrl_t;
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
 	s32 vcpu_current;
-	u32 scheduler_count;
 	u32 tick_usecs;
 
 	vmm_spinlock_t lock;
@@ -47,11 +46,34 @@ struct vmm_scheduler_ctrl {
 	struct dlist guest_list;
 };
 
-/** Scheduler tick handler (Must be called from somewhere) */
+/** IRQ Processing (Must be called from somewhere) */
+void vmm_scheduler_irq_process(u32 cpu_irq_num, 
+				vmm_user_regs_t * regs, 
+				bool host_irq);
+
+/** Tick handler (Must be called from somewhere) */
 void vmm_scheduler_tick(vmm_user_regs_t * regs);
 
-/** Schedule next vcpu */
-void vmm_scheduler_next(vmm_user_regs_t * regs);
+/** Retrive current vcpu number */
+vmm_vcpu_t * vmm_scheduler_current_vcpu(void);
+
+/** Retrive current guest number */
+vmm_guest_t * vmm_scheduler_current_guest(void);
+
+/** Disable pre-emption */
+void vmm_scheduler_preempt_disable(void);
+
+/** Enable pre-emption */
+void vmm_scheduler_preempt_enable(void);
+
+/** Start scheduler */
+void vmm_scheduler_start(void);
+
+/** Stop scheduler */
+void vmm_scheduler_stop(void);
+
+/** Get scheduler tick delay in micorseconds */
+u32 vmm_scheduler_tick_usecs(void);
 
 /** Number of vcpus (thread + normal) */
 u32 vmm_scheduler_vcpu_count(void);
@@ -59,26 +81,11 @@ u32 vmm_scheduler_vcpu_count(void);
 /** Retrive vcpu */
 vmm_vcpu_t * vmm_scheduler_vcpu(s32 vcpu_no);
 
-/** Number of guests */
-u32 vmm_scheduler_guest_count(void);
-
-/** Retrive guest */
-vmm_guest_t * vmm_scheduler_guest(s32 guest_no);
-
 /** Number of vcpus belonging to a given guest */
 u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest);
 
-/** Retrive vcpu belonging to a given guest */
-vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index);
-
-/** Find the relative index of a vcpu under a given guest */
-int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu);
-
-/** Retrive current vcpu number */
-vmm_vcpu_t * vmm_scheduler_current_vcpu(void);
-
-/** Retrive current guest number */
-vmm_guest_t * vmm_scheduler_current_guest(void);
+/** Reset a vcpu */
+int vmm_scheduler_vcpu_reset(vmm_vcpu_t * vcpu);
 
 /** Kick a vcpu out of reset state */
 int vmm_scheduler_vcpu_kick(vmm_vcpu_t * vcpu);
@@ -104,20 +111,41 @@ vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
 /** Destroy an orphan vcpu */
 int vmm_scheduler_vcpu_orphan_destroy(vmm_vcpu_t * vcpu);
 
-/** Disable pre-emption */
-void vmm_scheduler_preempt_disable(void);
+/** Number of guests */
+u32 vmm_scheduler_guest_count(void);
 
-/** Enable pre-emption */
-void vmm_scheduler_preempt_enable(void);
+/** Retrive guest */
+vmm_guest_t * vmm_scheduler_guest(s32 guest_no);
 
-/** Start scheduler */
-void vmm_scheduler_start(void);
+/** Retrive vcpu belonging to a given guest */
+vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index);
 
-/** Stop scheduler */
-void vmm_scheduler_stop(void);
+/** Find the relative index of a vcpu under a given guest */
+int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu);
 
-/** Get scheduler tick delay in micorseconds */
-u32 vmm_scheduler_tick_usecs(void);
+/** Reset a guest */
+int vmm_scheduler_guest_reset(vmm_guest_t * guest);
+
+/** Kick a guest out of reset state */
+int vmm_scheduler_guest_kick(vmm_guest_t * guest);
+
+/** Pause a guest */
+int vmm_scheduler_guest_pause(vmm_guest_t * guest);
+
+/** Resume a guest */
+int vmm_scheduler_guest_resume(vmm_guest_t * guest);
+
+/** Halt a guest */
+int vmm_scheduler_guest_halt(vmm_guest_t * guest);
+
+/** Dump registers of a guest */
+int vmm_scheduler_guest_dumpreg(vmm_guest_t * guest);
+
+/** Create a guest based on device tree configuration */
+vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode);
+
+/** Destroy a guest */
+int vmm_scheduler_guest_destroy(vmm_guest_t * guest);
 
 /** Initialize scheduler */
 int vmm_scheduler_init(void);

@@ -23,6 +23,8 @@
 # */
 
 core-objs-y+= commands/vmm_cmd_version.o
+core-objs-y+= commands/vmm_cmd_reset.o
+core-objs-y+= commands/vmm_cmd_shutdown.o
 core-objs-y+= commands/vmm_cmd_devtree.o
 core-objs-y+= commands/vmm_cmd_vcpu.o
 core-objs-y+= commands/vmm_cmd_guest.o
