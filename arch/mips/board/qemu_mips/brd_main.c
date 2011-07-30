@@ -88,3 +88,12 @@ int vmm_board_final_init(void)
 	return VMM_OK;
 }
 
+int vmm_board_reset(void)
+{
+	return VMM_EFAIL;
+}
+
+int vmm_board_shutdown(void)
+{
+	return VMM_EFAIL;
+}

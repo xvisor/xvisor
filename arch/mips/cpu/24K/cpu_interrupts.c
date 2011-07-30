@@ -82,7 +82,7 @@ void vmm_cpu_irq_disable(void)
 #endif
 }
 
-irq_flags_t vmm_interrupts_save(void)
+irq_flags_t vmm_cpu_irq_save(void)
 {
 	irq_flags_t flags;
 	__asm__ __volatile__("di %0\n\t"
@@ -91,7 +91,7 @@ irq_flags_t vmm_interrupts_save(void)
         return flags;
 }
 
-void vmm_interrupts_restore(irq_flags_t flags)
+void vmm_cpu_irq_restore(irq_flags_t flags)
 {
 	irq_flags_t temp;
 	write_c0_status(read_c0_status() | flags);
