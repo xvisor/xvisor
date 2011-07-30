@@ -46,11 +46,9 @@ int vmm_devtree_populate(vmm_devtree_node_t ** root,
 
 /** Get clock for given device name */
 int vmm_board_getclock(vmm_devtree_node_t * node, u32 * clock);
-
-/** Do early board initialization */
+int vmm_board_reset(void);
+int vmm_board_shutdown(void);
 int vmm_board_early_init(void);
-
-/** Do early final initialization */
 int vmm_board_final_init(void);
 
 #endif

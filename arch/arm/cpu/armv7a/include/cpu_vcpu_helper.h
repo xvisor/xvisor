@@ -26,6 +26,9 @@
 
 #include <vmm_types.h>
 
+/* Function to halt VCPU */
+void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs);
+
 /* Function to retrive CPSR of a VCPU */
 u32 cpu_vcpu_cpsr_retrive(vmm_vcpu_t * vcpu,
 			  vmm_user_regs_t * regs);

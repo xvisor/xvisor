@@ -26,16 +26,19 @@
 
 #include <vmm_types.h>
 
-/** VMM hang function */
+/** Hang hypervisor */
 void vmm_hang(void);
 
-/** VMM initialization function */
+/** Initialize hypervisor */
 void vmm_init(void);
 
-/** VMM exit function */
-void vmm_exit(void);
-
-/** VMM start function */
+/** Start hypervisor */
 void vmm_start(void);
+
+/** Reset hypervisor */
+void vmm_reset(void);
+
+/** Shutdown hypervisor */
+void vmm_shutdown(void);
 
 #endif

@@ -64,27 +64,83 @@ void cmd_guest_list()
 		   "--------------------\n");
 }
 
-int do_vcpu_cmd(char *cmd, int guest_num)
+int cmd_guest_kick(int num)
 {
-	int ret;
-	char cmdstr[128];
-	struct dlist *lentry;
-	vmm_vcpu_t *vcpu;
-	vmm_guest_t *guest;
-	guest = vmm_scheduler_guest(guest_num);
+	int ret = VMM_EFAIL;
+	vmm_guest_t *guest = vmm_scheduler_guest(num);
 	if (guest) {
-		list_for_each(lentry, &guest->vcpu_list) {
-			vcpu = list_entry(lentry, vmm_vcpu_t, head);
-			vmm_sprintf(cmdstr, "vcpu %s %d", cmd, vcpu->num);
-			ret = vmm_mterm_proc_cmdstr(cmdstr);
-			if (ret)
-				return ret;
+		if ((ret = vmm_scheduler_guest_kick(guest))) {
+			vmm_printf("%s: Failed to kick\n", guest->node->name);
+		} else {
+			vmm_printf("%s: Kicked\n", guest->node->name);
 		}
 	} else {
 		vmm_printf("Failed to find guest\n");
-		return VMM_EFAIL;
 	}
-	return VMM_OK;
+	return ret;
+}
+
+int cmd_guest_pause(int num)
+{
+	int ret = VMM_EFAIL;
+	vmm_guest_t *guest = vmm_scheduler_guest(num);
+	if (guest) {
+		;
+		if ((ret = vmm_scheduler_guest_pause(guest))) {
+			vmm_printf("%s: Failed to pause\n", guest->node->name);
+		} else {
+			vmm_printf("%s: Paused\n", guest->node->name);
+		}
+	} else {
+		vmm_printf("Failed to find guest\n");
+	}
+	return ret;
+}
+
+int cmd_guest_resume(int num)
+{
+	int ret = VMM_EFAIL;
+	vmm_guest_t *guest = vmm_scheduler_guest(num);
+	if (guest) {
+		if ((ret = vmm_scheduler_guest_resume(guest))) {
+			vmm_printf("%s: Failed to resume\n", guest->node->name);
+		} else {
+			vmm_printf("%s: Resumed\n", guest->node->name);
+		}
+	} else {
+		vmm_printf("Failed to find guest\n");
+	}
+	return ret;
+}
+
+int cmd_guest_halt(int num)
+{
+	int ret = VMM_EFAIL;
+	vmm_guest_t *guest = vmm_scheduler_guest(num);
+	if (guest) {
+		if ((ret = vmm_scheduler_guest_halt(guest))) {
+			vmm_printf("%s: Failed to halt\n", guest->node->name);
+		} else {
+			vmm_printf("%s: Halted\n", guest->node->name);
+		}
+	} else {
+		vmm_printf("Failed to find guest\n");
+	}
+	return ret;
+}
+
+int cmd_guest_dumpreg(int num)
+{
+	int ret = VMM_EFAIL;
+	vmm_guest_t *guest = vmm_scheduler_guest(num);
+	if (guest) {
+		if ((ret = vmm_scheduler_guest_dumpreg(guest))) {
+			vmm_printf("%s: Failed to dumpreg\n", guest->node->name);
+		}
+	} else {
+		vmm_printf("Failed to find guest\n");
+	}
+	return ret;
 }
 
 int cmd_guest_exec(int argc, char **argv)
@@ -106,20 +162,60 @@ int cmd_guest_exec(int argc, char **argv)
 	}
 	num = vmm_str2int(argv[2], 10);
 	count = vmm_scheduler_guest_count();
-	if (vmm_strcmp(argv[1], "kick") == 0 ||
-	    vmm_strcmp(argv[1], "pause") == 0 ||
-	    vmm_strcmp(argv[1], "resume") == 0 ||
-	    vmm_strcmp(argv[1], "halt") == 0 ||
-	    vmm_strcmp(argv[1], "dumpreg") == 0) {
+	if (vmm_strcmp(argv[1], "kick") == 0) {
 		if (num == -1) {
 			for (num = 0; num < count; num++) {
-				ret = do_vcpu_cmd(argv[1], num);
+				ret = cmd_guest_kick(num);
 				if (ret) {
 					return ret;
 				}
 			}
 		} else {
-			return do_vcpu_cmd(argv[1], num);;
+			return cmd_guest_kick(num);
+		}
+	} else if (vmm_strcmp(argv[1], "pause") == 0) {
+		if (num == -1) {
+			for (num = 0; num < count; num++) {
+				ret = cmd_guest_pause(num);
+				if (ret) {
+					return ret;
+				}
+			}
+		} else {
+			return cmd_guest_pause(num);
+		}
+	} else if (vmm_strcmp(argv[1], "resume") == 0) {
+		if (num == -1) {
+			for (num = 0; num < count; num++) {
+				ret = cmd_guest_resume(num);
+				if (ret) {
+					return ret;
+				}
+			}
+		} else {
+			return cmd_guest_resume(num);
+		}
+	} else if (vmm_strcmp(argv[1], "halt") == 0) {
+		if (num == -1) {
+			for (num = 0; num < count; num++) {
+				ret = cmd_guest_halt(num);
+				if (ret) {
+					return ret;
+				}
+			}
+		} else {
+			return cmd_guest_halt(num);
+		}
+	} else if (vmm_strcmp(argv[1], "dumpreg") == 0) {
+		if (num == -1) {
+			for (num = 0; num < count; num++) {
+				ret = cmd_guest_dumpreg(num);
+				if (ret) {
+					return ret;
+				}
+			}
+		} else {
+			return cmd_guest_dumpreg(num);
 		}
 	} else {
 		cmd_guest_usage();
