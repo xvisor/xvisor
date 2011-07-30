@@ -81,13 +81,15 @@ struct vmm_guest {
 			list_for_each(curr, &(guest->vcpu_list))
 
 enum vmm_vcpu_states {
-	VMM_VCPU_STATE_UNKNOWN = 0x00,
-	VMM_VCPU_STATE_RESET = 0x01,
-	VMM_VCPU_STATE_READY = 0x02,
-	VMM_VCPU_STATE_RUNNING = 0x04,
-	VMM_VCPU_STATE_PAUSED = 0x08,
-	VMM_VCPU_STATE_HALTED = 0x10
+	VMM_VCPU_STATE_UNKNOWN = 0x01,
+	VMM_VCPU_STATE_RESET = 0x02,
+	VMM_VCPU_STATE_READY = 0x04,
+	VMM_VCPU_STATE_RUNNING = 0x08,
+	VMM_VCPU_STATE_PAUSED = 0x10,
+	VMM_VCPU_STATE_HALTED = 0x20
 };
+
+#define VMM_VCPU_STATE_SAVEABLE		0x38
 
 struct vmm_vcpu {
 	struct dlist head;

@@ -38,35 +38,35 @@ vmm_scheduler_ctrl_t sched;
 void vmm_scheduler_next(vmm_user_regs_t * regs)
 {
 	s32 next;
-	vmm_vcpu_t *curr_vcpu, *next_vcpu;
+	vmm_vcpu_t *cur_vcpu, *nxt_vcpu;
 
 	/* Determine current vcpu */
-	curr_vcpu = (-1 < sched.vcpu_current) ?
+	cur_vcpu = (-1 < sched.vcpu_current) ?
 		    &sched.vcpu_array[sched.vcpu_current] : NULL;
 
 	/* Determine the next ready vcpu to schedule */
-	next = (curr_vcpu) ? curr_vcpu->num : -1;
+	next = (cur_vcpu) ? cur_vcpu->num : -1;
 	next = (next + 1) % (sched.vcpu_count);
-	next_vcpu = &sched.vcpu_array[next];
-	while ((next_vcpu->state != VMM_VCPU_STATE_READY) &&
+	nxt_vcpu = &sched.vcpu_array[next];
+	while ((nxt_vcpu->state != VMM_VCPU_STATE_READY) &&
 		(next != sched.vcpu_current)) {
 		next = (next + 1) % (sched.vcpu_count);
-		next_vcpu = &sched.vcpu_array[next];
+		nxt_vcpu = &sched.vcpu_array[next];
 	}
 
 	/* Do context switch between current and next vcpus */
-	if (!curr_vcpu || (curr_vcpu->num != next_vcpu->num)) {
-		if (curr_vcpu && (curr_vcpu->state != VMM_VCPU_STATE_RESET)) {
-			if (curr_vcpu->state == VMM_VCPU_STATE_RUNNING) {
-				curr_vcpu->state = VMM_VCPU_STATE_READY;
+	if (!cur_vcpu || (cur_vcpu->num != nxt_vcpu->num)) {
+		if (cur_vcpu && (cur_vcpu->state & VMM_VCPU_STATE_SAVEABLE)) {
+			if (cur_vcpu->state == VMM_VCPU_STATE_RUNNING) {
+				cur_vcpu->state = VMM_VCPU_STATE_READY;
 			}
-			vmm_vcpu_regs_switch(curr_vcpu, next_vcpu, regs);
+			vmm_vcpu_regs_switch(cur_vcpu, nxt_vcpu, regs);
 		} else {
-			vmm_vcpu_regs_switch(NULL, next_vcpu, regs);
+			vmm_vcpu_regs_switch(NULL, nxt_vcpu, regs);
 		}
-		next_vcpu->tick_pending = next_vcpu->tick_count;
-		next_vcpu->state = VMM_VCPU_STATE_RUNNING;
-		sched.vcpu_current = next_vcpu->num;
+		nxt_vcpu->tick_pending = nxt_vcpu->tick_count;
+		nxt_vcpu->state = VMM_VCPU_STATE_RUNNING;
+		sched.vcpu_current = nxt_vcpu->num;
 	}
 }
 
@@ -204,7 +204,8 @@ int vmm_scheduler_vcpu_reset(vmm_vcpu_t * vcpu)
 	irq_flags_t flags;
 	if (vcpu && vcpu->guest) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
-		if (vcpu->state != VMM_VCPU_STATE_RESET) {
+		if ((vcpu->state != VMM_VCPU_STATE_RESET) &&
+		    (vcpu->state != VMM_VCPU_STATE_UNKNOWN)) {
 			vcpu->state = VMM_VCPU_STATE_RESET;
 			vcpu->reset_count++;
 			rc = vmm_vcpu_regs_init(vcpu);
@@ -236,7 +237,8 @@ int vmm_scheduler_vcpu_pause(vmm_vcpu_t * vcpu)
 	irq_flags_t flags;
 	if (vcpu && vcpu->guest) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
-		if (vcpu->state == VMM_VCPU_STATE_READY) {
+		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
+		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
 			vcpu->state = VMM_VCPU_STATE_PAUSED;
 			rc = VMM_OK;
 		}
@@ -266,7 +268,8 @@ int vmm_scheduler_vcpu_halt(vmm_vcpu_t * vcpu)
 	irq_flags_t flags;
 	if (vcpu && vcpu->guest) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
-		if (vcpu->state != VMM_VCPU_STATE_HALTED) {
+		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
+		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
 			vcpu->state = VMM_VCPU_STATE_HALTED;
 			rc = VMM_OK;
 		}
