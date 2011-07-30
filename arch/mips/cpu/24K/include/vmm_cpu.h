@@ -36,7 +36,7 @@ int vmm_cpu_early_init(void);
 int vmm_cpu_final_init(void);
 
 /** Register related functions required by VMM core */
-void vmm_vcpu_regs_init(vmm_vcpu_t *vcpu);
+int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu);
 void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
 			  vmm_user_regs_t *regs);
 void vmm_vcpu_regs_dump(vmm_vcpu_t *vcpu);
@@ -56,7 +56,7 @@ irq_flags_t vmm_cpu_irq_save(void);
 void vmm_cpu_irq_restore(irq_flags_t flags);
 s32 vmm_vcpu_irq_execute(vmm_vcpu_t *vcpu,vmm_user_regs_t *regs,
 			u32 interrupt_no,u32 reason);
-irq_flags_t vmm_interrupts_save(void);
+irq_flags_t vmm_cpu_irq_save(void);
 void vmm_interrupts_restore(irq_flags_t flags);
 s32 vmm_vcpu_irq_execute(vmm_vcpu_t *vcpu,vmm_user_regs_t *regs,u32 interrupt_no,u32 reason);
 u32 vmm_vcpu_irq_priority(vmm_vcpu_t * vcpu, u32 irq_no);
