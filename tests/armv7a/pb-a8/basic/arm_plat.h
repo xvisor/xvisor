@@ -154,6 +154,7 @@
  *     SYS_CLD, SYS_BOOTCS
  */
 #define REALVIEW_SYS_LOCK_LOCKED    (1 << 16)
+#define REALVIEW_SYS_LOCKVAL		0xA05F
 #define REALVIEW_SYS_LOCKVAL_MASK	0xFFFF	/* write 0xA05F to enable write access */
 
 /*
