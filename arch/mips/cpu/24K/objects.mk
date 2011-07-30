@@ -42,3 +42,5 @@ cpu-objs-y+= cpu_vcpu_irq.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_mmu.o
 cpu-objs-y+= cpu_vcpu_mmu.o
+cpu-objs-y+= cpu_genex.o
+cpu-objs-y+= cpu_vcpu_emulate.o

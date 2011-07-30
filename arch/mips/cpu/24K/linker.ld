@@ -106,4 +106,12 @@ SECTIONS
 	. = . + CONFIG_VMM_INTERRUPT_STACK_SIZE;
 	. = ALIGN(4);
 	PROVIDE(_int_stack = .);
+
+	. = CPU_TEXT_START + 0x100000;
+	.test_text :
+ 	{
+		*(.test.text)
+		. = ALIGN(4);
+		PROVIDE(_e_test_text = .);
+	}
 }
