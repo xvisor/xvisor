@@ -33,7 +33,7 @@
 #include <realview/realview_timer.h>
 
 extern u32 dt_blob_start;
-virtual_addr_t pba8_csr_base;
+virtual_addr_t pba8_sys_base;
 virtual_addr_t pba8_sctl_base;
 
 int vmm_devtree_populate(vmm_devtree_node_t ** root,
@@ -64,11 +64,12 @@ int vmm_board_getclock(vmm_devtree_node_t * node, u32 * clock)
 int vmm_board_reset(void)
 {
 	/* FIXME: Write 0x1 to RESETCTL just like linux does */
-	vmm_writel(0x100, 
-		   (void *)(pba8_csr_base + REALVIEW_SYS_RESETCTL_OFFSET));
 #if 0
 	vmm_writel(REALVIEW_SYS_CTRL_RESET_CONFIGCLR, 
-		   (void *)(pba8_csr_base + REALVIEW_SYS_RESETCTL_OFFSET));
+		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
+#else
+	vmm_writel(0x100, 
+		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
 #endif
 
 	return VMM_OK;
@@ -101,7 +102,7 @@ int vmm_board_final_init(void)
 	/* We can register a Board specific resource here */
 
 	/* Map control registers */
-	pba8_csr_base = vmm_host_iomap(REALVIEW_CSR_BASE, 0x1000);
+	pba8_sys_base = vmm_host_iomap(REALVIEW_SYS_BASE, 0x1000);
 	pba8_sctl_base = vmm_host_iomap(REALVIEW_SCTL_BASE, 0x1000);
 
 	/* Initialize Realview timers */
@@ -138,7 +139,7 @@ int vmm_board_final_init(void)
 
 	/* Unlock Lockable reigsters */
 	vmm_writel(REALVIEW_SYS_LOCKVAL, 
-		   (void *)(pba8_csr_base + REALVIEW_SYS_LOCK_OFFSET));
+		   (void *)(pba8_sys_base + REALVIEW_SYS_LOCK_OFFSET));
 
 	/* Do Probing using device driver framework */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING

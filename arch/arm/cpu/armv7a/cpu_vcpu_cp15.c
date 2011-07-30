@@ -883,26 +883,70 @@ static u32 cortexa8_cp15_c0_c1[8] =
 static u32 cortexa8_cp15_c0_c2[8] =
 { 0x00101111, 0x12112111, 0x21232031, 0x11112131, 0x00111142, 0, 0, 0 };
 
-int cpu_vcpu_cp15_reset(vmm_vcpu_t * vcpu)
+int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 {
 	int rc = VMM_OK;
-	u32 vtlb;
+	u32 vtlb, vtlb_count;
+	const char *attrval;
+	vmm_devtree_node_t *node;
 	cpu_page_t *p = NULL;
 
-	/* Flush the shadow TLB */
-	for (vtlb = 0; vtlb < vcpu->sregs.cp15.vtlb.count; vtlb++) {
-		if (vcpu->sregs.cp15.vtlb.valid[vtlb]) {
-			p = &vcpu->sregs.cp15.vtlb.page[vtlb];
-			rc = cpu_mmu_unmap_page(vcpu->sregs.cp15.l1, p);
-			if (rc) {
-				return rc;
+	if (!vcpu->reset_count) {
+		vmm_memset(&vcpu->sregs.cp15, 0, sizeof(vcpu->sregs.cp15));
+		vcpu->sregs.cp15.l1 = cpu_mmu_l1tbl_alloc();
+		vcpu->sregs.cp15.dacr = 0x0;
+		vcpu->sregs.cp15.dacr |= (TTBL_DOM_CLIENT << 
+					 (TTBL_L1TBL_TTE_DOM_VCPU_NOMMU * 2));
+		vcpu->sregs.cp15.dacr |= (TTBL_DOM_CLIENT << 
+					 (TTBL_L1TBL_TTE_DOM_VCPU_SUPER * 2));
+		vcpu->sregs.cp15.dacr |= (TTBL_DOM_CLIENT << 
+					 (TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
+		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
+				   VMM_DEVTREE_VMMINFO_NODE_NAME);
+		if (!node) {
+			return VMM_EFAIL;
+		}
+		attrval = vmm_devtree_attrval(node, 
+						MMU_TLBENT_PER_VCPU_ATTR_NAME);
+		if (!attrval) {
+			return VMM_EFAIL;
+		}
+		vtlb_count = *((u32 *)attrval);
+		vcpu->sregs.cp15.vtlb.count = vtlb_count;
+		vcpu->sregs.cp15.vtlb.valid = vmm_malloc(vtlb_count);
+		vmm_memset(vcpu->sregs.cp15.vtlb.valid, 0, vtlb_count);
+		vcpu->sregs.cp15.vtlb.page_asid = vmm_malloc(vtlb_count);
+		vmm_memset(vcpu->sregs.cp15.vtlb.page_asid, 0, vtlb_count);
+		vcpu->sregs.cp15.vtlb.page_dom = vmm_malloc(vtlb_count);
+		vmm_memset(vcpu->sregs.cp15.vtlb.page_dom, 0, vtlb_count);
+		vcpu->sregs.cp15.vtlb.page = vmm_malloc(vtlb_count * 
+							sizeof(cpu_page_t));
+		vmm_memset(vcpu->sregs.cp15.vtlb.page, 0, vtlb_count * 
+							sizeof(cpu_page_t));
+		vcpu->sregs.cp15.vtlb.victim = 0;
+
+		if (read_sctlr() & SCTLR_V_MASK) {
+			vcpu->sregs.cp15.ovect_base = CPU_IRQ_HIGHVEC_BASE;
+		} else {
+			vcpu->sregs.cp15.ovect_base = CPU_IRQ_LOWVEC_BASE;
+		}
+	} else {
+		/* Flush the shadow TLB */
+		for (vtlb = 0; vtlb < vcpu->sregs.cp15.vtlb.count; vtlb++) {
+			if (vcpu->sregs.cp15.vtlb.valid[vtlb]) {
+				p = &vcpu->sregs.cp15.vtlb.page[vtlb];
+				rc = cpu_mmu_unmap_page(vcpu->sregs.cp15.l1, p);
+				if (rc) {
+					return rc;
+				}
+				vcpu->sregs.cp15.vtlb.valid[vtlb] = 0;
 			}
-			vcpu->sregs.cp15.vtlb.valid[vtlb] = 0;
 		}
 	}
 
+	vcpu->sregs.cp15.c0_cpuid = cpuid;
 	/* Reset values of important registers */
-	switch (vcpu->sregs.cp15.c0_cpuid) {
+	switch (cpuid) {
 	case ARM_CPUID_CORTEXA8:
 		vmm_memcpy(vcpu->sregs.cp15.c0_c1, cortexa8_cp15_c0_c1, 
 							8 * sizeof(u32));
@@ -931,56 +975,5 @@ int cpu_vcpu_cp15_reset(vmm_vcpu_t * vcpu)
 	};
 
 	return rc;
-}
-
-int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
-{
-	u32 vtlb_count;
-	vmm_devtree_node_t *node;
-	const char *attrval;
-
-	vmm_memset(&vcpu->sregs.cp15, 0, sizeof(vcpu->sregs.cp15));
-
-	vcpu->sregs.cp15.l1 = cpu_mmu_l1tbl_alloc();
-	vcpu->sregs.cp15.dacr = 0x0;
-	vcpu->sregs.cp15.dacr |= (TTBL_DOM_CLIENT << 
-					(TTBL_L1TBL_TTE_DOM_VCPU_NOMMU * 2));
-	vcpu->sregs.cp15.dacr |= (TTBL_DOM_CLIENT << 
-					(TTBL_L1TBL_TTE_DOM_VCPU_SUPER * 2));
-	vcpu->sregs.cp15.dacr |= (TTBL_DOM_CLIENT << 
-					(TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
-
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				   VMM_DEVTREE_VMMINFO_NODE_NAME);
-	if (!node) {
-		return VMM_EFAIL;
-	}
-	attrval = vmm_devtree_attrval(node, MMU_TLBENT_PER_VCPU_ATTR_NAME);
-	if (!attrval) {
-		return VMM_EFAIL;
-	}
-	vtlb_count = *((u32 *)attrval);
-	vcpu->sregs.cp15.vtlb.count = vtlb_count;
-	vcpu->sregs.cp15.vtlb.valid = vmm_malloc(vtlb_count);
-	vmm_memset(vcpu->sregs.cp15.vtlb.valid, 0, vtlb_count);
-	vcpu->sregs.cp15.vtlb.page_asid = vmm_malloc(vtlb_count);
-	vmm_memset(vcpu->sregs.cp15.vtlb.page_asid, 0, vtlb_count);
-	vcpu->sregs.cp15.vtlb.page_dom = vmm_malloc(vtlb_count);
-	vmm_memset(vcpu->sregs.cp15.vtlb.page_dom, 0, vtlb_count);
-	vcpu->sregs.cp15.vtlb.page = vmm_malloc(vtlb_count * 
-							sizeof(cpu_page_t));
-	vmm_memset(vcpu->sregs.cp15.vtlb.page, 0, vtlb_count * 
-							sizeof(cpu_page_t));
-	vcpu->sregs.cp15.vtlb.victim = 0;
-
-	if (read_sctlr() & SCTLR_V_MASK) {
-		vcpu->sregs.cp15.ovect_base = CPU_IRQ_HIGHVEC_BASE;
-	} else {
-		vcpu->sregs.cp15.ovect_base = CPU_IRQ_LOWVEC_BASE;
-	}
-
-	vcpu->sregs.cp15.c0_cpuid = cpuid;
-
-	return cpu_vcpu_cp15_reset(vcpu);
 }
 
