@@ -28,13 +28,9 @@
 
 #define EXEC_CODE_MASK			0x7CUL
 #define EXEC_CODE_SHIFT			2
-#define CE_MASK				0x30000000UL
-#define CE_SHIFT			28
 
 #define EXCEPTION_CAUSE(__cause_reg)	((__cause_reg & EXEC_CODE_MASK) \
 					 >> EXEC_CODE_SHIFT)
-#define UNUSABLE_COP_ID(__cause_reg)	((__cause_reg & CE_MASK) \
-					 >> CE_SHIFT)
 
 typedef enum {
 	EXEC_CODE_INT, /* Interrupt */

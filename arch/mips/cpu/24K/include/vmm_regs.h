@@ -29,7 +29,7 @@
 #include "cpu_mmu.h"
 
 struct vmm_user_regs {
-        u32 regs[CPU_USER_REG_COUNT];
+        u32 regs[CPU_GPR_COUNT];
 	u32 cp0_epc; /* EPC store here at time of interrupt or exception */
 	u32 cp0_status; /* status as what should be while returning from INT. */
 	u32 cp0_entryhi;

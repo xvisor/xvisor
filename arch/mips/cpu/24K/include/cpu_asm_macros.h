@@ -90,7 +90,7 @@ _name:						\
 #define SAVE_INT_CONTEXT(_int_sp)			\
 	move K0, SP;					\
 	la SP, _int_sp;					\
-	addiu SP, SP, -((CPU_USER_REG_COUNT + 3)* 4);   \
+	addiu SP, SP, -((CPU_UREG_COUNT) * 4);		\
         mfc0 K1, CP0_EPC;				\
 	SAVE_REG(V0,SP);				\
 	SAVE_REG(V1,SP);				\

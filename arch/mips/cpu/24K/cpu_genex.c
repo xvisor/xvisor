@@ -30,35 +30,31 @@
 #include <cpu_asm_macros.h>
 #include <cpu_vcpu_mmu.h>
 #include <cpu_genex.h>
+#include <cpu_vcpu_emulate.h>
 
 u32 do_general_exception(vmm_user_regs_t *uregs)
 {
 	u32 cp0_cause = read_c0_cause();
-	u32 cop_id, cp0_epc = read_c0_epc();
 	u32 cp0_status = read_c0_status();
 	mips32_entryhi_t ehi;
 	u32 victim_asid;
+	u32 victim_inst;
+	vmm_vcpu_t *c_vcpu;
 
 	ehi._entryhi = read_c0_entryhi();
 	victim_asid = ehi._s_entryhi.asid >> ASID_SHIFT;
-
-	ehi._s_entryhi.asid = (0x1 << ASID_SHIFT);
-	write_c0_entryhi(ehi._entryhi);
+	c_vcpu = vmm_scheduler_current_vcpu();
 
 	switch (EXCEPTION_CAUSE(cp0_cause)) {
 	case EXEC_CODE_COPU:
-		/* Co-processor unsuable */
-		cop_id = UNUSABLE_COP_ID(cp0_cause);
-		if (cop_id == 0) {
-			/* We need to handle only COP0 */
-			vmm_panic("COP0 unusable expetion, 0x%X EPC\n", cp0_epc);
-		} else {
-			vmm_panic("COP%d unusable exeption!\n", cop_id);
-		}
+		victim_inst = *((u32 *)uregs->cp0_epc);
+		cpu_vcpu_emulate_cop_inst(c_vcpu, victim_inst, uregs);
 		break;
 
 	case EXEC_CODE_TLBL:
 		if (CPU_IN_USER_MODE(cp0_status) && is_vmm_asid(ehi._s_entryhi.asid)) {
+			ehi._s_entryhi.asid = (0x1 << ASID_SHIFT);
+			write_c0_entryhi(ehi._entryhi);
 			vmm_panic("CPU is in user mode and ASID is pointing to VMM!!\n");
 		}
 		break;

@@ -222,4 +222,10 @@ END(fill_tlb_entry)
 mfc0 T1, CP0_CAUSE
 li T2, 2
 sll T1, T1, T2
+mtc0 T1, CP0_CAUSE
+ehb
+madd T1, T2
+mfhi T3
+di T3
+ei
 1:	b 1b
