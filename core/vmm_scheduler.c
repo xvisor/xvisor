@@ -206,7 +206,8 @@ int vmm_scheduler_vcpu_reset(vmm_vcpu_t * vcpu)
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state != VMM_VCPU_STATE_RESET) {
 			vcpu->state = VMM_VCPU_STATE_RESET;
-			rc = vmm_vcpu_regs_reset(vcpu);
+			vcpu->reset_count++;
+			rc = vmm_vcpu_regs_init(vcpu);
 		}
 		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
 	}
@@ -316,6 +317,7 @@ vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
 	vmm_strcpy(vcpu->name, name);
 	vcpu->node = NULL;
 	vcpu->state = VMM_VCPU_STATE_READY;
+	vcpu->reset_count = 0;
 	vcpu->preempt_count = 0;
 	vcpu->tick_pending = 0;
 	vcpu->tick_count = tick_count;
@@ -420,8 +422,19 @@ int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu)
 
 int vmm_scheduler_guest_reset(vmm_guest_t * guest)
 {
-	/* FIXME: TBD */
-	return VMM_OK;
+	int rc = VMM_EFAIL;
+	struct dlist *lentry;
+	vmm_vcpu_t *vcpu;
+	if (guest) {
+		rc = VMM_OK;
+		list_for_each(lentry, &guest->vcpu_list) {
+			vcpu = list_entry(lentry, vmm_vcpu_t, head);
+			if ((rc = vmm_scheduler_vcpu_reset(vcpu))) {
+				break;
+			}
+		}
+	}
+	return rc;
 }
 
 int vmm_scheduler_guest_kick(vmm_guest_t * guest)
@@ -577,6 +590,7 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 		vmm_strcat(vcpu->name, vnode->name);
 		vcpu->node = vnode;
 		vcpu->state = VMM_VCPU_STATE_RESET;
+		vcpu->reset_count = 0;
 		vcpu->preempt_count = 0;
 		vcpu->tick_pending = 0;
 		attrval = vmm_devtree_attrval(vnode,
