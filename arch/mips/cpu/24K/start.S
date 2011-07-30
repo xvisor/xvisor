@@ -156,9 +156,14 @@ LEAF(tlb_init)
 	nop
 END(tlb_init)
 
+.extern	do_tlbmiss
 LEAF(_handle_tlbmiss)
-	b _handle_tlbmiss
+	SAVE_INT_CONTEXT(_int_stack)
+	move A0, SP
+	bal do_tlbmiss
 	nop
+	RESTORE_INT_CONTEXT(SP)
+	eret
 END(_handle_tlbmiss)
 
 .extern generic_int_handler
@@ -178,9 +183,14 @@ LEAF(_handle_cache_error)
 	nop
 END(_handle_cache_error)
 
+.extern do_general_exception
 LEAF(_handle_general_exception)
-	b _handle_general_exception
+	SAVE_INT_CONTEXT(_int_stack)
+	move A0, SP
+	bal do_general_exception
 	nop
+	RESTORE_INT_CONTEXT(SP)
+	eret
 END(_handle_general_exception)
 
 /**
@@ -206,3 +216,16 @@ LEAF(fill_tlb_entry)
 	j RA
 	nop
 END(fill_tlb_entry)
+
+
+.section .test.text,"ax",@progbits
+mfc0 T1, CP0_CAUSE
+li T2, 2
+sll T1, T1, T2
+mtc0 T1, CP0_CAUSE
+ehb
+madd T1, T2
+mfhi T3
+di T3
+ei
+1:	b 1b

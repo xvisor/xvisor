@@ -25,13 +25,32 @@
 
 #include <vmm_types.h>
 
-#define MAX_HOST_TLB_ENTRIES 6
+struct vmm_user_regs;
 
-#define PAGE_SHIFT	12
-#define PAGE_SIZE	(0x01UL << PAGE_SHIFT)
-#define PAGE_MASK	~(PAGE_SIZE - 1)
-#define PFN_SHIFT	6
-#define VPN2_SHIFT	13
+#define MAX_HOST_TLB_ENTRIES 	6
+
+#define PAGE_SHIFT		12
+#define PAGE_SIZE		(0x01UL << PAGE_SHIFT)
+#define PAGE_MASK		~(PAGE_SIZE - 1)
+#define PFN_SHIFT		6
+#define VPN2_SHIFT		13
+#define ASID_SHIFT		6
+#define ASID_MASK		~((0x01UL << 8) - 1)
+
+#define TLB_PAGE_SIZE_1K	0x400
+#define TLB_PAGE_SIZE_4K	0x1000
+#define TLB_PAGE_SIZE_16K	0x4000
+#define TLB_PAGE_SIZE_256K	0x40000
+#define TLB_PAGE_SIZE_1M	0x100000
+#define TLB_PAGE_SIZE_4M	0x400000
+#define TLB_PAGE_SIZE_16M	0x1000000
+#define TLB_PAGE_SIZE_64M	0x4000000
+#define TLB_PAGE_SIZE_256M	0x10000000
+
+#define VMM_ASID		1
+
+#define is_vmm_asid(x)		((x >> ASID_SHIFT) == VMM_ASID)
+#define is_guest_asid(x)	((x & 0xC0))
 
 typedef union mips32_entryhi  {
 	u32 _entryhi;
@@ -68,6 +87,7 @@ struct host_tlb_entries_info {
 	s32 tlb_index;
 } host_tlb_entries[MAX_HOST_TLB_ENTRIES];
 
-void fill_tlb_entry(struct mips32_tlb_entry *tlb_entry, int index);
+void fill_tlb_entry(mips32_tlb_entry_t *tlb_entry, int index);
+u32 do_tlbmiss(struct vmm_user_regs *uregs);
 
 #endif /* __CPU_MMU_H_ */

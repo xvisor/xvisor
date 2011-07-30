@@ -56,39 +56,44 @@
 #define	FP		$30
 #define	RA		$31
 
-#define V0_IDX		0
-#define V1_IDX		1
-#define A0_IDX		2
-#define A1_IDX		3
-#define A2_IDX		4
-#define A3_IDX		5
-#define T0_IDX		6
-#define T1_IDX		7
-#define T2_IDX		8
-#define T3_IDX		9
-#define T4_IDX		10
-#define T5_IDX		11
-#define T6_IDX		12
-#define T7_IDX		13
-#define S0_IDX		14
-#define S1_IDX		15
-#define S2_IDX		16
-#define S3_IDX		17
-#define S4_IDX		18
-#define S5_IDX		19
-#define S6_IDX		20
-#define S7_IDX		21
-#define T8_IDX		22
-#define T9_IDX		23
-#define SP_IDX		24
-#define GP_IDX		25
-#define S8_IDX		26
-#define RA_IDX		27
-#define U_CP0_EPC_IDX	28
-#define U_CP0_STATUS_IDX 29
+#define ZERO_IDX	0
+#define AT_IDX		1
+#define V0_IDX		2
+#define V1_IDX		3
+#define A0_IDX		4
+#define A1_IDX		5
+#define A2_IDX		6
+#define A3_IDX		7
+#define T0_IDX		8
+#define T1_IDX		9
+#define T2_IDX		10
+#define T3_IDX		11
+#define T4_IDX		12
+#define T5_IDX		13
+#define T6_IDX		14
+#define T7_IDX		15
+#define S0_IDX		16
+#define S1_IDX		17
+#define S2_IDX		18
+#define S3_IDX		19
+#define S4_IDX		20
+#define S5_IDX		21
+#define S6_IDX		22
+#define S7_IDX		23
+#define T8_IDX		24
+#define T9_IDX		25
+#define K0_IDX		26
+#define K1_IDX		27
+#define GP_IDX		28
+#define SP_IDX		29
+#define S8_IDX		30
+#define RA_IDX		31
+#define U_CP0_EPC_IDX	32
+#define U_CP0_STATUS_IDX 33
+#define U_CP0_ENTRYHI_IDX 34
 
-#define CPU_USER_REG_COUNT	28
 #define	CPU_GPR_COUNT	32
+#define CPU_UREG_COUNT	(CPU_GPR_COUNT + 3)
 #define	CPU_TLB_COUNT	16
 
 #define	CP0_INDEX	$0
@@ -169,7 +174,7 @@
 #define	CP0_DATAHI_IDX		36
 #define	CP0_ERRORPC_IDX		37
 
-#define	CP0_REG_COUNT	38
+#define	CP0_REG_COUNT		38
 
 #define	S_EntryHiVPN2 	13 /* VPN/2 (R/W) */
 #define	ST0_CU0		0x10000000

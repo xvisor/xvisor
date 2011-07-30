@@ -1,4 +1,3 @@
-
 /dts-v1/;
 
 / {
@@ -10,6 +9,8 @@
 		tick_delay_usecs = <100>;
 		vcpu_timer_mhz = <10>;
 		hypercore_tick_count = <20>;
+		/* Maximum size of VMM */
+		vmm_max_size = <0x800000>;
 	};
 
 	host {
@@ -21,7 +22,7 @@
 		virt-addr-start = <0xC0000000>; /* Kseg1 region */
 		virt-addr-size = <0x80000>;
 		virt-addr-frame-size = <0x1000>; /* 4K minimum page maps */
-		
+
 		cpus {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -38,7 +39,7 @@
 		plb {
 			#address-cells = <1>;
 			#size-cells = <0>;
-		
+
 			uart0 {
 			      device_type = "serial";
 			      compatible = "ns8250";
@@ -71,30 +72,23 @@
 
 				vcpu@0 {
 					device_type = "vcpu";
-					model = "MIPS,24Kf";
+					model = "MIPS,24Kc";
 					tick_count = <200>;
 					start_pc = <0x0000000>;
 				};
 			};
-			
+
 			addrspace {
 				#address-cells = <1>;
 				#size-cells = <0>;
-		
-				mem@0 {
-					device_type = "real";
-					address_type = "memory";
-					guest_physical_addr = <0x81000000>;
-					host_physical_addr = <0x0 0x00000000>;
-					physical_size = <0x0 0x01000000>;
-				};
 
-				uart@2 {
-					device_type = "real";
+				mem@0 {
+					manifest_type = "real";
 					address_type = "memory";
-					guest_physical_addr = <0x140003F8>;
-					host_physical_addr = <0x140003F8>;
-					physical_size = <0x0 0x500>;
+					guest_physical_addr = <0x00000000>;
+					host_physical_addr = <0x100000>;
+					physical_size = <0x01000000>;
+					device_type = "memory";
 				};
 			};
 		};
