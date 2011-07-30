@@ -46,5 +46,7 @@ int vmm_board_getclock(vmm_devtree_node_t *node, u32 *clock);
 
 int vmm_board_early_init(void);
 int vmm_board_final_init(void);
+int vmm_board_reset(void);
+int vmm_board_shutdown(void);
 
 #endif

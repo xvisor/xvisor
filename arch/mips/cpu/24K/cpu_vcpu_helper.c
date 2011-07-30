@@ -33,7 +33,7 @@
 
 extern char _stack_start;
 
-void vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
+int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
 {
 	mips32_tlb_entry_t first_shadow_entry;
 	physical_addr_t gphys;
@@ -120,6 +120,8 @@ void vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
 		vmm_memcpy((void *)&vcpu->sregs.shadow_tlb_entries[0],
 			   (void *)&first_shadow_entry, sizeof(mips32_tlb_entry_t));
 	}
+
+	return VMM_OK;
 }
 
 void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,

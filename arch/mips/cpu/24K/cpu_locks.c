@@ -61,7 +61,7 @@ void __lock_section __cpu_spin_unlock(vmm_cpu_spinlock_t *lock)
 irq_flags_t __lock_section __cpu_spin_lock_irqsave (vmm_cpu_spinlock_t *lock)
 {
         irq_flags_t flags;
-        flags = vmm_interrupts_save();
+        flags = vmm_cpu_irq_save();
 	__cpu_spin_lock(lock);
         return flags;
 }
@@ -70,7 +70,7 @@ void __lock_section __cpu_spin_unlock_irqrestore (vmm_cpu_spinlock_t *lock,
 						irq_flags_t flags)
 {
 	__cpu_spin_unlock(lock);
-        vmm_interrupts_restore(flags);
+        vmm_cpu_irq_restore(flags);
 }
 
 void __lock_section vmm_cpu_spin_lock (vmm_cpu_spinlock_t *lock)
