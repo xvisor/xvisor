@@ -35,6 +35,7 @@ struct vmm_user_regs;
 #define PFN_SHIFT		6
 #define VPN2_SHIFT		13
 #define ASID_SHIFT		6
+#define ASID_MASK		~((0x01UL << 8) - 1)
 
 #define TLB_PAGE_SIZE_1K	0x400
 #define TLB_PAGE_SIZE_4K	0x1000
@@ -49,6 +50,7 @@ struct vmm_user_regs;
 #define VMM_ASID		1
 
 #define is_vmm_asid(x)		((x >> ASID_SHIFT) == VMM_ASID)
+#define is_guest_asid(x)	((x & 0xC0))
 
 typedef union mips32_entryhi  {
 	u32 _entryhi;

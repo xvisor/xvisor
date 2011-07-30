@@ -86,7 +86,7 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x00000000>;
-					host_physical_addr = <0x00000000>;
+					host_physical_addr = <0x100000>;
 					physical_size = <0x01000000>;
 					device_type = "memory";
 				};

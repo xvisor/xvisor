@@ -60,7 +60,7 @@ int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz,
 
 	if (tlb_info) {
 		/* Create TLB Hi Entry */
-		tlb_entry.entryhi._s_entryhi.asid = (0x01UL << 7);
+		tlb_entry.entryhi._s_entryhi.asid = (0x01UL << 6);
 		tlb_entry.entryhi._s_entryhi.reserved = 0;
 		tlb_entry.entryhi._s_entryhi.vpn2 = (va >> VPN2_SHIFT);
 		tlb_entry.entryhi._s_entryhi.vpn2x = 0;

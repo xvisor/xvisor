@@ -49,11 +49,16 @@ void vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
                 vcpu->uregs.regs[SP_IDX] = (virtual_addr_t)&_stack_start;
 		vcpu->uregs.regs[S8_IDX] = vcpu->uregs.regs[SP_IDX];
 		vcpu->uregs.cp0_status = read_c0_status();
+		vcpu->uregs.cp0_entryhi = read_c0_entryhi();
         } else {
 		/* For vcpu running guests */
 		vcpu->sregs.cp0_regs[CP0_CAUSE_IDX] = 0x400;
 		vcpu->sregs.cp0_regs[CP0_STATUS_IDX] = 0x40004;
 		vcpu->uregs.cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
+		vcpu->uregs.cp0_entryhi = read_c0_entryhi();
+		vcpu->uregs.cp0_entryhi &= ASID_MASK;
+		vcpu->uregs.cp0_entryhi |= (0x2 << ASID_SHIFT);
+
 		/* All guest run from 0 and fault */
 		vcpu->sregs.cp0_regs[CP0_EPC_IDX] = 0x00000000;
 		/* Give guest the same CPU cap as we have */
@@ -96,7 +101,7 @@ void vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
 
 		/* FIXME: Guest physical/virtual should be from DTS */
 		first_shadow_entry.entryhi._s_entryhi.vpn2 = (gphys >> VPN2_SHIFT);
-		first_shadow_entry.entryhi._s_entryhi.asid = (u8)(2 << 7);
+		first_shadow_entry.entryhi._s_entryhi.asid = (u8)(2 << 6);
 		first_shadow_entry.entryhi._s_entryhi.reserved = 0;
 		first_shadow_entry.entryhi._s_entryhi.vpn2x = 0;
 
@@ -121,9 +126,7 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
 			  vmm_user_regs_t *regs)
 {
 	if (tvcpu) {
-		if (tvcpu->guest == NULL) {
-			vmm_memcpy(&tvcpu->uregs, regs, sizeof(vmm_user_regs_t));
-		}
+		vmm_memcpy(&tvcpu->uregs, regs, sizeof(vmm_user_regs_t));
 	}
 
 	if (vcpu) {
@@ -132,6 +135,7 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
 		} else {
 			vcpu->uregs.cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
 		}
+
 		vmm_memcpy(regs, &vcpu->uregs, sizeof(vmm_user_regs_t));
 	}
 }
