@@ -1,0 +1,38 @@
+
+		Xvisor Virtualization Design
+
+This is document gives an overview of the xvisor virtualization design.
+It gives very important insight required for writing architecture support
+for Xvisor. 
+
+	 	Chapter 1: Modeling Virtual Machines
+
+TBD.
+
+	 	Chapter 2: Virtual CPU State Transitions
+
+TBD.
+                                            -----------
+                                [Reset]     |         |    [Halt]     
+                            ----------------|   HALT  |<---------------
+                            |               |         |               |
+                            |               -----------               |
+                            |                    A                    |
+                            |                    | [Halt]             |
+                            V                    |                    |
+  -----------          -----------  [Kick]  ----------- [Prempt] -----------
+  |         | [Create] |         |--------->|         |--------->|         |
+  | UNKNOWN |--------->|  RESET  |          |  READY  |          | RUNNING |
+  |         |          |         |<---------|         |<---------|         |
+  -----------          -----------  [Reset] ----------- [Prempt] -----------
+                         A     A              A     |              |     |
+                         |     |     [Resume] |     | [Pause]      |     |
+                         |     |              |     V              |     |
+                         |     |            -----------            |     |
+                         |     |            |         |            |     |
+                         |     -------------|  PAUSE  |<------------     |
+                         |        [Reset]   |         |   [Pause]        |
+                         |                  -----------                  |
+                         |                                               |
+                         -------------------------------------------------
+                                             [Reset]
