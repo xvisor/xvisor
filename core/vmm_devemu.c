@@ -610,6 +610,26 @@ const vmm_emuid_t *devemu_match_node(const vmm_emuid_t * matches,
 	return NULL;
 }
 
+int vmm_devemu_reset(vmm_guest_t *guest, vmm_guest_region_t *reg)
+{
+	vmm_emudev_t *edev;
+
+	if (!guest || !reg) {
+		return VMM_EFAIL;
+	}
+
+	if (!reg->is_virtual) {
+		return VMM_EFAIL;
+	}
+
+	edev = (vmm_emudev_t *)reg->priv;
+	if (!edev || !edev->reset) {
+		return VMM_EFAIL;
+	}
+
+	return edev->reset(edev);
+}
+
 int vmm_devemu_probe(vmm_guest_t *guest, vmm_guest_region_t *reg)
 {
 	int rc;
@@ -619,6 +639,14 @@ int vmm_devemu_probe(vmm_guest_t *guest, vmm_guest_region_t *reg)
 	vmm_emulator_t *emu;
 	const vmm_emuid_t *matches;
 	const vmm_emuid_t *match;
+
+	if (!guest || !reg) {
+		return VMM_EFAIL;
+	}
+
+	if (!reg->is_virtual) {
+		return VMM_EFAIL;
+	}
 
 	if (!guest->aspace.priv) {
 		eginst = vmm_malloc(sizeof(vmm_emuguest_t));
