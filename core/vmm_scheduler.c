@@ -19,7 +19,7 @@
  * @file vmm_scheduler.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for vmm scheduler
+ * @brief source file for hypervisor scheduler
  */
 
 #include <vmm_error.h>
@@ -208,7 +208,12 @@ int vmm_scheduler_vcpu_reset(vmm_vcpu_t * vcpu)
 		    (vcpu->state != VMM_VCPU_STATE_UNKNOWN)) {
 			vcpu->state = VMM_VCPU_STATE_RESET;
 			vcpu->reset_count++;
-			rc = vmm_vcpu_regs_init(vcpu);
+			if ((rc = vmm_vcpu_regs_init(vcpu))) {
+				return rc;
+			}
+			if ((rc = vmm_vcpu_irq_init(vcpu))) {
+				return rc;
+			}
 		}
 		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
 	}
@@ -436,6 +441,7 @@ int vmm_scheduler_guest_reset(vmm_guest_t * guest)
 				break;
 			}
 		}
+		rc = vmm_guest_aspace_reset(guest);
 	}
 	return rc;
 }
@@ -556,7 +562,9 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 	INIT_SPIN_LOCK(&guest->lock);
 	guest->node = gnode;
 	INIT_LIST_HEAD(&guest->vcpu_list);
-	vmm_guest_aspace_initguest(guest);
+	if (vmm_guest_aspace_init(guest)) {
+		return NULL;
+	}
 
 	/* Increment guest count */
 	sched.guest_count++;
@@ -623,7 +631,9 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 		if (vmm_vcpu_regs_init(vcpu)) {
 			continue;
 		}
-		vmm_vcpu_irq_initvcpu(vcpu);
+		if (vmm_vcpu_irq_init(vcpu)) {
+			continue;
+		}
 
 		/* Increment vcpu count */
 		sched.vcpu_count++;

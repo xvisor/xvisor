@@ -112,8 +112,24 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
+	/* Initialize device driver framework */
+	vmm_printf("Initialize Device Driver Framework\n");
+	ret = vmm_devdrv_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize device emulation framework */
+	vmm_printf("Initialize Device Emulation Framework\n");
+	ret = vmm_devemu_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
 	/* Initialize scheduler */
-	vmm_printf("Initialize Scheduler\n");
+	vmm_printf("Initialize Hypervisor Scheduler\n");
 	ret = vmm_scheduler_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
@@ -123,14 +139,6 @@ void vmm_init(void)
 	/* Initialize hyperthreading framework */
 	vmm_printf("Initialize Hyperthreading Framework\n");
 	ret = vmm_hyperthreading_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Initialize device driver framework */
-	vmm_printf("Initialize Device Driver Framework\n");
-	ret = vmm_devdrv_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
@@ -155,14 +163,6 @@ void vmm_init(void)
 	/* Initialize network device framework */
 	vmm_printf("Initialize Networking Framework\n");
 	ret = vmm_netdev_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Initialize device emulation framework */
-	vmm_printf("Initialize Device Emulation Framework\n");
-	ret = vmm_devemu_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
@@ -229,7 +229,7 @@ void vmm_start(void)
 	int ret;
 
 	/* Start mterm */
-	vmm_printf("Start Managment Terminal\n");
+	vmm_printf("Starting Managment Terminal\n");
 	ret = vmm_mterm_start();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
@@ -237,7 +237,7 @@ void vmm_start(void)
 	}
 
 	/* Start scheduler */
-	vmm_printf("Start Scheduler\n");
+	vmm_printf("Starting Hypervisor Scheduler\n");
 	vmm_scheduler_start();
 
 	/* Wait here till scheduler gets invoked by timer */
@@ -247,7 +247,7 @@ void vmm_start(void)
 static void vmm_stop(void)
 {
 	/* Stop scheduler */
-	vmm_printf("Stopping Scheduler\n");
+	vmm_printf("Stopping Hypervisor Scheduler\n");
 	vmm_scheduler_stop();
 
 	/* FIXME: Do other cleanup stuff. */
