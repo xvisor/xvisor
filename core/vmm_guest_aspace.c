@@ -126,7 +126,25 @@ bool is_address_node_valid(vmm_devtree_node_t * anode)
 	return TRUE;
 }
 
-int vmm_guest_aspace_initguest(vmm_guest_t *guest)
+int vmm_guest_aspace_reset(vmm_guest_t *guest)
+{
+	struct dlist *l;
+	vmm_guest_region_t *reg = NULL;
+
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	list_for_each(l, &guest->aspace.reg_list) {
+		reg = list_entry(l, vmm_guest_region_t, head);
+		if (reg->is_virtual) {
+		}
+	}
+
+	return VMM_OK;
+}
+
+int vmm_guest_aspace_init(vmm_guest_t *guest)
 {
 	const char *attrval;
 	struct dlist *l;

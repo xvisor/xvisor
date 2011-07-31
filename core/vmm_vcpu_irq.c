@@ -136,17 +136,20 @@ void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu)
 	}
 }
 
-void vmm_vcpu_irq_initvcpu(vmm_vcpu_t *vcpu)
+int vmm_vcpu_irq_init(vmm_vcpu_t *vcpu)
 {
 	u32 ite, irq_count = vmm_vcpu_irq_count(vcpu);
 
-	/* Clear the memory of irq */
-	vmm_memset(&vcpu->irqs, 0, sizeof(vcpu->irqs));
+	/* Only first time */
+	if (!vcpu->reset_count) {
+		/* Clear the memory of irq */
+		vmm_memset(&vcpu->irqs, 0, sizeof(vcpu->irqs));
 
-	/* Allocate memory for arrays */
-	vcpu->irqs.reason = vmm_malloc(sizeof(s32 *) * irq_count);
-	vcpu->irqs.pending = vmm_malloc(sizeof(s32 *) * irq_count);
-	vcpu->irqs.active = vmm_malloc(sizeof(s32 *) * irq_count);
+		/* Allocate memory for arrays */
+		vcpu->irqs.reason = vmm_malloc(sizeof(s32 *) * irq_count);
+		vcpu->irqs.pending = vmm_malloc(sizeof(s32 *) * irq_count);
+		vcpu->irqs.active = vmm_malloc(sizeof(s32 *) * irq_count);
+	}
 
 	/* Reset irq processing data structures for VCPU */
 	for (ite = 0; ite < irq_count; ite++) {
@@ -156,5 +159,7 @@ void vmm_vcpu_irq_initvcpu(vmm_vcpu_t *vcpu)
 	}
 	vcpu->irqs.pending_first = -1;
 	vcpu->irqs.active_first = -1;
+
+	return VMM_OK;
 }
 
