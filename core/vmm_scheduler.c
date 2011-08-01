@@ -441,7 +441,9 @@ int vmm_scheduler_guest_reset(vmm_guest_t * guest)
 				break;
 			}
 		}
-		rc = vmm_guest_aspace_reset(guest);
+		if (!rc) {
+			rc = vmm_guest_aspace_reset(guest);
+		}
 	}
 	return rc;
 }
