@@ -1,0 +1,124 @@
+
+		Xvisor Virtualization Design
+
+This is document gives an overview of the xvisor virtualization design.
+It gives very important insight required for writing architecture support
+for Xvisor. 
+
+	 	Chapter 1: Modeling Virtual Machines
+
+Each vcpu has two types of registers:
+  1. User Registers: Registers which are updated by processor in user mode 
+     (or unprivileged mode) only. This registers are usually general purpose 
+     registers and status flags which are automatically updated by processor
+     (e.g. comparision flags, overflow flag, zero flag, etc.).
+  2. Super Registers: Registers which are updated by processor in supervisor 
+     mode (or privileged mode) only. Whenever vcpu tries to read/write such an
+     register is updated we get an exception and we can return/update its 
+     virtual value. In most of the cases there are also some additional data 
+     structures (like MMU context, shadow TLB, shadow page table, ... etc.) 
+     in the super registers.
+
+	 	Chapter 2: Virtual CPU Scheduler
+
+The VCPUs are a black box for Xvisor (i.e. any thing could be running on 
+the VCPU) and exception/interrupt is the only way to entering to hypervisor 
+mode when a VCPU is running directly on hardware, Hence our scheduler will 
+always be invoked in exception/interrupt mode.
+
+To simplfy context switching, we expect that the architecture specific 
+exception/interrupt handler will save user register on interrupt stack and 
+restore user registers from interrupt stack before interrupt return. Due to 
+this simplification the user register context of current VCPU is available on
+interrupt stack and saving/restoring user registers become simple memory 
+copy operations.
+
+To keep lower memory foot print, scheduler expects per host CPU interrupt 
+stack in contrast to traditional UNIX systems which have per process 
+interrupt/kernel stack. 
+
+The VCPU scheduler use a round-robin strategy for fair share amoung VCPU, 
+although VCPUs can have variable length time slices. Xvisor keeps track 
+of time consumed by a VCPU through periodic calls to scheduler tick handler
+(i.e. vmm_scheduler_tick()) from architecture specific code.
+
+The possible scenarios in which a VCPU scheduler is invoked are:
+  1. Just like any other OS, Xvisor also configures an architecture specific 
+     timer interrupt. On every timer interrupt the architecture specific code 
+     is expected to call scheduler tick handler (i.e. vmm_scheduler_tick()). 
+     The tick handler invokes scheduler whenever time slice of a VCPU expires. 
+     We call this situation as VCPU premption.
+  2. If a VCPU misbehaves (i.e. does some invalid register/memory access) 
+     then we get an exception/interrupt. The architecture specific code can 
+     detect such situation and halt/pause the responsible VCPU. In this 
+     situation the state of VCPU is changing in interrupt mode, hence we must 
+     schedule some other VCPU which is runnable.
+  3. The VCPU state can also be changed from some hypervisor thread or 
+     managment terminal command. If the VCPU is already running when the state
+     change occurs from a hypervisor thread  (can happen for SMP systems) then 
+     the state change will be reflected on next timer tick else the state 
+     change will be reflected immediately.
+
+In order to keep in track of VCPU state changes (by architecture specific code
+or some hypervisor thread) and emulate interrupts for a VCPU, we must ensure 
+that generic interrupt handler (i.e. vmm_scheduler_irq_process) is called at 
+the end of every exception/interrupt.
+
+The expected high-level steps involved in architecture specific 
+exception/interrupt handler are:
+  1. Switch stack to interrupt stack (if this is done automatically 
+     by hardware then skip this step)
+  2. Save all user registers on interrupt stack
+  3. Call the high-level c function with argument as pointer to 
+     user registers on interrupt stack
+  4. Do architecture specific processing for exception/interrupt.
+  5. Call generic interrupt handler (i.e. vmm_scheduler_irq_process) with 
+     following arguments: 
+     - cpu exception/interrupt number
+     - pointer to user registers on interrupt stack
+     - boolean flag indicating whether exception/interrupt was generated 
+       by a host device. If this flag is set the generic interrupt handler
+       will invoke host irq subsystem.
+  6. Restore user registers from interrupt stack
+
+The expected high-level steps involved in architecture specific VCPU context
+switching (i.e. vmm_vcpu_regs_switch()) are as follows:
+  1. Save user registers from stack (saved by architecture specific 
+     exception/interrupt handler) to user registers of current VCPU 
+     (i.e. 'uregs' of current VCPU).
+  2. Restore user register of next VCPU (i.e. 'uregs' of current VCPU) to stack
+     (will be restored by architecture specific exception/interrupt handler).
+  3. Switch context of architecture specific CPU resources such as MMU, 
+     Floating point subsystem, etc.
+(Note: We don't need to save/restore supervisor registers because it is 
+expected that whenever VCPU updates a supervisor register xvisor gets an 
+exception. In the architecture specific code of exception handler we
+emulate the instruction updating supervisor register and keep the supervisor
+register of a VCPU in sync.)
+
+	 	Chapter 3: Virtual CPU State Transitions
+
+                                            -----------
+                                [Reset]     |         |    [Halt]     
+                            ----------------|   HALT  |<---------------
+                            |               |         |               |
+                            |               -----------               |
+                            |                    A                    |
+                            |                    | [Halt]             |
+                            V                    |                    |
+  -----------          -----------  [Kick]  ----------- [Prempt] -----------
+  |         | [Create] |         |--------->|         |--------->|         |
+  | UNKNOWN |--------->|  RESET  |          |  READY  |          | RUNNING |
+  |         |          |         |<---------|         |<---------|         |
+  -----------          -----------  [Reset] ----------- [Prempt] -----------
+                         A     A              A     |              |     |
+                         |     |     [Resume] |     | [Pause]      |     |
+                         |     |              |     V              |     |
+                         |     |            -----------            |     |
+                         |     |            |         |            |     |
+                         |     -------------|  PAUSE  |<------------     |
+                         |        [Reset]   |         |   [Pause]        |
+                         |                  -----------                  |
+                         |                                               |
+                         -------------------------------------------------
+                                             [Reset]

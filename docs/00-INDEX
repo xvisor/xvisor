@@ -9,3 +9,5 @@ Please try and keep the descriptions small enough to fit on one line.
 	- This file.
 CodingStyle
 	- Expected C coding style in Xvisor.
+VirtualizationDesign
+	- Overview of Xvisor virtualization.

@@ -34,6 +34,7 @@ void cmd_guest_usage(void)
 	vmm_printf("Usage:\n");
 	vmm_printf("   guest help\n");
 	vmm_printf("   guest list\n");
+	vmm_printf("   guest reset   <guest_num>\n");
 	vmm_printf("   guest kick    <guest_num>\n");
 	vmm_printf("   guest pause   <guest_num>\n");
 	vmm_printf("   guest resume  <guest_num>\n");
@@ -62,6 +63,22 @@ void cmd_guest_list()
 	}
 	vmm_printf("----------------------------------------"
 		   "--------------------\n");
+}
+
+int cmd_guest_reset(int num)
+{
+	int ret = VMM_EFAIL;
+	vmm_guest_t *guest = vmm_scheduler_guest(num);
+	if (guest) {
+		if ((ret = vmm_scheduler_guest_reset(guest))) {
+			vmm_printf("%s: Failed to reset\n", guest->node->name);
+		} else {
+			vmm_printf("%s: Reset done\n", guest->node->name);
+		}
+	} else {
+		vmm_printf("Failed to find guest\n");
+	}
+	return ret;
 }
 
 int cmd_guest_kick(int num)
@@ -162,7 +179,18 @@ int cmd_guest_exec(int argc, char **argv)
 	}
 	num = vmm_str2int(argv[2], 10);
 	count = vmm_scheduler_guest_count();
-	if (vmm_strcmp(argv[1], "kick") == 0) {
+	if (vmm_strcmp(argv[1], "reset") == 0) {
+		if (num == -1) {
+			for (num = 0; num < count; num++) {
+				ret = cmd_guest_reset(num);
+				if (ret) {
+					return ret;
+				}
+			}
+		} else {
+			return cmd_guest_reset(num);
+		}
+	} else if (vmm_strcmp(argv[1], "kick") == 0) {
 		if (num == -1) {
 			for (num = 0; num < count; num++) {
 				ret = cmd_guest_kick(num);
