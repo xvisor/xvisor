@@ -98,8 +98,6 @@ void vmm_scheduler_irq_process(u32 cpu_irq_num,
 	/* VCPU irq processing */
 	vmm_vcpu_irq_process(regs);
 
-	/* FIXME: Reset processing */
-
 }
 
 void vmm_scheduler_tick(vmm_user_regs_t * regs)
@@ -441,7 +439,9 @@ int vmm_scheduler_guest_reset(vmm_guest_t * guest)
 				break;
 			}
 		}
-		rc = vmm_guest_aspace_reset(guest);
+		if (!rc) {
+			rc = vmm_guest_aspace_reset(guest);
+		}
 	}
 	return rc;
 }
