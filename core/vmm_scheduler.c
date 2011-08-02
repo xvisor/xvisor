@@ -28,7 +28,6 @@
 #include <vmm_cpu.h>
 #include <vmm_mterm.h>
 #include <vmm_devtree.h>
-#include <vmm_host_irq.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
@@ -70,16 +69,9 @@ void vmm_scheduler_next(vmm_user_regs_t * regs)
 	}
 }
 
-void vmm_scheduler_irq_process(u32 cpu_irq_num, 
-				vmm_user_regs_t * regs, 
-				bool host_irq)
+void vmm_scheduler_irq_process(vmm_user_regs_t * regs)
 {
 	vmm_vcpu_t * vcpu = NULL;
-
-	/* Process host irq if required */
-	if (host_irq) {
-		vmm_host_irq_exec(cpu_irq_num, regs);
-	}
 
 	/* Determine current vcpu */
 	vcpu = (-1 < sched.vcpu_current) ? 
