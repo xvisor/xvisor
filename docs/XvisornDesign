@@ -1,5 +1,5 @@
 
-		Xvisor Virtualization Design
+		Xvisor Design Overview
 
 This is document gives an overview of the xvisor virtualization design.
 It gives very important insight required for writing architecture support
