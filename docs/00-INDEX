@@ -7,7 +7,8 @@ Please try and keep the descriptions small enough to fit on one line.
 
 00-INDEX
 	- This file.
+DesignDoc
+	- Overview of Xvisor design.
 CodingStyle
 	- Expected C coding style in Xvisor.
-XvisorDesign
-	- Overview of Xvisor design.
+
