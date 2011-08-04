@@ -28,6 +28,8 @@
 #include <vmm_devtree.h>
 #include <vmm_scheduler.h>
 #include <vmm_mterm.h>
+#include <vmm_host_aspace.h>
+#include <vmm_elf.h>
 
 void cmd_guest_usage(void)
 {
@@ -163,6 +165,7 @@ int cmd_guest_dumpreg(int num)
 int cmd_guest_exec(int argc, char **argv)
 {
 	int num, count;
+	u32 src_addr, dest_addr, size;
 	int ret;
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {

@@ -207,6 +207,7 @@ LEAF(fill_tlb_entry)
 	mtc0 T3, CP0_ENTRYHI /* load VPN in entry hi */
 	mtc0 T1, CP0_ENTRYLO0
 	mtc0 T2, CP0_ENTRYLO1
+	mtc0 T0, CP0_PAGEMASK
 	nop
 	nop
 	nop

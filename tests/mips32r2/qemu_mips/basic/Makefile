@@ -67,24 +67,28 @@ $(build_dir)/pflash.img: $(build_dir)/vmm.elf \
 		conv=notrunc
 	@dd if=$(build_dir)/vmm.elf of=$(build_dir)/pflash.img bs=1 \
 		conv=notrunc seek=1M
-	@dd if=$(obj_dir)/mips32r2_test.bin of=$(build_dir)/pflash.img \
-		conv=notrunc seek=2M
+	@dd if=$(obj_dir)/mips32r2_test.elf of=$(build_dir)/pflash.img \
+		bs=1 conv=notrunc seek=2M
 
 # Generate the TEST code
 $(obj_dir)/mips32r2_test.bin: $(obj_dir)/mips32r2_test.elf
 	@mkdir -p `dirname $@`
 	@echo " (OBJCOPY)   $(subst $(obj_dir)/,,$@)"
-	$(MIPS_OBJCOPY) -O binary $< $@
+	@$(MIPS_OBJCOPY) -O binary $< $@
 
 $(obj_dir)/mips32r2_test.elf: $(MIPS_TEST_OBJS) $(MIPS_TEST_LINK_SCRIPT)
 	@mkdir -p `dirname $@`
 	@echo " (LD)        $(subst $(obj_dir)/,,$@)"
-	$(MIPS_CC) $(MIPS_TEST_OBJS) $(MIPS_LDFLAGS) $(MIPS_TEST_LDFLAGS) -o $@
+	@$(MIPS_CC) $(MIPS_TEST_OBJS) $(MIPS_LDFLAGS) $(MIPS_TEST_LDFLAGS) -o $@
 
 $(MIPS_TEST_OBJS): mips32r2_entry.S $(MIPS_COMMON_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (AS)        $(subst $(obj_dir)/,,$@)"
-	$(MIPS_AS) $(MIPS_ASFLAGS) $(MIPS_TEST_ASFLAGS) -c $< -o $@
+	@$(MIPS_AS) $(MIPS_ASFLAGS) $(MIPS_TEST_ASFLAGS) -c $< -o $@
+
+$(build_dir)/u-boot.bin:
+	@echo " (CP)        U-Boot for Qemu-MIPS"
+	@cp u-boot.bin $(build_dir)/
 
 .PHONY: clean
 clean:

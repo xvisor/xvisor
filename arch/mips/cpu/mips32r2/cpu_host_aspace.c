@@ -22,6 +22,7 @@
  * @brief CPU specific source file for host virtual address space management.
  */
 
+#include <vmm_stdio.h>
 #include <vmm_string.h>
 #include <vmm_error.h>
 #include <cpu_mmu.h>
@@ -57,6 +58,25 @@ int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz,
 {
 	struct host_tlb_entries_info *tlb_info = free_host_tlb_index();
 	struct mips32_tlb_entry tlb_entry;
+	u32 page_mask, page_size;
+
+	switch (sz) {
+	case TLB_PAGE_SIZE_1K:
+	case TLB_PAGE_SIZE_4K:
+	case TLB_PAGE_SIZE_16K:
+	case TLB_PAGE_SIZE_256K:
+	case TLB_PAGE_SIZE_1M:
+	case TLB_PAGE_SIZE_4M:
+	case TLB_PAGE_SIZE_16M:
+	case TLB_PAGE_SIZE_64M:
+	case TLB_PAGE_SIZE_256M:
+		page_size = sz;
+		page_mask = ((sz / 2) - 1);
+		break;
+	default:
+		vmm_panic("Guest physical memory region should be same as page sizes available for MIPS32.\n");
+	}
+
 
 	if (tlb_info) {
 		/* Create TLB Hi Entry */
@@ -64,7 +84,7 @@ int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz,
 		tlb_entry.entryhi._s_entryhi.reserved = 0;
 		tlb_entry.entryhi._s_entryhi.vpn2 = (va >> VPN2_SHIFT);
 		tlb_entry.entryhi._s_entryhi.vpn2x = 0;
-		tlb_entry.page_mask = PAGE_MASK;
+		tlb_entry.page_mask = page_mask;
 
 		/* TLB Low entry. Mapping two physical addresses */
 		tlb_entry.entrylo0._s_entrylo.global = 0; /* not global */
@@ -75,7 +95,7 @@ int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz,
 
 		/* We'll map to consecutive physical addresses */
 		/* Needed? */
-		pa += PAGE_SIZE;
+		pa += page_size;
 		tlb_entry.entrylo1._s_entrylo.global = 0; /* not global */
 		tlb_entry.entrylo1._s_entrylo.valid = 1; /* valid */
 		tlb_entry.entrylo1._s_entrylo.dirty = 1; /* writeable */
