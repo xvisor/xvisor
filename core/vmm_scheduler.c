@@ -19,7 +19,7 @@
  * @file vmm_scheduler.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for vmm scheduler
+ * @brief source file for hypervisor scheduler
  */
 
 #include <vmm_error.h>
@@ -28,7 +28,6 @@
 #include <vmm_cpu.h>
 #include <vmm_mterm.h>
 #include <vmm_devtree.h>
-#include <vmm_host_irq.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
@@ -70,16 +69,9 @@ void vmm_scheduler_next(vmm_user_regs_t * regs)
 	}
 }
 
-void vmm_scheduler_irq_process(u32 cpu_irq_num, 
-				vmm_user_regs_t * regs, 
-				bool host_irq)
+void vmm_scheduler_irq_process(vmm_user_regs_t * regs)
 {
 	vmm_vcpu_t * vcpu = NULL;
-
-	/* Process host irq if required */
-	if (host_irq) {
-		vmm_host_irq_exec(cpu_irq_num, regs);
-	}
 
 	/* Determine current vcpu */
 	vcpu = (-1 < sched.vcpu_current) ? 
@@ -97,8 +89,6 @@ void vmm_scheduler_irq_process(u32 cpu_irq_num,
 
 	/* VCPU irq processing */
 	vmm_vcpu_irq_process(regs);
-
-	/* FIXME: Reset processing */
 
 }
 
@@ -208,7 +198,12 @@ int vmm_scheduler_vcpu_reset(vmm_vcpu_t * vcpu)
 		    (vcpu->state != VMM_VCPU_STATE_UNKNOWN)) {
 			vcpu->state = VMM_VCPU_STATE_RESET;
 			vcpu->reset_count++;
-			rc = vmm_vcpu_regs_init(vcpu);
+			if ((rc = vmm_vcpu_regs_init(vcpu))) {
+				return rc;
+			}
+			if ((rc = vmm_vcpu_irq_init(vcpu))) {
+				return rc;
+			}
 		}
 		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
 	}
@@ -436,6 +431,9 @@ int vmm_scheduler_guest_reset(vmm_guest_t * guest)
 				break;
 			}
 		}
+		if (!rc) {
+			rc = vmm_guest_aspace_reset(guest);
+		}
 	}
 	return rc;
 }
@@ -556,7 +554,9 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 	INIT_SPIN_LOCK(&guest->lock);
 	guest->node = gnode;
 	INIT_LIST_HEAD(&guest->vcpu_list);
-	vmm_guest_aspace_initguest(guest);
+	if (vmm_guest_aspace_init(guest)) {
+		return NULL;
+	}
 
 	/* Increment guest count */
 	sched.guest_count++;
@@ -623,7 +623,9 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 		if (vmm_vcpu_regs_init(vcpu)) {
 			continue;
 		}
-		vmm_vcpu_irq_initvcpu(vcpu);
+		if (vmm_vcpu_irq_init(vcpu)) {
+			continue;
+		}
 
 		/* Increment vcpu count */
 		sched.vcpu_count++;
