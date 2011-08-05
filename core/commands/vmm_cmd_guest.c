@@ -28,12 +28,16 @@
 #include <vmm_devtree.h>
 #include <vmm_scheduler.h>
 #include <vmm_mterm.h>
+#include <vmm_host_aspace.h>
+#include <vmm_guest_aspace.h>
+#include <vmm_elf.h>
 
 void cmd_guest_usage(void)
 {
 	vmm_printf("Usage:\n");
 	vmm_printf("   guest help\n");
 	vmm_printf("   guest list\n");
+	vmm_printf("   guest load    <guest_num> <src_hphys_addr> <dest_gphys_addr> <img_sz>\n");
 	vmm_printf("   guest reset   <guest_num>\n");
 	vmm_printf("   guest kick    <guest_num>\n");
 	vmm_printf("   guest pause   <guest_num>\n");
@@ -63,6 +67,46 @@ void cmd_guest_list()
 	}
 	vmm_printf("----------------------------------------"
 		   "--------------------\n");
+}
+
+int cmd_guest_load(int num, physical_addr_t src_hphys_addr, physical_addr_t dest_gphys_addr, u32 img_sz)
+{
+	vmm_guest_t *guest;
+	vmm_guest_region_t *guest_region;
+	virtual_addr_t src_hvaddr, dest_gvaddr;
+
+	guest = vmm_scheduler_guest(num);
+	if (guest) {
+		guest_region = vmm_guest_aspace_getregion(guest, dest_gphys_addr);
+		if (!guest_region) {
+			vmm_printf("Error: Cannot find a guest reqion containing address 0x%X\n", dest_gphys_addr);
+			return VMM_EFAIL;
+		}
+
+		if (img_sz > guest_region->phys_size) {
+			vmm_printf("(%s) Error: Image size is greater than the size of the requested guest region.\n",
+				   __FUNCTION__);
+			return VMM_EFAIL;
+		}
+
+		dest_gvaddr = vmm_host_iomap(guest_region->hphys_addr, guest_region->phys_size);
+		if (!dest_gvaddr) {
+			vmm_printf("(%s) Error: Cannot map host physical to host virtual.\n", __FUNCTION__);
+			return VMM_EFAIL;
+		}
+
+		src_hvaddr = vmm_host_iomap(src_hphys_addr, guest_region->phys_size);
+		if (!src_hvaddr) {
+			vmm_printf("(%s) Error: Cannot map host source physical to host virtual.\n", __FUNCTION__);
+			return VMM_EFAIL;
+		}
+
+		vmm_memcpy((void *)dest_gvaddr, (void *)src_hvaddr, img_sz);
+
+		return VMM_OK;
+	}
+
+	return VMM_EFAIL;
 }
 
 int cmd_guest_reset(int num)
@@ -163,6 +207,7 @@ int cmd_guest_dumpreg(int num)
 int cmd_guest_exec(int argc, char **argv)
 {
 	int num, count;
+	u32 src_addr, dest_addr, size;
 	int ret;
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
@@ -245,6 +290,23 @@ int cmd_guest_exec(int argc, char **argv)
 		} else {
 			return cmd_guest_dumpreg(num);
 		}
+	} else if (vmm_strcmp(argv[1], "load") == 0) {
+		if (num == -1) {
+			vmm_printf("Error: Cannot load images in all guests simultaneously.\n");
+			return VMM_EFAIL;
+		}
+
+		if (argc < 6) {
+			vmm_printf("Error: Insufficient argument for command load.\n");
+			cmd_guest_usage();
+			return VMM_EFAIL;
+		}
+
+		src_addr = vmm_str2uint(argv[3], 16);
+		dest_addr = vmm_str2uint(argv[4], 16);
+		size = vmm_str2uint(argv[5], 16);
+
+		return cmd_guest_load(num, src_addr, dest_addr, size);
 	} else {
 		cmd_guest_usage();
 		return VMM_EFAIL;

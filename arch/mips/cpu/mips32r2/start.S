@@ -207,6 +207,7 @@ LEAF(fill_tlb_entry)
 	mtc0 T3, CP0_ENTRYHI /* load VPN in entry hi */
 	mtc0 T1, CP0_ENTRYLO0
 	mtc0 T2, CP0_ENTRYLO1
+	mtc0 T0, CP0_PAGEMASK
 	nop
 	nop
 	nop
@@ -216,16 +217,3 @@ LEAF(fill_tlb_entry)
 	j RA
 	nop
 END(fill_tlb_entry)
-
-
-.section .test.text,"ax",@progbits
-mfc0 T1, CP0_CAUSE
-li T2, 2
-sll T1, T1, T2
-mtc0 T1, CP0_CAUSE
-ehb
-madd T1, T2
-mfhi T3
-di T3
-ei
-1:	b 1b

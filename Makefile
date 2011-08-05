@@ -70,6 +70,8 @@ CONFIG_ARCH:=$(shell echo $(CONFIG_ARCH))
 CONFIG_CPU:=$(shell echo $(CONFIG_CPU))
 CONFIG_BOARD:=$(shell echo $(CONFIG_BOARD))
 
+TESTDIR:=tests/$(CONFIG_CPU)/$(CONFIG_BOARD)/basic/
+
 # Setup path of directories
 export core_dir=$(CURDIR)/core
 export cpu_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/cpu/$(CONFIG_CPU)
@@ -212,6 +214,10 @@ ifeq ($(build_dir),$(CURDIR)/build)
 	$(V)rm -rf $(build_dir)
 endif
 	$(V)$(MAKE) -C $(src_dir)/tools/dtc clean
+
+.PHONY: tests
+tests:
+	$(V)$(MAKE) -C $(src_dir)/$(TESTDIR)
 
 # Rule for "make distclean"
 .PHONY: distclean
