@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -201,8 +201,6 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs
 				vmm_panic("Unable to load emulated register.\n");
 			}
 
-			/* handled. Need to start execution from next instruction. */
-			uregs->cp0_epc += 4;
 			break;
 		case MIPS32_OPC_CP0_MT:
 			rt = MIPS32_OPC_CP0_RT(inst);
@@ -217,7 +215,6 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs
 				vmm_panic("Unable to load emulated register.\n");
 			}
 
-			uregs->cp0_epc += 4;
 			break;
 
 		case MIPS32_OPC_CP0_DIEI:
@@ -243,7 +240,6 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs
 				vcpu->sregs.cp0_regs[CP0_STATUS_IDX] |= 0x01UL;
 			}
 
-			uregs->cp0_epc += 4;
 			break;
 		default:
 			ehi._entryhi = read_c0_entryhi() & ~0xFF;
@@ -256,4 +252,124 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs
 	}
 
 	return VMM_OK;
+}
+
+u32 cpu_vcpu_emulate_regular_branch_jump_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs)
+{
+	return 1;
+}
+
+u32 cpu_vcpu_emulate_jump_special_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs)
+{
+	return 1;
+}
+
+u32 cpu_vcpu_emulate_branch_regimm_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs)
+{
+	u8 rs = MIPS32_OPC_BANDJ_REGIMM_RS(inst);
+	s32 target_offset = MIPS32_OPC_BANDJ_REGIMM_OFFSET(inst);
+	u32 target_pc;
+	u32 usual_epc = uregs->cp0_epc + 8;
+	u32 should_execute_delay_slot = 1;
+
+	/* 16 to 18 bit before adding to address of faulting instruction. */
+	target_offset <<= 2;
+	target_pc = (uregs->cp0_epc + 4) + target_offset;
+
+	switch(MIPS32_OPC_BANDJ_REGIMM_OPCODE(inst)) {
+	/* branch is taken or not, delay slot is executed in either case */
+	case MIPS32_OPC_BANDJ_REGIMM_OPCODE_BLTZ:
+		if ((s32)uregs->regs[rs] < 0)
+			uregs->cp0_epc = target_pc;
+		else
+			uregs->cp0_epc += 8;
+		break;
+
+	/* same as BLTZ but delay slot is executed only if branch is taken */
+	case MIPS32_OPC_BANDJ_REGIMM_OPCODE_BLTZL:
+		if (uregs->regs[rs] < 0)
+			uregs->cp0_epc = target_pc;
+		else {
+			/* No branch, no delay slot execution. */
+			uregs->cp0_epc += 8;
+			should_execute_delay_slot = 0;
+		}
+		break;
+
+	case MIPS32_OPC_BANDJ_REGIMM_OPCODE_BGEZ:
+		if (uregs->regs[rs] >= 0)
+			uregs->cp0_epc = target_pc;
+		else
+			uregs->cp0_epc += 8;
+		break;
+
+	case MIPS32_OPC_BANDJ_REGIMM_OPCODE_BGEZL:
+		if (uregs->regs[rs] >= 0)
+			uregs->cp0_epc = target_pc;
+		else {
+			uregs->cp0_epc += 8;
+			should_execute_delay_slot = 0;
+		}
+		break;
+
+	case MIPS32_OPC_BANDJ_REGIMM_OPCODE_BGEZAL:
+		if (uregs->regs[rs] >= 0) {
+			uregs->cp0_epc = target_pc;
+			uregs->regs[RA_IDX] = usual_epc;
+		} else {
+			uregs->cp0_epc += 8;
+		}
+		break;
+
+	case MIPS32_OPC_BANDJ_REGIMM_OPCODE_BGEZALL:
+		if (uregs->regs[rs] >= 0) {
+			uregs->cp0_epc = target_pc;
+			uregs->regs[RA_IDX] = usual_epc;
+		} else {
+			uregs->cp0_epc += 8;
+			should_execute_delay_slot = 0;
+		}
+		break;
+
+	case MIPS32_OPC_BANDJ_REGIMM_OPCODE_BLTZAL:
+		if ((s32)uregs->regs[rs] < 0) {
+			uregs->regs[RA_IDX] = usual_epc;
+			uregs->cp0_epc = target_pc;
+		} else {
+			uregs->cp0_epc += 8;
+		}
+		break;
+
+	case MIPS32_OPC_BANDJ_REGIMM_OPCODE_BLTZALL:
+		if ((s32)uregs->regs[rs] < 0) {
+			uregs->regs[RA_IDX] = usual_epc;
+			uregs->cp0_epc = target_pc;
+		} else {
+			uregs->cp0_epc += 8;
+			should_execute_delay_slot = 0;
+		}
+		break;
+	}
+
+	return should_execute_delay_slot;
+}
+
+/*
+ * NOTE: This emulation will only happen when there was a fault or there was a priviledged
+ * instruction in the delay slot. This condition should be rare though.
+ */
+u32 cpu_vcpu_emulate_branch_and_jump_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs)
+{
+	int _err = VMM_EFAIL;
+
+	switch(MIPS32_OPC_BANDJ_OPCODE(inst)) {
+	case MIPS32_OPC_BANDJ_OPCODE_SPECIAL:
+		return cpu_vcpu_emulate_jump_special_inst(vcpu, inst, uregs);
+	case MIPS32_OPC_BANDJ_OPCODE_REGIMM:
+		return cpu_vcpu_emulate_branch_regimm_inst(vcpu, inst, uregs);
+	default:
+		return cpu_vcpu_emulate_regular_branch_jump_inst(vcpu, inst, uregs);
+	}
+
+	return _err;
 }

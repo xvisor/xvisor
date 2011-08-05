@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -40,15 +40,42 @@ u32 do_general_exception(vmm_user_regs_t *uregs)
 	u32 victim_asid;
 	u32 victim_inst;
 	vmm_vcpu_t *c_vcpu;
+	u8 delay_slot_exception = IS_BD_SET(cp0_cause);
 
 	ehi._entryhi = read_c0_entryhi();
 	victim_asid = ehi._s_entryhi.asid >> ASID_SHIFT;
 	c_vcpu = vmm_scheduler_current_vcpu();
 
+	/*
+	 * When exception is happening in the delay slot. We need to emulate
+	 * the corresponding branch instruction first. If its one of the "likely"
+	 * instructions, we don't need to emulate the faulting instruction since
+	 * "likely" instructions don't allow slot to be executed if branch is not
+	 * taken.
+	 */
+	if (delay_slot_exception) {
+		victim_inst = *((u32 *)(uregs->cp0_epc + 4));
+
+		/*
+		 * If this function returns zero, the branch instruction was a
+		 * "likely" instruction and the branch wasn't taken. So don't
+		 * execute the delay slot, just return. The correct EPC to return
+		 * to will be programmed under our feet.
+		 */
+		if (!cpu_vcpu_emulate_branch_and_jump_inst(c_vcpu, *((u32 *)uregs->cp0_epc), uregs)) {
+			return VMM_OK;
+		}
+	} else {
+		victim_inst = *((u32 *)uregs->cp0_epc);
+	}
+
 	switch (EXCEPTION_CAUSE(cp0_cause)) {
 	case EXEC_CODE_COPU:
-		victim_inst = *((u32 *)uregs->cp0_epc);
 		cpu_vcpu_emulate_cop_inst(c_vcpu, victim_inst, uregs);
+
+		if (!delay_slot_exception)
+			uregs->cp0_epc += 4;
+
 		break;
 
 	case EXEC_CODE_TLBL:

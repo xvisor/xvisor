@@ -37,7 +37,7 @@ int do_vcpu_tlbmiss(vmm_user_regs_t *uregs)
 	int counter = 0;
 
 	current_vcpu = vmm_scheduler_current_vcpu();
-	badvaddr >>= PAGE_SHIFT;
+	badvaddr >>= VPN2_SHIFT;
 	for (counter = 0; counter < 2 * CPU_TLB_COUNT; counter++) {
 		if (current_vcpu->sregs.shadow_tlb_entries[counter]
 		    .entryhi._s_entryhi.vpn2 == badvaddr) {

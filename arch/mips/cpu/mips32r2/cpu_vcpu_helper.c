@@ -33,14 +33,91 @@
 
 extern char _stack_start;
 
+#define VMM_REGION_TYPE_ROM	0
+#define VMM_REGION_TYPE_RAM	1
+
+static int map_guest_region(vmm_vcpu_t *vcpu, int region_type, int tlb_index)
+{
+	mips32_tlb_entry_t shadow_entry;
+	physical_addr_t gphys;
+	physical_addr_t hphys, paddr;
+	virtual_addr_t vaddr2map;
+	u32 gphys_size;
+	vmm_guest_region_t *region;
+	vmm_guest_t *aguest = vcpu->guest;
+
+	vaddr2map = (region_type == VMM_REGION_TYPE_ROM ? 0x3FC00000 : 0x0);
+	paddr = (region_type == VMM_REGION_TYPE_ROM ? 0x1FC00000 : 0x0);
+
+	/*
+	 * Create the initial TLB entry mapping complete RAM promised
+	 * to the guest. The idea is that guest vcpu shouldn't fault
+	 * on this address.
+	 */
+	region = vmm_guest_aspace_getregion(aguest, paddr);
+	if (region == NULL) {
+		vmm_printf("Bummer!!! No guest region defined for VCPU RAM.\n");
+		return VMM_EFAIL;
+	}
+
+	gphys = region->gphys_addr;
+	hphys = region->hphys_addr;
+	gphys_size = region->phys_size;
+
+	switch (gphys_size) {
+	case TLB_PAGE_SIZE_1K:
+	case TLB_PAGE_SIZE_4K:
+	case TLB_PAGE_SIZE_16K:
+	case TLB_PAGE_SIZE_256K:
+	case TLB_PAGE_SIZE_1M:
+	case TLB_PAGE_SIZE_4M:
+	case TLB_PAGE_SIZE_16M:
+	case TLB_PAGE_SIZE_64M:
+	case TLB_PAGE_SIZE_256M:
+		gphys_size = gphys_size;
+		shadow_entry.page_mask = ((gphys_size / 2) - 1);
+		break;
+	default:
+		vmm_panic("Guest physical memory region should be same as page"
+			  " sizes available for MIPS32.\n");
+	}
+
+	/* FIXME: Guest physical/virtual should be from DTS */
+	shadow_entry.entryhi._s_entryhi.vpn2 = (vaddr2map >> VPN2_SHIFT);
+	shadow_entry.entryhi._s_entryhi.asid = (u8)(2 << 6);
+	shadow_entry.entryhi._s_entryhi.reserved = 0;
+	shadow_entry.entryhi._s_entryhi.vpn2x = 0;
+
+	shadow_entry.entrylo0._s_entrylo.global = 0;
+	shadow_entry.entrylo0._s_entrylo.valid = 1;
+	shadow_entry.entrylo0._s_entrylo.dirty = 1;
+	shadow_entry.entrylo0._s_entrylo.cacheable = 1;
+	shadow_entry.entrylo0._s_entrylo.pfn = (hphys >> PAGE_SHIFT);
+
+	shadow_entry.entrylo1._s_entrylo.global = 0;
+	shadow_entry.entrylo1._s_entrylo.valid = 0;
+	shadow_entry.entrylo1._s_entrylo.dirty = 0;
+	shadow_entry.entrylo1._s_entrylo.cacheable = 0;
+	shadow_entry.entrylo1._s_entrylo.pfn = 0;
+
+	vmm_memcpy((void *)&vcpu->sregs.shadow_tlb_entries[tlb_index],
+		   (void *)&shadow_entry, sizeof(mips32_tlb_entry_t));
+
+	return VMM_OK;
+}
+
+static int map_vcpu_ram(vmm_vcpu_t *vcpu)
+{
+	return map_guest_region(vcpu, VMM_REGION_TYPE_RAM, 1);
+}
+
+static int map_vcpu_rom(vmm_vcpu_t *vcpu)
+{
+	return map_guest_region(vcpu, VMM_REGION_TYPE_ROM, 0);
+}
+
 int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
 {
-	mips32_tlb_entry_t first_shadow_entry;
-	physical_addr_t gphys;
-	physical_addr_t hphys;
-	u32 gphys_size;
-	vmm_guest_region_t *region; 
-
 	vmm_memset(&vcpu->uregs, 0, sizeof(vmm_user_regs_t));
 
         if (vcpu->guest == NULL) {
@@ -58,67 +135,27 @@ int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
 		vcpu->uregs.cp0_entryhi = read_c0_entryhi();
 		vcpu->uregs.cp0_entryhi &= ASID_MASK;
 		vcpu->uregs.cp0_entryhi |= (0x2 << ASID_SHIFT);
+		vcpu->uregs.cp0_epc = vcpu->start_pc;
 
 		/* All guest run from 0 and fault */
-		vcpu->sregs.cp0_regs[CP0_EPC_IDX] = 0x00000000;
+		vcpu->sregs.cp0_regs[CP0_EPC_IDX] = vcpu->start_pc;
 		/* Give guest the same CPU cap as we have */
 		vcpu->sregs.cp0_regs[CP0_PRID_IDX] = read_c0_prid();
 		/*
 		 * FIXME: Prepare the configuration registers as well. OS like
 		 * Linux use them for setting up handlers etc.
 		 */
-
-		/*
-		 * Create the initial TLB entry mapping complete RAM promised
-		 * to the guest. The idea is that guest vcpu shouldn't fault
-		 * on this address.
-		 */
-		region = vmm_guest_aspace_getregion(vcpu->guest, 0);
-		if (region == NULL) {
-			vmm_panic("Bummer!!! No guest region defined for VCPU RAM.\n");
+		if (map_vcpu_ram(vcpu) != VMM_OK) {
+			vmm_printf("(%s) Error: Failed to map guest's RAM in its address space!\n",
+				   __FUNCTION__);
+			return VMM_EFAIL;
 		}
 
-		gphys = region->gphys_addr;
-		hphys = region->hphys_addr;
-		gphys_size = region->phys_size;
-
-		switch (gphys_size) {
-		case TLB_PAGE_SIZE_1K:
-		case TLB_PAGE_SIZE_4K:
-		case TLB_PAGE_SIZE_16K:
-		case TLB_PAGE_SIZE_256K:
-		case TLB_PAGE_SIZE_1M:
-		case TLB_PAGE_SIZE_4M:
-		case TLB_PAGE_SIZE_16M:
-		case TLB_PAGE_SIZE_64M:
-		case TLB_PAGE_SIZE_256M:
-			gphys_size = gphys_size / 2;
-			first_shadow_entry.page_mask = ~((gphys_size / 2) - 1);
-			break;
-		default:
-			vmm_panic("Guest physical memory region should be same as page sizes available for MIPS32.\n");
+		if (map_vcpu_rom(vcpu) != VMM_OK) {
+			vmm_printf("(%s) Error: Failed to map guest's ROM in its address space!\n",
+				   __FUNCTION__);
+			return VMM_EFAIL;
 		}
-
-		/* FIXME: Guest physical/virtual should be from DTS */
-		first_shadow_entry.entryhi._s_entryhi.vpn2 = (gphys >> VPN2_SHIFT);
-		first_shadow_entry.entryhi._s_entryhi.asid = (u8)(2 << 6);
-		first_shadow_entry.entryhi._s_entryhi.reserved = 0;
-		first_shadow_entry.entryhi._s_entryhi.vpn2x = 0;
-
-		first_shadow_entry.entrylo0._s_entrylo.global = 0;
-		first_shadow_entry.entrylo0._s_entrylo.valid = 1;
-		first_shadow_entry.entrylo0._s_entrylo.dirty = 1;
-		first_shadow_entry.entrylo0._s_entrylo.cacheable = 1;
-		first_shadow_entry.entrylo0._s_entrylo.pfn = (hphys >> PAGE_SHIFT);
-
-		first_shadow_entry.entrylo1._s_entrylo.global = 0;
-		first_shadow_entry.entrylo1._s_entrylo.valid = 0;
-		first_shadow_entry.entrylo1._s_entrylo.dirty = 0;
-		first_shadow_entry.entrylo1._s_entrylo.cacheable = 0;
-		first_shadow_entry.entrylo1._s_entrylo.pfn = 0;
-
-		vmm_memcpy((void *)&vcpu->sregs.shadow_tlb_entries[0],
-			   (void *)&first_shadow_entry, sizeof(mips32_tlb_entry_t));
 	}
 
 	return VMM_OK;

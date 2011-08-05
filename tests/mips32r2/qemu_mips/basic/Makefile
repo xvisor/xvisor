@@ -67,7 +67,7 @@ $(build_dir)/pflash.img: $(build_dir)/vmm.elf \
 		conv=notrunc
 	@dd if=$(build_dir)/vmm.elf of=$(build_dir)/pflash.img bs=1 \
 		conv=notrunc seek=1M
-	@dd if=$(obj_dir)/mips32r2_test.elf of=$(build_dir)/pflash.img \
+	@dd if=$(obj_dir)/mips32r2_test.bin of=$(build_dir)/pflash.img \
 		bs=1 conv=notrunc seek=2M
 
 # Generate the TEST code

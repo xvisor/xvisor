@@ -28,11 +28,11 @@
 .extern _stack_start
 .section .start.text,"ax",@progbits
 
-EXCEPTION_VECTOR(_tlbmiss, 0x00, _handle_tlbmiss)
-EXCEPTION_VECTOR(_cache_error, 0x100, _handle_cache_error)
-EXCEPTION_VECTOR(_general_exception, 0x180, _handle_general_exception)
+//EXCEPTION_VECTOR(_tlbmiss, 0x00, _handle_tlbmiss)
+//EXCEPTION_VECTOR(_cache_error, 0x100, _handle_cache_error)
+//EXCEPTION_VECTOR(_general_exception, 0x180, _handle_general_exception)
 /* FIXME: We don't need this when in EIC mode. */
-EXCEPTION_VECTOR(_interrupts, 0x200, _handle_interrupt)
+//EXCEPTION_VECTOR(_interrupts, 0x200, _handle_interrupt)
 
 LEAF(_start)
 	mtc0	ZERO, CP0_CONTEXT
@@ -150,26 +150,6 @@ LEAF(tlb_init)
 	/* Return to caller */
 	nop
 END(tlb_init)
-
-LEAF(_handle_tlbmiss)
-	b _handle_tlbmiss
-	nop
-END(_handle_tlbmiss)
-
-LEAF(_handle_interrupt)
-	b _handle_interrupt
-	nop
-END(_handle_interrupt)
-
-LEAF(_handle_cache_error)
-	b _handle_cache_error
-	nop
-END(_handle_cache_error)
-
-LEAF(_handle_general_exception)
-	b _handle_general_exception
-	nop
-END(_handle_general_exception)
 
 /**
  * A0 -> Contains pointer to struct mips32_tlb_entry.
