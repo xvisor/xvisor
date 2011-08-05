@@ -10,7 +10,7 @@
 		vcpu_timer_mhz = <10>;
 		hypercore_tick_count = <20>;
 		/* Maximum size of VMM */
-		vmm_max_size = <0x800000>;
+		vmm_max_size = <0x40000000>;
 	};
 
 	host {
@@ -20,7 +20,7 @@
 		device_type = "host";
 		host_irq_count = <8>;
 		virt-addr-start = <0xC0000000>; /* Kseg1 region */
-		virt-addr-size = <0x80000>;
+		virt-addr-size = <0x40000000>;
 		virt-addr-frame-size = <0x1000>; /* 4K minimum page maps */
 
 		cpus {
@@ -74,7 +74,7 @@
 					device_type = "vcpu";
 					model = "MIPS,24Kc";
 					tick_count = <200>;
-					start_pc = <0x0000000>;
+					start_pc = <0x3FC00000>;
 				};
 			};
 
@@ -82,12 +82,21 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 
+				rom@0 {
+					manifest_type = "real";
+					address_type = "memory";
+					device_type = "memory";
+					guest_physical_addr = <0x1FC00000>;
+					host_physical_addr = <0x100000>;
+					physical_size = <0x400000>;
+				};
+
 				mem@0 {
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x00000000>;
-					host_physical_addr = <0x100000>;
-					physical_size = <0x01000000>;
+					host_physical_addr = <0x600000>;
+					physical_size = <0x1000000>;
 					device_type = "memory";
 				};
 			};

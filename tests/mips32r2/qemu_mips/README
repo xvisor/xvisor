@@ -1,0 +1,12 @@
+			Qemu Defined MIPS Guest
+
+This guest has MIP32 Release 2 compliant CPU and various peripherals
+as defined by Qemu. This isn't a real board just a emulation by Qemu.
+
+We have following guest OSes tested for this guest:
+
+  1. basic - Test code used by hypervior developers.
+
+Please follow the README under specific guest OS directory for detailed
+steps to configure, compile and run.
+
