@@ -63,6 +63,9 @@ void vmm_scheduler_next(vmm_user_regs_t * regs)
 		} else {
 			vmm_vcpu_regs_switch(NULL, nxt_vcpu, regs);
 		}
+	}
+
+	if (nxt_vcpu) {
 		nxt_vcpu->tick_pending = nxt_vcpu->tick_count;
 		nxt_vcpu->state = VMM_VCPU_STATE_RUNNING;
 		sched.vcpu_current = nxt_vcpu->num;
@@ -312,6 +315,7 @@ vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
 
 	/* Update vcpu attributes */
 	INIT_SPIN_LOCK(&vcpu->lock);
+	vcpu->index = 0;
 	vmm_strcpy(vcpu->name, name);
 	vcpu->node = NULL;
 	vcpu->state = VMM_VCPU_STATE_READY;
@@ -362,60 +366,36 @@ vmm_guest_t * vmm_scheduler_guest(s32 guest_no)
 
 u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest)
 {
-	u32 ret = 0;
-	struct dlist *l;
-
 	if (!guest) {
 		return 0;
 	}
 
-	list_for_each(l, &guest->vcpu_list) {
-		ret++;
-	}
-	
-	return ret;
+	return guest->vcpu_count;
 }
 
 vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, int index)
 {
+	bool found = FALSE;
 	vmm_vcpu_t *vcpu = NULL;
-	struct dlist *l;
+	struct dlist *lentry;
 
 	if (!guest || (index < 0)) {
 		return NULL;
 	}
 
-	list_for_each(l, &guest->vcpu_list) {
-		if (!index) {
-			vcpu = list_entry(l, vmm_vcpu_t, head);
+	list_for_each(lentry, &guest->vcpu_list) {
+		vcpu = list_entry(lentry, vmm_vcpu_t, head);
+		if (vcpu->index == index) {
+			found = TRUE;
 			break;
 		}
-		index--;
+	}
+
+	if (!found) {
+		return NULL;
 	}
 
 	return vcpu;
-}
-
-int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu)
-{
-	int ret = -1, index = 0;
-	vmm_vcpu_t *tvcpu = NULL;
-	struct dlist *l;
-
-	if (!guest || !vcpu) {
-		return -1;
-	}
-
-	list_for_each(l, &guest->vcpu_list) {
-		tvcpu = list_entry(l, vmm_vcpu_t, head);
-		if (tvcpu->num == vcpu->num) {
-			ret = index;
-			break;
-		}
-		index++;
-	}
-
-	return ret;
 }
 
 int vmm_scheduler_guest_reset(vmm_guest_t * guest)
@@ -553,13 +533,13 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 	list_add_tail(&sched.guest_list, &guest->head);
 	INIT_SPIN_LOCK(&guest->lock);
 	guest->node = gnode;
+	guest->vcpu_count = 0;
 	INIT_LIST_HEAD(&guest->vcpu_list);
+
+	/* Initialize guest address space */
 	if (vmm_guest_aspace_init(guest)) {
 		return NULL;
 	}
-
-	/* Increment guest count */
-	sched.guest_count++;
 
 	vsnode = vmm_devtree_getchildnode(gnode,
 					  VMM_DEVTREE_VCPUS_NODE_NAME);
@@ -587,6 +567,7 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 		vcpu = &sched.vcpu_array[sched.vcpu_count];
 		list_add_tail(&guest->vcpu_list, &vcpu->head);
 		INIT_SPIN_LOCK(&vcpu->lock);
+		vcpu->index = guest->vcpu_count;
 		vmm_strcpy(vcpu->name, gnode->name);
 		vmm_strcat(vcpu->name,
 			   VMM_DEVTREE_PATH_SEPRATOR_STRING);
@@ -629,7 +610,17 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 
 		/* Increment vcpu count */
 		sched.vcpu_count++;
+		guest->vcpu_count++;
 	}
+
+	/* Initialize guest address space */
+	if (vmm_guest_aspace_probe(guest)) {
+		/* FIXME: Free vcpus alotted to this guest */
+		return NULL;
+	}
+
+	/* Increment guest count */
+	sched.guest_count++;
 
 	return guest;
 }
