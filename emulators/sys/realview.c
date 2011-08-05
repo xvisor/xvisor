@@ -331,11 +331,6 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 		if (s->lockval == REALVIEW_LOCK_VAL) {
 			s->resetlevel &= regmask;
 			s->resetlevel |= regval;
-			/* FIXME: comparision does not work with linux */
-			if (regval & 0x100) {
-				vmm_scheduler_guest_reset(s->guest);
-				vmm_scheduler_guest_kick(s->guest);
-			}
 		}
 		break;
 	case 0x44: /* PCICTL */
@@ -399,6 +394,12 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 	}
 
 	vmm_spin_unlock(&s->lock);
+
+	/* FIXME: comparision does not work with linux */
+	if (s->resetlevel & 0x100) {
+		vmm_scheduler_guest_reset(s->guest);
+		vmm_scheduler_guest_kick(s->guest);
+	}
 
 	return rc;
 }
