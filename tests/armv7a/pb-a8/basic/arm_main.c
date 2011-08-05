@@ -74,6 +74,7 @@ void arm_main(void)
 			arm_puts("hi\n");
 		} else if (arm_strcmp(line, "reset") == 0) {
 			arm_puts("System reset ...\n\n");
+			arm_timer_disable();
 			arm_reset();
 			while (1);
 		} else if (arm_strcmp(line, "help") == 0) {
