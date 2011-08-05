@@ -79,9 +79,6 @@ u32 vmm_scheduler_vcpu_count(void);
 /** Retrive vcpu */
 vmm_vcpu_t * vmm_scheduler_vcpu(s32 vcpu_no);
 
-/** Number of vcpus belonging to a given guest */
-u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest);
-
 /** Reset a vcpu */
 int vmm_scheduler_vcpu_reset(vmm_vcpu_t * vcpu);
 
@@ -115,11 +112,11 @@ u32 vmm_scheduler_guest_count(void);
 /** Retrive guest */
 vmm_guest_t * vmm_scheduler_guest(s32 guest_no);
 
-/** Retrive vcpu belonging to a given guest */
-vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index);
+/** Number of vcpus belonging to a given guest */
+u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest);
 
-/** Find the relative index of a vcpu under a given guest */
-int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu);
+/** Retrive vcpu belonging to a given guest with particular index */
+vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, int index);
 
 /** Reset a guest */
 int vmm_scheduler_guest_reset(vmm_guest_t * guest);

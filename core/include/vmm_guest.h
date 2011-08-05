@@ -73,6 +73,7 @@ struct vmm_guest {
 	vmm_spinlock_t lock;
 	u32 num;
 	vmm_devtree_node_t *node;
+	u32 vcpu_count;
 	struct dlist vcpu_list;
 	vmm_guest_aspace_t aspace;
 };
@@ -95,6 +96,7 @@ struct vmm_vcpu {
 	struct dlist head;
 	vmm_spinlock_t lock;
 	u32 num;
+	int index;
 	char name[64];
 	vmm_devtree_node_t *node;
 	vmm_guest_t *guest;

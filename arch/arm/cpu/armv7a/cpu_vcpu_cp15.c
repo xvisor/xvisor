@@ -267,7 +267,7 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 					 */
 					if (arm_feature(vcpu, ARM_FEATURE_V7) ||
 						arm_cpuid(vcpu) == ARM_CPUID_ARM11MPCORE) {
-						int mpidr = vmm_scheduler_guest_vcpu_index(vcpu->guest, vcpu);
+						int mpidr = vcpu->index;
 						/* We don't support setting cluster ID ([8..11])
 						 * so these bits always RAZ.
 						 */

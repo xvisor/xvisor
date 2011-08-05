@@ -220,6 +220,7 @@ static int sp804_timer_write(struct sp804_timer *t, u32 offset,
 static int sp804_timer_reset(struct sp804_timer *t)
 {
 	u32 freq;
+
 	vmm_spin_lock(&t->lock);
 
 	t->value = 0xFFFFFFFF;
