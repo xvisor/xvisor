@@ -25,7 +25,7 @@
 #include <vmm_cpu.h>
 #include <vmm_board.h>
 #include <vmm_error.h>
-#include <vmm_scheduler.h>
+#include <vmm_timer.h>
 #include <vmm_host_aspace.h>
 #include <pba8_board.h>
 #include <realview/realview_timer.h>
@@ -44,7 +44,7 @@ void vmm_cpu_timer_disable(void)
 
 int pba8_timer_handler(u32 irq_no, vmm_user_regs_t * regs)
 {
-	vmm_scheduler_tick(regs);
+	vmm_timer_tick_process(regs, 1);
 
 	realview_timer_clearirq(pba8_cpu_timer_base);
 
