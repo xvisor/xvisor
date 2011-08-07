@@ -43,6 +43,7 @@ typedef struct vmm_ticker vmm_ticker_t;
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_ctrl {
+	u64 tick_stamp;
 	u32 tick_usecs;
 	struct dlist ticker_list;
 };
@@ -51,6 +52,9 @@ typedef struct vmm_timer_ctrl vmm_timer_ctrl_t;
 
 /** Process timer tick (Must be called from somewhere) */
 void vmm_timer_tick_process(vmm_user_regs_t * regs, u32 ticks);
+
+/** Get global ticks elapsed */
+u64 vmm_timer_tick_stamp(void);
 
 /** Get timer tick delay in microseconds */
 u32 vmm_timer_tick_usecs(void);
