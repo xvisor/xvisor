@@ -27,13 +27,14 @@
 #include <vmm_types.h>
 #include <vmm_guest.h>
 #include <vmm_spinlocks.h>
+#include <vmm_timer.h>
 
 typedef struct vmm_scheduler_ctrl vmm_scheduler_ctrl_t;
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
 	s32 vcpu_current;
-	u32 tick_usecs;
+	vmm_ticker_t tk;
 
 	vmm_spinlock_t lock;
 	u32 max_vcpu_count;
@@ -49,9 +50,6 @@ struct vmm_scheduler_ctrl {
 /** IRQ Processing (Must be called from somewhere) */
 void vmm_scheduler_irq_process(vmm_user_regs_t * regs);
 
-/** Tick handler (Must be called from somewhere) */
-void vmm_scheduler_tick(vmm_user_regs_t * regs);
-
 /** Retrive current vcpu number */
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void);
 
@@ -63,15 +61,6 @@ void vmm_scheduler_preempt_disable(void);
 
 /** Enable pre-emption */
 void vmm_scheduler_preempt_enable(void);
-
-/** Start scheduler */
-void vmm_scheduler_start(void);
-
-/** Stop scheduler */
-void vmm_scheduler_stop(void);
-
-/** Get scheduler tick delay in micorseconds */
-u32 vmm_scheduler_tick_usecs(void);
 
 /** Number of vcpus (thread + normal) */
 u32 vmm_scheduler_vcpu_count(void);

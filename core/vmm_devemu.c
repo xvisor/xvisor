@@ -26,6 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <vmm_timer.h>
 #include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_devemu.h>
@@ -266,7 +267,7 @@ static void devemu_clk_tick(vmm_user_regs_t * regs, u32 ticks_left)
 u32 vmm_devemu_clk_microsecs(void)
 {
 	/* FIXME: Need more fine tuning here */
-	return vmm_scheduler_tick_usecs();
+	return vmm_timer_tick_usecs();
 }
 
 int vmm_devemu_register_clk(vmm_guest_t *guest, vmm_emuclk_t * clk)

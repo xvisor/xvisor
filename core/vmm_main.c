@@ -31,13 +31,14 @@
 #include <vmm_version.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
+#include <vmm_timer.h>
 #include <vmm_scheduler.h>
 #include <vmm_hyperthreads.h>
-#include <vmm_mterm.h>
+#include <vmm_devdrv.h>
 #include <vmm_devemu.h>
+#include <vmm_mterm.h>
 #include <vmm_vserial.h>
 #include <vmm_modules.h>
-#include <vmm_devdrv.h>
 #include <vmm_chardev.h>
 #include <vmm_blockdev.h>
 #include <vmm_netdev.h>
@@ -72,6 +73,13 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
+	/* Initialize host interrupts */
+	ret = vmm_host_irq_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
 	/* Initialize CPU early */
 	ret = vmm_cpu_early_init();
 	if (ret) {
@@ -101,28 +109,14 @@ void vmm_init(void)
 	vmm_printf("Initialize Heap\n");
 	vmm_printf("Initialize Device Tree\n");
 	vmm_printf("Initialize Host Address Space\n");
+	vmm_printf("Initialize Host Interrupt Subsystem\n");
 	vmm_printf("Initialize CPU Early\n");
 	vmm_printf("Initialize Board Early\n");
+	vmm_printf("Initialize Standered I/O Subsystem\n");
 
-	/* Initialize host interrupts */
-	vmm_printf("Initialize Host Interrupt Subsystem\n");
-	ret = vmm_host_irq_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Initialize device driver framework */
-	vmm_printf("Initialize Device Driver Framework\n");
-	ret = vmm_devdrv_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Initialize device emulation framework */
-	vmm_printf("Initialize Device Emulation Framework\n");
-	ret = vmm_devemu_init();
+	/* Initialize timer subsystem */
+	vmm_printf("Initialize Timer Subsystem\n");
+	ret = vmm_timer_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
@@ -139,6 +133,22 @@ void vmm_init(void)
 	/* Initialize hyperthreading framework */
 	vmm_printf("Initialize Hyperthreading Framework\n");
 	ret = vmm_hyperthreading_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize device driver framework */
+	vmm_printf("Initialize Device Driver Framework\n");
+	ret = vmm_devdrv_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize device emulation framework */
+	vmm_printf("Initialize Device Emulation Framework\n");
+	ret = vmm_devemu_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
@@ -226,19 +236,9 @@ void vmm_init(void)
 
 void vmm_start(void)
 {
-	int ret;
-
-	/* Start mterm */
-	vmm_printf("Starting Managment Terminal\n");
-	ret = vmm_mterm_start();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Start scheduler */
-	vmm_printf("Starting Hypervisor Scheduler\n");
-	vmm_scheduler_start();
+	/* Start timer */
+	vmm_printf("Starting Hypervisor Timer\n");
+	vmm_timer_start();
 
 	/* Wait here till scheduler gets invoked by timer */
 	vmm_hang();
@@ -247,8 +247,8 @@ void vmm_start(void)
 static void vmm_stop(void)
 {
 	/* Stop scheduler */
-	vmm_printf("Stopping Hypervisor Scheduler\n");
-	vmm_scheduler_stop();
+	vmm_printf("Stopping Hypervisor Timer\n");
+	vmm_timer_stop();
 
 	/* FIXME: Do other cleanup stuff. */
 }
