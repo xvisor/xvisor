@@ -28,5 +28,6 @@
 #include <arm_types.h>
 
 int arm_strcmp(const char *a, const char *b);
+void arm_int2str(char * dst, u32 src);
 
 #endif /* __ARM_STRING_H_ */
