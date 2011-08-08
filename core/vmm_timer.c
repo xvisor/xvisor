@@ -35,8 +35,13 @@ void vmm_timer_tick_process(vmm_user_regs_t * regs, u32 ticks)
 	struct dlist *l;
 	vmm_ticker_t *t;
 
+	/* Sanity check */
+	if (!ticks) {
+		return;
+	}
+
 	/* Increment jiffies */
-	tctrl.tick_stamp += ticks;
+	tctrl.tickstamp += ticks;
 
 	/* Call enabled tickers */
 	t = NULL;
@@ -48,9 +53,14 @@ void vmm_timer_tick_process(vmm_user_regs_t * regs, u32 ticks)
 	}
 }
 
-u64 vmm_timer_tick_stamp(void)
+u64 vmm_timer_get_tickstamp(void)
 {
-	return tctrl.tick_stamp;
+	return tctrl.tickstamp;
+}
+
+void vmm_timer_set_tickstamp(u64 tickstamp)
+{
+	tctrl.tickstamp = tickstamp;
 }
 
 u32 vmm_timer_tick_usecs(void)
@@ -225,8 +235,8 @@ int vmm_timer_init(void)
 	const char *attrval;
 	vmm_devtree_node_t *vnode;
 
-	/* Set tick stamp to zero */
-	tctrl.tick_stamp = 0;
+	/* Set tickstamp to zero */
+	tctrl.tickstamp = 0;
 
 	/* Find out tick delay in microseconds */
 	vnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING

@@ -74,14 +74,8 @@ void vmm_scheduler_next(vmm_user_regs_t * regs)
 
 void vmm_scheduler_tick(vmm_user_regs_t * regs, u32 ticks)
 {
-	vmm_vcpu_t * vcpu = NULL;
-
-	if (!ticks) {
-		return;
-	}
-
-	vcpu = (-1 < sched.vcpu_current) ? 
-		&sched.vcpu_array[sched.vcpu_current] : NULL;
+	vmm_vcpu_t * vcpu = (-1 < sched.vcpu_current) ? 
+				&sched.vcpu_array[sched.vcpu_current] : NULL;
 	if (!vcpu) {
 		vmm_scheduler_next(regs);
 		return;
