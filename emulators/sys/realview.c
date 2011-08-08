@@ -47,11 +47,11 @@
 struct realview_sysctl {
 	vmm_guest_t *guest;
 	vmm_spinlock_t lock;
-	u32 mul_100hz;
-	u32 div_100hz;
+	u64 mul_100hz;
+	u64 div_100hz;
 	u64 ref_100hz;
-	u32 mul_24mhz;
-	u32 div_24mhz;
+	u64 mul_24mhz;
+	u64 div_24mhz;
 	u64 ref_24mhz;
 
 	u32 sys_id;
