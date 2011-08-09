@@ -60,10 +60,13 @@ int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs)
 	return VMM_OK;
 }
 
-int vmm_cpu_timer_setup(u32 tick_usecs)
+int vmm_cpu_timer_setup(u32 tick_nsecs)
 {
 	int ret;
-	u32 regval;
+	u32 regval, tick_usecs;
+
+	/* Get granuality in microseconds */
+	tick_usecs = tick_nsecs / 1000;
 
 	/* Register interrupt handler */
 	ret = vmm_host_irq_register(OMAP3_SYS_TIMER_IRQ,

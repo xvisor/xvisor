@@ -52,11 +52,14 @@ void realview_timer_clearirq(virtual_addr_t base)
 }
 
 int realview_timer_setup(virtual_addr_t base,
-			 u32 usecs,
+			 u64 nsecs,
 			 u32 hirq, vmm_host_irq_handler_t hirq_handler)
 {
 	int ret;
-	u32 ctrl;
+	u32 ctrl, usecs;
+
+	/* Expected microseconds */
+	usecs = nsecs / 1000;
 
 	/* Register interrupt handler */
 	ret = vmm_host_irq_register(hirq, hirq_handler);

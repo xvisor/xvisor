@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file brd_pic.c
+ * @file brd_timer.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief board specific progammable timer
@@ -51,11 +51,11 @@ int pba8_timer_handler(u32 irq_no, vmm_user_regs_t * regs)
 	return VMM_OK;
 }
 
-int vmm_cpu_timer_setup(u32 tick_usecs)
+int vmm_cpu_timer_setup(u32 tick_nsecs)
 {
 	pba8_cpu_timer_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE,
 					     0x1000);
 	return realview_timer_setup(pba8_cpu_timer_base,
-				    tick_usecs,
+				    tick_nsecs,
 				    IRQ_PBA8_TIMER0_1, &pba8_timer_handler);
 }
