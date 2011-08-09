@@ -34,7 +34,7 @@ typedef struct vmm_scheduler_ctrl vmm_scheduler_ctrl_t;
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
 	s32 vcpu_current;
-	vmm_ticker_t tk;
+	vmm_timer_event_t * ev;
 
 	vmm_spinlock_t lock;
 	u32 max_vcpu_count;

@@ -25,6 +25,8 @@
 #ifndef __VMM_LIST_H__
 #define __VMM_LIST_H__
 
+#include <vmm_macros.h>
+
 #define LIST_POISON_PREV	0xDEADBEEF
 #define LIST_POISON_NEXT	0xFADEBABE
 
@@ -40,12 +42,6 @@ struct dlist {
 
 #define list_entry(ptr, type, member) \
 	((type *)((char *)(ptr)-(unsigned long)(&((type *)0)->member)))
-
-#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
-
-#define container_of(ptr, type, member) ({			\
-	const typeof(((type *)0)->member) * __mptr = (ptr);	\
-	(type *)((char *)__mptr - offsetof(type, member)); })
 
 #define list_for_each(curr, head) \
 	for (curr = (head)->next; curr != head; curr = (curr)->next)

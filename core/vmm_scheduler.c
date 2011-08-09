@@ -72,24 +72,26 @@ void vmm_scheduler_next(vmm_user_regs_t * regs)
 	}
 }
 
-void vmm_scheduler_tick(vmm_user_regs_t * regs, u32 ticks)
+void vmm_scheduler_timer_event(vmm_timer_event_t * event)
 {
 	vmm_vcpu_t * vcpu = (-1 < sched.vcpu_current) ? 
 				&sched.vcpu_array[sched.vcpu_current] : NULL;
-	if (!vcpu) {
-		vmm_scheduler_next(regs);
-		return;
-	} 
-	if (!vcpu->preempt_count) {
-		if (!vcpu->tick_pending) {
-			vmm_scheduler_next(regs);
-		} else {
-			vcpu->tick_pending-=ticks;
-			if (vcpu->tick_func && !vcpu->preempt_count) {
-				vcpu->tick_func(regs, vcpu->tick_pending);
+	if (vcpu) {
+		if (!vcpu->preempt_count) {
+			if (!vcpu->tick_pending) {
+				vmm_scheduler_next(event->regs);
+			} else {
+				vcpu->tick_pending-=1;
+				if (vcpu->tick_func && !vcpu->preempt_count) {
+					vcpu->tick_func(event->regs, 
+							vcpu->tick_pending);
+				}
 			}
 		}
+	} else {
+		vmm_scheduler_next(event->regs);
 	}
+	vmm_timer_event_restart(event);
 }
 
 void vmm_scheduler_irq_process(vmm_user_regs_t * regs)
@@ -613,7 +615,6 @@ int vmm_scheduler_guest_destroy(vmm_guest_t * guest)
 
 int vmm_scheduler_init(void)
 {
-	int rc;
 	u32 vnum, gnum;
 	const char *attrval;
 	vmm_devtree_node_t *vnode;
@@ -687,13 +688,14 @@ int vmm_scheduler_init(void)
 		sched.vcpu_array[vnum].state = VMM_VCPU_STATE_UNKNOWN;
 	}
 
-	/* Register ticker per Host CPU */
-	vmm_strcpy(sched.tk.name, "sched");
-	sched.tk.enabled = TRUE;
-	sched.tk.hndl = &vmm_scheduler_tick;
-	if ((rc = vmm_timer_register_ticker(&sched.tk))) {
-		return rc;
+	/* Create timer event and start it. (Per Host CPU) */
+	sched.ev = vmm_timer_event_create("sched", 
+					  &vmm_scheduler_timer_event, 
+					  NULL);
+	if (!sched.ev) {
+		return VMM_EFAIL;
 	}
+	vmm_timer_event_start(sched.ev, vmm_timer_tick_nsecs());
 
 	return VMM_OK;
 }

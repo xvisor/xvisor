@@ -29,29 +29,35 @@
 #include <vmm_regs.h>
 #include <vmm_spinlocks.h>
 
-typedef void (*vmm_ticker_hndl_t) (vmm_user_regs_t * regs, u32 ticks);
+typedef struct vmm_timer_event vmm_timer_event_t;
 
-/** Structure representing a ticker (i.e. tick handler) */
-struct vmm_ticker {
+typedef void (*vmm_timer_event_handler_t) (vmm_timer_event_t * event);
+
+struct vmm_timer_event {
 	struct dlist head;
-	bool enabled;
 	char name[32];
-	vmm_ticker_hndl_t hndl;
+	bool active;
+	bool on_cpu_list;
+	struct dlist cpu_head;
+	u64 pending_nsecs;
+	u64 duration_nsecs;
+	vmm_timer_event_handler_t handler;
+	vmm_user_regs_t * regs;
+	void * priv;
 };
-
-typedef struct vmm_ticker vmm_ticker_t;
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_ctrl {
 	u64 timestamp;
 	u64 tick_nsecs;
-	struct dlist ticker_list;
+	struct dlist cpu_event_list;
+	struct dlist event_list;
 };
 
 typedef struct vmm_timer_ctrl vmm_timer_ctrl_t;
 
 /** Process timer tick (Must be called from somewhere) */
-void vmm_timer_tick_process(vmm_user_regs_t * regs, u64 ticks);
+void vmm_timer_tick_process(vmm_user_regs_t * regs);
 
 /** Current global timestamp (nanoseconds elapsed) */
 u64 vmm_timer_timestamp(void);
@@ -67,26 +73,28 @@ u64 vmm_timer_tick_usecs(void);
 /** Get timer tick delay in nanoseconds */
 u64 vmm_timer_tick_nsecs(void);
 
-/** Enable a ticker */
-int vmm_timer_enable_ticker(vmm_ticker_t * tk);
+/** Start a timer event */
+int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs);
 
-/** Disable a ticker */
-int vmm_timer_disable_ticker(vmm_ticker_t * tk);
+/** Restart a timer event */
+int vmm_timer_event_restart(vmm_timer_event_t * ev);
 
-/** Register a ticker */
-int vmm_timer_register_ticker(vmm_ticker_t * tk);
+/** Create a timer event */
+vmm_timer_event_t * vmm_timer_event_create(const char *name,
+					   vmm_timer_event_handler_t handler,
+					   void * priv);
 
-/** Unregister a ticker */
-int vmm_timer_unregister_ticker(vmm_ticker_t * tk);
+/** Destroy a timer event */
+int vmm_timer_event_destroy(vmm_timer_event_t * ev);
 
-/** Find a ticker */
-vmm_ticker_t *vmm_timer_find_ticker(const char *name);
+/** Find a timer event */
+vmm_timer_event_t *vmm_timer_event_find(const char *name);
 
-/** Retrive ticker with given index */
-vmm_ticker_t *vmm_timer_ticker(int index);
+/** Retrive timer event with given index */
+vmm_timer_event_t *vmm_timer_event_get(int index);
 
-/** Count number of ticker */
-u32 vmm_timer_ticker_count(void);
+/** Count number of timer events */
+u32 vmm_timer_event_count(void);
 
 /** Start timer */
 void vmm_timer_start(void);

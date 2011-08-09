@@ -25,31 +25,54 @@
 #include <vmm_cpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
+#include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_timer.h>
 
 vmm_timer_ctrl_t tctrl;
 
-void vmm_timer_tick_process(vmm_user_regs_t * regs, u64 ticks)
+void vmm_timer_tick_process(vmm_user_regs_t * regs)
 {
 	struct dlist *l;
-	vmm_ticker_t *t;
-
-	/* Sanity check */
-	if (!ticks) {
-		return;
-	}
+	vmm_timer_event_t *e, *de;
 
 	/* Increment timestamp */
-	tctrl.timestamp += ticks * tctrl.tick_nsecs;
+	tctrl.timestamp += tctrl.tick_nsecs;
 
-	/* Call enabled tickers */
-	t = NULL;
-	list_for_each(l, &tctrl.ticker_list) {
-		t = list_entry(l, vmm_ticker_t, head);
-		if (t->enabled) {
-			t->hndl(regs, ticks);
+	/* Update active events */
+	e = NULL;
+	list_for_each(l, &tctrl.cpu_event_list) {
+		e = list_entry(l, vmm_timer_event_t, cpu_head);
+		if (!e->active) {
+			continue;
 		}
+		if (tctrl.tick_nsecs < e->pending_nsecs) {
+			e->pending_nsecs -= tctrl.tick_nsecs;
+		} else {
+			e->pending_nsecs = 0;
+			e->active = FALSE;
+			e->regs = regs;
+			e->handler(e);
+		}
+	}
+
+	/* Remove inactive events from active list */
+	e = NULL;
+	de = NULL;
+	list_for_each(l, &tctrl.cpu_event_list) {
+		e = list_entry(l, vmm_timer_event_t, cpu_head);
+		if (de) {
+			list_del(&de->cpu_head);
+			de->on_cpu_list = FALSE;
+			de = NULL;
+		}
+		if (!e->active) {
+			de = e;
+		}
+	}
+	if (de) {
+		list_del(&de->cpu_head);
+		de->on_cpu_list = FALSE;
 	}
 }
 
@@ -69,70 +92,100 @@ int vmm_timer_adjust_timestamp(u64 timestamp)
 	return VMM_OK;
 }
 
-int vmm_timer_enable_ticker(vmm_ticker_t * tk)
+int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 {
-	tk->enabled = TRUE;
-
-	return VMM_OK;
-}
-
-int vmm_timer_disable_ticker(vmm_ticker_t * tk)
-{
-	tk->enabled = FALSE;
-
-	return VMM_OK;
-}
-
-int vmm_timer_register_ticker(vmm_ticker_t * tk)
-{
-	bool found;
-	struct dlist *l;
-	vmm_ticker_t *t;
-
-	if (!tk) {
+	if (!ev) {
 		return VMM_EFAIL;
 	}
 
-	t = NULL;
+	ev->active = TRUE;
+	ev->pending_nsecs = duration_nsecs;
+	ev->duration_nsecs = duration_nsecs;
+	if (!ev->on_cpu_list) {
+		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
+		ev->on_cpu_list = TRUE;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_timer_event_restart(vmm_timer_event_t * ev)
+{
+	if (!ev) {
+		return VMM_EFAIL;
+	}
+
+	ev->active = TRUE;
+	ev->pending_nsecs = ev->duration_nsecs;
+	if (!ev->on_cpu_list) {
+		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
+		ev->on_cpu_list = TRUE;
+	}
+
+	return VMM_OK;
+}
+
+vmm_timer_event_t * vmm_timer_event_create(const char *name,
+					   vmm_timer_event_handler_t handler,
+					   void * priv)
+{
+	bool found;
+	struct dlist *l;
+	vmm_timer_event_t *e;
+
+	e = NULL;
 	found = FALSE;
-	list_for_each(l, &tctrl.ticker_list) {
-		t = list_entry(l, vmm_ticker_t, head);
-		if (vmm_strcmp(t->name, tk->name) == 0) {
+	list_for_each(l, &tctrl.event_list) {
+		e = list_entry(l, vmm_timer_event_t, head);
+		if (vmm_strcmp(name, e->name) == 0) {
 			found = TRUE;
 			break;
 		}
 	}
 
 	if (found) {
-		return VMM_EINVALID;
+		return NULL;
 	}
 
-	INIT_LIST_HEAD(&tk->head);
+	e = vmm_malloc(sizeof(vmm_timer_event_t));
+	if (!e) {
+		return NULL;
+	}
 
-	list_add_tail(&tctrl.ticker_list, &tk->head);
+	INIT_LIST_HEAD(&e->head);
+	vmm_strcpy(e->name, name);
+	e->active = FALSE;
+	e->on_cpu_list = FALSE;
+	INIT_LIST_HEAD(&e->cpu_head);
+	e->pending_nsecs = 0;
+	e->duration_nsecs = 0;
+	e->handler = handler;
+	e->priv = priv;
 
-	return VMM_OK;
+	list_add_tail(&tctrl.event_list, &e->head);
+
+	return e;
 }
 
-int vmm_timer_unregister_ticker(vmm_ticker_t * tk)
+int vmm_timer_event_destroy(vmm_timer_event_t * ev)
 {
 	bool found;
 	struct dlist *l;
-	vmm_ticker_t *t;
+	vmm_timer_event_t *e;
 
-	if (!tk) {
+	if (!ev) {
 		return VMM_EFAIL;
 	}
 
-	if (list_empty(&tctrl.ticker_list)) {
+	if (list_empty(&tctrl.event_list)) {
 		return VMM_EFAIL;
 	}
 
-	t = NULL;
+	e = NULL;
 	found = FALSE;
-	list_for_each(l, &tctrl.ticker_list) {
-		t = list_entry(l, vmm_ticker_t, head);
-		if (vmm_strcmp(t->name, tk->name) == 0) {
+	list_for_each(l, &tctrl.event_list) {
+		e = list_entry(l, vmm_timer_event_t, head);
+		if (vmm_strcmp(e->name, ev->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -142,27 +195,29 @@ int vmm_timer_unregister_ticker(vmm_ticker_t * tk)
 		return VMM_ENOTAVAIL;
 	}
 
-	list_del(&t->head);
+	list_del(&e->head);
+
+	vmm_free(e);
 
 	return VMM_OK;
 }
 
-vmm_ticker_t *vmm_timer_find_ticker(const char *name)
+vmm_timer_event_t *vmm_timer_event_find(const char *name)
 {
 	bool found;
 	struct dlist *l;
-	vmm_ticker_t *t;
+	vmm_timer_event_t *e;
 
 	if (!name) {
 		return NULL;
 	}
 
 	found = FALSE;
-	t = NULL;
+	e = NULL;
 
-	list_for_each(l, &tctrl.ticker_list) {
-		t = list_entry(l, vmm_ticker_t, head);
-		if (vmm_strcmp(t->name, name) == 0) {
+	list_for_each(l, &tctrl.event_list) {
+		e = list_entry(l, vmm_timer_event_t, head);
+		if (vmm_strcmp(e->name, name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -172,14 +227,14 @@ vmm_ticker_t *vmm_timer_find_ticker(const char *name)
 		return NULL;
 	}
 
-	return t;
+	return e;
 }
 
-vmm_ticker_t *vmm_timer_ticker(int index)
+vmm_timer_event_t *vmm_timer_event_get(int index)
 {
 	bool found;
 	struct dlist *l;
-	vmm_ticker_t *ret;
+	vmm_timer_event_t *ret;
 
 	if (index < 0) {
 		return NULL;
@@ -188,8 +243,8 @@ vmm_ticker_t *vmm_timer_ticker(int index)
 	ret = NULL;
 	found = FALSE;
 
-	list_for_each(l, &tctrl.ticker_list) {
-		ret = list_entry(l, vmm_ticker_t, head);
+	list_for_each(l, &tctrl.event_list) {
+		ret = list_entry(l, vmm_timer_event_t, head);
 		if (!index) {
 			found = TRUE;
 			break;
@@ -204,12 +259,12 @@ vmm_ticker_t *vmm_timer_ticker(int index)
 	return ret;
 }
 
-u32 vmm_timer_ticker_count(void)
+u32 vmm_timer_event_count(void)
 {
 	u32 retval = 0;
 	struct dlist *l;
 
-	list_for_each(l, &tctrl.ticker_list) {
+	list_for_each(l, &tctrl.event_list) {
 		retval++;
 	}
 
@@ -262,8 +317,11 @@ int vmm_timer_init(void)
 	}
 	tctrl.tick_nsecs = *((u32 *) attrval);
 
-	/* Initialize ticker list */
-	INIT_LIST_HEAD(&tctrl.ticker_list);
+	/* Initialize Per CPU event list */
+	INIT_LIST_HEAD(&tctrl.cpu_event_list);
+
+	/* Initialize event list */
+	INIT_LIST_HEAD(&tctrl.event_list);
 
 	return VMM_OK;
 }
