@@ -79,17 +79,17 @@ void vmm_scheduler_timer_event(vmm_timer_event_t * event)
 	if (vcpu) {
 		if (!vcpu->preempt_count) {
 			if (!vcpu->tick_pending) {
-				vmm_scheduler_next(event->regs);
+				vmm_scheduler_next(event->cpu_regs);
 			} else {
 				vcpu->tick_pending-=1;
 				if (vcpu->tick_func && !vcpu->preempt_count) {
-					vcpu->tick_func(event->regs, 
+					vcpu->tick_func(event->cpu_regs, 
 							vcpu->tick_pending);
 				}
 			}
 		}
 	} else {
-		vmm_scheduler_next(event->regs);
+		vmm_scheduler_next(event->cpu_regs);
 	}
 	vmm_timer_event_restart(event);
 }

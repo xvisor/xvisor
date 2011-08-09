@@ -39,10 +39,10 @@ struct vmm_timer_event {
 	bool active;
 	bool on_cpu_list;
 	struct dlist cpu_head;
+	vmm_user_regs_t * cpu_regs;
 	u64 pending_nsecs;
 	u64 duration_nsecs;
 	vmm_timer_event_handler_t handler;
-	vmm_user_regs_t * regs;
 	void * priv;
 };
 

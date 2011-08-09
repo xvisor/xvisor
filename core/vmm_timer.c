@@ -51,8 +51,9 @@ void vmm_timer_tick_process(vmm_user_regs_t * regs)
 		} else {
 			e->pending_nsecs = 0;
 			e->active = FALSE;
-			e->regs = regs;
+			e->cpu_regs = regs;
 			e->handler(e);
+			e->cpu_regs = NULL;
 		}
 	}
 
@@ -157,6 +158,7 @@ vmm_timer_event_t * vmm_timer_event_create(const char *name,
 	e->active = FALSE;
 	e->on_cpu_list = FALSE;
 	INIT_LIST_HEAD(&e->cpu_head);
+	e->cpu_regs = NULL;
 	e->pending_nsecs = 0;
 	e->duration_nsecs = 0;
 	e->handler = handler;
