@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Himanshu Chauhan.
+ * Copyright (c) 2010 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
  *
  * @file vmm_timer.c
  * @version 0.1
- * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @author Anup Patel (anup@brainfault.org)
  * @brief Implementation of timer subsystem
  */
 
