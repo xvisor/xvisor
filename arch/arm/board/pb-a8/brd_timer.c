@@ -44,7 +44,7 @@ void vmm_cpu_timer_disable(void)
 
 int pba8_timer_handler(u32 irq_no, vmm_user_regs_t * regs)
 {
-	vmm_timer_tick_process(regs, 1);
+	vmm_timer_tick_process(regs);
 
 	realview_timer_clearirq(pba8_cpu_timer_base);
 

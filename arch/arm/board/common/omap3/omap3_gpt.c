@@ -52,7 +52,7 @@ u32 omap3_gpt_read(u32 base, u32 reg)
 
 int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs)
 {
-	vmm_timer_tick_process(regs, 1);
+	vmm_timer_tick_process(regs);
 
 	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
 			OMAP3_GPT_TISR, OMAP3_GPT_TISR_OVF_IT_FLAG_M);
