@@ -43,24 +43,29 @@ typedef struct vmm_ticker vmm_ticker_t;
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_ctrl {
-	u64 tickstamp;
-	u32 tick_usecs;
+	u64 timestamp;
+	u64 tick_nsecs;
 	struct dlist ticker_list;
 };
 
 typedef struct vmm_timer_ctrl vmm_timer_ctrl_t;
 
 /** Process timer tick (Must be called from somewhere) */
-void vmm_timer_tick_process(vmm_user_regs_t * regs, u32 ticks);
+void vmm_timer_tick_process(vmm_user_regs_t * regs, u64 ticks);
 
-/** Get global tickstamp (ticks elapsed) */
-u64 vmm_timer_get_tickstamp(void);
+/** Current global timestamp (nanoseconds elapsed) */
+u64 vmm_timer_timestamp(void);
 
-/** Set global tickstamp (ticks elapsed) */
-void vmm_timer_set_tickstamp(u64 tickstamp);
+/** Adjust global timestamp (nanoseconds elapsed) 
+  * Note: we can only increase timestamp since its a monotonic value.
+  */
+int vmm_timer_adjust_timestamp(u64 timestamp);
 
 /** Get timer tick delay in microseconds */
-u32 vmm_timer_tick_usecs(void);
+u64 vmm_timer_tick_usecs(void);
+
+/** Get timer tick delay in nanoseconds */
+u64 vmm_timer_tick_nsecs(void);
 
 /** Enable a ticker */
 int vmm_timer_enable_ticker(vmm_ticker_t * tk);

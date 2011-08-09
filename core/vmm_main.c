@@ -232,10 +232,7 @@ void vmm_init(void)
 			vmm_printf("Error: Failed to create guest\n");
 		}
 	}
-}
 
-void vmm_start(void)
-{
 	/* Start timer */
 	vmm_printf("Starting Hypervisor Timer\n");
 	vmm_timer_start();
@@ -244,21 +241,15 @@ void vmm_start(void)
 	vmm_hang();
 }
 
-static void vmm_stop(void)
+void vmm_reset(void)
 {
+	int rc;
+
 	/* Stop scheduler */
 	vmm_printf("Stopping Hypervisor Timer\n");
 	vmm_timer_stop();
 
 	/* FIXME: Do other cleanup stuff. */
-}
-
-void vmm_reset(void)
-{
-	int rc;
-
-	/* Stop all functionality */
-	vmm_stop();
 
 	/* Issue board reset */
 	vmm_printf("Issuing Board Reset\n");
@@ -274,8 +265,11 @@ void vmm_shutdown(void)
 {
 	int rc;
 
-	/* Stop all functionality */
-	vmm_stop();
+	/* Stop scheduler */
+	vmm_printf("Stopping Hypervisor Timer\n");
+	vmm_timer_stop();
+
+	/* FIXME: Do other cleanup stuff. */
 
 	/* Issue board shutdown */
 	vmm_printf("Issuing Board Shutdown\n");

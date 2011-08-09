@@ -30,7 +30,7 @@
 
 vmm_timer_ctrl_t tctrl;
 
-void vmm_timer_tick_process(vmm_user_regs_t * regs, u32 ticks)
+void vmm_timer_tick_process(vmm_user_regs_t * regs, u64 ticks)
 {
 	struct dlist *l;
 	vmm_ticker_t *t;
@@ -40,8 +40,8 @@ void vmm_timer_tick_process(vmm_user_regs_t * regs, u32 ticks)
 		return;
 	}
 
-	/* Increment jiffies */
-	tctrl.tickstamp += ticks;
+	/* Increment timestamp */
+	tctrl.timestamp += ticks * tctrl.tick_nsecs;
 
 	/* Call enabled tickers */
 	t = NULL;
@@ -53,19 +53,20 @@ void vmm_timer_tick_process(vmm_user_regs_t * regs, u32 ticks)
 	}
 }
 
-u64 vmm_timer_get_tickstamp(void)
+u64 vmm_timer_timestamp(void)
 {
-	return tctrl.tickstamp;
+	return tctrl.timestamp;
 }
 
-void vmm_timer_set_tickstamp(u64 tickstamp)
+int vmm_timer_adjust_timestamp(u64 timestamp)
 {
-	tctrl.tickstamp = tickstamp;
-}
+	if (timestamp < tctrl.timestamp) {
+		return VMM_EFAIL;
+	}
 
-u32 vmm_timer_tick_usecs(void)
-{
-	return tctrl.tick_usecs;
+	tctrl.timestamp = timestamp;
+
+	return VMM_OK;
 }
 
 int vmm_timer_enable_ticker(vmm_ticker_t * tk)
@@ -215,10 +216,20 @@ u32 vmm_timer_ticker_count(void)
 	return retval;
 }
 
+u64 vmm_timer_tick_usecs(void)
+{
+	return tctrl.tick_nsecs / (u64)1000;
+}
+
+u64 vmm_timer_tick_nsecs(void)
+{
+	return tctrl.tick_nsecs;
+}
+
 void vmm_timer_start(void)
 {
 	/** Setup timer */
-	vmm_cpu_timer_setup(tctrl.tick_usecs);
+	vmm_cpu_timer_setup(tctrl.tick_nsecs);
 
 	/** Enable timer */
 	vmm_cpu_timer_enable();
@@ -235,21 +246,21 @@ int vmm_timer_init(void)
 	const char *attrval;
 	vmm_devtree_node_t *vnode;
 
-	/* Set tickstamp to zero */
-	tctrl.tickstamp = 0;
+	/* Set timestamp to zero */
+	tctrl.timestamp = 0;
 
-	/* Find out tick delay in microseconds */
+	/* Find out tick delay in nanoseconds */
 	vnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
 				   VMM_DEVTREE_VMMINFO_NODE_NAME);
 	if (!vnode) {
 		return VMM_EFAIL;
 	}
 	attrval = vmm_devtree_attrval(vnode,
-				      VMM_DEVTREE_TICK_DELAY_USECS_ATTR_NAME);
+				      VMM_DEVTREE_TICK_DELAY_NSECS_ATTR_NAME);
 	if (!attrval) {
 		return VMM_EFAIL;
 	}
-	tctrl.tick_usecs = *((u32 *) attrval);
+	tctrl.tick_nsecs = *((u32 *) attrval);
 
 	/* Initialize ticker list */
 	INIT_LIST_HEAD(&tctrl.ticker_list);
