@@ -49,6 +49,7 @@ void arm_cmd_help(void)
 	arm_puts("hi     - Say hi to ARM test code\n");
 	arm_puts("hello  - Say hello to ARM test code\n");
 	arm_puts("sysctl - Display sysctl registers\n");
+	arm_puts("timer  - Display timer information\n");
 	arm_puts("reset  - Reset the system\n");
 }
 
@@ -77,6 +78,18 @@ void arm_cmd_sysctl(void)
 	arm_puts("\n");
 	arm_puts("  SYS_24MHz: 0x");
 	arm_int2str(str, sys_24mhz);
+	arm_puts(str);
+	arm_puts("\n");
+}
+
+void arm_cmd_timer(void)
+{
+	char str[32];
+	u32 irq_count;
+	irq_count = arm_timer_irqcount();
+	arm_puts("Timer Information ...\n");
+	arm_puts("  IRQ Count: 0x");
+	arm_int2str(str, irq_count);
 	arm_puts(str);
 	arm_puts("\n");
 }
@@ -119,6 +132,8 @@ void arm_main(void)
 			arm_cmd_hello();
 		} else if (arm_strcmp(line, "sysctl") == 0) {
 			arm_cmd_sysctl();
+		} else if (arm_strcmp(line, "timer") == 0) {
+			arm_cmd_timer();
 		} else if (arm_strcmp(line, "reset") == 0) {
 			arm_cmd_reset();
 		}
