@@ -51,7 +51,7 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 	/* If vcpu priviledge is user then generate exception 
 	 * and return without emulating instruction 
 	 */
-	if ((vcpu->sregs.cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 	} else {
 		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
@@ -82,7 +82,7 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 	/* If vcpu priviledge is user then generate exception 
 	 * and return without emulating instruction 
 	 */
-	if ((vcpu->sregs.cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_SOFT_IRQ, 0x0);
 	} else {
 		if (uregs->cpsr & CPSR_THUMB_ENABLED) {

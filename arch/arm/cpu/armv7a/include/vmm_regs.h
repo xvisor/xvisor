@@ -171,8 +171,8 @@ struct vmm_super_regs {
 
 typedef struct vmm_super_regs vmm_super_regs_t;
 
-#define arm_cpuid(vcpu) ((vcpu)->sregs.cp15.c0_cpuid)
-#define arm_set_feature(vcpu, feat) ((vcpu)->sregs.features |= (0x1 << (feat)))
-#define arm_feature(vcpu, feat) ((vcpu)->sregs.features & (0x1 << (feat)))
+#define arm_cpuid(vcpu) ((vcpu)->sregs->cp15.c0_cpuid)
+#define arm_set_feature(vcpu, feat) ((vcpu)->sregs->features |= (0x1 << (feat)))
+#define arm_feature(vcpu, feat) ((vcpu)->sregs->features & (0x1 << (feat)))
 
 #endif
