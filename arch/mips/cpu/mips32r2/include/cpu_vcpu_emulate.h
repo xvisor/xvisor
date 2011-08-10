@@ -67,6 +67,15 @@
 #define MIPS32_OPC_CP0_MT		0x04
 #define MIPS32_OPC_CP0_DIEI		0x0B
 
+/* TLB Access intructions and opcode macros */
+#define IS_TLB_ACCESS_INST(_i)		(_i & (0x01UL << 25))
+#define MIPS32_OPC_TLB_ACCESS_OPCODE(_i) (_i & 0x3FUL)
+
+#define MIPS32_OPC_TLB_OPCODE_TLBR	0x01
+#define MIPS32_OPC_TLB_OPCODE_TLBP	0x08
+#define MIPS32_OPC_TLB_OPCODE_TLBWI	0x02
+#define MIPS32_OPC_TLB_OPCODE_TLBWR	0x06
+
 /* BRANCH and JUMP instruction emulation macros and defines. */
 #define MIPS32_OPC_BANDJ_OPCODE_SHIFT	26
 #define MIPS32_OPC_BANDJ_OPCODE_MASK	(0x3FUL << \
