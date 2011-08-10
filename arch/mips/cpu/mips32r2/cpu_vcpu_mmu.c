@@ -42,8 +42,8 @@ int do_vcpu_tlbmiss(vmm_user_regs_t *uregs)
 	for (counter = 0; counter < 2 * CPU_TLB_COUNT; counter++) {
 		if (current_vcpu->sregs->shadow_tlb_entries[counter]
 		    .entryhi._s_entryhi.vpn2 == badvaddr) {
-			fill_tlb_entry(&current_vcpu->sregs->
-				       shadow_tlb_entries[counter], 4);
+			mips_fill_tlb_entry(&current_vcpu->sregs->
+					    shadow_tlb_entries[counter], -1);
 			return 0;
 		} else {
 			vmm_panic("No TLB entry in shadow."
@@ -167,7 +167,7 @@ static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 
 	if (do_map) {
 		guest_free_tlb_index = mips_get_vcpu_free_tlbidx(vcpu);
-		fill_tlb_entry(gtlbe, guest_free_tlb_index);
+		mips_fill_tlb_entry(gtlbe, guest_free_tlb_index);
 	}
 
 	return VMM_OK;
@@ -200,12 +200,6 @@ u32 mips_write_vcpu_tlbi(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 		return mips_vcpu_map_guest_to_host(vcpu, entry2prgm);
 	}
 
-	/*
-	 * Based on the TLB entry created above, create an actual entry
-	 * mapping to correct host physical. If the region that guest
-	 * tried to create does't exist, then???????? FAULT GUEST????
-	 * BUS ERROR??????
-	 */
 	return VMM_OK;
 }
 
