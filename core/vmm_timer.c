@@ -41,9 +41,16 @@ void vmm_timer_tick_process(vmm_user_regs_t * regs)
 
 	/* Update active events */
 	e = NULL;
+	de = NULL;
 	list_for_each(l, &tctrl.cpu_event_list) {
+		if (de) {
+			list_del(&de->cpu_head);
+			de->on_cpu_list = FALSE;
+			de = NULL;
+		}
 		e = list_entry(l, vmm_timer_event_t, cpu_head);
 		if (!e->active) {
+			de = e;
 			continue;
 		}
 		if (tctrl.tick_nsecs < e->pending_nsecs) {
@@ -54,21 +61,9 @@ void vmm_timer_tick_process(vmm_user_regs_t * regs)
 			e->cpu_regs = regs;
 			e->handler(e);
 			e->cpu_regs = NULL;
-		}
-	}
-
-	/* Remove inactive events from active list */
-	e = NULL;
-	de = NULL;
-	list_for_each(l, &tctrl.cpu_event_list) {
-		e = list_entry(l, vmm_timer_event_t, cpu_head);
-		if (de) {
-			list_del(&de->cpu_head);
-			de->on_cpu_list = FALSE;
-			de = NULL;
-		}
-		if (!e->active) {
-			de = e;
+			if (!e->active) {
+				de = e;
+			}
 		}
 	}
 	if (de) {
@@ -121,6 +116,22 @@ int vmm_timer_event_restart(vmm_timer_event_t * ev)
 	if (!ev->on_cpu_list) {
 		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
 		ev->on_cpu_list = TRUE;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_timer_event_stop(vmm_timer_event_t * ev)
+{
+	if (!ev) {
+		return VMM_EFAIL;
+	}
+
+	ev->active = FALSE;
+	ev->pending_nsecs = 0;
+	if (ev->on_cpu_list) {
+		list_del(&ev->cpu_head);
+		ev->on_cpu_list = FALSE;
 	}
 
 	return VMM_OK;
