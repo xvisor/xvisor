@@ -51,6 +51,7 @@ struct vmm_user_regs;
 
 #define is_vmm_asid(x)		((x >> ASID_SHIFT) == VMM_ASID)
 #define is_guest_asid(x)	((x & 0xC0))
+#define _ASID(x)		(x >> ASID_SHIFT)
 
 typedef union mips32_entryhi  {
 	u32 _entryhi;
