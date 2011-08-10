@@ -51,108 +51,108 @@ static u32 load_store_emulated_reg(u8 sreg, u8 sel,
 	case 9:
 	case 10:
 	case 11:
-		emulated_reg = &vcpu->sregs.cp0_regs[sreg];
+		emulated_reg = &vcpu->sregs->cp0_regs[sreg];
 		break;
 	case 12:
 		switch(sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_STATUS_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_STATUS_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_INTCTL_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_INTCTL_IDX];
 			break;
 		case 2:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_SRSCTL_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_SRSCTL_IDX];
 			break;
 		case 3:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_SRSMAP_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_SRSMAP_IDX];
 			break;
 		}
 	case 13: /* Cause register */
-		emulated_reg = &vcpu->sregs.cp0_regs[CP0_CAUSE_IDX];
+		emulated_reg = &vcpu->sregs->cp0_regs[CP0_CAUSE_IDX];
 		break;
 	case 14:
-		emulated_reg = &vcpu->sregs.cp0_regs[CP0_EPC_IDX];
+		emulated_reg = &vcpu->sregs->cp0_regs[CP0_EPC_IDX];
 		break;
 	case 15:
 		switch (sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_PRID_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_PRID_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_EBASE_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_EBASE_IDX];
 			break;
 		}
 		break;
 	case 16:
 		switch(sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_CONFIG_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_CONFIG_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_CONFIG1_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_CONFIG1_IDX];
 			break;
 		case 2:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_CONFIG2_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_CONFIG2_IDX];
 			break;
 		case 3:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_CONFIG3_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_CONFIG3_IDX];
 			break;
 		}
 		break;
 	case 17:
-		emulated_reg = &vcpu->sregs.cp0_regs[CP0_LLADDR_IDX];
+		emulated_reg = &vcpu->sregs->cp0_regs[CP0_LLADDR_IDX];
 		break;
 	case 18:
-		emulated_reg = &vcpu->sregs.cp0_regs[CP0_WATCHLO_IDX];
+		emulated_reg = &vcpu->sregs->cp0_regs[CP0_WATCHLO_IDX];
 		break;
 	case 19:
-		emulated_reg = &vcpu->sregs.cp0_regs[CP0_WATCHHI_IDX];
+		emulated_reg = &vcpu->sregs->cp0_regs[CP0_WATCHHI_IDX];
 		break;
 	case 23:
-		emulated_reg = &vcpu->sregs.cp0_regs[CP0_DEBUG_IDX];
+		emulated_reg = &vcpu->sregs->cp0_regs[CP0_DEBUG_IDX];
 		break;
 	case 24:
-		emulated_reg = &vcpu->sregs.cp0_regs[CP0_DEPC_IDX];
+		emulated_reg = &vcpu->sregs->cp0_regs[CP0_DEPC_IDX];
 		break;
 	case 25:
 		switch(sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_PERFCTL_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_PERFCTL_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_PERFCNT_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_PERFCNT_IDX];
 			break;
 		}
 		break;
 	case 26:
-		emulated_reg = &vcpu->sregs.cp0_regs[CP0_ECC_IDX];
+		emulated_reg = &vcpu->sregs->cp0_regs[CP0_ECC_IDX];
 		break;
 	case 27:
-		emulated_reg = &vcpu->sregs.cp0_regs[CP0_CACHEERR_IDX];
+		emulated_reg = &vcpu->sregs->cp0_regs[CP0_CACHEERR_IDX];
 		break;
 	case 28:
 		switch(sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_TAGLO_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_TAGLO_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_DATALO_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_DATALO_IDX];
 			break;
 		}
 		break;
 	case 29:
 		switch(sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_TAGHI_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_TAGHI_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs.cp0_regs[CP0_DATAHI_IDX];
+			emulated_reg = &vcpu->sregs->cp0_regs[CP0_DATAHI_IDX];
 			break;
 		}
 		break;
 	case 31:
-		emulated_reg = &vcpu->sregs.cp0_regs[CP0_ERRORPC_IDX];
+		emulated_reg = &vcpu->sregs->cp0_regs[CP0_ERRORPC_IDX];
 		break;
 	default:
 		_err = VMM_EFAIL;
@@ -224,20 +224,20 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs
 				 * save current status there. */
 				if (rt)
 					uregs->regs[rt] =
-						vcpu->sregs.cp0_regs[CP0_STATUS_IDX];
+						vcpu->sregs->cp0_regs[CP0_STATUS_IDX];
 
 				/* Opcode says disable interrupts (for vcpu) */
-				vcpu->sregs.cp0_regs[CP0_STATUS_IDX] &= ~0x1UL;
+				vcpu->sregs->cp0_regs[CP0_STATUS_IDX] &= ~0x1UL;
 			} else {
 				rt = MIPS32_OPC_CP0_RT(inst);
 				/* only when rt points to a non-zero register
 				 * save current status there. */
 				if (rt)
 					uregs->regs[rt] =
-						vcpu->sregs.cp0_regs[CP0_STATUS_IDX];
+						vcpu->sregs->cp0_regs[CP0_STATUS_IDX];
 
 				/* Opcode says enable interrupts (for vcpu) */
-				vcpu->sregs.cp0_regs[CP0_STATUS_IDX] |= 0x01UL;
+				vcpu->sregs->cp0_regs[CP0_STATUS_IDX] |= 0x01UL;
 			}
 
 			break;
