@@ -61,9 +61,6 @@ int vmm_mterm_exec_cmd(int argc, char **argv);
 /** Process command string */
 int vmm_mterm_proc_cmdstr(char *cmds);
 
-/** Start Managment terminal */
-int vmm_mterm_start(void);
-
 /** Initialize Managment terminal */
 int vmm_mterm_init(void);
 

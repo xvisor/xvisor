@@ -36,3 +36,16 @@ int arm_strcmp(const char *a, const char *b)
 	return (unsigned char)*a - (unsigned char)*b;
 }
 
+void arm_int2str(char * dst, u32 src)
+{
+	int pos = 0;
+	char hexchars[] = "0123456789ABCDEF";
+
+	while (pos < 8) {
+		dst[pos] = hexchars[(src >> 28) & 0xF];
+		pos++;
+		src = src << 4;
+	}
+
+	dst[pos] = '\0';
+}

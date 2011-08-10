@@ -72,6 +72,28 @@ void vmm_scheduler_next(vmm_user_regs_t * regs)
 	}
 }
 
+void vmm_scheduler_timer_event(vmm_timer_event_t * event)
+{
+	vmm_vcpu_t * vcpu = (-1 < sched.vcpu_current) ? 
+				&sched.vcpu_array[sched.vcpu_current] : NULL;
+	if (vcpu) {
+		if (!vcpu->preempt_count) {
+			if (!vcpu->tick_pending) {
+				vmm_scheduler_next(event->cpu_regs);
+			} else {
+				vcpu->tick_pending-=1;
+				if (vcpu->tick_func && !vcpu->preempt_count) {
+					vcpu->tick_func(event->cpu_regs, 
+							vcpu->tick_pending);
+				}
+			}
+		}
+	} else {
+		vmm_scheduler_next(event->cpu_regs);
+	}
+	vmm_timer_event_restart(event);
+}
+
 void vmm_scheduler_irq_process(vmm_user_regs_t * regs)
 {
 	vmm_vcpu_t * vcpu = NULL;
@@ -93,26 +115,6 @@ void vmm_scheduler_irq_process(vmm_user_regs_t * regs)
 	/* VCPU irq processing */
 	vmm_vcpu_irq_process(regs);
 
-}
-
-void vmm_scheduler_tick(vmm_user_regs_t * regs)
-{
-	vmm_vcpu_t * vcpu = (-1 < sched.vcpu_current) ? 
-			    &sched.vcpu_array[sched.vcpu_current] : NULL;
-	if (!vcpu) {
-		vmm_scheduler_next(regs);
-		return;
-	} 
-	if (!vcpu->preempt_count) {
-		if (!vcpu->tick_pending) {
-			vmm_scheduler_next(regs);
-		} else {
-			vcpu->tick_pending--;
-			if (vcpu->tick_func && !vcpu->preempt_count) {
-				vcpu->tick_func(regs, vcpu->tick_pending);
-			}
-		}
-	}
 }
 
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void)
@@ -156,26 +158,6 @@ void vmm_scheduler_preempt_enable(void)
 		vcpu->preempt_count--;
 		vmm_cpu_irq_restore(flags);
 	}
-}
-
-void vmm_scheduler_start(void)
-{
-	/** Setup timer */
-	vmm_cpu_timer_setup(sched.tick_usecs);
-
-	/** Enable timer */
-	vmm_cpu_timer_enable();
-}
-
-void vmm_scheduler_stop(void)
-{
-	/** Disable timer */
-	vmm_cpu_timer_disable();
-}
-
-u32 vmm_scheduler_tick_usecs(void)
-{
-	return sched.tick_usecs;
 }
 
 u32 vmm_scheduler_vcpu_count(void)
@@ -706,18 +688,14 @@ int vmm_scheduler_init(void)
 		sched.vcpu_array[vnum].state = VMM_VCPU_STATE_UNKNOWN;
 	}
 
-	/* Find out tick delay in microseconds */
-	vnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				   VMM_DEVTREE_VMMINFO_NODE_NAME);
-	if (!vnode) {
+	/* Create timer event and start it. (Per Host CPU) */
+	sched.ev = vmm_timer_event_create("sched", 
+					  &vmm_scheduler_timer_event, 
+					  NULL);
+	if (!sched.ev) {
 		return VMM_EFAIL;
 	}
-	attrval = vmm_devtree_attrval(vnode,
-				      VMM_DEVTREE_TICK_DELAY_USECS_ATTR_NAME);
-	if (!attrval) {
-		return VMM_EFAIL;
-	}
-	sched.tick_usecs = *((u32 *) attrval);
+	vmm_timer_event_start(sched.ev, vmm_timer_tick_nsecs());
 
 	return VMM_OK;
 }

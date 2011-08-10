@@ -28,6 +28,7 @@
 #include <vmm_modules.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
+#include <vmm_timer.h>
 #include <vmm_scheduler.h>
 #include <vmm_devemu.h>
 
@@ -45,18 +46,13 @@
 
 struct realview_sysctl {
 	vmm_guest_t *guest;
-	vmm_emuclk_t *clk;
 	vmm_spinlock_t lock;
-	u32 clk_count;
-	u32 mod_100hz;
-	u32 inc_100hz;
-	u32 mod_24mhz;
-	u32 inc_24mhz;
+	u64 ref_100hz;
+	u64 ref_24mhz;
 
 	u32 sys_id;
 	u32 leds;
 	u32 lockval;
-	u32 sys_100hz;
 	u32 cfgdata1;
 	u32 cfgdata2;
 	u32 flags;
@@ -67,26 +63,7 @@ struct realview_sysctl {
 	u32 sys_cfgdata;
 	u32 sys_cfgctrl;
 	u32 sys_cfgstat;
-	u32 sys_24mhz;
 };
-
-static void realview_emulator_tick(vmm_emuclk_t *eclk) 
-{
-	struct realview_sysctl * s = eclk->priv;
-
-	vmm_spin_lock(&s->lock);
-
-	s->clk_count++;
-
-	if (s->clk_count % s->mod_100hz == 0) {
-		s->sys_100hz += s->inc_100hz;
-	}
-	if (s->clk_count % s->mod_24mhz == 0) {
-		s->sys_24mhz += s->inc_24mhz;
-	}
-
-	vmm_spin_unlock(&s->lock);
-}
 
 static int realview_emulator_read(vmm_emudev_t *edev,
 			    	  physical_addr_t offset, 
@@ -121,7 +98,7 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		regval = 0;
 		break;
 	case 0x24: /* 100HZ */
-		regval = s->sys_100hz;
+		regval = (vmm_timer_timestamp() - s->ref_100hz) / 10000000;
 		break;
 	case 0x28: /* CFGDATA1 */
 		regval = s->cfgdata1;
@@ -162,7 +139,7 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		regval = 0;
 		break;
 	case 0x5c: /* 24MHz */
-		regval = s->sys_24mhz;
+		regval = ((vmm_timer_timestamp() - s->ref_24mhz) / 1000) * 24;
 		break;
 	case 0x60: /* MISC */
 		regval = 0;
@@ -410,16 +387,15 @@ static int realview_emulator_reset(vmm_emudev_t *edev)
 
 	vmm_spin_lock(&s->lock);
 
-	s->clk_count = 0;
+	s->ref_100hz = vmm_timer_timestamp();
+	s->ref_24mhz = s->ref_100hz;
 
 	s->leds = 0;
 	s->lockval = 0;
-	s->sys_100hz = 0;
 	s->cfgdata1 = 0;
 	s->cfgdata2 = 0;
 	s->flags = 0;
 	s->resetlevel = 0;
-	s->sys_24mhz = 0;
 
 	vmm_spin_unlock(&s->lock);
 
@@ -440,28 +416,12 @@ static int realview_emulator_probe(vmm_guest_t *guest,
 	}
 	vmm_memset(s, 0x0, sizeof(struct realview_sysctl));
 
-	s->clk = vmm_malloc(sizeof(vmm_emuclk_t));
-	if (!s->clk) {
-		rc = VMM_EFAIL;
-		goto realview_emulator_probe_freesys_fail;
-	}
-	vmm_strcpy(s->clk->name, "realview-clk");
-	s->clk->tick = realview_emulator_tick;
-	s->clk->priv = s;
-	if ((rc = vmm_devemu_register_clk(guest, s->clk))) {
-		rc = VMM_EFAIL;
-		goto realview_emulator_probe_freeclk_fail;
-	}
-
 	edev->priv = s;
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
-	s->clk_count = 0;
-	s->mod_100hz = 10000 / vmm_devemu_clk_microsecs();
-	s->inc_100hz = 1;
-	s->mod_24mhz = 1;
-	s->inc_24mhz = vmm_devemu_clk_microsecs() * 24;
+	s->ref_100hz = vmm_timer_timestamp();
+	s->ref_24mhz = s->ref_100hz;
 	if (eid->data) {
 		s->sys_id = ((u32 *)eid->data)[0];
 		s->proc_id = ((u32 *)eid->data)[1];
@@ -469,9 +429,6 @@ static int realview_emulator_probe(vmm_guest_t *guest,
 
 	goto realview_emulator_probe_done;
 
-realview_emulator_probe_freeclk_fail:
-	vmm_free(s->clk);
-realview_emulator_probe_freesys_fail:
 	vmm_free(s);
 realview_emulator_probe_done:
 	return rc;
@@ -481,7 +438,6 @@ static int realview_emulator_remove(vmm_emudev_t *edev)
 {
 	struct realview_sysctl * s = edev->priv;
 
-	vmm_free(s->clk);
 	vmm_free(s);
 
 	return VMM_OK;

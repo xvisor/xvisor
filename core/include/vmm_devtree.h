@@ -44,7 +44,7 @@
 #define VMM_DEVTREE_VMMINFO_NODE_NAME		"vmm"
 #define VMM_DEVTREE_MAX_VCPU_COUNT_ATTR_NAME	"max_vcpu_count"
 #define VMM_DEVTREE_MAX_GUEST_COUNT_ATTR_NAME	"max_guest_count"
-#define VMM_DEVTREE_TICK_DELAY_USECS_ATTR_NAME	"tick_delay_usecs"
+#define VMM_DEVTREE_TICK_DELAY_NSECS_ATTR_NAME	"tick_delay_nsecs"
 #define VMM_DEVTREE_HCORE_TICK_COUNT_ATTR_NAME	"hypercore_tick_count"
 
 #define VMM_DEVTREE_HOSTINFO_NODE_NAME		"host"

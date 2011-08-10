@@ -26,6 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <vmm_timer.h>
 #include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_devemu.h>
@@ -238,190 +239,6 @@ u32 vmm_devemu_pic_count(vmm_guest_t *guest)
 	eg = (vmm_emuguest_t *)guest->aspace.priv;
 
 	list_for_each(l, &eg->emupic_list) {
-		retval++;
-	}
-
-	return retval;
-}
-
-static void devemu_clk_tick(vmm_user_regs_t * regs, u32 ticks_left)
-{
-	struct dlist *l;
-	vmm_guest_t *guest = vmm_scheduler_current_guest();
-	vmm_emuguest_t *eg = NULL;
-	vmm_emuclk_t *ec;
-	
-	if (!guest) {
-		return;
-	}
-
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
-	
-	list_for_each(l, &eg->emuclk_list) {
-		ec = list_entry(l, vmm_emuclk_t, head);
-		ec->tick(ec);
-	}
-}
-
-u32 vmm_devemu_clk_microsecs(void)
-{
-	/* FIXME: Need more fine tuning here */
-	return vmm_scheduler_tick_usecs();
-}
-
-int vmm_devemu_register_clk(vmm_guest_t *guest, vmm_emuclk_t * clk)
-{
-	bool found;
-	struct dlist *l;
-	vmm_vcpu_t *vcpu;
-	vmm_emuclk_t *ec;
-	vmm_emuguest_t *eg;
-
-	if (!guest || !clk) {
-		return VMM_EFAIL;
-	}
-
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
-	ec = NULL;
-	found = FALSE;
-	list_for_each(l, &eg->emuclk_list) {
-		ec = list_entry(l, vmm_emuclk_t, head);
-		if (vmm_strcmp(ec->name, clk->name) == 0) {
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (found) {
-		return VMM_EINVALID;
-	}
-
-	INIT_LIST_HEAD(&clk->head);
-
-	list_add_tail(&eg->emuclk_list, &clk->head);
-
-	/* Update tick function of vcpu instances */
-	list_for_each(l, &guest->vcpu_list) {
-		vcpu = list_entry(l, vmm_vcpu_t, head);
-		vcpu->tick_func = &devemu_clk_tick;
-	}
-
-	return VMM_OK;
-}
-
-int vmm_devemu_unregister_clk(vmm_guest_t *guest, vmm_emuclk_t * clk)
-{
-	bool found;
-	struct dlist *l;
-	vmm_emuclk_t *ec;
-	vmm_emuguest_t *eg;
-
-	if (!guest || !clk) {
-		return VMM_EFAIL;
-	}
-
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
-
-	if (list_empty(&eg->emuclk_list)) {
-		return VMM_EFAIL;
-	}
-
-	ec = NULL;
-	found = FALSE;
-	list_for_each(l, &eg->emuclk_list) {
-		ec = list_entry(l, vmm_emuclk_t, head);
-		if (vmm_strcmp(ec->name, clk->name) == 0) {
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (!found) {
-		return VMM_ENOTAVAIL;
-	}
-
-	list_del(&ec->head);
-
-	return VMM_OK;
-}
-
-vmm_emuclk_t *vmm_devemu_find_clk(vmm_guest_t *guest, const char *name)
-{
-	bool found;
-	struct dlist *l;
-	vmm_emuguest_t *eg;
-	vmm_emuclk_t *ec;
-
-	if (!guest || !name) {
-		return NULL;
-	}
-
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
-	found = FALSE;
-	ec = NULL;
-
-	list_for_each(l, &eg->emuclk_list) {
-		ec = list_entry(l, vmm_emuclk_t, head);
-		if (vmm_strcmp(ec->name, name) == 0) {
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (!found) {
-		return NULL;
-	}
-
-	return ec;
-}
-
-vmm_emuclk_t *vmm_devemu_clk(vmm_guest_t *guest, int index)
-{
-	bool found;
-	struct dlist *l;
-	vmm_emuguest_t *eg;
-	vmm_emuclk_t *retval;
-
-	if (!guest) {
-		return NULL;
-	}
-	if (index < 0) {
-		return NULL;
-	}
-
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
-	retval = NULL;
-	found = FALSE;
-
-	list_for_each(l, &eg->emuclk_list) {
-		retval = list_entry(l, vmm_emuclk_t, head);
-		if (!index) {
-			found = TRUE;
-			break;
-		}
-		index--;
-	}
-
-	if (!found) {
-		return NULL;
-	}
-
-	return retval;
-}
-
-u32 vmm_devemu_clk_count(vmm_guest_t *guest)
-{
-	u32 retval = 0;
-	vmm_emuguest_t *eg;
-	struct dlist *l;
-
-	if (!guest) {
-		return 0;
-	}
-
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
-
-	list_for_each(l, &eg->emuclk_list) {
 		retval++;
 	}
 
@@ -651,7 +468,6 @@ int vmm_devemu_probe(vmm_guest_t *guest, vmm_guest_region_t *reg)
 	if (!guest->aspace.priv) {
 		eginst = vmm_malloc(sizeof(vmm_emuguest_t));
 		INIT_LIST_HEAD(&eginst->emupic_list);
-		INIT_LIST_HEAD(&eginst->emuclk_list);
 		guest->aspace.priv = eginst;
 	} else {
 		eginst = guest->aspace.priv;
