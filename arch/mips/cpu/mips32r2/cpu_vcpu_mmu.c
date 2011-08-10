@@ -39,10 +39,10 @@ int do_vcpu_tlbmiss(vmm_user_regs_t *uregs)
 	current_vcpu = vmm_scheduler_current_vcpu();
 	badvaddr >>= VPN2_SHIFT;
 	for (counter = 0; counter < 2 * CPU_TLB_COUNT; counter++) {
-		if (current_vcpu->sregs.shadow_tlb_entries[counter]
+		if (current_vcpu->sregs->shadow_tlb_entries[counter]
 		    .entryhi._s_entryhi.vpn2 == badvaddr) {
-			fill_tlb_entry(&current_vcpu->sregs
-				       .shadow_tlb_entries[counter], 4);
+			fill_tlb_entry(&current_vcpu->sregs->
+				       shadow_tlb_entries[counter], 4);
 			return 0;
 		} else {
 			vmm_panic("No TLB entry in shadow. Send fault to guest.\n");
