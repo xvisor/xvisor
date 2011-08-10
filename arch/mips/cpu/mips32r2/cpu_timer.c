@@ -26,6 +26,7 @@
 #include "vmm_error.h"
 #include "vmm_host_irq.h"
 #include "vmm_stdio.h"
+#include "vmm_timer.h"
 #include "cpu_interrupts.h"
 #include "cpu_timer.h"
 #include "cpu_asm_macros.h"
@@ -42,9 +43,10 @@
 
 unsigned long long jiffies;
 
-void vmm_cpu_timer_setup(u32 tick_usecs)
+int vmm_cpu_timer_setup(u64 tick_nsecs)
 {
         jiffies = 0;
+	return VMM_OK;
 }
 
 void vmm_cpu_timer_enable(void)
@@ -66,7 +68,7 @@ void vmm_cpu_timer_disable(void)
 s32 handle_internal_timer_interrupt(vmm_user_regs_t *uregs)
 {
         jiffies++;
-        vmm_scheduler_tick(uregs);
+	vmm_timer_tick_process(uregs);
 	write_c0_compare(read_c0_count() + VMM_COUNTER_JIFFIES);
         return 0;
 }

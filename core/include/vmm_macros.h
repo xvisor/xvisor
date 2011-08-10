@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Anup Patel.
+ * Copyright (c) 2010 Himanshu Chauhan.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,18 +16,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_string.h
- * @version 1.0
- * @author Anup Patel (anup@brainfault.org)
- * @brief Header file for common string functions
+ * @file vmm_macros.h
+ * @version 0.01
+ * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @brief Useful preprocessor macros for vmm
  */
 
-#ifndef __ARM_STRING_H_
-#define __ARM_STRING_H_
+#ifndef __VMM_MACROS_H__
+#define __VMM_MACROS_H__
 
-#include <arm_types.h>
+#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 
-int arm_strcmp(const char *a, const char *b);
-void arm_int2str(char * dst, u32 src);
+#define container_of(ptr, type, member) ({			\
+	const typeof(((type *)0)->member) * __mptr = (ptr);	\
+	(type *)((char *)__mptr - offsetof(type, member)); })
 
-#endif /* __ARM_STRING_H_ */
+#endif /* __VMM_MACROS_H__ */

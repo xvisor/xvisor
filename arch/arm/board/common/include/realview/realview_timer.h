@@ -28,9 +28,9 @@
 #include <vmm_host_irq.h>
 #include <realview/realview_plat.h>
 
-#define TIMER_LOAD	0x00
-#define TIMER_VALUE	0x04
-#define TIMER_CTRL	0x08
+#define TIMER_LOAD		0x00
+#define TIMER_VALUE		0x04
+#define TIMER_CTRL		0x08
 #define TIMER_CTRL_ONESHOT	(1 << 0)
 #define TIMER_CTRL_32BIT	(1 << 1)
 #define TIMER_CTRL_DIV1		(0 << 2)
@@ -39,17 +39,16 @@
 #define TIMER_CTRL_IE		(1 << 5)	/* Interrupt Enable (versatile only) */
 #define TIMER_CTRL_PERIODIC	(1 << 6)
 #define TIMER_CTRL_ENABLE	(1 << 7)
-
-#define TIMER_INTCLR	0x0c
-#define TIMER_RIS	0x10
-#define TIMER_MIS	0x14
-#define TIMER_BGLOAD	0x18
+#define TIMER_INTCLR		0x0c
+#define TIMER_RIS		0x10
+#define TIMER_MIS		0x14
+#define TIMER_BGLOAD		0x18
 
 void realview_timer_enable(virtual_addr_t base);
 void realview_timer_disable(virtual_addr_t base);
 void realview_timer_clearirq(virtual_addr_t base);
 int realview_timer_setup(virtual_addr_t base,
-			 u32 usecs,
+			 u64 nsecs,
 			 u32 hirq, vmm_host_irq_handler_t hirq_handler);
 int realview_timer_init(virtual_addr_t sctl_base,
 			virtual_addr_t base, u32 ensel);

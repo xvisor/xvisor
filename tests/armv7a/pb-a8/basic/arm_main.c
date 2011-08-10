@@ -42,8 +42,62 @@ void arm_init(void)
 	arm_timer_enable();
 }
 
-void arm_reset(void)
+void arm_cmd_help(void)
 {
+	arm_puts("List of commands: \n");
+	arm_puts("help   - List commands and their usage\n");
+	arm_puts("hi     - Say hi to ARM test code\n");
+	arm_puts("hello  - Say hello to ARM test code\n");
+	arm_puts("sysctl - Display sysctl registers\n");
+	arm_puts("timer  - Display timer information\n");
+	arm_puts("reset  - Reset the system\n");
+}
+
+void arm_cmd_hi(void)
+{
+	arm_puts("hello\n");
+}
+
+void arm_cmd_hello(void)
+{
+	arm_puts("hi\n");
+}
+
+void arm_cmd_sysctl(void)
+{
+	char str[32];
+	u32 sys_100hz, sys_24mhz;
+	sys_100hz = arm_readl((void *)(REALVIEW_SYS_BASE + 
+					REALVIEW_SYS_100HZ_OFFSET));
+	sys_24mhz = arm_readl((void *)(REALVIEW_SYS_BASE + 
+					REALVIEW_SYS_24MHz_OFFSET));
+	arm_puts("Sysctl Registers ...\n");
+	arm_puts("  SYS_100Hz: 0x");
+	arm_int2str(str, sys_100hz);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  SYS_24MHz: 0x");
+	arm_int2str(str, sys_24mhz);
+	arm_puts(str);
+	arm_puts("\n");
+}
+
+void arm_cmd_timer(void)
+{
+	char str[32];
+	u32 irq_count;
+	irq_count = arm_timer_irqcount();
+	arm_puts("Timer Information ...\n");
+	arm_puts("  IRQ Count: 0x");
+	arm_int2str(str, irq_count);
+	arm_puts(str);
+	arm_puts("\n");
+}
+
+void arm_cmd_reset(void)
+{
+	arm_puts("System reset ...\n\n");
+
 	/* Unlock Lockable reigsters */
 	arm_writel(REALVIEW_SYS_LOCKVAL, 
 		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_LOCK_OFFSET));
@@ -54,6 +108,8 @@ void arm_reset(void)
 	arm_writel(0x100, 
 		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
 #endif
+
+	while (1);
 }
 
 /* Works in user mode */
@@ -68,20 +124,18 @@ void arm_main(void)
 
 		arm_gets(line, 256, '\n');
 
-		if (arm_strcmp(line, "hi") == 0) {
-			arm_puts("hello\n");
+		if (arm_strcmp(line, "help") == 0) {
+			arm_cmd_help();
+		} else if (arm_strcmp(line, "hi") == 0) {
+			arm_cmd_hi();
 		} else if (arm_strcmp(line, "hello") == 0) {
-			arm_puts("hi\n");
+			arm_cmd_hello();
+		} else if (arm_strcmp(line, "sysctl") == 0) {
+			arm_cmd_sysctl();
+		} else if (arm_strcmp(line, "timer") == 0) {
+			arm_cmd_timer();
 		} else if (arm_strcmp(line, "reset") == 0) {
-			arm_puts("System reset ...\n\n");
-			arm_reset();
-			while (1);
-		} else if (arm_strcmp(line, "help") == 0) {
-			arm_puts("List of commands: \n");
-			arm_puts("hi    - Say hi to ARM test code\n");
-			arm_puts("hello - Say hello to ARM test code\n");
-			arm_puts("reset - Reset the system\n");
-			arm_puts("help  - List commands and their usage\n");
+			arm_cmd_reset();
 		}
 	}
 }
