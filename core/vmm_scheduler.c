@@ -310,6 +310,14 @@ vmm_vcpu_t * vmm_scheduler_vcpu_orphan_create(const char *name,
 	vcpu->bootpg_addr = 0;
 	vcpu->bootpg_size = 0;
 	vcpu->guest = NULL;
+	vcpu->uregs = vmm_malloc(sizeof(vmm_user_regs_t));
+	vcpu->sregs = NULL;
+	vcpu->irqs = NULL;
+
+	/* Sanity Check */
+	if (!vcpu->uregs) {
+		return NULL;
+	}
 
 	/* Initialize registers */
 	if (vmm_vcpu_regs_init(vcpu)) {
@@ -583,6 +591,12 @@ vmm_guest_t * vmm_scheduler_guest_create(vmm_devtree_node_t * gnode)
 			    *((physical_addr_t *) attrval);
 		}
 		vcpu->guest = guest;
+		vcpu->uregs = vmm_malloc(sizeof(vmm_user_regs_t));
+		vcpu->sregs = vmm_malloc(sizeof(vmm_super_regs_t));
+		vcpu->irqs = vmm_malloc(sizeof(vmm_vcpu_irqs_t));
+		if (!vcpu->uregs || !vcpu->sregs || !vcpu->irqs) {
+			break;
+		}
 		if (vmm_vcpu_regs_init(vcpu)) {
 			continue;
 		}
