@@ -24,6 +24,7 @@
 
 #include <cpu_regs.h>
 #include <cpu_asm_macros.h>
+#include <cpu_mmu.h>
 
 .extern _stack_start
 .section .start.text,"ax",@progbits
@@ -55,6 +56,12 @@ LEAF(_start)
 	bal	tlb_init
 	move	A0, V0
 
+	/* Reserve some tlb entries for hypervisor */
+	li	V0, MAX_HOST_TLB_ENTRIES
+	mtc0	V0, CP0_WIRED
+	nop
+	nop
+	ehb
 	la	SP, _stack_start	/* setup the stack (bss segment) */
 	la	T0, cpu_init
 	j	T0			/* Call the C- code now */
@@ -195,11 +202,10 @@ END(_handle_general_exception)
 
 /**
  * A0 -> Contains pointer to struct mips32_tlb_entry.
- * A1 -> Contains Index..
+ * A1 -> Contains Index.. if -1, do a random write.
  */
-.globl fill_tlb_entry
-LEAF(fill_tlb_entry)
-	mtc0 A1, CP0_INDEX /* load the tlb index to be programmed. */
+.globl mips_fill_tlb_entry
+LEAF(mips_fill_tlb_entry)
 	lw T0, 0(A0) /* load page mask */
 	lw T1, 4(A0) /* entry lo 0 */
 	lw T2, 8(A0) /* entry lo 1 */
@@ -212,8 +218,18 @@ LEAF(fill_tlb_entry)
 	nop
 	nop
 	ehb
+	bltz A1, 1f
+	nop
+	mtc0 A1, CP0_INDEX /* load the tlb index to be programmed. */
+	ehb
 	tlbwi
 	ehb
+	nop
+	nop
+	nop
+	nop
+1:
+	tlbr
 	j RA
 	nop
-END(fill_tlb_entry)
+END(mips_fill_tlb_entry)

@@ -102,7 +102,7 @@ int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz,
 		tlb_entry.entrylo1._s_entrylo.cacheable = 0; /* Dev map, no cache */
 		tlb_entry.entrylo1._s_entrylo.pfn = (pa >> PAGE_SHIFT);
 
-		fill_tlb_entry(&tlb_entry, tlb_info->tlb_index);
+		mips_fill_tlb_entry(&tlb_entry, tlb_info->tlb_index);
 		tlb_info->vaddr = va;
 		tlb_info->paddr = pa;
 		tlb_info->free = 0;

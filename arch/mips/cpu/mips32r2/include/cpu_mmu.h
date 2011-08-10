@@ -23,10 +23,6 @@
 #ifndef __CPU_MMU_H_
 #define __CPU_MMU_H_
 
-#include <vmm_types.h>
-
-struct vmm_user_regs;
-
 #define MAX_HOST_TLB_ENTRIES 	6
 
 #define PAGE_SHIFT		12
@@ -52,6 +48,11 @@ struct vmm_user_regs;
 #define is_vmm_asid(x)		((x >> ASID_SHIFT) == VMM_ASID)
 #define is_guest_asid(x)	((x & 0xC0))
 #define _ASID(x)		(x >> ASID_SHIFT)
+
+#if !defined(__ASSEMBLY__)
+#include <vmm_types.h>
+
+struct vmm_user_regs;
 
 typedef union mips32_entryhi  {
 	u32 _entryhi;
@@ -88,7 +89,8 @@ struct host_tlb_entries_info {
 	s32 tlb_index;
 } host_tlb_entries[MAX_HOST_TLB_ENTRIES];
 
-void fill_tlb_entry(mips32_tlb_entry_t *tlb_entry, int index);
+void mips_fill_tlb_entry(mips32_tlb_entry_t *tlb_entry, int index);
 u32 do_tlbmiss(struct vmm_user_regs *uregs);
+#endif /* ! __ASSEMBLY__ */
 
 #endif /* __CPU_MMU_H_ */
