@@ -115,7 +115,7 @@ void vmm_init(void)
 	vmm_printf("Initialize Standered I/O Subsystem\n");
 
 	/* Initialize timer subsystem */
-	vmm_printf("Initialize Timer Subsystem\n");
+	vmm_printf("Initialize Hypervisor Timer Subsystem\n");
 	ret = vmm_timer_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
@@ -246,7 +246,7 @@ void vmm_reset(void)
 	int rc;
 
 	/* Stop scheduler */
-	vmm_printf("Stopping Hypervisor Timer\n");
+	vmm_printf("Stopping Hypervisor Timer Subsytem\n");
 	vmm_timer_stop();
 
 	/* FIXME: Do other cleanup stuff. */
@@ -266,7 +266,7 @@ void vmm_shutdown(void)
 	int rc;
 
 	/* Stop scheduler */
-	vmm_printf("Stopping Hypervisor Timer\n");
+	vmm_printf("Stopping Hypervisor Timer Subsytem\n");
 	vmm_timer_stop();
 
 	/* FIXME: Do other cleanup stuff. */
