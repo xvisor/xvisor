@@ -100,7 +100,7 @@ static int map_guest_region(vmm_vcpu_t *vcpu, int region_type, int tlb_index)
 	shadow_entry.entrylo1._s_entrylo.cacheable = 0;
 	shadow_entry.entrylo1._s_entrylo.pfn = 0;
 
-	vmm_memcpy((void *)&vcpu->sregs.shadow_tlb_entries[tlb_index],
+	vmm_memcpy((void *)&vcpu->sregs->shadow_tlb_entries[tlb_index],
 		   (void *)&shadow_entry, sizeof(mips32_tlb_entry_t));
 
 	return VMM_OK;
@@ -118,29 +118,29 @@ static int map_vcpu_rom(vmm_vcpu_t *vcpu)
 
 int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
 {
-	vmm_memset(&vcpu->uregs, 0, sizeof(vmm_user_regs_t));
+	vmm_memset(vcpu->uregs, 0, sizeof(vmm_user_regs_t));
 
         if (vcpu->guest == NULL) {
 		/* For hypercore */
-                vcpu->uregs.cp0_epc = vcpu->start_pc;
-                vcpu->uregs.regs[SP_IDX] = (virtual_addr_t)&_stack_start;
-		vcpu->uregs.regs[S8_IDX] = vcpu->uregs.regs[SP_IDX];
-		vcpu->uregs.cp0_status = read_c0_status();
-		vcpu->uregs.cp0_entryhi = read_c0_entryhi();
+                vcpu->uregs->cp0_epc = vcpu->start_pc;
+                vcpu->uregs->regs[SP_IDX] = (virtual_addr_t)&_stack_start;
+		vcpu->uregs->regs[S8_IDX] = vcpu->uregs->regs[SP_IDX];
+		vcpu->uregs->cp0_status = read_c0_status();
+		vcpu->uregs->cp0_entryhi = read_c0_entryhi();
         } else {
 		/* For vcpu running guests */
-		vcpu->sregs.cp0_regs[CP0_CAUSE_IDX] = 0x400;
-		vcpu->sregs.cp0_regs[CP0_STATUS_IDX] = 0x40004;
-		vcpu->uregs.cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
-		vcpu->uregs.cp0_entryhi = read_c0_entryhi();
-		vcpu->uregs.cp0_entryhi &= ASID_MASK;
-		vcpu->uregs.cp0_entryhi |= (0x2 << ASID_SHIFT);
-		vcpu->uregs.cp0_epc = vcpu->start_pc;
+		vcpu->sregs->cp0_regs[CP0_CAUSE_IDX] = 0x400;
+		vcpu->sregs->cp0_regs[CP0_STATUS_IDX] = 0x40004;
+		vcpu->uregs->cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
+		vcpu->uregs->cp0_entryhi = read_c0_entryhi();
+		vcpu->uregs->cp0_entryhi &= ASID_MASK;
+		vcpu->uregs->cp0_entryhi |= (0x2 << ASID_SHIFT);
+		vcpu->uregs->cp0_epc = vcpu->start_pc;
 
 		/* All guest run from 0 and fault */
-		vcpu->sregs.cp0_regs[CP0_EPC_IDX] = vcpu->start_pc;
+		vcpu->sregs->cp0_regs[CP0_EPC_IDX] = vcpu->start_pc;
 		/* Give guest the same CPU cap as we have */
-		vcpu->sregs.cp0_regs[CP0_PRID_IDX] = read_c0_prid();
+		vcpu->sregs->cp0_regs[CP0_PRID_IDX] = read_c0_prid();
 		/*
 		 * FIXME: Prepare the configuration registers as well. OS like
 		 * Linux use them for setting up handlers etc.
@@ -170,12 +170,12 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
 
 	if (vcpu) {
 		if (vcpu->guest == NULL) {
-			vcpu->uregs.cp0_status = read_c0_status() & ~(0x01UL << CP0_STATUS_UM_SHIFT);
+			vcpu->uregs->cp0_status = read_c0_status() & ~(0x01UL << CP0_STATUS_UM_SHIFT);
 		} else {
-			vcpu->uregs.cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
+			vcpu->uregs->cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
 		}
 
-		vmm_memcpy(regs, &vcpu->uregs, sizeof(vmm_user_regs_t));
+		vmm_memcpy(regs, vcpu->uregs, sizeof(vmm_user_regs_t));
 	}
 }
 

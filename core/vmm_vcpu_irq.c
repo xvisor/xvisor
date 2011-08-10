@@ -47,23 +47,23 @@ void vmm_vcpu_irq_process(vmm_user_regs_t * regs)
 	}
 
 	/* Emulate a pending irq for current vcpu */
-	irq_no = vcpu->irqs.pending_first;
-	act_first = vcpu->irqs.active_first;
-	act_int = (-1 < act_first) ? vcpu->irqs.active[act_first] : -1;
+	irq_no = vcpu->irqs->pending_first;
+	act_first = vcpu->irqs->active_first;
+	act_int = (-1 < act_first) ? vcpu->irqs->active[act_first] : -1;
 	act_priority = (-1 < act_int) ? 
 				vmm_vcpu_irq_priority(vcpu, act_int) : -1;
 	if (irq_no != -1) {
-		irq_reason = vcpu->irqs.reason[irq_no];
+		irq_reason = vcpu->irqs->reason[irq_no];
 		irq_priority = vmm_vcpu_irq_priority(vcpu, irq_no);
 		if (act_first == -1 || act_priority > irq_priority) {
 			if (vmm_vcpu_irq_execute(vcpu, regs, irq_no, irq_reason)
 			    == VMM_OK) {
-				vcpu->irqs.pending_first =
-				    vcpu->irqs.pending[irq_no];
-				vcpu->irqs.pending[irq_no] = -1;
+				vcpu->irqs->pending_first =
+				    vcpu->irqs->pending[irq_no];
+				vcpu->irqs->pending[irq_no] = -1;
 				act_first++;
-				vcpu->irqs.active_first = act_first;
-				vcpu->irqs.active[act_first] = irq_no;
+				vcpu->irqs->active_first = act_first;
+				vcpu->irqs->active[act_first] = irq_no;
 			}
 		}
 	}
@@ -90,7 +90,7 @@ void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason)
 	/* Locate insertion postion for asserted irq */
 	irq_prio = vmm_vcpu_irq_priority(vcpu, irq_no);
 	irq_prev = -1;
-	irq_curr = vcpu->irqs.pending_first;
+	irq_curr = vcpu->irqs->pending_first;
 	while (irq_curr != -1) {
 		if (irq_no == irq_curr) {
 			return;
@@ -100,16 +100,16 @@ void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason)
 			break;
 		}
 		irq_prev = irq_curr;
-		irq_curr = vcpu->irqs.pending[irq_curr];
+		irq_curr = vcpu->irqs->pending[irq_curr];
 	}
 
 	/* Add the asserted irq to correct position */
-	vcpu->irqs.reason[irq_no] = reason;
-	vcpu->irqs.pending[irq_no] = irq_curr;
+	vcpu->irqs->reason[irq_no] = reason;
+	vcpu->irqs->pending[irq_no] = irq_curr;
 	if (irq_prev != -1) {
-		vcpu->irqs.pending[irq_prev] = irq_no;
+		vcpu->irqs->pending[irq_prev] = irq_no;
 	} else {
-		vcpu->irqs.pending_first = irq_no;
+		vcpu->irqs->pending_first = irq_no;
 	}
 }
 
@@ -128,11 +128,11 @@ void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu)
 	}
 
 	/* Deassert current active irq */
-	act_first = vcpu->irqs.active_first;
+	act_first = vcpu->irqs->active_first;
 	if (-1 < act_first) {
-		vcpu->irqs.active[act_first] = -1;
+		vcpu->irqs->active[act_first] = -1;
 		act_first--;
-		vcpu->irqs.active_first = act_first;
+		vcpu->irqs->active_first = act_first;
 	}
 }
 
@@ -143,22 +143,22 @@ int vmm_vcpu_irq_init(vmm_vcpu_t *vcpu)
 	/* Only first time */
 	if (!vcpu->reset_count) {
 		/* Clear the memory of irq */
-		vmm_memset(&vcpu->irqs, 0, sizeof(vcpu->irqs));
+		vmm_memset(vcpu->irqs, 0, sizeof(vmm_vcpu_irqs_t));
 
 		/* Allocate memory for arrays */
-		vcpu->irqs.reason = vmm_malloc(sizeof(s32 *) * irq_count);
-		vcpu->irqs.pending = vmm_malloc(sizeof(s32 *) * irq_count);
-		vcpu->irqs.active = vmm_malloc(sizeof(s32 *) * irq_count);
+		vcpu->irqs->reason = vmm_malloc(sizeof(s32 *) * irq_count);
+		vcpu->irqs->pending = vmm_malloc(sizeof(s32 *) * irq_count);
+		vcpu->irqs->active = vmm_malloc(sizeof(s32 *) * irq_count);
 	}
 
 	/* Reset irq processing data structures for VCPU */
 	for (ite = 0; ite < irq_count; ite++) {
-		vcpu->irqs.reason[ite] = 0;
-		vcpu->irqs.pending[ite] = -1;
-		vcpu->irqs.active[ite] = -1;
+		vcpu->irqs->reason[ite] = 0;
+		vcpu->irqs->pending[ite] = -1;
+		vcpu->irqs->active[ite] = -1;
 	}
-	vcpu->irqs.pending_first = -1;
-	vcpu->irqs.active_first = -1;
+	vcpu->irqs->pending_first = -1;
+	vcpu->irqs->active_first = -1;
 
 	return VMM_OK;
 }
