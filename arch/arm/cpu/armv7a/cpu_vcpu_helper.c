@@ -26,8 +26,7 @@
 #include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
-#include <vmm_guest.h>
-#include <vmm_scheduler.h>
+#include <vmm_manager.h>
 #include <cpu_defines.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
@@ -36,7 +35,7 @@ void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 {
 	vmm_printf("\n");
 	cpu_vcpu_dump_user_reg(vcpu, regs);
-	vmm_scheduler_vcpu_halt(vcpu);
+	vmm_manager_vcpu_halt(vcpu);
 }
 
 u32 cpu_vcpu_cpsr_retrive(vmm_vcpu_t * vcpu,

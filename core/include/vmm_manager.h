@@ -16,14 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_guest.h
- * @version 0.01
+ * @file vmm_manager.h
+ * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief header file for guest representation data structures
+ * @brief header file for hypervisor manager
  */
-
-#ifndef __VMM_GUEST_H__
-#define __VMM_GUEST_H__
+#ifndef _VMM_MANAGER_H__
+#define _VMM_MANAGER_H__
 
 #include <vmm_types.h>
 #include <vmm_regs.h>
@@ -114,4 +113,91 @@ struct vmm_vcpu {
 	vmm_vcpu_irqs_t *irqs;
 };
 
-#endif /* __VMM_GUEST_H__ */
+/** Control structure for Scheduler */
+struct vmm_manager_ctrl {
+	vmm_spinlock_t lock;
+	u32 max_vcpu_count;
+	u32 max_guest_count;
+	u32 vcpu_count;
+	u32 guest_count;
+	vmm_vcpu_t *vcpu_array;
+	vmm_guest_t *guest_array;
+	struct dlist orphan_vcpu_list;
+	struct dlist guest_list;
+};
+
+typedef struct vmm_manager_ctrl vmm_manager_ctrl_t;
+
+/** Number of vcpus (thread + normal) */
+u32 vmm_manager_vcpu_count(void);
+
+/** Retrive vcpu */
+vmm_vcpu_t * vmm_manager_vcpu(s32 vcpu_no);
+
+/** Reset a vcpu */
+int vmm_manager_vcpu_reset(vmm_vcpu_t * vcpu);
+
+/** Kick a vcpu out of reset state */
+int vmm_manager_vcpu_kick(vmm_vcpu_t * vcpu);
+
+/** Pause a vcpu */
+int vmm_manager_vcpu_pause(vmm_vcpu_t * vcpu);
+
+/** Resume a vcpu */
+int vmm_manager_vcpu_resume(vmm_vcpu_t * vcpu);
+
+/** Halt a vcpu */
+int vmm_manager_vcpu_halt(vmm_vcpu_t * vcpu);
+
+/** Dump registers of a vcpu */
+int vmm_manager_vcpu_dumpreg(vmm_vcpu_t * vcpu);
+
+/** Create an orphan vcpu */
+vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
+					    virtual_addr_t start_pc,
+					    u32 tick_count,
+					    vmm_vcpu_tick_t tick_func);
+
+/** Destroy an orphan vcpu */
+int vmm_manager_vcpu_orphan_destroy(vmm_vcpu_t * vcpu);
+
+/** Number of guests */
+u32 vmm_manager_guest_count(void);
+
+/** Retrive guest */
+vmm_guest_t * vmm_manager_guest(s32 guest_no);
+
+/** Number of vcpus belonging to a given guest */
+u32 vmm_manager_guest_vcpu_count(vmm_guest_t *guest);
+
+/** Retrive vcpu belonging to a given guest with particular index */
+vmm_vcpu_t * vmm_manager_guest_vcpu(vmm_guest_t *guest, int index);
+
+/** Reset a guest */
+int vmm_manager_guest_reset(vmm_guest_t * guest);
+
+/** Kick a guest out of reset state */
+int vmm_manager_guest_kick(vmm_guest_t * guest);
+
+/** Pause a guest */
+int vmm_manager_guest_pause(vmm_guest_t * guest);
+
+/** Resume a guest */
+int vmm_manager_guest_resume(vmm_guest_t * guest);
+
+/** Halt a guest */
+int vmm_manager_guest_halt(vmm_guest_t * guest);
+
+/** Dump registers of a guest */
+int vmm_manager_guest_dumpreg(vmm_guest_t * guest);
+
+/** Create a guest based on device tree configuration */
+vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode);
+
+/** Destroy a guest */
+int vmm_manager_guest_destroy(vmm_guest_t * guest);
+
+/** Initialize manager */
+int vmm_manager_init(void);
+
+#endif

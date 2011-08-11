@@ -32,7 +32,7 @@
 #include <vmm_string.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
-#include <vmm_scheduler.h>
+#include <vmm_manager.h>
 #include <vmm_wait.h>
 #include <vmm_hyperthreads.h>
 
@@ -178,7 +178,7 @@ s32 vmm_hypercore_init(void)
 	}
 
 	/* start hypercore vcpu with schedule and let it decide which thread to run */
-	hcore_info.vcpu = vmm_scheduler_vcpu_orphan_create("hypercore",
+	hcore_info.vcpu = vmm_manager_vcpu_orphan_create("hypercore",
 							(virtual_addr_t) &
 							vmm_hypercore_main,
 							*(u32 *) attrval,

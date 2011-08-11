@@ -24,8 +24,8 @@
 #ifndef _VMM_GUEST_ASPACE_H__
 #define _VMM_GUEST_ASPACE_H__
 
-#include <vmm_guest.h>
 #include <vmm_list.h>
+#include <vmm_manager.h>
 
 /** Check whether given guest physical address is virtual */
 bool vmm_guest_aspace_isvirtual(vmm_guest_t *guest,

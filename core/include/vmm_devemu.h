@@ -26,7 +26,7 @@
 
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
-#include <vmm_guest.h>
+#include <vmm_manager.h>
 
 typedef struct vmm_emudev vmm_emudev_t;
 typedef struct vmm_emupic vmm_emupic_t;
