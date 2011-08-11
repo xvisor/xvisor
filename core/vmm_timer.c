@@ -34,41 +34,25 @@ vmm_timer_ctrl_t tctrl;
 void vmm_timer_tick_process(vmm_user_regs_t * regs)
 {
 	struct dlist *l;
-	vmm_timer_event_t *e, *de;
+	vmm_timer_event_t *e;
 
 	/* Increment timestamp */
 	tctrl.timestamp += tctrl.tick_nsecs;
 
 	/* Update active events */
-	e = NULL;
-	de = NULL;
-	list_for_each(l, &tctrl.cpu_event_list) {
-		if (de) {
-			list_del(&de->cpu_head);
-			de->on_cpu_list = FALSE;
-			de = NULL;
-		}
+	while (!list_empty(&tctrl.cpu_event_list)) {
+		l = list_pop(&tctrl.cpu_event_list);
 		e = list_entry(l, vmm_timer_event_t, cpu_head);
-		if (!e->active) {
-			de = e;
-			continue;
-		}
-		if (tctrl.tick_nsecs < e->pending_nsecs) {
-			e->pending_nsecs -= tctrl.tick_nsecs;
-		} else {
-			e->pending_nsecs = 0;
+		if (e->expiry_timestamp <= tctrl.timestamp) {
+			e->expiry_timestamp = 0;
 			e->active = FALSE;
 			e->cpu_regs = regs;
 			e->handler(e);
 			e->cpu_regs = NULL;
-			if (!e->active) {
-				de = e;
-			}
+		} else  {
+			list_add(&tctrl.cpu_event_list, &e->cpu_head);
+			break;
 		}
-	}
-	if (de) {
-		list_del(&de->cpu_head);
-		de->on_cpu_list = FALSE;
 	}
 }
 
@@ -90,16 +74,33 @@ int vmm_timer_adjust_timestamp(u64 timestamp)
 
 int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 {
+	bool added;
+	struct dlist *l;
+	vmm_timer_event_t *e;
+
 	if (!ev) {
 		return VMM_EFAIL;
 	}
 
-	ev->active = TRUE;
-	ev->pending_nsecs = duration_nsecs;
+	if (ev->active) {
+		list_del(&ev->cpu_head);
+		ev->active = FALSE;
+	}
+
+	ev->expiry_timestamp = vmm_timer_timestamp() + duration_nsecs;
 	ev->duration_nsecs = duration_nsecs;
-	if (!ev->on_cpu_list) {
+	ev->active = TRUE;
+	added = FALSE;
+	e = NULL;
+	list_for_each(l, &tctrl.cpu_event_list) {
+		e = list_entry(l, vmm_timer_event_t, cpu_head);
+		if (ev->expiry_timestamp < e->expiry_timestamp) {
+			list_add_tail(&e->cpu_head, &ev->cpu_head);
+			added = TRUE;
+		}
+	}
+	if (!added) {
 		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
-		ev->on_cpu_list = TRUE;
 	}
 
 	return VMM_OK;
@@ -107,15 +108,32 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 
 int vmm_timer_event_restart(vmm_timer_event_t * ev)
 {
+	bool added;
+	struct dlist *l;
+	vmm_timer_event_t *e;
+
 	if (!ev) {
 		return VMM_EFAIL;
 	}
 
+	if (ev->active) {
+		list_del(&ev->cpu_head);
+		ev->active = FALSE;
+	}
+
+	ev->expiry_timestamp = vmm_timer_timestamp() + ev->duration_nsecs;
 	ev->active = TRUE;
-	ev->pending_nsecs = ev->duration_nsecs;
-	if (!ev->on_cpu_list) {
+	added = FALSE;
+	e = NULL;
+	list_for_each(l, &tctrl.cpu_event_list) {
+		e = list_entry(l, vmm_timer_event_t, cpu_head);
+		if (ev->expiry_timestamp < e->expiry_timestamp) {
+			list_add_tail(&e->cpu_head, &ev->cpu_head);
+			added = TRUE;
+		}
+	}
+	if (!added) {
 		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
-		ev->on_cpu_list = TRUE;
 	}
 
 	return VMM_OK;
@@ -127,11 +145,10 @@ int vmm_timer_event_stop(vmm_timer_event_t * ev)
 		return VMM_EFAIL;
 	}
 
-	ev->active = FALSE;
-	ev->pending_nsecs = 0;
-	if (ev->on_cpu_list) {
+	ev->expiry_timestamp = 0;
+	if (ev->active) {
 		list_del(&ev->cpu_head);
-		ev->on_cpu_list = FALSE;
+		ev->active = FALSE;
 	}
 
 	return VMM_OK;
@@ -167,10 +184,9 @@ vmm_timer_event_t * vmm_timer_event_create(const char *name,
 	INIT_LIST_HEAD(&e->head);
 	vmm_strcpy(e->name, name);
 	e->active = FALSE;
-	e->on_cpu_list = FALSE;
 	INIT_LIST_HEAD(&e->cpu_head);
 	e->cpu_regs = NULL;
-	e->pending_nsecs = 0;
+	e->expiry_timestamp = 0;
 	e->duration_nsecs = 0;
 	e->handler = handler;
 	e->priv = priv;
