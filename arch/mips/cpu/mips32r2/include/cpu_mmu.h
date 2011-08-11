@@ -23,10 +23,6 @@
 #ifndef __CPU_MMU_H_
 #define __CPU_MMU_H_
 
-#include <vmm_types.h>
-
-struct vmm_user_regs;
-
 #define MAX_HOST_TLB_ENTRIES 	6
 
 #define PAGE_SHIFT		12
@@ -51,6 +47,50 @@ struct vmm_user_regs;
 
 #define is_vmm_asid(x)		((x >> ASID_SHIFT) == VMM_ASID)
 #define is_guest_asid(x)	((x & 0xC0))
+#define _ASID(x)		(x >> ASID_SHIFT)
+
+#define TBE_VPN2(_tlb_entry)				\
+  ({							\
+    unsigned int _res;					\
+    _res = (_tlb_entry)->entryhi._s_entryhi.vpn2;	\
+    (_res << VPN2_SHIFT);				\
+  })
+
+#define TBE_PGMSKD_VPN2(_tlb_entry)			\
+	({ unsigned int _res;				\
+	  _res = TBE_VPN2(_tlb_entry) &			\
+	    ~(_tlb_entry->page_mask);			\
+	  _res;						\
+	})
+
+#define TBE_ASID(_tlb_entry)			\
+	({ unsigned int _res;			\
+		_res = _tlb_entry->entryhi.	\
+			_s_entryhi.asid;	\
+			_res;			\
+	})
+
+#define TBE_ELO_GLOBAL(_tlb_entry, _ELOT)	\
+	({ unsigned int _res;			\
+		_res = _tlb_entry->_ELOT.	\
+			_s_entrylo.global;	\
+		_res;				\
+	})
+
+#define TBE_ELO_VALID(_tlb_entry, _ELOT)	\
+	({ unsigned int _res;			\
+		_res = _tlb_entry->_ELOT.	\
+			_s_entrylo.valid;	\
+		_res;				\
+	})
+
+#define TBE_ELO_INVALIDATE(_tlb_entry, _ELOT)	(_tlb_entry-> \
+						 _ELOT._s_entrylo.valid = 0)
+
+#if !defined(__ASSEMBLY__)
+#include <vmm_types.h>
+
+struct vmm_user_regs;
 
 typedef union mips32_entryhi  {
 	u32 _entryhi;
@@ -87,7 +127,8 @@ struct host_tlb_entries_info {
 	s32 tlb_index;
 } host_tlb_entries[MAX_HOST_TLB_ENTRIES];
 
-void fill_tlb_entry(mips32_tlb_entry_t *tlb_entry, int index);
+void mips_fill_tlb_entry(mips32_tlb_entry_t *tlb_entry, int index);
 u32 do_tlbmiss(struct vmm_user_regs *uregs);
+#endif /* ! __ASSEMBLY__ */
 
 #endif /* __CPU_MMU_H_ */
