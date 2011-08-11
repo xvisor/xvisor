@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_stdio.h>
+#include <vmm_string.h>
 #include <vmm_scheduler.h>
 #include <vmm_regs.h>
 #include <cpu_asm_macros.h>
@@ -170,8 +171,26 @@ static u32 load_store_emulated_reg(u8 sreg, u8 sel,
 	return _err;
 }
 
+u32 cpu_vcpu_emulate_tlb_inst(vmm_vcpu_t *vcpu, u32 inst,
+			      vmm_user_regs_t *uregs)
+{
+	switch(MIPS32_OPC_TLB_ACCESS_OPCODE(inst)) {
+	case MIPS32_OPC_TLB_OPCODE_TLBP:
+		return mips_probe_vcpu_tlb(vcpu, uregs);
+	case MIPS32_OPC_TLB_OPCODE_TLBR:
+		return mips_read_vcpu_tlb(vcpu, uregs);
+	case MIPS32_OPC_TLB_OPCODE_TLBWI:
+		return mips_write_vcpu_tlbi(vcpu, uregs);
+	case MIPS32_OPC_TLB_OPCODE_TLBWR:
+		return mips_write_vcpu_tlbr(vcpu, uregs);
+	}
+
+	return VMM_EFAIL;
+}
+
 /* Co-processor un-usable exception */
-u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs)
+u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst,
+			      vmm_user_regs_t *uregs)
 {
 	u32 cp0_cause = read_c0_cause();
 	u8 rt, rd, sel;
@@ -198,7 +217,7 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs
 				ehi._entryhi = read_c0_entryhi() & ~0xFF;
 				ehi._s_entryhi.asid = (0x1 << ASID_SHIFT);
 				write_c0_entryhi(ehi._entryhi);
-				vmm_panic("Unable to load emulated register.\n");
+				vmm_panic("Can't load emulated register.\n");
 			}
 
 			break;
@@ -212,7 +231,7 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs
 				ehi._entryhi = read_c0_entryhi() & ~0xFF;
 				ehi._s_entryhi.asid = (0x1 << ASID_SHIFT);
 				write_c0_entryhi(ehi._entryhi);
-				vmm_panic("Unable to load emulated register.\n");
+				vmm_panic("Can't load emulated register.\n");
 			}
 
 			break;
@@ -242,10 +261,10 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs
 
 			break;
 		default:
-			ehi._entryhi = read_c0_entryhi() & ~0xFF;
-			ehi._s_entryhi.asid = (0x1 << ASID_SHIFT);
-			write_c0_entryhi(ehi._entryhi);
-			vmm_panic("Unknown MFC0 direction\n");
+			if (IS_TLB_ACCESS_INST(inst)) {
+				return cpu_vcpu_emulate_tlb_inst(vcpu,
+								 inst, uregs);
+			}
 			break;
 		}
 		break;
@@ -254,17 +273,20 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs
 	return VMM_OK;
 }
 
-u32 cpu_vcpu_emulate_regular_branch_jump_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs)
+static u32 mips_emulate_branch_jump(vmm_vcpu_t *vcpu, u32 inst,
+				    vmm_user_regs_t *uregs)
 {
 	return 1;
 }
 
-u32 cpu_vcpu_emulate_jump_special_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs)
+static u32 mips_emulate_jump_special(vmm_vcpu_t *vcpu, u32 inst,
+				     vmm_user_regs_t *uregs)
 {
 	return 1;
 }
 
-u32 cpu_vcpu_emulate_branch_regimm_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs)
+static u32 mips_emulate_branch_regimm(vmm_vcpu_t *vcpu, u32 inst,
+				      vmm_user_regs_t *uregs)
 {
 	u8 rs = MIPS32_OPC_BANDJ_REGIMM_RS(inst);
 	s32 target_offset = MIPS32_OPC_BANDJ_REGIMM_OFFSET(inst);
@@ -355,20 +377,22 @@ u32 cpu_vcpu_emulate_branch_regimm_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_reg
 }
 
 /*
- * NOTE: This emulation will only happen when there was a fault or there was a priviledged
- * instruction in the delay slot. This condition should be rare though.
+ * NOTE: This emulation will only happen when there was a fault or
+ * there was a priviledged instruction in the delay slot. This condition
+ * should be rare though.
  */
-u32 cpu_vcpu_emulate_branch_and_jump_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs)
+u32 cpu_vcpu_emulate_branch_and_jump_inst(vmm_vcpu_t *vcpu, u32 inst,
+					  vmm_user_regs_t *uregs)
 {
 	int _err = VMM_EFAIL;
 
 	switch(MIPS32_OPC_BANDJ_OPCODE(inst)) {
 	case MIPS32_OPC_BANDJ_OPCODE_SPECIAL:
-		return cpu_vcpu_emulate_jump_special_inst(vcpu, inst, uregs);
+		return mips_emulate_jump_special(vcpu, inst, uregs);
 	case MIPS32_OPC_BANDJ_OPCODE_REGIMM:
-		return cpu_vcpu_emulate_branch_regimm_inst(vcpu, inst, uregs);
+		return mips_emulate_branch_regimm(vcpu, inst, uregs);
 	default:
-		return cpu_vcpu_emulate_regular_branch_jump_inst(vcpu, inst, uregs);
+		return mips_emulate_branch_jump(vcpu, inst, uregs);
 	}
 
 	return _err;
