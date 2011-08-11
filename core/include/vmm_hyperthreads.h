@@ -25,7 +25,7 @@
 #define __VMM_HYPERTHREADS_H__
 
 #include <vmm_types.h>
-#include <vmm_guest.h>
+#include <vmm_manager.h>
 #include <vmm_spinlocks.h>
 
 typedef enum hyperthread_state {

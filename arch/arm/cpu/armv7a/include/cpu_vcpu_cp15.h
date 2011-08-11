@@ -25,7 +25,7 @@
 #define _CPU_VCPU_CP15_H__
 
 #include <vmm_types.h>
-#include <vmm_guest.h>
+#include <vmm_manager.h>
 
 /** Handle translation fault for a VCPU */
 int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu, 

@@ -32,6 +32,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 #include <vmm_timer.h>
+#include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_hyperthreads.h>
 #include <vmm_devdrv.h>
@@ -114,15 +115,23 @@ void vmm_init(void)
 	vmm_printf("Initialize Board Early\n");
 	vmm_printf("Initialize Standered I/O Subsystem\n");
 
-	/* Initialize timer subsystem */
-	vmm_printf("Initialize Hypervisor Timer Subsystem\n");
+	/* Initialize hypervisor timer */
+	vmm_printf("Initialize Hypervisor Timer\n");
 	ret = vmm_timer_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
 	}
 
-	/* Initialize scheduler */
+	/* Initialize hypervisor manager */
+	vmm_printf("Initialize Hypervisor Manager\n");
+	ret = vmm_manager_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize hypervisor scheduler */
 	vmm_printf("Initialize Hypervisor Scheduler\n");
 	ret = vmm_scheduler_init();
 	if (ret) {
@@ -227,7 +236,7 @@ void vmm_init(void)
 	list_for_each(l, &gsnode->child_list) {
 		gnode = list_entry(l, vmm_devtree_node_t, head);
 		vmm_printf("Creating %s\n", gnode->name);
-		guest = vmm_scheduler_guest_create(gnode);
+		guest = vmm_manager_guest_create(gnode);
 		if (!guest) {
 			vmm_printf("Error: Failed to create guest\n");
 		}
@@ -246,7 +255,7 @@ void vmm_reset(void)
 	int rc;
 
 	/* Stop scheduler */
-	vmm_printf("Stopping Hypervisor Timer Subsytem\n");
+	vmm_printf("Stopping Hypervisor Timer\n");
 	vmm_timer_stop();
 
 	/* FIXME: Do other cleanup stuff. */

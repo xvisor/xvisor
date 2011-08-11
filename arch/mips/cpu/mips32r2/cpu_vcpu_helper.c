@@ -25,7 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
-#include <vmm_guest.h>
+#include <vmm_manager.h>
 #include <cpu_asm_macros.h>
 #include <vmm_cpu.h>
 #include <cpu_mmu.h>

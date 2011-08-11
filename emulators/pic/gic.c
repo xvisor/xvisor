@@ -26,6 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_modules.h>
+#include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_devemu.h>
@@ -147,7 +148,7 @@ static void gic_update(struct gic_state *s)
 					       s->parent_irq[cpu], level);
 		} else if (level) {
 			/* Assert irq to VCPU */
-			vcpu = vmm_scheduler_guest_vcpu(s->guest, cpu);
+			vcpu = vmm_manager_guest_vcpu(s->guest, cpu);
 			if (vcpu) {
 				vmm_vcpu_irq_assert(vcpu, 
 						    s->parent_irq[cpu], 0x0);

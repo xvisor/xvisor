@@ -35,6 +35,7 @@ core-objs-y+= vmm_host_aspace.o
 core-objs-y+= vmm_timer.o
 core-objs-y+= vmm_vcpu_irq.o
 core-objs-y+= vmm_guest_aspace.o
+core-objs-y+= vmm_manager.o
 core-objs-y+= vmm_scheduler.o
 core-objs-y+= vmm_hyperthreads.o
 core-objs-y+= vmm_wait.o
