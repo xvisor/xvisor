@@ -1,0 +1,79 @@
+#
+# Automatically generated make config: don't edit
+# Project: Xvisor (eXtensible Versatile hypervISOR)
+# Version: 0.1
+# Fri Aug 12 00:20:14 2011
+#
+# CONFIG_ARCH_ARM is not set
+CONFIG_ARCH_MIPS=y
+CONFIG_ARCH="mips"
+CROSS_COMPILE="mips-linux-gnu-"
+CONFIG_CPU_MIPS32R2=y
+CONFIG_CPU="mips32r2"
+CONFIG_BOARD_QEMU_MIPS=y
+CONFIG_BOARD="qemu_mips"
+CONFIG_QEMU_MIPS=y
+# CONFIG_CPU_CORTEX_A8 is not set
+# CONFIG_CPU_OMAP3 is not set
+# CONFIG_BOARD_PB_A8 is not set
+
+#
+# General Setup
+#
+CONFIG_BANNER_NONE=y
+# CONFIG_BANNER_DEFAULT is not set
+
+#
+# Memory Management
+#
+CONFIG_HEAP_SIZE=131072
+CONFIG_VMM_STACK_SIZE=8192
+CONFIG_VMM_INTERRUPT_STACK_SIZE=4096
+# CONFIG_MM_TRIVIAL is not set
+CONFIG_MM_BUDDY=y
+
+#
+# Buddy System Configuration
+#
+CONFIG_MIN_BLOCK_SIZE_SHIFT=2
+CONFIG_BINS_MAX_ORDER=11
+
+#
+# Networking
+#
+# CONFIG_NET is not set
+
+#
+# Device Drivers
+#
+
+#
+# Serial Port Drivers
+#
+CONFIG_SERIAL=y
+CONFIG_SERIAL_UART=y
+# CONFIG_SERIAL_PL01X is not set
+
+#
+# Device Emulators
+#
+
+#
+# System Emulators
+#
+# CONFIG_EMU_SYS is not set
+
+#
+# PIC Emulators
+#
+# CONFIG_EMU_PIC is not set
+
+#
+# Timer Emulators
+#
+# CONFIG_EMU_TIMER is not set
+
+#
+# Serial Port Emulators
+#
+# CONFIG_EMU_SERIAL is not set
