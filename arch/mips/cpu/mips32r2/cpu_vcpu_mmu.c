@@ -36,14 +36,14 @@ int do_vcpu_tlbmiss(vmm_user_regs_t *uregs)
 	u32 badvaddr = read_c0_badvaddr();
 	vmm_vcpu_t *current_vcpu;
 	int counter = 0;
+	mips32_tlb_entry_t *c_tlbe;
 
 	current_vcpu = vmm_scheduler_current_vcpu();
-	badvaddr >>= VPN2_SHIFT;
 	for (counter = 0; counter < 2 * CPU_TLB_COUNT; counter++) {
-		if (current_vcpu->sregs->shadow_tlb_entries[counter]
-		    .entryhi._s_entryhi.vpn2 == badvaddr) {
-			mips_fill_tlb_entry(&current_vcpu->sregs->
-					    shadow_tlb_entries[counter], -1);
+		c_tlbe = &current_vcpu->sregs->shadow_tlb_entries[counter];
+		if (TBE_PGMSKD_VPN2(c_tlbe) ==
+		    (badvaddr & ~c_tlbe->page_mask)) {
+			mips_fill_tlb_entry(c_tlbe, -1);
 			return 0;
 		} else {
 			vmm_panic("No TLB entry in shadow."

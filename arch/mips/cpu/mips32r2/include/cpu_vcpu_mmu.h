@@ -26,39 +26,6 @@
 #include <vmm_types.h>
 #include <vmm_regs.h>
 
-#define TBE_PGMSKD_VPN2(_tlb_entry)			\
-	({ unsigned int _res;				\
-		_res = (_tlb_entry)->entryhi.		\
-			_s_entryhi.vpn2			\
-			& _tlb_entry->page_mask;	\
-		_res;					\
-	})
-
-#define TBE_ASID(_tlb_entry)			\
-	({ unsigned int _res;			\
-		_res = _tlb_entry->entryhi.	\
-			_s_entryhi.asid;	\
-			_res;			\
-	})
-
-#define TBE_ELO_GLOBAL(_tlb_entry, _ELOT)	\
-	({ unsigned int _res;			\
-		_res = _tlb_entry->_ELOT.	\
-			_s_entrylo.global;	\
-		_res;				\
-	})
-
-#define TBE_ELO_VALID(_tlb_entry, _ELOT)	\
-	({ unsigned int _res;			\
-		_res = _tlb_entry->_ELOT.	\
-			_s_entrylo.valid;	\
-		_res;				\
-	})
-
-#define TBE_ELO_INVALIDATE(_tlb_entry, _ELOT)	(_tlb_entry-> \
-						 _ELOT._s_entrylo.valid = 0)
-
-
 int do_vcpu_tlbmiss(vmm_user_regs_t *uregs);
 u32 mips_probe_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs);
 u32 mips_read_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs);

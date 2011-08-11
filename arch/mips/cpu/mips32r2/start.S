@@ -229,7 +229,7 @@ LEAF(mips_fill_tlb_entry)
 	nop
 	nop
 1:
-	tlbr
+	tlbwr
 	j RA
 	nop
 END(mips_fill_tlb_entry)

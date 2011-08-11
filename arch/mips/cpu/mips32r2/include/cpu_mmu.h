@@ -49,6 +49,44 @@
 #define is_guest_asid(x)	((x & 0xC0))
 #define _ASID(x)		(x >> ASID_SHIFT)
 
+#define TBE_VPN2(_tlb_entry)				\
+  ({							\
+    unsigned int _res;					\
+    _res = (_tlb_entry)->entryhi._s_entryhi.vpn2;	\
+    (_res << VPN2_SHIFT);				\
+  })
+
+#define TBE_PGMSKD_VPN2(_tlb_entry)			\
+	({ unsigned int _res;				\
+	  _res = TBE_VPN2(_tlb_entry) &			\
+	    ~(_tlb_entry->page_mask);			\
+	  _res;						\
+	})
+
+#define TBE_ASID(_tlb_entry)			\
+	({ unsigned int _res;			\
+		_res = _tlb_entry->entryhi.	\
+			_s_entryhi.asid;	\
+			_res;			\
+	})
+
+#define TBE_ELO_GLOBAL(_tlb_entry, _ELOT)	\
+	({ unsigned int _res;			\
+		_res = _tlb_entry->_ELOT.	\
+			_s_entrylo.global;	\
+		_res;				\
+	})
+
+#define TBE_ELO_VALID(_tlb_entry, _ELOT)	\
+	({ unsigned int _res;			\
+		_res = _tlb_entry->_ELOT.	\
+			_s_entrylo.valid;	\
+		_res;				\
+	})
+
+#define TBE_ELO_INVALIDATE(_tlb_entry, _ELOT)	(_tlb_entry-> \
+						 _ELOT._s_entrylo.valid = 0)
+
 #if !defined(__ASSEMBLY__)
 #include <vmm_types.h>
 
