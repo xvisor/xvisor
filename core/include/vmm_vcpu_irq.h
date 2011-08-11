@@ -25,7 +25,7 @@
 #define _VMM_VCPU_IRQ_H__
 
 #include <vmm_types.h>
-#include <vmm_guest.h>
+#include <vmm_manager.h>
 
 /** Process interrupts for current vcpu */
 void vmm_vcpu_irq_process(vmm_user_regs_t * regs);

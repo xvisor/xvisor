@@ -26,7 +26,7 @@
 #include <vmm_stdio.h>
 #include <vmm_string.h>
 #include <vmm_devtree.h>
-#include <vmm_scheduler.h>
+#include <vmm_manager.h>
 #include <vmm_mterm.h>
 
 void cmd_vcpu_usage(void)
@@ -54,9 +54,9 @@ void cmd_vcpu_list()
 		   "Num", "State", "Name", "Device Path");
 	vmm_printf("----------------------------------------"
 		   "----------------------------------------\n");
-	count = vmm_scheduler_vcpu_count();
+	count = vmm_manager_vcpu_count();
 	for (num = 0; num < count; num++) {
-		vcpu = vmm_scheduler_vcpu(num);
+		vcpu = vmm_manager_vcpu(num);
 		switch (vcpu->state) {
 		case VMM_VCPU_STATE_UNKNOWN:
 			vmm_strcpy(state, "Unknown");
@@ -96,9 +96,9 @@ void cmd_vcpu_list()
 int cmd_vcpu_reset(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
 	if (vcpu) {
-		if ((ret = vmm_scheduler_vcpu_reset(vcpu))) {
+		if ((ret = vmm_manager_vcpu_reset(vcpu))) {
 			vmm_printf("%s: Failed to reset\n", vcpu->name);
 		} else {
 			vmm_printf("%s: Reset done\n", vcpu->name);
@@ -112,9 +112,9 @@ int cmd_vcpu_reset(int num)
 int cmd_vcpu_kick(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
 	if (vcpu) {
-		if ((ret = vmm_scheduler_vcpu_kick(vcpu))) {
+		if ((ret = vmm_manager_vcpu_kick(vcpu))) {
 			vmm_printf("%s: Failed to kick\n", vcpu->name);
 		} else {
 			vmm_printf("%s: Kicked\n", vcpu->name);
@@ -128,10 +128,10 @@ int cmd_vcpu_kick(int num)
 int cmd_vcpu_pause(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
 	if (vcpu) {
 		;
-		if ((ret = vmm_scheduler_vcpu_pause(vcpu))) {
+		if ((ret = vmm_manager_vcpu_pause(vcpu))) {
 			vmm_printf("%s: Failed to pause\n", vcpu->name);
 		} else {
 			vmm_printf("%s: Paused\n", vcpu->name);
@@ -145,9 +145,9 @@ int cmd_vcpu_pause(int num)
 int cmd_vcpu_resume(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
 	if (vcpu) {
-		if ((ret = vmm_scheduler_vcpu_resume(vcpu))) {
+		if ((ret = vmm_manager_vcpu_resume(vcpu))) {
 			vmm_printf("%s: Failed to resume\n", vcpu->name);
 		} else {
 			vmm_printf("%s: Resumed\n", vcpu->name);
@@ -161,9 +161,9 @@ int cmd_vcpu_resume(int num)
 int cmd_vcpu_halt(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
 	if (vcpu) {
-		if ((ret = vmm_scheduler_vcpu_halt(vcpu))) {
+		if ((ret = vmm_manager_vcpu_halt(vcpu))) {
 			vmm_printf("%s: Failed to halt\n", vcpu->name);
 		} else {
 			vmm_printf("%s: Halted\n", vcpu->name);
@@ -177,9 +177,9 @@ int cmd_vcpu_halt(int num)
 int cmd_vcpu_dumpreg(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_scheduler_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
 	if (vcpu) {
-		if ((ret = vmm_scheduler_vcpu_dumpreg(vcpu))) {
+		if ((ret = vmm_manager_vcpu_dumpreg(vcpu))) {
 			vmm_printf("%s: Failed to dumpreg\n", vcpu->name);
 		}
 	} else {

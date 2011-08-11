@@ -26,7 +26,7 @@
 #include <vmm_stdio.h>
 #include <vmm_string.h>
 #include <vmm_devtree.h>
-#include <vmm_scheduler.h>
+#include <vmm_manager.h>
 #include <vmm_mterm.h>
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
@@ -58,9 +58,9 @@ void cmd_guest_list()
 	vmm_printf("| %-5s| %-16s| %-32s|\n", "Num", "Name", "Device Path");
 	vmm_printf("----------------------------------------"
 		   "--------------------\n");
-	count = vmm_scheduler_guest_count();
+	count = vmm_manager_guest_count();
 	for (num = 0; num < count; num++) {
-		guest = vmm_scheduler_guest(num);
+		guest = vmm_manager_guest(num);
 		vmm_devtree_getpath(path, guest->node);
 		vmm_printf("| %-5d| %-16s| %-32s|\n", num, guest->node->name,
 			   path);
@@ -75,7 +75,7 @@ int cmd_guest_load(int num, physical_addr_t src_hphys_addr, physical_addr_t dest
 	vmm_guest_region_t *guest_region;
 	virtual_addr_t src_hvaddr, dest_gvaddr;
 
-	guest = vmm_scheduler_guest(num);
+	guest = vmm_manager_guest(num);
 	if (guest) {
 		guest_region = vmm_guest_aspace_getregion(guest, dest_gphys_addr);
 		if (!guest_region) {
@@ -112,9 +112,9 @@ int cmd_guest_load(int num, physical_addr_t src_hphys_addr, physical_addr_t dest
 int cmd_guest_reset(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_scheduler_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(num);
 	if (guest) {
-		if ((ret = vmm_scheduler_guest_reset(guest))) {
+		if ((ret = vmm_manager_guest_reset(guest))) {
 			vmm_printf("%s: Failed to reset\n", guest->node->name);
 		} else {
 			vmm_printf("%s: Reset done\n", guest->node->name);
@@ -128,9 +128,9 @@ int cmd_guest_reset(int num)
 int cmd_guest_kick(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_scheduler_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(num);
 	if (guest) {
-		if ((ret = vmm_scheduler_guest_kick(guest))) {
+		if ((ret = vmm_manager_guest_kick(guest))) {
 			vmm_printf("%s: Failed to kick\n", guest->node->name);
 		} else {
 			vmm_printf("%s: Kicked\n", guest->node->name);
@@ -144,10 +144,10 @@ int cmd_guest_kick(int num)
 int cmd_guest_pause(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_scheduler_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(num);
 	if (guest) {
 		;
-		if ((ret = vmm_scheduler_guest_pause(guest))) {
+		if ((ret = vmm_manager_guest_pause(guest))) {
 			vmm_printf("%s: Failed to pause\n", guest->node->name);
 		} else {
 			vmm_printf("%s: Paused\n", guest->node->name);
@@ -161,9 +161,9 @@ int cmd_guest_pause(int num)
 int cmd_guest_resume(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_scheduler_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(num);
 	if (guest) {
-		if ((ret = vmm_scheduler_guest_resume(guest))) {
+		if ((ret = vmm_manager_guest_resume(guest))) {
 			vmm_printf("%s: Failed to resume\n", guest->node->name);
 		} else {
 			vmm_printf("%s: Resumed\n", guest->node->name);
@@ -177,9 +177,9 @@ int cmd_guest_resume(int num)
 int cmd_guest_halt(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_scheduler_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(num);
 	if (guest) {
-		if ((ret = vmm_scheduler_guest_halt(guest))) {
+		if ((ret = vmm_manager_guest_halt(guest))) {
 			vmm_printf("%s: Failed to halt\n", guest->node->name);
 		} else {
 			vmm_printf("%s: Halted\n", guest->node->name);
@@ -193,9 +193,9 @@ int cmd_guest_halt(int num)
 int cmd_guest_dumpreg(int num)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_scheduler_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(num);
 	if (guest) {
-		if ((ret = vmm_scheduler_guest_dumpreg(guest))) {
+		if ((ret = vmm_manager_guest_dumpreg(guest))) {
 			vmm_printf("%s: Failed to dumpreg\n", guest->node->name);
 		}
 	} else {
@@ -223,7 +223,7 @@ int cmd_guest_exec(int argc, char **argv)
 		return VMM_EFAIL;
 	}
 	num = vmm_str2int(argv[2], 10);
-	count = vmm_scheduler_guest_count();
+	count = vmm_manager_guest_count();
 	if (vmm_strcmp(argv[1], "reset") == 0) {
 		if (num == -1) {
 			for (num = 0; num < count; num++) {

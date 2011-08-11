@@ -26,8 +26,6 @@
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
-#include <vmm_timer.h>
-#include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_devemu.h>
 
