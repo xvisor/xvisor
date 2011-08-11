@@ -25,7 +25,7 @@
 #define _CPU_VCPU_COPROC_H__
 
 #include <vmm_types.h>
-#include <vmm_guest.h>
+#include <vmm_manager.h>
 
 typedef bool (*cpu_coproc_ldcstc_accept)(vmm_vcpu_t * vcpu, 
 					 vmm_user_regs_t *regs,

@@ -26,7 +26,6 @@
 
 #include <vmm_types.h>
 #include <vmm_hyperthreads.h>
-#include <cpu_timer.h>
 #include <cpu_locks.h>
 
 /** CPU related functions required by VMM core */
