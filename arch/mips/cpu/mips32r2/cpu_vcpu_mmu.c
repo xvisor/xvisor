@@ -92,12 +92,6 @@ u32 mips_read_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 	return VMM_OK;
 }
 
-/* return the next best TLB index to program. */
-u32 mips_get_vcpu_free_tlbidx(vmm_vcpu_t *vcpu)
-{
-	return 0;
-}
-
 static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 				       mips32_tlb_entry_t *gtlbe)
 {
@@ -106,7 +100,6 @@ static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 	physical_addr_t gphys_addr, hphys_addr, gphys_addr2map, gphys_offset;
 	physical_addr_t hphys_addr2map;
 	int do_map = 0;
-	int guest_free_tlb_index;
 
 	guest = vcpu->guest;
 
@@ -166,8 +159,8 @@ static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 	}
 
 	if (do_map) {
-		guest_free_tlb_index = mips_get_vcpu_free_tlbidx(vcpu);
-		mips_fill_tlb_entry(gtlbe, guest_free_tlb_index);
+		/* Program a random TLB for guest */
+		mips_fill_tlb_entry(gtlbe, -1);
 	}
 
 	return VMM_OK;
