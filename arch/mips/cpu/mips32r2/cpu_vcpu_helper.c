@@ -165,7 +165,7 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
 			  vmm_user_regs_t *regs)
 {
 	if (tvcpu) {
-		vmm_memcpy(&tvcpu->uregs, regs, sizeof(vmm_user_regs_t));
+		vmm_memcpy(tvcpu->uregs, regs, sizeof(vmm_user_regs_t));
 	}
 
 	if (vcpu) {
