@@ -6,7 +6,7 @@
 		#size-cells = <0>;
 		max_vcpu_count = <4>;
 		max_guest_count = <2>;
-		tick_delay_usecs = <100>;
+		tick_delay_nsecs = <100000>;
 		vcpu_timer_mhz = <10>;
 		hypercore_tick_count = <20>;
 		/* Maximum size of VMM */

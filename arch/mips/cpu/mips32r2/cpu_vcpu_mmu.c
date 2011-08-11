@@ -40,11 +40,10 @@ int do_vcpu_tlbmiss(vmm_user_regs_t *uregs)
 	current_vcpu = vmm_scheduler_current_vcpu();
 	badvaddr >>= VPN2_SHIFT;
 	for (counter = 0; counter < 2 * CPU_TLB_COUNT; counter++) {
-		if (current_vcpu->sregs.shadow_tlb_entries[counter]
+		if (current_vcpu->sregs->shadow_tlb_entries[counter]
 		    .entryhi._s_entryhi.vpn2 == badvaddr) {
-			/* Do a random TLB fill */
-			mips_fill_tlb_entry(&current_vcpu->sregs
-					    .shadow_tlb_entries[counter], -1);
+			mips_fill_tlb_entry(&current_vcpu->sregs->
+					    shadow_tlb_entries[counter], -1);
 			return 0;
 		} else {
 			vmm_panic("No TLB entry in shadow."
@@ -62,10 +61,10 @@ u32 mips_probe_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 	mips32_tlb_entry_t *c_tlb_entry, *tempe, t_tlb_entry;
 	mips32_entryhi_t g_probed_ehi;
 
-	g_probed_ehi._entryhi = vcpu->sregs.cp0_regs[CP0_ENTRYHI_IDX];
+	g_probed_ehi._entryhi = vcpu->sregs->cp0_regs[CP0_ENTRYHI_IDX];
 
 	for (tlb_counter = 0; tlb_counter < CPU_TLB_COUNT; tlb_counter++) {
-		c_tlb_entry = &vcpu->sregs.hw_tlb_entries[tlb_counter];
+		c_tlb_entry = &vcpu->sregs->hw_tlb_entries[tlb_counter];
 
 		t_tlb_entry.page_mask = c_tlb_entry->page_mask;
 		t_tlb_entry.entryhi._entryhi = g_probed_ehi._entryhi;
@@ -83,7 +82,7 @@ u32 mips_probe_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 		}
 	}
 
-	vcpu->sregs.cp0_regs[CP0_INDEX_IDX] = guest_cp0_index;
+	vcpu->sregs->cp0_regs[CP0_INDEX_IDX] = guest_cp0_index;
 
 	return VMM_OK;
 }
@@ -170,7 +169,7 @@ static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 u32 mips_write_vcpu_tlbi(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 {
 	mips32_tlb_entry_t *entry2prgm;
-	u32 tlb_index = vcpu->sregs.cp0_regs[CP0_INDEX_IDX];
+	u32 tlb_index = vcpu->sregs->cp0_regs[CP0_INDEX_IDX];
 
 	/*
 	 * TODO: Release 2 of MIPS32 checks and alerts for the duplicate
@@ -181,15 +180,15 @@ u32 mips_write_vcpu_tlbi(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 	 * These are THE entries that the guest created.
 	 */
 	if (tlb_index >=0 && tlb_index < CPU_TLB_COUNT) {
-		entry2prgm = &vcpu->sregs.hw_tlb_entries[tlb_index];
+		entry2prgm = &vcpu->sregs->hw_tlb_entries[tlb_index];
 		entry2prgm->entryhi._entryhi =
-			vcpu->sregs.cp0_regs[CP0_ENTRYHI_IDX];
+			vcpu->sregs->cp0_regs[CP0_ENTRYHI_IDX];
 		entry2prgm->entrylo0._entrylo =
-			vcpu->sregs.cp0_regs[CP0_ENTRYLO0_IDX];
+			vcpu->sregs->cp0_regs[CP0_ENTRYLO0_IDX];
 		entry2prgm->entrylo1._entrylo =
-			vcpu->sregs.cp0_regs[CP0_ENTRYLO1_IDX];
+			vcpu->sregs->cp0_regs[CP0_ENTRYLO1_IDX];
 		entry2prgm->page_mask =
-			vcpu->sregs.cp0_regs[CP0_PAGEMASK_IDX];
+			vcpu->sregs->cp0_regs[CP0_PAGEMASK_IDX];
 
 		return mips_vcpu_map_guest_to_host(vcpu, entry2prgm);
 	}

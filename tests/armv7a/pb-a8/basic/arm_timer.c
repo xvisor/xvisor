@@ -28,6 +28,8 @@
 #include <arm_plat.h>
 #include <arm_timer.h>
 
+static u32 timer_irq_count;
+
 void arm_timer_enable(void)
 {
 	u32 ctrl;
@@ -51,8 +53,14 @@ void arm_timer_clearirq(void)
 	arm_writel(1, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_INTCLR));
 }
 
+u32 arm_timer_irqcount(void)
+{
+	return timer_irq_count;
+}
+
 int arm_timer_irqhndl(u32 irq_no, pt_regs_t * regs)
 {
+	timer_irq_count++;
 	arm_timer_clearirq();
 	return 0;
 }
@@ -60,6 +68,8 @@ int arm_timer_irqhndl(u32 irq_no, pt_regs_t * regs)
 int arm_timer_init(u32 usecs, u32 ensel)
 {
 	u32 val;
+
+	timer_irq_count = 0;
 
 	/* 
 	 * set clock frequency: 

@@ -27,13 +27,14 @@
 #include <vmm_types.h>
 #include <vmm_guest.h>
 #include <vmm_spinlocks.h>
+#include <vmm_timer.h>
 
 typedef struct vmm_scheduler_ctrl vmm_scheduler_ctrl_t;
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
 	s32 vcpu_current;
-	u32 tick_usecs;
+	vmm_timer_event_t * ev;
 
 	vmm_spinlock_t lock;
 	u32 max_vcpu_count;
@@ -49,9 +50,6 @@ struct vmm_scheduler_ctrl {
 /** IRQ Processing (Must be called from somewhere) */
 void vmm_scheduler_irq_process(vmm_user_regs_t * regs);
 
-/** Tick handler (Must be called from somewhere) */
-void vmm_scheduler_tick(vmm_user_regs_t * regs);
-
 /** Retrive current vcpu number */
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void);
 
@@ -64,23 +62,11 @@ void vmm_scheduler_preempt_disable(void);
 /** Enable pre-emption */
 void vmm_scheduler_preempt_enable(void);
 
-/** Start scheduler */
-void vmm_scheduler_start(void);
-
-/** Stop scheduler */
-void vmm_scheduler_stop(void);
-
-/** Get scheduler tick delay in micorseconds */
-u32 vmm_scheduler_tick_usecs(void);
-
 /** Number of vcpus (thread + normal) */
 u32 vmm_scheduler_vcpu_count(void);
 
 /** Retrive vcpu */
 vmm_vcpu_t * vmm_scheduler_vcpu(s32 vcpu_no);
-
-/** Number of vcpus belonging to a given guest */
-u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest);
 
 /** Reset a vcpu */
 int vmm_scheduler_vcpu_reset(vmm_vcpu_t * vcpu);
@@ -115,11 +101,11 @@ u32 vmm_scheduler_guest_count(void);
 /** Retrive guest */
 vmm_guest_t * vmm_scheduler_guest(s32 guest_no);
 
-/** Retrive vcpu belonging to a given guest */
-vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, s32 index);
+/** Number of vcpus belonging to a given guest */
+u32 vmm_scheduler_guest_vcpu_count(vmm_guest_t *guest);
 
-/** Find the relative index of a vcpu under a given guest */
-int vmm_scheduler_guest_vcpu_index(vmm_guest_t *guest, vmm_vcpu_t *vcpu);
+/** Retrive vcpu belonging to a given guest with particular index */
+vmm_vcpu_t * vmm_scheduler_guest_vcpu(vmm_guest_t *guest, int index);
 
 /** Reset a guest */
 int vmm_scheduler_guest_reset(vmm_guest_t * guest);

@@ -138,6 +138,26 @@ int vmm_guest_aspace_reset(vmm_guest_t *guest)
 	list_for_each(l, &guest->aspace.reg_list) {
 		reg = list_entry(l, vmm_guest_region_t, head);
 		if (reg->is_virtual) {
+			vmm_devemu_reset(guest, reg);
+		}
+	}
+
+	return VMM_OK;
+}
+
+int vmm_guest_aspace_probe(vmm_guest_t *guest)
+{
+	struct dlist *l;
+	vmm_guest_region_t *reg = NULL;
+
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	list_for_each(l, &guest->aspace.reg_list) {
+		reg = list_entry(l, vmm_guest_region_t, head);
+		if (reg->is_virtual) {
+			vmm_devemu_probe(guest, reg);
 		}
 	}
 
@@ -226,10 +246,6 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 		reg->priv = NULL;
 
 		list_add_tail(&guest->aspace.reg_list, &reg->head);
-
-		if (reg->is_virtual) {
-			vmm_devemu_probe(guest, reg);
-		}
 	}
 
 	return VMM_OK;

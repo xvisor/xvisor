@@ -2,7 +2,6 @@
 # Copyright (c) 2010 Himanshu Chauhan.
 # All rights reserved.
 #
-#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
@@ -17,7 +16,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-#
 # @file objects.mk
 # @version 1.0
 # @author Himanshu Chauhan (hschauhan@nulltrace.org)
@@ -28,7 +26,8 @@ ifeq ($(CROSS_COMPILE),"")
 CROSS_COMPILE=mips-linux-gnu-
 endif
 
-cpu-cflags+=-finline-functions -O0
+cpu-cflags +=-finline-functions -O0
+cpu-ldflags += -static-libgcc -lgcc
 
 cpu-objs-y+= start.o
 cpu-objs-y+= cpu_atomic.o

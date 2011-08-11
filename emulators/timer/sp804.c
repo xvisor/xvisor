@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
+#include <vmm_timer.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_devemu.h>
@@ -48,16 +49,15 @@
 
 struct sp804_timer {
 	vmm_guest_t *guest;
+	vmm_timer_event_t *event;
 	vmm_spinlock_t lock;
 	/* Configuration */
 	u32 freq;
 	u32 irq;
-	u32 tick_usecs;
 	/* Registers */
 	u32 control;
 	u32 value;
-	u32 value_mod;
-	u32 value_dec;
+	u64 value_tstamp;
 	u32 limit;
 	u32 irq_level;
 };
@@ -71,29 +71,91 @@ static void sp804_timer_setirq(struct sp804_timer *t)
 	}
 }
 
-/* Check if timer active and schedule the next timer interrupt.  */
-static void sp804_timer_tick(struct sp804_timer *t)
+static void sp804_timer_event(vmm_timer_event_t * event)
 {
+	struct sp804_timer *t = event->priv;
 	if ((t->control & TIMER_CTRL_ENABLE) &&
 	    !(t->irq_level)) {
 		vmm_spin_lock(&t->lock);
-		if (t->value % t->value_mod == 0) {
-			if (t->value < t->value_dec) {
-				t->value = 0;
-			} else {
-				t->value -= t->value_dec;
-			}
+		t->value = t->limit;
+		t->irq_level = 1;
+		if (t->control & TIMER_CTRL_ONESHOT) {
+			t->control &= ~TIMER_CTRL_ENABLE;
 		}
-		if (!t->value) {
-			t->value = t->limit;
-			t->irq_level = 1;
-			if (t->control & TIMER_CTRL_ONESHOT) {
-				t->control &= ~TIMER_CTRL_ENABLE;
-			}
-			sp804_timer_setirq(t);
-		}
+		sp804_timer_setirq(t);
 		vmm_spin_unlock(&t->lock);
 	}
+}
+
+static void sp804_timer_syncvalue(struct sp804_timer *t, bool clear_irq)
+{
+	u64 nsecs;
+	u32 freq;
+	t->value = t->limit;
+	t->value_tstamp = vmm_timer_timestamp();
+	if (t->control & TIMER_CTRL_ENABLE) {
+		freq = t->freq;
+		switch ((t->control >> 2) & 3) {
+		case 1: 
+			freq >>= 4; 
+			break;
+		case 2: 
+			freq >>= 8; 
+			break;
+		};
+		if (t->control & TIMER_CTRL_IE) {
+			nsecs = t->limit;
+			nsecs = (nsecs * 1000000000) / freq;
+			vmm_timer_event_start(t->event, nsecs);
+		}
+	}
+	if (clear_irq) {
+		t->irq_level = 0;
+		sp804_timer_setirq(t);
+	}
+}
+
+static u32 sp804_timer_currvalue(struct sp804_timer *t)
+{
+	u32 ret, freq;
+	u64 cval;
+	if (t->control & TIMER_CTRL_ENABLE) {
+		freq = t->freq;
+		switch ((t->control >> 2) & 3) {
+		case 1: 
+			freq >>= 4; 
+			break;
+		case 2: 
+			freq >>= 8; 
+			break;
+		};
+		if (freq == 1000000) {
+			cval = (vmm_timer_timestamp() - 
+				t->value_tstamp) / 1000;
+		} else if (freq == 1000000000) {
+			cval = (vmm_timer_timestamp() - 
+				t->value_tstamp);
+		} else if (freq < 1000000000) {
+			cval = (vmm_timer_timestamp() - 
+				t->value_tstamp) / (1000000000 / freq);
+		} else {
+			cval = (vmm_timer_timestamp() - 
+				t->value_tstamp) * (freq / 1000000000);
+		}
+		if (t->control & TIMER_CTRL_PERIODIC) {
+			ret = cval % t->value;
+			ret = t->value - ret;
+		} else {
+			if (t->value < cval) {
+				ret = 0x0;
+			} else {
+				ret = t->value - cval;
+			}
+		}
+	} else {
+		ret = 0x0;
+	}
+	return ret;
 }
 
 static int sp804_timer_read(struct sp804_timer *t, u32 offset, u32 *dst)
@@ -108,7 +170,7 @@ static int sp804_timer_read(struct sp804_timer *t, u32 offset, u32 *dst)
 		*dst = t->limit;
 		break;
 	case 1: /* TimerValue */
-		*dst = t->value;
+		*dst = sp804_timer_currvalue(t);
 		break;
 	case 2: /* TimerControl */
 		*dst = t->control;
@@ -117,8 +179,9 @@ static int sp804_timer_read(struct sp804_timer *t, u32 offset, u32 *dst)
 		*dst = t->irq_level;
 		break;
 	case 5: /* TimerMIS */
- 		if ((t->control & TIMER_CTRL_IE) == 0)
+ 		if ((t->control & TIMER_CTRL_IE) == 0) {
 			*dst = 0;
+		}
 		*dst = t->irq_level;
 		break;
 	default:
@@ -135,7 +198,6 @@ static int sp804_timer_write(struct sp804_timer *t, u32 offset,
 			     u32 src_mask, u32 src)
 {
 	int rc = VMM_OK;
-	u32 freq;
 
 	vmm_spin_lock(&t->lock);
 
@@ -151,7 +213,7 @@ static int sp804_timer_write(struct sp804_timer *t, u32 offset,
 				t->limit = 0xFFFF;
 			}
 		}
-		t->value = t->limit;
+		sp804_timer_syncvalue(t, FALSE);
 		break;
 	case 1: /* TimerValue */
 		/* ??? Guest seems to want to write to readonly register.
@@ -160,24 +222,6 @@ static int sp804_timer_write(struct sp804_timer *t, u32 offset,
 		break;
 	case 2: /* TimerControl */
 		t->control = (t->control & src_mask) | (src & ~src_mask);
-		freq = t->freq;
-		/* ??? Need to recalculate expiry time 
-		 * after changing divisor. */
-		switch ((t->control >> 2) & 3) {
-		case 1: 
-			freq >>= 4; 
-			break;
-		case 2: 
-			freq >>= 8; 
-			break;
-		};
-		if (freq < 1000000) {
-			t->value_dec = 1;
-			t->value_mod = 1000000 / (freq * t->tick_usecs);
-		} else {
-			t->value_dec = (freq * t->tick_usecs) / 1000000;
-			t->value_mod = 1;
-		}
 		if ((t->control &
 		    (TIMER_CTRL_PERIODIC | TIMER_CTRL_ONESHOT)) == 0) {
 			/* Free running */
@@ -187,13 +231,10 @@ static int sp804_timer_write(struct sp804_timer *t, u32 offset,
 				t->limit = 0xFFFF;
 			}
 		}
-		if (t->control & TIMER_CTRL_ENABLE) {
-			t->value = t->limit;
-		}
+		sp804_timer_syncvalue(t, FALSE);
 		break;
 	case 3: /* TimerIntClr */
- 		t->irq_level = 0;
-		sp804_timer_setirq(t);
+		sp804_timer_syncvalue(t, TRUE);
 		break;
 	case 6: /* TimerBGLoad */
 		t->limit = (t->limit & src_mask) | (src & ~src_mask);
@@ -219,59 +260,36 @@ static int sp804_timer_write(struct sp804_timer *t, u32 offset,
 
 static int sp804_timer_reset(struct sp804_timer *t)
 {
-	u32 freq;
 	vmm_spin_lock(&t->lock);
 
-	t->value = 0xFFFFFFFF;
+	vmm_timer_event_stop(t->event);
+	t->limit = 0xFFFFFFFF;
 	t->control = TIMER_CTRL_IE;
-	t->irq_level = 0;
-	sp804_timer_setirq(t);
-	freq = t->freq;
-	switch ((t->control >> 2) & 3) {
-	case 1: 
-		freq >>= 4; 
-		break;
-	case 2: 
-		freq >>= 8; 
-		break;
-	};
-	if (freq < 1000000) {
-		t->value_dec = 1;
-		t->value_mod = 1000000 / (freq * t->tick_usecs);
-	} else {
-		t->value_dec = (freq * t->tick_usecs) / 1000000;
-		t->value_mod = 1;
-	}
+	sp804_timer_syncvalue(t, TRUE);
 
 	vmm_spin_unlock(&t->lock);
 
 	return VMM_OK;
 }
 
-static int sp804_timer_init(struct sp804_timer *t, vmm_guest_t *guest,
-			    u32 freq, u32 irq, u32 tick_usecs)
+static int sp804_timer_init(struct sp804_timer *t, 
+			    const char * t_name,
+			    vmm_guest_t *guest,
+			    u32 freq, u32 irq)
 {
-	INIT_SPIN_LOCK(&t->lock);
 	t->guest = guest;
+	t->event = vmm_timer_event_create(t_name, &sp804_timer_event, t);
+
+	INIT_SPIN_LOCK(&t->lock);
 	t->freq = freq;
 	t->irq = irq;
-	t->tick_usecs = tick_usecs;
 
 	return VMM_OK;
 }
 
 struct sp804_state {
-	vmm_emuclk_t *clk;
 	struct sp804_timer t[2];
 };
-
-static void sp804_emulator_tick(vmm_emuclk_t *eclk)
-{
-	struct sp804_state * s = eclk->priv;
-	
-	sp804_timer_tick(&s->t[0]);
-	sp804_timer_tick(&s->t[1]);
-}
 
 static int sp804_emulator_read(vmm_emudev_t *edev,
 			       physical_addr_t offset, 
@@ -383,8 +401,9 @@ static int sp804_emulator_probe(vmm_guest_t *guest,
 				vmm_emudev_t *edev,
 				const vmm_emuid_t *eid)
 {
-	int rc = VMM_OK;
-	u32 irq, tick_usecs;
+	int rc = VMM_OK; 
+	u32 irq;
+	char tname[32];
 	const char *attr;
 	struct sp804_state * s;
 
@@ -395,45 +414,31 @@ static int sp804_emulator_probe(vmm_guest_t *guest,
 	}
 	vmm_memset(s, 0x0, sizeof(struct sp804_state));
 
-	s->clk = vmm_malloc(sizeof(vmm_emuclk_t));
-	if (!s->clk) {
-		rc = VMM_EFAIL;
-		goto sp804_emulator_probe_freestate_fail;
-	}
-	vmm_strcpy(s->clk->name, "sp804-clk");
-	s->clk->tick = sp804_emulator_tick;
-	s->clk->priv = s;
-	if ((rc = vmm_devemu_register_clk(guest, s->clk))) {
-		rc = VMM_EFAIL;
-		goto sp804_emulator_probe_freeclk_fail;
-	}
-
 	attr = vmm_devtree_attrval(edev->node, "irq");
 	if (attr) {
 		irq = *((u32 *)attr);
 	} else {
 		rc = VMM_EFAIL;
-		goto sp804_emulator_probe_freeclk_fail;
+		goto sp804_emulator_probe_freestate_fail;
 	}
 
 	/* ??? The timers are actually configurable between 32kHz and 1MHz, 
 	 * but we don't implement that.  */
-	tick_usecs = vmm_devemu_clk_microsecs();
-	if ((rc = sp804_timer_init(&s->t[0], guest, 
-				   1000000, irq, tick_usecs))) {
-		goto sp804_emulator_probe_freeclk_fail;
+	vmm_strcpy(tname, edev->node->name);
+	vmm_strcat(tname, "(0)");
+	if ((rc = sp804_timer_init(&s->t[0], tname, guest, 1000000, irq))) {
+		goto sp804_emulator_probe_freestate_fail;
 	}
-	if ((rc = sp804_timer_init(&s->t[1], guest, 
-				   1000000, irq, tick_usecs))) {
-		goto sp804_emulator_probe_freeclk_fail;
+	vmm_strcpy(tname, edev->node->name);
+	vmm_strcat(tname, "(1)");
+	if ((rc = sp804_timer_init(&s->t[1], tname, guest, 1000000, irq))) {
+		goto sp804_emulator_probe_freestate_fail;
 	}
 
 	edev->priv = s;
 
 	goto sp804_emulator_probe_done;
 
-sp804_emulator_probe_freeclk_fail:
-	vmm_free(s->clk);
 sp804_emulator_probe_freestate_fail:
 	vmm_free(s);
 sp804_emulator_probe_done:

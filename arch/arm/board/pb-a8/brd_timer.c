@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file brd_pic.c
+ * @file brd_timer.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief board specific progammable timer
@@ -25,7 +25,7 @@
 #include <vmm_cpu.h>
 #include <vmm_board.h>
 #include <vmm_error.h>
-#include <vmm_scheduler.h>
+#include <vmm_timer.h>
 #include <vmm_host_aspace.h>
 #include <pba8_board.h>
 #include <realview/realview_timer.h>
@@ -44,18 +44,18 @@ void vmm_cpu_timer_disable(void)
 
 int pba8_timer_handler(u32 irq_no, vmm_user_regs_t * regs)
 {
-	vmm_scheduler_tick(regs);
+	vmm_timer_tick_process(regs);
 
 	realview_timer_clearirq(pba8_cpu_timer_base);
 
 	return VMM_OK;
 }
 
-int vmm_cpu_timer_setup(u32 tick_usecs)
+int vmm_cpu_timer_setup(u32 tick_nsecs)
 {
 	pba8_cpu_timer_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE,
 					     0x1000);
 	return realview_timer_setup(pba8_cpu_timer_base,
-				    tick_usecs,
+				    tick_nsecs,
 				    IRQ_PBA8_TIMER0_1, &pba8_timer_handler);
 }

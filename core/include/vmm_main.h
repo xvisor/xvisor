@@ -32,9 +32,6 @@ void vmm_hang(void);
 /** Initialize hypervisor */
 void vmm_init(void);
 
-/** Start hypervisor */
-void vmm_start(void);
-
 /** Reset hypervisor */
 void vmm_reset(void);
 

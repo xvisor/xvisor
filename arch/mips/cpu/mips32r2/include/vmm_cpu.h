@@ -64,7 +64,7 @@ u32 vmm_vcpu_irq_count(vmm_vcpu_t * vcpu);
 
 
 /** Timer related functions required by VMM core */
-void vmm_cpu_timer_setup(u32 tick_usecs);
+int vmm_cpu_timer_setup(u64 tick_nsecs);
 void vmm_cpu_timer_enable(void);
 void vmm_cpu_timer_disable(void);
 

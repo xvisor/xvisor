@@ -138,20 +138,6 @@ void vmm_mterm_main(void *udata)
 	}
 }
 
-int vmm_mterm_start(void)
-{
-	mterm_ctrl.thread =
-	    vmm_hyperthread_create("mterm", (void *)&vmm_mterm_main, NULL);
-
-	if (!mterm_ctrl.thread) {
-		vmm_panic("Creation of system critical thread failed.\n");
-	}
-
-	vmm_hyperthread_run(mterm_ctrl.thread);
-
-	return VMM_OK;
-}
-
 int vmm_mterm_init(void)
 {
 	int ret;
@@ -186,6 +172,17 @@ int vmm_mterm_init(void)
 			break;
 		}
 	}
+
+	/* Create mterm thread */
+	mterm_ctrl.thread =
+	    vmm_hyperthread_create("mterm", (void *)&vmm_mterm_main, NULL);
+
+	if (!mterm_ctrl.thread) {
+		vmm_panic("Creation of system critical thread failed.\n");
+	}
+
+	/* Mark the mterm thread runnable */
+	vmm_hyperthread_run(mterm_ctrl.thread);
 
 	return VMM_OK;
 }

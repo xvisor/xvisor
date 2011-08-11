@@ -30,7 +30,6 @@
 
 typedef struct vmm_emudev vmm_emudev_t;
 typedef struct vmm_emupic vmm_emupic_t;
-typedef struct vmm_emuclk vmm_emuclk_t;
 typedef struct vmm_emuid vmm_emuid_t;
 typedef struct vmm_emuguest vmm_emuguest_t;
 typedef struct vmm_emulator vmm_emulator_t;
@@ -39,8 +38,6 @@ typedef struct vmm_devemu_ctrl vmm_devemu_ctrl_t;
 typedef void (*vmm_emupic_hndl_t) (vmm_emupic_t *epic,
 				   u32 irq_num,
 				   int irq_level);
-
-typedef void (*vmm_emuclk_tick_t) (vmm_emuclk_t *eclk);
 
 typedef int (*vmm_emulator_probe_t) (vmm_guest_t *guest,
 				     vmm_emudev_t *edev,
@@ -76,13 +73,6 @@ struct vmm_emupic {
 	void *priv;
 };
 
-struct vmm_emuclk {
-	struct dlist head;
-	char name[32];
-	vmm_emuclk_tick_t tick;
-	void *priv;
-};
-
 struct vmm_emuid {
 	char name[32];
 	char type[32];
@@ -92,7 +82,6 @@ struct vmm_emuid {
 
 struct vmm_emuguest {
 	struct dlist emupic_list;
-	struct dlist emuclk_list;
 };
 
 struct vmm_emulator {
@@ -137,24 +126,6 @@ vmm_emupic_t *vmm_devemu_pic(vmm_guest_t *guest, int index);
 
 /** Count available emulated pic */
 u32 vmm_devemu_pic_count(vmm_guest_t *guest);
-
-/** Get period emulated clk in microseconds */
-u32 vmm_devemu_clk_microsecs(void);
-
-/** Register emulated clock */
-int vmm_devemu_register_clk(vmm_guest_t *guest, vmm_emuclk_t * clk);
-
-/** Unregister emulated clock */
-int vmm_devemu_unregister_clk(vmm_guest_t *guest, vmm_emuclk_t * clk);
-
-/** Find a registered emulated clock */
-vmm_emuclk_t *vmm_devemu_find_clk(vmm_guest_t *guest, const char *name);
-
-/** Get a registered emulated clock */
-vmm_emuclk_t *vmm_devemu_clk(vmm_guest_t *guest, int index);
-
-/** Count available emulated clock */
-u32 vmm_devemu_clk_count(vmm_guest_t *guest);
 
 /** Register emulator */
 int vmm_devemu_register_emulator(vmm_emulator_t * emu);

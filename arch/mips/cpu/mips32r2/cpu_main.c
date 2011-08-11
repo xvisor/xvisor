@@ -80,9 +80,9 @@ int vmm_cpu_final_init(void)
 
 void cpu_init(void)
 {
-	/** Initialize VMM (APIs only available after this) */
+	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
 
-	/** Start VMM */
-	vmm_start();
+	/* We should never come back here. */
+	while (1);
 }
