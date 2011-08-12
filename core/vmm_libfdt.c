@@ -27,42 +27,8 @@
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_libfdt.h>
-#include <vmm_cpu_io.h>
 
 #define LIBFDT_DATA32(ptr)	(*((u32*)ptr))
-
-int libfdt_is_cpu_le(void)
-{
-	u32 tval = 1;
-	if (((u8 *) & tval)[0] == 1)
-		return 1;
-	return 0;
-}
-
-void libfdt_copy_value(char *attr, char *dst, char *src, u32 len)
-{
-	u32 is_string_attr = 0;
-	if (vmm_strcmp(attr, VMM_DEVTREE_MODEL_ATTR_NAME) == 0 ||
-	    vmm_strcmp(attr, VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME) == 0 ||
-	    vmm_strcmp(attr, VMM_DEVTREE_COMPATIBLE_ATTR_NAME) == 0 ||
-	    vmm_strcmp(attr, VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME) == 0 ||
-	    vmm_strcmp(attr, VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME) == 0) {
-		is_string_attr = 1;
-	}
-	if (libfdt_is_cpu_le() && is_string_attr) {
-		while (sizeof(u32) <= len) {
-			*((u32 *) dst) = vmm_cpu_bswap32(*((u32 *) src));
-			src += sizeof(u32);
-			dst += sizeof(u32);
-			len -= sizeof(u32);
-		}
-		if (len > 0) {
-			vmm_memcpy(dst, src, len);
-		}
-	} else {
-		vmm_memcpy(dst, src, len);
-	}
-}
 
 void libfdt_node_parse_recursive(vmm_devtree_node_t * node,
 				 char **data_ptr, char *str_buf)
@@ -94,8 +60,7 @@ void libfdt_node_parse_recursive(vmm_devtree_node_t * node,
 			attr->name = &str_buf[LIBFDT_DATA32(*data_ptr)];
 			*data_ptr += sizeof(u32);
 			attr->value = vmm_malloc(attr->len);
-			libfdt_copy_value(attr->name,
-					  attr->value, *data_ptr, attr->len);
+			vmm_memcpy(attr->value, *data_ptr, attr->len);
 			*data_ptr += attr->len;
 			while ((u32) (*data_ptr) % sizeof(u32) != 0)
 				(*data_ptr)++;
