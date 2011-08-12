@@ -2,13 +2,15 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Wed Apr  6 21:28:03 2011
+# Fri Aug 12 09:14:46 2011
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 CONFIG_ARCH="arm"
 CROSS_COMPILE="arm-none-eabi-"
+# CONFIG_CPU_MIPS32R2 is not set
 CONFIG_CPU="armv7a"
+# CONFIG_BOARD_QEMU_MIPS is not set
 CONFIG_BOARD="beagle"
 # CONFIG_CPU_CORTEX_A8 is not set
 CONFIG_CPU_OMAP3=y
@@ -19,6 +21,8 @@ CONFIG_OMAP3=y
 #
 # General Setup
 #
+CONFIG_BANNER_NONE=y
+# CONFIG_BANNER_DEFAULT is not set
 
 #
 # Memory Management
@@ -37,11 +41,34 @@ CONFIG_MM_TRIVIAL=y
 #
 # Device Drivers
 #
-CONFIG_SERIAL=y
 
 #
 # Serial Port Drivers
 #
+CONFIG_SERIAL=y
 CONFIG_SERIAL_UART=y
 # CONFIG_SERIAL_PL01X is not set
-# CONFIG_PIC is not set
+
+#
+# Device Emulators
+#
+
+#
+# System Emulators
+#
+# CONFIG_EMU_SYS is not set
+
+#
+# PIC Emulators
+#
+# CONFIG_EMU_PIC is not set
+
+#
+# Timer Emulators
+#
+# CONFIG_EMU_TIMER is not set
+
+#
+# Serial Port Emulators
+#
+# CONFIG_EMU_SERIAL is not set
