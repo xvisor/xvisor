@@ -245,6 +245,7 @@ oldconfig:
 # Rule for "make defconfig"
 %-defconfig:
 	$(V)mkdir -p $(OPENCONF_TMPDIR)
+	$(V)$(MAKE) -C tools/openconf defconfig
 	$(V)cp $(src_dir)/arch/$(ARCH)/board/configs/$@ $(OPENCONF_CONFIG)
 	./tools/openconf/conf -s $(OPENCONF_INPUT)
 
