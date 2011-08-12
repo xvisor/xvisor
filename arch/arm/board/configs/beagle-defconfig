@@ -2,15 +2,15 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Fri Aug 12 09:14:46 2011
+# Fri Aug 12 16:25:21 2011
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 CONFIG_ARCH="arm"
 CROSS_COMPILE="arm-none-eabi-"
-# CONFIG_CPU_MIPS32R2 is not set
 CONFIG_CPU="armv7a"
-# CONFIG_BOARD_QEMU_MIPS is not set
+CONFIG_CPU_LE=y
+# CONFIG_CPU_BE is not set
 CONFIG_BOARD="beagle"
 # CONFIG_CPU_CORTEX_A8 is not set
 CONFIG_CPU_OMAP3=y

@@ -361,7 +361,8 @@ static void fixup_phandle_references(struct check *c, struct node *dt,
 		}
 
 		phandle = get_node_phandle(dt, refnode);
-		*((cell_t *)(prop->val.val + m->offset)) = cpu_to_fdt32(phandle);
+		*((cell_t *)(prop->val.val + m->offset)) = 
+					cpu_to_fdt32_e(phandle, little_endian);
 	}
 }
 CHECK(phandle_references, NULL, NULL, fixup_phandle_references, NULL, ERROR,
