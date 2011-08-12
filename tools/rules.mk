@@ -40,6 +40,9 @@ $(build_dir)/%.dep: $(src_dir)/%.dts
 $(build_dir)/%.S: $(src_dir)/%.dts
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
+ifdef CONFIG_CPU_LE
+	$(V)$(build_dir)/tools/dtc/dtc -E le -I dts -O asm $< -o $@
+else
 	$(V)$(build_dir)/tools/dtc/dtc -I dts -O asm $< -o $@
-
+endif
 

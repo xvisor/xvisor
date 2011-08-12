@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Fri Aug 12 00:20:14 2011
+# Fri Aug 12 16:31:15 2011
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_MIPS=y
@@ -10,6 +10,8 @@ CONFIG_ARCH="mips"
 CROSS_COMPILE="mips-linux-gnu-"
 CONFIG_CPU_MIPS32R2=y
 CONFIG_CPU="mips32r2"
+# CONFIG_CPU_LE is not set
+CONFIG_CPU_BE=y
 CONFIG_BOARD_QEMU_MIPS=y
 CONFIG_BOARD="qemu_mips"
 CONFIG_QEMU_MIPS=y
