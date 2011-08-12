@@ -23,6 +23,7 @@
  * Command line options
  */
 int quiet;		/* Level of quietness */
+int little_endian; 	/* Target system is little endian */
 int reservenum;		/* Number of memory reservation slots */
 int minsize;		/* Minimum blob size */
 int padsize;		/* Additional padding to blob */
@@ -77,6 +78,10 @@ static void  __attribute__ ((noreturn)) usage(void)
 	fprintf(stderr, "\t\tThis help text\n");
 	fprintf(stderr, "\t-q\n");
 	fprintf(stderr, "\t\tQuiet: -q suppress warnings, -qq errors, -qqq all\n");
+	fprintf(stderr, "\t-E <endianness>\n");
+	fprintf(stderr, "\t\tPossible endianness are:\n");
+	fprintf(stderr, "\t\t\tbe - big-endian (default)\n");
+	fprintf(stderr, "\t\t\tle - little-endian\n");
 	fprintf(stderr, "\t-I <input format>\n");
 	fprintf(stderr, "\t\tInput formats are:\n");
 	fprintf(stderr, "\t\t\tdts - device tree source text\n");
@@ -108,6 +113,7 @@ static void  __attribute__ ((noreturn)) usage(void)
 int main(int argc, char *argv[])
 {
 	struct boot_info *bi;
+	const char *endianstr = "be";
 	const char *inform = "dts";
 	const char *outform = "dts";
 	const char *outname = "-";
@@ -123,8 +129,11 @@ int main(int argc, char *argv[])
 	minsize    = 0;
 	padsize    = 0;
 
-	while ((opt = getopt(argc, argv, "hI:O:o:V:R:S:p:fcqb:v")) != EOF) {
+	while ((opt = getopt(argc, argv, "hE:I:O:o:V:R:S:p:fcqb:v")) != EOF) {
 		switch (opt) {
+		case 'E':
+			endianstr = optarg;
+			break;
 		case 'I':
 			inform = optarg;
 			break;
@@ -173,6 +182,11 @@ int main(int argc, char *argv[])
 		arg = "-";
 	else
 		arg = argv[optind];
+
+	if (streq(endianstr, "le"))
+		little_endian = 1;
+	else 
+		little_endian = 0;
 
 	/* minsize and padsize are mutually exclusive */
 	if (minsize && padsize)

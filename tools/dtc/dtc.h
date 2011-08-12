@@ -35,6 +35,7 @@
  * Command line options
  */
 extern int quiet;		/* Level of quietness */
+extern int little_endian; 	/* Target system is little endian */
 extern int reservenum;		/* Number of memory reservation slots */
 extern int minsize;		/* Minimum blob size */
 extern int padsize;		/* Additional padding to blob */
