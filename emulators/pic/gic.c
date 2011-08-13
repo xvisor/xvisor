@@ -736,16 +736,16 @@ static int gic_emulator_read(vmm_emudev_t *edev,
 	if (!vcpu || !vcpu->guest) {
 		return VMM_EFAIL;
 	}
-	if (s->guest->num != vcpu->guest->num) {
+	if (s->guest->id != vcpu->guest->id) {
 		return VMM_EFAIL;
 	}
 
 	if (offset < 0x1000) {
 		/* Read CPU Interface */
-		rc = gic_cpu_read(s, vcpu->index, offset & ~0x3, &regval);
+		rc = gic_cpu_read(s, vcpu->subid, offset & ~0x3, &regval);
 	} else {
 		/* Read Distribution Control */
-		rc = gic_dist_read(s, vcpu->index, 
+		rc = gic_dist_read(s, vcpu->subid, 
 				  (offset & ~0x3) - 0x1000, &regval);
 	}
 
@@ -814,17 +814,17 @@ static int gic_emulator_write(vmm_emudev_t *edev,
 	if (!vcpu || !vcpu->guest) {
 		return VMM_EFAIL;
 	}
-	if (s->guest->num != vcpu->guest->num) {
+	if (s->guest->id != vcpu->guest->id) {
 		return VMM_EFAIL;
 	}
 
 	if (offset < 0x1000) {
 		/* Write CPU Interface */
-		rc = gic_cpu_write(s, vcpu->index, 
+		rc = gic_cpu_write(s, vcpu->subid, 
 				   offset & ~0x3, regmask, regval);
 	} else {
 		/* Write Distribution Control */
-		rc = gic_dist_write(s, vcpu->index, 
+		rc = gic_dist_write(s, vcpu->subid, 
 				    (offset & ~0x3) - 0x1000, regmask, regval);
 	}
 
