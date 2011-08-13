@@ -33,6 +33,11 @@
 
 vmm_manager_ctrl_t mngr;
 
+u32 vmm_manager_max_vcpu_count(void)
+{
+	return mngr.max_vcpu_count;
+}
+
 u32 vmm_manager_vcpu_count(void)
 {
 	return mngr.vcpu_count;
@@ -50,7 +55,7 @@ int vmm_manager_vcpu_reset(vmm_vcpu_t * vcpu)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
-	if (vcpu && vcpu->guest) {
+	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if ((vcpu->state != VMM_VCPU_STATE_RESET) &&
 		    (vcpu->state != VMM_VCPU_STATE_UNKNOWN)) {
@@ -72,11 +77,10 @@ int vmm_manager_vcpu_kick(vmm_vcpu_t * vcpu)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
-	if (vcpu && vcpu->guest) {
+	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state == VMM_VCPU_STATE_RESET) {
 			vcpu->state = VMM_VCPU_STATE_READY;
-			vcpu->tick_pending = vcpu->tick_count;
 			rc = VMM_OK;
 		}
 		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
@@ -88,7 +92,7 @@ int vmm_manager_vcpu_pause(vmm_vcpu_t * vcpu)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
-	if (vcpu && vcpu->guest) {
+	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
 		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
@@ -104,7 +108,7 @@ int vmm_manager_vcpu_resume(vmm_vcpu_t * vcpu)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
-	if (vcpu && vcpu->guest) {
+	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state == VMM_VCPU_STATE_PAUSED) {
 			vcpu->state = VMM_VCPU_STATE_READY;
@@ -119,7 +123,7 @@ int vmm_manager_vcpu_halt(vmm_vcpu_t * vcpu)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
-	if (vcpu && vcpu->guest) {
+	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
 		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
@@ -148,14 +152,14 @@ int vmm_manager_vcpu_dumpreg(vmm_vcpu_t * vcpu)
 
 vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
-					    u32 tick_count,
-					    vmm_vcpu_tick_t tick_func)
+					    virtual_addr_t start_sp,
+					    u64 time_slice_nsecs)
 {
 	vmm_vcpu_t * vcpu;
 	irq_flags_t flags;
 
 	/* Sanity checks */
-	if (name == NULL || start_pc == 0 || tick_count == 0) {
+	if (name == NULL || start_pc == 0 || time_slice_nsecs == 0) {
 		return NULL;
 	}
 
@@ -176,12 +180,9 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->state = VMM_VCPU_STATE_READY;
 	vcpu->reset_count = 0;
 	vcpu->preempt_count = 0;
-	vcpu->tick_pending = 0;
-	vcpu->tick_count = tick_count;
-	vcpu->tick_func = tick_func;
+	vcpu->time_slice = time_slice_nsecs;
 	vcpu->start_pc = start_pc;
-	vcpu->bootpg_addr = 0;
-	vcpu->bootpg_size = 0;
+	vcpu->start_sp = start_sp;
 	vcpu->guest = NULL;
 	vcpu->uregs = vmm_malloc(sizeof(vmm_user_regs_t));
 	vcpu->sregs = NULL;
@@ -212,6 +213,11 @@ int vmm_manager_vcpu_orphan_destroy(vmm_vcpu_t * vcpu)
 {
 	/* FIXME: TBD */
 	return VMM_OK;
+}
+
+u32 vmm_manager_max_guest_count(void)
+{
+	return mngr.max_guest_count;
 }
 
 u32 vmm_manager_guest_count(void)
@@ -439,12 +445,10 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		vcpu->state = VMM_VCPU_STATE_RESET;
 		vcpu->reset_count = 0;
 		vcpu->preempt_count = 0;
-		vcpu->tick_pending = 0;
 		attrval = vmm_devtree_attrval(vnode,
-					      VMM_DEVTREE_TICK_COUNT_ATTR_NAME);
+					     VMM_DEVTREE_TIME_SLICE_ATTR_NAME);
 		if (attrval) {
-			vcpu->tick_count =
-			    *((virtual_addr_t *) attrval);
+			vcpu->time_slice = *((u32 *) attrval);
 		}
 		attrval = vmm_devtree_attrval(vnode,
 					      VMM_DEVTREE_START_PC_ATTR_NAME);
@@ -452,16 +456,11 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 			vcpu->start_pc = *((virtual_addr_t *) attrval);
 		}
 		attrval = vmm_devtree_attrval(vnode,
-					      VMM_DEVTREE_BOOTPG_ADDR_ATTR_NAME);
+					      VMM_DEVTREE_START_SP_ATTR_NAME);
 		if (attrval) {
-			vcpu->bootpg_addr =
-			    *((physical_addr_t *) attrval);
-		}
-		attrval = vmm_devtree_attrval(vnode,
-					      VMM_DEVTREE_BOOTPG_SIZE_ATTR_NAME);
-		if (attrval) {
-			vcpu->bootpg_size =
-			    *((physical_addr_t *) attrval);
+			vcpu->start_sp = *((virtual_addr_t *) attrval);
+		} else {
+			vcpu->start_sp = 0x0;
 		}
 		vcpu->guest = guest;
 		vcpu->uregs = vmm_malloc(sizeof(vmm_user_regs_t));

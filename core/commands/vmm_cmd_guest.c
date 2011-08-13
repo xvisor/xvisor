@@ -54,19 +54,19 @@ void cmd_guest_list()
 	char path[256];
 	vmm_guest_t *guest;
 	vmm_printf("----------------------------------------"
-		   "--------------------\n");
-	vmm_printf("| %-5s| %-16s| %-32s|\n", "Num", "Name", "Device Path");
+		   "----------------------------------------\n");
+	vmm_printf("| %-5s| %-16s| %-52s|\n", "Num", "Name", "Device Path");
 	vmm_printf("----------------------------------------"
-		   "--------------------\n");
+		   "----------------------------------------\n");
 	count = vmm_manager_guest_count();
 	for (num = 0; num < count; num++) {
 		guest = vmm_manager_guest(num);
 		vmm_devtree_getpath(path, guest->node);
-		vmm_printf("| %-5d| %-16s| %-32s|\n", num, guest->node->name,
+		vmm_printf("| %-5d| %-16s| %-52s|\n", num, guest->node->name,
 			   path);
 	}
 	vmm_printf("----------------------------------------"
-		   "--------------------\n");
+		   "----------------------------------------\n");
 }
 
 int cmd_guest_load(int num, physical_addr_t src_hphys_addr, physical_addr_t dest_gphys_addr, u32 img_sz)

@@ -26,7 +26,7 @@
 
 #include <vmm_sections.h>
 #include <vmm_types.h>
-#include <vmm_hyperthreads.h>
+#include <vmm_threads.h>
 
 #define VMM_CMD_SIGNATURE		0x4D434D44
 
@@ -50,7 +50,7 @@ struct vmm_mterm_ctrl {
 	vmm_cmd_t *table;
 	u32 table_size;
 	u32 cmd_count;
-	vmm_hyperthread_t *thread;
+	vmm_thread_t *thread;
 };
 
 typedef struct vmm_mterm_ctrl vmm_mterm_ctrl_t;

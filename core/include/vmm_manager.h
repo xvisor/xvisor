@@ -33,7 +33,6 @@
 typedef struct vmm_guest_region vmm_guest_region_t;
 typedef struct vmm_guest_aspace vmm_guest_aspace_t;
 typedef struct vmm_vcpu_irqs vmm_vcpu_irqs_t;
-typedef void (*vmm_vcpu_tick_t) (vmm_user_regs_t * regs, u32 ticks_left);
 typedef struct vmm_vcpu vmm_vcpu_t;
 typedef struct vmm_guest vmm_guest_t;
 
@@ -102,12 +101,9 @@ struct vmm_vcpu {
 	u32 state;
 	u32 reset_count;
 	u32 preempt_count;
-	u32 tick_pending;
-	u32 tick_count;
-	vmm_vcpu_tick_t tick_func;
+	u64 time_slice;
 	virtual_addr_t start_pc;
-	physical_addr_t bootpg_addr;
-	physical_size_t bootpg_size;
+	virtual_addr_t start_sp;
 	vmm_user_regs_t *uregs;
 	vmm_super_regs_t *sregs;
 	vmm_vcpu_irqs_t *irqs;
@@ -128,7 +124,10 @@ struct vmm_manager_ctrl {
 
 typedef struct vmm_manager_ctrl vmm_manager_ctrl_t;
 
-/** Number of vcpus (thread + normal) */
+/** Maximum number of vcpus (thread or normal) */
+u32 vmm_manager_max_vcpu_count(void);
+
+/** Current number of vcpus (thread + normal) */
 u32 vmm_manager_vcpu_count(void);
 
 /** Retrive vcpu */
@@ -155,8 +154,8 @@ int vmm_manager_vcpu_dumpreg(vmm_vcpu_t * vcpu);
 /** Create an orphan vcpu */
 vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
-					    u32 tick_count,
-					    vmm_vcpu_tick_t tick_func);
+					    virtual_addr_t start_sp,
+					    u64 time_slice_nsecs);
 
 /** Destroy an orphan vcpu */
 int vmm_manager_vcpu_orphan_destroy(vmm_vcpu_t * vcpu);
