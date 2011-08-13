@@ -131,7 +131,7 @@ u32 vmm_manager_max_vcpu_count(void);
 u32 vmm_manager_vcpu_count(void);
 
 /** Retrive vcpu */
-vmm_vcpu_t * vmm_manager_vcpu(s32 vcpu_no);
+vmm_vcpu_t * vmm_manager_vcpu(u32 vcpu_id);
 
 /** Reset a vcpu */
 int vmm_manager_vcpu_reset(vmm_vcpu_t * vcpu);
@@ -164,7 +164,7 @@ int vmm_manager_vcpu_orphan_destroy(vmm_vcpu_t * vcpu);
 u32 vmm_manager_guest_count(void);
 
 /** Retrive guest */
-vmm_guest_t * vmm_manager_guest(s32 guest_no);
+vmm_guest_t * vmm_manager_guest(u32 guest_id);
 
 /** Number of vcpus belonging to a given guest */
 u32 vmm_manager_guest_vcpu_count(vmm_guest_t *guest);

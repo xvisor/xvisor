@@ -37,20 +37,20 @@ void cmd_guest_usage(void)
 	vmm_printf("Usage:\n");
 	vmm_printf("   guest help\n");
 	vmm_printf("   guest list\n");
-	vmm_printf("   guest load    <guest_num> <src_hphys_addr> <dest_gphys_addr> <img_sz>\n");
-	vmm_printf("   guest reset   <guest_num>\n");
-	vmm_printf("   guest kick    <guest_num>\n");
-	vmm_printf("   guest pause   <guest_num>\n");
-	vmm_printf("   guest resume  <guest_num>\n");
-	vmm_printf("   guest halt    <guest_num>\n");
-	vmm_printf("   guest dumpreg <guest_num>\n");
+	vmm_printf("   guest load    <guest_id> <src_hphys_addr> <dest_gphys_addr> <img_sz>\n");
+	vmm_printf("   guest reset   <guest_id>\n");
+	vmm_printf("   guest kick    <guest_id>\n");
+	vmm_printf("   guest pause   <guest_id>\n");
+	vmm_printf("   guest resume  <guest_id>\n");
+	vmm_printf("   guest halt    <guest_id>\n");
+	vmm_printf("   guest dumpreg <guest_id>\n");
 	vmm_printf("Note:\n");
-	vmm_printf("   if guest_num is -1 then it means all guests\n");
+	vmm_printf("   if guest_id is -1 then it means all guests\n");
 }
 
 void cmd_guest_list()
 {
-	int num, count;
+	int id, count;
 	char path[256];
 	vmm_guest_t *guest;
 	vmm_printf("----------------------------------------"
@@ -59,23 +59,23 @@ void cmd_guest_list()
 	vmm_printf("----------------------------------------"
 		   "----------------------------------------\n");
 	count = vmm_manager_guest_count();
-	for (num = 0; num < count; num++) {
-		guest = vmm_manager_guest(num);
+	for (id = 0; id < count; id++) {
+		guest = vmm_manager_guest(id);
 		vmm_devtree_getpath(path, guest->node);
-		vmm_printf("| %-5d| %-16s| %-52s|\n", num, guest->node->name,
+		vmm_printf("| %-5d| %-16s| %-52s|\n", id, guest->node->name,
 			   path);
 	}
 	vmm_printf("----------------------------------------"
 		   "----------------------------------------\n");
 }
 
-int cmd_guest_load(int num, physical_addr_t src_hphys_addr, physical_addr_t dest_gphys_addr, u32 img_sz)
+int cmd_guest_load(int id, physical_addr_t src_hphys_addr, physical_addr_t dest_gphys_addr, u32 img_sz)
 {
 	vmm_guest_t *guest;
 	vmm_guest_region_t *guest_region;
 	virtual_addr_t src_hvaddr, dest_gvaddr;
 
-	guest = vmm_manager_guest(num);
+	guest = vmm_manager_guest(id);
 	if (guest) {
 		guest_region = vmm_guest_aspace_getregion(guest, dest_gphys_addr);
 		if (!guest_region) {
@@ -109,10 +109,10 @@ int cmd_guest_load(int num, physical_addr_t src_hphys_addr, physical_addr_t dest
 	return VMM_EFAIL;
 }
 
-int cmd_guest_reset(int num)
+int cmd_guest_reset(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(id);
 	if (guest) {
 		if ((ret = vmm_manager_guest_reset(guest))) {
 			vmm_printf("%s: Failed to reset\n", guest->node->name);
@@ -125,10 +125,10 @@ int cmd_guest_reset(int num)
 	return ret;
 }
 
-int cmd_guest_kick(int num)
+int cmd_guest_kick(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(id);
 	if (guest) {
 		if ((ret = vmm_manager_guest_kick(guest))) {
 			vmm_printf("%s: Failed to kick\n", guest->node->name);
@@ -141,10 +141,10 @@ int cmd_guest_kick(int num)
 	return ret;
 }
 
-int cmd_guest_pause(int num)
+int cmd_guest_pause(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(id);
 	if (guest) {
 		;
 		if ((ret = vmm_manager_guest_pause(guest))) {
@@ -158,10 +158,10 @@ int cmd_guest_pause(int num)
 	return ret;
 }
 
-int cmd_guest_resume(int num)
+int cmd_guest_resume(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(id);
 	if (guest) {
 		if ((ret = vmm_manager_guest_resume(guest))) {
 			vmm_printf("%s: Failed to resume\n", guest->node->name);
@@ -174,10 +174,10 @@ int cmd_guest_resume(int num)
 	return ret;
 }
 
-int cmd_guest_halt(int num)
+int cmd_guest_halt(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(id);
 	if (guest) {
 		if ((ret = vmm_manager_guest_halt(guest))) {
 			vmm_printf("%s: Failed to halt\n", guest->node->name);
@@ -190,10 +190,10 @@ int cmd_guest_halt(int num)
 	return ret;
 }
 
-int cmd_guest_dumpreg(int num)
+int cmd_guest_dumpreg(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(num);
+	vmm_guest_t *guest = vmm_manager_guest(id);
 	if (guest) {
 		if ((ret = vmm_manager_guest_dumpreg(guest))) {
 			vmm_printf("%s: Failed to dumpreg\n", guest->node->name);
@@ -206,7 +206,7 @@ int cmd_guest_dumpreg(int num)
 
 int cmd_guest_exec(int argc, char **argv)
 {
-	int num, count;
+	int id, count;
 	u32 src_addr, dest_addr, size;
 	int ret;
 	if (argc == 2) {
@@ -222,76 +222,76 @@ int cmd_guest_exec(int argc, char **argv)
 		cmd_guest_usage();
 		return VMM_EFAIL;
 	}
-	num = vmm_str2int(argv[2], 10);
+	id = vmm_str2int(argv[2], 10);
 	count = vmm_manager_guest_count();
 	if (vmm_strcmp(argv[1], "reset") == 0) {
-		if (num == -1) {
-			for (num = 0; num < count; num++) {
-				ret = cmd_guest_reset(num);
+		if (id == -1) {
+			for (id = 0; id < count; id++) {
+				ret = cmd_guest_reset(id);
 				if (ret) {
 					return ret;
 				}
 			}
 		} else {
-			return cmd_guest_reset(num);
+			return cmd_guest_reset(id);
 		}
 	} else if (vmm_strcmp(argv[1], "kick") == 0) {
-		if (num == -1) {
-			for (num = 0; num < count; num++) {
-				ret = cmd_guest_kick(num);
+		if (id == -1) {
+			for (id = 0; id < count; id++) {
+				ret = cmd_guest_kick(id);
 				if (ret) {
 					return ret;
 				}
 			}
 		} else {
-			return cmd_guest_kick(num);
+			return cmd_guest_kick(id);
 		}
 	} else if (vmm_strcmp(argv[1], "pause") == 0) {
-		if (num == -1) {
-			for (num = 0; num < count; num++) {
-				ret = cmd_guest_pause(num);
+		if (id == -1) {
+			for (id = 0; id < count; id++) {
+				ret = cmd_guest_pause(id);
 				if (ret) {
 					return ret;
 				}
 			}
 		} else {
-			return cmd_guest_pause(num);
+			return cmd_guest_pause(id);
 		}
 	} else if (vmm_strcmp(argv[1], "resume") == 0) {
-		if (num == -1) {
-			for (num = 0; num < count; num++) {
-				ret = cmd_guest_resume(num);
+		if (id == -1) {
+			for (id = 0; id < count; id++) {
+				ret = cmd_guest_resume(id);
 				if (ret) {
 					return ret;
 				}
 			}
 		} else {
-			return cmd_guest_resume(num);
+			return cmd_guest_resume(id);
 		}
 	} else if (vmm_strcmp(argv[1], "halt") == 0) {
-		if (num == -1) {
-			for (num = 0; num < count; num++) {
-				ret = cmd_guest_halt(num);
+		if (id == -1) {
+			for (id = 0; id < count; id++) {
+				ret = cmd_guest_halt(id);
 				if (ret) {
 					return ret;
 				}
 			}
 		} else {
-			return cmd_guest_halt(num);
+			return cmd_guest_halt(id);
 		}
 	} else if (vmm_strcmp(argv[1], "dumpreg") == 0) {
-		if (num == -1) {
-			for (num = 0; num < count; num++) {
-				ret = cmd_guest_dumpreg(num);
+		if (id == -1) {
+			for (id = 0; id < count; id++) {
+				ret = cmd_guest_dumpreg(id);
 				if (ret) {
 					return ret;
 				}
 			}
 		} else {
-			return cmd_guest_dumpreg(num);
+			return cmd_guest_dumpreg(id);
 		}
 	} else if (vmm_strcmp(argv[1], "load") == 0) {
-		if (num == -1) {
+		if (id == -1) {
 			vmm_printf("Error: Cannot load images in all guests simultaneously.\n");
 			return VMM_EFAIL;
 		}
@@ -306,7 +306,7 @@ int cmd_guest_exec(int argc, char **argv)
 		dest_addr = vmm_str2uint(argv[4], 16);
 		size = vmm_str2uint(argv[5], 16);
 
-		return cmd_guest_load(num, src_addr, dest_addr, size);
+		return cmd_guest_load(id, src_addr, dest_addr, size);
 	} else {
 		cmd_guest_usage();
 		return VMM_EFAIL;

@@ -43,10 +43,10 @@ u32 vmm_manager_vcpu_count(void)
 	return mngr.vcpu_count;
 }
 
-vmm_vcpu_t * vmm_manager_vcpu(s32 vcpu_no)
+vmm_vcpu_t * vmm_manager_vcpu(u32 vcpu_id)
 {
-	if (-1 < vcpu_no && vcpu_no < mngr.vcpu_count) {
-		return &mngr.vcpu_array[vcpu_no];
+	if (vcpu_id < mngr.vcpu_count) {
+		return &mngr.vcpu_array[vcpu_id];
 	}
 	return NULL;
 }
@@ -225,10 +225,10 @@ u32 vmm_manager_guest_count(void)
 	return mngr.guest_count;
 }
 
-vmm_guest_t * vmm_manager_guest(s32 guest_no)
+vmm_guest_t * vmm_manager_guest(u32 guest_id)
 {
-	if (-1 < guest_no && guest_no < mngr.guest_count) {
-		return &mngr.guest_array[guest_no];
+	if (guest_id < mngr.guest_count) {
+		return &mngr.guest_array[guest_id];
 	}
 	return NULL;
 }
