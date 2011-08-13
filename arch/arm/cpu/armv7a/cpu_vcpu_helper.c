@@ -668,7 +668,7 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	} else {
 		vcpu->uregs->cpsr = CPSR_COND_ZERO_MASK |
 		    CPSR_ASYNC_ABORT_DISABLED | CPSR_MODE_SUPERVISOR;
-		vcpu->uregs->sp = (u32) vmm_malloc(0x800) + 0x800 - 0x100;
+		vcpu->uregs->sp = vcpu->start_sp;
 	}
 	/* Initialize Supervisor Mode Registers */
 	/* For only Normal VCPUs */
