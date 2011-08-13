@@ -123,7 +123,7 @@ int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
         if (vcpu->guest == NULL) {
 		/* For hypercore */
                 vcpu->uregs->cp0_epc = vcpu->start_pc;
-                vcpu->uregs->regs[SP_IDX] = (virtual_addr_t)&_stack_start;
+                vcpu->uregs->regs[SP_IDX] = vcpu->start_sp;
 		vcpu->uregs->regs[S8_IDX] = vcpu->uregs->regs[SP_IDX];
 		vcpu->uregs->cp0_status = read_c0_status();
 		vcpu->uregs->cp0_entryhi = read_c0_entryhi();
