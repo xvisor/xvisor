@@ -44,7 +44,7 @@ static void vmm_threads_entry(void)
 	}
 
 	/* Sanity check */
-	tinfo = vmm_threads_id2thread(vcpu->num);
+	tinfo = vmm_threads_id2thread(vcpu->id);
 	if (!tinfo) {
 		vmm_panic("Error: Null thread at thread entry.\n");
 	}
@@ -135,7 +135,7 @@ u32 vmm_threads_get_id(vmm_thread_t * tinfo)
 		return 0;
 	}
 
-	return tinfo->tvcpu->num;
+	return tinfo->tvcpu->id;
 }
 
 int vmm_threads_get_name(char * dst, vmm_thread_t * tinfo)
@@ -183,7 +183,7 @@ vmm_thread_t *vmm_threads_id2thread(u32 tid)
 
 	list_for_each(l, &thctrl.thread_list) {
 		ret = list_entry(l, vmm_thread_t, head);
-		if (ret->tvcpu->num == tid) {
+		if (ret->tvcpu->id == tid) {
 			found = TRUE;
 			break;
 		}

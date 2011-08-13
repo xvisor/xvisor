@@ -174,7 +174,7 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 
 	/* Update vcpu attributes */
 	INIT_SPIN_LOCK(&vcpu->lock);
-	vcpu->index = 0;
+	vcpu->subid = 0;
 	vmm_strcpy(vcpu->name, name);
 	vcpu->node = NULL;
 	vcpu->state = VMM_VCPU_STATE_READY;
@@ -242,19 +242,19 @@ u32 vmm_manager_guest_vcpu_count(vmm_guest_t *guest)
 	return guest->vcpu_count;
 }
 
-vmm_vcpu_t * vmm_manager_guest_vcpu(vmm_guest_t *guest, int index)
+vmm_vcpu_t * vmm_manager_guest_vcpu(vmm_guest_t *guest, u32 subid)
 {
 	bool found = FALSE;
 	vmm_vcpu_t *vcpu = NULL;
-	struct dlist *lentry;
+	struct dlist *l;
 
-	if (!guest || (index < 0)) {
+	if (!guest) {
 		return NULL;
 	}
 
-	list_for_each(lentry, &guest->vcpu_list) {
-		vcpu = list_entry(lentry, vmm_vcpu_t, head);
-		if (vcpu->index == index) {
+	list_for_each(l, &guest->vcpu_list) {
+		vcpu = list_entry(l, vmm_vcpu_t, head);
+		if (vcpu->subid == subid) {
 			found = TRUE;
 			break;
 		}
@@ -436,7 +436,7 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		vcpu = &mngr.vcpu_array[mngr.vcpu_count];
 		list_add_tail(&guest->vcpu_list, &vcpu->head);
 		INIT_SPIN_LOCK(&vcpu->lock);
-		vcpu->index = guest->vcpu_count;
+		vcpu->subid = guest->vcpu_count;
 		vmm_strcpy(vcpu->name, gnode->name);
 		vmm_strcat(vcpu->name,
 			   VMM_DEVTREE_PATH_SEPRATOR_STRING);
@@ -551,7 +551,7 @@ int vmm_manager_init(void)
 		vmm_memset(&mngr.guest_array[gnum], 0, sizeof(vmm_guest_t));
 		INIT_LIST_HEAD(&mngr.guest_array[gnum].head);
 		INIT_SPIN_LOCK(&mngr.guest_array[gnum].lock);
-		mngr.guest_array[gnum].num = gnum;
+		mngr.guest_array[gnum].id = gnum;
 		mngr.guest_array[gnum].node = NULL;
 		INIT_LIST_HEAD(&mngr.guest_array[gnum].vcpu_list);
 	}
@@ -565,7 +565,7 @@ int vmm_manager_init(void)
 		vmm_memset(&mngr.vcpu_array[vnum], 0, sizeof(vmm_vcpu_t));
 		INIT_LIST_HEAD(&mngr.vcpu_array[vnum].head);
 		INIT_SPIN_LOCK(&mngr.vcpu_array[vnum].lock);
-		mngr.vcpu_array[vnum].num = vnum;
+		mngr.vcpu_array[vnum].id = vnum;
 		vmm_strcpy(mngr.vcpu_array[vnum].name, "");
 		mngr.vcpu_array[vnum].node = NULL;
 		mngr.vcpu_array[vnum].state = VMM_VCPU_STATE_UNKNOWN;

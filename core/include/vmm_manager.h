@@ -69,7 +69,7 @@ struct vmm_vcpu_irqs {
 struct vmm_guest {
 	struct dlist head;
 	vmm_spinlock_t lock;
-	u32 num;
+	u32 id;
 	vmm_devtree_node_t *node;
 	u32 vcpu_count;
 	struct dlist vcpu_list;
@@ -93,8 +93,8 @@ enum vmm_vcpu_states {
 struct vmm_vcpu {
 	struct dlist head;
 	vmm_spinlock_t lock;
-	u32 num;
-	int index;
+	u32 id;
+	u32 subid;
 	char name[64];
 	vmm_devtree_node_t *node;
 	vmm_guest_t *guest;
@@ -169,8 +169,8 @@ vmm_guest_t * vmm_manager_guest(s32 guest_no);
 /** Number of vcpus belonging to a given guest */
 u32 vmm_manager_guest_vcpu_count(vmm_guest_t *guest);
 
-/** Retrive vcpu belonging to a given guest with particular index */
-vmm_vcpu_t * vmm_manager_guest_vcpu(vmm_guest_t *guest, int index);
+/** Retrive vcpu belonging to a given guest with particular subid */
+vmm_vcpu_t * vmm_manager_guest_vcpu(vmm_guest_t *guest, u32 subid);
 
 /** Reset a guest */
 int vmm_manager_guest_reset(vmm_guest_t * guest);
