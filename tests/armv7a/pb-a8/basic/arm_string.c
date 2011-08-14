@@ -49,3 +49,18 @@ void arm_int2str(char * dst, u32 src)
 
 	dst[pos] = '\0';
 }
+
+void arm_longlong2str(char *dst, u64 src)
+{
+	int pos = 0;
+	char hexchars[] = "0123456789ABCDEF";
+
+	while (pos < 16) {
+		dst[pos] = hexchars[(src >> 60) & 0xF];
+		pos++;
+		src = src << 4;
+	}
+
+	dst[pos] = '\0';
+}
+

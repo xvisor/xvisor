@@ -85,11 +85,21 @@ void arm_cmd_sysctl(void)
 void arm_cmd_timer(void)
 {
 	char str[32];
-	u32 irq_count;
+	u64 irq_count, tstamp, ratio;
 	irq_count = arm_timer_irqcount();
+	tstamp = arm_timer_timestamp();
+	ratio = tstamp / irq_count;
 	arm_puts("Timer Information ...\n");
-	arm_puts("  IRQ Count: 0x");
-	arm_int2str(str, irq_count);
+	arm_puts("  Timer IRQ:  0x");
+	arm_longlong2str(str, irq_count);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  Time Stamp: 0x");
+	arm_longlong2str(str, tstamp);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  Time Ratio: 0x");
+	arm_longlong2str(str, ratio);
 	arm_puts(str);
 	arm_puts("\n");
 }

@@ -29,5 +29,6 @@
 
 int arm_strcmp(const char *a, const char *b);
 void arm_int2str(char * dst, u32 src);
+void arm_longlong2str(char * dst, u64 src);
 
 #endif /* __ARM_STRING_H_ */
