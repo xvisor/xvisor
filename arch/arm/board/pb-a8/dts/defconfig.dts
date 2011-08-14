@@ -115,6 +115,40 @@
 					compatible = "primecell,sp810";
 				};
 
+				uart0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10009000>;
+					host_physical_addr = <0x00000000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <256>;
+					irq = <45>;
+				};
+
+				timer0_1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10011000>;
+					host_physical_addr = <0x00000000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <36>;
+				};
+
+				timer2_3 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10012000>;
+					host_physical_addr = <0x00000000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <37>;
+				};
+
 				sysctrl1 {
 					manifest_type = "virtual";
 					address_type = "memory";
@@ -134,29 +168,6 @@
 					device_type = "pic";
 					compatible = "realview,gic";
 					parent_irq = <6>;
-				};
-
-				timer0_1 {
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x10011000>;
-					host_physical_addr = <0x00000000>;
-					physical_size = <0x1000>;
-					device_type = "timer";
-					compatible = "primecell,sp804";
-					irq = <36>;
-				};
-
-				uart0 {
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x10009000>;
-					host_physical_addr = <0x00000000>;
-					physical_size = <0x1000>;
-					device_type = "serial";
-					compatible = "primecell,arm,pl011";
-					fifo_size = <256>;
-					irq = <45>;
 				};
 			};
 		};
