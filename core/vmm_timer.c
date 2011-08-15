@@ -97,6 +97,7 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 		if (ev->expiry_timestamp < e->expiry_timestamp) {
 			list_add_tail(&e->cpu_head, &ev->cpu_head);
 			added = TRUE;
+			break;
 		}
 	}
 	if (!added) {
@@ -130,6 +131,7 @@ int vmm_timer_event_restart(vmm_timer_event_t * ev)
 		if (ev->expiry_timestamp < e->expiry_timestamp) {
 			list_add_tail(&e->cpu_head, &ev->cpu_head);
 			added = TRUE;
+			break;
 		}
 	}
 	if (!added) {

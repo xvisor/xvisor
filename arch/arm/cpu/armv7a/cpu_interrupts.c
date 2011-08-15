@@ -159,8 +159,8 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	if (rc) {
 		vmm_printf("\n");
 		vmm_printf("%s: error %d\n", __func__, rc);
-		vmm_printf("%s: vcpu_num = %d, ifar = 0x%x, ifsr = 0x%x\n", 
-				__func__, vcpu->num, ifar, ifsr);
+		vmm_printf("%s: vcpu_id = %d, ifar = 0x%x, ifsr = 0x%x\n", 
+				__func__, vcpu->id, ifar, ifsr);
 	}
 
 	vmm_scheduler_irq_process(uregs);
@@ -234,8 +234,8 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	if (rc) {
 		vmm_printf("\n");
 		vmm_printf("%s: error %d\n", __func__, rc);
-		vmm_printf("%s: vcpu_num = %d, dfar = 0x%x, dfsr = 0x%x\n", 
-				__func__, vcpu->num, dfar, dfsr);
+		vmm_printf("%s: vcpu_id = %d, dfar = 0x%x, dfsr = 0x%x\n", 
+				__func__, vcpu->id, dfar, dfsr);
 	}
 
 	vmm_scheduler_irq_process(uregs);

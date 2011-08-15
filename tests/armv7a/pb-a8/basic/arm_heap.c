@@ -16,21 +16,27 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_string.h
+ * @file arm_heap.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief Header file for common string functions
+ * @brief source file for heap managment
  */
 
-#ifndef __ARM_STRING_H_
-#define __ARM_STRING_H_
+#include <arm_heap.h>
 
-#include <arm_types.h>
+void * heap_curr;
+extern u8 _heap_start;
 
-char *arm_strcpy(char *dest, const char *src);
-int arm_strcmp(const char *a, const char *b);
-void arm_int2str(char * dst, int src);
-void arm_uint2hexstr(char * dst, unsigned int src);
-void arm_ulonglong2hexstr(char * dst, unsigned long long src);
+void * arm_malloc(size_t size)
+{
+	void * retval;
+	retval = heap_curr;
+	heap_curr += size;
+	return retval;
+}
 
-#endif /* __ARM_STRING_H_ */
+void arm_heap_init(void)
+{
+	heap_curr = &_heap_start;
+}
+

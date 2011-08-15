@@ -23,14 +23,18 @@
  */
 
 #include <arm_io.h>
+#include <arm_heap.h>
 #include <arm_irq.h>
 #include <arm_timer.h>
 #include <arm_string.h>
 #include <arm_stdio.h>
+#include "dhry.h"
 
 /* Works in supervisor mode */
 void arm_init(void)
 {
+	arm_heap_init();
+
 	arm_irq_setup();
 
 	arm_irq_enable();
@@ -45,11 +49,12 @@ void arm_init(void)
 void arm_cmd_help(void)
 {
 	arm_puts("List of commands: \n");
-	arm_puts("help   - List commands and their usage\n");
-	arm_puts("hi     - Say hi to ARM test code\n");
-	arm_puts("hello  - Say hello to ARM test code\n");
-	arm_puts("sysctl - Display sysctl registers\n");
-	arm_puts("timer  - Display timer information\n");
+	arm_puts("help      - List commands and their usage\n");
+	arm_puts("hi        - Say hi to ARM test code\n");
+	arm_puts("hello     - Say hello to ARM test code\n");
+	arm_puts("sysctl    - Display sysctl registers\n");
+	arm_puts("timer     - Display timer information\n");
+	arm_puts("dhrystone - Run dhrystone 2.1 benchmark\n");
 	arm_puts("reset  - Reset the system\n");
 }
 
@@ -73,11 +78,11 @@ void arm_cmd_sysctl(void)
 					REALVIEW_SYS_24MHz_OFFSET));
 	arm_puts("Sysctl Registers ...\n");
 	arm_puts("  SYS_100Hz: 0x");
-	arm_int2str(str, sys_100hz);
+	arm_uint2hexstr(str, sys_100hz);
 	arm_puts(str);
 	arm_puts("\n");
 	arm_puts("  SYS_24MHz: 0x");
-	arm_int2str(str, sys_24mhz);
+	arm_uint2hexstr(str, sys_24mhz);
 	arm_puts(str);
 	arm_puts("\n");
 }
@@ -85,13 +90,28 @@ void arm_cmd_sysctl(void)
 void arm_cmd_timer(void)
 {
 	char str[32];
-	u32 irq_count;
+	u64 irq_count, tstamp, ratio;
 	irq_count = arm_timer_irqcount();
+	tstamp = arm_timer_timestamp();
+	ratio = tstamp / irq_count;
 	arm_puts("Timer Information ...\n");
-	arm_puts("  IRQ Count: 0x");
-	arm_int2str(str, irq_count);
+	arm_puts("  Timer IRQ:  0x");
+	arm_ulonglong2hexstr(str, irq_count);
 	arm_puts(str);
 	arm_puts("\n");
+	arm_puts("  Time Stamp: 0x");
+	arm_ulonglong2hexstr(str, tstamp);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  Time Ratio: 0x");
+	arm_ulonglong2hexstr(str, ratio);
+	arm_puts(str);
+	arm_puts("\n");
+}
+
+void arm_cmd_dhrystone(void)
+{
+	dhry_main(1000000);
 }
 
 void arm_cmd_reset(void)
@@ -134,6 +154,8 @@ void arm_main(void)
 			arm_cmd_sysctl();
 		} else if (arm_strcmp(line, "timer") == 0) {
 			arm_cmd_timer();
+		} else if (arm_strcmp(line, "dhrystone") == 0) {
+			arm_cmd_dhrystone();
 		} else if (arm_strcmp(line, "reset") == 0) {
 			arm_cmd_reset();
 		}

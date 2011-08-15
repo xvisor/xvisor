@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Pranav Sawargaonkar.
+ * Copyright (c) 2011 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,14 +18,14 @@
  *
  * @file vmm_cpu.h
  * @version 1.0
- * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
+ * @author Anup Patel (anup@brainfault.org)
  * @brief header file for CPU functions required by VMM
  */
 #ifndef _VMM_CPU_H__
 #define _VMM_CPU_H__
 
 #include <vmm_types.h>
-#include <vmm_hyperthreads.h>
+#include <vmm_manager.h>
 #include <cpu_locks.h>
 
 /** CPU related functions required by VMM core */
@@ -37,14 +37,6 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu);
 void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 			  vmm_vcpu_t * vcpu, vmm_user_regs_t * regs);
 void vmm_vcpu_regs_dump(vmm_vcpu_t * vcpu);
-
-/** Hyperthread related functions required by VMM core */
-int vmm_hyperthread_regs_init(vmm_hyperthread_t * tinfo, void *udata);
-void vmm_hyperthread_regs_switch(vmm_hyperthread_t * tthread,
-				 vmm_hyperthread_t * thread,
-				 vmm_user_regs_t * regs);
-vmm_hyperthread_t *vmm_hyperthread_uregs2thread(vmm_user_regs_t * tregs);
-vmm_hyperthread_t *vmm_hyperthread_context2thread(void);
 
 /** Host address space related functions required by VMM core */
 int vmm_cpu_aspace_init(void);

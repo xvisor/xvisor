@@ -267,7 +267,7 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 					 */
 					if (arm_feature(vcpu, ARM_FEATURE_V7) ||
 						arm_cpuid(vcpu) == ARM_CPUID_ARM11MPCORE) {
-						int mpidr = vcpu->index;
+						int mpidr = vcpu->subid;
 						/* We don't support setting cluster ID ([8..11])
 						 * so these bits always RAZ.
 						 */
@@ -858,7 +858,7 @@ void cpu_vcpu_cp15_sync_cpsr(vmm_vcpu_t * vcpu)
 		vcpu->sregs->cp15.dacr |= 
 		(TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER));
 	}
-	if (cvcpu->num == vcpu->num) {
+	if (cvcpu->id == vcpu->id) {
 		cpu_mmu_chdacr(vcpu->sregs->cp15.dacr);
 	}
 }

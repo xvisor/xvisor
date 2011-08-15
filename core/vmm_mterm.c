@@ -30,8 +30,6 @@
 #include <vmm_devtree.h>
 #include <vmm_scheduler.h>
 #include <vmm_mterm.h>
-#include <vmm_board.h>
-#include <vmm_wait.h>
 
 #define VMM_CMD_STRING_SIZE	256
 #define VMM_CMD_DELIM_CHAR	';'
@@ -111,7 +109,7 @@ int vmm_mterm_proc_cmdstr(char *cmds)
 	return VMM_OK;
 }
 
-void vmm_mterm_main(void *udata)
+int vmm_mterm_main(void *udata)
 {
 	size_t cmds_len;
 	char cmds[VMM_CMD_STRING_SIZE];
@@ -136,12 +134,16 @@ void vmm_mterm_main(void *udata)
 		/* Process command string */
 		vmm_mterm_proc_cmdstr(cmds);
 	}
+
+	return VMM_OK;
 }
 
 int vmm_mterm_init(void)
 {
 	int ret;
-	u32 i;
+	u32 i, mterm_time_slice;
+	vmm_devtree_node_t * node;
+	const char * attrval;
 
 	/* Reset the control structure */
 	vmm_memset(&mterm_ctrl, 0, sizeof(mterm_ctrl));
@@ -173,16 +175,30 @@ int vmm_mterm_init(void)
 		}
 	}
 
-	/* Create mterm thread */
-	mterm_ctrl.thread =
-	    vmm_hyperthread_create("mterm", (void *)&vmm_mterm_main, NULL);
+	/* Retrive mterm time slice */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
+				   VMM_DEVTREE_VMMINFO_NODE_NAME);
+	if (!node) {
+		return VMM_EFAIL;
+	}
+	attrval = vmm_devtree_attrval(node,
+				      VMM_DEVTREE_MTERM_TIME_SLICE_ATTR_NAME);
+	if (!attrval) {
+		return VMM_EFAIL;
+	}
+	mterm_time_slice = *((u32 *) attrval);
 
+	/* Create mterm thread */
+	mterm_ctrl.thread = vmm_threads_create("mterm", 
+					       &vmm_mterm_main, 
+					       NULL, 
+					       mterm_time_slice);
 	if (!mterm_ctrl.thread) {
 		vmm_panic("Creation of system critical thread failed.\n");
 	}
 
-	/* Mark the mterm thread runnable */
-	vmm_hyperthread_run(mterm_ctrl.thread);
+	/* Start the mterm thread */
+	vmm_threads_start(mterm_ctrl.thread);
 
 	return VMM_OK;
 }
