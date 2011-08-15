@@ -111,7 +111,9 @@ void arm_cmd_timer(void)
 
 void arm_cmd_dhrystone(void)
 {
+	arm_timer_disable();
 	dhry_main(1000000);
+	arm_timer_enable();
 }
 
 void arm_cmd_reset(void)
