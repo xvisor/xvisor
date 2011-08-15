@@ -33,17 +33,21 @@ vmm_timer_ctrl_t tctrl;
 
 void vmm_timer_tick_process(vmm_user_regs_t * regs)
 {
+	u64 current_timestamp;
 	struct dlist *l;
 	vmm_timer_event_t *e;
 
 	/* Increment timestamp */
 	tctrl.timestamp += tctrl.tick_nsecs;
 
+	/* Current timestamp */
+	current_timestamp = vmm_timer_timestamp();
+
 	/* Update active events */
 	while (!list_empty(&tctrl.cpu_event_list)) {
 		l = list_pop(&tctrl.cpu_event_list);
 		e = list_entry(l, vmm_timer_event_t, cpu_head);
-		if (e->expiry_timestamp <= tctrl.timestamp) {
+		if (e->expiry_timestamp <= current_timestamp) {
 			e->expiry_timestamp = 0;
 			e->active = FALSE;
 			e->cpu_regs = regs;
@@ -56,9 +60,14 @@ void vmm_timer_tick_process(vmm_user_regs_t * regs)
 	}
 }
 
-u64 vmm_timer_timestamp(void)
+u64 __attribute__((weak)) vmm_cpu_timer_timestamp(void)
 {
 	return tctrl.timestamp;
+}
+
+u64 vmm_timer_timestamp(void)
+{
+	return vmm_cpu_timer_timestamp();
 }
 
 int vmm_timer_adjust_timestamp(u64 timestamp)
@@ -354,7 +363,7 @@ int vmm_timer_init(void)
 	/* Initialize event list */
 	INIT_LIST_HEAD(&tctrl.event_list);
 
-	return VMM_OK;
+	return vmm_cpu_timer_init();
 }
 
 
