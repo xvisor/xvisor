@@ -43,12 +43,6 @@
 
 unsigned long long jiffies;
 
-int vmm_cpu_timer_setup(u64 tick_nsecs)
-{
-        jiffies = 0;
-	return VMM_OK;
-}
-
 void vmm_cpu_timer_enable(void)
 {
 	u32 sr = read_c0_status();
@@ -72,3 +66,15 @@ s32 handle_internal_timer_interrupt(vmm_user_regs_t *uregs)
 	write_c0_compare(read_c0_count() + VMM_COUNTER_JIFFIES);
         return 0;
 }
+
+int vmm_cpu_timer_setup(u64 tick_nsecs)
+{
+        jiffies = 0;
+	return VMM_OK;
+}
+
+int vmm_cpu_timer_init(void)
+{
+	return VMM_OK;
+}
+
