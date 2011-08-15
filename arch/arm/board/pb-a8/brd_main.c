@@ -34,7 +34,6 @@
 
 extern u32 dt_blob_start;
 virtual_addr_t pba8_sys_base;
-virtual_addr_t pba8_sctl_base;
 
 int vmm_devtree_populate(vmm_devtree_node_t ** root,
 			 char **string_buffer, size_t * string_buffer_size)
@@ -96,46 +95,12 @@ int vmm_board_final_init(void)
 {
 	int rc;
 	vmm_devtree_node_t *node;
-	virtual_addr_t timer_base;
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
 	/* Map control registers */
 	pba8_sys_base = vmm_host_iomap(REALVIEW_SYS_BASE, 0x1000);
-	pba8_sctl_base = vmm_host_iomap(REALVIEW_SCTL_BASE, 0x1000);
-
-	/* Initialize Realview timers */
-	timer_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
-	rc = realview_timer_init(pba8_sctl_base, timer_base,
-				 REALVIEW_TIMER1_EnSel);
-	if (rc) {
-		return rc;
-	}
-	rc = realview_timer_init(pba8_sctl_base, timer_base + 0x20,
-				 REALVIEW_TIMER2_EnSel);
-	if (rc) {
-		return rc;
-	}
-	rc = vmm_host_iounmap(timer_base, 0x1000);
-	if (rc) {
-		return rc;
-	}
-	timer_base = vmm_host_iomap(REALVIEW_PBA8_TIMER2_3_BASE, 0x1000);
-	rc = realview_timer_init(pba8_sctl_base, timer_base,
-				 REALVIEW_TIMER3_EnSel);
-	if (rc) {
-		return rc;
-	}
-	rc = realview_timer_init(pba8_sctl_base, timer_base + 0x20,
-				 REALVIEW_TIMER4_EnSel);
-	if (rc) {
-		return rc;
-	}
-	rc = vmm_host_iounmap(timer_base, 0x1000);
-	if (rc) {
-		return rc;
-	}
 
 	/* Unlock Lockable reigsters */
 	vmm_writel(REALVIEW_SYS_LOCKVAL, 

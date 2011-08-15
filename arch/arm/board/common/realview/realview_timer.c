@@ -46,29 +46,20 @@ void realview_timer_disable(virtual_addr_t base)
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 }
 
-void realview_timer_clearirq(virtual_addr_t base)
+void realview_timer_event_clearirq(virtual_addr_t base)
 {
 	vmm_writel(1, (void *)(base + TIMER_INTCLR));
 }
 
-int realview_timer_setup(virtual_addr_t base,
-			 u64 nsecs,
-			 u32 hirq, vmm_host_irq_handler_t hirq_handler)
+int realview_timer_event_setup(virtual_addr_t base, u64 nsecs)
 {
-	int ret;
 	u32 ctrl, usecs;
 
 	/* Expected microseconds */
 	usecs = nsecs / 1000;
 
-	/* Register interrupt handler */
-	ret = vmm_host_irq_register(hirq, hirq_handler);
-	if (ret) {
-		return ret;
-	}
-
+	/* Setup the registers */
 	ctrl = vmm_readl((void *)(base + TIMER_CTRL));
-	ctrl &= ~TIMER_CTRL_ENABLE;
 	ctrl |= (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE);
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 	vmm_writel(usecs, (void *)(base + TIMER_LOAD));
@@ -77,9 +68,31 @@ int realview_timer_setup(virtual_addr_t base,
 	return VMM_OK;
 }
 
-int realview_timer_init(virtual_addr_t sctl_base,
-			virtual_addr_t base, u32 ensel)
+u32 realview_timer_counter_value(virtual_addr_t base)
 {
+	return vmm_readl((void *)(base + TIMER_VALUE));
+}
+
+int realview_timer_counter_setup(virtual_addr_t base)
+{
+	u32 ctrl;
+
+	vmm_writel(0x0, (void *)(base + TIMER_CTRL));
+	vmm_writel(0xFFFFFFFF, (void *)(base + TIMER_LOAD));
+	vmm_writel(0xFFFFFFFF, (void *)(base + TIMER_VALUE));
+	ctrl = (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC);
+	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
+	
+	return VMM_OK;
+}
+
+int realview_timer_init(virtual_addr_t sctl_base,
+			virtual_addr_t base, 
+			u32 ensel,
+			u32 hirq,
+			vmm_host_irq_handler_t hirq_handler)
+{
+	int ret = VMM_OK;
 	u32 val;
 
 	/* 
@@ -95,5 +108,10 @@ int realview_timer_init(virtual_addr_t sctl_base,
 	 */
 	vmm_writel(0, (void *)(base + TIMER_CTRL));
 
-	return VMM_OK;
+	/* Register interrupt handler */
+	if (hirq_handler) {
+		ret = vmm_host_irq_register(hirq, hirq_handler);
+	}
+
+	return ret;
 }
