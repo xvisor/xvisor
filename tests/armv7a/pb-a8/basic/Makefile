@@ -48,12 +48,17 @@ ARM_OBJCOPY=$(ARM_CROSS_COMPILE)objcopy
 
 ARM_TEST_OBJS=$(obj_dir)/arm_entry.o \
 		$(obj_dir)/arm_main.o \
+		$(obj_dir)/arm_heap.o \
 		$(obj_dir)/arm_irq.o \
 		$(obj_dir)/arm_stdio.o \
 		$(obj_dir)/arm_string.o \
 		$(obj_dir)/arm_gic.o \
 		$(obj_dir)/arm_timer.o \
-		$(obj_dir)/arm_pl01x.o
+		$(obj_dir)/arm_pl01x.o \
+		$(obj_dir)/dhry_1.o \
+		$(obj_dir)/dhry_2.o \
+		$(obj_dir)/dhry_port.o
+
 ARM_TEST_CPPFLAGS=-DARM_TEST_BOOT
 ARM_TEST_CFLAGS=$(ARM_TEST_CPPFLAGS)
 ARM_TEST_ASFLAGS=$(ARM_TEST_CPPFLAGS)
