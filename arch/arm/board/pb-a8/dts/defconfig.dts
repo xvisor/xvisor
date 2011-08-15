@@ -77,7 +77,7 @@
 				vcpu0 {
 					device_type = "vcpu";
 					model = "ARMv7a,cortex-a8";
-					time_slice = <20000000>;
+					time_slice = <98000000>;
 					start_pc = <0x00100000>;
 				};
 			};
@@ -123,7 +123,7 @@
 					physical_size = <0x1000>;
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
-					fifo_size = <1024>;
+					fifo_size = <2000>;
 					irq = <45>;
 				};
 

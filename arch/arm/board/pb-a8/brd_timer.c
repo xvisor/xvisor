@@ -30,32 +30,102 @@
 #include <pba8_board.h>
 #include <realview/realview_timer.h>
 
-virtual_addr_t pba8_cpu_timer_base;
+virtual_addr_t pba8_timer0_base;
+virtual_addr_t pba8_timer1_base;
+virtual_addr_t pba8_timer2_base;
+virtual_addr_t pba8_timer3_base;
 
 void vmm_cpu_timer_enable(void)
 {
-	realview_timer_enable(pba8_cpu_timer_base);
+	realview_timer_enable(pba8_timer0_base);
 }
 
 void vmm_cpu_timer_disable(void)
 {
-	realview_timer_disable(pba8_cpu_timer_base);
+	realview_timer_disable(pba8_timer0_base);
+}
+
+u64 vmm_cpu_timer_timestamp(void)
+{
+	u32 val = 0xFFFFFFFF - realview_timer_counter_value(pba8_timer3_base);
+	return ((u64)val * (u64)1000);
 }
 
 int pba8_timer_handler(u32 irq_no, vmm_user_regs_t * regs)
 {
 	vmm_timer_tick_process(regs);
 
-	realview_timer_clearirq(pba8_cpu_timer_base);
+	realview_timer_event_clearirq(pba8_timer0_base);
 
 	return VMM_OK;
 }
 
 int vmm_cpu_timer_setup(u32 tick_nsecs)
 {
-	pba8_cpu_timer_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE,
-					     0x1000);
-	return realview_timer_setup(pba8_cpu_timer_base,
-				    tick_nsecs,
-				    IRQ_PBA8_TIMER0_1, &pba8_timer_handler);
+	return realview_timer_event_setup(pba8_timer0_base, tick_nsecs);
 }
+
+int vmm_cpu_timer_init(void)
+{
+	int rc;
+	virtual_addr_t sctl_base;
+
+	/* Map control registers */
+	sctl_base = vmm_host_iomap(REALVIEW_SCTL_BASE, 0x1000);
+
+	/* Map timer registers */
+	pba8_timer0_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
+	pba8_timer1_base = pba8_timer0_base + 0x20;
+	pba8_timer2_base = vmm_host_iomap(REALVIEW_PBA8_TIMER2_3_BASE, 0x1000);
+	pba8_timer3_base = pba8_timer2_base + 0x20;
+
+	/* Initialize timers */
+	rc = realview_timer_init(sctl_base, 
+				 pba8_timer0_base,
+				 REALVIEW_TIMER1_EnSel,
+				 IRQ_PBA8_TIMER0_1,
+				 &pba8_timer_handler);
+	if (rc) {
+		return rc;
+	}
+	rc = realview_timer_init(sctl_base, 
+				 pba8_timer1_base,
+				 REALVIEW_TIMER2_EnSel,
+				 IRQ_PBA8_TIMER0_1,
+				 NULL);
+	if (rc) {
+		return rc;
+	}
+	rc = realview_timer_init(sctl_base, 
+				 pba8_timer2_base,
+				 REALVIEW_TIMER3_EnSel,
+				 IRQ_PBA8_TIMER2_3,
+				 NULL);
+	if (rc) {
+		return rc;
+	}
+	rc = realview_timer_init(sctl_base, 
+				 pba8_timer3_base,
+				 REALVIEW_TIMER4_EnSel,
+				 IRQ_PBA8_TIMER2_3,
+				 NULL);
+	if (rc) {
+		return rc;
+	}
+
+	/* Unmap control register */
+	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	if (rc) {
+		return rc;
+	}
+
+	/* Configure timer3 as free running source */
+	rc = realview_timer_counter_setup(pba8_timer3_base);
+	if (rc) {
+		return rc;
+	}
+	realview_timer_enable(pba8_timer3_base);
+
+	return VMM_OK;
+}
+
