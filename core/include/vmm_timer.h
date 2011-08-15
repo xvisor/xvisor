@@ -34,11 +34,11 @@ typedef struct vmm_timer_event vmm_timer_event_t;
 typedef void (*vmm_timer_event_handler_t) (vmm_timer_event_t * event);
 
 struct vmm_timer_event {
+	struct dlist cpu_head;
 	struct dlist head;
+	vmm_user_regs_t * cpu_regs;
 	char name[32];
 	bool active;
-	struct dlist cpu_head;
-	vmm_user_regs_t * cpu_regs;
 	u64 expiry_timestamp;
 	u64 duration_nsecs;
 	vmm_timer_event_handler_t handler;

@@ -34,29 +34,29 @@ void cmd_vcpu_usage(void)
 	vmm_printf("Usage:\n");
 	vmm_printf("   vcpu help\n");
 	vmm_printf("   vcpu list\n");
-	vmm_printf("   vcpu reset   <vcpu_num>\n");
-	vmm_printf("   vcpu kick    <vcpu_num>\n");
-	vmm_printf("   vcpu pause   <vcpu_num>\n");
-	vmm_printf("   vcpu resume  <vcpu_num>\n");
-	vmm_printf("   vcpu halt    <vcpu_num>\n");
-	vmm_printf("   vcpu dumpreg <vcpu_num>\n");
+	vmm_printf("   vcpu reset   <vcpu_id>\n");
+	vmm_printf("   vcpu kick    <vcpu_id>\n");
+	vmm_printf("   vcpu pause   <vcpu_id>\n");
+	vmm_printf("   vcpu resume  <vcpu_id>\n");
+	vmm_printf("   vcpu halt    <vcpu_id>\n");
+	vmm_printf("   vcpu dumpreg <vcpu_id>\n");
 }
 
 void cmd_vcpu_list()
 {
-	int num, count;
+	int id, count;
 	char state[10];
 	char path[256];
 	vmm_vcpu_t *vcpu;
 	vmm_printf("----------------------------------------"
 		   "----------------------------------------\n");
 	vmm_printf("| %-5s| %-9s| %-16s| %-41s|\n", 
-		   "Num", "State", "Name", "Device Path");
+		   "ID ", "State", "Name", "Device Path");
 	vmm_printf("----------------------------------------"
 		   "----------------------------------------\n");
 	count = vmm_manager_vcpu_count();
-	for (num = 0; num < count; num++) {
-		vcpu = vmm_manager_vcpu(num);
+	for (id = 0; id < count; id++) {
+		vcpu = vmm_manager_vcpu(id);
 		switch (vcpu->state) {
 		case VMM_VCPU_STATE_UNKNOWN:
 			vmm_strcpy(state, "Unknown");
@@ -83,20 +83,20 @@ void cmd_vcpu_list()
 		if (vcpu->guest) {
 			vmm_devtree_getpath(path, vcpu->node);
 			vmm_printf("| %-5d| %-9s| %-16s| %-41s|\n", 
-				   num, state, vcpu->name, path);
+				   id, state, vcpu->name, path);
 		} else {
 			vmm_printf("| %-5d| %-9s| %-16s| %-41s|\n", 
-				   num, state, vcpu->name, "(NA)");
+				   id, state, vcpu->name, "(NA)");
 		}
 	}
 	vmm_printf("----------------------------------------"
 		   "----------------------------------------\n");
 }
 
-int cmd_vcpu_reset(int num)
+int cmd_vcpu_reset(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		if ((ret = vmm_manager_vcpu_reset(vcpu))) {
 			vmm_printf("%s: Failed to reset\n", vcpu->name);
@@ -109,10 +109,10 @@ int cmd_vcpu_reset(int num)
 	return ret;
 }
 
-int cmd_vcpu_kick(int num)
+int cmd_vcpu_kick(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		if ((ret = vmm_manager_vcpu_kick(vcpu))) {
 			vmm_printf("%s: Failed to kick\n", vcpu->name);
@@ -125,10 +125,10 @@ int cmd_vcpu_kick(int num)
 	return ret;
 }
 
-int cmd_vcpu_pause(int num)
+int cmd_vcpu_pause(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		;
 		if ((ret = vmm_manager_vcpu_pause(vcpu))) {
@@ -142,10 +142,10 @@ int cmd_vcpu_pause(int num)
 	return ret;
 }
 
-int cmd_vcpu_resume(int num)
+int cmd_vcpu_resume(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		if ((ret = vmm_manager_vcpu_resume(vcpu))) {
 			vmm_printf("%s: Failed to resume\n", vcpu->name);
@@ -158,10 +158,10 @@ int cmd_vcpu_resume(int num)
 	return ret;
 }
 
-int cmd_vcpu_halt(int num)
+int cmd_vcpu_halt(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		if ((ret = vmm_manager_vcpu_halt(vcpu))) {
 			vmm_printf("%s: Failed to halt\n", vcpu->name);
@@ -174,10 +174,10 @@ int cmd_vcpu_halt(int num)
 	return ret;
 }
 
-int cmd_vcpu_dumpreg(int num)
+int cmd_vcpu_dumpreg(int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(num);
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		if ((ret = vmm_manager_vcpu_dumpreg(vcpu))) {
 			vmm_printf("%s: Failed to dumpreg\n", vcpu->name);
@@ -190,7 +190,7 @@ int cmd_vcpu_dumpreg(int num)
 
 int cmd_vcpu_exec(int argc, char **argv)
 {
-	int num;
+	int id;
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
 			cmd_vcpu_usage();
@@ -204,19 +204,19 @@ int cmd_vcpu_exec(int argc, char **argv)
 		cmd_vcpu_usage();
 		return VMM_EFAIL;
 	}
-	num = vmm_str2int(argv[2], 10);
+	id = vmm_str2int(argv[2], 10);
 	if (vmm_strcmp(argv[1], "reset") == 0) {
-		return cmd_vcpu_reset(num);
+		return cmd_vcpu_reset(id);
 	} else if (vmm_strcmp(argv[1], "kick") == 0) {
-		return cmd_vcpu_kick(num);
+		return cmd_vcpu_kick(id);
 	} else if (vmm_strcmp(argv[1], "pause") == 0) {
-		return cmd_vcpu_pause(num);
+		return cmd_vcpu_pause(id);
 	} else if (vmm_strcmp(argv[1], "resume") == 0) {
-		return cmd_vcpu_resume(num);
+		return cmd_vcpu_resume(id);
 	} else if (vmm_strcmp(argv[1], "halt") == 0) {
-		return cmd_vcpu_halt(num);
+		return cmd_vcpu_halt(id);
 	} else if (vmm_strcmp(argv[1], "dumpreg") == 0) {
-		return cmd_vcpu_dumpreg(num);
+		return cmd_vcpu_dumpreg(id);
 	} else {
 		cmd_vcpu_usage();
 		return VMM_EFAIL;

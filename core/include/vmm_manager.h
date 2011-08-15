@@ -33,7 +33,6 @@
 typedef struct vmm_guest_region vmm_guest_region_t;
 typedef struct vmm_guest_aspace vmm_guest_aspace_t;
 typedef struct vmm_vcpu_irqs vmm_vcpu_irqs_t;
-typedef void (*vmm_vcpu_tick_t) (vmm_user_regs_t * regs, u32 ticks_left);
 typedef struct vmm_vcpu vmm_vcpu_t;
 typedef struct vmm_guest vmm_guest_t;
 
@@ -70,7 +69,7 @@ struct vmm_vcpu_irqs {
 struct vmm_guest {
 	struct dlist head;
 	vmm_spinlock_t lock;
-	u32 num;
+	u32 id;
 	vmm_devtree_node_t *node;
 	u32 vcpu_count;
 	struct dlist vcpu_list;
@@ -94,20 +93,17 @@ enum vmm_vcpu_states {
 struct vmm_vcpu {
 	struct dlist head;
 	vmm_spinlock_t lock;
-	u32 num;
-	int index;
+	u32 id;
+	u32 subid;
 	char name[64];
 	vmm_devtree_node_t *node;
 	vmm_guest_t *guest;
 	u32 state;
 	u32 reset_count;
 	u32 preempt_count;
-	u32 tick_pending;
-	u32 tick_count;
-	vmm_vcpu_tick_t tick_func;
+	u64 time_slice;
 	virtual_addr_t start_pc;
-	physical_addr_t bootpg_addr;
-	physical_size_t bootpg_size;
+	virtual_addr_t start_sp;
 	vmm_user_regs_t *uregs;
 	vmm_super_regs_t *sregs;
 	vmm_vcpu_irqs_t *irqs;
@@ -128,11 +124,14 @@ struct vmm_manager_ctrl {
 
 typedef struct vmm_manager_ctrl vmm_manager_ctrl_t;
 
-/** Number of vcpus (thread + normal) */
+/** Maximum number of vcpus (thread or normal) */
+u32 vmm_manager_max_vcpu_count(void);
+
+/** Current number of vcpus (thread + normal) */
 u32 vmm_manager_vcpu_count(void);
 
 /** Retrive vcpu */
-vmm_vcpu_t * vmm_manager_vcpu(s32 vcpu_no);
+vmm_vcpu_t * vmm_manager_vcpu(u32 vcpu_id);
 
 /** Reset a vcpu */
 int vmm_manager_vcpu_reset(vmm_vcpu_t * vcpu);
@@ -155,8 +154,8 @@ int vmm_manager_vcpu_dumpreg(vmm_vcpu_t * vcpu);
 /** Create an orphan vcpu */
 vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
-					    u32 tick_count,
-					    vmm_vcpu_tick_t tick_func);
+					    virtual_addr_t start_sp,
+					    u64 time_slice_nsecs);
 
 /** Destroy an orphan vcpu */
 int vmm_manager_vcpu_orphan_destroy(vmm_vcpu_t * vcpu);
@@ -165,13 +164,13 @@ int vmm_manager_vcpu_orphan_destroy(vmm_vcpu_t * vcpu);
 u32 vmm_manager_guest_count(void);
 
 /** Retrive guest */
-vmm_guest_t * vmm_manager_guest(s32 guest_no);
+vmm_guest_t * vmm_manager_guest(u32 guest_id);
 
 /** Number of vcpus belonging to a given guest */
 u32 vmm_manager_guest_vcpu_count(vmm_guest_t *guest);
 
-/** Retrive vcpu belonging to a given guest with particular index */
-vmm_vcpu_t * vmm_manager_guest_vcpu(vmm_guest_t *guest, int index);
+/** Retrive vcpu belonging to a given guest with particular subid */
+vmm_vcpu_t * vmm_manager_guest_vcpu(vmm_guest_t *guest, u32 subid);
 
 /** Reset a guest */
 int vmm_manager_guest_reset(vmm_guest_t * guest);

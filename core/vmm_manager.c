@@ -33,15 +33,20 @@
 
 vmm_manager_ctrl_t mngr;
 
+u32 vmm_manager_max_vcpu_count(void)
+{
+	return mngr.max_vcpu_count;
+}
+
 u32 vmm_manager_vcpu_count(void)
 {
 	return mngr.vcpu_count;
 }
 
-vmm_vcpu_t * vmm_manager_vcpu(s32 vcpu_no)
+vmm_vcpu_t * vmm_manager_vcpu(u32 vcpu_id)
 {
-	if (-1 < vcpu_no && vcpu_no < mngr.vcpu_count) {
-		return &mngr.vcpu_array[vcpu_no];
+	if (vcpu_id < mngr.vcpu_count) {
+		return &mngr.vcpu_array[vcpu_id];
 	}
 	return NULL;
 }
@@ -50,7 +55,7 @@ int vmm_manager_vcpu_reset(vmm_vcpu_t * vcpu)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
-	if (vcpu && vcpu->guest) {
+	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if ((vcpu->state != VMM_VCPU_STATE_RESET) &&
 		    (vcpu->state != VMM_VCPU_STATE_UNKNOWN)) {
@@ -72,11 +77,10 @@ int vmm_manager_vcpu_kick(vmm_vcpu_t * vcpu)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
-	if (vcpu && vcpu->guest) {
+	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state == VMM_VCPU_STATE_RESET) {
 			vcpu->state = VMM_VCPU_STATE_READY;
-			vcpu->tick_pending = vcpu->tick_count;
 			rc = VMM_OK;
 		}
 		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
@@ -88,7 +92,7 @@ int vmm_manager_vcpu_pause(vmm_vcpu_t * vcpu)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
-	if (vcpu && vcpu->guest) {
+	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
 		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
@@ -104,7 +108,7 @@ int vmm_manager_vcpu_resume(vmm_vcpu_t * vcpu)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
-	if (vcpu && vcpu->guest) {
+	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state == VMM_VCPU_STATE_PAUSED) {
 			vcpu->state = VMM_VCPU_STATE_READY;
@@ -119,7 +123,7 @@ int vmm_manager_vcpu_halt(vmm_vcpu_t * vcpu)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
-	if (vcpu && vcpu->guest) {
+	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
 		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
@@ -148,14 +152,14 @@ int vmm_manager_vcpu_dumpreg(vmm_vcpu_t * vcpu)
 
 vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
-					    u32 tick_count,
-					    vmm_vcpu_tick_t tick_func)
+					    virtual_addr_t start_sp,
+					    u64 time_slice_nsecs)
 {
 	vmm_vcpu_t * vcpu;
 	irq_flags_t flags;
 
 	/* Sanity checks */
-	if (name == NULL || start_pc == 0 || tick_count == 0) {
+	if (name == NULL || start_pc == 0 || time_slice_nsecs == 0) {
 		return NULL;
 	}
 
@@ -170,18 +174,15 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 
 	/* Update vcpu attributes */
 	INIT_SPIN_LOCK(&vcpu->lock);
-	vcpu->index = 0;
+	vcpu->subid = 0;
 	vmm_strcpy(vcpu->name, name);
 	vcpu->node = NULL;
 	vcpu->state = VMM_VCPU_STATE_READY;
 	vcpu->reset_count = 0;
 	vcpu->preempt_count = 0;
-	vcpu->tick_pending = 0;
-	vcpu->tick_count = tick_count;
-	vcpu->tick_func = tick_func;
+	vcpu->time_slice = time_slice_nsecs;
 	vcpu->start_pc = start_pc;
-	vcpu->bootpg_addr = 0;
-	vcpu->bootpg_size = 0;
+	vcpu->start_sp = start_sp;
 	vcpu->guest = NULL;
 	vcpu->uregs = vmm_malloc(sizeof(vmm_user_regs_t));
 	vcpu->sregs = NULL;
@@ -214,15 +215,20 @@ int vmm_manager_vcpu_orphan_destroy(vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
+u32 vmm_manager_max_guest_count(void)
+{
+	return mngr.max_guest_count;
+}
+
 u32 vmm_manager_guest_count(void)
 {
 	return mngr.guest_count;
 }
 
-vmm_guest_t * vmm_manager_guest(s32 guest_no)
+vmm_guest_t * vmm_manager_guest(u32 guest_id)
 {
-	if (-1 < guest_no && guest_no < mngr.guest_count) {
-		return &mngr.guest_array[guest_no];
+	if (guest_id < mngr.guest_count) {
+		return &mngr.guest_array[guest_id];
 	}
 	return NULL;
 }
@@ -236,19 +242,19 @@ u32 vmm_manager_guest_vcpu_count(vmm_guest_t *guest)
 	return guest->vcpu_count;
 }
 
-vmm_vcpu_t * vmm_manager_guest_vcpu(vmm_guest_t *guest, int index)
+vmm_vcpu_t * vmm_manager_guest_vcpu(vmm_guest_t *guest, u32 subid)
 {
 	bool found = FALSE;
 	vmm_vcpu_t *vcpu = NULL;
-	struct dlist *lentry;
+	struct dlist *l;
 
-	if (!guest || (index < 0)) {
+	if (!guest) {
 		return NULL;
 	}
 
-	list_for_each(lentry, &guest->vcpu_list) {
-		vcpu = list_entry(lentry, vmm_vcpu_t, head);
-		if (vcpu->index == index) {
+	list_for_each(l, &guest->vcpu_list) {
+		vcpu = list_entry(l, vmm_vcpu_t, head);
+		if (vcpu->subid == subid) {
 			found = TRUE;
 			break;
 		}
@@ -430,7 +436,7 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		vcpu = &mngr.vcpu_array[mngr.vcpu_count];
 		list_add_tail(&guest->vcpu_list, &vcpu->head);
 		INIT_SPIN_LOCK(&vcpu->lock);
-		vcpu->index = guest->vcpu_count;
+		vcpu->subid = guest->vcpu_count;
 		vmm_strcpy(vcpu->name, gnode->name);
 		vmm_strcat(vcpu->name,
 			   VMM_DEVTREE_PATH_SEPRATOR_STRING);
@@ -439,12 +445,10 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		vcpu->state = VMM_VCPU_STATE_RESET;
 		vcpu->reset_count = 0;
 		vcpu->preempt_count = 0;
-		vcpu->tick_pending = 0;
 		attrval = vmm_devtree_attrval(vnode,
-					      VMM_DEVTREE_TICK_COUNT_ATTR_NAME);
+					     VMM_DEVTREE_TIME_SLICE_ATTR_NAME);
 		if (attrval) {
-			vcpu->tick_count =
-			    *((virtual_addr_t *) attrval);
+			vcpu->time_slice = *((u32 *) attrval);
 		}
 		attrval = vmm_devtree_attrval(vnode,
 					      VMM_DEVTREE_START_PC_ATTR_NAME);
@@ -452,16 +456,11 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 			vcpu->start_pc = *((virtual_addr_t *) attrval);
 		}
 		attrval = vmm_devtree_attrval(vnode,
-					      VMM_DEVTREE_BOOTPG_ADDR_ATTR_NAME);
+					      VMM_DEVTREE_START_SP_ATTR_NAME);
 		if (attrval) {
-			vcpu->bootpg_addr =
-			    *((physical_addr_t *) attrval);
-		}
-		attrval = vmm_devtree_attrval(vnode,
-					      VMM_DEVTREE_BOOTPG_SIZE_ATTR_NAME);
-		if (attrval) {
-			vcpu->bootpg_size =
-			    *((physical_addr_t *) attrval);
+			vcpu->start_sp = *((virtual_addr_t *) attrval);
+		} else {
+			vcpu->start_sp = 0x0;
 		}
 		vcpu->guest = guest;
 		vcpu->uregs = vmm_malloc(sizeof(vmm_user_regs_t));
@@ -552,7 +551,7 @@ int vmm_manager_init(void)
 		vmm_memset(&mngr.guest_array[gnum], 0, sizeof(vmm_guest_t));
 		INIT_LIST_HEAD(&mngr.guest_array[gnum].head);
 		INIT_SPIN_LOCK(&mngr.guest_array[gnum].lock);
-		mngr.guest_array[gnum].num = gnum;
+		mngr.guest_array[gnum].id = gnum;
 		mngr.guest_array[gnum].node = NULL;
 		INIT_LIST_HEAD(&mngr.guest_array[gnum].vcpu_list);
 	}
@@ -566,7 +565,7 @@ int vmm_manager_init(void)
 		vmm_memset(&mngr.vcpu_array[vnum], 0, sizeof(vmm_vcpu_t));
 		INIT_LIST_HEAD(&mngr.vcpu_array[vnum].head);
 		INIT_SPIN_LOCK(&mngr.vcpu_array[vnum].lock);
-		mngr.vcpu_array[vnum].num = vnum;
+		mngr.vcpu_array[vnum].id = vnum;
 		vmm_strcpy(mngr.vcpu_array[vnum].name, "");
 		mngr.vcpu_array[vnum].node = NULL;
 		mngr.vcpu_array[vnum].state = VMM_VCPU_STATE_UNKNOWN;

@@ -34,7 +34,7 @@
 #include <vmm_timer.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
-#include <vmm_hyperthreads.h>
+#include <vmm_threads.h>
 #include <vmm_devdrv.h>
 #include <vmm_devemu.h>
 #include <vmm_mterm.h>
@@ -56,13 +56,13 @@ void vmm_init(void)
 	vmm_devtree_node_t *gnode, *gsnode;
 	vmm_guest_t *guest = NULL;
 
-	/* Initialize Heap */
+	/* Initialize heap */
 	ret = vmm_heap_init();
 	if (ret) {
 		vmm_hang();
 	}
 
-	/* Initialize Device Tree */
+	/* Initialize device tree */
 	ret = vmm_devtree_init();
 	if (ret) {
 		vmm_hang();
@@ -139,9 +139,9 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
-	/* Initialize hyperthreading framework */
-	vmm_printf("Initialize Hyperthreading Framework\n");
-	ret = vmm_hyperthreading_init();
+	/* Initialize hypervisor threads */
+	vmm_printf("Initialize Hypervisor Threads\n");
+	ret = vmm_threads_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();

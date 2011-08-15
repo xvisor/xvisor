@@ -31,16 +31,16 @@
 
 vmm_scheduler_ctrl_t sched;
 
-void vmm_scheduler_next(vmm_user_regs_t * regs)
+void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
 {
-	s32 next;
+	int next;
 	vmm_vcpu_t *cur_vcpu, *nxt_vcpu;
 
 	/* Determine current vcpu */
 	cur_vcpu = vmm_manager_vcpu(sched.vcpu_current);
 
 	/* Determine the next ready vcpu to schedule */
-	next = (cur_vcpu) ? cur_vcpu->num : -1;
+	next = (cur_vcpu) ? cur_vcpu->id : -1;
 	next = (next + 1) % vmm_manager_vcpu_count();
 	nxt_vcpu = vmm_manager_vcpu(next);
 	while ((nxt_vcpu->state != VMM_VCPU_STATE_READY) &&
@@ -50,7 +50,7 @@ void vmm_scheduler_next(vmm_user_regs_t * regs)
 	}
 
 	/* Do context switch between current and next vcpus */
-	if (!cur_vcpu || (cur_vcpu->num != nxt_vcpu->num)) {
+	if (!cur_vcpu || (cur_vcpu->id != nxt_vcpu->id)) {
 		if (cur_vcpu && (cur_vcpu->state & VMM_VCPU_STATE_SAVEABLE)) {
 			if (cur_vcpu->state == VMM_VCPU_STATE_RUNNING) {
 				cur_vcpu->state = VMM_VCPU_STATE_READY;
@@ -62,31 +62,24 @@ void vmm_scheduler_next(vmm_user_regs_t * regs)
 	}
 
 	if (nxt_vcpu) {
-		nxt_vcpu->tick_pending = nxt_vcpu->tick_count;
 		nxt_vcpu->state = VMM_VCPU_STATE_RUNNING;
-		sched.vcpu_current = nxt_vcpu->num;
+		sched.vcpu_current = nxt_vcpu->id;
+		vmm_timer_event_start(ev, nxt_vcpu->time_slice);
 	}
 }
 
-void vmm_scheduler_timer_event(vmm_timer_event_t * event)
+void vmm_scheduler_timer_event(vmm_timer_event_t * ev)
 {
 	vmm_vcpu_t * vcpu = vmm_manager_vcpu(sched.vcpu_current);
 	if (vcpu) {
 		if (!vcpu->preempt_count) {
-			if (!vcpu->tick_pending) {
-				vmm_scheduler_next(event->cpu_regs);
-			} else {
-				vcpu->tick_pending-=1;
-				if (vcpu->tick_func && !vcpu->preempt_count) {
-					vcpu->tick_func(event->cpu_regs, 
-							vcpu->tick_pending);
-				}
-			}
+			vmm_scheduler_next(ev, ev->cpu_regs);
+		} else {
+			vmm_timer_event_restart(ev);
 		}
 	} else {
-		vmm_scheduler_next(event->cpu_regs);
+		vmm_scheduler_next(ev, ev->cpu_regs);
 	}
-	vmm_timer_event_restart(event);
 }
 
 void vmm_scheduler_irq_process(vmm_user_regs_t * regs)
@@ -102,7 +95,7 @@ void vmm_scheduler_irq_process(vmm_user_regs_t * regs)
 	/* Schedule next vcpu if state of 
 	 * current vcpu is not RUNNING */
 	if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
-		vmm_scheduler_next(regs);
+		vmm_scheduler_next(sched.ev, regs);
 		return;
 	}
 
