@@ -30,6 +30,8 @@ SECTIONS
 {
 	. = TEXT_START;
 
+	PROVIDE(_code_start = .);
+
 	.text :
  	{
 		*(.expvect)
@@ -123,4 +125,6 @@ SECTIONS
                 . = ALIGN(4);
                 PROVIDE(_usr_stack_end = .);
         }
+
+	PROVIDE(_code_end = .);
 }
