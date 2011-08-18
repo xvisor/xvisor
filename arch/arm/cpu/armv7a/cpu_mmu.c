@@ -393,7 +393,7 @@ int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 {
 	int ret = VMM_EFAIL;
 	u32 *l1_tte, *l2_tte;
-	u32 l1_tte_type, chkimp, found = 0;
+	u32 l1_tte_type, found = 0;
 	physical_addr_t l2base, chkpa;
 	virtual_size_t chksz;
 	cpu_l2tbl_t *l2 = NULL;
@@ -405,8 +405,6 @@ int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 	l1_tte = (u32 *) (l1->tbl_va +
 			  ((pg->va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
-	chkimp = *l1_tte & TTBL_L1TBL_TTE_IMP_MASK;
-	chkimp = chkimp >> TTBL_L1TBL_TTE_IMP_SHIFT;
 
 	found = 0;
 	switch (l1_tte_type) {
@@ -447,14 +445,14 @@ int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 
 	switch (found) {
 	case 1:
-		if (pg->sz == chksz && pg->imp == chkimp) {
+		if (pg->sz == chksz) {
 			*l1_tte = 0x0;
 			l1->tte_cnt--;
 			ret = VMM_OK;
 		}
 		break;
 	case 2:
-		if (pg->sz == chksz && pg->imp == chkimp) {
+		if (pg->sz == chksz) {
 			*l2_tte = 0x0;
 			l2->tte_cnt--;
 			if (!l2->tte_cnt) {
@@ -483,7 +481,7 @@ int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 {
 	int rc = VMM_OK;
 	u32 *l1_tte, *l2_tte;
-	u32 l1_tte_type, l1_tte_imp;
+	u32 l1_tte_type;
 	virtual_addr_t pgva;
 	virtual_size_t pgsz, minpgsz;
 	physical_addr_t l2base;
@@ -499,17 +497,13 @@ int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 			  ((pg->va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 
 	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
-	l1_tte_imp = *l1_tte & TTBL_L1TBL_TTE_IMP_MASK;
-	l1_tte_imp = l1_tte_imp >> TTBL_L1TBL_TTE_IMP_SHIFT;
 	if (l1_tte_type != TTBL_L1TBL_TTE_TYPE_FAULT) {
-		if (l1_tte_imp && pg->imp != l1_tte_imp) {
-			rc = VMM_EFAIL;
-			goto mmu_map_return;
-		}
 		if (l1_tte_type == TTBL_L1TBL_TTE_TYPE_L2TBL) {
 			minpgsz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		} else {
 			minpgsz = TTBL_L1TBL_SECTION_PAGE_SIZE;
+			rc = VMM_EFAIL;
+			goto mmu_map_return;
 		}
 		pgva = pg->va & ~(minpgsz - 1);
 		pgsz = pg->sz;
@@ -518,11 +512,8 @@ int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 				pgva += minpgsz;
 				pgsz = (pgsz < minpgsz) ? 0 : (pgsz - minpgsz);
 			} else {
-				if ((rc = cpu_mmu_unmap_page(l1, &upg))) {
-					goto mmu_map_return;
-				}
-				pgva += upg.sz;
-				pgsz = (pgsz < upg.sz) ? 0 : (pgsz - upg.sz);
+				rc = VMM_EFAIL;
+				goto mmu_map_return;
 			}
 		}
 	}
@@ -639,9 +630,6 @@ int cpu_mmu_unmap_reserved_page(cpu_page_t * pg)
 	if (!pg) {
 		return VMM_EFAIL;
 	}
-	if (pg->imp != 0x1) {
-		return VMM_EFAIL;
-	}
 
 	if ((rc = cpu_mmu_unmap_page(mmuctrl.defl1, pg))) {
 		return rc;
@@ -663,9 +651,6 @@ int cpu_mmu_map_reserved_page(cpu_page_t * pg)
 	cpu_l1tbl_t *l1;
 
 	if (!pg) {
-		return VMM_EFAIL;
-	}
-	if (pg->imp != 0x1) {
 		return VMM_EFAIL;
 	}
 
@@ -909,7 +894,7 @@ int cpu_mmu_init(void)
 		respg.pa = pa;
 		respg.va = va;
 		respg.sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
-		respg.imp = 1;
+		respg.imp = 0;
 		respg.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 		respg.ap = TTBL_AP_SRW_U;
 		respg.xn = 0;
@@ -927,26 +912,26 @@ int cpu_mmu_init(void)
 	if (highvec_enable) {
 		pa = (physical_addr_t) CPU_IRQ_HIGHVEC_BASE;
 		va = (virtual_addr_t) CPU_IRQ_HIGHVEC_BASE;
-		sz = (virtual_size_t) TTBL_L1TBL_SECTION_PAGE_SIZE;
+		sz = (virtual_size_t) TTBL_L2TBL_SMALL_PAGE_SIZE;
 	} else {
 		pa = (physical_addr_t) CPU_IRQ_LOWVEC_BASE;
 		va = (virtual_addr_t) CPU_IRQ_LOWVEC_BASE;
-		sz = (virtual_size_t) TTBL_L1TBL_SECTION_PAGE_SIZE;
+		sz = (virtual_size_t) TTBL_L2TBL_SMALL_PAGE_SIZE;
 	}
 	while (sz) {
-		if (va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-			tsz = va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1);
-			tsz = TTBL_L1TBL_SECTION_PAGE_SIZE - tsz;
-			pa &= ~(TTBL_L1TBL_SECTION_PAGE_SIZE - 1);
-			va &= ~(TTBL_L1TBL_SECTION_PAGE_SIZE - 1);
+		if (va & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) {
+			tsz = va & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
+			tsz = TTBL_L2TBL_SMALL_PAGE_SIZE - tsz;
+			pa &= ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
+			va &= ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
 		} else {
-			tsz = TTBL_L1TBL_SECTION_PAGE_SIZE;
+			tsz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		}
 		vmm_memset(&respg, 0, sizeof(respg));
 		respg.pa = pa;
 		respg.va = va;
-		respg.sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
-		respg.imp = 1;
+		respg.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+		respg.imp = 0;
 		respg.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 		respg.ap = TTBL_AP_SRW_U;
 		respg.xn = 0;
@@ -956,8 +941,8 @@ int cpu_mmu_init(void)
 			goto mmu_init_done;
 		}
 		sz = (sz < tsz) ? 0 : (sz - tsz);
-		pa += TTBL_L1TBL_SECTION_PAGE_SIZE;
-		va += TTBL_L1TBL_SECTION_PAGE_SIZE;
+		pa += TTBL_L2TBL_SMALL_PAGE_SIZE;
+		va += TTBL_L2TBL_SMALL_PAGE_SIZE;
 	}
 
 	/* Change translation table base address to default L1 */

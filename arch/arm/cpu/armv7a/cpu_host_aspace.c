@@ -41,7 +41,7 @@ int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz, physical_addr_t pa)
 	p.pa = pa;
 	p.va = va;
 	p.sz = sz;
-	p.imp = 1;
+	p.imp = 0;
 	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 	p.ap = TTBL_AP_SRW_U;
 	p.xn = 1;
