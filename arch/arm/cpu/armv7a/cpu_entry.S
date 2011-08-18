@@ -26,7 +26,7 @@
 
 	/* 
 	 * Xvisor could be loaded any where in memory by boot loaders.
-	 * The _boot function ensures that Xvisor exectues from intended
+	 * The _start function ensures that Xvisor exectues from intended
 	 * base address provided at compile time.
 	 */
 	.section .expvect, "ax", %progbits
@@ -43,7 +43,7 @@ _start:
 	 * r2 -> execution start
 	 * r3 -> execution end
 	 * r4 -> code size
-	 * We need to ensure that when jump to reset code, we are executing
+	 * We need to ensure that when we jump to reset code, we are executing
 	 * from intended execution address. If necessary do relocation from
 	 * load memory to execution memory.
 	 */
