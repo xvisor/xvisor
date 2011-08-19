@@ -55,7 +55,7 @@ void arm_cmd_help(void)
 	arm_puts("sysctl    - Display sysctl registers\n");
 	arm_puts("timer     - Display timer information\n");
 	arm_puts("dhrystone - Run dhrystone 2.1 benchmark\n");
-	arm_puts("reset  - Reset the system\n");
+	arm_puts("reset     - Reset the system\n");
 }
 
 void arm_cmd_hi(void)
