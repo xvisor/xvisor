@@ -28,13 +28,10 @@
 #include "vmm_types.h"
 
 #define __lock_section		__attribute__((section(".spinlock.text")))
-#define __cmdtbl_section	__attribute__((section(".cmdtbl")))
 #define __modtbl_section	__attribute__((section(".modtbl")))
 
 extern char _heap_start;
 extern char _eheap;
-extern char _cmdtbl_start;
-extern char _cmdtbl_end;
 extern char _modtbl_start;
 extern char _modtbl_end;
 extern char _mm_hk_start;
@@ -58,16 +55,6 @@ static inline virtual_addr_t vmm_modtbl_start(void)
 static inline virtual_size_t vmm_modtbl_size(void) 
 {
 	return (virtual_size_t)(&_modtbl_end - &_modtbl_start);
-}
-
-static inline virtual_addr_t vmm_cmdtbl_start(void) 
-{
-	return (virtual_addr_t)&_cmdtbl_start;
-}
-
-static inline virtual_size_t vmm_cmdtbl_size(void) 
-{
-	return (virtual_size_t)(&_cmdtbl_end - &_cmdtbl_start);
 }
 
 static inline virtual_addr_t vmm_heap_start(void)
