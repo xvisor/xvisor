@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_cmd_shutdown.c
+ * @file cmd_shutdown.c
  * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
  * @brief Implementation of shutdown command
@@ -25,13 +25,49 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_main.h>
-#include <vmm_mterm.h>
+#include <vmm_modules.h>
+#include <vmm_cmdmgr.h>
 
-int cmd_shutdown_exec(int argc, char **argv)
+#define MODULE_VARID			cmd_shutdown_module
+#define MODULE_NAME			"Command shutdown"
+#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_IPRIORITY		0
+#define	MODULE_INIT			cmd_shutdown_init
+#define	MODULE_EXIT			cmd_shutdown_exit
+
+void cmd_shutdown_usage(vmm_chardev_t *cdev)
 {
-	/* Reset the hypervisor */
+	vmm_cprintf(cdev, "Usage: ");
+	vmm_cprintf(cdev, "   shutdown\n");
+}
+
+int cmd_shutdown_exec(vmm_chardev_t *cdev, int argc, char **argv)
+{
+	/* Shutdown the hypervisor */
 	vmm_shutdown();
 	return VMM_OK;
 }
 
-VMM_DECLARE_CMD(shutdown, "shutdown hypervisor", cmd_shutdown_exec, NULL);
+static vmm_cmd_t cmd_shutdown = {
+	.name = "shutdown",
+	.desc = "shutdown hypervisor",
+	.usage = cmd_shutdown_usage,
+	.exec = cmd_shutdown_exec,
+};
+
+static int cmd_shutdown_init(void)
+{
+	return vmm_cmdmgr_register_cmd(&cmd_shutdown);
+}
+
+static void cmd_shutdown_exit(void)
+{
+	vmm_cmdmgr_unregister_cmd(&cmd_shutdown);
+}
+
+VMM_DECLARE_MODULE(MODULE_VARID, 
+			MODULE_NAME, 
+			MODULE_AUTHOR, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

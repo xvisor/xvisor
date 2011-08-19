@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_cmd_blockdev.c
+ * @file cmd_blockdev.c
  * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
  * @brief Implementation of blockdev command
@@ -27,16 +27,24 @@
 #include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_blockdev.h>
-#include <vmm_mterm.h>
+#include <vmm_modules.h>
+#include <vmm_cmdmgr.h>
 
-void cmd_blockdev_usage(void)
+#define MODULE_VARID			cmd_blockdev_module
+#define MODULE_NAME			"Command blockdev"
+#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_IPRIORITY		0
+#define	MODULE_INIT			cmd_blockdev_init
+#define	MODULE_EXIT			cmd_blockdev_exit
+
+void cmd_blockdev_usage(vmm_chardev_t *cdev)
 {
-	vmm_printf("Usage:\n");
-	vmm_printf("   blockdev help\n");
-	vmm_printf("   blockdev list\n");
+	vmm_cprintf(cdev, "Usage:\n");
+	vmm_cprintf(cdev, "   blockdev help\n");
+	vmm_cprintf(cdev, "   blockdev list\n");
 }
 
-void cmd_blockdev_list()
+void cmd_blockdev_list(vmm_chardev_t *cdev)
 {
 	int num, count;
 	char path[1024];
@@ -45,30 +53,52 @@ void cmd_blockdev_list()
 	for (num = 0; num < count; num++) {
 		bdev = vmm_blockdev_get(num);
 		if (!bdev->dev) {
-			vmm_printf("%s: ---\n", bdev->name);
+			vmm_cprintf(cdev, "%s: ---\n", bdev->name);
 		} else {
 			vmm_devtree_getpath(path, bdev->dev->node);
-			vmm_printf("%s: %s\n", bdev->name, path);
+			vmm_cprintf(cdev, "%s: %s\n", bdev->name, path);
 		}
 	}
 }
 
-int cmd_blockdev_exec(int argc, char **argv)
+int cmd_blockdev_exec(vmm_chardev_t *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
-			cmd_blockdev_usage();
+			cmd_blockdev_usage(cdev);
 			return VMM_OK;
 		} else if (vmm_strcmp(argv[1], "list") == 0) {
-			cmd_blockdev_list();
+			cmd_blockdev_list(cdev);
 			return VMM_OK;
 		}
 	}
 	if (argc < 3) {
-		cmd_blockdev_usage();
+		cmd_blockdev_usage(cdev);
 		return VMM_EFAIL;
 	}
 	return VMM_OK;
 }
 
-VMM_DECLARE_CMD(blockdev, "block device commands", cmd_blockdev_exec, NULL);
+static vmm_cmd_t cmd_blockdev = {
+	.name = "blockdev",
+	.desc = "block device commands",
+	.usage = cmd_blockdev_usage,
+	.exec = cmd_blockdev_exec,
+};
+
+static int cmd_blockdev_init(void)
+{
+	return vmm_cmdmgr_register_cmd(&cmd_blockdev);
+}
+
+static void cmd_blockdev_exit(void)
+{
+	vmm_cmdmgr_unregister_cmd(&cmd_blockdev);
+}
+
+VMM_DECLARE_MODULE(MODULE_VARID, 
+			MODULE_NAME, 
+			MODULE_AUTHOR, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);
