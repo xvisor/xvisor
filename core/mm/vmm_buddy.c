@@ -460,7 +460,7 @@ void buddy_free(void *ptr)
 	vmm_memset(freed_node, 0, sizeof(struct vmm_alloced_area));
 }
 
-void print_current_buddy_state(void)
+void print_current_buddy_state(vmm_chardev_t *cdev)
 {
 	int idx = 0;
 	struct vmm_free_area *varea;
@@ -468,10 +468,10 @@ void print_current_buddy_state(void)
 	struct dlist *pos;
 	int bfree = 0, balloced = 0;
 
-	vmm_printf("Heap size: %d KiB\n", (buddy_heap.heap_size / 1024));
+	vmm_cprintf(cdev, "Heap size: %d KiB\n", (buddy_heap.heap_size / 1024));
 
 	for (idx = 0; idx < BINS_MAX_ORDER; idx++) {
-		vmm_printf("[BLOCK 0x%4X]: ", MIN_BLOCK_SIZE << idx);
+		vmm_cprintf(cdev, "[BLOCK 0x%4X]: ", MIN_BLOCK_SIZE << idx);
 		list_for_each(pos, &buddy_heap.free_area[idx].head) {
 			varea = list_entry(pos, struct vmm_free_area, head);
 			bfree++;
@@ -483,13 +483,13 @@ void print_current_buddy_state(void)
 				balloced++;
 			}
 		}
-		vmm_printf("%5d alloced, %5d free block(s)\n", balloced, bfree);
+		vmm_cprintf(cdev, "%5d alloced, %5d free block(s)\n", balloced, bfree);
 		bfree = 0;
 		balloced = 0;
 	}
 }
 
-void print_current_hk_state(void)
+void print_current_hk_state(vmm_chardev_t *cdev)
 {
 	u32 free = 0, idx;
 	struct vmm_free_area *fren = free_node_list;
@@ -503,7 +503,7 @@ void print_current_hk_state(void)
 		}
 	}
 
-	vmm_printf("Free Node List: %d nodes free out of %d.\n", free,
+	vmm_cprintf(cdev, "Free Node List: %d nodes free out of %d.\n", free,
 		   (HEAP_FN_HK_LEN / sizeof(struct vmm_free_area)));
 
 	free = 0;
@@ -514,7 +514,7 @@ void print_current_hk_state(void)
 			acn++;
 		}
 	}
-	vmm_printf("Alloced Node List: %d nodes free out of %d.\n", free,
+	vmm_cprintf(cdev, "Alloced Node List: %d nodes free out of %d.\n", free,
 		   (HEAP_FN_HK_LEN / sizeof(struct vmm_alloced_area)));
 }
 

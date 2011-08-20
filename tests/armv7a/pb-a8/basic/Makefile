@@ -37,7 +37,7 @@ ARM_CROSS_COMPILE=$(CROSS_COMPILE)
 else
 ARM_CROSS_COMPILE=arm-none-eabi-
 endif
-ARM_CPPFLAGS=-I. -DTEXT_START=0x100000
+ARM_CPPFLAGS=-I. -DTEXT_START=0x10000
 ARM_CFLAGS=-g -Wall -Werror -nostdlib -mcpu=cortex-a8 $(ARM_CPPFLAGS)
 ARM_ASFLAGS=-g -Wall -Werror -nostdlib -mcpu=cortex-a8 $(ARM_CPPFLAGS) -D__ASSEMBLY__
 ARM_LDFLAGS=$(ARM_CFLAGS) -static-libgcc -lgcc

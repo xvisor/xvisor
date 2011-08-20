@@ -22,7 +22,7 @@
 # @brief list of PB-A8 board objects.
 # */
 
-board-cppflags =-DCPU_TEXT_START=0x10000
+board-cppflags =-DCPU_TEXT_START=0x6000000
 
 board-objs-y+=brd_defterm.o
 board-objs-y+=brd_pic.o

@@ -146,13 +146,7 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 		p->pa = reg->hphys_addr + (far - reg->gphys_addr);
 		p->va = far;
 		p->sz = reg->phys_size - (far - reg->gphys_addr);
-		if (TTBL_L1TBL_SECTION_PAGE_SIZE <= p->sz) {
-			p->sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
-		} else if (TTBL_L2TBL_LARGE_PAGE_SIZE <= p->sz) {
-			p->sz = TTBL_L2TBL_LARGE_PAGE_SIZE;
-		} else {
-			p->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
-		}
+		p->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		p->imp = 0;
 		p->dom = TTBL_L1TBL_TTE_DOM_VCPU_NOMMU;
 		if (reg->is_virtual) {

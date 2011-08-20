@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_cmd_elf.c
+ * @file elf.c
  * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
  * @brief Implementation of guest command
@@ -26,7 +26,7 @@
 #include <vmm_stdio.h>
 #include <vmm_string.h>
 #include <vmm_devtree.h>
-#include <vmm_elf.h>
+#include <elf.h>
 
 #if 0
 /* ======================================================================
@@ -134,7 +134,7 @@ static int valid_elf_image (virtual_addr_t addr)
 	return VMM_OK;
 }
 
-s32 vmm_elf_load(virtual_addr_t src_hvaddr, virtual_addr_t dest_gvaddr)
+s32 elf_load(virtual_addr_t src_hvaddr, virtual_addr_t dest_gvaddr)
 {
 	if (valid_elf_image(src_hvaddr) == VMM_OK) {
 		return load_elf_image_shdr(src_hvaddr, dest_gvaddr);
