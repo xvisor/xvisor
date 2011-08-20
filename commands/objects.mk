@@ -19,30 +19,20 @@
 # @file objects.mk
 # @version 1.0
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of core objects to be build
+# @brief list of command objects to be build
 # */
 
-core-objs-y+= vmm_main.o
-core-objs-y+= vmm_ringbuf.o
-core-objs-y+= vmm_stdio.o
-core-objs-y+= vmm_string.o
-core-objs-y+= vmm_libfdt.o
-core-objs-y+= vmm_spinlocks.o
-core-objs-y+= vmm_devtree.o
-core-objs-y+= vmm_host_irq.o
-core-objs-y+= vmm_host_aspace.o
-core-objs-y+= vmm_timer.o
-core-objs-y+= vmm_vcpu_irq.o
-core-objs-y+= vmm_guest_aspace.o
-core-objs-y+= vmm_manager.o
-core-objs-y+= vmm_scheduler.o
-core-objs-y+= vmm_threads.o
-core-objs-y+= vmm_cmdmgr.o
-core-objs-y+= vmm_devdrv.o
-core-objs-y+= vmm_devemu.o
-core-objs-y+= vmm_chardev.o
-core-objs-y+= vmm_blockdev.o
-core-objs-y+= vmm_netdev.o
-core-objs-y+= vmm_vserial.o
-core-objs-y+= vmm_modules.o
-
+commands-objs-y+= cmd_version.o
+commands-objs-y+= cmd_reset.o
+commands-objs-y+= cmd_shutdown.o
+commands-objs-y+= cmd_devtree.o
+commands-objs-y+= cmd_vcpu.o
+commands-objs-y+= cmd_guest.o
+commands-objs-y+= cmd_thread.o
+commands-objs-y+= cmd_chardev.o
+commands-objs-y+= cmd_blockdev.o
+commands-objs-y+= cmd_vserial.o
+commands-objs-y+= cmd_stdio.o
+commands-objs-$(CONFIG_MM_BUDDY)+= cmd_buddy.o
+commands-objs-$(CONFIG_NET)+= cmd_ping.o
+commands-objs-y+= elf.o

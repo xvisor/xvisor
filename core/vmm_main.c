@@ -35,9 +35,9 @@
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_threads.h>
+#include <vmm_cmdmgr.h>
 #include <vmm_devdrv.h>
 #include <vmm_devemu.h>
-#include <vmm_mterm.h>
 #include <vmm_vserial.h>
 #include <vmm_modules.h>
 #include <vmm_chardev.h>
@@ -180,7 +180,7 @@ void vmm_init(void)
 	}
 
 	/* Initialize network device framework */
-	vmm_printf("Initialize Networking Framework\n");
+	vmm_printf("Initialize Networking Device Framework\n");
 	ret = vmm_netdev_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
@@ -195,9 +195,9 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
-	/* Initialize managment terminal */
-	vmm_printf("Initialize Managment Terminal\n");
-	ret = vmm_mterm_init();
+	/* Initialize command manager */
+	vmm_printf("Initialize Command Manager\n");
+	ret = vmm_cmdmgr_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();

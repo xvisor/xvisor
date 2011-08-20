@@ -58,14 +58,6 @@ SECTIONS
 		_erodata = .;
 	}
 
-	.cmdbtl :
-	{
-		PROVIDE(_cmdtbl_start = .);
-		*(.cmdtbl)
-		. = ALIGN(4);
-		PROVIDE(_cmdtbl_end = .);
-	}
-
 	.modtbl :
 	{
 		PROVIDE(_modtbl_start = .);

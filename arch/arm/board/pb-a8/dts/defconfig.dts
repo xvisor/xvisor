@@ -78,7 +78,7 @@
 					device_type = "vcpu";
 					model = "ARMv7a,cortex-a8";
 					time_slice = <98000000>;
-					start_pc = <0x00100000>;
+					start_pc = <0x40000000>;
 				};
 			};
 			
@@ -89,9 +89,9 @@
 				mem {
 					manifest_type = "real";
 					address_type = "memory";
-					guest_physical_addr = <0x00100000>;
-					host_physical_addr = <0x00100000>;
-					physical_size = <0x00100000>;
+					guest_physical_addr = <0x00000000>;
+					host_physical_addr = <0x01000000>;
+					physical_size = <0x01000000>; /* 16 MB */
 					device_type = "memory";
 				};
 
@@ -168,6 +168,15 @@
 					device_type = "pic";
 					compatible = "realview,gic";
 					parent_irq = <6>;
+				};
+
+				nor_flash {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x40000000>;
+					host_physical_addr = <0x00100000>;
+					physical_size = <0x00300000>; /* 3 MB */
+					device_type = "memory";
 				};
 			};
 		};
