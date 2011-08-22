@@ -663,11 +663,13 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	vmm_memset(vcpu->uregs, 0, sizeof(vmm_user_regs_t));
 	vcpu->uregs->pc = vcpu->start_pc;
 	if (vcpu->guest) {
-		vcpu->uregs->cpsr = CPSR_COND_ZERO_MASK |
-		    CPSR_ASYNC_ABORT_DISABLED | CPSR_MODE_USER;
+		vcpu->uregs->cpsr  = CPSR_COND_ZERO_MASK;
+		vcpu->uregs->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
+		vcpu->uregs->cpsr |= CPSR_MODE_USER;
 	} else {
-		vcpu->uregs->cpsr = CPSR_COND_ZERO_MASK |
-		    CPSR_ASYNC_ABORT_DISABLED | CPSR_MODE_SUPERVISOR;
+		vcpu->uregs->cpsr  = CPSR_COND_ZERO_MASK;
+		vcpu->uregs->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
+		vcpu->uregs->cpsr |= CPSR_MODE_SUPERVISOR;
 		vcpu->uregs->sp = vcpu->start_sp;
 	}
 	/* Initialize Supervisor Mode Registers */
