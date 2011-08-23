@@ -48,13 +48,6 @@ ON WHAT HARDWARE DOES IT RUN?
   NOTE: The Xvisor development & testing is done currently on QEMU. For 
 	all the above mentioned hardwares QEMU support is available.
 
-INITIATORS:
-
-  - Anup Patel
-  - Himanshu Chauhan
-  - Sukanto Ghosh
-  - Pranav Sawargaonkar
-
 DOCUMENTATION:
 
   For Xvisor we prefer source level documentation more, so wherever possible
