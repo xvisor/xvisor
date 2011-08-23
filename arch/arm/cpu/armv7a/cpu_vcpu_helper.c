@@ -44,7 +44,7 @@ u32 cpu_vcpu_cpsr_retrive(vmm_vcpu_t * vcpu,
 	if (!vcpu || !regs) {
 		return 0;
 	}
-	if (vcpu->guest) {
+	if (vcpu->is_normal) {
 		return (((regs->cpsr & CPSR_USERBITS_MASK) |
 			 (vcpu->sregs->cpsr & CPSR_PRIVBITS_MASK)) &
 			CPSR_VALIDBITS_MASK);
@@ -55,7 +55,7 @@ u32 cpu_vcpu_cpsr_retrive(vmm_vcpu_t * vcpu,
 
 void cpu_vcpu_banked_regs_save(vmm_vcpu_t * vcpu, vmm_user_regs_t * src)
 {
-	if (!vcpu || !vcpu->guest || !src) {
+	if (!vcpu || !vcpu->is_normal || !src) {
 		return;
 	}
 	switch (vcpu->sregs->cpsr & CPSR_MODE_MASK) {
@@ -138,7 +138,7 @@ void cpu_vcpu_banked_regs_save(vmm_vcpu_t * vcpu, vmm_user_regs_t * src)
 
 void cpu_vcpu_banked_regs_restore(vmm_vcpu_t * vcpu, vmm_user_regs_t * dst)
 {
-	if (!vcpu || !vcpu->guest || !dst) {
+	if (!vcpu || !vcpu->is_normal || !dst) {
 		return;
 	}
 	switch (vcpu->sregs->cpsr & CPSR_MODE_MASK) {
@@ -229,7 +229,7 @@ void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu,
 	if (!vcpu) {
 		return;
 	}
-	if (vcpu->guest == NULL) {
+	if (!vcpu->is_normal) {
 		return;
 	}
 	/* If mode is changing then */
@@ -291,7 +291,7 @@ int cpu_vcpu_spsr_update(vmm_vcpu_t * vcpu,
 		return VMM_EFAIL;
 	}
 	if (((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) || 
-	    (vcpu->guest == NULL)) {
+	    (!vcpu->is_normal)) {
 		return VMM_EFAIL;
 	}
 	/* Update appropriate SPSR */
@@ -662,7 +662,7 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	/* For both Orphan & Normal VCPUs */
 	vmm_memset(vcpu->uregs, 0, sizeof(vmm_user_regs_t));
 	vcpu->uregs->pc = vcpu->start_pc;
-	if (vcpu->guest) {
+	if (vcpu->is_normal) {
 		vcpu->uregs->cpsr  = CPSR_COND_ZERO_MASK;
 		vcpu->uregs->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
 		vcpu->uregs->cpsr |= CPSR_MODE_USER;
@@ -674,7 +674,7 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	}
 	/* Initialize Supervisor Mode Registers */
 	/* For only Normal VCPUs */
-	if (!vcpu->guest) {
+	if (!vcpu->is_normal) {
 		return VMM_OK;
 	}
 	if (!vcpu->reset_count) {
@@ -765,11 +765,11 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 			tvcpu->uregs->gpr[ite] = regs->gpr[ite];
 		}
 		tvcpu->uregs->cpsr = regs->cpsr;
-		if(tvcpu->guest) {
+		if(tvcpu->is_normal) {
 			cpu_vcpu_banked_regs_save(tvcpu, regs);
 		}
 	}
-	if (vcpu->guest) {
+	if (vcpu->is_normal) {
 		/* Switch CP15 context */
 		cpu_vcpu_cp15_context_switch(tvcpu, vcpu, regs);
 	}
@@ -781,7 +781,7 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 		regs->gpr[ite] = vcpu->uregs->gpr[ite];
 	}
 	regs->cpsr = vcpu->uregs->cpsr;
-	if (vcpu->guest) {
+	if (vcpu->is_normal) {
 		cpu_vcpu_banked_regs_restore(vcpu, regs);
 	}
 }
@@ -809,7 +809,7 @@ void vmm_vcpu_regs_dump(vmm_vcpu_t * vcpu)
 	/* For both Normal & Orphan VCPUs */
 	cpu_vcpu_dump_user_reg(vcpu, vcpu->uregs);
 	/* For only Normal VCPUs */
-	if (!vcpu->guest) {
+	if (!vcpu->is_normal) {
 		return;
 	}
 	vmm_printf("  User Mode Registers (Banked)\n");
