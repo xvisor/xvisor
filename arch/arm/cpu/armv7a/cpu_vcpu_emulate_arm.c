@@ -3259,7 +3259,7 @@ int cpu_vcpu_emulate_arm_inst(vmm_vcpu_t *vcpu,
 	if (!vcpu) {
 		return VMM_EFAIL;
 	}
-	if (!vcpu->guest) {
+	if (!vcpu->is_normal) {
 		return VMM_EFAIL;
 	}
 

@@ -41,8 +41,8 @@ void vmm_vcpu_irq_process(vmm_user_regs_t * regs)
 		return;
 	}
 
-	/* For orphan vcpu dont do anything */
-	if (vcpu->guest == NULL) {
+	/* For non-normal vcpu dont do anything */
+	if (!vcpu->is_normal) {
 		return;
 	}
 
@@ -82,8 +82,8 @@ void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason)
 		return;
 	}
 
-	/* For orphan vcpu dont do anything */
-	if (vcpu->guest == NULL) {
+	/* For non-normal vcpu dont do anything */
+	if (!vcpu->is_normal) {
 		return;
 	}
 
@@ -122,8 +122,8 @@ void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu)
 		return;
 	}
 
-	/* For orphan vcpu dont do anything */
-	if (vcpu->guest == NULL) {
+	/* For non-normal vcpu dont do anything */
+	if (!vcpu->is_normal) {
 		return;
 	}
 

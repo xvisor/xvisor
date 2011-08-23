@@ -142,8 +142,6 @@ _reset:
 	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR
 	/* Call init function */
 	bl	arm_init
-	/* Set to User Mode */
-	SET_CURRENT_MODE CPSR_MODE_USER
 	/* Call main function */
 	bl	arm_main
 	/* We should never reach here */

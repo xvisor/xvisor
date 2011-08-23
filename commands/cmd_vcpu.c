@@ -88,7 +88,7 @@ void cmd_vcpu_list(vmm_chardev_t *cdev)
 			vmm_strcpy(state, "Invalid");
 			break;
 		}
-		if (vcpu->guest) {
+		if (vcpu->node) {
 			vmm_devtree_getpath(path, vcpu->node);
 			vmm_cprintf(cdev, "| %-5d| %-9s| %-16s| %-41s|\n", 
 					  id, state, vcpu->name, path);

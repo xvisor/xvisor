@@ -46,29 +46,51 @@ void arm_init(void)
 	arm_timer_enable();
 }
 
-void arm_cmd_help(void)
+void arm_cmd_help(int argc, char **argv)
 {
-	arm_puts("List of commands: \n");
 	arm_puts("help      - List commands and their usage\n");
+	arm_puts("\n");
 	arm_puts("hi        - Say hi to ARM test code\n");
+	arm_puts("\n");
 	arm_puts("hello     - Say hello to ARM test code\n");
+	arm_puts("\n");
 	arm_puts("sysctl    - Display sysctl registers\n");
+	arm_puts("\n");
 	arm_puts("timer     - Display timer information\n");
-	arm_puts("dhrystone - Run dhrystone 2.1 benchmark\n");
+	arm_puts("\n");
+	arm_puts("dhrystone - Dhrystone 2.1 benchmark\n");
+	arm_puts("            Usage: dhrystone [<iterations>]\n");
+	arm_puts("\n");
+	arm_puts("hexdump   - Dump memory contents in hex format\n");
+	arm_puts("            Usage: hexdump <addr> <count>\n");
+	arm_puts("            <addr>  = memory address in hex\n");
+	arm_puts("            <count> = byte count in hex\n");
+	arm_puts("\n");
+	arm_puts("copy      - Copy to target memory from source memory\n");
+	arm_puts("            Usage: copy <dest> <src> <count>\n");
+	arm_puts("            <dest>  = destination address in hex\n");
+	arm_puts("            <src>   = source address in hex\n");
+	arm_puts("            <count> = byte count in hex\n");
+	arm_puts("\n");
+	arm_puts("go        - Jump to a given address\n");
+	arm_puts("            Usage: go <addr>\n");
+	arm_puts("            <addr>  = jump address in hex\n");
+	arm_puts("\n");
 	arm_puts("reset     - Reset the system\n");
+	arm_puts("\n");
 }
 
-void arm_cmd_hi(void)
+void arm_cmd_hi(int argc, char **argv)
 {
 	arm_puts("hello\n");
 }
 
-void arm_cmd_hello(void)
+void arm_cmd_hello(int argc, char **argv)
 {
 	arm_puts("hi\n");
 }
 
-void arm_cmd_sysctl(void)
+void arm_cmd_sysctl(int argc, char **argv)
 {
 	char str[32];
 	u32 sys_100hz, sys_24mhz;
@@ -87,7 +109,7 @@ void arm_cmd_sysctl(void)
 	arm_puts("\n");
 }
 
-void arm_cmd_timer(void)
+void arm_cmd_timer(int argc, char **argv)
 {
 	char str[32];
 	u64 irq_count, tstamp, ratio;
@@ -109,14 +131,87 @@ void arm_cmd_timer(void)
 	arm_puts("\n");
 }
 
-void arm_cmd_dhrystone(void)
+void arm_cmd_dhrystone(int argc, char **argv)
 {
+	char str[32];
+	int iters = 1000000;
+	if (argc > 1) {
+		iters = arm_str2int(argv[1]);
+	} else {
+		arm_puts ("dhrystone: number of iterations not provided\n");
+		arm_puts ("dhrystone: using default ");
+		arm_int2str (str, iters);
+		arm_puts (str);
+		arm_puts (" iterations\n");
+	}
 	arm_timer_disable();
-	dhry_main(1000000);
+	dhry_main(iters);
 	arm_timer_enable();
 }
 
-void arm_cmd_reset(void)
+void arm_cmd_hexdump(int argc, char **argv)
+{
+	char str[32];
+	u32 *addr;
+	u32 i, count;
+	if (argc < 3) {
+		arm_puts ("hexdump: must provide <addr> and <count>\n");
+		return;
+	}
+	addr = (u32 *)arm_hexstr2uint(argv[1]);
+	count = arm_hexstr2uint(argv[2]);
+	for (i = 0; i < (count / 4); i++) {
+		if (i % 4 == 0) {
+			arm_uint2hexstr(str, (u32)&addr[i]);
+			arm_puts(str);
+			arm_puts(": ");
+		}
+		arm_uint2hexstr(str, addr[i]);
+		arm_puts(str);
+		if (i % 4 == 3) {
+			arm_puts("\n");
+		} else {
+			arm_puts(" ");
+		}
+	}
+	arm_puts("\n");
+}
+
+void arm_cmd_copy(int argc, char **argv)
+{
+	u8 *dest, *src;
+	u32 i, count;
+	if (argc < 4) {
+		arm_puts ("copy: must provide <dest>, <src>, and <count>\n");
+		return;
+	}
+	dest = (u8 *)arm_hexstr2uint(argv[1]);
+	src = (u8 *)arm_hexstr2uint(argv[2]);
+	count = arm_hexstr2uint(argv[3]);
+	for (i = 0; i < count; i++) {
+		dest[i] = src[i];
+	}
+}
+
+void arm_cmd_go(int argc, char **argv)
+{
+	char str[32];
+	void (* jump)(void);
+	if (argc < 2) {
+		arm_puts ("go: must provide destination address\n");
+		return;
+	}
+	arm_timer_disable();
+	jump = (void (*)(void))arm_hexstr2uint(argv[1]);
+	arm_uint2hexstr(str, (u32)jump);
+	arm_puts("Jumping to location 0x");
+	arm_puts(str);
+	arm_puts(" ...\n");
+	jump ();
+	arm_timer_enable();
+}
+
+void arm_cmd_reset(int argc, char **argv)
 {
 	arm_puts("System reset ...\n\n");
 
@@ -134,32 +229,69 @@ void arm_cmd_reset(void)
 	while (1);
 }
 
+#define ARM_MAX_CMD_STR_SIZE	256
+#define ARM_MAX_ARG_SIZE	32
+
 /* Works in user mode */
 void arm_main(void)
 {
-	char line[256];
+	int argc, pos, cnt;
+	char line[ARM_MAX_CMD_STR_SIZE];
+	char *argv[ARM_MAX_ARG_SIZE];
 
 	arm_puts("ARM Realview PB-A8 Test Code\n\n");
 
 	while(1) {
 		arm_puts("arm-test# ");
 
-		arm_gets(line, 256, '\n');
+		argc = 0;
+		cnt = 0;
+		pos = 0;
+		arm_gets(line, ARM_MAX_CMD_STR_SIZE, '\n');
+		while (line[pos] && (argc < ARM_MAX_ARG_SIZE)) {
+			if ((line[pos] == '\r') ||
+			    (line[pos] == '\n')) {
+				line[pos] = '\0';
+				break;
+			}
+			if (line[pos] == ' ') {
+				if (cnt > 0) {
+					line[pos] = '\0';
+					cnt = 0;
+				}
+			} else {
+				if (cnt == 0) {
+					argv[argc] = &line[pos];
+					argc++;
+				}
+				cnt++;
+			}
+			pos++;
+		}
+		if (!argc) {
+			continue;
+		}
 
-		if (arm_strcmp(line, "help") == 0) {
-			arm_cmd_help();
-		} else if (arm_strcmp(line, "hi") == 0) {
-			arm_cmd_hi();
-		} else if (arm_strcmp(line, "hello") == 0) {
-			arm_cmd_hello();
-		} else if (arm_strcmp(line, "sysctl") == 0) {
-			arm_cmd_sysctl();
-		} else if (arm_strcmp(line, "timer") == 0) {
-			arm_cmd_timer();
-		} else if (arm_strcmp(line, "dhrystone") == 0) {
-			arm_cmd_dhrystone();
-		} else if (arm_strcmp(line, "reset") == 0) {
-			arm_cmd_reset();
+		if (arm_strcmp(argv[0], "help") == 0) {
+			arm_cmd_help(argc, argv);
+		} else if (arm_strcmp(argv[0], "hi") == 0) {
+			arm_cmd_hi(argc, argv);
+		} else if (arm_strcmp(argv[0], "hello") == 0) {
+			arm_cmd_hello(argc, argv);
+		} else if (arm_strcmp(argv[0], "sysctl") == 0) {
+			arm_cmd_sysctl(argc, argv);
+		} else if (arm_strcmp(argv[0], "timer") == 0) {
+			arm_cmd_timer(argc, argv);
+		} else if (arm_strcmp(argv[0], "dhrystone") == 0) {
+			arm_cmd_dhrystone(argc, argv);
+		} else if (arm_strcmp(argv[0], "hexdump") == 0) {
+			arm_cmd_hexdump(argc, argv);
+		} else if (arm_strcmp(argv[0], "copy") == 0) {
+			arm_cmd_copy(argc, argv);
+		} else if (arm_strcmp(argv[0], "go") == 0) {
+			arm_cmd_go(argc, argv);
+		} else if (arm_strcmp(argv[0], "reset") == 0) {
+			arm_cmd_reset(argc, argv);
 		}
 	}
 }

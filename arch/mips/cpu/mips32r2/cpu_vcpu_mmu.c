@@ -103,7 +103,7 @@ static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 
 	guest = vcpu->guest;
 
-	if (guest) {
+	if (vcpu->is_normal) {
 		/*
 		 * Only if the guest is making a valid tlb entry, try to map the
 		 * gphys to hphys

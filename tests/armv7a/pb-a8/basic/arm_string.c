@@ -45,6 +45,23 @@ int arm_strcmp(const char *a, const char *b)
 	return (unsigned char)*a - (unsigned char)*b;
 }
 
+int arm_str2int(char * src)
+{
+	int val = 0, pos = 0, minus = 0;
+
+	if (src[pos] == '-') {
+		minus = 1;
+		pos++;
+	}
+
+	while (src[pos]) {
+		val = 10 * val + (src[pos] - '0');
+		pos++;
+	}
+
+	return (minus) ? -val : val;
+}
+
 void arm_int2str(char * dst, int src)
 {
 	int val, count = 0, pos = 0;
@@ -55,15 +72,44 @@ void arm_int2str(char * dst, int src)
 		count++;
 		val = val / 10;
 	}
+	if (src < 0) {
+		count++;
+	}
 
-	val = src;
+	val = (src < 0) ? -src : src;
 	while (val) {
 		dst[count - pos - 1] = intchars[val % 10];
 		pos++;
 		val = val / 10;
 	}
+	if (src < 0) {
+		dst[0] = '-';
+	}
 
 	dst[count] = '\0';
+}
+
+unsigned int arm_hexstr2uint(char * src)
+{
+	unsigned int val = 0x0;
+	int pos = 0;
+
+	if ((src[0] == '0') && (src[1] == 'x')) {
+		pos = 2;
+	}
+
+	while (src[pos]) {
+		if (('0' <= src[pos]) && (src[pos] <= '9')) {
+			val = val * 16 + (src[pos] - '0');
+		} else if (('A' <= src[pos]) && (src[pos] <= 'F')) {
+			val = val * 16 + (src[pos] - 'A' + 10);
+		} else if (('a' <= src[pos]) && (src[pos] <= 'f')) {
+			val = val * 16 + (src[pos] - 'a' + 10);
+		}
+		pos++;
+	}
+
+	return val;
 }
 
 void arm_uint2hexstr(char * dst, unsigned int src)
