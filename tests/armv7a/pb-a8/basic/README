@@ -15,9 +15,8 @@ Please follow the steps below to build & run Basic Test on Realview PB-A8:
   [1. Build environment]
   # CROSS_COMPILE=arm-none-eabi-; cd <xvisor_source_directory>
 
-  [2. Configure Xvisor]
-  # make menuconfig 
-  (In this step select ARCH=arm, CPU=cortex-a8, and BOARD=pb-a8)
+  [2. Configure Xvisor with Realview PB-A8 default settings]
+  # make ARCH=arm pb-a8-defconfig 
 
   [3. Build Xvisor]
   # make
@@ -35,13 +34,13 @@ Please follow the steps below to build & run Basic Test on Realview PB-A8:
   XVisor# vserial bind guest0/uart0
 
   [8. Say 'hi' to Basic Test Code]
-  arm-test# hi
+  [guest0/uart0] arm-test# hi
 
   [9. Say 'hello' to Basic Test Code]
-  arm-test# hello
+  [guest0/uart0] arm-test# hello
 
-  [10. Enter empty line to return to Xvisor prompt]
-  arm-test# 
+  [10. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] arm-test# 
 
   (Note: replace all <> brackets based on your workspace)
 

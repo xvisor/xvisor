@@ -256,7 +256,10 @@ static int sp804_timer_reset(struct sp804_timer *t)
 	vmm_timer_event_stop(t->event);
 	t->limit = 0xFFFFFFFF;
 	t->control = TIMER_CTRL_IE;
+	t->irq_level = 0;
+#if 0
 	sp804_timer_syncvalue(t, TRUE);
+#endif
 
 	vmm_spin_unlock(&t->lock);
 

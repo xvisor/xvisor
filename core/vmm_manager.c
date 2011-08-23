@@ -177,6 +177,7 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->subid = 0;
 	vmm_strcpy(vcpu->name, name);
 	vcpu->node = NULL;
+	vcpu->is_normal = FALSE;
 	vcpu->state = VMM_VCPU_STATE_READY;
 	vcpu->reset_count = 0;
 	vcpu->preempt_count = 0;
@@ -442,6 +443,7 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 			   VMM_DEVTREE_PATH_SEPRATOR_STRING);
 		vmm_strcat(vcpu->name, vnode->name);
 		vcpu->node = vnode;
+		vcpu->is_normal = TRUE;
 		vcpu->state = VMM_VCPU_STATE_RESET;
 		vcpu->reset_count = 0;
 		vcpu->preempt_count = 0;
@@ -568,6 +570,7 @@ int vmm_manager_init(void)
 		mngr.vcpu_array[vnum].id = vnum;
 		vmm_strcpy(mngr.vcpu_array[vnum].name, "");
 		mngr.vcpu_array[vnum].node = NULL;
+		mngr.vcpu_array[vnum].is_normal = FALSE;
 		mngr.vcpu_array[vnum].state = VMM_VCPU_STATE_UNKNOWN;
 	}
 
