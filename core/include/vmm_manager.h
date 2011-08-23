@@ -97,6 +97,7 @@ struct vmm_vcpu {
 	u32 subid;
 	char name[64];
 	vmm_devtree_node_t *node;
+	bool is_normal;
 	vmm_guest_t *guest;
 	u32 state;
 	u32 reset_count;
