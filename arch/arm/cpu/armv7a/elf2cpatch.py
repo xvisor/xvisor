@@ -30,16 +30,6 @@
 # instruction. Each encoded instruction will have its own unique inst_id.
 # the fields of instruction will be encoded as inst_field. The inst_field
 # for each encoded sensitive non-priviledged instruction will be diffrent.
-#
-# Limitations:
-# 1. LDM/STM: In LDM (exception return), LDM (user register) and 
-#	      STM (user register) instructions possible values of Rn are 
-#	      r0, r4, r8, or sp.
-# 2. LDRBT/STRBT: In LDRBT/STRBT Rt are r0, r1, r2, r3, r4, r5, r6, and r7
-# 3. LDRT/STRT: In LDRT/STRT Rt are r0, r1, r2, r3, r4, r5, r6, and r7
-#
-# The above limitations are introduced based on the instruction usage in 
-# Linux and NetBSD
 
 import os
 import sys
@@ -403,14 +393,15 @@ def convert_srs_inst(hxstr):
 #	Hypercall Fields:
 #		inst_cond[31:28] = cond
 #		inst_op[27:24] = 0xf
-#		inst_id[23:20] = 1 (if P==0)
-#		inst_id[23:20] = 2 (if P==1)
-#		inst_fields[19:18] = 0 (if Rn=[r0-r3] then Rn=r0)
-#		inst_fields[19:18] = 1 (if Rn=[r4-r7] then Rn=r4)
-#		inst_fields[19:18] = 2 (if Rn=[r8-r11] then Rn=r8)
-#		inst_fields[19:18] = 3 (if Rn=[r12-r15] then Rn=r13 or Rn=sp)
-#		inst_fields[17:17] = U
-#		inst_fields[16:16] = W
+#		inst_id[23:20] = 1 (if P==0 && U==0 && W==0)
+#		inst_id[23:20] = 2 (if P==0 && U==0 && W==1)
+#		inst_id[23:20] = 3 (if P==0 && U==1 && W==0)
+#		inst_id[23:20] = 4 (if P==0 && U==1 && W==1)
+#		inst_id[23:20] = 5 (if P==1 && U==0 && W==0)
+#		inst_id[23:20] = 6 (if P==1 && U==0 && W==1)
+#		inst_id[23:20] = 7 (if P==1 && U==1 && W==0)
+#		inst_id[23:20] = 8 (if P==1 && U==1 && W==1)
+#		inst_fields[19:16] = Rn
 #		inst_fields[15:0] = reg_list
 def convert_ldm_ue_inst(hxstr):
 	hx = int(hxstr, 16)
@@ -419,22 +410,12 @@ def convert_ldm_ue_inst(hxstr):
 	U = (hx >> 23) & 0x1
 	W = (hx >> 21) & 0x1
 	Rn = (hx >> 16) & 0xF
-	if (0<=Rn and Rn<4):
-		Rn = 0 # Use Rn=r0
-	elif (4<=Rn and Rn<8):
-		Rn = 1 # Use Rn=r4
-	elif (8<=Rn and Rn<12):
-		Rn = 2 # Use Rn=r8
-	else:
-		Rn = 3 # Use Rn=sp
-	inst_id = 1 + P
+	inst_id = 1 + P * 4 + U * 2 + W
 	reg_list = (hx >> 0) & 0xFFFF
 	rethx = 0x0F000000
 	rethx = rethx | (cond << 28)
 	rethx = rethx | (inst_id << 20)
-	rethx = rethx | (Rn << 18)
-	rethx = rethx | (U << 17)
-	rethx = rethx | (W << 16)
+	rethx = rethx | (Rn << 16)
 	rethx = rethx | (reg_list << 0)
 	return rethx
 
@@ -450,13 +431,11 @@ def convert_ldm_ue_inst(hxstr):
 #	Hypercall Fields:
 #		inst_cond[31:28] = cond
 #		inst_op[27:24] = 0xf
-#		inst_id[23:20] = 3
-#		inst_fields[19:18] = 0 (if Rn=[r0-r3] then Rn=r0)
-#		inst_fields[19:18] = 1 (if Rn=[r4-r7] then Rn=r4)
-#		inst_fields[19:18] = 2 (if Rn=[r8-r11] then Rn=r8)
-#		inst_fields[19:18] = 3 (if Rn=[r12-r15] then Rn=r13 or Rn=sp)
-#		inst_fields[17:17] = P
-#		inst_fields[18:18] = U
+#		inst_id[23:20] = 9 (if P==0 && U==0)
+#		inst_id[23:20] = 10 (if P==0 && U==1)
+#		inst_id[23:20] = 11 (if P==1 && U==0)
+#		inst_id[23:20] = 12 (if P==1 && U==1)
+#		inst_fields[19:16] = Rn
 #		inst_fields[15:0] = reg_list
 def convert_stm_u_inst(hxstr):
 	hx = int(hxstr, 16)
@@ -465,21 +444,11 @@ def convert_stm_u_inst(hxstr):
 	U = (hx >> 23) & 0x1
 	Rn = (hx >> 16) & 0xF
 	reg_list = (hx >> 0) & 0x7FFF
-	if (0<=Rn and Rn<4):
-		Rn = 0 # Use Rn=r0
-	elif (4<=Rn and Rn<8):
-		Rn = 1 # Use Rn=r4
-	elif (8<=Rn and Rn<12):
-		Rn = 2 # Use Rn=r8
-	else:
-		Rn = 3 # Use Rn=sp
-	inst_id = 3
+	inst_id = 9 + P * 2 + U
 	rethx = 0x0F000000
 	rethx = rethx | (cond << 28)
 	rethx = rethx | (inst_id << 20)
-	rethx = rethx | (Rn << 18)
-	rethx = rethx | (P << 17)
-	rethx = rethx | (U << 16)
+	rethx = rethx | (Rn << 16)
 	rethx = rethx | (reg_list << 0)
 	return rethx
 
@@ -501,8 +470,8 @@ def convert_stm_u_inst(hxstr):
 #	Hypercall Fields:
 #		inst_cond[31:28] = cond
 #		inst_op[27:24] = 0xf
-#		inst_id[23:20] = 4 (if bits[25:25]==0)
-#		inst_id[23:20] = 5 (if bits[25:25]==1)
+#		inst_id[23:20] = 13 (if bits[25:25]==0)
+#		inst_id[23:20] = 14 (if bits[25:25]==1)
 #		inst_fields[19:16] = opcode
 #		inst_fields[15:12] = Rn
 #		inst_fields[11:0] = imm12
@@ -518,426 +487,18 @@ def convert_subs_rel_inst(hxstr):
 	imm5 = (hx >> 7) & 0x1F
 	typ = (hx >> 5) & 0x3
 	Rm = (hx >> 0) & 0xF
-	inst_id = 4 + ((hx >> 25) & 0x1)
+	inst_id = 13 + ((hx >> 25) & 0x1)
 	rethx = 0x0F000000
 	rethx = rethx | (cond << 28)
 	rethx = rethx | (inst_id << 20)
 	rethx = rethx | (opcode << 16)
 	rethx = rethx | (Rn << 12)
-	if (inst_id==5):
+	if (inst_id==14):
 		rethx = rethx | (imm12 << 0)
 	else:
 		rethx = rethx | (imm5 << 7)
 		rethx = rethx | (typ << 5)
 		rethx = rethx | (Rm << 0)
-	return rethx
-
-# LDRT
-#	Syntax:
-# 		ldrt<c> <Rt>, [<Rn> {, #<imm>}]
-# 		ldrt<c> <Rt>, [<Rn>] {, #+/-<imm>}
-# 		ldrt<c> <Rt>, [<Rn>], +/-<Rm> {, <shift>}
-#	Fields:
-#		cond = bits[31:28]
-#		U = bits[23:23]
-#		Rn = bits[19:16]
-#		Rt = bits[15:12]
-#		imm12 = bits[11:0]
-#		imm5 = bits[11:7]
-#		type = bits[6:5]
-#		Rm = bits[3:0]
-#	Hypercall Fields:
-#		inst_cond[31:28] = cond
-#		inst_op[27:24] = 0xf
-#		inst_id[23:20] = 6 (if bits[25:25]==0)
-#		inst_id[23:20] = 7 (if bits[25:25]==1)
-#		inst_fields[19:19] = U
-#		inst_fields[18:15] = Rn
-#		inst_fields[14:12] = Rt
-#		inst_fields[11:0] = imm12
-#		inst_fields[11:7] = imm5
-#		inst_fields[6:5] = type
-#		inst_fields[3:0] = Rm
-def convert_ldrt_inst(hxstr,is_strt):
-	hx = int(hxstr, 16)
-	cond = (hx >> 28) & 0xF
-	U = (hx >> 23) & 0x1
-	Rn = (hx >> 16) & 0xF
-	Rt = (hx >> 12) & 0xF
-	Rt = Rt & 0x7 # Hack Rt can be [r0-r7]
-	imm12 = (hx >> 0) & 0xFFF
-	imm5 = (hx >> 7) & 0x1F
-	typ = (hx >> 5) & 0x3
-	Rm = (hx >> 0) & 0xF
-	inst_id = 6 + ((hx >> 25) & 0x1)
-	rethx = 0x0F000000
-	rethx = rethx | (cond << 28)
-	rethx = rethx | (inst_id << 20)
-	rethx = rethx | (U << 19)
-	rethx = rethx | (Rn << 15)
-	rethx = rethx | (Rt << 12)
-	if (((hx >> 25) & 0x1) == 0):
-		rethx = rethx | (imm12 << 0)
-	else:
-		rethx = rethx | (imm5 << 7)
-		rethx = rethx | (typ << 5)
-		rethx = rethx | (Rm << 0)
-	return rethx
-
-# STRT
-#	Syntax:
-# 		strt<c> <Rt>, [<Rn> {, #<imm>}]
-# 		strt<c> <Rt>, [<Rn>] {, #+/-<imm>}
-# 		strt<c> <Rt>, [<Rn>], +/-<Rm> {, <shift>}
-#	Fields:
-#		cond = bits[31:28]
-#		U = bits[23:23]
-#		Rn = bits[19:16]
-#		Rt = bits[15:12]
-#		imm12 = bits[11:0]
-#		imm5 = bits[11:7]
-#		type = bits[6:5]
-#		Rm = bits[3:0]
-#	Hypercall Fields:
-#		inst_cond[31:28] = cond
-#		inst_op[27:24] = 0xf
-#		inst_id[23:20] = 8 (if bits[25:25]==0)
-#		inst_id[23:20] = 9 (if bits[25:25]==1)
-#		inst_fields[19:19] = U
-#		inst_fields[18:15] = Rn
-#		inst_fields[14:12] = Rt
-#		inst_fields[11:0] = imm12
-#		inst_fields[11:7] = imm5
-#		inst_fields[6:5] = type
-#		inst_fields[3:0] = Rm
-def convert_strt_inst(hxstr):
-	hx = int(hxstr, 16)
-	cond = (hx >> 28) & 0xF
-	U = (hx >> 23) & 0x1
-	Rn = (hx >> 16) & 0xF
-	Rt = (hx >> 12) & 0xF
-	Rt = Rt & 0x7 # Hack Rt can be [r0-r7]
-	imm12 = (hx >> 0) & 0xFFF
-	imm5 = (hx >> 7) & 0x1F
-	typ = (hx >> 5) & 0x3
-	Rm = (hx >> 0) & 0xF
-	inst_id = 8 + ((hx >> 25) & 0x1)
-	rethx = 0x0F000000
-	rethx = rethx | (cond << 28)
-	rethx = rethx | (inst_id << 20)
-	rethx = rethx | (U << 19)
-	rethx = rethx | (Rn << 15)
-	rethx = rethx | (Rt << 12)
-	if (((hx >> 25) & 0x1) == 0):
-		rethx = rethx | (imm12 << 0)
-	else:
-		rethx = rethx | (imm5 << 7)
-		rethx = rethx | (typ << 5)
-		rethx = rethx | (Rm << 0)
-	return rethx
-
-# LDRBT
-#	Syntax:
-# 		ldrbt<c> <Rt>, [<Rn> {, #<imm>}]
-# 		ldrbt<c> <Rt>, [<Rn>] {, #+/-<imm>}
-# 		ldrbt<c> <Rt>, [<Rn>], +/-<Rm> {, <shift>}
-#	Fields:
-#		cond = bits[31:28]
-#		U = bits[23:23]
-#		Rn = bits[19:16]
-#		Rt = bits[15:12]
-#		imm12 = bits[11:0]
-#		imm5 = bits[11:7]
-#		type = bits[6:5]
-#		Rm = bits[3:0]
-#	Hypercall Fields:
-#		inst_cond[31:28] = cond
-#		inst_op[27:24] = 0xf
-#		inst_id[23:20] = 10 (if bits[25:25]==0)
-#		inst_id[23:20] = 11 (if bits[25:25]==1)
-#		inst_fields[19:19] = U
-#		inst_fields[18:15] = Rn
-#		inst_fields[14:12] = Rt
-#		inst_fields[11:0] = imm12
-#		inst_fields[11:7] = imm5
-#		inst_fields[6:5] = type
-#		inst_fields[3:0] = Rm
-def convert_ldrbt_inst(hxstr):
-	hx = int(hxstr, 16)
-	cond = (hx >> 28) & 0xF
-	U = (hx >> 23) & 0x1
-	Rn = (hx >> 16) & 0xF
-	Rt = (hx >> 12) & 0xF
-	Rt = Rt & 0x7 # Hack Rt can be [r0-r7]
-	imm12 = (hx >> 0) & 0xFFF
-	imm5 = (hx >> 7) & 0x1F
-	typ = (hx >> 5) & 0x3
-	Rm = (hx >> 0) & 0xF
-	inst_id = 10 + ((hx >> 25) & 0x1)
-	rethx = 0x0F000000
-	rethx = rethx | (cond << 28)
-	rethx = rethx | (inst_id << 20)
-	rethx = rethx | (U << 19)
-	rethx = rethx | (Rn << 15)
-	rethx = rethx | (Rt << 12)
-	if (((hx >> 25) & 0x1) == 0):
-		rethx = rethx | (imm12 << 0)
-	else:
-		rethx = rethx | (imm5 << 7)
-		rethx = rethx | (typ << 5)
-		rethx = rethx | (Rm << 0)
-	return rethx
-
-# STRBT
-#	Syntax:
-# 		strbt<c> <Rt>, [<Rn> {, #<imm>}]
-# 		strbt<c> <Rt>, [<Rn>] {, #+/-<imm>}
-# 		strbt<c> <Rt>, [<Rn>], +/-<Rm> {, <shift>}
-#	Fields:
-#		cond = bits[31:28]
-#		U = bits[23:23]
-#		Rn = bits[19:16]
-#		Rt = bits[15:12]
-#		imm12 = bits[11:0]
-#		imm5 = bits[11:7]
-#		type = bits[6:5]
-#		Rm = bits[3:0]
-#	Hypercall Fields:
-#		inst_cond[31:28] = cond
-#		inst_op[27:24] = 0xf
-#		inst_id[23:20] = 12 (if bits[25:25]==0)
-#		inst_id[23:20] = 13 (if bits[25:25]==1)
-#		inst_fields[19:19] = U
-#		inst_fields[18:15] = Rn
-#		inst_fields[14:12] = Rt
-#		inst_fields[11:0] = imm12
-#		inst_fields[11:7] = imm5
-#		inst_fields[6:5] = type
-#		inst_fields[3:0] = Rm
-def convert_strbt_inst(hxstr):
-	hx = int(hxstr, 16)
-	cond = (hx >> 28) & 0xF
-	U = (hx >> 23) & 0x1
-	Rn = (hx >> 16) & 0xF
-	Rt = (hx >> 12) & 0xF
-	Rt = Rt & 0x7 # Hack Rt can be [r0-r7]
-	imm12 = (hx >> 0) & 0xFFF
-	imm5 = (hx >> 7) & 0x1F
-	typ = (hx >> 5) & 0x3
-	Rm = (hx >> 0) & 0xF
-	inst_id = 12 + ((hx >> 25) & 0x1)
-	rethx = 0x0F000000
-	rethx = rethx | (cond << 28)
-	rethx = rethx | (inst_id << 20)
-	rethx = rethx | (U << 19)
-	rethx = rethx | (Rn << 15)
-	rethx = rethx | (Rt << 12)
-	if (((hx >> 25) & 0x1) == 0):
-		rethx = rethx | (imm12 << 0)
-	else:
-		rethx = rethx | (imm5 << 7)
-		rethx = rethx | (typ << 5)
-		rethx = rethx | (Rm << 0)
-	return rethx
-
-# LDRHT
-#	Syntax:
-# 		ldrht<c> <Rt>, [<Rn> {, #<imm>}]
-# 		ldrht<c> <Rt>, [<Rn>] {, #+/-<imm>}
-# 		ldrht<c> <Rt>, [<Rn>], +/-<Rm>
-#	Fields:
-#		cond = bits[31:28]
-#		U = bits[23:23]
-#		Rn = bits[19:16]
-#		Rt = bits[15:12]
-#		imm4H = bits[11:8]
-#		imm4L = bits[3:0]
-#		Rm = bits[3:0]
-#	Hypercall Fields:
-#		inst_cond[31:28] = cond
-#		inst_op[27:24] = 0xf
-#		inst_id[23:20] = 14
-#		inst_subid[19:17] = 0 (if bits[22:22]==0)
-#		inst_subid[19:17] = 1 (if bits[22:22]==1)
-#		inst_fields[16:13] = Rn
-#		inst_fields[12:9] = Rt
-#		inst_fields[8:8] = U
-#		inst_fields[7:4] = imm4H
-#		inst_fields[3:0] = imm4L
-#		inst_fields[7:4] = Rm
-def convert_ldrht_inst(hxstr):
-	hx = int(hxstr, 16)
-	cond = (hx >> 28) & 0xF
-	U = (hx >> 23) & 0x1
-	Rn = (hx >> 16) & 0xF
-	Rt = (hx >> 12) & 0xF
-	imm4H = (hx >> 8) & 0xF
-	imm4L = (hx >> 0) & 0xF
-	Rm = (hx >> 0) & 0xF
-	inst_id = 14
-	inst_subid = 0 + ((hx >> 22) & 0x1)
-	rethx = 0x0F000000
-	rethx = rethx | (cond << 28)
-	rethx = rethx | (inst_id << 20)
-	rethx = rethx | (inst_subid << 17)
-	rethx = rethx | (Rn << 13)
-	rethx = rethx | (Rt << 9)
-	rethx = rethx | (U << 8)
-	if (((hx >> 22) & 0x1) == 1):
-		rethx = rethx | (imm4H << 4)
-		rethx = rethx | (imm4L << 0)
-	else:
-		rethx = rethx | (Rm << 4)
-	return rethx
-
-# LDRSBT
-#	Syntax:
-# 		ldrsbt<c> <Rt>, [<Rn> {, #<imm>}]
-# 		ldrsbt<c> <Rt>, [<Rn>] {, #+/-<imm>}
-# 		ldrsbt<c> <Rt>, [<Rn>], +/-<Rm>
-#	Fields:
-#		cond = bits[31:28]
-#		U = bits[23:23]
-#		Rn = bits[19:16]
-#		Rt = bits[15:12]
-#		imm4H = bits[11:8]
-#		imm4L = bits[3:0]
-#		Rm = bits[3:0]
-#	Hypercall Fields:
-#		inst_cond[31:28] = cond
-#		inst_op[27:24] = 0xf
-#		inst_id[23:20] = 14
-#		inst_subid[19:17] = 2 (if bits[22:22]==0)
-#		inst_subid[19:17] = 3 (if bits[22:22]==1)
-#		inst_fields[16:13] = Rn
-#		inst_fields[12:9] = Rt
-#		inst_fields[8:8] = U
-#		inst_fields[7:4] = imm4H
-#		inst_fields[3:0] = imm4L
-#		inst_fields[7:4] = Rm
-def convert_ldrsbt_inst(hxstr):
-	hx = int(hxstr, 16)
-	cond = (hx >> 28) & 0xF
-	U = (hx >> 23) & 0x1
-	Rn = (hx >> 16) & 0xF
-	Rt = (hx >> 12) & 0xF
-	imm4H = (hx >> 8) & 0xF
-	imm4L = (hx >> 0) & 0xF
-	Rm = (hx >> 0) & 0xF
-	inst_id = 14
-	inst_subid = 2 + ((hx >> 22) & 0x1)
-	rethx = 0x0F000000
-	rethx = rethx | (cond << 28)
-	rethx = rethx | (inst_id << 20)
-	rethx = rethx | (inst_subid << 17)
-	rethx = rethx | (Rn << 13)
-	rethx = rethx | (Rt << 9)
-	rethx = rethx | (U << 8)
-	if (((hx >> 22) & 0x1) == 1):
-		rethx = rethx | (imm4H << 4)
-		rethx = rethx | (imm4L << 0)
-	else:
-		rethx = rethx | (Rm << 4)
-	return rethx
-
-# LDRSHT
-#	Syntax:
-# 		ldrsht<c> <Rt>, [<Rn> {, #<imm>}]
-# 		ldrsht<c> <Rt>, [<Rn>] {, #+/-<imm>}
-# 		ldrsht<c> <Rt>, [<Rn>], +/-<Rm>
-#	Fields:
-#		cond = bits[31:28]
-#		U = bits[23:23]
-#		Rn = bits[19:16]
-#		Rt = bits[15:12]
-#		imm4H = bits[11:8]
-#		imm4L = bits[3:0]
-#		Rm = bits[3:0]
-#	Hypercall Fields:
-#		inst_cond[31:28] = cond
-#		inst_op[27:24] = 0xf
-#		inst_id[23:20] = 14
-#		inst_subid[19:17] = 4 (if bits[22:22]==0)
-#		inst_subid[19:17] = 5 (if bits[22:22]==1)
-#		inst_fields[16:13] = Rn
-#		inst_fields[12:9] = Rt
-#		inst_fields[8:8] = U
-#		inst_fields[7:4] = imm4H
-#		inst_fields[3:0] = imm4L
-#		inst_fields[7:4] = Rm
-def convert_ldrsht_inst(hxstr):
-	hx = int(hxstr, 16)
-	cond = (hx >> 28) & 0xF
-	U = (hx >> 23) & 0x1
-	Rn = (hx >> 16) & 0xF
-	Rt = (hx >> 12) & 0xF
-	imm4H = (hx >> 8) & 0xF
-	imm4L = (hx >> 0) & 0xF
-	Rm = (hx >> 0) & 0xF
-	inst_id = 14
-	inst_subid = 4 + ((hx >> 22) & 0x1)
-	rethx = 0x0F000000
-	rethx = rethx | (cond << 28)
-	rethx = rethx | (inst_id << 20)
-	rethx = rethx | (inst_subid << 17)
-	rethx = rethx | (Rn << 13)
-	rethx = rethx | (Rt << 9)
-	rethx = rethx | (U << 8)
-	if (((hx >> 22) & 0x1) == 1):
-		rethx = rethx | (imm4H << 4)
-		rethx = rethx | (imm4L << 0)
-	else:
-		rethx = rethx | (Rm << 4)
-	return rethx
-
-# STRHT
-#	Syntax:
-# 		strht<c> <Rt>, [<Rn> {, #<imm>}]
-# 		strht<c> <Rt>, [<Rn>] {, #+/-<imm>}
-# 		strht<c> <Rt>, [<Rn>], +/-<Rm>
-#	Fields:
-#		cond = bits[31:28]
-#		U = bits[23:23]
-#		Rn = bits[19:16]
-#		Rt = bits[15:12]
-#		imm4H = bits[11:8]
-#		imm4L = bits[3:0]
-#		Rm = bits[3:0]
-#	Hypercall Fields:
-#		inst_cond[31:28] = cond
-#		inst_op[27:24] = 0xf
-#		inst_id[23:20] = 14
-#		inst_subid[19:17] = 6 (if bits[22:22]==0)
-#		inst_subid[19:17] = 7 (if bits[22:22]==1)
-#		inst_fields[16:13] = Rn
-#		inst_fields[12:9] = Rt
-#		inst_fields[8:8] = U
-#		inst_fields[7:4] = imm4H
-#		inst_fields[3:0] = imm4L
-#		inst_fields[7:4] = Rm
-def convert_strht_inst(hxstr):
-	hx = int(hxstr, 16)
-	cond = (hx >> 28) & 0xF
-	U = (hx >> 23) & 0x1
-	Rn = (hx >> 16) & 0xF
-	Rt = (hx >> 12) & 0xF
-	imm4H = (hx >> 8) & 0xF
-	imm4L = (hx >> 0) & 0xF
-	Rm = (hx >> 0) & 0xF
-	inst_id = 14
-	inst_subid = 6 + ((hx >> 22) & 0x1)
-	rethx = 0x0F000000
-	rethx = rethx | (cond << 28)
-	rethx = rethx | (inst_id << 20)
-	rethx = rethx | (inst_subid << 17)
-	rethx = rethx | (Rn << 13)
-	rethx = rethx | (Rt << 9)
-	rethx = rethx | (U << 8)
-	if (((hx >> 22) & 0x1) == 1):
-		rethx = rethx | (imm4H << 4)
-		rethx = rethx | (imm4L << 0)
-	else:
-		rethx = rethx | (Rm << 4)
 	return rethx
 
 psec = ""
@@ -1000,30 +561,6 @@ for ln, l in enumerate(lines):
 				w[len(w)-1].endswith("}^")):
 				print "\t#", w[2], w[3], w[4]
 				print "\twrite32,0x%x,0x%08x" % (addr, convert_stm_u_inst(w[1]))
-			elif (w[2].startswith("ldrbt")):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_ldrbt_inst(w[1]))
-			elif (w[2].startswith("ldrht")):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_ldrht_inst(w[1]))
-			elif (w[2].startswith("ldrsbt")):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_ldrsbt_inst(w[1]))
-			elif (w[2].startswith("ldrsht")):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_ldrsht_inst(w[1]))
-			elif (w[2].startswith("ldrt")):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_ldrt_inst(w[1]))
-			elif (w[2].startswith("strbt")):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_strbt_inst(w[1]))
-			elif (w[2].startswith("strht")):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_strht_inst(w[1]))
-			elif (w[2].startswith("strt")):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_strt_inst(w[1]))
 			elif ((int(w[1], 16) & 0x0C10F000)==0x0010F000):
 				print "\t#", w[2], w[3], w[4]
 				print "\twrite32,0x%x,0x%08x" % (addr, convert_subs_rel_inst(w[1]))

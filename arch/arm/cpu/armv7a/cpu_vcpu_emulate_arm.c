@@ -509,30 +509,9 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 	Rn = ARM_INST_BITS(inst,
 			   ARM_HYPERCALL_LDM_UE_RN_END,
 			   ARM_HYPERCALL_LDM_UE_RN_START);
-	switch (Rn) {
-	case 0:
-		Rn = 0;
-		break;
-	case 1:
-		Rn = 4;
-		break;
-	case 2:
-		Rn = 8;
-		break;
-	case 3:
-		Rn = 13;
-		break;
-	default:
-		Rn = 13;
-		break;
-	};
-	P = (id == ARM_HYPERCALL_LDM_UE_ID0) ? 0 : 1;
-	U = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_LDM_UE_U_END,
-			  ARM_HYPERCALL_LDM_UE_U_START);
-	W = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_LDM_UE_W_END,
-			  ARM_HYPERCALL_LDM_UE_W_START);
+	P = ((id - ARM_HYPERCALL_LDM_UE_ID0) & 0x4) >> 2;
+	U = ((id - ARM_HYPERCALL_LDM_UE_ID0) & 0x2) >> 1;
+	W = ((id - ARM_HYPERCALL_LDM_UE_ID0) & 0x1);
 	reg_list = ARM_INST_BITS(inst,
 				 ARM_HYPERCALL_LDM_UE_REGLIST_END,
 				 ARM_HYPERCALL_LDM_UE_REGLIST_START);
@@ -658,29 +637,8 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 	Rn = ARM_INST_BITS(inst,
 			   ARM_HYPERCALL_STM_U_RN_END,
 			   ARM_HYPERCALL_STM_U_RN_START);
-	switch (Rn) {
-	case 0:
-		Rn = 0;
-		break;
-	case 1:
-		Rn = 4;
-		break;
-	case 2:
-		Rn = 8;
-		break;
-	case 3:
-		Rn = 13;
-		break;
-	default:
-		Rn = 13;
-		break;
-	};
-	P = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_STM_U_P_END,
-			  ARM_HYPERCALL_STM_U_P_START);
-	U = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_STM_U_U_END,
-			  ARM_HYPERCALL_STM_U_U_START);
+	P = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x2) >> 1;
+	U = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x1);
 	reg_list = ARM_INST_BITS(inst,
 				 ARM_HYPERCALL_STM_U_REGLIST_END,
 				 ARM_HYPERCALL_STM_U_REGLIST_START);
@@ -838,62 +796,6 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 	return VMM_OK;
 }
 
-/** FIXME: Emulate 'ldrt' hypercall */
-int arm_hypercall_ldrt(u32 id, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'strt' hypercall */
-int arm_hypercall_strt(u32 id, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'ldrbt' hypercall */
-int arm_hypercall_ldrbt(u32 id, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'strbt' hypercall */
-int arm_hypercall_strbt(u32 id, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'ldrht' hypercall */
-int arm_hypercall_ldrht(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'ldrsbt' hypercall */
-int arm_hypercall_ldrsbt(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'ldrsht' hypercall */
-int arm_hypercall_ldrsht(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'strht' hypercall */
-int arm_hypercall_strht(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
 /** Emulate hypercall instruction */
 int arm_instgrp_hypercall(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
@@ -931,56 +833,84 @@ int arm_instgrp_hypercall(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		break;
 	case ARM_HYPERCALL_LDM_UE_ID0:
 	case ARM_HYPERCALL_LDM_UE_ID1:
+	case ARM_HYPERCALL_LDM_UE_ID2:
+	case ARM_HYPERCALL_LDM_UE_ID3:
+	case ARM_HYPERCALL_LDM_UE_ID4:
+	case ARM_HYPERCALL_LDM_UE_ID5:
+	case ARM_HYPERCALL_LDM_UE_ID6:
+	case ARM_HYPERCALL_LDM_UE_ID7:
 			return arm_hypercall_ldm_ue(id, inst, regs, vcpu);
 			break;
-	case ARM_HYPERCALL_STM_U_ID:
+	case ARM_HYPERCALL_STM_U_ID0:
+	case ARM_HYPERCALL_STM_U_ID1:
+	case ARM_HYPERCALL_STM_U_ID2:
+	case ARM_HYPERCALL_STM_U_ID3:
 		return arm_hypercall_stm_u(id, inst, regs, vcpu);
 		break;
 	case ARM_HYPERCALL_SUBS_REL_ID0:
 	case ARM_HYPERCALL_SUBS_REL_ID1:
 		return arm_hypercall_subs_rel(id, inst, regs, vcpu);
 		break;
-	case ARM_HYPERCALL_LDRT_ID0:
-	case ARM_HYPERCALL_LDRT_ID1:
-		return arm_hypercall_ldrt(id, inst, regs, vcpu);
-		break;
-	case ARM_HYPERCALL_STRT_ID0:
-	case ARM_HYPERCALL_STRT_ID1:
-		return arm_hypercall_strt(id, inst, regs, vcpu);
-		break;
-	case ARM_HYPERCALL_LDRBT_ID0:
-	case ARM_HYPERCALL_LDRBT_ID1:
-		return arm_hypercall_ldrbt(id, inst, regs, vcpu);
-		break;
-	case ARM_HYPERCALL_STRBT_ID0:
-	case ARM_HYPERCALL_STRBT_ID1:
-		return arm_hypercall_strbt(id, inst, regs, vcpu);
-		break;
-	case ARM_HYPERCALL_LDRHT_ID:
-		switch (subid) {
-		case ARM_HYPERCALL_LDRHT_SUBID0:
-		case ARM_HYPERCALL_LDRHT_SUBID1:
-			return arm_hypercall_ldrht(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_LDRSBT_SUBID0:
-		case ARM_HYPERCALL_LDRSBT_SUBID1:
-			return arm_hypercall_ldrsbt(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_LDRSHT_SUBID0:
-		case ARM_HYPERCALL_LDRSHT_SUBID1:
-			return arm_hypercall_ldrsht(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_STRHT_SUBID0:
-		case ARM_HYPERCALL_STRHT_SUBID1:
-			return arm_hypercall_strht(id, subid, inst, regs, vcpu);
-			break;
-		default:
-			break;
-		};
 	default:
 		break;
 	};
 	return VMM_EFAIL;
+}
+
+/** FIXME: Emulate 'ldrt' intruction */
+int arm_inst_ldrt(u32 id, u32 inst,
+			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
+}
+
+/** FIXME: Emulate 'strt' intruction */
+int arm_inst_strt(u32 id, u32 inst,
+			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
+}
+
+/** FIXME: Emulate 'ldrbt' intruction */
+int arm_inst_ldrbt(u32 id, u32 inst,
+			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
+}
+
+/** FIXME: Emulate 'strbt' intruction */
+int arm_inst_strbt(u32 id, u32 inst,
+			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
+}
+
+/** FIXME: Emulate 'ldrht' intruction */
+int arm_inst_ldrht(u32 id, u32 subid, u32 inst,
+			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
+}
+
+/** FIXME: Emulate 'ldrsbt' intruction */
+int arm_inst_ldrsbt(u32 id, u32 subid, u32 inst,
+			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
+}
+
+/** FIXME: Emulate 'ldrsht' intruction */
+int arm_inst_ldrsht(u32 id, u32 subid, u32 inst,
+			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
+}
+
+/** FIXME: Emulate 'strht' intruction */
+int arm_inst_strht(u32 id, u32 subid, u32 inst,
+			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
 }
 
 /** Emulate 'ldrh (immediate)' instruction */
