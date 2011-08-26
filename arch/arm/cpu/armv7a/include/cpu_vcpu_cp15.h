@@ -63,13 +63,15 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 
 			   vmm_user_regs_t * regs,
 			   virtual_addr_t addr, 
-			   void *dst, u32 dst_len);
+			   void *dst, u32 dst_len, 
+			   bool force_unpriv);
 
 /** Write to memory using VCPU CP15 */
 int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu, 
 			    vmm_user_regs_t * regs,
 			    virtual_addr_t addr, 
-			    void *src, u32 src_len);
+			    void *src, u32 src_len,
+			    bool force_unpriv);
 
 /* Read from memory using VCPU CP15 */
 virtual_addr_t cpu_vcpu_cp15_vector_addr(vmm_vcpu_t * vcpu, 
