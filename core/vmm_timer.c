@@ -83,6 +83,7 @@ int vmm_timer_adjust_timestamp(u64 timestamp)
 
 int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 {
+	irq_flags_t flags;
 	bool added;
 	struct dlist *l;
 	vmm_timer_event_t *e;
@@ -90,6 +91,8 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 	if (!ev) {
 		return VMM_EFAIL;
 	}
+
+	flags = vmm_cpu_irq_save();
 
 	if (ev->active) {
 		list_del(&ev->cpu_head);
@@ -113,11 +116,14 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
 	}
 
+	vmm_cpu_irq_restore(flags);
+
 	return VMM_OK;
 }
 
 int vmm_timer_event_restart(vmm_timer_event_t * ev)
 {
+	irq_flags_t flags;
 	bool added;
 	struct dlist *l;
 	vmm_timer_event_t *e;
@@ -125,6 +131,8 @@ int vmm_timer_event_restart(vmm_timer_event_t * ev)
 	if (!ev) {
 		return VMM_EFAIL;
 	}
+
+	flags = vmm_cpu_irq_save();
 
 	if (ev->active) {
 		list_del(&ev->cpu_head);
@@ -147,20 +155,28 @@ int vmm_timer_event_restart(vmm_timer_event_t * ev)
 		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
 	}
 
+	vmm_cpu_irq_restore(flags);
+
 	return VMM_OK;
 }
 
 int vmm_timer_event_stop(vmm_timer_event_t * ev)
 {
+	irq_flags_t flags;
+
 	if (!ev) {
 		return VMM_EFAIL;
 	}
+
+	flags = vmm_cpu_irq_save();
 
 	ev->expiry_timestamp = 0;
 	if (ev->active) {
 		list_del(&ev->cpu_head);
 		ev->active = FALSE;
 	}
+
+	vmm_cpu_irq_restore(flags);
 
 	return VMM_OK;
 }
