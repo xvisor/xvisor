@@ -32,7 +32,6 @@ vmm_timer_ctrl_t tctrl;
 
 static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 {
-	bool event_started = FALSE;
 	u64 tstamp;
 	struct dlist *l;
 	vmm_timer_event_t *e;
@@ -40,14 +39,10 @@ static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 	if (!tctrl.cpu_started) {
 		return;
 	}
-	if (tctrl.cpu_curr && !ev) {
-		return;
-	}
 
-	/* Current timestamp */
 	tstamp = vmm_timer_timestamp();
 
-	if (tctrl.cpu_curr) {
+	if (tctrl.cpu_curr && ev) {
 		if ((tstamp < ev->expiry_tstamp) &&
 		    (ev->expiry_tstamp < tctrl.cpu_curr->expiry_tstamp)) {
 			tctrl.cpu_curr = ev;
@@ -55,21 +50,14 @@ static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 		}
 	} else {
 		/* Scheduler next timer event */
-		event_started = FALSE;
 		list_for_each (l, &tctrl.cpu_event_list) {
 			e = list_entry(l, vmm_timer_event_t, cpu_head);
 			if (e->expiry_tstamp <= tstamp) {
 				continue;
 			}
-			event_started = TRUE;
 			tctrl.cpu_curr = e;
 			vmm_cpu_timer_start_event(e->expiry_tstamp - tstamp);
 			break;
-		}
-
-		/* Set current CPU event to NULL if no events started */
-		if (!event_started) {
-			tctrl.cpu_curr = NULL;
 		}
 	}
 }
@@ -80,30 +68,32 @@ void vmm_timer_event_process(vmm_user_regs_t * regs)
 	struct dlist *l;
 	vmm_timer_event_t *e;
 
-	/* Current timestamp */
-	tstamp = vmm_timer_timestamp();
-
 	/* Set current CPU event to NULL */
 	tctrl.cpu_curr = NULL;
 
-	/* Update active events */
-	while (!list_empty(&tctrl.cpu_event_list)) {
-		l = list_pop(&tctrl.cpu_event_list);
-		e = list_entry(l, vmm_timer_event_t, cpu_head);
-		if (e->expiry_tstamp <= tstamp) {
-			e->expiry_tstamp = 0;
-			e->active = FALSE;
-			e->cpu_regs = regs;
-			e->handler(e);
-			e->cpu_regs = NULL;
-		} else  {
-			list_add(&tctrl.cpu_event_list, &e->cpu_head);
-			break;
-		}
-	}
+	while (!tctrl.cpu_curr) {
+		/* Current timestamp */
+		tstamp = vmm_timer_timestamp();
 
-	/* Schedule next timer event */
-	vmm_timer_schedule_next_event(NULL);
+		/* Update active events */
+		while (!list_empty(&tctrl.cpu_event_list)) {
+			l = list_pop(&tctrl.cpu_event_list);
+			e = list_entry(l, vmm_timer_event_t, cpu_head);
+			if (e->expiry_tstamp <= tstamp) {
+				e->expiry_tstamp = 0;
+				e->active = FALSE;
+				e->cpu_regs = regs;
+				e->handler(e);
+				e->cpu_regs = NULL;
+			} else  {
+				list_add(&tctrl.cpu_event_list, &e->cpu_head);
+				break;
+			}
+		}
+
+		/* Schedule next timer event */
+		vmm_timer_schedule_next_event(NULL);
+	}
 }
 
 int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
@@ -189,9 +179,6 @@ int vmm_timer_event_stop(vmm_timer_event_t * ev)
 	if (ev->active) {
 		list_del(&ev->cpu_head);
 		ev->active = FALSE;
-	}
-	if (tctrl.cpu_curr == ev) {
-		tctrl.cpu_curr = NULL;
 	}
 
 	vmm_timer_schedule_next_event(NULL);
