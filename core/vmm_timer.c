@@ -26,29 +26,72 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
-#include <vmm_devtree.h>
 #include <vmm_timer.h>
 
 vmm_timer_ctrl_t tctrl;
 
-void vmm_timer_tick_process(vmm_user_regs_t * regs)
+static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 {
-	u64 current_timestamp;
+	bool event_started = FALSE;
+	u64 tstamp;
 	struct dlist *l;
 	vmm_timer_event_t *e;
 
-	/* Increment timestamp */
-	tctrl.timestamp += tctrl.tick_nsecs;
+	if (!tctrl.cpu_started) {
+		return;
+	}
+	if (tctrl.cpu_curr && !ev) {
+		return;
+	}
 
 	/* Current timestamp */
-	current_timestamp = vmm_timer_timestamp();
+	tstamp = vmm_timer_timestamp();
+
+	if (tctrl.cpu_curr) {
+		if ((tstamp < ev->expiry_tstamp) &&
+		    (ev->expiry_tstamp < tctrl.cpu_curr->expiry_tstamp)) {
+			tctrl.cpu_curr = ev;
+			vmm_cpu_timer_start_event(ev->expiry_tstamp - tstamp);
+		}
+	} else {
+		/* Scheduler next timer event */
+		event_started = FALSE;
+		list_for_each (l, &tctrl.cpu_event_list) {
+			e = list_entry(l, vmm_timer_event_t, cpu_head);
+			if (e->expiry_tstamp <= tstamp) {
+				continue;
+			}
+			event_started = TRUE;
+			tctrl.cpu_curr = e;
+			vmm_cpu_timer_start_event(e->expiry_tstamp - tstamp);
+			break;
+		}
+
+		/* Set current CPU event to NULL if no events started */
+		if (!event_started) {
+			tctrl.cpu_curr = NULL;
+		}
+	}
+}
+
+void vmm_timer_event_process(vmm_user_regs_t * regs)
+{
+	u64 tstamp;
+	struct dlist *l;
+	vmm_timer_event_t *e;
+
+	/* Current timestamp */
+	tstamp = vmm_timer_timestamp();
+
+	/* Set current CPU event to NULL */
+	tctrl.cpu_curr = NULL;
 
 	/* Update active events */
 	while (!list_empty(&tctrl.cpu_event_list)) {
 		l = list_pop(&tctrl.cpu_event_list);
 		e = list_entry(l, vmm_timer_event_t, cpu_head);
-		if (e->expiry_timestamp <= current_timestamp) {
-			e->expiry_timestamp = 0;
+		if (e->expiry_tstamp <= tstamp) {
+			e->expiry_tstamp = 0;
 			e->active = FALSE;
 			e->cpu_regs = regs;
 			e->handler(e);
@@ -58,32 +101,13 @@ void vmm_timer_tick_process(vmm_user_regs_t * regs)
 			break;
 		}
 	}
-}
 
-u64 __attribute__((weak)) vmm_cpu_timer_timestamp(void)
-{
-	return tctrl.timestamp;
-}
-
-u64 vmm_timer_timestamp(void)
-{
-	return vmm_cpu_timer_timestamp();
-}
-
-int vmm_timer_adjust_timestamp(u64 timestamp)
-{
-	if (timestamp < tctrl.timestamp) {
-		return VMM_EFAIL;
-	}
-
-	tctrl.timestamp = timestamp;
-
-	return VMM_OK;
+	/* Schedule next timer event */
+	vmm_timer_schedule_next_event(NULL);
 }
 
 int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 {
-	irq_flags_t flags;
 	bool added;
 	struct dlist *l;
 	vmm_timer_event_t *e;
@@ -92,21 +116,19 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_cpu_irq_save();
-
 	if (ev->active) {
 		list_del(&ev->cpu_head);
 		ev->active = FALSE;
 	}
 
-	ev->expiry_timestamp = vmm_timer_timestamp() + duration_nsecs;
+	ev->expiry_tstamp = vmm_timer_timestamp() + duration_nsecs;
 	ev->duration_nsecs = duration_nsecs;
 	ev->active = TRUE;
 	added = FALSE;
 	e = NULL;
 	list_for_each(l, &tctrl.cpu_event_list) {
 		e = list_entry(l, vmm_timer_event_t, cpu_head);
-		if (ev->expiry_timestamp < e->expiry_timestamp) {
+		if (ev->expiry_tstamp < e->expiry_tstamp) {
 			list_add_tail(&e->cpu_head, &ev->cpu_head);
 			added = TRUE;
 			break;
@@ -116,14 +138,13 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
 	}
 
-	vmm_cpu_irq_restore(flags);
+	vmm_timer_schedule_next_event(ev);
 
 	return VMM_OK;
 }
 
 int vmm_timer_event_restart(vmm_timer_event_t * ev)
 {
-	irq_flags_t flags;
 	bool added;
 	struct dlist *l;
 	vmm_timer_event_t *e;
@@ -132,20 +153,18 @@ int vmm_timer_event_restart(vmm_timer_event_t * ev)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_cpu_irq_save();
-
 	if (ev->active) {
 		list_del(&ev->cpu_head);
 		ev->active = FALSE;
 	}
 
-	ev->expiry_timestamp = vmm_timer_timestamp() + ev->duration_nsecs;
+	ev->expiry_tstamp = vmm_timer_timestamp() + ev->duration_nsecs;
 	ev->active = TRUE;
 	added = FALSE;
 	e = NULL;
 	list_for_each(l, &tctrl.cpu_event_list) {
 		e = list_entry(l, vmm_timer_event_t, cpu_head);
-		if (ev->expiry_timestamp < e->expiry_timestamp) {
+		if (ev->expiry_tstamp < e->expiry_tstamp) {
 			list_add_tail(&e->cpu_head, &ev->cpu_head);
 			added = TRUE;
 			break;
@@ -155,28 +174,27 @@ int vmm_timer_event_restart(vmm_timer_event_t * ev)
 		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
 	}
 
-	vmm_cpu_irq_restore(flags);
+	vmm_timer_schedule_next_event(ev);
 
 	return VMM_OK;
 }
 
 int vmm_timer_event_stop(vmm_timer_event_t * ev)
 {
-	irq_flags_t flags;
-
 	if (!ev) {
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_cpu_irq_save();
-
-	ev->expiry_timestamp = 0;
+	ev->expiry_tstamp = 0;
 	if (ev->active) {
 		list_del(&ev->cpu_head);
 		ev->active = FALSE;
 	}
+	if (tctrl.cpu_curr == ev) {
+		tctrl.cpu_curr = NULL;
+	}
 
-	vmm_cpu_irq_restore(flags);
+	vmm_timer_schedule_next_event(NULL);
 
 	return VMM_OK;
 }
@@ -213,7 +231,7 @@ vmm_timer_event_t * vmm_timer_event_create(const char *name,
 	e->active = FALSE;
 	INIT_LIST_HEAD(&e->cpu_head);
 	e->cpu_regs = NULL;
-	e->expiry_timestamp = 0;
+	e->expiry_tstamp = 0;
 	e->duration_nsecs = 0;
 	e->handler = handler;
 	e->priv = priv;
@@ -327,51 +345,34 @@ u32 vmm_timer_event_count(void)
 	return retval;
 }
 
-u64 vmm_timer_tick_usecs(void)
+u64 vmm_timer_timestamp(void)
 {
-	return tctrl.tick_nsecs / (u64)1000;
-}
-
-u64 vmm_timer_tick_nsecs(void)
-{
-	return tctrl.tick_nsecs;
+	return vmm_cpu_timer_timestamp();
 }
 
 void vmm_timer_start(void)
 {
-	/** Setup timer */
-	vmm_cpu_timer_setup(tctrl.tick_nsecs);
+	vmm_cpu_timer_setup();
 
-	/** Enable timer */
-	vmm_cpu_timer_enable();
+	vmm_cpu_timer_start_event(1000000);
+
+	tctrl.cpu_started = TRUE;
 }
 
 void vmm_timer_stop(void)
 {
-	/** Disable timer */
-	vmm_cpu_timer_disable();
+	vmm_cpu_timer_shutdown();
+
+	tctrl.cpu_started = FALSE;
 }
 
 int vmm_timer_init(void)
 {
-	const char *attrval;
-	vmm_devtree_node_t *vnode;
+	/* Initialize Per CPU event status */
+	tctrl.cpu_started = FALSE;
 
-	/* Set timestamp to zero */
-	tctrl.timestamp = 0;
-
-	/* Find out tick delay in nanoseconds */
-	vnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				   VMM_DEVTREE_VMMINFO_NODE_NAME);
-	if (!vnode) {
-		return VMM_EFAIL;
-	}
-	attrval = vmm_devtree_attrval(vnode,
-				      VMM_DEVTREE_TICK_DELAY_NSECS_ATTR_NAME);
-	if (!attrval) {
-		return VMM_EFAIL;
-	}
-	tctrl.tick_nsecs = *((u32 *) attrval);
+	/* Initialize Per CPU current event pointer */
+	tctrl.cpu_curr = NULL;
 
 	/* Initialize Per CPU event list */
 	INIT_LIST_HEAD(&tctrl.cpu_event_list);
@@ -381,6 +382,4 @@ int vmm_timer_init(void)
 
 	return vmm_cpu_timer_init();
 }
-
-
 
