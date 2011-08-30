@@ -35,34 +35,34 @@ virtual_addr_t pba8_timer1_base;
 virtual_addr_t pba8_timer2_base;
 virtual_addr_t pba8_timer3_base;
 
-void vmm_cpu_timer_enable(void)
-{
-	realview_timer_enable(pba8_timer0_base);
-}
-
-void vmm_cpu_timer_disable(void)
-{
-	realview_timer_disable(pba8_timer0_base);
-}
-
 u64 vmm_cpu_timer_timestamp(void)
 {
 	u32 val = 0xFFFFFFFF - realview_timer_counter_value(pba8_timer3_base);
 	return ((u64)val * (u64)1000);
 }
 
+int vmm_cpu_timer_shutdown(void)
+{
+	return realview_timer_event_shutdown(pba8_timer0_base);
+}
+
 int pba8_timer_handler(u32 irq_no, vmm_user_regs_t * regs)
 {
-	vmm_timer_tick_process(regs);
-
 	realview_timer_event_clearirq(pba8_timer0_base);
+
+	vmm_timer_event_process(regs);
 
 	return VMM_OK;
 }
 
-int vmm_cpu_timer_setup(u32 tick_nsecs)
+int vmm_cpu_timer_start_event(u64 tick_nsecs)
 {
-	return realview_timer_event_setup(pba8_timer0_base, tick_nsecs);
+	return realview_timer_event_start(pba8_timer0_base, tick_nsecs);
+}
+
+int vmm_cpu_timer_setup(void)
+{
+	return realview_timer_event_setup(pba8_timer0_base);
 }
 
 int vmm_cpu_timer_init(void)

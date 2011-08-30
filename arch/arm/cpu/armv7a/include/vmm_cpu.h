@@ -57,9 +57,10 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs,
 			 u32 irq_no, u32 reason);
 
 /** Timer related functions required by VMM core */
-void vmm_cpu_timer_enable(void);
-void vmm_cpu_timer_disable(void);
-int vmm_cpu_timer_setup(u32 tick_nsecs);
+int vmm_cpu_timer_start_event(u64 tick_nsecs);
+int vmm_cpu_timer_setup(void);
+int vmm_cpu_timer_shutdown(void);
+u64 vmm_cpu_timer_timestamp(void);
 int vmm_cpu_timer_init(void);
 
 /** Atomic Operations and spinlock */
