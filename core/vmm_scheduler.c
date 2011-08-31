@@ -162,7 +162,7 @@ int vmm_scheduler_init(void)
 	if (!sched.ev) {
 		return VMM_EFAIL;
 	}
-	vmm_timer_event_start(sched.ev, vmm_timer_tick_nsecs());
+	vmm_timer_event_start(sched.ev, 1000000);
 
 	return VMM_OK;
 }

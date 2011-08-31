@@ -46,12 +46,19 @@ void realview_timer_disable(virtual_addr_t base)
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 }
 
+int realview_timer_event_shutdown(virtual_addr_t base)
+{
+	vmm_writel(0x0, (void *)(base + TIMER_CTRL));
+
+	return VMM_OK;
+}
+
 void realview_timer_event_clearirq(virtual_addr_t base)
 {
 	vmm_writel(1, (void *)(base + TIMER_INTCLR));
 }
 
-int realview_timer_event_setup(virtual_addr_t base, u64 nsecs)
+int realview_timer_event_start(virtual_addr_t base, u64 nsecs)
 {
 	u32 ctrl, usecs;
 
@@ -60,10 +67,21 @@ int realview_timer_event_setup(virtual_addr_t base, u64 nsecs)
 
 	/* Setup the registers */
 	ctrl = vmm_readl((void *)(base + TIMER_CTRL));
-	ctrl |= (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE);
-	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 	vmm_writel(usecs, (void *)(base + TIMER_LOAD));
 	vmm_writel(usecs, (void *)(base + TIMER_VALUE));
+	ctrl |= TIMER_CTRL_ENABLE;
+	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
+
+	return VMM_OK;
+}
+
+int realview_timer_event_setup(virtual_addr_t base)
+{
+	u32 ctrl;
+
+	/* Setup the registers */
+	ctrl = (TIMER_CTRL_32BIT | TIMER_CTRL_ONESHOT | TIMER_CTRL_IE);
+	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 
 	return VMM_OK;
 }

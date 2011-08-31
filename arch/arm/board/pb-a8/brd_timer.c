@@ -35,37 +35,31 @@ virtual_addr_t pba8_timer1_base;
 virtual_addr_t pba8_timer2_base;
 virtual_addr_t pba8_timer3_base;
 
-void vmm_cpu_timer_enable(void)
+u64 vmm_cpu_clocksource_cycles(void)
 {
-	realview_timer_enable(pba8_timer0_base);
+	return ~realview_timer_counter_value(pba8_timer3_base);
 }
 
-void vmm_cpu_timer_disable(void)
+u64 vmm_cpu_clocksource_mask(void)
 {
-	realview_timer_disable(pba8_timer0_base);
+	return 0xFFFFFFFF;
 }
 
-u64 vmm_cpu_timer_timestamp(void)
+u32 vmm_cpu_clocksource_mult(void)
 {
-	u32 val = 0xFFFFFFFF - realview_timer_counter_value(pba8_timer3_base);
-	return ((u64)val * (u64)1000);
+	u32 khz = 1000;
+	u64 tmp = ((u64)1000000) << 20;
+	tmp += khz / 2;
+	tmp = tmp / khz;
+	return (u32)tmp;
 }
 
-int pba8_timer_handler(u32 irq_no, vmm_user_regs_t * regs)
+u32 vmm_cpu_clocksource_shift(void)
 {
-	vmm_timer_tick_process(regs);
-
-	realview_timer_event_clearirq(pba8_timer0_base);
-
-	return VMM_OK;
+	return 20;
 }
 
-int vmm_cpu_timer_setup(u32 tick_nsecs)
-{
-	return realview_timer_event_setup(pba8_timer0_base, tick_nsecs);
-}
-
-int vmm_cpu_timer_init(void)
+int vmm_cpu_clocksource_init(void)
 {
 	int rc;
 	virtual_addr_t sctl_base;
@@ -74,28 +68,10 @@ int vmm_cpu_timer_init(void)
 	sctl_base = vmm_host_iomap(REALVIEW_SCTL_BASE, 0x1000);
 
 	/* Map timer registers */
-	pba8_timer0_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
-	pba8_timer1_base = pba8_timer0_base + 0x20;
 	pba8_timer2_base = vmm_host_iomap(REALVIEW_PBA8_TIMER2_3_BASE, 0x1000);
 	pba8_timer3_base = pba8_timer2_base + 0x20;
 
 	/* Initialize timers */
-	rc = realview_timer_init(sctl_base, 
-				 pba8_timer0_base,
-				 REALVIEW_TIMER1_EnSel,
-				 IRQ_PBA8_TIMER0_1,
-				 &pba8_timer_handler);
-	if (rc) {
-		return rc;
-	}
-	rc = realview_timer_init(sctl_base, 
-				 pba8_timer1_base,
-				 REALVIEW_TIMER2_EnSel,
-				 IRQ_PBA8_TIMER0_1,
-				 NULL);
-	if (rc) {
-		return rc;
-	}
 	rc = realview_timer_init(sctl_base, 
 				 pba8_timer2_base,
 				 REALVIEW_TIMER3_EnSel,
@@ -125,6 +101,69 @@ int vmm_cpu_timer_init(void)
 		return rc;
 	}
 	realview_timer_enable(pba8_timer3_base);
+
+	return VMM_OK;
+}
+
+int vmm_cpu_clockevent_shutdown(void)
+{
+	return realview_timer_event_shutdown(pba8_timer0_base);
+}
+
+int pba8_timer_handler(u32 irq_no, vmm_user_regs_t * regs)
+{
+	realview_timer_event_clearirq(pba8_timer0_base);
+
+	vmm_timer_clockevent_process(regs);
+
+	return VMM_OK;
+}
+
+int vmm_cpu_clockevent_start(u64 tick_nsecs)
+{
+	return realview_timer_event_start(pba8_timer0_base, tick_nsecs);
+}
+
+int vmm_cpu_clockevent_setup(void)
+{
+	return realview_timer_event_setup(pba8_timer0_base);
+}
+
+int vmm_cpu_clockevent_init(void)
+{
+	int rc;
+	virtual_addr_t sctl_base;
+
+	/* Map control registers */
+	sctl_base = vmm_host_iomap(REALVIEW_SCTL_BASE, 0x1000);
+
+	/* Map timer registers */
+	pba8_timer0_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
+	pba8_timer1_base = pba8_timer0_base + 0x20;
+
+	/* Initialize timers */
+	rc = realview_timer_init(sctl_base, 
+				 pba8_timer0_base,
+				 REALVIEW_TIMER1_EnSel,
+				 IRQ_PBA8_TIMER0_1,
+				 &pba8_timer_handler);
+	if (rc) {
+		return rc;
+	}
+	rc = realview_timer_init(sctl_base, 
+				 pba8_timer1_base,
+				 REALVIEW_TIMER2_EnSel,
+				 IRQ_PBA8_TIMER0_1,
+				 NULL);
+	if (rc) {
+		return rc;
+	}
+
+	/* Unmap control register */
+	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	if (rc) {
+		return rc;
+	}
 
 	return VMM_OK;
 }

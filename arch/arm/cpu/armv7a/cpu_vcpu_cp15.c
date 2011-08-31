@@ -673,7 +673,8 @@ bad_reg:
 int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 
 			   vmm_user_regs_t * regs,
 			   virtual_addr_t addr, 
-			   void *dst, u32 dst_len)
+			   void *dst, u32 dst_len,
+			   bool force_unpriv)
 {
 	int rc = VMM_OK;
 	u32 vind;
@@ -748,7 +749,8 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu, 
 			    vmm_user_regs_t * regs,
 			    virtual_addr_t addr, 
-			    void *src, u32 src_len)
+			    void *src, u32 src_len,
+			    bool force_unpriv)
 {
 	int rc = VMM_OK;
 	u32 vind;
