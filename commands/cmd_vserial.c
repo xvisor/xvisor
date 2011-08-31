@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_cmd_vserial.c
+ * @file cmd_vserial.c
  * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
  * @brief Implementation of vserial command
@@ -27,39 +27,47 @@
 #include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_vserial.h>
-#include <vmm_mterm.h>
+#include <vmm_modules.h>
+#include <vmm_cmdmgr.h>
 
-void cmd_vserial_usage(void)
+#define MODULE_VARID			cmd_vserial_module
+#define MODULE_NAME			"Command vserial"
+#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_IPRIORITY		0
+#define	MODULE_INIT			cmd_vserial_init
+#define	MODULE_EXIT			cmd_vserial_exit
+
+void cmd_vserial_usage(vmm_chardev_t *cdev)
 {
-	vmm_printf("Usage:\n");
-	vmm_printf("   vserial bind <name>\n");
-	vmm_printf("   vserial dump <name> [<byte_count>]\n");
-	vmm_printf("   vserial help\n");
-	vmm_printf("   vserial list\n");
+	vmm_cprintf(cdev, "Usage:\n");
+	vmm_cprintf(cdev, "   vserial bind <name>\n");
+	vmm_cprintf(cdev, "   vserial dump <name> [<byte_count>]\n");
+	vmm_cprintf(cdev, "   vserial help\n");
+	vmm_cprintf(cdev, "   vserial list\n");
 }
 
-int cmd_vserial_bind(const char *name)
+int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 {
 	u32 ite, epos = 0;
 	char ch, estr[3] = {'\e', 'x', 'q'}; /* estr is escape string. */
 	vmm_vserial_t *vser = vmm_vserial_find(name);
 
 	if (!vser) {
-		vmm_printf("Failed to find virtual serial port\n");
+		vmm_cprintf(cdev, "Failed to find virtual serial port\n");
 		return VMM_EFAIL;
 	}
 
-	vmm_printf("[%s] ", name);
+	vmm_cprintf(cdev, "[%s] ", name);
 
 	epos = 0;
 	while(1) {
 		while (vmm_vserial_receive(vser, (u8 *)&ch, 1)) {
 			vmm_putc(ch);
 			if (ch == '\n') {
-				vmm_printf("[%s] ", name);
+				vmm_cprintf(cdev, "[%s] ", name);
 			}
 		}
-		if (!vmm_scanchar(NULL, &ch, FALSE)) {
+		if (!vmm_scanchar(NULL, cdev, &ch, FALSE)) {
 			if (epos < sizeof(estr)) {
 				if (estr[epos] == ch) {
 					epos++;
@@ -78,76 +86,98 @@ int cmd_vserial_bind(const char *name)
 		}
 	}
 
-	vmm_printf("\n");
+	vmm_cprintf(cdev, "\n");
 
 	return VMM_OK;
 }
 
-int cmd_vserial_dump(const char *name, int bcount)
+int cmd_vserial_dump(vmm_chardev_t *cdev, const char *name, int bcount)
 {
 	u8 ch;
 	vmm_vserial_t *vser = vmm_vserial_find(name);
 
 	if (!vser) {
-		vmm_printf("Failed to find virtual serial port\n");
+		vmm_cprintf(cdev, "Failed to find virtual serial port\n");
 		return VMM_EFAIL;
 	}
 
 	if (bcount < 0) {
 		while (vmm_vserial_receive(vser, &ch, 1)) {
-			vmm_putc(ch);
+			vmm_cprintf(cdev, "%c", ch);
 		}
 	} else {
 		while (bcount > 0 && vmm_vserial_receive(vser, &ch, 1)) {
-			vmm_putc(ch);
+			vmm_cprintf(cdev, "%c", ch);
 			bcount--;
 		}
 	}
 
-	vmm_printf("\n");
+	vmm_cprintf(cdev, "\n");
 
 	return VMM_OK;
 }
 
-void cmd_vserial_list()
+void cmd_vserial_list(vmm_chardev_t *cdev)
 {
 	int num, count;
 	vmm_vserial_t *vser;
 	count = vmm_vserial_count();
 	for (num = 0; num < count; num++) {
 		vser = vmm_vserial_get(num);
-		vmm_printf("%d: %s\n", num, vser->name);
+		vmm_cprintf(cdev, "%d: %s\n", num, vser->name);
 	}
 }
 
-int cmd_vserial_exec(int argc, char **argv)
+int cmd_vserial_exec(vmm_chardev_t *cdev, int argc, char **argv)
 {
 	int bcount = -1;
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
-			cmd_vserial_usage();
+			cmd_vserial_usage(cdev);
 			return VMM_OK;
 		} else if (vmm_strcmp(argv[1], "list") == 0) {
-			cmd_vserial_list();
+			cmd_vserial_list(cdev);
 			return VMM_OK;
 		}
 	}
 	if (argc < 3) {
-		cmd_vserial_usage();
+		cmd_vserial_usage(cdev);
 		return VMM_EFAIL;
 	}
 	if (vmm_strcmp(argv[1], "bind") == 0) {
-		return cmd_vserial_bind(argv[2]);
+		return cmd_vserial_bind(cdev, argv[2]);
 	} else if (vmm_strcmp(argv[1], "dump") == 0) {
 		if (4 <= argc) {
 			bcount = vmm_str2int(argv[3], 10);
 		}
-		return cmd_vserial_dump(argv[2], bcount);
+		return cmd_vserial_dump(cdev, argv[2], bcount);
 	} else {
-		cmd_vserial_usage();
+		cmd_vserial_usage(cdev);
 		return VMM_EFAIL;
 	}
 	return VMM_OK;
 }
 
-VMM_DECLARE_CMD(vserial, "virtual serial port commands", cmd_vserial_exec, NULL);
+static vmm_cmd_t cmd_vserial = {
+	.name = "vserial",
+	.desc = "virtual serial port commands",
+	.usage = cmd_vserial_usage,
+	.exec = cmd_vserial_exec,
+};
+
+static int cmd_vserial_init(void)
+{
+	return vmm_cmdmgr_register_cmd(&cmd_vserial);
+}
+
+static void cmd_vserial_exit(void)
+{
+	vmm_cmdmgr_unregister_cmd(&cmd_vserial);
+}
+
+VMM_DECLARE_MODULE(MODULE_VARID, 
+			MODULE_NAME, 
+			MODULE_AUTHOR, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

@@ -24,6 +24,53 @@
 
 #include <arm_asm_macro.h>
 
+	/* 
+	 * ARM Basic test could be loaded any where in memory by boot loaders.
+	 * The _start function ensures that it exectues from intended
+	 * base address provided at compile time.
+	 */
+	.section .expvect, "ax", %progbits
+	.globl _start
+_start:
+	add	r0, pc, #-0x8
+	ldr	r2, __code_start
+	ldr	r3, __code_end
+	sub	r4, r3, r2
+	add	r1, r0, r4
+	/*
+	 * r0 -> load start
+	 * r1 -> load end
+	 * r2 -> execution start
+	 * r3 -> execution end
+	 * r4 -> code size
+	 * We need to ensure that when we jump to reset code, we are executing
+	 * from intended execution address. If necessary do relocation from
+	 * load memory to execution memory.
+	 */
+	cmp	r0, r2
+	beq	_start_done
+	cmp	r1, r2
+	blt	_start_relocate
+	cmp	r3, r0
+	blt	_start_relocate
+_start_hang:
+	b	.
+_start_relocate:
+	mov	r5, #0
+_start_loop:
+	cmp	r5, r4
+	bge	_start_done
+	ldmia	r0!, {r7 - r10}
+	stmia	r2!, {r7 - r10}
+	add	r5, r5, #16
+	b	_start_loop
+_start_done:
+	ldr	pc, __reset
+__code_start:
+	.word _code_start
+__code_end:
+	.word _code_end
+
 	.section .expvect, "ax", %progbits
 	.globl _start_vect
 _start_vect:	
@@ -95,8 +142,6 @@ _reset:
 	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR
 	/* Call init function */
 	bl	arm_init
-	/* Set to User Mode */
-	SET_CURRENT_MODE CPSR_MODE_USER
 	/* Call main function */
 	bl	arm_main
 	/* We should never reach here */

@@ -37,7 +37,7 @@ ARM_CROSS_COMPILE=$(CROSS_COMPILE)
 else
 ARM_CROSS_COMPILE=arm-none-eabi-
 endif
-ARM_CPPFLAGS=-I. -DTEXT_START=0x100000
+ARM_CPPFLAGS=-I. -DTEXT_START=0x10000
 ARM_CFLAGS=-g -Wall -Werror -nostdlib -mcpu=cortex-a8 $(ARM_CPPFLAGS)
 ARM_ASFLAGS=-g -Wall -Werror -nostdlib -mcpu=cortex-a8 $(ARM_CPPFLAGS) -D__ASSEMBLY__
 ARM_LDFLAGS=$(ARM_CFLAGS) -static-libgcc -lgcc
@@ -48,12 +48,17 @@ ARM_OBJCOPY=$(ARM_CROSS_COMPILE)objcopy
 
 ARM_TEST_OBJS=$(obj_dir)/arm_entry.o \
 		$(obj_dir)/arm_main.o \
+		$(obj_dir)/arm_heap.o \
 		$(obj_dir)/arm_irq.o \
 		$(obj_dir)/arm_stdio.o \
 		$(obj_dir)/arm_string.o \
 		$(obj_dir)/arm_gic.o \
 		$(obj_dir)/arm_timer.o \
-		$(obj_dir)/arm_pl01x.o
+		$(obj_dir)/arm_pl01x.o \
+		$(obj_dir)/dhry_1.o \
+		$(obj_dir)/dhry_2.o \
+		$(obj_dir)/dhry_port.o
+
 ARM_TEST_CPPFLAGS=-DARM_TEST_BOOT
 ARM_TEST_CFLAGS=$(ARM_TEST_CPPFLAGS)
 ARM_TEST_ASFLAGS=$(ARM_TEST_CPPFLAGS)

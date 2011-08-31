@@ -28,7 +28,8 @@
 #include <arm_plat.h>
 #include <arm_timer.h>
 
-static u32 timer_irq_count;
+static u64 timer_irq_count;
+static u64 timer_time_stamp;
 
 void arm_timer_enable(void)
 {
@@ -53,9 +54,17 @@ void arm_timer_clearirq(void)
 	arm_writel(1, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_INTCLR));
 }
 
-u32 arm_timer_irqcount(void)
+u64 arm_timer_irqcount(void)
 {
 	return timer_irq_count;
+}
+
+u64 arm_timer_timestamp(void)
+{
+	u32 val = arm_readl((void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_VALUE));
+	val = 0xFFFFFFFF - val;
+	timer_time_stamp = (u64)val * (u64)1000;
+	return timer_time_stamp;
 }
 
 int arm_timer_irqhndl(u32 irq_no, pt_regs_t * regs)
@@ -70,6 +79,7 @@ int arm_timer_init(u32 usecs, u32 ensel)
 	u32 val;
 
 	timer_irq_count = 0;
+	timer_time_stamp = 0;
 
 	/* 
 	 * set clock frequency: 
@@ -82,12 +92,20 @@ int arm_timer_init(u32 usecs, u32 ensel)
 	/* Register interrupt handler */
 	arm_irq_register(IRQ_PBA8_TIMER0_1, &arm_timer_irqhndl);
 
+	/* Setup Timer0 for generating irq */
 	val = arm_readl((void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
 	val &= ~TIMER_CTRL_ENABLE;
 	val |= (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE);
 	arm_writel(val, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
 	arm_writel(usecs, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_LOAD));
 	arm_writel(usecs, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_VALUE));
+
+	/* Setup Timer3 for free running counter */
+	arm_writel(0x0, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_CTRL));
+	arm_writel(0xFFFFFFFF, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_LOAD));
+	arm_writel(0xFFFFFFFF, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_VALUE));
+	val = (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_ENABLE);
+	arm_writel(val, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_CTRL));
 
 	return 0;
 }

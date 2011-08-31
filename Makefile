@@ -73,28 +73,34 @@ CONFIG_BOARD:=$(shell echo $(CONFIG_BOARD))
 TESTDIR:=tests/$(CONFIG_CPU)/$(CONFIG_BOARD)/basic/
 
 # Setup path of directories
-export core_dir=$(CURDIR)/core
 export cpu_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/cpu/$(CONFIG_CPU)
 export cpu_common_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/cpu/common
 export board_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)
 export board_common_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/board/common
 export tools_dir=$(CURDIR)/tools
+export core_dir=$(CURDIR)/core
+export commands_dir=$(CURDIR)/commands
+export daemons_dir=$(CURDIR)/daemons
 export drivers_dir=$(CURDIR)/drivers
 export emulators_dir=$(CURDIR)/emulators
 
 # Setup list of objects for compilation
-cpu-object-mks=$(shell if [ -d $(cpu_dir) ]; then find $(cpu_dir) -iname "objects.mk"; fi)
-cpu-common-object-mks=$(shell if [ -d $(cpu_common_dir) ]; then find $(cpu_common_dir) -iname "objects.mk"; fi)
-board-object-mks=$(shell if [ -d $(board_dir) ]; then find $(board_dir) -iname "objects.mk"; fi)
-board-common-object-mks=$(shell if [ -d $(board_common_dir) ]; then find $(board_common_dir) -iname "objects.mk"; fi)
-core-object-mks=$(shell if [ -d $(core_dir) ]; then find $(core_dir) -iname "objects.mk"; fi)
-drivers-object-mks=$(shell if [ -d $(drivers_dir) ]; then find $(drivers_dir) -iname "objects.mk"; fi)
-emulators-object-mks=$(shell if [ -d $(emulators_dir) ]; then find $(emulators_dir) -iname "objects.mk"; fi)
+cpu-object-mks=$(shell if [ -d $(cpu_dir) ]; then find $(cpu_dir) -iname "objects.mk" | sort -r; fi)
+cpu-common-object-mks=$(shell if [ -d $(cpu_common_dir) ]; then find $(cpu_common_dir) -iname "objects.mk" | sort -r; fi)
+board-object-mks=$(shell if [ -d $(board_dir) ]; then find $(board_dir) -iname "objects.mk" | sort -r; fi)
+board-common-object-mks=$(shell if [ -d $(board_common_dir) ]; then find $(board_common_dir) -iname "objects.mk" | sort -r; fi)
+core-object-mks=$(shell if [ -d $(core_dir) ]; then find $(core_dir) -iname "objects.mk" | sort -r; fi)
+commands-object-mks=$(shell if [ -d $(commands_dir) ]; then find $(commands_dir) -iname "objects.mk" | sort -r; fi)
+daemons-object-mks=$(shell if [ -d $(daemons_dir) ]; then find $(daemons_dir) -iname "objects.mk" | sort -r; fi)
+drivers-object-mks=$(shell if [ -d $(drivers_dir) ]; then find $(drivers_dir) -iname "objects.mk" | sort -r; fi)
+emulators-object-mks=$(shell if [ -d $(emulators_dir) ]; then find $(emulators_dir) -iname "objects.mk" | sort -r; fi)
 include $(cpu-object-mks) 
 include $(cpu-common-object-mks) 
 include $(board-object-mks) 
 include $(board-common-object-mks) 
 include $(core-object-mks) 
+include $(commands-object-mks) 
+include $(daemons-object-mks)
 include $(drivers-object-mks)
 include $(emulators-object-mks)
 objs-y=$(foreach obj,$(cpu-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/cpu/$(CONFIG_CPU)/$(obj))
@@ -102,6 +108,8 @@ objs-y+=$(foreach obj,$(cpu-common-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/cpu/
 objs-y+=$(foreach obj,$(board-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)/$(obj))
 objs-y+=$(foreach obj,$(board-common-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/board/common/$(obj))
 objs-y+=$(foreach obj,$(core-objs-y),$(build_dir)/core/$(obj))
+objs-y+=$(foreach obj,$(commands-objs-y),$(build_dir)/commands/$(obj))
+objs-y+=$(foreach obj,$(daemons-objs-y),$(build_dir)/daemons/$(obj))
 objs-y+=$(foreach obj,$(drivers-objs-y),$(build_dir)/drivers/$(obj))
 objs-y+=$(foreach obj,$(emulators-objs-y),$(build_dir)/emulators/$(obj))
 
@@ -123,6 +131,8 @@ cppflags+=-I$(cpu_common_dir)/include
 cppflags+=-I$(board_dir)/include
 cppflags+=-I$(board_common_dir)/include
 cppflags+=-I$(core_dir)/include
+cppflags+=-I$(commands_dir)/include
+cppflags+=-I$(daemons_dir)/include
 cppflags+=-I$(drivers_dir)/include
 cppflags+=-I$(emulators_dir)/include
 cppflags+=$(cpu-cppflags)

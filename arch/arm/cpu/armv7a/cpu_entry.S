@@ -19,11 +19,61 @@
  * @file cpu_entry.S
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief CPU entry point code
+ * @brief various entry points (booting, reset, exceptions) to xvisor
  */
 
 #include <cpu_asm_macro.h>
 
+	/* 
+	 * Xvisor could be loaded any where in memory by boot loaders.
+	 * The _start function ensures that Xvisor exectues from intended
+	 * base address provided at compile time.
+	 */
+	.section .expvect, "ax", %progbits
+	.globl _start
+_start:
+	add	r0, pc, #-0x8
+	ldr	r2, __code_start
+	ldr	r3, __code_end
+	sub	r4, r3, r2
+	add	r1, r0, r4
+	/*
+	 * r0 -> load start
+	 * r1 -> load end
+	 * r2 -> execution start
+	 * r3 -> execution end
+	 * r4 -> code size
+	 * We need to ensure that when we jump to reset code, we are executing
+	 * from intended execution address. If necessary do relocation from
+	 * load memory to execution memory.
+	 */
+	cmp	r0, r2
+	beq	_start_done
+	cmp	r1, r2
+	blt	_start_relocate
+	cmp	r3, r0
+	blt	_start_relocate
+_start_hang:
+	b	.
+_start_relocate:
+	mov	r5, #0
+_start_loop:
+	cmp	r5, r4
+	bge	_start_done
+	ldmia	r0!, {r7 - r10}
+	stmia	r2!, {r7 - r10}
+	add	r5, r5, #16
+	b	_start_loop
+_start_done:
+	ldr	pc, __reset
+__code_start:
+	.word _code_start
+__code_end:
+	.word _code_end
+
+	/* 
+	 * Exception vector start.
+	 */
 	.section .expvect, "ax", %progbits
 	.globl _start_vect
 _start_vect:
@@ -55,6 +105,9 @@ __fiq:
 _end_vect:
 	b	.
 
+	/* 
+	 * Exception stacks.
+	 */
 __svc_stack_end:
 	.word _svc_stack_end
 __und_stack_end:
@@ -66,6 +119,10 @@ __irq_stack_end:
 __fiq_stack_end:
 	.word _fiq_stack_end
 
+	/* 
+	 * Reset exception handler.
+	 * Reset hardware state before starting Xvisor.
+	 */
 	.globl _reset
 _reset:
 	/* Clear a register for temporary usage */
@@ -94,6 +151,9 @@ _reset:
 	/* We should never reach here */
 	b	.
 
+	/* 
+	 * Undefined instruction exception handler.
+	 */
 START_EXCEPTION_HANDLER _undefined_instruction, 4
 	PUSH_USER_REGS
 	PUSH_BANKED_REGS _undefined_instruction_bankpush_skip
@@ -102,6 +162,9 @@ START_EXCEPTION_HANDLER _undefined_instruction, 4
 	PULL_USER_REGS
 END_EXCEPTION_HANDLER
 
+	/* 
+	 * Software interrupt exception handler.
+	 */
 START_EXCEPTION_HANDLER _software_interrupt, 4
 	PUSH_USER_REGS
 	PUSH_BANKED_REGS _software_interrupt_bankpush_skip
@@ -110,6 +173,9 @@ START_EXCEPTION_HANDLER _software_interrupt, 4
 	PULL_USER_REGS
 END_EXCEPTION_HANDLER
 
+	/* 
+	 * Prefetch abort exception handler.
+	 */
 START_EXCEPTION_HANDLER _prefetch_abort, 4
 	PUSH_USER_REGS
 	PUSH_BANKED_REGS _prefetch_abort_bankpush_skip
@@ -118,6 +184,9 @@ START_EXCEPTION_HANDLER _prefetch_abort, 4
 	PULL_USER_REGS
 END_EXCEPTION_HANDLER
 
+	/* 
+	 * Data abort exception handler.
+	 */
 START_EXCEPTION_HANDLER _data_abort, 8
 	PUSH_USER_REGS
 	PUSH_BANKED_REGS _data_abort_bankpush_skip
@@ -126,6 +195,9 @@ START_EXCEPTION_HANDLER _data_abort, 8
 	PULL_USER_REGS
 END_EXCEPTION_HANDLER
 
+	/* 
+	 * Not used exception handler.
+	 */
 START_EXCEPTION_HANDLER _not_used, 4
 	PUSH_USER_REGS
 	PUSH_BANKED_REGS _not_used_bankpush_skip
@@ -134,6 +206,9 @@ START_EXCEPTION_HANDLER _not_used, 4
 	PULL_USER_REGS
 END_EXCEPTION_HANDLER
 
+	/* 
+	 * IRQ exception handler.
+	 */
 START_EXCEPTION_HANDLER _irq, 4
 	PUSH_USER_REGS
 	PUSH_BANKED_REGS _irq_bankpush_skip
@@ -142,6 +217,9 @@ START_EXCEPTION_HANDLER _irq, 4
 	PULL_USER_REGS
 END_EXCEPTION_HANDLER
 
+	/* 
+	 * FIQ exception handler.
+	 */
 START_EXCEPTION_HANDLER _fiq, 4
 	PUSH_USER_REGS
 	PUSH_BANKED_REGS _fiq_bankpush_skip

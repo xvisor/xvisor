@@ -50,54 +50,6 @@ u32 omap3_gpt_read(u32 base, u32 reg)
 	return vmm_readl((void *)(base + reg));
 }
 
-int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs)
-{
-	vmm_timer_tick_process(regs);
-
-	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
-			OMAP3_GPT_TISR, OMAP3_GPT_TISR_OVF_IT_FLAG_M);
-
-	return VMM_OK;
-}
-
-int vmm_cpu_timer_setup(u32 tick_nsecs)
-{
-	int ret;
-	u32 regval, tick_usecs;
-
-	/* Get granuality in microseconds */
-	tick_usecs = tick_nsecs / 1000;
-
-	/* Register interrupt handler */
-	ret = vmm_host_irq_register(OMAP3_SYS_TIMER_IRQ,
-				    &vmm_cpu_timer_irq_handler);
-	if (ret) {
-		return ret;
-	}
-
-	/* Disable System Timer irq for sanity */
-	vmm_host_irq_disable(OMAP3_SYS_TIMER_IRQ);
-
-	/* Progamme System Timer */
-	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
-			OMAP3_GPT_TLDR,
-			0xFFFFFFFF -
-			tick_usecs * (OMAP3_SYS_TIMER_CLK / 1000000));
-	regval = omap3_gpt_read(OMAP3_SYS_TIMER_BASE, OMAP3_GPT_TCLR);
-	regval &= ~OMAP3_GPT_TCLR_ST_M;
-	regval &= ~OMAP3_GPT_TCLR_PTV_M;
-	regval |=
-	    (OMAP3_SYS_TIMER_PTV << OMAP3_GPT_TCLR_PTV_S) &
-	    OMAP3_GPT_TCLR_PTV_M;
-	regval |= OMAP3_GPT_TCLR_AR_M;
-	regval |= OMAP3_GPT_TCLR_PRE_M;
-	omap3_gpt_write(OMAP3_SYS_TIMER_BASE, OMAP3_GPT_TCLR, regval);
-	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
-			OMAP3_GPT_TIER, OMAP3_GPT_TIER_OVF_IT_ENA_M);
-
-	return VMM_OK;
-}
-
 void vmm_cpu_timer_enable(void)
 {
 	u32 regval;
@@ -123,3 +75,59 @@ void vmm_cpu_timer_disable(void)
 	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
 			OMAP3_GPT_TCLR, regval & ~OMAP3_GPT_TCLR_ST_M);
 }
+
+int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs)
+{
+	vmm_timer_tick_process(regs);
+
+	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
+			OMAP3_GPT_TISR, OMAP3_GPT_TISR_OVF_IT_FLAG_M);
+
+	return VMM_OK;
+}
+
+int vmm_cpu_timer_setup(u32 tick_nsecs)
+{
+	u32 regval, tick_usecs;
+
+	/* Get granuality in microseconds */
+	tick_usecs = tick_nsecs / 1000;
+
+	/* Progamme System Timer */
+	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
+			OMAP3_GPT_TLDR,
+			0xFFFFFFFF -
+			tick_usecs * (OMAP3_SYS_TIMER_CLK / 1000000));
+
+	regval = omap3_gpt_read(OMAP3_SYS_TIMER_BASE, OMAP3_GPT_TCLR);
+	regval &= ~OMAP3_GPT_TCLR_ST_M;
+	regval &= ~OMAP3_GPT_TCLR_PTV_M;
+	regval |=
+	    (OMAP3_SYS_TIMER_PTV << OMAP3_GPT_TCLR_PTV_S) &
+	    OMAP3_GPT_TCLR_PTV_M;
+	regval |= OMAP3_GPT_TCLR_AR_M;
+	regval |= OMAP3_GPT_TCLR_PRE_M;
+	omap3_gpt_write(OMAP3_SYS_TIMER_BASE, OMAP3_GPT_TCLR, regval);
+	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
+			OMAP3_GPT_TIER, OMAP3_GPT_TIER_OVF_IT_ENA_M);
+
+	return VMM_OK;
+}
+
+int vmm_cpu_timer_init(void)
+{
+	int ret;
+
+	/* Register interrupt handler */
+	ret = vmm_host_irq_register(OMAP3_SYS_TIMER_IRQ,
+				    &vmm_cpu_timer_irq_handler);
+	if (ret) {
+		return ret;
+	}
+
+	/* Disable System Timer irq for sanity */
+	vmm_host_irq_disable(OMAP3_SYS_TIMER_IRQ);
+
+	return VMM_OK;
+}
+

@@ -1,0 +1,259 @@
+/**
+ * Copyright (c) 2010 Anup Patel.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file cmd_vcpu.c
+ * @version 0.01
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief Implementation of vcpu command
+ */
+
+#include <vmm_error.h>
+#include <vmm_stdio.h>
+#include <vmm_string.h>
+#include <vmm_devtree.h>
+#include <vmm_manager.h>
+#include <vmm_modules.h>
+#include <vmm_cmdmgr.h>
+
+#define MODULE_VARID			cmd_vcpu_module
+#define MODULE_NAME			"Command vcpu"
+#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_IPRIORITY		0
+#define	MODULE_INIT			cmd_vcpu_init
+#define	MODULE_EXIT			cmd_vcpu_exit
+
+void cmd_vcpu_usage(vmm_chardev_t *cdev)
+{
+	vmm_cprintf(cdev, "Usage:\n");
+	vmm_cprintf(cdev, "   vcpu help\n");
+	vmm_cprintf(cdev, "   vcpu list\n");
+	vmm_cprintf(cdev, "   vcpu reset   <vcpu_id>\n");
+	vmm_cprintf(cdev, "   vcpu kick    <vcpu_id>\n");
+	vmm_cprintf(cdev, "   vcpu pause   <vcpu_id>\n");
+	vmm_cprintf(cdev, "   vcpu resume  <vcpu_id>\n");
+	vmm_cprintf(cdev, "   vcpu halt    <vcpu_id>\n");
+	vmm_cprintf(cdev, "   vcpu dumpreg <vcpu_id>\n");
+}
+
+void cmd_vcpu_list(vmm_chardev_t *cdev)
+{
+	int id, count;
+	char state[10];
+	char path[256];
+	vmm_vcpu_t *vcpu;
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
+	vmm_cprintf(cdev, "| %-5s| %-9s| %-16s| %-41s|\n", 
+		   "ID ", "State", "Name", "Device Path");
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
+	count = vmm_manager_vcpu_count();
+	for (id = 0; id < count; id++) {
+		vcpu = vmm_manager_vcpu(id);
+		switch (vcpu->state) {
+		case VMM_VCPU_STATE_UNKNOWN:
+			vmm_strcpy(state, "Unknown");
+			break;
+		case VMM_VCPU_STATE_RESET:
+			vmm_strcpy(state, "Reset");
+			break;
+		case VMM_VCPU_STATE_READY:
+			vmm_strcpy(state, "Ready");
+			break;
+		case VMM_VCPU_STATE_RUNNING:
+			vmm_strcpy(state, "Running");
+			break;
+		case VMM_VCPU_STATE_PAUSED:
+			vmm_strcpy(state, "Paused");
+			break;
+		case VMM_VCPU_STATE_HALTED:
+			vmm_strcpy(state, "Halted");
+			break;
+		default:
+			vmm_strcpy(state, "Invalid");
+			break;
+		}
+		if (vcpu->node) {
+			vmm_devtree_getpath(path, vcpu->node);
+			vmm_cprintf(cdev, "| %-5d| %-9s| %-16s| %-41s|\n", 
+					  id, state, vcpu->name, path);
+		} else {
+			vmm_cprintf(cdev, "| %-5d| %-9s| %-16s| %-41s|\n", 
+					  id, state, vcpu->name, "(NA)");
+		}
+	}
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
+}
+
+int cmd_vcpu_reset(vmm_chardev_t *cdev, int id)
+{
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	if (vcpu) {
+		if ((ret = vmm_manager_vcpu_reset(vcpu))) {
+			vmm_cprintf(cdev, "%s: Failed to reset\n", vcpu->name);
+		} else {
+			vmm_cprintf(cdev, "%s: Reset done\n", vcpu->name);
+		}
+	} else {
+		vmm_cprintf(cdev, "Failed to find vcpu\n");
+	}
+	return ret;
+}
+
+int cmd_vcpu_kick(vmm_chardev_t *cdev, int id)
+{
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	if (vcpu) {
+		if ((ret = vmm_manager_vcpu_kick(vcpu))) {
+			vmm_cprintf(cdev, "%s: Failed to kick\n", vcpu->name);
+		} else {
+			vmm_cprintf(cdev, "%s: Kicked\n", vcpu->name);
+		}
+	} else {
+		vmm_cprintf(cdev, "Failed to find vcpu\n");
+	}
+	return ret;
+}
+
+int cmd_vcpu_pause(vmm_chardev_t *cdev, int id)
+{
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	if (vcpu) {
+		;
+		if ((ret = vmm_manager_vcpu_pause(vcpu))) {
+			vmm_cprintf(cdev, "%s: Failed to pause\n", vcpu->name);
+		} else {
+			vmm_cprintf(cdev, "%s: Paused\n", vcpu->name);
+		}
+	} else {
+		vmm_cprintf(cdev, "Failed to find vcpu\n");
+	}
+	return ret;
+}
+
+int cmd_vcpu_resume(vmm_chardev_t *cdev, int id)
+{
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	if (vcpu) {
+		if ((ret = vmm_manager_vcpu_resume(vcpu))) {
+			vmm_cprintf(cdev, "%s: Failed to resume\n", 
+					  vcpu->name);
+		} else {
+			vmm_cprintf(cdev, "%s: Resumed\n", vcpu->name);
+		}
+	} else {
+		vmm_cprintf(cdev, "Failed to find vcpu\n");
+	}
+	return ret;
+}
+
+int cmd_vcpu_halt(vmm_chardev_t *cdev, int id)
+{
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	if (vcpu) {
+		if ((ret = vmm_manager_vcpu_halt(vcpu))) {
+			vmm_cprintf(cdev, "%s: Failed to halt\n", vcpu->name);
+		} else {
+			vmm_cprintf(cdev, "%s: Halted\n", vcpu->name);
+		}
+	} else {
+		vmm_cprintf(cdev, "Failed to find vcpu\n");
+	}
+	return ret;
+}
+
+int cmd_vcpu_dumpreg(vmm_chardev_t *cdev, int id)
+{
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	if (vcpu) {
+		if ((ret = vmm_manager_vcpu_dumpreg(vcpu))) {
+			vmm_cprintf(cdev, "%s: Failed to dumpreg\n", 
+					  vcpu->name);
+		}
+	} else {
+		vmm_cprintf(cdev, "Failed to find vcpu\n");
+	}
+	return ret;
+}
+
+int cmd_vcpu_exec(vmm_chardev_t *cdev, int argc, char **argv)
+{
+	int id;
+	if (argc == 2) {
+		if (vmm_strcmp(argv[1], "help") == 0) {
+			cmd_vcpu_usage(cdev);
+			return VMM_OK;
+		} else if (vmm_strcmp(argv[1], "list") == 0) {
+			cmd_vcpu_list(cdev);
+			return VMM_OK;
+		}
+	}
+	if (argc < 3) {
+		cmd_vcpu_usage(cdev);
+		return VMM_EFAIL;
+	}
+	id = vmm_str2int(argv[2], 10);
+	if (vmm_strcmp(argv[1], "reset") == 0) {
+		return cmd_vcpu_reset(cdev, id);
+	} else if (vmm_strcmp(argv[1], "kick") == 0) {
+		return cmd_vcpu_kick(cdev, id);
+	} else if (vmm_strcmp(argv[1], "pause") == 0) {
+		return cmd_vcpu_pause(cdev, id);
+	} else if (vmm_strcmp(argv[1], "resume") == 0) {
+		return cmd_vcpu_resume(cdev, id);
+	} else if (vmm_strcmp(argv[1], "halt") == 0) {
+		return cmd_vcpu_halt(cdev, id);
+	} else if (vmm_strcmp(argv[1], "dumpreg") == 0) {
+		return cmd_vcpu_dumpreg(cdev, id);
+	} else {
+		cmd_vcpu_usage(cdev);
+		return VMM_EFAIL;
+	}
+	return VMM_OK;
+}
+
+static vmm_cmd_t cmd_vcpu = {
+	.name = "vcpu",
+	.desc = "control commands for vcpu",
+	.usage = cmd_vcpu_usage,
+	.exec = cmd_vcpu_exec,
+};
+
+static int cmd_vcpu_init(void)
+{
+	return vmm_cmdmgr_register_cmd(&cmd_vcpu);
+}
+
+static void cmd_vcpu_exit(void)
+{
+	vmm_cmdmgr_unregister_cmd(&cmd_vcpu);
+}
+
+VMM_DECLARE_MODULE(MODULE_VARID, 
+			MODULE_NAME, 
+			MODULE_AUTHOR, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

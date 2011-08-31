@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Anup Patel.
+ * Copyright (c) 2011 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,23 +16,27 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_cmd_version.c
- * @version 0.01
+ * @file arm_heap.c
+ * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief Implementation of version command
+ * @brief source file for heap managment
  */
 
-#include <vmm_error.h>
-#include <vmm_stdio.h>
-#include <vmm_version.h>
-#include <vmm_mterm.h>
+#include <arm_heap.h>
 
-int cmd_version_exec(int argc, char **argv)
+void * heap_curr;
+extern u8 _heap_start;
+
+void * arm_malloc(size_t size)
 {
-	vmm_printf("%s Version %d.%d (%s %s)\n",
-		   VMM_PROJECT_NAME, VMM_PROJECT_VER_MAJOR,
-		   VMM_PROJECT_VER_MINOR, __DATE__, __TIME__);
-	return VMM_OK;
+	void * retval;
+	retval = heap_curr;
+	heap_curr += size;
+	return retval;
 }
 
-VMM_DECLARE_CMD(version, "show version of hypervisor", cmd_version_exec, NULL);
+void arm_heap_init(void)
+{
+	heap_curr = &_heap_start;
+}
+

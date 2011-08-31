@@ -24,6 +24,15 @@
 
 #include <arm_string.h>
 
+char *arm_strcpy(char *dest, const char *src)
+{
+	u32 i;
+	for (i = 0; src[i] != '\0'; ++i)
+		dest[i] = src[i];
+	dest[i] = '\0';
+	return dest;
+}
+
 int arm_strcmp(const char *a, const char *b)
 {
 	while (*a == *b) {
@@ -36,16 +45,112 @@ int arm_strcmp(const char *a, const char *b)
 	return (unsigned char)*a - (unsigned char)*b;
 }
 
-void arm_int2str(char * dst, u32 src)
+int arm_str2int(char * src)
 {
+	int val = 0, pos = 0, minus = 0;
+
+	if (src[pos] == '-') {
+		minus = 1;
+		pos++;
+	}
+
+	while (src[pos]) {
+		val = 10 * val + (src[pos] - '0');
+		pos++;
+	}
+
+	return (minus) ? -val : val;
+}
+
+void arm_int2str(char * dst, int src)
+{
+	int val, count = 0, pos = 0;
+	char intchars[] = "0123456789";
+
+	val = src;
+	while (val) {
+		count++;
+		val = val / 10;
+	}
+	if (src < 0) {
+		count++;
+	}
+
+	val = (src < 0) ? -src : src;
+	while (val) {
+		dst[count - pos - 1] = intchars[val % 10];
+		pos++;
+		val = val / 10;
+	}
+	if (src < 0) {
+		dst[0] = '-';
+	}
+
+	dst[count] = '\0';
+}
+
+unsigned int arm_hexstr2uint(char * src)
+{
+	unsigned int val = 0x0;
 	int pos = 0;
+
+	if ((src[0] == '0') && (src[1] == 'x')) {
+		pos = 2;
+	}
+
+	while (src[pos]) {
+		if (('0' <= src[pos]) && (src[pos] <= '9')) {
+			val = val * 16 + (src[pos] - '0');
+		} else if (('A' <= src[pos]) && (src[pos] <= 'F')) {
+			val = val * 16 + (src[pos] - 'A' + 10);
+		} else if (('a' <= src[pos]) && (src[pos] <= 'f')) {
+			val = val * 16 + (src[pos] - 'a' + 10);
+		}
+		pos++;
+	}
+
+	return val;
+}
+
+void arm_uint2hexstr(char * dst, unsigned int src)
+{
+	int ite, pos = 0;
 	char hexchars[] = "0123456789ABCDEF";
 
-	while (pos < 8) {
-		dst[pos] = hexchars[(src >> 28) & 0xF];
+	for (ite = 0; ite < 8; ite++) {
+		if ((pos == 0) && !((src >> (4 * (8 - ite - 1))) & 0xF)) {
+			continue;
+		}
+		dst[pos] = hexchars[(src >> (4 * (8 - ite - 1))) & 0xF];
 		pos++;
-		src = src << 4;
+	}
+
+	if (pos == 0) {
+		dst[pos] = '0';
+		pos++;
 	}
 
 	dst[pos] = '\0';
 }
+
+void arm_ulonglong2hexstr(char *dst, unsigned long long src)
+{
+	int ite, pos = 0;
+	char hexchars[] = "0123456789ABCDEF";
+
+	for (ite = 0; ite < 16; ite++) {
+		if ((pos == 0) && !((src >> (4 * (16 - ite - 1))) & 0xF)) {
+			continue;
+		}
+		dst[pos] = hexchars[(src >> (4 * (16 - ite - 1))) & 0xF];
+		pos++;
+	}
+
+	if (pos == 0) {
+		dst[pos] = '0';
+		pos++;
+	}
+
+	dst[pos] = '\0';
+}
+

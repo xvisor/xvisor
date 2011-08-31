@@ -25,6 +25,8 @@
 #ifndef __VMM_BUDDY_ALLOC_H_
 #define __VMM_BUDDY_ALLOC_H_
 
+#include <vmm_chardev.h>
+
 #define BINS_MAX_ORDER		(CONFIG_BINS_MAX_ORDER)
 #define MIN_BLOCK_SIZE		(0x01UL << CONFIG_MIN_BLOCK_SIZE_SHIFT)	/* Minimum alloc of bus width */
 #define MAX_BLOCK_SIZE		(MIN_BLOCK_SIZE << (BINS_MAX_ORDER - 1))	/* Max block size of 4 KiB */
@@ -50,7 +52,7 @@ struct vmm_heap {
 	struct vmm_free_area free_area[BINS_MAX_ORDER];	/* Bins holding free area. */
 } __attribute__ ((packed));
 
-void print_current_buddy_state(void);
-void print_current_hk_state(void);
+void print_current_buddy_state(vmm_chardev_t *cdev);
+void print_current_hk_state(vmm_chardev_t *cdev);
 
-#endif /* __BUDDY_ALLOC_H_ */
+#endif /* __VMM_BUDDY_ALLOC_H_ */

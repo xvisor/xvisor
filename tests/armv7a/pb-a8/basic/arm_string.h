@@ -27,7 +27,12 @@
 
 #include <arm_types.h>
 
+char *arm_strcpy(char *dest, const char *src);
 int arm_strcmp(const char *a, const char *b);
-void arm_int2str(char * dst, u32 src);
+int arm_str2int(char * src);
+void arm_int2str(char * dst, int src);
+unsigned int arm_hexstr2uint(char * src);
+void arm_uint2hexstr(char * dst, unsigned int src);
+void arm_ulonglong2hexstr(char * dst, unsigned long long src);
 
 #endif /* __ARM_STRING_H_ */

@@ -146,13 +146,7 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 		p->pa = reg->hphys_addr + (far - reg->gphys_addr);
 		p->va = far;
 		p->sz = reg->phys_size - (far - reg->gphys_addr);
-		if (TTBL_L1TBL_SECTION_PAGE_SIZE <= p->sz) {
-			p->sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
-		} else if (TTBL_L2TBL_LARGE_PAGE_SIZE <= p->sz) {
-			p->sz = TTBL_L2TBL_LARGE_PAGE_SIZE;
-		} else {
-			p->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
-		}
+		p->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		p->imp = 0;
 		p->dom = TTBL_L1TBL_TTE_DOM_VCPU_NOMMU;
 		if (reg->is_virtual) {
@@ -267,7 +261,7 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 					 */
 					if (arm_feature(vcpu, ARM_FEATURE_V7) ||
 						arm_cpuid(vcpu) == ARM_CPUID_ARM11MPCORE) {
-						int mpidr = vcpu->index;
+						int mpidr = vcpu->subid;
 						/* We don't support setting cluster ID ([8..11])
 						 * so these bits always RAZ.
 						 */
@@ -858,7 +852,7 @@ void cpu_vcpu_cp15_sync_cpsr(vmm_vcpu_t * vcpu)
 		vcpu->sregs->cp15.dacr |= 
 		(TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER));
 	}
-	if (cvcpu->num == vcpu->num) {
+	if (cvcpu->id == vcpu->id) {
 		cpu_mmu_chdacr(vcpu->sregs->cp15.dacr);
 	}
 }

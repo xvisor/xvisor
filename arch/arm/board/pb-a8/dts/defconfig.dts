@@ -9,10 +9,10 @@
 		armv7a_ttbl_pool_size = <0x20000>;
 		armv7a_l2tbl_per_vcpu = <4>;
 		armv7a_tlbent_per_vcpu = <64>;
-		max_vcpu_count = <4>;
+		max_vcpu_count = <8>;
 		max_guest_count = <2>;
 		tick_delay_nsecs = <200000>;
-		hypercore_tick_count = <20>;
+		mterm_time_slice = <2000000>;
 	};
 
 	host {
@@ -77,8 +77,8 @@
 				vcpu0 {
 					device_type = "vcpu";
 					model = "ARMv7a,cortex-a8";
-					tick_count = <80>;
-					start_pc = <0x00100000>;
+					time_slice = <98000000>;
+					start_pc = <0x40000000>;
 				};
 			};
 			
@@ -89,9 +89,9 @@
 				mem {
 					manifest_type = "real";
 					address_type = "memory";
-					guest_physical_addr = <0x00100000>;
-					host_physical_addr = <0x00100000>;
-					physical_size = <0x00100000>;
+					guest_physical_addr = <0x00000000>;
+					host_physical_addr = <0x01000000>;
+					physical_size = <0x01000000>; /* 16 MB */
 					device_type = "memory";
 				};
 
@@ -115,6 +115,40 @@
 					compatible = "primecell,sp810";
 				};
 
+				uart0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10009000>;
+					host_physical_addr = <0x00000000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <2000>;
+					irq = <45>;
+				};
+
+				timer0_1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10011000>;
+					host_physical_addr = <0x00000000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <36>;
+				};
+
+				timer2_3 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10012000>;
+					host_physical_addr = <0x00000000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <37>;
+				};
+
 				sysctrl1 {
 					manifest_type = "virtual";
 					address_type = "memory";
@@ -136,27 +170,13 @@
 					parent_irq = <6>;
 				};
 
-				timer0_1 {
-					manifest_type = "virtual";
+				nor_flash {
+					manifest_type = "real";
 					address_type = "memory";
-					guest_physical_addr = <0x10011000>;
-					host_physical_addr = <0x00000000>;
-					physical_size = <0x1000>;
-					device_type = "timer";
-					compatible = "primecell,sp804";
-					irq = <36>;
-				};
-
-				uart0 {
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x10009000>;
-					host_physical_addr = <0x00000000>;
-					physical_size = <0x1000>;
-					device_type = "serial";
-					compatible = "primecell,arm,pl011";
-					fifo_size = <256>;
-					irq = <45>;
+					guest_physical_addr = <0x40000000>;
+					host_physical_addr = <0x00100000>;
+					physical_size = <0x00300000>; /* 3 MB */
+					device_type = "memory";
 				};
 			};
 		};

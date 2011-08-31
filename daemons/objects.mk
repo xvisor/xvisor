@@ -19,20 +19,8 @@
 # @file objects.mk
 # @version 1.0
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of command to be build
+# @brief list of daemons objects to be build
 # */
 
-core-objs-y+= commands/vmm_cmd_version.o
-core-objs-y+= commands/vmm_cmd_reset.o
-core-objs-y+= commands/vmm_cmd_shutdown.o
-core-objs-y+= commands/vmm_cmd_devtree.o
-core-objs-y+= commands/vmm_cmd_vcpu.o
-core-objs-y+= commands/vmm_cmd_guest.o
-core-objs-y+= commands/vmm_cmd_hyperthreads.o
-core-objs-y+= commands/vmm_cmd_chardev.o
-core-objs-y+= commands/vmm_cmd_blockdev.o
-core-objs-y+= commands/vmm_cmd_vserial.o
-core-objs-y+= commands/vmm_cmd_stdio.o
-core-objs-$(CONFIG_MM_BUDDY)+= commands/vmm_cmd_buddy.o
-core-objs-$(CONFIG_NET)+= commands/vmm_cmd_ping.o
-core-objs-y+= commands/vmm_cmd_elf.o
+daemons-objs-y+= mterm.o
+

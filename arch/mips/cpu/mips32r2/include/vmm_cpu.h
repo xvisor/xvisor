@@ -25,8 +25,7 @@
 #define _VMM_CPU_H__
 
 #include <vmm_types.h>
-#include <vmm_scheduler.h>
-#include <vmm_hyperthreads.h>
+#include <vmm_manager.h>
 #include <cpu_interrupts.h>
 #include <cpu_timer.h>
 #include <cpu_locks.h>
@@ -64,9 +63,10 @@ u32 vmm_vcpu_irq_count(vmm_vcpu_t * vcpu);
 
 
 /** Timer related functions required by VMM core */
-int vmm_cpu_timer_setup(u64 tick_nsecs);
 void vmm_cpu_timer_enable(void);
 void vmm_cpu_timer_disable(void);
+int vmm_cpu_timer_setup(u64 tick_nsecs);
+int vmm_cpu_timer_init(void);
 
 /** Atomic Operations and spinlock */
 void vmm_cpu_atomic_inc(atomic_t *atom);
@@ -76,13 +76,6 @@ void vmm_cpu_spin_unlock(vmm_cpu_spinlock_t *lock);
 irq_flags_t vmm_cpu_spin_lock_irqsave(vmm_cpu_spinlock_t *lock);
 void vmm_cpu_spin_unlock_irqrestore(vmm_cpu_spinlock_t *lock, 
 				irq_flags_t flags);
-
-s32 vmm_hyperthread_regs_init(vmm_hyperthread_t *tinfo, void* udata);
-void vmm_hyperthread_regs_switch(vmm_hyperthread_t *tthread,
-				 vmm_hyperthread_t *thread,
-				 vmm_user_regs_t *regs);
-vmm_hyperthread_t *vmm_hyperthread_context2thread(void);
-vmm_hyperthread_t *vmm_hyperthread_uregs2thread(vmm_user_regs_t *tregs);
 
 u32 get_vcpu_word(u32 *);
 

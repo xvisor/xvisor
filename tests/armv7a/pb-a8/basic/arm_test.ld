@@ -30,6 +30,8 @@ SECTIONS
 {
 	. = TEXT_START;
 
+	PROVIDE(_code_start = .);
+
 	.text :
  	{
 		*(.expvect)
@@ -59,20 +61,13 @@ SECTIONS
 		_erodata = .;
 	}
 
-	.cmdbtl :
+	.heap :
 	{
-		PROVIDE(_cmdtbl_start = .);
-		*(.cmdtbl)
+		PROVIDE(_heap_start = .);
+		*(.heap)
+                . = . + 8192;
 		. = ALIGN(4);
-		PROVIDE(_cmdtbl_end = .);
-	}
-
-	.modtbl :
-	{
-		PROVIDE(_modtbl_start = .);
-		*(.modtbl)
-		. = ALIGN(4);
-		PROVIDE(_modtbl_end = .);
+		PROVIDE(_heap_end = .);
 	}
 
  	.svc_stack :
@@ -130,4 +125,6 @@ SECTIONS
                 . = ALIGN(4);
                 PROVIDE(_usr_stack_end = .);
         }
+
+	PROVIDE(_code_end = .);
 }

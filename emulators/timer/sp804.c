@@ -204,15 +204,6 @@ static int sp804_timer_write(struct sp804_timer *t, u32 offset,
 	switch (offset >> 2) {
 	case 0: /* TimerLoad */
 		t->limit = (t->limit & src_mask) | (src & ~src_mask);
-		if ((t->control & 
-		    (TIMER_CTRL_PERIODIC | TIMER_CTRL_ONESHOT)) == 0) {
-			/* Free running */
-			if (t->control & TIMER_CTRL_32BIT) {
-				t->limit = 0xFFFFFFFF;
-			} else {
-				t->limit = 0xFFFF;
-			}
-		}
 		sp804_timer_syncvalue(t, FALSE);
 		break;
 	case 1: /* TimerValue */
@@ -265,7 +256,10 @@ static int sp804_timer_reset(struct sp804_timer *t)
 	vmm_timer_event_stop(t->event);
 	t->limit = 0xFFFFFFFF;
 	t->control = TIMER_CTRL_IE;
+	t->irq_level = 0;
+#if 0
 	sp804_timer_syncvalue(t, TRUE);
+#endif
 
 	vmm_spin_unlock(&t->lock);
 

@@ -509,30 +509,9 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 	Rn = ARM_INST_BITS(inst,
 			   ARM_HYPERCALL_LDM_UE_RN_END,
 			   ARM_HYPERCALL_LDM_UE_RN_START);
-	switch (Rn) {
-	case 0:
-		Rn = 0;
-		break;
-	case 1:
-		Rn = 4;
-		break;
-	case 2:
-		Rn = 8;
-		break;
-	case 3:
-		Rn = 13;
-		break;
-	default:
-		Rn = 13;
-		break;
-	};
-	P = (id == ARM_HYPERCALL_LDM_UE_ID0) ? 0 : 1;
-	U = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_LDM_UE_U_END,
-			  ARM_HYPERCALL_LDM_UE_U_START);
-	W = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_LDM_UE_W_END,
-			  ARM_HYPERCALL_LDM_UE_W_START);
+	P = ((id - ARM_HYPERCALL_LDM_UE_ID0) & 0x4) >> 2;
+	U = ((id - ARM_HYPERCALL_LDM_UE_ID0) & 0x2) >> 1;
+	W = ((id - ARM_HYPERCALL_LDM_UE_ID0) & 0x1);
 	reg_list = ARM_INST_BITS(inst,
 				 ARM_HYPERCALL_LDM_UE_REGLIST_END,
 				 ARM_HYPERCALL_LDM_UE_REGLIST_START);
@@ -658,29 +637,8 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 	Rn = ARM_INST_BITS(inst,
 			   ARM_HYPERCALL_STM_U_RN_END,
 			   ARM_HYPERCALL_STM_U_RN_START);
-	switch (Rn) {
-	case 0:
-		Rn = 0;
-		break;
-	case 1:
-		Rn = 4;
-		break;
-	case 2:
-		Rn = 8;
-		break;
-	case 3:
-		Rn = 13;
-		break;
-	default:
-		Rn = 13;
-		break;
-	};
-	P = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_STM_U_P_END,
-			  ARM_HYPERCALL_STM_U_P_START);
-	U = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_STM_U_U_END,
-			  ARM_HYPERCALL_STM_U_U_START);
+	P = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x2) >> 1;
+	U = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x1);
 	reg_list = ARM_INST_BITS(inst,
 				 ARM_HYPERCALL_STM_U_REGLIST_END,
 				 ARM_HYPERCALL_STM_U_REGLIST_START);
@@ -838,62 +796,6 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 	return VMM_OK;
 }
 
-/** FIXME: Emulate 'ldrt' hypercall */
-int arm_hypercall_ldrt(u32 id, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'strt' hypercall */
-int arm_hypercall_strt(u32 id, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'ldrbt' hypercall */
-int arm_hypercall_ldrbt(u32 id, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'strbt' hypercall */
-int arm_hypercall_strbt(u32 id, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'ldrht' hypercall */
-int arm_hypercall_ldrht(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'ldrsbt' hypercall */
-int arm_hypercall_ldrsbt(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'ldrsht' hypercall */
-int arm_hypercall_ldrsht(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
-/** FIXME: Emulate 'strht' hypercall */
-int arm_hypercall_strht(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
-{
-	return VMM_OK;
-}
-
 /** Emulate hypercall instruction */
 int arm_instgrp_hypercall(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
@@ -931,52 +833,24 @@ int arm_instgrp_hypercall(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		break;
 	case ARM_HYPERCALL_LDM_UE_ID0:
 	case ARM_HYPERCALL_LDM_UE_ID1:
+	case ARM_HYPERCALL_LDM_UE_ID2:
+	case ARM_HYPERCALL_LDM_UE_ID3:
+	case ARM_HYPERCALL_LDM_UE_ID4:
+	case ARM_HYPERCALL_LDM_UE_ID5:
+	case ARM_HYPERCALL_LDM_UE_ID6:
+	case ARM_HYPERCALL_LDM_UE_ID7:
 			return arm_hypercall_ldm_ue(id, inst, regs, vcpu);
 			break;
-	case ARM_HYPERCALL_STM_U_ID:
+	case ARM_HYPERCALL_STM_U_ID0:
+	case ARM_HYPERCALL_STM_U_ID1:
+	case ARM_HYPERCALL_STM_U_ID2:
+	case ARM_HYPERCALL_STM_U_ID3:
 		return arm_hypercall_stm_u(id, inst, regs, vcpu);
 		break;
 	case ARM_HYPERCALL_SUBS_REL_ID0:
 	case ARM_HYPERCALL_SUBS_REL_ID1:
 		return arm_hypercall_subs_rel(id, inst, regs, vcpu);
 		break;
-	case ARM_HYPERCALL_LDRT_ID0:
-	case ARM_HYPERCALL_LDRT_ID1:
-		return arm_hypercall_ldrt(id, inst, regs, vcpu);
-		break;
-	case ARM_HYPERCALL_STRT_ID0:
-	case ARM_HYPERCALL_STRT_ID1:
-		return arm_hypercall_strt(id, inst, regs, vcpu);
-		break;
-	case ARM_HYPERCALL_LDRBT_ID0:
-	case ARM_HYPERCALL_LDRBT_ID1:
-		return arm_hypercall_ldrbt(id, inst, regs, vcpu);
-		break;
-	case ARM_HYPERCALL_STRBT_ID0:
-	case ARM_HYPERCALL_STRBT_ID1:
-		return arm_hypercall_strbt(id, inst, regs, vcpu);
-		break;
-	case ARM_HYPERCALL_LDRHT_ID:
-		switch (subid) {
-		case ARM_HYPERCALL_LDRHT_SUBID0:
-		case ARM_HYPERCALL_LDRHT_SUBID1:
-			return arm_hypercall_ldrht(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_LDRSBT_SUBID0:
-		case ARM_HYPERCALL_LDRSBT_SUBID1:
-			return arm_hypercall_ldrsbt(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_LDRSHT_SUBID0:
-		case ARM_HYPERCALL_LDRSHT_SUBID1:
-			return arm_hypercall_ldrsht(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_STRHT_SUBID0:
-		case ARM_HYPERCALL_STRHT_SUBID1:
-			return arm_hypercall_strht(id, subid, inst, regs, vcpu);
-			break;
-		default:
-			break;
-		};
 	default:
 		break;
 	};
@@ -1149,6 +1023,12 @@ int arm_inst_ldrh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
+/** FIXME: Emulate 'ldrht' intruction */
+int arm_inst_ldrht(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
+}
+
 /** Emulate 'strh (immediate)' instruction */
 int arm_inst_strh_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
@@ -1268,6 +1148,12 @@ int arm_inst_strh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		}
 	}
 	regs->pc += 4;
+	return VMM_OK;
+}
+
+/** FIXME: Emulate 'strht' intruction */
+int arm_inst_strht(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
 	return VMM_OK;
 }
 
@@ -1440,6 +1326,12 @@ int arm_inst_ldrsh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
+/** FIXME: Emulate 'ldrsht' intruction */
+int arm_inst_ldrsht(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
+}
+
 /** Emulate 'ldrsb (immediate)' instruction */
 int arm_inst_ldrsb_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
@@ -1606,6 +1498,12 @@ int arm_inst_ldrsb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 					arm_sign_extend(data, 8, 32));
 	}
 	regs->pc += 4;
+	return VMM_OK;
+}
+
+/** FIXME: Emulate 'ldrsbt' intruction */
+int arm_inst_ldrsbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
 	return VMM_OK;
 }
 
@@ -1949,8 +1847,8 @@ int arm_instgrp_dataproc(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
 	u32 op, op1, Rn, op2;
 	u32 is_op1_0xx1x, is_op1_xx0x0, is_op1_xx0x1, is_op1_xx1x0;
-	u32 is_op1_xx1x1;
-	u32 is_op2_1011, is_op2_11x1;
+	u32 is_op1_xx1x1, is_op1_0xxxx;
+	u32 is_op2_1011, is_op2_1101, is_op2_1111, is_op2_11x1;
 
 	op = ARM_INST_DECODE(inst,
 			     ARM_INST_DATAPROC_OP_MASK,
@@ -1965,15 +1863,18 @@ int arm_instgrp_dataproc(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			      ARM_INST_DATAPROC_OP2_MASK,
 			      ARM_INST_DATAPROC_OP2_SHIFT);
 
+	is_op1_0xxxx = !(op1 & 0x10);
 	is_op1_0xx1x = !(op1 & 0x10) && (op1 & 0x2);
 	is_op1_xx0x0 = !(op1 & 0x4) && !(op1 & 0x1);
 	is_op1_xx0x1 = !(op1 & 0x4) && (op1 & 0x1);
 	is_op1_xx1x0 = (op1 & 0x4) && !(op1 & 0x1);
 	is_op1_xx1x1 = (op1 & 0x4) && (op1 & 0x1);
 	is_op2_1011 = (op2 == 0xB);
-	is_op2_11x1 = (op2 == 0xD) || (op2 == 0xF);
+	is_op2_1101 = (op2 == 0xD);
+	is_op2_1111 = (op2 == 0xF);
+	is_op2_11x1 = is_op2_1101 || is_op2_1111;
 
-	if (!op && !is_op1_0xx1x && (is_op2_1011 || is_op2_11x1)) {
+	if (!op && !is_op1_0xx1x && (is_op2_1011 || is_op2_11x1)){
 		/* Extra load/store instructions */
 		switch (op2) {
 		case 0xB:
@@ -2044,6 +1945,23 @@ int arm_instgrp_dataproc(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		default:
 			break;
 		};
+	} if (!op && is_op1_0xx1x && (is_op2_1011 || is_op2_11x1)) {
+		/* Extra load/store instructions (unpriviledged) */
+		if (is_op2_1011) {
+			if (is_op1_0xxxx) {
+				/* STRHT */
+				return arm_inst_strht(inst, regs, vcpu);
+			} else {
+				/* LDRHT */
+				return arm_inst_ldrht(inst, regs, vcpu);
+			}
+		} else if (is_op2_1101 && !is_op1_0xxxx) {
+			/* LDRSBT */
+				return arm_inst_ldrsbt(inst, regs, vcpu);
+		} else if (is_op2_1111 && !is_op1_0xxxx) {
+			/* LDRSHT */
+				return arm_inst_ldrsht(inst, regs, vcpu);
+		}
 	}
 
 	arm_unpredictable(regs, vcpu);
@@ -2174,6 +2092,12 @@ int arm_inst_str_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
+/** FIXME: Emulate 'strt' intruction */
+int arm_inst_strt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
+}
+
 /** Emulate 'strb (immediate)' instruction */
 int arm_inst_strb_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
@@ -2300,6 +2224,12 @@ int arm_inst_strb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		}
 	}
 	regs->pc += 4;
+	return VMM_OK;
+}
+
+/** FIXME: Emulate 'strbt' intruction */
+int arm_inst_strbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
 	return VMM_OK;
 }
 
@@ -2461,6 +2391,12 @@ int arm_inst_ldr_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		}
 	}
 	regs->pc += 4;
+	return VMM_OK;
+}
+
+/** FIXME: Emulate 'ldrt' intruction */
+int arm_inst_ldrt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
 	return VMM_OK;
 }
 
@@ -2633,6 +2569,12 @@ int arm_inst_ldrb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
+/** FIXME: Emulate 'ldrbt' intruction */
+int arm_inst_ldrbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	return VMM_OK;
+}
+
 /** Emulate load/store instructions */
 int arm_instgrp_ldrstr(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
@@ -2668,29 +2610,25 @@ int arm_instgrp_ldrstr(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			return arm_inst_str_r(inst, regs, vcpu);
 		} else if (is_0x010 && !B) {
 			/* STRT */
-			arm_unpredictable(regs, vcpu);
-			return VMM_EFAIL;
+			return arm_inst_strt(inst, regs, vcpu);
 		} else if (is_xx0x1 && !is_0x011) {
 			/* LDR (register) */
 			return arm_inst_ldr_r(inst, regs, vcpu);
 		} else if (is_0x011 && !B) {
 			/* LDRT */
-			arm_unpredictable(regs, vcpu);
-			return VMM_EFAIL;
+			return arm_inst_ldrt(inst, regs, vcpu);
 		} else if (is_xx1x0 && !is_0x110 && !B) {
 			/* STRB (register) */
 			return arm_inst_strb_r(inst, regs, vcpu);
 		} else if (is_0x110 && !B) {
 			/* STRBT */
-			arm_unpredictable(regs, vcpu);
-			return VMM_EFAIL;
+			return arm_inst_strbt(inst, regs, vcpu);
 		} else if (is_xx1x1 && !is_0x111 && !B) {
 			/* LDRB (register) */
 			return arm_inst_ldrb_r(inst, regs, vcpu);
 		} else if (is_0x111 && !B) {
 			/* LDRBT */
-			arm_unpredictable(regs, vcpu);
-			return VMM_EFAIL;
+			return arm_inst_ldrbt(inst, regs, vcpu);
 		}
 	} else {
 		if (is_xx0x0 && !is_0x010) {
@@ -2698,8 +2636,7 @@ int arm_instgrp_ldrstr(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			return arm_inst_str_i(inst, regs, vcpu);
 		} else if (is_0x010) {
 			/* STRT */
-			arm_unpredictable(regs, vcpu);
-			return VMM_EFAIL;
+			return arm_inst_strt(inst, regs, vcpu);
 		} else if (is_xx0x1 && !is_0x011) {
 			if (rn == 0xF) {
 				/* LDR (literal) */
@@ -2710,15 +2647,13 @@ int arm_instgrp_ldrstr(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			}
 		} else if (is_0x011) {
 			/* LDRT */
-			arm_unpredictable(regs, vcpu);
-			return VMM_EFAIL;
+			return arm_inst_ldrt(inst, regs, vcpu);
 		} else if (is_xx1x0 && !is_0x110) {
 			/* STRB (immediate) */
 			return arm_inst_strb_i(inst, regs, vcpu);
 		} else if (is_0x110) {
 			/* STRBT */
-			arm_unpredictable(regs, vcpu);
-			return VMM_EFAIL;
+			return arm_inst_strbt(inst, regs, vcpu);
 		} else if (is_xx1x1 && !is_0x111) {
 			if (rn == 0xF) {
 				/* LDRB (literal) */
@@ -2729,8 +2664,7 @@ int arm_instgrp_ldrstr(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			}
 		} else if (is_0x111) {
 			/* LDRBT */
-			arm_unpredictable(regs, vcpu);
-			return VMM_EFAIL;
+			return arm_inst_ldrbt(inst, regs, vcpu);
 		}
 	}
 	arm_unpredictable(regs, vcpu);
@@ -3259,7 +3193,7 @@ int cpu_vcpu_emulate_arm_inst(vmm_vcpu_t *vcpu,
 	if (!vcpu) {
 		return VMM_EFAIL;
 	}
-	if (!vcpu->guest) {
+	if (!vcpu->is_normal) {
 		return VMM_EFAIL;
 	}
 

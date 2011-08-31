@@ -120,15 +120,15 @@ int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
 {
 	vmm_memset(vcpu->uregs, 0, sizeof(vmm_user_regs_t));
 
-        if (vcpu->guest == NULL) {
-		/* For hypercore */
+        if (!vcpu->is_normal) {
+		/* For orphan vcpu */
                 vcpu->uregs->cp0_epc = vcpu->start_pc;
-                vcpu->uregs->regs[SP_IDX] = (virtual_addr_t)&_stack_start;
+                vcpu->uregs->regs[SP_IDX] = vcpu->start_sp;
 		vcpu->uregs->regs[S8_IDX] = vcpu->uregs->regs[SP_IDX];
 		vcpu->uregs->cp0_status = read_c0_status();
 		vcpu->uregs->cp0_entryhi = read_c0_entryhi();
         } else {
-		/* For vcpu running guests */
+		/* For normal vcpu running guests */
 		vcpu->sregs->cp0_regs[CP0_CAUSE_IDX] = 0x400;
 		vcpu->sregs->cp0_regs[CP0_STATUS_IDX] = 0x40004;
 		vcpu->uregs->cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
@@ -169,7 +169,7 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
 	}
 
 	if (vcpu) {
-		if (vcpu->guest == NULL) {
+		if (!vcpu->is_normal) {
 			vcpu->uregs->cp0_status = read_c0_status() & ~(0x01UL << CP0_STATUS_UM_SHIFT);
 		} else {
 			vcpu->uregs->cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);

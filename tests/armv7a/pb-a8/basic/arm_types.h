@@ -42,6 +42,7 @@ typedef unsigned int ulong;
 #define stringify(s)	tostring(s)
 #define tostring(s)	#s
 
+typedef long long s64;
 typedef unsigned long long u64;
 typedef unsigned int irq_flags_t;
 typedef unsigned int virtual_addr_t;
