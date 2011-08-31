@@ -30,6 +30,21 @@
 
 vmm_timer_ctrl_t tctrl;
 
+u64 vmm_timer_timestamp(void)
+{
+	u64 cycles_now, cycles_delta;
+	u64 ns_offset;
+
+	cycles_now = vmm_cpu_clocksource_cycles();
+	cycles_delta = (cycles_now - tctrl.cycles_last) & tctrl.cycles_mask;
+	tctrl.cycles_last = cycles_now;
+	
+	ns_offset = (cycles_delta * tctrl.cycles_mult) >> tctrl.cycles_shift;
+	tctrl.timestamp += ns_offset;
+
+	return tctrl.timestamp;
+}
+
 static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 {
 	u64 tstamp;
@@ -46,7 +61,7 @@ static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 		if ((tstamp < ev->expiry_tstamp) &&
 		    (ev->expiry_tstamp < tctrl.cpu_curr->expiry_tstamp)) {
 			tctrl.cpu_curr = ev;
-			vmm_cpu_timer_start_event(ev->expiry_tstamp - tstamp);
+			vmm_cpu_clockevent_start(ev->expiry_tstamp - tstamp);
 		}
 	} else {
 		/* Scheduler next timer event */
@@ -56,13 +71,13 @@ static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 				continue;
 			}
 			tctrl.cpu_curr = e;
-			vmm_cpu_timer_start_event(e->expiry_tstamp - tstamp);
+			vmm_cpu_clockevent_start(e->expiry_tstamp - tstamp);
 			break;
 		}
 	}
 }
 
-void vmm_timer_event_process(vmm_user_regs_t * regs)
+void vmm_timer_clockevent_process(vmm_user_regs_t * regs)
 {
 	u64 tstamp;
 	struct dlist *l;
@@ -332,29 +347,26 @@ u32 vmm_timer_event_count(void)
 	return retval;
 }
 
-u64 vmm_timer_timestamp(void)
-{
-	return vmm_cpu_timer_timestamp();
-}
-
 void vmm_timer_start(void)
 {
-	vmm_cpu_timer_setup();
+	vmm_cpu_clockevent_setup();
 
-	vmm_cpu_timer_start_event(1000000);
+	vmm_cpu_clockevent_start(1000000);
 
 	tctrl.cpu_started = TRUE;
 }
 
 void vmm_timer_stop(void)
 {
-	vmm_cpu_timer_shutdown();
+	vmm_cpu_clockevent_shutdown();
 
 	tctrl.cpu_started = FALSE;
 }
 
 int vmm_timer_init(void)
 {
+	int rc;
+
 	/* Initialize Per CPU event status */
 	tctrl.cpu_started = FALSE;
 
@@ -367,6 +379,25 @@ int vmm_timer_init(void)
 	/* Initialize event list */
 	INIT_LIST_HEAD(&tctrl.event_list);
 
-	return vmm_cpu_timer_init();
+	/* Initialize cpu specific timer event */
+	if ((rc = vmm_cpu_clockevent_init())) {
+		return rc;
+	}
+
+	/* Initialize cpu specific timer cycle counter */
+	if ((rc = vmm_cpu_clocksource_init())) {
+		return rc;
+	}
+
+	/* Setup configuration for reading cycle counter */
+	tctrl.cycles_mask = vmm_cpu_clocksource_mask();
+	tctrl.cycles_mult = vmm_cpu_clocksource_mult();
+	tctrl.cycles_shift = vmm_cpu_clocksource_shift();
+	tctrl.cycles_last = vmm_cpu_clocksource_cycles();
+
+	/* Starting value of timestamp */
+	tctrl.timestamp = 0x0;
+
+	return VMM_OK;
 }
 

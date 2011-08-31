@@ -47,6 +47,11 @@ struct vmm_timer_event {
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_ctrl {
+	u64 cycles_last;
+	u64 cycles_mask;
+	u32 cycles_mult;
+	u32 cycles_shift;
+	u64 timestamp;
 	bool cpu_started;
 	vmm_timer_event_t * cpu_curr;
 	struct dlist cpu_event_list;
@@ -56,7 +61,7 @@ struct vmm_timer_ctrl {
 typedef struct vmm_timer_ctrl vmm_timer_ctrl_t;
 
 /** Process timer event (Must be called from somewhere) */
-void vmm_timer_event_process(vmm_user_regs_t * regs);
+void vmm_timer_clockevent_process(vmm_user_regs_t * regs);
 
 /** Start a timer event */
 int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs);
