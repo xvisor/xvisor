@@ -50,6 +50,36 @@ u32 omap3_gpt_read(u32 base, u32 reg)
 	return vmm_readl((void *)(base + reg));
 }
 
+u64 vmm_cpu_clocksource_cycles(void)
+{
+	return 0;
+}
+
+u64 vmm_cpu_clocksource_mask(void)
+{
+	return 0xFFFFFFFF;
+}
+
+u32 vmm_cpu_clocksource_mult(void)
+{
+	u32 khz = 1000;
+	u64 tmp = ((u64)1000000) << 20;
+	tmp += khz / 2;
+	tmp = tmp / khz;
+	return (u32)tmp;
+}
+
+u32 vmm_cpu_clocksource_shift(void)
+{
+	return 20;
+}
+
+int vmm_cpu_clocksource_init(void)
+{
+	return VMM_OK;
+}
+
+#if 0
 void vmm_cpu_timer_enable(void)
 {
 	u32 regval;
@@ -75,8 +105,9 @@ void vmm_cpu_timer_disable(void)
 	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
 			OMAP3_GPT_TCLR, regval & ~OMAP3_GPT_TCLR_ST_M);
 }
+#endif
 
-int vmm_cpu_timer_shutdown(void)
+int vmm_cpu_clockevent_shutdown(void)
 {
 	return VMM_OK;
 }
@@ -86,12 +117,12 @@ int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs)
 	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
 			OMAP3_GPT_TISR, OMAP3_GPT_TISR_OVF_IT_FLAG_M);
 
-	vmm_timer_event_process(regs);
+	vmm_timer_clockevent_process(regs);
 
 	return VMM_OK;
 }
 
-int vmm_cpu_timer_start_event(u64 tick_nsecs)
+int vmm_cpu_clockevent_start(u64 tick_nsecs)
 {
 	u32 tick_usecs;
 
@@ -107,7 +138,7 @@ int vmm_cpu_timer_start_event(u64 tick_nsecs)
 	return VMM_OK;
 }
 
-int vmm_cpu_timer_setup(void)
+int vmm_cpu_clockevent_setup(void)
 {
 	u32 regval;
 
@@ -126,12 +157,7 @@ int vmm_cpu_timer_setup(void)
 	return VMM_OK;
 }
 
-u64 vmm_cpu_timer_timestamp(void)
-{
-	return 0;
-}
-
-int vmm_cpu_timer_init(void)
+int vmm_cpu_clockevent_init(void)
 {
 	int ret;
 
