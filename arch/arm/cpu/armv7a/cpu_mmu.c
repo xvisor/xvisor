@@ -269,6 +269,23 @@ int cpu_mmu_l2tbl_free(cpu_l2tbl_t * l2)
 	return VMM_OK;
 }
 
+u32 cpu_mmu_best_page_size(virtual_addr_t va, physical_addr_t pa, u32 availsz)
+{
+	if (!(va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) &&
+	    !(pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) &&
+	    (TTBL_L1TBL_SECTION_PAGE_SIZE <= availsz)) {
+		return TTBL_L1TBL_SECTION_PAGE_SIZE;
+	}
+
+	if (!(va & (TTBL_L2TBL_LARGE_PAGE_SIZE - 1)) &&
+	    !(pa & (TTBL_L2TBL_LARGE_PAGE_SIZE - 1)) &&
+	    (TTBL_L2TBL_LARGE_PAGE_SIZE <= availsz)) {
+		return TTBL_L2TBL_LARGE_PAGE_SIZE;
+	}
+
+	return TTBL_L2TBL_SMALL_PAGE_SIZE;
+}
+
 int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
 {
 	int ret = VMM_EFAIL;
@@ -392,9 +409,9 @@ int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
 int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 {
 	int ret = VMM_EFAIL;
-	u32 *l1_tte, *l2_tte;
-	u32 l1_tte_type, found = 0;
-	physical_addr_t l2base, chkpa;
+	u32 ite, *l1_tte, *l2_tte;
+	u32 l1_tte_type, l1_sec_type, found = 0;
+	physical_addr_t l2base, pgpa, chkpa;
 	virtual_size_t chksz;
 	cpu_l2tbl_t *l2 = NULL;
 
@@ -405,15 +422,26 @@ int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 	l1_tte = (u32 *) (l1->tbl_va +
 			  ((pg->va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
+	l1_sec_type = (*l1_tte & TTBL_L1TBL_TTE_SECTYPE_MASK) >>
+	    TTBL_L1TBL_TTE_SECTYPE_SHIFT;
 
 	found = 0;
 	switch (l1_tte_type) {
 	case TTBL_L1TBL_TTE_TYPE_FAULT:
 		break;
 	case TTBL_L1TBL_TTE_TYPE_SECTION:
-		chkpa = *l1_tte & TTBL_L1TBL_TTE_BASE20_MASK;
-		chksz = TTBL_L1TBL_SECTION_PAGE_SIZE;
-		found = 1;
+		if (l1_sec_type) {
+			l1_tte = l1_tte - ((u32)l1_tte % 64) / 4;
+			pgpa = pg->pa & TTBL_L1TBL_TTE_BASE24_MASK;
+			chkpa = *l1_tte & TTBL_L1TBL_TTE_BASE24_MASK;
+			chksz = TTBL_L1TBL_SUPSECTION_PAGE_SIZE;
+			found = 1;
+		} else {
+			pgpa = pg->pa & TTBL_L1TBL_TTE_BASE20_MASK;
+			chkpa = *l1_tte & TTBL_L1TBL_TTE_BASE20_MASK;
+			chksz = TTBL_L1TBL_SECTION_PAGE_SIZE;
+			found = 2;
+		}
 		break;
 	case TTBL_L1TBL_TTE_TYPE_L2TBL:
 		l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
@@ -424,15 +452,18 @@ int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 			l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
 			switch (*l2_tte & TTBL_L2TBL_TTE_TYPE_MASK) {
 			case TTBL_L2TBL_TTE_TYPE_LARGE:
+				l2_tte = l2_tte - ((u32)l2_tte % 64) / 4;
+				pgpa = pg->pa & TTBL_L2TBL_TTE_BASE16_MASK;
 				chkpa = *l2_tte & TTBL_L2TBL_TTE_BASE16_MASK;
 				chksz = TTBL_L2TBL_LARGE_PAGE_SIZE;
-				found = 2;
+				found = 3;
 				break;
 			case TTBL_L2TBL_TTE_TYPE_SMALL_X:
 			case TTBL_L2TBL_TTE_TYPE_SMALL_XN:
+				pgpa = pg->pa & TTBL_L2TBL_TTE_BASE12_MASK;
 				chkpa = *l2_tte & TTBL_L2TBL_TTE_BASE12_MASK;
 				chksz = TTBL_L2TBL_SMALL_PAGE_SIZE;
-				found = 2;
+				found = 4;
 				break;
 			default:
 				break;
@@ -444,15 +475,36 @@ int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 	};
 
 	switch (found) {
-	case 1:
-		if (pg->sz == chksz) {
+	case 1: /* Super Section */
+		if ((pgpa == chkpa) && (pg->sz == chksz)) {
+			for (ite = 0; ite < 16; ite++) {
+				l1_tte[ite] = 0x0;
+				l1->tte_cnt--;
+			}
+			ret = VMM_OK;
+		}
+		break;
+	case 2: /* Section */
+		if ((pgpa == chkpa) && (pg->sz == chksz)) {
 			*l1_tte = 0x0;
 			l1->tte_cnt--;
 			ret = VMM_OK;
 		}
 		break;
-	case 2:
-		if (pg->sz == chksz) {
+	case 3: /* Large Page */
+		if ((pgpa == chkpa) && (pg->sz == chksz)) {
+			for (ite = 0; ite < 16; ite++) {
+				l2_tte[ite] = 0x0;
+				l2->tte_cnt--;				
+			}
+			if (!l2->tte_cnt) {
+				cpu_mmu_l2tbl_detach(l2);
+			}
+			ret = VMM_OK;
+		}
+		break;
+	case 4: /* Small Page */
+		if ((pgpa == chkpa) && (pg->sz == chksz)) {
 			*l2_tte = 0x0;
 			l2->tte_cnt--;
 			if (!l2->tte_cnt) {
@@ -481,7 +533,7 @@ int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 {
 	int rc = VMM_OK;
 	u32 *l1_tte, *l2_tte;
-	u32 l1_tte_type;
+	u32 ite, l1_tte_type;
 	virtual_addr_t pgva;
 	virtual_size_t pgsz, minpgsz;
 	physical_addr_t l2base;
@@ -505,7 +557,8 @@ int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 			rc = VMM_EFAIL;
 			goto mmu_map_return;
 		}
-		pgva = pg->va & ~(minpgsz - 1);
+		pgva = pg->va & ~(pg->sz - 1);
+		pgva = pgva & ~(minpgsz - 1);
 		pgsz = pg->sz;
 		while (pgsz) {
 			if (cpu_mmu_get_page(l1, pgva, &upg)) {
@@ -541,12 +594,14 @@ int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 	switch (pg->sz) {
 	case TTBL_L1TBL_SUPSECTION_PAGE_SIZE:	/* 16M Super Section Page */
 	case TTBL_L1TBL_SECTION_PAGE_SIZE:	/* 1M Section Page */
-		*l1_tte = 0x0;
 		if (pg->sz == TTBL_L1TBL_SECTION_PAGE_SIZE) {
+			*l1_tte = 0x0;
 			*l1_tte |= (pg->pa & TTBL_L1TBL_TTE_BASE20_MASK);
 			*l1_tte |= (pg->dom << TTBL_L1TBL_TTE_DOM_SHIFT) &
 			    TTBL_L1TBL_TTE_DOM_MASK;
 		} else {
+			l1_tte = l1_tte - ((u32)l1_tte % 64) / 4;
+			*l1_tte = 0x0;
 			*l1_tte |= (pg->pa & TTBL_L1TBL_TTE_BASE24_MASK);
 			*l1_tte |= (0x1 << TTBL_L1TBL_TTE_SECTYPE_SHIFT);
 		}
@@ -572,9 +627,14 @@ int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 		    TTBL_L1TBL_TTE_B_MASK;
 		*l1_tte |= TTBL_L1TBL_TTE_TYPE_SECTION;
 		l1->tte_cnt++;
+		if (pg->sz == TTBL_L1TBL_SUPSECTION_PAGE_SIZE) {
+			for (ite = 1; ite < 16; ite++) {
+				l1_tte[ite] = l1_tte[0];
+				l1->tte_cnt++;
+			}
+		}
 		break;
 	case TTBL_L2TBL_LARGE_PAGE_SIZE:	/* 64K Large Page */
-		break;
 	case TTBL_L2TBL_SMALL_PAGE_SIZE:	/* 4K Small Page */
 		l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
 		l2_tte = (u32 *) ((pg->va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
@@ -582,27 +642,45 @@ int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 		l2 = cpu_mmu_l2tbl_find_tbl_pa(l1, l2base);
 		if (l2) {
 			l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
-			*l2_tte |= (pg->pa & TTBL_L2TBL_TTE_BASE12_MASK);
+			if (pg->sz == TTBL_L2TBL_LARGE_PAGE_SIZE) {
+				l2_tte = l2_tte - ((u32)l2_tte % 64) / 4;
+				*l2_tte = 0x0;
+				*l2_tte |= (pg->pa & TTBL_L2TBL_TTE_BASE16_MASK);
+				*l2_tte |= TTBL_L2TBL_TTE_TYPE_LARGE;
+				*l2_tte |= (pg->xn << TTBL_L2TBL_TTE_LXN_SHIFT) &
+						TTBL_L2TBL_TTE_LXN_MASK;
+				*l2_tte |= (pg->tex << TTBL_L2TBL_TTE_LTEX_SHIFT) &
+						TTBL_L2TBL_TTE_LTEX_MASK;
+			} else {
+				*l2_tte = 0x0;
+				*l2_tte |= (pg->pa & TTBL_L2TBL_TTE_BASE12_MASK);
+				if (pg->xn) {
+					*l2_tte |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+				} else {
+					*l2_tte |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
+				}
+				*l2_tte |= (pg->tex << TTBL_L2TBL_TTE_STEX_SHIFT) &
+						TTBL_L2TBL_TTE_STEX_MASK;
+			}
 			*l2_tte |= (pg->ap << TTBL_L2TBL_TTE_NG_SHIFT) &
 			    TTBL_L2TBL_TTE_NG_MASK;
 			*l2_tte |= (pg->ap << TTBL_L2TBL_TTE_S_SHIFT) &
 			    TTBL_L2TBL_TTE_S_MASK;
 			*l2_tte |= (pg->ap << (TTBL_L2TBL_TTE_AP2_SHIFT - 2)) &
 			    TTBL_L2TBL_TTE_AP2_MASK;
-			*l2_tte |= (pg->tex << TTBL_L2TBL_TTE_STEX_SHIFT) &
-			    TTBL_L2TBL_TTE_STEX_MASK;
 			*l2_tte |= (pg->ap << TTBL_L2TBL_TTE_AP_SHIFT) &
 			    TTBL_L2TBL_TTE_AP_MASK;
 			*l2_tte |= (pg->c << TTBL_L2TBL_TTE_C_SHIFT) &
 			    TTBL_L2TBL_TTE_C_MASK;
 			*l2_tte |= (pg->b << TTBL_L2TBL_TTE_B_SHIFT) &
 			    TTBL_L2TBL_TTE_B_MASK;
-			if (pg->xn) {
-				*l2_tte |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
-			} else {
-				*l2_tte |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
-			}
 			l2->tte_cnt++;
+			if (pg->sz == TTBL_L2TBL_LARGE_PAGE_SIZE) {
+				for (ite = 1; ite < 16; ite++) {
+					l2_tte[ite] = l2_tte[0];
+					l2->tte_cnt++;
+				}
+			}
 		} else {
 			rc = VMM_EFAIL;
 			goto mmu_map_return;

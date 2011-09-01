@@ -80,6 +80,9 @@ struct cpu_mmu_ctrl {
 	cpu_l1tbl_t *defl1;
 };
 
+/** Estimate good page size */
+u32 cpu_mmu_best_page_size(virtual_addr_t va, physical_addr_t pa, u32 availsz);
+
 /** Get page from a given virtual address */
 int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg);
 
