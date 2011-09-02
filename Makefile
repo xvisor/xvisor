@@ -79,6 +79,7 @@ export board_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)
 export board_common_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/board/common
 export tools_dir=$(CURDIR)/tools
 export core_dir=$(CURDIR)/core
+export libs_dir=$(CURDIR)/libs
 export commands_dir=$(CURDIR)/commands
 export daemons_dir=$(CURDIR)/daemons
 export drivers_dir=$(CURDIR)/drivers
@@ -90,6 +91,7 @@ cpu-common-object-mks=$(shell if [ -d $(cpu_common_dir) ]; then find $(cpu_commo
 board-object-mks=$(shell if [ -d $(board_dir) ]; then find $(board_dir) -iname "objects.mk" | sort -r; fi)
 board-common-object-mks=$(shell if [ -d $(board_common_dir) ]; then find $(board_common_dir) -iname "objects.mk" | sort -r; fi)
 core-object-mks=$(shell if [ -d $(core_dir) ]; then find $(core_dir) -iname "objects.mk" | sort -r; fi)
+libs-object-mks=$(shell if [ -d $(libs_dir) ]; then find $(libs_dir) -iname "objects.mk" | sort -r; fi)
 commands-object-mks=$(shell if [ -d $(commands_dir) ]; then find $(commands_dir) -iname "objects.mk" | sort -r; fi)
 daemons-object-mks=$(shell if [ -d $(daemons_dir) ]; then find $(daemons_dir) -iname "objects.mk" | sort -r; fi)
 drivers-object-mks=$(shell if [ -d $(drivers_dir) ]; then find $(drivers_dir) -iname "objects.mk" | sort -r; fi)
@@ -99,6 +101,7 @@ include $(cpu-common-object-mks)
 include $(board-object-mks) 
 include $(board-common-object-mks) 
 include $(core-object-mks) 
+include $(libs-object-mks) 
 include $(commands-object-mks) 
 include $(daemons-object-mks)
 include $(drivers-object-mks)
@@ -108,6 +111,7 @@ objs-y+=$(foreach obj,$(cpu-common-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/cpu/
 objs-y+=$(foreach obj,$(board-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)/$(obj))
 objs-y+=$(foreach obj,$(board-common-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/board/common/$(obj))
 objs-y+=$(foreach obj,$(core-objs-y),$(build_dir)/core/$(obj))
+objs-y+=$(foreach obj,$(libs-objs-y),$(build_dir)/libs/$(obj))
 objs-y+=$(foreach obj,$(commands-objs-y),$(build_dir)/commands/$(obj))
 objs-y+=$(foreach obj,$(daemons-objs-y),$(build_dir)/daemons/$(obj))
 objs-y+=$(foreach obj,$(drivers-objs-y),$(build_dir)/drivers/$(obj))
@@ -137,15 +141,18 @@ cppflags+=-I$(drivers_dir)/include
 cppflags+=-I$(emulators_dir)/include
 cppflags+=$(cpu-cppflags)
 cppflags+=$(board-cppflags)
+cppflags+=$(libs-cppflags-y)
 cc=$(CROSS_COMPILE)gcc
 cflags=-g -Wall -nostdlib 
 cflags+=$(board-cflags) 
 cflags+=$(cpu-cflags) 
+cflags+=$(libs-cflags-y) 
 cflags+=$(cppflags)
 as=$(CROSS_COMPILE)gcc
 asflags=-g -Wall -nostdlib -D__ASSEMBLY__ 
 asflags+=$(board-asflags) 
 asflags+=$(cpu-asflags) 
+asflags+=$(libs-asflags-y) 
 asflags+=$(cppflags)
 ar=$(CROSS_COMPILE)ar
 arflasgs=rcs
@@ -153,6 +160,7 @@ ld=$(CROSS_COMPILE)gcc
 ldflags=-g -Wall -nostdlib 
 ldflags+=$(board-ldflags) 
 ldflags+=$(cpu-ldflags) 
+ldflags+=$(libs-ldflags-y) 
 ldflags+=-Wl,-T$(build_dir)/linker.ld
 objcopy=$(CROSS_COMPILE)objcopy
 

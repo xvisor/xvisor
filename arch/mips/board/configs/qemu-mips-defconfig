@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Fri Aug 12 16:31:15 2011
+# Fri Sep  2 12:12:59 2011
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_MIPS=y
@@ -41,9 +41,9 @@ CONFIG_MIN_BLOCK_SIZE_SHIFT=2
 CONFIG_BINS_MAX_ORDER=11
 
 #
-# Networking
+# Library Options
 #
-# CONFIG_NET is not set
+CONFIG_LIBFDT=y
 
 #
 # Device Drivers
