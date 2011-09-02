@@ -28,7 +28,7 @@
 #include <vmm_timer.h>
 #include <vmm_host_aspace.h>
 #include <pba8_board.h>
-#include <realview/realview_timer.h>
+#include <realview/timer.h>
 
 virtual_addr_t pba8_timer0_base;
 virtual_addr_t pba8_timer1_base;

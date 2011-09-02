@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file omap3_intc.c
+ * @file intc.c
  * @version 1.0
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @brief OMAP3 interrupt controller APIs
@@ -25,7 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <cpu_defines.h>
-#include <omap3/omap3_intc.h>
+#include <omap3/intc.h>
 
 static inline void omap3_intc_write(u32 base, u32 reg, u32 val)
 {

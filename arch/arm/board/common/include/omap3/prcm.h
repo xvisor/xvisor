@@ -16,10 +16,29 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file omap3_gpt.c
+ * @file prcm.h
  * @version 1.0
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief source code for OMAP3 Power, Reset, and Clock Managment
+ * @brief OMAP3 Power, Reset, and Clock Managment APIs
  */
+#ifndef __OMAP3_PRCM_H__
+#define __OMAP3_PRCM_H__
 
-#include <omap3/omap3_prcm.h>
+#include <vmm_types.h>
+
+#define OMAP3_IVA2_CM_BASE			0x48004000
+#define OMAP3_OCP_System_Reg_CM			0x48004800
+#define OMAP3_MPU_CM				0x48004900
+#define OMAP3_CORE_CM				0x48004A00
+#define OMAP3_SGX_CM				0x48004B00
+#define OMAP3_WKUP_CM				0x48004C00
+#define OMAP3_CLOCK_CONTROL_REG_CM		0x48004D00
+#define OMAP3_DSS_CM				0x48004E00
+#define OMAP3_CAM_CM				0x48004F00
+#define OMAP3_PER_CM				0x48005000
+#define OMAP3_EMU_CM				0x48005100
+#define OMAP3_GLOBAL_REG_CM			0x48005200
+#define OMAP3_NEON_CM				0x48005300
+#define OMAP3_USBHOST_CM			0x48005400
+
+#endif

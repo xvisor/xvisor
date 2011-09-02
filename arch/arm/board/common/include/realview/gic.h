@@ -16,16 +16,16 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file realview_gic.h
+ * @file gic.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Realview Generic Interrupt Controller header
  */
-#ifndef _REALVIEW_GIC_H__
-#define _REALVIEW_GIC_H__
+#ifndef __REALVIEW_GIC_H__
+#define __REALVIEW_GIC_H__
 
 #include <vmm_types.h>
-#include <realview/realview_plat.h>
+#include <realview/plat.h>
 
 #define GIC_CPU_CTRL			0x00
 #define GIC_CPU_PRIMASK			0x04

@@ -16,13 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file realview_plat.h
+ * @file plat.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Realview platform configuration
  */
-#ifndef _REALVIEW_PLAT_H__
-#define _REALVIEW_PLAT_H__
+#ifndef __REALVIEW_PLAT_H__
+#define __REALVIEW_PLAT_H__
 
 /*
  * Memory definitions

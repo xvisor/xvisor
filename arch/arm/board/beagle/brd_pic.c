@@ -22,7 +22,7 @@
  * @brief board specific progammable interrupt contoller
  */
 
-#include <omap3/omap3_intc.h>
+#include <omap3/intc.h>
 #include <vmm_board.h>
 #include <vmm_error.h>
 

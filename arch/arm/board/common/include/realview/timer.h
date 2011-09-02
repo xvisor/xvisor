@@ -16,17 +16,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file realview_timer.h
+ * @file timer.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Realview Timer header
  */
-#ifndef _REALVIEW_TIMER_H__
-#define _REALVIEW_TIMER_H__
+#ifndef __REALVIEW_TIMER_H__
+#define __REALVIEW_TIMER_H__
 
 #include <vmm_types.h>
 #include <vmm_host_irq.h>
-#include <realview/realview_plat.h>
+#include <realview/plat.h>
 
 #define TIMER_LOAD		0x00
 #define TIMER_VALUE		0x04

@@ -26,7 +26,7 @@
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
 #include <pba8_board.h>
-#include <realview/realview_gic.h>
+#include <realview/gic.h>
 
 int vmm_pic_cpu_to_host_map(u32 cpu_irq_no)
 {
