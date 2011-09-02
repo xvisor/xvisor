@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Fri Aug 12 16:23:44 2011
+# Fri Sep  2 12:06:05 2011
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
@@ -34,9 +34,9 @@ CONFIG_MM_TRIVIAL=y
 # CONFIG_MM_BUDDY is not set
 
 #
-# Networking
+# Library Options
 #
-# CONFIG_NET is not set
+CONFIG_LIBFDT=y
 
 #
 # Device Drivers
