@@ -1,47 +1,28 @@
 #/**
-# Copyright (c) 2011 Anup Patel.
+# Copyright (c) 2010 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
-#
+# 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#
+# 
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file    openconf.cfg
+# @file objects.mk
 # @version 1.0
-# @author  Anup Patel (anup@brainfault.org)
-# @brief   Board config file for PB-A8
+# @author Anup Patel (anup@brainfault.org)
+# @brief list of libfdt objects to be build
 # */
 
-config CONFIG_BOARD
-	string
-	default "pb-a8"
+libs-cppflags += -I$(libs_dir)/libfdt
 
-config CONFIG_REALVIEW
-	bool
-	select CONFIG_LIBFDT
-	select CONFIG_SERIAL
-	select CONFIG_SERIAL_PL01X
-	default y
+libs-objs-$(CONFIG_LIBFDT)+= libfdt/libfdt.o
 
-config CONFIG_EMU_REALVIEW
-	bool
-	select CONFIG_EMU_SYS
-	select CONFIG_EMU_SYS_REALVIEW
-	select CONFIG_EMU_SYS_SP810
-	select CONFIG_EMU_PIC
-	select CONFIG_EMU_PIC_GIC
-	select CONFIG_EMU_SERIAL
-	select CONFIG_EMU_SERIAL_PL011
-	select CONFIG_EMU_TIMER
-	select CONFIG_EMU_TIMER_SP804
-	default y

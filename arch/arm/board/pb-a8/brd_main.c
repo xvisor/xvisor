@@ -25,10 +25,10 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_devtree.h>
-#include <vmm_libfdt.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
+#include <libfdt.h>
 #include <pba8_board.h>
 #include <realview/realview_timer.h>
 
@@ -39,8 +39,7 @@ int vmm_devtree_populate(vmm_devtree_node_t ** root,
 			 char **string_buffer, size_t * string_buffer_size)
 {
 	virtual_addr_t fdt_addr = (virtual_addr_t) & dt_blob_start;
-	return vmm_libfdt_parse(fdt_addr, root, string_buffer,
-				string_buffer_size);
+	return libfdt_parse(fdt_addr, root, string_buffer, string_buffer_size);
 }
 
 int vmm_board_getclock(vmm_devtree_node_t * node, u32 * clock)

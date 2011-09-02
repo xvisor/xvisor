@@ -22,6 +22,8 @@
 # @brief list of uip objects to be built.
 # */
 
-core-objs-$(CONFIG_IPSTACK_UIP)+= net/uip/uip_arp.o
-core-objs-$(CONFIG_IPSTACK_UIP)+= net/uip/uip.o
-core-objs-$(CONFIG_IPSTACK_UIP)+= net/uip/uiplib.o
+libs-cppflags += -I$(libs_dir)/uip
+
+libs-objs-$(CONFIG_UIP)+= uip/uip_arp.o
+libs-objs-$(CONFIG_UIP)+= uip/uip.o
+libs-objs-$(CONFIG_UIP)+= uip/uiplib.o
