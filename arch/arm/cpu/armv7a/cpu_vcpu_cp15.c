@@ -37,6 +37,68 @@
 #include <cpu_vcpu_emulate_thumb.h>
 #include <cpu_vcpu_cp15.h>
 
+/* Allocate Virtual TLB entry */
+cpu_vtlb_entry_t * cpu_vcpu_cp15_vtlb_alloc(vmm_vcpu_t * vcpu)
+{
+	u32 victim;
+	cpu_vtlb_entry_t * ret = NULL;
+
+	/* Find out next victim entry from TLB */
+	victim = vcpu->sregs->cp15.vtlb.victim;
+	ret = &vcpu->sregs->cp15.vtlb.table[victim];
+	if (ret->valid) {
+		/* Remove valid victim page from L1 Page Table */
+		if (cpu_mmu_unmap_page(vcpu->sregs->cp15.l1, &ret->page)) {
+			return NULL;
+		}
+		ret->valid = 0;
+	}
+
+	/* Point to next victim */
+	victim = (victim + 1) % vcpu->sregs->cp15.vtlb.count;
+	vcpu->sregs->cp15.vtlb.victim = victim;
+
+	return ret;
+}
+
+/* Update Virtual TLB entry */
+int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu, cpu_vtlb_entry_t * e)
+{
+	int rc;
+
+	/* Add victim page to L1 page table */
+	if ((rc = cpu_mmu_map_page(vcpu->sregs->cp15.l1, &e->page))) {
+		return rc;
+	}
+
+	/* Mark entry as valid */
+	e->valid = 1;
+
+	return VMM_OK;
+}
+
+/** Flush Virtual TLB */
+int cpu_vcpu_cp15_vtlb_flush(vmm_vcpu_t * vcpu)
+{
+	int rc;
+	u32 vtlb;
+	cpu_vtlb_entry_t * e;
+
+	for (vtlb = 0; vtlb < vcpu->sregs->cp15.vtlb.count; vtlb++) {
+		if (vcpu->sregs->cp15.vtlb.table[vtlb].valid) {
+			e = &vcpu->sregs->cp15.vtlb.table[vtlb];
+			rc = cpu_mmu_unmap_page(vcpu->sregs->cp15.l1, 
+						&e->page);
+			if (rc) {
+				return rc;
+			}
+			vcpu->sregs->cp15.vtlb.table[vtlb].valid = 0;
+		}
+	}
+
+	return VMM_OK;
+}
+
 enum cpu_vcpu_cp15_fault_types {
 	CP15_TRANS_FAULT=0,
 	CP15_ACCESS_FAULT=1,
@@ -114,24 +176,8 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 			      vmm_user_regs_t * regs, 
 			      u32 far, u32 wnr, u32 page, u32 xn)
 {
-	int rc;
-	u8 *p_asid = NULL, *p_dom = NULL;
-	u32 victim;
 	vmm_guest_region_t *reg;
-	cpu_page_t *p;
-
-	/* Find out next victim page from shadow TLB */
-	victim = vcpu->sregs->cp15.vtlb.victim;
-	p = &vcpu->sregs->cp15.vtlb.page[victim];
-	p_asid = &vcpu->sregs->cp15.vtlb.page_asid[victim];
-	p_dom = &vcpu->sregs->cp15.vtlb.page_dom[victim];
-	if (vcpu->sregs->cp15.vtlb.valid[victim]) {
-		/* Remove valid victim page from L1 Page Table */
-		if ((rc = cpu_mmu_unmap_page(vcpu->sregs->cp15.l1, p))) {
-			return rc;
-		}
-		vcpu->sregs->cp15.vtlb.valid[victim] = 0;
-	}
+	cpu_vtlb_entry_t *e = NULL;
 
 	/* Get the required page for vcpu */
 	if (vcpu->sregs->cp15.c1_sctlr & SCTLR_M_MASK) {
@@ -143,34 +189,29 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 			cpu_vcpu_halt(vcpu, regs);
 			return VMM_EFAIL;
 		}
-		p->pa = reg->hphys_addr + (far - reg->gphys_addr);
-		p->va = far;
-		p->sz = reg->phys_size - (far - reg->gphys_addr);
-		p->sz = cpu_mmu_best_page_size(p->va, p->pa, p->sz);
-		p->imp = 0;
-		p->dom = TTBL_L1TBL_TTE_DOM_VCPU_NOMMU;
+		e = cpu_vcpu_cp15_vtlb_alloc(vcpu);
+		e->page.pa = reg->hphys_addr + (far - reg->gphys_addr);
+		e->page.va = far;
+		e->page.sz = reg->phys_size - (far - reg->gphys_addr);
+		e->page.sz = cpu_mmu_best_page_size(e->page.va, 
+						    e->page.pa, 
+						    e->page.sz);
+		e->page.pa &= ~(e->page.sz - 1);
+		e->page.va &= ~(e->page.sz - 1);
+		e->page.imp = 0;
+		e->page.dom = TTBL_L1TBL_TTE_DOM_VCPU_NOMMU;
 		if (reg->is_virtual) {
-			p->ap = TTBL_AP_SRW_U;
+			e->page.ap = TTBL_AP_SRW_U;
 		} else {
-			p->ap = TTBL_AP_SRW_URW;
+			e->page.ap = TTBL_AP_SRW_URW;
 		}
-		p->xn = 0;
-		p->c = 0;
-		p->b = 0;
-		*p_asid = 0;
-		*p_dom = 0;
+		e->page.xn = 0;
+		e->page.c = 0;
+		e->page.b = 0;
+		e->page_asid = 0;
+		e->page_dom = 0;
+		return cpu_vcpu_cp15_vtlb_update(vcpu, e);
 	}
-
-	/* Add victim page to L1 page table */
-	if ((rc = cpu_mmu_map_page(vcpu->sregs->cp15.l1, p))) {
-		return rc;
-	}
-
-	/* Mark current victim as valid and 
-	 * point to next victim page in shadow TLB */
-	vcpu->sregs->cp15.vtlb.valid[victim] = 1;
-	victim = (victim + 1) % vcpu->sregs->cp15.vtlb.count;
-	vcpu->sregs->cp15.vtlb.victim = victim;
 
 	return VMM_OK;
 }
@@ -882,10 +923,9 @@ static u32 cortexa8_cp15_c0_c2[8] =
 int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 {
 	int rc = VMM_OK;
-	u32 vtlb, vtlb_count;
 	const char *attrval;
+	u32 vtlb_count;
 	vmm_devtree_node_t *node;
-	cpu_page_t *p = NULL;
 
 	if (!vcpu->reset_count) {
 		vmm_memset(&vcpu->sregs->cp15, 0, sizeof(vcpu->sregs->cp15));
@@ -909,16 +949,10 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 		}
 		vtlb_count = *((u32 *)attrval);
 		vcpu->sregs->cp15.vtlb.count = vtlb_count;
-		vcpu->sregs->cp15.vtlb.valid = vmm_malloc(vtlb_count);
-		vmm_memset(vcpu->sregs->cp15.vtlb.valid, 0, vtlb_count);
-		vcpu->sregs->cp15.vtlb.page_asid = vmm_malloc(vtlb_count);
-		vmm_memset(vcpu->sregs->cp15.vtlb.page_asid, 0, vtlb_count);
-		vcpu->sregs->cp15.vtlb.page_dom = vmm_malloc(vtlb_count);
-		vmm_memset(vcpu->sregs->cp15.vtlb.page_dom, 0, vtlb_count);
-		vcpu->sregs->cp15.vtlb.page = vmm_malloc(vtlb_count * 
-							sizeof(cpu_page_t));
-		vmm_memset(vcpu->sregs->cp15.vtlb.page, 0, vtlb_count * 
-							sizeof(cpu_page_t));
+		vcpu->sregs->cp15.vtlb.table = vmm_malloc(vtlb_count *
+						sizeof(cpu_vtlb_entry_t));
+		vmm_memset(vcpu->sregs->cp15.vtlb.table, 0, vtlb_count * 
+						sizeof(cpu_vtlb_entry_t));
 		vcpu->sregs->cp15.vtlb.victim = 0;
 
 		if (read_sctlr() & SCTLR_V_MASK) {
@@ -927,16 +961,8 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 			vcpu->sregs->cp15.ovect_base = CPU_IRQ_LOWVEC_BASE;
 		}
 	} else {
-		/* Flush the shadow TLB */
-		for (vtlb = 0; vtlb < vcpu->sregs->cp15.vtlb.count; vtlb++) {
-			if (vcpu->sregs->cp15.vtlb.valid[vtlb]) {
-				p = &vcpu->sregs->cp15.vtlb.page[vtlb];
-				rc = cpu_mmu_unmap_page(vcpu->sregs->cp15.l1, p);
-				if (rc) {
-					return rc;
-				}
-				vcpu->sregs->cp15.vtlb.valid[vtlb] = 0;
-			}
+		if ((rc = cpu_vcpu_cp15_vtlb_flush(vcpu))) {
+			return rc;
 		}
 	}
 

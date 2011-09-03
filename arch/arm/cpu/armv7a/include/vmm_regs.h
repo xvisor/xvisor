@@ -90,6 +90,23 @@ struct vmm_user_regs {
 
 typedef struct vmm_user_regs vmm_user_regs_t;
 
+struct cpu_vtlb_entry {
+	u8 valid;
+	u8 page_asid;
+	u8 page_dom;
+	cpu_page_t page;
+};
+
+typedef struct cpu_vtlb_entry cpu_vtlb_entry_t;
+
+struct cpu_vtlb {
+	cpu_vtlb_entry_t * table;
+	u32 victim;
+	u32 count;
+};
+
+typedef struct cpu_vtlb cpu_vtlb_t;
+
 struct vmm_super_regs {
 	/* Priviledged CPSR */
 	u32 cpsr;
@@ -125,14 +142,7 @@ struct vmm_super_regs {
 		/* Shadow DACR */
 		u32 dacr;
 		/* Virtual TLB */
-		struct {
-			u8 *valid;
-			u8 *page_asid;
-			u8 *page_dom;
-			cpu_page_t *page;
-			u32 victim;
-			u32 count;
-		} vtlb;
+		cpu_vtlb_t vtlb;
 		/* Overlapping vectors */
 		u32 ovect[CPU_IRQ_NR * 2];
 		u32 ovect_base;
