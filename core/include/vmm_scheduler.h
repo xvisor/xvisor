@@ -35,11 +35,18 @@ typedef struct vmm_scheduler_ctrl vmm_scheduler_ctrl_t;
 struct vmm_scheduler_ctrl {
 	vmm_spinlock_t lock;
 	s32 vcpu_current;
+	bool irq_context;
 	vmm_timer_event_t * ev;
 };
 
-/** IRQ Processing (Must be called from somewhere) */
-void vmm_scheduler_irq_process(vmm_user_regs_t * regs);
+/** Enter IRQ Context (Must be called from somewhere) */
+void vmm_scheduler_irq_enter(vmm_user_regs_t * regs, bool vcpu_context);
+
+/** Exit IRQ Context (Must be called from somewhere) */
+void vmm_scheduler_irq_exit(vmm_user_regs_t * regs);
+
+/** Check whether we are in IRQ context */
+bool vmm_scheduler_irq_context(void);
 
 /** Retrive current vcpu number */
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void);
@@ -52,6 +59,9 @@ void vmm_scheduler_preempt_disable(void);
 
 /** Enable pre-emption */
 void vmm_scheduler_preempt_enable(void);
+
+/** Yield current vcpu (Should not be called in IRQ context) */
+void vmm_scheduler_yield(void);
 
 /** Initialize scheduler */
 int vmm_scheduler_init(void);
