@@ -64,6 +64,9 @@ int realview_timer_event_start(virtual_addr_t base, u64 nsecs)
 
 	/* Expected microseconds */
 	usecs = nsecs / 1000;
+	if (!usecs) {
+		usecs = 1;
+	}
 
 	/* Setup the registers */
 	ctrl = vmm_readl((void *)(base + TIMER_CTRL));

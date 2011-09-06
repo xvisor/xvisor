@@ -45,6 +45,8 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
 
+	vmm_scheduler_irq_enter(uregs, TRUE);
+
 	vcpu = vmm_scheduler_current_vcpu();
 
 	/* If vcpu priviledge is user then generate exception 
@@ -64,7 +66,7 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_software_interrupt(vmm_user_regs_t * uregs)
@@ -75,6 +77,8 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	vcpu = vmm_scheduler_current_vcpu();
 
@@ -95,7 +99,7 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_prefetch_abort(vmm_user_regs_t * uregs)
@@ -107,6 +111,8 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	ifsr = read_ifsr();
 	ifar = read_ifar();
@@ -163,7 +169,7 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 				__func__, vcpu->id, ifar, ifsr);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_data_abort(vmm_user_regs_t * uregs)
@@ -175,6 +181,8 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	dfsr = read_dfsr();
 	dfar = read_dfar();
@@ -238,7 +246,7 @@ void do_data_abort(vmm_user_regs_t * uregs)
 				__func__, vcpu->id, dfar, dfsr);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_not_used(vmm_user_regs_t * uregs)
@@ -248,16 +256,20 @@ void do_not_used(vmm_user_regs_t * uregs)
 
 void do_irq(vmm_user_regs_t * uregs)
 {
+	vmm_scheduler_irq_enter(uregs, FALSE);
+
 	vmm_host_irq_exec(CPU_EXTERNAL_IRQ, uregs);
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_fiq(vmm_user_regs_t * uregs)
 {
+	vmm_scheduler_irq_enter(uregs, FALSE);
+
 	vmm_host_irq_exec(CPU_EXTERNAL_FIQ, uregs);
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 int vmm_cpu_irq_setup(void)
