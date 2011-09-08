@@ -36,10 +36,10 @@ int vmm_devemu_emulate_read(vmm_guest_t *guest,
 			    void *dst, u32 dst_len)
 {
 	vmm_emudev_t *edev;
-	vmm_guest_region_t *reg;
+	vmm_region_t *reg;
 
 	reg = vmm_guest_aspace_getregion(guest, gphys_addr);
-	if (!reg || !reg->is_virtual) {
+	if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
 		return VMM_EFAIL;
 	}
 
@@ -56,10 +56,10 @@ int vmm_devemu_emulate_write(vmm_guest_t *guest,
 			     void *src, u32 src_len)
 {
 	vmm_emudev_t *edev;
-	vmm_guest_region_t *reg;
+	vmm_region_t *reg;
 
 	reg = vmm_guest_aspace_getregion(guest, gphys_addr);
-	if (!reg || !reg->is_virtual) {
+	if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
 		return VMM_EFAIL;
 	}
 
@@ -425,7 +425,7 @@ const vmm_emuid_t *devemu_match_node(const vmm_emuid_t * matches,
 	return NULL;
 }
 
-int vmm_devemu_reset(vmm_guest_t *guest, vmm_guest_region_t *reg)
+int vmm_devemu_reset(vmm_guest_t *guest, vmm_region_t *reg)
 {
 	vmm_emudev_t *edev;
 
@@ -433,7 +433,7 @@ int vmm_devemu_reset(vmm_guest_t *guest, vmm_guest_region_t *reg)
 		return VMM_EFAIL;
 	}
 
-	if (!reg->is_virtual) {
+	if (!(reg->flags & VMM_REGION_VIRTUAL)) {
 		return VMM_EFAIL;
 	}
 
@@ -445,7 +445,7 @@ int vmm_devemu_reset(vmm_guest_t *guest, vmm_guest_region_t *reg)
 	return edev->reset(edev);
 }
 
-int vmm_devemu_probe(vmm_guest_t *guest, vmm_guest_region_t *reg)
+int vmm_devemu_probe(vmm_guest_t *guest, vmm_region_t *reg)
 {
 	int rc;
 	struct dlist *l1;
@@ -459,7 +459,7 @@ int vmm_devemu_probe(vmm_guest_t *guest, vmm_guest_region_t *reg)
 		return VMM_EFAIL;
 	}
 
-	if (!reg->is_virtual) {
+	if (!(reg->flags & VMM_REGION_VIRTUAL)) {
 		return VMM_EFAIL;
 	}
 

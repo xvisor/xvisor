@@ -27,13 +27,9 @@
 #include <vmm_list.h>
 #include <vmm_manager.h>
 
-/** Check whether given guest physical address is virtual */
-bool vmm_guest_aspace_isvirtual(vmm_guest_t *guest,
-				physical_addr_t gphys_addr);
-
 /** Get region to which given guest physical address belongs */
-vmm_guest_region_t *vmm_guest_aspace_getregion(vmm_guest_t *guest,
-					       physical_addr_t gphys_addr);
+vmm_region_t *vmm_guest_aspace_getregion(vmm_guest_t *guest,
+					 physical_addr_t gphys_addr);
 
 /** Reset Guest Address space */
 int vmm_guest_aspace_reset(vmm_guest_t *guest);

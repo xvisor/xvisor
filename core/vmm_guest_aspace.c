@@ -30,40 +30,19 @@
 #include <vmm_devemu.h>
 #include <vmm_guest_aspace.h>
 
-bool vmm_guest_aspace_isvirtual(vmm_guest_t *guest,
-				physical_addr_t gphys_addr)
-{
-	struct dlist *l;
-	vmm_guest_region_t *reg = NULL;
-
-	if (guest == NULL) {
-		return FALSE;
-	}
-
-	list_for_each(l, &guest->aspace.reg_list) {
-		reg = list_entry(l, vmm_guest_region_t, head);
-		if (reg->gphys_addr <= gphys_addr &&
-		    gphys_addr < (reg->gphys_addr + reg->phys_size)) {
-			return reg->is_virtual;
-		}
-	}
-
-	return FALSE;
-}
-
-vmm_guest_region_t *vmm_guest_aspace_getregion(vmm_guest_t *guest,
-					       physical_addr_t gphys_addr)
+vmm_region_t *vmm_guest_aspace_getregion(vmm_guest_t *guest,
+					 physical_addr_t gphys_addr)
 {
 	bool found = FALSE;
 	struct dlist *l;
-	vmm_guest_region_t *reg = NULL;
+	vmm_region_t *reg = NULL;
 
 	if (guest == NULL) {
 		return NULL;
 	}
 
 	list_for_each(l, &guest->aspace.reg_list) {
-		reg = list_entry(l, vmm_guest_region_t, head);
+		reg = list_entry(l, vmm_region_t, head);
 		if (reg->gphys_addr <= gphys_addr &&
 		    gphys_addr < (reg->gphys_addr + reg->phys_size)) {
 			found = TRUE;
@@ -129,15 +108,15 @@ bool is_address_node_valid(vmm_devtree_node_t * anode)
 int vmm_guest_aspace_reset(vmm_guest_t *guest)
 {
 	struct dlist *l;
-	vmm_guest_region_t *reg = NULL;
+	vmm_region_t *reg = NULL;
 
 	if (!guest) {
 		return VMM_EFAIL;
 	}
 
 	list_for_each(l, &guest->aspace.reg_list) {
-		reg = list_entry(l, vmm_guest_region_t, head);
-		if (reg->is_virtual) {
+		reg = list_entry(l, vmm_region_t, head);
+		if (reg->flags & VMM_REGION_VIRTUAL) {
 			vmm_devemu_reset(guest, reg);
 		}
 	}
@@ -148,15 +127,15 @@ int vmm_guest_aspace_reset(vmm_guest_t *guest)
 int vmm_guest_aspace_probe(vmm_guest_t *guest)
 {
 	struct dlist *l;
-	vmm_guest_region_t *reg = NULL;
+	vmm_region_t *reg = NULL;
 
 	if (!guest) {
 		return VMM_EFAIL;
 	}
 
 	list_for_each(l, &guest->aspace.reg_list) {
-		reg = list_entry(l, vmm_guest_region_t, head);
-		if (reg->is_virtual) {
+		reg = list_entry(l, vmm_region_t, head);
+		if (reg->flags & VMM_REGION_VIRTUAL) {
 			vmm_devemu_probe(guest, reg);
 		}
 	}
@@ -170,7 +149,7 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 	struct dlist *l;
 	vmm_devtree_node_t *gnode = guest->node;
 	vmm_devtree_node_t *anode = NULL;
-	vmm_guest_region_t *reg = NULL;
+	vmm_region_t *reg = NULL;
 
 	/* Reset the address space for guest */
 	vmm_memset(&guest->aspace, 0, sizeof(vmm_guest_aspace_t));
@@ -202,36 +181,48 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 			continue;
 		}
 
-		reg = vmm_malloc(sizeof(vmm_guest_region_t));
+		reg = vmm_malloc(sizeof(vmm_region_t));
 
-		vmm_memset(reg, 0, sizeof(vmm_guest_region_t));
+		vmm_memset(reg, 0, sizeof(vmm_region_t));
 
 		INIT_LIST_HEAD(&reg->head);
 
 		reg->node = anode;
 		reg->aspace = &guest->aspace;
+		reg->flags = 0x0;
 
 		attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME);
 		if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) == 0) {
-			reg->is_virtual = FALSE;
+			reg->flags |= VMM_REGION_REAL;
 		} else {
-			reg->is_virtual = TRUE;
+			reg->flags |= VMM_REGION_VIRTUAL;
 		}
 
 		attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME);
 		if (vmm_strcmp(attrval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO) == 0) {
-			reg->is_memory = FALSE;
+			reg->flags |= VMM_REGION_IO;
 		} else {
-			reg->is_memory = TRUE;
+			reg->flags |= VMM_REGION_MEMORY;
+		}
+
+		attrval = vmm_devtree_attrval(anode,
+					      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
+		if (vmm_strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) == 0) {
+			reg->flags |= VMM_REGION_ISRAM;
+		} else if (vmm_strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_ROM) == 0) {
+			reg->flags |= VMM_REGION_READONLY;
+			reg->flags |= VMM_REGION_ISROM;
+		} else {
+			reg->flags |= VMM_REGION_ISDEVICE;
 		}
 
 		attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_GUEST_PHYS_ATTR_NAME);
 		reg->gphys_addr = *((physical_addr_t *) attrval);
 
-		if (!reg->is_virtual) {
+		if (reg->flags & VMM_REGION_REAL) {
 			attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
 			reg->hphys_addr = *((physical_addr_t *) attrval);
