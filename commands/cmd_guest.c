@@ -84,7 +84,7 @@ int cmd_guest_load(vmm_chardev_t *cdev, int id,
 		   u32 img_sz)
 {
 	vmm_guest_t *guest;
-	vmm_guest_region_t *guest_region;
+	vmm_region_t *guest_region;
 	virtual_addr_t src_hvaddr, dest_gvaddr;
 
 	guest = vmm_manager_guest(id);
