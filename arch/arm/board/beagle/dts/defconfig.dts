@@ -58,7 +58,7 @@
 		guest@0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			model = "vqemu-mips";
+			model = "realview-pb-a8";
 			device_type = "guest";
 
 			vcpus {
@@ -83,7 +83,7 @@
 					guest_physical_addr = <0x81000000>;
 					host_physical_addr = <0x0 0x00000000>;
 					physical_size = <0x0 0x01000000>;
-					device_type = "memory";
+					device_type = "ram";
 				};
 
 				uart@2 {

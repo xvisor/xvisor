@@ -58,26 +58,27 @@
 #define ARM_CPUID_ANY         0xffffffff
 
 enum arm_features {
-    ARM_FEATURE_VFP,
-    ARM_FEATURE_AUXCR,  /* ARM1026 Auxiliary control register.  */
-    ARM_FEATURE_XSCALE, /* Intel XScale extensions.  */
-    ARM_FEATURE_IWMMXT, /* Intel iwMMXt extension.  */
-    ARM_FEATURE_V6,
-    ARM_FEATURE_V6K,
-    ARM_FEATURE_V7,
-    ARM_FEATURE_THUMB2,
-    ARM_FEATURE_MPU,    /* Only has Memory Protection Unit, not full MMU.  */
-    ARM_FEATURE_VFP3,
-    ARM_FEATURE_VFP_FP16,
-    ARM_FEATURE_NEON,
-    ARM_FEATURE_DIV,
-    ARM_FEATURE_M, /* Microcontroller profile.  */
-    ARM_FEATURE_OMAPCP, /* OMAP specific CP15 ops handling.  */
-    ARM_FEATURE_THUMB2EE,
-    ARM_FEATURE_V7MP,    /* v7 Multiprocessing Extensions */
-    ARM_FEATURE_V4T,
-    ARM_FEATURE_V5,
-    ARM_FEATURE_STRONGARM,
+	ARM_FEATURE_VFP,
+	ARM_FEATURE_AUXCR,  /* ARM1026 Auxiliary control register.  */
+	ARM_FEATURE_XSCALE, /* Intel XScale extensions.  */
+	ARM_FEATURE_IWMMXT, /* Intel iwMMXt extension.  */
+	ARM_FEATURE_V6,
+	ARM_FEATURE_V6K,
+	ARM_FEATURE_V7,
+	ARM_FEATURE_THUMB2,
+	ARM_FEATURE_MPU,    /* Only has Memory Protection Unit, not full MMU.  */
+	ARM_FEATURE_VFP3,
+	ARM_FEATURE_VFP_FP16,
+	ARM_FEATURE_NEON,
+	ARM_FEATURE_DIV,
+	ARM_FEATURE_M, /* Microcontroller profile.  */
+	ARM_FEATURE_OMAPCP, /* OMAP specific CP15 ops handling.  */
+	ARM_FEATURE_THUMB2EE,
+	ARM_FEATURE_V7MP,    /* v7 Multiprocessing Extensions */
+	ARM_FEATURE_V4T,
+	ARM_FEATURE_V5,
+	ARM_FEATURE_STRONGARM,
+	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
 };
 
 struct vmm_user_regs {
@@ -92,8 +93,8 @@ typedef struct vmm_user_regs vmm_user_regs_t;
 
 struct cpu_vtlb_entry {
 	u8 valid;
-	u8 page_asid;
-	u8 page_dom;
+	u8 asid;
+	u8 dom;
 	cpu_page_t page;
 };
 
@@ -169,6 +170,12 @@ struct vmm_super_regs {
 		u32 c7_par; /* Translation result. */
 		u32 c9_insn; /* Cache lockdown registers. */
 		u32 c9_data;
+		u32 c9_pmcr; /* performance monitor control register */
+		u32 c9_pmcnten; /* perf monitor counter enables */
+		u32 c9_pmovsr; /* perf monitor overflow status */
+		u32 c9_pmxevtyper; /* perf monitor event type */
+		u32 c9_pmuserenr; /* perf monitor user enable */
+		u32 c9_pminten; /* perf monitor interrupt enables */
 		u32 c13_fcse; /* FCSE PID. */
 		u32 c13_context; /* Context ID. */
 		u32 c13_tls1; /* User RW Thread register. */

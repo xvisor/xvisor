@@ -37,42 +37,40 @@
 #include <cpu_vcpu_emulate_thumb.h>
 #include <cpu_vcpu_cp15.h>
 
-/* Allocate Virtual TLB entry */
-cpu_vtlb_entry_t * cpu_vcpu_cp15_vtlb_alloc(vmm_vcpu_t * vcpu)
+/* Update Virtual TLB */
+int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu, 
+			      cpu_page_t * p, u8 asid, u8 dom)
 {
+	int rc;
 	u32 victim;
-	cpu_vtlb_entry_t * ret = NULL;
+	cpu_vtlb_entry_t * e = NULL;
+
+	/* Add victim page to L1 page table */
+	if ((rc = cpu_mmu_map_page(vcpu->sregs->cp15.l1, p))) {
+		return rc;
+	}
 
 	/* Find out next victim entry from TLB */
 	victim = vcpu->sregs->cp15.vtlb.victim;
-	ret = &vcpu->sregs->cp15.vtlb.table[victim];
-	if (ret->valid) {
+	e = &vcpu->sregs->cp15.vtlb.table[victim];
+	if (e->valid) {
 		/* Remove valid victim page from L1 Page Table */
-		if (cpu_mmu_unmap_page(vcpu->sregs->cp15.l1, &ret->page)) {
-			return NULL;
+		rc = cpu_mmu_unmap_page(vcpu->sregs->cp15.l1, &e->page);
+		if (rc) {
+			return rc;
 		}
-		ret->valid = 0;
+		e->valid = 0;
 	}
+
+	/* Mark entry as valid */
+	vmm_memcpy(&e->page, p, sizeof(cpu_page_t));
+	e->asid = asid;
+	e->dom = dom;
+	e->valid = 1;
 
 	/* Point to next victim */
 	victim = (victim + 1) % vcpu->sregs->cp15.vtlb.count;
 	vcpu->sregs->cp15.vtlb.victim = victim;
-
-	return ret;
-}
-
-/* Update Virtual TLB entry */
-int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu, cpu_vtlb_entry_t * e)
-{
-	int rc;
-
-	/* Add victim page to L1 page table */
-	if ((rc = cpu_mmu_map_page(vcpu->sregs->cp15.l1, &e->page))) {
-		return rc;
-	}
-
-	/* Mark entry as valid */
-	e->valid = 1;
 
 	return VMM_OK;
 }
@@ -93,6 +91,56 @@ int cpu_vcpu_cp15_vtlb_flush(vmm_vcpu_t * vcpu)
 				return rc;
 			}
 			vcpu->sregs->cp15.vtlb.table[vtlb].valid = 0;
+		}
+	}
+
+	return VMM_OK;
+}
+
+/** Flush given virtual address from Virtual TLB */
+int cpu_vcpu_cp15_vtlb_flush_va(vmm_vcpu_t * vcpu, virtual_addr_t va)
+{
+	int rc;
+	u32 vtlb;
+	cpu_vtlb_entry_t * e;
+
+	for (vtlb = 0; vtlb < vcpu->sregs->cp15.vtlb.count; vtlb++) {
+		if (vcpu->sregs->cp15.vtlb.table[vtlb].valid) {
+			e = &vcpu->sregs->cp15.vtlb.table[vtlb];
+			if (e->page.va <= va &&
+			    va < (e->page.va + e->page.sz)) {
+				rc = cpu_mmu_unmap_page(vcpu->sregs->cp15.l1, 
+						&e->page);
+				if (rc) {
+					return rc;
+				}
+				vcpu->sregs->cp15.vtlb.table[vtlb].valid = 0;
+				break;
+			}
+		}
+	}
+
+	return VMM_OK;
+}
+
+/** Flush given adress space id from Virtual TLB */
+int cpu_vcpu_cp15_vtlb_flush_asid(vmm_vcpu_t * vcpu, u8 asid)
+{
+	int rc;
+	u32 vtlb;
+	cpu_vtlb_entry_t * e;
+
+	for (vtlb = 0; vtlb < vcpu->sregs->cp15.vtlb.count; vtlb++) {
+		if (vcpu->sregs->cp15.vtlb.table[vtlb].valid) {
+			e = &vcpu->sregs->cp15.vtlb.table[vtlb];
+			if (e->asid == asid) {
+				rc = cpu_mmu_unmap_page(vcpu->sregs->cp15.l1, 
+						&e->page);
+				if (rc) {
+					return rc;
+				}
+				vcpu->sregs->cp15.vtlb.table[vtlb].valid = 0;
+			}
 		}
 	}
 
@@ -176,8 +224,9 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 			      vmm_user_regs_t * regs, 
 			      u32 far, u32 wnr, u32 page, u32 xn)
 {
-	vmm_guest_region_t *reg;
-	cpu_vtlb_entry_t *e = NULL;
+	vmm_region_t *reg;
+	u8 asid, dom;
+	cpu_page_t pg;
 
 	/* Get the required page for vcpu */
 	if (vcpu->sregs->cp15.c1_sctlr & SCTLR_M_MASK) {
@@ -189,28 +238,33 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 			cpu_vcpu_halt(vcpu, regs);
 			return VMM_EFAIL;
 		}
-		e = cpu_vcpu_cp15_vtlb_alloc(vcpu);
-		e->page.pa = reg->hphys_addr + (far - reg->gphys_addr);
-		e->page.va = far;
-		e->page.sz = reg->phys_size - (far - reg->gphys_addr);
-		e->page.sz = cpu_mmu_best_page_size(e->page.va, 
-						    e->page.pa, 
-						    e->page.sz);
-		e->page.pa &= ~(e->page.sz - 1);
-		e->page.va &= ~(e->page.sz - 1);
-		e->page.imp = 0;
-		e->page.dom = TTBL_L1TBL_TTE_DOM_VCPU_NOMMU;
-		if (reg->is_virtual) {
-			e->page.ap = TTBL_AP_SRW_U;
+		pg.pa = reg->hphys_addr + (far - reg->gphys_addr);
+		pg.va = far;
+		pg.sz = reg->phys_size - (far - reg->gphys_addr);
+		pg.sz = cpu_mmu_best_page_size(pg.va, pg.pa, pg.sz);
+		pg.pa &= ~(pg.sz - 1);
+		pg.va &= ~(pg.sz - 1);
+		pg.imp = 0;
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_NOMMU;
+		if (reg->flags & VMM_REGION_VIRTUAL) {
+			pg.ap = TTBL_AP_SRW_U;
 		} else {
-			e->page.ap = TTBL_AP_SRW_URW;
+			if (reg->flags & VMM_REGION_READONLY) {
+				pg.ap = TTBL_AP_SRW_UR;
+			} else {
+				pg.ap = TTBL_AP_SRW_URW;
+			}
 		}
-		e->page.xn = 0;
-		e->page.c = 0;
-		e->page.b = 0;
-		e->page_asid = 0;
-		e->page_dom = 0;
-		return cpu_vcpu_cp15_vtlb_update(vcpu, e);
+		pg.xn = 0;
+		if (reg->flags & VMM_REGION_CACHEABLE) {
+			pg.c = 1;
+		} else {
+			pg.c = 0;
+		}
+		pg.b = 0;
+		asid = 0;
+		dom = 0;
+		return cpu_vcpu_cp15_vtlb_update(vcpu, &pg, asid, dom);
 	}
 
 	return VMM_OK;
@@ -510,7 +564,7 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 			vcpu->sregs->cp15.c1_sctlr = data;
 			/* ??? Lots of these bits are not implemented.  */
 			/* This may enable/disable the MMU, so do a TLB flush. */
-			/* FIXME: tlb_flush(vcpu, 1); */
+			cpu_vcpu_cp15_vtlb_flush(vcpu);
 			break;
 		case 1: /* Auxiliary control register.  */
 			/* Not implemented.  */
@@ -518,8 +572,6 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 		case 2:
 			if (vcpu->sregs->cp15.c1_coproc != data) {
 				vcpu->sregs->cp15.c1_coproc = data;
-				/* ??? Is this safe when called from within a TB? */
-				/* FIXME: tb_flush(vcpu); */
 			}
 			break;
 		default:
@@ -547,7 +599,7 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 	case 3: /* MMU Domain access control / MPU write buffer control.  */
 		vcpu->sregs->cp15.c3 = data;
 		/* Flush TLB as domain not tracked in TLB */
-		/* FIXME: tlb_flush(vcpu, 1); */
+		cpu_vcpu_cp15_vtlb_flush(vcpu);
 		break;
 	case 4: /* Reserved.  */
 		goto bad_reg;
@@ -583,7 +635,7 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 			goto bad_reg;
 		}
 		/* No cache, so nothing to do except VA->PA translations. */
-		if (arm_feature(vcpu, ARM_FEATURE_V6K)) {
+		if (arm_feature(vcpu, ARM_FEATURE_VAPA)) {
 			switch (CRm) {
 			case 4:
 				if (arm_feature(vcpu, ARM_FEATURE_V7)) {
@@ -627,17 +679,17 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 	case 8: /* MMU TLB control.  */
 		switch (opc2) {
 		case 0: /* Invalidate all.  */
-			/* FIXME: tlb_flush(vcpu, 0); */
+			cpu_vcpu_cp15_vtlb_flush(vcpu);
 			break;
 		case 1: /* Invalidate single TLB entry.  */
-			/* FIXME: tlb_flush_page(vcpu, data & TARGET_PAGE_MASK); */
+			cpu_vcpu_cp15_vtlb_flush_va(vcpu, data);
 			break;
 		case 2: /* Invalidate on ASID.  */
-			/* FIXME: tlb_flush(vcpu, data == 0); */
+			cpu_vcpu_cp15_vtlb_flush(vcpu);
 			break;
 		case 3: /* Invalidate single entry on MVA.  */
 			/* ??? This is like case 1, but ignores ASID.  */
-			/* FIXME: tlb_flush(vcpu, 1); */
+			cpu_vcpu_cp15_vtlb_flush(vcpu);
 			break;
 		default:
 			goto bad_reg;
@@ -669,6 +721,81 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 		case 1: /* TCM memory region registers.  */
 			/* Not implemented.  */
 			goto bad_reg;
+		case 12: /* Performance monitor control */
+			/* Performance monitors are implementation defined in v7,
+			 * but with an ARM recommended set of registers, which we
+			 * follow (although we don't actually implement any counters)
+			 */
+			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
+				goto bad_reg;
+			}
+			switch (opc2) {
+			case 0: /* performance monitor control register */
+				/* only the DP, X, D and E bits are writable */
+				vcpu->sregs->cp15.c9_pmcr &= ~0x39;
+				vcpu->sregs->cp15.c9_pmcr |= (data & 0x39);
+				break;
+			case 1: /* Count enable set register */
+				data &= (1 << 31);
+				vcpu->sregs->cp15.c9_pmcnten |= data;
+				break;
+			case 2: /* Count enable clear */
+				data &= (1 << 31);
+				vcpu->sregs->cp15.c9_pmcnten &= ~data;
+				break;
+			case 3: /* Overflow flag status */
+				vcpu->sregs->cp15.c9_pmovsr &= ~data;
+				break;
+			case 4: /* Software increment */
+				/* RAZ/WI since we don't implement 
+				 * the software-count event */
+				break;
+			case 5: /* Event counter selection register */
+				/* Since we don't implement any events, writing to this register
+				 * is actually UNPREDICTABLE. So we choose to RAZ/WI.
+				 */
+				break;
+			default:
+				goto bad_reg;
+			}
+			break;
+		case 13: /* Performance counters */
+			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
+				goto bad_reg;
+			}
+			switch (opc2) {
+			case 0: /* Cycle count register: not implemented, so RAZ/WI */
+				break;
+			case 1: /* Event type select */
+				vcpu->sregs->cp15.c9_pmxevtyper = data & 0xff;
+				break;
+			case 2: /* Event count register */
+				/* Unimplemented (we have no events), RAZ/WI */
+				break;
+			default:
+				goto bad_reg;
+			}
+			break;
+		case 14: /* Performance monitor control */
+			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
+				goto bad_reg;
+			}
+			switch (opc2) {
+			case 0: /* user enable */
+				vcpu->sregs->cp15.c9_pmuserenr = data & 1;
+				/* changes access rights for cp registers, so flush tbs */
+				break;
+			case 1: /* interrupt enable set */
+				/* We have no event counters so only the C bit can be changed */
+				data &= (1 << 31);
+				vcpu->sregs->cp15.c9_pminten |= data;
+				break;
+			case 2: /* interrupt enable clear */
+				data &= (1 << 31);
+				vcpu->sregs->cp15.c9_pminten &= ~data;
+				break;
+			}
+			break;
 		default:
 			goto bad_reg;
 		}
@@ -681,11 +808,11 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 	case 13: /* Process ID.  */
 		switch (opc2) {
 		case 0:
-			/* Unlike real hardware the qemu TLB uses virtual addresses,
+			/* Unlike real hardware the xvisor TLB uses virtual addresses,
 			 * not modified virtual addresses, so this causes a TLB flush.
 			 */
 			if (vcpu->sregs->cp15.c13_fcse != data) {
-				/* FIXME: tlb_flush(vcpu, 1); */
+				cpu_vcpu_cp15_vtlb_flush(vcpu);
 			}
 			vcpu->sregs->cp15.c13_fcse = data;
 			break;
@@ -693,7 +820,7 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 			/* This changes the ASID, so do a TLB flush.  */
 			if (vcpu->sregs->cp15.c13_context != data && 
 			    !arm_feature(vcpu, ARM_FEATURE_MPU)) {
-				/* FIXME: tlb_flush(vcpu, 0); */
+				cpu_vcpu_cp15_vtlb_flush(vcpu);
 			}
 			vcpu->sregs->cp15.c13_context = data;
 			break;

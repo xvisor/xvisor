@@ -91,7 +91,7 @@
 					guest_physical_addr = <0x00000000>;
 					host_physical_addr = <0x01000000>;
 					physical_size = <0x01000000>; /* 16 MB */
-					device_type = "memory";
+					device_type = "ram";
 				};
 
 				sysctl {
@@ -175,7 +175,7 @@
 					guest_physical_addr = <0x40000000>;
 					host_physical_addr = <0x00100000>;
 					physical_size = <0x00300000>; /* 3 MB */
-					device_type = "memory";
+					device_type = "rom";
 				};
 			};
 		};
