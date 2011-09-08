@@ -96,7 +96,7 @@ static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 				       mips32_tlb_entry_t *gtlbe)
 {
 	vmm_guest_t *guest;
-	vmm_guest_region_t *guest_region;
+	vmm_region_t *guest_region;
 	physical_addr_t gphys_addr, hphys_addr, gphys_addr2map, gphys_offset;
 	physical_addr_t hphys_addr2map;
 	int do_map = 0;
