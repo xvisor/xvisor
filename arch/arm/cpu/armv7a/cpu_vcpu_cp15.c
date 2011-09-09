@@ -25,7 +25,6 @@
 #include <vmm_heap.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
-#include <vmm_devtree.h>
 #include <vmm_devemu.h>
 #include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
@@ -233,7 +232,7 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 		/* FIXME: MMU enabled for vcpu */
 	} else {
 		/* MMU disabled for vcpu */
-		reg = vmm_guest_aspace_getregion(vcpu->guest, far);
+		reg = vmm_guest_getregion(vcpu->guest, far);
 		if (!reg) {
 			cpu_vcpu_halt(vcpu, regs);
 			return VMM_EFAIL;
@@ -1050,9 +1049,7 @@ static u32 cortexa8_cp15_c0_c2[8] =
 int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 {
 	int rc = VMM_OK;
-	const char *attrval;
 	u32 vtlb_count;
-	vmm_devtree_node_t *node;
 
 	if (!vcpu->reset_count) {
 		vmm_memset(&vcpu->sregs->cp15, 0, sizeof(vcpu->sregs->cp15));
@@ -1064,17 +1061,7 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 					 (TTBL_L1TBL_TTE_DOM_VCPU_SUPER * 2));
 		vcpu->sregs->cp15.dacr |= (TTBL_DOM_CLIENT << 
 					 (TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
-		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				   VMM_DEVTREE_VMMINFO_NODE_NAME);
-		if (!node) {
-			return VMM_EFAIL;
-		}
-		attrval = vmm_devtree_attrval(node, 
-						MMU_TLBENT_PER_VCPU_ATTR_NAME);
-		if (!attrval) {
-			return VMM_EFAIL;
-		}
-		vtlb_count = *((u32 *)attrval);
+		vtlb_count = CONFIG_ARMV7A_VTLB_ENTRY_COUNT;
 		vcpu->sregs->cp15.vtlb.count = vtlb_count;
 		vcpu->sregs->cp15.vtlb.table = vmm_malloc(vtlb_count *
 						sizeof(cpu_vtlb_entry_t));

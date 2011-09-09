@@ -25,7 +25,6 @@
 #include <vmm_heap.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
-#include <vmm_devtree.h>
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
@@ -876,13 +875,11 @@ int cpu_mmu_chttbr(cpu_l1tbl_t * l1)
 int cpu_mmu_init(void)
 {
 	int rc = VMM_OK;
-	u32 highvec_enable, dacr;
-	vmm_devtree_node_t *node;
+	u32 dacr;
 	virtual_addr_t defl1_va, va;
 	virtual_size_t sz, tsz;
 	physical_addr_t defl1_pa, pa;
 	cpu_page_t respg;
-	const char *attrval;
 	extern u32 _code_start;
 	extern u32 _code_end;
 
@@ -900,29 +897,7 @@ int cpu_mmu_init(void)
 	INIT_LIST_HEAD(&mmuctrl.l2tbl_list);
 	mmuctrl.defl1 = NULL;
 
-	/* Get the vmm information node */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				   VMM_DEVTREE_VMMINFO_NODE_NAME);
-	if (!node) {
-		rc = VMM_EFAIL;
-		goto mmu_init_done;
-	}
-
-	/* Determine value of highvec_enable attribute */
-	attrval = vmm_devtree_attrval(node, CPU_HIGHVEC_ENABLE_ATTR_NAME);
-	if (!attrval) {
-		rc = VMM_EFAIL;
-		goto mmu_init_done;
-	}
-	highvec_enable = *((u32 *) attrval);
-
-	/* Determine value of ttbl_pool_size attribute */
-	attrval = vmm_devtree_attrval(node, MMU_POOL_SIZE_ATTR_NAME);
-	if (!attrval) {
-		rc = VMM_EFAIL;
-		goto mmu_init_done;
-	}
-	mmuctrl.pool_sz = *((virtual_size_t *) attrval);
+	mmuctrl.pool_sz = CONFIG_ARMV7A_TTBL_POOL_SIZE;
 	mmuctrl.pool_bmap_len = (mmuctrl.pool_sz / (TTBL_MIN_SIZE * 32) + 1);
 	mmuctrl.pool_bmap = vmm_malloc(sizeof(u32) * mmuctrl.pool_bmap_len);
 	vmm_memset(mmuctrl.pool_bmap, 0, sizeof(u32) * mmuctrl.pool_bmap_len);
@@ -987,15 +962,15 @@ int cpu_mmu_init(void)
 	}
 
 	/* Reserve space for interrupt vectors */
-	if (highvec_enable) {
-		pa = (physical_addr_t) CPU_IRQ_HIGHVEC_BASE;
-		va = (virtual_addr_t) CPU_IRQ_HIGHVEC_BASE;
-		sz = (virtual_size_t) TTBL_L2TBL_SMALL_PAGE_SIZE;
-	} else {
-		pa = (physical_addr_t) CPU_IRQ_LOWVEC_BASE;
-		va = (virtual_addr_t) CPU_IRQ_LOWVEC_BASE;
-		sz = (virtual_size_t) TTBL_L2TBL_SMALL_PAGE_SIZE;
-	}
+#if defined(CONFIG_ARMV7A_HIGHVEC)
+	pa = (physical_addr_t) CPU_IRQ_HIGHVEC_BASE;
+	va = (virtual_addr_t) CPU_IRQ_HIGHVEC_BASE;
+	sz = (virtual_size_t) TTBL_L2TBL_SMALL_PAGE_SIZE;
+#else
+	pa = (physical_addr_t) CPU_IRQ_LOWVEC_BASE;
+	va = (virtual_addr_t) CPU_IRQ_LOWVEC_BASE;
+	sz = (virtual_size_t) TTBL_L2TBL_SMALL_PAGE_SIZE;
+#endif
 	while (sz) {
 		if (va & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) {
 			tsz = va & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1);

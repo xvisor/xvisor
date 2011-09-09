@@ -28,6 +28,11 @@
 #include <pba8_board.h>
 #include <realview/gic.h>
 
+u32 vmm_pic_irq_count(void)
+{
+	return 96;
+}
+
 int vmm_pic_cpu_to_host_map(u32 cpu_irq_no)
 {
 	return realview_gic_active_irq(0);
