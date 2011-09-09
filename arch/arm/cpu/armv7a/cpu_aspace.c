@@ -16,14 +16,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_host_aspace.c
+ * @file cpu_aspace.c
  * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
- * @brief CPU specific source file for host virtual address space management.
+ * @brief CPU specific source file for address space management.
  */
 
-#include <vmm_string.h>
 #include <vmm_cpu.h>
+#include <vmm_string.h>
+#include <vmm_host_aspace.h>
 #include <cpu_mmu.h>
 
 int vmm_cpu_aspace_init(void)
@@ -34,7 +35,10 @@ int vmm_cpu_aspace_init(void)
 	return cpu_mmu_init();
 }
 
-int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz, physical_addr_t pa)
+int vmm_cpu_aspace_map(virtual_addr_t va, 
+			virtual_size_t sz, 
+			physical_addr_t pa,
+			u32 mem_flags)
 {
 	cpu_page_t p;
 	vmm_memset(&p, 0, sizeof(p));
@@ -43,14 +47,23 @@ int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz, physical_addr_t pa)
 	p.sz = sz;
 	p.imp = 0;
 	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
-	p.ap = TTBL_AP_SRW_U;
-	p.xn = 1;
-	p.c = 0;
+	if (mem_flags & (VMM_MEMORY_READABLE | VMM_MEMORY_WRITEABLE)) {
+		p.ap = TTBL_AP_SRW_U;
+	} else if (mem_flags & VMM_MEMORY_READABLE) {
+		p.ap = TTBL_AP_SR_U;
+	} else if (mem_flags & VMM_MEMORY_WRITEABLE) {
+		p.ap = TTBL_AP_SRW_U;
+	} else {
+		p.ap = TTBL_AP_S_U;
+	}
+	p.xn = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
+	p.c = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;
 	p.b = 0;
 	return cpu_mmu_map_reserved_page(&p);
 }
 
-int vmm_cpu_iounmap(virtual_addr_t va, virtual_size_t sz)
+int vmm_cpu_aspace_unmap(virtual_addr_t va, 
+			 virtual_size_t sz)
 {
 	int rc;
 	cpu_page_t p;
@@ -60,3 +73,4 @@ int vmm_cpu_iounmap(virtual_addr_t va, virtual_size_t sz)
 	}
 	return cpu_mmu_unmap_reserved_page(&p);
 }
+

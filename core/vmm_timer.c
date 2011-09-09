@@ -58,10 +58,14 @@ static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 	tstamp = vmm_timer_timestamp();
 
 	if (tctrl.cpu_curr && ev) {
-		if ((tstamp < ev->expiry_tstamp) &&
-		    (ev->expiry_tstamp < tctrl.cpu_curr->expiry_tstamp)) {
+		if (tstamp < ev->expiry_tstamp) {
+			if (ev->expiry_tstamp < tctrl.cpu_curr->expiry_tstamp) {
+				tctrl.cpu_curr = ev;
+				vmm_cpu_clockevent_start(ev->expiry_tstamp - tstamp);
+			}
+		} else {
 			tctrl.cpu_curr = ev;
-			vmm_cpu_clockevent_start(ev->expiry_tstamp - tstamp);
+			vmm_cpu_clockevent_start(0);
 		}
 	} else {
 		/* Scheduler next timer event */

@@ -27,7 +27,7 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <libfdt.h>
-#include <omap3/omap3_config.h>
+#include <omap3/config.h>
 
 extern u32 dt_blob_start;
 

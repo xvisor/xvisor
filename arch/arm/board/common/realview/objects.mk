@@ -22,6 +22,6 @@
 # @brief list of Realview Platform objects.
 # */
 
-board-common-objs-$(CONFIG_REALVIEW)+=realview/realview_gic.o
-board-common-objs-$(CONFIG_REALVIEW)+=realview/realview_timer.o
+board-common-objs-$(CONFIG_REALVIEW)+=realview/gic.o
+board-common-objs-$(CONFIG_REALVIEW)+=realview/timer.o
 

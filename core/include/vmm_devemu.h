@@ -143,10 +143,10 @@ vmm_emulator_t *vmm_devemu_emulator(int index);
 u32 vmm_devemu_emulator_count(void);
 
 /** Reset emulators for given region */
-int vmm_devemu_reset(vmm_guest_t *guest, vmm_guest_region_t *reg);
+int vmm_devemu_reset(vmm_guest_t *guest, vmm_region_t *reg);
 
 /** Probe emulators for given region */
-int vmm_devemu_probe(vmm_guest_t *guest, vmm_guest_region_t *reg);
+int vmm_devemu_probe(vmm_guest_t *guest, vmm_region_t *reg);
 
 /** Initialize device emulation framework */
 int vmm_devemu_init(void);

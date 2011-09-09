@@ -30,7 +30,7 @@
 #include <vmm_host_aspace.h>
 #include <libfdt.h>
 #include <pba8_board.h>
-#include <realview/realview_timer.h>
+#include <realview/timer.h>
 
 extern u32 dt_blob_start;
 virtual_addr_t pba8_sys_base;
