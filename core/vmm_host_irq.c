@@ -27,7 +27,6 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
-#include <vmm_devtree.h>
 #include <vmm_host_irq.h>
 
 vmm_host_irqs_ctrl_t hirqctrl;
@@ -98,8 +97,6 @@ int vmm_host_irq_init(void)
 {
 	int ret;
 	u32 ite;
-	vmm_devtree_node_t *node;
-	const char *attrval;
 
 	/* Clear the memory of control structure */
 	vmm_memset(&hirqctrl, 0, sizeof(hirqctrl));
@@ -107,17 +104,8 @@ int vmm_host_irq_init(void)
 	/* Initialize spin lock */
 	INIT_SPIN_LOCK(&hirqctrl.lock);
 
-	/* Get the host information node */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-
-	/* Determine number of host interrupts */
-	attrval = vmm_devtree_attrval(node,
-				      VMM_DEVTREE_HOST_IRQ_COUNT_ATTR_NAME);
-	if (!attrval) {
-		return VMM_EFAIL;
-	}
-	hirqctrl.irq_count = *((u32 *) attrval);
+	/* Get host irq count */
+	hirqctrl.irq_count = vmm_pic_irq_count();
 
 	/* Allocate memory for enabled array */
 	hirqctrl.enabled = vmm_malloc(sizeof(bool) * hirqctrl.irq_count);

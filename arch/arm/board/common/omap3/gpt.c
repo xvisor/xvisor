@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file omap3_gpt.c
+ * @file gpt.c
  * @version 1.0
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @author Anup Patel (anup@brainfault.org)
@@ -28,8 +28,8 @@
 #include <vmm_timer.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
-#include <omap3/omap3_intc.h>
-#include <omap3/omap3_gpt.h>
+#include <omap3/intc.h>
+#include <omap3/gpt.h>
 
 #define OMAP3_V_OSCK		26000000	/* Clock output from T2 */
 #define OMAP3_V_SCLK		(OMAP3_V_OSCK >> 1)

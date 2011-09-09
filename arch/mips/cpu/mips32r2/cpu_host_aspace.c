@@ -53,8 +53,10 @@ static struct host_tlb_entries_info *free_host_tlb_index(void)
 	return NULL;
 }
 
-int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz,
-		  physical_addr_t pa)
+int vmm_cpu_aspace_map(virtual_addr_t va, 
+			virtual_size_t sz, 
+			physical_addr_t pa,
+			u32 mem_flags)
 {
 	struct host_tlb_entries_info *tlb_info = free_host_tlb_index();
 	struct mips32_tlb_entry tlb_entry;
@@ -113,7 +115,8 @@ int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz,
 	return VMM_EFAIL;
 }
 
-int vmm_cpu_iounmap(virtual_addr_t va, virtual_size_t sz)
+int vmm_cpu_aspace_unmap(virtual_addr_t va, 
+			 virtual_size_t sz)
 {
 	int i;
 

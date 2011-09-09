@@ -43,7 +43,7 @@ static int map_guest_region(vmm_vcpu_t *vcpu, int region_type, int tlb_index)
 	physical_addr_t hphys, paddr;
 	virtual_addr_t vaddr2map;
 	u32 gphys_size;
-	vmm_guest_region_t *region;
+	vmm_region_t *region;
 	vmm_guest_t *aguest = vcpu->guest;
 
 	vaddr2map = (region_type == VMM_REGION_TYPE_ROM ? 0x3FC00000 : 0x0);
@@ -54,7 +54,7 @@ static int map_guest_region(vmm_vcpu_t *vcpu, int region_type, int tlb_index)
 	 * to the guest. The idea is that guest vcpu shouldn't fault
 	 * on this address.
 	 */
-	region = vmm_guest_aspace_getregion(aguest, paddr);
+	region = vmm_guest_getregion(aguest, paddr);
 	if (region == NULL) {
 		vmm_printf("Bummer!!! No guest region defined for VCPU RAM.\n");
 		return VMM_EFAIL;

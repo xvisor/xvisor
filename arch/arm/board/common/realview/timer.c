@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file realview_timer.c
+ * @file timer.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Realview Timer source
@@ -25,8 +25,8 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <realview_config.h>
-#include <realview/realview_plat.h>
-#include <realview/realview_timer.h>
+#include <realview/plat.h>
+#include <realview/timer.h>
 
 void realview_timer_enable(virtual_addr_t base)
 {
@@ -64,6 +64,9 @@ int realview_timer_event_start(virtual_addr_t base, u64 nsecs)
 
 	/* Expected microseconds */
 	usecs = nsecs / 1000;
+	if (!usecs) {
+		usecs = 1;
+	}
 
 	/* Setup the registers */
 	ctrl = vmm_readl((void *)(base + TIMER_CTRL));

@@ -43,9 +43,12 @@ void vmm_vcpu_regs_dump(vmm_vcpu_t *vcpu);
 /** Host address space management related functions */
 /** Host address space related functions required by VMM core */
 int vmm_cpu_aspace_init(void);
-int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz,
-		  physical_addr_t pa);
-int vmm_cpu_iounmap(virtual_addr_t va, virtual_size_t sz);
+int vmm_cpu_aspace_map(virtual_addr_t va, 
+			virtual_size_t sz, 
+			physical_addr_t pa,
+			u32 mem_flags);
+int vmm_cpu_aspace_unmap(virtual_addr_t va, 
+			 virtual_size_t sz);
 
 /** Interrupt related functions required by VMM core */
 int vmm_cpu_irq_setup(void);
