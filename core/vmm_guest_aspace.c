@@ -28,10 +28,89 @@
 #include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_devemu.h>
+#include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 
-vmm_region_t *vmm_guest_aspace_getregion(vmm_guest_t *guest,
-					 physical_addr_t gphys_addr)
+u32 vmm_guest_physical_read(vmm_guest_t * guest, 
+			    physical_addr_t gphys_addr, 
+			    void * dst, u32 len)
+{
+	u32 bytes_read = 0, to_read;
+	physical_addr_t hphys_addr;
+	vmm_region_t * reg = NULL;
+
+	if (!guest || !dst || !len) {
+		return 0;
+	}
+
+	while (bytes_read < len) {
+		if (!(reg = vmm_guest_getregion(guest, gphys_addr))) {
+			break;
+		}
+
+		if (reg->flags & (VMM_REGION_VIRTUAL | VMM_REGION_IO)) {
+			break;
+		}
+
+		hphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+		to_read = (reg->gphys_addr + reg->phys_size - gphys_addr);
+		to_read = ((len - bytes_read) < to_read) ? 
+			  (len - bytes_read) : to_read;
+
+		to_read = vmm_host_physical_read(hphys_addr, dst, to_read);
+		if (!to_read) {
+			break;
+		}
+
+		gphys_addr += to_read;
+		bytes_read += to_read;
+		dst += to_read;
+	}
+
+	return bytes_read;
+}
+
+u32 vmm_guest_physical_write(vmm_guest_t * guest, 
+			     physical_addr_t gphys_addr, 
+			     void * src, u32 len)
+{
+	u32 bytes_written = 0, to_write;
+	physical_addr_t hphys_addr;
+	vmm_region_t * reg = NULL;
+
+	if (!guest || !src || !len) {
+		return 0;
+	}
+
+	while (bytes_written < len) {
+		if (!(reg = vmm_guest_getregion(guest, gphys_addr))) {
+			break;
+		}
+
+		if (reg->flags & (VMM_REGION_VIRTUAL | VMM_REGION_IO)) {
+			break;
+		}
+
+		hphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+		to_write = (reg->gphys_addr + reg->phys_size - gphys_addr);
+		to_write = ((len - bytes_written) < to_write) ? 
+			   (len - bytes_written) : to_write;
+
+		to_write = vmm_host_physical_write(hphys_addr, src, to_write);
+		if (!to_write) {
+			break;
+		}
+
+		gphys_addr += to_write;
+		bytes_written += to_write;
+		src += to_write;
+	}
+
+	return bytes_written;
+}
+
+vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
+				  physical_addr_t gphys_addr)
 {
 	bool found = FALSE;
 	struct dlist *l;

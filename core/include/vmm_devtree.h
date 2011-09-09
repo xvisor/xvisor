@@ -47,7 +47,6 @@
 #define VMM_DEVTREE_MAX_GUEST_COUNT_ATTR_NAME	"max_guest_count"
 
 #define VMM_DEVTREE_HOSTINFO_NODE_NAME		"host"
-#define VMM_DEVTREE_HOST_IRQ_COUNT_ATTR_NAME	"host_irq_count"
 #define VMM_DEVTREE_CPUS_NODE_NAME		"cpus"
 #define VMM_DEVTREE_CPU_FREQ_MHZ_ATTR_NAME	"cpu_freq_mhz"
 
