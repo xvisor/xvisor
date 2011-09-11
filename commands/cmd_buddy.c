@@ -39,11 +39,11 @@
 
 void cmd_buddy_usage(vmm_chardev_t *cdev)
 {
-	vmm_cprintf(cdev, "buddy: Show current heap statistics.\n");
+	vmm_cprintf(cdev, "Usage: \n");
 	vmm_cprintf(cdev, "    - buddy state\n");
-	vmm_cprintf(cdev, "        Show current allocation statistics.\n");
+	vmm_cprintf(cdev, "        Show current allocation state.\n");
 	vmm_cprintf(cdev, "    - buddy hk-state\n");
-	vmm_cprintf(cdev, "        Show current house keeping nodes state.\n");
+	vmm_cprintf(cdev, "        Show current house keeping state.\n");
 }
 
 int cmd_buddy_exec(vmm_chardev_t *cdev, int argc, char **argv)
@@ -54,11 +54,11 @@ int cmd_buddy_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	}
 
 	if (!vmm_strcmp(argv[1], "state")) {
-		print_current_buddy_state(cdev);
+		buddy_print_state(cdev);
 	} else if (!vmm_strcmp(argv[1], "hk-state")) {
-		print_current_hk_state(cdev);
+		buddy_print_hk_state(cdev);
 	} else {
-		vmm_cprintf(cdev, "buddy %s: Unknown command. Seep help below.\n");
+		vmm_cprintf(cdev, "buddy %s: Unknown command.\n");
 		cmd_buddy_usage(cdev);
 		return -1;
 	}
@@ -68,7 +68,7 @@ int cmd_buddy_exec(vmm_chardev_t *cdev, int argc, char **argv)
 
 static vmm_cmd_t cmd_buddy = {
 	.name = "buddy",
-	.desc = "show current heap usage.",
+	.desc = "show current buddy heap state.",
 	.usage = cmd_buddy_usage,
 	.exec = cmd_buddy_exec,
 };

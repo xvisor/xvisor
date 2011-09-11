@@ -25,6 +25,11 @@
 #include <vmm_board.h>
 #include <vmm_error.h>
 
+u32 vmm_pic_irq_count(void)
+{
+	return 8;
+}
+
 int vmm_pic_cpu_to_host_map(u32 cpu_irq_no)
 {
 	return -1;

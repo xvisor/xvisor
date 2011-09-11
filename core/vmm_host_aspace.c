@@ -100,10 +100,13 @@ int cpu_host_aspace_pool_free(virtual_addr_t pool_va, virtual_addr_t pool_sz)
 	return VMM_OK;
 }
 
-virtual_addr_t vmm_host_iomap(physical_addr_t pa, virtual_size_t sz)
+virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
+			       virtual_size_t sz, 
+			       u32 mem_flags)
 {
-	int rc;
+	int rc, ite;
 	virtual_addr_t va;
+	physical_addr_t tpa;
 
 	sz = VMM_ROUNDUP2_PGSZ(sz);
 
@@ -113,53 +116,16 @@ virtual_addr_t vmm_host_iomap(physical_addr_t pa, virtual_size_t sz)
 		while (1) ;
 	}
 
-	rc = vmm_cpu_aspace_map(va, sz, pa & ~(VMM_PAGE_SIZE - 1), 
-				(VMM_MEMORY_READABLE | 
-				 VMM_MEMORY_WRITEABLE));
-	if (rc) {
-		/* We were not able to map physical address */
-		while (1) ;
-	}
-
-	return va + (pa & (VMM_PAGE_SIZE - 1));
-}
-
-int vmm_host_iounmap(virtual_addr_t va, virtual_size_t sz)
-{
-	int rc;
-
-	sz = VMM_ROUNDUP2_PGSZ(sz);
-	va &= ~(VMM_PAGE_SIZE - 1);
-
-	rc = cpu_host_aspace_pool_free(va, sz);
-	if (rc) {
-		return rc;
-	}
-
-	return vmm_cpu_aspace_unmap(va, sz);
-}
-
-virtual_addr_t vmm_host_memmap(physical_addr_t pa, virtual_size_t sz)
-{
-	int rc;
-	virtual_addr_t va;
-
-	sz = VMM_ROUNDUP2_PGSZ(sz);
-
-	rc = vmm_host_aspace_pool_alloc(sz, &va);
-	if (rc) {
-		/* Don't have space */
-		while (1) ;
-	}
-
-	rc = vmm_cpu_aspace_map(va, sz, pa & ~(VMM_PAGE_SIZE - 1), 
-				(VMM_MEMORY_CACHEABLE | 
-				 VMM_MEMORY_READABLE | 
-				 VMM_MEMORY_WRITEABLE |
-				 VMM_MEMORY_EXECUTABLE));
-	if (rc) {
-		/* We were not able to map physical address */
-		while (1) ;
+	tpa = pa & ~(VMM_PAGE_SIZE - 1);
+	for (ite = 0; ite < (sz / VMM_PAGE_SIZE); ite++) {
+		rc = vmm_cpu_aspace_map(va + ite * VMM_PAGE_SIZE, 
+					VMM_PAGE_SIZE, 
+					tpa + ite * VMM_PAGE_SIZE, 
+					mem_flags);
+		if (rc) {
+			/* We were not able to map physical address */
+			while (1) ;
+		}
 	}
 
 	return va + (pa & (VMM_PAGE_SIZE - 1));
@@ -167,7 +133,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa, virtual_size_t sz)
 
 int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
 {
-	int rc;
+	int rc, ite;
 
 	sz = VMM_ROUNDUP2_PGSZ(sz);
 	va &= ~(VMM_PAGE_SIZE - 1);
@@ -177,7 +143,15 @@ int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
 		return rc;
 	}
 
-	return vmm_cpu_aspace_unmap(va, sz);
+	for (ite = 0; ite < (sz / VMM_PAGE_SIZE); ite++) {
+		rc = vmm_cpu_aspace_unmap(va + ite * VMM_PAGE_SIZE, 
+					  VMM_PAGE_SIZE);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	return VMM_OK;
 }
 
 u32 vmm_host_physical_read(physical_addr_t hphys_addr, 
@@ -199,7 +173,9 @@ u32 vmm_host_physical_read(physical_addr_t hphys_addr,
 		to_read = (to_read < (len - bytes_read)) ? 
 			   to_read : (len - bytes_read);
 
-		src = vmm_host_memmap(hphys_addr, VMM_PAGE_SIZE);
+		src = vmm_host_memmap(hphys_addr, 
+				      VMM_PAGE_SIZE, 
+				      VMM_MEMORY_READABLE);
 		vmm_memcpy(dst, (void *)src, to_read);
 		vmm_host_memunmap(src, VMM_PAGE_SIZE);
 
@@ -230,7 +206,9 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 		to_write = (to_write < (len - bytes_written)) ? 
 			    to_write : (len - bytes_written);
 
-		dst = vmm_host_memmap(hphys_addr, VMM_PAGE_SIZE);
+		dst = vmm_host_memmap(hphys_addr, 
+				      VMM_PAGE_SIZE, 
+				      VMM_MEMORY_WRITEABLE);
 		vmm_memcpy((void *)dst, src, to_write);
 		vmm_host_memunmap(dst, VMM_PAGE_SIZE);
 
