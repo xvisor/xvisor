@@ -31,21 +31,9 @@ extern char _heap_start;
 extern char _heap_end;
 extern char _modtbl_start;
 extern char _modtbl_end;
-extern char _mm_hk_start;
-extern char _mm_hk_end;
 
 #define __lock_section		__attribute__((section(".spinlock.text")))
 #define __modtbl_section	__attribute__((section(".modtbl")))
-
-static inline virtual_addr_t vmm_mm_hk_start(void)
-{
-        return (virtual_addr_t)&_mm_hk_start;
-}
-
-static inline virtual_size_t vmm_mm_hk_size(void)
-{
-        return (virtual_size_t)(&_mm_hk_end - &_mm_hk_start);
-}
 
 static inline virtual_addr_t vmm_modtbl_start(void)
 {

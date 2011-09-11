@@ -50,21 +50,15 @@
 #endif
 
 #define IS_POW_TWO(x)		(x && !(x & (x - 1)))
-#define HEAP_FN_HK_LEN		(vmm_mm_hk_size()/2)
-#define HEAP_AN_HK_LEN		(vmm_mm_hk_size()/2)
 
 static struct vmm_heap buddy_heap;
-static struct vmm_alloced_area current_allocations;
-struct vmm_free_area *free_node_list;
-struct vmm_alloced_area *alloced_node_list;
 
 static struct vmm_free_area *get_free_hk_node()
 {
 	int idx = 0;
-	struct vmm_free_area *fren = free_node_list;
+	struct vmm_free_area *fren = buddy_heap.hk_fn_array;
 
-	for (idx = 0; idx < (HEAP_FN_HK_LEN / sizeof(struct vmm_free_area));
-	     idx++) {
+	for (idx = 0; idx < buddy_heap.hk_fn_count; idx++) {
 		if (fren->map) {
 			fren++;
 		} else {
@@ -83,10 +77,9 @@ static void free_hk_node(struct vmm_free_area *node)
 static struct vmm_alloced_area *get_free_ac_node()
 {
 	int idx = 0;
-	struct vmm_alloced_area *fren = alloced_node_list;
+	struct vmm_alloced_area *fren = buddy_heap.hk_an_array;
 
-	for (idx = 0; idx < (HEAP_AN_HK_LEN / sizeof(struct vmm_alloced_area));
-	     idx++) {
+	for (idx = 0; idx < buddy_heap.hk_an_count; idx++) {
 		if (fren->map) {
 			fren++;
 		} else {
@@ -97,59 +90,58 @@ static struct vmm_alloced_area *get_free_ac_node()
 	return NULL;
 }
 
-static int buddy_init_max_blocks(void)
-{
-	void *heap_start = buddy_heap.heap_start;
-	unsigned int heap_size = buddy_heap.heap_size;
-	struct vmm_free_area *freenode;
-	int tnodes = 0;
-
-	INIT_LIST_HEAD(&buddy_heap.free_area[BINS_MAX_ORDER - 1].head);
-
-	while (heap_size) {
-		freenode = get_free_hk_node();
-		if (!freenode) {
-			return -1;
-		}
-		freenode->map = heap_start;
-		heap_size -= MAX_BLOCK_SIZE;
-		heap_start += MAX_BLOCK_SIZE;
-		list_add_tail(&buddy_heap.free_area[BINS_MAX_ORDER - 1].head,
-			      &freenode->head);
-		buddy_heap.free_area[BINS_MAX_ORDER - 1].count++;
-		tnodes++;
-	}
-
-	VMM_DPRINTK("Total: %d nodes of size 0x%X added to last bin.\n",
-		    tnodes, MAX_BLOCK_SIZE);
-
-	return 0;
-}
-
 int buddy_init(void *heap_start, unsigned int heap_size)
 {
-	int cntr = 0;
+	int cntr = 0, tnodes = 0;
+	void * mem_start;
+	unsigned int mem_size, hk_total_size;
+	struct vmm_free_area * freenode = NULL;
 
 	/* We manage heap space only in power of two */
 	if (!IS_POW_TWO(heap_size)) {
 		return VMM_EFAIL;
 	}
 
-	/* keep 4K of initial heap area for our housekeeping */
-	free_node_list = (struct vmm_free_area *)vmm_mm_hk_start();
-	alloced_node_list =
-	    (struct vmm_alloced_area *)(vmm_mm_hk_start() + HEAP_FN_HK_LEN);
-	vmm_memset(free_node_list, 0, HEAP_FN_HK_LEN + HEAP_AN_HK_LEN);
+	hk_total_size = (heap_size * HOUSE_KEEPING_PERCENT) / 100;
 
+	/* keep 4K of initial heap area for our housekeeping */
+	buddy_heap.hk_fn_array = (struct vmm_free_area *)heap_start;
+	buddy_heap.hk_fn_count = (hk_total_size / 2) / sizeof(struct vmm_free_area);
+	buddy_heap.hk_an_array = 
+			(struct vmm_alloced_area *)(heap_start + (hk_total_size / 2));
+	buddy_heap.hk_an_count = (hk_total_size / 2) / 
+					sizeof(struct vmm_alloced_area);
+	vmm_memset(buddy_heap.hk_fn_array, 0, hk_total_size);
+
+	INIT_LIST_HEAD(&buddy_heap.current.head);
+
+	mem_start = heap_start + hk_total_size;
+	mem_size = heap_size - hk_total_size;
+	buddy_heap.mem_start = mem_start;
+	buddy_heap.mem_size = mem_size;
 	buddy_heap.heap_start = heap_start;
 	buddy_heap.heap_size = heap_size;
-	buddy_heap.heap_end = buddy_heap.heap_start + heap_size;
 	vmm_memset(&buddy_heap.free_area[0], 0, sizeof(buddy_heap.free_area));
 	for (cntr = 0; cntr < BINS_MAX_ORDER; cntr++) {
 		INIT_LIST_HEAD(&buddy_heap.free_area[cntr].head);
 	}
-	buddy_init_max_blocks();
-	INIT_LIST_HEAD(&current_allocations.head);
+
+	INIT_LIST_HEAD(&buddy_heap.free_area[BINS_MAX_ORDER - 1].head);
+	while (mem_size) {
+		freenode = get_free_hk_node();
+		if (!freenode) {
+			return -1;
+		}
+		freenode->map = mem_start;
+		mem_size -= MAX_BLOCK_SIZE;
+		mem_start += MAX_BLOCK_SIZE;
+		list_add_tail(&buddy_heap.free_area[BINS_MAX_ORDER - 1].head,
+			      &freenode->head);
+		buddy_heap.free_area[BINS_MAX_ORDER - 1].count++;
+		tnodes++;
+	}
+	VMM_DPRINTK("Total: %d nodes of size 0x%X added to last bin.\n",
+		    tnodes, MAX_BLOCK_SIZE);
 
 	return 0;
 }
@@ -271,7 +263,7 @@ static struct vmm_alloced_area *search_for_allocated_block(void *addr)
 	struct vmm_alloced_area *cnode;
 	struct dlist *cnhead;
 
-	list_for_each(cnhead, &current_allocations.head) {
+	list_for_each(cnhead, &buddy_heap.current.head) {
 		cnode = list_entry(cnhead, struct vmm_alloced_area, head);
 		if (cnode && cnode->map == addr) {
 			return cnode;
@@ -396,8 +388,8 @@ void *buddy_malloc(unsigned int size)
 			aarea->map = farea->map;
 			aarea->blk_sz = MAX_BLOCK_SIZE * bneeded;
 			aarea->bin_num = BINS_MAX_ORDER - 1;
-			list_add_tail(&current_allocations.head, &aarea->head);
-			current_allocations.count++;
+			list_add_tail(&buddy_heap.current.head, &aarea->head);
+			buddy_heap.current.count++;
 			free_hk_node(farea);
 			return aarea->map;
 		}
@@ -421,9 +413,9 @@ void *buddy_malloc(unsigned int size)
 				vmm_memset(farea, 0,
 					   sizeof(struct vmm_free_area));
 				free_hk_node(farea);
-				list_add_tail(&current_allocations.head,
+				list_add_tail(&buddy_heap.current.head,
 					      &aarea->head);
-				current_allocations.count++;
+				buddy_heap.current.count++;
 				return aarea->map;
 			}
 		}
@@ -460,7 +452,7 @@ void buddy_free(void *ptr)
 	vmm_memset(freed_node, 0, sizeof(struct vmm_alloced_area));
 }
 
-void print_current_buddy_state(vmm_chardev_t *cdev)
+void buddy_print_state(vmm_chardev_t *cdev)
 {
 	int idx = 0;
 	struct vmm_free_area *varea;
@@ -476,7 +468,7 @@ void print_current_buddy_state(vmm_chardev_t *cdev)
 			varea = list_entry(pos, struct vmm_free_area, head);
 			bfree++;
 		}
-		list_for_each(pos, &current_allocations.head) {
+		list_for_each(pos, &buddy_heap.current.head) {
 			valloced =
 			    list_entry(pos, struct vmm_alloced_area, head);
 			if (valloced->bin_num == idx) {
@@ -489,33 +481,31 @@ void print_current_buddy_state(vmm_chardev_t *cdev)
 	}
 }
 
-void print_current_hk_state(vmm_chardev_t *cdev)
+void buddy_print_hk_state(vmm_chardev_t *cdev)
 {
 	u32 free = 0, idx;
-	struct vmm_free_area *fren = free_node_list;
-	struct vmm_alloced_area *acn = alloced_node_list;
+	struct vmm_free_area *fren = buddy_heap.hk_fn_array;
+	struct vmm_alloced_area *acn = buddy_heap.hk_an_array;
 
-	for (idx = 0; idx < (HEAP_FN_HK_LEN / sizeof(struct vmm_free_area));
-	     idx++) {
+	for (idx = 0; idx < buddy_heap.hk_fn_count; idx++) {
 		if (!fren->map) {
 			free++;
-			fren++;
 		}
+		fren++;
 	}
 
 	vmm_cprintf(cdev, "Free Node List: %d nodes free out of %d.\n", free,
-		   (HEAP_FN_HK_LEN / sizeof(struct vmm_free_area)));
+		   buddy_heap.hk_fn_count);
 
 	free = 0;
-	for (idx = 0; idx < (HEAP_AN_HK_LEN / sizeof(struct vmm_alloced_area));
-	     idx++) {
+	for (idx = 0; idx < buddy_heap.hk_an_count; idx++) {
 		if (!acn->map) {
 			free++;
-			acn++;
 		}
+		acn++;
 	}
 	vmm_cprintf(cdev, "Alloced Node List: %d nodes free out of %d.\n", free,
-		   (HEAP_FN_HK_LEN / sizeof(struct vmm_alloced_area)));
+		   buddy_heap.hk_an_count);
 }
 
 void *vmm_malloc(virtual_size_t size)

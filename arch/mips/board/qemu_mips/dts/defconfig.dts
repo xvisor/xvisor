@@ -18,7 +18,6 @@
 		#size-cells = <1>;
 		model = "qemu-mips";
 		device_type = "host";
-		host_irq_count = <8>;
 		virt-addr-start = <0xC0000000>; /* Kseg1 region */
 		virt-addr-size = <0x40000000>;
 		virt-addr-frame-size = <0x1000>; /* 4K minimum page maps */
