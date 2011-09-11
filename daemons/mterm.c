@@ -90,7 +90,7 @@ static int daemon_mterm_init(void)
 		return VMM_EFAIL;
 	}
 	attrval = vmm_devtree_attrval(node,
-				      VMM_DEVTREE_MTERM_TIME_SLICE_ATTR_NAME);
+				      "mterm_time_slice");
 	if (!attrval) {
 		return VMM_EFAIL;
 	}

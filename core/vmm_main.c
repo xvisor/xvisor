@@ -106,7 +106,7 @@ void vmm_init(void)
 		   VMM_PROJECT_VER_MINOR, __DATE__, __TIME__);
 	vmm_printf("\n");
 
-	/* Print intial messages that we missed */
+	/* Print initial messages that we missed */
 	vmm_printf("Initialize Heap\n");
 	vmm_printf("Initialize Device Tree\n");
 	vmm_printf("Initialize Host Address Space\n");

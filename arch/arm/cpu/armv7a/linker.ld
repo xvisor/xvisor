@@ -73,20 +73,20 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
-	.heap :
-	{
-		PROVIDE(_heap_start = .);
-		. = . + CONFIG_HEAP_SIZE;
-		. = ALIGN(4);
-		PROVIDE(_heap_end = .);
-	}
-
 	.mm_hk : /* Memory management house keeping */
 	{
 		PROVIDE(_mm_hk_start = .);
 		. = . + 262144;	/* 256 KiB for house keeping */
 		. = ALIGN(4);
 		PROVIDE(_mm_hk_end = .);
+	}
+
+	.heap :
+	{
+		PROVIDE(_heap_start = .);
+		. = . + CONFIG_HEAP_SIZE;
+		. = ALIGN(4);
+		PROVIDE(_heap_end = .);
 	}
 
 	.svc_stack :

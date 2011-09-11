@@ -5,13 +5,8 @@
 	vmm {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		armv7a_highvec_enable = <0>;
-		armv7a_ttbl_pool_size = <0x20000>;
-		armv7a_l2tbl_per_vcpu = <4>;
-		armv7a_tlbent_per_vcpu = <16>;
 		max_vcpu_count = <8>;
 		max_guest_count = <2>;
-		tick_delay_nsecs = <200000>;
 		mterm_time_slice = <2000000>;
 	};
 
@@ -20,10 +15,8 @@
 		#size-cells = <1>;
 		model = "beagle-omap3530";
 		device_type = "host";
-		host_irq_count = <96>;
 		virt-addr-start = <0x80000000>;
 		virt-addr-size = <0x80000>;
-		virt-addr-frame-size = <0x1000>; /* 4K minimum page maps */
 		
 		cpus {
 			#address-cells = <1>;
@@ -59,7 +52,7 @@
 		guest@0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			model = "vqemu-mips";
+			model = "realview-pb-a8";
 			device_type = "guest";
 
 			vcpus {
@@ -84,7 +77,7 @@
 					guest_physical_addr = <0x81000000>;
 					host_physical_addr = <0x0 0x00000000>;
 					physical_size = <0x0 0x01000000>;
-					device_type = "memory";
+					device_type = "ram";
 				};
 
 				uart@2 {

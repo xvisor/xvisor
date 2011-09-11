@@ -26,7 +26,7 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <serial/uart.h>
-#include <omap3/omap3_config.h>
+#include <omap3/config.h>
 
 int vmm_defterm_putc(u8 ch)
 {

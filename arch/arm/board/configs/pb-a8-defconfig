@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Fri Aug 12 16:23:44 2011
+# Fri Sep  9 17:30:08 2011
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
@@ -14,6 +14,14 @@ CONFIG_CPU_LE=y
 CONFIG_BOARD="pb-a8"
 CONFIG_CPU_CORTEX_A8=y
 # CONFIG_CPU_OMAP3 is not set
+CONFIG_ARMV7A=y
+
+#
+# ARMv7a Options
+#
+# CONFIG_ARMV7A_HIGHVEC is not set
+CONFIG_ARMV7A_TTBL_POOL_SIZE=131072
+CONFIG_ARMV7A_VTLB_ENTRY_COUNT=64
 CONFIG_BOARD_PB_A8=y
 CONFIG_REALVIEW=y
 CONFIG_EMU_REALVIEW=y
@@ -34,9 +42,9 @@ CONFIG_MM_TRIVIAL=y
 # CONFIG_MM_BUDDY is not set
 
 #
-# Networking
+# Library Options
 #
-# CONFIG_NET is not set
+CONFIG_LIBFDT=y
 
 #
 # Device Drivers

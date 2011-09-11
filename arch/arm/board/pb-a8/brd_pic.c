@@ -26,7 +26,12 @@
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
 #include <pba8_board.h>
-#include <realview/realview_gic.h>
+#include <realview/gic.h>
+
+u32 vmm_pic_irq_count(void)
+{
+	return 96;
+}
 
 int vmm_pic_cpu_to_host_map(u32 cpu_irq_no)
 {

@@ -25,7 +25,6 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_devtree.h>
 #include <vmm_host_irq.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
@@ -44,6 +43,8 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	vcpu = vmm_scheduler_current_vcpu();
 
@@ -64,7 +65,7 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_software_interrupt(vmm_user_regs_t * uregs)
@@ -75,6 +76,8 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	vcpu = vmm_scheduler_current_vcpu();
 
@@ -95,7 +98,7 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_prefetch_abort(vmm_user_regs_t * uregs)
@@ -107,6 +110,8 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	ifsr = read_ifsr();
 	ifar = read_ifar();
@@ -163,7 +168,7 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 				__func__, vcpu->id, ifar, ifsr);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_data_abort(vmm_user_regs_t * uregs)
@@ -175,6 +180,8 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	dfsr = read_dfsr();
 	dfar = read_dfar();
@@ -238,7 +245,7 @@ void do_data_abort(vmm_user_regs_t * uregs)
 				__func__, vcpu->id, dfar, dfsr);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_not_used(vmm_user_regs_t * uregs)
@@ -248,47 +255,35 @@ void do_not_used(vmm_user_regs_t * uregs)
 
 void do_irq(vmm_user_regs_t * uregs)
 {
+	vmm_scheduler_irq_enter(uregs, FALSE);
+
 	vmm_host_irq_exec(CPU_EXTERNAL_IRQ, uregs);
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_fiq(vmm_user_regs_t * uregs)
 {
+	vmm_scheduler_irq_enter(uregs, FALSE);
+
 	vmm_host_irq_exec(CPU_EXTERNAL_FIQ, uregs);
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 int vmm_cpu_irq_setup(void)
 {
 	extern u32 _start_vect[];
 	u32 *vectors, *vectors_data;
-	u32 highvec_enable, vec;
-	vmm_devtree_node_t *node;
-	const char *attrval;
+	u32 vec;
 
-	/* Get the vmm information node */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				   VMM_DEVTREE_VMMINFO_NODE_NAME);
-	if (!node) {
-		return VMM_EFAIL;
-	}
-
-	/* Determine value of highvec_enable attribute */
-	attrval = vmm_devtree_attrval(node, CPU_HIGHVEC_ENABLE_ATTR_NAME);
-	if (!attrval) {
-		return VMM_EFAIL;
-	}
-	highvec_enable = *((u32 *) attrval);
-
-	if (highvec_enable) {
-		/* Enable high vectors in SCTLR */
-		write_sctlr(read_sctlr() | SCTLR_V_MASK);
-		vectors = (u32 *) CPU_IRQ_HIGHVEC_BASE;
-	} else {
-		vectors = (u32 *) CPU_IRQ_LOWVEC_BASE;
-	}
+#if defined(CONFIG_ARMV7A_HIGHVEC)
+	/* Enable high vectors in SCTLR */
+	write_sctlr(read_sctlr() | SCTLR_V_MASK);
+	vectors = (u32 *) CPU_IRQ_HIGHVEC_BASE;
+#else
+	vectors = (u32 *) CPU_IRQ_LOWVEC_BASE;
+#endif
 	vectors_data = vectors + CPU_IRQ_NR;
 
 	/* If vectors are tat correct location then do nothing */

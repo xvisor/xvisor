@@ -80,51 +80,43 @@ void cmd_guest_list(vmm_chardev_t *cdev)
 
 int cmd_guest_load(vmm_chardev_t *cdev, int id, 
 		   physical_addr_t src_hphys_addr, 
-		   physical_addr_t dest_gphys_addr, 
-		   u32 img_sz)
+		   physical_addr_t dst_gphys_addr, 
+		   u32 len)
 {
+#define GUEST_LOAD_BUF_SZ		256
+	u8 buf[GUEST_LOAD_BUF_SZ];
+	u32 bytes_loaded = 0, to_load = 0;
 	vmm_guest_t *guest;
-	vmm_guest_region_t *guest_region;
-	virtual_addr_t src_hvaddr, dest_gvaddr;
 
 	guest = vmm_manager_guest(id);
 	if (guest) {
-		guest_region = vmm_guest_aspace_getregion(guest, 
-							dest_gphys_addr);
-		if (!guest_region) {
-			vmm_cprintf(cdev, "Error: Cannot find a guest reqion "
-					  "containing address 0x%X\n", 
-					  dest_gphys_addr);
-			return VMM_EFAIL;
+		while (bytes_loaded < len) {
+			to_load = (GUEST_LOAD_BUF_SZ < (len - bytes_loaded)) ? 
+				  GUEST_LOAD_BUF_SZ : (len - bytes_loaded);
+			to_load = vmm_host_physical_read(src_hphys_addr, 
+							 buf, 
+							 to_load);
+			if (!to_load) {
+				break;
+			}
+			to_load = vmm_guest_physical_write(guest, 
+							   dst_gphys_addr,
+							   buf, 
+							   to_load);
+			if (!to_load) {
+				break;
+			}
+			src_hphys_addr += to_load;
+			dst_gphys_addr += to_load;
+			bytes_loaded += to_load;
 		}
 
-		if (img_sz > guest_region->phys_size) {
-			vmm_cprintf(cdev, "(%s) Error: Image size is greater "
-					  "than the size of the requested "
-					  "guest region.\n", __FUNCTION__);
-			return VMM_EFAIL;
+		vmm_cprintf(cdev, "Loaded %d bytes for %s\n", bytes_loaded, 
+							     guest->node->name);
+
+		if (bytes_loaded == len) {
+			return VMM_OK;
 		}
-
-		dest_gvaddr = vmm_host_iomap(guest_region->hphys_addr, 
-					     guest_region->phys_size);
-		if (!dest_gvaddr) {
-			vmm_cprintf(cdev, "(%s) Error: Cannot map host physical"
-					  " to host virtual.\n", __FUNCTION__);
-			return VMM_EFAIL;
-		}
-
-		src_hvaddr = vmm_host_iomap(src_hphys_addr, 
-					    guest_region->phys_size);
-		if (!src_hvaddr) {
-			vmm_cprintf(cdev, "(%s) Error: Cannot map host source "
-					  "physical to host virtual.\n", 
-					  __FUNCTION__);
-			return VMM_EFAIL;
-		}
-
-		vmm_memcpy((void *)dest_gvaddr, (void *)src_hvaddr, img_sz);
-
-		return VMM_OK;
 	}
 
 	return VMM_EFAIL;

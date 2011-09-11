@@ -35,6 +35,7 @@
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_CPU		"cpu"
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_GUEST	"guest"
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU	"vcpu"
+#define VMM_DEVTREE_DEVICE_TYPE_VAL_RAM		"ram"
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_ROM		"rom"
 #define VMM_DEVTREE_COMPATIBLE_ATTR_NAME	"compatible"
 #define VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME	"clock-frequency"
@@ -44,11 +45,8 @@
 #define VMM_DEVTREE_VMMINFO_NODE_NAME		"vmm"
 #define VMM_DEVTREE_MAX_VCPU_COUNT_ATTR_NAME	"max_vcpu_count"
 #define VMM_DEVTREE_MAX_GUEST_COUNT_ATTR_NAME	"max_guest_count"
-#define VMM_DEVTREE_TICK_DELAY_NSECS_ATTR_NAME	"tick_delay_nsecs"
-#define VMM_DEVTREE_MTERM_TIME_SLICE_ATTR_NAME	"mterm_time_slice"
 
 #define VMM_DEVTREE_HOSTINFO_NODE_NAME		"host"
-#define VMM_DEVTREE_HOST_IRQ_COUNT_ATTR_NAME	"host_irq_count"
 #define VMM_DEVTREE_CPUS_NODE_NAME		"cpus"
 #define VMM_DEVTREE_CPU_FREQ_MHZ_ATTR_NAME	"cpu_freq_mhz"
 
