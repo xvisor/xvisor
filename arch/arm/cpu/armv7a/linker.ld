@@ -121,6 +121,8 @@ SECTIONS
 		PROVIDE(_fiq_stack_end = .);
 	}
 
+	. = ALIGN(4096);
+	
 	.heap :
 	{
 		PROVIDE(_heap_start = .);
