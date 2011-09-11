@@ -49,23 +49,36 @@ struct vmm_host_aspace_ctrl {
 
 typedef struct vmm_host_aspace_ctrl vmm_host_aspace_ctrl_t;
 
-/** Map IO physical address to a virtual address */
-virtual_addr_t vmm_host_iomap(physical_addr_t pa, virtual_size_t sz);
+/** Map physical memory to a virtual memory */
+virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
+			       virtual_size_t sz, 
+			       u32 mem_flags);
 
-/** Unmap IO virtual address */
-int vmm_host_iounmap(virtual_addr_t va, virtual_size_t sz);
+/** Unmap virtual memory */
+int vmm_host_memunmap(virtual_addr_t va, 
+		      virtual_size_t sz);
 
-/** Map Memory physical address to a virtual address */
-virtual_addr_t vmm_host_memmap(physical_addr_t pa, virtual_size_t sz);
+/** Map IO physical memory to a virtual memory */
+static inline virtual_addr_t vmm_host_iomap(physical_addr_t pa, 
+					    virtual_size_t sz)
+{
+	return vmm_host_memmap(pa, sz, 
+			       (VMM_MEMORY_READABLE | 
+				VMM_MEMORY_WRITEABLE));
+}
 
-/** Unmap Memory virtual address */
-int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz);
+/** Unmap IO virtual memory */
+static inline int vmm_host_iounmap(virtual_addr_t va, 
+				   virtual_size_t sz)
+{
+	return vmm_host_memunmap(va, sz);
+}
 
-/** Read from host memory address space */
+/** Read from host physical memory */
 u32 vmm_host_physical_read(physical_addr_t hphys_addr, 
 			   void * dst, u32 len);
 
-/** Write to host memory address space */
+/** Write to host physical memory */
 u32 vmm_host_physical_write(physical_addr_t hphys_addr, 
 			    void * src, u32 len);
 
