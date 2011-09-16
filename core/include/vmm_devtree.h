@@ -43,8 +43,6 @@
 #define VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME	"virtual-reg"
 
 #define VMM_DEVTREE_VMMINFO_NODE_NAME		"vmm"
-#define VMM_DEVTREE_MAX_VCPU_COUNT_ATTR_NAME	"max_vcpu_count"
-#define VMM_DEVTREE_MAX_GUEST_COUNT_ATTR_NAME	"max_guest_count"
 
 #define VMM_DEVTREE_HOSTINFO_NODE_NAME		"host"
 #define VMM_DEVTREE_CPUS_NODE_NAME		"cpus"
@@ -65,8 +63,6 @@
 #define VMM_DEVTREE_GUEST_PHYS_ATTR_NAME	"guest_physical_addr"
 #define VMM_DEVTREE_HOST_PHYS_ATTR_NAME		"host_physical_addr"
 #define VMM_DEVTREE_PHYS_SIZE_ATTR_NAME		"physical_size"
-#define VMM_DEVTREE_HOST_VIRT_START_ATTR_NAME	"virt-addr-start"
-#define VMM_DEVTREE_HOST_VIRT_SIZE_ATTR_NAME	"virt-addr-size"
 
 enum vmm_devtree_nodetypes {
 	VMM_DEVTREE_NODETYPE_UNKNOWN = 0,
