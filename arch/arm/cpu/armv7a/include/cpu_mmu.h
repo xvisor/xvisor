@@ -30,7 +30,6 @@
 typedef struct cpu_page cpu_page_t;
 typedef struct cpu_l1tbl cpu_l1tbl_t;
 typedef struct cpu_l2tbl cpu_l2tbl_t;
-typedef struct cpu_mmu_ctrl cpu_mmu_ctrl_t;
 
 struct cpu_page {
 	virtual_addr_t va;
@@ -47,10 +46,11 @@ struct cpu_page {
 	u32 c:1;
 	u32 b:1;
 	u32 pad:15;
-} __attribute((packed));
+} __attribute__((packed));
 
 struct cpu_l2tbl {
 	struct dlist head;
+	int l2_num;
 	cpu_l1tbl_t *l1;
 	u32 imp;
 	u32 domain;
@@ -58,26 +58,17 @@ struct cpu_l2tbl {
 	virtual_addr_t tbl_va;
 	virtual_addr_t map_va;
 	u32 tte_cnt;
+
 };
 
 struct cpu_l1tbl {
 	struct dlist head;
+	int l1_num;
 	physical_addr_t tbl_pa;
 	virtual_addr_t tbl_va;
 	u32 tte_cnt;
 	u32 l2tbl_cnt;
 	struct dlist l2tbl_list;
-};
-
-struct cpu_mmu_ctrl {
-	u32 *pool_bmap;
-	u32 pool_bmap_len;
-	physical_addr_t pool_pa;
-	virtual_addr_t pool_va;
-	virtual_size_t pool_sz;
-	struct dlist l1tbl_list;
-	struct dlist l2tbl_list;
-	cpu_l1tbl_t *defl1;
 };
 
 /** Estimate good page size */
@@ -114,6 +105,8 @@ int cpu_mmu_chdacr(u32 new_dacr);
 int cpu_mmu_chttbr(cpu_l1tbl_t * l1);
 
 /** Initialize MMU */
-int cpu_mmu_init(void);
+virtual_size_t cpu_mmu_init(physical_addr_t resv_pa, 
+			    virtual_addr_t resv_va,
+		            virtual_size_t resv_sz);
 
 #endif /** _CPU_MMU_H */

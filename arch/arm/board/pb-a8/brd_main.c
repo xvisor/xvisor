@@ -35,6 +35,18 @@
 extern u32 dt_blob_start;
 virtual_addr_t pba8_sys_base;
 
+physical_addr_t vmm_board_ram_start(void)
+{
+	/* FIXME: */
+	return 0x800000;
+}
+
+physical_size_t vmm_board_ram_size(void)
+{
+	/* FIXME: */
+	return 0x800000;
+}
+
 int vmm_devtree_populate(vmm_devtree_node_t ** root,
 			 char **string_buffer, size_t * string_buffer_size)
 {

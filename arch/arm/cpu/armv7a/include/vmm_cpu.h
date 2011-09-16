@@ -39,7 +39,9 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 void vmm_vcpu_regs_dump(vmm_vcpu_t * vcpu);
 
 /** Address space related functions required by VMM core */
-int vmm_cpu_aspace_init(void);
+virtual_size_t vmm_cpu_aspace_init(physical_addr_t resv_pa, 
+				   virtual_addr_t resv_va,
+				   virtual_size_t resv_sz);
 int vmm_cpu_aspace_map(virtual_addr_t va, 
 			virtual_size_t sz, 
 			physical_addr_t pa,

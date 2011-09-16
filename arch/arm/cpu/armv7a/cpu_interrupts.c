@@ -25,10 +25,13 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_string.h>
+#include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 #include <cpu_inline_asm.h>
+#include <cpu_mmu.h>
 #include <cpu_vcpu_emulate_arm.h>
 #include <cpu_vcpu_emulate_thumb.h>
 #include <cpu_vcpu_cp15.h>
@@ -273,9 +276,11 @@ void do_fiq(vmm_user_regs_t * uregs)
 
 int vmm_cpu_irq_setup(void)
 {
+	int rc;
 	extern u32 _start_vect[];
 	u32 *vectors, *vectors_data;
 	u32 vec;
+	cpu_page_t vec_page;
 
 #if defined(CONFIG_ARMV7A_HIGHVEC)
 	/* Enable high vectors in SCTLR */
@@ -286,9 +291,32 @@ int vmm_cpu_irq_setup(void)
 #endif
 	vectors_data = vectors + CPU_IRQ_NR;
 
-	/* If vectors are tat correct location then do nothing */
+	/* If vectors are at correct location then do nothing */
 	if ((u32) _start_vect == (u32) vectors) {
 		return VMM_OK;
+	}
+
+	/* If vectors are not mapped in virtual memory then map them. */
+	vmm_memset(&vec_page, 0, sizeof(cpu_page_t));
+	rc = cpu_mmu_get_reserved_page((virtual_addr_t)vectors, &vec_page);
+	if (rc) {
+		rc = vmm_host_ram_alloc(&vec_page.pa, 
+					TTBL_L2TBL_SMALL_PAGE_SIZE, 
+					TRUE);
+		if (rc) {
+			return rc;
+		}
+		vec_page.va = (virtual_addr_t)vectors;
+		vec_page.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+		vec_page.imp = 0;
+		vec_page.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+		vec_page.ap = TTBL_AP_SRW_U;
+		vec_page.xn = 0;
+		vec_page.c = 0;
+		vec_page.b = 0;
+		if ((rc = cpu_mmu_map_reserved_page(&vec_page))) {
+			return rc;
+		}
 	}
 
 	/*

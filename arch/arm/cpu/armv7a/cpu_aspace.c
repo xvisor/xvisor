@@ -27,12 +27,14 @@
 #include <vmm_host_aspace.h>
 #include <cpu_mmu.h>
 
-int vmm_cpu_aspace_init(void)
+virtual_size_t vmm_cpu_aspace_init(physical_addr_t resv_pa, 
+				   virtual_addr_t resv_va,
+				   virtual_size_t resv_sz)
 {
 	/* We don't need to do any thing here 
 	 * everything will be done by cpu_mmu_init() 
 	 */
-	return cpu_mmu_init();
+	return cpu_mmu_init(resv_pa, resv_va, resv_sz);
 }
 
 int vmm_cpu_aspace_map(virtual_addr_t va, 

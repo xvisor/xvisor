@@ -30,6 +30,8 @@ SECTIONS
 {
 	. = CPU_TEXT_START;
 
+	. = ALIGN(0x100000); /* Need this to create proper sections */
+	
 	PROVIDE(_code_start = .);
 
 	.text :
@@ -121,17 +123,7 @@ SECTIONS
 		PROVIDE(_fiq_stack_end = .);
 	}
 
-	. = ALIGN(4096);
-	
-	.heap :
-	{
-		PROVIDE(_heap_start = .);
-		. = . + (CONFIG_HEAP_SIZE * 1024);
-		. = ALIGN(4);
-		PROVIDE(_heap_end = .);
-	}
-
-	. = ALIGN(16384);
+	. = ALIGN(0x100000); /* Need this to create proper sections */
 	
 	PROVIDE(_code_end = .);
 }
