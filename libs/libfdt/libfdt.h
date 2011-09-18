@@ -87,8 +87,29 @@ struct fdt_property {
 
 typedef struct fdt_property fdt_property_t;
 
-int libfdt_parse(virtual_addr_t fdt_addr,
-		     vmm_devtree_node_t ** root,
-		     char **string_buffer, size_t * string_buffer_size);
+struct fdt_fileinfo {
+	struct fdt_header * header;
+	char * data_ptr;
+	size_t data_size;
+	char * str_ptr;
+	size_t str_size;
+};
+
+typedef struct fdt_fileinfo fdt_fileinfo_t;
+
+int libfdt_parse_fileinfo(virtual_addr_t fdt_addr, 
+			  fdt_fileinfo_t * fdt);
+
+int libfdt_parse_devtree(fdt_fileinfo_t * fdt,
+			 vmm_devtree_node_t ** root,
+			 char **string_buffer, 
+			 size_t * string_buffer_size);
+
+fdt_node_header_t * libfdt_find_node(fdt_fileinfo_t * fdt, 
+				     const char * node_path);
+
+fdt_property_t * libfdt_get_property(fdt_fileinfo_t * fdt, 
+				     fdt_node_header_t * fdt_node, 
+				     const char * property);
 
 #endif /* __LIBFDT_H_ */
