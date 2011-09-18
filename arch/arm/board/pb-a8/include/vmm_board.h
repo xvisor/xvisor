@@ -42,8 +42,8 @@ int vmm_pic_irq_disable(u32 host_irq_no);
 int vmm_pic_init(void);
 
 /** RAM related functions required by VMM core */
-physical_addr_t vmm_board_ram_start(void);
-physical_size_t vmm_board_ram_size(void);
+int vmm_board_ram_start(physical_addr_t * addr);
+int vmm_board_ram_size(physical_size_t * size);
 
 /** Device tree related function required by VMM core */
 int vmm_devtree_populate(vmm_devtree_node_t ** root,

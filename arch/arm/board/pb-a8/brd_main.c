@@ -35,23 +35,84 @@
 extern u32 dt_blob_start;
 virtual_addr_t pba8_sys_base;
 
-physical_addr_t vmm_board_ram_start(void)
+int vmm_board_ram_start(physical_addr_t * addr)
 {
-	/* FIXME: */
-	return 0x800000;
+	int rc = VMM_OK;
+	fdt_fileinfo_t fdt;
+	fdt_node_header_t * fdt_node;
+	fdt_property_t * prop;
+	
+	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
+	if (rc) {
+		return rc;
+	}
+
+	fdt_node = libfdt_find_node(&fdt, 
+				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_HOSTINFO_NODE_NAME
+				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_MEMORY_NODE_NAME);
+	if (!fdt_node) {
+		return VMM_EFAIL;
+	}
+
+	prop = libfdt_get_property(&fdt, fdt_node,
+				   VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME);
+	if (!prop) {
+		return VMM_EFAIL;
+	}
+	*addr = *((physical_addr_t *)prop->data);
+
+	return VMM_OK;
 }
 
-physical_size_t vmm_board_ram_size(void)
+int vmm_board_ram_size(physical_size_t * size)
 {
-	/* FIXME: */
-	return 0x800000;
+	int rc = VMM_OK;
+	fdt_fileinfo_t fdt;
+	fdt_node_header_t * fdt_node;
+	fdt_property_t * prop;
+	
+	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
+	if (rc) {
+		return rc;
+	}
+
+	fdt_node = libfdt_find_node(&fdt, 
+				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_HOSTINFO_NODE_NAME
+				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_MEMORY_NODE_NAME);
+	if (!fdt_node) {
+		return VMM_EFAIL;
+	}
+
+	prop = libfdt_get_property(&fdt, fdt_node,
+				   VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME);
+	if (!prop) {
+		return VMM_EFAIL;
+	}
+	*size = *((physical_size_t *)prop->data);
+
+	return VMM_OK;
 }
 
 int vmm_devtree_populate(vmm_devtree_node_t ** root,
-			 char **string_buffer, size_t * string_buffer_size)
+			 char **string_buffer, 
+			 size_t * string_buffer_size)
 {
-	virtual_addr_t fdt_addr = (virtual_addr_t) & dt_blob_start;
-	return libfdt_parse(fdt_addr, root, string_buffer, string_buffer_size);
+	int rc = VMM_OK;
+	fdt_fileinfo_t fdt;
+	
+	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
+	if (rc) {
+		return rc;
+	}
+
+	return libfdt_parse_devtree(&fdt, 
+				    root, 
+				    string_buffer, 
+				    string_buffer_size);
 }
 
 int vmm_board_getclock(vmm_devtree_node_t * node, u32 * clock)

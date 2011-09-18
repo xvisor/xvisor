@@ -25,6 +25,13 @@
 			};
 		};
 
+		memory {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			physical_addr = <0x800000>;
+			physical_size = <0x800000>;
+		};
+
 		plb {
 			#address-cells = <1>;
 			#size-cells = <0>;
