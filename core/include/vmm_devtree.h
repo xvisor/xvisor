@@ -47,6 +47,9 @@
 #define VMM_DEVTREE_HOSTINFO_NODE_NAME		"host"
 #define VMM_DEVTREE_CPUS_NODE_NAME		"cpus"
 #define VMM_DEVTREE_CPU_FREQ_MHZ_ATTR_NAME	"cpu_freq_mhz"
+#define VMM_DEVTREE_MEMORY_NODE_NAME		"memory"
+#define VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME	"physical_addr"
+#define VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME	"physical_size"
 
 #define VMM_DEVTREE_GUESTINFO_NODE_NAME		"guests"
 #define VMM_DEVTREE_VCPUS_NODE_NAME		"vcpus"

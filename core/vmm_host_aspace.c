@@ -342,13 +342,17 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 
 int vmm_host_aspace_init(void)
 {
-	int ite;
+	int ite, rc;
 	u32 resv_size = 0x0, bmap_total_size = 0x0;
 
 	vmm_memset(&hactrl, 0, sizeof(hactrl));
 
-	hactrl.ram_start = vmm_board_ram_start();
-	hactrl.ram_size = vmm_board_ram_size();
+	if ((rc = vmm_board_ram_start(&hactrl.ram_start))) {
+		return rc;
+	}
+	if ((rc = vmm_board_ram_size(&hactrl.ram_size))) {
+		return rc;
+	}
 	if (hactrl.ram_start & VMM_PAGE_MASK) {
 		hactrl.ram_size -= VMM_PAGE_SIZE;
 		hactrl.ram_size += hactrl.ram_start & VMM_PAGE_MASK;
