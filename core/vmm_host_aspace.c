@@ -19,38 +19,69 @@
  * @file vmm_host_aspace.c
  * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @author Anup patel (anup@brainfault.org)
  * @brief Source file for host virtual address space management.
  */
 
 #include <vmm_error.h>
 #include <vmm_list.h>
 #include <vmm_cpu.h>
-#include <vmm_heap.h>
+#include <vmm_board.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
-#include <vmm_devtree.h>
 #include <vmm_host_aspace.h>
+
+struct vmm_host_aspace_ctrl {
+	u32 *vapool_bmap;
+	u32 vapool_bmap_len;
+	u32 vapool_bmap_free;
+	virtual_addr_t vapool_start;
+	virtual_size_t vapool_size;
+	u32 *ram_bmap;
+	u32 ram_bmap_len;
+	u32 ram_bmap_free;
+	physical_addr_t ram_start;
+	physical_size_t ram_size;
+};
+
+typedef struct vmm_host_aspace_ctrl vmm_host_aspace_ctrl_t;
 
 vmm_host_aspace_ctrl_t hactrl;
 
-int vmm_host_aspace_pool_alloc(virtual_size_t pool_sz, virtual_addr_t * pool_va)
+int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 {
-	u32 i, found, bcnt, bpos, bfree;
+	u32 i, found, binc, bcnt, bpos, bfree;
 
 	bcnt = 0;
-	while (pool_sz > 0) {
+	while (sz > 0) {
 		bcnt++;
-		if (pool_sz > VMM_PAGE_SIZE) {
-			pool_sz -= VMM_PAGE_SIZE;
+		if (sz > VMM_PAGE_SIZE) {
+			sz -= VMM_PAGE_SIZE;
 		} else {
-			pool_sz = 0;
+			sz = 0;
 		}
 	}
 
+	if (hactrl.vapool_bmap_free < bcnt) {
+		return VMM_EFAIL;
+	}
+
 	found = 0;
-	for (bpos = 0; bpos < (hactrl.pool_sz / VMM_PAGE_SIZE); bpos += bcnt) {
+	if (aligned && (sz > VMM_PAGE_SIZE)) {
+		bpos = (hactrl.vapool_start % sz);
+		if (bpos) {
+			bpos = VMM_ROUNDUP2_PAGE_SIZE(sz) / VMM_PAGE_SIZE;
+		}
+		binc = bcnt;
+	} else {
+		bpos = 0;
+		binc = 1;
+	}
+	for ( ; bpos < (hactrl.vapool_size / VMM_PAGE_SIZE); bpos += binc) {
 		bfree = 0;
 		for (i = bpos; i < (bpos + bcnt); i++) {
-			if (hactrl.pool_bmap[i / 32] & (0x1 << (31 - (i % 32)))) {
+			if (hactrl.vapool_bmap[i >> 5] & 
+			    (0x1 << (31 - (i & 0x1F)))) {
 				break;
 			}
 			bfree++;
@@ -64,102 +95,265 @@ int vmm_host_aspace_pool_alloc(virtual_size_t pool_sz, virtual_addr_t * pool_va)
 		return VMM_EFAIL;
 	}
 
-	*pool_va = hactrl.pool_va + bpos * VMM_PAGE_SIZE;
+	*va = hactrl.vapool_start + bpos * VMM_PAGE_SIZE;
 	for (i = bpos; i < (bpos + bcnt); i++) {
-		hactrl.pool_bmap[i / 32] |= (0x1 << (31 - (i % 32)));
+		hactrl.vapool_bmap[i >> 5] |= (0x1 << (31 - (i & 0x1F)));
+		hactrl.vapool_bmap_free--;
 	}
 
 	return VMM_OK;
 }
 
-int cpu_host_aspace_pool_free(virtual_addr_t pool_va, virtual_addr_t pool_sz)
+int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz)
 {
 	u32 i, bcnt, bpos;
 
-	if (pool_va < hactrl.pool_va ||
-	    (hactrl.pool_va + hactrl.pool_sz) <= pool_va) {
+	if (va < hactrl.vapool_start ||
+	    (hactrl.vapool_start + hactrl.vapool_size) <= va) {
 		return VMM_EFAIL;
 	}
 
 	bcnt = 0;
-	while (pool_sz > 0) {
+	while (sz > 0) {
 		bcnt++;
-		if (pool_sz > VMM_PAGE_SIZE) {
-			pool_sz -= VMM_PAGE_SIZE;
+		if (sz > VMM_PAGE_SIZE) {
+			sz -= VMM_PAGE_SIZE;
 		} else {
-			pool_sz = 0;
+			sz = 0;
 		}
 	}
 
-	bpos = (pool_va - hactrl.pool_va) / VMM_PAGE_SIZE;
+	bpos = (va - hactrl.vapool_start) / VMM_PAGE_SIZE;
 
 	for (i = bpos; i < (bpos + bcnt); i++) {
-		hactrl.pool_bmap[i / 32] &= ~(0x1 << (31 - (i % 32)));
+		hactrl.vapool_bmap[i >> 5] &= ~(0x1 << (31 - (i & 0x1F)));
+		hactrl.vapool_bmap_free++;
 	}
 
 	return VMM_OK;
 }
 
-virtual_addr_t vmm_host_iomap(physical_addr_t pa, virtual_size_t sz)
+virtual_addr_t vmm_host_vapool_base(void)
 {
-	int rc;
+	return hactrl.vapool_start;
+}
+
+bool vmm_host_vapool_page_isfree(virtual_addr_t va)
+{
+	u32 bpos;
+
+	if (va < hactrl.vapool_start ||
+	    (hactrl.vapool_start + hactrl.vapool_size) <= va) {
+		return TRUE;
+	}
+
+	bpos = (va - hactrl.vapool_start) / VMM_PAGE_SIZE;
+
+	if (hactrl.vapool_bmap[bpos >> 5] & (0x1 << (31 - (bpos & 0x1F)))) {
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+u32 vmm_host_vapool_free_page_count(void)
+{
+	return hactrl.vapool_bmap_free;
+}
+
+u32 vmm_host_vapool_total_page_count(void)
+{
+	return hactrl.vapool_size / VMM_PAGE_SIZE;
+}
+
+int vmm_host_ram_alloc(physical_addr_t * pa, physical_size_t sz, bool aligned)
+{
+	u32 i, found, binc, bcnt, bpos, bfree;
+
+	bcnt = 0;
+	while (sz > 0) {
+		bcnt++;
+		if (sz > VMM_PAGE_SIZE) {
+			sz -= VMM_PAGE_SIZE;
+		} else {
+			sz = 0;
+		}
+	}
+
+	if (hactrl.ram_bmap_free < bcnt) {
+		return VMM_EFAIL;
+	}
+
+	found = 0;
+	if (aligned && (sz > VMM_PAGE_SIZE)) {
+		bpos = (hactrl.ram_start % sz);
+		if (bpos) {
+			bpos = VMM_ROUNDUP2_PAGE_SIZE(sz) / VMM_PAGE_SIZE;
+		}
+		binc = bcnt;
+	} else {
+		bpos = 0;
+		binc = 1;
+	}
+	for ( ; bpos < (hactrl.ram_size / VMM_PAGE_SIZE); bpos += binc) {
+		bfree = 0;
+		for (i = bpos; i < (bpos + bcnt); i++) {
+			if (hactrl.ram_bmap[i >> 5] & 
+			    (0x1 << (31 - (i & 0x1F)))) {
+				break;
+			}
+			bfree++;
+		}
+		if (bfree == bcnt) {
+			found = 1;
+			break;
+		}
+	}
+	if (!found) {
+		return VMM_EFAIL;
+	}
+
+	*pa = hactrl.ram_start + bpos * VMM_PAGE_SIZE;
+	for (i = bpos; i < (bpos + bcnt); i++) {
+		hactrl.ram_bmap[i >> 5] |= (0x1 << (31 - (i & 0x1F)));
+		hactrl.ram_bmap_free--;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz)
+{
+	u32 i, bcnt, bpos, bfree;
+
+	if ((pa < hactrl.ram_start) ||
+	    ((hactrl.ram_start + hactrl.ram_size) <= pa)) {
+		return VMM_EFAIL;
+	}
+
+	bcnt = 0;
+	while (sz > 0) {
+		bcnt++;
+		if (sz > VMM_PAGE_SIZE) {
+			sz -= VMM_PAGE_SIZE;
+		} else {
+			sz = 0;
+		}
+	}
+
+	if (hactrl.ram_bmap_free < bcnt) {
+		return VMM_EFAIL;
+	}
+
+	bpos = (pa - hactrl.ram_start) / VMM_PAGE_SIZE;
+	bfree = 0;
+	for (i = bpos; i < (bpos + bcnt); i++) {
+		if (hactrl.ram_bmap[i >> 5] & 
+		    (0x1 << (31 - (i & 0x1F)))) {
+			break;
+		}
+		bfree++;
+	}
+
+	if (bfree != bcnt) {
+		return VMM_EFAIL;
+	}
+
+	for (i = bpos; i < (bpos + bcnt); i++) {
+		hactrl.ram_bmap[i >> 5] |= (0x1 << (31 - (i & 0x1F)));
+		hactrl.ram_bmap_free--;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_host_ram_free(physical_addr_t pa, physical_size_t sz)
+{
+	u32 i, bcnt, bpos;
+
+	if (pa < hactrl.ram_start ||
+	    (hactrl.ram_start + hactrl.ram_size) <= pa) {
+		return VMM_EFAIL;
+	}
+
+	bcnt = 0;
+	while (sz > 0) {
+		bcnt++;
+		if (sz > VMM_PAGE_SIZE) {
+			sz -= VMM_PAGE_SIZE;
+		} else {
+			sz = 0;
+		}
+	}
+
+	bpos = (pa - hactrl.ram_start) / VMM_PAGE_SIZE;
+
+	for (i = bpos; i < (bpos + bcnt); i++) {
+		hactrl.ram_bmap[i >> 5] &= ~(0x1 << (31 - (i & 0x1F)));
+		hactrl.ram_bmap_free++;
+	}
+
+	return VMM_OK;
+}
+
+physical_addr_t vmm_host_ram_base(void)
+{
+	return hactrl.ram_start;
+}
+
+bool vmm_host_ram_frame_isfree(physical_addr_t pa)
+{
+	u32 bpos;
+
+	if (pa < hactrl.ram_start ||
+	    (hactrl.ram_start + hactrl.ram_size) <= pa) {
+		return TRUE;
+	}
+
+	bpos = (pa - hactrl.ram_start) / VMM_PAGE_SIZE;
+
+	if (hactrl.ram_bmap[bpos >> 5] & (0x1 << (31 - (bpos & 0x1F)))) {
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+u32 vmm_host_ram_free_frame_count(void)
+{
+	return hactrl.ram_bmap_free;
+}
+
+u32 vmm_host_ram_total_frame_count(void)
+{
+	return hactrl.ram_size / VMM_PAGE_SIZE;
+}
+
+virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
+			       virtual_size_t sz, 
+			       u32 mem_flags)
+{
+	int rc, ite;
 	virtual_addr_t va;
+	physical_addr_t tpa;
 
-	sz = VMM_ROUNDUP2_PGSZ(sz);
+	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
 
-	rc = vmm_host_aspace_pool_alloc(sz, &va);
-	if (rc) {
+	if ((rc = vmm_host_vapool_alloc(&va, sz, FALSE))) {
 		/* Don't have space */
 		while (1) ;
 	}
 
-	rc = vmm_cpu_aspace_map(va, sz, pa & ~(VMM_PAGE_SIZE - 1), 
-				(VMM_MEMORY_READABLE | 
-				 VMM_MEMORY_WRITEABLE));
-	if (rc) {
-		/* We were not able to map physical address */
-		while (1) ;
-	}
-
-	return va + (pa & (VMM_PAGE_SIZE - 1));
-}
-
-int vmm_host_iounmap(virtual_addr_t va, virtual_size_t sz)
-{
-	int rc;
-
-	sz = VMM_ROUNDUP2_PGSZ(sz);
-	va &= ~(VMM_PAGE_SIZE - 1);
-
-	rc = cpu_host_aspace_pool_free(va, sz);
-	if (rc) {
-		return rc;
-	}
-
-	return vmm_cpu_aspace_unmap(va, sz);
-}
-
-virtual_addr_t vmm_host_memmap(physical_addr_t pa, virtual_size_t sz)
-{
-	int rc;
-	virtual_addr_t va;
-
-	sz = VMM_ROUNDUP2_PGSZ(sz);
-
-	rc = vmm_host_aspace_pool_alloc(sz, &va);
-	if (rc) {
-		/* Don't have space */
-		while (1) ;
-	}
-
-	rc = vmm_cpu_aspace_map(va, sz, pa & ~(VMM_PAGE_SIZE - 1), 
-				(VMM_MEMORY_CACHEABLE | 
-				 VMM_MEMORY_READABLE | 
-				 VMM_MEMORY_WRITEABLE |
-				 VMM_MEMORY_EXECUTABLE));
-	if (rc) {
-		/* We were not able to map physical address */
-		while (1) ;
+	tpa = pa & ~(VMM_PAGE_SIZE - 1);
+	for (ite = 0; ite < (sz / VMM_PAGE_SIZE); ite++) {
+		rc = vmm_cpu_aspace_map(va + ite * VMM_PAGE_SIZE, 
+					VMM_PAGE_SIZE, 
+					tpa + ite * VMM_PAGE_SIZE, 
+					mem_flags);
+		if (rc) {
+			/* We were not able to map physical address */
+			while (1) ;
+		}
 	}
 
 	return va + (pa & (VMM_PAGE_SIZE - 1));
@@ -167,17 +361,55 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa, virtual_size_t sz)
 
 int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
 {
-	int rc;
+	int rc, ite;
 
-	sz = VMM_ROUNDUP2_PGSZ(sz);
+	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
 	va &= ~(VMM_PAGE_SIZE - 1);
 
-	rc = cpu_host_aspace_pool_free(va, sz);
-	if (rc) {
+	for (ite = 0; ite < (sz / VMM_PAGE_SIZE); ite++) {
+		rc = vmm_cpu_aspace_unmap(va + ite * VMM_PAGE_SIZE, 
+					  VMM_PAGE_SIZE);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	if ((rc = vmm_host_vapool_free(va, sz))) {
 		return rc;
 	}
 
-	return vmm_cpu_aspace_unmap(va, sz);
+	return VMM_OK;
+}
+
+virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags)
+{
+	int rc = VMM_OK;
+	physical_addr_t pa = 0x0;
+
+	rc = vmm_host_ram_alloc(&pa, page_count * VMM_PAGE_SIZE, FALSE);
+	if (rc) {
+		return 0x0;
+	}
+
+	return vmm_host_memmap(pa, page_count * VMM_PAGE_SIZE, mem_flags);
+}
+
+int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count)
+{
+	int rc = VMM_OK;
+	physical_addr_t pa = 0x0;
+
+	page_va &= ~VMM_PAGE_MASK;
+
+	if ((rc = vmm_cpu_aspace_va2pa(page_va, &pa))) {
+		return rc;
+	}
+
+	if ((rc = vmm_host_memunmap(page_va, page_count * VMM_PAGE_SIZE))) {
+		return rc;
+	}
+
+	return vmm_host_ram_free(pa, page_count * VMM_PAGE_SIZE);
 }
 
 u32 vmm_host_physical_read(physical_addr_t hphys_addr, 
@@ -199,7 +431,9 @@ u32 vmm_host_physical_read(physical_addr_t hphys_addr,
 		to_read = (to_read < (len - bytes_read)) ? 
 			   to_read : (len - bytes_read);
 
-		src = vmm_host_memmap(hphys_addr, VMM_PAGE_SIZE);
+		src = vmm_host_memmap(hphys_addr, 
+				      VMM_PAGE_SIZE, 
+				      VMM_MEMORY_READABLE);
 		vmm_memcpy(dst, (void *)src, to_read);
 		vmm_host_memunmap(src, VMM_PAGE_SIZE);
 
@@ -230,7 +464,9 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 		to_write = (to_write < (len - bytes_written)) ? 
 			    to_write : (len - bytes_written);
 
-		dst = vmm_host_memmap(hphys_addr, VMM_PAGE_SIZE);
+		dst = vmm_host_memmap(hphys_addr, 
+				      VMM_PAGE_SIZE, 
+				      VMM_MEMORY_WRITEABLE);
 		vmm_memcpy((void *)dst, src, to_write);
 		vmm_host_memunmap(dst, VMM_PAGE_SIZE);
 
@@ -244,38 +480,96 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 
 int vmm_host_aspace_init(void)
 {
-	vmm_devtree_node_t *node;
-	const char *attrval;
+	int ite, last, max, rc;
+	physical_addr_t resv_pa = 0x0;
+	virtual_addr_t resv_va = 0x0;
+	u32 resv_sz = 0x0, bmap_total_size = 0x0;
 
 	vmm_memset(&hactrl, 0, sizeof(hactrl));
 
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!node) {
+	hactrl.vapool_start = vmm_code_vaddr();
+	hactrl.vapool_size = vmm_code_size() + (CONFIG_VAPOOL_SIZE << 20);
+	if (hactrl.vapool_start & VMM_PAGE_MASK) {
+		hactrl.vapool_size -= VMM_PAGE_SIZE;
+		hactrl.vapool_size += hactrl.vapool_start & VMM_PAGE_MASK;
+		hactrl.vapool_start += VMM_PAGE_SIZE;
+		hactrl.vapool_start -= hactrl.vapool_start & VMM_PAGE_MASK;
+	}
+	if (hactrl.vapool_size & VMM_PAGE_MASK) {
+		hactrl.vapool_size -= hactrl.vapool_size & VMM_PAGE_MASK;
+	}
+	hactrl.vapool_bmap_len = hactrl.vapool_size / (VMM_PAGE_SIZE * 32);
+	hactrl.vapool_bmap_len += 1;
+	hactrl.vapool_bmap_free = hactrl.vapool_size / VMM_PAGE_SIZE;
+
+	if ((rc = vmm_board_ram_start(&hactrl.ram_start))) {
+		return rc;
+	}
+	if ((rc = vmm_board_ram_size(&hactrl.ram_size))) {
+		return rc;
+	}
+	if (hactrl.ram_start & VMM_PAGE_MASK) {
+		hactrl.ram_size -= VMM_PAGE_SIZE;
+		hactrl.ram_size += hactrl.ram_start & VMM_PAGE_MASK;
+		hactrl.ram_start += VMM_PAGE_SIZE;
+		hactrl.ram_start -= hactrl.ram_start & VMM_PAGE_MASK;
+	}
+	if (hactrl.ram_size & VMM_PAGE_MASK) {
+		hactrl.ram_size -= hactrl.ram_size & VMM_PAGE_MASK;
+	}
+	hactrl.ram_bmap_len = hactrl.ram_size / (VMM_PAGE_SIZE * 32);
+	hactrl.ram_bmap_len += 1;
+	hactrl.ram_bmap_free = hactrl.ram_size / VMM_PAGE_SIZE;
+
+	bmap_total_size = hactrl.vapool_bmap_len + hactrl.ram_bmap_len;
+	bmap_total_size *= sizeof(u32);
+	bmap_total_size = VMM_ROUNDUP2_PAGE_SIZE(bmap_total_size);
+	resv_pa = hactrl.ram_start;
+	resv_va = vmm_code_vaddr() + vmm_code_size();
+	resv_sz = bmap_total_size;
+	if ((rc = vmm_cpu_aspace_init(&resv_pa, &resv_va, &resv_sz))) {
+		return rc;
+	}
+	if (resv_sz < bmap_total_size) {
+		return VMM_EFAIL;
+	}
+	if ((hactrl.vapool_size <= resv_sz) || 
+	    (hactrl.ram_size <= resv_sz)) {
 		return VMM_EFAIL;
 	}
 
-	attrval = vmm_devtree_attrval(node,
-				      VMM_DEVTREE_HOST_VIRT_START_ATTR_NAME);
-	if (!attrval) {
-		return VMM_EFAIL;
+	hactrl.vapool_bmap = (u32 *)resv_va;
+	vmm_memset(hactrl.vapool_bmap, 0, sizeof(u32) * hactrl.vapool_bmap_len);
+	max = ((hactrl.vapool_start + hactrl.vapool_size) / VMM_PAGE_SIZE);
+	ite = ((vmm_code_vaddr() - hactrl.vapool_start) / VMM_PAGE_SIZE);
+	last = ite + (vmm_code_size() / VMM_PAGE_SIZE);
+	for ( ; (ite < last) && (ite < max); ite++) {
+		hactrl.vapool_bmap[ite >> 5] |= (0x1 << (31 - (ite & 0x1F)));
+		hactrl.vapool_bmap_free--;
+	}
+	ite = ((resv_va - hactrl.vapool_start) / VMM_PAGE_SIZE);
+	last = ite + (resv_sz / VMM_PAGE_SIZE);
+	for ( ; (ite < last) && (ite < max); ite++) {
+		hactrl.vapool_bmap[ite >> 5] |= (0x1 << (31 - (ite & 0x1F)));
+		hactrl.vapool_bmap_free--;
 	}
 
-	hactrl.pool_va = *((virtual_addr_t *) attrval);
-
-	attrval = vmm_devtree_attrval(node,
-				      VMM_DEVTREE_HOST_VIRT_SIZE_ATTR_NAME);
-
-	if (!attrval) {
-		return VMM_EFAIL;
+	hactrl.ram_bmap = &hactrl.vapool_bmap[hactrl.vapool_bmap_len];
+	vmm_memset(hactrl.ram_bmap, 0, sizeof(u32) * hactrl.ram_bmap_len);
+	max = ((hactrl.ram_start + hactrl.ram_size) / VMM_PAGE_SIZE);
+	ite = ((vmm_code_paddr() - hactrl.ram_start) / VMM_PAGE_SIZE);
+	last = ite + (vmm_code_size() / VMM_PAGE_SIZE);
+	for ( ; (ite < last) && (ite < max); ite++) {
+		hactrl.ram_bmap[ite >> 5] |= (0x1 << (31 - (ite & 0x1F)));
+		hactrl.ram_bmap_free--;
+	}
+	ite = ((resv_pa - hactrl.ram_start) / VMM_PAGE_SIZE);
+	last = ite + (resv_sz / VMM_PAGE_SIZE);
+	for ( ; (ite < last) && (ite < max); ite++) {
+		hactrl.ram_bmap[ite >> 5] |= (0x1 << (31 - (ite & 0x1F)));
+		hactrl.ram_bmap_free--;
 	}
 
-	hactrl.pool_sz = *((virtual_size_t *) attrval);
-
-	hactrl.pool_bmap_len = (hactrl.pool_sz / (VMM_PAGE_SIZE * 32) + 1);
-	hactrl.pool_bmap = vmm_malloc(sizeof(u32) * hactrl.pool_bmap_len);
-	vmm_memset(hactrl.pool_bmap, 0, sizeof(u32) * hactrl.pool_bmap_len);
-
-	return vmm_cpu_aspace_init();
+	return VMM_OK;
 }
 

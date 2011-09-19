@@ -25,6 +25,8 @@
 commands-objs-y+= cmd_version.o
 commands-objs-y+= cmd_reset.o
 commands-objs-y+= cmd_shutdown.o
+commands-objs-y+= cmd_vapool.o
+commands-objs-y+= cmd_ram.o
 commands-objs-y+= cmd_devtree.o
 commands-objs-y+= cmd_vcpu.o
 commands-objs-y+= cmd_guest.o

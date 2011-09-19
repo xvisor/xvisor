@@ -22,14 +22,15 @@
  * @brief header file for buddy allocator in VMM
  */
 
-#ifndef __VMM_BUDDY_ALLOC_H_
-#define __VMM_BUDDY_ALLOC_H_
+#ifndef __VMM_BUDDY_H_
+#define __VMM_BUDDY_H_
 
 #include <vmm_chardev.h>
 
-#define BINS_MAX_ORDER		(CONFIG_BINS_MAX_ORDER)
-#define MIN_BLOCK_SIZE		(0x01UL << CONFIG_MIN_BLOCK_SIZE_SHIFT)	/* Minimum alloc of bus width */
-#define MAX_BLOCK_SIZE		(MIN_BLOCK_SIZE << (BINS_MAX_ORDER - 1))	/* Max block size of 4 KiB */
+#define HOUSE_KEEPING_PERCENT	(CONFIG_BUDDY_HOUSE_KEEPING_PERCENT)
+#define MIN_BLOCK_SIZE		(0x01UL << CONFIG_BUDDY_MIN_BLOCK_SIZE_SHIFT)	/* Minimum alloc of bus width */
+#define MAX_BLOCK_SIZE		(0x01UL << CONFIG_BUDDY_MAX_BLOCK_SIZE_SHIFT)	/* Maximum alloc of bus width */
+#define BINS_MAX_ORDER		(CONFIG_BUDDY_MAX_BLOCK_SIZE_SHIFT - CONFIG_BUDDY_MIN_BLOCK_SIZE_SHIFT + 1)
 
 struct vmm_free_area {
 	struct dlist head;
@@ -46,13 +47,23 @@ struct vmm_alloced_area {
 } __attribute__ ((packed));
 
 struct vmm_heap {
+	struct vmm_free_area * hk_fn_array;
+	unsigned int hk_fn_count;
+	struct vmm_alloced_area * hk_an_array;
+	unsigned int hk_an_count;
+	struct vmm_alloced_area current;
+	void *mem_start;
+	unsigned int mem_size;
 	void *heap_start;
-	void *heap_end;
 	unsigned int heap_size;
 	struct vmm_free_area free_area[BINS_MAX_ORDER];	/* Bins holding free area. */
 } __attribute__ ((packed));
 
-void print_current_buddy_state(vmm_chardev_t *cdev);
-void print_current_hk_state(vmm_chardev_t *cdev);
+int buddy_init(void *heap_start, unsigned int heap_size);
+void *buddy_malloc(unsigned int size);
+void *buddy_zalloc(unsigned int size);
+void buddy_free(void *ptr);
+void buddy_print_state(vmm_chardev_t *cdev);
+void buddy_print_hk_state(vmm_chardev_t *cdev);
 
-#endif /* __VMM_BUDDY_ALLOC_H_ */
+#endif /* __VMM_BUDDY_H_ */
