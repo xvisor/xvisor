@@ -26,10 +26,8 @@
 		};
 
 		memory {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			physical_addr = <0x800000>;
-			physical_size = <0x800000>;
+			physical_addr = <0x00000000>;
+			physical_size = <0x08000000>; /* 128 MB */
 		};
 
 		nbridge {
@@ -164,8 +162,8 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x40000000>;
-					host_physical_addr = <0x00100000>;
-					physical_size = <0x00300000>; /* 3 MB */
+					host_physical_addr = <0x00800000>;
+					physical_size = <0x00800000>; /* 8 MB */
 					device_type = "rom";
 				};
 			};

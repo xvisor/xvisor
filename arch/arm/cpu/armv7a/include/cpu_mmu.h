@@ -104,9 +104,4 @@ int cpu_mmu_chdacr(u32 new_dacr);
 /** Change translation table base register */
 int cpu_mmu_chttbr(cpu_l1tbl_t * l1);
 
-/** Initialize MMU */
-virtual_size_t cpu_mmu_init(physical_addr_t resv_pa, 
-			    virtual_addr_t resv_va,
-		            virtual_size_t resv_sz);
-
 #endif /** _CPU_MMU_H */

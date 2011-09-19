@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Fri Sep 16 20:29:30 2011
+# Mon Sep 19 09:56:40 2011
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
@@ -30,6 +30,7 @@ CONFIG_EMU_REALVIEW=y
 #
 CONFIG_MAX_VCPU_COUNT=8
 CONFIG_MAX_GUEST_COUNT=2
+CONFIG_VAPOOL_SIZE=8
 CONFIG_BANNER_NONE=y
 # CONFIG_BANNER_DEFAULT is not set
 

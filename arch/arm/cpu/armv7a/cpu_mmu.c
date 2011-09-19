@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_string.h>
+#include <vmm_host_aspace.h>
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
@@ -830,16 +831,70 @@ int cpu_mmu_chttbr(cpu_l1tbl_t * l1)
 	return VMM_OK;
 }
 
+int vmm_cpu_aspace_map(virtual_addr_t va, 
+			virtual_size_t sz, 
+			physical_addr_t pa,
+			u32 mem_flags)
+{
+	cpu_page_t p;
+	vmm_memset(&p, 0, sizeof(p));
+	p.pa = pa;
+	p.va = va;
+	p.sz = sz;
+	p.imp = 0;
+	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+	if (mem_flags & (VMM_MEMORY_READABLE | VMM_MEMORY_WRITEABLE)) {
+		p.ap = TTBL_AP_SRW_U;
+	} else if (mem_flags & VMM_MEMORY_READABLE) {
+		p.ap = TTBL_AP_SR_U;
+	} else if (mem_flags & VMM_MEMORY_WRITEABLE) {
+		p.ap = TTBL_AP_SRW_U;
+	} else {
+		p.ap = TTBL_AP_S_U;
+	}
+	p.xn = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
+	p.c = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;
+	p.b = 0;
+	return cpu_mmu_map_reserved_page(&p);
+}
+
+int vmm_cpu_aspace_unmap(virtual_addr_t va, 
+			 virtual_size_t sz)
+{
+	int rc;
+	cpu_page_t p;
+	rc = cpu_mmu_get_reserved_page(va, &p);
+	if (rc) {
+		return rc;
+	}
+	return cpu_mmu_unmap_reserved_page(&p);
+}
+
+int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
+{
+	int rc = VMM_OK;
+	cpu_page_t p;
+
+	if ((rc = cpu_mmu_get_reserved_page(va, &p))) {
+		return rc;
+	}
+
+	*pa = p.pa + (va & (p.sz - 1));
+
+	return VMM_OK;
+}
+
 extern u8 _code_start;
 extern u8 _code_end;
 
-virtual_size_t cpu_mmu_init(physical_addr_t resv_pa, 
-			    virtual_addr_t resv_va,
-		            virtual_size_t resv_sz)
+int vmm_cpu_aspace_init(physical_addr_t * resv_pa, 
+			virtual_addr_t * resv_va,
+			virtual_size_t * resv_sz)
 {
+	int rc = VMM_EFAIL;
 	u32 dacr, i;
 	virtual_addr_t va, l1_base_va, l2_base_va;
-	virtual_size_t sz, tsz;
+	virtual_size_t sz;
 	physical_addr_t pa, l1_base_pa, l2_base_pa;
 	cpu_page_t respg;
 
@@ -863,15 +918,23 @@ virtual_size_t cpu_mmu_init(physical_addr_t resv_pa,
 	pa = (physical_addr_t) &_code_start;
 	va = (virtual_addr_t) &_code_start;
 	sz = (virtual_size_t) (&_code_end - &_code_start);
+	if (pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
+		rc = VMM_EFAIL;
+		goto mmu_init_error;
+	}
+	if (va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
+		rc = VMM_EFAIL;
+		goto mmu_init_error;
+	}
+	if (!sz) {
+		rc = VMM_EFAIL;
+		goto mmu_init_error;
+	}
+	if (sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
+		rc = VMM_EFAIL;
+		goto mmu_init_error;
+	}
 	while (sz) {
-		if (va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-			tsz = va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1);
-			tsz = TTBL_L1TBL_SECTION_PAGE_SIZE - tsz;
-			pa &= ~(TTBL_L1TBL_SECTION_PAGE_SIZE - 1);
-			va &= ~(TTBL_L1TBL_SECTION_PAGE_SIZE - 1);
-		} else {
-			tsz = TTBL_L1TBL_SECTION_PAGE_SIZE;
-		}
 		vmm_memset(&respg, 0, sizeof(respg));
 		respg.pa = pa;
 		respg.va = va;
@@ -882,60 +945,70 @@ virtual_size_t cpu_mmu_init(physical_addr_t resv_pa,
 		respg.xn = 0;
 		respg.c = 1;
 		respg.b = 0;
-		if (cpu_mmu_map_reserved_page(&respg)) {
+		if ((rc = cpu_mmu_map_reserved_page(&respg))) {
 			goto mmu_init_error;
 		}
-		sz = (sz < tsz) ? 0 : (sz - tsz);
+		sz -= TTBL_L1TBL_SECTION_PAGE_SIZE;
 		pa += TTBL_L1TBL_SECTION_PAGE_SIZE;
 		va += TTBL_L1TBL_SECTION_PAGE_SIZE;
 	}
 
 	/* Compute additional reserved space required */
-	if (resv_va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		goto mmu_init_error;
-	}
-	if (resv_pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		goto mmu_init_error;
-	}
-	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
-	mmuctrl.l1_bmap = (u8 *)(resv_va + resv_sz);
-	resv_sz += TTBL_MAX_L1TBL_COUNT;
-	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
-	mmuctrl.l1_array = (cpu_l1tbl_t *)(resv_va + resv_sz);
-	resv_sz += sizeof(cpu_l1tbl_t) * TTBL_MAX_L1TBL_COUNT;
-	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
-	mmuctrl.l2_bmap = (u8 *)(resv_va + resv_sz);
-	resv_sz += TTBL_MAX_L2TBL_COUNT;
-	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
-	mmuctrl.l2_array = (cpu_l2tbl_t *)(resv_va + resv_sz);
-	resv_sz += sizeof(cpu_l2tbl_t) * TTBL_MAX_L2TBL_COUNT;
-	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
-	if (resv_sz & (TTBL_L1TBL_SIZE - 1)) {
-		resv_sz += TTBL_L1TBL_SIZE - (resv_sz & (TTBL_L1TBL_SIZE - 1));
-	}
-	l1_base_va = resv_va + resv_sz;
-	l1_base_pa = resv_pa + resv_sz;
-	resv_sz += TTBL_L1TBL_SIZE * TTBL_MAX_L1TBL_COUNT;
-	l2_base_va = resv_va + resv_sz;
-	l2_base_pa = resv_pa + resv_sz;
-	resv_sz += TTBL_L2TBL_SIZE * TTBL_MAX_L2TBL_COUNT;
-	if (resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		resv_sz += TTBL_L1TBL_SECTION_PAGE_SIZE - 
-			   (resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
-	}
-	
-	/* Final sanity checks on reserved area */
+	pa = (physical_addr_t) &_code_start;
 	va = (virtual_addr_t) &_code_start;
 	sz = (virtual_size_t) (&_code_end - &_code_start);
-	if ((va < resv_va && resv_va < (va + sz)) ||
-	    (va < (resv_va + resv_sz) && (resv_va + resv_sz) < (va + sz))) {
-		goto mmu_init_error;
+	if ((va <= *resv_va) && (*resv_va < (va + sz))) {
+		*resv_va = va + sz;
+	} else if ((va <= (*resv_va + *resv_sz)) && 
+		   ((*resv_va + *resv_sz) < (va + sz))) {
+		*resv_va = va + sz;
 	}
-
+	if ((pa <= *resv_pa) && (*resv_pa < (pa + sz))) {
+		*resv_pa = pa + sz;
+	} else if ((pa <= (*resv_pa + *resv_sz)) && 
+		   ((*resv_pa + *resv_sz) < (pa + sz))) {
+		*resv_pa = pa + sz;
+	}
+	if (*resv_va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
+		*resv_va += TTBL_L1TBL_SECTION_PAGE_SIZE - 
+			    (*resv_va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
+	}
+	if (*resv_pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
+		*resv_pa += TTBL_L1TBL_SECTION_PAGE_SIZE - 
+			    (*resv_pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
+	}
+	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
+	mmuctrl.l1_bmap = (u8 *)(*resv_va + *resv_sz);
+	*resv_sz += TTBL_MAX_L1TBL_COUNT;
+	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
+	mmuctrl.l1_array = (cpu_l1tbl_t *)(*resv_va + *resv_sz);
+	*resv_sz += sizeof(cpu_l1tbl_t) * TTBL_MAX_L1TBL_COUNT;
+	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
+	mmuctrl.l2_bmap = (u8 *)(*resv_va + *resv_sz);
+	*resv_sz += TTBL_MAX_L2TBL_COUNT;
+	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
+	mmuctrl.l2_array = (cpu_l2tbl_t *)(*resv_va + *resv_sz);
+	*resv_sz += sizeof(cpu_l2tbl_t) * TTBL_MAX_L2TBL_COUNT;
+	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
+	if (*resv_sz & (TTBL_L1TBL_SIZE - 1)) {
+		*resv_sz += TTBL_L1TBL_SIZE - 
+			    (*resv_sz & (TTBL_L1TBL_SIZE - 1));
+	}
+	l1_base_va = *resv_va + *resv_sz;
+	l1_base_pa = *resv_pa + *resv_sz;
+	*resv_sz += TTBL_L1TBL_SIZE * TTBL_MAX_L1TBL_COUNT;
+	l2_base_va = *resv_va + *resv_sz;
+	l2_base_pa = *resv_pa + *resv_sz;
+	*resv_sz += TTBL_L2TBL_SIZE * TTBL_MAX_L2TBL_COUNT;
+	if (*resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
+		*resv_sz += TTBL_L1TBL_SECTION_PAGE_SIZE - 
+			    (*resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
+	}
+	
 	/* Map space for reserved area */
-	pa = resv_pa;
-	va = resv_va;
-	sz = resv_sz;
+	pa = *resv_pa;
+	va = *resv_va;
+	sz = *resv_sz;
 	while (sz) {
 		vmm_memset(&respg, 0, sizeof(respg));
 		respg.pa = pa;
@@ -947,7 +1020,7 @@ virtual_size_t cpu_mmu_init(physical_addr_t resv_pa,
 		respg.xn = 0;
 		respg.c = 1;
 		respg.b = 0;
-		if (cpu_mmu_map_reserved_page(&respg)) {
+		if ((rc = cpu_mmu_map_reserved_page(&respg))) {
 			goto mmu_init_error;
 		}
 		sz -= TTBL_L1TBL_SECTION_PAGE_SIZE;
@@ -960,7 +1033,7 @@ virtual_size_t cpu_mmu_init(physical_addr_t resv_pa,
 	write_dacr(dacr);
 
 	/* Change translation table base address to default L1 */
-	if (cpu_mmu_chttbr(&mmuctrl.defl1)) {
+	if ((rc = cpu_mmu_chttbr(&mmuctrl.defl1))) {
 		goto mmu_init_error;
 	}
 
@@ -990,8 +1063,8 @@ virtual_size_t cpu_mmu_init(physical_addr_t resv_pa,
 		mmuctrl.l2_array[i].tbl_va = l2_base_va + i * TTBL_L2TBL_SIZE;
 	}
 
-	return resv_sz;
+	return VMM_OK;
 
 mmu_init_error:
-	return 0;
+	return rc;
 }

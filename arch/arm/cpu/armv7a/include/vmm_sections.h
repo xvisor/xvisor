@@ -35,7 +35,7 @@ extern u8 _modtbl_end;
 #define __lock_section		__attribute__((section(".spinlock.text")))
 #define __modtbl_section	__attribute__((section(".modtbl")))
 
-static inline virtual_addr_t vmm_modtbl_start(void)
+static inline virtual_addr_t vmm_modtbl_vaddr(void)
 {
 	return (virtual_addr_t) & _modtbl_start;
 }
@@ -45,14 +45,19 @@ static inline virtual_size_t vmm_modtbl_size(void)
 	return (virtual_size_t) (&_modtbl_end - &_modtbl_start);
 }
 
-static inline virtual_addr_t vmm_vapool_start(void)
+static inline virtual_addr_t vmm_code_vaddr(void)
 {
-	return (virtual_addr_t) &_code_end;
+	return (virtual_addr_t) &_code_start;
 }
 
-static inline virtual_size_t vmm_vapool_size(void)
+static inline physical_addr_t vmm_code_paddr(void)
 {
-	return 0x800000;
+	return (physical_addr_t) &_code_start;
+}
+
+static inline virtual_size_t vmm_code_size(void)
+{
+	return (virtual_size_t) (&_code_end - &_code_start);
 }
 
 #endif /* __VMM_SECTIONS_H__ */
