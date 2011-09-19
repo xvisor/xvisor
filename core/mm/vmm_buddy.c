@@ -31,8 +31,8 @@
 #endif
 
 #include <vmm_list.h>
-#include <vmm_sections.h>
 #include <vmm_heap.h>
+#include <vmm_host_aspace.h>
 #include <mm/vmm_buddy.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
@@ -520,5 +520,20 @@ void vmm_free(void *pointer)
 
 int vmm_heap_init(void)
 {
-	return buddy_init((void *)vmm_heap_start(), vmm_heap_size());
+	u32 heap_size = 0, heap_page_count = 0, heap_mem_flags;
+	void * heap_start = NULL;
+
+	heap_size = CONFIG_HEAP_SIZE * 1024;
+	heap_page_count =  VMM_ROUNDUP2_PAGE_SIZE(heap_size) / VMM_PAGE_SIZE;
+	heap_mem_flags = 0;
+	heap_mem_flags |= VMM_MEMORY_READABLE; 
+	heap_mem_flags |= VMM_MEMORY_WRITEABLE; 
+	heap_mem_flags |= VMM_MEMORY_CACHEABLE;
+	heap_start = (void *)vmm_host_alloc_pages(heap_page_count, 
+						  heap_mem_flags);
+	if (!heap_start) {
+		return VMM_EFAIL;
+	}
+
+	return buddy_init(heap_start, heap_size);
 }

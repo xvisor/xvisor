@@ -32,7 +32,6 @@ cpu-objs-y+= cpu_mmu.o
 cpu-objs-y+= cpu_locks.o
 cpu-objs-y+= cpu_atomic.o
 cpu-objs-y+= cpu_interrupts.o
-cpu-objs-y+= cpu_aspace.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_coproc.o
 cpu-objs-y+= cpu_vcpu_cp15.o
