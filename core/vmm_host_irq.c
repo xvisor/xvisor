@@ -25,9 +25,19 @@
 #include <vmm_cpu.h>
 #include <vmm_board.h>
 #include <vmm_error.h>
-#include <vmm_heap.h>
 #include <vmm_string.h>
+#include <vmm_spinlocks.h>
+#include <vmm_heap.h>
 #include <vmm_host_irq.h>
+
+struct vmm_host_irqs_ctrl {
+	vmm_spinlock_t lock;
+	u32 irq_count;
+	bool *enabled;
+	vmm_host_irq_handler_t *handler;
+};
+
+typedef struct vmm_host_irqs_ctrl vmm_host_irqs_ctrl_t;
 
 vmm_host_irqs_ctrl_t hirqctrl;
 
@@ -108,7 +118,7 @@ int vmm_host_irq_init(void)
 	hirqctrl.irq_count = vmm_pic_irq_count();
 
 	/* Allocate memory for enabled array */
-	hirqctrl.enabled = vmm_malloc(sizeof(bool) * hirqctrl.irq_count);
+	hirqctrl.enabled = (bool *)vmm_malloc(sizeof(bool) * hirqctrl.irq_count);
 
 	/* Set default values to enabled array */
 	for (ite = 0; ite < hirqctrl.irq_count; ite++) {
@@ -116,8 +126,8 @@ int vmm_host_irq_init(void)
 	}
 
 	/* Allocate memory for handler array */
-	hirqctrl.handler = vmm_malloc(sizeof(vmm_host_irq_handler_t) *
-				      hirqctrl.irq_count);
+	hirqctrl.handler = vmm_malloc(sizeof(vmm_host_irq_handler_t) * 
+					hirqctrl.irq_count);
 
 	/* Reset the handler array */
 	for (ite = 0; ite < hirqctrl.irq_count; ite++) {

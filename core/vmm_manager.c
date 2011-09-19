@@ -26,7 +26,6 @@
 #include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_cpu.h>
-#include <vmm_devtree.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_manager.h>
@@ -504,8 +503,6 @@ int vmm_manager_guest_destroy(vmm_guest_t * guest)
 int vmm_manager_init(void)
 {
 	u32 vnum, gnum;
-	const char *attrval;
-	vmm_devtree_node_t *vnode;
 
 	/* Reset the manager control structure */
 	vmm_memset(&mngr, 0, sizeof(mngr));
@@ -521,28 +518,11 @@ int vmm_manager_init(void)
 	INIT_LIST_HEAD(&mngr.orphan_vcpu_list);
 	INIT_LIST_HEAD(&mngr.guest_list);
 
-	/* Get VMM information node */
-	vnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				    VMM_DEVTREE_VMMINFO_NODE_NAME);
-	if (!vnode) {
-		return VMM_EFAIL;
-	}
-
 	/* Get max vcpu count */
-	attrval = vmm_devtree_attrval(vnode,
-				      VMM_DEVTREE_MAX_VCPU_COUNT_ATTR_NAME);
-	if (!attrval) {
-		return VMM_EFAIL;
-	}
-	mngr.max_vcpu_count = *((u32 *) attrval);
+	mngr.max_vcpu_count = CONFIG_MAX_VCPU_COUNT;
 
 	/* Get max guest count */
-	attrval = vmm_devtree_attrval(vnode,
-				      VMM_DEVTREE_MAX_GUEST_COUNT_ATTR_NAME);
-	if (!attrval) {
-		return VMM_EFAIL;
-	}
-	mngr.max_guest_count = *((u32 *) attrval);
+	mngr.max_guest_count = CONFIG_MAX_GUEST_COUNT;
 
 	/* Allocate memory for guest instances */
 	mngr.guest_array =

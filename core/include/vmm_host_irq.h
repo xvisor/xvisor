@@ -26,18 +26,8 @@
 
 #include <vmm_types.h>
 #include <vmm_regs.h>
-#include <vmm_spinlocks.h>
 
 typedef int (*vmm_host_irq_handler_t) (u32 irq_no, vmm_user_regs_t * regs);
-
-struct vmm_host_irqs_ctrl {
-	vmm_spinlock_t lock;
-	u32 irq_count;
-	bool *enabled;
-	vmm_host_irq_handler_t *handler;
-};
-
-typedef struct vmm_host_irqs_ctrl vmm_host_irqs_ctrl_t;
 
 /** Execute host interrupts */
 int vmm_host_irq_exec(u32 cpu_irq_no, vmm_user_regs_t * regs);

@@ -48,7 +48,7 @@ void cmd_stdio_usage(vmm_chardev_t *cdev)
 void cmd_stdio_curdev(vmm_chardev_t *cdev)
 {
 	vmm_chardev_t *cd = vmm_stdio_device();
-	if (!cdev) {
+	if (!cd) {
 		vmm_cprintf(cdev, "Device: ---\n");
 	} else {
 		vmm_cprintf(cdev, "Device: %s\n", cd->name);
@@ -59,8 +59,8 @@ void cmd_stdio_chdev(vmm_chardev_t *cdev, char *chardev_name)
 {
 	int ret;
 	vmm_chardev_t *cd = vmm_chardev_find(chardev_name);
-	if (cdev) {
-		vmm_cprintf(cdev, "New device: %s\n", cdev->name);
+	if (cd) {
+		vmm_cprintf(cdev, "New device: %s\n", cd->name);
 		if ((ret = vmm_stdio_change_device(cd))) {
 			vmm_cprintf(cdev, "Failed to change device %s\n", 
 					  cd->name);

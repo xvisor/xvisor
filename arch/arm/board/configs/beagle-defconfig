@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Sun Sep 11 10:28:11 2011
+# Mon Sep 19 09:57:22 2011
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
@@ -20,7 +20,6 @@ CONFIG_ARMV7A=y
 # ARMv7a Options
 #
 # CONFIG_ARMV7A_HIGHVEC is not set
-CONFIG_ARMV7A_TTBL_POOL_SIZE=131072
 CONFIG_ARMV7A_VTLB_ENTRY_COUNT=64
 # CONFIG_BOARD_PB_A8 is not set
 CONFIG_BOARD_BEAGLE=y
@@ -29,6 +28,9 @@ CONFIG_OMAP3=y
 #
 # General Setup
 #
+CONFIG_MAX_VCPU_COUNT=8
+CONFIG_MAX_GUEST_COUNT=2
+CONFIG_VAPOOL_SIZE=8
 CONFIG_BANNER_NONE=y
 # CONFIG_BANNER_DEFAULT is not set
 

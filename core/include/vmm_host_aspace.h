@@ -19,6 +19,7 @@
  * @file vmm_host_aspace.h
  * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @author Anup patel (anup@brainfault.org)
  * @brief Header file for virtual address space management.
  */
 
@@ -27,11 +28,13 @@
 
 #include <vmm_types.h>
 
-#define VMM_PAGE_SHIFT		12
-#define VMM_PAGE_SIZE		(0x01UL << VMM_PAGE_SHIFT)
-#define VMM_PAGE_MASK		~(VMM_PAGE_SIZE - 1)
-#define VMM_PG_FN(x)		(x & VMM_PAGE_MASK)
-#define VMM_ROUNDUP2_PGSZ(x)	((x & ~VMM_PAGE_MASK) ? VMM_PG_FN(x) + VMM_PAGE_SIZE : x)
+#define VMM_PAGE_SHIFT			12
+#define VMM_PAGE_SIZE			(0x01UL << VMM_PAGE_SHIFT)
+#define VMM_PAGE_MASK			(VMM_PAGE_SIZE - 1)
+#define VMM_PAGE_NUM(x)			((x) & ~VMM_PAGE_MASK)
+#define VMM_ROUNDUP2_PAGE_SIZE(x)	(((x) & VMM_PAGE_MASK) ? \
+					VMM_PAGE_NUM(x) + VMM_PAGE_SIZE : \
+					(x))
 
 enum vmm_host_memory_flags {
 	VMM_MEMORY_CACHEABLE=0x00000001,
@@ -40,14 +43,48 @@ enum vmm_host_memory_flags {
 	VMM_MEMORY_EXECUTABLE=0x00000008
 };
 
-struct vmm_host_aspace_ctrl {
-	u32 *pool_bmap;
-	u32 pool_bmap_len;
-	virtual_addr_t pool_va;
-	virtual_size_t pool_sz;
-};
+/** Allocate virtual space from virtual address pool */
+int vmm_host_vapool_alloc(virtual_addr_t * va, 
+			  virtual_size_t sz, 
+			  bool aligned);
 
-typedef struct vmm_host_aspace_ctrl vmm_host_aspace_ctrl_t;
+/** Free virtual space to virtual address pool */
+int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz);
+
+/** Base address of virtual address pool */
+virtual_addr_t vmm_host_vapool_base(void);
+
+/** Check if a virtual address is free */
+bool vmm_host_vapool_page_isfree(virtual_addr_t va);
+
+/** Free page count of virtual address pool */
+u32 vmm_host_vapool_free_page_count(void);
+
+/** Total page count of virtual address pool */
+u32 vmm_host_vapool_total_page_count(void);
+
+/** Allocate physical space from RAM */
+int vmm_host_ram_alloc(physical_addr_t * pa, 
+		       physical_size_t sz, 
+		       bool aligned);
+
+/** Reserve a portion of RAM forcefully */
+int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz);
+
+/** Free physical space to RAM */
+int vmm_host_ram_free(physical_addr_t pa, physical_size_t sz);
+
+/** Base address of RAM */
+virtual_addr_t vmm_host_ram_base(void);
+
+/** Check if a RAM physical address is free */
+bool vmm_host_ram_frame_isfree(virtual_addr_t va);
+
+/** Free frame count of RAM */
+u32 vmm_host_ram_free_frame_count(void);
+
+/** Total frame count of RAM */
+u32 vmm_host_ram_total_frame_count(void);
 
 /** Map physical memory to a virtual memory */
 virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
@@ -73,6 +110,12 @@ static inline int vmm_host_iounmap(virtual_addr_t va,
 {
 	return vmm_host_memunmap(va, sz);
 }
+
+/** Allocate pages from host memory */
+virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags);
+
+/** Free pages back to host memory */
+int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count);
 
 /** Read from host physical memory */
 u32 vmm_host_physical_read(physical_addr_t hphys_addr, 
