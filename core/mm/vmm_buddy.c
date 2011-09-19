@@ -524,7 +524,7 @@ int vmm_heap_init(void)
 	void * heap_start = NULL;
 
 	heap_size = CONFIG_HEAP_SIZE * 1024;
-	heap_page_count =  VMM_ROUNDUP2_PGSZ(heap_size) / VMM_PAGE_SIZE;
+	heap_page_count =  VMM_ROUNDUP2_PAGE_SIZE(heap_size) / VMM_PAGE_SIZE;
 	heap_mem_flags = 0;
 	heap_mem_flags |= VMM_MEMORY_READABLE; 
 	heap_mem_flags |= VMM_MEMORY_WRITEABLE; 

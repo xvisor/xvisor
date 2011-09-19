@@ -53,7 +53,7 @@ int vmm_modules_init(void)
 	vmm_memset(&modules_ctrl, 0, sizeof(modules_ctrl));
 
 	/* Initialize the control structure */
-	modules_ctrl.table = (vmm_module_t *) vmm_modtbl_start();
+	modules_ctrl.table = (vmm_module_t *) vmm_modtbl_vaddr();
 	modules_ctrl.table_size = vmm_modtbl_size() / sizeof(vmm_module_t);
 	modules_ctrl.mod_count = 0;
 

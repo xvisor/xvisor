@@ -224,6 +224,7 @@ int vmm_guest_aspace_probe(vmm_guest_t *guest)
 
 int vmm_guest_aspace_init(vmm_guest_t *guest)
 {
+	int rc;
 	const char *attrval;
 	struct dlist *l;
 	vmm_devtree_node_t *gnode = guest->node;
@@ -314,6 +315,14 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 		reg->phys_size = *((physical_size_t *) attrval);
 
 		reg->priv = NULL;
+
+		if (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) {
+			rc = vmm_host_ram_reserve(reg->hphys_addr, 
+						  reg->phys_size);
+			if (rc) {
+				return rc;
+			}
+		}
 
 		list_add_tail(&guest->aspace.reg_list, &reg->head);
 	}
