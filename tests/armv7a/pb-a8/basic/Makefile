@@ -83,7 +83,7 @@ $(obj_dir)/qemu.img: $(build_dir)/vmm.bin $(obj_dir)/arm_test.bin.patched
 	@$(call memimg) \
 		-a 0x10000 -o $(obj_dir)/qemu.img \
 		$(build_dir)/vmm.bin@0x10000 \
-		$(obj_dir)/arm_test.bin.patched@0x100000
+		$(obj_dir)/arm_test.bin.patched@0x800000
 
 # Generate ARM_TEST code
 $(obj_dir)/arm_test.bin.patched: $(obj_dir)/arm_test.elf.patched
