@@ -29,41 +29,36 @@
 	 * The _start function ensures that Xvisor exectues from intended
 	 * base address provided at compile time.
 	 */
-	.section .expvect, "ax", %progbits
+	.section .entry, "ax", %progbits
 	.globl _start
 _start:
-	add	r0, pc, #-0x8
-	ldr	r2, __code_start
-	ldr	r3, __code_end
-	sub	r4, r3, r2
-	add	r1, r0, r4
+	add	r4, pc, #-0x8
+	ldr	r6, __code_start
+	ldr	r7, __code_end
+	sub	r2, r7, r6
+	add	r5, r4, r2
 	/*
-	 * r0 -> load start
-	 * r1 -> load end
-	 * r2 -> execution start
-	 * r3 -> execution end
-	 * r4 -> code size
+	 * r4 -> load start
+	 * r5 -> load end
+	 * r6 -> execution start
+	 * r7 -> execution end
+	 * r2 -> code size
 	 * We need to ensure that when we jump to reset code, we are executing
 	 * from intended execution address. If necessary do relocation from
 	 * load memory to execution memory.
 	 */
-	cmp	r0, r2
+	cmp	r4, r6
 	beq	_start_done
-	cmp	r1, r2
+	cmp	r5, r6
 	blt	_start_relocate
-	cmp	r3, r0
+	cmp	r7, r4
 	blt	_start_relocate
 _start_hang:
 	b	.
 _start_relocate:
-	mov	r5, #0
-_start_loop:
-	cmp	r5, r4
-	bge	_start_done
-	ldmia	r0!, {r7 - r10}
-	stmia	r2!, {r7 - r10}
-	add	r5, r5, #16
-	b	_start_loop
+	mov	r0, r4
+	mov	r1, r6
+	bl	_copy
 _start_done:
 	ldr	pc, __reset
 __code_start:
@@ -72,9 +67,41 @@ __code_end:
 	.word _code_end
 
 	/* 
+	 * Copy data from source to destination
+	 * Arguments:
+	 *  r0 -> source address
+	 *  r1 -> destination address
+	 *  r2 -> byte count
+	 * Return:
+	 *  r0 -> bytes copied
+	 */
+	.section .entry, "ax", %progbits
+	.globl _copy
+_copy:
+	mov	r3, #0
+_copy_loop:
+	cmp	r3, r2
+	beq	_copy_done
+	cmp	r3, #16
+	bge	_copy_chunk
+_copy_word:
+	ldmia	r0!, {r8}
+	stmia	r1!, {r8}
+	add	r3, r3, #4
+	b	_copy_loop
+_copy_chunk:
+	ldmia	r0!, {r8 - r11}
+	stmia	r1!, {r8 - r11}
+	add	r3, r3, #16
+	b	_copy_loop
+_copy_done:
+	mov	r0, r3
+	bx	lr
+
+	/* 
 	 * Exception vector start.
 	 */
-	.section .expvect, "ax", %progbits
+	.section .entry, "ax", %progbits
 	.globl _start_vect
 _start_vect:
 	ldr	pc, __reset
