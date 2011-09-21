@@ -23,6 +23,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <cpu_defines.h>
@@ -38,9 +39,13 @@ u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) defl1_mem[TTBL_L1TBL_SIZE];
 
 struct cpu_mmu_ctrl {
 	cpu_l1tbl_t defl1;
+	virtual_addr_t l1_base_va;
+	physical_addr_t l1_base_pa;
 	cpu_l1tbl_t * l1_array;
 	u8 * l1_bmap;
 	u32 l1_alloc_count;
+	virtual_addr_t l2_base_va;
+	physical_addr_t l2_base_pa;
 	cpu_l2tbl_t * l2_array;
 	u8 * l2_bmap;
 	u32 l2_alloc_count;
@@ -53,18 +58,21 @@ typedef struct cpu_mmu_ctrl cpu_mmu_ctrl_t;
 cpu_mmu_ctrl_t mmuctrl;
 
 /** Find L2 page table at given physical address from L1 page table */
-cpu_l2tbl_t *cpu_mmu_l2tbl_find_tbl_pa(cpu_l1tbl_t * l1, physical_addr_t tbl_pa)
+cpu_l2tbl_t *cpu_mmu_l2tbl_find_tbl_pa(cpu_l1tbl_t * l1, 
+				       physical_addr_t tbl_pa)
 {
-	struct dlist *lentry;
+	u32 tmp;
 	cpu_l2tbl_t *l2;
 
 	if (!l1) {
 		return NULL;
 	}
 
-	list_for_each(lentry, &l1->l2tbl_list) {
-		l2 = list_entry(lentry, cpu_l2tbl_t, head);
-		if (l2->tbl_pa == tbl_pa) {
+	tmp = mmuctrl.l2_base_pa + TTBL_MAX_L2TBL_COUNT * TTBL_L2TBL_SIZE;
+	if ((mmuctrl.l2_base_pa <= tbl_pa) && (tbl_pa < tmp)) {
+		tmp = (tbl_pa - mmuctrl.l2_base_pa) / TTBL_L2TBL_SIZE;
+		l2 = &mmuctrl.l2_array[tmp];
+		if (l2->l1->l1_num == l1->l1_num) {
 			return l2;
 		}
 	}
@@ -884,18 +892,15 @@ int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	return VMM_OK;
 }
 
-extern u8 _code_start;
-extern u8 _code_end;
-
 int vmm_cpu_aspace_init(physical_addr_t * resv_pa, 
 			virtual_addr_t * resv_va,
 			virtual_size_t * resv_sz)
 {
 	int rc = VMM_EFAIL;
-	u32 dacr, i;
-	virtual_addr_t va, l1_base_va, l2_base_va;
+	u32 i, val;
+	virtual_addr_t va;
 	virtual_size_t sz;
-	physical_addr_t pa, l1_base_pa, l2_base_pa;
+	physical_addr_t pa;
 	cpu_page_t respg;
 
 	/* Reset the memory of MMU control structure */
@@ -906,57 +911,30 @@ int vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	INIT_LIST_HEAD(&mmuctrl.l2tbl_list);
 
 	/* Handcraft default translation table */
-	vmm_memset(defl1_mem, 0, sizeof(defl1_mem));
 	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
-	mmuctrl.defl1.tbl_pa = (physical_addr_t)&defl1_mem;
-	mmuctrl.defl1.tbl_va = (physical_addr_t)&defl1_mem;
-	vmm_memset((void *)mmuctrl.defl1.tbl_va, 0, TTBL_L1TBL_SIZE);
+	mmuctrl.defl1.tbl_va = (virtual_addr_t)&defl1_mem;
+	mmuctrl.defl1.tbl_pa = vmm_code_paddr() + 
+			       ((virtual_addr_t)&defl1_mem - vmm_code_vaddr());
+	if (vmm_code_paddr() != vmm_code_vaddr()) {
+		val = vmm_code_paddr() >> TTBL_L1TBL_TTE_OFFSET_SHIFT;
+		val = val << 2;
+		*((u32 *)(mmuctrl.defl1.tbl_va + val)) = 0x0;
+		invalid_tlb();
+	}
 	mmuctrl.defl1.tte_cnt = 0;
+	for (i = 0; i < TTBL_L1TBL_SIZE; i += 4) {
+		val = *((u32 *)(mmuctrl.defl1.tbl_va + i));
+		if ((val & TTBL_L1TBL_TTE_TYPE_MASK) != 
+				TTBL_L1TBL_TTE_TYPE_FAULT) {
+			mmuctrl.defl1.tte_cnt++;
+		}
+	}
 	mmuctrl.defl1.l2tbl_cnt = 0;
 
-	/* Map space for code/data */
-	pa = (physical_addr_t) &_code_start;
-	va = (virtual_addr_t) &_code_start;
-	sz = (virtual_size_t) (&_code_end - &_code_start);
-	if (pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		rc = VMM_EFAIL;
-		goto mmu_init_error;
-	}
-	if (va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		rc = VMM_EFAIL;
-		goto mmu_init_error;
-	}
-	if (!sz) {
-		rc = VMM_EFAIL;
-		goto mmu_init_error;
-	}
-	if (sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		rc = VMM_EFAIL;
-		goto mmu_init_error;
-	}
-	while (sz) {
-		vmm_memset(&respg, 0, sizeof(respg));
-		respg.pa = pa;
-		respg.va = va;
-		respg.sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
-		respg.imp = 0;
-		respg.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
-		respg.ap = TTBL_AP_SRW_U;
-		respg.xn = 0;
-		respg.c = 1;
-		respg.b = 0;
-		if ((rc = cpu_mmu_map_reserved_page(&respg))) {
-			goto mmu_init_error;
-		}
-		sz -= TTBL_L1TBL_SECTION_PAGE_SIZE;
-		pa += TTBL_L1TBL_SECTION_PAGE_SIZE;
-		va += TTBL_L1TBL_SECTION_PAGE_SIZE;
-	}
-
 	/* Compute additional reserved space required */
-	pa = (physical_addr_t) &_code_start;
-	va = (virtual_addr_t) &_code_start;
-	sz = (virtual_size_t) (&_code_end - &_code_start);
+	pa = vmm_code_paddr();
+	va = vmm_code_vaddr();
+	sz = vmm_code_size();
 	if ((va <= *resv_va) && (*resv_va < (va + sz))) {
 		*resv_va = va + sz;
 	} else if ((va <= (*resv_va + *resv_sz)) && 
@@ -994,11 +972,11 @@ int vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 		*resv_sz += TTBL_L1TBL_SIZE - 
 			    (*resv_sz & (TTBL_L1TBL_SIZE - 1));
 	}
-	l1_base_va = *resv_va + *resv_sz;
-	l1_base_pa = *resv_pa + *resv_sz;
+	mmuctrl.l1_base_va = *resv_va + *resv_sz;
+	mmuctrl.l1_base_pa = *resv_pa + *resv_sz;
 	*resv_sz += TTBL_L1TBL_SIZE * TTBL_MAX_L1TBL_COUNT;
-	l2_base_va = *resv_va + *resv_sz;
-	l2_base_pa = *resv_pa + *resv_sz;
+	mmuctrl.l2_base_va = *resv_va + *resv_sz;
+	mmuctrl.l2_base_pa = *resv_pa + *resv_sz;
 	*resv_sz += TTBL_L2TBL_SIZE * TTBL_MAX_L2TBL_COUNT;
 	if (*resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
 		*resv_sz += TTBL_L1TBL_SECTION_PAGE_SIZE - 
@@ -1028,19 +1006,6 @@ int vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 		va += TTBL_L1TBL_SECTION_PAGE_SIZE;
 	}
 
-	/* Initialized domains (Dom0 for VMM) */
-	dacr = TTBL_DOM_CLIENT;
-	write_dacr(dacr);
-
-	/* Change translation table base address to default L1 */
-	if ((rc = cpu_mmu_chttbr(&mmuctrl.defl1))) {
-		goto mmu_init_error;
-	}
-
-	/* Enable MMU && Caches */
-	write_sctlr(read_sctlr() |
-		    (SCTLR_M_MASK | SCTLR_I_MASK | SCTLR_C_MASK));
-
 	/* Setup up l1 array */
 	vmm_memset(mmuctrl.l1_bmap, 0x0, TTBL_MAX_L1TBL_COUNT);
 	vmm_memset(mmuctrl.l1_array, 0x0, 
@@ -1048,8 +1013,10 @@ int vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	for (i = 0; i < TTBL_MAX_L1TBL_COUNT; i++) {
 		INIT_LIST_HEAD(&mmuctrl.l1_array[i].head);
 		mmuctrl.l1_array[i].l1_num = i;
-		mmuctrl.l1_array[i].tbl_pa = l1_base_pa + i * TTBL_L1TBL_SIZE;
-		mmuctrl.l1_array[i].tbl_va = l1_base_va + i * TTBL_L1TBL_SIZE;
+		mmuctrl.l1_array[i].tbl_pa = mmuctrl.l1_base_pa + 
+						i * TTBL_L1TBL_SIZE;
+		mmuctrl.l1_array[i].tbl_va = mmuctrl.l1_base_va + 
+						i * TTBL_L1TBL_SIZE;
 	}
 
 	/* Setup up l2 array */
@@ -1059,8 +1026,10 @@ int vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	for (i = 0; i < TTBL_MAX_L2TBL_COUNT; i++) {
 		INIT_LIST_HEAD(&mmuctrl.l2_array[i].head);
 		mmuctrl.l2_array[i].l2_num = i;
-		mmuctrl.l2_array[i].tbl_pa = l2_base_pa + i * TTBL_L2TBL_SIZE;
-		mmuctrl.l2_array[i].tbl_va = l2_base_va + i * TTBL_L2TBL_SIZE;
+		mmuctrl.l2_array[i].tbl_pa = mmuctrl.l2_base_pa + 
+						i * TTBL_L2TBL_SIZE;
+		mmuctrl.l2_array[i].tbl_va = mmuctrl.l2_base_va + 
+						i * TTBL_L2TBL_SIZE;
 	}
 
 	return VMM_OK;
