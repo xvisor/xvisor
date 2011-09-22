@@ -771,7 +771,9 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 	}
 	if (vcpu->is_normal) {
 		/* Switch CP15 context */
-		cpu_vcpu_cp15_context_switch(tvcpu, vcpu, regs);
+		cpu_vcpu_cp15_set_mmu_context(vcpu);
+	} else {
+		cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
 	}
 	/* Restore user registers & banked registers */
 	regs->pc = vcpu->uregs->pc;

@@ -230,6 +230,24 @@ int cpu_mmu_l2tbl_free(cpu_l2tbl_t * l2)
 	return VMM_OK;
 }
 
+/** Find L1 page table at given physical address */
+cpu_l1tbl_t *cpu_mmu_l1tbl_find_tbl_pa(physical_addr_t tbl_pa)
+{
+	u32 tmp;
+
+	if (tbl_pa == mmuctrl.defl1.tbl_pa) {
+		return &mmuctrl.defl1;
+	}
+
+	tmp = mmuctrl.l1_base_pa + TTBL_MAX_L1TBL_COUNT * TTBL_L1TBL_SIZE;
+	if ((mmuctrl.l1_base_pa <= tbl_pa) && (tbl_pa < tmp)) {
+		tmp = (tbl_pa - mmuctrl.l1_base_pa) / TTBL_L1TBL_SIZE;
+		return &mmuctrl.l1_array[tmp];
+	}
+
+	return NULL;
+}
+
 u32 cpu_mmu_best_page_size(virtual_addr_t va, physical_addr_t pa, u32 availsz)
 {
 	if (!(va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) &&
@@ -663,8 +681,6 @@ int cpu_mmu_get_reserved_page(virtual_addr_t va, cpu_page_t * pg)
 int cpu_mmu_unmap_reserved_page(cpu_page_t * pg)
 {
 	int rc;
-	struct dlist *le;
-	cpu_l1tbl_t *l1;
 
 	if (!pg) {
 		return VMM_EFAIL;
@@ -673,12 +689,6 @@ int cpu_mmu_unmap_reserved_page(cpu_page_t * pg)
 	if ((rc = cpu_mmu_unmap_page(&mmuctrl.defl1, pg))) {
 		return rc;
 	}
-	list_for_each(le, &mmuctrl.l1tbl_list) {
-		l1 = list_entry(le, cpu_l1tbl_t, head);
-		if ((rc = cpu_mmu_unmap_page(l1, pg))) {
-			return rc;
-		}
-	}
 
 	return VMM_OK;
 }
@@ -686,8 +696,6 @@ int cpu_mmu_unmap_reserved_page(cpu_page_t * pg)
 int cpu_mmu_map_reserved_page(cpu_page_t * pg)
 {
 	int rc;
-	struct dlist *le;
-	cpu_l1tbl_t *l1;
 
 	if (!pg) {
 		return VMM_EFAIL;
@@ -695,12 +703,6 @@ int cpu_mmu_map_reserved_page(cpu_page_t * pg)
 
 	if ((rc = cpu_mmu_map_page(&mmuctrl.defl1, pg))) {
 		return rc;
-	}
-	list_for_each(le, &mmuctrl.l1tbl_list) {
-		l1 = list_entry(le, cpu_l1tbl_t, head);
-		if ((rc = cpu_mmu_map_page(l1, pg))) {
-			return rc;
-		}
 	}
 
 	return VMM_OK;
@@ -783,6 +785,9 @@ int cpu_mmu_l1tbl_free(cpu_l1tbl_t * l1)
 	if (!l1) {
 		return VMM_EFAIL;
 	}
+	if (l1->tbl_pa == mmuctrl.defl1.tbl_pa) {
+		return VMM_EFAIL;
+	}
 
 	while (!list_empty(&l1->l2tbl_list)) {
 		le = list_pop(&l1->l2tbl_list);
@@ -796,6 +801,20 @@ int cpu_mmu_l1tbl_free(cpu_l1tbl_t * l1)
 	mmuctrl.l1_alloc_count--;
 
 	return VMM_OK;
+}
+
+cpu_l1tbl_t *cpu_mmu_l1tbl_default(void)
+{
+	return &mmuctrl.defl1;
+}
+
+cpu_l1tbl_t *cpu_mmu_l1tbl_current(void)
+{
+	u32 ttbr0;
+
+	ttbr0 = read_ttbr0();
+
+	return cpu_mmu_l1tbl_find_tbl_pa(ttbr0);
 }
 
 int cpu_mmu_chdacr(u32 new_dacr)
