@@ -22,59 +22,254 @@
  * @brief various entry points (booting, reset, exceptions) to xvisor
  */
 
+#include <cpu_defines.h>
 #include <cpu_asm_macro.h>
 
 	/* 
 	 * Xvisor could be loaded any where in memory by boot loaders.
-	 * The _start function ensures that Xvisor exectues from intended
-	 * base address provided at compile time.
+	 * The _start ensures that Xvisor exectues from intended base
+	 * address provided at compile time.
 	 */
-	.section .expvect, "ax", %progbits
+	.section .entry, "ax", %progbits
 	.globl _start
 _start:
-	add	r0, pc, #-0x8
-	ldr	r2, __code_start
-	ldr	r3, __code_end
-	sub	r4, r3, r2
-	add	r1, r0, r4
 	/*
-	 * r0 -> load start
-	 * r1 -> load end
-	 * r2 -> execution start
-	 * r3 -> execution end
-	 * r4 -> code size
-	 * We need to ensure that when we jump to reset code, we are executing
-	 * from intended execution address. If necessary do relocation from
-	 * load memory to execution memory.
+	 * r4 -> load start
+	 * r5 -> load end
+	 * r6 -> execution start
+	 * r7 -> execution end
+	 * r2 -> code size
 	 */
-	cmp	r0, r2
-	beq	_start_done
+	add	r4, pc, #-0x8
+	ldr	r6, __exec_start
+	ldr	r7, __exec_end
+	sub	r2, r7, r6
+	add	r5, r4, r2
+	ldr	r0, __load_start
+	sub	r0, r0, r6
+	add	r0, r0, r4
+	str	r4, [r0]
+	ldr	r0, __load_end
+	sub	r0, r0, r6
+	add	r0, r0, r4
+	str	r5, [r0]
+	/*
+	 * Hang if execution start is not 1 MB aligned
+	 */
+	mov	r0, r6
+	bfc	r0, #0, #20
+	cmp	r0, r6
+	blt	_start_hang
+	/*
+	 * Hang if execution end is not 1 MB aligned
+	 */
+	mov	r0, r7
+	bfc	r0, #0, #20
+	cmp	r0, r7
+	blt	_start_hang
+	/*
+	 * Relocate code if load start is not 1 MB aligned
+	 */
+	mov	r0, r4
+	bfc	r0, #0, #20
+	cmp	r0, r4
+	beq	_start_mmu_init
+_start_relocate:
+	/*
+	 * Relocate copy function at end after load end address
+	 */
+	ldr	r0, __copy_start
+	ldr	r1, __copy_end
+	sub	r2, r1, r0
+	sub	r0, r0, r6
+	add	r0, r0, r4
+	mov	r1, r5
+	bl	_copy
+	/*
+	 * Use newly relocated copy function to relocate entire code
+	 */
+	mov	r0, r4
+	mov	r1, r5
+	sub	r2, r5, r4
+	mov	r1, r4
+	bfc	r1, #0, #20
+	bl	_start_nextpc1
+_start_nextpc1:
+	add	lr, lr, #16
+	sub	lr, lr, r4
+	add	lr, lr, r1
+	bx	r5
+	/*
+	 * Update load start and load end
+	 * r4 -> new load start
+	 * r5 -> new load end
+	 */
+	mov	r0, r4
+	bfc	r0, #0, #20
+	subs	r1, r4, r0
+	subs	r4, r4, r1
+	subs	r5, r5, r1
+	ldr	r0, __load_start
+	sub	r0, r0, r6
+	add	r0, r0, r4
+	str	r4, [r0]
+	ldr	r0, __load_end
+	sub	r0, r0, r6
+	add	r0, r0, r4
+	str	r5, [r0]
+_start_mmu_init:
+	/* 
+	 * Clear default Level1 Table 
+	 */
+	/* r0 -> default Level1 Table base address */
+	ldr	r0, __defl1_mem
+	sub	r0, r0, r6
+	add	r0, r0, r4
+	/* r1 -> size of Level1 Table */
+	mov	r1, #1
+	lsl	r1, #14
+	/* r2 -> zero value to store */
+	mov	r2, #0
+_start_mmu_defl1_clear:
+	str	r2, [r0]
+	add	r0, r0, #4
+	sub	r1, r1, #4
+	cmp	r1, #0
+	bgt	_start_mmu_defl1_clear
+	/*
+	 * Create entries in default Level1 Table
+	 * for execution & load addresses
+	 */
+	/* r0 -> default Level1 Table base address */
+	ldr	r0, __defl1_mem
+	sub	r0, r0, r6
+	add	r0, r0, r4
+	/* r3 -> entry attributes */
+	ldr	r3, __mmu_section_attr
+	/* r1 -> load entry start address */
+	mov	r1, r4
+	lsr	r1, #18 /* r1 >> 20, r1 << 2 */
+	add	r1, r0, r1
+	/* Setup load entry */	
+	orr	r2, r3, r4
+	str	r2, [r1]
+	/* r1 -> execute entry start address */
+	mov	r1, r6
+	lsr	r1, #18 /* r1 >> 20, r1 << 2 */
+	add	r1, r0, r1
+	/* r2 -> execute entry end address */
+	sub	r2, r7, r6
+	lsr	r2, #18 /* r2 >> 20, r2 << 2 */
+	add	r2, r1, r2
+	/* r5 -> tempory value */
+	mov	r5, #0
+_start_mmu_defl1_set:
+	orr	r5, r3, r4
+	str	r5, [r1]
+	lsr	r4, #20
+	add	r4, r4, #1
+	lsl	r4, #20
+	add	r1, r1, #4
 	cmp	r1, r2
-	blt	_start_relocate
-	cmp	r3, r0
-	blt	_start_relocate
+	blt	_start_mmu_defl1_set
+	/*
+	 * Setup Translation Table Base Register 0
+	 */
+	mcr     p15, 0, r0, c2, c0, 0
+	/*
+	 * Setup Domain Control Register
+	 */
+	ldr	r1, __dacr_mmu_val
+	mcr	p15, 0, r1, c3, c0, 0
+	/*
+	 * Setup System Control Register
+	 */
+	ldr	r1, __sctrl_mmu_val
+	mrc     p15, 0, r2, c1, c0, 0
+	orr	r2, r2, r1
+	mcr     p15, 0, r2, c1, c0, 0
+	/*
+	 * Jump to reset code
+	 */
+	ldr	pc, __reset
 _start_hang:
 	b	.
-_start_relocate:
-	mov	r5, #0
-_start_loop:
-	cmp	r5, r4
-	bge	_start_done
-	ldmia	r0!, {r7 - r10}
-	stmia	r2!, {r7 - r10}
-	add	r5, r5, #16
-	b	_start_loop
-_start_done:
-	ldr	pc, __reset
-__code_start:
+#define SECTION_ATTR 	((TTBL_AP_SRW_U << TTBL_L1TBL_TTE_AP_SHIFT) | \
+			(TTBL_L1TBL_TTE_DOM_RESERVED << TTBL_L1TBL_TTE_DOM_SHIFT) | \
+			(0x1 << TTBL_L1TBL_TTE_C_SHIFT) | \
+			TTBL_L1TBL_TTE_TYPE_SECTION)
+__mmu_section_attr:
+	.word SECTION_ATTR
+__dacr_mmu_val:
+	.word (TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_RESERVED))
+__sctrl_mmu_val:
+	.word (SCTLR_M_MASK | SCTLR_C_MASK | SCTLR_I_MASK)
+__exec_start:
 	.word _code_start
-__code_end:
+__exec_end:
 	.word _code_end
+__load_start:
+	.word _load_start
+__load_end:
+	.word _load_end
+__copy_start:
+	.word _copy
+__copy_end:
+	.word _copy_end
+__defl1_mem:
+	.word defl1_mem
+
+	/* 
+	 * Load start address storage
+	 */
+	.globl _load_start
+_load_start:
+	.word 0x0
+
+	/* 
+	 * Load end address storage
+	 */
+	.globl _load_end
+_load_end:
+	.word 0x0
+
+	/* 
+	 * Copy data from source to destination
+	 * Arguments:
+	 *  r0 -> source address
+	 *  r1 -> destination address
+	 *  r2 -> byte count
+	 * Return:
+	 *  r0 -> bytes copied
+	 */
+	.section .entry, "ax", %progbits
+	.globl _copy
+_copy:
+	mov	r3, r2
+_copy_loop:
+	cmp	r3, #0
+	beq	_copy_done
+	cmp	r3, #16
+	bge	_copy_chunk
+_copy_word:
+	ldmia	r0!, {r8}
+	stmia	r1!, {r8}
+	sub	r3, r3, #4
+	b	_copy_loop
+_copy_chunk:
+	ldmia	r0!, {r8 - r11}
+	stmia	r1!, {r8 - r11}
+	sub	r3, r3, #16
+	b	_copy_loop
+_copy_done:
+	mov	r0, r2
+	bx	lr
+_copy_end:
 
 	/* 
 	 * Exception vector start.
 	 */
-	.section .expvect, "ax", %progbits
+	.section .entry, "ax", %progbits
 	.globl _start_vect
 _start_vect:
 	ldr	pc, __reset

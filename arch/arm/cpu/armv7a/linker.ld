@@ -37,7 +37,7 @@ SECTIONS
 	.text :
  	{
 		PROVIDE(_text_start = .);
-		*(.expvect)
+		*(.entry)
 		*(.text)
 		. = ALIGN(4);
 		PROVIDE(_text_end = .);
