@@ -109,19 +109,45 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	int rc = VMM_EFAIL;
 	u32 ifsr, ifar, fs;
 	vmm_vcpu_t * vcpu;
+	cpu_l1tbl_t * l1;
+	cpu_page_t pg;
+
+	ifsr = read_ifsr();
+	ifar = read_ifar();
+	fs = (ifsr & IFSR_FS4_MASK) >> IFSR_FS4_SHIFT;
+	fs = (fs << 4) | (ifsr & IFSR_FS_MASK);
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
-		vmm_panic("%s: unexpected exception\n", __func__);
+		if (fs != IFSR_FS_TRANS_FAULT_SECTION ||
+		    fs != IFSR_FS_TRANS_FAULT_PAGE) {
+			vmm_panic("%s: unexpected prefetch abort\n"
+				  "%s: ifsr = 0x%08x, ifar = 0x%08x\n", 
+				  __func__, __func__, ifsr, ifar);
+		}
+		rc = cpu_mmu_get_reserved_page((virtual_addr_t)ifar, &pg);
+		if (rc) {
+			vmm_panic("%s: cannot find reserved page\n"
+				  "%s: ifsr = 0x%08x, ifar = 0x%08x\n", 
+				  __func__, __func__, ifsr, ifar);
+		}
+		l1 = cpu_mmu_l1tbl_current();
+		if (!l1) {
+			vmm_panic("%s: cannot find l1 table\n"
+				  "%s: ifsr = 0x%08x, ifar = 0x%08x\n",
+				  __func__, __func__, ifsr, ifar);
+		}
+		rc = cpu_mmu_map_page(l1, &pg);
+		if (rc) {
+			vmm_panic("%s: cannot map page in l1 table\n"
+				  "%s: ifsr = 0x%08x, ifar = 0x%08x\n",
+				  __func__, __func__, ifsr, ifar);
+		}
+		return;
 	}
 
 	vmm_scheduler_irq_enter(uregs, TRUE);
 
-	ifsr = read_ifsr();
-	ifar = read_ifar();
 	vcpu = vmm_scheduler_current_vcpu();
-
-	fs = (ifsr & IFSR_FS4_MASK) >> IFSR_FS4_SHIFT;
-	fs = (fs << 4) | (ifsr & IFSR_FS_MASK);
 
 	switch(fs) {
 	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
@@ -179,20 +205,46 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	int rc = VMM_EFAIL;
 	u32 dfsr, dfar, fs, wnr;
 	vmm_vcpu_t * vcpu;
+	cpu_l1tbl_t * l1;
+	cpu_page_t pg;
+
+	dfsr = read_dfsr();
+	dfar = read_dfar();
+	fs = (dfsr & DFSR_FS4_MASK) >> DFSR_FS4_SHIFT;
+	fs = (fs << 4) | (dfsr & DFSR_FS_MASK);
+	wnr = (dfsr & DFSR_WNR_MASK) >> DFSR_WNR_SHIFT;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
-		vmm_panic("%s: unexpected exception\n", __func__);
+		if (fs != DFSR_FS_TRANS_FAULT_SECTION ||
+		    fs != DFSR_FS_TRANS_FAULT_PAGE) {
+			vmm_panic("%s: unexpected prefetch abort\n"
+				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n", 
+				  __func__, __func__, dfsr, dfar);
+		}
+		rc = cpu_mmu_get_reserved_page(dfar, &pg);
+		if (rc) {
+			vmm_panic("%s: cannot find reserved page\n"
+				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n", 
+				  __func__, __func__, dfsr, dfar);
+		}
+		l1 = cpu_mmu_l1tbl_current();
+		if (!l1) {
+			vmm_panic("%s: cannot find l1 table\n"
+				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n",
+				  __func__, __func__, dfsr, dfar);
+		}
+		rc = cpu_mmu_map_page(l1, &pg);
+		if (rc) {
+			vmm_panic("%s: cannot map page in l1 table\n"
+				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n",
+				  __func__, __func__, dfsr, dfar);
+		}
+		return;
 	}
 
 	vmm_scheduler_irq_enter(uregs, TRUE);
 
-	dfsr = read_dfsr();
-	dfar = read_dfar();
 	vcpu = vmm_scheduler_current_vcpu();
-
-	fs = (dfsr & DFSR_FS4_MASK) >> DFSR_FS4_SHIFT;
-	fs = (fs << 4) | (dfsr & DFSR_FS_MASK);
-	wnr = (dfsr & DFSR_WNR_MASK) >> DFSR_WNR_SHIFT;
 
 	switch(fs) {
 	case DFSR_FS_ALIGN_FAULT:

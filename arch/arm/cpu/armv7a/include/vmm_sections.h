@@ -31,6 +31,8 @@ extern u8 _code_start;
 extern u8 _code_end;
 extern u8 _modtbl_start;
 extern u8 _modtbl_end;
+extern u32 _load_start;
+extern u32 _load_end;
 
 #define __lock_section		__attribute__((section(".spinlock.text")))
 #define __modtbl_section	__attribute__((section(".modtbl")))
@@ -52,7 +54,7 @@ static inline virtual_addr_t vmm_code_vaddr(void)
 
 static inline physical_addr_t vmm_code_paddr(void)
 {
-	return (physical_addr_t) &_code_start;
+	return (physical_addr_t) _load_start;
 }
 
 static inline virtual_size_t vmm_code_size(void)

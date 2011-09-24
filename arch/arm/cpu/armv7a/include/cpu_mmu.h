@@ -58,7 +58,6 @@ struct cpu_l2tbl {
 	virtual_addr_t tbl_va;
 	virtual_addr_t map_va;
 	u32 tte_cnt;
-
 };
 
 struct cpu_l1tbl {
@@ -97,6 +96,15 @@ cpu_l1tbl_t *cpu_mmu_l1tbl_alloc(void);
 
 /** Free a L1 table */
 int cpu_mmu_l1tbl_free(cpu_l1tbl_t * l1);
+
+/** Current L1 table */
+cpu_l1tbl_t *cpu_mmu_l1tbl_default(void);
+
+/** Current L1 table */
+cpu_l1tbl_t *cpu_mmu_l1tbl_current(void);
+
+/** Optimized read word from a physical address */
+u32 cpu_mmu_physical_read32(physical_addr_t pa);
 
 /** Change domain access control register */
 int cpu_mmu_chdacr(u32 new_dacr);

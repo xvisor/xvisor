@@ -1026,9 +1026,7 @@ void cpu_vcpu_cp15_sync_cpsr(vmm_vcpu_t * vcpu)
 	}
 }
 
-void cpu_vcpu_cp15_context_switch(vmm_vcpu_t * tvcpu, 
-				  vmm_vcpu_t * vcpu, 
-				  vmm_user_regs_t * regs)
+void cpu_vcpu_cp15_set_mmu_context(vmm_vcpu_t * vcpu)
 {
 	cpu_mmu_chdacr(vcpu->sregs->cp15.dacr);
 	cpu_mmu_chttbr(vcpu->sregs->cp15.l1);
