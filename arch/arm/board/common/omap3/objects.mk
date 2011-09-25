@@ -22,7 +22,7 @@
 # @brief list of OMAP3 SOC objects.
 # */
 
-board-common-objs-$(CONFIG_OMAP3)+= omap3/omap3_prcm.o
-board-common-objs-$(CONFIG_OMAP3)+= omap3/omap3_intc.o
-board-common-objs-$(CONFIG_OMAP3)+= omap3/omap3_gpt.o
+board-common-objs-$(CONFIG_OMAP3)+= omap3/prcm.o
+board-common-objs-$(CONFIG_OMAP3)+= omap3/intc.o
+board-common-objs-$(CONFIG_OMAP3)+= omap3/gpt.o
 

@@ -35,13 +35,22 @@ int vmm_cpu_final_init(void);
 /** Register related functions required by VMM core */
 int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu);
 void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
-			  vmm_vcpu_t * vcpu, vmm_user_regs_t * regs);
+			  vmm_vcpu_t * vcpu, 
+			  vmm_user_regs_t * regs);
 void vmm_vcpu_regs_dump(vmm_vcpu_t * vcpu);
 
-/** Host address space related functions required by VMM core */
-int vmm_cpu_aspace_init(void);
-int vmm_cpu_iomap(virtual_addr_t va, virtual_size_t sz, physical_addr_t pa);
-int vmm_cpu_iounmap(virtual_addr_t va, virtual_size_t sz);
+/** Address space related functions required by VMM core */
+int vmm_cpu_aspace_init(physical_addr_t * resv_pa, 
+			virtual_addr_t * resv_va,
+			virtual_size_t * resv_sz);
+int vmm_cpu_aspace_map(virtual_addr_t va, 
+			virtual_size_t sz, 
+			physical_addr_t pa,
+			u32 mem_flags);
+int vmm_cpu_aspace_unmap(virtual_addr_t va, 
+			 virtual_size_t sz);
+int vmm_cpu_aspace_va2pa(virtual_addr_t va, 
+			 physical_addr_t * pa);
 
 /** CPU Interrupt related functions required by VMM core */
 int vmm_cpu_irq_setup(void);
@@ -53,14 +62,20 @@ void vmm_cpu_irq_restore(irq_flags_t flags);
 /** VCPU Interrupt related functions required by VMM core */
 u32 vmm_vcpu_irq_count(vmm_vcpu_t * vcpu);
 u32 vmm_vcpu_irq_priority(vmm_vcpu_t * vcpu, u32 irq_no);
-int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs,
+int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu, 
+			 vmm_user_regs_t * regs,
 			 u32 irq_no, u32 reason);
 
 /** Timer related functions required by VMM core */
-void vmm_cpu_timer_enable(void);
-void vmm_cpu_timer_disable(void);
-int vmm_cpu_timer_setup(u32 tick_nsecs);
-int vmm_cpu_timer_init(void);
+int vmm_cpu_clockevent_start(u64 tick_nsecs);
+int vmm_cpu_clockevent_setup(void);
+int vmm_cpu_clockevent_shutdown(void);
+int vmm_cpu_clockevent_init(void);
+u64 vmm_cpu_clocksource_cycles(void);
+u64 vmm_cpu_clocksource_mask(void);
+u32 vmm_cpu_clocksource_mult(void);
+u32 vmm_cpu_clocksource_shift(void);
+int vmm_cpu_clocksource_init(void);
 
 /** Atomic Operations and spinlock */
 void vmm_cpu_atomic_inc(atomic_t * atom);

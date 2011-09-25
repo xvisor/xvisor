@@ -70,17 +70,9 @@ SECTIONS
 	{
 		. = ALIGN(4096);
 		PROVIDE(_heap_start = .);
-		. = . + CONFIG_HEAP_SIZE; /* 128KiB heap space. */
+		. = . + (CONFIG_HEAP_SIZE * 1024);
 		. = ALIGN(4);
 		PROVIDE(_eheap = .);
-	}
-
-	.mm_hk : /* Memory management house keeping */
-	{
-		PROVIDE(_mm_hk_start = .);
-		. = . + 262144; /* 256 KiB for house keeping */
-		. = ALIGN(4);
-		PROVIDE(_mm_hk_end = .);
 	}
 
 	.init :
@@ -91,11 +83,11 @@ SECTIONS
 	}
 
 	PROVIDE(_stack_end = .);
-	. = . + CONFIG_VMM_STACK_SIZE;
+	. = . + CONFIG_STACK_SIZE;
 	. = ALIGN(4);
 	PROVIDE(_stack_start = .);
 	PROVIDE(_int_stack_end = .);
-	. = . + CONFIG_VMM_INTERRUPT_STACK_SIZE;
+	. = . + CONFIG_INTERRUPT_STACK_SIZE;
 	. = ALIGN(4);
 	PROVIDE(_int_stack = .);
 }

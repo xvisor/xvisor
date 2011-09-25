@@ -63,13 +63,15 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 
 			   vmm_user_regs_t * regs,
 			   virtual_addr_t addr, 
-			   void *dst, u32 dst_len);
+			   void *dst, u32 dst_len, 
+			   bool force_unpriv);
 
 /** Write to memory using VCPU CP15 */
 int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu, 
 			    vmm_user_regs_t * regs,
 			    virtual_addr_t addr, 
-			    void *src, u32 src_len);
+			    void *src, u32 src_len,
+			    bool force_unpriv);
 
 /* Read from memory using VCPU CP15 */
 virtual_addr_t cpu_vcpu_cp15_vector_addr(vmm_vcpu_t * vcpu, 
@@ -78,10 +80,8 @@ virtual_addr_t cpu_vcpu_cp15_vector_addr(vmm_vcpu_t * vcpu,
 /* Syncronize VCPU CP15 with change in VCPU mode */
 void cpu_vcpu_cp15_sync_cpsr(vmm_vcpu_t * vcpu);
 
-/** Switch MMU context between VCPUs */
-void cpu_vcpu_cp15_context_switch(vmm_vcpu_t * tvcpu, 
-				  vmm_vcpu_t * vcpu, 
-				  vmm_user_regs_t * regs);
+/** Set MMU context for given VCPU */
+void cpu_vcpu_cp15_set_mmu_context(vmm_vcpu_t * vcpu);
 
 /** Initialize CP15 subsystem for a VCPU */
 int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid);

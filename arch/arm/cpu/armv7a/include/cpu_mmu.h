@@ -30,7 +30,6 @@
 typedef struct cpu_page cpu_page_t;
 typedef struct cpu_l1tbl cpu_l1tbl_t;
 typedef struct cpu_l2tbl cpu_l2tbl_t;
-typedef struct cpu_mmu_ctrl cpu_mmu_ctrl_t;
 
 struct cpu_page {
 	virtual_addr_t va;
@@ -47,10 +46,11 @@ struct cpu_page {
 	u32 c:1;
 	u32 b:1;
 	u32 pad:15;
-} __attribute((packed));
+} __attribute__((packed));
 
 struct cpu_l2tbl {
 	struct dlist head;
+	int l2_num;
 	cpu_l1tbl_t *l1;
 	u32 imp;
 	u32 domain;
@@ -62,6 +62,7 @@ struct cpu_l2tbl {
 
 struct cpu_l1tbl {
 	struct dlist head;
+	int l1_num;
 	physical_addr_t tbl_pa;
 	virtual_addr_t tbl_va;
 	u32 tte_cnt;
@@ -69,16 +70,8 @@ struct cpu_l1tbl {
 	struct dlist l2tbl_list;
 };
 
-struct cpu_mmu_ctrl {
-	u32 *pool_bmap;
-	u32 pool_bmap_len;
-	physical_addr_t pool_pa;
-	virtual_addr_t pool_va;
-	virtual_size_t pool_sz;
-	struct dlist l1tbl_list;
-	struct dlist l2tbl_list;
-	cpu_l1tbl_t *defl1;
-};
+/** Estimate good page size */
+u32 cpu_mmu_best_page_size(virtual_addr_t va, physical_addr_t pa, u32 availsz);
 
 /** Get page from a given virtual address */
 int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg);
@@ -104,13 +97,19 @@ cpu_l1tbl_t *cpu_mmu_l1tbl_alloc(void);
 /** Free a L1 table */
 int cpu_mmu_l1tbl_free(cpu_l1tbl_t * l1);
 
+/** Current L1 table */
+cpu_l1tbl_t *cpu_mmu_l1tbl_default(void);
+
+/** Current L1 table */
+cpu_l1tbl_t *cpu_mmu_l1tbl_current(void);
+
+/** Optimized read word from a physical address */
+u32 cpu_mmu_physical_read32(physical_addr_t pa);
+
 /** Change domain access control register */
 int cpu_mmu_chdacr(u32 new_dacr);
 
 /** Change translation table base register */
 int cpu_mmu_chttbr(cpu_l1tbl_t * l1);
-
-/** Initialize MMU */
-int cpu_mmu_init(void);
 
 #endif /** _CPU_MMU_H */

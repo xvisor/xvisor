@@ -39,7 +39,7 @@ struct vmm_timer_event {
 	vmm_user_regs_t * cpu_regs;
 	char name[32];
 	bool active;
-	u64 expiry_timestamp;
+	u64 expiry_tstamp;
 	u64 duration_nsecs;
 	vmm_timer_event_handler_t handler;
 	void * priv;
@@ -47,30 +47,21 @@ struct vmm_timer_event {
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_ctrl {
+	u64 cycles_last;
+	u64 cycles_mask;
+	u32 cycles_mult;
+	u32 cycles_shift;
 	u64 timestamp;
-	u64 tick_nsecs;
+	bool cpu_started;
+	vmm_timer_event_t * cpu_curr;
 	struct dlist cpu_event_list;
 	struct dlist event_list;
 };
 
 typedef struct vmm_timer_ctrl vmm_timer_ctrl_t;
 
-/** Process timer tick (Must be called from somewhere) */
-void vmm_timer_tick_process(vmm_user_regs_t * regs);
-
-/** Current global timestamp (nanoseconds elapsed) */
-u64 vmm_timer_timestamp(void);
-
-/** Adjust global timestamp (nanoseconds elapsed) 
-  * Note: we can only increase timestamp since its a monotonic value.
-  */
-int vmm_timer_adjust_timestamp(u64 timestamp);
-
-/** Get timer tick delay in microseconds */
-u64 vmm_timer_tick_usecs(void);
-
-/** Get timer tick delay in nanoseconds */
-u64 vmm_timer_tick_nsecs(void);
+/** Process timer event (Must be called from somewhere) */
+void vmm_timer_clockevent_process(vmm_user_regs_t * regs);
 
 /** Start a timer event */
 int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs);
@@ -98,10 +89,13 @@ vmm_timer_event_t *vmm_timer_event_get(int index);
 /** Count number of timer events */
 u32 vmm_timer_event_count(void);
 
-/** Start timer */
+/** Current global timestamp (nanoseconds elapsed) */
+u64 vmm_timer_timestamp(void);
+
+/** Start all timer events */
 void vmm_timer_start(void);
 
-/** Stop timer */
+/** Stop all timer events */
 void vmm_timer_stop(void);
 
 /** Initialize timer subsystem */

@@ -30,21 +30,32 @@
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 
-typedef struct vmm_guest_region vmm_guest_region_t;
+enum vmm_region_flags {
+	VMM_REGION_REAL=0x00000001,
+	VMM_REGION_VIRTUAL=0x00000002,
+	VMM_REGION_MEMORY=0x00000004,
+	VMM_REGION_IO=0x00000008,
+	VMM_REGION_CACHEABLE=0x00000010,
+	VMM_REGION_READONLY=0x00000020,
+	VMM_REGION_ISRAM=0x00000040,
+	VMM_REGION_ISROM=0x00000080,
+	VMM_REGION_ISDEVICE=0x00000100,
+};
+
+typedef struct vmm_region vmm_region_t;
 typedef struct vmm_guest_aspace vmm_guest_aspace_t;
 typedef struct vmm_vcpu_irqs vmm_vcpu_irqs_t;
 typedef struct vmm_vcpu vmm_vcpu_t;
 typedef struct vmm_guest vmm_guest_t;
 
-struct vmm_guest_region {
+struct vmm_region {
 	struct dlist head;
 	vmm_devtree_node_t *node;
 	vmm_guest_aspace_t *aspace;
 	physical_addr_t gphys_addr;
 	physical_addr_t hphys_addr;
 	physical_size_t phys_size;
-	bool is_memory;
-	bool is_virtual;
+	u32 flags;
 	void *priv;
 };
 

@@ -16,17 +16,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file realview_timer.h
+ * @file timer.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Realview Timer header
  */
-#ifndef _REALVIEW_TIMER_H__
-#define _REALVIEW_TIMER_H__
+#ifndef __REALVIEW_TIMER_H__
+#define __REALVIEW_TIMER_H__
 
 #include <vmm_types.h>
 #include <vmm_host_irq.h>
-#include <realview/realview_plat.h>
+#include <realview/plat.h>
 
 #define TIMER_LOAD		0x00
 #define TIMER_VALUE		0x04
@@ -46,8 +46,10 @@
 
 void realview_timer_enable(virtual_addr_t base);
 void realview_timer_disable(virtual_addr_t base);
+int realview_timer_event_shutdown(virtual_addr_t base);
 void realview_timer_event_clearirq(virtual_addr_t base);
-int realview_timer_event_setup(virtual_addr_t base, u64 nsecs);
+int realview_timer_event_start(virtual_addr_t base, u64 nsecs);
+int realview_timer_event_setup(virtual_addr_t base);
 u32 realview_timer_counter_value(virtual_addr_t base);
 int realview_timer_counter_setup(virtual_addr_t base);
 int realview_timer_init(virtual_addr_t sctl_base,

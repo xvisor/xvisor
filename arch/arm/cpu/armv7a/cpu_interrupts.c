@@ -25,11 +25,13 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_devtree.h>
+#include <vmm_string.h>
+#include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 #include <cpu_inline_asm.h>
+#include <cpu_mmu.h>
 #include <cpu_vcpu_emulate_arm.h>
 #include <cpu_vcpu_emulate_thumb.h>
 #include <cpu_vcpu_cp15.h>
@@ -44,6 +46,8 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	vcpu = vmm_scheduler_current_vcpu();
 
@@ -64,7 +68,7 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_software_interrupt(vmm_user_regs_t * uregs)
@@ -75,6 +79,8 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	vcpu = vmm_scheduler_current_vcpu();
 
@@ -95,7 +101,7 @@ void do_software_interrupt(vmm_user_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_prefetch_abort(vmm_user_regs_t * uregs)
@@ -103,17 +109,45 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	int rc = VMM_EFAIL;
 	u32 ifsr, ifar, fs;
 	vmm_vcpu_t * vcpu;
-
-	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
-		vmm_panic("%s: unexpected exception\n", __func__);
-	}
+	cpu_l1tbl_t * l1;
+	cpu_page_t pg;
 
 	ifsr = read_ifsr();
 	ifar = read_ifar();
-	vcpu = vmm_scheduler_current_vcpu();
-
 	fs = (ifsr & IFSR_FS4_MASK) >> IFSR_FS4_SHIFT;
 	fs = (fs << 4) | (ifsr & IFSR_FS_MASK);
+
+	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+		if (fs != IFSR_FS_TRANS_FAULT_SECTION ||
+		    fs != IFSR_FS_TRANS_FAULT_PAGE) {
+			vmm_panic("%s: unexpected prefetch abort\n"
+				  "%s: ifsr = 0x%08x, ifar = 0x%08x\n", 
+				  __func__, __func__, ifsr, ifar);
+		}
+		rc = cpu_mmu_get_reserved_page((virtual_addr_t)ifar, &pg);
+		if (rc) {
+			vmm_panic("%s: cannot find reserved page\n"
+				  "%s: ifsr = 0x%08x, ifar = 0x%08x\n", 
+				  __func__, __func__, ifsr, ifar);
+		}
+		l1 = cpu_mmu_l1tbl_current();
+		if (!l1) {
+			vmm_panic("%s: cannot find l1 table\n"
+				  "%s: ifsr = 0x%08x, ifar = 0x%08x\n",
+				  __func__, __func__, ifsr, ifar);
+		}
+		rc = cpu_mmu_map_page(l1, &pg);
+		if (rc) {
+			vmm_panic("%s: cannot map page in l1 table\n"
+				  "%s: ifsr = 0x%08x, ifar = 0x%08x\n",
+				  __func__, __func__, ifsr, ifar);
+		}
+		return;
+	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
+
+	vcpu = vmm_scheduler_current_vcpu();
 
 	switch(fs) {
 	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
@@ -163,7 +197,7 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 				__func__, vcpu->id, ifar, ifsr);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_data_abort(vmm_user_regs_t * uregs)
@@ -171,18 +205,46 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	int rc = VMM_EFAIL;
 	u32 dfsr, dfar, fs, wnr;
 	vmm_vcpu_t * vcpu;
-
-	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
-		vmm_panic("%s: unexpected exception\n", __func__);
-	}
+	cpu_l1tbl_t * l1;
+	cpu_page_t pg;
 
 	dfsr = read_dfsr();
 	dfar = read_dfar();
-	vcpu = vmm_scheduler_current_vcpu();
-
 	fs = (dfsr & DFSR_FS4_MASK) >> DFSR_FS4_SHIFT;
 	fs = (fs << 4) | (dfsr & DFSR_FS_MASK);
 	wnr = (dfsr & DFSR_WNR_MASK) >> DFSR_WNR_SHIFT;
+
+	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+		if (fs != DFSR_FS_TRANS_FAULT_SECTION ||
+		    fs != DFSR_FS_TRANS_FAULT_PAGE) {
+			vmm_panic("%s: unexpected prefetch abort\n"
+				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n", 
+				  __func__, __func__, dfsr, dfar);
+		}
+		rc = cpu_mmu_get_reserved_page(dfar, &pg);
+		if (rc) {
+			vmm_panic("%s: cannot find reserved page\n"
+				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n", 
+				  __func__, __func__, dfsr, dfar);
+		}
+		l1 = cpu_mmu_l1tbl_current();
+		if (!l1) {
+			vmm_panic("%s: cannot find l1 table\n"
+				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n",
+				  __func__, __func__, dfsr, dfar);
+		}
+		rc = cpu_mmu_map_page(l1, &pg);
+		if (rc) {
+			vmm_panic("%s: cannot map page in l1 table\n"
+				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n",
+				  __func__, __func__, dfsr, dfar);
+		}
+		return;
+	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
+
+	vcpu = vmm_scheduler_current_vcpu();
 
 	switch(fs) {
 	case DFSR_FS_ALIGN_FAULT:
@@ -238,7 +300,7 @@ void do_data_abort(vmm_user_regs_t * uregs)
 				__func__, vcpu->id, dfar, dfsr);
 	}
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_not_used(vmm_user_regs_t * uregs)
@@ -248,52 +310,65 @@ void do_not_used(vmm_user_regs_t * uregs)
 
 void do_irq(vmm_user_regs_t * uregs)
 {
+	vmm_scheduler_irq_enter(uregs, FALSE);
+
 	vmm_host_irq_exec(CPU_EXTERNAL_IRQ, uregs);
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_fiq(vmm_user_regs_t * uregs)
 {
+	vmm_scheduler_irq_enter(uregs, FALSE);
+
 	vmm_host_irq_exec(CPU_EXTERNAL_FIQ, uregs);
 
-	vmm_scheduler_irq_process(uregs);
+	vmm_scheduler_irq_exit(uregs);
 }
 
 int vmm_cpu_irq_setup(void)
 {
+	int rc;
 	extern u32 _start_vect[];
 	u32 *vectors, *vectors_data;
-	u32 highvec_enable, vec;
-	vmm_devtree_node_t *node;
-	const char *attrval;
+	u32 vec;
+	cpu_page_t vec_page;
 
-	/* Get the vmm information node */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
-				   VMM_DEVTREE_VMMINFO_NODE_NAME);
-	if (!node) {
-		return VMM_EFAIL;
-	}
-
-	/* Determine value of highvec_enable attribute */
-	attrval = vmm_devtree_attrval(node, CPU_HIGHVEC_ENABLE_ATTR_NAME);
-	if (!attrval) {
-		return VMM_EFAIL;
-	}
-	highvec_enable = *((u32 *) attrval);
-
-	if (highvec_enable) {
-		/* Enable high vectors in SCTLR */
-		write_sctlr(read_sctlr() | SCTLR_V_MASK);
-		vectors = (u32 *) CPU_IRQ_HIGHVEC_BASE;
-	} else {
-		vectors = (u32 *) CPU_IRQ_LOWVEC_BASE;
-	}
+#if defined(CONFIG_ARMV7A_HIGHVEC)
+	/* Enable high vectors in SCTLR */
+	write_sctlr(read_sctlr() | SCTLR_V_MASK);
+	vectors = (u32 *) CPU_IRQ_HIGHVEC_BASE;
+#else
+	vectors = (u32 *) CPU_IRQ_LOWVEC_BASE;
+#endif
 	vectors_data = vectors + CPU_IRQ_NR;
 
-	/* If vectors are tat correct location then do nothing */
+	/* If vectors are at correct location then do nothing */
 	if ((u32) _start_vect == (u32) vectors) {
 		return VMM_OK;
+	}
+
+	/* If vectors are not mapped in virtual memory then map them. */
+	vmm_memset(&vec_page, 0, sizeof(cpu_page_t));
+	rc = cpu_mmu_get_reserved_page((virtual_addr_t)vectors, &vec_page);
+	if (rc) {
+		rc = vmm_host_ram_alloc(&vec_page.pa, 
+					TTBL_L2TBL_SMALL_PAGE_SIZE, 
+					TRUE);
+		if (rc) {
+			return rc;
+		}
+		vec_page.va = (virtual_addr_t)vectors;
+		vec_page.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+		vec_page.imp = 0;
+		vec_page.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+		vec_page.ap = TTBL_AP_SRW_U;
+		vec_page.xn = 0;
+		vec_page.c = 0;
+		vec_page.b = 0;
+		if ((rc = cpu_mmu_map_reserved_page(&vec_page))) {
+			return rc;
+		}
 	}
 
 	/*

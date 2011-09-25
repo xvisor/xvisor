@@ -33,12 +33,17 @@ int vmm_defterm_putc(u8 ch);
 int vmm_defterm_init(void);
 
 /** Interrupt controller related function required by VMM core */
+u32 vmm_pic_irq_count(void);
 int vmm_pic_cpu_to_host_map(u32 cpu_irq_no);
 int vmm_pic_pre_condition(u32 host_irq_no);
 int vmm_pic_post_condition(u32 host_irq_no);
 int vmm_pic_irq_enable(u32 host_irq_no);
 int vmm_pic_irq_disable(u32 host_irq_no);
 int vmm_pic_init(void);
+
+/** RAM related functions required by VMM core */
+int vmm_board_ram_start(physical_addr_t * addr);
+int vmm_board_ram_size(physical_size_t * size);
 
 /** Device tree related function required by VMM core */
 int vmm_devtree_populate(vmm_devtree_node_t ** root,

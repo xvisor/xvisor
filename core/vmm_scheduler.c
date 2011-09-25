@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
+#include <vmm_stdio.h>
 #include <vmm_cpu.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
@@ -82,7 +83,13 @@ void vmm_scheduler_timer_event(vmm_timer_event_t * ev)
 	}
 }
 
-void vmm_scheduler_irq_process(vmm_user_regs_t * regs)
+void vmm_scheduler_irq_enter(vmm_user_regs_t * regs, bool vcpu_context)
+{
+	/* Indicate that we have entered in IRQ */
+	sched.irq_context = (vcpu_context) ? FALSE : TRUE;
+}
+
+void vmm_scheduler_irq_exit(vmm_user_regs_t * regs)
 {
 	vmm_vcpu_t * vcpu = NULL;
 
@@ -102,6 +109,13 @@ void vmm_scheduler_irq_process(vmm_user_regs_t * regs)
 	/* VCPU irq processing */
 	vmm_vcpu_irq_process(regs);
 
+	/* Indicate that we have exited IRQ */
+	sched.irq_context = FALSE;
+}
+
+bool vmm_scheduler_irq_context(void)
+{
+	return sched.irq_context;
 }
 
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void)
@@ -147,6 +161,15 @@ void vmm_scheduler_preempt_enable(void)
 	}
 }
 
+void vmm_scheduler_yield(void)
+{
+	if (vmm_scheduler_irq_context()) {
+		vmm_panic("%s: Tried to yield in IRQ context\n", __func__);
+	}
+
+	vmm_timer_event_start(sched.ev, 0);
+}
+
 int vmm_scheduler_init(void)
 {
 	/* Reset the scheduler control structure */
@@ -155,6 +178,9 @@ int vmm_scheduler_init(void)
 	/* Initialize scheduling parameters. (Per Host CPU) */
 	sched.vcpu_current = -1;
 
+	/* Initialize IRQ state */
+	sched.irq_context = FALSE;
+
 	/* Create timer event and start it. (Per Host CPU) */
 	sched.ev = vmm_timer_event_create("sched", 
 					  &vmm_scheduler_timer_event, 
@@ -162,7 +188,7 @@ int vmm_scheduler_init(void)
 	if (!sched.ev) {
 		return VMM_EFAIL;
 	}
-	vmm_timer_event_start(sched.ev, vmm_timer_tick_nsecs());
+	vmm_timer_event_start(sched.ev, 0);
 
 	return VMM_OK;
 }

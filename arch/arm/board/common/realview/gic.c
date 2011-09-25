@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file realview_gic.c
+ * @file gic.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Realview Generic Interrupt Controller source
@@ -25,7 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <realview_config.h>
-#include <realview/realview_gic.h>
+#include <realview/gic.h>
 
 #define max(a,b)	((a) < (b) ? (b) : (a))
 

@@ -56,6 +56,12 @@ void vmm_init(void)
 	vmm_devtree_node_t *gnode, *gsnode;
 	vmm_guest_t *guest = NULL;
 
+	/* Initialize host virtual address space */
+	ret = vmm_host_aspace_init();
+	if (ret) {
+		vmm_hang();
+	}
+
 	/* Initialize heap */
 	ret = vmm_heap_init();
 	if (ret) {
@@ -64,12 +70,6 @@ void vmm_init(void)
 
 	/* Initialize device tree */
 	ret = vmm_devtree_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize host virtual address space */
-	ret = vmm_host_aspace_init();
 	if (ret) {
 		vmm_hang();
 	}
@@ -106,10 +106,10 @@ void vmm_init(void)
 		   VMM_PROJECT_VER_MINOR, __DATE__, __TIME__);
 	vmm_printf("\n");
 
-	/* Print intial messages that we missed */
-	vmm_printf("Initialize Heap\n");
-	vmm_printf("Initialize Device Tree\n");
+	/* Print initial messages that we missed */
 	vmm_printf("Initialize Host Address Space\n");
+	vmm_printf("Initialize Heap Managment\n");
+	vmm_printf("Initialize Device Tree\n");
 	vmm_printf("Initialize Host Interrupt Subsystem\n");
 	vmm_printf("Initialize CPU Early\n");
 	vmm_printf("Initialize Board Early\n");

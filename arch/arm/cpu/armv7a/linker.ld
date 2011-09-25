@@ -30,12 +30,14 @@ SECTIONS
 {
 	. = CPU_TEXT_START;
 
+	. = ALIGN(0x100000); /* Need this to create proper sections */
+	
 	PROVIDE(_code_start = .);
 
 	.text :
  	{
 		PROVIDE(_text_start = .);
-		*(.expvect)
+		*(.entry)
 		*(.text)
 		. = ALIGN(4);
 		PROVIDE(_text_end = .);
@@ -73,26 +75,10 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
-	.heap :
-	{
-		PROVIDE(_heap_start = .);
-		. = . + CONFIG_HEAP_SIZE;
-		. = ALIGN(4);
-		PROVIDE(_heap_end = .);
-	}
-
-	.mm_hk : /* Memory management house keeping */
-	{
-		PROVIDE(_mm_hk_start = .);
-		. = . + 262144;	/* 256 KiB for house keeping */
-		. = ALIGN(4);
-		PROVIDE(_mm_hk_end = .);
-	}
-
 	.svc_stack :
 	{
 		PROVIDE(_svc_stack_start = .);
-		. = . + 4096;
+		. = . + CONFIG_STACK_SIZE;
 		. = ALIGN(4);
 		PROVIDE(_svc_stack_end = .);
         }
@@ -100,7 +86,7 @@ SECTIONS
 	.mon_stack :
 	{
 		PROVIDE(_mon_stack_start = .);
-		. = . + 4096;
+		. = . + CONFIG_INTERRUPT_STACK_SIZE;
 		. = ALIGN(4);
 		PROVIDE(_mon_stack_end = .);
 	}
@@ -108,7 +94,7 @@ SECTIONS
 	.abt_stack :
 	{
 		PROVIDE(_abt_stack_start = .);
-		. = . + 4096;
+		. = . + CONFIG_INTERRUPT_STACK_SIZE;
 		. = ALIGN(4);
 		PROVIDE(_abt_stack_end = .);
 	}
@@ -116,7 +102,7 @@ SECTIONS
 	.und_stack :
 	{
 		PROVIDE(_und_stack_start = .);
-		. = . + 4096;
+		. = . + CONFIG_INTERRUPT_STACK_SIZE;
 		. = ALIGN(4);
 		PROVIDE(_und_stack_end = .);
 	}
@@ -124,7 +110,7 @@ SECTIONS
 	.irq_stack :
 	{
 		PROVIDE(_irq_stack_start = .);
-		. = . + 4096;
+		. = . + CONFIG_INTERRUPT_STACK_SIZE;
 		. = ALIGN(4);
 		PROVIDE(_irq_stack_end = .);
 	}
@@ -132,12 +118,12 @@ SECTIONS
 	.fiq_stack :
 	{
 		PROVIDE(_fiq_stack_start = .);
-		. = . + 4096;
+		. = . + CONFIG_INTERRUPT_STACK_SIZE;
 		. = ALIGN(4);
 		PROVIDE(_fiq_stack_end = .);
 	}
 
-	. = ALIGN(16384);
+	. = ALIGN(0x100000); /* Need this to create proper sections */
 	
 	PROVIDE(_code_end = .);
 }

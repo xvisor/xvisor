@@ -32,6 +32,7 @@ int vmm_defterm_putc(u8 ch);
 int vmm_defterm_init(void);
 
 /** Interrupt controller related function required by VMM core */
+u32 vmm_pic_irq_count(void);
 int vmm_pic_cpu_to_host_map(u32 cpu_irq_no);
 int vmm_pic_pre_condition(u32 host_irq_no);
 int vmm_pic_post_condition(u32 host_irq_no);

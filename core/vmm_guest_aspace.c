@@ -28,42 +28,100 @@
 #include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_devemu.h>
+#include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 
-bool vmm_guest_aspace_isvirtual(vmm_guest_t *guest,
-				physical_addr_t gphys_addr)
+u32 vmm_guest_physical_read(vmm_guest_t * guest, 
+			    physical_addr_t gphys_addr, 
+			    void * dst, u32 len)
 {
-	struct dlist *l;
-	vmm_guest_region_t *reg = NULL;
+	u32 bytes_read = 0, to_read;
+	physical_addr_t hphys_addr;
+	vmm_region_t * reg = NULL;
 
-	if (guest == NULL) {
-		return FALSE;
+	if (!guest || !dst || !len) {
+		return 0;
 	}
 
-	list_for_each(l, &guest->aspace.reg_list) {
-		reg = list_entry(l, vmm_guest_region_t, head);
-		if (reg->gphys_addr <= gphys_addr &&
-		    gphys_addr < (reg->gphys_addr + reg->phys_size)) {
-			return reg->is_virtual;
+	while (bytes_read < len) {
+		if (!(reg = vmm_guest_getregion(guest, gphys_addr))) {
+			break;
 		}
+
+		if (reg->flags & (VMM_REGION_VIRTUAL | VMM_REGION_IO)) {
+			break;
+		}
+
+		hphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+		to_read = (reg->gphys_addr + reg->phys_size - gphys_addr);
+		to_read = ((len - bytes_read) < to_read) ? 
+			  (len - bytes_read) : to_read;
+
+		to_read = vmm_host_physical_read(hphys_addr, dst, to_read);
+		if (!to_read) {
+			break;
+		}
+
+		gphys_addr += to_read;
+		bytes_read += to_read;
+		dst += to_read;
 	}
 
-	return FALSE;
+	return bytes_read;
 }
 
-vmm_guest_region_t *vmm_guest_aspace_getregion(vmm_guest_t *guest,
-					       physical_addr_t gphys_addr)
+u32 vmm_guest_physical_write(vmm_guest_t * guest, 
+			     physical_addr_t gphys_addr, 
+			     void * src, u32 len)
+{
+	u32 bytes_written = 0, to_write;
+	physical_addr_t hphys_addr;
+	vmm_region_t * reg = NULL;
+
+	if (!guest || !src || !len) {
+		return 0;
+	}
+
+	while (bytes_written < len) {
+		if (!(reg = vmm_guest_getregion(guest, gphys_addr))) {
+			break;
+		}
+
+		if (reg->flags & (VMM_REGION_VIRTUAL | VMM_REGION_IO)) {
+			break;
+		}
+
+		hphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+		to_write = (reg->gphys_addr + reg->phys_size - gphys_addr);
+		to_write = ((len - bytes_written) < to_write) ? 
+			   (len - bytes_written) : to_write;
+
+		to_write = vmm_host_physical_write(hphys_addr, src, to_write);
+		if (!to_write) {
+			break;
+		}
+
+		gphys_addr += to_write;
+		bytes_written += to_write;
+		src += to_write;
+	}
+
+	return bytes_written;
+}
+
+vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
+				  physical_addr_t gphys_addr)
 {
 	bool found = FALSE;
 	struct dlist *l;
-	vmm_guest_region_t *reg = NULL;
+	vmm_region_t *reg = NULL;
 
 	if (guest == NULL) {
 		return NULL;
 	}
 
 	list_for_each(l, &guest->aspace.reg_list) {
-		reg = list_entry(l, vmm_guest_region_t, head);
+		reg = list_entry(l, vmm_region_t, head);
 		if (reg->gphys_addr <= gphys_addr &&
 		    gphys_addr < (reg->gphys_addr + reg->phys_size)) {
 			found = TRUE;
@@ -129,15 +187,15 @@ bool is_address_node_valid(vmm_devtree_node_t * anode)
 int vmm_guest_aspace_reset(vmm_guest_t *guest)
 {
 	struct dlist *l;
-	vmm_guest_region_t *reg = NULL;
+	vmm_region_t *reg = NULL;
 
 	if (!guest) {
 		return VMM_EFAIL;
 	}
 
 	list_for_each(l, &guest->aspace.reg_list) {
-		reg = list_entry(l, vmm_guest_region_t, head);
-		if (reg->is_virtual) {
+		reg = list_entry(l, vmm_region_t, head);
+		if (reg->flags & VMM_REGION_VIRTUAL) {
 			vmm_devemu_reset(guest, reg);
 		}
 	}
@@ -148,15 +206,15 @@ int vmm_guest_aspace_reset(vmm_guest_t *guest)
 int vmm_guest_aspace_probe(vmm_guest_t *guest)
 {
 	struct dlist *l;
-	vmm_guest_region_t *reg = NULL;
+	vmm_region_t *reg = NULL;
 
 	if (!guest) {
 		return VMM_EFAIL;
 	}
 
 	list_for_each(l, &guest->aspace.reg_list) {
-		reg = list_entry(l, vmm_guest_region_t, head);
-		if (reg->is_virtual) {
+		reg = list_entry(l, vmm_region_t, head);
+		if (reg->flags & VMM_REGION_VIRTUAL) {
 			vmm_devemu_probe(guest, reg);
 		}
 	}
@@ -166,11 +224,12 @@ int vmm_guest_aspace_probe(vmm_guest_t *guest)
 
 int vmm_guest_aspace_init(vmm_guest_t *guest)
 {
+	int rc;
 	const char *attrval;
 	struct dlist *l;
 	vmm_devtree_node_t *gnode = guest->node;
 	vmm_devtree_node_t *anode = NULL;
-	vmm_guest_region_t *reg = NULL;
+	vmm_region_t *reg = NULL;
 
 	/* Reset the address space for guest */
 	vmm_memset(&guest->aspace, 0, sizeof(vmm_guest_aspace_t));
@@ -202,36 +261,48 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 			continue;
 		}
 
-		reg = vmm_malloc(sizeof(vmm_guest_region_t));
+		reg = vmm_malloc(sizeof(vmm_region_t));
 
-		vmm_memset(reg, 0, sizeof(vmm_guest_region_t));
+		vmm_memset(reg, 0, sizeof(vmm_region_t));
 
 		INIT_LIST_HEAD(&reg->head);
 
 		reg->node = anode;
 		reg->aspace = &guest->aspace;
+		reg->flags = 0x0;
 
 		attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME);
 		if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) == 0) {
-			reg->is_virtual = FALSE;
+			reg->flags |= VMM_REGION_REAL;
 		} else {
-			reg->is_virtual = TRUE;
+			reg->flags |= VMM_REGION_VIRTUAL;
 		}
 
 		attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME);
 		if (vmm_strcmp(attrval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO) == 0) {
-			reg->is_memory = FALSE;
+			reg->flags |= VMM_REGION_IO;
 		} else {
-			reg->is_memory = TRUE;
+			reg->flags |= VMM_REGION_MEMORY;
+		}
+
+		attrval = vmm_devtree_attrval(anode,
+					      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
+		if (vmm_strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) == 0) {
+			reg->flags |= VMM_REGION_ISRAM;
+		} else if (vmm_strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_ROM) == 0) {
+			reg->flags |= VMM_REGION_READONLY;
+			reg->flags |= VMM_REGION_ISROM;
+		} else {
+			reg->flags |= VMM_REGION_ISDEVICE;
 		}
 
 		attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_GUEST_PHYS_ATTR_NAME);
 		reg->gphys_addr = *((physical_addr_t *) attrval);
 
-		if (!reg->is_virtual) {
+		if (reg->flags & VMM_REGION_REAL) {
 			attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
 			reg->hphys_addr = *((physical_addr_t *) attrval);
@@ -244,6 +315,14 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 		reg->phys_size = *((physical_size_t *) attrval);
 
 		reg->priv = NULL;
+
+		if (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) {
+			rc = vmm_host_ram_reserve(reg->hphys_addr, 
+						  reg->phys_size);
+			if (rc) {
+				return rc;
+			}
+		}
 
 		list_add_tail(&guest->aspace.reg_list, &reg->head);
 	}
