@@ -41,6 +41,18 @@ u32 vmm_guest_physical_write(vmm_guest_t * guest,
 vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
 				  physical_addr_t gphys_addr);
 
+/** Map guest physical address to host physical address */
+int vmm_guest_gpa2hpa_map(vmm_guest_t * guest,
+			  physical_addr_t gphys_addr,
+			  physical_size_t gphys_size,
+			  physical_addr_t * hphys_addr,
+			  u32 * reg_flags);
+
+/** UnMap guest physical address to host physical address */
+int vmm_guest_gpa2hpa_unmap(vmm_guest_t * guest,
+			    physical_addr_t gphys_addr,
+			    physical_size_t gphys_size);
+
 /** Reset Guest Address space */
 int vmm_guest_aspace_reset(vmm_guest_t *guest);
 

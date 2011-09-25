@@ -136,6 +136,40 @@ vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
 	return reg;
 }
 
+int vmm_guest_gpa2hpa_map(vmm_guest_t * guest,
+			  physical_addr_t gphys_addr,
+			  physical_size_t gphys_size,
+			  physical_addr_t * hphys_addr,
+			  u32 * reg_flags)
+{
+	/* FIXME: */
+	vmm_region_t * reg = NULL;
+
+	if (!guest || !hphys_addr) {
+		return VMM_EFAIL;
+	}
+
+	reg = vmm_guest_getregion(guest, gphys_addr);
+	if (!reg) {
+		return VMM_EFAIL;
+	}
+
+	*hphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+	if (reg_flags) {
+		*reg_flags = reg->flags;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_guest_gpa2hpa_unmap(vmm_guest_t * guest,
+			    physical_addr_t gphys_addr,
+			    physical_size_t gphys_size)
+{
+	/* FIXME: */
+	return VMM_OK;
+}
+
 bool is_address_node_valid(vmm_devtree_node_t * anode)
 {
 	const char *attrval;
