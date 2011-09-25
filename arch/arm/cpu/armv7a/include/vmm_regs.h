@@ -147,6 +147,9 @@ struct vmm_super_regs {
 		/* Overlapping vectors */
 		u32 ovect[CPU_IRQ_NR * 2];
 		u32 ovect_base;
+		/* Translation table host physical address */
+		physical_addr_t ttbr0_hpa;
+		physical_addr_t ttbr1_hpa;
 		/* Coprocessor Registers */
 		u32 c0_cpuid;
 		u32 c0_cachetype;

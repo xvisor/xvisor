@@ -223,7 +223,8 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 			      vmm_user_regs_t * regs, 
 			      u32 far, u32 wnr, u32 page, u32 xn)
 {
-	vmm_region_t *reg;
+	int rc = VMM_OK;
+	u32 reg_flags = 0x0;
 	u8 asid, dom;
 	cpu_page_t pg;
 
@@ -232,30 +233,30 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 		/* FIXME: MMU enabled for vcpu */
 	} else {
 		/* MMU disabled for vcpu */
-		reg = vmm_guest_getregion(vcpu->guest, far);
-		if (!reg) {
-			cpu_vcpu_halt(vcpu, regs);
-			return VMM_EFAIL;
-		}
-		pg.pa = reg->hphys_addr + (far - reg->gphys_addr);
+		pg.pa = far;
 		pg.va = far;
-		pg.sz = reg->phys_size - (far - reg->gphys_addr);
-		pg.sz = cpu_mmu_best_page_size(pg.va, pg.pa, pg.sz);
+		pg.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		pg.pa &= ~(pg.sz - 1);
 		pg.va &= ~(pg.sz - 1);
+		if ((rc = vmm_guest_gpa2hpa_map(vcpu->guest, 
+						pg.pa, pg.sz,
+						&pg.pa,
+						&reg_flags))) {
+			return rc;
+		}
 		pg.imp = 0;
 		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_NOMMU;
-		if (reg->flags & VMM_REGION_VIRTUAL) {
+		if (reg_flags & VMM_REGION_VIRTUAL) {
 			pg.ap = TTBL_AP_SRW_U;
 		} else {
-			if (reg->flags & VMM_REGION_READONLY) {
+			if (reg_flags & VMM_REGION_READONLY) {
 				pg.ap = TTBL_AP_SRW_UR;
 			} else {
 				pg.ap = TTBL_AP_SRW_URW;
 			}
 		}
 		pg.xn = 0;
-		if (reg->flags & VMM_REGION_CACHEABLE) {
+		if (reg_flags & VMM_REGION_CACHEABLE) {
 			pg.c = 1;
 		} else {
 			pg.c = 0;
@@ -581,9 +582,21 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 		switch (opc2) {
 		case 0:
 			vcpu->sregs->cp15.c2_base0 = data;
+			if (vmm_guest_gpa2hpa_map(vcpu->guest, 
+						  data, TTBL_L1TBL_SIZE,
+						  &vcpu->sregs->cp15.ttbr0_hpa,
+						  NULL)) {
+				goto bad_reg;
+			}
 			break;
 		case 1:
 			vcpu->sregs->cp15.c2_base1 = data;
+			if (vmm_guest_gpa2hpa_map(vcpu->guest, 
+						  data, TTBL_L1TBL_SIZE,
+						  &vcpu->sregs->cp15.ttbr1_hpa,
+						  NULL)) {
+				goto bad_reg;
+			}
 			break;
 		case 2:
 			data &= 7;
