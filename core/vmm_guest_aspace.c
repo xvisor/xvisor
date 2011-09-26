@@ -31,6 +31,33 @@
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 
+vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
+				  physical_addr_t gphys_addr)
+{
+	bool found = FALSE;
+	struct dlist *l;
+	vmm_region_t *reg = NULL;
+
+	if (guest == NULL) {
+		return NULL;
+	}
+
+	list_for_each(l, &guest->aspace.reg_list) {
+		reg = list_entry(l, vmm_region_t, head);
+		if (reg->gphys_addr <= gphys_addr &&
+		    gphys_addr < (reg->gphys_addr + reg->phys_size)) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
+		return NULL;
+	}
+
+	return reg;
+}
+
 u32 vmm_guest_physical_read(vmm_guest_t * guest, 
 			    physical_addr_t gphys_addr, 
 			    void * dst, u32 len)
@@ -109,40 +136,13 @@ u32 vmm_guest_physical_write(vmm_guest_t * guest,
 	return bytes_written;
 }
 
-vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
-				  physical_addr_t gphys_addr)
-{
-	bool found = FALSE;
-	struct dlist *l;
-	vmm_region_t *reg = NULL;
-
-	if (guest == NULL) {
-		return NULL;
-	}
-
-	list_for_each(l, &guest->aspace.reg_list) {
-		reg = list_entry(l, vmm_region_t, head);
-		if (reg->gphys_addr <= gphys_addr &&
-		    gphys_addr < (reg->gphys_addr + reg->phys_size)) {
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (!found) {
-		return NULL;
-	}
-
-	return reg;
-}
-
 int vmm_guest_gpa2hpa_map(vmm_guest_t * guest,
 			  physical_addr_t gphys_addr,
 			  physical_size_t gphys_size,
 			  physical_addr_t * hphys_addr,
 			  u32 * reg_flags)
 {
-	/* FIXME: */
+	/* FIXME: Need to implement dynamic RAM allocation for RAM region */
 	vmm_region_t * reg = NULL;
 
 	if (!guest || !hphys_addr) {
