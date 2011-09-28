@@ -136,11 +136,12 @@ u32 vmm_guest_physical_write(vmm_guest_t * guest,
 	return bytes_written;
 }
 
-int vmm_guest_gpa2hpa_map(vmm_guest_t * guest,
-			  physical_addr_t gphys_addr,
-			  physical_size_t gphys_size,
-			  physical_addr_t * hphys_addr,
-			  u32 * reg_flags)
+int vmm_guest_physical_map(vmm_guest_t * guest,
+			   physical_addr_t gphys_addr,
+			   physical_size_t gphys_size,
+			   physical_addr_t * hphys_addr,
+			   physical_size_t * hphys_size,
+			   u32 * reg_flags)
 {
 	/* FIXME: Need to implement dynamic RAM allocation for RAM region */
 	vmm_region_t * reg = NULL;
@@ -155,6 +156,12 @@ int vmm_guest_gpa2hpa_map(vmm_guest_t * guest,
 	}
 
 	*hphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+	if (hphys_size) {
+		*hphys_size = reg->gphys_addr + reg->phys_size - gphys_addr;
+		if (gphys_size < *hphys_size) {
+			*hphys_size = gphys_size;
+		}
+	}
 	if (reg_flags) {
 		*reg_flags = reg->flags;
 	}
@@ -162,9 +169,9 @@ int vmm_guest_gpa2hpa_map(vmm_guest_t * guest,
 	return VMM_OK;
 }
 
-int vmm_guest_gpa2hpa_unmap(vmm_guest_t * guest,
-			    physical_addr_t gphys_addr,
-			    physical_size_t gphys_size)
+int vmm_guest_physical_unmap(vmm_guest_t * guest,
+			     physical_addr_t gphys_addr,
+			     physical_size_t gphys_size)
 {
 	/* FIXME: */
 	return VMM_OK;
