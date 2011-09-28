@@ -93,7 +93,6 @@ typedef struct vmm_user_regs vmm_user_regs_t;
 
 struct cpu_vtlb_entry {
 	u8 valid;
-	u8 asid;
 	u8 dom;
 	cpu_page_t page;
 };
