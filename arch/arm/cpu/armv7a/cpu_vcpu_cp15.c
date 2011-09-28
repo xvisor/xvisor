@@ -334,7 +334,7 @@ static u32 cpu_vcpu_cp15_find_page(vmm_vcpu_t * vcpu,
 		if (rc) {
 			return (fs << 4) | (pg->dom & 0xF);
 		}
-		pg->va = va;
+		pg->va = va & (pg->sz - 1);
 	} else {
 		/* MMU disabled for vcpu */
 		vmm_memset(pg, 0, sizeof(cpu_page_t));
@@ -343,6 +343,7 @@ static u32 cpu_vcpu_cp15_find_page(vmm_vcpu_t * vcpu,
 		pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		pg->pa &= ~(pg->sz - 1);
 		pg->va &= ~(pg->sz - 1);
+		pg->ap = TTBL_AP_SRW_URW;
 	}
 
 	return 0;
@@ -458,6 +459,11 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 						  far, (ecode >> 4), 
 						  (ecode & 0xF), wnr, 
 						  page, xn);
+	}
+	if (pg.sz > TTBL_L2TBL_SMALL_PAGE_SIZE) {
+		pg.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+		pg.pa = pg.pa + ((far & ~(pg.sz - 1)) - pg.va);
+		pg.va = far & ~(pg.sz - 1);
 	}
 	pdom = pg.dom;
 
