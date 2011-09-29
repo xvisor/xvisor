@@ -38,8 +38,7 @@
 
 /* Update Virtual TLB */
 static int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu, 
-				     cpu_page_t * p, 
-				     u8 dom)
+				     cpu_page_t * p)
 {
 	int rc;
 	u32 victim;
@@ -64,7 +63,6 @@ static int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu,
 
 	/* Mark entry as valid */
 	vmm_memcpy(&e->page, p, sizeof(cpu_page_t));
-	e->dom = dom;
 	e->valid = 1;
 
 	/* Point to next victim */
@@ -432,7 +430,6 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 	u32 ecode, reg_flags;
 	bool is_user;
 	int rc, access_type;
-	u8 pdom;
 	cpu_page_t pg;
 	physical_size_t availsz;
 
@@ -465,7 +462,6 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 		pg.pa = pg.pa + ((far & ~(pg.sz - 1)) - pg.va);
 		pg.va = far & ~(pg.sz - 1);
 	}
-	pdom = pg.dom;
 
 	if ((rc = vmm_guest_physical_map(vcpu->guest, 
 					 pg.pa, pg.sz,
@@ -505,7 +501,7 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 		pg.c = 0;
 	}
 
-	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg, pdom);
+	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg);
 }
 
 int cpu_vcpu_cp15_access_fault(vmm_vcpu_t * vcpu, 
@@ -926,9 +922,8 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 							vcpu->sregs->cp15.c7_par = pg.pa & 0xfffff000;
 						}
 					} else {
-						vcpu->sregs->cp15.c7_par = ((ret & (10 << 1)) >> 5) |
-									   ((ret & (12 << 1)) >> 6) |
-									   ((ret & 0xf) << 1) | 1;
+						vcpu->sregs->cp15.c7_par = (((ret >> 9) & 0x1) << 6) |
+									   (((ret >> 4) & 0x1F) << 1) | 1;
 					}
 				} 
 				break;
