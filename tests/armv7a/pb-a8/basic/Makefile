@@ -52,6 +52,7 @@ ARM_TEST_OBJS=$(obj_dir)/arm_entry.o \
 		$(obj_dir)/arm_irq.o \
 		$(obj_dir)/arm_stdio.o \
 		$(obj_dir)/arm_string.o \
+		$(obj_dir)/arm_mmu.o \
 		$(obj_dir)/arm_gic.o \
 		$(obj_dir)/arm_timer.o \
 		$(obj_dir)/arm_pl01x.o \

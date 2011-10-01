@@ -24,6 +24,7 @@
 
 #include <arm_io.h>
 #include <arm_heap.h>
+#include <arm_mmu.h>
 #include <arm_irq.h>
 #include <arm_timer.h>
 #include <arm_string.h>
@@ -48,35 +49,41 @@ void arm_init(void)
 
 void arm_cmd_help(int argc, char **argv)
 {
-	arm_puts("help      - List commands and their usage\n");
+	arm_puts("help        - List commands and their usage\n");
 	arm_puts("\n");
-	arm_puts("hi        - Say hi to ARM test code\n");
+	arm_puts("hi          - Say hi to ARM test code\n");
 	arm_puts("\n");
-	arm_puts("hello     - Say hello to ARM test code\n");
+	arm_puts("hello       - Say hello to ARM test code\n");
 	arm_puts("\n");
-	arm_puts("sysctl    - Display sysctl registers\n");
+	arm_puts("mmu_setup   - Setup MMU for ARM test code\n");
 	arm_puts("\n");
-	arm_puts("timer     - Display timer information\n");
+	arm_puts("mmu_test    - Test MMU for ARM test code\n");
 	arm_puts("\n");
-	arm_puts("dhrystone - Dhrystone 2.1 benchmark\n");
-	arm_puts("            Usage: dhrystone [<iterations>]\n");
+	arm_puts("mmu_cleanup - Cleanup MMU for ARM test code\n");
 	arm_puts("\n");
-	arm_puts("hexdump   - Dump memory contents in hex format\n");
-	arm_puts("            Usage: hexdump <addr> <count>\n");
-	arm_puts("            <addr>  = memory address in hex\n");
-	arm_puts("            <count> = byte count in hex\n");
+	arm_puts("sysctl      - Display sysctl registers\n");
 	arm_puts("\n");
-	arm_puts("copy      - Copy to target memory from source memory\n");
-	arm_puts("            Usage: copy <dest> <src> <count>\n");
-	arm_puts("            <dest>  = destination address in hex\n");
-	arm_puts("            <src>   = source address in hex\n");
-	arm_puts("            <count> = byte count in hex\n");
+	arm_puts("timer       - Display timer information\n");
 	arm_puts("\n");
-	arm_puts("go        - Jump to a given address\n");
-	arm_puts("            Usage: go <addr>\n");
-	arm_puts("            <addr>  = jump address in hex\n");
+	arm_puts("dhrystone   - Dhrystone 2.1 benchmark\n");
+	arm_puts("              Usage: dhrystone [<iterations>]\n");
 	arm_puts("\n");
-	arm_puts("reset     - Reset the system\n");
+	arm_puts("hexdump     - Dump memory contents in hex format\n");
+	arm_puts("              Usage: hexdump <addr> <count>\n");
+	arm_puts("              <addr>  = memory address in hex\n");
+	arm_puts("              <count> = byte count in hex\n");
+	arm_puts("\n");
+	arm_puts("copy        - Copy to target memory from source memory\n");
+	arm_puts("              Usage: copy <dest> <src> <count>\n");
+	arm_puts("              <dest>  = destination address in hex\n");
+	arm_puts("              <src>   = source address in hex\n");
+	arm_puts("              <count> = byte count in hex\n");
+	arm_puts("\n");
+	arm_puts("go          - Jump to a given address\n");
+	arm_puts("              Usage: go <addr>\n");
+	arm_puts("                <addr>  = jump address in hex\n");
+	arm_puts("\n");
+	arm_puts("reset       - Reset the system\n");
 	arm_puts("\n");
 }
 
@@ -88,6 +95,21 @@ void arm_cmd_hi(int argc, char **argv)
 void arm_cmd_hello(int argc, char **argv)
 {
 	arm_puts("hi\n");
+}
+
+void arm_cmd_mmu_setup(int argc, char **argv)
+{
+	arm_mmu_setup();
+}
+
+void arm_cmd_mmu_test(int argc, char **argv)
+{
+	arm_mmu_test();
+}
+
+void arm_cmd_mmu_cleanup(int argc, char **argv)
+{
+	arm_mmu_cleanup();
 }
 
 void arm_cmd_sysctl(int argc, char **argv)
@@ -278,6 +300,12 @@ void arm_main(void)
 			arm_cmd_hi(argc, argv);
 		} else if (arm_strcmp(argv[0], "hello") == 0) {
 			arm_cmd_hello(argc, argv);
+		} else if (arm_strcmp(argv[0], "mmu_setup") == 0) {
+			arm_cmd_mmu_setup(argc, argv);
+		} else if (arm_strcmp(argv[0], "mmu_test") == 0) {
+			arm_cmd_mmu_test(argc, argv);
+		} else if (arm_strcmp(argv[0], "mmu_cleanup") == 0) {
+			arm_cmd_mmu_cleanup(argc, argv);
 		} else if (arm_strcmp(argv[0], "sysctl") == 0) {
 			arm_cmd_sysctl(argc, argv);
 		} else if (arm_strcmp(argv[0], "timer") == 0) {
