@@ -473,26 +473,57 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 		return rc;
 	}
 	pg.sz = cpu_mmu_best_page_size(pg.va, pg.pa, availsz);
-	if (vcpu->sregs->cp15.c1_sctlr & SCTLR_M_MASK) {
-		/* MMU enabled for vcpu */
-		if ((pg.ap == TTBL_AP_SRW_U) || 
-		    (pg.ap == TTBL_AP_SR_U) || 
-		    (pg.ap == TTBL_AP_S_U)) {
-			pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_SUPER;
-		} else {
-			pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_USER;
-		}
-	} else {
-		/* MMU disabled for vcpu */
-		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_NOMMU;
-	}
+	switch (pg.ap) {
+	case TTBL_AP_S_U:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_USER;
+		pg.ap = TTBL_AP_S_U;
+		break;
+	case TTBL_AP_SRW_U:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_SUPER;
+		pg.ap = TTBL_AP_SRW_URW;
+		break;
+	case TTBL_AP_SRW_UR:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R;
+		pg.ap = TTBL_AP_SRW_UR;
+		break;
+	case TTBL_AP_SRW_URW:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_USER;
+		pg.ap = TTBL_AP_SRW_URW;
+		break;
+	case TTBL_AP_SR_U:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_SUPER;
+		pg.ap = TTBL_AP_SRW_UR;
+		break;
+	case TTBL_AP_SR_UR:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_USER;
+		pg.ap = TTBL_AP_SRW_UR;
+		break;
+	default:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_USER;
+		pg.ap = TTBL_AP_S_U;
+		break;
+	};
 	if (reg_flags & VMM_REGION_VIRTUAL) {
-		pg.ap = TTBL_AP_SRW_U;
-	} else {
-		if (reg_flags & VMM_REGION_READONLY) {
+		switch (pg.ap) {
+		case TTBL_AP_SRW_U:
+			pg.ap = TTBL_AP_S_U;
+			break;
+		case TTBL_AP_SRW_UR:
+			pg.ap = TTBL_AP_SR_U;
+			break;
+		case TTBL_AP_SRW_URW:
+			pg.ap = TTBL_AP_SRW_U;
+			break;
+		default:
+			break;
+		}
+	} else if (reg_flags & VMM_REGION_READONLY) {
+		switch (pg.ap) {
+		case TTBL_AP_SRW_URW:
 			pg.ap = TTBL_AP_SRW_UR;
-		} else {
-			pg.ap = TTBL_AP_SRW_URW;
+			break;
+		default:
+			break;
 		}
 	}
 	if (pg.c && (reg_flags & VMM_REGION_CACHEABLE)) {
@@ -552,7 +583,7 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 		return rc;
 	}
 	/* Check if vcpu was trying read/write to virtual space */
-	if (xn && (pg.ap == TTBL_AP_SRW_U)) {
+	if (xn && ((pg.ap == TTBL_AP_SRW_U) || (pg.ap == TTBL_AP_SR_U))) {
 		/* Emulate load/store instructions */
 		if (regs->cpsr & CPSR_THUMB_ENABLED) {
 			return cpu_vcpu_emulate_thumb_inst(vcpu, regs, FALSE);
@@ -1279,12 +1310,18 @@ void cpu_vcpu_cp15_sync_cpsr(vmm_vcpu_t * vcpu)
 	vmm_vcpu_t * cvcpu = vmm_scheduler_current_vcpu();
 	vcpu->sregs->cp15.dacr &= 
 			~(0x3 << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER));
+	vcpu->sregs->cp15.dacr &= 
+			~(0x3 << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R));
 	if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vcpu->sregs->cp15.dacr |= 
 		(TTBL_DOM_NOACCESS << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER));
+		vcpu->sregs->cp15.dacr |= 
+		(TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R));
 	} else {
 		vcpu->sregs->cp15.dacr |= 
 		(TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER));
+		vcpu->sregs->cp15.dacr |= 
+		(TTBL_DOM_MANAGER << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R));
 	}
 	if (cvcpu->id == vcpu->id) {
 		cpu_mmu_chdacr(vcpu->sregs->cp15.dacr);
@@ -1319,11 +1356,11 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 		vcpu->sregs->cp15.l1 = cpu_mmu_l1tbl_alloc();
 		vcpu->sregs->cp15.dacr = 0x0;
 		vcpu->sregs->cp15.dacr |= (TTBL_DOM_CLIENT << 
-					 (TTBL_L1TBL_TTE_DOM_VCPU_NOMMU * 2));
+				(TTBL_L1TBL_TTE_DOM_VCPU_SUPER * 2));
+		vcpu->sregs->cp15.dacr |= (TTBL_DOM_MANAGER << 
+				(TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R * 2));
 		vcpu->sregs->cp15.dacr |= (TTBL_DOM_CLIENT << 
-					 (TTBL_L1TBL_TTE_DOM_VCPU_SUPER * 2));
-		vcpu->sregs->cp15.dacr |= (TTBL_DOM_CLIENT << 
-					 (TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
+				(TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
 		vtlb_count = CONFIG_ARMV7A_VTLB_ENTRY_COUNT;
 		vcpu->sregs->cp15.vtlb.count = vtlb_count;
 		vcpu->sregs->cp15.vtlb.table = vmm_malloc(vtlb_count *
