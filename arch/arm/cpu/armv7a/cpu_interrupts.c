@@ -157,28 +157,36 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	case IFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
 		break;
 	case IFSR_FS_TRANS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, ifar, 0, 0, 0);
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, 
+						ifar, fs, 0, 0, 0, 0);
 		break;
 	case IFSR_FS_TRANS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, ifar, 0, 1, 0);
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, 
+						ifar, fs, 0, 0, 1, 0);
 		break;
 	case IFSR_FS_ACCESS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, ifar, 0, 0, 0);
+		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, 
+						ifar, fs, 0, 0, 0, 0);
 		break;
 	case IFSR_FS_ACCESS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, ifar, 0, 1, 0);
+		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, 
+						ifar, fs, 0, 0, 1, 0);
 		break;
 	case IFSR_FS_DOMAIN_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, ifar, 0, 0, 0);
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, 
+						ifar, fs, 0, 0, 0, 0);
 		break;
 	case IFSR_FS_DOMAIN_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, ifar, 0, 1, 0);
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, 
+						ifar, fs, 0, 0, 1, 0);
 		break;
 	case IFSR_FS_PERM_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, ifar, 0, 0, 0);
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
+						ifar, fs, 0, 0, 0, 0);
 		break;
 	case IFSR_FS_PERM_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, ifar, 0, 1, 0);
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
+						ifar, fs, 0, 0, 1, 0);
 		break;
 	case IFSR_FS_DEBUG_EVENT:
 	case IFSR_FS_SYNC_EXT_ABORT:
@@ -203,7 +211,7 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 void do_data_abort(vmm_user_regs_t * uregs)
 {
 	int rc = VMM_EFAIL;
-	u32 dfsr, dfar, fs, wnr;
+	u32 dfsr, dfar, fs, dom, wnr;
 	vmm_vcpu_t * vcpu;
 	cpu_l1tbl_t * l1;
 	cpu_page_t pg;
@@ -213,6 +221,7 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	fs = (dfsr & DFSR_FS4_MASK) >> DFSR_FS4_SHIFT;
 	fs = (fs << 4) | (dfsr & DFSR_FS_MASK);
 	wnr = (dfsr & DFSR_WNR_MASK) >> DFSR_WNR_SHIFT;
+	dom = (dfsr & DFSR_DOM_MASK) >> DFSR_DOM_SHIFT;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		if (fs != DFSR_FS_TRANS_FAULT_SECTION ||
@@ -258,28 +267,36 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	case DFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
 		break;
 	case DFSR_FS_TRANS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, dfar, wnr, 0, 1);
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, 
+						dfar, fs, dom, wnr, 0, 1);
 		break;
 	case DFSR_FS_TRANS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, dfar, wnr, 1, 1);
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, 
+						dfar, fs, dom, wnr, 1, 1);
 		break;
 	case DFSR_FS_ACCESS_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, dfar, wnr, 0, 1);
+		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, 
+						dfar, fs, dom, wnr, 0, 1);
 		break;
 	case DFSR_FS_ACCESS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, dfar, wnr, 1, 1);
+		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, 
+						dfar, fs, dom, wnr, 1, 1);
 		break;
 	case DFSR_FS_DOMAIN_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, dfar, wnr, 0, 1);
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, 
+						dfar, fs, dom, wnr, 0, 1);
 		break;
 	case DFSR_FS_DOMAIN_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, dfar, wnr, 1, 1);
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, 
+						dfar, fs, dom, wnr, 1, 1);
 		break;
 	case DFSR_FS_PERM_FAULT_SECTION:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, dfar, wnr, 0, 1);
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
+						dfar, fs, dom, wnr, 0, 1);
 		break;
 	case DFSR_FS_PERM_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, dfar, wnr, 1, 1);
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
+						dfar, fs, dom, wnr, 1, 1);
 		break;
 	case DFSR_FS_DEBUG_EVENT:
 	case DFSR_FS_SYNC_EXT_ABORT:

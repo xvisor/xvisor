@@ -30,22 +30,26 @@
 /** Handle translation fault for a VCPU */
 int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu, 
 			      vmm_user_regs_t * regs, 
-			      u32 far, u32 wnr, u32 page, u32 xn);
+			      u32 far, u32 fs, u32 dom,
+			      u32 wnr, u32 page, u32 xn);
 
 /** Handle access fault for a VCPU */
 int cpu_vcpu_cp15_access_fault(vmm_vcpu_t * vcpu, 
 			       vmm_user_regs_t * regs, 
-			       u32 far, u32 wnr, u32 page, u32 xn);
+			       u32 far, u32 fs, u32 dom,
+			       u32 wnr, u32 page, u32 xn);
 
 /** Handle domain fault for a VCPU */
 int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu, 
 			       vmm_user_regs_t * regs, 
-			       u32 far, u32 wnr, u32 page, u32 xn);
+			       u32 far, u32 fs, u32 dom,
+			       u32 wnr, u32 page, u32 xn);
 
 /** Handle permission fault for a VCPU */
 int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu, 
 			     vmm_user_regs_t * regs, 
-			     u32 far, u32 wnr, u32 page, u32 xn);
+			     u32 far, u32 fs, u32 dom,
+			     u32 wnr, u32 page, u32 xn);
 
 /** Read one registers from CP15 */
 bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
