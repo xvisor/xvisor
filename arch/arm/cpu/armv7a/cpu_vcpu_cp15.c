@@ -37,8 +37,8 @@
 #include <cpu_vcpu_cp15.h>
 
 /* Update Virtual TLB */
-int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu, 
-			      cpu_page_t * p, u8 asid, u8 dom)
+static int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu, 
+				     cpu_page_t * p)
 {
 	int rc;
 	u32 victim;
@@ -63,8 +63,6 @@ int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu,
 
 	/* Mark entry as valid */
 	vmm_memcpy(&e->page, p, sizeof(cpu_page_t));
-	e->asid = asid;
-	e->dom = dom;
 	e->valid = 1;
 
 	/* Point to next victim */
@@ -75,7 +73,7 @@ int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu,
 }
 
 /** Flush Virtual TLB */
-int cpu_vcpu_cp15_vtlb_flush(vmm_vcpu_t * vcpu)
+static int cpu_vcpu_cp15_vtlb_flush(vmm_vcpu_t * vcpu)
 {
 	int rc;
 	u32 vtlb;
@@ -97,7 +95,8 @@ int cpu_vcpu_cp15_vtlb_flush(vmm_vcpu_t * vcpu)
 }
 
 /** Flush given virtual address from Virtual TLB */
-int cpu_vcpu_cp15_vtlb_flush_va(vmm_vcpu_t * vcpu, virtual_addr_t va)
+static int cpu_vcpu_cp15_vtlb_flush_va(vmm_vcpu_t * vcpu, 
+				       virtual_addr_t va)
 {
 	int rc;
 	u32 vtlb;
@@ -122,28 +121,230 @@ int cpu_vcpu_cp15_vtlb_flush_va(vmm_vcpu_t * vcpu, virtual_addr_t va)
 	return VMM_OK;
 }
 
-/** Flush given adress space id from Virtual TLB */
-int cpu_vcpu_cp15_vtlb_flush_asid(vmm_vcpu_t * vcpu, u8 asid)
-{
-	int rc;
-	u32 vtlb;
-	cpu_vtlb_entry_t * e;
+enum cpu_vcpu_cp15_access_types {
+	CP15_ACCESS_READ=0,
+	CP15_ACCESS_WRITE=1,
+	CP15_ACCESS_EXECUTE=2
+};
 
-	for (vtlb = 0; vtlb < vcpu->sregs->cp15.vtlb.count; vtlb++) {
-		if (vcpu->sregs->cp15.vtlb.table[vtlb].valid) {
-			e = &vcpu->sregs->cp15.vtlb.table[vtlb];
-			if (e->asid == asid) {
-				rc = cpu_mmu_unmap_page(vcpu->sregs->cp15.l1, 
-						&e->page);
-				if (rc) {
-					return rc;
-				}
-				vcpu->sregs->cp15.vtlb.table[vtlb].valid = 0;
-			}
+/* Check section/page access permissions.
+ * Returns 1 - permitted, 0 - not-permitted
+ */
+static inline int check_ap(vmm_vcpu_t *vcpu, 
+			   int ap, int access_type,
+                           int is_user)
+{
+	switch (ap) {
+	case 0:
+		if (access_type == 1)
+			return 0;
+		switch ((vcpu->sregs->cp15.c1_sctlr >> 8) & 3) {
+		case 1:
+			if (is_user) 
+				return 0;
+			else 
+				return (access_type == 0) ? 1 : 0;
+		case 2:
+			return (access_type == 0) ? 1 : 0;
+		default:
+			return 0;
+		}
+	case 1:
+		return is_user ? 0 : 1;
+	case 2:
+		if (is_user)
+			return (access_type == 0) ? 1 : 0;
+		else
+			return 1;
+	case 3:
+		return 1;
+	case 4: /* Reserved. */
+		return 0;
+	case 5:
+		if (is_user)
+			return 0;
+		else
+			return (access_type == 0) ? 1 : 0;
+	case 6:
+		return (access_type == 0) ? 1 : 0;
+	case 7:
+		if (!arm_feature (vcpu, ARM_FEATURE_V6K))
+			return 0;
+		return (access_type == 0) ? 1 : 0;
+	default:
+		return 0;
+	};
+
+	return 0;
+}
+
+static physical_addr_t get_level1_table_pa(vmm_vcpu_t *vcpu, 
+					 	virtual_addr_t va)
+{
+	physical_addr_t table;
+	if (va & vcpu->sregs->cp15.c2_mask) {
+		table = vcpu->sregs->cp15.ttbr1_hpa & 0xffffc000;
+	} else {
+		table = vcpu->sregs->cp15.ttbr0_hpa & 
+			vcpu->sregs->cp15.c2_base_mask;
+	}
+	table |= (va >> 18) & 0x3ffc;
+	return table;
+}
+
+static int ttbl_walk_v6(vmm_vcpu_t *vcpu, 
+			virtual_addr_t va, 
+			int access_type,
+			int is_user, 
+			cpu_page_t * pg,
+			u32 * fs)
+{
+	physical_addr_t table;
+	physical_size_t table_sz;
+	int rc, type, domain;
+	u32 desc, reg_flags;
+
+	/* Clear memory of page to return */
+	vmm_memset(pg, 0, sizeof(cpu_page_t));
+	pg->va = va;
+
+	/* Pagetable walk.  */
+	/* Lookup l1 descriptor.  */
+	table = get_level1_table_pa(vcpu, va);
+	desc = cpu_mmu_physical_read32(table);
+	type = (desc & 3);
+	if (type == 0) {
+		/* Section translation fault.  */
+		*fs = 5;
+		pg->dom = 0;
+		goto do_fault;
+	} else if (type == 2 && (desc & (1 << 18))) {
+		/* Supersection.  */
+		pg->dom = 0;
+	} else {
+		/* Section or page.  */
+		pg->dom = (desc >> 4) & 0x1e;
+	}
+	domain = (vcpu->sregs->cp15.c3 >> pg->dom) & 3;
+	if (domain == 0 || domain == 2) {
+		if (type == 2)
+			*fs = 9; /* Section domain fault.  */
+		else
+			*fs = 11; /* Page domain fault.  */
+		goto do_fault;
+	}
+	if (type == 2) {
+		if (desc & (1 << 18)) {
+			/* Supersection.  */
+			pg->pa = (desc & 0xff000000) | (va & 0x00ffffff);
+			pg->sz = 0x1000000;
+		} else {
+			/* Section.  */
+			pg->pa = (desc & 0xfff00000) | (va & 0x000fffff);
+			pg->sz = 0x100000;
+		}
+		pg->ap = ((desc >> 10) & 3) | ((desc >> 13) & 4);
+		pg->xn = desc & (1 << 4);
+		*fs = 13;
+	} else {
+		/* Lookup l2 entry.  */
+		table = (desc & 0xfffffc00) | ((va >> 10) & 0x3fc);
+		reg_flags = 0x0;
+		rc = vmm_guest_physical_map(vcpu->guest, 
+					    table, 
+					    0x400, 
+					    &table, 
+					    &table_sz,
+					    &reg_flags);
+		if (rc) {
+			return rc;
+		}
+		if (table_sz < 0x400) {
+			return VMM_EFAIL;
+		}
+		if (reg_flags & VMM_REGION_VIRTUAL) {
+			return VMM_EFAIL;
+		}
+		desc = cpu_mmu_physical_read32(table);
+		pg->ap = ((desc >> 4) & 3) | ((desc >> 7) & 4);
+		switch (desc & 3) {
+		case 0: /* Page translation fault.  */
+			*fs = 7;
+			goto do_fault;
+		case 1: /* 64k page.  */
+			pg->pa = (desc & 0xffff0000) | (va & 0xffff);
+			pg->xn = desc & (1 << 15);
+			pg->sz = 0x10000;
+			break;
+		case 2: case 3: /* 4k page.  */
+			pg->pa = (desc & 0xfffff000) | (va & 0xfff);
+			pg->xn = desc & 1;
+			pg->sz = 0x1000;
+			break;
+		default:
+			/* Never happens, but compiler isn't 
+			 * smart enough to tell.
+			 */
+			return VMM_EFAIL;
+		}
+		*fs = 15;
+	}
+	if (domain == 3) {
+		/* Page permission not to be checked so, 
+		 * give full access using access permissions.
+		 */
+		pg->ap = TTBL_AP_SRW_URW;
+		pg->xn = 0;
+	} else {
+		if (pg->xn && access_type == 2)
+			goto do_fault;
+		/* The simplified model uses AP[0] as an access control bit.  */
+		if ((vcpu->sregs->cp15.c1_sctlr & (1 << 29)) && (pg->ap & 1) == 0) {
+			/* Access flag fault.  */
+			*fs = (*fs == 15) ? 6 : 3;
+			goto do_fault;
+		}
+		if (!check_ap(vcpu, pg->ap, access_type, is_user)) {
+			/* Access permission fault.  */
+			goto do_fault;
 		}
 	}
-
 	return VMM_OK;
+do_fault:
+	return VMM_EFAIL;
+}
+
+static u32 cpu_vcpu_cp15_find_page(vmm_vcpu_t * vcpu, 
+				   virtual_addr_t va, 
+				   int access_type,
+				   bool is_user,
+				   cpu_page_t * pg)
+{
+	int rc = VMM_OK;
+	u32 fs = 0x0;
+	virtual_addr_t mva = (va < 0x02000000) ? 
+			     (va + vcpu->sregs->cp15.c13_fcse): va;
+
+	/* Get the required page for vcpu */
+	if (vcpu->sregs->cp15.c1_sctlr & SCTLR_M_MASK) {
+		/* MMU enabled for vcpu */
+		rc = ttbl_walk_v6(vcpu, mva, access_type, is_user, pg, &fs);
+		if (rc) {
+			return (fs << 4) | (pg->dom & 0xF);
+		}
+		pg->va = va & (pg->sz - 1);
+	} else {
+		/* MMU disabled for vcpu */
+		vmm_memset(pg, 0, sizeof(cpu_page_t));
+		pg->pa = mva;
+		pg->va = va;
+		pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+		pg->pa &= ~(pg->sz - 1);
+		pg->va &= ~(pg->sz - 1);
+		pg->ap = TTBL_AP_SRW_URW;
+	}
+
+	return 0;
 }
 
 enum cpu_vcpu_cp15_fault_types {
@@ -153,11 +354,12 @@ enum cpu_vcpu_cp15_fault_types {
 	CP15_PERM_FAULT=3,
 };
 
-int cpu_vcpu_cp15_assert_fault(vmm_vcpu_t * vcpu, 
-				vmm_user_regs_t * regs, 
-				u32 type, u32 far, u32 wnr, u32 page, u32 xn)
+static int cpu_vcpu_cp15_assert_fault(vmm_vcpu_t * vcpu, 
+				      vmm_user_regs_t * regs, 
+				      u32 type, u32 far, u32 fs, u32 dom,
+				      u32 wnr, u32 page, u32 xn)
 {
-	u32 fs = 0x0, fsr = 0x0;
+	u32 fsr = 0x0;
 	if (!(vcpu->sregs->cp15.c1_sctlr & SCTLR_M_MASK)) {
 		cpu_vcpu_halt(vcpu, regs);
 		return VMM_EFAIL;
@@ -186,6 +388,7 @@ int cpu_vcpu_cp15_assert_fault(vmm_vcpu_t * vcpu,
 		fsr |= ((fs >> 4) << DFSR_FS4_SHIFT);
 		fsr |= (fs & DFSR_FS_MASK);
 		fsr |= ((wnr << DFSR_WNR_SHIFT) & DFSR_WNR_MASK);
+		fsr |= ((dom << DFSR_DOM_SHIFT) & DFSR_DOM_MASK);
 		vcpu->sregs->cp15.c5_dfsr = fsr;
 		vcpu->sregs->cp15.c6_dfar = far;
 		vmm_vcpu_irq_assert(vcpu, CPU_DATA_ABORT_IRQ, 0x0);
@@ -221,67 +424,132 @@ int cpu_vcpu_cp15_assert_fault(vmm_vcpu_t * vcpu,
 
 int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu, 
 			      vmm_user_regs_t * regs, 
-			      u32 far, u32 wnr, u32 page, u32 xn)
+			      u32 far, u32 fs, u32 dom, 
+			      u32 wnr, u32 page, u32 xn)
 {
-	vmm_region_t *reg;
-	u8 asid, dom;
+	u32 ecode, reg_flags;
+	bool is_user;
+	int rc, access_type;
 	cpu_page_t pg;
+	physical_size_t availsz;
 
-	/* Get the required page for vcpu */
-	if (vcpu->sregs->cp15.c1_sctlr & SCTLR_M_MASK) {
-		/* FIXME: MMU enabled for vcpu */
+	if (xn) {
+		if (wnr) {
+			access_type = CP15_ACCESS_WRITE;
+		} else {
+			access_type = CP15_ACCESS_READ;
+		}
 	} else {
-		/* MMU disabled for vcpu */
-		reg = vmm_guest_getregion(vcpu->guest, far);
-		if (!reg) {
-			cpu_vcpu_halt(vcpu, regs);
-			return VMM_EFAIL;
-		}
-		pg.pa = reg->hphys_addr + (far - reg->gphys_addr);
-		pg.va = far;
-		pg.sz = reg->phys_size - (far - reg->gphys_addr);
-		pg.sz = cpu_mmu_best_page_size(pg.va, pg.pa, pg.sz);
-		pg.pa &= ~(pg.sz - 1);
-		pg.va &= ~(pg.sz - 1);
-		pg.imp = 0;
-		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_NOMMU;
-		if (reg->flags & VMM_REGION_VIRTUAL) {
-			pg.ap = TTBL_AP_SRW_U;
-		} else {
-			if (reg->flags & VMM_REGION_READONLY) {
-				pg.ap = TTBL_AP_SRW_UR;
-			} else {
-				pg.ap = TTBL_AP_SRW_URW;
-			}
-		}
-		pg.xn = 0;
-		if (reg->flags & VMM_REGION_CACHEABLE) {
-			pg.c = 1;
-		} else {
-			pg.c = 0;
-		}
-		pg.b = 0;
-		asid = 0;
-		dom = 0;
-		return cpu_vcpu_cp15_vtlb_update(vcpu, &pg, asid, dom);
+		access_type = CP15_ACCESS_EXECUTE;
 	}
 
-	return VMM_OK;
+	if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+		is_user = TRUE;
+	} else {
+		is_user = FALSE;
+	}
+
+	if ((ecode = cpu_vcpu_cp15_find_page(vcpu, far, 
+					access_type, is_user, 
+					&pg))) {
+		return cpu_vcpu_cp15_assert_fault(vcpu, regs, CP15_TRANS_FAULT,
+						  far, (ecode >> 4), 
+						  (ecode & 0xF), wnr, 
+						  page, xn);
+	}
+	if (pg.sz > TTBL_L2TBL_SMALL_PAGE_SIZE) {
+		pg.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+		pg.pa = pg.pa + ((far & ~(pg.sz - 1)) - pg.va);
+		pg.va = far & ~(pg.sz - 1);
+	}
+
+	if ((rc = vmm_guest_physical_map(vcpu->guest, 
+					 pg.pa, pg.sz,
+					 &pg.pa, &availsz,
+					 &reg_flags))) {
+		return rc;
+	}
+	if (availsz < TTBL_L2TBL_SMALL_PAGE_SIZE) {
+		return rc;
+	}
+	pg.sz = cpu_mmu_best_page_size(pg.va, pg.pa, availsz);
+	switch (pg.ap) {
+	case TTBL_AP_S_U:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_USER;
+		pg.ap = TTBL_AP_S_U;
+		break;
+	case TTBL_AP_SRW_U:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_SUPER;
+		pg.ap = TTBL_AP_SRW_URW;
+		break;
+	case TTBL_AP_SRW_UR:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R;
+		pg.ap = TTBL_AP_SRW_UR;
+		break;
+	case TTBL_AP_SRW_URW:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_USER;
+		pg.ap = TTBL_AP_SRW_URW;
+		break;
+	case TTBL_AP_SR_U:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_SUPER;
+		pg.ap = TTBL_AP_SRW_UR;
+		break;
+	case TTBL_AP_SR_UR:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_USER;
+		pg.ap = TTBL_AP_SRW_UR;
+		break;
+	default:
+		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_USER;
+		pg.ap = TTBL_AP_S_U;
+		break;
+	};
+	if (reg_flags & VMM_REGION_VIRTUAL) {
+		switch (pg.ap) {
+		case TTBL_AP_SRW_U:
+			pg.ap = TTBL_AP_S_U;
+			break;
+		case TTBL_AP_SRW_UR:
+			pg.ap = TTBL_AP_SR_U;
+			break;
+		case TTBL_AP_SRW_URW:
+			pg.ap = TTBL_AP_SRW_U;
+			break;
+		default:
+			break;
+		}
+	} else if (reg_flags & VMM_REGION_READONLY) {
+		switch (pg.ap) {
+		case TTBL_AP_SRW_URW:
+			pg.ap = TTBL_AP_SRW_UR;
+			break;
+		default:
+			break;
+		}
+	}
+	if (pg.c && (reg_flags & VMM_REGION_CACHEABLE)) {
+		pg.c = 1;
+	} else {
+		pg.c = 0;
+	}
+
+	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg);
 }
 
 int cpu_vcpu_cp15_access_fault(vmm_vcpu_t * vcpu, 
 			       vmm_user_regs_t * regs, 
-			       u32 far, u32 wnr, u32 page, u32 xn)
+			       u32 far, u32 fs, u32 dom, 
+			       u32 wnr, u32 page, u32 xn)
 {
 	/* We don't do anything about access fault */
 	/* Assert access fault to vcpu */
 	return cpu_vcpu_cp15_assert_fault(vcpu, regs, CP15_ACCESS_FAULT, 
-					  far, wnr, page, xn);
+					  far, fs, dom, wnr, page, xn);
 }
 
 int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu, 
 			       vmm_user_regs_t * regs, 
-			       u32 far, u32 wnr, u32 page, u32 xn)
+			       u32 far, u32 fs, u32 dom, 
+			       u32 wnr, u32 page, u32 xn)
 {
 	int rc = VMM_OK;
 	cpu_page_t pg;
@@ -294,7 +562,7 @@ int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu,
 	    (pg.dom == TTBL_L1TBL_TTE_DOM_VCPU_SUPER)) {
 		/* Assert permission fault to VCPU */
 		rc = cpu_vcpu_cp15_assert_fault(vcpu, regs, CP15_PERM_FAULT, 
-						far, wnr, page, xn);
+						far, fs, dom, wnr, page, xn);
 	} else {
 		cpu_vcpu_halt(vcpu, regs);
 		rc = VMM_EFAIL;
@@ -304,7 +572,8 @@ int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu,
 
 int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu, 
 			     vmm_user_regs_t * regs, 
-			     u32 far, u32 wnr, u32 page, u32 xn)
+			     u32 far, u32 fs, u32 dom, 
+			     u32 wnr, u32 page, u32 xn)
 {
 	int rc = VMM_OK;
 	cpu_page_t pg;
@@ -314,7 +583,7 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 		return rc;
 	}
 	/* Check if vcpu was trying read/write to virtual space */
-	if (xn && (pg.ap == TTBL_AP_SRW_U)) {
+	if (xn && ((pg.ap == TTBL_AP_SRW_U) || (pg.ap == TTBL_AP_SR_U))) {
 		/* Emulate load/store instructions */
 		if (regs->cpsr & CPSR_THUMB_ENABLED) {
 			return cpu_vcpu_emulate_thumb_inst(vcpu, regs, FALSE);
@@ -324,7 +593,7 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 	} 
 	/* Assert permission fault to vcpu */
 	return cpu_vcpu_cp15_assert_fault(vcpu, regs, CP15_PERM_FAULT, 
-					  far, wnr, page, xn);
+					  far, fs, dom, wnr, page, xn);
 }
 
 bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
@@ -581,9 +850,29 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 		switch (opc2) {
 		case 0:
 			vcpu->sregs->cp15.c2_base0 = data;
+			if (vmm_guest_physical_map(vcpu->guest, 
+						   data, TTBL_L1TBL_SIZE,
+						   &vcpu->sregs->cp15.ttbr0_hpa,
+						   NULL,
+						   &data)) {
+				goto bad_reg;
+			}
+			if (data & VMM_REGION_VIRTUAL) {
+				goto bad_reg;
+			}
 			break;
 		case 1:
 			vcpu->sregs->cp15.c2_base1 = data;
+			if (vmm_guest_physical_map(vcpu->guest, 
+						   data, TTBL_L1TBL_SIZE,
+						   &vcpu->sregs->cp15.ttbr1_hpa,
+						   NULL,
+						   &data)) {
+				goto bad_reg;
+			}
+			if (data & VMM_REGION_VIRTUAL) {
+				goto bad_reg;
+			}
 			break;
 		case 2:
 			data &= 7;
@@ -643,34 +932,31 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 					vcpu->sregs->cp15.c7_par = data & 0xfffff1ff;
 				}
 				break;
-			case 8:
-				/* FIXME: */
-#if 0
-				uint32_t phys_addr;
-				target_ulong page_size;
-				int prot;
-				int ret, is_user = opc2 & 2;
-				int access_type = opc2 & 1;
-				if (opc2 & 4) {
-					/* Other states are only available with TrustZone */
-					goto bad_reg;
-				}
-				ret = get_phys_addr(vcpu, data, access_type, is_user,
-						&phys_addr, &prot, &page_size);
-				if (ret == 0) {
-					/* We do not set any attribute bits in the PAR */
-					if (page_size == (1 << 24) && 
-					    arm_feature(vcpu, ARM_FEATURE_V7)) {
-						vcpu->sregs->cp15.c7_par = (phys_addr & 0xff000000) | 1 << 1;
-					} else {
-						vcpu->sregs->cp15.c7_par = phys_addr & 0xfffff000;
+			case 8: 
+				{
+					cpu_page_t pg;
+					int ret, is_user = opc2 & 2;
+					int access_type = opc2 & 1;
+					if (opc2 & 4) {
+						/* Other states are only available with TrustZone */
+						goto bad_reg;
 					}
-				} else {
-					vcpu->sregs->cp15.c7_par = ((ret & (10 << 1)) >> 5) |
-							   ((ret & (12 << 1)) >> 6) |
-							   ((ret & 0xf) << 1) | 1;
-				}
-#endif
+					ret = cpu_vcpu_cp15_find_page(vcpu, data, 
+								      access_type, is_user,
+								      &pg);
+					if (ret == 0) {
+						/* We do not set any attribute bits in the PAR */
+						if (pg.sz == TTBL_L1TBL_SUPSECTION_PAGE_SIZE && 
+						    arm_feature(vcpu, ARM_FEATURE_V7)) {
+							vcpu->sregs->cp15.c7_par = (pg.pa & 0xff000000) | 1 << 1;
+						} else {
+							vcpu->sregs->cp15.c7_par = pg.pa & 0xfffff000;
+						}
+					} else {
+						vcpu->sregs->cp15.c7_par = (((ret >> 9) & 0x1) << 6) |
+									   (((ret >> 4) & 0x1F) << 1) | 1;
+					}
+				} 
 				break;
 			}
 		}
@@ -870,8 +1156,13 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 	} else {
 		rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, &pg);
 		if (rc == VMM_ENOTAVAIL) {
-			rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
-						addr, 0, (pg.va) ? 1 : 0, 1);
+			if (pg.va) {
+				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
+				addr, DFSR_FS_TRANS_FAULT_PAGE, 0, 0, 1, 1);
+			} else {
+				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
+				addr, DFSR_FS_TRANS_FAULT_SECTION, 0, 0, 0, 1);
+			}
 			if (!rc) {
 				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, 
 						      addr, &pg);
@@ -946,8 +1237,13 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 	} else {
 		rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, &pg);
 		if (rc == VMM_ENOTAVAIL) {
-			rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
-						addr, 1, (pg.va) ? 1 : 0, 1);
+			if (pg.va) {
+				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
+				addr, DFSR_FS_TRANS_FAULT_PAGE, 0, 1, 1, 1);
+			} else {
+				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
+				addr, DFSR_FS_TRANS_FAULT_SECTION, 0, 1, 0, 1);
+			}
 			if (!rc) {
 				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, 
 						      addr, &pg);
@@ -1014,12 +1310,18 @@ void cpu_vcpu_cp15_sync_cpsr(vmm_vcpu_t * vcpu)
 	vmm_vcpu_t * cvcpu = vmm_scheduler_current_vcpu();
 	vcpu->sregs->cp15.dacr &= 
 			~(0x3 << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER));
+	vcpu->sregs->cp15.dacr &= 
+			~(0x3 << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R));
 	if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vcpu->sregs->cp15.dacr |= 
 		(TTBL_DOM_NOACCESS << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER));
+		vcpu->sregs->cp15.dacr |= 
+		(TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R));
 	} else {
 		vcpu->sregs->cp15.dacr |= 
 		(TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER));
+		vcpu->sregs->cp15.dacr |= 
+		(TTBL_DOM_MANAGER << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R));
 	}
 	if (cvcpu->id == vcpu->id) {
 		cpu_mmu_chdacr(vcpu->sregs->cp15.dacr);
@@ -1054,11 +1356,11 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 		vcpu->sregs->cp15.l1 = cpu_mmu_l1tbl_alloc();
 		vcpu->sregs->cp15.dacr = 0x0;
 		vcpu->sregs->cp15.dacr |= (TTBL_DOM_CLIENT << 
-					 (TTBL_L1TBL_TTE_DOM_VCPU_NOMMU * 2));
+				(TTBL_L1TBL_TTE_DOM_VCPU_SUPER * 2));
+		vcpu->sregs->cp15.dacr |= (TTBL_DOM_MANAGER << 
+				(TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R * 2));
 		vcpu->sregs->cp15.dacr |= (TTBL_DOM_CLIENT << 
-					 (TTBL_L1TBL_TTE_DOM_VCPU_SUPER * 2));
-		vcpu->sregs->cp15.dacr |= (TTBL_DOM_CLIENT << 
-					 (TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
+				(TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
 		vtlb_count = CONFIG_ARMV7A_VTLB_ENTRY_COUNT;
 		vcpu->sregs->cp15.vtlb.count = vtlb_count;
 		vcpu->sregs->cp15.vtlb.table = vmm_malloc(vtlb_count *

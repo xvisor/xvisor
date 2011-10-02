@@ -27,6 +27,10 @@
 #include <vmm_list.h>
 #include <vmm_manager.h>
 
+/** Get region to which given guest physical address belongs */
+vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
+				  physical_addr_t gphys_addr);
+
 /** Read from guest memory address space */
 u32 vmm_guest_physical_read(vmm_guest_t * guest, 
 			    physical_addr_t gphys_addr, 
@@ -37,9 +41,18 @@ u32 vmm_guest_physical_write(vmm_guest_t * guest,
 			     physical_addr_t gphys_addr, 
 			     void * src, u32 len);
 
-/** Get region to which given guest physical address belongs */
-vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
-				  physical_addr_t gphys_addr);
+/** Map guest physical address to some host physical address */
+int vmm_guest_physical_map(vmm_guest_t * guest,
+			   physical_addr_t gphys_addr,
+			   physical_size_t gphys_size,
+			   physical_addr_t * hphys_addr,
+			   physical_size_t * hphys_size,
+			   u32 * reg_flags);
+
+/** Unmap guest physical address */
+int vmm_guest_physical_unmap(vmm_guest_t * guest,
+			     physical_addr_t gphys_addr,
+			     physical_size_t gphys_size);
 
 /** Reset Guest Address space */
 int vmm_guest_aspace_reset(vmm_guest_t *guest);

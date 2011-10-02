@@ -75,10 +75,10 @@ int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz);
 int vmm_host_ram_free(physical_addr_t pa, physical_size_t sz);
 
 /** Base address of RAM */
-virtual_addr_t vmm_host_ram_base(void);
+physical_addr_t vmm_host_ram_base(void);
 
 /** Check if a RAM physical address is free */
-bool vmm_host_ram_frame_isfree(virtual_addr_t va);
+bool vmm_host_ram_frame_isfree(physical_addr_t pa);
 
 /** Free frame count of RAM */
 u32 vmm_host_ram_free_frame_count(void);
