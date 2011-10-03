@@ -57,7 +57,9 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("\n");
 	arm_puts("mmu_setup   - Setup MMU for ARM test code\n");
 	arm_puts("\n");
-	arm_puts("mmu_test    - Test MMU for ARM test code\n");
+	arm_puts("mmu_state   - MMU is enabled/disabled for ARM test code\n");
+	arm_puts("\n");
+	arm_puts("mmu_test    - Run MMU test suite for ARM test code\n");
 	arm_puts("\n");
 	arm_puts("mmu_cleanup - Cleanup MMU for ARM test code\n");
 	arm_puts("\n");
@@ -102,9 +104,33 @@ void arm_cmd_mmu_setup(int argc, char **argv)
 	arm_mmu_setup();
 }
 
+void arm_cmd_mmu_state(int argc, char **argv)
+{
+	if (arm_mmu_is_enabled()) {
+		arm_puts("MMU Enabled\n");
+	} else {
+		arm_puts("MMU Disabled\n");
+	}
+}
+
 void arm_cmd_mmu_test(int argc, char **argv)
 {
-	arm_mmu_test();
+	char str[32];
+	u32 total = 0x0, pass = 0x0, fail = 0x0;
+	arm_puts("MMU Test Suite ...\n");
+	arm_mmu_test(&total, &pass, &fail);
+	arm_puts("  Total: ");
+	arm_uint2hexstr(str, total);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  Pass : ");
+	arm_uint2hexstr(str, pass);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  Fail : ");
+	arm_uint2hexstr(str, fail);
+	arm_puts(str);
+	arm_puts("\n");
 }
 
 void arm_cmd_mmu_cleanup(int argc, char **argv)
@@ -302,6 +328,8 @@ void arm_main(void)
 			arm_cmd_hello(argc, argv);
 		} else if (arm_strcmp(argv[0], "mmu_setup") == 0) {
 			arm_cmd_mmu_setup(argc, argv);
+		} else if (arm_strcmp(argv[0], "mmu_state") == 0) {
+			arm_cmd_mmu_state(argc, argv);
 		} else if (arm_strcmp(argv[0], "mmu_test") == 0) {
 			arm_cmd_mmu_test(argc, argv);
 		} else if (arm_strcmp(argv[0], "mmu_cleanup") == 0) {

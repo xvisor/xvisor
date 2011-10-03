@@ -24,6 +24,7 @@
 #ifndef __ARM_REGS_H__
 #define __ARM_REGS_H__
 
+/* CPSR related macros & defines */
 #define CPSR_MODE_MASK			0x0000001f
 #define CPSR_MODE_USER			0x00000010
 #define CPSR_MODE_FIQ			0x00000011
@@ -43,5 +44,25 @@
 #define CPSR_COND_CARRY			(1 << 29)
 #define CPSR_COND_ZERO			(1 << 30)
 #define CPSR_COND_NEGATIVE		(1 << 31)
+
+/* SCTLR related macros & defines */
+#define SCTLR_TE_MASK					0x40000000
+#define SCTLR_AFE_MASK					0x20000000
+#define SCTLR_TRE_MASK					0x10000000
+#define SCTLR_NFI_MASK					0x08000000
+#define SCTLR_EE_MASK					0x02000000
+#define SCTLR_VE_MASK					0x01000000
+#define SCTLR_U_MASK					0x00400000
+#define SCTLR_FI_MASK					0x00200000
+#define SCTLR_HA_MASK					0x00020000
+#define SCTLR_RR_MASK					0x00004000
+#define SCTLR_V_MASK					0x00002000
+#define SCTLR_I_MASK					0x00001000
+#define SCTLR_Z_MASK					0x00000800
+#define SCTLR_SW_MASK					0x00000400
+#define SCTLR_B_MASK					0x00000080
+#define SCTLR_C_MASK					0x00000004
+#define SCTLR_A_MASK					0x00000002
+#define SCTLR_M_MASK					0x00000001
 
 #endif
