@@ -179,17 +179,15 @@ static inline int check_ap(vmm_vcpu_t *vcpu,
 }
 
 static physical_addr_t get_level1_table_pa(vmm_vcpu_t *vcpu, 
-					 	virtual_addr_t va)
+					   virtual_addr_t va)
 {
-	physical_addr_t table;
 	if (va & vcpu->sregs->cp15.c2_mask) {
-		table = vcpu->sregs->cp15.ttbr1_hpa & 0xffffc000;
+		return vcpu->sregs->cp15.c2_base0 & 0xffffc000;
 	} else {
-		table = vcpu->sregs->cp15.ttbr0_hpa & 
+		return vcpu->sregs->cp15.c2_base0 & 
 			vcpu->sregs->cp15.c2_base_mask;
 	}
-	table |= (va >> 18) & 0x3ffc;
-	return table;
+	return 0x0;
 }
 
 static int ttbl_walk_v6(vmm_vcpu_t *vcpu, 
@@ -211,6 +209,22 @@ static int ttbl_walk_v6(vmm_vcpu_t *vcpu,
 	/* Pagetable walk.  */
 	/* Lookup l1 descriptor.  */
 	table = get_level1_table_pa(vcpu, va);
+	rc = vmm_guest_physical_map(vcpu->guest, 
+				    table, 
+				    0x4000, 
+				    &table, 
+				    &table_sz,
+				    &reg_flags);
+	if (rc) {
+		return rc;
+	}
+	if (table_sz < 0x4000) {
+		return VMM_EFAIL;
+	}
+	if (reg_flags & VMM_REGION_VIRTUAL) {
+		return VMM_EFAIL;
+	}
+	table |= (va >> 18) & 0x3ffc;
 	desc = cpu_mmu_physical_read32(table);
 	type = (desc & 3);
 	if (type == 0) {
@@ -332,17 +346,17 @@ static u32 cpu_vcpu_cp15_find_page(vmm_vcpu_t * vcpu,
 		if (rc) {
 			return (fs << 4) | (pg->dom & 0xF);
 		}
-		pg->va = va & (pg->sz - 1);
+		pg->va = va;
 	} else {
 		/* MMU disabled for vcpu */
 		vmm_memset(pg, 0, sizeof(cpu_page_t));
 		pg->pa = mva;
 		pg->va = va;
 		pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
-		pg->pa &= ~(pg->sz - 1);
-		pg->va &= ~(pg->sz - 1);
 		pg->ap = TTBL_AP_SRW_URW;
 	}
+	pg->pa &= ~(pg->sz - 1);
+	pg->va &= ~(pg->sz - 1);
 
 	return 0;
 }
@@ -611,12 +625,16 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 				switch (opc2) {
 				case 0: /* Device ID.  */
 					*data = vcpu->sregs->cp15.c0_cpuid;
+					break;
 				case 1: /* Cache Type.  */
 					*data = vcpu->sregs->cp15.c0_cachetype;
+					break;
 				case 2: /* TCM status.  */
 					*data = 0;
+					break;
 				case 3: /* TLB type register.  */
 					*data = 0; /* No lockable TLB entries.  */
+					break;
 				case 5: /* MPIDR */
 					/* The MPIDR was standardised in v7; prior to
 					 * this it was implemented only in the 11MPCore.
@@ -639,26 +657,32 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 						*data = mpidr;
 					}
 					/* otherwise fall through to the unimplemented-reg case */
+					break;
 				default:
 					goto bad_reg;
 				}
+				break;
 			case 1:
 				if (!arm_feature(vcpu, ARM_FEATURE_V6))
 					goto bad_reg;
 				*data =  vcpu->sregs->cp15.c0_c1[opc2];
+				break;
 			case 2:
 				if (!arm_feature(vcpu, ARM_FEATURE_V6))
 					goto bad_reg;
 				*data = vcpu->sregs->cp15.c0_c2[opc2];
+				break;
 			case 3:
 			case 4: 
 			case 5: 
 			case 6: 
 			case 7:
 		                *data = 0;
+				break;
 			default:
 				goto bad_reg;
 			}
+			break;
 		case 1:
 			/* These registers aren't documented on arm11 cores.  However
 			 * Linux looks at them anyway.  */
@@ -666,79 +690,106 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 				goto bad_reg;
 			if (CRm != 0)
 				goto bad_reg;
-			if (!arm_feature(vcpu, ARM_FEATURE_V7))
+			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
 				*data = 0;
+				break;
+			}
 			switch (opc2) {
 			case 0:
 				*data = vcpu->sregs->cp15.c0_ccsid[vcpu->sregs->cp15.c0_cssel];
+				break;
 			case 1:
 				*data = vcpu->sregs->cp15.c0_clid;
+				break;
 			case 7:
 				*data = 0;
+				break;
+			default:
+				goto bad_reg;
 			}
-			goto bad_reg;
+			break;
 		case 2:
 			if (opc2 != 0 || CRm != 0)
 				goto bad_reg;
 			*data = vcpu->sregs->cp15.c0_cssel;
+			break;
 		default:
 			goto bad_reg;
-		}
+		};
+		break;
 	case 1: /* System configuration.  */
 		switch (opc2) {
 		case 0: /* Control register.  */
 			*data = vcpu->sregs->cp15.c1_sctlr;
+			break;
 		case 1: /* Auxiliary control register.  */
 			if (!arm_feature(vcpu, ARM_FEATURE_AUXCR))
 				goto bad_reg;
 			switch (arm_cpuid(vcpu)) {
 			case ARM_CPUID_ARM1026:
 				*data = 1;
+				break;
 			case ARM_CPUID_ARM1136:
 			case ARM_CPUID_ARM1136_R2:
 				*data = 7;
+				break;
 			case ARM_CPUID_ARM11MPCORE:
 				*data = 1;
+				break;
 			case ARM_CPUID_CORTEXA8:
 				*data = 2;
+				break;
 			case ARM_CPUID_CORTEXA9:
 				*data = 0;
+				break;
 			default:
 				goto bad_reg;
 			}
+			break;
 		case 2: /* Coprocessor access register.  */
 			*data = vcpu->sregs->cp15.c1_coproc;
+			break;
 		default:
 			goto bad_reg;
-		}
+		};
+		break;
 	case 2: /* MMU Page table control / MPU cache control.  */
 		switch (opc2) {
 		case 0:
 			*data = vcpu->sregs->cp15.c2_base0;
+			break;
 		case 1:
 			*data = vcpu->sregs->cp15.c2_base1;
+			break;
 		case 2:
 			*data = vcpu->sregs->cp15.c2_control;
+			break;
 		default:
 			goto bad_reg;
-		}
+		};
+		break;
 	case 3: /* MMU Domain access control / MPU write buffer control.  */
 		*data = vcpu->sregs->cp15.c3;
+		break;
 	case 4: /* Reserved.  */
 		goto bad_reg;
 	case 5: /* MMU Fault status / MPU access permission.  */
 		switch (opc2) {
 		case 0:
 			*data = vcpu->sregs->cp15.c5_dfsr;
+			break;
 		case 1:
 			*data = vcpu->sregs->cp15.c5_ifsr;
+			break;
 		default:
 			goto bad_reg;
-		}
+		};
+		break;
 	case 6: /* MMU Fault address.  */
 		switch (opc2) {
 		case 0:
 			*data = vcpu->sregs->cp15.c6_dfar;
+			break;
 		case 1:
 			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
 				/* Watchpoint Fault Adrress.  */
@@ -749,6 +800,7 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 				 * shouldn't do any harm.  */
 				*data = vcpu->sregs->cp15.c6_ifar;
 			}
+			break;
 		case 2:
 			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
 				/* Instruction Fault Adrress.  */
@@ -756,16 +808,20 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 			} else {
 				goto bad_reg;
 			}
+			break;
 		default:
 			goto bad_reg;
-		}
+		};
+		break;
 	case 7: /* Cache control.  */
 		if (CRm == 4 && opc1 == 0 && opc2 == 0) {
 			*data = vcpu->sregs->cp15.c7_par;
+			break;
 		}
 		/* FIXME: Should only clear Z flag if destination is r15.  */
 		regs->cpsr &= ~CPSR_COND_ZERO_MASK;
 		*data = 0;
+		break;
 	case 8: /* MMU TLB control.  */
 		goto bad_reg;
 	case 9: /* Cache lockdown.  */
@@ -774,22 +830,28 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 			switch (opc2) {
 			case 0:
 				*data = vcpu->sregs->cp15.c9_data;
+				break;
 			case 1:
 				*data = vcpu->sregs->cp15.c9_insn;
+				break;
 			default:
 				goto bad_reg;
-			}
+			};
+			break;
 		case 1: /* L2 cache */
 			if (CRm != 0)
 				goto bad_reg;
 			/* L2 Lockdown and Auxiliary control.  */
 			*data = 0;
+			break;
 		default:
 			goto bad_reg;
-		}
+		};
+		break;
 	case 10: /* MMU TLB lockdown.  */
 		/* ??? TLB lockdown not implemented.  */
 		*data = 0;
+		break;
 	case 11: /* TCM DMA control.  */
 	case 12: /* Reserved.  */
 		goto bad_reg;
@@ -797,15 +859,19 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 		switch (opc2) {
 		case 0:
 			*data = vcpu->sregs->cp15.c13_fcse;
+			break;
 		case 1:
 			*data = vcpu->sregs->cp15.c13_context;
+			break;
 		default:
 			goto bad_reg;
-		}
+		};
+		break;
 	case 14: /* Reserved.  */
 		goto bad_reg;
 	case 15: /* Implementation specific.  */
 		*data = 0;
+		break;
 	}
 	return TRUE;
 bad_reg:
@@ -844,35 +910,15 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 			break;
 		default:
 			goto bad_reg;
-		}
+		};
 		break;
 	case 2: /* MMU Page table control / MPU cache control.  */
 		switch (opc2) {
 		case 0:
 			vcpu->sregs->cp15.c2_base0 = data;
-			if (vmm_guest_physical_map(vcpu->guest, 
-						   data, TTBL_L1TBL_SIZE,
-						   &vcpu->sregs->cp15.ttbr0_hpa,
-						   NULL,
-						   &data)) {
-				goto bad_reg;
-			}
-			if (data & VMM_REGION_VIRTUAL) {
-				goto bad_reg;
-			}
 			break;
 		case 1:
 			vcpu->sregs->cp15.c2_base1 = data;
-			if (vmm_guest_physical_map(vcpu->guest, 
-						   data, TTBL_L1TBL_SIZE,
-						   &vcpu->sregs->cp15.ttbr1_hpa,
-						   NULL,
-						   &data)) {
-				goto bad_reg;
-			}
-			if (data & VMM_REGION_VIRTUAL) {
-				goto bad_reg;
-			}
 			break;
 		case 2:
 			data &= 7;
@@ -882,7 +928,7 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 			break;
 		default:
 			goto bad_reg;
-		}
+		};
 		break;
 	case 3: /* MMU Domain access control / MPU write buffer control.  */
 		vcpu->sregs->cp15.c3 = data;
@@ -901,7 +947,7 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 			break;
 		default:
 			goto bad_reg;
-		}
+		};
 		break;
 	case 6: /* MMU Fault address / MPU base/size.  */
 		switch (opc2) {
@@ -958,7 +1004,9 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 					}
 				} 
 				break;
-			}
+			default:
+				goto bad_reg;
+			};
 		}
 		break;
 	case 8: /* MMU TLB control.  */
@@ -1381,6 +1429,10 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 	}
 
 	vcpu->sregs->cp15.c0_cpuid = cpuid;
+	vcpu->sregs->cp15.c2_control = 0x0;
+	vcpu->sregs->cp15.c2_mask = 0x0;
+	vcpu->sregs->cp15.c2_base_mask = 0xFFFFC000;
+	vcpu->sregs->cp15.c9_pmcr = (cpuid & 0xFF000000);
 	/* Reset values of important registers */
 	switch (cpuid) {
 	case ARM_CPUID_CORTEXA8:
