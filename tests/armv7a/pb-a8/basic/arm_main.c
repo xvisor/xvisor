@@ -117,18 +117,38 @@ void arm_cmd_mmu_test(int argc, char **argv)
 {
 	char str[32];
 	u32 total = 0x0, pass = 0x0, fail = 0x0;
-	arm_puts("MMU Test Suite ...\n");
-	arm_mmu_test(&total, &pass, &fail);
+	arm_puts("MMU Section Test Suite ...\n");
+	total = 0x0;
+	pass = 0x0;
+	fail = 0x0;
+	arm_mmu_section_test(&total, &pass, &fail);
 	arm_puts("  Total: ");
-	arm_uint2hexstr(str, total);
+	arm_int2str(str, total);
 	arm_puts(str);
 	arm_puts("\n");
 	arm_puts("  Pass : ");
-	arm_uint2hexstr(str, pass);
+	arm_int2str(str, pass);
 	arm_puts(str);
 	arm_puts("\n");
 	arm_puts("  Fail : ");
-	arm_uint2hexstr(str, fail);
+	arm_int2str(str, fail);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("MMU Page Test Suite ...\n");
+	total = 0x0;
+	pass = 0x0;
+	fail = 0x0;
+	arm_mmu_page_test(&total, &pass, &fail);
+	arm_puts("  Total: ");
+	arm_int2str(str, total);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  Pass : ");
+	arm_int2str(str, pass);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  Fail : ");
+	arm_int2str(str, fail);
 	arm_puts(str);
 	arm_puts("\n");
 }
@@ -287,7 +307,7 @@ void arm_main(void)
 	char line[ARM_MAX_CMD_STR_SIZE];
 	char *argv[ARM_MAX_ARG_SIZE];
 
-	arm_puts("ARM Realview PB-A8 Test Code\n\n");
+	arm_puts("ARM Realview PB-A8 Basic Test\n\n");
 
 	while(1) {
 		arm_puts("arm-test# ");
