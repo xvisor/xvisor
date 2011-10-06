@@ -129,6 +129,7 @@
 #define TTBL_AP_SRW_UR					0x2
 #define TTBL_AP_SRW_URW					0x3
 #define TTBL_AP_SR_U					0x5
+#define TTBL_AP_SR_UR_DEPRICATED			0x6
 #define TTBL_AP_SR_UR					0x7
 #define TTBL_DOM_MANAGER				0x3
 #define TTBL_DOM_RESERVED				0x2

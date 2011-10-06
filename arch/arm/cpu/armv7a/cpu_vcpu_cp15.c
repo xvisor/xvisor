@@ -361,17 +361,10 @@ static u32 cpu_vcpu_cp15_find_page(vmm_vcpu_t * vcpu,
 	return 0;
 }
 
-enum cpu_vcpu_cp15_fault_types {
-	CP15_TRANS_FAULT=0,
-	CP15_ACCESS_FAULT=1,
-	CP15_DOMAIN_FAULT=2,
-	CP15_PERM_FAULT=3,
-};
-
 static int cpu_vcpu_cp15_assert_fault(vmm_vcpu_t * vcpu, 
 				      vmm_user_regs_t * regs, 
-				      u32 type, u32 far, u32 fs, u32 dom,
-				      u32 wnr, u32 page, u32 xn)
+				      u32 far, u32 fs, u32 dom,
+				      u32 wnr, u32 xn)
 {
 	u32 fsr = 0x0;
 	if (!(vcpu->sregs->cp15.c1_sctlr & SCTLR_M_MASK)) {
@@ -379,26 +372,6 @@ static int cpu_vcpu_cp15_assert_fault(vmm_vcpu_t * vcpu,
 		return VMM_EFAIL;
 	}
 	if (xn) {
-		switch (type) {
-		case CP15_TRANS_FAULT:
-			fs = (page) ? DFSR_FS_TRANS_FAULT_PAGE : 
-					DFSR_FS_TRANS_FAULT_SECTION;
-			break;
-		case CP15_ACCESS_FAULT:
-			fs = (page) ? DFSR_FS_ACCESS_FAULT_PAGE : 
-					DFSR_FS_ACCESS_FAULT_SECTION;
-			break;
-		case CP15_DOMAIN_FAULT:
-			fs = (page) ? DFSR_FS_DOMAIN_FAULT_PAGE : 
-					DFSR_FS_DOMAIN_FAULT_SECTION;
-			break;
-		case CP15_PERM_FAULT:
-			fs = (page) ? DFSR_FS_PERM_FAULT_PAGE : 
-					DFSR_FS_PERM_FAULT_SECTION;
-			break;
-		default:
-			return VMM_EFAIL;
-		};
 		fsr |= ((fs >> 4) << DFSR_FS4_SHIFT);
 		fsr |= (fs & DFSR_FS_MASK);
 		fsr |= ((wnr << DFSR_WNR_SHIFT) & DFSR_WNR_MASK);
@@ -407,26 +380,6 @@ static int cpu_vcpu_cp15_assert_fault(vmm_vcpu_t * vcpu,
 		vcpu->sregs->cp15.c6_dfar = far;
 		vmm_vcpu_irq_assert(vcpu, CPU_DATA_ABORT_IRQ, 0x0);
 	} else {
-		switch (type) {
-		case CP15_TRANS_FAULT:
-			fs = (page) ? IFSR_FS_TRANS_FAULT_PAGE : 
-					IFSR_FS_TRANS_FAULT_SECTION;
-			break;
-		case CP15_ACCESS_FAULT:
-			fs = (page) ? IFSR_FS_ACCESS_FAULT_PAGE : 
-					IFSR_FS_ACCESS_FAULT_SECTION;
-			break;
-		case CP15_DOMAIN_FAULT:
-			fs = (page) ? IFSR_FS_DOMAIN_FAULT_PAGE : 
-					IFSR_FS_DOMAIN_FAULT_SECTION;
-			break;
-		case CP15_PERM_FAULT:
-			fs = (page) ? IFSR_FS_PERM_FAULT_PAGE : 
-					IFSR_FS_PERM_FAULT_SECTION;
-			break;
-		default:
-			return VMM_EFAIL;
-		};
 		fsr |= ((fs >> 4) << IFSR_FS4_SHIFT);
 		fsr |= (fs & IFSR_FS_MASK);
 		vcpu->sregs->cp15.c5_ifsr = fsr;
@@ -439,7 +392,7 @@ static int cpu_vcpu_cp15_assert_fault(vmm_vcpu_t * vcpu,
 int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu, 
 			      vmm_user_regs_t * regs, 
 			      u32 far, u32 fs, u32 dom, 
-			      u32 wnr, u32 page, u32 xn)
+			      u32 wnr, u32 xn)
 {
 	u32 ecode, reg_flags;
 	bool is_user;
@@ -466,10 +419,9 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 	if ((ecode = cpu_vcpu_cp15_find_page(vcpu, far, 
 					access_type, is_user, 
 					&pg))) {
-		return cpu_vcpu_cp15_assert_fault(vcpu, regs, CP15_TRANS_FAULT,
+		return cpu_vcpu_cp15_assert_fault(vcpu, regs, 
 						  far, (ecode >> 4), 
-						  (ecode & 0xF), wnr, 
-						  page, xn);
+						  (ecode & 0xF), wnr, xn);
 	}
 	if (pg.sz > TTBL_L2TBL_SMALL_PAGE_SIZE) {
 		pg.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
@@ -508,6 +460,7 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_SUPER;
 		pg.ap = TTBL_AP_SRW_UR;
 		break;
+	case TTBL_AP_SR_UR_DEPRICATED:
 	case TTBL_AP_SR_UR:
 		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_USER;
 		pg.ap = TTBL_AP_SRW_UR;
@@ -552,18 +505,17 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 int cpu_vcpu_cp15_access_fault(vmm_vcpu_t * vcpu, 
 			       vmm_user_regs_t * regs, 
 			       u32 far, u32 fs, u32 dom, 
-			       u32 wnr, u32 page, u32 xn)
+			       u32 wnr, u32 xn)
 {
 	/* We don't do anything about access fault */
-	/* Assert access fault to vcpu */
-	return cpu_vcpu_cp15_assert_fault(vcpu, regs, CP15_ACCESS_FAULT, 
-					  far, fs, dom, wnr, page, xn);
+	/* Assert fault to vcpu */
+	return cpu_vcpu_cp15_assert_fault(vcpu, regs, far, fs, dom, wnr, xn);
 }
 
 int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu, 
 			       vmm_user_regs_t * regs, 
 			       u32 far, u32 fs, u32 dom, 
-			       u32 wnr, u32 page, u32 xn)
+			       u32 wnr, u32 xn)
 {
 	int rc = VMM_OK;
 	cpu_page_t pg;
@@ -574,9 +526,11 @@ int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu,
 	}
 	if (((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) &&
 	    (pg.dom == TTBL_L1TBL_TTE_DOM_VCPU_SUPER)) {
-		/* Assert permission fault to VCPU */
-		rc = cpu_vcpu_cp15_assert_fault(vcpu, regs, CP15_PERM_FAULT, 
-						far, fs, dom, wnr, page, xn);
+		/* Remove fault address from VTLB and restart.
+		 * Doing this will force us to do TTBL walk If MMU 
+		 * is enabled then appropriate fault will be generated 
+		 */
+		rc = cpu_vcpu_cp15_vtlb_flush_va(vcpu, far);
 	} else {
 		cpu_vcpu_halt(vcpu, regs);
 		rc = VMM_EFAIL;
@@ -587,7 +541,7 @@ int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu,
 int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu, 
 			     vmm_user_regs_t * regs, 
 			     u32 far, u32 fs, u32 dom, 
-			     u32 wnr, u32 page, u32 xn)
+			     u32 wnr, u32 xn)
 {
 	int rc = VMM_OK;
 	cpu_page_t pg;
@@ -605,9 +559,11 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 			return cpu_vcpu_emulate_arm_inst(vcpu, regs, FALSE);
 		}
 	} 
-	/* Assert permission fault to vcpu */
-	return cpu_vcpu_cp15_assert_fault(vcpu, regs, CP15_PERM_FAULT, 
-					  far, fs, dom, wnr, page, xn);
+	/* Remove fault address from VTLB and restart.
+	 * Doing this will force us to do TTBL walk If MMU 
+	 * is enabled then appropriate fault will be generated 
+	 */
+	return cpu_vcpu_cp15_vtlb_flush_va(vcpu, far);
 }
 
 bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
@@ -1206,10 +1162,10 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 		if (rc == VMM_ENOTAVAIL) {
 			if (pg.va) {
 				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
-				addr, DFSR_FS_TRANS_FAULT_PAGE, 0, 0, 1, 1);
+				addr, DFSR_FS_TRANS_FAULT_PAGE, 0, 0, 1);
 			} else {
 				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
-				addr, DFSR_FS_TRANS_FAULT_SECTION, 0, 0, 0, 1);
+				addr, DFSR_FS_TRANS_FAULT_SECTION, 0, 0, 1);
 			}
 			if (!rc) {
 				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, 
@@ -1287,10 +1243,10 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 		if (rc == VMM_ENOTAVAIL) {
 			if (pg.va) {
 				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
-				addr, DFSR_FS_TRANS_FAULT_PAGE, 0, 1, 1, 1);
+				addr, DFSR_FS_TRANS_FAULT_PAGE, 0, 1, 1);
 			} else {
 				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
-				addr, DFSR_FS_TRANS_FAULT_SECTION, 0, 1, 0, 1);
+				addr, DFSR_FS_TRANS_FAULT_SECTION, 0, 1, 1);
 			}
 			if (!rc) {
 				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, 
