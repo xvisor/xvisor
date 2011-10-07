@@ -24,6 +24,7 @@
 
 #include <arm_config.h>
 #include <arm_gic.h>
+#include <arm_mmu.h>
 #include <arm_irq.h>
 
 arm_irq_handler_t irq_hndls[NR_IRQS_PBA8];
@@ -34,14 +35,17 @@ void do_undefined_instruction(pt_regs_t *regs)
 
 void do_software_interrupt(pt_regs_t *regs)
 {
+	arm_mmu_syscall(regs);
 }
 
 void do_prefetch_abort(pt_regs_t *regs)
 {
+	arm_mmu_prefetch_abort(regs);
 }
 
 void do_data_abort(pt_regs_t *regs)
 {
+	arm_mmu_data_abort(regs);
 }
 
 void do_not_used(pt_regs_t *regs)

@@ -60,11 +60,13 @@
 #define VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME	"manifest_type"
 #define VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL	"real"
 #define VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL	"virtual"
+#define VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS	"alias"
 #define VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME	"address_type"
 #define VMM_DEVTREE_ADDRESS_TYPE_VAL_MEMORY	"memory"
 #define VMM_DEVTREE_ADDRESS_TYPE_VAL_IO		"io"
 #define VMM_DEVTREE_GUEST_PHYS_ATTR_NAME	"guest_physical_addr"
 #define VMM_DEVTREE_HOST_PHYS_ATTR_NAME		"host_physical_addr"
+#define VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME	"alias_physical_addr"
 #define VMM_DEVTREE_PHYS_SIZE_ATTR_NAME		"physical_size"
 
 enum vmm_devtree_nodetypes {

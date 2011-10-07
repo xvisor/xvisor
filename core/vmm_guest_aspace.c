@@ -42,6 +42,8 @@ vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
 		return NULL;
 	}
 
+	reg = NULL;
+	found = FALSE;
 	list_for_each(l, &guest->aspace.reg_list) {
 		reg = list_entry(l, vmm_region_t, head);
 		if (reg->gphys_addr <= gphys_addr &&
@@ -50,9 +52,25 @@ vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
 			break;
 		}
 	}
-
 	if (!found) {
 		return NULL;
+	}
+
+	while (reg->flags & VMM_REGION_ALIAS) {
+		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+		reg = NULL;
+		found = FALSE;
+		list_for_each(l, &guest->aspace.reg_list) {
+			reg = list_entry(l, vmm_region_t, head);
+			if (reg->gphys_addr <= gphys_addr &&
+			    gphys_addr < (reg->gphys_addr + reg->phys_size)) {
+				found = TRUE;
+				break;
+			}
+		}
+		if (!found) {
+			return NULL;
+		}
 	}
 
 	return reg;
@@ -154,14 +172,23 @@ int vmm_guest_physical_map(vmm_guest_t * guest,
 	if (!reg) {
 		return VMM_EFAIL;
 	}
+	while (reg->flags & VMM_REGION_ALIAS) {
+		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+		reg = vmm_guest_getregion(guest, gphys_addr);
+		if (!reg) {
+			return VMM_EFAIL;
+		}
+	}
 
 	*hphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+
 	if (hphys_size) {
 		*hphys_size = reg->gphys_addr + reg->phys_size - gphys_addr;
 		if (gphys_size < *hphys_size) {
 			*hphys_size = gphys_size;
 		}
 	}
+
 	if (reg_flags) {
 		*reg_flags = reg->flags;
 	}
@@ -180,18 +207,23 @@ int vmm_guest_physical_unmap(vmm_guest_t * guest,
 bool is_address_node_valid(vmm_devtree_node_t * anode)
 {
 	const char *attrval;
-	bool is_virtual = FALSE;
+	bool is_real = FALSE;
+	bool is_alias = FALSE;
 
 	attrval = vmm_devtree_attrval(anode, VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME);
 	if (!attrval) {
 		return FALSE;
 	}
 	if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) != 0 &&
-	    vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL) != 0) {
+	    vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL) != 0 && 
+	    vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) != 0) {
 		return FALSE;
 	}
-	if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL) == 0) {
-		is_virtual = TRUE;
+	if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) == 0) {
+		is_real = TRUE;
+	}
+	if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) == 0) {
+		is_alias = TRUE;
 	}
 
 	attrval = vmm_devtree_attrval(anode,
@@ -209,9 +241,17 @@ bool is_address_node_valid(vmm_devtree_node_t * anode)
 		return FALSE;
 	}
 
-	if (!is_virtual) {
+	if (is_real) {
 		attrval = vmm_devtree_attrval(anode, 
 					VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
+		if (!attrval) {
+			return FALSE;
+		}
+	}
+
+	if (is_alias) {
+		attrval = vmm_devtree_attrval(anode, 
+					VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME);
 		if (!attrval) {
 			return FALSE;
 		}
@@ -316,6 +356,8 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 					      VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME);
 		if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) == 0) {
 			reg->flags |= VMM_REGION_REAL;
+		} else if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) == 0) {
+			reg->flags |= VMM_REGION_ALIAS;
 		} else {
 			reg->flags |= VMM_REGION_VIRTUAL;
 		}
@@ -347,6 +389,10 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 			attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
 			reg->hphys_addr = *((physical_addr_t *) attrval);
+		} else if (reg->flags & VMM_REGION_ALIAS){
+			attrval = vmm_devtree_attrval(anode,
+					      VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME);
+			reg->hphys_addr = *((physical_addr_t *) attrval);
 		} else {
 			reg->hphys_addr = reg->gphys_addr;
 		}
@@ -357,7 +403,8 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 
 		reg->priv = NULL;
 
-		if (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) {
+		if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) && 
+		    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM))) {
 			rc = vmm_host_ram_reserve(reg->hphys_addr, 
 						  reg->phys_size);
 			if (rc) {
