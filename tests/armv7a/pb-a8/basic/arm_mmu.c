@@ -104,7 +104,8 @@ void arm_mmu_data_abort(pt_regs_t *regs)
 	regs->pc += 4;
 }
 
-static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1, u32 * total, u32 * pass, u32 * fail)
+static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1, 
+				      u32 * total, u32 * pass, u32 * fail)
 {
 	volatile u32 * test_ptr = NULL;
 	u32 tmp;
@@ -552,6 +553,8 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1, u32 * total,
 		(*fail)++;
 	}
 	ARM_MMU_TEST_SWITCH_TO_SUPER();
+	l1[free_sec0] = 0x0;
+	invalid_tlb();
 	/* 4.4 TTBL_AP_SRW_URW */
 	tmp = 0x0;
 	tmp |= (TTBL_L1TBL_TTE_DOM_CHECKAP << TTBL_L1TBL_TTE_DOM_SHIFT);
@@ -780,12 +783,726 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1, u32 * total,
 	return;
 }
 
-#define FREE_SECTIONS	8
+static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1, 
+				   u32 * total, u32 * pass, u32 * fail)
+{
+	volatile u32 * test_ptr = NULL;
+	u32 tmp, tmp1;
+
+	/* 1. Unmapped Read/Write test */
+	/* 1.1 */
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_data_abort_fs = DFSR_FS_TRANS_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = 0x0;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_data_abort_wnr = 0;
+	test_data_abort_result = 0;
+	tmp = *(test_ptr);
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	/* 1.2 */
+	test_ptr = (u32 *)((free_page0 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			   (TTBL_L2TBL_SMALL_PAGE_SIZE / 2) - 4);	
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_data_abort_fs = DFSR_FS_TRANS_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = 0x0;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_data_abort_wnr = 0;
+	test_data_abort_result = 0;
+	tmp = *(test_ptr);
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	/* 1.3 */
+	test_ptr = (u32 *)((free_page0 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			    TTBL_L2TBL_SMALL_PAGE_SIZE - 4);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_data_abort_fs = DFSR_FS_TRANS_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = 0x0;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_data_abort_wnr = 0;
+	test_data_abort_result = 0;
+	tmp = *(test_ptr);
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+
+	/* 2. Mapped Read/Write test */
+	tmp = 0x0;
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	l2[free_page1] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[0] = 0xC001BABE;
+	test_ptr = (u32 *)((free_page0 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			   (TTBL_L2TBL_SMALL_PAGE_SIZE / 2) - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[0] = 0xC001BABE;
+	test_ptr = (u32 *)((free_page0 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			    TTBL_L2TBL_SMALL_PAGE_SIZE - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[0] = 0xC001BABE;
+	test_ptr = (u32 *)(free_page1 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[1] = 0xD00DFEED;
+	test_ptr = (u32 *)((free_page1 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			   (TTBL_L2TBL_SMALL_PAGE_SIZE / 2) - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[1] = 0xD00DFEED;
+	test_ptr = (u32 *)((free_page1 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			    TTBL_L2TBL_SMALL_PAGE_SIZE - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[1] = 0xD00DFEED;
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr = (u32 *)((free_page0 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			   (TTBL_L2TBL_SMALL_PAGE_SIZE / 2) - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr = (u32 *)((free_page0 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			    TTBL_L2TBL_SMALL_PAGE_SIZE - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr = (u32 *)(free_page1 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr = (u32 *)((free_page1 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			   (TTBL_L2TBL_SMALL_PAGE_SIZE / 2) - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr = (u32 *)((free_page1 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			    TTBL_L2TBL_SMALL_PAGE_SIZE - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	l2[free_page0] = 0x0;
+	l2[free_page1] = 0x0;
+	invalid_tlb();
+
+	/* 3. Domain Access test */
+	tmp1 = l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT];
+	/* 3.1 */
+	tmp = l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT];
+	tmp &= ~TTBL_L1TBL_TTE_DOM_MASK;
+	tmp |= (TTBL_L1TBL_TTE_DOM_CHECKAP << TTBL_L1TBL_TTE_DOM_SHIFT);
+	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp;
+	tmp = 0x0;
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_data_abort_fs = DFSR_FS_PERM_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_CHECKAP;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_data_abort_wnr = 0;
+	test_data_abort_result = 0;
+	tmp = *(test_ptr);
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp1;
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+	/* 3.2 */
+	tmp = l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT];
+	tmp &= ~TTBL_L1TBL_TTE_DOM_MASK;
+	tmp |= (TTBL_L1TBL_TTE_DOM_BYPASSAP << TTBL_L1TBL_TTE_DOM_SHIFT);
+	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp;
+	tmp = 0x0;
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[0] = 0xC001BABE;
+	test_ptr[1] = 0xD00DFEED;
+	test_ptr = (u32 *)((free_page0 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			    TTBL_L2TBL_SMALL_PAGE_SIZE - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[0] = 0xC001BABE;
+	test_ptr[1] = 0xD00DFEED;
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr = (u32 *)((free_page0 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			    TTBL_L2TBL_SMALL_PAGE_SIZE - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp1;
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+	/* 3.3 */
+	tmp = l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT];
+	tmp &= ~TTBL_L1TBL_TTE_DOM_MASK;
+	tmp |= (TTBL_L1TBL_TTE_DOM_NOACCESS << TTBL_L1TBL_TTE_DOM_SHIFT);
+	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp;
+	tmp = 0x0;
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_data_abort_fs = DFSR_FS_DOMAIN_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_NOACCESS;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_data_abort_wnr = 0;
+	test_data_abort_result = 0;
+	tmp = *(test_ptr);
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr = (u32 *)((free_page0 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			   (TTBL_L2TBL_SMALL_PAGE_SIZE / 2) - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_data_abort_wnr = 0;
+	test_data_abort_result = 0;
+	tmp = *(test_ptr);
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr = (u32 *)((free_page0 << 
+			    TTBL_L2TBL_TTE_BASE12_SHIFT) + 
+			    TTBL_L2TBL_SMALL_PAGE_SIZE - 8);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_data_abort_wnr = 0;
+	test_data_abort_result = 0;
+	tmp = *(test_ptr);
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp1;
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+
+	/* 4. Permission Access test */
+	/* 4.1 TTBL_AP_S_U */
+	tmp = 0x0;
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_data_abort_fs = DFSR_FS_PERM_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_CHECKAP;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_data_abort_wnr = 0;
+	test_data_abort_result = 0;
+	tmp = *(test_ptr);
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_USER();
+	test_data_abort_wnr = 1;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_data_abort_wnr = 0;
+	test_data_abort_result = 0;
+	tmp = *(test_ptr);
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_SUPER();
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+	/* 4.2 TTBL_AP_SRW_U */
+	tmp = 0x0;
+	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[0] = 0xC001BABE;
+	test_ptr[1] = 0xD00DFEED;
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr[0] = 0x0;
+	test_ptr[1] = 0x0;
+	(*total)++;
+	if (test_ptr[0] == 0x0 && test_ptr[1] == 0x0) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_USER();
+	test_data_abort_fs = DFSR_FS_PERM_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_CHECKAP;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_data_abort_wnr = 0;
+	test_data_abort_result = 0;
+	tmp = *(test_ptr);
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_SUPER();
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+	/* 4.3 TTBL_AP_SRW_UR */
+	tmp = 0x0;
+	tmp |= (TTBL_AP_SRW_UR << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[0] = 0x0;
+	test_ptr[1] = 0x0;
+	(*total)++;
+	if (test_ptr[0] == 0x0 && test_ptr[1] == 0x0) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr[0] = 0xC001BABE;
+	test_ptr[1] = 0xD00DFEED;
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_USER();
+	test_data_abort_fs = DFSR_FS_PERM_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_CHECKAP;
+	test_data_abort_result = 0;
+	test_ptr[0] = 0x0;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_SUPER();
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+	/* 4.4 TTBL_AP_SRW_URW */
+	tmp = 0x0;
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[0] = 0xC001BABE;
+	test_ptr[1] = 0xD00DFEED;
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr[0] = 0x0;
+	test_ptr[1] = 0x0;
+	(*total)++;
+	if (test_ptr[0] == 0x0 && test_ptr[1] == 0x0) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_USER();
+	test_ptr[0] = 0xC001BABE;
+	test_ptr[1] = 0xD00DFEED;
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_ptr[0] = 0x0;
+	test_ptr[1] = 0x0;
+	(*total)++;
+	if (test_ptr[0] == 0x0 && test_ptr[1] == 0x0) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_SUPER();
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+	/* 4.5 TTBL_AP_SR_U */
+	tmp = 0x0;
+	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[0] = 0xC001BABE;
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+	tmp = 0x0;
+	tmp |= (((TTBL_AP_SR_U & 0x4) >> 2) << TTBL_L2TBL_TTE_AP2_SHIFT);
+	tmp |= ((TTBL_AP_SR_U & 0x3) << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_data_abort_fs = DFSR_FS_PERM_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_CHECKAP;
+	test_data_abort_result = 0;
+	*test_ptr = 0x0;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_USER();
+	test_data_abort_fs = DFSR_FS_PERM_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_CHECKAP;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	test_data_abort_wnr = 0;
+	test_data_abort_result = 0;
+	tmp = *(test_ptr);
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_SUPER();
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+	/* 4.6 TTBL_AP_SR_UR_DEPRICATED */
+	tmp = 0x0;
+	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[0] = 0xC001BABE;
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+	tmp = 0x0;
+	tmp |= (((TTBL_AP_SR_UR_DEPRICATED & 0x4) >> 2) << TTBL_L2TBL_TTE_AP2_SHIFT);
+	tmp |= ((TTBL_AP_SR_UR_DEPRICATED & 0x3) << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_data_abort_fs = DFSR_FS_PERM_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_CHECKAP;
+	test_data_abort_result = 0;
+	*test_ptr = 0x0;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_USER();
+	test_data_abort_fs = DFSR_FS_PERM_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_CHECKAP;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_SUPER();
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+	/* 4.7 TTBL_AP_SR_UR */
+	tmp = 0x0;
+	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_ptr[0] = 0xC001BABE;
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+	tmp = 0x0;
+	tmp |= (((TTBL_AP_SR_UR & 0x4) >> 2) << TTBL_L2TBL_TTE_AP2_SHIFT);
+	tmp |= ((TTBL_AP_SR_UR & 0x3) << TTBL_L2TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L2TBL_TTE_C_MASK;
+	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_XN;
+	l2[free_page0] = tmp | (test_area_pa);
+	test_ptr = (u32 *)(free_page0 << TTBL_L2TBL_TTE_BASE12_SHIFT);
+	test_ptr = (u32 *)((u32)test_ptr + l2_mapva);
+	test_data_abort_fs = DFSR_FS_PERM_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_CHECKAP;
+	test_data_abort_result = 0;
+	*test_ptr = 0x0;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_USER();
+	test_data_abort_fs = DFSR_FS_PERM_FAULT_PAGE;
+	test_data_abort_far = (u32)test_ptr;
+	test_data_abort_wnr = 1;
+	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_CHECKAP;
+	test_data_abort_result = 0;
+	*(test_ptr) = 0xC001BABE;
+	(*total)++;
+	if (test_data_abort_result) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	(*total)++;
+	if (test_ptr[0] == 0xC001BABE) {
+		(*pass)++;
+	} else {
+		(*fail)++;
+	}
+	ARM_MMU_TEST_SWITCH_TO_SUPER();
+	l2[free_page0] = 0x0;
+	invalid_tlb();
+
+	return;
+}
+
+#define TEST_SECTION_COUNT		10
 
 void arm_mmu_section_test(u32 * total, u32 * pass, u32 * fail)
 {
 	int setup_required = 0;
-	u32 ite, pos, free_sec[FREE_SECTIONS];
+	u32 ite, pos, free_sec[TEST_SECTION_COUNT];
 	u32 sctlr = read_sctlr();
 
 	if (!(sctlr & SCTLR_M_MASK)) {
@@ -809,15 +1526,15 @@ void arm_mmu_section_test(u32 * total, u32 * pass, u32 * fail)
 			free_sec[pos] = ite;
 			pos++;
 		}
-		if (pos == FREE_SECTIONS) {
+		if (pos == TEST_SECTION_COUNT) {
 			break;
 		}
 	}
 
 	/* Run a fixed set of test for all free sections */
-	for (ite = 0; ite < FREE_SECTIONS; ite++) {
+	for (ite = 0; ite < TEST_SECTION_COUNT; ite++) {
 		arm_mmu_section_test_iter(free_sec[ite], 
-					  free_sec[(ite + 1) % FREE_SECTIONS],
+					  free_sec[(ite + 1) % TEST_SECTION_COUNT],
 					  total, pass, fail);
 	}
 
@@ -828,14 +1545,52 @@ void arm_mmu_section_test(u32 * total, u32 * pass, u32 * fail)
 	return;
 }
 
+#define TEST_PAGE_COUNT		10
+
 void arm_mmu_page_test(u32 * total, u32 * pass, u32 * fail)
 {
+	int setup_required = 0;
+	u32 ite, pos, free_page[TEST_PAGE_COUNT];
+	u32 sctlr = read_sctlr();
+
+	if (!(sctlr & SCTLR_M_MASK)) {
+		setup_required = 1;
+	}
+
+	if (setup_required) {
+		arm_mmu_setup();
+	}
+
 	/* Initialize statistics */
 	*total = 0x0;
 	*pass = 0x0;
 	*fail = 0x0;
 
-	/* FIXME: */
+	/* Prepare list of free sections */
+	pos = 0;
+	for (ite = 0; ite < (TTBL_L2TBL_SIZE / 4); ite++) {
+		if ((l2[ite] & TTBL_L2TBL_TTE_TYPE_MASK) == 
+						TTBL_L2TBL_TTE_TYPE_FAULT) {
+			free_page[pos] = ite;
+			pos++;
+		}
+		if (pos == TEST_PAGE_COUNT) {
+			break;
+		}
+	}
+
+	/* Run a fixed set of test for all free sections */
+	for (ite = 0; ite < TEST_PAGE_COUNT; ite++) {
+		arm_mmu_page_test_iter(free_page[ite], 
+					free_page[(ite + 1) % TEST_PAGE_COUNT],
+					total, pass, fail);
+	}
+
+	if (setup_required) {
+		arm_mmu_cleanup();
+	}
+
+	return;
 }
 
 bool arm_mmu_is_enabled(void)
@@ -920,7 +1675,7 @@ void arm_mmu_setup(void)
 
 	/* Setup test area in physical RAM */
 	test_area_pa = sec_end;
-	test_area_size = 2 * TTBL_L1TBL_SECTION_PAGE_SIZE;
+	test_area_size = TTBL_L1TBL_SECTION_PAGE_SIZE;
 
 	/* Write DACR */
 	sec = 0x0;
