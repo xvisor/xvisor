@@ -24,7 +24,7 @@
 #ifndef __ARM_ASM_MACRO_H__
 #define __ARM_ASM_MACRO_H__
 
-#include <arm_regs.h>
+#include <arm_defines.h>
 
 #ifdef __ASSEMBLY__
 

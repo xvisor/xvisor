@@ -81,10 +81,19 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-				mem {
-					manifest_type = "real";
+				mem0 {
+					manifest_type = "alias";
 					address_type = "memory";
 					guest_physical_addr = <0x00000000>;
+					alias_physical_addr = <0x70000000>;
+					physical_size = <0x01000000>; /* 16 MB */
+					device_type = "ram";
+				};
+
+				mem1 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x70000000>;
 					host_physical_addr = <0x71000000>;
 					physical_size = <0x01000000>; /* 16 MB */
 					device_type = "ram";
@@ -116,7 +125,40 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <2000>;
+					irq = <44>;
+				};
+
+				uart1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1000A000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <2000>;
 					irq = <45>;
+				};
+
+				uart2 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1000B000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <2000>;
+					irq = <46>;
+				};
+
+				uart3 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1000C000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <2000>;
+					irq = <47>;
 				};
 
 				timer0_1 {

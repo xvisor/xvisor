@@ -66,7 +66,7 @@ ARM_TEST_ASFLAGS=$(ARM_TEST_CPPFLAGS)
 ARM_TEST_LINK_SCRIPT=$(obj_dir)/arm_test.lnk
 ARM_TEST_LDFLAGS=-Wl,-T$(ARM_TEST_LINK_SCRIPT) $(ARM_TEST_CPPFLAGS)
 
-ARM_COMMON_DEPS=arm_asm_macro.h arm_regs.h arm_types.h
+ARM_COMMON_DEPS=arm_asm_macro.h arm_defines.h arm_types.h
 
 CPATCH32=$(build_dir)/tools/cpatch/cpatch32
 ELF2CPATCH=$(top_dir)/arch/arm/cpu/armv7a/elf2cpatch.py

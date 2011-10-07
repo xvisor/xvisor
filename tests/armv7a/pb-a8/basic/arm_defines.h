@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Anup Patel.
+ * Copyright (c) 2010 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,88 +16,34 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_defines.h
+ * @file arm_defines.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief common macros & defines for shared by all C & Assembly code
+ * @brief  register related macros & defines for ARM test code
  */
-#ifndef __CPU_DEFINES_H__
-#define __CPU_DEFINES_H__
+#ifndef __ARM_DEFINES_H__
+#define __ARM_DEFINES_H__
 
-/* Coprocessor related macros & defines */
-#define CPU_COPROC_COUNT				16
-
-/* GPR related macros & defines */
-#define CPU_GPR_COUNT 					13
-#define CPU_FIQ_GPR_COUNT 				5
-
-/* Interrupt or Exception related macros & defines */
-#define CPU_IRQ_NR					8
-#define CPU_IRQ_LOWVEC_BASE				0x00000000
-#define CPU_IRQ_HIGHVEC_BASE				0xFFFF0000
-#define CPU_RESET_IRQ					0
-#define CPU_UNDEF_INST_IRQ				1
-#define CPU_SOFT_IRQ					2
-#define CPU_PREFETCH_ABORT_IRQ				3
-#define CPU_DATA_ABORT_IRQ				4
-#define CPU_NOT_USED_IRQ				5
-#define CPU_EXTERNAL_IRQ				6
-#define CPU_EXTERNAL_FIQ				7
-
-/* CPSR related macors & defines */
-#define CPSR_VALIDBITS_MASK				0xFF0FFFFF
-#define CPSR_USERBITS_MASK				0xFFFFFC00
-#define CPSR_USERBITS_SHIFT				10
-#define CPSR_PRIVBITS_MASK				0x000003FF
-#define CPSR_PRIVBITS_SHIFT				0
+/* CPSR related macros & defines */
 #define CPSR_MODE_MASK					0x0000001f
 #define CPSR_MODE_USER					0x00000010
 #define CPSR_MODE_FIQ					0x00000011
 #define CPSR_MODE_IRQ					0x00000012
 #define CPSR_MODE_SUPERVISOR				0x00000013
-#define CPSR_MODE_MONITOR				0x00000016
 #define CPSR_MODE_ABORT					0x00000017
 #define CPSR_MODE_UNDEFINED				0x0000001b
 #define CPSR_MODE_SYSTEM				0x0000001f
+
 #define CPSR_THUMB_ENABLED				(1 << 5)
 #define CPSR_FIQ_DISABLED				(1 << 6)
 #define CPSR_IRQ_DISABLED				(1 << 7)
 #define CPSR_ASYNC_ABORT_DISABLED			(1 << 8)
 #define CPSR_BE_ENABLED					(1 << 9)
-#define CPSR_IT2_MASK					0x0000FC00
-#define CPSR_IT2_SHIFT					10
-#define CPSR_GE_MASK					0x000F0000
-#define CPSR_GE_SHIFT					16
-#define CPSR_JAZZLE_ENABLED				(1 << 24)
-#define CPSR_IT1_MASK					0x06000000
-#define CPSR_IT1_SHIFT					25
-#define CPSR_COND_OVERFLOW_MASK				(1 << 28)
-#define CPSR_COND_OVERFLOW_SHIFT			28
-#define CPSR_COND_CARRY_MASK				(1 << 29)
-#define CPSR_COND_CARRY_SHIFT				29
-#define CPSR_COND_ZERO_MASK				(1 << 30)
-#define CPSR_COND_ZERO_SHIFT				30
-#define CPSR_COND_NEGATIVE_MASK				(1 << 31)
-#define CPSR_COND_NEGATIVE_SHIFT			31
 
-/* VFP system registers.  */
-#define VFP_FPSID					0
-#define VFP_FPSCR					1
-#define VFP_MVFR1					6
-#define VFP_MVFR0					7
-#define VFP_FPEXC					8
-#define VFP_FPINST					9
-#define VFP_FPINST2					10
-
-/* iwMMXt coprocessor control registers.  */
-#define IWMMXT_wCID					0
-#define IWMMXT_wCon					1
-#define IWMMXT_wCSSF					2
-#define IWMMXT_wCASF					3
-#define IWMMXT_wCGR0					8
-#define IWMMXT_wCGR1					9
-#define IWMMXT_wCGR2					10
-#define IWMMXT_wCGR3					11
+#define CPSR_COND_OVERFLOW				(1 << 28)
+#define CPSR_COND_CARRY					(1 << 29)
+#define CPSR_COND_ZERO					(1 << 30)
+#define CPSR_COND_NEGATIVE				(1 << 31)
 
 /* SCTLR related macros & defines */
 #define SCTLR_TE_MASK					0x40000000
@@ -164,10 +110,9 @@
 #define TTBL_L1TBL_TTE_IMP_SHIFT			9
 #define TTBL_L1TBL_TTE_DOM_MASK				0x000001E0
 #define TTBL_L1TBL_TTE_DOM_SHIFT			5
-#define TTBL_L1TBL_TTE_DOM_RESERVED			0x0
-#define TTBL_L1TBL_TTE_DOM_VCPU_SUPER			0x1
-#define TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R		0x2
-#define TTBL_L1TBL_TTE_DOM_VCPU_USER			0x3
+#define TTBL_L1TBL_TTE_DOM_CHECKAP			0
+#define TTBL_L1TBL_TTE_DOM_BYPASSAP			1
+#define TTBL_L1TBL_TTE_DOM_NOACCESS			2
 #define TTBL_L1TBL_TTE_XN_MASK				0x00000010
 #define TTBL_L1TBL_TTE_XN_SHIFT				4
 #define TTBL_L1TBL_TTE_NS1_MASK				0x00000008
@@ -217,33 +162,6 @@
 #define TTBL_L2TBL_TTE_TYPE_LARGE			0x1
 #define TTBL_L2TBL_TTE_TYPE_SMALL_X			0x2
 #define TTBL_L2TBL_TTE_TYPE_SMALL_XN			0x3
-
-/* TTBR0 related macros & defines */
-#define TTBR0_IGRN0_MASK				0x00000040
-#define TTBR0_IRGN0_SHIFT				6
-#define TTBR0_NOS_MASK					0x00000020
-#define TTBR0_RGN_MASK					0x00000018
-#define TTBR0_RGN_SHIFT					3
-#define TTBR0_IMP_MASK					0x00000004
-#define TTBR0_S_MASK					0x00000002
-#define TTBR0_C_MASK					0x00000001
-#define TTBR0_IGRN1_MASK				0x00000001
-
-/* TTBR1 related macros & defines */
-#define TTBR1_IGRN0_MASK				0x00000040
-#define TTBR1_IRGN0_SHIFT				6
-#define TTBR1_NOS_MASK					0x00000020
-#define TTBR1_RGN_MASK					0x00000018
-#define TTBR1_RGN_SHIFT					3
-#define TTBR1_IMP_MASK					0x00000004
-#define TTBR1_S_MASK					0x00000002
-#define TTBR1_C_MASK					0x00000001
-#define TTBR1_IGRN1_MASK				0x00000001
-
-/* TTBCR related macros & defines */
-#define TTBCR_PD1_MASK					0x00000020
-#define TTBCR_PD2_MASK					0x00000010
-#define TTBCR_N_MASK					0x00000007
 
 /* IFSR related macros & defines */
 #define IFSR_EXT_MASK					0x00001000

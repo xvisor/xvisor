@@ -38,7 +38,7 @@ Please follow the steps below to build & run Atomthreads on Realview PB-A8:
   # make
 
   [9. Create qemu.img (from vmm.bin, arm_test.bin.patched and kern1.bin) for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x10000 -o build/qemu.img <xvisor_source_directory>/build/vmm.bin@0x10000 <xvisor_source_directory>/build/tests/armv7a/pb-a8/basic/arm_test.bin.patched@0x100000 build/kern1.bin@0x200000
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x10000 -o build/qemu.img <xvisor_source_directory>/build/vmm.bin@0x10000 <xvisor_source_directory>/build/tests/armv7a/pb-a8/basic/arm_test.bin.patched@0x800000 build/kern1.bin@0x900000
 
   [10. Launch QEMU]
   # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel build/qemu.img

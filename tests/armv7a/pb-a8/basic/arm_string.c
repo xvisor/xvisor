@@ -86,6 +86,11 @@ void arm_int2str(char * dst, int src)
 		dst[0] = '-';
 	}
 
+	if (count == 0) {
+		dst[count] = '0';
+		count++;
+	}
+
 	dst[count] = '\0';
 }
 
