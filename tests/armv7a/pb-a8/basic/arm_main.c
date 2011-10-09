@@ -81,6 +81,12 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("              <src>   = source address in hex\n");
 	arm_puts("              <count> = byte count in hex\n");
 	arm_puts("\n");
+	arm_puts("start_linux - Start linux kernel\n");
+	arm_puts("              Usage: start_linux <kernel_addr> <initrd_addr> <initrd_size>\n");
+	arm_puts("                <kernel_addr>  = kernel load address\n");
+	arm_puts("                <initrd_addr>  = initrd load address\n");
+	arm_puts("                <initrd_size>  = initrd size\n");
+	arm_puts("\n");
 	arm_puts("go          - Jump to a given address\n");
 	arm_puts("              Usage: go <addr>\n");
 	arm_puts("                <addr>  = jump address in hex\n");
@@ -271,6 +277,14 @@ void arm_cmd_copy(int argc, char **argv)
 	}
 }
 
+void arm_cmd_start_linux(int argc, char **argv)
+{
+	if (argc < 4) {
+		arm_puts ("start_linux: must provide <kernel_addr>, <initrd_addr>, and <initrd_size>\n");
+		return;
+	}
+}
+
 void arm_cmd_go(int argc, char **argv)
 {
 	char str[32];
@@ -374,6 +388,8 @@ void arm_main(void)
 			arm_cmd_hexdump(argc, argv);
 		} else if (arm_strcmp(argv[0], "copy") == 0) {
 			arm_cmd_copy(argc, argv);
+		} else if (arm_strcmp(argv[0], "start_linux") == 0) {
+			arm_cmd_start_linux(argc, argv);
 		} else if (arm_strcmp(argv[0], "go") == 0) {
 			arm_cmd_go(argc, argv);
 		} else if (arm_strcmp(argv[0], "reset") == 0) {
