@@ -221,7 +221,7 @@ void arm_cmd_hexdump(int argc, char **argv)
 {
 	char str[32];
 	u32 *addr;
-	u32 i, count;
+	u32 i, count, len;
 	if (argc < 3) {
 		arm_puts ("hexdump: must provide <addr> and <count>\n");
 		return;
@@ -231,10 +231,20 @@ void arm_cmd_hexdump(int argc, char **argv)
 	for (i = 0; i < (count / 4); i++) {
 		if (i % 4 == 0) {
 			arm_uint2hexstr(str, (u32)&addr[i]);
+			len = arm_strlen(str);
+			while (len < 8) {
+				arm_puts("0");
+				len++;
+			}
 			arm_puts(str);
 			arm_puts(": ");
 		}
 		arm_uint2hexstr(str, addr[i]);
+		len = arm_strlen(str);
+		while (len < 8) {
+			arm_puts("0");
+			len++;
+		}
 		arm_puts(str);
 		if (i % 4 == 3) {
 			arm_puts("\n");
