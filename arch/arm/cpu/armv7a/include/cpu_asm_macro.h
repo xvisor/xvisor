@@ -48,8 +48,8 @@
 	sub	lr, lr, #\lroffset
 .endm
 
-/* Save User Registers */
-.macro PUSH_USER_REGS
+/* If came from priviledged mode then push banked registers */
+.macro PUSH_REGS skip_lable
 	str     lr, [sp, #-4]!;         /* Push the return address */
 	sub     sp, sp, #(4*15);        /* Adjust the stack pointer */
 	stmia   sp, {r0-r12};           /* Push user mode registers */
@@ -58,10 +58,6 @@
 	mov     r0, r0;                 /* NOP for previous inst */
 	mrs     r0, spsr_all;           /* Put the SPSR on the stack */
 	str     r0, [sp, #-4]!
-.endm
-
-/* If came from priviledged mode then push banked registers */
-.macro PUSH_BANKED_REGS skip_lable
 	mov	r4, r0
 	and	r0, r0, #CPSR_MODE_MASK
 	cmp	r0, #CPSR_MODE_USER
@@ -73,7 +69,7 @@
 	str	sp, [r1, #0]
 	str	lr, [r1, #4]
 	msr	cpsr, r5
-	\skip_lable:
+\skip_lable:
 .endm
 
 /* Call C function to handle exception */
@@ -83,7 +79,7 @@
 .endm
 
 /* If going back to priviledged mode then pull banked registers */
-.macro PULL_BANKED_REGS skip_lable
+.macro PULL_REGS skip_lable
 	ldr     r0, [sp, #0]
 	mov	r4, r0
 	and	r0, r0, #CPSR_MODE_MASK
@@ -96,11 +92,7 @@
 	ldr	sp, [r1, #0]
 	ldr	lr, [r1, #4]
 	msr	cpsr, r5
-	\skip_lable:
-.endm
-
-/* Restore User Registers */
-.macro PULL_USER_REGS
+\skip_lable:
 	ldr     r0, [sp], #0x0004;      /* Get SPSR from stack */
 	msr     spsr_all, r0;
 	ldmia   sp, {r0-r14}^;          /* Restore registers (user) */

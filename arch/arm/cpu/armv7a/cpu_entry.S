@@ -283,9 +283,9 @@ _start_vect:
 __reset:
 	.word _reset
 __undefined_instruction:
-	.word _undefined_instruction
+	.word _undef_inst
 __software_interrupt:
-	.word _software_interrupt
+	.word _soft_irq
 __prefetch_abort:
 	.word _prefetch_abort
 __data_abort:
@@ -349,77 +349,63 @@ _reset:
 	/* 
 	 * Undefined instruction exception handler.
 	 */
-START_EXCEPTION_HANDLER _undefined_instruction, 4
-	PUSH_USER_REGS
-	PUSH_BANKED_REGS _undefined_instruction_bankpush_skip
+START_EXCEPTION_HANDLER _undef_inst, 4
+	PUSH_REGS _undef_inst_pushskip
 	CALL_EXCEPTION_CFUNC do_undefined_instruction
-	PULL_BANKED_REGS _undefined_instruction_bankpull_skip
-	PULL_USER_REGS
+	PULL_REGS _undef_inst_pullskip
 END_EXCEPTION_HANDLER
 
 	/* 
 	 * Software interrupt exception handler.
 	 */
-START_EXCEPTION_HANDLER _software_interrupt, 4
-	PUSH_USER_REGS
-	PUSH_BANKED_REGS _software_interrupt_bankpush_skip
+START_EXCEPTION_HANDLER _soft_irq, 4
+	PUSH_REGS _soft_irq_pushskip
 	CALL_EXCEPTION_CFUNC do_software_interrupt
-	PULL_BANKED_REGS _software_interrupt_bankpull_skip
-	PULL_USER_REGS
+	PULL_REGS _soft_irq_pullskip
 END_EXCEPTION_HANDLER
 
 	/* 
 	 * Prefetch abort exception handler.
 	 */
 START_EXCEPTION_HANDLER _prefetch_abort, 4
-	PUSH_USER_REGS
-	PUSH_BANKED_REGS _prefetch_abort_bankpush_skip
+	PUSH_REGS _prefetch_abort_pushskip
 	CALL_EXCEPTION_CFUNC do_prefetch_abort
-	PULL_BANKED_REGS _prefetch_abort_bankpull_skip
-	PULL_USER_REGS
+	PULL_REGS _prefetch_abort_pullskip
 END_EXCEPTION_HANDLER
 
 	/* 
 	 * Data abort exception handler.
 	 */
 START_EXCEPTION_HANDLER _data_abort, 8
-	PUSH_USER_REGS
-	PUSH_BANKED_REGS _data_abort_bankpush_skip
+	PUSH_REGS _data_abort_pushskip
 	CALL_EXCEPTION_CFUNC do_data_abort
-	PULL_BANKED_REGS _data_abort_bankpull_skip
-	PULL_USER_REGS
+	PULL_REGS _data_abort_pullskip
 END_EXCEPTION_HANDLER
 
 	/* 
 	 * Not used exception handler.
 	 */
 START_EXCEPTION_HANDLER _not_used, 4
-	PUSH_USER_REGS
-	PUSH_BANKED_REGS _not_used_bankpush_skip
+	PUSH_REGS _not_used_pushskip
 	CALL_EXCEPTION_CFUNC do_not_used
-	PULL_BANKED_REGS _not_used_bankpull_skip
-	PULL_USER_REGS
+	PULL_REGS _not_used_pullskip
 END_EXCEPTION_HANDLER
 
 	/* 
 	 * IRQ exception handler.
 	 */
 START_EXCEPTION_HANDLER _irq, 4
-	PUSH_USER_REGS
-	PUSH_BANKED_REGS _irq_bankpush_skip
+	PUSH_REGS _irq_pushskip
 	CALL_EXCEPTION_CFUNC do_irq
-	PULL_BANKED_REGS _irq_bankpull_skip
-	PULL_USER_REGS
+	PULL_REGS _irq_pullskip
 END_EXCEPTION_HANDLER
 
 	/* 
 	 * FIQ exception handler.
 	 */
 START_EXCEPTION_HANDLER _fiq, 4
-	PUSH_USER_REGS
-	PUSH_BANKED_REGS _fiq_bankpush_skip
+	PUSH_REGS _fiq_pushskip
 	CALL_EXCEPTION_CFUNC do_fiq
-	PULL_BANKED_REGS _fiq_bankpull_skip
-	PULL_USER_REGS
+	PULL_REGS _fiq_pullskip
 END_EXCEPTION_HANDLER
 

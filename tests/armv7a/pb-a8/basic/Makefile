@@ -37,7 +37,7 @@ ARM_CROSS_COMPILE=$(CROSS_COMPILE)
 else
 ARM_CROSS_COMPILE=arm-none-eabi-
 endif
-ARM_CPPFLAGS=-I. -DTEXT_START=0x10000
+ARM_CPPFLAGS=-I. -DTEXT_START=0x70010000
 ARM_CFLAGS=-g -Wall -Werror -nostdlib -mcpu=cortex-a8 $(ARM_CPPFLAGS)
 ARM_ASFLAGS=-g -Wall -Werror -nostdlib -mcpu=cortex-a8 $(ARM_CPPFLAGS) -D__ASSEMBLY__
 ARM_LDFLAGS=$(ARM_CFLAGS) -static-libgcc -lgcc
@@ -79,12 +79,12 @@ memimg = $(top_dir)/tools/scripts/memimg.py
 .PHONY: all
 all: $(obj_dir)/qemu.img
 
-$(obj_dir)/qemu.img: $(build_dir)/vmm.bin $(obj_dir)/arm_test.bin.patched
+$(obj_dir)/qemu.img: $(build_dir)/vmm.bin $(obj_dir)/arm_test.bin $(obj_dir)/arm_test.bin.patched
 	@echo " (MEMIMG)    $(subst $(obj_dir)/,,$@)"
 	@$(call memimg) \
-		-a 0x10000 -o $(obj_dir)/qemu.img \
-		$(build_dir)/vmm.bin@0x10000 \
-		$(obj_dir)/arm_test.bin.patched@0x800000
+		-a 0x70010000 -o $(obj_dir)/qemu.img \
+		$(build_dir)/vmm.bin@0x70010000 \
+		$(obj_dir)/arm_test.bin.patched@0x70800000
 
 # Generate ARM_TEST code
 $(obj_dir)/arm_test.bin.patched: $(obj_dir)/arm_test.elf.patched
