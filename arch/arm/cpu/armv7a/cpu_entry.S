@@ -352,7 +352,7 @@ _reset:
 START_EXCEPTION_HANDLER _undef_inst, 4
 	PUSH_REGS _undef_inst_pushskip
 	CALL_EXCEPTION_CFUNC do_undefined_instruction
-	PULL_REGS _undef_inst_pullskip
+	PULL_REGS _undef_inst_pullskip _undef_inst_pullskip1 _undef_inst_pullskip2
 END_EXCEPTION_HANDLER
 
 	/* 
@@ -361,7 +361,7 @@ END_EXCEPTION_HANDLER
 START_EXCEPTION_HANDLER _soft_irq, 4
 	PUSH_REGS _soft_irq_pushskip
 	CALL_EXCEPTION_CFUNC do_software_interrupt
-	PULL_REGS _soft_irq_pullskip
+	PULL_REGS _soft_irq_pullskip _soft_irq_pullskip1 _soft_irq_pullskip2
 END_EXCEPTION_HANDLER
 
 	/* 
@@ -370,7 +370,7 @@ END_EXCEPTION_HANDLER
 START_EXCEPTION_HANDLER _prefetch_abort, 4
 	PUSH_REGS _prefetch_abort_pushskip
 	CALL_EXCEPTION_CFUNC do_prefetch_abort
-	PULL_REGS _prefetch_abort_pullskip
+	PULL_REGS _prefetch_abort_pullskip _prefetch_abort_pullskip1 _prefetch_abort_pullskip2
 END_EXCEPTION_HANDLER
 
 	/* 
@@ -379,7 +379,7 @@ END_EXCEPTION_HANDLER
 START_EXCEPTION_HANDLER _data_abort, 8
 	PUSH_REGS _data_abort_pushskip
 	CALL_EXCEPTION_CFUNC do_data_abort
-	PULL_REGS _data_abort_pullskip
+	PULL_REGS _data_abort_pullskip _data_abort_pullskip1 _data_abort_pullskip2
 END_EXCEPTION_HANDLER
 
 	/* 
@@ -388,7 +388,7 @@ END_EXCEPTION_HANDLER
 START_EXCEPTION_HANDLER _not_used, 4
 	PUSH_REGS _not_used_pushskip
 	CALL_EXCEPTION_CFUNC do_not_used
-	PULL_REGS _not_used_pullskip
+	PULL_REGS _not_used_pullskip _not_used_pullskip1 _not_used_pullskip2
 END_EXCEPTION_HANDLER
 
 	/* 
@@ -397,7 +397,7 @@ END_EXCEPTION_HANDLER
 START_EXCEPTION_HANDLER _irq, 4
 	PUSH_REGS _irq_pushskip
 	CALL_EXCEPTION_CFUNC do_irq
-	PULL_REGS _irq_pullskip
+	PULL_REGS _irq_pullskip _irq_pullskip1 _irq_pullskip2
 END_EXCEPTION_HANDLER
 
 	/* 
@@ -406,6 +406,6 @@ END_EXCEPTION_HANDLER
 START_EXCEPTION_HANDLER _fiq, 4
 	PUSH_REGS _fiq_pushskip
 	CALL_EXCEPTION_CFUNC do_fiq
-	PULL_REGS _fiq_pullskip
+	PULL_REGS _fiq_pullskip _fiq_pullskip1 _fiq_pullskip2
 END_EXCEPTION_HANDLER
 

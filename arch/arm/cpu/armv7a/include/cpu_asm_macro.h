@@ -79,12 +79,16 @@
 .endm
 
 /* If going back to priviledged mode then pull banked registers */
-.macro PULL_REGS skip_lable
+.macro PULL_REGS skip_lable skip_lable1 skip_lable2
 	ldr     r0, [sp, #0]
 	mov	r4, r0
 	and	r0, r0, #CPSR_MODE_MASK
 	cmp	r0, #CPSR_MODE_USER
 	beq	\skip_lable
+	mrs	r1, cpsr
+	and 	r1, r1, #CPSR_MODE_MASK
+	cmp	r0, r1
+	beq	\skip_lable1
 	add	r1, sp, #(4*14)
 	mrs	r5, cpsr
 	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
@@ -99,6 +103,13 @@
 	mov     r0, r0;                 /* NOP for previous isnt */
 	add     sp, sp, #(4*15);        /* Adjust the stack pointer */
 	ldr     lr, [sp], #0x0004       /* Pull return address */
+	b	\skip_lable2
+\skip_lable1:
+	ldr     r0, [sp], #0x0004;      /* Get SPSR from stack */
+	msr     spsr_all, r0;
+	ldmia   sp, {r0-r14};           /* Restore registers */
+	mov     r0, r0;                 /* NOP for previous isnt */
+\skip_lable2:
 .endm
 
 .macro END_EXCEPTION_HANDLER
