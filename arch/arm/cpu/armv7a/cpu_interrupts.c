@@ -38,7 +38,7 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
 
-void do_undefined_instruction(vmm_user_regs_t * uregs)
+void do_undef_inst(vmm_user_regs_t * uregs)
 {
 	int rc = VMM_OK;
 	vmm_vcpu_t * vcpu;
@@ -72,7 +72,7 @@ void do_undefined_instruction(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-void do_software_interrupt(vmm_user_regs_t * uregs)
+void do_soft_irq(vmm_user_regs_t * uregs)
 {
 	int rc = VMM_OK;
 	vmm_vcpu_t * vcpu;

@@ -23,7 +23,6 @@
  */
 
 #include <cpu_defines.h>
-#include <cpu_asm_macro.h>
 
 	/* 
 	 * Xvisor could be loaded any where in memory by boot loaders.
@@ -323,89 +322,157 @@ _reset:
 	/* Clear a register for temporary usage */
 	mov	r8, #0
 	/* Disable IRQ & FIQ */
-	SET_CURRENT_FLAGS (CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED), r8
+	mrs	r8, cpsr
+	orr	r8, r8, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
+	msr	cpsr, r8
 	/* Set Supervisor Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR
-	SET_CURRENT_STACK __svc_stack_end
+	cps	#CPSR_MODE_SUPERVISOR
+	ldr	sp, __svc_stack_end
 	/* Set Undefined Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_UNDEFINED
-	SET_CURRENT_STACK __und_stack_end
+	cps	#CPSR_MODE_UNDEFINED
+	ldr	sp, __und_stack_end
 	/* Set Abort Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_ABORT
-	SET_CURRENT_STACK __abt_stack_end
+	cps	#CPSR_MODE_ABORT
+	ldr	sp, __abt_stack_end
 	/* Set IRQ Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_IRQ
-	SET_CURRENT_STACK __irq_stack_end
+	cps	#CPSR_MODE_IRQ
+	ldr	sp, __irq_stack_end
 	/* Set FIQ Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_FIQ
-	SET_CURRENT_STACK __fiq_stack_end
+	cps	#CPSR_MODE_FIQ
+	ldr	sp, __fiq_stack_end
 	/* Set to Supervisor Mode */
-	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR
+	cps	#CPSR_MODE_SUPERVISOR
 	/* Call CPU init function */
 	b	cpu_init
 	/* We should never reach here */
 	b	.
 
 	/* 
+	 * Helper Macros for Exception Handlers
+	 */
+.macro EXCEPTION_HANDLER irqname, lroffset
+	.align 5
+\irqname:
+	sub	lr, lr, #\lroffset
+.endm
+
+/* If came from priviledged mode then push banked registers */
+.macro PUSH_REGS skip_lable
+	str     lr, [sp, #-4]!;         /* Push the return address */
+	sub     sp, sp, #(4*15);        /* Adjust the stack pointer */
+	stmia   sp, {r0-r12};           /* Push user mode registers */
+	add     r0, sp, #(4*13);        /* Adjust the stack pointer */
+	stmia   r0, {r13-r14}^;         /* Push user mode registers */
+	mov     r0, r0;                 /* NOP for previous inst */
+	mrs     r0, spsr_all;           /* Put the SPSR on the stack */
+	str     r0, [sp, #-4]!
+	mov	r4, r0
+	and	r0, r0, #CPSR_MODE_MASK
+	cmp	r0, #CPSR_MODE_USER
+	beq	\skip_lable
+	add	r1, sp, #(4*14)
+	mrs	r5, cpsr
+	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
+	msr	cpsr, r4
+	str	sp, [r1, #0]
+	str	lr, [r1, #4]
+	msr	cpsr, r5
+\skip_lable:
+.endm
+
+/* Call C function to handle exception */
+.macro CALL_EXCEPTION_CFUNC cfunc
+	mov	r0, sp
+	bl	\cfunc
+.endm
+
+/* If going back to priviledged mode then pull banked registers */
+.macro PULL_REGS skip_lable skip_lable1
+	ldr     r0, [sp, #0]
+	mov	r4, r0
+	and	r0, r0, #CPSR_MODE_MASK
+	cmp	r0, #CPSR_MODE_USER
+	beq	\skip_lable
+	mrs	r1, cpsr
+	and 	r1, r1, #CPSR_MODE_MASK
+	cmp	r0, r1
+	beq	\skip_lable1
+	add	r1, sp, #(4*14)
+	mrs	r5, cpsr
+	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
+	msr	cpsr, r4
+	ldr	sp, [r1, #0]
+	ldr	lr, [r1, #4]
+	msr	cpsr, r5
+\skip_lable:
+	ldr     r0, [sp], #0x0004;      /* Get SPSR from stack */
+	msr     spsr_all, r0;
+	ldmia   sp, {r0-r14}^;          /* Restore registers (user) */
+	mov     r0, r0;                 /* NOP for previous isnt */
+	add     sp, sp, #(4*15);        /* Adjust the stack pointer */
+	ldr     lr, [sp], #0x0004       /* Pull return address */
+	movs	pc, lr
+\skip_lable1:
+	ldr     r0, [sp], #0x0004;      /* Get SPSR from stack */
+	msr     spsr_all, r0;
+	ldm	sp, {r0-r15}^;          /* Restore all registers & CPSR */
+	mov     r0, r0;                 /* NOP for previous inst */
+.endm
+
+	/* 
 	 * Undefined instruction exception handler.
 	 */
-START_EXCEPTION_HANDLER _undef_inst, 4
-	PUSH_REGS _undef_inst_pushskip
-	CALL_EXCEPTION_CFUNC do_undefined_instruction
-	PULL_REGS _undef_inst_pullskip _undef_inst_pullskip1 _undef_inst_pullskip2
-END_EXCEPTION_HANDLER
+EXCEPTION_HANDLER _undef_inst, 4
+	PUSH_REGS _undef_inst_push
+	CALL_EXCEPTION_CFUNC do_undef_inst
+	PULL_REGS _undef_inst_pull _undef_inst_pull1
 
 	/* 
 	 * Software interrupt exception handler.
 	 */
-START_EXCEPTION_HANDLER _soft_irq, 4
-	PUSH_REGS _soft_irq_pushskip
-	CALL_EXCEPTION_CFUNC do_software_interrupt
-	PULL_REGS _soft_irq_pullskip _soft_irq_pullskip1 _soft_irq_pullskip2
-END_EXCEPTION_HANDLER
+EXCEPTION_HANDLER _soft_irq, 4
+	PUSH_REGS _soft_irq_push
+	CALL_EXCEPTION_CFUNC do_soft_irq
+	PULL_REGS _soft_irq_pull _soft_irq_pull1
 
 	/* 
 	 * Prefetch abort exception handler.
 	 */
-START_EXCEPTION_HANDLER _prefetch_abort, 4
-	PUSH_REGS _prefetch_abort_pushskip
+EXCEPTION_HANDLER _prefetch_abort, 4
+	PUSH_REGS _prefetch_abort_push
 	CALL_EXCEPTION_CFUNC do_prefetch_abort
-	PULL_REGS _prefetch_abort_pullskip _prefetch_abort_pullskip1 _prefetch_abort_pullskip2
-END_EXCEPTION_HANDLER
+	PULL_REGS _prefetch_abort_pull _prefetch_abort_pull1
 
 	/* 
 	 * Data abort exception handler.
 	 */
-START_EXCEPTION_HANDLER _data_abort, 8
-	PUSH_REGS _data_abort_pushskip
+EXCEPTION_HANDLER _data_abort, 8
+	PUSH_REGS _data_abort_push
 	CALL_EXCEPTION_CFUNC do_data_abort
-	PULL_REGS _data_abort_pullskip _data_abort_pullskip1 _data_abort_pullskip2
-END_EXCEPTION_HANDLER
+	PULL_REGS _data_abort_pull _data_abort_pull1
 
 	/* 
 	 * Not used exception handler.
 	 */
-START_EXCEPTION_HANDLER _not_used, 4
-	PUSH_REGS _not_used_pushskip
+EXCEPTION_HANDLER _not_used, 4
+	PUSH_REGS _not_used_push
 	CALL_EXCEPTION_CFUNC do_not_used
-	PULL_REGS _not_used_pullskip _not_used_pullskip1 _not_used_pullskip2
-END_EXCEPTION_HANDLER
+	PULL_REGS _not_used_pull _not_used_pull1
 
 	/* 
 	 * IRQ exception handler.
 	 */
-START_EXCEPTION_HANDLER _irq, 4
-	PUSH_REGS _irq_pushskip
+EXCEPTION_HANDLER _irq, 4
+	PUSH_REGS _irq_push
 	CALL_EXCEPTION_CFUNC do_irq
-	PULL_REGS _irq_pullskip _irq_pullskip1 _irq_pullskip2
-END_EXCEPTION_HANDLER
+	PULL_REGS _irq_pull _irq_pull1
 
 	/* 
 	 * FIQ exception handler.
 	 */
-START_EXCEPTION_HANDLER _fiq, 4
-	PUSH_REGS _fiq_pushskip
+EXCEPTION_HANDLER _fiq, 4
+	PUSH_REGS _fiq_push
 	CALL_EXCEPTION_CFUNC do_fiq
-	PULL_REGS _fiq_pullskip _fiq_pullskip1 _fiq_pullskip2
-END_EXCEPTION_HANDLER
+	PULL_REGS _fiq_pull _fiq_pull1
+
 
