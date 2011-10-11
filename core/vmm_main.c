@@ -226,7 +226,7 @@ void vmm_init(void)
 	}
 
 	/* Populate guest instances */
-	vmm_printf("Populating Guest Instances\n");
+	vmm_printf("Creating Pre-Configured Guest Instances\n");
 	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
 				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
 	if (!gsnode) {
@@ -235,10 +235,13 @@ void vmm_init(void)
 	}
 	list_for_each(l, &gsnode->child_list) {
 		gnode = list_entry(l, vmm_devtree_node_t, head);
+#if defined(CONFIG_VERBOSE_MODE)
 		vmm_printf("Creating %s\n", gnode->name);
+#endif
 		guest = vmm_manager_guest_create(gnode);
 		if (!guest) {
-			vmm_printf("Error: Failed to create guest\n");
+			vmm_printf("%s: failed to create %s\n", 
+					__func__, gnode->name);
 		}
 	}
 

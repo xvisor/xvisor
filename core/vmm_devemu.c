@@ -488,17 +488,21 @@ int vmm_devemu_probe(vmm_guest_t *guest, vmm_region_t *reg)
 			reg->priv = einst;
 			reg->node->type = VMM_DEVTREE_NODETYPE_EDEVICE;
 			reg->node->priv = einst;
+#if defined(CONFIG_VERBOSE_MODE)
 			vmm_printf("Probe edevice %s/%s\n",
 				   guest->node->name, reg->node->name);
+#endif
 			if ((rc = einst->probe(guest, einst, match))) {
-				vmm_printf("Error %d\n", rc);
+				vmm_printf("%s: %s/%s probe error %d\n", 
+				__func__, guest->node->name, reg->node->name, rc);
 				vmm_free(einst);
 				reg->priv = NULL;
 				reg->node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
 				reg->node->priv = NULL;
 			}
 			if ((rc = einst->reset(einst))) {
-				vmm_printf("Error %d\n", rc);
+				vmm_printf("%s: %s/%s reset error %d\n", 
+				__func__, guest->node->name, reg->node->name, rc);
 				vmm_free(einst);
 				reg->priv = NULL;
 				reg->node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
