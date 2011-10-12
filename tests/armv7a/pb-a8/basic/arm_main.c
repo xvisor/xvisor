@@ -284,7 +284,7 @@ typedef void (* linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args);
 
 void arm_cmd_start_linux(int argc, char **argv)
 {
-	char cmdline[] = "root=/dev/ram rw ramdisk_size=0x1000000 console=ttyAMA0 mem=96M";
+	char  * cmdline = "root=/dev/ram rw ramdisk_size=0x1000000 earlyprintk console=ttyAMA0 mem=96M" ;
 	u32 * kernel_args = (u32 *)(RAM_START + 0x100);
 	u32 cmdline_size, p;
 	u32 kernel_addr, initrd_addr, initrd_size;

@@ -1113,6 +1113,11 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 			}
 			vcpu->sregs->cp15.c13_context = data;
 			break;
+		case 2:
+		case 3:
+		case 4:
+			/* FIXME: TPIDRURW, TPIDRURO, and TPIDRPRW not implemented */
+			break;
 		default:
 			goto bad_reg;
 		}

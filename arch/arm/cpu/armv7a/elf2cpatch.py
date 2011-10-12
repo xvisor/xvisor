@@ -53,7 +53,7 @@ if len(secs)==0:
 	print "Error: No sections to scan"
 	sys.exit()
 
-dumpcmd = os.environ.get("CROSS_COMPILE") + "objdump -D " + options.filename
+dumpcmd = os.environ.get("CROSS_COMPILE") + "objdump -d " + options.filename
 
 # Initialize data structures
 lines = [];
@@ -269,7 +269,8 @@ def convert_msr_i_inst(hxstr):
 	imm12 = (hx >> 0) & 0xFFF
 	rethx = 0x0F000000
 	rethx = rethx | (cond << 28)
-	rethx = rethx | (inst_id << 17)
+	rethx = rethx | (inst_id << 20)
+	rethx = rethx | (inst_subid << 17)
 	rethx = rethx | (mask << 13)
 	rethx = rethx | (imm12 << 1)
 	rethx = rethx | (R << 0)
@@ -517,18 +518,18 @@ for ln, l in enumerate(lines):
 			if (w[2]=="cps" or w[2]=="cpsie" or w[2]=="cpsid"):
 				print "\t#", w[2], w[3]
 				print "\twrite32,0x%x,0x%08x" % (addr, convert_cps_inst(w[1]))
-			elif (w[2].startswith("rfeda") or 
-				w[2].startswith("rfedb") or 
-				w[2].startswith("rfeia") or 
-				w[2].startswith("rfeib") or 
-				w[2].startswith("rfe")):
+			elif (w[2]=="rfeda" or 
+				w[2]=="rfedb" or 
+				w[2]=="rfeia" or 
+				w[2]=="rfeib" or 
+				w[2]=="rfe"):
 				print "\t#", w[2], w[3]
 				print "\twrite32,0x%x,0x%08x" % (addr, convert_rfe_inst(w[1]))				
 		elif len(w)>=5: 
-			if (w[2].startswith("mrs")):
+			if (w[2]=="mrs"):
 				print "\t#", w[2], w[3], w[4]
 				print "\twrite32,0x%x,0x%08x" % (addr, convert_mrs_inst(w[1]))
-			elif (w[2].startswith("msr")):
+			elif (w[2]=="msr"):
 				print "\t#", w[2], w[3], w[4]
 				# Check bit[25] to findout 
 				# whether instruction is immediate or literal
@@ -536,32 +537,44 @@ for ln, l in enumerate(lines):
 					print "\twrite32,0x%x,0x%08x" % (addr, convert_msr_i_inst(w[1]))
 				else:
 					print "\twrite32,0x%x,0x%08x" % (addr, convert_msr_r_inst(w[1]))
-			elif (w[2].startswith("srsda") or 
-				w[2].startswith("srsdb") or 
-				w[2].startswith("srsia") or 
-				w[2].startswith("srsib") or 
-				w[2].startswith("srs")):
+			elif (w[2]=="srsda" or 
+				w[2]=="srsdb" or 
+				w[2]=="srsia" or 
+				w[2]=="srsib" or 
+				w[2]=="srs"):
 				print "\t#", w[2], w[3], w[4]
 				print "\twrite32,0x%x,0x%08x" % (addr, convert_srs_inst(w[1]))
-			elif ((w[2].startswith("ldmda") or 
-				w[2].startswith("ldmdb") or 
-				w[2].startswith("ldmia") or 
-				w[2].startswith("ldmib") or 
-				w[2].startswith("ldm")) and
+			elif ((w[2]=="ldmda" or 
+				w[2]=="ldmdb" or 
+				w[2]=="ldmia" or 
+				w[2]=="ldmib" or 
+				w[2]=="ldm") and
 				w[4].startswith("{") and
 				w[len(w)-1].endswith("}^")):
 				print "\t#", w[2], w[3], w[4]
 				print "\twrite32,0x%x,0x%08x" % (addr, convert_ldm_ue_inst(w[1]))
-			elif ((w[2].startswith("stmda") or 
-				w[2].startswith("stmdb") or 
-				w[2].startswith("stmia") or 
-				w[2].startswith("stmib") or 
-				w[2].startswith("stm")) and
+			elif ((w[2]=="stmda" or 
+				w[2]=="stmdb" or 
+				w[2]=="stmia" or 
+				w[2]=="stmib" or 
+				w[2]=="stm") and
 				w[4].startswith("{") and
 				w[len(w)-1].endswith("}^")):
 				print "\t#", w[2], w[3], w[4]
 				print "\twrite32,0x%x,0x%08x" % (addr, convert_stm_u_inst(w[1]))
-			elif ((int(w[1], 16) & 0x0C10F000)==0x0010F000):
+			elif (((int(w[1], 16) & 0x0C10F000) == 0x0010F000) and
+				(w[2]=="ands" or 
+				 w[2]=="eors" or
+				 w[2]=="subs" or
+				 w[2]=="rsbs" or
+				 w[2]=="adds" or
+				 w[2]=="adcs" or
+				 w[2]=="sbcs" or
+				 w[2]=="rscs" or
+				 w[2]=="orrs" or
+				 w[2]=="movs" or
+				 w[2]=="bics" or
+				 w[2]=="mvns")):
 				print "\t#", w[2], w[3], w[4]
 				print "\twrite32,0x%x,0x%08x" % (addr, convert_subs_rel_inst(w[1]))
 
