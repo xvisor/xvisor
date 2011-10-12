@@ -48,7 +48,7 @@ void cmd_vserial_usage(vmm_chardev_t *cdev)
 
 int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 {
-	u32 ite, epos = 0;
+	u32 ite, epos = 0, chpos = 0;
 	char ch, estr[3] = {'\e', 'x', 'q'}; /* estr is escape string. */
 	vmm_vserial_t *vser = vmm_vserial_find(name);
 
@@ -60,11 +60,23 @@ int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 	vmm_cprintf(cdev, "[%s] ", name);
 
 	epos = 0;
+	chpos = 0;
 	while(1) {
 		while (vmm_vserial_receive(vser, (u8 *)&ch, 1)) {
-			vmm_putc(ch);
 			if (ch == '\n') {
+				vmm_putc(ch);
 				vmm_cprintf(cdev, "[%s] ", name);
+				chpos = 0;
+			} else if (ch == '\r') {
+				while (chpos) {
+					vmm_putc('\e');
+					vmm_putc('[');
+					vmm_putc('D');
+					chpos--;
+				}
+			} else {
+				vmm_putc(ch);
+				chpos++;
 			}
 		}
 		if (!vmm_scanchar(NULL, cdev, &ch, FALSE)) {
