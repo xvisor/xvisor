@@ -115,52 +115,52 @@ while 1:
 			lnum += 1
 
 # Heuritic based line filtering to avoid overwriting constants 
-for lnum, l in enumerate(lines):
-	if not(vlnums[lnum]):
-		continue
-	w = l.split(" ")
-	if len(w)>4:
-		op = w[2]
-		a1 = w[3].replace(",", "")
-		c0 = w[len(w)-3]
-		c1 = w[len(w)-2]
-		c2 = w[len(w)-1]
-		if op=="ldr" and c0==";" and c2.startswith("<") and c2.endswith(">"):
-			sym = c2
-			sym = sym.replace("<", "")
-			sym = sym.replace(">", "")
-			syms = sym.split("+")
-			if not(sym2base.has_key(syms[0])):
-				continue
-			addr = sym2base[syms[0]]
-			if len(syms)>1:
-				if syms[1].startswith("0x"):
-					addr += int(syms[1], 16)
-				else:
-					addr += int(syms[1], 16)
-			if not(addr2lnum.has_key(addr)):
-				continue
-			ln = addr2lnum[addr]
-			while ln < len(vlnums):
-				if vlnums[ln]:
-					vlnums[ln] = False
-					ln += 1
-				else:
-					break
-			if a1!="pc":
-				if w[1].startswith("0x"):
-					addr = int(w[1], 16)
-				else:
-					addr = int(w[1], 16)
-				if not(addr2lnum.has_key(addr)):
-					continue
-				ln = addr2lnum[addr];
-				while ln < len(vlnums):
-					if vlnums[ln]:
-						vlnums[ln] = False
-						ln += 1
-					else:
-						break
+#for lnum, l in enumerate(lines):
+#	if not(vlnums[lnum]):
+#		continue
+#	w = l.split(" ")
+#	if len(w)>4:
+#		op = w[2]
+#		a1 = w[3].replace(",", "")
+#		c0 = w[len(w)-3]
+#		c1 = w[len(w)-2]
+#		c2 = w[len(w)-1]
+#		if op=="ldr" and c0==";" and c2.startswith("<") and c2.endswith(">"):
+#			sym = c2
+#			sym = sym.replace("<", "")
+#			sym = sym.replace(">", "")
+#			syms = sym.split("+")
+#			if not(sym2base.has_key(syms[0])):
+#				continue
+#			addr = sym2base[syms[0]]
+#			if len(syms)>1:
+#				if syms[1].startswith("0x"):
+#					addr += int(syms[1], 16)
+#				else:
+#					addr += int(syms[1], 16)
+#			if not(addr2lnum.has_key(addr)):
+#				continue
+#			ln = addr2lnum[addr]
+#			while ln < len(vlnums):
+#				if vlnums[ln]:
+#					vlnums[ln] = False
+#					ln += 1
+#				else:
+#					break
+#			if a1!="pc":
+#				if w[1].startswith("0x"):
+#					addr = int(w[1], 16)
+#				else:
+#					addr = int(w[1], 16)
+#				if not(addr2lnum.has_key(addr)):
+#					continue
+#				ln = addr2lnum[addr];
+#				while ln < len(vlnums):
+#					if vlnums[ln]:
+#						vlnums[ln] = False
+#						ln += 1
+#					else:
+#						break
 
 #for ln, l in enumerate(lines):
 #	if vsymdec[ln]:
