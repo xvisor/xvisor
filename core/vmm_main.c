@@ -101,9 +101,10 @@ void vmm_init(void)
 
 	/* Print version string */
 	vmm_printf("\n");
-	vmm_printf("%s Version %d.%d (%s %s)\n",
+	vmm_printf("%s Version %d.%d.%d (%s %s)\n",
 		   VMM_PROJECT_NAME, VMM_PROJECT_VER_MAJOR,
-		   VMM_PROJECT_VER_MINOR, __DATE__, __TIME__);
+		   VMM_PROJECT_VER_MINOR, VMM_PROJECT_VER_RELEASE,
+		   __DATE__, __TIME__);
 	vmm_printf("\n");
 
 	/* Print initial messages that we missed */
