@@ -1644,6 +1644,11 @@ void arm_mmu_setup(void)
 	}
 	sec_end += TTBL_L1TBL_SECTION_PAGE_SIZE;
 
+	/* Creation section entries for exception vectors */
+	if (sec_start > 0x0) {
+		l1[0] = sec_tmpl | 0x0;
+	}
+
 	/* Map an additional section after code */
 	sec = sec_end;
 	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
