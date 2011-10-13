@@ -445,7 +445,7 @@ def convert_stm_u_inst(hxstr):
 	U = (hx >> 23) & 0x1
 	Rn = (hx >> 16) & 0xF
 	reg_list = (hx >> 0) & 0x7FFF
-	inst_id = 9 + P * 2 + U
+	inst_id = 9 + (P * 2) + U
 	rethx = 0x0F000000
 	rethx = rethx | (cond << 28)
 	rethx = rethx | (inst_id << 20)
@@ -514,6 +514,9 @@ for ln, l in enumerate(lines):
 			continue
 		w[0] = w[0].replace(":", "")
 		addr = int(w[0], 16)
+		if (len(w)>1):
+			if (w[1]=="Address"):
+				continue
 		if (len(w)==4):
 			if (w[2]=="cps" or w[2]=="cpsie" or w[2]=="cpsid"):
 				print "\t#", w[2], w[3]
