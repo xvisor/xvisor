@@ -143,9 +143,9 @@ static inline int check_ap(vmm_vcpu_t *vcpu,
 			if (is_user) 
 				return 0;
 			else 
-				return (access_type == 0) ? 1 : 0;
+				return (access_type != CP15_ACCESS_WRITE) ? 1 : 0;
 		case 2:
-			return (access_type == 0) ? 1 : 0;
+			return (access_type != CP15_ACCESS_WRITE) ? 1 : 0;
 		default:
 			return 0;
 		}
@@ -153,7 +153,7 @@ static inline int check_ap(vmm_vcpu_t *vcpu,
 		return is_user ? 0 : 1;
 	case 2:
 		if (is_user)
-			return (access_type == 0) ? 1 : 0;
+			return (access_type != CP15_ACCESS_WRITE) ? 1 : 0;
 		else
 			return 1;
 	case 3:
@@ -164,13 +164,13 @@ static inline int check_ap(vmm_vcpu_t *vcpu,
 		if (is_user)
 			return 0;
 		else
-			return (access_type == 0) ? 1 : 0;
+			return (access_type != CP15_ACCESS_WRITE) ? 1 : 0;
 	case 6:
-		return (access_type == 0) ? 1 : 0;
+		return (access_type != CP15_ACCESS_WRITE) ? 1 : 0;
 	case 7:
 		if (!arm_feature (vcpu, ARM_FEATURE_V6K))
 			return 0;
-		return (access_type == 0) ? 1 : 0;
+		return (access_type != CP15_ACCESS_WRITE) ? 1 : 0;
 	default:
 		return 0;
 	};
@@ -182,7 +182,7 @@ static physical_addr_t get_level1_table_pa(vmm_vcpu_t *vcpu,
 					   virtual_addr_t va)
 {
 	if (va & vcpu->sregs->cp15.c2_mask) {
-		return vcpu->sregs->cp15.c2_base0 & 0xffffc000;
+		return vcpu->sregs->cp15.c2_base1 & 0xffffc000;
 	} else {
 		return vcpu->sregs->cp15.c2_base0 & 
 			vcpu->sregs->cp15.c2_base_mask;
@@ -262,7 +262,7 @@ static int ttbl_walk_v6(vmm_vcpu_t *vcpu,
 		*fs = 13;
 	} else {
 		/* Lookup l2 entry.  */
-		table = (desc & 0xfffffc00) | ((va >> 10) & 0x3fc);
+		table = (desc & 0xfffffc00);
 		reg_flags = 0x0;
 		rc = vmm_guest_physical_map(vcpu->guest, 
 					    table, 
@@ -279,6 +279,7 @@ static int ttbl_walk_v6(vmm_vcpu_t *vcpu,
 		if (reg_flags & VMM_REGION_VIRTUAL) {
 			return VMM_EFAIL;
 		}
+		table |= ((va >> 10) & 0x3fc);
 		desc = cpu_mmu_physical_read32(table);
 		pg->ap = ((desc >> 4) & 3) | ((desc >> 7) & 4);
 		switch (desc & 3) {
@@ -344,7 +345,8 @@ static u32 cpu_vcpu_cp15_find_page(vmm_vcpu_t * vcpu,
 		/* MMU enabled for vcpu */
 		rc = ttbl_walk_v6(vcpu, mva, access_type, is_user, pg, &fs);
 		if (rc) {
-			return (fs << 4) | (pg->dom & 0xF);
+			/* FIXME: should be ORed with (pg->dom & 0xF) */
+			return (fs << 4) | ((vcpu->sregs->cp15.c3 >> pg->dom) & 0x3);
 		}
 		pg->va = va;
 	} else {
