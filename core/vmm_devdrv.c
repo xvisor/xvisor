@@ -113,10 +113,13 @@ int vmm_devdrv_probe(vmm_devtree_node_t * node)
 				dinst->priv = NULL;
 				node->type = VMM_DEVTREE_NODETYPE_DEVICE;
 				node->priv = dinst;
+#if defined(CONFIG_VERBOSE_MODE)
 				vmm_printf("Probe device %s\n", node->name);
+#endif
 				rc = drv->probe(dinst, match);
 				if (rc) {
-					vmm_printf("Error %d\n", rc);
+					vmm_printf("%s: %s probe error %d\n", 
+						__func__, node->name, rc);
 					vmm_free(dinst);
 					node->type =
 					    VMM_DEVTREE_NODETYPE_UNKNOWN;
@@ -165,7 +168,9 @@ int vmm_devdrv_remove(vmm_devtree_node_t * node)
 			match = devdrv_match_node(matches, node);
 			if (match) {
 				dinst = node->priv;
+#if defined(CONFIG_VERBOSE_MODE)
 				vmm_printf("Remove device %s\n", node->name);
+#endif
 				rc = drv->remove(dinst);
 				if (!rc) {
 					vmm_free(dinst);
@@ -173,7 +178,8 @@ int vmm_devdrv_remove(vmm_devtree_node_t * node)
 					    VMM_DEVTREE_NODETYPE_UNKNOWN;
 					node->priv = NULL;
 				} else {
-					vmm_printf("[error] %d\n", rc);
+					vmm_printf("%s: %s remove error %d\n", 
+						__func__, node->name, rc);
 				}
 				break;
 			}

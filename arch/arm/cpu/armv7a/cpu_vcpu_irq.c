@@ -73,38 +73,48 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 			 vmm_user_regs_t * regs, 
 			 u32 irq_no, u32 reason)
 {
-	u32 old_cpsr, new_mode, new_flags, lr_off;
+	u32 old_cpsr, new_cpsr, new_mode, new_flags, lr_off;
 	virtual_addr_t new_pc;
 
 	old_cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
+	new_cpsr = old_cpsr;
 	new_flags = 0x0;
 
 	switch(irq_no) {
 	case CPU_RESET_IRQ:
 		new_mode = CPSR_MODE_SUPERVISOR;
-		new_flags = CPSR_ASYNC_ABORT_DISABLED | CPSR_FIQ_DISABLED;
+		new_flags |= CPSR_ASYNC_ABORT_DISABLED;
+		new_flags |= CPSR_IRQ_DISABLED;
+		new_flags |= CPSR_FIQ_DISABLED;
 		lr_off = 0;
 		break;
 	case CPU_UNDEF_INST_IRQ:
 		new_mode = CPSR_MODE_UNDEFINED;
+		new_flags |= CPSR_IRQ_DISABLED;
 		lr_off = 4;
 		break;
 	case CPU_SOFT_IRQ:
 		new_mode = CPSR_MODE_SUPERVISOR;
+		new_flags |= CPSR_IRQ_DISABLED;
 		lr_off = 4;
 		break;
 	case CPU_PREFETCH_ABORT_IRQ:
 		new_mode = CPSR_MODE_ABORT;
-		new_flags = CPSR_ASYNC_ABORT_DISABLED;
+		new_flags |= CPSR_ASYNC_ABORT_DISABLED;
+		new_flags |= CPSR_IRQ_DISABLED;
 		lr_off = 4;
 		break;
 	case CPU_DATA_ABORT_IRQ:
 		new_mode = CPSR_MODE_ABORT;
-		new_flags = CPSR_ASYNC_ABORT_DISABLED;
+		new_flags |= CPSR_ASYNC_ABORT_DISABLED;
+		new_flags |= CPSR_IRQ_DISABLED;
 		lr_off = 8;
 		break;
 	case CPU_NOT_USED_IRQ:
 		new_mode = CPSR_MODE_SUPERVISOR;
+		new_flags |= CPSR_ASYNC_ABORT_DISABLED;
+		new_flags |= CPSR_IRQ_DISABLED;
+		new_flags |= CPSR_FIQ_DISABLED;
 		lr_off = 0;
 		break;
 	case CPU_EXTERNAL_IRQ:
@@ -112,8 +122,8 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 			return VMM_EFAIL;
 		}
 		new_mode = CPSR_MODE_IRQ;
-		new_flags = CPSR_ASYNC_ABORT_DISABLED;
-		new_flags |= (CPSR_IRQ_DISABLED);
+		new_flags |= CPSR_ASYNC_ABORT_DISABLED;
+		new_flags |= CPSR_IRQ_DISABLED;
 		lr_off = 4;
 		break;
 	case CPU_EXTERNAL_FIQ:
@@ -121,8 +131,9 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 			return VMM_EFAIL;
 		}
 		new_mode = CPSR_MODE_FIQ;
-		new_flags = CPSR_ASYNC_ABORT_DISABLED;
-		new_flags |= (CPSR_FIQ_DISABLED | CPSR_IRQ_DISABLED);
+		new_flags |= CPSR_ASYNC_ABORT_DISABLED;
+		new_flags |= CPSR_IRQ_DISABLED;
+		new_flags |= CPSR_FIQ_DISABLED;
 		lr_off = 4;
 		break;
 	default:
@@ -131,10 +142,17 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 	};
 
 	new_pc = cpu_vcpu_cp15_vector_addr(vcpu, irq_no);
-	cpu_vcpu_cpsr_update(vcpu, regs, 
-				((old_cpsr & ~0x3FF) | 
-				new_mode | 
-				new_flags));
+	new_cpsr &= ~CPSR_MODE_MASK;
+	new_cpsr |= (new_mode | new_flags);
+	new_cpsr &= ~(CPSR_IT1_MASK | CPSR_IT2_MASK);
+	if (arm_feature(vcpu, ARM_FEATURE_V4T)) {
+		if (vcpu->sregs->cp15.c1_sctlr & (1 << 30)) {
+			new_cpsr |= CPSR_THUMB_ENABLED;
+		} else {
+			new_cpsr &= ~CPSR_THUMB_ENABLED;
+		}
+	}
+	cpu_vcpu_cpsr_update(vcpu, regs, new_cpsr);
 	cpu_vcpu_spsr_update(vcpu, old_cpsr);
 	regs->lr = regs->pc + lr_off;
 	regs->pc = new_pc;

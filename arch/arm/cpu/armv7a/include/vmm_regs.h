@@ -142,8 +142,8 @@ struct vmm_super_regs {
 		u32 dacr;
 		/* Virtual TLB */
 		cpu_vtlb_t vtlb;
-		/* Overlapping vectors */
-		u32 ovect[CPU_IRQ_NR * 2];
+		/* Overlapping vector page */
+		u32 ovect[TTBL_L2TBL_SMALL_PAGE_SIZE / 4];
 		u32 ovect_base;
 		/* Coprocessor Registers */
 		u32 c0_cpuid;
