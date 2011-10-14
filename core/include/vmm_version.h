@@ -24,9 +24,10 @@
 #ifndef _VMM_VERSION_H__
 #define _VMM_VERSION_H__
 
-#define VMM_PROJECT_NAME	"Xvisor"
-#define VMM_PROJECT_VER_MAJOR	1
-#define VMM_PROJECT_VER_MINOR	0
+#define VMM_PROJECT_NAME		"Xvisor"
+#define VMM_PROJECT_VER_MAJOR		0
+#define VMM_PROJECT_VER_MINOR		1
+#define VMM_PROJECT_VER_RELEASE		0
 
 #if defined(CONFIG_BANNER_DEFAULT)
 /** Banner string in ASCII colossal font */

@@ -33,9 +33,11 @@
 
 void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 {
-	vmm_printf("\n");
-	cpu_vcpu_dump_user_reg(vcpu, regs);
-	vmm_manager_vcpu_halt(vcpu);
+	if (vcpu->state != VMM_VCPU_STATE_HALTED) {
+		vmm_printf("\n");
+		cpu_vcpu_dump_user_reg(vcpu, regs);
+		vmm_manager_vcpu_halt(vcpu);
+	}
 }
 
 u32 cpu_vcpu_cpsr_retrive(vmm_vcpu_t * vcpu,
@@ -45,11 +47,10 @@ u32 cpu_vcpu_cpsr_retrive(vmm_vcpu_t * vcpu,
 		return 0;
 	}
 	if (vcpu->is_normal) {
-		return (((regs->cpsr & CPSR_USERBITS_MASK) |
-			 (vcpu->sregs->cpsr & CPSR_PRIVBITS_MASK)) &
-			CPSR_VALIDBITS_MASK);
+		return (regs->cpsr & CPSR_USERBITS_MASK) |
+			(vcpu->sregs->cpsr & ~CPSR_USERBITS_MASK);
 	} else {
-		return regs->cpsr & CPSR_VALIDBITS_MASK;
+		return regs->cpsr;
 	}
 }
 
@@ -224,7 +225,6 @@ void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu,
 			  u32 new_cpsr)
 {
 	u32 old_cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
-	new_cpsr &= CPSR_VALIDBITS_MASK;
 	/* Sanity check */
 	if (!vcpu) {
 		return;
@@ -238,8 +238,8 @@ void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu,
 		cpu_vcpu_banked_regs_save(vcpu, regs);
 	}
 	/* Set the new priviledged bits of CPSR */
-	vcpu->sregs->cpsr &= ~CPSR_PRIVBITS_MASK;
-	vcpu->sregs->cpsr |= new_cpsr & CPSR_PRIVBITS_MASK;
+	vcpu->sregs->cpsr &= CPSR_USERBITS_MASK;
+	vcpu->sregs->cpsr |= new_cpsr & ~CPSR_USERBITS_MASK;
 	/* Set the new user bits of CPSR */
 	regs->cpsr &= ~CPSR_USERBITS_MASK;
 	regs->cpsr |= new_cpsr & CPSR_USERBITS_MASK;
@@ -285,7 +285,6 @@ u32 cpu_vcpu_spsr_retrive(vmm_vcpu_t * vcpu)
 int cpu_vcpu_spsr_update(vmm_vcpu_t * vcpu, 
 			 u32 new_spsr)
 {
-	new_spsr &= CPSR_VALIDBITS_MASK;
 	/* Sanity check */
 	if (!vcpu) {
 		return VMM_EFAIL;
@@ -663,11 +662,11 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	vmm_memset(vcpu->uregs, 0, sizeof(vmm_user_regs_t));
 	vcpu->uregs->pc = vcpu->start_pc;
 	if (vcpu->is_normal) {
-		vcpu->uregs->cpsr  = CPSR_COND_ZERO_MASK;
+		vcpu->uregs->cpsr  = CPSR_ZERO_MASK;
 		vcpu->uregs->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
 		vcpu->uregs->cpsr |= CPSR_MODE_USER;
 	} else {
-		vcpu->uregs->cpsr  = CPSR_COND_ZERO_MASK;
+		vcpu->uregs->cpsr  = CPSR_ZERO_MASK;
 		vcpu->uregs->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
 		vcpu->uregs->cpsr |= CPSR_MODE_SUPERVISOR;
 		vcpu->uregs->sp = vcpu->start_sp;
@@ -708,7 +707,7 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 		vcpu->sregs->sp_fiq = 0x0;
 		vcpu->sregs->lr_fiq = 0x0;
 		vcpu->sregs->spsr_fiq = 0x0;
-		cpu_vcpu_cpsr_update(vcpu, vcpu->uregs, (CPSR_COND_ZERO_MASK |
+		cpu_vcpu_cpsr_update(vcpu, vcpu->uregs, (CPSR_ZERO_MASK |
 						  CPSR_ASYNC_ABORT_DISABLED | 
 						  CPSR_IRQ_DISABLED |
 						  CPSR_FIQ_DISABLED | 
@@ -769,12 +768,8 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 			cpu_vcpu_banked_regs_save(tvcpu, regs);
 		}
 	}
-	if (vcpu->is_normal) {
-		/* Switch CP15 context */
-		cpu_vcpu_cp15_set_mmu_context(vcpu);
-	} else {
-		cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
-	}
+	/* Switch CP15 context */
+	cpu_vcpu_cp15_switch_context(tvcpu, vcpu);
 	/* Restore user registers & banked registers */
 	regs->pc = vcpu->uregs->pc;
 	regs->lr = vcpu->uregs->lr;

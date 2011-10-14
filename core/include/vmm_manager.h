@@ -71,11 +71,12 @@ struct vmm_guest_aspace {
 			list_for_each(curr, &(aspace->reg_list))
 
 struct vmm_vcpu_irqs {
+	bool *assert;
 	u32 *reason;
-	s32 *pending;
-	s32 pending_first;
-	s32 *active;
-	s32 active_first;
+	u32 depth;
+	u64 assert_count;
+	u64 execute_count;
+	u64 deassert_count;
 };
 
 struct vmm_guest {

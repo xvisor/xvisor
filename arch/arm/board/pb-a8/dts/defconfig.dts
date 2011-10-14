@@ -86,7 +86,7 @@
 					address_type = "memory";
 					guest_physical_addr = <0x00000000>;
 					alias_physical_addr = <0x70000000>;
-					physical_size = <0x01000000>; /* 16 MB */
+					physical_size = <0x06000000>; /* 96 MB */
 					device_type = "ram";
 				};
 
@@ -95,7 +95,7 @@
 					address_type = "memory";
 					guest_physical_addr = <0x70000000>;
 					host_physical_addr = <0x71000000>;
-					physical_size = <0x01000000>; /* 16 MB */
+					physical_size = <0x06000000>; /* 96 MB */
 					device_type = "ram";
 				};
 

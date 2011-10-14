@@ -95,11 +95,14 @@ int vmm_modules_init(void)
 	for (i = 0; i < modules_ctrl.mod_count; i++) {
 		/* Initialize module if required */
 		if (modules_ctrl.table[i].init) {
+#if defined(CONFIG_VERBOSE_MODE)
 			vmm_printf("Initialize %s\n",
 				   modules_ctrl.table[i].name);
+#endif
 			mod_ret = modules_ctrl.table[i].init();
 			if (mod_ret) {
-				vmm_printf("Error %d\n", mod_ret);
+				vmm_printf("%s: %s init error %d\n", 
+				__func__, modules_ctrl.table[i].name, mod_ret);
 			}
 			modules_ctrl.table[i].istatus = mod_ret;
 		}

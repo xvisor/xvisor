@@ -24,6 +24,15 @@
 
 #include <arm_string.h>
 
+size_t arm_strlen(const char *s)
+{
+	size_t ret = 0;
+	while (s[ret]) {
+		ret++;
+	}
+	return ret;
+}
+
 char *arm_strcpy(char *dest, const char *src)
 {
 	u32 i;

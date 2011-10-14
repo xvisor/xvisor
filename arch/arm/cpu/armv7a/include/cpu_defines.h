@@ -45,11 +45,6 @@
 #define CPU_EXTERNAL_FIQ				7
 
 /* CPSR related macors & defines */
-#define CPSR_VALIDBITS_MASK				0xFF0FFFFF
-#define CPSR_USERBITS_MASK				0xFFFFFC00
-#define CPSR_USERBITS_SHIFT				10
-#define CPSR_PRIVBITS_MASK				0x000003FF
-#define CPSR_PRIVBITS_SHIFT				0
 #define CPSR_MODE_MASK					0x0000001f
 #define CPSR_MODE_USER					0x00000010
 #define CPSR_MODE_FIQ					0x00000011
@@ -71,14 +66,28 @@
 #define CPSR_JAZZLE_ENABLED				(1 << 24)
 #define CPSR_IT1_MASK					0x06000000
 #define CPSR_IT1_SHIFT					25
-#define CPSR_COND_OVERFLOW_MASK				(1 << 28)
-#define CPSR_COND_OVERFLOW_SHIFT			28
-#define CPSR_COND_CARRY_MASK				(1 << 29)
-#define CPSR_COND_CARRY_SHIFT				29
-#define CPSR_COND_ZERO_MASK				(1 << 30)
-#define CPSR_COND_ZERO_SHIFT				30
-#define CPSR_COND_NEGATIVE_MASK				(1 << 31)
-#define CPSR_COND_NEGATIVE_SHIFT			31
+#define CPSR_CUMMULATE_MASK				(1 << 27)
+#define CPSR_CUMMULATE_SHIFT				27
+#define CPSR_OVERFLOW_MASK				(1 << 28)
+#define CPSR_OVERFLOW_SHIFT				28
+#define CPSR_CARRY_MASK					(1 << 29)
+#define CPSR_CARRY_SHIFT				29
+#define CPSR_ZERO_MASK					(1 << 30)
+#define CPSR_ZERO_SHIFT					30
+#define CPSR_NEGATIVE_MASK				(1 << 31)
+#define CPSR_NEGATIVE_SHIFT				31
+
+#define CPSR_NZCV_MASK					(CPSR_NEGATIVE_MASK |\
+							CPSR_ZERO_MASK |\
+							CPSR_CARRY_MASK |\
+							CPSR_OVERFLOW_MASK)
+#define CPSR_IT_MASK					(CPSR_IT2_MASK |\
+							CPSR_IT1_MASK)
+#define CPSR_USERBITS_MASK				(CPSR_NZCV_MASK |\
+							CPSR_CUMMULATE_MASK |\
+							CPSR_GE_MASK |\
+							CPSR_IT_MASK |\
+							CPSR_THUMB_ENABLED)
 
 /* VFP system registers.  */
 #define VFP_FPSID					0

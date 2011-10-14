@@ -43,9 +43,10 @@ void cmd_version_usage(vmm_chardev_t *cdev)
 
 int cmd_version_exec(vmm_chardev_t *cdev, int argc, char **argv)
 {
-	vmm_cprintf(cdev, "%s Version %d.%d (%s %s)\n",
+	vmm_cprintf(cdev, "%s Version %d.%d.%d (%s %s)\n",
 		    VMM_PROJECT_NAME, VMM_PROJECT_VER_MAJOR,
-		    VMM_PROJECT_VER_MINOR, __DATE__, __TIME__);
+		    VMM_PROJECT_VER_MINOR, VMM_PROJECT_VER_RELEASE, 
+		    __DATE__, __TIME__);
 	return VMM_OK;
 }
 
