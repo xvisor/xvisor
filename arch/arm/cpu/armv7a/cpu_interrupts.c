@@ -66,7 +66,6 @@ void do_undef_inst(vmm_user_regs_t * uregs)
 
 	if (rc) {
 		vmm_printf("%s: error %d\n", __func__, rc);
-		cpu_vcpu_halt(vcpu, uregs);
 	}
 
 	vmm_scheduler_irq_exit(uregs);
@@ -100,7 +99,6 @@ void do_soft_irq(vmm_user_regs_t * uregs)
 
 	if (rc) {
 		vmm_printf("%s: error %d\n", __func__, rc);
-		cpu_vcpu_halt(vcpu, uregs);
 	}
 
 	vmm_scheduler_irq_exit(uregs);
@@ -109,6 +107,7 @@ void do_soft_irq(vmm_user_regs_t * uregs)
 void do_prefetch_abort(vmm_user_regs_t * uregs)
 {
 	int rc = VMM_EFAIL;
+	bool crash_dump = FALSE;
 	u32 ifsr, ifar, fs;
 	vmm_vcpu_t * vcpu;
 	cpu_l1tbl_t * l1;
@@ -161,22 +160,26 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	case IFSR_FS_TRANS_FAULT_SECTION:
 	case IFSR_FS_TRANS_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, 
-						ifar, fs, 0, 0, 0);
+						ifar, fs, 0, 0, 0, FALSE);
+		crash_dump = TRUE;
 		break;
 	case IFSR_FS_ACCESS_FAULT_SECTION:
 	case IFSR_FS_ACCESS_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, 
 						ifar, fs, 0, 0, 0);
+		crash_dump = TRUE;
 		break;
 	case IFSR_FS_DOMAIN_FAULT_SECTION:
 	case IFSR_FS_DOMAIN_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, 
 						ifar, fs, 0, 0, 0);
+		crash_dump = TRUE;
 		break;
 	case IFSR_FS_PERM_FAULT_SECTION:
 	case IFSR_FS_PERM_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
 						ifar, fs, 0, 0, 0);
+		crash_dump = TRUE;
 		break;
 	case IFSR_FS_DEBUG_EVENT:
 	case IFSR_FS_SYNC_EXT_ABORT:
@@ -188,12 +191,12 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 		break; 
 	};
 
-	if (rc) {
+	if (rc && crash_dump) {
 		vmm_printf("\n");
 		vmm_printf("%s: error %d\n", __func__, rc);
 		vmm_printf("%s: vcpu_id = %d, ifar = 0x%x, ifsr = 0x%x\n", 
 				__func__, vcpu->id, ifar, ifsr);
-		cpu_vcpu_halt(vcpu, uregs);
+		cpu_vcpu_dump_user_reg(vcpu, uregs);
 	}
 
 	vmm_scheduler_irq_exit(uregs);
@@ -201,7 +204,8 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 
 void do_data_abort(vmm_user_regs_t * uregs)
 {
-	int rc = VMM_EFAIL;
+	int rc = VMM_EFAIL; 
+	bool crash_dump = FALSE;
 	u32 dfsr, dfar, fs, dom, wnr;
 	vmm_vcpu_t * vcpu;
 	cpu_l1tbl_t * l1;
@@ -260,22 +264,29 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	case DFSR_FS_TRANS_FAULT_SECTION:
 	case DFSR_FS_TRANS_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, 
-						dfar, fs, dom, wnr, 1);
+						dfar, fs, dom, wnr, 1, FALSE);
+		crash_dump = TRUE;
 		break;
 	case DFSR_FS_ACCESS_FAULT_SECTION:
 	case DFSR_FS_ACCESS_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, 
 						dfar, fs, dom, wnr, 1);
+		crash_dump = TRUE;
 		break;
 	case DFSR_FS_DOMAIN_FAULT_SECTION:
 	case DFSR_FS_DOMAIN_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, 
 						dfar, fs, dom, wnr, 1);
+		crash_dump = TRUE;
 		break;
 	case DFSR_FS_PERM_FAULT_SECTION:
 	case DFSR_FS_PERM_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
 						dfar, fs, dom, wnr, 1);
+		if ((dfar & ~(sizeof(vcpu->sregs->cp15.ovect) - 1)) != 
+						vcpu->sregs->cp15.ovect_base) {
+			crash_dump = FALSE;
+		}
 		break;
 	case DFSR_FS_DEBUG_EVENT:
 	case DFSR_FS_SYNC_EXT_ABORT:
@@ -289,12 +300,12 @@ void do_data_abort(vmm_user_regs_t * uregs)
 		break;
 	};
 
-	if (rc) {
+	if (rc && crash_dump) {
 		vmm_printf("\n");
 		vmm_printf("%s: error %d\n", __func__, rc);
 		vmm_printf("%s: vcpu_id = %d, dfar = 0x%x, dfsr = 0x%x\n", 
 				__func__, vcpu->id, dfar, dfsr);
-		cpu_vcpu_halt(vcpu, uregs);
+		cpu_vcpu_dump_user_reg(vcpu, uregs);
 	}
 
 	vmm_scheduler_irq_exit(uregs);

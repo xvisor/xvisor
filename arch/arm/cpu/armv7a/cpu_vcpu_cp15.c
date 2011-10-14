@@ -394,7 +394,7 @@ static int cpu_vcpu_cp15_assert_fault(vmm_vcpu_t * vcpu,
 int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu, 
 			      vmm_user_regs_t * regs, 
 			      u32 far, u32 fs, u32 dom, 
-			      u32 wnr, u32 xn)
+			      u32 wnr, u32 xn, bool force_user)
 {
 	u32 ecode, reg_flags;
 	bool is_user;
@@ -412,10 +412,14 @@ int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu,
 		access_type = CP15_ACCESS_EXECUTE;
 	}
 
-	if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if (force_user) {
 		is_user = TRUE;
 	} else {
-		is_user = FALSE;
+		if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+			is_user = TRUE;
+		} else {
+			is_user = FALSE;
+		}
 	}
 
 	if ((ecode = cpu_vcpu_cp15_find_page(vcpu, far, 
@@ -777,7 +781,7 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 			break;
 		}
 		/* FIXME: Should only clear Z flag if destination is r15.  */
-		regs->cpsr &= ~CPSR_COND_ZERO_MASK;
+		regs->cpsr &= ~CPSR_ZERO_MASK;
 		*data = 0;
 		break;
 	case 8: /* MMU TLB control.  */
@@ -820,6 +824,18 @@ bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu,
 			break;
 		case 1:
 			*data = vcpu->sregs->cp15.c13_context;
+			break;
+		case 2:
+			/* TPIDRURW */
+			*data = vcpu->sregs->cp15.c13_tls1;
+			break;
+		case 3:
+			/* TPIDRURO */
+			*data = vcpu->sregs->cp15.c13_tls2;
+			break;
+		case 4:
+			/* TPIDRPRW */
+			*data = vcpu->sregs->cp15.c13_tls3;
 			break;
 		default:
 			goto bad_reg;
@@ -1116,9 +1132,19 @@ bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu,
 			vcpu->sregs->cp15.c13_context = data;
 			break;
 		case 2:
+			/* TPIDRURW */
+			vcpu->sregs->cp15.c13_tls1 = data;
+			write_tpidrurw(data);
+			break;
 		case 3:
+			/* TPIDRURO */
+			vcpu->sregs->cp15.c13_tls2 = data;
+			write_tpidruro(data);
+			break;
 		case 4:
-			/* FIXME: TPIDRURW, TPIDRURO, and TPIDRPRW not implemented */
+			/* TPIDRPRW */
+			vcpu->sregs->cp15.c13_tls3 = data;
+			write_tpidrprw(data);
 			break;
 		default:
 			goto bad_reg;
@@ -1141,10 +1167,26 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 			   bool force_unpriv)
 {
 	int rc = VMM_OK;
-	u32 vind;
+	bool is_user = FALSE;
+	u32 vind, ecode;
 	cpu_page_t pg;
 	if ((addr & ~(sizeof(vcpu->sregs->cp15.ovect) - 1)) == 
 					vcpu->sregs->cp15.ovect_base) {
+		if (force_unpriv) {
+			is_user = TRUE;
+		} else {
+			if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+				is_user = TRUE;
+			} else {
+				is_user = FALSE;
+			}
+		}
+		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr, 
+					CP15_ACCESS_READ, is_user, &pg))) {
+			cpu_vcpu_cp15_assert_fault(vcpu, regs, 
+			addr, (ecode >> 4), (ecode & 0xF), 0, 1);
+			return VMM_EFAIL;
+		}
 		vind = addr & (sizeof(vcpu->sregs->cp15.ovect) - 1);
 		switch (dst_len) {
 		case 4:
@@ -1161,7 +1203,7 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 			*((u8 *)dst) = ((u8 *)vcpu->sregs->cp15.ovect)[vind];
 			break;
 		default:
-			rc = VMM_EFAIL;
+			return VMM_EFAIL;
 			break;
 		};
 	} else {
@@ -1169,50 +1211,53 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 		if (rc == VMM_ENOTAVAIL) {
 			if (pg.va) {
 				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
-				addr, DFSR_FS_TRANS_FAULT_PAGE, 0, 0, 1);
+				addr, DFSR_FS_TRANS_FAULT_PAGE, 0, 0, 1, force_unpriv);
 			} else {
 				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
-				addr, DFSR_FS_TRANS_FAULT_SECTION, 0, 0, 1);
+				addr, DFSR_FS_TRANS_FAULT_SECTION, 0, 0, 1, force_unpriv);
 			}
 			if (!rc) {
-				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, 
-						      addr, &pg);
+				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, &pg);
 			}
 		}
-		if (!rc) {
-			switch(pg.ap) {
-			case TTBL_AP_SR_U:
-			case TTBL_AP_SRW_U:
-				rc = vmm_devemu_emulate_read(vcpu->guest, 
-					(addr - pg.va) + pg.pa, dst, dst_len);
+		if (rc) {
+			cpu_vcpu_halt(vcpu, regs);
+			return rc;
+		}
+		switch(pg.ap) {
+		case TTBL_AP_SR_U:
+		case TTBL_AP_SRW_U:
+			return vmm_devemu_emulate_read(vcpu->guest, 
+				(addr - pg.va) + pg.pa, dst, dst_len);
+			break;
+		case TTBL_AP_SRW_UR:
+		case TTBL_AP_SRW_URW:
+			switch (dst_len) {
+			case 4:
+				*((u32 *)dst) = *((u32 *)addr);
 				break;
-			case TTBL_AP_SRW_UR:
-			case TTBL_AP_SRW_URW:
-				switch (dst_len) {
-				case 4:
-					*((u32 *)dst) = *((u32 *)addr);
-					break;
-				case 2:
-					*((u16 *)dst) = *((u16 *)addr);
-					break;
-				case 1:
-					*((u8 *)dst) = *((u8 *)addr);
-					break;
-				default:
-					rc = VMM_EFAIL;
-					break;
-				};
+			case 2:
+				*((u16 *)dst) = *((u16 *)addr);
+				break;
+			case 1:
+				*((u8 *)dst) = *((u8 *)addr);
 				break;
 			default:
-				rc = VMM_EFAIL;
+				return VMM_EFAIL;
 				break;
 			};
-		}
+			break;
+		default:
+			/* Remove fault address from VTLB and restart.
+			 * Doing this will force us to do TTBL walk If MMU 
+			 * is enabled then appropriate fault will be generated 
+			 */
+			cpu_vcpu_cp15_vtlb_flush_va(vcpu, addr);
+			return VMM_EFAIL;
+			break;
+		};
 	}
-	if (rc) {
-		cpu_vcpu_halt(vcpu, regs);
-	}
-	return rc;
+	return VMM_OK;
 }
 
 int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu, 
@@ -1222,10 +1267,26 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 			    bool force_unpriv)
 {
 	int rc = VMM_OK;
-	u32 vind;
+	bool is_user = FALSE;
+	u32 vind, ecode;
 	cpu_page_t pg;
 	if ((addr & ~(sizeof(vcpu->sregs->cp15.ovect) - 1)) == 
 					vcpu->sregs->cp15.ovect_base) {
+		if (force_unpriv) {
+			is_user = TRUE;
+		} else {
+			if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+				is_user = TRUE;
+			} else {
+				is_user = FALSE;
+			}
+		}
+		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr, 
+					CP15_ACCESS_WRITE, is_user, &pg))) {
+			cpu_vcpu_cp15_assert_fault(vcpu, regs, 
+			addr, (ecode >> 4), (ecode & 0xF), 1, 1);
+			return VMM_EFAIL;
+		}
 		vind = addr & (sizeof(vcpu->sregs->cp15.ovect) - 1);
 		switch (src_len) {
 		case 4:
@@ -1242,56 +1303,59 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 			((u8 *)vcpu->sregs->cp15.ovect)[vind] = *((u8 *)src);
 			break;
 		default:
-			rc = VMM_EFAIL;
+			return VMM_EFAIL;
 			break;
 		};
 	} else {
 		rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, &pg);
 		if (rc == VMM_ENOTAVAIL) {
 			if (pg.va) {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
-				addr, DFSR_FS_TRANS_FAULT_PAGE, 0, 1, 1);
+				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, addr, 
+				DFSR_FS_TRANS_FAULT_PAGE, 0, 1, 1, force_unpriv);
 			} else {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
-				addr, DFSR_FS_TRANS_FAULT_SECTION, 0, 1, 1);
+				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, addr, 
+				DFSR_FS_TRANS_FAULT_SECTION, 0, 1, 1, force_unpriv);
 			}
 			if (!rc) {
-				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, 
-						      addr, &pg);
+				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, &pg);
 			}
 		}
-		if (!rc) {
-			switch(pg.ap) {
-			case TTBL_AP_SRW_U:
-				rc = vmm_devemu_emulate_write(vcpu->guest, 
-					(addr - pg.va) + pg.pa, src, src_len);
+		if (rc) {
+			cpu_vcpu_halt(vcpu, regs);
+			return rc;
+		}
+		switch(pg.ap) {
+		case TTBL_AP_SRW_U:
+			return vmm_devemu_emulate_write(vcpu->guest, 
+				(addr - pg.va) + pg.pa, src, src_len);
+			break;
+		case TTBL_AP_SRW_URW:
+			switch (src_len) {
+			case 4:
+				*((u32 *)addr) = *((u32 *)src);
 				break;
-			case TTBL_AP_SRW_URW:
-				switch (src_len) {
-				case 4:
-					*((u32 *)addr) = *((u32 *)src);
-					break;
-				case 2:
-					*((u16 *)addr) = *((u16 *)src);
-					break;
-				case 1:
-					*((u8 *)addr) = *((u8 *)src);
-					break;
-				default:
-					rc = VMM_EFAIL;
-					break;
-				};
+			case 2:
+				*((u16 *)addr) = *((u16 *)src);
+				break;
+			case 1:
+				*((u8 *)addr) = *((u8 *)src);
 				break;
 			default:
-				rc = VMM_EFAIL;
+				return VMM_EFAIL;
 				break;
 			};
-		}
+			break;
+		default:
+			/* Remove fault address from VTLB and restart.
+			 * Doing this will force us to do TTBL walk If MMU 
+			 * is enabled then appropriate fault will be generated 
+			 */
+			cpu_vcpu_cp15_vtlb_flush_va(vcpu, addr);
+			return VMM_EFAIL;
+			break;
+		};
 	}
-	if (rc) {
-		cpu_vcpu_halt(vcpu, regs);
-	}
-	return rc;
+	return VMM_OK;
 }
 
 virtual_addr_t cpu_vcpu_cp15_vector_addr(vmm_vcpu_t * vcpu, u32 irq_no)
@@ -1339,10 +1403,22 @@ void cpu_vcpu_cp15_sync_cpsr(vmm_vcpu_t * vcpu)
 	}
 }
 
-void cpu_vcpu_cp15_set_mmu_context(vmm_vcpu_t * vcpu)
+void cpu_vcpu_cp15_switch_context(vmm_vcpu_t * tvcpu, vmm_vcpu_t * vcpu)
 {
-	cpu_mmu_chdacr(vcpu->sregs->cp15.dacr);
-	cpu_mmu_chttbr(vcpu->sregs->cp15.l1);
+	if (tvcpu && tvcpu->is_normal) {
+		tvcpu->sregs->cp15.c13_tls1 = read_tpidrurw();
+		tvcpu->sregs->cp15.c13_tls2 = read_tpidruro();
+		tvcpu->sregs->cp15.c13_tls3 = read_tpidrprw();
+	}
+	if (vcpu->is_normal) {
+		cpu_mmu_chdacr(vcpu->sregs->cp15.dacr);
+		cpu_mmu_chttbr(vcpu->sregs->cp15.l1);
+		write_tpidrurw(vcpu->sregs->cp15.c13_tls1);
+		write_tpidruro(vcpu->sregs->cp15.c13_tls2);
+		write_tpidrprw(vcpu->sregs->cp15.c13_tls3);
+	} else {
+		cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
+	}
 }
 
 static u32 cortexa9_cp15_c0_c1[8] =

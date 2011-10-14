@@ -322,9 +322,9 @@ _reset:
 	/* Clear a register for temporary usage */
 	mov	r8, #0
 	/* Disable IRQ & FIQ */
-	mrs	r8, cpsr
+	mrs	r8, cpsr_all
 	orr	r8, r8, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
-	msr	cpsr, r8
+	msr	cpsr_cxsf, r8
 	/* Set Supervisor Mode Stack */
 	cps	#CPSR_MODE_SUPERVISOR
 	ldr	sp, __svc_stack_end
@@ -371,12 +371,12 @@ _reset:
 	cmp	r0, #CPSR_MODE_USER
 	beq	\skip_lable
 	add	r1, sp, #(4*14)
-	mrs	r5, cpsr
+	mrs	r5, cpsr_all
 	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
-	msr	cpsr, r4
+	msr	cpsr_cxsf, r4
 	str	sp, [r1, #0]
 	str	lr, [r1, #4]
-	msr	cpsr, r5
+	msr	cpsr_cxsf, r5
 \skip_lable:
 .endm
 
@@ -393,20 +393,20 @@ _reset:
 	and	r0, r0, #CPSR_MODE_MASK
 	cmp	r0, #CPSR_MODE_USER
 	beq	\skip_lable
-	mrs	r1, cpsr
+	mrs	r1, cpsr_all
 	and 	r1, r1, #CPSR_MODE_MASK
 	cmp	r0, r1
 	beq	\skip_lable1
 	add	r1, sp, #(4*14)
-	mrs	r5, cpsr
+	mrs	r5, cpsr_all
 	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
-	msr	cpsr, r4
+	msr	cpsr_cxsf, r4
 	ldr	sp, [r1, #0]
 	ldr	lr, [r1, #4]
-	msr	cpsr, r5
+	msr	cpsr_cxsf, r5
 \skip_lable:
 	ldr     r0, [sp], #0x0004;      /* Get SPSR from stack */
-	msr     spsr_all, r0;
+	msr     spsr_cxsf, r0;
 	ldmia   sp, {r0-r14}^;          /* Restore registers (user) */
 	mov     r0, r0;                 /* NOP for previous isnt */
 	add     sp, sp, #(4*15);        /* Adjust the stack pointer */
@@ -414,7 +414,7 @@ _reset:
 	movs	pc, lr
 \skip_lable1:
 	ldr     r0, [sp], #0x0004;      /* Get SPSR from stack */
-	msr     spsr_all, r0;
+	msr     spsr_cxsf, r0;
 	ldm	sp, {r0-r15}^;          /* Restore all registers & CPSR */
 	mov     r0, r0;                 /* NOP for previous inst */
 .endm

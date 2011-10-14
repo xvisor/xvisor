@@ -31,7 +31,7 @@
 int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu, 
 			      vmm_user_regs_t * regs, 
 			      u32 far, u32 fs, u32 dom,
-			      u32 wnr, u32 xn);
+			      u32 wnr, u32 xn, bool force_user);
 
 /** Handle access fault for a VCPU */
 int cpu_vcpu_cp15_access_fault(vmm_vcpu_t * vcpu, 
@@ -84,8 +84,8 @@ virtual_addr_t cpu_vcpu_cp15_vector_addr(vmm_vcpu_t * vcpu,
 /* Syncronize VCPU CP15 with change in VCPU mode */
 void cpu_vcpu_cp15_sync_cpsr(vmm_vcpu_t * vcpu);
 
-/** Set MMU context for given VCPU */
-void cpu_vcpu_cp15_set_mmu_context(vmm_vcpu_t * vcpu);
+/** Switch CP15 context for given VCPU */
+void cpu_vcpu_cp15_switch_context(vmm_vcpu_t * tvcpu, vmm_vcpu_t * vcpu);
 
 /** Initialize CP15 subsystem for a VCPU */
 int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid);

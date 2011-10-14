@@ -122,4 +122,28 @@
 				" mcr     p15, 0, %0, c8, c6, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
 
+#define read_tpidrurw()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c13, c0, 2\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_tpidrurw(val)		asm volatile(\
+				" mcr     p15, 0, %0, c13, c0, 2\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_tpidruro()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c13, c0, 3\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_tpidruro(val)		asm volatile(\
+				" mcr     p15, 0, %0, c13, c0, 3\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_tpidrprw()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c13, c0, 4\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_tpidrprw(val)		asm volatile(\
+				" mcr     p15, 0, %0, c13, c0, 4\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
 #endif

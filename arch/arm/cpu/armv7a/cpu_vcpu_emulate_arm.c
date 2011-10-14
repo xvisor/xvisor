@@ -51,42 +51,42 @@ bool arm_condition_passed(u32 cond, vmm_user_regs_t * regs)
 	cond &= 0xF;
 	switch (cond >> 1) {
 	case 0:
-		ret = (regs->cpsr & CPSR_COND_ZERO_MASK) ? TRUE : FALSE;
+		ret = (regs->cpsr & CPSR_ZERO_MASK) ? TRUE : FALSE;
 		break;
 	case 1:
-		ret = (regs->cpsr & CPSR_COND_CARRY_MASK) ? TRUE : FALSE;
+		ret = (regs->cpsr & CPSR_CARRY_MASK) ? TRUE : FALSE;
 		break;
 	case 2:
-		ret = (regs->cpsr & CPSR_COND_NEGATIVE_MASK) ? TRUE : FALSE;
+		ret = (regs->cpsr & CPSR_NEGATIVE_MASK) ? TRUE : FALSE;
 		break;
 	case 3:
-		ret = (regs->cpsr & CPSR_COND_OVERFLOW_MASK) ? TRUE : FALSE;
+		ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? TRUE : FALSE;
 		break;
 	case 4:
-		ret = (regs->cpsr & CPSR_COND_CARRY_MASK) ? TRUE : FALSE;
-		ret = (ret && !(regs->cpsr & CPSR_COND_ZERO_MASK)) ? 
+		ret = (regs->cpsr & CPSR_CARRY_MASK) ? TRUE : FALSE;
+		ret = (ret && !(regs->cpsr & CPSR_ZERO_MASK)) ? 
 								TRUE : FALSE;
 		break;
 	case 5:
-		ret = (regs->cpsr & CPSR_COND_NEGATIVE_MASK) ? TRUE : FALSE;
+		ret = (regs->cpsr & CPSR_NEGATIVE_MASK) ? TRUE : FALSE;
 		if (ret) {
-			ret = (regs->cpsr & CPSR_COND_OVERFLOW_MASK) ? 
+			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
 								TRUE : FALSE;
 		} else {
-			ret = (regs->cpsr & CPSR_COND_OVERFLOW_MASK) ? 
+			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
 								FALSE : TRUE;
 		}
 		break;
 	case 6:
-		ret = (regs->cpsr & CPSR_COND_NEGATIVE_MASK) ? TRUE : FALSE;
+		ret = (regs->cpsr & CPSR_NEGATIVE_MASK) ? TRUE : FALSE;
 		if (ret) {
-			ret = (regs->cpsr & CPSR_COND_OVERFLOW_MASK) ? 
+			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
 								TRUE : FALSE;
 		} else {
-			ret = (regs->cpsr & CPSR_COND_OVERFLOW_MASK) ? 
+			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
 								FALSE : TRUE;
 		}
-		ret = (ret && !(regs->cpsr & CPSR_COND_ZERO_MASK)) ? 
+		ret = (ret && !(regs->cpsr & CPSR_ZERO_MASK)) ? 
 								TRUE : FALSE;
 		break;
 	case 7:
@@ -190,7 +190,7 @@ u32 arm_expand_imm_c(u32 imm12, u32 cin, u32 *cout)
 u32 arm_expand_imm(vmm_user_regs_t * regs, u32 imm12)
 {
 	return arm_expand_imm_c(imm12, 
-				(regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1,
+				(regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1,
 				NULL);
 }
 
@@ -716,8 +716,8 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 			arm_decode_imm_shift(type, imm5, &shift_t, &shift_n);
 			operand2 = cpu_vcpu_reg_read(vcpu, regs, Rm);
 			operand2 = arm_shift(operand2, shift_t, shift_n, 
-					 (regs->cpsr & CPSR_COND_CARRY_MASK) >>
-					 CPSR_COND_CARRY_SHIFT);
+					 (regs->cpsr & CPSR_CARRY_MASK) >>
+					 CPSR_CARRY_SHIFT);
 		} else {
 			operand2 = arm_expand_imm(regs, imm12);
 		}
@@ -742,7 +742,7 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 								0, NULL, NULL);
 			break;
 		case 0x5: /* ADC */
-			if (regs->cpsr & CPSR_COND_CARRY_MASK) {
+			if (regs->cpsr & CPSR_CARRY_MASK) {
 				result = arm_add_with_carry(result, operand2, 
 								1, NULL, NULL);
 			} else {
@@ -751,7 +751,7 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 			}
 			break;
 		case 0x6: /* SBC */
-			if (regs->cpsr & CPSR_COND_CARRY_MASK) {
+			if (regs->cpsr & CPSR_CARRY_MASK) {
 				result = arm_add_with_carry(result, ~operand2, 
 								1, NULL, NULL);
 			} else {
@@ -760,7 +760,7 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 			}
 			break;
 		case 0x7: /* RSC */
-			if (regs->cpsr & CPSR_COND_CARRY_MASK) {
+			if (regs->cpsr & CPSR_CARRY_MASK) {
 				result = arm_add_with_carry(~result, operand2, 
 								1, NULL, NULL);
 			} else {
@@ -1004,7 +1004,7 @@ int arm_inst_ldrh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1);
+				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
@@ -1191,7 +1191,7 @@ int arm_inst_strh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1);
+				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : (address - offset);
 		address = (index) ? offset_addr : address;
@@ -1419,7 +1419,7 @@ int arm_inst_ldrsh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1);
+				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
@@ -1652,7 +1652,7 @@ int arm_inst_ldrsb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1);
+				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
@@ -2304,7 +2304,7 @@ int arm_inst_str_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1);
+				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : (address - offset);
 		address = (index) ? offset_addr : address;
@@ -2376,7 +2376,7 @@ int arm_inst_strt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			 arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				  shift_t, 
 				  shift_n, 
-				  (regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1)
+				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1)
 				  : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
@@ -2506,7 +2506,7 @@ int arm_inst_strb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr & CPSR_COND_CARRY_SHIFT) & 0x1);
+				  (regs->cpsr & CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
@@ -2579,7 +2579,7 @@ int arm_inst_strbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			 arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				  shift_t, 
 				  shift_n, 
-				  (regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1)
+				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1)
 				  : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
@@ -2740,7 +2740,7 @@ int arm_inst_ldr_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1);
+				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
@@ -2814,7 +2814,7 @@ int arm_inst_ldrt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			 arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				  shift_t, 
 				  shift_n, 
-				  (regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1)
+				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1)
 				  : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
@@ -2984,7 +2984,7 @@ int arm_inst_ldrb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1);
+				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
@@ -3058,7 +3058,7 @@ int arm_inst_ldrbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			 arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				  shift_t, 
 				  shift_n, 
-				  (regs->cpsr >> CPSR_COND_CARRY_SHIFT) & 0x1)
+				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1)
 				  : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
