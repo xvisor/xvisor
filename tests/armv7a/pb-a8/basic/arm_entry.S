@@ -147,6 +147,14 @@ _reset:
 	/* We should never reach here */
 	b	.
 	
+	.globl _switch_to_user_mode
+_switch_to_user_mode:
+	sub	r0, sp
+	mov	r1, lr
+	SET_CURRENT_MODE CPSR_MODE_USER
+	mov	sp, r0
+	mov	lr, r1
+	bx	lr
 
 START_EXCEPTION_HANDLER _undefined_instruction, 4
 	PUSH_USER_REGS

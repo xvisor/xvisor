@@ -487,21 +487,16 @@ int vmm_host_aspace_init(void)
 
 	vmm_memset(&hactrl, 0, sizeof(hactrl));
 
+	/* Determine VAPOOl start and size. Also determine size of bitmap */
 	hactrl.vapool_start = vmm_code_vaddr();
 	hactrl.vapool_size = vmm_code_size() + (CONFIG_VAPOOL_SIZE << 20);
-	if (hactrl.vapool_start & VMM_PAGE_MASK) {
-		hactrl.vapool_size -= VMM_PAGE_SIZE;
-		hactrl.vapool_size += hactrl.vapool_start & VMM_PAGE_MASK;
-		hactrl.vapool_start += VMM_PAGE_SIZE;
-		hactrl.vapool_start -= hactrl.vapool_start & VMM_PAGE_MASK;
-	}
-	if (hactrl.vapool_size & VMM_PAGE_MASK) {
-		hactrl.vapool_size -= hactrl.vapool_size & VMM_PAGE_MASK;
-	}
+	hactrl.vapool_start &= ~VMM_PAGE_MASK;
+	hactrl.vapool_size &= ~VMM_PAGE_MASK;
 	hactrl.vapool_bmap_len = hactrl.vapool_size / (VMM_PAGE_SIZE * 32);
 	hactrl.vapool_bmap_len += 1;
 	hactrl.vapool_bmap_free = hactrl.vapool_size / VMM_PAGE_SIZE;
 
+	/* Determine RAM start and size. Also determine size of bitmap */
 	if ((rc = vmm_board_ram_start(&hactrl.ram_start))) {
 		return rc;
 	}
@@ -521,6 +516,8 @@ int vmm_host_aspace_init(void)
 	hactrl.ram_bmap_len += 1;
 	hactrl.ram_bmap_free = hactrl.ram_size / VMM_PAGE_SIZE;
 
+	/* Calculate physical address, virtual address, and size of 
+	 * reserved area of VAPOOL bitmap and RAM bitmap */
 	bmap_total_size = hactrl.vapool_bmap_len + hactrl.ram_bmap_len;
 	bmap_total_size *= sizeof(u32);
 	bmap_total_size = VMM_ROUNDUP2_PAGE_SIZE(bmap_total_size);
@@ -538,8 +535,11 @@ int vmm_host_aspace_init(void)
 		return VMM_EFAIL;
 	}
 
+	/* Initialize VAPOOL bitmap */
 	hactrl.vapool_bmap = (u32 *)resv_va;
 	vmm_memset(hactrl.vapool_bmap, 0, sizeof(u32) * hactrl.vapool_bmap_len);
+
+	/* Mark pages used for Code and Reserved space in VAPOOL bitmap */
 	max = ((hactrl.vapool_start + hactrl.vapool_size) / VMM_PAGE_SIZE);
 	ite = ((vmm_code_vaddr() - hactrl.vapool_start) / VMM_PAGE_SIZE);
 	last = ite + (vmm_code_size() / VMM_PAGE_SIZE);
@@ -554,8 +554,11 @@ int vmm_host_aspace_init(void)
 		hactrl.vapool_bmap_free--;
 	}
 
+	/* Initialize RAM bitmap */
 	hactrl.ram_bmap = &hactrl.vapool_bmap[hactrl.vapool_bmap_len];
 	vmm_memset(hactrl.ram_bmap, 0, sizeof(u32) * hactrl.ram_bmap_len);
+
+	/* Mark pages used for Code and Reserved space in RAM bitmap */
 	max = ((hactrl.ram_start + hactrl.ram_size) / VMM_PAGE_SIZE);
 	ite = ((vmm_code_paddr() - hactrl.ram_start) / VMM_PAGE_SIZE);
 	last = ite + (vmm_code_size() / VMM_PAGE_SIZE);

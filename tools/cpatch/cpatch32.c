@@ -45,6 +45,7 @@ int strsplit(char *str, char sep, char **tok, int maxtok)
 		}
 		str++;
 	}
+	tok[pos][chpos] = '\0';
 	cnt++;
 	if(tok[cnt-1][0]=='\0') cnt--;
 	return cnt;

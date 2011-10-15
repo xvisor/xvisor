@@ -16,15 +16,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_inline_asm.h
+ * @file arm_inline_asm.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief  Frequently required inline assembly macros
  */
-#ifndef __CPU_INLINE_ASM_H__
-#define __CPU_INLINE_ASM_H__
+#ifndef __ARM_INLINE_ASM_H__
+#define __ARM_INLINE_ASM_H__
 
-#include <vmm_types.h>
+#include <arm_types.h>
 
 #define read_sctlr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c1, c0, 0\n\t" \
@@ -121,29 +121,5 @@
 #define invalid_d_tlb_line(va)	asm volatile(\
 				" mcr     p15, 0, %0, c8, c6, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
-
-#define read_tpidrurw()		({ u32 rval; asm volatile(\
-				" mrc     p15, 0, %0, c13, c0, 2\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define write_tpidrurw(val)		asm volatile(\
-				" mcr     p15, 0, %0, c13, c0, 2\n\t" \
-				:: "r" ((val)) : "memory", "cc")
-
-#define read_tpidruro()		({ u32 rval; asm volatile(\
-				" mrc     p15, 0, %0, c13, c0, 3\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define write_tpidruro(val)		asm volatile(\
-				" mcr     p15, 0, %0, c13, c0, 3\n\t" \
-				:: "r" ((val)) : "memory", "cc")
-
-#define read_tpidrprw()		({ u32 rval; asm volatile(\
-				" mrc     p15, 0, %0, c13, c0, 4\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define write_tpidrprw(val)		asm volatile(\
-				" mcr     p15, 0, %0, c13, c0, 4\n\t" \
-				:: "r" ((val)) : "memory", "cc")
 
 #endif

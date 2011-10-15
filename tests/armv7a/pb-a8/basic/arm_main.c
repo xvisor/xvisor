@@ -57,7 +57,9 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("\n");
 	arm_puts("mmu_setup   - Setup MMU for ARM test code\n");
 	arm_puts("\n");
-	arm_puts("mmu_test    - Test MMU for ARM test code\n");
+	arm_puts("mmu_state   - MMU is enabled/disabled for ARM test code\n");
+	arm_puts("\n");
+	arm_puts("mmu_test    - Run MMU test suite for ARM test code\n");
 	arm_puts("\n");
 	arm_puts("mmu_cleanup - Cleanup MMU for ARM test code\n");
 	arm_puts("\n");
@@ -78,6 +80,12 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("              <dest>  = destination address in hex\n");
 	arm_puts("              <src>   = source address in hex\n");
 	arm_puts("              <count> = byte count in hex\n");
+	arm_puts("\n");
+	arm_puts("start_linux - Start linux kernel\n");
+	arm_puts("              Usage: start_linux <kernel_addr> <initrd_addr> <initrd_size>\n");
+	arm_puts("                <kernel_addr>  = kernel load address\n");
+	arm_puts("                <initrd_addr>  = initrd load address\n");
+	arm_puts("                <initrd_size>  = initrd size\n");
 	arm_puts("\n");
 	arm_puts("go          - Jump to a given address\n");
 	arm_puts("              Usage: go <addr>\n");
@@ -102,9 +110,53 @@ void arm_cmd_mmu_setup(int argc, char **argv)
 	arm_mmu_setup();
 }
 
+void arm_cmd_mmu_state(int argc, char **argv)
+{
+	if (arm_mmu_is_enabled()) {
+		arm_puts("MMU Enabled\n");
+	} else {
+		arm_puts("MMU Disabled\n");
+	}
+}
+
 void arm_cmd_mmu_test(int argc, char **argv)
 {
-	arm_mmu_test();
+	char str[32];
+	u32 total = 0x0, pass = 0x0, fail = 0x0;
+	arm_puts("MMU Section Test Suite ...\n");
+	total = 0x0;
+	pass = 0x0;
+	fail = 0x0;
+	arm_mmu_section_test(&total, &pass, &fail);
+	arm_puts("  Total: ");
+	arm_int2str(str, total);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  Pass : ");
+	arm_int2str(str, pass);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  Fail : ");
+	arm_int2str(str, fail);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("MMU Page Test Suite ...\n");
+	total = 0x0;
+	pass = 0x0;
+	fail = 0x0;
+	arm_mmu_page_test(&total, &pass, &fail);
+	arm_puts("  Total: ");
+	arm_int2str(str, total);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  Pass : ");
+	arm_int2str(str, pass);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  Fail : ");
+	arm_int2str(str, fail);
+	arm_puts(str);
+	arm_puts("\n");
 }
 
 void arm_cmd_mmu_cleanup(int argc, char **argv)
@@ -175,7 +227,7 @@ void arm_cmd_hexdump(int argc, char **argv)
 {
 	char str[32];
 	u32 *addr;
-	u32 i, count;
+	u32 i, count, len;
 	if (argc < 3) {
 		arm_puts ("hexdump: must provide <addr> and <count>\n");
 		return;
@@ -185,10 +237,20 @@ void arm_cmd_hexdump(int argc, char **argv)
 	for (i = 0; i < (count / 4); i++) {
 		if (i % 4 == 0) {
 			arm_uint2hexstr(str, (u32)&addr[i]);
+			len = arm_strlen(str);
+			while (len < 8) {
+				arm_puts("0");
+				len++;
+			}
 			arm_puts(str);
 			arm_puts(": ");
 		}
 		arm_uint2hexstr(str, addr[i]);
+		len = arm_strlen(str);
+		while (len < 8) {
+			arm_puts("0");
+			len++;
+		}
 		arm_puts(str);
 		if (i % 4 == 3) {
 			arm_puts("\n");
@@ -215,6 +277,77 @@ void arm_cmd_copy(int argc, char **argv)
 	}
 }
 
+#define RAM_START	0x70000000
+#define RAM_SIZE	0x06000000
+
+typedef void (* linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args);
+
+void arm_cmd_start_linux(int argc, char **argv)
+{
+	char  * cmdline = "root=/dev/ram rw ramdisk_size=0x1000000 earlyprintk console=ttyAMA0 mem=96M" ;
+	u32 * kernel_args = (u32 *)(RAM_START + 0x100);
+	u32 cmdline_size, p;
+	u32 kernel_addr, initrd_addr, initrd_size;
+
+	if (argc < 4) {
+		arm_puts ("start_linux: must provide <kernel_addr>, <initrd_addr>, and <initrd_size>\n");
+		return;
+	}
+
+	/* Parse the arguments from command line */
+	kernel_addr = arm_hexstr2uint(argv[1]);
+	initrd_addr = arm_hexstr2uint(argv[2]);
+	initrd_size = arm_hexstr2uint(argv[3]);
+
+	/* Setup kernel args */
+	for (p = 0; p < 128; p++) {
+		kernel_args[p] = 0x0;
+	}
+	p = 0;
+	/* ATAG_CORE */
+	kernel_args[p++] = 5;
+	kernel_args[p++] = 0x54410001;
+	kernel_args[p++] = 1;
+	kernel_args[p++] = 0x1000;
+	kernel_args[p++] = 0;
+	/* ATAG_MEM */
+	kernel_args[p++] = 4;
+	kernel_args[p++] = 0x54410002;
+	kernel_args[p++] = RAM_SIZE;
+	kernel_args[p++] = RAM_START;
+	/* ATAG_INITRD2 */
+	kernel_args[p++] = 4;
+        kernel_args[p++] = 0x54420005;
+        kernel_args[p++] = initrd_addr;
+        kernel_args[p++] = initrd_size;
+	/* ATAG_CMDLINE */
+	cmdline_size = arm_strlen(cmdline);
+	arm_strcpy((char *)&kernel_args[p + 2], cmdline);
+	cmdline_size = (cmdline_size >> 2) + 1;
+	kernel_args[p++] = cmdline_size + 2;
+	kernel_args[p++] = 0x54410009;
+	p += cmdline_size;
+	/* ATAG_END */
+	kernel_args[p++] = 0;
+	kernel_args[p++] = 0;
+
+	/* Disable interrupts and timer */
+	arm_timer_disable();
+	arm_irq_disable();
+
+	/* Jump to Linux Kernel
+	 * r0 -> zero
+	 * r1 -> machine type (0x769)
+	 * r2 -> kernel args address 
+	 */
+	((linux_entry_t)kernel_addr)(0x0, 0x769, (u32)kernel_args);
+
+	/* We should never reach here */
+	while (1);
+
+	return;
+}
+
 void arm_cmd_go(int argc, char **argv)
 {
 	char str[32];
@@ -237,15 +370,12 @@ void arm_cmd_reset(int argc, char **argv)
 {
 	arm_puts("System reset ...\n\n");
 
-	/* Unlock Lockable reigsters */
-	arm_writel(REALVIEW_SYS_LOCKVAL, 
-		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_LOCK_OFFSET));
-#if 0
-	arm_writel(REALVIEW_SYS_CTRL_RESET_CONFIGCLR, 
-		   (void *)(pba8_csr_base + REALVIEW_SYS_RESETCTL_OFFSET));
-#else
+#if 0 /* QEMU checks bit 8 which is wrong */
 	arm_writel(0x100, 
 		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
+#else
+	arm_writel(REALVIEW_SYS_CTRL_RESET_CONFIGCLR, 
+		   (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
 #endif
 
 	while (1);
@@ -261,7 +391,11 @@ void arm_main(void)
 	char line[ARM_MAX_CMD_STR_SIZE];
 	char *argv[ARM_MAX_ARG_SIZE];
 
-	arm_puts("ARM Realview PB-A8 Test Code\n\n");
+	arm_puts("ARM Realview PB-A8 Basic Test\n\n");
+
+	/* Unlock Lockable reigsters */
+	arm_writel(REALVIEW_SYS_LOCKVAL, 
+		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_LOCK_OFFSET));
 
 	while(1) {
 		arm_puts("arm-test# ");
@@ -302,6 +436,8 @@ void arm_main(void)
 			arm_cmd_hello(argc, argv);
 		} else if (arm_strcmp(argv[0], "mmu_setup") == 0) {
 			arm_cmd_mmu_setup(argc, argv);
+		} else if (arm_strcmp(argv[0], "mmu_state") == 0) {
+			arm_cmd_mmu_state(argc, argv);
 		} else if (arm_strcmp(argv[0], "mmu_test") == 0) {
 			arm_cmd_mmu_test(argc, argv);
 		} else if (arm_strcmp(argv[0], "mmu_cleanup") == 0) {
@@ -316,6 +452,8 @@ void arm_main(void)
 			arm_cmd_hexdump(argc, argv);
 		} else if (arm_strcmp(argv[0], "copy") == 0) {
 			arm_cmd_copy(argc, argv);
+		} else if (arm_strcmp(argv[0], "start_linux") == 0) {
+			arm_cmd_start_linux(argc, argv);
 		} else if (arm_strcmp(argv[0], "go") == 0) {
 			arm_cmd_go(argc, argv);
 		} else if (arm_strcmp(argv[0], "reset") == 0) {

@@ -25,7 +25,6 @@
 #define _ARM_IRQ_H__
 
 #include <arm_types.h>
-#include <arm_regs.h>
 
 typedef int (*arm_irq_handler_t) (u32 irq_no, pt_regs_t * regs);
 

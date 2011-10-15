@@ -78,14 +78,6 @@ SECTIONS
                 PROVIDE(_svc_stack_end = .);
         }
 
- 	.mon_stack :
-        {
-                PROVIDE(_mon_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_mon_stack_end = .);
-        }
-
  	.abt_stack :
         {
                 PROVIDE(_abt_stack_start = .);

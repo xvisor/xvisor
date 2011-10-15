@@ -820,9 +820,10 @@ cpu_l1tbl_t *cpu_mmu_l1tbl_current(void)
 
 u32 cpu_mmu_physical_read32(physical_addr_t pa)
 {
-	u32 ret, ite, found;
+	u32 ret = 0x0, ite, found;
 	u32 * l1_tte = NULL;
 	cpu_l1tbl_t * l1 = NULL;
+	virtual_addr_t va = 0x0;
 	irq_flags_t flags;
 
 	flags = vmm_cpu_irq_save();
@@ -839,7 +840,6 @@ u32 cpu_mmu_physical_read32(physical_addr_t pa)
 			}
 		}
 		if (found) {
-			ret = 0x0;
 			l1_tte[ite] = 0x0;
 			l1_tte[ite] |= (pa & TTBL_L1TBL_TTE_BASE20_MASK);
 			l1_tte[ite] |= (TTBL_L1TBL_TTE_DOM_RESERVED << 
@@ -868,16 +868,82 @@ u32 cpu_mmu_physical_read32(physical_addr_t pa)
 			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_B_SHIFT) &
 					TTBL_L1TBL_TTE_B_MASK;
 			l1_tte[ite] |= TTBL_L1TBL_TTE_TYPE_SECTION;
-			ret = *(u32 *)((ite << TTBL_L1TBL_TTE_BASE20_SHIFT) + 
-					(pa & ~TTBL_L1TBL_TTE_BASE20_MASK));
+			va = (ite << TTBL_L1TBL_TTE_BASE20_SHIFT) + 
+			     (pa & ~TTBL_L1TBL_TTE_BASE20_MASK);
+			va &= ~0x3;
+			ret = *(u32 *)(va);
 			l1_tte[ite] = 0x0;
-			return ret;
+			invalid_tlb_line(va);
 		}
 	}
 
 	vmm_cpu_irq_restore(flags);
 
-	return 0;
+	return ret;
+}
+
+void cpu_mmu_physical_write32(physical_addr_t pa, u32 val)
+{
+	u32 ite, found;
+	u32 * l1_tte = NULL;
+	cpu_l1tbl_t * l1 = NULL;
+	virtual_addr_t va = 0x0;
+	irq_flags_t flags;
+
+	flags = vmm_cpu_irq_save();
+
+	l1 = cpu_mmu_l1tbl_current();
+	if (l1) {
+		found = 0;
+		l1_tte = (u32 *)(l1->tbl_va);
+		for (ite = 0; ite < (TTBL_L1TBL_SIZE / 4); ite++) {
+			if ((l1_tte[ite] & TTBL_L2TBL_TTE_TYPE_MASK) == 
+			    TTBL_L2TBL_TTE_TYPE_FAULT) {
+				found = 1;
+				break;
+			}
+		}
+		if (found) {
+			l1_tte[ite] = 0x0;
+			l1_tte[ite] |= (pa & TTBL_L1TBL_TTE_BASE20_MASK);
+			l1_tte[ite] |= (TTBL_L1TBL_TTE_DOM_RESERVED << 
+					TTBL_L1TBL_TTE_DOM_SHIFT) &
+					TTBL_L1TBL_TTE_DOM_MASK;
+			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_NS2_SHIFT) &
+					TTBL_L1TBL_TTE_NS2_MASK;
+			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_NG_SHIFT) &
+					TTBL_L1TBL_TTE_NG_MASK;
+			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_S_SHIFT) &
+					TTBL_L1TBL_TTE_S_MASK;
+			l1_tte[ite] |= (TTBL_AP_SRW_U << 
+					(TTBL_L1TBL_TTE_AP2_SHIFT - 2)) &
+					TTBL_L1TBL_TTE_AP2_MASK;
+			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_TEX_SHIFT) &
+					TTBL_L1TBL_TTE_TEX_MASK;
+			l1_tte[ite] |= (TTBL_AP_SRW_U << 
+					TTBL_L1TBL_TTE_AP_SHIFT) &
+					TTBL_L1TBL_TTE_AP_MASK;
+			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_IMP_SHIFT) &
+					TTBL_L1TBL_TTE_IMP_MASK;
+			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_XN_SHIFT) &
+					TTBL_L1TBL_TTE_XN_MASK;
+			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_C_SHIFT) &
+					TTBL_L1TBL_TTE_C_MASK;
+			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_B_SHIFT) &
+					TTBL_L1TBL_TTE_B_MASK;
+			l1_tte[ite] |= TTBL_L1TBL_TTE_TYPE_SECTION;
+			va = (ite << TTBL_L1TBL_TTE_BASE20_SHIFT) + 
+			     (pa & ~TTBL_L1TBL_TTE_BASE20_MASK);
+			va &= ~0x3;
+			*(u32 *)(va) = val;
+			l1_tte[ite] = 0x0;
+			invalid_tlb_line(va);
+		}
+	}
+
+	vmm_cpu_irq_restore(flags);
+
+	return;
 }
 
 int cpu_mmu_chdacr(u32 new_dacr)
