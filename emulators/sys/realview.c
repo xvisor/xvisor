@@ -273,9 +273,11 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 	case 0x20: /* LOCK */
 		s->lockval &= regmask;
 		if (regval == REALVIEW_LOCK_VAL) {
-			s->lockval |= regval;
+			s->lockval |= (regval & 0xffff);
+			s->lockval &= ~(0x10000);
 		} else {
-			s->lockval |= (regval & 0x7fff);
+			s->lockval |= (regval & 0xffff);
+			s->lockval |= (0x10000);
 		}
 		break;
 	case 0x28: /* CFGDATA1 */
@@ -305,7 +307,7 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 			/* reserved: RAZ/WI */
 			break;
 		}
-		if (s->lockval == REALVIEW_LOCK_VAL) {
+		if (!(s->lockval & 0x10000)) {
 			s->resetlevel &= regmask;
 			s->resetlevel |= regval;
 		}
@@ -372,8 +374,12 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 
 	vmm_spin_unlock(&s->lock);
 
-	/* FIXME: comparision does not work with linux */
+	/* FIXME: Comparision does not work with linux */
+#if 0 /* QEMU checks bit 8 which is wrong */
 	if (s->resetlevel & 0x100) {
+#else
+	if (s->resetlevel & 0x01) {
+#endif
 		vmm_manager_guest_reset(s->guest);
 		vmm_manager_guest_kick(s->guest);
 	}
@@ -391,7 +397,7 @@ static int realview_emulator_reset(vmm_emudev_t *edev)
 	s->ref_24mhz = s->ref_100hz;
 
 	s->leds = 0;
-	s->lockval = 0;
+	s->lockval = 0x10000;
 	s->cfgdata1 = 0;
 	s->cfgdata2 = 0;
 	s->flags = 0;
