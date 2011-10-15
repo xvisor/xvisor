@@ -370,15 +370,12 @@ void arm_cmd_reset(int argc, char **argv)
 {
 	arm_puts("System reset ...\n\n");
 
-	/* Unlock Lockable reigsters */
-	arm_writel(REALVIEW_SYS_LOCKVAL, 
-		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_LOCK_OFFSET));
-#if 0
-	arm_writel(REALVIEW_SYS_CTRL_RESET_CONFIGCLR, 
-		   (void *)(pba8_csr_base + REALVIEW_SYS_RESETCTL_OFFSET));
-#else
+#if 0 /* QEMU checks bit 8 which is wrong */
 	arm_writel(0x100, 
 		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
+#else
+	arm_writel(REALVIEW_SYS_CTRL_RESET_CONFIGCLR, 
+		   (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
 #endif
 
 	while (1);
@@ -395,6 +392,10 @@ void arm_main(void)
 	char *argv[ARM_MAX_ARG_SIZE];
 
 	arm_puts("ARM Realview PB-A8 Basic Test\n\n");
+
+	/* Unlock Lockable reigsters */
+	arm_writel(REALVIEW_SYS_LOCKVAL, 
+		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_LOCK_OFFSET));
 
 	while(1) {
 		arm_puts("arm-test# ");
