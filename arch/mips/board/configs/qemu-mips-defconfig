@@ -7,7 +7,6 @@
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_MIPS=y
 CONFIG_ARCH="mips"
-CROSS_COMPILE="mips-linux-gnu-"
 CONFIG_CPU_MIPS32R2=y
 CONFIG_CPU="mips32r2"
 # CONFIG_CPU_LE is not set

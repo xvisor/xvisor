@@ -22,6 +22,7 @@
  * @brief Realview Sysctl emulator.
  */
 
+#include <vmm_math.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
@@ -98,7 +99,8 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		regval = 0;
 		break;
 	case 0x24: /* 100HZ */
-		regval = (vmm_timer_timestamp() - s->ref_100hz) / 10000000;
+		regval = vmm_udiv64((vmm_timer_timestamp() - s->ref_100hz), 
+								10000000);
 		break;
 	case 0x28: /* CFGDATA1 */
 		regval = s->cfgdata1;
@@ -139,7 +141,7 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		regval = 0;
 		break;
 	case 0x5c: /* 24MHz */
-		regval = ((vmm_timer_timestamp() - s->ref_24mhz) / 1000) * 24;
+		regval = vmm_udiv64((vmm_timer_timestamp() - s->ref_24mhz), 1000) * 24;
 		break;
 	case 0x60: /* MISC */
 		regval = 0;

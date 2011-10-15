@@ -22,6 +22,7 @@
  * @brief source file for hypervisor scheduler
  */
 
+#include <vmm_math.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
@@ -34,7 +35,7 @@ vmm_scheduler_ctrl_t sched;
 
 void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
 {
-	int next;
+	int next, vcpu_count = vmm_manager_vcpu_count();
 	vmm_vcpu_t *cur_vcpu, *nxt_vcpu;
 
 	/* Determine current vcpu */
@@ -42,11 +43,11 @@ void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
 
 	/* Determine the next ready vcpu to schedule */
 	next = (cur_vcpu) ? cur_vcpu->id : -1;
-	next = (next + 1) % vmm_manager_vcpu_count();
+	next = ((next + 1) < vcpu_count) ? (next + 1) : 0;
 	nxt_vcpu = vmm_manager_vcpu(next);
 	while ((nxt_vcpu->state != VMM_VCPU_STATE_READY) &&
 		(next != sched.vcpu_current)) {
-		next = (next + 1) % vmm_manager_vcpu_count();
+		next = ((next + 1) < vcpu_count) ? (next + 1) : 0;
 		nxt_vcpu = vmm_manager_vcpu(next);
 	}
 

@@ -22,13 +22,17 @@
 # @brief list of ARMv7a cpu objects.
 # */
 
-cpu-cflags+= -mcpu=cortex-a8
-cpu-asflags += -mcpu=cortex-a8
-cpu-ldflags += -static-libgcc -lgcc
+# Need -Uarm for gcc < 3.x
+# -mabi=aapcs-linux
+cpu-cflags += -msoft-float -mno-thumb-interwork -march=armv7-a -marm -Uarm
+# -mabi=aapcs-linux 
+cpu-asflags += -mno-thumb-interwork -march=armv7-a -marm
+cpu-ldflags += -msoft-float
 
 cpu-objs-y+= cpu_entry.o
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_mmu.o
+cpu-objs-y+= cpu_math.o
 cpu-objs-y+= cpu_locks.o
 cpu-objs-y+= cpu_atomic.o
 cpu-objs-y+= cpu_interrupts.o
