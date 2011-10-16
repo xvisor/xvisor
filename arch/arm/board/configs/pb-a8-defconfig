@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Tue Oct 11 15:08:04 2011
+# Sun Oct 16 23:04:17 2011
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
@@ -23,6 +23,12 @@ CONFIG_ARMV7A_VTLB_ENTRY_COUNT=64
 CONFIG_BOARD_PB_A8=y
 CONFIG_REALVIEW=y
 CONFIG_EMU_REALVIEW=y
+
+#
+# Realview PB-A8 Options
+#
+CONFIG_ONE_GUEST_PBA8_DTS=y
+# CONFIG_TWO_GUEST_PBA8_DTS is not set
 
 #
 # General Setup
