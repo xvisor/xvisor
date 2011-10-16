@@ -94,7 +94,7 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x70000000>;
-					host_physical_addr = <0x71000000>;
+					host_physical_addr = <0x72000000>;
 					physical_size = <0x06000000>; /* 96 MB */
 					device_type = "ram";
 				};
@@ -356,7 +356,7 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x40000000>;
-					host_physical_addr = <0x70800000>;
+					host_physical_addr = <0x71000000>;
 					physical_size = <0x00800000>; /* 8 MB */
 					device_type = "rom";
 				};
