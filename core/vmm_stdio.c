@@ -23,6 +23,7 @@
  */
 
 #include <stdarg.h>
+#include <vmm_math.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_main.h>
@@ -157,11 +158,11 @@ static int printi(char **out, vmm_chardev_t *cdev,
 	*s = '\0';
 
 	while (u) {
-		t = u % b;
+		t = vmm_umod32(u, b);
 		if (t >= 10)
 			t += letbase - '0' - 10;
 		*--s = t + '0';
-		u /= b;
+		u = vmm_udiv32(u, b);
 	}
 
 	if (neg) {

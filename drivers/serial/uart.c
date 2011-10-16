@@ -23,6 +23,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_math.h>
 #include <vmm_host_io.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
@@ -82,7 +83,7 @@ void uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 {
 	char val;
 	u16 bdiv;
-	bdiv = (input_clock / (16 * baudrate));
+	bdiv = vmm_udiv32(input_clock, (16 * baudrate));
 	/* set DLAB bit */
 	vmm_out_8((u8 *)REG_UART_LCR(base,reg_align), 0x80);
 	/* set baudrate divisor */

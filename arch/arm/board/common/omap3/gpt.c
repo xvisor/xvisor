@@ -24,6 +24,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_math.h>
 #include <vmm_main.h>
 #include <vmm_timer.h>
 #include <vmm_host_io.h>
@@ -64,8 +65,8 @@ u32 vmm_cpu_clocksource_mult(void)
 {
 	u32 khz = 1000;
 	u64 tmp = ((u64)1000000) << 20;
-	tmp += khz / 2;
-	tmp = tmp / khz;
+	tmp += khz >> 1;
+	tmp = vmm_udiv64(tmp, khz);
 	return (u32)tmp;
 }
 
@@ -127,7 +128,7 @@ int vmm_cpu_clockevent_start(u64 tick_nsecs)
 	u32 tick_usecs;
 
 	/* Get granuality in microseconds */
-	tick_usecs = tick_nsecs / 1000;
+	tick_usecs = vmm_udiv64(tick_nsecs, 1000);
 
 	/* Progamme System Timer */
 	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
