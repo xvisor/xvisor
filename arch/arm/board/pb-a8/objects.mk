@@ -28,5 +28,6 @@ board-objs-y+=brd_defterm.o
 board-objs-y+=brd_pic.o
 board-objs-y+=brd_timer.o
 board-objs-y+=brd_main.o
-board-objs-y+=dts/defconfig.o
+board-objs-$(CONFIG_ONE_GUEST_PBA8_DTS)+=dts/one_guest_pb-a8.o
+board-objs-$(CONFIG_TWO_GUEST_PBA8_DTS)+=dts/two_guest_pb-a8.o
 

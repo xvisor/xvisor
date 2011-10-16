@@ -407,7 +407,8 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 		    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM))) {
 			rc = vmm_host_ram_reserve(reg->hphys_addr, 
 						  reg->phys_size);
-			if (rc) {
+			/* FIXME: Currently we ingnore this error for ROM */
+			if (rc && (reg->flags & VMM_REGION_ISRAM)) {
 				return rc;
 			}
 		}
