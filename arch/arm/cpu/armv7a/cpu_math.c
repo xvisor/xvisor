@@ -24,115 +24,180 @@
 
 #include <vmm_math.h>
 
-void do_udiv64(u64 value, u64 divisor, u64 * remainder, u64 * quotient)
+static inline u32 do_fls64(u64 value) 
 {
-	u32 i, bit, num_bits;
-	u64 t, q, d;
-
-	*remainder = 0;
-	*quotient = 0;
-
-	if (divisor == 0) {
-		while (1);
+	u32 num_bits = 0;
+	if (value & 0xFFFF000000000000ULL) {
+		num_bits += 16;
+		value = value >> 16;
 	}
-
-	if (divisor > value) {
-		*remainder = value;
-		return;
+	if (value & 0x0000FFFF00000000ULL) {
+		num_bits += 16;
+		value = value >> 16;
 	}
-
-	if (divisor == value) {
-		return;
+	if (value & 0x00000000FFFF0000ULL) {
+		num_bits += 16;
+		value = value >> 16;
 	}
-
-	num_bits = 64;
-
-	while (*remainder < divisor) {
-		bit = (value & 0x8000000000000000ULL) >> 63;
-		*remainder = (*remainder << 1) | bit;
-		d = value;
-		value = value << 1;
-		num_bits--;
+	if (value & 0x000000000000FF00ULL) {
+		num_bits += 8;
+		value = value >> 8;
 	}
-
-
-	/* The loop, above, always goes one iteration too far.
-	 * To avoid inserting an "if" statement inside the loop
-	 * the last iteration is simply reversed. 
-	 */
-
-	value = d;
-	*remainder = *remainder >> 1;
-	num_bits++;
-
-	for (i = 0; i < num_bits; i++) {
-		bit = (value & 0x8000000000000000ULL) >> 63;
-		*remainder = (*remainder << 1) | bit;
-		t = *remainder - divisor;
-		q = !((t & 0x8000000000000000ULL) >> 63);
-		value = value << 1;
-		*quotient = (*quotient << 1) | q;
-		if (q) {
-			*remainder = t;
-		}
+	if (value & 0x00000000000000F0ULL) {
+		num_bits += 4;
+		value = value >> 4;
 	}
-
-	return;
+	if (value & 0x000000000000000CULL) {
+		num_bits += 2;
+		value = value >> 2;
+	}
+	if (value & 0x0000000000000003ULL) {
+		num_bits += 2;
+		value = value >> 2;
+	}
+	return num_bits;
 }
 
-void do_udiv32(u32 value, u32 divisor, u32 * remainder, u32 * quotient)
+u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder)
 {
-	u32 i, bit, num_bits;
-	u32 t, q, d;
+	u32 i, num_bits;
+	u64 t, remaind, quotient;
 
-	*remainder = 0;
-	*quotient = 0;
+	remaind = 0;
+	quotient = 0;
 
 	if (divisor == 0) {
 		while (1);
 	}
 
-	if (divisor > value) {
-		*remainder = value;
-		return;
+	if (divisor > dividend) {
+		if (remainder) {
+			*remainder = dividend;
+		}
+		return 0;
 	}
 
-	if (divisor == value) {
-		return;
+	if (divisor == dividend) {
+		return 1;
 	}
 
-	num_bits = 32;
+	num_bits = do_fls64(dividend);
+	dividend = dividend << (64 - num_bits);
 
-	while (*remainder < divisor) {
-		bit = (value & 0x80000000) >> 31;
-		*remainder = (*remainder << 1) | bit;
-		d = value;
-		value = value << 1;
+	while (1) {
+		remaind = (remaind << 1) | 
+			  ((dividend & 0x8000000000000000ULL) ? 1 : 0);
+		if (remaind < divisor) {
+			break;
+		}
+		dividend = dividend << 1;
 		num_bits--;
 	}
 
-
-	/* The loop, above, always goes one iteration too far.
-	 * To avoid inserting an "if" statement inside the loop
-	 * the last iteration is simply reversed. 
-	 */
-
-	value = d;
-	*remainder = *remainder >> 1;
-	num_bits++;
+	remaind = remaind >> 1;
 
 	for (i = 0; i < num_bits; i++) {
-		bit = (value & 0x80000000) >> 31;
-		*remainder = (*remainder << 1) | bit;
-		t = *remainder - divisor;
-		q = !((t & 0x80000000) >> 31);
-		value = value << 1;
-		*quotient = (*quotient << 1) | q;
-		if (q) {
-			*remainder = t;
+		remaind = (remaind << 1) | 
+			  ((dividend & 0x8000000000000000ULL) ? 1 : 0);
+		dividend = dividend << 1;
+		t = remaind - divisor;
+		if (!(t & 0x8000000000000000ULL)) {
+			quotient = (quotient << 1) | 1;
+			remaind = t;
+		} else {
+			quotient = (quotient << 1) | 0;
 		}
 	}
 
-	return;
+	if (remainder) {
+		*remainder = remaind;
+	}
+
+	return quotient;
+}
+
+static inline u32 do_fls32(u32 value) 
+{
+	u32 num_bits = 0;
+	if (value & 0xFFFF0000) {
+		num_bits += 16;
+		value = value >> 16;
+	}
+	if (value & 0x0000FF00) {
+		num_bits += 8;
+		value = value >> 8;
+	}
+	if (value & 0x000000F0) {
+		num_bits += 4;
+		value = value >> 4;
+	}
+	if (value & 0x0000000C) {
+		num_bits += 2;
+		value = value >> 2;
+	}
+	if (value & 0x00000003) {
+		num_bits += 2;
+		value = value >> 2;
+	}
+	return num_bits;
+}
+
+u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder)
+{
+	u32 i, num_bits;
+	u32 t, quotient, remaind;
+
+	remaind = 0;
+	quotient = 0;
+
+	if (divisor == 0) {
+		while (1);
+	}
+
+	if (divisor > dividend) {
+		if (remainder) {
+			*remainder = dividend;
+		}
+		return 0;
+	}
+
+	if (divisor == dividend) {
+		if (remainder) {
+			*remainder = 0;
+		}
+		return 1;
+	}
+
+	num_bits = do_fls32(dividend);
+	dividend = dividend << (32 - num_bits);
+
+	while (1) {
+		remaind = (remaind << 1) | ((dividend & 0x80000000) ? 1 : 0);
+		if (remaind < divisor) {
+			break;
+		}
+		dividend = dividend << 1;
+		num_bits--;
+	}
+
+	remaind = remaind >> 1;
+
+	for (i = 0; i < num_bits; i++) {
+		remaind = (remaind << 1) | ((dividend & 0x80000000) ? 1 : 0);
+		dividend = dividend << 1;
+		t = remaind - divisor;
+		if (!(t & 0x80000000)) {
+			quotient = ((quotient) << 1) | 1;
+			remaind = t;
+		} else {
+			quotient = ((quotient) << 1) | 0;
+		}
+	}
+
+	if (remainder) {
+		*remainder = remaind;
+	}
+
+	return quotient;
 }
 

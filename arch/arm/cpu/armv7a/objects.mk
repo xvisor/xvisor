@@ -23,9 +23,7 @@
 # */
 
 # Need -Uarm for gcc < 3.x
-# -mabi=aapcs-linux
 cpu-cflags += -msoft-float -mno-thumb-interwork -march=armv7-a -marm -Uarm
-# -mabi=aapcs-linux 
 cpu-asflags += -mno-thumb-interwork -march=armv7-a -marm
 cpu-ldflags += -msoft-float
 

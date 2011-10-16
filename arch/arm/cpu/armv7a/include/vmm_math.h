@@ -27,36 +27,74 @@
 
 #include <vmm_types.h>
 
-void do_udiv64(u64 value, u64 divisor, u64 * remainder, u64 * quotient);
+#define do_abs(x)  ((x) < 0 ? -(x) : (x))
+
+u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder);
 
 static inline u64 vmm_udiv64(u64 value, u64 divisor)
 {
-	u64 remainder, quotient;
-	do_udiv64(value, divisor, &remainder, &quotient);
-	return quotient;
+	return do_udiv64(value, divisor, NULL);
 }
 
 static inline u64 vmm_umod64(u64 value, u64 divisor)
 {
-	u64 remainder, quotient;
-	do_udiv64(value, divisor, &remainder, &quotient);
-	return remainder;
+	u64 r;
+	do_udiv64(value, divisor, &r);
+	return r;
 }
 
-void do_udiv32(u32 value, u32 divisor, u32 * remainder, u32 * quotient);
+static inline s64 vmm_sdiv64(s64 value, s64 divisor)
+{
+	if ((value * divisor) < 0) {
+		return -do_udiv64( do_abs(value), do_abs(divisor), NULL );
+	} else { /* positive value */
+		return do_udiv64( do_abs(value), do_abs(divisor), NULL );
+	}
+}
+
+static inline s64 vmm_smod64(s64 value, s64 divisor)
+{
+	u64 r;
+	do_udiv64( do_abs(value), do_abs(divisor), &r );
+	if (value < 0) {
+		return -r;
+	} else { /* positive value */
+		return r;
+	}
+}
+
+u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder);
 
 static inline u32 vmm_udiv32(u32 value, u32 divisor)
 {
-	u32 remainder, quotient;
-	do_udiv32(value, divisor, &remainder, &quotient);
-	return quotient;
+	return do_udiv32(value, divisor, NULL);
 }
 
 static inline u32 vmm_umod32(u32 value, u32 divisor)
 {
-	u32 remainder, quotient;
-	do_udiv32(value, divisor, &remainder, &quotient);
-	return remainder;
+	u32 r;
+	do_udiv32(value, divisor, &r);
+	return r;
+}
+
+static inline s32 vmm_sdiv32(s32 value, s32 divisor)
+{
+	if ((value * divisor) < 0) {
+		return -do_udiv32( do_abs(value), do_abs(divisor), NULL );
+	} else { /* positive value */
+		return do_udiv32( do_abs(value), do_abs(divisor), NULL );
+	}
+}
+
+static inline s32 vmm_smod32(s32 value, s32 divisor)
+{
+	u32 r;
+	do_udiv32( do_abs(value), do_abs(divisor), &r );
+	if (value < 0) {
+		return -r;
+	} else { /* positive value */
+		return r;
+	}
 }
 
 #endif /* __VMM_MATH_H__ */
