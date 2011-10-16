@@ -7,6 +7,7 @@ We have following guest OSes tested for this guest:
 
   1. basic - Test code used by hypervior developers.
   2. atomthreads - Atomthreads RTOS. 
+  2. linux-2.6.30.10 - Linux Kernel. 
 
 Please follow the README under specific guest OS directory for detailed
 steps to configure, compile and run.
