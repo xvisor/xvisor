@@ -24,6 +24,7 @@
 
 #include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_math.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
@@ -83,7 +84,7 @@ bool vmm_ringbuf_isfull(vmm_ringbuf_t *rb)
 
 	vmm_spin_lock(&rb->lock);
 
-	isfull = (rb->read_pos == ((rb->write_pos + 1) % rb->key_count));
+	isfull = (rb->read_pos == vmm_umod32((rb->write_pos + 1), rb->key_count));
 
 	vmm_spin_unlock(&rb->lock);
 
@@ -100,11 +101,11 @@ bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
 
 	vmm_spin_lock(&rb->lock);
 
-	isfull = (rb->read_pos == ((rb->write_pos + 1) % rb->key_count));
+	isfull = (rb->read_pos == vmm_umod32((rb->write_pos + 1), rb->key_count));
 	update = FALSE;
 	if (overwrite) {
 		if (isfull) {
-			rb->read_pos = (rb->read_pos + 1) % rb->key_count;
+			rb->read_pos = vmm_umod32((rb->read_pos + 1), rb->key_count);
 			rb->avail_count--;
 		}
 		update = TRUE;
@@ -133,7 +134,7 @@ bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
 				   rb->key_size);
 			break;
 		};
-		rb->write_pos = (rb->write_pos + 1) % rb->key_count;
+		rb->write_pos = vmm_umod32((rb->write_pos + 1), rb->key_count);
 		rb->avail_count++;
 	}
 
@@ -174,7 +175,7 @@ bool vmm_ringbuf_dequeue(vmm_ringbuf_t *rb, void *dstkey)
 				   rb->key_size);
 			break;
 		};
-		rb->read_pos = (rb->read_pos + 1) % rb->key_count;
+		rb->read_pos = vmm_umod32((rb->read_pos + 1), rb->key_count);
 		rb->avail_count--;
 	}
 
@@ -191,7 +192,7 @@ bool vmm_ringbuf_getkey(vmm_ringbuf_t *rb, u32 index, void *dstkey)
 	
 	vmm_spin_lock(&rb->lock);
 
-	index = (index + rb->read_pos) % rb->key_count;
+	index = vmm_umod32((index + rb->read_pos), rb->key_count);
 	switch(rb->key_size) {
 	case 1:
 		*((u8 *)dstkey) =

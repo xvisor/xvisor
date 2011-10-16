@@ -29,6 +29,7 @@
 #include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
+#include <vmm_math.h>
 #include <cpu_mmu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
@@ -66,7 +67,7 @@ static int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu,
 	e->valid = 1;
 
 	/* Point to next victim */
-	victim = (victim + 1) % vcpu->sregs->cp15.vtlb.count;
+	victim = vmm_umod32((victim + 1), vcpu->sregs->cp15.vtlb.count);
 	vcpu->sregs->cp15.vtlb.victim = victim;
 
 	return VMM_OK;

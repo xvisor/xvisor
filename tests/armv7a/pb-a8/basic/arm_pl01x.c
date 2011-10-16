@@ -23,6 +23,7 @@
  */
 
 #include <arm_io.h>
+#include <arm_math.h>
 #include <arm_pl01x.h>
 
 void arm_pl01x_putc(u32 base, u32 type, char ch)
@@ -72,9 +73,9 @@ void arm_pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock)
 		 * 	  / (16 * BAUD_RATE))
 		 */
 		temp = 16 * baudrate;
-		divider = input_clock / temp;
-		remainder = input_clock % temp;
-		temp = (8 * remainder) / baudrate;
+		divider = arm_udiv32(input_clock, temp);
+		remainder = arm_umod32(input_clock, temp);
+		temp = arm_udiv32((8 * remainder), baudrate);
 		fraction = (temp >> 1) + (temp & 1);
 
 		arm_writel(divider, (void*)(base + UART_PL011_IBRD));

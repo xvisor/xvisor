@@ -35,12 +35,13 @@ TimeStamp dhry_timestamp(void)
 
 long dhry_to_microsecs(TimeStamp UserTime)
 {
-	return UserTime / (TimeStamp)1000;
+	return arm_udiv64(UserTime, (TimeStamp)1000);
 }
 
 long dhry_iter_per_sec(TimeStamp UserTime, int Number_Of_Runs)
 {
-	return ((TimeStamp)Number_Of_Runs * (TimeStamp)1000000000) / UserTime;
+	return arm_udiv64(((TimeStamp)Number_Of_Runs * (TimeStamp)1000000000),
+								 UserTime);
 }
 
 int dhry_strcmp(char *dst, char *src)

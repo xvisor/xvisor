@@ -22,6 +22,7 @@
  * @brief source file for SP804 Dual-Mode Timer.
  */
 
+#include <vmm_math.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
@@ -105,7 +106,7 @@ static void sp804_timer_syncvalue(struct sp804_timer *t, bool clear_irq)
 		};
 		if (t->control & TIMER_CTRL_IE) {
 			nsecs = t->limit;
-			nsecs = (nsecs * 1000000000) / freq;
+			nsecs = vmm_udiv64((nsecs * 1000000000), freq);
 			vmm_timer_event_start(t->event, nsecs);
 		}
 	}
@@ -130,20 +131,22 @@ static u32 sp804_timer_currvalue(struct sp804_timer *t)
 			break;
 		};
 		if (freq == 1000000) {
-			cval = (vmm_timer_timestamp() - 
-				t->value_tstamp) / 1000;
+			cval = vmm_udiv64((vmm_timer_timestamp() - 
+					t->value_tstamp), 1000);
 		} else if (freq == 1000000000) {
 			cval = (vmm_timer_timestamp() - 
-				t->value_tstamp);
+					t->value_tstamp);
 		} else if (freq < 1000000000) {
-			cval = (vmm_timer_timestamp() - 
-				t->value_tstamp) / (1000000000 / freq);
+			cval = vmm_udiv32(1000000000, freq);
+			cval = vmm_udiv64((vmm_timer_timestamp() - 
+					t->value_tstamp), cval);
 		} else {
+			cval = vmm_udiv32(freq, 1000000000);
 			cval = (vmm_timer_timestamp() - 
-				t->value_tstamp) * (freq / 1000000000);
+					t->value_tstamp) * cval;
 		}
 		if (t->control & TIMER_CTRL_PERIODIC) {
-			ret = cval % t->value;
+			ret = vmm_umod64(cval, t->value);
 			ret = t->value - ret;
 		} else {
 			if (t->value < cval) {

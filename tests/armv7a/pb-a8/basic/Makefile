@@ -38,9 +38,9 @@ else
 ARM_CROSS_COMPILE=arm-none-eabi-
 endif
 ARM_CPPFLAGS=-I. -DTEXT_START=0x70010000
-ARM_CFLAGS=-g -Wall -Werror -nostdlib -mcpu=cortex-a8 $(ARM_CPPFLAGS)
-ARM_ASFLAGS=-g -Wall -Werror -nostdlib -mcpu=cortex-a8 $(ARM_CPPFLAGS) -D__ASSEMBLY__
-ARM_LDFLAGS=$(ARM_CFLAGS) -static-libgcc -lgcc
+ARM_CFLAGS=-g -Wall -Werror -nostdlib -msoft-float -march=armv7-a -marm $(ARM_CPPFLAGS)
+ARM_ASFLAGS=-g -Wall -Werror -nostdlib -msoft-float -march=armv7-a -marm $(ARM_CPPFLAGS) -D__ASSEMBLY__
+ARM_LDFLAGS=$(ARM_CFLAGS)
 ARM_AS=$(ARM_CROSS_COMPILE)gcc
 ARM_CC=$(ARM_CROSS_COMPILE)gcc
 ARM_CPP=$(ARM_CROSS_COMPILE)cpp
@@ -52,6 +52,7 @@ ARM_TEST_OBJS=$(obj_dir)/arm_entry.o \
 		$(obj_dir)/arm_irq.o \
 		$(obj_dir)/arm_stdio.o \
 		$(obj_dir)/arm_string.o \
+		$(obj_dir)/arm_math.o \
 		$(obj_dir)/arm_mmu.o \
 		$(obj_dir)/arm_gic.o \
 		$(obj_dir)/arm_timer.o \
@@ -66,7 +67,7 @@ ARM_TEST_ASFLAGS=$(ARM_TEST_CPPFLAGS)
 ARM_TEST_LINK_SCRIPT=$(obj_dir)/arm_test.lnk
 ARM_TEST_LDFLAGS=-Wl,-T$(ARM_TEST_LINK_SCRIPT) $(ARM_TEST_CPPFLAGS)
 
-ARM_COMMON_DEPS=arm_asm_macro.h arm_defines.h arm_types.h
+ARM_COMMON_DEPS=arm_asm_macro.h arm_math.h arm_defines.h arm_types.h
 
 CPATCH32=$(build_dir)/tools/cpatch/cpatch32
 ELF2CPATCH=$(top_dir)/arch/arm/cpu/armv7a/elf2cpatch.py

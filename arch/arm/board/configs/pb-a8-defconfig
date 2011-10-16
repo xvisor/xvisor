@@ -7,7 +7,6 @@
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 CONFIG_ARCH="arm"
-CROSS_COMPILE="arm-none-eabi-"
 CONFIG_CPU="armv7a"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set

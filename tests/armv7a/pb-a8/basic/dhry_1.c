@@ -159,7 +159,7 @@ void dhry_main (int iterations)
     }
       /* Int_1_Loc == 3, Int_2_Loc == 3, Int_3_Loc == 7 */
     Int_2_Loc = Int_2_Loc * Int_1_Loc;
-    Int_1_Loc = Int_2_Loc / Int_3_Loc;
+    Int_1_Loc = dhry_sdiv32(Int_2_Loc, Int_3_Loc);
     Int_2_Loc = 7 * (Int_2_Loc - Int_3_Loc) - Int_1_Loc;
       /* Int_1_Loc == 1, Int_2_Loc == 13, Int_3_Loc == 7 */
     Proc_2 (&Int_1_Loc);
@@ -314,7 +314,7 @@ void dhry_main (int iterations)
     dhry_printi (Dhrystones_Per_Second);
     dhry_prints (" \n");
     dhry_prints ("Dhrystones MIPS:                            ");
-    dhry_printi (Dhrystones_Per_Second / 1757);
+    dhry_printi (arm_sdiv32(Dhrystones_Per_Second, 1757));
     dhry_prints (" \n");
     dhry_prints ("\n");
   }
