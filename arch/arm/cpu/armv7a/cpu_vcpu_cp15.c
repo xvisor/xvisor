@@ -19,7 +19,12 @@
  * @file cpu_vcpu_cp15.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief Source for vcpu cp15 emulation
+ * @brief VCPU CP15 Emulation
+ * @details This source file implements CP15 coprocessor for each VCPU.
+ *
+ * The Translation table walk and CP15 register read/write has been 
+ * largely adapted from QEMU 0.14.xx targe-arm/helper.c source file
+ * which is licensed under GPL.
  */
 
 #include <vmm_heap.h>

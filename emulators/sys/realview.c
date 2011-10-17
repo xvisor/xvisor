@@ -20,6 +20,16 @@
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Realview Sysctl emulator.
+ * @details This source file implements the Realview Sysctl emulator.
+ *
+ * The source has been largely adapted from QEMU 0.14.xx hw/arm_sysctl.c 
+ *
+ * Status and system control registers for ARM RealView/Versatile boards.
+ *
+ * Copyright (c) 2006-2007 CodeSourcery.
+ * Written by Paul Brook
+ *
+ * The original code is licensed under the GPL.
  */
 
 #include <vmm_math.h>
@@ -380,7 +390,7 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 #if 0 /* QEMU checks bit 8 which is wrong */
 	if (s->resetlevel & 0x100) {
 #else
-	if (s->resetlevel & 0x01) {
+	if (s->resetlevel & 0x04) {
 #endif
 		vmm_manager_guest_reset(s->guest);
 		vmm_manager_guest_kick(s->guest);
