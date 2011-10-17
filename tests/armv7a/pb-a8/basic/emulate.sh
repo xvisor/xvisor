@@ -40,7 +40,7 @@ xvisor_qemu () {
 $CMDS
 "
 	echo "Executing Xvisor in QEMU..."
-	(sleep 5; kill $pid; sleep 5; kill -KILL $pid)& timer=$!
+	(sleep $2; kill $pid; sleep 1; kill -KILL $pid)& timer=$!
 	if ! wait $pid; then
 		kill $timer 2>/dev/null
 		echo
@@ -50,4 +50,4 @@ $CMDS
 	kill $timer
 }
 
-xvisor_qemu $1
+xvisor_qemu $1 15
