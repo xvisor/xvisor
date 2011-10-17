@@ -25,6 +25,7 @@ Busybox-1.19.2 RootFS on Realview PB-A8 Guest:
 
   [3. Configure Xvisor with Realview PB-A8 default settings]
   # make ARCH=arm pb-a8-defconfig 
+  (Note: pb-a8-defconfig will select device tree configuration with only one preconfigured guest. For enabling two preconfigured guest use "make ARCH=arm menuconfig" after the above step to change the device tree configuration for two guests)
 
   [4. Build Xvisor]
   # make
@@ -74,43 +75,41 @@ Busybox-1.19.2 RootFS on Realview PB-A8 Guest:
   [19. Build Busybox-1.19.2 RootFS]
   # make install
 
-  [20. Build Busybox-1.19.2 RootFS]
-  # make install
-
-  [21. Change ownership of installed RootFS]
+  [20. Change ownership of installed RootFS]
   # sudo chown -R root:root ./_install
 
-  [22. Create RootFS image]
+  [21. Create RootFS image]
   # fakeroot /bin/bash -c "genext2fs -b 3096 -N 1024 -D <xvisor_source_directory>/tests/armv7a/pb-a8/linux-3.0.4/busybox-1.19.2_dev.txt -d ./_install <linux-3.0.4_build_directory>/rootfs.img"
 
-  [23. GoTo Linux-3.0.4 build directory]
+  [22. GoTo Linux-3.0.4 build directory]
   # cd <linux-3.0.4_build_directory>
 
-  [24. Create xvisor_linux-3.0.4_qemu.img for running it on QEMU]
+  [23. Create xvisor_linux-3.0.4_qemu.img for running it on QEMU]
   # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x70010000 -o xvisor_linux-3.0.4_qemu.img <xvisor_source_directory>/build/vmm.bin@0x70010000 <xvisor_source_directory>/build/tests/armv7a/pb-a8/basic/arm_test.bin.patched@0x70800000 ./arch/arm/boot/zImage@0x70900000 ./rootfs.img@0x70C00000
+  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/armv7a/pb-a8/basic/arm_test.bin.patched@0x71000000 ./arch/arm/boot/zImage@0x71100000 ./rootfs.img@0x71400000")
 
-  [25. Launch QEMU 0.14.xx or higher]
+  [24. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel ./xvisor_linux-3.0.4_qemu.img
 
-  [26. Kick Guest0 for starting Basic Test]
+  [25. Kick Guest0 for starting Basic Test]
   XVisor# guest kick 0
 
-  [27. Bind to virtual UART0 of Linux Guest]
+  [26. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
-  [28. Copy zImage binary from NOR flash to DDR]
+  [27. Copy zImage binary from NOR flash to DDR]
   [guest0/uart0] arm-test# copy 0x70400000 0x40100000 0x200000
 
-  [29. Copy roofs.img binary from NOR flash to DDR]
+  [28. Copy roofs.img binary from NOR flash to DDR]
   [guest0/uart0] arm-test# copy 0x71000000 0x40400000 0x400000
 
-  [30. Start linux kernel]
+  [29. Start linux kernel]
   [guest0/uart0] arm-test# start_linux 0x70400000 0x71000000 0x400000
 
-  [31. Wait for Linux prompt to come-up and then try out some commands]
+  [30. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [32. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [31. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
