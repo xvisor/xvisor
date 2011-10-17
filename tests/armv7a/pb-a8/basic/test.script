@@ -6,3 +6,16 @@ guest list
 vserial bind guest0/uart0
 # Input in ARM test code
 hi
+# Display sysctl registers
+sysctl
+# Display timer information
+timer
+# Run dhrystone benchmark
+dhrystone
+# Run MMU test suite for ARM test code
+mmu_setup
+mmu_state
+mmu_test
+mmu_cleanup
+# Reset ARM test code guest
+reset

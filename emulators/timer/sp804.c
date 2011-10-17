@@ -19,7 +19,17 @@
  * @file sp804.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for SP804 Dual-Mode Timer.
+ * @brief SP804 Dual-Mode Timer Emulator.
+ * @details This source file implements the SP804 Dual-Mode Timer emulator.
+ *
+ * The source has been largely adapted from QEMU 0.14.xx hw/arm_timer.c 
+ *
+ * ARM PrimeCell Timer modules.
+ *
+ * Copyright (c) 2005-2006 CodeSourcery.
+ * Written by Paul Brook
+ *
+ * The original code is licensed under the GPL.
  */
 
 #include <vmm_math.h>

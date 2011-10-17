@@ -19,7 +19,17 @@
  * @file pl011.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for PrimeCell PL011 serial emulator.
+ * @brief PrimeCell PL011 serial emulator.
+ * @details This source file implements the PrimeCell PL011 serial emulator.
+ *
+ * The source has been largely adapted from QEMU 0.14.xx hw/pl011.c
+ * 
+ * Arm PrimeCell PL011 UART
+ *
+ * Copyright (c) 2006 CodeSourcery.
+ * Written by Paul Brook
+ *
+ * The original code is licensed under the GPL.
  */
 
 #include <vmm_error.h>
