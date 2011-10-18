@@ -42,7 +42,9 @@ void vmm_vcpu_regs_dump(vmm_vcpu_t *vcpu);
 
 /** Host address space management related functions */
 /** Host address space related functions required by VMM core */
-int vmm_cpu_aspace_init(void);
+int vmm_cpu_aspace_init(physical_addr_t * resv_pa, 
+			virtual_addr_t * resv_va,
+			virtual_size_t * resv_sz);
 int vmm_cpu_aspace_map(virtual_addr_t va, 
 			virtual_size_t sz, 
 			physical_addr_t pa,
@@ -64,6 +66,16 @@ s32 vmm_vcpu_irq_execute(vmm_vcpu_t *vcpu,vmm_user_regs_t *regs,u32 interrupt_no
 u32 vmm_vcpu_irq_priority(vmm_vcpu_t * vcpu, u32 irq_no);
 u32 vmm_vcpu_irq_count(vmm_vcpu_t * vcpu);
 
+/** Hrtimer related functions. */
+u64 vmm_cpu_clocksource_cycles(void);
+int vmm_cpu_clockevent_start(u64 ticks_nsecs);
+int vmm_cpu_clockevent_setup(void);
+int vmm_cpu_clockevent_shutdown(void);
+u64 vmm_cpu_clocksource_mask(void);
+u32 vmm_cpu_clocksource_mult(void);
+u32 vmm_cpu_clocksource_shift(void);
+int vmm_cpu_clockevent_init(void);
+int vmm_cpu_clocksource_init(void);
 
 /** Timer related functions required by VMM core */
 void vmm_cpu_timer_enable(void);

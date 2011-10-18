@@ -26,7 +26,7 @@ ifeq ($(CROSS_COMPILE),"")
 CROSS_COMPILE=mips-linux-gnu-
 endif
 
-cpu-cflags +=-finline-functions -O0
+cpu-cflags +=-finline-functions -Os
 cpu-ldflags += -static-libgcc -lgcc
 
 cpu-objs-y+= start.o

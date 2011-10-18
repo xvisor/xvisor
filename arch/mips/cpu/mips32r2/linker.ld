@@ -29,33 +29,40 @@ ENTRY(_start)
 SECTIONS 
 {
 	. = CPU_TEXT_START;
+
+	PROVIDE(_code_start = .);
+
 	.text :
  	{
+		PROVIDE(_text_start = .);
 		*(.start.text)
 		*(.text)
 		. = ALIGN(4);
-		_etext = .;
+		PROVIDE(_text_end = .);
 	}
 
 	.data :
 	{
+		PROVIDE(_data_start = .);
 		*(.data)
 		. = ALIGN(4);
-		_edata = .;
+		PROVIDE(_data_end = .);
 	}
 
 	.bss :
 	{
+		PROVIDE(_bss_start = .);
 		*(.bss)
 		. = ALIGN(4);
-		_ebss = .;
+		PROVIDE(_bss_end = .);
 	}
 
 	.rodata :
 	{
+		PROVIDE(_rodata_start = .);
 		*(.rodata .rodata.*)
 		. = ALIGN(4);
-		_erodata = .;
+		PROVIDE(_rodata_end = .);
 	}
 
 	.modtbl :
@@ -66,28 +73,31 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
-	.heap :
-	{
-		. = ALIGN(4096);
-		PROVIDE(_heap_start = .);
-		. = . + (CONFIG_HEAP_SIZE * 1024);
-		. = ALIGN(4);
-		PROVIDE(_eheap = .);
-	}
-
-	.init :
-	{
-		*(.init)
-		. = ALIGN(4);
-		_einit = .;
-	}
-
+	/* Usual X-Visor stack shared by threads. */
 	PROVIDE(_stack_end = .);
 	. = . + CONFIG_STACK_SIZE;
 	. = ALIGN(4);
 	PROVIDE(_stack_start = .);
+
+	/* Interrupt stack */
 	PROVIDE(_int_stack_end = .);
 	. = . + CONFIG_INTERRUPT_STACK_SIZE;
 	. = ALIGN(4);
 	PROVIDE(_int_stack = .);
+
+	. = ALIGN(0x100000);
+
+	PROVIDE(_code_end = .);
+	
+	/*
+	 * Init is at the end because this will be reclaimed
+	 * when the system as come up.
+	 */
+	.init :
+	{
+		PROVIDE(_init_start = .);
+		*(.init)
+		. = ALIGN(4);
+		PROVIDE(_init_end = .);
+	}
 }

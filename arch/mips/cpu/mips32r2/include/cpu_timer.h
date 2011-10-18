@@ -30,9 +30,4 @@
 #define VCPU_TIMER_FREQ_MHZ			VMM_VCPU_TIMER_FREQ_MHZ
 #define VCPU_DECREMENTER_SCALE			(VCPU_TIMER_FREQ_MHZ*CPU_DECREMENTER_TIMEOUT_MICROSECS)
 
-/** High-level functions to emulate timer features */
-//s32 cpu_emulate_decrementer(vmm_vcpu_t *vcpu);
-//s32 cpu_emulate_fit(vmm_vcpu_t *vcpu);
-//s32 cpu_emulate_watchdog(vmm_vcpu_t *vcpu);
-
 #endif

@@ -4,13 +4,7 @@
 	vmm {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		max_vcpu_count = <4>;
-		max_guest_count = <2>;
-		tick_delay_nsecs = <100000>;
-		vcpu_timer_mhz = <10>;
 		mterm_time_slice = <2000000>;
-		/* Maximum size of VMM */
-		vmm_max_size = <0x40000000>;
 	};
 
 	host {
@@ -18,9 +12,6 @@
 		#size-cells = <1>;
 		model = "qemu-mips";
 		device_type = "host";
-		virt-addr-start = <0xC0000000>; /* Kseg1 region */
-		virt-addr-size = <0x40000000>;
-		virt-addr-frame-size = <0x1000>; /* 4K minimum page maps */
 
 		cpus {
 			#address-cells = <1>;
@@ -33,6 +24,11 @@
 			};
 		};
 
+		memory {
+			physical_addr = <0x00000000>;
+			physical_size = <0x08000000>; /* 128 MB */
+		};
+
 		plb {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -43,12 +39,6 @@
 			      reg = <0x14000000 0x00000008>;
 			      reg_offset = <0x3F8>;
 			      baudrate = <115200>;
-			};
-
-			network-card {
-			       device_type = "nic";
-			       compatible = "ne2000";
-			       reg = <0x14000000 0x000000008>;
 			};
 		};
 	};

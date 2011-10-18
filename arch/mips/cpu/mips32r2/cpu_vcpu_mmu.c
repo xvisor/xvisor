@@ -95,10 +95,10 @@ u32 mips_read_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 				       mips32_tlb_entry_t *gtlbe)
 {
-	vmm_guest_t *guest;
-	vmm_region_t *guest_region;
-	physical_addr_t gphys_addr, hphys_addr, gphys_addr2map, gphys_offset;
-	physical_addr_t hphys_addr2map;
+	vmm_guest_t *guest = NULL;
+	vmm_region_t *guest_region = NULL;
+	physical_addr_t gphys_addr = 0, hphys_addr = 0, gphys_addr2map = 0, gphys_offset = 0;
+	physical_addr_t hphys_addr2map = 0;
 	int do_map = 0;
 
 	guest = vcpu->guest;

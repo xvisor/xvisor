@@ -129,6 +129,8 @@ struct host_tlb_entries_info {
 
 void mips_fill_tlb_entry(mips32_tlb_entry_t *tlb_entry, int index);
 u32 do_tlbmiss(struct vmm_user_regs *uregs);
+int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa);
+
 #endif /* ! __ASSEMBLY__ */
 
 #endif /* __CPU_MMU_H_ */

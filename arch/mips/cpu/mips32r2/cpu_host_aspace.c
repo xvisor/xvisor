@@ -28,7 +28,9 @@
 #include <cpu_mmu.h>
 #include <cpu_asm_macros.h>
 
-int vmm_cpu_aspace_init(void)
+int vmm_cpu_aspace_init(physical_addr_t * resv_pa, 
+			virtual_addr_t * resv_va,
+			virtual_size_t * resv_sz)
 {
 	int i;
 
@@ -60,7 +62,7 @@ int vmm_cpu_aspace_map(virtual_addr_t va,
 {
 	struct host_tlb_entries_info *tlb_info = free_host_tlb_index();
 	struct mips32_tlb_entry tlb_entry;
-	u32 page_mask, page_size;
+	u32 page_mask = 0, page_size = 0;
 
 	switch (sz) {
 	case TLB_PAGE_SIZE_1K:
@@ -89,6 +91,7 @@ int vmm_cpu_aspace_map(virtual_addr_t va,
 		tlb_entry.page_mask = page_mask;
 
 		/* TLB Low entry. Mapping two physical addresses */
+		/* FIXME: Take the flag settings from mem_flags. */
 		tlb_entry.entrylo0._s_entrylo.global = 0; /* not global */
 		tlb_entry.entrylo0._s_entrylo.valid = 1; /* valid */
 		tlb_entry.entrylo0._s_entrylo.dirty = 1; /* writeable */
@@ -128,4 +131,20 @@ int vmm_cpu_aspace_unmap(virtual_addr_t va,
 	}
 
 	return VMM_EFAIL;
+}
+
+int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
+{
+	int rc = VMM_EFAIL;
+	int i;
+
+	for (i = 0; i < MAX_HOST_TLB_ENTRIES; i++) {
+		if ((host_tlb_entries[i].vaddr == va) &&
+		    (!host_tlb_entries[i].free)) {
+			*pa = host_tlb_entries[i].paddr;
+			rc = VMM_OK;
+		}
+	}
+
+	return rc;
 }

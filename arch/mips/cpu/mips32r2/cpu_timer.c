@@ -32,14 +32,21 @@
 #include "cpu_asm_macros.h"
 
 /** CPU frequency in MHz */
-#define VMM_CPU_FREQ_MHZ				100
+#define VMM_CPU_FREQ_MHZ			100
+
+#define VMM_CLOCK_SOURCE_RATE			VMM_CPU_FREQ_MHZ
 
 /** Delay of VMM ticks in microseconds */
-#define VMM_CPU_TICK_DELAY_MICROSECS 			1000
+#define VMM_CPU_TICK_DELAY_MICROSECS 		1000
 
 /** Counter Jiffies */
-#define VMM_COUNTER_JIFFIES				(VMM_CPU_FREQ_MHZ * VMM_CPU_TICK_DELAY_MICROSECS)
+#define VMM_COUNTER_JIFFIES			(VMM_CPU_FREQ_MHZ \
+						 * VMM_CPU_TICK_DELAY_MICROSECS)
 
+#define MHZ2HZ(_x)				(_x * 1000 * 1000)
+#define SEC2NSEC(_x)				(_x * 1000 * 1000 * 1000)
+#define NS2COUNT(_x)				((MHZ2HZ(VMM_CPU_FREQ_MHZ) \
+						  * _x) / SEC2NSEC(1)) 
 
 unsigned long long jiffies;
 
@@ -49,32 +56,90 @@ void vmm_cpu_timer_enable(void)
 	sr |= ((0x1UL << 7) << 8);
 	write_c0_status(sr);
 
-	u32 cause = read_c0_cause();
-	cause &= ~(0x1UL << 27);
-	write_c0_cause(cause);
 	write_c0_compare(read_c0_count() + VMM_COUNTER_JIFFIES);
-}
-
-void vmm_cpu_timer_disable(void) 
-{
 }
 
 s32 handle_internal_timer_interrupt(vmm_user_regs_t *uregs)
 {
-        jiffies++;
+	jiffies++;
 	vmm_timer_clockevent_process(uregs);
 	write_c0_compare(read_c0_count() + VMM_COUNTER_JIFFIES);
-        return 0;
+	return 0;
 }
 
-int vmm_cpu_timer_setup(u64 tick_nsecs)
+u64 vmm_cpu_clocksource_cycles(void)
 {
-        jiffies = 0;
+	return read_c0_count();
+}
+
+int vmm_cpu_clockevent_start(u64 ticks_nsecs)
+{
+	/* Enable the timer interrupts. */
+	u32 sr = read_c0_status();
+	sr |= ((0x1UL << 7) << 8);
+	write_c0_status(sr);
+
+	u32 next_ticks = NS2COUNT((u32)ticks_nsecs);
+	write_c0_compare(read_c0_count() + next_ticks);
+
 	return VMM_OK;
 }
 
-int vmm_cpu_timer_init(void)
+int vmm_cpu_clockevent_setup(void)
 {
 	return VMM_OK;
 }
 
+int vmm_cpu_clockevent_shutdown(void)
+{
+	/* Disable the timer interrupts. */
+	u32 sr = read_c0_status();
+	sr &= ~((0x1UL << 7) << 8);
+	write_c0_status(sr);
+
+	return VMM_OK;
+}
+
+u64 vmm_cpu_clocksource_mask(void)
+{
+	return 0xFFFFFFFF;
+}
+
+u32 vmm_cpu_clocksource_mult(void)
+{
+	u32 khz = 1000;
+	u64 tmp = ((u64)1000000) << 20;
+	tmp += khz / 2;
+	tmp = tmp / khz;
+	return (u32)tmp;
+}
+
+u32 vmm_cpu_clocksource_shift(void)
+{
+	return 22;
+}
+
+int vmm_cpu_clockevent_init(void)
+{
+	/* Disable the timer interrupts. */
+	u32 sr = read_c0_status();
+	sr &= ~((0x1UL << 7) << 8);
+	write_c0_status(sr);
+
+	jiffies = 0;
+
+	return VMM_OK;
+}
+
+int vmm_cpu_clocksource_init(void)
+{
+	/* Enable the monotonic count. */
+	u32 cause = read_c0_cause();
+	cause &= ~(0x1UL << 27);
+	write_c0_cause(cause);
+
+	/* Initialize the counter to 0. */
+	write_c0_count(0);
+
+	return VMM_OK;
+}

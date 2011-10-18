@@ -29,6 +29,7 @@
 #include <vmm_regs.h>
 #include <cpu_asm_macros.h>
 #include <cpu_vcpu_mmu.h>
+#include <vmm_error.h>
 
 u32 do_tlbmiss(vmm_user_regs_t *uregs)
 {
