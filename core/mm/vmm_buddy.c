@@ -191,7 +191,7 @@ cont_blocks_found:
 			BUG_ON(!cnode,
 			       "Panic: No free house keeping nodes for buddy allocator!\n");
 
-			memcpy(cnode, snode, sizeof(struct vmm_free_area));
+			vmm_memcpy(cnode, snode, sizeof(struct vmm_free_area));
 			while (count) {
 				/*
 				 * Latch the next node to be released because

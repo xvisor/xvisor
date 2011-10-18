@@ -28,7 +28,6 @@
 #include <vmm_list.h>
 #include <vmm_cpu.h>
 #include <vmm_board.h>
-#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_host_aspace.h>
 
@@ -489,8 +488,8 @@ int vmm_host_aspace_init(void)
 	vmm_memset(&hactrl, 0, sizeof(hactrl));
 
 	/* Determine VAPOOl start and size. Also determine size of bitmap */
-	hactrl.vapool_start = vmm_code_vaddr();
-	hactrl.vapool_size = vmm_code_size() + (CONFIG_VAPOOL_SIZE << 20);
+	hactrl.vapool_start = vmm_cpu_code_vaddr_start();
+	hactrl.vapool_size = vmm_cpu_code_size() + (CONFIG_VAPOOL_SIZE << 20);
 	hactrl.vapool_start &= ~VMM_PAGE_MASK;
 	hactrl.vapool_size &= ~VMM_PAGE_MASK;
 	hactrl.vapool_bmap_len = hactrl.vapool_size >> (VMM_PAGE_SHIFT + 5);
@@ -523,7 +522,7 @@ int vmm_host_aspace_init(void)
 	bmap_total_size *= sizeof(u32);
 	bmap_total_size = VMM_ROUNDUP2_PAGE_SIZE(bmap_total_size);
 	resv_pa = hactrl.ram_start;
-	resv_va = vmm_code_vaddr() + vmm_code_size();
+	resv_va = vmm_cpu_code_vaddr_start() + vmm_cpu_code_size();
 	resv_sz = bmap_total_size;
 	if ((rc = vmm_cpu_aspace_init(&resv_pa, &resv_va, &resv_sz))) {
 		return rc;
@@ -542,8 +541,8 @@ int vmm_host_aspace_init(void)
 
 	/* Mark pages used for Code and Reserved space in VAPOOL bitmap */
 	max = ((hactrl.vapool_start + hactrl.vapool_size) >> VMM_PAGE_SHIFT);
-	ite = ((vmm_code_vaddr() - hactrl.vapool_start) >> VMM_PAGE_SHIFT);
-	last = ite + (vmm_code_size() >> VMM_PAGE_SHIFT);
+	ite = ((vmm_cpu_code_vaddr_start() - hactrl.vapool_start) >> VMM_PAGE_SHIFT);
+	last = ite + (vmm_cpu_code_size() >> VMM_PAGE_SHIFT);
 	for ( ; (ite < last) && (ite < max); ite++) {
 		hactrl.vapool_bmap[ite >> 5] |= (0x1 << (31 - (ite & 0x1F)));
 		hactrl.vapool_bmap_free--;
@@ -561,8 +560,8 @@ int vmm_host_aspace_init(void)
 
 	/* Mark pages used for Code and Reserved space in RAM bitmap */
 	max = ((hactrl.ram_start + hactrl.ram_size) >> VMM_PAGE_SHIFT);
-	ite = ((vmm_code_paddr() - hactrl.ram_start) >> VMM_PAGE_SHIFT);
-	last = ite + (vmm_code_size() >> VMM_PAGE_SHIFT);
+	ite = ((vmm_cpu_code_paddr_start() - hactrl.ram_start) >> VMM_PAGE_SHIFT);
+	last = ite + (vmm_cpu_code_size() >> VMM_PAGE_SHIFT);
 	for ( ; (ite < last) && (ite < max); ite++) {
 		hactrl.ram_bmap[ite >> 5] |= (0x1 << (31 - (ite & 0x1F)));
 		hactrl.ram_bmap_free--;

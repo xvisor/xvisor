@@ -183,11 +183,6 @@ void *vmm_memcpy(void *dest, const void *src, size_t count)
 	return dest;
 }
 
-void *memcpy(void *dest, const void *src, size_t count)
-{
-	return vmm_memcpy(dest, src, count);
-}
-
 void *vmm_memset(void *dest, int c, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
@@ -208,11 +203,6 @@ void *vmm_memset(void *dest, int c, size_t count)
 	return dest;
 }
 
-void *memset(void *dest, int c, size_t count)
-{
-	return vmm_memset(dest, c, count);
-}
-
 int vmm_memcmp(const void *s1, const void *s2, size_t count)
 {
 	u8 *p1 = (u8 *) s1;
@@ -226,7 +216,3 @@ int vmm_memcmp(const void *s1, const void *s2, size_t count)
 	return (0);
 }
 
-int memcmp(const void *s1, const void *s2, size_t count)
-{
-	return vmm_memcmp(s1, s2, count);
-}
