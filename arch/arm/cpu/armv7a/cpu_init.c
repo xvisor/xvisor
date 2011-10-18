@@ -27,6 +27,26 @@
 #include <vmm_error.h>
 #include <cpu_mmu.h>
 
+extern u8 _code_start;
+extern u8 _code_end;
+extern u32 _load_start;
+extern u32 _load_end;
+
+virtual_addr_t vmm_cpu_code_vaddr_start(void)
+{
+	return (virtual_addr_t) &_code_start;
+}
+
+physical_addr_t vmm_cpu_code_paddr_start(void)
+{
+	return (physical_addr_t) _load_start;
+}
+
+virtual_size_t vmm_cpu_code_size(void)
+{
+	return (virtual_size_t) (&_code_end - &_code_start);
+}
+
 int vmm_cpu_early_init(void)
 {
 	/*

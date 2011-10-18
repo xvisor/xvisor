@@ -1,0 +1,28 @@
+
+		High-Priority Features
+
+-> Add support for routing of host irq to guest irq based on device tree 
+   configuration. This will allow us to implement pass-through hardware 
+   access for guest using device tree configuration.
+-> Add support for sleep in scheduler. 
+-> Add support for waitqueues using sleep support of scheduler.
+-> Add completion, semaphore, and mutex locking mechanisms using waitqueues
+-> Update vserial and chardev access functions to make them sleepable. This 
+   will greatly increase our performance in guest.
+
+
+		Medium-Priority Features
+
+-> Add support for bottom halves like workqueues for device drivers
+-> Add support for SMP systems.
+-> Add support for telnet daemon.
+
+
+		Low-Priority Features
+
+-> Add support for frame buffer virtualization
+-> Add support for input device (mouse/keyboard) virtualization
+-> Add support for block device virtualization
+-> Add support for network switch virtualization
+-> Bla Bla Bla .... All the fancy stuff expected from a hypervisor
+

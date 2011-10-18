@@ -1061,10 +1061,10 @@ int vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	/* Handcraft default translation table */
 	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
 	mmuctrl.defl1.tbl_va = (virtual_addr_t)&defl1_mem;
-	mmuctrl.defl1.tbl_pa = vmm_code_paddr() + 
-			       ((virtual_addr_t)&defl1_mem - vmm_code_vaddr());
-	if (vmm_code_paddr() != vmm_code_vaddr()) {
-		val = vmm_code_paddr() >> TTBL_L1TBL_TTE_OFFSET_SHIFT;
+	mmuctrl.defl1.tbl_pa = vmm_cpu_code_paddr_start() + 
+			       ((virtual_addr_t)&defl1_mem - vmm_cpu_code_vaddr_start());
+	if (vmm_cpu_code_paddr_start() != vmm_cpu_code_vaddr_start()) {
+		val = vmm_cpu_code_paddr_start() >> TTBL_L1TBL_TTE_OFFSET_SHIFT;
 		val = val << 2;
 		*((u32 *)(mmuctrl.defl1.tbl_va + val)) = 0x0;
 		invalid_tlb();
@@ -1080,9 +1080,9 @@ int vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	mmuctrl.defl1.l2tbl_cnt = 0;
 
 	/* Compute additional reserved space required */
-	pa = vmm_code_paddr();
-	va = vmm_code_vaddr();
-	sz = vmm_code_size();
+	pa = vmm_cpu_code_paddr_start();
+	va = vmm_cpu_code_vaddr_start();
+	sz = vmm_cpu_code_size();
 	if ((va <= *resv_va) && (*resv_va < (va + sz))) {
 		*resv_va = va + sz;
 	} else if ((va <= (*resv_va + *resv_sz)) && 
