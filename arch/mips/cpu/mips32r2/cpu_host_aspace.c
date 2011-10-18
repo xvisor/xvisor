@@ -148,3 +148,13 @@ int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 
 	return rc;
 }
+
+virtual_addr_t vmm_cpu_code_vaddr_start(void)
+{
+	return ((virtual_addr_t) 0xC0000000);
+}
+
+physical_addr_t vmm_cpu_code_paddr_start(void)
+{
+	return ((physical_addr_t) 0);
+}

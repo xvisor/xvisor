@@ -51,6 +51,9 @@ int vmm_cpu_aspace_map(virtual_addr_t va,
 			u32 mem_flags);
 int vmm_cpu_aspace_unmap(virtual_addr_t va, 
 			 virtual_size_t sz);
+virtual_addr_t vmm_cpu_code_vaddr_start(void);
+physical_addr_t vmm_cpu_code_paddr_start(void);
+
 
 /** Interrupt related functions required by VMM core */
 int vmm_cpu_irq_setup(void);
