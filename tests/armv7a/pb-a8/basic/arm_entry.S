@@ -33,6 +33,7 @@
 	.globl _start
 _start:
 	add	r0, pc, #-0x8
+	cpsid	if
 	ldr	r2, __code_start
 	ldr	r3, __code_end
 	sub	r4, r3, r2
