@@ -124,7 +124,7 @@
 					physical_size = <0x1000>;
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
-					fifo_size = <2000>;
+					fifo_size = <256>;
 					irq = <44>;
 				};
 
@@ -135,7 +135,7 @@
 					physical_size = <0x1000>;
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
-					fifo_size = <2000>;
+					fifo_size = <256>;
 					irq = <45>;
 				};
 
@@ -146,7 +146,7 @@
 					physical_size = <0x1000>;
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
-					fifo_size = <2000>;
+					fifo_size = <256>;
 					irq = <46>;
 				};
 
@@ -157,7 +157,7 @@
 					physical_size = <0x1000>;
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
-					fifo_size = <2000>;
+					fifo_size = <256>;
 					irq = <47>;
 				};
 
