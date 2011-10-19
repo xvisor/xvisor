@@ -53,22 +53,94 @@ u32 vmm_vserial_send(vmm_vserial_t * vser, u8 *src, u32 len)
 u32 vmm_vserial_receive(vmm_vserial_t * vser, u8 *dst, u32 len)
 {
 	u32 i;
+	struct dlist * l;
+	vmm_vserial_receiver_t * receiver;
 
 	if (!vser || !dst) {
 		return 0;
 	}
-	if (!vser->can_recv || !vser->recv) {
-		return 0;
-	}
 
 	for (i = 0; i < len ; i++) {
-		if (!vser->can_recv(vser)) {
-			break;
+		list_for_each(l, &vser->receiver_list) {
+			receiver = list_entry(l, vmm_vserial_receiver_t, head);
+			receiver->recv(vser, receiver->priv, dst[i]);
 		}
-		vser->recv(vser, &dst[i]);
 	}
 
 	return i;
+}
+
+int vmm_vserial_register_receiver(vmm_vserial_t * vser, 
+				  vmm_vserial_recv_t recv, 
+				  void * priv)
+{
+	bool found;
+	struct dlist *l;
+	vmm_vserial_receiver_t * receiver;
+
+	if (!vser || !recv) {
+		return VMM_EFAIL;
+	}
+
+	receiver = NULL;
+	found = FALSE;
+	list_for_each(l, &vser->receiver_list) {
+		receiver = list_entry(l, vmm_vserial_receiver_t, head);
+		if ((receiver->recv == recv) && (receiver->priv == priv)) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (found) {
+		return VMM_EINVALID;
+	}
+
+	receiver = vmm_malloc(sizeof(vmm_vserial_receiver_t));
+	if (!receiver) {
+		return VMM_EFAIL;
+	}
+
+	INIT_LIST_HEAD(&receiver->head);
+	receiver->recv = recv;
+	receiver->priv = priv;
+
+	list_add_tail(&vser->receiver_list, &receiver->head);
+
+	return VMM_OK;
+}
+
+int vmm_vserial_unregister_receiver(vmm_vserial_t * vser, 
+				    vmm_vserial_recv_t recv, 
+				    void * priv)
+{
+	bool found;
+	struct dlist *l;
+	vmm_vserial_receiver_t * receiver;
+
+	if (!vser || !recv) {
+		return VMM_EFAIL;
+	}
+
+	receiver = NULL;
+	found = FALSE;
+	list_for_each(l, &vser->receiver_list) {
+		receiver = list_entry(l, vmm_vserial_receiver_t, head);
+		if ((receiver->recv == recv) && (receiver->priv == priv)) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
+		return VMM_EINVALID;
+	}
+
+	list_del(&receiver->head);
+
+	vmm_free(receiver);
+
+	return VMM_OK;
 }
 
 int vmm_vserial_register(vmm_vserial_t * vser)
@@ -96,6 +168,7 @@ int vmm_vserial_register(vmm_vserial_t * vser)
 	}
 
 	INIT_LIST_HEAD(&vser->head);
+	INIT_LIST_HEAD(&vser->receiver_list);
 
 	list_add_tail(&vsctrl.vser_list, &vser->head);
 
