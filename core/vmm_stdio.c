@@ -90,6 +90,14 @@ void vmm_putc(char ch)
 	vmm_printchar(NULL, NULL, ch, TRUE);
 }
 
+void vmm_cputc(vmm_chardev_t *cdev, char ch)
+{
+	if (ch == '\n') {
+		vmm_printchar(NULL, cdev, '\r', TRUE);
+	}
+	vmm_printchar(NULL, cdev, ch, TRUE);
+}
+
 static void printc(char **str, vmm_chardev_t *cdev, char ch)
 {
 	if (str) {

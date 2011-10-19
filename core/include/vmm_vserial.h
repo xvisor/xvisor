@@ -26,21 +26,28 @@
 
 #include <vmm_types.h>
 #include <vmm_list.h>
+#include <vmm_ringbuf.h>
 
+typedef struct vmm_vserial_receiver vmm_vserial_receiver_t;
 typedef struct vmm_vserial vmm_vserial_t;
 typedef struct vmm_vserial_ctrl vmm_vserial_ctrl_t;
 typedef bool (*vmm_vserial_can_send_t) (vmm_vserial_t *vser);
 typedef int (*vmm_vserial_send_t) (vmm_vserial_t *vser, u8 data);
-typedef bool (*vmm_vserial_can_recv_t) (vmm_vserial_t *vser);
-typedef int (*vmm_vserial_recv_t) (vmm_vserial_t *vser, u8 *data);
+typedef void (*vmm_vserial_recv_t) (vmm_vserial_t *vser, void * priv, u8 data);
+
+struct vmm_vserial_receiver {
+	struct dlist head;
+	vmm_vserial_recv_t recv;
+	void * priv;
+};
 
 struct vmm_vserial {
 	struct dlist head;
 	char name[64];
 	vmm_vserial_can_send_t can_send;
 	vmm_vserial_send_t send;
-	vmm_vserial_can_recv_t can_recv;
-	vmm_vserial_recv_t recv;
+	struct dlist receiver_list;
+	vmm_ringbuf_t * receive_buf;
 	void *priv;
 };
 
@@ -54,11 +61,25 @@ u32 vmm_vserial_send(vmm_vserial_t * vser, u8 *src, u32 len);
 /** Receive bytes from virtual serial port */
 u32 vmm_vserial_receive(vmm_vserial_t * vser, u8 *dst, u32 len);
 
-/** Register a virtual serial port */
-int vmm_vserial_register(vmm_vserial_t * vser);
+/** Register receiver to a virtual serial port */
+int vmm_vserial_register_receiver(vmm_vserial_t * vser, 
+				  vmm_vserial_recv_t recv, 
+				  void * priv);
 
 /** Unregister a virtual serial port */
-int vmm_vserial_unregister(vmm_vserial_t * vser);
+int vmm_vserial_unregister_receiver(vmm_vserial_t * vser,
+				    vmm_vserial_recv_t recv,
+				    void * priv);
+
+/** Alloc a virtual serial port */
+vmm_vserial_t * vmm_vserial_alloc(const char * name,
+				  vmm_vserial_can_send_t can_send,
+				  vmm_vserial_send_t send,
+				  u32 receive_buf_size,
+				  void * priv);
+
+/** Free a virtual serial port */
+int vmm_vserial_free(vmm_vserial_t * vser);
 
 /** Find a virtual serial port with given name */
 vmm_vserial_t * vmm_vserial_find(const char *name);

@@ -47,6 +47,9 @@ int vmm_printchar(char **str, vmm_chardev_t *cdev, char c, bool block);
 /** Put character to default terminal */
 void vmm_putc(char ch);
 
+/** Put character to character device */
+void vmm_cputc(vmm_chardev_t *cdev, char ch);
+
 /** Print formatted string to default terminal */
 int vmm_printf(const char *format, ...);
 
