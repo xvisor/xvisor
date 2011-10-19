@@ -75,7 +75,6 @@ struct pl011_state {
 	u32 ifl;
 	int rd_trig;
 	vmm_ringbuf_t *rd_fifo;
-	vmm_ringbuf_t *wr_fifo;
 };
 
 static void pl011_set_irq(struct pl011_state * s)
@@ -185,7 +184,7 @@ static int pl011_reg_write(struct pl011_state * s, u32 offset,
 	case 0: /* UARTDR */
 		/* ??? Check if transmitter is enabled.  */
 		val = src;
-		vmm_ringbuf_enqueue(s->wr_fifo, &val, TRUE);
+		vmm_vserial_receive(s->vser, &val, 1);
 		s->int_level |= PL011_INT_TX;
 		pl011_set_irq(s);
 		break;
@@ -275,28 +274,6 @@ static int pl011_vserial_send(vmm_vserial_t *vser, u8 data)
 	vmm_spin_unlock(&s->lock);
 
 	return VMM_OK;
-}
-
-static bool pl011_vserial_can_recv(vmm_vserial_t *vser)
-{
-	struct pl011_state * s = vser->priv;
-
-	return !vmm_ringbuf_isempty(s->wr_fifo);
-}
-
-static int pl011_vserial_recv(vmm_vserial_t *vser, u8 *data)
-{
-	int rc = VMM_OK;
-	u8 val;
-	struct pl011_state * s = vser->priv;
-
-	if (vmm_ringbuf_dequeue(s->wr_fifo, &val)) {
-		*data = val;
-	} else {
-		rc = VMM_EFAIL;
-	}
-	
-	return rc;
 }
 
 static int pl011_emulator_read(vmm_emudev_t *edev,
@@ -397,6 +374,7 @@ static int pl011_emulator_probe(vmm_guest_t *guest,
 				const vmm_emuid_t *eid)
 {
 	int rc = VMM_OK;
+	char name[64];
 	const char *attr;
 	struct pl011_state * s;
 
@@ -443,31 +421,24 @@ static int pl011_emulator_probe(vmm_guest_t *guest,
 		goto pl011_emulator_probe_freestate_fail;
 	}
 
-	s->wr_fifo = vmm_ringbuf_alloc(1, s->fifo_sz);
-	if (!s->wr_fifo) {
-		rc = VMM_EFAIL;
-		goto pl011_emulator_probe_freestate_fail;
-	}
-
-	s->vser = vmm_malloc(sizeof(vmm_vserial_t));
-	vmm_strcpy(s->vser->name, guest->node->name);
-	vmm_strcat(s->vser->name, "/");
-	vmm_strcat(s->vser->name, edev->node->name);
-	s->vser->can_send = &pl011_vserial_can_send;
-	s->vser->send = &pl011_vserial_send;
-	s->vser->can_recv = &pl011_vserial_can_recv;
-	s->vser->recv = &pl011_vserial_recv;
-	s->vser->priv = s;
-	if ((rc = vmm_vserial_register(s->vser))) {
-		goto pl011_emulator_probe_freevser_fail;
+	vmm_strcpy(name, guest->node->name);
+	vmm_strcat(name, "/");
+	vmm_strcat(name, edev->node->name);
+	s->vser = vmm_vserial_alloc(name, 
+				    &pl011_vserial_can_send, 
+				    &pl011_vserial_send, 
+				    s->fifo_sz,
+				    s);
+	if (!(s->vser)) {
+		goto pl011_emulator_probe_freerbuf_fail;
 	}
 
 	edev->priv = s;
 
 	goto pl011_emulator_probe_done;
 
-pl011_emulator_probe_freevser_fail:
-	vmm_free(s->vser);
+pl011_emulator_probe_freerbuf_fail:
+	vmm_ringbuf_free(s->rd_fifo);
 pl011_emulator_probe_freestate_fail:
 	vmm_free(s);
 pl011_emulator_probe_done:
@@ -478,10 +449,8 @@ static int pl011_emulator_remove(vmm_emudev_t *edev)
 {
 	struct pl011_state * s = edev->priv;
 
-	vmm_vserial_unregister(s->vser);
-	vmm_free(s->vser);
+	vmm_vserial_free(s->vser);
 	vmm_ringbuf_free(s->rd_fifo);
-	vmm_ringbuf_free(s->wr_fifo);
 	vmm_free(s);
 
 	return VMM_OK;
