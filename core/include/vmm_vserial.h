@@ -26,6 +26,7 @@
 
 #include <vmm_types.h>
 #include <vmm_list.h>
+#include <vmm_ringbuf.h>
 
 typedef struct vmm_vserial_receiver vmm_vserial_receiver_t;
 typedef struct vmm_vserial vmm_vserial_t;
@@ -46,6 +47,7 @@ struct vmm_vserial {
 	vmm_vserial_can_send_t can_send;
 	vmm_vserial_send_t send;
 	struct dlist receiver_list;
+	vmm_ringbuf_t * receive_buf;
 	void *priv;
 };
 
@@ -73,6 +75,7 @@ int vmm_vserial_unregister_receiver(vmm_vserial_t * vser,
 vmm_vserial_t * vmm_vserial_alloc(const char * name,
 				  vmm_vserial_can_send_t can_send,
 				  vmm_vserial_send_t send,
+				  u32 receive_buf_size,
 				  void * priv);
 
 /** Free a virtual serial port */

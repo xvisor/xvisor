@@ -60,6 +60,14 @@ u32 vmm_vserial_receive(vmm_vserial_t * vser, u8 *dst, u32 len)
 		return 0;
 	}
 
+	if (list_empty(&vser->receiver_list)) {
+		for (i = 0; i < len ; i++) {
+			vmm_ringbuf_enqueue(vser->receive_buf, &dst[i], TRUE);
+		}
+
+		return i;
+	}
+
 	for (i = 0; i < len ; i++) {
 		list_for_each(l, &vser->receiver_list) {
 			receiver = list_entry(l, vmm_vserial_receiver_t, head);
@@ -74,6 +82,7 @@ int vmm_vserial_register_receiver(vmm_vserial_t * vser,
 				  vmm_vserial_recv_t recv, 
 				  void * priv)
 {
+	u8 chval;
 	bool found;
 	struct dlist *l;
 	vmm_vserial_receiver_t * receiver;
@@ -106,6 +115,16 @@ int vmm_vserial_register_receiver(vmm_vserial_t * vser,
 	receiver->priv = priv;
 
 	list_add_tail(&vser->receiver_list, &receiver->head);
+
+	while (!vmm_ringbuf_isempty(vser->receive_buf)) {
+		if (!vmm_ringbuf_dequeue(vser->receive_buf, &chval)) {
+			break;
+		}
+		list_for_each(l, &vser->receiver_list) {
+			receiver = list_entry(l, vmm_vserial_receiver_t, head);
+			receiver->recv(vser, receiver->priv, chval);
+		}
+	}
 
 	return VMM_OK;
 }
@@ -146,6 +165,7 @@ int vmm_vserial_unregister_receiver(vmm_vserial_t * vser,
 vmm_vserial_t * vmm_vserial_alloc(const char * name,
 				  vmm_vserial_can_send_t can_send,
 				  vmm_vserial_send_t send,
+				  u32 receive_buf_size,
 				  void * priv)
 {
 	bool found;
@@ -172,6 +192,12 @@ vmm_vserial_t * vmm_vserial_alloc(const char * name,
 
 	vser = vmm_malloc(sizeof(vmm_vserial_t));
 	if (!vser) {
+		return NULL;
+	}
+
+	vser->receive_buf = vmm_ringbuf_alloc(1, receive_buf_size);
+	if (!(vser->receive_buf)) {
+		vmm_free(vser);
 		return NULL;
 	}
 
@@ -217,6 +243,7 @@ int vmm_vserial_free(vmm_vserial_t * vser)
 
 	list_del(&vs->head);
 
+	vmm_ringbuf_free(vs->receive_buf);
 	vmm_free(vs);
 
 	return VMM_OK;

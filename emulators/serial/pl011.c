@@ -427,6 +427,7 @@ static int pl011_emulator_probe(vmm_guest_t *guest,
 	s->vser = vmm_vserial_alloc(name, 
 				    &pl011_vserial_can_send, 
 				    &pl011_vserial_send, 
+				    s->fifo_sz,
 				    s);
 	if (!(s->vser)) {
 		goto pl011_emulator_probe_freerbuf_fail;
