@@ -374,6 +374,7 @@ static int pl011_emulator_probe(vmm_guest_t *guest,
 				const vmm_emuid_t *eid)
 {
 	int rc = VMM_OK;
+	char name[64];
 	const char *attr;
 	struct pl011_state * s;
 
@@ -420,23 +421,23 @@ static int pl011_emulator_probe(vmm_guest_t *guest,
 		goto pl011_emulator_probe_freestate_fail;
 	}
 
-	s->vser = vmm_malloc(sizeof(vmm_vserial_t));
-	vmm_strcpy(s->vser->name, guest->node->name);
-	vmm_strcat(s->vser->name, "/");
-	vmm_strcat(s->vser->name, edev->node->name);
-	s->vser->can_send = &pl011_vserial_can_send;
-	s->vser->send = &pl011_vserial_send;
-	s->vser->priv = s;
-	if ((rc = vmm_vserial_register(s->vser))) {
-		goto pl011_emulator_probe_freevser_fail;
+	vmm_strcpy(name, guest->node->name);
+	vmm_strcat(name, "/");
+	vmm_strcat(name, edev->node->name);
+	s->vser = vmm_vserial_alloc(name, 
+				    &pl011_vserial_can_send, 
+				    &pl011_vserial_send, 
+				    s);
+	if (!(s->vser)) {
+		goto pl011_emulator_probe_freerbuf_fail;
 	}
 
 	edev->priv = s;
 
 	goto pl011_emulator_probe_done;
 
-pl011_emulator_probe_freevser_fail:
-	vmm_free(s->vser);
+pl011_emulator_probe_freerbuf_fail:
+	vmm_ringbuf_free(s->rd_fifo);
 pl011_emulator_probe_freestate_fail:
 	vmm_free(s);
 pl011_emulator_probe_done:
@@ -447,8 +448,7 @@ static int pl011_emulator_remove(vmm_emudev_t *edev)
 {
 	struct pl011_state * s = edev->priv;
 
-	vmm_vserial_unregister(s->vser);
-	vmm_free(s->vser);
+	vmm_vserial_free(s->vser);
 	vmm_ringbuf_free(s->rd_fifo);
 	vmm_free(s);
 

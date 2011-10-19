@@ -143,39 +143,51 @@ int vmm_vserial_unregister_receiver(vmm_vserial_t * vser,
 	return VMM_OK;
 }
 
-int vmm_vserial_register(vmm_vserial_t * vser)
+vmm_vserial_t * vmm_vserial_alloc(const char * name,
+				  vmm_vserial_can_send_t can_send,
+				  vmm_vserial_send_t send,
+				  void * priv)
 {
 	bool found;
 	struct dlist *l;
-	vmm_vserial_t *vs;
+	vmm_vserial_t *vser;
 
-	if (!vser) {
-		return VMM_EFAIL;
+	if (!name) {
+		return NULL;
 	}
 
-	vs = NULL;
+	vser = NULL;
 	found = FALSE;
 	list_for_each(l, &vsctrl.vser_list) {
-		vs = list_entry(l, vmm_vserial_t, head);
-		if (vmm_strcmp(vs->name, vser->name) == 0) {
+		vser = list_entry(l, vmm_vserial_t, head);
+		if (vmm_strcmp(name, vser->name) == 0) {
 			found = TRUE;
 			break;
 		}
 	}
 
 	if (found) {
-		return VMM_EINVALID;
+		return NULL;
+	}
+
+	vser = vmm_malloc(sizeof(vmm_vserial_t));
+	if (!vser) {
+		return NULL;
 	}
 
 	INIT_LIST_HEAD(&vser->head);
+	vmm_strcpy(vser->name, name);
+	vser->can_send = can_send;
+	vser->send = send;
 	INIT_LIST_HEAD(&vser->receiver_list);
+	vser->priv = priv;
 
 	list_add_tail(&vsctrl.vser_list, &vser->head);
 
-	return VMM_OK;
+	return vser;
 }
 
-int vmm_vserial_unregister(vmm_vserial_t * vser)
+int vmm_vserial_free(vmm_vserial_t * vser)
 {
 	bool found;
 	struct dlist *l;
@@ -204,6 +216,8 @@ int vmm_vserial_unregister(vmm_vserial_t * vser)
 	}
 
 	list_del(&vs->head);
+
+	vmm_free(vs);
 
 	return VMM_OK;
 }

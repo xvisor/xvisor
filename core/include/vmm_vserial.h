@@ -69,11 +69,14 @@ int vmm_vserial_unregister_receiver(vmm_vserial_t * vser,
 				    vmm_vserial_recv_t recv,
 				    void * priv);
 
-/** Register a virtual serial port */
-int vmm_vserial_register(vmm_vserial_t * vser);
+/** Alloc a virtual serial port */
+vmm_vserial_t * vmm_vserial_alloc(const char * name,
+				  vmm_vserial_can_send_t can_send,
+				  vmm_vserial_send_t send,
+				  void * priv);
 
-/** Unregister a virtual serial port */
-int vmm_vserial_unregister(vmm_vserial_t * vser);
+/** Free a virtual serial port */
+int vmm_vserial_free(vmm_vserial_t * vser);
 
 /** Find a virtual serial port with given name */
 vmm_vserial_t * vmm_vserial_find(const char *name);
