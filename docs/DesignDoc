@@ -424,9 +424,7 @@ brief description of all possible states:
 A VCPU state change can occur from various locations such as architecture 
 specific code, some hypervisor thread, scheduler, some emulated device, etc. 
 Its not possible to describe all possible VCPU state transtion scenarios but, 
-the figures below can give a fair idea about it.
-
-The figure 3 below shows state transitions in a Normal VCPU.
+the figure 3 below can give a fair idea about it.
 
                                            +---------+
                                [Reset]     |         |      [Halt]     
@@ -452,14 +450,6 @@ The figure 3 below shows state transitions in a Normal VCPU.
                         |                                                  |
                         +--------------------------------------------------+
                                              [Reset]
-
-The figure 4 below shows state transitions in an Orphan VCPU.
-
-+---------+ [Create]  +---------+ [Scheduler] +---------+
-|         |---------->|         |------------>|         |
-| UNKNOWN |           |  READY  |             | RUNNING |
-|         |<----------|         |<------------|         |
-+---------+ [Destroy] +---------+ [Scheduler] +---------+
 
 
 	 	Chapter 5: Virtual CPU Interrupts
