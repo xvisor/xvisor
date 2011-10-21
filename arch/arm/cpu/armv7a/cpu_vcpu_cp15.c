@@ -34,7 +34,6 @@
 #include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
-#include <vmm_math.h>
 #include <cpu_mmu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
@@ -47,17 +46,14 @@ static int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu,
 				     cpu_page_t * p)
 {
 	int rc;
-	u32 victim;
+	u32 entry, victim, line;
 	cpu_vtlb_entry_t * e = NULL;
 
-	/* Add victim page to L1 page table */
-	if ((rc = cpu_mmu_map_page(vcpu->sregs->cp15.l1, p))) {
-		return rc;
-	}
-
 	/* Find out next victim entry from TLB */
-	victim = vcpu->sregs->cp15.vtlb.victim;
-	e = &vcpu->sregs->cp15.vtlb.table[victim];
+	line = (p->va & CPU_VCPU_VTLB_LINE_MASK) >> CPU_VCPU_VTLB_LINE_SHIFT;
+	victim = vcpu->sregs->cp15.vtlb.victim[line];
+	entry = victim + line * CPU_VCPU_VTLB_LINE_ENTRY_COUNT;
+	e = &vcpu->sregs->cp15.vtlb.table[entry];
 	if (e->valid) {
 		/* Remove valid victim page from L1 Page Table */
 		rc = cpu_mmu_unmap_page(vcpu->sregs->cp15.l1, &e->page);
@@ -67,13 +63,21 @@ static int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu,
 		e->valid = 0;
 	}
 
+	/* Add victim page to L1 page table */
+	if ((rc = cpu_mmu_map_page(vcpu->sregs->cp15.l1, p))) {
+		return rc;
+	}
+
 	/* Mark entry as valid */
 	vmm_memcpy(&e->page, p, sizeof(cpu_page_t));
 	e->valid = 1;
 
-	/* Point to next victim */
-	victim = vmm_umod32((victim + 1), vcpu->sregs->cp15.vtlb.count);
-	vcpu->sregs->cp15.vtlb.victim = victim;
+	/* Point to next victim of TLB line */
+	victim = victim + 1;
+	if (CPU_VCPU_VTLB_LINE_ENTRY_COUNT <= victim) {
+		victim = victim - CPU_VCPU_VTLB_LINE_ENTRY_COUNT;
+	}
+	vcpu->sregs->cp15.vtlb.victim[line] = victim;
 
 	return VMM_OK;
 }
@@ -82,10 +86,10 @@ static int cpu_vcpu_cp15_vtlb_update(vmm_vcpu_t * vcpu,
 static int cpu_vcpu_cp15_vtlb_flush(vmm_vcpu_t * vcpu)
 {
 	int rc;
-	u32 vtlb;
+	u32 vtlb, line;
 	cpu_vtlb_entry_t * e;
 
-	for (vtlb = 0; vtlb < vcpu->sregs->cp15.vtlb.count; vtlb++) {
+	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
 		if (vcpu->sregs->cp15.vtlb.table[vtlb].valid) {
 			e = &vcpu->sregs->cp15.vtlb.table[vtlb];
 			rc = cpu_mmu_unmap_page(vcpu->sregs->cp15.l1, 
@@ -97,6 +101,10 @@ static int cpu_vcpu_cp15_vtlb_flush(vmm_vcpu_t * vcpu)
 		}
 	}
 
+	for (line = 0; line < CPU_VCPU_VTLB_LINE_COUNT; line++) {
+		vcpu->sregs->cp15.vtlb.victim[line] = 0;
+	}
+
 	return VMM_OK;
 }
 
@@ -105,10 +113,12 @@ static int cpu_vcpu_cp15_vtlb_flush_va(vmm_vcpu_t * vcpu,
 				       virtual_addr_t va)
 {
 	int rc;
-	u32 vtlb;
+	u32 vtlb, line;
 	cpu_vtlb_entry_t * e;
 
-	for (vtlb = 0; vtlb < vcpu->sregs->cp15.vtlb.count; vtlb++) {
+	line = (va & CPU_VCPU_VTLB_LINE_MASK) >> CPU_VCPU_VTLB_LINE_SHIFT;
+	for (vtlb = line * CPU_VCPU_VTLB_LINE_ENTRY_COUNT; 
+	     vtlb < CPU_VCPU_VTLB_LINE_ENTRY_COUNT; vtlb++) {
 		if (vcpu->sregs->cp15.vtlb.table[vtlb].valid) {
 			e = &vcpu->sregs->cp15.vtlb.table[vtlb];
 			if (e->page.va <= va &&
@@ -1454,13 +1464,13 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 				(TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R * 2));
 		vcpu->sregs->cp15.dacr |= (TTBL_DOM_CLIENT << 
 				(TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
-		vtlb_count = CONFIG_ARMV7A_VTLB_ENTRY_COUNT;
-		vcpu->sregs->cp15.vtlb.count = vtlb_count;
+		vtlb_count = CPU_VCPU_VTLB_ENTRY_COUNT;
 		vcpu->sregs->cp15.vtlb.table = vmm_malloc(vtlb_count *
 						sizeof(cpu_vtlb_entry_t));
 		vmm_memset(vcpu->sregs->cp15.vtlb.table, 0, vtlb_count * 
 						sizeof(cpu_vtlb_entry_t));
-		vcpu->sregs->cp15.vtlb.victim = 0;
+		vmm_memset(&vcpu->sregs->cp15.vtlb.victim, 0, 
+					sizeof(vcpu->sregs->cp15.vtlb.victim));
 
 		if (read_sctlr() & SCTLR_V_MASK) {
 			vcpu->sregs->cp15.ovect_base = CPU_IRQ_HIGHVEC_BASE;
