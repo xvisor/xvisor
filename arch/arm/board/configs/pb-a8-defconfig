@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Sun Oct 16 23:04:17 2011
+# Fri Oct 21 11:27:51 2011
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
@@ -19,7 +19,6 @@ CONFIG_ARMV7A=y
 # ARMv7a Options
 #
 # CONFIG_ARMV7A_HIGHVEC is not set
-CONFIG_ARMV7A_VTLB_ENTRY_COUNT=64
 CONFIG_BOARD_PB_A8=y
 CONFIG_REALVIEW=y
 CONFIG_EMU_REALVIEW=y
