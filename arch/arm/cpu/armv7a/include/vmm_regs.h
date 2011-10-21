@@ -100,8 +100,7 @@ typedef struct cpu_vtlb_entry cpu_vtlb_entry_t;
 
 struct cpu_vtlb {
 	cpu_vtlb_entry_t * table;
-	u32 victim;
-	u32 count;
+	u32 victim[CPU_VCPU_VTLB_LINE_COUNT];
 };
 
 typedef struct cpu_vtlb cpu_vtlb_t;

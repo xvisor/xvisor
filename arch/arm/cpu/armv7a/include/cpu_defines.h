@@ -24,6 +24,13 @@
 #ifndef __CPU_DEFINES_H__
 #define __CPU_DEFINES_H__
 
+/* Maximum allowed VTLB entries */
+#define CPU_VCPU_VTLB_LINE_MASK				0x00000000
+#define CPU_VCPU_VTLB_LINE_SHIFT			0
+#define CPU_VCPU_VTLB_LINE_COUNT			1
+#define CPU_VCPU_VTLB_LINE_ENTRY_COUNT			128
+#define CPU_VCPU_VTLB_ENTRY_COUNT			128
+
 /* Coprocessor related macros & defines */
 #define CPU_COPROC_COUNT				16
 
