@@ -489,6 +489,10 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 	if (!done) {
 		done = 1;
 		switch (offset >> 8) {
+		case 0x1: /* Reserved */
+		case 0x2: /* Reserved */
+		case 0x3: /* Reserved */
+			break;
 		case 0x4: /* Priority */
 			irq = offset - 0x400;
 			if (GIC_NUM_IRQ(s) <= irq) {
