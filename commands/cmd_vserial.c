@@ -46,11 +46,45 @@ void cmd_vserial_usage(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "   vserial list\n");
 }
 
+struct cmd_vserial_recvcntx {
+	const char * name;
+	u32 chpos;
+	vmm_chardev_t *cdev;
+};
+
+typedef struct cmd_vserial_recvcntx cmd_vserial_recvcntx_t;
+
+void cmd_vserial_recv(vmm_vserial_t *vser, void * priv, u8 ch)
+{
+	cmd_vserial_recvcntx_t * recvcntx;
+	recvcntx = (cmd_vserial_recvcntx_t *)priv;
+	if (!recvcntx) {
+		return;
+	}
+	if (ch == '\n') {
+		vmm_cputc(recvcntx->cdev, ch);
+		vmm_cprintf(recvcntx->cdev, "[%s] ", recvcntx->name);
+		recvcntx->chpos = 0;
+	} else if (ch == '\r') {
+		while (recvcntx->chpos) {
+			vmm_cputc(recvcntx->cdev, '\e');
+			vmm_cputc(recvcntx->cdev, '[');
+			vmm_cputc(recvcntx->cdev, 'D');
+			recvcntx->chpos--;
+		}
+	} else {
+		vmm_cputc(recvcntx->cdev, ch);
+		recvcntx->chpos++;
+	}
+}
+
 int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 {
-	u32 ite, epos = 0, chpos = 0;
+	int rc = VMM_OK;
+	u32 ite, epos = 0;
 	char ch, estr[3] = {'\e', 'x', 'q'}; /* estr is escape string. */
 	vmm_vserial_t *vser = vmm_vserial_find(name);
+	cmd_vserial_recvcntx_t recvcntx;
 
 	if (!vser) {
 		vmm_cprintf(cdev, "Failed to find virtual serial port\n");
@@ -59,26 +93,17 @@ int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 
 	vmm_cprintf(cdev, "[%s] ", name);
 
+	recvcntx.name = name;
+	recvcntx.chpos = 0;
+	recvcntx.cdev = cdev;
+
+	rc = vmm_vserial_register_receiver(vser, &cmd_vserial_recv, &recvcntx);
+	if (rc) {
+		return rc;
+	}
+
 	epos = 0;
-	chpos = 0;
 	while(1) {
-		while (vmm_vserial_receive(vser, (u8 *)&ch, 1)) {
-			if (ch == '\n') {
-				vmm_putc(ch);
-				vmm_cprintf(cdev, "[%s] ", name);
-				chpos = 0;
-			} else if (ch == '\r') {
-				while (chpos) {
-					vmm_putc('\e');
-					vmm_putc('[');
-					vmm_putc('D');
-					chpos--;
-				}
-			} else {
-				vmm_putc(ch);
-				chpos++;
-			}
-		}
 		if (!vmm_scanchar(NULL, cdev, &ch, FALSE)) {
 			if (epos < sizeof(estr)) {
 				if (estr[epos] == ch) {
@@ -99,6 +124,11 @@ int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 	}
 
 	vmm_cprintf(cdev, "\n");
+
+	rc = vmm_vserial_unregister_receiver(vser, &cmd_vserial_recv, &recvcntx);
+	if (rc) {
+		return rc;
+	}
 
 	return VMM_OK;
 }

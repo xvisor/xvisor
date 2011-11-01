@@ -20,8 +20,19 @@
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Realview Sysctl emulator.
+ * @details This source file implements the Realview Sysctl emulator.
+ *
+ * The source has been largely adapted from QEMU 0.14.xx hw/arm_sysctl.c 
+ *
+ * Status and system control registers for ARM RealView/Versatile boards.
+ *
+ * Copyright (c) 2006-2007 CodeSourcery.
+ * Written by Paul Brook
+ *
+ * The original code is licensed under the GPL.
  */
 
+#include <vmm_math.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
@@ -98,7 +109,8 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		regval = 0;
 		break;
 	case 0x24: /* 100HZ */
-		regval = (vmm_timer_timestamp() - s->ref_100hz) / 10000000;
+		regval = vmm_udiv64((vmm_timer_timestamp() - s->ref_100hz), 
+								10000000);
 		break;
 	case 0x28: /* CFGDATA1 */
 		regval = s->cfgdata1;
@@ -139,7 +151,7 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		regval = 0;
 		break;
 	case 0x5c: /* 24MHz */
-		regval = ((vmm_timer_timestamp() - s->ref_24mhz) / 1000) * 24;
+		regval = vmm_udiv64((vmm_timer_timestamp() - s->ref_24mhz), 1000) * 24;
 		break;
 	case 0x60: /* MISC */
 		regval = 0;
@@ -378,7 +390,7 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 #if 0 /* QEMU checks bit 8 which is wrong */
 	if (s->resetlevel & 0x100) {
 #else
-	if (s->resetlevel & 0x01) {
+	if (s->resetlevel & 0x04) {
 #endif
 		vmm_manager_guest_reset(s->guest);
 		vmm_manager_guest_kick(s->guest);

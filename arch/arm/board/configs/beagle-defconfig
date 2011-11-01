@@ -2,12 +2,11 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Tue Oct 11 15:08:49 2011
+# Fri Oct 21 11:30:17 2011
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 CONFIG_ARCH="arm"
-CROSS_COMPILE="arm-none-eabi-"
 CONFIG_CPU="armv7a"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
@@ -20,7 +19,6 @@ CONFIG_ARMV7A=y
 # ARMv7a Options
 #
 # CONFIG_ARMV7A_HIGHVEC is not set
-CONFIG_ARMV7A_VTLB_ENTRY_COUNT=64
 # CONFIG_BOARD_PB_A8 is not set
 CONFIG_BOARD_BEAGLE=y
 CONFIG_OMAP3=y

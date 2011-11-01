@@ -64,7 +64,7 @@ void cmd_guest_list(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	vmm_cprintf(cdev, "| %-5s| %-16s| %-52s|\n", 
-			 "Num", "Name", "Device Path");
+			 "ID ", "Name", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	count = vmm_manager_guest_count();

@@ -1,0 +1,33 @@
+
+		High-Priority Features (For version 0.1.1)
+
+ * Add support for routing of host irq to guest irq based on device tree 
+   configuration. This will allow us to implement pass-through hardware 
+   access for guest using device tree configuration.
+ * Add support for sleep in scheduler. 
+ * Add support for waitqueues along with a test suite. This will use sleep 
+   support of scheduler.
+ * Add support for completion, semaphore, and mutex locking mechanisms along 
+   with a test suite for each. This will use sleep support of scheduler.
+ * Update character driver to support interrupt driven using completion locks.
+   This will greatly increase our performance in guest.
+ * Upgrade scheduler to prioritized round-robin from simple round-robin
+
+
+		Medium-Priority Features (For version 0.2.0)
+
+ * Add support for bottom halves like workqueues for device drivers
+ * Add support for real-time clock virtualization
+
+
+		Low-Priority Features (Wishlist)
+
+ * Add support for SMP systems
+ * Add support for frame buffer virtualization
+ * Add support for input device (mouse/keyboard) virtualization
+ * Add support for block device virtualization
+ * Add support for network switch virtualization
+ * Add support for telnet daemon
+ * Add support for libvirt tools
+ * Bla Bla Bla .... All the fancy stuff required in a hypervisor
+

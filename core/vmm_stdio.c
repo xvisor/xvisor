@@ -23,6 +23,7 @@
  */
 
 #include <stdarg.h>
+#include <vmm_math.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_main.h>
@@ -87,6 +88,14 @@ void vmm_putc(char ch)
 		vmm_printchar(NULL, NULL, '\r', TRUE);
 	}
 	vmm_printchar(NULL, NULL, ch, TRUE);
+}
+
+void vmm_cputc(vmm_chardev_t *cdev, char ch)
+{
+	if (ch == '\n') {
+		vmm_printchar(NULL, cdev, '\r', TRUE);
+	}
+	vmm_printchar(NULL, cdev, ch, TRUE);
 }
 
 static void printc(char **str, vmm_chardev_t *cdev, char ch)
@@ -157,11 +166,11 @@ static int printi(char **out, vmm_chardev_t *cdev,
 	*s = '\0';
 
 	while (u) {
-		t = u % b;
+		t = vmm_umod32(u, b);
 		if (t >= 10)
 			t += letbase - '0' - 10;
 		*--s = t + '0';
-		u /= b;
+		u = vmm_udiv32(u, b);
 	}
 
 	if (neg) {

@@ -53,39 +53,49 @@ u32 vmm_vserial_send(vmm_vserial_t * vser, u8 *src, u32 len)
 u32 vmm_vserial_receive(vmm_vserial_t * vser, u8 *dst, u32 len)
 {
 	u32 i;
+	struct dlist * l;
+	vmm_vserial_receiver_t * receiver;
 
 	if (!vser || !dst) {
 		return 0;
 	}
-	if (!vser->can_recv || !vser->recv) {
-		return 0;
+
+	if (list_empty(&vser->receiver_list)) {
+		for (i = 0; i < len ; i++) {
+			vmm_ringbuf_enqueue(vser->receive_buf, &dst[i], TRUE);
+		}
+
+		return i;
 	}
 
 	for (i = 0; i < len ; i++) {
-		if (!vser->can_recv(vser)) {
-			break;
+		list_for_each(l, &vser->receiver_list) {
+			receiver = list_entry(l, vmm_vserial_receiver_t, head);
+			receiver->recv(vser, receiver->priv, dst[i]);
 		}
-		vser->recv(vser, &dst[i]);
 	}
 
 	return i;
 }
 
-int vmm_vserial_register(vmm_vserial_t * vser)
+int vmm_vserial_register_receiver(vmm_vserial_t * vser, 
+				  vmm_vserial_recv_t recv, 
+				  void * priv)
 {
+	u8 chval;
 	bool found;
 	struct dlist *l;
-	vmm_vserial_t *vs;
+	vmm_vserial_receiver_t * receiver;
 
-	if (!vser) {
+	if (!vser || !recv) {
 		return VMM_EFAIL;
 	}
 
-	vs = NULL;
+	receiver = NULL;
 	found = FALSE;
-	list_for_each(l, &vsctrl.vser_list) {
-		vs = list_entry(l, vmm_vserial_t, head);
-		if (vmm_strcmp(vs->name, vser->name) == 0) {
+	list_for_each(l, &vser->receiver_list) {
+		receiver = list_entry(l, vmm_vserial_receiver_t, head);
+		if ((receiver->recv == recv) && (receiver->priv == priv)) {
 			found = TRUE;
 			break;
 		}
@@ -95,14 +105,115 @@ int vmm_vserial_register(vmm_vserial_t * vser)
 		return VMM_EINVALID;
 	}
 
-	INIT_LIST_HEAD(&vser->head);
+	receiver = vmm_malloc(sizeof(vmm_vserial_receiver_t));
+	if (!receiver) {
+		return VMM_EFAIL;
+	}
 
-	list_add_tail(&vsctrl.vser_list, &vser->head);
+	INIT_LIST_HEAD(&receiver->head);
+	receiver->recv = recv;
+	receiver->priv = priv;
+
+	list_add_tail(&vser->receiver_list, &receiver->head);
+
+	while (!vmm_ringbuf_isempty(vser->receive_buf)) {
+		if (!vmm_ringbuf_dequeue(vser->receive_buf, &chval)) {
+			break;
+		}
+		list_for_each(l, &vser->receiver_list) {
+			receiver = list_entry(l, vmm_vserial_receiver_t, head);
+			receiver->recv(vser, receiver->priv, chval);
+		}
+	}
 
 	return VMM_OK;
 }
 
-int vmm_vserial_unregister(vmm_vserial_t * vser)
+int vmm_vserial_unregister_receiver(vmm_vserial_t * vser, 
+				    vmm_vserial_recv_t recv, 
+				    void * priv)
+{
+	bool found;
+	struct dlist *l;
+	vmm_vserial_receiver_t * receiver;
+
+	if (!vser || !recv) {
+		return VMM_EFAIL;
+	}
+
+	receiver = NULL;
+	found = FALSE;
+	list_for_each(l, &vser->receiver_list) {
+		receiver = list_entry(l, vmm_vserial_receiver_t, head);
+		if ((receiver->recv == recv) && (receiver->priv == priv)) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
+		return VMM_EINVALID;
+	}
+
+	list_del(&receiver->head);
+
+	vmm_free(receiver);
+
+	return VMM_OK;
+}
+
+vmm_vserial_t * vmm_vserial_alloc(const char * name,
+				  vmm_vserial_can_send_t can_send,
+				  vmm_vserial_send_t send,
+				  u32 receive_buf_size,
+				  void * priv)
+{
+	bool found;
+	struct dlist *l;
+	vmm_vserial_t *vser;
+
+	if (!name) {
+		return NULL;
+	}
+
+	vser = NULL;
+	found = FALSE;
+	list_for_each(l, &vsctrl.vser_list) {
+		vser = list_entry(l, vmm_vserial_t, head);
+		if (vmm_strcmp(name, vser->name) == 0) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (found) {
+		return NULL;
+	}
+
+	vser = vmm_malloc(sizeof(vmm_vserial_t));
+	if (!vser) {
+		return NULL;
+	}
+
+	vser->receive_buf = vmm_ringbuf_alloc(1, receive_buf_size);
+	if (!(vser->receive_buf)) {
+		vmm_free(vser);
+		return NULL;
+	}
+
+	INIT_LIST_HEAD(&vser->head);
+	vmm_strcpy(vser->name, name);
+	vser->can_send = can_send;
+	vser->send = send;
+	INIT_LIST_HEAD(&vser->receiver_list);
+	vser->priv = priv;
+
+	list_add_tail(&vsctrl.vser_list, &vser->head);
+
+	return vser;
+}
+
+int vmm_vserial_free(vmm_vserial_t * vser)
 {
 	bool found;
 	struct dlist *l;
@@ -131,6 +242,9 @@ int vmm_vserial_unregister(vmm_vserial_t * vser)
 	}
 
 	list_del(&vs->head);
+
+	vmm_ringbuf_free(vs->receive_buf);
+	vmm_free(vs);
 
 	return VMM_OK;
 }

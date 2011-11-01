@@ -1,0 +1,27 @@
+diff -Naur linux-3.0.4-orig/arch/arm/mach-realview/realview_pba8.c linux-3.0.4/arch/arm/mach-realview/realview_pba8.c
+--- linux-3.0.4-orig/arch/arm/mach-realview/realview_pba8.c	2011-08-30 02:26:30.000000000 +0530
++++ linux-3.0.4/arch/arm/mach-realview/realview_pba8.c	2011-10-17 13:47:17.000000000 +0530
+@@ -173,12 +173,12 @@
+ AMBA_DEVICE(dmac,	"issp:dmac",	DMAC,		NULL);
+ 
+ static struct amba_device *amba_devs[] __initdata = {
+-	&dmac_device,
++/*	&dmac_device, */
+ 	&uart0_device,
+ 	&uart1_device,
+ 	&uart2_device,
+ 	&uart3_device,
+-	&smc_device,
++/*	&smc_device,
+ 	&clcd_device,
+ 	&sctl_device,
+ 	&wdog_device,
+@@ -191,7 +191,7 @@
+ 	&aaci_device,
+ 	&mmc0_device,
+ 	&kmi0_device,
+-	&kmi1_device,
++	&kmi1_device,*/
+ };
+ 
+ /*

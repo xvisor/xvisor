@@ -75,6 +75,7 @@ bool vmm_ringbuf_isempty(vmm_ringbuf_t *rb)
 
 bool vmm_ringbuf_isfull(vmm_ringbuf_t *rb)
 {
+	u32 write_pos_mod;
 	bool isfull;
 
 	if (!rb) {
@@ -83,7 +84,11 @@ bool vmm_ringbuf_isfull(vmm_ringbuf_t *rb)
 
 	vmm_spin_lock(&rb->lock);
 
-	isfull = (rb->read_pos == ((rb->write_pos + 1) % rb->key_count));
+	write_pos_mod = (rb->write_pos + 1);
+	if (rb->key_count <= write_pos_mod) {
+		write_pos_mod -= rb->key_count;
+	}
+	isfull = (rb->read_pos == write_pos_mod);
 
 	vmm_spin_unlock(&rb->lock);
 
@@ -92,6 +97,7 @@ bool vmm_ringbuf_isfull(vmm_ringbuf_t *rb)
 
 bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
 {
+	u32 read_pos_mod, write_pos_mod;
 	bool isfull, update;
 
 	if (!rb || !srckey) {
@@ -100,11 +106,19 @@ bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
 
 	vmm_spin_lock(&rb->lock);
 
-	isfull = (rb->read_pos == ((rb->write_pos + 1) % rb->key_count));
+	read_pos_mod = (rb->read_pos + 1);
+	if (rb->key_count <= read_pos_mod) {
+		read_pos_mod -= rb->key_count;
+	}
+	write_pos_mod = (rb->write_pos + 1);
+	if (rb->key_count <= write_pos_mod) {
+		write_pos_mod -= rb->key_count;
+	}
+	isfull = (rb->read_pos == write_pos_mod);
 	update = FALSE;
 	if (overwrite) {
 		if (isfull) {
-			rb->read_pos = (rb->read_pos + 1) % rb->key_count;
+			rb->read_pos = read_pos_mod;
 			rb->avail_count--;
 		}
 		update = TRUE;
@@ -133,7 +147,7 @@ bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
 				   rb->key_size);
 			break;
 		};
-		rb->write_pos = (rb->write_pos + 1) % rb->key_count;
+		rb->write_pos = write_pos_mod;
 		rb->avail_count++;
 	}
 
@@ -144,6 +158,7 @@ bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
 
 bool vmm_ringbuf_dequeue(vmm_ringbuf_t *rb, void *dstkey)
 {
+	u32 read_pos_mod;
 	bool isempty;
 
 	if (!rb || !dstkey) {
@@ -174,7 +189,11 @@ bool vmm_ringbuf_dequeue(vmm_ringbuf_t *rb, void *dstkey)
 				   rb->key_size);
 			break;
 		};
-		rb->read_pos = (rb->read_pos + 1) % rb->key_count;
+		read_pos_mod = (rb->read_pos + 1);
+		if (rb->key_count <= read_pos_mod) {
+			read_pos_mod -= rb->key_count;
+		}
+		rb->read_pos = read_pos_mod;
 		rb->avail_count--;
 	}
 
@@ -188,10 +207,17 @@ bool vmm_ringbuf_getkey(vmm_ringbuf_t *rb, u32 index, void *dstkey)
 	if (!rb || !dstkey) {
 		return FALSE;
 	}
+
+	if (rb->key_count <= index) {
+		return FALSE;
+	}
 	
 	vmm_spin_lock(&rb->lock);
 
-	index = (index + rb->read_pos) % rb->key_count;
+	index = (rb->read_pos + index);
+	if (rb->key_count <= index) {
+		index -= rb->key_count;
+	}
 	switch(rb->key_size) {
 	case 1:
 		*((u8 *)dstkey) =

@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_host_io.h>
+#include <vmm_math.h>
 #include <realview_config.h>
 #include <realview/plat.h>
 #include <realview/timer.h>
@@ -63,7 +64,7 @@ int realview_timer_event_start(virtual_addr_t base, u64 nsecs)
 	u32 ctrl, usecs;
 
 	/* Expected microseconds */
-	usecs = nsecs / 1000;
+	usecs = vmm_udiv64(nsecs, 1000);
 	if (!usecs) {
 		usecs = 1;
 	}

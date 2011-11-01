@@ -19,9 +19,20 @@
  * @file sp804.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for SP804 Dual-Mode Timer.
+ * @brief SP804 Dual-Mode Timer Emulator.
+ * @details This source file implements the SP804 Dual-Mode Timer emulator.
+ *
+ * The source has been largely adapted from QEMU 0.14.xx hw/arm_timer.c 
+ *
+ * ARM PrimeCell Timer modules.
+ *
+ * Copyright (c) 2005-2006 CodeSourcery.
+ * Written by Paul Brook
+ *
+ * The original code is licensed under the GPL.
  */
 
+#include <vmm_math.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
@@ -105,7 +116,7 @@ static void sp804_timer_syncvalue(struct sp804_timer *t, bool clear_irq)
 		};
 		if (t->control & TIMER_CTRL_IE) {
 			nsecs = t->limit;
-			nsecs = (nsecs * 1000000000) / freq;
+			nsecs = vmm_udiv64((nsecs * 1000000000), freq);
 			vmm_timer_event_start(t->event, nsecs);
 		}
 	}
@@ -130,20 +141,22 @@ static u32 sp804_timer_currvalue(struct sp804_timer *t)
 			break;
 		};
 		if (freq == 1000000) {
-			cval = (vmm_timer_timestamp() - 
-				t->value_tstamp) / 1000;
+			cval = vmm_udiv64((vmm_timer_timestamp() - 
+					t->value_tstamp), 1000);
 		} else if (freq == 1000000000) {
 			cval = (vmm_timer_timestamp() - 
-				t->value_tstamp);
+					t->value_tstamp);
 		} else if (freq < 1000000000) {
-			cval = (vmm_timer_timestamp() - 
-				t->value_tstamp) / (1000000000 / freq);
+			cval = vmm_udiv32(1000000000, freq);
+			cval = vmm_udiv64((vmm_timer_timestamp() - 
+					t->value_tstamp), cval);
 		} else {
+			cval = vmm_udiv32(freq, 1000000000);
 			cval = (vmm_timer_timestamp() - 
-				t->value_tstamp) * (freq / 1000000000);
+					t->value_tstamp) * cval;
 		}
 		if (t->control & TIMER_CTRL_PERIODIC) {
-			ret = cval % t->value;
+			ret = vmm_umod64(cval, t->value);
 			ret = t->value - ret;
 		} else {
 			if (t->value < cval) {
@@ -418,12 +431,16 @@ static int sp804_emulator_probe(vmm_guest_t *guest,
 
 	/* ??? The timers are actually configurable between 32kHz and 1MHz, 
 	 * but we don't implement that.  */
-	vmm_strcpy(tname, edev->node->name);
+	vmm_strcpy(tname, guest->node->name);
+	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPRATOR_STRING);
+	vmm_strcat(tname, edev->node->name);
 	vmm_strcat(tname, "(0)");
 	if ((rc = sp804_timer_init(&s->t[0], tname, guest, 1000000, irq))) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
-	vmm_strcpy(tname, edev->node->name);
+	vmm_strcpy(tname, guest->node->name);
+	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPRATOR_STRING);
+	vmm_strcat(tname, edev->node->name);
 	vmm_strcat(tname, "(1)");
 	if ((rc = sp804_timer_init(&s->t[1], tname, guest, 1000000, irq))) {
 		goto sp804_emulator_probe_freestate_fail;

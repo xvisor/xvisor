@@ -27,6 +27,7 @@
 #include <vmm_error.h>
 #include <vmm_timer.h>
 #include <vmm_host_aspace.h>
+#include <vmm_math.h>
 #include <pba8_board.h>
 #include <realview/timer.h>
 
@@ -49,8 +50,8 @@ u32 vmm_cpu_clocksource_mult(void)
 {
 	u32 khz = 1000;
 	u64 tmp = ((u64)1000000) << 20;
-	tmp += khz / 2;
-	tmp = tmp / khz;
+	tmp += khz >> 1;
+	tmp = vmm_udiv64(tmp, khz);
 	return (u32)tmp;
 }
 

@@ -19,7 +19,18 @@
  * @file gic.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief Realview GIC (Generic Interrupt Controller) emulator.
+ * @brief Realview GIC (Generic Interrupt Controller) Emulator.
+ * @details This source file implements the Realview GIC (Generic Interrupt
+ * Controller) emulator.
+ *
+ * The source has been largely adapted from QEMU 0.14.xx hw/arm_gic.c
+ * 
+ * ARM Generic/Distributed Interrupt Controller. 
+ *
+ * Copyright (c) 2006-2007 CodeSourcery.
+ * Written by Paul Brook
+ *
+ * The original code is licensed under the GPL.
  */
 
 #include <vmm_error.h>
@@ -478,6 +489,10 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 	if (!done) {
 		done = 1;
 		switch (offset >> 8) {
+		case 0x1: /* Reserved */
+		case 0x2: /* Reserved */
+		case 0x3: /* Reserved */
+			break;
 		case 0x4: /* Priority */
 			irq = offset - 0x400;
 			if (GIC_NUM_IRQ(s) <= irq) {
