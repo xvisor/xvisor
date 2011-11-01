@@ -33,6 +33,7 @@
 
 /** cpu specific types */
 typedef unsigned long long u64;
+typedef long long s64;
 typedef unsigned int irq_flags_t;
 typedef unsigned int virtual_addr_t;
 typedef unsigned int virtual_size_t;

@@ -23,8 +23,6 @@
 #ifndef __CPU_MMU_H_
 #define __CPU_MMU_H_
 
-#define MAX_HOST_TLB_ENTRIES 	6
-
 #define PAGE_SHIFT		12
 #define PAGE_SIZE		(0x01UL << PAGE_SHIFT)
 #define PAGE_MASK		~(PAGE_SIZE - 1)
@@ -120,16 +118,42 @@ typedef struct mips32_tlb_entry {
 	mips32_entryhi_t entryhi;
 } mips32_tlb_entry_t;
 
-struct host_tlb_entries_info {
+#define BITS_PER_PGD		10
+#define NUM_PGD_ENTRIES		(0x01UL << BITS_PER_PGD)
+#define PGD_MASK		(NUM_PGD_ENTRIES - 1)
+#define PGD_SHIFT		22
+
+#define BITS_PER_PTAB		10
+#define PTAB_SHIFT		12
+#define NUM_PTAB_ENTRIES	(0x01UL << BITS_PER_PTAB)
+#define PTAB_MASK		(NUM_PTAB_ENTRIES - 1)
+
+/*
+ * 8 MB of initial mapping. Rest will be dynamically
+ * allocated after heap is initialized.
+ */
+#define PG_TABLE_INIT_MAP_SZ	(8 * 1024 * 1024)
+
+typedef u32 pgd_t;
+typedef u32 ptab_t;
+
+/* Page flags */
+#define PAGE_MAPPED		(0x01UL << 0)
+#define PAGE_GLOBAL_MAPPED	(0x01UL << 1)
+
+typedef struct pte {
 	virtual_addr_t vaddr;
 	physical_addr_t paddr;
-	s32 free;
-	s32 tlb_index;
-} host_tlb_entries[MAX_HOST_TLB_ENTRIES];
+	u32 flags;
+	u32 reserved;
+} __attribute__((packed)) pte_t;
+
+pte_t *vmm_cpu_va2pte(virtual_addr_t vaddr);
 
 void mips_fill_tlb_entry(mips32_tlb_entry_t *tlb_entry, int index);
 u32 do_tlbmiss(struct vmm_user_regs *uregs);
 int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa);
+pte_t *vmm_cpu_va2pte(virtual_addr_t vaddr);
 
 #endif /* ! __ASSEMBLY__ */
 

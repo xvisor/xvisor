@@ -45,16 +45,6 @@ static inline virtual_size_t vmm_modtbl_size(void)
 	return (virtual_size_t) (&_modtbl_end - &_modtbl_start);
 }
 
-static inline virtual_addr_t vmm_code_vaddr(void)
-{
-	return (virtual_addr_t) &_code_start;
-}
-
-static inline physical_addr_t vmm_code_paddr(void)
-{
-	return ((physical_addr_t) 0);
-}
-
 static inline virtual_size_t vmm_code_size(void)
 {
 	return (virtual_size_t) (&_code_end - &_code_start);
