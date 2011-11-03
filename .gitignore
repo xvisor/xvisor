@@ -7,7 +7,6 @@
 *.bin
 *.lnk
 *.dis
-*.txt
 gdbinit0
 gdbinit1
 build/
