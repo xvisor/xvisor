@@ -455,7 +455,6 @@ void buddy_free(void *ptr)
 void buddy_print_state(vmm_chardev_t *cdev)
 {
 	int idx = 0;
-	struct vmm_free_area *varea;
 	struct vmm_alloced_area *valloced;
 	struct dlist *pos;
 	int bfree = 0, balloced = 0;
@@ -465,7 +464,6 @@ void buddy_print_state(vmm_chardev_t *cdev)
 	for (idx = 0; idx < BINS_MAX_ORDER; idx++) {
 		vmm_cprintf(cdev, "[BLOCK 0x%4X]: ", MIN_BLOCK_SIZE << idx);
 		list_for_each(pos, &buddy_heap.free_area[idx].head) {
-			varea = list_entry(pos, struct vmm_free_area, head);
 			bfree++;
 		}
 		list_for_each(pos, &buddy_heap.current.head) {
