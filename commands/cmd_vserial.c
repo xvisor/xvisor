@@ -82,7 +82,8 @@ int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 {
 	int rc = VMM_OK;
 	u32 ite, epos = 0;
-	char ch, estr[3] = {'\e', 'x', 'q'}; /* estr is escape string. */
+	char ch;
+	static const char estr[3] = {'\e', 'x', 'q'}; /* estr is escape string. */
 	vmm_vserial_t *vser = vmm_vserial_find(name);
 	cmd_vserial_recvcntx_t recvcntx;
 
