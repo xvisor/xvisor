@@ -35,6 +35,7 @@ struct vmm_host_irqs_ctrl {
 	u32 irq_count;
 	bool *enabled;
 	vmm_host_irq_handler_t *handler;
+	void **dev;
 };
 
 typedef struct vmm_host_irqs_ctrl vmm_host_irqs_ctrl_t;
@@ -50,8 +51,8 @@ int vmm_host_irq_exec(u32 cpu_irq_no, vmm_user_regs_t * regs)
 		    hirqctrl.enabled[host_irq_no]) {
 			cond = vmm_pic_pre_condition(host_irq_no);
 			if (!cond) {
-				hirqctrl.handler[host_irq_no] (host_irq_no,
-							       regs);
+				hirqctrl.handler[host_irq_no] (host_irq_no, 
+					   regs, hirqctrl.dev[host_irq_no]);
 				cond = vmm_pic_post_condition(host_irq_no);
 			}
 			return cond;
@@ -90,12 +91,15 @@ int vmm_host_irq_disable(u32 host_irq_no)
 	return VMM_EFAIL;
 }
 
-int vmm_host_irq_register(u32 host_irq_no, vmm_host_irq_handler_t handler)
+int vmm_host_irq_register(u32 host_irq_no, 
+			  vmm_host_irq_handler_t handler,
+			  void *dev)
 {
 	if (host_irq_no < hirqctrl.irq_count) {
 		if (hirqctrl.handler[host_irq_no] == NULL) {
 			vmm_spin_lock(&hirqctrl.lock);
 			hirqctrl.handler[host_irq_no] = handler;
+			hirqctrl.dev[host_irq_no] = dev;
 			vmm_spin_unlock(&hirqctrl.lock);
 			return vmm_host_irq_enable(host_irq_no);
 		}
@@ -129,9 +133,13 @@ int vmm_host_irq_init(void)
 	hirqctrl.handler = vmm_malloc(sizeof(vmm_host_irq_handler_t) * 
 					hirqctrl.irq_count);
 
+	/* Allocate memory for dev array */
+	hirqctrl.dev = vmm_malloc(sizeof(void *) * hirqctrl.irq_count);
+
 	/* Reset the handler array */
 	for (ite = 0; ite < hirqctrl.irq_count; ite++) {
 		hirqctrl.handler[ite] = NULL;
+		hirqctrl.dev[ite] = NULL;
 	}
 
 	/* Initialize board specific PIC */
