@@ -28,6 +28,7 @@
 #include <vmm_cpu.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
+#include <vmm_scheduler.h>
 #include <vmm_manager.h>
 
 vmm_manager_ctrl_t mngr;
@@ -50,88 +51,80 @@ vmm_vcpu_t * vmm_manager_vcpu(u32 vcpu_id)
 	return NULL;
 }
 
-int vmm_manager_vcpu_reset(vmm_vcpu_t * vcpu)
+static int vmm_manager_vcpu_state_change(vmm_vcpu_t *vcpu, u32 new_state)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
-	if (vcpu) {
-		flags = vmm_spin_lock_irqsave(&vcpu->lock);
+
+	if(!vcpu) {
+		return rc;
+	}
+
+	flags = vmm_spin_lock_irqsave(&vcpu->lock);
+	switch(new_state) {
+	case VMM_VCPU_STATE_RESET:
 		if ((vcpu->state != VMM_VCPU_STATE_RESET) &&
 		    (vcpu->state != VMM_VCPU_STATE_UNKNOWN)) {
+			rc = vmm_scheduler_notify_state_change(vcpu,new_state);
 			vcpu->state = VMM_VCPU_STATE_RESET;
 			vcpu->reset_count++;
 			if ((rc = vmm_vcpu_regs_init(vcpu))) {
-				return rc;
+				break;
 			}
 			if ((rc = vmm_vcpu_irq_init(vcpu))) {
-				return rc;
+				break;
 			}
 		}
-		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
-	}
+		break;
+	case VMM_VCPU_STATE_READY:
+		if ((vcpu->state == VMM_VCPU_STATE_RESET) ||
+		    (vcpu->state == VMM_VCPU_STATE_PAUSED)) {
+			rc = vmm_scheduler_notify_state_change(vcpu,new_state);
+			vcpu->state = VMM_VCPU_STATE_READY;
+		}
+		break;
+	case VMM_VCPU_STATE_PAUSED:
+		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
+		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
+			rc = vmm_scheduler_notify_state_change(vcpu,new_state);
+			vcpu->state = VMM_VCPU_STATE_PAUSED;
+		}
+		break;
+	case VMM_VCPU_STATE_HALTED:
+		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
+		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
+			rc = vmm_scheduler_notify_state_change(vcpu,new_state);
+			vcpu->state = VMM_VCPU_STATE_HALTED;
+		}
+		break;
+	};
+	vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
 	return rc;
+ }
+
+int vmm_manager_vcpu_reset(vmm_vcpu_t * vcpu)
+{
+	return vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_RESET);
 }
 
 int vmm_manager_vcpu_kick(vmm_vcpu_t * vcpu)
 {
-	int rc = VMM_EFAIL;
-	irq_flags_t flags;
-	if (vcpu) {
-		flags = vmm_spin_lock_irqsave(&vcpu->lock);
-		if (vcpu->state == VMM_VCPU_STATE_RESET) {
-			vcpu->state = VMM_VCPU_STATE_READY;
-			rc = VMM_OK;
-		}
-		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
-	}
-	return rc;
+	return vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_READY);
 }
 
 int vmm_manager_vcpu_pause(vmm_vcpu_t * vcpu)
 {
-	int rc = VMM_EFAIL;
-	irq_flags_t flags;
-	if (vcpu) {
-		flags = vmm_spin_lock_irqsave(&vcpu->lock);
-		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
-		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
-			vcpu->state = VMM_VCPU_STATE_PAUSED;
-			rc = VMM_OK;
-		}
-		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
-	}
-	return rc;
+	return vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_PAUSED);
 }
 
 int vmm_manager_vcpu_resume(vmm_vcpu_t * vcpu)
 {
-	int rc = VMM_EFAIL;
-	irq_flags_t flags;
-	if (vcpu) {
-		flags = vmm_spin_lock_irqsave(&vcpu->lock);
-		if (vcpu->state == VMM_VCPU_STATE_PAUSED) {
-			vcpu->state = VMM_VCPU_STATE_READY;
-			rc = VMM_OK;
-		}
-		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
-	}
-	return rc;
+	return vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_READY);
 }
 
 int vmm_manager_vcpu_halt(vmm_vcpu_t * vcpu)
 {
-	int rc = VMM_EFAIL;
-	irq_flags_t flags;
-	if (vcpu) {
-		flags = vmm_spin_lock_irqsave(&vcpu->lock);
-		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
-		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
-			vcpu->state = VMM_VCPU_STATE_HALTED;
-			rc = VMM_OK;
-		}
-		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
-	}
-	return rc;
+	return vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_HALTED);
 }
 
 int vmm_manager_vcpu_dumpreg(vmm_vcpu_t * vcpu)
