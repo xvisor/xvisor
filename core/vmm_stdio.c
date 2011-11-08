@@ -469,6 +469,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 				for (ite = pos; ite < count; ite++) {
 					s[ite - 1] = s[ite];
 				}
+				s[count] = '\0';
 				pos--;
 				count--;
 			}
