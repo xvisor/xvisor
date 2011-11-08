@@ -31,6 +31,21 @@
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 
+#define VMM_IDLE_VCPU_STACK_SZ 1024
+#define VMM_IDLE_VCPU_TIMESLICE 100000000
+
+/** Control structure for Scheduler */
+struct vmm_scheduler_ctrl {
+	vmm_spinlock_t lock;
+	vmm_vcpu_t *idle_vcpu;
+	u8 idle_vcpu_stack[VMM_IDLE_VCPU_STACK_SZ];
+	s32 vcpu_current;
+	bool irq_context;
+	vmm_timer_event_t * ev;
+};
+
+typedef struct vmm_scheduler_ctrl vmm_scheduler_ctrl_t;
+
 vmm_scheduler_ctrl_t sched;
 
 void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
@@ -205,9 +220,9 @@ int vmm_scheduler_init(void)
 
 	/* Create idle orphan vcpu with 100 msec time slice. (Per Host CPU) */
 	sched.idle_vcpu = vmm_manager_vcpu_orphan_create("idle/0",
-				(virtual_addr_t)&idle_orphan,
-				(virtual_addr_t)&sched.idle_vcpu_stack[1020],
-				100000000);
+	(virtual_addr_t)&idle_orphan,
+	(virtual_addr_t)&sched.idle_vcpu_stack[VMM_IDLE_VCPU_STACK_SZ - 4],
+	VMM_IDLE_VCPU_TIMESLICE);
 
 	/* Initialize scheduling parameters. (Per Host CPU) */
 	sched.vcpu_current = -1;

@@ -123,21 +123,6 @@ struct vmm_vcpu {
 	vmm_vcpu_irqs_t *irqs;
 };
 
-/** Control structure for Scheduler */
-struct vmm_manager_ctrl {
-	vmm_spinlock_t lock;
-	u32 max_vcpu_count;
-	u32 max_guest_count;
-	u32 vcpu_count;
-	u32 guest_count;
-	vmm_vcpu_t *vcpu_array;
-	vmm_guest_t *guest_array;
-	struct dlist orphan_vcpu_list;
-	struct dlist guest_list;
-};
-
-typedef struct vmm_manager_ctrl vmm_manager_ctrl_t;
-
 /** Maximum number of vcpus (thread or normal) */
 u32 vmm_manager_max_vcpu_count(void);
 
