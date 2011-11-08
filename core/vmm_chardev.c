@@ -29,10 +29,8 @@
 #include <vmm_chardev.h>
 
 int vmm_chardev_doioctl(vmm_chardev_t * cdev,
-			int cmd, void *buf, size_t buf_len)
+			int cmd, void *buf, size_t len, bool block)
 {
-	int ret;
-
 	if (!cdev) {
 		return VMM_EFAIL;
 	}
@@ -40,13 +38,11 @@ int vmm_chardev_doioctl(vmm_chardev_t * cdev,
 		return VMM_EFAIL;
 	}
 
-	ret = cdev->ioctl(cdev, cmd, buf, buf_len);
-
-	return ret;
+	return cdev->ioctl(cdev, cmd, buf, len, block);
 }
 
 u32 vmm_chardev_doread(vmm_chardev_t * cdev,
-		       u8 *dest, size_t offset, size_t len)
+		       u8 *dest, size_t offset, size_t len, bool block)
 {
 	if (!cdev) {
 		return 0;
@@ -55,11 +51,11 @@ u32 vmm_chardev_doread(vmm_chardev_t * cdev,
 		return 0;
 	}
 
-	return cdev->read(cdev, dest, offset, len);
+	return cdev->read(cdev, dest, offset, len, block);
 }
 
 u32 vmm_chardev_dowrite(vmm_chardev_t * cdev,
-			u8 *src, size_t offset, size_t len)
+			u8 *src, size_t offset, size_t len, bool block)
 {
 	if (!cdev) {
 		return 0;
@@ -68,7 +64,7 @@ u32 vmm_chardev_dowrite(vmm_chardev_t * cdev,
 		return 0;
 	}
 
-	return cdev->write(cdev, src, offset, len);
+	return cdev->write(cdev, src, offset, len, block);
 }
 
 int vmm_chardev_register(vmm_chardev_t * cdev)

@@ -105,7 +105,7 @@ int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 
 	epos = 0;
 	while(1) {
-		if (!vmm_scanchar(NULL, cdev, &ch, FALSE)) {
+		if (!vmm_scanchar(NULL, cdev, &ch, TRUE)) {
 			if (epos < sizeof(estr)) {
 				if (estr[epos] == ch) {
 					epos++;
