@@ -252,10 +252,13 @@ int cmd_help_exec(vmm_chardev_t *cdev, int argc, char **argv)
 			}
 		}
 	} else if (argc > 1) {
-		if ((cmd = vmm_cmdmgr_cmd_find(argv[1]))) {
-			vmm_cprintf(cdev, "%-12s - %s\n", 
-					  cmd->name, cmd->desc);
-			cmd->usage(cdev);
+		for (i = 1; i < argc; i++) {
+			if ((cmd = vmm_cmdmgr_cmd_find(argv[i]))) {
+				vmm_cprintf(cdev, "%-12s - %s\n",
+						  cmd->name, cmd->desc);
+				cmd->usage(cdev);
+			}
+			vmm_printf("\n");
 		}
 	}
 	return 0;
