@@ -186,12 +186,17 @@ void arm_cmd_sysctl(int argc, char **argv)
 void arm_cmd_timer(int argc, char **argv)
 {
 	char str[32];
-	u64 irq_count, tstamp;
+	u64 irq_count, irq_delay, tstamp;
 	irq_count = arm_timer_irqcount();
+	irq_delay = arm_timer_irqdelay();
 	tstamp = arm_timer_timestamp();
 	arm_puts("Timer Information ...\n");
 	arm_puts("  IRQ Count:  0x");
 	arm_ulonglong2hexstr(str, irq_count);
+	arm_puts(str);
+	arm_puts("\n");
+	arm_puts("  IRQ Delay:  0x");
+	arm_ulonglong2hexstr(str, irq_delay);
 	arm_puts(str);
 	arm_puts("\n");
 	arm_puts("  Time Stamp: 0x");
