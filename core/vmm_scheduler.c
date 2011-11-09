@@ -28,7 +28,9 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_cpu.h>
+#include <vmm_spinlocks.h>
 #include <vmm_vcpu_irq.h>
+#include <vmm_timer.h>
 #include <vmm_scheduler.h>
 
 #define VMM_IDLE_VCPU_STACK_SZ 1024

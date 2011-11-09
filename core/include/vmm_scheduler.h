@@ -25,9 +25,7 @@
 #define _VMM_SCHEDULER_H__
 
 #include <vmm_types.h>
-#include <vmm_spinlocks.h>
 #include <vmm_manager.h>
-#include <vmm_timer.h>
 
 /** Enter IRQ Context (Must be called from somewhere) */
 void vmm_scheduler_irq_enter(vmm_user_regs_t * regs, bool vcpu_context);
