@@ -63,11 +63,7 @@ u64 vmm_cpu_clocksource_mask(void)
 
 u32 vmm_cpu_clocksource_mult(void)
 {
-	u32 khz = 1000;
-	u64 tmp = ((u64)1000000) << 20;
-	tmp += khz >> 1;
-	tmp = vmm_udiv64(tmp, khz);
-	return (u32)tmp;
+	return vmm_timer_clocksource_khz2mult(1000, 20);
 }
 
 u32 vmm_cpu_clocksource_shift(void)

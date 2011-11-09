@@ -190,7 +190,7 @@ void arm_cmd_timer(int argc, char **argv)
 	irq_count = arm_timer_irqcount();
 	tstamp = arm_timer_timestamp();
 	arm_puts("Timer Information ...\n");
-	arm_puts("  Timer IRQ:  0x");
+	arm_puts("  IRQ Count:  0x");
 	arm_ulonglong2hexstr(str, irq_count);
 	arm_puts(str);
 	arm_puts("\n");
