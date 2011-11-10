@@ -114,7 +114,7 @@ void vmm_init(void)
 	vmm_printf("Initialize Host Interrupt Subsystem\n");
 	vmm_printf("Initialize CPU Early\n");
 	vmm_printf("Initialize Board Early\n");
-	vmm_printf("Initialize Standered I/O Subsystem\n");
+	vmm_printf("Initialize Standard I/O Subsystem\n");
 
 	/* Initialize hypervisor timer */
 	vmm_printf("Initialize Hypervisor Timer\n");

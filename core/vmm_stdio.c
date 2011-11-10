@@ -64,11 +64,10 @@ int vmm_printchar(char **str, vmm_chardev_t *cdev, char c, bool block)
 		++(*str);
 	} else {
 		if (cdev) {
-			while (!vmm_chardev_dowrite(cdev, 
-						(u8 *)&c, 0, sizeof(c))) {
+			if (!vmm_chardev_dowrite(cdev, 
+					(u8 *)&c, 0, sizeof(c), block)) {
 				if (!block) {
 					rc = VMM_EFAIL;
-					break;
 				}
 			}
 		} else {
@@ -311,16 +310,13 @@ int vmm_scanchar(char **str, vmm_chardev_t *cdev, char *c, bool block)
 	} else {
 		got_input = FALSE;
 		if (cdev) {
-			while (!got_input) {
-				if (!vmm_chardev_doread(cdev,
-						&ch, 0, sizeof(ch))) {
-					if (!block) {
-						rc = VMM_EFAIL;
-						break;
-					}
-				} else {
-					got_input = TRUE;
+			if (!vmm_chardev_doread(cdev,
+						&ch, 0, sizeof(ch), block)) {
+				if (!block) {
+					rc = VMM_EFAIL;
 				}
+			} else {
+				got_input = TRUE;
 			}
 		} else {
 			while (!got_input) {

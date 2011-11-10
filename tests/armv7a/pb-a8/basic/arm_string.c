@@ -74,7 +74,7 @@ int arm_str2int(char * src)
 void arm_int2str(char * dst, int src)
 {
 	int val, count = 0, pos = 0;
-	char intchars[] = "0123456789";
+	static const char intchars[] = "0123456789";
 
 	val = src;
 	while (val) {
@@ -129,7 +129,7 @@ unsigned int arm_hexstr2uint(char * src)
 void arm_uint2hexstr(char * dst, unsigned int src)
 {
 	int ite, pos = 0;
-	char hexchars[] = "0123456789ABCDEF";
+	static const char hexchars[] = "0123456789ABCDEF";
 
 	for (ite = 0; ite < 8; ite++) {
 		if ((pos == 0) && !((src >> (4 * (8 - ite - 1))) & 0xF)) {
@@ -150,7 +150,7 @@ void arm_uint2hexstr(char * dst, unsigned int src)
 void arm_ulonglong2hexstr(char *dst, unsigned long long src)
 {
 	int ite, pos = 0;
-	char hexchars[] = "0123456789ABCDEF";
+	static const char hexchars[] = "0123456789ABCDEF";
 
 	for (ite = 0; ite < 16; ite++) {
 		if ((pos == 0) && !((src >> (4 * (16 - ite - 1))) & 0xF)) {

@@ -88,16 +88,16 @@ void arm_mmu_data_abort(pt_regs_t *regs)
 	fs = (dfsr & DFSR_FS4_MASK) >> DFSR_FS4_SHIFT;
 	fs = (fs << 4) | (dfsr & DFSR_FS_MASK);
 	wnr = (dfsr & DFSR_WNR_MASK) >> DFSR_WNR_SHIFT;
+#if 0 /* FIXME: QEMU generate wrong domain value in DFSR */
 	dom = (dfsr & DFSR_DOM_MASK) >> DFSR_DOM_SHIFT;
+#else
+	dom = test_data_abort_dom;
+#endif
 
 	if ((fs == test_data_abort_fs) &&
 	    (dfar == test_data_abort_far) &&
-#if 0 /* FIXME: QEMU generate wrong domain value in DFSR */
 	    (wnr == test_data_abort_wnr) &&
 	    (dom == test_data_abort_dom)) {
-#else
-	    (wnr == test_data_abort_wnr)) {
-#endif
 		test_data_abort_result = 1;
 	}
 

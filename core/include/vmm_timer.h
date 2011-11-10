@@ -27,6 +27,7 @@
 #include <vmm_types.h>
 #include <vmm_list.h>
 #include <vmm_regs.h>
+#include <vmm_math.h>
 #include <vmm_spinlocks.h>
 
 typedef struct vmm_timer_event vmm_timer_event_t;
@@ -59,6 +60,15 @@ struct vmm_timer_ctrl {
 };
 
 typedef struct vmm_timer_ctrl vmm_timer_ctrl_t;
+
+/** Convert kHz clocksource to clocksource mult */
+static inline u32 vmm_timer_clocksource_khz2mult(u32 khz, u32 shift)
+{
+	u64 tmp = ((u64)1000000) << shift;
+	tmp += khz >> 1;
+	tmp = vmm_udiv64(tmp, khz);
+	return (u32)tmp;
+}
 
 /** Process timer event (Must be called from somewhere) */
 void vmm_timer_clockevent_process(vmm_user_regs_t * regs);

@@ -116,7 +116,11 @@ static void sp804_timer_syncvalue(struct sp804_timer *t, bool clear_irq)
 		};
 		if (t->control & TIMER_CTRL_IE) {
 			nsecs = t->limit;
-			nsecs = vmm_udiv64((nsecs * 1000000000), freq);
+			if (freq == 1000000) {
+				nsecs = nsecs * ((u64)1000);
+			} else {
+				nsecs = vmm_udiv64((nsecs * 1000000000), freq);
+			}
 			vmm_timer_event_start(t->event, nsecs);
 		}
 	}

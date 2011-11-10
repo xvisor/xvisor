@@ -49,6 +49,7 @@ void arm_timer_enable(void);
 void arm_timer_disable(void);
 void arm_timer_clearirq(void);
 u64 arm_timer_irqcount(void);
+u64 arm_timer_irqdelay(void);
 u64 arm_timer_timestamp(void);
 int arm_timer_init(u32 usecs, u32 ensel);
 
