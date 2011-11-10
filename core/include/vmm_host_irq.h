@@ -27,7 +27,9 @@
 #include <vmm_types.h>
 #include <vmm_regs.h>
 
-typedef int (*vmm_host_irq_handler_t) (u32 irq_no, vmm_user_regs_t * regs);
+typedef int (*vmm_host_irq_handler_t) (u32 irq_no, 
+					vmm_user_regs_t * regs,
+					void *dev);
 
 /** Execute host interrupts */
 int vmm_host_irq_exec(u32 cpu_irq_no, vmm_user_regs_t * regs);
@@ -42,7 +44,9 @@ int vmm_host_irq_enable(u32 host_irq_no);
 int vmm_host_irq_disable(u32 host_irq_no);
 
 /** Register handler for given irq */
-int vmm_host_irq_register(u32 irq_no, vmm_host_irq_handler_t handler);
+int vmm_host_irq_register(u32 irq_no, 
+			  vmm_host_irq_handler_t handler,
+			  void *dev);
 
 /** Interrupts initialization function */
 int vmm_host_irq_init(void);

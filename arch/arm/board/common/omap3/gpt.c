@@ -63,11 +63,7 @@ u64 vmm_cpu_clocksource_mask(void)
 
 u32 vmm_cpu_clocksource_mult(void)
 {
-	u32 khz = 1000;
-	u64 tmp = ((u64)1000000) << 20;
-	tmp += khz >> 1;
-	tmp = vmm_udiv64(tmp, khz);
-	return (u32)tmp;
+	return vmm_timer_clocksource_khz2mult(1000, 20);
 }
 
 u32 vmm_cpu_clocksource_shift(void)
@@ -113,7 +109,7 @@ int vmm_cpu_clockevent_shutdown(void)
 	return VMM_OK;
 }
 
-int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs)
+int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
 {
 	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
 			OMAP3_GPT_TISR, OMAP3_GPT_TISR_OVF_IT_FLAG_M);
@@ -164,7 +160,8 @@ int vmm_cpu_clockevent_init(void)
 
 	/* Register interrupt handler */
 	ret = vmm_host_irq_register(OMAP3_SYS_TIMER_IRQ,
-				    &vmm_cpu_timer_irq_handler);
+				    &vmm_cpu_timer_irq_handler,
+				    NULL);
 	if (ret) {
 		return ret;
 	}

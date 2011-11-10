@@ -132,7 +132,7 @@ int realview_timer_init(virtual_addr_t sctl_base,
 
 	/* Register interrupt handler */
 	if (hirq_handler) {
-		ret = vmm_host_irq_register(hirq, hirq_handler);
+		ret = vmm_host_irq_register(hirq, hirq_handler, NULL);
 	}
 
 	return ret;
