@@ -223,41 +223,33 @@ u32 arm_add_with_carry(u32 x, u32 y, u32 cin, u32 *cout, u32 *oout)
 int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 		       vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	u32 cpsr, imod, M, A, I, F, mode;
+	u32 cpsr, imod, mode;
 	imod = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_CPS_IMOD_END,
 			     ARM_HYPERCALL_CPS_IMOD_START);
-	M = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_CPS_M_END, ARM_HYPERCALL_CPS_M_START);
-	A = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_CPS_A_END, ARM_HYPERCALL_CPS_A_START);
-	I = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_CPS_I_END, ARM_HYPERCALL_CPS_I_START);
-	F = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_CPS_F_END, ARM_HYPERCALL_CPS_F_START);
 	mode = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_CPS_MODE_END,
 			     ARM_HYPERCALL_CPS_MODE_START);
 	cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
-	if (M) {
+	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_M_START)) {
 		cpsr &= ~CPSR_MODE_MASK;
 		cpsr |= mode;
 	}
-	if (A) {
+	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_A_START)) {
 		if (imod == 0x2) {
 			cpsr &= ~CPSR_ASYNC_ABORT_DISABLED;
 		} else if (imod == 0x3) {
 			cpsr |= CPSR_ASYNC_ABORT_DISABLED;
 		}
 	}
-	if (I) {
+	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_I_START)) {
 		if (imod == 0x2) {
 			cpsr &= ~CPSR_IRQ_DISABLED;
 		} else if (imod == 0x3) {
 			cpsr |= CPSR_IRQ_DISABLED;
 		}
 	}
-	if (F) {
+	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_F_START)) {
 		if (imod == 0x2) {
 			cpsr &= ~CPSR_FIQ_DISABLED;
 		} else if (imod == 0x3) {
@@ -273,15 +265,13 @@ int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
 		       vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	u32 cond, Rd, R, psr;
+	u32 cond, Rd, psr;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rd = ARM_INST_BITS(inst,
 			   ARM_HYPERCALL_MRS_RD_END,
 			   ARM_HYPERCALL_MRS_RD_START);
-	R = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_MRS_R_END, ARM_HYPERCALL_MRS_R_START);
 	if (arm_condition_passed(cond, regs)) {
-		if (R) {
+		if (ARM_INST_BIT(inst, ARM_HYPERCALL_MRS_R_START)) {
 			psr = cpu_vcpu_spsr_retrive(vcpu);
 		} else {
 			psr = cpu_vcpu_cpsr_retrive(vcpu, regs);
@@ -301,7 +291,7 @@ int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
 int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	u32 cond, mask, imm12, R, psr, tmask;
+	u32 cond, mask, imm12, psr, tmask;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	mask = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_MSR_I_MASK_END,
@@ -309,9 +299,6 @@ int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 	imm12 = ARM_INST_BITS(inst,
 			      ARM_HYPERCALL_MSR_I_IMM12_END,
 			      ARM_HYPERCALL_MSR_I_IMM12_START);
-	R = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_MSR_I_R_END,
-			  ARM_HYPERCALL_MSR_I_R_START);
 	if (arm_condition_passed(cond, regs)) {
 		psr = arm_expand_imm(regs, imm12);
 		if (!mask) {
@@ -324,7 +311,7 @@ int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 		tmask |= (mask & 0x4) ? 0xFF0000 : 0x00;
 		tmask |= (mask & 0x8) ? 0xFF000000 : 0x00;
 		psr &= tmask;
-		if (R) {
+		if (ARM_INST_BIT(inst, ARM_HYPERCALL_MSR_I_R_START)) {
 			psr |= (~tmask & cpu_vcpu_spsr_retrive(vcpu));
 			cpu_vcpu_spsr_update(vcpu, psr);
 		} else {
@@ -340,7 +327,7 @@ int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
 			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	u32 cond, mask, Rn, R, psr, tmask;
+	u32 cond, mask, Rn, psr, tmask;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	mask = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_MSR_R_MASK_END,
@@ -348,9 +335,6 @@ int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
 	Rn = ARM_INST_BITS(inst,
 			   ARM_HYPERCALL_MSR_R_RN_END,
 			   ARM_HYPERCALL_MSR_R_RN_START);
-	R = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_MSR_R_R_END,
-			  ARM_HYPERCALL_MSR_R_R_START);
 	if (arm_condition_passed(cond, regs)) {
 		if (Rn < 15) {
 			psr = cpu_vcpu_reg_read(vcpu, regs, Rn);
@@ -368,7 +352,7 @@ int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
 		tmask |= (mask & 0x4) ? 0xFF0000 : 0x00;
 		tmask |= (mask & 0x8) ? 0xFF000000 : 0x00;
 		psr &= tmask;
-		if (R) {
+		if (ARM_INST_BIT(inst, ARM_HYPERCALL_MSR_R_R_START)) {
 			psr |= (~tmask & cpu_vcpu_spsr_retrive(vcpu));
 			cpu_vcpu_spsr_update(vcpu, psr);
 		} else {
