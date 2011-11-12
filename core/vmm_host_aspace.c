@@ -29,6 +29,7 @@
 #include <vmm_cpu.h>
 #include <vmm_board.h>
 #include <vmm_string.h>
+#include <vmm_main.h>
 #include <vmm_host_aspace.h>
 
 struct vmm_host_aspace_ctrl {
@@ -341,7 +342,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 
 	if ((rc = vmm_host_vapool_alloc(&va, sz, FALSE))) {
 		/* Don't have space */
-		while (1) ;
+		vmm_hang();
 	}
 
 	tpa = pa & ~(VMM_PAGE_SIZE - 1);
@@ -352,7 +353,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 					mem_flags);
 		if (rc) {
 			/* We were not able to map physical address */
-			while (1) ;
+			vmm_hang();
 		}
 	}
 
