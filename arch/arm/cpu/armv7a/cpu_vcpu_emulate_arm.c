@@ -504,6 +504,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 	int rc;
 	u32 cond, Rn, U, P, W, reg_list;
 	u32 cpsr, address, i, mask, length, data;
+	u32 pos, ndata[16];
 	bool wback, increment, wordhigher;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
@@ -547,24 +548,37 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 			address = (increment) ? address : address - length;
 			address = (wordhigher) ? (address + 4) : address;
+			if (((address + length - 4) & ~TTBL_MIN_PAGE_MASK) !=
+				(address & ~TTBL_MIN_PAGE_MASK)) {
+				pos = TTBL_MIN_PAGE_SIZE -
+						(address & TTBL_MIN_PAGE_MASK);
+				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+					address, &ndata, pos, FALSE))) {
+					return rc;
+				}
+				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+					address + pos, &ndata[pos >> 2], 
+					length - pos, FALSE))) {
+					return rc;
+				}
+			} else {
+				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+					address, &ndata, length, FALSE))) {
+					return rc;
+				}
+			}
+			address = address + length - 4;
 			mask = 0x1;
+			pos = 0;
 			for (i = 0; i < 15; i++) {
 				if (reg_list & mask) {
-					data = 0x0;
-					if ((rc = cpu_vcpu_cp15_mem_read(vcpu, 
-					    regs, address, &data, 4, FALSE))) {
-						return rc;
-					}
-					cpu_vcpu_reg_write(vcpu, regs, i, data);
-					address += 4;
+					cpu_vcpu_reg_write(vcpu, regs, 
+							   i, ndata[pos]);
+					pos++;
 				}
 				mask = mask << 1;
 			}
-			data = 0x0;
-			if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
-							 &data, 4, FALSE))) {
-				return rc;
-			}
+			data = ndata[pos];
 			if (wback && !(reg_list & (0x1 << Rn))) {
 				address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 				address = (increment) ? address + length : 
@@ -604,18 +618,33 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 			address = (increment) ? address : address - length;
 			address = (wordhigher) ? (address + 4) : address;
+			if (((address + length - 4) & ~TTBL_MIN_PAGE_MASK) !=
+				(address & ~TTBL_MIN_PAGE_MASK)) {
+				pos = TTBL_MIN_PAGE_SIZE -
+						(address & TTBL_MIN_PAGE_MASK);
+				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+					address, &ndata, pos, FALSE))) {
+					return rc;
+				}
+				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+					address + pos, &ndata[pos >> 2], 
+					length - pos, FALSE))) {
+					return rc;
+				}
+			} else {
+				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
+					address, &ndata, length, FALSE))) {
+					return rc;
+				}
+			}
 			mask = 0x1;
+			pos = 0;
 			for (i = 0; i < 15; i++) {
 				if (reg_list & mask) {
-					data = 0x0;
-					if ((rc = cpu_vcpu_cp15_mem_read(vcpu, 
-					    regs, address, &data, 4, FALSE))) {
-						return rc;
-					}
 					cpu_vcpu_regmode_write(vcpu, regs, 
 								CPSR_MODE_USER,
-								i, data);
-					address += 4;
+								i, ndata[pos]);
+					pos++;
 				}
 				mask = mask << 1;
 			}
@@ -631,7 +660,8 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 {
 	int rc;
 	u32 cond, Rn, P, U, reg_list;
-	u32 i, cpsr, mask, length, address, data;
+	u32 i, cpsr, mask, length, address;
+	u32 pos, ndata[16];
 	bool increment, wordhigher;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
@@ -668,17 +698,33 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 		address = (increment) ? address : address - length;
 		address = (wordhigher) ? address + 4 : address;
 		mask = 0x1;
+		pos = 0;
 		for (i = 0; i < 16; i++) {
 			if (reg_list & mask) {
-				data = cpu_vcpu_regmode_read(vcpu, regs, 
+				ndata[pos] = cpu_vcpu_regmode_read(vcpu, regs, 
 							CPSR_MODE_USER, i);
-				if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
-						address, &data, 4, FALSE))) {
-					return rc;
-				}
-				address += 4;
+				pos++;
 			}
 			mask = mask << 1;
+		}
+		if (((address + length - 4) & ~TTBL_MIN_PAGE_MASK) !=
+					(address & ~TTBL_MIN_PAGE_MASK)) {
+			pos = TTBL_MIN_PAGE_SIZE -
+					(address & TTBL_MIN_PAGE_MASK);
+			if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
+				address, &ndata, pos, FALSE))) {
+				return rc;
+			}
+			if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
+				address + pos, &ndata[pos >> 2], 
+				length - pos, FALSE))) {
+				return rc;
+			}
+		} else {
+			if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
+				address, &ndata, length, FALSE))) {
+				return rc;
+			}
 		}
 	}
 	regs->pc += 4;

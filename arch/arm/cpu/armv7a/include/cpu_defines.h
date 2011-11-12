@@ -138,8 +138,12 @@
 /* Translation table related macors & defines */
 #define TTBL_MIN_SIZE					0x1000
 #define TTBL_MIN_PAGE_SIZE				0x1000
+#define TTBL_MIN_PAGE_MASK				0xFFF
+#define TTBL_MIN_PAGE_SHIFT				12
 #define TTBL_MAX_SIZE					0x4000
 #define TTBL_MAX_PAGE_SIZE				0x1000000
+#define TTBL_MAX_PAGE_MASK				0xFFFFFF
+#define TTBL_MAX_PAGE_SHIFT				24
 #define TTBL_AP_S_U					0x0
 #define TTBL_AP_SRW_U					0x1
 #define TTBL_AP_SRW_UR					0x2
