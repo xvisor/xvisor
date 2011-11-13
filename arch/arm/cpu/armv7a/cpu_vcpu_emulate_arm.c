@@ -45,10 +45,12 @@ static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
 	return imm & ((1 << bits) - 1);
 }
 
-bool arm_condition_passed(u32 cond, vmm_user_regs_t * regs)
+static bool arm_condition_passed(u32 cond, vmm_user_regs_t * regs)
 {
 	bool ret = FALSE;
-	cond &= 0xF;
+	if (cond == 0xE) {
+		return TRUE;
+	}
 	switch (cond >> 1) {
 	case 0:
 		ret = (regs->cpsr & CPSR_ZERO_MASK) ? TRUE : FALSE;
@@ -101,7 +103,7 @@ bool arm_condition_passed(u32 cond, vmm_user_regs_t * regs)
 	return ret;
 }
 
-void arm_decode_imm_shift(u32 type, u32 imm5, u32 *shift_t, u32 *shift_n)
+static void arm_decode_imm_shift(u32 type, u32 imm5, u32 *shift_t, u32 *shift_n)
 {
 	switch (type) {
 	case 0:
@@ -130,7 +132,7 @@ void arm_decode_imm_shift(u32 type, u32 imm5, u32 *shift_t, u32 *shift_n)
 	};
 }
 
-u32 arm_shift_c(u32 val, u32 shift_t, u32 shift_n, u32 cin, u32 *cout)
+static u32 arm_shift_c(u32 val, u32 shift_t, u32 shift_n, u32 cin, u32 *cout)
 {
 	u64 rval;
 	u32 carry = cin;
@@ -174,12 +176,12 @@ u32 arm_shift_c(u32 val, u32 shift_t, u32 shift_n, u32 cin, u32 *cout)
 	return val;
 }
 
-u32 arm_shift(u32 val, u32 shift_t, u32 shift_n, u32 cin)
+static inline u32 arm_shift(u32 val, u32 shift_t, u32 shift_n, u32 cin)
 {
 	return arm_shift_c(val, shift_t, shift_n, cin, NULL);
 }
 
-u32 arm_expand_imm_c(u32 imm12, u32 cin, u32 *cout)
+static inline u32 arm_expand_imm_c(u32 imm12, u32 cin, u32 *cout)
 {
 	return arm_shift_c((imm12 & 0xFF), 
 			   arm_shift_ror, 
@@ -187,14 +189,14 @@ u32 arm_expand_imm_c(u32 imm12, u32 cin, u32 *cout)
 			   cin, cout);
 }
 
-u32 arm_expand_imm(vmm_user_regs_t * regs, u32 imm12)
+static inline u32 arm_expand_imm(vmm_user_regs_t * regs, u32 imm12)
 {
 	return arm_expand_imm_c(imm12, 
 				(regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1,
 				NULL);
 }
 
-u32 arm_add_with_carry(u32 x, u32 y, u32 cin, u32 *cout, u32 *oout)
+static u32 arm_add_with_carry(u32 x, u32 y, u32 cin, u32 *cout, u32 *oout)
 {
 	s32 sresult;
 	u32 carry, overflow, uresult = 0x0;
@@ -728,27 +730,27 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 	Rn = ARM_INST_BITS(inst,
 			   ARM_HYPERCALL_SUBS_REL_RN_END,
 			   ARM_HYPERCALL_SUBS_REL_RN_START);
-	imm12 = ARM_INST_BITS(inst,
-			      ARM_HYPERCALL_SUBS_REL_IMM12_END,
-			      ARM_HYPERCALL_SUBS_REL_IMM12_START);
-	imm5 = ARM_INST_BITS(inst,
-			     ARM_HYPERCALL_SUBS_REL_IMM5_END,
-			     ARM_HYPERCALL_SUBS_REL_IMM5_START);
-	type = ARM_INST_BITS(inst,
-			     ARM_HYPERCALL_SUBS_REL_TYPE_END,
-			     ARM_HYPERCALL_SUBS_REL_TYPE_START);
-	Rm = ARM_INST_BITS(inst,
-			   ARM_HYPERCALL_SUBS_REL_RM_END,
-			   ARM_HYPERCALL_SUBS_REL_RM_START);
 	register_form = (id == ARM_HYPERCALL_SUBS_REL_ID0) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
 		if (register_form) {
+			imm5 = ARM_INST_BITS(inst,
+					     ARM_HYPERCALL_SUBS_REL_IMM5_END,
+					     ARM_HYPERCALL_SUBS_REL_IMM5_START);
+			type = ARM_INST_BITS(inst,
+					     ARM_HYPERCALL_SUBS_REL_TYPE_END,
+					     ARM_HYPERCALL_SUBS_REL_TYPE_START);
+			Rm = ARM_INST_BITS(inst,
+					   ARM_HYPERCALL_SUBS_REL_RM_END,
+					   ARM_HYPERCALL_SUBS_REL_RM_START);
 			arm_decode_imm_shift(type, imm5, &shift_t, &shift_n);
 			operand2 = cpu_vcpu_reg_read(vcpu, regs, Rm);
 			operand2 = arm_shift(operand2, shift_t, shift_n, 
 					 (regs->cpsr & CPSR_CARRY_MASK) >>
 					 CPSR_CARRY_SHIFT);
 		} else {
+			imm12 = ARM_INST_BITS(inst,
+			      ARM_HYPERCALL_SUBS_REL_IMM12_END,
+			      ARM_HYPERCALL_SUBS_REL_IMM12_START);
 			operand2 = arm_expand_imm(regs, imm12);
 		}
 		result = cpu_vcpu_reg_read(vcpu, regs, Rn);
