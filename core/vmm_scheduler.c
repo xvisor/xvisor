@@ -28,7 +28,6 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_cpu.h>
-#include <vmm_spinlocks.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_timer.h>
 #include <vmm_scheduler.h>
@@ -38,7 +37,6 @@
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
-	vmm_spinlock_t lock;
 	vmm_vcpu_t *idle_vcpu;
 	u8 idle_vcpu_stack[VMM_IDLE_VCPU_STACK_SZ];
 	s32 vcpu_current;
@@ -160,11 +158,11 @@ vmm_vcpu_t * vmm_scheduler_current_vcpu(void)
 {
 	irq_flags_t flags;
 	vmm_vcpu_t * vcpu = NULL;
-	flags = vmm_spin_lock_irqsave(&sched.lock);
+	flags = vmm_cpu_irq_save();
 	if (sched.vcpu_current != -1) {
 		vcpu = vmm_manager_vcpu(sched.vcpu_current);
 	}
-	vmm_spin_unlock_irqrestore(&sched.lock, flags);
+	vmm_cpu_irq_restore(flags);
 	return vcpu;
 }
 
