@@ -45,10 +45,10 @@ typedef unsigned int ulong;
 #define stringify(s)	tostring(s)
 #define tostring(s)	#s
 
-#define BUG_ON(x, bug_string)					\
+#define BUG_ON(x, bug_string,...)				\
 	do {							\
 		if (x) {					\
-			vmm_panic(bug_string);			\
+			vmm_panic(bug_string, #__VA_ARGS__);	\
 		}						\
 	} while(0);
 
