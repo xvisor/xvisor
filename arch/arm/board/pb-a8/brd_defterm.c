@@ -33,7 +33,7 @@
 #define	PBA8_DEFAULT_UART_INCLK			24000000
 #define	PBA8_DEFAULT_UART_BAUD			115200
 
-virtual_addr_t pba8_defterm_base;
+static virtual_addr_t pba8_defterm_base;
 
 int vmm_defterm_putc(u8 ch)
 {
