@@ -41,7 +41,7 @@
 
 #define MTERM_CMD_STRING_SIZE		256
 
-struct mterm_ctrl {
+static struct mterm_ctrl {
 	vmm_thread_t *thread;
 } mtctrl;
 
@@ -65,10 +65,10 @@ static int mterm_main(void *udata)
 		if (cmds_len > 0) {
 			if (cmds[cmds_len - 1] == '\r')
 				cmds[cmds_len - 1] = '\0';
-		}
 
-		/* Execute command string */
-		vmm_cmdmgr_execute_cmdstr(vmm_stdio_device(), cmds);
+			/* Execute command string */
+			vmm_cmdmgr_execute_cmdstr(vmm_stdio_device(), cmds);
+		}
 	}
 
 	return VMM_OK;
@@ -113,6 +113,8 @@ static int daemon_mterm_init(void)
 
 static void daemon_mterm_exit(void)
 {
+	vmm_threads_stop(mtctrl.thread);
+
 	vmm_threads_destroy(mtctrl.thread);
 }
 
