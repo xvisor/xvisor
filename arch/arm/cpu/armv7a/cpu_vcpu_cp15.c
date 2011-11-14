@@ -541,7 +541,7 @@ int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu,
 {
 	int rc = VMM_OK;
 	cpu_page_t pg;
-	/* Try to retrive the faulting page */
+	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, far, &pg))) {
 		cpu_vcpu_halt(vcpu, regs);
 		return rc;
@@ -567,7 +567,7 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 {
 	int rc = VMM_OK;
 	cpu_page_t pg;
-	/* Try to retrive the faulting page */
+	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, far, &pg))) {
 		cpu_vcpu_halt(vcpu, regs);
 		return rc;

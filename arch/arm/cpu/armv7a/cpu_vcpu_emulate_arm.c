@@ -232,7 +232,7 @@ int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 	mode = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_CPS_MODE_END,
 			     ARM_HYPERCALL_CPS_MODE_START);
-	cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
+	cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_M_START)) {
 		cpsr &= ~CPSR_MODE_MASK;
 		cpsr |= mode;
@@ -274,9 +274,9 @@ int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
 			   ARM_HYPERCALL_MRS_RD_START);
 	if (arm_condition_passed(cond, regs)) {
 		if (ARM_INST_BIT(inst, ARM_HYPERCALL_MRS_R_START)) {
-			psr = cpu_vcpu_spsr_retrive(vcpu);
+			psr = cpu_vcpu_spsr_retrieve(vcpu);
 		} else {
-			psr = cpu_vcpu_cpsr_retrive(vcpu, regs);
+			psr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 		}
 		if (Rd < 15) {
 			cpu_vcpu_reg_write(vcpu, regs, Rd, psr);
@@ -314,10 +314,10 @@ int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 		tmask |= (mask & 0x8) ? 0xFF000000 : 0x00;
 		psr &= tmask;
 		if (ARM_INST_BIT(inst, ARM_HYPERCALL_MSR_I_R_START)) {
-			psr |= (~tmask & cpu_vcpu_spsr_retrive(vcpu));
+			psr |= (~tmask & cpu_vcpu_spsr_retrieve(vcpu));
 			cpu_vcpu_spsr_update(vcpu, psr);
 		} else {
-			psr |= (~tmask & cpu_vcpu_cpsr_retrive(vcpu, regs));
+			psr |= (~tmask & cpu_vcpu_cpsr_retrieve(vcpu, regs));
 			cpu_vcpu_cpsr_update(vcpu, regs, psr);
 		}
 	}
@@ -355,10 +355,10 @@ int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
 		tmask |= (mask & 0x8) ? 0xFF000000 : 0x00;
 		psr &= tmask;
 		if (ARM_INST_BIT(inst, ARM_HYPERCALL_MSR_R_R_START)) {
-			psr |= (~tmask & cpu_vcpu_spsr_retrive(vcpu));
+			psr |= (~tmask & cpu_vcpu_spsr_retrieve(vcpu));
 			cpu_vcpu_spsr_update(vcpu, psr);
 		} else {
-			psr |= (~tmask & cpu_vcpu_cpsr_retrive(vcpu, regs));
+			psr |= (~tmask & cpu_vcpu_cpsr_retrieve(vcpu, regs));
 			cpu_vcpu_cpsr_update(vcpu, regs, psr);
 		}
 	}
@@ -395,7 +395,7 @@ int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 		return VMM_EFAIL;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
+		cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 		cpsr &= CPSR_MODE_MASK;
 		if (cpsr == CPSR_MODE_USER) {
 			arm_unpredictable(regs, vcpu);
@@ -454,7 +454,7 @@ int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 	increment = (U == 1) ? TRUE : FALSE;
 	wordhigher = (P == U) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
-		cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
+		cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 		cpsr &= CPSR_MODE_MASK;
 		if ((cpsr == CPSR_MODE_USER) ||
 		    (cpsr == CPSR_MODE_SYSTEM)) {
@@ -470,7 +470,7 @@ int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 			return rc;
 		}
 		address += 4;
-		data = cpu_vcpu_spsr_retrive(vcpu);
+		data = cpu_vcpu_spsr_retrieve(vcpu);
 		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
 						  &data, 4, FALSE))) {
 			return rc;
@@ -516,7 +516,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			return VMM_EFAIL;
 		}
 		if (arm_condition_passed(cond, regs)) {
-			cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
+			cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 			cpsr &= CPSR_MODE_MASK;
 			if ((cpsr == CPSR_MODE_USER) ||
 			    (cpsr == CPSR_MODE_SYSTEM)) {
@@ -571,7 +571,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 							address - length;
 				cpu_vcpu_reg_write(vcpu, regs, Rn, address);
 			}
-			cpsr = cpu_vcpu_spsr_retrive(vcpu);
+			cpsr = cpu_vcpu_spsr_retrieve(vcpu);
 			cpu_vcpu_cpsr_update(vcpu, regs, cpsr);
 			regs->pc = data;
 			/* Steps unique to exception return */
@@ -586,7 +586,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			return VMM_EFAIL;
 		}
 		if (arm_condition_passed(cond, regs)) {
-			cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
+			cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 			cpsr &= CPSR_MODE_MASK;
 			if ((cpsr == CPSR_MODE_USER) ||
 			    (cpsr == CPSR_MODE_SYSTEM)) {
@@ -665,7 +665,7 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 		return VMM_EFAIL;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
+		cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 		cpsr &= CPSR_MODE_MASK;
 		if ((cpsr == CPSR_MODE_USER) ||
 		    (cpsr == CPSR_MODE_SYSTEM)) {
@@ -817,7 +817,7 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 			return VMM_EFAIL;
 			break;
 		};
-		spsr = cpu_vcpu_spsr_retrive(vcpu);
+		spsr = cpu_vcpu_spsr_retrieve(vcpu);
 		cpu_vcpu_cpsr_update(vcpu, regs, spsr);
 		regs->pc = result;
 		/* Steps unique to exception return */

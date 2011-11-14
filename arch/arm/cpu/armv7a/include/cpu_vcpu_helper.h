@@ -29,8 +29,8 @@
 /* Function to halt VCPU */
 void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs);
 
-/* Function to retrive CPSR of a VCPU */
-u32 cpu_vcpu_cpsr_retrive(vmm_vcpu_t * vcpu,
+/* Function to retrieve CPSR of a VCPU */
+u32 cpu_vcpu_cpsr_retrieve(vmm_vcpu_t * vcpu,
 			  vmm_user_regs_t * regs);
 
 /* Function to update CPSR of a VCPU */
@@ -46,8 +46,8 @@ void cpu_vcpu_banked_regs_save(vmm_vcpu_t * vcpu,
 void cpu_vcpu_banked_regs_restore(vmm_vcpu_t * vcpu, 
 				  vmm_user_regs_t * dst);
 
-/* Function to retrive SPSR of a VCPU */
-u32 cpu_vcpu_spsr_retrive(vmm_vcpu_t * vcpu);
+/* Function to retrieve SPSR of a VCPU */
+u32 cpu_vcpu_spsr_retrieve(vmm_vcpu_t * vcpu);
 
 /* Function to update SPSR of a VCPU */
 int cpu_vcpu_spsr_update(vmm_vcpu_t * vcpu, 

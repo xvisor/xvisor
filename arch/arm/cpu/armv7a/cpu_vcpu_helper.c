@@ -40,7 +40,7 @@ void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 	}
 }
 
-u32 cpu_vcpu_cpsr_retrive(vmm_vcpu_t * vcpu,
+u32 cpu_vcpu_cpsr_retrieve(vmm_vcpu_t * vcpu,
 			  vmm_user_regs_t * regs)
 {
 	if (!vcpu || !regs) {
@@ -224,7 +224,7 @@ void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu,
 			  vmm_user_regs_t * regs,
 			  u32 new_cpsr)
 {
-	u32 old_cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
+	u32 old_cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 	/* Sanity check */
 	if (!vcpu) {
 		return;
@@ -253,7 +253,7 @@ void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu,
 	return;
 }
 
-u32 cpu_vcpu_spsr_retrive(vmm_vcpu_t * vcpu)
+u32 cpu_vcpu_spsr_retrieve(vmm_vcpu_t * vcpu)
 {
 	u32 retval = 0x0;
 	/* Find out correct SPSR */
@@ -790,7 +790,7 @@ void cpu_vcpu_dump_user_reg(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 	vmm_printf("    SP=0x%08x       LR=0x%08x       PC=0x%08x\n",
 		   regs->sp, regs->lr, regs->pc);
 	vmm_printf("    CPSR=0x%08x     \n", 
-				cpu_vcpu_cpsr_retrive(vcpu, regs));
+				cpu_vcpu_cpsr_retrieve(vcpu, regs));
 	vmm_printf("  General Purpose Registers");
 	for (ite = 0; ite < CPU_GPR_COUNT; ite++) {
 		if (ite % 3 == 0)
