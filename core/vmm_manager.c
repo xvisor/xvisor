@@ -38,15 +38,14 @@ struct vmm_manager_ctrl {
 	u32 max_guest_count;
 	u32 vcpu_count;
 	u32 guest_count;
-	vmm_vcpu_t *vcpu_array;
-	vmm_guest_t *guest_array;
+	vmm_vcpu_t vcpu_array[CONFIG_MAX_VCPU_COUNT];
+	vmm_guest_t guest_array[CONFIG_MAX_VCPU_COUNT];
+	vmm_user_regs_t user_reg_array[CONFIG_MAX_VCPU_COUNT];
 	struct dlist orphan_vcpu_list;
 	struct dlist guest_list;
 };
 
-typedef struct vmm_manager_ctrl vmm_manager_ctrl_t;
-
-vmm_manager_ctrl_t mngr;
+static struct vmm_manager_ctrl mngr;
 
 u32 vmm_manager_max_vcpu_count(void)
 {
@@ -192,7 +191,7 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->start_pc = start_pc;
 	vcpu->start_sp = start_sp;
 	vcpu->guest = NULL;
-	vcpu->uregs = vmm_malloc(sizeof(vmm_user_regs_t));
+	vcpu->uregs = &mngr.user_reg_array[mngr.vcpu_count];
 	vcpu->sregs = NULL;
 	vcpu->irqs = NULL;
 
@@ -472,10 +471,10 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 			vcpu->start_sp = 0x0;
 		}
 		vcpu->guest = guest;
-		vcpu->uregs = vmm_malloc(sizeof(vmm_user_regs_t));
+		vcpu->uregs = &mngr.user_reg_array[mngr.vcpu_count];
 		vcpu->sregs = vmm_malloc(sizeof(vmm_super_regs_t));
 		vcpu->irqs = vmm_malloc(sizeof(vmm_vcpu_irqs_t));
-		if (!vcpu->uregs || !vcpu->sregs || !vcpu->irqs) {
+		if (!vcpu->sregs || !vcpu->irqs) {
 			break;
 		}
 		if (vmm_vcpu_regs_init(vcpu)) {
@@ -521,8 +520,6 @@ int vmm_manager_init(void)
 	mngr.max_guest_count = 0;
 	mngr.vcpu_count = 0;
 	mngr.guest_count = 0;
-	mngr.vcpu_array = NULL;
-	mngr.guest_array = NULL;
 	INIT_LIST_HEAD(&mngr.orphan_vcpu_list);
 	INIT_LIST_HEAD(&mngr.guest_list);
 
@@ -532,13 +529,8 @@ int vmm_manager_init(void)
 	/* Get max guest count */
 	mngr.max_guest_count = CONFIG_MAX_GUEST_COUNT;
 
-	/* Allocate memory for guest instances */
-	mngr.guest_array =
-	    vmm_malloc(sizeof(vmm_guest_t) * mngr.max_guest_count);
-
 	/* Initialze memory for guest instances */
 	for (gnum = 0; gnum < mngr.max_guest_count; gnum++) {
-		vmm_memset(&mngr.guest_array[gnum], 0, sizeof(vmm_guest_t));
 		INIT_LIST_HEAD(&mngr.guest_array[gnum].head);
 		INIT_SPIN_LOCK(&mngr.guest_array[gnum].lock);
 		mngr.guest_array[gnum].id = gnum;
@@ -546,13 +538,8 @@ int vmm_manager_init(void)
 		INIT_LIST_HEAD(&mngr.guest_array[gnum].vcpu_list);
 	}
 
-	/* Allocate memory for vcpu instances */
-	mngr.vcpu_array =
-	    vmm_malloc(sizeof(vmm_vcpu_t) * mngr.max_vcpu_count);
-
 	/* Initialze memory for vcpu instances */
 	for (vnum = 0; vnum < mngr.max_vcpu_count; vnum++) {
-		vmm_memset(&mngr.vcpu_array[vnum], 0, sizeof(vmm_vcpu_t));
 		INIT_LIST_HEAD(&mngr.vcpu_array[vnum].head);
 		INIT_SPIN_LOCK(&mngr.vcpu_array[vnum].lock);
 		mngr.vcpu_array[vnum].id = vnum;
