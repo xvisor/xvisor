@@ -80,13 +80,10 @@ u32 vmm_cpu_clocksource_mult(void);
 u32 vmm_cpu_clocksource_shift(void);
 int vmm_cpu_clocksource_init(void);
 
-/** Atomic Operations and spinlock */
+/** Atomic Operations and Spinlocks */
 void vmm_cpu_atomic_inc(atomic_t * atom);
 void vmm_cpu_atomic_dec(atomic_t * atom);
 void vmm_cpu_spin_lock(vmm_cpu_spinlock_t * lock);
 void vmm_cpu_spin_unlock(vmm_cpu_spinlock_t * lock);
-irq_flags_t vmm_cpu_spin_lock_irqsave(vmm_cpu_spinlock_t * lock);
-void vmm_cpu_spin_unlock_irqrestore(vmm_cpu_spinlock_t * lock,
-				    irq_flags_t flags);
 
 #endif

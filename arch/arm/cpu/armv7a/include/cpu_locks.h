@@ -32,8 +32,4 @@
 void __lock_section __cpu_spin_lock(vmm_cpu_spinlock_t * lock);
 void __lock_section __cpu_spin_unlock(vmm_cpu_spinlock_t * lock);
 
-irq_flags_t __lock_section __cpu_spin_lock_irqsave(vmm_cpu_spinlock_t * lock);
-void __lock_section __cpu_spin_unlock_irqrestore(vmm_cpu_spinlock_t * lock,
-						 irq_flags_t flags);
-
 #endif /* __CPU_LOCKS_H__ */

@@ -2,8 +2,9 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Fri Oct 21 11:27:51 2011
+# Mon Nov 14 10:40:25 2011
 #
+# CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 CONFIG_ARCH="arm"
