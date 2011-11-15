@@ -59,23 +59,12 @@ typedef struct cpu_mmu_ctrl cpu_mmu_ctrl_t;
 cpu_mmu_ctrl_t mmuctrl;
 
 /** Find L2 page table at given physical address from L1 page table */
-cpu_l2tbl_t *cpu_mmu_l2tbl_find_tbl_pa(cpu_l1tbl_t * l1, 
-				       physical_addr_t tbl_pa)
+cpu_l2tbl_t *cpu_mmu_l2tbl_find_tbl_pa(physical_addr_t tbl_pa)
 {
-	u32 tmp;
-	cpu_l2tbl_t *l2;
+	u32 tmp = (tbl_pa - mmuctrl.l2_base_pa) >> TTBL_L2TBL_SIZE_SHIFT;
 
-	if (!l1) {
-		return NULL;
-	}
-
-	tmp = mmuctrl.l2_base_pa + TTBL_MAX_L2TBL_COUNT * TTBL_L2TBL_SIZE;
-	if ((mmuctrl.l2_base_pa <= tbl_pa) && (tbl_pa < tmp)) {
-		tmp = (tbl_pa - mmuctrl.l2_base_pa) / TTBL_L2TBL_SIZE;
-		l2 = &mmuctrl.l2_array[tmp];
-		if (l2->l1->l1_num == l1->l1_num) {
-			return l2;
-		}
+	if (tmp < TTBL_MAX_L2TBL_COUNT) {
+		return &mmuctrl.l2_array[tmp];
 	}
 
 	return NULL;
@@ -240,9 +229,9 @@ cpu_l1tbl_t *cpu_mmu_l1tbl_find_tbl_pa(physical_addr_t tbl_pa)
 		return &mmuctrl.defl1;
 	}
 
-	tmp = mmuctrl.l1_base_pa + TTBL_MAX_L1TBL_COUNT * TTBL_L1TBL_SIZE;
-	if ((mmuctrl.l1_base_pa <= tbl_pa) && (tbl_pa < tmp)) {
-		tmp = (tbl_pa - mmuctrl.l1_base_pa) / TTBL_L1TBL_SIZE;
+	tmp = (tbl_pa - mmuctrl.l1_base_pa) >> TTBL_L1TBL_SIZE_SHIFT;
+
+	if (tmp < TTBL_MAX_L1TBL_COUNT) {
 		return &mmuctrl.l1_array[tmp];
 	}
 
@@ -286,12 +275,10 @@ int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
 	l1_tte = (u32 *) (l1->tbl_va +
 			  ((va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
-	l1_sec_type = (*l1_tte & TTBL_L1TBL_TTE_SECTYPE_MASK) >>
-	    TTBL_L1TBL_TTE_SECTYPE_SHIFT;
-	vmm_memset(pg, 0, sizeof(cpu_page_t));
 
 	switch (l1_tte_type) {
 	case TTBL_L1TBL_TTE_TYPE_FAULT:
+		vmm_memset(pg, 0, sizeof(cpu_page_t));
 		break;
 	case TTBL_L1TBL_TTE_TYPE_SECTION:
 		pg->va = va & TTBL_L1TBL_TTE_OFFSET_MASK;
@@ -315,6 +302,8 @@ int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
 						TTBL_L1TBL_TTE_C_SHIFT;
 		pg->b = (*l1_tte & TTBL_L1TBL_TTE_B_MASK) >> 
 						TTBL_L1TBL_TTE_B_SHIFT;
+		l1_sec_type = (*l1_tte & TTBL_L1TBL_TTE_SECTYPE_MASK) >>
+	    					TTBL_L1TBL_TTE_SECTYPE_SHIFT;
 		if (l1_sec_type) {
 			pg->pa = *l1_tte & TTBL_L1TBL_TTE_BASE24_MASK;
 			pg->sz = TTBL_L1TBL_SUPSECTION_PAGE_SIZE;
@@ -331,7 +320,7 @@ int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
 		l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
 		l2_tte = (u32 *) ((va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
 				  TTBL_L2TBL_TTE_OFFSET_SHIFT);
-		l2 = cpu_mmu_l2tbl_find_tbl_pa(l1, l2base);
+		l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base);
 		if (l2) {
 			l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
 			pg->va = va & TTBL_L2TBL_TTE_BASE12_MASK;
@@ -379,6 +368,7 @@ int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
 		}
 		break;
 	default:
+		vmm_memset(pg, 0, sizeof(cpu_page_t));
 		ret = VMM_ENOTAVAIL;
 		break;
 	};
@@ -402,14 +392,14 @@ int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 	l1_tte = (u32 *) (l1->tbl_va +
 			  ((pg->va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
-	l1_sec_type = (*l1_tte & TTBL_L1TBL_TTE_SECTYPE_MASK) >>
-	    TTBL_L1TBL_TTE_SECTYPE_SHIFT;
 
 	found = 0;
 	switch (l1_tte_type) {
 	case TTBL_L1TBL_TTE_TYPE_FAULT:
 		break;
 	case TTBL_L1TBL_TTE_TYPE_SECTION:
+		l1_sec_type = (*l1_tte & TTBL_L1TBL_TTE_SECTYPE_MASK) >>
+						TTBL_L1TBL_TTE_SECTYPE_SHIFT;
 		if (l1_sec_type) {
 			l1_tte = l1_tte - ((u32)l1_tte % 64) / 4;
 			pgpa = pg->pa & TTBL_L1TBL_TTE_BASE24_MASK;
@@ -427,7 +417,7 @@ int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 		l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
 		l2_tte = (u32 *) ((pg->va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
 				  TTBL_L2TBL_TTE_OFFSET_SHIFT);
-		l2 = cpu_mmu_l2tbl_find_tbl_pa(l1, l2base);
+		l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base);
 		if (l2) {
 			l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
 			switch (*l2_tte & TTBL_L2TBL_TTE_TYPE_MASK) {
@@ -619,7 +609,7 @@ int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 		l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
 		l2_tte = (u32 *) ((pg->va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
 				  TTBL_L2TBL_TTE_OFFSET_SHIFT);
-		l2 = cpu_mmu_l2tbl_find_tbl_pa(l1, l2base);
+		l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base);
 		if (l2) {
 			l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
 			if (pg->sz == TTBL_L2TBL_LARGE_PAGE_SIZE) {
