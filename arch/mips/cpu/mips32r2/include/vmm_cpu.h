@@ -39,6 +39,7 @@ int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu);
 void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
 			  vmm_user_regs_t *regs);
 void vmm_vcpu_regs_dump(vmm_vcpu_t *vcpu);
+void vmm_vcpu_stat_dump(vmm_vcpu_t *vcpu);
 
 /** Host address space management related functions */
 /** Host address space related functions required by VMM core */

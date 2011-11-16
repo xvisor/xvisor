@@ -156,6 +156,21 @@ int vmm_manager_vcpu_dumpreg(vmm_vcpu_t * vcpu)
 	return rc;
 }
 
+int vmm_manager_vcpu_dumpstat(vmm_vcpu_t * vcpu)
+{
+	int rc = VMM_EFAIL;
+	irq_flags_t flags;
+	if (vcpu) {
+		flags = vmm_spin_lock_irqsave(&vcpu->lock);
+		if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
+			vmm_vcpu_stat_dump(vcpu);
+			rc = VMM_OK;
+		}
+		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
+	}
+	return rc;
+}
+
 vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
 					    virtual_addr_t start_sp,

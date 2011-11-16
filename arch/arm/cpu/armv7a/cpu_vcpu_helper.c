@@ -30,6 +30,7 @@
 #include <cpu_defines.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
+#include <vmm_math.h>
 
 void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 {
@@ -748,6 +749,14 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 			break;
 		};
 	}
+#ifdef CONFIG_ARMV7A_FUNCSTATS
+	for (ite=0; ite < ARM_FUNCSTAT_MAX; ite++) {
+		vcpu->sregs->funcstat[ite].function_name = NULL;
+		vcpu->sregs->funcstat[ite].entry_count = 0;
+		vcpu->sregs->funcstat[ite].exit_count = 0;
+		vcpu->sregs->funcstat[ite].time = 0;
+	}
+#endif
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
@@ -845,3 +854,27 @@ void vmm_vcpu_regs_dump(vmm_vcpu_t * vcpu)
 	vmm_printf("\n");
 }
 
+void vmm_vcpu_stat_dump(vmm_vcpu_t * vcpu)
+{
+#ifdef CONFIG_ARMV7A_FUNCSTATS
+	int index;
+
+	if (!vcpu || !vcpu->sregs) {
+		return;
+	}
+
+	vmm_printf("%-30s %-10s %s\n", "Function Name","Time/Call", "# Calls");
+
+	for (index=0; index < ARM_FUNCSTAT_MAX; index++) {
+		if (vcpu->sregs->funcstat[index].exit_count) { 
+			vmm_printf("%-30s %-10u %u\n", 
+			vcpu->sregs->funcstat[index].function_name, 
+			(u32)vmm_udiv64(vcpu->sregs->funcstat[index].time, 
+			vcpu->sregs->funcstat[index].exit_count), 
+			vcpu->sregs->funcstat[index].exit_count); 
+		} 
+	} 
+#else
+	vmm_printf("Not selected in Xvisor config\n");
+#endif
+}

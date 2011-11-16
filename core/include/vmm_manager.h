@@ -131,7 +131,7 @@ u32 vmm_manager_max_vcpu_count(void);
 /** Current number of vcpus (thread + normal) */
 u32 vmm_manager_vcpu_count(void);
 
-/** Retrive vcpu */
+/** Retrieve vcpu */
 vmm_vcpu_t * vmm_manager_vcpu(u32 vcpu_id);
 
 /** Reset a vcpu */
@@ -152,6 +152,9 @@ int vmm_manager_vcpu_halt(vmm_vcpu_t * vcpu);
 /** Dump registers of a vcpu */
 int vmm_manager_vcpu_dumpreg(vmm_vcpu_t * vcpu);
 
+/** Dump registers of a vcpu */
+int vmm_manager_vcpu_dumpstat(vmm_vcpu_t * vcpu);
+
 /** Create an orphan vcpu */
 vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
@@ -164,13 +167,13 @@ int vmm_manager_vcpu_orphan_destroy(vmm_vcpu_t * vcpu);
 /** Number of guests */
 u32 vmm_manager_guest_count(void);
 
-/** Retrive guest */
+/** Retrieve guest */
 vmm_guest_t * vmm_manager_guest(u32 guest_id);
 
 /** Number of vcpus belonging to a given guest */
 u32 vmm_manager_guest_vcpu_count(vmm_guest_t *guest);
 
-/** Retrive vcpu belonging to a given guest with particular subid */
+/** Retrieve vcpu belonging to a given guest with particular subid */
 vmm_vcpu_t * vmm_manager_guest_vcpu(vmm_guest_t *guest, u32 subid);
 
 /** Reset a guest */
