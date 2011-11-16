@@ -101,7 +101,9 @@ enum vmm_vcpu_states {
 	VMM_VCPU_STATE_HALTED = 0x20
 };
 
-#define VMM_VCPU_STATE_SAVEABLE		0x38
+#define VMM_VCPU_STATE_SAVEABLE		( VMM_VCPU_STATE_RUNNING | \
+					  VMM_VCPU_STATE_PAUSED | \
+					  VMM_VCPU_STATE_HALTED )
 
 struct vmm_vcpu {
 	struct dlist head;
