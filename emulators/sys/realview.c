@@ -445,9 +445,6 @@ static int realview_emulator_probe(vmm_guest_t *guest,
 		s->proc_id = ((u32 *)eid->data)[1];
 	}
 
-	goto realview_emulator_probe_done;
-
-	vmm_free(s);
 realview_emulator_probe_done:
 	return rc;
 }
@@ -455,6 +452,8 @@ realview_emulator_probe_done:
 static int realview_emulator_remove(vmm_emudev_t *edev)
 {
 	struct realview_sysctl * s = edev->priv;
+
+	edev->priv = NULL;
 
 	vmm_free(s);
 
