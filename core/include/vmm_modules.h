@@ -48,14 +48,6 @@ typedef struct vmm_module vmm_module_t;
 __modtbl_section vmm_module_t varid = \
 { VMM_MODULE_SIGNATURE, name, author, ipriority, 0, init, exit }
 
-struct vmm_modules_ctrl {
-	vmm_module_t *table;
-	u32 table_size;
-	u32 mod_count;
-};
-
-typedef struct vmm_modules_ctrl vmm_modules_ctrl_t;
-
 /** Retrive a module at given position in table */
 vmm_module_t *vmm_modules_getmodule(u32 index);
 

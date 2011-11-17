@@ -46,21 +46,6 @@ struct vmm_timer_event {
 	void * priv;
 };
 
-/** Control structure for Timer Subsystem */
-struct vmm_timer_ctrl {
-	u64 cycles_last;
-	u64 cycles_mask;
-	u32 cycles_mult;
-	u32 cycles_shift;
-	u64 timestamp;
-	bool cpu_started;
-	vmm_timer_event_t * cpu_curr;
-	struct dlist cpu_event_list;
-	struct dlist event_list;
-};
-
-typedef struct vmm_timer_ctrl vmm_timer_ctrl_t;
-
 /** Convert kHz clocksource to clocksource mult */
 static inline u32 vmm_timer_clocksource_khz2mult(u32 khz, u32 shift)
 {

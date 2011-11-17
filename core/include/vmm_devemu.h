@@ -33,7 +33,6 @@ typedef struct vmm_emupic vmm_emupic_t;
 typedef struct vmm_emuid vmm_emuid_t;
 typedef struct vmm_emuguest vmm_emuguest_t;
 typedef struct vmm_emulator vmm_emulator_t;
-typedef struct vmm_devemu_ctrl vmm_devemu_ctrl_t;
 
 typedef void (*vmm_emupic_hndl_t) (vmm_emupic_t *epic,
 				   u32 irq_num,
@@ -93,10 +92,6 @@ struct vmm_emulator {
 	vmm_emulator_write_t write;
 	vmm_emulator_reset_t reset;
 	vmm_emulator_remove_t remove;
-};
-
-struct vmm_devemu_ctrl {
-	struct dlist emu_list;
 };
 
 /** Emulate read for guest */

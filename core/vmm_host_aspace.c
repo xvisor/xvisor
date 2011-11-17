@@ -45,9 +45,7 @@ struct vmm_host_aspace_ctrl {
 	physical_size_t ram_size;
 };
 
-typedef struct vmm_host_aspace_ctrl vmm_host_aspace_ctrl_t;
-
-vmm_host_aspace_ctrl_t hactrl;
+static struct vmm_host_aspace_ctrl hactrl;
 
 int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 {

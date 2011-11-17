@@ -44,9 +44,7 @@ struct vmm_scheduler_ctrl {
 	vmm_timer_event_t * ev;
 };
 
-typedef struct vmm_scheduler_ctrl vmm_scheduler_ctrl_t;
-
-vmm_scheduler_ctrl_t sched;
+static struct vmm_scheduler_ctrl sched;
 
 void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
 {

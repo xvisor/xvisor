@@ -28,7 +28,20 @@
 #include <vmm_heap.h>
 #include <vmm_timer.h>
 
-vmm_timer_ctrl_t tctrl;
+/** Control structure for Timer Subsystem */
+struct vmm_timer_ctrl {
+        u64 cycles_last;
+        u64 cycles_mask;
+        u32 cycles_mult;
+        u32 cycles_shift;
+        u64 timestamp;
+        bool cpu_started;
+        vmm_timer_event_t * cpu_curr;
+        struct dlist cpu_event_list;
+        struct dlist event_list;
+};
+
+static struct vmm_timer_ctrl tctrl;
 
 u64 vmm_timer_timestamp(void)
 {

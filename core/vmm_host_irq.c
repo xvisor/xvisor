@@ -38,9 +38,7 @@ struct vmm_host_irqs_ctrl {
 	void **dev;
 };
 
-typedef struct vmm_host_irqs_ctrl vmm_host_irqs_ctrl_t;
-
-vmm_host_irqs_ctrl_t hirqctrl;
+static struct vmm_host_irqs_ctrl hirqctrl;
 
 int vmm_host_irq_exec(u32 cpu_irq_no, vmm_user_regs_t * regs)
 {

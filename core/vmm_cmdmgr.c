@@ -33,7 +33,11 @@
 #define VMM_CMD_ARG_DELIM_CHAR	' '
 #define VMM_CMD_ARG_DELIM_CHAR1	'\t'
 
-vmm_cmdmgr_ctrl_t cmctrl;
+struct vmm_cmdmgr_ctrl {
+        struct dlist cmd_list;
+};
+
+static struct vmm_cmdmgr_ctrl cmctrl;
 
 int vmm_cmdmgr_register_cmd(vmm_cmd_t * cmd)
 {

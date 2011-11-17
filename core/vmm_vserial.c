@@ -27,7 +27,11 @@
 #include <vmm_string.h>
 #include <vmm_vserial.h>
 
-vmm_vserial_ctrl_t vsctrl;
+struct vmm_vserial_ctrl {
+        struct dlist vser_list;
+};
+
+static struct vmm_vserial_ctrl vsctrl;
 
 u32 vmm_vserial_send(vmm_vserial_t * vser, u8 *src, u32 len)
 {
