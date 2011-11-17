@@ -87,4 +87,16 @@ void vmm_cpu_atomic_dec(atomic_t * atom);
 void vmm_cpu_spin_lock(vmm_cpu_spinlock_t * lock);
 void vmm_cpu_spin_unlock(vmm_cpu_spinlock_t * lock);
 
+/** Module related functions required by VMM core */
+extern u8 _modtbl_start;
+extern u8 _modtbl_end;
+static inline virtual_addr_t vmm_modtbl_vaddr(void)
+{
+	return (virtual_addr_t) &_modtbl_start;
+}
+static inline virtual_size_t vmm_modtbl_size(void)
+{
+	return (virtual_size_t) (&_modtbl_end - &_modtbl_start);
+}
+
 #endif

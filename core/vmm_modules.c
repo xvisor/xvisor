@@ -22,6 +22,7 @@
  * @brief source file of module managment code
  */
 
+#include <vmm_cpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
