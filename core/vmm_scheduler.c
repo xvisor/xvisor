@@ -37,9 +37,9 @@
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
+	vmm_vcpu_t *current_vcpu;
 	vmm_vcpu_t *idle_vcpu;
 	u8 idle_vcpu_stack[VMM_IDLE_VCPU_STACK_SZ];
-	s32 vcpu_current;
 	bool irq_context;
 	vmm_timer_event_t * ev;
 };
@@ -52,14 +52,13 @@ void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
 	vmm_vcpu_t *cur_vcpu, *nxt_vcpu;
 
 	/* Determine current vcpu */
-	cur_vcpu = vmm_manager_vcpu(sched.vcpu_current);
+	cur_vcpu = sched.current_vcpu;
 
 	/* Determine the next ready vcpu to schedule */
 	next = (cur_vcpu) ? cur_vcpu->id : -1;
 	next = ((next + 1) < vcpu_count) ? (next + 1) : 0;
 	nxt_vcpu = vmm_manager_vcpu(next);
-	while ((nxt_vcpu->state != VMM_VCPU_STATE_READY) &&
-		(next != sched.vcpu_current)) {
+	while (nxt_vcpu->state != VMM_VCPU_STATE_READY) {
 		next = ((next + 1) < vcpu_count) ? (next + 1) : 0;
 		nxt_vcpu = vmm_manager_vcpu(next);
 	}
@@ -78,14 +77,14 @@ void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
 
 	if (nxt_vcpu) {
 		nxt_vcpu->state = VMM_VCPU_STATE_RUNNING;
-		sched.vcpu_current = nxt_vcpu->id;
+		sched.current_vcpu = nxt_vcpu;
 		vmm_timer_event_start(ev, nxt_vcpu->time_slice);
 	}
 }
 
 void vmm_scheduler_timer_event(vmm_timer_event_t * ev)
 {
-	vmm_vcpu_t * vcpu = vmm_manager_vcpu(sched.vcpu_current);
+	vmm_vcpu_t * vcpu = sched.current_vcpu;
 	if (vcpu) {
 		if (!vcpu->preempt_count) {
 			vmm_scheduler_next(ev, ev->cpu_regs);
@@ -108,7 +107,7 @@ int vmm_scheduler_notify_state_change(vmm_vcpu_t * vcpu, u32 new_state)
 	switch(new_state) {
 	case VMM_VCPU_STATE_PAUSED:
 	case VMM_VCPU_STATE_HALTED:
-		if(vmm_manager_vcpu(sched.vcpu_current) == vcpu) {
+		if(sched.current_vcpu == vcpu) {
 			vmm_timer_event_start(sched.ev, 0);
 		}
 		break;
@@ -128,7 +127,7 @@ void vmm_scheduler_irq_exit(vmm_user_regs_t * regs)
 	vmm_vcpu_t * vcpu = NULL;
 
 	/* Determine current vcpu */
-	vcpu = vmm_manager_vcpu(sched.vcpu_current);
+	vcpu = sched.current_vcpu;
 	if (!vcpu) {
 		return;
 	}
@@ -154,14 +153,7 @@ bool vmm_scheduler_irq_context(void)
 
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void)
 {
-	irq_flags_t flags;
-	vmm_vcpu_t * vcpu = NULL;
-	flags = vmm_cpu_irq_save();
-	if (sched.vcpu_current != -1) {
-		vcpu = vmm_manager_vcpu(sched.vcpu_current);
-	}
-	vmm_cpu_irq_restore(flags);
-	return vcpu;
+	return sched.current_vcpu;
 }
 
 vmm_guest_t * vmm_scheduler_current_guest(void)
@@ -216,16 +208,16 @@ int vmm_scheduler_init(void)
 	/* Reset the scheduler control structure */
 	vmm_memset(&sched, 0, sizeof(sched));
 
+	/* Initialize current VCPU. (Per Host CPU) */
+	sched.current_vcpu = NULL;
+
 	/* Create idle orphan vcpu with 100 msec time slice. (Per Host CPU) */
 	sched.idle_vcpu = vmm_manager_vcpu_orphan_create("idle/0",
 	(virtual_addr_t)&idle_orphan,
 	(virtual_addr_t)&sched.idle_vcpu_stack[VMM_IDLE_VCPU_STACK_SZ - 4],
 	VMM_IDLE_VCPU_TIMESLICE);
 
-	/* Initialize scheduling parameters. (Per Host CPU) */
-	sched.vcpu_current = -1;
-
-	/* Initialize IRQ state */
+	/* Initialize IRQ state (Per Host CPU) */
 	sched.irq_context = FALSE;
 
 	/* Create timer event and start it. (Per Host CPU) */
