@@ -42,7 +42,7 @@ int vmm_devemu_emulate_read(vmm_guest_t *guest,
 	vmm_emudev_t *edev;
 	vmm_region_t *reg;
 
-	reg = vmm_guest_getregion(guest, gphys_addr);
+	reg = vmm_guest_find_region(guest, gphys_addr, FALSE);
 	if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
 		return VMM_EFAIL;
 	}
@@ -62,7 +62,7 @@ int vmm_devemu_emulate_write(vmm_guest_t *guest,
 	vmm_emudev_t *edev;
 	vmm_region_t *reg;
 
-	reg = vmm_guest_getregion(guest, gphys_addr);
+	reg = vmm_guest_find_region(guest, gphys_addr, FALSE);
 	if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
 		return VMM_EFAIL;
 	}

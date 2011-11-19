@@ -27,9 +27,12 @@
 #include <vmm_list.h>
 #include <vmm_manager.h>
 
-/** Get region to which given guest physical address belongs */
-vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
-				  physical_addr_t gphys_addr);
+/** Find region corresponding to a guest physical address and also
+ *  resolve aliased regions to real or virtual regions if required.
+ */
+vmm_region_t *vmm_guest_find_region(vmm_guest_t *guest,
+				    physical_addr_t gphys_addr,
+				    bool resolve_alias);
 
 /** Read from guest memory address space */
 u32 vmm_guest_physical_read(vmm_guest_t * guest, 
