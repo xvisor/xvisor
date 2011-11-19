@@ -56,23 +56,6 @@ vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
 		return NULL;
 	}
 
-	while (reg->flags & VMM_REGION_ALIAS) {
-		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
-		reg = NULL;
-		found = FALSE;
-		list_for_each(l, &guest->aspace.reg_list) {
-			reg = list_entry(l, vmm_region_t, head);
-			if (reg->gphys_addr <= gphys_addr &&
-			    gphys_addr < (reg->gphys_addr + reg->phys_size)) {
-				found = TRUE;
-				break;
-			}
-		}
-		if (!found) {
-			return NULL;
-		}
-	}
-
 	return reg;
 }
 
@@ -89,7 +72,18 @@ u32 vmm_guest_physical_read(vmm_guest_t * guest,
 	}
 
 	while (bytes_read < len) {
-		if (!(reg = vmm_guest_getregion(guest, gphys_addr))) {
+		reg = vmm_guest_getregion(guest, gphys_addr);
+		if (!reg) {
+			break;
+		}
+		while (reg->flags & VMM_REGION_ALIAS) {
+			gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+			reg = vmm_guest_getregion(guest, gphys_addr);
+			if (!reg) {
+				break;
+			}
+		}
+		if (!reg) {
 			break;
 		}
 
@@ -128,7 +122,18 @@ u32 vmm_guest_physical_write(vmm_guest_t * guest,
 	}
 
 	while (bytes_written < len) {
-		if (!(reg = vmm_guest_getregion(guest, gphys_addr))) {
+		reg = vmm_guest_getregion(guest, gphys_addr);
+		if (!reg) {
+			break;
+		}
+		while (reg->flags & VMM_REGION_ALIAS) {
+			gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+			reg = vmm_guest_getregion(guest, gphys_addr);
+			if (!reg) {
+				break;
+			}
+		}
+		if (!reg) {
 			break;
 		}
 
