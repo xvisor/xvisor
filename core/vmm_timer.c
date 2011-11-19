@@ -28,7 +28,20 @@
 #include <vmm_heap.h>
 #include <vmm_timer.h>
 
-vmm_timer_ctrl_t tctrl;
+/** Control structure for Timer Subsystem */
+struct vmm_timer_ctrl {
+        u64 cycles_last;
+        u64 cycles_mask;
+        u32 cycles_mult;
+        u32 cycles_shift;
+        u64 timestamp;
+        bool cpu_started;
+        vmm_timer_event_t * cpu_curr;
+        struct dlist cpu_event_list;
+        struct dlist event_list;
+};
+
+static struct vmm_timer_ctrl tctrl;
 
 u64 vmm_timer_timestamp(void)
 {
@@ -159,43 +172,11 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 
 int vmm_timer_event_restart(vmm_timer_event_t * ev)
 {
-	bool added;
-	irq_flags_t flags;
-	struct dlist *l;
-	vmm_timer_event_t *e;
-
 	if (!ev) {
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_cpu_irq_save();
-
-	if (ev->active) {
-		list_del(&ev->cpu_head);
-		ev->active = FALSE;
-	}
-
-	ev->expiry_tstamp = vmm_timer_timestamp() + ev->duration_nsecs;
-	ev->active = TRUE;
-	added = FALSE;
-	e = NULL;
-	list_for_each(l, &tctrl.cpu_event_list) {
-		e = list_entry(l, vmm_timer_event_t, cpu_head);
-		if (ev->expiry_tstamp < e->expiry_tstamp) {
-			list_add_tail(&e->cpu_head, &ev->cpu_head);
-			added = TRUE;
-			break;
-		}
-	}
-	if (!added) {
-		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
-	}
-
-	vmm_timer_schedule_next_event(ev);
-
-	vmm_cpu_irq_restore(flags);
-
-	return VMM_OK;
+	return vmm_timer_event_start(ev, ev->duration_nsecs);
 }
 
 int vmm_timer_event_stop(vmm_timer_event_t * ev)

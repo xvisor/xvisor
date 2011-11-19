@@ -23,7 +23,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_string.h>
 #include <vmm_devtree.h>
@@ -39,7 +38,7 @@
 
 #define VMM_DEVTREE_MAX_PATH_LEN		256
 
-static char *dtree_curpath;
+static char dtree_curpath[VMM_DEVTREE_MAX_PATH_LEN];
 
 void cmd_devtree_usage(vmm_chardev_t *cdev)
 {
@@ -226,7 +225,6 @@ static vmm_cmd_t cmd_devtree = {
 static int cmd_devtree_init(void)
 {
 	int ret;
-	dtree_curpath = vmm_malloc(VMM_DEVTREE_MAX_PATH_LEN);
 	vmm_memset(dtree_curpath, 0, VMM_DEVTREE_MAX_PATH_LEN);
 	ret = vmm_devtree_getpath(dtree_curpath, vmm_devtree_rootnode());
 	if (ret) {

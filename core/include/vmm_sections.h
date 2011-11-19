@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Pranav Sawargaonkar.
+ * Copyright (c) 2011 Pavel Borzenkov.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
  *
  * @file vmm_sections.h
  * @version 0.01
+ * @author Pavel Borzenkov <pavel.borzenkov@gmail.com>
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @brief Architecture specific implementation of synchronization mechanisms.
  */
@@ -27,20 +28,7 @@
 
 #include <vmm_types.h>
 
-extern u8 _modtbl_start;
-extern u8 _modtbl_end;
-
 #define __lock_section		__attribute__((section(".spinlock.text")))
 #define __modtbl_section	__attribute__((section(".modtbl")))
-
-static inline virtual_addr_t vmm_modtbl_vaddr(void)
-{
-	return (virtual_addr_t) & _modtbl_start;
-}
-
-static inline virtual_size_t vmm_modtbl_size(void)
-{
-	return (virtual_size_t) (&_modtbl_end - &_modtbl_start);
-}
 
 #endif /* __VMM_SECTIONS_H__ */

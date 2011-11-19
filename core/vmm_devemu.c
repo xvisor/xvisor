@@ -29,7 +29,11 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_devemu.h>
 
-vmm_devemu_ctrl_t dectrl;
+struct vmm_devemu_ctrl {
+        struct dlist emu_list;
+};
+
+static struct vmm_devemu_ctrl dectrl;
 
 int vmm_devemu_emulate_read(vmm_guest_t *guest, 
 			    physical_addr_t gphys_addr,

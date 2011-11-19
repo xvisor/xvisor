@@ -541,7 +541,7 @@ int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu,
 {
 	int rc = VMM_OK;
 	cpu_page_t pg;
-	/* Try to retrive the faulting page */
+	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, far, &pg))) {
 		cpu_vcpu_halt(vcpu, regs);
 		return rc;
@@ -567,7 +567,7 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 {
 	int rc = VMM_OK;
 	cpu_page_t pg;
-	/* Try to retrive the faulting page */
+	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, far, &pg))) {
 		cpu_vcpu_halt(vcpu, regs);
 		return rc;
@@ -1259,7 +1259,17 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 				*((u8 *)dst) = *((u8 *)addr);
 				break;
 			default:
-				return VMM_EFAIL;
+				if (dst_len > 4) {
+					vind = 0;
+					while (dst_len >= 4) {
+						((u32 *)dst)[vind] = 
+							((u32 *)addr)[vind];
+						vind++;
+						dst_len = dst_len - 4;
+					}
+				} else {
+					return VMM_EFAIL;
+				}
 				break;
 			};
 			break;
@@ -1357,7 +1367,17 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 				*((u8 *)addr) = *((u8 *)src);
 				break;
 			default:
-				return VMM_EFAIL;
+				if (src_len > 4) {
+					vind = 0;
+					while (src_len >= 4) {
+						((u32 *)addr)[vind] = 
+							((u32 *)src)[vind];
+						vind++;
+						src_len = src_len - 4;
+					}
+				} else {
+					return VMM_EFAIL;
+				}
 				break;
 			};
 			break;

@@ -23,6 +23,7 @@
 # */
 
 # Need -Uarm for gcc < 3.x
+cpu-cppflags+=-DCPU_TEXT_START=0xFF000000
 cpu-cflags += -msoft-float -mno-thumb-interwork -march=armv7-a -marm -Uarm
 cpu-asflags += -mno-thumb-interwork -march=armv7-a -marm
 cpu-ldflags += -msoft-float

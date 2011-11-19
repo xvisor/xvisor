@@ -38,7 +38,12 @@
 /* the following should be enough for 32 bit int */
 #define PRINT_BUF_LEN 16
 
-vmm_stdio_ctrl_t stdio_ctrl;
+struct vmm_stdio_ctrl {
+        vmm_spinlock_t lock;
+        vmm_chardev_t *cdev;
+};
+
+static struct vmm_stdio_ctrl stdio_ctrl;
 
 bool vmm_iscontrol(char c)
 {

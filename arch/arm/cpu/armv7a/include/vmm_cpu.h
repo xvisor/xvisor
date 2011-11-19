@@ -38,6 +38,7 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 			  vmm_vcpu_t * vcpu, 
 			  vmm_user_regs_t * regs);
 void vmm_vcpu_regs_dump(vmm_vcpu_t * vcpu);
+void vmm_vcpu_stat_dump(vmm_vcpu_t * vcpu);
 
 /** Address space related functions required by VMM core */
 int vmm_cpu_aspace_init(physical_addr_t * resv_pa, 
@@ -80,13 +81,22 @@ u32 vmm_cpu_clocksource_mult(void);
 u32 vmm_cpu_clocksource_shift(void);
 int vmm_cpu_clocksource_init(void);
 
-/** Atomic Operations and spinlock */
+/** Atomic Operations and Spinlocks */
 void vmm_cpu_atomic_inc(atomic_t * atom);
 void vmm_cpu_atomic_dec(atomic_t * atom);
 void vmm_cpu_spin_lock(vmm_cpu_spinlock_t * lock);
 void vmm_cpu_spin_unlock(vmm_cpu_spinlock_t * lock);
-irq_flags_t vmm_cpu_spin_lock_irqsave(vmm_cpu_spinlock_t * lock);
-void vmm_cpu_spin_unlock_irqrestore(vmm_cpu_spinlock_t * lock,
-				    irq_flags_t flags);
+
+/** Module related functions required by VMM core */
+extern u8 _modtbl_start;
+extern u8 _modtbl_end;
+static inline virtual_addr_t vmm_modtbl_vaddr(void)
+{
+	return (virtual_addr_t) &_modtbl_start;
+}
+static inline virtual_size_t vmm_modtbl_size(void)
+{
+	return (virtual_size_t) (&_modtbl_end - &_modtbl_start);
+}
 
 #endif

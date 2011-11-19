@@ -76,7 +76,7 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 	u32 old_cpsr, new_cpsr, new_mode, new_flags, lr_off;
 	virtual_addr_t new_pc;
 
-	old_cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
+	old_cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 	new_cpsr = old_cpsr;
 	new_flags = 0x0;
 

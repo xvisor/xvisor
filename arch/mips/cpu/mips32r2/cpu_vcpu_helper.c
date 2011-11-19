@@ -182,3 +182,7 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
 void vmm_vcpu_regs_dump(vmm_vcpu_t *vcpu) 
 {
 }
+
+void vmm_vcpu_stat_dump(vmm_vcpu_t *vcpu) 
+{
+}
