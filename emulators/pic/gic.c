@@ -248,8 +248,6 @@ static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 		return VMM_EFAIL;
 	}
 
-	vmm_spin_lock(&s->lock);
-
 	done = 1;
 	switch (offset - (offset & 0x3)) {
 	case 0x000: /* Distributor control */
@@ -374,8 +372,6 @@ static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 		};
 	}
 
-	vmm_spin_unlock(&s->lock);
-
 	if (!done) {
 		return VMM_EFAIL;
 	}
@@ -390,8 +386,6 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 	if (!s) {
 		return VMM_EFAIL;
 	}
-
-	vmm_spin_lock(&s->lock);
 
 	done = 1;
 	switch (offset - (offset & 0x3)) {
@@ -550,8 +544,6 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 		gic_update(s);
 	}
 
-	vmm_spin_unlock(&s->lock);
-
 	if (!done) {
 		return VMM_EFAIL;
 	}
@@ -568,6 +560,7 @@ static int gic_dist_read(struct gic_state * s, int cpu, u32 offset, u32 *dst)
 		return VMM_EFAIL;
 	}
 
+	vmm_spin_lock(&s->lock);
 	*dst = 0;
 	for (i = 0; i < 4; i++) {
 		if ((rc = gic_dist_readb(s, cpu, 
@@ -576,6 +569,7 @@ static int gic_dist_read(struct gic_state * s, int cpu, u32 offset, u32 *dst)
 		}
 		*dst |= val << (i * 8);
 	}
+	vmm_spin_unlock(&s->lock);
 
 	return VMM_OK;
 }
@@ -589,9 +583,10 @@ static int gic_dist_write(struct gic_state * s, int cpu, u32 offset,
 		return VMM_EFAIL;
 	}
 
+	vmm_spin_lock(&s->lock);
+
 	if (offset == 0xF00) {
 		/* Software Interrupt */
-		vmm_spin_lock(&s->lock);
 		irq = src & 0x3ff;
 		switch ((src >> 24) & 3) {
 		case 0:
@@ -609,7 +604,6 @@ static int gic_dist_write(struct gic_state * s, int cpu, u32 offset,
 		};
 		GIC_SET_PENDING(s, irq, mask);
 		gic_update(s);
-		vmm_spin_unlock(&s->lock);
 	} else {
 		src_mask = ~src_mask;
 		for (i = 0; i < 4; i++) {
@@ -623,6 +617,8 @@ static int gic_dist_write(struct gic_state * s, int cpu, u32 offset,
 			src = src >> 8;
 		}
 	}
+
+	vmm_spin_unlock(&s->lock);
 
 	return rc;
 }

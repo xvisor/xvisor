@@ -26,7 +26,7 @@
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_coproc.h>
 
-cpu_vcpu_coproc_t cp_array[CPU_COPROC_COUNT] =
+static cpu_vcpu_coproc_t cp_array[CPU_COPROC_COUNT] =
 {
 	{
 		.cpnum = 0,

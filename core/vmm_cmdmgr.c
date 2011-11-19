@@ -33,7 +33,11 @@
 #define VMM_CMD_ARG_DELIM_CHAR	' '
 #define VMM_CMD_ARG_DELIM_CHAR1	'\t'
 
-vmm_cmdmgr_ctrl_t cmctrl;
+struct vmm_cmdmgr_ctrl {
+        struct dlist cmd_list;
+};
+
+static struct vmm_cmdmgr_ctrl cmctrl;
 
 int vmm_cmdmgr_register_cmd(vmm_cmd_t * cmd)
 {
@@ -231,14 +235,14 @@ int vmm_cmdmgr_execute_cmdstr(vmm_chardev_t *cdev, char *cmds)
 	return VMM_OK;
 }
 
-void cmd_help_usage(vmm_chardev_t *cdev)
+static void cmd_help_usage(vmm_chardev_t *cdev)
 {
 	vmm_cprintf(cdev, "Usage: ");
 	vmm_cprintf(cdev, "   help\n");
-	vmm_cprintf(cdev, "   help <cmd_name>\n");
+	vmm_cprintf(cdev, "   help <cmd_name1> [<cmd_name2>] ...\n");
 }
 
-int cmd_help_exec(vmm_chardev_t *cdev, int argc, char **argv)
+static int cmd_help_exec(vmm_chardev_t *cdev, int argc, char **argv)
 {
 	u32 i, cmd_count;
 	vmm_cmd_t * cmd;
@@ -264,20 +268,19 @@ int cmd_help_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return 0;
 }
 
+static vmm_cmd_t help_cmd = {
+	.name = "help",
+	.desc = "displays list of all commands",
+	.usage = cmd_help_usage,
+	.exec = cmd_help_exec,
+};
+
 int vmm_cmdmgr_init(void)
 {
-	vmm_cmd_t * help_cmd = NULL;
-
 	vmm_memset(&cmctrl, 0, sizeof(cmctrl));
 
 	INIT_LIST_HEAD(&cmctrl.cmd_list);
 
-	help_cmd = vmm_malloc(sizeof(vmm_cmd_t));
-	vmm_strcpy(help_cmd->name, "help");
-	vmm_strcpy(help_cmd->desc, "displays list of all commands");
-	help_cmd->usage = &cmd_help_usage;
-	help_cmd->exec = &cmd_help_exec;
-
-	return vmm_cmdmgr_register_cmd(help_cmd);
+	return vmm_cmdmgr_register_cmd(&help_cmd);
 }
 

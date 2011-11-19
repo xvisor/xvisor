@@ -52,14 +52,6 @@ struct vmm_thread {
 
 typedef struct vmm_thread vmm_thread_t;
 
-struct vmm_threads_ctrl {
-	vmm_spinlock_t lock;
-	u32 thread_count;
-	struct dlist thread_list;
-};
-
-typedef struct vmm_threads_ctrl vmm_threads_ctrl_t;
-
 vmm_thread_t *vmm_threads_create(const char *thread_name, 
 				 vmm_thread_func_t thread_fn,
 				 void *thread_data,

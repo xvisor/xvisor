@@ -97,14 +97,6 @@ struct vmm_devtree_node {
 
 typedef struct vmm_devtree_node vmm_devtree_node_t;
 
-struct vmm_devtree_ctrl {
-	char *str_buf;
-	size_t str_buf_size;
-	vmm_devtree_node_t *root;
-};
-
-typedef struct vmm_devtree_ctrl vmm_devtree_ctrl_t;
-
 /** Get attribute value */
 const char *vmm_devtree_attrval(vmm_devtree_node_t * node, const char *attrib);
 

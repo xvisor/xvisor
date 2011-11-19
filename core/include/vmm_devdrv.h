@@ -80,13 +80,6 @@ struct vmm_driver {
 	vmm_driver_remove_t remove;
 };
 
-struct vmm_devdrv_ctrl {
-	struct dlist driver_list;
-	struct dlist class_list;
-};
-
-typedef struct vmm_devdrv_ctrl vmm_devdrv_ctrl_t;
-
 /** Probe device instances under a given device tree node */
 int vmm_devdrv_probe(vmm_devtree_node_t * node);
 

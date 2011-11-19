@@ -34,6 +34,7 @@ enum arm_shift_type {
 	arm_shift_rrx
 };
 
+#define ARM_INST_BIT(inst, start)		(((inst) >> (start)) & 0x1)
 #define ARM_INST_BITS(inst, end, start)		(((inst) << (31-(end))) >> (31+(start)-(end)))
 #define ARM_INST_DECODE(inst, mask, shift)	(((inst) & (mask)) >> (shift))
 #define ARM_INST_ENCODE(val, mask, shift)	(((val) << (shift)) & (mask))
