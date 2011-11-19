@@ -174,7 +174,7 @@ int vmm_board_final_init(void)
 	/* Map control registers */
 	pba8_sys_base = vmm_host_iomap(REALVIEW_SYS_BASE, 0x1000);
 
-	/* Unlock Lockable reigsters */
+	/* Unlock Lockable registers */
 	vmm_writel(REALVIEW_SYS_LOCKVAL, 
 		   (void *)(pba8_sys_base + REALVIEW_SYS_LOCK_OFFSET));
 
