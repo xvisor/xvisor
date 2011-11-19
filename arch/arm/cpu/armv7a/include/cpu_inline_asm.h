@@ -58,6 +58,14 @@
 				" mcr     p15, 0, %0, c2, c0, 1\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
+#define read_vbar()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c12, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_vbar(val)		asm volatile(\
+				" mcr     p15, 0, %0, c12, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
 #define read_ttbcr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c2, c0, 2\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})

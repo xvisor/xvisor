@@ -347,6 +347,9 @@ int vmm_cpu_irq_setup(void)
 	write_sctlr(read_sctlr() | SCTLR_V_MASK);
 	vectors = (u32 *) CPU_IRQ_HIGHVEC_BASE;
 #else
+#if defined(CONFIG_ARMV7A_SECUREX)
+	write_vbar(CPU_IRQ_LOWVEC_BASE);
+#endif
 	vectors = (u32 *) CPU_IRQ_LOWVEC_BASE;
 #endif
 	vectors_data = vectors + CPU_IRQ_NR;

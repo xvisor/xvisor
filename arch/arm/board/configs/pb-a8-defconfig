@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Wed Nov 16 10:36:04 2011
+# Sat Nov 19 19:41:04 2011
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -21,6 +21,7 @@ CONFIG_ARMV7A=y
 #
 # CONFIG_ARMV7A_HIGHVEC is not set
 # CONFIG_ARMV7A_FUNCSTATS is not set
+# CONFIG_ARMV7A_SECUREX is not set
 CONFIG_BOARD_PB_A8=y
 CONFIG_REALVIEW=y
 CONFIG_EMU_REALVIEW=y
