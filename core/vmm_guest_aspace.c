@@ -31,8 +31,9 @@
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 
-vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
-				  physical_addr_t gphys_addr)
+vmm_region_t *vmm_guest_find_region(vmm_guest_t *guest,
+				    physical_addr_t gphys_addr,
+				    bool resolve_alias)
 {
 	bool found = FALSE;
 	struct dlist *l;
@@ -56,7 +57,7 @@ vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
 		return NULL;
 	}
 
-	while (reg->flags & VMM_REGION_ALIAS) {
+	while (resolve_alias && (reg->flags & VMM_REGION_ALIAS)) {
 		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
 		reg = NULL;
 		found = FALSE;
@@ -89,7 +90,8 @@ u32 vmm_guest_physical_read(vmm_guest_t * guest,
 	}
 
 	while (bytes_read < len) {
-		if (!(reg = vmm_guest_getregion(guest, gphys_addr))) {
+		reg = vmm_guest_find_region(guest, gphys_addr, TRUE);
+		if (!reg) {
 			break;
 		}
 
@@ -128,7 +130,8 @@ u32 vmm_guest_physical_write(vmm_guest_t * guest,
 	}
 
 	while (bytes_written < len) {
-		if (!(reg = vmm_guest_getregion(guest, gphys_addr))) {
+		reg = vmm_guest_find_region(guest, gphys_addr, TRUE);
+		if (!reg) {
 			break;
 		}
 
@@ -168,13 +171,13 @@ int vmm_guest_physical_map(vmm_guest_t * guest,
 		return VMM_EFAIL;
 	}
 
-	reg = vmm_guest_getregion(guest, gphys_addr);
+	reg = vmm_guest_find_region(guest, gphys_addr, FALSE);
 	if (!reg) {
 		return VMM_EFAIL;
 	}
 	while (reg->flags & VMM_REGION_ALIAS) {
 		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
-		reg = vmm_guest_getregion(guest, gphys_addr);
+		reg = vmm_guest_find_region(guest, gphys_addr, FALSE);
 		if (!reg) {
 			return VMM_EFAIL;
 		}

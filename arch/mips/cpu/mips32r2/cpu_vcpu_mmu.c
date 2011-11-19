@@ -112,7 +112,7 @@ static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 			gphys_addr2map = (gtlbe->entrylo0._s_entrylo.pfn \
 					  << PAGE_SHIFT);
 			guest_region = \
-				vmm_guest_getregion(guest, gphys_addr2map);
+			vmm_guest_find_region(guest, gphys_addr2map, TRUE);
 			if (!guest_region) {
 				TBE_ELO_INVALIDATE(gtlbe, entrylo0);
 				return VMM_EFAIL;
@@ -135,7 +135,8 @@ static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 		if (TBE_ELO_VALID(gtlbe, entrylo1)) {
 			gphys_addr = (gtlbe->entrylo1._s_entrylo.pfn \
 				      << PAGE_SHIFT);
-			guest_region = vmm_guest_getregion(guest, gphys_addr);
+			guest_region = \
+			vmm_guest_find_region(guest, gphys_addr, TRUE);
 			if (!guest_region) {
 				TBE_ELO_INVALIDATE(gtlbe, entrylo1);
 				return VMM_EFAIL;
