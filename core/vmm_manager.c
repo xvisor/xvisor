@@ -451,11 +451,6 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 	guest->vcpu_count = 0;
 	INIT_LIST_HEAD(&guest->vcpu_list);
 
-	/* Initialize guest address space */
-	if (vmm_guest_aspace_init(guest)) {
-		return NULL;
-	}
-
 	vsnode = vmm_devtree_getchildnode(gnode,
 					  VMM_DEVTREE_VCPUS_NODE_NAME);
 	if (!vsnode) {
@@ -542,8 +537,7 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 	}
 
 	/* Initialize guest address space */
-	if (vmm_guest_aspace_probe(guest)) {
-		/* FIXME: Free vcpus alotted to this guest */
+	if (vmm_guest_aspace_init(guest)) {
 		return NULL;
 	}
 

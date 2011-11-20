@@ -57,14 +57,14 @@ struct vmm_region {
 	physical_addr_t hphys_addr;
 	physical_size_t phys_size;
 	u32 flags;
-	void *priv;
+	void *devemu_priv;
 };
 
 struct vmm_guest_aspace {
 	vmm_devtree_node_t *node;
 	vmm_guest_t *guest;
 	struct dlist reg_list;
-	void *priv;
+	void *devemu_priv;
 };
 
 #define list_for_each_region(curr, aspace)	\
@@ -123,6 +123,7 @@ struct vmm_vcpu {
 	vmm_user_regs_t *uregs;
 	vmm_super_regs_t *sregs;
 	vmm_vcpu_irqs_t *irqs;
+	void * devemu_priv;
 };
 
 /** Maximum number of vcpus (thread or normal) */

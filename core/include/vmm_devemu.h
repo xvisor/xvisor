@@ -94,13 +94,13 @@ struct vmm_emulator {
 	vmm_emulator_remove_t remove;
 };
 
-/** Emulate read for guest */
-int vmm_devemu_emulate_read(vmm_guest_t *guest, 
+/** Emulate read for given VCPU */
+int vmm_devemu_emulate_read(vmm_vcpu_t *vcpu, 
 			    physical_addr_t gphys_addr,
 			    void *dst, u32 dst_len);
 
-/** Emulate write for guest */
-int vmm_devemu_emulate_write(vmm_guest_t *guest, 
+/** Emulate write for given VCPU */
+int vmm_devemu_emulate_write(vmm_vcpu_t *vcpu, 
 			     physical_addr_t gphys_addr,
 			     void *src, u32 src_len);
 
@@ -137,11 +137,17 @@ vmm_emulator_t *vmm_devemu_emulator(int index);
 /** Count available emulators */
 u32 vmm_devemu_emulator_count(void);
 
+/** Reset context for given guest */
+int vmm_devemu_reset_context(vmm_guest_t *guest);
+
 /** Reset emulators for given region */
-int vmm_devemu_reset(vmm_guest_t *guest, vmm_region_t *reg);
+int vmm_devemu_reset_region(vmm_guest_t *guest, vmm_region_t *reg);
 
 /** Probe emulators for given region */
-int vmm_devemu_probe(vmm_guest_t *guest, vmm_region_t *reg);
+int vmm_devemu_probe_region(vmm_guest_t *guest, vmm_region_t *reg);
+
+/** Initialize context for given guest */
+int vmm_devemu_init_context(vmm_guest_t *guest);
 
 /** Initialize device emulation framework */
 int vmm_devemu_init(void);

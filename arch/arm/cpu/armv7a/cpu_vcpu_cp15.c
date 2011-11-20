@@ -1243,8 +1243,8 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 		switch(pg.ap) {
 		case TTBL_AP_SR_U:
 		case TTBL_AP_SRW_U:
-			return vmm_devemu_emulate_read(vcpu->guest, 
-				(addr - pg.va) + pg.pa, dst, dst_len);
+			return vmm_devemu_emulate_read(vcpu,
+					(addr - pg.va) + pg.pa, dst, dst_len);
 			break;
 		case TTBL_AP_SRW_UR:
 		case TTBL_AP_SRW_URW:
@@ -1352,8 +1352,8 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 		}
 		switch(pg.ap) {
 		case TTBL_AP_SRW_U:
-			return vmm_devemu_emulate_write(vcpu->guest, 
-				(addr - pg.va) + pg.pa, src, src_len);
+			return vmm_devemu_emulate_write(vcpu, 
+					(addr - pg.va) + pg.pa, src, src_len);
 			break;
 		case TTBL_AP_SRW_URW:
 			switch (src_len) {

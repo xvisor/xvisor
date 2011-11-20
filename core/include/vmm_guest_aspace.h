@@ -60,9 +60,6 @@ int vmm_guest_physical_unmap(vmm_guest_t * guest,
 /** Reset Guest Address space */
 int vmm_guest_aspace_reset(vmm_guest_t *guest);
 
-/** Probe Guest Address space */
-int vmm_guest_aspace_probe(vmm_guest_t *guest);
-
 /** Initialize Guest Address space */
 int vmm_guest_aspace_init(vmm_guest_t *guest);
 

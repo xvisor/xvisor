@@ -35,19 +35,23 @@ struct vmm_devemu_ctrl {
 
 static struct vmm_devemu_ctrl dectrl;
 
-int vmm_devemu_emulate_read(vmm_guest_t *guest, 
+int vmm_devemu_emulate_read(vmm_vcpu_t *vcpu, 
 			    physical_addr_t gphys_addr,
 			    void *dst, u32 dst_len)
 {
 	vmm_emudev_t *edev;
 	vmm_region_t *reg;
 
-	reg = vmm_guest_find_region(guest, gphys_addr, FALSE);
+	if (!vcpu || !(vcpu->guest)) {
+		return VMM_EFAIL;
+	}
+
+	reg = vmm_guest_find_region(vcpu->guest, gphys_addr, FALSE);
 	if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
 		return VMM_EFAIL;
 	}
 
-	edev = (vmm_emudev_t *)reg->priv;
+	edev = (vmm_emudev_t *)reg->devemu_priv;
 	if (!edev || !edev->read) {
 		return VMM_EFAIL;
 	}
@@ -55,19 +59,23 @@ int vmm_devemu_emulate_read(vmm_guest_t *guest,
 	return edev->read(edev, gphys_addr - reg->gphys_addr, dst, dst_len);
 }
 
-int vmm_devemu_emulate_write(vmm_guest_t *guest, 
+int vmm_devemu_emulate_write(vmm_vcpu_t *vcpu, 
 			     physical_addr_t gphys_addr,
 			     void *src, u32 src_len)
 {
 	vmm_emudev_t *edev;
 	vmm_region_t *reg;
 
-	reg = vmm_guest_find_region(guest, gphys_addr, FALSE);
+	if (!vcpu || !(vcpu->guest)) {
+		return VMM_EFAIL;
+	}
+
+	reg = vmm_guest_find_region(vcpu->guest, gphys_addr, FALSE);
 	if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
 		return VMM_EFAIL;
 	}
 
-	edev = (vmm_emudev_t *)reg->priv;
+	edev = (vmm_emudev_t *)reg->devemu_priv;
 	if (!edev || !edev->write) {
 		return VMM_EFAIL;
 	}
@@ -85,7 +93,7 @@ int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num, int irq_level)
 		return VMM_EFAIL;
 	}
 
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
+	eg = (vmm_emuguest_t *)guest->aspace.devemu_priv;
 
 	list_for_each(l, &eg->emupic_list) {
 		ep = list_entry(l, vmm_emupic_t, head);
@@ -106,7 +114,7 @@ int vmm_devemu_register_pic(vmm_guest_t *guest, vmm_emupic_t * pic)
 		return VMM_EFAIL;
 	}
 
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
+	eg = (vmm_emuguest_t *)guest->aspace.devemu_priv;
 	ep = NULL;
 	found = FALSE;
 	list_for_each(l, &eg->emupic_list) {
@@ -139,7 +147,7 @@ int vmm_devemu_unregister_pic(vmm_guest_t *guest, vmm_emupic_t * pic)
 		return VMM_EFAIL;
 	}
 
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
+	eg = (vmm_emuguest_t *)guest->aspace.devemu_priv;
 
 	if (list_empty(&eg->emupic_list)) {
 		return VMM_EFAIL;
@@ -175,7 +183,7 @@ vmm_emupic_t *vmm_devemu_find_pic(vmm_guest_t *guest, const char *name)
 		return NULL;
 	}
 
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
+	eg = (vmm_emuguest_t *)guest->aspace.devemu_priv;
 	found = FALSE;
 	ep = NULL;
 
@@ -208,7 +216,7 @@ vmm_emupic_t *vmm_devemu_pic(vmm_guest_t *guest, int index)
 		return NULL;
 	}
 
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
+	eg = (vmm_emuguest_t *)guest->aspace.devemu_priv;
 	retval = NULL;
 	found = FALSE;
 
@@ -238,7 +246,7 @@ u32 vmm_devemu_pic_count(vmm_guest_t *guest)
 		return 0;
 	}
 
-	eg = (vmm_emuguest_t *)guest->aspace.priv;
+	eg = (vmm_emuguest_t *)guest->aspace.devemu_priv;
 
 	list_for_each(l, &eg->emupic_list) {
 		retval++;
@@ -429,7 +437,16 @@ const vmm_emuid_t *devemu_match_node(const vmm_emuid_t * matches,
 	return NULL;
 }
 
-int vmm_devemu_reset(vmm_guest_t *guest, vmm_region_t *reg)
+int vmm_devemu_reset_context(vmm_guest_t *guest)
+{
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devemu_reset_region(vmm_guest_t *guest, vmm_region_t *reg)
 {
 	vmm_emudev_t *edev;
 
@@ -441,7 +458,7 @@ int vmm_devemu_reset(vmm_guest_t *guest, vmm_region_t *reg)
 		return VMM_EFAIL;
 	}
 
-	edev = (vmm_emudev_t *)reg->priv;
+	edev = (vmm_emudev_t *)reg->devemu_priv;
 	if (!edev || !edev->reset) {
 		return VMM_EFAIL;
 	}
@@ -449,7 +466,7 @@ int vmm_devemu_reset(vmm_guest_t *guest, vmm_region_t *reg)
 	return edev->reset(edev);
 }
 
-int vmm_devemu_probe(vmm_guest_t *guest, vmm_region_t *reg)
+int vmm_devemu_probe_region(vmm_guest_t *guest, vmm_region_t *reg)
 {
 	int rc;
 	struct dlist *l1;
@@ -467,13 +484,7 @@ int vmm_devemu_probe(vmm_guest_t *guest, vmm_region_t *reg)
 		return VMM_EFAIL;
 	}
 
-	if (!guest->aspace.priv) {
-		eginst = vmm_malloc(sizeof(vmm_emuguest_t));
-		INIT_LIST_HEAD(&eginst->emupic_list);
-		guest->aspace.priv = eginst;
-	} else {
-		eginst = guest->aspace.priv;
-	}
+	eginst = guest->aspace.devemu_priv;
 
 	list_for_each(l1, &dectrl.emu_list) {
 		emu = list_entry(l1, vmm_emulator_t, head);
@@ -489,7 +500,7 @@ int vmm_devemu_probe(vmm_guest_t *guest, vmm_region_t *reg)
 			einst->reset = emu->reset;
 			einst->remove = emu->remove;
 			einst->priv = NULL;
-			reg->priv = einst;
+			reg->devemu_priv = einst;
 			reg->node->type = VMM_DEVTREE_NODETYPE_EDEVICE;
 			reg->node->priv = einst;
 #if defined(CONFIG_VERBOSE_MODE)
@@ -500,7 +511,7 @@ int vmm_devemu_probe(vmm_guest_t *guest, vmm_region_t *reg)
 				vmm_printf("%s: %s/%s probe error %d\n", 
 				__func__, guest->node->name, reg->node->name, rc);
 				vmm_free(einst);
-				reg->priv = NULL;
+				reg->devemu_priv = NULL;
 				reg->node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
 				reg->node->priv = NULL;
 			}
@@ -508,12 +519,29 @@ int vmm_devemu_probe(vmm_guest_t *guest, vmm_region_t *reg)
 				vmm_printf("%s: %s/%s reset error %d\n", 
 				__func__, guest->node->name, reg->node->name, rc);
 				vmm_free(einst);
-				reg->priv = NULL;
+				reg->devemu_priv = NULL;
 				reg->node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
 				reg->node->priv = NULL;
 			}
 			break;
 		}
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devemu_init_context(vmm_guest_t *guest)
+{
+	vmm_emuguest_t *eginst;
+
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	if (!guest->aspace.devemu_priv) {
+		eginst = vmm_malloc(sizeof(vmm_emuguest_t));
+		INIT_LIST_HEAD(&eginst->emupic_list);
+		guest->aspace.devemu_priv = eginst;
 	}
 
 	return VMM_OK;
