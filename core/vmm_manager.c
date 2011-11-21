@@ -222,6 +222,7 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->guest = NULL;
 	vcpu->sregs = NULL;
 	vcpu->irqs = NULL;
+	vcpu->devemu_priv = NULL;
 
 	/* Initialize registers */
 	if (vmm_vcpu_regs_init(vcpu)) {
@@ -521,6 +522,7 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		vcpu->guest = guest;
 		vcpu->sregs = vmm_malloc(sizeof(vmm_super_regs_t));
 		vcpu->irqs = vmm_malloc(sizeof(vmm_vcpu_irqs_t));
+		vcpu->devemu_priv = NULL;
 		if (!vcpu->sregs || !vcpu->irqs) {
 			break;
 		}

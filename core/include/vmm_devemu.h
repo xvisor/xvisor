@@ -31,7 +31,6 @@
 typedef struct vmm_emudev vmm_emudev_t;
 typedef struct vmm_emupic vmm_emupic_t;
 typedef struct vmm_emuid vmm_emuid_t;
-typedef struct vmm_emuguest vmm_emuguest_t;
 typedef struct vmm_emulator vmm_emulator_t;
 
 typedef void (*vmm_emupic_hndl_t) (vmm_emupic_t *epic,
@@ -77,10 +76,6 @@ struct vmm_emuid {
 	char type[32];
 	char compatible[128];
 	void *data;
-};
-
-struct vmm_emuguest {
-	struct dlist emupic_list;
 };
 
 struct vmm_emulator {
