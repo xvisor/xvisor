@@ -70,6 +70,13 @@ u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder)
 		while (1);
 	}
 
+	if (divisor == 1) {
+		if (remainder) {
+			*remainder = 0;
+		}
+		return dividend;
+	}
+
 	if (divisor > dividend) {
 		if (remainder) {
 			*remainder = dividend;
@@ -78,6 +85,9 @@ u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder)
 	}
 
 	if (divisor == dividend) {
+		if (remainder) {
+			*remainder = 0;
+		}
 		return 1;
 	}
 
@@ -152,6 +162,13 @@ u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder)
 
 	if (divisor == 0) {
 		while (1);
+	}
+
+	if (divisor == 1) {
+		if (remainder) {
+			*remainder = 0;
+		}
+		return dividend;
 	}
 
 	if (divisor > dividend) {
