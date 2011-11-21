@@ -115,15 +115,6 @@ int vmm_board_getclock(vmm_devtree_node_t * node, u32 * clock)
 	if (!node || !clock) {
 		return VMM_EFAIL;
 	}
-#if 0
-	if (vmm_strcmp(node->name, "uart0") == 0) {
-		*clock = BRD_UART_CLK;
-	} else if (vmm_strcmp(node->name, "uart1") == 0) {
-		*clock = 7372800;
-	} else {
-		*clock = 100000000;
-	}
-#endif
 	*clock = OMAP3_UART_INCLK;
 	return VMM_OK;
 }
@@ -153,7 +144,6 @@ int vmm_board_early_init(void)
 
 int vmm_board_final_init(void)
 {
-#if 0
 	int rc;
 	vmm_devtree_node_t *node;
 
@@ -163,7 +153,7 @@ int vmm_board_final_init(void)
 	/* Do Probing using device driver framework */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPRATOR_STRING "plb");
+				   VMM_DEVTREE_PATH_SEPRATOR_STRING "l3");
 
 	if (!node) {
 		return VMM_ENOTAVAIL;
@@ -173,7 +163,6 @@ int vmm_board_final_init(void)
 	if (rc) {
 		return rc;
 	}
-#endif
 
 	return VMM_OK;
 
