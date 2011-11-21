@@ -25,4 +25,5 @@
 board-common-objs-$(CONFIG_OMAP3)+= omap3/prcm.o
 board-common-objs-$(CONFIG_OMAP3)+= omap3/intc.o
 board-common-objs-$(CONFIG_OMAP3)+= omap3/gpt.o
+board-common-objs-$(CONFIG_OMAP3)+= omap3/s32k-timer.o
 
