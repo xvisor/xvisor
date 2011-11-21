@@ -1,0 +1,93 @@
+		Xvisor on QEMU Beagleboard using Nand Image 
+
+This readme explains how to build & run Xvisor from nand-flash on beagle board
+emulated by QEMU 0.15.xx or higher. 
+
+We need to have 4 images to create the nand-flash image:
+ a) x-loader for OMAP3  (2nd stage bootloader for OMAP3)
+ b) u-boot binary for OMAP3  (3rd stage bootloader)
+ c) x-visor binary (vmm.bin)
+ d) patched guest binary (in our case realview pb-a8 test image, arm_test.bin.patched)
+
+Following steps will help you create these images and then boot Xvisor on Beagleboard QEMU:
+
+  [1. Build environment]
+  # CROSS_COMPILE=arm-none-linux-gnueabi-
+
+  (Follow step 2 to get the prebuilt x-loader and u-boot binaries, or 
+   steps 3-4 to build those images from source)
+  
+  [2. Download X-loader and u-boot binary]
+  # wget http://qemu-omap3.googlecode.com/files/image-v0.01.tar.bz2
+  # mkdir prebuilt-images/
+  # tar -xvjf image-v0.01.tar.bz2 -C prebuilt-images/
+
+  (we would not need the uImage extracted in the above step)
+
+  [3. Download and build X-loader from source - this creates x-load.bin.ift]
+  # git clone git://gitorious.org/x-load-omap3/mainline.git
+  # cd mainline
+  # make omap3530beagle_config
+  # make x-load.bin.ift
+  # cd ..
+
+  [4. Download and build u-boot from source - this creates u-boot.bin]
+  # git clone git://git.denx.de/u-boot.git
+  # cd u-boot
+  # make omap3_beagle_config
+  # make omap3_beagle
+  # cd ..
+
+  [5. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [6. Configure Xvisor with Beagleboard host default settings]
+  # make ARCH=arm beagle-defconfig 
+
+  [7. Build Xvisor, this creates vmm.bin]
+  # make
+
+  [8. Build ARM Basic Test for Realview PB-A8 Guest, this creates arm_test.bin.patched]
+  # make -C tests/armv7a/pb-a8/basic
+  
+  [9. Copy the x-loader and u-boot binaries (from step 2 or 3-4) into Xvisor build-directory]
+  # cp <path-to-x-loader-binary>/x-load.bin.ift <path-to-u-boot-binary>/u-boot.bin build/
+
+  [10. Create a flat binary with all our binaries appended]
+  # ./tools/scripts/memimg.py -a 0 -o build/beagle.img build/x-load.bin.ift@0x0 build/u-boot.bin@0x80000 build/vmm.bin@0x280000 build/tests/armv7a/pb-a8/basic/arm_test.bin.patched@0x680000
+
+  [11. Build the beagleboard nand-flash image from the flat binary created]
+  # ./tools/nandflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/nandflash/bb_nandflash_ecc 
+
+  [12. Launch QEMU 0.15.xx higher ]
+  # qemu-system-arm -M beagle -drive file=build/beagle-nand.bin,if=mtd -display none -serial stdio -s
+
+  [13. Copy Xvisor from nand-flash to DRAM]
+  OMAP3 beagleboard.org # nand read 0x80008000 0x280000 0x100000
+
+  [14. Copy Guest image from nand-flash to DRAM]
+  OMAP3 beagleboard.org # nand read 0x80800000 0x680000 0x100000
+
+  [15. Jump into Xvisor]
+  OMAP3 beagleboard.org # go 0x80008000
+
+  [16. Kick Guest for starting Basic Test]
+  XVisor# guest kick 0
+
+  [17. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [18. Say 'hi' to ARM Basic Test]
+  [guest0/uart0] arm-test# hi
+
+  [19. Say 'hello' to ARM Basic Test]
+  [guest0/uart0] arm-test# hello
+
+  [20. Check various commands of ARM Basic Test]
+  [guest0/uart0] arm-test# help
+
+  [21. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] arm-test# 
+
+  (Note: replace all <> brackets based on your workspace)
+
