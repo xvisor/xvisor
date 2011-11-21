@@ -22,8 +22,11 @@
 # @brief list of OMAP3 beagle board objects.
 # */
 
+board-cppflags =-DCPU_TEXT_START=0xFF000000
+
 board-objs-y+=brd_defterm.o
 board-objs-y+=brd_pic.o
 board-objs-y+=brd_main.o
+board-objs-y+=brd_timer.o
 board-objs-y+=dts/defconfig.o
 
