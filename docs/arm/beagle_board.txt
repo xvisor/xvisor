@@ -57,7 +57,7 @@ Following steps will help you create these images and then boot Xvisor on Beagle
   # ./tools/scripts/memimg.py -a 0 -o build/beagle.img build/x-load.bin.ift@0x0 build/u-boot.bin@0x80000 build/vmm.bin@0x280000 build/tests/armv7a/pb-a8/basic/arm_test.bin.patched@0x680000
 
   [11. Build the beagleboard nand-flash image from the flat binary created]
-  # ./tools/nandflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/nandflash/bb_nandflash_ecc 
+  # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc 
 
   [12. Launch QEMU 0.15.xx higher ]
   # qemu-system-arm -M beagle -drive file=build/beagle-nand.bin,if=mtd -display none -serial stdio -s
