@@ -24,6 +24,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
@@ -74,7 +75,7 @@ static int mterm_main(void *udata)
 	return VMM_OK;
 }
 
-static int daemon_mterm_init(void)
+static int __init_section daemon_mterm_init(void)
 {
 	u32 mterm_time_slice;
 	vmm_devtree_node_t * node;
