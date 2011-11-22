@@ -30,5 +30,6 @@
 
 #define __lock_section		__attribute__((section(".spinlock.text")))
 #define __modtbl_section	__attribute__((section(".modtbl")))
+#define __init_section		__attribute__((section(".init.text")))
 
 #endif /* __VMM_SECTIONS_H__ */
