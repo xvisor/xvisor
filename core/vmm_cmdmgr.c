@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_string.h>
+#include <vmm_sections.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_cmdmgr.h>
@@ -275,7 +276,7 @@ static vmm_cmd_t help_cmd = {
 	.exec = cmd_help_exec,
 };
 
-int vmm_cmdmgr_init(void)
+int __init_section vmm_cmdmgr_init(void)
 {
 	vmm_memset(&cmctrl, 0, sizeof(cmctrl));
 

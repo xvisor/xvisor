@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_list.h>
+#include <vmm_sections.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_blockdev.h>
@@ -161,7 +162,7 @@ u32 vmm_blockdev_count(void)
 	return vmm_devdrv_classdev_count(VMM_BLOCKDEV_CLASS_NAME);
 }
 
-int vmm_blockdev_init(void)
+int __init_section vmm_blockdev_init(void)
 {
 	int rc;
 	vmm_class_t *c;

@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_string.h>
+#include <vmm_sections.h>
 #include <vmm_heap.h>
 #include <vmm_host_aspace.h>
 #include <mm/vmm_trivial.h>
@@ -48,7 +49,7 @@ void vmm_free(void *pointer)
 	/* Nothing to be done for freeing */
 }
 
-int vmm_heap_init(void)
+int __init_section vmm_heap_init(void)
 {
 	u32 heap_size = 0, heap_page_count = 0, heap_mem_flags;
 	virtual_addr_t heap_start = 0x0;

@@ -24,6 +24,7 @@
 
 #include <vmm_math.h>
 #include <vmm_error.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
@@ -203,7 +204,7 @@ static void idle_orphan(void)
 	}
 }
 
-int vmm_scheduler_init(void)
+int __init_section vmm_scheduler_init(void)
 {
 	/* Reset the scheduler control structure */
 	vmm_memset(&sched, 0, sizeof(sched));

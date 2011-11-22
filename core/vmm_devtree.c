@@ -23,6 +23,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_board.h>
 #include <vmm_devtree.h>
@@ -171,7 +172,7 @@ vmm_devtree_node_t *vmm_devtree_rootnode(void)
 	return dtree_ctrl.root;
 }
 
-int vmm_devtree_init(void)
+int __init_section vmm_devtree_init(void)
 {
 	/* Reset the control structure */
 	vmm_memset(&dtree_ctrl, 0, sizeof(dtree_ctrl));

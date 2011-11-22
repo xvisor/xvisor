@@ -26,6 +26,7 @@
 #include <vmm_math.h>
 #include <vmm_error.h>
 #include <vmm_list.h>
+#include <vmm_sections.h>
 #include <vmm_cpu.h>
 #include <vmm_board.h>
 #include <vmm_string.h>
@@ -477,7 +478,7 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 	return bytes_written;
 }
 
-int vmm_host_aspace_init(void)
+int __init_section vmm_host_aspace_init(void)
 {
 	int ite, last, max, rc;
 	physical_addr_t resv_pa = 0x0;

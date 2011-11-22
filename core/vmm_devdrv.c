@@ -23,6 +23,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
@@ -671,7 +672,7 @@ u32 vmm_devdrv_driver_count(void)
 	return retval;
 }
 
-int vmm_devdrv_init(void)
+int __init_section vmm_devdrv_init(void)
 {
 	vmm_memset(&ddctrl, 0, sizeof(ddctrl));
 

@@ -25,6 +25,7 @@
 #include <vmm_cpu.h>
 #include <vmm_board.h>
 #include <vmm_error.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_spinlocks.h>
 #include <vmm_heap.h>
@@ -105,7 +106,7 @@ int vmm_host_irq_register(u32 host_irq_no,
 	return VMM_EFAIL;
 }
 
-int vmm_host_irq_init(void)
+int __init_section vmm_host_irq_init(void)
 {
 	int ret;
 	u32 ite;

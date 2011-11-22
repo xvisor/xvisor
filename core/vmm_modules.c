@@ -24,6 +24,7 @@
 
 #include <vmm_cpu.h>
 #include <vmm_error.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
@@ -50,7 +51,7 @@ u32 vmm_modules_count(void)
 	return modules_ctrl.mod_count;
 }
 
-int vmm_modules_init(void)
+int __init_section vmm_modules_init(void)
 {
 	int mod_ret;
 	u32 i, j;

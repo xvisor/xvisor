@@ -24,6 +24,7 @@
 
 #include <vmm_cpu.h>
 #include <vmm_error.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_timer.h>
@@ -364,7 +365,7 @@ void vmm_timer_stop(void)
 	tctrl.cpu_started = FALSE;
 }
 
-int vmm_timer_init(void)
+int __init_section vmm_timer_init(void)
 {
 	int rc;
 

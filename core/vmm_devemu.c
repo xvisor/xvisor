@@ -23,9 +23,10 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_heap.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <vmm_heap.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_devemu.h>
 
@@ -640,7 +641,7 @@ int vmm_devemu_init_context(vmm_guest_t *guest)
 	return VMM_OK;
 }
 
-int vmm_devemu_init(void)
+int __init_section vmm_devemu_init(void)
 {
 	vmm_memset(&dectrl, 0, sizeof(dectrl));
 

@@ -23,8 +23,9 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_heap.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
+#include <vmm_heap.h>
 #include <vmm_vserial.h>
 
 struct vmm_vserial_ctrl {
@@ -321,7 +322,7 @@ u32 vmm_vserial_count(void)
 	return retval;
 }
 
-int vmm_vserial_init(void)
+int __init_section vmm_vserial_init(void)
 {
 	vmm_memset(&vsctrl, 0, sizeof(vsctrl));
 

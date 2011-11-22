@@ -24,9 +24,10 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_heap.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <vmm_heap.h>
 #include <vmm_spinlocks.h>
 #include <vmm_scheduler.h>
 #include <vmm_threads.h>
@@ -236,7 +237,7 @@ u32 vmm_threads_count(void)
 	return thctrl.thread_count;
 }
 
-int vmm_threads_init(void)
+int __init_section vmm_threads_init(void)
 {
 	vmm_memset(&thctrl, 0, sizeof(thctrl));
 

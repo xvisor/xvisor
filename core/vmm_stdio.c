@@ -25,6 +25,7 @@
 #include <stdarg.h>
 #include <vmm_math.h>
 #include <vmm_error.h>
+#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_main.h>
 #include <vmm_board.h>
@@ -510,7 +511,7 @@ int vmm_stdio_change_device(vmm_chardev_t * cdev)
 	return VMM_OK;
 }
 
-int vmm_stdio_init(void)
+int __init_section vmm_stdio_init(void)
 {
 	/* Reset memory of control structure */
 	vmm_memset(&stdio_ctrl, 0, sizeof(stdio_ctrl));
