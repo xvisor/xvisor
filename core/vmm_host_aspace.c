@@ -478,6 +478,23 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 	return bytes_written;
 }
 
+u32 vmm_host_free_initmem(void)
+{
+	int rc;
+	virtual_addr_t init_start;
+	virtual_size_t init_size;
+
+	init_start = vmm_init_text_vaddr();
+	init_size = vmm_init_text_size();
+	init_size = VMM_ROUNDUP2_PAGE_SIZE(init_size);
+
+	if ((rc = vmm_host_free_pages(init_start, init_size >> VMM_PAGE_SHIFT))) {
+		vmm_hang();
+	}
+
+	return (init_size >> VMM_PAGE_SHIFT) * VMM_PAGE_SIZE / 1024;
+}
+
 int __init_section vmm_host_aspace_init(void)
 {
 	int ite, last, max, rc;
