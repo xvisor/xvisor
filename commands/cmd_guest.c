@@ -31,6 +31,7 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_guest_module
 #define MODULE_NAME			"Command guest"
@@ -406,7 +407,7 @@ static vmm_cmd_t cmd_guest = {
 	.exec = cmd_guest_exec,
 };
 
-static int cmd_guest_init(void)
+static int __init_section cmd_guest_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_guest);
 }

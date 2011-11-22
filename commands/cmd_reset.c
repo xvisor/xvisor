@@ -27,6 +27,7 @@
 #include <vmm_main.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_reset_module
 #define MODULE_NAME			"Command reset"
@@ -55,7 +56,7 @@ static vmm_cmd_t cmd_reset = {
 	.exec = cmd_reset_exec,
 };
 
-static int cmd_reset_init(void)
+static int __init_section cmd_reset_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_reset);
 }

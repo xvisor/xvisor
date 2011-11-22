@@ -29,6 +29,7 @@
 #include <mm/vmm_buddy.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_buddy_module
 #define MODULE_NAME			"Command buddy"
@@ -73,7 +74,7 @@ static vmm_cmd_t cmd_buddy = {
 	.exec = cmd_buddy_exec,
 };
 
-static int cmd_buddy_init(void)
+static int __init_section cmd_buddy_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_buddy);
 }

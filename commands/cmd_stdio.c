@@ -29,6 +29,7 @@
 #include <vmm_chardev.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_stdio_module
 #define MODULE_NAME			"Command stdio"
@@ -101,7 +102,7 @@ static vmm_cmd_t cmd_stdio = {
 	.exec = cmd_stdio_exec,
 };
 
-static int cmd_stdio_init(void)
+static int __init_section cmd_stdio_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_stdio);
 }

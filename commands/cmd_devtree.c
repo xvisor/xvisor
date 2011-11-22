@@ -28,6 +28,7 @@
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_devtree_module
 #define MODULE_NAME			"Command devtree"
@@ -222,7 +223,7 @@ static vmm_cmd_t cmd_devtree = {
 	.exec = cmd_devtree_exec,
 };
 
-static int cmd_devtree_init(void)
+static int __init_section cmd_devtree_init(void)
 {
 	int ret;
 	vmm_memset(dtree_curpath, 0, VMM_DEVTREE_MAX_PATH_LEN);

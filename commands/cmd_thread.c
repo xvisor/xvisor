@@ -30,6 +30,7 @@
 #include <vmm_threads.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_thread_module
 #define MODULE_NAME			"Command thread"
@@ -105,7 +106,7 @@ static vmm_cmd_t cmd_thread = {
 	.exec = cmd_thread_exec,
 };
 
-static int cmd_thread_init(void)
+static int __init_section cmd_thread_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_thread);
 }

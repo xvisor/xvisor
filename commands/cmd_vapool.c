@@ -29,6 +29,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_vapool_module
 #define MODULE_NAME			"Command vapool"
@@ -107,7 +108,7 @@ static vmm_cmd_t cmd_vapool = {
 	.exec = cmd_vapool_exec,
 };
 
-static int cmd_vapool_init(void)
+static int __init_section cmd_vapool_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_vapool);
 }

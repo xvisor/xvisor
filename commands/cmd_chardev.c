@@ -29,6 +29,7 @@
 #include <vmm_chardev.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_chardev_module
 #define MODULE_NAME			"Command chardev"
@@ -86,7 +87,7 @@ static vmm_cmd_t cmd_chardev = {
 	.exec = cmd_chardev_exec,
 };
 
-static int cmd_chardev_init(void)
+static int __init_section cmd_chardev_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_chardev);
 }

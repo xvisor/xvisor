@@ -27,6 +27,7 @@
 #include <vmm_main.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_shutdown_module
 #define MODULE_NAME			"Command shutdown"
@@ -55,7 +56,7 @@ static vmm_cmd_t cmd_shutdown = {
 	.exec = cmd_shutdown_exec,
 };
 
-static int cmd_shutdown_init(void)
+static int __init_section cmd_shutdown_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_shutdown);
 }

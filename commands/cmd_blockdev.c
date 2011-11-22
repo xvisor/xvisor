@@ -29,6 +29,7 @@
 #include <vmm_blockdev.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_blockdev_module
 #define MODULE_NAME			"Command blockdev"
@@ -86,7 +87,7 @@ static vmm_cmd_t cmd_blockdev = {
 	.exec = cmd_blockdev_exec,
 };
 
-static int cmd_blockdev_init(void)
+static int __init_section cmd_blockdev_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_blockdev);
 }

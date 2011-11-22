@@ -27,6 +27,7 @@
 #include <vmm_version.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_ping_module
 #define MODULE_NAME			"Command ping"
@@ -55,7 +56,7 @@ static vmm_cmd_t cmd_ping = {
 	.exec = cmd_ping_exec,
 };
 
-static int cmd_ping_init(void)
+static int __init_section cmd_ping_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_ping);
 }
