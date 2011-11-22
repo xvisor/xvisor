@@ -40,6 +40,7 @@
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_devemu.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			sp804_emulator_module
 #define MODULE_NAME			"SP804 Dual-Mode Timer Emulator"
@@ -486,7 +487,7 @@ static vmm_emulator_t sp804_emulator = {
 	.remove = sp804_emulator_remove,
 };
 
-static int sp804_emulator_init(void)
+static int __init_section sp804_emulator_init(void)
 {
 	return vmm_devemu_register_emulator(&sp804_emulator);
 }

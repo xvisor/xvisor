@@ -27,6 +27,7 @@
 #include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			sp810_emulator_module
 #define MODULE_NAME			"SP810 Serial Emulator"
@@ -201,7 +202,7 @@ static vmm_emulator_t sp810_emulator = {
 	.remove = sp810_emulator_remove,
 };
 
-static int sp810_emulator_init(void)
+static int __init_section sp810_emulator_init(void)
 {
 	return vmm_devemu_register_emulator(&sp810_emulator);
 }

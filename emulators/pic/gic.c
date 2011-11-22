@@ -41,6 +41,7 @@
 #include <vmm_scheduler.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_devemu.h>
+#include <vmm_sections.h>
 
 #define MODULE_VARID			gic_emulator_module
 #define MODULE_NAME			"Realview GIC Emulator"
@@ -991,7 +992,7 @@ static vmm_emulator_t gic_emulator = {
 	.remove = gic_emulator_remove,
 };
 
-static int gic_emulator_init(void)
+static int __init_section gic_emulator_init(void)
 {
 	return vmm_devemu_register_emulator(&gic_emulator);
 }
