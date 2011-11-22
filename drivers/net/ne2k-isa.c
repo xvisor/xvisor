@@ -30,6 +30,7 @@
 #include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_ringbuf.h>
+#include <vmm_sections.h>
 
 #include <vmm_hyperthreads.h>
 #include <vmm_wait.h>
@@ -776,7 +777,7 @@ static vmm_driver_t ne2k_driver = {
 	.remove = ne2k_driver_remove,
 };
 
-static int ne2k_driver_init(void)
+static int __init_section ne2k_driver_init(void)
 {
 	return vmm_devdrv_register_driver(&ne2k_driver);
 }

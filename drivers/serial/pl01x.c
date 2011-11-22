@@ -31,6 +31,7 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
+#include <vmm_sections.h>
 #include <serial/pl01x.h>
 
 #define MODULE_VARID			pl01x_driver_module
@@ -334,7 +335,7 @@ static vmm_driver_t pl01x_driver = {
 	.remove = pl01x_driver_remove,
 };
 
-static int pl01x_driver_init(void)
+static int __init_section pl01x_driver_init(void)
 {
 	return vmm_devdrv_register_driver(&pl01x_driver);
 }

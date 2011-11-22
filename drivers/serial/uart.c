@@ -31,6 +31,7 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
+#include <vmm_sections.h>
 #include <serial/uart.h>
 
 #define MODULE_VARID			uart_driver_module
@@ -273,7 +274,7 @@ static vmm_driver_t uart_driver = {
 	.remove = uart_driver_remove,
 };
 
-static int uart_driver_init(void)
+static int __init_section uart_driver_init(void)
 {
 	return vmm_devdrv_register_driver(&uart_driver);
 }
