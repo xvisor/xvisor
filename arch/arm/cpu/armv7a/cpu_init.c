@@ -25,6 +25,7 @@
 #include <vmm_cpu.h>
 #include <vmm_main.h>
 #include <vmm_error.h>
+#include <vmm_sections.h>
 #include <cpu_mmu.h>
 
 extern u8 _code_start;
@@ -47,7 +48,7 @@ virtual_size_t vmm_cpu_code_size(void)
 	return (virtual_size_t) (&_code_end - &_code_start);
 }
 
-int vmm_cpu_early_init(void)
+int __init_section vmm_cpu_early_init(void)
 {
 	/*
 	 * Host virtual memory, device tree, heap is up.
@@ -57,7 +58,7 @@ int vmm_cpu_early_init(void)
 	return VMM_OK;
 }
 
-int vmm_cpu_final_init(void)
+int __init_section vmm_cpu_final_init(void)
 {
 	/** FIXME: Final initialzation code for CPU */
 	/* All VMM API's are available here */
@@ -65,7 +66,7 @@ int vmm_cpu_final_init(void)
 	return VMM_OK;
 }
 
-void cpu_init(void)
+void __init_section cpu_init(void)
 {
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();

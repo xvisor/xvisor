@@ -26,6 +26,7 @@
 #include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
+#include <vmm_sections.h>
 #include <libfdt.h>
 #include <omap3/config.h>
 
@@ -131,7 +132,7 @@ int vmm_board_shutdown(void)
 	return VMM_OK;
 }
 
-int vmm_board_early_init(void)
+int __init_section vmm_board_early_init(void)
 {
 	/*
 	 * TODO:
@@ -142,7 +143,7 @@ int vmm_board_early_init(void)
 	return 0;
 }
 
-int vmm_board_final_init(void)
+int __init_section vmm_board_final_init(void)
 {
 	int rc;
 	vmm_devtree_node_t *node;
