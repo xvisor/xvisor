@@ -24,7 +24,6 @@
 #ifndef _VMM_MODULES_H__
 #define _VMM_MODULES_H__
 
-#include <vmm_sections.h>
 #include <vmm_types.h>
 
 #define VMM_MODULE_SIGNATURE		0x564D4F44

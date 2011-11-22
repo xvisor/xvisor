@@ -31,7 +31,6 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <vmm_sections.h>
 #include <serial/pl01x.h>
 
 #define MODULE_VARID			pl01x_driver_module

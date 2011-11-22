@@ -23,14 +23,12 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_cpu.h>
 #include <vmm_main.h>
 #include <vmm_stdio.h>
 #include <vmm_types.h>
-#include <vmm_sections.h>
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>

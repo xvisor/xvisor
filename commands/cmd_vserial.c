@@ -29,7 +29,6 @@
 #include <vmm_vserial.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
-#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_vserial_module
 #define MODULE_NAME			"Command vserial"

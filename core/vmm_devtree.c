@@ -23,7 +23,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_board.h>
 #include <vmm_devtree.h>

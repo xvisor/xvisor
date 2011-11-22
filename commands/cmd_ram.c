@@ -29,7 +29,6 @@
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
-#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_ram_module
 #define MODULE_NAME			"Command ram"

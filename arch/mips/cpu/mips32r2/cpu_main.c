@@ -27,7 +27,6 @@
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_main.h>
-#include <vmm_sections.h>
 #include <cpu_asm_macros.h>
 
 void vmm_regs_dump(vmm_user_regs_t *tregs)

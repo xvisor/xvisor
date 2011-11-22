@@ -24,7 +24,6 @@
 
 #include <vmm_math.h>
 #include <vmm_error.h>
-#include <vmm_sections.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>

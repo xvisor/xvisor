@@ -40,7 +40,6 @@
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_devemu.h>
-#include <vmm_sections.h>
 
 #define MODULE_VARID			sp804_emulator_module
 #define MODULE_NAME			"SP804 Dual-Mode Timer Emulator"

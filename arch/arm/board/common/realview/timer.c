@@ -25,7 +25,6 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <vmm_math.h>
-#include <vmm_sections.h>
 #include <realview_config.h>
 #include <realview/plat.h>
 #include <realview/timer.h>

@@ -27,7 +27,6 @@
 #include <vmm_version.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
-#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_version_module
 #define MODULE_NAME			"Command version"

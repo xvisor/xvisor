@@ -26,7 +26,6 @@
 #define __CPU_ATOMIC_H__
 
 #include <vmm_types.h>
-#include <vmm_sections.h>
 
 void __lock_section __cpu_atomic_inc(atomic_t * atom);
 void __lock_section __cpu_atomic_dec(atomic_t * atom);

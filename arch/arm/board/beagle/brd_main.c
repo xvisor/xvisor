@@ -26,7 +26,6 @@
 #include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
-#include <vmm_sections.h>
 #include <libfdt.h>
 #include <omap3/config.h>
 

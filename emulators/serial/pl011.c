@@ -40,7 +40,6 @@
 #include <vmm_ringbuf.h>
 #include <vmm_vserial.h>
 #include <vmm_devemu.h>
-#include <vmm_sections.h>
 
 #define MODULE_VARID			pl011_emulator_module
 #define MODULE_NAME			"PL011 Serial Emulator"

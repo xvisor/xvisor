@@ -30,7 +30,6 @@
 #include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_ringbuf.h>
-#include <vmm_sections.h>
 
 #include <vmm_hyperthreads.h>
 #include <vmm_wait.h>

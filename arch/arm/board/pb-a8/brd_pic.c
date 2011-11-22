@@ -25,7 +25,6 @@
 #include <vmm_board.h>
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
-#include <vmm_sections.h>
 #include <pba8_board.h>
 #include <realview/gic.h>
 

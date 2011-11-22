@@ -26,7 +26,6 @@
 #define __VMM_SPINLOCKS_H__
 
 #include <vmm_types.h>
-#include <vmm_sections.h>
 
 /* 
  * FIXME: With SMP should rather be holding

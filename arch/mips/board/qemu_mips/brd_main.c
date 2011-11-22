@@ -28,7 +28,6 @@
 #include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devdrv.h>
-#include <vmm_sections.h>
 #include <libfdt.h>
 
 extern u32 dt_blob_start;

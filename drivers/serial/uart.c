@@ -31,7 +31,6 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <vmm_sections.h>
 #include <serial/uart.h>
 
 #define MODULE_VARID			uart_driver_module

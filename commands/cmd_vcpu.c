@@ -29,7 +29,6 @@
 #include <vmm_manager.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
-#include <vmm_sections.h>
 
 #define MODULE_VARID			cmd_vcpu_module
 #define MODULE_NAME			"Command vcpu"

@@ -27,7 +27,6 @@
 #include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
-#include <vmm_sections.h>
 
 #define MODULE_VARID			sp810_emulator_module
 #define MODULE_NAME			"SP810 Serial Emulator"

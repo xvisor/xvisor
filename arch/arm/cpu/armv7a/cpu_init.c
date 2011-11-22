@@ -25,7 +25,6 @@
 #include <vmm_cpu.h>
 #include <vmm_main.h>
 #include <vmm_error.h>
-#include <vmm_sections.h>
 #include <cpu_mmu.h>
 
 extern u8 _code_start;

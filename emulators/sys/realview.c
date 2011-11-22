@@ -42,7 +42,6 @@
 #include <vmm_timer.h>
 #include <vmm_manager.h>
 #include <vmm_devemu.h>
-#include <vmm_sections.h>
 
 #define MODULE_VARID			realview_emulator_module
 #define MODULE_NAME			"Realview Sysctl Emulator"

@@ -41,7 +41,6 @@
 #include <vmm_scheduler.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_devemu.h>
-#include <vmm_sections.h>
 
 #define MODULE_VARID			gic_emulator_module
 #define MODULE_NAME			"Realview GIC Emulator"
