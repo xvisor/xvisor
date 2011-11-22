@@ -25,6 +25,7 @@
 #include <vmm_board.h>
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
+#include <vmm_sections.h>
 #include <pba8_board.h>
 #include <realview/gic.h>
 
@@ -58,7 +59,7 @@ int vmm_pic_irq_disable(u32 host_irq_no)
 	return realview_gic_mask(0, host_irq_no);
 }
 
-int vmm_pic_init(void)
+int __init_section vmm_pic_init(void)
 {
 	int ret;
 	virtual_addr_t dist_base, cpu_base;

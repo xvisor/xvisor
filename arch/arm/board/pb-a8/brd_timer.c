@@ -28,6 +28,7 @@
 #include <vmm_timer.h>
 #include <vmm_host_aspace.h>
 #include <vmm_math.h>
+#include <vmm_sections.h>
 #include <pba8_board.h>
 #include <realview/timer.h>
 
@@ -56,7 +57,7 @@ u32 vmm_cpu_clocksource_shift(void)
 	return 20;
 }
 
-int vmm_cpu_clocksource_init(void)
+int __init_section vmm_cpu_clocksource_init(void)
 {
 	int rc;
 	virtual_addr_t sctl_base;
@@ -126,7 +127,7 @@ int vmm_cpu_clockevent_setup(void)
 	return realview_timer_event_setup(pba8_timer0_base);
 }
 
-int vmm_cpu_clockevent_init(void)
+int __init_section vmm_cpu_clockevent_init(void)
 {
 	int rc;
 	virtual_addr_t sctl_base;

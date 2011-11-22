@@ -30,6 +30,7 @@
 #include <vmm_main.h>
 #include <vmm_stdio.h>
 #include <vmm_types.h>
+#include <vmm_sections.h>
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
@@ -1139,7 +1140,7 @@ int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	return VMM_OK;
 }
 
-int vmm_cpu_aspace_init(physical_addr_t * resv_pa, 
+int __init_section vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 			virtual_addr_t * resv_va,
 			virtual_size_t * resv_sz)
 {

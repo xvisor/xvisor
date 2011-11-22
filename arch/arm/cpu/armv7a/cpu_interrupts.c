@@ -30,6 +30,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
+#include <vmm_sections.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
 #include <cpu_vcpu_emulate_arm.h>
@@ -334,7 +335,7 @@ void do_fiq(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-int vmm_cpu_irq_setup(void)
+int __init_section vmm_cpu_irq_setup(void)
 {
 	int rc;
 	extern u32 _start_vect[];

@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_host_io.h>
+#include <vmm_sections.h>
 #include <realview_config.h>
 #include <realview/gic.h>
 
@@ -128,7 +129,8 @@ int realview_gic_unmask(u32 gic_nr, u32 irq)
 	return VMM_OK;
 }
 
-int realview_gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start)
+int __init_section realview_gic_dist_init(u32 gic_nr, virtual_addr_t base,
+					  u32 irq_start)
 {
 	unsigned int max_irq, i;
 	u32 cpumask = 1 << 0;	/*smp_processor_id(); */
@@ -189,7 +191,7 @@ int realview_gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start)
 	return VMM_OK;
 }
 
-int realview_gic_cpu_init(u32 gic_nr, virtual_addr_t base)
+int __init_section realview_gic_cpu_init(u32 gic_nr, virtual_addr_t base)
 {
 	if (REALVIEW_GIC_MAX_NR <= gic_nr) {
 		return VMM_EFAIL;
