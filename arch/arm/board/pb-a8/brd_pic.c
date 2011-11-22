@@ -58,7 +58,7 @@ int vmm_pic_irq_disable(u32 host_irq_no)
 	return realview_gic_mask(0, host_irq_no);
 }
 
-int __init_section vmm_pic_init(void)
+int __init vmm_pic_init(void)
 {
 	int ret;
 	virtual_addr_t dist_base, cpu_base;

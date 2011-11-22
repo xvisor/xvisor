@@ -50,7 +50,7 @@ u32 vmm_modules_count(void)
 	return modules_ctrl.mod_count;
 }
 
-int __init_section vmm_modules_init(void)
+int __init vmm_modules_init(void)
 {
 	int mod_ret;
 	u32 i, j;

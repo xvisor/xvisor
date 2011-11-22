@@ -107,7 +107,7 @@ static vmm_cmd_t cmd_vapool = {
 	.exec = cmd_vapool_exec,
 };
 
-static int __init_section cmd_vapool_init(void)
+static int __init cmd_vapool_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_vapool);
 }

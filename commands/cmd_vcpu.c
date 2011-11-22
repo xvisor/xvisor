@@ -270,7 +270,7 @@ static vmm_cmd_t cmd_vcpu = {
 	.exec = cmd_vcpu_exec,
 };
 
-static int __init_section cmd_vcpu_init(void)
+static int __init cmd_vcpu_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_vcpu);
 }

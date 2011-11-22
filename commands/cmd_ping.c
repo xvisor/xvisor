@@ -55,7 +55,7 @@ static vmm_cmd_t cmd_ping = {
 	.exec = cmd_ping_exec,
 };
 
-static int __init_section cmd_ping_init(void)
+static int __init cmd_ping_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_ping);
 }

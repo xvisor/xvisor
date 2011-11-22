@@ -147,7 +147,7 @@ u32 vmm_chardev_count(void)
 	return vmm_devdrv_classdev_count(VMM_CHARDEV_CLASS_NAME);
 }
 
-int __init_section vmm_chardev_init(void)
+int __init vmm_chardev_init(void)
 {
 	int rc;
 	vmm_class_t *c;

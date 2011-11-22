@@ -275,7 +275,7 @@ static vmm_cmd_t help_cmd = {
 	.exec = cmd_help_exec,
 };
 
-int __init_section vmm_cmdmgr_init(void)
+int __init vmm_cmdmgr_init(void)
 {
 	vmm_memset(&cmctrl, 0, sizeof(cmctrl));
 

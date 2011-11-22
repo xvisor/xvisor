@@ -152,7 +152,7 @@ int vmm_board_shutdown(void)
 	return VMM_OK;
 }
 
-int __init_section vmm_board_early_init(void)
+int __init vmm_board_early_init(void)
 {
 	/*
 	 * TODO:
@@ -163,7 +163,7 @@ int __init_section vmm_board_early_init(void)
 	return 0;
 }
 
-int __init_section vmm_board_final_init(void)
+int __init vmm_board_final_init(void)
 {
 	int rc;
 	vmm_devtree_node_t *node;

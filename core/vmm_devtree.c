@@ -171,7 +171,7 @@ vmm_devtree_node_t *vmm_devtree_rootnode(void)
 	return dtree_ctrl.root;
 }
 
-int __init_section vmm_devtree_init(void)
+int __init vmm_devtree_init(void)
 {
 	/* Reset the control structure */
 	vmm_memset(&dtree_ctrl, 0, sizeof(dtree_ctrl));

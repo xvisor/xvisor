@@ -555,7 +555,7 @@ int vmm_manager_guest_destroy(vmm_guest_t * guest)
 	return VMM_OK;
 }
 
-int vmm_manager_init(void)
+int __init vmm_manager_init(void)
 {
 	u32 vnum, gnum;
 

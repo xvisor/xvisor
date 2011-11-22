@@ -101,7 +101,7 @@ static vmm_cmd_t cmd_stdio = {
 	.exec = cmd_stdio_exec,
 };
 
-static int __init_section cmd_stdio_init(void)
+static int __init cmd_stdio_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_stdio);
 }

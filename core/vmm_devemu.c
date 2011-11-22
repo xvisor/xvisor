@@ -649,7 +649,7 @@ int vmm_devemu_init_context(vmm_guest_t *guest)
 	return VMM_OK;
 }
 
-int __init_section vmm_devemu_init(void)
+int __init vmm_devemu_init(void)
 {
 	vmm_memset(&dectrl, 0, sizeof(dectrl));
 

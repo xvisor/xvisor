@@ -509,7 +509,7 @@ int vmm_stdio_change_device(vmm_chardev_t * cdev)
 	return VMM_OK;
 }
 
-int __init_section vmm_stdio_init(void)
+int __init vmm_stdio_init(void)
 {
 	/* Reset memory of control structure */
 	vmm_memset(&stdio_ctrl, 0, sizeof(stdio_ctrl));

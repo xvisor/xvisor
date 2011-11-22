@@ -334,7 +334,7 @@ void do_fiq(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-int __init_section vmm_cpu_irq_setup(void)
+int __init vmm_cpu_irq_setup(void)
 {
 	int rc;
 	extern u32 _start_vect[];

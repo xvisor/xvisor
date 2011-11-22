@@ -364,7 +364,7 @@ void vmm_timer_stop(void)
 	tctrl.cpu_started = FALSE;
 }
 
-int __init_section vmm_timer_init(void)
+int __init vmm_timer_init(void)
 {
 	int rc;
 

@@ -128,7 +128,7 @@ int realview_gic_unmask(u32 gic_nr, u32 irq)
 	return VMM_OK;
 }
 
-int __init_section realview_gic_dist_init(u32 gic_nr, virtual_addr_t base,
+int __init realview_gic_dist_init(u32 gic_nr, virtual_addr_t base,
 					  u32 irq_start)
 {
 	unsigned int max_irq, i;
@@ -190,7 +190,7 @@ int __init_section realview_gic_dist_init(u32 gic_nr, virtual_addr_t base,
 	return VMM_OK;
 }
 
-int __init_section realview_gic_cpu_init(u32 gic_nr, virtual_addr_t base)
+int __init realview_gic_cpu_init(u32 gic_nr, virtual_addr_t base)
 {
 	if (REALVIEW_GIC_MAX_NR <= gic_nr) {
 		return VMM_EFAIL;

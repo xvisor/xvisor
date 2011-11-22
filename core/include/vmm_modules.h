@@ -44,7 +44,7 @@ struct vmm_module {
 typedef struct vmm_module vmm_module_t;
 
 #define VMM_DECLARE_MODULE(varid,name,author,ipriority,init,exit) \
-__modtbl_section vmm_module_t varid = \
+__modtbl vmm_module_t varid = \
 { VMM_MODULE_SIGNATURE, name, author, ipriority, 0, init, exit }
 
 /** Retrive a module at given position in table */

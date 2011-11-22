@@ -57,9 +57,9 @@ typedef unsigned int ulong;
 #define __unused		__attribute__((unused))
 #define __noreturn		__attribute__((noreturn))
 
-#define __lock_section		__attribute__((section(".spinlock.text")))
-#define __modtbl_section	__attribute__((section(".modtbl")))
-#define __init_section		__attribute__((section(".init.text")))
+#define __lock			__attribute__((section(".spinlock.text")))
+#define __modtbl		__attribute__((section(".modtbl")))
+#define __init			__attribute__((section(".init.text")))
 
 
 #endif /* __VMM_TYPES_H__ */

@@ -516,7 +516,7 @@ void vmm_free(void *pointer)
 	buddy_free(pointer);
 }
 
-int __init_section vmm_heap_init(void)
+int __init vmm_heap_init(void)
 {
 	u32 heap_size = 0, heap_page_count = 0, heap_mem_flags;
 	void * heap_start = NULL;

@@ -105,7 +105,7 @@ static vmm_cmd_t cmd_thread = {
 	.exec = cmd_thread_exec,
 };
 
-static int __init_section cmd_thread_init(void)
+static int __init cmd_thread_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_thread);
 }

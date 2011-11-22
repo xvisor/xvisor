@@ -273,7 +273,7 @@ static vmm_driver_t uart_driver = {
 	.remove = uart_driver_remove,
 };
 
-static int __init_section uart_driver_init(void)
+static int __init uart_driver_init(void)
 {
 	return vmm_devdrv_register_driver(&uart_driver);
 }

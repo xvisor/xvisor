@@ -28,7 +28,7 @@
 #include <vmm_types.h>
 #include <cpu_atomic.h>
 
-void __lock_section __cpu_spin_lock(vmm_cpu_spinlock_t * lock);
-void __lock_section __cpu_spin_unlock(vmm_cpu_spinlock_t * lock);
+void __lock __cpu_spin_lock(vmm_cpu_spinlock_t * lock);
+void __lock __cpu_spin_unlock(vmm_cpu_spinlock_t * lock);
 
 #endif /* __CPU_LOCKS_H__ */

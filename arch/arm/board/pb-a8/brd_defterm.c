@@ -53,7 +53,7 @@ int vmm_defterm_getc(u8 *ch)
 	return VMM_OK;
 }
 
-int __init_section vmm_defterm_init(void)
+int __init vmm_defterm_init(void)
 {
 	pba8_defterm_base = vmm_host_iomap(PBA8_DEFAULT_UART_BASE, 0x1000);
 	pl01x_lowlevel_init(pba8_defterm_base,

@@ -86,7 +86,7 @@ static vmm_cmd_t cmd_blockdev = {
 	.exec = cmd_blockdev_exec,
 };
 
-static int __init_section cmd_blockdev_init(void)
+static int __init cmd_blockdev_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_blockdev);
 }

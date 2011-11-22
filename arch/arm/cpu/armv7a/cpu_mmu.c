@@ -1138,9 +1138,9 @@ int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	return VMM_OK;
 }
 
-int __init_section vmm_cpu_aspace_init(physical_addr_t * resv_pa,
-			virtual_addr_t * resv_va,
-			virtual_size_t * resv_sz)
+int __init vmm_cpu_aspace_init(physical_addr_t * resv_pa,
+				virtual_addr_t * resv_va,
+				virtual_size_t * resv_sz)
 {
 	int rc = VMM_EFAIL;
 	u32 i, val;

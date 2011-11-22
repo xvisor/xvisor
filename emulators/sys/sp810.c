@@ -201,7 +201,7 @@ static vmm_emulator_t sp810_emulator = {
 	.remove = sp810_emulator_remove,
 };
 
-static int __init_section sp810_emulator_init(void)
+static int __init sp810_emulator_init(void)
 {
 	return vmm_devemu_register_emulator(&sp810_emulator);
 }

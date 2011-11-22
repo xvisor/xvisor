@@ -236,7 +236,7 @@ u32 vmm_threads_count(void)
 	return thctrl.thread_count;
 }
 
-int __init_section vmm_threads_init(void)
+int __init vmm_threads_init(void)
 {
 	vmm_memset(&thctrl, 0, sizeof(thctrl));
 

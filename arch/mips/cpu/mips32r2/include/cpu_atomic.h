@@ -27,7 +27,7 @@
 
 #include <vmm_types.h>
 
-void __lock_section __cpu_atomic_inc (atomic_t *atom);
-void __lock_section __cpu_atomic_dec (atomic_t *atom);
+void __lock __cpu_atomic_inc (atomic_t *atom);
+void __lock __cpu_atomic_dec (atomic_t *atom);
 
 #endif /* __VMM_CPU_LOCKS_H__ */

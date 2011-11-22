@@ -107,7 +107,7 @@ static vmm_cmd_t cmd_ram = {
 	.exec = cmd_ram_exec,
 };
 
-static int __init_section cmd_ram_init(void)
+static int __init cmd_ram_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_ram);
 }

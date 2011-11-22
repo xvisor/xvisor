@@ -203,7 +203,7 @@ static void idle_orphan(void)
 	}
 }
 
-int __init_section vmm_scheduler_init(void)
+int __init vmm_scheduler_init(void)
 {
 	/* Reset the scheduler control structure */
 	vmm_memset(&sched, 0, sizeof(sched));

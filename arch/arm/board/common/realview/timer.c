@@ -108,7 +108,7 @@ int realview_timer_counter_setup(virtual_addr_t base)
 	return VMM_OK;
 }
 
-int __init_section realview_timer_init(virtual_addr_t sctl_base,
+int __init realview_timer_init(virtual_addr_t sctl_base,
 				       virtual_addr_t base,
 				       u32 ensel,
 				       u32 hirq,

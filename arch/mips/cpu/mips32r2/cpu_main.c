@@ -63,7 +63,7 @@ void vmm_regs_dump(vmm_user_regs_t *tregs)
 	while(1);
 }
 
-int __init_section vmm_cpu_early_init(void)
+int __init vmm_cpu_early_init(void)
 {
 	/*
 	 * Host virtual memory, device tree, heap is up.
@@ -73,12 +73,12 @@ int __init_section vmm_cpu_early_init(void)
 	return 0;
 }
 
-int __init_section vmm_cpu_final_init(void)
+int __init vmm_cpu_final_init(void)
 {
         return 0;
 }
 
-void __init_section cpu_init(void)
+void __init cpu_init(void)
 {
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();

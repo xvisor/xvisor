@@ -406,7 +406,7 @@ static vmm_cmd_t cmd_guest = {
 	.exec = cmd_guest_exec,
 };
 
-static int __init_section cmd_guest_init(void)
+static int __init cmd_guest_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_guest);
 }

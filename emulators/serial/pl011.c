@@ -499,7 +499,7 @@ static vmm_emulator_t pl011_emulator = {
 	.remove = pl011_emulator_remove,
 };
 
-static int __init_section pl011_emulator_init(void)
+static int __init pl011_emulator_init(void)
 {
 	return vmm_devemu_register_emulator(&pl011_emulator);
 }

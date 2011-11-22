@@ -48,7 +48,7 @@ void vmm_free(void *pointer)
 	/* Nothing to be done for freeing */
 }
 
-int __init_section vmm_heap_init(void)
+int __init vmm_heap_init(void)
 {
 	u32 heap_size = 0, heap_page_count = 0, heap_mem_flags;
 	virtual_addr_t heap_start = 0x0;

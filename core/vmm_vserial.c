@@ -321,7 +321,7 @@ u32 vmm_vserial_count(void)
 	return retval;
 }
 
-int __init_section vmm_vserial_init(void)
+int __init vmm_vserial_init(void)
 {
 	vmm_memset(&vsctrl, 0, sizeof(vsctrl));
 
