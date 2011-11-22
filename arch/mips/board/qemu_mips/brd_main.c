@@ -28,6 +28,7 @@
 #include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devdrv.h>
+#include <vmm_sections.h>
 #include <libfdt.h>
 
 extern u32 dt_blob_start;
@@ -56,13 +57,13 @@ int vmm_board_getclock(vmm_devtree_node_t *node, u32 *clock)
 	return VMM_OK;
 }
 
-int vmm_board_early_init(void)
+int __init_section vmm_board_early_init(void)
 {
 	isa_vbase = vmm_host_iomap(0x14000000UL, 0x1000);
 	return (isa_vbase ? 0 : 1);
 }
 
-int vmm_board_final_init(void)
+int __init_section vmm_board_final_init(void)
 {
 	int rc;
 	vmm_devtree_node_t *node;
