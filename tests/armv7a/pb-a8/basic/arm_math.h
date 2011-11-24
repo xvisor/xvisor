@@ -47,7 +47,8 @@ u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder);
 
 static inline u32 arm_udiv32(u32 value, u32 divisor)
 {
-	return do_udiv32(value, divisor, NULL);
+	u32 remainder;
+	return do_udiv32(value, divisor, &remainder);
 }
 
 static inline u32 arm_umod32(u32 value, u32 divisor)
@@ -59,10 +60,11 @@ static inline u32 arm_umod32(u32 value, u32 divisor)
 
 static inline s32 arm_sdiv32(s32 value, s32 divisor)
 {
+	u32 remainder;
 	if ((value * divisor) < 0) {
-		return -do_udiv32( do_abs(value), do_abs(divisor), NULL );
+		return -do_udiv32( do_abs(value), do_abs(divisor), &remainder );
 	} else { /* positive value */
-		return do_udiv32( do_abs(value), do_abs(divisor), NULL );
+		return do_udiv32( do_abs(value), do_abs(divisor), &remainder );
 	}
 }
 

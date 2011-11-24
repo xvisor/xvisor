@@ -46,6 +46,8 @@ X: Files and directories that are NOT maintained, same rules as F:
    matches all files in and below net excluding net/ipv6/
 
 BEAGLE BOARD
+P:	Sukanto Ghosh
+M:	sukantoghosh@gmail.com
 P:	Pranav Sawargaonkar
 M:	pranav.sawargaonkar@gmail.com
 S:	Maintained
@@ -60,6 +62,7 @@ M:	hschauhan@nulltrace.org
 S:	Maintained
 L:	xvisor-devel@googlegroups.com
 F:	core/include/vmm_host_aspace.h
+F:	core/include/vmm_host_aspace.c
 
 HOST IO APIs
 P:	Himanshu Chauhan

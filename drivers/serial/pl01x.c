@@ -334,7 +334,7 @@ static vmm_driver_t pl01x_driver = {
 	.remove = pl01x_driver_remove,
 };
 
-static int pl01x_driver_init(void)
+static int __init pl01x_driver_init(void)
 {
 	return vmm_devdrv_register_driver(&pl01x_driver);
 }

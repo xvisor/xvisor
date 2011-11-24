@@ -222,7 +222,7 @@ static vmm_cmd_t cmd_devtree = {
 	.exec = cmd_devtree_exec,
 };
 
-static int cmd_devtree_init(void)
+static int __init cmd_devtree_init(void)
 {
 	int ret;
 	vmm_memset(dtree_curpath, 0, VMM_DEVTREE_MAX_PATH_LEN);

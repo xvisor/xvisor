@@ -484,7 +484,7 @@ static vmm_emulator_t realview_emulator = {
 	.remove = realview_emulator_remove,
 };
 
-static int realview_emulator_init(void)
+static int __init realview_emulator_init(void)
 {
 	return vmm_devemu_register_emulator(&realview_emulator);
 }

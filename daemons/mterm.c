@@ -74,7 +74,7 @@ static int mterm_main(void *udata)
 	return VMM_OK;
 }
 
-static int daemon_mterm_init(void)
+static int __init daemon_mterm_init(void)
 {
 	u32 mterm_time_slice;
 	vmm_devtree_node_t * node;

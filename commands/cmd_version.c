@@ -57,7 +57,7 @@ static vmm_cmd_t cmd_version = {
 	.exec = cmd_version_exec,
 };
 
-static int cmd_version_init(void)
+static int __init cmd_version_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_version);
 }

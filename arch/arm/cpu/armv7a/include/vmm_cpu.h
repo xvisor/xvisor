@@ -99,4 +99,16 @@ static inline virtual_size_t vmm_modtbl_size(void)
 	return (virtual_size_t) (&_modtbl_end - &_modtbl_start);
 }
 
+/** Init section related functions required by VMM core */
+extern u8 _init_text_start;
+extern u8 _init_text_end;
+static inline virtual_addr_t vmm_init_text_vaddr(void)
+{
+	return (virtual_addr_t) &_init_text_start;
+}
+static inline virtual_size_t vmm_init_text_size(void)
+{
+	return (virtual_size_t) (&_init_text_end - &_init_text_start);
+}
+
 #endif

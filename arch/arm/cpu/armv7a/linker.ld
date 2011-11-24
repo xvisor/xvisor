@@ -123,6 +123,15 @@ SECTIONS
 		PROVIDE(_fiq_stack_end = .);
 	}
 
+	. = ALIGN(0x1000); /* Put init functions into separate pages */
+	.init :
+	{
+		PROVIDE(_init_text_start = .);
+		*(.init.text)
+		. = ALIGN(4);
+		PROVIDE(_init_text_end = .);
+	}
+
 	. = ALIGN(0x100000); /* Need this to create proper sections */
 	
 	PROVIDE(_code_end = .);

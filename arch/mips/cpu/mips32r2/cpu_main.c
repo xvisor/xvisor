@@ -22,12 +22,12 @@
  * @brief C code for cpu functions
  */
 
-#include "vmm_cpu.h"
-#include "vmm_string.h"
-#include "vmm_stdio.h"
-#include "vmm_error.h"
-#include "vmm_main.h"
-#include "cpu_asm_macros.h"
+#include <vmm_cpu.h>
+#include <vmm_string.h>
+#include <vmm_stdio.h>
+#include <vmm_error.h>
+#include <vmm_main.h>
+#include <cpu_asm_macros.h>
 
 void vmm_regs_dump(vmm_user_regs_t *tregs)
 {
@@ -63,7 +63,7 @@ void vmm_regs_dump(vmm_user_regs_t *tregs)
 	while(1);
 }
 
-int vmm_cpu_early_init(void)
+int __init vmm_cpu_early_init(void)
 {
 	/*
 	 * Host virtual memory, device tree, heap is up.
@@ -73,12 +73,12 @@ int vmm_cpu_early_init(void)
 	return 0;
 }
 
-int vmm_cpu_final_init(void)
+int __init vmm_cpu_final_init(void)
 {
         return 0;
 }
 
-void cpu_init(void)
+void __init cpu_init(void)
 {
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();

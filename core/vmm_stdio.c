@@ -28,7 +28,6 @@
 #include <vmm_string.h>
 #include <vmm_main.h>
 #include <vmm_board.h>
-#include <vmm_sections.h>
 #include <vmm_stdio.h>
 
 /* NOTE: assuming sizeof(void *) == sizeof(int) */
@@ -510,7 +509,7 @@ int vmm_stdio_change_device(vmm_chardev_t * cdev)
 	return VMM_OK;
 }
 
-int vmm_stdio_init(void)
+int __init vmm_stdio_init(void)
 {
 	/* Reset memory of control structure */
 	vmm_memset(&stdio_ctrl, 0, sizeof(stdio_ctrl));

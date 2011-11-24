@@ -566,20 +566,23 @@ int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu,
 			     u32 wnr, u32 xn)
 {
 	int rc = VMM_OK;
-	cpu_page_t pg;
+	cpu_page_t * pg = &vcpu->sregs->cp15.virtio_page;
 	/* Try to retrieve the faulting page */
-	if ((rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, far, &pg))) {
+	if ((rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, far, pg))) {
 		cpu_vcpu_halt(vcpu, regs);
 		return rc;
 	}
 	/* Check if vcpu was trying read/write to virtual space */
-	if (xn && ((pg.ap == TTBL_AP_SRW_U) || (pg.ap == TTBL_AP_SR_U))) {
+	if (xn && ((pg->ap == TTBL_AP_SRW_U) || (pg->ap == TTBL_AP_SR_U))) {
 		/* Emulate load/store instructions */
+		vcpu->sregs->cp15.virtio_active = TRUE;
 		if (regs->cpsr & CPSR_THUMB_ENABLED) {
-			return cpu_vcpu_emulate_thumb_inst(vcpu, regs, FALSE);
+			rc = cpu_vcpu_emulate_thumb_inst(vcpu, regs, FALSE);
 		} else {
-			return cpu_vcpu_emulate_arm_inst(vcpu, regs, FALSE);
+			rc = cpu_vcpu_emulate_arm_inst(vcpu, regs, FALSE);
 		}
+		vcpu->sregs->cp15.virtio_active = FALSE;
+		return rc;
 	} 
 	/* Remove fault address from VTLB and restart.
 	 * Doing this will force us to do TTBL walk If MMU 
@@ -1186,6 +1189,7 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 	bool is_user = FALSE;
 	u32 vind, ecode;
 	cpu_page_t pg;
+	cpu_page_t * pgp = &pg;
 	if ((addr & ~(sizeof(vcpu->sregs->cp15.ovect) - 1)) == 
 					vcpu->sregs->cp15.ovect_base) {
 		if (force_unpriv) {
@@ -1223,9 +1227,14 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 			break;
 		};
 	} else {
-		rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, &pg);
+		if (vcpu->sregs->cp15.virtio_active) {
+			pgp = &vcpu->sregs->cp15.virtio_page;
+			rc = VMM_OK;
+		} else {
+			rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, &pg);
+		}
 		if (rc == VMM_ENOTAVAIL) {
-			if (pg.va) {
+			if (pgp->va) {
 				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
 				addr, DFSR_FS_TRANS_FAULT_PAGE, 0, 0, 1, force_unpriv);
 			} else {
@@ -1233,18 +1242,18 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 				addr, DFSR_FS_TRANS_FAULT_SECTION, 0, 0, 1, force_unpriv);
 			}
 			if (!rc) {
-				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, &pg);
+				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, pgp);
 			}
 		}
 		if (rc) {
 			cpu_vcpu_halt(vcpu, regs);
 			return rc;
 		}
-		switch(pg.ap) {
+		switch(pgp->ap) {
 		case TTBL_AP_SR_U:
 		case TTBL_AP_SRW_U:
-			return vmm_devemu_emulate_read(vcpu->guest, 
-				(addr - pg.va) + pg.pa, dst, dst_len);
+			return vmm_devemu_emulate_read(vcpu,
+					(addr - pgp->va) + pgp->pa, dst, dst_len);
 			break;
 		case TTBL_AP_SRW_UR:
 		case TTBL_AP_SRW_URW:
@@ -1296,6 +1305,7 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 	bool is_user = FALSE;
 	u32 vind, ecode;
 	cpu_page_t pg;
+	cpu_page_t * pgp = &pg;
 	if ((addr & ~(sizeof(vcpu->sregs->cp15.ovect) - 1)) == 
 					vcpu->sregs->cp15.ovect_base) {
 		if (force_unpriv) {
@@ -1333,9 +1343,14 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 			break;
 		};
 	} else {
-		rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, &pg);
+		if (vcpu->sregs->cp15.virtio_active) {
+			pgp = &vcpu->sregs->cp15.virtio_page;
+			rc = VMM_OK;
+		} else {
+			rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, &pg);
+		}
 		if (rc == VMM_ENOTAVAIL) {
-			if (pg.va) {
+			if (pgp->va) {
 				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, addr, 
 				DFSR_FS_TRANS_FAULT_PAGE, 0, 1, 1, force_unpriv);
 			} else {
@@ -1343,17 +1358,17 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 				DFSR_FS_TRANS_FAULT_SECTION, 0, 1, 1, force_unpriv);
 			}
 			if (!rc) {
-				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, &pg);
+				rc = cpu_mmu_get_page(vcpu->sregs->cp15.l1, addr, pgp);
 			}
 		}
 		if (rc) {
 			cpu_vcpu_halt(vcpu, regs);
 			return rc;
 		}
-		switch(pg.ap) {
+		switch(pgp->ap) {
 		case TTBL_AP_SRW_U:
-			return vmm_devemu_emulate_write(vcpu->guest, 
-				(addr - pg.va) + pg.pa, src, src_len);
+			return vmm_devemu_emulate_write(vcpu, 
+					(addr - pgp->va) + pgp->pa, src, src_len);
 			break;
 		case TTBL_AP_SRW_URW:
 			switch (src_len) {
@@ -1502,6 +1517,8 @@ int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid)
 			return rc;
 		}
 	}
+	vcpu->sregs->cp15.virtio_active = FALSE;
+	vmm_memset(&vcpu->sregs->cp15.virtio_page, 0, sizeof(cpu_page_t));
 
 	vcpu->sregs->cp15.c0_cpuid = cpuid;
 	vcpu->sregs->cp15.c2_control = 0x0;

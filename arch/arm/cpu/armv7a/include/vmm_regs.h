@@ -201,6 +201,9 @@ struct vmm_super_regs {
 		/* Overlapping vector page */
 		u32 ovect[TTBL_L2TBL_SMALL_PAGE_SIZE / 4];
 		u32 ovect_base;
+		/* Virtual IO */
+		bool virtio_active;
+		cpu_page_t virtio_page;
 		/* Coprocessor Registers */
 		u32 c0_cpuid;
 		u32 c0_cachetype;

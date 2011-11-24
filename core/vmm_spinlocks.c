@@ -27,7 +27,7 @@
 #include <vmm_scheduler.h>
 #include <vmm_spinlocks.h>
 
-void __lock_section vmm_spin_lock(vmm_spinlock_t * lock)
+void __lock vmm_spin_lock(vmm_spinlock_t * lock)
 {
 	/* Disable preemption in scheduler */
 	vmm_scheduler_preempt_disable();
@@ -37,7 +37,7 @@ void __lock_section vmm_spin_lock(vmm_spinlock_t * lock)
 #endif
 }
 
-void __lock_section vmm_spin_unlock(vmm_spinlock_t * lock)
+void __lock vmm_spin_unlock(vmm_spinlock_t * lock)
 {
 #if defined(CONFIG_SMP)
 	/* Call CPU specific unlocking routine */
@@ -47,7 +47,7 @@ void __lock_section vmm_spin_unlock(vmm_spinlock_t * lock)
 	vmm_scheduler_preempt_enable();
 }
 
-irq_flags_t __lock_section vmm_spin_lock_irqsave(vmm_spinlock_t * lock)
+irq_flags_t __lock vmm_spin_lock_irqsave(vmm_spinlock_t * lock)
 {
 	irq_flags_t flags;
 	/* Disable and save interrupt flags*/
@@ -60,8 +60,8 @@ irq_flags_t __lock_section vmm_spin_lock_irqsave(vmm_spinlock_t * lock)
 	return flags;
 }
 
-void __lock_section vmm_spin_unlock_irqrestore(vmm_spinlock_t * lock,
-					       irq_flags_t flags)
+void __lock vmm_spin_unlock_irqrestore(vmm_spinlock_t * lock,
+					irq_flags_t flags)
 {
 #if defined(CONFIG_SMP)
 	/* Call CPU specific unlocking routine */

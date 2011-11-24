@@ -14,8 +14,9 @@ We have also provided a Realview PB-A8 defconfig for linux-3.0.4 kernel
 for ease in building kernel. To obtain Linux-3.0.4 sources visit the 
 following site: http://www.kernel.org
 
-Please follow the steps below to build & run Linux-3.0.4 kernel with 
-Busybox-1.19.2 RootFS on Realview PB-A8 Guest:
+Please follow the steps below to build & run Linux-3.0.4 kernel with
+Busybox-1.19.2 RootFS on Realview PB-A8 Guest with Xvisor running on QEMU 
+Realview PB-A8 Host:
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=arm-none-linux-gnueabi-
@@ -113,5 +114,9 @@ Busybox-1.19.2 RootFS on Realview PB-A8 Guest:
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
+  (Note: the above steps assumes Xvisor running on Realview-PB-A8 host emulated
+   by QEMU 0.14.xx or higher. For other types of ARM host some of the above 
+   steps will need to be adapted for that specfic ARM host. For more info on 
+   your desired ARM host refer docs/arm/)
   (Note: you are free change ordering of the above step based on your workspace)
 
