@@ -33,7 +33,8 @@ u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder);
 
 static inline u64 vmm_udiv64(u64 value, u64 divisor)
 {
-	return do_udiv64(value, divisor, NULL);
+	u64 r;
+	return do_udiv64(value, divisor, &r);
 }
 
 static inline u64 vmm_umod64(u64 value, u64 divisor)
@@ -45,17 +46,18 @@ static inline u64 vmm_umod64(u64 value, u64 divisor)
 
 static inline s64 vmm_sdiv64(s64 value, s64 divisor)
 {
+	u64 r;
 	if ((value * divisor) < 0) {
-		return -do_udiv64( do_abs(value), do_abs(divisor), NULL );
+		return -do_udiv64(do_abs(value), do_abs(divisor), &r);
 	} else { /* positive value */
-		return do_udiv64( do_abs(value), do_abs(divisor), NULL );
+		return do_udiv64(do_abs(value), do_abs(divisor), &r);
 	}
 }
 
 static inline s64 vmm_smod64(s64 value, s64 divisor)
 {
 	u64 r;
-	do_udiv64( do_abs(value), do_abs(divisor), &r );
+	do_udiv64( do_abs(value), do_abs(divisor), &r);
 	if (value < 0) {
 		return -r;
 	} else { /* positive value */
@@ -67,7 +69,8 @@ u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder);
 
 static inline u32 vmm_udiv32(u32 value, u32 divisor)
 {
-	return do_udiv32(value, divisor, NULL);
+	u32 r;
+	return do_udiv32(value, divisor, &r);
 }
 
 static inline u32 vmm_umod32(u32 value, u32 divisor)
@@ -79,10 +82,11 @@ static inline u32 vmm_umod32(u32 value, u32 divisor)
 
 static inline s32 vmm_sdiv32(s32 value, s32 divisor)
 {
+	u32 r;
 	if ((value * divisor) < 0) {
-		return -do_udiv32( do_abs(value), do_abs(divisor), NULL );
+		return -do_udiv32(do_abs(value), do_abs(divisor), &r);
 	} else { /* positive value */
-		return do_udiv32( do_abs(value), do_abs(divisor), NULL );
+		return do_udiv32(do_abs(value), do_abs(divisor), &r);
 	}
 }
 

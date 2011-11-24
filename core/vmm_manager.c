@@ -222,6 +222,7 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->guest = NULL;
 	vcpu->sregs = NULL;
 	vcpu->irqs = NULL;
+	vcpu->devemu_priv = NULL;
 
 	/* Initialize registers */
 	if (vmm_vcpu_regs_init(vcpu)) {
@@ -451,11 +452,6 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 	guest->vcpu_count = 0;
 	INIT_LIST_HEAD(&guest->vcpu_list);
 
-	/* Initialize guest address space */
-	if (vmm_guest_aspace_init(guest)) {
-		return NULL;
-	}
-
 	vsnode = vmm_devtree_getchildnode(gnode,
 					  VMM_DEVTREE_VCPUS_NODE_NAME);
 	if (!vsnode) {
@@ -526,6 +522,7 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		vcpu->guest = guest;
 		vcpu->sregs = vmm_malloc(sizeof(vmm_super_regs_t));
 		vcpu->irqs = vmm_malloc(sizeof(vmm_vcpu_irqs_t));
+		vcpu->devemu_priv = NULL;
 		if (!vcpu->sregs || !vcpu->irqs) {
 			break;
 		}
@@ -542,8 +539,7 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 	}
 
 	/* Initialize guest address space */
-	if (vmm_guest_aspace_probe(guest)) {
-		/* FIXME: Free vcpus alotted to this guest */
+	if (vmm_guest_aspace_init(guest)) {
 		return NULL;
 	}
 
@@ -559,7 +555,7 @@ int vmm_manager_guest_destroy(vmm_guest_t * guest)
 	return VMM_OK;
 }
 
-int vmm_manager_init(void)
+int __init vmm_manager_init(void)
 {
 	u32 vnum, gnum;
 

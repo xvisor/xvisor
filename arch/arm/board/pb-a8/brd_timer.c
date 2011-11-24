@@ -56,7 +56,7 @@ u32 vmm_cpu_clocksource_shift(void)
 	return 20;
 }
 
-int vmm_cpu_clocksource_init(void)
+int __init vmm_cpu_clocksource_init(void)
 {
 	int rc;
 	virtual_addr_t sctl_base;
@@ -126,7 +126,7 @@ int vmm_cpu_clockevent_setup(void)
 	return realview_timer_event_setup(pba8_timer0_base);
 }
 
-int vmm_cpu_clockevent_init(void)
+int __init vmm_cpu_clockevent_init(void)
 {
 	int rc;
 	virtual_addr_t sctl_base;

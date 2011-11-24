@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2011 Pranav Sawargaonkar.
+ * Copyright (c) 2011 Sukanto Ghosh.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,6 +20,7 @@
  * @file gpt.h
  * @version 1.0
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief OMAP3 general purpose timer APIs
  */
 #ifndef __OMAP3_GPT_H__
@@ -37,6 +39,7 @@
 #define OMAP3_GPT9_BASE 			0x49040000
 #define OMAP3_GPT10_BASE 			0x48086000
 #define OMAP3_GPT11_BASE 			0x48088000
+#define OMAP3_GPT12_BASE 			0x48304000
 
 #define OMAP3_GPT_TIDR				0x000
 #define OMAP3_GPT_TIDR_TID_REV_S		0
@@ -179,5 +182,17 @@
 #define OMAP3_GPT_TOWR				0x058
 #define OMAP3_GPT_TOWR_OVF_WRAPPING_VALUE_S	0
 #define OMAP3_GPT_TOWR_OVF_WRAPPING_VALUE_M	0x00FFFFFF
+
+
+void omap3_gpt_disable(void);
+void omap3_gpt_stop(void);
+void omap3_gpt_start(void);
+void omap3_gpt_ack_irq(void);
+void omap3_gpt_load_start(u32 usecs);
+void omap3_gpt_oneshot(void);
+int omap3_gpt_init(physical_addr_t gpt_pa, physical_addr_t cm_pa, 
+		physical_addr_t prm_pa, u32 gpt_irq_no, 
+		vmm_host_irq_handler_t irq_handler);
+
 
 #endif

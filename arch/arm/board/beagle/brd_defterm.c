@@ -25,30 +25,34 @@
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_host_io.h>
+#include <vmm_host_aspace.h>
 #include <serial/uart.h>
 #include <omap3/config.h>
 
+static virtual_addr_t omap3_uart_base;
+
 int vmm_defterm_putc(u8 ch)
 {
-	if (!uart_lowlevel_can_putc(OMAP3_UART_BASE, 4)) {
+	if (!uart_lowlevel_can_putc(omap3_uart_base, 4)) {
 		return VMM_EFAIL;
 	}
-	uart_lowlevel_putc(OMAP3_UART_BASE, 4, ch);
+	uart_lowlevel_putc(omap3_uart_base, 4, ch);
 	return VMM_OK;
 }
 
 int vmm_defterm_getc(u8 *ch)
 {
-	if (!uart_lowlevel_can_getc(OMAP3_UART_BASE, 4)) {
+	if (!uart_lowlevel_can_getc(omap3_uart_base, 4)) {
 		return VMM_EFAIL;
 	}
-	*ch = uart_lowlevel_getc(OMAP3_UART_BASE, 4);
+	*ch = uart_lowlevel_getc(omap3_uart_base, 4);
 	return VMM_OK;
 }
 
 int vmm_defterm_init(void)
 {
-	uart_lowlevel_init(OMAP3_UART_BASE, 4,
+	omap3_uart_base = vmm_host_iomap(OMAP3_UART_BASE, 0x1000);
+	uart_lowlevel_init(omap3_uart_base, 4,
 			   OMAP3_UART_BAUD, OMAP3_UART_INCLK);
 	return VMM_OK;
 }

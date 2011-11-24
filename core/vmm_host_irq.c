@@ -105,7 +105,7 @@ int vmm_host_irq_register(u32 host_irq_no,
 	return VMM_EFAIL;
 }
 
-int vmm_host_irq_init(void)
+int __init vmm_host_irq_init(void)
 {
 	int ret;
 	u32 ite;

@@ -55,7 +55,7 @@ static vmm_cmd_t cmd_reset = {
 	.exec = cmd_reset_exec,
 };
 
-static int cmd_reset_init(void)
+static int __init cmd_reset_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_reset);
 }

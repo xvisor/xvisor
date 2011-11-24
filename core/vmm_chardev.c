@@ -24,8 +24,8 @@
 
 #include <vmm_error.h>
 #include <vmm_list.h>
-#include <vmm_heap.h>
 #include <vmm_string.h>
+#include <vmm_heap.h>
 #include <vmm_chardev.h>
 
 int vmm_chardev_doioctl(vmm_chardev_t * cdev,
@@ -147,7 +147,7 @@ u32 vmm_chardev_count(void)
 	return vmm_devdrv_classdev_count(VMM_CHARDEV_CLASS_NAME);
 }
 
-int vmm_chardev_init(void)
+int __init vmm_chardev_init(void)
 {
 	int rc;
 	vmm_class_t *c;

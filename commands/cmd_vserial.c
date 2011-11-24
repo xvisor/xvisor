@@ -208,7 +208,7 @@ static vmm_cmd_t cmd_vserial = {
 	.exec = cmd_vserial_exec,
 };
 
-static int cmd_vserial_init(void)
+static int __init cmd_vserial_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_vserial);
 }

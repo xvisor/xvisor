@@ -671,7 +671,7 @@ u32 vmm_devdrv_driver_count(void)
 	return retval;
 }
 
-int vmm_devdrv_init(void)
+int __init vmm_devdrv_init(void)
 {
 	vmm_memset(&ddctrl, 0, sizeof(ddctrl));
 

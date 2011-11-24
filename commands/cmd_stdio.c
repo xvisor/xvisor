@@ -96,12 +96,12 @@ int cmd_stdio_exec(vmm_chardev_t *cdev, int argc, char **argv)
 
 static vmm_cmd_t cmd_stdio = {
 	.name = "stdio",
-	.desc = "standered I/O configuration",
+	.desc = "standard I/O configuration",
 	.usage = cmd_stdio_usage,
 	.exec = cmd_stdio_exec,
 };
 
-static int cmd_stdio_init(void)
+static int __init cmd_stdio_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_stdio);
 }

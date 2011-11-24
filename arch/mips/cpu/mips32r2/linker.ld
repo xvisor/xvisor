@@ -75,13 +75,6 @@ SECTIONS
 		PROVIDE(_eheap = .);
 	}
 
-	.init :
-	{
-		*(.init)
-		. = ALIGN(4);
-		_einit = .;
-	}
-
 	PROVIDE(_stack_end = .);
 	. = . + CONFIG_STACK_SIZE;
 	. = ALIGN(4);
@@ -90,4 +83,13 @@ SECTIONS
 	. = . + CONFIG_INTERRUPT_STACK_SIZE;
 	. = ALIGN(4);
 	PROVIDE(_int_stack = .);
+
+	. = ALIGN(0x1000); /* Put init functions into separate pages */
+	.init :
+	{
+		PROVIDE(_init_text_start = .);
+		*(.init.text)
+		. = ALIGN(4);
+		PROVIDE(_init_text_end = .);
+	}
 }

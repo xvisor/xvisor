@@ -991,7 +991,7 @@ static vmm_emulator_t gic_emulator = {
 	.remove = gic_emulator_remove,
 };
 
-static int gic_emulator_init(void)
+static int __init gic_emulator_init(void)
 {
 	return vmm_devemu_register_emulator(&gic_emulator);
 }

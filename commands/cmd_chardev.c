@@ -86,7 +86,7 @@ static vmm_cmd_t cmd_chardev = {
 	.exec = cmd_chardev_exec,
 };
 
-static int cmd_chardev_init(void)
+static int __init cmd_chardev_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_chardev);
 }

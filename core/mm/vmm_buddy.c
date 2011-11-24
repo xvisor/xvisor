@@ -31,11 +31,11 @@
 #endif
 
 #include <vmm_list.h>
+#include <vmm_stdio.h>
+#include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_host_aspace.h>
 #include <mm/vmm_buddy.h>
-#include <vmm_stdio.h>
-#include <vmm_error.h>
 
 #ifndef NULL
 #define NULL			((void *)0)
@@ -516,7 +516,7 @@ void vmm_free(void *pointer)
 	buddy_free(pointer);
 }
 
-int vmm_heap_init(void)
+int __init vmm_heap_init(void)
 {
 	u32 heap_size = 0, heap_page_count = 0, heap_mem_flags;
 	void * heap_start = NULL;

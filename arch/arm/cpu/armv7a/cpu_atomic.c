@@ -25,7 +25,7 @@
 #include <vmm_error.h>
 #include <cpu_atomic.h>
 
-void __lock_section __cpu_atomic_inc(atomic_t * atom)
+void __lock __cpu_atomic_inc(atomic_t * atom)
 {
 
 	unsigned int tmp;
@@ -44,7 +44,7 @@ void __lock_section __cpu_atomic_inc(atomic_t * atom)
 			     :"cc");
 }
 
-void __lock_section __cpu_atomic_dec(atomic_t * atom)
+void __lock __cpu_atomic_dec(atomic_t * atom)
 {
 	unsigned int tmp;
 	unsigned int result;
@@ -63,12 +63,12 @@ void __lock_section __cpu_atomic_dec(atomic_t * atom)
 
 }
 
-void __lock_section vmm_cpu_atomic_inc(atomic_t * atom)
+void __lock vmm_cpu_atomic_inc(atomic_t * atom)
 {
 	__cpu_atomic_inc(atom);
 }
 
-void __lock_section vmm_cpu_atomic_dec(atomic_t * atom)
+void __lock vmm_cpu_atomic_dec(atomic_t * atom)
 {
 	__cpu_atomic_dec(atom);
 }
