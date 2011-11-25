@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Anup Patel.
+# Copyright (c) 2011 Jean-Christophe Dubois
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,32 +16,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @version 1.0
-# @author Anup Patel (anup@brainfault.org)
-# @brief config file for library options
+# @author Jean-Christophe Dubois (jcd@tribudubois.net)
+# @brief kallsyms functions borrowed from linux
 # */
 
-menu "Library Options"
-
-config CONFIG_LIBFDT
-	bool "Flattened Device Tree Library"
-	default n
-	help
-		Enable/Disable FDT Library.
-
-config CONFIG_UIP
-	bool "UIP"
-	default n
-	depends on CONFIG_NET
-	help
-		Enable/Disable UIP Library.
-
-config CONFIG_KALLSYMS
-	bool "Symbols lookup library"
-	default n
-	help
-		Add support by name/address symbol lookup
-
-endmenu
-
+libs-cppflags-$(CONFIG_KALLSYMS)+= -I$(libs_dir)/kallsyms
+libs-objs-$(CONFIG_KALLSYMS)+= kallsyms/kallsyms.o

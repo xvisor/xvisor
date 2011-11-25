@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Mon Nov 21 15:35:50 2011
+# Fri Nov 25 10:15:45 2011
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -63,6 +63,7 @@ CONFIG_BUDDY_MAX_BLOCK_SIZE_SHIFT=12
 # Library Options
 #
 CONFIG_LIBFDT=y
+# CONFIG_KALLSYMS is not set
 
 #
 # Device Drivers
