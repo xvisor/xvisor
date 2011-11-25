@@ -56,6 +56,7 @@ typedef unsigned int ulong;
 #define __alwaysinline 		__attribute__((always_inline))
 #define __unused		__attribute__((unused))
 #define __noreturn		__attribute__((noreturn))
+#define __notrace		__attribute__((no_instrument_function))
 
 #define __lock			__attribute__((section(".spinlock.text")))
 #define __modtbl		__attribute__((section(".modtbl")))
