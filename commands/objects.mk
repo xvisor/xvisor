@@ -38,3 +38,5 @@ commands-objs-y+= cmd_stdio.o
 commands-objs-$(CONFIG_MM_BUDDY)+= cmd_buddy.o
 commands-objs-$(CONFIG_NET)+= cmd_ping.o
 commands-objs-y+= elf.o
+
+commands-objs-$(CONFIG_PROFILE) += cmd_profile.o
