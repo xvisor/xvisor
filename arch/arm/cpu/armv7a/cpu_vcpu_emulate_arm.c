@@ -3198,91 +3198,117 @@ static int arm_inst_ldrbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 /** Emulate load/store instructions */
 static int arm_instgrp_ldrstr(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	u32 A, op1, rn, B;
+	u32 op1, rn;
 	u32 is_xx0x0, is_0x010, is_xx0x1, is_0x011, is_xx1x0, is_0x110;
 	u32 is_xx1x1, is_0x111;
 
-	A = ARM_INST_DECODE(inst,
-			    ARM_INST_LDRSTR_A_MASK,
-			    ARM_INST_LDRSTR_A_SHIFT);
 	op1 = ARM_INST_DECODE(inst,
 			      ARM_INST_LDRSTR_OP1_MASK,
 			      ARM_INST_LDRSTR_OP1_SHIFT);
-	rn = ARM_INST_DECODE(inst,
-			     ARM_INST_LDRSTR_RN_MASK, 
-			     ARM_INST_LDRSTR_RN_SHIFT);
-	B = ARM_INST_DECODE(inst,
-			    ARM_INST_LDRSTR_B_MASK,
-			    ARM_INST_LDRSTR_B_SHIFT);
 
-	is_xx0x0 = !(op1 & 0x5);
-	is_0x010 = is_xx0x0 && !(op1 & 0x10) && (op1 & 0x2);
-	is_xx0x1 = !(op1 & 0x4) && (op1 & 0x1);
-	is_0x011 = !(op1 & 0x14) && (op1 & 0x3);
-	is_xx1x0 = (op1 & 0x4) && !(op1 & 0x1);
-	is_0x110 = !(op1 & 0x11) && (op1 & 0x6);
-	is_xx1x1 = (op1 & 0x5);
-	is_0x111 = !(op1 & 0x10) && (op1 & 0x7);
-
-	if (A) {
-		if (is_xx0x0 && !is_0x010 && !B) {
-			/* STR (register) */
-			return arm_inst_str_r(inst, regs, vcpu);
-		} else if (is_0x010 && !B) {
+	if (!(inst & ARM_INST_LDRSTR_A_MASK)) {
+		is_0x010 = !(op1 & 0x5) && !(op1 & 0x10) && (op1 & 0x2);
+		if (!is_0x010) {
+			is_xx0x0 = !(op1 & 0x5);
+			if (is_xx0x0) {
+				/* STR (immediate) */
+				return arm_inst_str_i(inst, regs, vcpu);
+			}
+		} else {
 			/* STRT */
 			return arm_inst_strt(inst, regs, vcpu);
-		} else if (is_xx0x1 && !is_0x011) {
-			/* LDR (register) */
-			return arm_inst_ldr_r(inst, regs, vcpu);
-		} else if (is_0x011 && !B) {
+		}
+		is_0x011 = !(op1 & 0x14) && (op1 & 0x3);
+		if (!is_0x011) {
+			is_xx0x1 = !(op1 & 0x4) && (op1 & 0x1);
+			if (is_xx0x1) {
+				rn = ARM_INST_DECODE(inst,
+			     			ARM_INST_LDRSTR_RN_MASK, 
+			     			ARM_INST_LDRSTR_RN_SHIFT);
+				if (rn == 0xF) {
+					/* LDR (literal) */
+					return arm_inst_ldr_l(inst, regs, vcpu);
+				} else {
+					/* LDR (immediate) */
+					return arm_inst_ldr_i(inst, regs, vcpu);
+				}
+			}
+		} else {
 			/* LDRT */
 			return arm_inst_ldrt(inst, regs, vcpu);
-		} else if (is_xx1x0 && !is_0x110 && !B) {
-			/* STRB (register) */
-			return arm_inst_strb_r(inst, regs, vcpu);
-		} else if (is_0x110 && !B) {
+		}
+		is_0x110 = !(op1 & 0x11) && (op1 & 0x6);
+		if (!is_0x110) {
+			is_xx1x0 = (op1 & 0x4) && !(op1 & 0x1);
+			if (is_xx1x0) {
+				/* STRB (immediate) */
+				return arm_inst_strb_i(inst, regs, vcpu);
+			}
+		} else {
 			/* STRBT */
 			return arm_inst_strbt(inst, regs, vcpu);
-		} else if (is_xx1x1 && !is_0x111 && !B) {
-			/* LDRB (register) */
-			return arm_inst_ldrb_r(inst, regs, vcpu);
-		} else if (is_0x111 && !B) {
+		} 
+		is_0x111 = !(op1 & 0x10) && (op1 & 0x7);
+		if (!is_0x111) {
+			is_xx1x1 = (op1 & 0x5);
+			if (is_xx1x1) {
+				rn = ARM_INST_DECODE(inst,
+			 			ARM_INST_LDRSTR_RN_MASK, 
+			     			ARM_INST_LDRSTR_RN_SHIFT);
+				if (rn == 0xF) {
+					/* LDRB (literal) */
+					return arm_inst_ldrb_l(inst, regs, vcpu);
+				} else {
+					/* LDRB (immediate) */
+					return arm_inst_ldrb_i(inst, regs, vcpu);
+				}
+			}
+		} else {
 			/* LDRBT */
 			return arm_inst_ldrbt(inst, regs, vcpu);
 		}
-	} else {
-		if (is_xx0x0 && !is_0x010) {
-			/* STR (immediate) */
-			return arm_inst_str_i(inst, regs, vcpu);
-		} else if (is_0x010) {
+	} else if (!(inst & ARM_INST_LDRSTR_B_MASK)) {
+		is_0x010 = !(op1 & 0x5) && !(op1 & 0x10) && (op1 & 0x2);
+		if (!is_0x010) {
+			is_xx0x0 = !(op1 & 0x5);
+			if (is_xx0x0) {
+				/* STR (register) */
+				return arm_inst_str_r(inst, regs, vcpu);
+			}
+		} else {
 			/* STRT */
 			return arm_inst_strt(inst, regs, vcpu);
-		} else if (is_xx0x1 && !is_0x011) {
-			if (rn == 0xF) {
-				/* LDR (literal) */
-				return arm_inst_ldr_l(inst, regs, vcpu);
-			} else {
-				/* LDR (immediate) */
-				return arm_inst_ldr_i(inst, regs, vcpu);
+		}
+		is_0x011 = !(op1 & 0x14) && (op1 & 0x3);
+		if (!is_0x011) {
+			is_xx0x1 = !(op1 & 0x4) && (op1 & 0x1);
+			if (is_xx0x1) {
+				/* LDR (register) */
+				return arm_inst_ldr_r(inst, regs, vcpu);
 			}
-		} else if (is_0x011) {
+		} else {
 			/* LDRT */
 			return arm_inst_ldrt(inst, regs, vcpu);
-		} else if (is_xx1x0 && !is_0x110) {
-			/* STRB (immediate) */
-			return arm_inst_strb_i(inst, regs, vcpu);
-		} else if (is_0x110) {
+		}
+		is_0x110 = !(op1 & 0x11) && (op1 & 0x6);
+		if (!is_0x110) {
+			is_xx1x0 = (op1 & 0x4) && !(op1 & 0x1);
+			if (is_xx1x0) {
+				/* STRB (register) */
+				return arm_inst_strb_r(inst, regs, vcpu);
+			}
+		} else {
 			/* STRBT */
 			return arm_inst_strbt(inst, regs, vcpu);
-		} else if (is_xx1x1 && !is_0x111) {
-			if (rn == 0xF) {
-				/* LDRB (literal) */
-				return arm_inst_ldrb_l(inst, regs, vcpu);
-			} else {
-				/* LDRB (immediate) */
-				return arm_inst_ldrb_i(inst, regs, vcpu);
-			}
-		} else if (is_0x111) {
+		} 
+		is_0x111 = !(op1 & 0x10) && (op1 & 0x7);
+		if (!is_0x111) {
+			is_xx1x1 = (op1 & 0x5);
+			if (is_xx1x1) {
+				/* LDRB (register) */
+				return arm_inst_ldrb_r(inst, regs, vcpu);
+			} 
+		} else {
 			/* LDRBT */
 			return arm_inst_ldrbt(inst, regs, vcpu);
 		}
