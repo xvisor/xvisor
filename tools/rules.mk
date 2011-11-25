@@ -37,6 +37,11 @@ $(build_dir)/tools/bbflash/bb_nandflash_ecc: $(CURDIR)/tools/bbflash/Makefile
 	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
 	$(V)$(MAKE) -C $(CURDIR)/tools/bbflash O=$(build_dir)/tools/bbflash
 
+$(build_dir)/tools/kallsyms/kallsyms: $(CURDIR)/tools/kallsyms/Makefile
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
+	$(V)$(MAKE) -C $(CURDIR)/tools/kallsyms O=$(build_dir)/tools/kallsyms
+
 $(build_dir)/%.dep: $(src_dir)/%.dts
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc-dep)   $(subst $(build_dir)/,,$@)")
