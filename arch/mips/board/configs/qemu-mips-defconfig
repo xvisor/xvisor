@@ -2,8 +2,9 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Tue Oct 11 15:18:05 2011
+# Sat Nov 26 10:33:14 2011
 #
+# CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_MIPS=y
 CONFIG_ARCH="mips"
@@ -23,8 +24,10 @@ CONFIG_QEMU_MIPS=y
 #
 CONFIG_MAX_VCPU_COUNT=8
 CONFIG_MAX_GUEST_COUNT=2
+CONFIG_VGPA2REG_CACHE_SIZE=8
 CONFIG_VAPOOL_SIZE=8
 # CONFIG_VERBOSE_MODE is not set
+# CONFIG_PROFILE is not set
 CONFIG_BANNER_NONE=y
 # CONFIG_BANNER_DEFAULT is not set
 
@@ -48,6 +51,15 @@ CONFIG_BUDDY_MAX_BLOCK_SIZE_SHIFT=12
 # Library Options
 #
 CONFIG_LIBFDT=y
+# CONFIG_KALLSYMS is not set
+
+#
+# Tool Options
+#
+CONFIG_DTC=y
+# CONFIG_CPATCH is not set
+# CONFIG_BBFLASH is not set
+# CONFIG_KALLSYMS_GENERATOR is not set
 
 #
 # Device Drivers
