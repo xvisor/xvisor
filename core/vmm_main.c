@@ -43,6 +43,7 @@
 #include <vmm_chardev.h>
 #include <vmm_blockdev.h>
 #include <vmm_netdev.h>
+#include <vmm_profiler.h>
 
 void vmm_hang(void)
 {
@@ -148,6 +149,16 @@ void vmm_init(void)
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
 	}
+
+#ifdef CONFIG_PROFILE
+	/* Intialize hypervisor profiler */
+	vmm_printf("Initialize Hypervisor Profiler\n");
+	ret = vmm_profiler_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+#endif
 
 	/* Initialize device driver framework */
 	vmm_printf("Initialize Device Driver Framework\n");

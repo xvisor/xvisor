@@ -44,4 +44,5 @@ core-objs-y+= vmm_blockdev.o
 core-objs-y+= vmm_netdev.o
 core-objs-y+= vmm_vserial.o
 core-objs-y+= vmm_modules.o
+core-objs-$(CONFIG_PROFILE)+= vmm_profiler.o
 

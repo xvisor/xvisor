@@ -476,18 +476,17 @@ EXCEPTION_HANDLER _fiq, 4
 	PULL_REGS _fiq_pull _fiq_pull1
 
 #ifdef CONFIG_PROFILE
-	.globl vmm_ftrace_stub
-vmm_ftrace_stub:
-_vmm_ftrace_stub:
+	.globl vmm_profiler_trace_stub
+vmm_profiler_trace_stub:
 	mov     pc, lr
-_vmm_ftrace_stub_end:
+vmm_profiler_trace_stub_end:
 
 	.globl __gnu_mcount_nc
 __gnu_mcount_nc:
 	stmdb   sp!, {r0-r3, lr}		@ save registers
-	ldr     r0, =vmm_ftrace_trace_function	@ load vmm_ftrace_trace_function in r0
-	ldr     r2, [r0]			@ load content of vmm_ftrace_trace_function in r2
-	adr	r0, _vmm_ftrace_stub		@ load _vmm_ftrace_stub adress in r0
+	ldr     r0, =vmm_profiler_trace_function	@ load vmm_profiler_trace_function in r0
+	ldr     r2, [r0]			@ load content of vmm_profiler_trace_function in r2
+	adr	r0, vmm_profiler_trace_stub	@ load vmm_profiler_trace_stub adress in r0
         cmp     r0, r2				@ compare r0 and r2
 	bne     __gnu_mcount_do			@ branch to __gnu_mcount_do if r0 != r2
 						@ nothing else to do. We can return
@@ -500,6 +499,6 @@ __gnu_mcount_do:				@ We should do "traditionnal" mcount
 	mov     r0, lr				@ instrumented function
 	sub     r0, r0, #4			@ 4 = size of mcount call
 	adr     lr, __gnu_mcount_return		@ load addr __gnu_mcount_return in lr
-	mov     pc, r2				@ change pc with addr contained in vmm_ftrace_trace_function
+	mov     pc, r2				@ change pc with addr contained in vmm_profiler_trace_function
 __gnu_mcount_nc_end:
 #endif
