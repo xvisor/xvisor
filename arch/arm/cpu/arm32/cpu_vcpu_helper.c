@@ -749,7 +749,7 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 			break;
 		};
 	}
-#ifdef CONFIG_ARMV7A_FUNCSTATS
+#ifdef CONFIG_ARM32_FUNCSTATS
 	for (ite=0; ite < ARM_FUNCSTAT_MAX; ite++) {
 		vcpu->sregs->funcstat[ite].function_name = NULL;
 		vcpu->sregs->funcstat[ite].entry_count = 0;
@@ -856,7 +856,7 @@ void vmm_vcpu_regs_dump(vmm_vcpu_t * vcpu)
 
 void vmm_vcpu_stat_dump(vmm_vcpu_t * vcpu)
 {
-#ifdef CONFIG_ARMV7A_FUNCSTATS
+#ifdef CONFIG_ARM32_FUNCSTATS
 	int index;
 
 	if (!vcpu || !vcpu->sregs) {

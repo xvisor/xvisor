@@ -2,25 +2,26 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Sat Nov 26 09:43:00 2011
+# Sat Nov 26 12:02:33 2011
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 CONFIG_ARCH="arm"
-CONFIG_CPU="armv7a"
+CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
 CONFIG_BOARD="pb-a8"
 CONFIG_CPU_CORTEX_A8=y
 # CONFIG_CPU_OMAP3 is not set
 CONFIG_ARMV7A=y
+CONFIG_ARM32=y
 
 #
-# ARMv7a Options
+# ARM 32-Bit Options
 #
-# CONFIG_ARMV7A_HIGHVEC is not set
-# CONFIG_ARMV7A_FUNCSTATS is not set
+# CONFIG_ARM32_HIGHVEC is not set
+# CONFIG_ARM32_FUNCSTATS is not set
 # CONFIG_ARMV7A_SECUREX is not set
 CONFIG_BOARD_PB_A8=y
 CONFIG_REALVIEW=y

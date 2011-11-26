@@ -242,7 +242,7 @@ struct vmm_super_regs {
 		u32 c15_i_min; /* Minimum D-cache dirty line index. */
 	} cp15;
 	/* Statistics Gathering */
-#ifdef CONFIG_ARMV7A_FUNCSTATS
+#ifdef CONFIG_ARM32_FUNCSTATS
 	struct {
 		char const *function_name;
 		u32 entry_count;
@@ -259,7 +259,7 @@ typedef struct vmm_super_regs vmm_super_regs_t;
 #define arm_set_feature(vcpu, feat) ((vcpu)->sregs->features |= (0x1 << (feat)))
 #define arm_feature(vcpu, feat) ((vcpu)->sregs->features & (0x1 << (feat)))
 
-#ifdef CONFIG_ARMV7A_FUNCSTATS
+#ifdef CONFIG_ARM32_FUNCSTATS
 
 #include <vmm_timer.h>
 

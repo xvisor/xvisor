@@ -342,7 +342,7 @@ int __init vmm_cpu_irq_setup(void)
 	u32 vec;
 	cpu_page_t vec_page;
 
-#if defined(CONFIG_ARMV7A_HIGHVEC)
+#if defined(CONFIG_ARM32_HIGHVEC)
 	/* Enable high vectors in SCTLR */
 	write_sctlr(read_sctlr() | SCTLR_V_MASK);
 	vectors = (u32 *) CPU_IRQ_HIGHVEC_BASE;
