@@ -40,7 +40,7 @@
 #define	MODULE_INIT			cmd_profile_init
 #define	MODULE_EXIT			cmd_profile_exit
 
-void cmd_profile_usage(vmm_chardev_t * cdev)
+static void cmd_profile_usage(vmm_chardev_t * cdev)
 {
 	vmm_cprintf(cdev, "Usage: \n");
 	vmm_cprintf(cdev, "   profile help\n");
@@ -83,7 +83,7 @@ struct count_record {
 	char function_name[40];
 };
 
-int cmd_profile_cmp(void *m, size_t a, size_t b)
+static int cmd_profile_cmp(void *m, size_t a, size_t b)
 {
 	struct count_record *ptr = m;
 
@@ -99,7 +99,7 @@ int cmd_profile_cmp(void *m, size_t a, size_t b)
 	return 0;
 }
 
-void cmd_profile_swap(void *m, size_t a, size_t b)
+static void cmd_profile_swap(void *m, size_t a, size_t b)
 {
 	struct count_record tmp;
 	struct count_record *ptr = m;
@@ -213,4 +213,7 @@ static void cmd_profile_exit(void)
 
 VMM_DECLARE_MODULE(MODULE_VARID,
 		   MODULE_NAME,
-		   MODULE_AUTHOR, MODULE_IPRIORITY, MODULE_INIT, MODULE_EXIT);
+		   MODULE_AUTHOR,
+		   MODULE_IPRIORITY,
+		   MODULE_INIT,
+		   MODULE_EXIT);
