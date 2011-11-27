@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Sat Nov 26 12:02:33 2011
+# Sun Nov 27 09:20:23 2011
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -66,6 +66,7 @@ CONFIG_BUDDY_MAX_BLOCK_SIZE_SHIFT=12
 #
 CONFIG_LIBFDT=y
 # CONFIG_KALLSYMS is not set
+# CONFIG_LIBSORT is not set
 
 #
 # Tool Options

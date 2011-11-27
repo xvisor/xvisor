@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Anup Patel.
+# Copyright (c) 2011 Jean-Christophe Dubois
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,39 +16,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @version 1.0
-# @author Anup Patel (anup@brainfault.org)
-# @brief config file for library options
+# @author Jean-Christophe Dubois (jcd@tribudubois.net)
+# @brief makefile for the sorting library
 # */
 
-menu "Library Options"
-
-config CONFIG_LIBFDT
-	bool "Flattened device tree library"
-	default n
-	help
-		Enable/Disable FDT Library.
-
-config CONFIG_UIP
-	bool "UIP"
-	default n
-	depends on CONFIG_NET
-	help
-		Enable/Disable UIP Library.
-
-config CONFIG_KALLSYMS
-	bool "Symbols lookup library"
-	select CONFIG_KALLSYMS_GENERATOR
-	default n
-	help
-		Enable/Disable Symbols Lookup Library.
-
-config CONFIG_LIBSORT
-	bool "Sorting library"
-	default n
-	help
-		Enable/Disable Sorting Library.
-
-endmenu
-
+libs-cppflags-$(CONFIG_LIBSORT)+= -I$(libs_dir)/libsort
+libs-objs-$(CONFIG_LIBSORT)+= libsort/smoothsort.o
