@@ -221,7 +221,7 @@ static u32 arm_add_with_carry(u32 x, u32 y, u32 cin, u32 *cout, u32 *oout)
 static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 		       vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	u32 cpsr, imod, mode;
+	register u32 cpsr, imod, mode;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_CPS);
 	imod = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_CPS_IMOD_END,
@@ -265,7 +265,7 @@ static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 static int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
 		       vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	u32 cond, Rd, psr;
+	register u32 cond, Rd, psr;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MRS);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rd = ARM_INST_BITS(inst,
@@ -293,7 +293,7 @@ static int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
 static int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	u32 cond, mask, imm12, psr, tmask;
+	register u32 cond, mask, imm12, psr, tmask;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MSR_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	mask = ARM_INST_BITS(inst,
@@ -331,7 +331,7 @@ static int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 static int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
 			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	u32 cond, mask, Rn, psr, tmask;
+	register u32 cond, mask, Rn, psr, tmask;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MSR_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	mask = ARM_INST_BITS(inst,
@@ -374,10 +374,10 @@ static int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
 static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	int rc;
-	u32 cond, Rn, P, U, W;
-	u32 cpsr, address, data;
-	bool wback, increment, wordhigher;
+	u32 data;
+	register int rc;
+	register u32 cond, Rn, P, U, W;
+	register u32 cpsr, address;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_RFE);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
@@ -388,19 +388,9 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 		return VMM_EFAIL;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		P = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_RFE_P_END,
-			  ARM_HYPERCALL_RFE_P_START);
-		U = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_RFE_U_END,
-			  ARM_HYPERCALL_RFE_U_START);
-		W = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_RFE_W_END,
-			  ARM_HYPERCALL_RFE_W_START);
-		wback = (W == 1) ? TRUE : FALSE;
-		increment = (U == 1) ? TRUE : FALSE;
-		wordhigher = (P == U) ? TRUE : FALSE;
-
+		P = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_P_START);
+		U = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_U_START);
+		W = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_W_START);
 		cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 		cpsr &= CPSR_MODE_MASK;
 		if (cpsr == CPSR_MODE_USER) {
@@ -408,8 +398,8 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 			return VMM_EFAIL;
 		}
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-		address = (increment) ? address : (address - 8);
-		address = (wordhigher) ? (address + 4) : address;
+		address = (U == 1) ? address : (address - 8);
+		address = (P == U) ? (address + 4) : address;
 		data = 0x0;
 		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address + 4, 
 						 &data, 4, FALSE))) {
@@ -422,9 +412,9 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 			return rc;
 		}
 		regs->pc = data;
-		if (wback) {
+		if (W == 1) {
 			address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-			address = (increment) ? (address + 8) : (address - 8);
+			address = (U == 1) ? (address + 8) : (address - 8);
 			cpu_vcpu_reg_write(vcpu, regs, Rn, address);
 		}
 		/* Steps unique to exception return */
@@ -440,28 +430,19 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	int rc;
-	u32 cond, P, U, W, mode;
-	u32 cpsr, base, address, data;
-	bool wback, increment, wordhigher;
+	u32 data;
+	register int rc;
+	register u32 cond, P, U, W, mode;
+	register u32 cpsr, base, address;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_SRS);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	if (arm_condition_passed(cond, regs)) {
-		P = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_SRS_P_END,
-			  ARM_HYPERCALL_SRS_P_START);
-		U = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_SRS_U_END,
-			  ARM_HYPERCALL_SRS_U_START);
-		W = ARM_INST_BITS(inst,
-			  ARM_HYPERCALL_SRS_W_END,
-			  ARM_HYPERCALL_SRS_W_START);
+		P = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_P_START);
+		U = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_U_START);
+		W = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_W_START);
 		mode = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_SRS_MODE_END,
 			     ARM_HYPERCALL_SRS_MODE_START);
-		wback = (W == 1) ? TRUE : FALSE;
-		increment = (U == 1) ? TRUE : FALSE;
-		wordhigher = (P == U) ? TRUE : FALSE;
 		cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 		cpsr &= CPSR_MODE_MASK;
 		if ((cpsr == CPSR_MODE_USER) ||
@@ -470,8 +451,8 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 			return VMM_EFAIL;
 		}
 		base = cpu_vcpu_regmode_read(vcpu, regs, mode, 13);
-		address = (increment) ? base : (base - 8);
-		address = (wordhigher) ? (address + 4) : address;
+		address = (U == 1) ? base : (base - 8);
+		address = (P == U) ? (address + 4) : address;
 		data = regs->lr;
 		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
 						  &data, 4, FALSE))) {
@@ -483,8 +464,8 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 						  &data, 4, FALSE))) {
 			return rc;
 		}
-		if (wback) {
-			address = (increment) ? (base + 8) : (base - 8);
+		if (W == 1) {
+			address = (U == 1) ? (base + 8) : (base - 8);
 			cpu_vcpu_regmode_write(vcpu, regs, mode, 13, address);
 		}
 	}
@@ -496,11 +477,10 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	int rc;
-	u32 cond, Rn, U, P, W, reg_list;
-	u32 cpsr, address, i, mask, length, data;
-	u32 pos, ndata[16];
-	bool wback, increment, wordhigher;
+	u32 pos, data, ndata[16];
+	register int rc;
+	register u32 cond, Rn, U, P, W, reg_list;
+	register u32 cpsr, address, i, mask, length;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDM_UE);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
@@ -512,16 +492,13 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 	reg_list = ARM_INST_BITS(inst,
 				 ARM_HYPERCALL_LDM_UE_REGLIST_END,
 				 ARM_HYPERCALL_LDM_UE_REGLIST_START);
-	increment = (U == 1) ? TRUE : FALSE;
-	wordhigher = (P == U) ? TRUE : FALSE;
 	if (Rn == 15) {
 		arm_unpredictable(regs, vcpu);
 		return VMM_EFAIL;
 	}
 	if (reg_list & 0x8000) { 
 		/* LDM (Exception Return) */
-		wback = (W == 1) ? TRUE : FALSE;
-		if (wback && (reg_list & (0x1 << Rn))) {
+		if ((W == 1) && (reg_list & (0x1 << Rn))) {
 			arm_unpredictable(regs, vcpu);
 			return VMM_EFAIL;
 		}
@@ -542,8 +519,8 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 				mask = mask << 1;
 			}
 			address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-			address = (increment) ? address : address - length;
-			address = (wordhigher) ? (address + 4) : address;
+			address = (U == 1) ? address : address - length;
+			address = (P == U) ? (address + 4) : address;
 			if (((address + length - 4) & ~TTBL_MIN_PAGE_MASK) !=
 				(address & ~TTBL_MIN_PAGE_MASK)) {
 				pos = TTBL_MIN_PAGE_SIZE -
@@ -575,9 +552,9 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 				mask = mask << 1;
 			}
 			data = ndata[pos];
-			if (wback && !(reg_list & (0x1 << Rn))) {
+			if ((W == 1) && !(reg_list & (0x1 << Rn))) {
 				address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-				address = (increment) ? address + length : 
+				address = (U == 1) ? address + length : 
 							address - length;
 				cpu_vcpu_reg_write(vcpu, regs, Rn, address);
 			}
@@ -612,8 +589,8 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 				mask = mask << 1;
 			}
 			address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-			address = (increment) ? address : address - length;
-			address = (wordhigher) ? (address + 4) : address;
+			address = (U == 1) ? address : address - length;
+			address = (P == U) ? (address + 4) : address;
 			if (((address + length - 4) & ~TTBL_MIN_PAGE_MASK) !=
 				(address & ~TTBL_MIN_PAGE_MASK)) {
 				pos = TTBL_MIN_PAGE_SIZE -
@@ -655,11 +632,10 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 int arm_hypercall_stm_u(u32 id, u32 inst,
 			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	int rc;
-	u32 cond, Rn, P, U, reg_list;
-	u32 i, cpsr, mask, length, address;
 	u32 pos, ndata[16];
-	bool increment, wordhigher;
+	register int rc;
+	register u32 cond, Rn, P, U, reg_list;
+	register u32 i, cpsr, mask, length, address;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STM_U);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
@@ -675,9 +651,6 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 	if (arm_condition_passed(cond, regs)) {
 		P = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x2) >> 1;
 		U = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x1);
-		increment = (U == 1) ? TRUE : FALSE;
-		wordhigher = (P == U) ? TRUE : FALSE;
-
 		cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 		cpsr &= CPSR_MODE_MASK;
 		if ((cpsr == CPSR_MODE_USER) ||
@@ -694,8 +667,8 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 			mask = mask << 1;
 		}
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-		address = (increment) ? address : address - length;
-		address = (wordhigher) ? address + 4 : address;
+		address = (U == 1) ? address : address - length;
+		address = (P == U) ? address + 4 : address;
 		mask = 0x1;
 		pos = 0;
 		for (i = 0; i < 16; i++) {
@@ -735,8 +708,10 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 int arm_hypercall_subs_rel(u32 id, u32 inst,
 			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	u32 cond, opcode, Rn, imm12, imm5, type, Rm;
-	bool register_form, shift_t, shift_n, operand2, result, spsr;
+	u32 shift_t, shift_n;
+	register u32 cond, opcode, Rn, imm12, imm5, type, Rm;
+	register bool register_form;
+	register u32 operand2, result, spsr;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_SUBS_REL);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	opcode = ARM_INST_BITS(inst,
@@ -2288,52 +2263,43 @@ static int arm_instgrp_dataproc(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * v
 /** Emulate 'str (immediate)' instruction */
 static int arm_inst_str_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	int rc;
-	u32 cond, P, U, W, Rn, Rt, imm12;
-	u32 imm32, address, offset_addr, data;
-	bool index, add, wback;
+	u32 data;
+	register int rc;
+	register u32 cond, P, U, W, Rn, Rt, imm32;
+	register u32 address, offset_addr;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STR_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
-	P = ARM_INST_BITS(inst,
-			  ARM_INST_LDRSTR_P_END,
-			  ARM_INST_LDRSTR_P_START);
-	U = ARM_INST_BITS(inst,
-			  ARM_INST_LDRSTR_U_END,
-			  ARM_INST_LDRSTR_U_START);
-	W = ARM_INST_BITS(inst,
-			  ARM_INST_LDRSTR_W_END,
-			  ARM_INST_LDRSTR_W_START);
+	P = ARM_INST_BIT(inst, ARM_INST_LDRSTR_P_START);
+	U = ARM_INST_BIT(inst, ARM_INST_LDRSTR_U_START);
+	W = ARM_INST_BIT(inst, ARM_INST_LDRSTR_W_START);
 	Rn = ARM_INST_BITS(inst,
 			   ARM_INST_LDRSTR_RN_END,
 			   ARM_INST_LDRSTR_RN_START);
 	Rt = ARM_INST_BITS(inst,
 			   ARM_INST_LDRSTR_RT_END,
 			   ARM_INST_LDRSTR_RT_START);
-	imm12 = ARM_INST_BITS(inst,
+	imm32 = ARM_INST_BITS(inst,
 			      ARM_INST_LDRSTR_IMM12_END,
 			      ARM_INST_LDRSTR_IMM12_START);
+	imm32 = arm_zero_extend(imm32, 32);
 	if ((P == 0) && (W == 1)) {
 		arm_unpredictable(regs, vcpu);
 		return VMM_EFAIL;
 	}
-	imm32 = arm_zero_extend(imm12, 32);
-	index = (P == 1) ? TRUE : FALSE;
-	add = (U == 1) ? TRUE : FALSE;
-	wback = ((P == 0) || (W == 1)) ? TRUE : FALSE;
-	if (wback && ((Rn == 15) || (Rn == Rt))) {
+	if (((P == 0) || (W == 1)) && ((Rn == 15) || (Rn == Rt))) {
 		arm_unpredictable(regs, vcpu);
 		return VMM_EFAIL;
 	}
 	if (arm_condition_passed(cond, regs)) {
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-		offset_addr = (add) ? (address + imm32) : (address - imm32);
-		address = (index) ? offset_addr : address;
+		offset_addr = (U == 1) ? (address + imm32) : (address - imm32);
+		address = (P == 1) ? offset_addr : address;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt);
 		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
 						  &data, 4, FALSE))) {
 			return rc;
 		}
-		if (wback) {
+		if ((P == 0) || (W == 1)) {
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
@@ -2701,18 +2667,14 @@ static int arm_inst_strbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 /** Emulate 'ldr (immediate)' instruction */
 static int arm_inst_ldr_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	int rc;
-	u32 cond, P, U, W, Rn, Rt, imm12;
-	u32 imm32, offset_addr, address, data;
-	bool index, add, wback;
+	u32 data;
+	register int rc;
+	register u32 cond, P, U, W, Rn, Rt, imm32;
+	register u32 offset_addr, address;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDR_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
-	P = ARM_INST_BITS(inst,
-			  ARM_INST_LDRSTR_P_END,
-			  ARM_INST_LDRSTR_P_START);
-	W = ARM_INST_BITS(inst,
-			  ARM_INST_LDRSTR_W_END,
-			  ARM_INST_LDRSTR_W_START);
+	P = ARM_INST_BIT(inst, ARM_INST_LDRSTR_P_START);
+	W = ARM_INST_BIT(inst, ARM_INST_LDRSTR_W_START);
 	Rn = ARM_INST_BITS(inst,
 			   ARM_INST_LDRSTR_RN_END,
 			   ARM_INST_LDRSTR_RN_START);
@@ -2723,33 +2685,27 @@ static int arm_inst_ldr_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 		arm_unpredictable(regs, vcpu);
 		return VMM_EFAIL;
 	}
-	wback = ((P == 0) || (W == 1)) ? TRUE : FALSE;
-	if (wback && (Rn == Rt)) {
+	if (((P == 0) || (W == 1)) && (Rn == Rt)) {
 		arm_unpredictable(regs, vcpu);
 		return VMM_EFAIL;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		U = ARM_INST_BITS(inst,
-			  ARM_INST_LDRSTR_U_END,
-			  ARM_INST_LDRSTR_U_START);
-		imm12 = ARM_INST_BITS(inst,
+		U = ARM_INST_BIT(inst, ARM_INST_LDRSTR_U_START);
+		imm32 = ARM_INST_BITS(inst,
 			      ARM_INST_LDRSTR_IMM12_END,
 			      ARM_INST_LDRSTR_IMM12_START);
-		imm32 = arm_zero_extend(imm12, 32);
-		index = (P == 1) ? TRUE : FALSE;
-		add = (U == 1) ? TRUE : FALSE;
-
+		imm32 = arm_zero_extend(imm32, 32);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-		offset_addr = (add) ? (address + imm32) : 
+		offset_addr = (U == 1) ? (address + imm32) : 
 					(address - imm32);
-		address = (index) ? offset_addr : address;
+		address = (P == 1) ? offset_addr : address;
 		data = 0x0;
 		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
 						 &data, 4, FALSE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, data);
-		if (wback) {
+		if ((P == 0) || (W == 1)) {
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
