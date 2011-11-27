@@ -31,6 +31,7 @@
 #include <vmm_timer.h>
 #include <vmm_profiler.h>
 #include <kallsyms.h>
+#include <libsort.h>
 
 #define MODULE_VARID			cmd_profile_module
 #define MODULE_NAME			"Command profile"
@@ -77,21 +78,80 @@ static int cmd_profile_status(vmm_chardev_t * cdev, int dummy)
 	return VMM_OK;
 }
 
+struct count_record {
+	unsigned int count;
+	char function_name[40];
+};
+
+int cmd_profile_cmp(void *m, size_t a, size_t b)
+{
+	struct count_record *ptr = m;
+
+	if (ptr[a].count < ptr[b].count) {
+		return 1;
+	} else if (ptr[a].count == ptr[b].count) {
+		if (vmm_strcmp
+		    (&ptr[a].function_name[0], &ptr[b].function_name[0]) < 0) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+void cmd_profile_swap(void *m, size_t a, size_t b)
+{
+	struct count_record tmp;
+	struct count_record *ptr = m;
+
+	tmp = ptr[a];
+	ptr[a] = ptr[b];
+	ptr[b] = tmp;
+}
+
 static int cmd_profile_count_iterator(void *data, const char *name,
 				      unsigned long addr)
 {
+	struct count_record *ptr = data;
+	int index = kallsyms_get_symbol_pos(addr, NULL, NULL);
 	int count = vmm_profiler_get_function_count(addr);
 
-	if (count) {
-		vmm_printf("%s %d\n", name, count);
-	}
+	ptr += index;
+
+	/* It would be nice to have the strncpy variant */
+	vmm_strcpy(ptr->function_name, name);
+	ptr->function_name[39] = 0;
+	ptr->count = count;
 
 	return VMM_OK;
 }
 
 static int cmd_profile_dump(vmm_chardev_t * cdev, int dummy)
 {
-	kallsyms_on_each_symbol(cmd_profile_count_iterator, NULL);
+	int index;
+	struct count_record *count_array =
+	    vmm_malloc(sizeof(struct count_record) * kallsyms_num_syms);
+
+	if (count_array == NULL) {
+		return VMM_EFAIL;
+	}
+
+	kallsyms_on_each_symbol(cmd_profile_count_iterator, count_array);
+
+	libsort_smoothsort(count_array, 0, kallsyms_num_syms, cmd_profile_cmp,
+			   cmd_profile_swap);
+
+	for (index = 0; index < kallsyms_num_syms; index++) {
+		if (count_array[index].count) {
+			vmm_printf("%-40s %d\n",
+				   count_array[index].function_name,
+				   count_array[index].count);
+		}
+	}
+
+	vmm_free(count_array);
+
+	count_array = NULL;
 
 	return VMM_OK;
 }
@@ -153,7 +213,4 @@ static void cmd_profile_exit(void)
 
 VMM_DECLARE_MODULE(MODULE_VARID,
 		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+		   MODULE_AUTHOR, MODULE_IPRIORITY, MODULE_INIT, MODULE_EXIT);
