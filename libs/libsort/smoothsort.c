@@ -1,28 +1,24 @@
-/*
- * This file is part of the Sofia-SIP package
+/**
+ * Copyright (c) 2005 2005 Nokia Corporation.
+ * All rights reserved.
  *
- * Copyright (C) 2005 Nokia Corporation.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
  *
- * Contact: Pekka Pessi <pekka.pessi@nokia.com>
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * This library is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA
- *
- */
-
-/**@file smoothsort.c
+ * @file smoothsort.c
+ * @version 1.0
+ * @author Pekka Pessi (pekka.pessi@nokia.com)
  * @brief Smoothsort implementation
  *
  * Smoothsort is a in-place sorting algorithm with performance of O(NlogN)
@@ -32,11 +28,9 @@
  * "Smoothsort, an alternative for sorting in-situ", E.D. Dijkstra, EWD796a</a>,
  * &lt;http://www.enterag.ch/hartwig/order/smoothsort.pdf&gt;.
  *
- * @author Pekka Pessi <Pekka.Pessi@nokia.com>
- *
  * Changelog:
  * (26/Nov/2011) Jean-Christophe Dubois (jcd@tribudubois.net)
- *      Adapted the file to xvisor
+ *      Adapted the file to xvisor and moved license from LGPL 2.1 to GPL 2
  */
 
 #include <libsort.h>
