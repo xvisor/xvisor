@@ -36,7 +36,8 @@ u32 cpu_vcpu_cpsr_retrieve(vmm_vcpu_t * vcpu,
 /* Function to update CPSR of a VCPU */
 void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu, 
 			  vmm_user_regs_t * regs,
-			  u32 new_cpsr);
+			  u32 new_cpsr,
+			  u32 new_cpsr_mask);
 
 /* Function to save banked registers of a VCPU */
 void cpu_vcpu_banked_regs_save(vmm_vcpu_t * vcpu, 
@@ -51,7 +52,8 @@ u32 cpu_vcpu_spsr_retrieve(vmm_vcpu_t * vcpu);
 
 /* Function to update SPSR of a VCPU */
 int cpu_vcpu_spsr_update(vmm_vcpu_t * vcpu, 
-			 u32 new_spsr);
+			 u32 new_spsr,
+			 u32 new_spsr_update);
 
 /* Function to read a VCPU register of current mode */
 u32 cpu_vcpu_reg_read(vmm_vcpu_t * vcpu, 

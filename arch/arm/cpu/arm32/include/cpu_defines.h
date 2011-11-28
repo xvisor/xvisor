@@ -95,6 +95,8 @@
 							CPSR_GE_MASK |\
 							CPSR_IT_MASK |\
 							CPSR_THUMB_ENABLED)
+#define CPSR_PRIVBITS_MASK				(~CPSR_USERBITS_MASK)
+#define CPSR_ALLBITS_MASK				0xFFFFFFFF
 
 /* VFP system registers.  */
 #define VFP_FPSID					0

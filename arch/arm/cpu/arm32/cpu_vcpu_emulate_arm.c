@@ -221,7 +221,7 @@ static u32 arm_add_with_carry(u32 x, u32 y, u32 cin, u32 *cout, u32 *oout)
 static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 		       vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	register u32 cpsr, imod, mode;
+	register u32 cpsr, mask, imod, mode;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_CPS);
 	imod = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_CPS_IMOD_END,
@@ -229,10 +229,11 @@ static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 	mode = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_CPS_MODE_END,
 			     ARM_HYPERCALL_CPS_MODE_START);
-	cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
+	cpsr = 0x0;
+	mask = 0x0;
 	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_M_START)) {
-		cpsr &= ~CPSR_MODE_MASK;
 		cpsr |= mode;
+		mask |= CPSR_MODE_MASK;
 	}
 	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_A_START)) {
 		if (imod == 0x2) {
@@ -240,6 +241,7 @@ static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 		} else if (imod == 0x3) {
 			cpsr |= CPSR_ASYNC_ABORT_DISABLED;
 		}
+		mask |= CPSR_ASYNC_ABORT_DISABLED;
 	}
 	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_I_START)) {
 		if (imod == 0x2) {
@@ -247,6 +249,7 @@ static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 		} else if (imod == 0x3) {
 			cpsr |= CPSR_IRQ_DISABLED;
 		}
+		mask |= CPSR_IRQ_DISABLED;
 	}
 	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_F_START)) {
 		if (imod == 0x2) {
@@ -254,8 +257,9 @@ static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 		} else if (imod == 0x3) {
 			cpsr |= CPSR_FIQ_DISABLED;
 		}
+		mask |= CPSR_FIQ_DISABLED;
 	}
-	cpu_vcpu_cpsr_update(vcpu, regs, cpsr);
+	cpu_vcpu_cpsr_update(vcpu, regs, cpsr, mask);
 	regs->pc += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_CPS);
 	return VMM_OK;
@@ -315,11 +319,9 @@ static int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 		tmask |= (mask & 0x8) ? 0xFF000000 : 0x00;
 		psr &= tmask;
 		if (ARM_INST_BIT(inst, ARM_HYPERCALL_MSR_I_R_START)) {
-			psr |= (~tmask & cpu_vcpu_spsr_retrieve(vcpu));
-			cpu_vcpu_spsr_update(vcpu, psr);
+			cpu_vcpu_spsr_update(vcpu, psr, tmask);
 		} else {
-			psr |= (~tmask & cpu_vcpu_cpsr_retrieve(vcpu, regs));
-			cpu_vcpu_cpsr_update(vcpu, regs, psr);
+			cpu_vcpu_cpsr_update(vcpu, regs, psr, tmask);
 		}
 	}
 	regs->pc += 4;
@@ -358,11 +360,9 @@ static int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
 		tmask |= (mask & 0x8) ? 0xFF000000 : 0x00;
 		psr &= tmask;
 		if (ARM_INST_BIT(inst, ARM_HYPERCALL_MSR_R_R_START)) {
-			psr |= (~tmask & cpu_vcpu_spsr_retrieve(vcpu));
-			cpu_vcpu_spsr_update(vcpu, psr);
+			cpu_vcpu_spsr_update(vcpu, psr, tmask);
 		} else {
-			psr |= (~tmask & cpu_vcpu_cpsr_retrieve(vcpu, regs));
-			cpu_vcpu_cpsr_update(vcpu, regs, psr);
+			cpu_vcpu_cpsr_update(vcpu, regs, psr, tmask);
 		}
 	}
 	regs->pc += 4;
@@ -405,7 +405,7 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 						 &data, 4, FALSE))) {
 			return rc;
 		}
-		cpu_vcpu_cpsr_update(vcpu, regs, data);
+		cpu_vcpu_cpsr_update(vcpu, regs, data, CPSR_ALLBITS_MASK);
 		data = 0x0;
 		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
 						 &data, 4, FALSE))) {
@@ -559,7 +559,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 				cpu_vcpu_reg_write(vcpu, regs, Rn, address);
 			}
 			cpsr = cpu_vcpu_spsr_retrieve(vcpu);
-			cpu_vcpu_cpsr_update(vcpu, regs, cpsr);
+			cpu_vcpu_cpsr_update(vcpu, regs, cpsr, CPSR_ALLBITS_MASK);
 			regs->pc = data;
 			/* Steps unique to exception return */
 			vmm_vcpu_irq_deassert(vcpu);
@@ -808,7 +808,7 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 			break;
 		};
 		spsr = cpu_vcpu_spsr_retrieve(vcpu);
-		cpu_vcpu_cpsr_update(vcpu, regs, spsr);
+		cpu_vcpu_cpsr_update(vcpu, regs, spsr, CPSR_ALLBITS_MASK);
 		regs->pc = result;
 		/* Steps unique to exception return */
 		vmm_vcpu_irq_deassert(vcpu);

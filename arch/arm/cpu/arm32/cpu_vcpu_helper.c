@@ -223,29 +223,35 @@ void cpu_vcpu_banked_regs_restore(vmm_vcpu_t * vcpu, vmm_user_regs_t * dst)
 
 void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu, 
 			  vmm_user_regs_t * regs,
-			  u32 new_cpsr)
+			  u32 new_cpsr,
+			  u32 new_cpsr_mask)
 {
-	u32 old_cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
+	bool mode_change;
+	u32 new_priv_mask, new_user_mask;
 	/* Sanity check */
-	if (!vcpu) {
+	if (!vcpu && !vcpu->is_normal) {
 		return;
 	}
-	if (!vcpu->is_normal) {
-		return;
-	}
-	/* If mode is changing then */
-	if ((old_cpsr & CPSR_MODE_MASK) != (new_cpsr & CPSR_MODE_MASK)) {
+	new_cpsr &= new_cpsr_mask;
+	new_priv_mask = new_cpsr_mask & CPSR_PRIVBITS_MASK;
+	new_user_mask = new_cpsr_mask & CPSR_USERBITS_MASK;
+	/* Determine if mode is changing */
+	mode_change = FALSE;
+	if ((new_priv_mask & CPSR_MODE_MASK) &&
+	    ((vcpu->sregs->cpsr & CPSR_MODE_MASK) != 
+					(new_cpsr & CPSR_MODE_MASK))) {
+		mode_change = TRUE;
 		/* Save banked registers for old CPSR */
 		cpu_vcpu_banked_regs_save(vcpu, regs);
 	}
 	/* Set the new priviledged bits of CPSR */
-	vcpu->sregs->cpsr &= CPSR_USERBITS_MASK;
-	vcpu->sregs->cpsr |= new_cpsr & ~CPSR_USERBITS_MASK;
+	vcpu->sregs->cpsr &= (~CPSR_PRIVBITS_MASK | ~new_priv_mask);
+	vcpu->sregs->cpsr |= new_cpsr & CPSR_PRIVBITS_MASK & new_priv_mask;
 	/* Set the new user bits of CPSR */
-	regs->cpsr &= ~CPSR_USERBITS_MASK;
-	regs->cpsr |= new_cpsr & CPSR_USERBITS_MASK;
+	regs->cpsr &= (~CPSR_USERBITS_MASK | ~new_user_mask);
+	regs->cpsr |= new_cpsr & CPSR_USERBITS_MASK & new_user_mask;
 	/* If mode is changing then */
-	if ((old_cpsr & CPSR_MODE_MASK) != (new_cpsr & CPSR_MODE_MASK)) {
+	if (mode_change) {
 		/* Restore values of banked registers for new CPSR */
 		cpu_vcpu_banked_regs_restore(vcpu, regs);
 		/* Synchronize CP15 state to change in mode */
@@ -284,7 +290,8 @@ u32 cpu_vcpu_spsr_retrieve(vmm_vcpu_t * vcpu)
 }
 
 int cpu_vcpu_spsr_update(vmm_vcpu_t * vcpu, 
-			 u32 new_spsr)
+			 u32 new_spsr,
+			 u32 new_spsr_mask)
 {
 	/* Sanity check */
 	if (!vcpu) {
@@ -294,25 +301,32 @@ int cpu_vcpu_spsr_update(vmm_vcpu_t * vcpu,
 	    (!vcpu->is_normal)) {
 		return VMM_EFAIL;
 	}
+	new_spsr &= new_spsr_mask;
 	/* Update appropriate SPSR */
 	switch (vcpu->sregs->cpsr & CPSR_MODE_MASK) {
 	case CPSR_MODE_ABORT:
-		vcpu->sregs->spsr_abt = new_spsr;
+		vcpu->sregs->spsr_abt &= ~new_spsr_mask;
+		vcpu->sregs->spsr_abt |= new_spsr;
 		break;
 	case CPSR_MODE_UNDEFINED:
-		vcpu->sregs->spsr_und = new_spsr;
+		vcpu->sregs->spsr_und &= ~new_spsr_mask;
+		vcpu->sregs->spsr_und |= new_spsr;
 		break;
 	case CPSR_MODE_MONITOR:
-		vcpu->sregs->spsr_mon = new_spsr;
+		vcpu->sregs->spsr_mon &= ~new_spsr_mask;
+		vcpu->sregs->spsr_mon |= new_spsr;
 		break;
 	case CPSR_MODE_SUPERVISOR:
-		vcpu->sregs->spsr_svc = new_spsr;
+		vcpu->sregs->spsr_svc &= ~new_spsr_mask;
+		vcpu->sregs->spsr_svc |= new_spsr;
 		break;
 	case CPSR_MODE_IRQ:
-		vcpu->sregs->spsr_irq = new_spsr;
+		vcpu->sregs->spsr_irq &= ~new_spsr_mask;
+		vcpu->sregs->spsr_irq |= new_spsr;
 		break;
 	case CPSR_MODE_FIQ:
-		vcpu->sregs->spsr_fiq = new_spsr;
+		vcpu->sregs->spsr_fiq &= ~new_spsr_mask;
+		vcpu->sregs->spsr_fiq |= new_spsr;
 		break;
 	default:
 		break;
@@ -708,11 +722,14 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 		vcpu->sregs->sp_fiq = 0x0;
 		vcpu->sregs->lr_fiq = 0x0;
 		vcpu->sregs->spsr_fiq = 0x0;
-		cpu_vcpu_cpsr_update(vcpu, vcpu->uregs, (CPSR_ZERO_MASK |
-						  CPSR_ASYNC_ABORT_DISABLED | 
-						  CPSR_IRQ_DISABLED |
-						  CPSR_FIQ_DISABLED | 
-						  CPSR_MODE_SUPERVISOR));
+		cpu_vcpu_cpsr_update(vcpu, 
+				     vcpu->uregs, 
+				     (CPSR_ZERO_MASK |
+					CPSR_ASYNC_ABORT_DISABLED | 
+					CPSR_IRQ_DISABLED |
+					CPSR_FIQ_DISABLED | 
+					CPSR_MODE_SUPERVISOR),
+				     CPSR_ALLBITS_MASK);
 	}
 	if (!vcpu->reset_count) {
 		vcpu->sregs->features = 0;

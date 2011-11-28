@@ -152,8 +152,8 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 			new_cpsr &= ~CPSR_THUMB_ENABLED;
 		}
 	}
-	cpu_vcpu_cpsr_update(vcpu, regs, new_cpsr);
-	cpu_vcpu_spsr_update(vcpu, old_cpsr);
+	cpu_vcpu_cpsr_update(vcpu, regs, new_cpsr, CPSR_ALLBITS_MASK);
+	cpu_vcpu_spsr_update(vcpu, old_cpsr, CPSR_ALLBITS_MASK);
 	regs->lr = regs->pc + lr_off;
 	regs->pc = new_pc;
 
