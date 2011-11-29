@@ -233,6 +233,95 @@ if { [string first "hi" $hi_out] > -1 } {
         puts "The hello Command Failed \n :: HELLO TESTCASE FAIL :: \n\n"
 }
 
+send -- "help\r"
+#expect "hi"
+expect $arm_prompt
+
+set help_out $expect_out(buffer)
+#puts $help_out
+if { [string first "reset" $help_out] > -1 } {
+        puts "The help Command passed \n :: HELP TESTCASE PASS :: \n\n"
+} else {
+        puts "The help Command Failed \n :: HELP TESTCASE FAIL :: \n\n"
+}
+
+send -- "mmu_setup\r"
+expect $arm_prompt
+
+send -- "mmu_state\r"
+expect $arm_prompt
+set mmu_state_out $expect_out(buffer)
+#puts $mmu_state_out
+if { [string first "MMU Enabled" $mmu_state_out] > -1 } {
+        puts "The mmu_setup Command passed \n :: MMU SETUP & MMU STATE TESTCASE PASS :: \n\n"
+} else {
+        puts "The mmu_setup Command Failed \n :: MMU SETUP & MMU STATE TESTCASE FAIL :: \n\n"
+}
+
+
+send -- "mmu_cleanup\r"
+expect $arm_prompt
+
+send -- "mmu_state\r"
+expect $arm_prompt
+set mmu_state_out $expect_out(buffer)
+#puts $mmu_state_out
+if { [string first "MMU Disabled" $mmu_state_out] > -1 } {
+        puts "The mmu_cleanup Command passed \n :: MMU CLEANUP & MMU STATE TESTCASE PASS :: \n\n"
+} else {
+        puts "The mmu_cleanup Command Failed \n :: MMU CLEANUP & MMU STATE TESTCASE FAIL :: \n\n"
+}
+
+
+send -- "mmu_test\r"
+expect $arm_prompt
+set mmu_test_out $expect_out(buffer)
+#puts $mmu_test_out
+set first_fail [string first "Fail : 0" $mmu_test_out]
+set last_fail [string last "Fail : 0" $mmu_test_out]
+
+if { $last_fail > $first_fail } {
+#        puts "The mmu_test Command passed First is $first_fail and last is $last_fail \n :: MMU TEST TESTCASE PASS :: \n\n"
+puts "The mmu_test Command passed \n :: MMU TEST TESTCASE PASS :: \n\n"
+} else {
+        puts "The mmu_test Command Failed \n :: MMU TEST TESTCASE FAIL :: \n\n"
+}
+
+
+send -- "sysctl\r"
+expect $arm_prompt
+set sysctl_out $expect_out(buffer)
+#puts $sysctl_out
+if { [string first "SYS_24MHz" $sysctl_out] > -1 } {
+        puts "The sysctl Command passed \n :: SYSCTL TESTCASE PASS :: \n\n"
+} else {
+        puts "The sysctl Command Failed \n :: SYSCTL TESTCASE FAIL :: \n\n"
+}
+
+send -- "timer\r"
+expect $arm_prompt
+set timer_out $expect_out(buffer)
+#puts $timer_out
+if { [string first "Time Stamp:" $timer_out] > -1 } {
+        puts "The timer Command passed \n :: TIMER TESTCASE PASS :: \n\n"
+} else {
+        puts "The timer Command Failed \n :: TIMER TESTCASE FAIL :: \n\n"
+}
+
+send -- "dhrystone\r"
+expect $arm_prompt
+set dhrystone_out $expect_out(buffer)
+#puts $dhrystone_out
+if { [string first "Dhrystones MIPS:" $dhrystone_out] > -1 } {
+        puts "The Dhrystone Command passed \n :: DHRYSTONE TESTCASE PASS :: \n\n"
+	set temp_var [string last ":" $dhrystone_out]
+	set temp_var [expr $temp_var + 25 ]
+	set DMIPS [string range $dhrystone_out $temp_var end ]
+	puts "DMIPS is $DMIPS"
+} else {
+        puts "The Dhrystone Command Failed \n :: DHRYSTONE TESTCASE FAIL :: \n\n"
+}
+
 send -- "\n"
 
 expect "#"
