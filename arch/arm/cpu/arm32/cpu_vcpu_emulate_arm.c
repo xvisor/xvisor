@@ -45,7 +45,7 @@ static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
 	return imm & ((1 << bits) - 1);
 }
 
-static bool arm_condition_passed(u32 cond, vmm_user_regs_t * regs)
+static bool arm_condition_check(u32 cond, vmm_user_regs_t * regs)
 {
 	bool ret = FALSE;
 	if (cond == 0xE) {
@@ -70,8 +70,7 @@ static bool arm_condition_passed(u32 cond, vmm_user_regs_t * regs)
 								TRUE : FALSE;
 		break;
 	case 5:
-		ret = (regs->cpsr & CPSR_NEGATIVE_MASK) ? TRUE : FALSE;
-		if (ret) {
+		if (regs->cpsr & CPSR_NEGATIVE_MASK) {
 			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
 								TRUE : FALSE;
 		} else {
@@ -80,8 +79,7 @@ static bool arm_condition_passed(u32 cond, vmm_user_regs_t * regs)
 		}
 		break;
 	case 6:
-		ret = (regs->cpsr & CPSR_NEGATIVE_MASK) ? TRUE : FALSE;
-		if (ret) {
+		if (regs->cpsr & CPSR_NEGATIVE_MASK) {
 			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
 								TRUE : FALSE;
 		} else {
@@ -103,33 +101,38 @@ static bool arm_condition_passed(u32 cond, vmm_user_regs_t * regs)
 	return ret;
 }
 
-static void arm_decode_imm_shift(u32 type, u32 imm5, u32 *shift_t, u32 *shift_n)
+#define arm_condition_passed(cond, regs) (((cond) == 0xE) ? \
+					 TRUE : \
+					 arm_condition_check((cond), (regs)))
+
+static u32 arm_decode_imm_shift(u32 type, u32 imm5, u32 *shift_t)
 {
 	switch (type) {
 	case 0:
 		*shift_t = arm_shift_lsl;
-		*shift_n = imm5;
+		return imm5;
 		break;
 	case 1:
 		*shift_t = arm_shift_lsr;
-		*shift_n = (imm5) ? imm5 : 32;
+		return (imm5) ? imm5 : 32;
 		break;
 	case 2:
 		*shift_t = arm_shift_asr;
-		*shift_n = (imm5) ? imm5 : 32;
+		return (imm5) ? imm5 : 32;
 		break;
 	case 3:
 		if (imm5) {
 			*shift_t = arm_shift_ror;
-			*shift_n = imm5;
+			return imm5;
 		} else {
 			*shift_t = arm_shift_rrx;
-			*shift_n = 1;
+			return 1;
 		}
 		break;
 	default:
 		break;
 	};
+	return 0;
 }
 
 static u32 arm_shift_c(u32 val, u32 shift_t, u32 shift_n, u32 cin, u32 *cout)
@@ -391,8 +394,7 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 		P = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_P_START);
 		U = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_U_START);
 		W = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_W_START);
-		cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
-		cpsr &= CPSR_MODE_MASK;
+		cpsr = vcpu->sregs->cpsr & CPSR_MODE_MASK;
 		if (cpsr == CPSR_MODE_USER) {
 			arm_unpredictable(regs, vcpu);
 			return VMM_EFAIL;
@@ -443,8 +445,7 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 		mode = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_SRS_MODE_END,
 			     ARM_HYPERCALL_SRS_MODE_START);
-		cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
-		cpsr &= CPSR_MODE_MASK;
+		cpsr = vcpu->sregs->cpsr & CPSR_MODE_MASK;
 		if ((cpsr == CPSR_MODE_USER) ||
 		    (cpsr == CPSR_MODE_SYSTEM)) {
 			arm_unpredictable(regs, vcpu);
@@ -503,8 +504,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			return VMM_EFAIL;
 		}
 		if (arm_condition_passed(cond, regs)) {
-			cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
-			cpsr &= CPSR_MODE_MASK;
+			cpsr = vcpu->sregs->cpsr & CPSR_MODE_MASK;
 			if ((cpsr == CPSR_MODE_USER) ||
 			    (cpsr == CPSR_MODE_SYSTEM)) {
 				arm_unpredictable(regs, vcpu);
@@ -573,8 +573,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			return VMM_EFAIL;
 		}
 		if (arm_condition_passed(cond, regs)) {
-			cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
-			cpsr &= CPSR_MODE_MASK;
+			cpsr = vcpu->sregs->cpsr & CPSR_MODE_MASK;
 			if ((cpsr == CPSR_MODE_USER) ||
 			    (cpsr == CPSR_MODE_SYSTEM)) {
 				arm_unpredictable(regs, vcpu);
@@ -651,8 +650,7 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 	if (arm_condition_passed(cond, regs)) {
 		P = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x2) >> 1;
 		U = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x1);
-		cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
-		cpsr &= CPSR_MODE_MASK;
+		cpsr = vcpu->sregs->cpsr & CPSR_MODE_MASK;
 		if ((cpsr == CPSR_MODE_USER) ||
 		    (cpsr == CPSR_MODE_SYSTEM)) {
 			arm_unpredictable(regs, vcpu);
@@ -708,9 +706,9 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 int arm_hypercall_subs_rel(u32 id, u32 inst,
 			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
-	u32 shift_t, shift_n;
+	u32 shift_t;
 	register u32 cond, opcode, Rn, imm12, imm5, type, Rm;
-	register bool register_form;
+	register bool register_form, shift_n;
 	register u32 operand2, result, spsr;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_SUBS_REL);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
@@ -732,7 +730,7 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 			Rm = ARM_INST_BITS(inst,
 					   ARM_HYPERCALL_SUBS_REL_RM_END,
 					   ARM_HYPERCALL_SUBS_REL_RM_START);
-			arm_decode_imm_shift(type, imm5, &shift_t, &shift_n);
+			shift_n = arm_decode_imm_shift(type, imm5, &shift_t);
 			operand2 = cpu_vcpu_reg_read(vcpu, regs, Rm);
 			operand2 = arm_shift(operand2, shift_t, shift_n, 
 					 (regs->cpsr & CPSR_CARRY_MASK) >>
@@ -2348,7 +2346,7 @@ static int arm_inst_str_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	index = (P == 1) ? TRUE : FALSE;
 	add = (U == 1) ? TRUE : FALSE;
 	wback = ((P == 0) || (W == 1)) ? TRUE : FALSE;
-	arm_decode_imm_shift(type, imm5, &shift_t, &shift_n);
+	shift_n = arm_decode_imm_shift(type, imm5, &shift_t);
 	if (Rm == 15) {
 		arm_unpredictable(regs, vcpu);
 		return VMM_EFAIL;
@@ -2418,7 +2416,7 @@ static int arm_inst_strt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			return VMM_EFAIL;
 		}
 		imm32 = 0;
-		arm_decode_imm_shift(type, imm5, &shift_t, &shift_n);
+		shift_n = arm_decode_imm_shift(type, imm5, &shift_t);
 	} else {
 		if ((Rn == 15) || (Rn == Rt)) {
 			arm_unpredictable(regs, vcpu);
@@ -2556,7 +2554,7 @@ static int arm_inst_strb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	index = (P == 1) ? TRUE : FALSE;
 	add = (U == 1) ? TRUE : FALSE;
 	wback = ((P == 0) || (W == 1)) ? TRUE : FALSE;
-	arm_decode_imm_shift(type, imm5, &shift_t, &shift_n);
+	shift_n = arm_decode_imm_shift(type, imm5, &shift_t);
 	if ((Rt == 15) || (Rm == 15)) {
 		arm_unpredictable(regs, vcpu);
 		return VMM_EFAIL;
@@ -2627,7 +2625,7 @@ static int arm_inst_strbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			return VMM_EFAIL;
 		}
 		imm32 = 0;
-		arm_decode_imm_shift(type, imm5, &shift_t, &shift_n);
+		shift_n = arm_decode_imm_shift(type, imm5, &shift_t);
 	} else {
 		if ((Rt == 15) || (Rn == 15) || (Rn == Rt)) {
 			arm_unpredictable(regs, vcpu);
@@ -2789,7 +2787,7 @@ static int arm_inst_ldr_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	index = (P == 1) ? TRUE : FALSE;
 	add = (U == 1) ? TRUE : FALSE;
 	wback = ((P == 0) || (W == 1)) ? TRUE : FALSE;
-	arm_decode_imm_shift(type, imm5, &shift_t, &shift_n);
+	shift_n = arm_decode_imm_shift(type, imm5, &shift_t);
 	if (Rm == 15) {
 		arm_unpredictable(regs, vcpu);
 		return VMM_EFAIL;
@@ -2861,7 +2859,7 @@ static int arm_inst_ldrt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			return VMM_EFAIL;
 		}
 		imm32 = 0;
-		arm_decode_imm_shift(type, imm5, &shift_t, &shift_n);
+		shift_n = arm_decode_imm_shift(type, imm5, &shift_t);
 	} else {
 		if ((Rt == 15) || (Rn == 15) || (Rn == Rt)) {
 			arm_unpredictable(regs, vcpu);
@@ -3041,7 +3039,7 @@ static int arm_inst_ldrb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	index = (P == 1) ? TRUE : FALSE;
 	add = (U == 1) ? TRUE : FALSE;
 	wback = ((P == 0) || (W == 1)) ? TRUE : FALSE;
-	arm_decode_imm_shift(type, imm5, &shift_t, &shift_n);
+	shift_n = arm_decode_imm_shift(type, imm5, &shift_t);
 	if ((Rt == 15) || (Rm == 15)) {
 		arm_unpredictable(regs, vcpu);
 		return VMM_EFAIL;
@@ -3113,7 +3111,7 @@ static int arm_inst_ldrbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 			return VMM_EFAIL;
 		}
 		imm32 = 0;
-		arm_decode_imm_shift(type, imm5, &shift_t, &shift_n);
+		shift_n = arm_decode_imm_shift(type, imm5, &shift_t);
 	} else {
 		if ((Rt == 15) || (Rn == 15) || (Rn == Rt)) {
 			arm_unpredictable(regs, vcpu);
