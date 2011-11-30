@@ -205,17 +205,13 @@ static void idle_orphan(void)
 
 int __init vmm_scheduler_init(void)
 {
+	int rc;
+
 	/* Reset the scheduler control structure */
 	vmm_memset(&sched, 0, sizeof(sched));
 
 	/* Initialize current VCPU. (Per Host CPU) */
 	sched.current_vcpu = NULL;
-
-	/* Create idle orphan vcpu with 100 msec time slice. (Per Host CPU) */
-	sched.idle_vcpu = vmm_manager_vcpu_orphan_create("idle/0",
-	(virtual_addr_t)&idle_orphan,
-	(virtual_addr_t)&sched.idle_vcpu_stack[VMM_IDLE_VCPU_STACK_SZ - 4],
-	VMM_IDLE_VCPU_TIMESLICE);
 
 	/* Initialize IRQ state (Per Host CPU) */
 	sched.irq_context = FALSE;
@@ -227,6 +223,22 @@ int __init vmm_scheduler_init(void)
 	if (!sched.ev) {
 		return VMM_EFAIL;
 	}
+
+	/* Create idle orphan vcpu with 100 msec time slice. (Per Host CPU) */
+	sched.idle_vcpu = vmm_manager_vcpu_orphan_create("idle/0",
+	(virtual_addr_t)&idle_orphan,
+	(virtual_addr_t)&sched.idle_vcpu_stack[VMM_IDLE_VCPU_STACK_SZ - 4],
+	VMM_IDLE_VCPU_TIMESLICE);
+	if (!sched.idle_vcpu) {
+		return VMM_EFAIL;
+	}
+
+	/* Kick idle orphan vcpu */
+	if ((rc = vmm_manager_vcpu_kick(sched.idle_vcpu))) {
+		return rc;
+	}
+
+	/* Start scheduler timer event */
 	vmm_timer_event_start(sched.ev, 0);
 
 	return VMM_OK;

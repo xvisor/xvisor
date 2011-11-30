@@ -213,7 +213,7 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 	vmm_strcpy(vcpu->name, name);
 	vcpu->node = NULL;
 	vcpu->is_normal = FALSE;
-	vcpu->state = VMM_VCPU_STATE_READY;
+	vcpu->state = VMM_VCPU_STATE_RESET;
 	vcpu->reset_count = 0;
 	vcpu->preempt_count = 0;
 	vcpu->time_slice = time_slice_nsecs;
