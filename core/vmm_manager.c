@@ -209,6 +209,8 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 
 	/* Update vcpu attributes */
 	INIT_SPIN_LOCK(&vcpu->lock);
+	INIT_LIST_HEAD(&vcpu->head);
+	INIT_LIST_HEAD(&vcpu->rq_head);
 	vcpu->subid = 0;
 	vmm_strcpy(vcpu->name, name);
 	vcpu->node = NULL;
@@ -446,8 +448,8 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 	}
 
 	/* Initialize guest instance */
-	list_add_tail(&mngr.guest_list, &guest->head);
 	INIT_SPIN_LOCK(&guest->lock);
+	list_add_tail(&mngr.guest_list, &guest->head);
 	guest->node = gnode;
 	guest->vcpu_count = 0;
 	INIT_LIST_HEAD(&guest->vcpu_list);
@@ -490,8 +492,9 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		}
 
 		/* Initialize vcpu instance */
-		list_add_tail(&guest->vcpu_list, &vcpu->head);
 		INIT_SPIN_LOCK(&vcpu->lock);
+		list_add_tail(&guest->vcpu_list, &vcpu->head);
+		INIT_LIST_HEAD(&vcpu->rq_head);
 		vcpu->subid = guest->vcpu_count;
 		vmm_strcpy(vcpu->name, gnode->name);
 		vmm_strcat(vcpu->name,

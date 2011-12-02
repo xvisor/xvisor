@@ -107,6 +107,7 @@ enum vmm_vcpu_states {
 
 struct vmm_vcpu {
 	struct dlist head;
+	struct dlist rq_head; /**< Scheduling Parameter */
 	vmm_spinlock_t lock;
 	u32 id;
 	u32 subid;
@@ -116,8 +117,8 @@ struct vmm_vcpu {
 	vmm_guest_t *guest;
 	u32 state;
 	u32 reset_count;
-	u32 preempt_count;
-	u64 time_slice;
+	u32 preempt_count; /**< Scheduling Parameter */
+	u64 time_slice; /**< Scheduling Parameter */
 	virtual_addr_t start_pc;
 	virtual_addr_t start_sp;
 	vmm_user_regs_t *uregs;

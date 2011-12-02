@@ -37,6 +37,7 @@
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
+	struct dlist ready_queue;
 	vmm_vcpu_t *current_vcpu;
 	vmm_vcpu_t *idle_vcpu;
 	u8 idle_vcpu_stack[VMM_IDLE_VCPU_STACK_SZ];
@@ -48,33 +49,40 @@ static struct vmm_scheduler_ctrl sched;
 
 void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
 {
-	int next, vcpu_count = vmm_manager_vcpu_count();
-	vmm_vcpu_t *cur_vcpu, *nxt_vcpu;
+	struct dlist *l;
+	vmm_vcpu_t *cur_vcpu = sched.current_vcpu;
+	vmm_vcpu_t *nxt_vcpu = NULL;
 
-	/* Determine current vcpu */
-	cur_vcpu = sched.current_vcpu;
-
-	/* Determine the next ready vcpu to schedule */
-	next = (cur_vcpu) ? cur_vcpu->id : -1;
-	next = ((next + 1) < vcpu_count) ? (next + 1) : 0;
-	nxt_vcpu = vmm_manager_vcpu(next);
-	while (nxt_vcpu->state != VMM_VCPU_STATE_READY) {
-		next = ((next + 1) < vcpu_count) ? (next + 1) : 0;
-		nxt_vcpu = vmm_manager_vcpu(next);
-	}
-
-	/* Do context switch between current and next vcpus */
-	if (!cur_vcpu || (cur_vcpu->id != nxt_vcpu->id)) {
-		if (cur_vcpu && (cur_vcpu->state & VMM_VCPU_STATE_SAVEABLE)) {
-			if (cur_vcpu->state == VMM_VCPU_STATE_RUNNING) {
-				cur_vcpu->state = VMM_VCPU_STATE_READY;
+	if (cur_vcpu) {
+		/* Normal scheduling */
+		if (!list_empty(&sched.ready_queue)) {
+			l = list_pop(&sched.ready_queue);
+			nxt_vcpu = list_entry(l, vmm_vcpu_t, rq_head);
+			if (cur_vcpu->state & VMM_VCPU_STATE_SAVEABLE) {
+				if (cur_vcpu->state == VMM_VCPU_STATE_RUNNING) {
+					cur_vcpu->state = VMM_VCPU_STATE_READY;
+					list_add_tail(&sched.ready_queue, &cur_vcpu->rq_head);
+				}
+				vmm_vcpu_regs_switch(cur_vcpu, nxt_vcpu, regs);
+			} else {
+				vmm_vcpu_regs_switch(NULL, nxt_vcpu, regs);
 			}
-			vmm_vcpu_regs_switch(cur_vcpu, nxt_vcpu, regs);
 		} else {
+			nxt_vcpu = cur_vcpu;
+		}
+	} else {
+		/* First time scheduling */
+		if (!list_empty(&sched.ready_queue)) {
+			l = list_pop(&sched.ready_queue);
+			nxt_vcpu = list_entry(l, vmm_vcpu_t, rq_head);
 			vmm_vcpu_regs_switch(NULL, nxt_vcpu, regs);
+		} else {
+			/* This should never happen !!! */
+			while (1);
 		}
 	}
 
+	/* Make next VCPU as current VCPU */
 	if (nxt_vcpu) {
 		nxt_vcpu->state = VMM_VCPU_STATE_RUNNING;
 		sched.current_vcpu = nxt_vcpu;
@@ -105,10 +113,23 @@ int vmm_scheduler_notify_state_change(vmm_vcpu_t * vcpu, u32 new_state)
 	}
 
 	switch(new_state) {
+	case VMM_VCPU_STATE_RESET:
+		/* Make sure VCPU is not in ready queue */
+		if(sched.current_vcpu != vcpu) {
+			list_del(&vcpu->rq_head);
+		}
+		break;
+	case VMM_VCPU_STATE_READY:
+		/* Append VCPU to ready queue */
+		list_add_tail(&sched.ready_queue, &vcpu->rq_head);
+		break;
 	case VMM_VCPU_STATE_PAUSED:
 	case VMM_VCPU_STATE_HALTED:
+		/* Expire timer event if current VCPU is paused or halted */
 		if(sched.current_vcpu == vcpu) {
 			vmm_timer_event_start(sched.ev, 0);
+		} else {
+			list_del(&vcpu->rq_head);
 		}
 		break;
 	}
@@ -209,6 +230,9 @@ int __init vmm_scheduler_init(void)
 
 	/* Reset the scheduler control structure */
 	vmm_memset(&sched, 0, sizeof(sched));
+
+	/* Initialize ready queue head (Per Host CPU) */
+	INIT_LIST_HEAD(&sched.ready_queue);
 
 	/* Initialize current VCPU. (Per Host CPU) */
 	sched.current_vcpu = NULL;
