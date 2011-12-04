@@ -19,14 +19,14 @@
  * @file vmm_trivial.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for trivial allocator in VMM
+ * @brief source file for trivial heap allocator
  */
 
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_host_aspace.h>
-#include <mm/vmm_trivial.h>
+#include <heap/vmm_trivial.h>
 
 vmm_trivial_control_t heap_ctrl;
 

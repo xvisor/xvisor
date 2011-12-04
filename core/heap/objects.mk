@@ -22,6 +22,6 @@
 # @brief list of core objects to be build
 # */
 
-core-objs-$(CONFIG_MM_TRIVIAL) += mm/vmm_trivial.o
-core-objs-$(CONFIG_MM_BUDDY) += mm/vmm_buddy.o
+core-objs-$(CONFIG_HEAP_TRIVIAL) += heap/vmm_trivial.o
+core-objs-$(CONFIG_HEAP_BUDDY) += heap/vmm_buddy.o
 

@@ -19,7 +19,7 @@
  * @file vmm_buddy.h
  * @version 0.01
  * @author Himanshu Chauhan (hchauhan@nulltrace.org)
- * @brief header file for buddy allocator in VMM
+ * @brief header file for buddy heap allocator
  */
 
 #ifndef __VMM_BUDDY_H_

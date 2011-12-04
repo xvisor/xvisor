@@ -19,7 +19,7 @@
  * @file vmm_trivial.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief header file for trivial allocator in VMM
+ * @brief header file for trivial heap allocator
  */
 #ifndef _VMM_TRIVIAL_H__
 #define _VMM_TRIVIAL_H__

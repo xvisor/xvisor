@@ -19,7 +19,7 @@
  * @file vmm_buddy.c
  * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
- * @brief source file for buddy allocator in VMM
+ * @brief source file for buddy heap allocator
  */
 #if TEST_BUDDY_SYSTEM
 #include <stdio.h>
@@ -35,7 +35,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_host_aspace.h>
-#include <mm/vmm_buddy.h>
+#include <heap/vmm_buddy.h>
 
 #ifndef NULL
 #define NULL			((void *)0)

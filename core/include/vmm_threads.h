@@ -29,8 +29,6 @@
 #include <vmm_manager.h>
 #include <vmm_spinlocks.h>
 
-#define VMM_THREAD_STACK_SZ		4096
-
 enum vmm_thread_states {
 	VMM_THREAD_STATE_CREATED=0,
 	VMM_THREAD_STATE_RUNNING=1,
@@ -47,7 +45,7 @@ struct vmm_thread {
 					 * function on execution */
 	int tretval;			/* thread return value */
 	u64 tnsecs;			/* thread time slice in nanoseconds */
-	u8 tstack[VMM_THREAD_STACK_SZ]; /* thread stack */
+	u8 tstack[CONFIG_THREAD_STACK_SIZE]; /* thread stack */
 };
 
 typedef struct vmm_thread vmm_thread_t;
