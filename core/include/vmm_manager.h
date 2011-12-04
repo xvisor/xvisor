@@ -107,7 +107,6 @@ enum vmm_vcpu_states {
 
 struct vmm_vcpu {
 	struct dlist head;
-	struct dlist rq_head; /**< Scheduling Parameter */
 	vmm_spinlock_t lock;
 	u32 id;
 	u32 subid;
@@ -117,14 +116,17 @@ struct vmm_vcpu {
 	vmm_guest_t *guest;
 	u32 state;
 	u32 reset_count;
-	u32 preempt_count; /**< Scheduling Parameter */
-	u64 time_slice; /**< Scheduling Parameter */
 	virtual_addr_t start_pc;
 	virtual_addr_t start_sp;
 	vmm_user_regs_t *uregs;
 	vmm_super_regs_t *sregs;
 	vmm_vcpu_irqs_t *irqs;
-	void * devemu_priv;
+
+	u32 preempt_count; /**< Scheduling Parameter */
+	u64 time_slice; /**< Scheduling Parameter */
+	void * sched_priv; /**< Scheduling Context */
+
+	void * devemu_priv; /**< Device Emulation Context */
 };
 
 /** Maximum number of vcpus (thread or normal) */

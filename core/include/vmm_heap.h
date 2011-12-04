@@ -19,7 +19,7 @@
  * @file vmm_heap.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief header file for heap managment in VMM
+ * @brief header file declaring interface of a heap managment technique
  */
 #ifndef _VMM_HEAP_H__
 #define _VMM_HEAP_H__

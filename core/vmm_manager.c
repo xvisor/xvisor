@@ -79,7 +79,7 @@ static int vmm_manager_vcpu_state_change(vmm_vcpu_t *vcpu, u32 new_state)
 	case VMM_VCPU_STATE_RESET:
 		if ((vcpu->state != VMM_VCPU_STATE_RESET) &&
 		    (vcpu->state != VMM_VCPU_STATE_UNKNOWN)) {
-			rc = vmm_scheduler_notify_state_change(vcpu,new_state);
+			rc = vmm_scheduler_notify_state_change(vcpu, new_state);
 			vcpu->state = VMM_VCPU_STATE_RESET;
 			vcpu->reset_count++;
 			if ((rc = vmm_vcpu_regs_init(vcpu))) {
@@ -93,21 +93,21 @@ static int vmm_manager_vcpu_state_change(vmm_vcpu_t *vcpu, u32 new_state)
 	case VMM_VCPU_STATE_READY:
 		if ((vcpu->state == VMM_VCPU_STATE_RESET) ||
 		    (vcpu->state == VMM_VCPU_STATE_PAUSED)) {
-			rc = vmm_scheduler_notify_state_change(vcpu,new_state);
+			rc = vmm_scheduler_notify_state_change(vcpu, new_state);
 			vcpu->state = VMM_VCPU_STATE_READY;
 		}
 		break;
 	case VMM_VCPU_STATE_PAUSED:
 		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
 		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
-			rc = vmm_scheduler_notify_state_change(vcpu,new_state);
+			rc = vmm_scheduler_notify_state_change(vcpu, new_state);
 			vcpu->state = VMM_VCPU_STATE_PAUSED;
 		}
 		break;
 	case VMM_VCPU_STATE_HALTED:
 		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
 		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
-			rc = vmm_scheduler_notify_state_change(vcpu,new_state);
+			rc = vmm_scheduler_notify_state_change(vcpu, new_state);
 			vcpu->state = VMM_VCPU_STATE_HALTED;
 		}
 		break;
@@ -204,18 +204,14 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 		return NULL;
 	}
 
-	/* Add it to orphan list */
-	list_add_tail(&mngr.orphan_vcpu_list, &vcpu->head);
-
 	/* Update vcpu attributes */
 	INIT_SPIN_LOCK(&vcpu->lock);
 	INIT_LIST_HEAD(&vcpu->head);
-	INIT_LIST_HEAD(&vcpu->rq_head);
 	vcpu->subid = 0;
 	vmm_strcpy(vcpu->name, name);
 	vcpu->node = NULL;
 	vcpu->is_normal = FALSE;
-	vcpu->state = VMM_VCPU_STATE_RESET;
+	vcpu->state = VMM_VCPU_STATE_UNKNOWN;
 	vcpu->reset_count = 0;
 	vcpu->preempt_count = 0;
 	vcpu->time_slice = time_slice_nsecs;
@@ -228,11 +224,23 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 
 	/* Initialize registers */
 	if (vmm_vcpu_regs_init(vcpu)) {
-		vcpu->state = VMM_VCPU_STATE_UNKNOWN;
-		mngr.vcpu_avail_array[vnum] = FALSE;
+		mngr.vcpu_avail_array[vnum] = TRUE;
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 		return NULL;
 	}
+
+	/* Notify scheduler about new VCPU */
+	vcpu->sched_priv = NULL;
+	if (vmm_scheduler_notify_state_change(vcpu, 
+					VMM_VCPU_STATE_RESET)) {
+		mngr.vcpu_avail_array[vnum] = TRUE;
+		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+		return NULL;
+	}
+	vcpu->state = VMM_VCPU_STATE_RESET;
+
+	/* Add VCPU to orphan list */
+	list_add_tail(&mngr.orphan_vcpu_list, &vcpu->head);
 
 	/* Increment vcpu count */
 	mngr.vcpu_count++;
@@ -493,8 +501,6 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 
 		/* Initialize vcpu instance */
 		INIT_SPIN_LOCK(&vcpu->lock);
-		list_add_tail(&guest->vcpu_list, &vcpu->head);
-		INIT_LIST_HEAD(&vcpu->rq_head);
 		vcpu->subid = guest->vcpu_count;
 		vmm_strcpy(vcpu->name, gnode->name);
 		vmm_strcat(vcpu->name,
@@ -502,7 +508,7 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		vmm_strcat(vcpu->name, vnode->name);
 		vcpu->node = vnode;
 		vcpu->is_normal = TRUE;
-		vcpu->state = VMM_VCPU_STATE_RESET;
+		vcpu->state = VMM_VCPU_STATE_UNKNOWN;
 		vcpu->reset_count = 0;
 		vcpu->preempt_count = 0;
 		attrval = vmm_devtree_attrval(vnode,
@@ -527,6 +533,7 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		vcpu->irqs = vmm_malloc(sizeof(vmm_vcpu_irqs_t));
 		vcpu->devemu_priv = NULL;
 		if (!vcpu->sregs || !vcpu->irqs) {
+			mngr.vcpu_avail_array[vnum] = TRUE;
 			break;
 		}
 		if (vmm_vcpu_regs_init(vcpu)) {
@@ -535,6 +542,18 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		if (vmm_vcpu_irq_init(vcpu)) {
 			continue;
 		}
+
+		/* Notify scheduler about new VCPU */
+		vcpu->sched_priv = NULL;
+		if (vmm_scheduler_notify_state_change(vcpu, 
+						VMM_VCPU_STATE_RESET)) {
+			mngr.vcpu_avail_array[vnum] = TRUE;
+			break;
+		}
+		vcpu->state = VMM_VCPU_STATE_RESET;
+
+		/* Add VCPU to Guest child list */
+		list_add_tail(&guest->vcpu_list, &vcpu->head);
 
 		/* Increment vcpu count */
 		mngr.vcpu_count++;
