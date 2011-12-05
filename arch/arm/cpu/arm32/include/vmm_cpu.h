@@ -26,13 +26,12 @@
 
 #include <vmm_types.h>
 #include <vmm_manager.h>
-#include <cpu_locks.h>
 
-/** CPU related functions required by VMM core */
+/** CPU functions required by VMM core */
 int vmm_cpu_early_init(void);
 int vmm_cpu_final_init(void);
 
-/** Register related functions required by VMM core */
+/** Register functions required by VMM core */
 int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu);
 void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 			  vmm_vcpu_t * vcpu, 
@@ -40,7 +39,7 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 void vmm_vcpu_regs_dump(vmm_vcpu_t * vcpu);
 void vmm_vcpu_stat_dump(vmm_vcpu_t * vcpu);
 
-/** Address space related functions required by VMM core */
+/** Address space functions required by VMM core */
 int vmm_cpu_aspace_init(physical_addr_t * resv_pa, 
 			virtual_addr_t * resv_va,
 			virtual_size_t * resv_sz);
@@ -56,21 +55,21 @@ virtual_addr_t vmm_cpu_code_vaddr_start(void);
 physical_addr_t vmm_cpu_code_paddr_start(void);
 virtual_size_t vmm_cpu_code_size(void);
 
-/** CPU Interrupt related functions required by VMM core */
+/** CPU Interrupt functions required by VMM core */
 int vmm_cpu_irq_setup(void);
 void vmm_cpu_irq_enable(void);
 void vmm_cpu_irq_disable(void);
 irq_flags_t vmm_cpu_irq_save(void);
 void vmm_cpu_irq_restore(irq_flags_t flags);
 
-/** VCPU Interrupt related functions required by VMM core */
+/** VCPU Interrupt functions required by VMM core */
 u32 vmm_vcpu_irq_count(vmm_vcpu_t * vcpu);
 u32 vmm_vcpu_irq_priority(vmm_vcpu_t * vcpu, u32 irq_no);
 int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu, 
 			 vmm_user_regs_t * regs,
 			 u32 irq_no, u32 reason);
 
-/** Timer related functions required by VMM core */
+/** Timer functions required by VMM core */
 int vmm_cpu_clockevent_start(u64 tick_nsecs);
 int vmm_cpu_clockevent_setup(void);
 int vmm_cpu_clockevent_shutdown(void);
@@ -81,13 +80,19 @@ u32 vmm_cpu_clocksource_mult(void);
 u32 vmm_cpu_clocksource_shift(void);
 int vmm_cpu_clocksource_init(void);
 
-/** Atomic Operations and Spinlocks */
+#if defined(CONFIG_SMP)
+/** Spinlock functions required by VMM core */
+bool vmm_cpu_spin_lock_check(spinlock_t * lock);
+void vmm_cpu_spin_lock(spinlock_t * lock);
+void vmm_cpu_spin_unlock(spinlock_t * lock);
+#endif
+
+/** Atomic operations required by VMM core */
 void vmm_cpu_atomic_inc(atomic_t * atom);
 void vmm_cpu_atomic_dec(atomic_t * atom);
-void vmm_cpu_spin_lock(vmm_cpu_spinlock_t * lock);
-void vmm_cpu_spin_unlock(vmm_cpu_spinlock_t * lock);
+int vmm_cpu_atomic_testnset(atomic_t * atom, u32 test, u32 val);
 
-/** Module related functions required by VMM core */
+/** Module functions required by VMM core */
 extern u8 _modtbl_start;
 extern u8 _modtbl_end;
 static inline virtual_addr_t vmm_modtbl_vaddr(void)
@@ -99,7 +104,7 @@ static inline virtual_size_t vmm_modtbl_size(void)
 	return (virtual_size_t) (&_modtbl_end - &_modtbl_start);
 }
 
-/** Init section related functions required by VMM core */
+/** Init section functions required by VMM core */
 extern u8 _init_text_start;
 extern u8 _init_text_end;
 static inline virtual_addr_t vmm_init_text_vaddr(void)

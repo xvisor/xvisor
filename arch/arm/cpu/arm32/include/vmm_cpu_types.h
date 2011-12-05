@@ -40,13 +40,17 @@ typedef struct {
 } atomic_t;
 
 typedef struct {
-	atomic_t __cpu_lock;
-} vmm_cpu_spinlock_t;
+	volatile long lock;
+} spinlock_t;
 
 #define __ARCH_SPIN_UNLOCKED	0
-#define __CPU_INIT_SPIN_LOCK_UNLOCKED				\
-	{ .__cpu_lock = { .counter = __ARCH_SPIN_UNLOCKED } }
-#define __CPU_SPIN_LOCK_UNLOCKED(_lptr)		\
-	(_lptr)->__cpu_lock.counter = __ARCH_SPIN_UNLOCKED
+
+/* FIXME: Need memory barrier for this. */
+#define VMM_CPU_SPIN_LOCK_INIT(_lptr)		\
+	(_lptr)->lock = __ARCH_SPIN_UNLOCKED
+
+/* FIXME: Need memory barrier for this. */
+#define VMM_CPU_ATOMIC_READ(atom)	((atom)->counter)
+#define VMM_CPU_ATOMIC_WRITE(atom, val) ((atom)->counter = (val))
 
 #endif /* __VMM_CPU_TYPES_H__ */

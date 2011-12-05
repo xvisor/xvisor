@@ -22,7 +22,8 @@
  * @brief Architecture specific implementation of synchronization mechanisms.
  */
 
-#include <cpu_atomic.h>
+#include <vmm_error.h>
+#include <vmm_types.h>
 
 void __lock __cpu_atomic_inc (atomic_t *atom)
 {
@@ -50,6 +51,12 @@ void __lock __cpu_atomic_dec (atomic_t *atom)
 		:"r"(&atom->counter));
 }
 
+/* FIXME: Implement This. */
+int __lock __cpu_atomic_testnset(atomic_t * atom, u32 test, u32 val)
+{
+	return 0;
+}
+
 void __lock vmm_cpu_atomic_inc (atomic_t *atom)
 {
 	__cpu_atomic_inc(atom);
@@ -59,3 +66,9 @@ void __lock vmm_cpu_atomic_dec (atomic_t *atom)
 {
 	__cpu_atomic_dec(atom);
 }
+
+int __lock vmm_cpu_atomic_testnset(atomic_t * atom, u32 test, u32 val)
+{
+	return __cpu_atomic_testnset(atom, test, val);
+}
+

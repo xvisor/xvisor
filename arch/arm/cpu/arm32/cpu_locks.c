@@ -23,10 +23,10 @@
  * @brief ARM specific synchronization mechanisms.
  */
 
-#include <vmm_cpu.h>
-#include <cpu_locks.h>
+#include <vmm_error.h>
+#include <vmm_types.h>
 
-void __lock __cpu_spin_lock(vmm_cpu_spinlock_t * lock)
+void __lock __cpu_spin_lock(spinlock_t * lock)
 {
 	unsigned int tmp;
 	__asm__ __volatile__("@ __cpu_spin_lock\n"
@@ -47,26 +47,31 @@ void __lock __cpu_spin_lock(vmm_cpu_spinlock_t * lock)
 			     "       bne     1b\n"
 				/* If fails go back to 1 and retry else return */
 			     :"=&r"(tmp)
-			     :"r"(1), "r"(&lock->__cpu_lock)
+			     :"r"(1), "r"(&lock->lock)
 			     :"cc", "memory");
 }
 
-void __lock __cpu_spin_unlock(vmm_cpu_spinlock_t * lock)
+void __lock __cpu_spin_unlock(spinlock_t * lock)
 {
 	__asm__ __volatile__("@ __cpu_spin_unlock\n"
 			     "       str     %0, [%1]\n"
 				/* Save 0 to lock->__cpu_lock in order to unlock */
 			     :
-			     :"r"(0), "r"(&lock->__cpu_lock)
+			     :"r"(0), "r"(&lock->lock)
 			     :"memory");
 }
 
-void __lock vmm_cpu_spin_lock(vmm_cpu_spinlock_t * lock)
+bool __lock vmm_cpu_spin_lock_check(spinlock_t * lock)
+{
+	return (lock->lock) ? TRUE : FALSE;
+}
+
+void __lock vmm_cpu_spin_lock(spinlock_t * lock)
 {
 	return __cpu_spin_lock(lock);
 }
 
-void __lock vmm_cpu_spin_unlock(vmm_cpu_spinlock_t * lock)
+void __lock vmm_cpu_spin_unlock(spinlock_t * lock)
 {
 	__cpu_spin_unlock(lock);
 }

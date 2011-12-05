@@ -32,7 +32,9 @@ cpu-objs-y+= cpu_entry.o
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_mmu.o
 cpu-objs-y+= cpu_math.o
+ifdef CONFIG_SMP
 cpu-objs-y+= cpu_locks.o
+endif
 cpu-objs-y+= cpu_atomic.o
 cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_helper.o
