@@ -29,6 +29,11 @@
 #include <vmm_manager.h>
 #include <vmm_spinlocks.h>
 
+#define VMM_THREAD_MAX_PRIORITY	VMM_VCPU_MAX_PRIORITY
+#define VMM_THREAD_MIN_PRIORITY VMM_VCPU_MIN_PRIORITY
+#define VMM_THREAD_DEF_PRIORITY	VMM_VCPU_DEF_PRIORITY
+#define VMM_THREAD_DEF_TIME_SLICE VMM_VCPU_DEF_TIME_SLICE
+
 enum vmm_thread_states {
 	VMM_THREAD_STATE_CREATED=0,
 	VMM_THREAD_STATE_RUNNING=1,
@@ -53,6 +58,7 @@ typedef struct vmm_thread vmm_thread_t;
 vmm_thread_t *vmm_threads_create(const char *thread_name, 
 				 vmm_thread_func_t thread_fn,
 				 void *thread_data,
+				 u8 thread_priority,
 				 u64 thread_nsecs);
 int vmm_threads_destroy(vmm_thread_t * tinfo);
 int vmm_threads_start(vmm_thread_t * tinfo);

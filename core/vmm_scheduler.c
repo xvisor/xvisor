@@ -31,15 +31,16 @@
 #include <vmm_schedalgo.h>
 #include <vmm_scheduler.h>
 
-#define VMM_IDLE_VCPU_STACK_SZ 1024
-#define VMM_IDLE_VCPU_TIMESLICE 100000000
+#define IDLE_VCPU_STACK_SZ CONFIG_THREAD_STACK_SIZE
+#define IDLE_VCPU_PRIORITY VMM_VCPU_MIN_PRIORITY
+#define IDLE_VCPU_TIMESLICE VMM_VCPU_DEF_TIME_SLICE
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
 	void * rq;
 	vmm_vcpu_t *current_vcpu;
 	vmm_vcpu_t *idle_vcpu;
-	u8 idle_vcpu_stack[VMM_IDLE_VCPU_STACK_SZ];
+	u8 idle_vcpu_stack[IDLE_VCPU_STACK_SZ];
 	bool irq_context;
 	vmm_timer_event_t * ev;
 };
@@ -264,8 +265,8 @@ int __init vmm_scheduler_init(void)
 	/* Create idle orphan vcpu with 100 msec time slice. (Per Host CPU) */
 	sched.idle_vcpu = vmm_manager_vcpu_orphan_create("idle/0",
 	(virtual_addr_t)&idle_orphan,
-	(virtual_addr_t)&sched.idle_vcpu_stack[VMM_IDLE_VCPU_STACK_SZ - 4],
-	VMM_IDLE_VCPU_TIMESLICE);
+	(virtual_addr_t)&sched.idle_vcpu_stack[IDLE_VCPU_STACK_SZ - 4],
+	IDLE_VCPU_PRIORITY, IDLE_VCPU_TIMESLICE);
 	if (!sched.idle_vcpu) {
 		return VMM_EFAIL;
 	}

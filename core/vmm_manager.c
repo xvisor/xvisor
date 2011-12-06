@@ -174,6 +174,7 @@ int vmm_manager_vcpu_dumpstat(vmm_vcpu_t * vcpu)
 vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
 					    virtual_addr_t start_sp,
+					    u8 priority,
 					    u64 time_slice_nsecs)
 {
 	int found, vnum;
@@ -214,6 +215,7 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->state = VMM_VCPU_STATE_UNKNOWN;
 	vcpu->reset_count = 0;
 	vcpu->preempt_count = 0;
+	vcpu->priority = priority;
 	vcpu->time_slice = time_slice_nsecs;
 	vcpu->start_pc = start_pc;
 	vcpu->start_sp = start_sp;
@@ -512,9 +514,18 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		vcpu->reset_count = 0;
 		vcpu->preempt_count = 0;
 		attrval = vmm_devtree_attrval(vnode,
+					     VMM_DEVTREE_PRIORITY_ATTR_NAME);
+		if (attrval) {
+			vcpu->priority = *((u32 *) attrval);
+		} else {
+			vcpu->priority = VMM_VCPU_DEF_PRIORITY;
+		}
+		attrval = vmm_devtree_attrval(vnode,
 					     VMM_DEVTREE_TIME_SLICE_ATTR_NAME);
 		if (attrval) {
 			vcpu->time_slice = *((u32 *) attrval);
+		} else {
+			vcpu->time_slice = VMM_VCPU_DEF_TIME_SLICE;
 		}
 		attrval = vmm_devtree_attrval(vnode,
 					      VMM_DEVTREE_START_PC_ATTR_NAME);
