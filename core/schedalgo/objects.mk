@@ -23,4 +23,5 @@
 # */
 
 core-objs-$(CONFIG_SCHEDALGO_RR) += schedalgo/vmm_schedalgo_rr.o
+core-objs-$(CONFIG_SCHEDALGO_PRR) += schedalgo/vmm_schedalgo_prr.o
 

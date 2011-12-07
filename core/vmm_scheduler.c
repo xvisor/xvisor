@@ -50,25 +50,31 @@ static struct vmm_scheduler_ctrl sched;
 void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
 {
 	vmm_vcpu_t *current = sched.current_vcpu;
-	vmm_vcpu_t *next = vmm_schedalgo_rq_dequeue(sched.rq, current);
+	vmm_vcpu_t *next = NULL; 
 
 	if (current) {
 		/* Normal scheduling */
-		if (next && (next->id != current->id)) {
-			if (current->state & VMM_VCPU_STATE_SAVEABLE) {
-				if (current->state == VMM_VCPU_STATE_RUNNING) {
-					current->state = VMM_VCPU_STATE_READY;
-					vmm_schedalgo_rq_enqueue(sched.rq, current);
-				}
+		if (current->state & VMM_VCPU_STATE_SAVEABLE) {
+			if (current->state == VMM_VCPU_STATE_RUNNING) {
+				current->state = VMM_VCPU_STATE_READY;
+				vmm_schedalgo_rq_enqueue(sched.rq, current);
+			}
+			next = vmm_schedalgo_rq_dequeue(sched.rq);
+			if (next && (next->id != current->id)) {
 				vmm_vcpu_regs_switch(current, next, regs);
-			} else {
-				vmm_vcpu_regs_switch(NULL, next, regs);
 			}
 		} else {
-			next = current;
+			if (current->state == VMM_VCPU_STATE_READY) {
+				vmm_schedalgo_rq_enqueue(sched.rq, current);
+			}
+			next = vmm_schedalgo_rq_dequeue(sched.rq);
+			if (next) {
+				vmm_vcpu_regs_switch(NULL, next, regs);
+			}
 		}
 	} else {
 		/* First time scheduling */
+		next = vmm_schedalgo_rq_dequeue(sched.rq);
 		if (next) {
 			vmm_vcpu_regs_switch(NULL, next, regs);
 		} else {
@@ -119,18 +125,21 @@ int vmm_scheduler_notify_state_change(vmm_vcpu_t * vcpu, u32 new_state)
 		} else {
 			/* Existing VCPU */
 			/* Make sure VCPU is not in a ready queue */
-			if(sched.current_vcpu != vcpu) {
-				rc = vmm_schedalgo_rq_detach(vcpu);
+			if((sched.current_vcpu != vcpu) &&
+			   (vcpu->state == VMM_VCPU_STATE_READY)) {
+				rc = vmm_schedalgo_rq_detach(sched.rq, vcpu);
 			}
 		}
 		break;
 	case VMM_VCPU_STATE_READY:
 		/* Enqueue VCPU to ready queue */
-		rc = vmm_schedalgo_rq_enqueue(sched.rq, vcpu);
-		if (!rc && sched.current_vcpu) {
-			if (vmm_schedalgo_rq_prempt_needed(sched.rq, 
+		if (sched.current_vcpu != vcpu) {
+			rc = vmm_schedalgo_rq_enqueue(sched.rq, vcpu);
+			if (!rc && sched.current_vcpu) {
+				if (vmm_schedalgo_rq_prempt_needed(sched.rq, 
 							sched.current_vcpu)) {
-				vmm_timer_event_start(sched.ev, 0);
+					vmm_timer_event_start(sched.ev, 0);
+				}
 			}
 		}
 		break;
@@ -140,7 +149,10 @@ int vmm_scheduler_notify_state_change(vmm_vcpu_t * vcpu, u32 new_state)
 		if(sched.current_vcpu == vcpu) {
 			vmm_timer_event_start(sched.ev, 0);
 		} else {
-			rc = vmm_schedalgo_rq_detach(vcpu);
+			/* Make sure VCPU is not in a ready queue */
+			if (vcpu->state == VMM_VCPU_STATE_READY) {
+				rc = vmm_schedalgo_rq_detach(sched.rq, vcpu);
+			}
 		}
 		break;
 	}
@@ -262,7 +274,7 @@ int __init vmm_scheduler_init(void)
 		return VMM_EFAIL;
 	}
 
-	/* Create idle orphan vcpu with 100 msec time slice. (Per Host CPU) */
+	/* Create idle orphan vcpu with default time slice. (Per Host CPU) */
 	sched.idle_vcpu = vmm_manager_vcpu_orphan_create("idle/0",
 	(virtual_addr_t)&idle_orphan,
 	(virtual_addr_t)&sched.idle_vcpu_stack[IDLE_VCPU_STACK_SZ - 4],

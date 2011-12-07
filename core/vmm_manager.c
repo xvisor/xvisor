@@ -185,6 +185,9 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 	if (name == NULL || start_pc == 0 || time_slice_nsecs == 0) {
 		return NULL;
 	}
+	if (VMM_VCPU_MAX_PRIORITY < priority) {
+		priority = VMM_VCPU_MAX_PRIORITY;
+	}
 
 	/* Acquire lock */
 	flags = vmm_spin_lock_irqsave(&mngr.lock);
@@ -517,6 +520,9 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 					     VMM_DEVTREE_PRIORITY_ATTR_NAME);
 		if (attrval) {
 			vcpu->priority = *((u32 *) attrval);
+			if (VMM_VCPU_MAX_PRIORITY < vcpu->priority) {
+				vcpu->priority = VMM_VCPU_MAX_PRIORITY;
+			}
 		} else {
 			vcpu->priority = VMM_VCPU_DEF_PRIORITY;
 		}

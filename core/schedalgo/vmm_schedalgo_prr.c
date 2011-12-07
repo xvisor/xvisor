@@ -16,10 +16,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_schedalgo_rr.c
+ * @file vmm_schedalgo_prr.c
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief implementation of round-robin scheduling algorithm
+ * @brief implementation of priority round-robin scheduling algorithm
  */
 
 #include <vmm_error.h>
@@ -33,7 +33,7 @@ struct vmm_schedalgo_rq_entry {
 };
 
 struct vmm_schedalgo_rq {
-	struct dlist list;
+	struct dlist list[VMM_VCPU_MAX_PRIORITY+1];
 };
 
 int vmm_schedalgo_vcpu_setup(vmm_vcpu_t * vcpu)
@@ -80,13 +80,14 @@ int vmm_schedalgo_rq_enqueue(void * rq, vmm_vcpu_t * vcpu)
 		return VMM_EFAIL;
 	}
 
-	list_add_tail(&rqi->list, &rq_entry->head);
+	list_add_tail(&rqi->list[vcpu->priority], &rq_entry->head);
 
 	return VMM_OK;
 }
 
 vmm_vcpu_t * vmm_schedalgo_rq_dequeue(void * rq)
 {
+	int p;
 	struct dlist *l;
 	struct vmm_schedalgo_rq_entry * rq_entry;
 	struct vmm_schedalgo_rq * rqi;
@@ -97,11 +98,20 @@ vmm_vcpu_t * vmm_schedalgo_rq_dequeue(void * rq)
 
 	rqi = rq;
 
-	if (list_empty(&rqi->list)) {
+	p = VMM_VCPU_MAX_PRIORITY + 1;
+	while (p) {
+		if (!list_empty(&rqi->list[p-1])) {
+			break;
+		}
+		p--;
+	}
+
+	if (!p) {
 		return NULL;
 	}
 
-	l = list_pop(&rqi->list);
+	p = p - 1;
+	l = list_pop(&rqi->list[p]);
 	rq_entry = list_entry(l, struct vmm_schedalgo_rq_entry, head);
 	
 	return rq_entry->vcpu;
@@ -128,16 +138,38 @@ int vmm_schedalgo_rq_detach(void * rq, vmm_vcpu_t * vcpu)
 
 bool vmm_schedalgo_rq_prempt_needed(void * rq, vmm_vcpu_t * current)
 {
-	return FALSE;
+	int p;
+	bool ret = FALSE;
+	struct vmm_schedalgo_rq * rqi;
+	
+	if (!rq || !current) {
+		return FALSE;
+	}
+
+	rqi = rq;
+
+	p = VMM_VCPU_MAX_PRIORITY;
+	while (p > current->priority) {
+		if (!list_empty(&rqi->list[p])) {
+			ret = TRUE;
+			break;
+		}
+		p--;
+	}
+
+	return ret;
 }
 
 void * vmm_schedalgo_rq_create(void)
 {
+	int p;
 	struct vmm_schedalgo_rq * rq = 
 			vmm_malloc(sizeof(struct vmm_schedalgo_rq));
 
 	if (rq) {
-		INIT_LIST_HEAD(&rq->list);
+		for (p = 0; p <= VMM_VCPU_MAX_PRIORITY; p++) {
+			INIT_LIST_HEAD(&rq->list[p]);
+		}
 	}
 
 	return rq;

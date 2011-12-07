@@ -36,11 +36,11 @@ int vmm_schedalgo_vcpu_cleanup(vmm_vcpu_t * vcpu);
 /** Enqueue VCPU to a ready queue */
 int vmm_schedalgo_rq_enqueue(void * rq, vmm_vcpu_t * vcpu);
 
-/** Dequeue VCPU to a ready queue */
-vmm_vcpu_t * vmm_schedalgo_rq_dequeue(void * rq, vmm_vcpu_t * current);
+/** Dequeue VCPU from a ready queue */
+vmm_vcpu_t * vmm_schedalgo_rq_dequeue(void * rq);
 
-/** Detach VCPU from its read queue */
-int vmm_schedalgo_rq_detach(vmm_vcpu_t * vcpu);
+/** Detach VCPU from its ready queue */
+int vmm_schedalgo_rq_detach(void * rq, vmm_vcpu_t * vcpu);
 
 /** Check if current VCPU is required to be prempted based on current 
  *  ready queue state
