@@ -134,15 +134,15 @@ int vmm_board_getclock(vmm_devtree_node_t * node, u32 * clock)
 
 int vmm_board_reset(void)
 {
-	/* FIXME: Write 0x1 to RESETCTL just like linux does */
-#if 0
-	vmm_writel(REALVIEW_SYS_CTRL_RESET_CONFIGCLR, 
-		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
-#else
+#if 0 /* QEMU checks bit 8 which is wrong */
 	vmm_writel(0x100, 
+		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
+#else
+	vmm_writel(0x0, 
+		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
+	vmm_writel(REALVIEW_SYS_CTRL_RESET_PLLRESET, 
 		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
 #endif
-
 	return VMM_OK;
 }
 
