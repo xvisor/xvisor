@@ -52,12 +52,12 @@ u64 vmm_cpu_clocksource_mask(void)
 
 u32 vmm_cpu_clocksource_mult(void)
 {
-	return vmm_timer_clocksource_hz2mult(OMAP3_CLKSRC_FREQ_HZ, 17);
+	return vmm_timer_clocksource_hz2mult(OMAP3_CLKSRC_FREQ_HZ, 15);
 }
 
 u32 vmm_cpu_clocksource_shift(void)
 {
-	return 17;
+	return 15;
 }
 
 int vmm_cpu_clocksource_init(void)
