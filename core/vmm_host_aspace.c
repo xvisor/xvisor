@@ -505,7 +505,7 @@ int __init vmm_host_aspace_init(void)
 
 	/* Determine VAPOOl start and size. Also determine size of bitmap */
 	hactrl.vapool_start = vmm_cpu_code_vaddr_start();
-	hactrl.vapool_size = vmm_cpu_code_size() + (CONFIG_VAPOOL_SIZE << 20);
+	hactrl.vapool_size = (CONFIG_VAPOOL_SIZE << 20);
 	hactrl.vapool_start &= ~VMM_PAGE_MASK;
 	hactrl.vapool_size &= ~VMM_PAGE_MASK;
 	hactrl.vapool_bmap_len = hactrl.vapool_size >> (VMM_PAGE_SHIFT + 5);
@@ -538,7 +538,7 @@ int __init vmm_host_aspace_init(void)
 	bmap_total_size *= sizeof(u32);
 	bmap_total_size = VMM_ROUNDUP2_PAGE_SIZE(bmap_total_size);
 	resv_pa = hactrl.ram_start;
-	resv_va = vmm_cpu_code_vaddr_start() + vmm_cpu_code_size();
+	resv_va = hactrl.vapool_start + vmm_cpu_code_size();
 	resv_sz = bmap_total_size;
 	if ((rc = vmm_cpu_aspace_init(&resv_pa, &resv_va, &resv_sz))) {
 		return rc;
