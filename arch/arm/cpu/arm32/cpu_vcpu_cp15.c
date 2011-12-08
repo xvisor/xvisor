@@ -1185,24 +1185,17 @@ int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu,
 			   void *dst, u32 dst_len,
 			   bool force_unpriv)
 {
-	int rc = VMM_OK;
-	bool is_user = FALSE;
-	u32 vind, ecode;
 	cpu_page_t pg;
-	cpu_page_t * pgp = &pg;
+	register int rc = VMM_OK;
+	register u32 vind, ecode;
+	register cpu_page_t * pgp = &pg;
 	if ((addr & ~(sizeof(vcpu->sregs->cp15.ovect) - 1)) == 
 					vcpu->sregs->cp15.ovect_base) {
-		if (force_unpriv) {
-			is_user = TRUE;
-		} else {
-			if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
-				is_user = TRUE;
-			} else {
-				is_user = FALSE;
-			}
+		if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+			force_unpriv = TRUE;
 		}
 		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr, 
-					CP15_ACCESS_READ, is_user, &pg))) {
+					CP15_ACCESS_READ, force_unpriv, &pg))) {
 			cpu_vcpu_cp15_assert_fault(vcpu, regs, 
 			addr, (ecode >> 4), (ecode & 0xF), 0, 1);
 			return VMM_EFAIL;
@@ -1301,24 +1294,17 @@ int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu,
 			    void *src, u32 src_len,
 			    bool force_unpriv)
 {
-	int rc = VMM_OK;
-	bool is_user = FALSE;
-	u32 vind, ecode;
 	cpu_page_t pg;
-	cpu_page_t * pgp = &pg;
+	register int rc = VMM_OK;
+	register u32 vind, ecode;
+	register cpu_page_t * pgp = &pg;
 	if ((addr & ~(sizeof(vcpu->sregs->cp15.ovect) - 1)) == 
 					vcpu->sregs->cp15.ovect_base) {
-		if (force_unpriv) {
-			is_user = TRUE;
-		} else {
-			if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
-				is_user = TRUE;
-			} else {
-				is_user = FALSE;
-			}
+		if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+			force_unpriv = TRUE;
 		}
 		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr, 
-					CP15_ACCESS_WRITE, is_user, &pg))) {
+					CP15_ACCESS_WRITE, force_unpriv, &pg))) {
 			cpu_vcpu_cp15_assert_fault(vcpu, regs, 
 			addr, (ecode >> 4), (ecode & 0xF), 1, 1);
 			return VMM_EFAIL;
