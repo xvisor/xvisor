@@ -172,11 +172,7 @@ int vmm_waitqueue_wakeall(vmm_waitqueue_t * wq)
 	}
 
 	/* Decrement VCPU count in waitqueue */
-	if (wake_count < wq->vcpu_count) {
-		wq->vcpu_count -= wake_count;
-	} else {
-		wq->vcpu_count = 0;
-	}
+	wq->vcpu_count -= wake_count;
 
 	/* Unlock waitqueue */
 	flags = vmm_spin_lock_irqsave(&wq->lock);
