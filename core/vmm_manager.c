@@ -225,7 +225,6 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->guest = NULL;
 	vcpu->sregs = NULL;
 	vcpu->irqs = NULL;
-	vcpu->devemu_priv = NULL;
 
 	/* Initialize registers */
 	if (vmm_vcpu_regs_init(vcpu)) {
@@ -243,6 +242,13 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 		return NULL;
 	}
 	vcpu->state = VMM_VCPU_STATE_RESET;
+
+	/* Set wait queue context to NULL */
+	INIT_LIST_HEAD(&vcpu->wq_head);
+	vcpu->wq_priv = NULL;
+
+	/* Set device emulation context to NULL */
+	vcpu->devemu_priv = NULL;
 
 	/* Add VCPU to orphan list */
 	list_add_tail(&mngr.orphan_vcpu_list, &vcpu->head);
@@ -548,7 +554,6 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		vcpu->guest = guest;
 		vcpu->sregs = vmm_malloc(sizeof(vmm_super_regs_t));
 		vcpu->irqs = vmm_malloc(sizeof(vmm_vcpu_irqs_t));
-		vcpu->devemu_priv = NULL;
 		if (!vcpu->sregs || !vcpu->irqs) {
 			mngr.vcpu_avail_array[vnum] = TRUE;
 			break;
@@ -568,6 +573,13 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 			break;
 		}
 		vcpu->state = VMM_VCPU_STATE_RESET;
+
+		/* Set wait queue context to NULL */
+		INIT_LIST_HEAD(&vcpu->wq_head);
+		vcpu->wq_priv = NULL;
+
+		/* Set device emulation context to NULL */
+		vcpu->devemu_priv = NULL;
 
 		/* Add VCPU to Guest child list */
 		list_add_tail(&guest->vcpu_list, &vcpu->head);

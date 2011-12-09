@@ -46,13 +46,6 @@ typedef unsigned int ulong;
 #define stringify(s)	tostring(s)
 #define tostring(s)	#s
 
-#define BUG_ON(x, bug_string, ...)				\
-	do {							\
-		if (x) {					\
-			vmm_panic(bug_string, #__VA_ARGS__);	\
-		}						\
-	} while(0);
-
 #define __alwaysinline 		__attribute__((always_inline))
 #define __unused		__attribute__((unused))
 #define __noreturn		__attribute__((noreturn))

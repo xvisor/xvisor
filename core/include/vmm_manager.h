@@ -132,6 +132,9 @@ struct vmm_vcpu {
 	u64 time_slice; /**< Scheduling Parameter (nano seconds) */
 	void * sched_priv; /**< Scheduling Context */
 
+	struct dlist wq_head; /**< Wait Queue List head */
+	void * wq_priv; /**< Wait Queue Context */
+
 	void * devemu_priv; /**< Device Emulation Context */
 };
 
