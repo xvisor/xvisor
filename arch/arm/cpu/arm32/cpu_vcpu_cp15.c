@@ -1453,8 +1453,6 @@ void cpu_vcpu_cp15_switch_context(vmm_vcpu_t * tvcpu, vmm_vcpu_t * vcpu)
 		write_tpidrurw(vcpu->sregs->cp15.c13_tls1);
 		write_tpidruro(vcpu->sregs->cp15.c13_tls2);
 		write_tpidrprw(vcpu->sregs->cp15.c13_tls3);
-	} else {
-		cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
 	}
 }
 

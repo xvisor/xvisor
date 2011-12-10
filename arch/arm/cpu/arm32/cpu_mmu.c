@@ -1040,7 +1040,9 @@ int cpu_mmu_chdacr(u32 new_dacr)
 	new_dacr &= ~0x3;
 	new_dacr |= old_dacr & 0x3;
 
-	write_dacr(new_dacr);
+	if (new_dacr != old_dacr) {
+		write_dacr(new_dacr);
+	}
 
 	return VMM_OK;
 }
@@ -1048,9 +1050,16 @@ int cpu_mmu_chdacr(u32 new_dacr)
 int cpu_mmu_chttbr(cpu_l1tbl_t * l1)
 {
 	u32 sctlr;
+	cpu_l1tbl_t * curr_l1;
 
 	if (!l1) {
 		return VMM_EFAIL;
+	}
+
+	/* Do nothing if new l1 table is already current l1 table */
+	curr_l1 = cpu_mmu_l1tbl_current();
+	if (curr_l1 == l1) {
+		return VMM_OK;
 	}
 
 	sctlr = read_sctlr();
