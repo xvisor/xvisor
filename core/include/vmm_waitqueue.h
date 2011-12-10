@@ -56,8 +56,11 @@ static inline u32 vmm_waitqueue_count(vmm_waitqueue_t * wq)
 /* Put current VCPU to sleep on given waitqueue */
 int vmm_waitqueue_sleep(vmm_waitqueue_t * wq);
 
-/* Wakeup VCPU its waitqueue */
+/* Wakeup VCPU from its waitqueue */
 int vmm_waitqueue_wake(vmm_vcpu_t * vcpu);
+
+/* Wakeup first VCPU in a given waitqueue */
+int vmm_waitqueue_wakefirst(vmm_waitqueue_t * wq);
 
 /* Wakeup all VCPUs in a given waitqueue */
 int vmm_waitqueue_wakeall(vmm_waitqueue_t * wq);

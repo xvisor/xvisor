@@ -135,6 +135,49 @@ int vmm_waitqueue_wake(vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
+int vmm_waitqueue_wakefirst(vmm_waitqueue_t * wq)
+{
+	int rc = VMM_OK;
+	struct dlist *l;
+	vmm_vcpu_t * vcpu;
+	irq_flags_t flags;
+
+	/* Sanity checks */
+	if (!wq) {
+		return VMM_EFAIL;
+	}
+
+	/* Lock waitqueue */
+	flags = vmm_spin_lock_irqsave(&wq->lock);
+
+	/* Get first VCPU from waitqueue list */
+	l = list_pop(&wq->vcpu_list);
+	vcpu = list_entry(l, vmm_vcpu_t, wq_head);
+
+	/* Try to Resume VCPU */
+	if ((rc = vmm_manager_vcpu_resume(vcpu))) {
+		/* Failed to resume VCPU so continue */
+		list_add_tail(&wq->vcpu_list, &vcpu->wq_head);
+
+		/* Unlock waitqueue */
+		vmm_spin_unlock_irqrestore(&wq->lock, flags);
+
+		/* Return Failure */
+		return rc;
+	}
+
+	/* Set VCPU waitqueue context to NULL */
+	vcpu->wq_priv = NULL;
+
+	/* Decrement VCPU count in waitqueue */
+	wq->vcpu_count--;
+
+	/* Unlock waitqueue */
+	vmm_spin_unlock_irqrestore(&wq->lock, flags);
+	
+	return VMM_OK;
+}
+
 int vmm_waitqueue_wakeall(vmm_waitqueue_t * wq)
 {
 	int i, wake_count, rc = VMM_OK;
@@ -175,7 +218,7 @@ int vmm_waitqueue_wakeall(vmm_waitqueue_t * wq)
 	wq->vcpu_count -= wake_count;
 
 	/* Unlock waitqueue */
-	flags = vmm_spin_lock_irqsave(&wq->lock);
+	vmm_spin_unlock_irqrestore(&wq->lock, flags);
 	
 	return VMM_OK;
 }
