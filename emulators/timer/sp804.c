@@ -145,8 +145,19 @@ static u32 sp804_timer_currvalue(struct sp804_timer *t)
 			break;
 		};
 		if (freq == 1000000) {
-			cval = vmm_udiv64((vmm_timer_timestamp() - 
-					t->value_tstamp), 1000);
+			/* Note: Timestamps are in nanosecs so we convert 
+			 * nanosecs timestamp difference to microsecs timestamp
+			 * difference for 1MHz clock. To achive this we simply 
+			 * have to divide timestamp difference by 1000, but in 
+			 * integer arithmetic any integer divided by 1000 
+			 * equals (a >> 10).
+			 * (a / 1000)
+			 * = (a / 1024) * (1024 / 1000)
+			 * = (a / 1024) * 1
+			 * = (a / 1024) = (a >> 10)
+			 */
+			cval = (vmm_timer_timestamp() - 
+					t->value_tstamp) >> 10;
 		} else if (freq == 1000000000) {
 			cval = (vmm_timer_timestamp() - 
 					t->value_tstamp);
@@ -155,13 +166,26 @@ static u32 sp804_timer_currvalue(struct sp804_timer *t)
 			cval = vmm_udiv64((vmm_timer_timestamp() - 
 					t->value_tstamp), cval);
 		} else {
-			cval = vmm_udiv32(freq, 1000000000);
+			/* Note: For integer arithmetic (freq / 1000000000)
+			 * is equal to (freq >> 30). This is because
+			 * (freq / 1000000000) 
+			 * = (freq / 1073741824) * (1073741824 / 1000000000)
+			 * = (freq / 1073741824) * 1
+			 * = (freq / 1073741824) = (freq >> 30)
+			 */
+			cval = freq >> 30;
 			cval = (vmm_timer_timestamp() - 
 					t->value_tstamp) * cval;
 		}
 		if (t->control & TIMER_CTRL_PERIODIC) {
-			ret = vmm_umod64(cval, t->value);
-			ret = t->value - ret;
+			if (t->value == 0xFFFFFFFF) {
+				ret = 0xFFFFFFFF - (cval & 0xFFFFFFFF);
+			} else if (t->value == 0xFFFF) {
+				ret = 0xFFFF - (cval & 0xFFFF);
+			} else {
+				ret = vmm_umod64(cval, t->value);
+				ret = t->value - ret;
+			}
 		} else {
 			if (t->value < cval) {
 				ret = 0x0;
