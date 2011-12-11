@@ -27,30 +27,20 @@
 
 #include <vmm_waitqueue.h>
 
-struct vmm_completion {
-	vmm_spinlock_t lock;
-	u32 done;
-	vmm_waitqueue_t wq;
-};
+#define vmm_completion				vmm_waitqueue
+#define vmm_completion_t			vmm_waitqueue_t
 
-typedef struct vmm_completion vmm_completion_t;
+#define INIT_COMPLETION(cptr)			INIT_WAITQUEUE(cptr)
 
-#define INIT_COMPLETION(cptr)	do { \
-				INIT_SPIN_LOCK(&((cptr)->lock)); \
-				(cptr)->done = 0; \
-				INIT_WAITQUEUE(&(cptr)->wq); \
-				} while (0);
+static inline bool vmm_completion_done(vmm_completion_t * cmpl)
+{
+	return vmm_waitqueue_count(cmpl) ? FALSE : TRUE;
+}
 
-/* Check status of work completion */
-bool vmm_completion_done(vmm_completion_t * cmpl);
+#define vmm_completion_wait(cmpl)		vmm_waitqueue_sleep(cmpl)
 
-/* Wait for work completion */
-int vmm_completion_wait(vmm_completion_t * cmpl);
+#define vmm_completion_complete_first(cmpl)	vmm_waitqueue_wakefirst(cmpl)
 
-/* Wakeup (or Signal) first waiting Orphan VCPU (or Thread) */
-int vmm_completion_complete_first(vmm_completion_t * cmpl);
-
-/* Wakeup (or Signal) all waiting Orphan VCPUs (or Threads) */
-int vmm_completion_complete_all(vmm_completion_t * cmpl);
+#define vmm_completion_complete_all(cmpl)	vmm_waitqueue_wakeall(cmpl)
 
 #endif /* __VMM_COMPLETION_H__ */

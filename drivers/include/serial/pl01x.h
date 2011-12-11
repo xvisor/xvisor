@@ -97,6 +97,7 @@
 #define UART_PL010_BAUD_4800              191
 #define UART_PL010_BAUD_2400              383
 #define UART_PL010_BAUD_1200              767
+
 /*
  *  PL011 definitions
  *
@@ -106,6 +107,8 @@
 #define UART_PL011_LCRH                 0x2C
 #define UART_PL011_CR                   0x30
 #define UART_PL011_IMSC                 0x38
+#define UART_PL011_MIS                  0x40
+#define UART_PL011_ICR                  0x44
 #define UART_PL011_PERIPH_ID0           0xFE0
 
 #define UART_PL011_LCRH_SPS             (1 << 7)
@@ -143,6 +146,30 @@
 #define UART_PL011_IMSC_DCDMIM          (1 << 2)
 #define UART_PL011_IMSC_CTSMIM          (1 << 1)
 #define UART_PL011_IMSC_RIMIM           (1 << 0)
+
+#define UART_PL011_MIS_OEIMS		(1 << 10)
+#define UART_PL011_MIS_BEIMS		(1 << 9)
+#define UART_PL011_MIS_PEIMS		(1 << 8)
+#define UART_PL011_MIS_FEIMS		(1 << 7)
+#define UART_PL011_MIS_RTIMS		(1 << 6)
+#define UART_PL011_MIS_TXIMS		(1 << 5)
+#define UART_PL011_MIS_RXIMS		(1 << 4)
+#define UART_PL011_MIS_DSRMIMS		(1 << 3)
+#define UART_PL011_MIS_DCDMIMS		(1 << 2)
+#define UART_PL011_MIS_CTSMIMS		(1 << 1)
+#define UART_PL011_MIS_RIMIMS		(1 << 0)
+
+#define UART_PL011_ICR_OEIC		(1 << 10)
+#define UART_PL011_ICR_BEIC		(1 << 9)
+#define UART_PL011_ICR_PEIC		(1 << 8)
+#define UART_PL011_ICR_FEIC		(1 << 7)
+#define UART_PL011_ICR_RTIC		(1 << 6)
+#define UART_PL011_ICR_TXIC		(1 << 5)
+#define UART_PL011_ICR_RXIC		(1 << 4)
+#define UART_PL011_ICR_DSRMIC		(1 << 3)
+#define UART_PL011_ICR_DCDMIC		(1 << 2)
+#define UART_PL011_ICR_CTSMIC		(1 << 1)
+#define UART_PL011_ICR_RIMIC		(1 << 0)
 
 bool pl01x_lowlevel_can_getc(virtual_addr_t base, u32 type);
 u8 pl01x_lowlevel_getc(virtual_addr_t base, u32 type);

@@ -200,6 +200,24 @@ vmm_vcpu_t * vmm_scheduler_current_vcpu(void)
 	return sched.current_vcpu;
 }
 
+bool vmm_scheduler_orphan_context(void)
+{
+	if (sched.current_vcpu && !sched.irq_context) {
+		return (sched.current_vcpu->is_normal) ? FALSE : TRUE;
+	}
+
+	return FALSE;
+}
+
+bool vmm_scheduler_normal_context(void)
+{
+	if (sched.current_vcpu && !sched.irq_context) {
+		return (sched.current_vcpu->is_normal) ? TRUE : FALSE;
+	}
+
+	return FALSE;
+}
+
 vmm_guest_t * vmm_scheduler_current_guest(void)
 {
 	vmm_vcpu_t *vcpu = vmm_scheduler_current_vcpu();

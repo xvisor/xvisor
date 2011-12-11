@@ -24,9 +24,12 @@
 
 #include <vmm_math.h>
 #include <vmm_error.h>
-#include <vmm_host_io.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
+#include <vmm_host_io.h>
+#include <vmm_host_irq.h>
+#include <vmm_scheduler.h>
+#include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
@@ -39,15 +42,6 @@
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			pl01x_driver_init
 #define	MODULE_EXIT			pl01x_driver_exit
-
-struct pl01x_port {
-	virtual_addr_t base;
-	u32 baudrate;
-	u32 input_clock;
-	u32 type;
-};
-
-typedef struct pl01x_port pl01x_port_t;
 
 bool pl01x_lowlevel_can_getc(virtual_addr_t base, u32 type)
 {
@@ -177,6 +171,66 @@ void pl01x_lowlevel_init(virtual_addr_t base, u32 type,
 	}
 }
 
+struct pl01x_port {
+	vmm_completion_t read_done;
+	virtual_addr_t base;
+	u32 baudrate;
+	u32 input_clock;
+	u32 type;
+	u32 irq;
+};
+
+typedef struct pl01x_port pl01x_port_t;
+
+static int pl01x_irq_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
+{
+	/* Determing the interrupt occurred */
+	unsigned int data;
+	pl01x_port_t *port = (pl01x_port_t *)dev;
+
+	data = vmm_readl((void*)(port->base + UART_PL01x_FR));
+	/* Only handle the RX interrupt case now */
+	if(!(data & UART_PL01x_FR_RXFE)) {
+		/* Mask RX interrupts till RX FIFO is empty */
+		vmm_writel((UART_PL011_IMSC_RXIM),
+				(void*)(port->base + UART_PL011_IMSC));
+		/* Clear RX interrupts till RX FIFO is empty */
+		vmm_writel((UART_PL011_ICR_RXIC),
+				(void*)(port->base + UART_PL011_ICR));
+		/* Signal work completions to all sleeping threads */
+		vmm_completion_complete_all(&port->read_done);
+	}
+
+	return VMM_OK;
+}
+
+static u8 pl01x_getc_sleepable(pl01x_port_t *port)
+{
+	unsigned int data;
+
+	/* Wait until there is data in the FIFO */
+	while (vmm_readl((void*)(port->base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE) {
+		if(vmm_scheduler_orphan_context()) {
+			/* Enable the RX interrupts */
+			vmm_writel(~(UART_PL011_IMSC_RXIM),
+					(void*)(port->base + UART_PL011_IMSC));
+			/* Wait for completion */
+			vmm_completion_wait(&port->read_done);
+		}
+	}
+
+	data = vmm_readl((void*)(port->base + UART_PL01x_DR));
+
+	/* Check for an error flag */
+	if (data & 0xFFFFFF00) {
+		/* Clear the error */
+		vmm_writel(0xFFFFFFFF, (void*)(port->base + UART_PL01x_ECR));
+		return -1;
+	}
+
+	return (char)data;
+}
+
 static u32 pl01x_read(vmm_chardev_t *cdev, 
 		      u8 *dest, size_t offset, size_t len, bool block)
 {
@@ -194,15 +248,14 @@ static u32 pl01x_read(vmm_chardev_t *cdev,
 
 	for(i = 0; i < len; i++) {
 		if (block) {
-			while (!pl01x_lowlevel_can_getc(port->base, 
-							port->type));
+			dest[i] = pl01x_getc_sleepable(port);
 		} else {
 			if (!pl01x_lowlevel_can_getc(port->base, 
 						     port->type)) {
 				break;
 			}
+			dest[i] = pl01x_lowlevel_getc(port->base, port->type);
 		}
-		dest[i] = pl01x_lowlevel_getc(port->base, port->type);
 	}
 
 	return i;
@@ -265,6 +318,8 @@ static int pl01x_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
 	cd->write = pl01x_write;
 	cd->priv = port;
 
+	INIT_COMPLETION(&port->read_done);
+
 	rc = vmm_devdrv_ioremap(dev, &port->base, 0);
 	if(rc) {
 		goto free_port;
@@ -284,6 +339,16 @@ static int pl01x_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
 	port->baudrate = *((u32 *)attr);
 	rc = vmm_devdrv_getclock(dev, &port->input_clock);
 	if(rc) {
+		goto free_port;
+	}
+
+	attr = vmm_devtree_attrval(dev->node, "irq");
+	if(!attr) {
+		rc = VMM_EFAIL;
+		goto free_port;
+	}
+	port->irq = *((u32 *)attr);
+	if((rc = vmm_host_irq_register(port->irq, pl01x_irq_handler, port))) {
 		goto free_port;
 	}
 

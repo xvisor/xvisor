@@ -37,17 +37,13 @@ int vmm_waitqueue_sleep(vmm_waitqueue_t * wq)
 	if (!wq) {
 		return VMM_EFAIL;
 	}
-	if (vmm_scheduler_irq_context()) {
-		BUG_ON("%s: Cannot sleep in IRQ context\n", __func__);
+	if (!vmm_scheduler_orphan_context()) {
+		BUG_ON("%s: Sleep allowed in Orphan VCPU (or Thread)"
+		       " context only\n", __func__);
 	}
 
 	/* Get current VCPU */
 	vcpu = vmm_scheduler_current_vcpu();
-
-	/* More sanity checks */
-	if (vcpu->is_normal) {
-		BUG_ON("%s: Normal VCPU cannot use waitqueues\n", __func__);
-	}
 
 	/* Lock waitqueue */
 	flags = vmm_spin_lock_irqsave(&wq->lock);
