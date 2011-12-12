@@ -28,6 +28,8 @@
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
+#include <vmm_stdio.h>
+#include <vmm_chardev.h>
 #include <libfdt.h>
 #include <pba8_board.h>
 #include <realview/timer.h>
@@ -167,6 +169,7 @@ int __init vmm_board_final_init(void)
 {
 	int rc;
 	vmm_devtree_node_t *node;
+	vmm_chardev_t * cdev;
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
@@ -190,6 +193,12 @@ int __init vmm_board_final_init(void)
 	rc = vmm_devdrv_probe(node);
 	if (rc) {
 		return rc;
+	}
+
+	/* Find uart0 character device and 
+	 * set it as vmm_stdio character device */
+	if ((cdev = vmm_chardev_find("uart0"))) {
+		vmm_stdio_change_device(cdev);
 	}
 
 	return VMM_OK;

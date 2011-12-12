@@ -85,12 +85,12 @@ int vmm_cpu_clocksource_init(void);
 bool vmm_cpu_spin_lock_check(spinlock_t * lock);
 void vmm_cpu_spin_lock(spinlock_t * lock);
 void vmm_cpu_spin_unlock(spinlock_t * lock);
-#endif
 
 /** Atomic operations required by VMM core */
 void vmm_cpu_atomic_inc(atomic_t * atom);
 void vmm_cpu_atomic_dec(atomic_t * atom);
 int vmm_cpu_atomic_testnset(atomic_t * atom, u32 test, u32 val);
+#endif
 
 /** Module functions required by VMM core */
 extern u8 _modtbl_start;
