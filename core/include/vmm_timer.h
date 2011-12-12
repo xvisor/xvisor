@@ -73,6 +73,9 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs);
 /** Restart a timer event */
 int vmm_timer_event_restart(vmm_timer_event_t * ev);
 
+/** Expire a timer event */
+int vmm_timer_event_expire(vmm_timer_event_t * ev);
+
 /** Stop a timer event */
 int vmm_timer_event_stop(vmm_timer_event_t * ev);
 

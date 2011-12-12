@@ -184,51 +184,38 @@ typedef struct pl01x_port pl01x_port_t;
 
 static int pl01x_irq_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
 {
-	/* Determing the interrupt occurred */
 	unsigned int data;
 	pl01x_port_t *port = (pl01x_port_t *)dev;
 
-	data = vmm_readl((void*)(port->base + UART_PL01x_FR));
-	/* Only handle the RX interrupt case now */
-	if(!(data & UART_PL01x_FR_RXFE)) {
+	/* Get masked interrupt status */
+	data = vmm_readl((void*)(port->base + UART_PL011_MIS));
+
+	/* Only handle RX FIFO not empty */
+	if(data & UART_PL011_MIS_RXMIS) {
 		/* Mask RX interrupts till RX FIFO is empty */
-		vmm_writel((UART_PL011_IMSC_RXIM),
-				(void*)(port->base + UART_PL011_IMSC));
-		/* Clear RX interrupts till RX FIFO is empty */
-		vmm_writel((UART_PL011_ICR_RXIC),
-				(void*)(port->base + UART_PL011_ICR));
+		vmm_writel(0x0, (void*)(port->base + UART_PL011_IMSC));
 		/* Signal work completions to all sleeping threads */
 		vmm_completion_complete_all(&port->read_done);
 	}
 
+	/* Clear all interrupts */
+	vmm_writel(data, (void*)(port->base + UART_PL011_ICR));
+
 	return VMM_OK;
 }
 
-static u8 pl01x_getc_sleepable(pl01x_port_t *port)
+static u8 pl01x_getc_sleepable(pl01x_port_t * port)
 {
-	unsigned int data;
-
 	/* Wait until there is data in the FIFO */
-	while (vmm_readl((void*)(port->base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE) {
-		if(vmm_scheduler_orphan_context()) {
-			/* Enable the RX interrupts */
-			vmm_writel(~(UART_PL011_IMSC_RXIM),
-					(void*)(port->base + UART_PL011_IMSC));
-			/* Wait for completion */
-			vmm_completion_wait(&port->read_done);
-		}
+	if (vmm_readl((void*)(port->base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE) {
+		/* Enable the RX interrupt */
+		vmm_writel(UART_PL011_IMSC_RXIM, (void*)(port->base + UART_PL011_IMSC));
+		/* Wait for completion */
+		vmm_completion_wait(&port->read_done);
 	}
 
-	data = vmm_readl((void*)(port->base + UART_PL01x_DR));
-
-	/* Check for an error flag */
-	if (data & 0xFFFFFF00) {
-		/* Clear the error */
-		vmm_writel(0xFFFFFFFF, (void*)(port->base + UART_PL01x_ECR));
-		return -1;
-	}
-
-	return (char)data;
+	/* Read data to destination */
+	return (u8)vmm_readl((void*)(port->base + UART_PL01x_DR));
 }
 
 static u32 pl01x_read(vmm_chardev_t *cdev, 
@@ -246,10 +233,18 @@ static u32 pl01x_read(vmm_chardev_t *cdev,
 
 	port = cdev->priv;
 
-	for(i = 0; i < len; i++) {
-		if (block) {
+	if (block && vmm_scheduler_orphan_context()) {
+		for(i = 0; i < len; i++) {
 			dest[i] = pl01x_getc_sleepable(port);
-		} else {
+		}
+	} else if (block) {
+		for(i = 0; i < len; i++) {
+			while (!pl01x_lowlevel_can_getc(port->base, 
+						     port->type)) ;
+			dest[i] = pl01x_lowlevel_getc(port->base, port->type);
+		}
+	} else {
+		for(i = 0; i < len; i++) {
 			if (!pl01x_lowlevel_can_getc(port->base, 
 						     port->type)) {
 				break;

@@ -65,12 +65,6 @@ int vmm_cpu_clocksource_init(void)
 	return omap3_s32k_init();
 }
 
-int vmm_cpu_clockevent_shutdown(void)
-{
-	omap3_gpt_stop();
-	return VMM_OK;
-}
-
 int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
 {
 	omap3_gpt_ack_irq();
@@ -94,22 +88,45 @@ int vmm_cpu_clockevent_start(u64 tick_nsecs)
 	return VMM_OK;
 }
 
-int vmm_cpu_clockevent_setup(void)
+int vmm_cpu_clockevent_stop(void)
 {
-	omap3_gpt_disable();
-	omap3_gpt_oneshot();
+	omap3_gpt_stop();
+	return VMM_OK;
+}
 
-	vmm_host_irq_enable(OMAP3_SYS_TIMER_IRQ);
+/* FIXME: Please fix this */
+int vmm_cpu_clockevent_expire(void)
+{
+	int i, rc = VMM_OK;
+
+	if ((rc = vmm_cpu_clockevent_start(0))) {
+		return rc;
+	}
+
+	/* FIXME: We should poll for irq pending here. */
+	for (i = 0; i < 1000; i++);
 
 	return VMM_OK;
 }
 
 int vmm_cpu_clockevent_init(void)
 {
-	return omap3_gpt_init(OMAP3_SYS_TIMER_BASE,
+	int rc = VMM_OK;
+
+	rc = omap3_gpt_init(OMAP3_SYS_TIMER_BASE,
 			OMAP3_WKUP_CM_BASE,
 			OMAP3_GLOBAL_REG_PRM_BASE,
 			OMAP3_SYS_TIMER_IRQ,
 			&vmm_cpu_timer_irq_handler);
+	if (rc) {
+		return rc;
+	}
+
+	omap3_gpt_disable();
+	omap3_gpt_oneshot();
+
+	vmm_host_irq_enable(OMAP3_SYS_TIMER_IRQ);
+
+	return VMM_OK;
 }
 

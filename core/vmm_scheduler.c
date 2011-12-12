@@ -138,7 +138,7 @@ int vmm_scheduler_notify_state_change(vmm_vcpu_t * vcpu, u32 new_state)
 			if (!rc && sched.current_vcpu) {
 				if (vmm_schedalgo_rq_prempt_needed(sched.rq, 
 							sched.current_vcpu)) {
-					vmm_timer_event_start(sched.ev, 0);
+					vmm_timer_event_expire(sched.ev);
 				}
 			}
 		}
@@ -147,7 +147,7 @@ int vmm_scheduler_notify_state_change(vmm_vcpu_t * vcpu, u32 new_state)
 	case VMM_VCPU_STATE_HALTED:
 		/* Expire timer event if current VCPU is paused or halted */
 		if(sched.current_vcpu == vcpu) {
-			vmm_timer_event_start(sched.ev, 0);
+			vmm_timer_event_expire(sched.ev);
 		} else {
 			/* Make sure VCPU is not in a ready queue */
 			if (vcpu->state == VMM_VCPU_STATE_READY) {
@@ -249,19 +249,19 @@ void vmm_scheduler_preempt_enable(void)
 	}
 }
 
-void vmm_scheduler_yield(void)
+void vmm_scheduler_orphan_yield(void)
 {
-	if (vmm_scheduler_irq_context()) {
-		vmm_panic("%s: Tried to yield in IRQ context\n", __func__);
+	if (!vmm_scheduler_orphan_context()) {
+		vmm_panic("%s: Can yield in Orphan VCPU context only\n", __func__);
 	}
 
-	vmm_timer_event_start(sched.ev, 0);
+	vmm_timer_event_expire(sched.ev);
 }
 
 static void idle_orphan(void)
 {
 	while(1) {
-		vmm_scheduler_yield();
+		vmm_scheduler_orphan_yield();
 	}
 }
 

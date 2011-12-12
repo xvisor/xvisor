@@ -71,8 +71,8 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 
 /** Timer functions required by VMM core */
 int vmm_cpu_clockevent_start(u64 tick_nsecs);
-int vmm_cpu_clockevent_setup(void);
-int vmm_cpu_clockevent_shutdown(void);
+int vmm_cpu_clockevent_expire(void);
+int vmm_cpu_clockevent_stop(void);
 int vmm_cpu_clockevent_init(void);
 u64 vmm_cpu_clocksource_cycles(void);
 u64 vmm_cpu_clocksource_mask(void);
