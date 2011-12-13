@@ -45,9 +45,8 @@ int vmm_profiler_start(void);
  */
 int vmm_profiler_stop(void); 
 
-unsigned int vmm_profiler_get_function_count(unsigned long addr);
-
-char *vmm_profiler_get_function_name(unsigned long addr);
+u64 vmm_profiler_get_function_count(unsigned long addr);
+u64 vmm_profiler_get_function_total_time(unsigned long addr);
 
 /**
  * Initialize Profiler. 

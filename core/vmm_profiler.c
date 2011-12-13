@@ -26,42 +26,142 @@
 #include <vmm_heap.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
+#include <vmm_timer.h>
+#include <vmm_cpu.h>
+#include <vmm_stdio.h>
+#include <vmm_spinlocks.h>
 #include <kallsyms.h>
 
-/* prototype for mcount callback functions */
-typedef void (*ftrace_func_t) (unsigned long ip, unsigned long parent_ip);
+typedef void (*vmm_profile_callback_t) (void *, void *);
 
-/* This function is architecture specific */
-extern void vmm_profiler_trace_stub(unsigned long ip, unsigned long parent_ip);
+struct vmm_profiler_stat {
+	u64 counter;
+	u64 time;
+	u64 time_in;
+	bool is_tracing;
+};
 
-static bool _trace_on = 0;
+struct vmm_profiler_ctrl {
+	bool is_active;
+	bool is_in_trace;
+	vmm_spinlock_t lock;
+	struct vmm_profiler_stat *stat;
+};
 
-static unsigned int *_counter = NULL;
+static struct vmm_profiler_ctrl pctrl;
 
-/* This is used from the __gnu_mcount_nc function in cpu_entry.S */
-ftrace_func_t vmm_profiler_trace_function = vmm_profiler_trace_stub;
-
-static __notrace void vmm_profiler_trace_count(unsigned long ip,
-					       unsigned long parent_ip)
+static __notrace void vmm_profile_none(void *ip, void *parent_ip)
 {
-	if (_trace_on && _counter) {
-		_counter[kallsyms_get_symbol_pos(ip, NULL, NULL)]++;
+	// Default NULL function
+}
+
+static vmm_profile_callback_t _vmm_profile_enter = vmm_profile_none;
+static vmm_profile_callback_t _vmm_profile_exit = vmm_profile_none;
+
+void __notrace __cyg_profile_func_enter(void *ip, void *parent_ip)
+{
+	(*_vmm_profile_enter) (ip, parent_ip);
+}
+
+void __notrace __cyg_profile_func_exit(void *ip, void *parent_ip)
+{
+	(*_vmm_profile_exit) (ip, parent_ip);
+}
+
+static void __notrace vmm_profile_enter(void *ip, void *parent_ip)
+{
+	int index;
+	irq_flags_t flags;
+
+	if (pctrl.is_in_trace)
+		return;
+
+	pctrl.is_in_trace = 1;
+
+	index = kallsyms_get_symbol_pos((long unsigned int)ip, NULL, NULL);
+
+	if (pctrl.stat[index].is_tracing == 1) {
+		goto out;
 	}
+
+	if (pctrl.stat[index].time_in != 0) {
+		goto out;
+	}
+
+	flags = vmm_spin_lock_irqsave(&pctrl.lock);
+
+	pctrl.stat[index].counter++;
+	pctrl.stat[index].is_tracing = 1;
+	pctrl.stat[index].time_in = vmm_timer_timestamp_for_profile();
+
+	vmm_spin_unlock_irqrestore(&pctrl.lock, flags);
+
+ out:
+	pctrl.is_in_trace = 0;
+}
+
+static void __notrace vmm_profile_exit(void *ip, void *parent_ip)
+{
+	int index;
+	u64 time;
+	irq_flags_t flags;
+
+	if (pctrl.is_in_trace) {
+		return;
+	}
+
+	pctrl.is_in_trace = 1;
+
+	index = kallsyms_get_symbol_pos((long unsigned int)ip, NULL, NULL);
+
+	// If this function was no traced yet ...
+	// we just return as we can't get the start timer
+	if (pctrl.stat[index].is_tracing != 1) {
+		goto out;
+	}
+
+	if (pctrl.stat[index].time_in == 0) {
+		goto out;
+	}
+
+	flags = vmm_spin_lock_irqsave(&pctrl.lock);
+
+	time = vmm_timer_timestamp_for_profile();
+
+	if (pctrl.stat[index].time_in < time) {
+		pctrl.stat[index].time += time - pctrl.stat[index].time_in;
+	} else {
+		//vmm_printf("negative time\n");
+	}
+	vmm_spin_unlock_irqrestore(&pctrl.lock, flags);
+
+ out:
+	pctrl.stat[index].time_in = 0;
+
+	// OK we don't trace this function anymore
+	pctrl.stat[index].is_tracing = 0;
+
+	pctrl.is_in_trace = 0;
 }
 
 bool vmm_profiler_isactive(void)
 {
-	return _trace_on;
+	return pctrl.is_active;
 }
 
 int vmm_profiler_start(void)
 {
 	if (!vmm_profiler_isactive()) {
-		vmm_memset(_counter, 0,
-			   sizeof(unsigned int) * kallsyms_num_syms);
+		irq_flags_t flags = vmm_cpu_irq_save();
 
-		vmm_profiler_trace_function = vmm_profiler_trace_count;
-		_trace_on = 1;
+		vmm_memset(pctrl.stat, 0,
+			   sizeof(struct vmm_profiler_stat) *
+			   kallsyms_num_syms);
+		_vmm_profile_enter = vmm_profile_enter;
+		_vmm_profile_exit = vmm_profile_exit;
+		pctrl.is_active = 1;
+
+		vmm_cpu_irq_restore(flags);
 	} else {
 		return VMM_EFAIL;
 	}
@@ -72,8 +172,13 @@ int vmm_profiler_start(void)
 int vmm_profiler_stop(void)
 {
 	if (vmm_profiler_isactive()) {
-		_trace_on = 0;
-		vmm_profiler_trace_function = vmm_profiler_trace_stub;
+		irq_flags_t flags = vmm_cpu_irq_save();
+
+		_vmm_profile_enter = vmm_profile_none;
+		_vmm_profile_exit = vmm_profile_none;
+		pctrl.is_active = 0;
+
+		vmm_cpu_irq_restore(flags);
 	} else {
 		return VMM_EFAIL;
 	}
@@ -81,23 +186,29 @@ int vmm_profiler_stop(void)
 	return VMM_OK;
 }
 
-unsigned int vmm_profiler_get_function_count(unsigned long addr)
+u64 vmm_profiler_get_function_count(unsigned long addr)
 {
-	return _counter[kallsyms_get_symbol_pos(addr, NULL, NULL)];
+	return pctrl.stat[kallsyms_get_symbol_pos(addr, NULL, NULL)].counter;
 }
 
-char *vmm_profiler_get_function_name(unsigned long addr)
+u64 vmm_profiler_get_function_total_time(unsigned long addr)
 {
-	return NULL;
+	return pctrl.stat[kallsyms_get_symbol_pos(addr, NULL, NULL)].time;
 }
 
-int vmm_profiler_init(void)
+int __init vmm_profiler_init(void)
 {
-	_counter = vmm_malloc(sizeof(unsigned int) * kallsyms_num_syms);
+	pctrl.stat =
+	    vmm_malloc(sizeof(struct vmm_profiler_stat) * kallsyms_num_syms);
 
-	if (_counter == NULL) {
+	if (pctrl.stat == NULL) {
 		return VMM_EFAIL;
 	}
+
+	vmm_memset(pctrl.stat, 0, sizeof(struct vmm_profiler_stat) *
+		   kallsyms_num_syms);
+
+	INIT_SPIN_LOCK(&pctrl.lock);
 
 	return VMM_OK;
 }

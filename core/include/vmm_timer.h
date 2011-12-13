@@ -99,6 +99,11 @@ u32 vmm_timer_event_count(void);
 /** Current global timestamp (nanoseconds elapsed) */
 u64 vmm_timer_timestamp(void);
 
+#ifdef CONFIG_PROFILE
+/** Current global timestamp (nanoseconds elapsed) */
+u64 vmm_timer_timestamp_for_profile(void);
+#endif
+
 /** Start all timer events */
 void vmm_timer_start(void);
 

@@ -51,12 +51,26 @@ u64 vmm_timer_timestamp(void)
 	cycles_now = vmm_cpu_clocksource_cycles();
 	cycles_delta = (cycles_now - tctrl.cycles_last) & tctrl.cycles_mask;
 	tctrl.cycles_last = cycles_now;
-	
+
 	ns_offset = (cycles_delta * tctrl.cycles_mult) >> tctrl.cycles_shift;
 	tctrl.timestamp += ns_offset;
 
 	return tctrl.timestamp;
 }
+
+#ifdef CONFIG_PROFILE
+u64 __notrace vmm_timer_timestamp_for_profile(void)
+{
+	u64 cycles_now, cycles_delta;
+	u64 ns_offset;
+
+	cycles_now = vmm_cpu_clocksource_cycles();
+	cycles_delta = (cycles_now - tctrl.cycles_last) & tctrl.cycles_mask;
+	ns_offset = (cycles_delta * tctrl.cycles_mult) >> tctrl.cycles_shift;
+
+	return tctrl.timestamp + ns_offset;
+}
+#endif
 
 static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 {
