@@ -27,6 +27,20 @@
 #include <vmm_scheduler.h>
 #include <vmm_semaphore.h>
 
+bool vmm_semaphore_avail(vmm_semaphore_t * sem)
+{
+	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
+
+	return vmm_cpu_atomic_read(&(sem)->value) ? TRUE : FALSE;
+}
+
+u32 vmm_semaphore_limit(vmm_semaphore_t * sem)
+{
+	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
+
+	return sem->limit;
+}
+
 int vmm_semaphore_up(vmm_semaphore_t * sem)
 {
 	int rc;

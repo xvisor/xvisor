@@ -23,8 +23,16 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_stdio.h>
 #include <vmm_scheduler.h>
 #include <vmm_waitqueue.h>
+
+u32 vmm_waitqueue_count(vmm_waitqueue_t * wq) 
+{
+	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
+
+	return wq->vcpu_count;
+}
 
 int vmm_waitqueue_sleep(vmm_waitqueue_t * wq) 
 {
