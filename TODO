@@ -4,8 +4,6 @@
  * Add support for routing of host irq to guest irq based on device tree 
    configuration. This will allow us to implement pass-through hardware 
    access for guest using device tree configuration.
- * Add support for semaphore, and mutex locking mechanisms along 
-   with a test suite for each.
  * Add support for bottom halves like workqueues for device drivers
 
 
