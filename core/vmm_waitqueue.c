@@ -23,7 +23,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_stdio.h>
 #include <vmm_scheduler.h>
 #include <vmm_waitqueue.h>
 
@@ -34,9 +33,7 @@ int vmm_waitqueue_sleep(vmm_waitqueue_t * wq)
 	vmm_vcpu_t * vcpu;
 
 	/* Sanity checks */
-	if (!wq) {
-		return VMM_EFAIL;
-	}
+	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
 	BUG_ON(!vmm_scheduler_orphan_context(), 
 		"%s: Sleep allowed in Orphan VCPU (or Thread) context only\n",
 		 __func__);
@@ -138,9 +135,7 @@ int vmm_waitqueue_wakefirst(vmm_waitqueue_t * wq)
 	irq_flags_t flags;
 
 	/* Sanity checks */
-	if (!wq) {
-		return VMM_EFAIL;
-	}
+	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
 
 	/* Lock waitqueue */
 	flags = vmm_spin_lock_irqsave(&wq->lock);
@@ -181,9 +176,7 @@ int vmm_waitqueue_wakeall(vmm_waitqueue_t * wq)
 	irq_flags_t flags;
 
 	/* Sanity checks */
-	if (!wq) {
-		return VMM_EFAIL;
-	}
+	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
 
 	/* Lock waitqueue */
 	flags = vmm_spin_lock_irqsave(&wq->lock);

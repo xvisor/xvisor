@@ -26,6 +26,7 @@
 #define __VMM_SEMAPHORE_H__
 
 #include <vmm_cpu.h>
+#include <vmm_stdio.h>
 #include <vmm_waitqueue.h>
 
 struct vmm_semaphore {
@@ -45,16 +46,17 @@ typedef struct vmm_semaphore vmm_semaphore_t;
 /** Check if semaphore is available */
 static inline bool vmm_semaphore_avail(vmm_semaphore_t * sem)
 {
-	if (sem) {
-		return vmm_cpu_atomic_read(&(sem)->value) ? TRUE : FALSE;
-	}
-	return FALSE;
+	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
+
+	return vmm_cpu_atomic_read(&(sem)->value) ? TRUE : FALSE;
 }
 
 /** Get maximum value (or limit) of semaphore */
 static inline u32 vmm_semaphore_limit(vmm_semaphore_t * sem)
 {
-	return (sem) ? sem->limit : 0;
+	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
+
+	return sem->limit;
 }
 
 /** Release (or increment) semaphore */

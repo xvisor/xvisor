@@ -28,15 +28,13 @@
 /* FIXME: Need memory barrier for this. */
 u32  __lock vmm_cpu_atomic_read(atomic_t * atom)
 {
-	return (atom) ? atom->counter : 0;
+	return atom->counter;
 }
 
 /* FIXME: Need memory barrier for this. */
 void  __lock vmm_cpu_atomic_write(atomic_t * atom, u32 value)
 {
-	if (atom) {
-		atom->counter = value;
-	}
+	atom->counter = value;
 }
 
 void __lock __cpu_atomic_inc (atomic_t *atom)

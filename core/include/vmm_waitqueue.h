@@ -27,6 +27,7 @@
 
 #include <vmm_list.h>
 #include <vmm_spinlocks.h>
+#include <vmm_stdio.h>
 #include <vmm_manager.h>
 
 struct vmm_waitqueue {
@@ -46,11 +47,9 @@ typedef struct vmm_waitqueue vmm_waitqueue_t;
 /* Waiting VCPU count */
 static inline u32 vmm_waitqueue_count(vmm_waitqueue_t * wq) 
 {
-	if (wq) {
-		return wq->vcpu_count;
-	}
+	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
 
-	return 0;
+	return wq->vcpu_count;
 }
 
 /* Put current VCPU to sleep on given waitqueue */

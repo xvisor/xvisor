@@ -33,9 +33,7 @@ int vmm_semaphore_up(vmm_semaphore_t * sem)
 	u32 value;
 
 	/* Sanity Check */
-	if (!sem) {
-		return VMM_EFAIL;
-	}
+	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
 
 	/* Try to increment the semaphore */
 	rc = VMM_EFAIL;
@@ -59,9 +57,7 @@ int vmm_semaphore_down(vmm_semaphore_t * sem)
 	u32 value;
 
 	/* Sanity Check */
-	if (!sem) {
-		return VMM_EFAIL;
-	}
+	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
 	BUG_ON(!vmm_scheduler_orphan_context(), 
 		"%s: Down allowed in Orphan VCPU (or Thread) context only\n",
 		 __func__);
