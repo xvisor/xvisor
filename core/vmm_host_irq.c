@@ -163,7 +163,10 @@ int vmm_host_irq_unregister(u32 hirq_no,
 		list_del(&hirq->head);
 		vmm_free(hirq);
 		vmm_spin_unlock_irqrestore(&hirqctrl.lock, flags);
-		return vmm_host_irq_enable(hirq_no);
+		if (list_empty(irq)) {
+			return vmm_host_irq_disable(hirq_no);
+		}
+		return VMM_OK;
 	}
 	return VMM_EFAIL;
 }
