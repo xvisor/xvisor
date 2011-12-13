@@ -49,8 +49,4 @@ typedef struct {
 #define VMM_CPU_SPIN_LOCK_INIT(_lptr)		\
 	(_lptr)->lock = __ARCH_SPIN_UNLOCKED
 
-/* FIXME: Need memory barrier for this. */
-#define VMM_CPU_ATOMIC_READ(atom)	((atom)->counter)
-#define VMM_CPU_ATOMIC_WRITE(atom, val) ((atom)->counter = (val))
-
 #endif /* __VMM_CPU_TYPES_H__ */

@@ -75,6 +75,8 @@ void vmm_cpu_spin_unlock(spinlock_t *lock);
 #endif
 
 /** Atomic Operations and spinlock */
+u32 vmm_cpu_atomic_read(atomic_t * atom);
+void vmm_cpu_atomic_write(atomic_t * atom, u32 value);
 void vmm_cpu_atomic_inc(atomic_t *atom);
 void vmm_cpu_atomic_dec(atomic_t *atom);
 int vmm_cpu_atomic_testnset(atomic_t * atom, u32 test, u32 val);
