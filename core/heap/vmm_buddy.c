@@ -439,14 +439,12 @@ void buddy_free(void *ptr)
 {
 	/* FIXME: Handle the freeing of contiguously allocated nodes. */
 	struct vmm_alloced_area *freed_node = search_for_allocated_block(ptr);
-	if (!freed_node) {
-		VMM_DPRINTK("Bugger! No allocations found for address %X\n",
-			    (unsigned int)ptr);
-		return;
-	}
+
+	BUG_ON(!freed_node, "Panic: No allocation found for ptr to release!\n");
 
 	VMM_DPRINTK("Freeing 0x%X of block size: %d bin: %d\n",
 		    (unsigned int)ptr, freed_node->blk_sz, freed_node->bin_num);
+
 	return_to_pool(freed_node);
 	list_del(&freed_node->head);
 	vmm_memset(freed_node, 0, sizeof(struct vmm_alloced_area));
