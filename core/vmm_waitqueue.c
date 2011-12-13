@@ -37,10 +37,9 @@ int vmm_waitqueue_sleep(vmm_waitqueue_t * wq)
 	if (!wq) {
 		return VMM_EFAIL;
 	}
-	if (!vmm_scheduler_orphan_context()) {
-		BUG_ON("%s: Sleep allowed in Orphan VCPU (or Thread)"
-		       " context only\n", __func__);
-	}
+	BUG_ON(!vmm_scheduler_orphan_context(), 
+		"%s: Sleep allowed in Orphan VCPU (or Thread) context only\n",
+		 __func__);
 
 	/* Get current VCPU */
 	vcpu = vmm_scheduler_current_vcpu();
