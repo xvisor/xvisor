@@ -106,7 +106,7 @@ static void printc(char **str, vmm_chardev_t *cdev, char ch)
 	if (str) {
 		vmm_printchar(str, NULL, ch, TRUE);
 	} else {
-		vmm_putc(ch);
+		vmm_cputc(cdev, ch);
 	}
 }
 
