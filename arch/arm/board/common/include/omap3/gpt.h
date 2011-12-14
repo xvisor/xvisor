@@ -188,6 +188,7 @@ void omap3_gpt_disable(void);
 void omap3_gpt_stop(void);
 void omap3_gpt_start(void);
 void omap3_gpt_ack_irq(void);
+void omap3_gpt_poll_overflow(void);
 void omap3_gpt_load_start(u32 usecs);
 void omap3_gpt_oneshot(void);
 int omap3_gpt_init(physical_addr_t gpt_pa, physical_addr_t cm_pa, 

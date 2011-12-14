@@ -82,6 +82,12 @@ void omap3_gpt_ack_irq(void)
 	omap3_gpt_write(OMAP3_GPT_TISR, OMAP3_GPT_TISR_OVF_IT_FLAG_M);
 }
 
+void omap3_gpt_poll_overflow(void)
+{
+	while(!(omap3_gpt_read(OMAP3_GPT_TISR) & 
+				OMAP3_GPT_TISR_OVF_IT_FLAG_M));
+}
+
 void omap3_gpt_load_start(u32 usecs)
 {
 	/* Number of clocks */

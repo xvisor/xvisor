@@ -94,17 +94,17 @@ int vmm_cpu_clockevent_stop(void)
 	return VMM_OK;
 }
 
-/* FIXME: Please fix this */
 int vmm_cpu_clockevent_expire(void)
 {
-	int i, rc = VMM_OK;
+	int rc = VMM_OK;
 
 	if ((rc = vmm_cpu_clockevent_start(0))) {
 		return rc;
 	}
 
-	/* FIXME: We should poll for irq pending here. */
-	for (i = 0; i < 1000; i++);
+	/* No need to worry about irq-handler as irqs are disabled 
+	 * before calling this */
+	omap3_gpt_poll_overflow();
 
 	return VMM_OK;
 }
