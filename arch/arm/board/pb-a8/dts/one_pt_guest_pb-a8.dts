@@ -195,7 +195,8 @@
 					compatible = "realview,gic";
 					parent_irq = <6>;
 					h2g_irq_map = </* Host => Guest */
-							   45       44 /* UART0 */
+							  /* uart0 */
+							   45      44 
 						      >;
 				};
 
