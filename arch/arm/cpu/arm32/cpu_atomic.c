@@ -19,6 +19,7 @@
  * @file cpu_atomic.c
  * @version 0.01
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
+ * @author Jean-Christophe Dubois <jcd@tribudubois.net>
  * @brief ARM specific synchronization mechanisms.
  */
 
@@ -26,73 +27,140 @@
 #include <vmm_types.h>
 
 /* FIXME: Need memory barrier for this. */
-u32  __lock vmm_cpu_atomic_read(atomic_t * atom)
+long __lock vmm_cpu_atomic_read(atomic_t * atom)
 {
 	return atom->counter;
 }
 
 /* FIXME: Need memory barrier for this. */
-void  __lock vmm_cpu_atomic_write(atomic_t * atom, u32 value)
+void __lock vmm_cpu_atomic_write(atomic_t * atom, long value)
 {
 	atom->counter = value;
 }
 
-void __lock __cpu_atomic_inc(atomic_t * atom)
+static void __lock __cpu_atomic_add(atomic_t * atom, long value)
 {
 
 	unsigned int tmp;
-	unsigned int result;
+	long result;
 
-	__asm__ __volatile__("@ atomic_add\n" "1:     ldrex   %0, [%3]\n"	/* Load atom->counter([%3]) to tmp (%0) */
-			     "       add     %0, %0, #1\n"	/* Add 1 to tmp */
-			     "       strex   %1, %0, [%2]\n"	/* Save tmp (%0) to atom->counter
-								 * Result of this operation will be in result i.e. 
-								 * if store operation success result will be 0 or else 1
-								 */
-			     "       teq     %1, #0\n"	/* Compare result with 0 */
-			     "       bne     1b"	/* If fails go back to 1 and retry else return */
-			     :"=&r"(tmp), "=&r"(result), "=&r"(atom->counter)
-			     :"r"(&atom->counter)
-			     :"cc");
+	__asm__ __volatile__("@ atomic_add\n"
+"1:     ldrex   %0, [%3]\n"	/* Load atom->counter(%3) to result (%0) */
+"	add     %0, %0, %4\n"	/* Add value (%4) to result */
+"	strex   %1, %0, [%3]\n"	/* Save result (%0) to atom->counter (%3)
+				 * Result of this operation will be in tmp (%1) 
+				 * if store operation success tmp is 0 or else 1
+				 */
+"	teq     %1, #0\n"	/* Compare tmp (%1) result with 0 */
+"	bne     1b"	/* If fails go back to 1 and retry else return */
+	:"=&r"(result), "=&r"(tmp), "=&r"(atom->counter)
+	:"r"(&atom->counter), "Ir"(value)
+	:"cc");
 }
 
-void __lock __cpu_atomic_dec(atomic_t * atom)
+static void __lock __cpu_atomic_sub(atomic_t * atom, long value)
 {
 	unsigned int tmp;
-	unsigned int result;
+	long result;
 
-	__asm__ __volatile__("@ atomic_add\n" "1:     ldrex   %0, [%3]\n"	/* Load atom->counter([%3]) to tmp (%0) */
-			     "       sub     %0, %0, #1\n"	/* Sub to tmp   */
-			     "       strex   %1, %0, [%2]\n"	/* Save tmp (%0) to atom->counter
-								 * Result of this operation will be in result i.e. 
-								 * if store operation success result will be 0 or else 1
-								 */
-			     "       teq     %1, #0\n"	/* Compare result with 0 */
-			     "       bne     1b"	/* If fails go back to 1 and retry else return */
-			     :"=&r"(tmp), "=&r"(result), "=&r"(atom->counter)
-			     :"r"(&atom->counter)
-			     :"cc");
-
+	__asm__ __volatile__("@ atomic_sub\n"
+"1:     ldrex   %0, [%3]\n"	/* Load atom->counter(%3) to result (%0) */
+"	sub     %0, %0, %4\n"	/* Substract value (%4) to result (%0) */
+"	strex   %1, %0, [%3]\n"	/* Save result (%0) to atom->counter (%3)
+				 * Result of this operation will be in tmp (%1) 
+				 * if store operation success tmp (%1) is 0
+				 */
+"	teq     %1, #0\n"	/* Compare tmp (%1) result with 0 */
+"	bne     1b"	/* If fails go back to 1 and retry else return */
+	:"=&r"(result), "=&r"(tmp), "=&r"(atom->counter)
+	:"r"(&atom->counter), "Ir"(value)
+	:"cc");
 }
 
-/* FIXME: Implement This. */
-int __lock __cpu_atomic_testnset(atomic_t * atom, u32 test, u32 val)
+static bool __lock __cpu_atomic_testnset(atomic_t * atom, long test, long value)
 {
-	return 0;
+	unsigned int tmp;
+	long previous;
+
+	__asm__ __volatile__("@ atomic_testnset\n"
+"1:	ldrex  %1, [%3]\n"	/* load atom->counter(%3) to previous (%1) */
+"	mov	%0, #0\n"	/* load 0 to tmp (%0) */
+"	teq	%1, %4\n"	/* compare previous (%1) and test (%4) */
+"	strexeq %0, %5, [%3]\n"	/* if equal, store value (%5) to atom->counter
+				 * result of the operation is in tmp (%0)
+				 */
+"	teq     %0, #0\n"	/* Compare tmp (%0) result with 0 */
+"	bne     1b"		/* If fails go back to 1 and retry */
+	:"=&r"(tmp), "=&r"(previous), "=&r"(atom->counter)
+	:"r"(&atom->counter), "Ir"(test), "r"(value)
+	:"cc");
+
+	return (previous == test);
 }
 
-void __lock vmm_cpu_atomic_inc(atomic_t * atom)
+static long __lock __cpu_atomic_add_return(atomic_t * atom, long value)
 {
-	__cpu_atomic_inc(atom);
+	unsigned int tmp;
+	long result;
+
+	__asm__ __volatile__("@ atomic_add_return\n"
+"1:     ldrex   %0, [%3]\n"	/* Load atom->counter(%3) to result (%0) */
+"	add     %0, %0, %4\n"	/* Add value (%4) to result */
+"	strex   %1, %0, [%3]\n"	/* Save result (%0) to atom->counter (%3)
+				 * Result of this operation will be in tmp (%1) 
+				 * if store operation success tmp is 0 or else 1
+				 */
+"	teq     %1, #0\n"	/* Compare tmp (%1) result with 0 */
+"	bne     1b"	/* If fails go back to 1 and retry else return */
+	:"=&r"(result), "=&r"(tmp), "=&r"(atom->counter)
+	:"r"(&atom->counter), "Ir"(value)
+	:"cc");
+
+	return result;
 }
 
-void __lock vmm_cpu_atomic_dec(atomic_t * atom)
+static long __lock __cpu_atomic_sub_return(atomic_t * atom, long value)
 {
-	__cpu_atomic_dec(atom);
+	unsigned int tmp;
+	long result;
+
+	__asm__ __volatile__("@ atomic_sub_return\n"
+"1:     ldrex   %0, [%3]\n"	/* Load atom->counter(%3) to result (%0) */
+"	sub     %0, %0, %4\n"	/* Substract value (%4) to result (%0) */
+"	strex   %1, %0, [%3]\n"	/* Save result (%0) to atom->counter (%3)
+				 * Result of this operation will be in tmp (%1) 
+				 * if store operation success tmp is 0 or else 1
+				 */
+"	teq     %1, #0\n"	/* Compare tmp (%1) result with 0 */
+"	bne     1b"	/* If fails go back to 1 and retry else return */
+	:"=&r"(result), "=&r"(tmp), "=&r"(atom->counter)
+	:"r"(&atom->counter), "Ir"(value)
+	:"cc");
+
+	return result;
 }
 
-int __lock vmm_cpu_atomic_testnset(atomic_t * atom, u32 test, u32 val)
+void __lock vmm_cpu_atomic_add(atomic_t * atom, long value)
 {
-	return __cpu_atomic_testnset(atom, test, val);
+	__cpu_atomic_add(atom, value);
 }
 
+void __lock vmm_cpu_atomic_sub(atomic_t * atom, long value)
+{
+	__cpu_atomic_sub(atom, value);
+}
+
+long __lock vmm_cpu_atomic_add_return(atomic_t * atom, long value)
+{
+	return __cpu_atomic_add_return(atom, value);
+}
+
+long __lock vmm_cpu_atomic_sub_return(atomic_t * atom, long value)
+{
+	return __cpu_atomic_sub_return(atom, value);
+}
+
+bool __lock vmm_cpu_atomic_testnset(atomic_t * atom, long test, long value)
+{
+	return __cpu_atomic_testnset(atom, test, value);
+}
