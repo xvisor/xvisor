@@ -101,4 +101,5 @@ SECTIONS
 		. = ALIGN(4);
 		PROVIDE(_init_text_end = .);
 	}
+	PROVIDE(_code_end = .);
 }
