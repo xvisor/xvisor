@@ -150,11 +150,11 @@ static u32 sp804_timer_currvalue(struct sp804_timer *t)
 			 * difference for 1MHz clock. To achive this we simply 
 			 * have to divide timestamp difference by 1000, but in 
 			 * integer arithmetic any integer divided by 1000 
-			 * equals (a >> 10).
+			 * can be approximated as follows.
 			 * (a / 1000)
 			 * = (a / 1024) * (1024 / 1000)
-			 * = (a / 1024) * 1
-			 * = (a / 1024) = (a >> 10)
+			 * = (a / 1024) * (1.024)
+			 * ~ (a / 1024) = (a >> 10)
 			 */
 			cval = (vmm_timer_timestamp() - 
 					t->value_tstamp) >> 10;
@@ -167,13 +167,15 @@ static u32 sp804_timer_currvalue(struct sp804_timer *t)
 					t->value_tstamp), cval);
 		} else {
 			/* Note: For integer arithmetic (freq / 1000000000)
-			 * is equal to (freq >> 30). This is because
+			 * can be approximated as follows:
 			 * (freq / 1000000000) 
 			 * = (freq / 1073741824) * (1073741824 / 1000000000)
-			 * = (freq / 1073741824) * 1
-			 * = (freq / 1073741824) = (freq >> 30)
+			 * = (freq >> 30) * (1 + (73741824 / 1000000000))
+			 * = (freq >> 30) + (freq >> 30) * (0.0737418)
+			 * ~ (freq >> 30) + (freq >> 30) * (151 / 2048)
+			 * ~ (freq >> 30) + (((freq >> 30) * 151) >> 11)
 			 */
-			cval = freq >> 30;
+			cval = (freq >> 30) + (((freq >> 30) * 151) >> 11);
 			cval = (vmm_timer_timestamp() - 
 					t->value_tstamp) * cval;
 		}

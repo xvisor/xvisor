@@ -154,12 +154,13 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		/* Note: What we want is the below value 
 		 * regval = vmm_udiv64((vmm_timer_timestamp() - s->ref_24mhz) * 24, 1000);
 		 * In integer arithmetic division by constant can be simplified
-		 * (a / 1000)
-		 * = (a / 1024) * (1024 / 1000)
-		 * = (a / 1024) * 1
-		 * = (a / 1024) = (a >> 10)
+		 * (a * 24) / 1000
+		 * = a * (24 / 1000)
+		 * = a * (3 / 125)
+		 * ~ a * (3 / 128) [because (3 / 125) ~ (3 / 128)]
+		 * ~ (a * 3) >> 7
 		 */
-		regval = ((vmm_timer_timestamp() - s->ref_24mhz) * 24) >> 10;
+		regval = ((vmm_timer_timestamp() - s->ref_24mhz) * 3) >> 7;
 		break;
 	case 0x60: /* MISC */
 		regval = 0;
