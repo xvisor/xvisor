@@ -40,106 +40,103 @@
 #include <omap3/prcm.h>
 #include <omap3/s32k-timer.h>
 
-static virtual_addr_t omap35x_gpt1_base = 0;	/* used for clockevent */
-static u32 omap3_osc_clk_hz = 0;
-static u32 omap3_gpt1_clk_hz = 0;
+static omap3_gpt_cfg_t *omap3_gpt_config = NULL;
+static int omap3_sys_clk_div = 0;
 
-static void omap3_gpt_write(u32 reg, u32 val)
+static void omap3_gpt_write(u32 gpt_num, u32 reg, u32 val)
 {
-	vmm_writel(val, (void *)(omap35x_gpt1_base + reg));
+	vmm_writel(val, (void *)(omap3_gpt_config[gpt_num].base_va + reg));
 }
 
-static u32 omap3_gpt_read(u32 reg)
+static u32 omap3_gpt_read(u32 gpt_num, u32 reg)
 {
-	return vmm_readl((void *)(omap35x_gpt1_base + reg));
+	return vmm_readl((void *)(omap3_gpt_config[gpt_num].base_va + reg));
 }
 
-void omap3_gpt_disable(void)
+void omap3_gpt_disable(u32 gpt_num)
 {
-	omap3_gpt_write(OMAP3_GPT_TCLR, 0);
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TCLR, 0);
 }
 
-void omap3_gpt_stop(void)
+u32 omap3_gpt_get_counter(u32 gpt_num)
+{
+	return omap3_gpt_read(gpt_num, OMAP3_GPT_TCRR);
+}
+
+void omap3_gpt_stop(u32 gpt_num)
 {
 	u32 regval;
 	/* Stop Timer (TCLR[ST] = 0) */
-	regval = omap3_gpt_read(OMAP3_GPT_TCLR);
+	regval = omap3_gpt_read(gpt_num, OMAP3_GPT_TCLR);
 	regval &= ~OMAP3_GPT_TCLR_ST_M;
-	omap3_gpt_write(OMAP3_GPT_TCLR, regval);
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TCLR, regval);
 }
 
-void omap3_gpt_start(void)
+void omap3_gpt_start(u32 gpt_num)
 {
 	u32 regval;
 	/* Start Timer (TCLR[ST] = 1) */
-	regval = omap3_gpt_read(OMAP3_GPT_TCLR);
+	regval = omap3_gpt_read(gpt_num, OMAP3_GPT_TCLR);
 	regval |= OMAP3_GPT_TCLR_ST_M;
-	omap3_gpt_write(OMAP3_GPT_TCLR, regval);
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TCLR, regval);
 }
 
-void omap3_gpt_ack_irq(void)
+void omap3_gpt_ack_irq(u32 gpt_num)
 {
-	omap3_gpt_write(OMAP3_GPT_TISR, OMAP3_GPT_TISR_OVF_IT_FLAG_M);
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TISR, OMAP3_GPT_TISR_OVF_IT_FLAG_M);
 }
 
-void omap3_gpt_poll_overflow(void)
+void omap3_gpt_poll_overflow(u32 gpt_num)
 {
-	while(!(omap3_gpt_read(OMAP3_GPT_TISR) & 
+	while(!(omap3_gpt_read(gpt_num, OMAP3_GPT_TISR) & 
 				OMAP3_GPT_TISR_OVF_IT_FLAG_M));
 }
 
-void omap3_gpt_load_start(u32 usecs)
+void omap3_gpt_load_start(u32 gpt_num, u32 usecs)
 {
+	u32 freq = (omap3_gpt_config[gpt_num].clk_hz);
 	/* Number of clocks */
-	u32 clocks = (usecs * omap3_gpt1_clk_hz) / 1000000;
+	u32 clocks = (usecs * freq) / 1000000;
 	/* Reset the counter */
-	omap3_gpt_write(OMAP3_GPT_TCRR, 0xFFFFFFFF - clocks);
-	omap3_gpt_start();
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TCRR, 0xFFFFFFFF - clocks);
+	omap3_gpt_start(gpt_num);
 }
 
-void omap3_gpt_oneshot(void)
+void omap3_gpt_oneshot(u32 gpt_num)
 {
 	u32 regval;
 	/* Disable AR (auto-reload) */
-	regval = omap3_gpt_read(OMAP3_GPT_TCLR);
+	regval = omap3_gpt_read(gpt_num, OMAP3_GPT_TCLR);
 	regval &= ~OMAP3_GPT_TCLR_AR_M;
-	omap3_gpt_write(OMAP3_GPT_TCLR, regval);
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TCLR, regval);
 	/* Enable Overflow Interrupt TIER[OVF_IT_ENA] */
-	omap3_gpt_write(OMAP3_GPT_TIER, OMAP3_GPT_TIER_OVF_IT_ENA_M);
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TIER, OMAP3_GPT_TIER_OVF_IT_ENA_M);
 }
 
-/******************************************************************************
- * omap3_osc_clk_speed() - determine reference oscillator speed
- *                       based on known 32kHz clock and gptimer.
- *****************************************************************************/
-void omap3_osc_clk_speed(virtual_addr_t wkup_cm_base, virtual_addr_t glbl_prm_base)
+void omap3_gpt_continuous(u32 gpt_num)
 {
-	u32 start, cstart, cend, cdiff, cdiv, val;
+	u32 regval;
+	/* Enable AR (auto-reload) */
+	regval = omap3_gpt_read(gpt_num, OMAP3_GPT_TCLR);
+	regval |= OMAP3_GPT_TCLR_AR_M;
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TCLR, regval);
+	/* Disable interrupts TIER[OVF_IT_ENA] */
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TIER, 0);
+	/* Auto reload value set to 0 */
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TLDR, 0);
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TCRR, 0);
+	omap3_gpt_start(gpt_num);
+}
 
-	/* Determine system clock divider */
-	val = vmm_readl((void *)(glbl_prm_base + OMAP3_PRM_CLKSRC_CTRL));
-	cdiv = (val & OMAP3_PRM_CLKSRC_CTRL_SYSCLKDIV_M) 
-		>> OMAP3_PRM_CLKSRC_CTRL_SYSCLKDIV_S;
-
-	/* select sys_clk for GPT1 */
-	val = vmm_readl((void *)(wkup_cm_base +  OMAP3_CM_CLKSEL_WKUP)) 
-		| OMAP3_CM_CLKSEL_WKUP_CLKSEL_GPT1_M;
-	vmm_writel(val, (void *)(wkup_cm_base + OMAP3_CM_CLKSEL_WKUP));
-
-	/* Enable I and F Clocks for GPT1 */
-	val = vmm_readl((void *)(wkup_cm_base + OMAP3_CM_ICLKEN_WKUP)) 
-		| OMAP3_CM_ICLKEN_WKUP_EN_GPT1_M; 
-	vmm_writel(val, (void *)(wkup_cm_base + OMAP3_CM_ICLKEN_WKUP));
-
-	val = vmm_readl((void *)(wkup_cm_base + OMAP3_CM_FCLKEN_WKUP)) 
-		| OMAP3_CM_FCLKEN_WKUP_EN_GPT1_M;
-	vmm_writel(val, (void *)(wkup_cm_base + OMAP3_CM_FCLKEN_WKUP));
+u32 omap3_gpt_get_clk_speed(u32 gpt_num)
+{
+	u32 start, cstart, cend, cdiff, val, omap3_osc_clk_hz = 0;
 
 	/* Start counting at 0 */
-	omap3_gpt_write(OMAP3_GPT_TLDR, 0);
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TLDR, 0);
 
 	/* Enable GPT */
-	omap3_gpt_write(OMAP3_GPT_TCLR, OMAP3_GPT_TCLR_ST_M);
+	omap3_gpt_write(gpt_num, OMAP3_GPT_TCLR, OMAP3_GPT_TCLR_ST_M);
 
 	/* enable 32kHz source, determine sys_clk via gauging */
 	omap3_s32k_init();
@@ -151,15 +148,15 @@ void omap3_osc_clk_speed(virtual_addr_t wkup_cm_base, virtual_addr_t glbl_prm_ba
 	while (omap3_s32k_get_counter() < start);
 
 	/* get start sys_clk count */
-	cstart = omap3_gpt_read(OMAP3_GPT_TCRR);
+	cstart = omap3_gpt_read(gpt_num, OMAP3_GPT_TCRR);
 
 	/* wait for 40 cycles */
 	while (omap3_s32k_get_counter() < (start + 20)) ;
-	cend = omap3_gpt_read(OMAP3_GPT_TCRR);	/* get end sys_clk count */
+	cend = omap3_gpt_read(gpt_num, OMAP3_GPT_TCRR);	/* get end sys_clk count */
 	cdiff = cend - cstart;			/* get elapsed ticks */
-	cdiff *= cdiv;
+	cdiff *= omap3_sys_clk_div;
 
-	omap3_gpt_stop();
+	omap3_gpt_stop(gpt_num);
 
 	/* based on number of ticks assign speed */
 	if (cdiff > 19000)
@@ -175,36 +172,88 @@ void omap3_osc_clk_speed(virtual_addr_t wkup_cm_base, virtual_addr_t glbl_prm_ba
 	else
 		omap3_osc_clk_hz = OMAP3_SYSCLK_S12M;
 
-	omap3_gpt1_clk_hz = omap3_osc_clk_hz >> (cdiv-1);
-#if defined(CONFIG_VERBOSE_MODE)
-	vmm_printf("Clockevent-generator [GPT1] running @ %d Hz\n",
-			omap3_gpt1_clk_hz);
-#endif
+	val = omap3_osc_clk_hz >> (omap3_sys_clk_div -1);
+	return(val);
 }
 
-int omap3_gpt_init(physical_addr_t gpt_pa, physical_addr_t cm_pa, 
-		physical_addr_t prm_pa, u32 gpt_irq_no, 
+void omap3_gpt_clock_enable(u32 gpt_num)
+{
+	u32 val;
+	/* select clock source (1=sys_clk; 0=32K) for GPT */
+	if(omap3_gpt_config[gpt_num].src_sys_clk) {
+		val = vmm_readl((void *)(omap3_gpt_config[gpt_num].cm_va +
+				  	OMAP3_CM_CLKSEL)) 
+			| omap3_gpt_config[gpt_num].clksel_mask;
+		omap3_gpt_config[gpt_num].clk_hz = omap3_gpt_get_clk_speed(gpt_num);
+	} else {
+		val = vmm_readl((void *)(omap3_gpt_config[gpt_num].cm_va +
+				  	OMAP3_CM_CLKSEL)) 
+			& ~(omap3_gpt_config[gpt_num].clksel_mask);
+		omap3_gpt_config[gpt_num].clk_hz = OMAP3_S32K_FREQ_HZ;
+	}
+	vmm_writel(val, (void *)(omap3_gpt_config[gpt_num].cm_va + 
+				OMAP3_CM_CLKSEL));
+
+	/* Enable I Clock for GPT */
+	val = vmm_readl((void *)(omap3_gpt_config[gpt_num].cm_va + OMAP3_CM_ICLKEN)) 
+		| omap3_gpt_config[gpt_num].iclken_mask; 
+	vmm_writel(val, (void *)(omap3_gpt_config[gpt_num].cm_va + OMAP3_CM_ICLKEN));
+
+	/* Enable F Clock for GPT */
+	val = vmm_readl((void *)(omap3_gpt_config[gpt_num].cm_va + OMAP3_CM_FCLKEN)) 
+		| omap3_gpt_config[gpt_num].fclken_mask;
+	vmm_writel(val, (void *)(omap3_gpt_config[gpt_num].cm_va + OMAP3_CM_FCLKEN));
+}
+
+int omap3_gpt_instance_init(u32 gpt_num, physical_addr_t prm_pa, 
 		vmm_host_irq_handler_t irq_handler)
 {
 	int ret;
-	virtual_addr_t wkup_cm_base = vmm_host_iomap(cm_pa, 0x100);
+	u32 val;
 	virtual_addr_t glbl_prm_base = vmm_host_iomap(prm_pa, 0x100);
 
-	/* Map timer registers */
-	if(!omap35x_gpt1_base)
-		omap35x_gpt1_base = vmm_host_iomap(gpt_pa, 0x1000);
+	/* Determine system clock divider */
+	val = vmm_readl((void *)(glbl_prm_base + OMAP3_PRM_CLKSRC_CTRL));
+	omap3_sys_clk_div = (val & OMAP3_PRM_CLKSRC_CTRL_SYSCLKDIV_M) 
+		>> OMAP3_PRM_CLKSRC_CTRL_SYSCLKDIV_S;
 	
-	/* Determing OSC-CLK speed based on S32K timer */
-	omap3_osc_clk_speed(wkup_cm_base, glbl_prm_base);
+	vmm_host_iounmap(glbl_prm_base, 0x100);
+
+	/* Enable clock */
+	omap3_gpt_clock_enable(gpt_num);
+
+#if defined(CONFIG_VERBOSE_MODE)
+	vmm_printf("GPT%d (base: 0x%08X) running @ %d Hz\n", gpt_num+1, 
+			omap3_gpt_config[gpt_num].base_va, 
+			omap3_gpt_config[gpt_num].clk_hz);
+#endif
 
 	/* Register interrupt handler */
-	ret = vmm_host_irq_register(gpt_irq_no, irq_handler, NULL);
-	if (ret) {
-		return ret;
+	if(irq_handler) {
+		ret = vmm_host_irq_register(omap3_gpt_config[gpt_num].irq_no, irq_handler, NULL);
+		if (ret) {
+			return ret;
+		}
 	}
 
 	/* Disable System Timer irq for sanity */
-	vmm_host_irq_disable(gpt_irq_no);
+	vmm_host_irq_disable(omap3_gpt_config[gpt_num].irq_no);
 
 	return VMM_OK;
 }
+
+int omap3_gpt_global_init(u32 gpt_count, omap3_gpt_cfg_t *cfg)
+{
+	int i;
+	if(!omap3_gpt_config) {
+		omap3_gpt_config = cfg;
+		for(i=0; i<gpt_count; i++) {
+			omap3_gpt_config[i].base_va = vmm_host_iomap(omap3_gpt_config[i].base_pa, 0x1000);
+			omap3_gpt_config[i].cm_va = vmm_host_iomap(omap3_gpt_config[i].cm_pa, 0x100);
+			if(!omap3_gpt_config[i].base_va || !omap3_gpt_config[i].cm_va)
+				return VMM_EFAIL;
+		}
+	}
+	return VMM_OK;
+}
+

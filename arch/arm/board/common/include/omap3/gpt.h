@@ -183,17 +183,30 @@
 #define OMAP3_GPT_TOWR_OVF_WRAPPING_VALUE_S	0
 #define OMAP3_GPT_TOWR_OVF_WRAPPING_VALUE_M	0x00FFFFFF
 
+typedef struct {
+	physical_addr_t base_pa;
+	virtual_addr_t base_va;
+	physical_addr_t cm_pa;
+	virtual_addr_t cm_va;
+	u32 clksel_mask;
+	u32 iclken_mask;
+	u32 fclken_mask;
+	bool src_sys_clk;
+	u32 clk_hz;
+	u32 irq_no;
+}omap3_gpt_cfg_t;
 
-void omap3_gpt_disable(void);
-void omap3_gpt_stop(void);
-void omap3_gpt_start(void);
-void omap3_gpt_ack_irq(void);
-void omap3_gpt_poll_overflow(void);
-void omap3_gpt_load_start(u32 usecs);
-void omap3_gpt_oneshot(void);
-int omap3_gpt_init(physical_addr_t gpt_pa, physical_addr_t cm_pa, 
-		physical_addr_t prm_pa, u32 gpt_irq_no, 
+u32 omap3_gpt_get_counter(u32 gpt_num);
+void omap3_gpt_disable(u32 gpt_num);
+void omap3_gpt_stop(u32 gpt_num);
+void omap3_gpt_start(u32 gpt_num);
+void omap3_gpt_ack_irq(u32 gpt_num);
+void omap3_gpt_poll_overflow(u32 gpt_num);
+void omap3_gpt_load_start(u32 gpt_num, u32 usecs);
+void omap3_gpt_oneshot(u32 gpt_num);
+void omap3_gpt_continuous(u32 gpt_num);
+int omap3_gpt_instance_init(u32 gpt_num, physical_addr_t prm_pa, 
 		vmm_host_irq_handler_t irq_handler);
-
+int omap3_gpt_global_init(u32 gpt_count, omap3_gpt_cfg_t *cfg);
 
 #endif
