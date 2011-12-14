@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Wed Dec  7 11:51:07 2011
+# Wed Dec 14 15:07:11 2011
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -27,6 +27,12 @@ CONFIG_ARMV7A_SECUREX=y
 CONFIG_EMU_REALVIEW=y
 CONFIG_BOARD_BEAGLE=y
 CONFIG_OMAP3=y
+
+#
+# Beagleboard Options
+#
+CONFIG_OMAP3_CLKSRC_S32KT=y
+# CONFIG_OMAP3_CLKSRC_GPT is not set
 
 #
 # Hypervisor Options
