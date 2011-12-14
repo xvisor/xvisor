@@ -73,7 +73,15 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
-	/* Usual X-Visor stack shared by threads. */
+	.heap :
+	{
+		. = ALIGN(4096);
+		PROVIDE(_heap_start = .);
+		. = . + (CONFIG_HEAP_SIZE * 1024);
+		. = ALIGN(4);
+		PROVIDE(_eheap = .);
+	}
+
 	PROVIDE(_stack_end = .);
 	. = . + CONFIG_STACK_SIZE;
 	. = ALIGN(4);
@@ -85,19 +93,12 @@ SECTIONS
 	. = ALIGN(4);
 	PROVIDE(_int_stack = .);
 
-	. = ALIGN(0x100000);
-
-	PROVIDE(_code_end = .);
-	
-	/*
-	 * Init is at the end because this will be reclaimed
-	 * when the system as come up.
-	 */
+	. = ALIGN(0x1000); /* Put init functions into separate pages */
 	.init :
 	{
-		PROVIDE(_init_start = .);
-		*(.init)
+		PROVIDE(_init_text_start = .);
+		*(.init.text)
 		. = ALIGN(4);
-		PROVIDE(_init_end = .);
+		PROVIDE(_init_text_end = .);
 	}
 }

@@ -52,6 +52,7 @@ void vmm_hang(void)
 void vmm_init(void)
 {
 	int ret;
+	u32 freed;
 	struct dlist *l;
 	vmm_devtree_node_t *gnode, *gsnode;
 	vmm_guest_t *guest = NULL;
@@ -114,7 +115,7 @@ void vmm_init(void)
 	vmm_printf("Initialize Host Interrupt Subsystem\n");
 	vmm_printf("Initialize CPU Early\n");
 	vmm_printf("Initialize Board Early\n");
-	vmm_printf("Initialize Standered I/O Subsystem\n");
+	vmm_printf("Initialize Standard I/O Subsystem\n");
 
 	/* Initialize hypervisor timer */
 	vmm_printf("Initialize Hypervisor Timer\n");
@@ -226,7 +227,12 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
-	/* Populate guest instances */
+	/* Free init memory (Must be third last step) */
+	vmm_printf("Freeing init memory: ");
+	freed = vmm_host_free_initmem();
+	vmm_printf("%dK\n", freed);
+
+	/* Populate guest instances (Must be second last step) */
 	vmm_printf("Creating Pre-Configured Guest Instances\n");
 	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
 				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
@@ -246,7 +252,7 @@ void vmm_init(void)
 		}
 	}
 
-	/* Start timer */
+	/* Start timer (Must be last step) */
 	vmm_printf("Starting Hypervisor Timer\n");
 	vmm_timer_start();
 

@@ -26,7 +26,7 @@
 #include <vmm_cpu.h>
 #include <cpu_locks.h>
 
-void __lock_section __cpu_spin_lock(vmm_cpu_spinlock_t * lock)
+void __lock __cpu_spin_lock(vmm_cpu_spinlock_t * lock)
 {
 	unsigned int tmp;
 	__asm__ __volatile__("@ __cpu_spin_lock\n"
@@ -51,7 +51,7 @@ void __lock_section __cpu_spin_lock(vmm_cpu_spinlock_t * lock)
 			     :"cc", "memory");
 }
 
-void __lock_section __cpu_spin_unlock(vmm_cpu_spinlock_t * lock)
+void __lock __cpu_spin_unlock(vmm_cpu_spinlock_t * lock)
 {
 	__asm__ __volatile__("@ __cpu_spin_unlock\n"
 			     "       str     %0, [%1]\n"
@@ -61,38 +61,13 @@ void __lock_section __cpu_spin_unlock(vmm_cpu_spinlock_t * lock)
 			     :"memory");
 }
 
-irq_flags_t __lock_section __cpu_spin_lock_irqsave(vmm_cpu_spinlock_t * lock)
-{
-	irq_flags_t flags;
-	flags = vmm_cpu_irq_save();
-	__cpu_spin_lock(lock);
-	return flags;
-}
-
-void __lock_section __cpu_spin_unlock_irqrestore(vmm_cpu_spinlock_t * lock,
-						 irq_flags_t flags)
-{
-	__cpu_spin_unlock(lock);
-	vmm_cpu_irq_restore(flags);
-}
-
-void __lock_section vmm_cpu_spin_lock(vmm_cpu_spinlock_t * lock)
+void __lock vmm_cpu_spin_lock(vmm_cpu_spinlock_t * lock)
 {
 	return __cpu_spin_lock(lock);
 }
 
-void __lock_section vmm_cpu_spin_unlock(vmm_cpu_spinlock_t * lock)
+void __lock vmm_cpu_spin_unlock(vmm_cpu_spinlock_t * lock)
 {
 	__cpu_spin_unlock(lock);
 }
 
-irq_flags_t __lock_section vmm_cpu_spin_lock_irqsave(vmm_cpu_spinlock_t * lock)
-{
-	return __cpu_spin_lock_irqsave(lock);
-}
-
-void __lock_section vmm_cpu_spin_unlock_irqrestore(vmm_cpu_spinlock_t * lock,
-						   irq_flags_t flags)
-{
-	__cpu_spin_unlock_irqrestore(lock, flags);
-}

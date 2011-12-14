@@ -24,7 +24,6 @@
 #ifndef _VMM_MODULES_H__
 #define _VMM_MODULES_H__
 
-#include <vmm_sections.h>
 #include <vmm_types.h>
 
 #define VMM_MODULE_SIGNATURE		0x564D4F44
@@ -45,16 +44,8 @@ struct vmm_module {
 typedef struct vmm_module vmm_module_t;
 
 #define VMM_DECLARE_MODULE(varid,name,author,ipriority,init,exit) \
-__modtbl_section vmm_module_t varid = \
+__modtbl vmm_module_t varid = \
 { VMM_MODULE_SIGNATURE, name, author, ipriority, 0, init, exit }
-
-struct vmm_modules_ctrl {
-	vmm_module_t *table;
-	u32 table_size;
-	u32 mod_count;
-};
-
-typedef struct vmm_modules_ctrl vmm_modules_ctrl_t;
 
 /** Retrive a module at given position in table */
 vmm_module_t *vmm_modules_getmodule(u32 index);

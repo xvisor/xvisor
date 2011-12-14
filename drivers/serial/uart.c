@@ -107,7 +107,7 @@ void uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 }
 
 static u32 uart_read(vmm_chardev_t *cdev, 
-				u8 *dest, size_t offset, size_t len)
+		     u8 *dest, size_t offset, size_t len, bool block)
 {
 	u32 i;
 	uart_port_t *port;
@@ -122,8 +122,14 @@ static u32 uart_read(vmm_chardev_t *cdev,
 	port = cdev->priv;
 
 	for(i = 0; i < len; i++) {
-		if (!uart_lowlevel_can_getc(port->base, port->reg_align)) {
-			break;
+		if (block) {
+			while (!uart_lowlevel_can_getc(port->base, 
+							port->reg_align));
+		} else {
+			if (!uart_lowlevel_can_getc(port->base, 
+						    port->reg_align)) {
+				break;
+			}
 		}
 		dest[i] = uart_lowlevel_getc(port->base, port->reg_align);
 	}
@@ -132,7 +138,7 @@ static u32 uart_read(vmm_chardev_t *cdev,
 }
 
 static u32 uart_write(vmm_chardev_t *cdev, 
-				u8 *src, size_t offset, size_t len)
+		      u8 *src, size_t offset, size_t len, bool block)
 {
 	u32 i;
 	uart_port_t *port;
@@ -147,8 +153,14 @@ static u32 uart_write(vmm_chardev_t *cdev,
 	port = cdev->priv;
 
 	for(i = 0; i < len; i++) {
-		if (!uart_lowlevel_can_putc(port->base, port->reg_align)) {
-			break;
+		if (block) {
+			while (!uart_lowlevel_can_putc(port->base, 
+							port->reg_align));
+		} else {
+			if (!uart_lowlevel_can_putc(port->base, 
+						    port->reg_align)) {
+				break;
+			}
 		}
 		uart_lowlevel_putc(port->base, port->reg_align, src[i]);
 	}
@@ -261,7 +273,7 @@ static vmm_driver_t uart_driver = {
 	.remove = uart_driver_remove,
 };
 
-static int uart_driver_init(void)
+static int __init uart_driver_init(void)
 {
 	return vmm_devdrv_register_driver(&uart_driver);
 }

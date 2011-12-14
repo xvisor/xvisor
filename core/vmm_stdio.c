@@ -28,7 +28,6 @@
 #include <vmm_string.h>
 #include <vmm_main.h>
 #include <vmm_board.h>
-#include <vmm_sections.h>
 #include <vmm_stdio.h>
 
 /* NOTE: assuming sizeof(void *) == sizeof(int) */
@@ -38,7 +37,12 @@
 /* the following should be enough for 32 bit int */
 #define PRINT_BUF_LEN 16
 
-vmm_stdio_ctrl_t stdio_ctrl;
+struct vmm_stdio_ctrl {
+        vmm_spinlock_t lock;
+        vmm_chardev_t *cdev;
+};
+
+static struct vmm_stdio_ctrl stdio_ctrl;
 
 bool vmm_iscontrol(char c)
 {
@@ -64,11 +68,10 @@ int vmm_printchar(char **str, vmm_chardev_t *cdev, char c, bool block)
 		++(*str);
 	} else {
 		if (cdev) {
-			while (!vmm_chardev_dowrite(cdev, 
-						(u8 *)&c, 0, sizeof(c))) {
+			if (!vmm_chardev_dowrite(cdev, 
+					(u8 *)&c, 0, sizeof(c), block)) {
 				if (!block) {
 					rc = VMM_EFAIL;
-					break;
 				}
 			}
 		} else {
@@ -311,16 +314,13 @@ int vmm_scanchar(char **str, vmm_chardev_t *cdev, char *c, bool block)
 	} else {
 		got_input = FALSE;
 		if (cdev) {
-			while (!got_input) {
-				if (!vmm_chardev_doread(cdev,
-						&ch, 0, sizeof(ch))) {
-					if (!block) {
-						rc = VMM_EFAIL;
-						break;
-					}
-				} else {
-					got_input = TRUE;
+			if (!vmm_chardev_doread(cdev,
+						&ch, 0, sizeof(ch), block)) {
+				if (!block) {
+					rc = VMM_EFAIL;
 				}
+			} else {
+				got_input = TRUE;
 			}
 		} else {
 			while (!got_input) {
@@ -469,6 +469,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 				for (ite = pos; ite < count; ite++) {
 					s[ite - 1] = s[ite];
 				}
+				s[count] = '\0';
 				pos--;
 				count--;
 			}
@@ -508,7 +509,7 @@ int vmm_stdio_change_device(vmm_chardev_t * cdev)
 	return VMM_OK;
 }
 
-int vmm_stdio_init(void)
+int __init vmm_stdio_init(void)
 {
 	/* Reset memory of control structure */
 	vmm_memset(&stdio_ctrl, 0, sizeof(stdio_ctrl));

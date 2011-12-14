@@ -52,6 +52,8 @@ void cmd_guest_usage(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "   guest resume  <guest_id>\n");
 	vmm_cprintf(cdev, "   guest halt    <guest_id>\n");
 	vmm_cprintf(cdev, "   guest dumpreg <guest_id>\n");
+	vmm_cprintf(cdev, "   guest dumpmem <guest_id> <gphys_addr> "
+			  "[mem_sz]\n");
 	vmm_cprintf(cdev, "Note:\n");
 	vmm_cprintf(cdev, "   if guest_id is -1 then it means all guests\n");
 }
@@ -228,6 +230,42 @@ int cmd_guest_dumpreg(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
+int cmd_guest_dumpmem(vmm_chardev_t *cdev, int id,
+		      physical_addr_t gphys_addr, u32 len)
+{
+#define BYTES_PER_LINE 16
+	u8 buf[BYTES_PER_LINE];
+	u32 total_loaded = 0, loaded = 0, *mem;
+	vmm_guest_t *guest;
+
+	len = (len + (BYTES_PER_LINE - 1)) & ~(BYTES_PER_LINE - 1);
+
+	guest = vmm_manager_guest(id);
+	if (guest) {
+		vmm_cprintf(cdev, "Guest %d physical memory 0x%x - 0x%x:\n",
+				  id, gphys_addr, gphys_addr + len);
+		while (total_loaded < len) {
+			loaded = vmm_guest_physical_read(guest, gphys_addr,
+                                                        buf, BYTES_PER_LINE);
+			if (loaded != BYTES_PER_LINE)
+				break;
+
+			mem = (u32 *)buf;
+			vmm_cprintf(cdev, "0x%08x:\t0x%08x 0x%08x 0x%08x "
+					  "0x%08x\n", gphys_addr, mem[0],
+					  mem[1], mem[2], mem[3]);
+
+			gphys_addr += BYTES_PER_LINE;
+			total_loaded += BYTES_PER_LINE;
+		}
+#undef BYTES_PER_LINE
+		if (total_loaded == len)
+			return VMM_OK;
+	}
+	return VMM_EFAIL;
+}
+
+
 int cmd_guest_exec(vmm_chardev_t *cdev, int argc, char **argv)
 {
 	int id, count;
@@ -314,6 +352,27 @@ int cmd_guest_exec(vmm_chardev_t *cdev, int argc, char **argv)
 		} else {
 			return cmd_guest_dumpreg(cdev, id);
 		}
+	} else if (vmm_strcmp(argv[1], "dumpmem") == 0) {
+		if (id == -1) {
+			vmm_cprintf(cdev, "Error: Cannot dump memory in "
+					  "all guests simultaneously.\n");
+			return VMM_EFAIL;
+		}
+
+		if (argc < 4) {
+			vmm_cprintf(cdev, "Error: Insufficient argument for "
+					  "command dumpmem.\n");
+			cmd_guest_usage(cdev);
+			return VMM_EFAIL;
+		}
+
+		src_addr = vmm_str2uint(argv[3], 16);
+		if (argc > 4)
+			size = vmm_str2uint(argv[4], 16);
+		else
+			size = 64;
+
+		return cmd_guest_dumpmem(cdev, id, src_addr, size);
 	} else if (vmm_strcmp(argv[1], "load") == 0) {
 		if (id == -1) {
 			vmm_cprintf(cdev, "Error: Cannot load images in " 
@@ -347,7 +406,7 @@ static vmm_cmd_t cmd_guest = {
 	.exec = cmd_guest_exec,
 };
 
-static int cmd_guest_init(void)
+static int __init cmd_guest_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_guest);
 }

@@ -121,7 +121,8 @@ our $Attribute	= qr{
 			____cacheline_aligned|
 			____cacheline_aligned_in_smp|
 			____cacheline_internodealigned_in_smp|
-			__weak
+			__weak|
+			__init
 		  }x;
 our $Modifier;
 our $Inline	= qr{inline|__always_inline|noinline};
@@ -263,9 +264,9 @@ sub top_of_kernel_tree {
 	my ($root) = @_;
 
 	my @tree_check = (
-		"COPYING", "CREDITS", "Kbuild", "MAINTAINERS", "Makefile",
-		"README", "Documentation", "arch", "include", "drivers",
-		"fs", "init", "ipc", "kernel", "lib", "scripts",
+		"COPYING", "MAINTAINERS", "Makefile", "README",
+		"arch", "commands", "core", "daemons", "docs",
+		"drivers", "emulators", "libs", "tests", "tools",
 	);
 
 	foreach my $check (@tree_check) {

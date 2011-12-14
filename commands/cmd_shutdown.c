@@ -55,7 +55,7 @@ static vmm_cmd_t cmd_shutdown = {
 	.exec = cmd_shutdown_exec,
 };
 
-static int cmd_shutdown_init(void)
+static int __init cmd_shutdown_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_shutdown);
 }

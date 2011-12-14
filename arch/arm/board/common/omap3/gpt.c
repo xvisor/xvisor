@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2011 Pranav Sawargaonkar.
+ * Copyright (c) 2011 Sukanto Ghosh.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,7 +21,10 @@
  * @version 1.0
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @author Anup Patel (anup@brainfault.org)
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief source code for OMAP3 general purpose timers
+ *
+ * Parts of this source code has been taken from u-boot
  */
 
 #include <vmm_error.h>
@@ -28,150 +32,173 @@
 #include <vmm_main.h>
 #include <vmm_timer.h>
 #include <vmm_host_io.h>
+#include <vmm_stdio.h>
+#include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 #include <omap3/intc.h>
 #include <omap3/gpt.h>
+#include <omap3/prcm.h>
+#include <omap3/s32k-timer.h>
 
-#define OMAP3_V_OSCK		26000000	/* Clock output from T2 */
-#define OMAP3_V_SCLK		(OMAP3_V_OSCK >> 1)
+static virtual_addr_t omap35x_gpt1_base = 0;	/* used for clockevent */
+static u32 omap3_osc_clk_hz = 0;
+static u32 omap3_gpt1_clk_hz = 0;
 
-#define OMAP3_SYS_TIMER_INCLK	(26000000 >> 1)
-#define OMAP3_SYS_TIMER_BASE	(OMAP3_GPT1_BASE)
-#define OMAP3_SYS_TIMER_IRQ	(OMAP3_MPU_INTC_GPT1_IRQ)
-#define OMAP3_SYS_TIMER_PTV	2	/* Divisor: 2^(PTV+1) => 8 */
-#define OMAP3_SYS_TIMER_CLK	(OMAP3_SYS_TIMER_INCLK/(2<<OMAP3_SYS_TIMER_PTV))
-
-void omap3_gpt_write(u32 base, u32 reg, u32 val)
+static void omap3_gpt_write(u32 reg, u32 val)
 {
-	vmm_writel(val, (void *)(base + reg));
+	vmm_writel(val, (void *)(omap35x_gpt1_base + reg));
 }
 
-u32 omap3_gpt_read(u32 base, u32 reg)
+static u32 omap3_gpt_read(u32 reg)
 {
-	return vmm_readl((void *)(base + reg));
+	return vmm_readl((void *)(omap35x_gpt1_base + reg));
 }
 
-u64 vmm_cpu_clocksource_cycles(void)
+void omap3_gpt_disable(void)
 {
-	return 0;
+	omap3_gpt_write(OMAP3_GPT_TCLR, 0);
 }
 
-u64 vmm_cpu_clocksource_mask(void)
-{
-	return 0xFFFFFFFF;
-}
-
-u32 vmm_cpu_clocksource_mult(void)
-{
-	u32 khz = 1000;
-	u64 tmp = ((u64)1000000) << 20;
-	tmp += khz >> 1;
-	tmp = vmm_udiv64(tmp, khz);
-	return (u32)tmp;
-}
-
-u32 vmm_cpu_clocksource_shift(void)
-{
-	return 20;
-}
-
-int vmm_cpu_clocksource_init(void)
-{
-	return VMM_OK;
-}
-
-#if 0
-void vmm_cpu_timer_enable(void)
+void omap3_gpt_stop(void)
 {
 	u32 regval;
-
-	/* Enable System Timer irq */
-	vmm_host_irq_enable(OMAP3_SYS_TIMER_IRQ);
-
-	/* Enable System Timer */
-	regval = omap3_gpt_read(OMAP3_SYS_TIMER_BASE, OMAP3_GPT_TCLR);
-	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
-			OMAP3_GPT_TCLR, regval | OMAP3_GPT_TCLR_ST_M);
-}
-
-void vmm_cpu_timer_disable(void)
-{
-	u32 regval;
-
-	/* Disable System Timer irq */
-	vmm_host_irq_disable(OMAP3_SYS_TIMER_IRQ);
-
-	/* Disable System Timer */
-	regval = omap3_gpt_read(OMAP3_SYS_TIMER_BASE, OMAP3_GPT_TCLR);
-	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
-			OMAP3_GPT_TCLR, regval & ~OMAP3_GPT_TCLR_ST_M);
-}
-#endif
-
-int vmm_cpu_clockevent_shutdown(void)
-{
-	return VMM_OK;
-}
-
-int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs)
-{
-	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
-			OMAP3_GPT_TISR, OMAP3_GPT_TISR_OVF_IT_FLAG_M);
-
-	vmm_timer_clockevent_process(regs);
-
-	return VMM_OK;
-}
-
-int vmm_cpu_clockevent_start(u64 tick_nsecs)
-{
-	u32 tick_usecs;
-
-	/* Get granuality in microseconds */
-	tick_usecs = vmm_udiv64(tick_nsecs, 1000);
-
-	/* Progamme System Timer */
-	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
-			OMAP3_GPT_TLDR,
-			0xFFFFFFFF -
-			tick_usecs * (OMAP3_SYS_TIMER_CLK / 1000000));
-
-	return VMM_OK;
-}
-
-int vmm_cpu_clockevent_setup(void)
-{
-	u32 regval;
-
-	regval = omap3_gpt_read(OMAP3_SYS_TIMER_BASE, OMAP3_GPT_TCLR);
+	/* Stop Timer (TCLR[ST] = 0) */
+	regval = omap3_gpt_read(OMAP3_GPT_TCLR);
 	regval &= ~OMAP3_GPT_TCLR_ST_M;
-	regval &= ~OMAP3_GPT_TCLR_PTV_M;
-	regval |=
-	    (OMAP3_SYS_TIMER_PTV << OMAP3_GPT_TCLR_PTV_S) &
-	    OMAP3_GPT_TCLR_PTV_M;
-	regval |= OMAP3_GPT_TCLR_AR_M;
-	regval |= OMAP3_GPT_TCLR_PRE_M;
-	omap3_gpt_write(OMAP3_SYS_TIMER_BASE, OMAP3_GPT_TCLR, regval);
-	omap3_gpt_write(OMAP3_SYS_TIMER_BASE,
-			OMAP3_GPT_TIER, OMAP3_GPT_TIER_OVF_IT_ENA_M);
-
-	return VMM_OK;
+	omap3_gpt_write(OMAP3_GPT_TCLR, regval);
 }
 
-int vmm_cpu_clockevent_init(void)
+void omap3_gpt_start(void)
+{
+	u32 regval;
+	/* Start Timer (TCLR[ST] = 1) */
+	regval = omap3_gpt_read(OMAP3_GPT_TCLR);
+	regval |= OMAP3_GPT_TCLR_ST_M;
+	omap3_gpt_write(OMAP3_GPT_TCLR, regval);
+}
+
+void omap3_gpt_ack_irq(void)
+{
+	omap3_gpt_write(OMAP3_GPT_TISR, OMAP3_GPT_TISR_OVF_IT_FLAG_M);
+}
+
+void omap3_gpt_load_start(u32 usecs)
+{
+	/* Number of clocks */
+	u32 clocks = (usecs * omap3_gpt1_clk_hz) / 1000000;
+	/* Reset the counter */
+	omap3_gpt_write(OMAP3_GPT_TCRR, 0xFFFFFFFF - clocks);
+	omap3_gpt_start();
+}
+
+void omap3_gpt_oneshot(void)
+{
+	u32 regval;
+	/* Disable AR (auto-reload) */
+	regval = omap3_gpt_read(OMAP3_GPT_TCLR);
+	regval &= ~OMAP3_GPT_TCLR_AR_M;
+	omap3_gpt_write(OMAP3_GPT_TCLR, regval);
+	/* Enable Overflow Interrupt TIER[OVF_IT_ENA] */
+	omap3_gpt_write(OMAP3_GPT_TIER, OMAP3_GPT_TIER_OVF_IT_ENA_M);
+}
+
+/******************************************************************************
+ * omap3_osc_clk_speed() - determine reference oscillator speed
+ *                       based on known 32kHz clock and gptimer.
+ *****************************************************************************/
+void omap3_osc_clk_speed(virtual_addr_t wkup_cm_base, virtual_addr_t glbl_prm_base)
+{
+	u32 start, cstart, cend, cdiff, cdiv, val;
+
+	/* Determine system clock divider */
+	val = vmm_readl((void *)(glbl_prm_base + OMAP3_PRM_CLKSRC_CTRL));
+	cdiv = (val & OMAP3_PRM_CLKSRC_CTRL_SYSCLKDIV_M) 
+		>> OMAP3_PRM_CLKSRC_CTRL_SYSCLKDIV_S;
+
+	/* select sys_clk for GPT1 */
+	val = vmm_readl((void *)(wkup_cm_base +  OMAP3_CM_CLKSEL_WKUP)) 
+		| OMAP3_CM_CLKSEL_WKUP_CLKSEL_GPT1_M;
+	vmm_writel(val, (void *)(wkup_cm_base + OMAP3_CM_CLKSEL_WKUP));
+
+	/* Enable I and F Clocks for GPT1 */
+	val = vmm_readl((void *)(wkup_cm_base + OMAP3_CM_ICLKEN_WKUP)) 
+		| OMAP3_CM_ICLKEN_WKUP_EN_GPT1_M; 
+	vmm_writel(val, (void *)(wkup_cm_base + OMAP3_CM_ICLKEN_WKUP));
+
+	val = vmm_readl((void *)(wkup_cm_base + OMAP3_CM_FCLKEN_WKUP)) 
+		| OMAP3_CM_FCLKEN_WKUP_EN_GPT1_M;
+	vmm_writel(val, (void *)(wkup_cm_base + OMAP3_CM_FCLKEN_WKUP));
+
+	/* Start counting at 0 */
+	omap3_gpt_write(OMAP3_GPT_TLDR, 0);
+
+	/* Enable GPT */
+	omap3_gpt_write(OMAP3_GPT_TCLR, OMAP3_GPT_TCLR_ST_M);
+
+	/* enable 32kHz source, determine sys_clk via gauging */
+	omap3_s32k_init();
+
+	/* start time in 20 cycles */
+	start = 20 + omap3_s32k_get_counter();
+
+	/* dead loop till start time */
+	while (omap3_s32k_get_counter() < start);
+
+	/* get start sys_clk count */
+	cstart = omap3_gpt_read(OMAP3_GPT_TCRR);
+
+	/* wait for 40 cycles */
+	while (omap3_s32k_get_counter() < (start + 20)) ;
+	cend = omap3_gpt_read(OMAP3_GPT_TCRR);	/* get end sys_clk count */
+	cdiff = cend - cstart;			/* get elapsed ticks */
+	cdiff *= cdiv;
+
+	omap3_gpt_stop();
+
+	/* based on number of ticks assign speed */
+	if (cdiff > 19000)
+		omap3_osc_clk_hz = OMAP3_SYSCLK_S38_4M;
+	else if (cdiff > 15200)
+		omap3_osc_clk_hz = OMAP3_SYSCLK_S26M;
+	else if (cdiff > 13000)
+		omap3_osc_clk_hz = OMAP3_SYSCLK_S24M;
+	else if (cdiff > 9000)
+		omap3_osc_clk_hz = OMAP3_SYSCLK_S19_2M;
+	else if (cdiff > 7600)
+		omap3_osc_clk_hz = OMAP3_SYSCLK_S13M;
+	else
+		omap3_osc_clk_hz = OMAP3_SYSCLK_S12M;
+
+	omap3_gpt1_clk_hz = omap3_osc_clk_hz >> (cdiv-1);
+#if defined(CONFIG_VERBOSE_MODE)
+	vmm_printf("Clockevent-generator [GPT1] running @ %d Hz\n",
+			omap3_gpt1_clk_hz);
+#endif
+}
+
+int omap3_gpt_init(physical_addr_t gpt_pa, physical_addr_t cm_pa, 
+		physical_addr_t prm_pa, u32 gpt_irq_no, 
+		vmm_host_irq_handler_t irq_handler)
 {
 	int ret;
+	virtual_addr_t wkup_cm_base = vmm_host_iomap(cm_pa, 0x100);
+	virtual_addr_t glbl_prm_base = vmm_host_iomap(prm_pa, 0x100);
+
+	/* Map timer registers */
+	if(!omap35x_gpt1_base)
+		omap35x_gpt1_base = vmm_host_iomap(gpt_pa, 0x1000);
+	
+	/* Determing OSC-CLK speed based on S32K timer */
+	omap3_osc_clk_speed(wkup_cm_base, glbl_prm_base);
 
 	/* Register interrupt handler */
-	ret = vmm_host_irq_register(OMAP3_SYS_TIMER_IRQ,
-				    &vmm_cpu_timer_irq_handler);
+	ret = vmm_host_irq_register(gpt_irq_no, irq_handler, NULL);
 	if (ret) {
 		return ret;
 	}
 
 	/* Disable System Timer irq for sanity */
-	vmm_host_irq_disable(OMAP3_SYS_TIMER_IRQ);
+	vmm_host_irq_disable(gpt_irq_no);
 
 	return VMM_OK;
 }
-

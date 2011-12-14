@@ -161,7 +161,7 @@ u32 vmm_blockdev_count(void)
 	return vmm_devdrv_classdev_count(VMM_BLOCKDEV_CLASS_NAME);
 }
 
-int vmm_blockdev_init(void)
+int __init vmm_blockdev_init(void)
 {
 	int rc;
 	vmm_class_t *c;

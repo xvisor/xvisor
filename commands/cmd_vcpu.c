@@ -37,7 +37,7 @@
 #define	MODULE_INIT			cmd_vcpu_init
 #define	MODULE_EXIT			cmd_vcpu_exit
 
-void cmd_vcpu_usage(vmm_chardev_t *cdev)
+static void cmd_vcpu_usage(vmm_chardev_t *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   vcpu help\n");
@@ -48,9 +48,16 @@ void cmd_vcpu_usage(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "   vcpu resume  <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu halt    <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu dumpreg <vcpu_id>\n");
+	vmm_cprintf(cdev, "   vcpu dumpstat <vcpu_id>\n");
 }
 
-void cmd_vcpu_list(vmm_chardev_t *cdev)
+static int cmd_vcpu_help(vmm_chardev_t *cdev, int dummy)
+{
+	cmd_vcpu_usage(cdev);
+	return VMM_OK;
+}
+
+static int cmd_vcpu_list(vmm_chardev_t *cdev, int dummy)
 {
 	int id, count;
 	char state[10];
@@ -99,9 +106,10 @@ void cmd_vcpu_list(vmm_chardev_t *cdev)
 	}
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
+	return VMM_OK;
 }
 
-int cmd_vcpu_reset(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_reset(vmm_chardev_t *cdev, int id)
 {
 	int ret = VMM_EFAIL;
 	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
@@ -117,7 +125,7 @@ int cmd_vcpu_reset(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_vcpu_kick(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_kick(vmm_chardev_t *cdev, int id)
 {
 	int ret = VMM_EFAIL;
 	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
@@ -133,7 +141,7 @@ int cmd_vcpu_kick(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_vcpu_pause(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_pause(vmm_chardev_t *cdev, int id)
 {
 	int ret = VMM_EFAIL;
 	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
@@ -150,7 +158,7 @@ int cmd_vcpu_pause(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_vcpu_resume(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_resume(vmm_chardev_t *cdev, int id)
 {
 	int ret = VMM_EFAIL;
 	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
@@ -167,7 +175,7 @@ int cmd_vcpu_resume(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_vcpu_halt(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_halt(vmm_chardev_t *cdev, int id)
 {
 	int ret = VMM_EFAIL;
 	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
@@ -183,7 +191,7 @@ int cmd_vcpu_halt(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_vcpu_dumpreg(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_dumpreg(vmm_chardev_t *cdev, int id)
 {
 	int ret = VMM_EFAIL;
 	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
@@ -198,40 +206,61 @@ int cmd_vcpu_dumpreg(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_vcpu_exec(vmm_chardev_t *cdev, int argc, char **argv)
+static int cmd_vcpu_dumpstat(vmm_chardev_t *cdev, int id)
 {
-	int id;
-	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
-			cmd_vcpu_usage(cdev);
-			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "list") == 0) {
-			cmd_vcpu_list(cdev);
-			return VMM_OK;
+	int ret = VMM_EFAIL;
+	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	if (vcpu) {
+		if ((ret = vmm_manager_vcpu_dumpstat(vcpu))) {
+			vmm_cprintf(cdev, "%s: Failed to dumpstat\n", 
+					  vcpu->name);
 		}
-	}
-	if (argc < 3) {
-		cmd_vcpu_usage(cdev);
-		return VMM_EFAIL;
-	}
-	id = vmm_str2int(argv[2], 10);
-	if (vmm_strcmp(argv[1], "reset") == 0) {
-		return cmd_vcpu_reset(cdev, id);
-	} else if (vmm_strcmp(argv[1], "kick") == 0) {
-		return cmd_vcpu_kick(cdev, id);
-	} else if (vmm_strcmp(argv[1], "pause") == 0) {
-		return cmd_vcpu_pause(cdev, id);
-	} else if (vmm_strcmp(argv[1], "resume") == 0) {
-		return cmd_vcpu_resume(cdev, id);
-	} else if (vmm_strcmp(argv[1], "halt") == 0) {
-		return cmd_vcpu_halt(cdev, id);
-	} else if (vmm_strcmp(argv[1], "dumpreg") == 0) {
-		return cmd_vcpu_dumpreg(cdev, id);
 	} else {
+		vmm_cprintf(cdev, "Failed to find vcpu\n");
+	}
+	return ret;
+}
+
+static const struct {
+	char *name;
+	int (*function) (vmm_chardev_t *, int);
+} const command[] = {
+	{"help", cmd_vcpu_help},
+	{"list", cmd_vcpu_list},
+	{"reset", cmd_vcpu_reset},
+	{"kick", cmd_vcpu_kick},
+	{"pause", cmd_vcpu_pause},
+	{"resume", cmd_vcpu_resume},
+	{"halt", cmd_vcpu_halt},
+	{"dumpreg", cmd_vcpu_dumpreg},
+	{"dumpstat", cmd_vcpu_dumpstat},
+	{NULL, NULL},
+};
+	
+static int cmd_vcpu_exec(vmm_chardev_t *cdev, int argc, char **argv)
+{
+	int id = -1;
+	int index = 0;
+
+	if (argc > 3) {
 		cmd_vcpu_usage(cdev);
 		return VMM_EFAIL;
 	}
-	return VMM_OK;
+
+	if (argc == 3) {
+		id = vmm_str2int(argv[2], 10);
+	}
+	
+	while (command[index].name) {
+		if (vmm_strcmp(argv[1], command[index].name) == 0) {
+			return command[index].function(cdev, id);
+		}
+		index++;
+	}
+
+	cmd_vcpu_usage(cdev);
+
+	return VMM_EFAIL;
 }
 
 static vmm_cmd_t cmd_vcpu = {
@@ -241,7 +270,7 @@ static vmm_cmd_t cmd_vcpu = {
 	.exec = cmd_vcpu_exec,
 };
 
-static int cmd_vcpu_init(void)
+static int __init cmd_vcpu_init(void)
 {
 	return vmm_cmdmgr_register_cmd(&cmd_vcpu);
 }

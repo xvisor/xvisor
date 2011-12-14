@@ -31,8 +31,9 @@
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 
-vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
-				  physical_addr_t gphys_addr)
+vmm_region_t *vmm_guest_find_region(vmm_guest_t *guest,
+				    physical_addr_t gphys_addr,
+				    bool resolve_alias)
 {
 	bool found = FALSE;
 	struct dlist *l;
@@ -56,7 +57,7 @@ vmm_region_t *vmm_guest_getregion(vmm_guest_t *guest,
 		return NULL;
 	}
 
-	while (reg->flags & VMM_REGION_ALIAS) {
+	while (resolve_alias && (reg->flags & VMM_REGION_ALIAS)) {
 		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
 		reg = NULL;
 		found = FALSE;
@@ -89,7 +90,8 @@ u32 vmm_guest_physical_read(vmm_guest_t * guest,
 	}
 
 	while (bytes_read < len) {
-		if (!(reg = vmm_guest_getregion(guest, gphys_addr))) {
+		reg = vmm_guest_find_region(guest, gphys_addr, TRUE);
+		if (!reg) {
 			break;
 		}
 
@@ -128,7 +130,8 @@ u32 vmm_guest_physical_write(vmm_guest_t * guest,
 	}
 
 	while (bytes_written < len) {
-		if (!(reg = vmm_guest_getregion(guest, gphys_addr))) {
+		reg = vmm_guest_find_region(guest, gphys_addr, TRUE);
+		if (!reg) {
 			break;
 		}
 
@@ -168,13 +171,13 @@ int vmm_guest_physical_map(vmm_guest_t * guest,
 		return VMM_EFAIL;
 	}
 
-	reg = vmm_guest_getregion(guest, gphys_addr);
+	reg = vmm_guest_find_region(guest, gphys_addr, FALSE);
 	if (!reg) {
 		return VMM_EFAIL;
 	}
 	while (reg->flags & VMM_REGION_ALIAS) {
 		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
-		reg = vmm_guest_getregion(guest, gphys_addr);
+		reg = vmm_guest_find_region(guest, gphys_addr, FALSE);
 		if (!reg) {
 			return VMM_EFAIL;
 		}
@@ -270,37 +273,21 @@ int vmm_guest_aspace_reset(vmm_guest_t *guest)
 	struct dlist *l;
 	vmm_region_t *reg = NULL;
 
+	/* Sanity Check */
 	if (!guest) {
 		return VMM_EFAIL;
 	}
 
+	/* Reset device emulation for virtual regions */
 	list_for_each(l, &guest->aspace.reg_list) {
 		reg = list_entry(l, vmm_region_t, head);
 		if (reg->flags & VMM_REGION_VIRTUAL) {
-			vmm_devemu_reset(guest, reg);
+			vmm_devemu_reset_region(guest, reg);
 		}
 	}
 
-	return VMM_OK;
-}
-
-int vmm_guest_aspace_probe(vmm_guest_t *guest)
-{
-	struct dlist *l;
-	vmm_region_t *reg = NULL;
-
-	if (!guest) {
-		return VMM_EFAIL;
-	}
-
-	list_for_each(l, &guest->aspace.reg_list) {
-		reg = list_entry(l, vmm_region_t, head);
-		if (reg->flags & VMM_REGION_VIRTUAL) {
-			vmm_devemu_probe(guest, reg);
-		}
-	}
-
-	return VMM_OK;
+	/* Reset device emulation context */
+	return vmm_devemu_reset_context(guest);
 }
 
 int vmm_guest_aspace_init(vmm_guest_t *guest)
@@ -311,6 +298,11 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 	vmm_devtree_node_t *gnode = guest->node;
 	vmm_devtree_node_t *anode = NULL;
 	vmm_region_t *reg = NULL;
+
+	/* Sanity Check */
+	if (!guest) {
+		return VMM_EFAIL;
+	}
 
 	/* Reset the address space for guest */
 	vmm_memset(&guest->aspace, 0, sizeof(vmm_guest_aspace_t));
@@ -328,8 +320,8 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 	/* Initialize region list */
 	INIT_LIST_HEAD(&guest->aspace.reg_list);
 
-	/* Initialize priv pointer of aspace */
-	guest->aspace.priv = NULL;
+	/* Initialize devemu_priv pointer of aspace */
+	guest->aspace.devemu_priv = NULL;
 
 	/* Populate valid regions */
 	list_for_each(l, &(guest->aspace.node->child_list)) {
@@ -401,7 +393,7 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 					      VMM_DEVTREE_PHYS_SIZE_ATTR_NAME);
 		reg->phys_size = *((physical_size_t *) attrval);
 
-		reg->priv = NULL;
+		reg->devemu_priv = NULL;
 
 		if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) && 
 		    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM))) {
@@ -413,6 +405,19 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 		}
 
 		list_add_tail(&guest->aspace.reg_list, &reg->head);
+	}
+
+	/* Initialize device emulation context */
+	if ((rc = vmm_devemu_init_context(guest))) {
+		return rc;
+	}
+
+	/* Probe device emulation for virutal regions */
+	list_for_each(l, &guest->aspace.reg_list) {
+		reg = list_entry(l, vmm_region_t, head);
+		if (reg->flags & VMM_REGION_VIRTUAL) {
+			vmm_devemu_probe_region(guest, reg);
+		}
 	}
 
 	return VMM_OK;

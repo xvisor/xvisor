@@ -41,12 +41,6 @@ struct vmm_cmd {
 
 typedef struct vmm_cmd vmm_cmd_t;
 
-struct vmm_cmdmgr_ctrl {
-	struct dlist cmd_list;
-};
-
-typedef struct vmm_cmdmgr_ctrl vmm_cmdmgr_ctrl_t;
-
 /** Register command */
 int vmm_cmdmgr_register_cmd(vmm_cmd_t * cmd);
 

@@ -31,7 +31,12 @@
 #include <vmm_devdrv.h>
 #include <vmm_host_aspace.h>
 
-vmm_devdrv_ctrl_t ddctrl;
+struct vmm_devdrv_ctrl {
+	struct dlist driver_list;
+	struct dlist class_list;
+};
+
+static struct vmm_devdrv_ctrl ddctrl;
 
 int devdrv_device_is_compatible(vmm_devtree_node_t * node, const char *compat)
 {
@@ -666,7 +671,7 @@ u32 vmm_devdrv_driver_count(void)
 	return retval;
 }
 
-int vmm_devdrv_init(void)
+int __init vmm_devdrv_init(void)
 {
 	vmm_memset(&ddctrl, 0, sizeof(ddctrl));
 

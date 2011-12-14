@@ -19,6 +19,7 @@
  * @file vmm_types.h
  * @version 0.01
  * @author Himanshu Chauhan (hchauhan@nulltrace.org)
+ * @author Pavel Borzenkov <pavel.borzenkov@gmail.com>
  * @brief header file for common types used in xvisor.
  */
 
@@ -45,15 +46,20 @@ typedef unsigned int ulong;
 #define stringify(s)	tostring(s)
 #define tostring(s)	#s
 
-#define BUG_ON(x, bug_string,...)				\
+#define BUG_ON(x, bug_string, ...)				\
 	do {							\
 		if (x) {					\
 			vmm_panic(bug_string, #__VA_ARGS__);	\
 		}						\
 	} while(0);
 
-#define __alwaysinline __attribute__((always_inline))
-#define __unused __attribute__((unused))
-#define __noreturn __attribute__((noreturn))
+#define __alwaysinline 		__attribute__((always_inline))
+#define __unused		__attribute__((unused))
+#define __noreturn		__attribute__((noreturn))
+
+#define __lock			__attribute__((section(".spinlock.text")))
+#define __modtbl		__attribute__((section(".modtbl")))
+#define __init			__attribute__((section(".init.text")))
+
 
 #endif /* __VMM_TYPES_H__ */

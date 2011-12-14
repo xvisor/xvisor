@@ -28,13 +28,6 @@
 #include <vmm_spinlocks.h>
 #include <vmm_chardev.h>
 
-struct vmm_stdio_ctrl {
-	vmm_spinlock_t lock;
-	vmm_chardev_t *cdev;
-};
-
-typedef struct vmm_stdio_ctrl vmm_stdio_ctrl_t;
-
 /** Check if a character is a control character */
 bool vmm_iscontrol(char c);
 

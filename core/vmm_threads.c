@@ -24,14 +24,20 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <vmm_heap.h>
 #include <vmm_spinlocks.h>
 #include <vmm_scheduler.h>
 #include <vmm_threads.h>
 
-vmm_threads_ctrl_t thctrl;
+struct vmm_threads_ctrl {
+        vmm_spinlock_t lock;
+        u32 thread_count;
+        struct dlist thread_list;
+};
+
+static struct vmm_threads_ctrl thctrl;
 
 static void vmm_threads_entry(void)
 {
@@ -230,9 +236,9 @@ u32 vmm_threads_count(void)
 	return thctrl.thread_count;
 }
 
-int vmm_threads_init(void)
+int __init vmm_threads_init(void)
 {
-	vmm_memset(&thctrl, 0, sizeof(vmm_threads_ctrl_t));
+	vmm_memset(&thctrl, 0, sizeof(thctrl));
 
 	INIT_SPIN_LOCK(&thctrl.lock);
 	INIT_LIST_HEAD(&thctrl.thread_list);

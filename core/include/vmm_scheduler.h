@@ -25,19 +25,7 @@
 #define _VMM_SCHEDULER_H__
 
 #include <vmm_types.h>
-#include <vmm_spinlocks.h>
 #include <vmm_manager.h>
-#include <vmm_timer.h>
-
-typedef struct vmm_scheduler_ctrl vmm_scheduler_ctrl_t;
-
-/** Control structure for Scheduler */
-struct vmm_scheduler_ctrl {
-	vmm_spinlock_t lock;
-	s32 vcpu_current;
-	bool irq_context;
-	vmm_timer_event_t * ev;
-};
 
 /** Enter IRQ Context (Must be called from somewhere) */
 void vmm_scheduler_irq_enter(vmm_user_regs_t * regs, bool vcpu_context);
@@ -47,6 +35,11 @@ void vmm_scheduler_irq_exit(vmm_user_regs_t * regs);
 
 /** Check whether we are in IRQ context */
 bool vmm_scheduler_irq_context(void);
+
+/** Notify Change in vcpu state 
+ *  (Must be called before actually changing the state) 
+ */
+int vmm_scheduler_notify_state_change(vmm_vcpu_t * vcpu, u32 new_state);
 
 /** Retrive current vcpu number */
 vmm_vcpu_t * vmm_scheduler_current_vcpu(void);

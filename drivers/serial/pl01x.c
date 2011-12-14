@@ -178,7 +178,7 @@ void pl01x_lowlevel_init(virtual_addr_t base, u32 type,
 }
 
 static u32 pl01x_read(vmm_chardev_t *cdev, 
-				u8 *dest, size_t offset, size_t len)
+		      u8 *dest, size_t offset, size_t len, bool block)
 {
 	u32 i;
 	pl01x_port_t *port;
@@ -193,8 +193,14 @@ static u32 pl01x_read(vmm_chardev_t *cdev,
 	port = cdev->priv;
 
 	for(i = 0; i < len; i++) {
-		if (!pl01x_lowlevel_can_getc(port->base, port->type)) {
-			break;
+		if (block) {
+			while (!pl01x_lowlevel_can_getc(port->base, 
+							port->type));
+		} else {
+			if (!pl01x_lowlevel_can_getc(port->base, 
+						     port->type)) {
+				break;
+			}
 		}
 		dest[i] = pl01x_lowlevel_getc(port->base, port->type);
 	}
@@ -203,7 +209,7 @@ static u32 pl01x_read(vmm_chardev_t *cdev,
 }
 
 static u32 pl01x_write(vmm_chardev_t *cdev, 
-				u8 *src, size_t offset, size_t len)
+		       u8 *src, size_t offset, size_t len, bool block)
 {
 	u32 i;
 	pl01x_port_t *port;
@@ -218,8 +224,14 @@ static u32 pl01x_write(vmm_chardev_t *cdev,
 	port = cdev->priv;
 
 	for(i = 0; i < len; i++) {
-		if (!pl01x_lowlevel_can_putc(port->base, port->type)) {
-			break;
+		if (block) {
+			while (!pl01x_lowlevel_can_putc(port->base, 
+							port->type));
+		} else {
+			if (!pl01x_lowlevel_can_putc(port->base, 
+						     port->type)) {
+				break;
+			}
 		}
 		pl01x_lowlevel_putc(port->base, port->type, src[i]);
 	}
@@ -322,7 +334,7 @@ static vmm_driver_t pl01x_driver = {
 	.remove = pl01x_driver_remove,
 };
 
-static int pl01x_driver_init(void)
+static int __init pl01x_driver_init(void)
 {
 	return vmm_devdrv_register_driver(&pl01x_driver);
 }

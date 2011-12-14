@@ -334,7 +334,7 @@ void do_fiq(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-int vmm_cpu_irq_setup(void)
+int __init vmm_cpu_irq_setup(void)
 {
 	int rc;
 	extern u32 _start_vect[];
@@ -347,6 +347,9 @@ int vmm_cpu_irq_setup(void)
 	write_sctlr(read_sctlr() | SCTLR_V_MASK);
 	vectors = (u32 *) CPU_IRQ_HIGHVEC_BASE;
 #else
+#if defined(CONFIG_ARMV7A_SECUREX)
+	write_vbar(CPU_IRQ_LOWVEC_BASE);
+#endif
 	vectors = (u32 *) CPU_IRQ_LOWVEC_BASE;
 #endif
 	vectors_data = vectors + CPU_IRQ_NR;

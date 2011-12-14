@@ -54,7 +54,7 @@ static int map_guest_region(vmm_vcpu_t *vcpu, int region_type, int tlb_index)
 	 * to the guest. The idea is that guest vcpu shouldn't fault
 	 * on this address.
 	 */
-	region = vmm_guest_getregion(aguest, paddr);
+	region = vmm_guest_find_region(aguest, paddr, TRUE);
 	if (region == NULL) {
 		vmm_printf("Bummer!!! No guest region defined for VCPU RAM.\n");
 		return VMM_EFAIL;
@@ -180,5 +180,9 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
 }
 
 void vmm_vcpu_regs_dump(vmm_vcpu_t *vcpu) 
+{
+}
+
+void vmm_vcpu_stat_dump(vmm_vcpu_t *vcpu) 
 {
 }

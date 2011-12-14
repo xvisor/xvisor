@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Pranav Sawargaonkar.
+ * Copyright (c) 2011 Sukanto Ghosh.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,31 +16,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_sections.h
- * @version 0.01
- * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief Architecture specific implementation of synchronization mechanisms.
+ * @file s32k-timer.h
+ * @version 1.0
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @brief OMAP3 32K sync timer APIs
  */
-
-#ifndef __VMM_SECTIONS_H__
-#define __VMM_SECTIONS_H__
+#ifndef __OMAP3_S32K_TIMER_H__
+#define __OMAP3_S32K_TIMER_H__
 
 #include <vmm_types.h>
 
-extern u8 _modtbl_start;
-extern u8 _modtbl_end;
+#define OMAP3_S32K_FREQ_HZ	32768
 
-#define __lock_section		__attribute__((section(".spinlock.text")))
-#define __modtbl_section	__attribute__((section(".modtbl")))
+#define OMAP3_S32K_BASE 	0x48320000
+#define OMAP3_S32K_CR	 	0x10
 
-static inline virtual_addr_t vmm_modtbl_vaddr(void)
-{
-	return (virtual_addr_t) & _modtbl_start;
-}
+u32 omap3_s32k_get_counter(void);
+int omap3_s32k_init(void);
 
-static inline virtual_size_t vmm_modtbl_size(void)
-{
-	return (virtual_size_t) (&_modtbl_end - &_modtbl_start);
-}
+#endif  /*  __OMAP3_S32K_TIMER_H__ */
 
-#endif /* __VMM_SECTIONS_H__ */

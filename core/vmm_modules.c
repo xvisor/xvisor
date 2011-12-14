@@ -22,13 +22,20 @@
  * @brief source file of module managment code
  */
 
+#include <vmm_cpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
 #include <vmm_modules.h>
 
-vmm_modules_ctrl_t modules_ctrl;
+struct vmm_modules_ctrl {
+        vmm_module_t *table;
+        u32 table_size;
+        u32 mod_count;
+};
+
+static struct vmm_modules_ctrl modules_ctrl;
 
 vmm_module_t *vmm_modules_getmodule(u32 index)
 {
@@ -43,7 +50,7 @@ u32 vmm_modules_count(void)
 	return modules_ctrl.mod_count;
 }
 
-int vmm_modules_init(void)
+int __init vmm_modules_init(void)
 {
 	int mod_ret;
 	u32 i, j;

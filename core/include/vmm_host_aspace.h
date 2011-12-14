@@ -125,6 +125,9 @@ u32 vmm_host_physical_read(physical_addr_t hphys_addr,
 u32 vmm_host_physical_write(physical_addr_t hphys_addr, 
 			    void * src, u32 len);
 
+/** Free memory used by initialization functions */
+u32 vmm_host_free_initmem(void);
+
 int vmm_host_aspace_init(void);
 
 #endif /* __VMM_HOST_ASPACE_H_ */

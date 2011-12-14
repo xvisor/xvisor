@@ -24,11 +24,19 @@
 
 #include <arm_io.h>
 #include <arm_irq.h>
+#include <arm_math.h>
 #include <arm_config.h>
 #include <arm_plat.h>
 #include <arm_timer.h>
 
 static u64 timer_irq_count;
+static u64 timer_irq_tcount;
+static u64 timer_irq_tstamp;
+static u64 timer_irq_delay;
+static u64 timer_counter_mask;
+static u64 timer_counter_shift;
+static u64 timer_counter_mult;
+static u64 timer_counter_last;
 static u64 timer_time_stamp;
 
 void arm_timer_enable(void)
@@ -59,16 +67,34 @@ u64 arm_timer_irqcount(void)
 	return timer_irq_count;
 }
 
+u64 arm_timer_irqdelay(void)
+{
+	return timer_irq_delay;
+}
+
 u64 arm_timer_timestamp(void)
 {
-	u32 val = arm_readl((void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_VALUE));
-	val = 0xFFFFFFFF - val;
-	timer_time_stamp = (u64)val * (u64)1000;
+	u64 timer_counter_now, timer_counter_delta, offset;
+	timer_counter_now = ~arm_readl((void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_VALUE));
+	timer_counter_delta = (timer_counter_now - timer_counter_last) & timer_counter_mask;
+	timer_counter_last = timer_counter_now;
+	offset = (timer_counter_delta * timer_counter_mult) >> timer_counter_shift;
+	timer_time_stamp += offset;
 	return timer_time_stamp;
 }
 
 int arm_timer_irqhndl(u32 irq_no, pt_regs_t * regs)
 {
+	u64 tstamp = arm_timer_timestamp();
+	if (!timer_irq_tstamp) {
+		timer_irq_tstamp = tstamp;
+	}
+	if (timer_irq_tcount == 1024) {
+		timer_irq_delay = (tstamp - timer_irq_tstamp) >> 10;
+		timer_irq_tcount = 0;
+		timer_irq_tstamp = tstamp;
+	}
+	timer_irq_tcount++;
 	timer_irq_count++;
 	arm_timer_clearirq();
 	return 0;
@@ -78,8 +104,18 @@ int arm_timer_init(u32 usecs, u32 ensel)
 {
 	u32 val;
 
-	timer_irq_count = 0;
+	timer_counter_mask = 0xFFFFFFFFULL;
+	timer_counter_shift = 20;
+	timer_counter_mult = ((u64)1000000) << timer_counter_shift;
+	timer_counter_mult += (((u64)1000000) >> 1);
+	timer_counter_mult = arm_udiv64(timer_counter_mult, ((u64)1000000));
+	timer_counter_last = 0; 
 	timer_time_stamp = 0;
+
+	timer_irq_count = 0;
+	timer_irq_tcount = 0;
+	timer_irq_tstamp = 0;
+	timer_irq_delay = 0;
 
 	/* 
 	 * set clock frequency: 

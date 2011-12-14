@@ -31,10 +31,10 @@
 #include <pba8_board.h>
 #include <realview/timer.h>
 
-virtual_addr_t pba8_timer0_base;
-virtual_addr_t pba8_timer1_base;
-virtual_addr_t pba8_timer2_base;
-virtual_addr_t pba8_timer3_base;
+static virtual_addr_t pba8_timer0_base;
+static virtual_addr_t pba8_timer1_base;
+static virtual_addr_t pba8_timer2_base;
+static virtual_addr_t pba8_timer3_base;
 
 u64 vmm_cpu_clocksource_cycles(void)
 {
@@ -48,11 +48,7 @@ u64 vmm_cpu_clocksource_mask(void)
 
 u32 vmm_cpu_clocksource_mult(void)
 {
-	u32 khz = 1000;
-	u64 tmp = ((u64)1000000) << 20;
-	tmp += khz >> 1;
-	tmp = vmm_udiv64(tmp, khz);
-	return (u32)tmp;
+	return vmm_timer_clocksource_khz2mult(1000, 20);
 }
 
 u32 vmm_cpu_clocksource_shift(void)
@@ -60,7 +56,7 @@ u32 vmm_cpu_clocksource_shift(void)
 	return 20;
 }
 
-int vmm_cpu_clocksource_init(void)
+int __init vmm_cpu_clocksource_init(void)
 {
 	int rc;
 	virtual_addr_t sctl_base;
@@ -111,7 +107,7 @@ int vmm_cpu_clockevent_shutdown(void)
 	return realview_timer_event_shutdown(pba8_timer0_base);
 }
 
-int pba8_timer_handler(u32 irq_no, vmm_user_regs_t * regs)
+static int pba8_timer0_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
 {
 	realview_timer_event_clearirq(pba8_timer0_base);
 
@@ -130,7 +126,7 @@ int vmm_cpu_clockevent_setup(void)
 	return realview_timer_event_setup(pba8_timer0_base);
 }
 
-int vmm_cpu_clockevent_init(void)
+int __init vmm_cpu_clockevent_init(void)
 {
 	int rc;
 	virtual_addr_t sctl_base;
@@ -143,11 +139,11 @@ int vmm_cpu_clockevent_init(void)
 	pba8_timer1_base = pba8_timer0_base + 0x20;
 
 	/* Initialize timers */
-	rc = realview_timer_init(sctl_base, 
+	rc = realview_timer_init(sctl_base,
 				 pba8_timer0_base,
 				 REALVIEW_TIMER1_EnSel,
 				 IRQ_PBA8_TIMER0_1,
-				 &pba8_timer_handler);
+				 pba8_timer0_handler);
 	if (rc) {
 		return rc;
 	}

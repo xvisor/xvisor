@@ -26,7 +26,6 @@
 #define __VMM_SPINLOCKS_H__
 
 #include <vmm_types.h>
-#include <vmm_sections.h>
 
 /* 
  * FIXME: With SMP should rather be holding
@@ -46,10 +45,12 @@ typedef struct vmm_spinlock vmm_spinlock_t;
 #define DECLARE_SPIN_LOCK(_lock)	vmm_spinlock_t _lock;
 #define INIT_SPIN_LOCK(_lptr)		__SPIN_LOCK_INITIALIZER(_lptr)
 
-void __lock_section vmm_spin_lock(vmm_spinlock_t * lock);
-void __lock_section vmm_spin_unlock(vmm_spinlock_t * lock);
-irq_flags_t __lock_section vmm_spin_lock_irqsave(vmm_spinlock_t * lock);
-void __lock_section vmm_spin_unlock_irqrestore(vmm_spinlock_t * lock,
-					       irq_flags_t flags);
+void vmm_spin_lock(vmm_spinlock_t * lock);
+
+void vmm_spin_unlock(vmm_spinlock_t * lock);
+
+irq_flags_t vmm_spin_lock_irqsave(vmm_spinlock_t * lock);
+
+void vmm_spin_unlock_irqrestore(vmm_spinlock_t * lock, irq_flags_t flags);
 
 #endif /* __VMM_SPINLOCKS_H__ */

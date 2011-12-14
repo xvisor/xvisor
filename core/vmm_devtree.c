@@ -27,7 +27,13 @@
 #include <vmm_board.h>
 #include <vmm_devtree.h>
 
-vmm_devtree_ctrl_t dtree_ctrl;
+struct vmm_devtree_ctrl {
+        char *str_buf;
+        size_t str_buf_size;
+        vmm_devtree_node_t *root;
+};
+
+static struct vmm_devtree_ctrl dtree_ctrl;
 
 const char *vmm_devtree_attrval(vmm_devtree_node_t * node, const char *attrib)
 {
@@ -165,7 +171,7 @@ vmm_devtree_node_t *vmm_devtree_rootnode(void)
 	return dtree_ctrl.root;
 }
 
-int vmm_devtree_init(void)
+int __init vmm_devtree_init(void)
 {
 	/* Reset the control structure */
 	vmm_memset(&dtree_ctrl, 0, sizeof(dtree_ctrl));

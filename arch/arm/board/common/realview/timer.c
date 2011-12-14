@@ -108,11 +108,11 @@ int realview_timer_counter_setup(virtual_addr_t base)
 	return VMM_OK;
 }
 
-int realview_timer_init(virtual_addr_t sctl_base,
-			virtual_addr_t base, 
-			u32 ensel,
-			u32 hirq,
-			vmm_host_irq_handler_t hirq_handler)
+int __init realview_timer_init(virtual_addr_t sctl_base,
+				       virtual_addr_t base,
+				       u32 ensel,
+				       u32 hirq,
+				       vmm_host_irq_handler_t hirq_handler)
 {
 	int ret = VMM_OK;
 	u32 val;
@@ -132,7 +132,7 @@ int realview_timer_init(virtual_addr_t sctl_base,
 
 	/* Register interrupt handler */
 	if (hirq_handler) {
-		ret = vmm_host_irq_register(hirq, hirq_handler);
+		ret = vmm_host_irq_register(hirq, hirq_handler, NULL);
 	}
 
 	return ret;

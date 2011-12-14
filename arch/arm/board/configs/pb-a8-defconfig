@@ -2,8 +2,9 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Fri Oct 21 11:27:51 2011
+# Mon Nov 21 15:35:50 2011
 #
+# CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 CONFIG_ARCH="arm"
@@ -19,6 +20,8 @@ CONFIG_ARMV7A=y
 # ARMv7a Options
 #
 # CONFIG_ARMV7A_HIGHVEC is not set
+# CONFIG_ARMV7A_FUNCSTATS is not set
+# CONFIG_ARMV7A_SECUREX is not set
 CONFIG_BOARD_PB_A8=y
 CONFIG_REALVIEW=y
 CONFIG_EMU_REALVIEW=y
@@ -34,6 +37,7 @@ CONFIG_ONE_GUEST_PBA8_DTS=y
 #
 CONFIG_MAX_VCPU_COUNT=8
 CONFIG_MAX_GUEST_COUNT=2
+CONFIG_VGPA2REG_CACHE_SIZE=8
 CONFIG_VAPOOL_SIZE=8
 # CONFIG_VERBOSE_MODE is not set
 CONFIG_BANNER_NONE=y

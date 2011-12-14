@@ -30,6 +30,7 @@
 #include <cpu_defines.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
+#include <vmm_math.h>
 
 void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 {
@@ -40,7 +41,7 @@ void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 	}
 }
 
-u32 cpu_vcpu_cpsr_retrive(vmm_vcpu_t * vcpu,
+u32 cpu_vcpu_cpsr_retrieve(vmm_vcpu_t * vcpu,
 			  vmm_user_regs_t * regs)
 {
 	if (!vcpu || !regs) {
@@ -224,7 +225,7 @@ void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu,
 			  vmm_user_regs_t * regs,
 			  u32 new_cpsr)
 {
-	u32 old_cpsr = cpu_vcpu_cpsr_retrive(vcpu, regs);
+	u32 old_cpsr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
 	/* Sanity check */
 	if (!vcpu) {
 		return;
@@ -253,7 +254,7 @@ void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu,
 	return;
 }
 
-u32 cpu_vcpu_spsr_retrive(vmm_vcpu_t * vcpu)
+u32 cpu_vcpu_spsr_retrieve(vmm_vcpu_t * vcpu)
 {
 	u32 retval = 0x0;
 	/* Find out correct SPSR */
@@ -748,6 +749,14 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 			break;
 		};
 	}
+#ifdef CONFIG_ARMV7A_FUNCSTATS
+	for (ite=0; ite < ARM_FUNCSTAT_MAX; ite++) {
+		vcpu->sregs->funcstat[ite].function_name = NULL;
+		vcpu->sregs->funcstat[ite].entry_count = 0;
+		vcpu->sregs->funcstat[ite].exit_count = 0;
+		vcpu->sregs->funcstat[ite].time = 0;
+	}
+#endif
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
@@ -790,7 +799,7 @@ void cpu_vcpu_dump_user_reg(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 	vmm_printf("    SP=0x%08x       LR=0x%08x       PC=0x%08x\n",
 		   regs->sp, regs->lr, regs->pc);
 	vmm_printf("    CPSR=0x%08x     \n", 
-				cpu_vcpu_cpsr_retrive(vcpu, regs));
+				cpu_vcpu_cpsr_retrieve(vcpu, regs));
 	vmm_printf("  General Purpose Registers");
 	for (ite = 0; ite < CPU_GPR_COUNT; ite++) {
 		if (ite % 3 == 0)
@@ -845,3 +854,27 @@ void vmm_vcpu_regs_dump(vmm_vcpu_t * vcpu)
 	vmm_printf("\n");
 }
 
+void vmm_vcpu_stat_dump(vmm_vcpu_t * vcpu)
+{
+#ifdef CONFIG_ARMV7A_FUNCSTATS
+	int index;
+
+	if (!vcpu || !vcpu->sregs) {
+		return;
+	}
+
+	vmm_printf("%-30s %-10s %s\n", "Function Name","Time/Call", "# Calls");
+
+	for (index=0; index < ARM_FUNCSTAT_MAX; index++) {
+		if (vcpu->sregs->funcstat[index].exit_count) { 
+			vmm_printf("%-30s %-10u %u\n", 
+			vcpu->sregs->funcstat[index].function_name, 
+			(u32)vmm_udiv64(vcpu->sregs->funcstat[index].time, 
+			vcpu->sregs->funcstat[index].exit_count), 
+			vcpu->sregs->funcstat[index].exit_count); 
+		} 
+	} 
+#else
+	vmm_printf("Not selected in Xvisor config\n");
+#endif
+}

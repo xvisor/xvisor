@@ -29,6 +29,7 @@
 #include <vmm_cpu.h>
 #include <vmm_board.h>
 #include <vmm_string.h>
+#include <vmm_main.h>
 #include <vmm_host_aspace.h>
 
 struct vmm_host_aspace_ctrl {
@@ -44,9 +45,7 @@ struct vmm_host_aspace_ctrl {
 	physical_size_t ram_size;
 };
 
-typedef struct vmm_host_aspace_ctrl vmm_host_aspace_ctrl_t;
-
-vmm_host_aspace_ctrl_t hactrl;
+static struct vmm_host_aspace_ctrl hactrl;
 
 int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 {
@@ -353,7 +352,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 
 	if ((rc = vmm_host_vapool_alloc(&va, sz, FALSE))) {
 		/* Don't have space */
-		while (1) ;
+		vmm_hang();
 	}
 
 	tpa = pa & ~(VMM_PAGE_SIZE - 1);
@@ -364,7 +363,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 					mem_flags);
 		if (rc) {
 			/* We were not able to map physical address */
-			while (1) ;
+			vmm_hang();
 		}
 	}
 
@@ -501,7 +500,24 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 	return bytes_written;
 }
 
-int vmm_host_aspace_init(void)
+u32 vmm_host_free_initmem(void)
+{
+	int rc;
+	virtual_addr_t init_start;
+	virtual_size_t init_size;
+
+	init_start = vmm_init_text_vaddr();
+	init_size = vmm_init_text_size();
+	init_size = VMM_ROUNDUP2_PAGE_SIZE(init_size);
+
+	if ((rc = vmm_host_free_pages(init_start, init_size >> VMM_PAGE_SHIFT))) {
+		vmm_hang();
+	}
+
+	return (init_size >> VMM_PAGE_SHIFT) * VMM_PAGE_SIZE / 1024;
+}
+
+int __init vmm_host_aspace_init(void)
 {
 	int ite, last, max, rc;
 	physical_addr_t resv_pa = 0x0;
