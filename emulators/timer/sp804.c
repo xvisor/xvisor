@@ -153,11 +153,14 @@ static u32 sp804_timer_currvalue(struct sp804_timer *t)
 			 * can be approximated as follows.
 			 * (a / 1000)
 			 * = (a / 1024) * (1024 / 1000)
-			 * = (a / 1024) * (1.024)
-			 * ~ (a / 1024) = (a >> 10)
+			 * = (a / 1024) + (a / 1024) * (24 / 1000)
+			 * = (a >> 10) + (a >> 10) * (3 / 125)
+			 * ~ (a >> 10) + (a >> 10) * (3 / 128)
+			 * ~ (a >> 10) + (((a >> 10) * 3) >> 7)
 			 */
 			cval = (vmm_timer_timestamp() - 
 					t->value_tstamp) >> 10;
+			cval = cval + ((cval * 3) >> 7);
 		} else if (freq == 1000000000) {
 			cval = (vmm_timer_timestamp() - 
 					t->value_tstamp);
