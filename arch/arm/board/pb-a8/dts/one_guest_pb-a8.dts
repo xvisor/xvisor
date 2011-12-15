@@ -5,7 +5,6 @@
 	vmm {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		mterm_time_slice = <2000000>;
 	};
 
 	host {
