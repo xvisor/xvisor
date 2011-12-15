@@ -88,9 +88,9 @@ int vmm_printchar(char **str, vmm_chardev_t *cdev, char c, bool block)
 void vmm_putc(char ch)
 {
 	if (ch == '\n') {
-		vmm_printchar(NULL, NULL, '\r', TRUE);
+		vmm_printchar(NULL, stdio_ctrl.cdev, '\r', TRUE);
 	}
-	vmm_printchar(NULL, NULL, ch, TRUE);
+	vmm_printchar(NULL, stdio_ctrl.cdev, ch, TRUE);
 }
 
 void vmm_cputc(vmm_chardev_t *cdev, char ch)
@@ -104,7 +104,7 @@ void vmm_cputc(vmm_chardev_t *cdev, char ch)
 static void printc(char **str, vmm_chardev_t *cdev, char ch)
 {
 	if (str) {
-		vmm_printchar(str, NULL, ch, TRUE);
+		vmm_printchar(str, cdev, ch, TRUE);
 	} else {
 		vmm_cputc(cdev, ch);
 	}
