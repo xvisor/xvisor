@@ -128,17 +128,24 @@ int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
 	return VMM_OK;
 }
 
-int vmm_cpu_clockevent_start(u64 tick_nsecs)
+int vmm_cpu_clockevent_start(u64 nsecs)
 {
-	u32 tick_usecs;
+	u32 usecs;
 
-	/* Get granuality in microseconds */
-	tick_usecs = vmm_udiv64(tick_nsecs, 1000);
-	if (!tick_usecs) {
-		tick_usecs = 1;
+	/* Expected microseconds is usecs = (nsecs / 1000).
+	 * In integer arithmetic this can be approximated 
+	 * as follows:
+	 * usecs = (nsecs / 1000)
+	 *       = (nsecs / 1024) * (1024 / 1000)
+	 *       = (nsecs / 1024) * (1.024)
+	 *       ~ (nsecs / 1024) = (nsecs >> 10)
+	 */
+	usecs = nsecs >> 10;
+	if (!usecs) {
+		usecs = 1;
 	}
 
-	omap3_gpt_load_start(BEAGLE_CLK_EVENT_GPT, tick_usecs);
+	omap3_gpt_load_start(BEAGLE_CLK_EVENT_GPT, usecs);
 	return VMM_OK;
 }
 
