@@ -93,7 +93,7 @@ int __init vmm_cpu_clocksource_init(void)
 	}
 
 	/* Configure timer3 as free running source */
-	rc = realview_timer_counter_setup(pba8_timer3_base);
+	rc = realview_timer_counter_start(pba8_timer3_base);
 	if (rc) {
 		return rc;
 	}
@@ -102,9 +102,9 @@ int __init vmm_cpu_clocksource_init(void)
 	return VMM_OK;
 }
 
-int vmm_cpu_clockevent_shutdown(void)
+int vmm_cpu_clockevent_stop(void)
 {
-	return realview_timer_event_shutdown(pba8_timer0_base);
+	return realview_timer_event_stop(pba8_timer0_base);
 }
 
 static int pba8_timer0_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
@@ -116,14 +116,26 @@ static int pba8_timer0_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
 	return VMM_OK;
 }
 
+int vmm_cpu_clockevent_expire(void)
+{
+	int i, rc;
+
+	rc = realview_timer_event_start(pba8_timer0_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	while (!realview_timer_event_checkirq(pba8_timer0_base)) {
+		/* FIXME: Relax a bit with some soft delay */
+		for (i = 0; i < 100; i++);
+	}
+
+	return VMM_OK;
+}
+
 int vmm_cpu_clockevent_start(u64 tick_nsecs)
 {
 	return realview_timer_event_start(pba8_timer0_base, tick_nsecs);
-}
-
-int vmm_cpu_clockevent_setup(void)
-{
-	return realview_timer_event_setup(pba8_timer0_base);
 }
 
 int __init vmm_cpu_clockevent_init(void)

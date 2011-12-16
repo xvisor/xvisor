@@ -56,13 +56,13 @@ Realview PB-A8 Host:
   # make O=<linux-2.6.30.10_build_directory> ARCH=arm zImage
 
   [13. Patch Linux-2.6.30.10 kernel to replace sensitive non-priviledged instructions]
-  # <xvisor_source_directory>/arch/arm/cpu/armv7a/elf2cpatch.py -f <linux-2.6.30.10_build_directory>/vmlinux .text.head .init .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux-2.6.30.10_build_directory>/vmlinux 0
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux-2.6.30.10_build_directory>/vmlinux .text.head .init .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux-2.6.30.10_build_directory>/vmlinux 0
 
   [14. Build Linux-2.6.30.10 in build directory to reflect changes in kernel image]
   # make O=<linux-2.6.30.10_build_directory> ARCH=arm zImage
 
   [15. Patch Linux-2.6.30.10 compressed kernel to replace sensitive non-priviledged instructions]
-  # <xvisor_source_directory>/arch/arm/cpu/armv7a/elf2cpatch.py -f <linux-2.6.30.10_build_directory>/arch/arm/boot/compressed/vmlinux .text.head .init .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux-2.6.30.10_build_directory>/arch/arm/boot/compressed/vmlinux 0
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux-2.6.30.10_build_directory>/arch/arm/boot/compressed/vmlinux .text.head .init .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux-2.6.30.10_build_directory>/arch/arm/boot/compressed/vmlinux 0
 
   [16. Build Linux-2.6.30.10 in build directory to reflect changes in compressed kernel image]
   # make O=<linux-2.6.30.10_build_directory> ARCH=arm zImage

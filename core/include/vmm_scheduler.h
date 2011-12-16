@@ -36,6 +36,12 @@ void vmm_scheduler_irq_exit(vmm_user_regs_t * regs);
 /** Check whether we are in IRQ context */
 bool vmm_scheduler_irq_context(void);
 
+/** Check whether we are in Orphan VCPU context */
+bool vmm_scheduler_orphan_context(void);
+
+/** Check whether we are in Normal VCPU context */
+bool vmm_scheduler_normal_context(void);
+
 /** Notify Change in vcpu state 
  *  (Must be called before actually changing the state) 
  */

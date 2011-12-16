@@ -81,6 +81,14 @@ L:	xvisor-devel@googlegroups.com
 F:	core/include/vmm_threads.h
 F:	core/vmm_threads.c
 
+HYPERVISOR PROFILER
+P:	Jean-Christophe Dubois
+M:	jcd@tribudubois.net
+S:	Maintained
+L:	xvisor-devel@googlegroups.com
+F:	core/include/vmm_profiler.h
+F:	core/vmm_profiler.c
+
 LINK-LIST APIs
 P:	Himanshu Chauhan
 M:	hschauhan@nulltrace.org

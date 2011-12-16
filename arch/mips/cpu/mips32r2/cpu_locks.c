@@ -22,10 +22,10 @@
  * @brief Architecture specific implementation of synchronization mechanisms.
  */
 
-#include <vmm_cpu.h>
-#include <cpu_locks.h>
+#include <vmm_error.h>
+#include <vmm_types.h>
 
-void __lock __cpu_spin_lock(vmm_cpu_spinlock_t *lock)
+void __lock __cpu_spin_lock(spinlock_t *lock)
 {
         int tmp;
 	u32 *lcounter = (u32 *)&lock->__cpu_lock.counter;
@@ -41,7 +41,7 @@ void __lock __cpu_spin_lock(vmm_cpu_spinlock_t *lock)
 		:"r"(lcounter));
 }
 
-void __lock __cpu_spin_unlock(vmm_cpu_spinlock_t *lock)
+void __lock __cpu_spin_unlock(spinlock_t *lock)
 {
 	int tmp;
 	u32 *lcounter = (u32 *)&lock->__cpu_lock.counter;
@@ -58,12 +58,17 @@ void __lock __cpu_spin_unlock(vmm_cpu_spinlock_t *lock)
 		:"r"(lcounter));
 }
 
-void __lock vmm_cpu_spin_lock (vmm_cpu_spinlock_t *lock)
+bool __lock vmm_cpu_spin_lock_check(spinlock_t * lock)
+{
+	return (lock->__cpu_lock.counter) ? TRUE : FALSE;
+}
+
+void __lock vmm_cpu_spin_lock (spinlock_t *lock)
 {
 	__cpu_spin_lock(lock);
 }
 
-void __lock vmm_cpu_spin_unlock (vmm_cpu_spinlock_t *lock)
+void __lock vmm_cpu_spin_unlock (spinlock_t *lock)
 {
 	__cpu_spin_unlock(lock);
 }

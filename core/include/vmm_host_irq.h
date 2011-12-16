@@ -35,18 +35,22 @@ typedef int (*vmm_host_irq_handler_t) (u32 irq_no,
 int vmm_host_irq_exec(u32 cpu_irq_no, vmm_user_regs_t * regs);
 
 /** Check if a host irq is enabled */
-bool vmm_host_irq_isenabled(u32 host_irq_no);
+bool vmm_host_irq_isenabled(u32 hirq_no);
 
 /** Enable a host irq (by default all irqs are enabled) */
-int vmm_host_irq_enable(u32 host_irq_no);
+int vmm_host_irq_enable(u32 hirq_no);
 
 /** Disable a host irq */
-int vmm_host_irq_disable(u32 host_irq_no);
+int vmm_host_irq_disable(u32 hirq_no);
 
 /** Register handler for given irq */
-int vmm_host_irq_register(u32 irq_no, 
+int vmm_host_irq_register(u32 hirq_no, 
 			  vmm_host_irq_handler_t handler,
 			  void *dev);
+
+/** Unregister handler for given irq */
+int vmm_host_irq_unregister(u32 hirq_no, 
+			    vmm_host_irq_handler_t handler);
 
 /** Interrupts initialization function */
 int vmm_host_irq_init(void);

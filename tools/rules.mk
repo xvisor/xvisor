@@ -22,20 +22,12 @@
 # @brief Rules to build & use tools
 # */
 
+ifdef CONFIG_DTC
+
 $(build_dir)/tools/dtc/dtc: $(CURDIR)/tools/dtc/Makefile
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
 	$(V)$(MAKE) -C $(CURDIR)/tools/dtc O=$(build_dir)/tools/dtc
-
-$(build_dir)/tools/cpatch/cpatch32: $(CURDIR)/tools/cpatch/Makefile
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
-	$(V)$(MAKE) -C $(CURDIR)/tools/cpatch O=$(build_dir)/tools/cpatch
-
-$(build_dir)/tools/bbflash/bb_nandflash_ecc: $(CURDIR)/tools/bbflash/Makefile
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
-	$(V)$(MAKE) -C $(CURDIR)/tools/bbflash O=$(build_dir)/tools/bbflash
 
 $(build_dir)/%.dep: $(src_dir)/%.dts
 	$(V)mkdir -p `dirname $@`
@@ -49,5 +41,34 @@ ifdef CONFIG_CPU_LE
 	$(V)$(build_dir)/tools/dtc/dtc -E le -I dts -O asm $< -o $@
 else
 	$(V)$(build_dir)/tools/dtc/dtc -I dts -O asm $< -o $@
+endif
+
+endif
+
+ifdef CONFIG_CPATCH
+
+$(build_dir)/tools/cpatch/cpatch32: $(CURDIR)/tools/cpatch/Makefile
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
+	$(V)$(MAKE) -C $(CURDIR)/tools/cpatch O=$(build_dir)/tools/cpatch
+
+endif
+
+ifdef CONFIG_BBFLASH
+
+$(build_dir)/tools/bbflash/bb_nandflash_ecc: $(CURDIR)/tools/bbflash/Makefile
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
+	$(V)$(MAKE) -C $(CURDIR)/tools/bbflash O=$(build_dir)/tools/bbflash
+
+endif
+
+ifdef CONFIG_KALLSYMS_GENERATOR
+
+$(build_dir)/tools/kallsyms/kallsyms: $(CURDIR)/tools/kallsyms/Makefile
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
+	$(V)$(MAKE) -C $(CURDIR)/tools/kallsyms O=$(build_dir)/tools/kallsyms
+
 endif
 

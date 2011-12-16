@@ -18,11 +18,12 @@ WHAT IS XVISOR?
   hypervisor, such as:
 	- Tree based configuration (Device Tree)
 	- Tickless and high resolution timekeeping (Timer Subsystem)
-	- Threading Framework (Hyperthreads)
-	- Device Driver Framework (Host Address Space, Host IRQs, Drivers)
+	- Threading framework (Hyperthreads)
+	- Device driver framework (Host address space, Host IRQs, Drivers)
 	- CPU virtualization (Guest, Virtual CPUs, Virtual IRQs)
-	- Address Space Virtualization (Guest Address Space)
+	- Address space virtualization (Guest Address Space)
 	- IO virtualization (Device Emulation Framework, Emulators)
+	- Pass through hardware access (Host to Guest IRQ Mapping)
 	- Serial Port Virtualization (VSerial)
 	- Managment Terminal (Mterm)
 

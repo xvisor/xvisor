@@ -105,6 +105,11 @@ enum vmm_vcpu_states {
 					  VMM_VCPU_STATE_PAUSED | \
 					  VMM_VCPU_STATE_HALTED )
 
+#define VMM_VCPU_MIN_PRIORITY		0
+#define VMM_VCPU_MAX_PRIORITY		7
+#define VMM_VCPU_DEF_PRIORITY		3
+#define VMM_VCPU_DEF_TIME_SLICE		1000000
+
 struct vmm_vcpu {
 	struct dlist head;
 	vmm_spinlock_t lock;
@@ -116,14 +121,21 @@ struct vmm_vcpu {
 	vmm_guest_t *guest;
 	u32 state;
 	u32 reset_count;
-	u32 preempt_count;
-	u64 time_slice;
 	virtual_addr_t start_pc;
 	virtual_addr_t start_sp;
 	vmm_user_regs_t *uregs;
 	vmm_super_regs_t *sregs;
 	vmm_vcpu_irqs_t *irqs;
-	void * devemu_priv;
+
+	u8 priority; /**< Scheduling Parameter */
+	u32 preempt_count; /**< Scheduling Parameter */
+	u64 time_slice; /**< Scheduling Parameter (nano seconds) */
+	void * sched_priv; /**< Scheduling Context */
+
+	struct dlist wq_head; /**< Wait Queue List head */
+	void * wq_priv; /**< Wait Queue Context */
+
+	void * devemu_priv; /**< Device Emulation Context */
 };
 
 /** Maximum number of vcpus (thread or normal) */
@@ -160,6 +172,7 @@ int vmm_manager_vcpu_dumpstat(vmm_vcpu_t * vcpu);
 vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
 					    virtual_addr_t start_sp,
+					    u8 priority,
 					    u64 time_slice_nsecs);
 
 /** Destroy an orphan vcpu */
