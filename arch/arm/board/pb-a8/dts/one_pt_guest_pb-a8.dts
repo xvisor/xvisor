@@ -1,0 +1,214 @@
+
+/dts-v1/;
+
+/ {
+	vmm {
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	host {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		model = "realview-pb-a8";
+		device_type = "host";
+		
+		cpus {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cpu_freq_mhz = <100>;
+
+			cpu0 {
+				device_type = "cpu";
+				model = "Cortex-A8";
+			};
+		};
+
+		memory {
+			physical_addr = <0x70000000>;
+			physical_size = <0x08000000>; /* 128 MB */
+		};
+
+		nbridge {
+			#address-cells = <1>;
+			#size-cells = <0>;
+		
+			sbridge {
+				#address-cells = <1>;
+				#size-cells = <0>;
+		
+				uart0 {
+			      		device_type = "serial";
+			      		compatible = "pl011";
+			      		reg = <0x10009000 0x1000>;
+			      		baudrate = <115200>;
+					irq = <44>;
+				};
+			};
+		};
+	};
+
+	guests {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		guest0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			model = "realview-pb-a8";
+			device_type = "guest";
+
+			vcpus {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				vcpu0 {
+					device_type = "vcpu";
+					model = "ARMv7a,cortex-a8";
+					time_slice = <98000000>;
+					start_pc = <0x40000000>;
+				};
+			};
+			
+			aspace {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				mem0 {
+					manifest_type = "alias";
+					address_type = "memory";
+					guest_physical_addr = <0x00000000>;
+					alias_physical_addr = <0x70000000>;
+					physical_size = <0x06000000>; /* 96 MB */
+					device_type = "ram";
+				};
+
+				mem1 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x70000000>;
+					host_physical_addr = <0x72000000>;
+					physical_size = <0x06000000>; /* 96 MB */
+					device_type = "ram";
+				};
+
+				sysctl {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10000000>;
+					physical_size = <0x1000>;
+					device_type = "sys";
+					compatible = "realview,pb-a8";
+				};
+
+				sysctrl0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10001000>;
+					physical_size = <0x1000>;
+					device_type = "sys";
+					compatible = "primecell,sp810";
+				};
+
+				/* Pass Through Device PL011 */
+				uart0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x10009000>;
+					host_physical_addr = <0x1000A000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+				};
+
+				uart1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1000A000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <1024>;
+					irq = <45>;
+				};
+
+				uart2 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1000B000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <1024>;
+					irq = <46>;
+				};
+
+				uart3 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1000C000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <1024>;
+					irq = <47>;
+				};
+
+				timer0_1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10011000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <36>;
+				};
+
+				timer2_3 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10012000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <37>;
+				};
+
+				sysctrl1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1001A000>;
+					physical_size = <0x1000>;
+					device_type = "sys";
+					compatible = "primecell,sp810";
+				};
+
+				/* Pass through device access requires 
+				 * host IRQ to guest IRQ routing
+				 */
+				gic0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1E000000>;
+					physical_size = <0x2000>;
+					device_type = "pic";
+					compatible = "realview,gic";
+					parent_irq = <6>;
+					h2g_irq_map = </* Host => Guest */
+							  /* uart0 */
+							   45      44 
+						      >;
+				};
+
+				nor_flash {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x40000000>;
+					host_physical_addr = <0x70800000>;
+					physical_size = <0x00800000>; /* 8 MB */
+					device_type = "rom";
+				};
+			};
+		};
+
+	};
+};

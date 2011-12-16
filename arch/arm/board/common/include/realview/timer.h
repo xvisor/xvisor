@@ -46,12 +46,13 @@
 
 void realview_timer_enable(virtual_addr_t base);
 void realview_timer_disable(virtual_addr_t base);
-int realview_timer_event_shutdown(virtual_addr_t base);
+int realview_timer_event_stop(virtual_addr_t base);
 void realview_timer_event_clearirq(virtual_addr_t base);
+bool realview_timer_event_checkirq(virtual_addr_t base);
 int realview_timer_event_start(virtual_addr_t base, u64 nsecs);
-int realview_timer_event_setup(virtual_addr_t base);
+
 u32 realview_timer_counter_value(virtual_addr_t base);
-int realview_timer_counter_setup(virtual_addr_t base);
+int realview_timer_counter_start(virtual_addr_t base);
 int realview_timer_init(virtual_addr_t sctl_base,
 			virtual_addr_t base, 
 			u32 ensel,

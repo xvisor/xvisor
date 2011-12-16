@@ -76,6 +76,7 @@ static int mterm_main(void *udata)
 
 static int __init daemon_mterm_init(void)
 {
+	u8 mterm_priority;
 	u32 mterm_time_slice;
 	vmm_devtree_node_t * node;
 	const char * attrval;
@@ -90,16 +91,25 @@ static int __init daemon_mterm_init(void)
 		return VMM_EFAIL;
 	}
 	attrval = vmm_devtree_attrval(node,
-				      "mterm_time_slice");
-	if (!attrval) {
-		return VMM_EFAIL;
+				      "mterm_priority");
+	if (attrval) {
+		mterm_priority = *((u32 *) attrval);
+	} else {
+		mterm_priority = VMM_THREAD_DEF_PRIORITY;
 	}
-	mterm_time_slice = *((u32 *) attrval);
+	attrval = vmm_devtree_attrval(node,
+				      "mterm_time_slice");
+	if (attrval) {
+		mterm_time_slice = *((u32 *) attrval);
+	} else {
+		mterm_time_slice = VMM_THREAD_DEF_TIME_SLICE;
+	}
 
 	/* Create mterm thread */
 	mtctrl.thread = vmm_threads_create("mterm", 
 					   &mterm_main, 
 					   NULL, 
+					   mterm_priority,
 					   mterm_time_slice);
 	if (!mtctrl.thread) {
 		vmm_panic("Creation of system critical thread failed.\n");

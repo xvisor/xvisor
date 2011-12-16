@@ -28,6 +28,13 @@
 #include <vmm_spinlocks.h>
 #include <vmm_chardev.h>
 
+#define BUG_ON(x, bug_string, ...)				\
+	do {							\
+		if (x) {					\
+			vmm_panic(bug_string, #__VA_ARGS__);	\
+		}						\
+	} while(0);
+
 /** Check if a character is a control character */
 bool vmm_iscontrol(char c);
 

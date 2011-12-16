@@ -51,12 +51,26 @@ u64 vmm_timer_timestamp(void)
 	cycles_now = vmm_cpu_clocksource_cycles();
 	cycles_delta = (cycles_now - tctrl.cycles_last) & tctrl.cycles_mask;
 	tctrl.cycles_last = cycles_now;
-	
+
 	ns_offset = (cycles_delta * tctrl.cycles_mult) >> tctrl.cycles_shift;
 	tctrl.timestamp += ns_offset;
 
 	return tctrl.timestamp;
 }
+
+#ifdef CONFIG_PROFILE
+u64 __notrace vmm_timer_timestamp_for_profile(void)
+{
+	u64 cycles_now, cycles_delta;
+	u64 ns_offset;
+
+	cycles_now = vmm_cpu_clocksource_cycles();
+	cycles_delta = (cycles_now - tctrl.cycles_last) & tctrl.cycles_mask;
+	ns_offset = (cycles_delta * tctrl.cycles_mult) >> tctrl.cycles_shift;
+
+	return tctrl.timestamp + ns_offset;
+}
+#endif
 
 static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 {
@@ -177,6 +191,32 @@ int vmm_timer_event_restart(vmm_timer_event_t * ev)
 	}
 
 	return vmm_timer_event_start(ev, ev->duration_nsecs);
+}
+
+int vmm_timer_event_expire(vmm_timer_event_t * ev)
+{
+	irq_flags_t flags;
+
+	if (!ev) {
+		return VMM_EFAIL;
+	}
+
+	flags = vmm_cpu_irq_save();
+
+	if (ev->active) {
+		list_del(&ev->cpu_head);
+		ev->active = FALSE;
+	}
+
+	ev->expiry_tstamp = vmm_timer_timestamp();
+	ev->active = TRUE;
+	list_add(&tctrl.cpu_event_list, &ev->cpu_head);
+
+	vmm_cpu_clockevent_expire();
+
+	vmm_cpu_irq_restore(flags);
+
+	return VMM_OK;
 }
 
 int vmm_timer_event_stop(vmm_timer_event_t * ev)
@@ -350,8 +390,6 @@ u32 vmm_timer_event_count(void)
 
 void vmm_timer_start(void)
 {
-	vmm_cpu_clockevent_setup();
-
 	vmm_cpu_clockevent_start(1000000);
 
 	tctrl.cpu_started = TRUE;
@@ -359,7 +397,7 @@ void vmm_timer_start(void)
 
 void vmm_timer_stop(void)
 {
-	vmm_cpu_clockevent_shutdown();
+	vmm_cpu_clockevent_stop();
 
 	tctrl.cpu_started = FALSE;
 }

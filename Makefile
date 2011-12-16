@@ -106,6 +106,7 @@ include $(commands-object-mks)
 include $(daemons-object-mks)
 include $(drivers-object-mks)
 include $(emulators-object-mks)
+
 objs-y=$(foreach obj,$(cpu-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/cpu/$(CONFIG_CPU)/$(obj))
 objs-y+=$(foreach obj,$(cpu-common-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/cpu/common/$(obj))
 objs-y+=$(foreach obj,$(board-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)/$(obj))
@@ -124,8 +125,9 @@ deps-y=$(objs-y:.o=.dep)
 include $(tools_dir)/tools.mk
 
 # Setup list of targets for compilation
-targets-y=$(build_dir)/vmm.elf
+targets-y+=$(build_dir)/vmm.elf
 targets-y+=$(build_dir)/vmm.bin
+targets-y+=$(build_dir)/system.map
 
 # Setup compilation environment
 cpp=$(CROSS_COMPILE)cpp
@@ -163,6 +165,15 @@ ldflags+=$(cpu-ldflags)
 ldflags+=$(libs-ldflags-y) 
 ldflags+=-Wl,-T$(build_dir)/linker.ld
 objcopy=$(CROSS_COMPILE)objcopy
+nm=$(CROSS_COMPILE)nm
+
+final-objs-y=$(objs-y)
+ifdef CONFIG_KALLSYMS
+final-objs-y+=$(build_dir)/system_map.o
+endif
+ifdef CONFIG_PROFILE
+cflags+=-finstrument-functions
+endif
 
 # Default rule "make"
 .PHONY: all
@@ -182,10 +193,26 @@ $(build_dir)/vmm.bin: $(build_dir)/vmm.elf
 	$(if $(V), @echo " (objcopy)   $(subst $(build_dir)/,,$@)")
 	$(V)$(objcopy) -O binary $< $@
 
-$(build_dir)/vmm.elf: $(build_dir)/linker.ld $(objs-y)
+$(build_dir)/system_map.S: $(build_dir)/tools/kallsyms/kallsyms
+$(build_dir)/system_map.S: $(build_dir)/system.map
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (kallsyms)  $(subst $(build_dir)/,,$@)")
+	$(V)$(build_dir)/tools/kallsyms/kallsyms --all-symbols < $< > $@
+
+$(build_dir)/system.map: $(build_dir)/vmm_tmp.elf
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (nm)        $(subst $(build_dir)/,,$@)")
+	$(V)$(nm) -n $< | grep -v '\( [aNUw] \)\|\(__crc_\)\|\( \$[adt]\)' > $@
+
+$(build_dir)/vmm_tmp.elf: $(build_dir)/linker.ld $(objs-y)
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (ld)        $(subst $(build_dir)/,,$@)")
 	$(V)$(ld) $(objs-y) $(ldflags) -o $@
+
+$(build_dir)/vmm.elf: $(build_dir)/linker.ld $(final-objs-y)
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (ld)        $(subst $(build_dir)/,,$@)")
+	$(V)$(ld) $(final-objs-y) $(ldflags) -o $@
 
 $(build_dir)/linker.ld: $(cpu_dir)/linker.ld
 	$(V)mkdir -p `dirname $@`

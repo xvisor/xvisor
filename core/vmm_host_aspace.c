@@ -29,7 +29,7 @@
 #include <vmm_cpu.h>
 #include <vmm_board.h>
 #include <vmm_string.h>
-#include <vmm_main.h>
+#include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 
 struct vmm_host_aspace_ctrl {
@@ -340,7 +340,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 
 	if ((rc = vmm_host_vapool_alloc(&va, sz, FALSE))) {
 		/* Don't have space */
-		vmm_hang();
+		BUG_ON("%s: Don't have space\n", __func__);
 	}
 
 	tpa = pa & ~(VMM_PAGE_SIZE - 1);
@@ -351,7 +351,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 					mem_flags);
 		if (rc) {
 			/* We were not able to map physical address */
-			vmm_hang();
+			BUG_ON("%s: map physical address failed\n", __func__);
 		}
 	}
 
@@ -488,7 +488,7 @@ u32 vmm_host_free_initmem(void)
 	init_size = VMM_ROUNDUP2_PAGE_SIZE(init_size);
 
 	if ((rc = vmm_host_free_pages(init_start, init_size >> VMM_PAGE_SHIFT))) {
-		vmm_hang();
+		BUG_ON("%s: Unable to free pages\n", __func__);
 	}
 
 	return (init_size >> VMM_PAGE_SHIFT) * VMM_PAGE_SIZE / 1024;
@@ -505,7 +505,7 @@ int __init vmm_host_aspace_init(void)
 
 	/* Determine VAPOOl start and size. Also determine size of bitmap */
 	hactrl.vapool_start = vmm_cpu_code_vaddr_start();
-	hactrl.vapool_size = vmm_cpu_code_size() + (CONFIG_VAPOOL_SIZE << 20);
+	hactrl.vapool_size = (CONFIG_VAPOOL_SIZE << 20);
 	hactrl.vapool_start &= ~VMM_PAGE_MASK;
 	hactrl.vapool_size &= ~VMM_PAGE_MASK;
 	hactrl.vapool_bmap_len = hactrl.vapool_size >> (VMM_PAGE_SHIFT + 5);
@@ -538,7 +538,7 @@ int __init vmm_host_aspace_init(void)
 	bmap_total_size *= sizeof(u32);
 	bmap_total_size = VMM_ROUNDUP2_PAGE_SIZE(bmap_total_size);
 	resv_pa = hactrl.ram_start;
-	resv_va = vmm_cpu_code_vaddr_start() + vmm_cpu_code_size();
+	resv_va = hactrl.vapool_start + vmm_cpu_code_size();
 	resv_sz = bmap_total_size;
 	if ((rc = vmm_cpu_aspace_init(&resv_pa, &resv_va, &resv_sz))) {
 		return rc;
