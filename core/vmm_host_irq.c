@@ -196,9 +196,6 @@ int __init vmm_host_irq_init(void)
 	/* Allocate memory for irq array */
 	hirqctrl.irq = vmm_malloc(sizeof(struct dlist) * hirqctrl.irq_count);
 
-	/* Allocate memory for dev array */
-	hirqctrl.dev = vmm_malloc(sizeof(void *) * hirqctrl.irq_count);
-
 	/* Reset the handler array */
 	for (ite = 0; ite < hirqctrl.irq_count; ite++) {
 		INIT_LIST_HEAD(&hirqctrl.irq[ite]);

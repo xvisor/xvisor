@@ -119,6 +119,16 @@ u32 vmm_cpu_clocksource_shift(void)
 	return 22;
 }
 
+int vmm_cpu_clockevent_stop(void)
+{
+	return 0;
+}
+
+int vmm_cpu_clockevent_expire(void)
+{
+	return 0;
+}
+
 int vmm_cpu_clockevent_init(void)
 {
 	/* Disable the timer interrupts. */
