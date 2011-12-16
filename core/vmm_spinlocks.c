@@ -27,6 +27,16 @@
 #include <vmm_scheduler.h>
 #include <vmm_spinlocks.h>
 
+bool __lock vmm_spin_lock_check(vmm_spinlock_t * lock)
+{
+#if defined(CONFIG_SMP)
+	/* Call CPU specific locking routine */
+	return vmm_cpu_spin_lock_check(&lock->__the_lock);
+#else
+	return FALSE;
+#endif
+}
+
 void __lock vmm_spin_lock(vmm_spinlock_t * lock)
 {
 	/* Disable preemption in scheduler */

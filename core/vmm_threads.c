@@ -71,6 +71,7 @@ static void vmm_threads_entry(void)
 vmm_thread_t *vmm_threads_create(const char *thread_name, 
 				 vmm_thread_func_t thread_fn,
 				 void *thread_data,
+				 u8 thread_priority,
 				 u64 thread_nsecs)
 {
 	irq_flags_t flags;
@@ -84,13 +85,13 @@ vmm_thread_t *vmm_threads_create(const char *thread_name,
 	tinfo->tfn = thread_fn;
 	tinfo->tdata = thread_data;
 	tinfo->tnsecs = thread_nsecs;
-	vmm_memset(&tinfo->tstack, 0, VMM_THREAD_STACK_SZ);
+	vmm_memset(&tinfo->tstack, 0, CONFIG_THREAD_STACK_SIZE);
 
 	/* Create an orphan vcpu for this thread */
 	tinfo->tvcpu = vmm_manager_vcpu_orphan_create(thread_name,
 			(virtual_addr_t)&vmm_threads_entry,
-			(virtual_addr_t)&tinfo->tstack[VMM_THREAD_STACK_SZ - 4],
-			thread_nsecs);
+			(virtual_addr_t)&tinfo->tstack[CONFIG_THREAD_STACK_SIZE - 4],
+			thread_priority, thread_nsecs);
 	if (!tinfo->tvcpu) {
 		vmm_free(tinfo);
 		return NULL;

@@ -550,7 +550,6 @@ int vmm_devemu_probe_region(vmm_guest_t *guest, vmm_region_t *reg)
 	int rc;
 	struct dlist *l1;
 	vmm_emudev_t *einst;
-	struct vmm_devemu_guest_context *eginst;
 	vmm_emulator_t *emu;
 	const vmm_emuid_t *matches;
 	const vmm_emuid_t *match;
@@ -562,8 +561,6 @@ int vmm_devemu_probe_region(vmm_guest_t *guest, vmm_region_t *reg)
 	if (!(reg->flags & VMM_REGION_VIRTUAL)) {
 		return VMM_EFAIL;
 	}
-
-	eginst = guest->aspace.devemu_priv;
 
 	list_for_each(l1, &dectrl.emu_list) {
 		emu = list_entry(l1, vmm_emulator_t, head);

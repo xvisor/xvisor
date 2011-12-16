@@ -4,7 +4,8 @@
 	vmm {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		mterm_time_slice = <2000000>;
+		/* Maximum size of VMM */
+		vmm_max_size = <0x40000000>;
 	};
 
 	host {

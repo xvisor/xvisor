@@ -83,13 +83,13 @@ SECTIONS
 	}
 
 	PROVIDE(_stack_end = .);
-	. = . + CONFIG_STACK_SIZE;
+	. = . + CONFIG_IRQ_STACK_SIZE;
 	. = ALIGN(4);
 	PROVIDE(_stack_start = .);
 
 	/* Interrupt stack */
 	PROVIDE(_int_stack_end = .);
-	. = . + CONFIG_INTERRUPT_STACK_SIZE;
+	. = . + CONFIG_IRQ_STACK_SIZE;
 	. = ALIGN(4);
 	PROVIDE(_int_stack = .);
 

@@ -31,7 +31,9 @@ cpu-ldflags += -static-libgcc -lgcc
 
 cpu-objs-y+= start.o
 cpu-objs-y+= cpu_atomic.o
+ifdef CONFIG_SMP
 cpu-objs-y+= cpu_locks.o
+endif
 cpu-objs-y+= cpu_main.o
 cpu-objs-y+= cpu_timer.o
 cpu-objs-y+= cpu_interrupts.o

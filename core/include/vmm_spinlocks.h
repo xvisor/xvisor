@@ -27,30 +27,48 @@
 
 #include <vmm_types.h>
 
+#if defined(CONFIG_SMP)
+
 /* 
  * FIXME: With SMP should rather be holding
  * more information like which core is holding the
  * lock.
  */
 struct vmm_spinlock {
-	vmm_cpu_spinlock_t __the_lock;
+	spinlock_t __the_lock;
 };
 
-typedef struct vmm_spinlock vmm_spinlock_t;
-
-#define __INIT_SPIN_LOCK_UNLOCKED 	{ .__the_lock = __CPU_INIT_SPIN_LOCK_UNLOCKED }
-#define __SPIN_LOCK_INITIALIZER(_lptr) 	__CPU_SPIN_LOCK_UNLOCKED(&((_lptr)->__the_lock))
+#define __SPIN_LOCK_INITIALIZER(_lptr) 	VMM_CPU_SPIN_LOCK_INIT(&((_lptr)->__the_lock))
 #define DEFINE_SPIN_LOCK(_lock) 	vmm_spinlock_t _lock = __SPIN_LOCK_INITIALIZER(&_lock);
 
 #define DECLARE_SPIN_LOCK(_lock)	vmm_spinlock_t _lock;
 #define INIT_SPIN_LOCK(_lptr)		__SPIN_LOCK_INITIALIZER(_lptr)
 
+#else 
+
+struct vmm_spinlock {
+	u32 __the_lock;
+};
+
+#define INIT_SPIN_LOCK(_lptr)		((_lptr)->__the_lock = 0)
+
+#endif
+
+typedef struct vmm_spinlock vmm_spinlock_t;
+
+/** Check status of spinlock (TRUE: Locked, FALSE: Unlocked) */
+bool vmm_spin_lock_check(vmm_spinlock_t * lock);
+
+/** Lock the spinlock */
 void vmm_spin_lock(vmm_spinlock_t * lock);
 
+/** Unlock the spinlock */
 void vmm_spin_unlock(vmm_spinlock_t * lock);
 
+/** Save irq flags and lock the spinlock */
 irq_flags_t vmm_spin_lock_irqsave(vmm_spinlock_t * lock);
 
+/** Unlock the spinlock and restore irq flags */
 void vmm_spin_unlock_irqrestore(vmm_spinlock_t * lock, irq_flags_t flags);
 
 #endif /* __VMM_SPINLOCKS_H__ */

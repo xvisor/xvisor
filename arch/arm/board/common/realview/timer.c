@@ -24,7 +24,6 @@
 
 #include <vmm_error.h>
 #include <vmm_host_io.h>
-#include <vmm_math.h>
 #include <realview_config.h>
 #include <realview/plat.h>
 #include <realview/timer.h>
@@ -47,7 +46,7 @@ void realview_timer_disable(virtual_addr_t base)
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 }
 
-int realview_timer_event_shutdown(virtual_addr_t base)
+int realview_timer_event_stop(virtual_addr_t base)
 {
 	vmm_writel(0x0, (void *)(base + TIMER_CTRL));
 
@@ -59,32 +58,38 @@ void realview_timer_event_clearirq(virtual_addr_t base)
 	vmm_writel(1, (void *)(base + TIMER_INTCLR));
 }
 
+bool realview_timer_event_checkirq(virtual_addr_t base)
+{
+	return vmm_readl((void *)(base + TIMER_MIS)) ? TRUE : FALSE;
+}
+
 int realview_timer_event_start(virtual_addr_t base, u64 nsecs)
 {
 	u32 ctrl, usecs;
 
-	/* Expected microseconds */
-	usecs = vmm_udiv64(nsecs, 1000);
+	/* Expected microseconds is usecs = (nsecs / 1000).
+	 * In integer arithmetic this can be approximated 
+	 * as follows:
+	 * usecs = (nsecs / 1000)
+	 *       = (nsecs / 1024) * (1024 / 1000)
+	 *       = (nsecs / 1024) + (nsecs / 1024) * (24 / 1000)
+	 *       = (nsecs >> 10) + (nsecs >> 10) * (3 / 125)
+	 *       ~ (nsecs >> 10) + (nsecs >> 10) * (3 / 128)
+	 *       ~ (nsecs >> 10) + (((nsecs >> 10) * 3) >> 7)
+	 */
+	usecs = (nsecs >> 10) + (((nsecs >> 10) * 3) >> 7);
 	if (!usecs) {
 		usecs = 1;
 	}
 
 	/* Setup the registers */
 	ctrl = vmm_readl((void *)(base + TIMER_CTRL));
+	ctrl &= ~TIMER_CTRL_ENABLE;
+	ctrl |= (TIMER_CTRL_32BIT | TIMER_CTRL_ONESHOT | TIMER_CTRL_IE);
+	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 	vmm_writel(usecs, (void *)(base + TIMER_LOAD));
 	vmm_writel(usecs, (void *)(base + TIMER_VALUE));
 	ctrl |= TIMER_CTRL_ENABLE;
-	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
-
-	return VMM_OK;
-}
-
-int realview_timer_event_setup(virtual_addr_t base)
-{
-	u32 ctrl;
-
-	/* Setup the registers */
-	ctrl = (TIMER_CTRL_32BIT | TIMER_CTRL_ONESHOT | TIMER_CTRL_IE);
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 
 	return VMM_OK;
@@ -95,7 +100,7 @@ u32 realview_timer_counter_value(virtual_addr_t base)
 	return vmm_readl((void *)(base + TIMER_VALUE));
 }
 
-int realview_timer_counter_setup(virtual_addr_t base)
+int realview_timer_counter_start(virtual_addr_t base)
 {
 	u32 ctrl;
 
