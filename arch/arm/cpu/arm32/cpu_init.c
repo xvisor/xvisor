@@ -73,13 +73,3 @@ void __init cpu_init(void)
 	/* We will never come back here. */
 	while (1);
 }
-
-virtual_addr_t vmm_cpu_code_vaddr_start(void)
-{
-	return vmm_code_vaddr();
-}
-
-physical_addr_t vmm_cpu_code_paddr_start(void)
-{
-	return vmm_code_paddr();
-}

@@ -165,18 +165,6 @@ u32 vmm_host_vapool_total_page_count(void)
 	return hactrl.vapool_size >> VMM_PAGE_SHIFT;
 }
 
-/**
- * Returns the physical address of the first page from the list of
- * contiguous pages booked from the host memory. This is allocation
- * is done from heap area.
- *
- * @param pa: Output parameter which on return contains the physical
- * address of the first page.
- * @param sz: Size of memory booked from host memory starting from
- * physical address returned in pa.
- * @param aligned: Flag that mentions if the allocation is to be
- * aligned.
- */
 int vmm_host_ram_alloc(physical_addr_t * pa, physical_size_t sz, bool aligned)
 {
 	u32 i, found, binc, bcnt, bpos, bfree;
@@ -392,17 +380,6 @@ int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
 	return VMM_OK;
 }
 
-/**
- * Allocates page_count number of contiguous pages from the memory
- * allocated for host.
- *
- * @param page_count: Number of pages to allocate from host memory.
- * @param mem_flags: Allocation flags.
- *
- * @return Virtual address for the first free page in the list.
- *
- * @see vmm_host_ram_alloc
- */
 virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags)
 {
 	int rc = VMM_OK;
