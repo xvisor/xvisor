@@ -63,6 +63,8 @@ vmm_thread_t *vmm_threads_create(const char *thread_name,
 int vmm_threads_destroy(vmm_thread_t * tinfo);
 int vmm_threads_start(vmm_thread_t * tinfo);
 int vmm_threads_stop(vmm_thread_t * tinfo);
+int vmm_threads_sleep(vmm_thread_t * tinfo);
+int vmm_threads_wakeup(vmm_thread_t * tinfo);
 u32 vmm_threads_get_id(vmm_thread_t * tinfo);
 int vmm_threads_get_name(char * dst, vmm_thread_t * tinfo);
 int vmm_threads_get_state(vmm_thread_t * tinfo);

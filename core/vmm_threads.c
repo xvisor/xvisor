@@ -132,7 +132,46 @@ int vmm_threads_start(vmm_thread_t * tinfo)
 
 int vmm_threads_stop(vmm_thread_t * tinfo)
 {
-	/* FIXME: TBD */
+	int rc;
+
+	if (!tinfo) {
+		return VMM_EFAIL;
+	}
+
+	if ((rc = vmm_manager_vcpu_halt(tinfo->tvcpu))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_threads_sleep(vmm_thread_t * tinfo)
+{
+	int rc;
+
+	if (!tinfo) {
+		return VMM_EFAIL;
+	}
+
+	if ((rc = vmm_manager_vcpu_pause(tinfo->tvcpu))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_threads_wakeup(vmm_thread_t * tinfo)
+{
+	int rc;
+
+	if (!tinfo) {
+		return VMM_EFAIL;
+	}
+
+	if ((rc = vmm_manager_vcpu_resume(tinfo->tvcpu))) {
+		return rc;
+	}
+
 	return VMM_OK;
 }
 
