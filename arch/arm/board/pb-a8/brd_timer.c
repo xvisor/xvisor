@@ -33,12 +33,10 @@
 
 static virtual_addr_t pba8_timer0_base;
 static virtual_addr_t pba8_timer1_base;
-static virtual_addr_t pba8_timer2_base;
-static virtual_addr_t pba8_timer3_base;
 
 u64 vmm_cpu_clocksource_cycles(void)
 {
-	return ~realview_timer_counter_value(pba8_timer3_base);
+	return ~realview_timer_counter_value(pba8_timer1_base);
 }
 
 u64 vmm_cpu_clocksource_mask(void)
@@ -65,22 +63,14 @@ int __init vmm_cpu_clocksource_init(void)
 	sctl_base = vmm_host_iomap(REALVIEW_SCTL_BASE, 0x1000);
 
 	/* Map timer registers */
-	pba8_timer2_base = vmm_host_iomap(REALVIEW_PBA8_TIMER2_3_BASE, 0x1000);
-	pba8_timer3_base = pba8_timer2_base + 0x20;
+	pba8_timer1_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
+	pba8_timer1_base += 0x20;
 
 	/* Initialize timers */
 	rc = realview_timer_init(sctl_base, 
-				 pba8_timer2_base,
-				 REALVIEW_TIMER3_EnSel,
-				 IRQ_PBA8_TIMER2_3,
-				 NULL);
-	if (rc) {
-		return rc;
-	}
-	rc = realview_timer_init(sctl_base, 
-				 pba8_timer3_base,
-				 REALVIEW_TIMER4_EnSel,
-				 IRQ_PBA8_TIMER2_3,
+				 pba8_timer1_base,
+				 REALVIEW_TIMER2_EnSel,
+				 IRQ_PBA8_TIMER0_1,
 				 NULL);
 	if (rc) {
 		return rc;
@@ -92,12 +82,12 @@ int __init vmm_cpu_clocksource_init(void)
 		return rc;
 	}
 
-	/* Configure timer3 as free running source */
-	rc = realview_timer_counter_start(pba8_timer3_base);
+	/* Configure timer1 as free running source */
+	rc = realview_timer_counter_start(pba8_timer1_base);
 	if (rc) {
 		return rc;
 	}
-	realview_timer_enable(pba8_timer3_base);
+	realview_timer_enable(pba8_timer1_base);
 
 	return VMM_OK;
 }
@@ -148,7 +138,6 @@ int __init vmm_cpu_clockevent_init(void)
 
 	/* Map timer registers */
 	pba8_timer0_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
-	pba8_timer1_base = pba8_timer0_base + 0x20;
 
 	/* Initialize timers */
 	rc = realview_timer_init(sctl_base,
@@ -156,14 +145,6 @@ int __init vmm_cpu_clockevent_init(void)
 				 REALVIEW_TIMER1_EnSel,
 				 IRQ_PBA8_TIMER0_1,
 				 pba8_timer0_handler);
-	if (rc) {
-		return rc;
-	}
-	rc = realview_timer_init(sctl_base, 
-				 pba8_timer1_base,
-				 REALVIEW_TIMER2_EnSel,
-				 IRQ_PBA8_TIMER0_1,
-				 NULL);
 	if (rc) {
 		return rc;
 	}
