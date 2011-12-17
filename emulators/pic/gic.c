@@ -886,7 +886,18 @@ static int gic_emulator_reset(vmm_emudev_t *edev)
 
 	vmm_spin_lock(&s->lock);
 
-	vmm_memset(s->irq_state, 0, s->num_irq * sizeof(struct gic_irq_state));
+	/*
+	 * We should not reset level as for host to guest IRQ might
+	 * have been raised already.
+	 */
+	for (i = 0; i < s->num_irq; i++) {
+		s->irq_state[i].enabled &= 0;
+		s->irq_state[i].pending = 0;
+		s->irq_state[i].active = 0;
+		s->irq_state[i].model = 0;
+		s->irq_state[i].trigger = 0;
+	}
+
 	for (i = 0; i < GIC_NUM_CPU(s); i++) {
 		s->priority_mask[i] = 0xf0;
 		s->current_pending[i] = 1023;
