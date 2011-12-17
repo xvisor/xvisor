@@ -72,9 +72,8 @@ u64 __notrace vmm_timer_timestamp_for_profile(void)
 }
 #endif
 
-static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
+static void vmm_timer_schedule_next_event(u64 tstamp, vmm_timer_event_t * ev)
 {
-	u64 tstamp;
 	struct dlist *l;
 	vmm_timer_event_t *e;
 
@@ -82,7 +81,7 @@ static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 		return;
 	}
 
-	tstamp = vmm_timer_timestamp();
+//	tstamp = vmm_timer_timestamp();
 
 	if (tctrl.cpu_curr && ev) {
 		if (tstamp < ev->expiry_tstamp) {
@@ -92,7 +91,7 @@ static void vmm_timer_schedule_next_event(vmm_timer_event_t * ev)
 			}
 		} else {
 			tctrl.cpu_curr = ev;
-			vmm_cpu_clockevent_start(0);
+			vmm_cpu_clockevent_expire();
 		}
 	} else {
 		/* Scheduler next timer event */
@@ -138,12 +137,13 @@ void vmm_timer_clockevent_process(vmm_user_regs_t * regs)
 		}
 
 		/* Schedule next timer event */
-		vmm_timer_schedule_next_event(NULL);
+		vmm_timer_schedule_next_event(tstamp, NULL);
 	}
 }
 
 int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 {
+	u64 tstamp;
 	bool added;
 	irq_flags_t flags;
 	struct dlist *l;
@@ -160,7 +160,8 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 		ev->active = FALSE;
 	}
 
-	ev->expiry_tstamp = vmm_timer_timestamp() + duration_nsecs;
+	tstamp = vmm_timer_timestamp();
+	ev->expiry_tstamp = tstamp + duration_nsecs;
 	ev->duration_nsecs = duration_nsecs;
 	ev->active = TRUE;
 	added = FALSE;
@@ -177,7 +178,7 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
 	}
 
-	vmm_timer_schedule_next_event(ev);
+	vmm_timer_schedule_next_event(tstamp, ev);
 
 	vmm_cpu_irq_restore(flags);
 
@@ -235,7 +236,7 @@ int vmm_timer_event_stop(vmm_timer_event_t * ev)
 		ev->active = FALSE;
 	}
 
-	vmm_timer_schedule_next_event(NULL);
+	vmm_timer_schedule_next_event(vmm_timer_timestamp(), NULL);
 
 	vmm_cpu_irq_restore(flags);
 
