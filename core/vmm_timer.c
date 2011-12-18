@@ -128,6 +128,7 @@ void vmm_timer_clockevent_process(vmm_user_regs_t * regs)
 				e->cpu_regs = regs;
 				e->handler(e);
 				e->cpu_regs = NULL;
+				tstamp = vmm_timer_timestamp();
 			} else  {
 				list_add(&tctrl.cpu_event_list, &e->cpu_head);
 				break;
@@ -135,7 +136,7 @@ void vmm_timer_clockevent_process(vmm_user_regs_t * regs)
 		}
 
 		/* Schedule next timer event */
-		vmm_timer_schedule_next_event(vmm_timer_timestamp(), NULL);
+		vmm_timer_schedule_next_event(tstamp, NULL);
 	}
 }
 
