@@ -65,6 +65,9 @@ struct sp804_timer {
 	/* Configuration */
 	u32 freq;
 	u32 irq;
+	u64 periodic_start;
+	u64 periodic_duration;
+	u64 periodic_backlog;
 	/* Registers */
 	u32 control;
 	u32 value;
@@ -92,6 +95,10 @@ static void sp804_timer_event(vmm_timer_event_t * event)
 		t->irq_level = 1;
 		if (t->control & TIMER_CTRL_ONESHOT) {
 			t->control &= ~TIMER_CTRL_ENABLE;
+		} else if (t->control & TIMER_CTRL_PERIODIC) {
+			t->periodic_backlog += vmm_timer_timestamp() - 
+						t->periodic_start -
+						t->periodic_duration;
 		}
 		sp804_timer_setirq(t);
 		vmm_spin_unlock(&t->lock);
@@ -100,10 +107,11 @@ static void sp804_timer_event(vmm_timer_event_t * event)
 
 static void sp804_timer_syncvalue(struct sp804_timer *t, bool clear_irq)
 {
-	u64 nsecs;
+	u64 tstamp, nsecs;
 	u32 freq;
+	tstamp = vmm_timer_timestamp();
 	t->value = t->limit;
-	t->value_tstamp = vmm_timer_timestamp();
+	t->value_tstamp = tstamp;
 	if (t->control & TIMER_CTRL_ENABLE) {
 		freq = t->freq;
 		switch ((t->control >> 2) & 3) {
@@ -121,7 +129,25 @@ static void sp804_timer_syncvalue(struct sp804_timer *t, bool clear_irq)
 			} else {
 				nsecs = vmm_udiv64((nsecs * 1000000000), freq);
 			}
-			vmm_timer_event_start(t->event, nsecs);
+			if (t->control & TIMER_CTRL_PERIODIC) {
+				t->periodic_start = tstamp;
+				/* For now, only 10 events allowed in backlog. */
+				if ((nsecs * 10) < t->periodic_backlog) {
+					t->periodic_backlog = 0;
+				}
+				if (nsecs < t->periodic_backlog) {
+					t->periodic_duration = 0;
+					t->periodic_backlog -= nsecs;
+					nsecs = 0;
+				} else {
+					t->periodic_duration = nsecs;
+				}
+			}
+			if (nsecs) {
+				vmm_timer_event_start(t->event, nsecs);
+			} else {
+				vmm_timer_event_expire(t->event);
+			}
 		}
 	}
 	if (clear_irq) {
@@ -305,6 +331,9 @@ static int sp804_timer_reset(struct sp804_timer *t)
 	vmm_spin_lock(&t->lock);
 
 	vmm_timer_event_stop(t->event);
+	t->periodic_start = 0x0;
+	t->periodic_backlog = 0x0;
+	t->periodic_duration = 0x0;
 	t->limit = 0xFFFFFFFF;
 	t->control = TIMER_CTRL_IE;
 	t->irq_level = 0;
