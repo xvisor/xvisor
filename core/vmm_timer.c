@@ -142,7 +142,6 @@ void vmm_timer_clockevent_process(vmm_user_regs_t * regs)
 
 int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 {
-	u64 tstamp;
 	bool added;
 	irq_flags_t flags;
 	struct dlist *l;
@@ -159,8 +158,7 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 		ev->active = FALSE;
 	}
 
-	tstamp = vmm_timer_timestamp();
-	ev->expiry_tstamp = tstamp + duration_nsecs;
+	ev->expiry_tstamp = vmm_timer_timestamp() + duration_nsecs;
 	ev->duration_nsecs = duration_nsecs;
 	ev->active = TRUE;
 	added = FALSE;
@@ -177,7 +175,7 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
 	}
 
-	vmm_timer_schedule_next_event(tstamp, ev);
+	vmm_timer_schedule_next_event(vmm_timer_timestamp(), ev);
 
 	vmm_cpu_irq_restore(flags);
 
