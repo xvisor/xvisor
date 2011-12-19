@@ -39,82 +39,6 @@ struct vmm_threads_ctrl {
 
 static struct vmm_threads_ctrl thctrl;
 
-static void vmm_threads_entry(void)
-{
-	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
-	vmm_thread_t * tinfo = NULL;
-
-	/* Sanity check */
-	if (!vcpu) {
-		vmm_panic("Error: Null vcpu at thread entry.\n");
-	}
-
-	/* Sanity check */
-	tinfo = vmm_threads_id2thread(vcpu->id);
-	if (!tinfo) {
-		vmm_panic("Error: Null thread at thread entry.\n");
-	}
-
-	/* Enter the thread function */
-	tinfo->tretval = tinfo->tfn(tinfo->tdata);
-
-	/* Thread finished so, stop it. */
-	vmm_threads_stop(tinfo);
-	
-	/* Nothing else to do for this thread.
-	 * Let us hope someone else will destroy it.
-	 * For now just hang. :( :( 
-         */
-	while (1);
-}
-
-vmm_thread_t *vmm_threads_create(const char *thread_name, 
-				 vmm_thread_func_t thread_fn,
-				 void *thread_data,
-				 u8 thread_priority,
-				 u64 thread_nsecs)
-{
-	irq_flags_t flags;
-	vmm_thread_t * tinfo;
-
-	/* Create thread structure instance */
-	tinfo = vmm_malloc(sizeof(vmm_thread_t));
-	if (!tinfo) {
-		return NULL;
-	}
-	tinfo->tfn = thread_fn;
-	tinfo->tdata = thread_data;
-	tinfo->tnsecs = thread_nsecs;
-	vmm_memset(&tinfo->tstack, 0, CONFIG_THREAD_STACK_SIZE);
-
-	/* Create an orphan vcpu for this thread */
-	tinfo->tvcpu = vmm_manager_vcpu_orphan_create(thread_name,
-			(virtual_addr_t)&vmm_threads_entry,
-			(virtual_addr_t)&tinfo->tstack[CONFIG_THREAD_STACK_SIZE - 4],
-			thread_priority, thread_nsecs);
-	if (!tinfo->tvcpu) {
-		vmm_free(tinfo);
-		return NULL;
-	}
-
-	/* Lock threads control */
-	flags = vmm_spin_lock_irqsave(&thctrl.lock);
-
-	list_add_tail(&thctrl.thread_list, &tinfo->head);
-	thctrl.thread_count++;
-
-	/* Unlock threads control */
-	vmm_spin_unlock_irqrestore(&thctrl.lock, flags);
-
-	return tinfo;
-}
-
-int vmm_threads_destroy(vmm_thread_t * tinfo)
-{
-	/* FIXME: TBD */
-	return VMM_OK;
-}
-
 int vmm_threads_start(vmm_thread_t * tinfo)
 {
 	int rc;
@@ -221,11 +145,15 @@ int vmm_threads_get_state(vmm_thread_t * tinfo)
 vmm_thread_t *vmm_threads_id2thread(u32 tid)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	vmm_thread_t *ret;
 
 	ret = NULL;
 	found = FALSE;
+
+	/* Lock threads control */
+	flags = vmm_spin_lock_irqsave(&thctrl.lock);
 
 	list_for_each(l, &thctrl.thread_list) {
 		ret = list_entry(l, vmm_thread_t, head);
@@ -234,6 +162,9 @@ vmm_thread_t *vmm_threads_id2thread(u32 tid)
 			break;
 		}
 	}
+
+	/* Unlock threads control */
+	vmm_spin_unlock_irqrestore(&thctrl.lock, flags);
 
 	if (!found) {
 		return NULL;
@@ -245,6 +176,7 @@ vmm_thread_t *vmm_threads_id2thread(u32 tid)
 vmm_thread_t *vmm_threads_index2thread(int index)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	vmm_thread_t *ret;
 
@@ -255,6 +187,9 @@ vmm_thread_t *vmm_threads_index2thread(int index)
 	ret = NULL;
 	found = FALSE;
 
+	/* Lock threads control */
+	flags = vmm_spin_lock_irqsave(&thctrl.lock);
+
 	list_for_each(l, &thctrl.thread_list) {
 		ret = list_entry(l, vmm_thread_t, head);
 		if (!index) {
@@ -263,6 +198,9 @@ vmm_thread_t *vmm_threads_index2thread(int index)
 		}
 		index--;
 	}
+
+	/* Unlock threads control */
+	vmm_spin_unlock_irqrestore(&thctrl.lock, flags);
 
 	if (!found) {
 		return NULL;
@@ -274,6 +212,106 @@ vmm_thread_t *vmm_threads_index2thread(int index)
 u32 vmm_threads_count(void)
 {
 	return thctrl.thread_count;
+}
+
+static void vmm_threads_entry(void)
+{
+	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
+	vmm_thread_t * tinfo = NULL;
+
+	/* Sanity check */
+	if (!vcpu) {
+		vmm_panic("Error: Null vcpu at thread entry.\n");
+	}
+
+	/* Sanity check */
+	tinfo = vmm_threads_id2thread(vcpu->id);
+	if (!tinfo) {
+		vmm_panic("Error: Null thread at thread entry.\n");
+	}
+
+	/* Enter the thread function */
+	tinfo->tretval = tinfo->tfn(tinfo->tdata);
+
+	/* Thread finished so, stop it. */
+	vmm_threads_stop(tinfo);
+	
+	/* Nothing else to do for this thread.
+	 * Let us hope someone else will destroy it.
+	 * For now just hang. :( :( 
+         */
+	while (1);
+}
+
+vmm_thread_t *vmm_threads_create(const char *thread_name, 
+				 vmm_thread_func_t thread_fn,
+				 void *thread_data,
+				 u8 thread_priority,
+				 u64 thread_nsecs)
+{
+	irq_flags_t flags;
+	vmm_thread_t * tinfo;
+
+	/* Create thread structure instance */
+	tinfo = vmm_malloc(sizeof(vmm_thread_t));
+	if (!tinfo) {
+		return NULL;
+	}
+	tinfo->tfn = thread_fn;
+	tinfo->tdata = thread_data;
+	tinfo->tnsecs = thread_nsecs;
+	vmm_memset(&tinfo->tstack, 0, CONFIG_THREAD_STACK_SIZE);
+
+	/* Create an orphan vcpu for this thread */
+	tinfo->tvcpu = vmm_manager_vcpu_orphan_create(thread_name,
+			(virtual_addr_t)&vmm_threads_entry,
+			(virtual_addr_t)&tinfo->tstack[CONFIG_THREAD_STACK_SIZE - 4],
+			thread_priority, thread_nsecs);
+	if (!tinfo->tvcpu) {
+		vmm_free(tinfo);
+		return NULL;
+	}
+
+	/* Lock threads control */
+	flags = vmm_spin_lock_irqsave(&thctrl.lock);
+
+	list_add_tail(&thctrl.thread_list, &tinfo->head);
+	thctrl.thread_count++;
+
+	/* Unlock threads control */
+	vmm_spin_unlock_irqrestore(&thctrl.lock, flags);
+
+	return tinfo;
+}
+
+int vmm_threads_destroy(vmm_thread_t * tinfo)
+{
+	int rc = VMM_OK;
+	irq_flags_t flags;
+
+	/* Sanity Check */
+	if (!tinfo) {
+		return VMM_EFAIL;
+	}
+
+	/* Lock threads control */
+	flags = vmm_spin_lock_irqsave(&thctrl.lock);
+
+	list_del(&tinfo->head);
+	thctrl.thread_count--;
+
+	/* Unlock threads control */
+	vmm_spin_unlock_irqrestore(&thctrl.lock, flags);
+
+	/* Destroy the thread VCPU */
+	if ((rc = vmm_manager_vcpu_orphan_destroy(tinfo->tvcpu))) {
+		return rc;
+	}
+
+	/* Free thread memory */
+	vmm_free(tinfo);
+
+	return VMM_OK;
 }
 
 int __init vmm_threads_init(void)
