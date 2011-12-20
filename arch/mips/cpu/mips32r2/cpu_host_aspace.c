@@ -32,7 +32,6 @@
 
 extern u8 _code_end;
 extern u8 _code_start;
-u32 nr_ptabs = 0;
 
 u32 nr_pg_szes[9] = {
 	TLB_PAGE_SIZE_1K,
@@ -54,69 +53,81 @@ virtual_size_t vmm_cpu_code_base_size(void);
 
 static pgd_t host_pgd[NUM_PGD_ENTRIES];
 
-static int vmm_cpu_boot_pagetable_init(physical_addr_t pa,
-				       virtual_addr_t va,
-				       virtual_size_t sz)
+static virtual_size_t calculate_page_table_size(virtual_size_t sz,
+						u32 *nr_ptabs)
 {
-	int i, j, done = 0;
+	/*
+	 * Do the calculation of total physical space required
+	 * for creating page table to map PG_TABLE_INIT_MAP_SZ
+	 * amount of virtual addresses.
+	 */
+	u32 nr_pte_per_page = PAGE_SIZE / sizeof(pte_t);
+	/* Total number of PTEs for mapping the given size. */
+	u32 nr_ptes = (sz / PAGE_SIZE);
+	/* Total pages required to keep above calculated PTEs */
+	u32 nr_pte_pages = (nr_ptes * sizeof(pte_t))/PAGE_SIZE;
+	/* Number of ptabs to map above number of ptes */
+	*nr_ptabs = (nr_pte_pages * nr_pte_per_page)/NUM_PTAB_ENTRIES;
+
+	/*
+	 * Total memory required (including ptabs and pte pages)
+	 * to map the required virtual addresses.
+	 */
+	u32 need_sz = (*nr_ptabs + nr_pte_pages) * PAGE_SIZE;
+
+	return VMM_ROUNDUP2_PAGE_SIZE(need_sz);
+}
+
+static int vmm_cpu_boot_pagetable_init(physical_addr_t *pa,
+				       virtual_addr_t *va,
+				       virtual_size_t *sz)
+{
+	int i, j;
 	u32 pgd_offset;
 	ptab_t *c_ptab;
 	pte_t *spte;
-	struct mips32_tlb_entry tlb_entry;
-	u32 page_mask = 0, page_size = 0;
-	virtual_addr_t cva = va;
+	virtual_addr_t cva, eva = 0;
+	u32 nr_ptabs = 0, pg_tab_sz = 0, tsize2map;
 
+	tsize2map = CONFIG_VAPOOL_SIZE << 20;
+
+	pg_tab_sz = calculate_page_table_size(tsize2map, &nr_ptabs);
+
+	/*+----------------------------------------+ (CONFIG_VAPOOL
+	  |                                        |     	  +
+	  |                                        |  VMM CODE DATA
+	  |                VIRTUAL                 |	  +
+	  |               ADDRESSES                |  PAGE TABLE SIZE)
+	  |                   TO                   |
+	  |                   BE                   |
+	  |                 MAPPED                 |
+	  |                                        |
+	  |                                        |
+	  |                                        |
+	  +----------------------------------------+
+	  |                                        |
+	  |      RESERVED AREA FOR ALLOCATION BITM |
+	  |                                        |
+	  +----------------------------------------+
+	  |             PAGE TABLES                |
+	  +----------------------------------------+
+	  |                                        |
+	  |            VMM CODE + DATA             |
+	  |                                        |
+	  |                                        |
+	  +----------------------------------------+ 0x00000000*/
 	/*
-	 * Find the largest page size that can map maximum of
-	 * the given virutal address space.
+	 * Map virtual addresses from the end of VMM. Why? We don't
+	 * expect text section to fault.
 	 */
-	for (i = 8; i >= 0; i--) {
-		j = ((int)sz - nr_pg_szes[i]);
-		if (j > 0) {
-			done = 1;
-			break;
-		}
-	}
+	cva = vmm_cpu_code_vaddr_start() + vmm_cpu_code_size() + pg_tab_sz;
 
-	if (!done)
-		return VMM_EFAIL;
-
-	page_size = nr_pg_szes[i + 1];
-	page_mask = ((page_size / 2) - 1);
-
-	/* Create TLB Hi Entry */
-	tlb_entry.entryhi._s_entryhi.asid = (0x01UL << 6);
-	tlb_entry.entryhi._s_entryhi.reserved = 0;
-	tlb_entry.entryhi._s_entryhi.vpn2 = (va >> VPN2_SHIFT);
-	tlb_entry.entryhi._s_entryhi.vpn2x = 0;
-	tlb_entry.page_mask = page_mask;
-
-	/* TLB Low entry. Mapping two physical addresses */
-	/* FIXME: Take the flag settings from mem_flags. */
-	tlb_entry.entrylo0._s_entrylo.global = 0; /* not global */
-	tlb_entry.entrylo0._s_entrylo.valid = 1; /* valid */
-	tlb_entry.entrylo0._s_entrylo.dirty = 1; /* writeable */
-	tlb_entry.entrylo0._s_entrylo.cacheable = 0; /* Dev map, no cache */
-	tlb_entry.entrylo0._s_entrylo.pfn = (pa >> PAGE_SHIFT);
-
-	/* We'll map to consecutive physical addresses */
-	/* Needed? */
-	pa += page_size;
-	tlb_entry.entrylo1._s_entrylo.global = 0; /* not global */
-	tlb_entry.entrylo1._s_entrylo.valid = 1; /* Invalid */
-	tlb_entry.entrylo1._s_entrylo.dirty = 1; /* writeable */
-	tlb_entry.entrylo1._s_entrylo.cacheable = 0; /* Dev map, no cache */
-	tlb_entry.entrylo1._s_entrylo.pfn = (pa >> PAGE_SHIFT);
-
-	/* FIXME: This should be a wired entry */
-	mips_fill_tlb_entry(&tlb_entry, -1);
-
-	cva += sz;
-	spte = (pte_t *)(va + vmm_cpu_code_base_size() + (nr_ptabs * PAGE_SIZE));
-	c_ptab = (ptab_t *)(va + vmm_cpu_code_base_size());
+	spte = (pte_t *)(CPU_TEXT_START + vmm_cpu_code_size()
+			 + (nr_ptabs * PAGE_SIZE));
+	c_ptab = (ptab_t *)(CPU_TEXT_START + vmm_cpu_code_size());
 
 	/* Initialize the PGD */
-	for (i = 0; i < nr_ptabs; i++) {
+	for (i = 0; i <= nr_ptabs; i++) {
 		pgd_offset = (cva >> PGD_SHIFT) & PGD_MASK;
 		host_pgd[pgd_offset] = (pgd_t)(c_ptab);
 
@@ -130,6 +141,25 @@ static int vmm_cpu_boot_pagetable_init(physical_addr_t pa,
 		cva += (NUM_PTAB_ENTRIES * PAGE_SIZE);
 	}
 
+	cva = vmm_cpu_code_vaddr_start() + vmm_cpu_code_size() + pg_tab_sz;
+	eva += cva + (CONFIG_VAPOOL_SIZE << 20);
+	*pa += vmm_cpu_code_size() + pg_tab_sz;
+
+	/* Create the page table entries for all the virtual addresses. */
+	for (; cva < eva;) {
+		if (vmm_cpu_aspace_map(cva, VMM_PAGE_SIZE, *pa, 0) != VMM_OK)
+			return VMM_EFAIL;
+
+		cva += VMM_PAGE_SIZE;
+		*pa += VMM_PAGE_SIZE;
+	}
+
+	/*
+	 * Set current ASID to VMM's ASID. We need to handle
+	 * our own page faults.
+	 */
+	set_current_asid(0x1UL << 6);
+	*va += pg_tab_sz;
 
 	return VMM_OK;
 }
@@ -139,11 +169,8 @@ int vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 			virtual_size_t * resv_sz)
 {
 	u32 c0_sr;
-	physical_addr_t pa = vmm_cpu_code_paddr_start();
-	virtual_addr_t va = vmm_cpu_code_vaddr_start();
-	virtual_size_t sz = vmm_cpu_code_size();
 
-	if (vmm_cpu_boot_pagetable_init(pa, va, sz) != VMM_OK)
+	if (vmm_cpu_boot_pagetable_init(resv_pa, resv_va, resv_sz) != VMM_OK)
 		return VMM_EFAIL;
 
 
@@ -161,14 +188,21 @@ int vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 pte_t *vmm_cpu_va2pte(virtual_addr_t vaddr)
 {
 	ptab_t *ptab;
+	pte_t *pte;
 	pgd_t pgd_offset = ((vaddr >> PGD_SHIFT) & PGD_MASK);
+	u32 ptab_offset = ((vaddr >> PTAB_SHIFT) & PTAB_MASK);
 	ptab = (ptab_t *)host_pgd[pgd_offset];
 
-	return (pte_t *)ptab[((vaddr >> PTAB_SHIFT) & PTAB_MASK)];
+	BUG_ON(ptab == NULL, "Bummer! Can't handle page fault at address %X."
+	       "No pagetable entry found.\n", vaddr);
+
+	pte = (pte_t *)ptab[ptab_offset];
+
+	return pte;
 }
 
 static void vmm_cpu_create_pte(virtual_addr_t vaddr, physical_addr_t paddr,
-			       u32 flags, mips32_tlb_entry_t *tlb_entry)
+			       u32 flags)
 {
 	pte_t *pte = NULL;
 	ptab_t *ptab = NULL;
@@ -188,12 +222,12 @@ int vmm_cpu_aspace_map(virtual_addr_t va,
 			physical_addr_t pa,
 			u32 mem_flags)
 {
-	struct mips32_tlb_entry tlb_entry;
-	u32 page_mask = 0, page_size = 0;
-
 	switch (sz) {
-	case TLB_PAGE_SIZE_1K:
 	case TLB_PAGE_SIZE_4K:
+		vmm_cpu_create_pte(va, pa, mem_flags);
+		break;
+
+	case TLB_PAGE_SIZE_1K:
 	case TLB_PAGE_SIZE_16K:
 	case TLB_PAGE_SIZE_256K:
 	case TLB_PAGE_SIZE_1M:
@@ -201,39 +235,9 @@ int vmm_cpu_aspace_map(virtual_addr_t va,
 	case TLB_PAGE_SIZE_16M:
 	case TLB_PAGE_SIZE_64M:
 	case TLB_PAGE_SIZE_256M:
-		page_size = sz;
-		page_mask = ((sz / 2) - 1);
-		break;
 	default:
-		vmm_panic("Guest physical memory region should be same as page sizes available for MIPS32.\n");
+		vmm_panic("%d page size not supported.\n", sz);
 	}
-
-
-	/* Create TLB Hi Entry */
-	tlb_entry.entryhi._s_entryhi.asid = (0x01UL << 6);
-	tlb_entry.entryhi._s_entryhi.reserved = 0;
-	tlb_entry.entryhi._s_entryhi.vpn2 = (va >> VPN2_SHIFT);
-	tlb_entry.entryhi._s_entryhi.vpn2x = 0;
-	tlb_entry.page_mask = page_mask;
-
-	/* TLB Low entry. Mapping two physical addresses */
-	/* FIXME: Take the flag settings from mem_flags. */
-	tlb_entry.entrylo0._s_entrylo.global = 0; /* not global */
-	tlb_entry.entrylo0._s_entrylo.valid = 1; /* valid */
-	tlb_entry.entrylo0._s_entrylo.dirty = 1; /* writeable */
-	tlb_entry.entrylo0._s_entrylo.cacheable = 0; /* Dev map, no cache */
-	tlb_entry.entrylo0._s_entrylo.pfn = (pa >> PAGE_SHIFT);
-
-	/* We'll map to consecutive physical addresses */
-	/* Needed? */
-	pa += page_size;
-	tlb_entry.entrylo1._s_entrylo.global = 0; /* not global */
-	tlb_entry.entrylo1._s_entrylo.valid = 1; /* valid */
-	tlb_entry.entrylo1._s_entrylo.dirty = 1; /* writeable */
-	tlb_entry.entrylo1._s_entrylo.cacheable = 0; /* Dev map, no cache */
-	tlb_entry.entrylo1._s_entrylo.pfn = (pa >> PAGE_SHIFT);
-
-	vmm_cpu_create_pte(va, pa - page_size, mem_flags, &tlb_entry);
 
 	return VMM_OK;
 }
@@ -274,38 +278,7 @@ virtual_size_t vmm_cpu_code_base_size(void)
 	return (virtual_size_t)(&_code_end - &_code_start);
 }
 
-virtual_size_t vmm_cpu_pg_table_size(void)
-{
-	/*
-	 * Do the calculation of total physical space required
-	 * for creating page table to map PG_TABLE_INIT_MAP_SZ
-	 * amount of virtual addresses.
-	 */
-	u32 nr_pte_per_page = PAGE_SIZE / sizeof(pte_t);
-	/* Total number of PTEs for mapping PG_TABLE_INIT_MAP_SZ */
-	u32 nr_ptes = (PG_TABLE_INIT_MAP_SZ / PAGE_SIZE);
-	/* Total pages required to keep above calculated PTEs */
-	u32 nr_pte_pages = (nr_ptes * sizeof(pte_t))/PAGE_SIZE;
-	/* Number of ptabs to map above number of ptes */
-	nr_ptabs = (nr_pte_pages * nr_pte_per_page)/NUM_PTAB_ENTRIES;
-
-	/*
-	 * Total memory required (including ptabs and pte pages)
-	 * to map the required virtual addresses.
-	 */
-	u32 need_sz = (nr_ptabs + nr_pte_pages) * PAGE_SIZE;
-
-	return VMM_ROUNDUP2_PAGE_SIZE(need_sz);
-}
-
 virtual_size_t vmm_cpu_code_size(void)
 {
-	virtual_size_t rsz;
-
-	rsz = vmm_cpu_code_base_size() + vmm_cpu_pg_table_size();
-
-	rsz = VMM_ROUNDUP2_PAGE_SIZE(rsz);
-	rsz &= PAGE_MASK;
-
-	return rsz;
+	return VMM_ROUNDUP2_PAGE_SIZE(vmm_cpu_code_base_size());
 }
