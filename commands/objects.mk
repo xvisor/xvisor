@@ -22,21 +22,20 @@
 # @brief list of command objects to be build
 # */
 
-commands-objs-y+= cmd_version.o
-commands-objs-y+= cmd_reset.o
-commands-objs-y+= cmd_shutdown.o
-commands-objs-y+= cmd_vapool.o
-commands-objs-y+= cmd_ram.o
-commands-objs-y+= cmd_devtree.o
-commands-objs-y+= cmd_vcpu.o
-commands-objs-y+= cmd_guest.o
-commands-objs-y+= cmd_thread.o
-commands-objs-y+= cmd_chardev.o
-commands-objs-y+= cmd_blockdev.o
-commands-objs-y+= cmd_vserial.o
-commands-objs-y+= cmd_stdio.o
-commands-objs-$(CONFIG_MM_BUDDY)+= cmd_buddy.o
-commands-objs-$(CONFIG_NET)+= cmd_ping.o
-commands-objs-y+= elf.o
+commands-objs-$(CONFIG_CMD_VERSION)+= cmd_version.o
+commands-objs-$(CONFIG_CMD_RESET)+= cmd_reset.o
+commands-objs-$(CONFIG_CMD_SHUTDOWN)+= cmd_shutdown.o
+commands-objs-$(CONFIG_CMD_VAPOOL)+= cmd_vapool.o
+commands-objs-$(CONFIG_CMD_RAM)+= cmd_ram.o
+commands-objs-$(CONFIG_CMD_DEVTREE)+= cmd_devtree.o
+commands-objs-$(CONFIG_CMD_VCPU)+= cmd_vcpu.o
+commands-objs-$(CONFIG_CMD_GUEST)+= cmd_guest.o
+commands-objs-$(CONFIG_CMD_THREAD)+= cmd_thread.o
+commands-objs-$(CONFIG_CMD_CHARDEV)+= cmd_chardev.o
+commands-objs-$(CONFIG_CMD_BLOCKDEV)+= cmd_blockdev.o
+commands-objs-$(CONFIG_CMD_VSERIAL)+= cmd_vserial.o
+commands-objs-$(CONFIG_CMD_STDIO)+= cmd_stdio.o
+commands-objs-$(CONFIG_CMD_BUDDY)+= cmd_buddy.o
+commands-objs-$(CONFIG_CMD_PING)+= cmd_ping.o
+commands-objs-$(CONFIG_CMD_PROFILE) += cmd_profile.o
 
-commands-objs-$(CONFIG_PROFILE) += cmd_profile.o

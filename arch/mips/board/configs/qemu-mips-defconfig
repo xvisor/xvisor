@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Wed Dec  7 11:51:47 2011
+# Tue Dec 20 15:23:29 2011
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -46,19 +46,28 @@ CONFIG_BUDDY_MIN_BLOCK_SIZE_SHIFT=2
 CONFIG_BUDDY_MAX_BLOCK_SIZE_SHIFT=12
 
 #
+# Command Options
+#
+CONFIG_CMD_VERSION=y
+CONFIG_CMD_RESET=y
+CONFIG_CMD_SHUTDOWN=y
+CONFIG_CMD_VAPOOL=y
+CONFIG_CMD_RAM=y
+CONFIG_CMD_DEVTREE=y
+CONFIG_CMD_VCPU=y
+CONFIG_CMD_GUEST=y
+CONFIG_CMD_THREAD=y
+CONFIG_CMD_CHARDEV=y
+CONFIG_CMD_BLOCKDEV=y
+CONFIG_CMD_VSERIAL=y
+CONFIG_CMD_STDIO=y
+
+#
 # Library Options
 #
 CONFIG_LIBFDT=y
 # CONFIG_KALLSYMS is not set
 # CONFIG_LIBSORT is not set
-
-#
-# Tool Options
-#
-CONFIG_DTC=y
-# CONFIG_CPATCH is not set
-# CONFIG_BBFLASH is not set
-# CONFIG_KALLSYMS_GENERATOR is not set
 
 #
 # Device Drivers
@@ -94,3 +103,11 @@ CONFIG_SERIAL_UART=y
 # Serial Port Emulators
 #
 # CONFIG_EMU_SERIAL is not set
+
+#
+# Tool Options
+#
+CONFIG_DTC=y
+# CONFIG_CPATCH is not set
+# CONFIG_BBFLASH is not set
+# CONFIG_KALLSYMS_GENERATOR is not set
