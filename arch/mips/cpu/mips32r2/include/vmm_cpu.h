@@ -110,7 +110,7 @@ extern u8 _init_text_start;
 extern u8 _init_text_end;
 static inline virtual_addr_t vmm_init_text_vaddr(void)
 {
-	return (virtual_addr_t) &_init_text_start;
+	return (virtual_addr_t) ((&_init_text_start - CPU_TEXT_START) + 0xC0000000);
 }
 static inline virtual_size_t vmm_init_text_size(void)
 {

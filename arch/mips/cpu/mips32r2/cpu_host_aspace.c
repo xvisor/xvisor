@@ -245,7 +245,7 @@ int vmm_cpu_aspace_map(virtual_addr_t va,
 int vmm_cpu_aspace_unmap(virtual_addr_t va,
 			 virtual_size_t sz)
 {
-	return VMM_EFAIL;
+	return VMM_OK;
 }
 
 int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
@@ -255,10 +255,14 @@ int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	u32 ptab_id = ((va >> PTAB_SHIFT) & PTAB_MASK);
 	u32 pgd_id = ((va >> PGD_SHIFT) & PGD_MASK);
 
-	ptab = (ptab_t *)host_pgd[pgd_id];
-	pte = (pte_t *)ptab[ptab_id];
+	if (va < (vmm_cpu_code_vaddr_start() + vmm_cpu_code_size()))
+		*pa = (va - vmm_cpu_code_vaddr_start());
+	else {
+		ptab = (ptab_t *)host_pgd[pgd_id];
+		pte = (pte_t *)ptab[ptab_id];
 
-	*pa = pte->paddr;
+		*pa = pte->paddr;
+	}
 
 	return VMM_OK;
 }
