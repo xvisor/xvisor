@@ -107,8 +107,8 @@ int arm_timer_init(u32 usecs, u32 init_irqcount, u32 ensel)
 	timer_counter_mask = 0xFFFFFFFFULL;
 	timer_counter_shift = 20;
 	timer_counter_mult = ((u64)1000000) << timer_counter_shift;
-	timer_counter_mult += (((u64)1000000) >> 1);
-	timer_counter_mult = arm_udiv64(timer_counter_mult, ((u64)1000000));
+	timer_counter_mult += (((u64)1000) >> 1);
+	timer_counter_mult = arm_udiv64(timer_counter_mult, ((u64)1000));
 	timer_counter_last = 0; 
 	timer_time_stamp = 0;
 

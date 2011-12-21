@@ -222,7 +222,9 @@ void arm_cmd_dhrystone(int argc, char **argv)
 		arm_puts (str);
 		arm_puts (" iterations\n");
 	}
+	arm_timer_disable();
 	dhry_main(iters);
+	arm_timer_enable();
 }
 
 void arm_cmd_hexdump(int argc, char **argv)
