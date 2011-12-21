@@ -55,22 +55,47 @@ struct vmm_thread {
 
 typedef struct vmm_thread vmm_thread_t;
 
+/** Start a thread */
+int vmm_threads_start(vmm_thread_t * tinfo);
+
+/** Stop a thread */
+int vmm_threads_stop(vmm_thread_t * tinfo);
+
+/** Put a thread to sleep */
+int vmm_threads_sleep(vmm_thread_t * tinfo);
+
+/** Wakeup a thread */
+int vmm_threads_wakeup(vmm_thread_t * tinfo);
+
+/** Retrive thread id */
+u32 vmm_threads_get_id(vmm_thread_t * tinfo);
+
+/** Retrive thread name */
+int vmm_threads_get_name(char * dst, vmm_thread_t * tinfo);
+
+/** Retrive thread state */
+int vmm_threads_get_state(vmm_thread_t * tinfo);
+
+/** Retrive thread instance from thread id */
+vmm_thread_t *vmm_threads_id2thread(u32 tid);
+
+/** Retrive thread instance from thread index */
+vmm_thread_t *vmm_threads_index2thread(int index);
+
+/** Count number of threads */
+u32 vmm_threads_count(void);
+
+/** Create a new thread */
 vmm_thread_t *vmm_threads_create(const char *thread_name, 
 				 vmm_thread_func_t thread_fn,
 				 void *thread_data,
 				 u8 thread_priority,
 				 u64 thread_nsecs);
+
+/** Destroy a thread */
 int vmm_threads_destroy(vmm_thread_t * tinfo);
-int vmm_threads_start(vmm_thread_t * tinfo);
-int vmm_threads_stop(vmm_thread_t * tinfo);
-int vmm_threads_sleep(vmm_thread_t * tinfo);
-int vmm_threads_wakeup(vmm_thread_t * tinfo);
-u32 vmm_threads_get_id(vmm_thread_t * tinfo);
-int vmm_threads_get_name(char * dst, vmm_thread_t * tinfo);
-int vmm_threads_get_state(vmm_thread_t * tinfo);
-vmm_thread_t *vmm_threads_id2thread(u32 tid);
-vmm_thread_t *vmm_threads_index2thread(int index);
-u32 vmm_threads_count(void);
+
+/** Intialize hypervisor threads */
 int vmm_threads_init(void);
 
 #endif /* __VMM_THREADS_H__ */
