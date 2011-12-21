@@ -34,6 +34,8 @@
 /* Works in supervisor mode */
 void arm_init(void)
 {
+	u32 sys_100hz;
+
 	arm_heap_init();
 
 	arm_irq_setup();
@@ -42,7 +44,9 @@ void arm_init(void)
 
 	arm_stdio_init();
 
-	arm_timer_init(1000, 1);
+	sys_100hz = arm_readl((void *)(REALVIEW_SYS_BASE + 
+					REALVIEW_SYS_100HZ_OFFSET));
+	arm_timer_init(10000, sys_100hz, 1);
 
 	arm_timer_enable();
 }
@@ -218,9 +222,7 @@ void arm_cmd_dhrystone(int argc, char **argv)
 		arm_puts (str);
 		arm_puts (" iterations\n");
 	}
-	arm_timer_disable();
 	dhry_main(iters);
-	arm_timer_enable();
 }
 
 void arm_cmd_hexdump(int argc, char **argv)
