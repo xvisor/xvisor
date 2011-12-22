@@ -38,6 +38,7 @@ core-objs-y+= vmm_scheduler.o
 core-objs-y+= vmm_threads.o
 core-objs-y+= vmm_waitqueue.o
 core-objs-y+= vmm_semaphore.o
+core-objs-y+= vmm_workqueue.o
 core-objs-y+= vmm_cmdmgr.o
 core-objs-y+= vmm_devdrv.o
 core-objs-y+= vmm_devemu.o

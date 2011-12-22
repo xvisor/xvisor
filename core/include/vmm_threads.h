@@ -37,7 +37,8 @@
 enum vmm_thread_states {
 	VMM_THREAD_STATE_CREATED=0,
 	VMM_THREAD_STATE_RUNNING=1,
-	VMM_THREAD_STATE_STOPPED=2
+	VMM_THREAD_STATE_SLEEPING=2,
+	VMM_THREAD_STATE_STOPPED=3
 };
 
 typedef int (*vmm_thread_func_t) (void *udata);
@@ -69,6 +70,9 @@ int vmm_threads_wakeup(vmm_thread_t * tinfo);
 
 /** Retrive thread id */
 u32 vmm_threads_get_id(vmm_thread_t * tinfo);
+
+/** Retrive thread priority */
+u8 vmm_threads_get_priority(vmm_thread_t * tinfo);
 
 /** Retrive thread name */
 int vmm_threads_get_name(char * dst, vmm_thread_t * tinfo);

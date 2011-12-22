@@ -108,6 +108,15 @@ u32 vmm_threads_get_id(vmm_thread_t * tinfo)
 	return tinfo->tvcpu->id;
 }
 
+u8 vmm_threads_get_priority(vmm_thread_t * tinfo)
+{
+	if (!tinfo) {
+		return 0;
+	}
+
+	return tinfo->tvcpu->priority;
+}
+
 int vmm_threads_get_name(char * dst, vmm_thread_t * tinfo)
 {
 	if (!tinfo || !dst) {
@@ -131,8 +140,9 @@ int vmm_threads_get_state(vmm_thread_t * tinfo)
 		} else if (tinfo->tvcpu->state & 
 			  (VMM_VCPU_STATE_READY | VMM_VCPU_STATE_RUNNING)) {
 			rc = VMM_THREAD_STATE_RUNNING;
-		} else if (tinfo->tvcpu->state & 
-			  (VMM_VCPU_STATE_PAUSED | VMM_VCPU_STATE_HALTED)) {
+		} else if (tinfo->tvcpu->state & VMM_VCPU_STATE_PAUSED) {
+			rc = VMM_THREAD_STATE_SLEEPING;
+		} else if (tinfo->tvcpu->state & VMM_VCPU_STATE_HALTED) {
 			rc = VMM_THREAD_STATE_STOPPED;
 		} else {
 			rc = -1;
