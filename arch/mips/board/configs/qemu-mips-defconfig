@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1
-# Tue Dec 20 15:23:29 2011
+# Thu Dec 22 22:49:24 2011
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -61,6 +61,8 @@ CONFIG_CMD_CHARDEV=y
 CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_STDIO=y
+CONFIG_CMD_BUDDY=y
+# CONFIG_CMD_THREADTEST is not set
 
 #
 # Library Options

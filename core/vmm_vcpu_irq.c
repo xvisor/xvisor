@@ -123,7 +123,15 @@ void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu)
 
 int vmm_vcpu_irq_init(vmm_vcpu_t *vcpu)
 {
-	u32 ite, irq_count = vmm_vcpu_irq_count(vcpu);
+	u32 ite, irq_count;
+
+	/* For Orphan VCPU just return */
+	if (!vcpu->is_normal) {
+		return VMM_OK;
+	}
+
+	/* Get irq count */
+	irq_count = vmm_vcpu_irq_count(vcpu);
 
 	/* Only first time */
 	if (!vcpu->reset_count) {

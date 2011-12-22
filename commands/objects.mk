@@ -37,5 +37,6 @@ commands-objs-$(CONFIG_CMD_VSERIAL)+= cmd_vserial.o
 commands-objs-$(CONFIG_CMD_STDIO)+= cmd_stdio.o
 commands-objs-$(CONFIG_CMD_BUDDY)+= cmd_buddy.o
 commands-objs-$(CONFIG_CMD_PING)+= cmd_ping.o
-commands-objs-$(CONFIG_CMD_PROFILE) += cmd_profile.o
+commands-objs-$(CONFIG_CMD_PROFILE)+= cmd_profile.o
+commands-objs-$(CONFIG_CMD_THREADTEST)+= cmd_threadtest.o
 
