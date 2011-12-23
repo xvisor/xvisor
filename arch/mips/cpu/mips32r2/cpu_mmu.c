@@ -29,17 +29,59 @@
 #include <vmm_regs.h>
 #include <cpu_asm_macros.h>
 #include <cpu_vcpu_mmu.h>
+#include <vmm_error.h>
+
+void set_current_asid(u32 cur_asid)
+{
+	mips32_entryhi_t ehi;
+	ehi._entryhi = read_c0_entryhi();
+	ehi._s_entryhi.asid = cur_asid;
+	write_c0_entryhi(ehi._entryhi);
+}
 
 u32 do_tlbmiss(vmm_user_regs_t *uregs)
 {
 	mips32_entryhi_t ehi;
 	ehi._entryhi = read_c0_entryhi();
+	virtual_addr_t badvaddr;
+	pte_t *fpte;
+	struct mips32_tlb_entry tlb_entry;
 
 	/* FIXME: Hardcoded 1 is the ASID of VMM. Move it to a macro */
 	if (!is_vmm_asid(ehi._s_entryhi.asid)) {
 		return do_vcpu_tlbmiss(uregs);
 	} else {
-		vmm_panic("ARGHHH!!! Cannot handle page fault in VMM!\n");
+		badvaddr = read_c0_badvaddr();
+		fpte = vmm_cpu_va2pte(badvaddr);
+
+		if (fpte == NULL)
+			vmm_panic("ARGHHH!!! Cannot handle page fault in VMM!\n");
+
+		tlb_entry.entryhi._s_entryhi.asid = (0x01UL << 6);
+		tlb_entry.entryhi._s_entryhi.reserved = 0;
+		tlb_entry.entryhi._s_entryhi.vpn2 = (fpte->vaddr >> VPN2_SHIFT);
+		tlb_entry.entryhi._s_entryhi.vpn2x = 0;
+		tlb_entry.page_mask = PAGE_MASK;
+
+		/* TLB Low entry. Mapping two physical addresses */
+		/* FIXME: Take the flag settings from mem_flags. */
+		tlb_entry.entrylo0._s_entrylo.global = 0; /* not global */
+		tlb_entry.entrylo0._s_entrylo.valid = 1; /* valid */
+		tlb_entry.entrylo0._s_entrylo.dirty = 1; /* writeable */
+		tlb_entry.entrylo0._s_entrylo.cacheable = 0; /* Dev map, no cache */
+		tlb_entry.entrylo0._s_entrylo.pfn = (fpte->paddr >> PAGE_SHIFT);
+
+		/* We'll map to consecutive physical addresses */
+		/* Needed? */
+		fpte->paddr += PAGE_SIZE;
+		tlb_entry.entrylo1._s_entrylo.global = 0; /* not global */
+		tlb_entry.entrylo1._s_entrylo.valid = 0; /* valid */
+		tlb_entry.entrylo1._s_entrylo.dirty = 1; /* writeable */
+		tlb_entry.entrylo1._s_entrylo.cacheable = 0; /* Dev map, no cache */
+		tlb_entry.entrylo1._s_entrylo.pfn = (fpte->paddr >> PAGE_SHIFT);
+
+		mips_fill_tlb_entry(&tlb_entry, -1);
+
 	}
 
 	return 0;

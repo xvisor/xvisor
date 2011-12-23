@@ -48,20 +48,6 @@ LEAF(_start)
 	mtc0	ZERO, CP0_COMPARE
 	mtc0	ZERO, CP0_COUNT
 
-	/* Read number of tlb entries from config register */
-	bal 	num_tlb_entries
-	nop
-
-	/* initialize tlb */
-	bal	tlb_init
-	move	A0, V0
-
-	/* Reserve some tlb entries for hypervisor */
-	li	V0, MAX_HOST_TLB_ENTRIES
-	mtc0	V0, CP0_WIRED
-	nop
-	nop
-	ehb
 	la	SP, _stack_start	/* setup the stack (bss segment) */
 	la	T0, cpu_init
 	j	T0			/* Call the C- code now */

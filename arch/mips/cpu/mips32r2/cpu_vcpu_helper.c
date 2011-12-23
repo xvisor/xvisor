@@ -106,12 +106,12 @@ static int map_guest_region(vmm_vcpu_t *vcpu, int region_type, int tlb_index)
 	return VMM_OK;
 }
 
-static int map_vcpu_ram(vmm_vcpu_t *vcpu)
+static  __attribute__((unused)) int map_vcpu_ram(vmm_vcpu_t *vcpu)
 {
 	return map_guest_region(vcpu, VMM_REGION_TYPE_RAM, 1);
 }
 
-static int map_vcpu_rom(vmm_vcpu_t *vcpu)
+static  __attribute__((unused)) int map_vcpu_rom(vmm_vcpu_t *vcpu)
 {
 	return map_guest_region(vcpu, VMM_REGION_TYPE_ROM, 0);
 }
@@ -141,21 +141,6 @@ int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
 		vcpu->sregs->cp0_regs[CP0_EPC_IDX] = vcpu->start_pc;
 		/* Give guest the same CPU cap as we have */
 		vcpu->sregs->cp0_regs[CP0_PRID_IDX] = read_c0_prid();
-		/*
-		 * FIXME: Prepare the configuration registers as well. OS like
-		 * Linux use them for setting up handlers etc.
-		 */
-		if (map_vcpu_ram(vcpu) != VMM_OK) {
-			vmm_printf("(%s) Error: Failed to map guest's RAM in its address space!\n",
-				   __FUNCTION__);
-			return VMM_EFAIL;
-		}
-
-		if (map_vcpu_rom(vcpu) != VMM_OK) {
-			vmm_printf("(%s) Error: Failed to map guest's ROM in its address space!\n",
-				   __FUNCTION__);
-			return VMM_EFAIL;
-		}
 	}
 
 	return VMM_OK;

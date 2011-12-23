@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Himanshu Chauhan.
+ * Copyright (c) 2011 Himanshu Chauhan
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,18 +16,27 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_timer.h
+ * @file cpu_math.c
  * @version 1.0
- * @author Himanshu Chauhan (hschauhan@nulltrace.org)
- * @brief header file for cpu timer handling functions
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief Architecture specific math related functions
  */
-#ifndef _CPU_TIMER_H__
-#define _CPU_TIMER_H__
 
-#include <vmm_types.h>
-#include <vmm_scheduler.h>
+#include <vmm_math.h>
 
-#define VCPU_TIMER_FREQ_MHZ			VMM_VCPU_TIMER_FREQ_MHZ
-#define VCPU_DECREMENTER_SCALE			(VCPU_TIMER_FREQ_MHZ*CPU_DECREMENTER_TIMEOUT_MICROSECS)
+u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder)
+{
+	if (remainder)
+		*remainder = dividend % divisor;
 
-#endif
+	return (dividend / divisor);
+}
+
+u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder)
+{
+	if (remainder)
+		*remainder = dividend % divisor;
+
+	return (dividend/divisor);
+}
+
