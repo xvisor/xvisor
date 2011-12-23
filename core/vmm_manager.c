@@ -80,6 +80,9 @@ static int vmm_manager_vcpu_state_change(vmm_vcpu_t *vcpu, u32 new_state)
 		if ((vcpu->state != VMM_VCPU_STATE_RESET) &&
 		    (vcpu->state != VMM_VCPU_STATE_UNKNOWN)) {
 			rc = vmm_scheduler_notify_state_change(vcpu, new_state);
+			if (rc) {
+				break;
+			}
 			vcpu->state = VMM_VCPU_STATE_RESET;
 			vcpu->reset_count++;
 			if ((rc = vmm_vcpu_regs_init(vcpu))) {
@@ -264,7 +267,50 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 
 int vmm_manager_vcpu_orphan_destroy(vmm_vcpu_t * vcpu)
 {
-	/* FIXME: TBD */
+	int rc = VMM_OK;
+	irq_flags_t flags;
+
+	/* Sanity checks */
+	if (!vcpu) {
+		return VMM_EFAIL;
+	}
+	if (vcpu->is_normal || vcpu->wq_priv) {
+		return VMM_EFAIL;
+	}
+
+	/* Reset the VCPU */
+	if ((rc = vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_RESET))) {
+		return rc;
+	}
+
+	/* Acquire lock */
+	flags = vmm_spin_lock_irqsave(&mngr.lock);
+
+	/* Decrement vcpu count */
+	mngr.vcpu_count--;
+
+	/* Remove VCPU from orphan list */
+	list_del(&vcpu->head);
+
+	/* Notify scheduler about VCPU state change */
+	if ((rc = vmm_scheduler_notify_state_change(vcpu, 
+					VMM_VCPU_STATE_UNKNOWN))) {
+		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+		return rc;
+	}
+	vcpu->sched_priv = NULL;
+
+	/* Change VCPU state */
+	vcpu->state = VMM_VCPU_STATE_UNKNOWN;
+
+	/* FIXME: deinit registers */
+
+	/* Mark VCPU as available */
+	mngr.vcpu_avail_array[vcpu->id] = TRUE;
+
+	/* Release lock */
+	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+
 	return VMM_OK;
 }
 

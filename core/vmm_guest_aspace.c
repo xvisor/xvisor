@@ -373,6 +373,12 @@ int vmm_guest_aspace_init(vmm_guest_t *guest)
 			reg->flags |= VMM_REGION_ISDEVICE;
 		}
 
+		if ((reg->flags & VMM_REGION_REAL) &&
+		    (reg->flags & VMM_REGION_MEMORY) &&
+		    (reg->flags & VMM_REGION_ISRAM)) {
+			reg->flags |= VMM_REGION_CACHEABLE;
+		}
+
 		attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_GUEST_PHYS_ATTR_NAME);
 		reg->gphys_addr = *((physical_addr_t *) attrval);

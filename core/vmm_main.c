@@ -35,15 +35,16 @@
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_threads.h>
-#include <vmm_cmdmgr.h>
+#include <vmm_profiler.h>
 #include <vmm_devdrv.h>
 #include <vmm_devemu.h>
-#include <vmm_vserial.h>
-#include <vmm_modules.h>
 #include <vmm_chardev.h>
 #include <vmm_blockdev.h>
 #include <vmm_netdev.h>
-#include <vmm_profiler.h>
+#include <vmm_workqueue.h>
+#include <vmm_cmdmgr.h>
+#include <vmm_vserial.h>
+#include <vmm_modules.h>
 
 void vmm_hang(void)
 {
@@ -200,9 +201,9 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
-	/* Initialize character device framework */
-	vmm_printf("Initialize Virtual Serial Port Framework\n");
-	ret = vmm_vserial_init();
+	/* Initialize workqueue framework */
+	vmm_printf("Initialize Workqueue Framework\n");
+	ret = vmm_workqueue_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
@@ -211,6 +212,14 @@ void vmm_init(void)
 	/* Initialize command manager */
 	vmm_printf("Initialize Command Manager\n");
 	ret = vmm_cmdmgr_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize character device framework */
+	vmm_printf("Initialize Virtual Serial Port Framework\n");
+	ret = vmm_vserial_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();

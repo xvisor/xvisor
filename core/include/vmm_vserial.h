@@ -53,7 +53,7 @@ struct vmm_vserial {
 /** Send bytes to virtual serial port */
 u32 vmm_vserial_send(vmm_vserial_t * vser, u8 *src, u32 len);
 
-/** Receive bytes from virtual serial port */
+/** Receive bytes on virtual serial port */
 u32 vmm_vserial_receive(vmm_vserial_t * vser, u8 *dst, u32 len);
 
 /** Register receiver to a virtual serial port */

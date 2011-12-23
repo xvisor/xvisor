@@ -139,10 +139,16 @@ int vmm_cpu_clockevent_start(u64 nsecs)
 	 *       = (nsecs / 1024) * (1024 / 1000)
 	 *       = (nsecs / 1024) + (nsecs / 1024) * (24 / 1000)
 	 *       = (nsecs >> 10) + (nsecs >> 10) * (3 / 125)
-	 *       ~ (nsecs >> 10) + (nsecs >> 10) * (3 / 128)
-	 *       ~ (nsecs >> 10) + (((nsecs >> 10) * 3) >> 7)
+	 *       = (nsecs >> 10) + (nsecs >> 10) * (3 / 128) * (128 / 125)
+	 *       = (nsecs >> 10) + (nsecs >> 10) * (3 / 128) + 
+	 *                                (nsecs >> 10) * (3 / 128) * (3 / 125)
+	 *       ~ (nsecs >> 10) + (nsecs >> 10) * (3 / 128) + 
+	 *                                (nsecs >> 10) * (3 / 128) * (3 / 128)
+	 *       ~ (nsecs >> 10) + (((nsecs >> 10) * 3) >> 7) + 
+	 *                                          (((nsecs >> 10) * 9) >> 14)
 	 */
-	usecs = (nsecs >> 10) + (((nsecs >> 10) * 3) >> 7);
+	nsecs = nsecs >> 10;
+	usecs = nsecs + ((nsecs * 3) >> 7) + ((nsecs * 9) >> 14);
 	if (!usecs) {
 		usecs = 1;
 	}

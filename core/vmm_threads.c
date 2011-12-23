@@ -39,6 +39,191 @@ struct vmm_threads_ctrl {
 
 static struct vmm_threads_ctrl thctrl;
 
+int vmm_threads_start(vmm_thread_t * tinfo)
+{
+	int rc;
+
+	if (!tinfo) {
+		return VMM_EFAIL;
+	}
+
+	if ((rc = vmm_manager_vcpu_kick(tinfo->tvcpu))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_threads_stop(vmm_thread_t * tinfo)
+{
+	int rc;
+
+	if (!tinfo) {
+		return VMM_EFAIL;
+	}
+
+	if ((rc = vmm_manager_vcpu_halt(tinfo->tvcpu))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_threads_sleep(vmm_thread_t * tinfo)
+{
+	int rc;
+
+	if (!tinfo) {
+		return VMM_EFAIL;
+	}
+
+	if ((rc = vmm_manager_vcpu_pause(tinfo->tvcpu))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_threads_wakeup(vmm_thread_t * tinfo)
+{
+	int rc;
+
+	if (!tinfo) {
+		return VMM_EFAIL;
+	}
+
+	if ((rc = vmm_manager_vcpu_resume(tinfo->tvcpu))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+u32 vmm_threads_get_id(vmm_thread_t * tinfo)
+{
+	if (!tinfo) {
+		return 0;
+	}
+
+	return tinfo->tvcpu->id;
+}
+
+u8 vmm_threads_get_priority(vmm_thread_t * tinfo)
+{
+	if (!tinfo) {
+		return 0;
+	}
+
+	return tinfo->tvcpu->priority;
+}
+
+int vmm_threads_get_name(char * dst, vmm_thread_t * tinfo)
+{
+	if (!tinfo || !dst) {
+		return VMM_EFAIL;
+	}
+
+	vmm_strcpy(dst, tinfo->tvcpu->name);
+
+	return VMM_OK;
+}
+
+int vmm_threads_get_state(vmm_thread_t * tinfo)
+{
+	int rc = -1;
+
+	if (!tinfo) {
+		rc =  -1;
+	} else {
+		if (tinfo->tvcpu->state & VMM_VCPU_STATE_RESET) { 
+			rc = VMM_THREAD_STATE_CREATED;
+		} else if (tinfo->tvcpu->state & 
+			  (VMM_VCPU_STATE_READY | VMM_VCPU_STATE_RUNNING)) {
+			rc = VMM_THREAD_STATE_RUNNING;
+		} else if (tinfo->tvcpu->state & VMM_VCPU_STATE_PAUSED) {
+			rc = VMM_THREAD_STATE_SLEEPING;
+		} else if (tinfo->tvcpu->state & VMM_VCPU_STATE_HALTED) {
+			rc = VMM_THREAD_STATE_STOPPED;
+		} else {
+			rc = -1;
+		}
+	}
+
+	return rc;
+}
+
+vmm_thread_t *vmm_threads_id2thread(u32 tid)
+{
+	bool found;
+	irq_flags_t flags;
+	struct dlist *l;
+	vmm_thread_t *ret;
+
+	ret = NULL;
+	found = FALSE;
+
+	/* Lock threads control */
+	flags = vmm_spin_lock_irqsave(&thctrl.lock);
+
+	list_for_each(l, &thctrl.thread_list) {
+		ret = list_entry(l, vmm_thread_t, head);
+		if (ret->tvcpu->id == tid) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	/* Unlock threads control */
+	vmm_spin_unlock_irqrestore(&thctrl.lock, flags);
+
+	if (!found) {
+		return NULL;
+	}
+
+	return ret;
+}
+
+vmm_thread_t *vmm_threads_index2thread(int index)
+{
+	bool found;
+	irq_flags_t flags;
+	struct dlist *l;
+	vmm_thread_t *ret;
+
+	if (index < 0) {
+		return NULL;
+	}
+
+	ret = NULL;
+	found = FALSE;
+
+	/* Lock threads control */
+	flags = vmm_spin_lock_irqsave(&thctrl.lock);
+
+	list_for_each(l, &thctrl.thread_list) {
+		ret = list_entry(l, vmm_thread_t, head);
+		if (!index) {
+			found = TRUE;
+			break;
+		}
+		index--;
+	}
+
+	/* Unlock threads control */
+	vmm_spin_unlock_irqrestore(&thctrl.lock, flags);
+
+	if (!found) {
+		return NULL;
+	}
+
+	return ret;
+}
+
+u32 vmm_threads_count(void)
+{
+	return thctrl.thread_count;
+}
+
 static void vmm_threads_entry(void)
 {
 	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
@@ -111,130 +296,32 @@ vmm_thread_t *vmm_threads_create(const char *thread_name,
 
 int vmm_threads_destroy(vmm_thread_t * tinfo)
 {
-	/* FIXME: TBD */
-	return VMM_OK;
-}
+	int rc = VMM_OK;
+	irq_flags_t flags;
 
-int vmm_threads_start(vmm_thread_t * tinfo)
-{
-	int rc;
-
+	/* Sanity Check */
 	if (!tinfo) {
 		return VMM_EFAIL;
 	}
 
-	if ((rc = vmm_manager_vcpu_kick(tinfo->tvcpu))) {
+	/* Lock threads control */
+	flags = vmm_spin_lock_irqsave(&thctrl.lock);
+
+	list_del(&tinfo->head);
+	thctrl.thread_count--;
+
+	/* Unlock threads control */
+	vmm_spin_unlock_irqrestore(&thctrl.lock, flags);
+
+	/* Destroy the thread VCPU */
+	if ((rc = vmm_manager_vcpu_orphan_destroy(tinfo->tvcpu))) {
 		return rc;
 	}
 
-	return VMM_OK;
-}
-
-int vmm_threads_stop(vmm_thread_t * tinfo)
-{
-	/* FIXME: TBD */
-	return VMM_OK;
-}
-
-u32 vmm_threads_get_id(vmm_thread_t * tinfo)
-{
-	if (!tinfo) {
-		return 0;
-	}
-
-	return tinfo->tvcpu->id;
-}
-
-int vmm_threads_get_name(char * dst, vmm_thread_t * tinfo)
-{
-	if (!tinfo || !dst) {
-		return VMM_EFAIL;
-	}
-
-	vmm_strcpy(dst, tinfo->tvcpu->name);
+	/* Free thread memory */
+	vmm_free(tinfo);
 
 	return VMM_OK;
-}
-
-int vmm_threads_get_state(vmm_thread_t * tinfo)
-{
-	int rc = -1;
-
-	if (!tinfo) {
-		rc =  -1;
-	} else {
-		if (tinfo->tvcpu->state & VMM_VCPU_STATE_RESET) { 
-			rc = VMM_THREAD_STATE_CREATED;
-		} else if (tinfo->tvcpu->state & 
-			  (VMM_VCPU_STATE_READY | VMM_VCPU_STATE_RUNNING)) {
-			rc = VMM_THREAD_STATE_RUNNING;
-		} else if (tinfo->tvcpu->state & 
-			  (VMM_VCPU_STATE_PAUSED | VMM_VCPU_STATE_HALTED)) {
-			rc = VMM_THREAD_STATE_STOPPED;
-		} else {
-			rc = -1;
-		}
-	}
-
-	return rc;
-}
-
-vmm_thread_t *vmm_threads_id2thread(u32 tid)
-{
-	bool found;
-	struct dlist *l;
-	vmm_thread_t *ret;
-
-	ret = NULL;
-	found = FALSE;
-
-	list_for_each(l, &thctrl.thread_list) {
-		ret = list_entry(l, vmm_thread_t, head);
-		if (ret->tvcpu->id == tid) {
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (!found) {
-		return NULL;
-	}
-
-	return ret;
-}
-
-vmm_thread_t *vmm_threads_index2thread(int index)
-{
-	bool found;
-	struct dlist *l;
-	vmm_thread_t *ret;
-
-	if (index < 0) {
-		return NULL;
-	}
-
-	ret = NULL;
-	found = FALSE;
-
-	list_for_each(l, &thctrl.thread_list) {
-		ret = list_entry(l, vmm_thread_t, head);
-		if (!index) {
-			found = TRUE;
-			break;
-		}
-		index--;
-	}
-
-	if (!found) {
-		return NULL;
-	}
-
-	return ret;
-}
-
-u32 vmm_threads_count(void)
-{
-	return thctrl.thread_count;
 }
 
 int __init vmm_threads_init(void)
