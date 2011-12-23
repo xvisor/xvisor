@@ -30,7 +30,7 @@ void * dhry_malloc(unsigned int size)
 
 TimeStamp dhry_timestamp(void)
 {
-	return arm_timer_timestamp();
+	return arm_udiv64(arm_timer_timestamp(), 1000);
 }
 
 long dhry_to_microsecs(TimeStamp UserTime)

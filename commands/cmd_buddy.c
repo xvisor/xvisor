@@ -26,7 +26,7 @@
 #include <vmm_stdio.h>
 #include <vmm_version.h>
 #include <vmm_string.h>
-#include <mm/vmm_buddy.h>
+#include <heap/vmm_buddy.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 

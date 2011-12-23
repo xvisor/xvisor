@@ -21,15 +21,8 @@
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief source file for buddy heap allocator
  */
-#if TEST_BUDDY_SYSTEM
-#include <stdio.h>
-#include <string.h>
-#endif
 
-#if !TEST_BUDDY_SYSTEM
 #include <vmm_string.h>
-#endif
-
 #include <vmm_list.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
@@ -44,9 +37,9 @@
 #define _DEBUG			0
 
 #if _DEBUG
-#define VMM_DPRINTK(fmt, ...)	vmm_printf(fmt, ##__VA_ARGS__)
+#define DPRINTF(fmt, ...)	vmm_printf(fmt, ##__VA_ARGS__)
 #else
-#define VMM_DPRINTK(fmt, ...)
+#define DPRINTF(fmt, ...)
 #endif
 
 #define IS_POW_TWO(x)		(x && !(x & (x - 1)))
@@ -126,7 +119,6 @@ int buddy_init(void *heap_start, unsigned int heap_size)
 		INIT_LIST_HEAD(&buddy_heap.free_area[cntr].head);
 	}
 
-	INIT_LIST_HEAD(&buddy_heap.free_area[BINS_MAX_ORDER - 1].head);
 	while (mem_size) {
 		freenode = get_free_hk_node();
 		if (!freenode) {
@@ -140,7 +132,7 @@ int buddy_init(void *heap_start, unsigned int heap_size)
 		buddy_heap.free_area[BINS_MAX_ORDER - 1].count++;
 		tnodes++;
 	}
-	VMM_DPRINTK("Total: %d nodes of size 0x%X added to last bin.\n",
+	DPRINTF("Total: %d nodes of size 0x%X added to last bin.\n",
 		    tnodes, MAX_BLOCK_SIZE);
 
 	return 0;
@@ -150,7 +142,7 @@ static struct vmm_free_area *buddy_get_contiguous_block(unsigned int num_blocks,
 							unsigned int idx)
 {
 	struct vmm_free_area *snode = NULL, *cnode = NULL, *pnode = NULL;
-	struct dlist *cnhead;
+	struct dlist *l;
 	unsigned int count = 0;
 
 	if (idx >= BINS_MAX_ORDER) {
@@ -164,25 +156,23 @@ static struct vmm_free_area *buddy_get_contiguous_block(unsigned int num_blocks,
 	/* First check if we have enough nodes, contiguous or non-contiguous. */
 	if (buddy_heap.free_area[idx].count >= num_blocks) {
 		/* okay we have enough nodes. Now try allocation contiguous nodes */
-		list_for_each(cnhead, &buddy_heap.free_area[idx].head) {
-			cnode = list_entry(cnhead, struct vmm_free_area, head);
-			if (cnode) {
-				if (snode == NULL) {
-					snode = cnode;
-				}
-				if (pnode) {
-					if (pnode->map + MAX_BLOCK_SIZE ==
-					    cnode->map) {
-						pnode = cnode;
-						if (++count == num_blocks) {
-							goto cont_blocks_found;
-						}
-						continue;
-					}
-					snode = NULL;
-				} else {
+		list_for_each(l, &buddy_heap.free_area[idx].head) {
+			cnode = list_entry(l, struct vmm_free_area, head);
+			if (snode == NULL) {
+				snode = cnode;
+				count = 0;
+			}
+			if (pnode) {
+				if ((pnode->map + MAX_BLOCK_SIZE) == cnode->map) {
 					pnode = cnode;
+					if (++count == num_blocks) {
+						goto cont_blocks_found;
+					}
+					continue;
 				}
+				snode = NULL;
+			} else {
+				pnode = cnode;
 			}
 		}
 cont_blocks_found:
@@ -190,7 +180,6 @@ cont_blocks_found:
 			cnode = get_free_hk_node();
 			BUG_ON(!cnode,
 			       "Panic: No free house keeping nodes for buddy allocator!\n");
-
 			vmm_memcpy(cnode, snode, sizeof(struct vmm_free_area));
 			while (count) {
 				/*
@@ -201,6 +190,7 @@ cont_blocks_found:
 				    list_entry(snode->head.next,
 					       struct vmm_free_area, head);
 				list_del(&snode->head);
+				free_hk_node(snode);
 				buddy_heap.free_area[idx].count--;
 				count--;
 				snode = pnode;
@@ -228,11 +218,9 @@ static struct vmm_free_area *buddy_get_block(unsigned int idx)
 	}
 
 	if (list_empty(&buddy_heap.free_area[idx].head)) {
-		/*
-		 * We borrowed a block from higher order. keep half of it and rest half
-		 * give to the caller.
+		/* We borrowed a block from higher order. 
+		 * keep half of it and rest half give to the caller.
 		 */
-		/* This is what we keep for us for further allocation request. */
 		farea = buddy_get_block(idx + 1);
 		if (farea) {
 			rarea = get_free_hk_node();
@@ -241,7 +229,6 @@ static struct vmm_free_area *buddy_get_block(unsigned int idx)
 				list_add_tail(&buddy_heap.free_area[idx].head,
 					      &farea->head);
 				buddy_heap.free_area[idx].count++;
-
 				/* this is our buddy we will give to caller */
 				rarea->map = farea->map + blk_sz;
 			}
@@ -276,6 +263,7 @@ static struct vmm_alloced_area *search_for_allocated_block(void *addr)
 static int add_free_area_to_bin(struct vmm_free_area *free_area,
 				unsigned int bin_num)
 {
+	bool added = FALSE;
 	struct vmm_free_area *carea = NULL;
 	struct dlist *pos;
 
@@ -284,11 +272,16 @@ static int add_free_area_to_bin(struct vmm_free_area *free_area,
 	} else {
 		list_for_each(pos, &buddy_heap.free_area[bin_num].head) {
 			carea = list_entry(pos, struct vmm_free_area, head);
-			if (carea->map > free_area->map) {
+			if (free_area->map < carea->map) {
+				list_add_tail(&carea->head, &free_area->head);
+				added = TRUE;
 				break;
 			}
 		}
-		list_add(&carea->head, &free_area->head);
+		if (!added) {
+			list_add_tail(&buddy_heap.free_area[bin_num].head, 
+								&free_area->head);
+		}
 	}
 	buddy_heap.free_area[bin_num].count++;
 
@@ -310,8 +303,8 @@ restart:
 		cfa = list_entry(pos, struct vmm_free_area, head);
 		if (lmap) {
 			if ((lmap + (MIN_BLOCK_SIZE << bin)) == cfa->map) {
-				VMM_DPRINTK
-				    ("Coalescing 0x%X and 0x%X and giving back to bin %d\n",
+				DPRINTF
+				    ("Coalescing 0x%X and 0x%X to bin %d\n",
 				     (unsigned int)lfa->map,
 				     (unsigned int)cfa->map, bin + 1);
 				list_del(&cfa->head);
@@ -381,10 +374,8 @@ void *buddy_malloc(unsigned int size)
 		farea = buddy_get_contiguous_block(bneeded, BINS_MAX_ORDER - 1);
 		if (farea) {
 			aarea = get_free_ac_node();
-
-			BUG_ON(!aarea,
-			       "Panic: No house keeping node available for buddy allocator.!\n");
-
+			BUG_ON(!aarea, "Panic: No house keeping node "
+					"available for buddy allocator.!\n");
 			aarea->map = farea->map;
 			aarea->blk_sz = MAX_BLOCK_SIZE * bneeded;
 			aarea->bin_num = BINS_MAX_ORDER - 1;
@@ -395,18 +386,14 @@ void *buddy_malloc(unsigned int size)
 		}
 	}
 
-	for (idx = 0; idx <= BINS_MAX_ORDER; idx++) {
+	for (idx = 0; idx < BINS_MAX_ORDER; idx++) {
 		if (size > curr_blk) {
 			curr_blk <<= 1;
 		} else {
 			farea = buddy_get_block(idx);
 			if (farea) {
 				aarea = get_free_ac_node();
-				if (!aarea) {
-					VMM_DPRINTK
-					    ("Bummer! No free alloc node?\n");
-					return NULL;
-				}
+				BUG_ON(!aarea, "Bummer! No free alloc node\n");
 				aarea->map = farea->map;
 				aarea->blk_sz = curr_blk;
 				aarea->bin_num = idx;
@@ -437,17 +424,25 @@ void *buddy_zalloc(unsigned int size)
 
 void buddy_free(void *ptr)
 {
-	/* FIXME: Handle the freeing of contiguously allocated nodes. */
-	struct vmm_alloced_area *freed_node = search_for_allocated_block(ptr);
+	u32 aarea_sz;
+	struct vmm_alloced_area *aarea = search_for_allocated_block(ptr);
 
-	BUG_ON(!freed_node, "Panic: No allocation found for ptr to release!\n");
+	BUG_ON(!aarea, "Panic: No allocation for 0x%08x!\n", (u32)ptr);
 
-	VMM_DPRINTK("Freeing 0x%X of block size: %d bin: %d\n",
-		    (unsigned int)ptr, freed_node->blk_sz, freed_node->bin_num);
+	if (MAX_BLOCK_SIZE < aarea->blk_sz) {
+		aarea_sz = aarea->blk_sz;
+		aarea->blk_sz = MAX_BLOCK_SIZE;
+		while (MAX_BLOCK_SIZE <= aarea_sz) {
+			return_to_pool(aarea);
+			aarea->map += MAX_BLOCK_SIZE;
+			aarea_sz -= MAX_BLOCK_SIZE;
+		}
+	} else {
+		return_to_pool(aarea);
+	}
 
-	return_to_pool(freed_node);
-	list_del(&freed_node->head);
-	vmm_memset(freed_node, 0, sizeof(struct vmm_alloced_area));
+	list_del(&aarea->head);
+	vmm_memset(aarea, 0, sizeof(struct vmm_alloced_area));
 }
 
 void buddy_print_state(vmm_chardev_t *cdev)
@@ -457,7 +452,8 @@ void buddy_print_state(vmm_chardev_t *cdev)
 	struct dlist *pos;
 	int bfree = 0, balloced = 0;
 
-	vmm_cprintf(cdev, "Heap size: %d KiB\n", (buddy_heap.heap_size / 1024));
+	vmm_cprintf(cdev, "Heap Size: %d KiB\n", 
+					(buddy_heap.heap_size / 1024));
 
 	for (idx = 0; idx < BINS_MAX_ORDER; idx++) {
 		vmm_cprintf(cdev, "[BLOCK 0x%4X]: ", MIN_BLOCK_SIZE << idx);
@@ -471,7 +467,8 @@ void buddy_print_state(vmm_chardev_t *cdev)
 				balloced++;
 			}
 		}
-		vmm_cprintf(cdev, "%5d alloced, %5d free block(s)\n", balloced, bfree);
+		vmm_cprintf(cdev, "%5d alloced, %5d free block(s)\n", 
+							balloced, bfree);
 		bfree = 0;
 		balloced = 0;
 	}
@@ -490,7 +487,7 @@ void buddy_print_hk_state(vmm_chardev_t *cdev)
 		fren++;
 	}
 
-	vmm_cprintf(cdev, "Free Node List: %d nodes free out of %d.\n", free,
+	vmm_cprintf(cdev, "Free Node List: %d nodes free out of %d\n", free,
 		   buddy_heap.hk_fn_count);
 
 	free = 0;
@@ -500,7 +497,7 @@ void buddy_print_hk_state(vmm_chardev_t *cdev)
 		}
 		acn++;
 	}
-	vmm_cprintf(cdev, "Alloced Node List: %d nodes free out of %d.\n", free,
+	vmm_cprintf(cdev, "Alloced Node List: %d nodes free out of %d\n", free,
 		   buddy_heap.hk_an_count);
 }
 

@@ -89,8 +89,8 @@ int arm_timer_irqhndl(u32 irq_no, pt_regs_t * regs)
 	if (!timer_irq_tstamp) {
 		timer_irq_tstamp = tstamp;
 	}
-	if (timer_irq_tcount == 1024) {
-		timer_irq_delay = (tstamp - timer_irq_tstamp) >> 10;
+	if (timer_irq_tcount == 256) {
+		timer_irq_delay = (tstamp - timer_irq_tstamp) >> 8;
 		timer_irq_tcount = 0;
 		timer_irq_tstamp = tstamp;
 	}
@@ -100,19 +100,19 @@ int arm_timer_irqhndl(u32 irq_no, pt_regs_t * regs)
 	return 0;
 }
 
-int arm_timer_init(u32 usecs, u32 ensel)
+int arm_timer_init(u32 usecs, u32 init_irqcount, u32 ensel)
 {
 	u32 val;
 
 	timer_counter_mask = 0xFFFFFFFFULL;
 	timer_counter_shift = 20;
 	timer_counter_mult = ((u64)1000000) << timer_counter_shift;
-	timer_counter_mult += (((u64)1000000) >> 1);
-	timer_counter_mult = arm_udiv64(timer_counter_mult, ((u64)1000000));
+	timer_counter_mult += (((u64)1000) >> 1);
+	timer_counter_mult = arm_udiv64(timer_counter_mult, ((u64)1000));
 	timer_counter_last = 0; 
 	timer_time_stamp = 0;
 
-	timer_irq_count = 0;
+	timer_irq_count = init_irqcount;
 	timer_irq_tcount = 0;
 	timer_irq_tstamp = 0;
 	timer_irq_delay = 0;

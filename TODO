@@ -1,16 +1,18 @@
 
-		High-Priority Features (For version 0.1.1)
+		High-Priority Features (For version 0.1.2)
 
- * Add support for bottom halves like workqueues for device drivers
-
-
-		Medium-Priority Features (For version 0.2.0)
-
+ * Add testsuit for completion, threads, workqueues, semaphore, mutex, etc.
+ * Add support for dynamic guest creation/deletion using commands
+ * Add support for device clock managment for device drivers
  * Add support for real-time clock virtualization
+
+
+		Medium-Priority Features (For version 1.0.0)
+
  * Add support for SMP systems
 
 
-		Low-Priority Features (Wishlist)
+		Low-Priority Features (Our Wishlist)
 
  * Add support for frame buffer virtualization
  * Add support for block device virtualization

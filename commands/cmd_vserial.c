@@ -49,6 +49,7 @@ void cmd_vserial_usage(vmm_chardev_t *cdev)
 struct cmd_vserial_recvcntx {
 	const char * name;
 	u32 chpos;
+	int chcount;
 	vmm_chardev_t *cdev;
 };
 
@@ -76,6 +77,13 @@ void cmd_vserial_recv(vmm_vserial_t *vser, void * priv, u8 ch)
 		vmm_cputc(recvcntx->cdev, ch);
 		recvcntx->chpos++;
 	}
+	if (-1 < recvcntx->chcount) {
+		if (recvcntx->chcount) {
+			recvcntx->chcount--;
+		} else {
+			vmm_vserial_unregister_receiver(vser, &cmd_vserial_recv, recvcntx);
+		}
+	}
 }
 
 int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
@@ -96,6 +104,7 @@ int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 
 	recvcntx.name = name;
 	recvcntx.chpos = 0;
+	recvcntx.chcount = -1;
 	recvcntx.cdev = cdev;
 
 	rc = vmm_vserial_register_receiver(vser, &cmd_vserial_recv, &recvcntx);
@@ -136,26 +145,33 @@ int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 
 int cmd_vserial_dump(vmm_chardev_t *cdev, const char *name, int bcount)
 {
-	u8 ch;
+	int rc = VMM_OK;
 	vmm_vserial_t *vser = vmm_vserial_find(name);
+	cmd_vserial_recvcntx_t recvcntx;
 
 	if (!vser) {
 		vmm_cprintf(cdev, "Failed to find virtual serial port\n");
 		return VMM_EFAIL;
 	}
 
-	if (bcount < 0) {
-		while (vmm_vserial_receive(vser, &ch, 1)) {
-			vmm_cprintf(cdev, "%c", ch);
-		}
-	} else {
-		while (bcount > 0 && vmm_vserial_receive(vser, &ch, 1)) {
-			vmm_cprintf(cdev, "%c", ch);
-			bcount--;
-		}
+	vmm_cprintf(cdev, "[%s] ", name);
+
+	recvcntx.name = name;
+	recvcntx.chpos = 0;
+	recvcntx.chcount = -1;
+	recvcntx.cdev = cdev;
+
+	rc = vmm_vserial_register_receiver(vser, &cmd_vserial_recv, &recvcntx);
+	if (rc) {
+		return rc;
 	}
 
 	vmm_cprintf(cdev, "\n");
+
+	rc = vmm_vserial_unregister_receiver(vser, &cmd_vserial_recv, &recvcntx);
+	if (rc) {
+		return rc;
+	}
 
 	return VMM_OK;
 }
