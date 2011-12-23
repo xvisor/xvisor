@@ -43,8 +43,8 @@
 #define VMM_COUNTER_JIFFIES			(VMM_CPU_FREQ_MHZ \
 						 * VMM_CPU_TICK_DELAY_MICROSECS)
 
-#define MHZ2HZ(_x)				(_x * 1000 * 1000)
-#define SEC2NSEC(_x)				(_x * 1000 * 1000 * 1000)
+#define MHZ2HZ(_x_)				(u64)(_x_ * 1000 * 1000)
+#define SEC2NSEC(__x)				(__x * 1000 * 1000 * 1000)
 #define NS2COUNT(_x)				((MHZ2HZ(VMM_CPU_FREQ_MHZ) \
 						  * _x) / SEC2NSEC(1)) 
 
@@ -72,6 +72,13 @@ u64 vmm_cpu_clocksource_cycles(void)
 	return read_c0_count();
 }
 
+u32 ns2count(u64 ticks_nsecs)
+{
+	u32 req_count = ((u64)(MHZ2HZ(VMM_CPU_FREQ_MHZ) * ticks_nsecs))/SEC2NSEC(1);
+
+	return req_count;
+}
+
 int vmm_cpu_clockevent_start(u64 ticks_nsecs)
 {
 	/* Enable the timer interrupts. */
@@ -79,7 +86,7 @@ int vmm_cpu_clockevent_start(u64 ticks_nsecs)
 	sr |= ((0x1UL << 7) << 8);
 	write_c0_status(sr);
 
-	u32 next_ticks = NS2COUNT((u32)ticks_nsecs);
+	u32 next_ticks = ns2count(ticks_nsecs);
 	write_c0_compare(read_c0_count() + next_ticks);
 
 	return VMM_OK;
@@ -107,16 +114,12 @@ u64 vmm_cpu_clocksource_mask(void)
 
 u32 vmm_cpu_clocksource_mult(void)
 {
-	u32 khz = 1000;
-	u64 tmp = ((u64)1000000) << 20;
-	tmp += khz / 2;
-	tmp = tmp / khz;
-	return (u32)tmp;
+	return vmm_timer_clocksource_khz2mult(1000, 20);
 }
 
 u32 vmm_cpu_clocksource_shift(void)
 {
-	return 22;
+	return 20;
 }
 
 int vmm_cpu_clockevent_stop(void)

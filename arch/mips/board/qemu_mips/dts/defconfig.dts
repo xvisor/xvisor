@@ -48,7 +48,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		guest@0 {
+		guest0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			model = "vqemu-mips";
@@ -58,10 +58,10 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-				vcpu@0 {
+				vcpu0 {
 					device_type = "vcpu";
 					model = "MIPS,24Kc";
-					tick_slice = <20000000>;
+					time_slice = <98000000>;
 					start_pc = <0x3FC00000>;
 				};
 			};
@@ -70,22 +70,22 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-				rom@0 {
+				nor_flash {
 					manifest_type = "real";
 					address_type = "memory";
-					device_type = "memory";
+					device_type = "rom";
 					guest_physical_addr = <0x1FC00000>;
-					host_physical_addr = <0x100000>;
+					host_physical_addr = <0x300000>;
 					physical_size = <0x400000>;
 				};
 
-				mem@0 {
-					manifest_type = "real";
+				mem0 {
+					manifest_type = "alias";
 					address_type = "memory";
 					guest_physical_addr = <0x00000000>;
-					host_physical_addr = <0x600000>;
+					alias_physical_addr = <0x600000>;
 					physical_size = <0x1000000>;
-					device_type = "memory";
+					device_type = "ram";
 				};
 			};
 		};

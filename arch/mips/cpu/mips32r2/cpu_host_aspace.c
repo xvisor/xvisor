@@ -120,11 +120,11 @@ static int vmm_cpu_boot_pagetable_init(physical_addr_t *pa,
 	 * Map virtual addresses from the end of VMM. Why? We don't
 	 * expect text section to fault.
 	 */
-	cva = vmm_cpu_code_vaddr_start() + vmm_cpu_code_size() + pg_tab_sz;
+	cva = vmm_cpu_code_vaddr_start() + vmm_cpu_code_size();
 
-	spte = (pte_t *)(CPU_TEXT_START + vmm_cpu_code_size()
+	spte = (pte_t *)(CPU_TEXT_START + vmm_cpu_code_size() + (*sz)
 			 + (nr_ptabs * PAGE_SIZE));
-	c_ptab = (ptab_t *)(CPU_TEXT_START + vmm_cpu_code_size());
+	c_ptab = (ptab_t *)(CPU_TEXT_START + vmm_cpu_code_size() + (*sz));
 
 	/* Initialize the PGD */
 	for (i = 0; i <= nr_ptabs; i++) {
@@ -141,9 +141,9 @@ static int vmm_cpu_boot_pagetable_init(physical_addr_t *pa,
 		cva += (NUM_PTAB_ENTRIES * PAGE_SIZE);
 	}
 
-	cva = vmm_cpu_code_vaddr_start() + vmm_cpu_code_size() + pg_tab_sz;
-	eva += cva + (CONFIG_VAPOOL_SIZE << 20);
-	*pa += vmm_cpu_code_size() + pg_tab_sz;
+	cva = vmm_cpu_code_vaddr_start() + vmm_cpu_code_size();
+	eva += cva + ((CONFIG_VAPOOL_SIZE << 20) - (vmm_cpu_code_size() + (*sz) + pg_tab_sz));
+	*pa += vmm_cpu_code_size();
 
 	/* Create the page table entries for all the virtual addresses. */
 	for (; cva < eva;) {
@@ -159,7 +159,7 @@ static int vmm_cpu_boot_pagetable_init(physical_addr_t *pa,
 	 * our own page faults.
 	 */
 	set_current_asid(0x1UL << 6);
-	*va += pg_tab_sz;
+	*sz += pg_tab_sz;
 
 	return VMM_OK;
 }
