@@ -41,13 +41,18 @@ void vmm_vcpu_regs_dump(vmm_vcpu_t *vcpu);
 void vmm_vcpu_stat_dump(vmm_vcpu_t *vcpu);
 
 /** Host address space functions required by VMM core */
-int vmm_cpu_aspace_init(void);
+int vmm_cpu_aspace_init(physical_addr_t * resv_pa, 
+			virtual_addr_t * resv_va,
+			virtual_size_t * resv_sz);
 int vmm_cpu_aspace_map(virtual_addr_t va, 
 			virtual_size_t sz, 
 			physical_addr_t pa,
 			u32 mem_flags);
 int vmm_cpu_aspace_unmap(virtual_addr_t va, 
 			 virtual_size_t sz);
+virtual_addr_t vmm_cpu_code_vaddr_start(void);
+physical_addr_t vmm_cpu_code_paddr_start(void);
+virtual_size_t vmm_cpu_code_size(void);
 
 /** Interrupt functions required by VMM core */
 int vmm_cpu_irq_setup(void);
@@ -62,10 +67,15 @@ u32 vmm_vcpu_irq_priority(vmm_vcpu_t * vcpu, u32 irq_no);
 u32 vmm_vcpu_irq_count(vmm_vcpu_t * vcpu);
 
 /** Timer functions required by VMM core */
-void vmm_cpu_timer_enable(void);
-void vmm_cpu_timer_disable(void);
-int vmm_cpu_timer_setup(u64 tick_nsecs);
-int vmm_cpu_timer_init(void);
+int vmm_cpu_clockevent_start(u64 tick_nsecs);
+int vmm_cpu_clockevent_expire(void);
+int vmm_cpu_clockevent_stop(void);
+int vmm_cpu_clockevent_init(void);
+u64 vmm_cpu_clocksource_cycles(void);
+u64 vmm_cpu_clocksource_mask(void);
+u32 vmm_cpu_clocksource_mult(void);
+u32 vmm_cpu_clocksource_shift(void);
+int vmm_cpu_clocksource_init(void);
 
 #if defined(CONFIG_SMP)
 /** Spinlock functions required by VMM core */
@@ -83,7 +93,7 @@ void vmm_cpu_atomic_sub(atomic_t * atom, long value);
 long vmm_cpu_atomic_sub_return(atomic_t * atom, long value);
 bool vmm_cpu_atomic_testnset(atomic_t * atom, long test, long val);
 
-/** Module functions required by VMM core */
+/** Module related functions required by VMM core */
 extern u8 _modtbl_start;
 extern u8 _modtbl_end;
 static inline virtual_addr_t vmm_modtbl_vaddr(void)
@@ -95,12 +105,12 @@ static inline virtual_size_t vmm_modtbl_size(void)
 	return (virtual_size_t) (&_modtbl_end - &_modtbl_start);
 }
 
-/** Init section functions required by VMM core */
+/** Init section related functions required by VMM core */
 extern u8 _init_text_start;
 extern u8 _init_text_end;
 static inline virtual_addr_t vmm_init_text_vaddr(void)
 {
-	return (virtual_addr_t) &_init_text_start;
+	return (virtual_addr_t) ((&_init_text_start - CPU_TEXT_START) + 0xC0000000);
 }
 static inline virtual_size_t vmm_init_text_size(void)
 {

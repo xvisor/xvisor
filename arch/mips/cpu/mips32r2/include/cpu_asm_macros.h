@@ -178,6 +178,36 @@ _name:						\
 	"lw " to_string(reg) " , " num_to_string(reg ## _IDX)	\
 			     " * 4(" num_to_string(here)" )\n\t"
 
+#define LOAD_WORD(to, from)			\
+	"lw " to_string(to) " , " to_string(from) "\n\t"
+#define STORE_WORD(from, to)			\
+	"sw " to_string(from) ", " to_string(to) "\n\t"
+
+#define LOAD_WORD_FROM_CP0(to, from_cp)		\
+	"mfc0 " to_string(to) ", " to_string(from_cp) "\n\t"
+
+#define STORE_WORD_TO_CP0(from, to_cp)		\
+	"mtc0 " to_string(from) ", " to_string(to_cp) "\n\t"
+
+#define NOP_HAZARD()				\
+	asm volatile("nop\n\t"			\
+	"nop\n\t"				\
+	"nop\n\t"				\
+	"nop\n\t"				\
+	"nop\n\t"				\
+	"nop\n\t"				\
+	"nop\n\t"				\
+	"nop\n\t"				\
+	"nop\n\t"
+
+#define EHB()					\
+	asm volatile("ehb\n\t")
+
+#define TLB_WRITE_RANDOM()			\
+	asm volatile("tlbwr\n\t")
+
+#define TLB_WRITE_INDEXED()			\
+	asm volatile("tlbwi\n\t")
 
 /*
  * Macros to be used with C code.

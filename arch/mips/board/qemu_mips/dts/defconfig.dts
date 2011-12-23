@@ -13,9 +13,6 @@
 		#size-cells = <1>;
 		model = "qemu-mips";
 		device_type = "host";
-		virt-addr-start = <0xC0000000>; /* Kseg1 region */
-		virt-addr-size = <0x40000000>;
-		virt-addr-frame-size = <0x1000>; /* 4K minimum page maps */
 
 		cpus {
 			#address-cells = <1>;
@@ -26,6 +23,11 @@
 				device_type = "cpu";
 				model = "MIPS,24Kf";
 			};
+		};
+
+		memory {
+			physical_addr = <0x00000000>;
+			physical_size = <0x08000000>; /* 128 MB */
 		};
 
 		plb {
@@ -39,12 +41,6 @@
 			      reg_offset = <0x3F8>;
 			      baudrate = <115200>;
 			};
-
-			network-card {
-			       device_type = "nic";
-			       compatible = "ne2000";
-			       reg = <0x14000000 0x000000008>;
-			};
 		};
 	};
 
@@ -52,7 +48,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		guest@0 {
+		guest0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			model = "vqemu-mips";
@@ -62,10 +58,10 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-				vcpu@0 {
+				vcpu0 {
 					device_type = "vcpu";
 					model = "MIPS,24Kc";
-					tick_slice = <20000000>;
+					time_slice = <98000000>;
 					start_pc = <0x3FC00000>;
 				};
 			};
@@ -74,22 +70,22 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-				rom@0 {
+				nor_flash {
 					manifest_type = "real";
 					address_type = "memory";
-					device_type = "memory";
+					device_type = "rom";
 					guest_physical_addr = <0x1FC00000>;
-					host_physical_addr = <0x100000>;
+					host_physical_addr = <0x300000>;
 					physical_size = <0x400000>;
 				};
 
-				mem@0 {
-					manifest_type = "real";
+				mem0 {
+					manifest_type = "alias";
 					address_type = "memory";
 					guest_physical_addr = <0x00000000>;
-					host_physical_addr = <0x600000>;
+					alias_physical_addr = <0x600000>;
 					physical_size = <0x1000000>;
-					device_type = "memory";
+					device_type = "ram";
 				};
 			};
 		};

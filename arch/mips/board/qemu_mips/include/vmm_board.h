@@ -40,6 +40,10 @@ int vmm_pic_irq_enable(u32 host_irq_no);
 int vmm_pic_irq_disable(u32 host_irq_no);
 int vmm_pic_init(void);
 
+/** RAM related functions required by VMM core */
+int vmm_board_ram_start(physical_addr_t * addr);
+int vmm_board_ram_size(physical_size_t * size);
+
 int vmm_devtree_populate(vmm_devtree_node_t **root,
                          char **string_buffer,
                          size_t *string_buffer_size);

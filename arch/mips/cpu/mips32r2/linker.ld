@@ -29,33 +29,40 @@ ENTRY(_start)
 SECTIONS 
 {
 	. = CPU_TEXT_START;
+
+	PROVIDE(_code_start = .);
+
 	.text :
  	{
+		PROVIDE(_text_start = .);
 		*(.start.text)
 		*(.text)
 		. = ALIGN(4);
-		_etext = .;
+		PROVIDE(_text_end = .);
 	}
 
 	.data :
 	{
+		PROVIDE(_data_start = .);
 		*(.data)
 		. = ALIGN(4);
-		_edata = .;
+		PROVIDE(_data_end = .);
 	}
 
 	.bss :
 	{
+		PROVIDE(_bss_start = .);
 		*(.bss)
 		. = ALIGN(4);
-		_ebss = .;
+		PROVIDE(_bss_end = .);
 	}
 
 	.rodata :
 	{
+		PROVIDE(_rodata_start = .);
 		*(.rodata .rodata.*)
 		. = ALIGN(4);
-		_erodata = .;
+		PROVIDE(_rodata_end = .);
 	}
 
 	.modtbl :
@@ -79,6 +86,8 @@ SECTIONS
 	. = . + CONFIG_IRQ_STACK_SIZE;
 	. = ALIGN(4);
 	PROVIDE(_stack_start = .);
+
+	/* Interrupt stack */
 	PROVIDE(_int_stack_end = .);
 	. = . + CONFIG_IRQ_STACK_SIZE;
 	. = ALIGN(4);
@@ -92,4 +101,5 @@ SECTIONS
 		. = ALIGN(4);
 		PROVIDE(_init_text_end = .);
 	}
+	PROVIDE(_code_end = .);
 }

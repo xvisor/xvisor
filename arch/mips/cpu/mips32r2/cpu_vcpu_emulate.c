@@ -37,7 +37,7 @@ static u32 load_store_emulated_reg(u8 sreg, u8 sel,
 				   vmm_vcpu_t *vcpu, u8 do_load)
 {
 	u32 _err = VMM_OK;
-	u32 *emulated_reg;
+	u32 *emulated_reg = NULL;
 
 	switch(sreg) {
 	case 0: /* index register */
