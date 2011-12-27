@@ -637,9 +637,9 @@ int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 				*l2_tte |= (pg->tex << TTBL_L2TBL_TTE_STEX_SHIFT) &
 						TTBL_L2TBL_TTE_STEX_MASK;
 			}
-			*l2_tte |= (pg->ap << TTBL_L2TBL_TTE_NG_SHIFT) &
+			*l2_tte |= (pg->ng << TTBL_L2TBL_TTE_NG_SHIFT) &
 			    TTBL_L2TBL_TTE_NG_MASK;
-			*l2_tte |= (pg->ap << TTBL_L2TBL_TTE_S_SHIFT) &
+			*l2_tte |= (pg->s << TTBL_L2TBL_TTE_S_SHIFT) &
 			    TTBL_L2TBL_TTE_S_MASK;
 			*l2_tte |= (pg->ap << (TTBL_L2TBL_TTE_AP2_SHIFT - 2)) &
 			    TTBL_L2TBL_TTE_AP2_MASK;
@@ -720,9 +720,9 @@ static int cpu_mmu_split_reserved_page(cpu_page_t *pg, virtual_size_t rsize)
 				*l2_tte |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
 				*l2_tte |= (pg->tex << TTBL_L2TBL_TTE_STEX_SHIFT) &
 						TTBL_L2TBL_TTE_STEX_MASK;
-				*l2_tte |= (pg->ap << TTBL_L2TBL_TTE_NG_SHIFT) &
+				*l2_tte |= (pg->ng << TTBL_L2TBL_TTE_NG_SHIFT) &
 						TTBL_L2TBL_TTE_NG_MASK;
-				*l2_tte |= (pg->ap << TTBL_L2TBL_TTE_S_SHIFT) &
+				*l2_tte |= (pg->s << TTBL_L2TBL_TTE_S_SHIFT) &
 						TTBL_L2TBL_TTE_S_MASK;
 				*l2_tte |= (pg->ap << (TTBL_L2TBL_TTE_AP2_SHIFT - 2)) &
 						TTBL_L2TBL_TTE_AP2_MASK;
@@ -1104,6 +1104,9 @@ int vmm_cpu_aspace_map(virtual_addr_t va,
 	}
 	p.xn = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
 	p.c = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;
+	p.s = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;
+	p.tex = (mem_flags & VMM_MEMORY_CACHEABLE) ? 0x7 : 0;
+	p.ng = 0;
 	p.b = 0;
 	return cpu_mmu_map_reserved_page(&p);
 }
@@ -1251,7 +1254,10 @@ int __init vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 		respg.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 		respg.ap = TTBL_AP_SRW_U;
 		respg.xn = 0;
+		respg.ng = 0;
+		respg.s = 1;
 		respg.c = 1;
+		respg.tex = 0x7;
 		respg.b = 0;
 		if ((rc = cpu_mmu_map_reserved_page(&respg))) {
 			goto mmu_init_error;
