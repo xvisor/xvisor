@@ -25,7 +25,7 @@
 		};
 
 		memory {
-			physical_addr = <0x80000000>;
+			physical_addr = <0x88000000>;
 			physical_size = <0x08000000>; /* 128 MB */
 		};
 
@@ -90,7 +90,7 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x70000000>;
-					host_physical_addr = <0x82000000>;
+					host_physical_addr = <0x8a000000>;
 					physical_size = <0x06000000>; /* 96 MB */
 					device_type = "ram";
 				};
@@ -200,7 +200,7 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x40000000>;
-					host_physical_addr = <0x81000000>;
+					host_physical_addr = <0x89000000>;
 					physical_size = <0x00800000>; /* 8 MB */
 					device_type = "rom";
 				};
