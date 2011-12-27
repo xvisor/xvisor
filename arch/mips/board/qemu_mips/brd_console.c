@@ -55,7 +55,7 @@ int vmm_defterm_putc(u8 ch)
 int vmm_defterm_init(void)
 {
 	uart_base = isa_vbase + 0x3F8;
-	uart_lowlevel_init(uart_base, 1, 115200, 1843200);
+	uart_lowlevel_init("ns8250", uart_base, 1, 115200, 1843200);
 
 	return VMM_OK;
 }

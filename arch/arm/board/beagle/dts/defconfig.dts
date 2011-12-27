@@ -39,7 +39,7 @@
 			
 				uart0 {
 				      device_type = "serial";
-				      compatible = "ns8250";
+				      compatible = "st16654";
 				      reg = <0x49020000 0x1000>;
 				      baudrate = <115200>;
 				      reg_offset = <0x0>;
