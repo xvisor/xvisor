@@ -28,6 +28,7 @@
 #include <vmm_devdrv.h>
 #include <libfdt.h>
 #include <omap3/config.h>
+#include <omap3/prcm.h>
 
 extern u32 dt_blob_start;
 
@@ -139,6 +140,8 @@ int __init vmm_board_early_init(void)
 	 * Do necessary early stuff like iomapping devices
 	 * memory or boot time memory reservation here.
 	 */
+	omap3_cm_init(OMAP3_CM_BASE);
+	omap3_prm_init(OMAP3_PRM_BASE);
 	return 0;
 }
 
