@@ -499,14 +499,14 @@ static int sp804_emulator_probe(vmm_guest_t *guest,
 	/* ??? The timers are actually configurable between 32kHz and 1MHz, 
 	 * but we don't implement that.  */
 	vmm_strcpy(tname, guest->node->name);
-	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPRATOR_STRING);
+	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPARATOR_STRING);
 	vmm_strcat(tname, edev->node->name);
 	vmm_strcat(tname, "(0)");
 	if ((rc = sp804_timer_init(&s->t[0], tname, guest, 1000000, irq))) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
 	vmm_strcpy(tname, guest->node->name);
-	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPRATOR_STRING);
+	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPARATOR_STRING);
 	vmm_strcat(tname, edev->node->name);
 	vmm_strcat(tname, "(1)");
 	if ((rc = sp804_timer_init(&s->t[1], tname, guest, 1000000, irq))) {

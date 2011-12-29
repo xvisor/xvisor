@@ -50,9 +50,9 @@ int vmm_board_ram_start(physical_addr_t * addr)
 	}
 
 	fdt_node = libfdt_find_node(&fdt, 
-				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_MEMORY_NODE_NAME);
 	if (!fdt_node) {
 		return VMM_EFAIL;
@@ -81,9 +81,9 @@ int vmm_board_ram_size(physical_size_t * size)
 	}
 
 	fdt_node = libfdt_find_node(&fdt, 
-				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_MEMORY_NODE_NAME);
 	if (!fdt_node) {
 		return VMM_EFAIL;
@@ -182,9 +182,9 @@ int __init vmm_board_final_init(void)
 		   (void *)(pba8_sys_base + REALVIEW_SYS_LOCK_OFFSET));
 
 	/* Do Probing using device driver framework */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPRATOR_STRING "nbridge");
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge");
 
 	if (!node) {
 		return VMM_ENOTAVAIL;
