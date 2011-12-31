@@ -104,9 +104,8 @@ void vmm_init(void)
 
 	/* Print version string */
 	vmm_printf("\n");
-	vmm_printf("%s Version %d.%d.%d (%s %s)\n",
-		   VMM_PROJECT_NAME, VMM_PROJECT_VER_MAJOR,
-		   VMM_PROJECT_VER_MINOR, VMM_PROJECT_VER_RELEASE,
+	vmm_printf("%s v%d.%d.%d (%s %s)\n", VMM_NAME, 
+		   VMM_VERSION_MAJOR, VMM_VERSION_MINOR, VMM_VERSION_RELEASE,
 		   __DATE__, __TIME__);
 	vmm_printf("\n");
 
@@ -254,7 +253,7 @@ void vmm_init(void)
 
 	/* Populate guest instances (Must be second last step) */
 	vmm_printf("Creating Pre-Configured Guest Instances\n");
-	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
+	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
 	if (!gsnode) {
 		vmm_printf("Error %d\n", ret);

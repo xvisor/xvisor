@@ -45,7 +45,7 @@
 omap3_gpt_cfg_t beagle_gpt_cfg[] = {
 	{
 		.base_pa =	OMAP3_GPT1_BASE,
-		.cm_pa =	OMAP3_WKUP_CM_BASE,
+		.cm_domain =	OMAP3_WKUP_CM,
 		.clksel_mask = 	OMAP3_CM_CLKSEL_WKUP_CLKSEL_GPT1_M,
 		.iclken_mask =	OMAP3_CM_ICLKEN_WKUP_EN_GPT1_M,
 		.fclken_mask =  OMAP3_CM_FCLKEN_WKUP_EN_GPT1_M,	
@@ -54,7 +54,7 @@ omap3_gpt_cfg_t beagle_gpt_cfg[] = {
 	},
 	{
 		.base_pa =	OMAP3_GPT2_BASE,
-		.cm_pa =	OMAP3_PER_CM_BASE,
+		.cm_domain =	OMAP3_PER_CM,
 		.clksel_mask = 	OMAP3_CM_CLKSEL_PER_CLKSEL_GPT2_M,
 		.iclken_mask =	OMAP3_CM_ICLKEN_PER_EN_GPT2_M,
 		.fclken_mask =  OMAP3_CM_FCLKEN_PER_EN_GPT2_M,	
@@ -113,7 +113,7 @@ int vmm_cpu_clocksource_init(void)
 {
 	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(omap3_gpt_cfg_t), 
 			beagle_gpt_cfg);
-	omap3_gpt_instance_init(BEAGLE_CLK_SRC_GPT, OMAP3_GLOBAL_REG_PRM_BASE, NULL);
+	omap3_gpt_instance_init(BEAGLE_CLK_SRC_GPT, OMAP3_GLOBAL_REG_PRM, NULL);
 	omap3_gpt_continuous(BEAGLE_CLK_SRC_GPT);
 	return 0;
 }
@@ -181,7 +181,7 @@ int vmm_cpu_clockevent_init(void)
 	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(omap3_gpt_cfg_t), 
 			beagle_gpt_cfg);
 
-	rc = omap3_gpt_instance_init(BEAGLE_CLK_EVENT_GPT, OMAP3_GLOBAL_REG_PRM_BASE,
+	rc = omap3_gpt_instance_init(BEAGLE_CLK_EVENT_GPT, OMAP3_GLOBAL_REG_PRM,
 			&vmm_cpu_timer_irq_handler);
 	if (rc) {
 		return rc;

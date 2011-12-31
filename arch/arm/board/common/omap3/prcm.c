@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Pranav Sawargaonkar.
+ * Copyright (c) 2011 Sukanto Ghosh.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,8 +18,83 @@
  *
  * @file prcm.c
  * @version 1.0
- * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief source code for OMAP3 Power, Reset, and Clock Managment
  */
 
+#include <vmm_host_io.h>
+#include <vmm_error.h>
+#include <vmm_host_aspace.h>
 #include <omap3/prcm.h>
+
+virtual_addr_t omap3_cm_base = 0;
+virtual_addr_t omap3_prm_base = 0;
+physical_addr_t omap3_cm_pa = 0;
+physical_addr_t omap3_prm_pa = 0;
+
+int omap3_cm_init(physical_addr_t cm_pa)
+{
+	if(!omap3_cm_base) {
+		omap3_cm_pa = cm_pa;
+		omap3_cm_base = vmm_host_iomap(omap3_cm_pa, 0x2000);
+		if(!omap3_cm_base)
+			return VMM_EFAIL;
+	}
+	return VMM_OK;
+}
+
+int omap3_prm_init(physical_addr_t prm_pa)
+{
+	if(!omap3_prm_base) {
+		omap3_prm_pa = prm_pa;
+		omap3_prm_base = vmm_host_iomap(omap3_prm_pa, 0x2000);
+		if(!omap3_prm_base)
+			return VMM_EFAIL;
+	}
+	return VMM_OK;
+}
+
+u32 omap3_cm_read(u32 domain, u32 offset)
+{
+	return vmm_readl((void *)(omap3_cm_base + domain + offset));
+}
+
+void omap3_cm_write(u32 domain, u32 offset, u32 val)
+{
+	vmm_writel(val, (void *)(omap3_cm_base + domain + offset));
+}
+
+u32 omap3_prm_read(u32 domain, u32 offset)
+{
+	return vmm_readl((void *)(omap3_prm_base + domain + offset));
+}
+
+void omap3_prm_write(u32 domain, u32 offset, u32 val)
+{
+	vmm_writel(val, (void *)(omap3_prm_base + domain + offset));
+}
+
+void omap3_cm_setbits(u32 domain, u32 offset, u32 mask)
+{
+	vmm_writel(vmm_readl((void *)(omap3_cm_base + domain + offset)) | mask,
+		(void *)(omap3_cm_base + domain + offset));
+}
+
+void omap3_cm_clrbits(u32 domain, u32 offset, u32 mask)
+{
+	vmm_writel(vmm_readl((void *)(omap3_cm_base + domain + offset)) & (~mask),
+		(void *)(omap3_cm_base + domain + offset));
+}
+
+void omap3_prm_setbits(u32 domain, u32 offset, u32 mask)
+{
+	vmm_writel(vmm_readl((void *)(omap3_prm_base + domain + offset)) | mask,
+		(void *)(omap3_prm_base + domain + offset));
+}
+
+void omap3_prm_clrbits(u32 domain, u32 offset, u32 mask)
+{
+	vmm_writel(vmm_readl((void *)(omap3_prm_base + domain + offset)) & (~mask),
+		(void *)(omap3_prm_base + domain + offset));
+}
+

@@ -39,6 +39,7 @@
 #define UART_LSR_OFFSET		5 /* In:  Line Status Register */
 #define UART_MSR_OFFSET		6 /* In:  Modem Status Register */
 #define UART_SCR_OFFSET		7 /* I/O: Scratch Register */
+#define UART_MDR1_OFFSET	8 /* I/O:  Mode Register */
 
 #define UART_LSR_THRE		0x20	/* Transmit-hold-register empty */
 #define UART_LSR_DR		0x01	/* Receiver data ready */
@@ -55,11 +56,13 @@
 #define REG_UART_LSR(base,align)	((base)+UART_LSR_OFFSET*(align))
 #define REG_UART_MSR(base,align)	((base)+UART_MSR_OFFSET*(align))
 #define REG_UART_SCR(base,align)	((base)+UART_SCR_OFFSET*(align))
+#define REG_UART_MDR1(base,align)	((base)+UART_MDR1_OFFSET*(align))
 
 bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align);
 u8 uart_lowlevel_getc(virtual_addr_t base, u32 reg_align);
 bool uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align);
 void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, u8 ch);
-void uart_lowlevel_init(virtual_addr_t base, u32 reg_align, u32 baudrate, u32 input_clock);
+void uart_lowlevel_init(const char *compatible, virtual_addr_t base, u32 reg_align, 
+		u32 baudrate, u32 input_clock);
 
 #endif /* __UART_H_ */
