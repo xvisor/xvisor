@@ -27,8 +27,8 @@
 #include <vmm_types.h>
 #include <vmm_list.h>
 
-#define VMM_DEVTREE_PATH_SEPRATOR		'/'
-#define VMM_DEVTREE_PATH_SEPRATOR_STRING	"/"
+#define VMM_DEVTREE_PATH_SEPARATOR		'/'
+#define VMM_DEVTREE_PATH_SEPARATOR_STRING	"/"
 
 #define VMM_DEVTREE_MODEL_ATTR_NAME		"model"
 #define VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME	"device_type"

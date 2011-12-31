@@ -59,8 +59,8 @@ void vmm_scheduler_preempt_disable(void);
 /** Enable pre-emption */
 void vmm_scheduler_preempt_enable(void);
 
-/** Yield current vcpu (Should not be called in IRQ context) */
-void vmm_scheduler_yield(void);
+/** Yield current orphan vcpu (Should not be called in IRQ context) */
+void vmm_scheduler_orphan_yield(void);
 
 /** Initialize scheduler */
 int vmm_scheduler_init(void);

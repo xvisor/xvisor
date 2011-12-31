@@ -186,8 +186,7 @@
 typedef struct {
 	physical_addr_t base_pa;
 	virtual_addr_t base_va;
-	physical_addr_t cm_pa;
-	virtual_addr_t cm_va;
+	u32 cm_domain;
 	u32 clksel_mask;
 	u32 iclken_mask;
 	u32 fclken_mask;

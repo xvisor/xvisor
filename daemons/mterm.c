@@ -85,7 +85,7 @@ static int __init daemon_mterm_init(void)
 	vmm_memset(&mtctrl, 0, sizeof(mtctrl));
 
 	/* Retrive mterm time slice */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_VMMINFO_NODE_NAME);
 	if (!node) {
 		return VMM_EFAIL;

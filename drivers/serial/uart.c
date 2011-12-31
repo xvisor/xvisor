@@ -78,32 +78,62 @@ void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, u8 ch)
 	vmm_out_8((u8 *)REG_UART_THR(base,reg_align), ch);
 }
 
-void uart_lowlevel_init(virtual_addr_t base, u32 reg_align, 
-						u32 baudrate, u32 input_clock)
+void uart_lowlevel_init(const char *compatible, virtual_addr_t base, 
+		u32 reg_align, u32 baudrate, u32 input_clock)
 {
-	char val;
 	u16 bdiv;
+	u32 val;
 	bdiv = vmm_udiv32(input_clock, (16 * baudrate));
-	/* set DLAB bit */
-	vmm_out_8((u8 *)REG_UART_LCR(base,reg_align), 0x80);
-	/* set baudrate divisor */
-	vmm_out_8((u8 *)REG_UART_DLL(base,reg_align), bdiv & 0xFF);
-	/* set baudrate divisor */
-	vmm_out_8((u8 *)REG_UART_DLM(base,reg_align), (bdiv >> 8) & 0xFF); 
-	/* clear DLAB; set 8 bits, no parity */
-	vmm_out_8((u8 *)REG_UART_LCR(base,reg_align), 0x03);
-	/* disable FIFO */
-	vmm_out_8((u8 *)REG_UART_FCR(base,reg_align), 0x01);
-	/* no modem control DTR RTS */
-	vmm_out_8((u8 *)REG_UART_MCR(base,reg_align), 0x00);
-	/* clear line status */
-	val = vmm_in_8((u8 *)REG_UART_LSR(base,reg_align));
-	/* read receive buffer */
-	val = vmm_in_8((u8 *)REG_UART_RBR(base,reg_align));
-	/* set scratchpad */
-	vmm_out_8((u8 *)REG_UART_SCR(base,reg_align), 0x00);
-	/* set interrupt enable reg */
-	vmm_out_8((u8 *)REG_UART_IER(base,reg_align), 0x0F);
+
+	if(!vmm_strcmp(compatible, "st16654")) {
+		/* set interrupt enable reg */
+		vmm_out_8((u8 *)REG_UART_IER(base,reg_align), 0x00);
+		/* set mode select to disabled before dll/dlh */
+		vmm_out_8((u8 *)REG_UART_MDR1(base,reg_align), 0x07);
+		/* set DLAB bit */
+		vmm_out_8((u8 *)REG_UART_LCR(base,reg_align), 0x83);
+		/* clear DLL */
+		vmm_out_8((u8 *)REG_UART_DLL(base,reg_align), 0x00);
+		/* clear DLM */
+		vmm_out_8((u8 *)REG_UART_DLM(base,reg_align), 0x00); 
+		/* clear DLAB; set 8 bits, no parity */
+		vmm_out_8((u8 *)REG_UART_LCR(base,reg_align), 0x03);
+		/* no modem control DTR RTS */
+		vmm_out_8((u8 *)REG_UART_MCR(base,reg_align), 0x03);
+		/* enable FIFO */
+		vmm_out_8((u8 *)REG_UART_FCR(base,reg_align), 0x07);
+		/* set DLAB bit */
+		vmm_out_8((u8 *)REG_UART_LCR(base,reg_align), 0x83);
+		/* set baudrate divisor */
+		vmm_out_8((u8 *)REG_UART_DLL(base,reg_align), bdiv & 0xFF);
+		/* set baudrate divisor */
+		vmm_out_8((u8 *)REG_UART_DLM(base,reg_align), (bdiv >> 8) & 0xFF); 
+		/* clear DLAB; set 8 bits, no parity */
+		vmm_out_8((u8 *)REG_UART_LCR(base,reg_align), 0x03);
+		/* set mode select to 16x mode  */
+		vmm_out_8((u8 *)REG_UART_MDR1(base,reg_align), 0x00);
+	} else {
+		/* set DLAB bit */
+		vmm_out_8((u8 *)REG_UART_LCR(base,reg_align), 0x80);
+		/* set baudrate divisor */
+		vmm_out_8((u8 *)REG_UART_DLL(base,reg_align), bdiv & 0xFF);
+		/* set baudrate divisor */
+		vmm_out_8((u8 *)REG_UART_DLM(base,reg_align), (bdiv >> 8) & 0xFF); 
+		/* clear DLAB; set 8 bits, no parity */
+		vmm_out_8((u8 *)REG_UART_LCR(base,reg_align), 0x03);
+		/* disable FIFO */
+		vmm_out_8((u8 *)REG_UART_FCR(base,reg_align), 0x01);
+		/* no modem control DTR RTS */
+		vmm_out_8((u8 *)REG_UART_MCR(base,reg_align), 0x00);
+		/* clear line status */
+		val = vmm_in_8((u8 *)REG_UART_LSR(base,reg_align));
+		/* read receive buffer */
+		val = vmm_in_8((u8 *)REG_UART_RBR(base,reg_align));
+		/* set scratchpad */
+		vmm_out_8((u8 *)REG_UART_SCR(base,reg_align), 0x00);
+		/* set interrupt enable reg */
+		vmm_out_8((u8 *)REG_UART_IER(base,reg_align), 0x0F);
+	}
 }
 
 static u32 uart_read(vmm_chardev_t *cdev, 
@@ -222,8 +252,9 @@ static int uart_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
 		goto free_port;
 	}
 
+	attr = vmm_devtree_attrval(dev->node, "compatible");
 	/* Call low-level init function */
-	uart_lowlevel_init(port->base, 
+	uart_lowlevel_init(attr, port->base, 
 				port->reg_align, 
 				port->baudrate, 
 				port->input_clock);
@@ -263,6 +294,7 @@ static vmm_devid_t uart_devid_table[] = {
 	{ .type = "serial", .compatible = "ns16550"},
 	{ .type = "serial", .compatible = "ns16750"},
 	{ .type = "serial", .compatible = "ns16850"},
+	{ .type = "serial", .compatible = "st16654"},
 	{ /* end of list */ },
 };
 

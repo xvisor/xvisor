@@ -561,7 +561,7 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		vcpu->subid = guest->vcpu_count;
 		vmm_strcpy(vcpu->name, gnode->name);
 		vmm_strcat(vcpu->name,
-			   VMM_DEVTREE_PATH_SEPRATOR_STRING);
+			   VMM_DEVTREE_PATH_SEPARATOR_STRING);
 		vmm_strcat(vcpu->name, vnode->name);
 		vcpu->node = vnode;
 		vcpu->is_normal = TRUE;

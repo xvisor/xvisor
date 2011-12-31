@@ -28,6 +28,7 @@
 #include <vmm_devdrv.h>
 #include <libfdt.h>
 #include <omap3/config.h>
+#include <omap3/prcm.h>
 
 extern u32 dt_blob_start;
 
@@ -44,9 +45,9 @@ int vmm_board_ram_start(physical_addr_t * addr)
 	}
 
 	fdt_node = libfdt_find_node(&fdt, 
-				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_MEMORY_NODE_NAME);
 	if (!fdt_node) {
 		return VMM_EFAIL;
@@ -75,9 +76,9 @@ int vmm_board_ram_size(physical_size_t * size)
 	}
 
 	fdt_node = libfdt_find_node(&fdt, 
-				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPRATOR_STRING
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_MEMORY_NODE_NAME);
 	if (!fdt_node) {
 		return VMM_EFAIL;
@@ -139,6 +140,8 @@ int __init vmm_board_early_init(void)
 	 * Do necessary early stuff like iomapping devices
 	 * memory or boot time memory reservation here.
 	 */
+	omap3_cm_init(OMAP3_CM_BASE);
+	omap3_prm_init(OMAP3_PRM_BASE);
 	return 0;
 }
 
@@ -151,9 +154,9 @@ int __init vmm_board_final_init(void)
 	/* We can register a Board specific resource here */
 
 	/* Do Probing using device driver framework */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPRATOR_STRING
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPRATOR_STRING "l3");
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "l3");
 
 	if (!node) {
 		return VMM_ENOTAVAIL;

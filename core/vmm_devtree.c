@@ -80,7 +80,7 @@ void recursive_getpath(char **out, vmm_devtree_node_t * node)
 
 	if (node->parent) {
 		recursive_getpath(out, node->parent);
-		**out = VMM_DEVTREE_PATH_SEPRATOR;
+		**out = VMM_DEVTREE_PATH_SEPARATOR;
 		(*out) += 1;
 		**out = '\0';
 	}
@@ -101,7 +101,7 @@ int vmm_devtree_getpath(char *out, vmm_devtree_node_t * node)
 	recursive_getpath(&out_ptr, node);
 
 	if (vmm_strcmp(out, "") == 0) {
-		out[0] = VMM_DEVTREE_PATH_SEPRATOR;
+		out[0] = VMM_DEVTREE_PATH_SEPARATOR;
 		out[1] = '\0';
 	}
 
@@ -127,10 +127,10 @@ vmm_devtree_node_t *vmm_devtree_getchildnode(vmm_devtree_node_t * node,
 				found = TRUE;
 				path += vmm_strlen(child->name);
 				if (*path) {
-					if (*path != VMM_DEVTREE_PATH_SEPRATOR
+					if (*path != VMM_DEVTREE_PATH_SEPARATOR
 					    && *(path + 1) != '\0')
 						return NULL;
-					if (*path == VMM_DEVTREE_PATH_SEPRATOR)
+					if (*path == VMM_DEVTREE_PATH_SEPARATOR)
 						path++;
 				}
 				break;
@@ -157,9 +157,9 @@ vmm_devtree_node_t *vmm_devtree_getnode(const char *path)
 	path += vmm_strlen(node->name);
 
 	if (*path) {
-		if (*path != VMM_DEVTREE_PATH_SEPRATOR && *(path + 1) != '\0')
+		if (*path != VMM_DEVTREE_PATH_SEPARATOR && *(path + 1) != '\0')
 			return NULL;
-		if (*path == VMM_DEVTREE_PATH_SEPRATOR)
+		if (*path == VMM_DEVTREE_PATH_SEPARATOR)
 			path++;
 	}
 

@@ -52,7 +52,7 @@ int vmm_defterm_getc(u8 *ch)
 int vmm_defterm_init(void)
 {
 	omap3_uart_base = vmm_host_iomap(OMAP3_UART_BASE, 0x1000);
-	uart_lowlevel_init(omap3_uart_base, 4,
+	uart_lowlevel_init("st16654", omap3_uart_base, 4,
 			   OMAP3_UART_BAUD, OMAP3_UART_INCLK);
 	return VMM_OK;
 }

@@ -84,7 +84,7 @@ void cmd_devtree_print_node(vmm_chardev_t *cdev,
 	for (i = 0; i < indent; i++)
 		vmm_cprintf(cdev, "\t");
 	if (node->name[0] == '\0' && indent == 0) {
-		vmm_cprintf(cdev, "%c", VMM_DEVTREE_PATH_SEPRATOR);
+		vmm_cprintf(cdev, "%c", VMM_DEVTREE_PATH_SEPARATOR);
 	} else {
 		vmm_cprintf(cdev, "%s", node->name);
 	}
@@ -130,7 +130,7 @@ int cmd_devtree_chpath(vmm_chardev_t *cdev, char *path)
 {
 	vmm_devtree_node_t *node;
 
-	if (*path == VMM_DEVTREE_PATH_SEPRATOR) {
+	if (*path == VMM_DEVTREE_PATH_SEPARATOR) {
 		node = vmm_devtree_getnode(path);
 	} else {
 		node =
