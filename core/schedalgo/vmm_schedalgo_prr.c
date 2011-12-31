@@ -45,6 +45,10 @@ int vmm_schedalgo_vcpu_setup(vmm_vcpu_t * vcpu)
 	}
 
 	rq_entry = vmm_malloc(sizeof(struct vmm_schedalgo_rq_entry));
+	if (!rq_entry) {
+		return VMM_EFAIL;
+	}
+
 	INIT_LIST_HEAD(&rq_entry->head);
 	rq_entry->vcpu = vcpu;
 	vcpu->sched_priv = rq_entry;
@@ -58,8 +62,10 @@ int vmm_schedalgo_vcpu_cleanup(vmm_vcpu_t * vcpu)
 		return VMM_EFAIL;
 	}
 
-	vmm_free(vcpu->sched_priv);
-	vcpu->sched_priv = NULL;
+	if (vcpu->sched_priv) {
+		vmm_free(vcpu->sched_priv);
+		vcpu->sched_priv = NULL;
+	}
 
 	return VMM_OK;
 }
@@ -177,8 +183,11 @@ void * vmm_schedalgo_rq_create(void)
 
 int vmm_schedalgo_rq_destroy(void * rq)
 {
-	vmm_free(rq);
+	if (rq) {
+		vmm_free(rq);
+		return VMM_OK;
+	}
 
-	return VMM_OK;
+	return VMM_EFAIL;
 }
 

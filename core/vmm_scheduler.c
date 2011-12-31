@@ -47,7 +47,7 @@ struct vmm_scheduler_ctrl {
 
 static struct vmm_scheduler_ctrl sched;
 
-void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
+static void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
 {
 	vmm_vcpu_t *current = sched.current_vcpu;
 	vmm_vcpu_t *next = NULL; 
@@ -91,7 +91,7 @@ void vmm_scheduler_next(vmm_timer_event_t * ev, vmm_user_regs_t * regs)
 	}
 }
 
-void vmm_scheduler_timer_event(vmm_timer_event_t * ev)
+static void vmm_scheduler_timer_event(vmm_timer_event_t * ev)
 {
 	vmm_vcpu_t * vcpu = sched.current_vcpu;
 	if (vcpu) {

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include "libelf32.h"
 
-#define CPATCH32_SEPRATOR		','
+#define CPATCH32_SEPARATOR		','
 #define CPATCH32_MAX_LINE_SIZE		256
 #define CPATCH32_MAX_TOKEN_SIZE		64
 #define CPATCH32_MAX_TOKEN_COUNT	64
@@ -119,7 +119,7 @@ int main (int argc, char **argv)
 			continue;
 		}
 		/* Split the line based on seperator */
-		tokcnt = strsplit(line, CPATCH32_SEPRATOR, toks, CPATCH32_MAX_TOKEN_COUNT);
+		tokcnt = strsplit(line, CPATCH32_SEPARATOR, toks, CPATCH32_MAX_TOKEN_COUNT);
 		if(tokcnt==0) {
 			continue;
 		}

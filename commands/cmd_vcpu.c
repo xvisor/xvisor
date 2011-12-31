@@ -244,7 +244,7 @@ static int cmd_vcpu_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	int id = -1;
 	int index = 0;
 
-	if (argc > 3) {
+	if ((argc == 1) || (argc > 3)) {
 		cmd_vcpu_usage(cdev);
 		return VMM_EFAIL;
 	}

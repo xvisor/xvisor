@@ -43,22 +43,12 @@ u32 omap3_s32k_get_counter(void)
 
 int omap3_s32k_init(void)
 {
-	u32 val;
-	virtual_addr_t cm_wkup_base; 
-	static int init_done = 0;
-
-	if(!init_done) {
-		if(!omap35x_32k_synct_base)
-			omap35x_32k_synct_base = 
-				vmm_host_iomap(OMAP3_S32K_BASE, 0x1000);
-		cm_wkup_base = vmm_host_iomap(OMAP3_WKUP_CM_BASE, 0x100);
-
+	if(!omap35x_32k_synct_base) {
+		omap35x_32k_synct_base = 
+			vmm_host_iomap(OMAP3_S32K_BASE, 0x1000);
 		/* Enable I-clock for S32K */
-		val = vmm_readl((void *)(cm_wkup_base + OMAP3_CM_ICLKEN_WKUP)) 
-			| OMAP3_CM_ICLKEN_WKUP_EN_32KSYNC_M;
-		vmm_writel(val, (void *)(cm_wkup_base + OMAP3_CM_ICLKEN_WKUP)); 
-		init_done = 1;
-		vmm_host_iounmap(cm_wkup_base, 0x100);
+		omap3_cm_setbits(OMAP3_WKUP_CM, OMAP3_CM_ICLKEN_WKUP,
+				OMAP3_CM_ICLKEN_WKUP_EN_32KSYNC_M);
 	}
 	return VMM_OK;
 }

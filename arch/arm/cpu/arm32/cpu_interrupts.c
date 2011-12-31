@@ -122,8 +122,8 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 		if (fs != IFSR_FS_TRANS_FAULT_SECTION ||
 		    fs != IFSR_FS_TRANS_FAULT_PAGE) {
 			vmm_panic("%s: unexpected prefetch abort\n"
-				  "%s: ifsr = 0x%08x, ifar = 0x%08x\n", 
-				  __func__, __func__, ifsr, ifar);
+				  "%s: pc = 0x%08x, ifsr = 0x%08x, ifar = 0x%08x\n", 
+				  __func__, __func__, uregs->pc, ifsr, ifar);
 		}
 		rc = cpu_mmu_get_reserved_page((virtual_addr_t)ifar, &pg);
 		if (rc) {
@@ -222,8 +222,8 @@ void do_data_abort(vmm_user_regs_t * uregs)
 		if (fs != DFSR_FS_TRANS_FAULT_SECTION ||
 		    fs != DFSR_FS_TRANS_FAULT_PAGE) {
 			vmm_panic("%s: unexpected prefetch abort\n"
-				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n", 
-				  __func__, __func__, dfsr, dfar);
+				  "%s: pc = 0x%08x, dfsr = 0x%08x, dfar = 0x%08x\n", 
+				  __func__, __func__, uregs->pc, dfsr, dfar);
 		}
 		rc = cpu_mmu_get_reserved_page(dfar, &pg);
 		if (rc) {
@@ -375,7 +375,10 @@ int __init vmm_cpu_irq_setup(void)
 		vec_page.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 		vec_page.ap = TTBL_AP_SRW_U;
 		vec_page.xn = 0;
+		vec_page.ng = 0;
+		vec_page.s = 0;
 		vec_page.c = 0;
+		vec_page.tex = 0;
 		vec_page.b = 0;
 		if ((rc = cpu_mmu_map_reserved_page(&vec_page))) {
 			return rc;
