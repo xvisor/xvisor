@@ -22,6 +22,11 @@
 # @brief toplevel makefile to build VMM source code
 # */
 
+# Current Version
+MAJOR = 0
+MINOR = 1
+RELEASE = 0
+
 # Find out source & build directories
 src_dir=$(CURDIR)
 ifdef O
@@ -50,7 +55,7 @@ endif
 
 # Name & Version
 export PROJECT_NAME = Xvisor (eXtensible Versatile hypervISOR)
-export PROJECT_VERSION = 0.1
+export PROJECT_VERSION = $(MAJOR).$(MINOR).$(RELEASE)
 export CONFIG_DIR=$(build_dir)/tmpconf
 export CONFIG_FILE=$(build_dir)/.config
 export DEPENDENCY_FILE=$(build_dir)/.deps
@@ -164,6 +169,9 @@ targets-y+=$(build_dir)/system.map
 # Setup compilation environment
 cpp=$(CROSS_COMPILE)cpp
 cppflags=-include $(OPENCONF_TMPDIR)/$(OPENCONF_AUTOHEADER)
+cppflags+=-DCONFIG_MAJOR=$(MAJOR)
+cppflags+=-DCONFIG_MINOR=$(MINOR)
+cppflags+=-DCONFIG_RELEASE=$(RELEASE)
 cppflags+=-I$(cpu_dir)/include
 cppflags+=-I$(cpu_common_dir)/include
 cppflags+=-I$(board_dir)/include
