@@ -144,6 +144,13 @@ int __init realview_timer_init(virtual_addr_t sctl_base,
 	/* Register interrupt handler */
 	if (hirq_handler) {
 		ret = vmm_host_irq_register(hirq, hirq_handler, NULL);
+		if (ret) {
+			return ret;
+		}
+		ret = vmm_host_irq_enable(hirq);
+		if (ret) {
+			return ret;
+		}
 	}
 
 	return ret;

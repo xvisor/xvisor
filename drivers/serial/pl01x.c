@@ -346,6 +346,9 @@ static int pl01x_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
 	if((rc = vmm_host_irq_register(port->irq, pl01x_irq_handler, port))) {
 		goto free_port;
 	}
+	if((rc = vmm_host_irq_enable(port->irq))) {
+		goto free_port;
+	}
 
 	/* Call low-level init function */
 	pl01x_lowlevel_init(port->base, 

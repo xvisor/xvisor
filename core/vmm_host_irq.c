@@ -132,7 +132,7 @@ int vmm_host_irq_register(u32 hirq_no,
 		hirq->dev = dev;
 		list_add_tail(irq, &hirq->head);
 		vmm_spin_unlock_irqrestore(&hirqctrl.lock, flags);
-		return vmm_host_irq_enable(hirq_no);
+		return VMM_OK;
 	}
 	return VMM_EFAIL;
 }

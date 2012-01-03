@@ -228,6 +228,10 @@ int omap3_gpt_instance_init(u32 gpt_num, u32 prm_domain,
 		if (ret) {
 			return ret;
 		}
+		ret = vmm_host_irq_enable(omap3_gpt_config[gpt_num].irq_no);
+		if (ret) {
+			return ret;
+		}
 	}
 
 
