@@ -33,9 +33,9 @@ typedef struct vmm_emupic vmm_emupic_t;
 typedef struct vmm_emuid vmm_emuid_t;
 typedef struct vmm_emulator vmm_emulator_t;
 
-typedef void (*vmm_emupic_hndl_t) (vmm_emupic_t *epic,
-				   u32 irq_num,
-				   int irq_level);
+typedef void (*vmm_emupic_handle_t) (vmm_emupic_t *epic,
+				     u32 irq_num,
+				     int irq_level);
 
 typedef int (*vmm_emulator_probe_t) (vmm_guest_t *guest,
 				     vmm_emudev_t *edev,
@@ -67,7 +67,7 @@ struct vmm_emudev {
 struct vmm_emupic {
 	struct dlist head;
 	char name[32];
-	vmm_emupic_hndl_t hndl;
+	vmm_emupic_handle_t handle;
 	void *priv;
 };
 
@@ -101,6 +101,12 @@ int vmm_devemu_emulate_write(vmm_vcpu_t *vcpu,
 
 /** Emulate irq for guest */
 int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num, int irq_level);
+
+/** Signal completion of host-to-guest mapped irq 
+ *  (Note: For proper functioning of host-to-guest mapped irq, the PIC 
+ *  emulators must call this function upon completion/end-of interrupt)
+ */
+int vmm_devemu_complete_h2g_irq(vmm_guest_t *guest, u32 irq_num);
 
 /** Register emulated pic */
 int vmm_devemu_register_pic(vmm_guest_t *guest, vmm_emupic_t * emu);

@@ -26,6 +26,7 @@
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
+#include <vmm_host_irq.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_devemu.h>
 
@@ -38,8 +39,16 @@ struct vmm_devemu_vcpu_context {
 	vmm_region_t * wr_reg[CONFIG_VGPA2REG_CACHE_SIZE];
 };
 
+struct vmm_devemu_h2g_irq {
+	vmm_guest_t * guest;
+	u32 host_irq;
+	u32 guest_irq;
+};
+
 struct vmm_devemu_guest_context {
 	struct dlist emupic_list;
+	u32 h2g_irq_count;
+	struct vmm_devemu_h2g_irq * h2g_irq;
 };
 
 struct vmm_devemu_ctrl {
@@ -154,7 +163,46 @@ int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num, int irq_level)
 
 	list_for_each(l, &eg->emupic_list) {
 		ep = list_entry(l, vmm_emupic_t, head);
-		ep->hndl(ep, irq_num, irq_level);
+		ep->handle(ep, irq_num, irq_level);
+	}
+
+	return VMM_OK;
+}
+
+static int vmm_devemu_handle_h2g_irq(u32 irq_no, vmm_user_regs_t * regs, void *dev)
+{
+	struct vmm_devemu_h2g_irq * irq = dev;
+
+	if (irq) {
+		vmm_host_irq_disable(irq->host_irq);
+		vmm_devemu_emulate_irq(irq->guest, irq->guest_irq, 1);
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devemu_complete_h2g_irq(vmm_guest_t *guest, u32 irq_num)
+{
+	u32 i;
+	struct vmm_devemu_guest_context *eg;
+
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
+
+	/* Check if a host IRQ to guest IRQ ended */
+	if (eg->h2g_irq) {
+		for (i = 0; i < eg->h2g_irq_count; i++) {
+			if (irq_num == eg->h2g_irq[i].guest_irq) {
+				vmm_devemu_emulate_irq(eg->h2g_irq[i].guest, 
+						       eg->h2g_irq[i].guest_irq, 
+						       0);
+				vmm_host_irq_enable(eg->h2g_irq[i].host_irq);
+				break;
+			}
+		}
 	}
 
 	return VMM_OK;
@@ -498,11 +546,20 @@ int vmm_devemu_reset_context(vmm_guest_t *guest)
 {
 	u32 ite;
 	struct dlist * l;
+	struct vmm_devemu_guest_context *eg;
 	struct vmm_devemu_vcpu_context *ev;
 	vmm_vcpu_t * vcpu;
 
 	if (!guest) {
 		return VMM_EFAIL;
+	}
+
+	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
+
+	if (eg->h2g_irq) {
+		for (ite = 0; ite < eg->h2g_irq_count; ite++) {
+			vmm_host_irq_enable(eg->h2g_irq[ite].host_irq);
+		}
 	}
 
 	list_for_each(l, &guest->vcpu_list) {
@@ -608,20 +665,59 @@ int vmm_devemu_probe_region(vmm_guest_t *guest, vmm_region_t *reg)
 
 int vmm_devemu_init_context(vmm_guest_t *guest)
 {
+	int rc = VMM_OK;
 	u32 ite;
 	struct dlist * l;
+	const char * attr;
 	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_devemu_guest_context *eg;
 	vmm_vcpu_t * vcpu;
 
 	if (!guest) {
-		return VMM_EFAIL;
+		rc = VMM_EFAIL;
+		goto devemu_init_context_done;
 	}
 
 	if (!guest->aspace.devemu_priv) {
 		eg = vmm_malloc(sizeof(struct vmm_devemu_guest_context));
+		if (!eg) {
+			rc = VMM_EFAIL;
+			goto devemu_init_context_done;
+		}
 		INIT_LIST_HEAD(&eg->emupic_list);
 		guest->aspace.devemu_priv = eg;
+	}
+
+	eg->h2g_irq = NULL;
+	eg->h2g_irq_count = 0;
+	attr = vmm_devtree_attrval(guest->aspace.node, 
+				   VMM_DEVTREE_H2GIRQMAP_ATTR_NAME);
+	if (attr) {
+		eg->h2g_irq_count = vmm_devtree_attrlen(guest->aspace.node, 
+					VMM_DEVTREE_H2GIRQMAP_ATTR_NAME) >> 3;
+		if (!(eg->h2g_irq_count)) {
+			rc = VMM_EFAIL;
+			goto devemu_init_context_free;
+		}
+
+		eg->h2g_irq = vmm_malloc(sizeof(struct vmm_devemu_h2g_irq) * 
+					(eg->h2g_irq_count));
+		if (!eg->h2g_irq) {
+			rc = VMM_EFAIL;
+			goto devemu_init_context_free;
+		}
+
+		for (ite = 0; ite < eg->h2g_irq_count; ite++) {
+			eg->h2g_irq[ite].guest = guest;
+			eg->h2g_irq[ite].host_irq = ((u32 *)attr)[2 * ite];
+			eg->h2g_irq[ite].guest_irq = ((u32 *)attr)[(2 * ite) + 1];
+			rc = vmm_host_irq_register(eg->h2g_irq[ite].host_irq, 
+						   vmm_devemu_handle_h2g_irq, 
+						   &eg->h2g_irq[ite]);
+			if (rc) {
+				goto devemu_init_context_free_h2g;
+			}
+		}
 	}
 
 	list_for_each(l, &guest->vcpu_list) {
@@ -643,7 +739,15 @@ int vmm_devemu_init_context(vmm_guest_t *guest)
 		}
 	}
 
-	return VMM_OK;
+	goto devemu_init_context_done;
+
+devemu_init_context_free_h2g:
+	vmm_free(eg->h2g_irq);
+devemu_init_context_free:
+	vmm_free(eg);
+devemu_init_context_done:
+	return rc;
+
 }
 
 int __init vmm_devemu_init(void)

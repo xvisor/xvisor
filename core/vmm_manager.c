@@ -640,6 +640,11 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 		return NULL;
 	}
 
+	/* Reset guest address space */
+	if (vmm_guest_aspace_reset(guest)) {
+		return NULL;
+	}
+
 	/* Increment guest count */
 	mngr.guest_count++;
 

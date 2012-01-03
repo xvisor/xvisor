@@ -62,13 +62,6 @@ struct gic_irq_state {
 	u32 trigger:1; /* nonzero = edge triggered.  */
 };
 
-struct gic_h2g_irq {
-	vmm_guest_t *guest;
-	vmm_emupic_t *pic;
-	u32 host_irq;
-	u32 guest_irq;
-};
-
 struct gic_state {
 	vmm_guest_t *guest;
 	vmm_emupic_t *pic;
@@ -97,12 +90,7 @@ struct gic_state {
 	int irq_target[GIC_MAX_NIRQ];
 	int priority1[32][GIC_MAX_NCPU];
 	int priority2[GIC_MAX_NIRQ - 32];
-	int last_active[GIC_MAX_NIRQ][GIC_MAX_NCPU];
-
-	/* Host IRQ to Guest IRQ Mapping */
-	u32 h2g_irq_count;
-	struct gic_h2g_irq * h2g_irq;
-	
+	int last_active[GIC_MAX_NIRQ][GIC_MAX_NCPU];	
 };
 
 #define GIC_ALL_CPU_MASK(s) ((1 << (s)->num_cpu) - 1)
@@ -182,7 +170,7 @@ static void gic_update(struct gic_state *s)
 }
 
 /* Process IRQ asserted in device emulation framework */
-static void gic_irq_hndl(vmm_emupic_t *epic, u32 irq, int level)
+static void gic_irq_handle(vmm_emupic_t *epic, u32 irq, int level)
 {
 	struct gic_state * s = (struct gic_state *)epic->priv;
 
@@ -211,19 +199,6 @@ static void gic_irq_hndl(vmm_emupic_t *epic, u32 irq, int level)
 	gic_update(s);
 
 	vmm_spin_unlock(&s->lock);
-}
-
-/* Process an external host IRQ input.  */
-static int gic_h2g_irq_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
-{
-	struct gic_h2g_irq * irq = dev;
-
-	if (irq) {
-		vmm_host_irq_disable(irq->host_irq);
-		gic_irq_hndl(irq->pic, irq->guest_irq, 1);
-	}
-
-	return VMM_OK;
 }
 
 static void gic_set_running_irq(struct gic_state *s, int cpu, int irq)
@@ -260,7 +235,7 @@ static u32 gic_acknowledge_irq(struct gic_state *s, int cpu)
 
 static void gic_complete_irq(struct gic_state * s, int cpu, int irq)
 {
-	int i, update = 0;
+	int update = 0;
 	int cm = 1 << cpu;
 
 	if (s->running_irq[cpu] == 1023)
@@ -297,16 +272,8 @@ static void gic_complete_irq(struct gic_state * s, int cpu, int irq)
 				s->last_active[s->running_irq[cpu]][cpu]);
 	}
 
-	/* Check if a host IRQ to guest IRQ ended */
-	if (s->h2g_irq) {
-		for (i = 0; i < s->h2g_irq_count; i++) {
-			if (irq == s->h2g_irq[i].guest_irq) {
-				gic_irq_hndl(s->h2g_irq[i].pic, s->h2g_irq[i].guest_irq, 0);
-				vmm_host_irq_enable(s->h2g_irq[i].host_irq);
-				break;
-			}
-		}
-	}
+	/* Signal completion of host-to-guest mapped irq */
+	vmm_devemu_complete_h2g_irq(s->guest, irq);
 }
 
 static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
@@ -938,7 +905,7 @@ static int gic_emulator_probe(vmm_guest_t *guest,
 		goto gic_emulator_probe_freestate_fail;
 	}
 	vmm_strcpy(s->pic->name, "gic-pic");
-	s->pic->hndl = &gic_irq_hndl;
+	s->pic->handle = &gic_irq_handle;
 	s->pic->priv = s;
 	if ((rc = vmm_devemu_register_pic(guest, s->pic))) {
 		rc = VMM_EFAIL;
@@ -977,36 +944,6 @@ static int gic_emulator_probe(vmm_guest_t *guest,
 		goto gic_emulator_probe_freepic_fail;
 	}
 
-	s->h2g_irq = NULL;
-	s->h2g_irq_count = 0;
-	attr = vmm_devtree_attrval(edev->node, "h2g_irq_map");
-	if (attr) {
-		s->h2g_irq_count = vmm_devtree_attrlen(edev->node, "h2g_irq_map") >> 3;
-		if (!(s->h2g_irq_count)) {
-			rc = VMM_EFAIL;
-			goto gic_emulator_probe_freepic_fail;
-		}
-
-		s->h2g_irq = vmm_malloc(sizeof(struct gic_h2g_irq) * (s->h2g_irq_count));
-		if (!s->h2g_irq) {
-			rc = VMM_EFAIL;
-			goto gic_emulator_probe_freepic_fail;
-		}
-
-		for (i = 0; i < s->h2g_irq_count; i++) {
-			s->h2g_irq[i].guest = guest;
-			s->h2g_irq[i].pic = s->pic;
-			s->h2g_irq[i].host_irq = ((u32 *)attr)[2 * i];
-			s->h2g_irq[i].guest_irq = ((u32 *)attr)[(2 * i) + 1];
-			rc = vmm_host_irq_register(s->h2g_irq[i].host_irq, 
-						   gic_h2g_irq_handler, 
-						   &s->h2g_irq[i]);
-			if (rc) {
-				goto gic_emulator_free_h2g;
-			}
-		}
-	}
-
 	edev->priv = s;
 
 	s->guest = guest;
@@ -1014,8 +951,6 @@ static int gic_emulator_probe(vmm_guest_t *guest,
 
 	goto gic_emulator_probe_done;
 
-gic_emulator_free_h2g:
-	vmm_free(s->h2g_irq);
 gic_emulator_probe_freepic_fail:
 	vmm_free(s->pic);
 gic_emulator_probe_freestate_fail:
