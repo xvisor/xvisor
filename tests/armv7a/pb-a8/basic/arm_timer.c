@@ -134,12 +134,10 @@ int arm_timer_init(u32 usecs, u32 init_irqcount, u32 ensel)
 	val |= (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE);
 	arm_writel(val, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
 	arm_writel(usecs, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_LOAD));
-	arm_writel(usecs, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_VALUE));
 
 	/* Setup Timer3 for free running counter */
 	arm_writel(0x0, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_CTRL));
 	arm_writel(0xFFFFFFFF, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_LOAD));
-	arm_writel(0xFFFFFFFF, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_VALUE));
 	val = (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_ENABLE);
 	arm_writel(val, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_CTRL));
 
