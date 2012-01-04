@@ -90,12 +90,19 @@ int realview_timer_event_start(virtual_addr_t base, u64 nsecs)
 
 	/* Setup the registers */
 	ctrl = vmm_readl((void *)(base + TIMER_CTRL));
-	ctrl &= ~TIMER_CTRL_ENABLE;
-	ctrl |= (TIMER_CTRL_32BIT | TIMER_CTRL_ONESHOT | TIMER_CTRL_IE);
-	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
+	/* Stop the timer if started */
+	if (ctrl & TIMER_CTRL_ENABLE) {
+		ctrl &= ~TIMER_CTRL_ENABLE;
+		ctrl |= TIMER_CTRL_32BIT; /* Ensure 32-bit mode */
+		vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
+	}
+	/* write the new timer value */
 	vmm_writel(usecs, (void *)(base + TIMER_LOAD));
-	vmm_writel(usecs, (void *)(base + TIMER_VALUE));
-	ctrl |= TIMER_CTRL_ENABLE;
+	/* start the timer in One Shot mode */
+	ctrl |=	(TIMER_CTRL_32BIT | 
+		 TIMER_CTRL_ONESHOT | 
+		 TIMER_CTRL_IE |
+		 TIMER_CTRL_ENABLE);
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 
 	return VMM_OK;
@@ -112,18 +119,16 @@ int realview_timer_counter_start(virtual_addr_t base)
 
 	vmm_writel(0x0, (void *)(base + TIMER_CTRL));
 	vmm_writel(0xFFFFFFFF, (void *)(base + TIMER_LOAD));
-	vmm_writel(0xFFFFFFFF, (void *)(base + TIMER_VALUE));
 	ctrl = (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC);
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
-	
+
 	return VMM_OK;
 }
 
 int __init realview_timer_init(virtual_addr_t sctl_base,
-				       virtual_addr_t base,
-				       u32 ensel,
-				       u32 hirq,
-				       vmm_host_irq_handler_t hirq_handler)
+			       virtual_addr_t base,
+			       u32 ensel,
+			       u32 hirq, vmm_host_irq_handler_t hirq_handler)
 {
 	int ret = VMM_OK;
 	u32 val;
