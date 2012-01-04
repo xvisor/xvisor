@@ -30,15 +30,15 @@
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_ctrl {
-        u64 cycles_last;
-        u64 cycles_mask;
-        u32 cycles_mult;
-        u32 cycles_shift;
-        u64 timestamp;
-        bool cpu_started;
-        vmm_timer_event_t * cpu_curr;
-        struct dlist cpu_event_list;
-        struct dlist event_list;
+	u64 cycles_last;
+	u64 cycles_mask;
+	u32 cycles_mult;
+	u32 cycles_shift;
+	u64 timestamp;
+	bool cpu_started;
+	vmm_timer_event_t *cpu_curr;
+	struct dlist cpu_event_list;
+	struct dlist event_list;
 };
 
 static struct vmm_timer_ctrl tctrl;
@@ -72,72 +72,73 @@ u64 __notrace vmm_timer_timestamp_for_profile(void)
 }
 #endif
 
-static void vmm_timer_schedule_next_event(u64 curr_tstamp, vmm_timer_event_t * ev)
+static void vmm_timer_schedule_next_event(void)
 {
-	struct dlist *l;
 	vmm_timer_event_t *e;
 
+	/* If not started yet, we give up */
 	if (!tctrl.cpu_started) {
 		return;
 	}
 
-	if (tctrl.cpu_curr && ev) {
-		if (curr_tstamp < ev->expiry_tstamp) {
-			if (ev->expiry_tstamp < tctrl.cpu_curr->expiry_tstamp) {
-				tctrl.cpu_curr = ev;
-				vmm_cpu_clockevent_start(ev->expiry_tstamp - curr_tstamp);
-			}
-		} else {
-			tctrl.cpu_curr = ev;
-			vmm_cpu_clockevent_expire();
+	/* If no events, we give up */
+	if (list_empty(&tctrl.cpu_event_list)) {
+		return;
+	}
+
+	/* retrieve first timer in the list of active timers */
+	e = list_entry(list_first(&tctrl.cpu_event_list), vmm_timer_event_t,
+		       cpu_head);
+
+	if (tctrl.cpu_curr != e) {
+		/* The current event is not the one at the head of the list. */
+		u64 tstamp = vmm_timer_timestamp();
+
+		tctrl.cpu_curr = e;
+
+		if (tstamp > e->expiry_tstamp) {
+			tstamp = e->expiry_tstamp;
 		}
+
+		vmm_cpu_clockevent_start(e->expiry_tstamp - tstamp);
 	} else {
-		/* Scheduler next timer event */
-		list_for_each (l, &tctrl.cpu_event_list) {
-			e = list_entry(l, vmm_timer_event_t, cpu_head);
-			if (e->expiry_tstamp <= curr_tstamp) {
-				continue;
-			}
-			tctrl.cpu_curr = e;
-			vmm_cpu_clockevent_start(e->expiry_tstamp - curr_tstamp);
-			break;
-		}
+		/* FIXME: What if expiry time of current event changed ?? */
+		/* Nothing to change as the current event is the one at the */
+		/* head of the list and they are ordered by expiration time */
 	}
 }
 
+/**
+ * This is call from interrupt context. So we don't need to protect the list
+ * when manipulating it.
+ */
 void vmm_timer_clockevent_process(vmm_user_regs_t * regs)
 {
-	u64 tstamp;
-	struct dlist *l;
 	vmm_timer_event_t *e;
 
-	/* Set current CPU event to NULL */
-	tctrl.cpu_curr = NULL;
-
-	while (!tctrl.cpu_curr) {
+	/* process expired active events */
+	while (!list_empty(&tctrl.cpu_event_list)) {
+		e = list_entry(list_first(&tctrl.cpu_event_list),
+			       vmm_timer_event_t, cpu_head);
 		/* Current timestamp */
-		tstamp = vmm_timer_timestamp();
-
-		/* Update active events */
-		while (!list_empty(&tctrl.cpu_event_list)) {
-			l = list_pop(&tctrl.cpu_event_list);
-			e = list_entry(l, vmm_timer_event_t, cpu_head);
-			if (e->expiry_tstamp <= tstamp) {
-				e->expiry_tstamp = 0;
-				e->active = FALSE;
-				e->cpu_regs = regs;
-				e->handler(e);
-				e->cpu_regs = NULL;
-				tstamp = vmm_timer_timestamp();
-			} else  {
-				list_add(&tctrl.cpu_event_list, &e->cpu_head);
-				break;
-			}
+		if (e->expiry_tstamp <= vmm_timer_timestamp()) {
+			/* Set current CPU event to NULL */
+			tctrl.cpu_curr = NULL;
+			/* consume expired active events */
+			list_del(&e->cpu_head);
+			e->expiry_tstamp = 0;
+			e->active = FALSE;
+			e->cpu_regs = regs;
+			e->handler(e);
+			e->cpu_regs = NULL;
+		} else {
+			/* no more expired events */
+			break;
 		}
-
-		/* Schedule next timer event */
-		vmm_timer_schedule_next_event(tstamp, NULL);
 	}
+
+	/* Schedule next timer event */
+	vmm_timer_schedule_next_event();
 }
 
 int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
@@ -146,19 +147,25 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 	irq_flags_t flags;
 	struct dlist *l;
 	vmm_timer_event_t *e;
+	u64 tstamp;
 
 	if (!ev) {
 		return VMM_EFAIL;
 	}
 
+	tstamp = vmm_timer_timestamp();
+
 	flags = vmm_cpu_irq_save();
 
 	if (ev->active) {
+		/*
+		 * if the timer event is already started, we remove it from
+		 * the active list because it has changed.
+		 */
 		list_del(&ev->cpu_head);
-		ev->active = FALSE;
 	}
 
-	ev->expiry_tstamp = vmm_timer_timestamp() + duration_nsecs;
+	ev->expiry_tstamp = tstamp + duration_nsecs;
 	ev->duration_nsecs = duration_nsecs;
 	ev->active = TRUE;
 	added = FALSE;
@@ -171,11 +178,12 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 			break;
 		}
 	}
+
 	if (!added) {
 		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
 	}
 
-	vmm_timer_schedule_next_event(vmm_timer_timestamp(), ev);
+	vmm_timer_schedule_next_event();
 
 	vmm_cpu_irq_restore(flags);
 
@@ -199,19 +207,26 @@ int vmm_timer_event_expire(vmm_timer_event_t * ev)
 		return VMM_EFAIL;
 	}
 
+	/* prevent (timer) interrupt */
 	flags = vmm_cpu_irq_save();
 
+	/* if the event is already engaged */
 	if (ev->active) {
+		/* We remove it from the list */
 		list_del(&ev->cpu_head);
-		ev->active = FALSE;
 	}
 
-	ev->expiry_tstamp = vmm_timer_timestamp();
+	/* set the expiry_tstamp to before now */
+	ev->expiry_tstamp = 0;
 	ev->active = TRUE;
+
+	/* add the event on list head as it is going to expire now */
 	list_add(&tctrl.cpu_event_list, &ev->cpu_head);
 
+	/* trigger a timer interrupt */
 	vmm_cpu_clockevent_expire();
 
+	/* allow (timer) interrupts */
 	vmm_cpu_irq_restore(flags);
 
 	return VMM_OK;
@@ -228,21 +243,22 @@ int vmm_timer_event_stop(vmm_timer_event_t * ev)
 	flags = vmm_cpu_irq_save();
 
 	ev->expiry_tstamp = 0;
+
 	if (ev->active) {
 		list_del(&ev->cpu_head);
 		ev->active = FALSE;
 	}
 
-	vmm_timer_schedule_next_event(vmm_timer_timestamp(), NULL);
+	vmm_timer_schedule_next_event();
 
 	vmm_cpu_irq_restore(flags);
 
 	return VMM_OK;
 }
 
-vmm_timer_event_t * vmm_timer_event_create(const char *name,
-					   vmm_timer_event_handler_t handler,
-					   void * priv)
+vmm_timer_event_t *vmm_timer_event_create(const char *name,
+					  vmm_timer_event_handler_t handler,
+					  void *priv)
 {
 	bool found;
 	struct dlist *l;
@@ -437,4 +453,3 @@ int __init vmm_timer_init(void)
 
 	return VMM_OK;
 }
-
