@@ -109,6 +109,11 @@ static inline struct dlist *list_pop(struct dlist *head)
 	return dnode;
 }
 
+static inline struct dlist *list_first(struct dlist *head)
+{
+	return head->next;
+}
+
 static inline int list_empty(struct dlist *head)
 {
 	return (head->next == head);
