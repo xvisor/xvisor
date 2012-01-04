@@ -33,7 +33,7 @@
 
 #define IDLE_VCPU_STACK_SZ CONFIG_THREAD_STACK_SIZE
 #define IDLE_VCPU_PRIORITY VMM_VCPU_MIN_PRIORITY
-#define IDLE_VCPU_TIMESLICE VMM_VCPU_DEF_TIME_SLICE
+#define IDLE_VCPU_TIMESLICE (VMM_VCPU_DEF_TIME_SLICE * 1000)
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
@@ -261,6 +261,11 @@ void vmm_scheduler_orphan_yield(void)
 static void idle_orphan(void)
 {
 	while(1) {
+		if (vmm_schedalgo_rq_length(sched.rq, 
+					    IDLE_VCPU_PRIORITY) == 0) {
+			vmm_cpu_wait_for_irq();
+		}
+
 		vmm_scheduler_orphan_yield();
 	}
 }

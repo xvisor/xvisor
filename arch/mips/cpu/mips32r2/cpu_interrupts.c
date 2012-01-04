@@ -128,3 +128,10 @@ s32 generic_int_handler(vmm_user_regs_t *uregs)
 
         return 0;
 }
+
+void vmm_cpu_wait_for_irq(void)
+{
+	/* FIXME: Use some hardware functionality to wait for interrupt */
+	/* OR */
+	/* FIXME: Use some soft delay */
+}

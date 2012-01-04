@@ -60,6 +60,7 @@ void vmm_cpu_irq_enable(void);
 void vmm_cpu_irq_disable(void);
 irq_flags_t vmm_cpu_irq_save(void);
 void vmm_cpu_irq_restore(irq_flags_t flags);
+void vmm_cpu_wait_for_irq(void);
 
 /** VCPU Interrupt functions required by VMM core */
 s32 vmm_vcpu_irq_execute(vmm_vcpu_t *vcpu,vmm_user_regs_t *regs,u32 interrupt_no,u32 reason);

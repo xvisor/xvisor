@@ -53,4 +53,7 @@ void * vmm_schedalgo_rq_create(void);
 /** Destroy existing ready queue */
 int vmm_schedalgo_rq_destroy(void * rq);
 
+/** return the number of READY VCPU at given priority */
+int vmm_schedalgo_rq_length(void *rq, u8 priority);
+
 #endif

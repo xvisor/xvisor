@@ -70,6 +70,25 @@ int vmm_schedalgo_vcpu_cleanup(vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
+int vmm_schedalgo_rq_length(void *rq, u8 priority)
+{
+	struct vmm_schedalgo_rq *rqi;
+	struct dlist *l;
+	int count = 0;
+
+	if (!rq) {
+		return -1;
+	}
+
+	rqi = rq;
+
+	list_for_each(l, &rqi->list[priority]) {
+		count++;
+	}
+
+	return count;
+}
+
 int vmm_schedalgo_rq_enqueue(void * rq, vmm_vcpu_t * vcpu)
 {
 	struct vmm_schedalgo_rq_entry * rq_entry;

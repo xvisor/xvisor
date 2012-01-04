@@ -426,3 +426,8 @@ void vmm_cpu_irq_restore(irq_flags_t flags)
 		      :"memory", "cc");
 }
 
+void vmm_cpu_wait_for_irq(void)
+{
+	/* We could also use soft delay here. */
+	asm volatile (" wfi ");
+}
