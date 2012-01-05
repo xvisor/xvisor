@@ -42,6 +42,7 @@ struct vmm_scheduler_ctrl {
 	vmm_vcpu_t *idle_vcpu;
 	u8 idle_vcpu_stack[IDLE_VCPU_STACK_SZ];
 	bool irq_context;
+	bool yield_on_irq_exit;
 	vmm_timer_event_t * ev;
 };
 
@@ -164,6 +165,9 @@ void vmm_scheduler_irq_enter(vmm_user_regs_t * regs, bool vcpu_context)
 {
 	/* Indicate that we have entered in IRQ */
 	sched.irq_context = (vcpu_context) ? FALSE : TRUE;
+
+	/* Ensure that yield on exit is disabled */
+	sched.yield_on_irq_exit = FALSE;
 }
 
 void vmm_scheduler_irq_exit(vmm_user_regs_t * regs)
@@ -178,8 +182,10 @@ void vmm_scheduler_irq_exit(vmm_user_regs_t * regs)
 
 	/* Schedule next vcpu if state of 
 	 * current vcpu is not RUNNING */
-	if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
+	if ((vcpu->state != VMM_VCPU_STATE_RUNNING) ||
+	    sched.yield_on_irq_exit) {
 		vmm_scheduler_next(sched.ev, regs);
+		sched.yield_on_irq_exit = FALSE;
 		return;
 	}
 
@@ -249,13 +255,29 @@ void vmm_scheduler_preempt_enable(void)
 	}
 }
 
-void vmm_scheduler_orphan_yield(void)
+void vmm_scheduler_yield(void)
 {
-	if (!vmm_scheduler_orphan_context()) {
-		vmm_panic("%s: Can yield in Orphan VCPU context only\n", __func__);
+	vmm_vcpu_t * vcpu = NULL; 
+
+	if (vmm_scheduler_irq_context()) {
+		vmm_panic("%s: Cannot yield in IRQ context\n", __func__);
 	}
 
-	vmm_timer_event_expire(sched.ev);
+	if (vmm_scheduler_orphan_context()) {
+		/* For Orphan VCPU
+		 * Forcefully expire timeslice 
+		 */
+		vmm_timer_event_expire(sched.ev);
+	} else if (vmm_scheduler_normal_context()) {
+		/* For Normal VCPU
+		 * Just enable yield on exit and rest will be taken care
+		 * by vmm_scheduler_irq_exit()
+		 */
+		vcpu = vmm_scheduler_current_vcpu();
+		if (vcpu->state == VMM_VCPU_STATE_RUNNING) {
+			sched.yield_on_irq_exit = TRUE;
+		}
+	}
 }
 
 static void idle_orphan(void)
@@ -266,7 +288,7 @@ static void idle_orphan(void)
 			vmm_cpu_wait_for_irq();
 		}
 
-		vmm_scheduler_orphan_yield();
+		vmm_scheduler_yield();
 	}
 }
 
@@ -288,6 +310,9 @@ int __init vmm_scheduler_init(void)
 
 	/* Initialize IRQ state (Per Host CPU) */
 	sched.irq_context = FALSE;
+
+	/* Initialize yield on exit (Per Host CPU) */
+	sched.yield_on_irq_exit = FALSE;
 
 	/* Create timer event and start it. (Per Host CPU) */
 	sched.ev = vmm_timer_event_create("sched", 
