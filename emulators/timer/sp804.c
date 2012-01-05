@@ -51,23 +51,27 @@
 /* Common timer implementation.  */
 #define TIMER_CTRL_ONESHOT		(1 << 0)
 #define TIMER_CTRL_32BIT		(1 << 1)
-#define TIMER_CTRL_DIV1			(0 << 2)
 #define TIMER_CTRL_DIV16		(1 << 2)
-#define TIMER_CTRL_DIV256		(2 << 2)
+#define TIMER_CTRL_DIV256		(1 << 3)
 #define TIMER_CTRL_IE			(1 << 5)
 #define TIMER_CTRL_PERIODIC		(1 << 6)
 #define TIMER_CTRL_ENABLE		(1 << 7)
 
+#define TIMER_CTRL_DIV_MASK 	(TIMER_CTRL_DIV16 | TIMER_CTRL_DIV256)
+
+#define TIMER_CTRL_NOT_FREE_RUNNING	(TIMER_CTRL_PERIODIC | TIMER_CTRL_ONESHOT)
+
+struct sp804_state;
+
 struct sp804_timer {
+	struct sp804_state *state;
 	vmm_guest_t *guest;
 	vmm_timer_event_t *event;
 	vmm_spinlock_t lock;
 	/* Configuration */
+	u32 ref_freq;
 	u32 freq;
 	u32 irq;
-	u64 periodic_start;
-	u64 periodic_duration;
-	u64 periodic_backlog;
 	/* Registers */
 	u32 control;
 	u32 value;
@@ -76,143 +80,190 @@ struct sp804_timer {
 	u32 irq_level;
 };
 
+struct sp804_state {
+	struct sp804_timer t[2];
+};
+
+static bool sp804_timer_interrupt_is_raised(struct sp804_timer *t)
+{
+	return ((t->control & TIMER_CTRL_ENABLE) && (t->control & TIMER_CTRL_IE)
+		&& t->irq_level);
+}
+
 static void sp804_timer_setirq(struct sp804_timer *t)
 {
-	if ((t->control & TIMER_CTRL_IE) && t->irq_level) {
+	if (sp804_timer_interrupt_is_raised(t)) {
+		/*
+		 * The timer is enabled, the interrupt mode is enabled and
+		 * and an interrupt is pending ... So we can raise the 
+		 * interrupt level to the guest OS
+		 */
 		vmm_devemu_emulate_irq(t->guest, t->irq, 1);
 	} else {
+		/*
+		 * in all other cases, we need to lower the interrupt level.
+		 */
 		vmm_devemu_emulate_irq(t->guest, t->irq, 0);
+	}
+}
+
+static u32 sp804_get_freq(struct sp804_timer *t)
+{
+	/* An array of dividers for our freq */
+	static char freq_mul[4] = { 0, 4, 8, 0 };
+
+	return (t->ref_freq >> freq_mul[(t->control >> 2) & 3]);
+}
+
+static void sp804_timer_init_timer(struct sp804_timer *t)
+{
+	if (t->control & TIMER_CTRL_ENABLE) {
+		u64 nsecs;
+		/* Get a time stamp */
+		u64 tstamp = vmm_timer_timestamp();
+
+		if (!(t->control & TIMER_CTRL_NOT_FREE_RUNNING)) {
+			/* Free running timer */
+			t->value = 0xffffffff;
+		} else {
+			/* init the value with the limit value. */
+			t->value = t->limit;
+		}
+
+		/* If only 16 bits, we keep the lower bytes */
+		if (!(t->control & TIMER_CTRL_32BIT)) {
+			t->value &= 0xffff;
+		}
+
+		/* This is a simple one shot timer or the first run
+		 * of a periodic timer
+		 */
+		t->value_tstamp = tstamp;
+
+		/* If interrupt is not enabled then we are done */
+		if (!(t->control & TIMER_CTRL_IE)) {
+			return;
+		}
+
+		/* Now we need to compute our delay in nsecs. */
+		nsecs = (u64) t->value;
+
+		/* 
+		 * convert t->value in ns based on freq
+		 * We optimize the 1MHz case as this is the one that is 
+		 * mostly used here (and this is easy).
+		 */
+		if (nsecs) {
+			if (t->freq == 1000000) {
+				nsecs *= 1000;
+			} else {
+				nsecs =
+				    vmm_udiv64((nsecs * 1000000000),
+					       (u64) t->freq);
+			}
+		}
+
+		/*
+		 * We start our timer
+		 */
+		if (vmm_timer_event_start(t->event, nsecs) == VMM_EFAIL) {
+			/* FIXME: What should we do??? */
+		}
+	} else {
+		/*
+		 * This timer is not enabled ...
+		 * To be safe, we stop the timer
+		 */
+		if (vmm_timer_event_stop(t->event) == VMM_EFAIL) {
+			/* FIXME: What should we do??? */
+		}
+		/*
+		 * At this point the timer should be frozen but could restart
+		 * at any time if the timer is enabled again through the ctrl 
+		 * reg
+		 */
+	}
+}
+
+static void sp804_timer_clear_irq(struct sp804_timer *t)
+{
+	if (t->irq_level == 1) {
+		t->irq_level = 0;
+		sp804_timer_setirq(t);
+		if (t->control & TIMER_CTRL_PERIODIC) {
+			/* this is either free running or periodic timer.
+			 * We restart the timer.
+			 */
+			sp804_timer_init_timer(t);
+		}
 	}
 }
 
 static void sp804_timer_event(vmm_timer_event_t * event)
 {
 	struct sp804_timer *t = event->priv;
-	if ((t->control & TIMER_CTRL_ENABLE) &&
-	    !(t->irq_level)) {
+
+	/* A timer event expired, if the timer is still activated,
+	 * and the level is low, we need to process it
+	 */
+	if (t->control & TIMER_CTRL_ENABLE) {
 		vmm_spin_lock(&t->lock);
-		t->value = t->limit;
-		t->irq_level = 1;
+
+		if (t->irq_level == 0) {
+			/* We raise the interrupt */
+			t->irq_level = 1;
+			/* Raise an interrupt to the guest if required */
+			sp804_timer_setirq(t);
+		}
+
 		if (t->control & TIMER_CTRL_ONESHOT) {
+			/* If One shot timer, we disable it */
 			t->control &= ~TIMER_CTRL_ENABLE;
-		} else if (t->control & TIMER_CTRL_PERIODIC) {
-			t->periodic_backlog += vmm_timer_timestamp() - 
-						t->periodic_start -
-						t->periodic_duration;
 		}
-		sp804_timer_setirq(t);
+
 		vmm_spin_unlock(&t->lock);
+	} else {
+		/* The timer was not activated
+		 * So we need to lower the interrupt level (if raised)
+		 */
+		sp804_timer_clear_irq(t);
 	}
 }
 
-static void sp804_timer_syncvalue(struct sp804_timer *t, bool clear_irq)
+static u32 sp804_timer_current_value(struct sp804_timer *t)
 {
-	u64 tstamp, nsecs;
-	u32 freq;
-	tstamp = vmm_timer_timestamp();
-	t->value = t->limit;
-	t->value_tstamp = tstamp;
-	if (t->control & TIMER_CTRL_ENABLE) {
-		freq = t->freq;
-		switch ((t->control >> 2) & 3) {
-		case 1: 
-			freq >>= 4; 
-			break;
-		case 2: 
-			freq >>= 8; 
-			break;
-		};
-		if (t->control & TIMER_CTRL_IE) {
-			nsecs = t->limit;
-			if (freq == 1000000) {
-				nsecs = nsecs * ((u64)1000);
-			} else {
-				nsecs = vmm_udiv64((nsecs * 1000000000), freq);
-			}
-			if (t->control & TIMER_CTRL_PERIODIC) {
-				t->periodic_start = tstamp;
-				/* For now, only 10 events allowed in backlog. */
-				if ((nsecs * 10) < t->periodic_backlog) {
-					t->periodic_backlog = 0;
-				}
-				if (nsecs < t->periodic_backlog) {
-					t->periodic_duration = 0;
-					t->periodic_backlog -= nsecs;
-					nsecs = 0;
-				} else {
-					t->periodic_duration = nsecs;
-				}
-			}
-			if (nsecs) {
-				vmm_timer_event_start(t->event, nsecs);
-			} else {
-				vmm_timer_event_expire(t->event);
-			}
-		}
-	}
-	if (clear_irq) {
-		t->irq_level = 0;
-		sp804_timer_setirq(t);
-	}
-}
+	u32 ret = 0;
 
-static u32 sp804_timer_currvalue(struct sp804_timer *t)
-{
-	u32 ret, freq;
-	u64 cval;
 	if (t->control & TIMER_CTRL_ENABLE) {
-		freq = t->freq;
-		switch ((t->control >> 2) & 3) {
-		case 1: 
-			freq >>= 4; 
-			break;
-		case 2: 
-			freq >>= 8; 
-			break;
-		};
-		if (freq == 1000000) {
-			/* Note: Timestamps are in nanosecs so we convert 
+		/* How much nsecs since the timer was started */
+		u64 cval = vmm_timer_timestamp() - t->value_tstamp;
+
+		/* convert the computed time to freqency ticks */
+		if (t->freq == 1000000) {
+			/* Note: Timestamps are in nanosecs so we convert
 			 * nanosecs timestamp difference to microsecs timestamp
-			 * difference for 1MHz clock. To achive this we simply 
-			 * have to divide timestamp difference by 1000, but in 
-			 * integer arithmetic any integer divided by 1000 
+			 * difference for 1MHz clock. To achive this we simply
+			 * have to divide timestamp difference by 1000, but in
+			 * integer arithmetic any integer divided by 1000
 			 * can be approximated as follows.
 			 * (a / 1000)
 			 * = (a / 1024) * (1024 / 1000)
 			 * = (a / 1024) + (a / 1024) * (24 / 1000)
 			 * = (a >> 10) + (a >> 10) * (3 / 125)
 			 * = (a >> 10) + (a >> 10) * (3 / 128) * (128 / 125)
-			 * = (a >> 10) + (a >> 10) * (3 / 128) + 
-			 *                    (a >> 10) * (3 / 128) * (3 / 125)
-			 * ~ (a >> 10) + (a >> 10) * (3 / 128) + 
-			 *                    (a >> 10) * (3 / 128) * (3 / 128)
-			 * ~ (a >> 10) + (((a >> 10) * 3) >> 7) + 
-			 *                              (((a >> 10) * 9) >> 14)
+			 * = (a >> 10) + (a >> 10) * (3 / 128) +
+			 *		    (a >> 10) * (3 / 128) * (3 / 125)
+			 * ~ (a >> 10) + (a >> 10) * (3 / 128) +
+			 *		    (a >> 10) * (3 / 128) * (3 / 128)
+			 * ~ (a >> 10) + (((a >> 10) * 3) >> 7) +
+			 *			      (((a >> 10) * 9) >> 14)
 			 */
-			cval = (vmm_timer_timestamp() - 
-					t->value_tstamp) >> 10;
+			cval = cval >> 10;
 			cval = cval + ((cval * 3) >> 7) + ((cval * 9) >> 14);
-		} else if (freq == 1000000000) {
-			cval = (vmm_timer_timestamp() - 
-					t->value_tstamp);
-		} else if (freq < 1000000000) {
-			cval = vmm_udiv32(1000000000, freq);
-			cval = vmm_udiv64((vmm_timer_timestamp() - 
-					t->value_tstamp), cval);
-		} else {
-			/* Note: For integer arithmetic (freq / 1000000000)
-			 * can be approximated as follows:
-			 * (freq / 1000000000) 
-			 * = (freq / 1073741824) * (1073741824 / 1000000000)
-			 * = (freq >> 30) * (1 + (73741824 / 1000000000))
-			 * = (freq >> 30) + (freq >> 30) * (0.0737418)
-			 * ~ (freq >> 30) + (freq >> 30) * (151 / 2048)
-			 * ~ (freq >> 30) + (((freq >> 30) * 151) >> 11)
-			 */
-			cval = (freq >> 30) + (((freq >> 30) * 151) >> 11);
-			cval = (vmm_timer_timestamp() - 
-					t->value_tstamp) * cval;
+		} else if (t->freq != 1000000000) {
+			cval = vmm_udiv64(cval * t->freq, (u64) 1000000000);
 		}
+
 		if (t->control & TIMER_CTRL_PERIODIC) {
 			if (t->value == 0xFFFFFFFF) {
 				ret = 0xFFFFFFFF - (cval & 0xFFFFFFFF);
@@ -225,41 +276,37 @@ static u32 sp804_timer_currvalue(struct sp804_timer *t)
 		} else {
 			if (t->value < cval) {
 				ret = 0x0;
-			} else {
-				ret = t->value - cval;
-			}
-		}
-	} else {
-		ret = 0x0;
+ 			} else {
+ 				ret = t->value - cval;
+ 			}
+ 		}
 	}
+
 	return ret;
 }
 
-static int sp804_timer_read(struct sp804_timer *t, u32 offset, u32 *dst)
+static int sp804_timer_read(struct sp804_timer *t, u32 offset, u32 * dst)
 {
 	int rc = VMM_OK;
 
 	vmm_spin_lock(&t->lock);
 
 	switch (offset >> 2) {
-	case 0: /* TimerLoad */
-	case 6: /* TimerBGLoad */
+	case 0:		/* TimerLoad */
+	case 6:		/* TimerBGLoad */
 		*dst = t->limit;
 		break;
-	case 1: /* TimerValue */
-		*dst = sp804_timer_currvalue(t);
+	case 1:		/* TimerValue */
+		*dst = sp804_timer_current_value(t);
 		break;
-	case 2: /* TimerControl */
+	case 2:		/* TimerControl */
 		*dst = t->control;
 		break;
-	case 4: /* TimerRIS */
+	case 4:		/* TimerRIS */
 		*dst = t->irq_level;
 		break;
-	case 5: /* TimerMIS */
- 		if ((t->control & TIMER_CTRL_IE) == 0) {
-			*dst = 0;
-		}
-		*dst = t->irq_level;
+	case 5:		/* TimerMIS */
+		*dst = t->irq_level & ((t->control & TIMER_CTRL_IE) >> 5);
 		break;
 	default:
 		rc = VMM_EFAIL;
@@ -271,50 +318,43 @@ static int sp804_timer_read(struct sp804_timer *t, u32 offset, u32 *dst)
 	return rc;
 }
 
-static int sp804_timer_write(struct sp804_timer *t, u32 offset, 
+static int sp804_timer_write(struct sp804_timer *t, u32 offset,
 			     u32 src_mask, u32 src)
 {
 	int rc = VMM_OK;
+	int timer_divider_select;
 
 	vmm_spin_lock(&t->lock);
 
 	switch (offset >> 2) {
-	case 0: /* TimerLoad */
+	case 0:		/* TimerLoad */
+		/* This update the limit and the timer value immediately */
 		t->limit = (t->limit & src_mask) | (src & ~src_mask);
-		sp804_timer_syncvalue(t, FALSE);
+		sp804_timer_init_timer(t);
 		break;
-	case 1: /* TimerValue */
+	case 1:		/* TimerValue */
 		/* ??? Guest seems to want to write to readonly register.
 		 * Ignore it. 
 		 */
 		break;
-	case 2: /* TimerControl */
+	case 2:		/* TimerControl */
+		timer_divider_select = t->control;
 		t->control = (t->control & src_mask) | (src & ~src_mask);
-		if ((t->control &
-		    (TIMER_CTRL_PERIODIC | TIMER_CTRL_ONESHOT)) == 0) {
-			/* Free running */
-			if (t->control & TIMER_CTRL_32BIT) {
-				t->limit = 0xFFFFFFFF;
-			} else {
-				t->limit = 0xFFFF;
-			}
+		if ((timer_divider_select & TIMER_CTRL_DIV_MASK) !=
+		    (t->control & TIMER_CTRL_DIV_MASK)) {
+			t->freq = sp804_get_freq(t);
 		}
-		sp804_timer_syncvalue(t, FALSE);
+		sp804_timer_init_timer(t);
 		break;
-	case 3: /* TimerIntClr */
-		sp804_timer_syncvalue(t, TRUE);
+	case 3:		/* TimerIntClr */
+		/* Any write to this register clear the interrupt status */
+		sp804_timer_clear_irq(t);
 		break;
-	case 6: /* TimerBGLoad */
+	case 6:		/* TimerBGLoad */
+		/* This will update the limit value for next interrupt 
+		 * setting
+		 */
 		t->limit = (t->limit & src_mask) | (src & ~src_mask);
-		if ((t->control & 
-		    (TIMER_CTRL_PERIODIC | TIMER_CTRL_ONESHOT)) == 0) {
-			/* Free running */
-			if (t->control & TIMER_CTRL_32BIT) {
-				t->limit = 0xFFFFFFFF;
-			} else {
-				t->limit = 0xFFFF;
-			}
-		}
 		break;
 	default:
 		rc = VMM_EFAIL;
@@ -331,69 +371,66 @@ static int sp804_timer_reset(struct sp804_timer *t)
 	vmm_spin_lock(&t->lock);
 
 	vmm_timer_event_stop(t->event);
-	t->periodic_start = 0x0;
-	t->periodic_backlog = 0x0;
-	t->periodic_duration = 0x0;
 	t->limit = 0xFFFFFFFF;
 	t->control = TIMER_CTRL_IE;
 	t->irq_level = 0;
-#if 0
-	sp804_timer_syncvalue(t, TRUE);
-#endif
+	t->freq = sp804_get_freq(t);
+	sp804_timer_setirq(t);
+	sp804_timer_init_timer(t);
 
 	vmm_spin_unlock(&t->lock);
 
 	return VMM_OK;
 }
 
-static int sp804_timer_init(struct sp804_timer *t, 
-			    const char * t_name,
-			    vmm_guest_t *guest,
-			    u32 freq, u32 irq)
+static int sp804_timer_init(struct sp804_timer *t,
+			    const char *t_name,
+			    vmm_guest_t * guest, u32 freq, u32 irq)
 {
-	t->guest = guest;
 	t->event = vmm_timer_event_create(t_name, &sp804_timer_event, t);
 
-	INIT_SPIN_LOCK(&t->lock);
-	t->freq = freq;
+	if (t->event == NULL) {
+		return VMM_EFAIL;
+	}
+
+	t->guest = guest;
+	t->ref_freq = freq;
+	t->freq = sp804_get_freq(t);
 	t->irq = irq;
+	INIT_SPIN_LOCK(&t->lock);
 
 	return VMM_OK;
 }
 
-struct sp804_state {
-	struct sp804_timer t[2];
-};
-
-static int sp804_emulator_read(vmm_emudev_t *edev,
-			       physical_addr_t offset, 
-			       void *dst, u32 dst_len)
+static int sp804_emulator_read(vmm_emudev_t * edev,
+			       physical_addr_t offset, void *dst, u32 dst_len)
 {
 	int rc = VMM_OK;
 	u32 regval = 0x0;
-	struct sp804_state * s = edev->priv;
+	struct sp804_state *s = edev->priv;
 
 	if (offset < 0x20) {
 		rc = sp804_timer_read(&s->t[0], offset & ~0x3, &regval);
 	} else {
-		rc = sp804_timer_read(&s->t[1], (offset & ~0x3) - 0x20, &regval);
+		rc = sp804_timer_read(&s->t[1], (offset & ~0x3) - 0x20,
+				      &regval);
 	}
 
 	if (!rc) {
 		regval = (regval >> ((offset & 0x3) * 8));
 		switch (dst_len) {
 		case 1:
-			((u8 *)dst)[0] = regval & 0xFF;
+			((u8 *) dst)[0] = regval & 0xFF;
 			break;
 		case 2:
-			((u8 *)dst)[0] = regval & 0xFF;
-			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
+			((u8 *) dst)[0] = regval & 0xFF;
+			((u8 *) dst)[1] = (regval >> 8) & 0xFF;
 			break;
 		case 4:
-			((u8 *)dst)[0] = regval & 0xFF;
-			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
-			((u8 *)dst)[2] = (regval >> 16) & 0xFF;
-			((u8 *)dst)[3] = (regval >> 24) & 0xFF;
+			((u8 *) dst)[0] = regval & 0xFF;
+			((u8 *) dst)[1] = (regval >> 8) & 0xFF;
+			((u8 *) dst)[2] = (regval >> 16) & 0xFF;
+			((u8 *) dst)[3] = (regval >> 24) & 0xFF;
 			break;
 		default:
 			rc = VMM_EFAIL;
@@ -404,30 +441,29 @@ static int sp804_emulator_read(vmm_emudev_t *edev,
 	return rc;
 }
 
-static int sp804_emulator_write(vmm_emudev_t *edev,
-				physical_addr_t offset, 
-				void *src, u32 src_len)
+static int sp804_emulator_write(vmm_emudev_t * edev,
+				physical_addr_t offset, void *src, u32 src_len)
 {
 	int rc = VMM_OK, i;
 	u32 regmask = 0x0, regval = 0x0;
-	struct sp804_state * s = edev->priv;
+	struct sp804_state *s = edev->priv;
 
 	switch (src_len) {
 	case 1:
 		regmask = 0xFFFFFF00;
-		regval = ((u8 *)src)[0];
+		regval = ((u8 *) src)[0];
 		break;
 	case 2:
 		regmask = 0xFFFF0000;
-		regval = ((u8 *)src)[0];
-		regval |= (((u8 *)src)[1] << 8);
+		regval = ((u8 *) src)[0];
+		regval |= (((u8 *) src)[1] << 8);
 		break;
 	case 4:
 		regmask = 0x00000000;
-		regval = ((u8 *)src)[0];
-		regval |= (((u8 *)src)[1] << 8);
-		regval |= (((u8 *)src)[2] << 16);
-		regval |= (((u8 *)src)[3] << 24);
+		regval = ((u8 *) src)[0];
+		regval |= (((u8 *) src)[1] << 8);
+		regval |= (((u8 *) src)[2] << 16);
+		regval |= (((u8 *) src)[3] << 24);
 		break;
 	default:
 		return VMM_EFAIL;
@@ -439,25 +475,21 @@ static int sp804_emulator_write(vmm_emudev_t *edev,
 	}
 	regval = (regval << ((offset & 0x3) * 8));
 
-	if (!rc) {
-		if (offset < 0x20) {
-			rc = sp804_timer_write(&s->t[0], 
-					       offset & ~0x3, 
-					       regmask, regval);
-		} else {
-			rc = sp804_timer_write(&s->t[1], 
-					       (offset & ~0x3) - 0x20, 
-					       regmask, regval);
-		}
+	if (offset < 0x20) {
+		rc = sp804_timer_write(&s->t[0],
+				       offset & ~0x3, regmask, regval);
+	} else {
+		rc = sp804_timer_write(&s->t[1],
+				       (offset & ~0x3) - 0x20, regmask, regval);
 	}
 
 	return rc;
 }
 
-static int sp804_emulator_reset(vmm_emudev_t *edev)
+static int sp804_emulator_reset(vmm_emudev_t * edev)
 {
 	int rc;
-	struct sp804_state * s = edev->priv;
+	struct sp804_state *s = edev->priv;
 
 	rc = sp804_timer_reset(&s->t[0]);
 	if (rc) {
@@ -471,15 +503,14 @@ static int sp804_emulator_reset(vmm_emudev_t *edev)
 	return VMM_OK;
 }
 
-static int sp804_emulator_probe(vmm_guest_t *guest,
-				vmm_emudev_t *edev,
-				const vmm_emuid_t *eid)
+static int sp804_emulator_probe(vmm_guest_t * guest,
+				vmm_emudev_t * edev, const vmm_emuid_t * eid)
 {
-	int rc = VMM_OK; 
+	int rc = VMM_OK;
 	u32 irq;
 	char tname[32];
 	const char *attr;
-	struct sp804_state * s;
+	struct sp804_state *s;
 
 	s = vmm_malloc(sizeof(struct sp804_state));
 	if (!s) {
@@ -490,7 +521,7 @@ static int sp804_emulator_probe(vmm_guest_t *guest,
 
 	attr = vmm_devtree_attrval(edev->node, "irq");
 	if (attr) {
-		irq = *((u32 *)attr);
+		irq = *((u32 *) attr);
 	} else {
 		rc = VMM_EFAIL;
 		goto sp804_emulator_probe_freestate_fail;
@@ -502,6 +533,7 @@ static int sp804_emulator_probe(vmm_guest_t *guest,
 	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPARATOR_STRING);
 	vmm_strcat(tname, edev->node->name);
 	vmm_strcat(tname, "(0)");
+	s->t[0].state = s;
 	if ((rc = sp804_timer_init(&s->t[0], tname, guest, 1000000, irq))) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
@@ -509,6 +541,7 @@ static int sp804_emulator_probe(vmm_guest_t *guest,
 	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPARATOR_STRING);
 	vmm_strcat(tname, edev->node->name);
 	vmm_strcat(tname, "(1)");
+	s->t[1].state = s;
 	if ((rc = sp804_timer_init(&s->t[1], tname, guest, 1000000, irq))) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
@@ -517,15 +550,15 @@ static int sp804_emulator_probe(vmm_guest_t *guest,
 
 	goto sp804_emulator_probe_done;
 
-sp804_emulator_probe_freestate_fail:
+ sp804_emulator_probe_freestate_fail:
 	vmm_free(s);
-sp804_emulator_probe_done:
+ sp804_emulator_probe_done:
 	return rc;
 }
 
-static int sp804_emulator_remove(vmm_emudev_t *edev)
+static int sp804_emulator_remove(vmm_emudev_t * edev)
 {
-	struct sp804_state * s = edev->priv;
+	struct sp804_state *s = edev->priv;
 
 	vmm_free(s);
 
@@ -533,9 +566,9 @@ static int sp804_emulator_remove(vmm_emudev_t *edev)
 }
 
 static vmm_emuid_t sp804_emuid_table[] = {
-	{ .type = "timer", 
-	  .compatible = "primecell,sp804", 
-	},
+	{.type = "timer",
+	 .compatible = "primecell,sp804",
+	 },
 	{ /* end of list */ },
 };
 
@@ -559,9 +592,9 @@ static void sp804_emulator_exit(void)
 	vmm_devemu_unregister_emulator(&sp804_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
-			MODULE_AUTHOR, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
-			MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_VARID,
+		   MODULE_NAME,
+		   MODULE_AUTHOR,
+		   MODULE_IPRIORITY,
+		   MODULE_INIT,
+		   MODULE_EXIT);
