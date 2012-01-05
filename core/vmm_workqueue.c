@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
+#include <vmm_scheduler.h>
 #include <vmm_workqueue.h>
 
 struct vmm_workqueue_ctrl {
@@ -166,7 +167,7 @@ u32 vmm_workqueue_count(void)
 
 int vmm_workqueue_flush(vmm_workqueue_t * wq)
 {
-	int i, rc;
+	int rc;
 
 	if (!wq) {
 		return VMM_EFAIL;
@@ -177,8 +178,8 @@ int vmm_workqueue_flush(vmm_workqueue_t * wq)
 	}
 
 	while (!list_empty(&wq->work_list)) {
-		/* FIXME: Replace this with appropriate soft delay APIs */
-		for (i = 0; i < 1000; i++);
+		/* We release the processor to let the wq thread do its job */
+		vmm_scheduler_yield();
 	}
 
 	return VMM_OK;
