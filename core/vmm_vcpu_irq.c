@@ -108,11 +108,12 @@ void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason)
 		vcpu->irqs->reason[irq_no] = reason;
 		vcpu->irqs->assert[irq_no] = TRUE;
 		vcpu->irqs->assert_count++;
-		/* If vcpu was waiting for irq then resume it. */
-		if (vcpu->irqs->wait_for_irq) {
-			vcpu->irqs->wait_for_irq = FALSE;
-			vmm_manager_vcpu_resume(vcpu);
-		}
+	}
+
+	/* If vcpu was waiting for irq then resume it. */
+	if (vcpu->irqs->wait_for_irq) {
+		vmm_manager_vcpu_resume(vcpu);
+		vcpu->irqs->wait_for_irq = FALSE;
 	}
 }
 
@@ -141,11 +142,7 @@ int vmm_vcpu_irq_wait(vmm_vcpu_t *vcpu)
 		return VMM_EFAIL;
 	}
 
-	/* If already waiting for irq then return failure */
-	if (vcpu->irqs->wait_for_irq) {
-		return VMM_EFAIL;
-	}
-
+	/* Pause VCPU only if required */
 	if (!(rc = vmm_manager_vcpu_pause(vcpu))) {
 		/* Set wait for irq flag */
 		vcpu->irqs->wait_for_irq = TRUE;
