@@ -59,6 +59,8 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("\n");
 	arm_puts("hello       - Say hello to ARM test code\n");
 	arm_puts("\n");
+	arm_puts("wfi_test    - Run wait for irq instruction test for ARM test code\n");
+	arm_puts("\n");
 	arm_puts("mmu_setup   - Setup MMU for ARM test code\n");
 	arm_puts("\n");
 	arm_puts("mmu_state   - MMU is enabled/disabled for ARM test code\n");
@@ -107,6 +109,13 @@ void arm_cmd_hi(int argc, char **argv)
 void arm_cmd_hello(int argc, char **argv)
 {
 	arm_puts("hi\n");
+}
+
+void arm_cmd_wfi_test(int argc, char **argv)
+{
+	arm_puts("Executing WFI instruction\n");
+	asm ("wfi\n");
+	arm_puts("Resumed from WFI instruction\n");
 }
 
 void arm_cmd_mmu_setup(int argc, char **argv)
@@ -440,6 +449,8 @@ void arm_main(void)
 			arm_cmd_hi(argc, argv);
 		} else if (arm_strcmp(argv[0], "hello") == 0) {
 			arm_cmd_hello(argc, argv);
+		} else if (arm_strcmp(argv[0], "wfi_test") == 0) {
+			arm_cmd_wfi_test(argc, argv);
 		} else if (arm_strcmp(argv[0], "mmu_setup") == 0) {
 			arm_cmd_mmu_setup(argc, argv);
 		} else if (arm_strcmp(argv[0], "mmu_state") == 0) {
