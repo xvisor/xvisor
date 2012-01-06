@@ -148,7 +148,9 @@ int vmm_scheduler_notify_state_change(vmm_vcpu_t * vcpu, u32 new_state)
 	case VMM_VCPU_STATE_HALTED:
 		/* Expire timer event if current VCPU is paused or halted */
 		if(sched.current_vcpu == vcpu) {
-			vmm_timer_event_expire(sched.ev);
+			if (!vcpu->is_normal) {
+				vmm_timer_event_expire(sched.ev);
+			}
 		} else {
 			/* Make sure VCPU is not in a ready queue */
 			if (vcpu->state == VMM_VCPU_STATE_READY) {
