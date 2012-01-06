@@ -33,7 +33,7 @@
 
 #define IDLE_VCPU_STACK_SZ CONFIG_THREAD_STACK_SIZE
 #define IDLE_VCPU_PRIORITY VMM_VCPU_MIN_PRIORITY
-#define IDLE_VCPU_TIMESLICE (VMM_VCPU_DEF_TIME_SLICE * 1000)
+#define IDLE_VCPU_TIMESLICE (VMM_VCPU_DEF_TIME_SLICE)
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
@@ -186,7 +186,6 @@ void vmm_scheduler_irq_exit(vmm_user_regs_t * regs)
 	    sched.yield_on_irq_exit) {
 		vmm_scheduler_next(sched.ev, regs);
 		sched.yield_on_irq_exit = FALSE;
-		return;
 	}
 
 	/* VCPU irq processing */
