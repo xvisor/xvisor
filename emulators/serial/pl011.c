@@ -267,7 +267,7 @@ static int pl011_vserial_send(vmm_vserial_t *vser, u8 data)
 	if (s->cr & 0x10 || rd_count == s->fifo_sz) {
 		s->flags |= PL011_FLAG_RXFF;
 	}
-	if (rd_count == s->rd_trig) {
+	if (rd_count >= s->rd_trig) {
 		s->int_level |= PL011_INT_RX;
 		pl011_set_irq(s);
 	}
