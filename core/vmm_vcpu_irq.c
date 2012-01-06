@@ -33,9 +33,8 @@
 void vmm_vcpu_irq_process(vmm_user_regs_t * regs)
 {
 	int irq_no;
-	u32 i, irq_prio, irq_reas, tmp_prio;
+	u32 i, irq_prio, irq_reas, tmp_prio, irq_count;
 	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
-	u32 irq_count = vmm_vcpu_irq_count(vcpu);
 
 	/* Sanity Checks */
 	if (vcpu == NULL) {
@@ -46,6 +45,9 @@ void vmm_vcpu_irq_process(vmm_user_regs_t * regs)
 	if (!vcpu->is_normal) {
 		return;
 	}
+
+	/* Get irq count */
+	irq_count = vmm_vcpu_irq_count(vcpu);
 
 	/* Find the irq number to process */
 	irq_no = -1;
@@ -82,13 +84,10 @@ void vmm_vcpu_irq_process(vmm_user_regs_t * regs)
 
 void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason)
 {
-	u32 irq_count = vmm_vcpu_irq_count(vcpu);
+	u32 irq_count;
 
 	/* Sanity Checks */
 	if (vcpu == NULL) {
-		return;
-	}
-	if (irq_count <= irq_no) {
 		return;
 	}
 
@@ -97,18 +96,30 @@ void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason)
 		return;
 	}
 
+	/* Get irq count */
+	irq_count = vmm_vcpu_irq_count(vcpu);
+
+	if (irq_count <= irq_no) {
+		return;
+	}
+
 	/* Assert the irq */
 	if (!vcpu->irqs->assert[irq_no]) {
 		vcpu->irqs->reason[irq_no] = reason;
 		vcpu->irqs->assert[irq_no] = TRUE;
 		vcpu->irqs->assert_count++;
+		/* If vcpu was waiting for irq then resume it. */
+		if (vcpu->irqs->wait_for_irq) {
+			vcpu->irqs->wait_for_irq = FALSE;
+			vmm_manager_vcpu_resume(vcpu);
+		}
 	}
 }
 
 void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu)
 {
 	/* Sanity check */
-	if (!vcpu) {
+	if (vcpu == NULL) {
 		return;
 	}
 
@@ -121,9 +132,36 @@ void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu)
 	vcpu->irqs->deassert_count++;
 }
 
+int vmm_vcpu_irq_wait(vmm_vcpu_t *vcpu)
+{
+	int rc = VMM_OK;
+
+	/* Sanity Checks */
+	if ((vcpu == NULL) || !vcpu->is_normal) {
+		return VMM_EFAIL;
+	}
+
+	/* If already waiting for irq then return failure */
+	if (vcpu->irqs->wait_for_irq) {
+		return VMM_EFAIL;
+	}
+
+	if (!(rc = vmm_manager_vcpu_pause(vcpu))) {
+		/* Set wait for irq flag */
+		vcpu->irqs->wait_for_irq = TRUE;
+	}
+
+	return rc;
+}
+
 int vmm_vcpu_irq_init(vmm_vcpu_t *vcpu)
 {
 	u32 ite, irq_count;
+
+	/* Sanity Checks */
+	if (vcpu == NULL) {
+		return VMM_EFAIL;
+	}
 
 	/* For Orphan VCPU just return */
 	if (!vcpu->is_normal) {
@@ -156,6 +194,9 @@ int vmm_vcpu_irq_init(vmm_vcpu_t *vcpu)
 		vcpu->irqs->reason[ite] = 0;
 		vcpu->irqs->assert[ite] = FALSE;
 	}
+
+	/* Clear wait for irq flag */
+	vcpu->irqs->wait_for_irq = FALSE;
 
 	return VMM_OK;
 }

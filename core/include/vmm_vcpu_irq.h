@@ -36,6 +36,9 @@ void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason);
 /** Deassert active irq of given vcpu */
 void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu);
 
+/** Wait for irq on given vcpu */
+int vmm_vcpu_irq_wait(vmm_vcpu_t *vcpu);
+
 /** Intialize interrupts for given vcpu */
 int vmm_vcpu_irq_init(vmm_vcpu_t *vcpu);
 

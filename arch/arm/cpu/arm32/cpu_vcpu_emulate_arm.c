@@ -428,6 +428,22 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 	return VMM_OK;
 }
 
+/** Emulate 'wfi' hypercall */
+static int arm_hypercall_wfi(u32 id, u32 subid, u32 inst,
+			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+{
+	register u32 cond;
+	arm_funcstat_start(vcpu, ARM_FUNCSTAT_WFI);
+	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
+	if (arm_condition_passed(cond, regs)) {
+		/* Wait for irq on this vcpu */
+		vmm_vcpu_irq_wait(vcpu);
+	}
+	regs->pc += 4;
+	arm_funcstat_end(vcpu, ARM_FUNCSTAT_WFI);
+	return VMM_OK;
+}
+
 /** Emulate 'srs' hypercall */
 static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
@@ -847,6 +863,9 @@ static int arm_instgrp_hypercall(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * 
 			break;
 		case ARM_HYPERCALL_SRS_SUBID:
 			return arm_hypercall_srs(id, subid, inst, regs, vcpu);
+			break;
+		case ARM_HYPERCALL_WFI_SUBID:
+			return arm_hypercall_wfi(id, subid, inst, regs, vcpu);
 			break;
 		default:
 			break;

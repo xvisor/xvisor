@@ -77,6 +77,7 @@ struct vmm_vcpu_irqs {
 	u64 assert_count;
 	u64 execute_count;
 	u64 deassert_count;
+	bool wait_for_irq;
 };
 
 struct vmm_guest {
