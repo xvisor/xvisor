@@ -23,6 +23,7 @@
  */
 
 #include <arm_string.h>
+#include <arm_math.h>
 
 size_t arm_strlen(const char *s)
 {
@@ -101,6 +102,39 @@ void arm_int2str(char * dst, int src)
 	}
 
 	dst[count] = '\0';
+}
+
+void arm_ulonglong2str(char *dst, unsigned long long src)
+{
+	unsigned long long val, remainder;
+        int count = 0, pos = 0;
+        static const char intchars[] = "0123456789";
+
+        val = src;
+        while (val) {
+                count++;
+                val = do_udiv64(val, 10, &remainder);
+        }
+        if (src < 0) {
+                count++;
+        }
+
+        val = (src < 0) ? -src : src;
+        while (val) {
+                val = do_udiv64(val, 10, &remainder);
+                dst[count - pos - 1] = intchars[remainder];
+                pos++;
+        }
+        if (src < 0) {
+                dst[0] = '-';
+        }
+
+        if (count == 0) {
+                dst[count] = '0';
+                count++;
+        }
+
+        dst[count] = '\0';
 }
 
 unsigned int arm_hexstr2uint(char * src)

@@ -60,6 +60,8 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("hello       - Say hello to ARM test code\n");
 	arm_puts("\n");
 	arm_puts("wfi_test    - Run wait for irq instruction test for ARM test code\n");
+	arm_puts("              Usage: wfi_test [<msecs>]\n");
+	arm_puts("              <msecs>  = delay in milliseconds to wait for\n");
 	arm_puts("\n");
 	arm_puts("mmu_setup   - Setup MMU for ARM test code\n");
 	arm_puts("\n");
@@ -113,9 +115,29 @@ void arm_cmd_hello(int argc, char **argv)
 
 void arm_cmd_wfi_test(int argc, char **argv)
 {
+	u64 tstamp;
+	char time[256];
+	int delay = 1000;
+
+	if (argc > 1) {
+		delay = arm_str2int(argv[1]);
+	}
+
 	arm_puts("Executing WFI instruction\n");
+	arm_timer_disable();
+	arm_timer_change_period(delay*1000);
+	arm_timer_enable();
+	tstamp = arm_timer_timestamp();
 	asm ("wfi\n");
+	tstamp = arm_timer_timestamp() - tstamp;
+	arm_timer_disable();
+	arm_timer_change_period(10000);
+	arm_timer_enable();
 	arm_puts("Resumed from WFI instruction\n");
+	arm_puts("Time spent in WFI: ");
+	arm_ulonglong2str(time, tstamp);
+	arm_puts(time);
+	arm_puts(" nsecs\n");
 }
 
 void arm_cmd_mmu_setup(int argc, char **argv)

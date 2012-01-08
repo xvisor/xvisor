@@ -52,5 +52,6 @@ u64 arm_timer_irqcount(void);
 u64 arm_timer_irqdelay(void);
 u64 arm_timer_timestamp(void);
 int arm_timer_init(u32 usecs, u32 init_irqcount, u32 ensel);
+void arm_timer_change_period(u32 usec);
 
 #endif

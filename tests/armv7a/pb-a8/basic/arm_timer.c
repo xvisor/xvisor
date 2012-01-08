@@ -57,6 +57,11 @@ void arm_timer_disable(void)
 	arm_writel(ctrl, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
 }
 
+void arm_timer_change_period(u32 usec)
+{
+        arm_writel(usec, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_LOAD));
+}
+
 void arm_timer_clearirq(void)
 {
 	arm_writel(1, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_INTCLR));
@@ -133,7 +138,7 @@ int arm_timer_init(u32 usecs, u32 init_irqcount, u32 ensel)
 	val &= ~TIMER_CTRL_ENABLE;
 	val |= (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE);
 	arm_writel(val, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
-	arm_writel(usecs, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_LOAD));
+	arm_timer_change_period(usecs);
 
 	/* Setup Timer3 for free running counter */
 	arm_writel(0x0, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_CTRL));
