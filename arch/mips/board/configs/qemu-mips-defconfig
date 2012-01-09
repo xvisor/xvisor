@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.1
-# Thu Dec 22 22:49:24 2011
+# Version: 0.1.1
+# Mon Jan  9 10:36:20 2012
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -32,6 +32,10 @@ CONFIG_VAPOOL_SIZE=8
 # CONFIG_PROFILE is not set
 # CONFIG_SCHEDALGO_RR is not set
 CONFIG_SCHEDALGO_PRR=y
+# CONFIG_TSLICE_1MS is not set
+CONFIG_TSLICE_10MS=y
+# CONFIG_TSLICE_100MS is not set
+CONFIG_TSLICE_MS=10
 CONFIG_IRQ_STACK_SIZE=4096
 CONFIG_THREAD_STACK_SIZE=4096
 CONFIG_HEAP_SIZE=1024

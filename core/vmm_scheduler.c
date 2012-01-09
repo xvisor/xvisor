@@ -33,7 +33,7 @@
 
 #define IDLE_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
 #define IDLE_VCPU_PRIORITY 		VMM_VCPU_MIN_PRIORITY
-#define IDLE_VCPU_TIMESLICE 		(VMM_VCPU_DEF_TIME_SLICE * 1000)
+#define IDLE_VCPU_TIMESLICE 		(VMM_VCPU_DEF_TIME_SLICE * 100)
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
