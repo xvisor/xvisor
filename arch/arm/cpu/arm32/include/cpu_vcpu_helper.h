@@ -25,6 +25,7 @@
 #define _CPU_VCPU_HELPER_H__
 
 #include <vmm_types.h>
+#include <vmm_manager.h>
 
 /* Function to halt VCPU */
 void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs);

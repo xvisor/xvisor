@@ -394,7 +394,7 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 		P = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_P_START);
 		U = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_U_START);
 		W = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_W_START);
-		cpsr = vcpu->sregs->cpsr & CPSR_MODE_MASK;
+		cpsr = arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK;
 		if (cpsr == CPSR_MODE_USER) {
 			arm_unpredictable(regs, vcpu);
 			return VMM_EFAIL;
@@ -461,7 +461,7 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 		mode = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_SRS_MODE_END,
 			     ARM_HYPERCALL_SRS_MODE_START);
-		cpsr = vcpu->sregs->cpsr & CPSR_MODE_MASK;
+		cpsr = arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK;
 		if ((cpsr == CPSR_MODE_USER) ||
 		    (cpsr == CPSR_MODE_SYSTEM)) {
 			arm_unpredictable(regs, vcpu);
@@ -520,7 +520,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			return VMM_EFAIL;
 		}
 		if (arm_condition_passed(cond, regs)) {
-			cpsr = vcpu->sregs->cpsr & CPSR_MODE_MASK;
+			cpsr = arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK;
 			if ((cpsr == CPSR_MODE_USER) ||
 			    (cpsr == CPSR_MODE_SYSTEM)) {
 				arm_unpredictable(regs, vcpu);
@@ -589,7 +589,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			return VMM_EFAIL;
 		}
 		if (arm_condition_passed(cond, regs)) {
-			cpsr = vcpu->sregs->cpsr & CPSR_MODE_MASK;
+			cpsr = arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK;
 			if ((cpsr == CPSR_MODE_USER) ||
 			    (cpsr == CPSR_MODE_SYSTEM)) {
 				arm_unpredictable(regs, vcpu);
@@ -666,7 +666,7 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 	if (arm_condition_passed(cond, regs)) {
 		P = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x2) >> 1;
 		U = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x1);
-		cpsr = vcpu->sregs->cpsr & CPSR_MODE_MASK;
+		cpsr = arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK;
 		if ((cpsr == CPSR_MODE_USER) ||
 		    (cpsr == CPSR_MODE_SYSTEM)) {
 			arm_unpredictable(regs, vcpu);

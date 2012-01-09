@@ -124,9 +124,11 @@ struct vmm_vcpu {
 	u32 reset_count;
 	virtual_addr_t start_pc;
 	virtual_addr_t start_sp;
-	vmm_user_regs_t *uregs;
-	vmm_super_regs_t *sregs;
-	vmm_vcpu_irqs_t *irqs;
+
+	vmm_user_regs_t uregs;
+	void * sregs_priv;
+
+	vmm_vcpu_irqs_t irqs;
 
 	u8 priority; /**< Scheduling Parameter */
 	u32 preempt_count; /**< Scheduling Parameter */

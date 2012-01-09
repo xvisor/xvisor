@@ -146,7 +146,7 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 	new_cpsr |= (new_mode | new_flags);
 	new_cpsr &= ~(CPSR_IT1_MASK | CPSR_IT2_MASK);
 	if (arm_feature(vcpu, ARM_FEATURE_V4T)) {
-		if (vcpu->sregs->cp15.c1_sctlr & (1 << 30)) {
+		if (arm_sregs(vcpu)->cp15.c1_sctlr & (1 << 30)) {
 			new_cpsr |= CPSR_THUMB_ENABLED;
 		} else {
 			new_cpsr &= ~CPSR_THUMB_ENABLED;

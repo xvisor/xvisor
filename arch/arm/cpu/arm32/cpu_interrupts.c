@@ -54,7 +54,7 @@ void do_undef_inst(vmm_user_regs_t * uregs)
 	/* If vcpu priviledge is user then generate exception 
 	 * and return without emulating instruction 
 	 */
-	if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if ((arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 	} else {
 		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
@@ -87,7 +87,7 @@ void do_soft_irq(vmm_user_regs_t * uregs)
 	/* If vcpu priviledge is user then generate exception 
 	 * and return without emulating instruction 
 	 */
-	if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if ((arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_SOFT_IRQ, 0x0);
 	} else {
 		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
@@ -283,8 +283,8 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	case DFSR_FS_PERM_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
 						dfar, fs, dom, wnr, 1);
-		if ((dfar & ~(sizeof(vcpu->sregs->cp15.ovect) - 1)) != 
-						vcpu->sregs->cp15.ovect_base) {
+		if ((dfar & ~(sizeof(arm_sregs(vcpu)->cp15.ovect) - 1)) != 
+						arm_sregs(vcpu)->cp15.ovect_base) {
 			crash_dump = FALSE;
 		}
 		break;

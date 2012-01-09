@@ -149,21 +149,21 @@ struct vmm_user_regs {
 
 typedef struct vmm_user_regs vmm_user_regs_t;
 
-struct cpu_vtlb_entry {
+struct arm_vtlb_entry {
 	u8 valid;
 	cpu_page_t page;
 };
 
-typedef struct cpu_vtlb_entry cpu_vtlb_entry_t;
+typedef struct arm_vtlb_entry arm_vtlb_entry_t;
 
-struct cpu_vtlb {
-	cpu_vtlb_entry_t * table;
+struct arm_vtlb {
+	arm_vtlb_entry_t * table;
 	u32 victim[CPU_VCPU_VTLB_LINE_COUNT];
 };
 
-typedef struct cpu_vtlb cpu_vtlb_t;
+typedef struct arm_vtlb arm_vtlb_t;
 
-struct vmm_super_regs {
+struct arm_super_regs {
 	/* Priviledged CPSR */
 	u32 cpsr;
 	/* Banked Registers */
@@ -198,7 +198,7 @@ struct vmm_super_regs {
 		/* Shadow DACR */
 		u32 dacr;
 		/* Virtual TLB */
-		cpu_vtlb_t vtlb;
+		arm_vtlb_t vtlb;
 		/* Overlapping vector page */
 		u32 ovect[TTBL_L2TBL_SMALL_PAGE_SIZE / 4];
 		u32 ovect_base;
@@ -254,11 +254,14 @@ struct vmm_super_regs {
 
 } __attribute((packed));
 
-typedef struct vmm_super_regs vmm_super_regs_t;
+typedef struct arm_super_regs arm_super_regs_t;
 
-#define arm_cpuid(vcpu) ((vcpu)->sregs->cp15.c0_cpuid)
-#define arm_set_feature(vcpu, feat) ((vcpu)->sregs->features |= (0x1 << (feat)))
-#define arm_feature(vcpu, feat) ((vcpu)->sregs->features & (0x1 << (feat)))
+#define arm_uregs(vcpu)		(&((vcpu)->uregs))
+#define arm_sregs(vcpu)		((arm_super_regs_t *)((vcpu)->sregs_priv))
+
+#define arm_cpuid(vcpu) (arm_sregs(vcpu)->cp15.c0_cpuid)
+#define arm_set_feature(vcpu, feat) (arm_sregs(vcpu)->features |= (0x1 << (feat)))
+#define arm_feature(vcpu, feat) (arm_sregs(vcpu)->features & (0x1 << (feat)))
 
 #ifdef CONFIG_ARM32_FUNCSTATS
 
@@ -266,12 +269,12 @@ typedef struct vmm_super_regs vmm_super_regs_t;
 
 #define arm_funcstat_start(vcpu, funcid)	{ \
 	u64 _time_stamp = vmm_timer_timestamp(); \
-	vcpu->sregs->funcstat[funcid].function_name = __FUNCTION__; \
-	vcpu->sregs->funcstat[funcid].entry_count++
+	arm_sregs(vcpu)->funcstat[funcid].function_name = __FUNCTION__; \
+	arm_sregs(vcpu)->funcstat[funcid].entry_count++
 
 #define arm_funcstat_end(vcpu, funcid) 	  \
-	vcpu->sregs->funcstat[funcid].time += (vmm_timer_timestamp() - _time_stamp); \
-	vcpu->sregs->funcstat[funcid].exit_count++; }
+	arm_sregs(vcpu)->funcstat[funcid].time += (vmm_timer_timestamp() - _time_stamp); \
+	arm_sregs(vcpu)->funcstat[funcid].exit_count++; }
 
 #else
 

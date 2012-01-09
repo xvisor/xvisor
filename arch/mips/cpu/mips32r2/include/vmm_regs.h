@@ -37,7 +37,7 @@ struct vmm_user_regs {
 
 typedef struct vmm_user_regs vmm_user_regs_t;
 
-struct vmm_super_regs {
+struct mips_super_regs {
 	/**
 	 * XXX: We assume that machine doesn't have
 	 * any other coprocessor.
@@ -55,9 +55,12 @@ struct vmm_super_regs {
 
 } __attribute ((packed));
 
-typedef struct vmm_super_regs vmm_super_regs_t;
+typedef struct mips_super_regs mips_super_regs_t;
 
 #define TLB_NOT_IN_HW	((s16)-1)
 #define TLB_FREE	((s16)-1)
+
+#define mips_uregs(vcpu)		(&((vcpu)->uregs))
+#define mips_sregs(vcpu)		((mips_super_regs_t *)((vcpu)->sregs_priv))
 
 #endif

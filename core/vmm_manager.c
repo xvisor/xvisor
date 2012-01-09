@@ -24,7 +24,6 @@
 
 #include <vmm_error.h>
 #include <vmm_string.h>
-#include <vmm_heap.h>
 #include <vmm_cpu.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
@@ -40,7 +39,6 @@ struct vmm_manager_ctrl {
 	bool vcpu_avail_array[CONFIG_MAX_VCPU_COUNT];
 	vmm_guest_t guest_array[CONFIG_MAX_GUEST_COUNT];
 	bool guest_avail_array[CONFIG_MAX_GUEST_COUNT];
-	vmm_user_regs_t user_reg_array[CONFIG_MAX_VCPU_COUNT];
 	struct dlist orphan_vcpu_list;
 	struct dlist guest_list;
 };
@@ -226,8 +224,7 @@ vmm_vcpu_t * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->start_pc = start_pc;
 	vcpu->start_sp = start_sp;
 	vcpu->guest = NULL;
-	vcpu->sregs = NULL;
-	vcpu->irqs = NULL;
+	vcpu->sregs_priv = NULL;
 
 	/* Initialize registers */
 	if (vmm_vcpu_regs_init(vcpu)) {
@@ -598,12 +595,7 @@ vmm_guest_t * vmm_manager_guest_create(vmm_devtree_node_t * gnode)
 			vcpu->start_sp = 0x0;
 		}
 		vcpu->guest = guest;
-		vcpu->sregs = vmm_malloc(sizeof(vmm_super_regs_t));
-		vcpu->irqs = vmm_malloc(sizeof(vmm_vcpu_irqs_t));
-		if (!vcpu->sregs || !vcpu->irqs) {
-			mngr.vcpu_avail_array[vnum] = TRUE;
-			break;
-		}
+		vcpu->sregs_priv = NULL;
 		if (vmm_vcpu_regs_init(vcpu)) {
 			continue;
 		}
@@ -690,7 +682,6 @@ int __init vmm_manager_init(void)
 		mngr.vcpu_array[vnum].node = NULL;
 		mngr.vcpu_array[vnum].is_normal = FALSE;
 		mngr.vcpu_array[vnum].state = VMM_VCPU_STATE_UNKNOWN;
-		mngr.vcpu_array[vnum].uregs = &mngr.user_reg_array[vnum];
 		mngr.vcpu_avail_array[vnum] = TRUE;
 	}
 
