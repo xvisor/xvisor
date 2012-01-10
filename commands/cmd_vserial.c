@@ -53,12 +53,10 @@ struct cmd_vserial_recvcntx {
 	vmm_chardev_t *cdev;
 };
 
-typedef struct cmd_vserial_recvcntx cmd_vserial_recvcntx_t;
-
 void cmd_vserial_recv(vmm_vserial_t *vser, void * priv, u8 ch)
 {
-	cmd_vserial_recvcntx_t * recvcntx;
-	recvcntx = (cmd_vserial_recvcntx_t *)priv;
+	struct cmd_vserial_recvcntx * recvcntx;
+	recvcntx = (struct cmd_vserial_recvcntx *)priv;
 	if (!recvcntx) {
 		return;
 	}
@@ -93,7 +91,7 @@ int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 	char ch;
 	static const char estr[3] = {'\e', 'x', 'q'}; /* estr is escape string. */
 	vmm_vserial_t *vser = vmm_vserial_find(name);
-	cmd_vserial_recvcntx_t recvcntx;
+	struct cmd_vserial_recvcntx recvcntx;
 
 	if (!vser) {
 		vmm_cprintf(cdev, "Failed to find virtual serial port\n");
@@ -147,7 +145,7 @@ int cmd_vserial_dump(vmm_chardev_t *cdev, const char *name, int bcount)
 {
 	int rc = VMM_OK;
 	vmm_vserial_t *vser = vmm_vserial_find(name);
-	cmd_vserial_recvcntx_t recvcntx;
+	struct cmd_vserial_recvcntx recvcntx;
 
 	if (!vser) {
 		vmm_cprintf(cdev, "Failed to find virtual serial port\n");
