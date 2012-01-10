@@ -85,9 +85,7 @@ struct cpu_vcpu_coproc {
 	cpu_coproc_write write;
 };
 
-typedef struct cpu_vcpu_coproc cpu_vcpu_coproc_t;
-
 /** Retrive a coprocessor with given number */
-cpu_vcpu_coproc_t *cpu_vcpu_coproc_get(u32 cpnum);
+struct cpu_vcpu_coproc *cpu_vcpu_coproc_get(u32 cpnum);
 
 #endif /* _CPU_VCPU_COPROC_H */

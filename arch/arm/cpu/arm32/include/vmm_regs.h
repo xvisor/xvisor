@@ -151,17 +151,13 @@ typedef struct vmm_user_regs vmm_user_regs_t;
 
 struct arm_vtlb_entry {
 	u8 valid;
-	cpu_page_t page;
+	struct cpu_page page;
 };
-
-typedef struct arm_vtlb_entry arm_vtlb_entry_t;
 
 struct arm_vtlb {
-	arm_vtlb_entry_t * table;
+	struct arm_vtlb_entry * table;
 	u32 victim[CPU_VCPU_VTLB_LINE_COUNT];
 };
-
-typedef struct arm_vtlb arm_vtlb_t;
 
 struct arm_super_regs {
 	/* Priviledged CPSR */
@@ -194,17 +190,17 @@ struct arm_super_regs {
 	/* System control coprocessor (cp15) */
 	struct {
 		/* Shadow L1 */
-		cpu_l1tbl_t *l1;
+		struct cpu_l1tbl *l1;
 		/* Shadow DACR */
 		u32 dacr;
 		/* Virtual TLB */
-		arm_vtlb_t vtlb;
+		struct arm_vtlb vtlb;
 		/* Overlapping vector page */
 		u32 ovect[TTBL_L2TBL_SMALL_PAGE_SIZE / 4];
 		u32 ovect_base;
 		/* Virtual IO */
 		bool virtio_active;
-		cpu_page_t virtio_page;
+		struct cpu_page virtio_page;
 		/* Coprocessor Registers */
 		u32 c0_cpuid;
 		u32 c0_cachetype;

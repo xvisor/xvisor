@@ -41,27 +41,25 @@
 u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) defl1_mem[TTBL_L1TBL_SIZE];
 
 struct cpu_mmu_ctrl {
-	cpu_l1tbl_t defl1;
+	struct cpu_l1tbl defl1;
 	virtual_addr_t l1_base_va;
 	physical_addr_t l1_base_pa;
-	cpu_l1tbl_t * l1_array;
+	struct cpu_l1tbl * l1_array;
 	u8 * l1_bmap;
 	u32 l1_alloc_count;
 	virtual_addr_t l2_base_va;
 	physical_addr_t l2_base_pa;
-	cpu_l2tbl_t * l2_array;
+	struct cpu_l2tbl * l2_array;
 	u8 * l2_bmap;
 	u32 l2_alloc_count;
 	struct dlist l1tbl_list;
 	struct dlist l2tbl_list;
 };
 
-typedef struct cpu_mmu_ctrl cpu_mmu_ctrl_t;
-
-cpu_mmu_ctrl_t mmuctrl;
+static struct cpu_mmu_ctrl mmuctrl;
 
 /** Find L2 page table at given physical address from L1 page table */
-cpu_l2tbl_t *cpu_mmu_l2tbl_find_tbl_pa(physical_addr_t tbl_pa)
+struct cpu_l2tbl *cpu_mmu_l2tbl_find_tbl_pa(physical_addr_t tbl_pa)
 {
 	u32 tmp = (tbl_pa - mmuctrl.l2_base_pa) >> TTBL_L2TBL_SIZE_SHIFT;
 
@@ -73,7 +71,7 @@ cpu_l2tbl_t *cpu_mmu_l2tbl_find_tbl_pa(physical_addr_t tbl_pa)
 }
 
 /** Check whether a L2 page table is attached or not */
-int cpu_mmu_l2tbl_is_attached(cpu_l2tbl_t * l2)
+int cpu_mmu_l2tbl_is_attached(struct cpu_l2tbl * l2)
 {
 	if (!l2) {
 		return 0;
@@ -82,7 +80,7 @@ int cpu_mmu_l2tbl_is_attached(cpu_l2tbl_t * l2)
 }
 
 /** Detach a L2 page table */
-int cpu_mmu_l2tbl_detach(cpu_l2tbl_t * l2)
+int cpu_mmu_l2tbl_detach(struct cpu_l2tbl * l2)
 {
 	u32 *l1_tte;
 	u32 l1_tte_type;
@@ -115,7 +113,7 @@ int cpu_mmu_l2tbl_detach(cpu_l2tbl_t * l2)
 }
 
 /** Attach a L2 page table to a particular L1 page table */
-int cpu_mmu_l2tbl_attach(cpu_l1tbl_t * l1, cpu_l2tbl_t * l2, u32 new_imp,
+int cpu_mmu_l2tbl_attach(struct cpu_l1tbl * l1, struct cpu_l2tbl * l2, u32 new_imp,
 			 u32 new_domain, virtual_addr_t new_map_va, bool force)
 {
 	int rc;
@@ -165,13 +163,13 @@ int cpu_mmu_l2tbl_attach(cpu_l1tbl_t * l1, cpu_l2tbl_t * l2, u32 new_imp,
 }
 
 /** Allocate a L2 page table of given type */
-cpu_l2tbl_t *cpu_mmu_l2tbl_alloc(void)
+struct cpu_l2tbl *cpu_mmu_l2tbl_alloc(void)
 {
 	u32 i;
-	cpu_l2tbl_t *l2;
+	struct cpu_l2tbl *l2;
 
 	if (!list_empty(&mmuctrl.l2tbl_list)) {
-		return list_entry(mmuctrl.l2tbl_list.next, cpu_l2tbl_t, head);
+		return list_entry(mmuctrl.l2tbl_list.next, struct cpu_l2tbl, head);
 	}
 
 	if (mmuctrl.l2_alloc_count < TTBL_MAX_L2TBL_COUNT) {
@@ -202,7 +200,7 @@ cpu_l2tbl_t *cpu_mmu_l2tbl_alloc(void)
 }
 
 /** Free a L2 page table */
-int cpu_mmu_l2tbl_free(cpu_l2tbl_t * l2)
+int cpu_mmu_l2tbl_free(struct cpu_l2tbl * l2)
 {
 	int rc;
 
@@ -226,7 +224,7 @@ int cpu_mmu_l2tbl_free(cpu_l2tbl_t * l2)
 }
 
 /** Find L1 page table at given physical address */
-cpu_l1tbl_t *cpu_mmu_l1tbl_find_tbl_pa(physical_addr_t tbl_pa)
+struct cpu_l1tbl *cpu_mmu_l1tbl_find_tbl_pa(physical_addr_t tbl_pa)
 {
 	u32 tmp;
 
@@ -260,14 +258,14 @@ u32 cpu_mmu_best_page_size(virtual_addr_t va, physical_addr_t pa, u32 availsz)
 	return TTBL_L2TBL_SMALL_PAGE_SIZE;
 }
 
-int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
+int cpu_mmu_get_page(struct cpu_l1tbl * l1, virtual_addr_t va, struct cpu_page * pg)
 {
 	int ret = VMM_EFAIL;
 	u32 *l1_tte, *l2_tte;
 	u32 l1_tte_type, l1_sec_type;
 	physical_addr_t l2base;
-	cpu_l2tbl_t *l2;
-	cpu_page_t r;
+	struct cpu_l2tbl *l2;
+	struct cpu_page r;
 
 	if (!l1) {
 		return VMM_EFAIL;
@@ -283,7 +281,7 @@ int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
 
 	switch (l1_tte_type) {
 	case TTBL_L1TBL_TTE_TYPE_FAULT:
-		vmm_memset(pg, 0, sizeof(cpu_page_t));
+		vmm_memset(pg, 0, sizeof(struct cpu_page));
 		break;
 	case TTBL_L1TBL_TTE_TYPE_SECTION:
 		pg->va = va & TTBL_L1TBL_TTE_OFFSET_MASK;
@@ -373,7 +371,7 @@ int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
 		}
 		break;
 	default:
-		vmm_memset(pg, 0, sizeof(cpu_page_t));
+		vmm_memset(pg, 0, sizeof(struct cpu_page));
 		ret = VMM_ENOTAVAIL;
 		break;
 	};
@@ -381,14 +379,14 @@ int cpu_mmu_get_page(cpu_l1tbl_t * l1, virtual_addr_t va, cpu_page_t * pg)
 	return ret;
 }
 
-int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
+int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 {
 	int ret = VMM_EFAIL;
 	u32 ite, *l1_tte, *l2_tte;
 	u32 l1_tte_type, l1_sec_type, found = 0;
 	physical_addr_t l2base, pgpa, chkpa;
 	virtual_size_t chksz;
-	cpu_l2tbl_t *l2 = NULL;
+	struct cpu_l2tbl *l2 = NULL;
 
 	if (!l1 || !pg) {
 		return ret;
@@ -504,7 +502,7 @@ int cpu_mmu_unmap_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 	return ret;
 }
 
-int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
+int cpu_mmu_map_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 {
 	int rc = VMM_OK;
 	u32 *l1_tte, *l2_tte;
@@ -512,8 +510,8 @@ int cpu_mmu_map_page(cpu_l1tbl_t * l1, cpu_page_t * pg)
 	virtual_addr_t pgva;
 	virtual_size_t pgsz, minpgsz;
 	physical_addr_t l2base;
-	cpu_page_t upg;
-	cpu_l2tbl_t *l2;
+	struct cpu_page upg;
+	struct cpu_l2tbl *l2;
 
 	if (!l1 || !pg) {
 		rc = VMM_EFAIL;
@@ -669,13 +667,13 @@ mmu_map_return:
 	return rc;
 }
 
-static int cpu_mmu_split_reserved_page(cpu_page_t *pg, virtual_size_t rsize)
+static int cpu_mmu_split_reserved_page(struct cpu_page *pg, virtual_size_t rsize)
 {
 	int rc = VMM_EFAIL;
 	int i, count;
 	u32 *l2_tte;
-	cpu_l1tbl_t *l1;
-	cpu_l2tbl_t *l2;
+	struct cpu_l1tbl *l1;
+	struct cpu_l2tbl *l2;
 	virtual_addr_t va;
 	physical_addr_t pa;
 
@@ -759,12 +757,12 @@ error:
 	return rc;
 }
 
-int cpu_mmu_get_reserved_page(virtual_addr_t va, cpu_page_t * pg)
+int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page * pg)
 {
 	return cpu_mmu_get_page(&mmuctrl.defl1, va, pg);
 }
 
-int cpu_mmu_unmap_reserved_page(cpu_page_t * pg)
+int cpu_mmu_unmap_reserved_page(struct cpu_page * pg)
 {
 	int rc;
 
@@ -779,7 +777,7 @@ int cpu_mmu_unmap_reserved_page(cpu_page_t * pg)
 	return VMM_OK;
 }
 
-int cpu_mmu_map_reserved_page(cpu_page_t * pg)
+int cpu_mmu_map_reserved_page(struct cpu_page * pg)
 {
 	int rc;
 
@@ -794,12 +792,12 @@ int cpu_mmu_map_reserved_page(cpu_page_t * pg)
 	return VMM_OK;
 }
 
-cpu_l1tbl_t *cpu_mmu_l1tbl_alloc(void)
+struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 {
 	u32 i, *nl1_tte;
-	cpu_l1tbl_t *nl1 = NULL;
+	struct cpu_l1tbl *nl1 = NULL;
 	struct dlist *le;
-	cpu_l2tbl_t *l2, *nl2;
+	struct cpu_l2tbl *l2, *nl2;
 
 	if (mmuctrl.l1_alloc_count < TTBL_MAX_L1TBL_COUNT) {
 		for (i = 0; i < TTBL_MAX_L1TBL_COUNT; i++) {
@@ -826,7 +824,7 @@ cpu_l1tbl_t *cpu_mmu_l1tbl_alloc(void)
 	nl1->tte_cnt = mmuctrl.defl1.tte_cnt;
 
 	list_for_each(le, &mmuctrl.defl1.l2tbl_list) {
-		l2 = list_entry(le, cpu_l2tbl_t, head);
+		l2 = list_entry(le, struct cpu_l2tbl, head);
 		nl1_tte = (u32 *) (nl1->tbl_va +
 			  ((l2->map_va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 		*nl1_tte = 0x0;
@@ -853,7 +851,7 @@ l1tbl_alloc_fail:
 	if (nl1) {
 		while (!list_empty(&nl1->l2tbl_list)) {
 			le = list_pop(&nl1->l2tbl_list);
-			nl2 = list_entry(le, cpu_l2tbl_t, head);
+			nl2 = list_entry(le, struct cpu_l2tbl, head);
 			cpu_mmu_l2tbl_free(nl2);
 		}
 		mmuctrl.l1_bmap[nl1->l1_num] = 0;
@@ -863,10 +861,10 @@ l1tbl_alloc_fail:
 	return NULL;
 }
 
-int cpu_mmu_l1tbl_free(cpu_l1tbl_t * l1)
+int cpu_mmu_l1tbl_free(struct cpu_l1tbl * l1)
 {
 	struct dlist *le;
-	cpu_l2tbl_t *l2;
+	struct cpu_l2tbl *l2;
 
 	if (!l1) {
 		return VMM_EFAIL;
@@ -877,7 +875,7 @@ int cpu_mmu_l1tbl_free(cpu_l1tbl_t * l1)
 
 	while (!list_empty(&l1->l2tbl_list)) {
 		le = list_pop(&l1->l2tbl_list);
-		l2 = list_entry(le, cpu_l2tbl_t, head);
+		l2 = list_entry(le, struct cpu_l2tbl, head);
 		cpu_mmu_l2tbl_free(l2);
 	}
 
@@ -889,12 +887,12 @@ int cpu_mmu_l1tbl_free(cpu_l1tbl_t * l1)
 	return VMM_OK;
 }
 
-cpu_l1tbl_t *cpu_mmu_l1tbl_default(void)
+struct cpu_l1tbl *cpu_mmu_l1tbl_default(void)
 {
 	return &mmuctrl.defl1;
 }
 
-cpu_l1tbl_t *cpu_mmu_l1tbl_current(void)
+struct cpu_l1tbl *cpu_mmu_l1tbl_current(void)
 {
 	u32 ttbr0;
 
@@ -907,7 +905,7 @@ u32 cpu_mmu_physical_read32(physical_addr_t pa)
 {
 	u32 ret = 0x0, ite, found;
 	u32 * l1_tte = NULL;
-	cpu_l1tbl_t * l1 = NULL;
+	struct cpu_l1tbl * l1 = NULL;
 	virtual_addr_t va = 0x0;
 	irq_flags_t flags;
 
@@ -971,7 +969,7 @@ void cpu_mmu_physical_write32(physical_addr_t pa, u32 val)
 {
 	u32 ite, found;
 	u32 * l1_tte = NULL;
-	cpu_l1tbl_t * l1 = NULL;
+	struct cpu_l1tbl * l1 = NULL;
 	virtual_addr_t va = 0x0;
 	irq_flags_t flags;
 
@@ -1047,10 +1045,10 @@ int cpu_mmu_chdacr(u32 new_dacr)
 	return VMM_OK;
 }
 
-int cpu_mmu_chttbr(cpu_l1tbl_t * l1)
+int cpu_mmu_chttbr(struct cpu_l1tbl * l1)
 {
 	u32 sctlr;
-	cpu_l1tbl_t * curr_l1;
+	struct cpu_l1tbl * curr_l1;
 
 	if (!l1) {
 		return VMM_EFAIL;
@@ -1086,7 +1084,7 @@ int vmm_cpu_aspace_map(virtual_addr_t va,
 			physical_addr_t pa,
 			u32 mem_flags)
 {
-	cpu_page_t p;
+	struct cpu_page p;
 	vmm_memset(&p, 0, sizeof(p));
 	p.pa = pa;
 	p.va = va;
@@ -1115,7 +1113,7 @@ int vmm_cpu_aspace_unmap(virtual_addr_t va,
 			 virtual_size_t sz)
 {
 	int rc;
-	cpu_page_t p;
+	struct cpu_page p;
 
 	rc = cpu_mmu_get_reserved_page(va, &p);
 	if (rc) {
@@ -1139,7 +1137,7 @@ int vmm_cpu_aspace_unmap(virtual_addr_t va,
 int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 {
 	int rc = VMM_OK;
-	cpu_page_t p;
+	struct cpu_page p;
 
 	if ((rc = cpu_mmu_get_reserved_page(va, &p))) {
 		return rc;
@@ -1159,7 +1157,7 @@ int __init vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	virtual_addr_t va;
 	virtual_size_t sz;
 	physical_addr_t pa;
-	cpu_page_t respg;
+	struct cpu_page respg;
 
 	/* Reset the memory of MMU control structure */
 	vmm_memset(&mmuctrl, 0, sizeof(mmuctrl));
@@ -1217,14 +1215,14 @@ int __init vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	mmuctrl.l1_bmap = (u8 *)(*resv_va + *resv_sz);
 	*resv_sz += TTBL_MAX_L1TBL_COUNT;
 	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
-	mmuctrl.l1_array = (cpu_l1tbl_t *)(*resv_va + *resv_sz);
-	*resv_sz += sizeof(cpu_l1tbl_t) * TTBL_MAX_L1TBL_COUNT;
+	mmuctrl.l1_array = (struct cpu_l1tbl *)(*resv_va + *resv_sz);
+	*resv_sz += sizeof(struct cpu_l1tbl) * TTBL_MAX_L1TBL_COUNT;
 	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
 	mmuctrl.l2_bmap = (u8 *)(*resv_va + *resv_sz);
 	*resv_sz += TTBL_MAX_L2TBL_COUNT;
 	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
-	mmuctrl.l2_array = (cpu_l2tbl_t *)(*resv_va + *resv_sz);
-	*resv_sz += sizeof(cpu_l2tbl_t) * TTBL_MAX_L2TBL_COUNT;
+	mmuctrl.l2_array = (struct cpu_l2tbl *)(*resv_va + *resv_sz);
+	*resv_sz += sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT;
 	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
 	if (*resv_sz & (TTBL_L1TBL_SIZE - 1)) {
 		*resv_sz += TTBL_L1TBL_SIZE - 
@@ -1270,7 +1268,7 @@ int __init vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	/* Setup up l1 array */
 	vmm_memset(mmuctrl.l1_bmap, 0x0, TTBL_MAX_L1TBL_COUNT);
 	vmm_memset(mmuctrl.l1_array, 0x0, 
-		   sizeof(cpu_l1tbl_t) * TTBL_MAX_L1TBL_COUNT);
+		   sizeof(struct cpu_l1tbl) * TTBL_MAX_L1TBL_COUNT);
 	for (i = 0; i < TTBL_MAX_L1TBL_COUNT; i++) {
 		INIT_LIST_HEAD(&mmuctrl.l1_array[i].head);
 		mmuctrl.l1_array[i].l1_num = i;
@@ -1283,7 +1281,7 @@ int __init vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	/* Setup up l2 array */
 	vmm_memset(mmuctrl.l2_bmap, 0x0, TTBL_MAX_L2TBL_COUNT);
 	vmm_memset(mmuctrl.l2_array, 0x0, 
-		   sizeof(cpu_l2tbl_t) * TTBL_MAX_L2TBL_COUNT);
+		   sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT);
 	for (i = 0; i < TTBL_MAX_L2TBL_COUNT; i++) {
 		INIT_LIST_HEAD(&mmuctrl.l2_array[i].head);
 		mmuctrl.l2_array[i].l2_num = i;

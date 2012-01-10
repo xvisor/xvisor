@@ -110,8 +110,8 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	bool crash_dump = FALSE;
 	u32 ifsr, ifar, fs;
 	vmm_vcpu_t * vcpu;
-	cpu_l1tbl_t * l1;
-	cpu_page_t pg;
+	struct cpu_l1tbl * l1;
+	struct cpu_page pg;
 
 	ifsr = read_ifsr();
 	ifar = read_ifar();
@@ -208,8 +208,8 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	bool crash_dump = FALSE;
 	u32 dfsr, dfar, fs, dom, wnr;
 	vmm_vcpu_t * vcpu;
-	cpu_l1tbl_t * l1;
-	cpu_page_t pg;
+	struct cpu_l1tbl * l1;
+	struct cpu_page pg;
 
 	dfsr = read_dfsr();
 	dfar = read_dfar();
@@ -340,7 +340,7 @@ int __init vmm_cpu_irq_setup(void)
 	extern u32 _start_vect[];
 	u32 *vectors, *vectors_data;
 	u32 vec;
-	cpu_page_t vec_page;
+	struct cpu_page vec_page;
 
 #if defined(CONFIG_ARM32_HIGHVEC)
 	/* Enable high vectors in SCTLR */
@@ -360,7 +360,7 @@ int __init vmm_cpu_irq_setup(void)
 	}
 
 	/* If vectors are not mapped in virtual memory then map them. */
-	vmm_memset(&vec_page, 0, sizeof(cpu_page_t));
+	vmm_memset(&vec_page, 0, sizeof(struct cpu_page));
 	rc = cpu_mmu_get_reserved_page((virtual_addr_t)vectors, &vec_page);
 	if (rc) {
 		rc = vmm_host_ram_alloc(&vec_page.pa, 

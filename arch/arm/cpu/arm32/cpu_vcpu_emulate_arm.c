@@ -3312,7 +3312,7 @@ static int arm_inst_stcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	u32 imm32, offset_addr, address, i, data;
 	bool index, add, wback, uopt;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STCX);
-	cpu_vcpu_coproc_t *cp = NULL;
+	struct cpu_vcpu_coproc *cp = NULL;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst, ARM_INST_STCX_P_END, ARM_INST_STCX_P_START);
 	U = ARM_INST_BITS(inst, ARM_INST_STCX_U_END, ARM_INST_STCX_U_START);
@@ -3378,7 +3378,7 @@ static int arm_inst_ldcx_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	u32 cond, P, U, D, W, Rn, CRd, coproc, imm8;
 	u32 imm32, offset_addr, address, i, data;
 	bool index, add, wback, uopt;
-	cpu_vcpu_coproc_t *cp = NULL;
+	struct cpu_vcpu_coproc *cp = NULL;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDCX_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst, ARM_INST_LDCX_I_P_END, ARM_INST_LDCX_I_P_START);
@@ -3448,7 +3448,7 @@ static int arm_inst_ldcx_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	u32 cond, P, U, D, W, CRd, coproc, imm8;
 	u32 imm32, offset_addr, address, i, data;
 	bool index, add, uopt;
-	cpu_vcpu_coproc_t *cp = NULL;
+	struct cpu_vcpu_coproc *cp = NULL;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDCX_L);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst, ARM_INST_LDCX_L_P_END, ARM_INST_LDCX_L_P_START);
@@ -3510,7 +3510,7 @@ static int arm_inst_mcrrx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
 	u32 cond, Rt2, Rt, coproc, opc1, CRm;
 	u32 data, data2;
-	cpu_vcpu_coproc_t *cp = NULL;
+	struct cpu_vcpu_coproc *cp = NULL;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MCRRX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rt2 = ARM_INST_BITS(inst,
@@ -3555,7 +3555,7 @@ static int arm_inst_mrrcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
 	u32 cond, Rt2, Rt, coproc, opc1, CRm;
 	u32 data, data2;
-	cpu_vcpu_coproc_t *cp = NULL;
+	struct cpu_vcpu_coproc *cp = NULL;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MRRCX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rt2 = ARM_INST_BITS(inst,
@@ -3601,7 +3601,7 @@ static int arm_inst_mrrcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 static int arm_inst_cdpx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
 	u32 cond, opc1, opc2, coproc, CRd, CRn, CRm;
-	cpu_vcpu_coproc_t *cp = NULL;
+	struct cpu_vcpu_coproc *cp = NULL;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_CDPX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	opc1 = ARM_INST_BITS(inst, 
@@ -3638,7 +3638,7 @@ static int arm_inst_mcrx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
 	u32 cond, opc1, opc2, coproc, Rt, CRn, CRm;
 	u32 data;
-	cpu_vcpu_coproc_t *cp = NULL;
+	struct cpu_vcpu_coproc *cp = NULL;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MCRX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	opc1 = ARM_INST_BITS(inst, 
@@ -3676,7 +3676,7 @@ static int arm_inst_mrcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 {
 	u32 cond, opc1, opc2, coproc, Rt, CRn, CRm;
 	u32 data;
-	cpu_vcpu_coproc_t *cp = NULL;
+	struct cpu_vcpu_coproc *cp = NULL;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MRCX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	opc1 = ARM_INST_BITS(inst, 
