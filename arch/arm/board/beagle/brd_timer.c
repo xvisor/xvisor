@@ -42,7 +42,7 @@
 #define BEAGLE_CLK_SRC_GPT	1 
 #endif
 
-omap3_gpt_cfg_t beagle_gpt_cfg[] = {
+struct omap3_gpt_cfg beagle_gpt_cfg[] = {
 	{
 		.base_pa =	OMAP3_GPT1_BASE,
 		.cm_domain =	OMAP3_WKUP_CM,
@@ -111,7 +111,7 @@ u32 vmm_cpu_clocksource_shift(void)
 
 int vmm_cpu_clocksource_init(void)
 {
-	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(omap3_gpt_cfg_t), 
+	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct omap3_gpt_cfg), 
 			beagle_gpt_cfg);
 	omap3_gpt_instance_init(BEAGLE_CLK_SRC_GPT, OMAP3_GLOBAL_REG_PRM, NULL);
 	omap3_gpt_continuous(BEAGLE_CLK_SRC_GPT);
@@ -178,7 +178,7 @@ int vmm_cpu_clockevent_init(void)
 {
 	int rc = VMM_OK;
 
-	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(omap3_gpt_cfg_t), 
+	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct omap3_gpt_cfg), 
 			beagle_gpt_cfg);
 
 	rc = omap3_gpt_instance_init(BEAGLE_CLK_EVENT_GPT, OMAP3_GLOBAL_REG_PRM,

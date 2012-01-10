@@ -40,7 +40,7 @@
 #include <omap3/prcm.h>
 #include <omap3/s32k-timer.h>
 
-static omap3_gpt_cfg_t *omap3_gpt_config = NULL;
+static struct omap3_gpt_cfg *omap3_gpt_config = NULL;
 static int omap3_sys_clk_div = 0;
 
 static void omap3_gpt_write(u32 gpt_num, u32 reg, u32 val)
@@ -238,7 +238,7 @@ int omap3_gpt_instance_init(u32 gpt_num, u32 prm_domain,
 	return VMM_OK;
 }
 
-int omap3_gpt_global_init(u32 gpt_count, omap3_gpt_cfg_t *cfg)
+int omap3_gpt_global_init(u32 gpt_count, struct omap3_gpt_cfg *cfg)
 {
 	int i;
 	if(!omap3_gpt_config) {
