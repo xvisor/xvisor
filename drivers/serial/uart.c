@@ -47,8 +47,6 @@ struct uart_port {
 	u32 reg_align;
 };
 
-typedef struct uart_port uart_port_t;
-
 bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align)
 {
 	if (vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & UART_LSR_DR) {
@@ -140,7 +138,7 @@ static u32 uart_read(vmm_chardev_t *cdev,
 		     u8 *dest, size_t offset, size_t len, bool block)
 {
 	u32 i;
-	uart_port_t *port;
+	struct uart_port *port;
 
 	if(!cdev || !dest) {
 		return 0;
@@ -171,7 +169,7 @@ static u32 uart_write(vmm_chardev_t *cdev,
 		      u8 *src, size_t offset, size_t len, bool block)
 {
 	u32 i;
-	uart_port_t *port;
+	struct uart_port *port;
 
 	if(!cdev || !src) {
 		return 0;
@@ -203,7 +201,7 @@ static int uart_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
 	int rc;
 	const char *attr;
 	vmm_chardev_t *cd;
-	uart_port_t *port;
+	struct uart_port *port;
 	
 	cd = vmm_malloc(sizeof(vmm_chardev_t));
 	if(!cd) {
@@ -211,7 +209,7 @@ static int uart_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
 		goto free_nothing;
 	}
 
-	port = vmm_malloc(sizeof(uart_port_t));
+	port = vmm_malloc(sizeof(struct uart_port));
 	if(!port) {
 		rc = VMM_EFAIL;
 		goto free_chardev;

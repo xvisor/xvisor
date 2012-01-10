@@ -180,12 +180,10 @@ struct pl01x_port {
 	u32 irq;
 };
 
-typedef struct pl01x_port pl01x_port_t;
-
 static int pl01x_irq_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
 {
 	unsigned int data;
-	pl01x_port_t *port = (pl01x_port_t *)dev;
+	struct pl01x_port *port = (struct pl01x_port *)dev;
 
 	/* Get masked interrupt status */
 	data = vmm_readl((void*)(port->base + UART_PL011_MIS));
@@ -204,7 +202,7 @@ static int pl01x_irq_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
 	return VMM_OK;
 }
 
-static u8 pl01x_getc_sleepable(pl01x_port_t * port)
+static u8 pl01x_getc_sleepable(struct pl01x_port * port)
 {
 	/* Wait until there is data in the FIFO */
 	if (vmm_readl((void*)(port->base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE) {
@@ -222,7 +220,7 @@ static u32 pl01x_read(vmm_chardev_t *cdev,
 		      u8 *dest, size_t offset, size_t len, bool block)
 {
 	u32 i;
-	pl01x_port_t *port;
+	struct pl01x_port *port;
 
 	if(!cdev || !dest) {
 		return 0;
@@ -260,7 +258,7 @@ static u32 pl01x_write(vmm_chardev_t *cdev,
 		       u8 *src, size_t offset, size_t len, bool block)
 {
 	u32 i;
-	pl01x_port_t *port;
+	struct pl01x_port *port;
 
 	if(!cdev || !src) {
 		return 0;
@@ -292,7 +290,7 @@ static int pl01x_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
 	int rc;
 	const char *attr;
 	vmm_chardev_t *cd;
-	pl01x_port_t *port;
+	struct pl01x_port *port;
 	
 	cd = vmm_malloc(sizeof(vmm_chardev_t));
 	if(!cd) {
@@ -300,7 +298,7 @@ static int pl01x_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
 		goto free_nothing;
 	}
 
-	port = vmm_malloc(sizeof(pl01x_port_t));
+	port = vmm_malloc(sizeof(struct pl01x_port));
 	if(!port) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
