@@ -31,7 +31,7 @@
 #define LIBFDT_DATA32(ptr)	(*((u32*)ptr))
 
 int libfdt_parse_fileinfo(virtual_addr_t fdt_addr, 
-			  fdt_fileinfo_t * fdt)
+			  struct fdt_fileinfo * fdt)
 {
 	struct fdt_header *header;
 
@@ -51,8 +51,8 @@ int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
 
 	/* Compute data location & size */
 	fdt->data_ptr = (char *)fdt_addr;
-	fdt->data_ptr += sizeof(fdt_header_t);
-	fdt->data_ptr += sizeof(fdt_reserve_entry_t);
+	fdt->data_ptr += sizeof(struct fdt_header);
+	fdt->data_ptr += sizeof(struct fdt_reserve_entry);
 	fdt->data_size = header->size_dt_struct;
 
 	/* Compute strings location & size */
@@ -123,7 +123,7 @@ static void libfdt_parse_devtree_recursive(vmm_devtree_node_t * node,
 	return;
 }
 
-int libfdt_parse_devtree(fdt_fileinfo_t * fdt,
+int libfdt_parse_devtree(struct fdt_fileinfo * fdt,
 			 vmm_devtree_node_t ** root,
 			 char **string_buffer, 
 			 size_t * string_buffer_size)
@@ -157,11 +157,11 @@ int libfdt_parse_devtree(fdt_fileinfo_t * fdt,
 	return VMM_OK;
 }
 
-static fdt_node_header_t * libfdt_find_node_recursive(char **data_ptr, 
-						      char *str_buf, 
-						      const char * node_path)
+static struct fdt_node_header * libfdt_find_node_recursive(char **data_ptr, 
+							   char *str_buf, 
+							   const char * node_path)
 {
-	fdt_node_header_t * ret = NULL;
+	struct fdt_node_header * ret = NULL;
 	u32 i, valid, len = 0x0;
 
 	while ((*node_path == ' ') || 
@@ -204,7 +204,7 @@ static fdt_node_header_t * libfdt_find_node_recursive(char **data_ptr,
 
 		if (*node_path == '\0') {
 			*data_ptr -= sizeof(u32);
-			return (fdt_node_header_t *)(*data_ptr);
+			return (struct fdt_node_header *)(*data_ptr);
 		}
 	}
 	*data_ptr += len + 1;
@@ -246,8 +246,8 @@ static fdt_node_header_t * libfdt_find_node_recursive(char **data_ptr,
 	return NULL;
 }
 
-fdt_node_header_t * libfdt_find_node(fdt_fileinfo_t * fdt, 
-				     const char * node_path)
+struct fdt_node_header * libfdt_find_node(struct fdt_fileinfo * fdt, 
+					  const char * node_path)
 {
 	char * data_ptr = NULL;
 
@@ -261,12 +261,12 @@ fdt_node_header_t * libfdt_find_node(fdt_fileinfo_t * fdt,
 	return libfdt_find_node_recursive(&data_ptr, fdt->str_ptr, node_path);
 }
 
-fdt_property_t * libfdt_get_property(fdt_fileinfo_t * fdt, 
-				     fdt_node_header_t * fdt_node, 
-				     const char * property)
+struct fdt_property * libfdt_get_property(struct fdt_fileinfo * fdt, 
+					  struct fdt_node_header * fdt_node, 
+					  const char * property)
 {
 	u32 len = 0x0;
-	fdt_property_t * ret = NULL;
+	struct fdt_property * ret = NULL;
 	char * data_ptr = NULL;
 
 	/* Sanity checks */
@@ -298,7 +298,7 @@ fdt_property_t * libfdt_get_property(fdt_fileinfo_t * fdt,
 		if (!vmm_strcmp(&fdt->str_ptr[LIBFDT_DATA32(data_ptr)], 
 				property)) {
 			data_ptr -= sizeof(u32) * 2;
-			ret = (fdt_property_t *)data_ptr;
+			ret = (struct fdt_property *)data_ptr;
 			break;
 		}
 		data_ptr += sizeof(u32);

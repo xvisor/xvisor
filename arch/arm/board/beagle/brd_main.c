@@ -35,9 +35,9 @@ extern u32 dt_blob_start;
 int vmm_board_ram_start(physical_addr_t * addr)
 {
 	int rc = VMM_OK;
-	fdt_fileinfo_t fdt;
-	fdt_node_header_t * fdt_node;
-	fdt_property_t * prop;
+	struct fdt_fileinfo fdt;
+	struct fdt_node_header * fdt_node;
+	struct fdt_property * prop;
 	
 	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
 	if (rc) {
@@ -66,9 +66,9 @@ int vmm_board_ram_start(physical_addr_t * addr)
 int vmm_board_ram_size(physical_size_t * size)
 {
 	int rc = VMM_OK;
-	fdt_fileinfo_t fdt;
-	fdt_node_header_t * fdt_node;
-	fdt_property_t * prop;
+	struct fdt_fileinfo fdt;
+	struct fdt_node_header * fdt_node;
+	struct fdt_property * prop;
 	
 	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
 	if (rc) {
@@ -98,7 +98,7 @@ int vmm_devtree_populate(vmm_devtree_node_t ** root,
 			 char **string_buffer, size_t * string_buffer_size)
 {
 	int rc = VMM_OK;
-	fdt_fileinfo_t fdt;
+	struct fdt_fileinfo fdt;
 	
 	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
 	if (rc) {

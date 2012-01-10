@@ -62,21 +62,15 @@ struct fdt_header {
 	u32 size_dt_struct;	/* size of the structure block */
 };
 
-typedef struct fdt_header fdt_header_t;
-
 struct fdt_reserve_entry {
 	u64 address;
 	u64 size;
 };
 
-typedef struct fdt_reserve_entry fdt_reserve_entry_t;
-
 struct fdt_node_header {
 	u32 tag;
 	char name[0];
 };
-
-typedef struct fdt_node_header fdt_node_header_t;
 
 struct fdt_property {
 	u32 tag;
@@ -84,8 +78,6 @@ struct fdt_property {
 	u32 nameoff;
 	char data[0];
 };
-
-typedef struct fdt_property fdt_property_t;
 
 struct fdt_fileinfo {
 	struct fdt_header * header;
@@ -95,21 +87,19 @@ struct fdt_fileinfo {
 	size_t str_size;
 };
 
-typedef struct fdt_fileinfo fdt_fileinfo_t;
-
 int libfdt_parse_fileinfo(virtual_addr_t fdt_addr, 
-			  fdt_fileinfo_t * fdt);
+			  struct fdt_fileinfo * fdt);
 
-int libfdt_parse_devtree(fdt_fileinfo_t * fdt,
+int libfdt_parse_devtree(struct fdt_fileinfo * fdt,
 			 vmm_devtree_node_t ** root,
 			 char **string_buffer, 
 			 size_t * string_buffer_size);
 
-fdt_node_header_t * libfdt_find_node(fdt_fileinfo_t * fdt, 
-				     const char * node_path);
+struct fdt_node_header * libfdt_find_node(struct fdt_fileinfo * fdt, 
+					  const char * node_path);
 
-fdt_property_t * libfdt_get_property(fdt_fileinfo_t * fdt, 
-				     fdt_node_header_t * fdt_node, 
-				     const char * property);
+struct fdt_property * libfdt_get_property(struct fdt_fileinfo * fdt, 
+					  struct fdt_node_header * fdt_node, 
+					  const char * property);
 
 #endif /* __LIBFDT_H_ */
