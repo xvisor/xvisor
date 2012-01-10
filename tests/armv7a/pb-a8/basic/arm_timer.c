@@ -88,7 +88,7 @@ u64 arm_timer_timestamp(void)
 	return timer_time_stamp;
 }
 
-int arm_timer_irqhndl(u32 irq_no, pt_regs_t * regs)
+int arm_timer_irqhndl(u32 irq_no, struct pt_regs * regs)
 {
 	u64 tstamp = arm_timer_timestamp();
 	if (!timer_irq_tstamp) {

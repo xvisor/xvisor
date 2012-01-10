@@ -26,7 +26,7 @@
 
 #include <arm_types.h>
 
-typedef int (*arm_irq_handler_t) (u32 irq_no, pt_regs_t * regs);
+typedef int (*arm_irq_handler_t) (u32 irq_no, struct pt_regs * regs);
 
 #define CPU_IRQ_NR					8
 

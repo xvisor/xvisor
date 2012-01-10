@@ -64,6 +64,4 @@ struct pt_regs {
 	u32 pc;
 } __attribute ((packed)) ;
 
-typedef struct pt_regs pt_regs_t;
-
 #endif /* __ARM_TYPES_H__ */

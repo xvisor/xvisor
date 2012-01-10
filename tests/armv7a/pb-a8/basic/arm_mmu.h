@@ -27,9 +27,9 @@
 
 #include <arm_types.h>
 
-void arm_mmu_syscall(pt_regs_t *regs);
-void arm_mmu_prefetch_abort(pt_regs_t *regs);
-void arm_mmu_data_abort(pt_regs_t *regs);
+void arm_mmu_syscall(struct pt_regs *regs);
+void arm_mmu_prefetch_abort(struct pt_regs *regs);
+void arm_mmu_data_abort(struct pt_regs *regs);
 void arm_mmu_section_test(u32 * total, u32 * pass, u32 * fail);
 void arm_mmu_page_test(u32 * total, u32 * pass, u32 * fail);
 bool arm_mmu_is_enabled(void);

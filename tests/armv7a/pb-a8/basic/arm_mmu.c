@@ -35,7 +35,7 @@ u32 l2_mapva;
 u32 test_area_pa;
 u32 test_area_size;
 
-void arm_mmu_syscall(pt_regs_t *regs)
+void arm_mmu_syscall(struct pt_regs *regs)
 {
 	u32 inst = 0x0;
 	inst = *((u32 *)regs->pc);
@@ -56,7 +56,7 @@ u32 test_prefetch_abort_fs;
 u32 test_prefetch_abort_far;
 u32 test_prefetch_abort_result;
 
-void arm_mmu_prefetch_abort(pt_regs_t *regs)
+void arm_mmu_prefetch_abort(struct pt_regs *regs)
 {
 	u32 ifsr, ifar, fs;
 
@@ -79,7 +79,7 @@ u32 test_data_abort_wnr;
 u32 test_data_abort_dom;
 u32 test_data_abort_result;
 
-void arm_mmu_data_abort(pt_regs_t *regs)
+void arm_mmu_data_abort(struct pt_regs *regs)
 {
 	u32 dfsr, dfar, fs, dom, wnr;
 

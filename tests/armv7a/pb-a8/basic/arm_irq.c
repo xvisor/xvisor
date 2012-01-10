@@ -29,30 +29,30 @@
 
 arm_irq_handler_t irq_hndls[NR_IRQS_PBA8];
 
-void do_undefined_instruction(pt_regs_t *regs)
+void do_undefined_instruction(struct pt_regs *regs)
 {
 }
 
-void do_software_interrupt(pt_regs_t *regs)
+void do_software_interrupt(struct pt_regs *regs)
 {
 	arm_mmu_syscall(regs);
 }
 
-void do_prefetch_abort(pt_regs_t *regs)
+void do_prefetch_abort(struct pt_regs *regs)
 {
 	arm_mmu_prefetch_abort(regs);
 }
 
-void do_data_abort(pt_regs_t *regs)
+void do_data_abort(struct pt_regs *regs)
 {
 	arm_mmu_data_abort(regs);
 }
 
-void do_not_used(pt_regs_t *regs)
+void do_not_used(struct pt_regs *regs)
 {
 }
 
-void do_irq(pt_regs_t *uregs)
+void do_irq(struct pt_regs *uregs)
 {
 	int rc = 0;
 	int irq = arm_gic_active_irq(0);
@@ -71,7 +71,7 @@ void do_irq(pt_regs_t *uregs)
 	}
 }
 
-void do_fiq(pt_regs_t *uregs)
+void do_fiq(struct pt_regs *uregs)
 {
 }
 
