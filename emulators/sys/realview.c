@@ -56,7 +56,7 @@
 #define REALVIEW_SYSID_VEXPRESS		0x01900000
 
 struct realview_sysctl {
-	vmm_guest_t *guest;
+	struct vmm_guest *guest;
 	vmm_spinlock_t lock;
 	u64 ref_100hz;
 	u64 ref_24mhz;
@@ -76,7 +76,7 @@ struct realview_sysctl {
 	u32 sys_cfgstat;
 };
 
-static int realview_emulator_read(vmm_emudev_t *edev,
+static int realview_emulator_read(struct vmm_emudev *edev,
 			    	  physical_addr_t offset, 
 				  void *dst, u32 dst_len)
 {
@@ -242,7 +242,7 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 	return rc;
 }
 
-static int realview_emulator_write(vmm_emudev_t *edev,
+static int realview_emulator_write(struct vmm_emudev *edev,
 				   physical_addr_t offset, 
 				   void *src, u32 src_len)
 {
@@ -408,7 +408,7 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 	return rc;
 }
 
-static int realview_emulator_reset(vmm_emudev_t *edev)
+static int realview_emulator_reset(struct vmm_emudev *edev)
 {
 	struct realview_sysctl * s = edev->priv;
 
@@ -429,9 +429,9 @@ static int realview_emulator_reset(vmm_emudev_t *edev)
 	return VMM_OK;
 }
 
-static int realview_emulator_probe(vmm_guest_t *guest,
-				   vmm_emudev_t *edev,
-				   const vmm_emuid_t *eid)
+static int realview_emulator_probe(struct vmm_guest *guest,
+				   struct vmm_emudev *edev,
+				   const struct vmm_emuid *eid)
 {
 	int rc = VMM_OK;
 	struct realview_sysctl * s;
@@ -458,7 +458,7 @@ realview_emulator_probe_done:
 	return rc;
 }
 
-static int realview_emulator_remove(vmm_emudev_t *edev)
+static int realview_emulator_remove(struct vmm_emudev *edev)
 {
 	struct realview_sysctl * s = edev->priv;
 
@@ -475,7 +475,7 @@ static u32 realview_sysids[] = {
 	/* proc_id */ REALVIEW_PROCID_PBA8, 
 };
 
-static vmm_emuid_t realview_emuid_table[] = {
+static struct vmm_emuid realview_emuid_table[] = {
 	{ .type = "sys", 
 	  .compatible = "realview,pb-a8", 
 	  .data = &realview_sysids[0] 
@@ -483,7 +483,7 @@ static vmm_emuid_t realview_emuid_table[] = {
 	{ /* end of list */ },
 };
 
-static vmm_emulator_t realview_emulator = {
+static struct vmm_emulator realview_emulator = {
 	.name = "realview",
 	.match_table = realview_emuid_table,
 	.probe = realview_emulator_probe,

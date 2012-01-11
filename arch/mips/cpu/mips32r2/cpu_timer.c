@@ -59,7 +59,7 @@ void vmm_cpu_timer_enable(void)
 	write_c0_compare(read_c0_count() + VMM_COUNTER_JIFFIES);
 }
 
-s32 handle_internal_timer_interrupt(vmm_user_regs_t *uregs)
+s32 handle_internal_timer_interrupt(arch_regs_t *uregs)
 {
 	jiffies++;
 	vmm_timer_clockevent_process(uregs);

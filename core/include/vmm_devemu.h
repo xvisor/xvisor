@@ -28,34 +28,34 @@
 #include <vmm_devtree.h>
 #include <vmm_manager.h>
 
-typedef struct vmm_emudev vmm_emudev_t;
-typedef struct vmm_emupic vmm_emupic_t;
-typedef struct vmm_emuid vmm_emuid_t;
-typedef struct vmm_emulator vmm_emulator_t;
+struct vmm_emudev;
+struct vmm_emupic;
+struct vmm_emuid;
+struct vmm_emulator;
 
-typedef void (*vmm_emupic_handle_t) (vmm_emupic_t *epic,
+typedef void (*vmm_emupic_handle_t) (struct vmm_emupic *epic,
 				     u32 irq_num,
 				     int irq_level);
 
-typedef int (*vmm_emulator_probe_t) (vmm_guest_t *guest,
-				     vmm_emudev_t *edev,
-				     const vmm_emuid_t *eid);
+typedef int (*vmm_emulator_probe_t) (struct vmm_guest *guest,
+				     struct vmm_emudev *edev,
+				     const struct vmm_emuid *eid);
 
-typedef int (*vmm_emulator_read_t) (vmm_emudev_t *edev,
+typedef int (*vmm_emulator_read_t) (struct vmm_emudev *edev,
 				    physical_addr_t offset, 
 				    void *dst, u32 dst_len);
 
-typedef int (*vmm_emulator_reset_t) (vmm_emudev_t *edev);
+typedef int (*vmm_emulator_reset_t) (struct vmm_emudev *edev);
 
-typedef int (*vmm_emulator_write_t) (vmm_emudev_t *edev,
+typedef int (*vmm_emulator_write_t) (struct vmm_emudev *edev,
 				     physical_addr_t offset, 
 				     void *src, u32 src_len);
 
-typedef int (*vmm_emulator_remove_t) (vmm_emudev_t *edev);
+typedef int (*vmm_emulator_remove_t) (struct vmm_emudev *edev);
 
 struct vmm_emudev {
 	vmm_spinlock_t lock;
-	vmm_devtree_node_t *node;
+	struct vmm_devtree_node *node;
 	vmm_emulator_probe_t probe;
 	vmm_emulator_read_t read;
 	vmm_emulator_write_t write;
@@ -81,7 +81,7 @@ struct vmm_emuid {
 struct vmm_emulator {
 	struct dlist head;
 	char name[32];
-	const vmm_emuid_t *match_table;
+	const struct vmm_emuid *match_table;
 	vmm_emulator_probe_t probe;
 	vmm_emulator_read_t read;
 	vmm_emulator_write_t write;
@@ -90,65 +90,69 @@ struct vmm_emulator {
 };
 
 /** Emulate read for given VCPU */
-int vmm_devemu_emulate_read(vmm_vcpu_t *vcpu, 
+int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu, 
 			    physical_addr_t gphys_addr,
 			    void *dst, u32 dst_len);
 
 /** Emulate write for given VCPU */
-int vmm_devemu_emulate_write(vmm_vcpu_t *vcpu, 
+int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu, 
 			     physical_addr_t gphys_addr,
 			     void *src, u32 src_len);
 
 /** Emulate irq for guest */
-int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num, int irq_level);
+int vmm_devemu_emulate_irq(struct vmm_guest *guest, 
+			   u32 irq_num, int irq_level);
 
 /** Signal completion of host-to-guest mapped irq 
  *  (Note: For proper functioning of host-to-guest mapped irq, the PIC 
  *  emulators must call this function upon completion/end-of interrupt)
  */
-int vmm_devemu_complete_h2g_irq(vmm_guest_t *guest, u32 irq_num);
+int vmm_devemu_complete_h2g_irq(struct vmm_guest *guest, u32 irq_num);
 
 /** Register emulated pic */
-int vmm_devemu_register_pic(vmm_guest_t *guest, vmm_emupic_t * emu);
+int vmm_devemu_register_pic(struct vmm_guest *guest, 
+			    struct vmm_emupic * emu);
 
 /** Unregister emulated pic */
-int vmm_devemu_unregister_pic(vmm_guest_t *guest, vmm_emupic_t * emu);
+int vmm_devemu_unregister_pic(struct vmm_guest *guest, 
+			      struct vmm_emupic * emu);
 
 /** Find a registered emulated pic */
-vmm_emupic_t *vmm_devemu_find_pic(vmm_guest_t *guest, const char *name);
+struct vmm_emupic *vmm_devemu_find_pic(struct vmm_guest *guest, 
+					const char *name);
 
 /** Get a registered emulated pic */
-vmm_emupic_t *vmm_devemu_pic(vmm_guest_t *guest, int index);
+struct vmm_emupic *vmm_devemu_pic(struct vmm_guest *guest, int index);
 
 /** Count available emulated pic */
-u32 vmm_devemu_pic_count(vmm_guest_t *guest);
+u32 vmm_devemu_pic_count(struct vmm_guest *guest);
 
 /** Register emulator */
-int vmm_devemu_register_emulator(vmm_emulator_t * emu);
+int vmm_devemu_register_emulator(struct vmm_emulator * emu);
 
 /** Unregister emulator */
-int vmm_devemu_unregister_emulator(vmm_emulator_t * emu);
+int vmm_devemu_unregister_emulator(struct vmm_emulator * emu);
 
 /** Find a registered emulator */
-vmm_emulator_t *vmm_devemu_find_emulator(const char *name);
+struct vmm_emulator *vmm_devemu_find_emulator(const char *name);
 
 /** Get a registered emulator */
-vmm_emulator_t *vmm_devemu_emulator(int index);
+struct vmm_emulator *vmm_devemu_emulator(int index);
 
 /** Count available emulators */
 u32 vmm_devemu_emulator_count(void);
 
 /** Reset context for given guest */
-int vmm_devemu_reset_context(vmm_guest_t *guest);
+int vmm_devemu_reset_context(struct vmm_guest *guest);
 
 /** Reset emulators for given region */
-int vmm_devemu_reset_region(vmm_guest_t *guest, vmm_region_t *reg);
+int vmm_devemu_reset_region(struct vmm_guest *guest, struct vmm_region *reg);
 
 /** Probe emulators for given region */
-int vmm_devemu_probe_region(vmm_guest_t *guest, vmm_region_t *reg);
+int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg);
 
 /** Initialize context for given guest */
-int vmm_devemu_init_context(vmm_guest_t *guest);
+int vmm_devemu_init_context(struct vmm_guest *guest);
 
 /** Initialize device emulation framework */
 int vmm_devemu_init(void);

@@ -31,10 +31,10 @@
 #include <cpu_vcpu_mmu.h>
 #include <vmm_guest_aspace.h>
 
-int do_vcpu_tlbmiss(vmm_user_regs_t *uregs)
+int do_vcpu_tlbmiss(arch_regs_t *uregs)
 {
 	u32 badvaddr = read_c0_badvaddr();
-	vmm_vcpu_t *current_vcpu;
+	struct vmm_vcpu *current_vcpu;
 	int counter = 0;
 	mips32_tlb_entry_t *c_tlbe;
 
@@ -54,7 +54,7 @@ int do_vcpu_tlbmiss(vmm_user_regs_t *uregs)
 	return VMM_EFAIL;
 }
 
-u32 mips_probe_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
+u32 mips_probe_vcpu_tlb(struct vmm_vcpu *vcpu, arch_regs_t *uregs)
 {
 	u32 guest_cp0_index = (0x01UL << 31);
 	u32 tlb_counter;
@@ -87,16 +87,16 @@ u32 mips_probe_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 	return VMM_OK;
 }
 
-u32 mips_read_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
+u32 mips_read_vcpu_tlb(struct vmm_vcpu *vcpu, arch_regs_t *uregs)
 {
 	return VMM_OK;
 }
 
-static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
+static u32 mips_vcpu_map_guest_to_host(struct vmm_vcpu *vcpu,
 				       mips32_tlb_entry_t *gtlbe)
 {
-	vmm_guest_t *guest = NULL;
-	vmm_region_t *guest_region = NULL;
+	struct vmm_guest *guest = NULL;
+	struct vmm_region *guest_region = NULL;
 	physical_addr_t gphys_addr = 0, hphys_addr = 0, gphys_addr2map = 0, gphys_offset = 0;
 	physical_addr_t hphys_addr2map = 0;
 	int do_map = 0;
@@ -165,7 +165,7 @@ static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 	return VMM_OK;
 }
 
-u32 mips_write_vcpu_tlbi(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
+u32 mips_write_vcpu_tlbi(struct vmm_vcpu *vcpu, arch_regs_t *uregs)
 {
 	mips32_tlb_entry_t *entry2prgm;
 	u32 tlb_index = mips_sregs(vcpu)->cp0_regs[CP0_INDEX_IDX];
@@ -195,7 +195,7 @@ u32 mips_write_vcpu_tlbi(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 	return VMM_OK;
 }
 
-u32 mips_write_vcpu_tlbr(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
+u32 mips_write_vcpu_tlbr(struct vmm_vcpu *vcpu, arch_regs_t *uregs)
 {
 	return VMM_OK;
 }

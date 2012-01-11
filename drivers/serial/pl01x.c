@@ -172,7 +172,7 @@ void pl01x_lowlevel_init(virtual_addr_t base, u32 type,
 }
 
 struct pl01x_port {
-	vmm_completion_t read_done;
+	struct vmm_completion read_done;
 	virtual_addr_t base;
 	u32 baudrate;
 	u32 input_clock;
@@ -180,7 +180,7 @@ struct pl01x_port {
 	u32 irq;
 };
 
-static int pl01x_irq_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
+static int pl01x_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 {
 	unsigned int data;
 	struct pl01x_port *port = (struct pl01x_port *)dev;
@@ -216,7 +216,7 @@ static u8 pl01x_getc_sleepable(struct pl01x_port * port)
 	return (u8)vmm_readl((void*)(port->base + UART_PL01x_DR));
 }
 
-static u32 pl01x_read(vmm_chardev_t *cdev, 
+static u32 pl01x_read(struct vmm_chardev *cdev, 
 		      u8 *dest, size_t offset, size_t len, bool block)
 {
 	u32 i;
@@ -254,7 +254,7 @@ static u32 pl01x_read(vmm_chardev_t *cdev,
 	return i;
 }
 
-static u32 pl01x_write(vmm_chardev_t *cdev, 
+static u32 pl01x_write(struct vmm_chardev *cdev, 
 		       u8 *src, size_t offset, size_t len, bool block)
 {
 	u32 i;
@@ -285,14 +285,14 @@ static u32 pl01x_write(vmm_chardev_t *cdev,
 	return i;
 }
 
-static int pl01x_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
+static int pl01x_driver_probe(struct vmm_device *dev,const struct vmm_devid *devid)
 {
 	int rc;
 	const char *attr;
-	vmm_chardev_t *cd;
+	struct vmm_chardev *cd;
 	struct pl01x_port *port;
 	
-	cd = vmm_malloc(sizeof(vmm_chardev_t));
+	cd = vmm_malloc(sizeof(struct vmm_chardev));
 	if(!cd) {
 		rc = VMM_EFAIL;
 		goto free_nothing;
@@ -369,10 +369,10 @@ free_nothing:
 	return rc;
 }
 
-static int pl01x_driver_remove(vmm_device_t *dev)
+static int pl01x_driver_remove(struct vmm_device *dev)
 {
 	int rc;
-	vmm_chardev_t *cd =(vmm_chardev_t*)dev->priv;
+	struct vmm_chardev *cd =(struct vmm_chardev*)dev->priv;
 
 	rc = vmm_chardev_unregister(cd);
 	vmm_free(cd->priv);
@@ -382,13 +382,13 @@ static int pl01x_driver_remove(vmm_device_t *dev)
 	return rc;
 }
 
-static vmm_devid_t pl01x_devid_table[] = {
+static struct vmm_devid pl01x_devid_table[] = {
 	{ .type = "serial", .compatible = "pl010" },
 	{ .type = "serial", .compatible = "pl011" },
 	{ /* end of list */ },
 };
 
-static vmm_driver_t pl01x_driver = {
+static struct vmm_driver pl01x_driver = {
 	.name = "pl01x_serial",
 	.match_table = pl01x_devid_table,
 	.probe = pl01x_driver_probe,

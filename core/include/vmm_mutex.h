@@ -28,7 +28,6 @@
 #include <vmm_semaphore.h>
 
 #define vmm_mutex				vmm_semaphore
-#define vmm_mutex_t				vmm_semaphore_t
 
 #define INIT_MUTEX(mptr)			INIT_SEMAPHORE(mptr, 1)
 

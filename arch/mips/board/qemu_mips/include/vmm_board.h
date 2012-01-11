@@ -44,10 +44,10 @@ int vmm_pic_init(void);
 int vmm_board_ram_start(physical_addr_t * addr);
 int vmm_board_ram_size(physical_size_t * size);
 
-int vmm_devtree_populate(vmm_devtree_node_t **root,
+int vmm_devtree_populate(struct vmm_devtree_node **root,
                          char **string_buffer,
                          size_t *string_buffer_size);
-int vmm_board_getclock(vmm_devtree_node_t *node, u32 *clock);
+int vmm_board_getclock(struct vmm_devtree_node *node, u32 *clock);
 
 int vmm_board_early_init(void);
 int vmm_board_final_init(void);

@@ -41,14 +41,12 @@ struct vmm_module {
 	vmm_module_exit_t exit;
 };
 
-typedef struct vmm_module vmm_module_t;
-
 #define VMM_DECLARE_MODULE(varid,name,author,ipriority,init,exit) \
-__modtbl vmm_module_t varid = \
+__modtbl struct vmm_module varid = \
 { VMM_MODULE_SIGNATURE, name, author, ipriority, 0, init, exit }
 
 /** Retrive a module at given position in table */
-vmm_module_t *vmm_modules_getmodule(u32 index);
+struct vmm_module *vmm_modules_getmodule(u32 index);
 
 /** Count number of valid modules */
 u32 vmm_modules_count(void);

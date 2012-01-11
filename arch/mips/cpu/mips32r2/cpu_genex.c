@@ -32,14 +32,14 @@
 #include <cpu_genex.h>
 #include <cpu_vcpu_emulate.h>
 
-u32 do_general_exception(vmm_user_regs_t *uregs)
+u32 do_general_exception(arch_regs_t *uregs)
 {
 	u32 cp0_cause = read_c0_cause();
 	u32 cp0_status = read_c0_status();
 	mips32_entryhi_t ehi;
 	u32 victim_asid;
 	u32 victim_inst;
-	vmm_vcpu_t *c_vcpu;
+	struct vmm_vcpu *c_vcpu;
 	u8 delay_slot_exception = IS_BD_SET(cp0_cause);
 
 	ehi._entryhi = read_c0_entryhi();

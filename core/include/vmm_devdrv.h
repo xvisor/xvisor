@@ -30,17 +30,19 @@
 #include <vmm_devtree.h>
 #include <vmm_spinlocks.h>
 
-typedef struct vmm_devid vmm_devid_t;
-typedef struct vmm_device vmm_device_t;
+struct vmm_devid;
+struct vmm_device;
 
-typedef struct vmm_class vmm_class_t;
-typedef struct vmm_classdev vmm_classdev_t;
+struct vmm_class;
+struct vmm_classdev;
 
-typedef struct vmm_driver vmm_driver_t;
-typedef int (*vmm_driver_probe_t) (vmm_device_t *, const vmm_devid_t *);
-typedef int (*vmm_driver_suspend_t) (vmm_device_t *);
-typedef int (*vmm_driver_resume_t) (vmm_device_t *);
-typedef int (*vmm_driver_remove_t) (vmm_device_t *);
+struct vmm_driver;
+
+typedef int (*vmm_driver_probe_t) (struct vmm_device *, 
+				   const struct vmm_devid *);
+typedef int (*vmm_driver_suspend_t) (struct vmm_device *);
+typedef int (*vmm_driver_resume_t) (struct vmm_device *);
+typedef int (*vmm_driver_remove_t) (struct vmm_device *);
 
 struct vmm_devid {
 	char name[32];
@@ -51,16 +53,16 @@ struct vmm_devid {
 
 struct vmm_device {
 	vmm_spinlock_t lock;
-	vmm_devtree_node_t *node;
-	vmm_class_t *class;
-	vmm_classdev_t *classdev;
+	struct vmm_devtree_node *node;
+	struct vmm_class *class;
+	struct vmm_classdev *classdev;
 	void *priv;
 };
 
 struct vmm_classdev {
 	struct dlist head;
 	char name[32];
-	vmm_device_t *dev;
+	struct vmm_device *dev;
 	void *priv;
 };
 
@@ -73,7 +75,7 @@ struct vmm_class {
 struct vmm_driver {
 	struct dlist head;
 	char name[32];
-	const vmm_devid_t *match_table;
+	const struct vmm_devid *match_table;
 	vmm_driver_probe_t probe;
 	vmm_driver_suspend_t suspend;
 	vmm_driver_resume_t resume;
@@ -81,59 +83,62 @@ struct vmm_driver {
 };
 
 /** Probe device instances under a given device tree node */
-int vmm_devdrv_probe(vmm_devtree_node_t * node);
+int vmm_devdrv_probe(struct vmm_devtree_node * node);
 
 /** Remove device instances under a given device tree node */
-int vmm_devdrv_remove(vmm_devtree_node_t * node);
+int vmm_devdrv_remove(struct vmm_devtree_node * node);
 
 /** Map device registers to some virtual address */
-int vmm_devdrv_ioremap(vmm_device_t * dev, virtual_addr_t * addr, int regset);
+int vmm_devdrv_ioremap(struct vmm_device * dev, 
+			virtual_addr_t * addr, int regset);
 
 /** Get input clock for given device */
-int vmm_devdrv_getclock(vmm_device_t * dev, u32 * clock);
+int vmm_devdrv_getclock(struct vmm_device * dev, u32 * clock);
 
 /** Register class */
-int vmm_devdrv_register_class(vmm_class_t * cls);
+int vmm_devdrv_register_class(struct vmm_class * cls);
 
 /** Unregister class */
-int vmm_devdrv_unregister_class(vmm_class_t * cls);
+int vmm_devdrv_unregister_class(struct vmm_class * cls);
 
 /** Find a registered class */
-vmm_class_t *vmm_devdrv_find_class(const char *cname);
+struct vmm_class *vmm_devdrv_find_class(const char *cname);
 
 /** Get a registered class */
-vmm_class_t *vmm_devdrv_class(int index);
+struct vmm_class *vmm_devdrv_class(int index);
 
 /** Count available classes */
 u32 vmm_devdrv_class_count(void);
 
 /** Register device to a class */
-int vmm_devdrv_register_classdev(const char *cname, vmm_classdev_t * cdev);
+int vmm_devdrv_register_classdev(const char *cname, 
+				 struct vmm_classdev * cdev);
 
 /** Unregister device from a class */
-int vmm_devdrv_unregister_classdev(const char *cname, vmm_classdev_t * cdev);
+int vmm_devdrv_unregister_classdev(const char *cname, 
+				   struct vmm_classdev * cdev);
 
 /** Find a class device under a class */
-vmm_classdev_t *vmm_devdrv_find_classdev(const char *cname,
+struct vmm_classdev *vmm_devdrv_find_classdev(const char *cname,
 					 const char *cdev_name);
 
 /** Get a class device from a class */
-vmm_classdev_t *vmm_devdrv_classdev(const char *cname, int index);
+struct vmm_classdev *vmm_devdrv_classdev(const char *cname, int index);
 
 /** Count available class devices under a class */
 u32 vmm_devdrv_classdev_count(const char *cname);
 
 /** Register device driver */
-int vmm_devdrv_register_driver(vmm_driver_t * drv);
+int vmm_devdrv_register_driver(struct vmm_driver * drv);
 
 /** Unregister device driver */
-int vmm_devdrv_unregister_driver(vmm_driver_t * drv);
+int vmm_devdrv_unregister_driver(struct vmm_driver * drv);
 
 /** Find a registered driver */
-vmm_driver_t *vmm_devdrv_find_driver(const char *name);
+struct vmm_driver *vmm_devdrv_find_driver(const char *name);
 
 /** Get a registered driver */
-vmm_driver_t *vmm_devdrv_driver(int index);
+struct vmm_driver *vmm_devdrv_driver(int index);
 
 /** Count available device drivers */
 u32 vmm_devdrv_driver_count(void);

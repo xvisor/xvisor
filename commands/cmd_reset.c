@@ -35,20 +35,20 @@
 #define	MODULE_INIT			cmd_reset_init
 #define	MODULE_EXIT			cmd_reset_exit
 
-void cmd_reset_usage(vmm_chardev_t *cdev)
+void cmd_reset_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage: ");
 	vmm_cprintf(cdev, "   reset\n");
 }
 
-int cmd_reset_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_reset_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	/* Reset the hypervisor */
 	vmm_reset();
 	return VMM_OK;
 }
 
-static vmm_cmd_t cmd_reset = {
+static struct vmm_cmd cmd_reset = {
 	.name = "reset",
 	.desc = "reset hypervisor",
 	.usage = cmd_reset_usage,

@@ -39,11 +39,11 @@ struct vmm_cmdmgr_ctrl {
 
 static struct vmm_cmdmgr_ctrl cmctrl;
 
-int vmm_cmdmgr_register_cmd(vmm_cmd_t * cmd)
+int vmm_cmdmgr_register_cmd(struct vmm_cmd * cmd)
 {
 	bool found;
 	struct dlist *l;
-	vmm_cmd_t *c;
+	struct vmm_cmd *c;
 
 	if (cmd == NULL) {
 		return VMM_EFAIL;
@@ -52,7 +52,7 @@ int vmm_cmdmgr_register_cmd(vmm_cmd_t * cmd)
 	c = NULL;
 	found = FALSE;
 	list_for_each(l, &cmctrl.cmd_list) {
-		c = list_entry(l, vmm_cmd_t, head);
+		c = list_entry(l, struct vmm_cmd, head);
 		if (vmm_strcmp(c->name, cmd->name) == 0) {
 			found = TRUE;
 			break;
@@ -70,11 +70,11 @@ int vmm_cmdmgr_register_cmd(vmm_cmd_t * cmd)
 	return VMM_OK;
 }
 
-int vmm_cmdmgr_unregister_cmd(vmm_cmd_t * cmd)
+int vmm_cmdmgr_unregister_cmd(struct vmm_cmd * cmd)
 {
 	bool found;
 	struct dlist *l;
-	vmm_cmd_t *c;
+	struct vmm_cmd *c;
 
 	if (cmd == NULL || list_empty(&cmctrl.cmd_list)) {
 		return VMM_EFAIL;
@@ -83,7 +83,7 @@ int vmm_cmdmgr_unregister_cmd(vmm_cmd_t * cmd)
 	c = NULL;
 	found = FALSE;
 	list_for_each(l, &cmctrl.cmd_list) {
-		c = list_entry(l, vmm_cmd_t, head);
+		c = list_entry(l, struct vmm_cmd, head);
 		if (vmm_strcmp(c->name, cmd->name) == 0) {
 			found = TRUE;
 			break;
@@ -99,11 +99,11 @@ int vmm_cmdmgr_unregister_cmd(vmm_cmd_t * cmd)
 	return VMM_OK;
 }
 
-vmm_cmd_t * vmm_cmdmgr_cmd_find(const char *cmd_name)
+struct vmm_cmd * vmm_cmdmgr_cmd_find(const char *cmd_name)
 {
 	bool found;
 	struct dlist *l;
-	vmm_cmd_t *c;
+	struct vmm_cmd *c;
 
 	if (!cmd_name) {
 		return NULL;
@@ -113,7 +113,7 @@ vmm_cmd_t * vmm_cmdmgr_cmd_find(const char *cmd_name)
 	c = NULL;
 
 	list_for_each(l, &cmctrl.cmd_list) {
-		c = list_entry(l, vmm_cmd_t, head);
+		c = list_entry(l, struct vmm_cmd, head);
 		if (vmm_strcmp(c->name, cmd_name) == 0) {
 			found = TRUE;
 			break;
@@ -127,11 +127,11 @@ vmm_cmd_t * vmm_cmdmgr_cmd_find(const char *cmd_name)
 	return c;
 }
 
-vmm_cmd_t *vmm_cmdmgr_cmd(int index)
+struct vmm_cmd *vmm_cmdmgr_cmd(int index)
 {
 	bool found;
 	struct dlist *l;
-	vmm_cmd_t * c;
+	struct vmm_cmd * c;
 
 	if (index < 0) {
 		return NULL;
@@ -141,7 +141,7 @@ vmm_cmd_t *vmm_cmdmgr_cmd(int index)
 	found = FALSE;
 
 	list_for_each(l, &cmctrl.cmd_list) {
-		c = list_entry(l, vmm_cmd_t, head);
+		c = list_entry(l, struct vmm_cmd, head);
 		if (!index) {
 			found = TRUE;
 			break;
@@ -170,10 +170,10 @@ u32 vmm_cmdmgr_cmd_count(void)
 	return retval;
 }
 
-int vmm_cmdmgr_execute_cmd(vmm_chardev_t *cdev, int argc, char **argv)
+int vmm_cmdmgr_execute_cmd(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int ret;
-	vmm_cmd_t * cmd = NULL;
+	struct vmm_cmd * cmd = NULL;
 
 	/* Find & execute the commad */
 	if ((cmd = vmm_cmdmgr_cmd_find(argv[0]))) {
@@ -191,7 +191,7 @@ int vmm_cmdmgr_execute_cmd(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_OK;
 }
 
-int vmm_cmdmgr_execute_cmdstr(vmm_chardev_t *cdev, char *cmds)
+int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds)
 {
 	int argc, cmd_ret;
 	char *argv[VMM_CMD_ARG_MAXCOUNT];
@@ -235,17 +235,17 @@ int vmm_cmdmgr_execute_cmdstr(vmm_chardev_t *cdev, char *cmds)
 	return VMM_OK;
 }
 
-static void cmd_help_usage(vmm_chardev_t *cdev)
+static void cmd_help_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage: ");
 	vmm_cprintf(cdev, "   help\n");
 	vmm_cprintf(cdev, "   help <cmd_name1> [<cmd_name2>] ...\n");
 }
 
-static int cmd_help_exec(vmm_chardev_t *cdev, int argc, char **argv)
+static int cmd_help_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u32 i, cmd_count;
-	vmm_cmd_t * cmd;
+	struct vmm_cmd * cmd;
 	
 	if (argc == 1) {
 		cmd_count = vmm_cmdmgr_cmd_count();
@@ -268,7 +268,7 @@ static int cmd_help_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return 0;
 }
 
-static vmm_cmd_t help_cmd = {
+static struct vmm_cmd help_cmd = {
 	.name = "help",
 	.desc = "displays list of all commands",
 	.usage = cmd_help_usage,

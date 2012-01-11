@@ -29,14 +29,14 @@
 
 struct vmm_schedalgo_rq_entry {
 	struct dlist head;
-	vmm_vcpu_t * vcpu;	
+	struct vmm_vcpu * vcpu;	
 };
 
 struct vmm_schedalgo_rq {
 	struct dlist list[VMM_VCPU_MAX_PRIORITY+1];
 };
 
-int vmm_schedalgo_vcpu_setup(vmm_vcpu_t * vcpu)
+int vmm_schedalgo_vcpu_setup(struct vmm_vcpu * vcpu)
 {
 	struct vmm_schedalgo_rq_entry * rq_entry;
 
@@ -56,7 +56,7 @@ int vmm_schedalgo_vcpu_setup(vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
-int vmm_schedalgo_vcpu_cleanup(vmm_vcpu_t * vcpu)
+int vmm_schedalgo_vcpu_cleanup(struct vmm_vcpu * vcpu)
 {
 	if (!vcpu) {
 		return VMM_EFAIL;
@@ -89,7 +89,7 @@ int vmm_schedalgo_rq_length(void *rq, u8 priority)
 	return count;
 }
 
-int vmm_schedalgo_rq_enqueue(void * rq, vmm_vcpu_t * vcpu)
+int vmm_schedalgo_rq_enqueue(void * rq, struct vmm_vcpu * vcpu)
 {
 	struct vmm_schedalgo_rq_entry * rq_entry;
 	struct vmm_schedalgo_rq * rqi;
@@ -110,7 +110,7 @@ int vmm_schedalgo_rq_enqueue(void * rq, vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
-vmm_vcpu_t * vmm_schedalgo_rq_dequeue(void * rq)
+struct vmm_vcpu * vmm_schedalgo_rq_dequeue(void * rq)
 {
 	int p;
 	struct dlist *l;
@@ -142,7 +142,7 @@ vmm_vcpu_t * vmm_schedalgo_rq_dequeue(void * rq)
 	return rq_entry->vcpu;
 }
 
-int vmm_schedalgo_rq_detach(void * rq, vmm_vcpu_t * vcpu)
+int vmm_schedalgo_rq_detach(void * rq, struct vmm_vcpu * vcpu)
 {
 	struct vmm_schedalgo_rq_entry * rq_entry;
 
@@ -161,7 +161,7 @@ int vmm_schedalgo_rq_detach(void * rq, vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
-bool vmm_schedalgo_rq_prempt_needed(void * rq, vmm_vcpu_t * current)
+bool vmm_schedalgo_rq_prempt_needed(void * rq, struct vmm_vcpu * current)
 {
 	int p;
 	bool ret = FALSE;

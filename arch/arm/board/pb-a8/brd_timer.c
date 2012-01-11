@@ -97,7 +97,7 @@ int vmm_cpu_clockevent_stop(void)
 	return realview_timer_event_stop(pba8_timer0_base);
 }
 
-static int pba8_timer0_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
+static int pba8_timer0_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 {
 	realview_timer_event_clearirq(pba8_timer0_base);
 

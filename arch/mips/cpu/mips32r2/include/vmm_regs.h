@@ -28,14 +28,14 @@
 #include "cpu_regs.h"
 #include "cpu_mmu.h"
 
-struct vmm_user_regs {
+struct arch_regs {
         u32 regs[CPU_GPR_COUNT];
 	u32 cp0_epc; /* EPC store here at time of interrupt or exception */
 	u32 cp0_status; /* status as what should be while returning from INT. */
 	u32 cp0_entryhi;
 };
 
-typedef struct vmm_user_regs vmm_user_regs_t;
+typedef struct arch_regs arch_regs_t;
 
 struct mips_super_regs {
 	/**
@@ -60,7 +60,7 @@ typedef struct mips_super_regs mips_super_regs_t;
 #define TLB_NOT_IN_HW	((s16)-1)
 #define TLB_FREE	((s16)-1)
 
-#define mips_uregs(vcpu)		(&((vcpu)->uregs))
-#define mips_sregs(vcpu)		((mips_super_regs_t *)((vcpu)->sregs_priv))
+#define mips_uregs(vcpu)		(&((vcpu)->regs))
+#define mips_sregs(vcpu)		((mips_super_regs_t *)((vcpu)->arch_priv))
 
 #endif

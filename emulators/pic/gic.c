@@ -63,8 +63,8 @@ struct gic_irq_state {
 };
 
 struct gic_state {
-	vmm_guest_t *guest;
-	vmm_emupic_t *pic;
+	struct vmm_guest *guest;
+	struct vmm_emupic *pic;
 	vmm_spinlock_t lock;
 
 	/* Coniguration */
@@ -123,7 +123,7 @@ static void gic_update(struct gic_state *s)
 {
 	int best_irq, best_prio;
 	int irq, level, cpu, cm;
-	vmm_vcpu_t *vcpu;
+	struct vmm_vcpu *vcpu;
 	for (cpu = 0; cpu < GIC_NUM_CPU(s); cpu++) {
 		cm = 1 << cpu;
 		s->current_pending[cpu] = 1023;
@@ -170,7 +170,7 @@ static void gic_update(struct gic_state *s)
 }
 
 /* Process IRQ asserted in device emulation framework */
-static void gic_irq_handle(vmm_emupic_t *epic, u32 irq, int level)
+static void gic_irq_handle(struct vmm_emupic *epic, u32 irq, int level)
 {
 	struct gic_state * s = (struct gic_state *)epic->priv;
 
@@ -738,11 +738,11 @@ static int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset,
 	return VMM_OK;
 }
 
-static int gic_emulator_read(vmm_emudev_t *edev,
+static int gic_emulator_read(struct vmm_emudev *edev,
 			     physical_addr_t offset, 
 			     void *dst, u32 dst_len)
 {
-	vmm_vcpu_t * vcpu = NULL;
+	struct vmm_vcpu * vcpu = NULL;
 	int rc = VMM_OK;
 	u32 regval = 0x0;
 	struct gic_state * s = edev->priv;
@@ -789,11 +789,11 @@ static int gic_emulator_read(vmm_emudev_t *edev,
 	return rc;
 }
 
-static int gic_emulator_write(vmm_emudev_t *edev,
+static int gic_emulator_write(struct vmm_emudev *edev,
 			      physical_addr_t offset, 
 			      void *src, u32 src_len)
 {
-	vmm_vcpu_t * vcpu = NULL;
+	struct vmm_vcpu * vcpu = NULL;
 	int rc = VMM_OK, i;
 	u32 regmask = 0x0, regval = 0x0;
 	struct gic_state * s = edev->priv;
@@ -846,7 +846,7 @@ static int gic_emulator_write(vmm_emudev_t *edev,
 	return rc;
 }
 
-static int gic_emulator_reset(vmm_emudev_t *edev)
+static int gic_emulator_reset(struct vmm_emudev *edev)
 {
 	u32 i;
 	struct gic_state * s = edev->priv;
@@ -883,9 +883,9 @@ static int gic_emulator_reset(vmm_emudev_t *edev)
 	return VMM_OK;
 }
 
-static int gic_emulator_probe(vmm_guest_t *guest,
-			      vmm_emudev_t *edev,
-			      const vmm_emuid_t *eid)
+static int gic_emulator_probe(struct vmm_guest *guest,
+			      struct vmm_emudev *edev,
+			      const struct vmm_emuid *eid)
 {
 	int rc = VMM_OK, i;
 	u32 attrlen;
@@ -899,7 +899,7 @@ static int gic_emulator_probe(vmm_guest_t *guest,
 	}
 	vmm_memset(s, 0x0, sizeof(struct gic_state));
 
-	s->pic = vmm_malloc(sizeof(vmm_emupic_t));
+	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
 	if (!s->pic) {
 		rc = VMM_EFAIL;
 		goto gic_emulator_probe_freestate_fail;
@@ -959,7 +959,7 @@ gic_emulator_probe_done:
 	return rc;
 }
 
-static int gic_emulator_remove(vmm_emudev_t *edev)
+static int gic_emulator_remove(struct vmm_emudev *edev)
 {
 	struct gic_state * s = edev->priv;
 
@@ -988,7 +988,7 @@ static u32 gic_configs[] = {
 	/* reserved */ 0,
 };
 
-static vmm_emuid_t gic_emuid_table[] = {
+static struct vmm_emuid gic_emuid_table[] = {
 	{ .type = "pic", 
 	  .compatible = "realview,gic", 
 	  .data = &gic_configs[0],
@@ -996,7 +996,7 @@ static vmm_emuid_t gic_emuid_table[] = {
 	{ /* end of list */ },
 };
 
-static vmm_emulator_t gic_emulator = {
+static struct vmm_emulator gic_emulator = {
 	.name = "gic",
 	.match_table = gic_emuid_table,
 	.probe = gic_emulator_probe,

@@ -29,12 +29,12 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
 
-u32 vmm_vcpu_irq_count(vmm_vcpu_t * vcpu)
+u32 vmm_vcpu_irq_count(struct vmm_vcpu * vcpu)
 {
 	return CPU_IRQ_NR;
 }
 
-u32 vmm_vcpu_irq_priority(vmm_vcpu_t * vcpu, u32 irq_no)
+u32 vmm_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no)
 {
 	u32 ret = 3;
 
@@ -69,8 +69,8 @@ u32 vmm_vcpu_irq_priority(vmm_vcpu_t * vcpu, u32 irq_no)
 	return ret;
 }
 
-int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
-			 vmm_user_regs_t * regs, 
+int vmm_vcpu_irq_execute(struct vmm_vcpu * vcpu,
+			 arch_regs_t * regs, 
 			 u32 irq_no, u32 reason)
 {
 	u32 old_cpsr, new_cpsr, new_mode, new_flags, lr_off;
@@ -146,7 +146,7 @@ int vmm_vcpu_irq_execute(vmm_vcpu_t * vcpu,
 	new_cpsr |= (new_mode | new_flags);
 	new_cpsr &= ~(CPSR_IT1_MASK | CPSR_IT2_MASK);
 	if (arm_feature(vcpu, ARM_FEATURE_V4T)) {
-		if (arm_sregs(vcpu)->cp15.c1_sctlr & (1 << 30)) {
+		if (arm_priv(vcpu)->cp15.c1_sctlr & (1 << 30)) {
 			new_cpsr |= CPSR_THUMB_ENABLED;
 		} else {
 			new_cpsr &= ~CPSR_THUMB_ENABLED;

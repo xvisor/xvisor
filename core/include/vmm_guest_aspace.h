@@ -30,22 +30,22 @@
 /** Find region corresponding to a guest physical address and also
  *  resolve aliased regions to real or virtual regions if required.
  */
-vmm_region_t *vmm_guest_find_region(vmm_guest_t *guest,
-				    physical_addr_t gphys_addr,
-				    bool resolve_alias);
+struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
+					 physical_addr_t gphys_addr,
+					 bool resolve_alias);
 
 /** Read from guest memory address space */
-u32 vmm_guest_physical_read(vmm_guest_t * guest, 
+u32 vmm_guest_physical_read(struct vmm_guest * guest, 
 			    physical_addr_t gphys_addr, 
 			    void * dst, u32 len);
 
 /** Write to guest memory address space */
-u32 vmm_guest_physical_write(vmm_guest_t * guest, 
+u32 vmm_guest_physical_write(struct vmm_guest * guest, 
 			     physical_addr_t gphys_addr, 
 			     void * src, u32 len);
 
 /** Map guest physical address to some host physical address */
-int vmm_guest_physical_map(vmm_guest_t * guest,
+int vmm_guest_physical_map(struct vmm_guest * guest,
 			   physical_addr_t gphys_addr,
 			   physical_size_t gphys_size,
 			   physical_addr_t * hphys_addr,
@@ -53,14 +53,14 @@ int vmm_guest_physical_map(vmm_guest_t * guest,
 			   u32 * reg_flags);
 
 /** Unmap guest physical address */
-int vmm_guest_physical_unmap(vmm_guest_t * guest,
+int vmm_guest_physical_unmap(struct vmm_guest * guest,
 			     physical_addr_t gphys_addr,
 			     physical_size_t gphys_size);
 
 /** Reset Guest Address space */
-int vmm_guest_aspace_reset(vmm_guest_t *guest);
+int vmm_guest_aspace_reset(struct vmm_guest *guest);
 
 /** Initialize Guest Address space */
-int vmm_guest_aspace_init(vmm_guest_t *guest);
+int vmm_guest_aspace_init(struct vmm_guest *guest);
 
 #endif

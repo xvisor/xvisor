@@ -91,7 +91,7 @@ int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
 			  struct fdt_fileinfo * fdt);
 
 int libfdt_parse_devtree(struct fdt_fileinfo * fdt,
-			 vmm_devtree_node_t ** root,
+			 struct vmm_devtree_node ** root,
 			 char **string_buffer, 
 			 size_t * string_buffer_size);
 

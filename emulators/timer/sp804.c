@@ -65,8 +65,8 @@ struct sp804_state;
 
 struct sp804_timer {
 	struct sp804_state *state;
-	vmm_guest_t *guest;
-	vmm_timer_event_t *event;
+	struct vmm_guest *guest;
+	struct vmm_timer_event *event;
 	vmm_spinlock_t lock;
 	/* Configuration */
 	u32 ref_freq;
@@ -199,7 +199,7 @@ static void sp804_timer_clear_irq(struct sp804_timer *t)
 	}
 }
 
-static void sp804_timer_event(vmm_timer_event_t * event)
+static void sp804_timer_event(struct vmm_timer_event * event)
 {
 	struct sp804_timer *t = event->priv;
 
@@ -385,7 +385,7 @@ static int sp804_timer_reset(struct sp804_timer *t)
 
 static int sp804_timer_init(struct sp804_timer *t,
 			    const char *t_name,
-			    vmm_guest_t * guest, u32 freq, u32 irq)
+			    struct vmm_guest * guest, u32 freq, u32 irq)
 {
 	t->event = vmm_timer_event_create(t_name, &sp804_timer_event, t);
 
@@ -402,7 +402,7 @@ static int sp804_timer_init(struct sp804_timer *t,
 	return VMM_OK;
 }
 
-static int sp804_emulator_read(vmm_emudev_t * edev,
+static int sp804_emulator_read(struct vmm_emudev * edev,
 			       physical_addr_t offset, void *dst, u32 dst_len)
 {
 	int rc = VMM_OK;
@@ -441,7 +441,7 @@ static int sp804_emulator_read(vmm_emudev_t * edev,
 	return rc;
 }
 
-static int sp804_emulator_write(vmm_emudev_t * edev,
+static int sp804_emulator_write(struct vmm_emudev * edev,
 				physical_addr_t offset, void *src, u32 src_len)
 {
 	int rc = VMM_OK, i;
@@ -486,7 +486,7 @@ static int sp804_emulator_write(vmm_emudev_t * edev,
 	return rc;
 }
 
-static int sp804_emulator_reset(vmm_emudev_t * edev)
+static int sp804_emulator_reset(struct vmm_emudev * edev)
 {
 	int rc;
 	struct sp804_state *s = edev->priv;
@@ -503,8 +503,9 @@ static int sp804_emulator_reset(vmm_emudev_t * edev)
 	return VMM_OK;
 }
 
-static int sp804_emulator_probe(vmm_guest_t * guest,
-				vmm_emudev_t * edev, const vmm_emuid_t * eid)
+static int sp804_emulator_probe(struct vmm_guest * guest,
+				struct vmm_emudev * edev, 
+				const struct vmm_emuid * eid)
 {
 	int rc = VMM_OK;
 	u32 irq;
@@ -556,7 +557,7 @@ static int sp804_emulator_probe(vmm_guest_t * guest,
 	return rc;
 }
 
-static int sp804_emulator_remove(vmm_emudev_t * edev)
+static int sp804_emulator_remove(struct vmm_emudev * edev)
 {
 	struct sp804_state *s = edev->priv;
 
@@ -565,14 +566,14 @@ static int sp804_emulator_remove(vmm_emudev_t * edev)
 	return VMM_OK;
 }
 
-static vmm_emuid_t sp804_emuid_table[] = {
+static struct vmm_emuid sp804_emuid_table[] = {
 	{.type = "timer",
 	 .compatible = "primecell,sp804",
 	 },
 	{ /* end of list */ },
 };
 
-static vmm_emulator_t sp804_emulator = {
+static struct vmm_emulator sp804_emulator = {
 	.name = "sp804",
 	.match_table = sp804_emuid_table,
 	.probe = sp804_emulator_probe,

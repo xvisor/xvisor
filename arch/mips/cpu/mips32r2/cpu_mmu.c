@@ -39,7 +39,7 @@ void set_current_asid(u32 cur_asid)
 	write_c0_entryhi(ehi._entryhi);
 }
 
-u32 do_tlbmiss(vmm_user_regs_t *uregs)
+u32 do_tlbmiss(arch_regs_t *uregs)
 {
 	mips32_entryhi_t ehi;
 	ehi._entryhi = read_c0_entryhi();

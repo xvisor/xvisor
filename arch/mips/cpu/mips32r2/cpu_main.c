@@ -29,7 +29,7 @@
 #include <vmm_main.h>
 #include <cpu_asm_macros.h>
 
-void vmm_regs_dump(vmm_user_regs_t *tregs)
+void vmm_regs_dump(arch_regs_t *tregs)
 {
 	vmm_printf("V0: 0x%X\n", tregs->regs[V0_IDX]);
 	vmm_printf("V1: 0x%X\n", tregs->regs[V1_IDX]);

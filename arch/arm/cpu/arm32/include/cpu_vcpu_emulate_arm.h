@@ -318,7 +318,7 @@ enum arm_shift_type {
 #define ARM_INST_OP_SHIFT			4
 
 /** Emulate Priviledged ARM instructions */
-int cpu_vcpu_emulate_arm_inst(vmm_vcpu_t *vcpu, 
-				vmm_user_regs_t * regs, bool is_hypercall);
+int cpu_vcpu_emulate_arm_inst(struct vmm_vcpu *vcpu, 
+			      arch_regs_t * regs, bool is_hypercall);
 
 #endif

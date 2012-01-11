@@ -62,12 +62,12 @@ int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
 	return VMM_OK;
 }
 
-static void libfdt_parse_devtree_recursive(vmm_devtree_node_t * node,
+static void libfdt_parse_devtree_recursive(struct vmm_devtree_node * node,
 					   char **data_ptr, 
 					   char *str_buf)
 {
-	vmm_devtree_node_t *child;
-	vmm_devtree_attr_t *attr;
+	struct vmm_devtree_node *child;
+	struct vmm_devtree_attr *attr;
 
 	if (LIBFDT_DATA32(*data_ptr) != FDT_BEGIN_NODE)
 		return;
@@ -87,7 +87,7 @@ static void libfdt_parse_devtree_recursive(vmm_devtree_node_t * node,
 		switch (LIBFDT_DATA32(*data_ptr)) {
 		case FDT_PROP:
 			*data_ptr += sizeof(u32);
-			attr = vmm_malloc(sizeof(vmm_devtree_attr_t));
+			attr = vmm_malloc(sizeof(struct vmm_devtree_attr));
 			INIT_LIST_HEAD(&attr->head);
 			attr->len = LIBFDT_DATA32(*data_ptr);
 			*data_ptr += sizeof(u32);
@@ -104,7 +104,7 @@ static void libfdt_parse_devtree_recursive(vmm_devtree_node_t * node,
 			*data_ptr += sizeof(u32);
 			break;
 		case FDT_BEGIN_NODE:
-			child = vmm_malloc(sizeof(vmm_devtree_node_t));
+			child = vmm_malloc(sizeof(struct vmm_devtree_node));
 			INIT_LIST_HEAD(&child->head);
 			INIT_LIST_HEAD(&child->attr_list);
 			INIT_LIST_HEAD(&child->child_list);
@@ -124,7 +124,7 @@ static void libfdt_parse_devtree_recursive(vmm_devtree_node_t * node,
 }
 
 int libfdt_parse_devtree(struct fdt_fileinfo * fdt,
-			 vmm_devtree_node_t ** root,
+			 struct vmm_devtree_node ** root,
 			 char **string_buffer, 
 			 size_t * string_buffer_size)
 {
@@ -141,7 +141,7 @@ int libfdt_parse_devtree(struct fdt_fileinfo * fdt,
 	*string_buffer_size = fdt->str_size;
 
 	/* Setup root node */
-	*root = vmm_malloc(sizeof(vmm_devtree_node_t));
+	*root = vmm_malloc(sizeof(struct vmm_devtree_node));
 	INIT_LIST_HEAD(&(*root)->head);
 	INIT_LIST_HEAD(&(*root)->attr_list);
 	INIT_LIST_HEAD(&(*root)->child_list);

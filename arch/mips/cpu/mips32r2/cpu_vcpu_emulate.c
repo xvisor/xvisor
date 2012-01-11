@@ -34,7 +34,7 @@
 
 static u32 load_store_emulated_reg(u8 sreg, u8 sel,
 				   u32 *treg,
-				   vmm_vcpu_t *vcpu, u8 do_load)
+				   struct vmm_vcpu *vcpu, u8 do_load)
 {
 	u32 _err = VMM_OK;
 	u32 *emulated_reg = NULL;
@@ -171,8 +171,8 @@ static u32 load_store_emulated_reg(u8 sreg, u8 sel,
 	return _err;
 }
 
-u32 cpu_vcpu_emulate_tlb_inst(vmm_vcpu_t *vcpu, u32 inst,
-			      vmm_user_regs_t *uregs)
+u32 cpu_vcpu_emulate_tlb_inst(struct vmm_vcpu *vcpu, u32 inst,
+			      arch_regs_t *uregs)
 {
 	switch(MIPS32_OPC_TLB_ACCESS_OPCODE(inst)) {
 	case MIPS32_OPC_TLB_OPCODE_TLBP:
@@ -189,8 +189,8 @@ u32 cpu_vcpu_emulate_tlb_inst(vmm_vcpu_t *vcpu, u32 inst,
 }
 
 /* Co-processor un-usable exception */
-u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst,
-			      vmm_user_regs_t *uregs)
+u32 cpu_vcpu_emulate_cop_inst(struct vmm_vcpu *vcpu, u32 inst,
+			      arch_regs_t *uregs)
 {
 	u32 cp0_cause = read_c0_cause();
 	u8 rt, rd, sel;
@@ -273,20 +273,20 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst,
 	return VMM_OK;
 }
 
-static u32 mips_emulate_branch_jump(vmm_vcpu_t *vcpu, u32 inst,
-				    vmm_user_regs_t *uregs)
+static u32 mips_emulate_branch_jump(struct vmm_vcpu *vcpu, u32 inst,
+				    arch_regs_t *uregs)
 {
 	return 1;
 }
 
-static u32 mips_emulate_jump_special(vmm_vcpu_t *vcpu, u32 inst,
-				     vmm_user_regs_t *uregs)
+static u32 mips_emulate_jump_special(struct vmm_vcpu *vcpu, u32 inst,
+				     arch_regs_t *uregs)
 {
 	return 1;
 }
 
-static u32 mips_emulate_branch_regimm(vmm_vcpu_t *vcpu, u32 inst,
-				      vmm_user_regs_t *uregs)
+static u32 mips_emulate_branch_regimm(struct vmm_vcpu *vcpu, u32 inst,
+				      arch_regs_t *uregs)
 {
 	u8 rs = MIPS32_OPC_BANDJ_REGIMM_RS(inst);
 	s32 target_offset = MIPS32_OPC_BANDJ_REGIMM_OFFSET(inst);
@@ -381,8 +381,8 @@ static u32 mips_emulate_branch_regimm(vmm_vcpu_t *vcpu, u32 inst,
  * there was a priviledged instruction in the delay slot. This condition
  * should be rare though.
  */
-u32 cpu_vcpu_emulate_branch_and_jump_inst(vmm_vcpu_t *vcpu, u32 inst,
-					  vmm_user_regs_t *uregs)
+u32 cpu_vcpu_emulate_branch_and_jump_inst(struct vmm_vcpu *vcpu, u32 inst,
+					  arch_regs_t *uregs)
 {
 	int _err = VMM_EFAIL;
 

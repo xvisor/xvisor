@@ -56,8 +56,8 @@ void vmm_init(void)
 	int ret;
 	u32 freed;
 	struct dlist *l;
-	vmm_devtree_node_t *gnode, *gsnode;
-	vmm_guest_t *guest = NULL;
+	struct vmm_devtree_node *gnode, *gsnode;
+	struct vmm_guest *guest = NULL;
 
 	/* Initialize host virtual address space */
 	ret = vmm_host_aspace_init();
@@ -260,7 +260,7 @@ void vmm_init(void)
 		vmm_hang();
 	}
 	list_for_each(l, &gsnode->child_list) {
-		gnode = list_entry(l, vmm_devtree_node_t, head);
+		gnode = list_entry(l, struct vmm_devtree_node, head);
 #if defined(CONFIG_VERBOSE_MODE)
 		vmm_printf("Creating %s\n", gnode->name);
 #endif

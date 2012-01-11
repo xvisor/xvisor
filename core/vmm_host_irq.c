@@ -45,7 +45,7 @@ struct vmm_host_irqs_ctrl {
 
 static struct vmm_host_irqs_ctrl hirqctrl;
 
-int vmm_host_irq_exec(u32 cpu_irq_no, vmm_user_regs_t * regs)
+int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs)
 {
 	struct dlist * l;
 	struct dlist * irq;

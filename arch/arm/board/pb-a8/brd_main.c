@@ -99,7 +99,7 @@ int vmm_board_ram_size(physical_size_t * size)
 	return VMM_OK;
 }
 
-int vmm_devtree_populate(vmm_devtree_node_t ** root,
+int vmm_devtree_populate(struct vmm_devtree_node ** root,
 			 char **string_buffer, 
 			 size_t * string_buffer_size)
 {
@@ -117,7 +117,7 @@ int vmm_devtree_populate(vmm_devtree_node_t ** root,
 				    string_buffer_size);
 }
 
-int vmm_board_getclock(vmm_devtree_node_t * node, u32 * clock)
+int vmm_board_getclock(struct vmm_devtree_node * node, u32 * clock)
 {
 	if (!node || !clock) {
 		return VMM_EFAIL;
@@ -168,8 +168,8 @@ int __init vmm_board_early_init(void)
 int __init vmm_board_final_init(void)
 {
 	int rc;
-	vmm_devtree_node_t *node;
-	vmm_chardev_t * cdev;
+	struct vmm_devtree_node *node;
+	struct vmm_chardev * cdev;
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */

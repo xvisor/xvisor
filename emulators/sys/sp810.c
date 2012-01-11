@@ -36,12 +36,12 @@
 #define	MODULE_EXIT			sp810_emulator_exit
 
 struct sp810_state {
-	vmm_guest_t *guest;
+	struct vmm_guest *guest;
 	vmm_spinlock_t lock;
 	u32 sysctrl;
 };
 
-static int sp810_emulator_read(vmm_emudev_t *edev,
+static int sp810_emulator_read(struct vmm_emudev *edev,
 			       physical_addr_t offset, 
 			       void *dst, u32 dst_len)
 {
@@ -87,7 +87,7 @@ static int sp810_emulator_read(vmm_emudev_t *edev,
 	return rc;
 }
 
-static int sp810_emulator_write(vmm_emudev_t *edev,
+static int sp810_emulator_write(struct vmm_emudev *edev,
 				physical_addr_t offset, 
 				void *src, u32 src_len)
 {
@@ -139,7 +139,7 @@ static int sp810_emulator_write(vmm_emudev_t *edev,
 	return rc;
 }
 
-static int sp810_emulator_reset(vmm_emudev_t *edev)
+static int sp810_emulator_reset(struct vmm_emudev *edev)
 {
 	struct sp810_state * s = edev->priv;
 
@@ -152,9 +152,9 @@ static int sp810_emulator_reset(vmm_emudev_t *edev)
 	return VMM_OK;
 }
 
-static int sp810_emulator_probe(vmm_guest_t *guest,
-				vmm_emudev_t *edev,
-				const vmm_emuid_t *eid)
+static int sp810_emulator_probe(struct vmm_guest *guest,
+				struct vmm_emudev *edev,
+				const struct vmm_emuid *eid)
 {
 	int rc = VMM_OK;
 	struct sp810_state * s;
@@ -175,7 +175,7 @@ sp810_emulator_probe_done:
 	return rc;
 }
 
-static int sp810_emulator_remove(vmm_emudev_t *edev)
+static int sp810_emulator_remove(struct vmm_emudev *edev)
 {
 	struct sp810_state * s = edev->priv;
 
@@ -184,14 +184,14 @@ static int sp810_emulator_remove(vmm_emudev_t *edev)
 	return VMM_OK;
 }
 
-static vmm_emuid_t sp810_emuid_table[] = {
+static struct vmm_emuid sp810_emuid_table[] = {
 	{ .type = "sys", 
 	  .compatible = "primecell,sp810", 
 	},
 	{ /* end of list */ },
 };
 
-static vmm_emulator_t sp810_emulator = {
+static struct vmm_emulator sp810_emulator = {
 	.name = "sp810",
 	.match_table = sp810_emuid_table,
 	.probe = sp810_emulator_probe,

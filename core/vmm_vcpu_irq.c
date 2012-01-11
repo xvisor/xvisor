@@ -30,11 +30,11 @@
 #include <vmm_devtree.h>
 #include <vmm_vcpu_irq.h>
 
-void vmm_vcpu_irq_process(vmm_user_regs_t * regs)
+void vmm_vcpu_irq_process(arch_regs_t * regs)
 {
 	int irq_no;
 	u32 i, irq_prio, irq_reas, tmp_prio, irq_count;
-	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
+	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 
 	/* Sanity Checks */
 	if (vcpu == NULL) {
@@ -82,7 +82,7 @@ void vmm_vcpu_irq_process(vmm_user_regs_t * regs)
 	}
 }
 
-void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason)
+void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 {
 	u32 irq_count;
 
@@ -117,7 +117,7 @@ void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason)
 	}
 }
 
-void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu)
+void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu)
 {
 	/* Sanity check */
 	if (vcpu == NULL) {
@@ -133,7 +133,7 @@ void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu)
 	vcpu->irqs.deassert_count++;
 }
 
-int vmm_vcpu_irq_wait(vmm_vcpu_t *vcpu)
+int vmm_vcpu_irq_wait(struct vmm_vcpu *vcpu)
 {
 	int rc = VMM_OK;
 
@@ -151,7 +151,7 @@ int vmm_vcpu_irq_wait(vmm_vcpu_t *vcpu)
 	return rc;
 }
 
-int vmm_vcpu_irq_init(vmm_vcpu_t *vcpu)
+int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 {
 	u32 ite, irq_count;
 
@@ -171,7 +171,7 @@ int vmm_vcpu_irq_init(vmm_vcpu_t *vcpu)
 	/* Only first time */
 	if (!vcpu->reset_count) {
 		/* Clear the memory of irq */
-		vmm_memset(&vcpu->irqs, 0, sizeof(vmm_vcpu_irqs_t));
+		vmm_memset(&vcpu->irqs, 0, sizeof(struct vmm_vcpu_irqs));
 
 		/* Allocate memory for arrays */
 		vcpu->irqs.assert = vmm_malloc(sizeof(bool) * irq_count);

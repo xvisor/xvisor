@@ -39,7 +39,7 @@
 
 struct vmm_stdio_ctrl {
         vmm_spinlock_t lock;
-        vmm_chardev_t *cdev;
+        struct vmm_chardev *cdev;
 };
 
 static struct vmm_stdio_ctrl stdio_ctrl;
@@ -60,7 +60,7 @@ bool vmm_isprintable(char c)
 	return FALSE;
 }
 
-int vmm_printchar(char **str, vmm_chardev_t *cdev, char c, bool block)
+int vmm_printchar(char **str, struct vmm_chardev *cdev, char c, bool block)
 {
 	int rc = VMM_OK;
 	if (str) {
@@ -93,7 +93,7 @@ void vmm_putc(char ch)
 	vmm_printchar(NULL, stdio_ctrl.cdev, ch, TRUE);
 }
 
-void vmm_cputc(vmm_chardev_t *cdev, char ch)
+void vmm_cputc(struct vmm_chardev *cdev, char ch)
 {
 	if (ch == '\n') {
 		vmm_printchar(NULL, cdev, '\r', TRUE);
@@ -101,7 +101,7 @@ void vmm_cputc(vmm_chardev_t *cdev, char ch)
 	vmm_printchar(NULL, cdev, ch, TRUE);
 }
 
-static void printc(char **str, vmm_chardev_t *cdev, char ch)
+static void printc(char **str, struct vmm_chardev *cdev, char ch)
 {
 	if (str) {
 		vmm_printchar(str, cdev, ch, TRUE);
@@ -110,7 +110,7 @@ static void printc(char **str, vmm_chardev_t *cdev, char ch)
 	}
 }
 
-static int prints(char **out, vmm_chardev_t *cdev, 
+static int prints(char **out, struct vmm_chardev *cdev, 
 		  const char *string, int width, int pad)
 {
 	int pc = 0;
@@ -146,7 +146,7 @@ static int prints(char **out, vmm_chardev_t *cdev,
 	return pc;
 }
 
-static int printi(char **out, vmm_chardev_t *cdev, 
+static int printi(char **out, struct vmm_chardev *cdev, 
 		  int i, int b, int sg, int width, int pad, int letbase)
 {
 	char print_buf[PRINT_BUF_LEN];
@@ -189,7 +189,7 @@ static int printi(char **out, vmm_chardev_t *cdev,
 	return pc + prints(out, cdev, s, width, pad);
 }
 
-static int print(char **out, vmm_chardev_t *cdev, const char *format, va_list args)
+static int print(char **out, struct vmm_chardev *cdev, const char *format, va_list args)
 {
 	int width, pad;
 	int pc = 0;
@@ -282,7 +282,7 @@ int vmm_sprintf(char *out, const char *format, ...)
 	return retval;
 }
 
-int vmm_cprintf(vmm_chardev_t *cdev, const char *format, ...)
+int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 {
 	va_list args;
 	int retval;
@@ -303,7 +303,7 @@ int vmm_panic(const char *format, ...)
 	return retval;
 }
 
-int vmm_scanchar(char **str, vmm_chardev_t *cdev, char *c, bool block)
+int vmm_scanchar(char **str, struct vmm_chardev *cdev, char *c, bool block)
 {
 	u8 ch = 0;
 	bool got_input = FALSE;
@@ -491,12 +491,12 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 	return s;
 }
 
-vmm_chardev_t *vmm_stdio_device(void)
+struct vmm_chardev *vmm_stdio_device(void)
 {
 	return stdio_ctrl.cdev;
 }
 
-int vmm_stdio_change_device(vmm_chardev_t * cdev)
+int vmm_stdio_change_device(struct vmm_chardev * cdev)
 {
 	if (!cdev) {
 		return VMM_EFAIL;

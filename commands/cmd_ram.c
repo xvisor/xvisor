@@ -37,7 +37,7 @@
 #define	MODULE_INIT			cmd_ram_init
 #define	MODULE_EXIT			cmd_ram_exit
 
-void cmd_ram_usage(vmm_chardev_t *cdev)
+void cmd_ram_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   ram help\n");
@@ -45,7 +45,7 @@ void cmd_ram_usage(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "   ram bitmap [<column count>]\n");
 }
 
-void cmd_ram_stats(vmm_chardev_t *cdev)
+void cmd_ram_stats(struct vmm_chardev *cdev)
 {
 	u32 free = vmm_host_ram_free_frame_count();
 	u32 total = vmm_host_ram_total_frame_count();
@@ -57,7 +57,7 @@ void cmd_ram_stats(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "Total Frames : %d (0x%08x)\n", total, total);
 }
 
-void cmd_ram_bitmap(vmm_chardev_t *cdev, int colcnt)
+void cmd_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
 {
 	u32 ite, total = vmm_host_ram_total_frame_count();
 	physical_addr_t base = vmm_host_ram_base();
@@ -76,7 +76,7 @@ void cmd_ram_bitmap(vmm_chardev_t *cdev, int colcnt)
 	vmm_cprintf(cdev, "\n");
 }
 
-int cmd_ram_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_ram_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int colcnt;
 	if (1 < argc) {
@@ -100,7 +100,7 @@ int cmd_ram_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_EFAIL;
 }
 
-static vmm_cmd_t cmd_ram = {
+static struct vmm_cmd cmd_ram = {
 	.name = "ram",
 	.desc = "RAM status",
 	.usage = cmd_ram_usage,

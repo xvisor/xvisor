@@ -37,7 +37,7 @@
 #define	MODULE_INIT			cmd_vserial_init
 #define	MODULE_EXIT			cmd_vserial_exit
 
-void cmd_vserial_usage(vmm_chardev_t *cdev)
+void cmd_vserial_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   vserial bind <name>\n");
@@ -50,10 +50,10 @@ struct cmd_vserial_recvcntx {
 	const char * name;
 	u32 chpos;
 	int chcount;
-	vmm_chardev_t *cdev;
+	struct vmm_chardev *cdev;
 };
 
-void cmd_vserial_recv(vmm_vserial_t *vser, void * priv, u8 ch)
+void cmd_vserial_recv(struct vmm_vserial *vser, void * priv, u8 ch)
 {
 	struct cmd_vserial_recvcntx * recvcntx;
 	recvcntx = (struct cmd_vserial_recvcntx *)priv;
@@ -84,13 +84,13 @@ void cmd_vserial_recv(vmm_vserial_t *vser, void * priv, u8 ch)
 	}
 }
 
-int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
+int cmd_vserial_bind(struct vmm_chardev *cdev, const char *name)
 {
 	int rc = VMM_OK;
 	u32 ite, epos = 0;
 	char ch;
 	static const char estr[3] = {'\e', 'x', 'q'}; /* estr is escape string. */
-	vmm_vserial_t *vser = vmm_vserial_find(name);
+	struct vmm_vserial *vser = vmm_vserial_find(name);
 	struct cmd_vserial_recvcntx recvcntx;
 
 	if (!vser) {
@@ -141,10 +141,10 @@ int cmd_vserial_bind(vmm_chardev_t *cdev, const char *name)
 	return VMM_OK;
 }
 
-int cmd_vserial_dump(vmm_chardev_t *cdev, const char *name, int bcount)
+int cmd_vserial_dump(struct vmm_chardev *cdev, const char *name, int bcount)
 {
 	int rc = VMM_OK;
-	vmm_vserial_t *vser = vmm_vserial_find(name);
+	struct vmm_vserial *vser = vmm_vserial_find(name);
 	struct cmd_vserial_recvcntx recvcntx;
 
 	if (!vser) {
@@ -174,10 +174,10 @@ int cmd_vserial_dump(vmm_chardev_t *cdev, const char *name, int bcount)
 	return VMM_OK;
 }
 
-void cmd_vserial_list(vmm_chardev_t *cdev)
+void cmd_vserial_list(struct vmm_chardev *cdev)
 {
 	int num, count;
-	vmm_vserial_t *vser;
+	struct vmm_vserial *vser;
 	count = vmm_vserial_count();
 	for (num = 0; num < count; num++) {
 		vser = vmm_vserial_get(num);
@@ -185,7 +185,7 @@ void cmd_vserial_list(vmm_chardev_t *cdev)
 	}
 }
 
-int cmd_vserial_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_vserial_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int bcount = -1;
 	if (argc == 2) {
@@ -215,7 +215,7 @@ int cmd_vserial_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_OK;
 }
 
-static vmm_cmd_t cmd_vserial = {
+static struct vmm_cmd cmd_vserial = {
 	.name = "vserial",
 	.desc = "virtual serial port commands",
 	.usage = cmd_vserial_usage,

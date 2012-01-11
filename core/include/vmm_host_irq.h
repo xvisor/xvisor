@@ -28,11 +28,11 @@
 #include <vmm_regs.h>
 
 typedef int (*vmm_host_irq_handler_t) (u32 irq_no, 
-					vmm_user_regs_t * regs,
+					arch_regs_t * regs,
 					void *dev);
 
 /** Execute host interrupts */
-int vmm_host_irq_exec(u32 cpu_irq_no, vmm_user_regs_t * regs);
+int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs);
 
 /** Check if a host irq is enabled */
 bool vmm_host_irq_isenabled(u32 hirq_no);

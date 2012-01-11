@@ -37,7 +37,7 @@
 #define	MODULE_INIT			cmd_buddy_init
 #define	MODULE_EXIT			cmd_buddy_exit
 
-void cmd_buddy_usage(vmm_chardev_t *cdev)
+void cmd_buddy_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage: \n");
 	vmm_cprintf(cdev, "    - buddy state\n");
@@ -46,7 +46,7 @@ void cmd_buddy_usage(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "        Show current house keeping state.\n");
 }
 
-int cmd_buddy_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_buddy_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc <= 1) {
 		cmd_buddy_usage(cdev);
@@ -66,7 +66,7 @@ int cmd_buddy_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_OK;
 }
 
-static vmm_cmd_t cmd_buddy = {
+static struct vmm_cmd cmd_buddy = {
 	.name = "buddy",
 	.desc = "show current buddy heap state.",
 	.usage = cmd_buddy_usage,

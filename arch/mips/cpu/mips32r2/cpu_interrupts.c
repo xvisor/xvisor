@@ -99,7 +99,7 @@ void vmm_cpu_irq_restore(irq_flags_t flags)
 			     :"=r"(temp));
 }
 
-s32 generic_int_handler(vmm_user_regs_t *uregs)
+s32 generic_int_handler(arch_regs_t *uregs)
 {
         u32 cause = read_c0_cause();
         u32 oints = 0;

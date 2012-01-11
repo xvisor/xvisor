@@ -85,8 +85,6 @@ struct vmm_devtree_attr {
 	u32 len;
 };
 
-typedef struct vmm_devtree_attr vmm_devtree_attr_t;
-
 struct vmm_devtree_node {
 	struct dlist head;
 	char *name;
@@ -97,26 +95,26 @@ struct vmm_devtree_node {
 	struct dlist child_list;
 };
 
-typedef struct vmm_devtree_node vmm_devtree_node_t;
-
 /** Get attribute value */
-const char *vmm_devtree_attrval(vmm_devtree_node_t * node, const char *attrib);
+const char *vmm_devtree_attrval(struct vmm_devtree_node * node, 
+				const char *attrib);
 
 /** Get lenght of attribute value */
-u32 vmm_devtree_attrlen(vmm_devtree_node_t * node, const char *attrib);
+u32 vmm_devtree_attrlen(struct vmm_devtree_node * node, 
+			const char *attrib);
 
 /** Create a path string for a given node */
-int vmm_devtree_getpath(char *out, vmm_devtree_node_t * node);
+int vmm_devtree_getpath(char *out, struct vmm_devtree_node * node);
 
 /** Get node corresponding to a path string */
-vmm_devtree_node_t *vmm_devtree_getnode(const char *path);
+struct vmm_devtree_node *vmm_devtree_getnode(const char *path);
 
 /** Get child node below a given node */
-vmm_devtree_node_t *vmm_devtree_getchildnode(vmm_devtree_node_t * node,
-					     const char *path);
+struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node * node,
+					      const char *path);
 
 /** Get the root node */
-vmm_devtree_node_t *vmm_devtree_rootnode(void);
+struct vmm_devtree_node *vmm_devtree_rootnode(void);
 
 /** Initialize device tree */
 int vmm_devtree_init(void);

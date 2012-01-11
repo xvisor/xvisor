@@ -40,7 +40,7 @@
 
 static char dtree_curpath[VMM_DEVTREE_MAX_PATH_LEN];
 
-void cmd_devtree_usage(vmm_chardev_t *cdev)
+void cmd_devtree_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   devtree help\n");
@@ -50,18 +50,18 @@ void cmd_devtree_usage(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "   devtree print  [<path>]\n");
 }
 
-void cmd_devtree_print_attributes(vmm_chardev_t *cdev, 
-				  vmm_devtree_node_t * node, int indent)
+void cmd_devtree_print_attributes(struct vmm_chardev *cdev, 
+				  struct vmm_devtree_node * node, int indent)
 {
 	int i;
 	struct dlist *lentry;
-	vmm_devtree_attr_t *attr;
+	struct vmm_devtree_attr *attr;
 
 	if (!node)
 		return;
 
 	list_for_each(lentry, &node->attr_list) {
-		attr = list_entry(lentry, vmm_devtree_attr_t, head);
+		attr = list_entry(lentry, struct vmm_devtree_attr, head);
 		for (i = 0; i < indent; i++)
 			vmm_cprintf(cdev, "\t");
 		if (attr->value[attr->len - 1] == '\0' && 4 < attr->len) {
@@ -74,12 +74,12 @@ void cmd_devtree_print_attributes(vmm_chardev_t *cdev,
 	}
 }
 
-void cmd_devtree_print_node(vmm_chardev_t *cdev, 
-			    vmm_devtree_node_t * node, int indent)
+void cmd_devtree_print_node(struct vmm_chardev *cdev, 
+			    struct vmm_devtree_node * node, int indent)
 {
 	int i;
 	struct dlist *lentry;
-	vmm_devtree_node_t *child;
+	struct vmm_devtree_node *child;
 
 	for (i = 0; i < indent; i++)
 		vmm_cprintf(cdev, "\t");
@@ -107,7 +107,7 @@ void cmd_devtree_print_node(vmm_chardev_t *cdev,
 	}
 
 	list_for_each(lentry, &node->child_list) {
-		child = list_entry(lentry, vmm_devtree_node_t, head);
+		child = list_entry(lentry, struct vmm_devtree_node, head);
 		cmd_devtree_print_node(cdev, child, indent + 1);
 	}
 
@@ -120,21 +120,21 @@ void cmd_devtree_print_node(vmm_chardev_t *cdev,
 	vmm_cprintf(cdev, ";\n");
 }
 
-int cmd_devtree_curpath(vmm_chardev_t *cdev)
+int cmd_devtree_curpath(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "%s\r\n", dtree_curpath);
 	return VMM_OK;
 }
 
-int cmd_devtree_chpath(vmm_chardev_t *cdev, char *path)
+int cmd_devtree_chpath(struct vmm_chardev *cdev, char *path)
 {
-	vmm_devtree_node_t *node;
+	struct vmm_devtree_node *node;
 
 	if (*path == VMM_DEVTREE_PATH_SEPARATOR) {
 		node = vmm_devtree_getnode(path);
 	} else {
 		node =
-		    vmm_devtree_getchildnode(vmm_devtree_getnode(dtree_curpath),
+		    vmm_devtree_getchild(vmm_devtree_getnode(dtree_curpath),
 					     path);
 	}
 
@@ -148,9 +148,9 @@ int cmd_devtree_chpath(vmm_chardev_t *cdev, char *path)
 	return VMM_OK;
 }
 
-int cmd_devtree_attrib(vmm_chardev_t *cdev, char *path)
+int cmd_devtree_attrib(struct vmm_chardev *cdev, char *path)
 {
-	vmm_devtree_node_t *node = vmm_devtree_getnode(path);
+	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
 
 	if (!node) {
 		vmm_cprintf(cdev, "Failed to print attributes\n");
@@ -162,9 +162,9 @@ int cmd_devtree_attrib(vmm_chardev_t *cdev, char *path)
 	return VMM_OK;
 }
 
-int cmd_devtree_print(vmm_chardev_t *cdev, char *path)
+int cmd_devtree_print(struct vmm_chardev *cdev, char *path)
 {
-	vmm_devtree_node_t *node = vmm_devtree_getnode(path);
+	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
 
 	if (!node) {
 		vmm_cprintf(cdev, "Failed to print device tree\n");
@@ -176,7 +176,7 @@ int cmd_devtree_print(vmm_chardev_t *cdev, char *path)
 	return VMM_OK;
 }
 
-int cmd_devtree_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_devtree_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc < 2) {
 		cmd_devtree_usage(cdev);
@@ -215,7 +215,7 @@ int cmd_devtree_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_OK;
 }
 
-static vmm_cmd_t cmd_devtree = {
+static struct vmm_cmd cmd_devtree = {
 	.name = "devtree",
 	.desc = "traverse the device tree",
 	.usage = cmd_devtree_usage,

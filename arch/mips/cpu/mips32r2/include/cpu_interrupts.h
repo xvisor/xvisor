@@ -52,6 +52,6 @@ enum sys_ints {
 	__asm__ __volatile__("di $0\n\t");
 
 void setup_interrupts();
-s32 handle_internal_timer_interrupt(vmm_user_regs_t *uregs);
+s32 handle_internal_timer_interrupt(arch_regs_t *uregs);
 
 #endif

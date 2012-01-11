@@ -36,7 +36,7 @@ struct vmm_timer_ctrl {
 	u32 cycles_shift;
 	u64 timestamp;
 	bool cpu_started;
-	vmm_timer_event_t *cpu_curr;
+	struct vmm_timer_event *cpu_curr;
 	struct dlist cpu_event_list;
 	struct dlist event_list;
 };
@@ -74,7 +74,7 @@ u64 __notrace vmm_timer_timestamp_for_profile(void)
 
 static void vmm_timer_schedule_next_event(void)
 {
-	vmm_timer_event_t *e;
+	struct vmm_timer_event *e;
 
 	/* If not started yet, we give up */
 	if (!tctrl.cpu_started) {
@@ -87,7 +87,7 @@ static void vmm_timer_schedule_next_event(void)
 	}
 
 	/* retrieve first timer in the list of active timers */
-	e = list_entry(list_first(&tctrl.cpu_event_list), vmm_timer_event_t,
+	e = list_entry(list_first(&tctrl.cpu_event_list), struct vmm_timer_event,
 		       cpu_head);
 
 	if (tctrl.cpu_curr != e) {
@@ -112,14 +112,14 @@ static void vmm_timer_schedule_next_event(void)
  * This is call from interrupt context. So we don't need to protect the list
  * when manipulating it.
  */
-void vmm_timer_clockevent_process(vmm_user_regs_t * regs)
+void vmm_timer_clockevent_process(arch_regs_t * regs)
 {
-	vmm_timer_event_t *e;
+	struct vmm_timer_event *e;
 
 	/* process expired active events */
 	while (!list_empty(&tctrl.cpu_event_list)) {
 		e = list_entry(list_first(&tctrl.cpu_event_list),
-			       vmm_timer_event_t, cpu_head);
+			       struct vmm_timer_event, cpu_head);
 		/* Current timestamp */
 		if (e->expiry_tstamp <= vmm_timer_timestamp()) {
 			/* Set current CPU event to NULL */
@@ -128,9 +128,9 @@ void vmm_timer_clockevent_process(vmm_user_regs_t * regs)
 			list_del(&e->cpu_head);
 			e->expiry_tstamp = 0;
 			e->active = FALSE;
-			e->cpu_regs = regs;
+			e->regs = regs;
 			e->handler(e);
-			e->cpu_regs = NULL;
+			e->regs = NULL;
 		} else {
 			/* no more expired events */
 			break;
@@ -141,12 +141,12 @@ void vmm_timer_clockevent_process(vmm_user_regs_t * regs)
 	vmm_timer_schedule_next_event();
 }
 
-int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
+int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs)
 {
 	bool added;
 	irq_flags_t flags;
 	struct dlist *l;
-	vmm_timer_event_t *e;
+	struct vmm_timer_event *e;
 	u64 tstamp;
 
 	if (!ev) {
@@ -171,7 +171,7 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 	added = FALSE;
 	e = NULL;
 	list_for_each(l, &tctrl.cpu_event_list) {
-		e = list_entry(l, vmm_timer_event_t, cpu_head);
+		e = list_entry(l, struct vmm_timer_event, cpu_head);
 		if (ev->expiry_tstamp < e->expiry_tstamp) {
 			list_add_tail(&e->cpu_head, &ev->cpu_head);
 			added = TRUE;
@@ -190,7 +190,7 @@ int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs)
 	return VMM_OK;
 }
 
-int vmm_timer_event_restart(vmm_timer_event_t * ev)
+int vmm_timer_event_restart(struct vmm_timer_event * ev)
 {
 	if (!ev) {
 		return VMM_EFAIL;
@@ -199,7 +199,7 @@ int vmm_timer_event_restart(vmm_timer_event_t * ev)
 	return vmm_timer_event_start(ev, ev->duration_nsecs);
 }
 
-int vmm_timer_event_expire(vmm_timer_event_t * ev)
+int vmm_timer_event_expire(struct vmm_timer_event * ev)
 {
 	irq_flags_t flags;
 
@@ -232,7 +232,7 @@ int vmm_timer_event_expire(vmm_timer_event_t * ev)
 	return VMM_OK;
 }
 
-int vmm_timer_event_stop(vmm_timer_event_t * ev)
+int vmm_timer_event_stop(struct vmm_timer_event * ev)
 {
 	irq_flags_t flags;
 
@@ -256,18 +256,18 @@ int vmm_timer_event_stop(vmm_timer_event_t * ev)
 	return VMM_OK;
 }
 
-vmm_timer_event_t *vmm_timer_event_create(const char *name,
-					  vmm_timer_event_handler_t handler,
-					  void *priv)
+struct vmm_timer_event *vmm_timer_event_create(const char *name,
+					vmm_timer_event_handler_t handler,
+					void *priv)
 {
 	bool found;
 	struct dlist *l;
-	vmm_timer_event_t *e;
+	struct vmm_timer_event *e;
 
 	e = NULL;
 	found = FALSE;
 	list_for_each(l, &tctrl.event_list) {
-		e = list_entry(l, vmm_timer_event_t, head);
+		e = list_entry(l, struct vmm_timer_event, head);
 		if (vmm_strcmp(name, e->name) == 0) {
 			found = TRUE;
 			break;
@@ -278,7 +278,7 @@ vmm_timer_event_t *vmm_timer_event_create(const char *name,
 		return NULL;
 	}
 
-	e = vmm_malloc(sizeof(vmm_timer_event_t));
+	e = vmm_malloc(sizeof(struct vmm_timer_event));
 	if (!e) {
 		return NULL;
 	}
@@ -287,7 +287,7 @@ vmm_timer_event_t *vmm_timer_event_create(const char *name,
 	vmm_strcpy(e->name, name);
 	e->active = FALSE;
 	INIT_LIST_HEAD(&e->cpu_head);
-	e->cpu_regs = NULL;
+	e->regs = NULL;
 	e->expiry_tstamp = 0;
 	e->duration_nsecs = 0;
 	e->handler = handler;
@@ -298,11 +298,11 @@ vmm_timer_event_t *vmm_timer_event_create(const char *name,
 	return e;
 }
 
-int vmm_timer_event_destroy(vmm_timer_event_t * ev)
+int vmm_timer_event_destroy(struct vmm_timer_event * ev)
 {
 	bool found;
 	struct dlist *l;
-	vmm_timer_event_t *e;
+	struct vmm_timer_event *e;
 
 	if (!ev) {
 		return VMM_EFAIL;
@@ -315,7 +315,7 @@ int vmm_timer_event_destroy(vmm_timer_event_t * ev)
 	e = NULL;
 	found = FALSE;
 	list_for_each(l, &tctrl.event_list) {
-		e = list_entry(l, vmm_timer_event_t, head);
+		e = list_entry(l, struct vmm_timer_event, head);
 		if (vmm_strcmp(e->name, ev->name) == 0) {
 			found = TRUE;
 			break;
@@ -333,11 +333,11 @@ int vmm_timer_event_destroy(vmm_timer_event_t * ev)
 	return VMM_OK;
 }
 
-vmm_timer_event_t *vmm_timer_event_find(const char *name)
+struct vmm_timer_event *vmm_timer_event_find(const char *name)
 {
 	bool found;
 	struct dlist *l;
-	vmm_timer_event_t *e;
+	struct vmm_timer_event *e;
 
 	if (!name) {
 		return NULL;
@@ -347,7 +347,7 @@ vmm_timer_event_t *vmm_timer_event_find(const char *name)
 	e = NULL;
 
 	list_for_each(l, &tctrl.event_list) {
-		e = list_entry(l, vmm_timer_event_t, head);
+		e = list_entry(l, struct vmm_timer_event, head);
 		if (vmm_strcmp(e->name, name) == 0) {
 			found = TRUE;
 			break;
@@ -361,11 +361,11 @@ vmm_timer_event_t *vmm_timer_event_find(const char *name)
 	return e;
 }
 
-vmm_timer_event_t *vmm_timer_event_get(int index)
+struct vmm_timer_event *vmm_timer_event_get(int index)
 {
 	bool found;
 	struct dlist *l;
-	vmm_timer_event_t *ret;
+	struct vmm_timer_event *ret;
 
 	if (index < 0) {
 		return NULL;
@@ -375,7 +375,7 @@ vmm_timer_event_t *vmm_timer_event_get(int index)
 	found = FALSE;
 
 	list_for_each(l, &tctrl.event_list) {
-		ret = list_entry(l, vmm_timer_event_t, head);
+		ret = list_entry(l, struct vmm_timer_event, head);
 		if (!index) {
 			found = TRUE;
 			break;

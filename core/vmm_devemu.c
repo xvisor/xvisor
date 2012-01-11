@@ -33,14 +33,14 @@
 struct vmm_devemu_vcpu_context {
 	u32 rd_victim;
 	physical_addr_t rd_gphys[CONFIG_VGPA2REG_CACHE_SIZE];
-	vmm_region_t * rd_reg[CONFIG_VGPA2REG_CACHE_SIZE];
+	struct vmm_region * rd_reg[CONFIG_VGPA2REG_CACHE_SIZE];
 	u32 wr_victim;
 	physical_addr_t wr_gphys[CONFIG_VGPA2REG_CACHE_SIZE];
-	vmm_region_t * wr_reg[CONFIG_VGPA2REG_CACHE_SIZE];
+	struct vmm_region * wr_reg[CONFIG_VGPA2REG_CACHE_SIZE];
 };
 
 struct vmm_devemu_h2g_irq {
-	vmm_guest_t * guest;
+	struct vmm_guest * guest;
 	u32 host_irq;
 	u32 guest_irq;
 };
@@ -57,15 +57,15 @@ struct vmm_devemu_ctrl {
 
 static struct vmm_devemu_ctrl dectrl;
 
-int vmm_devemu_emulate_read(vmm_vcpu_t *vcpu, 
+int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu, 
 			    physical_addr_t gphys_addr,
 			    void *dst, u32 dst_len)
 {
 	u32 ite;
 	bool found;
 	struct vmm_devemu_vcpu_context * ev;
-	vmm_emudev_t *edev;
-	vmm_region_t *reg;
+	struct vmm_emudev *edev;
+	struct vmm_region *reg;
 
 	if (!vcpu || !(vcpu->guest)) {
 		return VMM_EFAIL;
@@ -95,7 +95,7 @@ int vmm_devemu_emulate_read(vmm_vcpu_t *vcpu,
 		}
 	}
 
-	edev = (vmm_emudev_t *)reg->devemu_priv;
+	edev = (struct vmm_emudev *)reg->devemu_priv;
 	if (!edev || !edev->read) {
 		return VMM_EFAIL;
 	}
@@ -103,15 +103,15 @@ int vmm_devemu_emulate_read(vmm_vcpu_t *vcpu,
 	return edev->read(edev, gphys_addr - reg->gphys_addr, dst, dst_len);
 }
 
-int vmm_devemu_emulate_write(vmm_vcpu_t *vcpu, 
+int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu, 
 			     physical_addr_t gphys_addr,
 			     void *src, u32 src_len)
 {
 	u32 ite;
 	bool found;
 	struct vmm_devemu_vcpu_context * ev;
-	vmm_emudev_t *edev;
-	vmm_region_t *reg;
+	struct vmm_emudev *edev;
+	struct vmm_region *reg;
 
 	if (!vcpu || !(vcpu->guest)) {
 		return VMM_EFAIL;
@@ -141,7 +141,7 @@ int vmm_devemu_emulate_write(vmm_vcpu_t *vcpu,
 		}
 	}
 
-	edev = (vmm_emudev_t *)reg->devemu_priv;
+	edev = (struct vmm_emudev *)reg->devemu_priv;
 	if (!edev || !edev->write) {
 		return VMM_EFAIL;
 	}
@@ -149,10 +149,10 @@ int vmm_devemu_emulate_write(vmm_vcpu_t *vcpu,
 	return edev->write(edev, gphys_addr - reg->gphys_addr, src, src_len);
 }
 
-int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num, int irq_level)
+int vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq_num, int irq_level)
 {
 	struct dlist *l;
-	vmm_emupic_t *ep;
+	struct vmm_emupic *ep;
 	struct vmm_devemu_guest_context *eg;
 
 	if (!guest) {
@@ -162,14 +162,14 @@ int vmm_devemu_emulate_irq(vmm_guest_t *guest, u32 irq_num, int irq_level)
 	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
 
 	list_for_each(l, &eg->emupic_list) {
-		ep = list_entry(l, vmm_emupic_t, head);
+		ep = list_entry(l, struct vmm_emupic, head);
 		ep->handle(ep, irq_num, irq_level);
 	}
 
 	return VMM_OK;
 }
 
-static int vmm_devemu_handle_h2g_irq(u32 irq_no, vmm_user_regs_t * regs, void *dev)
+static int vmm_devemu_handle_h2g_irq(u32 irq_no, arch_regs_t * regs, void *dev)
 {
 	struct vmm_devemu_h2g_irq * irq = dev;
 
@@ -181,7 +181,7 @@ static int vmm_devemu_handle_h2g_irq(u32 irq_no, vmm_user_regs_t * regs, void *d
 	return VMM_OK;
 }
 
-int vmm_devemu_complete_h2g_irq(vmm_guest_t *guest, u32 irq_num)
+int vmm_devemu_complete_h2g_irq(struct vmm_guest *guest, u32 irq_num)
 {
 	u32 i;
 	struct vmm_devemu_guest_context *eg;
@@ -208,11 +208,12 @@ int vmm_devemu_complete_h2g_irq(vmm_guest_t *guest, u32 irq_num)
 	return VMM_OK;
 }
 
-int vmm_devemu_register_pic(vmm_guest_t *guest, vmm_emupic_t * pic)
+int vmm_devemu_register_pic(struct vmm_guest *guest, 
+			    struct vmm_emupic * pic)
 {
 	bool found;
 	struct dlist *l;
-	vmm_emupic_t *ep;
+	struct vmm_emupic *ep;
 	struct vmm_devemu_guest_context *eg;
 
 	if (!guest || !pic) {
@@ -223,7 +224,7 @@ int vmm_devemu_register_pic(vmm_guest_t *guest, vmm_emupic_t * pic)
 	ep = NULL;
 	found = FALSE;
 	list_for_each(l, &eg->emupic_list) {
-		ep = list_entry(l, vmm_emupic_t, head);
+		ep = list_entry(l, struct vmm_emupic, head);
 		if (vmm_strcmp(ep->name, pic->name) == 0) {
 			found = TRUE;
 			break;
@@ -241,11 +242,12 @@ int vmm_devemu_register_pic(vmm_guest_t *guest, vmm_emupic_t * pic)
 	return VMM_OK;
 }
 
-int vmm_devemu_unregister_pic(vmm_guest_t *guest, vmm_emupic_t * pic)
+int vmm_devemu_unregister_pic(struct vmm_guest *guest, 
+			      struct vmm_emupic * pic)
 {
 	bool found;
 	struct dlist *l;
-	vmm_emupic_t *ep;
+	struct vmm_emupic *ep;
 	struct vmm_devemu_guest_context *eg;
 
 	if (!guest || !pic) {
@@ -261,7 +263,7 @@ int vmm_devemu_unregister_pic(vmm_guest_t *guest, vmm_emupic_t * pic)
 	ep = NULL;
 	found = FALSE;
 	list_for_each(l, &eg->emupic_list) {
-		ep = list_entry(l, vmm_emupic_t, head);
+		ep = list_entry(l, struct vmm_emupic, head);
 		if (vmm_strcmp(ep->name, pic->name) == 0) {
 			found = TRUE;
 			break;
@@ -277,12 +279,13 @@ int vmm_devemu_unregister_pic(vmm_guest_t *guest, vmm_emupic_t * pic)
 	return VMM_OK;
 }
 
-vmm_emupic_t *vmm_devemu_find_pic(vmm_guest_t *guest, const char *name)
+struct vmm_emupic *vmm_devemu_find_pic(struct vmm_guest *guest, 
+					const char *name)
 {
 	bool found;
 	struct dlist *l;
 	struct vmm_devemu_guest_context *eg;
-	vmm_emupic_t *ep;
+	struct vmm_emupic *ep;
 
 	if (!guest || !name) {
 		return NULL;
@@ -293,7 +296,7 @@ vmm_emupic_t *vmm_devemu_find_pic(vmm_guest_t *guest, const char *name)
 	ep = NULL;
 
 	list_for_each(l, &eg->emupic_list) {
-		ep = list_entry(l, vmm_emupic_t, head);
+		ep = list_entry(l, struct vmm_emupic, head);
 		if (vmm_strcmp(ep->name, name) == 0) {
 			found = TRUE;
 			break;
@@ -307,12 +310,12 @@ vmm_emupic_t *vmm_devemu_find_pic(vmm_guest_t *guest, const char *name)
 	return ep;
 }
 
-vmm_emupic_t *vmm_devemu_pic(vmm_guest_t *guest, int index)
+struct vmm_emupic *vmm_devemu_pic(struct vmm_guest *guest, int index)
 {
 	bool found;
 	struct dlist *l;
 	struct vmm_devemu_guest_context *eg;
-	vmm_emupic_t *retval;
+	struct vmm_emupic *retval;
 
 	if (!guest) {
 		return NULL;
@@ -326,7 +329,7 @@ vmm_emupic_t *vmm_devemu_pic(vmm_guest_t *guest, int index)
 	found = FALSE;
 
 	list_for_each(l, &eg->emupic_list) {
-		retval = list_entry(l, vmm_emupic_t, head);
+		retval = list_entry(l, struct vmm_emupic, head);
 		if (!index) {
 			found = TRUE;
 			break;
@@ -341,7 +344,7 @@ vmm_emupic_t *vmm_devemu_pic(vmm_guest_t *guest, int index)
 	return retval;
 }
 
-u32 vmm_devemu_pic_count(vmm_guest_t *guest)
+u32 vmm_devemu_pic_count(struct vmm_guest *guest)
 {
 	u32 retval = 0;
 	struct vmm_devemu_guest_context *eg;
@@ -360,11 +363,11 @@ u32 vmm_devemu_pic_count(vmm_guest_t *guest)
 	return retval;
 }
 
-int vmm_devemu_register_emulator(vmm_emulator_t * emu)
+int vmm_devemu_register_emulator(struct vmm_emulator * emu)
 {
 	bool found;
 	struct dlist *l;
-	vmm_emulator_t *e;
+	struct vmm_emulator *e;
 
 	if (emu == NULL) {
 		return VMM_EFAIL;
@@ -373,7 +376,7 @@ int vmm_devemu_register_emulator(vmm_emulator_t * emu)
 	e = NULL;
 	found = FALSE;
 	list_for_each(l, &dectrl.emu_list) {
-		e = list_entry(l, vmm_emulator_t, head);
+		e = list_entry(l, struct vmm_emulator, head);
 		if (vmm_strcmp(e->name, emu->name) == 0) {
 			found = TRUE;
 			break;
@@ -391,11 +394,11 @@ int vmm_devemu_register_emulator(vmm_emulator_t * emu)
 	return VMM_OK;
 }
 
-int vmm_devemu_unregister_emulator(vmm_emulator_t * emu)
+int vmm_devemu_unregister_emulator(struct vmm_emulator * emu)
 {
 	bool found;
 	struct dlist *l;
-	vmm_emulator_t *e;
+	struct vmm_emulator *e;
 
 	if (emu == NULL || list_empty(&dectrl.emu_list)) {
 		return VMM_EFAIL;
@@ -404,7 +407,7 @@ int vmm_devemu_unregister_emulator(vmm_emulator_t * emu)
 	e = NULL;
 	found = FALSE;
 	list_for_each(l, &dectrl.emu_list) {
-		e = list_entry(l, vmm_emulator_t, head);
+		e = list_entry(l, struct vmm_emulator, head);
 		if (vmm_strcmp(e->name, emu->name) == 0) {
 			found = TRUE;
 			break;
@@ -420,11 +423,11 @@ int vmm_devemu_unregister_emulator(vmm_emulator_t * emu)
 	return VMM_OK;
 }
 
-vmm_emulator_t *vmm_devemu_find_emulator(const char *name)
+struct vmm_emulator *vmm_devemu_find_emulator(const char *name)
 {
 	bool found;
 	struct dlist *l;
-	vmm_emulator_t *emu;
+	struct vmm_emulator *emu;
 
 	if (!name) {
 		return NULL;
@@ -434,7 +437,7 @@ vmm_emulator_t *vmm_devemu_find_emulator(const char *name)
 	emu = NULL;
 
 	list_for_each(l, &dectrl.emu_list) {
-		emu = list_entry(l, vmm_emulator_t, head);
+		emu = list_entry(l, struct vmm_emulator, head);
 		if (vmm_strcmp(emu->name, name) == 0) {
 			found = TRUE;
 			break;
@@ -448,11 +451,11 @@ vmm_emulator_t *vmm_devemu_find_emulator(const char *name)
 	return emu;
 }
 
-vmm_emulator_t *vmm_devemu_emulator(int index)
+struct vmm_emulator *vmm_devemu_emulator(int index)
 {
 	bool found;
 	struct dlist *l;
-	vmm_emulator_t *retval;
+	struct vmm_emulator *retval;
 
 	if (index < 0) {
 		return NULL;
@@ -462,7 +465,7 @@ vmm_emulator_t *vmm_devemu_emulator(int index)
 	found = FALSE;
 
 	list_for_each(l, &dectrl.emu_list) {
-		retval = list_entry(l, vmm_emulator_t, head);
+		retval = list_entry(l, struct vmm_emulator, head);
 		if (!index) {
 			found = TRUE;
 			break;
@@ -491,7 +494,7 @@ u32 vmm_devemu_emulator_count(void)
 	return retval;
 }
 
-int devemu_device_is_compatible(vmm_devtree_node_t * node, const char *compat)
+int devemu_device_is_compatible(struct vmm_devtree_node * node, const char *compat)
 {
 	const char *cp;
 	int cplen, l;
@@ -511,8 +514,8 @@ int devemu_device_is_compatible(vmm_devtree_node_t * node, const char *compat)
 	return 0;
 }
 
-const vmm_emuid_t *devemu_match_node(const vmm_emuid_t * matches,
-				     vmm_devtree_node_t * node)
+const struct vmm_emuid *devemu_match_node(const struct vmm_emuid * matches,
+					  struct vmm_devtree_node * node)
 {
 	const char *node_type;
 
@@ -542,13 +545,13 @@ const vmm_emuid_t *devemu_match_node(const vmm_emuid_t * matches,
 	return NULL;
 }
 
-int vmm_devemu_reset_context(vmm_guest_t *guest)
+int vmm_devemu_reset_context(struct vmm_guest *guest)
 {
 	u32 ite;
 	struct dlist * l;
 	struct vmm_devemu_guest_context *eg;
 	struct vmm_devemu_vcpu_context *ev;
-	vmm_vcpu_t * vcpu;
+	struct vmm_vcpu * vcpu;
 
 	if (!guest) {
 		return VMM_EFAIL;
@@ -563,7 +566,7 @@ int vmm_devemu_reset_context(vmm_guest_t *guest)
 	}
 
 	list_for_each(l, &guest->vcpu_list) {
-		vcpu = list_entry(l, vmm_vcpu_t, head);
+		vcpu = list_entry(l, struct vmm_vcpu, head);
 		if (vcpu->devemu_priv) {
 			ev = vcpu->devemu_priv;
 			ev->rd_victim = 0;
@@ -582,9 +585,9 @@ int vmm_devemu_reset_context(vmm_guest_t *guest)
 	return VMM_OK;
 }
 
-int vmm_devemu_reset_region(vmm_guest_t *guest, vmm_region_t *reg)
+int vmm_devemu_reset_region(struct vmm_guest *guest, struct vmm_region *reg)
 {
-	vmm_emudev_t *edev;
+	struct vmm_emudev *edev;
 
 	if (!guest || !reg) {
 		return VMM_EFAIL;
@@ -594,7 +597,7 @@ int vmm_devemu_reset_region(vmm_guest_t *guest, vmm_region_t *reg)
 		return VMM_EFAIL;
 	}
 
-	edev = (vmm_emudev_t *)reg->devemu_priv;
+	edev = (struct vmm_emudev *)reg->devemu_priv;
 	if (!edev || !edev->reset) {
 		return VMM_EFAIL;
 	}
@@ -602,14 +605,14 @@ int vmm_devemu_reset_region(vmm_guest_t *guest, vmm_region_t *reg)
 	return edev->reset(edev);
 }
 
-int vmm_devemu_probe_region(vmm_guest_t *guest, vmm_region_t *reg)
+int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 {
 	int rc;
 	struct dlist *l1;
-	vmm_emudev_t *einst;
-	vmm_emulator_t *emu;
-	const vmm_emuid_t *matches;
-	const vmm_emuid_t *match;
+	struct vmm_emudev *einst;
+	struct vmm_emulator *emu;
+	const struct vmm_emuid *matches;
+	const struct vmm_emuid *match;
 
 	if (!guest || !reg) {
 		return VMM_EFAIL;
@@ -620,11 +623,11 @@ int vmm_devemu_probe_region(vmm_guest_t *guest, vmm_region_t *reg)
 	}
 
 	list_for_each(l1, &dectrl.emu_list) {
-		emu = list_entry(l1, vmm_emulator_t, head);
+		emu = list_entry(l1, struct vmm_emulator, head);
 		matches = emu->match_table;
 		match = devemu_match_node(matches, reg->node);
 		if (match) {
-			einst = vmm_malloc(sizeof(vmm_emudev_t));
+			einst = vmm_malloc(sizeof(struct vmm_emudev));
 			INIT_SPIN_LOCK(&einst->lock);
 			einst->node = reg->node;
 			einst->probe = emu->probe;
@@ -663,7 +666,7 @@ int vmm_devemu_probe_region(vmm_guest_t *guest, vmm_region_t *reg)
 	return VMM_OK;
 }
 
-int vmm_devemu_init_context(vmm_guest_t *guest)
+int vmm_devemu_init_context(struct vmm_guest *guest)
 {
 	int rc = VMM_OK;
 	u32 ite;
@@ -671,7 +674,7 @@ int vmm_devemu_init_context(vmm_guest_t *guest)
 	const char * attr;
 	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_devemu_guest_context *eg;
-	vmm_vcpu_t * vcpu;
+	struct vmm_vcpu * vcpu;
 
 	if (!guest) {
 		rc = VMM_EFAIL;
@@ -721,7 +724,7 @@ int vmm_devemu_init_context(vmm_guest_t *guest)
 	}
 
 	list_for_each(l, &guest->vcpu_list) {
-		vcpu = list_entry(l, vmm_vcpu_t, head);
+		vcpu = list_entry(l, struct vmm_vcpu, head);
 		if (!vcpu->devemu_priv) {
 			ev = vmm_malloc(sizeof(struct vmm_devemu_vcpu_context));
 			vmm_memset(ev, 0, sizeof(struct vmm_devemu_vcpu_context));

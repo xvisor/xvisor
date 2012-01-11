@@ -654,7 +654,7 @@ int ne2k_send(struct nic_priv_data *nic_data, volatile void *packet, int length)
 	return 0;
 }
 
-static int ne2k_read(vmm_netdev_t *ndev, 
+static int ne2k_read(struct vmm_netdev *ndev, 
 		char *dest, size_t offset, size_t len)
 {
 	struct nic_priv_data *pdata;
@@ -672,7 +672,7 @@ static int ne2k_read(vmm_netdev_t *ndev,
 	return ne2k_rx(pdata);
 }
 
-static int ne2k_write(vmm_netdev_t *ndev,
+static int ne2k_write(struct vmm_netdev *ndev,
 		char *src, size_t offset, size_t len)
 {
 	struct nic_priv_data *pdata;
@@ -693,13 +693,13 @@ static int ne2k_write(vmm_netdev_t *ndev,
 	return len;
 }
 
-static int ne2k_driver_probe(vmm_device_t *dev, const vmm_devid_t *devid)
+static int ne2k_driver_probe(struct vmm_driver *dev, const struct vmm_devid *devid)
 {
 	int rc;
-	vmm_netdev_t *ndev;
+	struct vmm_netdev *ndev;
 	struct nic_priv_data *priv_data;
 	
-	ndev = vmm_malloc(sizeof(vmm_netdev_t));
+	ndev = vmm_malloc(sizeof(struct vmm_netdev));
 	if(!ndev) {
 		rc = VMM_EFAIL;
 		goto free_nothing;
@@ -749,12 +749,12 @@ free_nothing:
 	return rc;
 }
 
-static int ne2k_driver_remove(vmm_device_t *dev)
+static int ne2k_driver_remove(struct vmm_driver *dev)
 {
-	vmm_netdev_t *ndev;
+	struct vmm_netdev *ndev;
 	struct nic_priv_data *priv_data;
 
-	ndev = (vmm_netdev_t *)dev->priv;
+	ndev = (struct vmm_netdev *)dev->priv;
 	priv_data = (struct nic_priv_data *)ndev->priv;
 
 	vmm_ringbuf_free(priv_data->rx_rb);
@@ -764,12 +764,12 @@ static int ne2k_driver_remove(vmm_device_t *dev)
 	return 0;
 }
 
-static vmm_devid_t ne2k_devid_table[] = {
+static struct vmm_devid ne2k_devid_table[] = {
 	{ .type = "nic", .compatible = "ne2000"},
 	{ /* end of list */ },
 };
 
-static vmm_driver_t ne2k_driver = {
+static struct vmm_driver ne2k_driver = {
 	.name = "ne2k_driver",
 	.match_table = ne2k_devid_table,
 	.probe = ne2k_driver_probe,

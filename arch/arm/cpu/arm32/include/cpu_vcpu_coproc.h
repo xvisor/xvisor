@@ -27,48 +27,48 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
-typedef bool (*cpu_coproc_ldcstc_accept)(vmm_vcpu_t * vcpu, 
-					 vmm_user_regs_t *regs,
+typedef bool (*cpu_coproc_ldcstc_accept)(struct vmm_vcpu * vcpu, 
+					 arch_regs_t *regs,
 					 u32 D, u32 CRd, 
 					 u32 uopt, u32 imm8);
 
-typedef bool (*cpu_coproc_ldcstc_done)(vmm_vcpu_t * vcpu, 
-					vmm_user_regs_t *regs,
+typedef bool (*cpu_coproc_ldcstc_done)(struct vmm_vcpu * vcpu, 
+					arch_regs_t *regs,
 					u32 index, u32 D, u32 CRd, 
 					u32 uopt, u32 imm8);
 
-typedef u32 (*cpu_coproc_ldcstc_read)(vmm_vcpu_t * vcpu,
-					vmm_user_regs_t *regs,
+typedef u32 (*cpu_coproc_ldcstc_read)(struct vmm_vcpu * vcpu,
+					arch_regs_t *regs,
 					u32 index, u32 D, u32 CRd, 
 					u32 uopt, u32 imm8);
 
-typedef void (*cpu_coproc_ldcstc_write)(vmm_vcpu_t * vcpu, 
-					vmm_user_regs_t *regs,
+typedef void (*cpu_coproc_ldcstc_write)(struct vmm_vcpu * vcpu, 
+					arch_regs_t *regs,
 					u32 index, u32 D, u32 CRd, 
 					u32 uopt, u32 imm8, u32 data);
 
-typedef bool (*cpu_coproc_read2)(vmm_vcpu_t * vcpu, 
-				 vmm_user_regs_t *regs,
+typedef bool (*cpu_coproc_read2)(struct vmm_vcpu * vcpu, 
+				 arch_regs_t *regs,
 				 u32 opc1, u32 CRm, 
 				 u32 *data, u32 *data2);
 
-typedef bool (*cpu_coproc_write2)(vmm_vcpu_t * vcpu, 
-				  vmm_user_regs_t *regs,
+typedef bool (*cpu_coproc_write2)(struct vmm_vcpu * vcpu, 
+				  arch_regs_t *regs,
 				  u32 opc1, u32 CRm, 
 				  u32 data, u32 data2);
 
-typedef bool (*cpu_coproc_data_process)(vmm_vcpu_t *vcpu, 
-					vmm_user_regs_t *regs,
+typedef bool (*cpu_coproc_data_process)(struct vmm_vcpu *vcpu, 
+					arch_regs_t *regs,
 					u32 opc1, u32 opc2, 
 					u32 CRd, u32 CRn, u32 CRm);
 
-typedef bool (*cpu_coproc_read)(vmm_vcpu_t * vcpu, 
-				vmm_user_regs_t *regs,
+typedef bool (*cpu_coproc_read)(struct vmm_vcpu * vcpu, 
+				arch_regs_t *regs,
 				u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 				u32 *data);
 
-typedef bool (*cpu_coproc_write)(vmm_vcpu_t * vcpu, 
-				 vmm_user_regs_t *regs,
+typedef bool (*cpu_coproc_write)(struct vmm_vcpu * vcpu, 
+				 arch_regs_t *regs,
 				 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 				 u32 data);
 

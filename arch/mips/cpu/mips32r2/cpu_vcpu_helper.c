@@ -36,15 +36,15 @@ extern char _stack_start;
 #define VMM_REGION_TYPE_ROM	0
 #define VMM_REGION_TYPE_RAM	1
 
-static int map_guest_region(vmm_vcpu_t *vcpu, int region_type, int tlb_index)
+static int map_guest_region(struct vmm_vcpu *vcpu, int region_type, int tlb_index)
 {
 	mips32_tlb_entry_t shadow_entry;
 	physical_addr_t gphys;
 	physical_addr_t hphys, paddr;
 	virtual_addr_t vaddr2map;
 	u32 gphys_size;
-	vmm_region_t *region;
-	vmm_guest_t *aguest = vcpu->guest;
+	struct vmm_region *region;
+	struct vmm_guest *aguest = vcpu->guest;
 
 	vaddr2map = (region_type == VMM_REGION_TYPE_ROM ? 0x3FC00000 : 0x0);
 	paddr = (region_type == VMM_REGION_TYPE_ROM ? 0x1FC00000 : 0x0);
@@ -106,19 +106,19 @@ static int map_guest_region(vmm_vcpu_t *vcpu, int region_type, int tlb_index)
 	return VMM_OK;
 }
 
-static  __attribute__((unused)) int map_vcpu_ram(vmm_vcpu_t *vcpu)
+static  __attribute__((unused)) int map_vcpu_ram(struct vmm_vcpu *vcpu)
 {
 	return map_guest_region(vcpu, VMM_REGION_TYPE_RAM, 1);
 }
 
-static  __attribute__((unused)) int map_vcpu_rom(vmm_vcpu_t *vcpu)
+static  __attribute__((unused)) int map_vcpu_rom(struct vmm_vcpu *vcpu)
 {
 	return map_guest_region(vcpu, VMM_REGION_TYPE_ROM, 0);
 }
 
-int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
+int vmm_vcpu_regs_init(struct vmm_vcpu *vcpu)
 {
-	vmm_memset(mips_uregs(vcpu), 0, sizeof(vmm_user_regs_t));
+	vmm_memset(mips_uregs(vcpu), 0, sizeof(arch_regs_t));
 
         if (!vcpu->is_normal) {
 		/* For orphan vcpu */
@@ -146,11 +146,12 @@ int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
 	return VMM_OK;
 }
 
-void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
-			  vmm_user_regs_t *regs)
+void vmm_vcpu_regs_switch(struct vmm_vcpu *tvcpu, 
+			  struct vmm_vcpu *vcpu,
+			  arch_regs_t *regs)
 {
 	if (tvcpu) {
-		vmm_memcpy(mips_uregs(tvcpu), regs, sizeof(vmm_user_regs_t));
+		vmm_memcpy(mips_uregs(tvcpu), regs, sizeof(arch_regs_t));
 	}
 
 	if (vcpu) {
@@ -160,14 +161,14 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
 			mips_uregs(vcpu)->cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
 		}
 
-		vmm_memcpy(regs, mips_uregs(vcpu), sizeof(vmm_user_regs_t));
+		vmm_memcpy(regs, mips_uregs(vcpu), sizeof(arch_regs_t));
 	}
 }
 
-void vmm_vcpu_regs_dump(vmm_vcpu_t *vcpu) 
+void vmm_vcpu_regs_dump(struct vmm_vcpu *vcpu) 
 {
 }
 
-void vmm_vcpu_stat_dump(vmm_vcpu_t *vcpu) 
+void vmm_vcpu_stat_dump(struct vmm_vcpu *vcpu) 
 {
 }

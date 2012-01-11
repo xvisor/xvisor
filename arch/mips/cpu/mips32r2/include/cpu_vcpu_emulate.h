@@ -133,7 +133,7 @@
 #define MIPS32_OPC_BANDJ_SPECIAL_OPCODE_JALR	0x09
 #define MIPS32_OPC_BANDJ_SPECIAL_OPCODE_JALRHB	0x09
 
-u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs);
-u32 cpu_vcpu_emulate_branch_and_jump_inst(vmm_vcpu_t *vcpu, u32 inst, vmm_user_regs_t *uregs);
+u32 cpu_vcpu_emulate_cop_inst(struct vmm_vcpu *vcpu, u32 inst, arch_regs_t *uregs);
+u32 cpu_vcpu_emulate_branch_and_jump_inst(struct vmm_vcpu *vcpu, u32 inst, arch_regs_t *uregs);
 
 #endif /* __CPU_VCPU_EMULATE_H_ */

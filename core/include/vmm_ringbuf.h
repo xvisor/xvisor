@@ -38,15 +38,13 @@ struct vmm_ringbuf {
 	u32 avail_count;
 };
 
-typedef struct vmm_ringbuf vmm_ringbuf_t;
-
-vmm_ringbuf_t *vmm_ringbuf_alloc(u32 key_size, u32 key_count);
-bool vmm_ringbuf_isempty(vmm_ringbuf_t *rb);
-bool vmm_ringbuf_isfull(vmm_ringbuf_t *rb);
-bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite);
-bool vmm_ringbuf_dequeue(vmm_ringbuf_t *rb, void *dstkey);
-bool vmm_ringbuf_getkey(vmm_ringbuf_t *rb, u32 index, void *dstkey);
-u32 vmm_ringbuf_avail(vmm_ringbuf_t *rb);
-int vmm_ringbuf_free(vmm_ringbuf_t *rb);
+struct vmm_ringbuf *vmm_ringbuf_alloc(u32 key_size, u32 key_count);
+bool vmm_ringbuf_isempty(struct vmm_ringbuf *rb);
+bool vmm_ringbuf_isfull(struct vmm_ringbuf *rb);
+bool vmm_ringbuf_enqueue(struct vmm_ringbuf *rb, void *srckey, bool overwrite);
+bool vmm_ringbuf_dequeue(struct vmm_ringbuf *rb, void *dstkey);
+bool vmm_ringbuf_getkey(struct vmm_ringbuf *rb, u32 index, void *dstkey);
+u32 vmm_ringbuf_avail(struct vmm_ringbuf *rb);
+int vmm_ringbuf_free(struct vmm_ringbuf *rb);
 
 #endif /* __VMM_RINGBUF_H__ */

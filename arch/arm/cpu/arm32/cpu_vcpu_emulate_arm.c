@@ -45,7 +45,7 @@ static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
 	return imm & ((1 << bits) - 1);
 }
 
-static bool arm_condition_check(u32 cond, vmm_user_regs_t * regs)
+static bool arm_condition_check(u32 cond, arch_regs_t * regs)
 {
 	bool ret = FALSE;
 	if (cond == 0xE) {
@@ -192,7 +192,7 @@ static inline u32 arm_expand_imm_c(u32 imm12, u32 cin, u32 *cout)
 			   cin, cout);
 }
 
-static inline u32 arm_expand_imm(vmm_user_regs_t * regs, u32 imm12)
+static inline u32 arm_expand_imm(arch_regs_t * regs, u32 imm12)
 {
 	return arm_expand_imm_c(imm12, 
 				(regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1,
@@ -222,7 +222,7 @@ static u32 arm_add_with_carry(u32 x, u32 y, u32 cin, u32 *cout, u32 *oout)
 
 /** Emulate 'cps' hypercall */
 static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
-		       vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+		       arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	register u32 cpsr, mask, imod, mode;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_CPS);
@@ -270,7 +270,7 @@ static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'mrs' hypercall */
 static int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
-		       vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+		       arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	register u32 cond, Rd, psr;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MRS);
@@ -298,7 +298,7 @@ static int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'msr_i' hypercall */
 static int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	register u32 cond, mask, imm12, psr, tmask;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MSR_I);
@@ -334,7 +334,7 @@ static int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'msr_r' hypercall */
 static int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	register u32 cond, mask, Rn, psr, tmask;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MSR_R);
@@ -375,7 +375,7 @@ static int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'rfe' hypercall */
 static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 data;
 	register int rc;
@@ -394,7 +394,7 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 		P = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_P_START);
 		U = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_U_START);
 		W = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_W_START);
-		cpsr = arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK;
+		cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
 		if (cpsr == CPSR_MODE_USER) {
 			arm_unpredictable(regs, vcpu);
 			return VMM_EFAIL;
@@ -430,7 +430,7 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'wfi' hypercall */
 static int arm_hypercall_wfi(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	register u32 cond;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_WFI);
@@ -446,7 +446,7 @@ static int arm_hypercall_wfi(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'srs' hypercall */
 static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 data;
 	register int rc;
@@ -461,7 +461,7 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 		mode = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_SRS_MODE_END,
 			     ARM_HYPERCALL_SRS_MODE_START);
-		cpsr = arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK;
+		cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
 		if ((cpsr == CPSR_MODE_USER) ||
 		    (cpsr == CPSR_MODE_SYSTEM)) {
 			arm_unpredictable(regs, vcpu);
@@ -492,7 +492,7 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'ldm_ue' hypercall */
 int arm_hypercall_ldm_ue(u32 id, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 pos, data, ndata[16];
 	register int rc;
@@ -520,7 +520,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			return VMM_EFAIL;
 		}
 		if (arm_condition_passed(cond, regs)) {
-			cpsr = arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK;
+			cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
 			if ((cpsr == CPSR_MODE_USER) ||
 			    (cpsr == CPSR_MODE_SYSTEM)) {
 				arm_unpredictable(regs, vcpu);
@@ -589,7 +589,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			return VMM_EFAIL;
 		}
 		if (arm_condition_passed(cond, regs)) {
-			cpsr = arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK;
+			cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
 			if ((cpsr == CPSR_MODE_USER) ||
 			    (cpsr == CPSR_MODE_SYSTEM)) {
 				arm_unpredictable(regs, vcpu);
@@ -645,7 +645,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 
 /** Emulate 'stm_u' hypercall */
 int arm_hypercall_stm_u(u32 id, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 pos, ndata[16];
 	register int rc;
@@ -666,7 +666,7 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 	if (arm_condition_passed(cond, regs)) {
 		P = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x2) >> 1;
 		U = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x1);
-		cpsr = arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK;
+		cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
 		if ((cpsr == CPSR_MODE_USER) ||
 		    (cpsr == CPSR_MODE_SYSTEM)) {
 			arm_unpredictable(regs, vcpu);
@@ -720,7 +720,7 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 
 /** Emulate 'subs_rel' hypercall */
 int arm_hypercall_subs_rel(u32 id, u32 inst,
-			 vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 shift_t;
 	register u32 cond, opcode, Rn, imm12, imm5, type, Rm;
@@ -834,7 +834,8 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 }
 
 /** Emulate hypercall instruction */
-static int arm_instgrp_hypercall(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_instgrp_hypercall(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 id, subid;
 	id = ARM_INST_DECODE(inst,
@@ -898,7 +899,8 @@ static int arm_instgrp_hypercall(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * 
 }
 
 /** Emulate 'ldrh (immediate)' instruction */
-static int arm_inst_ldrh_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrh_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
@@ -960,7 +962,8 @@ static int arm_inst_ldrh_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrh (literal)' instruction */
-static int arm_inst_ldrh_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrh_l(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rt, imm4H, imm4L;
@@ -1002,7 +1005,8 @@ static int arm_inst_ldrh_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrh (register)' instruction */
-static int arm_inst_ldrh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrh_r(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, Rm;
@@ -1070,7 +1074,8 @@ static int arm_inst_ldrh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrht' intruction */
-static int arm_inst_ldrht(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrht(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
@@ -1135,7 +1140,8 @@ static int arm_inst_ldrht(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'strh (immediate)' instruction */
-static int arm_inst_strh_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_strh_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
@@ -1195,7 +1201,8 @@ static int arm_inst_strh_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'strh (register)' instruction */
-static int arm_inst_strh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_strh_r(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, Rm;
@@ -1261,7 +1268,8 @@ static int arm_inst_strh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'strht' intruction */
-static int arm_inst_strht(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_strht(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
@@ -1325,7 +1333,8 @@ static int arm_inst_strht(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrsh (immediate)' instruction */
-static int arm_inst_ldrsh_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrsh_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
@@ -1388,7 +1397,8 @@ static int arm_inst_ldrsh_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrsh (literal)' instruction */
-static int arm_inst_ldrsh_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrsh_l(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rt, imm4H, imm4L;
@@ -1431,7 +1441,8 @@ static int arm_inst_ldrsh_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrsh (register)' instruction */
-static int arm_inst_ldrsh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrsh_r(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, Rm;
@@ -1500,7 +1511,8 @@ static int arm_inst_ldrsh_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrsht' intruction */
-static int arm_inst_ldrsht(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrsht(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
@@ -1566,7 +1578,8 @@ static int arm_inst_ldrsht(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrsb (immediate)' instruction */
-static int arm_inst_ldrsb_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrsb_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
@@ -1629,7 +1642,8 @@ static int arm_inst_ldrsb_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrsb (literal)' instruction */
-static int arm_inst_ldrsb_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrsb_l(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rt, imm4H, imm4L;
@@ -1672,7 +1686,8 @@ static int arm_inst_ldrsb_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrsb (register)' instruction */
-static int arm_inst_ldrsb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrsb_r(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, Rm;
@@ -1741,7 +1756,8 @@ static int arm_inst_ldrsb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrsbt' intruction */
-static int arm_inst_ldrsbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrsbt(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
@@ -1807,7 +1823,8 @@ static int arm_inst_ldrsbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrd (immediate)' instruction */
-static int arm_inst_ldrd_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrd_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
@@ -1883,7 +1900,8 @@ static int arm_inst_ldrd_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrd (literal)' instruction */
-static int arm_inst_ldrd_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrd_l(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rt, imm4H, imm4L;
@@ -1935,7 +1953,8 @@ static int arm_inst_ldrd_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrd (register)' instruction */
-static int arm_inst_ldrd_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrd_r(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, Rm;
@@ -2007,7 +2026,8 @@ static int arm_inst_ldrd_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'strd (immediate)' instruction */
-static int arm_inst_strd_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_strd_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
@@ -2081,7 +2101,8 @@ static int arm_inst_strd_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'strd (register)' instruction */
-static int arm_inst_strd_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_strd_r(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, Rm;
@@ -2152,7 +2173,8 @@ static int arm_inst_strd_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate data processing instructions */
-static int arm_instgrp_dataproc(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_instgrp_dataproc(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 op, op1, Rn, op2;
 	u32 is_op1_0xx1x, is_op1_xx0x0, is_op1_xx0x1, is_op1_xx1x0;
@@ -2278,7 +2300,8 @@ static int arm_instgrp_dataproc(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * v
 }
 
 /** Emulate 'str (immediate)' instruction */
-static int arm_inst_str_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_str_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 data;
 	register int rc;
@@ -2326,7 +2349,8 @@ static int arm_inst_str_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'str (register)' instruction */
-static int arm_inst_str_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_str_r(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm5, type, Rm;
@@ -2397,7 +2421,8 @@ static int arm_inst_str_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'strt' intruction */
-static int arm_inst_strt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_strt(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
@@ -2473,7 +2498,8 @@ static int arm_inst_strt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'strb (immediate)' instruction */
-static int arm_inst_strb_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_strb_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm12;
@@ -2534,7 +2560,8 @@ static int arm_inst_strb_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'strb (register)' instruction */
-static int arm_inst_strb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_strb_r(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm5, type, Rm;
@@ -2606,7 +2633,8 @@ static int arm_inst_strb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'strbt' intruction */
-static int arm_inst_strbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_strbt(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
@@ -2682,7 +2710,8 @@ static int arm_inst_strbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldr (immediate)' instruction */
-static int arm_inst_ldr_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldr_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 data;
 	register int rc;
@@ -2732,7 +2761,8 @@ static int arm_inst_ldr_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldr (literal)' instruction */
-static int arm_inst_ldr_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldr_l(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rt, imm12;
@@ -2767,7 +2797,8 @@ static int arm_inst_ldr_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldr (register)' instruction */
-static int arm_inst_ldr_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldr_r(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm5, type, Rm;
@@ -2840,7 +2871,8 @@ static int arm_inst_ldr_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrt' intruction */
-static int arm_inst_ldrt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrt(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
@@ -2917,7 +2949,8 @@ static int arm_inst_ldrt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrb (immediate)' instruction */
-static int arm_inst_ldrb_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrb_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm12;
@@ -2980,7 +3013,8 @@ static int arm_inst_ldrb_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrb (literal)' instruction */
-static int arm_inst_ldrb_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrb_l(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rt, imm12;
@@ -3019,7 +3053,8 @@ static int arm_inst_ldrb_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrb (register)' instruction */
-static int arm_inst_ldrb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrb_r(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm5, type, Rm;
@@ -3092,7 +3127,8 @@ static int arm_inst_ldrb_r(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldrbt' intruction */
-static int arm_inst_ldrbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldrbt(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
@@ -3169,7 +3205,8 @@ static int arm_inst_ldrbt(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate load/store instructions */
-static int arm_instgrp_ldrstr(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_instgrp_ldrstr(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 op1, rn;
 	u32 is_xx0x0, is_0x010, is_xx0x1, is_0x011, is_xx1x0, is_0x110;
@@ -3291,21 +3328,24 @@ static int arm_instgrp_ldrstr(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcp
 }
 
 /** Emulate media instructions */
-static int arm_instgrp_media(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_instgrp_media(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	arm_unpredictable(regs, vcpu);
 	return VMM_EFAIL;
 }
 
 /** Emulate branch, branch with link, and block transfer instructions */
-static int arm_instgrp_brblk(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_instgrp_brblk(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	arm_unpredictable(regs, vcpu);
 	return VMM_EFAIL;
 }
 
 /** Emulate 'stc/stc2' instruction */
-static int arm_inst_stcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_stcx(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, D, W, Rn, CRd, coproc, imm8;
@@ -3372,7 +3412,8 @@ static int arm_inst_stcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldc_i/ldc2_i' instruction */
-static int arm_inst_ldcx_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldcx_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, D, W, Rn, CRd, coproc, imm8;
@@ -3442,7 +3483,8 @@ static int arm_inst_ldcx_i(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'ldc_l/ldc2_l' instruction */
-static int arm_inst_ldcx_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_ldcx_l(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, D, W, CRd, coproc, imm8;
@@ -3506,7 +3548,8 @@ static int arm_inst_ldcx_l(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'mcrr/mcrr2' instruction */
-static int arm_inst_mcrrx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_mcrrx(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 cond, Rt2, Rt, coproc, opc1, CRm;
 	u32 data, data2;
@@ -3551,7 +3594,8 @@ static int arm_inst_mcrrx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'mrrc/mrrc2' instruction */
-static int arm_inst_mrrcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_mrrcx(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 cond, Rt2, Rt, coproc, opc1, CRm;
 	u32 data, data2;
@@ -3598,7 +3642,8 @@ static int arm_inst_mrrcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'cdp/cdp2' instruction */
-static int arm_inst_cdpx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_cdpx(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 cond, opc1, opc2, coproc, CRd, CRn, CRm;
 	struct cpu_vcpu_coproc *cp = NULL;
@@ -3634,7 +3679,8 @@ static int arm_inst_cdpx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'mcr/mcr2' instruction */
-static int arm_inst_mcrx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_mcrx(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 cond, opc1, opc2, coproc, Rt, CRn, CRm;
 	u32 data;
@@ -3672,7 +3718,8 @@ static int arm_inst_mcrx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 }
 
 /** Emulate 'mrc/mrc2' instruction */
-static int arm_inst_mrcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_inst_mrcx(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 cond, opc1, opc2, coproc, Rt, CRn, CRm;
 	u32 data;
@@ -3710,7 +3757,8 @@ static int arm_inst_mrcx(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
-static int arm_instgrp_coproc(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcpu)
+static int arm_instgrp_coproc(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 op1, rn, cpro, op;
 	u32 is_op1_0xxxxx, is_op1_0xxxx0, is_op1_0xxxx1, is_op1_00000x;
@@ -3819,8 +3867,8 @@ static int arm_instgrp_coproc(u32 inst, vmm_user_regs_t * regs, vmm_vcpu_t * vcp
 	return VMM_EFAIL;
 }
 
-int cpu_vcpu_emulate_arm_inst(vmm_vcpu_t *vcpu, 
-				vmm_user_regs_t * regs, bool is_hypercall)
+int cpu_vcpu_emulate_arm_inst(struct vmm_vcpu *vcpu, 
+				arch_regs_t * regs, bool is_hypercall)
 {
 	u32 inst, op1, op;
 

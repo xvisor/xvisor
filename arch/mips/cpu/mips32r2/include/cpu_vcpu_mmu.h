@@ -26,10 +26,10 @@
 #include <vmm_types.h>
 #include <vmm_regs.h>
 
-int do_vcpu_tlbmiss(vmm_user_regs_t *uregs);
-u32 mips_probe_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs);
-u32 mips_read_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs);
-u32 mips_write_vcpu_tlbi(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs);
-u32 mips_write_vcpu_tlbr(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs);
+int do_vcpu_tlbmiss(arch_regs_t *uregs);
+u32 mips_probe_vcpu_tlb(struct vmm_vcpu *vcpu, arch_regs_t *uregs);
+u32 mips_read_vcpu_tlb(struct vmm_vcpu *vcpu, arch_regs_t *uregs);
+u32 mips_write_vcpu_tlbi(struct vmm_vcpu *vcpu, arch_regs_t *uregs);
+u32 mips_write_vcpu_tlbr(struct vmm_vcpu *vcpu, arch_regs_t *uregs);
 
 #endif /* __CPU_VCPU_MMU_H_ */

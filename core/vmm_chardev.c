@@ -28,7 +28,7 @@
 #include <vmm_heap.h>
 #include <vmm_chardev.h>
 
-int vmm_chardev_doioctl(vmm_chardev_t * cdev,
+int vmm_chardev_doioctl(struct vmm_chardev * cdev,
 			int cmd, void *buf, size_t len, bool block)
 {
 	if (!cdev) {
@@ -41,7 +41,7 @@ int vmm_chardev_doioctl(vmm_chardev_t * cdev,
 	return cdev->ioctl(cdev, cmd, buf, len, block);
 }
 
-u32 vmm_chardev_doread(vmm_chardev_t * cdev,
+u32 vmm_chardev_doread(struct vmm_chardev * cdev,
 		       u8 *dest, size_t offset, size_t len, bool block)
 {
 	if (!cdev) {
@@ -54,7 +54,7 @@ u32 vmm_chardev_doread(vmm_chardev_t * cdev,
 	return cdev->read(cdev, dest, offset, len, block);
 }
 
-u32 vmm_chardev_dowrite(vmm_chardev_t * cdev,
+u32 vmm_chardev_dowrite(struct vmm_chardev * cdev,
 			u8 *src, size_t offset, size_t len, bool block)
 {
 	if (!cdev) {
@@ -67,9 +67,9 @@ u32 vmm_chardev_dowrite(vmm_chardev_t * cdev,
 	return cdev->write(cdev, src, offset, len, block);
 }
 
-int vmm_chardev_register(vmm_chardev_t * cdev)
+int vmm_chardev_register(struct vmm_chardev * cdev)
 {
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	if (cdev == NULL) {
 		return VMM_EFAIL;
@@ -78,7 +78,7 @@ int vmm_chardev_register(vmm_chardev_t * cdev)
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_malloc(sizeof(vmm_classdev_t));
+	cd = vmm_malloc(sizeof(struct vmm_classdev));
 	if (!cd) {
 		return VMM_EFAIL;
 	}
@@ -93,10 +93,10 @@ int vmm_chardev_register(vmm_chardev_t * cdev)
 	return VMM_OK;
 }
 
-int vmm_chardev_unregister(vmm_chardev_t * cdev)
+int vmm_chardev_unregister(struct vmm_chardev * cdev)
 {
 	int rc;
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	if (cdev == NULL) {
 		return VMM_EFAIL;
@@ -116,9 +116,9 @@ int vmm_chardev_unregister(vmm_chardev_t * cdev)
 	return rc;
 }
 
-vmm_chardev_t *vmm_chardev_find(const char *name)
+struct vmm_chardev *vmm_chardev_find(const char *name)
 {
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_find_classdev(VMM_CHARDEV_CLASS_NAME, name);
 
@@ -129,9 +129,9 @@ vmm_chardev_t *vmm_chardev_find(const char *name)
 	return cd->priv;
 }
 
-vmm_chardev_t *vmm_chardev_get(int num)
+struct vmm_chardev *vmm_chardev_get(int num)
 {
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_classdev(VMM_CHARDEV_CLASS_NAME, num);
 
@@ -150,9 +150,9 @@ u32 vmm_chardev_count(void)
 int __init vmm_chardev_init(void)
 {
 	int rc;
-	vmm_class_t *c;
+	struct vmm_class *c;
 
-	c = vmm_malloc(sizeof(vmm_class_t));
+	c = vmm_malloc(sizeof(struct vmm_class));
 	if (!c) {
 		return VMM_EFAIL;
 	}

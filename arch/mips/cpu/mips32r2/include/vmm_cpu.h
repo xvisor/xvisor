@@ -34,11 +34,12 @@ int vmm_cpu_early_init(void);
 int vmm_cpu_final_init(void);
 
 /** Register functions required by VMM core */
-int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu);
-void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
-			  vmm_user_regs_t *regs);
-void vmm_vcpu_regs_dump(vmm_vcpu_t *vcpu);
-void vmm_vcpu_stat_dump(vmm_vcpu_t *vcpu);
+int vmm_vcpu_regs_init(struct vmm_vcpu *vcpu);
+void vmm_vcpu_regs_switch(struct vmm_vcpu *tvcpu, 
+			  struct vmm_vcpu *vcpu,
+			  arch_regs_t *regs);
+void vmm_vcpu_regs_dump(struct vmm_vcpu *vcpu);
+void vmm_vcpu_stat_dump(struct vmm_vcpu *vcpu);
 
 /** Host address space functions required by VMM core */
 int vmm_cpu_aspace_init(physical_addr_t * resv_pa, 
@@ -63,9 +64,12 @@ void vmm_cpu_irq_restore(irq_flags_t flags);
 void vmm_cpu_wait_for_irq(void);
 
 /** VCPU Interrupt functions required by VMM core */
-s32 vmm_vcpu_irq_execute(vmm_vcpu_t *vcpu,vmm_user_regs_t *regs,u32 interrupt_no,u32 reason);
-u32 vmm_vcpu_irq_priority(vmm_vcpu_t * vcpu, u32 irq_no);
-u32 vmm_vcpu_irq_count(vmm_vcpu_t * vcpu);
+s32 vmm_vcpu_irq_execute(struct vmm_vcpu *vcpu,
+			 arch_regs_t *regs,
+			 u32 interrupt_no,
+			 u32 reason);
+u32 vmm_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no);
+u32 vmm_vcpu_irq_count(struct vmm_vcpu * vcpu);
 
 /** Timer functions required by VMM core */
 int vmm_cpu_clockevent_start(u64 tick_nsecs);

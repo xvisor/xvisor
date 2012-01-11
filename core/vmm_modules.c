@@ -30,14 +30,14 @@
 #include <vmm_modules.h>
 
 struct vmm_modules_ctrl {
-        vmm_module_t *table;
+        struct vmm_module *table;
         u32 table_size;
         u32 mod_count;
 };
 
 static struct vmm_modules_ctrl modules_ctrl;
 
-vmm_module_t *vmm_modules_getmodule(u32 index)
+struct vmm_module *vmm_modules_getmodule(u32 index)
 {
 	if (0 <= index && index < modules_ctrl.mod_count) {
 		return &modules_ctrl.table[index];
@@ -54,14 +54,14 @@ int __init vmm_modules_init(void)
 {
 	int mod_ret;
 	u32 i, j;
-	vmm_module_t tmpmod;
+	struct vmm_module tmpmod;
 
 	/* Reset the control structure */
 	vmm_memset(&modules_ctrl, 0, sizeof(modules_ctrl));
 
 	/* Initialize the control structure */
-	modules_ctrl.table = (vmm_module_t *) vmm_modtbl_vaddr();
-	modules_ctrl.table_size = vmm_modtbl_size() / sizeof(vmm_module_t);
+	modules_ctrl.table = (struct vmm_module *) vmm_modtbl_vaddr();
+	modules_ctrl.table_size = vmm_modtbl_size() / sizeof(struct vmm_module);
 	modules_ctrl.mod_count = 0;
 
 	/* Find and count valid modules */

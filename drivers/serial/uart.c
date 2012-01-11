@@ -134,7 +134,7 @@ void uart_lowlevel_init(const char *compatible, virtual_addr_t base,
 	}
 }
 
-static u32 uart_read(vmm_chardev_t *cdev, 
+static u32 uart_read(struct vmm_chardev *cdev, 
 		     u8 *dest, size_t offset, size_t len, bool block)
 {
 	u32 i;
@@ -165,7 +165,7 @@ static u32 uart_read(vmm_chardev_t *cdev,
 	return i;
 }
 
-static u32 uart_write(vmm_chardev_t *cdev, 
+static u32 uart_write(struct vmm_chardev *cdev, 
 		      u8 *src, size_t offset, size_t len, bool block)
 {
 	u32 i;
@@ -196,14 +196,14 @@ static u32 uart_write(vmm_chardev_t *cdev,
 	return i;
 }
 
-static int uart_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
+static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devid)
 {
 	int rc;
 	const char *attr;
-	vmm_chardev_t *cd;
+	struct vmm_chardev *cd;
 	struct uart_port *port;
 	
-	cd = vmm_malloc(sizeof(vmm_chardev_t));
+	cd = vmm_malloc(sizeof(struct vmm_chardev));
 	if(!cd) {
 		rc = VMM_EFAIL;
 		goto free_nothing;
@@ -272,10 +272,10 @@ free_nothing:
 	return rc;
 }
 
-static int uart_driver_remove(vmm_device_t *dev)
+static int uart_driver_remove(struct vmm_device *dev)
 {
 	int rc;
-	vmm_chardev_t *cd =(vmm_chardev_t*)dev->priv;
+	struct vmm_chardev *cd =(struct vmm_chardev*)dev->priv;
 
 	rc = vmm_chardev_unregister(cd);
 	vmm_free(cd->priv);
@@ -285,7 +285,7 @@ static int uart_driver_remove(vmm_device_t *dev)
 	return rc;
 }
 
-static vmm_devid_t uart_devid_table[] = {
+static struct vmm_devid uart_devid_table[] = {
 	{ .type = "serial", .compatible = "ns8250"},
 	{ .type = "serial", .compatible = "ns16450"},
 	{ .type = "serial", .compatible = "ns16550a"},
@@ -296,7 +296,7 @@ static vmm_devid_t uart_devid_table[] = {
 	{ /* end of list */ },
 };
 
-static vmm_driver_t uart_driver = {
+static struct vmm_driver uart_driver = {
 	.name = "uart_serial",
 	.match_table = uart_devid_table,
 	.probe = uart_driver_probe,

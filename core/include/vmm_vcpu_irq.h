@@ -28,18 +28,18 @@
 #include <vmm_manager.h>
 
 /** Process interrupts for current vcpu */
-void vmm_vcpu_irq_process(vmm_user_regs_t * regs);
+void vmm_vcpu_irq_process(arch_regs_t * regs);
 
 /** Assert an irq to given vcpu */
-void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason);
+void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason);
 
 /** Deassert active irq of given vcpu */
-void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu);
+void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu);
 
 /** Wait for irq on given vcpu */
-int vmm_vcpu_irq_wait(vmm_vcpu_t *vcpu);
+int vmm_vcpu_irq_wait(struct vmm_vcpu *vcpu);
 
 /** Intialize interrupts for given vcpu */
-int vmm_vcpu_irq_init(vmm_vcpu_t *vcpu);
+int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu);
 
 #endif

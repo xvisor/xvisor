@@ -31,17 +31,17 @@
 
 #define VMM_NETDEV_CLASS_NAME				"network"
 
-typedef struct vmm_netdev vmm_netdev_t;
-typedef int (*vmm_netdev_ioctl_t) (vmm_netdev_t * ndev,
+struct vmm_netdev;
+typedef int (*vmm_netdev_ioctl_t) (struct vmm_netdev * ndev,
 				   int cmd, void *buf, size_t buf_len);
-typedef int (*vmm_netdev_read_t) (vmm_netdev_t * ndev,
+typedef int (*vmm_netdev_read_t) (struct vmm_netdev * ndev,
 				  char *dest, size_t offset, size_t len);
-typedef int (*vmm_netdev_write_t) (vmm_netdev_t * ndev,
+typedef int (*vmm_netdev_write_t) (struct vmm_netdev * ndev,
 				   char *src, size_t offset, size_t len);
 
 struct vmm_netdev {
 	char name[32];
-	vmm_device_t *dev;
+	struct vmm_device *dev;
 	vmm_netdev_ioctl_t ioctl;
 	vmm_netdev_read_t read;
 	vmm_netdev_write_t write;
@@ -49,27 +49,28 @@ struct vmm_netdev {
 };
 
 /** Do ioctl operation on a character device */
-int vmm_netdev_doioctl(vmm_netdev_t * ndev, int cmd, void *buf, size_t buf_len);
+int vmm_netdev_doioctl(struct vmm_netdev * ndev, 
+			int cmd, void *buf, size_t buf_len);
 
 /** Do read operation on a character device */
-int vmm_netdev_doread(vmm_netdev_t * ndev,
+int vmm_netdev_doread(struct vmm_netdev * ndev,
 		      char *dest, size_t offset, size_t len);
 
 /** Do write operation on a character device */
-int vmm_netdev_dowrite(vmm_netdev_t * ndev,
+int vmm_netdev_dowrite(struct vmm_netdev * ndev,
 		       char *src, size_t offset, size_t len);
 
 /** Register character device to device driver framework */
-int vmm_netdev_register(vmm_netdev_t * ndev);
+int vmm_netdev_register(struct vmm_netdev * ndev);
 
 /** Unregister character device from device driver framework */
-int vmm_netdev_unregister(vmm_netdev_t * ndev);
+int vmm_netdev_unregister(struct vmm_netdev * ndev);
 
 /** Find a character device in device driver framework */
-vmm_netdev_t *vmm_netdev_find(const char *name);
+struct vmm_netdev *vmm_netdev_find(const char *name);
 
 /** Get character device with given number */
-vmm_netdev_t *vmm_netdev_get(int num);
+struct vmm_netdev *vmm_netdev_get(int num);
 
 /** Count number of character devices */
 u32 vmm_netdev_count(void);

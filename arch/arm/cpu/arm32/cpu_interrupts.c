@@ -38,10 +38,10 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
 
-void do_undef_inst(vmm_user_regs_t * uregs)
+void do_undef_inst(arch_regs_t * uregs)
 {
 	int rc = VMM_OK;
-	vmm_vcpu_t * vcpu;
+	struct vmm_vcpu * vcpu;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
@@ -54,7 +54,7 @@ void do_undef_inst(vmm_user_regs_t * uregs)
 	/* If vcpu priviledge is user then generate exception 
 	 * and return without emulating instruction 
 	 */
-	if ((arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 	} else {
 		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
@@ -71,10 +71,10 @@ void do_undef_inst(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-void do_soft_irq(vmm_user_regs_t * uregs)
+void do_soft_irq(arch_regs_t * uregs)
 {
 	int rc = VMM_OK;
-	vmm_vcpu_t * vcpu;
+	struct vmm_vcpu * vcpu;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
@@ -87,7 +87,7 @@ void do_soft_irq(vmm_user_regs_t * uregs)
 	/* If vcpu priviledge is user then generate exception 
 	 * and return without emulating instruction 
 	 */
-	if ((arm_sregs(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_SOFT_IRQ, 0x0);
 	} else {
 		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
@@ -104,12 +104,12 @@ void do_soft_irq(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-void do_prefetch_abort(vmm_user_regs_t * uregs)
+void do_prefetch_abort(arch_regs_t * uregs)
 {
 	int rc = VMM_EFAIL;
 	bool crash_dump = FALSE;
 	u32 ifsr, ifar, fs;
-	vmm_vcpu_t * vcpu;
+	struct vmm_vcpu * vcpu;
 	struct cpu_l1tbl * l1;
 	struct cpu_page pg;
 
@@ -202,12 +202,12 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-void do_data_abort(vmm_user_regs_t * uregs)
+void do_data_abort(arch_regs_t * uregs)
 {
 	int rc = VMM_EFAIL; 
 	bool crash_dump = FALSE;
 	u32 dfsr, dfar, fs, dom, wnr;
-	vmm_vcpu_t * vcpu;
+	struct vmm_vcpu * vcpu;
 	struct cpu_l1tbl * l1;
 	struct cpu_page pg;
 
@@ -283,8 +283,8 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	case DFSR_FS_PERM_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
 						dfar, fs, dom, wnr, 1);
-		if ((dfar & ~(sizeof(arm_sregs(vcpu)->cp15.ovect) - 1)) != 
-						arm_sregs(vcpu)->cp15.ovect_base) {
+		if ((dfar & ~(sizeof(arm_priv(vcpu)->cp15.ovect) - 1)) != 
+						arm_priv(vcpu)->cp15.ovect_base) {
 			crash_dump = FALSE;
 		}
 		break;
@@ -311,12 +311,12 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-void do_not_used(vmm_user_regs_t * uregs)
+void do_not_used(arch_regs_t * uregs)
 {
 	vmm_panic("%s: unexpected exception\n", __func__);
 }
 
-void do_irq(vmm_user_regs_t * uregs)
+void do_irq(arch_regs_t * uregs)
 {
 	vmm_scheduler_irq_enter(uregs, FALSE);
 
@@ -325,7 +325,7 @@ void do_irq(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-void do_fiq(vmm_user_regs_t * uregs)
+void do_fiq(arch_regs_t * uregs)
 {
 	vmm_scheduler_irq_enter(uregs, FALSE);
 
