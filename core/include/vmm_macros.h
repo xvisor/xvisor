@@ -31,4 +31,12 @@
 	const typeof(((type *)0)->member) * __mptr = (ptr);	\
 	(type *)((char *)__mptr - offsetof(type, member)); })
 
+#define array_size(x) (sizeof(x) / sizeof((x)[0]))
+
+#define field_sizeof(t, f) (sizeof(((t*)0)->f))
+
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
+#define max(a, b) ((a) < (b) ? (b) : (a))
+
 #endif /* __VMM_MACROS_H__ */
