@@ -628,6 +628,11 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 		match = devemu_match_node(matches, reg->node);
 		if (match) {
 			einst = vmm_malloc(sizeof(struct vmm_emudev));
+			if (einst == NULL) {
+				/* FIXME: There is more cleanup to do */
+				return VMM_EFAIL;
+			}
+			vmm_memset(einst, 0, sizeof(struct vmm_emudev));
 			INIT_SPIN_LOCK(&einst->lock);
 			einst->node = reg->node;
 			einst->probe = emu->probe;
@@ -681,15 +686,14 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 		goto devemu_init_context_done;
 	}
 
-	if (!guest->aspace.devemu_priv) {
-		eg = vmm_malloc(sizeof(struct vmm_devemu_guest_context));
-		if (!eg) {
-			rc = VMM_EFAIL;
-			goto devemu_init_context_done;
-		}
-		INIT_LIST_HEAD(&eg->emupic_list);
-		guest->aspace.devemu_priv = eg;
+	eg = vmm_malloc(sizeof(struct vmm_devemu_guest_context));
+	if (!eg) {
+		rc = VMM_EFAIL;
+		goto devemu_init_context_done;
 	}
+	vmm_memset(eg, 0, sizeof(struct vmm_devemu_guest_context));
+	INIT_LIST_HEAD(&eg->emupic_list);
+	guest->aspace.devemu_priv = eg;
 
 	eg->h2g_irq = NULL;
 	eg->h2g_irq_count = 0;
@@ -704,11 +708,13 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 		}
 
 		eg->h2g_irq = vmm_malloc(sizeof(struct vmm_devemu_h2g_irq) * 
-					(eg->h2g_irq_count));
+							(eg->h2g_irq_count));
 		if (!eg->h2g_irq) {
 			rc = VMM_EFAIL;
 			goto devemu_init_context_free;
 		}
+		vmm_memset(eg->h2g_irq, 0, sizeof(struct vmm_devemu_h2g_irq) *
+							(eg->h2g_irq_count));
 
 		for (ite = 0; ite < eg->h2g_irq_count; ite++) {
 			eg->h2g_irq[ite].guest = guest;
