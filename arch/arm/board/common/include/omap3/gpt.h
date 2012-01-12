@@ -27,6 +27,7 @@
 #define __OMAP3_GPT_H__
 
 #include <vmm_types.h>
+#include <vmm_host_irq.h>
 
 #define OMAP3_GPT1_BASE 			0x48318000
 #define OMAP3_GPT2_BASE 			0x49032000

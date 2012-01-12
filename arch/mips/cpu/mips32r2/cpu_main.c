@@ -22,14 +22,14 @@
  * @brief C code for cpu functions
  */
 
-#include <vmm_cpu.h>
+#include <arch_cpu.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_main.h>
 #include <cpu_asm_macros.h>
 
-void vmm_regs_dump(arch_regs_t *tregs)
+void cpu_regs_dump(arch_regs_t *tregs)
 {
 	vmm_printf("V0: 0x%X\n", tregs->regs[V0_IDX]);
 	vmm_printf("V1: 0x%X\n", tregs->regs[V1_IDX]);
@@ -63,7 +63,7 @@ void vmm_regs_dump(arch_regs_t *tregs)
 	while(1);
 }
 
-int __init vmm_cpu_early_init(void)
+int __init arch_cpu_early_init(void)
 {
 	/*
 	 * Host virtual memory, device tree, heap is up.
@@ -73,7 +73,7 @@ int __init vmm_cpu_early_init(void)
 	return 0;
 }
 
-int __init vmm_cpu_final_init(void)
+int __init arch_cpu_final_init(void)
 {
         return 0;
 }

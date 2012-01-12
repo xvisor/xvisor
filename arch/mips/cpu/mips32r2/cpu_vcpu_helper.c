@@ -22,14 +22,14 @@
  * @brief source of VCPU helper functions
  */
 
+#include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
-#include <cpu_asm_macros.h>
-#include <vmm_cpu.h>
-#include <cpu_mmu.h>
 #include <vmm_guest_aspace.h>
+#include <cpu_asm_macros.h>
+#include <cpu_mmu.h>
 
 extern char _stack_start;
 
@@ -116,7 +116,7 @@ static  __attribute__((unused)) int map_vcpu_rom(struct vmm_vcpu *vcpu)
 	return map_guest_region(vcpu, VMM_REGION_TYPE_ROM, 0);
 }
 
-int vmm_vcpu_regs_init(struct vmm_vcpu *vcpu)
+int arch_vcpu_regs_init(struct vmm_vcpu *vcpu)
 {
 	vmm_memset(mips_uregs(vcpu), 0, sizeof(arch_regs_t));
 
@@ -146,7 +146,7 @@ int vmm_vcpu_regs_init(struct vmm_vcpu *vcpu)
 	return VMM_OK;
 }
 
-void vmm_vcpu_regs_switch(struct vmm_vcpu *tvcpu, 
+void arch_vcpu_regs_switch(struct vmm_vcpu *tvcpu, 
 			  struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs)
 {
@@ -165,10 +165,10 @@ void vmm_vcpu_regs_switch(struct vmm_vcpu *tvcpu,
 	}
 }
 
-void vmm_vcpu_regs_dump(struct vmm_vcpu *vcpu) 
+void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu) 
 {
 }
 
-void vmm_vcpu_stat_dump(struct vmm_vcpu *vcpu) 
+void arch_vcpu_stat_dump(struct vmm_vcpu *vcpu) 
 {
 }

@@ -24,7 +24,7 @@
 #define __CPU_GENEX_H_
 
 #include <vmm_types.h>
-#include <vmm_regs.h>
+#include <arch_regs.h>
 
 #define EXEC_CODE_MASK			0x7CUL
 #define EXEC_CODE_SHIFT			2

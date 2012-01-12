@@ -22,9 +22,9 @@
  * @brief source file for hypervisor manager
  */
 
+#include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
-#include <vmm_cpu.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
@@ -83,7 +83,7 @@ static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			}
 			vcpu->state = VMM_VCPU_STATE_RESET;
 			vcpu->reset_count++;
-			if ((rc = vmm_vcpu_regs_init(vcpu))) {
+			if ((rc = arch_vcpu_regs_init(vcpu))) {
 				break;
 			}
 			if ((rc = vmm_vcpu_irq_init(vcpu))) {
@@ -149,7 +149,7 @@ int vmm_manager_vcpu_dumpreg(struct vmm_vcpu * vcpu)
 	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
-			vmm_vcpu_regs_dump(vcpu);
+			arch_vcpu_regs_dump(vcpu);
 			rc = VMM_OK;
 		}
 		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
@@ -164,7 +164,7 @@ int vmm_manager_vcpu_dumpstat(struct vmm_vcpu * vcpu)
 	if (vcpu) {
 		flags = vmm_spin_lock_irqsave(&vcpu->lock);
 		if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
-			vmm_vcpu_stat_dump(vcpu);
+			arch_vcpu_stat_dump(vcpu);
 			rc = VMM_OK;
 		}
 		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
@@ -227,7 +227,7 @@ struct vmm_vcpu * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->arch_priv = NULL;
 
 	/* Initialize registers */
-	if (vmm_vcpu_regs_init(vcpu)) {
+	if (arch_vcpu_regs_init(vcpu)) {
 		mngr.vcpu_avail_array[vnum] = TRUE;
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 		return NULL;
@@ -595,7 +595,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 		}
 		vcpu->guest = guest;
 		vcpu->arch_priv = NULL;
-		if (vmm_vcpu_regs_init(vcpu)) {
+		if (arch_vcpu_regs_init(vcpu)) {
 			continue;
 		}
 		if (vmm_vcpu_irq_init(vcpu)) {

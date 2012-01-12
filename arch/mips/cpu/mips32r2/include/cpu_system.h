@@ -20,8 +20,8 @@
  *
  */
 
-#ifndef _ARCH_SYSTEM_H
-#define _ARCH_SYSTEM_H
+#ifndef _CPU_SYSTEM_H
+#define _CPU_SYSTEM_H
 
 #include <vmm_types.h>
 
@@ -41,4 +41,4 @@ typedef union prid_ {
 	u32 prid;
 }cp0_prid_t;
 
-#endif /* _ARCH_SYSTEM_H */
+#endif /* _CPU_SYSTEM_H */

@@ -33,7 +33,7 @@
 extern u32 dt_blob_start;
 virtual_addr_t isa_vbase;
 
-int vmm_board_ram_start(physical_addr_t * addr)
+int arch_board_ram_start(physical_addr_t * addr)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
@@ -67,7 +67,7 @@ int vmm_board_ram_start(physical_addr_t * addr)
 	return VMM_OK;
 }
 
-int vmm_board_ram_size(physical_size_t * size)
+int arch_board_ram_size(physical_size_t * size)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
@@ -100,7 +100,7 @@ int vmm_board_ram_size(physical_size_t * size)
 	return VMM_OK;
 }
 
-int vmm_devtree_populate(struct vmm_devtree_node **root,
+int arch_devtree_populate(struct vmm_devtree_node **root,
 			 char **string_buffer,
 			 size_t *string_buffer_size)
 {
@@ -118,7 +118,7 @@ int vmm_devtree_populate(struct vmm_devtree_node **root,
 				    string_buffer_size);
 }
 
-int vmm_board_getclock(struct vmm_devtree_node *node, u32 *clock)
+int arch_board_getclock(struct vmm_devtree_node *node, u32 *clock)
 {
 	if(!node || !clock) {
 		return VMM_EFAIL;
@@ -133,14 +133,14 @@ int vmm_board_getclock(struct vmm_devtree_node *node, u32 *clock)
 	return VMM_OK;
 }
 
-int __init vmm_board_early_init(void)
+int __init arch_board_early_init(void)
 {
 	isa_vbase = 0xb4000000UL;
 	/* isa_vbase = vmm_host_iomap(0x14000000UL, 0x1000); */
 	return (isa_vbase ? 0 : 1);
 }
 
-int __init vmm_board_final_init(void)
+int __init arch_board_final_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
@@ -166,12 +166,12 @@ int __init vmm_board_final_init(void)
 	return VMM_OK;
 }
 
-int vmm_board_reset(void)
+int arch_board_reset(void)
 {
 	return VMM_EFAIL;
 }
 
-int vmm_board_shutdown(void)
+int arch_board_shutdown(void)
 {
 	return VMM_EFAIL;
 }

@@ -22,9 +22,9 @@
  * @brief main file for core code
  */
 
+#include <arch_cpu.h>
+#include <arch_board.h>
 #include <vmm_error.h>
-#include <vmm_cpu.h>
-#include <vmm_board.h>
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_stdio.h>
@@ -85,13 +85,13 @@ void vmm_init(void)
 	}
 
 	/* Initialize CPU early */
-	ret = vmm_cpu_early_init();
+	ret = arch_cpu_early_init();
 	if (ret) {
 		vmm_hang();
 	}
 
 	/* Initialize Board early */
-	ret = vmm_board_early_init();
+	ret = arch_board_early_init();
 	if (ret) {
 		vmm_hang();
 	}
@@ -232,7 +232,7 @@ void vmm_init(void)
 
 	/* Initialize cpu final */
 	vmm_printf("Initialize CPU Final\n");
-	ret = vmm_cpu_final_init();
+	ret = arch_cpu_final_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
@@ -240,7 +240,7 @@ void vmm_init(void)
 
 	/* Intialize board final */
 	vmm_printf("Initialize Board Final\n");
-	ret = vmm_board_final_init();
+	ret = arch_board_final_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
@@ -291,7 +291,7 @@ void vmm_reset(void)
 
 	/* Issue board reset */
 	vmm_printf("Issuing Board Reset\n");
-	if ((rc = vmm_board_reset())) {
+	if ((rc = arch_board_reset())) {
 		vmm_panic("Error: Board reset failed.\n");
 	}
 
@@ -311,7 +311,7 @@ void vmm_shutdown(void)
 
 	/* Issue board shutdown */
 	vmm_printf("Issuing Board Shutdown\n");
-	if ((rc = vmm_board_shutdown())) {
+	if ((rc = arch_board_shutdown())) {
 		vmm_panic("Error: Board shutdown failed.\n");
 	}
 

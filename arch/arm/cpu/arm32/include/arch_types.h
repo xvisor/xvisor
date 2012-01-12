@@ -16,13 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_types.h
+ * @file arch_types.h
  * @version 1.0
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @brief common header file for typedefs
  */
-#ifndef _VMM_CPU_TYPES_H__
-#define _VMM_CPU_TYPES_H__
+#ifndef _ARCH_TYPES_H__
+#define _ARCH_TYPES_H__
 
 /** cpu specific types */
 typedef long long s64;
@@ -46,7 +46,7 @@ typedef struct {
 #define __ARCH_SPIN_UNLOCKED	0
 
 /* FIXME: Need memory barrier for this. */
-#define VMM_CPU_SPIN_LOCK_INIT(_lptr)		\
+#define ARCH_SPIN_LOCK_INIT(_lptr)		\
 	(_lptr)->lock = __ARCH_SPIN_UNLOCKED
 
-#endif /* __VMM_CPU_TYPES_H__ */
+#endif /* _ARCH_TYPES_H__ */

@@ -24,8 +24,8 @@
 #ifndef _CPU_INTERRUPTS_H__
 #define _CPU_INTERRUPTS_H__
 
-#include "vmm_types.h"
-#include "vmm_regs.h"
+#include <vmm_types.h>
+#include <arch_regs.h>
 
 #define NR_SYS_INT				8
 #define SYS_TIMER_INT_STATUS_MASK		(0x01UL << 30)

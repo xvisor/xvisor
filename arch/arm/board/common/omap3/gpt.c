@@ -27,18 +27,17 @@
  * Parts of this source code has been taken from u-boot
  */
 
+#include <arch_math.h>
+#include <omap3/intc.h>
+#include <omap3/gpt.h>
+#include <omap3/prcm.h>
+#include <omap3/s32k-timer.h>
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_main.h>
 #include <vmm_timer.h>
 #include <vmm_host_io.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
-#include <vmm_host_irq.h>
-#include <omap3/intc.h>
-#include <omap3/gpt.h>
-#include <omap3/prcm.h>
-#include <omap3/s32k-timer.h>
 
 static struct omap3_gpt_cfg *omap3_gpt_config = NULL;
 static int omap3_sys_clk_div = 0;

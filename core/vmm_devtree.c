@@ -22,9 +22,9 @@
  * @brief Device Tree Implementation.
  */
 
+#include <arch_board.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
-#include <vmm_board.h>
 #include <vmm_devtree.h>
 
 struct vmm_devtree_ctrl {
@@ -178,7 +178,7 @@ int __init vmm_devtree_init(void)
 	vmm_memset(&dtree_ctrl, 0, sizeof(dtree_ctrl));
 
 	/* Populate Device Tree */
-	return vmm_devtree_populate(&dtree_ctrl.root,
-				    &dtree_ctrl.str_buf,
-				    &dtree_ctrl.str_buf_size);
+	return arch_devtree_populate(&dtree_ctrl.root,
+				     &dtree_ctrl.str_buf,
+				     &dtree_ctrl.str_buf_size);
 }

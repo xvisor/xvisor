@@ -22,7 +22,7 @@
  * @brief Implementation of timer subsystem
  */
 
-#include <vmm_cpu.h>
+#include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
@@ -48,7 +48,7 @@ u64 vmm_timer_timestamp(void)
 	u64 cycles_now, cycles_delta;
 	u64 ns_offset;
 
-	cycles_now = vmm_cpu_clocksource_cycles();
+	cycles_now = arch_cpu_clocksource_cycles();
 	cycles_delta = (cycles_now - tctrl.cycles_last) & tctrl.cycles_mask;
 	tctrl.cycles_last = cycles_now;
 
@@ -64,7 +64,7 @@ u64 __notrace vmm_timer_timestamp_for_profile(void)
 	u64 cycles_now, cycles_delta;
 	u64 ns_offset;
 
-	cycles_now = vmm_cpu_clocksource_cycles();
+	cycles_now = arch_cpu_clocksource_cycles();
 	cycles_delta = (cycles_now - tctrl.cycles_last) & tctrl.cycles_mask;
 	ns_offset = (cycles_delta * tctrl.cycles_mult) >> tctrl.cycles_shift;
 
@@ -100,7 +100,7 @@ static void vmm_timer_schedule_next_event(void)
 			tstamp = e->expiry_tstamp;
 		}
 
-		vmm_cpu_clockevent_start(e->expiry_tstamp - tstamp);
+		arch_cpu_clockevent_start(e->expiry_tstamp - tstamp);
 	} else {
 		/* FIXME: What if expiry time of current event changed ?? */
 		/* Nothing to change as the current event is the one at the */
@@ -155,7 +155,7 @@ int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs)
 
 	tstamp = vmm_timer_timestamp();
 
-	flags = vmm_cpu_irq_save();
+	flags = arch_cpu_irq_save();
 
 	if (ev->active) {
 		/*
@@ -185,7 +185,7 @@ int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs)
 
 	vmm_timer_schedule_next_event();
 
-	vmm_cpu_irq_restore(flags);
+	arch_cpu_irq_restore(flags);
 
 	return VMM_OK;
 }
@@ -208,7 +208,7 @@ int vmm_timer_event_expire(struct vmm_timer_event * ev)
 	}
 
 	/* prevent (timer) interrupt */
-	flags = vmm_cpu_irq_save();
+	flags = arch_cpu_irq_save();
 
 	/* if the event is already engaged */
 	if (ev->active) {
@@ -224,10 +224,10 @@ int vmm_timer_event_expire(struct vmm_timer_event * ev)
 	list_add(&tctrl.cpu_event_list, &ev->cpu_head);
 
 	/* trigger a timer interrupt */
-	vmm_cpu_clockevent_expire();
+	arch_cpu_clockevent_expire();
 
 	/* allow (timer) interrupts */
-	vmm_cpu_irq_restore(flags);
+	arch_cpu_irq_restore(flags);
 
 	return VMM_OK;
 }
@@ -240,7 +240,7 @@ int vmm_timer_event_stop(struct vmm_timer_event * ev)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_cpu_irq_save();
+	flags = arch_cpu_irq_save();
 
 	ev->expiry_tstamp = 0;
 
@@ -251,7 +251,7 @@ int vmm_timer_event_stop(struct vmm_timer_event * ev)
 
 	vmm_timer_schedule_next_event();
 
-	vmm_cpu_irq_restore(flags);
+	arch_cpu_irq_restore(flags);
 
 	return VMM_OK;
 }
@@ -404,14 +404,14 @@ u32 vmm_timer_event_count(void)
 
 void vmm_timer_start(void)
 {
-	vmm_cpu_clockevent_start(1000000);
+	arch_cpu_clockevent_start(1000000);
 
 	tctrl.cpu_started = TRUE;
 }
 
 void vmm_timer_stop(void)
 {
-	vmm_cpu_clockevent_stop();
+	arch_cpu_clockevent_stop();
 
 	tctrl.cpu_started = FALSE;
 }
@@ -433,20 +433,20 @@ int __init vmm_timer_init(void)
 	INIT_LIST_HEAD(&tctrl.event_list);
 
 	/* Initialize cpu specific timer event */
-	if ((rc = vmm_cpu_clockevent_init())) {
+	if ((rc = arch_cpu_clockevent_init())) {
 		return rc;
 	}
 
 	/* Initialize cpu specific timer cycle counter */
-	if ((rc = vmm_cpu_clocksource_init())) {
+	if ((rc = arch_cpu_clocksource_init())) {
 		return rc;
 	}
 
 	/* Setup configuration for reading cycle counter */
-	tctrl.cycles_mask = vmm_cpu_clocksource_mask();
-	tctrl.cycles_mult = vmm_cpu_clocksource_mult();
-	tctrl.cycles_shift = vmm_cpu_clocksource_shift();
-	tctrl.cycles_last = vmm_cpu_clocksource_cycles();
+	tctrl.cycles_mask = arch_cpu_clocksource_mask();
+	tctrl.cycles_mult = arch_cpu_clocksource_mult();
+	tctrl.cycles_shift = arch_cpu_clocksource_shift();
+	tctrl.cycles_last = arch_cpu_clocksource_cycles();
 
 	/* Starting value of timestamp */
 	tctrl.timestamp = 0x0;

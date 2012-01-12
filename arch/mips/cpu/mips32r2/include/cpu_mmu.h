@@ -152,8 +152,7 @@ pte_t *vmm_cpu_va2pte(virtual_addr_t vaddr);
 
 void mips_fill_tlb_entry(mips32_tlb_entry_t *tlb_entry, int index);
 u32 do_tlbmiss(struct arch_regs *uregs);
-int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa);
-pte_t *vmm_cpu_va2pte(virtual_addr_t vaddr);
+pte_t *cpu_va2pte(virtual_addr_t vaddr);
 void set_current_asid(u32 cur_asid);
 
 #endif /* ! __ASSEMBLY__ */

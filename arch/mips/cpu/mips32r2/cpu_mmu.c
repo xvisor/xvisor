@@ -22,14 +22,14 @@
  * @brief MMU handling functions.
  */
 
+#include <arch_regs.h>
+#include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
 #include <cpu_mmu.h>
-#include <vmm_regs.h>
 #include <cpu_asm_macros.h>
 #include <cpu_vcpu_mmu.h>
-#include <vmm_error.h>
 
 void set_current_asid(u32 cur_asid)
 {
@@ -52,7 +52,7 @@ u32 do_tlbmiss(arch_regs_t *uregs)
 		return do_vcpu_tlbmiss(uregs);
 	} else {
 		badvaddr = read_c0_badvaddr();
-		fpte = vmm_cpu_va2pte(badvaddr);
+		fpte = cpu_va2pte(badvaddr);
 
 		if (fpte == NULL)
 			vmm_panic("ARGHHH!!! Cannot handle page fault in VMM!\n");

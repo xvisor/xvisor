@@ -23,11 +23,11 @@
  * @brief Source file for host virtual address space management.
  */
 
-#include <vmm_math.h>
+#include <arch_cpu.h>
+#include <arch_math.h>
+#include <arch_board.h>
 #include <vmm_error.h>
 #include <vmm_list.h>
-#include <vmm_cpu.h>
-#include <vmm_board.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
@@ -67,7 +67,7 @@ int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 
 	found = 0;
 	if (aligned && (sz > VMM_PAGE_SIZE)) {
-		bpos = vmm_umod32(hactrl.vapool_start, sz);
+		bpos = arch_umod32(hactrl.vapool_start, sz);
 		if (bpos) {
 			bpos = VMM_ROUNDUP2_PAGE_SIZE(sz) >> VMM_PAGE_SHIFT;
 		}
@@ -185,7 +185,7 @@ int vmm_host_ram_alloc(physical_addr_t * pa, physical_size_t sz, bool aligned)
 
 	found = 0;
 	if (aligned && (sz > VMM_PAGE_SIZE)) {
-		bpos = vmm_umod32(hactrl.ram_start, sz);
+		bpos = arch_umod32(hactrl.ram_start, sz);
 		if (bpos) {
 			bpos = VMM_ROUNDUP2_PAGE_SIZE(sz) >> VMM_PAGE_SHIFT;
 		}
@@ -345,7 +345,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 
 	tpa = pa & ~(VMM_PAGE_SIZE - 1);
 	for (ite = 0; ite < (sz >> VMM_PAGE_SHIFT); ite++) {
-		rc = vmm_cpu_aspace_map(va + ite * VMM_PAGE_SIZE, 
+		rc = arch_cpu_aspace_map(va + ite * VMM_PAGE_SIZE, 
 					VMM_PAGE_SIZE, 
 					tpa + ite * VMM_PAGE_SIZE, 
 					mem_flags);
@@ -366,7 +366,7 @@ int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
 	va &= ~(VMM_PAGE_SIZE - 1);
 
 	for (ite = 0; ite < (sz >> VMM_PAGE_SHIFT); ite++) {
-		rc = vmm_cpu_aspace_unmap(va + ite * VMM_PAGE_SIZE, 
+		rc = arch_cpu_aspace_unmap(va + ite * VMM_PAGE_SIZE, 
 					  VMM_PAGE_SIZE);
 		if (rc) {
 			return rc;
@@ -400,7 +400,7 @@ int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count)
 
 	page_va &= ~VMM_PAGE_MASK;
 
-	if ((rc = vmm_cpu_aspace_va2pa(page_va, &pa))) {
+	if ((rc = arch_cpu_aspace_va2pa(page_va, &pa))) {
 		return rc;
 	}
 
@@ -483,8 +483,8 @@ u32 vmm_host_free_initmem(void)
 	virtual_addr_t init_start;
 	virtual_size_t init_size;
 
-	init_start = vmm_init_text_vaddr();
-	init_size = vmm_init_text_size();
+	init_start = arch_init_text_vaddr();
+	init_size = arch_init_text_size();
 	init_size = VMM_ROUNDUP2_PAGE_SIZE(init_size);
 
 	if ((rc = vmm_host_free_pages(init_start, init_size >> VMM_PAGE_SHIFT))) {
@@ -504,7 +504,7 @@ int __init vmm_host_aspace_init(void)
 	vmm_memset(&hactrl, 0, sizeof(hactrl));
 
 	/* Determine VAPOOl start and size. Also determine size of bitmap */
-	hactrl.vapool_start = vmm_cpu_code_vaddr_start();
+	hactrl.vapool_start = arch_code_vaddr_start();
 	hactrl.vapool_size = (CONFIG_VAPOOL_SIZE << 20);
 	hactrl.vapool_start &= ~VMM_PAGE_MASK;
 	hactrl.vapool_size &= ~VMM_PAGE_MASK;
@@ -513,10 +513,10 @@ int __init vmm_host_aspace_init(void)
 	hactrl.vapool_bmap_free = hactrl.vapool_size >> VMM_PAGE_SHIFT;
 
 	/* Determine RAM start and size. Also determine size of bitmap */
-	if ((rc = vmm_board_ram_start(&hactrl.ram_start))) {
+	if ((rc = arch_board_ram_start(&hactrl.ram_start))) {
 		return rc;
 	}
-	if ((rc = vmm_board_ram_size(&hactrl.ram_size))) {
+	if ((rc = arch_board_ram_size(&hactrl.ram_size))) {
 		return rc;
 	}
 	if (hactrl.ram_start & VMM_PAGE_MASK) {
@@ -538,9 +538,9 @@ int __init vmm_host_aspace_init(void)
 	bmap_total_size *= sizeof(u32);
 	bmap_total_size = VMM_ROUNDUP2_PAGE_SIZE(bmap_total_size);
 	resv_pa = hactrl.ram_start;
-	resv_va = hactrl.vapool_start + vmm_cpu_code_size();
+	resv_va = hactrl.vapool_start + arch_code_size();
 	resv_sz = bmap_total_size;
-	if ((rc = vmm_cpu_aspace_init(&resv_pa, &resv_va, &resv_sz))) {
+	if ((rc = arch_cpu_aspace_init(&resv_pa, &resv_va, &resv_sz))) {
 		return rc;
 	}
 	if (resv_sz < bmap_total_size) {
@@ -557,8 +557,8 @@ int __init vmm_host_aspace_init(void)
 
 	/* Mark pages used for Code and Reserved space in VAPOOL bitmap */
 	max = ((hactrl.vapool_start + hactrl.vapool_size) >> VMM_PAGE_SHIFT);
-	ite = ((vmm_cpu_code_vaddr_start() - hactrl.vapool_start) >> VMM_PAGE_SHIFT);
-	last = ite + (vmm_cpu_code_size() >> VMM_PAGE_SHIFT);
+	ite = ((arch_code_vaddr_start() - hactrl.vapool_start) >> VMM_PAGE_SHIFT);
+	last = ite + (arch_code_size() >> VMM_PAGE_SHIFT);
 	for ( ; (ite < last) && (ite < max); ite++) {
 		hactrl.vapool_bmap[ite >> 5] |= (0x1 << (31 - (ite & 0x1F)));
 		hactrl.vapool_bmap_free--;
@@ -576,8 +576,8 @@ int __init vmm_host_aspace_init(void)
 
 	/* Mark pages used for Code and Reserved space in RAM bitmap */
 	max = ((hactrl.ram_start + hactrl.ram_size) >> VMM_PAGE_SHIFT);
-	ite = ((vmm_cpu_code_paddr_start() - hactrl.ram_start) >> VMM_PAGE_SHIFT);
-	last = ite + (vmm_cpu_code_size() >> VMM_PAGE_SHIFT);
+	ite = ((arch_code_paddr_start() - hactrl.ram_start) >> VMM_PAGE_SHIFT);
+	last = ite + (arch_code_size() >> VMM_PAGE_SHIFT);
 	for ( ; (ite < last) && (ite < max); ite++) {
 		hactrl.ram_bmap[ite >> 5] |= (0x1 << (31 - (ite & 0x1F)));
 		hactrl.ram_bmap_free--;

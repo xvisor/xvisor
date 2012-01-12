@@ -22,7 +22,7 @@
  * @brief Implementation of vapool command
  */
 
-#include <vmm_math.h>
+#include <arch_math.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
@@ -64,7 +64,7 @@ void cmd_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "0 : free\n");
 	vmm_cprintf(cdev, "1 : used");
 	for (ite = 0; ite < total; ite++) {
-		if (vmm_umod32(ite, colcnt) == 0) {
+		if (arch_umod32(ite, colcnt) == 0) {
 			vmm_cprintf(cdev, "\n0x%08x: ", base + ite * VMM_PAGE_SIZE);
 		}
 		if (vmm_host_vapool_page_isfree(base + ite * VMM_PAGE_SIZE)) {

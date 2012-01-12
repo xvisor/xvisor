@@ -24,7 +24,7 @@
 #define __CPU_VCPU_MMU_H_
 
 #include <vmm_types.h>
-#include <vmm_regs.h>
+#include <arch_regs.h>
 
 int do_vcpu_tlbmiss(arch_regs_t *uregs);
 u32 mips_probe_vcpu_tlb(struct vmm_vcpu *vcpu, arch_regs_t *uregs);

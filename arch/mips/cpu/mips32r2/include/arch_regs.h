@@ -16,13 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_regs.h
+ * @file arch_regs.h
  * @version 1.0
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief common header file for CPU registers
  */
-#ifndef _VMM_REGS_H__
-#define _VMM_REGS_H__
+#ifndef _ARCH_REGS_H__
+#define _ARCH_REGS_H__
 
 #include "vmm_types.h"
 #include "cpu_regs.h"

@@ -22,10 +22,10 @@
  * @brief source file for hypervisor scheduler
  */
 
+#include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
-#include <vmm_cpu.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_timer.h>
 #include <vmm_schedalgo.h>
@@ -62,7 +62,7 @@ static void vmm_scheduler_next(struct vmm_timer_event * ev, arch_regs_t * regs)
 			}
 			next = vmm_schedalgo_rq_dequeue(sched.rq);
 			if (next && (next->id != current->id)) {
-				vmm_vcpu_regs_switch(current, next, regs);
+				arch_vcpu_regs_switch(current, next, regs);
 			}
 		} else {
 			if (current->state == VMM_VCPU_STATE_READY) {
@@ -70,14 +70,14 @@ static void vmm_scheduler_next(struct vmm_timer_event * ev, arch_regs_t * regs)
 			}
 			next = vmm_schedalgo_rq_dequeue(sched.rq);
 			if (next) {
-				vmm_vcpu_regs_switch(NULL, next, regs);
+				arch_vcpu_regs_switch(NULL, next, regs);
 			}
 		}
 	} else {
 		/* First time scheduling */
 		next = vmm_schedalgo_rq_dequeue(sched.rq);
 		if (next) {
-			vmm_vcpu_regs_switch(NULL, next, regs);
+			arch_vcpu_regs_switch(NULL, next, regs);
 		} else {
 			/* This should never happen !!! */
 			while (1);
@@ -239,9 +239,9 @@ void vmm_scheduler_preempt_disable(void)
 	irq_flags_t flags;
 	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 	if (vcpu) {
-		flags = vmm_cpu_irq_save();
+		flags = arch_cpu_irq_save();
 		vcpu->preempt_count++;
-		vmm_cpu_irq_restore(flags);
+		arch_cpu_irq_restore(flags);
 	}
 }
 
@@ -250,9 +250,9 @@ void vmm_scheduler_preempt_enable(void)
 	irq_flags_t flags;
 	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 	if (vcpu && vcpu->preempt_count) {
-		flags = vmm_cpu_irq_save();
+		flags = arch_cpu_irq_save();
 		vcpu->preempt_count--;
-		vmm_cpu_irq_restore(flags);
+		arch_cpu_irq_restore(flags);
 	}
 }
 
@@ -286,7 +286,7 @@ static void idle_orphan(void)
 	while(1) {
 		if (vmm_schedalgo_rq_length(sched.rq, 
 					    IDLE_VCPU_PRIORITY) == 0) {
-			vmm_cpu_wait_for_irq();
+			arch_cpu_wait_for_irq();
 		}
 
 		vmm_scheduler_yield();

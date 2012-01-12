@@ -26,7 +26,7 @@
 #ifndef __VMM_TYPES_H__
 #define __VMM_TYPES_H__
 
-#include <vmm_cpu_types.h>
+#include <arch_types.h>
 
 typedef char s8;
 typedef short s16;

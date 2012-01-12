@@ -16,23 +16,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_cpu_io.h
+ * @file arch_io.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief header file for CPU I/O or Memory read/write functions
  */
-#ifndef _VMM_CPU_IO_H__
-#define _VMM_CPU_IO_H__
+#ifndef _ARCH_IO_H__
+#define _ARCH_IO_H__
 
 #include <vmm_types.h>
 
-static inline u16 vmm_cpu_bswap16(u16 data)
+static inline u16 arch_bswap16(u16 data)
 {
 	return (((data & 0xFF) << 8) |
 		((data & 0xFF00) >> 8));
 }
 
-static inline u32 vmm_cpu_bswap32(u32 data)
+static inline u32 arch_bswap32(u32 data)
 {
 	return (((data & 0xFF) << 24) |
 		((data & 0xFF00) << 8) |
@@ -41,94 +41,94 @@ static inline u32 vmm_cpu_bswap32(u32 data)
 }
 
 /** FIXME: */
-static inline u8 vmm_cpu_ioreadb(volatile void *addr)
+static inline u8 arch_ioreadb(volatile void *addr)
 {
 	return 0;
 }
 
 /** FIXME: */
-static inline void vmm_cpu_iowriteb(volatile void *addr, u8 data)
+static inline void arch_iowriteb(volatile void *addr, u8 data)
 {
 }
 
 /** FIXME: */
-static inline u16 vmm_cpu_ioreadw(volatile void *addr)
-{
-	return 0;
-}
-
-/** FIXME: */
-static inline void vmm_cpu_iowritew(volatile void *addr, u16 data)
-{
-}
-
-/** FIXME: */
-static inline u32 vmm_cpu_ioreadl(volatile void *addr)
+static inline u16 arch_ioreadw(volatile void *addr)
 {
 	return 0;
 }
 
 /** FIXME: */
-static inline void vmm_cpu_iowritel(volatile void *addr, u32 data)
+static inline void arch_iowritew(volatile void *addr, u16 data)
 {
 }
 
 /** FIXME: */
-static inline u8 vmm_cpu_in_8(volatile u8 *addr)
+static inline u32 arch_ioreadl(volatile void *addr)
+{
+	return 0;
+}
+
+/** FIXME: */
+static inline void arch_iowritel(volatile void *addr, u32 data)
+{
+}
+
+/** FIXME: */
+static inline u8 arch_in_8(volatile u8 *addr)
 {
 	return *addr;
 }
 
 /** FIXME: */
-static inline void vmm_cpu_out_8(volatile u8 *addr, u8 data)
+static inline void arch_out_8(volatile u8 *addr, u8 data)
 {
 	*addr = data;
 }
 
 /** FIXME: */
-static inline u16 vmm_cpu_in_le16(volatile u16 *addr)
+static inline u16 arch_in_le16(volatile u16 *addr)
 {
-	return vmm_cpu_bswap16(*addr);
+	return arch_bswap16(*addr);
 }
 
 /** FIXME: */
-static inline void vmm_cpu_out_le16(volatile u16* addr, u16 data)
+static inline void arch_out_le16(volatile u16* addr, u16 data)
 {
-	*addr = vmm_cpu_bswap16(data);
+	*addr = arch_bswap16(data);
 }
 
 /** FIXME: */
-static inline u16 vmm_cpu_in_be16(volatile u16 *addr)
+static inline u16 arch_in_be16(volatile u16 *addr)
 {
 	return *addr;
 }
 
 /** FIXME: */
-static inline void vmm_cpu_out_be16(volatile u16* addr, u16 data)
+static inline void arch_out_be16(volatile u16* addr, u16 data)
 {
 	*addr = data;
 }
 
 /** FIXME: */
-static inline u32 vmm_cpu_in_le32(volatile u32 *addr)
+static inline u32 arch_in_le32(volatile u32 *addr)
 {
-	return vmm_cpu_bswap32(*addr);
+	return arch_bswap32(*addr);
 }
 
 /** FIXME: */
-static inline void vmm_cpu_out_le32(volatile u32* addr, u32 data)
+static inline void arch_out_le32(volatile u32* addr, u32 data)
 {
-	*addr = vmm_cpu_bswap32(data);
+	*addr = arch_bswap32(data);
 }
 
 /** FIXME: */
-static inline u32 vmm_cpu_in_be32(volatile u32 *addr)
+static inline u32 arch_in_be32(volatile u32 *addr)
 {
 	return *addr;
 }
 
 /** FIXME: */
-static inline void vmm_cpu_out_be32(volatile u32* addr, u32 data)
+static inline void arch_out_be32(volatile u32* addr, u32 data)
 {
 	*addr = data;
 }

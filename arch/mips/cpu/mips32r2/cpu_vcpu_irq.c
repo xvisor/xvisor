@@ -22,22 +22,22 @@
  * @brief source code for handling vcpu interrupts
  */
 
+#include <arch_cpu.h>
 #include <vmm_error.h>
-#include <vmm_cpu.h>
 #include <vmm_vcpu_irq.h>
 
-u32 vmm_vcpu_irq_count(struct vmm_vcpu * vcpu)
+u32 arch_vcpu_irq_count(struct vmm_vcpu * vcpu)
 {
 	return 7;
 }
 
-u32 vmm_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no)
+u32 arch_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no)
 {
 	/* all at same priority */
 	return 1;
 }
 
-int vmm_vcpu_irq_execute(struct vmm_vcpu * vcpu,
+int arch_vcpu_irq_execute(struct vmm_vcpu * vcpu,
 			 arch_regs_t * regs, 
 			 u32 irq_no, u32 reason)
 {

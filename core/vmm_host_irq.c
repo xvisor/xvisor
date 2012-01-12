@@ -22,8 +22,8 @@
  * @brief source code for host interrupts
  */
 
-#include <vmm_cpu.h>
-#include <vmm_board.h>
+#include <arch_cpu.h>
+#include <arch_board.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_spinlocks.h>
@@ -50,17 +50,17 @@ int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs)
 	struct dlist * l;
 	struct dlist * irq;
 	struct vmm_host_irq * hirq;
-	int cond, hirq_no = vmm_pic_cpu_to_host_map(cpu_irq_no);
+	int cond, hirq_no = arch_pic_cpu_to_host_map(cpu_irq_no);
 	if (-1 < hirq_no && hirq_no < hirqctrl.irq_count) {
 		if (hirqctrl.enabled[hirq_no]) {
-			cond = vmm_pic_pre_condition(hirq_no);
+			cond = arch_pic_pre_condition(hirq_no);
 			if (!cond) {
 				irq = &hirqctrl.irq[hirq_no];
 				list_for_each(l, irq) {
 					hirq = list_entry(l, struct vmm_host_irq, head);
 					hirq->hndl(hirq_no, regs, hirq->dev);
 				}
-				cond = vmm_pic_post_condition(hirq_no);
+				cond = arch_pic_post_condition(hirq_no);
 			}
 			return cond;
 		}
@@ -81,7 +81,7 @@ int vmm_host_irq_enable(u32 hirq_no)
 	if (hirq_no < hirqctrl.irq_count) {
 		if (!hirqctrl.enabled[hirq_no]) {
 			hirqctrl.enabled[hirq_no] = TRUE;
-			return vmm_pic_irq_enable(hirq_no);
+			return arch_pic_irq_enable(hirq_no);
 		}
 	}
 	return VMM_EFAIL;
@@ -92,7 +92,7 @@ int vmm_host_irq_disable(u32 hirq_no)
 	if (hirq_no < hirqctrl.irq_count) {
 		if (hirqctrl.enabled[hirq_no]) {
 			hirqctrl.enabled[hirq_no] = FALSE;
-			return vmm_pic_irq_disable(hirq_no);
+			return arch_pic_irq_disable(hirq_no);
 		}
 	}
 	return VMM_EFAIL;
@@ -183,7 +183,7 @@ int __init vmm_host_irq_init(void)
 	INIT_SPIN_LOCK(&hirqctrl.lock);
 
 	/* Get host irq count */
-	hirqctrl.irq_count = vmm_pic_irq_count();
+	hirqctrl.irq_count = arch_pic_irq_count();
 
 	/* Allocate memory for enabled array */
 	hirqctrl.enabled = (bool *)vmm_malloc(sizeof(bool) * hirqctrl.irq_count);
@@ -202,19 +202,19 @@ int __init vmm_host_irq_init(void)
 	}
 
 	/* Initialize board specific PIC */
-	ret = vmm_pic_init();
+	ret = arch_pic_init();
 	if (ret) {
 		return ret;
 	}
 
 	/** Setup interrupts in CPU */
-	ret = vmm_cpu_irq_setup();
+	ret = arch_cpu_irq_setup();
 	if (ret) {
 		return ret;
 	}
 
 	/** Enable interrupts in CPU */
-	vmm_cpu_irq_enable();
+	arch_cpu_irq_enable();
 
 	return VMM_OK;
 }

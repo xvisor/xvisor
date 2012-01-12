@@ -22,7 +22,7 @@
  * @brief source file of module managment code
  */
 
-#include <vmm_cpu.h>
+#include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
@@ -60,8 +60,8 @@ int __init vmm_modules_init(void)
 	vmm_memset(&modules_ctrl, 0, sizeof(modules_ctrl));
 
 	/* Initialize the control structure */
-	modules_ctrl.table = (struct vmm_module *) vmm_modtbl_vaddr();
-	modules_ctrl.table_size = vmm_modtbl_size() / sizeof(struct vmm_module);
+	modules_ctrl.table = (struct vmm_module *) arch_modtbl_vaddr();
+	modules_ctrl.table_size = arch_modtbl_size() / sizeof(struct vmm_module);
 	modules_ctrl.mod_count = 0;
 
 	/* Find and count valid modules */

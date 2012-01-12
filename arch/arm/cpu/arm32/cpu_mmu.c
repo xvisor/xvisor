@@ -25,10 +25,10 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_host_aspace.h>
-#include <vmm_cpu.h>
 #include <vmm_main.h>
 #include <vmm_stdio.h>
 #include <vmm_types.h>
+#include <arch_cpu.h>
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
@@ -909,7 +909,7 @@ u32 cpu_mmu_physical_read32(physical_addr_t pa)
 	virtual_addr_t va = 0x0;
 	irq_flags_t flags;
 
-	flags = vmm_cpu_irq_save();
+	flags = arch_cpu_irq_save();
 
 	l1 = cpu_mmu_l1tbl_current();
 	if (l1) {
@@ -960,7 +960,7 @@ u32 cpu_mmu_physical_read32(physical_addr_t pa)
 		}
 	}
 
-	vmm_cpu_irq_restore(flags);
+	arch_cpu_irq_restore(flags);
 
 	return ret;
 }
@@ -973,7 +973,7 @@ void cpu_mmu_physical_write32(physical_addr_t pa, u32 val)
 	virtual_addr_t va = 0x0;
 	irq_flags_t flags;
 
-	flags = vmm_cpu_irq_save();
+	flags = arch_cpu_irq_save();
 
 	l1 = cpu_mmu_l1tbl_current();
 	if (l1) {
@@ -1024,7 +1024,7 @@ void cpu_mmu_physical_write32(physical_addr_t pa, u32 val)
 		}
 	}
 
-	vmm_cpu_irq_restore(flags);
+	arch_cpu_irq_restore(flags);
 
 	return;
 }
@@ -1079,7 +1079,7 @@ int cpu_mmu_chttbr(struct cpu_l1tbl * l1)
 	return VMM_OK;
 }
 
-int vmm_cpu_aspace_map(virtual_addr_t va, 
+int arch_cpu_aspace_map(virtual_addr_t va, 
 			virtual_size_t sz, 
 			physical_addr_t pa,
 			u32 mem_flags)
@@ -1109,7 +1109,7 @@ int vmm_cpu_aspace_map(virtual_addr_t va,
 	return cpu_mmu_map_reserved_page(&p);
 }
 
-int vmm_cpu_aspace_unmap(virtual_addr_t va, 
+int arch_cpu_aspace_unmap(virtual_addr_t va, 
 			 virtual_size_t sz)
 {
 	int rc;
@@ -1134,7 +1134,7 @@ int vmm_cpu_aspace_unmap(virtual_addr_t va,
 	return cpu_mmu_unmap_reserved_page(&p);
 }
 
-int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
+int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 {
 	int rc = VMM_OK;
 	struct cpu_page p;
@@ -1148,7 +1148,7 @@ int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	return VMM_OK;
 }
 
-int __init vmm_cpu_aspace_init(physical_addr_t * resv_pa,
+int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 				virtual_addr_t * resv_va,
 				virtual_size_t * resv_sz)
 {
@@ -1169,10 +1169,10 @@ int __init vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	/* Handcraft default translation table */
 	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
 	mmuctrl.defl1.tbl_va = (virtual_addr_t)&defl1_mem;
-	mmuctrl.defl1.tbl_pa = vmm_cpu_code_paddr_start() + 
-			       ((virtual_addr_t)&defl1_mem - vmm_cpu_code_vaddr_start());
-	if (vmm_cpu_code_paddr_start() != vmm_cpu_code_vaddr_start()) {
-		val = vmm_cpu_code_paddr_start() >> TTBL_L1TBL_TTE_OFFSET_SHIFT;
+	mmuctrl.defl1.tbl_pa = arch_code_paddr_start() + 
+			       ((virtual_addr_t)&defl1_mem - arch_code_vaddr_start());
+	if (arch_code_paddr_start() != arch_code_vaddr_start()) {
+		val = arch_code_paddr_start() >> TTBL_L1TBL_TTE_OFFSET_SHIFT;
 		val = val << 2;
 		*((u32 *)(mmuctrl.defl1.tbl_va + val)) = 0x0;
 		invalid_tlb();
@@ -1188,9 +1188,9 @@ int __init vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	mmuctrl.defl1.l2tbl_cnt = 0;
 
 	/* Compute additional reserved space required */
-	pa = vmm_cpu_code_paddr_start();
-	va = vmm_cpu_code_vaddr_start();
-	sz = vmm_cpu_code_size();
+	pa = arch_code_paddr_start();
+	va = arch_code_vaddr_start();
+	sz = arch_code_size();
 	if ((va <= *resv_va) && (*resv_va < (va + sz))) {
 		*resv_va = va + sz;
 	} else if ((va <= (*resv_va + *resv_sz)) && 

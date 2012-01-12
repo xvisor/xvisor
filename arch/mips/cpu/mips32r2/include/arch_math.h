@@ -16,14 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_math.h
+ * @file arch_math.h
  * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
  * @brief Architecture specific math related functions
  */
 
-#ifndef __VMM_MATH_H__
-#define __VMM_MATH_H__
+#ifndef __arch_MATH_H__
+#define __arch_MATH_H__
 
 #include <vmm_types.h>
 
@@ -31,33 +31,31 @@
 
 u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder);
 
-static inline u64 vmm_udiv64(u64 value, u64 divisor)
+static inline u64 arch_udiv64(u64 value, u64 divisor)
 {
-	u64 r;
-	return do_udiv64(value, divisor, &r);
+	return do_udiv64(value, divisor, NULL);
 }
 
-static inline u64 vmm_umod64(u64 value, u64 divisor)
+static inline u64 arch_umod64(u64 value, u64 divisor)
 {
 	u64 r;
 	do_udiv64(value, divisor, &r);
 	return r;
 }
 
-static inline s64 vmm_sdiv64(s64 value, s64 divisor)
+static inline s64 arch_sdiv64(s64 value, s64 divisor)
 {
-	u64 r;
 	if ((value * divisor) < 0) {
-		return -do_udiv64(do_abs(value), do_abs(divisor), &r);
+		return -do_udiv64( do_abs(value), do_abs(divisor), NULL );
 	} else { /* positive value */
-		return do_udiv64(do_abs(value), do_abs(divisor), &r);
+		return do_udiv64( do_abs(value), do_abs(divisor), NULL );
 	}
 }
 
-static inline s64 vmm_smod64(s64 value, s64 divisor)
+static inline s64 arch_smod64(s64 value, s64 divisor)
 {
 	u64 r;
-	do_udiv64( do_abs(value), do_abs(divisor), &r);
+	do_udiv64( do_abs(value), do_abs(divisor), &r );
 	if (value < 0) {
 		return -r;
 	} else { /* positive value */
@@ -67,30 +65,28 @@ static inline s64 vmm_smod64(s64 value, s64 divisor)
 
 u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder);
 
-static inline u32 vmm_udiv32(u32 value, u32 divisor)
+static inline u32 arch_udiv32(u32 value, u32 divisor)
 {
-	u32 r;
-	return do_udiv32(value, divisor, &r);
+	return do_udiv32(value, divisor, NULL);
 }
 
-static inline u32 vmm_umod32(u32 value, u32 divisor)
+static inline u32 arch_umod32(u32 value, u32 divisor)
 {
 	u32 r;
 	do_udiv32(value, divisor, &r);
 	return r;
 }
 
-static inline s32 vmm_sdiv32(s32 value, s32 divisor)
+static inline s32 arch_sdiv32(s32 value, s32 divisor)
 {
-	u32 r;
 	if ((value * divisor) < 0) {
-		return -do_udiv32(do_abs(value), do_abs(divisor), &r);
+		return -do_udiv32( do_abs(value), do_abs(divisor), NULL );
 	} else { /* positive value */
-		return do_udiv32(do_abs(value), do_abs(divisor), &r);
+		return do_udiv32( do_abs(value), do_abs(divisor), NULL );
 	}
 }
 
-static inline s32 vmm_smod32(s32 value, s32 divisor)
+static inline s32 arch_smod32(s32 value, s32 divisor)
 {
 	u32 r;
 	do_udiv32( do_abs(value), do_abs(divisor), &r );

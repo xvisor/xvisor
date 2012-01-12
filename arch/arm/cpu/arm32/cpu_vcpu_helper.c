@@ -30,7 +30,7 @@
 #include <cpu_defines.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
-#include <vmm_math.h>
+#include <arch_math.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 {
@@ -664,7 +664,7 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu,
 	}
 }
 
-int vmm_vcpu_regs_init(struct vmm_vcpu * vcpu)
+int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 {
 	u32 ite, cpuid = ARM_CPUID_CORTEXA8;
 	/* Initialize User Mode Registers */
@@ -773,7 +773,7 @@ int vmm_vcpu_regs_init(struct vmm_vcpu * vcpu)
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
-void vmm_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
+void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
 			  struct vmm_vcpu * vcpu, arch_regs_t * regs)
 {
 	u32 ite;
@@ -822,7 +822,7 @@ void cpu_vcpu_dump_user_reg(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 	vmm_printf("\n");
 }
 
-void vmm_vcpu_regs_dump(struct vmm_vcpu * vcpu)
+void arch_vcpu_regs_dump(struct vmm_vcpu * vcpu)
 {
 	u32 ite;
 	/* For both Normal & Orphan VCPUs */
@@ -867,7 +867,7 @@ void vmm_vcpu_regs_dump(struct vmm_vcpu * vcpu)
 	vmm_printf("\n");
 }
 
-void vmm_vcpu_stat_dump(struct vmm_vcpu * vcpu)
+void arch_vcpu_stat_dump(struct vmm_vcpu * vcpu)
 {
 #ifdef CONFIG_ARM32_FUNCSTATS
 	int index;

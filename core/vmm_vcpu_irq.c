@@ -22,7 +22,7 @@
  * @brief source code for vcpu irq processing
  */
 
-#include <vmm_cpu.h>
+#include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
@@ -47,7 +47,7 @@ void vmm_vcpu_irq_process(arch_regs_t * regs)
 	}
 
 	/* Get irq count */
-	irq_count = vmm_vcpu_irq_count(vcpu);
+	irq_count = arch_vcpu_irq_count(vcpu);
 
 	/* Find the irq number to process */
 	irq_no = -1;
@@ -57,12 +57,12 @@ void vmm_vcpu_irq_process(arch_regs_t * regs)
 		if (irq_no == -1) {
 			if (vcpu->irqs.assert[i]) {
 				irq_no = i;
-				irq_prio = vmm_vcpu_irq_priority(vcpu, irq_no);
+				irq_prio = arch_vcpu_irq_priority(vcpu, irq_no);
 				irq_reas = vcpu->irqs.reason[irq_no];
 			}
 		} else {
 			if (vcpu->irqs.assert[i]) {
-				tmp_prio = vmm_vcpu_irq_priority(vcpu, i);
+				tmp_prio = arch_vcpu_irq_priority(vcpu, i);
 				if (tmp_prio > irq_prio) {
 					irq_no = i;
 					irq_prio = tmp_prio;
@@ -74,7 +74,7 @@ void vmm_vcpu_irq_process(arch_regs_t * regs)
 
 	/* If irq number found then execute it */
 	if (-1 < irq_no) {
-		if (vmm_vcpu_irq_execute(vcpu, regs, irq_no, irq_reas) == VMM_OK) {
+		if (arch_vcpu_irq_execute(vcpu, regs, irq_no, irq_reas) == VMM_OK) {
 			vcpu->irqs.reason[irq_no] = 0x0;
 			vcpu->irqs.assert[irq_no] = FALSE;
 			vcpu->irqs.execute_count++;
@@ -97,7 +97,7 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 	}
 
 	/* Get irq count */
-	irq_count = vmm_vcpu_irq_count(vcpu);
+	irq_count = arch_vcpu_irq_count(vcpu);
 
 	if (irq_count <= irq_no) {
 		return;
@@ -166,7 +166,7 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	}
 
 	/* Get irq count */
-	irq_count = vmm_vcpu_irq_count(vcpu);
+	irq_count = arch_vcpu_irq_count(vcpu);
 
 	/* Only first time */
 	if (!vcpu->reset_count) {

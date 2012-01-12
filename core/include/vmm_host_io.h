@@ -26,119 +26,119 @@
 #define __VMM_HOST_IO_H_
 
 #include <vmm_types.h>
-#include <vmm_cpu_io.h>
+#include <arch_io.h>
 
 /** I/O read/write legacy functions (Assumed to be Little Endian) */
 static inline u8 vmm_ioreadb(volatile void *addr)
 {
-	return vmm_cpu_ioreadb(addr);
+	return arch_ioreadb(addr);
 }
 
 static inline void vmm_iowriteb(volatile void *addr, u8 data)
 {
-	vmm_cpu_iowriteb(addr, data);
+	arch_iowriteb(addr, data);
 }
 
 static inline u16 vmm_ioreadw(volatile void *addr)
 {
-	return vmm_cpu_ioreadw(addr);
+	return arch_ioreadw(addr);
 }
 
 static inline void vmm_iowritew(volatile void *addr, u16 data)
 {
-	vmm_cpu_iowritew(addr, data);
+	arch_iowritew(addr, data);
 }
 
 static inline u32 vmm_ioreadl(volatile void *addr)
 {
-	return vmm_cpu_ioreadw(addr);
+	return arch_ioreadw(addr);
 }
 
 static inline void vmm_iowritel(volatile void *addr, u32 data)
 {
-	vmm_cpu_iowritew(addr, data);
+	arch_iowritew(addr, data);
 }
 
 /** Memory read/write legacy functions (Assumed to be Little Endian) */
 static inline u8 vmm_readb(volatile void *addr)
 {
-	return vmm_cpu_in_8((u8 *) addr);
+	return arch_in_8((u8 *) addr);
 }
 
 static inline void vmm_writeb(u8 data, volatile void *addr)
 {
-	vmm_cpu_out_8((u8 *) addr, data);
+	arch_out_8((u8 *) addr, data);
 }
 
 static inline u16 vmm_readw(volatile void *addr)
 {
-	return vmm_cpu_in_le16((u16 *) addr);
+	return arch_in_le16((u16 *) addr);
 }
 
 static inline void vmm_writew(u16 data, volatile void *addr)
 {
-	vmm_cpu_out_le16((u16 *) addr, data);
+	arch_out_le16((u16 *) addr, data);
 }
 
 static inline u32 vmm_readl(volatile void *addr)
 {
-	return vmm_cpu_in_le32((u32 *) addr);
+	return arch_in_le32((u32 *) addr);
 }
 
 static inline void vmm_writel(u32 data, volatile void *addr)
 {
-	vmm_cpu_out_le32((u32 *) addr, data);
+	arch_out_le32((u32 *) addr, data);
 }
 
 /** Memory read/write functions */
 static inline u8 vmm_in_8(volatile u8 * addr)
 {
-	return vmm_cpu_in_8(addr);
+	return arch_in_8(addr);
 }
 
 static inline void vmm_out_8(volatile u8 * addr, u8 data)
 {
-	vmm_cpu_out_8(addr, data);
+	arch_out_8(addr, data);
 }
 
 static inline u16 vmm_in_le16(volatile u16 * addr)
 {
-	return vmm_cpu_in_le16(addr);
+	return arch_in_le16(addr);
 }
 
 static inline void vmm_out_le16(volatile u16 * addr, u16 data)
 {
-	vmm_cpu_out_le16(addr, data);
+	arch_out_le16(addr, data);
 }
 
 static inline u16 vmm_in_be16(volatile u16 * addr)
 {
-	return vmm_cpu_in_be16(addr);
+	return arch_in_be16(addr);
 }
 
 static inline void vmm_out_be16(volatile u16 * addr, u16 data)
 {
-	vmm_cpu_out_be16(addr, data);
+	arch_out_be16(addr, data);
 }
 
 static inline u32 vmm_in_le32(volatile u32 * addr)
 {
-	return vmm_cpu_in_le32(addr);
+	return arch_in_le32(addr);
 }
 
 static inline void vmm_out_le32(volatile u32 * addr, u32 data)
 {
-	vmm_cpu_out_le32(addr, data);
+	arch_out_le32(addr, data);
 }
 
 static inline u32 vmm_in_be32(volatile u32 * addr)
 {
-	return vmm_cpu_in_be32(addr);
+	return arch_in_be32(addr);
 }
 
 static inline void vmm_out_be32(volatile u32 * addr, u32 data)
 {
-	vmm_cpu_out_be32(addr, data);
+	arch_out_be32(addr, data);
 }
 
 #endif /* __VMM_HOST_IO_H_ */

@@ -25,13 +25,13 @@
 #ifndef __VMM_SEMAPHORE_H__
 #define __VMM_SEMAPHORE_H__
 
-#include <vmm_cpu.h>
+#include <vmm_types.h>
 #include <vmm_waitqueue.h>
 
 struct vmm_semaphore {
 	u32 limit;
 	atomic_t value;
-	struct vmm_waitqueue	wq;
+	struct vmm_waitqueue wq;
 };
 
 #define INIT_SEMAPHORE(sem, value)	do { \

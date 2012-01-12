@@ -23,11 +23,11 @@
  */
 
 #include <stdarg.h>
-#include <vmm_math.h>
+#include <arch_math.h>
+#include <arch_board.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_main.h>
-#include <vmm_board.h>
 #include <vmm_stdio.h>
 
 /* NOTE: assuming sizeof(void *) == sizeof(int) */
@@ -75,7 +75,7 @@ int vmm_printchar(char **str, struct vmm_chardev *cdev, char c, bool block)
 				}
 			}
 		} else {
-			while ((rc = vmm_defterm_putc((u8)c))) {
+			while ((rc = arch_defterm_putc((u8)c))) {
 				if (!block) {
 					break;
 				}
@@ -169,11 +169,11 @@ static int printi(char **out, struct vmm_chardev *cdev,
 	*s = '\0';
 
 	while (u) {
-		t = vmm_umod32(u, b);
+		t = arch_umod32(u, b);
 		if (t >= 10)
 			t += letbase - '0' - 10;
 		*--s = t + '0';
-		u = vmm_udiv32(u, b);
+		u = arch_udiv32(u, b);
 	}
 
 	if (neg) {
@@ -324,7 +324,7 @@ int vmm_scanchar(char **str, struct vmm_chardev *cdev, char *c, bool block)
 			}
 		} else {
 			while (!got_input) {
-				if ((rc = vmm_defterm_getc(&ch))) {
+				if ((rc = arch_defterm_getc(&ch))) {
 					if (!block) {
 						break;
 					}
@@ -521,5 +521,5 @@ int __init vmm_stdio_init(void)
 	stdio_ctrl.cdev = NULL;
 
 	/* Initialize default serial terminal (board specific) */
-	return vmm_defterm_init();
+	return arch_defterm_init();
 }

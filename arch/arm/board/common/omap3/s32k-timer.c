@@ -22,17 +22,17 @@
  * @brief source code for OMAP3 32K sync timer
  */
 
+#include <arch_math.h>
+#include <omap3/intc.h>
+#include <omap3/gpt.h>
+#include <omap3/prcm.h>
+#include <omap3/s32k-timer.h>
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_main.h>
 #include <vmm_timer.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
-#include <omap3/intc.h>
-#include <omap3/gpt.h>
-#include <omap3/prcm.h>
-#include <omap3/s32k-timer.h>
 
 static virtual_addr_t omap35x_32k_synct_base = 0;
 

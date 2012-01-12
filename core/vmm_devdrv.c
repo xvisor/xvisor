@@ -22,11 +22,11 @@
  * @brief Device driver framework source
  */
 
+#include <arch_board.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
-#include <vmm_board.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_aspace.h>
@@ -239,7 +239,7 @@ int vmm_devdrv_getclock(struct vmm_device * dev, u32 * clock)
 	if (attrval) {
 		*clock = *((u32 *) attrval);
 	} else {
-		return vmm_board_getclock(dev->node, clock);
+		return arch_board_getclock(dev->node, clock);
 	}
 
 	return VMM_OK;

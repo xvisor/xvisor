@@ -23,10 +23,10 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_cpu.h>
-#include <vmm_regs.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
+#include <arch_cpu.h>
+#include <arch_regs.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate_thumb.h>
 

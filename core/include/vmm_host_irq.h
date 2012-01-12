@@ -25,7 +25,7 @@
 #define _VMM_HOST_IRQ_H__
 
 #include <vmm_types.h>
-#include <vmm_regs.h>
+#include <arch_regs.h>
 
 typedef int (*vmm_host_irq_handler_t) (u32 irq_no, 
 					arch_regs_t * regs,

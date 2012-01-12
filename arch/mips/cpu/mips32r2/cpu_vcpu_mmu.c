@@ -22,14 +22,14 @@
  * @brief MMU handling functions related to VCPU.
  */
 
+#include <arch_regs.h>
 #include <vmm_error.h>
 #include <vmm_types.h>
-#include <vmm_regs.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
+#include <vmm_guest_aspace.h>
 #include <cpu_asm_macros.h>
 #include <cpu_vcpu_mmu.h>
-#include <vmm_guest_aspace.h>
 
 int do_vcpu_tlbmiss(arch_regs_t *uregs)
 {

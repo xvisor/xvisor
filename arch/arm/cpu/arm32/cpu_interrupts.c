@@ -334,7 +334,7 @@ void do_fiq(arch_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-int __init vmm_cpu_irq_setup(void)
+int __init arch_cpu_irq_setup(void)
 {
 	int rc;
 	extern u32 _start_vect[];
@@ -397,17 +397,17 @@ int __init vmm_cpu_irq_setup(void)
 	return VMM_OK;
 }
 
-void vmm_cpu_irq_enable(void)
+void arch_cpu_irq_enable(void)
 {
 	__asm("cpsie i");
 }
 
-void vmm_cpu_irq_disable(void)
+void arch_cpu_irq_disable(void)
 {
 	__asm("cpsid i");
 }
 
-irq_flags_t vmm_cpu_irq_save(void)
+irq_flags_t arch_cpu_irq_save(void)
 {
 	unsigned long retval;
 
@@ -420,13 +420,13 @@ irq_flags_t vmm_cpu_irq_save(void)
 	return retval;
 }
 
-void vmm_cpu_irq_restore(irq_flags_t flags)
+void arch_cpu_irq_restore(irq_flags_t flags)
 {
 	asm volatile (" msr     cpsr_c, %0"::"r" (flags)
 		      :"memory", "cc");
 }
 
-void vmm_cpu_wait_for_irq(void)
+void arch_cpu_wait_for_irq(void)
 {
 	/* We could also use soft delay here. */
 	asm volatile (" wfi ");

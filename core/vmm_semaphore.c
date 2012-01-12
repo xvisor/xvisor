@@ -22,6 +22,7 @@
  * @brief Implementation of sempahore locks for Orphan VCPU (or Thread).
  */
 
+#include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
@@ -31,7 +32,7 @@ bool vmm_semaphore_avail(struct vmm_semaphore * sem)
 {
 	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
 
-	return vmm_cpu_atomic_read(&(sem)->value) ? TRUE : FALSE;
+	return arch_cpu_atomic_read(&(sem)->value) ? TRUE : FALSE;
 }
 
 u32 vmm_semaphore_limit(struct vmm_semaphore * sem)
@@ -51,10 +52,10 @@ int vmm_semaphore_up(struct vmm_semaphore * sem)
 
 	/* Try to increment the semaphore */
 	rc = VMM_EFAIL;
-	value = vmm_cpu_atomic_read(&sem->value);
+	value = arch_cpu_atomic_read(&sem->value);
 	while ((value < sem->limit) && 
-		(rc = vmm_cpu_atomic_testnset(&sem->value, value, value + 1))) {
-		value = vmm_cpu_atomic_read(&sem->value);
+		(rc = arch_cpu_atomic_testnset(&sem->value, value, value + 1))) {
+		value = arch_cpu_atomic_read(&sem->value);
 	}
 
 	/* If successful then wakeup all sleeping threads */
@@ -80,12 +81,12 @@ int vmm_semaphore_down(struct vmm_semaphore * sem)
 	rc = VMM_EFAIL;
 	while (rc) {
 		/* Sleep if semaphore not available */
-		while (!(value = vmm_cpu_atomic_read(&sem->value))) {
+		while (!(value = arch_cpu_atomic_read(&sem->value))) {
 			vmm_waitqueue_sleep(&sem->wq);
 		}
 
 		/* Try to decrement the semaphore */
-		rc = vmm_cpu_atomic_testnset(&sem->value, value, value - 1);
+		rc = arch_cpu_atomic_testnset(&sem->value, value, value - 1);
 	}
 
 	return rc;
