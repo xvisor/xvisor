@@ -685,6 +685,10 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 		rc = VMM_EFAIL;
 		goto devemu_init_context_done;
 	}
+	if (guest->aspace.devemu_priv) {
+		rc = VMM_EFAIL;
+		goto devemu_init_context_done;
+	}
 
 	eg = vmm_malloc(sizeof(struct vmm_devemu_guest_context));
 	if (!eg) {
