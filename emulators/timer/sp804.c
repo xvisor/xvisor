@@ -86,8 +86,8 @@ struct sp804_state {
 
 static bool sp804_timer_interrupt_is_raised(struct sp804_timer *t)
 {
-	return ((t->control & TIMER_CTRL_ENABLE) && (t->control & TIMER_CTRL_IE)
-		&& t->irq_level);
+	return (t->irq_level && (t->control & TIMER_CTRL_ENABLE) 
+		&& (t->control & TIMER_CTRL_IE));
 }
 
 static void sp804_timer_setirq(struct sp804_timer *t)
@@ -135,13 +135,14 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 			t->value &= 0xffff;
 		}
 
-		/* This is a simple one shot timer or the first run
-		 * of a periodic timer
-		 */
-		t->value_tstamp = tstamp;
-
 		/* If interrupt is not enabled then we are done */
 		if (!(t->control & TIMER_CTRL_IE)) {
+			if (t->value_tstamp == 0) {
+				/* If value_tstamp was not set yet, we set it
+				 * before leaving
+				 */
+				t->value_tstamp = tstamp;
+			}
 			return;
 		}
 
@@ -161,6 +162,32 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 				    arch_udiv64((nsecs * 1000000000),
 					       (u64) t->freq);
 			}
+
+			/* compute the tstamp */
+			if (t->value_tstamp
+			    && (!(t->control & TIMER_CTRL_ONESHOT))) {
+				/* This is a restart of a periodic or free
+				 * running timer
+				 * We need to adjust our duration and start 
+				 * time to account for timer processing
+				 * overhead and expired periods
+				 */
+				u64 adjust_duration = tstamp - t->value_tstamp;
+
+				while (adjust_duration > nsecs) {
+					t->value_tstamp += nsecs;
+					adjust_duration -= nsecs;
+				}
+
+				nsecs -= adjust_duration;
+			} else {
+				/* This is a simple one shot timer or the first
+				 * run of a periodic timer
+				 */
+				t->value_tstamp = tstamp;
+			}
+		} else {
+			t->value_tstamp = tstamp;
 		}
 
 		/*
@@ -190,7 +217,7 @@ static void sp804_timer_clear_irq(struct sp804_timer *t)
 	if (t->irq_level == 1) {
 		t->irq_level = 0;
 		sp804_timer_setirq(t);
-		if (t->control & TIMER_CTRL_PERIODIC) {
+		if (!(t->control & TIMER_CTRL_ONESHOT)) {
 			/* this is either free running or periodic timer.
 			 * We restart the timer.
 			 */
@@ -219,6 +246,7 @@ static void sp804_timer_event(struct vmm_timer_event * event)
 		if (t->control & TIMER_CTRL_ONESHOT) {
 			/* If One shot timer, we disable it */
 			t->control &= ~TIMER_CTRL_ENABLE;
+			t->value_tstamp = 0;
 		}
 
 		vmm_spin_unlock(&t->lock);
@@ -264,22 +292,28 @@ static u32 sp804_timer_current_value(struct sp804_timer *t)
 			cval = arch_udiv64(cval * t->freq, (u64) 1000000000);
 		}
 
-		if (t->control & TIMER_CTRL_PERIODIC) {
-			if (t->value == 0xFFFFFFFF) {
-				ret = 0xFFFFFFFF - (cval & 0xFFFFFFFF);
-			} else if (t->value == 0xFFFF) {
-				ret = 0xFFFF - (cval & 0xFFFF);
+		if (t->control & (TIMER_CTRL_PERIODIC | TIMER_CTRL_PERIODIC)) {
+			if (cval >= t->value) {
+				ret = 0;
 			} else {
-				ret = arch_umod64(cval, t->value);
-				ret = t->value - ret;
+				ret = t->value - (u32)cval;
 			}
 		} else {
-			if (t->value < cval) {
-				ret = 0x0;
- 			} else {
- 				ret = t->value - cval;
- 			}
- 		}
+			/*
+			 * We need to convert this number of ticks (on 64 bits)
+			 * to a number on 32 bits.
+			 */
+			switch (t->value) {
+			case 0xFFFFFFFF:
+			case 0xFFFF:
+				ret = t->value - ((u32)cval & t->value);
+				break;
+			default:
+				cval = arch_umod64(cval, (u64) t->value);
+				ret = t->value - (u32)cval;
+				break;
+			}
+		}
 	}
 
 	return ret;
@@ -375,6 +409,7 @@ static int sp804_timer_reset(struct sp804_timer *t)
 	t->control = TIMER_CTRL_IE;
 	t->irq_level = 0;
 	t->freq = sp804_get_freq(t);
+	t->value_tstamp = 0;
 	sp804_timer_setirq(t);
 	sp804_timer_init_timer(t);
 
