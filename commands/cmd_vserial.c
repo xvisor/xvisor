@@ -60,6 +60,9 @@ void cmd_vserial_recv(struct vmm_vserial *vser, void * priv, u8 ch)
 	if (!recvcntx) {
 		return;
 	}
+	if (!recvcntx->chcount) {
+		return;
+	}
 	if (ch == '\n') {
 		vmm_cputc(recvcntx->cdev, ch);
 		vmm_cprintf(recvcntx->cdev, "[%s] ", recvcntx->name);
@@ -78,8 +81,6 @@ void cmd_vserial_recv(struct vmm_vserial *vser, void * priv, u8 ch)
 	if (-1 < recvcntx->chcount) {
 		if (recvcntx->chcount) {
 			recvcntx->chcount--;
-		} else {
-			vmm_vserial_unregister_receiver(vser, &cmd_vserial_recv, recvcntx);
 		}
 	}
 }
@@ -156,7 +157,7 @@ int cmd_vserial_dump(struct vmm_chardev *cdev, const char *name, int bcount)
 
 	recvcntx.name = name;
 	recvcntx.chpos = 0;
-	recvcntx.chcount = -1;
+	recvcntx.chcount = (0 < bcount) ? bcount : -1;
 	recvcntx.cdev = cdev;
 
 	rc = vmm_vserial_register_receiver(vser, &cmd_vserial_recv, &recvcntx);
