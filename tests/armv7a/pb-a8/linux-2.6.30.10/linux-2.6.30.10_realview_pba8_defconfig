@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.30.10
-# Wed Oct 12 22:54:05 2011
+# Fri Jan 13 11:06:57 2012
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -278,7 +278,8 @@ CONFIG_CMDLINE="root=/dev/ram rw ramdisk_size=0x1000000 console=ttyAMA0 mem=128M
 #
 # CPU Power Management
 #
-# CONFIG_CPU_IDLE is not set
+CONFIG_CPU_IDLE=y
+CONFIG_CPU_IDLE_GOV_LADDER=y
 
 #
 # Floating point emulation
@@ -664,7 +665,7 @@ CONFIG_NLS_ISO8859_1=y
 #
 # Kernel hacking
 #
-# CONFIG_PRINTK_TIME is not set
+CONFIG_PRINTK_TIME=y
 CONFIG_ENABLE_WARN_DEPRECATED=y
 CONFIG_ENABLE_MUST_CHECK=y
 CONFIG_FRAME_WARN=1024
