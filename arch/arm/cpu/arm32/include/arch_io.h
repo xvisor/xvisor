@@ -26,114 +26,72 @@
 #define _ARCH_IO_H__
 
 #include <vmm_types.h>
+#include <cpu_inline_asm.h>
 
-static inline u16 arch_bswap16(u16 data)
-{
-	register u16 tmp = data;
-	__asm__ __volatile__("rev16 %0, %0"
-			     :"+l"(tmp));
-	return tmp;
-}
+#define __raw_write8(a,v)	(*(volatile u8 *)(a) = (v))
+#define __raw_write16(a,v)	(*(volatile u16 *)(a) = (v))
+#define __raw_write32(a,v)	(*(volatile u32 *)(a) = (v))
 
-static inline u32 arch_bswap32(u32 data)
-{
-	register u32 tmp = data;
-	__asm__ __volatile__("rev %0, %0"
-			     :"+l"(tmp));
-	return tmp;
-}
+#define __raw_read8(a)		(*(volatile u8 *)(a))
+#define __raw_read16(a)		(*(volatile u16 *)(a))
+#define __raw_read32(a)		(*(volatile u32 *)(a))
 
-/** FIXME: */
-static inline u8 arch_ioreadb(volatile void *addr)
-{
-	return 0;
-}
+#if 0 /* FIXME: will be enabled after testing on HW */
+#define __iormb()		dsb()
+#define __iowmb()		dsb()
+#else
+#define __iormb()		do { } while (0)
+#define __iowmb()		do { } while (0)
+#endif
 
-/** FIXME: */
-static inline void arch_iowriteb(volatile void *addr, u8 data)
-{
-}
+#define arch_bswap16(v)		(rev16(v))
 
-/** FIXME: */
-static inline u16 arch_ioreadw(volatile void *addr)
-{
-	return 0;
-}
+#define arch_bswap32(v)		(rev(v))
 
-/** FIXME: */
-static inline void arch_iowritew(volatile void *addr, u16 data)
-{
-}
+/*
+ * IO port access primitives
+ * -------------------------
+ *
+ * The ARM doesn't have special IO access instructions; all IO is memory
+ * mapped.  Note that these are defined to perform little endian accesses
+ * only. For ARM, IO port read/write operations translate to a read/write
+ * operation to memory address. All IO port read/write operations are
+ * assumed to be little-endian. 
+ */
+#define arch_ioreadb(a)		({u8 v = __raw_read8(a); __iormb(); v; })
 
-/** FIXME: */
-static inline u32 arch_ioreadl(volatile void *addr)
-{
-	return 0;
-}
+#define arch_iowriteb(a, v)	{__iowmb(); __raw_write8(a, v); }
 
-/** FIXME: */
-static inline void arch_iowritel(volatile void *addr, u32 data)
-{
-}
+#define arch_ioreadw(a)		({u16 v = __raw_read16(a); __iormb(); v; })
 
-/** FIXME: */
-static inline u8 arch_in_8(volatile u8 * addr)
-{
-	return *addr;
-}
+#define arch_iowritew(a, v)	{__iowmb(); __raw_write16(a, v); }
 
-/** FIXME: */
-static inline void arch_out_8(volatile u8 * addr, u8 data)
-{
-	*addr = data;
-}
+#define arch_ioreadl(a)		({u32 v = __raw_read32(a); __iormb(); v; })
 
-/** FIXME: */
-static inline u16 arch_in_le16(volatile u16 * addr)
-{
-	return *addr;
-}
+#define arch_iowritel(a, v)	{__iowmb(); __raw_write32(a, v); }
 
-/** FIXME: */
-static inline void arch_out_le16(volatile u16 * addr, u16 data)
-{
-	*addr = data;
-}
+/*
+ * Memory access primitives
+ * ------------------------
+ */
+#define arch_in_8(a)		({u8 v = __raw_read8(a); __iormb(); v; })
 
-/** FIXME: */
-static inline u16 arch_in_be16(volatile u16 * addr)
-{
-	return arch_bswap16(*addr);
-}
+#define arch_out_8(a, v)	{__iowmb(); __raw_write8(a, v); }
 
-/** FIXME: */
-static inline void arch_out_be16(volatile u16 * addr, u16 data)
-{
-	*addr = arch_bswap16(data);
-}
+#define arch_in_le16(a)		({u16 v = __raw_read16(a); __iormb(); v; })
 
-/** FIXME: */
-static inline u32 arch_in_le32(volatile u32 * addr)
-{
-	return *addr;
-}
+#define arch_out_le16(a, v)	({__raw_write16(a, v); __iowmb(); })
 
-/** FIXME: */
-static inline void arch_out_le32(volatile u32 * addr, u32 data)
-{
-	*addr = data;
-}
+#define arch_in_be16(a)		({u16 v = __raw_read16(a); __iormb(); (rev16(v)); })
 
-/** FIXME: */
-static inline u32 arch_in_be32(volatile u32 * addr)
-{
-	return arch_bswap32(*addr);
-}
+#define arch_out_be16(a, v)	{__iowmb(); __raw_write16(a, (rev16(v))); }
 
-/** FIXME: */
-static inline void arch_out_be32(volatile u32 * addr, u32 data)
-{
-	*addr = arch_bswap32(data);
-}
+#define arch_in_le32(a)		({u32 v = __raw_read32(a); __iormb(); v; })
+
+#define arch_out_le32(a, v)	{__iowmb(); __raw_write32(a, v); }
+
+#define arch_in_be32(a)		({u32 v = __raw_read32(a); __iormb(); (rev(v)); })
+
+#define arch_out_be32(a, v)	{__iowmb(); __raw_write32(a, (rev(v))); }
 
 #endif
