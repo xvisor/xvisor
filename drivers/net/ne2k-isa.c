@@ -704,12 +704,14 @@ static int ne2k_driver_probe(struct vmm_driver *dev, const struct vmm_devid *dev
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
+	vmm_memset(ndev,0, sizeof(struct vmm_netdev));
 
 	priv_data = vmm_malloc(sizeof(struct nic_priv_data));
 	if(!priv_data) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
 	}
+	vmm_memset(priv_data,0, sizeof(struct nic_priv_data));
 
 	if (ne2k_init(priv_data)) {
 		rc = VMM_EFAIL;
@@ -755,11 +757,16 @@ static int ne2k_driver_remove(struct vmm_driver *dev)
 	struct nic_priv_data *priv_data;
 
 	ndev = (struct vmm_netdev *)dev->priv;
-	priv_data = (struct nic_priv_data *)ndev->priv;
 
-	vmm_ringbuf_free(priv_data->rx_rb);
-	vmm_free(priv_data);
-	vmm_free(ndev);
+	if (ndev) {
+		priv_data = (struct nic_priv_data *)ndev->priv;
+		if (priv_data) {
+			vmm_ringbuf_free(priv_data->rx_rb);
+			vmm_free(priv_data);
+		}
+		vmm_free(ndev);
+		dev->priv = NULL;
+	}
 
 	return 0;
 }

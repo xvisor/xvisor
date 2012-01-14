@@ -297,12 +297,14 @@ static int pl01x_driver_probe(struct vmm_device *dev,const struct vmm_devid *dev
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
+	vmm_memset(cd, 0, sizeof(struct vmm_chardev));
 
 	port = vmm_malloc(sizeof(struct pl01x_port));
 	if(!port) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
 	}
+	vmm_memset(port, 0, sizeof(struct pl01x_port));
 
 	vmm_strcpy(cd->name, dev->node->name);
 	cd->dev = dev;
@@ -371,13 +373,15 @@ free_nothing:
 
 static int pl01x_driver_remove(struct vmm_device *dev)
 {
-	int rc;
+	int rc = VMM_OK;
 	struct vmm_chardev *cd =(struct vmm_chardev*)dev->priv;
 
-	rc = vmm_chardev_unregister(cd);
-	vmm_free(cd->priv);
-	vmm_free(cd);
-	dev->priv = NULL;
+	if (cd) {
+		rc = vmm_chardev_unregister(cd);
+		vmm_free(cd->priv);
+		vmm_free(cd);
+		dev->priv = NULL;
+	}
 
 	return rc;
 }
