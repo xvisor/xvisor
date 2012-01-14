@@ -62,35 +62,20 @@ bool vmm_isprintable(char c)
 
 int vmm_printchar(char **str, struct vmm_chardev *cdev, char c, bool block)
 {
-	int rc = VMM_OK;
-	if (str) {
+	int rc ;
+	if (str && *str) {
 		**str = c;
 		++(*str);
+		rc = VMM_OK;
+	} else if (cdev) {
+		rc = ((vmm_chardev_dowrite(cdev, (u8 *)&c, 0, sizeof(c), 
+					   block)) ? VMM_OK : VMM_EFAIL);
 	} else {
-		if (cdev) {
-			if (!vmm_chardev_dowrite(cdev, 
-					(u8 *)&c, 0, sizeof(c), block)) {
-				if (!block) {
-					rc = VMM_EFAIL;
-				}
-			}
-		} else {
-			while ((rc = arch_defterm_putc((u8)c))) {
-				if (!block) {
-					break;
-				}
-			}
-		}
+		while (((rc = arch_defterm_putc((u8)c)) == VMM_EFAIL) 
+		       && block);
 	}
-	return rc;
-}
 
-void vmm_putc(char ch)
-{
-	if (ch == '\n') {
-		vmm_printchar(NULL, stdio_ctrl.cdev, '\r', TRUE);
-	}
-	vmm_printchar(NULL, stdio_ctrl.cdev, ch, TRUE);
+	return rc;
 }
 
 void vmm_cputc(struct vmm_chardev *cdev, char ch)
@@ -99,6 +84,11 @@ void vmm_cputc(struct vmm_chardev *cdev, char ch)
 		vmm_printchar(NULL, cdev, '\r', TRUE);
 	}
 	vmm_printchar(NULL, cdev, ch, TRUE);
+}
+
+void vmm_putc(char ch)
+{
+	vmm_cputc(stdio_ctrl.cdev, ch);
 }
 
 static void printc(char **str, struct vmm_chardev *cdev, char ch)
@@ -305,39 +295,20 @@ int vmm_panic(const char *format, ...)
 
 int vmm_scanchar(char **str, struct vmm_chardev *cdev, char *c, bool block)
 {
-	u8 ch = 0;
-	bool got_input = FALSE;
-	int rc = VMM_OK;
-	if (str) {
+	int rc;
+
+	if (str && *str) {
 		*c = **str;
 		++(*str);
+		rc = VMM_OK;
+	} else if (cdev) {
+		rc = (vmm_chardev_doread(cdev, (u8 *)c, 0, sizeof(char), 
+					 block) ? VMM_OK : VMM_EFAIL);
 	} else {
-		got_input = FALSE;
-		if (cdev) {
-			if (!vmm_chardev_doread(cdev,
-						&ch, 0, sizeof(ch), block)) {
-				if (!block) {
-					rc = VMM_EFAIL;
-				}
-			} else {
-				got_input = TRUE;
-			}
-		} else {
-			while (!got_input) {
-				if ((rc = arch_defterm_getc(&ch))) {
-					if (!block) {
-						break;
-					}
-				} else {
-					got_input = TRUE;
-				}
-			}
-		}
-		if (!got_input) {
-			ch = 0;
-		}
-		*c = ch;
+		while (((rc = arch_defterm_getc((u8 *)c)) == VMM_EFAIL) 
+		       && block);
 	}
+
 	return rc;
 }
 
