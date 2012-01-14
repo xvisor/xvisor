@@ -39,12 +39,13 @@ typedef unsigned int bool;
 typedef unsigned int ulong;
 
 /** Boolean macros */
-#define TRUE		1
-#define FALSE		0
-#define NULL 		((void *)0)
+#define TRUE			1
+#define FALSE			0
+#define NULL 			((void *)0)
 
-#define stringify(s)	tostring(s)
-#define tostring(s)	#s
+#define stringify(s)		tostring(s)
+#define tostring(s)		#s
+#define barrier() 		__asm__ __volatile__("": : :"memory")
 
 #define __alwaysinline 		__attribute__((always_inline))
 #define __unused		__attribute__((unused))

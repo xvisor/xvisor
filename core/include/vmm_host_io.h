@@ -62,32 +62,32 @@ static inline void vmm_iowritel(volatile void *addr, u32 data)
 /** Memory read/write legacy functions (Assumed to be Little Endian) */
 static inline u8 vmm_readb(volatile void *addr)
 {
-	return arch_in_8((u8 *) addr);
+	return arch_in_8(addr);
 }
 
 static inline void vmm_writeb(u8 data, volatile void *addr)
 {
-	arch_out_8((u8 *) addr, data);
+	arch_out_8(addr, data);
 }
 
 static inline u16 vmm_readw(volatile void *addr)
 {
-	return arch_in_le16((u16 *) addr);
+	return arch_in_le16(addr);
 }
 
 static inline void vmm_writew(u16 data, volatile void *addr)
 {
-	arch_out_le16((u16 *) addr, data);
+	arch_out_le16(addr, data);
 }
 
 static inline u32 vmm_readl(volatile void *addr)
 {
-	return arch_in_le32((u32 *) addr);
+	return arch_in_le32(addr);
 }
 
 static inline void vmm_writel(u32 data, volatile void *addr)
 {
-	arch_out_le32((u32 *) addr, data);
+	arch_out_le32(addr, data);
 }
 
 /** Memory read/write functions */
