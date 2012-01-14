@@ -179,7 +179,10 @@ static int sp810_emulator_remove(struct vmm_emudev *edev)
 {
 	struct sp810_state * s = edev->priv;
 
-	vmm_free(s);
+	if (s) {
+		vmm_free(s);
+		edev->priv = NULL;
+	}
 
 	return VMM_OK;
 }

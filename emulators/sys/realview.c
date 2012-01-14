@@ -462,9 +462,10 @@ static int realview_emulator_remove(struct vmm_emudev *edev)
 {
 	struct realview_sysctl * s = edev->priv;
 
-	edev->priv = NULL;
-
-	vmm_free(s);
+	if (s) {
+		vmm_free(s);
+		edev->priv = NULL;
+	}
 
 	return VMM_OK;
 }

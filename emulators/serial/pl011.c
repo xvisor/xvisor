@@ -449,9 +449,12 @@ static int pl011_emulator_remove(struct vmm_emudev *edev)
 {
 	struct pl011_state * s = edev->priv;
 
-	vmm_vserial_free(s->vser);
-	vmm_ringbuf_free(s->rd_fifo);
-	vmm_free(s);
+	if (s) {
+		vmm_vserial_free(s->vser);
+		vmm_ringbuf_free(s->rd_fifo);
+		vmm_free(s);
+		edev->priv = NULL;
+	}
 
 	return VMM_OK;
 }

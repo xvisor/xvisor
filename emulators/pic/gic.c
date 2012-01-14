@@ -904,6 +904,8 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto gic_emulator_probe_freestate_fail;
 	}
+	vmm_memset(s->pic, 0x0, sizeof(struct vmm_emupic));
+
 	vmm_strcpy(s->pic->name, "gic-pic");
 	s->pic->handle = &gic_irq_handle;
 	s->pic->priv = s;
@@ -963,7 +965,13 @@ static int gic_emulator_remove(struct vmm_emudev *edev)
 {
 	struct gic_state * s = edev->priv;
 
-	vmm_free(s);
+	if (s) {
+		if (s->pic) {
+			vmm_free(s->pic);
+		}
+		vmm_free(s);
+		edev->priv = NULL;
+	}
 
 	return VMM_OK;
 }
