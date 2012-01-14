@@ -57,7 +57,8 @@ bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align)
 
 u8 uart_lowlevel_getc(virtual_addr_t base, u32 reg_align)
 {
-	while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & UART_LSR_DR));
+	while (uart_lowlevel_can_getc(base, reg_align) == FALSE);
+
 	return (vmm_in_8((u8 *)REG_UART_RBR(base,reg_align)));
 }
 
@@ -71,8 +72,8 @@ bool uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align)
 
 void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, u8 ch)
 {
-	while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & 
-							UART_LSR_THRE));
+	while (uart_lowlevel_can_putc(base, reg_align) == FALSE);
+
 	vmm_out_8((u8 *)REG_UART_THR(base,reg_align), ch);
 }
 
@@ -80,7 +81,6 @@ void uart_lowlevel_init(const char *compatible, virtual_addr_t base,
 		u32 reg_align, u32 baudrate, u32 input_clock)
 {
 	u16 bdiv;
-	u32 val;
 	bdiv = arch_udiv32(input_clock, (16 * baudrate));
 
 	if(!vmm_strcmp(compatible, "st16654")) {
@@ -124,9 +124,9 @@ void uart_lowlevel_init(const char *compatible, virtual_addr_t base,
 		/* no modem control DTR RTS */
 		vmm_out_8((u8 *)REG_UART_MCR(base,reg_align), 0x00);
 		/* clear line status */
-		val = vmm_in_8((u8 *)REG_UART_LSR(base,reg_align));
+		vmm_in_8((u8 *)REG_UART_LSR(base,reg_align));
 		/* read receive buffer */
-		val = vmm_in_8((u8 *)REG_UART_RBR(base,reg_align));
+		vmm_in_8((u8 *)REG_UART_RBR(base,reg_align));
 		/* set scratchpad */
 		vmm_out_8((u8 *)REG_UART_SCR(base,reg_align), 0x00);
 		/* set interrupt enable reg */
@@ -140,25 +140,18 @@ static u32 uart_read(struct vmm_chardev *cdev,
 	u32 i;
 	struct uart_port *port;
 
-	if(!cdev || !dest) {
-		return 0;
-	}
-	if(!cdev->priv) {
+	if (!(cdev && dest && cdev->priv)) {
 		return 0;
 	}
 
 	port = cdev->priv;
 
 	for(i = 0; i < len; i++) {
-		if (block) {
-			while (!uart_lowlevel_can_getc(port->base, 
-							port->reg_align));
-		} else {
-			if (!uart_lowlevel_can_getc(port->base, 
-						    port->reg_align)) {
-				break;
-			}
+		if (!block && 
+		    !uart_lowlevel_can_getc(port->base, port->reg_align)) {
+			break;
 		}
+
 		dest[i] = uart_lowlevel_getc(port->base, port->reg_align);
 	}
 
@@ -171,25 +164,18 @@ static u32 uart_write(struct vmm_chardev *cdev,
 	u32 i;
 	struct uart_port *port;
 
-	if(!cdev || !src) {
-		return 0;
-	}
-	if(!cdev->priv) {
+	if (!(cdev && src && cdev->priv)) {
 		return 0;
 	}
 
 	port = cdev->priv;
 
 	for(i = 0; i < len; i++) {
-		if (block) {
-			while (!uart_lowlevel_can_putc(port->base, 
-							port->reg_align));
-		} else {
-			if (!uart_lowlevel_can_putc(port->base, 
-						    port->reg_align)) {
-				break;
-			}
+		if (!block && 
+		    !uart_lowlevel_can_putc(port->base, port->reg_align)) {
+			break;
 		}
+
 		uart_lowlevel_putc(port->base, port->reg_align, src[i]);
 	}
 

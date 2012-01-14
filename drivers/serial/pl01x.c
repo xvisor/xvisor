@@ -56,7 +56,7 @@ u8 pl01x_lowlevel_getc(virtual_addr_t base, u32 type)
 	unsigned int data;
 
 	/* Wait until there is data in the FIFO */
-	while (vmm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE);
+	while (pl01x_lowlevel_can_getc(base, type) != TRUE);
 
 	data = vmm_readl((void*)(base + UART_PL01x_DR));
 
@@ -81,7 +81,7 @@ bool pl01x_lowlevel_can_putc(virtual_addr_t base, u32 type)
 void pl01x_lowlevel_putc(virtual_addr_t base, u32 type, u8 ch)
 {
 	/* Wait until there is space in the FIFO */
-	while (vmm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF);
+	while (pl01x_lowlevel_can_putc(base, type) != TRUE);
 
 	/* Send the character */
 	vmm_writel(ch, (void*)(base + UART_PL01x_DR));
@@ -205,9 +205,11 @@ static int pl01x_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 static u8 pl01x_getc_sleepable(struct pl01x_port * port)
 {
 	/* Wait until there is data in the FIFO */
-	if (vmm_readl((void*)(port->base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE) {
+	if (pl01x_lowlevel_can_getc(port->base, port->type) == FALSE) {
 		/* Enable the RX interrupt */
-		vmm_writel(UART_PL011_IMSC_RXIM, (void*)(port->base + UART_PL011_IMSC));
+		vmm_writel(UART_PL011_IMSC_RXIM, 
+			   (void*)(port->base + UART_PL011_IMSC));
+
 		/* Wait for completion */
 		vmm_completion_wait(&port->read_done);
 	}
@@ -222,10 +224,7 @@ static u32 pl01x_read(struct vmm_chardev *cdev,
 	u32 i;
 	struct pl01x_port *port;
 
-	if(!cdev || !dest) {
-		return 0;
-	}
-	if(!cdev->priv) {
+	if (!(cdev && dest && cdev->priv)) {
 		return 0;
 	}
 
@@ -235,18 +234,14 @@ static u32 pl01x_read(struct vmm_chardev *cdev,
 		for(i = 0; i < len; i++) {
 			dest[i] = pl01x_getc_sleepable(port);
 		}
-	} else if (block) {
-		for(i = 0; i < len; i++) {
-			while (!pl01x_lowlevel_can_getc(port->base, 
-						     port->type)) ;
-			dest[i] = pl01x_lowlevel_getc(port->base, port->type);
-		}
 	} else {
 		for(i = 0; i < len; i++) {
-			if (!pl01x_lowlevel_can_getc(port->base, 
+			if (!block && 
+			    !pl01x_lowlevel_can_getc(port->base, 
 						     port->type)) {
 				break;
 			}
+
 			dest[i] = pl01x_lowlevel_getc(port->base, port->type);
 		}
 	}
@@ -260,25 +255,18 @@ static u32 pl01x_write(struct vmm_chardev *cdev,
 	u32 i;
 	struct pl01x_port *port;
 
-	if(!cdev || !src) {
-		return 0;
-	}
-	if(!cdev->priv) {
+	if (!(cdev && src && cdev->priv)) {
 		return 0;
 	}
 
 	port = cdev->priv;
 
 	for(i = 0; i < len; i++) {
-		if (block) {
-			while (!pl01x_lowlevel_can_putc(port->base, 
-							port->type));
-		} else {
-			if (!pl01x_lowlevel_can_putc(port->base, 
-						     port->type)) {
+		if (!block && 
+		    !pl01x_lowlevel_can_putc(port->base, port->type)) {
 				break;
-			}
 		}
+
 		pl01x_lowlevel_putc(port->base, port->type, src[i]);
 	}
 
