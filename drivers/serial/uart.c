@@ -57,7 +57,7 @@ bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align)
 
 u8 uart_lowlevel_getc(virtual_addr_t base, u32 reg_align)
 {
-	while (uart_lowlevel_can_getc(base, reg_align) == FALSE);
+	while (!uart_lowlevel_can_getc(base, reg_align));
 
 	return (vmm_in_8((u8 *)REG_UART_RBR(base,reg_align)));
 }
@@ -72,7 +72,7 @@ bool uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align)
 
 void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, u8 ch)
 {
-	while (uart_lowlevel_can_putc(base, reg_align) == FALSE);
+	while (!uart_lowlevel_can_putc(base, reg_align));
 
 	vmm_out_8((u8 *)REG_UART_THR(base,reg_align), ch);
 }
