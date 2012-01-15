@@ -56,7 +56,7 @@ u8 pl01x_lowlevel_getc(virtual_addr_t base, u32 type)
 	unsigned int data;
 
 	/* Wait until there is data in the FIFO */
-	while (pl01x_lowlevel_can_getc(base, type) != TRUE);
+	while (!pl01x_lowlevel_can_getc(base, type));
 
 	data = vmm_readl((void*)(base + UART_PL01x_DR));
 
@@ -81,7 +81,7 @@ bool pl01x_lowlevel_can_putc(virtual_addr_t base, u32 type)
 void pl01x_lowlevel_putc(virtual_addr_t base, u32 type, u8 ch)
 {
 	/* Wait until there is space in the FIFO */
-	while (pl01x_lowlevel_can_putc(base, type) != TRUE);
+	while (!pl01x_lowlevel_can_putc(base, type));
 
 	/* Send the character */
 	vmm_writel(ch, (void*)(base + UART_PL01x_DR));
@@ -172,12 +172,14 @@ void pl01x_lowlevel_init(virtual_addr_t base, u32 type,
 }
 
 struct pl01x_port {
-	struct vmm_completion read_done;
+	struct vmm_completion read_possible;
+	struct vmm_completion write_possible;
 	virtual_addr_t base;
 	u32 baudrate;
 	u32 input_clock;
 	u32 type;
 	u32 irq;
+	u32 mask;
 };
 
 static int pl01x_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
@@ -188,14 +190,23 @@ static int pl01x_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 	/* Get masked interrupt status */
 	data = vmm_readl((void*)(port->base + UART_PL011_MIS));
 
-	/* Only handle RX FIFO not empty */
+	/* handle RX FIFO not empty */
 	if(data & UART_PL011_MIS_RXMIS) {
 		/* Mask RX interrupts till RX FIFO is empty */
-		vmm_writel(0x0, (void*)(port->base + UART_PL011_IMSC));
+		port->mask &= ~UART_PL011_IMSC_RXIM;
 		/* Signal work completions to all sleeping threads */
-		vmm_completion_complete_all(&port->read_done);
+		vmm_completion_complete_all(&port->read_possible);
 	}
 
+	/* handle TX FIFO not full */
+	if(data & UART_PL011_MIS_TXMIS) {
+		/* Mask TX interrupts till TX FIFO is full */
+		port->mask &= ~UART_PL011_IMSC_TXIM;
+		/* Signal work completions to all sleeping threads */
+		vmm_completion_complete_all(&port->write_possible);
+	}
+
+	vmm_writel(port->mask, (void*)(port->base + UART_PL011_IMSC));
 	/* Clear all interrupts */
 	vmm_writel(data, (void*)(port->base + UART_PL011_ICR));
 
@@ -205,13 +216,14 @@ static int pl01x_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 static u8 pl01x_getc_sleepable(struct pl01x_port * port)
 {
 	/* Wait until there is data in the FIFO */
-	if (pl01x_lowlevel_can_getc(port->base, port->type) == FALSE) {
+	if (!pl01x_lowlevel_can_getc(port->base, port->type)) {
 		/* Enable the RX interrupt */
-		vmm_writel(UART_PL011_IMSC_RXIM, 
+		port->mask |= UART_PL011_IMSC_RXIM;
+		vmm_writel(port->mask, 
 			   (void*)(port->base + UART_PL011_IMSC));
 
 		/* Wait for completion */
-		vmm_completion_wait(&port->read_done);
+		vmm_completion_wait(&port->read_possible);
 	}
 
 	/* Read data to destination */
@@ -249,6 +261,23 @@ static u32 pl01x_read(struct vmm_chardev *cdev,
 	return i;
 }
 
+static void pl01x_putc_sleepable(struct pl01x_port * port, u8 ch)
+{
+	/* Wait until there is space in the FIFO */
+	if (!pl01x_lowlevel_can_putc(port->base, port->type)) {
+		/* Enable the TX interrupt */
+		port->mask |= UART_PL011_IMSC_TXIM;
+		vmm_writel(port->mask, 
+			   (void*)(port->base + UART_PL011_IMSC));
+
+		/* Wait for completion */
+		vmm_completion_wait(&port->write_possible);
+	}
+
+	/* Write data to FIFO */
+	vmm_writel(ch, (void*)(port->base + UART_PL01x_DR));
+}
+
 static u32 pl01x_write(struct vmm_chardev *cdev, 
 		       u8 *src, size_t offset, size_t len, bool block)
 {
@@ -261,13 +290,19 @@ static u32 pl01x_write(struct vmm_chardev *cdev,
 
 	port = cdev->priv;
 
-	for(i = 0; i < len; i++) {
-		if (!block && 
-		    !pl01x_lowlevel_can_putc(port->base, port->type)) {
-				break;
+	if (block && vmm_scheduler_orphan_context()) {
+		for(i = 0; i < len; i++) {
+			pl01x_putc_sleepable(port, src[i]);
 		}
-
-		pl01x_lowlevel_putc(port->base, port->type, src[i]);
+	} else {
+		for(i = 0; i < len; i++) {
+			if (!block && 
+			    !pl01x_lowlevel_can_putc(port->base, port->type)) {
+				break;
+			}
+	
+			pl01x_lowlevel_putc(port->base, port->type, src[i]);
+		}
 	}
 
 	return i;
@@ -301,7 +336,8 @@ static int pl01x_driver_probe(struct vmm_device *dev,const struct vmm_devid *dev
 	cd->write = pl01x_write;
 	cd->priv = port;
 
-	INIT_COMPLETION(&port->read_done);
+	INIT_COMPLETION(&port->read_possible);
+	INIT_COMPLETION(&port->write_possible);
 
 	rc = vmm_devdrv_ioremap(dev, &port->base, 0);
 	if(rc) {
