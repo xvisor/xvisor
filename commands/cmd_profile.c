@@ -171,7 +171,7 @@ static int cmd_profile_count_iterator(void *data, const char *name,
 	ptr->count = count;
 	ptr->total_time = time;
 	if (count) {
-		ptr->time_per_call = vmm_udiv64(time, (u64)count);
+		ptr->time_per_call = arch_udiv64(time, (u64)count);
 	}
 
 	return VMM_OK;
@@ -196,7 +196,7 @@ static u32 ns_to_micros(u64 count)
 		count = (u64)0xffffffff * 1000;
 	}
 
-	return (u32)vmm_udiv64(count, 1000);
+	return (u32)arch_udiv64(count, 1000);
 }
 
 static int cmd_profile_dump(struct vmm_chardev * cdev, char *filter_mode)
