@@ -43,6 +43,15 @@ char *vmm_strcpy(char *dest, const char *src)
 	return dest;
 }
 
+char *vmm_strncpy(char *dest, const char *src, size_t n)
+{
+	u32 i;
+	for (i = 0; src[i] != '\0' && n; ++i, n--)
+		dest[i] = src[i];
+	dest[i] = '\0';
+	return dest;
+}
+
 char *vmm_strcat(char *dest, const char *src)
 {
 	char *save = dest;

@@ -46,8 +46,7 @@ int arch_board_ram_start(physical_addr_t * addr);
 int arch_board_ram_size(physical_size_t * size);
 
 /** Device tree related function required by VMM core */
-int arch_devtree_populate(struct vmm_devtree_node ** root,
-			  char **string_buffer, size_t * string_buffer_size);
+int arch_devtree_populate(struct vmm_devtree_node ** root);
 
 /** Board specific functions */
 int arch_board_getclock(struct vmm_devtree_node * node, u32 * clock);

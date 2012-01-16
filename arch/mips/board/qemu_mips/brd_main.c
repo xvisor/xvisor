@@ -100,9 +100,7 @@ int arch_board_ram_size(physical_size_t * size)
 	return VMM_OK;
 }
 
-int arch_devtree_populate(struct vmm_devtree_node **root,
-			 char **string_buffer,
-			 size_t *string_buffer_size)
+int arch_devtree_populate(struct vmm_devtree_node **root)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
@@ -112,10 +110,7 @@ int arch_devtree_populate(struct vmm_devtree_node **root,
 		return rc;
 	}
 
-	return libfdt_parse_devtree(&fdt,
-				    root,
-				    string_buffer,
-				    string_buffer_size);
+	return libfdt_parse_devtree(&fdt, root);
 }
 
 int arch_board_getclock(struct vmm_devtree_node *node, u32 *clock)

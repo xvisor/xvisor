@@ -81,9 +81,9 @@ struct fdt_property {
 
 struct fdt_fileinfo {
 	struct fdt_header * header;
-	char * data_ptr;
+	char * data;
 	size_t data_size;
-	char * str_ptr;
+	char * str;
 	size_t str_size;
 };
 
@@ -91,9 +91,7 @@ int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
 			  struct fdt_fileinfo * fdt);
 
 int libfdt_parse_devtree(struct fdt_fileinfo * fdt,
-			 struct vmm_devtree_node ** root,
-			 char **string_buffer, 
-			 size_t * string_buffer_size);
+			 struct vmm_devtree_node ** root);
 
 struct fdt_node_header * libfdt_find_node(struct fdt_fileinfo * fdt, 
 					  const char * node_path);
