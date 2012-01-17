@@ -34,13 +34,66 @@ struct vmm_devtree_ctrl {
 
 static struct vmm_devtree_ctrl dtree_ctrl;
 
-const char *vmm_devtree_attrval(struct vmm_devtree_node * node, 
-				const char *attrib)
+u32 vmm_devtree_estimate_attrtype(const char * name)
+{
+	u32 ret = VMM_DEVTREE_ATTRTYPE_UNKNOWN;
+
+	if (!name) {
+		return ret;
+	}
+
+	if (!vmm_strcmp(name, VMM_DEVTREE_MODEL_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_STRING;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_STRING;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_COMPATIBLE_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_STRING;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_REG_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_UNKNOWN;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_CPU_FREQ_MHZ_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_START_PC_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_START_SP_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_VIRTSIZE;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_PRIORITY_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_TIME_SLICE_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_H2GIRQMAP_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_STRING;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_STRING;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_GUEST_PHYS_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_HOST_PHYS_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_PHYS_SIZE_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
+	}
+
+	return ret;
+}
+
+void * vmm_devtree_attrval(struct vmm_devtree_node * node, 
+			   const char *attrib)
 {
 	struct vmm_devtree_attr *attr;
 	struct dlist *l;
 
-	if (!node) {
+	if (!node || !attrib) {
 		return NULL;
 	}
 
@@ -59,7 +112,7 @@ u32 vmm_devtree_attrlen(struct vmm_devtree_node * node, const char *attrib)
 	struct vmm_devtree_attr *attr;
 	struct dlist *l;
 
-	if (!node) {
+	if (!node || !attrib) {
 		return 0;
 	}
 
@@ -75,7 +128,8 @@ u32 vmm_devtree_attrlen(struct vmm_devtree_node * node, const char *attrib)
 
 struct vmm_devtree_attr * vmm_devtree_addattr(struct vmm_devtree_node * node,
 					      const char *name,
-					      char * value,
+					      void * value,
+					      u32 type,
 					      u32 len)
 {
 	struct dlist *l;
@@ -95,6 +149,7 @@ struct vmm_devtree_attr * vmm_devtree_addattr(struct vmm_devtree_node * node,
 	attr = vmm_malloc(sizeof(struct vmm_devtree_attr));
 	INIT_LIST_HEAD(&attr->head);
 	attr->len = len;
+	attr->type = type;
 	len = vmm_strlen(name) + 1;
 	attr->name = vmm_malloc(len);
 	vmm_strncpy(attr->name, name, len);
@@ -107,7 +162,8 @@ struct vmm_devtree_attr * vmm_devtree_addattr(struct vmm_devtree_node * node,
 
 int vmm_devtree_setattr(struct vmm_devtree_node * node,
 			const char *name,
-			char * new_value,
+			void * new_value,
+			u32 new_type,
 			u32 new_len)
 {
 	bool found;
@@ -131,12 +187,13 @@ int vmm_devtree_setattr(struct vmm_devtree_node * node,
 		return VMM_EFAIL;
 	}
 
-
 	if (attr->len != new_len) {
 		attr->len = new_len;
 		vmm_free(attr->value);
 		attr->value = vmm_malloc(attr->len);
 	}
+
+	attr->type = new_type;
 
 	vmm_memcpy(attr->value, new_value, attr->len);
 

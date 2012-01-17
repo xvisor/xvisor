@@ -64,12 +64,19 @@ void cmd_devtree_print_attributes(struct vmm_chardev *cdev,
 		attr = list_entry(lentry, struct vmm_devtree_attr, head);
 		for (i = 0; i < indent; i++)
 			vmm_cprintf(cdev, "\t");
-		if (attr->value[attr->len - 1] == '\0' && 4 < attr->len) {
+		if (attr->type == VMM_DEVTREE_ATTRTYPE_STRING) {
 			vmm_cprintf(cdev, "\t%s = \"%s\";\n", 
-						attr->name, attr->value);
+						attr->name, (char *)attr->value);
 		} else {
-			vmm_cprintf(cdev, "\t%s = 0x%x;\n", attr->name,
-				   *((u32 *) attr->value));
+			vmm_cprintf(cdev, "\t%s = <", attr->name);
+			for (i = 0; i < attr->len; i += 4) {
+				if (i > 0) {
+					vmm_cprintf(cdev, " ");
+				}
+				vmm_cprintf(cdev, "0x%x", 
+						((u32 *)attr->value)[i >> 2]);
+			}
+			vmm_cprintf(cdev, ">;\n", attr->name);
 		}
 	}
 }

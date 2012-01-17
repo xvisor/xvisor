@@ -65,7 +65,7 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo * fdt,
 					   struct vmm_devtree_node * node,
 					   char **data)
 {
-	u32 len;
+	u32 type, len;
 	const char * name;
 	struct vmm_devtree_node *child;
 
@@ -81,7 +81,8 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo * fdt,
 			*data += sizeof(u32);
 			name = &fdt->str[LIBFDT_DATA32(*data)];
 			*data += sizeof(u32);
-			vmm_devtree_addattr(node, name, *data, len);
+			type = vmm_devtree_estimate_attrtype(name);
+			vmm_devtree_addattr(node, name, *data, type, len);
 			*data += len;
 			while ((u32) (*data) % sizeof(u32) != 0)
 				(*data)++;
@@ -91,8 +92,8 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo * fdt,
 			break;
 		case FDT_BEGIN_NODE:
 			*data += sizeof(u32);
-			child = vmm_devtree_addnode(node, *data, 
-					VMM_DEVTREE_NODETYPE_UNKNOWN, NULL);
+			type = VMM_DEVTREE_NODETYPE_UNKNOWN;
+			child = vmm_devtree_addnode(node, *data, type, NULL);
 			*data += vmm_strlen(*data) + 1;
 			while ((u32) (*data) % sizeof(u32) != 0) {
 				(*data)++;

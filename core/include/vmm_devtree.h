@@ -71,18 +71,30 @@
 #define VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME	"alias_physical_addr"
 #define VMM_DEVTREE_PHYS_SIZE_ATTR_NAME		"physical_size"
 
-enum vmm_devtree_nodetypes {
-	VMM_DEVTREE_NODETYPE_UNKNOWN = 0,
-	VMM_DEVTREE_NODETYPE_DEVICE = 1,
-	VMM_DEVTREE_NODETYPE_EDEVICE = 2,
-	VMM_DEVTREE_NODETYPE_MAXTYPES = 3
+enum vmm_devtree_attrypes {
+	VMM_DEVTREE_ATTRTYPE_UNKNOWN = 0,
+	VMM_DEVTREE_ATTRTYPE_STRING = 1,
+	VMM_DEVTREE_ATTRTYPE_UINT32 = 2,
+	VMM_DEVTREE_ATTRTYPE_UINT64 = 3,
+	VMM_DEVTREE_ATTRTYPE_VIRTADDR=4,
+	VMM_DEVTREE_ATTRTYPE_VIRTSIZE=5,
+	VMM_DEVTREE_ATTRTYPE_PHYSADDR=6,
+	VMM_DEVTREE_ATTRTYPE_PHYSSIZE=7
 };
 
 struct vmm_devtree_attr {
 	struct dlist head;
 	char *name;
-	char *value;
+	u32 type;
+	void *value;
 	u32 len;
+};
+
+enum vmm_devtree_nodetypes {
+	VMM_DEVTREE_NODETYPE_UNKNOWN = 0,
+	VMM_DEVTREE_NODETYPE_DEVICE = 1,
+	VMM_DEVTREE_NODETYPE_EDEVICE = 2,
+	VMM_DEVTREE_NODETYPE_MAXTYPES = 3
 };
 
 struct vmm_devtree_node {
@@ -95,9 +107,12 @@ struct vmm_devtree_node {
 	struct dlist child_list;
 };
 
+/** Estimate type of attribute from its name */
+u32 vmm_devtree_estimate_attrtype(const char * name);
+
 /** Get attribute value */
-const char *vmm_devtree_attrval(struct vmm_devtree_node * node, 
-				const char *attrib);
+void * vmm_devtree_attrval(struct vmm_devtree_node * node, 
+			   const char *attrib);
 
 /** Get length of attribute value */
 u32 vmm_devtree_attrlen(struct vmm_devtree_node * node, 
@@ -106,13 +121,15 @@ u32 vmm_devtree_attrlen(struct vmm_devtree_node * node,
 /** Add new attribute to a device tree node */
 struct vmm_devtree_attr * vmm_devtree_addattr(struct vmm_devtree_node * node,
 					      const char *name,
-					      char * value,
+					      void * value,
+					      u32 type,
 					      u32 len);
 
 /** Set new value to an existing attribute of a device tree node */
 int vmm_devtree_setattr(struct vmm_devtree_node * node,
 			const char *name,
-			char * new_value,
+			void * new_value,
+			u32 new_type,
 			u32 new_len);
 
 /** Delete an attribute from a device tree node */
