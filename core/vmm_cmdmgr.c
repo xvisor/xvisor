@@ -179,12 +179,13 @@ int vmm_cmdmgr_execute_cmd(struct vmm_chardev *cdev, int argc, char **argv)
 	if ((cmd = vmm_cmdmgr_cmd_find(argv[0]))) {
 		/* Found a matching command so execute it. */
 		if ((ret = cmd->exec(cdev, argc, argv))) {
-			vmm_cprintf(cdev, "Error %d: Command Failed\n", ret);
+			vmm_cprintf(cdev, "Error: Command Failed "
+					  "(Code %d)\n", ret);
 			return ret;
 		}
 	} else {
 		/* Did not find command. */
-		vmm_cprintf(cdev, "Unknown Command - %s\n", argv[0]);
+		vmm_cprintf(cdev, "Error: Unknown Command %s\n", argv[0]);
 		return VMM_ENOTAVAIL;
 	}
 
