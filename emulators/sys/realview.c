@@ -82,6 +82,7 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 {
 	int rc = VMM_OK;
 	u32 regval = 0x0;
+	u64 tdiff;
 	struct realview_sysctl * s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
@@ -109,8 +110,8 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 		regval = 0;
 		break;
 	case 0x24: /* 100HZ */
-		regval = arch_udiv64((vmm_timer_timestamp() - s->ref_100hz), 
-								10000000);
+		tdiff = vmm_timer_timestamp() - s->ref_100hz;
+		regval = arch_udiv64(tdiff, 10000000);
 		break;
 	case 0x28: /* CFGDATA1 */
 		regval = s->cfgdata1;
@@ -151,16 +152,20 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 		regval = 0;
 		break;
 	case 0x5c: /* 24MHz */
+		tdiff = vmm_timer_timestamp() - s->ref_100hz;
 		/* Note: What we want is the below value 
-		 * regval = vmm_udiv64((vmm_timer_timestamp() - s->ref_24mhz) * 24, 1000);
+		 * regval = vmm_udiv64(tdiff * 24, 1000);
 		 * In integer arithmetic division by constant can be simplified
 		 * (a * 24) / 1000
 		 * = a * (24 / 1000)
 		 * = a * (3 / 125)
-		 * ~ a * (3 / 128) [because (3 / 125) ~ (3 / 128)]
-		 * ~ (a * 3) >> 7
+		 * = a * (3 / 128) * (128 / 125)
+		 * = a * (3 / 128) + a * (3 / 128) * (3 / 125)
+		 * ~ a * (3 / 128) + a * (3 / 128) * (3 / 128) 
+		 * ~ (a * 3) >> 7 + (a * 9) >> 14 
 		 */
-		regval = ((vmm_timer_timestamp() - s->ref_24mhz) * 3) >> 7;
+		tdiff = ((tdiff * 3) >> 7) + ((tdiff * 9) >> 14);
+		regval = tdiff;
 		break;
 	case 0x60: /* MISC */
 		regval = 0;
