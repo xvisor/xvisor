@@ -40,7 +40,11 @@ int vmm_strncmp(const char *a, const char *b, int n);
 
 int vmm_str2int(const char *s, unsigned int base);
 
+long long vmm_str2longlong(const char *s, unsigned int base);
+
 unsigned int vmm_str2uint(const char *s, unsigned int base);
+
+unsigned long long vmm_str2ulonglong(const char *s, unsigned int base);
 
 void *vmm_memcpy(void *dest, const void *src, size_t count);
 
