@@ -82,7 +82,7 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo * fdt,
 			name = &fdt->str[LIBFDT_DATA32(*data)];
 			*data += sizeof(u32);
 			type = vmm_devtree_estimate_attrtype(name);
-			vmm_devtree_addattr(node, name, *data, type, len);
+			vmm_devtree_setattr(node, name, *data, type, len);
 			*data += len;
 			while ((u32) (*data) % sizeof(u32) != 0)
 				(*data)++;

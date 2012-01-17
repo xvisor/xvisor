@@ -118,19 +118,16 @@ void * vmm_devtree_attrval(struct vmm_devtree_node * node,
 u32 vmm_devtree_attrlen(struct vmm_devtree_node * node, 
 			const char *attrib);
 
-/** Add new attribute to a device tree node */
-struct vmm_devtree_attr * vmm_devtree_addattr(struct vmm_devtree_node * node,
-					      const char *name,
-					      void * value,
-					      u32 type,
-					      u32 len);
-
-/** Set new value to an existing attribute of a device tree node */
+/** Set an attribute for a device tree node */
 int vmm_devtree_setattr(struct vmm_devtree_node * node,
 			const char *name,
-			void * new_value,
-			u32 new_type,
-			u32 new_len);
+			void * value,
+			u32 type,
+			u32 len);
+
+/** Get an attribute from a device tree node */
+struct vmm_devtree_attr * vmm_devtree_getattr(struct vmm_devtree_node * node,
+					      const char *name);
 
 /** Delete an attribute from a device tree node */
 int vmm_devtree_delattr(struct vmm_devtree_node * node, const char *name);
@@ -150,6 +147,10 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node * parent,
 					     const char * name,
 					     u32 type,
 					     void * priv);
+
+/** Delete a node from device tree */
+int vmm_devtree_delnode(struct vmm_devtree_node * node);
+
 /** Get the root node */
 struct vmm_devtree_node *vmm_devtree_rootnode(void);
 

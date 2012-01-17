@@ -126,100 +126,83 @@ u32 vmm_devtree_attrlen(struct vmm_devtree_node * node, const char *attrib)
 	return 0;
 }
 
-struct vmm_devtree_attr * vmm_devtree_addattr(struct vmm_devtree_node * node,
-					      const char *name,
-					      void * value,
-					      u32 type,
-					      u32 len)
+int vmm_devtree_setattr(struct vmm_devtree_node * node,
+			const char *name,
+			void * value,
+			u32 type,
+			u32 len)
 {
+	bool found;
 	struct dlist *l;
 	struct vmm_devtree_attr * attr;
 
 	if (!node || !name || !value) {
+		return VMM_EFAIL;
+	}
+
+	found = FALSE;
+	list_for_each(l, &node->attr_list) {
+		attr = list_entry(l, struct vmm_devtree_attr, head);
+		if (vmm_strcmp(attr->name, name) == 0) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
+		attr = vmm_malloc(sizeof(struct vmm_devtree_attr));
+		INIT_LIST_HEAD(&attr->head);
+		attr->len = len;
+		attr->type = type;
+		len = vmm_strlen(name) + 1;
+		attr->name = vmm_malloc(len);
+		vmm_strncpy(attr->name, name, len);
+		attr->value = vmm_malloc(attr->len);
+		vmm_memcpy(attr->value, value, attr->len);
+		list_add_tail(&node->attr_list, &attr->head);
+	} else {
+		if (attr->len != len) {
+			attr->len = len;
+			vmm_free(attr->value);
+			attr->value = vmm_malloc(attr->len);
+		}
+		attr->type = type;
+		vmm_memcpy(attr->value, value, attr->len);
+	}
+
+	return VMM_OK;
+}
+
+struct vmm_devtree_attr * vmm_devtree_getattr(struct vmm_devtree_node * node,
+					      const char *name)
+{
+	struct dlist *l;
+	struct vmm_devtree_attr * attr;
+
+	if (!node || !name) {
 		return NULL;
 	}
 
 	list_for_each(l, &node->attr_list) {
 		attr = list_entry(l, struct vmm_devtree_attr, head);
 		if (vmm_strcmp(attr->name, name) == 0) {
-			return NULL;
+			return attr;
 		}
 	}
 
-	attr = vmm_malloc(sizeof(struct vmm_devtree_attr));
-	INIT_LIST_HEAD(&attr->head);
-	attr->len = len;
-	attr->type = type;
-	len = vmm_strlen(name) + 1;
-	attr->name = vmm_malloc(len);
-	vmm_strncpy(attr->name, name, len);
-	attr->value = vmm_malloc(attr->len);
-	vmm_memcpy(attr->value, value, attr->len);
-	list_add_tail(&node->attr_list, &attr->head);
-
-	return attr;
-}
-
-int vmm_devtree_setattr(struct vmm_devtree_node * node,
-			const char *name,
-			void * new_value,
-			u32 new_type,
-			u32 new_len)
-{
-	bool found;
-	struct dlist *l;
-	struct vmm_devtree_attr * attr;
-
-	if (!node || !name || !new_value) {
-		return VMM_EFAIL;
-	}
-
-	found = FALSE;
-	list_for_each(l, &node->attr_list) {
-		attr = list_entry(l, struct vmm_devtree_attr, head);
-		if (vmm_strcmp(attr->name, name) == 0) {
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (!found) {
-		return VMM_EFAIL;
-	}
-
-	if (attr->len != new_len) {
-		attr->len = new_len;
-		vmm_free(attr->value);
-		attr->value = vmm_malloc(attr->len);
-	}
-
-	attr->type = new_type;
-
-	vmm_memcpy(attr->value, new_value, attr->len);
-
-	return VMM_OK;
+	return NULL;
 }
 
 int vmm_devtree_delattr(struct vmm_devtree_node * node, const char *name)
 {
-	bool found;
-	struct dlist *l;
 	struct vmm_devtree_attr * attr;
 
 	if (!node || !name) {
 		return VMM_EFAIL;
 	}
 
-	found = FALSE;
-	list_for_each(l, &node->attr_list) {
-		attr = list_entry(l, struct vmm_devtree_attr, head);
-		if (vmm_strcmp(attr->name, name) == 0) {
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (!found) {
+	attr = vmm_devtree_getattr(node, name);
+	if (!attr) {
 		return VMM_EFAIL;
 	}
 
@@ -373,7 +356,7 @@ int vmm_devtree_delnode(struct vmm_devtree_node * node)
 	struct vmm_devtree_attr * attr;
 	struct vmm_devtree_node * child;
 
-	if (!node) {
+	if (!node || (node == dtree_ctrl.root)) {
 		return VMM_EFAIL;
 	}
 
