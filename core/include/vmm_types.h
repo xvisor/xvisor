@@ -37,6 +37,8 @@ typedef unsigned int u32;
 typedef unsigned int size_t;
 typedef unsigned int bool;
 typedef unsigned int ulong;
+typedef long long s64;
+typedef unsigned long long u64;
 
 /** Boolean macros */
 #define TRUE			1
