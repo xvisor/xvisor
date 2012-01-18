@@ -51,7 +51,7 @@ u32 vmm_devtree_estimate_attrtype(const char * name)
 	} else if (!vmm_strcmp(name, VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!vmm_strcmp(name, VMM_DEVTREE_REG_ATTR_NAME)) {
-		ret = VMM_DEVTREE_ATTRTYPE_UNKNOWN;
+		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
 	} else if (!vmm_strcmp(name, VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
 	} else if (!vmm_strcmp(name, VMM_DEVTREE_CPU_FREQ_MHZ_ATTR_NAME)) {

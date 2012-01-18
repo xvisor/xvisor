@@ -70,9 +70,79 @@ void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 	if (attr->type == VMM_DEVTREE_ATTRTYPE_STRING) {
 		vmm_cprintf(cdev, "\t%s = \"%s\";\n", 
 					attr->name, (char *)attr->value);
+	} else if (attr->type == VMM_DEVTREE_ATTRTYPE_UINT64) {
+		vmm_cprintf(cdev, "\t%s = <", attr->name);
+		for (i = 0; i < attr->len; i += sizeof(u64)) {
+			if (i > 0) {
+				vmm_cprintf(cdev, " ");
+			}
+			vmm_cprintf(cdev, "0x%llx", 
+					((u64 *)attr->value)[i >> 3]);
+		}
+		vmm_cprintf(cdev, ">;\n", attr->name);
+	} else if (attr->type == VMM_DEVTREE_ATTRTYPE_PHYSADDR) {
+		vmm_cprintf(cdev, "\t%s = <", attr->name);
+		for (i = 0; i < attr->len; i += sizeof(physical_addr_t)) {
+			if (i > 0) {
+				vmm_cprintf(cdev, " ");
+			}
+			if (sizeof(u64) == sizeof(physical_addr_t)) {
+				vmm_cprintf(cdev, "0x%llx", 
+				((physical_addr_t *)attr->value)[i >> 3]);
+			} else {
+				vmm_cprintf(cdev, "0x%x", 
+				((physical_addr_t *)attr->value)[i >> 2]);
+			}
+		}
+		vmm_cprintf(cdev, ">;\n", attr->name);
+	} else if (attr->type == VMM_DEVTREE_ATTRTYPE_PHYSSIZE) {
+		vmm_cprintf(cdev, "\t%s = <", attr->name);
+		for (i = 0; i < attr->len; i += sizeof(physical_size_t)) {
+			if (i > 0) {
+				vmm_cprintf(cdev, " ");
+			}
+			if (sizeof(u64) == sizeof(physical_size_t)) {
+				vmm_cprintf(cdev, "0x%llx", 
+				((physical_size_t *)attr->value)[i >> 3]);
+			} else {
+				vmm_cprintf(cdev, "0x%x", 
+				((physical_size_t *)attr->value)[i >> 2]);
+			}
+		}
+		vmm_cprintf(cdev, ">;\n", attr->name);
+	} else if (attr->type == VMM_DEVTREE_ATTRTYPE_VIRTADDR) {
+		vmm_cprintf(cdev, "\t%s = <", attr->name);
+		for (i = 0; i < attr->len; i += sizeof(virtual_addr_t)) {
+			if (i > 0) {
+				vmm_cprintf(cdev, " ");
+			}
+			if (sizeof(u64) == sizeof(virtual_addr_t)) {
+				vmm_cprintf(cdev, "0x%llx", 
+				((virtual_addr_t *)attr->value)[i >> 3]);
+			} else {
+				vmm_cprintf(cdev, "0x%x", 
+				((virtual_addr_t *)attr->value)[i >> 2]);
+			}
+		}
+		vmm_cprintf(cdev, ">;\n", attr->name);
+	} else if (attr->type == VMM_DEVTREE_ATTRTYPE_VIRTSIZE) {
+		vmm_cprintf(cdev, "\t%s = <", attr->name);
+		for (i = 0; i < attr->len; i += sizeof(virtual_size_t)) {
+			if (i > 0) {
+				vmm_cprintf(cdev, " ");
+			}
+			if (sizeof(u64) == sizeof(virtual_size_t)) {
+				vmm_cprintf(cdev, "0x%llx", 
+				((virtual_size_t *)attr->value)[i >> 3]);
+			} else {
+				vmm_cprintf(cdev, "0x%x", 
+				((virtual_size_t *)attr->value)[i >> 2]);
+			}
+		}
+		vmm_cprintf(cdev, ">;\n", attr->name);
 	} else {
 		vmm_cprintf(cdev, "\t%s = <", attr->name);
-		for (i = 0; i < attr->len; i += 4) {
+		for (i = 0; i < attr->len; i += sizeof(u32)) {
 			if (i > 0) {
 				vmm_cprintf(cdev, " ");
 			}
@@ -169,11 +239,10 @@ int cmd_devtree_attr_show(struct vmm_chardev *cdev, char *path)
 	return VMM_OK;
 }
 
-/* FIXME: */
 int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
 			 char * type, int valc, char **valv)
 {
-	int rc = VMM_OK;
+	int i, rc = VMM_OK;
 	u32 val_type = VMM_DEVTREE_ATTRTYPE_UNKNOWN, val_len = 0;
 	void * val = NULL;
 	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
@@ -184,28 +253,77 @@ int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
 	}
 
 	if (!vmm_strcmp(type, "unknown")) {
+		val = NULL;
+		val_len = 0;
 		val_type = VMM_DEVTREE_ATTRTYPE_UNKNOWN;
 	} else if (!vmm_strcmp(type, "string")) {
+		for (i = 0; i < valc; i++) {
+			val_len += vmm_strlen(valv[i]);
+			val_len += 1;
+		}
+		val = vmm_malloc(val_len);
+		vmm_strcpy(val, valv[0]);
+		for (i = 1; i < valc; i++) {
+			vmm_strcat(val, " ");
+			vmm_strcat(val, valv[i]);
+		}
+		val_len = vmm_strlen((char *)val);
 		val_type = VMM_DEVTREE_ATTRTYPE_STRING;
 	} else if (!vmm_strcmp(type, "uint32")) {
+		val_len = valc * sizeof(u32);
+		val = vmm_malloc(val_len);
+		for (i = 0; i < valc; i++) {
+			((u32 *)val)[i] = vmm_str2uint(valv[i], 10);
+		}
 		val_type = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!vmm_strcmp(type, "uint64")) {
+		val_len = valc * sizeof(u64);
+		val = vmm_malloc(val_len);
+		for (i = 0; i < valc; i++) {
+			((u64 *)val)[i] = vmm_str2ulonglong(valv[i], 10);
+		}
 		val_type = VMM_DEVTREE_ATTRTYPE_UINT64;
 	} else if (!vmm_strcmp(type, "physaddr")) {
+		val_len = valc * sizeof(physical_addr_t);
+		val = vmm_malloc(val_len);
+		for (i = 0; i < valc; i++) {
+			((physical_addr_t *)val)[i] = 
+			(physical_addr_t)vmm_str2ulonglong(valv[i], 10);
+		}
 		val_type = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
 	} else if (!vmm_strcmp(type, "physsize")) {
+		val_len = valc * sizeof(physical_size_t);
+		val = vmm_malloc(val_len);
+		for (i = 0; i < valc; i++) {
+			((physical_size_t *)val)[i] = 
+			(physical_size_t)vmm_str2ulonglong(valv[i], 10);
+		}
 		val_type = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
 	} else if (!vmm_strcmp(type, "virtaddr")) {
+		val_len = valc * sizeof(virtual_addr_t);
+		val = vmm_malloc(val_len);
+		for (i = 0; i < valc; i++) {
+			((virtual_addr_t *)val)[i] = 
+			(virtual_addr_t)vmm_str2ulonglong(valv[i], 10);
+		}
 		val_type = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
 	} else if (!vmm_strcmp(type, "virtsize")) {
+		val_len = valc * sizeof(virtual_size_t);
+		val = vmm_malloc(val_len);
+		for (i = 0; i < valc; i++) {
+			((virtual_size_t *)val)[i] = 
+			(virtual_size_t)vmm_str2ulonglong(valv[i], 10);
+		}
 		val_type = VMM_DEVTREE_ATTRTYPE_VIRTSIZE;
 	} else {
 		vmm_cprintf(cdev, "Error: Invalid attribute type %s\n", type);
 		return VMM_EFAIL;
 	}
 
-	rc = vmm_devtree_setattr(node, name, val, val_type, val_len);
-	vmm_free(val);
+	if (val && (val_len > 0)) {
+		rc = vmm_devtree_setattr(node, name, val, val_type, val_len);
+		vmm_free(val);
+	}
 
 	return rc;
 }

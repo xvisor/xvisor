@@ -35,7 +35,7 @@
 #define PAD_RIGHT 1
 #define PAD_ZERO 2
 /* the following should be enough for 32 bit int */
-#define PRINT_BUF_LEN 16
+#define PRINT_BUF_LEN 64
 
 struct vmm_stdio_ctrl {
         vmm_spinlock_t lock;
@@ -137,12 +137,12 @@ static int prints(char **out, struct vmm_chardev *cdev,
 }
 
 static int printi(char **out, struct vmm_chardev *cdev, 
-		  int i, int b, int sg, int width, int pad, int letbase)
+		  long long i, int b, int sg, int width, int pad, int letbase)
 {
 	char print_buf[PRINT_BUF_LEN];
 	char *s;
 	int t, neg = 0, pc = 0;
-	unsigned int u = i;
+	unsigned long long u = i;
 
 	if (i == 0) {
 		print_buf[0] = '0';
@@ -159,11 +159,11 @@ static int printi(char **out, struct vmm_chardev *cdev,
 	*s = '\0';
 
 	while (u) {
-		t = arch_umod32(u, b);
+		t = arch_umod64(u, b);
 		if (t >= 10)
 			t += letbase - '0' - 10;
 		*--s = t + '0';
-		u = arch_udiv32(u, b);
+		u = arch_udiv64(u, b);
 	}
 
 	if (neg) {
@@ -184,6 +184,7 @@ static int print(char **out, struct vmm_chardev *cdev, const char *format, va_li
 	int width, pad;
 	int pc = 0;
 	char scr[2];
+	long long tmp;
 
 	for (; *format != 0; ++format) {
 		if (*format == '%') {
@@ -212,26 +213,55 @@ static int print(char **out, struct vmm_chardev *cdev, const char *format, va_li
 			}
 			if (*format == 'd') {
 				pc +=
-				    printi(out, cdev, va_arg(args, int), 10, 1, width,
-					   pad, 'a');
+				    printi(out, cdev, va_arg(args, int), 
+					   10, 1, width, pad, '0');
 				continue;
 			}
 			if (*format == 'x') {
 				pc +=
-				    printi(out, cdev, va_arg(args, int), 16, 0, width,
-					   pad, 'a');
+				    printi(out, cdev, va_arg(args, unsigned int), 
+					   16, 0, width, pad, 'a');
 				continue;
 			}
 			if (*format == 'X') {
 				pc +=
-				    printi(out, cdev, va_arg(args, int), 16, 0, width,
-					   pad, 'A');
+				    printi(out, cdev, va_arg(args, unsigned int), 
+					   16, 0, width, pad, 'A');
 				continue;
 			}
 			if (*format == 'u') {
 				pc +=
-				    printi(out, cdev, va_arg(args, unsigned int), 10,
-					   0, width, pad, 'a');
+				    printi(out, cdev, va_arg(args, unsigned int), 
+					   10, 0, width, pad, 'a');
+				continue;
+			}
+			if (*format == 'l' && *(format + 1) == 'l') {
+				format += 2;
+				if (sizeof(long long) == 
+						sizeof(unsigned long)) {
+					tmp = va_arg(args, unsigned long long);
+				} else {
+					((unsigned long *)&tmp)[0] = 
+						va_arg(args, unsigned long);
+					((unsigned long *)&tmp)[1] = 
+						va_arg(args, unsigned long);
+				}
+				if (*format == 'u') {
+					format++;
+					pc += printi(out, cdev, tmp,
+						10, 0, width, pad, 'a');
+				} else if (*format == 'x') {
+					format++;
+					pc += printi(out, cdev, tmp,
+						16, 0, width, pad, 'a');
+				} else if (*format == 'X') {
+					format++;
+					pc += printi(out, cdev, tmp,
+						16, 0, width, pad, 'A');
+				} else {
+					pc += printi(out, cdev, tmp,
+						10, 1, width, pad, '0');
+				}
 				continue;
 			}
 			if (*format == 'c') {
