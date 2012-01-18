@@ -26,19 +26,39 @@
 
 #include <vmm_types.h>
 
-static inline u16 arch_bswap16(u16 data)
+static inline u16 bswap16(u16 data)
 {
 	return (((data & 0xFF) << 8) |
 		((data & 0xFF00) >> 8));
 }
 
-static inline u32 arch_bswap32(u32 data)
+static inline u32 bswap32(u32 data)
 {
 	return (((data & 0xFF) << 24) |
 		((data & 0xFF00) << 8) |
 		((data & 0xFF0000) >> 8) |
 		((data & 0xFF000000) >> 24));
 }
+
+/*
+ * Endianness primitives
+ * ------------------------
+ */
+#define arch_cpu_to_le16(v)	bswap16(v)
+
+#define arch_le16_to_cpu(v)	bswap16(v)
+
+#define arch_cpu_to_be16(v)	(v)
+
+#define arch_be16_to_cpu(v)	(v)
+
+#define arch_cpu_to_le32(v)	bswap32(v)
+
+#define arch_le32_to_cpu(v)	bswap32(v)
+
+#define arch_cpu_to_be32(v)	(v)
+
+#define arch_be32_to_cpu(v)	(v)
 
 /** FIXME: */
 static inline u8 arch_ioreadb(volatile void *addr)
@@ -88,13 +108,13 @@ static inline void arch_out_8(volatile u8 *addr, u8 data)
 /** FIXME: */
 static inline u16 arch_in_le16(volatile u16 *addr)
 {
-	return arch_bswap16(*addr);
+	return bswap16(*addr);
 }
 
 /** FIXME: */
 static inline void arch_out_le16(volatile u16* addr, u16 data)
 {
-	*addr = arch_bswap16(data);
+	*addr = bswap16(data);
 }
 
 /** FIXME: */
@@ -112,13 +132,13 @@ static inline void arch_out_be16(volatile u16* addr, u16 data)
 /** FIXME: */
 static inline u32 arch_in_le32(volatile u32 *addr)
 {
-	return arch_bswap32(*addr);
+	return bswap32(*addr);
 }
 
 /** FIXME: */
 static inline void arch_out_le32(volatile u32* addr, u32 data)
 {
-	*addr = arch_bswap32(data);
+	*addr = bswap32(data);
 }
 
 /** FIXME: */
