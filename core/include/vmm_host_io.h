@@ -28,46 +28,22 @@
 #include <vmm_types.h>
 #include <arch_io.h>
 
-/** Endianness related helper functions */
-static inline u16 vmm_cpu_to_le16(u16 data)
-{
-	return arch_cpu_to_le16(data);
-}
+/** Endianness related helper macros */
+#define vmm_cpu_to_le16(data)	arch_cpu_to_le16(data)
 
-static inline u16 vmm_le16_to_cpu(u16 data)
-{
-	return arch_le16_to_cpu(data);
-}
+#define vmm_le16_to_cpu(data)	arch_le16_to_cpu(data)
 
-static inline u16 vmm_cpu_to_be16(u16 data)
-{
-	return arch_cpu_to_be16(data);
-}
+#define vmm_cpu_to_be16(data)	arch_cpu_to_be16(data)
 
-static inline u16 vmm_be16_to_cpu(u16 data)
-{
-	return arch_be16_to_cpu(data);
-}
+#define vmm_be16_to_cpu(data)	arch_be16_to_cpu(data)
 
-static inline u32 vmm_cpu_to_le32(u32 data)
-{
-	return arch_cpu_to_le32(data);
-}
+#define vmm_cpu_to_le32(data)	arch_cpu_to_le32(data)
 
-static inline u32 vmm_le32_to_cpu(u32 data)
-{
-	return arch_le32_to_cpu(data);
-}
+#define vmm_le32_to_cpu(data)	arch_le32_to_cpu(data)
 
-static inline u32 vmm_cpu_to_be32(u32 data)
-{
-	return arch_cpu_to_be32(data);
-}
+#define vmm_cpu_to_be32(data)	arch_cpu_to_be32(data)
 
-static inline u32 vmm_be32_to_cpu(u32 data)
-{
-	return arch_be32_to_cpu(data);
-}
+#define vmm_be32_to_cpu(data)	arch_be32_to_cpu(data)
 
 /** I/O read/write legacy functions (Assumed to be Little Endian) */
 static inline u8 vmm_ioreadb(volatile void *addr)
