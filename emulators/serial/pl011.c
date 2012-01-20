@@ -39,6 +39,7 @@
 #include <vmm_devtree.h>
 #include <vmm_ringbuf.h>
 #include <vmm_vserial.h>
+#include <vmm_host_io.h>
 #include <vmm_devemu.h>
 
 #define MODULE_VARID			pl011_emulator_module
@@ -290,17 +291,13 @@ static int pl011_emulator_read(struct vmm_emudev *edev,
 		regval = (regval >> ((offset & 0x3) * 8));
 		switch (dst_len) {
 		case 1:
-			((u8 *)dst)[0] = regval & 0xFF;
+			*(u8 *)dst = regval & 0xFF;
 			break;
 		case 2:
-			((u8 *)dst)[0] = regval & 0xFF;
-			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
+			*(u16 *)dst = arch_cpu_to_le16(regval & 0xFFFF);
 			break;
 		case 4:
-			((u8 *)dst)[0] = regval & 0xFF;
-			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
-			((u8 *)dst)[2] = (regval >> 16) & 0xFF;
-			((u8 *)dst)[3] = (regval >> 24) & 0xFF;
+			*(u32 *)dst = arch_cpu_to_le32(regval);
 			break;
 		default:
 			rc = VMM_EFAIL;
@@ -315,26 +312,22 @@ static int pl011_emulator_write(struct vmm_emudev *edev,
 				physical_addr_t offset, 
 				void *src, u32 src_len)
 {
-	int rc = VMM_OK, i;
+	int i;
 	u32 regmask = 0x0, regval = 0x0;
 	struct pl011_state * s = edev->priv;
 
 	switch (src_len) {
 	case 1:
 		regmask = 0xFFFFFF00;
-		regval = ((u8 *)src)[0];
+		regval = *(u8 *)src;
 		break;
 	case 2:
 		regmask = 0xFFFF0000;
-		regval = ((u8 *)src)[0];
-		regval |= (((u8 *)src)[1] << 8);
+		regval = vmm_le16_to_cpu(*(u16 *)src);
 		break;
 	case 4:
 		regmask = 0x00000000;
-		regval = ((u8 *)src)[0];
-		regval |= (((u8 *)src)[1] << 8);
-		regval |= (((u8 *)src)[2] << 16);
-		regval |= (((u8 *)src)[3] << 24);
+		regval = vmm_le32_to_cpu(*(u32 *)src);
 		break;
 	default:
 		return VMM_EFAIL;
@@ -346,11 +339,7 @@ static int pl011_emulator_write(struct vmm_emudev *edev,
 	}
 	regval = (regval << ((offset & 0x3) * 8));
 
-	if (!rc) {
-		rc = pl011_reg_write(s, offset & ~0x3, regmask, regval);
-	}
-
-	return rc;
+	return pl011_reg_write(s, offset & ~0x3, regmask, regval);
 }
 
 static int pl011_emulator_reset(struct vmm_emudev *edev)

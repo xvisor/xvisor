@@ -39,6 +39,7 @@
 #include <vmm_timer.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
+#include <vmm_host_io.h>
 #include <vmm_devemu.h>
 
 #define MODULE_VARID			sp804_emulator_module
@@ -444,28 +445,19 @@ static int sp804_emulator_read(struct vmm_emudev * edev,
 	u32 regval = 0x0;
 	struct sp804_state *s = edev->priv;
 
-	if (offset < 0x20) {
-		rc = sp804_timer_read(&s->t[0], offset & ~0x3, &regval);
-	} else {
-		rc = sp804_timer_read(&s->t[1], (offset & ~0x3) - 0x20,
-				      &regval);
-	}
+	rc = sp804_timer_read(&s->t[(offset<0x20)?0:1], offset & 0x1C, &regval);
 
 	if (!rc) {
 		regval = (regval >> ((offset & 0x3) * 8));
 		switch (dst_len) {
 		case 1:
-			((u8 *) dst)[0] = regval & 0xFF;
+			*(u8 *)dst = regval & 0xFF;
 			break;
 		case 2:
-			((u8 *) dst)[0] = regval & 0xFF;
-			((u8 *) dst)[1] = (regval >> 8) & 0xFF;
+			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
 			break;
 		case 4:
-			((u8 *) dst)[0] = regval & 0xFF;
-			((u8 *) dst)[1] = (regval >> 8) & 0xFF;
-			((u8 *) dst)[2] = (regval >> 16) & 0xFF;
-			((u8 *) dst)[3] = (regval >> 24) & 0xFF;
+			*(u32 *)dst = vmm_cpu_to_le32(regval);
 			break;
 		default:
 			rc = VMM_EFAIL;
@@ -479,26 +471,22 @@ static int sp804_emulator_read(struct vmm_emudev * edev,
 static int sp804_emulator_write(struct vmm_emudev * edev,
 				physical_addr_t offset, void *src, u32 src_len)
 {
-	int rc = VMM_OK, i;
+	int i;
 	u32 regmask = 0x0, regval = 0x0;
 	struct sp804_state *s = edev->priv;
 
 	switch (src_len) {
 	case 1:
 		regmask = 0xFFFFFF00;
-		regval = ((u8 *) src)[0];
+		regval = *(u8 *)src;
 		break;
 	case 2:
 		regmask = 0xFFFF0000;
-		regval = ((u8 *) src)[0];
-		regval |= (((u8 *) src)[1] << 8);
+		regval = vmm_le16_to_cpu(*(u16 *)src);
 		break;
 	case 4:
 		regmask = 0x00000000;
-		regval = ((u8 *) src)[0];
-		regval |= (((u8 *) src)[1] << 8);
-		regval |= (((u8 *) src)[2] << 16);
-		regval |= (((u8 *) src)[3] << 24);
+		regval = vmm_le32_to_cpu(*(u32 *)src);
 		break;
 	default:
 		return VMM_EFAIL;
@@ -510,15 +498,7 @@ static int sp804_emulator_write(struct vmm_emudev * edev,
 	}
 	regval = (regval << ((offset & 0x3) * 8));
 
-	if (offset < 0x20) {
-		rc = sp804_timer_write(&s->t[0],
-				       offset & ~0x3, regmask, regval);
-	} else {
-		rc = sp804_timer_write(&s->t[1],
-				       (offset & ~0x3) - 0x20, regmask, regval);
-	}
-
-	return rc;
+	return sp804_timer_write(&s->t[(offset<0x20)?0:1], offset & 0x1C, regmask, regval);
 }
 
 static int sp804_emulator_reset(struct vmm_emudev * edev)
@@ -526,16 +506,9 @@ static int sp804_emulator_reset(struct vmm_emudev * edev)
 	int rc;
 	struct sp804_state *s = edev->priv;
 
-	rc = sp804_timer_reset(&s->t[0]);
-	if (rc) {
-		return rc;
-	}
-	rc = sp804_timer_reset(&s->t[1]);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
+	if (!(rc = sp804_timer_reset(&s->t[0])) &&
+	    !(rc = sp804_timer_reset(&s->t[1])));
+	return rc;
 }
 
 static int sp804_emulator_probe(struct vmm_guest * guest,

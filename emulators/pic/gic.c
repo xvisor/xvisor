@@ -41,6 +41,7 @@
 #include <vmm_scheduler.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_host_irq.h>
+#include <vmm_host_io.h>
 #include <vmm_devemu.h>
 
 #define MODULE_VARID			gic_emulator_module
@@ -757,28 +758,23 @@ static int gic_emulator_read(struct vmm_emudev *edev,
 
 	if (offset < 0x1000) {
 		/* Read CPU Interface */
-		rc = gic_cpu_read(s, vcpu->subid, offset & ~0x3, &regval);
+		rc = gic_cpu_read(s, vcpu->subid, offset & 0xFFC, &regval);
 	} else {
 		/* Read Distribution Control */
-		rc = gic_dist_read(s, vcpu->subid, 
-				  (offset & ~0x3) - 0x1000, &regval);
+		rc = gic_dist_read(s, vcpu->subid, offset & 0xFFC, &regval);
 	}
 
 	if (!rc) {
 		regval = (regval >> ((offset & 0x3) * 8));
 		switch (dst_len) {
 		case 1:
-			((u8 *)dst)[0] = regval & 0xFF;
+			*(u8 *)dst = regval & 0xFF;
 			break;
 		case 2:
-			((u8 *)dst)[0] = regval & 0xFF;
-			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
+			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
 			break;
 		case 4:
-			((u8 *)dst)[0] = regval & 0xFF;
-			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
-			((u8 *)dst)[2] = (regval >> 16) & 0xFF;
-			((u8 *)dst)[3] = (regval >> 24) & 0xFF;
+			*(u32 *)dst = vmm_cpu_to_le32(regval);
 			break;
 		default:
 			rc = VMM_EFAIL;
@@ -801,19 +797,15 @@ static int gic_emulator_write(struct vmm_emudev *edev,
 	switch (src_len) {
 	case 1:
 		regmask = 0xFFFFFF00;
-		regval = ((u8 *)src)[0];
+		regval = *(u8 *)src;
 		break;
 	case 2:
 		regmask = 0xFFFF0000;
-		regval = ((u8 *)src)[0];
-		regval |= (((u8 *)src)[1] << 8);
+		regval = vmm_le16_to_cpu(*(u16 *)src);
 		break;
 	case 4:
 		regmask = 0x00000000;
-		regval = ((u8 *)src)[0];
-		regval |= (((u8 *)src)[1] << 8);
-		regval |= (((u8 *)src)[2] << 16);
-		regval |= (((u8 *)src)[3] << 24);
+		regval = vmm_le32_to_cpu(*(u32 *)src);
 		break;
 	default:
 		return VMM_EFAIL;
@@ -836,11 +828,11 @@ static int gic_emulator_write(struct vmm_emudev *edev,
 	if (offset < 0x1000) {
 		/* Write CPU Interface */
 		rc = gic_cpu_write(s, vcpu->subid, 
-				   offset & ~0x3, regmask, regval);
+				   offset & 0xFFC, regmask, regval);
 	} else {
 		/* Write Distribution Control */
 		rc = gic_dist_write(s, vcpu->subid, 
-				    (offset & ~0x3) - 0x1000, regmask, regval);
+				    offset & 0xFFC, regmask, regval);
 	}
 
 	return rc;
