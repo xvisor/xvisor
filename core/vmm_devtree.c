@@ -307,6 +307,9 @@ struct vmm_devtree_node *vmm_devtree_getnode(const char *path)
 	return vmm_devtree_getchild(node, path);
 }
 
+/* NOTE: vmm_devtree_addnode() allows parent == NULL to enable creation of
+ * root node using vmm_devtree_addnode().
+ */
 struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node * parent,
 					     const char * name,
 					     u32 type,
@@ -332,13 +335,9 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node * parent,
 	INIT_LIST_HEAD(&node->head);
 	INIT_LIST_HEAD(&node->attr_list);
 	INIT_LIST_HEAD(&node->child_list);
-	if (name) {
-		len = vmm_strlen(name) + 1;
-		node->name = vmm_malloc(len);
-		vmm_strncpy(node->name, name, len);
-	} else {
-		node->name = NULL;
-	}
+	len = vmm_strlen(name) + 1;
+	node->name = vmm_malloc(len);
+	vmm_strncpy(node->name, name, len);
 	node->type = type;
 	node->priv = priv;
 	node->parent = parent;
@@ -347,6 +346,66 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node * parent,
 	}
 
 	return node;
+}
+
+static int devtree_copynode_recursive(struct vmm_devtree_node * dst,
+				      struct vmm_devtree_node * src)
+{
+	int rc;
+	struct dlist *l;
+	struct vmm_devtree_attr * sattr = NULL;
+	struct vmm_devtree_node * child = NULL;
+	struct vmm_devtree_node * schild = NULL;
+
+	list_for_each(l, &src->attr_list) {
+		sattr = list_entry(l, struct vmm_devtree_attr, head);
+		if ((rc = vmm_devtree_setattr(dst, sattr->name, 
+				sattr->value, sattr->type, sattr->len))) {
+			return rc;
+		}
+	}
+
+	list_for_each(l, &src->child_list) {
+		schild = list_entry(l, struct vmm_devtree_node, head);
+		child = vmm_devtree_addnode(dst, schild->name, 
+				   VMM_DEVTREE_NODETYPE_UNKNOWN, NULL);
+		if (!child) {
+			return VMM_EFAIL;
+		}
+		if ((rc = devtree_copynode_recursive(child, schild))) {
+			return rc;
+		}
+	}
+	
+	return VMM_OK;
+}
+
+int vmm_devtree_copynode(struct vmm_devtree_node * parent,
+			 const char * name,
+			 struct vmm_devtree_node * src)
+{
+	struct vmm_devtree_node * node = NULL;
+
+	if (!parent || !name || !src) {
+		return VMM_EFAIL;
+	}
+
+	node = parent;
+	while (node && src != node) {
+		node = node->parent;
+	}
+	if (src == node) {
+		return VMM_EFAIL;
+	}
+	node = NULL;
+
+	node = vmm_devtree_addnode(parent, name, 
+				   VMM_DEVTREE_NODETYPE_UNKNOWN, NULL);
+	if (!node) {
+		return VMM_EFAIL;
+	}
+
+	return devtree_copynode_recursive(node, src);
 }
 
 int vmm_devtree_delnode(struct vmm_devtree_node * node)

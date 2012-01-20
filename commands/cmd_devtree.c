@@ -43,13 +43,16 @@ void cmd_devtree_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   devtree help\n");
 	vmm_cprintf(cdev, "   devtree attr show <node_path>\n");
 	vmm_cprintf(cdev, "   devtree attr set  <node_path> <attr_name> "
-					      "<attr_type> <attr_val0> ...\n");
+						"<attr_type> <attr_val0> "
+						"<attr_val1> ...\n");
 	vmm_cprintf(cdev, "   devtree attr get  <node_path> <attr_name>\n");
 	vmm_cprintf(cdev, "   devtree attr del  <node_path> <attr_name>\n");
 	vmm_cprintf(cdev, "   devtree node show <node_path>\n");
+	vmm_cprintf(cdev, "   devtree node dump <node_path>\n");
 	vmm_cprintf(cdev, "   devtree node add  <node_path> <node_name>\n");
+	vmm_cprintf(cdev, "   devtree node copy <node_path> <node_name> "
+						"<src_node_path>\n");
 	vmm_cprintf(cdev, "   devtree node del  <node_path>\n");
-	vmm_cprintf(cdev, "   devtree tree show <node_path>\n");
 	vmm_cprintf(cdev, "Note:\n");
 	vmm_cprintf(cdev, "   <node_path> = unix like path of node "
 			  "(e.g. / or /host/cpus or /guests/guest0)\n");
@@ -382,6 +385,20 @@ int cmd_devtree_node_show(struct vmm_chardev *cdev, char *path)
 	return VMM_OK;
 }
 
+int cmd_devtree_node_dump(struct vmm_chardev *cdev, char *path)
+{
+	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
+
+	if (!node) {
+		vmm_cprintf(cdev, "Error: Unable to find node at %s\n", path);
+		return VMM_EFAIL;
+	}
+
+	cmd_devtree_print_node(cdev, node, TRUE, 0);
+
+	return VMM_OK;
+}
+
 int cmd_devtree_node_add(struct vmm_chardev *cdev, char *path, char *name)
 {
 	struct vmm_devtree_node *parent = vmm_devtree_getnode(path);
@@ -403,6 +420,25 @@ int cmd_devtree_node_add(struct vmm_chardev *cdev, char *path, char *name)
 	return VMM_OK;
 }
 
+int cmd_devtree_node_copy(struct vmm_chardev *cdev, 
+			  char *path, char *name, char *src_path)
+{
+	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
+	struct vmm_devtree_node *src = vmm_devtree_getnode(src_path);
+
+	if (!node) {
+		vmm_cprintf(cdev, "Error: Unable to find node at %s\n", path);
+		return VMM_EFAIL;
+	}
+
+	if (!src) {
+		vmm_cprintf(cdev, "Error: Unable to find node at %s\n", src_path);
+		return VMM_EFAIL;
+	}
+
+	return vmm_devtree_copynode(node, name, src);
+}
+
 int cmd_devtree_node_del(struct vmm_chardev *cdev, char *path)
 {
 	int rc;
@@ -418,20 +454,6 @@ int cmd_devtree_node_del(struct vmm_chardev *cdev, char *path)
 		vmm_cprintf(cdev, "Error: Unable to delete node at %s\n", path);
 		return rc;
 	}
-
-	return VMM_OK;
-}
-
-int cmd_devtree_tree_show(struct vmm_chardev *cdev, char *path)
-{
-	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
-
-	if (!node) {
-		vmm_cprintf(cdev, "Error: Unable to find node at %s\n", path);
-		return VMM_EFAIL;
-	}
-
-	cmd_devtree_print_node(cdev, node, TRUE, 0);
 
 	return VMM_OK;
 }
@@ -469,14 +491,15 @@ int cmd_devtree_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if (vmm_strcmp(argv[1], "node") == 0) {
 		if (vmm_strcmp(argv[2], "show") == 0) {
 			return cmd_devtree_node_show(cdev, argv[3]);
+		} else 	if (vmm_strcmp(argv[2], "dump") == 0) {
+			return cmd_devtree_node_dump(cdev, argv[3]);
 		} else if ((vmm_strcmp(argv[2], "add") == 0) && (argc == 5)) {
 			return cmd_devtree_node_add(cdev, argv[3], argv[4]);
+		} else if ((vmm_strcmp(argv[2], "copy") == 0) && (argc == 6)) {
+			return cmd_devtree_node_copy(cdev, argv[3], 
+							argv[4], argv[5]);
 		} else if (vmm_strcmp(argv[2], "del") == 0) {
 			return cmd_devtree_node_del(cdev, argv[3]);
-		}
-	} else if (vmm_strcmp(argv[1], "tree") == 0) {
-		if (vmm_strcmp(argv[2], "show") == 0) {
-			return cmd_devtree_tree_show(cdev, argv[3]);
 		}
 	}
 	cmd_devtree_usage(cdev);

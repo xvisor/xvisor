@@ -148,6 +148,11 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node * parent,
 					     u32 type,
 					     void * priv);
 
+/** Copy a node to another location in device tree */
+int vmm_devtree_copynode(struct vmm_devtree_node * parent,
+			 const char * name,
+			 struct vmm_devtree_node * src);
+
 /** Delete a node from device tree */
 int vmm_devtree_delnode(struct vmm_devtree_node * node);
 
