@@ -108,19 +108,19 @@ static int pba8_timer0_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 
 int arch_cpu_clockevent_expire(void)
 {
-	int i, rc;
+	int rc;
 
 	rc = realview_timer_event_start(pba8_timer0_base, 0);
-	if (rc) {
-		return rc;
+
+	if (!rc) {
+		/* FIXME: The polling loop below is fine with emulators but,
+		 * for real hardware we might require some soft delay to
+		 * avoid bus contention.
+		 */
+		while (!realview_timer_event_checkirq(pba8_timer0_base));
 	}
 
-	while (!realview_timer_event_checkirq(pba8_timer0_base)) {
-		/* FIXME: Relax a bit with some soft delay */
-		for (i = 0; i < 100; i++);
-	}
-
-	return VMM_OK;
+	return rc;
 }
 
 int arch_cpu_clockevent_start(u64 tick_nsecs)
