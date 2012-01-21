@@ -32,8 +32,8 @@
  * The original code is licensed under the GPL.
  */
 
-#include <arch_math.h>
 #include <vmm_error.h>
+#include <vmm_math.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_timer.h>
@@ -160,7 +160,7 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 				nsecs *= 1000;
 			} else {
 				nsecs =
-				    arch_udiv64((nsecs * 1000000000),
+				    vmm_udiv64((nsecs * 1000000000),
 					       (u64) t->freq);
 			}
 
@@ -290,7 +290,7 @@ static u32 sp804_timer_current_value(struct sp804_timer *t)
 			cval = cval >> 10;
 			cval = cval + ((cval * 3) >> 7) + ((cval * 9) >> 14);
 		} else if (t->freq != 1000000000) {
-			cval = arch_udiv64(cval * t->freq, (u64) 1000000000);
+			cval = vmm_udiv64(cval * t->freq, (u64) 1000000000);
 		}
 
 		if (t->control & (TIMER_CTRL_PERIODIC | TIMER_CTRL_PERIODIC)) {
@@ -310,7 +310,7 @@ static u32 sp804_timer_current_value(struct sp804_timer *t)
 				ret = t->value - ((u32)cval & t->value);
 				break;
 			default:
-				cval = arch_umod64(cval, (u64) t->value);
+				cval = vmm_umod64(cval, (u64) t->value);
 				ret = t->value - (u32)cval;
 				break;
 			}

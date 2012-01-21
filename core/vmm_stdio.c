@@ -23,9 +23,9 @@
  */
 
 #include <stdarg.h>
-#include <arch_math.h>
 #include <arch_board.h>
 #include <vmm_error.h>
+#include <vmm_math.h>
 #include <vmm_string.h>
 #include <vmm_main.h>
 #include <vmm_stdio.h>
@@ -159,11 +159,11 @@ static int printi(char **out, struct vmm_chardev *cdev,
 	*s = '\0';
 
 	while (u) {
-		t = arch_umod64(u, b);
+		t = vmm_umod64(u, b);
 		if (t >= 10)
 			t += letbase - '0' - 10;
 		*--s = t + '0';
-		u = arch_udiv64(u, b);
+		u = vmm_udiv64(u, b);
 	}
 
 	if (neg) {

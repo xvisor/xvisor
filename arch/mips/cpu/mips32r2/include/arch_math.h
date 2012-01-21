@@ -97,4 +97,4 @@ static inline s32 arch_smod32(s32 value, s32 divisor)
 	}
 }
 
-#endif /* __VMM_MATH_H__ */
+#endif /* __ARCH_MATH_H__ */

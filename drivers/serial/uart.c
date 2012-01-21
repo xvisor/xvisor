@@ -22,8 +22,8 @@
  * @brief source file for UART serial port driver.
  */
 
-#include <arch_math.h>
 #include <vmm_error.h>
+#include <vmm_math.h>
 #include <vmm_host_io.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
@@ -81,7 +81,7 @@ void uart_lowlevel_init(const char *compatible, virtual_addr_t base,
 		u32 reg_align, u32 baudrate, u32 input_clock)
 {
 	u16 bdiv;
-	bdiv = arch_udiv32(input_clock, (16 * baudrate));
+	bdiv = vmm_udiv32(input_clock, (16 * baudrate));
 
 	if(!vmm_strcmp(compatible, "st16654")) {
 		/* set interrupt enable reg */

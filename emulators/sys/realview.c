@@ -32,8 +32,8 @@
  * The original code is licensed under the GPL.
  */
 
-#include <arch_math.h>
 #include <vmm_error.h>
+#include <vmm_math.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_modules.h>
@@ -112,7 +112,7 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 		break;
 	case 0x24: /* 100HZ */
 		tdiff = vmm_timer_timestamp() - s->ref_100hz;
-		regval = arch_udiv64(tdiff, 10000000);
+		regval = vmm_udiv64(tdiff, 10000000);
 		break;
 	case 0x28: /* CFGDATA1 */
 		regval = s->cfgdata1;

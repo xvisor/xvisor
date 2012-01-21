@@ -27,7 +27,6 @@
  * Parts of this source code has been taken from u-boot
  */
 
-#include <arch_math.h>
 #include <omap3/intc.h>
 #include <omap3/gpt.h>
 #include <omap3/prcm.h>

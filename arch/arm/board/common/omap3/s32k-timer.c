@@ -22,7 +22,6 @@
  * @brief source code for OMAP3 32K sync timer
  */
 
-#include <arch_math.h>
 #include <omap3/intc.h>
 #include <omap3/gpt.h>
 #include <omap3/prcm.h>

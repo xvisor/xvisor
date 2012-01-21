@@ -25,8 +25,8 @@
 #define _VMM_TIMER_H__
 
 #include <arch_regs.h>
-#include <arch_math.h>
 #include <vmm_types.h>
+#include <vmm_math.h>
 #include <vmm_list.h>
 #include <vmm_spinlocks.h>
 
@@ -51,7 +51,7 @@ static inline u32 vmm_timer_clocksource_khz2mult(u32 khz, u32 shift)
 {
 	u64 tmp = ((u64)1000000) << shift;
 	tmp += khz >> 1;
-	tmp = arch_udiv64(tmp, khz);
+	tmp = vmm_udiv64(tmp, khz);
 	return (u32)tmp;
 }
 
@@ -60,7 +60,7 @@ static inline u32 vmm_timer_clocksource_hz2mult(u32 hz, u32 shift)
 {
 	u64 tmp = ((u64)1000000000) << shift;
 	tmp += hz >> 1;
-	tmp = arch_udiv64(tmp, hz);
+	tmp = vmm_udiv64(tmp, hz);
 	return (u32)tmp;
 }
 

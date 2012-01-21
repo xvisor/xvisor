@@ -24,9 +24,9 @@
  */
 
 #include <arch_cpu.h>
-#include <arch_math.h>
 #include <arch_board.h>
 #include <vmm_error.h>
+#include <vmm_math.h>
 #include <vmm_list.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
@@ -67,7 +67,7 @@ int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 
 	found = 0;
 	if (aligned && (sz > VMM_PAGE_SIZE)) {
-		bpos = arch_umod32(hactrl.vapool_start, sz);
+		bpos = vmm_umod32(hactrl.vapool_start, sz);
 		if (bpos) {
 			bpos = VMM_ROUNDUP2_PAGE_SIZE(sz) >> VMM_PAGE_SHIFT;
 		}
@@ -185,7 +185,7 @@ int vmm_host_ram_alloc(physical_addr_t * pa, physical_size_t sz, bool aligned)
 
 	found = 0;
 	if (aligned && (sz > VMM_PAGE_SIZE)) {
-		bpos = arch_umod32(hactrl.ram_start, sz);
+		bpos = vmm_umod32(hactrl.ram_start, sz);
 		if (bpos) {
 			bpos = VMM_ROUNDUP2_PAGE_SIZE(sz) >> VMM_PAGE_SHIFT;
 		}

@@ -24,7 +24,6 @@
  */
 
 #include <arch_cpu.h>
-#include <arch_math.h>
 #include <arch_board.h>
 #include <omap3/intc.h>
 #include <omap3/gpt.h>

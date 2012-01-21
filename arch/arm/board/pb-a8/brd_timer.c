@@ -26,7 +26,6 @@
 #include <vmm_timer.h>
 #include <vmm_host_aspace.h>
 #include <arch_cpu.h>
-#include <arch_math.h>
 #include <arch_board.h>
 #include <pba8_board.h>
 #include <realview/timer.h>

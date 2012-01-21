@@ -22,8 +22,8 @@
  * @brief source file for PrimeCell PL011 serial port driver.
  */
 
-#include <arch_math.h>
 #include <vmm_error.h>
+#include <vmm_math.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_host_io.h>
@@ -105,9 +105,9 @@ void pl011_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	 *        / (16 * BAUD_RATE))
 	 */
 	temp = 16 * baudrate;
-	divider = arch_udiv32(input_clock, temp);
-	remainder = arch_umod32(input_clock, temp);
-	temp = arch_udiv32((8 * remainder), baudrate);
+	divider = vmm_udiv32(input_clock, temp);
+	remainder = vmm_umod32(input_clock, temp);
+	temp = vmm_udiv32((8 * remainder), baudrate);
 	fraction = (temp >> 1) + (temp & 1);
 
 	vmm_out_le16((void *)(base + UART_PL011_IBRD), (u16) divider);
