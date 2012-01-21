@@ -16,92 +16,39 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file pl01x.h
+ * @file pl011.h
  * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
- * @brief Header file for PrimeCell PL011/PL010 serial port driver.
+ * @brief Header file for PrimeCell PL011 serial port driver.
  */
 
-#ifndef __PL01X_H_
-#define __PL01X_H_
+#ifndef __PL011_H_
+#define __PL011_H_
 
 #include <vmm_types.h>
 
-#define PL01X_TYPE_0			0
-#define PL01X_TYPE_1			1
-
 /*
- * ARM PrimeCell UART's (PL010 & PL011)
+ * ARM PrimeCell UART's (PL011)
  * ------------------------------------
  *
- *  Definitions common to both PL010 & PL011
- *
  */
-#define UART_PL01x_DR                   0x00	 /*  Data read or written from the interface. */
-#define UART_PL01x_RSR                  0x04	 /*  Receive status register (Read). */
-#define UART_PL01x_ECR                  0x04	 /*  Error clear register (Write). */
-#define UART_PL01x_FR                   0x18	 /*  Flag register (Read only). */
+#define UART_PL011_DR                   0x00	 /*  Data read or written from the interface. */
+#define UART_PL011_RSR                  0x04	 /*  Receive status register (Read). */
+#define UART_PL011_ECR                  0x04	 /*  Error clear register (Write). */
+#define UART_PL011_FR                   0x18	 /*  Flag register (Read only). */
 
-#define UART_PL01x_RSR_OE               0x08
-#define UART_PL01x_RSR_BE               0x04
-#define UART_PL01x_RSR_PE               0x02
-#define UART_PL01x_RSR_FE               0x01
+#define UART_PL011_RSR_OE               0x08
+#define UART_PL011_RSR_BE               0x04
+#define UART_PL011_RSR_PE               0x02
+#define UART_PL011_RSR_FE               0x01
 
-#define UART_PL01x_FR_TXFE              0x80
-#define UART_PL01x_FR_RXFF              0x40
-#define UART_PL01x_FR_TXFF              0x20
-#define UART_PL01x_FR_RXFE              0x10
-#define UART_PL01x_FR_BUSY              0x08
-#define UART_PL01x_FR_TMSK              (UART_PL01x_FR_TXFF + UART_PL01x_FR_BUSY)
+#define UART_PL011_FR_TXFE              0x80
+#define UART_PL011_FR_RXFF              0x40
+#define UART_PL011_FR_TXFF              0x20
+#define UART_PL011_FR_RXFE              0x10
+#define UART_PL011_FR_BUSY              0x08
+#define UART_PL011_FR_TMSK              (UART_PL011_FR_TXFF + UART_PL011_FR_BUSY)
 
-/*
- *  PL010 definitions
- *
- */
-#define UART_PL010_LCRH                 0x08	 /*  Line control register, high byte. */
-#define UART_PL010_LCRM                 0x0C	 /*  Line control register, middle byte. */
-#define UART_PL010_LCRL                 0x10	 /*  Line control register, low byte. */
-#define UART_PL010_CR                   0x14	 /*  Control register. */
-#define UART_PL010_IIR                  0x1C	 /*  Interrupt indentification register (Read). */
-#define UART_PL010_ICR                  0x1C	 /*  Interrupt clear register (Write). */
-#define UART_PL010_ILPR                 0x20	 /*  IrDA low power counter register. */
-
-#define UART_PL010_CR_LPE               (1 << 7)
-#define UART_PL010_CR_RTIE              (1 << 6)
-#define UART_PL010_CR_TIE               (1 << 5)
-#define UART_PL010_CR_RIE               (1 << 4)
-#define UART_PL010_CR_MSIE              (1 << 3)
-#define UART_PL010_CR_IIRLP             (1 << 2)
-#define UART_PL010_CR_SIREN             (1 << 1)
-#define UART_PL010_CR_UARTEN            (1 << 0)
-
-#define UART_PL010_LCRH_WLEN_8          (3 << 5)
-#define UART_PL010_LCRH_WLEN_7          (2 << 5)
-#define UART_PL010_LCRH_WLEN_6          (1 << 5)
-#define UART_PL010_LCRH_WLEN_5          (0 << 5)
-#define UART_PL010_LCRH_FEN             (1 << 4)
-#define UART_PL010_LCRH_STP2            (1 << 3)
-#define UART_PL010_LCRH_EPS             (1 << 2)
-#define UART_PL010_LCRH_PEN             (1 << 1)
-#define UART_PL010_LCRH_BRK             (1 << 0)
-
-
-#define UART_PL010_BAUD_460800            1
-#define UART_PL010_BAUD_230400            3
-#define UART_PL010_BAUD_115200            7
-#define UART_PL010_BAUD_57600             15
-#define UART_PL010_BAUD_38400             23
-#define UART_PL010_BAUD_19200             47
-#define UART_PL010_BAUD_14400             63
-#define UART_PL010_BAUD_9600              95
-#define UART_PL010_BAUD_4800              191
-#define UART_PL010_BAUD_2400              383
-#define UART_PL010_BAUD_1200              767
-
-/*
- *  PL011 definitions
- *
- */
 #define UART_PL011_IBRD                 0x24
 #define UART_PL011_FBRD                 0x28
 #define UART_PL011_LCRH                 0x2C
@@ -171,10 +118,10 @@
 #define UART_PL011_ICR_CTSMIC		(1 << 1)
 #define UART_PL011_ICR_RIMIC		(1 << 0)
 
-bool pl01x_lowlevel_can_getc(virtual_addr_t base, u32 type);
-u8 pl01x_lowlevel_getc(virtual_addr_t base, u32 type);
-bool pl01x_lowlevel_can_putc(virtual_addr_t base, u32 type);
-void pl01x_lowlevel_putc(virtual_addr_t base, u32 type, u8 ch);
-void pl01x_lowlevel_init(virtual_addr_t base, u32 type, u32 baudrate, u32 input_clock);
+bool pl011_lowlevel_can_getc(virtual_addr_t base);
+u8 pl011_lowlevel_getc(virtual_addr_t base);
+bool pl011_lowlevel_can_putc(virtual_addr_t base);
+void pl011_lowlevel_putc(virtual_addr_t base, u8 ch);
+void pl011_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock);
 
 #endif /* __PL01X_H_ */
