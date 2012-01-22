@@ -38,10 +38,10 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
 
-void do_undef_inst(vmm_user_regs_t * uregs)
+void do_undef_inst(arch_regs_t * uregs)
 {
 	int rc = VMM_OK;
-	vmm_vcpu_t * vcpu;
+	struct vmm_vcpu * vcpu;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
@@ -54,7 +54,7 @@ void do_undef_inst(vmm_user_regs_t * uregs)
 	/* If vcpu priviledge is user then generate exception 
 	 * and return without emulating instruction 
 	 */
-	if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 	} else {
 		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
@@ -71,10 +71,10 @@ void do_undef_inst(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-void do_soft_irq(vmm_user_regs_t * uregs)
+void do_soft_irq(arch_regs_t * uregs)
 {
 	int rc = VMM_OK;
-	vmm_vcpu_t * vcpu;
+	struct vmm_vcpu * vcpu;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
@@ -87,7 +87,7 @@ void do_soft_irq(vmm_user_regs_t * uregs)
 	/* If vcpu priviledge is user then generate exception 
 	 * and return without emulating instruction 
 	 */
-	if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_SOFT_IRQ, 0x0);
 	} else {
 		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
@@ -104,14 +104,14 @@ void do_soft_irq(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-void do_prefetch_abort(vmm_user_regs_t * uregs)
+void do_prefetch_abort(arch_regs_t * uregs)
 {
 	int rc = VMM_EFAIL;
 	bool crash_dump = FALSE;
 	u32 ifsr, ifar, fs;
-	vmm_vcpu_t * vcpu;
-	cpu_l1tbl_t * l1;
-	cpu_page_t pg;
+	struct vmm_vcpu * vcpu;
+	struct cpu_l1tbl * l1;
+	struct cpu_page pg;
 
 	ifsr = read_ifsr();
 	ifar = read_ifar();
@@ -202,14 +202,14 @@ void do_prefetch_abort(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-void do_data_abort(vmm_user_regs_t * uregs)
+void do_data_abort(arch_regs_t * uregs)
 {
 	int rc = VMM_EFAIL; 
 	bool crash_dump = FALSE;
 	u32 dfsr, dfar, fs, dom, wnr;
-	vmm_vcpu_t * vcpu;
-	cpu_l1tbl_t * l1;
-	cpu_page_t pg;
+	struct vmm_vcpu * vcpu;
+	struct cpu_l1tbl * l1;
+	struct cpu_page pg;
 
 	dfsr = read_dfsr();
 	dfar = read_dfar();
@@ -283,8 +283,8 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	case DFSR_FS_PERM_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
 						dfar, fs, dom, wnr, 1);
-		if ((dfar & ~(sizeof(vcpu->sregs->cp15.ovect) - 1)) != 
-						vcpu->sregs->cp15.ovect_base) {
+		if ((dfar & ~(sizeof(arm_priv(vcpu)->cp15.ovect) - 1)) != 
+						arm_priv(vcpu)->cp15.ovect_base) {
 			crash_dump = FALSE;
 		}
 		break;
@@ -311,12 +311,12 @@ void do_data_abort(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-void do_not_used(vmm_user_regs_t * uregs)
+void do_not_used(arch_regs_t * uregs)
 {
 	vmm_panic("%s: unexpected exception\n", __func__);
 }
 
-void do_irq(vmm_user_regs_t * uregs)
+void do_irq(arch_regs_t * uregs)
 {
 	vmm_scheduler_irq_enter(uregs, FALSE);
 
@@ -325,7 +325,7 @@ void do_irq(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-void do_fiq(vmm_user_regs_t * uregs)
+void do_fiq(arch_regs_t * uregs)
 {
 	vmm_scheduler_irq_enter(uregs, FALSE);
 
@@ -334,13 +334,13 @@ void do_fiq(vmm_user_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-int __init vmm_cpu_irq_setup(void)
+int __init arch_cpu_irq_setup(void)
 {
 	int rc;
 	extern u32 _start_vect[];
 	u32 *vectors, *vectors_data;
 	u32 vec;
-	cpu_page_t vec_page;
+	struct cpu_page vec_page;
 
 #if defined(CONFIG_ARM32_HIGHVEC)
 	/* Enable high vectors in SCTLR */
@@ -360,7 +360,7 @@ int __init vmm_cpu_irq_setup(void)
 	}
 
 	/* If vectors are not mapped in virtual memory then map them. */
-	vmm_memset(&vec_page, 0, sizeof(cpu_page_t));
+	vmm_memset(&vec_page, 0, sizeof(struct cpu_page));
 	rc = cpu_mmu_get_reserved_page((virtual_addr_t)vectors, &vec_page);
 	if (rc) {
 		rc = vmm_host_ram_alloc(&vec_page.pa, 
@@ -397,17 +397,17 @@ int __init vmm_cpu_irq_setup(void)
 	return VMM_OK;
 }
 
-void vmm_cpu_irq_enable(void)
+void arch_cpu_irq_enable(void)
 {
 	__asm("cpsie i");
 }
 
-void vmm_cpu_irq_disable(void)
+void arch_cpu_irq_disable(void)
 {
 	__asm("cpsid i");
 }
 
-irq_flags_t vmm_cpu_irq_save(void)
+irq_flags_t arch_cpu_irq_save(void)
 {
 	unsigned long retval;
 
@@ -420,9 +420,14 @@ irq_flags_t vmm_cpu_irq_save(void)
 	return retval;
 }
 
-void vmm_cpu_irq_restore(irq_flags_t flags)
+void arch_cpu_irq_restore(irq_flags_t flags)
 {
 	asm volatile (" msr     cpsr_c, %0"::"r" (flags)
 		      :"memory", "cc");
 }
 
+void arch_cpu_wait_for_irq(void)
+{
+	/* We could also use soft delay here. */
+	asm volatile (" wfi ");
+}

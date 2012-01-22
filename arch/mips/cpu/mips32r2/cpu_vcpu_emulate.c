@@ -22,19 +22,19 @@
  * @brief Priviledged instruction emulation code.
  */
 
+#include <arch_regs.h>
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_stdio.h>
 #include <vmm_string.h>
 #include <vmm_scheduler.h>
-#include <vmm_regs.h>
 #include <cpu_asm_macros.h>
 #include <cpu_vcpu_mmu.h>
 #include <cpu_vcpu_emulate.h>
 
 static u32 load_store_emulated_reg(u8 sreg, u8 sel,
 				   u32 *treg,
-				   vmm_vcpu_t *vcpu, u8 do_load)
+				   struct vmm_vcpu *vcpu, u8 do_load)
 {
 	u32 _err = VMM_OK;
 	u32 *emulated_reg = NULL;
@@ -52,108 +52,108 @@ static u32 load_store_emulated_reg(u8 sreg, u8 sel,
 	case 9:
 	case 10:
 	case 11:
-		emulated_reg = &vcpu->sregs->cp0_regs[sreg];
+		emulated_reg = &mips_sregs(vcpu)->cp0_regs[sreg];
 		break;
 	case 12:
 		switch(sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_STATUS_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_STATUS_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_INTCTL_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_INTCTL_IDX];
 			break;
 		case 2:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_SRSCTL_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_SRSCTL_IDX];
 			break;
 		case 3:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_SRSMAP_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_SRSMAP_IDX];
 			break;
 		}
 	case 13: /* Cause register */
-		emulated_reg = &vcpu->sregs->cp0_regs[CP0_CAUSE_IDX];
+		emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_CAUSE_IDX];
 		break;
 	case 14:
-		emulated_reg = &vcpu->sregs->cp0_regs[CP0_EPC_IDX];
+		emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_EPC_IDX];
 		break;
 	case 15:
 		switch (sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_PRID_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_PRID_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_EBASE_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_EBASE_IDX];
 			break;
 		}
 		break;
 	case 16:
 		switch(sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_CONFIG_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_CONFIG_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_CONFIG1_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_CONFIG1_IDX];
 			break;
 		case 2:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_CONFIG2_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_CONFIG2_IDX];
 			break;
 		case 3:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_CONFIG3_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_CONFIG3_IDX];
 			break;
 		}
 		break;
 	case 17:
-		emulated_reg = &vcpu->sregs->cp0_regs[CP0_LLADDR_IDX];
+		emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_LLADDR_IDX];
 		break;
 	case 18:
-		emulated_reg = &vcpu->sregs->cp0_regs[CP0_WATCHLO_IDX];
+		emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_WATCHLO_IDX];
 		break;
 	case 19:
-		emulated_reg = &vcpu->sregs->cp0_regs[CP0_WATCHHI_IDX];
+		emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_WATCHHI_IDX];
 		break;
 	case 23:
-		emulated_reg = &vcpu->sregs->cp0_regs[CP0_DEBUG_IDX];
+		emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_DEBUG_IDX];
 		break;
 	case 24:
-		emulated_reg = &vcpu->sregs->cp0_regs[CP0_DEPC_IDX];
+		emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_DEPC_IDX];
 		break;
 	case 25:
 		switch(sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_PERFCTL_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_PERFCTL_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_PERFCNT_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_PERFCNT_IDX];
 			break;
 		}
 		break;
 	case 26:
-		emulated_reg = &vcpu->sregs->cp0_regs[CP0_ECC_IDX];
+		emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_ECC_IDX];
 		break;
 	case 27:
-		emulated_reg = &vcpu->sregs->cp0_regs[CP0_CACHEERR_IDX];
+		emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_CACHEERR_IDX];
 		break;
 	case 28:
 		switch(sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_TAGLO_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_TAGLO_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_DATALO_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_DATALO_IDX];
 			break;
 		}
 		break;
 	case 29:
 		switch(sel) {
 		case 0:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_TAGHI_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_TAGHI_IDX];
 			break;
 		case 1:
-			emulated_reg = &vcpu->sregs->cp0_regs[CP0_DATAHI_IDX];
+			emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_DATAHI_IDX];
 			break;
 		}
 		break;
 	case 31:
-		emulated_reg = &vcpu->sregs->cp0_regs[CP0_ERRORPC_IDX];
+		emulated_reg = &mips_sregs(vcpu)->cp0_regs[CP0_ERRORPC_IDX];
 		break;
 	default:
 		_err = VMM_EFAIL;
@@ -171,8 +171,8 @@ static u32 load_store_emulated_reg(u8 sreg, u8 sel,
 	return _err;
 }
 
-u32 cpu_vcpu_emulate_tlb_inst(vmm_vcpu_t *vcpu, u32 inst,
-			      vmm_user_regs_t *uregs)
+u32 cpu_vcpu_emulate_tlb_inst(struct vmm_vcpu *vcpu, u32 inst,
+			      arch_regs_t *uregs)
 {
 	switch(MIPS32_OPC_TLB_ACCESS_OPCODE(inst)) {
 	case MIPS32_OPC_TLB_OPCODE_TLBP:
@@ -189,8 +189,8 @@ u32 cpu_vcpu_emulate_tlb_inst(vmm_vcpu_t *vcpu, u32 inst,
 }
 
 /* Co-processor un-usable exception */
-u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst,
-			      vmm_user_regs_t *uregs)
+u32 cpu_vcpu_emulate_cop_inst(struct vmm_vcpu *vcpu, u32 inst,
+			      arch_regs_t *uregs)
 {
 	u32 cp0_cause = read_c0_cause();
 	u8 rt, rd, sel;
@@ -243,20 +243,20 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst,
 				 * save current status there. */
 				if (rt)
 					uregs->regs[rt] =
-						vcpu->sregs->cp0_regs[CP0_STATUS_IDX];
+						mips_sregs(vcpu)->cp0_regs[CP0_STATUS_IDX];
 
 				/* Opcode says disable interrupts (for vcpu) */
-				vcpu->sregs->cp0_regs[CP0_STATUS_IDX] &= ~0x1UL;
+				mips_sregs(vcpu)->cp0_regs[CP0_STATUS_IDX] &= ~0x1UL;
 			} else {
 				rt = MIPS32_OPC_CP0_RT(inst);
 				/* only when rt points to a non-zero register
 				 * save current status there. */
 				if (rt)
 					uregs->regs[rt] =
-						vcpu->sregs->cp0_regs[CP0_STATUS_IDX];
+						mips_sregs(vcpu)->cp0_regs[CP0_STATUS_IDX];
 
 				/* Opcode says enable interrupts (for vcpu) */
-				vcpu->sregs->cp0_regs[CP0_STATUS_IDX] |= 0x01UL;
+				mips_sregs(vcpu)->cp0_regs[CP0_STATUS_IDX] |= 0x01UL;
 			}
 
 			break;
@@ -273,20 +273,20 @@ u32 cpu_vcpu_emulate_cop_inst(vmm_vcpu_t *vcpu, u32 inst,
 	return VMM_OK;
 }
 
-static u32 mips_emulate_branch_jump(vmm_vcpu_t *vcpu, u32 inst,
-				    vmm_user_regs_t *uregs)
+static u32 mips_emulate_branch_jump(struct vmm_vcpu *vcpu, u32 inst,
+				    arch_regs_t *uregs)
 {
 	return 1;
 }
 
-static u32 mips_emulate_jump_special(vmm_vcpu_t *vcpu, u32 inst,
-				     vmm_user_regs_t *uregs)
+static u32 mips_emulate_jump_special(struct vmm_vcpu *vcpu, u32 inst,
+				     arch_regs_t *uregs)
 {
 	return 1;
 }
 
-static u32 mips_emulate_branch_regimm(vmm_vcpu_t *vcpu, u32 inst,
-				      vmm_user_regs_t *uregs)
+static u32 mips_emulate_branch_regimm(struct vmm_vcpu *vcpu, u32 inst,
+				      arch_regs_t *uregs)
 {
 	u8 rs = MIPS32_OPC_BANDJ_REGIMM_RS(inst);
 	s32 target_offset = MIPS32_OPC_BANDJ_REGIMM_OFFSET(inst);
@@ -381,8 +381,8 @@ static u32 mips_emulate_branch_regimm(vmm_vcpu_t *vcpu, u32 inst,
  * there was a priviledged instruction in the delay slot. This condition
  * should be rare though.
  */
-u32 cpu_vcpu_emulate_branch_and_jump_inst(vmm_vcpu_t *vcpu, u32 inst,
-					  vmm_user_regs_t *uregs)
+u32 cpu_vcpu_emulate_branch_and_jump_inst(struct vmm_vcpu *vcpu, u32 inst,
+					  arch_regs_t *uregs)
 {
 	int _err = VMM_EFAIL;
 

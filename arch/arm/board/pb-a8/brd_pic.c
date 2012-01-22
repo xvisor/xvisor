@@ -22,43 +22,43 @@
  * @brief board specific progammable interrupt contoller
  */
 
-#include <vmm_board.h>
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
+#include <arch_board.h>
 #include <pba8_board.h>
 #include <realview/gic.h>
 
-u32 vmm_pic_irq_count(void)
+u32 arch_pic_irq_count(void)
 {
 	return 96;
 }
 
-int vmm_pic_cpu_to_host_map(u32 cpu_irq_no)
+int arch_pic_cpu_to_host_map(u32 cpu_irq_no)
 {
 	return realview_gic_active_irq(0);
 }
 
-int vmm_pic_pre_condition(u32 host_irq_no)
+int arch_pic_pre_condition(u32 host_irq_no)
 {
 	return VMM_OK;
 }
 
-int vmm_pic_post_condition(u32 host_irq_no)
+int arch_pic_post_condition(u32 host_irq_no)
 {
 	return realview_gic_ack_irq(0, host_irq_no);
 }
 
-int vmm_pic_irq_enable(u32 host_irq_no)
+int arch_pic_irq_enable(u32 host_irq_no)
 {
 	return realview_gic_unmask(0, host_irq_no);
 }
 
-int vmm_pic_irq_disable(u32 host_irq_no)
+int arch_pic_irq_disable(u32 host_irq_no)
 {
 	return realview_gic_mask(0, host_irq_no);
 }
 
-int __init vmm_pic_init(void)
+int __init arch_pic_init(void)
 {
 	int ret;
 	virtual_addr_t dist_base, cpu_base;

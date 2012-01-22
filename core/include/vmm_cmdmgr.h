@@ -28,8 +28,8 @@
 #include <vmm_list.h>
 #include <vmm_chardev.h>
 
-typedef void (*vmm_cmd_usage_t) (vmm_chardev_t *);
-typedef int (*vmm_cmd_exec_t) (vmm_chardev_t *, int, char **);
+typedef void (*vmm_cmd_usage_t) (struct vmm_chardev *);
+typedef int (*vmm_cmd_exec_t) (struct vmm_chardev *, int, char **);
 
 struct vmm_cmd {
 	struct dlist head;
@@ -39,28 +39,26 @@ struct vmm_cmd {
 	vmm_cmd_exec_t exec;
 };
 
-typedef struct vmm_cmd vmm_cmd_t;
-
 /** Register command */
-int vmm_cmdmgr_register_cmd(vmm_cmd_t * cmd);
+int vmm_cmdmgr_register_cmd(struct vmm_cmd * cmd);
 
 /** Unregister command */
-int vmm_cmdmgr_unregister_cmd(vmm_cmd_t * cmd);
+int vmm_cmdmgr_unregister_cmd(struct vmm_cmd * cmd);
 
 /** Find a registered command */
-vmm_cmd_t * vmm_cmdmgr_cmd_find(const char * cmd_name);
+struct vmm_cmd * vmm_cmdmgr_cmd_find(const char * cmd_name);
 
 /** Get a registered command */
-vmm_cmd_t * vmm_cmdmgr_cmd(int index);
+struct vmm_cmd * vmm_cmdmgr_cmd(int index);
 
 /** Count of registered commands */
 u32 vmm_cmdmgr_cmd_count(void);
 
 /** Execute command */
-int vmm_cmdmgr_execute_cmd(vmm_chardev_t *cdev, int argc, char **argv);
+int vmm_cmdmgr_execute_cmd(struct vmm_chardev *cdev, int argc, char **argv);
 
 /** Execute command string */
-int vmm_cmdmgr_execute_cmdstr(vmm_chardev_t *cdev, char *cmds);
+int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds);
 
 /** Initialize command manager */
 int vmm_cmdmgr_init(void);

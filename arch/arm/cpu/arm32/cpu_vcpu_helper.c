@@ -25,14 +25,14 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
+#include <vmm_math.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
 #include <cpu_defines.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
-#include <vmm_math.h>
 
-void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
+void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 {
 	if (vcpu->state != VMM_VCPU_STATE_HALTED) {
 		vmm_printf("\n");
@@ -41,188 +41,188 @@ void cpu_vcpu_halt(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 	}
 }
 
-u32 cpu_vcpu_cpsr_retrieve(vmm_vcpu_t * vcpu,
-			  vmm_user_regs_t * regs)
+u32 cpu_vcpu_cpsr_retrieve(struct vmm_vcpu * vcpu,
+			  arch_regs_t * regs)
 {
 	if (!vcpu || !regs) {
 		return 0;
 	}
 	if (vcpu->is_normal) {
 		return (regs->cpsr & CPSR_USERBITS_MASK) |
-			(vcpu->sregs->cpsr & ~CPSR_USERBITS_MASK);
+			(arm_priv(vcpu)->cpsr & ~CPSR_USERBITS_MASK);
 	} else {
 		return regs->cpsr;
 	}
 }
 
-void cpu_vcpu_banked_regs_save(vmm_vcpu_t * vcpu, vmm_user_regs_t * src)
+void cpu_vcpu_banked_regs_save(struct vmm_vcpu * vcpu, arch_regs_t * src)
 {
 	if (!vcpu || !vcpu->is_normal || !src) {
 		return;
 	}
-	switch (vcpu->sregs->cpsr & CPSR_MODE_MASK) {
+	switch (arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) {
 	case CPSR_MODE_USER:
-		vcpu->sregs->gpr_usr[0] = src->gpr[8];
-		vcpu->sregs->gpr_usr[1] = src->gpr[9];
-		vcpu->sregs->gpr_usr[2] = src->gpr[10];
-		vcpu->sregs->gpr_usr[3] = src->gpr[11];
-		vcpu->sregs->gpr_usr[4] = src->gpr[12];
-		vcpu->sregs->sp_usr = src->sp;
-		vcpu->sregs->lr_usr = src->lr;
+		arm_priv(vcpu)->gpr_usr[0] = src->gpr[8];
+		arm_priv(vcpu)->gpr_usr[1] = src->gpr[9];
+		arm_priv(vcpu)->gpr_usr[2] = src->gpr[10];
+		arm_priv(vcpu)->gpr_usr[3] = src->gpr[11];
+		arm_priv(vcpu)->gpr_usr[4] = src->gpr[12];
+		arm_priv(vcpu)->sp_usr = src->sp;
+		arm_priv(vcpu)->lr_usr = src->lr;
 		break;
 	case CPSR_MODE_SYSTEM:
-		vcpu->sregs->gpr_usr[0] = src->gpr[8];
-		vcpu->sregs->gpr_usr[1] = src->gpr[9];
-		vcpu->sregs->gpr_usr[2] = src->gpr[10];
-		vcpu->sregs->gpr_usr[3] = src->gpr[11];
-		vcpu->sregs->gpr_usr[4] = src->gpr[12];
-		vcpu->sregs->sp_usr = src->sp;
-		vcpu->sregs->lr_usr = src->lr;
+		arm_priv(vcpu)->gpr_usr[0] = src->gpr[8];
+		arm_priv(vcpu)->gpr_usr[1] = src->gpr[9];
+		arm_priv(vcpu)->gpr_usr[2] = src->gpr[10];
+		arm_priv(vcpu)->gpr_usr[3] = src->gpr[11];
+		arm_priv(vcpu)->gpr_usr[4] = src->gpr[12];
+		arm_priv(vcpu)->sp_usr = src->sp;
+		arm_priv(vcpu)->lr_usr = src->lr;
 		break;
 	case CPSR_MODE_ABORT:
-		vcpu->sregs->gpr_usr[0] = src->gpr[8];
-		vcpu->sregs->gpr_usr[1] = src->gpr[9];
-		vcpu->sregs->gpr_usr[2] = src->gpr[10];
-		vcpu->sregs->gpr_usr[3] = src->gpr[11];
-		vcpu->sregs->gpr_usr[4] = src->gpr[12];
-		vcpu->sregs->sp_abt = src->sp;
-		vcpu->sregs->lr_abt = src->lr;
+		arm_priv(vcpu)->gpr_usr[0] = src->gpr[8];
+		arm_priv(vcpu)->gpr_usr[1] = src->gpr[9];
+		arm_priv(vcpu)->gpr_usr[2] = src->gpr[10];
+		arm_priv(vcpu)->gpr_usr[3] = src->gpr[11];
+		arm_priv(vcpu)->gpr_usr[4] = src->gpr[12];
+		arm_priv(vcpu)->sp_abt = src->sp;
+		arm_priv(vcpu)->lr_abt = src->lr;
 		break;
 	case CPSR_MODE_UNDEFINED:
-		vcpu->sregs->gpr_usr[0] = src->gpr[8];
-		vcpu->sregs->gpr_usr[1] = src->gpr[9];
-		vcpu->sregs->gpr_usr[2] = src->gpr[10];
-		vcpu->sregs->gpr_usr[3] = src->gpr[11];
-		vcpu->sregs->gpr_usr[4] = src->gpr[12];
-		vcpu->sregs->sp_und = src->sp;
-		vcpu->sregs->lr_und = src->lr;
+		arm_priv(vcpu)->gpr_usr[0] = src->gpr[8];
+		arm_priv(vcpu)->gpr_usr[1] = src->gpr[9];
+		arm_priv(vcpu)->gpr_usr[2] = src->gpr[10];
+		arm_priv(vcpu)->gpr_usr[3] = src->gpr[11];
+		arm_priv(vcpu)->gpr_usr[4] = src->gpr[12];
+		arm_priv(vcpu)->sp_und = src->sp;
+		arm_priv(vcpu)->lr_und = src->lr;
 		break;
 	case CPSR_MODE_MONITOR:
-		vcpu->sregs->gpr_usr[0] = src->gpr[8];
-		vcpu->sregs->gpr_usr[1] = src->gpr[9];
-		vcpu->sregs->gpr_usr[2] = src->gpr[10];
-		vcpu->sregs->gpr_usr[3] = src->gpr[11];
-		vcpu->sregs->gpr_usr[4] = src->gpr[12];
-		vcpu->sregs->sp_mon = src->sp;
-		vcpu->sregs->lr_mon = src->lr;
+		arm_priv(vcpu)->gpr_usr[0] = src->gpr[8];
+		arm_priv(vcpu)->gpr_usr[1] = src->gpr[9];
+		arm_priv(vcpu)->gpr_usr[2] = src->gpr[10];
+		arm_priv(vcpu)->gpr_usr[3] = src->gpr[11];
+		arm_priv(vcpu)->gpr_usr[4] = src->gpr[12];
+		arm_priv(vcpu)->sp_mon = src->sp;
+		arm_priv(vcpu)->lr_mon = src->lr;
 		break;
 	case CPSR_MODE_SUPERVISOR:
-		vcpu->sregs->gpr_usr[0] = src->gpr[8];
-		vcpu->sregs->gpr_usr[1] = src->gpr[9];
-		vcpu->sregs->gpr_usr[2] = src->gpr[10];
-		vcpu->sregs->gpr_usr[3] = src->gpr[11];
-		vcpu->sregs->gpr_usr[4] = src->gpr[12];
-		vcpu->sregs->sp_svc = src->sp;
-		vcpu->sregs->lr_svc = src->lr;
+		arm_priv(vcpu)->gpr_usr[0] = src->gpr[8];
+		arm_priv(vcpu)->gpr_usr[1] = src->gpr[9];
+		arm_priv(vcpu)->gpr_usr[2] = src->gpr[10];
+		arm_priv(vcpu)->gpr_usr[3] = src->gpr[11];
+		arm_priv(vcpu)->gpr_usr[4] = src->gpr[12];
+		arm_priv(vcpu)->sp_svc = src->sp;
+		arm_priv(vcpu)->lr_svc = src->lr;
 		break;
 	case CPSR_MODE_IRQ:
-		vcpu->sregs->gpr_usr[0] = src->gpr[8];
-		vcpu->sregs->gpr_usr[1] = src->gpr[9];
-		vcpu->sregs->gpr_usr[2] = src->gpr[10];
-		vcpu->sregs->gpr_usr[3] = src->gpr[11];
-		vcpu->sregs->gpr_usr[4] = src->gpr[12];
-		vcpu->sregs->sp_irq = src->sp;
-		vcpu->sregs->lr_irq = src->lr;
+		arm_priv(vcpu)->gpr_usr[0] = src->gpr[8];
+		arm_priv(vcpu)->gpr_usr[1] = src->gpr[9];
+		arm_priv(vcpu)->gpr_usr[2] = src->gpr[10];
+		arm_priv(vcpu)->gpr_usr[3] = src->gpr[11];
+		arm_priv(vcpu)->gpr_usr[4] = src->gpr[12];
+		arm_priv(vcpu)->sp_irq = src->sp;
+		arm_priv(vcpu)->lr_irq = src->lr;
 		break;
 	case CPSR_MODE_FIQ:
-		vcpu->sregs->gpr_fiq[0] = src->gpr[8];
-		vcpu->sregs->gpr_fiq[1] = src->gpr[9];
-		vcpu->sregs->gpr_fiq[2] = src->gpr[10];
-		vcpu->sregs->gpr_fiq[3] = src->gpr[11];
-		vcpu->sregs->gpr_fiq[4] = src->gpr[12];
-		vcpu->sregs->sp_fiq = src->sp;
-		vcpu->sregs->lr_fiq = src->lr;
+		arm_priv(vcpu)->gpr_fiq[0] = src->gpr[8];
+		arm_priv(vcpu)->gpr_fiq[1] = src->gpr[9];
+		arm_priv(vcpu)->gpr_fiq[2] = src->gpr[10];
+		arm_priv(vcpu)->gpr_fiq[3] = src->gpr[11];
+		arm_priv(vcpu)->gpr_fiq[4] = src->gpr[12];
+		arm_priv(vcpu)->sp_fiq = src->sp;
+		arm_priv(vcpu)->lr_fiq = src->lr;
 		break;
 	default:
 		break;
 	};
 }
 
-void cpu_vcpu_banked_regs_restore(vmm_vcpu_t * vcpu, vmm_user_regs_t * dst)
+void cpu_vcpu_banked_regs_restore(struct vmm_vcpu * vcpu, arch_regs_t * dst)
 {
 	if (!vcpu || !vcpu->is_normal || !dst) {
 		return;
 	}
-	switch (vcpu->sregs->cpsr & CPSR_MODE_MASK) {
+	switch (arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) {
 	case CPSR_MODE_USER:
-		dst->gpr[8] = vcpu->sregs->gpr_usr[0];
-		dst->gpr[9] = vcpu->sregs->gpr_usr[1];
-		dst->gpr[10] = vcpu->sregs->gpr_usr[2];
-		dst->gpr[11] = vcpu->sregs->gpr_usr[3];
-		dst->gpr[12] = vcpu->sregs->gpr_usr[4];
-		dst->sp = vcpu->sregs->sp_usr;
-		dst->lr = vcpu->sregs->lr_usr;
+		dst->gpr[8] = arm_priv(vcpu)->gpr_usr[0];
+		dst->gpr[9] = arm_priv(vcpu)->gpr_usr[1];
+		dst->gpr[10] = arm_priv(vcpu)->gpr_usr[2];
+		dst->gpr[11] = arm_priv(vcpu)->gpr_usr[3];
+		dst->gpr[12] = arm_priv(vcpu)->gpr_usr[4];
+		dst->sp = arm_priv(vcpu)->sp_usr;
+		dst->lr = arm_priv(vcpu)->lr_usr;
 		break;
 	case CPSR_MODE_SYSTEM:
-		dst->gpr[8] = vcpu->sregs->gpr_usr[0];
-		dst->gpr[9] = vcpu->sregs->gpr_usr[1];
-		dst->gpr[10] = vcpu->sregs->gpr_usr[2];
-		dst->gpr[11] = vcpu->sregs->gpr_usr[3];
-		dst->gpr[12] = vcpu->sregs->gpr_usr[4];
-		dst->sp = vcpu->sregs->sp_usr;
-		dst->lr = vcpu->sregs->lr_usr;
+		dst->gpr[8] = arm_priv(vcpu)->gpr_usr[0];
+		dst->gpr[9] = arm_priv(vcpu)->gpr_usr[1];
+		dst->gpr[10] = arm_priv(vcpu)->gpr_usr[2];
+		dst->gpr[11] = arm_priv(vcpu)->gpr_usr[3];
+		dst->gpr[12] = arm_priv(vcpu)->gpr_usr[4];
+		dst->sp = arm_priv(vcpu)->sp_usr;
+		dst->lr = arm_priv(vcpu)->lr_usr;
 		break;
 	case CPSR_MODE_ABORT:
-		dst->gpr[8] = vcpu->sregs->gpr_usr[0];
-		dst->gpr[9] = vcpu->sregs->gpr_usr[1];
-		dst->gpr[10] = vcpu->sregs->gpr_usr[2];
-		dst->gpr[11] = vcpu->sregs->gpr_usr[3];
-		dst->gpr[12] = vcpu->sregs->gpr_usr[4];
-		dst->sp = vcpu->sregs->sp_abt;
-		dst->lr = vcpu->sregs->lr_abt;
+		dst->gpr[8] = arm_priv(vcpu)->gpr_usr[0];
+		dst->gpr[9] = arm_priv(vcpu)->gpr_usr[1];
+		dst->gpr[10] = arm_priv(vcpu)->gpr_usr[2];
+		dst->gpr[11] = arm_priv(vcpu)->gpr_usr[3];
+		dst->gpr[12] = arm_priv(vcpu)->gpr_usr[4];
+		dst->sp = arm_priv(vcpu)->sp_abt;
+		dst->lr = arm_priv(vcpu)->lr_abt;
 		break;
 	case CPSR_MODE_UNDEFINED:
-		dst->gpr[8] = vcpu->sregs->gpr_usr[0];
-		dst->gpr[9] = vcpu->sregs->gpr_usr[1];
-		dst->gpr[10] = vcpu->sregs->gpr_usr[2];
-		dst->gpr[11] = vcpu->sregs->gpr_usr[3];
-		dst->gpr[12] = vcpu->sregs->gpr_usr[4];
-		dst->sp = vcpu->sregs->sp_und;
-		dst->lr = vcpu->sregs->lr_und;
+		dst->gpr[8] = arm_priv(vcpu)->gpr_usr[0];
+		dst->gpr[9] = arm_priv(vcpu)->gpr_usr[1];
+		dst->gpr[10] = arm_priv(vcpu)->gpr_usr[2];
+		dst->gpr[11] = arm_priv(vcpu)->gpr_usr[3];
+		dst->gpr[12] = arm_priv(vcpu)->gpr_usr[4];
+		dst->sp = arm_priv(vcpu)->sp_und;
+		dst->lr = arm_priv(vcpu)->lr_und;
 		break;
 	case CPSR_MODE_MONITOR:
-		dst->gpr[8] = vcpu->sregs->gpr_usr[0];
-		dst->gpr[9] = vcpu->sregs->gpr_usr[1];
-		dst->gpr[10] = vcpu->sregs->gpr_usr[2];
-		dst->gpr[11] = vcpu->sregs->gpr_usr[3];
-		dst->gpr[12] = vcpu->sregs->gpr_usr[4];
-		dst->sp = vcpu->sregs->sp_mon;
-		dst->lr = vcpu->sregs->lr_mon;
+		dst->gpr[8] = arm_priv(vcpu)->gpr_usr[0];
+		dst->gpr[9] = arm_priv(vcpu)->gpr_usr[1];
+		dst->gpr[10] = arm_priv(vcpu)->gpr_usr[2];
+		dst->gpr[11] = arm_priv(vcpu)->gpr_usr[3];
+		dst->gpr[12] = arm_priv(vcpu)->gpr_usr[4];
+		dst->sp = arm_priv(vcpu)->sp_mon;
+		dst->lr = arm_priv(vcpu)->lr_mon;
 		break;
 	case CPSR_MODE_SUPERVISOR:
-		dst->gpr[8] = vcpu->sregs->gpr_usr[0];
-		dst->gpr[9] = vcpu->sregs->gpr_usr[1];
-		dst->gpr[10] = vcpu->sregs->gpr_usr[2];
-		dst->gpr[11] = vcpu->sregs->gpr_usr[3];
-		dst->gpr[12] = vcpu->sregs->gpr_usr[4];
-		dst->sp = vcpu->sregs->sp_svc;
-		dst->lr = vcpu->sregs->lr_svc;
+		dst->gpr[8] = arm_priv(vcpu)->gpr_usr[0];
+		dst->gpr[9] = arm_priv(vcpu)->gpr_usr[1];
+		dst->gpr[10] = arm_priv(vcpu)->gpr_usr[2];
+		dst->gpr[11] = arm_priv(vcpu)->gpr_usr[3];
+		dst->gpr[12] = arm_priv(vcpu)->gpr_usr[4];
+		dst->sp = arm_priv(vcpu)->sp_svc;
+		dst->lr = arm_priv(vcpu)->lr_svc;
 		break;
 	case CPSR_MODE_IRQ:
-		dst->gpr[8] = vcpu->sregs->gpr_usr[0];
-		dst->gpr[9] = vcpu->sregs->gpr_usr[1];
-		dst->gpr[10] = vcpu->sregs->gpr_usr[2];
-		dst->gpr[11] = vcpu->sregs->gpr_usr[3];
-		dst->gpr[12] = vcpu->sregs->gpr_usr[4];
-		dst->sp = vcpu->sregs->sp_irq;
-		dst->lr = vcpu->sregs->lr_irq;
+		dst->gpr[8] = arm_priv(vcpu)->gpr_usr[0];
+		dst->gpr[9] = arm_priv(vcpu)->gpr_usr[1];
+		dst->gpr[10] = arm_priv(vcpu)->gpr_usr[2];
+		dst->gpr[11] = arm_priv(vcpu)->gpr_usr[3];
+		dst->gpr[12] = arm_priv(vcpu)->gpr_usr[4];
+		dst->sp = arm_priv(vcpu)->sp_irq;
+		dst->lr = arm_priv(vcpu)->lr_irq;
 		break;
 	case CPSR_MODE_FIQ:
-		dst->gpr[8] = vcpu->sregs->gpr_fiq[0];
-		dst->gpr[9] = vcpu->sregs->gpr_fiq[1];
-		dst->gpr[10] = vcpu->sregs->gpr_fiq[2];
-		dst->gpr[11] = vcpu->sregs->gpr_fiq[3];
-		dst->gpr[12] = vcpu->sregs->gpr_fiq[4];
-		dst->sp = vcpu->sregs->sp_fiq;
-		dst->lr = vcpu->sregs->lr_fiq;
+		dst->gpr[8] = arm_priv(vcpu)->gpr_fiq[0];
+		dst->gpr[9] = arm_priv(vcpu)->gpr_fiq[1];
+		dst->gpr[10] = arm_priv(vcpu)->gpr_fiq[2];
+		dst->gpr[11] = arm_priv(vcpu)->gpr_fiq[3];
+		dst->gpr[12] = arm_priv(vcpu)->gpr_fiq[4];
+		dst->sp = arm_priv(vcpu)->sp_fiq;
+		dst->lr = arm_priv(vcpu)->lr_fiq;
 		break;
 	default:
 		break;
 	};
 }
 
-void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu, 
-			  vmm_user_regs_t * regs,
+void cpu_vcpu_cpsr_update(struct vmm_vcpu * vcpu, 
+			  arch_regs_t * regs,
 			  u32 new_cpsr,
 			  u32 new_cpsr_mask)
 {
@@ -235,15 +235,15 @@ void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu,
 	/* Determine if mode is changing */
 	mode_change = FALSE;
 	if ((new_cpsr_mask & CPSR_MODE_MASK) &&
-	    ((vcpu->sregs->cpsr & CPSR_MODE_MASK) != 
+	    ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) != 
 					(new_cpsr & CPSR_MODE_MASK))) {
 		mode_change = TRUE;
 		/* Save banked registers for old CPSR */
 		cpu_vcpu_banked_regs_save(vcpu, regs);
 	}
 	/* Set the new priviledged bits of CPSR */
-	vcpu->sregs->cpsr &= (~CPSR_PRIVBITS_MASK | ~new_cpsr_mask);
-	vcpu->sregs->cpsr |= new_cpsr & CPSR_PRIVBITS_MASK & new_cpsr_mask;
+	arm_priv(vcpu)->cpsr &= (~CPSR_PRIVBITS_MASK | ~new_cpsr_mask);
+	arm_priv(vcpu)->cpsr |= new_cpsr & CPSR_PRIVBITS_MASK & new_cpsr_mask;
 	/* Set the new user bits of CPSR */
 	regs->cpsr &= (~CPSR_USERBITS_MASK | ~new_cpsr_mask);
 	regs->cpsr |= new_cpsr & CPSR_USERBITS_MASK & new_cpsr_mask;
@@ -257,27 +257,27 @@ void cpu_vcpu_cpsr_update(vmm_vcpu_t * vcpu,
 	return;
 }
 
-u32 cpu_vcpu_spsr_retrieve(vmm_vcpu_t * vcpu)
+u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu * vcpu)
 {
 	/* Find out correct SPSR */
-	switch (vcpu->sregs->cpsr & CPSR_MODE_MASK) {
+	switch (arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) {
 	case CPSR_MODE_ABORT:
-		return vcpu->sregs->spsr_abt;
+		return arm_priv(vcpu)->spsr_abt;
 		break;
 	case CPSR_MODE_UNDEFINED:
-		return vcpu->sregs->spsr_und;
+		return arm_priv(vcpu)->spsr_und;
 		break;
 	case CPSR_MODE_MONITOR:
-		return vcpu->sregs->spsr_mon;
+		return arm_priv(vcpu)->spsr_mon;
 		break;
 	case CPSR_MODE_SUPERVISOR:
-		return vcpu->sregs->spsr_svc;
+		return arm_priv(vcpu)->spsr_svc;
 		break;
 	case CPSR_MODE_IRQ:
-		return vcpu->sregs->spsr_irq;
+		return arm_priv(vcpu)->spsr_irq;
 		break;
 	case CPSR_MODE_FIQ:
-		return vcpu->sregs->spsr_fiq;
+		return arm_priv(vcpu)->spsr_fiq;
 		break;
 	default:
 		break;
@@ -285,7 +285,7 @@ u32 cpu_vcpu_spsr_retrieve(vmm_vcpu_t * vcpu)
 	return 0;
 }
 
-int cpu_vcpu_spsr_update(vmm_vcpu_t * vcpu, 
+int cpu_vcpu_spsr_update(struct vmm_vcpu * vcpu, 
 			 u32 new_spsr,
 			 u32 new_spsr_mask)
 {
@@ -293,35 +293,35 @@ int cpu_vcpu_spsr_update(vmm_vcpu_t * vcpu,
 	if (!vcpu && !vcpu->is_normal) {
 		return VMM_EFAIL;
 	}
-	if ((vcpu->sregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		return VMM_EFAIL;
 	}
 	new_spsr &= new_spsr_mask;
 	/* Update appropriate SPSR */
-	switch (vcpu->sregs->cpsr & CPSR_MODE_MASK) {
+	switch (arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) {
 	case CPSR_MODE_ABORT:
-		vcpu->sregs->spsr_abt &= ~new_spsr_mask;
-		vcpu->sregs->spsr_abt |= new_spsr;
+		arm_priv(vcpu)->spsr_abt &= ~new_spsr_mask;
+		arm_priv(vcpu)->spsr_abt |= new_spsr;
 		break;
 	case CPSR_MODE_UNDEFINED:
-		vcpu->sregs->spsr_und &= ~new_spsr_mask;
-		vcpu->sregs->spsr_und |= new_spsr;
+		arm_priv(vcpu)->spsr_und &= ~new_spsr_mask;
+		arm_priv(vcpu)->spsr_und |= new_spsr;
 		break;
 	case CPSR_MODE_MONITOR:
-		vcpu->sregs->spsr_mon &= ~new_spsr_mask;
-		vcpu->sregs->spsr_mon |= new_spsr;
+		arm_priv(vcpu)->spsr_mon &= ~new_spsr_mask;
+		arm_priv(vcpu)->spsr_mon |= new_spsr;
 		break;
 	case CPSR_MODE_SUPERVISOR:
-		vcpu->sregs->spsr_svc &= ~new_spsr_mask;
-		vcpu->sregs->spsr_svc |= new_spsr;
+		arm_priv(vcpu)->spsr_svc &= ~new_spsr_mask;
+		arm_priv(vcpu)->spsr_svc |= new_spsr;
 		break;
 	case CPSR_MODE_IRQ:
-		vcpu->sregs->spsr_irq &= ~new_spsr_mask;
-		vcpu->sregs->spsr_irq |= new_spsr;
+		arm_priv(vcpu)->spsr_irq &= ~new_spsr_mask;
+		arm_priv(vcpu)->spsr_irq |= new_spsr;
 		break;
 	case CPSR_MODE_FIQ:
-		vcpu->sregs->spsr_fiq &= ~new_spsr_mask;
-		vcpu->sregs->spsr_fiq |= new_spsr;
+		arm_priv(vcpu)->spsr_fiq &= ~new_spsr_mask;
+		arm_priv(vcpu)->spsr_fiq |= new_spsr;
 		break;
 	default:
 		break;
@@ -330,8 +330,8 @@ int cpu_vcpu_spsr_update(vmm_vcpu_t * vcpu,
 	return VMM_OK;
 }
 
-u32 cpu_vcpu_reg_read(vmm_vcpu_t * vcpu, 
-		      vmm_user_regs_t * regs, 
+u32 cpu_vcpu_reg_read(struct vmm_vcpu * vcpu, 
+		      arch_regs_t * regs, 
 		      u32 reg_num) 
 {
 	switch (reg_num) {
@@ -365,12 +365,12 @@ u32 cpu_vcpu_reg_read(vmm_vcpu_t * vcpu,
 	return 0x0;
 }
 
-void cpu_vcpu_reg_write(vmm_vcpu_t * vcpu, 
-			vmm_user_regs_t * regs, 
+void cpu_vcpu_reg_write(struct vmm_vcpu * vcpu, 
+			arch_regs_t * regs, 
 			u32 reg_num, 
 			u32 reg_val) 
 {
-	u32 curmode = vcpu->sregs->cpsr & CPSR_MODE_MASK;
+	u32 curmode = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
 	switch (reg_num) {
 	case 0:
 	case 1:
@@ -389,9 +389,9 @@ void cpu_vcpu_reg_write(vmm_vcpu_t * vcpu,
 	case 12:
 		regs->gpr[reg_num] = reg_val;
 		if (curmode == CPSR_MODE_FIQ) {
-			vcpu->sregs->gpr_fiq[reg_num - 8] = reg_val;
+			arm_priv(vcpu)->gpr_fiq[reg_num - 8] = reg_val;
 		} else {
-			vcpu->sregs->gpr_usr[reg_num - 8] = reg_val;
+			arm_priv(vcpu)->gpr_usr[reg_num - 8] = reg_val;
 		}
 		break;
 	case 13:
@@ -399,25 +399,25 @@ void cpu_vcpu_reg_write(vmm_vcpu_t * vcpu,
 		switch (curmode) {
 		case CPSR_MODE_USER:
 		case CPSR_MODE_SYSTEM:
-			vcpu->sregs->sp_usr = reg_val;
+			arm_priv(vcpu)->sp_usr = reg_val;
 			break;
 		case CPSR_MODE_FIQ:
-			vcpu->sregs->sp_fiq = reg_val;
+			arm_priv(vcpu)->sp_fiq = reg_val;
 			break;
 		case CPSR_MODE_IRQ:
-			vcpu->sregs->sp_irq = reg_val;
+			arm_priv(vcpu)->sp_irq = reg_val;
 			break;
 		case CPSR_MODE_SUPERVISOR:
-			vcpu->sregs->sp_svc = reg_val;
+			arm_priv(vcpu)->sp_svc = reg_val;
 			break;
 		case CPSR_MODE_ABORT:
-			vcpu->sregs->sp_abt = reg_val;
+			arm_priv(vcpu)->sp_abt = reg_val;
 			break;
 		case CPSR_MODE_UNDEFINED:
-			vcpu->sregs->sp_und = reg_val;
+			arm_priv(vcpu)->sp_und = reg_val;
 			break;
 		case CPSR_MODE_MONITOR:
-			vcpu->sregs->sp_mon = reg_val;
+			arm_priv(vcpu)->sp_mon = reg_val;
 			break;
 		default:
 			break;
@@ -428,25 +428,25 @@ void cpu_vcpu_reg_write(vmm_vcpu_t * vcpu,
 		switch (curmode) {
 		case CPSR_MODE_USER:
 		case CPSR_MODE_SYSTEM:
-			vcpu->sregs->lr_usr = reg_val;
+			arm_priv(vcpu)->lr_usr = reg_val;
 			break;
 		case CPSR_MODE_FIQ:
-			vcpu->sregs->lr_fiq = reg_val;
+			arm_priv(vcpu)->lr_fiq = reg_val;
 			break;
 		case CPSR_MODE_IRQ:
-			vcpu->sregs->lr_irq = reg_val;
+			arm_priv(vcpu)->lr_irq = reg_val;
 			break;
 		case CPSR_MODE_SUPERVISOR:
-			vcpu->sregs->lr_svc = reg_val;
+			arm_priv(vcpu)->lr_svc = reg_val;
 			break;
 		case CPSR_MODE_ABORT:
-			vcpu->sregs->lr_abt = reg_val;
+			arm_priv(vcpu)->lr_abt = reg_val;
 			break;
 		case CPSR_MODE_UNDEFINED:
-			vcpu->sregs->lr_und = reg_val;
+			arm_priv(vcpu)->lr_und = reg_val;
 			break;
 		case CPSR_MODE_MONITOR:
-			vcpu->sregs->lr_mon = reg_val;
+			arm_priv(vcpu)->lr_mon = reg_val;
 			break;
 		default:
 			break;
@@ -460,12 +460,12 @@ void cpu_vcpu_reg_write(vmm_vcpu_t * vcpu,
 	};
 }
 
-u32 cpu_vcpu_regmode_read(vmm_vcpu_t * vcpu, 
-			  vmm_user_regs_t * regs, 
+u32 cpu_vcpu_regmode_read(struct vmm_vcpu * vcpu, 
+			  arch_regs_t * regs, 
 			  u32 mode,
 			  u32 reg_num)
 {
-	u32 curmode = vcpu->sregs->cpsr & CPSR_MODE_MASK;
+	u32 curmode = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
 	if (mode == curmode) {
 		return cpu_vcpu_reg_read(vcpu, regs, reg_num);
 	} else {
@@ -486,10 +486,10 @@ u32 cpu_vcpu_regmode_read(vmm_vcpu_t * vcpu,
 		case 11:
 		case 12:
 			if (curmode == CPSR_MODE_FIQ) {
-				return vcpu->sregs->gpr_usr[reg_num - 8];
+				return arm_priv(vcpu)->gpr_usr[reg_num - 8];
 			} else {
 				if (mode == CPSR_MODE_FIQ) {
-					return vcpu->sregs->
+					return arm_priv(vcpu)->
 							gpr_fiq[reg_num - 8];
 				} else {
 					return regs->gpr[reg_num];
@@ -500,25 +500,25 @@ u32 cpu_vcpu_regmode_read(vmm_vcpu_t * vcpu,
 			switch (mode) {
 			case CPSR_MODE_USER:
 			case CPSR_MODE_SYSTEM:
-				return vcpu->sregs->sp_usr;
+				return arm_priv(vcpu)->sp_usr;
 				break;
 			case CPSR_MODE_FIQ:
-				return vcpu->sregs->sp_fiq;
+				return arm_priv(vcpu)->sp_fiq;
 				break;
 			case CPSR_MODE_IRQ:
-				return vcpu->sregs->sp_irq;
+				return arm_priv(vcpu)->sp_irq;
 				break;
 			case CPSR_MODE_SUPERVISOR:
-				return vcpu->sregs->sp_svc;
+				return arm_priv(vcpu)->sp_svc;
 				break;
 			case CPSR_MODE_ABORT:
-				return vcpu->sregs->sp_abt;
+				return arm_priv(vcpu)->sp_abt;
 				break;
 			case CPSR_MODE_UNDEFINED:
-				return vcpu->sregs->sp_und;
+				return arm_priv(vcpu)->sp_und;
 				break;
 			case CPSR_MODE_MONITOR:
-				return vcpu->sregs->sp_mon;
+				return arm_priv(vcpu)->sp_mon;
 				break;
 			default:
 				break;
@@ -528,25 +528,25 @@ u32 cpu_vcpu_regmode_read(vmm_vcpu_t * vcpu,
 			switch (mode) {
 			case CPSR_MODE_USER:
 			case CPSR_MODE_SYSTEM:
-				return vcpu->sregs->lr_usr;
+				return arm_priv(vcpu)->lr_usr;
 				break;
 			case CPSR_MODE_FIQ:
-				return vcpu->sregs->lr_fiq;
+				return arm_priv(vcpu)->lr_fiq;
 				break;
 			case CPSR_MODE_IRQ:
-				return vcpu->sregs->lr_irq;
+				return arm_priv(vcpu)->lr_irq;
 				break;
 			case CPSR_MODE_SUPERVISOR:
-				return vcpu->sregs->lr_svc;
+				return arm_priv(vcpu)->lr_svc;
 				break;
 			case CPSR_MODE_ABORT:
-				return vcpu->sregs->lr_abt;
+				return arm_priv(vcpu)->lr_abt;
 				break;
 			case CPSR_MODE_UNDEFINED:
-				return vcpu->sregs->lr_und;
+				return arm_priv(vcpu)->lr_und;
 				break;
 			case CPSR_MODE_MONITOR:
-				return vcpu->sregs->lr_mon;
+				return arm_priv(vcpu)->lr_mon;
 				break;
 			default:
 				break;
@@ -562,13 +562,13 @@ u32 cpu_vcpu_regmode_read(vmm_vcpu_t * vcpu,
 	return 0x0;
 }
 
-void cpu_vcpu_regmode_write(vmm_vcpu_t * vcpu, 
-			    vmm_user_regs_t * regs, 
+void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu, 
+			    arch_regs_t * regs, 
 			    u32 mode,
 			    u32 reg_num,
 			    u32 reg_val)
 {
-	u32 curmode = vcpu->sregs->cpsr & CPSR_MODE_MASK;
+	u32 curmode = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
 	if (mode == curmode) {
 		cpu_vcpu_reg_write(vcpu, regs, reg_num, reg_val);
 	} else {
@@ -589,10 +589,10 @@ void cpu_vcpu_regmode_write(vmm_vcpu_t * vcpu,
 		case 11:
 		case 12:
 			if (curmode == CPSR_MODE_FIQ) {
-				vcpu->sregs->gpr_usr[reg_num - 8] = reg_val;
+				arm_priv(vcpu)->gpr_usr[reg_num - 8] = reg_val;
 			} else {
 				if (mode == CPSR_MODE_FIQ) {
-					vcpu->sregs->gpr_fiq[reg_num - 8] = 
+					arm_priv(vcpu)->gpr_fiq[reg_num - 8] = 
 								reg_val;
 				} else {
 					regs->gpr[reg_num] = reg_val;
@@ -603,25 +603,25 @@ void cpu_vcpu_regmode_write(vmm_vcpu_t * vcpu,
 			switch (mode) {
 			case CPSR_MODE_USER:
 			case CPSR_MODE_SYSTEM:
-				vcpu->sregs->sp_usr = reg_val;
+				arm_priv(vcpu)->sp_usr = reg_val;
 				break;
 			case CPSR_MODE_FIQ:
-				vcpu->sregs->sp_fiq = reg_val;
+				arm_priv(vcpu)->sp_fiq = reg_val;
 				break;
 			case CPSR_MODE_IRQ:
-				vcpu->sregs->sp_irq = reg_val;
+				arm_priv(vcpu)->sp_irq = reg_val;
 				break;
 			case CPSR_MODE_SUPERVISOR:
-				vcpu->sregs->sp_svc = reg_val;
+				arm_priv(vcpu)->sp_svc = reg_val;
 				break;
 			case CPSR_MODE_ABORT:
-				vcpu->sregs->sp_abt = reg_val;
+				arm_priv(vcpu)->sp_abt = reg_val;
 				break;
 			case CPSR_MODE_UNDEFINED:
-				vcpu->sregs->sp_und = reg_val;
+				arm_priv(vcpu)->sp_und = reg_val;
 				break;
 			case CPSR_MODE_MONITOR:
-				vcpu->sregs->sp_mon = reg_val;
+				arm_priv(vcpu)->sp_mon = reg_val;
 				break;
 			default:
 				break;
@@ -631,25 +631,25 @@ void cpu_vcpu_regmode_write(vmm_vcpu_t * vcpu,
 			switch (mode) {
 			case CPSR_MODE_USER:
 			case CPSR_MODE_SYSTEM:
-				vcpu->sregs->lr_usr = reg_val;
+				arm_priv(vcpu)->lr_usr = reg_val;
 				break;
 			case CPSR_MODE_FIQ:
-				vcpu->sregs->lr_fiq = reg_val;
+				arm_priv(vcpu)->lr_fiq = reg_val;
 				break;
 			case CPSR_MODE_IRQ:
-				vcpu->sregs->lr_irq = reg_val;
+				arm_priv(vcpu)->lr_irq = reg_val;
 				break;
 			case CPSR_MODE_SUPERVISOR:
-				vcpu->sregs->lr_svc = reg_val;
+				arm_priv(vcpu)->lr_svc = reg_val;
 				break;
 			case CPSR_MODE_ABORT:
-				vcpu->sregs->lr_abt = reg_val;
+				arm_priv(vcpu)->lr_abt = reg_val;
 				break;
 			case CPSR_MODE_UNDEFINED:
-				vcpu->sregs->lr_und = reg_val;
+				arm_priv(vcpu)->lr_und = reg_val;
 				break;
 			case CPSR_MODE_MONITOR:
-				vcpu->sregs->lr_mon = reg_val;
+				arm_priv(vcpu)->lr_mon = reg_val;
 				break;
 			default:
 				break;
@@ -664,22 +664,22 @@ void cpu_vcpu_regmode_write(vmm_vcpu_t * vcpu,
 	}
 }
 
-int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
+int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 {
 	u32 ite, cpuid = ARM_CPUID_CORTEXA8;
 	/* Initialize User Mode Registers */
 	/* For both Orphan & Normal VCPUs */
-	vmm_memset(vcpu->uregs, 0, sizeof(vmm_user_regs_t));
-	vcpu->uregs->pc = vcpu->start_pc;
+	vmm_memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
+	arm_regs(vcpu)->pc = vcpu->start_pc;
 	if (vcpu->is_normal) {
-		vcpu->uregs->cpsr  = CPSR_ZERO_MASK;
-		vcpu->uregs->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
-		vcpu->uregs->cpsr |= CPSR_MODE_USER;
+		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
+		arm_regs(vcpu)->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
+		arm_regs(vcpu)->cpsr |= CPSR_MODE_USER;
 	} else {
-		vcpu->uregs->cpsr  = CPSR_ZERO_MASK;
-		vcpu->uregs->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
-		vcpu->uregs->cpsr |= CPSR_MODE_SUPERVISOR;
-		vcpu->uregs->sp = vcpu->start_sp;
+		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
+		arm_regs(vcpu)->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
+		arm_regs(vcpu)->cpsr |= CPSR_MODE_SUPERVISOR;
+		arm_regs(vcpu)->sp = vcpu->start_sp;
 	}
 	/* Initialize Supervisor Mode Registers */
 	/* For only Normal VCPUs */
@@ -687,38 +687,39 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 		return VMM_OK;
 	}
 	if (!vcpu->reset_count) {
-		vmm_memset(vcpu->sregs, 0, sizeof(vmm_super_regs_t));
-		vcpu->sregs->cpsr = CPSR_ASYNC_ABORT_DISABLED | 
+		vcpu->arch_priv = vmm_malloc(sizeof(arm_priv_t));
+		vmm_memset(arm_priv(vcpu), 0, sizeof(arm_priv_t));
+		arm_priv(vcpu)->cpsr = CPSR_ASYNC_ABORT_DISABLED | 
 				   CPSR_IRQ_DISABLED |
 				   CPSR_FIQ_DISABLED | 
 				   CPSR_MODE_SUPERVISOR;
 	} else {
 		for (ite = 0; ite < CPU_FIQ_GPR_COUNT; ite++) {
-			vcpu->sregs->gpr_usr[ite] = 0x0;
-			vcpu->sregs->gpr_fiq[ite] = 0x0;
+			arm_priv(vcpu)->gpr_usr[ite] = 0x0;
+			arm_priv(vcpu)->gpr_fiq[ite] = 0x0;
 		}
-		vcpu->sregs->sp_usr = 0x0;
-		vcpu->sregs->lr_usr = 0x0;
-		vcpu->sregs->sp_svc = 0x0;
-		vcpu->sregs->lr_svc = 0x0;
-		vcpu->sregs->spsr_svc = 0x0;
-		vcpu->sregs->sp_mon = 0x0;
-		vcpu->sregs->lr_mon = 0x0;
-		vcpu->sregs->spsr_mon = 0x0;
-		vcpu->sregs->sp_abt = 0x0;
-		vcpu->sregs->lr_abt = 0x0;
-		vcpu->sregs->spsr_abt = 0x0;
-		vcpu->sregs->sp_und = 0x0;
-		vcpu->sregs->lr_und = 0x0;
-		vcpu->sregs->spsr_und = 0x0;
-		vcpu->sregs->sp_irq = 0x0;
-		vcpu->sregs->lr_irq = 0x0;
-		vcpu->sregs->spsr_irq = 0x0;
-		vcpu->sregs->sp_fiq = 0x0;
-		vcpu->sregs->lr_fiq = 0x0;
-		vcpu->sregs->spsr_fiq = 0x0;
+		arm_priv(vcpu)->sp_usr = 0x0;
+		arm_priv(vcpu)->lr_usr = 0x0;
+		arm_priv(vcpu)->sp_svc = 0x0;
+		arm_priv(vcpu)->lr_svc = 0x0;
+		arm_priv(vcpu)->spsr_svc = 0x0;
+		arm_priv(vcpu)->sp_mon = 0x0;
+		arm_priv(vcpu)->lr_mon = 0x0;
+		arm_priv(vcpu)->spsr_mon = 0x0;
+		arm_priv(vcpu)->sp_abt = 0x0;
+		arm_priv(vcpu)->lr_abt = 0x0;
+		arm_priv(vcpu)->spsr_abt = 0x0;
+		arm_priv(vcpu)->sp_und = 0x0;
+		arm_priv(vcpu)->lr_und = 0x0;
+		arm_priv(vcpu)->spsr_und = 0x0;
+		arm_priv(vcpu)->sp_irq = 0x0;
+		arm_priv(vcpu)->lr_irq = 0x0;
+		arm_priv(vcpu)->spsr_irq = 0x0;
+		arm_priv(vcpu)->sp_fiq = 0x0;
+		arm_priv(vcpu)->lr_fiq = 0x0;
+		arm_priv(vcpu)->spsr_fiq = 0x0;
 		cpu_vcpu_cpsr_update(vcpu, 
-				     vcpu->uregs, 
+				     arm_regs(vcpu), 
 				     (CPSR_ZERO_MASK |
 					CPSR_ASYNC_ABORT_DISABLED | 
 					CPSR_IRQ_DISABLED |
@@ -727,7 +728,7 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 				     CPSR_ALLBITS_MASK);
 	}
 	if (!vcpu->reset_count) {
-		vcpu->sregs->features = 0;
+		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
 		case ARM_CPUID_CORTEXA8:
 			arm_set_feature(vcpu, ARM_FEATURE_V4T);
@@ -763,28 +764,28 @@ int vmm_vcpu_regs_init(vmm_vcpu_t * vcpu)
 	}
 #ifdef CONFIG_ARM32_FUNCSTATS
 	for (ite=0; ite < ARM_FUNCSTAT_MAX; ite++) {
-		vcpu->sregs->funcstat[ite].function_name = NULL;
-		vcpu->sregs->funcstat[ite].entry_count = 0;
-		vcpu->sregs->funcstat[ite].exit_count = 0;
-		vcpu->sregs->funcstat[ite].time = 0;
+		arm_priv(vcpu)->funcstat[ite].function_name = NULL;
+		arm_priv(vcpu)->funcstat[ite].entry_count = 0;
+		arm_priv(vcpu)->funcstat[ite].exit_count = 0;
+		arm_priv(vcpu)->funcstat[ite].time = 0;
 	}
 #endif
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
-void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
-			  vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
+void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
+			  struct vmm_vcpu * vcpu, arch_regs_t * regs)
 {
 	u32 ite;
 	/* Save user registers & banked registers */
 	if (tvcpu) {
-		tvcpu->uregs->pc = regs->pc;
-		tvcpu->uregs->lr = regs->lr;
-		tvcpu->uregs->sp = regs->sp;
+		arm_regs(tvcpu)->pc = regs->pc;
+		arm_regs(tvcpu)->lr = regs->lr;
+		arm_regs(tvcpu)->sp = regs->sp;
 		for (ite = 0; ite < CPU_GPR_COUNT; ite++) {
-			tvcpu->uregs->gpr[ite] = regs->gpr[ite];
+			arm_regs(tvcpu)->gpr[ite] = regs->gpr[ite];
 		}
-		tvcpu->uregs->cpsr = regs->cpsr;
+		arm_regs(tvcpu)->cpsr = regs->cpsr;
 		if(tvcpu->is_normal) {
 			cpu_vcpu_banked_regs_save(tvcpu, regs);
 		}
@@ -792,19 +793,19 @@ void vmm_vcpu_regs_switch(vmm_vcpu_t * tvcpu,
 	/* Switch CP15 context */
 	cpu_vcpu_cp15_switch_context(tvcpu, vcpu);
 	/* Restore user registers & banked registers */
-	regs->pc = vcpu->uregs->pc;
-	regs->lr = vcpu->uregs->lr;
-	regs->sp = vcpu->uregs->sp;
+	regs->pc = arm_regs(vcpu)->pc;
+	regs->lr = arm_regs(vcpu)->lr;
+	regs->sp = arm_regs(vcpu)->sp;
 	for (ite = 0; ite < CPU_GPR_COUNT; ite++) {
-		regs->gpr[ite] = vcpu->uregs->gpr[ite];
+		regs->gpr[ite] = arm_regs(vcpu)->gpr[ite];
 	}
-	regs->cpsr = vcpu->uregs->cpsr;
+	regs->cpsr = arm_regs(vcpu)->cpsr;
 	if (vcpu->is_normal) {
 		cpu_vcpu_banked_regs_restore(vcpu, regs);
 	}
 }
 
-void cpu_vcpu_dump_user_reg(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
+void cpu_vcpu_dump_user_reg(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 {
 	u32 ite;
 	vmm_printf("  Core Registers\n");
@@ -821,69 +822,69 @@ void cpu_vcpu_dump_user_reg(vmm_vcpu_t * vcpu, vmm_user_regs_t * regs)
 	vmm_printf("\n");
 }
 
-void vmm_vcpu_regs_dump(vmm_vcpu_t * vcpu)
+void arch_vcpu_regs_dump(struct vmm_vcpu * vcpu)
 {
 	u32 ite;
 	/* For both Normal & Orphan VCPUs */
-	cpu_vcpu_dump_user_reg(vcpu, vcpu->uregs);
+	cpu_vcpu_dump_user_reg(vcpu, arm_regs(vcpu));
 	/* For only Normal VCPUs */
 	if (!vcpu->is_normal) {
 		return;
 	}
 	vmm_printf("  User Mode Registers (Banked)\n");
 	vmm_printf("    SP=0x%08x       LR=0x%08x\n",
-		   vcpu->sregs->sp_usr, vcpu->sregs->lr_usr);
+		   arm_priv(vcpu)->sp_usr, arm_priv(vcpu)->lr_usr);
 	vmm_printf("  Supervisor Mode Registers (Banked)\n");
 	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   vcpu->sregs->sp_svc, vcpu->sregs->lr_svc,
-		   vcpu->sregs->spsr_svc);
+		   arm_priv(vcpu)->sp_svc, arm_priv(vcpu)->lr_svc,
+		   arm_priv(vcpu)->spsr_svc);
 	vmm_printf("  Monitor Mode Registers (Banked)\n");
 	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   vcpu->sregs->sp_mon, vcpu->sregs->lr_mon,
-		   vcpu->sregs->spsr_mon);
+		   arm_priv(vcpu)->sp_mon, arm_priv(vcpu)->lr_mon,
+		   arm_priv(vcpu)->spsr_mon);
 	vmm_printf("  Abort Mode Registers (Banked)\n");
 	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   vcpu->sregs->sp_abt, vcpu->sregs->lr_abt,
-		   vcpu->sregs->spsr_abt);
+		   arm_priv(vcpu)->sp_abt, arm_priv(vcpu)->lr_abt,
+		   arm_priv(vcpu)->spsr_abt);
 	vmm_printf("  Undefined Mode Registers (Banked)\n");
 	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   vcpu->sregs->sp_und, vcpu->sregs->lr_und,
-		   vcpu->sregs->spsr_und);
+		   arm_priv(vcpu)->sp_und, arm_priv(vcpu)->lr_und,
+		   arm_priv(vcpu)->spsr_und);
 	vmm_printf("  IRQ Mode Registers (Banked)\n");
 	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   vcpu->sregs->sp_irq, vcpu->sregs->lr_irq,
-		   vcpu->sregs->spsr_irq);
+		   arm_priv(vcpu)->sp_irq, arm_priv(vcpu)->lr_irq,
+		   arm_priv(vcpu)->spsr_irq);
 	vmm_printf("  FIQ Mode Registers (Banked)\n");
 	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x",
-		   vcpu->sregs->sp_fiq, vcpu->sregs->lr_fiq,
-		   vcpu->sregs->spsr_fiq);
+		   arm_priv(vcpu)->sp_fiq, arm_priv(vcpu)->lr_fiq,
+		   arm_priv(vcpu)->spsr_fiq);
 	for (ite = 0; ite < 5; ite++) {
 		if (ite % 3 == 0)
 			vmm_printf("\n");
 		vmm_printf("    R%02d=0x%08x  ", (ite + 8),
-			   vcpu->sregs->gpr_fiq[ite]);
+			   arm_priv(vcpu)->gpr_fiq[ite]);
 	}
 	vmm_printf("\n");
 }
 
-void vmm_vcpu_stat_dump(vmm_vcpu_t * vcpu)
+void arch_vcpu_stat_dump(struct vmm_vcpu * vcpu)
 {
 #ifdef CONFIG_ARM32_FUNCSTATS
 	int index;
 
-	if (!vcpu || !vcpu->sregs) {
+	if (!vcpu || !arm_priv(vcpu)) {
 		return;
 	}
 
 	vmm_printf("%-30s %-10s %s\n", "Function Name","Time/Call", "# Calls");
 
 	for (index=0; index < ARM_FUNCSTAT_MAX; index++) {
-		if (vcpu->sregs->funcstat[index].exit_count) { 
+		if (arm_priv(vcpu)->funcstat[index].exit_count) { 
 			vmm_printf("%-30s %-10u %u\n", 
-			vcpu->sregs->funcstat[index].function_name, 
-			(u32)vmm_udiv64(vcpu->sregs->funcstat[index].time, 
-			vcpu->sregs->funcstat[index].exit_count), 
-			vcpu->sregs->funcstat[index].exit_count); 
+			arm_priv(vcpu)->funcstat[index].function_name, 
+			(u32)vmm_udiv64(arm_priv(vcpu)->funcstat[index].time, 
+			arm_priv(vcpu)->funcstat[index].exit_count), 
+			arm_priv(vcpu)->funcstat[index].exit_count); 
 		} 
 	} 
 #else

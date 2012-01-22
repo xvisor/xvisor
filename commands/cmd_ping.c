@@ -35,20 +35,20 @@
 #define	MODULE_INIT			cmd_ping_init
 #define	MODULE_EXIT			cmd_ping_exit
 
-void cmd_ping_usage(vmm_chardev_t *cdev)
+void cmd_ping_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage: ");
 	vmm_cprintf(cdev, "   ping\n");
 }
 
-int cmd_ping_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	return VMM_OK;
 }
 
 VMM_DECLARE_CMD(ping, , cmd_ping_exec, NULL);
 
-static vmm_cmd_t cmd_ping = {
+static struct vmm_cmd cmd_ping = {
 	.name = "ping",
 	.desc = "ping target machine on network",
 	.usage = cmd_ping_usage,

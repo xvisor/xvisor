@@ -61,17 +61,17 @@ void __lock __cpu_spin_unlock(spinlock_t * lock)
 			     :"memory");
 }
 
-bool __lock vmm_cpu_spin_lock_check(spinlock_t * lock)
+bool __lock arch_cpu_spin_lock_check(spinlock_t * lock)
 {
 	return (lock->lock) ? TRUE : FALSE;
 }
 
-void __lock vmm_cpu_spin_lock(spinlock_t * lock)
+void __lock arch_cpu_spin_lock(spinlock_t * lock)
 {
 	return __cpu_spin_lock(lock);
 }
 
-void __lock vmm_cpu_spin_unlock(spinlock_t * lock)
+void __lock arch_cpu_spin_unlock(spinlock_t * lock)
 {
 	__cpu_spin_unlock(lock);
 }

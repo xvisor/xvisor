@@ -30,6 +30,7 @@
 #include <vmm_heap.h>
 #include <vmm_timer.h>
 #include <vmm_profiler.h>
+#include <vmm_math.h>
 #include <kallsyms.h>
 #include <libsort.h>
 
@@ -40,7 +41,7 @@
 #define	MODULE_INIT			cmd_profile_init
 #define	MODULE_EXIT			cmd_profile_exit
 
-static void cmd_profile_usage(vmm_chardev_t * cdev)
+static void cmd_profile_usage(struct vmm_chardev * cdev)
 {
 	vmm_cprintf(cdev, "Usage: \n");
 	vmm_cprintf(cdev, "   profile help\n");
@@ -50,24 +51,24 @@ static void cmd_profile_usage(vmm_chardev_t * cdev)
 	vmm_cprintf(cdev, "   profile dump [name|count|total_time|single_time]\n");
 }
 
-static int cmd_profile_help(vmm_chardev_t * cdev, char *dummy)
+static int cmd_profile_help(struct vmm_chardev * cdev, char *dummy)
 {
 	cmd_profile_usage(cdev);
 
 	return VMM_OK;
 }
 
-static int cmd_profile_start(vmm_chardev_t * cdev, char *dummy)
+static int cmd_profile_start(struct vmm_chardev * cdev, char *dummy)
 {
 	return vmm_profiler_start();
 }
 
-static int cmd_profile_stop(vmm_chardev_t * cdev, char *dummy)
+static int cmd_profile_stop(struct vmm_chardev * cdev, char *dummy)
 {
 	return vmm_profiler_stop();
 }
 
-static int cmd_profile_status(vmm_chardev_t * cdev, char *dummy)
+static int cmd_profile_status(struct vmm_chardev * cdev, char *dummy)
 {
 	if (vmm_profiler_isactive()) {
 		vmm_printf("profile function is running\n");
@@ -199,7 +200,7 @@ static u32 ns_to_micros(u64 count)
 	return (u32)vmm_udiv64(count, 1000);
 }
 
-static int cmd_profile_dump(vmm_chardev_t * cdev, char *filter_mode)
+static int cmd_profile_dump(struct vmm_chardev * cdev, char *filter_mode)
 {
 	int index = 0;
 	int (*cmp_function) (void *, size_t, size_t) = cmd_profile_count_cmp;
@@ -240,7 +241,7 @@ static int cmd_profile_dump(vmm_chardev_t * cdev, char *filter_mode)
 
 static const struct {
 	char *name;
-	int (*function) (vmm_chardev_t *, char *);
+	int (*function) (struct vmm_chardev *, char *);
 } const command[] = {
 	{"help", cmd_profile_help},
 	{"start", cmd_profile_start},
@@ -250,7 +251,7 @@ static const struct {
 	{NULL, NULL},
 };
 
-static int cmd_profile_exec(vmm_chardev_t * cdev, int argc, char **argv)
+static int cmd_profile_exec(struct vmm_chardev * cdev, int argc, char **argv)
 {
 	char *param = NULL;
 	int index = 0;
@@ -276,7 +277,7 @@ static int cmd_profile_exec(vmm_chardev_t * cdev, int argc, char **argv)
 	return VMM_EFAIL;
 }
 
-static vmm_cmd_t cmd_profile = {
+static struct vmm_cmd cmd_profile = {
 	.name = "profile",
 	.desc = "profile related commands",
 	.usage = cmd_profile_usage,

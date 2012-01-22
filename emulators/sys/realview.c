@@ -32,8 +32,8 @@
  * The original code is licensed under the GPL.
  */
 
-#include <vmm_math.h>
 #include <vmm_error.h>
+#include <vmm_math.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_modules.h>
@@ -41,6 +41,7 @@
 #include <vmm_devtree.h>
 #include <vmm_timer.h>
 #include <vmm_manager.h>
+#include <vmm_host_io.h>
 #include <vmm_devemu.h>
 
 #define MODULE_VARID			realview_emulator_module
@@ -56,7 +57,7 @@
 #define REALVIEW_SYSID_VEXPRESS		0x01900000
 
 struct realview_sysctl {
-	vmm_guest_t *guest;
+	struct vmm_guest *guest;
 	vmm_spinlock_t lock;
 	u64 ref_100hz;
 	u64 ref_24mhz;
@@ -76,12 +77,13 @@ struct realview_sysctl {
 	u32 sys_cfgstat;
 };
 
-static int realview_emulator_read(vmm_emudev_t *edev,
+static int realview_emulator_read(struct vmm_emudev *edev,
 			    	  physical_addr_t offset, 
 				  void *dst, u32 dst_len)
 {
 	int rc = VMM_OK;
 	u32 regval = 0x0;
+	u64 tdiff;
 	struct realview_sysctl * s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
@@ -109,8 +111,8 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		regval = 0;
 		break;
 	case 0x24: /* 100HZ */
-		regval = vmm_udiv64((vmm_timer_timestamp() - s->ref_100hz), 
-								10000000);
+		tdiff = vmm_timer_timestamp() - s->ref_100hz;
+		regval = vmm_udiv64(tdiff, 10000000);
 		break;
 	case 0x28: /* CFGDATA1 */
 		regval = s->cfgdata1;
@@ -151,16 +153,20 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		regval = 0;
 		break;
 	case 0x5c: /* 24MHz */
+		tdiff = vmm_timer_timestamp() - s->ref_100hz;
 		/* Note: What we want is the below value 
-		 * regval = vmm_udiv64((vmm_timer_timestamp() - s->ref_24mhz) * 24, 1000);
+		 * regval = vmm_udiv64(tdiff * 24, 1000);
 		 * In integer arithmetic division by constant can be simplified
 		 * (a * 24) / 1000
 		 * = a * (24 / 1000)
 		 * = a * (3 / 125)
-		 * ~ a * (3 / 128) [because (3 / 125) ~ (3 / 128)]
-		 * ~ (a * 3) >> 7
+		 * = a * (3 / 128) * (128 / 125)
+		 * = a * (3 / 128) + a * (3 / 128) * (3 / 125)
+		 * ~ a * (3 / 128) + a * (3 / 128) * (3 / 128) 
+		 * ~ (a * 3) >> 7 + (a * 9) >> 14 
 		 */
-		regval = ((vmm_timer_timestamp() - s->ref_24mhz) * 3) >> 7;
+		tdiff = ((tdiff * 3) >> 7) + ((tdiff * 9) >> 14);
+		regval = tdiff;
 		break;
 	case 0x60: /* MISC */
 		regval = 0;
@@ -221,17 +227,13 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 		regval = (regval >> ((offset & 0x3) * 8));
 		switch (dst_len) {
 		case 1:
-			((u8 *)dst)[0] = regval & 0xFF;
+			*(u8 *)dst = regval & 0xFF;
 			break;
 		case 2:
-			((u8 *)dst)[0] = regval & 0xFF;
-			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
+			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
 			break;
 		case 4:
-			((u8 *)dst)[0] = regval & 0xFF;
-			((u8 *)dst)[1] = (regval >> 8) & 0xFF;
-			((u8 *)dst)[2] = (regval >> 16) & 0xFF;
-			((u8 *)dst)[3] = (regval >> 24) & 0xFF;
+			*(u32 *)dst = vmm_cpu_to_le32(regval);
 			break;
 		default:
 			rc = VMM_EFAIL;
@@ -242,7 +244,7 @@ static int realview_emulator_read(vmm_emudev_t *edev,
 	return rc;
 }
 
-static int realview_emulator_write(vmm_emudev_t *edev,
+static int realview_emulator_write(struct vmm_emudev *edev,
 				   physical_addr_t offset, 
 				   void *src, u32 src_len)
 {
@@ -253,19 +255,15 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 	switch (src_len) {
 	case 1:
 		regmask = 0xFFFFFF00;
-		regval = ((u8 *)src)[0];
+		regval = *(u8 *)src;
 		break;
 	case 2:
 		regmask = 0xFFFF0000;
-		regval = ((u8 *)src)[0];
-		regval |= (((u8 *)src)[1] << 8);
+		regval = vmm_le16_to_cpu(*(u16 *)src);
 		break;
 	case 4:
 		regmask = 0x00000000;
-		regval = ((u8 *)src)[0];
-		regval |= (((u8 *)src)[1] << 8);
-		regval |= (((u8 *)src)[2] << 16);
-		regval |= (((u8 *)src)[3] << 24);
+		regval = vmm_le32_to_cpu(*(u32 *)src);
 		break;
 	default:
 		return VMM_EFAIL;
@@ -408,7 +406,7 @@ static int realview_emulator_write(vmm_emudev_t *edev,
 	return rc;
 }
 
-static int realview_emulator_reset(vmm_emudev_t *edev)
+static int realview_emulator_reset(struct vmm_emudev *edev)
 {
 	struct realview_sysctl * s = edev->priv;
 
@@ -429,9 +427,9 @@ static int realview_emulator_reset(vmm_emudev_t *edev)
 	return VMM_OK;
 }
 
-static int realview_emulator_probe(vmm_guest_t *guest,
-				   vmm_emudev_t *edev,
-				   const vmm_emuid_t *eid)
+static int realview_emulator_probe(struct vmm_guest *guest,
+				   struct vmm_emudev *edev,
+				   const struct vmm_emuid *eid)
 {
 	int rc = VMM_OK;
 	struct realview_sysctl * s;
@@ -458,13 +456,14 @@ realview_emulator_probe_done:
 	return rc;
 }
 
-static int realview_emulator_remove(vmm_emudev_t *edev)
+static int realview_emulator_remove(struct vmm_emudev *edev)
 {
 	struct realview_sysctl * s = edev->priv;
 
-	edev->priv = NULL;
-
-	vmm_free(s);
+	if (s) {
+		vmm_free(s);
+		edev->priv = NULL;
+	}
 
 	return VMM_OK;
 }
@@ -475,7 +474,7 @@ static u32 realview_sysids[] = {
 	/* proc_id */ REALVIEW_PROCID_PBA8, 
 };
 
-static vmm_emuid_t realview_emuid_table[] = {
+static struct vmm_emuid realview_emuid_table[] = {
 	{ .type = "sys", 
 	  .compatible = "realview,pb-a8", 
 	  .data = &realview_sysids[0] 
@@ -483,7 +482,7 @@ static vmm_emuid_t realview_emuid_table[] = {
 	{ /* end of list */ },
 };
 
-static vmm_emulator_t realview_emulator = {
+static struct vmm_emulator realview_emulator = {
 	.name = "realview",
 	.match_table = realview_emuid_table,
 	.probe = realview_emulator_probe,

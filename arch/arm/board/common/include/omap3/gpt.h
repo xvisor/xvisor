@@ -27,6 +27,7 @@
 #define __OMAP3_GPT_H__
 
 #include <vmm_types.h>
+#include <vmm_host_irq.h>
 
 #define OMAP3_GPT1_BASE 			0x48318000
 #define OMAP3_GPT2_BASE 			0x49032000
@@ -183,7 +184,7 @@
 #define OMAP3_GPT_TOWR_OVF_WRAPPING_VALUE_S	0
 #define OMAP3_GPT_TOWR_OVF_WRAPPING_VALUE_M	0x00FFFFFF
 
-typedef struct {
+struct omap3_gpt_cfg {
 	physical_addr_t base_pa;
 	virtual_addr_t base_va;
 	u32 cm_domain;
@@ -193,7 +194,7 @@ typedef struct {
 	bool src_sys_clk;
 	u32 clk_hz;
 	u32 irq_no;
-}omap3_gpt_cfg_t;
+};
 
 u32 omap3_gpt_get_counter(u32 gpt_num);
 void omap3_gpt_disable(u32 gpt_num);
@@ -206,6 +207,6 @@ void omap3_gpt_oneshot(u32 gpt_num);
 void omap3_gpt_continuous(u32 gpt_num);
 int omap3_gpt_instance_init(u32 gpt_num, physical_addr_t prm_pa, 
 		vmm_host_irq_handler_t irq_handler);
-int omap3_gpt_global_init(u32 gpt_count, omap3_gpt_cfg_t *cfg);
+int omap3_gpt_global_init(u32 gpt_count, struct omap3_gpt_cfg *cfg);
 
 #endif

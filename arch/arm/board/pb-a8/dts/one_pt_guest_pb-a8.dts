@@ -73,6 +73,15 @@
 			aspace {
 				#address-cells = <1>;
 				#size-cells = <0>;
+				/* Pass through device access requires 
+				 * host IRQ to guest IRQ routing
+				 */
+				h2g_irq_map = </* Host => Guest */
+						  /* uart0 */
+						   45      44 
+						  /*  eth0 */
+						   60      60 
+					      >;
 
 				mem0 {
 					manifest_type = "alias";
@@ -182,9 +191,6 @@
 					compatible = "primecell,sp810";
 				};
 
-				/* Pass through device access requires 
-				 * host IRQ to guest IRQ routing
-				 */
 				gic0 {
 					manifest_type = "virtual";
 					address_type = "memory";
@@ -193,12 +199,6 @@
 					device_type = "pic";
 					compatible = "realview,gic";
 					parent_irq = <6>;
-					h2g_irq_map = </* Host => Guest */
-							  /* uart0 */
-							   45      44 
-							  /*  eth0 */
-							   60      60 
-						      >;
 				};
 
 				nor_flash {

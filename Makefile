@@ -373,7 +373,7 @@ oldconfig:
 %-defconfig:
 	$(V)mkdir -p $(OPENCONF_TMPDIR)
 	$(V)$(MAKE) -C tools/openconf defconfig
-	$(V)cp $(src_dir)/arch/$(ARCH)/board/configs/$@ $(OPENCONF_CONFIG)
+	$(V)cp $(src_dir)/arch/$(ARCH)/configs/$@ $(OPENCONF_CONFIG)
 	./tools/openconf/conf -s $(OPENCONF_INPUT)
 
 .PHONY: tags

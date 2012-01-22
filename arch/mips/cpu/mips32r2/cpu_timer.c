@@ -22,14 +22,14 @@
  * @brief source code for handling cpu timer functions
  */
 
-#include "vmm_types.h"
-#include "vmm_error.h"
-#include "vmm_host_irq.h"
-#include "vmm_stdio.h"
-#include "vmm_timer.h"
-#include "cpu_interrupts.h"
-#include "cpu_timer.h"
-#include "cpu_asm_macros.h"
+#include <vmm_types.h>
+#include <vmm_error.h>
+#include <vmm_host_irq.h>
+#include <vmm_stdio.h>
+#include <vmm_timer.h>
+#include <cpu_interrupts.h>
+#include <cpu_timer.h>
+#include <cpu_asm_macros.h>
 
 /** CPU frequency in MHz */
 #define VMM_CPU_FREQ_MHZ			100
@@ -50,7 +50,7 @@
 
 unsigned long long jiffies;
 
-void vmm_cpu_timer_enable(void)
+void arch_cpu_timer_enable(void)
 {
 	u32 sr = read_c0_status();
 	sr |= ((0x1UL << 7) << 8);
@@ -59,7 +59,7 @@ void vmm_cpu_timer_enable(void)
 	write_c0_compare(read_c0_count() + VMM_COUNTER_JIFFIES);
 }
 
-s32 handle_internal_timer_interrupt(vmm_user_regs_t *uregs)
+s32 handle_internal_timer_interrupt(arch_regs_t *uregs)
 {
 	jiffies++;
 	vmm_timer_clockevent_process(uregs);
@@ -67,7 +67,7 @@ s32 handle_internal_timer_interrupt(vmm_user_regs_t *uregs)
 	return 0;
 }
 
-u64 vmm_cpu_clocksource_cycles(void)
+u64 arch_cpu_clocksource_cycles(void)
 {
 	return read_c0_count();
 }
@@ -79,7 +79,7 @@ u32 ns2count(u64 ticks_nsecs)
 	return req_count;
 }
 
-int vmm_cpu_clockevent_start(u64 ticks_nsecs)
+int arch_cpu_clockevent_start(u64 ticks_nsecs)
 {
 	/* Enable the timer interrupts. */
 	u32 sr = read_c0_status();
@@ -92,12 +92,12 @@ int vmm_cpu_clockevent_start(u64 ticks_nsecs)
 	return VMM_OK;
 }
 
-int vmm_cpu_clockevent_setup(void)
+int arch_cpu_clockevent_setup(void)
 {
 	return VMM_OK;
 }
 
-int vmm_cpu_clockevent_shutdown(void)
+int arch_cpu_clockevent_shutdown(void)
 {
 	/* Disable the timer interrupts. */
 	u32 sr = read_c0_status();
@@ -107,32 +107,32 @@ int vmm_cpu_clockevent_shutdown(void)
 	return VMM_OK;
 }
 
-u64 vmm_cpu_clocksource_mask(void)
+u64 arch_cpu_clocksource_mask(void)
 {
 	return 0xFFFFFFFF;
 }
 
-u32 vmm_cpu_clocksource_mult(void)
+u32 arch_cpu_clocksource_mult(void)
 {
 	return vmm_timer_clocksource_khz2mult(1000, 20);
 }
 
-u32 vmm_cpu_clocksource_shift(void)
+u32 arch_cpu_clocksource_shift(void)
 {
 	return 20;
 }
 
-int vmm_cpu_clockevent_stop(void)
+int arch_cpu_clockevent_stop(void)
 {
 	return 0;
 }
 
-int vmm_cpu_clockevent_expire(void)
+int arch_cpu_clockevent_expire(void)
 {
 	return 0;
 }
 
-int vmm_cpu_clockevent_init(void)
+int arch_cpu_clockevent_init(void)
 {
 	/* Disable the timer interrupts. */
 	u32 sr = read_c0_status();
@@ -144,7 +144,7 @@ int vmm_cpu_clockevent_init(void)
 	return VMM_OK;
 }
 
-int vmm_cpu_clocksource_init(void)
+int arch_cpu_clocksource_init(void)
 {
 	/* Enable the monotonic count. */
 	u32 cause = read_c0_cause();

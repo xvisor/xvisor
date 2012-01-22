@@ -27,8 +27,8 @@
 #include <vmm_types.h>
 
 /** Emulate Priviledged Thumb instructions */
-int cpu_vcpu_emulate_thumb_inst(vmm_vcpu_t *vcpu, 
-				vmm_user_regs_t * regs, 
+int cpu_vcpu_emulate_thumb_inst(struct vmm_vcpu *vcpu, 
+				arch_regs_t * regs, 
 				bool is_hypercall);
 
 #endif

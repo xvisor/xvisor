@@ -22,39 +22,38 @@
  * @brief board specific progammable timer
  */
 
-#include <vmm_cpu.h>
-#include <vmm_board.h>
 #include <vmm_error.h>
 #include <vmm_timer.h>
 #include <vmm_host_aspace.h>
-#include <vmm_math.h>
+#include <arch_cpu.h>
+#include <arch_board.h>
 #include <pba8_board.h>
 #include <realview/timer.h>
 
 static virtual_addr_t pba8_timer0_base;
 static virtual_addr_t pba8_timer1_base;
 
-u64 vmm_cpu_clocksource_cycles(void)
+u64 arch_cpu_clocksource_cycles(void)
 {
 	return ~realview_timer_counter_value(pba8_timer1_base);
 }
 
-u64 vmm_cpu_clocksource_mask(void)
+u64 arch_cpu_clocksource_mask(void)
 {
 	return 0xFFFFFFFF;
 }
 
-u32 vmm_cpu_clocksource_mult(void)
+u32 arch_cpu_clocksource_mult(void)
 {
 	return vmm_timer_clocksource_khz2mult(1000, 20);
 }
 
-u32 vmm_cpu_clocksource_shift(void)
+u32 arch_cpu_clocksource_shift(void)
 {
 	return 20;
 }
 
-int __init vmm_cpu_clocksource_init(void)
+int __init arch_cpu_clocksource_init(void)
 {
 	int rc;
 	virtual_addr_t sctl_base;
@@ -92,12 +91,12 @@ int __init vmm_cpu_clocksource_init(void)
 	return VMM_OK;
 }
 
-int vmm_cpu_clockevent_stop(void)
+int arch_cpu_clockevent_stop(void)
 {
 	return realview_timer_event_stop(pba8_timer0_base);
 }
 
-static int pba8_timer0_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
+static int pba8_timer0_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 {
 	realview_timer_event_clearirq(pba8_timer0_base);
 
@@ -106,29 +105,29 @@ static int pba8_timer0_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
 	return VMM_OK;
 }
 
-int vmm_cpu_clockevent_expire(void)
+int arch_cpu_clockevent_expire(void)
 {
-	int i, rc;
+	int rc;
 
 	rc = realview_timer_event_start(pba8_timer0_base, 0);
-	if (rc) {
-		return rc;
+
+	if (!rc) {
+		/* FIXME: The polling loop below is fine with emulators but,
+		 * for real hardware we might require some soft delay to
+		 * avoid bus contention.
+		 */
+		while (!realview_timer_event_checkirq(pba8_timer0_base));
 	}
 
-	while (!realview_timer_event_checkirq(pba8_timer0_base)) {
-		/* FIXME: Relax a bit with some soft delay */
-		for (i = 0; i < 100; i++);
-	}
-
-	return VMM_OK;
+	return rc;
 }
 
-int vmm_cpu_clockevent_start(u64 tick_nsecs)
+int arch_cpu_clockevent_start(u64 tick_nsecs)
 {
 	return realview_timer_event_start(pba8_timer0_base, tick_nsecs);
 }
 
-int __init vmm_cpu_clockevent_init(void)
+int __init arch_cpu_clockevent_init(void)
 {
 	int rc;
 	virtual_addr_t sctl_base;

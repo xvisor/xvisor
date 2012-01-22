@@ -42,13 +42,13 @@ bool vmm_iscontrol(char c);
 bool vmm_isprintable(char c);
 
 /** Low-level print char function */
-int vmm_printchar(char **str, vmm_chardev_t *cdev, char c, bool block);
+int vmm_printchar(char **str, struct vmm_chardev *cdev, char c, bool block);
 
 /** Put character to default terminal */
 void vmm_putc(char ch);
 
 /** Put character to character device */
-void vmm_cputc(vmm_chardev_t *cdev, char ch);
+void vmm_cputc(struct vmm_chardev *cdev, char ch);
 
 /** Print formatted string to default terminal */
 int vmm_printf(const char *format, ...);
@@ -57,13 +57,13 @@ int vmm_printf(const char *format, ...);
 int vmm_sprintf(char *out, const char *format, ...);
 
 /** Print formatted string to character device */
-int vmm_cprintf(vmm_chardev_t *cdev, const char *format, ...);
+int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
 
 /** Panic & Print formatted message */
 int vmm_panic(const char *format, ...);
 
 /** Low-level scan character function */
-int vmm_scanchar(char **str, vmm_chardev_t *cdev, char *c, bool block);
+int vmm_scanchar(char **str, struct vmm_chardev *cdev, char *c, bool block);
 
 /** Get character from default terminal */
 char vmm_getc(void);
@@ -72,10 +72,10 @@ char vmm_getc(void);
 char *vmm_gets(char *s, int maxwidth, char endchar);
 
 /** Get character device used as default terminal */
-vmm_chardev_t *vmm_stdio_device(void);
+struct vmm_chardev *vmm_stdio_device(void);
 
 /** Change character device used as default terminal */
-int vmm_stdio_change_device(vmm_chardev_t * cdev);
+int vmm_stdio_change_device(struct vmm_chardev * cdev);
 
 /** Initialize standerd IO library */
 int vmm_stdio_init(void);

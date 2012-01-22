@@ -154,14 +154,14 @@
 #define CYGACC_CALL_IF_DELAY_US(X) udelay(X)
 
 /* H/W infomation struct */
-typedef struct hw_info_t {
+struct hw_info {
 	char *dev_name;
 	u32 offset;
 	u8 a0, a1, a2;
 	u32 flags;
-} hw_info_t;
+};
 
-typedef struct nic_priv_data {
+struct nic_priv_data {
 	u8* base;
 	u8* data;
 	u8* reset;
@@ -182,7 +182,7 @@ typedef struct nic_priv_data {
 	int rx_buf_start, rx_buf_end;
 	int initialized;
 	vmm_hyperthread_t *txrx_thread;
-} nic_priv_data_t;
+};
 
 /* ------------------------------------------------------------------------ */
 /* Register offsets */

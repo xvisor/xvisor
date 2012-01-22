@@ -30,7 +30,7 @@
 static virtual_addr_t uart_base = 0;
 extern virtual_addr_t isa_vbase;
 
-int vmm_defterm_getc(u8 *ch)
+int arch_defterm_getc(u8 *ch)
 {
 	if (uart_base) {
 		if (!uart_lowlevel_can_getc(uart_base, 1)) {
@@ -41,7 +41,7 @@ int vmm_defterm_getc(u8 *ch)
 	return VMM_OK;
 }
 
-int vmm_defterm_putc(u8 ch)
+int arch_defterm_putc(u8 ch)
 {
 	if (uart_base) {
 		if (!uart_lowlevel_can_putc(uart_base, 1)) {
@@ -52,7 +52,7 @@ int vmm_defterm_putc(u8 ch)
 	return VMM_OK;
 }
 
-int vmm_defterm_init(void)
+int arch_defterm_init(void)
 {
 	uart_base = isa_vbase + 0x3F8;
 	uart_lowlevel_init("ns8250", uart_base, 1, 115200, 1843200);

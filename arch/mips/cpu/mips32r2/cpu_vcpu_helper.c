@@ -22,29 +22,29 @@
  * @brief source of VCPU helper functions
  */
 
+#include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
-#include <cpu_asm_macros.h>
-#include <vmm_cpu.h>
-#include <cpu_mmu.h>
 #include <vmm_guest_aspace.h>
+#include <cpu_asm_macros.h>
+#include <cpu_mmu.h>
 
 extern char _stack_start;
 
 #define VMM_REGION_TYPE_ROM	0
 #define VMM_REGION_TYPE_RAM	1
 
-static int map_guest_region(vmm_vcpu_t *vcpu, int region_type, int tlb_index)
+static int map_guest_region(struct vmm_vcpu *vcpu, int region_type, int tlb_index)
 {
 	mips32_tlb_entry_t shadow_entry;
 	physical_addr_t gphys;
 	physical_addr_t hphys, paddr;
 	virtual_addr_t vaddr2map;
 	u32 gphys_size;
-	vmm_region_t *region;
-	vmm_guest_t *aguest = vcpu->guest;
+	struct vmm_region *region;
+	struct vmm_guest *aguest = vcpu->guest;
 
 	vaddr2map = (region_type == VMM_REGION_TYPE_ROM ? 0x3FC00000 : 0x0);
 	paddr = (region_type == VMM_REGION_TYPE_ROM ? 0x1FC00000 : 0x0);
@@ -100,74 +100,75 @@ static int map_guest_region(vmm_vcpu_t *vcpu, int region_type, int tlb_index)
 	shadow_entry.entrylo1._s_entrylo.cacheable = 0;
 	shadow_entry.entrylo1._s_entrylo.pfn = 0;
 
-	vmm_memcpy((void *)&vcpu->sregs->shadow_tlb_entries[tlb_index],
+	vmm_memcpy((void *)&mips_sregs(vcpu)->shadow_tlb_entries[tlb_index],
 		   (void *)&shadow_entry, sizeof(mips32_tlb_entry_t));
 
 	return VMM_OK;
 }
 
-static  __attribute__((unused)) int map_vcpu_ram(vmm_vcpu_t *vcpu)
+static  __attribute__((unused)) int map_vcpu_ram(struct vmm_vcpu *vcpu)
 {
 	return map_guest_region(vcpu, VMM_REGION_TYPE_RAM, 1);
 }
 
-static  __attribute__((unused)) int map_vcpu_rom(vmm_vcpu_t *vcpu)
+static  __attribute__((unused)) int map_vcpu_rom(struct vmm_vcpu *vcpu)
 {
 	return map_guest_region(vcpu, VMM_REGION_TYPE_ROM, 0);
 }
 
-int vmm_vcpu_regs_init(vmm_vcpu_t *vcpu)
+int arch_vcpu_regs_init(struct vmm_vcpu *vcpu)
 {
-	vmm_memset(vcpu->uregs, 0, sizeof(vmm_user_regs_t));
+	vmm_memset(mips_uregs(vcpu), 0, sizeof(arch_regs_t));
 
         if (!vcpu->is_normal) {
 		/* For orphan vcpu */
-                vcpu->uregs->cp0_epc = vcpu->start_pc;
-                vcpu->uregs->regs[SP_IDX] = vcpu->start_sp;
-		vcpu->uregs->regs[S8_IDX] = vcpu->uregs->regs[SP_IDX];
-		vcpu->uregs->cp0_status = read_c0_status();
-		vcpu->uregs->cp0_entryhi = read_c0_entryhi();
+                mips_uregs(vcpu)->cp0_epc = vcpu->start_pc;
+                mips_uregs(vcpu)->regs[SP_IDX] = vcpu->start_sp;
+		mips_uregs(vcpu)->regs[S8_IDX] = mips_uregs(vcpu)->regs[SP_IDX];
+		mips_uregs(vcpu)->cp0_status = read_c0_status();
+		mips_uregs(vcpu)->cp0_entryhi = read_c0_entryhi();
         } else {
 		/* For normal vcpu running guests */
-		vcpu->sregs->cp0_regs[CP0_CAUSE_IDX] = 0x400;
-		vcpu->sregs->cp0_regs[CP0_STATUS_IDX] = 0x40004;
-		vcpu->uregs->cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
-		vcpu->uregs->cp0_entryhi = read_c0_entryhi();
-		vcpu->uregs->cp0_entryhi &= ASID_MASK;
-		vcpu->uregs->cp0_entryhi |= (0x2 << ASID_SHIFT);
-		vcpu->uregs->cp0_epc = vcpu->start_pc;
+		mips_sregs(vcpu)->cp0_regs[CP0_CAUSE_IDX] = 0x400;
+		mips_sregs(vcpu)->cp0_regs[CP0_STATUS_IDX] = 0x40004;
+		mips_uregs(vcpu)->cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
+		mips_uregs(vcpu)->cp0_entryhi = read_c0_entryhi();
+		mips_uregs(vcpu)->cp0_entryhi &= ASID_MASK;
+		mips_uregs(vcpu)->cp0_entryhi |= (0x2 << ASID_SHIFT);
+		mips_uregs(vcpu)->cp0_epc = vcpu->start_pc;
 
 		/* All guest run from 0 and fault */
-		vcpu->sregs->cp0_regs[CP0_EPC_IDX] = vcpu->start_pc;
+		mips_sregs(vcpu)->cp0_regs[CP0_EPC_IDX] = vcpu->start_pc;
 		/* Give guest the same CPU cap as we have */
-		vcpu->sregs->cp0_regs[CP0_PRID_IDX] = read_c0_prid();
+		mips_sregs(vcpu)->cp0_regs[CP0_PRID_IDX] = read_c0_prid();
 	}
 
 	return VMM_OK;
 }
 
-void vmm_vcpu_regs_switch(vmm_vcpu_t *tvcpu, vmm_vcpu_t *vcpu,
-			  vmm_user_regs_t *regs)
+void arch_vcpu_regs_switch(struct vmm_vcpu *tvcpu, 
+			  struct vmm_vcpu *vcpu,
+			  arch_regs_t *regs)
 {
 	if (tvcpu) {
-		vmm_memcpy(tvcpu->uregs, regs, sizeof(vmm_user_regs_t));
+		vmm_memcpy(mips_uregs(tvcpu), regs, sizeof(arch_regs_t));
 	}
 
 	if (vcpu) {
 		if (!vcpu->is_normal) {
-			vcpu->uregs->cp0_status = read_c0_status() & ~(0x01UL << CP0_STATUS_UM_SHIFT);
+			mips_uregs(vcpu)->cp0_status = read_c0_status() & ~(0x01UL << CP0_STATUS_UM_SHIFT);
 		} else {
-			vcpu->uregs->cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
+			mips_uregs(vcpu)->cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
 		}
 
-		vmm_memcpy(regs, vcpu->uregs, sizeof(vmm_user_regs_t));
+		vmm_memcpy(regs, mips_uregs(vcpu), sizeof(arch_regs_t));
 	}
 }
 
-void vmm_vcpu_regs_dump(vmm_vcpu_t *vcpu) 
+void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu) 
 {
 }
 
-void vmm_vcpu_stat_dump(vmm_vcpu_t *vcpu) 
+void arch_vcpu_stat_dump(struct vmm_vcpu *vcpu) 
 {
 }

@@ -22,7 +22,7 @@
  * @brief source code for vcpu irq processing
  */
 
-#include <vmm_cpu.h>
+#include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
@@ -30,12 +30,11 @@
 #include <vmm_devtree.h>
 #include <vmm_vcpu_irq.h>
 
-void vmm_vcpu_irq_process(vmm_user_regs_t * regs)
+void vmm_vcpu_irq_process(arch_regs_t * regs)
 {
 	int irq_no;
-	u32 i, irq_prio, irq_reas, tmp_prio;
-	vmm_vcpu_t * vcpu = vmm_scheduler_current_vcpu();
-	u32 irq_count = vmm_vcpu_irq_count(vcpu);
+	u32 i, irq_prio, irq_reas, tmp_prio, irq_count;
+	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 
 	/* Sanity Checks */
 	if (vcpu == NULL) {
@@ -46,6 +45,9 @@ void vmm_vcpu_irq_process(vmm_user_regs_t * regs)
 	if (!vcpu->is_normal) {
 		return;
 	}
+
+	/* Get irq count */
+	irq_count = arch_vcpu_irq_count(vcpu);
 
 	/* Find the irq number to process */
 	irq_no = -1;
@@ -53,18 +55,18 @@ void vmm_vcpu_irq_process(vmm_user_regs_t * regs)
 	irq_reas = 0x0;
 	for (i = 0; i < irq_count; i++) {
 		if (irq_no == -1) {
-			if (vcpu->irqs->assert[i]) {
+			if (vcpu->irqs.assert[i]) {
 				irq_no = i;
-				irq_prio = vmm_vcpu_irq_priority(vcpu, irq_no);
-				irq_reas = vcpu->irqs->reason[irq_no];
+				irq_prio = arch_vcpu_irq_priority(vcpu, irq_no);
+				irq_reas = vcpu->irqs.reason[irq_no];
 			}
 		} else {
-			if (vcpu->irqs->assert[i]) {
-				tmp_prio = vmm_vcpu_irq_priority(vcpu, i);
+			if (vcpu->irqs.assert[i]) {
+				tmp_prio = arch_vcpu_irq_priority(vcpu, i);
 				if (tmp_prio > irq_prio) {
 					irq_no = i;
 					irq_prio = tmp_prio;
-					irq_reas = vcpu->irqs->reason[irq_no];
+					irq_reas = vcpu->irqs.reason[irq_no];
 				}
 			}
 		}
@@ -72,23 +74,20 @@ void vmm_vcpu_irq_process(vmm_user_regs_t * regs)
 
 	/* If irq number found then execute it */
 	if (-1 < irq_no) {
-		if (vmm_vcpu_irq_execute(vcpu, regs, irq_no, irq_reas) == VMM_OK) {
-			vcpu->irqs->reason[irq_no] = 0x0;
-			vcpu->irqs->assert[irq_no] = FALSE;
-			vcpu->irqs->execute_count++;
+		if (arch_vcpu_irq_execute(vcpu, regs, irq_no, irq_reas) == VMM_OK) {
+			vcpu->irqs.reason[irq_no] = 0x0;
+			vcpu->irqs.assert[irq_no] = FALSE;
+			vcpu->irqs.execute_count++;
 		}
 	}
 }
 
-void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason)
+void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 {
-	u32 irq_count = vmm_vcpu_irq_count(vcpu);
+	u32 irq_count;
 
 	/* Sanity Checks */
 	if (vcpu == NULL) {
-		return;
-	}
-	if (irq_count <= irq_no) {
 		return;
 	}
 
@@ -97,18 +96,31 @@ void vmm_vcpu_irq_assert(vmm_vcpu_t *vcpu, u32 irq_no, u32 reason)
 		return;
 	}
 
+	/* Get irq count */
+	irq_count = arch_vcpu_irq_count(vcpu);
+
+	if (irq_count <= irq_no) {
+		return;
+	}
+
 	/* Assert the irq */
-	if (!vcpu->irqs->assert[irq_no]) {
-		vcpu->irqs->reason[irq_no] = reason;
-		vcpu->irqs->assert[irq_no] = TRUE;
-		vcpu->irqs->assert_count++;
+	if (!vcpu->irqs.assert[irq_no]) {
+		vcpu->irqs.reason[irq_no] = reason;
+		vcpu->irqs.assert[irq_no] = TRUE;
+		vcpu->irqs.assert_count++;
+	}
+
+	/* If vcpu was waiting for irq then resume it. */
+	if (vcpu->irqs.wait_for_irq) {
+		vmm_manager_vcpu_resume(vcpu);
+		vcpu->irqs.wait_for_irq = FALSE;
 	}
 }
 
-void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu)
+void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu)
 {
 	/* Sanity check */
-	if (!vcpu) {
+	if (vcpu == NULL) {
 		return;
 	}
 
@@ -118,12 +130,35 @@ void vmm_vcpu_irq_deassert(vmm_vcpu_t *vcpu)
 	}
 
 	/* Increment deassert count */
-	vcpu->irqs->deassert_count++;
+	vcpu->irqs.deassert_count++;
 }
 
-int vmm_vcpu_irq_init(vmm_vcpu_t *vcpu)
+int vmm_vcpu_irq_wait(struct vmm_vcpu *vcpu)
+{
+	int rc = VMM_OK;
+
+	/* Sanity Checks */
+	if ((vcpu == NULL) || !vcpu->is_normal) {
+		return VMM_EFAIL;
+	}
+
+	/* Pause VCPU only if required */
+	if (!(rc = vmm_manager_vcpu_pause(vcpu))) {
+		/* Set wait for irq flag */
+		vcpu->irqs.wait_for_irq = TRUE;
+	}
+
+	return rc;
+}
+
+int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 {
 	u32 ite, irq_count;
+
+	/* Sanity Checks */
+	if (vcpu == NULL) {
+		return VMM_EFAIL;
+	}
 
 	/* For Orphan VCPU just return */
 	if (!vcpu->is_normal) {
@@ -131,31 +166,34 @@ int vmm_vcpu_irq_init(vmm_vcpu_t *vcpu)
 	}
 
 	/* Get irq count */
-	irq_count = vmm_vcpu_irq_count(vcpu);
+	irq_count = arch_vcpu_irq_count(vcpu);
 
 	/* Only first time */
 	if (!vcpu->reset_count) {
 		/* Clear the memory of irq */
-		vmm_memset(vcpu->irqs, 0, sizeof(vmm_vcpu_irqs_t));
+		vmm_memset(&vcpu->irqs, 0, sizeof(struct vmm_vcpu_irqs));
 
 		/* Allocate memory for arrays */
-		vcpu->irqs->assert = vmm_malloc(sizeof(bool) * irq_count);
-		vcpu->irqs->reason = vmm_malloc(sizeof(u32) * irq_count);
+		vcpu->irqs.assert = vmm_malloc(sizeof(bool) * irq_count);
+		vcpu->irqs.reason = vmm_malloc(sizeof(u32) * irq_count);
 	}
 
 	/* Set default irq depth */
-	vcpu->irqs->depth = 0;
+	vcpu->irqs.depth = 0;
 
 	/* Set default assert & deassert count */
-	vcpu->irqs->assert_count = 0;
-	vcpu->irqs->execute_count = 0;
-	vcpu->irqs->deassert_count = 0;
+	vcpu->irqs.assert_count = 0;
+	vcpu->irqs.execute_count = 0;
+	vcpu->irqs.deassert_count = 0;
 
 	/* Reset irq processing data structures for VCPU */
 	for (ite = 0; ite < irq_count; ite++) {
-		vcpu->irqs->reason[ite] = 0;
-		vcpu->irqs->assert[ite] = FALSE;
+		vcpu->irqs.reason[ite] = 0;
+		vcpu->irqs.assert[ite] = FALSE;
 	}
+
+	/* Clear wait for irq flag */
+	vcpu->irqs.wait_for_irq = FALSE;
 
 	return VMM_OK;
 }

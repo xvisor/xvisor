@@ -26,38 +26,36 @@
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
 #include <pba8_board.h>
-#include <serial/pl01x.h>
+#include <serial/pl011.h>
 
 #define	PBA8_DEFAULT_UART_BASE			REALVIEW_PBA8_UART0_BASE
-#define	PBA8_DEFAULT_UART_TYPE			PL01X_TYPE_1
 #define	PBA8_DEFAULT_UART_INCLK			24000000
 #define	PBA8_DEFAULT_UART_BAUD			115200
 
 static virtual_addr_t pba8_defterm_base;
 
-int vmm_defterm_putc(u8 ch)
+int arch_defterm_putc(u8 ch)
 {
-	if (!pl01x_lowlevel_can_putc(pba8_defterm_base, PBA8_DEFAULT_UART_TYPE)) {
+	if (!pl011_lowlevel_can_putc(pba8_defterm_base)) {
 		return VMM_EFAIL;
 	}
-	pl01x_lowlevel_putc(pba8_defterm_base, PBA8_DEFAULT_UART_TYPE, ch);
+	pl011_lowlevel_putc(pba8_defterm_base, ch);
 	return VMM_OK;
 }
 
-int vmm_defterm_getc(u8 *ch)
+int arch_defterm_getc(u8 * ch)
 {
-	if (!pl01x_lowlevel_can_getc(pba8_defterm_base, PBA8_DEFAULT_UART_TYPE)) {
+	if (!pl011_lowlevel_can_getc(pba8_defterm_base)) {
 		return VMM_EFAIL;
 	}
-	*ch = pl01x_lowlevel_getc(pba8_defterm_base, PBA8_DEFAULT_UART_TYPE);
+	*ch = pl011_lowlevel_getc(pba8_defterm_base);
 	return VMM_OK;
 }
 
-int __init vmm_defterm_init(void)
+int __init arch_defterm_init(void)
 {
 	pba8_defterm_base = vmm_host_iomap(PBA8_DEFAULT_UART_BASE, 0x1000);
-	pl01x_lowlevel_init(pba8_defterm_base,
-			    PBA8_DEFAULT_UART_TYPE,
+	pl011_lowlevel_init(pba8_defterm_base,
 			    PBA8_DEFAULT_UART_BAUD, PBA8_DEFAULT_UART_INCLK);
 	return VMM_OK;
 }

@@ -24,20 +24,20 @@
 #ifndef _VMM_TIMER_H__
 #define _VMM_TIMER_H__
 
+#include <arch_regs.h>
 #include <vmm_types.h>
-#include <vmm_list.h>
-#include <vmm_regs.h>
 #include <vmm_math.h>
+#include <vmm_list.h>
 #include <vmm_spinlocks.h>
 
-typedef struct vmm_timer_event vmm_timer_event_t;
+struct vmm_timer_event;
 
-typedef void (*vmm_timer_event_handler_t) (vmm_timer_event_t * event);
+typedef void (*vmm_timer_event_handler_t) (struct vmm_timer_event * event);
 
 struct vmm_timer_event {
 	struct dlist cpu_head;
 	struct dlist head;
-	vmm_user_regs_t * cpu_regs;
+	arch_regs_t * regs;
 	char name[32];
 	bool active;
 	u64 expiry_tstamp;
@@ -65,33 +65,33 @@ static inline u32 vmm_timer_clocksource_hz2mult(u32 hz, u32 shift)
 }
 
 /** Process timer event (Must be called from somewhere) */
-void vmm_timer_clockevent_process(vmm_user_regs_t * regs);
+void vmm_timer_clockevent_process(arch_regs_t * regs);
 
 /** Start a timer event */
-int vmm_timer_event_start(vmm_timer_event_t * ev, u64 duration_nsecs);
+int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs);
 
 /** Restart a timer event */
-int vmm_timer_event_restart(vmm_timer_event_t * ev);
+int vmm_timer_event_restart(struct vmm_timer_event * ev);
 
 /** Expire a timer event */
-int vmm_timer_event_expire(vmm_timer_event_t * ev);
+int vmm_timer_event_expire(struct vmm_timer_event * ev);
 
 /** Stop a timer event */
-int vmm_timer_event_stop(vmm_timer_event_t * ev);
+int vmm_timer_event_stop(struct vmm_timer_event * ev);
 
 /** Create a timer event */
-vmm_timer_event_t * vmm_timer_event_create(const char *name,
+struct vmm_timer_event * vmm_timer_event_create(const char *name,
 					   vmm_timer_event_handler_t handler,
 					   void * priv);
 
 /** Destroy a timer event */
-int vmm_timer_event_destroy(vmm_timer_event_t * ev);
+int vmm_timer_event_destroy(struct vmm_timer_event * ev);
 
 /** Find a timer event */
-vmm_timer_event_t *vmm_timer_event_find(const char *name);
+struct vmm_timer_event *vmm_timer_event_find(const char *name);
 
 /** Retrive timer event with given index */
-vmm_timer_event_t *vmm_timer_event_get(int index);
+struct vmm_timer_event *vmm_timer_event_get(int index);
 
 /** Count number of timer events */
 u32 vmm_timer_event_count(void);

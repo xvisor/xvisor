@@ -22,13 +22,14 @@
  * @brief CPU specific source file for host virtual address space management.
  */
 
+#include <arch_cpu.h>
+#include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_string.h>
-#include <vmm_error.h>
+#include <vmm_host_aspace.h>
 #include <cpu_mmu.h>
 #include <cpu_asm_macros.h>
-#include <vmm_host_aspace.h>
-#include <vmm_cpu.h>
+
 
 extern u8 _code_end;
 extern u8 _code_start;
@@ -45,11 +46,11 @@ u32 nr_pg_szes[9] = {
 	TLB_PAGE_SIZE_256M
 };
 
-int vmm_cpu_aspace_map(virtual_addr_t va,
+int arch_cpu_aspace_map(virtual_addr_t va,
 		       virtual_size_t sz,
 		       physical_addr_t pa,
 		       u32 mem_flags);
-virtual_size_t vmm_cpu_code_base_size(void);
+virtual_size_t cpu_code_base_size(void);
 
 static pgd_t host_pgd[NUM_PGD_ENTRIES];
 
@@ -78,7 +79,7 @@ static virtual_size_t calculate_page_table_size(virtual_size_t sz,
 	return VMM_ROUNDUP2_PAGE_SIZE(need_sz);
 }
 
-static int vmm_cpu_boot_pagetable_init(physical_addr_t *pa,
+static int cpu_boot_pagetable_init(physical_addr_t *pa,
 				       virtual_addr_t *va,
 				       virtual_size_t *sz)
 {
@@ -120,11 +121,11 @@ static int vmm_cpu_boot_pagetable_init(physical_addr_t *pa,
 	 * Map virtual addresses from the end of VMM. Why? We don't
 	 * expect text section to fault.
 	 */
-	cva = vmm_cpu_code_vaddr_start() + vmm_cpu_code_size();
+	cva = arch_code_vaddr_start() + arch_code_size();
 
-	spte = (pte_t *)(CPU_TEXT_START + vmm_cpu_code_size() + (*sz)
+	spte = (pte_t *)(CPU_TEXT_START + arch_code_size() + (*sz)
 			 + (nr_ptabs * PAGE_SIZE));
-	c_ptab = (ptab_t *)(CPU_TEXT_START + vmm_cpu_code_size() + (*sz));
+	c_ptab = (ptab_t *)(CPU_TEXT_START + arch_code_size() + (*sz));
 
 	/* Initialize the PGD */
 	for (i = 0; i <= nr_ptabs; i++) {
@@ -141,13 +142,13 @@ static int vmm_cpu_boot_pagetable_init(physical_addr_t *pa,
 		cva += (NUM_PTAB_ENTRIES * PAGE_SIZE);
 	}
 
-	cva = vmm_cpu_code_vaddr_start() + vmm_cpu_code_size();
-	eva += cva + ((CONFIG_VAPOOL_SIZE << 20) - (vmm_cpu_code_size() + (*sz) + pg_tab_sz));
-	*pa += vmm_cpu_code_size();
+	cva = arch_code_vaddr_start() + arch_code_size();
+	eva += cva + ((CONFIG_VAPOOL_SIZE << 20) - (arch_code_size() + (*sz) + pg_tab_sz));
+	*pa += arch_code_size();
 
 	/* Create the page table entries for all the virtual addresses. */
 	for (; cva < eva;) {
-		if (vmm_cpu_aspace_map(cva, VMM_PAGE_SIZE, *pa, 0) != VMM_OK)
+		if (arch_cpu_aspace_map(cva, VMM_PAGE_SIZE, *pa, 0) != VMM_OK)
 			return VMM_EFAIL;
 
 		cva += VMM_PAGE_SIZE;
@@ -164,13 +165,13 @@ static int vmm_cpu_boot_pagetable_init(physical_addr_t *pa,
 	return VMM_OK;
 }
 
-int vmm_cpu_aspace_init(physical_addr_t * resv_pa,
+int arch_cpu_aspace_init(physical_addr_t * resv_pa,
 			virtual_addr_t * resv_va,
 			virtual_size_t * resv_sz)
 {
 	u32 c0_sr;
 
-	if (vmm_cpu_boot_pagetable_init(resv_pa, resv_va, resv_sz) != VMM_OK)
+	if (cpu_boot_pagetable_init(resv_pa, resv_va, resv_sz) != VMM_OK)
 		return VMM_EFAIL;
 
 
@@ -185,7 +186,7 @@ int vmm_cpu_aspace_init(physical_addr_t * resv_pa,
 	return VMM_OK;
 }
 
-pte_t *vmm_cpu_va2pte(virtual_addr_t vaddr)
+pte_t *cpu_va2pte(virtual_addr_t vaddr)
 {
 	ptab_t *ptab;
 	pte_t *pte;
@@ -201,7 +202,7 @@ pte_t *vmm_cpu_va2pte(virtual_addr_t vaddr)
 	return pte;
 }
 
-static void vmm_cpu_create_pte(virtual_addr_t vaddr, physical_addr_t paddr,
+static void cpu_create_pte(virtual_addr_t vaddr, physical_addr_t paddr,
 			       u32 flags)
 {
 	pte_t *pte = NULL;
@@ -217,14 +218,14 @@ static void vmm_cpu_create_pte(virtual_addr_t vaddr, physical_addr_t paddr,
 	pte->flags = flags;
 }
 
-int vmm_cpu_aspace_map(virtual_addr_t va,
+int arch_cpu_aspace_map(virtual_addr_t va,
 			virtual_size_t sz,
 			physical_addr_t pa,
 			u32 mem_flags)
 {
 	switch (sz) {
 	case TLB_PAGE_SIZE_4K:
-		vmm_cpu_create_pte(va, pa, mem_flags);
+		cpu_create_pte(va, pa, mem_flags);
 		break;
 
 	case TLB_PAGE_SIZE_1K:
@@ -242,21 +243,21 @@ int vmm_cpu_aspace_map(virtual_addr_t va,
 	return VMM_OK;
 }
 
-int vmm_cpu_aspace_unmap(virtual_addr_t va,
+int arch_cpu_aspace_unmap(virtual_addr_t va,
 			 virtual_size_t sz)
 {
 	return VMM_OK;
 }
 
-int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
+int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 {
 	pte_t *pte = NULL;
 	ptab_t *ptab = NULL;
 	u32 ptab_id = ((va >> PTAB_SHIFT) & PTAB_MASK);
 	u32 pgd_id = ((va >> PGD_SHIFT) & PGD_MASK);
 
-	if (va < (vmm_cpu_code_vaddr_start() + vmm_cpu_code_size()))
-		*pa = (va - vmm_cpu_code_vaddr_start());
+	if (va < (arch_code_vaddr_start() + arch_code_size()))
+		*pa = (va - arch_code_vaddr_start());
 	else {
 		ptab = (ptab_t *)host_pgd[pgd_id];
 		pte = (pte_t *)ptab[ptab_id];
@@ -267,22 +268,22 @@ int vmm_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	return VMM_OK;
 }
 
-virtual_addr_t vmm_cpu_code_vaddr_start(void)
+virtual_addr_t arch_code_vaddr_start(void)
 {
 	return ((virtual_addr_t) 0xC0000000);
 }
 
-physical_addr_t vmm_cpu_code_paddr_start(void)
+physical_addr_t arch_code_paddr_start(void)
 {
 	return ((physical_addr_t) 0);
 }
 
-virtual_size_t vmm_cpu_code_base_size(void)
+virtual_size_t cpu_code_base_size(void)
 {
 	return (virtual_size_t)(&_code_end - &_code_start);
 }
 
-virtual_size_t vmm_cpu_code_size(void)
+virtual_size_t arch_code_size(void)
 {
-	return VMM_ROUNDUP2_PAGE_SIZE(vmm_cpu_code_base_size());
+	return VMM_ROUNDUP2_PAGE_SIZE(cpu_code_base_size());
 }

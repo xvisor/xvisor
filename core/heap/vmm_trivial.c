@@ -28,7 +28,7 @@
 #include <vmm_host_aspace.h>
 #include <heap/vmm_trivial.h>
 
-vmm_trivial_control_t heap_ctrl;
+static struct vmm_trivial_control heap_ctrl;
 
 void *vmm_malloc(virtual_size_t size)
 {

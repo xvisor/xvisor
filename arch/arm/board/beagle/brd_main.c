@@ -22,22 +22,22 @@
  * @brief main source file for board specific code
  */
 
+#include <omap3/config.h>
+#include <omap3/prcm.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <libfdt.h>
-#include <omap3/config.h>
-#include <omap3/prcm.h>
 
 extern u32 dt_blob_start;
 
-int vmm_board_ram_start(physical_addr_t * addr)
+int arch_board_ram_start(physical_addr_t * addr)
 {
 	int rc = VMM_OK;
-	fdt_fileinfo_t fdt;
-	fdt_node_header_t * fdt_node;
-	fdt_property_t * prop;
+	struct fdt_fileinfo fdt;
+	struct fdt_node_header * fdt_node;
+	struct fdt_property * prop;
 	
 	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
 	if (rc) {
@@ -63,12 +63,12 @@ int vmm_board_ram_start(physical_addr_t * addr)
 	return VMM_OK;
 }
 
-int vmm_board_ram_size(physical_size_t * size)
+int arch_board_ram_size(physical_size_t * size)
 {
 	int rc = VMM_OK;
-	fdt_fileinfo_t fdt;
-	fdt_node_header_t * fdt_node;
-	fdt_property_t * prop;
+	struct fdt_fileinfo fdt;
+	struct fdt_node_header * fdt_node;
+	struct fdt_property * prop;
 	
 	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
 	if (rc) {
@@ -94,24 +94,20 @@ int vmm_board_ram_size(physical_size_t * size)
 	return VMM_OK;
 }
 
-int vmm_devtree_populate(vmm_devtree_node_t ** root,
-			 char **string_buffer, size_t * string_buffer_size)
+int arch_devtree_populate(struct vmm_devtree_node ** root)
 {
 	int rc = VMM_OK;
-	fdt_fileinfo_t fdt;
+	struct fdt_fileinfo fdt;
 	
 	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
 	if (rc) {
 		return rc;
 	}
 
-	return libfdt_parse_devtree(&fdt, 
-				    root, 
-				    string_buffer, 
-				    string_buffer_size);
+	return libfdt_parse_devtree(&fdt, root);
 }
 
-int vmm_board_getclock(vmm_devtree_node_t * node, u32 * clock)
+int arch_board_getclock(struct vmm_devtree_node * node, u32 * clock)
 {
 	if (!node || !clock) {
 		return VMM_EFAIL;
@@ -120,19 +116,19 @@ int vmm_board_getclock(vmm_devtree_node_t * node, u32 * clock)
 	return VMM_OK;
 }
 
-int vmm_board_reset(void)
+int arch_board_reset(void)
 {
 	/* FIXME: TBD */
 	return VMM_OK;
 }
 
-int vmm_board_shutdown(void)
+int arch_board_shutdown(void)
 {
 	/* FIXME: TBD */
 	return VMM_OK;
 }
 
-int __init vmm_board_early_init(void)
+int __init arch_board_early_init(void)
 {
 	/*
 	 * TODO:
@@ -145,10 +141,10 @@ int __init vmm_board_early_init(void)
 	return 0;
 }
 
-int __init vmm_board_final_init(void)
+int __init arch_board_final_init(void)
 {
 	int rc;
-	vmm_devtree_node_t *node;
+	struct vmm_devtree_node *node;
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */

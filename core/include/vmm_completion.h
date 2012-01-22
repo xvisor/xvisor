@@ -28,11 +28,10 @@
 #include <vmm_waitqueue.h>
 
 #define vmm_completion				vmm_waitqueue
-#define vmm_completion_t			vmm_waitqueue_t
 
 #define INIT_COMPLETION(cptr)			INIT_WAITQUEUE(cptr)
 
-static inline bool vmm_completion_done(vmm_completion_t * cmpl)
+static inline bool vmm_completion_done(struct vmm_completion * cmpl)
 {
 	return vmm_waitqueue_count(cmpl) ? FALSE : TRUE;
 }

@@ -22,7 +22,7 @@
  * @brief Architecture specific math related functions
  */
 
-#include <vmm_math.h>
+#include <arch_math.h>
 
 u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder)
 {

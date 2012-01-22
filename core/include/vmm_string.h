@@ -27,15 +27,29 @@
 #include <vmm_types.h>
 
 size_t vmm_strlen(const char *s);
+
 char *vmm_strcpy(char *dest, const char *src);
+
+char *vmm_strncpy(char *dest, const char *src, size_t n);
+
 char *vmm_strcat(char *dest, const char *src);
+
 int vmm_strcmp(const char *a, const char *b);
+
 int vmm_strncmp(const char *a, const char *b, int n);
+
 int vmm_str2int(const char *s, unsigned int base);
+
+long long vmm_str2longlong(const char *s, unsigned int base);
+
 unsigned int vmm_str2uint(const char *s, unsigned int base);
 
+unsigned long long vmm_str2ulonglong(const char *s, unsigned int base);
+
 void *vmm_memcpy(void *dest, const void *src, size_t count);
+
 void *vmm_memset(void *dest, int c, size_t count);
+
 int vmm_memcmp(const void *s1, const void *s2, size_t count);
 
 #endif

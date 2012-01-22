@@ -35,8 +35,6 @@ struct vmm_waitqueue {
 	u32 vcpu_count;
 };
 
-typedef struct vmm_waitqueue vmm_waitqueue_t;
-
 #define INIT_WAITQUEUE(wqptr)	do { \
 				INIT_SPIN_LOCK(&((wqptr)->lock)); \
 				INIT_LIST_HEAD(&((wqptr)->vcpu_list)); \
@@ -44,18 +42,18 @@ typedef struct vmm_waitqueue vmm_waitqueue_t;
 				} while (0);
 
 /* Waiting VCPU count */
-u32 vmm_waitqueue_count(vmm_waitqueue_t * wq);
+u32 vmm_waitqueue_count(struct vmm_waitqueue * wq);
 
 /* Put current VCPU to sleep on given waitqueue */
-int vmm_waitqueue_sleep(vmm_waitqueue_t * wq);
+int vmm_waitqueue_sleep(struct vmm_waitqueue * wq);
 
 /* Wakeup VCPU from its waitqueue */
-int vmm_waitqueue_wake(vmm_vcpu_t * vcpu);
+int vmm_waitqueue_wake(struct vmm_vcpu * vcpu);
 
 /* Wakeup first VCPU in a given waitqueue */
-int vmm_waitqueue_wakefirst(vmm_waitqueue_t * wq);
+int vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq);
 
 /* Wakeup all VCPUs in a given waitqueue */
-int vmm_waitqueue_wakeall(vmm_waitqueue_t * wq);
+int vmm_waitqueue_wakeall(struct vmm_waitqueue * wq);
 
 #endif /* __VMM_WAITQUEUE_H__ */

@@ -23,11 +23,11 @@
  */
 
 #include <stdarg.h>
-#include <vmm_math.h>
+#include <arch_board.h>
 #include <vmm_error.h>
+#include <vmm_math.h>
 #include <vmm_string.h>
 #include <vmm_main.h>
-#include <vmm_board.h>
 #include <vmm_stdio.h>
 
 /* NOTE: assuming sizeof(void *) == sizeof(int) */
@@ -35,11 +35,11 @@
 #define PAD_RIGHT 1
 #define PAD_ZERO 2
 /* the following should be enough for 32 bit int */
-#define PRINT_BUF_LEN 16
+#define PRINT_BUF_LEN 64
 
 struct vmm_stdio_ctrl {
         vmm_spinlock_t lock;
-        vmm_chardev_t *cdev;
+        struct vmm_chardev *cdev;
 };
 
 static struct vmm_stdio_ctrl stdio_ctrl;
@@ -60,40 +60,25 @@ bool vmm_isprintable(char c)
 	return FALSE;
 }
 
-int vmm_printchar(char **str, vmm_chardev_t *cdev, char c, bool block)
+int vmm_printchar(char **str, struct vmm_chardev *cdev, char c, bool block)
 {
-	int rc = VMM_OK;
-	if (str) {
+	int rc ;
+	if (str && *str) {
 		**str = c;
 		++(*str);
+		rc = VMM_OK;
+	} else if (cdev) {
+		rc = ((vmm_chardev_dowrite(cdev, (u8 *)&c, 0, sizeof(c), 
+					   block)) ? VMM_OK : VMM_EFAIL);
 	} else {
-		if (cdev) {
-			if (!vmm_chardev_dowrite(cdev, 
-					(u8 *)&c, 0, sizeof(c), block)) {
-				if (!block) {
-					rc = VMM_EFAIL;
-				}
-			}
-		} else {
-			while ((rc = vmm_defterm_putc((u8)c))) {
-				if (!block) {
-					break;
-				}
-			}
-		}
+		while (((rc = arch_defterm_putc((u8)c)) == VMM_EFAIL) 
+		       && block);
 	}
+
 	return rc;
 }
 
-void vmm_putc(char ch)
-{
-	if (ch == '\n') {
-		vmm_printchar(NULL, stdio_ctrl.cdev, '\r', TRUE);
-	}
-	vmm_printchar(NULL, stdio_ctrl.cdev, ch, TRUE);
-}
-
-void vmm_cputc(vmm_chardev_t *cdev, char ch)
+void vmm_cputc(struct vmm_chardev *cdev, char ch)
 {
 	if (ch == '\n') {
 		vmm_printchar(NULL, cdev, '\r', TRUE);
@@ -101,7 +86,12 @@ void vmm_cputc(vmm_chardev_t *cdev, char ch)
 	vmm_printchar(NULL, cdev, ch, TRUE);
 }
 
-static void printc(char **str, vmm_chardev_t *cdev, char ch)
+void vmm_putc(char ch)
+{
+	vmm_cputc(stdio_ctrl.cdev, ch);
+}
+
+static void printc(char **str, struct vmm_chardev *cdev, char ch)
 {
 	if (str) {
 		vmm_printchar(str, cdev, ch, TRUE);
@@ -110,7 +100,7 @@ static void printc(char **str, vmm_chardev_t *cdev, char ch)
 	}
 }
 
-static int prints(char **out, vmm_chardev_t *cdev, 
+static int prints(char **out, struct vmm_chardev *cdev, 
 		  const char *string, int width, int pad)
 {
 	int pc = 0;
@@ -146,13 +136,13 @@ static int prints(char **out, vmm_chardev_t *cdev,
 	return pc;
 }
 
-static int printi(char **out, vmm_chardev_t *cdev, 
-		  int i, int b, int sg, int width, int pad, int letbase)
+static int printi(char **out, struct vmm_chardev *cdev, 
+		  long long i, int b, int sg, int width, int pad, int letbase)
 {
 	char print_buf[PRINT_BUF_LEN];
 	char *s;
 	int t, neg = 0, pc = 0;
-	unsigned int u = i;
+	unsigned long long u = i;
 
 	if (i == 0) {
 		print_buf[0] = '0';
@@ -169,11 +159,11 @@ static int printi(char **out, vmm_chardev_t *cdev,
 	*s = '\0';
 
 	while (u) {
-		t = vmm_umod32(u, b);
+		t = vmm_umod64(u, b);
 		if (t >= 10)
 			t += letbase - '0' - 10;
 		*--s = t + '0';
-		u = vmm_udiv32(u, b);
+		u = vmm_udiv64(u, b);
 	}
 
 	if (neg) {
@@ -189,11 +179,12 @@ static int printi(char **out, vmm_chardev_t *cdev,
 	return pc + prints(out, cdev, s, width, pad);
 }
 
-static int print(char **out, vmm_chardev_t *cdev, const char *format, va_list args)
+static int print(char **out, struct vmm_chardev *cdev, const char *format, va_list args)
 {
 	int width, pad;
 	int pc = 0;
 	char scr[2];
+	long long tmp;
 
 	for (; *format != 0; ++format) {
 		if (*format == '%') {
@@ -222,26 +213,55 @@ static int print(char **out, vmm_chardev_t *cdev, const char *format, va_list ar
 			}
 			if (*format == 'd') {
 				pc +=
-				    printi(out, cdev, va_arg(args, int), 10, 1, width,
-					   pad, 'a');
+				    printi(out, cdev, va_arg(args, int), 
+					   10, 1, width, pad, '0');
 				continue;
 			}
 			if (*format == 'x') {
 				pc +=
-				    printi(out, cdev, va_arg(args, int), 16, 0, width,
-					   pad, 'a');
+				    printi(out, cdev, va_arg(args, unsigned int), 
+					   16, 0, width, pad, 'a');
 				continue;
 			}
 			if (*format == 'X') {
 				pc +=
-				    printi(out, cdev, va_arg(args, int), 16, 0, width,
-					   pad, 'A');
+				    printi(out, cdev, va_arg(args, unsigned int), 
+					   16, 0, width, pad, 'A');
 				continue;
 			}
 			if (*format == 'u') {
 				pc +=
-				    printi(out, cdev, va_arg(args, unsigned int), 10,
-					   0, width, pad, 'a');
+				    printi(out, cdev, va_arg(args, unsigned int), 
+					   10, 0, width, pad, 'a');
+				continue;
+			}
+			if (*format == 'l' && *(format + 1) == 'l') {
+				format += 2;
+				if (sizeof(long long) == 
+						sizeof(unsigned long)) {
+					tmp = va_arg(args, unsigned long long);
+				} else {
+					((unsigned long *)&tmp)[0] = 
+						va_arg(args, unsigned long);
+					((unsigned long *)&tmp)[1] = 
+						va_arg(args, unsigned long);
+				}
+				if (*format == 'u') {
+					format++;
+					pc += printi(out, cdev, tmp,
+						10, 0, width, pad, 'a');
+				} else if (*format == 'x') {
+					format++;
+					pc += printi(out, cdev, tmp,
+						16, 0, width, pad, 'a');
+				} else if (*format == 'X') {
+					format++;
+					pc += printi(out, cdev, tmp,
+						16, 0, width, pad, 'A');
+				} else {
+					pc += printi(out, cdev, tmp,
+						10, 1, width, pad, '0');
+				}
 				continue;
 			}
 			if (*format == 'c') {
@@ -282,7 +302,7 @@ int vmm_sprintf(char *out, const char *format, ...)
 	return retval;
 }
 
-int vmm_cprintf(vmm_chardev_t *cdev, const char *format, ...)
+int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 {
 	va_list args;
 	int retval;
@@ -303,41 +323,22 @@ int vmm_panic(const char *format, ...)
 	return retval;
 }
 
-int vmm_scanchar(char **str, vmm_chardev_t *cdev, char *c, bool block)
+int vmm_scanchar(char **str, struct vmm_chardev *cdev, char *c, bool block)
 {
-	u8 ch = 0;
-	bool got_input = FALSE;
-	int rc = VMM_OK;
-	if (str) {
+	int rc;
+
+	if (str && *str) {
 		*c = **str;
 		++(*str);
+		rc = VMM_OK;
+	} else if (cdev) {
+		rc = (vmm_chardev_doread(cdev, (u8 *)c, 0, sizeof(char), 
+					 block) ? VMM_OK : VMM_EFAIL);
 	} else {
-		got_input = FALSE;
-		if (cdev) {
-			if (!vmm_chardev_doread(cdev,
-						&ch, 0, sizeof(ch), block)) {
-				if (!block) {
-					rc = VMM_EFAIL;
-				}
-			} else {
-				got_input = TRUE;
-			}
-		} else {
-			while (!got_input) {
-				if ((rc = vmm_defterm_getc(&ch))) {
-					if (!block) {
-						break;
-					}
-				} else {
-					got_input = TRUE;
-				}
-			}
-		}
-		if (!got_input) {
-			ch = 0;
-		}
-		*c = ch;
+		while (((rc = arch_defterm_getc((u8 *)c)) == VMM_EFAIL) 
+		       && block);
 	}
+
 	return rc;
 }
 
@@ -491,12 +492,12 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 	return s;
 }
 
-vmm_chardev_t *vmm_stdio_device(void)
+struct vmm_chardev *vmm_stdio_device(void)
 {
 	return stdio_ctrl.cdev;
 }
 
-int vmm_stdio_change_device(vmm_chardev_t * cdev)
+int vmm_stdio_change_device(struct vmm_chardev * cdev)
 {
 	if (!cdev) {
 		return VMM_EFAIL;
@@ -521,5 +522,5 @@ int __init vmm_stdio_init(void)
 	stdio_ctrl.cdev = NULL;
 
 	/* Initialize default serial terminal (board specific) */
-	return vmm_defterm_init();
+	return arch_defterm_init();
 }

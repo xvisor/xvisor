@@ -39,7 +39,7 @@
 #define	MODULE_INIT			cmd_guest_init
 #define	MODULE_EXIT			cmd_guest_exit
 
-void cmd_guest_usage(vmm_chardev_t *cdev)
+void cmd_guest_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   guest help\n");
@@ -58,11 +58,11 @@ void cmd_guest_usage(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "   if guest_id is -1 then it means all guests\n");
 }
 
-void cmd_guest_list(vmm_chardev_t *cdev)
+void cmd_guest_list(struct vmm_chardev *cdev)
 {
 	int id, count;
 	char path[256];
-	vmm_guest_t *guest;
+	struct vmm_guest *guest;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	vmm_cprintf(cdev, "| %-5s| %-16s| %-52s|\n", 
@@ -80,7 +80,7 @@ void cmd_guest_list(vmm_chardev_t *cdev)
 			  "----------------------------------------\n");
 }
 
-int cmd_guest_load(vmm_chardev_t *cdev, int id, 
+int cmd_guest_load(struct vmm_chardev *cdev, int id, 
 		   physical_addr_t src_hphys_addr, 
 		   physical_addr_t dst_gphys_addr, 
 		   u32 len)
@@ -88,7 +88,7 @@ int cmd_guest_load(vmm_chardev_t *cdev, int id,
 #define GUEST_LOAD_BUF_SZ		256
 	u8 buf[GUEST_LOAD_BUF_SZ];
 	u32 bytes_loaded = 0, to_load = 0;
-	vmm_guest_t *guest;
+	struct vmm_guest *guest;
 
 	guest = vmm_manager_guest(id);
 	if (guest) {
@@ -124,10 +124,10 @@ int cmd_guest_load(vmm_chardev_t *cdev, int id,
 	return VMM_EFAIL;
 }
 
-int cmd_guest_reset(vmm_chardev_t *cdev, int id)
+int cmd_guest_reset(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(id);
+	struct vmm_guest *guest = vmm_manager_guest(id);
 	if (guest) {
 		if ((ret = vmm_manager_guest_reset(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to reset\n", 
@@ -142,10 +142,10 @@ int cmd_guest_reset(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_guest_kick(vmm_chardev_t *cdev, int id)
+int cmd_guest_kick(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(id);
+	struct vmm_guest *guest = vmm_manager_guest(id);
 	if (guest) {
 		if ((ret = vmm_manager_guest_kick(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to kick\n", 
@@ -160,10 +160,10 @@ int cmd_guest_kick(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_guest_pause(vmm_chardev_t *cdev, int id)
+int cmd_guest_pause(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(id);
+	struct vmm_guest *guest = vmm_manager_guest(id);
 	if (guest) {
 		;
 		if ((ret = vmm_manager_guest_pause(guest))) {
@@ -179,10 +179,10 @@ int cmd_guest_pause(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_guest_resume(vmm_chardev_t *cdev, int id)
+int cmd_guest_resume(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(id);
+	struct vmm_guest *guest = vmm_manager_guest(id);
 	if (guest) {
 		if ((ret = vmm_manager_guest_resume(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to resume\n", 
@@ -197,10 +197,10 @@ int cmd_guest_resume(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_guest_halt(vmm_chardev_t *cdev, int id)
+int cmd_guest_halt(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(id);
+	struct vmm_guest *guest = vmm_manager_guest(id);
 	if (guest) {
 		if ((ret = vmm_manager_guest_halt(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to halt\n", 
@@ -215,10 +215,10 @@ int cmd_guest_halt(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_guest_dumpreg(vmm_chardev_t *cdev, int id)
+int cmd_guest_dumpreg(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_guest_t *guest = vmm_manager_guest(id);
+	struct vmm_guest *guest = vmm_manager_guest(id);
 	if (guest) {
 		if ((ret = vmm_manager_guest_dumpreg(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to dumpreg\n", 
@@ -230,13 +230,13 @@ int cmd_guest_dumpreg(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-int cmd_guest_dumpmem(vmm_chardev_t *cdev, int id,
+int cmd_guest_dumpmem(struct vmm_chardev *cdev, int id,
 		      physical_addr_t gphys_addr, u32 len)
 {
 #define BYTES_PER_LINE 16
 	u8 buf[BYTES_PER_LINE];
 	u32 total_loaded = 0, loaded = 0, *mem;
-	vmm_guest_t *guest;
+	struct vmm_guest *guest;
 
 	len = (len + (BYTES_PER_LINE - 1)) & ~(BYTES_PER_LINE - 1);
 
@@ -266,7 +266,7 @@ int cmd_guest_dumpmem(vmm_chardev_t *cdev, int id,
 }
 
 
-int cmd_guest_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int id, count;
 	u32 src_addr, dest_addr, size;
@@ -399,7 +399,7 @@ int cmd_guest_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_OK;
 }
 
-static vmm_cmd_t cmd_guest = {
+static struct vmm_cmd cmd_guest = {
 	.name = "guest",
 	.desc = "control commands for guest",
 	.usage = cmd_guest_usage,

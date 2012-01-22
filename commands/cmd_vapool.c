@@ -22,9 +22,9 @@
  * @brief Implementation of vapool command
  */
 
-#include <vmm_math.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
+#include <vmm_math.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
@@ -37,7 +37,7 @@
 #define	MODULE_INIT			cmd_vapool_init
 #define	MODULE_EXIT			cmd_vapool_exit
 
-void cmd_vapool_usage(vmm_chardev_t *cdev)
+void cmd_vapool_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   vapool help\n");
@@ -45,7 +45,7 @@ void cmd_vapool_usage(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "   vapool bitmap [<column count>]\n");
 }
 
-void cmd_vapool_stats(vmm_chardev_t *cdev)
+void cmd_vapool_stats(struct vmm_chardev *cdev)
 {
 	u32 free = vmm_host_vapool_free_page_count();
 	u32 total = vmm_host_vapool_total_page_count();
@@ -57,7 +57,7 @@ void cmd_vapool_stats(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "Total Pages  : %d (0x%08x)\n", total, total);
 }
 
-void cmd_vapool_bitmap(vmm_chardev_t *cdev, int colcnt)
+void cmd_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 {
 	u32 ite, total = vmm_host_vapool_total_page_count();
 	virtual_addr_t base = vmm_host_vapool_base();
@@ -76,7 +76,7 @@ void cmd_vapool_bitmap(vmm_chardev_t *cdev, int colcnt)
 	vmm_cprintf(cdev, "\n");
 }
 
-int cmd_vapool_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_vapool_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int colcnt;
 	if (1 < argc) {
@@ -100,7 +100,7 @@ int cmd_vapool_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_EFAIL;
 }
 
-static vmm_cmd_t cmd_vapool = {
+static struct vmm_cmd cmd_vapool = {
 	.name = "vapool",
 	.desc = "virtual address space pool status",
 	.usage = cmd_vapool_usage,

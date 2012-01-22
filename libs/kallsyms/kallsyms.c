@@ -29,7 +29,6 @@
  *	Adapted the file to xvisor
  */
 
-#include <vmm_cpu.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 

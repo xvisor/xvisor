@@ -28,7 +28,8 @@
 #include <vmm_string.h>
 #include <vmm_netdev.h>
 
-int vmm_netdev_doioctl(vmm_netdev_t * ndev, int cmd, void *buf, size_t buf_len)
+int vmm_netdev_doioctl(struct vmm_netdev * ndev, 
+			int cmd, void *buf, size_t buf_len)
 {
 	int ret;
 
@@ -44,7 +45,7 @@ int vmm_netdev_doioctl(vmm_netdev_t * ndev, int cmd, void *buf, size_t buf_len)
 	return ret;
 }
 
-int vmm_netdev_doread(vmm_netdev_t * ndev,
+int vmm_netdev_doread(struct vmm_netdev * ndev,
 		      char *dest, size_t offset, size_t len)
 {
 	int ret;
@@ -61,7 +62,7 @@ int vmm_netdev_doread(vmm_netdev_t * ndev,
 	return ret;
 }
 
-int vmm_netdev_dowrite(vmm_netdev_t * ndev,
+int vmm_netdev_dowrite(struct vmm_netdev * ndev,
 		       char *src, size_t offset, size_t len)
 {
 	int ret;
@@ -78,9 +79,9 @@ int vmm_netdev_dowrite(vmm_netdev_t * ndev,
 	return ret;
 }
 
-int vmm_netdev_register(vmm_netdev_t * ndev)
+int vmm_netdev_register(struct vmm_netdev * ndev)
 {
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	if (ndev == NULL) {
 		return VMM_EFAIL;
@@ -89,7 +90,7 @@ int vmm_netdev_register(vmm_netdev_t * ndev)
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_malloc(sizeof(vmm_classdev_t));
+	cd = vmm_malloc(sizeof(struct vmm_classdev));
 	if (!cd) {
 		return VMM_EFAIL;
 	}
@@ -104,10 +105,10 @@ int vmm_netdev_register(vmm_netdev_t * ndev)
 	return VMM_OK;
 }
 
-int vmm_netdev_unregister(vmm_netdev_t * ndev)
+int vmm_netdev_unregister(struct vmm_netdev * ndev)
 {
 	int rc;
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	if (ndev == NULL) {
 		return VMM_EFAIL;
@@ -127,9 +128,9 @@ int vmm_netdev_unregister(vmm_netdev_t * ndev)
 	return rc;
 }
 
-vmm_netdev_t *vmm_netdev_find(const char *name)
+struct vmm_netdev *vmm_netdev_find(const char *name)
 {
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_find_classdev(VMM_NETDEV_CLASS_NAME, name);
 
@@ -140,9 +141,9 @@ vmm_netdev_t *vmm_netdev_find(const char *name)
 	return cd->priv;
 }
 
-vmm_netdev_t *vmm_netdev_get(int num)
+struct vmm_netdev *vmm_netdev_get(int num)
 {
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_classdev(VMM_NETDEV_CLASS_NAME, num);
 
@@ -161,9 +162,9 @@ u32 vmm_netdev_count(void)
 int vmm_netdev_init(void)
 {
 	int rc;
-	vmm_class_t *c;
+	struct vmm_class *c;
 
-	c = vmm_malloc(sizeof(vmm_class_t));
+	c = vmm_malloc(sizeof(struct vmm_class));
 	if (!c) {
 		return VMM_EFAIL;
 	}

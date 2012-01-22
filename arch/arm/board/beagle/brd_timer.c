@@ -23,18 +23,17 @@
  *
  */
 
-#include <vmm_cpu.h>
-#include <vmm_board.h>
+#include <arch_cpu.h>
+#include <arch_board.h>
+#include <omap3/intc.h>
+#include <omap3/gpt.h>
+#include <omap3/s32k-timer.h>
+#include <omap3/prcm.h>
 #include <vmm_error.h>
 #include <vmm_timer.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
-#include <vmm_math.h>
-#include <omap3/intc.h>
-#include <omap3/gpt.h>
-#include <omap3/s32k-timer.h>
-#include <omap3/prcm.h>
 
 #define BEAGLE_CLK_EVENT_GPT	0 
 
@@ -42,7 +41,7 @@
 #define BEAGLE_CLK_SRC_GPT	1 
 #endif
 
-omap3_gpt_cfg_t beagle_gpt_cfg[] = {
+struct omap3_gpt_cfg beagle_gpt_cfg[] = {
 	{
 		.base_pa =	OMAP3_GPT1_BASE,
 		.cm_domain =	OMAP3_WKUP_CM,
@@ -64,54 +63,54 @@ omap3_gpt_cfg_t beagle_gpt_cfg[] = {
 };
 
 #ifdef CONFIG_BEAGLE_CLKSRC_S32KT
-u64 vmm_cpu_clocksource_cycles(void)
+u64 arch_cpu_clocksource_cycles(void)
 {
 	return ((u64)omap3_s32k_get_counter());
 }
 
-u64 vmm_cpu_clocksource_mask(void)
+u64 arch_cpu_clocksource_mask(void)
 {
 	return 0xFFFFFFFF;
 }
 
-u32 vmm_cpu_clocksource_mult(void)
+u32 arch_cpu_clocksource_mult(void)
 {
 	return vmm_timer_clocksource_hz2mult(OMAP3_S32K_FREQ_HZ, 15);
 }
 
-u32 vmm_cpu_clocksource_shift(void)
+u32 arch_cpu_clocksource_shift(void)
 {
 	return 15;
 }
 
-int vmm_cpu_clocksource_init(void)
+int arch_cpu_clocksource_init(void)
 {
 	return omap3_s32k_init();
 }
 #else
-u64 vmm_cpu_clocksource_cycles(void)
+u64 arch_cpu_clocksource_cycles(void)
 {
 	return omap3_gpt_get_counter(BEAGLE_CLK_SRC_GPT);
 }
 
-u64 vmm_cpu_clocksource_mask(void)
+u64 arch_cpu_clocksource_mask(void)
 {
 	return 0xFFFFFFFF;
 }
 
-u32 vmm_cpu_clocksource_mult(void)
+u32 arch_cpu_clocksource_mult(void)
 {
 	return vmm_timer_clocksource_khz2mult((beagle_gpt_cfg[BEAGLE_CLK_SRC_GPT].clk_hz)/1000, 24);
 }
 
-u32 vmm_cpu_clocksource_shift(void)
+u32 arch_cpu_clocksource_shift(void)
 {
 	return 24;
 }
 
-int vmm_cpu_clocksource_init(void)
+int arch_cpu_clocksource_init(void)
 {
-	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(omap3_gpt_cfg_t), 
+	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct omap3_gpt_cfg), 
 			beagle_gpt_cfg);
 	omap3_gpt_instance_init(BEAGLE_CLK_SRC_GPT, OMAP3_GLOBAL_REG_PRM, NULL);
 	omap3_gpt_continuous(BEAGLE_CLK_SRC_GPT);
@@ -119,7 +118,7 @@ int vmm_cpu_clocksource_init(void)
 }
 #endif
 
-int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
+int arch_cpu_timer_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 {
 	omap3_gpt_ack_irq(BEAGLE_CLK_EVENT_GPT);
 	omap3_gpt_stop(BEAGLE_CLK_EVENT_GPT);
@@ -128,7 +127,7 @@ int vmm_cpu_timer_irq_handler(u32 irq_no, vmm_user_regs_t * regs, void *dev)
 	return VMM_OK;
 }
 
-int vmm_cpu_clockevent_start(u64 nsecs)
+int arch_cpu_clockevent_start(u64 nsecs)
 {
 	u32 usecs;
 
@@ -157,13 +156,13 @@ int vmm_cpu_clockevent_start(u64 nsecs)
 	return VMM_OK;
 }
 
-int vmm_cpu_clockevent_stop(void)
+int arch_cpu_clockevent_stop(void)
 {
 	omap3_gpt_stop(BEAGLE_CLK_EVENT_GPT);
 	return VMM_OK;
 }
 
-int vmm_cpu_clockevent_expire(void)
+int arch_cpu_clockevent_expire(void)
 {
 	omap3_gpt_load_start(BEAGLE_CLK_EVENT_GPT, 1);
 
@@ -174,15 +173,15 @@ int vmm_cpu_clockevent_expire(void)
 	return VMM_OK;
 }
 
-int vmm_cpu_clockevent_init(void)
+int arch_cpu_clockevent_init(void)
 {
 	int rc = VMM_OK;
 
-	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(omap3_gpt_cfg_t), 
+	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct omap3_gpt_cfg), 
 			beagle_gpt_cfg);
 
 	rc = omap3_gpt_instance_init(BEAGLE_CLK_EVENT_GPT, OMAP3_GLOBAL_REG_PRM,
-			&vmm_cpu_timer_irq_handler);
+			&arch_cpu_timer_irq_handler);
 	if (rc) {
 		return rc;
 	}

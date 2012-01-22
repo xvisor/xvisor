@@ -37,7 +37,7 @@
 #define	MODULE_INIT			cmd_vcpu_init
 #define	MODULE_EXIT			cmd_vcpu_exit
 
-static void cmd_vcpu_usage(vmm_chardev_t *cdev)
+static void cmd_vcpu_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   vcpu help\n");
@@ -51,18 +51,18 @@ static void cmd_vcpu_usage(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "   vcpu dumpstat <vcpu_id>\n");
 }
 
-static int cmd_vcpu_help(vmm_chardev_t *cdev, int dummy)
+static int cmd_vcpu_help(struct vmm_chardev *cdev, int dummy)
 {
 	cmd_vcpu_usage(cdev);
 	return VMM_OK;
 }
 
-static int cmd_vcpu_list(vmm_chardev_t *cdev, int dummy)
+static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 {
 	int id, count;
 	char state[10];
 	char path[256];
-	vmm_vcpu_t *vcpu;
+	struct vmm_vcpu *vcpu;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	vmm_cprintf(cdev, "| %-5s| %-6s| %-9s| %-16s| %-33s|\n", 
@@ -111,10 +111,10 @@ static int cmd_vcpu_list(vmm_chardev_t *cdev, int dummy)
 	return VMM_OK;
 }
 
-static int cmd_vcpu_reset(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_reset(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		if ((ret = vmm_manager_vcpu_reset(vcpu))) {
 			vmm_cprintf(cdev, "%s: Failed to reset\n", vcpu->name);
@@ -127,10 +127,10 @@ static int cmd_vcpu_reset(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-static int cmd_vcpu_kick(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_kick(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		if ((ret = vmm_manager_vcpu_kick(vcpu))) {
 			vmm_cprintf(cdev, "%s: Failed to kick\n", vcpu->name);
@@ -143,10 +143,10 @@ static int cmd_vcpu_kick(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-static int cmd_vcpu_pause(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_pause(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		;
 		if ((ret = vmm_manager_vcpu_pause(vcpu))) {
@@ -160,10 +160,10 @@ static int cmd_vcpu_pause(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-static int cmd_vcpu_resume(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_resume(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		if ((ret = vmm_manager_vcpu_resume(vcpu))) {
 			vmm_cprintf(cdev, "%s: Failed to resume\n", 
@@ -177,10 +177,10 @@ static int cmd_vcpu_resume(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-static int cmd_vcpu_halt(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_halt(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		if ((ret = vmm_manager_vcpu_halt(vcpu))) {
 			vmm_cprintf(cdev, "%s: Failed to halt\n", vcpu->name);
@@ -193,10 +193,10 @@ static int cmd_vcpu_halt(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-static int cmd_vcpu_dumpreg(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_dumpreg(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		if ((ret = vmm_manager_vcpu_dumpreg(vcpu))) {
 			vmm_cprintf(cdev, "%s: Failed to dumpreg\n", 
@@ -208,10 +208,10 @@ static int cmd_vcpu_dumpreg(vmm_chardev_t *cdev, int id)
 	return ret;
 }
 
-static int cmd_vcpu_dumpstat(vmm_chardev_t *cdev, int id)
+static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev, int id)
 {
 	int ret = VMM_EFAIL;
-	vmm_vcpu_t *vcpu = vmm_manager_vcpu(id);
+	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
 	if (vcpu) {
 		if ((ret = vmm_manager_vcpu_dumpstat(vcpu))) {
 			vmm_cprintf(cdev, "%s: Failed to dumpstat\n", 
@@ -225,7 +225,7 @@ static int cmd_vcpu_dumpstat(vmm_chardev_t *cdev, int id)
 
 static const struct {
 	char *name;
-	int (*function) (vmm_chardev_t *, int);
+	int (*function) (struct vmm_chardev *, int);
 } const command[] = {
 	{"help", cmd_vcpu_help},
 	{"list", cmd_vcpu_list},
@@ -239,7 +239,7 @@ static const struct {
 	{NULL, NULL},
 };
 	
-static int cmd_vcpu_exec(vmm_chardev_t *cdev, int argc, char **argv)
+static int cmd_vcpu_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int id = -1;
 	int index = 0;
@@ -265,7 +265,7 @@ static int cmd_vcpu_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_EFAIL;
 }
 
-static vmm_cmd_t cmd_vcpu = {
+static struct vmm_cmd cmd_vcpu = {
 	.name = "vcpu",
 	.desc = "control commands for vcpu",
 	.usage = cmd_vcpu_usage,

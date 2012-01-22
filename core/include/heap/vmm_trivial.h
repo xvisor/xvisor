@@ -32,6 +32,4 @@ struct vmm_trivial_control {
 	virtual_addr_t curoff;
 };
 
-typedef struct vmm_trivial_control vmm_trivial_control_t;
-
 #endif

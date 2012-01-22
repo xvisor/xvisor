@@ -24,7 +24,7 @@
 #define __CPU_GENEX_H_
 
 #include <vmm_types.h>
-#include <vmm_regs.h>
+#include <arch_regs.h>
 
 #define EXEC_CODE_MASK			0x7CUL
 #define EXEC_CODE_SHIFT			2
@@ -67,6 +67,6 @@ typedef enum {
 	EXEC_CODE_RESERVED10
 } exec_code_t;
 
-u32 do_general_exception(vmm_user_regs_t *uregs);
+u32 do_general_exception(arch_regs_t *uregs);
 
 #endif /* __CPU_GENEX_H_ */

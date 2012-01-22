@@ -25,16 +25,14 @@
 #ifndef __VMM_SEMAPHORE_H__
 #define __VMM_SEMAPHORE_H__
 
-#include <vmm_cpu.h>
+#include <vmm_types.h>
 #include <vmm_waitqueue.h>
 
 struct vmm_semaphore {
 	u32 limit;
 	atomic_t value;
-	vmm_waitqueue_t	wq;
+	struct vmm_waitqueue wq;
 };
-
-typedef struct vmm_semaphore vmm_semaphore_t;
 
 #define INIT_SEMAPHORE(sem, value)	do { \
 					(sem)->limit = (value); \
@@ -43,15 +41,15 @@ typedef struct vmm_semaphore vmm_semaphore_t;
 					} while (0);
 
 /** Check if semaphore is available */
-bool vmm_semaphore_avail(vmm_semaphore_t * sem);
+bool vmm_semaphore_avail(struct vmm_semaphore * sem);
 
 /** Get maximum value (or limit) of semaphore */
-u32 vmm_semaphore_limit(vmm_semaphore_t * sem);
+u32 vmm_semaphore_limit(struct vmm_semaphore * sem);
 
 /** Release (or increment) semaphore */
-int vmm_semaphore_up(vmm_semaphore_t * sem);
+int vmm_semaphore_up(struct vmm_semaphore * sem);
 
 /** Acquire (or decrement) semaphore */
-int vmm_semaphore_down(vmm_semaphore_t * sem);
+int vmm_semaphore_down(struct vmm_semaphore * sem);
 
 #endif /* __VMM_SEMAPHORE_H__ */

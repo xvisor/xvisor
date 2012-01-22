@@ -22,7 +22,7 @@
  * @brief Architecture specific math related functions
  */
 
-#include <vmm_math.h>
+#include <arch_math.h>
 
 static const unsigned char byte_reverse_table[] = 
 {
