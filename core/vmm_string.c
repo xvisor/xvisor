@@ -43,6 +43,15 @@ char *vmm_strcpy(char *dest, const char *src)
 	return dest;
 }
 
+char *vmm_strncpy(char *dest, const char *src, size_t n)
+{
+	u32 i;
+	for (i = 0; src[i] != '\0' && n; ++i, n--)
+		dest[i] = src[i];
+	dest[i] = '\0';
+	return dest;
+}
+
 char *vmm_strcat(char *dest, const char *src)
 {
 	char *save = dest;
@@ -88,9 +97,9 @@ int vmm_strncmp(const char *a, const char *b, int n)
 	}
 }
 
-int vmm_str2int(const char *s, unsigned int base)
+long long vmm_str2longlong(const char *s, unsigned int base)
 {
-	int val = 0;
+	long long val = 0;
 	unsigned int digit;
 	int neg = 0;
 
@@ -105,6 +114,12 @@ int vmm_str2int(const char *s, unsigned int base)
 		neg = 1;
 		s++;
 	} else if (*s == '+') {
+		s++;
+	}
+
+	if ((*s == '0') && (*(s+1) == 'x')) {
+		base = 16;
+		s++;
 		s++;
 	}
 
@@ -130,15 +145,26 @@ int vmm_str2int(const char *s, unsigned int base)
 	return val;
 }
 
-unsigned int vmm_str2uint(const char *s, unsigned int base)
+int vmm_str2int(const char *s, unsigned int base)
 {
-	unsigned int val = 0;
+	return vmm_str2longlong(s, base);
+}
+
+unsigned long long vmm_str2ulonglong(const char *s, unsigned int base)
+{
+	unsigned long long val = 0;
 	unsigned int digit;
 
 	if (base < 2 || base > 16)
 		return 0;
 
 	while (*s == ' ' || *s == '\t') {
+		s++;
+	}
+
+	if ((*s == '0') && (*(s+1) == 'x')) {
+		base = 16;
+		s++;
 		s++;
 	}
 
@@ -158,6 +184,11 @@ unsigned int vmm_str2uint(const char *s, unsigned int base)
 	}
 
 	return val;
+}
+
+unsigned int vmm_str2uint(const char *s, unsigned int base)
+{
+	return vmm_str2ulonglong(s, base);
 }
 
 void *vmm_memcpy(void *dest, const void *src, size_t count)

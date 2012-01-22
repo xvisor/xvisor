@@ -28,11 +28,12 @@
 #include <vmm_list.h>
 #include <vmm_ringbuf.h>
 
-typedef struct vmm_vserial_receiver vmm_vserial_receiver_t;
-typedef struct vmm_vserial vmm_vserial_t;
-typedef bool (*vmm_vserial_can_send_t) (vmm_vserial_t *vser);
-typedef int (*vmm_vserial_send_t) (vmm_vserial_t *vser, u8 data);
-typedef void (*vmm_vserial_recv_t) (vmm_vserial_t *vser, void * priv, u8 data);
+struct vmm_vserial_receiver;
+struct vmm_vserial;
+typedef bool (*vmm_vserial_can_send_t) (struct vmm_vserial *vser);
+typedef int (*vmm_vserial_send_t) (struct vmm_vserial *vser, u8 data);
+typedef void (*vmm_vserial_recv_t) (struct vmm_vserial *vser, 
+				    void * priv, u8 data);
 
 struct vmm_vserial_receiver {
 	struct dlist head;
@@ -46,41 +47,41 @@ struct vmm_vserial {
 	vmm_vserial_can_send_t can_send;
 	vmm_vserial_send_t send;
 	struct dlist receiver_list;
-	vmm_ringbuf_t * receive_buf;
+	struct vmm_ringbuf * receive_buf;
 	void *priv;
 };
 
 /** Send bytes to virtual serial port */
-u32 vmm_vserial_send(vmm_vserial_t * vser, u8 *src, u32 len);
+u32 vmm_vserial_send(struct vmm_vserial * vser, u8 *src, u32 len);
 
 /** Receive bytes on virtual serial port */
-u32 vmm_vserial_receive(vmm_vserial_t * vser, u8 *dst, u32 len);
+u32 vmm_vserial_receive(struct vmm_vserial * vser, u8 *dst, u32 len);
 
 /** Register receiver to a virtual serial port */
-int vmm_vserial_register_receiver(vmm_vserial_t * vser, 
+int vmm_vserial_register_receiver(struct vmm_vserial * vser, 
 				  vmm_vserial_recv_t recv, 
 				  void * priv);
 
 /** Unregister a virtual serial port */
-int vmm_vserial_unregister_receiver(vmm_vserial_t * vser,
+int vmm_vserial_unregister_receiver(struct vmm_vserial * vser,
 				    vmm_vserial_recv_t recv,
 				    void * priv);
 
 /** Alloc a virtual serial port */
-vmm_vserial_t * vmm_vserial_alloc(const char * name,
-				  vmm_vserial_can_send_t can_send,
-				  vmm_vserial_send_t send,
-				  u32 receive_buf_size,
-				  void * priv);
+struct vmm_vserial * vmm_vserial_alloc(const char * name,
+					vmm_vserial_can_send_t can_send,
+					vmm_vserial_send_t send,
+					u32 receive_buf_size,
+					void * priv);
 
 /** Free a virtual serial port */
-int vmm_vserial_free(vmm_vserial_t * vser);
+int vmm_vserial_free(struct vmm_vserial * vser);
 
 /** Find a virtual serial port with given name */
-vmm_vserial_t * vmm_vserial_find(const char *name);
+struct vmm_vserial * vmm_vserial_find(const char *name);
 
 /** Get a virtual serial port with given index */
-vmm_vserial_t * vmm_vserial_get(int index);
+struct vmm_vserial * vmm_vserial_get(int index);
 
 /** Count of available virtual serial ports */
 u32 vmm_vserial_count(void);

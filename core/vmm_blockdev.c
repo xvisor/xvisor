@@ -28,7 +28,7 @@
 #include <vmm_string.h>
 #include <vmm_blockdev.h>
 
-int vmm_blockdev_doioctl(vmm_blockdev_t * bdev,
+int vmm_blockdev_doioctl(struct vmm_blockdev * bdev,
 			 int cmd, void *buf, size_t buf_len)
 {
 	int ret;
@@ -45,7 +45,7 @@ int vmm_blockdev_doioctl(vmm_blockdev_t * bdev,
 	return ret;
 }
 
-int vmm_blockdev_doreadblk(vmm_blockdev_t * bdev,
+int vmm_blockdev_doreadblk(struct vmm_blockdev * bdev,
 			   void *dest, u32 blknum, u32 blkcount)
 {
 	int ret;
@@ -62,7 +62,7 @@ int vmm_blockdev_doreadblk(vmm_blockdev_t * bdev,
 	return ret;
 }
 
-int vmm_blockdev_dowriteblk(vmm_blockdev_t * bdev,
+int vmm_blockdev_dowriteblk(struct vmm_blockdev * bdev,
 			    void *src, u32 blknum, u32 blkcount)
 {
 	int ret;
@@ -79,9 +79,9 @@ int vmm_blockdev_dowriteblk(vmm_blockdev_t * bdev,
 	return ret;
 }
 
-int vmm_blockdev_register(vmm_blockdev_t * bdev)
+int vmm_blockdev_register(struct vmm_blockdev * bdev)
 {
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	if (bdev == NULL) {
 		return VMM_EFAIL;
@@ -90,7 +90,7 @@ int vmm_blockdev_register(vmm_blockdev_t * bdev)
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_malloc(sizeof(vmm_classdev_t));
+	cd = vmm_malloc(sizeof(struct vmm_classdev));
 	if (!cd) {
 		return VMM_EFAIL;
 	}
@@ -105,10 +105,10 @@ int vmm_blockdev_register(vmm_blockdev_t * bdev)
 	return VMM_OK;
 }
 
-int vmm_blockdev_unregister(vmm_blockdev_t * bdev)
+int vmm_blockdev_unregister(struct vmm_blockdev * bdev)
 {
 	int rc;
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	if (bdev == NULL) {
 		return VMM_EFAIL;
@@ -130,9 +130,9 @@ int vmm_blockdev_unregister(vmm_blockdev_t * bdev)
 	return rc;
 }
 
-vmm_blockdev_t *vmm_blockdev_find(const char *name)
+struct vmm_blockdev *vmm_blockdev_find(const char *name)
 {
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_find_classdev(VMM_BLOCKDEV_CLASS_NAME, name);
 
@@ -143,9 +143,9 @@ vmm_blockdev_t *vmm_blockdev_find(const char *name)
 	return cd->priv;
 }
 
-vmm_blockdev_t *vmm_blockdev_get(int num)
+struct vmm_blockdev *vmm_blockdev_get(int num)
 {
-	vmm_classdev_t *cd;
+	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_classdev(VMM_BLOCKDEV_CLASS_NAME, num);
 
@@ -164,9 +164,9 @@ u32 vmm_blockdev_count(void)
 int __init vmm_blockdev_init(void)
 {
 	int rc;
-	vmm_class_t *c;
+	struct vmm_class *c;
 
-	c = vmm_malloc(sizeof(vmm_class_t));
+	c = vmm_malloc(sizeof(struct vmm_class));
 	if (!c) {
 		return VMM_EFAIL;
 	}

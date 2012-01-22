@@ -28,66 +28,67 @@
 #include <vmm_manager.h>
 
 /** Handle translation fault for a VCPU */
-int cpu_vcpu_cp15_trans_fault(vmm_vcpu_t * vcpu, 
-			      vmm_user_regs_t * regs, 
+int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu * vcpu, 
+			      arch_regs_t * regs, 
 			      u32 far, u32 fs, u32 dom,
 			      u32 wnr, u32 xn, bool force_user);
 
 /** Handle access fault for a VCPU */
-int cpu_vcpu_cp15_access_fault(vmm_vcpu_t * vcpu, 
-			       vmm_user_regs_t * regs, 
+int cpu_vcpu_cp15_access_fault(struct vmm_vcpu * vcpu, 
+			       arch_regs_t * regs, 
 			       u32 far, u32 fs, u32 dom,
 			       u32 wnr, u32 xn);
 
 /** Handle domain fault for a VCPU */
-int cpu_vcpu_cp15_domain_fault(vmm_vcpu_t * vcpu, 
-			       vmm_user_regs_t * regs, 
+int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu * vcpu, 
+			       arch_regs_t * regs, 
 			       u32 far, u32 fs, u32 dom,
 			       u32 wnr, u32 xn);
 
 /** Handle permission fault for a VCPU */
-int cpu_vcpu_cp15_perm_fault(vmm_vcpu_t * vcpu, 
-			     vmm_user_regs_t * regs, 
+int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu * vcpu, 
+			     arch_regs_t * regs, 
 			     u32 far, u32 fs, u32 dom,
 			     u32 wnr, u32 xn);
 
 /** Read one registers from CP15 */
-bool cpu_vcpu_cp15_read(vmm_vcpu_t * vcpu, 
-			vmm_user_regs_t *regs,
+bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu, 
+			arch_regs_t *regs,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			u32 *data);
 
 /** Write one registers to CP15 */
-bool cpu_vcpu_cp15_write(vmm_vcpu_t * vcpu, 
-			 vmm_user_regs_t *regs,
+bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu, 
+			 arch_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data);
 
 /** Read from memory using VCPU CP15 */
-int cpu_vcpu_cp15_mem_read(vmm_vcpu_t * vcpu, 
-			   vmm_user_regs_t * regs,
+int cpu_vcpu_cp15_mem_read(struct vmm_vcpu * vcpu, 
+			   arch_regs_t * regs,
 			   virtual_addr_t addr, 
 			   void *dst, u32 dst_len, 
 			   bool force_unpriv);
 
 /** Write to memory using VCPU CP15 */
-int cpu_vcpu_cp15_mem_write(vmm_vcpu_t * vcpu, 
-			    vmm_user_regs_t * regs,
+int cpu_vcpu_cp15_mem_write(struct vmm_vcpu * vcpu, 
+			    arch_regs_t * regs,
 			    virtual_addr_t addr, 
 			    void *src, u32 src_len,
 			    bool force_unpriv);
 
 /* Read from memory using VCPU CP15 */
-virtual_addr_t cpu_vcpu_cp15_vector_addr(vmm_vcpu_t * vcpu, 
+virtual_addr_t cpu_vcpu_cp15_vector_addr(struct vmm_vcpu * vcpu, 
 					 u32 irq_no);
 
 /* Syncronize VCPU CP15 with change in VCPU mode */
-void cpu_vcpu_cp15_sync_cpsr(vmm_vcpu_t * vcpu);
+void cpu_vcpu_cp15_sync_cpsr(struct vmm_vcpu * vcpu);
 
 /** Switch CP15 context for given VCPU */
-void cpu_vcpu_cp15_switch_context(vmm_vcpu_t * tvcpu, vmm_vcpu_t * vcpu);
+void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu, 
+				  struct vmm_vcpu * vcpu);
 
 /** Initialize CP15 subsystem for a VCPU */
-int cpu_vcpu_cp15_init(vmm_vcpu_t * vcpu, u32 cpuid);
+int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid);
 
 #endif /* _CPU_VCPU_CP15_H */

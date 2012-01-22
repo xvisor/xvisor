@@ -23,16 +23,16 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_cpu.h>
-#include <vmm_regs.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
+#include <arch_cpu.h>
+#include <arch_regs.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate_thumb.h>
 
 /** FIXME: Emulate Priviledged Thumb instructions */
-int cpu_vcpu_emulate_thumb_inst(vmm_vcpu_t *vcpu, 
-				vmm_user_regs_t * regs,
+int cpu_vcpu_emulate_thumb_inst(struct vmm_vcpu *vcpu, 
+				arch_regs_t * regs,
 				bool is_hypercall)
 {
 	/* Sanity check */

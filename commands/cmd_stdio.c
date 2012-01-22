@@ -37,7 +37,7 @@
 #define	MODULE_INIT			cmd_stdio_init
 #define	MODULE_EXIT			cmd_stdio_exit
 
-void cmd_stdio_usage(vmm_chardev_t *cdev)
+void cmd_stdio_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   stdio help\n");
@@ -45,9 +45,9 @@ void cmd_stdio_usage(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev, "   stdio chdev <chardev_name>\n");
 }
 
-void cmd_stdio_curdev(vmm_chardev_t *cdev)
+void cmd_stdio_curdev(struct vmm_chardev *cdev)
 {
-	vmm_chardev_t *cd = vmm_stdio_device();
+	struct vmm_chardev *cd = vmm_stdio_device();
 	if (!cd) {
 		vmm_cprintf(cdev, "Device: ---\n");
 	} else {
@@ -55,10 +55,10 @@ void cmd_stdio_curdev(vmm_chardev_t *cdev)
 	}
 }
 
-void cmd_stdio_chdev(vmm_chardev_t *cdev, char *chardev_name)
+void cmd_stdio_chdev(struct vmm_chardev *cdev, char *chardev_name)
 {
 	int ret;
-	vmm_chardev_t *cd = vmm_chardev_find(chardev_name);
+	struct vmm_chardev *cd = vmm_chardev_find(chardev_name);
 	if (cd) {
 		vmm_cprintf(cdev, "New device: %s\n", cd->name);
 		if ((ret = vmm_stdio_change_device(cd))) {
@@ -70,7 +70,7 @@ void cmd_stdio_chdev(vmm_chardev_t *cdev, char *chardev_name)
 	}
 }
 
-int cmd_stdio_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_stdio_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
@@ -94,7 +94,7 @@ int cmd_stdio_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_OK;
 }
 
-static vmm_cmd_t cmd_stdio = {
+static struct vmm_cmd cmd_stdio = {
 	.name = "stdio",
 	.desc = "standard I/O configuration",
 	.usage = cmd_stdio_usage,

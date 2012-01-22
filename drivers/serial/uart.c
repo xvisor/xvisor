@@ -47,8 +47,6 @@ struct uart_port {
 	u32 reg_align;
 };
 
-typedef struct uart_port uart_port_t;
-
 bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align)
 {
 	if (vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & UART_LSR_DR) {
@@ -59,7 +57,8 @@ bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align)
 
 u8 uart_lowlevel_getc(virtual_addr_t base, u32 reg_align)
 {
-	while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & UART_LSR_DR));
+	while (!uart_lowlevel_can_getc(base, reg_align));
+
 	return (vmm_in_8((u8 *)REG_UART_RBR(base,reg_align)));
 }
 
@@ -73,8 +72,8 @@ bool uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align)
 
 void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, u8 ch)
 {
-	while (!(vmm_in_8((u8 *)REG_UART_LSR(base,reg_align)) & 
-							UART_LSR_THRE));
+	while (!uart_lowlevel_can_putc(base, reg_align));
+
 	vmm_out_8((u8 *)REG_UART_THR(base,reg_align), ch);
 }
 
@@ -82,7 +81,6 @@ void uart_lowlevel_init(const char *compatible, virtual_addr_t base,
 		u32 reg_align, u32 baudrate, u32 input_clock)
 {
 	u16 bdiv;
-	u32 val;
 	bdiv = vmm_udiv32(input_clock, (16 * baudrate));
 
 	if(!vmm_strcmp(compatible, "st16654")) {
@@ -126,9 +124,9 @@ void uart_lowlevel_init(const char *compatible, virtual_addr_t base,
 		/* no modem control DTR RTS */
 		vmm_out_8((u8 *)REG_UART_MCR(base,reg_align), 0x00);
 		/* clear line status */
-		val = vmm_in_8((u8 *)REG_UART_LSR(base,reg_align));
+		vmm_in_8((u8 *)REG_UART_LSR(base,reg_align));
 		/* read receive buffer */
-		val = vmm_in_8((u8 *)REG_UART_RBR(base,reg_align));
+		vmm_in_8((u8 *)REG_UART_RBR(base,reg_align));
 		/* set scratchpad */
 		vmm_out_8((u8 *)REG_UART_SCR(base,reg_align), 0x00);
 		/* set interrupt enable reg */
@@ -136,86 +134,74 @@ void uart_lowlevel_init(const char *compatible, virtual_addr_t base,
 	}
 }
 
-static u32 uart_read(vmm_chardev_t *cdev, 
+static u32 uart_read(struct vmm_chardev *cdev, 
 		     u8 *dest, size_t offset, size_t len, bool block)
 {
 	u32 i;
-	uart_port_t *port;
+	struct uart_port *port;
 
-	if(!cdev || !dest) {
-		return 0;
-	}
-	if(!cdev->priv) {
+	if (!(cdev && dest && cdev->priv)) {
 		return 0;
 	}
 
 	port = cdev->priv;
 
 	for(i = 0; i < len; i++) {
-		if (block) {
-			while (!uart_lowlevel_can_getc(port->base, 
-							port->reg_align));
-		} else {
-			if (!uart_lowlevel_can_getc(port->base, 
-						    port->reg_align)) {
-				break;
-			}
+		if (!block && 
+		    !uart_lowlevel_can_getc(port->base, port->reg_align)) {
+			break;
 		}
+
 		dest[i] = uart_lowlevel_getc(port->base, port->reg_align);
 	}
 
 	return i;
 }
 
-static u32 uart_write(vmm_chardev_t *cdev, 
+static u32 uart_write(struct vmm_chardev *cdev, 
 		      u8 *src, size_t offset, size_t len, bool block)
 {
 	u32 i;
-	uart_port_t *port;
+	struct uart_port *port;
 
-	if(!cdev || !src) {
-		return 0;
-	}
-	if(!cdev->priv) {
+	if (!(cdev && src && cdev->priv)) {
 		return 0;
 	}
 
 	port = cdev->priv;
 
 	for(i = 0; i < len; i++) {
-		if (block) {
-			while (!uart_lowlevel_can_putc(port->base, 
-							port->reg_align));
-		} else {
-			if (!uart_lowlevel_can_putc(port->base, 
-						    port->reg_align)) {
-				break;
-			}
+		if (!block && 
+		    !uart_lowlevel_can_putc(port->base, port->reg_align)) {
+			break;
 		}
+
 		uart_lowlevel_putc(port->base, port->reg_align, src[i]);
 	}
 
 	return i;
 }
 
-static int uart_driver_probe(vmm_device_t *dev,const vmm_devid_t *devid)
+static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devid)
 {
 	int rc;
 	const char *attr;
-	vmm_chardev_t *cd;
-	uart_port_t *port;
+	struct vmm_chardev *cd;
+	struct uart_port *port;
 	
-	cd = vmm_malloc(sizeof(vmm_chardev_t));
+	cd = vmm_malloc(sizeof(struct vmm_chardev));
 	if(!cd) {
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
+	vmm_memset(cd, 0, sizeof(struct vmm_chardev));
 
-	port = vmm_malloc(sizeof(uart_port_t));
+	port = vmm_malloc(sizeof(struct uart_port));
 	if(!port) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
 	}
+	vmm_memset(port, 0, sizeof(struct uart_port));
 
 	vmm_strcpy(cd->name, dev->node->name);
 	cd->dev = dev;
@@ -274,20 +260,22 @@ free_nothing:
 	return rc;
 }
 
-static int uart_driver_remove(vmm_device_t *dev)
+static int uart_driver_remove(struct vmm_device *dev)
 {
-	int rc;
-	vmm_chardev_t *cd =(vmm_chardev_t*)dev->priv;
+	int rc = VMM_OK;
+	struct vmm_chardev *cd =(struct vmm_chardev*)dev->priv;
 
-	rc = vmm_chardev_unregister(cd);
-	vmm_free(cd->priv);
-	vmm_free(cd);
-	dev->priv = NULL;
+	if (cd) {
+		rc = vmm_chardev_unregister(cd);
+		vmm_free(cd->priv);
+		vmm_free(cd);
+		dev->priv = NULL;
+	}
 
 	return rc;
 }
 
-static vmm_devid_t uart_devid_table[] = {
+static struct vmm_devid uart_devid_table[] = {
 	{ .type = "serial", .compatible = "ns8250"},
 	{ .type = "serial", .compatible = "ns16450"},
 	{ .type = "serial", .compatible = "ns16550a"},
@@ -298,7 +286,7 @@ static vmm_devid_t uart_devid_table[] = {
 	{ /* end of list */ },
 };
 
-static vmm_driver_t uart_driver = {
+static struct vmm_driver uart_driver = {
 	.name = "uart_serial",
 	.match_table = uart_devid_table,
 	.probe = uart_driver_probe,

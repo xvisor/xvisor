@@ -22,41 +22,41 @@
  * @brief board specific progammable interrupt contoller
  */
 
+#include <arch_board.h>
 #include <omap3/intc.h>
-#include <vmm_board.h>
 #include <vmm_error.h>
 
-u32 vmm_pic_irq_count(void)
+u32 arch_pic_irq_count(void)
 {
 	return OMAP3_MPU_INTC_NRIRQ;
 }
 
-int vmm_pic_cpu_to_host_map(u32 cpu_irq_no)
+int arch_pic_cpu_to_host_map(u32 cpu_irq_no)
 {
 	return omap3_intc_active_irq(cpu_irq_no);
 }
 
-int vmm_pic_pre_condition(u32 host_irq_no)
+int arch_pic_pre_condition(u32 host_irq_no)
 {
 	return VMM_OK;
 }
 
-int vmm_pic_post_condition(u32 host_irq_no)
+int arch_pic_post_condition(u32 host_irq_no)
 {
 	return omap3_intc_ack_irq(host_irq_no);
 }
 
-int vmm_pic_irq_enable(u32 host_irq_no)
+int arch_pic_irq_enable(u32 host_irq_no)
 {
 	return omap3_intc_unmask(host_irq_no);
 }
 
-int vmm_pic_irq_disable(u32 host_irq_no)
+int arch_pic_irq_disable(u32 host_irq_no)
 {
 	return omap3_intc_mask(host_irq_no);
 }
 
-int vmm_pic_init(void)
+int arch_pic_init(void)
 {
 	return omap3_intc_init();
 }

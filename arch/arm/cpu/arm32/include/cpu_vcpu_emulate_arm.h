@@ -101,6 +101,9 @@ enum arm_shift_type {
 #define ARM_HYPERCALL_SRS_MODE_END		13
 #define ARM_HYPERCALL_SRS_MODE_START		10
 
+#define ARM_HYPERCALL_WFI_ID			0
+#define ARM_HYPERCALL_WFI_SUBID			6
+
 #define ARM_HYPERCALL_LDM_UE_ID0		1
 #define ARM_HYPERCALL_LDM_UE_ID1		2
 #define ARM_HYPERCALL_LDM_UE_ID2		3
@@ -315,7 +318,7 @@ enum arm_shift_type {
 #define ARM_INST_OP_SHIFT			4
 
 /** Emulate Priviledged ARM instructions */
-int cpu_vcpu_emulate_arm_inst(vmm_vcpu_t *vcpu, 
-				vmm_user_regs_t * regs, bool is_hypercall);
+int cpu_vcpu_emulate_arm_inst(struct vmm_vcpu *vcpu, 
+			      arch_regs_t * regs, bool is_hypercall);
 
 #endif

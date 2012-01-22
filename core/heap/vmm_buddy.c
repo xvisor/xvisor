@@ -445,7 +445,7 @@ void buddy_free(void *ptr)
 	vmm_memset(aarea, 0, sizeof(struct vmm_alloced_area));
 }
 
-void buddy_print_state(vmm_chardev_t *cdev)
+void buddy_print_state(struct vmm_chardev *cdev)
 {
 	int idx = 0;
 	struct vmm_alloced_area *valloced;
@@ -474,7 +474,7 @@ void buddy_print_state(vmm_chardev_t *cdev)
 	}
 }
 
-void buddy_print_hk_state(vmm_chardev_t *cdev)
+void buddy_print_hk_state(struct vmm_chardev *cdev)
 {
 	u32 free = 0, idx;
 	struct vmm_free_area *fren = buddy_heap.hk_fn_array;

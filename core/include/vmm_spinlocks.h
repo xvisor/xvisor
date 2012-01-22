@@ -38,7 +38,7 @@ struct vmm_spinlock {
 	spinlock_t __the_lock;
 };
 
-#define __SPIN_LOCK_INITIALIZER(_lptr) 	VMM_CPU_SPIN_LOCK_INIT(&((_lptr)->__the_lock))
+#define __SPIN_LOCK_INITIALIZER(_lptr) 	ARCH_SPIN_LOCK_INIT(&((_lptr)->__the_lock))
 #define DEFINE_SPIN_LOCK(_lock) 	vmm_spinlock_t _lock = __SPIN_LOCK_INITIALIZER(&_lock);
 
 #define DECLARE_SPIN_LOCK(_lock)	vmm_spinlock_t _lock;

@@ -68,10 +68,10 @@ DEFINE_WAIT_LIST(rx_wait_queue);
 #define n2k_inb(nic, port)		(vmm_in_8(port + nic->base))
 #define n2k_outb(nic, port, val)	(vmm_out_8(port + nic->base, val))
 
-void push_packet_len(nic_priv_data_t *dp, int len);
+void push_packet_len(struct nic_priv_data *dp, int len);
 void push_tx_done(int key, int val);
 
-static hw_info_t hw_info[] = {
+static struct hw_info hw_inf[] = {
 	{ "Generic NE2000", 0x0ff0, 0x00, 0xa0, 0x0c, 0 },
 	{ "QEMU NE2000", 0x0, 0x52, 0x54, 0x00, 0 },
 	{ NULL, 0x00, 0x00, 0x00, 0x00, 0x00 } /* NULL terminated array */
@@ -82,7 +82,7 @@ static hw_info_t hw_info[] = {
 #define PCNET_RESET	0x1f	/* Issue a read to reset, a write to clear. */
 #define PCNET_MISC	0x18	/* For IBM CCAE and Socket EA cards */
 
-static void pcnet_reset_8390(nic_priv_data_t *dp)
+static void pcnet_reset_8390(struct nic_priv_data *dp)
 {
 	int i, r;
 
@@ -102,7 +102,7 @@ static void pcnet_reset_8390(nic_priv_data_t *dp)
 		vmm_printf("pcnet_reset_8390() did not complete.\n");
 }
 
-int get_prom(nic_priv_data_t *dp, u8* mac_addr)
+int get_prom(struct nic_priv_data *dp, u8* mac_addr)
 {
 	u8 prom[32];
 	int i, j;
@@ -156,13 +156,13 @@ int get_prom(nic_priv_data_t *dp, u8* mac_addr)
 	return VMM_OK;
 }
 
-static bool dp83902a_init(nic_priv_data_t *dp)
+static bool dp83902a_init(struct nic_priv_data *dp)
 {
 	return true;
 }
 
 static void
-dp83902a_stop(nic_priv_data_t *dp)
+dp83902a_stop(struct nic_priv_data *dp)
 {
 	n2k_outb(dp, DP_CR, DP_CR_PAGE0 | DP_CR_NODMA | DP_CR_STOP);	/* Brutal */
 	n2k_outb(dp, DP_ISR, 0xFF);		/* Clear any pending interrupts */
@@ -178,7 +178,7 @@ dp83902a_stop(nic_priv_data_t *dp)
  * the hardware ready to send/receive packets.
  */
 static void
-dp83902a_start(nic_priv_data_t *dp, u8 * enaddr)
+dp83902a_start(struct nic_priv_data *dp, u8 * enaddr)
 {
 	int i;
 
@@ -218,7 +218,7 @@ dp83902a_start(nic_priv_data_t *dp, u8 * enaddr)
  * data handling routine so it may be called either when data becomes first
  * available or when an Tx interrupt occurs
  */
-static void dp83902a_start_xmit(nic_priv_data_t *dp, int start_page, int len)
+static void dp83902a_start_xmit(struct nic_priv_data *dp, int start_page, int len)
 {
 	n2k_outb(dp, DP_ISR, (DP_ISR_TxP | DP_ISR_TxE));
 	n2k_outb(dp, DP_CR, DP_CR_PAGE0 | DP_CR_NODMA | DP_CR_START);
@@ -234,7 +234,7 @@ static void dp83902a_start_xmit(nic_priv_data_t *dp, int start_page, int len)
  * This routine is called to send data to the hardware. It is known a-priori
  * that there is free buffer space (dp->tx_next).
  */
-static void dp83902a_send(nic_priv_data_t *dp, u8 *data, int total_len, u32 key)
+static void dp83902a_send(struct nic_priv_data *dp, u8 *data, int total_len, u32 key)
 {
 	int len, start_page, pkt_len, i;
 	volatile int isr;
@@ -323,7 +323,7 @@ static void dp83902a_send(nic_priv_data_t *dp, u8 *data, int total_len, u32 key)
  * the upper layer is ready to unload the packet, the internal function
  * 'dp83902a_recv' will be called to actually fetch it from the hardware.
  */
-static void dp83902a_RxEvent(nic_priv_data_t *dp)
+static void dp83902a_RxEvent(struct nic_priv_data *dp)
 {
 	u8 rsr;
 	u8 rcv_hdr[4];
@@ -388,7 +388,7 @@ static void dp83902a_RxEvent(nic_priv_data_t *dp)
  * may come in pieces, using a scatter-gather list. This allows for more
  * efficient processing in the upper layers of the stack.
  */
-static void dp83902a_recv(nic_priv_data_t *dp, int len)
+static void dp83902a_recv(struct nic_priv_data *dp, int len)
 {
 	u8 *base = dp->base;
 	int i, mlen;
@@ -427,7 +427,7 @@ static void dp83902a_recv(nic_priv_data_t *dp, int len)
 }
 
 static void
-dp83902a_TxEvent(nic_priv_data_t *dp)
+dp83902a_TxEvent(struct nic_priv_data *dp)
 {
 	u8 *base = dp->base;
 	u8 tsr;
@@ -462,7 +462,7 @@ dp83902a_TxEvent(nic_priv_data_t *dp)
  * interrupt.
  */
 static void
-dp83902a_ClearCounters(nic_priv_data_t *dp)
+dp83902a_ClearCounters(struct nic_priv_data *dp)
 {
 	u8 *base = dp->base;
 	u8 cnt1, cnt2, cnt3;
@@ -478,7 +478,7 @@ dp83902a_ClearCounters(nic_priv_data_t *dp)
  * out in section 7.0 of the datasheet.
  */
 static void
-dp83902a_Overflow(nic_priv_data_t *dp)
+dp83902a_Overflow(struct nic_priv_data *dp)
 {
 	u8 *base = dp->base;
 	u8 isr;
@@ -517,7 +517,7 @@ dp83902a_Overflow(nic_priv_data_t *dp)
 }
 
 static void
-dp83902a_poll(nic_priv_data_t *dp)
+dp83902a_poll(struct nic_priv_data *dp)
 {
 	u8 *base = dp->base;
 	volatile u8 isr = 0;
@@ -566,7 +566,7 @@ dp83902a_poll(nic_priv_data_t *dp)
 
 static int pkey = -1;
 
-void push_packet_len(nic_priv_data_t *dp, int len)
+void push_packet_len(struct nic_priv_data *dp, int len)
 {
 	vmm_printf("pushed len = %d\n", len);
 	if (len >= 2000) {
@@ -584,7 +584,7 @@ void push_tx_done(int key, int val)
 	pkey = key;
 }
 
-int ne2k_init(nic_priv_data_t *nic_data)
+int ne2k_init(struct nic_priv_data *nic_data)
 {
 	int r;
 	u8 eth_addr[6];
@@ -624,7 +624,7 @@ int ne2k_init(nic_priv_data_t *nic_data)
 	return VMM_OK;
 }
 
-void ne2k_halt(nic_priv_data_t *nic_data)
+void ne2k_halt(struct nic_priv_data *nic_data)
 {
 	if(nic_data->initialized)
 		dp83902a_stop(nic_data);
@@ -632,13 +632,13 @@ void ne2k_halt(nic_priv_data_t *nic_data)
 	nic_data->initialized = 0;
 }
 
-int ne2k_rx(nic_priv_data_t *nic_data)
+int ne2k_rx(struct nic_priv_data *nic_data)
 {
 	dp83902a_poll(nic_data);
 	return 1;
 }
 
-int ne2k_send(nic_priv_data_t *nic_data, volatile void *packet, int length)
+int ne2k_send(struct nic_priv_data *nic_data, volatile void *packet, int length)
 {
 	pkey = -1;
 
@@ -654,10 +654,10 @@ int ne2k_send(nic_priv_data_t *nic_data, volatile void *packet, int length)
 	return 0;
 }
 
-static int ne2k_read(vmm_netdev_t *ndev, 
+static int ne2k_read(struct vmm_netdev *ndev, 
 		char *dest, size_t offset, size_t len)
 {
-	nic_priv_data_t *pdata;
+	struct nic_priv_data *pdata;
 
 	if(!ndev || !dest) {
 		return 0;
@@ -672,10 +672,10 @@ static int ne2k_read(vmm_netdev_t *ndev,
 	return ne2k_rx(pdata);
 }
 
-static int ne2k_write(vmm_netdev_t *ndev,
+static int ne2k_write(struct vmm_netdev *ndev,
 		char *src, size_t offset, size_t len)
 {
-	nic_priv_data_t *pdata;
+	struct nic_priv_data *pdata;
 
 	if(!ndev || !src) {
 		return VMM_EFAIL;
@@ -693,23 +693,25 @@ static int ne2k_write(vmm_netdev_t *ndev,
 	return len;
 }
 
-static int ne2k_driver_probe(vmm_device_t *dev, const vmm_devid_t *devid)
+static int ne2k_driver_probe(struct vmm_driver *dev, const struct vmm_devid *devid)
 {
 	int rc;
-	vmm_netdev_t *ndev;
-	nic_priv_data_t *priv_data;
+	struct vmm_netdev *ndev;
+	struct nic_priv_data *priv_data;
 	
-	ndev = vmm_malloc(sizeof(vmm_netdev_t));
+	ndev = vmm_malloc(sizeof(struct vmm_netdev));
 	if(!ndev) {
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
+	vmm_memset(ndev,0, sizeof(struct vmm_netdev));
 
-	priv_data = vmm_malloc(sizeof(nic_priv_data_t));
+	priv_data = vmm_malloc(sizeof(struct nic_priv_data));
 	if(!priv_data) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
 	}
+	vmm_memset(priv_data,0, sizeof(struct nic_priv_data));
 
 	if (ne2k_init(priv_data)) {
 		rc = VMM_EFAIL;
@@ -749,27 +751,32 @@ free_nothing:
 	return rc;
 }
 
-static int ne2k_driver_remove(vmm_device_t *dev)
+static int ne2k_driver_remove(struct vmm_driver *dev)
 {
-	vmm_netdev_t *ndev;
-	nic_priv_data_t *priv_data;
+	struct vmm_netdev *ndev;
+	struct nic_priv_data *priv_data;
 
-	ndev = (vmm_netdev_t *)dev->priv;
-	priv_data = (nic_priv_data_t *)ndev->priv;
+	ndev = (struct vmm_netdev *)dev->priv;
 
-	vmm_ringbuf_free(priv_data->rx_rb);
-	vmm_free(priv_data);
-	vmm_free(ndev);
+	if (ndev) {
+		priv_data = (struct nic_priv_data *)ndev->priv;
+		if (priv_data) {
+			vmm_ringbuf_free(priv_data->rx_rb);
+			vmm_free(priv_data);
+		}
+		vmm_free(ndev);
+		dev->priv = NULL;
+	}
 
 	return 0;
 }
 
-static vmm_devid_t ne2k_devid_table[] = {
+static struct vmm_devid ne2k_devid_table[] = {
 	{ .type = "nic", .compatible = "ne2000"},
 	{ /* end of list */ },
 };
 
-static vmm_driver_t ne2k_driver = {
+static struct vmm_driver ne2k_driver = {
 	.name = "ne2k_driver",
 	.match_table = ne2k_devid_table,
 	.probe = ne2k_driver_probe,

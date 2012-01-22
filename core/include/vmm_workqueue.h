@@ -36,15 +36,15 @@ enum {
 	VMM_WORK_STATE_STOPPED=0x8
 };
 
-typedef struct vmm_work vmm_work_t;
-typedef void (*vmm_work_func_t)(vmm_work_t * work);
-typedef struct vmm_workqueue vmm_workqueue_t;
+struct vmm_work;
+typedef void (*vmm_work_func_t)(struct vmm_work * work);
+struct vmm_workqueue;
 
 struct vmm_work {
 	vmm_spinlock_t lock;
 	struct dlist head;
 	u32 flags;
-	vmm_workqueue_t * wq;
+	struct vmm_workqueue * wq;
 	vmm_work_func_t func;
 	void * data;
 };
@@ -53,7 +53,7 @@ struct vmm_workqueue {
 	vmm_spinlock_t lock;
 	struct dlist head;
 	struct dlist work_list;
-	vmm_thread_t * thread;
+	struct vmm_thread * thread;
 };
 
 #define INIT_WORK(work, func, data)	do { \
@@ -66,42 +66,43 @@ struct vmm_workqueue {
 					} while (0); 
 
 /** Check if work is new */
-bool vmm_workqueue_work_isnew(vmm_work_t * work);
+bool vmm_workqueue_work_isnew(struct vmm_work * work);
 
 /** Check if work is pending */
-bool vmm_workqueue_work_pending(vmm_work_t * work);
+bool vmm_workqueue_work_pending(struct vmm_work * work);
 
 /** Check if work is in-progress */
-bool vmm_workqueue_work_inprogress(vmm_work_t * work);
+bool vmm_workqueue_work_inprogress(struct vmm_work * work);
 
 /** Check if work is completed */
-bool vmm_workqueue_work_completed(vmm_work_t * work);
+bool vmm_workqueue_work_completed(struct vmm_work * work);
 
 /** Schedule work under specific workqueue 
  *  Note: if workqueue is NULL then system workqueues are used.
  */
-int vmm_workqueue_schedule_work(vmm_workqueue_t * wq, vmm_work_t * work);
+int vmm_workqueue_schedule_work(struct vmm_workqueue * wq, 
+				struct vmm_work * work);
 
 /** Stop a scheduled or in-progress work */
-int vmm_workqueue_stop_work(vmm_work_t * work);
+int vmm_workqueue_stop_work(struct vmm_work * work);
 
 /** Forcefully flush all pending work in a workqueue */
-int vmm_workqueue_flush(vmm_workqueue_t * wq);
+int vmm_workqueue_flush(struct vmm_workqueue * wq);
 
 /** Retrive workqueue instance from workqueue index */
-vmm_thread_t *vmm_workqueue_get_thread(vmm_workqueue_t * wq);
+struct vmm_thread *vmm_workqueue_get_thread(struct vmm_workqueue * wq);
 
 /** Retrive workqueue instance from workqueue index */
-vmm_workqueue_t *vmm_workqueue_index2workqueue(int index);
+struct vmm_workqueue *vmm_workqueue_index2workqueue(int index);
 
 /** Count number of threads */
 u32 vmm_workqueue_count(void);
 
 /** Destroy workqueue */
-int vmm_workqueue_destroy(vmm_workqueue_t * wq);
+int vmm_workqueue_destroy(struct vmm_workqueue * wq);
 
 /** Create workqueue with given name and thread priority */
-vmm_workqueue_t * vmm_workqueue_create(const char *name, u8 priority);
+struct vmm_workqueue * vmm_workqueue_create(const char *name, u8 priority);
 
 /** Initialize workqueue framework */
 int vmm_workqueue_init(void);

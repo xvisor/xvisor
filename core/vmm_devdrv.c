@@ -22,11 +22,11 @@
  * @brief Device driver framework source
  */
 
+#include <arch_board.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
-#include <vmm_board.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_aspace.h>
@@ -38,7 +38,7 @@ struct vmm_devdrv_ctrl {
 
 static struct vmm_devdrv_ctrl ddctrl;
 
-int devdrv_device_is_compatible(vmm_devtree_node_t * node, const char *compat)
+int devdrv_device_is_compatible(struct vmm_devtree_node * node, const char *compat)
 {
 	const char *cp;
 	int cplen, l;
@@ -58,8 +58,8 @@ int devdrv_device_is_compatible(vmm_devtree_node_t * node, const char *compat)
 	return 0;
 }
 
-const vmm_devid_t *devdrv_match_node(const vmm_devid_t * matches,
-				     vmm_devtree_node_t * node)
+const struct vmm_devid *devdrv_match_node(const struct vmm_devid * matches,
+					  struct vmm_devtree_node * node)
 {
 	const char *node_type;
 
@@ -89,15 +89,15 @@ const vmm_devid_t *devdrv_match_node(const vmm_devid_t * matches,
 	return NULL;
 }
 
-int vmm_devdrv_probe(vmm_devtree_node_t * node)
+int vmm_devdrv_probe(struct vmm_devtree_node * node)
 {
 	int rc;
 	struct dlist *l;
-	vmm_devtree_node_t *child;
-	vmm_driver_t *drv;
-	vmm_device_t *dinst;
-	const vmm_devid_t *matches;
-	const vmm_devid_t *match;
+	struct vmm_devtree_node *child;
+	struct vmm_driver *drv;
+	struct vmm_device *dinst;
+	const struct vmm_devid *matches;
+	const struct vmm_devid *match;
 
 	if (!node) {
 		return VMM_EFAIL;
@@ -106,11 +106,11 @@ int vmm_devdrv_probe(vmm_devtree_node_t * node)
 	rc = VMM_OK;
 	if (node->type == VMM_DEVTREE_NODETYPE_UNKNOWN && node->priv == NULL) {
 		list_for_each(l, &ddctrl.driver_list) {
-			drv = list_entry(l, vmm_driver_t, head);
+			drv = list_entry(l, struct vmm_driver, head);
 			matches = drv->match_table;
 			match = devdrv_match_node(matches, node);
 			if (match) {
-				dinst = vmm_malloc(sizeof(vmm_device_t));
+				dinst = vmm_malloc(sizeof(struct vmm_device));
 				INIT_SPIN_LOCK(&dinst->lock);
 				dinst->node = node;
 				dinst->class = NULL;
@@ -136,29 +136,29 @@ int vmm_devdrv_probe(vmm_devtree_node_t * node)
 	}
 
 	list_for_each(l, &node->child_list) {
-		child = list_entry(l, vmm_devtree_node_t, head);
+		child = list_entry(l, struct vmm_devtree_node, head);
 		vmm_devdrv_probe(child);
 	}
 
 	return rc;
 }
 
-int vmm_devdrv_remove(vmm_devtree_node_t * node)
+int vmm_devdrv_remove(struct vmm_devtree_node * node)
 {
 	int rc;
 	struct dlist *l;
-	vmm_devtree_node_t *child;
-	vmm_driver_t *drv;
-	vmm_device_t *dinst;
-	const vmm_devid_t *matches;
-	const vmm_devid_t *match;
+	struct vmm_devtree_node *child;
+	struct vmm_driver *drv;
+	struct vmm_device *dinst;
+	const struct vmm_devid *matches;
+	const struct vmm_devid *match;
 
 	if (!node) {
 		return VMM_EFAIL;
 	}
 
 	list_for_each(l, &node->child_list) {
-		child = list_entry(l, vmm_devtree_node_t, head);
+		child = list_entry(l, struct vmm_devtree_node, head);
 		rc = vmm_devdrv_remove(child);
 		if (rc) {
 			return rc;
@@ -168,7 +168,7 @@ int vmm_devdrv_remove(vmm_devtree_node_t * node)
 	rc = VMM_OK;
 	if (node->type == VMM_DEVTREE_NODETYPE_DEVICE && node->priv != NULL) {
 		list_for_each(l, &ddctrl.driver_list) {
-			drv = list_entry(l, vmm_driver_t, head);
+			drv = list_entry(l, struct vmm_driver, head);
 			matches = drv->match_table;
 			match = devdrv_match_node(matches, node);
 			if (match) {
@@ -194,7 +194,8 @@ int vmm_devdrv_remove(vmm_devtree_node_t * node)
 	return rc;
 }
 
-int vmm_devdrv_ioremap(vmm_device_t * dev, virtual_addr_t * addr, int regset)
+int vmm_devdrv_ioremap(struct vmm_device * dev, 
+			virtual_addr_t * addr, int regset)
 {
 	const char *attrval;
 
@@ -224,7 +225,7 @@ int vmm_devdrv_ioremap(vmm_device_t * dev, virtual_addr_t * addr, int regset)
 	return VMM_OK;
 }
 
-int vmm_devdrv_getclock(vmm_device_t * dev, u32 * clock)
+int vmm_devdrv_getclock(struct vmm_device * dev, u32 * clock)
 {
 	const char *attrval;
 
@@ -238,17 +239,17 @@ int vmm_devdrv_getclock(vmm_device_t * dev, u32 * clock)
 	if (attrval) {
 		*clock = *((u32 *) attrval);
 	} else {
-		return vmm_board_getclock(dev->node, clock);
+		return arch_board_getclock(dev->node, clock);
 	}
 
 	return VMM_OK;
 }
 
-int vmm_devdrv_register_class(vmm_class_t * cls)
+int vmm_devdrv_register_class(struct vmm_class * cls)
 {
 	bool found;
 	struct dlist *l;
-	vmm_class_t *c;
+	struct vmm_class *c;
 
 	if (cls == NULL) {
 		return VMM_EFAIL;
@@ -257,7 +258,7 @@ int vmm_devdrv_register_class(vmm_class_t * cls)
 	c = NULL;
 	found = FALSE;
 	list_for_each(l, &ddctrl.class_list) {
-		c = list_entry(l, vmm_class_t, head);
+		c = list_entry(l, struct vmm_class, head);
 		if (vmm_strcmp(c->name, cls->name) == 0) {
 			found = TRUE;
 			break;
@@ -275,11 +276,11 @@ int vmm_devdrv_register_class(vmm_class_t * cls)
 	return VMM_OK;
 }
 
-int vmm_devdrv_unregister_class(vmm_class_t * cls)
+int vmm_devdrv_unregister_class(struct vmm_class * cls)
 {
 	bool found;
 	struct dlist *l;
-	vmm_class_t *c;
+	struct vmm_class *c;
 
 	if (cls == NULL || list_empty(&ddctrl.class_list)) {
 		return VMM_EFAIL;
@@ -288,7 +289,7 @@ int vmm_devdrv_unregister_class(vmm_class_t * cls)
 	c = NULL;
 	found = FALSE;
 	list_for_each(l, &ddctrl.class_list) {
-		c = list_entry(l, vmm_class_t, head);
+		c = list_entry(l, struct vmm_class, head);
 		if (vmm_strcmp(c->name, cls->name) == 0) {
 			found = TRUE;
 			break;
@@ -304,11 +305,11 @@ int vmm_devdrv_unregister_class(vmm_class_t * cls)
 	return VMM_OK;
 }
 
-vmm_class_t *vmm_devdrv_find_class(const char *cname)
+struct vmm_class *vmm_devdrv_find_class(const char *cname)
 {
 	bool found;
 	struct dlist *l;
-	vmm_class_t *cls;
+	struct vmm_class *cls;
 
 	if (!cname) {
 		return NULL;
@@ -318,7 +319,7 @@ vmm_class_t *vmm_devdrv_find_class(const char *cname)
 	cls = NULL;
 
 	list_for_each(l, &ddctrl.class_list) {
-		cls = list_entry(l, vmm_class_t, head);
+		cls = list_entry(l, struct vmm_class, head);
 		if (vmm_strcmp(cls->name, cname) == 0) {
 			found = TRUE;
 			break;
@@ -332,11 +333,11 @@ vmm_class_t *vmm_devdrv_find_class(const char *cname)
 	return cls;
 }
 
-vmm_class_t *vmm_devdrv_class(int index)
+struct vmm_class *vmm_devdrv_class(int index)
 {
 	bool found;
 	struct dlist *l;
-	vmm_class_t *retval;
+	struct vmm_class *retval;
 
 	if (index < 0) {
 		return NULL;
@@ -346,7 +347,7 @@ vmm_class_t *vmm_devdrv_class(int index)
 	found = FALSE;
 
 	list_for_each(l, &ddctrl.class_list) {
-		retval = list_entry(l, vmm_class_t, head);
+		retval = list_entry(l, struct vmm_class, head);
 		if (!index) {
 			found = TRUE;
 			break;
@@ -375,12 +376,12 @@ u32 vmm_devdrv_class_count(void)
 	return retval;
 }
 
-int vmm_devdrv_register_classdev(const char *cname, vmm_classdev_t * cdev)
+int vmm_devdrv_register_classdev(const char *cname, struct vmm_classdev * cdev)
 {
 	bool found;
 	struct dlist *l;
-	vmm_class_t *c;
-	vmm_classdev_t *cd;
+	struct vmm_class *c;
+	struct vmm_classdev *cd;
 
 	c = vmm_devdrv_find_class(cname);
 
@@ -391,7 +392,7 @@ int vmm_devdrv_register_classdev(const char *cname, vmm_classdev_t * cdev)
 	cd = NULL;
 	found = FALSE;
 	list_for_each(l, &c->classdev_list) {
-		cd = list_entry(l, vmm_classdev_t, head);
+		cd = list_entry(l, struct vmm_classdev, head);
 		if (vmm_strcmp(cd->name, cdev->name) == 0) {
 			found = TRUE;
 			break;
@@ -414,12 +415,12 @@ int vmm_devdrv_register_classdev(const char *cname, vmm_classdev_t * cdev)
 	return VMM_OK;
 }
 
-int vmm_devdrv_unregister_classdev(const char *cname, vmm_classdev_t * cdev)
+int vmm_devdrv_unregister_classdev(const char *cname, struct vmm_classdev * cdev)
 {
 	bool found;
 	struct dlist *l;
-	vmm_class_t *c;
-	vmm_classdev_t *cd;
+	struct vmm_class *c;
+	struct vmm_classdev *cd;
 
 	c = vmm_devdrv_find_class(cname);
 
@@ -433,7 +434,7 @@ int vmm_devdrv_unregister_classdev(const char *cname, vmm_classdev_t * cdev)
 	cd = NULL;
 	found = FALSE;
 	list_for_each(l, &c->classdev_list) {
-		cd = list_entry(l, vmm_classdev_t, head);
+		cd = list_entry(l, struct vmm_classdev, head);
 		if (vmm_strcmp(cd->name, cdev->name) == 0) {
 			found = TRUE;
 			break;
@@ -455,13 +456,13 @@ int vmm_devdrv_unregister_classdev(const char *cname, vmm_classdev_t * cdev)
 	return VMM_OK;
 }
 
-vmm_classdev_t *vmm_devdrv_find_classdev(const char *cname,
+struct vmm_classdev *vmm_devdrv_find_classdev(const char *cname,
 					 const char *cdev_name)
 {
 	bool found;
 	struct dlist *l;
-	vmm_class_t *c;
-	vmm_classdev_t *cd;
+	struct vmm_class *c;
+	struct vmm_classdev *cd;
 
 	c = vmm_devdrv_find_class(cname);
 
@@ -473,7 +474,7 @@ vmm_classdev_t *vmm_devdrv_find_classdev(const char *cname,
 	cd = NULL;
 
 	list_for_each(l, &c->classdev_list) {
-		cd = list_entry(l, vmm_classdev_t, head);
+		cd = list_entry(l, struct vmm_classdev, head);
 		if (vmm_strcmp(cd->name, cdev_name) == 0) {
 			found = TRUE;
 			break;
@@ -487,12 +488,12 @@ vmm_classdev_t *vmm_devdrv_find_classdev(const char *cname,
 	return cd;
 }
 
-vmm_classdev_t *vmm_devdrv_classdev(const char *cname, int index)
+struct vmm_classdev *vmm_devdrv_classdev(const char *cname, int index)
 {
 	bool found;
 	struct dlist *l;
-	vmm_class_t *c;
-	vmm_classdev_t *retval;
+	struct vmm_class *c;
+	struct vmm_classdev *retval;
 
 	c = vmm_devdrv_find_class(cname);
 
@@ -504,7 +505,7 @@ vmm_classdev_t *vmm_devdrv_classdev(const char *cname, int index)
 	found = FALSE;
 
 	list_for_each(l, &c->classdev_list) {
-		retval = list_entry(l, vmm_classdev_t, head);
+		retval = list_entry(l, struct vmm_classdev, head);
 		if (!index) {
 			found = TRUE;
 			break;
@@ -523,7 +524,7 @@ u32 vmm_devdrv_classdev_count(const char *cname)
 {
 	u32 retval;
 	struct dlist *l;
-	vmm_class_t *c;
+	struct vmm_class *c;
 
 	c = vmm_devdrv_find_class(cname);
 
@@ -540,11 +541,11 @@ u32 vmm_devdrv_classdev_count(const char *cname)
 	return retval;
 }
 
-int vmm_devdrv_register_driver(vmm_driver_t * drv)
+int vmm_devdrv_register_driver(struct vmm_driver * drv)
 {
 	bool found;
 	struct dlist *l;
-	vmm_driver_t *d;
+	struct vmm_driver *d;
 
 	if (drv == NULL) {
 		return VMM_EFAIL;
@@ -553,7 +554,7 @@ int vmm_devdrv_register_driver(vmm_driver_t * drv)
 	d = NULL;
 	found = FALSE;
 	list_for_each(l, &ddctrl.driver_list) {
-		d = list_entry(l, vmm_driver_t, head);
+		d = list_entry(l, struct vmm_driver, head);
 		if (vmm_strcmp(d->name, drv->name) == 0) {
 			found = TRUE;
 			break;
@@ -571,11 +572,11 @@ int vmm_devdrv_register_driver(vmm_driver_t * drv)
 	return VMM_OK;
 }
 
-int vmm_devdrv_unregister_driver(vmm_driver_t * drv)
+int vmm_devdrv_unregister_driver(struct vmm_driver * drv)
 {
 	bool found;
 	struct dlist *l;
-	vmm_driver_t *d;
+	struct vmm_driver *d;
 
 	if (drv == NULL || list_empty(&ddctrl.driver_list)) {
 		return VMM_EFAIL;
@@ -584,7 +585,7 @@ int vmm_devdrv_unregister_driver(vmm_driver_t * drv)
 	d = NULL;
 	found = FALSE;
 	list_for_each(l, &ddctrl.driver_list) {
-		d = list_entry(l, vmm_driver_t, head);
+		d = list_entry(l, struct vmm_driver, head);
 		if (vmm_strcmp(d->name, drv->name) == 0) {
 			found = TRUE;
 			break;
@@ -600,11 +601,11 @@ int vmm_devdrv_unregister_driver(vmm_driver_t * drv)
 	return VMM_OK;
 }
 
-vmm_driver_t *vmm_devdrv_find_driver(const char *name)
+struct vmm_driver *vmm_devdrv_find_driver(const char *name)
 {
 	bool found;
 	struct dlist *l;
-	vmm_driver_t *drv;
+	struct vmm_driver *drv;
 
 	if (!name) {
 		return NULL;
@@ -614,7 +615,7 @@ vmm_driver_t *vmm_devdrv_find_driver(const char *name)
 	drv = NULL;
 
 	list_for_each(l, &ddctrl.driver_list) {
-		drv = list_entry(l, vmm_driver_t, head);
+		drv = list_entry(l, struct vmm_driver, head);
 		if (vmm_strcmp(drv->name, name) == 0) {
 			found = TRUE;
 			break;
@@ -628,11 +629,11 @@ vmm_driver_t *vmm_devdrv_find_driver(const char *name)
 	return drv;
 }
 
-vmm_driver_t *vmm_devdrv_driver(int index)
+struct vmm_driver *vmm_devdrv_driver(int index)
 {
 	bool found;
 	struct dlist *l;
-	vmm_driver_t *retval;
+	struct vmm_driver *retval;
 
 	if (index < 0) {
 		return NULL;
@@ -642,7 +643,7 @@ vmm_driver_t *vmm_devdrv_driver(int index)
 	found = FALSE;
 
 	list_for_each(l, &ddctrl.driver_list) {
-		retval = list_entry(l, vmm_driver_t, head);
+		retval = list_entry(l, struct vmm_driver, head);
 		if (!index) {
 			found = TRUE;
 			break;

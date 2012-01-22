@@ -26,7 +26,7 @@
 #ifndef __VMM_TYPES_H__
 #define __VMM_TYPES_H__
 
-#include <vmm_cpu_types.h>
+#include <arch_types.h>
 
 typedef char s8;
 typedef short s16;
@@ -37,14 +37,17 @@ typedef unsigned int u32;
 typedef unsigned int size_t;
 typedef unsigned int bool;
 typedef unsigned int ulong;
+typedef long long s64;
+typedef unsigned long long u64;
 
 /** Boolean macros */
-#define TRUE		1
-#define FALSE		0
-#define NULL 		((void *)0)
+#define TRUE			1
+#define FALSE			0
+#define NULL 			((void *)0)
 
-#define stringify(s)	tostring(s)
-#define tostring(s)	#s
+#define stringify(s)		tostring(s)
+#define tostring(s)		#s
+#define barrier() 		__asm__ __volatile__("": : :"memory")
 
 #define __alwaysinline 		__attribute__((always_inline))
 #define __unused		__attribute__((unused))

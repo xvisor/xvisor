@@ -40,7 +40,7 @@
 #define	MODULE_INIT			cmd_threadtest_init
 #define	MODULE_EXIT			cmd_threadtest_exit
 
-void cmd_threadtest_usage(vmm_chardev_t *cdev)
+void cmd_threadtest_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev,"Usage: \n");
 	vmm_cprintf(cdev,"   threadtest help\n");
@@ -48,7 +48,7 @@ void cmd_threadtest_usage(vmm_chardev_t *cdev)
 	vmm_cprintf(cdev,"   threadtest exec <test_id>\n");
 }
 
-typedef int (*threadtest_testfunc_t) (vmm_chardev_t * cdev);
+typedef int (*threadtest_testfunc_t) (struct vmm_chardev * cdev);
 
 struct threadtest_testcase {
 	threadtest_testfunc_t func;
@@ -56,7 +56,7 @@ struct threadtest_testcase {
 };
 
 struct test1_thread_data {
-	vmm_completion_t cmpl;
+	struct vmm_completion cmpl;
 	bool start;
 	u32 counter;
 	u32 limit;
@@ -77,10 +77,10 @@ static int test1_thread_main(void *data)
 	return VMM_OK;
 }
 
-static int threadtest_test1(vmm_chardev_t * cdev)
+static int threadtest_test1(struct vmm_chardev * cdev)
 {
 	int rc;
-	vmm_thread_t * t = NULL;
+	struct vmm_thread * t = NULL;
 	struct test1_thread_data d;
 
 	INIT_COMPLETION(&d.cmpl);
@@ -116,7 +116,7 @@ static int threadtest_test1(vmm_chardev_t * cdev)
 	return VMM_EFAIL;
 }
 
-static int threadtest_test2(vmm_chardev_t * cdev)
+static int threadtest_test2(struct vmm_chardev * cdev)
 {
 	return VMM_OK;
 }
@@ -126,7 +126,7 @@ static struct threadtest_testcase testcases[] = {
 	{ threadtest_test2, "Second Test"}
 };
 
-void cmd_threadtest_list(vmm_chardev_t *cdev)
+void cmd_threadtest_list(struct vmm_chardev *cdev)
 {
 	int i, testcount = 0;
 
@@ -138,7 +138,7 @@ void cmd_threadtest_list(vmm_chardev_t *cdev)
 	}
 }
 
-int cmd_threadtest_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_threadtest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int i, rc, testid = 0, testcount = 0;	
 	if ((argc > 1) && (argc < 4)) {
@@ -184,7 +184,7 @@ int cmd_threadtest_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_EFAIL;
 }
 
-static vmm_cmd_t cmd_threadtest = {
+static struct vmm_cmd cmd_threadtest = {
 	.name = "threadtest",
 	.desc = "Thread Test Command",
 	.usage = cmd_threadtest_usage,

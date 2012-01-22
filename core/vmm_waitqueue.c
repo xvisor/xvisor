@@ -27,18 +27,18 @@
 #include <vmm_scheduler.h>
 #include <vmm_waitqueue.h>
 
-u32 vmm_waitqueue_count(vmm_waitqueue_t * wq) 
+u32 vmm_waitqueue_count(struct vmm_waitqueue * wq) 
 {
 	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
 
 	return wq->vcpu_count;
 }
 
-int vmm_waitqueue_sleep(vmm_waitqueue_t * wq) 
+int vmm_waitqueue_sleep(struct vmm_waitqueue * wq) 
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
-	vmm_vcpu_t * vcpu;
+	struct vmm_vcpu * vcpu;
 
 	/* Sanity checks */
 	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
@@ -91,11 +91,11 @@ int vmm_waitqueue_sleep(vmm_waitqueue_t * wq)
 	return VMM_OK;
 }
 
-int vmm_waitqueue_wake(vmm_vcpu_t * vcpu)
+int vmm_waitqueue_wake(struct vmm_vcpu * vcpu)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
-	vmm_waitqueue_t * wq;
+	struct vmm_waitqueue * wq;
 
 	/* Sanity checks */
 	if (!vcpu || !vcpu->wq_priv) {
@@ -135,11 +135,11 @@ int vmm_waitqueue_wake(vmm_vcpu_t * vcpu)
 	return VMM_OK;
 }
 
-int vmm_waitqueue_wakefirst(vmm_waitqueue_t * wq)
+int vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq)
 {
 	int rc = VMM_OK;
 	struct dlist *l;
-	vmm_vcpu_t * vcpu;
+	struct vmm_vcpu * vcpu;
 	irq_flags_t flags;
 
 	/* Sanity checks */
@@ -150,7 +150,7 @@ int vmm_waitqueue_wakefirst(vmm_waitqueue_t * wq)
 
 	/* Get first VCPU from waitqueue list */
 	l = list_pop(&wq->vcpu_list);
-	vcpu = list_entry(l, vmm_vcpu_t, wq_head);
+	vcpu = list_entry(l, struct vmm_vcpu, wq_head);
 
 	/* Try to Resume VCPU */
 	if ((rc = vmm_manager_vcpu_resume(vcpu))) {
@@ -176,11 +176,11 @@ int vmm_waitqueue_wakefirst(vmm_waitqueue_t * wq)
 	return VMM_OK;
 }
 
-int vmm_waitqueue_wakeall(vmm_waitqueue_t * wq)
+int vmm_waitqueue_wakeall(struct vmm_waitqueue * wq)
 {
 	int i, wake_count, rc = VMM_OK;
 	struct dlist *l;
-	vmm_vcpu_t * vcpu;
+	struct vmm_vcpu * vcpu;
 	irq_flags_t flags;
 
 	/* Sanity checks */
@@ -194,7 +194,7 @@ int vmm_waitqueue_wakeall(vmm_waitqueue_t * wq)
 	for (i = 0; i < wq->vcpu_count; i++) {
 		/* Get VCPU from waitqueue list */
 		l = list_pop(&wq->vcpu_list);
-		vcpu = list_entry(l, vmm_vcpu_t, wq_head);
+		vcpu = list_entry(l, struct vmm_vcpu, wq_head);
 
 		/* Try to Resume VCPU */
 		if ((rc = vmm_manager_vcpu_resume(vcpu))) {

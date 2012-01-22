@@ -63,7 +63,7 @@ int buddy_init(void *heap_start, unsigned int heap_size);
 void *buddy_malloc(unsigned int size);
 void *buddy_zalloc(unsigned int size);
 void buddy_free(void *ptr);
-void buddy_print_state(vmm_chardev_t *cdev);
-void buddy_print_hk_state(vmm_chardev_t *cdev);
+void buddy_print_state(struct vmm_chardev *cdev);
+void buddy_print_hk_state(struct vmm_chardev *cdev);
 
 #endif /* __VMM_BUDDY_H_ */

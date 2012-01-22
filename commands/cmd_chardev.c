@@ -37,18 +37,18 @@
 #define	MODULE_INIT			cmd_chardev_init
 #define	MODULE_EXIT			cmd_chardev_exit
 
-void cmd_chardev_usage(vmm_chardev_t *cdev)
+void cmd_chardev_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   chardev help\n");
 	vmm_cprintf(cdev, "   chardev list\n");
 }
 
-void cmd_chardev_list(vmm_chardev_t *cdev)
+void cmd_chardev_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	char path[1024];
-	vmm_chardev_t *cd;
+	struct vmm_chardev *cd;
 	count = vmm_chardev_count();
 	for (num = 0; num < count; num++) {
 		cd = vmm_chardev_get(num);
@@ -61,7 +61,7 @@ void cmd_chardev_list(vmm_chardev_t *cdev)
 	}
 }
 
-int cmd_chardev_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_chardev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
@@ -79,7 +79,7 @@ int cmd_chardev_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_OK;
 }
 
-static vmm_cmd_t cmd_chardev = {
+static struct vmm_cmd cmd_chardev = {
 	.name = "chardev",
 	.desc = "character device commands",
 	.usage = cmd_chardev_usage,

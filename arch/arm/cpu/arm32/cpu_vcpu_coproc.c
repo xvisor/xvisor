@@ -26,7 +26,7 @@
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_coproc.h>
 
-static cpu_vcpu_coproc_t cp_array[CPU_COPROC_COUNT] =
+static struct cpu_vcpu_coproc cp_array[CPU_COPROC_COUNT] =
 {
 	{
 		.cpnum = 0,
@@ -222,7 +222,7 @@ static cpu_vcpu_coproc_t cp_array[CPU_COPROC_COUNT] =
 	},
 };
 
-cpu_vcpu_coproc_t *cpu_vcpu_coproc_get(u32 cpnum)
+struct cpu_vcpu_coproc *cpu_vcpu_coproc_get(u32 cpnum)
 {
 	if (cpnum < CPU_COPROC_COUNT) {
 		return &cp_array[cpnum];

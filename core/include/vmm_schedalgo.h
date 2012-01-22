@@ -28,29 +28,32 @@
 #include <vmm_manager.h>
 
 /** Setup newly created VCPU for scheduling algorithm */
-int vmm_schedalgo_vcpu_setup(vmm_vcpu_t * vcpu);
+int vmm_schedalgo_vcpu_setup(struct vmm_vcpu * vcpu);
 
 /** Cleanup existing VCPU for scheduling algorithm */
-int vmm_schedalgo_vcpu_cleanup(vmm_vcpu_t * vcpu);
+int vmm_schedalgo_vcpu_cleanup(struct vmm_vcpu * vcpu);
 
 /** Enqueue VCPU to a ready queue */
-int vmm_schedalgo_rq_enqueue(void * rq, vmm_vcpu_t * vcpu);
+int vmm_schedalgo_rq_enqueue(void * rq, struct vmm_vcpu * vcpu);
 
 /** Dequeue VCPU from a ready queue */
-vmm_vcpu_t * vmm_schedalgo_rq_dequeue(void * rq);
+struct vmm_vcpu * vmm_schedalgo_rq_dequeue(void * rq);
 
 /** Detach VCPU from its ready queue */
-int vmm_schedalgo_rq_detach(void * rq, vmm_vcpu_t * vcpu);
+int vmm_schedalgo_rq_detach(void * rq, struct vmm_vcpu * vcpu);
 
 /** Check if current VCPU is required to be prempted based on current 
  *  ready queue state
  */
-bool vmm_schedalgo_rq_prempt_needed(void * rq, vmm_vcpu_t * current);
+bool vmm_schedalgo_rq_prempt_needed(void * rq, struct vmm_vcpu * current);
 
 /** Create a new ready queue */
 void * vmm_schedalgo_rq_create(void);
 
 /** Destroy existing ready queue */
 int vmm_schedalgo_rq_destroy(void * rq);
+
+/** return the number of READY VCPU at given priority */
+int vmm_schedalgo_rq_length(void *rq, u8 priority);
 
 #endif

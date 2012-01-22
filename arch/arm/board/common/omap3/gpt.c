@@ -27,20 +27,18 @@
  * Parts of this source code has been taken from u-boot
  */
 
+#include <omap3/intc.h>
+#include <omap3/gpt.h>
+#include <omap3/prcm.h>
+#include <omap3/s32k-timer.h>
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_main.h>
 #include <vmm_timer.h>
 #include <vmm_host_io.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
-#include <vmm_host_irq.h>
-#include <omap3/intc.h>
-#include <omap3/gpt.h>
-#include <omap3/prcm.h>
-#include <omap3/s32k-timer.h>
 
-static omap3_gpt_cfg_t *omap3_gpt_config = NULL;
+static struct omap3_gpt_cfg *omap3_gpt_config = NULL;
 static int omap3_sys_clk_div = 0;
 
 static void omap3_gpt_write(u32 gpt_num, u32 reg, u32 val)
@@ -228,13 +226,17 @@ int omap3_gpt_instance_init(u32 gpt_num, u32 prm_domain,
 		if (ret) {
 			return ret;
 		}
+		ret = vmm_host_irq_enable(omap3_gpt_config[gpt_num].irq_no);
+		if (ret) {
+			return ret;
+		}
 	}
 
 
 	return VMM_OK;
 }
 
-int omap3_gpt_global_init(u32 gpt_count, omap3_gpt_cfg_t *cfg)
+int omap3_gpt_global_init(u32 gpt_count, struct omap3_gpt_cfg *cfg)
 {
 	int i;
 	if(!omap3_gpt_config) {

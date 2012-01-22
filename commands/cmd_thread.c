@@ -38,18 +38,18 @@
 #define	MODULE_INIT			cmd_thread_init
 #define	MODULE_EXIT			cmd_thread_exit
 
-void cmd_thread_usage(vmm_chardev_t *cdev)
+void cmd_thread_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   thread help\n");
 	vmm_cprintf(cdev, "   thread list\n");
 }
 
-void cmd_thread_list(vmm_chardev_t *cdev)
+void cmd_thread_list(struct vmm_chardev *cdev)
 {
 	int rc, index, count;
 	char state[10], name[64];
-	vmm_thread_t *tinfo;
+	struct vmm_thread *tinfo;
 	vmm_cprintf(cdev, "----------------------------------------"
 		   	  "----------------------------------------\n");
 	vmm_cprintf(cdev, "| %-5s| %-6s| %-9s| %-51s|\n", 
@@ -88,7 +88,7 @@ void cmd_thread_list(vmm_chardev_t *cdev)
 			  "----------------------------------------\n");
 }
 
-int cmd_thread_exec(vmm_chardev_t *cdev, int argc, char **argv)
+int cmd_thread_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
@@ -103,7 +103,7 @@ int cmd_thread_exec(vmm_chardev_t *cdev, int argc, char **argv)
 	return VMM_EFAIL;
 }
 
-static vmm_cmd_t cmd_thread = {
+static struct vmm_cmd cmd_thread = {
 	.name = "thread",
 	.desc = "control commands for threads",
 	.usage = cmd_thread_usage,

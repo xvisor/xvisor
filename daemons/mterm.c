@@ -42,7 +42,7 @@
 #define MTERM_CMD_STRING_SIZE		256
 
 static struct mterm_ctrl {
-	vmm_thread_t *thread;
+	struct vmm_thread *thread;
 } mtctrl;
 
 static int mterm_main(void *udata)
@@ -78,7 +78,7 @@ static int __init daemon_mterm_init(void)
 {
 	u8 mterm_priority;
 	u32 mterm_time_slice;
-	vmm_devtree_node_t * node;
+	struct vmm_devtree_node * node;
 	const char * attrval;
 
 	/* Reset the control structure */

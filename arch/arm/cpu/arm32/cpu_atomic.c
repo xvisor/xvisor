@@ -27,13 +27,13 @@
 #include <vmm_types.h>
 
 /* FIXME: Need memory barrier for this. */
-long __lock vmm_cpu_atomic_read(atomic_t * atom)
+long __lock arch_cpu_atomic_read(atomic_t * atom)
 {
 	return atom->counter;
 }
 
 /* FIXME: Need memory barrier for this. */
-void __lock vmm_cpu_atomic_write(atomic_t * atom, long value)
+void __lock arch_cpu_atomic_write(atomic_t * atom, long value)
 {
 	atom->counter = value;
 }
@@ -140,27 +140,27 @@ static long __lock __cpu_atomic_sub_return(atomic_t * atom, long value)
 	return result;
 }
 
-void __lock vmm_cpu_atomic_add(atomic_t * atom, long value)
+void __lock arch_cpu_atomic_add(atomic_t * atom, long value)
 {
 	__cpu_atomic_add(atom, value);
 }
 
-void __lock vmm_cpu_atomic_sub(atomic_t * atom, long value)
+void __lock arch_cpu_atomic_sub(atomic_t * atom, long value)
 {
 	__cpu_atomic_sub(atom, value);
 }
 
-long __lock vmm_cpu_atomic_add_return(atomic_t * atom, long value)
+long __lock arch_cpu_atomic_add_return(atomic_t * atom, long value)
 {
 	return __cpu_atomic_add_return(atom, value);
 }
 
-long __lock vmm_cpu_atomic_sub_return(atomic_t * atom, long value)
+long __lock arch_cpu_atomic_sub_return(atomic_t * atom, long value)
 {
 	return __cpu_atomic_sub_return(atom, value);
 }
 
-bool __lock vmm_cpu_atomic_testnset(atomic_t * atom, long test, long value)
+bool __lock arch_cpu_atomic_testnset(atomic_t * atom, long test, long value)
 {
 	return __cpu_atomic_testnset(atom, test, value);
 }

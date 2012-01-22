@@ -1,0 +1,119 @@
+#
+# Automatically generated make config: don't edit
+# Project: Xvisor (eXtensible Versatile hypervISOR)
+# Version: 0.1.1
+# Mon Jan  9 10:36:20 2012
+#
+# CONFIG_SMP is not set
+# CONFIG_ARCH_ARM is not set
+CONFIG_ARCH_MIPS=y
+CONFIG_ARCH="mips"
+CONFIG_CPU_MIPS32R2=y
+CONFIG_CPU="mips32r2"
+# CONFIG_CPU_LE is not set
+CONFIG_CPU_BE=y
+CONFIG_BOARD_QEMU_MIPS=y
+CONFIG_BOARD="qemu_mips"
+CONFIG_QEMU_MIPS=y
+# CONFIG_CPU_CORTEX_A8 is not set
+# CONFIG_CPU_OMAP3 is not set
+# CONFIG_BOARD_PB_A8 is not set
+
+#
+# Hypervisor Options
+#
+# CONFIG_VERBOSE_MODE is not set
+CONFIG_BANNER_NONE=y
+# CONFIG_BANNER_DEFAULT is not set
+CONFIG_MAX_VCPU_COUNT=8
+CONFIG_MAX_GUEST_COUNT=2
+CONFIG_VGPA2REG_CACHE_SIZE=8
+CONFIG_VAPOOL_SIZE=8
+# CONFIG_PROFILE is not set
+# CONFIG_SCHEDALGO_RR is not set
+CONFIG_SCHEDALGO_PRR=y
+# CONFIG_TSLICE_1MS is not set
+CONFIG_TSLICE_10MS=y
+# CONFIG_TSLICE_100MS is not set
+CONFIG_TSLICE_MS=10
+CONFIG_IRQ_STACK_SIZE=4096
+CONFIG_THREAD_STACK_SIZE=4096
+CONFIG_HEAP_SIZE=1024
+CONFIG_HEAP_BUDDY=y
+# CONFIG_HEAP_TRIVIAL is not set
+
+#
+# Buddy System Configuration
+#
+CONFIG_BUDDY_HOUSE_KEEPING_PERCENT=25
+CONFIG_BUDDY_MIN_BLOCK_SIZE_SHIFT=2
+CONFIG_BUDDY_MAX_BLOCK_SIZE_SHIFT=12
+
+#
+# Command Options
+#
+CONFIG_CMD_VERSION=y
+CONFIG_CMD_RESET=y
+CONFIG_CMD_SHUTDOWN=y
+CONFIG_CMD_VAPOOL=y
+CONFIG_CMD_RAM=y
+CONFIG_CMD_DEVTREE=y
+CONFIG_CMD_VCPU=y
+CONFIG_CMD_GUEST=y
+CONFIG_CMD_THREAD=y
+CONFIG_CMD_CHARDEV=y
+CONFIG_CMD_BLOCKDEV=y
+CONFIG_CMD_VSERIAL=y
+CONFIG_CMD_STDIO=y
+CONFIG_CMD_BUDDY=y
+# CONFIG_CMD_THREADTEST is not set
+
+#
+# Library Options
+#
+CONFIG_LIBFDT=y
+# CONFIG_KALLSYMS is not set
+# CONFIG_LIBSORT is not set
+
+#
+# Device Drivers
+#
+
+#
+# Serial Port Drivers
+#
+CONFIG_SERIAL=y
+CONFIG_SERIAL_UART=y
+# CONFIG_SERIAL_PL01X is not set
+
+#
+# Device Emulators
+#
+
+#
+# System Emulators
+#
+# CONFIG_EMU_SYS is not set
+
+#
+# PIC Emulators
+#
+# CONFIG_EMU_PIC is not set
+
+#
+# Timer Emulators
+#
+# CONFIG_EMU_TIMER is not set
+
+#
+# Serial Port Emulators
+#
+# CONFIG_EMU_SERIAL is not set
+
+#
+# Tool Options
+#
+CONFIG_DTC=y
+# CONFIG_CPATCH is not set
+# CONFIG_BBFLASH is not set
+# CONFIG_KALLSYMS_GENERATOR is not set

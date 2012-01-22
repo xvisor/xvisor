@@ -22,9 +22,9 @@
  * @brief intialization functions for CPU
  */
 
-#include <vmm_cpu.h>
 #include <vmm_main.h>
 #include <vmm_error.h>
+#include <arch_cpu.h>
 #include <cpu_mmu.h>
 
 extern u8 _code_start;
@@ -32,22 +32,22 @@ extern u8 _code_end;
 extern u32 _load_start;
 extern u32 _load_end;
 
-virtual_addr_t vmm_cpu_code_vaddr_start(void)
+virtual_addr_t arch_code_vaddr_start(void)
 {
 	return (virtual_addr_t) &_code_start;
 }
 
-physical_addr_t vmm_cpu_code_paddr_start(void)
+physical_addr_t arch_code_paddr_start(void)
 {
 	return (physical_addr_t) _load_start;
 }
 
-virtual_size_t vmm_cpu_code_size(void)
+virtual_size_t arch_code_size(void)
 {
 	return (virtual_size_t) (&_code_end - &_code_start);
 }
 
-int __init vmm_cpu_early_init(void)
+int __init arch_cpu_early_init(void)
 {
 	/*
 	 * Host virtual memory, device tree, heap is up.
@@ -57,7 +57,7 @@ int __init vmm_cpu_early_init(void)
 	return VMM_OK;
 }
 
-int __init vmm_cpu_final_init(void)
+int __init arch_cpu_final_init(void)
 {
 	/** FIXME: Final initialzation code for CPU */
 	/* All VMM API's are available here */

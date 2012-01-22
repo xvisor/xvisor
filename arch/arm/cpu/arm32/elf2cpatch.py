@@ -381,6 +381,27 @@ def convert_srs_inst(hxstr):
 	rethx = rethx | (mode << 10)
 	return rethx
 
+# WFI
+#	Syntax:
+# 		wfi<c>
+#	Fields:
+#		cond = bits[31:28]
+#	Hypercall Fields:
+#		inst_cond[31:28] = cond
+#		inst_op[27:24] = 0xf
+#		inst_id[23:20] = 0
+#		inst_subid[19:17] = 6
+def convert_wfi_inst(hxstr):
+	hx = int(hxstr, 16)
+	inst_id = 0
+	inst_subid = 6
+	cond = (hx >> 28) & 0xF
+	rethx = 0x0F000000
+	rethx = rethx | (cond << 28)
+	rethx = rethx | (inst_id << 20)
+	rethx = rethx | (inst_subid << 17)
+	return rethx
+
 # LDM (exception return or user register)
 #	Syntax:
 # 		ldm<amode><c> <Rn>{!}, <registers_with_or_without_pc>^
@@ -517,7 +538,11 @@ for ln, l in enumerate(lines):
 		if (len(w)>1):
 			if (w[1]=="Address"):
 				continue
-		if (len(w)==4):
+		if (len(w)==3):
+			if (w[2]=="wfi"):
+				print "\t#", w[2] 
+				print "\twrite32,0x%x,0x%08x" % (addr, convert_wfi_inst(w[1]))
+		elif (len(w)==4):
 			if (w[2]=="cps" or w[2]=="cpsie" or w[2]=="cpsid"):
 				print "\t#", w[2], w[3]
 				print "\twrite32,0x%x,0x%08x" % (addr, convert_cps_inst(w[1]))

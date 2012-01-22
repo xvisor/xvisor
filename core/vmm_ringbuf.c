@@ -29,11 +29,11 @@
 #include <vmm_string.h>
 #include <vmm_ringbuf.h>
 
-vmm_ringbuf_t *vmm_ringbuf_alloc(u32 key_size, u32 key_count)
+struct vmm_ringbuf *vmm_ringbuf_alloc(u32 key_size, u32 key_count)
 {
-	vmm_ringbuf_t *rb;
+	struct vmm_ringbuf *rb;
 
-	rb = vmm_malloc(sizeof(vmm_ringbuf_t));
+	rb = vmm_malloc(sizeof(struct vmm_ringbuf));
 	if (!rb) {
 		return NULL;
 	}
@@ -56,7 +56,7 @@ rb_init_fail:
 	return NULL;
 }
 
-bool vmm_ringbuf_isempty(vmm_ringbuf_t *rb)
+bool vmm_ringbuf_isempty(struct vmm_ringbuf *rb)
 {
 	bool isempty;
 
@@ -73,7 +73,7 @@ bool vmm_ringbuf_isempty(vmm_ringbuf_t *rb)
 	return isempty;
 }
 
-bool vmm_ringbuf_isfull(vmm_ringbuf_t *rb)
+bool vmm_ringbuf_isfull(struct vmm_ringbuf *rb)
 {
 	u32 write_pos_mod;
 	bool isfull;
@@ -95,7 +95,7 @@ bool vmm_ringbuf_isfull(vmm_ringbuf_t *rb)
 	return isfull;
 }
 
-bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
+bool vmm_ringbuf_enqueue(struct vmm_ringbuf *rb, void *srckey, bool overwrite)
 {
 	u32 read_pos_mod, write_pos_mod;
 	bool isfull, update;
@@ -156,7 +156,7 @@ bool vmm_ringbuf_enqueue(vmm_ringbuf_t *rb, void *srckey, bool overwrite)
 	return update;
 }
 
-bool vmm_ringbuf_dequeue(vmm_ringbuf_t *rb, void *dstkey)
+bool vmm_ringbuf_dequeue(struct vmm_ringbuf *rb, void *dstkey)
 {
 	u32 read_pos_mod;
 	bool isempty;
@@ -202,7 +202,7 @@ bool vmm_ringbuf_dequeue(vmm_ringbuf_t *rb, void *dstkey)
 	return !isempty;
 }
 
-bool vmm_ringbuf_getkey(vmm_ringbuf_t *rb, u32 index, void *dstkey)
+bool vmm_ringbuf_getkey(struct vmm_ringbuf *rb, u32 index, void *dstkey)
 {
 	if (!rb || !dstkey) {
 		return FALSE;
@@ -243,7 +243,7 @@ bool vmm_ringbuf_getkey(vmm_ringbuf_t *rb, u32 index, void *dstkey)
 	return TRUE;
 }
 
-u32 vmm_ringbuf_avail(vmm_ringbuf_t *rb)
+u32 vmm_ringbuf_avail(struct vmm_ringbuf *rb)
 {
 	u32 retval;
 
@@ -260,7 +260,7 @@ u32 vmm_ringbuf_avail(vmm_ringbuf_t *rb)
 	return retval;
 }
 
-int vmm_ringbuf_free(vmm_ringbuf_t *rb)
+int vmm_ringbuf_free(struct vmm_ringbuf *rb)
 {
 	vmm_free(rb->keys);
 	vmm_free(rb);

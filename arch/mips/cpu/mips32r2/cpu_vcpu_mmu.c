@@ -22,25 +22,25 @@
  * @brief MMU handling functions related to VCPU.
  */
 
+#include <arch_regs.h>
 #include <vmm_error.h>
 #include <vmm_types.h>
-#include <vmm_regs.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
+#include <vmm_guest_aspace.h>
 #include <cpu_asm_macros.h>
 #include <cpu_vcpu_mmu.h>
-#include <vmm_guest_aspace.h>
 
-int do_vcpu_tlbmiss(vmm_user_regs_t *uregs)
+int do_vcpu_tlbmiss(arch_regs_t *uregs)
 {
 	u32 badvaddr = read_c0_badvaddr();
-	vmm_vcpu_t *current_vcpu;
+	struct vmm_vcpu *current_vcpu;
 	int counter = 0;
 	mips32_tlb_entry_t *c_tlbe;
 
 	current_vcpu = vmm_scheduler_current_vcpu();
 	for (counter = 0; counter < 2 * CPU_TLB_COUNT; counter++) {
-		c_tlbe = &current_vcpu->sregs->shadow_tlb_entries[counter];
+		c_tlbe = &mips_sregs(current_vcpu)->shadow_tlb_entries[counter];
 		if (TBE_PGMSKD_VPN2(c_tlbe) ==
 		    (badvaddr & ~c_tlbe->page_mask)) {
 			mips_fill_tlb_entry(c_tlbe, -1);
@@ -54,17 +54,17 @@ int do_vcpu_tlbmiss(vmm_user_regs_t *uregs)
 	return VMM_EFAIL;
 }
 
-u32 mips_probe_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
+u32 mips_probe_vcpu_tlb(struct vmm_vcpu *vcpu, arch_regs_t *uregs)
 {
 	u32 guest_cp0_index = (0x01UL << 31);
 	u32 tlb_counter;
 	mips32_tlb_entry_t *c_tlb_entry, *tempe, t_tlb_entry;
 	mips32_entryhi_t g_probed_ehi;
 
-	g_probed_ehi._entryhi = vcpu->sregs->cp0_regs[CP0_ENTRYHI_IDX];
+	g_probed_ehi._entryhi = mips_sregs(vcpu)->cp0_regs[CP0_ENTRYHI_IDX];
 
 	for (tlb_counter = 0; tlb_counter < CPU_TLB_COUNT; tlb_counter++) {
-		c_tlb_entry = &vcpu->sregs->hw_tlb_entries[tlb_counter];
+		c_tlb_entry = &mips_sregs(vcpu)->hw_tlb_entries[tlb_counter];
 
 		t_tlb_entry.page_mask = c_tlb_entry->page_mask;
 		t_tlb_entry.entryhi._entryhi = g_probed_ehi._entryhi;
@@ -82,21 +82,21 @@ u32 mips_probe_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 		}
 	}
 
-	vcpu->sregs->cp0_regs[CP0_INDEX_IDX] = guest_cp0_index;
+	mips_sregs(vcpu)->cp0_regs[CP0_INDEX_IDX] = guest_cp0_index;
 
 	return VMM_OK;
 }
 
-u32 mips_read_vcpu_tlb(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
+u32 mips_read_vcpu_tlb(struct vmm_vcpu *vcpu, arch_regs_t *uregs)
 {
 	return VMM_OK;
 }
 
-static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
+static u32 mips_vcpu_map_guest_to_host(struct vmm_vcpu *vcpu,
 				       mips32_tlb_entry_t *gtlbe)
 {
-	vmm_guest_t *guest = NULL;
-	vmm_region_t *guest_region = NULL;
+	struct vmm_guest *guest = NULL;
+	struct vmm_region *guest_region = NULL;
 	physical_addr_t gphys_addr = 0, hphys_addr = 0, gphys_addr2map = 0, gphys_offset = 0;
 	physical_addr_t hphys_addr2map = 0;
 	int do_map = 0;
@@ -165,10 +165,10 @@ static u32 mips_vcpu_map_guest_to_host(vmm_vcpu_t *vcpu,
 	return VMM_OK;
 }
 
-u32 mips_write_vcpu_tlbi(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
+u32 mips_write_vcpu_tlbi(struct vmm_vcpu *vcpu, arch_regs_t *uregs)
 {
 	mips32_tlb_entry_t *entry2prgm;
-	u32 tlb_index = vcpu->sregs->cp0_regs[CP0_INDEX_IDX];
+	u32 tlb_index = mips_sregs(vcpu)->cp0_regs[CP0_INDEX_IDX];
 
 	/*
 	 * TODO: Release 2 of MIPS32 checks and alerts for the duplicate
@@ -179,15 +179,15 @@ u32 mips_write_vcpu_tlbi(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 	 * These are THE entries that the guest created.
 	 */
 	if (tlb_index >=0 && tlb_index < CPU_TLB_COUNT) {
-		entry2prgm = &vcpu->sregs->hw_tlb_entries[tlb_index];
+		entry2prgm = &mips_sregs(vcpu)->hw_tlb_entries[tlb_index];
 		entry2prgm->entryhi._entryhi =
-			vcpu->sregs->cp0_regs[CP0_ENTRYHI_IDX];
+			mips_sregs(vcpu)->cp0_regs[CP0_ENTRYHI_IDX];
 		entry2prgm->entrylo0._entrylo =
-			vcpu->sregs->cp0_regs[CP0_ENTRYLO0_IDX];
+			mips_sregs(vcpu)->cp0_regs[CP0_ENTRYLO0_IDX];
 		entry2prgm->entrylo1._entrylo =
-			vcpu->sregs->cp0_regs[CP0_ENTRYLO1_IDX];
+			mips_sregs(vcpu)->cp0_regs[CP0_ENTRYLO1_IDX];
 		entry2prgm->page_mask =
-			vcpu->sregs->cp0_regs[CP0_PAGEMASK_IDX];
+			mips_sregs(vcpu)->cp0_regs[CP0_PAGEMASK_IDX];
 
 		return mips_vcpu_map_guest_to_host(vcpu, entry2prgm);
 	}
@@ -195,7 +195,7 @@ u32 mips_write_vcpu_tlbi(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
 	return VMM_OK;
 }
 
-u32 mips_write_vcpu_tlbr(vmm_vcpu_t *vcpu, vmm_user_regs_t *uregs)
+u32 mips_write_vcpu_tlbr(struct vmm_vcpu *vcpu, arch_regs_t *uregs)
 {
 	return VMM_OK;
 }
