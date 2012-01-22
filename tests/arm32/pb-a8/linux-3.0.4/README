@@ -32,16 +32,16 @@ Realview PB-A8 Host:
   # make
 
   [5. Build Basic Test Code]
-  # make -C tests/armv7a/pb-a8/basic
+  # make -C tests/arm32/pb-a8/basic
 
   [6. Copy patch to Linux-3.0.4 source directory]
-  # cp tests/armv7a/pb-a8/linux-3.0.4/linux-3.0.4_realview_pba8.patch <linux-3.0.4_source_directory>
+  # cp tests/arm32/pb-a8/linux-3.0.4/linux-3.0.4_realview_pba8.patch <linux-3.0.4_source_directory>
 
   [7. Copy defconfig to Linux-3.0.4 build directory]
-  # cp tests/armv7a/pb-a8/linux-3.0.4/linux-3.0.4_realview_pba8_defconfig <linux-3.0.4_build_directory>/.config
+  # cp tests/arm32/pb-a8/linux-3.0.4/linux-3.0.4_realview_pba8_defconfig <linux-3.0.4_build_directory>/.config
 
   [8. Copy defconfig to Busybox-1.19.2 source directory]
-  # cp tests/armv7a/pb-a8/linux-3.0.4/busybox-1.19.2_defconfig <busybox-1.19.2_source_directory>/.config
+  # cp tests/arm32/pb-a8/linux-3.0.4/busybox-1.19.2_defconfig <busybox-1.19.2_source_directory>/.config
 
   [9. GoTo Linux-3.0.4 source directory]
   # cd <linux-3.0.4_source_directory>
@@ -80,14 +80,14 @@ Realview PB-A8 Host:
   # sudo chown -R root:root ./_install
 
   [21. Create RootFS image]
-  # fakeroot /bin/bash -c "genext2fs -b 3096 -N 1024 -D <xvisor_source_directory>/tests/armv7a/pb-a8/linux-3.0.4/busybox-1.19.2_dev.txt -d ./_install <linux-3.0.4_build_directory>/rootfs.img"
+  # fakeroot /bin/bash -c "genext2fs -b 3096 -N 1024 -D <xvisor_source_directory>/tests/arm32/pb-a8/linux-3.0.4/busybox-1.19.2_dev.txt -d ./_install <linux-3.0.4_build_directory>/rootfs.img"
 
   [22. GoTo Linux-3.0.4 build directory]
   # cd <linux-3.0.4_build_directory>
 
   [23. Create xvisor_linux-3.0.4_qemu.img for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x70010000 -o xvisor_linux-3.0.4_qemu.img <xvisor_source_directory>/build/vmm.bin@0x70010000 <xvisor_source_directory>/build/tests/armv7a/pb-a8/basic/arm_test.bin.patched@0x70800000 ./arch/arm/boot/zImage@0x70900000 ./rootfs.img@0x70C00000
-  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/armv7a/pb-a8/basic/arm_test.bin.patched@0x71000000 ./arch/arm/boot/zImage@0x71100000 ./rootfs.img@0x71400000")
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x70010000 -o xvisor_linux-3.0.4_qemu.img <xvisor_source_directory>/build/vmm.bin@0x70010000 <xvisor_source_directory>/build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x70800000 ./arch/arm/boot/zImage@0x70900000 ./rootfs.img@0x70C00000
+  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x71000000 ./arch/arm/boot/zImage@0x71100000 ./rootfs.img@0x71400000")
 
   [24. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel ./xvisor_linux-3.0.4_qemu.img

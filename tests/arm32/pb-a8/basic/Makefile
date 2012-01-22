@@ -30,7 +30,7 @@ else
  build_dir=$(top_dir)/build
 endif
 -include $(build_dir)/.config
-obj_dir=$(build_dir)/tests/armv7a/pb-a8/basic
+obj_dir=$(build_dir)/tests/arm32/pb-a8/basic
 
 ifdef CROSS_COMPILE
 ARM_CROSS_COMPILE=$(CROSS_COMPILE)
