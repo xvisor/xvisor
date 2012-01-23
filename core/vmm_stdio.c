@@ -236,7 +236,6 @@ static int print(char **out, struct vmm_chardev *cdev, const char *format, va_li
 				continue;
 			}
 			if (*format == 'l' && *(format + 1) == 'l') {
-				format += 2;
 				if (sizeof(long long) == 
 						sizeof(unsigned long)) {
 					tmp = va_arg(args, unsigned long long);
@@ -246,19 +245,20 @@ static int print(char **out, struct vmm_chardev *cdev, const char *format, va_li
 					((unsigned long *)&tmp)[1] = 
 						va_arg(args, unsigned long);
 				}
-				if (*format == 'u') {
-					format++;
+				if (*(format + 2) == 'u') {
+					format += 2;
 					pc += printi(out, cdev, tmp,
 						10, 0, width, pad, 'a');
-				} else if (*format == 'x') {
-					format++;
+				} else if (*(format + 2) == 'x') {
+					format += 2;
 					pc += printi(out, cdev, tmp,
 						16, 0, width, pad, 'a');
-				} else if (*format == 'X') {
-					format++;
+				} else if (*(format + 2) == 'X') {
+					format += 2;
 					pc += printi(out, cdev, tmp,
 						16, 0, width, pad, 'A');
 				} else {
+					format += 1;
 					pc += printi(out, cdev, tmp,
 						10, 1, width, pad, '0');
 				}

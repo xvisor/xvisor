@@ -44,8 +44,6 @@ void cmd_guest_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   guest help\n");
 	vmm_cprintf(cdev, "   guest list\n");
-	vmm_cprintf(cdev, "   guest load    <guest_id> "
-			  "<src_hphys_addr> <dest_gphys_addr> <img_sz>\n");
 	vmm_cprintf(cdev, "   guest reset   <guest_id>\n");
 	vmm_cprintf(cdev, "   guest kick    <guest_id>\n");
 	vmm_cprintf(cdev, "   guest pause   <guest_id>\n");
@@ -78,50 +76,6 @@ void cmd_guest_list(struct vmm_chardev *cdev)
 	}
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-}
-
-int cmd_guest_load(struct vmm_chardev *cdev, int id, 
-		   physical_addr_t src_hphys_addr, 
-		   physical_addr_t dst_gphys_addr, 
-		   u32 len)
-{
-#define GUEST_LOAD_BUF_SZ		256
-	u8 buf[GUEST_LOAD_BUF_SZ];
-	u32 bytes_loaded = 0, to_load = 0;
-	struct vmm_guest *guest;
-
-	guest = vmm_manager_guest(id);
-	if (guest) {
-		while (bytes_loaded < len) {
-			to_load = (GUEST_LOAD_BUF_SZ < (len - bytes_loaded)) ? 
-				  GUEST_LOAD_BUF_SZ : (len - bytes_loaded);
-			to_load = vmm_host_physical_read(src_hphys_addr, 
-							 buf, 
-							 to_load);
-			if (!to_load) {
-				break;
-			}
-			to_load = vmm_guest_physical_write(guest, 
-							   dst_gphys_addr,
-							   buf, 
-							   to_load);
-			if (!to_load) {
-				break;
-			}
-			src_hphys_addr += to_load;
-			dst_gphys_addr += to_load;
-			bytes_loaded += to_load;
-		}
-
-		vmm_cprintf(cdev, "Loaded %d bytes for %s\n", bytes_loaded, 
-							     guest->node->name);
-
-		if (bytes_loaded == len) {
-			return VMM_OK;
-		}
-	}
-
-	return VMM_EFAIL;
 }
 
 int cmd_guest_reset(struct vmm_chardev *cdev, int id)
@@ -242,8 +196,9 @@ int cmd_guest_dumpmem(struct vmm_chardev *cdev, int id,
 
 	guest = vmm_manager_guest(id);
 	if (guest) {
-		vmm_cprintf(cdev, "Guest %d physical memory 0x%x - 0x%x:\n",
-				  id, gphys_addr, gphys_addr + len);
+		vmm_cprintf(cdev, "Guest %d physical memory ", id);
+		vmm_cprintf(cdev, "0x%llx - 0x%llx:\n", (u64)gphys_addr, 
+						(u64)(gphys_addr + len));
 		while (total_loaded < len) {
 			loaded = vmm_guest_physical_read(guest, gphys_addr,
                                                         buf, BYTES_PER_LINE);
@@ -251,9 +206,13 @@ int cmd_guest_dumpmem(struct vmm_chardev *cdev, int id,
 				break;
 
 			mem = (u32 *)buf;
-			vmm_cprintf(cdev, "0x%08x:\t0x%08x 0x%08x 0x%08x "
-					  "0x%08x\n", gphys_addr, mem[0],
-					  mem[1], mem[2], mem[3]);
+			if (sizeof(u64) == sizeof(physical_addr_t)) {
+				vmm_cprintf(cdev, "0x%016llx:", (u64)gphys_addr);
+			} else {
+				vmm_cprintf(cdev, "0x%08x:", gphys_addr);
+			}
+			vmm_cprintf(cdev, " 0x%08x 0x%08x 0x%08x 0x%08x\n"
+					  , mem[0], mem[1], mem[2], mem[3]);
 
 			gphys_addr += BYTES_PER_LINE;
 			total_loaded += BYTES_PER_LINE;
@@ -269,7 +228,8 @@ int cmd_guest_dumpmem(struct vmm_chardev *cdev, int id,
 int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int id, count;
-	u32 src_addr, dest_addr, size;
+	physical_addr_t src_addr;
+	u32 size;
 	int ret;
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
@@ -366,32 +326,13 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return VMM_EFAIL;
 		}
 
-		src_addr = vmm_str2uint(argv[3], 16);
+		src_addr = (physical_addr_t)vmm_str2ulonglong(argv[3], 10);
 		if (argc > 4)
-			size = vmm_str2uint(argv[4], 16);
+			size = (physical_size_t)vmm_str2uint(argv[4], 10);
 		else
 			size = 64;
 
 		return cmd_guest_dumpmem(cdev, id, src_addr, size);
-	} else if (vmm_strcmp(argv[1], "load") == 0) {
-		if (id == -1) {
-			vmm_cprintf(cdev, "Error: Cannot load images in " 
-					  "all guests simultaneously.\n");
-			return VMM_EFAIL;
-		}
-
-		if (argc < 6) {
-			vmm_cprintf(cdev, "Error: Insufficient argument for "
-					  "command load.\n");
-			cmd_guest_usage(cdev);
-			return VMM_EFAIL;
-		}
-
-		src_addr = vmm_str2uint(argv[3], 16);
-		dest_addr = vmm_str2uint(argv[4], 16);
-		size = vmm_str2uint(argv[5], 16);
-
-		return cmd_guest_load(cdev, id, src_addr, dest_addr, size);
 	} else {
 		cmd_guest_usage(cdev);
 		return VMM_EFAIL;
