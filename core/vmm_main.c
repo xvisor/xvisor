@@ -192,6 +192,7 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
+#ifdef CONFIG_NET
 	/* Initialize network device framework */
 	vmm_printf("Initialize Networking Device Framework\n");
 	ret = vmm_netdev_init();
@@ -199,6 +200,7 @@ void vmm_init(void)
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
 	}
+#endif
 
 	/* Initialize workqueue framework */
 	vmm_printf("Initialize Workqueue Framework\n");

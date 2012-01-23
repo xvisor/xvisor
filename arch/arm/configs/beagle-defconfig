@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.1
-# Mon Jan  9 10:33:07 2012
+# Mon Jan 23 15:35:10 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -44,6 +44,7 @@ CONFIG_MAX_VCPU_COUNT=8
 CONFIG_MAX_GUEST_COUNT=2
 CONFIG_VGPA2REG_CACHE_SIZE=8
 CONFIG_VAPOOL_SIZE=8
+# CONFIG_NET is not set
 # CONFIG_PROFILE is not set
 # CONFIG_SCHEDALGO_RR is not set
 CONFIG_SCHEDALGO_PRR=y
