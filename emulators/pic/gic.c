@@ -308,11 +308,7 @@ static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 	case 0x180: /* Clear-enable0 */
 	case 0x184: /* Clear-enable1 */
 	case 0x188: /* Clear-enable2 */
-		if (offset < 0x180) {
-			irq = (offset - 0x100) * 8;
-		} else {
-			irq = (offset - 0x180) * 8;
-		}
+		irq = (offset & 0xF) * 8;
 		*dst = 0;
 		for (i = 0; i < 8; i++) {
 			*dst |= GIC_TEST_ENABLED(s, irq + i) ? 
@@ -325,11 +321,7 @@ static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 	case 0x280: /* Clear-pending0 */
 	case 0x284: /* Clear-pending1 */
 	case 0x288: /* Clear-pending2 */
-		if (offset < 0x280) {
-			irq = (offset - 0x200) * 8;
-		} else {
-			irq = (offset - 0x280) * 8;
-		}
+		irq = (offset & 0xF) * 8;
 		mask = (irq < 32) ? (1 << cpu) : GIC_ALL_CPU_MASK(s);
 		*dst = 0;
 		for (i = 0; i < 8; i++) {
@@ -340,7 +332,7 @@ static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 	case 0x300: /* Active0 */
 	case 0x304: /* Active1 */
 	case 0x308: /* Active2 */
-		irq = (offset - 0x300) * 8;
+		irq = (offset & 0xF) * 8;
 		mask = (irq < 32) ? (1 << cpu) : GIC_ALL_CPU_MASK(s);
 		*dst = 0;
 		for (i = 0; i < 8; i++) {
@@ -437,7 +429,7 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 	case 0x100: /* Set-enable0 */
 	case 0x104: /* Set-enable1 */
 	case 0x108: /* Set-enable2 */
-		irq = (offset - 0x100) * 8;
+		irq = (offset & 0xF) *8;
 		if (GIC_NUM_IRQ(s) <= irq) {
 			done = 0;
 			break;
@@ -462,7 +454,7 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 	case 0x180: /* Clear-enable0 */
 	case 0x184: /* Clear-enable1 */
 	case 0x188: /* Clear-enable2 */
-		irq = (offset - 0x180) * 8;
+		irq = (offset & 0xF) *8;
 		if (GIC_NUM_IRQ(s) <= irq) {
 			done = 0;
 			break;
@@ -479,7 +471,7 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 	case 0x200: /* Set-pending0 */
 	case 0x204: /* Set-pending1 */
 	case 0x208: /* Set-pending2 */
-		irq = (offset - 0x200) * 8;
+		irq = (offset & 0xF) *8;
 		if (GIC_NUM_IRQ(s) <= irq) {
 			done = 0;
 			break;
@@ -497,7 +489,7 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 	case 0x280: /* Clear-pending0 */
 	case 0x284: /* Clear-pending1 */
 	case 0x288: /* Clear-pending2 */
-		irq = (offset - 0x280) * 8;
+		irq = (offset & 0xF) *8;
 		if (GIC_NUM_IRQ(s) <= irq) {
 			done = 0;
 			break;
