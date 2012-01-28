@@ -197,8 +197,13 @@ int cmd_guest_dumpmem(struct vmm_chardev *cdev, int id,
 	guest = vmm_manager_guest(id);
 	if (guest) {
 		vmm_cprintf(cdev, "Guest %d physical memory ", id);
-		vmm_cprintf(cdev, "0x%llx - 0x%llx:\n", (u64)gphys_addr, 
-						(u64)(gphys_addr + len));
+		if (sizeof(u64) == sizeof(physical_addr_t)) {
+			vmm_cprintf(cdev, "0x%016llx - 0x%016llx:\n", 
+				(u64)gphys_addr, (u64)(gphys_addr + len));
+		} else {
+			vmm_cprintf(cdev, "0x%08x - 0x%08x:\n", 
+				(u32)gphys_addr, (u32)(gphys_addr + len));
+		}
 		while (total_loaded < len) {
 			loaded = vmm_guest_physical_read(guest, gphys_addr,
                                                         buf, BYTES_PER_LINE);
@@ -207,11 +212,11 @@ int cmd_guest_dumpmem(struct vmm_chardev *cdev, int id,
 
 			mem = (u32 *)buf;
 			if (sizeof(u64) == sizeof(physical_addr_t)) {
-				vmm_cprintf(cdev, "0x%016llx:", (u64)gphys_addr);
+				vmm_cprintf(cdev, "%016llx:", (u64)gphys_addr);
 			} else {
-				vmm_cprintf(cdev, "0x%08x:", gphys_addr);
+				vmm_cprintf(cdev, "%08x:", gphys_addr);
 			}
-			vmm_cprintf(cdev, " 0x%08x 0x%08x 0x%08x 0x%08x\n"
+			vmm_cprintf(cdev, " %08x %08x %08x %08x\n"
 					  , mem[0], mem[1], mem[2], mem[3]);
 
 			gphys_addr += BYTES_PER_LINE;
