@@ -30,6 +30,7 @@ commands-objs-$(CONFIG_CMD_RAM)+= cmd_ram.o
 commands-objs-$(CONFIG_CMD_DEVTREE)+= cmd_devtree.o
 commands-objs-$(CONFIG_CMD_VCPU)+= cmd_vcpu.o
 commands-objs-$(CONFIG_CMD_GUEST)+= cmd_guest.o
+commands-objs-$(CONFIG_CMD_MEMORY)+= cmd_memory.o
 commands-objs-$(CONFIG_CMD_THREAD)+= cmd_thread.o
 commands-objs-$(CONFIG_CMD_CHARDEV)+= cmd_chardev.o
 commands-objs-$(CONFIG_CMD_BLOCKDEV)+= cmd_blockdev.o
