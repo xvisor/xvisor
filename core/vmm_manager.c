@@ -472,6 +472,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 {
 	int vnum, gnum, found;
 	const char *attrval;
+	irq_flags_t flags;
 	struct dlist *l1;
 	struct vmm_devtree_node *vsnode;
 	struct vmm_devtree_node *vnode;
@@ -480,9 +481,6 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 
 	/* Sanity checks */
 	if (!gnode) {
-		return NULL;
-	}
-	if (CONFIG_MAX_GUEST_COUNT <= mngr.guest_count) {
 		return NULL;
 	}
 	attrval = vmm_devtree_attrval(gnode,
@@ -494,7 +492,21 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 		return NULL;
 	}
 
-	/* Find next available vcpu instance */
+	/* Acquire lock */
+	flags = vmm_spin_lock_irqsave(&mngr.lock);
+
+	/* Ensure guest node uniqueness */
+	list_for_each(l1, &mngr.guest_list) {
+		guest = list_entry(l1, struct vmm_guest, head);
+		if ((guest->node == gnode) ||
+		    (vmm_strcmp(guest->node->name, gnode->name) == 0)) {
+			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+			return NULL;
+		}
+	}
+	guest = NULL;
+
+	/* Find next available guest instance */
 	found = 0;
 	for (gnum = 0; gnum < CONFIG_MAX_GUEST_COUNT; gnum++) {
 		if (mngr.guest_avail_array[gnum]) {
@@ -506,6 +518,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 		guest = &mngr.guest_array[gnum];
 		mngr.guest_avail_array[gnum] = FALSE;
 	} else {
+		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 		return NULL;
 	}
 
@@ -628,16 +641,21 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 
 	/* Initialize guest address space */
 	if (vmm_guest_aspace_init(guest)) {
+		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 		return NULL;
 	}
 
 	/* Reset guest address space */
 	if (vmm_guest_aspace_reset(guest)) {
+		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 		return NULL;
 	}
 
 	/* Increment guest count */
 	mngr.guest_count++;
+
+	/* Release lock */
+	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 
 	return guest;
 }
