@@ -765,6 +765,9 @@ int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page * pg)
 int cpu_mmu_unmap_reserved_page(struct cpu_page * pg)
 {
 	int rc;
+	struct dlist * le;
+	struct cpu_l1tbl * l1;
+	irq_flags_t flags;
 
 	if (!pg) {
 		return VMM_EFAIL;
@@ -773,6 +776,21 @@ int cpu_mmu_unmap_reserved_page(struct cpu_page * pg)
 	if ((rc = cpu_mmu_unmap_page(&mmuctrl.defl1, pg))) {
 		return rc;
 	}
+
+	/* Note: It might be possible that the reserved page
+	 * was mapped on-demand into l1 tables other than 
+	 * default l1 table so, we should try to remove mappings
+	 * of this page from other l1 tables.
+	 */
+
+	flags = arch_cpu_irq_save();
+
+	list_for_each(le, &mmuctrl.l1tbl_list) {
+		l1 = list_entry(le, struct cpu_l1tbl, head);
+		cpu_mmu_unmap_page(l1, pg);
+	}
+
+	arch_cpu_irq_restore(flags);
 
 	return VMM_OK;
 }
@@ -788,6 +806,14 @@ int cpu_mmu_map_reserved_page(struct cpu_page * pg)
 	if ((rc = cpu_mmu_map_page(&mmuctrl.defl1, pg))) {
 		return rc;
 	}
+
+	/* Note: Ideally resereved page mapping should be created
+	 * in each and every l1 table that exist, but that would 
+	 * be uneccesary and redundant. To avoid this we only 
+	 * create mapping in default l1 table and let other VCPUs
+	 * fault on this page and load the page on-demand from
+	 * data abort and prefetch abort handlers.
+	 */
 
 	return VMM_OK;
 }
