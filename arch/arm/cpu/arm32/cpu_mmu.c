@@ -1117,12 +1117,10 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 	p.sz = sz;
 	p.imp = 0;
 	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
-	if (mem_flags & (VMM_MEMORY_READABLE | VMM_MEMORY_WRITEABLE)) {
+	if (mem_flags & VMM_MEMORY_WRITEABLE) {
 		p.ap = TTBL_AP_SRW_U;
 	} else if (mem_flags & VMM_MEMORY_READABLE) {
 		p.ap = TTBL_AP_SR_U;
-	} else if (mem_flags & VMM_MEMORY_WRITEABLE) {
-		p.ap = TTBL_AP_SRW_U;
 	} else {
 		p.ap = TTBL_AP_S_U;
 	}
