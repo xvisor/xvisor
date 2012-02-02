@@ -215,7 +215,7 @@ int cpu_mmu_l2tbl_free(struct cpu_l2tbl * l2)
 		}
 	}
 
-	list_del(&l2->head);
+	INIT_LIST_HEAD(&l2->head);
 
 	mmuctrl.l2_bmap[l2->l2_num] = 0;
 	mmuctrl.l2_alloc_count--;
@@ -900,7 +900,7 @@ int cpu_mmu_l1tbl_free(struct cpu_l1tbl * l1)
 	}
 
 	while (!list_empty(&l1->l2tbl_list)) {
-		le = list_pop(&l1->l2tbl_list);
+		le = list_first(&l1->l2tbl_list);
 		l2 = list_entry(le, struct cpu_l2tbl, head);
 		cpu_mmu_l2tbl_free(l2);
 	}
@@ -1300,6 +1300,9 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 						i * TTBL_L1TBL_SIZE;
 		mmuctrl.l1_array[i].tbl_va = mmuctrl.l1_base_va + 
 						i * TTBL_L1TBL_SIZE;
+		mmuctrl.l1_array[i].tte_cnt = 0;
+		mmuctrl.l1_array[i].l2tbl_cnt = 0;
+		INIT_LIST_HEAD(&mmuctrl.l1_array[i].l2tbl_list);
 	}
 
 	/* Setup up l2 array */
@@ -1313,6 +1316,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 						i * TTBL_L2TBL_SIZE;
 		mmuctrl.l2_array[i].tbl_va = mmuctrl.l2_base_va + 
 						i * TTBL_L2TBL_SIZE;
+		mmuctrl.l2_array[i].tte_cnt = 0;
 	}
 
 	return VMM_OK;
