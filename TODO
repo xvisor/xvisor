@@ -2,7 +2,6 @@
 		High-Priority Features (For version 0.1.2)
 
  * Add testsuit for completion, threads, workqueues, semaphore, mutex, etc.
- * Add support for dynamic guest creation/deletion using commands
  * Add support for device clock managment for device drivers
  * Add support for real-time clock virtualization
 
