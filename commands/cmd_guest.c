@@ -45,6 +45,7 @@ void cmd_guest_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   guest help\n");
 	vmm_cprintf(cdev, "   guest list\n");
 	vmm_cprintf(cdev, "   guest create  <guest_name>\n");
+	vmm_cprintf(cdev, "   guest destroy <guest_id>\n");
 	vmm_cprintf(cdev, "   guest reset   <guest_id>\n");
 	vmm_cprintf(cdev, "   guest kick    <guest_id>\n");
 	vmm_cprintf(cdev, "   guest pause   <guest_id>\n");
@@ -107,6 +108,24 @@ int cmd_guest_create(struct vmm_chardev *cdev, char *name)
 	vmm_cprintf(cdev, "Created %s successfully\n", name);
 
 	return VMM_OK;
+}
+
+int cmd_guest_destroy(struct vmm_chardev *cdev, int id)
+{
+	int ret = VMM_EFAIL;
+	char name[64];
+	struct vmm_guest *guest = vmm_manager_guest(id);
+	if (guest) {
+		vmm_strncpy(name, guest->node->name, 64);
+		if ((ret = vmm_manager_guest_destroy(guest))) {
+			vmm_cprintf(cdev, "%s: Failed to destroy\n", name);
+		} else {
+			vmm_cprintf(cdev, "%s: Destroyed\n", name);
+		}
+	} else {
+		vmm_cprintf(cdev, "Failed to find guest\n");
+	}
+	return ret;
 }
 
 int cmd_guest_reset(struct vmm_chardev *cdev, int id)
@@ -283,6 +302,18 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	count = vmm_manager_guest_count();
 	if (vmm_strcmp(argv[1], "create") == 0) {
 		return cmd_guest_create(cdev, argv[2]);
+	} else if (vmm_strcmp(argv[1], "destroy") == 0) {
+		id = vmm_str2int(argv[2], 10);
+		if (id == -1) {
+			for (id = 0; id < count; id++) {
+				ret = cmd_guest_destroy(cdev, id);
+				if (ret) {
+					return ret;
+				}
+			}
+		} else {
+			return cmd_guest_destroy(cdev, id);
+		}
 	} else if (vmm_strcmp(argv[1], "reset") == 0) {
 		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
