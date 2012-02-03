@@ -300,7 +300,11 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu * vcpu)
 	/* Change VCPU state */
 	vcpu->state = VMM_VCPU_STATE_UNKNOWN;
 
-	/* FIXME: deinit registers */
+	/* Deinit VCPU registers */
+	if ((rc = arch_vcpu_regs_deinit(vcpu))) {
+		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+		return rc;
+	}
 
 	/* Mark VCPU as available */
 	mngr.vcpu_avail_array[vcpu->id] = TRUE;
@@ -662,7 +666,71 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 
 int vmm_manager_guest_destroy(struct vmm_guest * guest)
 {
-	/* FIXME: TBD */
+	int rc;
+	irq_flags_t flags;
+	struct dlist * l;
+	struct vmm_vcpu * vcpu;
+
+	/* Sanity Check */
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	/* For sanity reset guest (ignore reture value) */
+	vmm_manager_guest_reset(guest);
+
+	/* Acquire lock */
+	flags = vmm_spin_lock_irqsave(&mngr.lock);
+
+	/* Decrement guest count */
+	mngr.guest_count--;
+
+	/* Remove from guest list */
+	list_del(&guest->head);
+
+	/* Deinit the guest aspace */
+	if ((rc = vmm_guest_aspace_deinit(guest))) {
+		return rc;
+	}
+
+	/* Destroy each VCPU of guest */
+	while (!list_empty(&guest->vcpu_list)) {
+		l = list_pop(&guest->vcpu_list);
+		vcpu = list_entry(l, struct vmm_vcpu, head);
+
+		/* Decrement vcpu count */
+		mngr.vcpu_count--;
+
+		/* Notify scheduler about VCPU state change */
+		if ((rc = vmm_scheduler_notify_state_change(vcpu, 
+					VMM_VCPU_STATE_UNKNOWN))) {
+			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+			return rc;
+		}
+		vcpu->sched_priv = NULL;
+
+		/* Change VCPU state */
+		vcpu->state = VMM_VCPU_STATE_UNKNOWN;
+
+		/* Deinit VCPU registers */
+		if ((rc = arch_vcpu_regs_deinit(vcpu))) {
+			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+			return rc;
+		}
+
+		/* Mark VCPU as available */
+		mngr.vcpu_avail_array[vcpu->id] = TRUE;
+	}
+
+	/* Reset guest instance members */
+	INIT_LIST_HEAD(&mngr.guest_array[guest->id].head);
+	mngr.guest_array[guest->id].node = NULL;
+	INIT_LIST_HEAD(&mngr.guest_array[guest->id].vcpu_list);
+	mngr.guest_avail_array[guest->id] = TRUE;
+
+	/* Release lock */
+	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+
 	return VMM_OK;
 }
 

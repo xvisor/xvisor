@@ -671,6 +671,33 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 	return VMM_OK;
 }
 
+int vmm_devemu_remove_region(struct vmm_guest *guest, struct vmm_region *reg)
+{
+	int rc;
+	struct vmm_emudev *einst;
+
+	if (!guest || !reg) {
+		return VMM_EFAIL;
+	}
+
+	if (!(reg->flags & VMM_REGION_VIRTUAL)) {
+		return VMM_EFAIL;
+	}
+
+	if (reg->devemu_priv) {
+		einst = reg->devemu_priv;
+
+		if ((rc = einst->remove(einst))) {
+			return rc;
+		}
+
+		vmm_free(reg->devemu_priv);
+		reg->devemu_priv = NULL;
+	}
+
+	return VMM_OK;
+}
+
 int vmm_devemu_init_context(struct vmm_guest *guest)
 {
 	int rc = VMM_OK;
@@ -761,6 +788,38 @@ devemu_init_context_free:
 devemu_init_context_done:
 	return rc;
 
+}
+
+/* FIXME: TBD */
+int vmm_devemu_deinit_context(struct vmm_guest *guest)
+{
+	struct dlist * l;
+	struct vmm_vcpu * vcpu;
+	struct vmm_devemu_guest_context *eg;
+
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	list_for_each(l, &guest->vcpu_list) {
+		vcpu = list_entry(l, struct vmm_vcpu, head);
+		if (!vcpu->devemu_priv) {
+			vmm_free(vcpu->devemu_priv);
+			vcpu->devemu_priv = NULL;
+		}
+	}
+
+	eg = guest->aspace.devemu_priv;
+
+	if (eg->h2g_irq) {
+		vmm_free(eg->h2g_irq);
+		eg->h2g_irq = NULL;
+	}
+
+	vmm_free(guest->aspace.devemu_priv);
+	guest->aspace.devemu_priv = NULL;
+
+	return VMM_OK;
 }
 
 int __init vmm_devemu_init(void)

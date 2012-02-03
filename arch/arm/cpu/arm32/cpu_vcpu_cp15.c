@@ -1546,3 +1546,18 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 	return rc;
 }
 
+int cpu_vcpu_cp15_deinit(struct vmm_vcpu * vcpu)
+{
+	int rc;
+
+	if ((rc = cpu_mmu_l1tbl_free(arm_priv(vcpu)->cp15.l1))) {
+		return rc;
+	}
+
+	vmm_free(arm_priv(vcpu)->cp15.vtlb.table);
+
+	vmm_memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
+
+	return VMM_OK;
+}
+

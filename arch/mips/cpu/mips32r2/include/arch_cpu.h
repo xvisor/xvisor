@@ -35,6 +35,7 @@ int arch_cpu_final_init(void);
 
 /** Register functions required by VMM core */
 int arch_vcpu_regs_init(struct vmm_vcpu *vcpu);
+int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu);
 void arch_vcpu_regs_switch(struct vmm_vcpu *tvcpu, 
 			  struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs);

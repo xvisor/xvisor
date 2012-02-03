@@ -146,6 +146,13 @@ int arch_vcpu_regs_init(struct vmm_vcpu *vcpu)
 	return VMM_OK;
 }
 
+int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu)
+{
+	vmm_memset(mips_uregs(vcpu), 0, sizeof(arch_regs_t));
+
+	return VMM_OK;
+}
+
 void arch_vcpu_regs_switch(struct vmm_vcpu *tvcpu, 
 			  struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs)

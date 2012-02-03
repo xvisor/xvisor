@@ -63,4 +63,7 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest);
 /** Initialize Guest Address space */
 int vmm_guest_aspace_init(struct vmm_guest *guest);
 
+/** DeInitialize Guest Address space */
+int vmm_guest_aspace_deinit(struct vmm_guest *guest);
+
 #endif
