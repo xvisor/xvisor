@@ -49,7 +49,6 @@ int arch_board_ram_size(physical_size_t * size);
 int arch_devtree_populate(struct vmm_devtree_node ** root);
 
 /** Get clock for given device name */
-int arch_board_getclock(struct vmm_devtree_node * node, u32 * clock);
 int arch_board_reset(void);
 int arch_board_shutdown(void);
 int arch_board_early_init(void);

@@ -38,7 +38,7 @@
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_RAM		"ram"
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_ROM		"rom"
 #define VMM_DEVTREE_COMPATIBLE_ATTR_NAME	"compatible"
-#define VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME	"clock-frequency"
+#define VMM_DEVTREE_CLOCK_RATE_ATTR_NAME	"clock-rate"
 #define VMM_DEVTREE_REG_ATTR_NAME		"reg"
 #define VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME	"virtual-reg"
 

@@ -113,21 +113,6 @@ int arch_devtree_populate(struct vmm_devtree_node **root)
 	return libfdt_parse_devtree(&fdt, root);
 }
 
-int arch_board_getclock(struct vmm_devtree_node *node, u32 *clock)
-{
-	if(!node || !clock) {
-		return VMM_EFAIL;
-	}
-
-	if(vmm_strcmp(node->name, "uart0")==0) {
-		*clock = 7372800;
-	} else {
-		*clock = 100000000;
-	}
-
-	return VMM_OK;
-}
-
 int __init arch_board_early_init(void)
 {
 	isa_vbase = 0xb4000000UL;
@@ -153,7 +138,7 @@ int __init arch_board_final_init(void)
 		return VMM_ENOTAVAIL;
 	}
 
-	rc = vmm_devdrv_probe(node);
+	rc = vmm_devdrv_probe(node, NULL);
 	if(rc) {
 		return rc;
 	}

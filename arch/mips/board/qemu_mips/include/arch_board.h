@@ -45,7 +45,6 @@ int arch_board_ram_start(physical_addr_t * addr);
 int arch_board_ram_size(physical_size_t * size);
 
 int arch_devtree_populate(struct vmm_devtree_node **root);
-int arch_board_getclock(struct vmm_devtree_node *node, u32 *clock);
 
 int arch_board_early_init(void);
 int arch_board_final_init(void);

@@ -35,11 +35,12 @@
 			#size-cells = <0>;
 
 			uart0 {
-			      device_type = "serial";
-			      compatible = "ns8250";
-			      reg = <0x14000000 0x00000008>;
-			      reg_offset = <0x3F8>;
-			      baudrate = <115200>;
+				device_type = "serial";
+				compatible = "ns8250";
+				reg = <0x14000000 0x00000008>;
+				clock-rate = <7372800>;
+				reg_offset = <0x3F8>;
+				baudrate = <115200>;
 			};
 		};
 	};

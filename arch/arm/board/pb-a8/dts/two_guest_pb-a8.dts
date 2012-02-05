@@ -46,6 +46,7 @@
 			      		device_type = "serial";
 			      		compatible = "pl011";
 			      		reg = <0x10009000 0x1000>;
+					clock-rate = <24000000>;
 			      		baudrate = <115200>;
 					irq = <44>;
 				};
@@ -54,6 +55,7 @@
 			      		device_type = "serial";
 			      		compatible = "pl011";
 			      		reg = <0x1000A000 0x1000>;
+					clock-rate = <24000000>;
 			      		baudrate = <115200>;
 					irq = <45>;
 				};

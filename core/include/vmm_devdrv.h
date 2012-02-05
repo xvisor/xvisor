@@ -31,12 +31,21 @@
 #include <vmm_spinlocks.h>
 
 struct vmm_devid;
+struct vmm_devclk;
 struct vmm_device;
 
 struct vmm_class;
 struct vmm_classdev;
 
 struct vmm_driver;
+
+typedef struct vmm_devclk * (*vmm_devdrv_getclk_t) (struct vmm_devtree_node *);
+typedef void (*vmm_devdrv_putclk_t) (struct vmm_devclk *);
+
+typedef int (*vmm_devclk_isenabled_t) (struct vmm_devclk *);
+typedef int (*vmm_devclk_enable_t) (struct vmm_devclk *);
+typedef int (*vmm_devclk_disable_t) (struct vmm_devclk *);
+typedef u32 (*vmm_devclk_getrate_t) (struct vmm_devclk *);
 
 typedef int (*vmm_driver_probe_t) (struct vmm_device *, 
 				   const struct vmm_devid *);
@@ -51,8 +60,18 @@ struct vmm_devid {
 	void *data;
 };
 
+struct vmm_devclk {
+	struct vmm_devclk * parent;
+	vmm_devclk_isenabled_t isenabled;
+	vmm_devclk_enable_t enable;
+	vmm_devclk_disable_t disable;
+	vmm_devclk_getrate_t getrate;
+	void * priv;
+};
+
 struct vmm_device {
 	vmm_spinlock_t lock;
+	struct vmm_devclk *clk;
 	struct vmm_devtree_node *node;
 	struct vmm_class *class;
 	struct vmm_classdev *classdev;
@@ -83,17 +102,30 @@ struct vmm_driver {
 };
 
 /** Probe device instances under a given device tree node */
-int vmm_devdrv_probe(struct vmm_devtree_node * node);
+int vmm_devdrv_probe(struct vmm_devtree_node * node, 
+		     vmm_devdrv_getclk_t getclk);
 
 /** Remove device instances under a given device tree node */
-int vmm_devdrv_remove(struct vmm_devtree_node * node);
+int vmm_devdrv_remove(struct vmm_devtree_node * node,
+		      vmm_devdrv_putclk_t putclk);
 
 /** Map device registers to some virtual address */
 int vmm_devdrv_ioremap(struct vmm_device * dev, 
 			virtual_addr_t * addr, int regset);
 
-/** Get input clock for given device */
-int vmm_devdrv_getclock(struct vmm_device * dev, u32 * clock);
+/** Check if clock is enabled for given device */
+bool vmm_devdrv_clock_isenabled(struct vmm_device * dev);
+
+/** Enable clock for given device */
+int vmm_devdrv_clock_enable(struct vmm_device * dev);
+
+/** Disable clock for given device */
+int vmm_devdrv_clock_disable(struct vmm_device * dev);
+
+/** Get clock rate for given device 
+ *  NOTE: If clock is not enabled then this will enable clock first.
+ */
+u32 vmm_devdrv_clock_rate(struct vmm_device * dev);
 
 /** Register class */
 int vmm_devdrv_register_class(struct vmm_class * cls);
