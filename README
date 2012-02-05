@@ -16,16 +16,17 @@ WHAT IS XVISOR?
 
   Xvisor has most of the features expected from a modern fully-fledged 
   hypervisor, such as:
-	- Tree based configuration (Device Tree)
-	- Tickless and high resolution timekeeping (Timer Subsystem)
-	- Threading framework (Hyperthreads)
-	- Device driver framework (Host address space, Host IRQs, Drivers)
-	- CPU virtualization (Guest, Virtual CPUs, Virtual IRQs)
-	- Address space virtualization (Guest Address Space)
-	- IO virtualization (Device Emulation Framework, Emulators)
-	- Pass through hardware access (Host to Guest IRQ Mapping)
-	- Serial Port Virtualization (VSerial)
-	- Managment Terminal (Mterm)
+	- Tree based configuration
+	- Tickless and high resolution timekeeping
+	- Threading framework
+	- Host device driver framework
+	- CPU virtualization
+	- Address space virtualization
+	- IO device emulation framework
+	- Pass through hardware access
+	- Dynamic guest creation/destruction
+	- Serial port virtualization
+	- Managment terminal
 
   It is distributed under the GNU General Public License - see the
   accompanying COPYING file for more details.
