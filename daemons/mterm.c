@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file mterm.c
- * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief source file of managment terminal

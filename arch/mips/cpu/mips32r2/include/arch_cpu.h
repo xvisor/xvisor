@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arch_cpu.h
- * @version 1.0
  * @author Himanshu Chauhan (hchauhan@nulltrace.org)
  * @brief header file for CPU functions required by VMM
  */

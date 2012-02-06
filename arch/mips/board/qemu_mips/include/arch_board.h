@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arch_board.h
- * @version 1.0
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief board specific initialization functions
  */

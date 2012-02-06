@@ -17,7 +17,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @version 1.0
 # @author Himanshu Chauhan (hschauhan@nulltrace.org)
 # @brief list of uip objects to be built.
 # */

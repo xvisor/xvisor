@@ -18,7 +18,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file qemu_test.tcl
-# @version 1.0
 # @author Sanjeev Pandita (san.pandita@gmail.com)
 # @brief Automation script to test the Xvisor commands and Basic Test
 # */

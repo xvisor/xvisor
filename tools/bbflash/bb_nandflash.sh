@@ -22,7 +22,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file bb_nandflash.sh
-# @version 2.0
 # @author Sukanto Ghosh (sukantoghosh@gmail.com)
 # @brief script to create beagleboard nand flash image 
 # */

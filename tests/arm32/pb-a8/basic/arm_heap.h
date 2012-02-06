@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arm_heap.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Header file for heap managment
  */

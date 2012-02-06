@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_vcpu_cp15.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief VCPU CP15 Emulation
  * @details This source file implements CP15 coprocessor for each VCPU.

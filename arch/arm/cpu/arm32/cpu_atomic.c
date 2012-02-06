@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_atomic.c
- * @version 0.01
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @author Jean-Christophe Dubois <jcd@tribudubois.net>
  * @brief ARM specific synchronization mechanisms.

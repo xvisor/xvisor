@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_schedalgo_prr.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief implementation of priority round-robin scheduling algorithm
  */

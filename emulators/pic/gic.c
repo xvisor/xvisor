@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file gic.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Realview GIC (Generic Interrupt Controller) Emulator.
  * @details This source file implements the Realview GIC (Generic Interrupt

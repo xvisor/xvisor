@@ -18,7 +18,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file prcm.h
- * @version 1.0
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief OMAP3 Power, Reset, and Clock Managment APIs

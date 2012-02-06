@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cmd_version.c
- * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
  * @brief Implementation of version command
  */

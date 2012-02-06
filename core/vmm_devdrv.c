@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_devdrv.c
- * @version 0.1
  * @author Anup Patel (anup@brainfault.org)
  * @brief Device driver framework source
  */

@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_mutex.h
- * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
  * @brief Header file of mutext locks for Orphan VCPU (or Thread).
  */

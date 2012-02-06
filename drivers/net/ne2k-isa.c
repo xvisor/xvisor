@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file ne2k-isa.c
- * @version 0.1
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief Driver for NE2000 based cards on ISA host bus.
  */

@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file realview.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Realview Sysctl emulator.
  * @details This source file implements the Realview Sysctl emulator.

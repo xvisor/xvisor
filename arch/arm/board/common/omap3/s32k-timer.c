@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file s32k-timer.c
- * @version 1.0
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief source code for OMAP3 32K sync timer
  */

@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arm_defines.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief  register related macros & defines for ARM test code
  */

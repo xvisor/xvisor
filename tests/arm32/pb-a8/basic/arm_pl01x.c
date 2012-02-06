@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arm_pl01x.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief source file for PrimeCell PL011/PL010 serial port driver.
  */

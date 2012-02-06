@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file pl011.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief PrimeCell PL011 serial emulator.
  * @details This source file implements the PrimeCell PL011 serial emulator.

@@ -17,7 +17,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file Makefile
-# @version 1.0
 # @author Sukanto Ghosh (sukantoghosh@gmail.com)
 # @brief toplevel makefile for Beagleboard Nandflash ECC tool
 # */
