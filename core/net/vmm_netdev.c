@@ -26,7 +26,17 @@
 #include <vmm_list.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
-#include <vmm_netdev.h>
+#include <vmm_stdio.h>
+#include <vmm_modules.h>
+#include <vmm_devdrv.h>
+#include <net/vmm_netdev.h>
+
+#define MODULE_VARID			netdev_framework_module
+#define MODULE_NAME			"Network Device Framework"
+#define MODULE_AUTHOR			"Himanshu Chauhan"
+#define MODULE_IPRIORITY		VMM_NETDEV_CLASS_IPRIORITY
+#define	MODULE_INIT			vmm_netdev_init
+#define	MODULE_EXIT			vmm_netdev_exit
 
 int vmm_netdev_doioctl(struct vmm_netdev * ndev, 
 			int cmd, void *buf, size_t buf_len)
@@ -159,10 +169,12 @@ u32 vmm_netdev_count(void)
 	return vmm_devdrv_classdev_count(VMM_NETDEV_CLASS_NAME);
 }
 
-int vmm_netdev_init(void)
+static int __init vmm_netdev_init(void)
 {
 	int rc;
 	struct vmm_class *c;
+
+	vmm_printf("Initialize Networking Device Framework\n");
 
 	c = vmm_malloc(sizeof(struct vmm_class));
 	if (!c) {
@@ -181,3 +193,28 @@ int vmm_netdev_init(void)
 
 	return VMM_OK;
 }
+
+static void vmm_netdev_exit(void)
+{
+	int rc;
+	struct vmm_class *c;
+
+	c = vmm_devdrv_find_class(VMM_NETDEV_CLASS_NAME);
+	if (!c) {
+		return;
+	}
+
+	rc = vmm_devdrv_unregister_class(c);
+	if (rc) {
+		return;
+	}
+
+	vmm_free(c);
+}
+
+VMM_DECLARE_MODULE(MODULE_VARID,
+		   MODULE_NAME,
+		   MODULE_AUTHOR,
+		   MODULE_IPRIORITY,
+		   MODULE_INIT,
+		   MODULE_EXIT);

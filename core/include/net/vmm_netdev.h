@@ -30,6 +30,7 @@
 #include <vmm_devdrv.h>
 
 #define VMM_NETDEV_CLASS_NAME				"network"
+#define VMM_NETDEV_CLASS_IPRIORITY			1
 
 struct vmm_netdev;
 typedef int (*vmm_netdev_ioctl_t) (struct vmm_netdev * ndev,
@@ -48,34 +49,31 @@ struct vmm_netdev {
 	void *priv;
 };
 
-/** Do ioctl operation on a character device */
+/** Do ioctl operation on a network device */
 int vmm_netdev_doioctl(struct vmm_netdev * ndev, 
 			int cmd, void *buf, size_t buf_len);
 
-/** Do read operation on a character device */
+/** Do read operation on a network device */
 int vmm_netdev_doread(struct vmm_netdev * ndev,
 		      char *dest, size_t offset, size_t len);
 
-/** Do write operation on a character device */
+/** Do write operation on a network device */
 int vmm_netdev_dowrite(struct vmm_netdev * ndev,
 		       char *src, size_t offset, size_t len);
 
-/** Register character device to device driver framework */
+/** Register network device to device driver framework */
 int vmm_netdev_register(struct vmm_netdev * ndev);
 
-/** Unregister character device from device driver framework */
+/** Unregister network device from device driver framework */
 int vmm_netdev_unregister(struct vmm_netdev * ndev);
 
-/** Find a character device in device driver framework */
+/** Find a network device in device driver framework */
 struct vmm_netdev *vmm_netdev_find(const char *name);
 
-/** Get character device with given number */
+/** Get network device with given number */
 struct vmm_netdev *vmm_netdev_get(int num);
 
-/** Count number of character devices */
+/** Count number of network devices */
 u32 vmm_netdev_count(void);
-
-/** Initalize character device framework */
-int vmm_netdev_init(void);
 
 #endif /* __VMM_NETDEV_H_ */

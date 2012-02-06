@@ -40,7 +40,6 @@
 #include <vmm_devemu.h>
 #include <vmm_chardev.h>
 #include <vmm_blockdev.h>
-#include <vmm_netdev.h>
 #include <vmm_workqueue.h>
 #include <vmm_cmdmgr.h>
 #include <vmm_vserial.h>
@@ -176,32 +175,6 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
-	/* Initialize character device framework */
-	vmm_printf("Initialize Character Device Framework\n");
-	ret = vmm_chardev_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Initialize block device framework */
-	vmm_printf("Initialize Block Device Framework\n");
-	ret = vmm_blockdev_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-#ifdef CONFIG_NET
-	/* Initialize network device framework */
-	vmm_printf("Initialize Networking Device Framework\n");
-	ret = vmm_netdev_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-#endif
-
 	/* Initialize workqueue framework */
 	vmm_printf("Initialize Workqueue Framework\n");
 	ret = vmm_workqueue_init();
@@ -213,6 +186,22 @@ void vmm_init(void)
 	/* Initialize command manager */
 	vmm_printf("Initialize Command Manager\n");
 	ret = vmm_cmdmgr_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize character device framework */
+	vmm_printf("Initialize Character Device Framework\n");
+	ret = vmm_chardev_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize block device framework */
+	vmm_printf("Initialize Block Device Framework\n");
+	ret = vmm_blockdev_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
