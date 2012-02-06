@@ -38,10 +38,9 @@
 #include <vmm_profiler.h>
 #include <vmm_devdrv.h>
 #include <vmm_devemu.h>
-#include <vmm_chardev.h>
-#include <vmm_blockdev.h>
 #include <vmm_workqueue.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_chardev.h>
 #include <vmm_vserial.h>
 #include <vmm_modules.h>
 
@@ -194,14 +193,6 @@ void vmm_init(void)
 	/* Initialize character device framework */
 	vmm_printf("Initialize Character Device Framework\n");
 	ret = vmm_chardev_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Initialize block device framework */
-	vmm_printf("Initialize Block Device Framework\n");
-	ret = vmm_blockdev_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();

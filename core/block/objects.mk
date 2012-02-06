@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Anup Patel.
+# Copyright (c) 2012 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -22,28 +22,5 @@
 # @brief list of core objects to be build
 # */
 
-core-objs-y+= vmm_main.o
-core-objs-y+= vmm_ringbuf.o
-core-objs-y+= vmm_stdio.o
-core-objs-y+= vmm_string.o
-core-objs-y+= vmm_spinlocks.o
-core-objs-y+= vmm_devtree.o
-core-objs-y+= vmm_host_irq.o
-core-objs-y+= vmm_host_aspace.o
-core-objs-y+= vmm_timer.o
-core-objs-y+= vmm_vcpu_irq.o
-core-objs-y+= vmm_guest_aspace.o
-core-objs-y+= vmm_manager.o
-core-objs-y+= vmm_scheduler.o
-core-objs-y+= vmm_threads.o
-core-objs-y+= vmm_waitqueue.o
-core-objs-y+= vmm_semaphore.o
-core-objs-y+= vmm_workqueue.o
-core-objs-y+= vmm_cmdmgr.o
-core-objs-y+= vmm_devdrv.o
-core-objs-y+= vmm_devemu.o
-core-objs-y+= vmm_chardev.o
-core-objs-y+= vmm_vserial.o
-core-objs-y+= vmm_modules.o
-core-objs-$(CONFIG_PROFILE)+= vmm_profiler.o
+core-objs-$(CONFIG_BLOCK)+= block/vmm_blockdev.o
 

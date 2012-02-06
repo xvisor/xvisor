@@ -26,7 +26,17 @@
 #include <vmm_list.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
-#include <vmm_blockdev.h>
+#include <vmm_stdio.h>
+#include <vmm_modules.h>
+#include <vmm_devdrv.h>
+#include <block/vmm_blockdev.h>
+
+#define MODULE_VARID			blockdev_framework_module
+#define MODULE_NAME			"Block Device Framework"
+#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_IPRIORITY		VMM_BLOCKDEV_CLASS_IPRIORITY
+#define	MODULE_INIT			vmm_blockdev_init
+#define	MODULE_EXIT			vmm_blockdev_exit
 
 int vmm_blockdev_doioctl(struct vmm_blockdev * bdev,
 			 int cmd, void *buf, size_t buf_len)
@@ -161,10 +171,12 @@ u32 vmm_blockdev_count(void)
 	return vmm_devdrv_classdev_count(VMM_BLOCKDEV_CLASS_NAME);
 }
 
-int __init vmm_blockdev_init(void)
+static int __init vmm_blockdev_init(void)
 {
 	int rc;
 	struct vmm_class *c;
+
+	vmm_printf("Initialize Block Device Framework\n");
 
 	c = vmm_malloc(sizeof(struct vmm_class));
 	if (!c) {
@@ -183,3 +195,28 @@ int __init vmm_blockdev_init(void)
 
 	return VMM_OK;
 }
+
+static void vmm_blockdev_exit(void)
+{
+	int rc;
+	struct vmm_class *c;
+
+	c = vmm_devdrv_find_class(VMM_BLOCKDEV_CLASS_NAME);
+	if (!c) {
+		return;
+	}
+
+	rc = vmm_devdrv_unregister_class(c);
+	if (rc) {
+		return;
+	}
+
+	vmm_free(c);
+}
+
+VMM_DECLARE_MODULE(MODULE_VARID,
+		   MODULE_NAME,
+		   MODULE_AUTHOR,
+		   MODULE_IPRIORITY,
+		   MODULE_INIT,
+		   MODULE_EXIT);

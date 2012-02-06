@@ -26,9 +26,9 @@
 #include <vmm_stdio.h>
 #include <vmm_string.h>
 #include <vmm_devtree.h>
-#include <vmm_blockdev.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <block/vmm_blockdev.h>
 
 #define MODULE_VARID			cmd_blockdev_module
 #define MODULE_NAME			"Command blockdev"
