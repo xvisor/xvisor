@@ -7,6 +7,8 @@ Please try and keep the descriptions small enough to fit on one line.
 
 00-INDEX
 	- This file.
+releases/
+	- Detailed information about each release.
 DesignDoc
 	- Overview of Xvisor design.
 CodingStyle
