@@ -96,6 +96,34 @@ int vmm_strncmp(const char *a, const char *b, int n)
 	}
 }
 
+void vmm_str2lower(char * s)
+{
+	if (!s) {
+		return;
+	}
+
+	while (*s) {
+		if ('A' <= *s && *s <= 'Z') {
+			*s = (*s - 'A') + 'a';
+		}
+		s++;
+	}
+}
+
+void vmm_str2upper(char * s)
+{
+	if (!s) {
+		return;
+	}
+
+	while (*s) {
+		if ('a' <= *s && *s <= 'z') {
+			*s = (*s - 'a') + 'A';
+		}
+		s++;
+	}
+}
+
 long long vmm_str2longlong(const char *s, unsigned int base)
 {
 	long long val = 0;

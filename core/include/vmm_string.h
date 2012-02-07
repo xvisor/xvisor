@@ -37,6 +37,10 @@ int vmm_strcmp(const char *a, const char *b);
 
 int vmm_strncmp(const char *a, const char *b, int n);
 
+void vmm_str2lower(char * s);
+
+void vmm_str2upper(char * s);
+
 int vmm_str2int(const char *s, unsigned int base);
 
 long long vmm_str2longlong(const char *s, unsigned int base);
