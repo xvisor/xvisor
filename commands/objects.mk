@@ -32,6 +32,7 @@ commands-objs-$(CONFIG_CMD_GUEST)+= cmd_guest.o
 commands-objs-$(CONFIG_CMD_MEMORY)+= cmd_memory.o
 commands-objs-$(CONFIG_CMD_THREAD)+= cmd_thread.o
 commands-objs-$(CONFIG_CMD_CHARDEV)+= cmd_chardev.o
+commands-objs-$(CONFIG_CMD_RTCDEV)+= cmd_rtcdev.o
 commands-objs-$(CONFIG_CMD_BLOCKDEV)+= cmd_blockdev.o
 commands-objs-$(CONFIG_CMD_VSERIAL)+= cmd_vserial.o
 commands-objs-$(CONFIG_CMD_STDIO)+= cmd_stdio.o

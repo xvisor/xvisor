@@ -1,0 +1,251 @@
+/**
+ * Copyright (c) 2012 Anup Patel.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file cmd_rtcdev.c
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief Implementation of rtcdev command
+ */
+
+#include <vmm_error.h>
+#include <vmm_stdio.h>
+#include <vmm_string.h>
+#include <vmm_devtree.h>
+#include <vmm_modules.h>
+#include <vmm_cmdmgr.h>
+#include <rtc/vmm_rtcdev.h>
+
+#define MODULE_VARID			cmd_rtcdev_module
+#define MODULE_NAME			"Command rtcdev"
+#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_IPRIORITY		0
+#define	MODULE_INIT			cmd_rtcdev_init
+#define	MODULE_EXIT			cmd_rtcdev_exit
+
+void cmd_rtcdev_usage(struct vmm_chardev *cdev)
+{
+	vmm_cprintf(cdev, "Usage:\n");
+	vmm_cprintf(cdev, "   rtcdev help\n");
+	vmm_cprintf(cdev, "   rtcdev list\n");
+	vmm_cprintf(cdev, "   rtcdev get_time <rtc_name>\n");
+	vmm_cprintf(cdev, "   rtcdev set_time <rtc_name> "
+					"<hour> <minute> <second> "
+					"<day> <month> <year>\n");
+	vmm_cprintf(cdev, "Note:\n");
+	vmm_cprintf(cdev, "   <hour>    = any value between 0..23\n");
+	vmm_cprintf(cdev, "   <minute>  = any value between 0..59\n");
+	vmm_cprintf(cdev, "   <second>  = any value between 0..59\n");
+	vmm_cprintf(cdev, "   <day>     = any value between 0..31\n");
+	vmm_cprintf(cdev, "   <month>   = any value between 0..12\n");
+	vmm_cprintf(cdev, "   <year>    = any value greater than 1970\n");
+}
+
+void cmd_rtcdev_list(struct vmm_chardev *cdev)
+{
+	int num, count;
+	char path[1024];
+	struct vmm_rtcdev *rd;
+	count = vmm_rtcdev_count();
+	for (num = 0; num < count; num++) {
+		rd = vmm_rtcdev_get(num);
+		if (!rd->dev) {
+			vmm_cprintf(cdev, "%s: ---\n", rd->name);
+		} else {
+			vmm_devtree_getpath(path, rd->dev->node);
+			vmm_cprintf(cdev, "%s: %s\n", rd->name, path);
+		}
+	}
+}
+
+int cmd_rtcdev_get_time(struct vmm_chardev *cdev, const char * name)
+{
+	int rc;
+	struct vmm_rtc_time tm;
+	struct vmm_rtcdev * rtc = vmm_rtcdev_find(name);
+
+	if (!rtc) {
+		vmm_cprintf(cdev, "Error: cannot find rtc %s\n", name);
+		return VMM_EFAIL;
+	}
+
+	rc = vmm_rtcdev_get_time(rtc, &tm);
+	if (rc) {
+		vmm_cprintf(cdev, "Error: get_time failed for rtc %s\n", name);
+		return rc;
+	}
+
+	switch (tm.tm_wday) {
+	case 0:
+		vmm_cprintf(cdev, "%s ", "Sun");
+		break;
+	case 1:
+		vmm_cprintf(cdev, "%s ", "Mon");
+		break;
+	case 2:
+		vmm_cprintf(cdev, "%s ", "Tue");
+		break;
+	case 3:
+		vmm_cprintf(cdev, "%s ", "Wed");
+		break;
+	case 4:
+		vmm_cprintf(cdev, "%s ", "Thu");
+		break;
+	case 5:
+		vmm_cprintf(cdev, "%s ", "Fri");
+		break;
+	case 6:
+		vmm_cprintf(cdev, "%s ", "Sat");
+		break;
+	default:
+		vmm_cprintf(cdev, "Error: Invalid day of week\n");
+	};
+
+	switch (tm.tm_mon) {
+	case 0:
+		vmm_cprintf(cdev, "%s ", "Jan");
+		break;
+	case 1:
+		vmm_cprintf(cdev, "%s ", "Feb");
+		break;
+	case 2:
+		vmm_cprintf(cdev, "%s ", "Mar");
+		break;
+	case 3:
+		vmm_cprintf(cdev, "%s ", "Apr");
+		break;
+	case 4:
+		vmm_cprintf(cdev, "%s ", "May");
+		break;
+	case 5:
+		vmm_cprintf(cdev, "%s ", "Jun");
+		break;
+	case 6:
+		vmm_cprintf(cdev, "%s ", "Jul");
+		break;
+	case 7:
+		vmm_cprintf(cdev, "%s ", "Aug");
+		break;
+	case 8:
+		vmm_cprintf(cdev, "%s ", "Sep");
+		break;
+	case 9:
+		vmm_cprintf(cdev, "%s ", "Oct");
+		break;
+	case 10:
+		vmm_cprintf(cdev, "%s ", "Nov");
+		break;
+	case 11:
+		vmm_cprintf(cdev, "%s ", "Dec");
+		break;
+	default:
+		vmm_cprintf(cdev, "Error: Invalid month\n");
+	};
+
+	vmm_cprintf(cdev, "%2d %d:%d:%d %d", tm.tm_mday, 
+				tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_year);
+
+	vmm_cprintf(cdev, "\n");
+
+	return VMM_OK;
+}
+
+int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
+			int targc, char **targv)
+{
+	int rc;
+	struct vmm_rtc_time tm;
+	struct vmm_rtcdev * rtc = vmm_rtcdev_find(name);
+
+	if (!rtc) {
+		vmm_cprintf(cdev, "Error: cannot find rtc %s\n", name);
+		return VMM_EFAIL;
+	}
+
+	/* hour */
+	tm.tm_hour = vmm_str2int(targv[0], 10);
+	/* min */
+	tm.tm_min = vmm_str2int(targv[1], 10);
+	/* sec */
+	tm.tm_sec = vmm_str2int(targv[2], 10);
+	/* mday */
+	tm.tm_mday = vmm_str2int(targv[3], 10);
+	/* mon */
+	tm.tm_mon = vmm_str2int(targv[4], 10);
+	/* year */
+	tm.tm_year = vmm_str2int(targv[3], 10) - 1900;
+
+	if (!vmm_rtc_valid_tm(&tm)) {
+		vmm_cprintf(cdev, "Error: invalid date-time\n");
+		return VMM_EFAIL;
+	}
+
+	rc = vmm_rtcdev_set_time(rtc, &tm);
+	if (rc) {
+		vmm_cprintf(cdev, "Error: set_time failed for rtc %s\n", name);
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int cmd_rtcdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
+{
+	if (argc == 2) {
+		if (vmm_strcmp(argv[1], "help") == 0) {
+			cmd_rtcdev_usage(cdev);
+			return VMM_OK;
+		} else if (vmm_strcmp(argv[1], "list") == 0) {
+			cmd_rtcdev_list(cdev);
+			return VMM_OK;
+		}
+	}
+	if (argc < 3) {
+		cmd_rtcdev_usage(cdev);
+		return VMM_EFAIL;
+	}
+	if (vmm_strcmp(argv[1], "get_time") == 0) {
+		return cmd_rtcdev_get_time(cdev, argv[2]);
+	} else if ((vmm_strcmp(argv[1], "set_time") == 0) && argc == 9) {
+		return cmd_rtcdev_set_time(cdev, argv[2], argc - 3, &argv[3]);
+	}
+	cmd_rtcdev_usage(cdev);
+	return VMM_EFAIL;
+}
+
+static struct vmm_cmd cmd_rtcdev = {
+	.name = "rtcdev",
+	.desc = "rtc device commands",
+	.usage = cmd_rtcdev_usage,
+	.exec = cmd_rtcdev_exec,
+};
+
+static int __init cmd_rtcdev_init(void)
+{
+	return vmm_cmdmgr_register_cmd(&cmd_rtcdev);
+}
+
+static void cmd_rtcdev_exit(void)
+{
+	vmm_cmdmgr_unregister_cmd(&cmd_rtcdev);
+}
+
+VMM_DECLARE_MODULE(MODULE_VARID, 
+			MODULE_NAME, 
+			MODULE_AUTHOR, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);
