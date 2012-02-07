@@ -43,14 +43,16 @@ void cmd_rtcdev_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   rtcdev list\n");
 	vmm_cprintf(cdev, "   rtcdev get_time <rtc_name>\n");
 	vmm_cprintf(cdev, "   rtcdev set_time <rtc_name> "
-					"<hour> <minute> <second> "
-					"<day> <month> <year>\n");
+				"<hour>:<min>:<sec> <day> <month> <year>\n");
 	vmm_cprintf(cdev, "Note:\n");
+	vmm_cprintf(cdev, "   RTC devices do not keep track of timezones "
+				"hence we assume UTC/GMT timezone.\n");
 	vmm_cprintf(cdev, "   <hour>    = any value between 0..23\n");
 	vmm_cprintf(cdev, "   <minute>  = any value between 0..59\n");
 	vmm_cprintf(cdev, "   <second>  = any value between 0..59\n");
 	vmm_cprintf(cdev, "   <day>     = any value between 0..31\n");
-	vmm_cprintf(cdev, "   <month>   = any value between 0..12\n");
+	vmm_cprintf(cdev, "   <month>   = Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|"
+						"Sep|Oct|Nov|Dec\n");
 	vmm_cprintf(cdev, "   <year>    = any value greater than 1970\n");
 }
 
@@ -155,8 +157,9 @@ int cmd_rtcdev_get_time(struct vmm_chardev *cdev, const char * name)
 		vmm_cprintf(cdev, "Error: Invalid month\n");
 	};
 
-	vmm_cprintf(cdev, "%2d %d:%d:%d %d", tm.tm_mday, 
-				tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_year);
+	vmm_cprintf(cdev, "%2d %d:%d:%d UTC %d", tm.tm_mday, 
+				tm.tm_hour, tm.tm_min, tm.tm_sec, 
+				tm.tm_year + 1900);
 
 	vmm_cprintf(cdev, "\n");
 
@@ -167,6 +170,7 @@ int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
 			int targc, char **targv)
 {
 	int rc;
+	char * s;
 	struct vmm_rtc_time tm;
 	struct vmm_rtcdev * rtc = vmm_rtcdev_find(name);
 
@@ -175,17 +179,61 @@ int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
 		return VMM_EFAIL;
 	}
 
-	/* hour */
-	tm.tm_hour = vmm_str2int(targv[0], 10);
-	/* min */
-	tm.tm_min = vmm_str2int(targv[1], 10);
-	/* sec */
-	tm.tm_sec = vmm_str2int(targv[2], 10);
-	/* mday */
-	tm.tm_mday = vmm_str2int(targv[3], 10);
-	/* mon */
-	tm.tm_mon = vmm_str2int(targv[4], 10);
-	/* year */
+	s = targv[0];
+	rc = 0;
+	tm.tm_hour = 0;
+	tm.tm_min = 0;
+	tm.tm_sec = 0;
+	while (*s) {
+		if (*s == ':') {
+			rc++;
+		} else if ('0' <= *s && *s <= '9') {
+			switch(rc) {
+			case 0:
+				tm.tm_hour = tm.tm_hour * 10 + (*s - '0');
+				break;
+			case 1:
+				tm.tm_min = tm.tm_min * 10 + (*s - '0');
+				break;
+			case 2:
+				tm.tm_sec = tm.tm_sec * 10 + (*s - '0');
+				break;
+			default:
+				break;
+			};
+		}
+		s++;
+	}
+	rc = 0;
+	tm.tm_mday = vmm_str2int(targv[1], 10);
+	vmm_str2lower(targv[2]);
+	if (vmm_strcmp(targv[2], "jan") == 0) {
+		tm.tm_mon = 0;
+	} else if (vmm_strcmp(targv[2], "feb") == 0) {
+		tm.tm_mon = 1;
+	} else if (vmm_strcmp(targv[2], "mar") == 0) {
+		tm.tm_mon = 2;
+	} else if (vmm_strcmp(targv[2], "apr") == 0) {
+		tm.tm_mon = 3;
+	} else if (vmm_strcmp(targv[2], "may") == 0) {
+		tm.tm_mon = 4;
+	} else if (vmm_strcmp(targv[2], "jun") == 0) {
+		tm.tm_mon = 5;
+	} else if (vmm_strcmp(targv[2], "jul") == 0) {
+		tm.tm_mon = 6;
+	} else if (vmm_strcmp(targv[2], "aug") == 0) {
+		tm.tm_mon = 7;
+	} else if (vmm_strcmp(targv[2], "sep") == 0) {
+		tm.tm_mon = 8;
+	} else if (vmm_strcmp(targv[2], "oct") == 0) {
+		tm.tm_mon = 9;
+	} else if (vmm_strcmp(targv[2], "nov") == 0) {
+		tm.tm_mon = 10;
+	} else if (vmm_strcmp(targv[2], "dec") == 0) {
+		tm.tm_mon = 11;
+	} else {
+		tm.tm_mon = vmm_str2int(targv[2], 10);
+	}
 	tm.tm_year = vmm_str2int(targv[3], 10) - 1900;
 
 	if (!vmm_rtc_valid_tm(&tm)) {
@@ -219,7 +267,7 @@ int cmd_rtcdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	}
 	if (vmm_strcmp(argv[1], "get_time") == 0) {
 		return cmd_rtcdev_get_time(cdev, argv[2]);
-	} else if ((vmm_strcmp(argv[1], "set_time") == 0) && argc == 9) {
+	} else if ((vmm_strcmp(argv[1], "set_time") == 0) && argc == 7) {
 		return cmd_rtcdev_set_time(cdev, argv[2], argc - 3, &argv[3]);
 	}
 	cmd_rtcdev_usage(cdev);
