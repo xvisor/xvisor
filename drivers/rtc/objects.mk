@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Anup Patel.
+# Copyright (c) 2012 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,13 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for driver options
+# @brief list of driver objects
 # */
 
-menu "Device Drivers"
-     source "drivers/serial/openconf.cfg"
-     source "drivers/rtc/openconf.cfg"
-     source "drivers/net/openconf.cfg"
-endmenu
+drivers-objs-$(CONFIG_RTC_PL031)+= rtc/pl031.o
+

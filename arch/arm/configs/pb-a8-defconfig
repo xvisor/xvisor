@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.1
-# Mon Feb  6 14:03:20 2012
+# Tue Feb  7 17:18:29 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -44,7 +44,7 @@ CONFIG_MAX_VCPU_COUNT=8
 CONFIG_MAX_GUEST_COUNT=2
 CONFIG_VGPA2REG_CACHE_SIZE=8
 CONFIG_VAPOOL_SIZE=8
-# CONFIG_RTC is not set
+CONFIG_RTC=y
 # CONFIG_BLOCK is not set
 # CONFIG_NET is not set
 # CONFIG_PROFILE is not set
@@ -84,6 +84,7 @@ CONFIG_CMD_CHARDEV=y
 CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_STDIO=y
 CONFIG_CMD_BUDDY=y
+CONFIG_CMD_RTCDEV=y
 # CONFIG_CMD_THREADTEST is not set
 
 #
@@ -103,6 +104,11 @@ CONFIG_LIBFDT=y
 CONFIG_SERIAL=y
 # CONFIG_SERIAL_UART is not set
 CONFIG_SERIAL_PL01X=y
+
+#
+# RTC Drivers
+#
+CONFIG_RTC_PL031=y
 
 #
 # Device Emulators
