@@ -35,7 +35,6 @@ struct vmm_rtc_time {
 	int tm_year;
 	int tm_wday;
 	int tm_yday;
-	int tm_isdst;
 };
 
 /**
