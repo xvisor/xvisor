@@ -31,7 +31,7 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_math.h>
+#include <vmm_wallclock.h>
 #include <rtc/vmm_rtclib.h>
 
 static const unsigned char rtc_days_in_month[] = {
@@ -78,39 +78,17 @@ bool vmm_rtc_valid_tm(struct vmm_rtc_time *tm)
 	return TRUE;
 }
 
-/* [For the Julian calendar (which was used in Russia before 1917,
- * Britain & colonies before 1752, anywhere else before 1582,
- * and is still in use by some communities) leave out the
- * -year/100+year/400 terms, and add 10.]
- *
- * This algorithm was first published by Gauss (I think).
- *
- * WARNING: this function will overflow on 2106-02-07 06:28:16 on
- * machines where long is 32-bit! (However, as time_t is signed, we
- * will already get problems at other places on 2038-01-19 03:14:08)
+/* WARNING: this function will overflow on 2106-02-07 06:28:16 on
+ * machines where long is 32-bit!
  */
 void vmm_rtc_tm_to_time(struct vmm_rtc_time *tm, unsigned long *time)
 {
-	unsigned int year0 = tm->tm_year + 1900;
-	unsigned int mon0 = tm->tm_mon + 1;
-	unsigned int day = tm->tm_mday;
-	unsigned int hour = tm->tm_hour;
-	unsigned int min = tm->tm_min;
-	unsigned int sec = tm->tm_sec;
-	unsigned int mon = mon0, year = year0;
-
-	/* 1..12 -> 11,12,1..10 */
-	if (0 >= (int) (mon -= 2)) {
-		mon += 12;	/* Puts Feb last since it has leap day */
-		year -= 1;
-	}
-
-	*time = ((((unsigned long)
-		  (year/4 - year/100 + year/400 + 367*mon/12 + day) +
-		  year*365 - 719499
-	    )*24 + hour /* now have hours */
-	  )*60 + min /* now have minutes */
-	)*60 + sec; /* finally seconds */
+	*time = (unsigned long)vmm_wallclock_mktime(tm->tm_year + 1900, 
+						    tm->tm_mon + 1, 
+						    tm->tm_mday, 
+						    tm->tm_hour, 
+						    tm->tm_min, 
+						    tm->tm_sec);
 }
 
 void vmm_rtc_time_to_tm(unsigned long time, struct vmm_rtc_time *tm)

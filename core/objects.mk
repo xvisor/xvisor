@@ -39,6 +39,7 @@ core-objs-y+= vmm_waitqueue.o
 core-objs-y+= vmm_semaphore.o
 core-objs-y+= vmm_workqueue.o
 core-objs-y+= vmm_cmdmgr.o
+core-objs-y+= vmm_wallclock.o
 core-objs-y+= vmm_devdrv.o
 core-objs-y+= vmm_devemu.o
 core-objs-y+= vmm_chardev.o

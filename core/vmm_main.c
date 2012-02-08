@@ -39,6 +39,7 @@
 #include <vmm_devemu.h>
 #include <vmm_workqueue.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_wallclock.h>
 #include <vmm_chardev.h>
 #include <vmm_vserial.h>
 #include <vmm_modules.h>
@@ -184,6 +185,14 @@ void vmm_init(void)
 	/* Initialize command manager */
 	vmm_printf("Initialize Command Manager\n");
 	ret = vmm_cmdmgr_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize wall-clock */
+	vmm_printf("Initialize Wall-Clock Subsystem\n");
+	ret = vmm_wallclock_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
