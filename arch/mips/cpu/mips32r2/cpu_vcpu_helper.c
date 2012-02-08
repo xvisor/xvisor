@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_vcpu_helper.c
- * @version 1.0
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief source of VCPU helper functions
  */
@@ -142,6 +141,13 @@ int arch_vcpu_regs_init(struct vmm_vcpu *vcpu)
 		/* Give guest the same CPU cap as we have */
 		mips_sregs(vcpu)->cp0_regs[CP0_PRID_IDX] = read_c0_prid();
 	}
+
+	return VMM_OK;
+}
+
+int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu)
+{
+	vmm_memset(mips_uregs(vcpu), 0, sizeof(arch_regs_t));
 
 	return VMM_OK;
 }

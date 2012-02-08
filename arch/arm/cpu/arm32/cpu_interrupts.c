@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_interrupts.c
- * @version 1.0
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @author Anup Patel (anup@brainfault.org)
  * @brief source code for handling cpu interrupts
@@ -119,7 +118,7 @@ void do_prefetch_abort(arch_regs_t * uregs)
 	fs = (fs << 4) | (ifsr & IFSR_FS_MASK);
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
-		if (fs != IFSR_FS_TRANS_FAULT_SECTION ||
+		if (fs != IFSR_FS_TRANS_FAULT_SECTION &&
 		    fs != IFSR_FS_TRANS_FAULT_PAGE) {
 			vmm_panic("%s: unexpected prefetch abort\n"
 				  "%s: pc = 0x%08x, ifsr = 0x%08x, ifar = 0x%08x\n", 
@@ -219,9 +218,9 @@ void do_data_abort(arch_regs_t * uregs)
 	dom = (dfsr & DFSR_DOM_MASK) >> DFSR_DOM_SHIFT;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
-		if (fs != DFSR_FS_TRANS_FAULT_SECTION ||
+		if (fs != DFSR_FS_TRANS_FAULT_SECTION &&
 		    fs != DFSR_FS_TRANS_FAULT_PAGE) {
-			vmm_panic("%s: unexpected prefetch abort\n"
+			vmm_panic("%s: unexpected data abort\n"
 				  "%s: pc = 0x%08x, dfsr = 0x%08x, dfar = 0x%08x\n", 
 				  __func__, __func__, uregs->pc, dfsr, dfar);
 		}

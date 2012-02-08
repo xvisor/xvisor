@@ -16,8 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file linker.ld
- * @version 1.0
+ * @file arm_test.ld
  * @author Anup Patel (anup@brainfault.org)
  * @brief Linker script for ARM test code
  */

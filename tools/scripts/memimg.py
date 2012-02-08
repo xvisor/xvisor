@@ -18,7 +18,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file memimg.py
-# @version 1.0
 # @author Anup Patel (anup@brainfault.org)
 # @brief Create memory image from a set of input files of any format
 # */

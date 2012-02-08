@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_vcpu_irq.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief source code for vcpu irq processing
  */
@@ -36,13 +35,8 @@ void vmm_vcpu_irq_process(arch_regs_t * regs)
 	u32 i, irq_prio, irq_reas, tmp_prio, irq_count;
 	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 
-	/* Sanity Checks */
-	if (vcpu == NULL) {
-		return;
-	}
-
 	/* For non-normal vcpu dont do anything */
-	if (!vcpu->is_normal) {
+	if (!vcpu || !vcpu->is_normal) {
 		return;
 	}
 
@@ -54,26 +48,18 @@ void vmm_vcpu_irq_process(arch_regs_t * regs)
 	irq_prio = 0x0;
 	irq_reas = 0x0;
 	for (i = 0; i < irq_count; i++) {
-		if (irq_no == -1) {
-			if (vcpu->irqs.assert[i]) {
+		if (vcpu->irqs.assert[i]) {
+			tmp_prio = arch_vcpu_irq_priority(vcpu, i);
+			if (tmp_prio > irq_prio) {
 				irq_no = i;
-				irq_prio = arch_vcpu_irq_priority(vcpu, irq_no);
+				irq_prio = tmp_prio;
 				irq_reas = vcpu->irqs.reason[irq_no];
-			}
-		} else {
-			if (vcpu->irqs.assert[i]) {
-				tmp_prio = arch_vcpu_irq_priority(vcpu, i);
-				if (tmp_prio > irq_prio) {
-					irq_no = i;
-					irq_prio = tmp_prio;
-					irq_reas = vcpu->irqs.reason[irq_no];
-				}
 			}
 		}
 	}
 
 	/* If irq number found then execute it */
-	if (-1 < irq_no) {
+	if (irq_no != -1) {
 		if (arch_vcpu_irq_execute(vcpu, regs, irq_no, irq_reas) == VMM_OK) {
 			vcpu->irqs.reason[irq_no] = 0x0;
 			vcpu->irqs.assert[irq_no] = FALSE;
@@ -84,22 +70,12 @@ void vmm_vcpu_irq_process(arch_regs_t * regs)
 
 void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 {
-	u32 irq_count;
-
-	/* Sanity Checks */
-	if (vcpu == NULL) {
-		return;
-	}
-
 	/* For non-normal vcpu dont do anything */
-	if (!vcpu->is_normal) {
+	if (!vcpu || !vcpu->is_normal) {
 		return;
 	}
 
-	/* Get irq count */
-	irq_count = arch_vcpu_irq_count(vcpu);
-
-	if (irq_count <= irq_no) {
+	if (irq_no > arch_vcpu_irq_count(vcpu)) {
 		return;
 	}
 
@@ -119,13 +95,8 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 
 void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu)
 {
-	/* Sanity check */
-	if (vcpu == NULL) {
-		return;
-	}
-
 	/* For non-normal vcpu dont do anything */
-	if (!vcpu->is_normal) {
+	if (!vcpu || !vcpu->is_normal) {
 		return;
 	}
 
@@ -135,11 +106,11 @@ void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu)
 
 int vmm_vcpu_irq_wait(struct vmm_vcpu *vcpu)
 {
-	int rc = VMM_OK;
+	int rc = VMM_EFAIL;
 
 	/* Sanity Checks */
-	if ((vcpu == NULL) || !vcpu->is_normal) {
-		return VMM_EFAIL;
+	if (!vcpu || !vcpu->is_normal) {
+		return rc;
 	}
 
 	/* Pause VCPU only if required */
@@ -156,7 +127,7 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	u32 ite, irq_count;
 
 	/* Sanity Checks */
-	if (vcpu == NULL) {
+	if (!vcpu) {
 		return VMM_EFAIL;
 	}
 
@@ -197,4 +168,3 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 
 	return VMM_OK;
 }
-

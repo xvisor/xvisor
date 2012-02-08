@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_blockdev.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Block Device framework header
  */
@@ -29,6 +28,7 @@
 #include <vmm_devdrv.h>
 
 #define VMM_BLOCKDEV_CLASS_NAME				"block"
+#define VMM_BLOCKDEV_CLASS_IPRIORITY			1
 
 struct vmm_blockdev;
 
@@ -73,8 +73,5 @@ struct vmm_blockdev *vmm_blockdev_get(int num);
 
 /** Count number of block devices */
 u32 vmm_blockdev_count(void);
-
-/** Initalize block device framework */
-int vmm_blockdev_init(void);
 
 #endif /* __VMM_BLOCKDEV_H_ */

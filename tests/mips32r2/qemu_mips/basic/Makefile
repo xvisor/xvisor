@@ -17,7 +17,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file Makefile
-# @version 1.0
 # @author Himanshu Chauhan (hschauhan@nulltrace.org)
 # @brief toplevel makefile to build MIPS test code
 # */

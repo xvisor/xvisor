@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arch_cpu.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief header file for CPU functions required by VMM
  */
@@ -33,6 +32,7 @@ int arch_cpu_final_init(void);
 
 /** Register functions required by VMM core */
 int arch_vcpu_regs_init(struct vmm_vcpu * vcpu);
+int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu);
 void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
 			  struct vmm_vcpu * vcpu, 
 			  arch_regs_t * regs);

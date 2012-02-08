@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_guest_aspace.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief source code for guest address space
  */
@@ -425,6 +424,56 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 			vmm_devemu_probe_region(guest, reg);
 		}
 	}
+
+	return VMM_OK;
+}
+
+int vmm_guest_aspace_deinit(struct vmm_guest *guest)
+{
+	int rc;
+	struct dlist *l;
+	struct vmm_region *reg = NULL;
+
+	/* Sanity Check */
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	/* Remove emulator for each virtual regions */
+	list_for_each(l, &guest->aspace.reg_list) {
+		reg = list_entry(l, struct vmm_region, head);
+		if (reg->flags & VMM_REGION_VIRTUAL) {
+			vmm_devemu_remove_region(guest, reg);
+		}
+	}
+
+	/* DeInitialize device emulation context */
+	if ((rc = vmm_devemu_deinit_context(guest))) {
+		return rc;
+	}
+
+	/* Free the regions */
+	while (!list_empty(&guest->aspace.reg_list)) {
+		l = list_pop(&guest->aspace.reg_list);
+		reg = list_entry(l, struct vmm_region, head);
+
+		if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) && 
+		    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM))) {
+			rc = vmm_host_ram_free(reg->hphys_addr, 
+						reg->phys_size);
+			if (rc) {
+				return rc;
+			}
+		}
+
+		vmm_free(reg);
+	}
+
+	/* Reset region list */
+	INIT_LIST_HEAD(&guest->aspace.reg_list);
+
+	/* Reset devemu_priv pointer of aspace */
+	guest->aspace.devemu_priv = NULL;
 
 	return VMM_OK;
 }

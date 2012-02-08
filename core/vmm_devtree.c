@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_devtree.c
- * @version 0.1
  * @author Anup Patel (anup@brainfault.org)
  * @brief Device Tree Implementation.
  */
@@ -48,7 +47,7 @@ u32 vmm_devtree_estimate_attrtype(const char * name)
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
 	} else if (!vmm_strcmp(name, VMM_DEVTREE_COMPATIBLE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME)) {
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!vmm_strcmp(name, VMM_DEVTREE_REG_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;

@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_vcpu_cp15.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Header File for VCPU cp15 emulation
  */
@@ -90,5 +89,8 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 
 /** Initialize CP15 subsystem for a VCPU */
 int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid);
+
+/** DeInitialize CP15 subsystem for a VCPU */
+int cpu_vcpu_cp15_deinit(struct vmm_vcpu * vcpu);
 
 #endif /* _CPU_VCPU_CP15_H */

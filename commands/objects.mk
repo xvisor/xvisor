@@ -17,7 +17,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @version 1.0
 # @author Anup Patel (anup@brainfault.org)
 # @brief list of command objects to be build
 # */
@@ -30,8 +29,10 @@ commands-objs-$(CONFIG_CMD_RAM)+= cmd_ram.o
 commands-objs-$(CONFIG_CMD_DEVTREE)+= cmd_devtree.o
 commands-objs-$(CONFIG_CMD_VCPU)+= cmd_vcpu.o
 commands-objs-$(CONFIG_CMD_GUEST)+= cmd_guest.o
+commands-objs-$(CONFIG_CMD_MEMORY)+= cmd_memory.o
 commands-objs-$(CONFIG_CMD_THREAD)+= cmd_thread.o
 commands-objs-$(CONFIG_CMD_CHARDEV)+= cmd_chardev.o
+commands-objs-$(CONFIG_CMD_RTCDEV)+= cmd_rtcdev.o
 commands-objs-$(CONFIG_CMD_BLOCKDEV)+= cmd_blockdev.o
 commands-objs-$(CONFIG_CMD_VSERIAL)+= cmd_vserial.o
 commands-objs-$(CONFIG_CMD_STDIO)+= cmd_stdio.o

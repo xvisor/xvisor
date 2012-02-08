@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file sp804.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief SP804 Dual-Mode Timer Emulator.
  * @details This source file implements the SP804 Dual-Mode Timer emulator.

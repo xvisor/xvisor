@@ -18,7 +18,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file emulate.sh
-# @version 1.0
 # @author Jim Huang (jserv@0xlab.org)
 # @brief execuate and validate Xvisor in QEMU
 

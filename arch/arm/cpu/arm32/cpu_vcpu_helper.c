@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_vcpu_helper.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief source of VCPU helper functions
  */
@@ -771,6 +770,29 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 	}
 #endif
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
+}
+
+int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu)
+{
+	int rc;
+
+	/* For both Orphan & Normal VCPUs */
+	vmm_memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
+
+	/* For Orphan VCPUs do nothing else */
+	if (!vcpu->is_normal) {
+		return VMM_OK;
+	}
+
+	/* Cleanup CP15 */
+	if ((rc = cpu_vcpu_cp15_deinit(vcpu))) {
+		return rc;
+	}
+
+	/* Free super regs */
+	vmm_free(vcpu->arch_priv);
+
+	return VMM_OK;
 }
 
 void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,

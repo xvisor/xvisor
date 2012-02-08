@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_devtree.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief Device Tree Header File.
  */
@@ -38,7 +37,7 @@
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_RAM		"ram"
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_ROM		"rom"
 #define VMM_DEVTREE_COMPATIBLE_ATTR_NAME	"compatible"
-#define VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME	"clock-frequency"
+#define VMM_DEVTREE_CLOCK_RATE_ATTR_NAME	"clock-rate"
 #define VMM_DEVTREE_REG_ATTR_NAME		"reg"
 #define VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME	"virtual-reg"
 

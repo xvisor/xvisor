@@ -2,7 +2,6 @@
 # Copyright (c) 2010 Himanshu Chauhan.
 # All rights reserved.
 #
-#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
@@ -17,9 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-#
 # @file objects.mk
-# @version 1.0
 # @author Himanshu Chauhan (hschauhan@nulltrace.org)
 # @brief list of board specific objects to be build
 # */

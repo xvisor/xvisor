@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_devdrv.c
- * @version 0.1
  * @author Anup Patel (anup@brainfault.org)
  * @brief Device driver framework source
  */
@@ -89,7 +88,8 @@ const struct vmm_devid *devdrv_match_node(const struct vmm_devid * matches,
 	return NULL;
 }
 
-int vmm_devdrv_probe(struct vmm_devtree_node * node)
+int vmm_devdrv_probe(struct vmm_devtree_node * node, 
+		     vmm_devdrv_getclk_t getclk)
 {
 	int rc;
 	struct dlist *l;
@@ -112,6 +112,7 @@ int vmm_devdrv_probe(struct vmm_devtree_node * node)
 			if (match) {
 				dinst = vmm_malloc(sizeof(struct vmm_device));
 				INIT_SPIN_LOCK(&dinst->lock);
+				dinst->clk = (getclk) ? getclk(node) : NULL;
 				dinst->node = node;
 				dinst->class = NULL;
 				dinst->classdev = NULL;
@@ -137,13 +138,14 @@ int vmm_devdrv_probe(struct vmm_devtree_node * node)
 
 	list_for_each(l, &node->child_list) {
 		child = list_entry(l, struct vmm_devtree_node, head);
-		vmm_devdrv_probe(child);
+		vmm_devdrv_probe(child, getclk);
 	}
 
 	return rc;
 }
 
-int vmm_devdrv_remove(struct vmm_devtree_node * node)
+int vmm_devdrv_remove(struct vmm_devtree_node * node,
+		      vmm_devdrv_putclk_t putclk)
 {
 	int rc;
 	struct dlist *l;
@@ -159,7 +161,7 @@ int vmm_devdrv_remove(struct vmm_devtree_node * node)
 
 	list_for_each(l, &node->child_list) {
 		child = list_entry(l, struct vmm_devtree_node, head);
-		rc = vmm_devdrv_remove(child);
+		rc = vmm_devdrv_remove(child, putclk);
 		if (rc) {
 			return rc;
 		}
@@ -178,6 +180,9 @@ int vmm_devdrv_remove(struct vmm_devtree_node * node)
 #endif
 				rc = drv->remove(dinst);
 				if (!rc) {
+					if (dinst->clk && putclk) {
+						putclk(dinst->clk);
+					}
 					vmm_free(dinst);
 					node->type =
 					    VMM_DEVTREE_NODETYPE_UNKNOWN;
@@ -225,24 +230,119 @@ int vmm_devdrv_ioremap(struct vmm_device * dev,
 	return VMM_OK;
 }
 
-int vmm_devdrv_getclock(struct vmm_device * dev, u32 * clock)
+bool vmm_devdrv_clock_isenabled(struct vmm_device * dev)
 {
-	const char *attrval;
+	const char *clkattr;
 
-	if (!dev || !clock) {
-		return VMM_EFAIL;
+	if (!dev) {
+		return FALSE;
 	}
 
-	attrval = vmm_devtree_attrval(dev->node,
-				      VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME);
+	clkattr = vmm_devtree_attrval(dev->node,
+				      VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
+	if (clkattr) {
+		return TRUE;
+	}
 
-	if (attrval) {
-		*clock = *((u32 *) attrval);
-	} else {
-		return arch_board_getclock(dev->node, clock);
+	if (dev->clk && dev->clk->isenabled) {
+		return dev->clk->isenabled(dev->clk);
+	}
+
+	return FALSE;
+}
+
+static int devdrv_clock_enable(struct vmm_devclk * clk)
+{
+	int rc = VMM_OK;
+	bool enabled = FALSE;
+
+	if (clk->isenabled) {
+		enabled = clk->isenabled(clk);
+	}
+
+	if (!enabled) {
+		if (clk->parent) {
+			rc = devdrv_clock_enable(clk->parent);
+			if (rc) {
+				return rc;
+			}
+		}
+		if (clk->enable) {
+			return clk->enable(clk);
+		} else {
+			return VMM_EFAIL;
+		}
 	}
 
 	return VMM_OK;
+}
+
+int vmm_devdrv_clock_enable(struct vmm_device * dev)
+{
+	const char *clkattr;
+
+	if (!dev) {
+		return VMM_EFAIL;
+	}
+
+	clkattr = vmm_devtree_attrval(dev->node,
+				      VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
+	if (clkattr) {
+		return VMM_OK;
+	}
+
+	if (dev->clk) {
+		return devdrv_clock_enable(dev->clk);
+	}
+
+	return VMM_EFAIL;
+}
+
+int vmm_devdrv_clock_disable(struct vmm_device * dev)
+{
+	const char *clkattr;
+
+	if (!dev) {
+		return VMM_EFAIL;
+	}
+
+	clkattr = vmm_devtree_attrval(dev->node,
+				      VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
+	if (clkattr) {
+		return VMM_OK;
+	}
+
+	if (dev->clk && dev->clk->disable) {
+		return dev->clk->disable(dev->clk);
+	}
+
+	return VMM_EFAIL;
+}
+
+u32 vmm_devdrv_clock_rate(struct vmm_device * dev)
+{
+	const char *clkattr;
+
+	if (!dev) {
+		return 0;
+	}
+
+	clkattr = vmm_devtree_attrval(dev->node,
+				      VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
+	if (clkattr) {
+		return *((u32 *)clkattr);
+	}
+
+	if (dev->clk && dev->clk->getrate) {
+		if (!vmm_devdrv_clock_isenabled(dev)) {
+			if (vmm_devdrv_clock_enable(dev)) {
+				return 0;
+			}
+		}
+		return dev->clk->getrate(dev->clk);
+	}
+
+	return 0;
 }
 
 int vmm_devdrv_register_class(struct vmm_class * cls)

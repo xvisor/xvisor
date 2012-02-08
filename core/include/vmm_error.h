@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_error.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief header file for VMM error codes

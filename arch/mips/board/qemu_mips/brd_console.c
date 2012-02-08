@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file brd_console.c
- * @version 0.1
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief main source file for serial port in qemu-mips board.
  */

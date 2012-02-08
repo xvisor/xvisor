@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cmd_guest.c
- * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
  * @brief Implementation of guest command
  */
@@ -44,6 +43,8 @@ void cmd_guest_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   guest help\n");
 	vmm_cprintf(cdev, "   guest list\n");
+	vmm_cprintf(cdev, "   guest create  <guest_name>\n");
+	vmm_cprintf(cdev, "   guest destroy <guest_id>\n");
 	vmm_cprintf(cdev, "   guest reset   <guest_id>\n");
 	vmm_cprintf(cdev, "   guest kick    <guest_id>\n");
 	vmm_cprintf(cdev, "   guest pause   <guest_id>\n");
@@ -53,7 +54,10 @@ void cmd_guest_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   guest dumpmem <guest_id> <gphys_addr> "
 			  "[mem_sz]\n");
 	vmm_cprintf(cdev, "Note:\n");
-	vmm_cprintf(cdev, "   if guest_id is -1 then it means all guests\n");
+	vmm_cprintf(cdev, "   <guest_id> = if -1 implies all guests "
+						"else guest id.\n");
+	vmm_cprintf(cdev, "   <guest_name> = node name under /guests "
+							"device tree node\n");
 }
 
 void cmd_guest_list(struct vmm_chardev *cdev)
@@ -76,6 +80,51 @@ void cmd_guest_list(struct vmm_chardev *cdev)
 	}
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
+}
+
+int cmd_guest_create(struct vmm_chardev *cdev, char *name)
+{
+	struct vmm_guest * guest = NULL;
+	struct vmm_devtree_node * node = NULL;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+					VMM_DEVTREE_GUESTINFO_NODE_NAME);
+
+	node = vmm_devtree_getchild(node, name);
+	if (!node) {
+		vmm_cprintf(cdev, "Error: failed to find %s node under %s\n",
+				  name, VMM_DEVTREE_PATH_SEPARATOR_STRING
+					VMM_DEVTREE_GUESTINFO_NODE_NAME);
+		return VMM_EFAIL;
+	}
+
+	guest = vmm_manager_guest_create(node);
+	if (!guest) {
+		vmm_cprintf(cdev, "Error: failed to create %s\n", name);
+		return VMM_EFAIL;
+	}
+
+	vmm_cprintf(cdev, "Created %s successfully\n", name);
+
+	return VMM_OK;
+}
+
+int cmd_guest_destroy(struct vmm_chardev *cdev, int id)
+{
+	int ret = VMM_EFAIL;
+	char name[64];
+	struct vmm_guest *guest = vmm_manager_guest(id);
+	if (guest) {
+		vmm_strncpy(name, guest->node->name, 64);
+		if ((ret = vmm_manager_guest_destroy(guest))) {
+			vmm_cprintf(cdev, "%s: Failed to destroy\n", name);
+		} else {
+			vmm_cprintf(cdev, "%s: Destroyed\n", name);
+		}
+	} else {
+		vmm_cprintf(cdev, "Failed to find guest\n");
+	}
+	return ret;
 }
 
 int cmd_guest_reset(struct vmm_chardev *cdev, int id)
@@ -197,8 +246,13 @@ int cmd_guest_dumpmem(struct vmm_chardev *cdev, int id,
 	guest = vmm_manager_guest(id);
 	if (guest) {
 		vmm_cprintf(cdev, "Guest %d physical memory ", id);
-		vmm_cprintf(cdev, "0x%llx - 0x%llx:\n", (u64)gphys_addr, 
-						(u64)(gphys_addr + len));
+		if (sizeof(u64) == sizeof(physical_addr_t)) {
+			vmm_cprintf(cdev, "0x%016llx - 0x%016llx:\n", 
+				(u64)gphys_addr, (u64)(gphys_addr + len));
+		} else {
+			vmm_cprintf(cdev, "0x%08x - 0x%08x:\n", 
+				(u32)gphys_addr, (u32)(gphys_addr + len));
+		}
 		while (total_loaded < len) {
 			loaded = vmm_guest_physical_read(guest, gphys_addr,
                                                         buf, BYTES_PER_LINE);
@@ -207,11 +261,11 @@ int cmd_guest_dumpmem(struct vmm_chardev *cdev, int id,
 
 			mem = (u32 *)buf;
 			if (sizeof(u64) == sizeof(physical_addr_t)) {
-				vmm_cprintf(cdev, "0x%016llx:", (u64)gphys_addr);
+				vmm_cprintf(cdev, "%016llx:", (u64)gphys_addr);
 			} else {
-				vmm_cprintf(cdev, "0x%08x:", gphys_addr);
+				vmm_cprintf(cdev, "%08x:", gphys_addr);
 			}
-			vmm_cprintf(cdev, " 0x%08x 0x%08x 0x%08x 0x%08x\n"
+			vmm_cprintf(cdev, " %08x %08x %08x %08x\n"
 					  , mem[0], mem[1], mem[2], mem[3]);
 
 			gphys_addr += BYTES_PER_LINE;
@@ -244,9 +298,23 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		cmd_guest_usage(cdev);
 		return VMM_EFAIL;
 	}
-	id = vmm_str2int(argv[2], 10);
 	count = vmm_manager_guest_count();
-	if (vmm_strcmp(argv[1], "reset") == 0) {
+	if (vmm_strcmp(argv[1], "create") == 0) {
+		return cmd_guest_create(cdev, argv[2]);
+	} else if (vmm_strcmp(argv[1], "destroy") == 0) {
+		id = vmm_str2int(argv[2], 10);
+		if (id == -1) {
+			for (id = 0; id < count; id++) {
+				ret = cmd_guest_destroy(cdev, id);
+				if (ret) {
+					return ret;
+				}
+			}
+		} else {
+			return cmd_guest_destroy(cdev, id);
+		}
+	} else if (vmm_strcmp(argv[1], "reset") == 0) {
+		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
 				ret = cmd_guest_reset(cdev, id);
@@ -258,6 +326,7 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return cmd_guest_reset(cdev, id);
 		}
 	} else if (vmm_strcmp(argv[1], "kick") == 0) {
+		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
 				ret = cmd_guest_kick(cdev, id);
@@ -269,6 +338,7 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return cmd_guest_kick(cdev, id);
 		}
 	} else if (vmm_strcmp(argv[1], "pause") == 0) {
+		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
 				ret = cmd_guest_pause(cdev, id);
@@ -280,6 +350,7 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return cmd_guest_pause(cdev, id);
 		}
 	} else if (vmm_strcmp(argv[1], "resume") == 0) {
+		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
 				ret = cmd_guest_resume(cdev, id);
@@ -291,6 +362,7 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return cmd_guest_resume(cdev, id);
 		}
 	} else if (vmm_strcmp(argv[1], "halt") == 0) {
+		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
 				ret = cmd_guest_halt(cdev, id);
@@ -302,6 +374,7 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return cmd_guest_halt(cdev, id);
 		}
 	} else if (vmm_strcmp(argv[1], "dumpreg") == 0) {
+		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
 				ret = cmd_guest_dumpreg(cdev, id);
@@ -313,25 +386,23 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return cmd_guest_dumpreg(cdev, id);
 		}
 	} else if (vmm_strcmp(argv[1], "dumpmem") == 0) {
+		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			vmm_cprintf(cdev, "Error: Cannot dump memory in "
 					  "all guests simultaneously.\n");
 			return VMM_EFAIL;
 		}
-
 		if (argc < 4) {
 			vmm_cprintf(cdev, "Error: Insufficient argument for "
 					  "command dumpmem.\n");
 			cmd_guest_usage(cdev);
 			return VMM_EFAIL;
 		}
-
 		src_addr = (physical_addr_t)vmm_str2ulonglong(argv[3], 10);
 		if (argc > 4)
 			size = (physical_size_t)vmm_str2uint(argv[4], 10);
 		else
 			size = 64;
-
 		return cmd_guest_dumpmem(cdev, id, src_addr, size);
 	} else {
 		cmd_guest_usage(cdev);

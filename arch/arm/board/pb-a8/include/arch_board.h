@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arch_board.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief board specific functions
  */
@@ -49,7 +48,6 @@ int arch_board_ram_size(physical_size_t * size);
 int arch_devtree_populate(struct vmm_devtree_node ** root);
 
 /** Board specific functions */
-int arch_board_getclock(struct vmm_devtree_node * node, u32 * clock);
 int arch_board_reset(void);
 int arch_board_shutdown(void);
 int arch_board_early_init(void);

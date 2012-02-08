@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arm_types.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief common header file for typedefs
  */

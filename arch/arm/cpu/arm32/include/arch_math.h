@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arch_math.h
- * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
  * @brief Architecture specific math related functions
  */

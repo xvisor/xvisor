@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_guest_aspace.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief header file for guest address space
  */
@@ -62,5 +61,8 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest);
 
 /** Initialize Guest Address space */
 int vmm_guest_aspace_init(struct vmm_guest *guest);
+
+/** DeInitialize Guest Address space */
+int vmm_guest_aspace_deinit(struct vmm_guest *guest);
 
 #endif

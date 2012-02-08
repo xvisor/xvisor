@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_host_io.h
- * @version 1.0
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief header file for common io functions.
  */

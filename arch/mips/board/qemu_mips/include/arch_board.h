@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arch_board.h
- * @version 1.0
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief board specific initialization functions
  */
@@ -45,7 +44,6 @@ int arch_board_ram_start(physical_addr_t * addr);
 int arch_board_ram_size(physical_size_t * size);
 
 int arch_devtree_populate(struct vmm_devtree_node **root);
-int arch_board_getclock(struct vmm_devtree_node *node, u32 *clock);
 
 int arch_board_early_init(void);
 int arch_board_final_init(void);

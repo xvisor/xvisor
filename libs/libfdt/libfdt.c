@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file libfdt.c
- * @version 0.1
  * @author Anup Patel. (anup@brainfault.org)
  * @brief Flattend device tree library source
  */

@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_vcpu_cp15.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief VCPU CP15 Emulation
  * @details This source file implements CP15 coprocessor for each VCPU.
@@ -1454,6 +1453,10 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		write_tpidrurw(arm_priv(vcpu)->cp15.c13_tls1);
 		write_tpidruro(arm_priv(vcpu)->cp15.c13_tls2);
 		write_tpidrprw(arm_priv(vcpu)->cp15.c13_tls3);
+	} else {
+		if (tvcpu->is_normal) {
+			cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
+		}
 	}
 }
 
@@ -1540,5 +1543,20 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 	};
 
 	return rc;
+}
+
+int cpu_vcpu_cp15_deinit(struct vmm_vcpu * vcpu)
+{
+	int rc;
+
+	if ((rc = cpu_mmu_l1tbl_free(arm_priv(vcpu)->cp15.l1))) {
+		return rc;
+	}
+
+	vmm_free(arm_priv(vcpu)->cp15.vtlb.table);
+
+	vmm_memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
+
+	return VMM_OK;
 }
 

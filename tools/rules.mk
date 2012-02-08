@@ -17,7 +17,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file rules.mk
-# @version 1.0
 # @author Anup Patel (anup@brainfault.org)
 # @brief Rules to build & use tools
 # */

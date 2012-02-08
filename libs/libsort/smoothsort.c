@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file smoothsort.c
- * @version 1.0
  * @author Pekka Pessi (pekka.pessi@nokia.com)
  * @brief Smoothsort implementation
  *

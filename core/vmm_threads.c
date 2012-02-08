@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_threads.c
- * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @author Anup Patel (anup@brainfault.org)
  * @brief Source file for hypervisor threads. These run on top of vcpus.
