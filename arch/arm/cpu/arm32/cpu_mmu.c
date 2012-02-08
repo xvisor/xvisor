@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_mmu.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief source file for memory management unit
  */
@@ -215,7 +214,7 @@ int cpu_mmu_l2tbl_free(struct cpu_l2tbl * l2)
 		}
 	}
 
-	list_del(&l2->head);
+	INIT_LIST_HEAD(&l2->head);
 
 	mmuctrl.l2_bmap[l2->l2_num] = 0;
 	mmuctrl.l2_alloc_count--;
@@ -765,6 +764,9 @@ int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page * pg)
 int cpu_mmu_unmap_reserved_page(struct cpu_page * pg)
 {
 	int rc;
+	struct dlist * le;
+	struct cpu_l1tbl * l1;
+	irq_flags_t flags;
 
 	if (!pg) {
 		return VMM_EFAIL;
@@ -773,6 +775,21 @@ int cpu_mmu_unmap_reserved_page(struct cpu_page * pg)
 	if ((rc = cpu_mmu_unmap_page(&mmuctrl.defl1, pg))) {
 		return rc;
 	}
+
+	/* Note: It might be possible that the reserved page
+	 * was mapped on-demand into l1 tables other than 
+	 * default l1 table so, we should try to remove mappings
+	 * of this page from other l1 tables.
+	 */
+
+	flags = arch_cpu_irq_save();
+
+	list_for_each(le, &mmuctrl.l1tbl_list) {
+		l1 = list_entry(le, struct cpu_l1tbl, head);
+		cpu_mmu_unmap_page(l1, pg);
+	}
+
+	arch_cpu_irq_restore(flags);
 
 	return VMM_OK;
 }
@@ -788,6 +805,14 @@ int cpu_mmu_map_reserved_page(struct cpu_page * pg)
 	if ((rc = cpu_mmu_map_page(&mmuctrl.defl1, pg))) {
 		return rc;
 	}
+
+	/* Note: Ideally resereved page mapping should be created
+	 * in each and every l1 table that exist, but that would 
+	 * be uneccesary and redundant. To avoid this we only 
+	 * create mapping in default l1 table and let other VCPUs
+	 * fault on this page and load the page on-demand from
+	 * data abort and prefetch abort handlers.
+	 */
 
 	return VMM_OK;
 }
@@ -874,7 +899,7 @@ int cpu_mmu_l1tbl_free(struct cpu_l1tbl * l1)
 	}
 
 	while (!list_empty(&l1->l2tbl_list)) {
-		le = list_pop(&l1->l2tbl_list);
+		le = list_first(&l1->l2tbl_list);
 		l2 = list_entry(le, struct cpu_l2tbl, head);
 		cpu_mmu_l2tbl_free(l2);
 	}
@@ -1091,12 +1116,10 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 	p.sz = sz;
 	p.imp = 0;
 	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
-	if (mem_flags & (VMM_MEMORY_READABLE | VMM_MEMORY_WRITEABLE)) {
+	if (mem_flags & VMM_MEMORY_WRITEABLE) {
 		p.ap = TTBL_AP_SRW_U;
 	} else if (mem_flags & VMM_MEMORY_READABLE) {
 		p.ap = TTBL_AP_SR_U;
-	} else if (mem_flags & VMM_MEMORY_WRITEABLE) {
-		p.ap = TTBL_AP_SRW_U;
 	} else {
 		p.ap = TTBL_AP_S_U;
 	}
@@ -1276,6 +1299,9 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 						i * TTBL_L1TBL_SIZE;
 		mmuctrl.l1_array[i].tbl_va = mmuctrl.l1_base_va + 
 						i * TTBL_L1TBL_SIZE;
+		mmuctrl.l1_array[i].tte_cnt = 0;
+		mmuctrl.l1_array[i].l2tbl_cnt = 0;
+		INIT_LIST_HEAD(&mmuctrl.l1_array[i].l2tbl_list);
 	}
 
 	/* Setup up l2 array */
@@ -1289,6 +1315,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 						i * TTBL_L2TBL_SIZE;
 		mmuctrl.l2_array[i].tbl_va = mmuctrl.l2_base_va + 
 						i * TTBL_L2TBL_SIZE;
+		mmuctrl.l2_array[i].tte_cnt = 0;
 	}
 
 	return VMM_OK;

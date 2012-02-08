@@ -17,7 +17,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @version 1.0
 # @author Anup Patel (anup@brainfault.org)
 # @brief list of core objects to be build
 # */
@@ -43,9 +42,7 @@ core-objs-y+= vmm_cmdmgr.o
 core-objs-y+= vmm_devdrv.o
 core-objs-y+= vmm_devemu.o
 core-objs-y+= vmm_chardev.o
-core-objs-y+= vmm_blockdev.o
 core-objs-y+= vmm_vserial.o
 core-objs-y+= vmm_modules.o
-core-objs-$(CONFIG_NET)+= vmm_netdev.o
 core-objs-$(CONFIG_PROFILE)+= vmm_profiler.o
 

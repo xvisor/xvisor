@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_host_aspace.c
- * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief CPU specific source file for host virtual address space management.
  */

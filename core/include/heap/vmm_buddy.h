@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_buddy.h
- * @version 0.01
  * @author Himanshu Chauhan (hchauhan@nulltrace.org)
  * @brief header file for buddy heap allocator
  */

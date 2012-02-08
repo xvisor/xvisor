@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_emulate_thumb.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief header file to emulate Thumb instructions
  */

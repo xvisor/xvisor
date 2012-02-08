@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_spinlocks.c
- * @version 0.01
  * @author Himanshu Chauhan (hchauhan@nulltrace.org)
  * @brief header file for spinlock synchronization mechanisms.
  */

@@ -17,7 +17,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file Makefile
-# @version 1.0
 # @author Anup Patel (anup@brainfault.org)
 # @brief toplevel makefile to build VMM source code
 # */
@@ -74,8 +73,6 @@ export OPENCONF_AUTOHEADER = openconf.h
 CONFIG_ARCH:=$(shell echo $(CONFIG_ARCH))
 CONFIG_CPU:=$(shell echo $(CONFIG_CPU))
 CONFIG_BOARD:=$(shell echo $(CONFIG_BOARD))
-
-TESTDIR:=tests/$(CONFIG_CPU)/$(CONFIG_BOARD)/basic/
 
 # Setup path of directories
 export cpu_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/cpu/$(CONFIG_CPU)
@@ -341,10 +338,6 @@ ifeq ($(build_dir),$(CURDIR)/build)
 	$(V)rm -rf $(build_dir)
 endif
 	$(V)$(MAKE) -C $(src_dir)/tools/dtc clean
-
-.PHONY: tests
-tests:
-	$(V)$(MAKE) -C $(src_dir)/$(TESTDIR)
 
 # Rule for "make distclean"
 .PHONY: distclean

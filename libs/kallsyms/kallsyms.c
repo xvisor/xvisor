@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file kallsyms.c
- * @version 1.0
  * @author Rusty Russell (rusty@rustcorp.com.au) IBM Corporation
  * @brief source file for trace support functions
  *

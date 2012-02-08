@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_host_aspace.h
- * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @author Anup patel (anup@brainfault.org)
  * @brief Header file for virtual address space management.

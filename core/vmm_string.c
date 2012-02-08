@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_string.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief source file for CPU specific string functions required by VMM
  */
@@ -94,6 +93,34 @@ int vmm_strncmp(const char *a, const char *b, int n)
 		return (unsigned char)*a - (unsigned char)*b;
 	} else {
 		return 0;
+	}
+}
+
+void vmm_str2lower(char * s)
+{
+	if (!s) {
+		return;
+	}
+
+	while (*s) {
+		if ('A' <= *s && *s <= 'Z') {
+			*s = (*s - 'A') + 'a';
+		}
+		s++;
+	}
+}
+
+void vmm_str2upper(char * s)
+{
+	if (!s) {
+		return;
+	}
+
+	while (*s) {
+		if ('a' <= *s && *s <= 'z') {
+			*s = (*s - 'a') + 'A';
+		}
+		s++;
 	}
 }
 

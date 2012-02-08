@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_devemu.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief header file for device emulation framework
  */
@@ -151,8 +150,14 @@ int vmm_devemu_reset_region(struct vmm_guest *guest, struct vmm_region *reg);
 /** Probe emulators for given region */
 int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg);
 
+/** Remove emulator for given region */
+int vmm_devemu_remove_region(struct vmm_guest *guest, struct vmm_region *reg);
+
 /** Initialize context for given guest */
 int vmm_devemu_init_context(struct vmm_guest *guest);
+
+/** DeInitialize context for given guest */
+int vmm_devemu_deinit_context(struct vmm_guest *guest);
 
 /** Initialize device emulation framework */
 int vmm_devemu_init(void);

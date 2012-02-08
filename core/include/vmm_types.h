@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_types.h
- * @version 0.01
  * @author Himanshu Chauhan (hchauhan@nulltrace.org)
  * @author Pavel Borzenkov <pavel.borzenkov@gmail.com>
  * @brief header file for common types used in xvisor.

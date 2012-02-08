@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file brd_main.c
- * @version 1.0
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @brief main source file for board specific code
  */
@@ -107,15 +106,6 @@ int arch_devtree_populate(struct vmm_devtree_node ** root)
 	return libfdt_parse_devtree(&fdt, root);
 }
 
-int arch_board_getclock(struct vmm_devtree_node * node, u32 * clock)
-{
-	if (!node || !clock) {
-		return VMM_EFAIL;
-	}
-	*clock = OMAP3_UART_INCLK;
-	return VMM_OK;
-}
-
 int arch_board_reset(void)
 {
 	/* FIXME: TBD */
@@ -158,7 +148,7 @@ int __init arch_board_final_init(void)
 		return VMM_ENOTAVAIL;
 	}
 
-	rc = vmm_devdrv_probe(node);
+	rc = vmm_devdrv_probe(node, NULL);
 	if (rc) {
 		return rc;
 	}

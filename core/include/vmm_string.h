@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_string.h
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief header file for libc functions required by VMM
  */
@@ -37,6 +36,10 @@ char *vmm_strcat(char *dest, const char *src);
 int vmm_strcmp(const char *a, const char *b);
 
 int vmm_strncmp(const char *a, const char *b, int n);
+
+void vmm_str2lower(char * s);
+
+void vmm_str2upper(char * s);
 
 int vmm_str2int(const char *s, unsigned int base);
 

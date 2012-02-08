@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_macros.h
- * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief Useful preprocessor macros for vmm
  */

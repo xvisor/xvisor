@@ -17,7 +17,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @version 1.0
 # @author Jean-Christophe Dubois (jcd@tribudubois.net)
 # @brief kallsyms functions borrowed from linux
 # */

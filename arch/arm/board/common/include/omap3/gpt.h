@@ -18,7 +18,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file gpt.h
- * @version 1.0
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief OMAP3 general purpose timer APIs

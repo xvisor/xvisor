@@ -1,0 +1,26 @@
+			Xvisor v0.1.0
+	(Last Commit: a341828367df801f69f2737c2362efe2e936611c)
+		(Release Date: 27-Oct-2011)
+
+This is the first release of Xvisor (eXtensible Versatile hypervISOR).
+
+The features supported in this release:
+ - Tree based configuration
+ - Tickless and high resolution timekeeping
+ - Threading framework
+ - Device driver framework
+ - CPU virtualization
+ - Address Space virtualization
+ - Device emulation framework
+ - Serial port virtualization
+ - Managment terminal
+
+ARM 32-bit Port:
+ - Able to boot multiple unmodified Linux-2.6.30.10 or Linux-3.0.4 
+   guest with a fairly interactive and smooth Busybox 0.19.2 console. 
+ - Supported host for Xvisor ARM is Realview-PB-A8 Board emulated by QEMU. 
+ - Being ported to real hardware, specifically Beagle Board.
+
+MIPS 32-bit Port:
+ - Only compilable for now. It is still a work in progress.
+

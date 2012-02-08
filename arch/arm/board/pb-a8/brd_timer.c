@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file brd_timer.c
- * @version 1.0
  * @author Anup Patel (anup@brainfault.org)
  * @brief board specific progammable timer
  */

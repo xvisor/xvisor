@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_vcpu_irq.c
- * @version 0.1
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief source code for handling vcpu interrupts
  */

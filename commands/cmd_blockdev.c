@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cmd_blockdev.c
- * @version 0.01
  * @author Anup Patel (anup@brainfault.org)
  * @brief Implementation of blockdev command
  */
@@ -26,9 +25,9 @@
 #include <vmm_stdio.h>
 #include <vmm_string.h>
 #include <vmm_devtree.h>
-#include <vmm_blockdev.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <block/vmm_blockdev.h>
 
 #define MODULE_VARID			cmd_blockdev_module
 #define MODULE_NAME			"Command blockdev"

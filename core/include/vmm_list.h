@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_list.h
- * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief Abstraction and functions for common list handling.
  */

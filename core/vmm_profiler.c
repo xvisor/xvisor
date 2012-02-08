@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file vmm_profiler.c
- * @version 0.01
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief source file of hypervisor profiler (profiling support).
  */

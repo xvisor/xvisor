@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cmd_thread.c
- * @version 0.01
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @author Anup Patel (anup@brainfault.org)
  * @brief Command file for hypervisor threads control.

@@ -21,7 +21,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file bb_nandflash_ecc.c
- * @version 0.02
  * @author yajin <yajin@vm-kernel.org>
  * @author Sukanto Ghosh <sukantoghosh@gmail.com>
  * @brief Tool to calculate ecc code for beagle nand flash

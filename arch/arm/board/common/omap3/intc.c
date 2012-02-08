@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file intc.c
- * @version 1.0
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @brief OMAP3 interrupt controller APIs
  */

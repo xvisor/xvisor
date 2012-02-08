@@ -18,7 +18,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file elf2cpatch.py
-# @version 1.0
 # @author Anup Patel (anup@brainfault.org)
 # @brief Script to generate cpatch script from guest OS ELF
 # */

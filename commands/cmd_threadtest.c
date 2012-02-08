@@ -17,7 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cmd_threadtest.c
- * @version 0.01
  * @author Sanjeev Pandita (san.pandita@gmail.com)
  * @author Anup Patel (anup@brainfault.org)
  * @brief Command for testing threading & locking related features
