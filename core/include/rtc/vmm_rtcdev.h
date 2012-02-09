@@ -56,6 +56,12 @@ int vmm_rtcdev_set_time(struct vmm_rtcdev * rdev,
 int vmm_rtcdev_get_time(struct vmm_rtcdev * rdev,
 			struct vmm_rtc_time * tm);
 
+/** Sync wall-clock time using given rtc device */
+int vmm_rtcdev_sync_wallclock(struct vmm_rtcdev * rdev);
+
+/** Sync rtc device time from current wall-clock time */
+int vmm_rtcdev_sync_device(struct vmm_rtcdev * rdev);
+
 /** Register rtc device to device driver framework */
 int vmm_rtcdev_register(struct vmm_rtcdev * rdev);
 

@@ -28,6 +28,7 @@
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
+#include <vmm_wallclock.h>
 #include <rtc/vmm_rtcdev.h>
 
 #define MODULE_VARID			rtcdev_framework_module
@@ -55,6 +56,72 @@ int vmm_rtcdev_set_time(struct vmm_rtcdev * rdev,
 	}
 
 	return VMM_EFAIL;
+}
+
+int vmm_rtcdev_sync_wallclock(struct vmm_rtcdev * rdev)
+{
+	int rc;
+	struct vmm_timezone tz, utc_tz;
+	struct vmm_timeval tv;
+	struct vmm_rtc_time tm;
+
+	if (!rdev) {
+		return VMM_EFAIL;
+	}
+
+	if ((rc = vmm_rtcdev_get_time(rdev, &tm))) {
+		return rc;
+	}
+
+	if ((rc = vmm_wallclock_get_timezone(&tz))) {
+		return rc;
+	}
+
+	utc_tz.tz_minuteswest = 0;
+	utc_tz.tz_dsttime = 0;
+
+	tv.tv_sec = vmm_wallclock_mktime(tm.tm_year + 1900, 
+					 tm.tm_mon + 1, 
+					 tm.tm_mday, 
+					 tm.tm_hour, 
+					 tm.tm_min, 
+					 tm.tm_sec);
+	tv.tv_nsec = 0;
+
+	if ((rc = vmm_wallclock_set_timeofday(&tv, &utc_tz))) {
+		return rc;
+	}
+
+	if ((rc = vmm_wallclock_set_timezone(&tz))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_rtcdev_sync_device(struct vmm_rtcdev * rdev)
+{
+	int rc;
+	struct vmm_timezone tz;
+	struct vmm_timeval tv;
+	struct vmm_rtc_time tm;
+
+	if (!rdev) {
+		return VMM_EFAIL;
+	}
+
+	if ((rc = vmm_wallclock_get_timeofday(&tv, &tz))) {
+		return rc;
+	}
+
+	tv.tv_sec -= tz.tz_minuteswest * 60;
+	vmm_rtc_time_to_tm((unsigned long)tv.tv_sec, &tm);
+
+	if ((rc = vmm_rtcdev_set_time(rdev, &tm))) {
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
 int vmm_rtcdev_register(struct vmm_rtcdev * rdev)
