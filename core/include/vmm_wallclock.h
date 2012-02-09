@@ -35,6 +35,28 @@ struct vmm_timezone {
 	int	tz_dsttime;	/* type of dst correction */
 };
 
+struct vmm_timeinfo {
+	/*
+	 * the number of seconds after the minute, normally in the range
+	 * 0 to 59, but can be up to 60 to allow for leap seconds
+	 */
+	int tm_sec;
+	/* the number of minutes after the hour, in the range 0 to 59*/
+	int tm_min;
+	/* the number of hours past midnight, in the range 0 to 23 */
+	int tm_hour;
+	/* the day of the month, in the range 1 to 31 */
+	int tm_mday;
+	/* the number of months since January, in the range 0 to 11 */
+	int tm_mon;
+	/* the number of years since 1900 */
+	long tm_year;
+	/* the number of days since Sunday, in the range 0 to 6 */
+	int tm_wday;
+	/* the number of days since January 1, in the range 0 to 365 */
+	int tm_yday;
+};
+
 /** Parameters used to convert the timeval values: */
 #define MSEC_PER_SEC	1000L
 #define USEC_PER_MSEC	1000L
@@ -82,12 +104,20 @@ static inline s64 vmm_timeval_to_ns(const struct vmm_timeval *tv)
 /** Convert nanoseconds to vmm_timeval */
 struct vmm_timeval vmm_ns_to_timeval(const s64 nsec);
 
-/** 
- * Converts Gregorian date to seconds since 1970-01-01 00:00:00.
- * Assumes input in normal date format, i.e. 1980-12-31 23:59:59
- * => year=1980, mon=12, day=31, hour=23, min=59, sec=59.
+/** Convert seconds elapsed Gregorian date to vmm_timeinfo 
+ *  @totalsecs	number of seconds elapsed since 00:00:00 on January 1, 1970,
+ *		Coordinated Universal Time (UTC).
+ *  @offset	offset seconds adding to totalsecs.
+ *  @result	pointer to struct vmm_timeinfo variable for broken-down time
  */
-u64 vmm_wallclock_mktime(const unsigned int year0, 
+void vmm_wallclock_mkinfo(s64 totalsecs, int offset, 
+			  struct vmm_timeinfo * result);
+
+/** Converts Gregorian date to seconds since 1970-01-01 00:00:00.
+ *  Assumes input in normal date format, i.e. 1980-12-31 23:59:59
+ *  => year=1980, mon=12, day=31, hour=23, min=59, sec=59.
+ */
+s64 vmm_wallclock_mktime(const unsigned int year0, 
 			 const unsigned int mon0,
 			 const unsigned int day, 
 			 const unsigned int hour,

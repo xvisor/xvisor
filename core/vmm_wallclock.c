@@ -19,6 +19,16 @@
  * @file vmm_wallclock.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief source file for wall-clock subsystem
+ *
+ *  This source has been adapted from linux/kernel/time.c
+ *
+ *  Copyright (C) 1991, 1992  Linus Torvalds
+ *
+ *  This file contains the interface functions for the various
+ *  time related system calls: time, stime, gettimeofday, settimeofday,
+ *			       adjtime
+ *
+ *  The original code is licensed under the GPL.
  */
 
 #include <vmm_error.h>
@@ -35,7 +45,7 @@ struct vmm_wallclock_ctrl {
 	u64 last_modify_tstamp;
 };
 
-struct vmm_wallclock_ctrl wclk;
+static struct vmm_wallclock_ctrl wclk;
 
 void vmm_timeval_set_normalized(struct vmm_timeval *tv, s64 sec, s64 nsec)
 {
@@ -100,6 +110,94 @@ struct vmm_timeval vmm_ns_to_timeval(const s64 nsec)
 	return tv;
 }
 
+/*
+ * Nonzero if YEAR is a leap year (every 4 years,
+ * except every 100th isn't, and every 400th is).
+ */
+static int __isleap(long year)
+{
+	return (year) % 4 == 0 && ((year) % 100 != 0 || (year) % 400 == 0);
+}
+
+/* do a mathdiv for long type */
+static long math_div(long a, long b)
+{
+	return vmm_sdiv64(a, b) - (vmm_smod64(a, b) < 0);
+}
+
+/* How many leap years between y1 and y2, y1 must less or equal to y2 */
+static long leaps_between(long y1, long y2)
+{
+	long leaps1 = math_div(y1 - 1, 4) - math_div(y1 - 1, 100)
+		+ math_div(y1 - 1, 400);
+	long leaps2 = math_div(y2 - 1, 4) - math_div(y2 - 1, 100)
+		+ math_div(y2 - 1, 400);
+	return leaps2 - leaps1;
+}
+
+/* How many days come before each month (0-12). */
+static const unsigned short __mon_yday[2][13] = {
+	/* Normal years. */
+	{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365},
+	/* Leap years. */
+	{0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}
+};
+
+#define SECS_PER_HOUR	(60 * 60)
+#define SECS_PER_DAY	(SECS_PER_HOUR * 24)
+
+void vmm_wallclock_mkinfo(s64 totalsecs, int offset, 
+			  struct vmm_timeinfo * result)
+{
+	long days, rem, y;
+	const unsigned short *ip;
+
+	days = vmm_sdiv64(totalsecs, SECS_PER_DAY);
+	rem = totalsecs - days * SECS_PER_DAY;
+	rem += offset;
+	while (rem < 0) {
+		rem += SECS_PER_DAY;
+		--days;
+	}
+	while (rem >= SECS_PER_DAY) {
+		rem -= SECS_PER_DAY;
+		++days;
+	}
+
+	result->tm_hour = rem / SECS_PER_HOUR;
+	rem %= SECS_PER_HOUR;
+	result->tm_min = rem / 60;
+	result->tm_sec = rem % 60;
+
+	/* January 1, 1970 was a Thursday. */
+	result->tm_wday = (4 + days) % 7;
+	if (result->tm_wday < 0)
+		result->tm_wday += 7;
+
+	y = 1970;
+
+	while (days < 0 || days >= (__isleap(y) ? 366 : 365)) {
+		/* Guess a corrected year, assuming 365 days per year. */
+		long yg = y + math_div(days, 365);
+
+		/* Adjust DAYS and Y to match the guessed year. */
+		days -= (yg - y) * 365 + leaps_between(y, yg);
+		y = yg;
+	}
+
+	result->tm_year = y - 1900;
+
+	result->tm_yday = days;
+
+	ip = __mon_yday[__isleap(y)];
+	for (y = 11; days < ip[y]; y--)
+		continue;
+	days -= ip[y];
+
+	result->tm_mon = y;
+	result->tm_mday = days + 1;
+}
+
 /* [For the Julian calendar (which was used in Russia before 1917,
  * Britain & colonies before 1752, anywhere else before 1582,
  * and is still in use by some communities) leave out the
@@ -109,9 +207,9 @@ struct vmm_timeval vmm_ns_to_timeval(const s64 nsec)
  *
  * NOTE: the original function mktime() in linux will overflow on 
  * 2106-02-07 06:28:16 on machines where long is 32-bit! To take 
- * care of this issue we return u64 try to avoid overflow.
+ * care of this issue we return s64 try to avoid overflow.
  */
-u64 vmm_wallclock_mktime(const unsigned int year0, 
+s64 vmm_wallclock_mktime(const unsigned int year0, 
 			 const unsigned int mon0,
 			 const unsigned int day, 
 			 const unsigned int hour,
@@ -143,7 +241,7 @@ u64 vmm_wallclock_mktime(const unsigned int year0,
 	ret *= (u64)60;
 	ret += sec;
 
-	return ret;
+	return (s64)ret;
 }
 
 int vmm_wallclock_set_local_time(struct vmm_timeval * tv)
@@ -179,6 +277,9 @@ int vmm_wallclock_get_local_time(struct vmm_timeval * tv)
 	tv->tv_sec = wclk.tv.tv_sec;
 	tv->tv_nsec = wclk.tv.tv_nsec;
 	tdiff = vmm_timer_timestamp() - wclk.last_modify_tstamp;
+
+	vmm_spin_unlock_irqrestore(&wclk.lock, flags);
+
 	tdiv = vmm_udiv64(tdiff, NSEC_PER_SEC);
 	tmod = tdiff - tdiv * NSEC_PER_SEC;
 	tv->tv_nsec += tmod;
@@ -187,8 +288,6 @@ int vmm_wallclock_get_local_time(struct vmm_timeval * tv)
 		tv->tv_nsec -= NSEC_PER_SEC;
 	}
 	tv->tv_sec += tdiv;
-
-	vmm_spin_unlock_irqrestore(&wclk.lock, flags);
 
 	return VMM_OK;
 }
