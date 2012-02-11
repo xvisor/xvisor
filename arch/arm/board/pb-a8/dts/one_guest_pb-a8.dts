@@ -197,6 +197,16 @@
 					irq = <37>;
 				};
 
+				rtc0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10017000>;
+					physical_size = <0x1000>;
+					device_type = "rtc";
+					compatible = "primecell,pl031";
+					irq = <42>;
+				};
+
 				sysctrl1 {
 					manifest_type = "virtual";
 					address_type = "memory";

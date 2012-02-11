@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.1
-# Thu Feb  9 12:27:56 2012
+# Fri Feb 10 10:25:35 2012
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -117,6 +117,11 @@ CONFIG_SERIAL_UART=y
 # Serial Port Emulators
 #
 # CONFIG_EMU_SERIAL is not set
+
+#
+# Real-Time Clock Emulators
+#
+# CONFIG_EMU_RTC is not set
 
 #
 # Tool Options
