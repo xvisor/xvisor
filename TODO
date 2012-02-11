@@ -2,7 +2,6 @@
 		High-Priority Features (For version 0.1.2)
 
  * Add testsuit for completion, threads, workqueues, semaphore, mutex, etc.
- * Add support for real-time clock virtualization
 
 
 		Medium-Priority Features (For version 1.0.0)
