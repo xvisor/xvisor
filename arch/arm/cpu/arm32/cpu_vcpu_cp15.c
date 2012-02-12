@@ -454,6 +454,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu * vcpu,
 					 pg.pa, pg.sz,
 					 &pg.pa, &availsz,
 					 &reg_flags))) {
+		vmm_manager_vcpu_halt(vcpu);
 		return rc;
 	}
 	if (availsz < TTBL_L2TBL_SMALL_PAGE_SIZE) {
