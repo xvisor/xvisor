@@ -410,6 +410,24 @@ int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count)
 	return vmm_host_ram_free(pa, page_count * VMM_PAGE_SIZE);
 }
 
+int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t * page_pa)
+{
+	int rc = VMM_OK;
+	physical_addr_t pa = 0x0;
+
+	page_va &= ~VMM_PAGE_MASK;
+
+	if ((rc = arch_cpu_aspace_va2pa(page_va, &pa))) {
+		return rc;
+	}
+
+	if (!page_pa) {
+		*page_pa = pa;
+	}
+
+	return VMM_OK;
+}
+
 u32 vmm_host_physical_read(physical_addr_t hphys_addr, 
 			   void * dst, u32 len)
 {
