@@ -23,9 +23,15 @@
 
 #include <vmm_error.h>
 #include <vmm_string.h>
+#include <vmm_stdio.h>
 #include <vmm_heap.h>
 #include <vmm_host_aspace.h>
-#include <heap/vmm_trivial.h>
+
+struct vmm_trivial_control {
+	virtual_addr_t base;
+	virtual_size_t size;
+	virtual_addr_t curoff;
+};
 
 static struct vmm_trivial_control heap_ctrl;
 
@@ -45,6 +51,44 @@ void *vmm_malloc(virtual_size_t size)
 void vmm_free(void *pointer)
 {
 	/* Nothing to be done for freeing */
+}
+
+int vmm_heap_allocator_name(char * name, int name_sz)
+{
+	if (!name && name_sz > 0) {
+		return VMM_EFAIL;
+	}
+
+	vmm_strncpy(name, "Trivial", name_sz);
+
+	return VMM_OK;
+}
+
+virtual_addr_t vmm_heap_start_va(void)
+{
+	return (virtual_addr_t)heap_ctrl.base;
+}
+
+virtual_size_t vmm_heap_size(void)
+{
+	return (virtual_size_t)heap_ctrl.size;
+}
+
+virtual_size_t vmm_heap_hksize(void)
+{
+	return (virtual_size_t)0;
+}
+
+int vmm_heap_print_state(struct vmm_chardev *cdev)
+{
+	vmm_cprintf(cdev, "Heap State\n");
+	vmm_cprintf(cdev, "  Used Space  : %d KiB\n", 
+				heap_ctrl.curoff / 1024);
+	vmm_cprintf(cdev, "  Free Space  : %d KiB\n", 
+				(heap_ctrl.size - heap_ctrl.curoff) / 1024);
+	vmm_cprintf(cdev, "  Total Space : %d KiB\n", 
+				heap_ctrl.size / 1024);
+	return VMM_OK;
 }
 
 int __init vmm_heap_init(void)
