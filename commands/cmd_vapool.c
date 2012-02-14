@@ -25,6 +25,7 @@
 #include <vmm_string.h>
 #include <vmm_math.h>
 #include <vmm_stdio.h>
+#include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
