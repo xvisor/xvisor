@@ -11,6 +11,8 @@ releases/
 	- Detailed information about each release.
 DesignDoc
 	- Overview of Xvisor design.
+VersionScheme
+	- Explanation about Xvisor Version Scheme.
 CodingStyle
 	- Expected C coding style in Xvisor.
 arm/
