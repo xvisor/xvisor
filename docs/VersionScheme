@@ -2,7 +2,7 @@
 		Xvisor Version Scheme
 
 The Xvisor Version Scheme is intended to capture the progress of Xvisor 
-in-terms of feature addtions. 
+in-terms of feature additions. 
 
 The Xvisor Version Scheme is as follow:
 
@@ -17,8 +17,7 @@ The Xvisor Version Scheme is as follow:
  4. There will be no limit on <minor> release number, it will keep increasing.
     The <minor> number will be reset 0 only when we increment <major> number.
  5. Increasing <major> number will be based on discussions on xvisor-devel 
-    mailing list. Currently we are at <major> = 0, we will move to <major> = 1
-    only after we have SMP support in place.
+    mailing list.
 
 In the above, points 2 and 3 are based on our current pace of development. 
 In future, we will keep adapting points 2 and 3 based on pace of development 
