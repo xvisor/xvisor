@@ -2,11 +2,12 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.1
-# Mon Feb 13 12:29:12 2012
+# Sat Feb 18 18:35:08 2012
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_MIPS=y
+# CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="mips"
 CONFIG_CPU_MIPS32R2=y
 CONFIG_CPU="mips32r2"
