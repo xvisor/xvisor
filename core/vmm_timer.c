@@ -35,6 +35,7 @@ struct vmm_timer_ctrl {
 	u32 cycles_shift;
 	u64 timestamp;
 	bool cpu_started;
+	u64 cpu_next_event;
 	struct vmm_timer_event *cpu_curr;
 	struct dlist cpu_event_list;
 	struct dlist event_list;
@@ -73,6 +74,8 @@ u64 __notrace vmm_timer_timestamp_for_profile(void)
 
 static void vmm_timer_schedule_next_event(void)
 {
+	u64 tstamp;
+	bool config_clockevent = FALSE;
 	struct vmm_timer_event *e;
 
 	/* If not started yet, we give up */
@@ -86,24 +89,33 @@ static void vmm_timer_schedule_next_event(void)
 	}
 
 	/* retrieve first timer in the list of active timers */
-	e = list_entry(list_first(&tctrl.cpu_event_list), struct vmm_timer_event,
+	e = list_entry(list_first(&tctrl.cpu_event_list), 
+		       struct vmm_timer_event,
 		       cpu_head);
 
 	if (tctrl.cpu_curr != e) {
 		/* The current event is not the one at the head of the list. */
-		u64 tstamp = vmm_timer_timestamp();
-
-		tctrl.cpu_curr = e;
-
-		if (tstamp > e->expiry_tstamp) {
-			tstamp = e->expiry_tstamp;
-		}
-
-		arch_cpu_clockevent_start(e->expiry_tstamp - tstamp);
+		config_clockevent = TRUE;
 	} else {
-		/* FIXME: What if expiry time of current event changed ?? */
-		/* Nothing to change as the current event is the one at the */
-		/* head of the list and they are ordered by expiration time */
+		/* The current event is one at the head of the list. 
+		 * It is possible that expiry time of current event is made
+		 * sooner, so we check and configure clockevent if required.
+		 */
+		if (e->expiry_tstamp <= tctrl.cpu_next_event) {
+			config_clockevent = TRUE;
+		}
+	}
+
+	if (config_clockevent) {
+		tctrl.cpu_curr = e;
+		tstamp = vmm_timer_timestamp();
+		if (tstamp < e->expiry_tstamp) {
+			tctrl.cpu_next_event = e->expiry_tstamp;
+			arch_cpu_clockevent_start(e->expiry_tstamp - tstamp);
+		} else {
+			tctrl.cpu_next_event = tstamp;
+			arch_cpu_clockevent_expire();
+		}
 	}
 }
 
@@ -404,6 +416,8 @@ u32 vmm_timer_event_count(void)
 void vmm_timer_start(void)
 {
 	arch_cpu_clockevent_start(1000000);
+
+	tctrl.cpu_next_event = vmm_timer_timestamp() + 1000000;
 
 	tctrl.cpu_started = TRUE;
 }
