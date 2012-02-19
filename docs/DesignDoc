@@ -27,9 +27,9 @@ system virtual machine with hardware acceleration) running directly on a host
 machine (i.e. physical machine/hardware). In short, we can say that Xvisor 
 is a Native (or Type-1) Hypervisor (or Virtual Machine Monitor).
 
-We refer system virtual machine instances as "Guest" instances and CPUs of 
-system virtual machines as "VCPU" instances in Xvisor. Also, VCPU belonging to
-a Guest is refered as "Normal VCPU" and VCPU not belonging to any guest is 
+We refer system virtual machine instances as "Guest" instances and virtual CPUs
+of system virtual machines as "VCPU" instances in Xvisor. Also, VCPU belonging
+to a Guest is refered as "Normal VCPU" and VCPU not belonging to any guest is 
 referred as "Orphan VCPU". Xvisor creates Orphan VCPUs for various background 
 processing and running managment daemons. 
 
@@ -88,7 +88,7 @@ this creates conflicts in the AMP case. Xvisor provides technology to partition
 or virtualize processing cores, memory, and devices between the multiple OSs 
 that are used to build a system.
 
-Xvisor maintians its configuration in the form of Tree data structure called 
+Xvisor maintians its configuration in the form of tree data structure called 
 "device tree" to ease the task of configuring Xvisor running on a single-core 
 or multi-core system. It is highly inspired from Device Tree Script (DTS) used 
 by of_platform of Linux kernel. As a result, system designers can utilize a 
@@ -133,8 +133,8 @@ must be ensured while updating/populating Xvisor device tree:
   * Attribute 64-bit unsigned Value: A 64-bit integer value must be represented
     in big-endian format or little-endian format based on the endianess of host
     CPU architecture. 
-(Note: The Xvisor architecture specific code must ensure that the above 
-constraints are satisfied while populating device tree)
+(Note: Architecture specific code must ensure that the above constraints are 
+satisfied while populating device tree)
 (Note: For standard attributes used by Xvisor refer source code.)
 
 The figure 2 below shows the device tree representation of the hypervisor setup
@@ -293,23 +293,89 @@ shown in figure 1 of chapter 1.
                                                             +--------+
 
 By default, Xvisor will always support configuring device tree using DTS.
-It also includes a DTC compiler taken from Linux kernel source code and 
-a light-weight DTB parsing library (vmm_libfdt) which can be used by
-architecture specific code (or board specific code) to populate device
-tree for Xvisor.
+It also includes a DTC compiler taken from Linux kernel source code and a 
+light-weight DTB parsing library (libfdt) which can be used by architecture 
+specific code (or board specific code) to populate device tree for Xvisor.
 
 
 	 	Chapter 3: Hypervisor Timer
 
-TBD.
+Like any OS, a hypervisor also needs to keep track of passing time using a 
+timekeeping subsystem. We refer timekeeping subsystem of Xvisor as hypervisor 
+timer. A timekeeping subsystem of an OS does two crucial tasks, which are:
+  1. Keep track of passing time: The legacy way of achiving this is to count
+     periodic interrupts, but this method is very imprecise and with low 
+     resolution. The more precise and low overhead way of achiving this to 
+     use a clocksource device (i.e. free-runing cycle accurate hardware 
+     counter) as reference for time elapsed.
+  2. Schedule events in future: To achive this an OS will keep per-CPU list 
+     of events sorted ascending based upon their expiry time. The OS will use
+     per-CPU clockevent device (i.e. PIT) to schedule events one-by-one from 
+     the sorted events with earliest expiring event first. All OSes will 
+     differ only in how they maintain per-CPU sorted event list.
+
+Unlike any OS, Timekeeping is especially problematic for hypervisors because 
+a number of challenges. The most obvious problem is that time is now shared 
+between the host and, potentially, a number of guest OSes. The guest OS never
+gets 100% of CPU execution time, despite the fact that it may very well make 
+that assumption. It may expect it to remain true to very exacting bounds when 
+interrupt sources are disabled, but in reality only its virtual interrupt 
+sources are disabled, and the machine may still be preempted at any time. This
+causes problems as the passage of real time, the injection of guest interrupts 
+and the associated clock sources are no longer completely synchronized with 
+real time.
+
+One of the most immediate problems that occurs with legacy guest OSes is that
+the system timekeeping routines are often designed to keep track of time by 
+counting periodic interrupts. These interrupts may come from the PIT or the 
+RTC, but the problem is the same: the host virtualization engine may not be 
+able to deliver the proper number of interrupts per second, and so guest time 
+may fall behind. This is especially problematic if a high interrupt rate is 
+selected, such as 1000 HZ, which is unfortunately the default for many Linux
+guests.
+
+There are three approaches to solving this problem:
+  1. It may be possible to simply ignore it for guests which have a separate 
+     time source for tracking 'wall clock' or 'real time' may not need any 
+     adjustment of their interrupts to maintain proper time.
+  2. If this is not sufficient, it may be necessary to inject additional 
+     interrupts into the guest in order to increase the effective interrupt 
+     rate. This approach leads to complications in extreme conditions, where 
+     host load or guest lag is too much to compensate for.
+  3. The guest may need to become aware of lost ticks and compensate for them 
+     internally. Although promising in theory, the implementation of this 
+     policy in Linux has been extremely error prone, and a number of buggy 
+     variants of lost tick compensation are distributed across commonly used 
+     Linux systems.
+
+From the above it is clear that a hypervisor will have to keep track of time 
+elapsed with low overhead, high precision and high resolution (i.e. we cannot
+count periodic interrupts for tracking elapsed time). In simpler words the 
+timekeeping in hypervisor has to be tickless and high resolution. Further the
+PIT emulators in hypervisor will have to keep backlogs of pending periodic
+interrupts.
+
+The hypervisor timer subsystem of Xvisor is highly inspired from Linux hrtimer 
+subsystem and is completely tickless. It provides the following features:
+  1. 64-bit Timestamp: The timestamp represents nanoseconds elapsed since
+     Xvisor was booted. (i.e. uptime of Xvisor in-terms of nanoseconds)
+  2. Timer events: We can create or destroy a timer event with a unique name
+     and associated expiry call back handler. Further, we can start a timer 
+     event to expire after given duration in nanoseconds. The timer events are
+     one shot events i.e. they are stopped automatically when they expires. 
+     To have a periodic timer event we will have to manually re-start a timer 
+     event from its expiry call back handler.
+
+The hypervisor timer requires architecture specific code to provide one global
+clocksource device (arch_cpu_clocksource_* funcs) and per-CPU clockevent device
+(arch_cpu_clockevent_* funcs) to provide above mentioned features.
 
 
 	 	Chapter 4: Hypervisor Manager
 
-The VCPU & Guest abstractions in Xvisor are defined by Hypervisor Manager. 
-The main role of hypervisor manager is to manage the VCPU & Guest instances.
-It also provides routines for triggering VCPU state changes and it notifies 
-the hypervisor scheduler whenever a VCPU state changes.
+The VCPU & Guest instances in Xvisor are created & managed by the Hypervisor 
+Manager. It also provides routines for triggering VCPU state changes and it 
+notifies the hypervisor scheduler whenever a VCPU state changes.
 
 Just like any OS, a VCPU instance in Xvisor has an architecture dependent part
 and an architecture independent part. 
@@ -332,20 +398,22 @@ The architecture dependent part of VCPU context consist of:
 
 The architecture independent part of VCPU context consist of:
   1.  ID: Globally unique identification number
-  2.  SUBID: Identification number unique within parent Guest. (Only important
-      for Normal VCPUs)
-  3.  Name: The name given for this VCPU. (Only important for Orphan VCPUs)
-  4.  Device Tree Node: Pointer to VCPU device tree node. (Only available for
+  2.  SUBID: Identification number unique within parent Guest. (Only for 
+      Normal VCPUs)
+  3.  Name: The name given for this VCPU. (Only for Orphan VCPUs)
+  4.  Device Tree Node: Pointer to VCPU device tree node. (Only for
       Normal VCPUs)
   5.  Is Normal: Flag showing whether this VCPU is Normal or Orphan.
-  6.  Guest: Pointer to parent Guest. (Only available for Normal VCPUs)
+  6.  Guest: Pointer to parent Guest. (Only for Normal VCPUs)
   7.  State: Current VCPU state. (Explained below.)
   8.  Reset Count: Number of times the VCPU has been resetted.
-  9.  Virtual IRQ Info.: Management information for VCPU Virtual interrupts.
-  10. Scheduling Info.: Managment information required by scheduler 
+  9.  Start PC: Starting value of Program Counter.
+  10. Start SP: Starting value of Stack Pointer. (Only for Orphan VCPUs)
+  11. Virtual IRQ Info.: Management information for VCPU Virtual interrupts.
+  12. Scheduling Info.: Managment information required by scheduler 
       (e.g. priority, prempt_count, time_slice, etc)
-  11. Waitqueue Info.: Information required by waitqueues.
-  12. Device Emulation Context: Pointer to private information required by
+  13. Waitqueue Info.: Information required by waitqueues.
+  14. Device Emulation Context: Pointer to private information required by
       device emulation framework per VCPU.
 
 A VCPU can be in excatly one state at any give instance of time. Below is a 
@@ -371,6 +439,7 @@ specific code, some hypervisor thread, scheduler, some emulated device, etc.
 Its not possible to have an exhaustive list of all possible scenarios that 
 would require a VCPU state change, but the VCPU state changes have to strictly 
 follow a finite-state machine which is ensured by the hypervisor manager. 
+
 The figure 3 shows finite-state machine for VCPU state changes.
 
                                            +---------+
@@ -397,7 +466,6 @@ The figure 3 shows finite-state machine for VCPU state changes.
                         |                                                  |
                         +--------------------------------------------------+
                                              [Reset]
-
 
 The number of virtual interrupts per VCPU and their priority are provided by
 architecture specific code. The assertion/deassertion of any virtual interrupt 
@@ -442,6 +510,10 @@ Guest Region). Further a Guest Region can be one of the three forms:
 The hypervisor scheduler of Xvisor is generic and pluggable with respect to the 
 scheduling strategy (or scheduling algorithm). It updates per-CPU ready queues
 whenever it gets notifications from hypervisor manager about VCPU state change.
+The hypervisor scheduler uses per-CPU hypervisor timer event to alot time slice
+for a VCPU. When a scheduler timer event expires for a CPU, the scheduler will 
+find next VCPU using some scheduling strategy (or algorithm) and configure the 
+scheduler timer event for alotting time slice for next VCPU.
 
 For Xvisor a Normal VCPU is a black box (i.e. any thing could be running on the
 VCPU) and exception or interrupt is the only way to get back control. Whenever
@@ -458,28 +530,28 @@ architecture specific execption or interrupt handlers.
 
 The expected high-level steps involved in architecture specific exception or 
 interrupt handlers are:
-  1. [Assembly] Switch stack to interrupt stack (if this is done automatically
-     by hardware then skip this step)
-  2. [Assembly] Save all user registers (or arch_regs_t) on stack
-  3. [Assembly] Call the high-level c function with argument as pointer to 
-     user registers (or arch_regs_t) on interrupt stack
-  6. [C Code] Call scheduler interrupt enter (i.e. vmm_scheduler_irq_enter) 
-     with following arguments: 
-     - pointer to user registers (or arch_regs_t) on interrupt stack
-     - boolean flag TRUE if we are in Normal Context else FALSE
-  4. [C Code] If exception was generated by a host device then call host 
-     interrupt subsystem to handle host device interrupt 
-     (i.e. call vmm_host_irq_exec()) with following arguments:
-     - host cpu exception or interrupt number
-     - pointer to user registers (or arch_regs_t) on stack
-  5. [C Code] Do architecture specific processing or emulation based on 
-     type of exception or interrupt.
-  6. [C Code] Call scheduler interrupt exit (i.e. vmm_scheduler_irq_exit) 
-     with following arguments: 
-     - pointer to user registers (or arch_regs_t) on stack
-  7. [C Code] Return from high-level C function.
-  8. [Assembly] Restore user registers (or arch_regs_t) from interrupt stack
-  9. [Assembly] Do interrupt or exception return
+  1.  [Assembly] Switch stack to interrupt stack (if this is done automatically
+      by hardware then skip this step)
+  2.  [Assembly] Save all user registers (or arch_regs_t) on stack
+  3.  [Assembly] Call the high-level c function with argument as pointer to 
+      user registers (or arch_regs_t) on interrupt stack
+  4.  [C Code] Call scheduler interrupt enter (i.e. vmm_scheduler_irq_enter) 
+      with following arguments: 
+      - pointer to user registers (or arch_regs_t) on interrupt stack
+      - boolean flag TRUE if we are in Normal Context else FALSE
+  5.  [C Code] If exception was generated by a host device then call host 
+      interrupt subsystem to handle host device interrupt 
+      (i.e. call vmm_host_irq_exec()) with following arguments:
+      - host cpu exception or interrupt number
+      - pointer to user registers (or arch_regs_t) on stack
+  6.  [C Code] Do architecture specific processing or emulation based on 
+      type of exception or interrupt.
+  7.  [C Code] Call scheduler interrupt exit (i.e. vmm_scheduler_irq_exit) 
+      with following arguments: 
+      - pointer to user registers (or arch_regs_t) on stack
+  8.  [C Code] Return from high-level C function.
+  9.  [Assembly] Restore user registers (or arch_regs_t) from interrupt stack
+  10. [Assembly] Do interrupt or exception return
 
 To simplfy context switching, we expect that architecture specific exception or
 interrupt handlers will save user register (or arch_regs_t) on interrupt stack 
@@ -529,13 +601,88 @@ following scheduling information per-VCPU:
   4. Private Pointer: In addition to above scheduling strategy (or alogrithm) 
      can maintain per-VCPU private information.
 
-Currently, scheduling strategy (or scheduling algorithm) available are:
+Currently, scheduling strategies (or algorithms) available are:
   1. Round-Robin (RR)
   2. Priority Based Round-Robin (PRR)
-(Note: By default scheduler will use Priority Based Round-Robin)
+(Note: By default Xvisor will uses Priority Based Round-Robin strategy)
 
 
-	 	Chapter 6: Hypervisor Threads (Hyperthreads)
+	 	Chapter 6: Hypervisor Threads
+
+The threading framework for managing background threads in Xvisor is called 
+Hypervisor Threads. Threads in Xvisor are no different from Orphan VCPUs, 
+in-fact each thread is a wrapper over an orphan VCPU. The best example of a
+thread would be our management terminal (mterm).
+
+To create a thread in Xvisor we will require five mandatory things:
+  1. Name: The name assigned to this thread.
+  2. Function: Thread entry function pointer.
+  3. Data: Void pointer to arbitary data to be passed as argument to thread
+     entry function.
+  4. Priority: Priority of the thread (or underlying Orphan VCPU). Higher the 
+     value higher the priority.
+  5. Time Slice: Minimum amount of time in nano-seconds that a thread (or 
+     underlying Orphan VCPU) must get once it is scheduled.
+
+We dont need to explicitly create stack for each thread. The hyprevisor threads 
+framework automatically creates fixed sized stack for each thread when they are 
+created. The stack size for all threads can be changed at compile time using 
+Xvisor menuconfig options.
+
+Also, the thread ID, Priority, and Time Slice will be same as ID, Priority, and
+Time Slice of the underlying Orphan VCPU.
+
+A thread can be in one of the following states at any point of time:
+  * CREATED: The thread is freshly created one and it is not running yet.
+  * RUNNING: The thread is running.
+  * SLEEPING: The thread is sleeping in a waitqueue.
+  * STOPPED: The thread has stopped. Either it was forcefully stopped or it is
+    done with its task.
+(Note: Orphan VCPU states can be directly mapped to one of the thread states, 
+hence to get current thread state we look at state of underlying Orphan VCPU.)
+
+For inter-thread synchronization we have following synchronization primitives:
+  1. Spinlocks: Typically used for smaller critical sections, and for 
+     syncronization between IRQ context and Orphan context.
+  2. Completion: Typcially used when a Thread or Orphan VCPU wants to wait for
+     an event (for e.g. interrupt from host device) to occur.
+  3. Semaphore: Traditional semaphore lock which allows Thread or Orphan VCPU 
+     to sleep when lock (or resource) not available. 
+  4. Mutex: Traditional mutex lock which allows Thread or Orphan VCPU to sleep
+     when lock not available.
+
+From the above Completion, Semaphore, and Mutex used Xvisor waitqueues for 
+sleeping. Only a Thread (or Orphan VCPU) can sleep in a waitqueue because we
+cannot sleep in IRQ and Normal context. Due to this sleepable operations on 
+Completion, Semaphore, and Mutex should only be done in Orphan context.
+
+
+		Chapter 7: Device Driver Framework
+
+TBD. Also explain Character Device Framework as an example.
+
+
+		Chapter 8: Device Emulation Framework
+
+TBD.
+
+
+		Chapter 9: Workqueue Framework
+
+TBD.
+
+
+		Chapter 10: Command Manager
+
+TBD.
+
+
+		Chapter 11: Wall-Clock Subsystem
+
+TBD.
+
+
+		Chapter 12: Virtual Serial Port Framework
 
 TBD.
 
