@@ -371,6 +371,7 @@ static u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu * vcpu,
 		pg->va = va;
 		pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		pg->ap = TTBL_AP_SRW_URW;
+		pg->c = 1;
 	}
 	pg->pa &= ~(pg->sz - 1);
 	pg->va &= ~(pg->sz - 1);
