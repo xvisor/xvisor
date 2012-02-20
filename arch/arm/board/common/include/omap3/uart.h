@@ -16,14 +16,16 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file config.h
+ * @file uart.h
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief header file for OMAP3 configuration macors & defines
+ * @brief header file for OMAP3 UART configuration
  */
-#ifndef __OMAP3_CONFIG_H__
-#define __OMAP3_CONFIG_H__
+#ifndef __OMAP3_UART_H__
+#define __OMAP3_UART_H__
 
 #define OMAP3_COM_FREQ   	48000000L
+
+/** OMAP3/OMAP343X UART Base Physical Address */
 #define OMAP3_UART_BASE 	0x49020000
 #define OMAP3_UART_BAUD 	115200
 #define OMAP3_UART_INCLK 	OMAP3_COM_FREQ

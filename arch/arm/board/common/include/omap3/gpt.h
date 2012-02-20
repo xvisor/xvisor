@@ -28,6 +28,7 @@
 #include <vmm_types.h>
 #include <vmm_host_irq.h>
 
+/** OMAP3/OMAP343X GPT Base Physical Addresses */
 #define OMAP3_GPT1_BASE 			0x48318000
 #define OMAP3_GPT2_BASE 			0x49032000
 #define OMAP3_GPT3_BASE 			0x49034000
