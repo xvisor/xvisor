@@ -272,8 +272,13 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu,
 			pg->pa = (desc & 0xfff00000) | (va & 0x000fffff);
 			pg->sz = 0x100000;
 		}
-		pg->ap = ((desc >> 10) & 3) | ((desc >> 13) & 4);
-		pg->xn = desc & (1 << 4);
+		pg->ng = (desc >> 17) & 0x1;
+		pg->s = (desc >> 16) & 0x1;
+		pg->tex = (desc >> 12) & 0x7;
+		pg->ap = ((desc >> 10) & 0x3) | ((desc >> 13) & 0x4);
+		pg->xn = (desc >> 4) & 0x1;
+		pg->c = (desc >> 3) & 0x1;
+		pg->b = (desc >> 2) & 0x1;
 		*fs = 13;
 	} else {
 		/* Lookup l2 entry.  */
@@ -296,20 +301,21 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu,
 		}
 		table |= ((va >> 10) & 0x3fc);
 		desc = cpu_mmu_physical_read32(table);
-		pg->ap = ((desc >> 4) & 3) | ((desc >> 7) & 4);
 		switch (desc & 3) {
 		case 0: /* Page translation fault.  */
 			*fs = 7;
 			goto do_fault;
 		case 1: /* 64k page.  */
 			pg->pa = (desc & 0xffff0000) | (va & 0xffff);
-			pg->xn = desc & (1 << 15);
 			pg->sz = 0x10000;
+			pg->xn = (desc >> 15) & 0x1;
+			pg->tex = (desc >> 12) & 0x7;
 			break;
 		case 2: case 3: /* 4k page.  */
 			pg->pa = (desc & 0xfffff000) | (va & 0xfff);
-			pg->xn = desc & 1;
 			pg->sz = 0x1000;
+			pg->tex = (desc >> 6) & 0x7;
+			pg->xn = desc & 0x1;
 			break;
 		default:
 			/* Never happens, but compiler isn't 
@@ -317,6 +323,11 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu,
 			 */
 			return VMM_EFAIL;
 		}
+		pg->ng = (desc >> 11) & 0x1;
+		pg->s = (desc >> 10) & 0x1;
+		pg->ap = ((desc >> 4) & 0x3) | ((desc >> 7) & 0x4);
+		pg->c = (desc >> 3) & 0x1;
+		pg->b = (desc >> 2) & 0x1;
 		*fs = 15;
 	}
 	if (domain == 3) {

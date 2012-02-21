@@ -41,7 +41,7 @@ struct cpu_page {
 	u32 c:1;
 	u32 b:1;
 	u32 pad:15;
-}; /*__attribute__((packed));*/
+};
 
 struct cpu_l2tbl {
 	struct dlist head;
