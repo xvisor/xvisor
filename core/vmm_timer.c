@@ -35,6 +35,7 @@ struct vmm_timer_ctrl {
 	u32 cycles_shift;
 	u64 timestamp;
 	bool cpu_started;
+	bool cpu_inprocess;
 	u64 cpu_next_event;
 	struct vmm_timer_event *cpu_curr;
 	struct dlist cpu_event_list;
@@ -78,8 +79,8 @@ static void vmm_timer_schedule_next_event(void)
 	bool config_clockevent = FALSE;
 	struct vmm_timer_event *e;
 
-	/* If not started yet, we give up */
-	if (!tctrl.cpu_started) {
+	/* If not started yet or still processing events then we give up */
+	if (!tctrl.cpu_started || tctrl.cpu_inprocess) {
 		return;
 	}
 
@@ -127,6 +128,8 @@ void vmm_timer_clockevent_process(arch_regs_t * regs)
 {
 	struct vmm_timer_event *e;
 
+	tctrl.cpu_inprocess = TRUE;
+
 	/* process expired active events */
 	while (!list_empty(&tctrl.cpu_event_list)) {
 		e = list_entry(list_first(&tctrl.cpu_event_list),
@@ -147,6 +150,8 @@ void vmm_timer_clockevent_process(arch_regs_t * regs)
 			break;
 		}
 	}
+
+	tctrl.cpu_inprocess = FALSE;
 
 	/* Schedule next timer event */
 	vmm_timer_schedule_next_event();
@@ -435,6 +440,7 @@ int __init vmm_timer_init(void)
 
 	/* Initialize Per CPU event status */
 	tctrl.cpu_started = FALSE;
+	tctrl.cpu_inprocess = FALSE;
 
 	/* Initialize Per CPU current event pointer */
 	tctrl.cpu_curr = NULL;
