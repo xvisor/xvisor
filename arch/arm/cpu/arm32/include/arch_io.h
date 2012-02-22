@@ -35,13 +35,11 @@
 #define __raw_read16(a)		(*(volatile u16 *)(a))
 #define __raw_read32(a)		(*(volatile u32 *)(a))
 
-#if 0 /* FIXME: will be enabled after testing on HW */
+#define __mb()			dsb()
+#define __rmb()			dsb()
+#define __wmb()			dsb()
 #define __iormb()		dsb()
 #define __iowmb()		dsb()
-#else
-#define __iormb()		do { } while (0)
-#define __iowmb()		do { } while (0)
-#endif
 
 /*
  * Endianness primitives
