@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.1
-# Sat Feb 18 18:33:46 2012
+# Tue Feb 21 11:13:36 2012
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -13,9 +13,6 @@ CONFIG_CPU="x86_64"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
 CONFIG_BOARD="x86_64_generic"
-# CONFIG_CPU_CORTEX_A8 is not set
-# CONFIG_CPU_OMAP3 is not set
-# CONFIG_BOARD_PB_A8 is not set
 CONFIG_CPU_X86_64=y
 CONFIG_BOARD_X86_64_GENERIC=y
 CONFIG_X86_64_GENERIC=y
@@ -69,8 +66,7 @@ CONFIG_CMD_THREAD=y
 CONFIG_CMD_CHARDEV=y
 CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_STDIO=y
-CONFIG_CMD_HEAP=y
-CONFIG_CMD_WALLCLOCK=y
+CONFIG_CMD_BUDDY=y
 # CONFIG_CMD_THREADTEST is not set
 
 #
@@ -87,9 +83,7 @@ CONFIG_LIBFDT=y
 #
 # Serial Port Drivers
 #
-CONFIG_SERIAL=y
-CONFIG_SERIAL_UART=y
-# CONFIG_SERIAL_PL01X is not set
+# CONFIG_SERIAL is not set
 
 #
 # RTC Drivers
@@ -118,11 +112,6 @@ CONFIG_SERIAL_UART=y
 # Serial Port Emulators
 #
 # CONFIG_EMU_SERIAL is not set
-
-#
-# Real-Time Clock Emulators
-#
-# CONFIG_EMU_RTC is not set
 
 #
 # Tool Options
