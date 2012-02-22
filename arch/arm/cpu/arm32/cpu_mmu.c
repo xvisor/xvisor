@@ -216,7 +216,7 @@ int cpu_mmu_l2tbl_free(struct cpu_l2tbl * l2)
 
 	INIT_LIST_HEAD(&l2->head);
 
-	mmuctrl.l2_bmap[l2->l2_num] = 0;
+	mmuctrl.l2_bmap[l2->num] = 0;
 	mmuctrl.l2_alloc_count--;
 
 	return VMM_OK;
@@ -879,7 +879,7 @@ l1tbl_alloc_fail:
 			nl2 = list_entry(le, struct cpu_l2tbl, head);
 			cpu_mmu_l2tbl_free(nl2);
 		}
-		mmuctrl.l1_bmap[nl1->l1_num] = 0;
+		mmuctrl.l1_bmap[nl1->num] = 0;
 		mmuctrl.l1_alloc_count--;
 	}
 
@@ -906,7 +906,7 @@ int cpu_mmu_l1tbl_free(struct cpu_l1tbl * l1)
 
 	list_del(&l1->head);
 
-	mmuctrl.l1_bmap[l1->l1_num] = 0;
+	mmuctrl.l1_bmap[l1->num] = 0;
 	mmuctrl.l1_alloc_count--;
 
 	return VMM_OK;
@@ -1072,7 +1072,6 @@ int cpu_mmu_chdacr(u32 new_dacr)
 
 int cpu_mmu_chttbr(struct cpu_l1tbl * l1)
 {
-	u32 sctlr;
 	struct cpu_l1tbl * curr_l1;
 
 	if (!l1) {
@@ -1085,21 +1084,11 @@ int cpu_mmu_chttbr(struct cpu_l1tbl * l1)
 		return VMM_OK;
 	}
 
-	sctlr = read_sctlr();
-
-	/* FIXME: Clean & Flush I-Cache if I-Cache enabled */
-	if (sctlr & SCTLR_I_MASK) {
-	}
-
-	/* FIXME: Clean & Flush D-Cache if D-Cache enabled */
-	if (sctlr & SCTLR_C_MASK) {
-	}
-
-	/* Invalidate all TLB enteries */
-	invalid_tlb();
-
 	/* Update TTBR0 to point to new L1 table */
 	write_ttbr0(l1->tbl_pa);
+
+	/* Update Context IDR */
+	write_contextidr((((u32)l1->num) & 0xFF));
 
 	return VMM_OK;
 }
@@ -1191,6 +1180,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 
 	/* Handcraft default translation table */
 	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
+	mmuctrl.defl1.num = TTBL_MAX_L1TBL_COUNT;
 	mmuctrl.defl1.tbl_va = (virtual_addr_t)&defl1_mem;
 	mmuctrl.defl1.tbl_pa = arch_code_paddr_start() + 
 			       ((virtual_addr_t)&defl1_mem - arch_code_vaddr_start());
@@ -1294,7 +1284,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 		   sizeof(struct cpu_l1tbl) * TTBL_MAX_L1TBL_COUNT);
 	for (i = 0; i < TTBL_MAX_L1TBL_COUNT; i++) {
 		INIT_LIST_HEAD(&mmuctrl.l1_array[i].head);
-		mmuctrl.l1_array[i].l1_num = i;
+		mmuctrl.l1_array[i].num = i;
 		mmuctrl.l1_array[i].tbl_pa = mmuctrl.l1_base_pa + 
 						i * TTBL_L1TBL_SIZE;
 		mmuctrl.l1_array[i].tbl_va = mmuctrl.l1_base_va + 
@@ -1310,7 +1300,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 		   sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT);
 	for (i = 0; i < TTBL_MAX_L2TBL_COUNT; i++) {
 		INIT_LIST_HEAD(&mmuctrl.l2_array[i].head);
-		mmuctrl.l2_array[i].l2_num = i;
+		mmuctrl.l2_array[i].num = i;
 		mmuctrl.l2_array[i].tbl_pa = mmuctrl.l2_base_pa + 
 						i * TTBL_L2TBL_SIZE;
 		mmuctrl.l2_array[i].tbl_va = mmuctrl.l2_base_va + 
