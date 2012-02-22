@@ -532,6 +532,11 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu * vcpu,
 	} else {
 		pg.c = 0;
 	}
+	if (pg.b && (reg_flags & VMM_REGION_BUFFERABLE)) {
+		pg.b = 1;
+	} else {
+		pg.b = 0;
+	}
 
 	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg);
 }

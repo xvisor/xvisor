@@ -376,6 +376,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 		    (reg->flags & VMM_REGION_MEMORY) &&
 		    (reg->flags & VMM_REGION_ISRAM)) {
 			reg->flags |= VMM_REGION_CACHEABLE;
+			reg->flags |= VMM_REGION_BUFFERABLE;
 		}
 
 		attrval = vmm_devtree_attrval(anode,
