@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.1
-# Tue Feb 21 11:13:36 2012
+# Wed Feb 22 10:39:14 2012
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -66,7 +66,8 @@ CONFIG_CMD_THREAD=y
 CONFIG_CMD_CHARDEV=y
 CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_STDIO=y
-CONFIG_CMD_BUDDY=y
+CONFIG_CMD_HEAP=y
+CONFIG_CMD_WALLCLOCK=y
 # CONFIG_CMD_THREADTEST is not set
 
 #
@@ -112,6 +113,11 @@ CONFIG_LIBFDT=y
 # Serial Port Emulators
 #
 # CONFIG_EMU_SERIAL is not set
+
+#
+# Real-Time Clock Emulators
+#
+# CONFIG_EMU_RTC is not set
 
 #
 # Tool Options
