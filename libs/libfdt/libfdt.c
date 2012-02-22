@@ -75,26 +75,26 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo * fdt,
 	while (LIBFDT_DATA32(*data) != FDT_END_NODE) {
 		switch (LIBFDT_DATA32(*data)) {
 		case FDT_PROP:
-			*data += sizeof(u32);
+			*data += sizeof(fdt_cell_t);
 			len = LIBFDT_DATA32(*data);
-			*data += sizeof(u32);
+			*data += sizeof(fdt_cell_t);
 			name = &fdt->str[LIBFDT_DATA32(*data)];
-			*data += sizeof(u32);
+			*data += sizeof(fdt_cell_t);
 			type = vmm_devtree_estimate_attrtype(name);
 			vmm_devtree_setattr(node, name, *data, type, len);
 			*data += len;
-			while ((u32) (*data) % sizeof(u32) != 0)
+			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0)
 				(*data)++;
 			break;
 		case FDT_NOP:
-			*data += sizeof(u32);
+			*data += sizeof(fdt_cell_t);
 			break;
 		case FDT_BEGIN_NODE:
-			*data += sizeof(u32);
+			*data += sizeof(fdt_cell_t);
 			type = VMM_DEVTREE_NODETYPE_UNKNOWN;
 			child = vmm_devtree_addnode(node, *data, type, NULL);
 			*data += vmm_strlen(*data) + 1;
-			while ((u32) (*data) % sizeof(u32) != 0) {
+			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
 				(*data)++;
 			}
 			libfdt_parse_devtree_recursive(fdt, child, data);
@@ -105,7 +105,7 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo * fdt,
 		};
 	}
 
-	*data += sizeof(u32);
+	*data += sizeof(fdt_cell_t);
 
 	return;
 }
@@ -128,7 +128,7 @@ int libfdt_parse_devtree(struct fdt_fileinfo * fdt,
 		return VMM_EFAIL;
 
 	/* Point to root node name */
-	data += sizeof(u32);
+	data += sizeof(fdt_cell_t);
 
 	/* Create root node */
 	*root = vmm_devtree_addnode(NULL, data, 
@@ -136,7 +136,7 @@ int libfdt_parse_devtree(struct fdt_fileinfo * fdt,
 
 	/* Skip root node name */
 	data += vmm_strlen(data) + 1;
-	while ((u32) (data) % sizeof(u32) != 0) {
+	while ((virtual_addr_t) (data) % sizeof(fdt_cell_t) != 0) {
 		(data)++;
 	}
 
@@ -163,7 +163,7 @@ static struct fdt_node_header * libfdt_find_node_recursive(char **data,
 	if (LIBFDT_DATA32(*data) != FDT_BEGIN_NODE)
 		return NULL;
 
-	*data += sizeof(u32);
+	*data += sizeof(fdt_cell_t);
 
 	len = vmm_strlen(*data);
 	valid = 1;
@@ -192,29 +192,29 @@ static struct fdt_node_header * libfdt_find_node_recursive(char **data,
 		}
 
 		if (*node_path == '\0') {
-			*data -= sizeof(u32);
+			*data -= sizeof(fdt_cell_t);
 			return (struct fdt_node_header *)(*data);
 		}
 	}
 	*data += len + 1;
-	while ((u32) (*data) % sizeof(u32) != 0) {
+	while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
 		(*data)++;
 	}
 
 	while (LIBFDT_DATA32(*data) != FDT_END_NODE) {
 		switch (LIBFDT_DATA32(*data)) {
 		case FDT_PROP:
-			*data += sizeof(u32);
+			*data += sizeof(fdt_cell_t);
 			len = LIBFDT_DATA32(*data);
-			*data += sizeof(u32);
-			*data += sizeof(u32);
+			*data += sizeof(fdt_cell_t);
+			*data += sizeof(fdt_cell_t);
 			*data += len;
-			while ((u32) (*data) % sizeof(u32) != 0) {
+			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
 				(*data)++;
 			}
 			break;
 		case FDT_NOP:
-			*data += sizeof(u32);
+			*data += sizeof(fdt_cell_t);
 			break;
 		case FDT_BEGIN_NODE:
 			ret = libfdt_find_node_recursive(data, str, node_path);
@@ -228,7 +228,7 @@ static struct fdt_node_header * libfdt_find_node_recursive(char **data,
 		};
 	}
 
-	*data += sizeof(u32);
+	*data += sizeof(fdt_cell_t);
 
 	return NULL;
 }
@@ -267,30 +267,30 @@ struct fdt_property * libfdt_get_property(struct fdt_fileinfo * fdt,
 
 	/* Convert node to character stream */
 	data = (char *)fdt_node;
-	data += sizeof(u32);
+	data += sizeof(fdt_cell_t);
 
 	/* Skip node name */
 	len = vmm_strlen(data);
 	data += len + 1;
-	while ((u32) (data) % sizeof(u32) != 0) {
+	while ((virtual_addr_t) (data) % sizeof(fdt_cell_t) != 0) {
 		data++;
 	}
 
 	/* Find node property and its value */
 	ret = NULL;
 	while (LIBFDT_DATA32(data) == FDT_PROP) {
-		data += sizeof(u32);
+		data += sizeof(fdt_cell_t);
 		len = LIBFDT_DATA32(data);
-		data += sizeof(u32);
+		data += sizeof(fdt_cell_t);
 		if (!vmm_strcmp(&fdt->str[LIBFDT_DATA32(data)], 
 				property)) {
-			data -= sizeof(u32) * 2;
+			data -= sizeof(fdt_cell_t) * 2;
 			ret = (struct fdt_property *)data;
 			break;
 		}
-		data += sizeof(u32);
+		data += sizeof(fdt_cell_t);
 		data += len;
-		while ((u32) (data) % sizeof(u32) != 0) {
+		while ((virtual_addr_t) (data) % sizeof(fdt_cell_t) != 0) {
 			(data)++;
 		}
 	}

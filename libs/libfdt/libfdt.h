@@ -42,6 +42,9 @@
 #define FDT_V16_SIZE	FDT_V3_SIZE
 #define FDT_V17_SIZE	(FDT_V16_SIZE + sizeof(u32))
 
+/* Memory unit in FDT is called a cell (assumed to be u32) */
+typedef u32 fdt_cell_t;
+
 struct fdt_header {
 	u32 magic;		/* magic word FDT_MAGIC */
 	u32 totalsize;		/* total size of DT block */
