@@ -33,6 +33,7 @@
 
 int arch_cpu_irq_setup(void)
 {
+        return 0;
 }
 
 void arch_cpu_irq_enable(void)

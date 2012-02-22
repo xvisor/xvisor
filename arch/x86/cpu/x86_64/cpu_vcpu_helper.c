@@ -34,11 +34,6 @@ extern char _stack_start;
 #define VMM_REGION_TYPE_ROM	0
 #define VMM_REGION_TYPE_RAM	1
 
-static int map_guest_region(struct vmm_vcpu *vcpu, int region_type, int tlb_index)
-{
-	return VMM_OK;
-}
-
 int arch_vcpu_regs_init(struct vmm_vcpu *vcpu)
 {
 	return VMM_OK;

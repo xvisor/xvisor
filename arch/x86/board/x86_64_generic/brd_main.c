@@ -113,6 +113,7 @@ int arch_devtree_populate(struct vmm_devtree_node **root)
 
 int __init arch_board_early_init(void)
 {
+        return VMM_OK;
 }
 
 int __init arch_board_final_init(void)
