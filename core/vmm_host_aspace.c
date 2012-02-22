@@ -224,7 +224,7 @@ int __init vmm_host_aspace_init(void)
 	physical_size_t ram_size;
 	virtual_addr_t vapool_start, resv_va = 0x0;
 	virtual_size_t vapool_size, vapool_hksize, ram_hksize;
-	u32 resv_sz = 0x0, hk_total_size = 0x0;
+	virtual_size_t resv_sz = 0x0, hk_total_size = 0x0;
 
 	/* Determine VAPOOL start, size, and hksize */
 	vapool_start = arch_code_vaddr_start();
