@@ -38,4 +38,9 @@
 
 #define max(a, b) ((a) < (b) ? (b) : (a))
 
+/* Help in branch prediction */
+#define likely(x) __builtin_expect((x), 1)
+
+#define unlikely(x) __builtin_expect((x), 0)
+
 #endif /* __VMM_MACROS_H__ */
