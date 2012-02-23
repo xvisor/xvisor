@@ -8,7 +8,7 @@
  * This is released under GNU GPLv2.
  *
  */
-
+.code32 /* 32-bit code */
 .section .text
 .globl _start_64, _pg_dir
 
@@ -20,13 +20,33 @@
  */
 _pg_dir:
 _start_64:
-	movl	%esp, __xvisor_stack + 8192	/* setup the stack (bss segment) */
-	jmp	1f
+	leal	__xvisor_stack + 8192, %esp	/* setup the stack (bss segment) */
 
-1:
+        /* O.K. We have CPUID. Check if we can enter
+         * long mode. */
+        movl $0x80000000, %eax
+        cpuid
+        cmp  $0x80000001, %eax
+        jb _no_longmode
+
+        movl $0x80000001, %eax
+        cpuid
+        movl $(0x20000000), %ecx
+        test %ecx, %edx
+        jz _no_longmode
+
+        /*
+         * O.K. CPU Supports Long mode. Need to set up
+         * Long mode page tables and move to long mode.
+         */
+        movl  %cr0, %eax
+        movl $0x1, %ecx
+        test %ecx, %eax
+        jz   _pe_not_enabled
+
 	.extern cpu_init
 	call cpu_init		/* Call the C- code now */
-	jmp	1b /* we shouldn't work here */
+1:      jmp	1b /* we shouldn't work here */
 
 /*
  * Don't worry about this. This is a multi-boot signature for grub
@@ -51,6 +71,16 @@ mboot:
 	.int _bss_start
 	.int _code_end
 	.int _start_64
+
+_no_longmode:
+        jmp _no_longmode
+
+/*
+ * If not loaded by multiboot compliant
+ * bootloader.
+ */
+_pe_not_enabled:
+        jmp _pe_not_enabled
 
 .section .bss
 .globl __xvisor_stack

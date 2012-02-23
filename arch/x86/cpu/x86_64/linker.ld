@@ -26,7 +26,7 @@ ENTRY(_start_64)
 
 SECTIONS 
 {
-	. = 0;
+	. = CPU_TEXT_START;
 
 	PROVIDE(_code_start = .);
 

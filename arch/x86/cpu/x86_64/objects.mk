@@ -24,7 +24,7 @@
 
 cpu-cflags +=-finline-functions -O0
 cpu-ldflags += -static-libgcc -lgcc
-cpu-cppflags +=-DCPU_TEXT_START=0x0000000000000000
+cpu-cppflags +=-DCPU_TEXT_START=0x100000
 
 cpu-objs-y+= start.o
 
