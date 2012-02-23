@@ -203,7 +203,7 @@ __mmu_section_attr:
 __dacr_mmu_val:
 	.word (TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_RESERVED))
 __sctrl_mmu_clear:
-	.word ~(SCTLR_A_MASK)
+	.word ~(SCTLR_A_MASK | SCTLR_TRE_MASK)
 __sctrl_mmu_val:
 	.word (SCTLR_M_MASK | SCTLR_C_MASK | SCTLR_I_MASK)
 __exec_start:
