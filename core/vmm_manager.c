@@ -56,8 +56,10 @@ u32 vmm_manager_vcpu_count(void)
 
 struct vmm_vcpu * vmm_manager_vcpu(u32 vcpu_id)
 {
-	if (vcpu_id < mngr.vcpu_count) {
-		return &mngr.vcpu_array[vcpu_id];
+	if (vcpu_id < CONFIG_MAX_VCPU_COUNT) {
+		if (!mngr.vcpu_avail_array[vcpu_id]) {
+			return &mngr.vcpu_array[vcpu_id];
+		}
 	}
 	return NULL;
 }
@@ -326,8 +328,10 @@ u32 vmm_manager_guest_count(void)
 
 struct vmm_guest * vmm_manager_guest(u32 guest_id)
 {
-	if (guest_id < mngr.guest_count) {
-		return &mngr.guest_array[guest_id];
+	if (guest_id < CONFIG_MAX_GUEST_COUNT) {
+		if (!mngr.guest_avail_array[guest_id]) {
+			return &mngr.guest_array[guest_id];
+		}
 	}
 	return NULL;
 }

@@ -141,13 +141,15 @@ struct vmm_vcpu {
 	void * devemu_priv; /**< Device Emulation Context */
 };
 
-/** Maximum number of vcpus (thread or normal) */
+/** Maximum number of vcpus */
 u32 vmm_manager_max_vcpu_count(void);
 
-/** Current number of vcpus (thread + normal) */
+/** Current number of vcpus (orphan + normal) */
 u32 vmm_manager_vcpu_count(void);
 
-/** Retrieve vcpu */
+/** Retrieve vcpu with given ID. 
+ *  Returns NULL if there is no vcpu associated with given ID.
+ */
 struct vmm_vcpu * vmm_manager_vcpu(u32 vcpu_id);
 
 /** Reset a vcpu */
@@ -181,10 +183,15 @@ struct vmm_vcpu * vmm_manager_vcpu_orphan_create(const char *name,
 /** Destroy an orphan vcpu */
 int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu * vcpu);
 
-/** Number of guests */
+/** Maximum number of guests */
+u32 vmm_manager_max_guest_count(void);
+
+/** Current number of guests */
 u32 vmm_manager_guest_count(void);
 
-/** Retrieve guest */
+/** Retrieve guest with given ID. 
+ *  Returns NULL if there is no guest associated with given ID.
+ */
 struct vmm_guest * vmm_manager_guest(u32 guest_id);
 
 /** Number of vcpus belonging to a given guest */
