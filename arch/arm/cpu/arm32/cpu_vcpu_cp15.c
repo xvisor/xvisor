@@ -1473,7 +1473,11 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		write_tpidruro(arm_priv(vcpu)->cp15.c13_tls2);
 		write_tpidrprw(arm_priv(vcpu)->cp15.c13_tls3);
 	} else {
-		if (tvcpu->is_normal) {
+		if (tvcpu) {
+			if (tvcpu->is_normal) {
+				cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
+			}
+		} else {
 			cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
 		}
 	}
