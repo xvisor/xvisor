@@ -26,11 +26,29 @@ ENTRY(_start_64)
 
 SECTIONS 
 {
-	. = CPU_TEXT_START;
+	. = CPU_TEXT_LMA;
 
-	PROVIDE(_code_start = .);
+	PROVIDE(_code_bootstrap_start = .);
 
-	.text :
+        .text.bootstrap :
+        {
+                PROVIDE(_text_bootstrap_start = .);
+                *(.text.bootstrap)
+                . = ALIGN(4);
+                PROVIDE(_text_bootstrap_end = .);
+                PROVIDE(_bss_bootstrap_start = .);
+                *(.bss.bootstrap)
+                PROVIDE(_bss_bootstrap_end = .);
+                . = ALIGN(4);
+        }
+
+        PROVIDE(_code_bootstrap_end = .);
+
+        . += CPU_TEXT_VMA;
+
+        PROVIDE(_code_start = .);
+
+	.text : AT(ADDR(.text) - CPU_TEXT_VMA)
  	{
 		PROVIDE(_text_start = .);
 		*(.start.text)
@@ -39,7 +57,7 @@ SECTIONS
 		PROVIDE(_text_end = .);
 	}
 
-	.data :
+	.data : AT(ADDR(.data) - CPU_TEXT_VMA)
 	{
 		PROVIDE(_data_start = .);
 		*(.data)
@@ -47,7 +65,7 @@ SECTIONS
 		PROVIDE(_data_end = .);
 	}
 
-	.bss :
+	.bss : AT(ADDR(.bss) - CPU_TEXT_VMA)
 	{
 		PROVIDE(_bss_start = .);
 		*(.bss)
@@ -55,7 +73,7 @@ SECTIONS
 		PROVIDE(_bss_end = .);
 	}
 
-	.rodata :
+	.rodata : AT(ADDR(.rodata) - CPU_TEXT_VMA)
 	{
 		PROVIDE(_rodata_start = .);
 		*(.rodata .rodata.*)
@@ -63,7 +81,7 @@ SECTIONS
 		PROVIDE(_rodata_end = .);
 	}
 
-	.modtbl :
+	.modtbl : AT(ADDR(.modtbl) - CPU_TEXT_VMA)
 	{
 		PROVIDE(_modtbl_start = .);
 		*(.modtbl)
@@ -71,7 +89,7 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
-	.heap :
+	.heap : AT(ADDR(.heap) - CPU_TEXT_VMA)
 	{
 		. = ALIGN(4096);
 		PROVIDE(_heap_start = .);
@@ -80,19 +98,7 @@ SECTIONS
 		PROVIDE(_eheap = .);
 	}
 
-	PROVIDE(_stack_end = .);
-	. = . + CONFIG_IRQ_STACK_SIZE;
-	. = ALIGN(4);
-	PROVIDE(_stack_start = .);
-
-	/* Interrupt stack */
-	PROVIDE(_int_stack_end = .);
-	. = . + CONFIG_IRQ_STACK_SIZE;
-	. = ALIGN(4);
-	PROVIDE(_int_stack = .);
-
-	. = ALIGN(0x1000); /* Put init functions into separate pages */
-	.init :
+	.init : AT(ADDR(.heap) - CPU_TEXT_VMA)
 	{
 		PROVIDE(_init_text_start = .);
 		*(.init.text)

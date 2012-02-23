@@ -22,9 +22,9 @@
 # @brief list of x86_64 object files.
 # */
 
-cpu-cflags +=-finline-functions -O0
+cpu-cflags +=-finline-functions -O0 -mcmodel=large
 cpu-ldflags += -static-libgcc -lgcc
-cpu-cppflags +=-DCPU_TEXT_START=0x100000
+cpu-cppflags +=-DCPU_TEXT_LMA=0x100000 -DCPU_TEXT_VMA=0xC0000000
 
 cpu-objs-y+= start.o
 

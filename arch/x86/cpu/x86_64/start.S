@@ -9,7 +9,7 @@
  *
  */
 .code32 /* 32-bit code */
-.section .text
+.section .text.bootstrap
 .globl _start_64, _pg_dir
 
 /*
@@ -44,8 +44,10 @@ _start_64:
         test %ecx, %eax
         jz   _pe_not_enabled
 
-	.extern cpu_init
-	call cpu_init		/* Call the C- code now */
+        /*
+         * Need to do a far jump to long code, before that
+         * Setup!!!
+         */
 1:      jmp	1b /* we shouldn't work here */
 
 /*
@@ -60,16 +62,16 @@ mboot:
 	.equ MULTIBOOT_HEADER_MAGIC, 0x1BADB002
 	.equ MULTIBOOT_HEADER_FLAGS, MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO | MULTIBOOT_AOUT_KLUDGE
 	.equ MULTIBOOT_CHECKSUM, -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
-	.extern _text_start, _bss_start, _code_end    /* These externs are coming from the linker script */
+	.extern _text_bootstrap_start, _bss_bootstrap_start, _code_bootstrap_end    /* These externs are coming from the linker script */
 
 	.int MULTIBOOT_HEADER_MAGIC
 	.int MULTIBOOT_HEADER_FLAGS
 	.int MULTIBOOT_CHECKSUM
 
 	.int mboot
-	.int _text_start
-	.int _bss_start
-	.int _code_end
+	.int _text_bootstrap_start
+	.int _bss_bootstrap_start
+	.int _code_bootstrap_end
 	.int _start_64
 
 _no_longmode:
@@ -82,6 +84,6 @@ _no_longmode:
 _pe_not_enabled:
         jmp _pe_not_enabled
 
-.section .bss
+.section .bss.bootstrap
 .globl __xvisor_stack
 .lcomm __xvisor_stack, 8192 /* 8K of stack */

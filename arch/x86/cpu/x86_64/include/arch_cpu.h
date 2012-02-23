@@ -116,7 +116,7 @@ extern u8 _init_text_start;
 extern u8 _init_text_end;
 static inline virtual_addr_t arch_init_text_vaddr(void)
 {
-	return (virtual_addr_t) ((&_init_text_start - CPU_TEXT_START) + 0xC0000000);
+	return (virtual_addr_t) (&_init_text_start);
 }
 static inline virtual_size_t arch_init_text_size(void)
 {
