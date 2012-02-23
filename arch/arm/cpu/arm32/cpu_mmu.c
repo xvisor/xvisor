@@ -214,8 +214,6 @@ int cpu_mmu_l2tbl_free(struct cpu_l2tbl * l2)
 		}
 	}
 
-	INIT_LIST_HEAD(&l2->head);
-
 	mmuctrl.l2_bmap[l2->num] = 0;
 	mmuctrl.l2_alloc_count--;
 
@@ -1199,6 +1197,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 		}
 	}
 	mmuctrl.defl1.l2tbl_cnt = 0;
+	write_contextidr((((u32)mmuctrl.defl1.num) & 0xFF));
 
 	/* Compute additional reserved space required */
 	pa = arch_code_paddr_start();
