@@ -76,7 +76,6 @@ u64 __notrace vmm_timer_timestamp_for_profile(void)
 static void vmm_timer_schedule_next_event(void)
 {
 	u64 tstamp;
-	bool config_clockevent = FALSE;
 	struct vmm_timer_event *e;
 
 	/* If not started yet or still processing events then we give up */
@@ -89,34 +88,20 @@ static void vmm_timer_schedule_next_event(void)
 		return;
 	}
 
-	/* retrieve first timer in the list of active timers */
+	/* Retrieve first event from list of active events */
 	e = list_entry(list_first(&tctrl.cpu_event_list), 
 		       struct vmm_timer_event,
 		       cpu_head);
 
-	if (tctrl.cpu_curr != e) {
-		/* The current event is not the one at the head of the list. */
-		config_clockevent = TRUE;
+	/* Configure clockevent device for first event */
+	tctrl.cpu_curr = e;
+	tstamp = vmm_timer_timestamp();
+	if (tstamp < e->expiry_tstamp) {
+		tctrl.cpu_next_event = e->expiry_tstamp;
+		arch_cpu_clockevent_start(e->expiry_tstamp - tstamp);
 	} else {
-		/* The current event is one at the head of the list. 
-		 * It is possible that expiry time of current event is made
-		 * sooner, so we check and configure clockevent if required.
-		 */
-		if (e->expiry_tstamp <= tctrl.cpu_next_event) {
-			config_clockevent = TRUE;
-		}
-	}
-
-	if (config_clockevent) {
-		tctrl.cpu_curr = e;
-		tstamp = vmm_timer_timestamp();
-		if (tstamp < e->expiry_tstamp) {
-			tctrl.cpu_next_event = e->expiry_tstamp;
-			arch_cpu_clockevent_start(e->expiry_tstamp - tstamp);
-		} else {
-			tctrl.cpu_next_event = tstamp;
-			arch_cpu_clockevent_expire();
-		}
+		tctrl.cpu_next_event = tstamp;
+		arch_cpu_clockevent_expire();
 	}
 }
 
