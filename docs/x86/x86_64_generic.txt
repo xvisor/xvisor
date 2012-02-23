@@ -1,0 +1,47 @@
+Booting x86_64 images on Qemu
+-----------------------------
+
+A. What is needed?
+   It is required that you have a machine with grub2. Any
+   latest Linux distro should have it. Compiling and installing
+   grub2 is out of scope for this document. It is also
+   required that you are running a 64-bit Linux because
+   cross compiling for 64-bit on 32-bit machines is not
+   discussed here.
+
+B. Steps to build a bootable image of Xvisor
+   1. Clone xvisor-x86_64 repo
+          git clone git://github.com/hschauhan/xvisor-x86_64.git
+
+   2. Build Xvisor with following command:
+           make ARCH=x86 x86_64_generic-defconfig
+           make
+   3. Create a directory xvisor-iso _somewhere_.
+           mkdir -p xvisor-iso/boot/grub
+
+   4. Copy the xvisor image in the ISO directory:
+           cp XVISOR_BASE/build/vmm.bin xvisor-iso/boot/
+       where XVISOR_BASE is base directory where you pulled
+       the xvisor tree.
+
+   5. Create a grub configuration file under ISO directory
+         <your editor> xvisor-iso/boot/grub/grub.cfg
+         CUT AND PASTE FOLLOWING IN IT
+         -------8<----CUT-START--8<---------------
+             set timeout=15
+             set default=0
+
+             menuentry "Xvisor x86_64" {
+                  multiboot /boot/vmm.bin
+                  boot
+             }
+         -------8<----CUT-END----8<---------------
+         Please copy paste above. A slight mistake won't
+         boot your system.
+
+   6. Create a ISO to boot
+          grub-mkrescue -o bootable.iso xvisor-iso/
+
+   7. Boot the image
+          qemu-system-x86_64 -boot d -cdrom bootable.iso
+
