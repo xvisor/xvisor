@@ -385,6 +385,10 @@ static u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu * vcpu,
 		pg->c = 1;
 		pg->b = 1;
 	}
+
+	/* Ensure pages for normal vcpu are non-global */
+	pg->ng = 1; 
+	/* Ensure pages for normal vcpu have aligned va & pa */
 	pg->pa &= ~(pg->sz - 1);
 	pg->va &= ~(pg->sz - 1);
 
