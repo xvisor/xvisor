@@ -34,6 +34,7 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <cpu_mmu.h>
+#include <cpu_barrier.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate_arm.h>
@@ -983,46 +984,63 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		if (opc1 != 0) {
 			goto bad_reg;
 		}
-		/* No cache, so nothing to do except VA->PA translations. */
-		if (arm_feature(vcpu, ARM_FEATURE_VAPA)) {
-			switch (CRm) {
-			case 4:
+		switch (CRm) {
+		case 4:
+			/* VA->PA translations. */
+			if (arm_feature(vcpu, ARM_FEATURE_VAPA)) {
 				if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 					arm_priv(vcpu)->cp15.c7_par = data & 0xfffff6ff;
 				} else {
 					arm_priv(vcpu)->cp15.c7_par = data & 0xfffff1ff;
 				}
-				break;
-			case 8: 
-				{
-					struct cpu_page pg;
-					int ret, is_user = opc2 & 2;
-					int access_type = opc2 & 1;
-					if (opc2 & 4) {
-						/* Other states are only available with TrustZone */
-						goto bad_reg;
-					}
-					ret = cpu_vcpu_cp15_find_page(vcpu, data, 
-								      access_type, is_user,
-								      &pg);
-					if (ret == 0) {
-						/* We do not set any attribute bits in the PAR */
-						if (pg.sz == TTBL_L1TBL_SUPSECTION_PAGE_SIZE && 
-						    arm_feature(vcpu, ARM_FEATURE_V7)) {
-							arm_priv(vcpu)->cp15.c7_par = (pg.pa & 0xff000000) | 1 << 1;
-						} else {
-							arm_priv(vcpu)->cp15.c7_par = pg.pa & 0xfffff000;
-						}
+			}
+			break;
+		case 8:
+			/* VA->PA translations. */
+			if (arm_feature(vcpu, ARM_FEATURE_VAPA)) {
+				struct cpu_page pg;
+				int ret, is_user = opc2 & 2;
+				int access_type = opc2 & 1;
+				if (opc2 & 4) {
+					/* Other states are only available with TrustZone */
+					goto bad_reg;
+				}
+				ret = cpu_vcpu_cp15_find_page(vcpu, data, 
+							      access_type, is_user,
+							      &pg);
+				if (ret == 0) {
+					/* We do not set any attribute bits in the PAR */
+					if (pg.sz == TTBL_L1TBL_SUPSECTION_PAGE_SIZE && 
+					    arm_feature(vcpu, ARM_FEATURE_V7)) {
+						arm_priv(vcpu)->cp15.c7_par = (pg.pa & 0xff000000) | 1 << 1;
 					} else {
-						arm_priv(vcpu)->cp15.c7_par = (((ret >> 9) & 0x1) << 6) |
-									   (((ret >> 4) & 0x1F) << 1) | 1;
+						arm_priv(vcpu)->cp15.c7_par = pg.pa & 0xfffff000;
 					}
-				} 
+				} else {
+					arm_priv(vcpu)->cp15.c7_par = (((ret >> 9) & 0x1) << 6) |
+								   (((ret >> 4) & 0x1F) << 1) | 1;
+				}
+			}
+			break;
+		case 10:
+			/* Handle cache operations */
+			switch (opc2) {
+			case 4:
+				/* Data synchroization barrier */
+				dsb();
+				break;
+			case 5:
+				/* Data memory barrier */
+				dmb();
 				break;
 			default:
-				goto bad_reg;
+				break;
 			};
-		}
+			break;
+		default:
+			/* FIXME: Should goto bad_reg; */
+			break;
+		};
 		break;
 	case 8: /* MMU TLB control.  */
 		switch (opc2) {

@@ -29,6 +29,7 @@
 #include <vmm_types.h>
 #include <arch_cpu.h>
 #include <cpu_defines.h>
+#include <cpu_barrier.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
 
@@ -1268,9 +1269,9 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 		respg.ap = TTBL_AP_SRW_U;
 		respg.xn = 0;
 		respg.ng = 0;
-		respg.s = 1;
+		respg.s = 0;
 		respg.c = 1;
-		respg.tex = 0x7;
+		respg.tex = 0;
 		respg.b = 0;
 		if ((rc = cpu_mmu_map_reserved_page(&respg))) {
 			goto mmu_init_error;

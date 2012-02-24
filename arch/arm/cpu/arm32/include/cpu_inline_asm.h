@@ -33,12 +33,6 @@
 				" rev16   %0, %1\n\t" : "=r" (rval) : \
 				"r" (val) : "memory", "cc"); rval;})
 
-#define isb() 			asm volatile ("isb" : : : "memory")
-
-#define dsb() 			asm volatile ("dsb" : : : "memory")
-
-#define dmb() 			asm volatile ("dmb" : : : "memory")
-
 #define read_sctlr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c1, c0, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
