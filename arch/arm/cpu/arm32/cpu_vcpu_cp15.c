@@ -995,6 +995,27 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				}
 			}
 			break;
+		case 5:
+			switch (opc2) {
+			case 0:
+				/* FIXME: */
+				break;
+			case 1:
+				/* FIXME: */
+				break;
+			case 4:
+				/* FIXME: */
+				break;
+			case 6:
+				/* FIXME: */
+				break;
+			case 7:
+				/* FIXME: */
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
 		case 8:
 			/* VA->PA translations. */
 			if (arm_feature(vcpu, ARM_FEATURE_VAPA)) {
@@ -1025,6 +1046,9 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		case 10:
 			/* Handle cache operations */
 			switch (opc2) {
+			case 1:
+				/* FIXME: */
+				break;
 			case 4:
 				/* Data synchroization barrier */
 				dsb();
@@ -1034,12 +1058,32 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				dmb();
 				break;
 			default:
+				goto bad_reg;
+			};
+			break;
+		case 11:
+			switch (opc2) {
+			case 1:
+				/* FIXME: */
 				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 14:
+			switch (opc2) {
+			case 1:
+				/* FIXME: */
+				break;
+			case 2:
+				/* FIXME: */
+				break;
+			default:
+				goto bad_reg;
 			};
 			break;
 		default:
-			/* FIXME: Should goto bad_reg; */
-			break;
+			goto bad_reg;
 		};
 		break;
 	case 8: /* MMU TLB control.  */
