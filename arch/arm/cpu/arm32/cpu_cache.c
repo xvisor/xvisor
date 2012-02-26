@@ -18,122 +18,184 @@
  *
  * @file cpu_cache.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Implementation of cache operations
+ * @brief Implementation of cache operations for ARMv7a
  */
 #include <cpu_cache.h>
 
-/* FIXME: */
 void flush_icache(void)
 {
+	u32 tmp = 0;
+	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
+		     : : "r"(tmp) : );
 }
 
-/* FIXME: */
 void flush_icache_mva(virtual_addr_t mva)
 {
+	asm volatile(" mcr     p15, 0, %0, c7, c5, 1\n\t"
+		     : : "r"(mva) : );
 }
 
-/* FIXME: */
 void flush_icache_line(u32 line)
 {
+	/* No such instruction so flush everything */
+	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
+		     : : "r"(line) : );
 }
 
-/* FIXME: */
 void flush_bpredictor(void)
 {
+	u32 tmp = 0;
+	asm volatile(" mcr     p15, 0, %0, c7, c5, 6\n\t"
+		     : : "r"(tmp) : );
 }
 
-/* FIXME: */
 void flush_bpredictor_mva(virtual_addr_t mva)
 {
+	asm volatile(" mcr     p15, 0, %0, c7, c5, 7\n\t"
+		     : : "r"(mva) : );
 }
 
-/* FIXME: */
 void flush_dcache(void)
 {
+	/* FIXME: flush data cache */
 }
 
-/* FIXME: */
 void flush_dcache_mva(virtual_addr_t mva)
 {
+#if 0	/* FIXME: */
+	asm volatile(" mcr     p15, 0, %0, c7, c6, 1\n\t"
+		     : : "r"(mva) : );
+#endif
 }
 
-/* FIXME: */
 void flush_dcache_line(u32 line)
 {
+#if 0	/* FIXME: */
+	asm volatile(" mcr     p15, 0, %0, c7, c6, 2\n\t"
+		     : : "r"(line) : );
+#endif
 }
 
-/* FIXME: */
 void flush_idcache(void)
 {
+#if 0	/* FIXME: */
+	u32 tmp = 0;
+	/* flush instruction cache */
+	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
+		     : : "r"(tmp) : );
+	/* FIXME: flush data cache */
+#endif
 }
 
-/* FIXME: */
 void flush_idcache_mva(virtual_addr_t mva)
 {
+#if 0	/* FIXME: */
+	asm volatile(" mcr     p15, 0, %0, c7, c5, 1\n\t"
+		     " mcr     p15, 0, %0, c7, c6, 1\n\t"
+		     : : "r"(mva) : );
+#endif
 }
 
-/* FIXME: */
 void flush_idcache_line(u32 line)
 {
+#if 0	/* FIXME: */
+	asm volatile(" mcr     p15, 0, %0, c7, c5, 2\n\t"
+		     " mcr     p15, 0, %0, c7, c6, 2\n\t"
+		     : : "r"(line) : );
+#endif
 }
 
-/* FIXME: */
 void clean_dcache(void)
-{
+{	
+	/* FIXME: */
 }
 
-/* FIXME: */
 void clean_dcache_mva(virtual_addr_t mva)
 {
+	asm volatile(" mcr     p15, 0, %0, c7, c10, 1\n\t"
+		     : : "r"(mva) : );
 }
 
-/* FIXME: */
 void clean_dcache_line(u32 line)
 {
+	asm volatile(" mcr     p15, 0, %0, c7, c10, 2\n\t"
+		     : : "r"(line) : );
 }
 
-/* FIXME: */
 void clean_idcache(void)
 {
+	/* FIXME: */
 }
 
-/* FIXME: */
 void clean_idcache_mva(virtual_addr_t mva)
 {
+	/* Instruction cache does not require cleaning so,
+	 * this operation reduces to cleaning of data cache.
+	 */
+	asm volatile(" mcr     p15, 0, %0, c7, c10, 1\n\t"
+		     : : "r"(mva) : );
 }
 
-/* FIXME: */
 void clean_idcache_line(u32 line)
 {
+	/* Instruction cache does not require cleaning so,
+	 * this operation reduces to cleaning of data cache.
+	 */
+	asm volatile(" mcr     p15, 0, %0, c7, c10, 2\n\t"
+		     : : "r"(line) : );
 }
 
-/* FIXME: */
 void clean_flush_dcache(void)
 {
+	/* FIXME: */
 }
 
-/* FIXME: */
 void clean_flush_dcache_mva(virtual_addr_t mva)
 {
+#if 0	/* FIXME: */
+	asm volatile(" mcr     p15, 0, %0, c7, c14, 1\n\t"
+		     : : "r"(mva) : );
+#endif
 }
 
-/* FIXME: */
 void clean_flush_dcache_line(u32 line)
 {
+#if 0	/* FIXME: */
+	asm volatile(" mcr     p15, 0, %0, c7, c14, 2\n\t"
+		     : : "r"(line) : );
+#endif
 }
 
-/* FIXME: */
 void clean_flush_idcache(void)
 {
+	/* FIXME: */
 }
 
-/* FIXME: */
 void clean_flush_idcache_mva(virtual_addr_t mva)
 {
+#if 0	/* FIXME: */
+	/* Instruction cache does not require cleaning so,
+	 * this operation reduces to following:
+	 *   1. Flush instruction cache
+	 *   2. Clean & flush data cache
+	 */
+	asm volatile(" mcr     p15, 0, %0, c7, c5, 1\n\t"
+		     " mcr     p15, 0, %0, c7, c14, 1\n\t"
+		     : : "r"(mva) : );
+#endif
 }
 
-/* FIXME: */
 void clean_flush_idcache_line(u32 line)
 {
+#if 0	/* FIXME: */
+	/* Instruction cache does not require cleaning so,
+	 * this operation reduces to following:
+	 *   1. Flush entire instruction cache
+	 *   2. Clean & flush data cache
+	 */
+	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
+		     " mcr     p15, 0, %0, c7, c14, 2\n\t"
+		     : : "r"(line) : );
+#endif
 }
 
