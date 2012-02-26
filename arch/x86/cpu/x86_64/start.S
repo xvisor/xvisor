@@ -9,8 +9,9 @@
  *
  */
 .code32 /* 32-bit code */
-.section .text.bootstrap
-.globl _start_64, _pg_dir
+.section .bootstrap.text, "ax"
+.globl _start_64
+.extern _bss_bootstrap_end
 
 /*
  * I think this is really the best way to reclaim the
@@ -18,9 +19,8 @@
  * we will put them in a seperate .init section and then
  * reclaim it later.
  */
-_pg_dir:
 _start_64:
-	leal	__xvisor_stack + 8192, %esp	/* setup the stack (bss segment) */
+	leal	_bss_bootstrap_end, %esp	/* setup the stack (bss segment) */
 
         /* O.K. We have CPUID. Check if we can enter
          * long mode. */
@@ -44,6 +44,7 @@ _start_64:
         test %ecx, %eax
         jz   _pe_not_enabled
 
+        call bootstrap32
         /*
          * Need to do a far jump to long code, before that
          * Setup!!!
@@ -84,6 +85,43 @@ _no_longmode:
 _pe_not_enabled:
         jmp _pe_not_enabled
 
-.section .bss.bootstrap
-.globl __xvisor_stack
-.lcomm __xvisor_stack, 8192 /* 8K of stack */
+.type   early_print, @function
+early_print:
+        pushl   %ebp
+        movl    %esp, %ebp
+        subl    $16, %esp
+        movl    $0xb8000, -8(%ebp)
+        movl    $0, -4(%ebp)
+        jmp     _ccd
+_ctex:
+        movl    8(%ebp), %eax
+        movzbl  (%eax), %eax
+        movl    %eax, %edx
+        movl    -8(%ebp), %eax
+        movb    %dl, (%eax)
+        addl    $1, -8(%ebp)
+        movl    -8(%ebp), %eax
+        movb    $7, (%eax)
+        addl    $1, -8(%ebp)
+        addl    $1, 8(%ebp)
+        addl    $1, -4(%ebp)
+_ccd:
+        cmpl    $24, -4(%ebp)
+        jle     _ctex
+        leave
+        ret
+
+.type	bootstrap32, @function
+bootstrap32:
+        pushl   %ebp
+        movl    %esp, %ebp
+        subl    $4, %esp
+        movl    $_load_banner, (%esp)
+        call    early_print
+30:
+	jmp	30b
+
+.section .bootstrap_readonly,"aw",@progbits
+.align 4
+_load_banner:
+	.string	"Bootstrapping X-Visor..."

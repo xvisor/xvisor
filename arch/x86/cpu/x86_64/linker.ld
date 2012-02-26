@@ -30,18 +30,29 @@ SECTIONS
 
 	PROVIDE(_code_bootstrap_start = .);
 
-        .text.bootstrap :
+        .bootstrap.text :
         {
                 PROVIDE(_text_bootstrap_start = .);
-                *(.text.bootstrap)
-                . = ALIGN(4);
+                *(.bootstrap.text)
                 PROVIDE(_text_bootstrap_end = .);
-                PROVIDE(_bss_bootstrap_start = .);
-                *(.bss.bootstrap)
-                PROVIDE(_bss_bootstrap_end = .);
-                . = ALIGN(4);
         }
 
+        . = ALIGN(4);
+        .bootstrap_readonly :
+        {
+                *(.bootstrap_readonly)
+        }
+
+        . = ALIGN(4);
+        .bootstrap_zeroed_section :
+        {
+                PROVIDE(_bss_bootstrap_start = .);
+                *(.bootstrap_zeroed_section)
+                . += 4096;
+                PROVIDE(_bss_bootstrap_end = .);
+        }
+
+        . = ALIGN(4);
         PROVIDE(_code_bootstrap_end = .);
 
         . += CPU_TEXT_VMA;
