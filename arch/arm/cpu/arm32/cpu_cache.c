@@ -62,47 +62,37 @@ void flush_dcache(void)
 
 void flush_dcache_mva(virtual_addr_t mva)
 {
-#if 0	/* FIXME: */
 	asm volatile(" mcr     p15, 0, %0, c7, c6, 1\n\t"
 		     : : "r"(mva) : );
-#endif
 }
 
 void flush_dcache_line(u32 line)
 {
-#if 0	/* FIXME: */
 	asm volatile(" mcr     p15, 0, %0, c7, c6, 2\n\t"
 		     : : "r"(line) : );
-#endif
 }
 
 void flush_idcache(void)
 {
-#if 0	/* FIXME: */
 	u32 tmp = 0;
 	/* flush instruction cache */
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
 		     : : "r"(tmp) : );
 	/* FIXME: flush data cache */
-#endif
 }
 
 void flush_idcache_mva(virtual_addr_t mva)
 {
-#if 0	/* FIXME: */
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 1\n\t"
 		     " mcr     p15, 0, %0, c7, c6, 1\n\t"
 		     : : "r"(mva) : );
-#endif
 }
 
 void flush_idcache_line(u32 line)
 {
-#if 0	/* FIXME: */
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 2\n\t"
 		     " mcr     p15, 0, %0, c7, c6, 2\n\t"
 		     : : "r"(line) : );
-#endif
 }
 
 void clean_dcache(void)
@@ -152,18 +142,14 @@ void clean_flush_dcache(void)
 
 void clean_flush_dcache_mva(virtual_addr_t mva)
 {
-#if 0	/* FIXME: */
 	asm volatile(" mcr     p15, 0, %0, c7, c14, 1\n\t"
 		     : : "r"(mva) : );
-#endif
 }
 
 void clean_flush_dcache_line(u32 line)
 {
-#if 0	/* FIXME: */
 	asm volatile(" mcr     p15, 0, %0, c7, c14, 2\n\t"
 		     : : "r"(line) : );
-#endif
 }
 
 void clean_flush_idcache(void)
@@ -173,21 +159,18 @@ void clean_flush_idcache(void)
 
 void clean_flush_idcache_mva(virtual_addr_t mva)
 {
-#if 0	/* FIXME: */
 	/* Instruction cache does not require cleaning so,
 	 * this operation reduces to following:
 	 *   1. Flush instruction cache
 	 *   2. Clean & flush data cache
 	 */
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 1\n\t"
-		     " mcr     p15, 0, %0, c7, c14, 1\n\t"
+		     " mcr     p15, 0, %0, c7, c11, 1\n\t"
 		     : : "r"(mva) : );
-#endif
 }
 
 void clean_flush_idcache_line(u32 line)
 {
-#if 0	/* FIXME: */
 	/* Instruction cache does not require cleaning so,
 	 * this operation reduces to following:
 	 *   1. Flush entire instruction cache
@@ -196,6 +179,5 @@ void clean_flush_idcache_line(u32 line)
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
 		     " mcr     p15, 0, %0, c7, c14, 2\n\t"
 		     : : "r"(line) : );
-#endif
 }
 
