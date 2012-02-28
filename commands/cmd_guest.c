@@ -71,9 +71,11 @@ void cmd_guest_list(struct vmm_chardev *cdev)
 			 "ID ", "Name", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	count = vmm_manager_guest_count();
+	count = vmm_manager_max_guest_count();
 	for (id = 0; id < count; id++) {
-		guest = vmm_manager_guest(id);
+		if (!(guest = vmm_manager_guest(id))) {
+			continue;
+		}
 		vmm_devtree_getpath(path, guest->node);
 		vmm_cprintf(cdev, "| %-5d| %-16s| %-52s|\n", 
 				  id, guest->node->name, path);
@@ -298,15 +300,17 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		cmd_guest_usage(cdev);
 		return VMM_EFAIL;
 	}
-	count = vmm_manager_guest_count();
+	count = vmm_manager_max_guest_count();
 	if (vmm_strcmp(argv[1], "create") == 0) {
 		return cmd_guest_create(cdev, argv[2]);
 	} else if (vmm_strcmp(argv[1], "destroy") == 0) {
 		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
-				ret = cmd_guest_destroy(cdev, id);
-				if (ret) {
+				if (!vmm_manager_guest(id)) {
+					continue;
+				}
+				if ((ret = cmd_guest_destroy(cdev, id))) {
 					return ret;
 				}
 			}
@@ -317,8 +321,10 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
-				ret = cmd_guest_reset(cdev, id);
-				if (ret) {
+				if (!vmm_manager_guest(id)) {
+					continue;
+				}
+				if ((ret = cmd_guest_reset(cdev, id))) {
 					return ret;
 				}
 			}
@@ -329,8 +335,10 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
-				ret = cmd_guest_kick(cdev, id);
-				if (ret) {
+				if (!vmm_manager_guest(id)) {
+					continue;
+				}
+				if ((ret = cmd_guest_kick(cdev, id))) {
 					return ret;
 				}
 			}
@@ -341,8 +349,10 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
-				ret = cmd_guest_pause(cdev, id);
-				if (ret) {
+				if (!vmm_manager_guest(id)) {
+					continue;
+				}
+				if ((ret = cmd_guest_pause(cdev, id))) {
 					return ret;
 				}
 			}
@@ -353,8 +363,10 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
-				ret = cmd_guest_resume(cdev, id);
-				if (ret) {
+				if (!vmm_manager_guest(id)) {
+					continue;
+				}
+				if ((ret = cmd_guest_resume(cdev, id))) {
 					return ret;
 				}
 			}
@@ -365,8 +377,10 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
-				ret = cmd_guest_halt(cdev, id);
-				if (ret) {
+				if (!vmm_manager_guest(id)) {
+					continue;
+				}
+				if ((ret = cmd_guest_halt(cdev, id))) {
 					return ret;
 				}
 			}
@@ -377,8 +391,10 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		id = vmm_str2int(argv[2], 10);
 		if (id == -1) {
 			for (id = 0; id < count; id++) {
-				ret = cmd_guest_dumpreg(cdev, id);
-				if (ret) {
+				if (!vmm_manager_guest(id)) {
+					continue;
+				}
+				if ((ret = cmd_guest_dumpreg(cdev, id))) {
 					return ret;
 				}
 			}

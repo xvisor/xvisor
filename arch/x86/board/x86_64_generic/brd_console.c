@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Anup Patel.
+ * Copyright (c) 2010-20 Himanshu Chauhan.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,19 +16,26 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_trivial.h
- * @author Anup Patel (anup@brainfault.org)
- * @brief header file for trivial heap allocator
+ * @file brd_console.c
+ * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @brief main source file for serial port in qemu-mips board.
  */
-#ifndef _VMM_TRIVIAL_H__
-#define _VMM_TRIVIAL_H__
 
 #include <vmm_types.h>
+#include <vmm_error.h>
+#include <vmm_host_aspace.h>
 
-struct vmm_trivial_control {
-	virtual_addr_t base;
-	virtual_size_t size;
-	virtual_addr_t curoff;
-};
+int arch_defterm_getc(u8 *ch)
+{
+	return VMM_OK;
+}
 
-#endif
+int arch_defterm_putc(u8 ch)
+{
+	return VMM_OK;
+}
+
+int arch_defterm_init(void)
+{
+	return VMM_OK;
+}

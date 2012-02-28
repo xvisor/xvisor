@@ -235,7 +235,7 @@ int omap3_gpt_instance_init(u32 gpt_num, u32 prm_domain,
 	return VMM_OK;
 }
 
-int omap3_gpt_global_init(u32 gpt_count, struct omap3_gpt_cfg *cfg)
+int __init omap3_gpt_global_init(u32 gpt_count, struct omap3_gpt_cfg *cfg)
 {
 	int i;
 	if(!omap3_gpt_config) {

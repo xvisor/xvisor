@@ -25,9 +25,11 @@
 
 #include <vmm_types.h>
 
+/** OMAP3/OMAP343X S32K Base Physical Address */
+#define OMAP3_S32K_BASE 	0x48320000
+
 #define OMAP3_S32K_FREQ_HZ	32768
 
-#define OMAP3_S32K_BASE 	0x48320000
 #define OMAP3_S32K_CR	 	0x10
 
 u32 omap3_s32k_get_counter(void);

@@ -19,6 +19,7 @@ WHAT IS XVISOR?
   hypervisor, such as:
 	- Tree based configuration
 	- Tickless and high resolution timekeeping
+	- Wall-clock for tracking real-time
 	- Threading framework
 	- Host device driver framework
 	- CPU virtualization

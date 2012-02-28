@@ -25,6 +25,7 @@
 #define _ARCH_IO_H__
 
 #include <vmm_types.h>
+#include <cpu_barrier.h>
 #include <cpu_inline_asm.h>
 
 #define __raw_write8(a,v)	(*(volatile u8 *)(a) = (v))
@@ -35,13 +36,8 @@
 #define __raw_read16(a)		(*(volatile u16 *)(a))
 #define __raw_read32(a)		(*(volatile u32 *)(a))
 
-#if 0 /* FIXME: will be enabled after testing on HW */
-#define __iormb()		dsb()
-#define __iowmb()		dsb()
-#else
-#define __iormb()		do { } while (0)
-#define __iowmb()		do { } while (0)
-#endif
+#define __iormb()		rmb()
+#define __iowmb()		wmb()
 
 /*
  * Endianness primitives

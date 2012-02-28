@@ -27,7 +27,6 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_host_aspace.h>
-#include <heap/vmm_buddy.h>
 
 #ifndef NULL
 #define NULL			((void *)0)
@@ -43,7 +42,39 @@
 
 #define IS_POW_TWO(x)		(x && !(x & (x - 1)))
 
-static struct vmm_heap buddy_heap;
+#define HOUSE_KEEPING_PERCENT	(CONFIG_BUDDY_HOUSE_KEEPING_PERCENT)
+#define MIN_BLOCK_SIZE		(0x01UL << CONFIG_BUDDY_MIN_BLOCK_SIZE_SHIFT)	/* Minimum alloc of bus width */
+#define MAX_BLOCK_SIZE		(0x01UL << CONFIG_BUDDY_MAX_BLOCK_SIZE_SHIFT)	/* Maximum alloc of bus width */
+#define BINS_MAX_ORDER		(CONFIG_BUDDY_MAX_BLOCK_SIZE_SHIFT - CONFIG_BUDDY_MIN_BLOCK_SIZE_SHIFT + 1)
+
+struct vmm_free_area {
+	struct dlist head;
+	void *map;
+	unsigned int count;
+} __attribute__ ((packed));
+
+struct vmm_alloced_area {
+	struct dlist head;
+	void *map;
+	unsigned int blk_sz;
+	unsigned int bin_num;
+	unsigned int count;
+} __attribute__ ((packed));
+
+struct vmm_buddy_heap {
+	struct vmm_free_area * hk_fn_array;
+	unsigned int hk_fn_count;
+	struct vmm_alloced_area * hk_an_array;
+	unsigned int hk_an_count;
+	struct vmm_alloced_area current;
+	void *mem_start;
+	unsigned int mem_size;
+	void *heap_start;
+	unsigned int heap_size;
+	struct vmm_free_area free_area[BINS_MAX_ORDER];	/* Bins holding free area. */
+} __attribute__ ((packed));
+
+static struct vmm_buddy_heap buddy_heap;
 
 static struct vmm_free_area *get_free_hk_node()
 {
@@ -444,18 +475,54 @@ void buddy_free(void *ptr)
 	vmm_memset(aarea, 0, sizeof(struct vmm_alloced_area));
 }
 
-void buddy_print_state(struct vmm_chardev *cdev)
+void *vmm_malloc(virtual_size_t size)
+{
+	return buddy_malloc(size);
+}
+
+void vmm_free(void *pointer)
+{
+	buddy_free(pointer);
+}
+
+int vmm_heap_allocator_name(char * name, int name_sz)
+{
+	if (!name && name_sz > 0) {
+		return VMM_EFAIL;
+	}
+
+	vmm_strncpy(name, "Buddy System", name_sz);
+
+	return VMM_OK;
+}
+
+virtual_addr_t vmm_heap_start_va(void)
+{
+	return (virtual_addr_t)buddy_heap.heap_start;
+}
+
+virtual_size_t vmm_heap_size(void)
+{
+	return (virtual_size_t)buddy_heap.heap_size;
+}
+
+virtual_size_t vmm_heap_hksize(void)
+{
+	return (virtual_size_t)(buddy_heap.heap_size - buddy_heap.mem_size);
+}
+
+int vmm_heap_print_state(struct vmm_chardev *cdev)
 {
 	int idx = 0;
-	struct vmm_alloced_area *valloced;
+	struct vmm_free_area *fren = buddy_heap.hk_fn_array;
+	struct vmm_alloced_area *valloced, *acn = buddy_heap.hk_an_array;
 	struct dlist *pos;
-	int bfree = 0, balloced = 0;
+	int free = 0, bfree = 0, balloced = 0;
 
-	vmm_cprintf(cdev, "Heap Size: %d KiB\n", 
-					(buddy_heap.heap_size / 1024));
+	vmm_cprintf(cdev, "Heap State\n");
 
 	for (idx = 0; idx < BINS_MAX_ORDER; idx++) {
-		vmm_cprintf(cdev, "[BLOCK 0x%4X]: ", MIN_BLOCK_SIZE << idx);
+		vmm_cprintf(cdev, "  [BLOCK 0x%4X]: ", MIN_BLOCK_SIZE << idx);
 		list_for_each(pos, &buddy_heap.free_area[idx].head) {
 			bfree++;
 		}
@@ -471,13 +538,8 @@ void buddy_print_state(struct vmm_chardev *cdev)
 		bfree = 0;
 		balloced = 0;
 	}
-}
 
-void buddy_print_hk_state(struct vmm_chardev *cdev)
-{
-	u32 free = 0, idx;
-	struct vmm_free_area *fren = buddy_heap.hk_fn_array;
-	struct vmm_alloced_area *acn = buddy_heap.hk_an_array;
+	vmm_cprintf(cdev, "House-Keeping State\n");
 
 	for (idx = 0; idx < buddy_heap.hk_fn_count; idx++) {
 		if (!fren->map) {
@@ -486,8 +548,8 @@ void buddy_print_hk_state(struct vmm_chardev *cdev)
 		fren++;
 	}
 
-	vmm_cprintf(cdev, "Free Node List: %d nodes free out of %d\n", free,
-		   buddy_heap.hk_fn_count);
+	vmm_cprintf(cdev, "  Free Node List: %d nodes free out of %d\n", 
+						free, buddy_heap.hk_fn_count);
 
 	free = 0;
 	for (idx = 0; idx < buddy_heap.hk_an_count; idx++) {
@@ -496,18 +558,10 @@ void buddy_print_hk_state(struct vmm_chardev *cdev)
 		}
 		acn++;
 	}
-	vmm_cprintf(cdev, "Alloced Node List: %d nodes free out of %d\n", free,
-		   buddy_heap.hk_an_count);
-}
+	vmm_cprintf(cdev, "  Alloced Node List: %d nodes free out of %d\n", 
+						free, buddy_heap.hk_an_count);
 
-void *vmm_malloc(virtual_size_t size)
-{
-	return buddy_malloc(size);
-}
-
-void vmm_free(void *pointer)
-{
-	buddy_free(pointer);
+	return VMM_OK;
 }
 
 int __init vmm_heap_init(void)

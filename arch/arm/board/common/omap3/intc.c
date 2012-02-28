@@ -98,7 +98,7 @@ int omap3_intc_unmask(u32 irq)
 	return VMM_OK;
 }
 
-int omap3_intc_init(void)
+int __init omap3_intc_init(void)
 {
 	u32 tmp;
 

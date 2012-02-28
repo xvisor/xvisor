@@ -41,11 +41,11 @@ struct cpu_page {
 	u32 c:1;
 	u32 b:1;
 	u32 pad:15;
-} __attribute__((packed));
+};
 
 struct cpu_l2tbl {
 	struct dlist head;
-	int l2_num;
+	int num;
 	struct cpu_l1tbl *l1;
 	u32 imp;
 	u32 domain;
@@ -57,7 +57,7 @@ struct cpu_l2tbl {
 
 struct cpu_l1tbl {
 	struct dlist head;
-	int l1_num;
+	int num;
 	physical_addr_t tbl_pa;
 	virtual_addr_t tbl_va;
 	u32 tte_cnt;

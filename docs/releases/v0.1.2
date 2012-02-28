@@ -1,0 +1,31 @@
+			Xvisor v0.1.2
+		(Last Commit: ------------)
+		(Release Date: 28-Feb-2012)
+
+In this release, we added few features, cleaned-up our code, and formalized 
+our coding-style document.
+
+New Features:
+ - Wait-for-interrupt support in VCPU irq subsystem
+ - Dynamic guest creation/destruction
+ - Device clock managment support in device driver framework
+ - RTC device framework
+ - Wall-clock subsystem for tracking real-time
+ - PL031 RTC emulators
+
+ARM 32-bit Port:
+ - Replaced wfi instruction with a new hypercall. The new hypercall uses 
+   wait-for-interrupt feature of VCPU irq subsystem.
+ - Added support for VCPU deinit required for destroying a VCPU
+ - Linux guest is able to sync date/time from emulated RTC
+ - Added support for emulating cache operations
+ - Xvisor ARM running on BeagleBoard-xM is able to boot Linux kernel on
+   Realview-PB-A8 guest
+
+MIPS 32-bit Port:
+ - Xvisor MIPS boots up and gets to managment terminal.
+ - Guest support in Xvisor MIPS is still work-in-progress.
+
+x86 64-bit Port:
+ - Initial compilable code for supporting Intel x86_64
+

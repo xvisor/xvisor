@@ -24,17 +24,19 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <cpu_barrier.h>
 
-/* FIXME: Need memory barrier for this. */
 long __lock arch_cpu_atomic_read(atomic_t * atom)
 {
-	return atom->counter;
+	long ret = atom->counter;
+	rmb();
+	return ret;
 }
 
-/* FIXME: Need memory barrier for this. */
 void __lock arch_cpu_atomic_write(atomic_t * atom, long value)
 {
 	atom->counter = value;
+	wmb();
 }
 
 static void __lock __cpu_atomic_add(atomic_t * atom, long value)

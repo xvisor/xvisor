@@ -32,7 +32,7 @@
 #define MODULE_VARID			cmd_rtcdev_module
 #define MODULE_NAME			"Command rtcdev"
 #define MODULE_AUTHOR			"Anup Patel"
-#define MODULE_IPRIORITY		0
+#define MODULE_IPRIORITY		(VMM_RTCDEV_CLASS_IPRIORITY+1)
 #define	MODULE_INIT			cmd_rtcdev_init
 #define	MODULE_EXIT			cmd_rtcdev_exit
 
@@ -41,12 +41,14 @@ void cmd_rtcdev_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   rtcdev help\n");
 	vmm_cprintf(cdev, "   rtcdev list\n");
+	vmm_cprintf(cdev, "   rtcdev sync_wallclock <rtc_name>\n");
+	vmm_cprintf(cdev, "   rtcdev sync_device <rtc_name>\n");
 	vmm_cprintf(cdev, "   rtcdev get_time <rtc_name>\n");
 	vmm_cprintf(cdev, "   rtcdev set_time <rtc_name> "
 				"<hour>:<min>:<sec> <day> <month> <year>\n");
 	vmm_cprintf(cdev, "Note:\n");
-	vmm_cprintf(cdev, "   RTC devices do not keep track of timezones "
-				"hence we assume UTC/GMT timezone.\n");
+	vmm_cprintf(cdev, "   RTC devices keep track of "
+				"time in UTC/GMT timezone only\n");
 	vmm_cprintf(cdev, "   <hour>    = any value between 0..23\n");
 	vmm_cprintf(cdev, "   <minute>  = any value between 0..59\n");
 	vmm_cprintf(cdev, "   <second>  = any value between 0..59\n");
@@ -71,6 +73,46 @@ void cmd_rtcdev_list(struct vmm_chardev *cdev)
 			vmm_cprintf(cdev, "%s: %s\n", rd->name, path);
 		}
 	}
+}
+
+int cmd_rtcdev_sync_wallclock(struct vmm_chardev *cdev, const char * name)
+{
+	int rc;
+	struct vmm_rtcdev * rtc = vmm_rtcdev_find(name);
+
+	if (!rtc) {
+		vmm_cprintf(cdev, "Error: cannot find rtc %s\n", name);
+		return VMM_EFAIL;
+	}
+
+	rc = vmm_rtcdev_sync_wallclock(rtc);
+	if (rc) {
+		vmm_cprintf(cdev, "Error: sync_wallclock failed for rtc %s\n", 
+									 name);
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int cmd_rtcdev_sync_device(struct vmm_chardev *cdev, const char * name)
+{
+	int rc;
+	struct vmm_rtcdev * rtc = vmm_rtcdev_find(name);
+
+	if (!rtc) {
+		vmm_cprintf(cdev, "Error: cannot find rtc %s\n", name);
+		return VMM_EFAIL;
+	}
+
+	rc = vmm_rtcdev_sync_device(rtc);
+	if (rc) {
+		vmm_cprintf(cdev, "Error: sync_device failed for rtc %s\n", 
+									 name);
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
 int cmd_rtcdev_get_time(struct vmm_chardev *cdev, const char * name)
@@ -265,7 +307,11 @@ int cmd_rtcdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		cmd_rtcdev_usage(cdev);
 		return VMM_EFAIL;
 	}
-	if (vmm_strcmp(argv[1], "get_time") == 0) {
+	if (vmm_strcmp(argv[1], "sync_wallclock") == 0) {
+		return cmd_rtcdev_sync_wallclock(cdev, argv[2]);
+	} else if (vmm_strcmp(argv[1], "sync_device") == 0) {
+		return cmd_rtcdev_sync_device(cdev, argv[2]);
+	} else if (vmm_strcmp(argv[1], "get_time") == 0) {
 		return cmd_rtcdev_get_time(cdev, argv[2]);
 	} else if ((vmm_strcmp(argv[1], "set_time") == 0) && argc == 7) {
 		return cmd_rtcdev_set_time(cdev, argv[2], argc - 3, &argv[3]);

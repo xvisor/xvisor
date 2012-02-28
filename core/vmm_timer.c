@@ -35,6 +35,8 @@ struct vmm_timer_ctrl {
 	u32 cycles_shift;
 	u64 timestamp;
 	bool cpu_started;
+	bool cpu_inprocess;
+	u64 cpu_next_event;
 	struct vmm_timer_event *cpu_curr;
 	struct dlist cpu_event_list;
 	struct dlist event_list;
@@ -73,10 +75,11 @@ u64 __notrace vmm_timer_timestamp_for_profile(void)
 
 static void vmm_timer_schedule_next_event(void)
 {
+	u64 tstamp;
 	struct vmm_timer_event *e;
 
-	/* If not started yet, we give up */
-	if (!tctrl.cpu_started) {
+	/* If not started yet or still processing events then we give up */
+	if (!tctrl.cpu_started || tctrl.cpu_inprocess) {
 		return;
 	}
 
@@ -85,25 +88,20 @@ static void vmm_timer_schedule_next_event(void)
 		return;
 	}
 
-	/* retrieve first timer in the list of active timers */
-	e = list_entry(list_first(&tctrl.cpu_event_list), struct vmm_timer_event,
+	/* Retrieve first event from list of active events */
+	e = list_entry(list_first(&tctrl.cpu_event_list), 
+		       struct vmm_timer_event,
 		       cpu_head);
 
-	if (tctrl.cpu_curr != e) {
-		/* The current event is not the one at the head of the list. */
-		u64 tstamp = vmm_timer_timestamp();
-
-		tctrl.cpu_curr = e;
-
-		if (tstamp > e->expiry_tstamp) {
-			tstamp = e->expiry_tstamp;
-		}
-
+	/* Configure clockevent device for first event */
+	tctrl.cpu_curr = e;
+	tstamp = vmm_timer_timestamp();
+	if (tstamp < e->expiry_tstamp) {
+		tctrl.cpu_next_event = e->expiry_tstamp;
 		arch_cpu_clockevent_start(e->expiry_tstamp - tstamp);
 	} else {
-		/* FIXME: What if expiry time of current event changed ?? */
-		/* Nothing to change as the current event is the one at the */
-		/* head of the list and they are ordered by expiration time */
+		tctrl.cpu_next_event = tstamp;
+		arch_cpu_clockevent_expire();
 	}
 }
 
@@ -114,6 +112,8 @@ static void vmm_timer_schedule_next_event(void)
 void vmm_timer_clockevent_process(arch_regs_t * regs)
 {
 	struct vmm_timer_event *e;
+
+	tctrl.cpu_inprocess = TRUE;
 
 	/* process expired active events */
 	while (!list_empty(&tctrl.cpu_event_list)) {
@@ -135,6 +135,8 @@ void vmm_timer_clockevent_process(arch_regs_t * regs)
 			break;
 		}
 	}
+
+	tctrl.cpu_inprocess = FALSE;
 
 	/* Schedule next timer event */
 	vmm_timer_schedule_next_event();
@@ -405,6 +407,8 @@ void vmm_timer_start(void)
 {
 	arch_cpu_clockevent_start(1000000);
 
+	tctrl.cpu_next_event = vmm_timer_timestamp() + 1000000;
+
 	tctrl.cpu_started = TRUE;
 }
 
@@ -421,6 +425,7 @@ int __init vmm_timer_init(void)
 
 	/* Initialize Per CPU event status */
 	tctrl.cpu_started = FALSE;
+	tctrl.cpu_inprocess = FALSE;
 
 	/* Initialize Per CPU current event pointer */
 	tctrl.cpu_curr = NULL;
