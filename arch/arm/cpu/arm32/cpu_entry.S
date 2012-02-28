@@ -183,9 +183,11 @@ _start_mmu_defl1_set:
 	 * Setup System Control Register
 	 */
 	ldr	r1, __sctrl_mmu_val
-	mrc     p15, 0, r2, c1, c0, 0
-	orr	r2, r2, r1
-	mcr     p15, 0, r2, c1, c0, 0
+	ldr	r2, __sctrl_mmu_clear
+	mrc     p15, 0, r3, c1, c0, 0
+	and	r3, r3, r2
+	orr	r3, r3, r1
+	mcr     p15, 0, r3, c1, c0, 0
 	/*
 	 * Jump to reset code
 	 */
@@ -200,6 +202,8 @@ __mmu_section_attr:
 	.word SECTION_ATTR
 __dacr_mmu_val:
 	.word (TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_RESERVED))
+__sctrl_mmu_clear:
+	.word ~(SCTLR_A_MASK | SCTLR_TRE_MASK)
 __sctrl_mmu_val:
 	.word (SCTLR_M_MASK | SCTLR_C_MASK | SCTLR_I_MASK)
 __exec_start:

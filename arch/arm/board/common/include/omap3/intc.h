@@ -25,7 +25,10 @@
 
 #include <vmm_types.h>
 
+/** OMAP3/OMAP343X INTC Base Physical Address */
 #define OMAP3_MPU_INTC_BASE			0x48200000
+
+/** OMAP3/OMAP343X INTC IRQ Count */
 #define OMAP3_MPU_INTC_NRIRQ			96
 
 #define OMAP3_MPU_INTC_EMUINT			0

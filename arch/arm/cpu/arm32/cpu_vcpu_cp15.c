@@ -34,6 +34,8 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <cpu_mmu.h>
+#include <cpu_cache.h>
+#include <cpu_barrier.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate_arm.h>
@@ -272,8 +274,13 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu,
 			pg->pa = (desc & 0xfff00000) | (va & 0x000fffff);
 			pg->sz = 0x100000;
 		}
-		pg->ap = ((desc >> 10) & 3) | ((desc >> 13) & 4);
-		pg->xn = desc & (1 << 4);
+		pg->ng = (desc >> 17) & 0x1;
+		pg->s = (desc >> 16) & 0x1;
+		pg->tex = (desc >> 12) & 0x7;
+		pg->ap = ((desc >> 10) & 0x3) | ((desc >> 13) & 0x4);
+		pg->xn = (desc >> 4) & 0x1;
+		pg->c = (desc >> 3) & 0x1;
+		pg->b = (desc >> 2) & 0x1;
 		*fs = 13;
 	} else {
 		/* Lookup l2 entry.  */
@@ -296,20 +303,21 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu,
 		}
 		table |= ((va >> 10) & 0x3fc);
 		desc = cpu_mmu_physical_read32(table);
-		pg->ap = ((desc >> 4) & 3) | ((desc >> 7) & 4);
 		switch (desc & 3) {
 		case 0: /* Page translation fault.  */
 			*fs = 7;
 			goto do_fault;
 		case 1: /* 64k page.  */
 			pg->pa = (desc & 0xffff0000) | (va & 0xffff);
-			pg->xn = desc & (1 << 15);
 			pg->sz = 0x10000;
+			pg->xn = (desc >> 15) & 0x1;
+			pg->tex = (desc >> 12) & 0x7;
 			break;
 		case 2: case 3: /* 4k page.  */
 			pg->pa = (desc & 0xfffff000) | (va & 0xfff);
-			pg->xn = desc & 1;
 			pg->sz = 0x1000;
+			pg->tex = (desc >> 6) & 0x7;
+			pg->xn = desc & 0x1;
 			break;
 		default:
 			/* Never happens, but compiler isn't 
@@ -317,6 +325,11 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu,
 			 */
 			return VMM_EFAIL;
 		}
+		pg->ng = (desc >> 11) & 0x1;
+		pg->s = (desc >> 10) & 0x1;
+		pg->ap = ((desc >> 4) & 0x3) | ((desc >> 7) & 0x4);
+		pg->c = (desc >> 3) & 0x1;
+		pg->b = (desc >> 2) & 0x1;
 		*fs = 15;
 	}
 	if (domain == 3) {
@@ -371,7 +384,13 @@ static u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu * vcpu,
 		pg->va = va;
 		pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		pg->ap = TTBL_AP_SRW_URW;
+		pg->c = 1;
+		pg->b = 1;
 	}
+
+	/* Ensure pages for normal vcpu are non-global */
+	pg->ng = 1; 
+	/* Ensure pages for normal vcpu have aligned va & pa */
 	pg->pa &= ~(pg->sz - 1);
 	pg->va &= ~(pg->sz - 1);
 
@@ -454,6 +473,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu * vcpu,
 					 pg.pa, pg.sz,
 					 &pg.pa, &availsz,
 					 &reg_flags))) {
+		vmm_manager_vcpu_halt(vcpu);
 		return rc;
 	}
 	if (availsz < TTBL_L2TBL_SMALL_PAGE_SIZE) {
@@ -518,6 +538,11 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu * vcpu,
 		pg.c = 1;
 	} else {
 		pg.c = 0;
+	}
+	if (pg.b && (reg_flags & VMM_REGION_BUFFERABLE)) {
+		pg.b = 1;
+	} else {
+		pg.b = 0;
 	}
 
 	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg);
@@ -960,46 +985,275 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		if (opc1 != 0) {
 			goto bad_reg;
 		}
-		/* No cache, so nothing to do except VA->PA translations. */
-		if (arm_feature(vcpu, ARM_FEATURE_VAPA)) {
-			switch (CRm) {
+		/* Note: Data cache invaidate/flush is a dangerous 
+		 * operation since it is possible that Xvisor had its 
+		 * own updates in data cache which are not written to 
+		 * main memory we might end-up losing those updates 
+		 * which can potentially crash the system. 
+		 */
+		switch (CRm) {
+		case 0:
+			switch (opc2) {
 			case 4:
+				/* Legacy wait-for-interrupt */
+				/* Emulation for ARMv5, ARMv6 */
+				vmm_vcpu_irq_wait(vcpu);
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 4:
+			/* VA->PA translations. */
+			if (arm_feature(vcpu, ARM_FEATURE_VAPA)) {
 				if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 					arm_priv(vcpu)->cp15.c7_par = data & 0xfffff6ff;
 				} else {
 					arm_priv(vcpu)->cp15.c7_par = data & 0xfffff1ff;
 				}
+			}
+			break;
+		case 5:
+			switch (opc2) {
+			case 0:
+				/* Invalidate all instruction caches to PoU */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				flush_icache();
 				break;
-			case 8: 
-				{
-					struct cpu_page pg;
-					int ret, is_user = opc2 & 2;
-					int access_type = opc2 & 1;
-					if (opc2 & 4) {
-						/* Other states are only available with TrustZone */
-						goto bad_reg;
-					}
-					ret = cpu_vcpu_cp15_find_page(vcpu, data, 
-								      access_type, is_user,
-								      &pg);
-					if (ret == 0) {
-						/* We do not set any attribute bits in the PAR */
-						if (pg.sz == TTBL_L1TBL_SUPSECTION_PAGE_SIZE && 
-						    arm_feature(vcpu, ARM_FEATURE_V7)) {
-							arm_priv(vcpu)->cp15.c7_par = (pg.pa & 0xff000000) | 1 << 1;
-						} else {
-							arm_priv(vcpu)->cp15.c7_par = pg.pa & 0xfffff000;
-						}
-					} else {
-						arm_priv(vcpu)->cp15.c7_par = (((ret >> 9) & 0x1) << 6) |
-									   (((ret >> 4) & 0x1F) << 1) | 1;
-					}
-				} 
+			case 1:
+				/* Invalidate instruction cache line by MVA to PoU */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				flush_icache_mva(data);
+				break;
+			case 2:
+				/* Invalidate instruction cache line by set/way. */
+				/* Emulation for ARMv5, ARMv6 */
+				flush_icache_line(data);
+				break;
+			case 4:
+				/* Instruction synchroization barrier */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				isb();
+				break;
+			case 6:
+				/* Invalidate entire branch predictor array */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				flush_bpredictor();
+				break;
+			case 7:
+				/* Invalidate MVA from branch predictor array */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				flush_bpredictor_mva(data);
 				break;
 			default:
 				goto bad_reg;
 			};
-		}
+			break;
+		case 6:
+			switch (opc2) {
+			case 0:
+				/* Invalidate data caches */
+				/* Emulation for ARMv5, ARMv6 */
+				/* For safety and correctness ignore 
+				 * this cache operation.
+				 */
+				break;
+			case 1:
+				/* Invalidate data cache line by MVA to PoC. */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				/* For safety and correctness ignore 
+				 * this cache operation.
+				 */
+				break;
+			case 2:
+				/* Invalidate data cache line by set/way. */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				/* For safety and correctness ignore 
+				 * this cache operation.
+				 */
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 7:
+			switch (opc2) {
+			case 0:
+				/* Invalidate unified (instruction or data) cache */
+				/* Emulation for ARMv5, ARMv6 */
+				/* For safety and correctness 
+				 * only flush instruction cache.
+				 */
+				flush_icache();
+				break;
+			case 1:
+				/* Invalidate unified cache line by MVA */
+				/* Emulation for ARMv5, ARMv6 */
+				/* For safety and correctness 
+				 * only flush instruction cache.
+				 */
+				flush_icache_mva(data);
+				break;
+			case 2:
+				/* Invalidate unified cache line by set/way */
+				/* Emulation for ARMv5, ARMv6 */
+				/* For safety and correctness 
+				 * only flush instruction cache.
+				 */
+				flush_icache_line(data);
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 8:
+			/* VA->PA translations. */
+			if (arm_feature(vcpu, ARM_FEATURE_VAPA)) {
+				struct cpu_page pg;
+				int ret, is_user = opc2 & 2;
+				int access_type = opc2 & 1;
+				if (opc2 & 4) {
+					/* Other states are only available with TrustZone */
+					goto bad_reg;
+				}
+				ret = cpu_vcpu_cp15_find_page(vcpu, data, 
+							      access_type, is_user,
+							      &pg);
+				if (ret == 0) {
+					/* We do not set any attribute bits in the PAR */
+					if (pg.sz == TTBL_L1TBL_SUPSECTION_PAGE_SIZE && 
+					    arm_feature(vcpu, ARM_FEATURE_V7)) {
+						arm_priv(vcpu)->cp15.c7_par = (pg.pa & 0xff000000) | 1 << 1;
+					} else {
+						arm_priv(vcpu)->cp15.c7_par = pg.pa & 0xfffff000;
+					}
+				} else {
+					arm_priv(vcpu)->cp15.c7_par = (((ret >> 9) & 0x1) << 6) |
+								   (((ret >> 4) & 0x1F) << 1) | 1;
+				}
+			}
+			break;
+		case 10:
+			switch (opc2) {
+			case 0:
+				/* Clean data cache */
+				/* Emulation for ARMv6 */
+				clean_dcache();
+				break;
+			case 1:
+				/* Clean data cache line by MVA. */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				clean_dcache_mva(data);
+				break;
+			case 2:
+				/* Clean data cache line by set/way. */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				clean_dcache_line(data);
+				break;
+			case 4:
+				/* Data synchroization barrier */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				dsb();
+				break;
+			case 5:
+				/* Data memory barrier */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				dmb();
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 11:
+			switch (opc2) {
+			case 0:
+				/* Clean unified cache */
+				/* Emulation for ARMv5, ARMv6 */
+				clean_idcache();
+				break;
+			case 1:
+				/* Clean unified cache line by MVA. */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				clean_idcache_mva(data);
+				break;
+			case 2:
+				/* Clean unified cache line by set/way. */
+				/* Emulation for ARMv5, ARMv6 */
+				clean_idcache_line(data);
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 14:
+			switch (opc2) {
+			case 0:
+				/* Clean and invalidate data cache */
+				/* Emulation for ARMv6 */
+				/* For safety and correctness 
+				 * only clean data cache.
+				 */
+				clean_dcache();
+				break;
+			case 1:
+				/* Clean and invalidate data cache line by MVA */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				/* For safety and correctness 
+				 * only clean data cache.
+				 */
+				/* FIXME: clean_dcache_mva(data); */
+				break;
+			case 2:
+				/* Clean and invalidate data cache line by set/way */
+				/* Emulation for ARMv5, ARMv6, ARMv7 */
+				/* For safety and correctness 
+				 * only clean data cache.
+				 */
+				clean_dcache_line(data);
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 15:
+			switch (opc2) {
+			case 0:
+				/* Clean and invalidate unified cache */
+				/* Emulation for ARMv6 */
+				/* For safety and correctness 
+				 * clean data cache and
+				 * flush instruction cache.
+				 */
+				clean_dcache();
+				flush_icache();
+				break;
+			case 1:
+				/* Clean and Invalidate unified cache line by MVA */
+				/* Emulation for ARMv5, ARMv6 */
+				/* For safety and correctness 
+				 * clean data cache and
+				 * flush instruction cache.
+				 */
+				clean_dcache_mva(data);
+				flush_icache_mva(data);
+				break;
+			case 2:
+				/* Clean and Invalidate unified cache line by set/way */
+				/* Emulation for ARMv5, ARMv6 */
+				/* For safety and correctness 
+				 * clean data cache and
+				 * flush instruction cache.
+				 */
+				clean_dcache_line(data);
+				flush_icache_line(data);
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		default:
+			goto bad_reg;
+		};
 		break;
 	case 8: /* MMU TLB control.  */
 		switch (opc2) {
@@ -1454,7 +1708,11 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		write_tpidruro(arm_priv(vcpu)->cp15.c13_tls2);
 		write_tpidrprw(arm_priv(vcpu)->cp15.c13_tls3);
 	} else {
-		if (tvcpu->is_normal) {
+		if (tvcpu) {
+			if (tvcpu->is_normal) {
+				cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
+			}
+		} else {
 			cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
 		}
 	}

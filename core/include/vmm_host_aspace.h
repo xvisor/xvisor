@@ -42,26 +42,6 @@ enum vmm_host_memory_flags {
 	VMM_MEMORY_EXECUTABLE=0x00000008
 };
 
-/** Allocate virtual space from virtual address pool */
-int vmm_host_vapool_alloc(virtual_addr_t * va, 
-			  virtual_size_t sz, 
-			  bool aligned);
-
-/** Free virtual space to virtual address pool */
-int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz);
-
-/** Base address of virtual address pool */
-virtual_addr_t vmm_host_vapool_base(void);
-
-/** Check if a virtual address is free */
-bool vmm_host_vapool_page_isfree(virtual_addr_t va);
-
-/** Free page count of virtual address pool */
-u32 vmm_host_vapool_free_page_count(void);
-
-/** Total page count of virtual address pool */
-u32 vmm_host_vapool_total_page_count(void);
-
 /** Allocate physical space from RAM */
 int vmm_host_ram_alloc(physical_addr_t * pa, 
 		       physical_size_t sz, 
@@ -115,6 +95,9 @@ virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags);
 
 /** Free pages back to host memory */
 int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count);
+
+/** Convert virtual address of a page to its physical address */
+int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t * page_pa);
 
 /** Read from host physical memory */
 u32 vmm_host_physical_read(physical_addr_t hphys_addr, 

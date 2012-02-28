@@ -48,7 +48,10 @@
 	guests {
 		#address-cells = <1>;
 		#size-cells = <0>;
-
+/* FIXME: No pre-configured guest by default. 
+ * Xvisor MIPS is still work-in-progress 
+ */
+/*
 		guest0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -90,5 +93,6 @@
 				};
 			};
 		};
+*/
 	};
 };

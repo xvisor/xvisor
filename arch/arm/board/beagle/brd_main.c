@@ -21,13 +21,13 @@
  * @brief main source file for board specific code
  */
 
-#include <omap3/config.h>
-#include <omap3/prcm.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <libfdt.h>
+#include <omap3/prcm.h>
+#include <omap3/sdrc.h>
 
 extern u32 dt_blob_start;
 
@@ -118,16 +118,77 @@ int arch_board_shutdown(void)
 	return VMM_OK;
 }
 
+/* Micron MT46H32M32LF-6 */
+/* XXX Using ARE = 0x1 (no autorefresh burst) -- can this be changed? */
+static struct omap3_sdrc_params mt46h32m32lf6_sdrc_params[] = {
+	[0] = {
+		.rate	     = 166000000,
+		.actim_ctrla = 0x9a9db4c6,
+		.actim_ctrlb = 0x00011217,
+		.rfr_ctrl    = 0x0004dc01,
+		.mr	     = 0x00000032,
+	},
+	[1] = {
+		.rate	     = 165941176,
+		.actim_ctrla = 0x9a9db4c6,
+		.actim_ctrlb = 0x00011217,
+		.rfr_ctrl    = 0x0004dc01,
+		.mr	     = 0x00000032,
+	},
+	[2] = {
+		.rate	     = 83000000,
+		.actim_ctrla = 0x51512283,
+		.actim_ctrlb = 0x0001120c,
+		.rfr_ctrl    = 0x00025501,
+		.mr	     = 0x00000032,
+	},
+	[3] = {
+		.rate	     = 82970588,
+		.actim_ctrla = 0x51512283,
+		.actim_ctrlb = 0x0001120c,
+		.rfr_ctrl    = 0x00025501,
+		.mr	     = 0x00000032,
+	},
+	[4] = {
+		.rate	     = 0
+	},
+};
+
 int __init arch_board_early_init(void)
 {
-	/*
-	 * TODO:
-	 * Host virtual memory, device tree, heap is up.
+	int rc;
+
+	/* Host virtual memory, device tree, heap is up.
 	 * Do necessary early stuff like iomapping devices
 	 * memory or boot time memory reservation here.
 	 */
-	omap3_cm_init(OMAP3_CM_BASE);
-	omap3_prm_init(OMAP3_PRM_BASE);
+
+	/* The function omap3_beagle_init_early() of 
+	 * <linux>/arch/arm/mach-omap2/board-omap3beagle.c
+	 * does the following:
+	 *   1. Initialize Clock & Power Domains using function 
+	 *      omap2_init_common_infrastructure() of
+	 *      <linux>/arch/arm/mach-omap2/io.c
+	 *   2. Initialize & Reprogram Clock of SDRC using function
+	 *      omap2_sdrc_init() of <linux>/arch/arm/mach-omap2/sdrc.c
+	 */
+
+	/* Initialize Clock Mamagment */
+	if ((rc = omap3_cm_init())) {
+		return rc;
+	}
+
+	/* Initialize Power & Reset Mamagment */
+	if ((rc = omap3_prm_init())) {
+		return rc;
+	}
+
+	/* Initialize SDRAM Controller (SDRC) */
+	if ((rc = omap3_sdrc_init(mt46h32m32lf6_sdrc_params, 
+				  mt46h32m32lf6_sdrc_params))) {
+		return rc;
+	}
+
 	return 0;
 }
 

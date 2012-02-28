@@ -28,25 +28,21 @@
 
 virtual_addr_t omap3_cm_base = 0;
 virtual_addr_t omap3_prm_base = 0;
-physical_addr_t omap3_cm_pa = 0;
-physical_addr_t omap3_prm_pa = 0;
 
-int omap3_cm_init(physical_addr_t cm_pa)
+int __init omap3_cm_init(void)
 {
 	if(!omap3_cm_base) {
-		omap3_cm_pa = cm_pa;
-		omap3_cm_base = vmm_host_iomap(omap3_cm_pa, 0x2000);
+		omap3_cm_base = vmm_host_iomap(OMAP3_CM_BASE, OMAP3_CM_SIZE);
 		if(!omap3_cm_base)
 			return VMM_EFAIL;
 	}
 	return VMM_OK;
 }
 
-int omap3_prm_init(physical_addr_t prm_pa)
+int __init omap3_prm_init(void)
 {
 	if(!omap3_prm_base) {
-		omap3_prm_pa = prm_pa;
-		omap3_prm_base = vmm_host_iomap(omap3_prm_pa, 0x2000);
+		omap3_prm_base = vmm_host_iomap(OMAP3_PRM_BASE, OMAP3_PRM_SIZE);
 		if(!omap3_prm_base)
 			return VMM_EFAIL;
 	}

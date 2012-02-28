@@ -18,18 +18,34 @@
  *
  * @file vmm_heap.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief header file declaring interface of a heap managment technique
+ * @brief header file for heap managment interface
  */
 #ifndef _VMM_HEAP_H__
 #define _VMM_HEAP_H__
 
 #include <vmm_types.h>
+#include <vmm_chardev.h>
 
 /** Allocate memory */
 void *vmm_malloc(virtual_size_t size);
 
 /** Free memory */
 void vmm_free(void *pointer);
+
+/** Retrive name of heap allocator */
+int vmm_heap_allocator_name(char * name, int name_sz);
+
+/** Starting virtual address of heap */
+virtual_addr_t vmm_heap_start_va(void);
+
+/** Total size of heap (house-keeping + allocation) */
+virtual_size_t vmm_heap_size(void);
+
+/** Size of heap house-keeping */
+virtual_size_t vmm_heap_hksize(void);
+
+/** Print heap state */
+int vmm_heap_print_state(struct vmm_chardev *cdev);
 
 /** Initialization function for head managment */
 int vmm_heap_init(void);

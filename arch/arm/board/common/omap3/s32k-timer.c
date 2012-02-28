@@ -39,7 +39,7 @@ u32 omap3_s32k_get_counter(void)
 	return vmm_readl((void *)(omap35x_32k_synct_base + OMAP3_S32K_CR));
 }
 
-int omap3_s32k_init(void)
+int __init omap3_s32k_init(void)
 {
 	if(!omap35x_32k_synct_base) {
 		omap35x_32k_synct_base = 

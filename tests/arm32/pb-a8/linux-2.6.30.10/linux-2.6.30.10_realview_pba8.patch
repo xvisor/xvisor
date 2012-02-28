@@ -1,6 +1,6 @@
 diff -Naur linux-2.6.30.10-orig/arch/arm/kernel/early_printk.c linux-2.6.30.10/arch/arm/kernel/early_printk.c
 --- linux-2.6.30.10-orig/arch/arm/kernel/early_printk.c	1970-01-01 05:30:00.000000000 +0530
-+++ linux-2.6.30.10/arch/arm/kernel/early_printk.c	2011-10-12 17:24:06.000000000 +0530
++++ linux-2.6.30.10/arch/arm/kernel/early_printk.c	2011-10-15 16:32:23.000000000 +0530
 @@ -0,0 +1,57 @@
 +/*
 + *  linux/arch/arm/kernel/early_printk.c
@@ -61,7 +61,7 @@ diff -Naur linux-2.6.30.10-orig/arch/arm/kernel/early_printk.c linux-2.6.30.10/a
 +early_param("earlyprintk", setup_early_printk);
 diff -Naur linux-2.6.30.10-orig/arch/arm/kernel/entry-armv.S linux-2.6.30.10/arch/arm/kernel/entry-armv.S
 --- linux-2.6.30.10-orig/arch/arm/kernel/entry-armv.S	2009-12-04 11:30:07.000000000 +0530
-+++ linux-2.6.30.10/arch/arm/kernel/entry-armv.S	2011-10-14 16:47:52.000000000 +0530
++++ linux-2.6.30.10/arch/arm/kernel/entry-armv.S	2011-10-15 16:32:23.000000000 +0530
 @@ -876,7 +876,7 @@
  
  __kuser_cmpxchg:				@ 0xffff0fc0
@@ -73,7 +73,7 @@ diff -Naur linux-2.6.30.10-orig/arch/arm/kernel/entry-armv.S linux-2.6.30.10/arc
  	 * Poor you.  No fast solution possible...
 diff -Naur linux-2.6.30.10-orig/arch/arm/kernel/Makefile linux-2.6.30.10/arch/arm/kernel/Makefile
 --- linux-2.6.30.10-orig/arch/arm/kernel/Makefile	2009-12-04 11:30:07.000000000 +0530
-+++ linux-2.6.30.10/arch/arm/kernel/Makefile	2011-10-12 15:55:03.000000000 +0530
++++ linux-2.6.30.10/arch/arm/kernel/Makefile	2011-10-15 16:32:23.000000000 +0530
 @@ -46,5 +46,6 @@
  
  head-y			:= head$(MMUEXT).o
@@ -83,7 +83,7 @@ diff -Naur linux-2.6.30.10-orig/arch/arm/kernel/Makefile linux-2.6.30.10/arch/ar
  extra-y := $(head-y) init_task.o vmlinux.lds
 diff -Naur linux-2.6.30.10-orig/arch/arm/kernel/setup.c linux-2.6.30.10/arch/arm/kernel/setup.c
 --- linux-2.6.30.10-orig/arch/arm/kernel/setup.c	2009-12-04 11:30:07.000000000 +0530
-+++ linux-2.6.30.10/arch/arm/kernel/setup.c	2011-10-12 11:49:51.000000000 +0530
++++ linux-2.6.30.10/arch/arm/kernel/setup.c	2011-10-15 16:32:23.000000000 +0530
 @@ -336,7 +336,7 @@
  	"add	sp, %0, %4\n\t"
  	"msr	cpsr_c, %5\n\t"
@@ -103,7 +103,7 @@ diff -Naur linux-2.6.30.10-orig/arch/arm/kernel/setup.c linux-2.6.30.10/arch/arm
  	/*
 diff -Naur linux-2.6.30.10-orig/arch/arm/kernel/traps.c linux-2.6.30.10/arch/arm/kernel/traps.c
 --- linux-2.6.30.10-orig/arch/arm/kernel/traps.c	2009-12-04 11:30:07.000000000 +0530
-+++ linux-2.6.30.10/arch/arm/kernel/traps.c	2011-10-14 16:48:11.000000000 +0530
++++ linux-2.6.30.10/arch/arm/kernel/traps.c	2011-10-15 16:32:23.000000000 +0530
 @@ -507,7 +507,7 @@
  #endif
  		return 0;
@@ -115,8 +115,8 @@ diff -Naur linux-2.6.30.10-orig/arch/arm/kernel/traps.c linux-2.6.30.10/arch/arm
  	 * Return zero in r0 if *MEM was changed or non-zero if no exchange
 diff -Naur linux-2.6.30.10-orig/arch/arm/mach-realview/realview_pba8.c linux-2.6.30.10/arch/arm/mach-realview/realview_pba8.c
 --- linux-2.6.30.10-orig/arch/arm/mach-realview/realview_pba8.c	2009-12-04 11:30:07.000000000 +0530
-+++ linux-2.6.30.10/arch/arm/mach-realview/realview_pba8.c	2011-10-12 18:50:01.000000000 +0530
-@@ -171,12 +171,12 @@
++++ linux-2.6.30.10/arch/arm/mach-realview/realview_pba8.c	2012-02-10 14:35:37.000000000 +0530
+@@ -171,25 +171,25 @@
  AMBA_DEVICE(dmac,	"issp:30",	DMAC,		NULL);
  
  static struct amba_device *amba_devs[] __initdata = {
@@ -131,7 +131,14 @@ diff -Naur linux-2.6.30.10-orig/arch/arm/mach-realview/realview_pba8.c linux-2.6
  	&clcd_device,
  	&sctl_device,
  	&wdog_device,
-@@ -189,7 +189,7 @@
+ 	&gpio0_device,
+ 	&gpio1_device,
+-	&gpio2_device,
++	&gpio2_device,*/
+ 	&rtc_device,
+-	&sci0_device,
++/*	&sci0_device,
+ 	&ssp0_device,
  	&aaci_device,
  	&mmc0_device,
  	&kmi0_device,

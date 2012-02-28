@@ -33,12 +33,6 @@
 				" rev16   %0, %1\n\t" : "=r" (rval) : \
 				"r" (val) : "memory", "cc"); rval;})
 
-#define isb() 			asm volatile ("isb" : : : "memory")
-
-#define dsb() 			asm volatile ("dsb" : : : "memory")
-
-#define dmb() 			asm volatile ("dmb" : : : "memory")
-
 #define read_sctlr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c1, c0, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
@@ -146,6 +140,14 @@
 #define invalid_d_tlb_line(va)	asm volatile(\
 				" mcr     p15, 0, %0, c8, c6, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
+
+#define read_contextidr()	({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c13, c0, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_contextidr(val)	asm volatile(\
+				" mcr     p15, 0, %0, c13, c0, 1\n\t" \
+				:: "r" ((val)) : "memory", "cc")
 
 #define read_tpidrurw()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c13, c0, 2\n\t" \

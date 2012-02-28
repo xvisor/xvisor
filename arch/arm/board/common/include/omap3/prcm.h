@@ -27,17 +27,23 @@
 
 #include <vmm_types.h>
 
+/** OMAP3/OMAP343X PRCM Base Physical Address */
+#define OMAP3_PRCM_BASE			0x48004000
+
+/** OMAP3/OMAP343X CM Base Physical Address */
+#define OMAP3_CM_BASE			0x48004000
+#define OMAP3_CM_SIZE			0x2000
+
+/** OMAP3/OMAP343X PRM Base Physical Address */
+#define OMAP3_PRM_BASE			0x48306000
+#define OMAP3_PRM_SIZE			0x2000
+
 #define OMAP3_SYSCLK_S12M		12000000
 #define OMAP3_SYSCLK_S13M		13000000
 #define OMAP3_SYSCLK_S19_2M		19200000
 #define OMAP3_SYSCLK_S24M		24000000
 #define OMAP3_SYSCLK_S26M		26000000
 #define OMAP3_SYSCLK_S38_4M		38400000
-
-#define OMAP3_PRCM_BASE			0x48004000
-
-#define OMAP3_CM_BASE			0x48004000
-#define OMAP3_CM_SIZE			0x2000
 
 #define OMAP3_IVA2_CM			0x0000
 #define OMAP3_OCP_SYS_REG_CM		0x0800
@@ -53,9 +59,6 @@
 #define OMAP3_GLOBAL_REG_CM		0x1200
 #define OMAP3_NEON_CM			0x1300
 #define OMAP3_USBHOST_CM		0x1400
-
-#define OMAP3_PRM_BASE			0x48306000
-#define OMAP3_PRM_SIZE			0x2000
 
 #define OMAP3_IVA2_PRM			0x0000
 #define OMAP3_OCP_SYS_REG_PRM		0x0800
@@ -143,12 +146,13 @@
 #define OMAP3_CM_CLKSEL			0x40
 
 
-int omap3_cm_init(physical_addr_t cm_pa);
+int omap3_cm_init(void);
 u32 omap3_cm_read(u32 domain, u32 offset);
 void omap3_cm_write(u32 domain, u32 offset, u32 val);
 void omap3_cm_setbits(u32 domain, u32 offset, u32 mask);
 void omap3_cm_clrbits(u32 domain, u32 offset, u32 mask);
-int omap3_prm_init(physical_addr_t prm_pa);
+
+int omap3_prm_init(void);
 u32 omap3_prm_read(u32 domain, u32 offset);
 void omap3_prm_write(u32 domain, u32 offset, u32 val);
 void omap3_prm_setbits(u32 domain, u32 offset, u32 mask);

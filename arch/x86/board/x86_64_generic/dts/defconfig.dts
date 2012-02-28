@@ -1,0 +1,94 @@
+/dts-v1/;
+
+/ {
+	vmm {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		/* Maximum size of VMM */
+		vmm_max_size = <0x40000000>;
+	};
+
+	host {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		model = "x86_64_generic";
+		device_type = "host";
+
+		cpus {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cpu_freq_mhz = <100>;
+
+			cpu@0 {
+				device_type = "cpu";
+				model = "Intel Atom Family";
+			};
+		};
+
+		memory {
+			physical_addr = <0x00000000>;
+			physical_size = <0x08000000>; /* 128 MB */
+		};
+
+		plb {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			uart0 {
+				device_type = "serial";
+				compatible = "ns8250";
+				reg = <0x14000000 0x00000008>;
+				clock-rate = <7372800>;
+				reg_offset = <0x3F8>;
+				baudrate = <115200>;
+			};
+		};
+	};
+
+	guests {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		guest0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			model = "vqemu-mips";
+			device_type = "guest";
+
+			vcpus {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				vcpu0 {
+					device_type = "vcpu";
+					model = "MIPS,24Kc";
+					time_slice = <98000000>;
+					start_pc = <0x3FC00000>;
+				};
+			};
+
+			aspace {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				nor_flash {
+					manifest_type = "real";
+					address_type = "memory";
+					device_type = "rom";
+					guest_physical_addr = <0x1FC00000>;
+					host_physical_addr = <0x300000>;
+					physical_size = <0x400000>;
+				};
+
+				mem0 {
+					manifest_type = "alias";
+					address_type = "memory";
+					guest_physical_addr = <0x00000000>;
+					alias_physical_addr = <0x600000>;
+					physical_size = <0x1000000>;
+					device_type = "ram";
+				};
+			};
+		};
+	};
+};

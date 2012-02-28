@@ -68,9 +68,11 @@ static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 		   "ID ", "Prio", "State", "Name", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	count = vmm_manager_vcpu_count();
+	count = vmm_manager_max_vcpu_count();
 	for (id = 0; id < count; id++) {
-		vcpu = vmm_manager_vcpu(id);
+		if (!(vcpu = vmm_manager_vcpu(id))) {
+			continue;
+		}
 		switch (vcpu->state) {
 		case VMM_VCPU_STATE_UNKNOWN:
 			vmm_strcpy(state, "Unknown");

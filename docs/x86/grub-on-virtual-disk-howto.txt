@@ -1,0 +1,173 @@
+Follow these steps to create a virtual disk and install legacy grub onto the
+mbr so as to use it with qemu-system-x86_64
+
+1. Create disk image
+====================
+dd takes the default block size as 512 bytes. For creating a disk image of
+size ~21MB Count (C) = 40320
+
+# dd if=/dev/zero of=x86.disk count=40320
+40320+0 records in
+40320+0 records out
+20643840 bytes (21 MB) copied, 0.0554614 s, 372 MB/s
+
+2. Partitioning the disk
+========================
+
+2.1 Setting drive parameters like secotrs, head and cylinders
+-------------------------------------------------------------
+Use expert mode fdisk to set the cylinders, head and sectors and partition
+the disk.
+
+Necessary inputs required to complete this step
+Number of sectors(s) = 63 (choosing default)
+Number of heads(h) = 16
+Number of cylinders(c) = C / (s * h)
+
+Thus c = 40320 / (63 * 16) = 40
+
+# fdisk x86.disk
+Device contains neither a valid DOS partition table, nor Sun, SGI or OSF disklabel
+Building a new DOS disklabel with disk identifier 0x3d81c3b7.
+Changes will remain in memory only, until you decide to write them.
+After that, of course, the previous content won't be recoverable.
+
+Warning: invalid flag 0x0000 of partition table 4 will be corrected by w(rite)
+
+Command (m for help): x
+
+Expert command (m for help): s
+Number of sectors (1-63, default 63):
+Using default value 63
+
+Expert command (m for help): h
+Number of heads (1-256, default 255): 16
+
+Expert command (m for help): c
+Number of cylinders (1-1048576, default 2): 40
+
+Expert command (m for help): w
+The partition table has been altered!
+
+Syncing disks.
+
+2.2 Creating primary partition
+------------------------------
+# fdisk x86.disk
+
+Command (m for help): n
+Command action
+   e   extended
+   p   primary partition (1-4)
+p
+Partition number (1-4, default 1): 1
+First sector (2048-40319, default 2048):
+Using default value 2048
+Last sector, +sectors or +size{K,M,G} (2048-40319, default 40319):
+Using default value 40319
+
+Command (m for help): t
+Selected partition 1
+Hex code (type L to list codes): 83
+
+Command (m for help): w
+The partition table has been altered!
+
+Syncing disks.
+
+3. Formatting drive & Mounting
+==============================
+3.1 Setting up loopback device
+------------------------------
+Inputs required in this step is the start of partition
+
+# fdisk -u -l x86.disk
+
+Disk x86.disk: 20 MB, 20643840 bytes
+120 heads, 63 sectors/track, 5 cylinders, total 40320 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x3d81c3b7
+
+   Device Boot      Start         End      Blocks   Id  System
+x86.disk1            2048       40319       19136   83  Linux
+                      ^
+                      +--- 2048 * 512 = 1048576 (S)
+
+# losetup -o (S) /dev/loop0 x86.img
+
+3.2 Formatting with ext2
+------------------------
+# mkfs.ext2 /dev/loop0
+
+3.3 Mounting the virtual drive
+------------------------------
+# mkdir -p /mnt/loop0
+# mount /dev/loop0 /mnt/loop0
+
+4. Installing grub
+==================
+For this step please ensure that you have grub installed on your box
+
+4.1 Copying grub stage1 & stage2 to virtual disk
+------------------------------------------------
+# mkdir -p /mnt/loop0/boot/grub/
+# cp -rv /usr/lib/grub/i386-pc/stage{1,2} /mnt/loop0/boot/grub/
+
+4.3 Copying vmm.bin to virtual disk
+-----------------------------------
+# cp $(XVISOR_TOP)/build/vmm.{bin,elf} $(XVISOR_TOP)/build/system.map /mnt/loop0/boot
+
+4.2 Detach loopback device
+--------------------------
+# umount /dev/loop0
+# losetup -d /dev/loop0
+
+4.3 Installing grub on virtual disk
+-----------------------------------
+Inputs required c, h and s from step 2.1 is passed to geometry command
+
+# grub --device-map=/dev/null
+
+    GNU GRUB  version 0.97  (640K lower / 3072K upper memory)
+
+ [ Minimal BASH-like line editing is supported.  For the first word, TAB
+   lists possible command completions.  Anywhere else TAB lists the possible
+   completions of a device/filename. ]
+
+grub> device (hd0) x86.disk
+
+grub> geometry (hd0) 40 16 63
+drive 0x80: C/H/S = 40/16/63, The number of sectors = 40320, x86.disk
+   Partition num: 0,  Filesystem type is ext2fs, partition type 0x83
+
+grub> root (hd0,0)
+ Filesystem type is ext2fs, partition type 0x83
+
+grub> setup (hd0)
+ Checking if "/boot/grub/stage1" exists... yes
+ Checking if "/boot/grub/stage2" exists... yes
+ Checking if "/boot/grub/e2fs_stage1_5" exists... no
+ Running "install /boot/grub/stage1 (hd0) /boot/grub/stage2 p /boot/grub/menu.l
+st "... succeeded
+Done.
+
+grub>  quit
+
+5. Running on qemu
+==================
+$ qemu-system-x86_64 -hda x86.disk -m 128
+
+6. Starting vmm.bin in grub in qemu
+===================================
+At grub prompt in qemu execute
+
+grub> kernel /boot/vmm.bin
+   [Multiboot kludge, loadaddr=0x100000, .........]
+
+grub> boot
+
+7. Referrences
+==============
+http://www.slideshare.net/sukhdotin/installing-grub-on-virtual-hard-disk-images-5094625
