@@ -113,6 +113,15 @@ SECTIONS
 		PROVIDE(_eheap = .);
 	}
 
+        .stack :
+        {
+                . = ALIGN(4096);
+                PROVIDE(_stack_end = .);
+                . += 8192;
+                . = ALIGN(4);
+                PROVIDE(_stack_start = .);
+        }
+
 	.init :
 	{
 		PROVIDE(_init_text_start = .);

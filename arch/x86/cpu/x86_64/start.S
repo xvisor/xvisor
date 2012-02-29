@@ -63,8 +63,8 @@ mboot:
 
 	.int mboot
 	.int _text_bootstrap_start
-	.int _bss_bootstrap_start
-	.int _code_bootstrap_end
+        .int _code_end
+        .int 0
 	.int _start_32
 
 _no_longmode:
@@ -189,12 +189,6 @@ bootstrap32:
          */
         call    __do_IMP
 
-        /*
-         * Create the boot page table
-         * for all 64-bit code.
-         */
-        //call    __boot_pgtable_init
-
         /* Enable PAE */
         movl    %cr4, %eax
         or      $(1 << 5), %eax
@@ -247,7 +241,7 @@ _gdt64:
         /* Segment base: Again shouln't matter */
         .word 0
         .long 0xBF9A00 /* AVL:L:Execute/Access */
-        .word 
+        .word
 
         .xvisor_data_64:
         .word 0xFFFF
@@ -300,8 +294,8 @@ __pgti:
 .code64
 .section .bootstrap.text
 __64_bit_entry_trampoline:
+        movabsq $_stack_start, %rsp
 
-lforever:       jmp lforever
         /*
          * Hell yes. We are done bootstrapping!
          * Time for hypervisor initialization now.
@@ -309,8 +303,7 @@ lforever:       jmp lforever
          * This was all *dirty* and I hope I got it
          * right. Well atleast I tried my best! :)
          */
-        movabsq $cpu_init, %rax
-        callq *%rax
+        call cpu_init
 
         /*
          * Any case: Shouldn't be here. Kill yourself!!
