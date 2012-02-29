@@ -121,6 +121,15 @@ S:	Maintained
 L:	xvisor-devel@googlegroups.com
 F:	arch/mips/*
 
+INTEL64(x86-64)
+P:	Himanshu Chauhan
+M:	hschauhan@nulltrace.org
+P:	Tushar Jagad
+M:	thjagad@gmail.com
+S:	Maintained
+L:	xvisor-devel@googlegroups.com
+F:	arch/x86/*
+
 RING BUFFER APIs
 P:	Himanshu Chauhan
 M:	hschauhan@nulltrace.org
