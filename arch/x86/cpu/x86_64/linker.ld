@@ -61,11 +61,9 @@ SECTIONS
         . = ALIGN(4096);
         PROVIDE(_code_bootstrap_end = .);
 
-        . += CPU_TEXT_VMA;
-
         PROVIDE(_code_start = .);
 
-	.text : AT(ADDR(.text) - CPU_TEXT_VMA)
+	.text :
  	{
 		PROVIDE(_text_start = .);
 		*(.start.text)
@@ -74,7 +72,7 @@ SECTIONS
 		PROVIDE(_text_end = .);
 	}
 
-	.data : AT(ADDR(.data) - CPU_TEXT_VMA)
+	.data :
 	{
 		PROVIDE(_data_start = .);
 		*(.data)
@@ -82,7 +80,7 @@ SECTIONS
 		PROVIDE(_data_end = .);
 	}
 
-	.bss : AT(ADDR(.bss) - CPU_TEXT_VMA)
+	.bss :
 	{
 		PROVIDE(_bss_start = .);
 		*(.bss)
@@ -90,7 +88,7 @@ SECTIONS
 		PROVIDE(_bss_end = .);
 	}
 
-	.rodata : AT(ADDR(.rodata) - CPU_TEXT_VMA)
+	.rodata :
 	{
 		PROVIDE(_rodata_start = .);
 		*(.rodata .rodata.*)
@@ -98,7 +96,7 @@ SECTIONS
 		PROVIDE(_rodata_end = .);
 	}
 
-	.modtbl : AT(ADDR(.modtbl) - CPU_TEXT_VMA)
+	.modtbl :
 	{
 		PROVIDE(_modtbl_start = .);
 		*(.modtbl)
@@ -106,7 +104,7 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
-	.heap : AT(ADDR(.heap) - CPU_TEXT_VMA)
+	.heap :
 	{
 		. = ALIGN(4096);
 		PROVIDE(_heap_start = .);
@@ -115,7 +113,7 @@ SECTIONS
 		PROVIDE(_eheap = .);
 	}
 
-	.init : AT(ADDR(.heap) - CPU_TEXT_VMA)
+	.init :
 	{
 		PROVIDE(_init_text_start = .);
 		*(.init.text)

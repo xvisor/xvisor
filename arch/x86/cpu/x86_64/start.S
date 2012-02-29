@@ -117,7 +117,8 @@ __do_IMP:
         movl    %esp, %ebp
         subl    $32, %esp
         movl    $_code_bootstrap_start, -4(%ebp)
-        movl    $_code_bootstrap_end, -8(%ebp)
+        /*movl    $_code_bootstrap_end, -8(%ebp)*/
+        movl    $_code_end, -8(%ebp)
         movl    $CPU_TEXT_LMA, -12(%ebp)
         movl    $8, -16(%ebp)
 
@@ -245,12 +246,13 @@ _gdt64:
         .word 0xFFFF
         /* Segment base: Again shouln't matter */
         .word 0
-        .long 0x309A00 /* AVL:L:Execute/Access */
+        .long 0xBF9A00 /* AVL:L:Execute/Access */
+        .word 
 
         .xvisor_data_64:
         .word 0xFFFF
         .word 0
-        .long 0x109200
+        .long 0x9F9200
 
         .GDT_POINTER:
         .word .-_gdt64 -1
