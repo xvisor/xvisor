@@ -1255,7 +1255,12 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 			    (*resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
 	}
 	
-	/* Map space for reserved area */
+	/* Map space for reserved area 
+	 * We have kept our page table pool in reserved area
+	 * so to avoid cleaning data cache during page table 
+	 * programming we make reserved area as write-through 
+	 * and cacheable
+	 */
 	pa = *resv_pa;
 	va = *resv_va;
 	sz = *resv_sz;
