@@ -1115,11 +1115,11 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 		p.ap = TTBL_AP_S_U;
 	}
 	p.xn = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
+	p.tex = 0;
 	p.c = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;
-	p.s = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;
-	p.tex = (mem_flags & VMM_MEMORY_CACHEABLE) ? 0x7 : 0;
+	p.b = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;;
 	p.ng = 0;
-	p.b = 0;
+	p.s = 0;
 	return cpu_mmu_map_reserved_page(&p);
 }
 
