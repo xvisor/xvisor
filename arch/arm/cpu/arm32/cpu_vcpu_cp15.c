@@ -384,8 +384,9 @@ static u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu * vcpu,
 		pg->va = va;
 		pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		pg->ap = TTBL_AP_SRW_URW;
+		pg->tex = 0;
 		pg->c = 1;
-		pg->b = 1;
+		pg->b = 0;
 	}
 
 	/* Ensure pages for normal vcpu are non-global */
