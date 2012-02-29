@@ -22,7 +22,7 @@
  */
 OUTPUT_FORMAT(elf64-x86-64)
 OUTPUT_ARCH(i386:x86-64)
-ENTRY(_start_64)
+ENTRY(_start_32)
 
 SECTIONS 
 {
@@ -43,16 +43,22 @@ SECTIONS
                 *(.bootstrap_readonly)
         }
 
-        . = ALIGN(4);
-        .bootstrap_zeroed_section :
+        /*
+         * We use the first few pages for initial page
+         * page tables. For this the start of PML4 should
+         * be aligned to page size.
+         */
+        . = ALIGN(4096);
+        .bootstrap.bss :
         {
                 PROVIDE(_bss_bootstrap_start = .);
-                *(.bootstrap_zeroed_section)
+                *(.bootstrap.bss)
+                . = ALIGN(4);
                 . += 4096;
                 PROVIDE(_bss_bootstrap_end = .);
         }
 
-        . = ALIGN(4);
+        . = ALIGN(4096);
         PROVIDE(_code_bootstrap_end = .);
 
         . += CPU_TEXT_VMA;

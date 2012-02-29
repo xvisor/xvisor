@@ -8,18 +8,15 @@
  * This is released under GNU GPLv2.
  *
  */
+#include <cpu_mmu.h>
+
 .code32 /* 32-bit code */
 .section .bootstrap.text, "ax"
-.globl _start_64
+.globl _start_32
 .extern _bss_bootstrap_end
 
-/*
- * I think this is really the best way to reclaim the
- * area of initial code. For all other non-recalled code
- * we will put them in a seperate .init section and then
- * reclaim it later.
- */
-_start_64:
+_start_32:
+        cli /* no interrupts please. */
 	leal	_bss_bootstrap_end, %esp	/* setup the stack (bss segment) */
 
         /* O.K. We have CPUID. Check if we can enter
@@ -45,11 +42,6 @@ _start_64:
         jz   _pe_not_enabled
 
         call bootstrap32
-        /*
-         * Need to do a far jump to long code, before that
-         * Setup!!!
-         */
-1:      jmp	1b /* we shouldn't work here */
 
 /*
  * Don't worry about this. This is a multi-boot signature for grub
@@ -73,7 +65,7 @@ mboot:
 	.int _text_bootstrap_start
 	.int _bss_bootstrap_start
 	.int _code_bootstrap_end
-	.int _start_64
+	.int _start_32
 
 _no_longmode:
         jmp _no_longmode
@@ -111,17 +103,214 @@ _ccd:
         leave
         ret
 
-.type	bootstrap32, @function
+     	.globl	__boot_pgtable_init
+	.type	__boot_pgtable_init, @function
+__boot_pgtable_init:
+	pushl	%ebp
+	movl	%esp, %ebp
+
+32:     jmp 32b
+
+        .type __do_IMP, @function
+__do_IMP:
+        pushl   %ebp
+        movl    %esp, %ebp
+        subl    $32, %esp
+        movl    $_code_bootstrap_start, -4(%ebp)
+        movl    $_code_bootstrap_end, -8(%ebp)
+        movl    $CPU_TEXT_LMA, -12(%ebp)
+        movl    $8, -16(%ebp)
+
+__fill_IMP_table:
+        /* Populate the page table */
+        movl    -12(%ebp), %eax
+        shrl    $12, %eax
+        andl    $0x1FF, %eax /* eax now has page table index. */
+        movl    -12(%ebp), %ecx
+        andl    $PAGE_MASK, %ecx
+        or      $0x3, %ecx
+        movl    %ecx, __pgti(,%eax,8)
+        xor     %ecx, %ecx
+        movl    %ecx, __pgti+4(,%eax,8)
+
+        /* populate the page directory index */
+        movl    -12(%ebp), %eax
+        shrl    $21, %eax
+        andl    $0x1FF, %eax /* eax now has page directory index. */
+        movl    $__pgti, %ecx
+        andl    $PAGE_MASK, %ecx
+        or      $0x3, %ecx
+        movl    %ecx, __pgdi(,%eax,8)
+        xorl    %ecx, %ecx
+
+        /* populate the page directory pointer */
+        movl    -12(%ebp), %eax
+        shrl    $30, %eax
+        andl    $0x1FF, %eax /* eax now has page directory pointer index. */
+        movl    $__pgdi, %ecx
+        andl    $PAGE_MASK, %ecx
+        or      $0x3, %ecx
+        movl    %ecx, __pgdp(,%eax,8)
+        xorl    %ecx, %ecx
+
+        /* populate PML4 */
+        movl    -12(%ebp), %eax
+        shrl    $39, %eax
+        andl    $0x1FF, %eax /* eax now has PML4 index. */
+        movl    $__pgdp, %ecx
+        andl    $PAGE_MASK, %ecx
+        or      $0x3, %ecx
+        movl    %ecx, __pml4(,%eax,8)
+        xorl    %ecx, %ecx
+
+        addl     $4096, -12(%ebp)
+        movl     -12(%ebp), %eax
+        movl     -8(%ebp), %ecx
+        cmp      %ecx, %eax
+        jb      __fill_IMP_table
+        movl    %ebp, %esp
+        popl    %ebp
+        ret
+
+        .type	bootstrap32, @function
 bootstrap32:
         pushl   %ebp
         movl    %esp, %ebp
         subl    $4, %esp
         movl    $_load_banner, (%esp)
         call    early_print
-30:
-	jmp	30b
+
+        /*
+         * Create identity map page table entries
+         * because we will execute a few
+         * more 32-bit bootstrap instructions
+         * before jumping to 64-code.
+         */
+        call    __do_IMP
+
+        /*
+         * Create the boot page table
+         * for all 64-bit code.
+         */
+        //call    __boot_pgtable_init
+
+        /* Enable PAE */
+        movl    %cr4, %eax
+        or      $(1 << 5), %eax
+        movl    %eax, %cr4
+
+        /* Load the page table in cr3 */
+        movl    $__pml4, %eax
+        movl    %eax, %cr3
+
+        /* Set the IA32-e mode */
+        movl    $0xc0000080, %ecx
+        rdmsr
+        or      $0x100, %eax
+        wrmsr
+
+        /* Enable Paging */
+        movl    %cr0, %eax
+        orl    $(1 << 31 | 1 << 0), %eax
+        movl    %eax, %cr0
+
+        /* Load the new 64-bit GDT */
+        movl   $.GDT_POINTER, %eax
+        lgdt   (%eax)
+        movl   $0x10, %eax
+        movl   %eax, %ds
+        movl   %eax, %es
+        movl   %eax, %fs
+        movl   %eax, %ss
+        movl   %eax, %gs
+
+        /*
+         * Do a far call to 64-bit trampoline
+         * Bootstrapping is almost done!
+         */
+        ljmp   $0x8, $(__64_bit_entry_trampoline)
+
 
 .section .bootstrap_readonly,"aw",@progbits
 .align 4
 _load_banner:
 	.string	"Bootstrapping X-Visor..."
+
+_gdt64:
+        .NULL:
+        .quad 0 /* Null segment */
+
+        .xvisor_code_64:
+        /* Segment limit: Shouldn't matter in long mode but still.. */
+        .word 0xFFFF
+        /* Segment base: Again shouln't matter */
+        .word 0
+        .long 0x309A00 /* AVL:L:Execute/Access */
+
+        .xvisor_data_64:
+        .word 0xFFFF
+        .word 0
+        .long 0x109200
+
+        .GDT_POINTER:
+        .word .-_gdt64 -1
+        .long _gdt64
+
+
+/*
+ * 1 page for PML4, 1 page for PGPT, 1 page
+ * for PGTI, 4 pages for Page tables.
+ */
+.section .bootstrap.bss,"aw",@progbits
+        .globl __pml4
+        .align 32
+	.type	__pml4, @object
+	.size	__pml4, 4096
+__pml4:
+	.long	0
+	.long	0
+	.zero	4088
+	.align 32
+	.type	__pgdp, @object
+	.size	__pgdp, 4096
+__pgdp:
+	.long	0
+	.long	0
+	.zero	4088
+	.align 32
+	.type	__pgdi, @object
+	.size	__pgdi, 4096
+__pgdi:
+	.long	0
+	.long	0
+	.zero	4088
+	.align 32
+	.type	__pgti, @object
+	.size	__pgti, 16384
+__pgti:
+	.long	0
+	.long	0
+	.long	0
+	.long	0
+	.zero	16
+	.zero	16352
+
+.code64
+.section .bootstrap.text
+__64_bit_entry_trampoline:
+
+lforever:       jmp lforever
+        /*
+         * Hell yes. We are done bootstrapping!
+         * Time for hypervisor initialization now.
+         *
+         * This was all *dirty* and I hope I got it
+         * right. Well atleast I tried my best! :)
+         */
+        movabsq $cpu_init, %rax
+        callq *%rax
+
+        /*
+         * Any case: Shouldn't be here. Kill yourself!!
+         */
+        hlt
