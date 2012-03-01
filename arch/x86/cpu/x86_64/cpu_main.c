@@ -34,6 +34,17 @@ void cpu_regs_dump(arch_regs_t *tregs)
 {
 }
 
+extern void cls();
+extern void init_console(void);
+extern void putch(u8 ch);
+void early_print_string(u8 *str)
+{
+        while (*str) {
+                putch(*str);
+                str++;
+        }
+}
+
 int __init arch_cpu_early_init(void)
 {
 	/*
@@ -51,8 +62,17 @@ int __init arch_cpu_final_init(void)
 
 void __init cpu_init(struct multiboot_info *binfo)
 {
+        init_console();
+
         /* save our copy of boot info */
         vmm_memcpy(&boot_info, binfo, sizeof(struct multiboot_info));
+
+        cls();
+
+        early_print_string((u8 *)"Bootstrapping done.\n");
+        early_print_string((u8 *)"Initializing X-Visor. Please wait...\n");
+
+        while(1);
 
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();

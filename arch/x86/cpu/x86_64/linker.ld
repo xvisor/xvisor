@@ -129,5 +129,7 @@ SECTIONS
 		. = ALIGN(4);
 		PROVIDE(_init_text_end = .);
 	}
+
+        . = ALIGN(4096);
 	PROVIDE(_code_end = .);
 }
