@@ -28,47 +28,15 @@ SECTIONS
 {
 	. = CPU_TEXT_LMA;
 
-	PROVIDE(_code_bootstrap_start = .);
-
-        .bootstrap.text :
-        {
-                PROVIDE(_text_bootstrap_start = .);
-                *(.bootstrap.text)
-                PROVIDE(_text_bootstrap_end = .);
-        }
-
-        . = ALIGN(4);
-        .bootstrap_readonly :
-        {
-                *(.bootstrap_readonly)
-        }
-
-        /*
-         * We use the first few pages for initial page
-         * page tables. For this the start of PML4 should
-         * be aligned to page size.
-         */
-        . = ALIGN(4096);
-        .bootstrap.bss :
-        {
-                PROVIDE(_bss_bootstrap_start = .);
-                *(.bootstrap.bss)
-                . = ALIGN(4);
-                . += 4096;
-                PROVIDE(_bss_bootstrap_end = .);
-        }
-
-        . = ALIGN(4096);
-        PROVIDE(_code_bootstrap_end = .);
-
         PROVIDE(_code_start = .);
 
+        .mboot : { *(.mboot) }
+
+        . = ALIGN(4);
 	.text :
  	{
 		PROVIDE(_text_start = .);
-		*(.start.text)
 		*(.text)
-		. = ALIGN(4);
 		PROVIDE(_text_end = .);
 	}
 
@@ -126,10 +94,26 @@ SECTIONS
 	{
 		PROVIDE(_init_text_start = .);
 		*(.init.text)
-		. = ALIGN(4);
+		. = ALIGN(4096);
+
+        	PROVIDE(_code_bootstrap_start = .);
+                *(.bootstrap.text)
+
+                /*
+                 * We have initial page tables in .bootstrap.bss
+                 * So beginning should be page aligned.
+                 */
+                . = ALIGN(4096);
+                KEEP(*(.bootstrap.bss))
+                . = ALIGN(4);
+                . += 4096;
+                PROVIDE(_bootstrap_stack_start = .);
+
+                . = ALIGN(4096);
+
+                PROVIDE(_code_bootstrap_end = .);
 		PROVIDE(_init_text_end = .);
 	}
 
-        . = ALIGN(4096);
 	PROVIDE(_code_end = .);
 }

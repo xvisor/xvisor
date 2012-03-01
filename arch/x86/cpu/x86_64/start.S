@@ -10,6 +10,31 @@
  */
 #include <cpu_mmu.h>
 
+.section .mboot,"aw",@progbits
+/*
+ * Don't worry about this. This is a multi-boot signature for grub
+ * to let it know that this binary is actually a kernel.
+ */
+.align 4
+mboot:
+	.equ MULTIBOOT_PAGE_ALIGN, 1<< 0
+	.equ MULTIBOOT_MEMORY_INFO, 1 << 1
+	.equ MULTIBOOT_AOUT_KLUDGE, 1 << 16
+	.equ MULTIBOOT_HEADER_MAGIC, 0x1BADB002
+	.equ MULTIBOOT_HEADER_FLAGS, MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO | MULTIBOOT_AOUT_KLUDGE
+	.equ MULTIBOOT_CHECKSUM, -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
+	.extern _code_start, _code_end    /* These externs are coming from the linker script */
+
+	.int MULTIBOOT_HEADER_MAGIC
+	.int MULTIBOOT_HEADER_FLAGS
+	.int MULTIBOOT_CHECKSUM
+
+	.int mboot
+	.int _code_start
+        .int _code_end
+        .int 0
+	.int _start_32
+
 .code32 /* 32-bit code */
 .section .bootstrap.text, "ax"
 .globl _start_32
@@ -17,7 +42,7 @@
 
 _start_32:
         cli /* no interrupts please. */
-	leal	_bss_bootstrap_end, %esp	/* setup the stack (bss segment) */
+	leal	_bootstrap_stack_start, %esp	/* setup the stack (bss segment) */
 
         xor     %eax, %eax
         movl    %ebx, _mboot_info(, %eax, 8)
@@ -46,30 +71,6 @@ _start_32:
 
         call bootstrap32
 
-/*
- * Don't worry about this. This is a multi-boot signature for grub
- * to let it know that this binary is actually a kernel.
- */
-.align 4
-mboot:
-	.equ MULTIBOOT_PAGE_ALIGN, 1<< 0
-	.equ MULTIBOOT_MEMORY_INFO, 1 << 1
-	.equ MULTIBOOT_AOUT_KLUDGE, 1 << 16
-	.equ MULTIBOOT_HEADER_MAGIC, 0x1BADB002
-	.equ MULTIBOOT_HEADER_FLAGS, MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO | MULTIBOOT_AOUT_KLUDGE
-	.equ MULTIBOOT_CHECKSUM, -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
-	.extern _text_bootstrap_start, _bss_bootstrap_start, _code_bootstrap_end    /* These externs are coming from the linker script */
-
-	.int MULTIBOOT_HEADER_MAGIC
-	.int MULTIBOOT_HEADER_FLAGS
-	.int MULTIBOOT_CHECKSUM
-
-	.int mboot
-	.int _text_bootstrap_start
-        .int _code_end
-        .int 0
-	.int _start_32
-
 _no_longmode:
         jmp _no_longmode
 
@@ -79,32 +80,6 @@ _no_longmode:
  */
 _pe_not_enabled:
         jmp _pe_not_enabled
-
-.type   early_print, @function
-early_print:
-        pushl   %ebp
-        movl    %esp, %ebp
-        subl    $16, %esp
-        movl    $0xb8000, -8(%ebp)
-        movl    $0, -4(%ebp)
-        jmp     _ccd
-_ctex:
-        movl    8(%ebp), %eax
-        movzbl  (%eax), %eax
-        movl    %eax, %edx
-        movl    -8(%ebp), %eax
-        movb    %dl, (%eax)
-        addl    $1, -8(%ebp)
-        movl    -8(%ebp), %eax
-        movb    $7, (%eax)
-        addl    $1, -8(%ebp)
-        addl    $1, 8(%ebp)
-        addl    $1, -4(%ebp)
-_ccd:
-        cmpl    $24, -4(%ebp)
-        jle     _ctex
-        leave
-        ret
 
         .type create_page_table_entry, @function
 create_page_table_entry:
@@ -174,7 +149,8 @@ __do_IMP:
         pushl   %ebp
         movl    %esp, %ebp
         movl    $_code_end, %eax
-        subl    $CPU_TEXT_LMA, %eax
+        subl    $_code_start, %eax
+        xor     %edx, %edx
         movl    $PAGE_SIZE, %ecx
         divl    %ecx
         pushl   %eax
@@ -199,9 +175,6 @@ __map_vga_base:
 bootstrap32:
         pushl   %ebp
         movl    %esp, %ebp
-        subl    $4, %esp
-        movl    $_load_banner, (%esp)
-        call    early_print
 
         /*
          * Create identity map page table entries
@@ -250,39 +223,6 @@ bootstrap32:
          */
         ljmp   $0x8, $(__64_bit_entry_trampoline)
 
-
-.section .bootstrap_readonly,"aw",@progbits
-.align 4
-_load_banner:
-	.string	"Bootstrapping X-Visor..."
-
-.align 4
-_mboot_info:
-        .quad 0
-
-.align 4
-_gdt64:
-        .NULL:
-        .quad 0 /* Null segment */
-
-        .xvisor_code_64:
-        /* Segment limit: Shouldn't matter in long mode but still.. */
-        .word 0xFFFF
-        /* Segment base: Again shouln't matter */
-        .word 0
-        .long 0xBF9A00 /* AVL:L:Execute/Access */
-        .word
-
-        .xvisor_data_64:
-        .word 0xFFFF
-        .word 0
-        .long 0x9F9200
-
-        .GDT_POINTER:
-        .word .-_gdt64 -1
-        .long _gdt64
-
-
 /*
  * 1 page for PML4, 1 page for PGPT, 1 page
  * for PGTI, 4 pages for Page tables.
@@ -315,6 +255,32 @@ __pgdi:
 	.size	__pgti, 32768
 __pgti:
 	.zero	32768
+
+.align 4
+_mboot_info:
+        .quad 0
+
+.align 4
+_gdt64:
+        .NULL:
+        .quad 0 /* Null segment */
+
+        .xvisor_code_64:
+        /* Segment limit: Shouldn't matter in long mode but still.. */
+        .word 0xFFFF
+        /* Segment base: Again shouln't matter */
+        .word 0
+        .long 0xBF9A00 /* AVL:L:Execute/Access */
+        .word
+
+        .xvisor_data_64:
+        .word 0xFFFF
+        .word 0
+        .long 0x9F9200
+
+        .GDT_POINTER:
+        .word .-_gdt64 -1
+        .long _gdt64
 
 .code64
 .section .bootstrap.text
