@@ -19,6 +19,9 @@ _start_32:
         cli /* no interrupts please. */
 	leal	_bss_bootstrap_end, %esp	/* setup the stack (bss segment) */
 
+        xor     %eax, %eax
+        movl    %ebx, _mboot_info(, %eax, 8)
+
         /* O.K. We have CPUID. Check if we can enter
          * long mode. */
         movl $0x80000000, %eax
@@ -231,6 +234,11 @@ bootstrap32:
 _load_banner:
 	.string	"Bootstrapping X-Visor..."
 
+.align 4
+_mboot_info:
+        .quad 0
+
+.align 4
 _gdt64:
         .NULL:
         .quad 0 /* Null segment */
@@ -295,6 +303,7 @@ __pgti:
 .section .bootstrap.text
 __64_bit_entry_trampoline:
         movabsq $_stack_start, %rsp
+        movq    (_mboot_info), %rdi
 
         /*
          * Hell yes. We are done bootstrapping!

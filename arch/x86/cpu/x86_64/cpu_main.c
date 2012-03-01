@@ -26,6 +26,9 @@
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_main.h>
+#include <multiboot.h>
+
+struct multiboot_info boot_info;
 
 void cpu_regs_dump(arch_regs_t *tregs)
 {
@@ -46,8 +49,11 @@ int __init arch_cpu_final_init(void)
         return 0;
 }
 
-void __init cpu_init(void)
+void __init cpu_init(struct multiboot_info *binfo)
 {
+        /* save our copy of boot info */
+        vmm_memcpy(&boot_info, binfo, sizeof(struct multiboot_info));
+
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
 
