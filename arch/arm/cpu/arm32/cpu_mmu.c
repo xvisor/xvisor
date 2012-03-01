@@ -29,6 +29,7 @@
 #include <vmm_types.h>
 #include <arch_cpu.h>
 #include <cpu_defines.h>
+#include <cpu_cache.h>
 #include <cpu_barrier.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
@@ -57,6 +58,13 @@ struct cpu_mmu_ctrl {
 };
 
 static struct cpu_mmu_ctrl mmuctrl;
+
+static inline void cpu_mmu_sync_tte(u32 *tte)
+{
+	clean_dcache_mva((virtual_addr_t)tte);
+	isb();
+	dsb();
+}
 
 /** Find L2 page table at given physical address from L1 page table */
 struct cpu_l2tbl *cpu_mmu_l2tbl_find_tbl_pa(physical_addr_t tbl_pa)
@@ -100,6 +108,7 @@ int cpu_mmu_l2tbl_detach(struct cpu_l2tbl * l2)
 	}
 
 	*l1_tte = 0x0;
+	cpu_mmu_sync_tte(l1_tte);
 	l2->l1->tte_cnt--;
 	l2->l1->l2tbl_cnt--;
 	l2->l1 = NULL;
@@ -151,6 +160,7 @@ int cpu_mmu_l2tbl_attach(struct cpu_l1tbl * l1, struct cpu_l2tbl * l2, u32 new_i
 	l1_tte_new |= (l2->tbl_pa & TTBL_L1TBL_TTE_BASE10_MASK);
 	l1_tte_new |= TTBL_L1TBL_TTE_TYPE_L2TBL;
 	*l1_tte = l1_tte_new;
+	cpu_mmu_sync_tte(l1_tte);
 	if (l1_tte_type == TTBL_L1TBL_TTE_TYPE_FAULT) {
 		l1->tte_cnt++;
 	}
@@ -450,6 +460,7 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 		if ((pgpa == chkpa) && (pg->sz == chksz)) {
 			for (ite = 0; ite < 16; ite++) {
 				l1_tte[ite] = 0x0;
+				cpu_mmu_sync_tte(&l1_tte[ite]);
 				l1->tte_cnt--;
 			}
 			ret = VMM_OK;
@@ -458,6 +469,7 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 	case 2: /* Section */
 		if ((pgpa == chkpa) && (pg->sz == chksz)) {
 			*l1_tte = 0x0;
+			cpu_mmu_sync_tte(l1_tte);
 			l1->tte_cnt--;
 			ret = VMM_OK;
 		}
@@ -466,6 +478,7 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 		if ((pgpa == chkpa) && (pg->sz == chksz)) {
 			for (ite = 0; ite < 16; ite++) {
 				l2_tte[ite] = 0x0;
+				cpu_mmu_sync_tte(&l2_tte[ite]);
 				l2->tte_cnt--;				
 			}
 			if (!l2->tte_cnt) {
@@ -477,6 +490,7 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 	case 4: /* Small Page */
 		if ((pgpa == chkpa) && (pg->sz == chksz)) {
 			*l2_tte = 0x0;
+			cpu_mmu_sync_tte(l2_tte);
 			l2->tte_cnt--;
 			if (!l2->tte_cnt) {
 				cpu_mmu_l2tbl_detach(l2);
@@ -597,10 +611,12 @@ int cpu_mmu_map_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 		*l1_tte |= (pg->b << TTBL_L1TBL_TTE_B_SHIFT) &
 		    TTBL_L1TBL_TTE_B_MASK;
 		*l1_tte |= TTBL_L1TBL_TTE_TYPE_SECTION;
+		cpu_mmu_sync_tte(l1_tte);
 		l1->tte_cnt++;
 		if (pg->sz == TTBL_L1TBL_SUPSECTION_PAGE_SIZE) {
 			for (ite = 1; ite < 16; ite++) {
 				l1_tte[ite] = l1_tte[0];
+				cpu_mmu_sync_tte(&l1_tte[ite]);
 				l1->tte_cnt++;
 			}
 		}
@@ -645,10 +661,12 @@ int cpu_mmu_map_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 			    TTBL_L2TBL_TTE_C_MASK;
 			*l2_tte |= (pg->b << TTBL_L2TBL_TTE_B_SHIFT) &
 			    TTBL_L2TBL_TTE_B_MASK;
+			cpu_mmu_sync_tte(l2_tte);
 			l2->tte_cnt++;
 			if (pg->sz == TTBL_L2TBL_LARGE_PAGE_SIZE) {
 				for (ite = 1; ite < 16; ite++) {
 					l2_tte[ite] = l2_tte[0];
+					cpu_mmu_sync_tte(&l2_tte[ite]);
 					l2->tte_cnt++;
 				}
 			}
@@ -728,6 +746,7 @@ static int cpu_mmu_split_reserved_page(struct cpu_page *pg, virtual_size_t rsize
 						TTBL_L2TBL_TTE_C_MASK;
 				*l2_tte |= (pg->b << TTBL_L2TBL_TTE_B_SHIFT) &
 						TTBL_L2TBL_TTE_B_MASK;
+				cpu_mmu_sync_tte(l2_tte);
 				l2->tte_cnt++;
 
 				va += TTBL_L2TBL_SMALL_PAGE_SIZE;
@@ -852,6 +871,7 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 		nl1_tte = (u32 *) (nl1->tbl_va +
 			  ((l2->map_va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 		*nl1_tte = 0x0;
+		cpu_mmu_sync_tte(nl1_tte);
 		nl1->tte_cnt--;
 		nl2 = cpu_mmu_l2tbl_alloc();
 		if (!nl2) {
@@ -975,11 +995,13 @@ u32 cpu_mmu_physical_read32(physical_addr_t pa)
 			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_B_SHIFT) &
 					TTBL_L1TBL_TTE_B_MASK;
 			l1_tte[ite] |= TTBL_L1TBL_TTE_TYPE_SECTION;
+			cpu_mmu_sync_tte(&l1_tte[ite]);
 			va = (ite << TTBL_L1TBL_TTE_BASE20_SHIFT) + 
 			     (pa & ~TTBL_L1TBL_TTE_BASE20_MASK);
 			va &= ~0x3;
 			ret = *(u32 *)(va);
 			l1_tte[ite] = 0x0;
+			cpu_mmu_sync_tte(&l1_tte[ite]);
 			invalid_tlb_line(va);
 		}
 	}
@@ -1039,11 +1061,13 @@ void cpu_mmu_physical_write32(physical_addr_t pa, u32 val)
 			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_B_SHIFT) &
 					TTBL_L1TBL_TTE_B_MASK;
 			l1_tte[ite] |= TTBL_L1TBL_TTE_TYPE_SECTION;
+			cpu_mmu_sync_tte(&l1_tte[ite]);
 			va = (ite << TTBL_L1TBL_TTE_BASE20_SHIFT) + 
 			     (pa & ~TTBL_L1TBL_TTE_BASE20_MASK);
 			va &= ~0x3;
 			*(u32 *)(va) = val;
 			l1_tte[ite] = 0x0;
+			cpu_mmu_sync_tte(&l1_tte[ite]);
 			invalid_tlb_line(va);
 		}
 	}
@@ -1256,10 +1280,9 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 	}
 	
 	/* Map space for reserved area 
-	 * We have kept our page table pool in reserved area
-	 * so to avoid cleaning data cache during page table 
-	 * programming we make reserved area as write-through 
-	 * and cacheable
+	 * We have kept our page table pool in reserved area pages
+	 * as cacheable and write-back. We will clean data cache every
+	 * time we modify a page table (or translation table) entry.
 	 */
 	pa = *resv_pa;
 	va = *resv_va;
@@ -1273,11 +1296,11 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 		respg.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 		respg.ap = TTBL_AP_SRW_U;
 		respg.xn = 0;
-		respg.ng = 0;
-		respg.s = 0;
-		respg.c = 1;
 		respg.tex = 0;
-		respg.b = 0;
+		respg.c = 1;
+		respg.b = 1;
+		respg.s = 0;
+		respg.ng = 0;
 		if ((rc = cpu_mmu_map_reserved_page(&respg))) {
 			goto mmu_init_error;
 		}
