@@ -28,53 +28,19 @@ SECTIONS
 {
 	. = CPU_TEXT_LMA;
 
-	PROVIDE(_code_bootstrap_start = .);
-
-        .bootstrap.text :
-        {
-                PROVIDE(_text_bootstrap_start = .);
-                *(.bootstrap.text)
-                PROVIDE(_text_bootstrap_end = .);
-        }
-
-        . = ALIGN(4);
-        .bootstrap_readonly :
-        {
-                *(.bootstrap_readonly)
-        }
-
-        /*
-         * We use the first few pages for initial page
-         * page tables. For this the start of PML4 should
-         * be aligned to page size.
-         */
-        . = ALIGN(4096);
-        .bootstrap.bss :
-        {
-                PROVIDE(_bss_bootstrap_start = .);
-                *(.bootstrap.bss)
-                . = ALIGN(4);
-                . += 4096;
-                PROVIDE(_bss_bootstrap_end = .);
-        }
-
-        . = ALIGN(4096);
-        PROVIDE(_code_bootstrap_end = .);
-
-        . += CPU_TEXT_VMA;
-
         PROVIDE(_code_start = .);
 
-	.text : AT(ADDR(.text) - CPU_TEXT_VMA)
+        .mboot : { *(.mboot) }
+
+        . = ALIGN(4);
+	.text :
  	{
 		PROVIDE(_text_start = .);
-		*(.start.text)
 		*(.text)
-		. = ALIGN(4);
 		PROVIDE(_text_end = .);
 	}
 
-	.data : AT(ADDR(.data) - CPU_TEXT_VMA)
+	.data :
 	{
 		PROVIDE(_data_start = .);
 		*(.data)
@@ -82,7 +48,7 @@ SECTIONS
 		PROVIDE(_data_end = .);
 	}
 
-	.bss : AT(ADDR(.bss) - CPU_TEXT_VMA)
+	.bss :
 	{
 		PROVIDE(_bss_start = .);
 		*(.bss)
@@ -90,7 +56,7 @@ SECTIONS
 		PROVIDE(_bss_end = .);
 	}
 
-	.rodata : AT(ADDR(.rodata) - CPU_TEXT_VMA)
+	.rodata :
 	{
 		PROVIDE(_rodata_start = .);
 		*(.rodata .rodata.*)
@@ -98,7 +64,7 @@ SECTIONS
 		PROVIDE(_rodata_end = .);
 	}
 
-	.modtbl : AT(ADDR(.modtbl) - CPU_TEXT_VMA)
+	.modtbl :
 	{
 		PROVIDE(_modtbl_start = .);
 		*(.modtbl)
@@ -106,7 +72,7 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
-	.heap : AT(ADDR(.heap) - CPU_TEXT_VMA)
+	.heap :
 	{
 		. = ALIGN(4096);
 		PROVIDE(_heap_start = .);
@@ -115,12 +81,39 @@ SECTIONS
 		PROVIDE(_eheap = .);
 	}
 
-	.init : AT(ADDR(.heap) - CPU_TEXT_VMA)
+        .stack :
+        {
+                . = ALIGN(4096);
+                PROVIDE(_stack_end = .);
+                . += 8192;
+                . = ALIGN(4);
+                PROVIDE(_stack_start = .);
+        }
+
+	.init :
 	{
 		PROVIDE(_init_text_start = .);
 		*(.init.text)
-		. = ALIGN(4);
+		. = ALIGN(4096);
+
+        	PROVIDE(_code_bootstrap_start = .);
+                *(.bootstrap.text)
+
+                /*
+                 * We have initial page tables in .bootstrap.bss
+                 * So beginning should be page aligned.
+                 */
+                . = ALIGN(4096);
+                KEEP(*(.bootstrap.bss))
+                . = ALIGN(4);
+                . += 4096;
+                PROVIDE(_bootstrap_stack_start = .);
+
+                . = ALIGN(4096);
+
+                PROVIDE(_code_bootstrap_end = .);
 		PROVIDE(_init_text_end = .);
 	}
+
 	PROVIDE(_code_end = .);
 }

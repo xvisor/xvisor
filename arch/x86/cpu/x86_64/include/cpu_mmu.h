@@ -36,7 +36,7 @@
  * +---------------------------------------------+
  */
 #define PGTREE_BIT_WIDTH	9
-#define PGTREE_MASK		~((0x01UL << PGTREE_BIT_WIDTH) - 1)
+#define PGTREE_MASK		~((0x01 << PGTREE_BIT_WIDTH) - 1)
 
 #define PML4_SHIFT		39
 #define PML4_MASK		(PGTREE_MASK << PML4_SHIFT)

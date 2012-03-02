@@ -10,6 +10,31 @@
  */
 #include <cpu_mmu.h>
 
+.section .mboot,"aw",@progbits
+/*
+ * Don't worry about this. This is a multi-boot signature for grub
+ * to let it know that this binary is actually a kernel.
+ */
+.align 4
+mboot:
+	.equ MULTIBOOT_PAGE_ALIGN, 1<< 0
+	.equ MULTIBOOT_MEMORY_INFO, 1 << 1
+	.equ MULTIBOOT_AOUT_KLUDGE, 1 << 16
+	.equ MULTIBOOT_HEADER_MAGIC, 0x1BADB002
+	.equ MULTIBOOT_HEADER_FLAGS, MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO | MULTIBOOT_AOUT_KLUDGE
+	.equ MULTIBOOT_CHECKSUM, -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
+	.extern _code_start, _code_end    /* These externs are coming from the linker script */
+
+	.int MULTIBOOT_HEADER_MAGIC
+	.int MULTIBOOT_HEADER_FLAGS
+	.int MULTIBOOT_CHECKSUM
+
+	.int mboot
+	.int _code_start
+        .int _code_end
+        .int 0
+	.int _start_32
+
 .code32 /* 32-bit code */
 .section .bootstrap.text, "ax"
 .globl _start_32
@@ -17,7 +42,10 @@
 
 _start_32:
         cli /* no interrupts please. */
-	leal	_bss_bootstrap_end, %esp	/* setup the stack (bss segment) */
+	leal	_bootstrap_stack_start, %esp	/* setup the stack (bss segment) */
+
+        xor     %eax, %eax
+        movl    %ebx, _mboot_info(, %eax, 8)
 
         /* O.K. We have CPUID. Check if we can enter
          * long mode. */
@@ -43,30 +71,6 @@ _start_32:
 
         call bootstrap32
 
-/*
- * Don't worry about this. This is a multi-boot signature for grub
- * to let it know that this binary is actually a kernel.
- */
-.align 4
-mboot:
-	.equ MULTIBOOT_PAGE_ALIGN, 1<< 0
-	.equ MULTIBOOT_MEMORY_INFO, 1 << 1
-	.equ MULTIBOOT_AOUT_KLUDGE, 1 << 16
-	.equ MULTIBOOT_HEADER_MAGIC, 0x1BADB002
-	.equ MULTIBOOT_HEADER_FLAGS, MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO | MULTIBOOT_AOUT_KLUDGE
-	.equ MULTIBOOT_CHECKSUM, -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
-	.extern _text_bootstrap_start, _bss_bootstrap_start, _code_bootstrap_end    /* These externs are coming from the linker script */
-
-	.int MULTIBOOT_HEADER_MAGIC
-	.int MULTIBOOT_HEADER_FLAGS
-	.int MULTIBOOT_CHECKSUM
-
-	.int mboot
-	.int _text_bootstrap_start
-	.int _bss_bootstrap_start
-	.int _code_bootstrap_end
-	.int _start_32
-
 _no_longmode:
         jmp _no_longmode
 
@@ -77,66 +81,34 @@ _no_longmode:
 _pe_not_enabled:
         jmp _pe_not_enabled
 
-.type   early_print, @function
-early_print:
+        .type create_page_table_entry, @function
+create_page_table_entry:
         pushl   %ebp
         movl    %esp, %ebp
         subl    $16, %esp
-        movl    $0xb8000, -8(%ebp)
-        movl    $0, -4(%ebp)
-        jmp     _ccd
-_ctex:
         movl    8(%ebp), %eax
-        movzbl  (%eax), %eax
-        movl    %eax, %edx
-        movl    -8(%ebp), %eax
-        movb    %dl, (%eax)
-        addl    $1, -8(%ebp)
-        movl    -8(%ebp), %eax
-        movb    $7, (%eax)
-        addl    $1, -8(%ebp)
-        addl    $1, 8(%ebp)
-        addl    $1, -4(%ebp)
-_ccd:
-        cmpl    $24, -4(%ebp)
-        jle     _ctex
-        leave
-        ret
-
-     	.globl	__boot_pgtable_init
-	.type	__boot_pgtable_init, @function
-__boot_pgtable_init:
-	pushl	%ebp
-	movl	%esp, %ebp
-
-32:     jmp 32b
-
-        .type __do_IMP, @function
-__do_IMP:
-        pushl   %ebp
-        movl    %esp, %ebp
-        subl    $32, %esp
-        movl    $_code_bootstrap_start, -4(%ebp)
-        movl    $_code_bootstrap_end, -8(%ebp)
-        movl    $CPU_TEXT_LMA, -12(%ebp)
-        movl    $8, -16(%ebp)
+        movl    %eax, -4(%ebp)  /* VA Start */
+        movl    12(%ebp), %eax
+        movl    %eax, -8(%ebp)  /* PA Start */
+        movl    16(%ebp), %eax
+        movl    %eax, -12(%ebp) /* NR_PAGES to MAP */
 
 __fill_IMP_table:
         /* Populate the page table */
-        movl    -12(%ebp), %eax
-        shrl    $12, %eax
-        andl    $0x1FF, %eax /* eax now has page table index. */
-        movl    -12(%ebp), %ecx
+        movl    -4(%ebp), %eax
+        shrl    $PGTI_SHIFT, %eax
+        andl    $(~PGTREE_MASK), %eax /* eax now has page table index. */
+        movl    -8(%ebp), %ecx
         andl    $PAGE_MASK, %ecx
-        or      $0x3, %ecx
+        or      $0x3, %ecx /* page table entry present and its r/w */
         movl    %ecx, __pgti(,%eax,8)
         xor     %ecx, %ecx
         movl    %ecx, __pgti+4(,%eax,8)
 
         /* populate the page directory index */
-        movl    -12(%ebp), %eax
-        shrl    $21, %eax
-        andl    $0x1FF, %eax /* eax now has page directory index. */
+        movl    -4(%ebp), %eax
+        shrl    $PGDI_SHIFT, %eax
+        andl    $(~PGTREE_MASK), %eax /* eax now has page directory index. */
         movl    $__pgti, %ecx
         andl    $PAGE_MASK, %ecx
         or      $0x3, %ecx
@@ -145,8 +117,8 @@ __fill_IMP_table:
 
         /* populate the page directory pointer */
         movl    -12(%ebp), %eax
-        shrl    $30, %eax
-        andl    $0x1FF, %eax /* eax now has page directory pointer index. */
+        shrl    $PGDP_SHIFT, %eax
+        andl    $(~PGTREE_MASK), %eax /* eax now has page directory pointer index. */
         movl    $__pgdi, %ecx
         andl    $PAGE_MASK, %ecx
         or      $0x3, %ecx
@@ -155,30 +127,54 @@ __fill_IMP_table:
 
         /* populate PML4 */
         movl    -12(%ebp), %eax
-        shrl    $39, %eax
-        andl    $0x1FF, %eax /* eax now has PML4 index. */
+        shrl    $PML4_SHIFT, %eax
+        andl    $(~PGTREE_MASK), %eax /* eax now has PML4 index. */
         movl    $__pgdp, %ecx
         andl    $PAGE_MASK, %ecx
         or      $0x3, %ecx
         movl    %ecx, __pml4(,%eax,8)
         xorl    %ecx, %ecx
 
-        addl     $4096, -12(%ebp)
-        movl     -12(%ebp), %eax
-        movl     -8(%ebp), %ecx
-        cmp      %ecx, %eax
-        jb      __fill_IMP_table
-        movl    %ebp, %esp
-        popl    %ebp
+        addl     $4096, -4(%ebp)
+        addl     $4096, -8(%ebp)
+        subl     $1, -12(%ebp)
+        cmp      $0, -12(%ebp)
+        ja      __fill_IMP_table
+        leave
+        ret
+
+.extern _code_end
+        .type __do_IMP, @function
+__do_IMP:
+        pushl   %ebp
+        movl    %esp, %ebp
+        movl    $_code_end, %eax
+        subl    $_code_start, %eax
+        xor     %edx, %edx
+        movl    $PAGE_SIZE, %ecx
+        divl    %ecx
+        pushl   %eax
+        pushl   $CPU_TEXT_LMA
+        pushl   $CPU_TEXT_LMA /* identical map */
+        call    create_page_table_entry
+        leave
+        ret
+
+        .type __map_vga_base, @function
+__map_vga_base:
+        pushl   %ebp
+        movl    %esp, %ebp
+        pushl   $16 /* vga buffer is 16K */
+        pushl   $0xb8000 /* vga base */
+        pushl   $0xb8000 /* identical map */
+        call    create_page_table_entry
+        leave
         ret
 
         .type	bootstrap32, @function
 bootstrap32:
         pushl   %ebp
         movl    %esp, %ebp
-        subl    $4, %esp
-        movl    $_load_banner, (%esp)
-        call    early_print
 
         /*
          * Create identity map page table entries
@@ -188,11 +184,8 @@ bootstrap32:
          */
         call    __do_IMP
 
-        /*
-         * Create the boot page table
-         * for all 64-bit code.
-         */
-        //call    __boot_pgtable_init
+        /* Identical map for vga base */
+        call    __map_vga_base
 
         /* Enable PAE */
         movl    %cr4, %eax
@@ -230,33 +223,6 @@ bootstrap32:
          */
         ljmp   $0x8, $(__64_bit_entry_trampoline)
 
-
-.section .bootstrap_readonly,"aw",@progbits
-.align 4
-_load_banner:
-	.string	"Bootstrapping X-Visor..."
-
-_gdt64:
-        .NULL:
-        .quad 0 /* Null segment */
-
-        .xvisor_code_64:
-        /* Segment limit: Shouldn't matter in long mode but still.. */
-        .word 0xFFFF
-        /* Segment base: Again shouln't matter */
-        .word 0
-        .long 0x309A00 /* AVL:L:Execute/Access */
-
-        .xvisor_data_64:
-        .word 0xFFFF
-        .word 0
-        .long 0x109200
-
-        .GDT_POINTER:
-        .word .-_gdt64 -1
-        .long _gdt64
-
-
 /*
  * 1 page for PML4, 1 page for PGPT, 1 page
  * for PGTI, 4 pages for Page tables.
@@ -286,20 +252,42 @@ __pgdi:
 	.zero	4088
 	.align 32
 	.type	__pgti, @object
-	.size	__pgti, 16384
+	.size	__pgti, 32768
 __pgti:
-	.long	0
-	.long	0
-	.long	0
-	.long	0
-	.zero	16
-	.zero	16352
+	.zero	32768
+
+.align 4
+_mboot_info:
+        .quad 0
+
+.align 4
+_gdt64:
+        .NULL:
+        .quad 0 /* Null segment */
+
+        .xvisor_code_64:
+        /* Segment limit: Shouldn't matter in long mode but still.. */
+        .word 0xFFFF
+        /* Segment base: Again shouln't matter */
+        .word 0
+        .long 0xBF9A00 /* AVL:L:Execute/Access */
+        .word
+
+        .xvisor_data_64:
+        .word 0xFFFF
+        .word 0
+        .long 0x9F9200
+
+        .GDT_POINTER:
+        .word .-_gdt64 -1
+        .long _gdt64
 
 .code64
 .section .bootstrap.text
 __64_bit_entry_trampoline:
+        movabsq $_stack_start, %rsp
+        movq    (_mboot_info), %rdi
 
-lforever:       jmp lforever
         /*
          * Hell yes. We are done bootstrapping!
          * Time for hypervisor initialization now.
@@ -307,8 +295,7 @@ lforever:       jmp lforever
          * This was all *dirty* and I hope I got it
          * right. Well atleast I tried my best! :)
          */
-        movabsq $cpu_init, %rax
-        callq *%rax
+        call cpu_init
 
         /*
          * Any case: Shouldn't be here. Kill yourself!!
