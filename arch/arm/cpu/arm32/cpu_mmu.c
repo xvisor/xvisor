@@ -862,8 +862,10 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 	nl1->tte_cnt = 0;
 	nl1->l2tbl_cnt = 0;
 
-	vmm_memcpy((void *)nl1->tbl_va,
-		   (void *)mmuctrl.defl1.tbl_va, TTBL_L1TBL_SIZE);
+	for (i = 0; i < (TTBL_L1TBL_SIZE / 4); i++) {
+		((u32 *)nl1->tbl_va)[i] = ((u32 *)mmuctrl.defl1.tbl_va)[i];
+		cpu_mmu_sync_tte(&((u32 *)nl1->tbl_va)[i]);
+	}
 	nl1->tte_cnt = mmuctrl.defl1.tte_cnt;
 
 	list_for_each(le, &mmuctrl.defl1.l2tbl_list) {
@@ -877,8 +879,10 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 		if (!nl2) {
 			goto l1tbl_alloc_fail;
 		}
-		vmm_memcpy((void *)nl2->tbl_va, (void *)l2->tbl_va,
-			   TTBL_L2TBL_SIZE);
+		for (i = 0; i < (TTBL_L2TBL_SIZE / 4); i++) {
+			((u32 *)nl2->tbl_va)[i] = ((u32 *)l2->tbl_va)[i];
+			cpu_mmu_sync_tte(&((u32 *)nl2->tbl_va)[i]);
+		}
 		nl2->tte_cnt = l2->tte_cnt;
 		if (cpu_mmu_l2tbl_attach
 		    (nl1, nl2, l2->imp, l2->domain, l2->map_va, FALSE)) {
