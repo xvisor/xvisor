@@ -23,10 +23,10 @@ Guest with Xvisor running on QEMU Realview PB-A8 Host:
   # make
 
   [5. Build Basic Test Code]
-  # make -C tests/armv7a/pb-a8/basic
+  # make -C tests/arm32/pb-a8/basic
 
   [6. Launch QEMU 0.14.xx or higher]
-  # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel build/tests/armv7a/pb-a8/basic/qemu.img
+  # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel build/tests/arm32/pb-a8/basic/qemu.img
 
   [7. Kick Guest for starting Basic Test]
   XVisor# guest kick -1

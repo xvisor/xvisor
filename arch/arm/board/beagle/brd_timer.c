@@ -36,7 +36,7 @@
 
 #define BEAGLE_CLK_EVENT_GPT	0 
 
-#ifndef CONFIG_BEAGLE_CLKSRC_S32KT
+#ifndef CONFIG_OMAP3_CLKSRC_S32KT
 #define BEAGLE_CLK_SRC_GPT	1 
 #endif
 
@@ -61,7 +61,7 @@ struct omap3_gpt_cfg beagle_gpt_cfg[] = {
 	}
 };
 
-#ifdef CONFIG_BEAGLE_CLKSRC_S32KT
+#ifdef CONFIG_OMAP3_CLKSRC_S32KT
 u64 arch_cpu_clocksource_cycles(void)
 {
 	return ((u64)omap3_s32k_get_counter());

@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.1.1
-# Sat Feb 18 18:33:07 2012
+# Version: 0.1.2
+# Sun Mar  4 09:17:08 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -24,6 +24,7 @@ CONFIG_ARM32=y
 # CONFIG_ARM32_HIGHVEC is not set
 # CONFIG_ARM32_FUNCSTATS is not set
 CONFIG_ARMV7A_SECUREX=y
+# CONFIG_BOARD_PB_A8 is not set
 CONFIG_EMU_REALVIEW=y
 CONFIG_BOARD_BEAGLE=y
 CONFIG_OMAP3=y
@@ -33,6 +34,8 @@ CONFIG_OMAP3=y
 #
 CONFIG_OMAP3_CLKSRC_S32KT=y
 # CONFIG_OMAP3_CLKSRC_GPT is not set
+CONFIG_OMAP3_ONE_GUEST_PBA8_DTS=y
+# CONFIG_OMAP3_TWO_GUEST_PBA8_DTS is not set
 
 #
 # Hypervisor Options

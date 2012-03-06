@@ -384,8 +384,9 @@ static u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu * vcpu,
 		pg->va = va;
 		pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		pg->ap = TTBL_AP_SRW_URW;
+		pg->tex = 0;
 		pg->c = 1;
-		pg->b = 1;
+		pg->b = 0;
 	}
 
 	/* Ensure pages for normal vcpu are non-global */
@@ -593,8 +594,11 @@ int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu * vcpu,
 	struct cpu_page * pg = &arm_priv(vcpu)->cp15.virtio_page;
 	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1, far, pg))) {
-		cpu_vcpu_halt(vcpu, regs);
-		return rc;
+		/* Remove fault address from VTLB and restart.
+		 * Doing this will force us to do TTBL walk If MMU 
+		 * is enabled then appropriate fault will be generated.
+		 */
+		return cpu_vcpu_cp15_vtlb_flush_va(vcpu, far);
 	}
 	/* Check if vcpu was trying read/write to virtual space */
 	if (xn && ((pg->ap == TTBL_AP_SRW_U) || (pg->ap == TTBL_AP_SR_U))) {
@@ -610,7 +614,7 @@ int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu * vcpu,
 	} 
 	/* Remove fault address from VTLB and restart.
 	 * Doing this will force us to do TTBL walk If MMU 
-	 * is enabled then appropriate fault will be generated 
+	 * is enabled then appropriate fault will be generated.
 	 */
 	return cpu_vcpu_cp15_vtlb_flush_va(vcpu, far);
 }

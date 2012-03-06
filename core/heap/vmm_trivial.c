@@ -102,6 +102,7 @@ int __init vmm_heap_init(void)
 	heap_mem_flags |= VMM_MEMORY_READABLE; 
 	heap_mem_flags |= VMM_MEMORY_WRITEABLE; 
 	heap_mem_flags |= VMM_MEMORY_CACHEABLE;
+	heap_mem_flags |= VMM_MEMORY_BUFFERABLE;
 	heap_start = vmm_host_alloc_pages(heap_page_count, heap_mem_flags);
 	if (!heap_start) {
 		return VMM_EFAIL;

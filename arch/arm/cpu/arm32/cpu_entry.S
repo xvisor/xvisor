@@ -197,6 +197,7 @@ _start_hang:
 #define SECTION_ATTR 	((TTBL_AP_SRW_U << TTBL_L1TBL_TTE_AP_SHIFT) | \
 			(TTBL_L1TBL_TTE_DOM_RESERVED << TTBL_L1TBL_TTE_DOM_SHIFT) | \
 			(0x1 << TTBL_L1TBL_TTE_C_SHIFT) | \
+			(0x1 << TTBL_L1TBL_TTE_B_SHIFT) | \
 			TTBL_L1TBL_TTE_TYPE_SECTION)
 __mmu_section_attr:
 	.word SECTION_ATTR
@@ -361,25 +362,21 @@ _reset:
 
 /* If came from priviledged mode then push banked registers */
 .macro PUSH_REGS skip_lable
-	str     lr, [sp, #-4]!;         /* Push the return address */
-	sub     sp, sp, #(4*15);        /* Adjust the stack pointer */
-	stmia   sp, {r0-r12};           /* Push user mode registers */
-	add     r0, sp, #(4*13);        /* Adjust the stack pointer */
-	stmia   r0, {r13-r14}^;         /* Push user mode registers */
-	mov     r0, r0;                 /* NOP for previous inst */
-	mrs     r0, spsr_all;           /* Put the SPSR on the stack */
-	str     r0, [sp, #-4]!
-	mov	r4, r0
-	and	r0, r0, #CPSR_MODE_MASK
+	str     lr, [sp, #-4]!;		/* Push the return address */
+	sub	sp, sp, #(4*2);		/* Adjust the stack pointer */
+	stm	sp, {r13-r14}^;		/* Push user mode registers */
+	stmdb	sp!, {r0-r12};		/* Push user mode registers */
+	mrs     r4, spsr_all;		/* Put SPSR on stack & NOP for prev. */
+	str     r4, [sp, #-4]!
+	and	r0, r4, #CPSR_MODE_MASK
 	cmp	r0, #CPSR_MODE_USER
 	beq	\skip_lable
 	add	r1, sp, #(4*14)
 	mrs	r5, cpsr_all
 	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
 	msr	cpsr_cxsf, r4
-	str	sp, [r1, #0]
-	str	lr, [r1, #4]
-	msr	cpsr_cxsf, r5
+	stm	r1, {r13-r14}
+	msr	cpsr_cxsf, r5		/* Restore CPSR & NOP for prev. */
 \skip_lable:
 .endm
 
@@ -391,9 +388,8 @@ _reset:
 
 /* If going back to priviledged mode then pull banked registers */
 .macro PULL_REGS skip_lable skip_lable1
-	ldr     r0, [sp, #0]
-	mov	r4, r0
-	and	r0, r0, #CPSR_MODE_MASK
+	ldr     r4, [sp, #0]
+	and	r0, r4, #CPSR_MODE_MASK
 	cmp	r0, #CPSR_MODE_USER
 	beq	\skip_lable
 	mrs	r1, cpsr_all
@@ -404,22 +400,20 @@ _reset:
 	mrs	r5, cpsr_all
 	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
 	msr	cpsr_cxsf, r4
-	ldr	sp, [r1, #0]
-	ldr	lr, [r1, #4]
-	msr	cpsr_cxsf, r5
+	ldm	r1, {r13-r14}
+	msr	cpsr_cxsf, r5		/* Restore CPSR & NOP for prev. inst */
 \skip_lable:
-	ldr     r0, [sp], #0x0004;      /* Get SPSR from stack */
+	ldr     r0, [sp], #0x0004;	/* Get SPSR from stack */
 	msr     spsr_cxsf, r0;
-	ldmia   sp, {r0-r14}^;          /* Restore registers (user) */
-	mov     r0, r0;                 /* NOP for previous isnt */
-	add     sp, sp, #(4*15);        /* Adjust the stack pointer */
-	ldr     lr, [sp], #0x0004       /* Pull return address */
+	ldmia   sp, {r0-r14}^;		/* Restore registers (user) */
+	add     sp, sp, #(4*15);	/* Adjust stack & NOP for prev. */
+	ldr     lr, [sp], #0x0004	/* Pull return address */
 	movs	pc, lr
 \skip_lable1:
-	ldr     r0, [sp], #0x0004;      /* Get SPSR from stack */
+	ldr     r0, [sp], #0x0004;	/* Get SPSR from stack */
 	msr     spsr_cxsf, r0;
-	ldm	sp, {r0-r15}^;          /* Restore all registers & CPSR */
-	mov     r0, r0;                 /* NOP for previous inst */
+	ldm	sp, {r0-r15}^;		/* Restore all registers & CPSR */
+	mov     r0, r0;			/* NOP for prev. */
 .endm
 
 	/* 
