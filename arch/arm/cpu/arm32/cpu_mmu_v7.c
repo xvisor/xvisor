@@ -18,7 +18,7 @@
  *
  * @file cpu_mmu.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for memory management unit
+ * @brief Implementation of memory managment unit for ARMv7a family
  */
 
 #include <vmm_error.h>
