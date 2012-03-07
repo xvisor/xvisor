@@ -42,16 +42,8 @@ ON WHAT HARDWARE DOES IT RUN?
   long as they have a paged memory management unit (PMMU) and a port of
   the GNU C compiler (gcc) (part of The GNU Compiler Collection, GCC).
 
-  The list of currently supported hardware is below:
-	- ARM
-		CPUs:   Cortex-A8, OMAP3
-		Boards: Realview-PB-A8, Beagle
-	- MIPS
-		CPUs:   24K
-		Boards: QEMU-MIPS
-
-  NOTE: The Xvisor development & testing is done currently on QEMU. For 
-	all the above mentioned hardwares QEMU support is available.
+  Please refer to the HOSTS text file in top-level directory of source code
+  for a detailed and formatted list of supported host hardware.
 
 DOCUMENTATION:
 
