@@ -18,6 +18,7 @@
  *
  * @file vmm_netdev.c
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @author Pranav Sawargaonkar <pranav.sawargaonkar@gmail.com>
  * @brief Network Device framework source
  */
 
@@ -37,65 +38,28 @@
 #define	MODULE_INIT			vmm_netdev_init
 #define	MODULE_EXIT			vmm_netdev_exit
 
-int vmm_netdev_doioctl(struct vmm_netdev * ndev, 
-			int cmd, void *buf, size_t buf_len)
+struct vmm_netdev *vmm_alloc_netdev(const char *name)
 {
-	int ret;
+	struct vmm_netdev *ndev;
+
+	ndev = vmm_malloc(sizeof(struct vmm_netdev));
 
 	if (!ndev) {
-		return VMM_EFAIL;
+		vmm_printf("%s Failed to allocate net device\n", __func__);
+		return NULL;
 	}
-	if (!(ndev->ioctl)) {
-		return VMM_EFAIL;
-	}
-
-	ret = ndev->ioctl(ndev, cmd, buf, buf_len);
-
-	return ret;
-}
-
-int vmm_netdev_doread(struct vmm_netdev * ndev,
-		      char *dest, size_t offset, size_t len)
-{
-	int ret;
-
-	if (!ndev) {
-		return 0;
-	}
-	if (!(ndev->read)) {
-		return 0;
-	}
-
-	ret = ndev->read(ndev, dest, offset, len);
-
-	return ret;
-}
-
-int vmm_netdev_dowrite(struct vmm_netdev * ndev,
-		       char *src, size_t offset, size_t len)
-{
-	int ret;
-
-	if (!ndev) {
-		return 0;
-	}
-	if (!(ndev->write)) {
-		return 0;
-	}
-
-	ret = ndev->write(ndev, src, offset, len);
-
-	return ret;
+ 
+	vmm_strcpy(ndev->name, name);
+ 
+	return ndev;
 }
 
 int vmm_netdev_register(struct vmm_netdev * ndev)
 {
 	struct vmm_classdev *cd;
+	int rc;
 
 	if (ndev == NULL) {
-		return VMM_EFAIL;
-	}
-	if (ndev->read == NULL || ndev->write == NULL) {
 		return VMM_EFAIL;
 	}
 
@@ -109,9 +73,34 @@ int vmm_netdev_register(struct vmm_netdev * ndev)
 	cd->dev = ndev->dev;
 	cd->priv = ndev;
 
-	vmm_devdrv_register_classdev(VMM_NETDEV_CLASS_NAME, cd);
+	rc = vmm_devdrv_register_classdev(VMM_NETDEV_CLASS_NAME, cd);
+	if (rc != VMM_OK) {
+		vmm_printf("%s: Failed to class register network device %s "
+			   "with err 0x%x\n", __func__, ndev->name, rc);
+		goto fail_ndev_reg;
+	}
+ 
+	if (ndev->dev_ops && ndev->dev_ops->ndev_init) {
+		rc = ndev->dev_ops->ndev_init(ndev);
+		if (rc != VMM_OK) {
+			vmm_printf("%s: Device %s Failed during initializaion"
+				   "with err %d!!!!\n", __func__ , 
+				   ndev->name, rc);
+			rc = vmm_devdrv_unregister_classdev(
+						VMM_NETDEV_CLASS_NAME, cd);
+			if (rc != VMM_OK) {
+				vmm_printf("%s: Failed to class unregister "
+					   "network device %s with err "
+					   "0x%x", __func__, ndev->name, rc);
+			}
+		}
+	}
 
-	return VMM_OK;
+	return rc;
+
+fail_ndev_reg:
+	vmm_free(cd);
+	return rc;
 }
 
 int vmm_netdev_unregister(struct vmm_netdev * ndev)
