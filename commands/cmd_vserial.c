@@ -49,6 +49,7 @@ struct cmd_vserial_recvcntx {
 	const char * name;
 	u32 chpos;
 	int chcount;
+	int ecount;
 	struct vmm_chardev *cdev;
 };
 
@@ -63,19 +64,49 @@ void cmd_vserial_recv(struct vmm_vserial *vser, void * priv, u8 ch)
 		return;
 	}
 	if (ch == '\n') {
+		/* Emulate the effect of '\n' character */
 		vmm_cputc(recvcntx->cdev, ch);
 		vmm_cprintf(recvcntx->cdev, "[%s] ", recvcntx->name);
 		recvcntx->chpos = 0;
 	} else if (ch == '\r') {
+		/* Emulate the effect of '\r' character */
 		while (recvcntx->chpos) {
 			vmm_cputc(recvcntx->cdev, '\e');
 			vmm_cputc(recvcntx->cdev, '[');
 			vmm_cputc(recvcntx->cdev, 'D');
 			recvcntx->chpos--;
 		}
-	} else {
+	} else if (ch == '\e' || recvcntx->ecount > 0) {
+		/* Increment ecount till entire ANSI/VT100
+		 * command is detected. Upon detecting end 
+		 * of ANSI/VT100 command set ecount to 0
+		 */
 		vmm_cputc(recvcntx->cdev, ch);
-		recvcntx->chpos++;
+		if (('a' <= ch && ch <= 'z') ||
+		    ('A' <= ch && ch <= 'Z')) {
+			/* ANSI/VT100 command usually ends 
+			 * with an alphbet lower or upper case
+			 */
+			recvcntx->ecount = 0;
+		} else if ((recvcntx->ecount == 1) &&
+			   (ch == '7' || ch == '8')) {
+			/* ANSI/VT100 <ESC>7 or <ESC>8 */
+			recvcntx->ecount = 0;
+		} else if ((recvcntx->ecount == 1) &&
+			   (ch == '(' || ch == ')')) {
+			/* ANSI/VT100 <ESC>( or <ESC>) */
+			recvcntx->ecount = 0;
+		} else {
+			recvcntx->ecount++;
+		}
+	} else {
+		/* By default keep printing incoming character
+		 * but increment chpos for only printable characters.
+		 */
+		vmm_cputc(recvcntx->cdev, ch);
+		if (vmm_isprintable(ch)) {
+			recvcntx->chpos++;
+		}
 	}
 	if (-1 < recvcntx->chcount) {
 		if (recvcntx->chcount) {
@@ -103,6 +134,7 @@ int cmd_vserial_bind(struct vmm_chardev *cdev, const char *name)
 	recvcntx.name = name;
 	recvcntx.chpos = 0;
 	recvcntx.chcount = -1;
+	recvcntx.ecount = 0;
 	recvcntx.cdev = cdev;
 
 	rc = vmm_vserial_register_receiver(vser, &cmd_vserial_recv, &recvcntx);
@@ -157,6 +189,7 @@ int cmd_vserial_dump(struct vmm_chardev *cdev, const char *name, int bcount)
 	recvcntx.name = name;
 	recvcntx.chpos = 0;
 	recvcntx.chcount = (0 < bcount) ? bcount : -1;
+	recvcntx.ecount = 0;
 	recvcntx.cdev = cdev;
 
 	rc = vmm_vserial_register_receiver(vser, &cmd_vserial_recv, &recvcntx);
