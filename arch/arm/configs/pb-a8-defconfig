@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.1.1
-# Sat Feb 18 18:32:13 2012
+# Version: 0.1.2
+# Fri Mar  9 10:46:25 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -34,6 +34,7 @@ CONFIG_EMU_REALVIEW=y
 CONFIG_ONE_GUEST_PBA8_DTS=y
 # CONFIG_ONE_PT_GUEST_PBA8_DTS is not set
 # CONFIG_TWO_GUEST_PBA8_DTS is not set
+# CONFIG_TWO_PT_GUEST_PBA8_DTS is not set
 
 #
 # Hypervisor Options
