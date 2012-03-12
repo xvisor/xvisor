@@ -44,6 +44,7 @@ static unsigned long long eval_literal(const char *s, int base, int bits);
 
 	uint64_t addr;
 	cell_t cell;
+	uint64_t cell64;
 	struct property *prop;
 	struct property *proplist;
 	struct node *node;
@@ -56,6 +57,7 @@ static unsigned long long eval_literal(const char *s, int base, int bits);
 %token <propnodename> DT_PROPNODENAME
 %token <literal> DT_LITERAL
 %token <literal> DT_LEGACYLITERAL
+%token <literal> DT_LITERAL64
 %token <cbase> DT_BASE
 %token <byte> DT_BYTE
 %token <data> DT_STRING
@@ -73,6 +75,7 @@ static unsigned long long eval_literal(const char *s, int base, int bits);
 %type <data> celllist
 %type <cbase> cellbase
 %type <cell> cellval
+%type <cell64> cellval64
 %type <data> bytestring
 %type <prop> propdef
 %type <proplist> proplist
@@ -258,6 +261,14 @@ celllist:
 		{
 			$$ = data_append_cell($1, $2);
 		}
+	| celllist cellval64
+		{
+			if (little_endian) {
+				$$ = data_append_cell2($1, (uint32_t)($2), (uint32_t)($2 >> 32));
+			} else {
+				$$ = data_append_cell2($1, (uint32_t)($2 >> 32), (uint32_t)($2));
+			}
+		}
 	| celllist DT_REF
 		{
 			$$ = data_append_cell(data_add_marker($1, REF_PHANDLE,
@@ -287,7 +298,12 @@ cellval:
 			$$ = eval_literal($2, $1, 32);
 		}
 	;
-
+cellval64:
+	  DT_LITERAL64
+		{
+			$$ = eval_literal($1, 0, 64);
+		}
+	;
 bytestring:
 	  /* empty */
 		{
@@ -363,11 +379,24 @@ void yyerror (char const *s)
 
 static unsigned long long eval_literal(const char *s, int base, int bits)
 {
+	int len;
 	unsigned long long val;
-	char *e;
+	char *e, str[256];
 
 	errno = 0;
-	val = strtoull(s, &e, base);
+	len = strlen(s);
+	if (256 <= len) {
+		yyerror("too many characters in literal");
+	}
+	strcpy(str, s);
+	if (len > 5) {
+		if ((str[len - 3] == 'U') && 
+	    	    (str[len - 2] == 'L') && 
+		    (str[len - 1] == 'L')) {
+			str[len - 3] = '\0';
+		}
+	}
+	val = strtoull(str, &e, base);
 	if (*e)
 		yyerror("bad characters in literal");
 	else if ((errno == ERANGE)

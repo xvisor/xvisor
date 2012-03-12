@@ -248,6 +248,16 @@ struct data data_append_cell(struct data d, cell_t word)
 	return data_append_data(d, &beword, sizeof(beword));
 }
 
+struct data data_append_cell2(struct data d, cell_t word1, cell_t word2)
+{
+	cell_t beword[2];
+
+	beword[0] = cpu_to_fdt32_e(word1, little_endian);
+	beword[1] = cpu_to_fdt32_e(word2, little_endian);
+
+	return data_append_data(d, &beword, sizeof(beword));
+}
+
 struct data data_append_re(struct data d, const struct fdt_reserve_entry *re)
 {
 	struct fdt_reserve_entry bere;
