@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Mon Mar 12 14:14:29 2012
+# Mon Mar 12 22:06:12 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -15,6 +15,7 @@ CONFIG_CPU_LE=y
 CONFIG_BOARD="beagle"
 # CONFIG_CPU_CORTEX_A8 is not set
 CONFIG_CPU_OMAP3=y
+# CONFIG_CPU_CORTEX_A9 is not set
 CONFIG_ARMV7A=y
 CONFIG_ARM32=y
 
