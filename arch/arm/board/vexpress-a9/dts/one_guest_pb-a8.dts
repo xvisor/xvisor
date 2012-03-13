@@ -30,7 +30,7 @@
 			 * X MB then we will be able to access only first
 			 * X MB starting at physical_addr.
 			 */
-			physical_addr = <0x70000000>;
+			physical_addr = <0x60000000>;
 			physical_size = <0x10000000>; /* 256 MB */
 		};
 
@@ -48,7 +48,7 @@
 			      		reg = <0x10009000 0x1000>;
 					clock-rate = <24000000>;
 			      		baudrate = <115200>;
-					irq = <44>;
+					irq = <37>;
 				};
 
 				uart1 {
@@ -57,7 +57,7 @@
 			      		reg = <0x1000A000 0x1000>;
 					clock-rate = <24000000>;
 			      		baudrate = <115200>;
-					irq = <45>;
+					irq = <38>;
 				};
 
 				rtc0 {
@@ -65,7 +65,7 @@
 			      		compatible = "pl031";
 			      		reg = <0x10017000 0x1000>;
 					clock-rate = <1>;
-					irq = <42>;
+					irq = <36>;
 				};
 			};
 		};
@@ -110,7 +110,7 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x70000000>;
-					host_physical_addr = <0x72000000>;
+					host_physical_addr = <0x62000000>;
 					physical_size = <0x06000000>; /* 96 MB */
 					device_type = "ram";
 				};
@@ -230,7 +230,7 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x40000000>;
-					host_physical_addr = <0x70800000>;
+					host_physical_addr = <0x60800000>;
 					physical_size = <0x00800000>; /* 8 MB */
 					device_type = "rom";
 				};

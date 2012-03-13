@@ -32,10 +32,14 @@
 #include <rtc/vmm_rtcdev.h>
 #include <libfdt.h>
 #include <ca9x4_board.h>
+#include <vexpress/plat.h>
 #include <vexpress/timer.h>
 
 extern u32 dt_blob_start;
+
+#if 0 /* FIXME: */
 virtual_addr_t ca9x4_sys_base;
+#endif
 
 int arch_board_ram_start(physical_addr_t * addr)
 {
@@ -114,10 +118,7 @@ int arch_devtree_populate(struct vmm_devtree_node ** root)
 
 int arch_board_reset(void)
 {
-#if 0 /* QEMU checks bit 8 which is wrong */
-	vmm_writel(0x100, 
-		   (void *)(VEXPRESS_SYS_BASE + VEXPRESS_SYS_RESETCTL_OFFSET));
-#else
+#if 0 /* FIXME: */
 	vmm_writel(0x0, 
 		   (void *)(ca9x4_sys_base + VEXPRESS_SYS_RESETCTL_OFFSET));
 	vmm_writel(VEXPRESS_SYS_CTRL_RESET_PLLRESET, 
@@ -155,12 +156,14 @@ int __init arch_board_final_init(void)
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
+#if 0 /* FIXME: */
 	/* Map control registers */
 	ca9x4_sys_base = vmm_host_iomap(VEXPRESS_SYS_BASE, 0x1000);
 
 	/* Unlock Lockable registers */
 	vmm_writel(VEXPRESS_SYS_LOCKVAL, 
 		   (void *)(ca9x4_sys_base + VEXPRESS_SYS_LOCK_OFFSET));
+#endif
 
 	/* Do Probing using device driver framework */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING

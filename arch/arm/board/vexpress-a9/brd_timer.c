@@ -27,6 +27,8 @@
 #include <arch_cpu.h>
 #include <arch_board.h>
 #include <ca9x4_board.h>
+#include <vexpress/plat.h>
+#include <vexpress/sp810.h>
 #include <vexpress/timer.h>
 
 static virtual_addr_t ca9x4_timer0_base;
@@ -58,17 +60,16 @@ int __init arch_cpu_clocksource_init(void)
 	virtual_addr_t sctl_base;
 
 	/* Map control registers */
-	sctl_base = vmm_host_iomap(VEXPRESS_SCTL_BASE, 0x1000);
+	sctl_base = vmm_host_iomap(V2M_SYSCTL, 0x1000);
 
 	/* Map timer registers */
-	ca9x4_timer1_base = vmm_host_iomap(VEXPRESS_CA9X4_TIMER0_1_BASE, 0x1000);
-	ca9x4_timer1_base += 0x20;
+	ca9x4_timer1_base = vmm_host_iomap(V2M_TIMER1, 0x1000);
 
 	/* Initialize timers */
 	rc = vexpress_timer_init(sctl_base, 
 				 ca9x4_timer1_base,
-				 VEXPRESS_TIMER2_EnSel,
-				 IRQ_CA9X4_TIMER0_1,
+				 SCCTRL_TIMEREN1SEL_TIMCLK,
+				 IRQ_V2M_TIMER1,
 				 NULL);
 	if (rc) {
 		return rc;
@@ -132,16 +133,16 @@ int __init arch_cpu_clockevent_init(void)
 	virtual_addr_t sctl_base;
 
 	/* Map control registers */
-	sctl_base = vmm_host_iomap(VEXPRESS_SCTL_BASE, 0x1000);
+	sctl_base = vmm_host_iomap(V2M_SYSCTL, 0x1000);
 
 	/* Map timer registers */
-	ca9x4_timer0_base = vmm_host_iomap(VEXPRESS_CA9X4_TIMER0_1_BASE, 0x1000);
+	ca9x4_timer0_base = vmm_host_iomap(V2M_TIMER0, 0x1000);
 
 	/* Initialize timers */
 	rc = vexpress_timer_init(sctl_base,
 				 ca9x4_timer0_base,
-				 VEXPRESS_TIMER1_EnSel,
-				 IRQ_CA9X4_TIMER0_1,
+				 SCCTRL_TIMEREN0SEL_TIMCLK,
+				 IRQ_V2M_TIMER0,
 				 ca9x4_timer0_handler);
 	if (rc) {
 		return rc;

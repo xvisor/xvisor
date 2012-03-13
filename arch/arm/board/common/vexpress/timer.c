@@ -25,6 +25,7 @@
 #include <vmm_host_io.h>
 #include <vexpress_config.h>
 #include <vexpress/plat.h>
+#include <vexpress/sp810.h>
 #include <vexpress/timer.h>
 
 void vexpress_timer_enable(virtual_addr_t base)
@@ -126,18 +127,14 @@ int vexpress_timer_counter_start(virtual_addr_t base)
 
 int __init vexpress_timer_init(virtual_addr_t sctl_base,
 			       virtual_addr_t base,
-			       u32 ensel,
+			       u32 ensel_timclk,
 			       u32 hirq, vmm_host_irq_handler_t hirq_handler)
 {
 	int ret = VMM_OK;
 	u32 val;
 
-	/* 
-	 * set clock frequency: 
-	 *      VEXPRESS_REFCLK is 32KHz
-	 *      VEXPRESS_TIMCLK is 1MHz
-	 */
-	val = vmm_readl((void *)sctl_base) | (VEXPRESS_TIMCLK << ensel);
+	/* Select 1MHz TIMCLK as the reference clock for SP804 timers */
+	val = vmm_readl((void *)sctl_base) | (ensel_timclk);
 	vmm_writel(val, (void *)sctl_base);
 
 	/*

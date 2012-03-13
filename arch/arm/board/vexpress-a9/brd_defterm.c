@@ -25,9 +25,10 @@
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
 #include <serial/pl011.h>
+#include <vexpress/plat.h>
 #include <ca9x4_board.h>
 
-#define	CA9X4_DEFAULT_UART_BASE			VEXPRESS_CA9X4_UART0_BASE
+#define	CA9X4_DEFAULT_UART_BASE			V2M_UART0
 #define	CA9X4_DEFAULT_UART_INCLK		24000000
 #define	CA9X4_DEFAULT_UART_BAUD			115200
 

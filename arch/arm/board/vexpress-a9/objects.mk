@@ -18,12 +18,12 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of CA9X4 board objects.
+# @brief list of Versatile Express Cortex A9X4 board objects.
 # */
 
 board-objs-y+=brd_defterm.o
 board-objs-y+=brd_pic.o
 board-objs-y+=brd_timer.o
 board-objs-y+=brd_main.o
-board-objs-$(CONFIG_CA9X4_ONE_GUEST_PBA8_DTS)+=dts/one_guest_pb-a8.o
+board-objs-$(CONFIG_VEXPRESS_A9_ONE_GUEST_PBA8_DTS)+=dts/one_guest_pb-a8.o
 

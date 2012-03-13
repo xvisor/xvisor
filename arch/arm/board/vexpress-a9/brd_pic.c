@@ -62,13 +62,13 @@ int __init arch_pic_init(void)
 	int ret;
 	virtual_addr_t dist_base, cpu_base;
 
-	dist_base = vmm_host_iomap(VEXPRESS_CA9X4_GIC_DIST_BASE, 0x1000);
+	dist_base = vmm_host_iomap(A9_MPCORE_GIC_DIST, 0x1000);
 	ret = vexpress_gic_dist_init(0, dist_base, IRQ_CA9X4_GIC_START);
 	if (ret) {
 		return ret;
 	}
 
-	cpu_base = vmm_host_iomap(VEXPRESS_CA9X4_GIC_CPU_BASE, 0x1000);
+	cpu_base = vmm_host_iomap(A9_MPCORE_GIC_CPU, 0x1000);
 	ret = vexpress_gic_cpu_init(0, cpu_base);
 	if (ret) {
 		return ret;

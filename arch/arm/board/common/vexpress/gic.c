@@ -34,7 +34,7 @@ struct gic_chip_data {
 	virtual_addr_t cpu_base;
 };
 
-static struct gic_chip_data gic_data[VEXPRESS_GIC_MAX_NR];
+static struct gic_chip_data gic_data[V2M_GIC_MAX_NR];
 
 static inline void vexpress_gic_write(u32 val, virtual_addr_t addr)
 {
@@ -50,7 +50,7 @@ int vexpress_gic_active_irq(u32 gic_nr)
 {
 	int ret = -1;
 
-	if (VEXPRESS_GIC_MAX_NR <= gic_nr) {
+	if (V2M_GIC_MAX_NR <= gic_nr) {
 		return VMM_EFAIL;
 	}
 
@@ -65,7 +65,7 @@ int vexpress_gic_ack_irq(u32 gic_nr, u32 irq)
 {
 	u32 gic_irq;
 
-	if (VEXPRESS_GIC_MAX_NR <= gic_nr) {
+	if (V2M_GIC_MAX_NR <= gic_nr) {
 		return VMM_EFAIL;
 	}
 
@@ -85,7 +85,7 @@ int vexpress_gic_mask(u32 gic_nr, u32 irq)
 	u32 mask = 1 << (irq % 32);
 	u32 gic_irq;
 
-	if (VEXPRESS_GIC_MAX_NR <= gic_nr) {
+	if (V2M_GIC_MAX_NR <= gic_nr) {
 		return VMM_EFAIL;
 	}
 
@@ -106,7 +106,7 @@ int vexpress_gic_unmask(u32 gic_nr, u32 irq)
 	u32 mask = 1 << (irq % 32);
 	u32 gic_irq;
 
-	if (VEXPRESS_GIC_MAX_NR <= gic_nr) {
+	if (V2M_GIC_MAX_NR <= gic_nr) {
 		return VMM_EFAIL;
 	}
 
@@ -128,7 +128,7 @@ int __init vexpress_gic_dist_init(u32 gic_nr, virtual_addr_t base,
 	unsigned int max_irq, i;
 	u32 cpumask = 1 << 0;	/*smp_processor_id(); */
 
-	if (VEXPRESS_GIC_MAX_NR <= gic_nr) {
+	if (V2M_GIC_MAX_NR <= gic_nr) {
 		return VMM_EFAIL;
 	}
 
@@ -151,8 +151,8 @@ int __init vexpress_gic_dist_init(u32 gic_nr, virtual_addr_t base,
 	 * Limit this to either the architected maximum, or the
 	 * platform maximum.
 	 */
-	if (max_irq > max(1020, VEXPRESS_GIC_NR_IRQS))
-		max_irq = max(1020, VEXPRESS_GIC_NR_IRQS);
+	if (max_irq > max(1020, V2M_GIC_NR_IRQS))
+		max_irq = max(1020, V2M_GIC_NR_IRQS);
 
 	/*
 	 * Set all global interrupts to be level triggered, active low.
@@ -186,7 +186,7 @@ int __init vexpress_gic_dist_init(u32 gic_nr, virtual_addr_t base,
 
 int __init vexpress_gic_cpu_init(u32 gic_nr, virtual_addr_t base)
 {
-	if (VEXPRESS_GIC_MAX_NR <= gic_nr) {
+	if (V2M_GIC_MAX_NR <= gic_nr) {
 		return VMM_EFAIL;
 	}
 
