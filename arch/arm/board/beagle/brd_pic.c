@@ -30,29 +30,28 @@ u32 arch_pic_irq_count(void)
 	return OMAP3_MPU_INTC_NRIRQ;
 }
 
-int arch_pic_cpu_to_host_map(u32 cpu_irq_no)
+u32 arch_pic_irq_active(u32 cpu_irq_no)
 {
 	return omap3_intc_active_irq(cpu_irq_no);
 }
 
-int arch_pic_pre_condition(u32 host_irq_no)
+void arch_pic_irq_ack(u32 host_irq_no)
 {
-	return VMM_OK;
+	omap3_intc_ack_irq(host_irq_no);
 }
 
-int arch_pic_post_condition(u32 host_irq_no)
+void arch_pic_irq_eoi(u32 host_irq_no)
 {
-	return omap3_intc_ack_irq(host_irq_no);
 }
 
-int arch_pic_irq_enable(u32 host_irq_no)
+void arch_pic_irq_unmask(u32 host_irq_no)
 {
-	return omap3_intc_unmask(host_irq_no);
+	omap3_intc_unmask(host_irq_no);
 }
 
-int arch_pic_irq_disable(u32 host_irq_no)
+void arch_pic_irq_mask(u32 host_irq_no)
 {
-	return omap3_intc_mask(host_irq_no);
+	omap3_intc_mask(host_irq_no);
 }
 
 int arch_pic_init(void)
