@@ -25,36 +25,35 @@
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
 #include <pba8_board.h>
-#include <realview/gic.h>
+#include <gic.h>
 
 u32 arch_pic_irq_count(void)
 {
-	return 96;
+	return GIC_NR_IRQS;
 }
 
-int arch_pic_cpu_to_host_map(u32 cpu_irq_no)
+u32 arch_pic_irq_active(u32 cpu_irq_no)
 {
-	return realview_gic_active_irq(0);
+	return gic_active_irq(0);
 }
 
-int arch_pic_pre_condition(u32 host_irq_no)
+void arch_pic_irq_ack(u32 host_irq_no)
 {
-	return VMM_OK;
+	gic_ack_irq(0, host_irq_no);
 }
 
-int arch_pic_post_condition(u32 host_irq_no)
+void arch_pic_irq_eoi(u32 host_irq_no)
 {
-	return realview_gic_ack_irq(0, host_irq_no);
 }
 
-int arch_pic_irq_enable(u32 host_irq_no)
+void arch_pic_irq_unmask(u32 host_irq_no)
 {
-	return realview_gic_unmask(0, host_irq_no);
+	gic_unmask(0, host_irq_no);
 }
 
-int arch_pic_irq_disable(u32 host_irq_no)
+void arch_pic_irq_mask(u32 host_irq_no)
 {
-	return realview_gic_mask(0, host_irq_no);
+	gic_mask(0, host_irq_no);
 }
 
 int __init arch_pic_init(void)
@@ -63,13 +62,13 @@ int __init arch_pic_init(void)
 	virtual_addr_t dist_base, cpu_base;
 
 	dist_base = vmm_host_iomap(REALVIEW_PBA8_GIC_DIST_BASE, 0x1000);
-	ret = realview_gic_dist_init(0, dist_base, IRQ_PBA8_GIC_START);
+	ret = gic_dist_init(0, dist_base, IRQ_PBA8_GIC_START);
 	if (ret) {
 		return ret;
 	}
 
 	cpu_base = vmm_host_iomap(REALVIEW_PBA8_GIC_CPU_BASE, 0x1000);
-	ret = realview_gic_cpu_init(0, cpu_base);
+	ret = gic_cpu_init(0, cpu_base);
 	if (ret) {
 		return ret;
 	}

@@ -30,6 +30,19 @@ typedef int (*vmm_host_irq_handler_t) (u32 irq_no,
 					arch_regs_t * regs,
 					void *dev);
 
+/** Host IRQ Handler Abstraction */
+struct vmm_host_irq_hndl {
+	struct dlist head;
+	vmm_host_irq_handler_t hndl;
+	void *dev;
+};
+
+/** Host IRQ Abstraction */
+struct vmm_host_irq {
+	bool enabled;
+	struct dlist hndl_list;
+};
+
 /** Execute host interrupts */
 int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs);
 

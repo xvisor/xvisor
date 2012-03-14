@@ -64,7 +64,7 @@
 
 				vcpu0 {
 					device_type = "vcpu";
-					model = "MIPS,24Kc";
+					compatible = "MIPS,24Kc";
 					time_slice = <98000000>;
 					start_pc = <0x3FC00000>;
 				};

@@ -665,7 +665,8 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu,
 
 int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 {
-	u32 ite, cpuid = ARM_CPUID_CORTEXA8;
+	u32 ite, cpuid = 0;
+	const char * attr;
 	/* Initialize User Mode Registers */
 	/* For both Orphan & Normal VCPUs */
 	vmm_memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
@@ -684,6 +685,13 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 	/* For only Normal VCPUs */
 	if (!vcpu->is_normal) {
 		return VMM_OK;
+	}
+	attr = vmm_devtree_attrval(vcpu->node, 
+				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
+	if (vmm_strcmp(attr, "ARMv7a,cortex-a8") == 0) {
+		cpuid = ARM_CPUID_CORTEXA8;
+	} else {
+		return VMM_EFAIL;
 	}
 	if (!vcpu->reset_count) {
 		vcpu->arch_priv = vmm_malloc(sizeof(arm_priv_t));

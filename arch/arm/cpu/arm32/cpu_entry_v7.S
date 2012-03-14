@@ -18,7 +18,7 @@
  *
  * @file cpu_entry.S
  * @author Anup Patel (anup@brainfault.org)
- * @brief various entry points (booting, reset, exceptions) to xvisor
+ * @brief entry points (booting, reset, exceptions) for ARMv7a family
  */
 
 #include <cpu_defines.h>

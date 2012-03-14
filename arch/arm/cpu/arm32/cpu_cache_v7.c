@@ -18,7 +18,7 @@
  *
  * @file cpu_cache.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Implementation of cache operations for ARMv7a
+ * @brief Implementation of cache operations for ARMv7a family
  */
 #include <cpu_cache.h>
 
