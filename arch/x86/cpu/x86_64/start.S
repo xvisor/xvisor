@@ -85,7 +85,7 @@ _pe_not_enabled:
 create_page_table_entry:
         pushl   %ebp
         movl    %esp, %ebp
-        subl    $16, %esp
+        subl    $20, %esp
         movl    8(%ebp), %eax
         movl    %eax, -4(%ebp)  /* VA Start */
         movl    12(%ebp), %eax
@@ -94,10 +94,19 @@ create_page_table_entry:
         movl    %eax, -12(%ebp) /* NR_PAGES to MAP */
 
 __fill_IMP_table:
-        /* Populate the page table */
         movl    -4(%ebp), %eax
-        shrl    $PGTI_SHIFT, %eax
-        andl    $(~PGTREE_MASK), %eax /* eax now has page table index. */
+        shrl    $PGDI_SHIFT, %eax
+        andl    $(~PGTREE_MASK), %eax /* Page directory index */
+        movl    %eax, -16(%ebp)
+
+        /* Populate the page table */
+        movl    -4(%ebp), %ebx
+        shrl    $PGTI_SHIFT, %ebx
+        andl    $(~PGTREE_MASK), %ebx /* ebx now has page table index. */
+        movl    $512, %eax
+        movl    -16(%ebp), %edx
+        mull    %edx /* 512 * pgdi */
+        addl    %ebx, %eax /* pgti + (512 * pdgi) */
         movl    -8(%ebp), %ecx
         andl    $PAGE_MASK, %ecx
         or      $0x3, %ecx /* page table entry present and its r/w */
@@ -106,17 +115,18 @@ __fill_IMP_table:
         movl    %ecx, __pgti+4(,%eax,8)
 
         /* populate the page directory index */
-        movl    -4(%ebp), %eax
-        shrl    $PGDI_SHIFT, %eax
-        andl    $(~PGTREE_MASK), %eax /* eax now has page directory index. */
+        movl    -16(%ebp), %ebx /* get saved pgdi */
         movl    $__pgti, %ecx
-        andl    $PAGE_MASK, %ecx
-        or      $0x3, %ecx
-        movl    %ecx, __pgdi(,%eax,8)
-        xorl    %ecx, %ecx
+        movl    $8, %edx
+        mull    %edx
+        addl    %ecx, %eax
+        andl    $PAGE_MASK, %eax
+        or      $0x3, %eax
+        movl    %eax, __pgdi(,%ebx,8)
+        xorl    %eax, %eax
 
         /* populate the page directory pointer */
-        movl    -12(%ebp), %eax
+        movl    -4(%ebp), %eax
         shrl    $PGDP_SHIFT, %eax
         andl    $(~PGTREE_MASK), %eax /* eax now has page directory pointer index. */
         movl    $__pgdi, %ecx
@@ -126,9 +136,7 @@ __fill_IMP_table:
         xorl    %ecx, %ecx
 
         /* populate PML4 */
-        movl    -12(%ebp), %eax
-        shrl    $PML4_SHIFT, %eax
-        andl    $(~PGTREE_MASK), %eax /* eax now has PML4 index. */
+        andl    $0, %eax
         movl    $__pgdp, %ecx
         andl    $PAGE_MASK, %ecx
         or      $0x3, %ecx
@@ -171,11 +179,27 @@ __map_vga_base:
         leave
         ret
 
+#if 0
+        .type __test_pagetables, @function
+__test_pagetables:
+        pushl   %ebp
+        movl    %esp, %ebp
+        pushl   $2 /* vga buffer is 16K */
+        pushl   $0x300000 /* vga base */
+        pushl   $0x300000 /* identical map */
+        call    create_page_table_entry
+        leave
+        ret
+#endif
+
         .type	bootstrap32, @function
 bootstrap32:
         pushl   %ebp
         movl    %esp, %ebp
 
+#if 0
+        call    __test_pagetables
+#endif
         /*
          * Create identity map page table entries
          * because we will execute a few
@@ -236,13 +260,17 @@ __pml4:
 	.long	0
 	.long	0
 	.zero	4088
+
 	.align 32
+        .globl __pgdp
 	.type	__pgdp, @object
 	.size	__pgdp, 4096
 __pgdp:
 	.long	0
 	.long	0
 	.zero	4088
+
+        .globl __pgdi
 	.align 32
 	.type	__pgdi, @object
 	.size	__pgdi, 4096
@@ -250,11 +278,13 @@ __pgdi:
 	.long	0
 	.long	0
 	.zero	4088
+
+        .globl __pgti
 	.align 32
 	.type	__pgti, @object
 	.size	__pgti, 32768
 __pgti:
-	.zero	32768
+	.zero	131072
 
 .align 4
 _mboot_info:
