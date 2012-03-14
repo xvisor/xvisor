@@ -64,9 +64,6 @@ void __init cpu_init(struct multiboot_info *binfo)
 {
         init_console();
 
-        /* save our copy of boot info */
-        vmm_memcpy(&boot_info, binfo, sizeof(struct multiboot_info));
-
         cls();
 
         early_print_string((u8 *)"Bootstrapping done.\n");
