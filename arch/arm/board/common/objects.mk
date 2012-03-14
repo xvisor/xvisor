@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2012 Anup Patel.
+# Copyright (c) 2011 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,9 +18,9 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of Versatile Express Platform objects.
+# @brief list of common objects.
 # */
 
-board-common-objs-$(CONFIG_VEXPRESS)+=vexpress/gic.o
-board-common-objs-$(CONFIG_VEXPRESS)+=vexpress/timer.o
+board-common-objs-$(CONFIG_ARM_GIC)+=gic.o
+board-common-objs-$(CONFIG_ARM_TIMER_SP804)+=sp804_timer.o
 

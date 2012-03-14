@@ -33,7 +33,6 @@
 #include <libfdt.h>
 #include <ca9x4_board.h>
 #include <vexpress/plat.h>
-#include <vexpress/timer.h>
 
 extern u32 dt_blob_start;
 

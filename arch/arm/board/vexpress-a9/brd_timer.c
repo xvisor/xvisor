@@ -29,14 +29,14 @@
 #include <ca9x4_board.h>
 #include <vexpress/plat.h>
 #include <vexpress/sp810.h>
-#include <vexpress/timer.h>
+#include <sp804_timer.h>
 
 static virtual_addr_t ca9x4_timer0_base;
 static virtual_addr_t ca9x4_timer1_base;
 
 u64 arch_cpu_clocksource_cycles(void)
 {
-	return ~vexpress_timer_counter_value(ca9x4_timer1_base);
+	return ~sp804_timer_counter_value(ca9x4_timer1_base);
 }
 
 u64 arch_cpu_clocksource_mask(void)
@@ -57,23 +57,15 @@ u32 arch_cpu_clocksource_shift(void)
 int __init arch_cpu_clocksource_init(void)
 {
 	int rc;
+	u32 val;
 	virtual_addr_t sctl_base;
 
 	/* Map control registers */
 	sctl_base = vmm_host_iomap(V2M_SYSCTL, 0x1000);
 
-	/* Map timer registers */
-	ca9x4_timer1_base = vmm_host_iomap(V2M_TIMER1, 0x1000);
-
-	/* Initialize timers */
-	rc = vexpress_timer_init(sctl_base, 
-				 ca9x4_timer1_base,
-				 SCCTRL_TIMEREN1SEL_TIMCLK,
-				 IRQ_V2M_TIMER1,
-				 NULL);
-	if (rc) {
-		return rc;
-	}
+	/* Select 1MHz TIMCLK as the reference clock for SP804 timers */
+	val = vmm_readl((void *)sctl_base) | SCCTRL_TIMEREN1SEL_TIMCLK;
+	vmm_writel(val, (void *)sctl_base);
 
 	/* Unmap control register */
 	rc = vmm_host_iounmap(sctl_base, 0x1000);
@@ -81,24 +73,33 @@ int __init arch_cpu_clocksource_init(void)
 		return rc;
 	}
 
-	/* Configure timer1 as free running source */
-	rc = vexpress_timer_counter_start(ca9x4_timer1_base);
+	/* Map timer registers */
+	ca9x4_timer1_base = vmm_host_iomap(V2M_TIMER1, 0x1000);
+
+	/* Initialize timers */
+	rc = sp804_timer_init(ca9x4_timer1_base, IRQ_V2M_TIMER1, NULL);
 	if (rc) {
 		return rc;
 	}
-	vexpress_timer_enable(ca9x4_timer1_base);
+
+	/* Configure timer1 as free running source */
+	rc = sp804_timer_counter_start(ca9x4_timer1_base);
+	if (rc) {
+		return rc;
+	}
+	sp804_timer_enable(ca9x4_timer1_base);
 
 	return VMM_OK;
 }
 
 int arch_cpu_clockevent_stop(void)
 {
-	return vexpress_timer_event_stop(ca9x4_timer0_base);
+	return sp804_timer_event_stop(ca9x4_timer0_base);
 }
 
 static int ca9x4_timer0_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 {
-	vexpress_timer_event_clearirq(ca9x4_timer0_base);
+	sp804_timer_event_clearirq(ca9x4_timer0_base);
 
 	vmm_timer_clockevent_process(regs);
 
@@ -109,14 +110,14 @@ int arch_cpu_clockevent_expire(void)
 {
 	int rc;
 
-	rc = vexpress_timer_event_start(ca9x4_timer0_base, 0);
+	rc = sp804_timer_event_start(ca9x4_timer0_base, 0);
 
 	if (!rc) {
 		/* FIXME: The polling loop below is fine with emulators but,
 		 * for real hardware we might require some soft delay to
 		 * avoid bus contention.
 		 */
-		while (!vexpress_timer_event_checkirq(ca9x4_timer0_base));
+		while (!sp804_timer_event_checkirq(ca9x4_timer0_base));
 	}
 
 	return rc;
@@ -124,32 +125,35 @@ int arch_cpu_clockevent_expire(void)
 
 int arch_cpu_clockevent_start(u64 tick_nsecs)
 {
-	return vexpress_timer_event_start(ca9x4_timer0_base, tick_nsecs);
+	return sp804_timer_event_start(ca9x4_timer0_base, tick_nsecs);
 }
 
 int __init arch_cpu_clockevent_init(void)
 {
 	int rc;
+	u32 val;
 	virtual_addr_t sctl_base;
 
 	/* Map control registers */
 	sctl_base = vmm_host_iomap(V2M_SYSCTL, 0x1000);
 
-	/* Map timer registers */
-	ca9x4_timer0_base = vmm_host_iomap(V2M_TIMER0, 0x1000);
+	/* Select 1MHz TIMCLK as the reference clock for SP804 timers */
+	val = vmm_readl((void *)sctl_base) | SCCTRL_TIMEREN0SEL_TIMCLK;
+	vmm_writel(val, (void *)sctl_base);
 
-	/* Initialize timers */
-	rc = vexpress_timer_init(sctl_base,
-				 ca9x4_timer0_base,
-				 SCCTRL_TIMEREN0SEL_TIMCLK,
-				 IRQ_V2M_TIMER0,
-				 ca9x4_timer0_handler);
+	/* Unmap control register */
+	rc = vmm_host_iounmap(sctl_base, 0x1000);
 	if (rc) {
 		return rc;
 	}
 
-	/* Unmap control register */
-	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	/* Map timer registers */
+	ca9x4_timer0_base = vmm_host_iomap(V2M_TIMER0, 0x1000);
+
+	/* Initialize timers */
+	rc = sp804_timer_init(ca9x4_timer0_base, 
+			      IRQ_V2M_TIMER0,
+			      ca9x4_timer0_handler);
 	if (rc) {
 		return rc;
 	}

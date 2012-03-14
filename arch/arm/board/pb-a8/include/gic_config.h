@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Anup Patel.
+ * Copyright (c) 2011 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,23 +16,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vexpress_config.h
+ * @file gic_config.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief Versatile Express Platform Configuration Header
+ * @brief GIC Configuration Header
  */
-#ifndef _VEXPRESS_CONFIG_H__
-#define _VEXPRESS_CONFIG_H__
+#ifndef _GIC_CONFIG_H__
+#define _GIC_CONFIG_H__
 
-#include <ca9x4_board.h>
+#include <pba8_board.h>
 
-#if !defined(V2M_GIC_NR_IRQS) || (V2M_GIC_NR_IRQS < NR_IRQS_CA9X4)
-#undef V2M_GIC_NR_IRQS
-#define V2M_GIC_NR_IRQS		NR_IRQS_CA9X4
+#if !defined(GIC_NR_IRQS) || (GIC_NR_IRQS < NR_IRQS_PBA8)
+#undef GIC_NR_IRQS
+#define GIC_NR_IRQS		NR_IRQS_PBA8
 #endif
 
-#if !defined(V2M_GIC_MAX_NR) || (V2M_GIC_MAX_NR < NR_GIC_CA9X4)
-#undef V2M_GIC_MAX_NR
-#define V2M_GIC_MAX_NR		NR_GIC_CA9X4
+#if !defined(GIC_MAX_NR) || (GIC_MAX_NR < NR_GIC_PBA8)
+#undef GIC_MAX_NR
+#define GIC_MAX_NR		NR_GIC_PBA8
 #endif
 
-#endif
+#endif /* _GIC_CONFIG_H__ */

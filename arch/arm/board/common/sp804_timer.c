@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Anup Patel.
+ * Copyright (c) 2011 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,17 +18,14 @@
  *
  * @file timer.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Versatile Express Timer source
+ * @brief SP804 Dual-Mode Timer Implementation
  */
 
 #include <vmm_error.h>
 #include <vmm_host_io.h>
-#include <vexpress_config.h>
-#include <vexpress/plat.h>
-#include <vexpress/sp810.h>
-#include <vexpress/timer.h>
+#include <sp804_timer.h>
 
-void vexpress_timer_enable(virtual_addr_t base)
+void sp804_timer_enable(virtual_addr_t base)
 {
 	u32 ctrl;
 
@@ -37,7 +34,7 @@ void vexpress_timer_enable(virtual_addr_t base)
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 }
 
-void vexpress_timer_disable(virtual_addr_t base)
+void sp804_timer_disable(virtual_addr_t base)
 {
 	u32 ctrl;
 
@@ -46,24 +43,24 @@ void vexpress_timer_disable(virtual_addr_t base)
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 }
 
-int vexpress_timer_event_stop(virtual_addr_t base)
+int sp804_timer_event_stop(virtual_addr_t base)
 {
 	vmm_writel(0x0, (void *)(base + TIMER_CTRL));
 
 	return VMM_OK;
 }
 
-void vexpress_timer_event_clearirq(virtual_addr_t base)
+void sp804_timer_event_clearirq(virtual_addr_t base)
 {
 	vmm_writel(1, (void *)(base + TIMER_INTCLR));
 }
 
-bool vexpress_timer_event_checkirq(virtual_addr_t base)
+bool sp804_timer_event_checkirq(virtual_addr_t base)
 {
 	return vmm_readl((void *)(base + TIMER_MIS)) ? TRUE : FALSE;
 }
 
-int vexpress_timer_event_start(virtual_addr_t base, u64 nsecs)
+int sp804_timer_event_start(virtual_addr_t base, u64 nsecs)
 {
 	u32 ctrl, usecs;
 
@@ -108,12 +105,12 @@ int vexpress_timer_event_start(virtual_addr_t base, u64 nsecs)
 	return VMM_OK;
 }
 
-u32 vexpress_timer_counter_value(virtual_addr_t base)
+u32 sp804_timer_counter_value(virtual_addr_t base)
 {
 	return vmm_readl((void *)(base + TIMER_VALUE));
 }
 
-int vexpress_timer_counter_start(virtual_addr_t base)
+int sp804_timer_counter_start(virtual_addr_t base)
 {
 	u32 ctrl;
 
@@ -125,17 +122,10 @@ int vexpress_timer_counter_start(virtual_addr_t base)
 	return VMM_OK;
 }
 
-int __init vexpress_timer_init(virtual_addr_t sctl_base,
-			       virtual_addr_t base,
-			       u32 ensel_timclk,
-			       u32 hirq, vmm_host_irq_handler_t hirq_handler)
+int __init sp804_timer_init(virtual_addr_t base, u32 hirq,
+			    vmm_host_irq_handler_t hirq_handler)
 {
 	int ret = VMM_OK;
-	u32 val;
-
-	/* Select 1MHz TIMCLK as the reference clock for SP804 timers */
-	val = vmm_readl((void *)sctl_base) | (ensel_timclk);
-	vmm_writel(val, (void *)sctl_base);
 
 	/*
 	 * Initialise to a known state (all timers off)

@@ -25,16 +25,16 @@
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
 #include <ca9x4_board.h>
-#include <vexpress/gic.h>
+#include <gic.h>
 
 u32 arch_pic_irq_count(void)
 {
-	return 96;
+	return GIC_NR_IRQS;
 }
 
 int arch_pic_cpu_to_host_map(u32 cpu_irq_no)
 {
-	return vexpress_gic_active_irq(0);
+	return gic_active_irq(0);
 }
 
 int arch_pic_pre_condition(u32 host_irq_no)
@@ -44,17 +44,17 @@ int arch_pic_pre_condition(u32 host_irq_no)
 
 int arch_pic_post_condition(u32 host_irq_no)
 {
-	return vexpress_gic_ack_irq(0, host_irq_no);
+	return gic_ack_irq(0, host_irq_no);
 }
 
 int arch_pic_irq_enable(u32 host_irq_no)
 {
-	return vexpress_gic_unmask(0, host_irq_no);
+	return gic_unmask(0, host_irq_no);
 }
 
 int arch_pic_irq_disable(u32 host_irq_no)
 {
-	return vexpress_gic_mask(0, host_irq_no);
+	return gic_mask(0, host_irq_no);
 }
 
 int __init arch_pic_init(void)
@@ -63,13 +63,13 @@ int __init arch_pic_init(void)
 	virtual_addr_t dist_base, cpu_base;
 
 	dist_base = vmm_host_iomap(A9_MPCORE_GIC_DIST, 0x1000);
-	ret = vexpress_gic_dist_init(0, dist_base, IRQ_CA9X4_GIC_START);
+	ret = gic_dist_init(0, dist_base, IRQ_CA9X4_GIC_START);
 	if (ret) {
 		return ret;
 	}
 
 	cpu_base = vmm_host_iomap(A9_MPCORE_GIC_CPU, 0x1000);
-	ret = vexpress_gic_cpu_init(0, cpu_base);
+	ret = gic_cpu_init(0, cpu_base);
 	if (ret) {
 		return ret;
 	}

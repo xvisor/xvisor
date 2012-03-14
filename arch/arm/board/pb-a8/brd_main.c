@@ -32,7 +32,7 @@
 #include <rtc/vmm_rtcdev.h>
 #include <libfdt.h>
 #include <pba8_board.h>
-#include <realview/timer.h>
+#include <realview/plat.h>
 
 extern u32 dt_blob_start;
 virtual_addr_t pba8_sys_base;

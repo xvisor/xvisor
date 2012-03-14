@@ -18,13 +18,17 @@
  *
  * @file gic.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief Realview Generic Interrupt Controller header
+ * @brief Generic Interrupt Controller Interface
  */
-#ifndef __REALVIEW_GIC_H__
-#define __REALVIEW_GIC_H__
+#ifndef __GIC_H__
+#define __GIC_H__
 
 #include <vmm_types.h>
-#include <realview/plat.h>
+
+/* Include GIC configuration defines/macros 
+ * provided by board specific code 
+ */
+#include <gic_config.h>
 
 #define GIC_CPU_CTRL			0x00
 #define GIC_CPU_PRIMASK			0x04
@@ -46,11 +50,16 @@
 #define GIC_DIST_CONFIG			0xc00
 #define GIC_DIST_SOFTINT		0xf00
 
-int realview_gic_active_irq(u32 gic_nr);
-int realview_gic_ack_irq(u32 gic_nr, u32 irq);
-int realview_gic_mask(u32 gic_nr, u32 irq);
-int realview_gic_unmask(u32 gic_nr, u32 irq);
-int realview_gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start);
-int realview_gic_cpu_init(u32 gic_nr, virtual_addr_t base);
+int gic_active_irq(u32 gic_nr);
 
-#endif
+int gic_ack_irq(u32 gic_nr, u32 irq);
+
+int gic_mask(u32 gic_nr, u32 irq);
+
+int gic_unmask(u32 gic_nr, u32 irq);
+
+int gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start);
+
+int gic_cpu_init(u32 gic_nr, virtual_addr_t base);
+
+#endif /* __GIC_H__ */
