@@ -105,13 +105,15 @@ int arch_cpu_clockevent_stop(void)
 	return sp804_timer_event_stop(pba8_timer0_base);
 }
 
-static int pba8_timer0_handler(u32 irq_no, arch_regs_t * regs, void *dev)
+static vmm_irq_return_t pba8_timer0_handler(u32 irq_no, 
+					    arch_regs_t * regs, 
+					    void *dev)
 {
 	sp804_timer_event_clearirq(pba8_timer0_base);
 
 	vmm_timer_clockevent_process(regs);
 
-	return VMM_OK;
+	return VMM_IRQ_HANDLED;
 }
 
 int arch_cpu_clockevent_expire(void)

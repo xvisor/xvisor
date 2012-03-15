@@ -168,7 +168,9 @@ int vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq_num, int irq_level)
 	return VMM_OK;
 }
 
-static int vmm_devemu_handle_h2g_irq(u32 irq_no, arch_regs_t * regs, void *dev)
+static vmm_irq_return_t vmm_devemu_handle_h2g_irq(u32 irq_no, 
+						  arch_regs_t * regs, 
+						  void *dev)
 {
 	struct vmm_devemu_h2g_irq * irq = dev;
 
@@ -177,7 +179,7 @@ static int vmm_devemu_handle_h2g_irq(u32 irq_no, arch_regs_t * regs, void *dev)
 		vmm_devemu_emulate_irq(irq->guest, irq->guest_irq, 1);
 	}
 
-	return VMM_OK;
+	return VMM_IRQ_HANDLED;
 }
 
 int vmm_devemu_complete_h2g_irq(struct vmm_guest *guest, u32 irq_num)

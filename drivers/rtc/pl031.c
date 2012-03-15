@@ -83,7 +83,9 @@ static int pl031_alarm_irq_enable(struct pl031_local *ldata,
 }
 #endif
 
-static int pl031_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
+static vmm_irq_return_t pl031_irq_handler(u32 irq_no, 
+					  arch_regs_t * regs, 
+					  void *dev)
 {
 	unsigned long rtcmis;
 	struct pl031_local *ldata = (struct pl031_local *)dev;
@@ -93,7 +95,7 @@ static int pl031_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 		vmm_writel(rtcmis, (void *)(ldata->base + RTC_ICR));
 	}
 
-	return VMM_OK;
+	return VMM_IRQ_HANDLED;
 }
 
 static int pl031_set_time(struct vmm_rtcdev *rdev, struct vmm_rtc_time * tm)

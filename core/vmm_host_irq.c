@@ -50,7 +50,10 @@ int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs)
 			}
 			list_for_each(l, &irq->hndl_list) {
 				hirq = list_entry(l, struct vmm_host_irq_hndl, head);
-				hirq->hndl(hirq_num, regs, hirq->dev);
+				if (hirq->hndl(hirq_num, regs, hirq->dev) ==
+							VMM_IRQ_HANDLED) {
+					break;
+				}
 			}
 			if (irq->chip && irq->chip->irq_eoi) {
 				irq->chip->irq_eoi(irq);

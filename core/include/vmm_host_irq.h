@@ -27,9 +27,21 @@
 #include <vmm_list.h>
 #include <arch_regs.h>
 
-typedef int (*vmm_host_irq_handler_t) (u32 irq_no, 
-					arch_regs_t * regs,
-					void *dev);
+/**
+ * enum vmm_irq_return
+ * @VMM_IRQ_NONE		interrupt was not from this device
+ * @VMM_IRQ_HANDLED		interrupt was handled by this device
+ */
+enum vmm_irq_return {
+	VMM_IRQ_NONE		= (0 << 0),
+	VMM_IRQ_HANDLED		= (1 << 0),
+};
+
+typedef enum vmm_irq_return vmm_irq_return_t;
+
+typedef vmm_irq_return_t (*vmm_host_irq_handler_t) (u32 irq_no, 
+						    arch_regs_t * regs,
+						    void *dev);
 
 /** Host IRQ Handler Abstraction */
 struct vmm_host_irq_hndl {
