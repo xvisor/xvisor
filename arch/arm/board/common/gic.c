@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_host_io.h>
+#include <vmm_host_irq.h>
 #include <gic.h>
 
 #define max(a,b)	((a) < (b) ? (b) : (a))
@@ -33,24 +34,40 @@ struct gic_chip_data {
 	virtual_addr_t cpu_base;
 };
 
+#ifndef GIC_MAX_NR
+#define GIC_MAX_NR	1
+#endif
+
+static virtual_addr_t gic_cpu_base_addr;
 static struct gic_chip_data gic_data[GIC_MAX_NR];
 
-static inline void gic_write(u32 val, virtual_addr_t addr)
+#define gic_write(val, addr)	vmm_writel((val), (void *)(addr))
+#define gic_read(addr)		vmm_readl((void *)(addr))
+
+static inline virtual_addr_t gic_dist_base(struct vmm_host_irq *irq)
 {
-	vmm_writel(val, (void *)(addr));
+	struct gic_chip_data *gic_data = vmm_host_irq_get_chip_data(irq);
+	return gic_data->dist_base;
 }
 
-static inline u32 gic_read(virtual_addr_t addr)
+static inline virtual_addr_t gic_cpu_base(struct vmm_host_irq *irq)
 {
-	return vmm_readl((void *)(addr));
+	struct gic_chip_data *gic_data = vmm_host_irq_get_chip_data(irq);
+	return gic_data->cpu_base;
 }
 
-int gic_active_irq(u32 gic_nr)
+static inline u32 gic_irq(struct vmm_host_irq *irq)
 {
-	int ret = -1;
+	struct gic_chip_data *gic_data = vmm_host_irq_get_chip_data(irq);
+	return irq->num - gic_data->irq_offset;
+}
+
+u32 gic_active_irq(u32 gic_nr)
+{
+	u32 ret;
 
 	if (GIC_MAX_NR <= gic_nr) {
-		return VMM_EFAIL;
+		return 0xFFFFFFFF;
 	}
 
 	ret = gic_read(gic_data[gic_nr].cpu_base + GIC_CPU_INTACK) & 0x3FF;
@@ -59,83 +76,40 @@ int gic_active_irq(u32 gic_nr)
 	return ret;
 }
 
-int gic_ack_irq(u32 gic_nr, u32 irq)
+void gic_eoi_irq(struct vmm_host_irq *irq)
 {
-	u32 gic_irq;
-
-	if (GIC_MAX_NR <= gic_nr) {
-		return VMM_EFAIL;
-	}
-
-	if (irq < gic_data[gic_nr].irq_offset) {
-		return VMM_EFAIL;
-	}
-
-	gic_irq = irq - gic_data[gic_nr].irq_offset;
-
-	gic_write(gic_irq, gic_data[gic_nr].cpu_base + GIC_CPU_EOI);
-
-	return VMM_OK;
+	gic_write(gic_irq(irq), gic_cpu_base(irq) + GIC_CPU_EOI);
 }
 
-int gic_mask(u32 gic_nr, u32 irq)
+void gic_mask_irq(struct vmm_host_irq *irq)
 {
-	u32 mask = 1 << (irq % 32);
-	u32 gic_irq;
-
-	if (GIC_MAX_NR <= gic_nr) {
-		return VMM_EFAIL;
-	}
-
-	if (irq < gic_data[gic_nr].irq_offset) {
-		return VMM_EFAIL;
-	}
-
-	gic_irq = irq - gic_data[gic_nr].irq_offset;
-
-	gic_write(mask, gic_data[gic_nr].dist_base +
-			GIC_DIST_ENABLE_CLEAR + (gic_irq / 32) * 4);
-
-	return VMM_OK;
+	gic_write(1 << (irq->num % 32), gic_dist_base(irq) +
+		  GIC_DIST_ENABLE_CLEAR + (gic_irq(irq) / 32) * 4);
 }
 
-int gic_unmask(u32 gic_nr, u32 irq)
+void gic_unmask_irq(struct vmm_host_irq *irq)
 {
-	u32 mask = 1 << (irq % 32);
-	u32 gic_irq;
-
-	if (GIC_MAX_NR <= gic_nr) {
-		return VMM_EFAIL;
-	}
-
-	if (irq < gic_data[gic_nr].irq_offset) {
-		return VMM_EFAIL;
-	}
-
-	gic_irq = irq - gic_data[gic_nr].irq_offset;
-
-	gic_write(mask, gic_data[gic_nr].dist_base +
-			GIC_DIST_ENABLE_SET + (gic_irq / 32) * 4);
-
-	return VMM_OK;
+	gic_write(1 << (irq->num % 32), gic_dist_base(irq) +
+		  GIC_DIST_ENABLE_SET + (gic_irq(irq) / 32) * 4);
 }
 
-int __init gic_dist_init(u32 gic_nr, virtual_addr_t base,
-					  u32 irq_start)
-{
-	unsigned int max_irq, i;
-	u32 cpumask = 1 << 0;	/*smp_processor_id(); */
+static struct vmm_host_irq_chip gic_chip = {
+	.name			= "GIC",
+	.irq_mask		= gic_mask_irq,
+	.irq_unmask		= gic_unmask_irq,
+	.irq_eoi		= gic_eoi_irq,
+};
 
-	if (GIC_MAX_NR <= gic_nr) {
-		return VMM_EFAIL;
-	}
+void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)
+{
+	unsigned int max_irq, irq_limit, i;
+	u32 cpumask = 1 << 0;	/* FIXME: smp_processor_id(); */
+	virtual_addr_t base = gic->dist_base;
 
 	cpumask |= cpumask << 8;
 	cpumask |= cpumask << 16;
 
-	gic_data[gic_nr].dist_base = base;
-	gic_data[gic_nr].irq_offset = (irq_start - 1) & ~31;
-
+	/* Disable IRQ distribution */
 	gic_write(0, base + GIC_DIST_CTRL);
 
 	/*
@@ -149,49 +123,103 @@ int __init gic_dist_init(u32 gic_nr, virtual_addr_t base,
 	 * Limit this to either the architected maximum, or the
 	 * platform maximum.
 	 */
-	if (max_irq > max(1020, GIC_NR_IRQS))
-		max_irq = max(1020, GIC_NR_IRQS);
+	if (max_irq > 1020) {
+		max_irq = 1020;
+	}
 
 	/*
 	 * Set all global interrupts to be level triggered, active low.
 	 */
-	for (i = 32; i < max_irq; i += 16)
+	for (i = 32; i < max_irq; i += 16) {
 		gic_write(0, base + GIC_DIST_CONFIG + i * 4 / 16);
+	}
 
 	/*
 	 * Set all global interrupts to this CPU only.
 	 */
-	for (i = 32; i < max_irq; i += 4)
+	for (i = 32; i < max_irq; i += 4) {
 		gic_write(cpumask, base + GIC_DIST_TARGET + i * 4 / 4);
+	}
 
 	/*
 	 * Set priority on all interrupts.
 	 */
-	for (i = 0; i < max_irq; i += 4)
+	for (i = 0; i < max_irq; i += 4) {
 		gic_write(0xa0a0a0a0, base + GIC_DIST_PRI + i * 4 / 4);
+	}
 
 	/*
 	 * Disable all interrupts.
 	 */
-	for (i = 0; i < max_irq; i += 32)
+	for (i = 0; i < max_irq; i += 32) {
 		gic_write(0xffffffff,
 			  base + GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
+	}
 
+	/*
+	 * Limit number of interrupts registered to the platform maximum
+	 */
+	irq_limit = gic->irq_offset + max_irq;
+	if (irq_limit > GIC_NR_IRQS) {
+		irq_limit = GIC_NR_IRQS;
+	}
+
+	/*
+	 * Setup the Host IRQ subsystem.
+	 */
+	for (i = irq_start; i < irq_limit; i++) {
+		vmm_host_irq_set_chip(i, &gic_chip);
+		vmm_host_irq_set_chip_data(i, gic);
+	}
+
+	/* Enable IRQ distribution */
 	gic_write(1, base + GIC_DIST_CTRL);
-
-	return VMM_OK;
 }
 
-int __init gic_cpu_init(u32 gic_nr, virtual_addr_t base)
+void __init gic_cpu_init(struct gic_chip_data *gic)
 {
-	if (GIC_MAX_NR <= gic_nr) {
+	int i;
+
+	/*
+	 * Deal with the banked PPI and SGI interrupts - disable all
+	 * PPI interrupts, ensure all SGI interrupts are enabled.
+	 */
+	gic_write(0xffff0000, gic->dist_base + GIC_DIST_ENABLE_CLEAR);
+	gic_write(0x0000ffff, gic->dist_base + GIC_DIST_ENABLE_SET);
+
+	/*
+	 * Set priority on PPI and SGI interrupts
+	 */
+	for (i = 0; i < 32; i += 4) {
+		gic_write(0xa0a0a0a0, 
+			  gic->dist_base + GIC_DIST_PRI + i * 4 / 4);
+	}
+
+	gic_write(0xf0, gic->cpu_base + GIC_CPU_PRIMASK);
+	gic_write(1, gic->cpu_base + GIC_CPU_CTRL);
+}
+
+int __init gic_init(u32 gic_nr, u32 irq_start, 
+		    virtual_addr_t cpu_base, virtual_addr_t dist_base)
+{
+	struct gic_chip_data *gic;
+
+	if (gic_nr >= GIC_MAX_NR) {
 		return VMM_EFAIL;
 	}
 
-	gic_data[gic_nr].cpu_base = base;
+	gic = &gic_data[gic_nr];
+	gic->dist_base = dist_base;
+	gic->cpu_base = cpu_base;
+	gic->irq_offset = (irq_start - 1) & ~31;
 
-	gic_write(0xf0, base + GIC_CPU_PRIMASK);
-	gic_write(1, base + GIC_CPU_CTRL);
+	if (gic_nr == 0) {
+		gic_cpu_base_addr = cpu_base;
+	}
+
+	gic_dist_init(gic, irq_start);
+	gic_cpu_init(gic);
 
 	return VMM_OK;
 }
+

@@ -21,36 +21,15 @@
  * @brief board specific progammable interrupt contoller
  */
 
-#include <arch_board.h>
 #include <vmm_error.h>
+#include <arch_board.h>
 
-u32 arch_pic_irq_count(void)
+u32 arch_host_irq_active(u32 cpu_irq_no)
 {
-	return 8;
+	return 0;
 }
 
-u32 arch_pic_irq_active(u32 cpu_irq_no)
-{
-	return 8;
-}
-
-void arch_pic_irq_ack(u32 host_irq_no)
-{
-}
-
-void arch_pic_irq_eoi(u32 host_irq_no)
-{
-}
-
-void arch_pic_irq_unmask(u32 host_irq_no)
-{
-}
-
-void arch_pic_irq_mask(u32 host_irq_no)
-{
-}
-
-int arch_pic_init(void)
+int __init arch_host_irq_init(void)
 {
 	return VMM_OK;
 }

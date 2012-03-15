@@ -50,16 +50,9 @@
 #define GIC_DIST_CONFIG			0xc00
 #define GIC_DIST_SOFTINT		0xf00
 
-int gic_active_irq(u32 gic_nr);
+u32 gic_active_irq(u32 gic_nr);
 
-int gic_ack_irq(u32 gic_nr, u32 irq);
-
-int gic_mask(u32 gic_nr, u32 irq);
-
-int gic_unmask(u32 gic_nr, u32 irq);
-
-int gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start);
-
-int gic_cpu_init(u32 gic_nr, virtual_addr_t base);
+int gic_init(u32 gic_nr, u32 irq_start, 
+	     virtual_addr_t cpu_base, virtual_addr_t dist_base);
 
 #endif /* __GIC_H__ */

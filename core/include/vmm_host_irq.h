@@ -24,6 +24,7 @@
 #define _VMM_HOST_IRQ_H__
 
 #include <vmm_types.h>
+#include <vmm_list.h>
 #include <arch_regs.h>
 
 typedef int (*vmm_host_irq_handler_t) (u32 irq_no, 
@@ -37,31 +38,67 @@ struct vmm_host_irq_hndl {
 	void *dev;
 };
 
+struct vmm_host_irq;
+
+/** Host IRQ Chip Abstraction */
+struct vmm_host_irq_chip {
+	const char *name;
+	void (*irq_ack)(struct vmm_host_irq *irq);
+	void (*irq_mask)(struct vmm_host_irq *irq);
+	void (*irq_unmask)(struct vmm_host_irq *irq);
+	void (*irq_eoi)(struct vmm_host_irq *irq);
+};
+
 /** Host IRQ Abstraction */
 struct vmm_host_irq {
+	u32 num;
 	bool enabled;
+	void * chip_data;
+	struct vmm_host_irq_chip * chip;
 	struct dlist hndl_list;
 };
 
-/** Execute host interrupts */
+/** Execute host interrupts (To be called from architecture specific code) */
 int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs);
 
+/* Set host irq chip for given host irq number */
+int vmm_host_irq_set_chip(u32 hirq_num, struct vmm_host_irq_chip *chip);
+
+/* Set host irq chip data for given host irq number */
+int vmm_host_irq_set_chip_data(u32 hirq_num, void * chip_data);
+
+/** Get host irq instance from host irq number */
+struct vmm_host_irq * vmm_host_irq_get(u32 hirq_num);
+
+/** Get host irq chip instance from host irq instance */
+static inline struct vmm_host_irq_chip * vmm_host_irq_get_chip(
+						struct vmm_host_irq *irq)
+{
+	return (irq) ? irq->chip : NULL;
+}
+
+/** Get host irq chip data from host irq instance */
+static inline void * vmm_host_irq_get_chip_data(struct vmm_host_irq *irq)
+{
+	return (irq) ? irq->chip_data : NULL;
+}
+
 /** Check if a host irq is enabled */
-bool vmm_host_irq_isenabled(u32 hirq_no);
+bool vmm_host_irq_isenabled(u32 hirq_num);
 
 /** Enable a host irq (by default all irqs are enabled) */
-int vmm_host_irq_enable(u32 hirq_no);
+int vmm_host_irq_enable(u32 hirq_num);
 
 /** Disable a host irq */
-int vmm_host_irq_disable(u32 hirq_no);
+int vmm_host_irq_disable(u32 hirq_num);
 
 /** Register handler for given irq */
-int vmm_host_irq_register(u32 hirq_no, 
+int vmm_host_irq_register(u32 hirq_num, 
 			  vmm_host_irq_handler_t handler,
 			  void *dev);
 
 /** Unregister handler for given irq */
-int vmm_host_irq_unregister(u32 hirq_no, 
+int vmm_host_irq_unregister(u32 hirq_num, 
 			    vmm_host_irq_handler_t handler);
 
 /** Interrupts initialization function */

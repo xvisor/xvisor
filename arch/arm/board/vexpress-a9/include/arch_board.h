@@ -25,20 +25,30 @@
 
 #include <vmm_types.h>
 #include <vmm_devtree.h>
+#include <vmm_host_aspace.h>
+#include <ca9x4_board.h>
+#include <gic.h>
 
 /** Default Terminal related function required by VMM core */
 int arch_defterm_getc(u8 *ch);
 int arch_defterm_putc(u8 ch);
 int arch_defterm_init(void);
 
-/** Interrupt controller related function required by VMM core */
-u32 arch_pic_irq_count(void);
-u32 arch_pic_irq_active(u32 cpu_irq_no);
-void arch_pic_irq_ack(u32 host_irq_no);
-void arch_pic_irq_eoi(u32 host_irq_no);
-void arch_pic_irq_unmask(u32 host_irq_no);
-void arch_pic_irq_mask(u32 host_irq_no);
-int arch_pic_init(void);
+/** Host IRQ related function required by VMM core */
+#define ARCH_HOST_IRQ_COUNT			GIC_NR_IRQS
+static inline u32 arch_host_irq_active(u32 cpu_irq_no)
+{
+	return gic_active_irq(0);
+}
+static inline int arch_host_irq_init(void)
+{
+	virtual_addr_t dist_base, cpu_base;
+
+	dist_base = vmm_host_iomap(A9_MPCORE_GIC_DIST, 0x1000);
+	cpu_base = vmm_host_iomap(A9_MPCORE_GIC_CPU, 0x1000);
+
+	return gic_init(0, IRQ_CA9X4_GIC_START, cpu_base, dist_base);
+}
 
 /** RAM related functions required by VMM core */
 int arch_board_ram_start(physical_addr_t * addr);
