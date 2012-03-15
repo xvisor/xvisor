@@ -61,11 +61,6 @@ u32 omap3_intc_active_irq(u32 cpu_irq)
 	return ret;
 }
 
-void omap3_intc_ack(struct vmm_host_irq *irq)
-{
-	intc_write(OMAP3_INTC_CONTROL, OMAP3_INTC_CONTROL_NEWIRQAGR_M);
-}
-
 void omap3_intc_mask(struct vmm_host_irq *irq)
 {
 	intc_write(OMAP3_INTC_MIR((irq->num / OMAP3_INTC_BITS_PER_REG)),
@@ -78,11 +73,16 @@ void omap3_intc_unmask(struct vmm_host_irq *irq)
 		   0x1 << (irq->num & (OMAP3_INTC_BITS_PER_REG - 1)));
 }
 
+void omap3_intc_eoi(struct vmm_host_irq *irq)
+{
+	intc_write(OMAP3_INTC_CONTROL, OMAP3_INTC_CONTROL_NEWIRQAGR_M);
+}
+
 static struct vmm_host_irq_chip intc_chip = {
 	.name			= "INTC",
-	.irq_ack		= omap3_intc_ack,
 	.irq_mask		= omap3_intc_mask,
 	.irq_unmask		= omap3_intc_unmask,
+	.irq_eoi		= omap3_intc_eoi,
 };
 
 int __init omap3_intc_init(void)
