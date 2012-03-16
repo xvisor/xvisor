@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Anup Patel.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -31,11 +31,14 @@
 #include <vmm_chardev.h>
 #include <rtc/vmm_rtcdev.h>
 #include <libfdt.h>
-#include <realview_plat.h>
-#include <pba8_board.h>
+#include <vexpress_plat.h>
+#include <ca15x4_board.h>
 
 extern u32 dt_blob_start;
-virtual_addr_t pba8_sys_base;
+
+#if 0 /* FIXME: */
+virtual_addr_t ca15x4_sys_base;
+#endif
 
 int arch_board_ram_start(physical_addr_t * addr)
 {
@@ -114,14 +117,11 @@ int arch_devtree_populate(struct vmm_devtree_node ** root)
 
 int arch_board_reset(void)
 {
-#if 0 /* QEMU checks bit 8 which is wrong */
-	vmm_writel(0x100, 
-		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
-#else
+#if 0 /* FIXME: */
 	vmm_writel(0x0, 
-		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
-	vmm_writel(REALVIEW_SYS_CTRL_RESET_PLLRESET, 
-		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
+		   (void *)(ca15x4_sys_base + VEXPRESS_SYS_RESETCTL_OFFSET));
+	vmm_writel(VEXPRESS_SYS_CTRL_RESET_PLLRESET, 
+		   (void *)(ca15x4_sys_base + VEXPRESS_SYS_RESETCTL_OFFSET));
 #endif
 	return VMM_OK;
 }
@@ -155,12 +155,14 @@ int __init arch_board_final_init(void)
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
+#if 0 /* FIXME: */
 	/* Map control registers */
-	pba8_sys_base = vmm_host_iomap(REALVIEW_SYS_BASE, 0x1000);
+	ca15x4_sys_base = vmm_host_iomap(VEXPRESS_SYS_BASE, 0x1000);
 
 	/* Unlock Lockable registers */
-	vmm_writel(REALVIEW_SYS_LOCKVAL, 
-		   (void *)(pba8_sys_base + REALVIEW_SYS_LOCK_OFFSET));
+	vmm_writel(VEXPRESS_SYS_LOCKVAL, 
+		   (void *)(ca15x4_sys_base + VEXPRESS_SYS_LOCK_OFFSET));
+#endif
 
 	/* Do Probing using device driver framework */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING

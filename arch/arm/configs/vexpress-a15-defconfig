@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Sat Mar 17 00:26:02 2012
+# Sat Mar 17 01:40:20 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -12,11 +12,11 @@ CONFIG_ARCH="arm"
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
-CONFIG_BOARD="pb-a8"
-CONFIG_CPU_CORTEX_A8=y
+CONFIG_BOARD="vexpress-a15"
+# CONFIG_CPU_CORTEX_A8 is not set
 # CONFIG_CPU_OMAP3 is not set
 # CONFIG_CPU_CORTEX_A9 is not set
-# CONFIG_CPU_CORTEX_A15 is not set
+CONFIG_CPU_CORTEX_A15=y
 CONFIG_ARMV7A=y
 CONFIG_ARM32=y
 
@@ -26,19 +26,16 @@ CONFIG_ARM32=y
 # CONFIG_ARM32_HIGHVEC is not set
 # CONFIG_ARM32_FUNCSTATS is not set
 # CONFIG_ARMV7A_SECUREX is not set
-CONFIG_BOARD_PB_A8=y
-CONFIG_REALVIEW=y
 CONFIG_ARM_GIC=y
 CONFIG_ARM_TIMER_SP804=y
 CONFIG_EMU_REALVIEW=y
+CONFIG_VEXPRESS=y
+CONFIG_BOARD_VEXPRESS_A15=y
 
 #
-# Realview PB-A8 Options
+# Versatile Express Cortex-A15 Options
 #
-CONFIG_ONE_GUEST_PBA8_DTS=y
-# CONFIG_ONE_PT_GUEST_PBA8_DTS is not set
-# CONFIG_TWO_GUEST_PBA8_DTS is not set
-# CONFIG_TWO_PT_GUEST_PBA8_DTS is not set
+CONFIG_VEXPRESS_A15_ONE_GUEST_PBA8_DTS=y
 
 #
 # Hypervisor Options

@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file plat.h
+ * @file vexpress_plat.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief Versatile Express V2M platform configuration
  */

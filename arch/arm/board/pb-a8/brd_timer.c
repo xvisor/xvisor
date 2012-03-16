@@ -27,7 +27,7 @@
 #include <vmm_host_aspace.h>
 #include <arch_cpu.h>
 #include <arch_board.h>
-#include <realview/plat.h>
+#include <realview_plat.h>
 #include <pba8_board.h>
 #include <sp804_timer.h>
 

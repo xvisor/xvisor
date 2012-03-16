@@ -31,8 +31,8 @@
 #include <vmm_chardev.h>
 #include <rtc/vmm_rtcdev.h>
 #include <libfdt.h>
+#include <vexpress_plat.h>
 #include <ca9x4_board.h>
-#include <vexpress/plat.h>
 
 extern u32 dt_blob_start;
 
