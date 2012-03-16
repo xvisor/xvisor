@@ -55,7 +55,7 @@ struct vmm_netdev {
 	struct vmm_netdev_ops *dev_ops;
 	unsigned int state;
 	void *priv;		/* Driver specific private data */
-	void *vsw_priv;		/* VMM virtual packet switching layer
+	void *nsw_priv;		/* VMM virtual packet switching layer
 				 * specific private data.
 				 */
 	void *net_priv;		/* VMM specific private data -

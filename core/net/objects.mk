@@ -22,4 +22,5 @@
 # */
 
 core-objs-$(CONFIG_NET)+= net/vmm_netdev.o
+core-objs-$(CONFIG_NET)+= net/vmm_netswitch.o
 
