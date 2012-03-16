@@ -49,8 +49,10 @@ struct vmm_netdev *vmm_alloc_netdev(const char *name)
 		return NULL;
 	}
  
+	vmm_memset(ndev, 0, sizeof(struct vmm_netdev));
 	vmm_strcpy(ndev->name, name);
- 
+	ndev->state = VMM_NETDEV_UNINITIALIZED;
+
 	return ndev;
 }
 
@@ -65,7 +67,8 @@ int vmm_netdev_register(struct vmm_netdev * ndev)
 
 	cd = vmm_malloc(sizeof(struct vmm_classdev));
 	if (!cd) {
-		return VMM_EFAIL;
+		rc = VMM_EFAIL;
+		goto ret_ndev_reg;
 	}
 
 	INIT_LIST_HEAD(&cd->head);
@@ -93,13 +96,17 @@ int vmm_netdev_register(struct vmm_netdev * ndev)
 					   "network device %s with err "
 					   "0x%x", __func__, ndev->name, rc);
 			}
+			goto fail_ndev_reg;
 		}
 	}
 
 	return rc;
 
 fail_ndev_reg:
+	cd->dev = NULL;
+	cd->priv = NULL;
 	vmm_free(cd);
+ret_ndev_reg:
 	return rc;
 }
 

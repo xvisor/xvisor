@@ -29,11 +29,16 @@
 #include <vmm_spinlocks.h>
 #include <vmm_devdrv.h>
 
-#define VMM_NETDEV_CLASS_NAME                "network"
-#define VMM_NETDEV_CLASS_IPRIORITY            1
+#define VMM_NETDEV_CLASS_NAME			"network"
+#define VMM_NETDEV_CLASS_IPRIORITY		1
  
-#define MAX_VMM_NETDEV_NAME_LEN                32
-#define MAX_VMM_NDEV_HW_ADDRESS                32   
+#define MAX_VMM_NETDEV_NAME_LEN			32
+#define MAX_VMM_NDEV_HW_ADDRESS			32
+
+enum vmm_netdev_status {
+	VMM_NETDEV_UNINITIALIZED = 0,
+	VMM_NETDEV_REGISTERED,
+};
 
 struct vmm_netdev;
 
@@ -49,15 +54,19 @@ struct vmm_netdev {
 	struct vmm_device *dev;
 	struct vmm_netdev_ops *dev_ops;
 	unsigned int state;
-	void *priv;        /* Driver specific private data */
-	void *vmm_vsw_priv;    /* VMM virtual packet switching layer private data */
-	void *vmm_priv;        /* VMM specific private data - Usecase is currently undefined */
+	void *priv;		/* Driver specific private data */
+	void *vsw_priv;		/* VMM virtual packet switching layer
+				 * specific private data.
+				 */
+	void *net_priv;		/* VMM specific private data -
+				 * Usecase is currently undefined
+				 */
 	unsigned char hw_addr[MAX_VMM_NDEV_HW_ADDRESS];
 	unsigned int hw_addr_len;
 };
 
 /** Allocate new network device */
-struct vmm_netdev * vmm_netdev_alloc(char *name);
+struct vmm_netdev *vmm_netdev_alloc(char *name);
 
 /** Register network device to device driver framework */
 int vmm_netdev_register(struct vmm_netdev *ndev);
