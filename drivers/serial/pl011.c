@@ -152,9 +152,9 @@ static vmm_irq_return_t pl011_irq_handler(u32 irq_no,
 	data = vmm_in_le16((void *)(port->base + UART_PL011_MIS));
 
 	/* handle RX FIFO not empty */
-	if (data & UART_PL011_MIS_RXMIS) {
+	if (data & (UART_PL011_MIS_RXMIS | UART_PL011_MIS_RTMIS)) {
 		/* Mask RX interrupts till RX FIFO is empty */
-		port->mask &= ~UART_PL011_IMSC_RXIM;
+		port->mask &= ~(UART_PL011_IMSC_RXIM | UART_PL011_IMSC_RTIM);
 		vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
 		/* Signal work completions to all sleeping threads */
 		vmm_completion_complete_all(&port->read_possible);
@@ -178,9 +178,9 @@ static vmm_irq_return_t pl011_irq_handler(u32 irq_no,
 static u8 pl011_getc_sleepable(struct pl011_port *port)
 {
 	/* Wait until there is data in the FIFO */
-	if (!pl011_lowlevel_can_getc(port->base)) {
+	while (!pl011_lowlevel_can_getc(port->base)) {
 		/* Enable the RX interrupt */
-		port->mask |= UART_PL011_IMSC_RXIM;
+		port->mask |= (UART_PL011_IMSC_RXIM | UART_PL011_IMSC_RTIM);
 		vmm_out_le16((void *)(port->base + UART_PL011_IMSC),
 			     port->mask);
 
