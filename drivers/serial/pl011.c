@@ -118,6 +118,13 @@ void pl011_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	vmm_out_8((void *)(base + UART_PL011_LCRH),
 		  UART_PL011_LCRH_WLEN_8 | UART_PL011_LCRH_FEN);
 
+	/* Ensure RX FIFO not empty triggered when 
+	 * RX FIFO becomes 1/8 full
+	 */
+	temp = vmm_in_8((void *)(base + UART_PL011_IFLS));
+	temp &= ~UART_PL011_IFLS_RXIFL_MASK;
+	vmm_out_8((void *)(base + UART_PL011_IFLS), (u8) temp);
+
 	/* Finally, enable the UART */
 	vmm_out_le16((void *)(base + UART_PL011_CR),
 		     UART_PL011_CR_UARTEN | UART_PL011_CR_TXE |
@@ -148,6 +155,7 @@ static vmm_irq_return_t pl011_irq_handler(u32 irq_no,
 	if (data & UART_PL011_MIS_RXMIS) {
 		/* Mask RX interrupts till RX FIFO is empty */
 		port->mask &= ~UART_PL011_IMSC_RXIM;
+		vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
 		/* Signal work completions to all sleeping threads */
 		vmm_completion_complete_all(&port->read_possible);
 	}
@@ -156,11 +164,11 @@ static vmm_irq_return_t pl011_irq_handler(u32 irq_no,
 	if (data & UART_PL011_MIS_TXMIS) {
 		/* Mask TX interrupts till TX FIFO is full */
 		port->mask &= ~UART_PL011_IMSC_TXIM;
+		vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
 		/* Signal work completions to all sleeping threads */
 		vmm_completion_complete_all(&port->write_possible);
 	}
 
-	vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
 	/* Clear all interrupts */
 	vmm_out_le16((void *)(port->base + UART_PL011_ICR), data);
 
