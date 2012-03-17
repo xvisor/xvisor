@@ -65,6 +65,7 @@ struct vmm_host_irq_chip {
 struct vmm_host_irq {
 	u32 num;
 	bool enabled;
+	u32 count;
 	void * chip_data;
 	struct vmm_host_irq_chip * chip;
 	struct dlist hndl_list;
@@ -81,6 +82,12 @@ int vmm_host_irq_set_chip_data(u32 hirq_num, void * chip_data);
 
 /** Get host irq instance from host irq number */
 struct vmm_host_irq * vmm_host_irq_get(u32 hirq_num);
+
+/** Get host irq count from host irq instance */
+static inline u32 vmm_host_irq_get_count(struct vmm_host_irq *irq)
+{
+	return (irq) ? irq->count : 0;
+}
 
 /** Get host irq chip instance from host irq instance */
 static inline struct vmm_host_irq_chip * vmm_host_irq_get_chip(

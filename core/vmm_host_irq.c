@@ -45,6 +45,7 @@ int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs)
 	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		if (irq->enabled) {
+			irq->count++;
 			if (irq->chip && irq->chip->irq_ack) {
 				irq->chip->irq_ack(irq);
 			}
@@ -221,6 +222,7 @@ int __init vmm_host_irq_init(void)
 	for (ite = 0; ite < ARCH_HOST_IRQ_COUNT; ite++) {
 		hirqctrl.irq[ite].num = ite;
 		hirqctrl.irq[ite].enabled = FALSE;
+		hirqctrl.irq[ite].count = 0;
 		hirqctrl.irq[ite].chip = NULL;
 		hirqctrl.irq[ite].chip_data = NULL;
 		INIT_LIST_HEAD(&hirqctrl.irq[ite].hndl_list);
