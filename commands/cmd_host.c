@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <vmm_host_irq.h>
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
@@ -43,6 +44,7 @@ void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   host help\n");
 	vmm_cprintf(cdev, "   host info\n");
+	vmm_cprintf(cdev, "   host irq stats\n");
 	vmm_cprintf(cdev, "   host ram stats\n");
 	vmm_cprintf(cdev, "   host ram bitmap [<column count>]\n");
 	vmm_cprintf(cdev, "   host vapool stats\n");
@@ -53,6 +55,28 @@ void cmd_host_info(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "CPU   : %s\n", CONFIG_CPU);
 	vmm_cprintf(cdev, "Board : %s\n", CONFIG_BOARD);
+}
+
+void cmd_host_irq_stats(struct vmm_chardev *cdev)
+{
+	u32 num, stats, count = vmm_host_irq_count();
+	struct vmm_host_irq *irq;
+	struct vmm_host_irq_chip *chip;
+	vmm_cprintf(cdev, "----------------------------------------\n");
+	vmm_cprintf(cdev, "| %-8s| %-10s| %-15s|\n", 
+			  "IRQ Num", "IRQ Chip", "IRQ Count");
+	vmm_cprintf(cdev, "----------------------------------------\n");
+	for (num = 0; num < count; num++) {
+		irq = vmm_host_irq_get(num);
+		if (!vmm_host_irq_isenabled(irq)) {
+			continue;
+		}
+		stats = vmm_host_irq_get_count(irq);
+		chip = vmm_host_irq_get_chip(irq);
+		vmm_cprintf(cdev, "| %-8d| %-10s| %-15d|\n", 
+				  num, chip->name, stats);
+	}
+	vmm_cprintf(cdev, "----------------------------------------\n");
 }
 
 void cmd_host_ram_stats(struct vmm_chardev *cdev)
@@ -127,6 +151,11 @@ int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		} else if (vmm_strcmp(argv[1], "info") == 0) {
 			cmd_host_info(cdev);
 			return VMM_OK;
+		} else if ((vmm_strcmp(argv[1], "irq") == 0) && (2 < argc)) {
+			if (vmm_strcmp(argv[2], "stats") == 0) {
+				cmd_host_irq_stats(cdev);
+				return VMM_OK;
+			}
 		} else if ((vmm_strcmp(argv[1], "ram") == 0) && (2 < argc)) {
 			if (vmm_strcmp(argv[2], "stats") == 0) {
 				cmd_host_ram_stats(cdev);
