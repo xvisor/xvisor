@@ -18,7 +18,7 @@
  *
  * @file cpu_cache.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief ARM specific cache operations
+ * @brief cache interface of a ARM processor
  */
 #ifndef __CPU_CACHE_H__
 #define __CPU_CACHE_H__

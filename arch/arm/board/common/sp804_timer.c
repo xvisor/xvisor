@@ -18,16 +18,14 @@
  *
  * @file timer.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Realview Timer source
+ * @brief SP804 Dual-Mode Timer Implementation
  */
 
 #include <vmm_error.h>
 #include <vmm_host_io.h>
-#include <realview_config.h>
-#include <realview/plat.h>
-#include <realview/timer.h>
+#include <sp804_timer.h>
 
-void realview_timer_enable(virtual_addr_t base)
+void sp804_timer_enable(virtual_addr_t base)
 {
 	u32 ctrl;
 
@@ -36,7 +34,7 @@ void realview_timer_enable(virtual_addr_t base)
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 }
 
-void realview_timer_disable(virtual_addr_t base)
+void sp804_timer_disable(virtual_addr_t base)
 {
 	u32 ctrl;
 
@@ -45,24 +43,24 @@ void realview_timer_disable(virtual_addr_t base)
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 }
 
-int realview_timer_event_stop(virtual_addr_t base)
+int sp804_timer_event_stop(virtual_addr_t base)
 {
 	vmm_writel(0x0, (void *)(base + TIMER_CTRL));
 
 	return VMM_OK;
 }
 
-void realview_timer_event_clearirq(virtual_addr_t base)
+void sp804_timer_event_clearirq(virtual_addr_t base)
 {
 	vmm_writel(1, (void *)(base + TIMER_INTCLR));
 }
 
-bool realview_timer_event_checkirq(virtual_addr_t base)
+bool sp804_timer_event_checkirq(virtual_addr_t base)
 {
 	return vmm_readl((void *)(base + TIMER_MIS)) ? TRUE : FALSE;
 }
 
-int realview_timer_event_start(virtual_addr_t base, u64 nsecs)
+int sp804_timer_event_start(virtual_addr_t base, u64 nsecs)
 {
 	u32 ctrl, usecs;
 
@@ -107,12 +105,12 @@ int realview_timer_event_start(virtual_addr_t base, u64 nsecs)
 	return VMM_OK;
 }
 
-u32 realview_timer_counter_value(virtual_addr_t base)
+u32 sp804_timer_counter_value(virtual_addr_t base)
 {
 	return vmm_readl((void *)(base + TIMER_VALUE));
 }
 
-int realview_timer_counter_start(virtual_addr_t base)
+int sp804_timer_counter_start(virtual_addr_t base)
 {
 	u32 ctrl;
 
@@ -124,21 +122,10 @@ int realview_timer_counter_start(virtual_addr_t base)
 	return VMM_OK;
 }
 
-int __init realview_timer_init(virtual_addr_t sctl_base,
-			       virtual_addr_t base,
-			       u32 ensel,
-			       u32 hirq, vmm_host_irq_handler_t hirq_handler)
+int __init sp804_timer_init(virtual_addr_t base, u32 hirq,
+			    vmm_host_irq_handler_t hirq_handler)
 {
 	int ret = VMM_OK;
-	u32 val;
-
-	/* 
-	 * set clock frequency: 
-	 *      REALVIEW_REFCLK is 32KHz
-	 *      REALVIEW_TIMCLK is 1MHz
-	 */
-	val = vmm_readl((void *)sctl_base) | (REALVIEW_TIMCLK << ensel);
-	vmm_writel(val, (void *)sctl_base);
 
 	/*
 	 * Initialise to a known state (all timers off)

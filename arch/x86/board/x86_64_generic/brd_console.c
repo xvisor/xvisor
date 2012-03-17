@@ -25,6 +25,11 @@
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
 
+extern void cls();
+extern void putch(unsigned char c);
+extern void settextcolor(u8 forecolor, u8 backcolor);
+extern void init_console(void);
+
 int arch_defterm_getc(u8 *ch)
 {
 	return VMM_OK;
@@ -32,10 +37,13 @@ int arch_defterm_getc(u8 *ch)
 
 int arch_defterm_putc(u8 ch)
 {
+        putch(ch);
+
 	return VMM_OK;
 }
 
 int arch_defterm_init(void)
 {
+        init_console();
 	return VMM_OK;
 }

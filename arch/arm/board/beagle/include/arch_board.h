@@ -25,20 +25,23 @@
 
 #include <vmm_types.h>
 #include <vmm_devtree.h>
+#include <omap3/intc.h>
 
 /** Default Terminal related function required by VMM core */
 int arch_defterm_getc(u8 *ch);
 int arch_defterm_putc(u8 ch);
 int arch_defterm_init(void);
 
-/** Interrupt controller related function required by VMM core */
-u32 arch_pic_irq_count(void);
-int arch_pic_cpu_to_host_map(u32 cpu_irq_no);
-int arch_pic_pre_condition(u32 host_irq_no);
-int arch_pic_post_condition(u32 host_irq_no);
-int arch_pic_irq_enable(u32 host_irq_no);
-int arch_pic_irq_disable(u32 host_irq_no);
-int arch_pic_init(void);
+/** Host IRQ related function required by VMM core */
+#define ARCH_HOST_IRQ_COUNT			OMAP3_MPU_INTC_NRIRQ
+static inline u32 arch_host_irq_active(u32 cpu_irq_no)
+{
+	return omap3_intc_active_irq(cpu_irq_no);
+}
+static inline int arch_host_irq_init(void)
+{
+	return omap3_intc_init();
+}
 
 /** RAM related functions required by VMM core */
 int arch_board_ram_start(physical_addr_t * addr);

@@ -16,16 +16,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file timer.h
+ * @file sp804_timer.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief Realview Timer header
+ * @brief SP804 Dual-Mode Timer Interface
  */
-#ifndef __REALVIEW_TIMER_H__
-#define __REALVIEW_TIMER_H__
+#ifndef __SP804_TIMER_H__
+#define __SP804_TIMER_H__
 
 #include <vmm_types.h>
 #include <vmm_host_irq.h>
-#include <realview/plat.h>
 
 #define TIMER_LOAD		0x00
 #define TIMER_VALUE		0x04
@@ -35,7 +34,7 @@
 #define TIMER_CTRL_DIV1		(0 << 2)
 #define TIMER_CTRL_DIV16	(1 << 2)
 #define TIMER_CTRL_DIV256	(2 << 2)
-#define TIMER_CTRL_IE		(1 << 5)	/* Interrupt Enable (versatile only) */
+#define TIMER_CTRL_IE		(1 << 5)
 #define TIMER_CTRL_PERIODIC	(1 << 6)
 #define TIMER_CTRL_ENABLE	(1 << 7)
 #define TIMER_INTCLR		0x0c
@@ -43,19 +42,23 @@
 #define TIMER_MIS		0x14
 #define TIMER_BGLOAD		0x18
 
-void realview_timer_enable(virtual_addr_t base);
-void realview_timer_disable(virtual_addr_t base);
-int realview_timer_event_stop(virtual_addr_t base);
-void realview_timer_event_clearirq(virtual_addr_t base);
-bool realview_timer_event_checkirq(virtual_addr_t base);
-int realview_timer_event_start(virtual_addr_t base, u64 nsecs);
+void sp804_timer_enable(virtual_addr_t base);
 
-u32 realview_timer_counter_value(virtual_addr_t base);
-int realview_timer_counter_start(virtual_addr_t base);
-int realview_timer_init(virtual_addr_t sctl_base,
-			virtual_addr_t base, 
-			u32 ensel,
-			u32 hirq,
-			vmm_host_irq_handler_t hirq_handler);
+void sp804_timer_disable(virtual_addr_t base);
 
-#endif
+int sp804_timer_event_stop(virtual_addr_t base);
+
+void sp804_timer_event_clearirq(virtual_addr_t base);
+
+bool sp804_timer_event_checkirq(virtual_addr_t base);
+
+int sp804_timer_event_start(virtual_addr_t base, u64 nsecs);
+
+u32 sp804_timer_counter_value(virtual_addr_t base);
+
+int sp804_timer_counter_start(virtual_addr_t base);
+
+int sp804_timer_init(virtual_addr_t base, u32 hirq,
+		     vmm_host_irq_handler_t hirq_handler);
+
+#endif /* __SP804_TIMER_H__ */

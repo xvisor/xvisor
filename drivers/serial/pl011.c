@@ -134,7 +134,9 @@ struct pl011_port {
 	u16 mask;
 };
 
-static int pl011_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
+static vmm_irq_return_t pl011_irq_handler(u32 irq_no, 
+					  arch_regs_t * regs, 
+					  void *dev)
 {
 	u16 data;
 	struct pl011_port *port = (struct pl011_port *)dev;
@@ -162,7 +164,7 @@ static int pl011_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 	/* Clear all interrupts */
 	vmm_out_le16((void *)(port->base + UART_PL011_ICR), data);
 
-	return VMM_OK;
+	return VMM_IRQ_HANDLED;
 }
 
 static u8 pl011_getc_sleepable(struct pl011_port *port)

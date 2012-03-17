@@ -18,6 +18,7 @@
  *
  * @file vmm_netdev.h
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @author Pranav Sawargaonkar <pranav.sawargaonkar@gmail.com>
  * @brief Network Device framework header
  */
 
@@ -28,40 +29,47 @@
 #include <vmm_spinlocks.h>
 #include <vmm_devdrv.h>
 
-#define VMM_NETDEV_CLASS_NAME				"network"
-#define VMM_NETDEV_CLASS_IPRIORITY			1
+#define VMM_NETDEV_CLASS_NAME			"network"
+#define VMM_NETDEV_CLASS_IPRIORITY		1
+ 
+#define MAX_VMM_NETDEV_NAME_LEN			32
+#define MAX_VMM_NDEV_HW_ADDRESS			32
 
-struct vmm_netdev;
-typedef int (*vmm_netdev_ioctl_t) (struct vmm_netdev * ndev,
-				   int cmd, void *buf, size_t buf_len);
-typedef int (*vmm_netdev_read_t) (struct vmm_netdev * ndev,
-				  char *dest, size_t offset, size_t len);
-typedef int (*vmm_netdev_write_t) (struct vmm_netdev * ndev,
-				   char *src, size_t offset, size_t len);
-
-struct vmm_netdev {
-	char name[32];
-	struct vmm_device *dev;
-	vmm_netdev_ioctl_t ioctl;
-	vmm_netdev_read_t read;
-	vmm_netdev_write_t write;
-	void *priv;
+enum vmm_netdev_status {
+	VMM_NETDEV_UNINITIALIZED = 0,
+	VMM_NETDEV_REGISTERED,
 };
 
-/** Do ioctl operation on a network device */
-int vmm_netdev_doioctl(struct vmm_netdev * ndev, 
-			int cmd, void *buf, size_t buf_len);
+struct vmm_netdev;
 
-/** Do read operation on a network device */
-int vmm_netdev_doread(struct vmm_netdev * ndev,
-		      char *dest, size_t offset, size_t len);
+struct vmm_netdev_ops {
+	int (*ndev_init) (struct vmm_netdev *ndev);
+	int (*ndev_open) (struct vmm_netdev *ndev);
+	int (*ndev_close) (struct vmm_netdev *ndev);
+	int (*ndev_xmit) (struct vmm_netdev *ndev, void *buf);
+};
+ 
+struct vmm_netdev {
+	char name[MAX_VMM_NETDEV_NAME_LEN];
+	struct vmm_device *dev;
+	struct vmm_netdev_ops *dev_ops;
+	unsigned int state;
+	void *priv;		/* Driver specific private data */
+	void *nsw_priv;		/* VMM virtual packet switching layer
+				 * specific private data.
+				 */
+	void *net_priv;		/* VMM specific private data -
+				 * Usecase is currently undefined
+				 */
+	unsigned char hw_addr[MAX_VMM_NDEV_HW_ADDRESS];
+	unsigned int hw_addr_len;
+};
 
-/** Do write operation on a network device */
-int vmm_netdev_dowrite(struct vmm_netdev * ndev,
-		       char *src, size_t offset, size_t len);
+/** Allocate new network device */
+struct vmm_netdev *vmm_netdev_alloc(char *name);
 
 /** Register network device to device driver framework */
-int vmm_netdev_register(struct vmm_netdev * ndev);
+int vmm_netdev_register(struct vmm_netdev *ndev);
 
 /** Unregister network device from device driver framework */
 int vmm_netdev_unregister(struct vmm_netdev * ndev);

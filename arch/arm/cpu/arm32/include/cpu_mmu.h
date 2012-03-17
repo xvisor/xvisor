@@ -18,7 +18,7 @@
  *
  * @file cpu_mmu.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief Header File for memory management unit
+ * @brief memory management unit interface of a ARM processor
  */
 #ifndef _CPU_MMU_H__
 #define _CPU_MMU_H__

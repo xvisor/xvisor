@@ -11,11 +11,18 @@
 
 		Low-Priority Features (Our Wishlist)
 
- * Add support for frame buffer virtualization
- * Add support for block device virtualization
- * Add support for input device (mouse/keyboard) virtualization
- * Add support for network virtualization
- * Add support for telnet daemon
- * Add support for libvirt tools
+ * Add networking capabilities.
+ * Add remote command line interface for managment
+ * Add network virtualization
+ * Add block device virtualization
+ * Add light-weight virtual file system with at least 
+   Ext2, FAT32, and ISO9660 support.
+ * Add frame buffer virtualization
+ * Add input device (mouse/keyboard) virtualization
+ * Add libvirt tools support
+ * Add VNC support
+ * Add standalone tool for virtualbox image import
+ * Support open virtualization format (create, modify and edit)
+ * Add plugin infrastructure.
  * Bla Bla Bla .... All the fancy stuff required in a hypervisor
 

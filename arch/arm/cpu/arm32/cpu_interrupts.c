@@ -226,6 +226,16 @@ void do_data_abort(arch_regs_t * uregs)
 		}
 		rc = cpu_mmu_get_reserved_page(dfar, &pg);
 		if (rc) {
+			/* If we were in normal context then just handle
+			 * trans fault for current normal VCPU and exit
+			 * else there is nothing we can do so panic.
+			 */
+			if (vmm_scheduler_normal_context()) {
+				vcpu = vmm_scheduler_current_vcpu();
+				cpu_vcpu_cp15_trans_fault(vcpu, uregs, 
+						dfar, fs, dom, wnr, 1, FALSE);
+				return;
+			}
 			vmm_panic("%s: cannot find reserved page\n"
 				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n", 
 				  __func__, __func__, dfsr, dfar);

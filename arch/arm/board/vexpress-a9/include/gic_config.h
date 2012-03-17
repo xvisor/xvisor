@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Anup Patel.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,23 +16,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file realview_config.h
+ * @file gic_config.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief Realview Platform Configuration Header
+ * @brief GIC Configuration Header
  */
-#ifndef _REALVIEW_CONFIG_H__
-#define _REALVIEW_CONFIG_H__
+#ifndef __GIC_CONFIG_H__
+#define __GIC_CONFIG_H__
 
-#include <pba8_board.h>
+#include <ca9x4_board.h>
 
-#if !defined(REALVIEW_GIC_NR_IRQS) || (REALVIEW_GIC_NR_IRQS < NR_IRQS_PBA8)
-#undef REALVIEW_GIC_NR_IRQS
-#define REALVIEW_GIC_NR_IRQS			NR_IRQS_PBA8
+#if !defined(GIC_NR_IRQS) || (GIC_NR_IRQS < NR_IRQS_CA9X4)
+#undef GIC_NR_IRQS
+#define GIC_NR_IRQS		NR_IRQS_CA9X4
 #endif
 
-#if !defined(REALVIEW_GIC_MAX_NR) || (REALVIEW_GIC_MAX_NR < NR_GIC_PBA8)
-#undef REALVIEW_GIC_MAX_NR
-#define REALVIEW_GIC_MAX_NR		NR_GIC_PBA8
+#if !defined(GIC_MAX_NR) || (GIC_MAX_NR < NR_GIC_CA9X4)
+#undef GIC_MAX_NR
+#define GIC_MAX_NR		NR_GIC_CA9X4
 #endif
 
-#endif
+#endif /* __GIC_CONFIG_H__ */

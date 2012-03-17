@@ -27,15 +27,16 @@ cpu-cflags += -msoft-float -mno-thumb-interwork -march=armv7-a -marm -Uarm
 cpu-asflags += -mno-thumb-interwork -march=armv7-a -marm
 cpu-ldflags += -msoft-float
 
-cpu-objs-y+= cpu_entry.o
+cpu-objs-$(CONFIG_ARMV7A)+= cpu_entry_v7.o
+cpu-objs-$(CONFIG_ARMV7A)+= cpu_mmu_v7.o
+cpu-objs-$(CONFIG_ARMV7A)+= cpu_cache_v7.o
+
 cpu-objs-y+= cpu_init.o
-cpu-objs-y+= cpu_mmu.o
 cpu-objs-y+= cpu_math.o
 ifdef CONFIG_SMP
 cpu-objs-y+= cpu_locks.o
 endif
 cpu-objs-y+= cpu_atomic.o
-cpu-objs-y+= cpu_cache.o
 cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_coproc.o

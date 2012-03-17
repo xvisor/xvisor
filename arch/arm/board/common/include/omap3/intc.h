@@ -210,10 +210,7 @@
 #define OMAP3_INTC_ILR_FIQNIRQ_S		1
 #define OMAP3_INTC_ILR_FIQNIRQ_M		0x00000001
 
-int omap3_intc_active_irq(u32 cpu_irq);
-int omap3_intc_ack_irq(u32 irq);
-int omap3_intc_mask(u32 irq);
-int omap3_intc_unmask(u32 irq);
+u32 omap3_intc_active_irq(u32 cpu_irq);
 int omap3_intc_init(void);
 
 #endif

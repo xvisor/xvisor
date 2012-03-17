@@ -1,0 +1,74 @@
+		Supported Host Hardware
+
+Note: This list is meant to remain in alphabetical order. Please add new 
+machines or boards in alphabetical order so that it is much easier to find
+and edit them later. It is formatted to allow easy grepping and beautification
+by scripts. The fields are: Host Machine Name (M), Host Architecture (A), 
+Host CPU Name (C), Host CPU Vendor (V), Emulator for Host Machine (E),
+Guest support (G), Current status (S), and Relevant documentation files (D).
+If a field spans multiple lines then simply add field prefix to every line.
+
+----------
+
+M:	BeagleBoard or BeagleBoard-xM
+A:	ARM 32-bit (ARMv7a)
+C:	OMAP3 (Cortex-A8)
+V:	Texax Instruments (http://www.ti.com/)
+E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
+G:	By default Realview PB-A8 guest is supported
+S:	Able to boot multiple Realview PB-A8 linux guest on BeagleBoard-xM 
+	Hardware and BeagleBoard emulated by Linaro QEMU 
+D:	docs/arm/beagle_board.txt
+
+M:	Realview PB-A8
+A:	ARM 32-bit (ARMv7a)
+C:	Cortex-A8
+V:	ARM Ltd. (http://www.arm.com/)
+E:	QEMU 0.14.xx or higher (http://wiki.qemu.org/)
+G:	By default Realview PB-A8 guest is supported
+S:	Able to boot multiple Realview PB-A8 linux guest on Realview-PB-A8
+	emulated by QEMU 
+D:	docs/arm/realview_pb-a8.txt
+
+M:	QEMU MIPS Emulation
+A:	MIPS 32-bit
+C:	mips32r2
+V:	MIPS Technologies (http://www.mips.com/)
+E:	QEMU 0.14.xx or higher (http://wiki.qemu.org/)
+G:	Work-In-Progress. No guest support available yet
+S:	Able to get Xvisor managment terminal on MIPS emulated by QEMU
+D:	---
+
+M:	Versatile Express Cortex A9x4
+A:	ARM 32-bit (ARMv7a)
+C:	Cortex-A9
+V:	ARM Ltd. (http://www.arm.com/)
+E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
+G:	By default Realview PB-A8 guest is supported
+S:	Only supports Contex-A9 Uniprocessor. The Cortex-A9 Multiprocessor 
+	(or SMP) suppport is Work-In-Progress.
+S:	Able to boot multiple Realview PB-A8 linux guest on Realview-PB-A8
+	emulated by Linaro QEMU.
+D:	docs/arm/vexpress-a9.txt
+
+M:	Versatile Express Cortex A15x4
+A:	ARM 32-bit (ARMv7a)
+C:	Cortex-A15 (Without Virtualization Extensions)
+V:	ARM Ltd. (http://www.arm.com/)
+E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
+G:	By default Realview PB-A8 guest is supported
+S:	Only supports Contex-A15 Uniprocessor. The Cortex-A15 Multiprocessor 
+	(or SMP) suppport is Work-In-Progress.
+S:	Able to boot multiple Realview PB-A8 linux guest on Realview-PB-A8
+	emulated by Linaro QEMU.
+D:	docs/arm/vexpress-a15.txt
+
+M:	x86_64 Generic
+A:	x86 64-bit
+C:	x86_64
+V:	Intel (http://www.intel.com)
+E:	QEMU 0.15.xx or higher (http://wiki.qemu.org/)
+G:	Work-In-Progress.
+S:	Work-In-Progress.
+D:	docs/x86/x86_64_generic.txt
+

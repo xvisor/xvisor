@@ -36,7 +36,7 @@
 
 #define BEAGLE_CLK_EVENT_GPT	0 
 
-#ifndef CONFIG_BEAGLE_CLKSRC_S32KT
+#ifndef CONFIG_OMAP3_CLKSRC_S32KT
 #define BEAGLE_CLK_SRC_GPT	1 
 #endif
 
@@ -61,7 +61,7 @@ struct omap3_gpt_cfg beagle_gpt_cfg[] = {
 	}
 };
 
-#ifdef CONFIG_BEAGLE_CLKSRC_S32KT
+#ifdef CONFIG_OMAP3_CLKSRC_S32KT
 u64 arch_cpu_clocksource_cycles(void)
 {
 	return ((u64)omap3_s32k_get_counter());
@@ -117,13 +117,15 @@ int arch_cpu_clocksource_init(void)
 }
 #endif
 
-int arch_cpu_timer_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
+static vmm_irq_return_t arch_cpu_timer_irq_handler(u32 irq_no, 
+						   arch_regs_t * regs, 
+						   void *dev)
 {
 	omap3_gpt_ack_irq(BEAGLE_CLK_EVENT_GPT);
 	omap3_gpt_stop(BEAGLE_CLK_EVENT_GPT);
 	vmm_timer_clockevent_process(regs);
 
-	return VMM_OK;
+	return VMM_IRQ_HANDLED;
 }
 
 int arch_cpu_clockevent_start(u64 nsecs)

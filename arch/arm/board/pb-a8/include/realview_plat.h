@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file plat.h
+ * @file realview_plat.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief Realview platform configuration
  */

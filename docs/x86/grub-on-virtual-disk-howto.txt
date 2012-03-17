@@ -157,7 +157,12 @@ grub>  quit
 
 5. Running on qemu
 ==================
-$ qemu-system-x86_64 -hda x86.disk -m 128
+$ qemu-system-x86_64 -hda x86.disk -m 128 -curses
+
+To quit qemu in the curses mode press ALT + 2 to switch to QEMU command
+prompt and type quit.
+
+Type ALT + 1 to go back to display.
 
 6. Starting vmm.bin in grub in qemu
 ===================================

@@ -42,10 +42,12 @@
 
 #define IS_POW_TWO(x)		(x && !(x & (x - 1)))
 
-#define HOUSE_KEEPING_PERCENT	(CONFIG_BUDDY_HOUSE_KEEPING_PERCENT)
-#define MIN_BLOCK_SIZE		(0x01UL << CONFIG_BUDDY_MIN_BLOCK_SIZE_SHIFT)	/* Minimum alloc of bus width */
-#define MAX_BLOCK_SIZE		(0x01UL << CONFIG_BUDDY_MAX_BLOCK_SIZE_SHIFT)	/* Maximum alloc of bus width */
-#define BINS_MAX_ORDER		(CONFIG_BUDDY_MAX_BLOCK_SIZE_SHIFT - CONFIG_BUDDY_MIN_BLOCK_SIZE_SHIFT + 1)
+#define HOUSE_KEEPING_PERCENT	(25) /* 25 per-cent for house keeping */
+#define MIN_BLOCK_SHIFT		(ARCH_CACHE_LINE_SIZE_SHIFT)
+#define MAX_BLOCK_SHIFT		(VMM_PAGE_SHIFT)
+#define MIN_BLOCK_SIZE		(0x01UL << MIN_BLOCK_SHIFT)	/* Minimum alloc of bus width */
+#define MAX_BLOCK_SIZE		(0x01UL << MAX_BLOCK_SHIFT)	/* Maximum alloc of bus width */
+#define BINS_MAX_ORDER		(MAX_BLOCK_SHIFT - MIN_BLOCK_SHIFT + 1)
 
 struct vmm_free_area {
 	struct dlist head;
@@ -575,6 +577,7 @@ int __init vmm_heap_init(void)
 	heap_mem_flags |= VMM_MEMORY_READABLE; 
 	heap_mem_flags |= VMM_MEMORY_WRITEABLE; 
 	heap_mem_flags |= VMM_MEMORY_CACHEABLE;
+	heap_mem_flags |= VMM_MEMORY_BUFFERABLE;
 	heap_start = (void *)vmm_host_alloc_pages(heap_page_count, 
 						  heap_mem_flags);
 	if (!heap_start) {

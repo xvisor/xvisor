@@ -42,14 +42,16 @@ dtc-objs-y+=$(build_dir)/livetree.o
 dtc-objs-y+=$(build_dir)/treesource.o
 dtc-objs-y+=$(build_dir)/srcpos.o
 dtc-objs-y+=$(build_dir)/checks.o
-dtc-objs-y+=$(build_dir)/dtc-lexer.lex.o
 dtc-objs-y+=$(build_dir)/dtc-parser.tab.o
+dtc-objs-y+=$(build_dir)/dtc-lexer.lex.o
 
 dtc-cp=cp
 dtc-cc=gcc
 dtc-cflags=
 dtc-ld=gcc
 dtc-ldflags=
+dtc-lex=flex
+dtc-yacc=bison
 
 .PHONY: all
 all: $(targets-y)
@@ -58,21 +60,37 @@ $(build_dir)/dtc: $(dtc-deps-y) $(dtc-objs-y)
 	@mkdir -p `dirname $@`
 	@echo " (host-ld)   $(subst $(build_dir)/,,$@)"
 	@$(dtc-ld) $(dtc-ldflags) $(dtc-objs-y) -o $@
+ifdef DTC_GENERATE_PARSER
+	@mkdir -p `dirname $(src_dir)`
+	@$(dtc-cp) $(src_dir)/dtc-lexer.lex.c $(src_dir)/dtc-lexer.lex.c_shipped
+	@$(dtc-cp) $(src_dir)/dtc-parser.tab.c $(src_dir)/dtc-parser.tab.c_shipped
+	@$(dtc-cp) $(src_dir)/dtc-parser.tab.h $(src_dir)/dtc-parser.tab.h_shipped
+endif
 
-$(src_dir)/%.lex.c: %.lex.c_shipped 
+ifdef DTC_GENERATE_PARSER
+$(src_dir)/%.lex.c: $(src_dir)/%.l
+	@mkdir -p `dirname $@`
+	@echo " (lex)       $(subst $(src_dir)/,,$@)"
+	@$(dtc-lex) -o$@ $<
+$(src_dir)/%.tab.c: $(src_dir)/%.y
+	@mkdir -p `dirname $@`
+	@echo " (yacc)      $(subst $(src_dir)/,,$@)"
+	@$(dtc-yacc) -o$@ -d $<
+$(src_dir)/%.tab.h: $(src_dir)/%.tab.c
+else
+$(src_dir)/%.lex.c: $(src_dir)/%.lex.c_shipped 
 	@mkdir -p `dirname $@`
 	@echo " (copy)      $(subst $(src_dir)/,,$@)"
 	@$(dtc-cp) $< $@
-
-$(src_dir)/%.tab.c: %.tab.c_shipped
+$(src_dir)/%.tab.c: $(src_dir)/%.tab.c_shipped
 	@mkdir -p `dirname $@`
 	@echo " (copy)      $(subst $(src_dir)/,,$@)"
 	@$(dtc-cp) $< $@
-
-$(src_dir)/%.tab.h: %.tab.h_shipped
+$(src_dir)/%.tab.h: $(src_dir)/%.tab.h_shipped
 	@mkdir -p `dirname $@`
 	@echo " (copy)      $(subst $(src_dir)/,,$@)"
 	@$(dtc-cp) $< $@
+endif
 
 $(build_dir)/%.o: $(src_dir)/%.c
 	@mkdir -p `dirname $@`
