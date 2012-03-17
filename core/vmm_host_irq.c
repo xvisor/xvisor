@@ -29,17 +29,9 @@
 #include <vmm_heap.h>
 #include <vmm_host_irq.h>
 
-struct vmm_host_irq {
-	struct dlist head;
-	vmm_host_irq_handler_t hndl;
-	void *dev;
-};
-
 struct vmm_host_irqs_ctrl {
 	vmm_spinlock_t lock;
-	u32 irq_count;
-	bool *enabled;
-	struct dlist  * irq;
+	struct vmm_host_irq * irq;
 };
 
 static struct vmm_host_irqs_ctrl hirqctrl;
@@ -47,71 +39,111 @@ static struct vmm_host_irqs_ctrl hirqctrl;
 int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs)
 {
 	struct dlist * l;
-	struct dlist * irq;
-	struct vmm_host_irq * hirq;
-	int cond, hirq_no = arch_pic_cpu_to_host_map(cpu_irq_no);
-	if (-1 < hirq_no && hirq_no < hirqctrl.irq_count) {
-		if (hirqctrl.enabled[hirq_no]) {
-			cond = arch_pic_pre_condition(hirq_no);
-			if (!cond) {
-				irq = &hirqctrl.irq[hirq_no];
-				list_for_each(l, irq) {
-					hirq = list_entry(l, struct vmm_host_irq, head);
-					hirq->hndl(hirq_no, regs, hirq->dev);
-				}
-				cond = arch_pic_post_condition(hirq_no);
+	struct vmm_host_irq * irq;
+	struct vmm_host_irq_hndl * hirq;
+	u32 hirq_num = arch_host_irq_active(cpu_irq_no);
+	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
+		irq = &hirqctrl.irq[hirq_num];
+		if (irq->enabled) {
+			if (irq->chip && irq->chip->irq_ack) {
+				irq->chip->irq_ack(irq);
 			}
-			return cond;
+			list_for_each(l, &irq->hndl_list) {
+				hirq = list_entry(l, struct vmm_host_irq_hndl, head);
+				if (hirq->hndl(hirq_num, regs, hirq->dev) ==
+							VMM_IRQ_HANDLED) {
+					break;
+				}
+			}
+			if (irq->chip && irq->chip->irq_eoi) {
+				irq->chip->irq_eoi(irq);
+			}
 		}
 	}
 	return VMM_ENOTAVAIL;
 }
 
-bool vmm_host_irq_isenabled(u32 hirq_no)
+int vmm_host_irq_set_chip(u32 hirq_num, struct vmm_host_irq_chip *chip)
 {
-	if (hirq_no < hirqctrl.irq_count) {
-		return hirqctrl.enabled[hirq_no];
+	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
+		hirqctrl.irq[hirq_num].chip = chip;
+		return VMM_OK;
+	}
+	return VMM_EFAIL;
+}
+
+int vmm_host_irq_set_chip_data(u32 hirq_num, void * chip_data)
+{
+	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
+		hirqctrl.irq[hirq_num].chip_data = chip_data;
+		return VMM_OK;
+	}
+	return VMM_EFAIL;
+}
+
+struct vmm_host_irq * vmm_host_irq_get(u32 hirq_num)
+{
+	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
+		return &hirqctrl.irq[hirq_num];
+	}
+	return NULL;
+}
+
+bool vmm_host_irq_isenabled(u32 hirq_num)
+{
+	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
+		return hirqctrl.irq[hirq_num].enabled;
 	}
 	return FALSE;
 }
 
-int vmm_host_irq_enable(u32 hirq_no)
+int vmm_host_irq_enable(u32 hirq_num)
 {
-	if (hirq_no < hirqctrl.irq_count) {
-		if (!hirqctrl.enabled[hirq_no]) {
-			hirqctrl.enabled[hirq_no] = TRUE;
-			return arch_pic_irq_enable(hirq_no);
+	struct vmm_host_irq * irq;
+	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
+		irq = &hirqctrl.irq[hirq_num];
+		if (!irq->enabled) {
+			irq->enabled = TRUE;
+			if (irq->chip && irq->chip->irq_unmask) {
+				irq->chip->irq_unmask(irq);
+			}
+			return VMM_OK;
 		}
 	}
 	return VMM_EFAIL;
 }
 
-int vmm_host_irq_disable(u32 hirq_no)
+int vmm_host_irq_disable(u32 hirq_num)
 {
-	if (hirq_no < hirqctrl.irq_count) {
-		if (hirqctrl.enabled[hirq_no]) {
-			hirqctrl.enabled[hirq_no] = FALSE;
-			return arch_pic_irq_disable(hirq_no);
+	struct vmm_host_irq * irq;
+	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
+		irq = &hirqctrl.irq[hirq_num];
+		if (irq->enabled) {
+			irq->enabled = FALSE;
+			if (irq->chip && irq->chip->irq_mask) {
+				irq->chip->irq_mask(irq);
+			}
+			return VMM_OK;
 		}
 	}
 	return VMM_EFAIL;
 }
 
-int vmm_host_irq_register(u32 hirq_no, 
+int vmm_host_irq_register(u32 hirq_num, 
 			  vmm_host_irq_handler_t handler,
 			  void *dev)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *irq;
 	struct dlist *l;
-	struct vmm_host_irq * hirq;
-	if (hirq_no < hirqctrl.irq_count) {
+	struct vmm_host_irq *irq;
+	struct vmm_host_irq_hndl *hirq;
+	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
 		flags = vmm_spin_lock_irqsave(&hirqctrl.lock);
-		irq = &hirqctrl.irq[hirq_no];
+		irq = &hirqctrl.irq[hirq_num];
 		found = FALSE;
-		list_for_each(l, irq) {
-			hirq = list_entry(l, struct vmm_host_irq, head);
+		list_for_each(l, &irq->hndl_list) {
+			hirq = list_entry(l, struct vmm_host_irq_hndl, head);
 			if (hirq->hndl == handler) {
 				found = TRUE;
 				break;
@@ -121,7 +153,7 @@ int vmm_host_irq_register(u32 hirq_no,
 			vmm_spin_unlock_irqrestore(&hirqctrl.lock, flags);
 			return VMM_EFAIL;
 		}
-		hirq = vmm_malloc(sizeof(struct vmm_host_irq));
+		hirq = vmm_malloc(sizeof(struct vmm_host_irq_hndl));
 		if (!hirq) {
 			vmm_spin_unlock_irqrestore(&hirqctrl.lock, flags);
 			return VMM_EFAIL;
@@ -129,27 +161,27 @@ int vmm_host_irq_register(u32 hirq_no,
 		INIT_LIST_HEAD(&hirq->head);
 		hirq->hndl = handler;
 		hirq->dev = dev;
-		list_add_tail(irq, &hirq->head);
+		list_add_tail(&irq->hndl_list, &hirq->head);
 		vmm_spin_unlock_irqrestore(&hirqctrl.lock, flags);
 		return VMM_OK;
 	}
 	return VMM_EFAIL;
 }
 
-int vmm_host_irq_unregister(u32 hirq_no, 
+int vmm_host_irq_unregister(u32 hirq_num, 
 			    vmm_host_irq_handler_t handler)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *irq;
 	struct dlist *l;
-	struct vmm_host_irq * hirq;
-	if (hirq_no < hirqctrl.irq_count) {
+	struct vmm_host_irq *irq;
+	struct vmm_host_irq_hndl * hirq;
+	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
 		flags = vmm_spin_lock_irqsave(&hirqctrl.lock);
-		irq = &hirqctrl.irq[hirq_no];
+		irq = &hirqctrl.irq[hirq_num];
 		found = FALSE;
-		list_for_each(l, irq) {
-			hirq = list_entry(l, struct vmm_host_irq, head);
+		list_for_each(l, &irq->hndl_list) {
+			hirq = list_entry(l, struct vmm_host_irq_hndl, head);
 			if (hirq->hndl == handler) {
 				found = TRUE;
 				break;
@@ -162,8 +194,8 @@ int vmm_host_irq_unregister(u32 hirq_no,
 		list_del(&hirq->head);
 		vmm_free(hirq);
 		vmm_spin_unlock_irqrestore(&hirqctrl.lock, flags);
-		if (list_empty(irq)) {
-			return vmm_host_irq_disable(hirq_no);
+		if (list_empty(&irq->hndl_list)) {
+			return vmm_host_irq_disable(hirq_num);
 		}
 		return VMM_OK;
 	}
@@ -181,34 +213,26 @@ int __init vmm_host_irq_init(void)
 	/* Initialize spin lock */
 	INIT_SPIN_LOCK(&hirqctrl.lock);
 
-	/* Get host irq count */
-	hirqctrl.irq_count = arch_pic_irq_count();
-
-	/* Allocate memory for enabled array */
-	hirqctrl.enabled = (bool *)vmm_malloc(sizeof(bool) * hirqctrl.irq_count);
-
-	/* Set default values to enabled array */
-	for (ite = 0; ite < hirqctrl.irq_count; ite++) {
-		hirqctrl.enabled[ite] = FALSE;
-	}
-
 	/* Allocate memory for irq array */
-	hirqctrl.irq = vmm_malloc(sizeof(struct dlist) * hirqctrl.irq_count);
+	hirqctrl.irq = vmm_malloc(sizeof(struct vmm_host_irq) * 
+				  ARCH_HOST_IRQ_COUNT);
 
 	/* Reset the handler array */
-	for (ite = 0; ite < hirqctrl.irq_count; ite++) {
-		INIT_LIST_HEAD(&hirqctrl.irq[ite]);
+	for (ite = 0; ite < ARCH_HOST_IRQ_COUNT; ite++) {
+		hirqctrl.irq[ite].num = ite;
+		hirqctrl.irq[ite].enabled = FALSE;
+		hirqctrl.irq[ite].chip = NULL;
+		hirqctrl.irq[ite].chip_data = NULL;
+		INIT_LIST_HEAD(&hirqctrl.irq[ite].hndl_list);
 	}
 
 	/* Initialize board specific PIC */
-	ret = arch_pic_init();
-	if (ret) {
+	if ((ret = arch_host_irq_init())) {
 		return ret;
 	}
 
 	/** Setup interrupts in CPU */
-	ret = arch_cpu_irq_setup();
-	if (ret) {
+	if ((ret = arch_cpu_irq_setup())) {
 		return ret;
 	}
 

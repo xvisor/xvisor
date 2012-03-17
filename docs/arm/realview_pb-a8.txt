@@ -1,14 +1,14 @@
 		Xvisor on QEMU Realview-PB-A8 Host
 
-This readme explains how to build & run Xvisor for Realview-PB-A8 emulated 
-by QEMU 0.14.xx or higher. 
+This readme explains how to build & run Xvisor for Realview-PB-A8 emulated by
+QEMU 0.14.xx or higher. 
 
 By default, Xvisor for Realview-PB-A8 supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
 refer <xvisor_source>/tests/arm32/pb-a8/basic/README.
 
-Please follow the steps below to build & run Basic Test on Realview PB-A8
-Guest with Xvisor running on QEMU Realview PB-A8 Host:
+Please follow the steps below to build & run Basic Test on Realview PB-A8 guest
+with Xvisor running on QEMU Realview PB-A8 Host:
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=arm-none-linux-gnueabi-
@@ -23,10 +23,10 @@ Guest with Xvisor running on QEMU Realview PB-A8 Host:
   # make
 
   [5. Build Basic Test Code]
-  # make -C tests/armv7a/pb-a8/basic
+  # make -C tests/arm32/pb-a8/basic
 
   [6. Launch QEMU 0.14.xx or higher]
-  # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel build/tests/armv7a/pb-a8/basic/qemu.img
+  # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel build/tests/arm32/pb-a8/basic/qemu.img
 
   [7. Kick Guest for starting Basic Test]
   XVisor# guest kick -1

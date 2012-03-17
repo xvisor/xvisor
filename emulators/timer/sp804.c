@@ -292,7 +292,7 @@ static u32 sp804_timer_current_value(struct sp804_timer *t)
 			cval = vmm_udiv64(cval * t->freq, (u64) 1000000000);
 		}
 
-		if (t->control & (TIMER_CTRL_PERIODIC | TIMER_CTRL_PERIODIC)) {
+		if (t->control & (TIMER_CTRL_ONESHOT)) {
 			if (cval >= t->value) {
 				ret = 0;
 			} else {

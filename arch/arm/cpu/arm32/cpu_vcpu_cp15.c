@@ -62,7 +62,12 @@ static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu * vcpu,
 			return rc;
 		}
 		e->valid = 0;
+		e->ng = 0;
 	}
+
+	/* Ensure pages for normal vcpu are non-global */
+	e->ng = p->ng;
+	p->ng = 1; 
 
 	/* Add victim page to L1 page table */
 	if ((rc = cpu_mmu_map_page(arm_priv(vcpu)->cp15.l1, p))) {
@@ -98,7 +103,8 @@ static int cpu_vcpu_cp15_vtlb_flush(struct vmm_vcpu * vcpu)
 			if (rc) {
 				return rc;
 			}
-			arm_priv(vcpu)->cp15.vtlb.table[vtlb].valid = 0;
+			e->valid = 0;
+			e->ng = 0;
 		}
 	}
 
@@ -129,7 +135,33 @@ static int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu * vcpu,
 				if (rc) {
 					return rc;
 				}
-				arm_priv(vcpu)->cp15.vtlb.table[vtlb].valid = 0;
+				e->valid = 0;
+				e->ng = 0;
+				break;
+			}
+		}
+	}
+
+	return VMM_OK;
+}
+
+static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
+{
+	int rc;
+	u32 vtlb;
+	struct arm_vtlb_entry * e;
+
+	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
+		if (arm_priv(vcpu)->cp15.vtlb.table[vtlb].valid) {
+			e = &arm_priv(vcpu)->cp15.vtlb.table[vtlb];
+			if (e->ng) {
+				rc = cpu_mmu_unmap_page(arm_priv(vcpu)->cp15.l1, 
+						&e->page);
+				if (rc) {
+					return rc;
+				}
+				e->valid = 0;
+				e->ng = 0;
 				break;
 			}
 		}
@@ -384,12 +416,11 @@ static u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu * vcpu,
 		pg->va = va;
 		pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		pg->ap = TTBL_AP_SRW_URW;
+		pg->tex = 0;
 		pg->c = 1;
-		pg->b = 1;
+		pg->b = 0;
 	}
 
-	/* Ensure pages for normal vcpu are non-global */
-	pg->ng = 1; 
 	/* Ensure pages for normal vcpu have aligned va & pa */
 	pg->pa &= ~(pg->sz - 1);
 	pg->va &= ~(pg->sz - 1);
@@ -593,8 +624,11 @@ int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu * vcpu,
 	struct cpu_page * pg = &arm_priv(vcpu)->cp15.virtio_page;
 	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1, far, pg))) {
-		cpu_vcpu_halt(vcpu, regs);
-		return rc;
+		/* Remove fault address from VTLB and restart.
+		 * Doing this will force us to do TTBL walk If MMU 
+		 * is enabled then appropriate fault will be generated.
+		 */
+		return cpu_vcpu_cp15_vtlb_flush_va(vcpu, far);
 	}
 	/* Check if vcpu was trying read/write to virtual space */
 	if (xn && ((pg->ap == TTBL_AP_SRW_U) || (pg->ap == TTBL_AP_SR_U))) {
@@ -610,7 +644,7 @@ int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu * vcpu,
 	} 
 	/* Remove fault address from VTLB and restart.
 	 * Doing this will force us to do TTBL walk If MMU 
-	 * is enabled then appropriate fault will be generated 
+	 * is enabled then appropriate fault will be generated.
 	 */
 	return cpu_vcpu_cp15_vtlb_flush_va(vcpu, far);
 }
@@ -1264,7 +1298,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			cpu_vcpu_cp15_vtlb_flush_va(vcpu, data);
 			break;
 		case 2: /* Invalidate on ASID.  */
-			cpu_vcpu_cp15_vtlb_flush(vcpu);
+			cpu_vcpu_cp15_vtlb_flush_ng(vcpu);
 			break;
 		case 3: /* Invalidate single entry on MVA.  */
 			/* ??? This is like case 1, but ignores ASID.  */
@@ -1387,8 +1421,9 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 	case 13: /* Process ID.  */
 		switch (opc2) {
 		case 0:
-			/* Unlike real hardware the xvisor TLB uses virtual addresses,
-			 * not modified virtual addresses, so this causes a TLB flush.
+			/* Unlike real hardware vTLB uses virtual addresses,
+			 * not modified virtual addresses, so this causes 
+			 * a vTLB flush.
 			 */
 			if (arm_priv(vcpu)->cp15.c13_fcse != data) {
 				cpu_vcpu_cp15_vtlb_flush(vcpu);
@@ -1396,10 +1431,12 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			arm_priv(vcpu)->cp15.c13_fcse = data;
 			break;
 		case 1:
-			/* This changes the ASID, so do a TLB flush.  */
+			/* This changes the ASID, 
+			 * so flush non-global pages from vTLB.
+			 */
 			if (arm_priv(vcpu)->cp15.c13_context != data && 
 			    !arm_feature(vcpu, ARM_FEATURE_MPU)) {
-				cpu_vcpu_cp15_vtlb_flush(vcpu);
+				cpu_vcpu_cp15_vtlb_flush_ng(vcpu);
 			}
 			arm_priv(vcpu)->cp15.c13_context = data;
 			break;

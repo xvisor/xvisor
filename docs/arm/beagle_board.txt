@@ -112,10 +112,10 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   (Note: replace all <> brackets based on your workspace)
 
 
-		Xvisor on QEMU BeagleBoard using NAND Booting 
+		Xvisor on Linaro QEMU BeagleBoard using NAND Booting 
 
 This readme explains how to build & run Xvisor from nand-flash on BeagleBoard
-emulated by QEMU 0.15.xx or higher. 
+emulated by QEMU Linaro 2.02 or higher. 
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
@@ -195,7 +195,7 @@ follows:
   [12. Build the beagleboard nand-flash image from the flat binary created]
   # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc 
 
-  [13. Launch QEMU 0.15.xx higher ]
+  [13. Launch QEMU Linaro 2.02 or higher ]
   # qemu-system-arm -M beagle -drive file=build/beagle-nand.bin,if=mtd -display none -serial stdio -s
 
   [14. Copy Xvisor from nand-flash to SDRAM]

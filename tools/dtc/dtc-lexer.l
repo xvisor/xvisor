@@ -133,6 +133,14 @@ static int pop_input_file(void);
 			return DT_LEGACYLITERAL;
 		}
 
+<V1>0[xX][0-9a-fA-F]+ULL	{
+			yylloc.file = srcpos_file;
+			yylloc.first_line = yylineno;
+			yylval.literal = strdup(yytext);
+			DPRINT("Literal: '%s'\n", yylval.literal);
+			return DT_LITERAL64;
+		}
+
 <V1>[0-9]+|0[xX][0-9a-fA-F]+      {
 			yylloc.file = srcpos_file;
 			yylloc.first_line = yylineno;
