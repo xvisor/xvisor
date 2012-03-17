@@ -64,6 +64,19 @@ int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs)
 	return VMM_ENOTAVAIL;
 }
 
+u32 vmm_host_irq_count(void)
+{
+	return ARCH_HOST_IRQ_COUNT;
+}
+
+struct vmm_host_irq * vmm_host_irq_get(u32 hirq_num)
+{
+	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
+		return &hirqctrl.irq[hirq_num];
+	}
+	return NULL;
+}
+
 int vmm_host_irq_set_chip(u32 hirq_num, struct vmm_host_irq_chip *chip)
 {
 	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
@@ -80,22 +93,6 @@ int vmm_host_irq_set_chip_data(u32 hirq_num, void * chip_data)
 		return VMM_OK;
 	}
 	return VMM_EFAIL;
-}
-
-struct vmm_host_irq * vmm_host_irq_get(u32 hirq_num)
-{
-	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
-		return &hirqctrl.irq[hirq_num];
-	}
-	return NULL;
-}
-
-bool vmm_host_irq_isenabled(u32 hirq_num)
-{
-	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
-		return hirqctrl.irq[hirq_num].enabled;
-	}
-	return FALSE;
 }
 
 int vmm_host_irq_enable(u32 hirq_num)
