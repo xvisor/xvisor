@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Sat Mar 17 00:26:55 2012
+# Sat Mar 17 20:59:25 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -72,8 +72,7 @@ CONFIG_HEAP_BUDDY=y
 CONFIG_CMD_VERSION=y
 CONFIG_CMD_RESET=y
 CONFIG_CMD_SHUTDOWN=y
-CONFIG_CMD_VAPOOL=y
-CONFIG_CMD_RAM=y
+CONFIG_CMD_HOST=y
 CONFIG_CMD_DEVTREE=y
 CONFIG_CMD_VCPU=y
 CONFIG_CMD_GUEST=y
