@@ -38,7 +38,8 @@
 
 struct vmm_stdio_ctrl {
         vmm_spinlock_t lock;
-        struct vmm_chardev *cdev;
+        struct vmm_chardev *indev;
+        struct vmm_chardev *outdev;
 };
 
 static struct vmm_stdio_ctrl stdio_ctrl;
@@ -87,7 +88,7 @@ void vmm_cputc(struct vmm_chardev *cdev, char ch)
 
 void vmm_putc(char ch)
 {
-	vmm_cputc(stdio_ctrl.cdev, ch);
+	vmm_cputc(stdio_ctrl.outdev, ch);
 }
 
 static void printc(char **str, struct vmm_chardev *cdev, char ch)
@@ -286,7 +287,7 @@ int vmm_printf(const char *format, ...)
 	va_list args;
 	int retval;
 	va_start(args, format);
-	retval = print(NULL, stdio_ctrl.cdev, format, args);
+	retval = print(NULL, stdio_ctrl.outdev, format, args);
 	va_end(args);
 	return retval;
 }
@@ -296,7 +297,7 @@ int vmm_sprintf(char *out, const char *format, ...)
 	va_list args;
 	int retval;
 	va_start(args, format);
-	retval = print(&out, stdio_ctrl.cdev, format, args);
+	retval = print(&out, stdio_ctrl.outdev, format, args);
 	va_end(args);
 	return retval;
 }
@@ -316,7 +317,7 @@ int vmm_panic(const char *format, ...)
 	va_list args;
 	int retval;
 	va_start(args, format);
-	retval = print(NULL, stdio_ctrl.cdev, format, args);
+	retval = print(NULL, stdio_ctrl.outdev, format, args);
 	va_end(args);
 	vmm_hang();
 	return retval;
@@ -344,7 +345,7 @@ int vmm_scanchar(char **str, struct vmm_chardev *cdev, char *c, bool block)
 char vmm_getc(void)
 {
 	char ch = 0;
-	vmm_scanchar(NULL, stdio_ctrl.cdev, &ch, TRUE);
+	vmm_scanchar(NULL, stdio_ctrl.indev, &ch, TRUE);
 	if (ch == '\r') {
 		ch = '\n';
 	}
@@ -378,8 +379,8 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 		if (vmm_isprintable(ch)) {
 			add_ch = TRUE;
 		} else if (ch == '\e') { /* Escape character */
-			vmm_scanchar(NULL, stdio_ctrl.cdev, &ch, TRUE);
-			vmm_scanchar(NULL, stdio_ctrl.cdev, &ch1, TRUE);
+			vmm_scanchar(NULL, stdio_ctrl.indev, &ch, TRUE);
+			vmm_scanchar(NULL, stdio_ctrl.indev, &ch1, TRUE);
 			if (ch == '[') {
 				if (ch1 == 'A') { /* Up Key */
 					/* Ignore it. */ 
@@ -396,7 +397,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 				} else if (ch1 == 'F') { /* End Key */
 					to_end = TRUE;
 				} else if (ch1 == '3') {
-					vmm_scanchar(NULL, stdio_ctrl.cdev, &ch, TRUE);
+					vmm_scanchar(NULL, stdio_ctrl.indev, &ch, TRUE);
 					if (ch == '~') { /* Delete Key */
 						if (pos < count) {
 							to_right = TRUE;
@@ -491,19 +492,37 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 	return s;
 }
 
-struct vmm_chardev *vmm_stdio_device(void)
+struct vmm_chardev *vmm_stdio_indevice(void)
 {
-	return stdio_ctrl.cdev;
+	return stdio_ctrl.indev;
 }
 
-int vmm_stdio_change_device(struct vmm_chardev * cdev)
+struct vmm_chardev *vmm_stdio_outdevice(void)
+{
+	return stdio_ctrl.outdev;
+}
+
+int vmm_stdio_change_indevice(struct vmm_chardev * cdev)
 {
 	if (!cdev) {
 		return VMM_EFAIL;
 	}
 
 	vmm_spin_lock(&stdio_ctrl.lock);
-	stdio_ctrl.cdev = cdev;
+	stdio_ctrl.indev = cdev;
+	vmm_spin_unlock(&stdio_ctrl.lock);
+
+	return VMM_OK;
+}
+
+int vmm_stdio_change_outdevice(struct vmm_chardev * cdev)
+{
+	if (!cdev) {
+		return VMM_EFAIL;
+	}
+
+	vmm_spin_lock(&stdio_ctrl.lock);
+	stdio_ctrl.outdev = cdev;
 	vmm_spin_unlock(&stdio_ctrl.lock);
 
 	return VMM_OK;
@@ -517,8 +536,9 @@ int __init vmm_stdio_init(void)
 	/* Initialize lock */
 	INIT_SPIN_LOCK(&stdio_ctrl.lock);
 
-	/* Set current device to NULL */
-	stdio_ctrl.cdev = NULL;
+	/* Set current devices to NULL */
+	stdio_ctrl.indev = NULL;
+	stdio_ctrl.outdev = NULL;
 
 	/* Initialize default serial terminal (board specific) */
 	return arch_defterm_init();

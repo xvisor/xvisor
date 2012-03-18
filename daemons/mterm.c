@@ -66,7 +66,7 @@ static int mterm_main(void *udata)
 				cmds[cmds_len - 1] = '\0';
 
 			/* Execute command string */
-			vmm_cmdmgr_execute_cmdstr(vmm_stdio_device(), cmds);
+			vmm_cmdmgr_execute_cmdstr(vmm_stdio_outdevice(), cmds);
 		}
 	}
 
