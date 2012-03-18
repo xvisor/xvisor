@@ -18,13 +18,26 @@
 #
 # @file objects.mk
 # @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
-# @brief list of ARMv7a cpu objects.
+# @author Anup Patel (anup@brainfault.org)
+# @brief list of ARM32 cpu objects.
 # */
+
+# This selects which instruction set is used.
+# Note that GCC does not numerically define an architecture version
+# macro, but instead defines a whole series of macros which makes
+# testing for a specific architecture or later rather impossible.
+arch-$(CONFIG_ARMV7A) += -mno-thumb-interwork -march=armv7-a
+
+# This selects how we optimise for the processor.
+tune-$(CONFIG_CPU_CORTEX_A8)  += -mcpu=cortex-a8
+tune-$(CONFIG_CPU_OMAP3)      += -mcpu=cortex-a8
+tune-$(CONFIG_CPU_CORTEX_A9)  += -mcpu=cortex-a9
+tune-$(CONFIG_CPU_CORTEX_A15) += -mcpu=cortex-a15
 
 # Need -Uarm for gcc < 3.x
 cpu-cppflags+=-DCPU_TEXT_START=0xFF000000
-cpu-cflags += -msoft-float -mno-thumb-interwork -march=armv7-a -marm -Uarm
-cpu-asflags += -mno-thumb-interwork -march=armv7-a -marm
+cpu-cflags += -msoft-float -marm -Uarm $(arch-y) $(tune-y)
+cpu-asflags += -marm $(arch-y) $(tune-y)
 cpu-ldflags += -msoft-float
 
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_entry_v7.o
