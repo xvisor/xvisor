@@ -25,12 +25,12 @@
 
 	/* 
 	 * Xvisor could be loaded any where in memory by boot loaders.
-	 * The _start ensures that Xvisor exectues from intended base
-	 * address provided at compile time.
+	 * The _start_primary ensures that Xvisor exectues from intended
+	 * base address provided at compile time.
 	 */
 	.section .entry, "ax", %progbits
-	.globl _start
-_start:
+	.globl _start_primary
+_start_primary:
 	/*
 	 * r4 -> load start
 	 * r5 -> load end
@@ -52,24 +52,24 @@ _start:
 	add	r0, r0, r4
 	str	r5, [r0]
 	/*
-	 * Hang if execution start is not 1 MB aligned
+	 * Hang if execution start is not 4 KB aligned
 	 */
 	mov	r0, r6
-	bfc	r0, #0, #20
+	bfc	r0, #0, #12
 	cmp	r0, r6
 	blt	_start_hang
 	/*
-	 * Hang if execution end is not 1 MB aligned
+	 * Hang if execution end is not 4 KB aligned
 	 */
 	mov	r0, r7
-	bfc	r0, #0, #20
+	bfc	r0, #0, #12
 	cmp	r0, r7
 	blt	_start_hang
 	/*
-	 * Relocate code if load start is not 1 MB aligned
+	 * Relocate code if load start is not 4 KB aligned
 	 */
 	mov	r0, r4
-	bfc	r0, #0, #20
+	bfc	r0, #0, #12
 	cmp	r0, r4
 	beq	_start_mmu_init
 _start_relocate:
@@ -90,7 +90,7 @@ _start_relocate:
 	mov	r1, r5
 	sub	r2, r5, r4
 	mov	r1, r4
-	bfc	r1, #0, #20
+	bfc	r1, #0, #12
 	bl	_start_nextpc1
 _start_nextpc1:
 	add	lr, lr, #16
@@ -103,10 +103,10 @@ _start_nextpc1:
 	 * r5 -> new load end
 	 */
 	mov	r0, r4
-	bfc	r0, #0, #20
-	subs	r1, r4, r0
-	subs	r4, r4, r1
-	subs	r5, r5, r1
+	bfc	r0, #0, #12
+	sub	r1, r4, r0
+	sub	r4, r4, r1
+	sub	r5, r5, r1
 	ldr	r0, __load_start
 	sub	r0, r0, r6
 	add	r0, r0, r4
@@ -116,6 +116,10 @@ _start_nextpc1:
 	add	r0, r0, r4
 	str	r5, [r0]
 _start_mmu_init:
+	/*
+	 * Enable to hypervisor mode
+	 */
+	bl	_enable_hvc
 	/* 
 	 * Clear default Level1 Table 
 	 */
@@ -268,6 +272,76 @@ _copy_done:
 	mov	r0, r2
 	bx	lr
 _copy_end:
+
+	/* 
+	 * Enable hypervisor mode.
+	 * Arguments:
+	 *  r4 -> load start
+	 *  r5 -> load end
+	 *  r6 -> execution start
+	 *  r7 -> execution end
+	 * Note: This function should be called before enabling MMU
+	 */
+	.section .entry, "ax", %progbits
+	.globl _enable_hvc
+_enable_hvc:
+	/* Save lr and jump to hvc_start */
+	mov	r12, lr
+	b	_enable_hvc_start
+	.balign	256
+_enable_hvc_tmon_table:
+	b	.
+	b	.
+	b	_enable_hvc_tmon
+	b	.
+	b	.
+	b	.
+	b	.
+	b	.
+__enable_hvc_tmon_table:
+	.word _enable_hvc_tmon_table
+	.balign	256
+_enable_hvc_thyp_table:
+	b	.
+	b	.
+	b	.
+	b	.
+	b	.
+	b	_enable_hvc_thyp
+	b	.
+	b	.
+__enable_hvc_thyp_table:
+	.word _enable_hvc_thyp_table
+_enable_hvc_tmon:
+	/* Get secure configuration register */
+	mrc	p15, 0, r0, c1, c1, 0	
+	bic	r0, r0, #0x07f
+	ldr	r1, =0x131
+	orr	r0, r0, r1
+	mcr	p15, 0, r0, c1, c1, 0
+	/* Get temp hypervisor vector base address */
+	ldr	r0, __enable_hvc_thyp_table
+	sub	r0, r0, r6
+	add	r0, r0, r4
+	mcr	p15, 4, r0, c12, c0, 0
+	movs	pc, lr
+_enable_hvc_thyp:
+	/* Yeppie! in hypervisor mode */
+	mov	lr, r12
+	bx	lr
+_enable_hvc_start:
+	/* Get temp monitor vector base address */
+	ldr	r0, __enable_hvc_tmon_table
+	sub	r0, r0, r6
+	add	r0, r0, r4
+	/* Set temp monitor vector base address */
+	mcr	p15, 0, r0, c12, c0, 1
+	/* Call temp monitor mode code */
+	smc	#0
+	/* Call temp hypervisor mode code */
+	hvc	#0
+	/* Hang! Not supposed to reach here */
+	b	.
 
 	/* 
 	 * Exception vector start.
