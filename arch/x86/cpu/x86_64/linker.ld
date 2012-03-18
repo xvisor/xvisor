@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-13 Himanshu Chauhan.
+ * Copyright (c) 2012 Himanshu Chauhan.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -35,33 +35,22 @@ SECTIONS
         . = ALIGN(4);
 	.text :
  	{
-		PROVIDE(_text_start = .);
 		*(.text)
-		PROVIDE(_text_end = .);
 	}
 
 	.data :
 	{
-		PROVIDE(_data_start = .);
 		*(.data)
-		. = ALIGN(4);
-		PROVIDE(_data_end = .);
 	}
 
 	.bss :
 	{
-		PROVIDE(_bss_start = .);
 		*(.bss)
-		. = ALIGN(4);
-		PROVIDE(_bss_end = .);
 	}
 
 	.rodata :
 	{
-		PROVIDE(_rodata_start = .);
 		*(.rodata .rodata.*)
-		. = ALIGN(4);
-		PROVIDE(_rodata_end = .);
 	}
 
 	.modtbl :
@@ -77,7 +66,6 @@ SECTIONS
 		. = ALIGN(4096);
 		PROVIDE(_heap_start = .);
 		. = . + (CONFIG_HEAP_SIZE * 1024);
-		. = ALIGN(4);
 		PROVIDE(_eheap = .);
 	}
 
@@ -86,7 +74,6 @@ SECTIONS
                 . = ALIGN(4096);
                 PROVIDE(_stack_end = .);
                 . += 8192;
-                . = ALIGN(4);
                 PROVIDE(_stack_start = .);
         }
 
@@ -109,7 +96,7 @@ SECTIONS
                 . += 4096;
                 PROVIDE(_bootstrap_stack_start = .);
 
-                . = ALIGN(4096);
+                . = ALIGN(8192);
 
                 PROVIDE(_code_bootstrap_end = .);
 		PROVIDE(_init_text_end = .);
