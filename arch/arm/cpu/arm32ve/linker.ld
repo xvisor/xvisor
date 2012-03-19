@@ -23,11 +23,11 @@
 
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
 OUTPUT_ARCH("arm")
-ENTRY(_start_vect)
+ENTRY(_start)
 
 SECTIONS 
 {
-	. = CPU_TEXT_START;
+	. = TEXT_START;
 
 	. = ALIGN(0x1000); /* Need this to create proper sections */
 	
@@ -82,12 +82,12 @@ SECTIONS
 		PROVIDE(_svc_stack_end = .);
         }
 
-	.mon_stack :
+	.hyp_stack :
 	{
-		PROVIDE(_mon_stack_start = .);
+		PROVIDE(_hyp_stack_start = .);
 		. = . + CONFIG_IRQ_STACK_SIZE;
 		. = ALIGN(4);
-		PROVIDE(_mon_stack_end = .);
+		PROVIDE(_hyp_stack_end = .);
 	}
 
 	.abt_stack :

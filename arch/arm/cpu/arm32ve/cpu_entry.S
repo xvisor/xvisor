@@ -25,12 +25,12 @@
 
 	/* 
 	 * Xvisor could be loaded any where in memory by boot loaders.
-	 * The _start_primary ensures that Xvisor exectues from intended
+	 * The _start ensures that Xvisor exectues from intended
 	 * base address provided at compile time.
 	 */
 	.section .entry, "ax", %progbits
-	.globl _start_primary
-_start_primary:
+	.globl _start
+_start:
 	/*
 	 * r4 -> load start
 	 * r5 -> load end
@@ -117,100 +117,29 @@ _start_nextpc1:
 	str	r5, [r0]
 _start_mmu_init:
 	/*
-	 * Enable to hypervisor mode
+	 * Enable hypervisor mode
 	 */
 	bl	_enable_hvc
-	/* 
-	 * Clear default Level1 Table 
-	 */
-	/* r0 -> default Level1 Table base address */
-	ldr	r0, __defl1_mem
-	sub	r0, r0, r6
-	add	r0, r0, r4
-	/* r1 -> size of Level1 Table */
-	mov	r1, #1
-	lsl	r1, #14
-	/* r2 -> zero value to store */
-	mov	r2, #0
-_start_mmu_defl1_clear:
-	str	r2, [r0]
-	add	r0, r0, #4
-	sub	r1, r1, #4
-	cmp	r1, #0
-	bgt	_start_mmu_defl1_clear
 	/*
-	 * Create entries in default Level1 Table
-	 * for execution & load addresses
+	 * Setup initial TTBL using C code and a temporary stack
 	 */
-	/* r0 -> default Level1 Table base address */
-	ldr	r0, __defl1_mem
-	sub	r0, r0, r6
-	add	r0, r0, r4
-	/* r3 -> entry attributes */
-	ldr	r3, __mmu_section_attr
-	/* r1 -> load entry start address */
-	mov	r1, r4
-	lsr	r1, #18 /* r1 >> 20, r1 << 2 */
-	add	r1, r0, r1
-	/* Setup load entry */	
-	orr	r2, r3, r4
-	str	r2, [r1]
-	/* r1 -> execute entry start address */
-	mov	r1, r6
-	lsr	r1, #18 /* r1 >> 20, r1 << 2 */
-	add	r1, r0, r1
-	/* r2 -> execute entry end address */
-	sub	r2, r7, r6
-	lsr	r2, #18 /* r2 >> 20, r2 << 2 */
-	add	r2, r1, r2
-	/* r5 -> tempory value */
-	mov	r5, #0
-_start_mmu_defl1_set:
-	orr	r5, r3, r4
-	str	r5, [r1]
-	lsr	r4, #20
-	add	r4, r4, #1
-	lsl	r4, #20
-	add	r1, r1, #4
-	cmp	r1, r2
-	blt	_start_mmu_defl1_set
+	ldr	sp, __hyp_stack_end
+	sub	sp, sp, r6
+	add	sp, sp, r4
+	mov	r0, r4
+	mov	r1, r5
+	mov	r2, r6
+	mov	r3, r7
+	bl	_setup_initial_ttbl
 	/*
-	 * Setup Translation Table Base Register 0
+	 * FIXME: Setup MMU & related registers
 	 */
-	mcr     p15, 0, r0, c2, c0, 0
-	/*
-	 * Setup Domain Control Register
-	 */
-	ldr	r1, __dacr_mmu_val
-	mcr	p15, 0, r1, c3, c0, 0
-	/*
-	 * Setup System Control Register
-	 */
-	ldr	r1, __sctrl_mmu_val
-	ldr	r2, __sctrl_mmu_clear
-	mrc     p15, 0, r3, c1, c0, 0
-	and	r3, r3, r2
-	orr	r3, r3, r1
-	mcr     p15, 0, r3, c1, c0, 0
 	/*
 	 * Jump to reset code
 	 */
 	ldr	pc, __reset
 _start_hang:
 	b	.
-#define SECTION_ATTR 	((TTBL_AP_SRW_U << TTBL_L1TBL_TTE_AP_SHIFT) | \
-			(TTBL_L1TBL_TTE_DOM_RESERVED << TTBL_L1TBL_TTE_DOM_SHIFT) | \
-			(0x1 << TTBL_L1TBL_TTE_C_SHIFT) | \
-			(0x1 << TTBL_L1TBL_TTE_B_SHIFT) | \
-			TTBL_L1TBL_TTE_TYPE_SECTION)
-__mmu_section_attr:
-	.word SECTION_ATTR
-__dacr_mmu_val:
-	.word (TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_RESERVED))
-__sctrl_mmu_clear:
-	.word ~(SCTLR_A_MASK | SCTLR_TRE_MASK)
-__sctrl_mmu_val:
-	.word (SCTLR_M_MASK | SCTLR_C_MASK | SCTLR_I_MASK)
 __exec_start:
 	.word _code_start
 __exec_end:
@@ -316,7 +245,9 @@ _enable_hvc_tmon:
 	/* Get secure configuration register */
 	mrc	p15, 0, r0, c1, c1, 0	
 	bic	r0, r0, #0x07f
-	ldr	r1, =0x131
+	mov	r1, #0x13
+	lsl	r1, r1, #4
+	orr	r1, r1, #0x1
 	orr	r0, r0, r1
 	mcr	p15, 0, r0, c1, c1, 0
 	/* Get temp hypervisor vector base address */
@@ -390,6 +321,8 @@ __irq_stack_end:
 	.word _irq_stack_end
 __fiq_stack_end:
 	.word _fiq_stack_end
+__hyp_stack_end:
+	.word _hyp_stack_end
 
 	/* 
 	 * Reset exception handler.

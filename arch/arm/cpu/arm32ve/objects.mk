@@ -32,12 +32,13 @@ arch-$(CONFIG_ARMV7A_VE) += -mno-thumb-interwork -march=armv7-a
 tune-$(CONFIG_CPU_CORTEX_A15_VE) += -mcpu=cortex-a15
 
 # Need -Uarm for gcc < 3.x
-cpu-cppflags+=-DCPU_TEXT_START=0xFF000000
+cpu-cppflags+=-DTEXT_START=0xFF000000
 cpu-cflags += -msoft-float -marm -Uarm $(arch-y) $(tune-y)
 cpu-asflags += -marm $(arch-y) $(tune-y)
 cpu-ldflags += -msoft-float
 
 cpu-objs-y+= cpu_entry.o
+cpu-objs-y+= cpu_entry_ttbl.o
 cpu-objs-y+= cpu_mmu.o
 cpu-objs-y+= cpu_cache.o
 
