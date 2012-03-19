@@ -23,7 +23,7 @@
 # */
 
 cpu-cflags +=-finline-functions -O0 -mcmodel=large
-cpu-cppflags +=-DCPU_TEXT_LMA=0x100000 -DCPU_TEXT_VMA=0xC0000000
+cpu-cppflags +=-DCPU_TEXT_LMA=0x100000
 
 cpu-objs-y+= start.o
 
@@ -38,10 +38,9 @@ cpu-objs-y+= cpu_atomic.o
 cpu-objs-y+= cpu_main.o
 cpu-objs-y+= cpu_timer.o
 cpu-objs-y+= cpu_interrupts.o
-cpu-objs-y+= cpu_host_aspace.o
 cpu-objs-y+= cpu_vcpu_irq.o
 cpu-objs-y+= cpu_vcpu_helper.o
-#cpu-objs-y+= cpu_mmu.o
+cpu-objs-y+= cpu_mmu.o
 #cpu-objs-y+= cpu_vcpu_mmu.o
 #cpu-objs-y+= cpu_genex.o
 #cpu-objs-y+= cpu_vcpu_emulate.o

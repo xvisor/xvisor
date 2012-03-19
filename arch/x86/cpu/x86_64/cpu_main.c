@@ -62,15 +62,6 @@ int __init arch_cpu_final_init(void)
 
 void __init cpu_init(struct multiboot_info *binfo)
 {
-        init_console();
-
-        cls();
-
-        early_print_string((u8 *)"Bootstrapping done.\n");
-        early_print_string((u8 *)"Initializing X-Visor. Please wait...\n");
-
-        while(1);
-
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
 
