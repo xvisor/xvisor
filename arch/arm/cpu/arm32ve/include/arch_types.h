@@ -27,8 +27,8 @@
 typedef unsigned int irq_flags_t;
 typedef unsigned int virtual_addr_t;
 typedef unsigned int virtual_size_t;
-typedef unsigned int physical_addr_t;
-typedef unsigned int physical_size_t;
+typedef unsigned long long physical_addr_t;
+typedef unsigned long long physical_size_t;
 typedef unsigned int clock_freq_t;
 typedef unsigned long long jiffies_t;
 

@@ -58,7 +58,7 @@ int cmd_memory_dump(struct vmm_chardev *cdev, physical_addr_t addr,
 	int rc;
 	u32 w;
 	bool page_mapped;
-	virtual_addr_t page_va;
+	virtual_addr_t page_va, addr_offset;
 	physical_addr_t page_pa;
 	addr = addr - (addr & (wsz - 1));
 	if (sizeof(physical_addr_t) == sizeof(u64)) {
@@ -96,18 +96,19 @@ int cmd_memory_dump(struct vmm_chardev *cdev, physical_addr_t addr,
 				vmm_cprintf(cdev, "\n%08x:", addr);
 			}
 		}
+		addr_offset = (addr & VMM_PAGE_MASK);
 		switch (wsz) {
 		case 1:
 			vmm_cprintf(cdev, " %02x", 
-				*((u8 *)(page_va + (addr & VMM_PAGE_MASK))));
+				    *((u8 *)(page_va + addr_offset)));
 			break;
 		case 2:
 			vmm_cprintf(cdev, " %04x", 
-				*((u16 *)(page_va + (addr & VMM_PAGE_MASK))));
+				    *((u16 *)(page_va + addr_offset)));
 			break;
 		case 4:
 			vmm_cprintf(cdev, " %08x", 
-				*((u32 *)(page_va + (addr & VMM_PAGE_MASK))));
+				    *((u32 *)(page_va + addr_offset)));
 			break;
 		default:
 			break;
@@ -132,7 +133,7 @@ int cmd_memory_modify(struct vmm_chardev *cdev, physical_addr_t addr,
 {
 	int rc, w = 0;
 	bool page_mapped;
-	virtual_addr_t page_va;
+	virtual_addr_t page_va, addr_offset;
 	physical_addr_t page_pa;
 	addr = addr - (addr & (wsz - 1));
 	page_pa = addr - (addr & VMM_PAGE_MASK);
@@ -153,17 +154,18 @@ int cmd_memory_modify(struct vmm_chardev *cdev, physical_addr_t addr,
 			page_va = vmm_host_iomap(page_pa, VMM_PAGE_SIZE);
 			page_mapped = TRUE;
 		}
+		addr_offset = (addr & VMM_PAGE_MASK);
 		switch (wsz) {
 		case 1:
-			*((u8 *)(page_va + (addr & VMM_PAGE_MASK))) = 
+			*((u8 *)(page_va + addr_offset)) = 
 						(u8)vmm_str2uint(valv[w], 10);
 			break;
 		case 2:
-			*((u16 *)(page_va + (addr & VMM_PAGE_MASK))) = 
+			*((u16 *)(page_va + addr_offset)) = 
 						(u16)vmm_str2uint(valv[w], 10);
 			break;
 		case 4:
-			*((u32 *)(page_va + (addr & VMM_PAGE_MASK))) = 
+			*((u32 *)(page_va + addr_offset)) = 
 						(u32)vmm_str2uint(valv[w], 10);
 			break;
 		default:
