@@ -1190,15 +1190,18 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	return VMM_OK;
 }
 
-int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
-				virtual_addr_t * resv_va,
-				virtual_size_t * resv_sz)
+int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa, 
+				virtual_addr_t * core_resv_va,
+				virtual_size_t * core_resv_sz,
+				physical_addr_t * arch_resv_pa,
+				virtual_addr_t * arch_resv_va,
+				virtual_size_t * arch_resv_sz)
 {
 	int rc = VMM_EFAIL;
 	u32 i, val;
-	virtual_addr_t va;
-	virtual_size_t sz;
-	physical_addr_t pa;
+	virtual_addr_t va, resv_va = *core_resv_va;
+	virtual_size_t sz, resv_sz = *core_resv_sz;
+	physical_addr_t pa, resv_pa = *core_resv_pa;
 	struct cpu_page respg;
 
 	/* Reset the memory of MMU control structure */
@@ -1231,66 +1234,83 @@ int __init arch_cpu_aspace_init(physical_addr_t * resv_pa,
 	mmuctrl.defl1.l2tbl_cnt = 0;
 	write_contextidr((((u32)mmuctrl.defl1.num) & 0xFF));
 
-	/* Compute additional reserved space required */
+	/* Check & setup core reserved space and update the 
+	 * core_resv_pa, core_resv_va, and core_resv_sz parameters
+	 * to inform host aspace about correct placement of the
+	 * core reserved space.
+	 */
 	pa = arch_code_paddr_start();
 	va = arch_code_vaddr_start();
 	sz = arch_code_size();
-	if ((va <= *resv_va) && (*resv_va < (va + sz))) {
-		*resv_va = va + sz;
-	} else if ((va <= (*resv_va + *resv_sz)) && 
-		   ((*resv_va + *resv_sz) < (va + sz))) {
-		*resv_va = va + sz;
+	if ((va <= resv_va) && (resv_va < (va + sz))) {
+		resv_va = va + sz;
+	} else if ((va <= (resv_va + resv_sz)) && 
+		   ((resv_va + resv_sz) < (va + sz))) {
+		resv_va = va + sz;
 	}
-	if ((pa <= *resv_pa) && (*resv_pa < (pa + sz))) {
-		*resv_pa = pa + sz;
-	} else if ((pa <= (*resv_pa + *resv_sz)) && 
-		   ((*resv_pa + *resv_sz) < (pa + sz))) {
-		*resv_pa = pa + sz;
+	if ((pa <= resv_pa) && (resv_pa < (pa + sz))) {
+		resv_pa = pa + sz;
+	} else if ((pa <= (resv_pa + resv_sz)) && 
+		   ((resv_pa + resv_sz) < (pa + sz))) {
+		resv_pa = pa + sz;
 	}
-	if (*resv_va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		*resv_va += TTBL_L1TBL_SECTION_PAGE_SIZE - 
-			    (*resv_va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
+	if (resv_va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
+		resv_va += TTBL_L1TBL_SECTION_PAGE_SIZE - 
+			    (resv_va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
 	}
-	if (*resv_pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		*resv_pa += TTBL_L1TBL_SECTION_PAGE_SIZE - 
-			    (*resv_pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
+	if (resv_pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
+		resv_pa += TTBL_L1TBL_SECTION_PAGE_SIZE - 
+			    (resv_pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
 	}
-	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
-	mmuctrl.l1_bmap = (u8 *)(*resv_va + *resv_sz);
-	*resv_sz += TTBL_MAX_L1TBL_COUNT;
-	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
-	mmuctrl.l1_array = (struct cpu_l1tbl *)(*resv_va + *resv_sz);
-	*resv_sz += sizeof(struct cpu_l1tbl) * TTBL_MAX_L1TBL_COUNT;
-	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
-	mmuctrl.l2_bmap = (u8 *)(*resv_va + *resv_sz);
-	*resv_sz += TTBL_MAX_L2TBL_COUNT;
-	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
-	mmuctrl.l2_array = (struct cpu_l2tbl *)(*resv_va + *resv_sz);
-	*resv_sz += sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT;
-	*resv_sz = (*resv_sz & 0x3) ? (*resv_sz & ~0x3) + 0x4 : *resv_sz;
-	if (*resv_sz & (TTBL_L1TBL_SIZE - 1)) {
-		*resv_sz += TTBL_L1TBL_SIZE - 
-			    (*resv_sz & (TTBL_L1TBL_SIZE - 1));
+	*core_resv_pa = resv_pa;
+	*core_resv_va = resv_va;
+	*core_resv_sz = resv_sz;
+
+
+	/* Allocate arch reserved space and update the *arch_resv_pa, 
+	 * *arch_resv_va, and *arch_resv_sz parameters to inform host
+	 * aspace about the arch reserved space.
+	 */
+	*arch_resv_va = (resv_va + resv_sz);
+	*arch_resv_pa = (resv_pa + resv_sz);
+	*arch_resv_sz = resv_sz;
+	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
+	mmuctrl.l1_bmap = (u8 *)(resv_va + resv_sz);
+	resv_sz += TTBL_MAX_L1TBL_COUNT;
+	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
+	mmuctrl.l1_array = (struct cpu_l1tbl *)(resv_va + resv_sz);
+	resv_sz += sizeof(struct cpu_l1tbl) * TTBL_MAX_L1TBL_COUNT;
+	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
+	mmuctrl.l2_bmap = (u8 *)(resv_va + resv_sz);
+	resv_sz += TTBL_MAX_L2TBL_COUNT;
+	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
+	mmuctrl.l2_array = (struct cpu_l2tbl *)(resv_va + resv_sz);
+	resv_sz += sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT;
+	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
+	if (resv_sz & (TTBL_L1TBL_SIZE - 1)) {
+		resv_sz += TTBL_L1TBL_SIZE - 
+			    (resv_sz & (TTBL_L1TBL_SIZE - 1));
 	}
-	mmuctrl.l1_base_va = *resv_va + *resv_sz;
-	mmuctrl.l1_base_pa = *resv_pa + *resv_sz;
-	*resv_sz += TTBL_L1TBL_SIZE * TTBL_MAX_L1TBL_COUNT;
-	mmuctrl.l2_base_va = *resv_va + *resv_sz;
-	mmuctrl.l2_base_pa = *resv_pa + *resv_sz;
-	*resv_sz += TTBL_L2TBL_SIZE * TTBL_MAX_L2TBL_COUNT;
-	if (*resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		*resv_sz += TTBL_L1TBL_SECTION_PAGE_SIZE - 
-			    (*resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
+	mmuctrl.l1_base_va = resv_va + resv_sz;
+	mmuctrl.l1_base_pa = resv_pa + resv_sz;
+	resv_sz += TTBL_L1TBL_SIZE * TTBL_MAX_L1TBL_COUNT;
+	mmuctrl.l2_base_va = resv_va + resv_sz;
+	mmuctrl.l2_base_pa = resv_pa + resv_sz;
+	resv_sz += TTBL_L2TBL_SIZE * TTBL_MAX_L2TBL_COUNT;
+	if (resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
+		resv_sz += TTBL_L1TBL_SECTION_PAGE_SIZE - 
+			    (resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
 	}
+	*arch_resv_sz = resv_sz - *arch_resv_sz;
 	
-	/* Map space for reserved area 
+	/* Map reserved space (core reserved space + arch reserved space) 
 	 * We have kept our page table pool in reserved area pages
 	 * as cacheable and write-back. We will clean data cache every
 	 * time we modify a page table (or translation table) entry.
 	 */
-	pa = *resv_pa;
-	va = *resv_va;
-	sz = *resv_sz;
+	pa = resv_pa;
+	va = resv_va;
+	sz = resv_sz;
 	while (sz) {
 		vmm_memset(&respg, 0, sizeof(respg));
 		respg.pa = pa;
