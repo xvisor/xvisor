@@ -147,17 +147,6 @@ struct arch_regs {
 
 typedef struct arch_regs arch_regs_t;
 
-struct arm_vtlb_entry {
-	u8 valid;
-	u8 ng;
-	struct cpu_page page;
-};
-
-struct arm_vtlb {
-	struct arm_vtlb_entry * table;
-	u32 victim[CPU_VCPU_VTLB_LINE_COUNT];
-};
-
 struct arm_priv {
 	/* Priviledged CPSR */
 	u32 cpsr;
@@ -188,18 +177,8 @@ struct arm_priv {
 	u32 features;
 	/* System control coprocessor (cp15) */
 	struct {
-		/* Shadow L1 */
+		/* Stage2 L1 */
 		struct cpu_l1tbl *l1;
-		/* Shadow DACR */
-		u32 dacr;
-		/* Virtual TLB */
-		struct arm_vtlb vtlb;
-		/* Overlapping vector page */
-		u32 ovect[TTBL_L2TBL_SMALL_PAGE_SIZE / 4];
-		u32 ovect_base;
-		/* Virtual IO */
-		bool virtio_active;
-		struct cpu_page virtio_page;
 		/* Coprocessor Registers */
 		u32 c0_cpuid;
 		u32 c0_cachetype;

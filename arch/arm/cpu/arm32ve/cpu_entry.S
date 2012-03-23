@@ -152,8 +152,6 @@ __copy_start:
 	.word _copy
 __copy_end:
 	.word _copy_end
-__defl1_mem:
-	.word defl1_mem
 
 	/* 
 	 * Load start address storage

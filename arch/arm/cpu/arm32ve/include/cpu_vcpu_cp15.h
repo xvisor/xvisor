@@ -26,30 +26,6 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
-/** Handle translation fault for a VCPU */
-int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu * vcpu, 
-			      arch_regs_t * regs, 
-			      u32 far, u32 fs, u32 dom,
-			      u32 wnr, u32 xn, bool force_user);
-
-/** Handle access fault for a VCPU */
-int cpu_vcpu_cp15_access_fault(struct vmm_vcpu * vcpu, 
-			       arch_regs_t * regs, 
-			       u32 far, u32 fs, u32 dom,
-			       u32 wnr, u32 xn);
-
-/** Handle domain fault for a VCPU */
-int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu * vcpu, 
-			       arch_regs_t * regs, 
-			       u32 far, u32 fs, u32 dom,
-			       u32 wnr, u32 xn);
-
-/** Handle permission fault for a VCPU */
-int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu * vcpu, 
-			     arch_regs_t * regs, 
-			     u32 far, u32 fs, u32 dom,
-			     u32 wnr, u32 xn);
-
 /** Read one registers from CP15 */
 bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu, 
 			arch_regs_t *regs,
@@ -61,24 +37,6 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			 arch_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data);
-
-/** Read from memory using VCPU CP15 */
-int cpu_vcpu_cp15_mem_read(struct vmm_vcpu * vcpu, 
-			   arch_regs_t * regs,
-			   virtual_addr_t addr, 
-			   void *dst, u32 dst_len, 
-			   bool force_unpriv);
-
-/** Write to memory using VCPU CP15 */
-int cpu_vcpu_cp15_mem_write(struct vmm_vcpu * vcpu, 
-			    arch_regs_t * regs,
-			    virtual_addr_t addr, 
-			    void *src, u32 src_len,
-			    bool force_unpriv);
-
-/* Read from memory using VCPU CP15 */
-virtual_addr_t cpu_vcpu_cp15_vector_addr(struct vmm_vcpu * vcpu, 
-					 u32 irq_no);
 
 /* Syncronize VCPU CP15 with change in VCPU mode */
 void cpu_vcpu_cp15_sync_cpsr(struct vmm_vcpu * vcpu);
