@@ -45,11 +45,13 @@ cpu-objs-$(CONFIG_ARMV5)+= cpu_entry_v5.o
 cpu-objs-$(CONFIG_ARMV5)+= cpu_mmu_v5.o
 cpu-objs-$(CONFIG_ARMV5)+= cpu_cache_v5.o
 cpu-objs-$(CONFIG_ARMV5)+= cpu_atomic_v5.o
+cpu-objs-$(CONFIG_ARMV5)+= cpu_interrupts_v5.o
 
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_entry_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_mmu_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_cache_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_atomic_v7.o
+cpu-objs-$(CONFIG_ARMV7A)+= cpu_interrupts_v7.o
 
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_math.o
