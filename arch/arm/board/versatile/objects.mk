@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2011 Anup Patel.
+# Copyright (c) 2012 Jean-Christophe Dubois.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,10 +17,14 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Anup Patel (anup@brainfault.org)
-# @brief list of common objects.
+# @author Jean-Christophe Dubois (jcd@tribudubois.net)
+# @brief list of Versatile board objects.
 # */
 
-board-common-objs-$(CONFIG_ARM_GIC)+=gic.o
-board-common-objs-$(CONFIG_ARM_TIMER_SP804)+=sp804_timer.o
-board-common-objs-$(CONFIG_ARM_PL190)+=pl190.o
+board-objs-y+=brd_defterm.o
+board-objs-y+=brd_timer.o
+board-objs-y+=brd_main.o
+board-objs-$(CONFIG_ONE_GUEST_VERSATILE_DTS)+=dts/one_guest_versatile.o
+board-objs-$(CONFIG_ONE_PT_GUEST_VERSATILE_DTS)+=dts/one_pt_guest_versatile.o
+board-objs-$(CONFIG_TWO_GUEST_VERSATILE_DTS)+=dts/two_guest_versatile.o
+

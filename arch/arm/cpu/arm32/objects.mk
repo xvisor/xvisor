@@ -27,6 +27,7 @@
 # macro, but instead defines a whole series of macros which makes
 # testing for a specific architecture or later rather impossible.
 arch-$(CONFIG_ARMV7A) += -mno-thumb-interwork -march=armv7-a
+arch-$(CONFIG_ARMV5) += -mno-thumb-interwork -march=armv5te
 
 # This selects how we optimise for the processor.
 tune-$(CONFIG_CPU_CORTEX_A8)  += -mcpu=cortex-a8
@@ -40,15 +41,17 @@ cpu-cflags += -msoft-float -marm -Uarm $(arch-y) $(tune-y)
 cpu-asflags += -marm $(arch-y) $(tune-y)
 cpu-ldflags += -msoft-float
 
+cpu-objs-$(CONFIG_ARMV5)+= cpu_entry_v5.o
+cpu-objs-$(CONFIG_ARMV5)+= cpu_mmu_v5.o
+cpu-objs-$(CONFIG_ARMV5)+= cpu_cache_v5.o
+
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_entry_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_mmu_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_cache_v7.o
 
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_math.o
-ifdef CONFIG_SMP
-cpu-objs-y+= cpu_locks.o
-endif
+cpu-objs-$(CONFIG_SMP)+= cpu_locks.o
 cpu-objs-y+= cpu_atomic.o
 cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_helper.o
@@ -57,4 +60,3 @@ cpu-objs-y+= cpu_vcpu_cp15.o
 cpu-objs-y+= cpu_vcpu_irq.o
 cpu-objs-y+= cpu_vcpu_emulate_arm.o
 cpu-objs-y+= cpu_vcpu_emulate_thumb.o
-

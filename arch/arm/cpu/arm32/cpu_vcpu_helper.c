@@ -665,8 +665,9 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu,
 
 int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 {
-	u32 ite, cpuid = 0;
+	u32 ite, cpuid;
 	const char * attr;
+
 	/* Initialize User Mode Registers */
 	/* For both Orphan & Normal VCPUs */
 	vmm_memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
@@ -690,6 +691,8 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
 	if (vmm_strcmp(attr, "ARMv7a,cortex-a8") == 0) {
 		cpuid = ARM_CPUID_CORTEXA8;
+	} else if (vmm_strcmp(attr, "ARMv5te,ARM926ej") == 0) {
+		cpuid = ARM_CPUID_ARM926;
 	} else {
 		return VMM_EFAIL;
 	}
@@ -737,6 +740,11 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 	if (!vcpu->reset_count) {
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
+		case ARM_CPUID_ARM926:
+			arm_set_feature(vcpu, ARM_FEATURE_V4T);
+			arm_set_feature(vcpu, ARM_FEATURE_V5);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+			break;
 		case ARM_CPUID_CORTEXA8:
 			arm_set_feature(vcpu, ARM_FEATURE_V4T);
 			arm_set_feature(vcpu, ARM_FEATURE_V5);
@@ -769,6 +777,7 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 			break;
 		};
 	}
+
 #ifdef CONFIG_ARM32_FUNCSTATS
 	for (ite=0; ite < ARM_FUNCSTAT_MAX; ite++) {
 		arm_priv(vcpu)->funcstat[ite].function_name = NULL;
@@ -777,6 +786,7 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 		arm_priv(vcpu)->funcstat[ite].time = 0;
 	}
 #endif
+
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
