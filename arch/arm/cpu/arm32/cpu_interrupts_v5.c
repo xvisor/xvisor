@@ -86,4 +86,18 @@ void arch_cpu_irq_restore(irq_flags_t flags)
 
 void arch_cpu_wait_for_irq(void)
 {
+	asm volatile (
+		"	mov     r0, #0\n"
+		"	mrc     p15, 0, r1, c1, c0, 0	@ Read control register\n"
+		"	mcr	p15, 0, r0, c7, c10, 4	@ Drain write buffer\n"
+		"	bic	r2, r1, #1 << 12\n"
+		"	mrs	r3, cpsr		@ Disable FIQs while Icache\n"
+		"	orr	ip, r3, #0x00000040	@ is disabled\n"
+		"	msr	cpsr_c, ip\n"
+		"	mcr	p15, 0, r2, c1, c0, 0	@ Disable I cache\n"
+		"	mcr	p15, 0, r0, c7, c0, 4	@ Wait for interrupt\n"
+		"	mcr	p15, 0, r1, c1, c0, 0	@ Restore ICache enable\n"
+		"	msr	cpsr_c, r3		@ Restore FIQ state\n"
+		"	mov	pc, lr"
+		:::"memory", "cc" );
 }
