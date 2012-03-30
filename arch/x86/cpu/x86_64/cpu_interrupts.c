@@ -21,18 +21,25 @@
  * @brief source code for handling cpu interrupts
  */
 
-#include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_types.h>
-#include <vmm_scheduler.h>
 #include <vmm_host_irq.h>
 #include <vmm_stdio.h>
-#include <cpu_interrupts.h>
 #include <cpu_timer.h>
 #include <cpu_mmu.h>
+#include <vmm_scheduler.h>
+#include <arch_cpu.h>
+
+#if CONFIG_LOCAL_APIC
+#include <cpu_apic.h>
+#endif
 
 int arch_cpu_irq_setup(void)
 {
+#if CONFIG_LOCAL_APIC
+	apic_init();
+#endif
+
         return 0;
 }
 

@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Sat Mar 17 21:16:05 2012
+# Wed Mar 21 22:22:41 2012
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -14,6 +14,12 @@ CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
 CONFIG_BOARD="x86_64_generic"
 CONFIG_CPU_X86_64=y
+
+#
+# Processor Features
+#
+CONFIG_LOCAL_APIC=y
+# CONFIG_8259A is not set
 CONFIG_BOARD_X86_64_GENERIC=y
 CONFIG_X86_64_GENERIC=y
 
