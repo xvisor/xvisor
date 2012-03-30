@@ -161,15 +161,18 @@ int arch_cpu_aspace_unmap(virtual_addr_t va,
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_init(physical_addr_t * resv_pa,
-			virtual_addr_t * resv_va,
-			virtual_size_t * resv_sz)
+int arch_cpu_aspace_init(physical_addr_t *core_resv_pa,
+			 virtual_addr_t *core_resv_va,
+			 virtual_size_t *core_resv_sz,
+			 physical_addr_t *arch_resv_pa,
+			 virtual_addr_t *arch_resv_va,
+			 virtual_size_t *arch_resv_sz)
 {
 	virtual_addr_t cva, eva = 0;
 	u32 pg_tab_sz = 0, tsize2map;
 	physical_addr_t pa;
 
-	tsize2map = (CONFIG_VAPOOL_SIZE << 20) + arch_code_size() + (*resv_sz);
+	tsize2map = (CONFIG_VAPOOL_SIZE << 20) + arch_code_size() + (*core_resv_sz);
 
 	tsize2map = VMM_ROUNDUP2_PAGE_SIZE(tsize2map);
 
@@ -204,9 +207,9 @@ int arch_cpu_aspace_init(physical_addr_t * resv_pa,
 
 	eva = cva + ((CONFIG_VAPOOL_SIZE << 20)
 		     + (arch_code_size()
-			+ (*resv_sz) + (pg_tab_sz * PAGE_SIZE)));
+			+ (*core_resv_sz) + (pg_tab_sz * PAGE_SIZE)));
 
-	pa = *resv_pa;
+	pa = *core_resv_pa;
 
 	/* Create the page table entries for all the virtual addresses. */
 	for (; cva < eva;) {
@@ -217,9 +220,15 @@ int arch_cpu_aspace_init(physical_addr_t * resv_pa,
 		pa += VMM_PAGE_SIZE;
 	}
 
-	*resv_sz += (pg_tab_sz * PAGE_SIZE);
-	*resv_va += (pg_tab_sz * PAGE_SIZE);
-	*resv_pa += (pg_tab_sz * PAGE_SIZE) + arch_code_size();
+	/*
+	 * We keep pagetables at the end of code so move the core
+	 * reserved space after the page tables.
+	 */
+	*arch_resv_sz = (pg_tab_sz * PAGE_SIZE);
+	*arch_resv_va = *core_resv_va;
+	*arch_resv_pa = *core_resv_pa + arch_code_size(); 
+	*core_resv_va += (pg_tab_sz * PAGE_SIZE);
+	*core_resv_pa += (pg_tab_sz * PAGE_SIZE) + arch_code_size();
 
         /* Switch over to new page table. */
         switch_to_pagetable(VIRT_TO_PHYS(&pml4[0]));
