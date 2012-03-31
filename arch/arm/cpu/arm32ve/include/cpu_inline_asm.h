@@ -141,7 +141,7 @@
 				" mrc     p15, 0, %0, c13, c0, 2\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define write_tpidrurw(val)		asm volatile(\
+#define write_tpidrurw(val)	asm volatile(\
 				" mcr     p15, 0, %0, c13, c0, 2\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
@@ -149,7 +149,7 @@
 				" mrc     p15, 0, %0, c13, c0, 3\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define write_tpidruro(val)		asm volatile(\
+#define write_tpidruro(val)	asm volatile(\
 				" mcr     p15, 0, %0, c13, c0, 3\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
@@ -157,8 +157,198 @@
 				" mrc     p15, 0, %0, c13, c0, 4\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define write_tpidrprw(val)		asm volatile(\
+#define write_tpidrprw(val)	asm volatile(\
 				" mcr     p15, 0, %0, c13, c0, 4\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+/* Virtualization Extension Register Read/Write */
+
+#define read_vpidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_vpidr(val)	asm volatile(\
+				" mcr     p15, 4, %0, c0, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_vmpidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c0, c0, 5\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_vmpidr(val)	asm volatile(\
+				" mcr     p15, 4, %0, c0, c0, 5\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hsctlr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c1, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hsctlr(val)	asm volatile(\
+				" mcr     p15, 4, %0, c1, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hactlr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c1, c0, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hactlr(val)	asm volatile(\
+				" mcr     p15, 4, %0, c1, c0, 1\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hcr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c1, c1, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hcr(val)		asm volatile(\
+				" mcr     p15, 4, %0, c1, c1, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hdctlr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c1, c1, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hdctlr(val)	asm volatile(\
+				" mcr     p15, 4, %0, c1, c1, 1\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hcptr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c1, c1, 2\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hcptr(val)	asm volatile(\
+				" mcr     p15, 4, %0, c1, c1, 2\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hstr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c1, c1, 3\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hstr(val)		asm volatile(\
+				" mcr     p15, 4, %0, c1, c1, 3\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hacr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c1, c1, 7\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hacr(val)		asm volatile(\
+				" mcr     p15, 4, %0, c1, c1, 7\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_vttbr()		({ u32 v1, v2; asm volatile(\
+				" mrrc     p15, 6, %0, %1, c2\n\t" \
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
+
+#define write_vttbr(val)	asm volatile(\
+				" mcrr     p15, 6, %0, %1, c2\n\t" \
+				:: "r" ((val) & 0xFFFFFFFF), "r" ((val) >> 32) \
+				: "memory", "cc")
+
+#define read_httbr()		({ u32 v1, v2; asm volatile(\
+				" mrrc     p15, 4, %0, %1, c2\n\t" \
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
+
+#define write_httbr(val)	asm volatile(\
+				" mcrr     p15, 4, %0, %1, c2\n\t" \
+				:: "r" ((val) & 0xFFFFFFFF), "r" ((val) >> 32) \
+				: "memory", "cc")
+
+#define read_vtcr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c2, c1, 2\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_vtcr(val)		asm volatile(\
+				" mcr     p15, 4, %0, c2, c1, 2\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_htcr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c2, c0, 2\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_htcr(val)		asm volatile(\
+				" mcr     p15, 4, %0, c2, c0, 2\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hadfsr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c5, c1, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hadfsr(val)	asm volatile(\
+				" mcr     p15, 4, %0, c5, c1, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_haifsr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c5, c1, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_haifsr(val)	asm volatile(\
+				" mcr     p15, 4, %0, c5, c1, 1\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hsr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c5, c2, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hsr(val)		asm volatile(\
+				" mcr     p15, 4, %0, c5, c2, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hdfar()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c6, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hdfar(val)	asm volatile(\
+				" mcr     p15, 4, %0, c6, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hifar()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c6, c0, 2\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hifar(val)	asm volatile(\
+				" mcr     p15, 4, %0, c6, c0, 2\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hpfar()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c6, c0, 4\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hpfar(val)	asm volatile(\
+				" mcr     p15, 4, %0, c6, c0, 4\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hmair0()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c10, c2, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hmair0(val)	asm volatile(\
+				" mcr     p15, 4, %0, c10, c2, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hmair1()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c10, c2, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hmair1(val)	asm volatile(\
+				" mcr     p15, 4, %0, c10, c2, 1\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_hvbar()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c12, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_hvbar(val)	asm volatile(\
+				" mcr     p15, 4, %0, c12, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_htpidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 4, %0, c13, c0, 2\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_htpidr(val)	asm volatile(\
+				" mcr     p15, 4, %0, c13, c0, 2\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
 #endif

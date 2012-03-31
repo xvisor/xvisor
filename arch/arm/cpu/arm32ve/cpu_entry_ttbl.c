@@ -23,17 +23,34 @@
 
 #include <vmm_types.h>
 #include <cpu_defines.h>
+#include <cpu_inline_asm.h>
+
+extern u8 defl1_ttbl[];
+extern u8 defl2_ttbl[];
+extern u8 defl3_ttbl[];
 
 /* Note: This function must be called with MMU disabled from 
  * primary CPU only.
  * Note: This function cannot refer to any global variable &
  * functions to ensure that it can be executed from anywhere.
  */
+#define to_load_va(va)		((va) - exec_start + load_start)
 void __attribute__ ((section (".entry"))) 
 _setup_initial_ttbl(virtual_addr_t load_start,
 		    virtual_addr_t load_end,
 		    virtual_addr_t exec_start,
 		    virtual_addr_t exec_end)
 {
-	/* FIXME: */
+	virtual_addr_t va;
+	physical_addr_t pa;
+
+	/* FIXME: Setup Translation Table */
+
+	/* FIXME: Setup Hypervisor Translation Control Register */
+
+	/* FIXME: Setup Hypervisor Translation Table Base Register */
+	pa = read_httbr();
+	va = to_load_va((virtual_addr_t)&defl1_ttbl);
+	pa = va; /* because MMU is disabled */
+	write_httbr(pa);
 }

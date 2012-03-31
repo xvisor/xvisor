@@ -132,14 +132,24 @@ _start_mmu_init:
 	mov	r3, r7
 	bl	_setup_initial_ttbl
 	/*
-	 * FIXME: Setup MMU & related registers
+	 * Setup Hypervisor System Control Register
 	 */
+	ldr	r1, __hsctlr_mmu_val
+	ldr	r2, __hsctlr_mmu_clear
+	mrc     p15, 4, r3, c1, c0, 0
+	and	r3, r3, r2
+	orr	r3, r3, r1
+	mcr     p15, 4, r3, c1, c0, 0
 	/*
 	 * Jump to reset code
 	 */
 	ldr	pc, __reset
 _start_hang:
 	b	.
+__hsctlr_mmu_clear:
+	.word ~(HSCTLR_A_MASK)
+__hsctlr_mmu_val:
+	.word (HSCTLR_M_MASK | HSCTLR_C_MASK | HSCTLR_I_MASK)
 __exec_start:
 	.word _code_start
 __exec_end:

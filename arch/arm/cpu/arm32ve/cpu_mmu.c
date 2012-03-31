@@ -34,6 +34,10 @@
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
 
+u8 __attribute__ ((aligned(TTBL_TABLE_SIZE))) defl1_ttbl[TTBL_TABLE_SIZE];
+u8 __attribute__ ((aligned(TTBL_TABLE_SIZE))) defl2_ttbl[TTBL_L3_BLOCK_SIZE*2];
+u8 __attribute__ ((aligned(TTBL_TABLE_SIZE))) defl3_ttbl[TTBL_L3_BLOCK_SIZE*5];
+
 /* FIXME: */
 u32 cpu_mmu_best_page_size(virtual_addr_t va, physical_addr_t pa, u32 availsz)
 {
