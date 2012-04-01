@@ -123,7 +123,7 @@ _start_mmu_init:
 	/*
 	 * Setup initial TTBL using C code and a temporary stack
 	 */
-	ldr	sp, __hyp_stack_end
+	ldr	sp, __hvc_stack_end
 	sub	sp, sp, r6
 	add	sp, sp, r4
 	mov	r0, r4
@@ -286,6 +286,7 @@ _enable_hvc_start:
 	 * Exception vector start.
 	 */
 	.section .entry, "ax", %progbits
+	.balign	256
 	.globl _start_vect
 _start_vect:
 	ldr	pc, __reset
@@ -319,8 +320,8 @@ _end_vect:
 	/* 
 	 * Exception stacks.
 	 */
-__svc_stack_end:
-	.word _svc_stack_end
+__hvc_stack_end:
+	.word _hvc_stack_end
 __und_stack_end:
 	.word _und_stack_end
 __abt_stack_end:
@@ -329,8 +330,6 @@ __irq_stack_end:
 	.word _irq_stack_end
 __fiq_stack_end:
 	.word _fiq_stack_end
-__hyp_stack_end:
-	.word _hyp_stack_end
 
 	/* 
 	 * Reset exception handler.
@@ -344,23 +343,8 @@ _reset:
 	mrs	r8, cpsr_all
 	orr	r8, r8, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
 	msr	cpsr_cxsf, r8
-	/* Set Supervisor Mode Stack */
-	cps	#CPSR_MODE_SUPERVISOR
-	ldr	sp, __svc_stack_end
-	/* Set Undefined Mode Stack */
-	cps	#CPSR_MODE_UNDEFINED
-	ldr	sp, __und_stack_end
-	/* Set Abort Mode Stack */
-	cps	#CPSR_MODE_ABORT
-	ldr	sp, __abt_stack_end
-	/* Set IRQ Mode Stack */
-	cps	#CPSR_MODE_IRQ
-	ldr	sp, __irq_stack_end
-	/* Set FIQ Mode Stack */
-	cps	#CPSR_MODE_FIQ
-	ldr	sp, __fiq_stack_end
-	/* Set to Supervisor Mode */
-	cps	#CPSR_MODE_SUPERVISOR
+	/* Set Hypervisor Mode Stack */
+	ldr	sp, __hvc_stack_end
 	/* Call CPU init function */
 	b	cpu_init
 	/* We should never reach here */

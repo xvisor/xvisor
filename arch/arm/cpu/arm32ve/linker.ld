@@ -74,20 +74,12 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
-	.svc_stack :
+	.hvc_stack :
 	{
-		PROVIDE(_svc_stack_start = .);
+		PROVIDE(_hvc_stack_start = .);
 		. = . + CONFIG_IRQ_STACK_SIZE;
 		. = ALIGN(4);
-		PROVIDE(_svc_stack_end = .);
-        }
-
-	.hyp_stack :
-	{
-		PROVIDE(_hyp_stack_start = .);
-		. = . + CONFIG_IRQ_STACK_SIZE;
-		. = ALIGN(4);
-		PROVIDE(_hyp_stack_end = .);
+		PROVIDE(_hvc_stack_end = .);
 	}
 
 	.abt_stack :
