@@ -33,7 +33,7 @@ extern u32 def_ttbl_use_count;
  * Note: This function cannot refer to any global variable &
  * functions to ensure that it can execute from anywhere.
  */
-#define to_load_va(va)		((va) - exec_start + load_start)
+#define to_load_pa(va)		((va) - exec_start + load_start)
 void __attribute__ ((section (".entry"))) 
 _setup_initial_ttbl(virtual_addr_t load_start,
 		    virtual_addr_t load_end,
@@ -43,11 +43,12 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	u32 i, index, tmp, map_exec;
 	u32 *ttbl_count;
 	u64 *ttbl, *nttbl;
+	virtual_addr_t page_addr;
 	physical_addr_t pa;
 
-	ttbl = (u64 *)to_load_va((virtual_addr_t)&def_ttbl);
+	ttbl = (u64 *)to_load_pa((virtual_addr_t)&def_ttbl);
 	nttbl = ttbl + TTBL_TABLE_ENTCNT;
-	ttbl_count = (u32 *)to_load_va((virtual_addr_t)&def_ttbl_use_count);
+	ttbl_count = (u32 *)to_load_pa((virtual_addr_t)&def_ttbl_use_count);
 	*ttbl_count = 0;
 
 	for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
@@ -56,18 +57,18 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	(*ttbl_count)++;
 
 	map_exec = 0;
-	tmp = load_start;
+	page_addr = load_start;
 	while (1) {
-		if (!map_exec && load_end <= tmp) {
+		if (!map_exec && load_end <= page_addr) {
 			map_exec = 1;
-			tmp = exec_start;
-		} else if (map_exec && exec_end <= tmp) {
+			page_addr = exec_start;
+		} else if (map_exec && exec_end <= page_addr) {
 			break;
 		}
 
 		/* Setup level1 table */
-		ttbl = (u64 *)to_load_va((virtual_addr_t)&def_ttbl);
-		index = (tmp & TTBL_L1_INDEX_MASK) >> TTBL_L1_INDEX_SHIFT;
+		ttbl = (u64 *)to_load_pa((virtual_addr_t)&def_ttbl);
+		index = (page_addr & TTBL_L1_INDEX_MASK) >> TTBL_L1_INDEX_SHIFT;
 		if (ttbl[index] & TTBL_VALID_MASK) {
 			ttbl = (u64 *)(u32)(ttbl[index] & TTBL_OUTADDR_MASK);
 		} else {
@@ -82,7 +83,7 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 		}
 
 		/* Setup level2 table */
-		index = (tmp & TTBL_L2_INDEX_MASK) >> TTBL_L2_INDEX_SHIFT;
+		index = (page_addr & TTBL_L2_INDEX_MASK) >> TTBL_L2_INDEX_SHIFT;
 		if (ttbl[index] & TTBL_VALID_MASK) {
 			ttbl = (u64 *)(u32)(ttbl[index] & TTBL_OUTADDR_MASK);
 		} else {
@@ -97,12 +98,12 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 		}
 
 		/* Setup level3 table */
-		index = (tmp & TTBL_L3_INDEX_MASK) >> TTBL_L3_INDEX_SHIFT;
+		index = (page_addr & TTBL_L3_INDEX_MASK) >> TTBL_L3_INDEX_SHIFT;
 		if (!(ttbl[index] & TTBL_VALID_MASK)) {
 			if (map_exec) {
-				ttbl[index] |= (to_load_va(tmp) & TTBL_OUTADDR_MASK);
+				ttbl[index] |= (to_load_pa(page_addr) & TTBL_OUTADDR_MASK);
 			} else {
-				ttbl[index] |= (tmp & TTBL_OUTADDR_MASK);
+				ttbl[index] |= (page_addr & TTBL_OUTADDR_MASK);
 			}
 			ttbl[index] |= TTBL_STAGE1_LOWER_AF_MASK;
 			ttbl[index] |= (TTBL_AP_SRW_U << TTBL_STAGE1_LOWER_AP_SHIFT);
@@ -110,7 +111,7 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 		}
 
 		/* Point to next page */
-		tmp += TTBL_L3_BLOCK_SIZE;
+		page_addr += TTBL_L3_BLOCK_SIZE;
 	}
 
 	/* Setup Hypervisor Translation Control Register */
@@ -120,7 +121,7 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 
 	/* Setup Hypervisor Translation Table Base Register */
 	/* Note: if MMU is disabled then va = pa */
-	pa = to_load_va((virtual_addr_t)&def_ttbl);;
+	pa = to_load_pa((virtual_addr_t)&def_ttbl);;
 	pa &= HTTBR_BADDR_MASK;
 	write_httbr(pa);
 }

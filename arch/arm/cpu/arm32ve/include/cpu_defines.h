@@ -325,10 +325,10 @@
 #define TTBL_UPPER_SHIFT				52
 #define TTBL_OUTADDR_MASK				0x000000FFFFFFF000ULL
 #define TTBL_OUTADDR_SHIFT				12
-#define TTBL_AP_S_U					0x0
-#define TTBL_AP_SRW_U					0x1
-#define TTBL_AP_SRW_UR					0x2
-#define TTBL_AP_SRW_URW					0x3
+#define TTBL_AP_SRW_U					0x0
+#define TTBL_AP_S_URW					0x1
+#define TTBL_AP_SR_U					0x2
+#define TTBL_AP_S_UR					0x3
 #define TTBL_LOWER_MASK					0x0000000000000FFCULL
 #define TTBL_LOWER_SHIFT				2
 #define TTBL_TABLE_MASK					0x0000000000000002ULL

@@ -337,6 +337,8 @@ __fiq_stack_end:
 	 */
 	.globl _reset
 _reset:
+	/* Clear lr */
+	mov 	lr, #0
 	/* Clear a register for temporary usage */
 	mov	r8, #0
 	/* Disable IRQ & FIQ */
