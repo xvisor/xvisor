@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Sat Mar 24 11:48:33 2012
+# Mon Apr  2 09:52:11 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -38,7 +38,7 @@ CONFIG_BOARD_VEXPRESS_A15=y
 #
 # Versatile Express Cortex-A15 Options
 #
-CONFIG_VEXPRESS_A15_ONE_GUEST_PBA8_DTS=y
+CONFIG_VEXPRESS_A15_VE_ONE_GUEST_PBA8_DTS=y
 
 #
 # Hypervisor Options
