@@ -34,7 +34,9 @@
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
 
-u8 __attribute__ ((aligned(TTBL_TABLE_SIZE))) def_ttbl[TTBL_TABLE_SIZE * 8];
+#define TTBL_INITIAL_TABLE_SIZE (TTBL_INITIAL_TABLE_COUNT * TTBL_TABLE_SIZE)
+
+u8 __attribute__ ((aligned(TTBL_TABLE_SIZE))) def_ttbl[TTBL_INITIAL_TABLE_SIZE];
 u32 def_ttbl_use_count;
 
 /* FIXME: */

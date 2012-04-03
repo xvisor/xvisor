@@ -46,15 +46,21 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	virtual_addr_t page_addr;
 	physical_addr_t pa;
 
-	ttbl = (u64 *)to_load_pa((virtual_addr_t)&def_ttbl);
-	nttbl = ttbl + TTBL_TABLE_ENTCNT;
+	ttbl = NULL;
+	nttbl = (u64 *)to_load_pa((virtual_addr_t)&def_ttbl);
 	ttbl_count = (u32 *)to_load_pa((virtual_addr_t)&def_ttbl_use_count);
 	*ttbl_count = 0;
 
+	/* Allocate level1 table */
+	if (*ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
+		while(1); /* No initial table available */
+	}
 	for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
-		ttbl[i] = 0x0ULL;
+		nttbl[i] = 0x0ULL;
 	}
 	(*ttbl_count)++;
+	ttbl = nttbl;
+	nttbl += TTBL_TABLE_ENTCNT;
 
 	map_exec = 0;
 	page_addr = load_start;
@@ -70,36 +76,47 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 		ttbl = (u64 *)to_load_pa((virtual_addr_t)&def_ttbl);
 		index = (page_addr & TTBL_L1_INDEX_MASK) >> TTBL_L1_INDEX_SHIFT;
 		if (ttbl[index] & TTBL_VALID_MASK) {
+			/* Find level2 table */
 			ttbl = (u64 *)(u32)(ttbl[index] & TTBL_OUTADDR_MASK);
 		} else {
+			/* Allocate new level2 table */
+			if (*ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
+				while(1); /* No initial table available */
+			}
 			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
 				nttbl[i] = 0x0ULL;
 			}
+			(*ttbl_count)++;
 			ttbl[index] |= (((virtual_addr_t)nttbl) & TTBL_OUTADDR_MASK);
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
 			ttbl = nttbl;
 			nttbl += TTBL_TABLE_ENTCNT;
-			(*ttbl_count)++;
 		}
 
 		/* Setup level2 table */
 		index = (page_addr & TTBL_L2_INDEX_MASK) >> TTBL_L2_INDEX_SHIFT;
 		if (ttbl[index] & TTBL_VALID_MASK) {
+			/* Find level3 table */
 			ttbl = (u64 *)(u32)(ttbl[index] & TTBL_OUTADDR_MASK);
 		} else {
+			/* Allocate new level3 table */
+			if (*ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
+				while(1); /* No initial table available */
+			}
 			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
 				nttbl[i] = 0x0ULL;
 			}
+			(*ttbl_count)++;
 			ttbl[index] |= (((virtual_addr_t)nttbl) & TTBL_OUTADDR_MASK);
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
 			ttbl = nttbl;
 			nttbl += TTBL_TABLE_ENTCNT;
-			(*ttbl_count)++;
 		}
 
 		/* Setup level3 table */
 		index = (page_addr & TTBL_L3_INDEX_MASK) >> TTBL_L3_INDEX_SHIFT;
 		if (!(ttbl[index] & TTBL_VALID_MASK)) {
+			/* Update level3 table */
 			if (map_exec) {
 				ttbl[index] |= (to_load_pa(page_addr) & TTBL_OUTADDR_MASK);
 			} else {

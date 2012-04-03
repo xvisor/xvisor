@@ -306,6 +306,7 @@
 #define VTCR_T0SZ_SHIFT					0
 
 /* TTBL Generic */
+#define TTBL_INITIAL_TABLE_COUNT			8
 #define TTBL_TABLE_SIZE					0x00001000
 #define TTBL_TABLE_ENTCNT				512
 #define TTBL_TABLE_ENTSZ				8
