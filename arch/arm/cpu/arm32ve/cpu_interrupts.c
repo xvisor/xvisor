@@ -76,9 +76,13 @@ void do_fiq(arch_regs_t * uregs)
 	return;
 }
 
-/* FIXME: */
 int __init arch_cpu_irq_setup(void)
 {
+	extern u32 _start_vect[];
+
+	/* Update HVBAR to point to hypervisor vector table */
+	write_hvbar((virtual_addr_t)&_start_vect);
+
 	return VMM_OK;
 }
 
