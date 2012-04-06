@@ -161,6 +161,32 @@
 				" mcr     p15, 0, %0, c13, c0, 4\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
+/* Virtualization Extension TLB maintainence */
+
+#define invalid_nhtlb()		({ u32 rval=0; asm volatile(\
+				" mcr     p15, 4, %0, c8, c7, 4\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define invalid_nhtlb_is()	({ u32 rval=0; asm volatile(\
+				" mcr     p15, 4, %0, c8, c3, 4\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define invalid_htlb()		({ u32 rval=0; asm volatile(\
+				" mcr     p15, 4, %0, c8, c7, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define invalid_htlb_is()	({ u32 rval=0; asm volatile(\
+				" mcr     p15, 4, %0, c8, c3, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define invalid_htlb_mva(va)	asm volatile(\
+				" mcr     p15, 4, %0, c8, c7, 1\n\t" \
+				:: "r" ((va)) : "memory", "cc")
+
+#define invalid_htlb_mva_is(va)	asm volatile(\
+				" mcr     p15, 4, %0, c8, c3, 1\n\t" \
+				:: "r" ((va)) : "memory", "cc")
+
 /* Virtualization Extension Register Read/Write */
 
 #define read_vpidr()		({ u32 rval; asm volatile(\

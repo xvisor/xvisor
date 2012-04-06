@@ -18,7 +18,7 @@
  *
  * @file cpu_mmu.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief memory management unit interface of a ARM processor
+ * @brief MMU interface of LPAE enabled ARM processor
  */
 #ifndef _CPU_MMU_H__
 #define _CPU_MMU_H__
@@ -26,87 +26,84 @@
 #include <vmm_types.h>
 #include <vmm_list.h>
 
+/** LPAE page/block */
 struct cpu_page {
-	virtual_addr_t va;
-	physical_addr_t pa;
-	virtual_size_t sz;
-	u32 ns:1;
-	u32 ng:1;
-	u32 s:1;
-	u32 tex:3;
-	u32 ap:3;
-	u32 imp:1;
-	u32 dom:4;
+	physical_addr_t ia;
+	physical_addr_t oa;
+	physical_size_t sz;
+	/* upper */
 	u32 xn:1;
-	u32 c:1;
-	u32 b:1;
-	u32 pad:15;
+	u32 pxn:1;
+	u32 cont:1;
+	/* lower */
+	u32 ng:1;
+	u32 af:1;
+	u32 sh:1;
+	u32 ap:2;
+	u32 ns:1;
+	u32 aindex:3;
+	u32 memattr:4;
+	/* padding */
+	u32 pad:16;
 };
 
-struct cpu_l2tbl {
+/** LPAE translation table */
+struct cpu_ttbl {
 	struct dlist head;
-	int num;
-	struct cpu_l1tbl *l1;
-	u32 imp;
-	u32 domain;
-	physical_addr_t tbl_pa;
-	virtual_addr_t tbl_va;
-	virtual_addr_t map_va;
-	u32 tte_cnt;
-};
-
-struct cpu_l1tbl {
-	struct dlist head;
-	int num;
+	struct cpu_ttbl * parent;
+	int stage;
+	int level;
+	physical_addr_t map_ia;
 	physical_addr_t tbl_pa;
 	virtual_addr_t tbl_va;
 	u32 tte_cnt;
-	u32 l2tbl_cnt;
-	struct dlist l2tbl_list;
+	u32 child_cnt;
+	struct dlist child_list;
 };
 
 /** Estimate good page size */
-u32 cpu_mmu_best_page_size(virtual_addr_t va, physical_addr_t pa, u32 availsz);
+u32 cpu_mmu_best_page_size(physical_addr_t ia, 
+			   physical_addr_t oa, 
+			   u32 availsz);
 
 /** Get page from a given virtual address */
-int cpu_mmu_get_page(struct cpu_l1tbl * l1, 
-		     virtual_addr_t va, 
+int cpu_mmu_get_page(struct cpu_ttbl * ttbl, 
+		     physical_addr_t ia, 
 		     struct cpu_page * pg);
 
-/** Unmap a page from given L1 table */
-int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg);
+/** Unmap a page from given translation table */
+int cpu_mmu_unmap_page(struct cpu_ttbl * ttbl, struct cpu_page * pg);
 
-/** Map a page under a given L1 table */
-int cpu_mmu_map_page(struct cpu_l1tbl * l1, struct cpu_page * pg);
+/** Map a page under a given translation table */
+int cpu_mmu_map_page(struct cpu_ttbl * ttbl, struct cpu_page * pg);
 
-/** Get reserved page from a given virtual address */
-int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page * pg);
+/** Get page from a given virtual address */
+int cpu_mmu_get_hypervisor_page(virtual_addr_t va, struct cpu_page * pg);
 
-/** Unmap a reserved page */
-int cpu_mmu_unmap_reserved_page(struct cpu_page * pg);
+/** Unmap a page from hypervisor translation table */
+int cpu_mmu_unmap_hypervisor_page(struct cpu_page * pg);
 
-/** Map a reserved page */
-int cpu_mmu_map_reserved_page(struct cpu_page * pg);
+/** Map a page in hypervisor translation table */
+int cpu_mmu_map_hypervisor_page(struct cpu_page * pg);
 
-/** Allocate a L1 table */
-struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void);
+/** Allocate a new translation table */
+struct cpu_ttbl *cpu_mmu_ttbl_alloc(int stage);
 
-/** Free a L1 table */
-int cpu_mmu_l1tbl_free(struct cpu_l1tbl * l1);
+/** Free existing translation table */
+int cpu_mmu_ttbl_free(struct cpu_ttbl * ttbl);
 
-/** Current L1 table */
-struct cpu_l1tbl *cpu_mmu_l1tbl_default(void);
+/** Get child under a parent translation table */
+struct cpu_ttbl *cpu_mmu_ttbl_get_child(struct cpu_ttbl *parent,
+					physical_addr_t map_ia,
+					bool create);
 
-/** Current L1 table */
-struct cpu_l1tbl *cpu_mmu_l1tbl_current(void);
+/** Get hypervisor translation table */
+struct cpu_ttbl * cpu_mmu_hypervisor_ttbl(void);
 
-/** Optimized read word from a physical address */
-u32 cpu_mmu_physical_read32(physical_addr_t pa);
+/** Get current stage2 translation table */
+struct cpu_ttbl *cpu_mmu_stage2_current(void);
 
-/** Optimized write word from a physical address */
-void cpu_mmu_physical_write32(physical_addr_t pa, u32 val);
+/** Change translation table for stage2 */
+int cpu_mmu_stage2_chttbr(u8 vmid, struct cpu_ttbl * ttbl);
 
-/** Change translation table base register */
-int cpu_mmu_chttbr(struct cpu_l1tbl * l1);
-
-#endif /** _CPU_MMU_H */
+#endif /* _CPU_MMU_H */

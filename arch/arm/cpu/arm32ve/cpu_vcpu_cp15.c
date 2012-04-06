@@ -867,7 +867,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 
 	if (!vcpu->reset_count) {
 		vmm_memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
-		arm_priv(vcpu)->cp15.l1 = cpu_mmu_l1tbl_alloc();
+		arm_priv(vcpu)->cp15.ttbl = cpu_mmu_ttbl_alloc(TTBL_STAGE2);
 	}
 
 	arm_priv(vcpu)->cp15.c0_cpuid = cpuid;
@@ -911,7 +911,7 @@ int cpu_vcpu_cp15_deinit(struct vmm_vcpu * vcpu)
 {
 	int rc;
 
-	if ((rc = cpu_mmu_l1tbl_free(arm_priv(vcpu)->cp15.l1))) {
+	if ((rc = cpu_mmu_ttbl_free(arm_priv(vcpu)->cp15.ttbl))) {
 		return rc;
 	}
 

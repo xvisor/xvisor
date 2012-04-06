@@ -26,7 +26,7 @@
 #include <cpu_inline_asm.h>
 
 extern u8 def_ttbl[];
-extern u32 def_ttbl_use_count;
+extern int def_ttbl_tree[];
 
 /* Note: This function must be called with MMU disabled from 
  * primary CPU only.
@@ -40,25 +40,34 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 		    virtual_addr_t exec_start,
 		    virtual_addr_t exec_end)
 {
-	u32 i, index, tmp, map_exec;
-	u32 *ttbl_count;
+	int * ttbl_tree;
+	u32 i, index, map_exec;
+	u32 ttbl_count;
 	u64 *ttbl, *nttbl;
-	virtual_addr_t page_addr;
+	virtual_addr_t ttbl_base, page_addr;
 	physical_addr_t pa;
 
+	/* FIXME: Initialize HMAIR0 and HMAIR1 for using caching 
+	* attributes via attrindex of each page
+	*/
+
 	ttbl = NULL;
-	nttbl = (u64 *)to_load_pa((virtual_addr_t)&def_ttbl);
-	ttbl_count = (u32 *)to_load_pa((virtual_addr_t)&def_ttbl_use_count);
-	*ttbl_count = 0;
+	ttbl_base = to_load_pa((virtual_addr_t)&def_ttbl);
+	nttbl = (u64 *)ttbl_base;
+	ttbl_tree = (int *)to_load_pa((virtual_addr_t)&def_ttbl_tree);
+	for (i = 0; i < TTBL_INITIAL_TABLE_COUNT; i++) {
+		ttbl_tree[i] = -1;
+	}
+	ttbl_count = 0;
 
 	/* Allocate level1 table */
-	if (*ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
+	if (ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
 		while(1); /* No initial table available */
 	}
 	for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
 		nttbl[i] = 0x0ULL;
 	}
-	(*ttbl_count)++;
+	ttbl_count++;
 	ttbl = nttbl;
 	nttbl += TTBL_TABLE_ENTCNT;
 
@@ -80,13 +89,15 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 			ttbl = (u64 *)(u32)(ttbl[index] & TTBL_OUTADDR_MASK);
 		} else {
 			/* Allocate new level2 table */
-			if (*ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
+			if (ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
 				while(1); /* No initial table available */
 			}
 			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
 				nttbl[i] = 0x0ULL;
 			}
-			(*ttbl_count)++;
+			ttbl_tree[ttbl_count] = ((u32)ttbl - ttbl_base) >> 
+							TTBL_TABLE_SIZE_SHIFT;
+			ttbl_count++;
 			ttbl[index] |= (((virtual_addr_t)nttbl) & TTBL_OUTADDR_MASK);
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
 			ttbl = nttbl;
@@ -100,13 +111,15 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 			ttbl = (u64 *)(u32)(ttbl[index] & TTBL_OUTADDR_MASK);
 		} else {
 			/* Allocate new level3 table */
-			if (*ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
+			if (ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
 				while(1); /* No initial table available */
 			}
 			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
 				nttbl[i] = 0x0ULL;
 			}
-			(*ttbl_count)++;
+			ttbl_tree[ttbl_count] = ((u32)ttbl - ttbl_base) >> 
+							TTBL_TABLE_SIZE_SHIFT;
+			ttbl_count++;
 			ttbl[index] |= (((virtual_addr_t)nttbl) & TTBL_OUTADDR_MASK);
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
 			ttbl = nttbl;
@@ -132,9 +145,9 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	}
 
 	/* Setup Hypervisor Translation Control Register */
-	tmp = read_htcr();
-	tmp &= ~HTCR_T0SZ_MASK; /* Ensure T0SZ = 0 */
-	write_htcr(tmp);
+	i = read_htcr();
+	i &= ~HTCR_T0SZ_MASK; /* Ensure T0SZ = 0 */
+	write_htcr(i);
 
 	/* Setup Hypervisor Translation Table Base Register */
 	/* Note: if MMU is disabled then va = pa */

@@ -178,7 +178,7 @@ struct arm_priv {
 	/* System control coprocessor (cp15) */
 	struct {
 		/* Stage2 L1 */
-		struct cpu_l1tbl *l1;
+		struct cpu_ttbl *ttbl;
 		/* Coprocessor Registers */
 		u32 c0_cpuid;
 		u32 c0_cachetype;
