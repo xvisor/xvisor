@@ -342,30 +342,12 @@ int cpu_mmu_get_page(struct cpu_ttbl * ttbl,
 	int index;
 	u64 * tte;
 	struct cpu_ttbl *child;
-	physical_size_t blksz;
 
 	if (!ttbl || !pg) {
 		return VMM_EFAIL;
 	}
-	if (!cpu_mmu_valid_block_size(pg->sz)) {
-		return VMM_EFAIL;
-	}
 
-	blksz = cpu_mmu_level_block_size(ttbl->level);
-
-	if (pg->sz > blksz ) {
-		return VMM_EFAIL;
-	}
-
-	if (pg->sz < blksz) {
-		child = cpu_mmu_ttbl_get_child(ttbl, pg->ia, FALSE);
-		if (!child) {
-			return VMM_EFAIL;
-		}
-		return cpu_mmu_get_page(child, ia, pg);
-	}
-
-	index = cpu_mmu_level_index(pg->ia, ttbl->level);
+	index = cpu_mmu_level_index(ia, ttbl->level);
 	tte = (u64 *)ttbl->tbl_va;
 
 	if (!(tte[index] & TTBL_VALID_MASK)) {
@@ -374,6 +356,15 @@ int cpu_mmu_get_page(struct cpu_ttbl * ttbl,
 	if ((ttbl->level == TTBL_LAST_LEVEL) &&
 	    !(tte[index] & TTBL_TABLE_MASK)) {
 		return VMM_EFAIL;
+	}
+
+	if ((ttbl->level < TTBL_LAST_LEVEL) && 
+	    (tte[index] & TTBL_TABLE_MASK)) {
+		child = cpu_mmu_ttbl_get_child(ttbl, ia, FALSE);
+		if (!child) {
+			return VMM_EFAIL;
+		}
+		return cpu_mmu_get_page(child, ia, pg);
 	}
 
 	vmm_memset(pg, 0, sizeof(struct cpu_page));
