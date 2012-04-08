@@ -74,53 +74,23 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
+	. = ALIGN(0x1000); /* init functions start is page aligned */
+	.init : /* Put init functions into separate pages */
+	{
+		PROVIDE(_init_text_start = .);
+		*(.init.text)
+		. = ALIGN(4);
+		PROVIDE(_init_text_end = .);
+	}
+
+	. = ALIGN(0x1000); /* init functions end is page aligned */
+
 	.hvc_stack :
 	{
 		PROVIDE(_hvc_stack_start = .);
 		. = . + CONFIG_IRQ_STACK_SIZE;
 		. = ALIGN(4);
 		PROVIDE(_hvc_stack_end = .);
-	}
-
-	.abt_stack :
-	{
-		PROVIDE(_abt_stack_start = .);
-		. = . + CONFIG_IRQ_STACK_SIZE;
-		. = ALIGN(4);
-		PROVIDE(_abt_stack_end = .);
-	}
-
-	.und_stack :
-	{
-		PROVIDE(_und_stack_start = .);
-		. = . + CONFIG_IRQ_STACK_SIZE;
-		. = ALIGN(4);
-		PROVIDE(_und_stack_end = .);
-	}
-
-	.irq_stack :
-	{
-		PROVIDE(_irq_stack_start = .);
-		. = . + CONFIG_IRQ_STACK_SIZE;
-		. = ALIGN(4);
-		PROVIDE(_irq_stack_end = .);
-	}
-
-	.fiq_stack :
-	{
-		PROVIDE(_fiq_stack_start = .);
-		. = . + CONFIG_IRQ_STACK_SIZE;
-		. = ALIGN(4);
-		PROVIDE(_fiq_stack_end = .);
-	}
-
-	. = ALIGN(0x1000); /* Put init functions into separate pages */
-	.init :
-	{
-		PROVIDE(_init_text_start = .);
-		*(.init.text)
-		. = ALIGN(4);
-		PROVIDE(_init_text_end = .);
 	}
 
 	. = ALIGN(0x1000); /* Need this to create proper sections */

@@ -322,14 +322,6 @@ _end_vect:
 	 */
 __hvc_stack_end:
 	.word _hvc_stack_end
-__und_stack_end:
-	.word _und_stack_end
-__abt_stack_end:
-	.word _abt_stack_end
-__irq_stack_end:
-	.word _irq_stack_end
-__fiq_stack_end:
-	.word _fiq_stack_end
 
 	/* 
 	 * Reset exception handler.
