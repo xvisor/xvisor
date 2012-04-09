@@ -59,21 +59,27 @@ void do_data_abort(arch_regs_t * uregs)
 }
 
 /* FIXME: */
-void do_not_used(arch_regs_t * uregs)
+void do_hyp_trap(arch_regs_t * uregs)
 {
 	return;
 }
 
-/* FIXME: */
 void do_irq(arch_regs_t * uregs)
 {
-	return;
+	vmm_scheduler_irq_enter(uregs, FALSE);
+
+	vmm_host_irq_exec(CPU_EXTERNAL_IRQ, uregs);
+
+	vmm_scheduler_irq_exit(uregs);
 }
 
-/* FIXME: */
 void do_fiq(arch_regs_t * uregs)
 {
-	return;
+	vmm_scheduler_irq_enter(uregs, FALSE);
+
+	vmm_host_irq_exec(CPU_EXTERNAL_FIQ, uregs);
+
+	vmm_scheduler_irq_exit(uregs);
 }
 
 int __init arch_cpu_irq_setup(void)

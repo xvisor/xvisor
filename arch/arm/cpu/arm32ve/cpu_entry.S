@@ -253,7 +253,7 @@ _enable_hvc_tmon:
 	/* Get secure configuration register */
 	mrc	p15, 0, r0, c1, c1, 0	
 	bic	r0, r0, #0x07f
-	mov	r1, #0x13
+	mov	r1, #0x10
 	lsl	r1, r1, #4
 	orr	r1, r1, #0x1
 	orr	r0, r0, r1
@@ -266,8 +266,10 @@ _enable_hvc_tmon:
 	movs	pc, lr
 _enable_hvc_thyp:
 	/* Yeppie! in hypervisor mode */
-	mov	lr, r12
-	bx	lr
+	mrs	r0, cpsr_all
+	msr	spsr_hyp, r0
+	msr	elr_hyp, r12
+	eret
 _enable_hvc_start:
 	/* Get temp monitor vector base address */
 	ldr	r0, __enable_hvc_tmon_table
@@ -294,7 +296,7 @@ _start_vect:
 	ldr	pc, __software_interrupt
 	ldr	pc, __prefetch_abort
 	ldr	pc, __data_abort
-	ldr	pc, __not_used
+	ldr	pc, __hypervisor_trap
 	ldr	pc, __irq
 	ldr	pc, __fiq
 __reset:
@@ -307,8 +309,8 @@ __prefetch_abort:
 	.word _prefetch_abort
 __data_abort:
 	.word _data_abort
-__not_used:
-	.word _not_used
+__hypervisor_trap:
+	.word _hyp_trap
 __irq:
 	.word _irq
 __fiq:
@@ -323,6 +325,12 @@ _end_vect:
 __hvc_stack_end:
 	.word _hvc_stack_end
 
+#define HCR_INITIAL_VAL (HCR_AMO_MASK | HCR_IMO_MASK | HCR_FMO_MASK)
+__hcr_initial_set:
+	.word (HCR_INITIAL_VAL)
+__hcr_initial_clear:
+	.word ~(0x0)
+
 	/* 
 	 * Reset exception handler.
 	 * Reset hardware state before starting Xvisor.
@@ -332,13 +340,22 @@ _reset:
 	/* Clear lr */
 	mov 	lr, #0
 	/* Clear a register for temporary usage */
-	mov	r8, #0
+	mov	r0, #0
+	mov	r1, #0
+	mov	r2, #0
 	/* Disable IRQ & FIQ */
-	mrs	r8, cpsr_all
-	orr	r8, r8, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
-	msr	cpsr_cxsf, r8
+	mrs	r0, cpsr_all
+	orr	r0, r0, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
+	msr	cpsr_cxsf, r0
 	/* Set Hypervisor Mode Stack */
 	ldr	sp, __hvc_stack_end
+	/* Initial Hypervisor Configuration */
+	ldr	r1, __hcr_initial_set
+	ldr	r2, __hcr_initial_clear
+	mrc     p15, 4, r0, c1, c1, 0
+	and	r0, r0, r2
+	orr	r0, r0, r1
+	mcr     p15, 4, r0, c1, c1, 0
 	/* Call CPU init function */
 	b	cpu_init
 	/* We should never reach here */
@@ -347,30 +364,23 @@ _reset:
 	/* 
 	 * Helper Macros for Exception Handlers
 	 */
-.macro EXCEPTION_HANDLER irqname, lroffset
+.macro EXCEPTION_HANDLER irqname
 	.align 5
 \irqname:
-	sub	lr, lr, #\lroffset
 .endm
 
-/* If came from priviledged mode then push banked registers */
-.macro PUSH_REGS skip_lable
-	str     lr, [sp, #-4]!;		/* Push the return address */
-	sub	sp, sp, #(4*2);		/* Adjust the stack pointer */
-	stm	sp, {r13-r14}^;		/* Push user mode registers */
-	stmdb	sp!, {r0-r12};		/* Push user mode registers */
-	mrs     r4, spsr_all;		/* Put SPSR on stack & NOP for prev. */
-	str     r4, [sp, #-4]!
-	and	r0, r4, #CPSR_MODE_MASK
-	cmp	r0, #CPSR_MODE_USER
-	beq	\skip_lable
-	add	r1, sp, #(4*14)
-	mrs	r5, cpsr_all
-	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
-	msr	cpsr_cxsf, r4
-	stm	r1, {r13-r14}
-	msr	cpsr_cxsf, r5		/* Restore CPSR & NOP for prev. */
-\skip_lable:
+/* Push registers on stack */
+.macro PUSH_REGS
+	str	lr, [sp, #-4]
+	str	sp, [sp, #-8]
+	sub	sp, sp, #(4*15)
+	stm	sp, {r0-r12}
+	mov	r0, r0
+	sub	sp, sp, #(4*2)
+	mrs	r0, spsr_hyp
+	str	r0, [sp, #0]
+	mrs	r0, elr_hyp
+	str	r0, [sp, #4]
 .endm
 
 /* Call C function to handle exception */
@@ -379,88 +389,70 @@ _reset:
 	bl	\cfunc
 .endm
 
-/* If going back to priviledged mode then pull banked registers */
-.macro PULL_REGS skip_lable skip_lable1
-	ldr     r4, [sp, #0]
-	and	r0, r4, #CPSR_MODE_MASK
-	cmp	r0, #CPSR_MODE_USER
-	beq	\skip_lable
-	mrs	r1, cpsr_all
-	and 	r1, r1, #CPSR_MODE_MASK
-	cmp	r0, r1
-	beq	\skip_lable1
-	add	r1, sp, #(4*14)
-	mrs	r5, cpsr_all
-	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
-	msr	cpsr_cxsf, r4
-	ldm	r1, {r13-r14}
-	msr	cpsr_cxsf, r5		/* Restore CPSR & NOP for prev. inst */
-\skip_lable:
-	ldr     r0, [sp], #0x0004;	/* Get SPSR from stack */
-	msr     spsr_cxsf, r0;
-	ldmia   sp, {r0-r14}^;		/* Restore registers (user) */
-	add     sp, sp, #(4*15);	/* Adjust stack & NOP for prev. */
-	ldr     lr, [sp], #0x0004	/* Pull return address */
-	movs	pc, lr
-\skip_lable1:
-	ldr     r0, [sp], #0x0004;	/* Get SPSR from stack */
-	msr     spsr_cxsf, r0;
-	ldm	sp, {r0-r15}^;		/* Restore all registers & CPSR */
-	mov     r0, r0;			/* NOP for prev. */
+/* Pull registers from stack */
+.macro PULL_REGS
+	ldr	r0, [sp], #4
+	msr	spsr_hyp, r0
+	ldr	r0, [sp], #4
+	msr	elr_hyp, r0
+	ldm	sp, {r0-r14}
+	mov	r0, r0
+	eret
 .endm
 
 	/* 
 	 * Undefined instruction exception handler.
 	 */
-EXCEPTION_HANDLER _undef_inst, 4
-	PUSH_REGS _undef_inst_push
+EXCEPTION_HANDLER _undef_inst
+	PUSH_REGS
 	CALL_EXCEPTION_CFUNC do_undef_inst
-	PULL_REGS _undef_inst_pull _undef_inst_pull1
+	PULL_REGS
 
 	/* 
 	 * Software interrupt exception handler.
 	 */
-EXCEPTION_HANDLER _soft_irq, 4
-	PUSH_REGS _soft_irq_push
+EXCEPTION_HANDLER _soft_irq
+	PUSH_REGS
 	CALL_EXCEPTION_CFUNC do_soft_irq
-	PULL_REGS _soft_irq_pull _soft_irq_pull1
+	PULL_REGS
 
 	/* 
 	 * Prefetch abort exception handler.
 	 */
-EXCEPTION_HANDLER _prefetch_abort, 4
-	PUSH_REGS _prefetch_abort_push
+EXCEPTION_HANDLER _prefetch_abort
+	PUSH_REGS
 	CALL_EXCEPTION_CFUNC do_prefetch_abort
-	PULL_REGS _prefetch_abort_pull _prefetch_abort_pull1
+	PULL_REGS
 
 	/* 
 	 * Data abort exception handler.
 	 */
-EXCEPTION_HANDLER _data_abort, 8
-	PUSH_REGS _data_abort_push
+EXCEPTION_HANDLER _data_abort
+	PUSH_REGS
 	CALL_EXCEPTION_CFUNC do_data_abort
-	PULL_REGS _data_abort_pull _data_abort_pull1
+	PULL_REGS
 
 	/* 
-	 * Not used exception handler.
+	 * Hypervisor trap exception handler.
 	 */
-EXCEPTION_HANDLER _not_used, 4
-	PUSH_REGS _not_used_push
-	CALL_EXCEPTION_CFUNC do_not_used
-	PULL_REGS _not_used_pull _not_used_pull1
+EXCEPTION_HANDLER _hyp_trap
+	PUSH_REGS
+	CALL_EXCEPTION_CFUNC do_hyp_trap
+	PULL_REGS
 
 	/* 
 	 * IRQ exception handler.
 	 */
-EXCEPTION_HANDLER _irq, 4
-	PUSH_REGS _irq_push
+EXCEPTION_HANDLER _irq
+	PUSH_REGS
 	CALL_EXCEPTION_CFUNC do_irq
-	PULL_REGS _irq_pull _irq_pull1
+	PULL_REGS
 
 	/* 
 	 * FIQ exception handler.
 	 */
-EXCEPTION_HANDLER _fiq, 4
-	PUSH_REGS _fiq_push
+EXCEPTION_HANDLER _fiq
+	PUSH_REGS
 	CALL_EXCEPTION_CFUNC do_fiq
-	PULL_REGS _fiq_pull _fiq_pull1
+	PULL_REGS
+

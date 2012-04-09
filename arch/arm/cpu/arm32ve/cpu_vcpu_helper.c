@@ -674,11 +674,11 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 	if (vcpu->is_normal) {
 		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
 		arm_regs(vcpu)->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
-		arm_regs(vcpu)->cpsr |= CPSR_MODE_USER;
+		arm_regs(vcpu)->cpsr |= CPSR_MODE_SUPERVISOR;
 	} else {
 		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
 		arm_regs(vcpu)->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
-		arm_regs(vcpu)->cpsr |= CPSR_MODE_SUPERVISOR;
+		arm_regs(vcpu)->cpsr |= CPSR_MODE_HYPERVISOR;
 		arm_regs(vcpu)->sp = vcpu->start_sp;
 	}
 	/* Initialize Supervisor Mode Registers */

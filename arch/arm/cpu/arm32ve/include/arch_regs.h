@@ -139,10 +139,10 @@ enum arm_funcstats {
 
 struct arch_regs {
 	u32 cpsr; /* CPSR */
+	u32 pc;	/* Program Counter */
 	u32 gpr[CPU_GPR_COUNT];	/* R0 - R12 */
 	u32 sp;	/* Stack Pointer */
 	u32 lr;	/* Link Register */
-	u32 pc;	/* Program Counter */
 } __attribute((packed));
 
 typedef struct arch_regs arch_regs_t;

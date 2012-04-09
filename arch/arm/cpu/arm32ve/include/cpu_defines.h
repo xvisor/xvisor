@@ -46,7 +46,7 @@
 #define CPU_SOFT_IRQ					2
 #define CPU_PREFETCH_ABORT_IRQ				3
 #define CPU_DATA_ABORT_IRQ				4
-#define CPU_NOT_USED_IRQ				5
+#define CPU_HYP_TRAP_IRQ				5
 #define CPU_EXTERNAL_IRQ				6
 #define CPU_EXTERNAL_FIQ				7
 

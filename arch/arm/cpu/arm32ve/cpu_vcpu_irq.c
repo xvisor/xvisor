@@ -52,7 +52,7 @@ u32 arch_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no)
 	case CPU_DATA_ABORT_IRQ:
 		ret = 2;
 		break;
-	case CPU_NOT_USED_IRQ:
+	case CPU_HYP_TRAP_IRQ:
 		ret = 2;
 		break;
 	case CPU_EXTERNAL_IRQ:
