@@ -1,0 +1,52 @@
+		ARM Fast Models Evaluation Installation Guidelines
+
+This readme explains how to install & setup evaluation version of the latest
+ARM fast models.
+
+The ARM Fast Models enable developers to generate Programmer's View virtual 
+platforms, which are functionally accurate, fast, and scalable. These virtual
+platforms enable the parallel development of software and hardware, and are 
+fast enough to be used to test applications at close to real-time speeds. 
+
+Please follow the steps below to install & setup ARM fast models on your 
+Linux system:
+
+  [1. Register with ARM Ltd. on www.arm.com if not already registered]
+
+  [2. Login on www.arm.com]
+
+  [3. Goto SUPPORT > Resources > Evaluation Products > Fast Models]
+
+  [4. Get your evaluation license.dat and fast model .tgz]
+
+  [5. Unpack fast model .tgz to <your_unpacked_fastmodel_tgz> directory]
+
+  [6. Run <your_unpacked_fastmodel_tgz>/setup.bin and install all packages to <your_fastmodel_dir>]
+
+  [7. Ensure execute permission for fast model environment setup script]
+  # chmod +x <your_fastmodel_dir>/FastModelsTools_xxx/source_all.sh
+
+  [8. Setup environment variable for fast model tools from your init scripts (e.g. ~/.bashrc)]
+  # export ARMLMD_LICENSE_FILE=<path_to_your_license_dat>/license.dat
+  # export PATH=<your_fastmodel_dir>/FastModelsTools_xxx/bin:$PATH
+  # source <your_fastmodel_dir>/FastModelsTools_xxx/source_all.sh
+
+  [9. Ensure commands mentioned in previous step are executed before proceeding]
+
+  [10. Start system canvas tool to build required emulation model (lets assume Cortex-A15x1)]
+  # sgcanvas
+
+  [11. OPEN <your_fastmodel_dir>/FastModelsPortfolio_xxxx/examples/RTSM_VE/Build_Cortex-A15x1/RTSM_VE_Cortex-A15x1.sgproj]
+
+  [12. SELECT Integrated Simulator & Cadilibrary from PROJECT -> PROJECT SETTINGS -> PARAMETER CATEGORY -> TARGETS]
+
+  [13. COMPILE (this will start system canvas build process)]
+  (The output emulation model will be shared library named cadi_system_Linux-Debug-GCC-3.4.so located in 
+   <your_fastmodel_dir>/FastModelsPortfolio_xxxx/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-3.4)
+
+  (Note: replace all <> brackets based on your workspace)
+  (Note: to build a different emulation model redo steps 10 to 13 and 
+   select appropriate .sgproj file in step 11)
+  (Note: the above steps may slightly differ for older versions of
+   ARM fast models)
+
