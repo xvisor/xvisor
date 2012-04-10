@@ -25,25 +25,28 @@ with Xvisor running on QEMU Vexpress-A9 Host:
   [5. Build Basic Test Code]
   # make -C tests/arm32/pb-a8/basic
 
-  [6. Launch QEMU Linaro 2.02 or higher]
-  # qemu-system-arm -M vexpress-a9 -display none -serial stdio -kernel build/tests/arm32/pb-a8/basic/qemu.img
+  [6. Create qemu.img for running it on QEMU]
+  # ./tools/scripts/memimg.py -a 0x60010000 -o build/qemu.img build/vmm.bin@0x60010000 build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x60800000
 
-  [7. Kick Guest for starting Basic Test]
+  [7. Launch QEMU Linaro 2.02 or higher]
+  # qemu-system-arm -M vexpress-a9 -display none -serial stdio -kernel build/qemu.img
+
+  [8. Kick Guest for starting Basic Test]
   XVisor# guest kick -1
 
-  [8. Bind to virtual UART]
+  [9. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [9. Say 'hi' to Basic Test Code]
+  [10. Say 'hi' to Basic Test Code]
   [guest0/uart0] arm-test# hi
 
-  [10. Say 'hello' to Basic Test Code]
+  [11. Say 'hello' to Basic Test Code]
   [guest0/uart0] arm-test# hello
 
-  [11. Check various commands of Basic Test Code]
+  [12. Check various commands of Basic Test Code]
   [guest0/uart0] arm-test# help
 
-  [12. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [13. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] arm-test# 
 
   (Note: replace all <> brackets based on your workspace)
