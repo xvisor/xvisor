@@ -1,7 +1,7 @@
 		Xvisor on QEMU Realview-PB-A8 Host
 
-This readme explains how to build & run Xvisor for Realview-PB-A8 emulated by
-QEMU 0.14.xx or higher. 
+This section of readme explains how to build & run Xvisor for Realview-PB-A8 
+emulated by QEMU 0.14.xx or higher. 
 
 By default, Xvisor for Realview-PB-A8 supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test

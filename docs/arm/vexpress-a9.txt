@@ -1,7 +1,7 @@
 		Xvisor on Linaro QEMU Vexpress-A9 Host
 
-This readme explains how to build & run Xvisor for Vexpress-A9 emulated 
-by QEMU Linaro 2.02 or higher. 
+This section of readme explains how to build & run Xvisor for Vexpress-A9 
+emulated by QEMU Linaro 2.02 or higher. 
 
 By default, Xvisor for Vexpress-A9 supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test

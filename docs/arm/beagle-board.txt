@@ -1,7 +1,7 @@
 		Xvisor on BeagleBoard-xM using SD Booting 
 
-This readme explains how to build & run Xvisor on real hardware BeagleBoard-xM
-using SD booting feature of BeagleBoard-xM.
+This section of readme explains how to build & run Xvisor on real hardware 
+BeagleBoard-xM using SD booting feature of BeagleBoard-xM.
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
@@ -114,8 +114,8 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
 
 		Xvisor on Linaro QEMU BeagleBoard using NAND Booting 
 
-This readme explains how to build & run Xvisor from nand-flash on BeagleBoard
-emulated by QEMU Linaro 2.02 or higher. 
+This section of readme explains how to build & run Xvisor from nand-flash on 
+BeagleBoard emulated by QEMU Linaro 2.02 or higher. 
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
