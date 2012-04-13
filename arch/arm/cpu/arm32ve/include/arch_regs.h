@@ -80,60 +80,8 @@ enum arm_features {
 	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
 };
 
-/* Function statistics related enumeration */
+/* FIXME: Function statistics related enumeration */
 enum arm_funcstats {
-	ARM_FUNCSTAT_CPS,
-	ARM_FUNCSTAT_MRS,
-	ARM_FUNCSTAT_MSR_I,
-	ARM_FUNCSTAT_MSR_R,
-	ARM_FUNCSTAT_RFE,
-	ARM_FUNCSTAT_SRS,
-	ARM_FUNCSTAT_LDM_UE,
-	ARM_FUNCSTAT_STM_U,
-	ARM_FUNCSTAT_SUBS_REL,
-	ARM_FUNCSTAT_LDRH_I,
-	ARM_FUNCSTAT_LDRH_L,
-	ARM_FUNCSTAT_LDRH_R,
-	ARM_FUNCSTAT_LDRHT,
-	ARM_FUNCSTAT_STRH_I,
-	ARM_FUNCSTAT_STRH_R,
-	ARM_FUNCSTAT_STRHT,
-	ARM_FUNCSTAT_LDRSH_I,
-	ARM_FUNCSTAT_LDRSH_L,
-	ARM_FUNCSTAT_LDRSH_R,
-	ARM_FUNCSTAT_LDRSHT,
-	ARM_FUNCSTAT_LDRSB_I,
-	ARM_FUNCSTAT_LDRSB_L,
-	ARM_FUNCSTAT_LDRSB_R,
-	ARM_FUNCSTAT_LDRSBT,
-	ARM_FUNCSTAT_LDRD_I,
-	ARM_FUNCSTAT_LDRD_L,
-	ARM_FUNCSTAT_LDRD_R,
-	ARM_FUNCSTAT_STRD_I,
-	ARM_FUNCSTAT_STRD_R,
-	ARM_FUNCSTAT_STR_I,
-	ARM_FUNCSTAT_STR_R,
-	ARM_FUNCSTAT_STRT,
-	ARM_FUNCSTAT_STRB_I,
-	ARM_FUNCSTAT_STRB_R,
-	ARM_FUNCSTAT_STRBT,
-	ARM_FUNCSTAT_LDR_I,
-	ARM_FUNCSTAT_LDR_L,
-	ARM_FUNCSTAT_LDR_R,
-	ARM_FUNCSTAT_LDRT,
-	ARM_FUNCSTAT_LDRB_I,
-	ARM_FUNCSTAT_LDRB_L,
-	ARM_FUNCSTAT_LDRB_R,
-	ARM_FUNCSTAT_LDRBT,
-	ARM_FUNCSTAT_STCX,
-	ARM_FUNCSTAT_LDCX_I,
-	ARM_FUNCSTAT_LDCX_L,
-	ARM_FUNCSTAT_MCRRX,
-	ARM_FUNCSTAT_MRRCX,
-	ARM_FUNCSTAT_CDPX,
-	ARM_FUNCSTAT_MCRX,
-	ARM_FUNCSTAT_MRCX,	
-	ARM_FUNCSTAT_WFI,	
 	ARM_FUNCSTAT_MAX
 };
 
@@ -148,18 +96,11 @@ struct arch_regs {
 typedef struct arch_regs arch_regs_t;
 
 struct arm_priv {
-	/* Priviledged CPSR */
-	u32 cpsr;
 	/* Banked Registers */
-	u32 gpr_usr[CPU_FIQ_GPR_COUNT];	/* User Mode */
 	u32 sp_usr;
-	u32 lr_usr;
 	u32 sp_svc; /* Supervisor Mode */
 	u32 lr_svc;
 	u32 spsr_svc;
-	u32 sp_mon; /* Monitor Mode */
-	u32 lr_mon;
-	u32 spsr_mon;
 	u32 sp_abt; /* Abort Mode */
 	u32 lr_abt;
 	u32 spsr_abt;
@@ -173,6 +114,8 @@ struct arm_priv {
 	u32 sp_fiq;
 	u32 lr_fiq;
 	u32 spsr_fiq;
+	/* Hypervisor Configuration */
+	u32 hcr;
 	/* Internal CPU feature flags. */
 	u32 features;
 	/* System control coprocessor (cp15) */

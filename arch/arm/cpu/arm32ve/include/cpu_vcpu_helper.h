@@ -29,43 +29,6 @@
 /* Function to halt VCPU */
 void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs);
 
-/* Function to retrieve CPSR of a VCPU */
-u32 cpu_vcpu_cpsr_retrieve(struct vmm_vcpu * vcpu,
-			  arch_regs_t * regs);
-
-/* Function to update CPSR of a VCPU */
-void cpu_vcpu_cpsr_update(struct vmm_vcpu * vcpu, 
-			  arch_regs_t * regs,
-			  u32 new_cpsr,
-			  u32 new_cpsr_mask);
-
-/* Function to save banked registers of a VCPU */
-void cpu_vcpu_banked_regs_save(struct vmm_vcpu * vcpu, 
-			       arch_regs_t * src);
-
-/* Function to restore banked registers of a VCPU */
-void cpu_vcpu_banked_regs_restore(struct vmm_vcpu * vcpu, 
-				  arch_regs_t * dst);
-
-/* Function to retrieve SPSR of a VCPU */
-u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu * vcpu);
-
-/* Function to update SPSR of a VCPU */
-int cpu_vcpu_spsr_update(struct vmm_vcpu * vcpu, 
-			 u32 new_spsr,
-			 u32 new_spsr_update);
-
-/* Function to read a VCPU register of current mode */
-u32 cpu_vcpu_reg_read(struct vmm_vcpu * vcpu, 
-		      arch_regs_t * regs, 
-		      u32 reg_num);
-
-/* Function to write a VCPU register of current mode */
-void cpu_vcpu_reg_write(struct vmm_vcpu * vcpu, 
-			arch_regs_t * regs, 
-			u32 reg_num, 
-			u32 reg_val);
-
 /* Function to read a VCPU register of given mode */
 u32 cpu_vcpu_regmode_read(struct vmm_vcpu * vcpu, 
 			  arch_regs_t * regs, 
@@ -78,6 +41,25 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu,
 			     u32 mode,
 			     u32 reg_num,
 			     u32 reg_val);
+
+/* Function to read a VCPU register of current mode */
+u32 cpu_vcpu_reg_read(struct vmm_vcpu * vcpu, 
+		      arch_regs_t * regs, 
+		      u32 reg_num);
+
+/* Function to write a VCPU register of current mode */
+void cpu_vcpu_reg_write(struct vmm_vcpu * vcpu, 
+			arch_regs_t * regs, 
+			u32 reg_num, 
+			u32 reg_val);
+
+/* Function to retrieve SPSR of a VCPU */
+u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu * vcpu, u32 mode);
+
+/* Function to update SPSR of a VCPU */
+int cpu_vcpu_spsr_update(struct vmm_vcpu * vcpu, 
+			 u32 mode,
+			 u32 new_spsr);
 
 /* Function to dump user registers */
 void cpu_vcpu_dump_user_reg(struct vmm_vcpu * vcpu, arch_regs_t * regs);
