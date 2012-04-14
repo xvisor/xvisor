@@ -37,30 +37,35 @@
 /* FIXME: */
 void do_undef_inst(arch_regs_t * uregs)
 {
+	while (1);
 	return;
 }
 
 /* FIXME: */
 void do_soft_irq(arch_regs_t * uregs)
 {
+	while (1);
 	return;
 }
 
 /* FIXME: */
 void do_prefetch_abort(arch_regs_t * uregs)
 {
+	while (1);
 	return;
 }
 
 /* FIXME: */
 void do_data_abort(arch_regs_t * uregs)
 {
+	while (1);
 	return;
 }
 
 /* FIXME: */
 void do_hyp_trap(arch_regs_t * uregs)
 {
+	while (1);
 	return;
 }
 

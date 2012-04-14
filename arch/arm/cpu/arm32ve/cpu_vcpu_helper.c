@@ -473,7 +473,17 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 	}
 	if (!vcpu->reset_count) {
 		vcpu->arch_priv = vmm_malloc(sizeof(arm_priv_t));
+		if (!vcpu->arch_priv) {
+			return VMM_EFAIL;
+		}
 		vmm_memset(arm_priv(vcpu), 0, sizeof(arm_priv_t));
+		arm_priv(vcpu)->hyp_stack = vmm_malloc(CONFIG_IRQ_STACK_SIZE);
+		if (!arm_priv(vcpu)->hyp_stack) {
+			vmm_free(vcpu->arch_priv);
+			return VMM_EFAIL;
+		}
+		arm_regs(vcpu)->sp = (u32)arm_priv(vcpu)->hyp_stack + 
+				     CONFIG_IRQ_STACK_SIZE - 4;
 	} else {
 		for (ite = 0; ite < CPU_FIQ_GPR_COUNT; ite++) {
 			arm_priv(vcpu)->gpr_fiq[ite] = 0x0;
@@ -584,6 +594,9 @@ int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu)
 	if ((rc = cpu_vcpu_cp15_deinit(vcpu))) {
 		return rc;
 	}
+
+	/* Free hypervisor mode stack */
+	vmm_free(arm_priv(vcpu)->hyp_stack);
 
 	/* Free super regs */
 	vmm_free(vcpu->arch_priv);

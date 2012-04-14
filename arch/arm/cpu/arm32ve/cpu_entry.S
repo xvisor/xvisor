@@ -407,6 +407,8 @@ _reset:
 
 	/* 
 	 * Undefined instruction exception handler.
+	 * Note: We will get this exception when we
+	 * execute invalide instruction in hypervisor mode
 	 */
 EXCEPTION_HANDLER _undef_inst
 	PUSH_REGS
@@ -415,6 +417,8 @@ EXCEPTION_HANDLER _undef_inst
 
 	/* 
 	 * Software interrupt exception handler.
+	 * Note: We will get this exception when we
+	 * execute hvc or svc instruction in hypervisor mode
 	 */
 EXCEPTION_HANDLER _soft_irq
 	PUSH_REGS
@@ -423,6 +427,8 @@ EXCEPTION_HANDLER _soft_irq
 
 	/* 
 	 * Prefetch abort exception handler.
+	 * Note: We will get this exception when we
+	 * execute from invalid location in hypervisor mode
 	 */
 EXCEPTION_HANDLER _prefetch_abort
 	PUSH_REGS
@@ -431,6 +437,8 @@ EXCEPTION_HANDLER _prefetch_abort
 
 	/* 
 	 * Data abort exception handler.
+	 * Note: We will get this exception when we
+	 * access invalid location in hypervisor mode
 	 */
 EXCEPTION_HANDLER _data_abort
 	PUSH_REGS
@@ -439,6 +447,8 @@ EXCEPTION_HANDLER _data_abort
 
 	/* 
 	 * Hypervisor trap exception handler.
+	 * Note: We will get this exception only when we
+	 * have to provide service to Guest
 	 */
 EXCEPTION_HANDLER _hyp_trap
 	PUSH_REGS
@@ -447,6 +457,8 @@ EXCEPTION_HANDLER _hyp_trap
 
 	/* 
 	 * IRQ exception handler.
+	 * Note: We will get this exception only when we
+	 * have physical IRQ directed to hypervisor mode
 	 */
 EXCEPTION_HANDLER _irq
 	PUSH_REGS
@@ -455,6 +467,8 @@ EXCEPTION_HANDLER _irq
 
 	/* 
 	 * FIQ exception handler.
+	 * Note: We will get this exception only when we
+	 * have physical FIQ directed to hypervisor mode
 	 */
 EXCEPTION_HANDLER _fiq
 	PUSH_REGS
