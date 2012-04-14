@@ -29,6 +29,7 @@
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <cpu_defines.h>
+#include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
 
@@ -495,8 +496,33 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 		arm_priv(vcpu)->spsr_fiq = 0x0;
 	}
 	if (!vcpu->reset_count) {
-		/* FIXME: Initialize Hypervisor Configuration */
-		arm_priv(vcpu)->hcr = 0;
+		/* Initialize Hypervisor Configuration */
+		arm_priv(vcpu)->hcr = (HCR_TVM_MASK |
+					HCR_TTLB_MASK |
+					HCR_TPU_MASK |
+					HCR_TPC_MASK |
+					HCR_TSW_MASK |
+					HCR_TAC_MASK |
+					HCR_TIDCP_MASK |
+					HCR_TSC_MASK |
+					HCR_TID3_MASK |
+					HCR_TID2_MASK |
+					HCR_TID1_MASK |
+					HCR_TID0_MASK |
+					HCR_TWI_MASK |
+					HCR_AMO_MASK |
+					HCR_IMO_MASK |
+					HCR_FMO_MASK |
+					HCR_VM_MASK);
+		/* Initialize Hypervisor Coprocessor Trap Register */
+		arm_priv(vcpu)->hcptr = (HCPTR_TCPAC_MASK |
+					 HCPTR_TTA_MASK |
+					 HCPTR_TASE_MASK |
+					 HCPTR_TCP_MASK);
+		/* Initialize Hypervisor System Trap Register */
+		arm_priv(vcpu)->hstr = (HSTR_TJDBX_MASK |
+					HSTR_TTEE_MASK);
+		/* Initialize VCPU features */
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
 		case ARM_CPUID_CORTEXA8:
@@ -662,6 +688,9 @@ void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
 		arm_regs(tvcpu)->cpsr = regs->cpsr;
 		if(tvcpu->is_normal) {
 			cpu_vcpu_banked_regs_save(tvcpu);
+			arm_priv(tvcpu)->hcr = read_hcr();
+			arm_priv(tvcpu)->hcptr = read_hcptr();
+			arm_priv(tvcpu)->hstr = read_hstr();
 		}
 	}
 	/* Switch CP15 context */
@@ -676,7 +705,15 @@ void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
 	regs->cpsr = arm_regs(vcpu)->cpsr;
 	if (vcpu->is_normal) {
 		cpu_vcpu_banked_regs_restore(vcpu);
-		/* FIXME: Update Hypervisor Configuration Register */
+		if (read_hcr() != arm_priv(vcpu)->hcr) {
+			write_hcr(arm_priv(vcpu)->hcr);
+		}
+		if (read_hcptr() != arm_priv(vcpu)->hcptr) {
+			write_hcptr(arm_priv(vcpu)->hcptr);
+		}
+		if (read_hstr() != arm_priv(vcpu)->hstr) {
+			write_hstr(arm_priv(vcpu)->hstr);
+		}
 	}
 }
 

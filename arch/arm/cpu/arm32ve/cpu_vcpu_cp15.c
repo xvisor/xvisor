@@ -838,15 +838,22 @@ bad_reg:
 	return FALSE;
 }
 
-/* FIXME: */
-void cpu_vcpu_cp15_sync_cpsr(struct vmm_vcpu * vcpu)
-{
-}
-
-/* FIXME: */
 void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu, 
 				  struct vmm_vcpu * vcpu)
 {
+	if (tvcpu && tvcpu->is_normal) {
+		arm_priv(tvcpu)->cp15.c13_tls1 = read_tpidrurw();
+		arm_priv(tvcpu)->cp15.c13_tls2 = read_tpidruro();
+		arm_priv(tvcpu)->cp15.c13_tls3 = read_tpidrprw();
+	}
+	if (vcpu->is_normal) {
+		cpu_mmu_stage2_chttbl(vcpu->id, arm_priv(vcpu)->cp15.ttbl);
+		write_vpidr(arm_priv(vcpu)->cp15.c0_cpuid);
+		write_vmpidr(vcpu->subid);
+		write_tpidrurw(arm_priv(vcpu)->cp15.c13_tls1);
+		write_tpidruro(arm_priv(vcpu)->cp15.c13_tls2);
+		write_tpidrprw(arm_priv(vcpu)->cp15.c13_tls3);
+	}
 }
 
 static u32 cortexa9_cp15_c0_c1[8] =

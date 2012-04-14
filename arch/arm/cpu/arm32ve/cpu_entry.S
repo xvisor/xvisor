@@ -325,9 +325,14 @@ _end_vect:
 __hvc_stack_end:
 	.word _hvc_stack_end
 
-#define HCR_INITIAL_VAL (HCR_AMO_MASK | HCR_IMO_MASK | HCR_FMO_MASK)
+	/* 
+	 * Initial Hypervisor settings.
+	 */
 __hcr_initial_set:
-	.word (HCR_INITIAL_VAL)
+	.word (HCR_AMO_MASK | \
+		HCR_IMO_MASK | \
+		HCR_FMO_MASK | \
+		HCR_VM_MASK)
 __hcr_initial_clear:
 	.word ~(0x0)
 

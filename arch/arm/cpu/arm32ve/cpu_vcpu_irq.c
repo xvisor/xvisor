@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_vcpu_irq.h>
 #include <arch_cpu.h>
+#include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
 
@@ -67,10 +68,38 @@ u32 arch_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no)
 	return ret;
 }
 
-/* FIXME: */
 int arch_vcpu_irq_execute(struct vmm_vcpu * vcpu,
 			 arch_regs_t * regs, 
 			 u32 irq_no, u32 reason)
 {
+	u32 hcr = read_hcr();
+
+	switch(irq_no) {
+	case CPU_DATA_ABORT_IRQ:
+		hcr |= HCR_VA_MASK;
+		/* VA bit is auto-cleared */
+		break;
+	case CPU_EXTERNAL_IRQ:
+		if (regs->cpsr & CPSR_IRQ_DISABLED) {
+			return VMM_EFAIL;
+		}
+		hcr |= HCR_VI_MASK;
+		/* VI bit will be cleared by "HVC #0" instruction */
+		break;
+	case CPU_EXTERNAL_FIQ:
+		if (regs->cpsr & CPSR_FIQ_DISABLED) {
+			return VMM_EFAIL;
+		}
+		hcr |= HCR_VF_MASK;
+		/* VF bit will be cleared by "HVC #0" instruction */
+		break;
+	default:
+		return VMM_EFAIL;
+		break;
+	};
+
+	arm_priv(vcpu)->hcr = hcr;
+	write_hcr(hcr);
+
 	return VMM_OK;
 }

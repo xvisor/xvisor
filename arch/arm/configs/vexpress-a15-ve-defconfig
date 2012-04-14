@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Mon Apr  2 09:52:11 2012
+# Fri Apr 13 17:15:39 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -151,6 +151,6 @@ CONFIG_EMU_RTC_PL031=y
 # Tool Options
 #
 CONFIG_DTC=y
-# CONFIG_CPATCH is not set
+CONFIG_CPATCH=y
 # CONFIG_BBFLASH is not set
 # CONFIG_KALLSYMS_GENERATOR is not set

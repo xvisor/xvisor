@@ -38,9 +38,6 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data);
 
-/* Syncronize VCPU CP15 with change in VCPU mode */
-void cpu_vcpu_cp15_sync_cpsr(struct vmm_vcpu * vcpu);
-
 /** Switch CP15 context for given VCPU */
 void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu, 
 				  struct vmm_vcpu * vcpu);

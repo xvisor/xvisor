@@ -116,6 +116,10 @@ struct arm_priv {
 	u32 spsr_fiq;
 	/* Hypervisor Configuration */
 	u32 hcr;
+	/* Hypervisor Coprocessor Trap Register */
+	u32 hcptr;
+	/* Hypervisor System Trap Register */
+	u32 hstr;
 	/* Internal CPU feature flags. */
 	u32 features;
 	/* System control coprocessor (cp15) */

@@ -576,15 +576,25 @@ struct cpu_ttbl * cpu_mmu_hypervisor_ttbl(void)
 	return mmuctrl.hyp_ttbl;
 }
 
-/* FIXME: */
-struct cpu_ttbl *cpu_mmu_stage2_current(void)
+struct cpu_ttbl *cpu_mmu_stage2_curttbl(void)
 {
-	return NULL;
+	return cpu_mmu_ttbl_find(read_vttbr() & VTTBR_BADDR_MASK);
 }
 
-/* FIXME: */
-int cpu_mmu_stage2_chttbr(u8 vmid, struct cpu_ttbl * ttbl)
+u8 cpu_mmu_stage2_curvmid(void)
 {
+	return (read_vttbr() & VTTBR_VMID_MASK) >> VTTBR_VMID_SHIFT;
+}
+
+int cpu_mmu_stage2_chttbl(u8 vmid, struct cpu_ttbl * ttbl)
+{
+	u64 vttbr = 0x0;
+
+	vttbr |= ((u64)vmid << VTTBR_VMID_SHIFT) & VTTBR_VMID_MASK;
+	vttbr |= ttbl->tbl_pa  & VTTBR_BADDR_MASK;
+
+	write_vttbr(vttbr);
+
 	return VMM_OK;
 }
 

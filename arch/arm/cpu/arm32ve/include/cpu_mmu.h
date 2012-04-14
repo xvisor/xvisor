@@ -101,9 +101,12 @@ struct cpu_ttbl *cpu_mmu_ttbl_get_child(struct cpu_ttbl *parent,
 struct cpu_ttbl * cpu_mmu_hypervisor_ttbl(void);
 
 /** Get current stage2 translation table */
-struct cpu_ttbl *cpu_mmu_stage2_current(void);
+struct cpu_ttbl *cpu_mmu_stage2_curttbl(void);
+
+/** Get current stage2 VMID */
+u8 cpu_mmu_stage2_curvmid(void);
 
 /** Change translation table for stage2 */
-int cpu_mmu_stage2_chttbr(u8 vmid, struct cpu_ttbl * ttbl);
+int cpu_mmu_stage2_chttbl(u8 vmid, struct cpu_ttbl * ttbl);
 
 #endif /* _CPU_MMU_H */
