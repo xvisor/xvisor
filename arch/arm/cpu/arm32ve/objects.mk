@@ -53,4 +53,5 @@ cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_coproc.o
 cpu-objs-y+= cpu_vcpu_cp15.o
 cpu-objs-y+= cpu_vcpu_irq.o
+cpu-objs-y+= cpu_vcpu_emulate.o
 

@@ -23,48 +23,45 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
-#include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
-#include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 #include <cpu_inline_asm.h>
-#include <cpu_mmu.h>
 #include <cpu_vcpu_cp15.h>
+#include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
 
-void do_undef_inst(arch_regs_t * uregs)
+void do_undef_inst(arch_regs_t * regs)
 {
 	vmm_printf("%s: unexpected exception\n", __func__);
-	cpu_vcpu_dump_user_reg(uregs);
+	cpu_vcpu_dump_user_reg(regs);
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
-void do_soft_irq(arch_regs_t * uregs)
+void do_soft_irq(arch_regs_t * regs)
 {
 	vmm_printf("%s: unexpected exception\n", __func__);
-	cpu_vcpu_dump_user_reg(uregs);
+	cpu_vcpu_dump_user_reg(regs);
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
-void do_prefetch_abort(arch_regs_t * uregs)
+void do_prefetch_abort(arch_regs_t * regs)
 {
 	vmm_printf("%s: unexpected exception\n", __func__);
-	cpu_vcpu_dump_user_reg(uregs);
+	cpu_vcpu_dump_user_reg(regs);
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
-void do_data_abort(arch_regs_t * uregs)
+void do_data_abort(arch_regs_t * regs)
 {
 	vmm_printf("%s: unexpected exception\n", __func__);
-	cpu_vcpu_dump_user_reg(uregs);
+	cpu_vcpu_dump_user_reg(regs);
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
-void do_hyp_trap(arch_regs_t * uregs)
+void do_hyp_trap(arch_regs_t * regs)
 {
-	int rc = VMM_EFAIL;
+	int rc = VMM_OK;
 	u32 hsr, ec, il, iss;
 	struct vmm_vcpu * vcpu;
 
@@ -73,75 +70,98 @@ void do_hyp_trap(arch_regs_t * uregs)
 	il = (hsr & HSR_IL_MASK) >> HSR_IL_SHIFT;
 	iss = (hsr & HSR_ISS_MASK) >> HSR_ISS_SHIFT;
 
-	if ((uregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_HYPERVISOR) {
+	/* We dont expect any faults from hypervisor code itself 
+	 * so, any trap we get from hypervisor mode means something
+	 * unexpected has occured.
+	 */
+	if ((regs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_HYPERVISOR) {
 		vmm_printf("%s: unexpected exception\n", __func__);
 		vmm_printf("%s: ec=0x%x, il=0x%x, iss=0x%x\n", 
 			   __func__, ec, il, iss);
-		cpu_vcpu_dump_user_reg(uregs);
+		cpu_vcpu_dump_user_reg(regs);
 		vmm_panic("%s: please reboot ...\n", __func__);
 	}
 
-	vmm_scheduler_irq_enter(uregs, TRUE);
+	vmm_scheduler_irq_enter(regs, TRUE);
 
 	vcpu = vmm_scheduler_current_vcpu();
 
 	switch (ec) {
 	case HSR_EC_UNKNOWN:
-		/* FIXME: */
+		/* We dont expect to get this trap so error */
+		rc = VMM_EFAIL;
 		break;
 	case HSR_EC_TRAP_WFI_WFE:
-		/* FIXME: */
+		/* WFI emulation */
+		rc = cpu_vcpu_emulate_wfi(vcpu, regs, il, iss);
 		break;
 	case HSR_EC_TRAP_MCR_MRC_CP15:
-		/* FIXME: */
+		/* MCR/MRC CP15 emulation */
+		rc = cpu_vcpu_emulate_mcr_mrc_cp15(vcpu, regs, il, iss);
 		break;
 	case HSR_EC_TRAP_MCRR_MRRC_CP15:
-		/* FIXME: */
+		/* MCRR/MRRC CP15 emulation */
+		rc = cpu_vcpu_emulate_mcrr_mrrc_cp15(vcpu, regs, il, iss);
 		break;
 	case HSR_EC_TRAP_MCR_MRC_CP14:
-		/* FIXME: */
+		/* MCR/MRC CP14 emulation */
+		rc = cpu_vcpu_emulate_mcr_mrc_cp14(vcpu, regs, il, iss);
 		break;
 	case HSR_EC_TRAP_LDC_STC_CP14:
-		/* FIXME: */
+		/* LDC/STC CP14 emulation */
+		rc = cpu_vcpu_emulate_ldc_stc_cp14(vcpu, regs, il, iss);
 		break;
 	case HSR_EC_TRAP_CP0_TO_CP13:
-		/* FIXME: */
+		/* CP0 to CP13 emulation */
+		rc = cpu_vcpu_emulate_cp0_cp13(vcpu, regs, il, iss);
 		break;
 	case HSR_EC_TRAP_VMRS:
-		/* FIXME: */
+		/* MRC (or VMRS) to CP10 for MVFR0, MVFR1 or FPSID */
+		rc = cpu_vcpu_emulate_vmrs(vcpu, regs, il, iss);
 		break;
 	case HSR_EC_TRAP_JAZELLE:
-		/* FIXME: */
+		/* Jazelle emulation */
+		rc = cpu_vcpu_emulate_jazelle(vcpu, regs, il, iss);
 		break;
 	case HSR_EC_TRAP_BXJ:
-		/* FIXME: */
+		/* BXJ emulation */
+		rc = cpu_vcpu_emulate_bxj(vcpu, regs, il, iss);
 		break;
 	case HSR_EC_TRAP_MRRC_CP14:
-		/* FIXME: */
+		/* MRRC to CP14 emulation */
+		rc = cpu_vcpu_emulate_mrrc_cp14(vcpu, regs, il, iss);
 		break;
 	case HSR_EC_TRAP_SVC:
-		/* FIXME: */
+		/* We dont expect to get this trap so error */
+		rc = VMM_EFAIL;
 		break;
 	case HSR_EC_TRAP_HVC:
-		/* FIXME: */
+		/* Hypercall or HVC emulation */
+		rc = cpu_vcpu_emulate_hvc(vcpu, regs, il, iss);
 		break;
 	case HSR_EC_TRAP_SMC:
-		/* FIXME: */
+		/* We dont expect to get this trap so error */
+		rc = VMM_EFAIL;
 		break;
 	case HSR_EC_TRAP_STAGE2_INST_ABORT:
 		/* FIXME: */
+		rc = VMM_EFAIL;
 		break;
 	case HSR_EC_TRAP_STAGE1_INST_ABORT:
-		/* FIXME: */
+		/* We dont expect to get this trap so error */
+		rc = VMM_EFAIL;
 		break;
 	case HSR_EC_TRAP_STAGE2_DATA_ABORT:
 		/* FIXME: */
+		rc = VMM_EFAIL;
 		break;
 	case HSR_EC_TRAP_STAGE1_DATA_ABORT:
-		/* FIXME: */
+		/* We dont expect to get this trap so error */
+		rc = VMM_EFAIL;
 		break;
 	default:
-		/* FIXME: */
+		/* Unknown EC value so error */
+		rc = VMM_EFAIL;
 		break;
 	};
 
@@ -149,29 +169,29 @@ void do_hyp_trap(arch_regs_t * uregs)
 		vmm_printf("%s: ec=0x%x, il=0x%x, iss=0x%x, error=%d\n", 
 			   __func__, ec, il, iss, rc);
 		if (vcpu->state != VMM_VCPU_STATE_HALTED) {
-			cpu_vcpu_halt(vcpu, uregs);
+			cpu_vcpu_halt(vcpu, regs);
 		}
 	}
 
-	vmm_scheduler_irq_exit(uregs);
+	vmm_scheduler_irq_exit(regs);
 }
 
-void do_irq(arch_regs_t * uregs)
+void do_irq(arch_regs_t * regs)
 {
-	vmm_scheduler_irq_enter(uregs, FALSE);
+	vmm_scheduler_irq_enter(regs, FALSE);
 
-	vmm_host_irq_exec(CPU_EXTERNAL_IRQ, uregs);
+	vmm_host_irq_exec(CPU_EXTERNAL_IRQ, regs);
 
-	vmm_scheduler_irq_exit(uregs);
+	vmm_scheduler_irq_exit(regs);
 }
 
-void do_fiq(arch_regs_t * uregs)
+void do_fiq(arch_regs_t * regs)
 {
-	vmm_scheduler_irq_enter(uregs, FALSE);
+	vmm_scheduler_irq_enter(regs, FALSE);
 
-	vmm_host_irq_exec(CPU_EXTERNAL_FIQ, uregs);
+	vmm_host_irq_exec(CPU_EXTERNAL_FIQ, regs);
 
-	vmm_scheduler_irq_exit(uregs);
+	vmm_scheduler_irq_exit(regs);
 }
 
 int __init arch_cpu_irq_setup(void)
