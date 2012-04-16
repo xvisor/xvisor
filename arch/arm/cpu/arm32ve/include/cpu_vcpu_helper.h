@@ -62,6 +62,6 @@ int cpu_vcpu_spsr_update(struct vmm_vcpu * vcpu,
 			 u32 new_spsr);
 
 /* Function to dump user registers */
-void cpu_vcpu_dump_user_reg(struct vmm_vcpu * vcpu, arch_regs_t * regs);
+void cpu_vcpu_dump_user_reg(arch_regs_t * regs);
 
 #endif

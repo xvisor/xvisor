@@ -34,39 +34,126 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
 
-/* FIXME: */
 void do_undef_inst(arch_regs_t * uregs)
 {
-	while (1);
-	return;
+	vmm_printf("%s: unexpected exception\n", __func__);
+	cpu_vcpu_dump_user_reg(uregs);
+	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
-/* FIXME: */
 void do_soft_irq(arch_regs_t * uregs)
 {
-	while (1);
-	return;
+	vmm_printf("%s: unexpected exception\n", __func__);
+	cpu_vcpu_dump_user_reg(uregs);
+	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
-/* FIXME: */
 void do_prefetch_abort(arch_regs_t * uregs)
 {
-	while (1);
-	return;
+	vmm_printf("%s: unexpected exception\n", __func__);
+	cpu_vcpu_dump_user_reg(uregs);
+	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
-/* FIXME: */
 void do_data_abort(arch_regs_t * uregs)
 {
-	while (1);
-	return;
+	vmm_printf("%s: unexpected exception\n", __func__);
+	cpu_vcpu_dump_user_reg(uregs);
+	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
-/* FIXME: */
 void do_hyp_trap(arch_regs_t * uregs)
 {
-	while (1);
-	return;
+	int rc = VMM_EFAIL;
+	u32 hsr, ec, il, iss;
+	struct vmm_vcpu * vcpu;
+
+	hsr = read_hsr();
+	ec = (hsr & HSR_EC_MASK) >> HSR_EC_SHIFT;
+	il = (hsr & HSR_IL_MASK) >> HSR_IL_SHIFT;
+	iss = (hsr & HSR_ISS_MASK) >> HSR_ISS_SHIFT;
+
+	if ((uregs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_HYPERVISOR) {
+		vmm_printf("%s: unexpected exception\n", __func__);
+		vmm_printf("%s: ec=0x%x, il=0x%x, iss=0x%x\n", 
+			   __func__, ec, il, iss);
+		cpu_vcpu_dump_user_reg(uregs);
+		vmm_panic("%s: please reboot ...\n", __func__);
+	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
+
+	vcpu = vmm_scheduler_current_vcpu();
+
+	switch (ec) {
+	case HSR_EC_UNKNOWN:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_WFI_WFE:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_MCR_MRC_CP15:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_MCRR_MRRC_CP15:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_MCR_MRC_CP14:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_LDC_STC_CP14:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_CP0_TO_CP13:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_VMRS:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_JAZELLE:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_BXJ:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_MRRC_CP14:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_SVC:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_HVC:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_SMC:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_STAGE2_INST_ABORT:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_STAGE1_INST_ABORT:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_STAGE2_DATA_ABORT:
+		/* FIXME: */
+		break;
+	case HSR_EC_TRAP_STAGE1_DATA_ABORT:
+		/* FIXME: */
+		break;
+	default:
+		/* FIXME: */
+		break;
+	};
+
+	if (rc) {
+		vmm_printf("%s: ec=0x%x, il=0x%x, iss=0x%x, error=%d\n", 
+			   __func__, ec, il, iss, rc);
+		if (vcpu->state != VMM_VCPU_STATE_HALTED) {
+			cpu_vcpu_halt(vcpu, uregs);
+		}
+	}
+
+	vmm_scheduler_irq_exit(uregs);
 }
 
 void do_irq(arch_regs_t * uregs)

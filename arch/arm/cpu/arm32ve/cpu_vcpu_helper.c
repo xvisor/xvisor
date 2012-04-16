@@ -37,7 +37,7 @@ void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 {
 	if (vcpu->state != VMM_VCPU_STATE_HALTED) {
 		vmm_printf("\n");
-		cpu_vcpu_dump_user_reg(vcpu, regs);
+		cpu_vcpu_dump_user_reg(regs);
 		vmm_manager_vcpu_halt(vcpu);
 	}
 }
@@ -730,7 +730,7 @@ void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
 	}
 }
 
-void cpu_vcpu_dump_user_reg(struct vmm_vcpu * vcpu, arch_regs_t * regs)
+void cpu_vcpu_dump_user_reg(arch_regs_t * regs)
 {
 	u32 ite;
 	vmm_printf("  Core Registers\n");
@@ -750,7 +750,7 @@ void arch_vcpu_regs_dump(struct vmm_vcpu * vcpu)
 {
 	u32 ite;
 	/* For both Normal & Orphan VCPUs */
-	cpu_vcpu_dump_user_reg(vcpu, arm_regs(vcpu));
+	cpu_vcpu_dump_user_reg(arm_regs(vcpu));
 	/* For only Normal VCPUs */
 	if (!vcpu->is_normal) {
 		return;
