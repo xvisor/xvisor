@@ -26,6 +26,16 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
+/** Handle stage2 instruction abort */
+int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu * vcpu, 
+			     arch_regs_t * regs,
+			     u32 il, u32 iss, u32 fipa);
+
+/** Handle stage2 data abort */
+int cpu_vcpu_cp15_data_abort(struct vmm_vcpu * vcpu, 
+			     arch_regs_t * regs,
+			     u32 il, u32 iss, u32 fipa);
+
 /** Read one registers from CP15 */
 bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu, 
 			arch_regs_t *regs,

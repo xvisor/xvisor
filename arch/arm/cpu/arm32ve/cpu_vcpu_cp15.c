@@ -40,6 +40,23 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_cp15.h>
 
+/* FIXME: */
+int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu * vcpu, 
+			     arch_regs_t * regs,
+			     u32 il, u32 iss, u32 fipa)
+{
+	return VMM_EFAIL;
+}
+
+/* FIXME: */
+int cpu_vcpu_cp15_data_abort(struct vmm_vcpu * vcpu, 
+			     arch_regs_t * regs,
+			     u32 il, u32 iss, u32 fipa)
+{
+	return VMM_EFAIL;
+}
+
+
 bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu, 
 			arch_regs_t *regs,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 

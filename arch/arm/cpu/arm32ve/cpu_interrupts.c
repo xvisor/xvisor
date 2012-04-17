@@ -63,6 +63,7 @@ void do_hyp_trap(arch_regs_t * regs)
 {
 	int rc = VMM_OK;
 	u32 hsr, ec, il, iss;
+	physical_addr_t fipa;
 	struct vmm_vcpu * vcpu;
 
 	hsr = read_hsr();
@@ -144,16 +145,20 @@ void do_hyp_trap(arch_regs_t * regs)
 		rc = VMM_EFAIL;
 		break;
 	case HSR_EC_TRAP_STAGE2_INST_ABORT:
-		/* FIXME: */
-		rc = VMM_EFAIL;
+		/* Stage2 instruction abort */
+		fipa = (read_hpfar() & HPFAR_FIPA_MASK) >> HPFAR_FIPA_SHIFT;
+		fipa = fipa << HPFAR_FIPA_CORRECTION_SHIFT;
+		rc = cpu_vcpu_cp15_inst_abort(vcpu, regs, il, iss, fipa);
 		break;
 	case HSR_EC_TRAP_STAGE1_INST_ABORT:
 		/* We dont expect to get this trap so error */
 		rc = VMM_EFAIL;
 		break;
 	case HSR_EC_TRAP_STAGE2_DATA_ABORT:
-		/* FIXME: */
-		rc = VMM_EFAIL;
+		/* Stage2 data abort */
+		fipa = (read_hpfar() & HPFAR_FIPA_MASK) >> HPFAR_FIPA_SHIFT;
+		fipa = fipa << HPFAR_FIPA_CORRECTION_SHIFT;
+		rc = cpu_vcpu_cp15_data_abort(vcpu, regs, il, iss, fipa);
 		break;
 	case HSR_EC_TRAP_STAGE1_DATA_ABORT:
 		/* We dont expect to get this trap so error */
