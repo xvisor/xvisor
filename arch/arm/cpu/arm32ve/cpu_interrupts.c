@@ -88,79 +88,81 @@ void do_hyp_trap(arch_regs_t * regs)
 	vcpu = vmm_scheduler_current_vcpu();
 
 	switch (ec) {
-	case HSR_EC_UNKNOWN:
+	case EC_UNKNOWN:
 		/* We dont expect to get this trap so error */
 		rc = VMM_EFAIL;
 		break;
-	case HSR_EC_TRAP_WFI_WFE:
+	case EC_TRAP_WFI_WFE:
 		/* WFI emulation */
 		rc = cpu_vcpu_emulate_wfi(vcpu, regs, il, iss);
 		break;
-	case HSR_EC_TRAP_MCR_MRC_CP15:
+	case EC_TRAP_MCR_MRC_CP15:
 		/* MCR/MRC CP15 emulation */
 		rc = cpu_vcpu_emulate_mcr_mrc_cp15(vcpu, regs, il, iss);
 		break;
-	case HSR_EC_TRAP_MCRR_MRRC_CP15:
+	case EC_TRAP_MCRR_MRRC_CP15:
 		/* MCRR/MRRC CP15 emulation */
 		rc = cpu_vcpu_emulate_mcrr_mrrc_cp15(vcpu, regs, il, iss);
 		break;
-	case HSR_EC_TRAP_MCR_MRC_CP14:
+	case EC_TRAP_MCR_MRC_CP14:
 		/* MCR/MRC CP14 emulation */
 		rc = cpu_vcpu_emulate_mcr_mrc_cp14(vcpu, regs, il, iss);
 		break;
-	case HSR_EC_TRAP_LDC_STC_CP14:
+	case EC_TRAP_LDC_STC_CP14:
 		/* LDC/STC CP14 emulation */
 		rc = cpu_vcpu_emulate_ldc_stc_cp14(vcpu, regs, il, iss);
 		break;
-	case HSR_EC_TRAP_CP0_TO_CP13:
+	case EC_TRAP_CP0_TO_CP13:
 		/* CP0 to CP13 emulation */
 		rc = cpu_vcpu_emulate_cp0_cp13(vcpu, regs, il, iss);
 		break;
-	case HSR_EC_TRAP_VMRS:
+	case EC_TRAP_VMRS:
 		/* MRC (or VMRS) to CP10 for MVFR0, MVFR1 or FPSID */
 		rc = cpu_vcpu_emulate_vmrs(vcpu, regs, il, iss);
 		break;
-	case HSR_EC_TRAP_JAZELLE:
+	case EC_TRAP_JAZELLE:
 		/* Jazelle emulation */
 		rc = cpu_vcpu_emulate_jazelle(vcpu, regs, il, iss);
 		break;
-	case HSR_EC_TRAP_BXJ:
+	case EC_TRAP_BXJ:
 		/* BXJ emulation */
 		rc = cpu_vcpu_emulate_bxj(vcpu, regs, il, iss);
 		break;
-	case HSR_EC_TRAP_MRRC_CP14:
+	case EC_TRAP_MRRC_CP14:
 		/* MRRC to CP14 emulation */
 		rc = cpu_vcpu_emulate_mrrc_cp14(vcpu, regs, il, iss);
 		break;
-	case HSR_EC_TRAP_SVC:
+	case EC_TRAP_SVC:
 		/* We dont expect to get this trap so error */
 		rc = VMM_EFAIL;
 		break;
-	case HSR_EC_TRAP_HVC:
+	case EC_TRAP_HVC:
 		/* Hypercall or HVC emulation */
 		rc = cpu_vcpu_emulate_hvc(vcpu, regs, il, iss);
 		break;
-	case HSR_EC_TRAP_SMC:
+	case EC_TRAP_SMC:
 		/* We dont expect to get this trap so error */
 		rc = VMM_EFAIL;
 		break;
-	case HSR_EC_TRAP_STAGE2_INST_ABORT:
+	case EC_TRAP_STAGE2_INST_ABORT:
 		/* Stage2 instruction abort */
 		fipa = (read_hpfar() & HPFAR_FIPA_MASK) >> HPFAR_FIPA_SHIFT;
-		fipa = fipa << HPFAR_FIPA_CORRECTION_SHIFT;
+		fipa = fipa << HPFAR_FIPA_PAGE_SHIFT;
+		fipa = fipa | (read_hifar() & HPFAR_FIPA_PAGE_MASK);
 		rc = cpu_vcpu_cp15_inst_abort(vcpu, regs, il, iss, fipa);
 		break;
-	case HSR_EC_TRAP_STAGE1_INST_ABORT:
+	case EC_TRAP_STAGE1_INST_ABORT:
 		/* We dont expect to get this trap so error */
 		rc = VMM_EFAIL;
 		break;
-	case HSR_EC_TRAP_STAGE2_DATA_ABORT:
+	case EC_TRAP_STAGE2_DATA_ABORT:
 		/* Stage2 data abort */
 		fipa = (read_hpfar() & HPFAR_FIPA_MASK) >> HPFAR_FIPA_SHIFT;
-		fipa = fipa << HPFAR_FIPA_CORRECTION_SHIFT;
+		fipa = fipa << HPFAR_FIPA_PAGE_SHIFT;
+		fipa = fipa | (read_hdfar() & HPFAR_FIPA_PAGE_MASK);
 		rc = cpu_vcpu_cp15_data_abort(vcpu, regs, il, iss, fipa);
 		break;
-	case HSR_EC_TRAP_STAGE1_DATA_ABORT:
+	case EC_TRAP_STAGE1_DATA_ABORT:
 		/* We dont expect to get this trap so error */
 		rc = VMM_EFAIL;
 		break;

@@ -81,4 +81,16 @@ int cpu_vcpu_emulate_hvc(struct vmm_vcpu * vcpu,
 			 arch_regs_t * regs, 
 			 u32 il, u32 iss);
 
+/** Emulate Load instruction */
+int cpu_vcpu_emulate_load(struct vmm_vcpu * vcpu, 
+			  arch_regs_t * regs,
+			  u32 il, u32 iss,
+			  physical_addr_t ipa);
+
+/** Emulate Store instruction */
+int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu, 
+			   arch_regs_t * regs,
+			   u32 il, u32 iss,
+			   physical_addr_t ipa);
+
 #endif

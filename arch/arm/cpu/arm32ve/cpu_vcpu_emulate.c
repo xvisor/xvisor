@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_vcpu_hvc.c
+ * @file cpu_vcpu_emulate.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Implementation of hardware assisted instruction emulation
  */
@@ -24,6 +24,7 @@
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_vcpu_irq.h>
+#include <vmm_devemu.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_emulate.h>
@@ -169,4 +170,95 @@ int cpu_vcpu_emulate_hvc(struct vmm_vcpu * vcpu,
 
 	return VMM_EFAIL;
 }
+
+int cpu_vcpu_emulate_load(struct vmm_vcpu * vcpu, 
+			  arch_regs_t * regs,
+			  u32 il, u32 iss,
+			  physical_addr_t ipa)
+{
+	int rc;
+	u8 data8;
+	u16 data16;
+	u32 data32, srt, sas;
+
+	srt = (iss & ISS_ABORT_SRT_MASK) >> ISS_ABORT_SRT_SHIFT;
+	sas = (iss & ISS_ABORT_SAS_MASK) >> ISS_ABORT_SAS_SHIFT;
+
+	switch (sas) {
+	case 0:
+		rc = vmm_devemu_emulate_read(vcpu, ipa, 
+					     &data8, sizeof(data8));
+		if (!rc) {
+			cpu_vcpu_reg_write(vcpu, regs, srt, data8);
+		}
+		break;
+	case 1:
+		rc = vmm_devemu_emulate_read(vcpu, ipa, 
+					     &data16, sizeof(data16));
+		if (!rc) {
+			cpu_vcpu_reg_write(vcpu, regs, srt, data16);
+		}
+		break;
+	case 2:
+		rc = vmm_devemu_emulate_read(vcpu, ipa, 
+					     &data32, sizeof(data32));
+		if (!rc) {
+			cpu_vcpu_reg_write(vcpu, regs, srt, data32);
+		}
+		break;
+	default:
+		rc = VMM_EFAIL;
+		break;
+	};
+
+	if (!rc) {
+		/* Next instruction */
+		regs->pc += (il) ? 4 : 2;
+	}
+
+	return rc;
+}
+
+int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu, 
+			   arch_regs_t * regs,
+			   u32 il, u32 iss,
+			   physical_addr_t ipa)
+{
+	int rc;
+	u8 data8;
+	u16 data16;
+	u32 data32, srt, sas;
+
+	srt = (iss & ISS_ABORT_SRT_MASK) >> ISS_ABORT_SRT_SHIFT;
+	sas = (iss & ISS_ABORT_SAS_MASK) >> ISS_ABORT_SAS_SHIFT;
+
+	switch (sas) {
+	case 0:
+		data8 = cpu_vcpu_reg_read(vcpu, regs, srt);
+		rc = vmm_devemu_emulate_write(vcpu, ipa, 
+					      &data8, sizeof(data8));
+		break;
+	case 1:
+		data16 = cpu_vcpu_reg_read(vcpu, regs, srt);
+		rc = vmm_devemu_emulate_write(vcpu, ipa, 
+					      &data16, sizeof(data16));
+		break;
+	case 2:
+		data32 = cpu_vcpu_reg_read(vcpu, regs, srt);
+		rc = vmm_devemu_emulate_write(vcpu, ipa, 
+					      &data32, sizeof(data32));
+		break;
+	default:
+		rc = VMM_EFAIL;
+		break;
+	};
+
+	if (!rc) {
+		/* Next instruction */
+		regs->pc += (il) ? 4 : 2;
+	}
+
+	return rc;
+}
+
 

@@ -154,4 +154,9 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	pa = to_load_pa((virtual_addr_t)&def_ttbl);;
 	pa &= HTTBR_BADDR_MASK;
 	write_httbr(pa);
+
+	/* Setup Hypervisor Virtual Translation Control Register */
+	i = read_vtcr();
+	i |= (0x1 << VTCR_SL0_SHIFT) & VTCR_SL0_MASK;
+	write_vtcr(i);
 }

@@ -38,21 +38,107 @@
 #include <cpu_barrier.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
+#include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_cp15.h>
 
-/* FIXME: */
+static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu * vcpu, 
+				    arch_regs_t * regs,
+				    physical_addr_t fipa)
+{
+	int rc;
+	u32 reg_flags = 0x0;
+	struct cpu_page pg;
+
+	vmm_memset(&pg, 0, sizeof(pg));
+
+	pg.ia = fipa & TTBL_L3_MAP_MASK;
+
+	if ((pg.ia & TTBL_L2_MAP_MASK) == pg.ia) {
+		pg.sz = TTBL_L2_BLOCK_SIZE;
+	} else {
+		pg.sz = TTBL_L3_BLOCK_SIZE;
+	}
+
+	rc = vmm_guest_physical_map(vcpu->guest, pg.ia, pg.sz, 
+				    &pg.oa, &pg.sz, &reg_flags);
+	if (rc) {
+		return rc;
+	}
+
+	if (pg.sz < TTBL_L3_BLOCK_SIZE) {
+		return VMM_EFAIL;
+	}
+
+	pg.sz = cpu_mmu_best_page_size(pg.ia, pg.oa, pg.sz);
+
+	if (reg_flags & VMM_REGION_VIRTUAL) {
+		pg.af = 0;
+		pg.ap = TTBL_HAP_NOACCESS;
+	} else if (reg_flags & VMM_REGION_READONLY) {
+		pg.af = 1;
+		pg.ap = TTBL_HAP_READONLY;
+	} else {
+		pg.af = 1;
+		pg.ap = TTBL_HAP_READWRITE;
+	}
+
+	/* FIXME: Handle Cacheable Regions
+	 * if (reg_flags & VMM_REGION_CACHEABLE) {
+	 * }
+	 */
+
+	/* FIXME: Handle Cacheable Regions
+	 * if (reg_flags & VMM_REGION_BUFFERABLE) {
+	 * }
+	 */
+
+	return cpu_mmu_map_page(arm_priv(vcpu)->cp15.ttbl, &pg);
+}
+
 int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu * vcpu, 
 			     arch_regs_t * regs,
-			     u32 il, u32 iss, u32 fipa)
+			     u32 il, u32 iss, 
+			     physical_addr_t fipa)
 {
+	switch (iss & ISS_ABORT_FSR_MASK) {
+	case FSR_TRANS_FAULT_LEVEL1:
+	case FSR_TRANS_FAULT_LEVEL2:
+	case FSR_TRANS_FAULT_LEVEL3:
+		return cpu_vcpu_cp15_stage2_map(vcpu, regs, fipa);
+	default:
+		break;
+	};
+
 	return VMM_EFAIL;
 }
 
-/* FIXME: */
 int cpu_vcpu_cp15_data_abort(struct vmm_vcpu * vcpu, 
 			     arch_regs_t * regs,
-			     u32 il, u32 iss, u32 fipa)
+			     u32 il, u32 iss, 
+			     physical_addr_t fipa)
 {
+	switch (iss & ISS_ABORT_FSR_MASK) {
+	case FSR_TRANS_FAULT_LEVEL1:
+	case FSR_TRANS_FAULT_LEVEL2:
+	case FSR_TRANS_FAULT_LEVEL3:
+		return cpu_vcpu_cp15_stage2_map(vcpu, regs, fipa);
+	case FSR_ACCESS_FAULT_LEVEL1:
+	case FSR_ACCESS_FAULT_LEVEL2:
+	case FSR_ACCESS_FAULT_LEVEL3:
+		if (!(iss & ISS_ABORT_ISV_MASK)) {
+			return VMM_EFAIL;
+		}
+		if (iss & ISS_ABORT_WNR_MASK) {
+			return cpu_vcpu_emulate_store(vcpu, regs, 
+						      il, iss, fipa);
+		} else {
+			return cpu_vcpu_emulate_load(vcpu, regs, 
+						     il, iss, fipa);
+		}
+	default:
+		break;
+	};
+
 	return VMM_EFAIL;
 }
 
