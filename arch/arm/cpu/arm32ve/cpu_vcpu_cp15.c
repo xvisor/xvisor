@@ -280,7 +280,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 			}
 			break;
 		case 2: /* Coprocessor access register.  */
-			*data = arm_priv(vcpu)->cp15.c1_coproc;
+			*data = arm_priv(vcpu)->cp15.c1_cpacr;
 			break;
 		default:
 			goto bad_reg;
@@ -289,20 +289,20 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 	case 2: /* MMU Page table control / MPU cache control.  */
 		switch (opc2) {
 		case 0:
-			*data = arm_priv(vcpu)->cp15.c2_base0;
+			*data = arm_priv(vcpu)->cp15.c2_ttbr0;
 			break;
 		case 1:
-			*data = arm_priv(vcpu)->cp15.c2_base1;
+			*data = arm_priv(vcpu)->cp15.c2_ttbr1;
 			break;
 		case 2:
-			*data = arm_priv(vcpu)->cp15.c2_control;
+			*data = arm_priv(vcpu)->cp15.c2_ttbcr;
 			break;
 		default:
 			goto bad_reg;
 		};
 		break;
 	case 3: /* MMU Domain access control / MPU write buffer control.  */
-		*data = arm_priv(vcpu)->cp15.c3;
+		*data = arm_priv(vcpu)->cp15.c3_dacr;
 		break;
 	case 4: /* Reserved.  */
 		goto bad_reg;
@@ -391,10 +391,10 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 	case 13: /* Process ID.  */
 		switch (opc2) {
 		case 0:
-			*data = arm_priv(vcpu)->cp15.c13_fcse;
+			*data = arm_priv(vcpu)->cp15.c13_fcseidr;
 			break;
 		case 1:
-			*data = arm_priv(vcpu)->cp15.c13_context;
+			*data = arm_priv(vcpu)->cp15.c13_contextidr;
 			break;
 		case 2:
 			/* TPIDRURW */
@@ -441,17 +441,14 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		switch (opc2) {
 		case 0:
 			arm_priv(vcpu)->cp15.c1_sctlr = data;
-			/* ??? Lots of these bits are not implemented.  */
-			/* This may enable/disable the MMU, so do a TLB flush. */
-			/* FIXME: cpu_vcpu_cp15_vtlb_flush(vcpu); */
+			write_sctlr(data);
 			break;
 		case 1: /* Auxiliary control register.  */
 			/* Not implemented.  */
 			break;
 		case 2:
-			if (arm_priv(vcpu)->cp15.c1_coproc != data) {
-				arm_priv(vcpu)->cp15.c1_coproc = data;
-			}
+			arm_priv(vcpu)->cp15.c1_cpacr = data;
+			write_cpacr(data);
 			break;
 		default:
 			goto bad_reg;
@@ -460,25 +457,25 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 	case 2: /* MMU Page table control / MPU cache control.  */
 		switch (opc2) {
 		case 0:
-			arm_priv(vcpu)->cp15.c2_base0 = data;
+			arm_priv(vcpu)->cp15.c2_ttbr0 = data;
+			write_ttbr0(data);
 			break;
 		case 1:
-			arm_priv(vcpu)->cp15.c2_base1 = data;
+			arm_priv(vcpu)->cp15.c2_ttbr1 = data;
+			write_ttbr1(data);
 			break;
 		case 2:
 			data &= 7;
-			arm_priv(vcpu)->cp15.c2_control = data;
-			arm_priv(vcpu)->cp15.c2_mask = ~(((u32)0xffffffffu) >> data);
-			arm_priv(vcpu)->cp15.c2_base_mask = ~((u32)0x3fffu >> data);
+			arm_priv(vcpu)->cp15.c2_ttbcr = data;
+			write_ttbcr(data);
 			break;
 		default:
 			goto bad_reg;
 		};
 		break;
 	case 3: /* MMU Domain access control / MPU write buffer control.  */
-		arm_priv(vcpu)->cp15.c3 = data;
-		/* Flush TLB as domain not tracked in TLB */
-		/* FIXME: cpu_vcpu_cp15_vtlb_flush(vcpu); */
+		arm_priv(vcpu)->cp15.c3_dacr = data;
+		write_dacr(data);
 		break;
 	case 4: /* Reserved.  */
 		goto bad_reg;
@@ -486,9 +483,11 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		switch (opc2) {
 		case 0:
 			arm_priv(vcpu)->cp15.c5_dfsr = data;
+			write_dfsr(data);
 			break;
 		case 1:
 			arm_priv(vcpu)->cp15.c5_ifsr = data;
+			write_ifsr(data);
 			break;
 		default:
 			goto bad_reg;
@@ -498,10 +497,12 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		switch (opc2) {
 		case 0:
 			arm_priv(vcpu)->cp15.c6_dfar = data;
+			write_dfar(data);
 			break;
 		case 1: /* ??? This is WFAR on armv6 */
 		case 2:
 			arm_priv(vcpu)->cp15.c6_ifar = data;
+			write_ifar(data);
 			break;
 		default:
 			goto bad_reg;
@@ -897,20 +898,15 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			 * not modified virtual addresses, so this causes 
 			 * a vTLB flush.
 			 */
-			if (arm_priv(vcpu)->cp15.c13_fcse != data) {
-				/* FIXME: cpu_vcpu_cp15_vtlb_flush(vcpu); */
-			}
-			arm_priv(vcpu)->cp15.c13_fcse = data;
+			arm_priv(vcpu)->cp15.c13_fcseidr = data;
+			write_fcseidr(data);
 			break;
 		case 1:
 			/* This changes the ASID, 
 			 * so flush non-global pages from vTLB.
 			 */
-			if (arm_priv(vcpu)->cp15.c13_context != data && 
-			    !arm_feature(vcpu, ARM_FEATURE_MPU)) {
-				/* FIXME: cpu_vcpu_cp15_vtlb_flush_ng(vcpu); */
-			}
-			arm_priv(vcpu)->cp15.c13_context = data;
+			arm_priv(vcpu)->cp15.c13_contextidr = data;
+			write_contextidr(data);
 			break;
 		case 2:
 			/* TPIDRURW */
@@ -945,6 +941,18 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 				  struct vmm_vcpu * vcpu)
 {
 	if (tvcpu && tvcpu->is_normal) {
+		arm_priv(tvcpu)->cp15.c1_sctlr = read_sctlr();
+		arm_priv(tvcpu)->cp15.c1_cpacr = read_cpacr();
+		arm_priv(tvcpu)->cp15.c2_ttbr0 = read_ttbr0();
+		arm_priv(tvcpu)->cp15.c2_ttbr1 = read_ttbr1();
+		arm_priv(tvcpu)->cp15.c2_ttbcr = read_ttbcr();
+		arm_priv(tvcpu)->cp15.c3_dacr = read_dacr();
+		arm_priv(tvcpu)->cp15.c5_ifsr = read_ifsr();
+		arm_priv(tvcpu)->cp15.c5_dfsr = read_dfsr();
+		arm_priv(tvcpu)->cp15.c6_ifar = read_ifar();
+		arm_priv(tvcpu)->cp15.c6_dfar = read_dfar();
+		arm_priv(tvcpu)->cp15.c13_fcseidr = read_fcseidr();
+		arm_priv(tvcpu)->cp15.c13_contextidr = read_contextidr();
 		arm_priv(tvcpu)->cp15.c13_tls1 = read_tpidrurw();
 		arm_priv(tvcpu)->cp15.c13_tls2 = read_tpidruro();
 		arm_priv(tvcpu)->cp15.c13_tls3 = read_tpidrprw();
@@ -953,6 +961,18 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		cpu_mmu_stage2_chttbl(vcpu->id, arm_priv(vcpu)->cp15.ttbl);
 		write_vpidr(arm_priv(vcpu)->cp15.c0_cpuid);
 		write_vmpidr(vcpu->subid);
+		write_sctlr(arm_priv(vcpu)->cp15.c1_sctlr);
+		write_cpacr(arm_priv(vcpu)->cp15.c1_cpacr);
+		write_ttbr0(arm_priv(vcpu)->cp15.c2_ttbr0);
+		write_ttbr1(arm_priv(vcpu)->cp15.c2_ttbr1);
+		write_ttbcr(arm_priv(vcpu)->cp15.c2_ttbcr);
+		write_dacr(arm_priv(vcpu)->cp15.c3_dacr);
+		write_ifsr(arm_priv(vcpu)->cp15.c5_ifsr);
+		write_dfsr(arm_priv(vcpu)->cp15.c5_dfsr);
+		write_ifar(arm_priv(vcpu)->cp15.c6_ifar);
+		write_dfar(arm_priv(vcpu)->cp15.c6_dfar);
+		write_fcseidr(arm_priv(vcpu)->cp15.c13_fcseidr);
+		write_contextidr(arm_priv(vcpu)->cp15.c13_contextidr);
 		write_tpidrurw(arm_priv(vcpu)->cp15.c13_tls1);
 		write_tpidruro(arm_priv(vcpu)->cp15.c13_tls2);
 		write_tpidrprw(arm_priv(vcpu)->cp15.c13_tls3);
@@ -981,9 +1001,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 	}
 
 	arm_priv(vcpu)->cp15.c0_cpuid = cpuid;
-	arm_priv(vcpu)->cp15.c2_control = 0x0;
-	arm_priv(vcpu)->cp15.c2_mask = 0x0;
-	arm_priv(vcpu)->cp15.c2_base_mask = 0xFFFFC000;
+	arm_priv(vcpu)->cp15.c2_ttbcr = 0x0;
 	arm_priv(vcpu)->cp15.c9_pmcr = (cpuid & 0xFF000000);
 	/* Reset values of important registers */
 	switch (cpuid) {

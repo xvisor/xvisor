@@ -137,13 +137,11 @@ struct arm_priv {
 		u32 c0_c1[8]; /* Feature registers. */
 		u32 c0_c2[8]; /* Instruction set registers. */
 		u32 c1_sctlr; /* System control register. */
-		u32 c1_coproc; /* Coprocessor access register.  */
-		u32 c2_base0; /* MMU translation table base 0. */
-		u32 c2_base1; /* MMU translation table base 1. */
-		u32 c2_control; /* MMU translation table base control. */
-		u32 c2_mask; /* MMU translation table base selection mask. */
-		u32 c2_base_mask; /* MMU translation table base 0 mask. */
-		u32 c3; /* MMU domain access control register */
+		u32 c1_cpacr; /* Coprocessor access register.  */
+		u32 c2_ttbr0; /* MMU translation table base 0. */
+		u32 c2_ttbr1; /* MMU translation table base 1. */
+		u32 c2_ttbcr; /* MMU translation table base control. */
+		u32 c3_dacr; /* MMU domain access control register */
 		u32 c5_ifsr; /* Fault status registers. */
 		u32 c5_dfsr; /* Fault status registers. */
 		u32 c6_ifar; /* Fault address registers. */
@@ -157,8 +155,8 @@ struct arm_priv {
 		u32 c9_pmxevtyper; /* perf monitor event type */
 		u32 c9_pmuserenr; /* perf monitor user enable */
 		u32 c9_pminten; /* perf monitor interrupt enables */
-		u32 c13_fcse; /* FCSE PID. */
-		u32 c13_context; /* Context ID. */
+		u32 c13_fcseidr; /* FCSE PID. */
+		u32 c13_contextidr; /* Context ID. */
 		u32 c13_tls1; /* User RW Thread register. */
 		u32 c13_tls2; /* User RO Thread register. */
 		u32 c13_tls3; /* Privileged Thread register. */

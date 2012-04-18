@@ -482,8 +482,6 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 			vmm_free(vcpu->arch_priv);
 			return VMM_EFAIL;
 		}
-		arm_regs(vcpu)->sp = (u32)arm_priv(vcpu)->hyp_stack + 
-				     CONFIG_IRQ_STACK_SIZE - 4;
 	} else {
 		for (ite = 0; ite < CPU_FIQ_GPR_COUNT; ite++) {
 			arm_priv(vcpu)->gpr_fiq[ite] = 0x0;
@@ -505,6 +503,8 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 		arm_priv(vcpu)->lr_fiq = 0x0;
 		arm_priv(vcpu)->spsr_fiq = 0x0;
 	}
+	arm_regs(vcpu)->sp = (u32)arm_priv(vcpu)->hyp_stack + 
+				     CONFIG_IRQ_STACK_SIZE - 4;
 	if (!vcpu->reset_count) {
 		/* Initialize Hypervisor Configuration */
 		arm_priv(vcpu)->hcr = (HCR_TPU_MASK |
@@ -564,6 +564,11 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 		default:
 			break;
 		};
+	} else {
+		/* Clear virtual exception bits in HCR */
+		arm_priv(vcpu)->hcr &= ~(HCR_VA_MASK | 
+					 HCR_VI_MASK | 
+					 HCR_VF_MASK);
 	}
 #ifdef CONFIG_ARM32_FUNCSTATS
 	for (ite=0; ite < ARM_FUNCSTAT_MAX; ite++) {

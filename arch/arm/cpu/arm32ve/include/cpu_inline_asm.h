@@ -41,6 +41,14 @@
 				" mcr     p15, 0, %0, c1, c0, 0\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
+#define read_cpacr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c1, c0, 2\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_cpacr(val)	asm volatile(\
+				" mcr     p15, 0, %0, c1, c0, 2\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
 #define read_dacr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c3, c0, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
@@ -128,6 +136,14 @@
 #define invalid_d_tlb_line(va)	asm volatile(\
 				" mcr     p15, 0, %0, c8, c6, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
+
+#define read_fcseidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c13, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_fcseidr(val)	asm volatile(\
+				" mcr     p15, 0, %0, c13, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
 
 #define read_contextidr()	({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c13, c0, 1\n\t" \
