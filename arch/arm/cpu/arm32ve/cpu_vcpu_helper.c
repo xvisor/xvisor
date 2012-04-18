@@ -507,9 +507,7 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 	}
 	if (!vcpu->reset_count) {
 		/* Initialize Hypervisor Configuration */
-		arm_priv(vcpu)->hcr = (HCR_TVM_MASK |
-					HCR_TTLB_MASK |
-					HCR_TPU_MASK |
+		arm_priv(vcpu)->hcr = (HCR_TPU_MASK |
 					HCR_TPC_MASK |
 					HCR_TSW_MASK |
 					HCR_TAC_MASK |

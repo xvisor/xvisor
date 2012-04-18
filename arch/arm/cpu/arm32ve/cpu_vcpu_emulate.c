@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_devemu.h>
+#include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_emulate.h>
@@ -145,14 +146,20 @@ static int cpu_vcpu_hvc_movs_pc_lr(struct vmm_vcpu * vcpu,
 				   arch_regs_t * regs, 
 				   u32 il)
 {
-	u32 spsr;
+	u32 hcr, spsr;
+
+	/* Clear VI, VF from HCR */
+	hcr = read_hcr();
+	hcr &= ~(HCR_VI_MASK | HCR_VF_MASK);
+	arm_priv(vcpu)->hcr = hcr;
+	write_hcr(hcr);
+
+	/* Update PC */
+	regs->pc = cpu_vcpu_reg_read(vcpu, regs, 14);
 
 	/* Update CPSR */
 	spsr = cpu_vcpu_spsr_retrieve(vcpu, regs->cpsr & CPSR_MODE_MASK);
 	regs->cpsr = spsr;
-
-	/* Update PC */
-	regs->pc = regs->lr;
 
 	return VMM_OK;
 }
