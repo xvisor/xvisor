@@ -142,39 +142,11 @@ int cpu_vcpu_emulate_mrrc_cp14(struct vmm_vcpu * vcpu,
 	return VMM_EFAIL;
 }
 
-static int cpu_vcpu_hvc_movs_pc_lr(struct vmm_vcpu * vcpu, 
-				   arch_regs_t * regs, 
-				   u32 il)
-{
-	u32 hcr, spsr;
-
-	/* Clear VI, VF from HCR */
-	hcr = read_hcr();
-	hcr &= ~(HCR_VI_MASK | HCR_VF_MASK);
-	arm_priv(vcpu)->hcr = hcr;
-	write_hcr(hcr);
-
-	/* Update PC */
-	regs->pc = cpu_vcpu_reg_read(vcpu, regs, 14);
-
-	/* Update CPSR */
-	spsr = cpu_vcpu_spsr_retrieve(vcpu, regs->cpsr & CPSR_MODE_MASK);
-	regs->cpsr = spsr;
-
-	return VMM_OK;
-}
-
+/* TODO: To be implemeted later */
 int cpu_vcpu_emulate_hvc(struct vmm_vcpu * vcpu, 
 			 arch_regs_t * regs, 
 			 u32 il, u32 iss)
 {
-	switch(iss & 0xFFFF) {
-	case 0:
-		return cpu_vcpu_hvc_movs_pc_lr(vcpu, regs, il);
-	default:
-		break;
-	};
-
 	return VMM_EFAIL;
 }
 

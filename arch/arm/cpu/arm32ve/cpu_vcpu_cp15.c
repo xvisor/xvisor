@@ -48,28 +48,22 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu * vcpu,
 	int rc;
 	u32 reg_flags = 0x0;
 	struct cpu_page pg;
+	physical_size_t availsz;
 
 	vmm_memset(&pg, 0, sizeof(pg));
 
 	pg.ia = fipa & TTBL_L3_MAP_MASK;
-
-	if ((pg.ia & TTBL_L2_MAP_MASK) == pg.ia) {
-		pg.sz = TTBL_L2_BLOCK_SIZE;
-	} else {
-		pg.sz = TTBL_L3_BLOCK_SIZE;
-	}
+	pg.sz = TTBL_L3_BLOCK_SIZE;
 
 	rc = vmm_guest_physical_map(vcpu->guest, pg.ia, pg.sz, 
-				    &pg.oa, &pg.sz, &reg_flags);
+				    &pg.oa, &availsz, &reg_flags);
 	if (rc) {
 		return rc;
 	}
 
-	if (pg.sz < TTBL_L3_BLOCK_SIZE) {
+	if (availsz < TTBL_L3_BLOCK_SIZE) {
 		return VMM_EFAIL;
 	}
-
-	pg.sz = cpu_mmu_best_page_size(pg.ia, pg.oa, pg.sz);
 
 	if (reg_flags & VMM_REGION_VIRTUAL) {
 		pg.af = 0;
@@ -92,7 +86,12 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu * vcpu,
 	 * }
 	 */
 
-	return cpu_mmu_map_page(arm_priv(vcpu)->cp15.ttbl, &pg);
+	rc = cpu_mmu_map_page(arm_priv(vcpu)->cp15.ttbl, &pg);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
 int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu * vcpu, 

@@ -68,11 +68,9 @@ u32 arch_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no)
 	return ret;
 }
 
-int arch_vcpu_irq_execute(struct vmm_vcpu * vcpu,
-			 arch_regs_t * regs, 
-			 u32 irq_no, u32 reason)
+int arch_vcpu_irq_assert(struct vmm_vcpu * vcpu, u32 irq_no, u32 reason)
 {
-	u32 hcr = read_hcr();
+	u32 hcr = arm_priv(vcpu)->hcr;
 
 	switch(irq_no) {
 	case CPU_DATA_ABORT_IRQ:
@@ -80,18 +78,44 @@ int arch_vcpu_irq_execute(struct vmm_vcpu * vcpu,
 		/* VA bit is auto-cleared */
 		break;
 	case CPU_EXTERNAL_IRQ:
-		if (regs->cpsr & CPSR_IRQ_DISABLED) {
-			return VMM_EFAIL;
-		}
 		hcr |= HCR_VI_MASK;
-		/* VI bit will be cleared by "HVC #0" instruction */
+		/* VI bit will be cleared on deassertion */
 		break;
 	case CPU_EXTERNAL_FIQ:
-		if (regs->cpsr & CPSR_FIQ_DISABLED) {
-			return VMM_EFAIL;
-		}
 		hcr |= HCR_VF_MASK;
-		/* VF bit will be cleared by "HVC #0" instruction */
+		/* VF bit will be cleared on deassertion */
+		break;
+	default:
+		return VMM_EFAIL;
+		break;
+	};
+
+	arm_priv(vcpu)->hcr = hcr;
+
+	return VMM_OK;
+}
+
+
+int arch_vcpu_irq_execute(struct vmm_vcpu * vcpu,
+			 arch_regs_t * regs, 
+			 u32 irq_no, u32 reason)
+{
+	/* Updated HCR in HW */
+	write_hcr(arm_priv(vcpu)->hcr);
+
+	return VMM_OK;
+}
+
+int arch_vcpu_irq_deassert(struct vmm_vcpu * vcpu, u32 irq_no, u32 reason)
+{
+	u32 hcr = read_hcr();
+
+	switch(irq_no) {
+	case CPU_EXTERNAL_IRQ:
+		hcr &= ~HCR_VI_MASK;
+		break;
+	case CPU_EXTERNAL_FIQ:
+		hcr &= ~HCR_VF_MASK;
 		break;
 	default:
 		return VMM_EFAIL;
@@ -103,3 +127,4 @@ int arch_vcpu_irq_execute(struct vmm_vcpu * vcpu,
 
 	return VMM_OK;
 }
+
