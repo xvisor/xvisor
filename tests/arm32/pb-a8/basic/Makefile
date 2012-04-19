@@ -72,17 +72,15 @@ ARM_TEST_LDFLAGS=-Wl,-T$(ARM_TEST_LINK_SCRIPT) $(ARM_TEST_CPPFLAGS)
 ARM_COMMON_DEPS=arm_asm_macro.h arm_math.h arm_defines.h arm_types.h
 
 CPATCH32=$(build_dir)/tools/cpatch/cpatch32
-ifdef CONFIG_ARM32
 ELF2CPATCH=$(top_dir)/arch/arm/cpu/arm32/elf2cpatch.py
-else
-ELF2CPATCH=$(top_dir)/arch/arm/cpu/arm32ve/elf2cpatch.py
-endif
 
 cmd_patch_elf = CROSS_COMPILE=$(ARM_CROSS_COMPILE) \
 		$(ELF2CPATCH) -f $@ .text | $(CPATCH32) $@ 0
 
 ARM_TEST_TARGETS = $(obj_dir)/arm_test.bin
+ifdef CONFIG_ARM32
 ARM_TEST_TARGETS += $(obj_dir)/arm_test.bin.patched
+endif
 
 .PHONY: all
 all: $(ARM_TEST_TARGETS)
