@@ -58,14 +58,18 @@ int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu * vcpu,
 	CRm  = (iss & 0x0000001E) >> 1;
 
 	if (iss & 0x1) {
-		/* MCR CP15 */
-		t = cpu_vcpu_reg_read(vcpu, regs, Rt);
-		rc = cpu_vcpu_cp15_write(vcpu, regs, opc1, opc2, CRn, CRm, t);
-	} else {
 		/* MRC CP15 */
-		rc = cpu_vcpu_cp15_read(vcpu, regs, opc1, opc2, CRn, CRm, &t);
+		if (!cpu_vcpu_cp15_read(vcpu, regs, opc1, opc2, CRn, CRm, &t)) {
+			rc = VMM_EFAIL;
+		}
 		if (!rc) {
 			cpu_vcpu_reg_write(vcpu, regs, Rt, t);
+		}
+	} else {
+		/* MCR CP15 */
+		t = cpu_vcpu_reg_read(vcpu, regs, Rt);
+		if (!cpu_vcpu_cp15_write(vcpu, regs, opc1, opc2, CRn, CRm, t)) {
+			rc = VMM_EFAIL;
 		}
 	}
 

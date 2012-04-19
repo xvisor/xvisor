@@ -91,6 +91,7 @@ int arch_vcpu_irq_assert(struct vmm_vcpu * vcpu, u32 irq_no, u32 reason)
 	};
 
 	arm_priv(vcpu)->hcr = hcr;
+	write_hcr(arm_priv(vcpu)->hcr);
 
 	return VMM_OK;
 }
@@ -100,9 +101,6 @@ int arch_vcpu_irq_execute(struct vmm_vcpu * vcpu,
 			 arch_regs_t * regs, 
 			 u32 irq_no, u32 reason)
 {
-	/* Updated HCR in HW */
-	write_hcr(arm_priv(vcpu)->hcr);
-
 	return VMM_OK;
 }
 
