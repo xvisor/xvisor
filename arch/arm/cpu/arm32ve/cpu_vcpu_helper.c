@@ -507,20 +507,14 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 				     CONFIG_IRQ_STACK_SIZE - 4;
 	if (!vcpu->reset_count) {
 		/* Initialize Hypervisor Configuration */
-		arm_priv(vcpu)->hcr = (HCR_TPU_MASK |
-					HCR_TPC_MASK |
-					HCR_TSW_MASK |
-					HCR_TAC_MASK |
+		arm_priv(vcpu)->hcr = (HCR_TAC_MASK |
 					HCR_TIDCP_MASK |
 					HCR_TSC_MASK |
-					HCR_TID3_MASK |
-					HCR_TID2_MASK |
-					HCR_TID1_MASK |
-					HCR_TID0_MASK |
 					HCR_TWI_MASK |
 					HCR_AMO_MASK |
 					HCR_IMO_MASK |
 					HCR_FMO_MASK |
+					HCR_SWIO_MASK |
 					HCR_VM_MASK);
 		/* Initialize Hypervisor Coprocessor Trap Register */
 		arm_priv(vcpu)->hcptr = (HCPTR_TCPAC_MASK |
@@ -529,7 +523,8 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 					 HCPTR_TCP_MASK);
 		/* Initialize Hypervisor System Trap Register */
 		arm_priv(vcpu)->hstr = (HSTR_TJDBX_MASK |
-					HSTR_TTEE_MASK);
+					HSTR_TTEE_MASK |
+					HSTR_T1_MASK);
 		/* Initialize VCPU features */
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {

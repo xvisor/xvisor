@@ -47,9 +47,11 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	virtual_addr_t ttbl_base, page_addr;
 	physical_addr_t pa;
 
-	/* FIXME: Initialize HMAIR0 and HMAIR1 for using caching 
-	* attributes via attrindex of each page
-	*/
+	/* Initialize HMAIR0 and HMAIR1 for using caching 
+	 * attributes via attrindex of each page
+	 */
+	write_hmair0(HMAIR0_INITVAL);
+	write_hmair1(HMAIR0_INITVAL);
 
 	ttbl = NULL;
 	ttbl_base = to_load_pa((virtual_addr_t)&def_ttbl);
@@ -137,6 +139,8 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 			}
 			ttbl[index] |= TTBL_STAGE1_LOWER_AF_MASK;
 			ttbl[index] |= (TTBL_AP_SRW_U << TTBL_STAGE1_LOWER_AP_SHIFT);
+			ttbl[index] |= (AINDEX_NORMAL_WT << TTBL_STAGE1_LOWER_AINDEX_SHIFT) & 
+							TTBL_STAGE1_LOWER_AINDEX_MASK;
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
 		}
 

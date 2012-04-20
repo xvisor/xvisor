@@ -604,6 +604,7 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 			u32 mem_flags)
 {
 	struct cpu_page p;
+
 	vmm_memset(&p, 0, sizeof(p));
 	p.ia = va;
 	p.oa = pa;
@@ -617,7 +618,21 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 		p.ap = TTBL_AP_SR_U;
 	}
 	p.xn = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
-	/* FIXME: What about cacheable memory ?? */
+
+	if ((mem_flags & VMM_MEMORY_CACHEABLE) && 
+	    (mem_flags & VMM_MEMORY_BUFFERABLE)) {
+		/* FIXME: */
+		p.aindex = AINDEX_NORMAL_WT;
+	} else if (mem_flags & VMM_MEMORY_CACHEABLE) {
+		/* FIXME: */
+		p.aindex = AINDEX_NORMAL_WT;
+	} else if (mem_flags & VMM_MEMORY_BUFFERABLE) {
+		/* FIXME: */
+		p.aindex = AINDEX_NORMAL_WT;
+	} else {
+		p.aindex = AINDEX_SO;
+	}
+
 	return cpu_mmu_map_hypervisor_page(&p);
 }
 
@@ -826,6 +841,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		hyppg.sz = TTBL_L3_BLOCK_SIZE;
 		hyppg.af = 1;
 		hyppg.ap = TTBL_AP_SRW_U;
+		hyppg.aindex = AINDEX_NORMAL_WT;
 		if ((rc = cpu_mmu_map_hypervisor_page(&hyppg))) {
 			goto mmu_init_error;
 		}

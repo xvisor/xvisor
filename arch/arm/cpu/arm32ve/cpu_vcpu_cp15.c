@@ -76,6 +76,10 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu * vcpu,
 		pg.ap = TTBL_HAP_READWRITE;
 	}
 
+	if (reg_flags & VMM_REGION_ISRAM) {
+		pg.memattr = 0xf;
+	}
+
 	/* FIXME: Handle Cacheable Regions
 	 * if (reg_flags & VMM_REGION_CACHEABLE) {
 	 * }
@@ -440,7 +444,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		switch (opc2) {
 		case 0:
 			arm_priv(vcpu)->cp15.c1_sctlr = data;
-			write_sctlr(data);
+			write_sctlr(data & ~(SCTLR_A_MASK | SCTLR_TRE_MASK));
 			break;
 		case 1: /* Auxiliary control register.  */
 			/* Not implemented.  */
@@ -707,7 +711,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				/* For safety and correctness 
 				 * only clean data cache.
 				 */
-				/* FIXME: clean_dcache_mva(data); */
+				clean_dcache_mva(data);
 				break;
 			case 2:
 				/* Clean and invalidate data cache line by set/way */
@@ -940,8 +944,6 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 				  struct vmm_vcpu * vcpu)
 {
 	if (tvcpu && tvcpu->is_normal) {
-		arm_priv(tvcpu)->cp15.c1_sctlr = read_sctlr();
-		arm_priv(tvcpu)->cp15.c1_cpacr = read_cpacr();
 		arm_priv(tvcpu)->cp15.c2_ttbr0 = read_ttbr0();
 		arm_priv(tvcpu)->cp15.c2_ttbr1 = read_ttbr1();
 		arm_priv(tvcpu)->cp15.c2_ttbcr = read_ttbcr();
@@ -960,7 +962,8 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		cpu_mmu_stage2_chttbl(vcpu->id, arm_priv(vcpu)->cp15.ttbl);
 		write_vpidr(arm_priv(vcpu)->cp15.c0_cpuid);
 		write_vmpidr(vcpu->subid);
-		write_sctlr(arm_priv(vcpu)->cp15.c1_sctlr);
+		write_sctlr(arm_priv(vcpu)->cp15.c1_sctlr & 
+					~(SCTLR_A_MASK | SCTLR_TRE_MASK));
 		write_cpacr(arm_priv(vcpu)->cp15.c1_cpacr);
 		write_ttbr0(arm_priv(vcpu)->cp15.c2_ttbr0);
 		write_ttbr1(arm_priv(vcpu)->cp15.c2_ttbr1);
