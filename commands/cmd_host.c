@@ -84,7 +84,11 @@ void cmd_host_ram_stats(struct vmm_chardev *cdev)
 	u32 free = vmm_host_ram_free_frame_count();
 	u32 total = vmm_host_ram_total_frame_count();
 	physical_addr_t base = vmm_host_ram_base();
-	vmm_cprintf(cdev, "Base Address : 0x%08x\n", base);
+	if (sizeof(u64) == sizeof(physical_addr_t)) {
+		vmm_cprintf(cdev, "Base Address : 0x%016llx\n", base);
+	} else {
+		vmm_cprintf(cdev, "Base Address : 0x%08x\n", base);
+	}
 	vmm_cprintf(cdev, "Frame Size   : %d (0x%08x)\n", 
 					VMM_PAGE_SIZE, VMM_PAGE_SIZE);
 	vmm_cprintf(cdev, "Free Frames  : %d (0x%08x)\n", free, free);
@@ -99,7 +103,13 @@ void cmd_host_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "1 : used");
 	for (ite = 0; ite < total; ite++) {
 		if (vmm_umod32(ite, colcnt) == 0) {
-			vmm_cprintf(cdev, "\n0x%08x: ", base + ite * VMM_PAGE_SIZE);
+			if (sizeof(u64) == sizeof(physical_addr_t)) {
+				vmm_cprintf(cdev, "\n0x%016llx: ", 
+						base + ite * VMM_PAGE_SIZE);
+			} else {
+				vmm_cprintf(cdev, "\n0x%08x: ", 
+						base + ite * VMM_PAGE_SIZE);
+			}
 		}
 		if (vmm_host_ram_frame_isfree(base + ite * VMM_PAGE_SIZE)) {
 			vmm_cprintf(cdev, "0");
@@ -115,7 +125,11 @@ void cmd_host_vapool_stats(struct vmm_chardev *cdev)
 	u32 free = vmm_host_vapool_free_page_count();
 	u32 total = vmm_host_vapool_total_page_count();
 	virtual_addr_t base = vmm_host_vapool_base();
-	vmm_cprintf(cdev, "Base Address : 0x%08x\n", base);
+	if (sizeof(u64) == sizeof(virtual_addr_t)) {
+		vmm_cprintf(cdev, "Base Address : 0x%016llx\n", base);
+	} else {
+		vmm_cprintf(cdev, "Base Address : 0x%08x\n", base);
+	}
 	vmm_cprintf(cdev, "Page Size    : %d (0x%08x)\n", 
 					VMM_PAGE_SIZE, VMM_PAGE_SIZE);
 	vmm_cprintf(cdev, "Free Pages   : %d (0x%08x)\n", free, free);
@@ -130,7 +144,13 @@ void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "1 : used");
 	for (ite = 0; ite < total; ite++) {
 		if (vmm_umod32(ite, colcnt) == 0) {
-			vmm_cprintf(cdev, "\n0x%08x: ", base + ite * VMM_PAGE_SIZE);
+			if (sizeof(u64) == sizeof(virtual_addr_t)) {
+				vmm_cprintf(cdev, "\n0x%016llx: ", 
+						base + ite * VMM_PAGE_SIZE);
+			} else {
+				vmm_cprintf(cdev, "\n0x%08x: ", 
+						base + ite * VMM_PAGE_SIZE);
+			}
 		}
 		if (vmm_host_vapool_page_isfree(base + ite * VMM_PAGE_SIZE)) {
 			vmm_cprintf(cdev, "0");

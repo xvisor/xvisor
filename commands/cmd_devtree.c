@@ -89,7 +89,7 @@ void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 				vmm_cprintf(cdev, " ");
 			}
 			if (sizeof(u64) == sizeof(physical_addr_t)) {
-				vmm_cprintf(cdev, "0x%llx", 
+				vmm_cprintf(cdev, "0x%llxULL", 
 				((physical_addr_t *)attr->value)[i >> 3]);
 			} else {
 				vmm_cprintf(cdev, "0x%x", 
@@ -104,7 +104,7 @@ void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 				vmm_cprintf(cdev, " ");
 			}
 			if (sizeof(u64) == sizeof(physical_size_t)) {
-				vmm_cprintf(cdev, "0x%llx", 
+				vmm_cprintf(cdev, "0x%llxULL", 
 				((physical_size_t *)attr->value)[i >> 3]);
 			} else {
 				vmm_cprintf(cdev, "0x%x", 
@@ -119,7 +119,7 @@ void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 				vmm_cprintf(cdev, " ");
 			}
 			if (sizeof(u64) == sizeof(virtual_addr_t)) {
-				vmm_cprintf(cdev, "0x%llx", 
+				vmm_cprintf(cdev, "0x%llxULL", 
 				((virtual_addr_t *)attr->value)[i >> 3]);
 			} else {
 				vmm_cprintf(cdev, "0x%x", 
@@ -134,7 +134,7 @@ void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 				vmm_cprintf(cdev, " ");
 			}
 			if (sizeof(u64) == sizeof(virtual_size_t)) {
-				vmm_cprintf(cdev, "0x%llx", 
+				vmm_cprintf(cdev, "0x%llxULL", 
 				((virtual_size_t *)attr->value)[i >> 3]);
 			} else {
 				vmm_cprintf(cdev, "0x%x", 
