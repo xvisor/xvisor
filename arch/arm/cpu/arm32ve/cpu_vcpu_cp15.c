@@ -444,7 +444,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		switch (opc2) {
 		case 0:
 			arm_priv(vcpu)->cp15.c1_sctlr = data;
-			write_sctlr(data & ~(SCTLR_A_MASK | SCTLR_TRE_MASK));
+			write_sctlr(data & ~(SCTLR_A_MASK));
 			break;
 		case 1: /* Auxiliary control register.  */
 			/* Not implemented.  */
@@ -962,8 +962,7 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		cpu_mmu_stage2_chttbl(vcpu->id, arm_priv(vcpu)->cp15.ttbl);
 		write_vpidr(arm_priv(vcpu)->cp15.c0_cpuid);
 		write_vmpidr(vcpu->subid);
-		write_sctlr(arm_priv(vcpu)->cp15.c1_sctlr & 
-					~(SCTLR_A_MASK | SCTLR_TRE_MASK));
+		write_sctlr(arm_priv(vcpu)->cp15.c1_sctlr & ~(SCTLR_A_MASK));
 		write_cpacr(arm_priv(vcpu)->cp15.c1_cpacr);
 		write_ttbr0(arm_priv(vcpu)->cp15.c2_ttbr0);
 		write_ttbr1(arm_priv(vcpu)->cp15.c2_ttbr1);

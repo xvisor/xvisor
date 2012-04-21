@@ -154,6 +154,14 @@ int cpu_vcpu_emulate_hvc(struct vmm_vcpu * vcpu,
 	return VMM_EFAIL;
 }
 
+static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
+{
+	if (imm & (1 << (len - 1))) {
+		imm = imm | (~((1 << len) - 1));
+	}
+	return imm & ((1 << bits) - 1);
+}
+
 int cpu_vcpu_emulate_load(struct vmm_vcpu * vcpu, 
 			  arch_regs_t * regs,
 			  u32 il, u32 iss,
@@ -162,24 +170,37 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu * vcpu,
 	int rc;
 	u8 data8;
 	u16 data16;
-	u32 data32, srt, sas;
+	u32 data32, sas, sse, srt;
 
-	srt = (iss & ISS_ABORT_SRT_MASK) >> ISS_ABORT_SRT_SHIFT;
 	sas = (iss & ISS_ABORT_SAS_MASK) >> ISS_ABORT_SAS_SHIFT;
+	sse = (iss & ISS_ABORT_SSE_MASK) >> ISS_ABORT_SSE_SHIFT;
+	srt = (iss & ISS_ABORT_SRT_MASK) >> ISS_ABORT_SRT_SHIFT;
+
+	sse = (sas == 2) ? 0 : sse;
 
 	switch (sas) {
 	case 0:
 		rc = vmm_devemu_emulate_read(vcpu, ipa, 
 					     &data8, sizeof(data8));
 		if (!rc) {
-			cpu_vcpu_reg_write(vcpu, regs, srt, data8);
+			if (sse) {
+				cpu_vcpu_reg_write(vcpu, regs, srt, 
+					arm_sign_extend(data8, 8, 32));
+			} else {
+				cpu_vcpu_reg_write(vcpu, regs, srt, data8);
+			}
 		}
 		break;
 	case 1:
 		rc = vmm_devemu_emulate_read(vcpu, ipa, 
 					     &data16, sizeof(data16));
 		if (!rc) {
-			cpu_vcpu_reg_write(vcpu, regs, srt, data16);
+			if (sse) {
+				cpu_vcpu_reg_write(vcpu, regs, srt, 
+					arm_sign_extend(data16, 16, 32));
+			} else {
+				cpu_vcpu_reg_write(vcpu, regs, srt, data16);
+			}
 		}
 		break;
 	case 2:
@@ -210,10 +231,10 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu,
 	int rc;
 	u8 data8;
 	u16 data16;
-	u32 data32, srt, sas;
+	u32 data32, sas, srt;
 
-	srt = (iss & ISS_ABORT_SRT_MASK) >> ISS_ABORT_SRT_SHIFT;
 	sas = (iss & ISS_ABORT_SAS_MASK) >> ISS_ABORT_SAS_SHIFT;
+	srt = (iss & ISS_ABORT_SRT_MASK) >> ISS_ABORT_SRT_SHIFT;
 
 	switch (sas) {
 	case 0:
