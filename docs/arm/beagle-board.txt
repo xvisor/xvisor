@@ -34,7 +34,7 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   # mkimage -A arm -O linux -T kernel -C none -a 0x88000000 -e 0x88000000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
   [6. Build ARM Basic Test for Realview PB-A8 Guest, this creates arm_test.bin.patched]
-  # make -C tests/armv7a/pb-a8/basic
+  # make -C tests/arm32/pb-a8/basic
   
   [7. Unplug micro-SD card from BeagleBoard-xM and plug it on your development machine]
 
@@ -174,7 +174,7 @@ follows:
   # mkimage -A arm -O linux -T kernel -C none -a 0x88000000 -e 0x88000000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
   [9. Build ARM Basic Test for Realview PB-A8 Guest, this creates arm_test.bin.patched]
-  # make -C tests/armv7a/pb-a8/basic
+  # make -C tests/arm32/pb-a8/basic
 
   [10. Copy the X-loader and U-Boot binaries (from step 2 or 3-4) into Xvisor build-directory]
   # cp <path-to-x-loader-binary>/x-load.bin.ift <path-to-u-boot-binary>/u-boot.bin build/
