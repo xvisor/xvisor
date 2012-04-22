@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Fri Mar 23 23:37:39 2012
+# Sun Apr 22 17:54:49 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -30,7 +30,6 @@ CONFIG_ARM32=y
 #
 # CONFIG_ARM32_HIGHVEC is not set
 # CONFIG_ARM32_FUNCSTATS is not set
-# CONFIG_BOARD_PB_A8 is not set
 CONFIG_ARM_TIMER_SP804=y
 CONFIG_BOARD_VERSATILE=y
 CONFIG_VERSATILE=y
@@ -109,6 +108,7 @@ CONFIG_LIBFDT=y
 #
 CONFIG_SERIAL=y
 # CONFIG_SERIAL_UART is not set
+# CONFIG_SERIAL_OMAP_UART is not set
 CONFIG_SERIAL_PL01X=y
 
 #

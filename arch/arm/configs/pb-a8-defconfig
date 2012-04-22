@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Sat Mar 24 11:03:58 2012
+# Sun Apr 22 17:53:56 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -110,6 +110,7 @@ CONFIG_LIBFDT=y
 #
 CONFIG_SERIAL=y
 # CONFIG_SERIAL_UART is not set
+# CONFIG_SERIAL_OMAP_UART is not set
 CONFIG_SERIAL_PL01X=y
 
 #
