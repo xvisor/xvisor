@@ -33,8 +33,23 @@ Vexpress-A15 Host:
   [7. Launch ARM fast models 7.0 or higher]
   # model_shell <your_fastmodel_dir>/FastModelsPortfolio_xxxx/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-3.4/cadi_system_Linux-Debug-GCC-3.4.so build/fast_model_boot.axf
 
-  [8. Try out Xvisor help command]
-  XVisor# help
+  [8. Kick Guest for starting Basic Test]
+  XVisor# guest kick -1
+
+  [9. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [10. Say 'hi' to Basic Test Code]
+  [guest0/uart0] arm-test# hi
+
+  [11. Say 'hello' to Basic Test Code]
+  [guest0/uart0] arm-test# hello
+
+  [12. Check various commands of Basic Test Code]
+  [guest0/uart0] arm-test# help
+
+  [13. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] arm-test# 
 
   (Note: replace all <> brackets based on your workspace)
 
