@@ -28,7 +28,6 @@
 #include <vmm_string.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
-#include <vmm_scheduler.h>
 #include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
@@ -359,7 +358,7 @@ static void omap_uart_putc_sleepable(struct omap_uart_omap_port *port, u8 ch)
 #endif
 
 static u32 omap_uart_read(struct vmm_chardev *cdev, 
-		     u8 *dest, size_t offset, size_t len, bool block)
+			  u8 *dest, u32 offset, u32 len, bool sleep)
 {
 	u32 i;
 	struct omap_uart_omap_port *port;
@@ -370,7 +369,7 @@ static u32 omap_uart_read(struct vmm_chardev *cdev,
 
 	port = cdev->priv;
 
-	if (block && vmm_scheduler_orphan_context()) {
+	if (sleep) {
 		for (i = 0; i < len; i++) {
 #ifndef OMAP_UART_POLLING
 			dest[i] = omap_uart_getc_sleepable(port);
@@ -380,10 +379,9 @@ static u32 omap_uart_read(struct vmm_chardev *cdev,
 		}
 	} else {
 		for(i = 0; i < len; i++) {
-			if (!block && !omap_uart_lowlevel_can_getc(port->base, port->reg_align)) {
+			if (!omap_uart_lowlevel_can_getc(port->base, port->reg_align)) {
 				break;
 			}
-
 			dest[i] = omap_uart_lowlevel_getc(port->base, port->reg_align);
 		}
 	}
@@ -392,7 +390,7 @@ static u32 omap_uart_read(struct vmm_chardev *cdev,
 }
 
 static u32 omap_uart_write(struct vmm_chardev *cdev, 
-		      u8 *src, size_t offset, size_t len, bool block)
+			   u8 *src, u32 offset, u32 len, bool sleep)
 {
 	u32 i;
 	struct omap_uart_omap_port *port;
@@ -403,7 +401,7 @@ static u32 omap_uart_write(struct vmm_chardev *cdev,
 
 	port = cdev->priv;
 
-	if (block && vmm_scheduler_orphan_context()) {
+	if (sleep) {
 		for (i = 0; i < len; i++) {
 #ifndef OMAP_UART_POLLING
 			omap_uart_putc_sleepable(port, src[i]);
@@ -413,10 +411,9 @@ static u32 omap_uart_write(struct vmm_chardev *cdev,
 		}
 	} else {
 		for (i = 0; i < len; i++) {
-			if (!block && !omap_uart_lowlevel_can_putc(port->base, port->reg_align)) {
+			if (!omap_uart_lowlevel_can_putc(port->base, port->reg_align)) {
 				break;
 			}
-
 			omap_uart_lowlevel_putc(port->base, port->reg_align, src[i]);
 		}
 	}

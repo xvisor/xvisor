@@ -27,7 +27,6 @@
 #include <vmm_string.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
-#include <vmm_scheduler.h>
 #include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
@@ -193,7 +192,7 @@ static u8 pl011_getc_sleepable(struct pl011_port *port)
 }
 
 static u32 pl011_read(struct vmm_chardev *cdev,
-		      u8 * dest, size_t offset, size_t len, bool block)
+		      u8 * dest, u32 offset, u32 len, bool sleep)
 {
 	u32 i;
 	struct pl011_port *port;
@@ -204,16 +203,15 @@ static u32 pl011_read(struct vmm_chardev *cdev,
 
 	port = cdev->priv;
 
-	if (block && vmm_scheduler_orphan_context()) {
+	if (sleep) {
 		for (i = 0; i < len; i++) {
 			dest[i] = pl011_getc_sleepable(port);
 		}
 	} else {
 		for (i = 0; i < len; i++) {
-			if (!block && !pl011_lowlevel_can_getc(port->base)) {
+			if (!pl011_lowlevel_can_getc(port->base)) {
 				break;
 			}
-
 			dest[i] = pl011_lowlevel_getc(port->base);
 		}
 	}
@@ -239,7 +237,7 @@ static void pl011_putc_sleepable(struct pl011_port *port, u8 ch)
 }
 
 static u32 pl011_write(struct vmm_chardev *cdev,
-		       u8 * src, size_t offset, size_t len, bool block)
+		       u8 * src, u32 offset, u32 len, bool sleep)
 {
 	u32 i;
 	struct pl011_port *port;
@@ -250,16 +248,15 @@ static u32 pl011_write(struct vmm_chardev *cdev,
 
 	port = cdev->priv;
 
-	if (block && vmm_scheduler_orphan_context()) {
+	if (sleep) {
 		for (i = 0; i < len; i++) {
 			pl011_putc_sleepable(port, src[i]);
 		}
 	} else {
 		for (i = 0; i < len; i++) {
-			if (!block && !pl011_lowlevel_can_putc(port->base)) {
+			if (!pl011_lowlevel_can_putc(port->base)) {
 				break;
 			}
-
 			pl011_lowlevel_putc(port->base, src[i]);
 		}
 	}

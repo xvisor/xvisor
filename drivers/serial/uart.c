@@ -28,7 +28,6 @@
 #include <vmm_string.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
-#include <vmm_scheduler.h>
 #include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
@@ -109,7 +108,7 @@ void uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 }
 
 static u32 uart_read(struct vmm_chardev *cdev, 
-		u8 *dest, size_t offset, size_t len, bool block)
+		     u8 *dest, u32 offset, u32 len, bool sleep)
 {
 	u32 i;
 	struct uart_port *port;
@@ -121,10 +120,9 @@ static u32 uart_read(struct vmm_chardev *cdev,
 	port = cdev->priv;
 
 	for(i = 0; i < len; i++) {
-		if (!block && !uart_lowlevel_can_getc(port->base, port->reg_align)) {
+		if (!uart_lowlevel_can_getc(port->base, port->reg_align)) {
 			break;
 		}
-
 		dest[i] = uart_lowlevel_getc(port->base, port->reg_align);
 	}
 
@@ -132,7 +130,7 @@ static u32 uart_read(struct vmm_chardev *cdev,
 }
 
 static u32 uart_write(struct vmm_chardev *cdev, 
-		u8 *src, size_t offset, size_t len, bool block)
+		      u8 *src, u32 offset, u32 len, bool sleep)
 {
 	u32 i;
 	struct uart_port *port;
@@ -144,10 +142,9 @@ static u32 uart_write(struct vmm_chardev *cdev,
 	port = cdev->priv;
 
 	for(i = 0; i < len; i++) {
-		if (!block && !uart_lowlevel_can_putc(port->base, port->reg_align)) {
+		if (!uart_lowlevel_can_putc(port->base, port->reg_align)) {
 			break;
 		}
-
 		uart_lowlevel_putc(port->base, port->reg_align, src[i]);
 	}
 
