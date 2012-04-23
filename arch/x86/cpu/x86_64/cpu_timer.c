@@ -104,10 +104,14 @@ int arch_cpu_clockevent_expire(void)
 
 int arch_cpu_clockevent_init(void)
 {
+	/* FIXME */
+	while (1);
 	return VMM_OK;
 }
 
 int arch_cpu_clocksource_init(void)
 {
+	/* FIXME */
+	while (1);
 	return VMM_OK;
 }

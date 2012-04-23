@@ -43,6 +43,16 @@
 #define UART_LSR_THRE		0x20	/* Transmit-hold-register empty */
 #define UART_LSR_DR		0x01	/* Receiver data ready */
 
+#define UART_IIR_NOINT		0x01	/* No interrupt */
+#define UART_IIR_TYPE		0x1e	/* IT_TYPE field */
+#define UART_IIR_THRI		0x02	/* THR Interrupt */
+#define UART_IIR_RDI		0x04	/* RHR Interrupt */
+#define UART_IIR_RLSI		0x06	/* Receiver Line Status Intr */
+
+#define UART_IER_RHR		0x01	/* RHR interrupt */
+#define UART_IER_THR		0x02	/* THR interrupt */
+#define UART_IER_RLSI		0x04	/* RLSI interrupt */
+
 #define REG_UART_RBR(base,align)	((base)+UART_RBR_OFFSET*(align))
 #define REG_UART_THR(base,align)	((base)+UART_THR_OFFSET*(align))
 #define REG_UART_DLL(base,align)	((base)+UART_DLL_OFFSET*(align))
@@ -61,7 +71,7 @@ bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align);
 u8 uart_lowlevel_getc(virtual_addr_t base, u32 reg_align);
 bool uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align);
 void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, u8 ch);
-void uart_lowlevel_init(const char *compatible, virtual_addr_t base, u32 reg_align, 
-		u32 baudrate, u32 input_clock);
+void uart_lowlevel_init(virtual_addr_t base, u32 reg_align, 
+			u32 baudrate, u32 input_clock);
 
 #endif /* __UART_H_ */

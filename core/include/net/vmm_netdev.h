@@ -31,7 +31,7 @@
 
 #define VMM_NETDEV_CLASS_NAME			"network"
 #define VMM_NETDEV_CLASS_IPRIORITY		1
- 
+
 #define MAX_VMM_NETDEV_NAME_LEN			32
 #define MAX_VMM_NDEV_HW_ADDRESS			32
 
@@ -48,7 +48,7 @@ struct vmm_netdev_ops {
 	int (*ndev_close) (struct vmm_netdev *ndev);
 	int (*ndev_xmit) (struct vmm_netdev *ndev, void *buf);
 };
- 
+
 struct vmm_netdev {
 	char name[MAX_VMM_NETDEV_NAME_LEN];
 	struct vmm_device *dev;
@@ -64,6 +64,10 @@ struct vmm_netdev {
 	unsigned char hw_addr[MAX_VMM_NDEV_HW_ADDRESS];
 	unsigned int hw_addr_len;
 };
+
+/** Packet Switch layer initialization routines */
+extern int vmm_netswitch_init(void);
+extern int vmm_netswitch_exit(void);
 
 /** Allocate new network device */
 struct vmm_netdev *vmm_netdev_alloc(char *name);

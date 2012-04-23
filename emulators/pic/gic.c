@@ -158,12 +158,17 @@ static void gic_update(struct gic_state *s)
 			/* Assert irq to Parent PIC */
 			vmm_devemu_emulate_irq(s->guest, 
 					       s->parent_irq[cpu], level);
-		} else if (level) {
-			/* Assert irq to VCPU */
+		} else {
 			vcpu = vmm_manager_guest_vcpu(s->guest, cpu);
-			if (vcpu) {
+			if (level && vcpu) {
+				/* Assert irq to VCPU */
 				vmm_vcpu_irq_assert(vcpu, 
 						    s->parent_irq[cpu], 0x0);
+			} 
+			if (!level && vcpu) {
+				/* Deassert irq to VCPU */
+				vmm_vcpu_irq_deassert(vcpu, 
+						      s->parent_irq[cpu]);
 			}
 		}
 	}

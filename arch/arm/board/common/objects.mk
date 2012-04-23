@@ -23,4 +23,4 @@
 
 board-common-objs-$(CONFIG_ARM_GIC)+=gic.o
 board-common-objs-$(CONFIG_ARM_TIMER_SP804)+=sp804_timer.o
-
+board-common-objs-$(CONFIG_ARM_PL190)+=pl190.o

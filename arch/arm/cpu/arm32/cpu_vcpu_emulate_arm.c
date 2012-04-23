@@ -379,7 +379,7 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 	u32 data;
 	register int rc;
 	register u32 cond, Rn, P, U, W;
-	register u32 cpsr, address;
+	register u32 address;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_RFE);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
@@ -393,11 +393,27 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 		P = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_P_START);
 		U = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_U_START);
 		W = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_W_START);
-		cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
-		if (cpsr == CPSR_MODE_USER) {
+		switch (arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) {
+		case CPSR_MODE_FIQ:
+			vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_FIQ);
+			break;
+		case CPSR_MODE_IRQ:
+			vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_IRQ);
+			break;
+		case CPSR_MODE_SUPERVISOR:
+			vmm_vcpu_irq_deassert(vcpu, CPU_SOFT_IRQ);
+			break;
+		case CPSR_MODE_ABORT:
+			vmm_vcpu_irq_deassert(vcpu, CPU_PREFETCH_ABORT_IRQ);
+			vmm_vcpu_irq_deassert(vcpu, CPU_DATA_ABORT_IRQ);
+			break;
+		case CPSR_MODE_UNDEFINED:
+			vmm_vcpu_irq_deassert(vcpu, CPU_UNDEF_INST_IRQ);
+			break;
+		default:
 			arm_unpredictable(regs, vcpu);
 			return VMM_EFAIL;
-		}
+		};
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		address = (U == 1) ? address : (address - 8);
 		address = (P == U) ? (address + 4) : address;
@@ -418,8 +434,6 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 			address = (U == 1) ? (address + 8) : (address - 8);
 			cpu_vcpu_reg_write(vcpu, regs, Rn, address);
 		}
-		/* Steps unique to exception return */
-		vmm_vcpu_irq_deassert(vcpu);
 	} else {
 		regs->pc += 4;
 	}
@@ -519,12 +533,27 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			return VMM_EFAIL;
 		}
 		if (arm_condition_passed(cond, regs)) {
-			cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
-			if ((cpsr == CPSR_MODE_USER) ||
-			    (cpsr == CPSR_MODE_SYSTEM)) {
+			switch (arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) {
+			case CPSR_MODE_FIQ:
+				vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_FIQ);
+				break;
+			case CPSR_MODE_IRQ:
+				vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_IRQ);
+				break;
+			case CPSR_MODE_SUPERVISOR:
+				vmm_vcpu_irq_deassert(vcpu, CPU_SOFT_IRQ);
+				break;
+			case CPSR_MODE_ABORT:
+				vmm_vcpu_irq_deassert(vcpu, CPU_PREFETCH_ABORT_IRQ);
+				vmm_vcpu_irq_deassert(vcpu, CPU_DATA_ABORT_IRQ);
+				break;
+			case CPSR_MODE_UNDEFINED:
+				vmm_vcpu_irq_deassert(vcpu, CPU_UNDEF_INST_IRQ);
+				break;
+			default:
 				arm_unpredictable(regs, vcpu);
 				return VMM_EFAIL;
-			}
+			};
 			mask = 0x1;
 			length = 4;
 			for (i = 0; i < 15; i++) {
@@ -576,8 +605,6 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			cpsr = cpu_vcpu_spsr_retrieve(vcpu);
 			cpu_vcpu_cpsr_update(vcpu, regs, cpsr, CPSR_ALLBITS_MASK);
 			regs->pc = data;
-			/* Steps unique to exception return */
-			vmm_vcpu_irq_deassert(vcpu);
 		} else {
 			regs->pc += 4;
 		}
@@ -735,6 +762,27 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 			   ARM_HYPERCALL_SUBS_REL_RN_START);
 	register_form = (id == ARM_HYPERCALL_SUBS_REL_ID0) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
+		switch (arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) {
+		case CPSR_MODE_FIQ:
+			vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_FIQ);
+			break;
+		case CPSR_MODE_IRQ:
+			vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_IRQ);
+			break;
+		case CPSR_MODE_SUPERVISOR:
+			vmm_vcpu_irq_deassert(vcpu, CPU_SOFT_IRQ);
+			break;
+		case CPSR_MODE_ABORT:
+			vmm_vcpu_irq_deassert(vcpu, CPU_PREFETCH_ABORT_IRQ);
+			vmm_vcpu_irq_deassert(vcpu, CPU_DATA_ABORT_IRQ);
+			break;
+		case CPSR_MODE_UNDEFINED:
+			vmm_vcpu_irq_deassert(vcpu, CPU_UNDEF_INST_IRQ);
+			break;
+		default:
+			arm_unpredictable(regs, vcpu);
+			return VMM_EFAIL;
+		};
 		if (register_form) {
 			imm5 = ARM_INST_BITS(inst,
 					     ARM_HYPERCALL_SUBS_REL_IMM5_END,
@@ -823,8 +871,6 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 		spsr = cpu_vcpu_spsr_retrieve(vcpu);
 		cpu_vcpu_cpsr_update(vcpu, regs, spsr, CPSR_ALLBITS_MASK);
 		regs->pc = result;
-		/* Steps unique to exception return */
-		vmm_vcpu_irq_deassert(vcpu);
 	} else {
 		regs->pc += 4;
 	}

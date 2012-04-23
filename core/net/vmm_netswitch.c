@@ -30,13 +30,6 @@
 #include <vmm_devdrv.h>
 #include <net/vmm_netswitch.h>
 
-#define MODULE_VARID		netswitch_framework_module
-#define MODULE_NAME		"Network Switch Framework"
-#define MODULE_AUTHOR		"Pranav Sawargaonkar"
-#define MODULE_IPRIORITY	VMM_NETSWITCH_CLASS_IPRIORITY
-#define MODULE_INIT		vmm_netswitch_init
-#define MODULE_EXIT		vmm_netswitch_exit
-
 struct vmm_netswitch *vmm_netswitch_alloc(char *name)
 {
 	struct vmm_netswitch *nsw;
@@ -143,7 +136,7 @@ u32 vmm_netswitch_count(void)
 	return vmm_devdrv_classdev_count(VMM_NETSWITCH_CLASS_NAME);
 }
 
-static int __init vmm_netswitch_init(void)
+int vmm_netswitch_init(void)
 {
 	int rc;
 	struct vmm_class *c;
@@ -167,26 +160,23 @@ static int __init vmm_netswitch_init(void)
 	return VMM_OK;
 }
 
-static void vmm_netswitch_exit(void)
+int vmm_netswitch_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
 
 	c = vmm_devdrv_find_class(VMM_NETSWITCH_CLASS_NAME);
 	if (!c)
-		return;
+		return VMM_OK;
 
 	rc = vmm_devdrv_unregister_class(c);
-	if (rc)
-	return;
+	if (rc) {
+		vmm_printf("Failed to unregister %s class",
+			VMM_NETSWITCH_CLASS_NAME);
+		return rc;
+	}
 
 	vmm_free(c);
+
+	return VMM_OK;
 }
-
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
-

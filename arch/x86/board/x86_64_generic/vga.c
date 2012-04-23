@@ -22,6 +22,7 @@
  */
 #include <vmm_types.h>
 #include <vmm_string.h>
+#include <vmm_host_aspace.h>
 
 /* 
  * These define our textpointer, our background and foreground
@@ -159,7 +160,7 @@ void settextcolor(u8 forecolor, u8 backcolor)
 void init_console(void)
 {
         settextcolor(15 /* White foreground */, 0 /* Black background */);
-	textmemptr = (u16 *)0xB8000;
+	textmemptr = (u16 *)vmm_host_iomap(0xB8000, 0x4000);
 	cls();
 }
 

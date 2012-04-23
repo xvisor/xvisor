@@ -202,26 +202,29 @@ int vmm_devdrv_remove(struct vmm_devtree_node * node,
 int vmm_devdrv_ioremap(struct vmm_device * dev, 
 			virtual_addr_t * addr, int regset)
 {
-	const char *attrval;
+	const char *aval;
+	physical_addr_t pa;
+	virtual_size_t sz;
 
 	if (!dev || !addr || regset < 0) {
 		return VMM_EFAIL;
 	}
 
-	attrval = vmm_devtree_attrval(dev->node,
-				      VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME);
+	aval = vmm_devtree_attrval(dev->node,
+				   VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME);
 
-	if (attrval) {
+	if (aval) {
 		/* Directly return the "virtual-reg" attribute */
-		*addr = ((virtual_addr_t *) attrval)[regset];
+		*addr = ((virtual_addr_t *) aval)[regset];
 	} else {
-		attrval = vmm_devtree_attrval(dev->node,
-					      VMM_DEVTREE_REG_ATTR_NAME);
-		if (attrval) {
-			*addr =
-			    vmm_host_iomap(((virtual_addr_t *) attrval)[regset],
-					   ((virtual_addr_t *) attrval)[regset +
-									1]);
+		aval = vmm_devtree_attrval(dev->node,
+					   VMM_DEVTREE_REG_ATTR_NAME);
+		if (aval) {
+			aval += regset * (sizeof(pa) + sizeof(sz));
+			pa = *((physical_addr_t *)aval);
+			aval += sizeof(pa);
+			sz = *((virtual_size_t *)aval);
+			*addr = vmm_host_iomap(pa, sz);
 		} else {
 			return VMM_EFAIL;
 		}

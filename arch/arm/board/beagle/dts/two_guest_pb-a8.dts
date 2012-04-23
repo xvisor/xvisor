@@ -45,6 +45,7 @@
 					baudrate = <115200>;
 					reg_offset = <0x0>;
 					reg_align = <0x4>;
+					irq = <74>;
 				};
 			};
 		};

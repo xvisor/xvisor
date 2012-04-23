@@ -179,7 +179,8 @@ int __init arch_board_final_init(void)
 	/* Find uart0 character device and 
 	 * set it as vmm_stdio character device */
 	if ((cdev = vmm_chardev_find("uart0"))) {
-		vmm_stdio_change_device(cdev);
+		vmm_stdio_change_indevice(cdev);
+		vmm_stdio_change_outdevice(cdev);
 	}
 
 	/* Syncup wall-clock time from rtc0 */

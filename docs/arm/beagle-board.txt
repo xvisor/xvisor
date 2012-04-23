@@ -1,7 +1,7 @@
 		Xvisor on BeagleBoard-xM using SD Booting 
 
-This readme explains how to build & run Xvisor on real hardware BeagleBoard-xM
-using SD booting feature of BeagleBoard-xM.
+This section of readme explains how to build & run Xvisor on real hardware 
+BeagleBoard-xM using SD booting feature of BeagleBoard-xM.
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
@@ -34,7 +34,7 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   # mkimage -A arm -O linux -T kernel -C none -a 0x88000000 -e 0x88000000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
   [6. Build ARM Basic Test for Realview PB-A8 Guest, this creates arm_test.bin.patched]
-  # make -C tests/armv7a/pb-a8/basic
+  # make -C tests/arm32/pb-a8/basic
   
   [7. Unplug micro-SD card from BeagleBoard-xM and plug it on your development machine]
 
@@ -96,9 +96,11 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
 
   (Note: If you had patched zImage and rootfs images loaded in guest NOR flash
    then instead of above step you can start booting linux,
-   arm-test# copy 0x70400000 0x40100000 0x200000
+   arm-test# copy 0x70400000 0x40100000 0x300000
    arm-test# copy 0x71000000 0x40400000 0x400000
-   arm-test# start_linux 0x70400000 0x71000000 0x400000 )
+   arm-test# start_linux 0x70400000 0x71000000 0x400000 
+   OR
+   arm-test# nor_boot)
 
   [22. Say 'hello' to ARM Basic Test]
   [guest0/uart0] arm-test# hello
@@ -114,8 +116,8 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
 
 		Xvisor on Linaro QEMU BeagleBoard using NAND Booting 
 
-This readme explains how to build & run Xvisor from nand-flash on BeagleBoard
-emulated by QEMU Linaro 2.02 or higher. 
+This section of readme explains how to build & run Xvisor from nand-flash on 
+BeagleBoard emulated by QEMU Linaro 2.02 or higher. 
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
@@ -174,7 +176,7 @@ follows:
   # mkimage -A arm -O linux -T kernel -C none -a 0x88000000 -e 0x88000000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
   [9. Build ARM Basic Test for Realview PB-A8 Guest, this creates arm_test.bin.patched]
-  # make -C tests/armv7a/pb-a8/basic
+  # make -C tests/arm32/pb-a8/basic
 
   [10. Copy the X-loader and U-Boot binaries (from step 2 or 3-4) into Xvisor build-directory]
   # cp <path-to-x-loader-binary>/x-load.bin.ift <path-to-u-boot-binary>/u-boot.bin build/
@@ -231,9 +233,11 @@ follows:
 
   (Note: If you had patched zImage and rootfs images loaded in guest NOR flash
    then instead of above step you can start booting linux,
-   arm-test# copy 0x70400000 0x40100000 0x200000
+   arm-test# copy 0x70400000 0x40100000 0x300000
    arm-test# copy 0x71000000 0x40400000 0x400000
-   arm-test# start_linux 0x70400000 0x71000000 0x400000 )
+   arm-test# start_linux 0x70400000 0x71000000 0x400000
+   OR
+   arm-test# nor_boot)
 
   [19. Say 'hello' to ARM Basic Test]
   [guest0/uart0] arm-test# hello

@@ -1,0 +1,177 @@
+
+/dts-v1/;
+
+/ {
+	vmm {
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	host {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		model = "verstilepb";
+		device_type = "host";
+		
+		cpus {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cpu_freq_mhz = <100>;
+
+			cpu0 {
+				device_type = "cpu";
+				model = "ARM926ej";
+			};
+		};
+
+		memory {
+			physical_addr = <0x00000000>;
+			physical_size = <0x08000000>; /* 128 MB */
+		};
+
+		nbridge {
+			#address-cells = <1>;
+			#size-cells = <0>;
+		
+			sbridge {
+				#address-cells = <1>;
+				#size-cells = <0>;
+		
+				uart0 {
+			      		device_type = "serial";
+			      		compatible = "pl011";
+			      		reg = <0x101F1000 0x1000>;
+			      		baudrate = <115200>;
+					irq = <12>;
+				};
+
+				uart1 {
+			      		device_type = "serial";
+			      		compatible = "pl011";
+			      		reg = <0x101F2000 0x1000>;
+			      		baudrate = <115200>;
+					irq = <13>;
+				};
+
+				uart2 {
+			      		device_type = "serial";
+			      		compatible = "pl011";
+			      		reg = <0x101F3000 0x1000>;
+			      		baudrate = <115200>;
+					irq = <14>;
+				};
+			};
+		};
+	};
+
+	guests {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		guest0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			model = "versatilepb";
+			device_type = "guest";
+
+			vcpus {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				vcpu0 {
+					device_type = "vcpu";
+					model = "ARMv5te,ARM926ej";
+					time_slice = <50000000>;
+					start_pc = <0x40000000>;
+				};
+			};
+			
+			aspace {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				mem0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x00000000>;
+					host_physical_addr = <0x02000000>;
+					physical_size = <0x06000000>; /* 96 MB */
+					device_type = "ram";
+				};
+
+				sysctl {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10000000>;
+					physical_size = <0x1000>;
+					device_type = "sys";
+					compatible = "versatilepb";
+				};
+
+				uart0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101F1000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <1024>;
+					irq = <12>;
+				};
+
+				uart1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101F2000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <1024>;
+					irq = <13>;
+				};
+
+				uart2 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101F3000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <1024>;
+					irq = <14>;
+				};
+
+				timer0_1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E2000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <36>;
+				};
+
+				timer2_3 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E3000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <37>;
+				};
+
+				pic0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10140000>;
+					physical_size = <0x10000>;
+					device_type = "pic";
+					compatible = "versatilepb,pic";
+					parent_irq = <6>;
+				};
+
+			};
+		};
+	};
+};

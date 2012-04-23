@@ -1,0 +1,11 @@
+			Versatile PB Guest
+
+This guest has ARM9 (Single Core ARMv5) CPU and various peripherals
+expected on a Versatile Platform Base Board.
+
+We have following guest OSes tested for this guest:
+
+  1. basic - Basic test and/or bootloader used by xvisor developers
+
+Please follow the README under specific guest OS directory for detailed
+steps to configure, compile and run.

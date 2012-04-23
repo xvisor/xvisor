@@ -36,7 +36,11 @@
  * +---------------------------------------------+
  */
 #define PGTREE_BIT_WIDTH	9
+#if !defined(__ASSEMBLY__)
+#define PGTREE_MASK		~((0x01UL << PGTREE_BIT_WIDTH) - 1)
+#else
 #define PGTREE_MASK		~((0x01 << PGTREE_BIT_WIDTH) - 1)
+#endif
 
 #define PML4_SHIFT		39
 #define PML4_MASK		(PGTREE_MASK << PML4_SHIFT)
@@ -60,26 +64,32 @@
 #define VIRT_TO_PGDI(__virt)	(((u64)__virt & ~(PGDI_MASK)) >> PGDI_SHIFT)
 #define VIRT_TO_PGTI(__virt)	(((u64)__virt & ~(PGTI_MASK)) >> PGTI_SHIFT)
 #define VIRT_TO_PGOFF(__virt)	(((u64)__virt & ~(PAGE_MASK)) >> PAGE_SHIFT)
-#else
-.macro VIRT_TO_PML4 __virt
-	and $(~(PML4_MASK)), \__virt
-        shr $PML4_SHIFT, \_virt
-.endm
 
-.macro VIRT_TO_PGDP __virt
-	and $(~(PGDP_MASK)), \__virt
-        shr $PGDP_SHIFT, \_virt
-.endm
+/* by plan we have identity mappings */
+#define VIRT_TO_PHYS(__virt)	(u64)(__virt)
+#define PHYS_TO_VIRT(__phys)	(u64)(__phys)
 
-.macro VIRT_TO_PGDI __virt
-	and $(~(PGDI_MASK)), \__virt
-        shr $PGDI_SHIFT, \_virt
-.endm
+union page {
+	u64 _val;
+	struct {
+		u64 present:1;
+		u64 rw:1;
+		u64 priviledge:1;
+		u64 write_through:1;
+		u64 cache_disable:1;
+		u64 accessed:1;
+		u64 dirty:1;
+		u64 pat:1;
+		u64 global:1;
+		u64 ignored:3;
+		u64 paddr:40;
+		u64 reserved:11;
+		u64 execution_disable:1;
+	} bits;
+};
 
-.macro VIRT_TO_PGTI __virt
-	and $(~(PGTI_MASK)), \__virt
-        shr $PGTI_SHIFT, \_virt
-.endm
+#define __bootstrap_text __attribute__((section(".bootstrap.text")))
+
 #endif
 
 #endif /* __CPU_MMU_H_ */

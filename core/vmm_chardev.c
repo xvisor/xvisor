@@ -25,33 +25,60 @@
 #include <vmm_list.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
+#include <vmm_scheduler.h>
 #include <vmm_chardev.h>
 
 int vmm_chardev_doioctl(struct vmm_chardev * cdev,
-			int cmd, void *buf, size_t len, bool block)
+			int cmd, void *buf, u32 len)
 {
 	if (cdev && cdev->ioctl) {
-		return cdev->ioctl(cdev, cmd, buf, len, block);
+		return cdev->ioctl(cdev, cmd, buf, len);
 	} else {
 		return VMM_EFAIL;
 	}
 }
 
 u32 vmm_chardev_doread(struct vmm_chardev * cdev,
-		       u8 *dest, size_t offset, size_t len, bool block)
+		       u8 *dest, u32 offset, u32 len, bool block)
 {
+	u32 b;
+	bool sleep;
+
 	if (cdev && cdev->read) {
-		return cdev->read(cdev, dest, offset, len, block);
+		if (block) {
+			b = 0;
+			sleep = vmm_scheduler_orphan_context() ? TRUE : FALSE;
+			while (b < len) {
+				b += cdev->read(cdev, &dest[b], 
+					        offset + b, len - b, sleep);
+			}
+			return b;
+		} else {
+			return cdev->read(cdev, dest, offset, len, FALSE);
+		}
 	} else {
 		return 0;
 	}
 }
 
 u32 vmm_chardev_dowrite(struct vmm_chardev * cdev,
-			u8 *src, size_t offset, size_t len, bool block)
+			u8 *src, u32 offset, u32 len, bool block)
 {
+	u32 b;
+	bool sleep;
+
 	if (cdev && cdev->write) {
-		return cdev->write(cdev, src, offset, len, block);
+		if (block) {
+			b = 0;
+			sleep = vmm_scheduler_orphan_context() ? TRUE : FALSE;
+			while (b < len) {
+				b += cdev->write(cdev, &src[b], 
+					         offset + b, len - b, sleep);
+			}
+			return b;
+		} else {
+			return cdev->write(cdev, src, offset, len, FALSE);
+		}
 	} else {
 		return 0;
 	}

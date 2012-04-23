@@ -94,6 +94,13 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("                <initrd_addr>  = initrd load address\n");
 	arm_puts("                <initrd_size>  = initrd size\n");
 	arm_puts("\n");
+	arm_puts("nor_boot    - Boot linux kernel from NOR flash\n");
+	arm_puts("              Usage: nor_boot\n");
+	arm_puts("              Equivalent Commands: \n");
+	arm_puts("                 copy 0x70400000 0x40100000 0x300000\n");
+	arm_puts("                 copy 0x71000000 0x40400000 0x400000\n");
+	arm_puts("                 start_linux 0x70400000 0x71000000 0x400000\n");
+	arm_puts("\n");
 	arm_puts("go          - Jump to a given address\n");
 	arm_puts("              Usage: go <addr>\n");
 	arm_puts("                <addr>  = jump address in hex\n");
@@ -382,6 +389,22 @@ void arm_cmd_start_linux(int argc, char **argv)
 	return;
 }
 
+void arm_cmd_nor_boot(int argc, char **argv)
+{
+	char *cmd1[4] = {"copy", "0x70400000", "0x40100000", "0x300000"};
+	char *cmd2[4] = {"copy", "0x71000000", "0x40400000", "0x400000"};
+	char *cmd3[4] = {"start_linux", "0x70400000", "0x71000000", "0x400000"};
+
+	arm_puts("copy 0x70400000 0x40100000 0x300000\n");
+	arm_cmd_copy(4, cmd1);
+	
+	arm_puts("copy 0x71000000 0x40400000 0x400000\n");
+	arm_cmd_copy(4, cmd2);
+
+	arm_puts("start_linux 0x70400000 0x71000000 0x400000\n");
+	arm_cmd_start_linux(4, cmd3);
+}
+
 void arm_cmd_go(int argc, char **argv)
 {
 	char str[32];
@@ -492,6 +515,8 @@ void arm_main(void)
 			arm_cmd_copy(argc, argv);
 		} else if (arm_strcmp(argv[0], "start_linux") == 0) {
 			arm_cmd_start_linux(argc, argv);
+		} else if (arm_strcmp(argv[0], "nor_boot") == 0) {
+			arm_cmd_nor_boot(argc, argv);
 		} else if (arm_strcmp(argv[0], "go") == 0) {
 			arm_cmd_go(argc, argv);
 		} else if (arm_strcmp(argv[0], "reset") == 0) {

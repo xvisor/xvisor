@@ -39,9 +39,8 @@ void __lock arch_cpu_atomic_write(atomic_t * atom, long value)
 	wmb();
 }
 
-static void __lock __cpu_atomic_add(atomic_t * atom, long value)
+void __lock arch_cpu_atomic_add(atomic_t * atom, long value)
 {
-
 	unsigned int tmp;
 	long result;
 
@@ -59,7 +58,7 @@ static void __lock __cpu_atomic_add(atomic_t * atom, long value)
 	:"cc");
 }
 
-static void __lock __cpu_atomic_sub(atomic_t * atom, long value)
+void __lock arch_cpu_atomic_sub(atomic_t * atom, long value)
 {
 	unsigned int tmp;
 	long result;
@@ -78,7 +77,7 @@ static void __lock __cpu_atomic_sub(atomic_t * atom, long value)
 	:"cc");
 }
 
-static bool __lock __cpu_atomic_testnset(atomic_t * atom, long test, long value)
+bool __lock arch_cpu_atomic_testnset(atomic_t * atom, long test, long value)
 {
 	unsigned int tmp;
 	long previous;
@@ -99,7 +98,7 @@ static bool __lock __cpu_atomic_testnset(atomic_t * atom, long test, long value)
 	return (previous == test);
 }
 
-static long __lock __cpu_atomic_add_return(atomic_t * atom, long value)
+long __lock arch_cpu_atomic_add_return(atomic_t * atom, long value)
 {
 	unsigned int tmp;
 	long result;
@@ -120,7 +119,7 @@ static long __lock __cpu_atomic_add_return(atomic_t * atom, long value)
 	return result;
 }
 
-static long __lock __cpu_atomic_sub_return(atomic_t * atom, long value)
+long __lock arch_cpu_atomic_sub_return(atomic_t * atom, long value)
 {
 	unsigned int tmp;
 	long result;
@@ -139,29 +138,4 @@ static long __lock __cpu_atomic_sub_return(atomic_t * atom, long value)
 	:"cc");
 
 	return result;
-}
-
-void __lock arch_cpu_atomic_add(atomic_t * atom, long value)
-{
-	__cpu_atomic_add(atom, value);
-}
-
-void __lock arch_cpu_atomic_sub(atomic_t * atom, long value)
-{
-	__cpu_atomic_sub(atom, value);
-}
-
-long __lock arch_cpu_atomic_add_return(atomic_t * atom, long value)
-{
-	return __cpu_atomic_add_return(atom, value);
-}
-
-long __lock arch_cpu_atomic_sub_return(atomic_t * atom, long value)
-{
-	return __cpu_atomic_sub_return(atom, value);
-}
-
-bool __lock arch_cpu_atomic_testnset(atomic_t * atom, long test, long value)
-{
-	return __cpu_atomic_testnset(atom, test, value);
 }

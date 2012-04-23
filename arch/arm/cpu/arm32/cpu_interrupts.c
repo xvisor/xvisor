@@ -345,6 +345,8 @@ void do_fiq(arch_regs_t * uregs)
 
 int __init arch_cpu_irq_setup(void)
 {
+	static const struct cpu_page zero_filled_cpu_page = { 0 };
+
 	int rc;
 	extern u32 _start_vect[];
 	u32 *vectors, *vectors_data;
@@ -369,7 +371,7 @@ int __init arch_cpu_irq_setup(void)
 	}
 
 	/* If vectors are not mapped in virtual memory then map them. */
-	vmm_memset(&vec_page, 0, sizeof(struct cpu_page));
+	vec_page = zero_filled_cpu_page;
 	rc = cpu_mmu_get_reserved_page((virtual_addr_t)vectors, &vec_page);
 	if (rc) {
 		rc = vmm_host_ram_alloc(&vec_page.pa, 
@@ -378,17 +380,12 @@ int __init arch_cpu_irq_setup(void)
 		if (rc) {
 			return rc;
 		}
+
 		vec_page.va = (virtual_addr_t)vectors;
 		vec_page.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
-		vec_page.imp = 0;
 		vec_page.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 		vec_page.ap = TTBL_AP_SRW_U;
-		vec_page.xn = 0;
-		vec_page.ng = 0;
-		vec_page.s = 0;
-		vec_page.c = 0;
-		vec_page.tex = 0;
-		vec_page.b = 0;
+
 		if ((rc = cpu_mmu_map_reserved_page(&vec_page))) {
 			return rc;
 		}
@@ -404,39 +401,4 @@ int __init arch_cpu_irq_setup(void)
 	}
 
 	return VMM_OK;
-}
-
-void arch_cpu_irq_enable(void)
-{
-	__asm("cpsie i");
-}
-
-void arch_cpu_irq_disable(void)
-{
-	__asm("cpsid i");
-}
-
-irq_flags_t arch_cpu_irq_save(void)
-{
-	unsigned long retval;
-
-	asm volatile (" mrs     %0, cpsr\n\t" " cpsid   i"	/* Syntax CPSID <iflags> {, #<p_mode>}
-								 * Note: This instruction is supported 
-								 * from ARM6 and above
-								 */
-		      :"=r" (retval)::"memory", "cc");
-
-	return retval;
-}
-
-void arch_cpu_irq_restore(irq_flags_t flags)
-{
-	asm volatile (" msr     cpsr_c, %0"::"r" (flags)
-		      :"memory", "cc");
-}
-
-void arch_cpu_wait_for_irq(void)
-{
-	/* We could also use soft delay here. */
-	asm volatile (" wfi ");
 }

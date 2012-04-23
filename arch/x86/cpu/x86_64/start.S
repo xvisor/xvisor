@@ -301,7 +301,6 @@ _gdt64:
         /* Segment base: Again shouln't matter */
         .word 0
         .long 0xBF9A00 /* AVL:L:Execute/Access */
-        .word
 
         .xvisor_data_64:
         .word 0xFFFF

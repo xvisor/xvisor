@@ -65,6 +65,7 @@ struct vmm_host_irq_chip {
 struct vmm_host_irq {
 	u32 num;
 	bool enabled;
+	u32 count;
 	void * chip_data;
 	struct vmm_host_irq_chip * chip;
 	struct dlist hndl_list;
@@ -73,14 +74,35 @@ struct vmm_host_irq {
 /** Execute host interrupts (To be called from architecture specific code) */
 int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs);
 
+/** Get host irq count */
+u32 vmm_host_irq_count(void);
+
+/** Get host irq instance from host irq number */
+struct vmm_host_irq * vmm_host_irq_get(u32 hirq_num);
+
 /* Set host irq chip for given host irq number */
 int vmm_host_irq_set_chip(u32 hirq_num, struct vmm_host_irq_chip *chip);
 
 /* Set host irq chip data for given host irq number */
 int vmm_host_irq_set_chip_data(u32 hirq_num, void * chip_data);
 
-/** Get host irq instance from host irq number */
-struct vmm_host_irq * vmm_host_irq_get(u32 hirq_num);
+/** Get host irq number from host irq instance */
+static inline u32 vmm_host_irq_get_num(struct vmm_host_irq *irq)
+{
+	return (irq) ? irq->num : 0;
+}
+
+/** Check if a host irq is enabled */
+static inline bool vmm_host_irq_isenabled(struct vmm_host_irq *irq)
+{
+	return (irq) ? irq->enabled : FALSE;
+}
+
+/** Get host irq count from host irq instance */
+static inline u32 vmm_host_irq_get_count(struct vmm_host_irq *irq)
+{
+	return (irq) ? irq->count : 0;
+}
 
 /** Get host irq chip instance from host irq instance */
 static inline struct vmm_host_irq_chip * vmm_host_irq_get_chip(
@@ -94,9 +116,6 @@ static inline void * vmm_host_irq_get_chip_data(struct vmm_host_irq *irq)
 {
 	return (irq) ? irq->chip_data : NULL;
 }
-
-/** Check if a host irq is enabled */
-bool vmm_host_irq_isenabled(u32 hirq_num);
 
 /** Enable a host irq (by default all irqs are enabled) */
 int vmm_host_irq_enable(u32 hirq_num);

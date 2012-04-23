@@ -25,6 +25,8 @@
 #include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
+#include <vmm_stdio.h>
+#include <vmm_chardev.h>
 #include <libfdt.h>
 #include <omap3/prcm.h>
 #include <omap3/sdrc.h>
@@ -196,6 +198,7 @@ int __init arch_board_final_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
+	struct vmm_chardev * cdev;
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
@@ -212,6 +215,13 @@ int __init arch_board_final_init(void)
 	rc = vmm_devdrv_probe(node, NULL);
 	if (rc) {
 		return rc;
+	}
+
+	/* Find uart0 character device and 
+	 * set it as vmm_stdio character device */
+	if ((cdev = vmm_chardev_find("uart0"))) {
+		vmm_stdio_change_indevice(cdev);
+		vmm_stdio_change_outdevice(cdev);
 	}
 
 	return VMM_OK;

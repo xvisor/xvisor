@@ -164,15 +164,17 @@ static int cpu_boot_pagetable_init(physical_addr_t *pa,
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_init(physical_addr_t * resv_pa,
-			virtual_addr_t * resv_va,
-			virtual_size_t * resv_sz)
+int arch_cpu_aspace_init(physical_addr_t * core_resv_pa, 
+			 virtual_addr_t * core_resv_va,
+			 virtual_size_t * core_resv_sz,
+			 physical_addr_t * arch_resv_pa,
+			 virtual_addr_t * arch_resv_va,
+			 virtual_size_t * arch_resv_sz)
 {
 	u32 c0_sr;
 
-	if (cpu_boot_pagetable_init(resv_pa, resv_va, resv_sz) != VMM_OK)
+	if (cpu_boot_pagetable_init(core_resv_pa, core_resv_va, core_resv_sz))
 		return VMM_EFAIL;
-
 
 	/*
 	 * Now that the page tables are set, we are ready to handle

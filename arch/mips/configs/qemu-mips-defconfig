@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Mon Mar 12 14:16:02 2012
+# Sun Apr 22 20:52:42 2012
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -52,8 +52,7 @@ CONFIG_HEAP_BUDDY=y
 CONFIG_CMD_VERSION=y
 CONFIG_CMD_RESET=y
 CONFIG_CMD_SHUTDOWN=y
-CONFIG_CMD_VAPOOL=y
-CONFIG_CMD_RAM=y
+CONFIG_CMD_HOST=y
 CONFIG_CMD_DEVTREE=y
 CONFIG_CMD_VCPU=y
 CONFIG_CMD_GUEST=y
@@ -82,6 +81,7 @@ CONFIG_LIBFDT=y
 #
 CONFIG_SERIAL=y
 CONFIG_SERIAL_UART=y
+# CONFIG_SERIAL_OMAP_UART is not set
 # CONFIG_SERIAL_PL01X is not set
 
 #

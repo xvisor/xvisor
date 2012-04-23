@@ -33,7 +33,7 @@ void vmm_vcpu_irq_process(arch_regs_t * regs);
 void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason);
 
 /** Deassert active irq of given vcpu */
-void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu);
+void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no);
 
 /** Wait for irq on given vcpu */
 int vmm_vcpu_irq_wait(struct vmm_vcpu *vcpu);
