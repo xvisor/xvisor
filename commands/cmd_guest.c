@@ -416,7 +416,7 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		}
 		src_addr = (physical_addr_t)vmm_str2ulonglong(argv[3], 10);
 		if (argc > 4)
-			size = (physical_size_t)vmm_str2uint(argv[4], 10);
+			size = (physical_size_t)vmm_str2ulonglong(argv[4], 10);
 		else
 			size = 64;
 		return cmd_guest_dumpmem(cdev, id, src_addr, size);

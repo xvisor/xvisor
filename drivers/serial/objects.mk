@@ -22,5 +22,6 @@
 # */
 
 drivers-objs-$(CONFIG_SERIAL_UART)+= serial/uart.o
+drivers-objs-$(CONFIG_SERIAL_OMAP_UART)+= serial/omap-uart.o
 drivers-objs-$(CONFIG_SERIAL_PL01X)+= serial/pl011.o
 

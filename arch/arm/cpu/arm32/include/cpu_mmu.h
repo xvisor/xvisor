@@ -26,6 +26,10 @@
 #include <vmm_types.h>
 #include <vmm_list.h>
 
+/* Generic CPU page having superset of page 
+ * attributes required by all ARM family 
+ * processors such as ARMv5, ARMv6, and ARMv7
+ */
 struct cpu_page {
 	virtual_addr_t va;
 	physical_addr_t pa;
@@ -43,6 +47,7 @@ struct cpu_page {
 	u32 pad:15;
 };
 
+/* Generic L2-table representation */
 struct cpu_l2tbl {
 	struct dlist head;
 	int num;
@@ -55,6 +60,7 @@ struct cpu_l2tbl {
 	u32 tte_cnt;
 };
 
+/* Generic L1-table representation */
 struct cpu_l1tbl {
 	struct dlist head;
 	int num;

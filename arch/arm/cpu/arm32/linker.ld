@@ -74,6 +74,17 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
+	. = ALIGN(0x1000); /* init functions start is page aligned */
+	.init : /* Put init functions into separate pages */
+	{
+		PROVIDE(_init_text_start = .);
+		*(.init.text)
+		. = ALIGN(4);
+		PROVIDE(_init_text_end = .);
+	}
+
+	. = ALIGN(0x1000); /* init functions end is page aligned */
+
 	.svc_stack :
 	{
 		PROVIDE(_svc_stack_start = .);
@@ -120,15 +131,6 @@ SECTIONS
 		. = . + CONFIG_IRQ_STACK_SIZE;
 		. = ALIGN(4);
 		PROVIDE(_fiq_stack_end = .);
-	}
-
-	. = ALIGN(0x1000); /* Put init functions into separate pages */
-	.init :
-	{
-		PROVIDE(_init_text_start = .);
-		*(.init.text)
-		. = ALIGN(4);
-		PROVIDE(_init_text_end = .);
 	}
 
 	. = ALIGN(0x100000); /* Need this to create proper sections */

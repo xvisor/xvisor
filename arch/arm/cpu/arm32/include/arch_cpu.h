@@ -40,9 +40,12 @@ void arch_vcpu_regs_dump(struct vmm_vcpu * vcpu);
 void arch_vcpu_stat_dump(struct vmm_vcpu * vcpu);
 
 /** Address space functions required by VMM core */
-int arch_cpu_aspace_init(physical_addr_t * resv_pa, 
-			virtual_addr_t * resv_va,
-			virtual_size_t * resv_sz);
+int arch_cpu_aspace_init(physical_addr_t * core_resv_pa, 
+			 virtual_addr_t * core_resv_va,
+			 virtual_size_t * core_resv_sz,
+			 physical_addr_t * arch_resv_pa,
+			 virtual_addr_t * arch_resv_va,
+			 virtual_size_t * arch_resv_sz);
 int arch_cpu_aspace_map(virtual_addr_t va, 
 			virtual_size_t sz, 
 			physical_addr_t pa,
@@ -66,9 +69,11 @@ void arch_cpu_wait_for_irq(void);
 /** VCPU Interrupt functions required by VMM core */
 u32 arch_vcpu_irq_count(struct vmm_vcpu * vcpu);
 u32 arch_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no);
+int arch_vcpu_irq_assert(struct vmm_vcpu * vcpu, u32 irq_no, u32 reason);
 int arch_vcpu_irq_execute(struct vmm_vcpu * vcpu, 
 			 arch_regs_t * regs,
 			 u32 irq_no, u32 reason);
+int arch_vcpu_irq_deassert(struct vmm_vcpu * vcpu, u32 irq_no, u32 reason);
 
 /** Timer functions required by VMM core */
 int arch_cpu_clockevent_start(u64 tick_nsecs);

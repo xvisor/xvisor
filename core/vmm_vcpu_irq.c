@@ -61,8 +61,8 @@ void vmm_vcpu_irq_process(arch_regs_t * regs)
 	/* If irq number found then execute it */
 	if (irq_no != -1) {
 		if (arch_vcpu_irq_execute(vcpu, regs, irq_no, irq_reas) == VMM_OK) {
-			vcpu->irqs.reason[irq_no] = 0x0;
 			vcpu->irqs.assert[irq_no] = FALSE;
+			vcpu->irqs.execute[irq_no] = TRUE;
 			vcpu->irqs.execute_count++;
 		}
 	}
@@ -81,9 +81,11 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 
 	/* Assert the irq */
 	if (!vcpu->irqs.assert[irq_no]) {
-		vcpu->irqs.reason[irq_no] = reason;
-		vcpu->irqs.assert[irq_no] = TRUE;
-		vcpu->irqs.assert_count++;
+		if (arch_vcpu_irq_assert(vcpu, irq_no, reason) == VMM_OK) {
+			vcpu->irqs.reason[irq_no] = reason;
+			vcpu->irqs.assert[irq_no] = TRUE;
+			vcpu->irqs.assert_count++;
+		}
 	}
 
 	/* If vcpu was waiting for irq then resume it. */
@@ -93,15 +95,27 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 	}
 }
 
-void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu)
+void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no)
 {
+	u32 reason;
+
 	/* For non-normal vcpu dont do anything */
 	if (!vcpu || !vcpu->is_normal) {
 		return;
 	}
 
-	/* Increment deassert count */
-	vcpu->irqs.deassert_count++;
+	/* Deassert the irq */
+	if (vcpu->irqs.execute[irq_no]) {
+		reason = vcpu->irqs.reason[irq_no];
+		if (arch_vcpu_irq_deassert(vcpu, irq_no, reason) == VMM_OK) {
+			vcpu->irqs.deassert_count++;
+		}
+	}
+
+	/* Ensure irq is not asserted and not executing */
+	vcpu->irqs.reason[irq_no] = 0x0;
+	vcpu->irqs.assert[irq_no] = FALSE;
+	vcpu->irqs.execute[irq_no] = FALSE;
 }
 
 int vmm_vcpu_irq_wait(struct vmm_vcpu *vcpu)
@@ -146,6 +160,7 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 
 		/* Allocate memory for arrays */
 		vcpu->irqs.assert = vmm_malloc(sizeof(bool) * irq_count);
+		vcpu->irqs.execute = vmm_malloc(sizeof(bool) * irq_count);
 		vcpu->irqs.reason = vmm_malloc(sizeof(u32) * irq_count);
 	}
 
@@ -161,6 +176,7 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	for (ite = 0; ite < irq_count; ite++) {
 		vcpu->irqs.reason[ite] = 0;
 		vcpu->irqs.assert[ite] = FALSE;
+		vcpu->irqs.execute[ite] = FALSE;
 	}
 
 	/* Clear wait for irq flag */

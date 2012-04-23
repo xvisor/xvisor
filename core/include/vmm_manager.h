@@ -72,6 +72,7 @@ struct vmm_guest_aspace {
 
 struct vmm_vcpu_irqs {
 	bool *assert;
+	bool *execute;
 	u32 *reason;
 	u32 depth;
 	u64 assert_count;

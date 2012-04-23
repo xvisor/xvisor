@@ -24,8 +24,7 @@
 commands-objs-$(CONFIG_CMD_VERSION)+= cmd_version.o
 commands-objs-$(CONFIG_CMD_RESET)+= cmd_reset.o
 commands-objs-$(CONFIG_CMD_SHUTDOWN)+= cmd_shutdown.o
-commands-objs-$(CONFIG_CMD_VAPOOL)+= cmd_vapool.o
-commands-objs-$(CONFIG_CMD_RAM)+= cmd_ram.o
+commands-objs-$(CONFIG_CMD_HOST)+= cmd_host.o
 commands-objs-$(CONFIG_CMD_DEVTREE)+= cmd_devtree.o
 commands-objs-$(CONFIG_CMD_VCPU)+= cmd_vcpu.o
 commands-objs-$(CONFIG_CMD_GUEST)+= cmd_guest.o

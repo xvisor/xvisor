@@ -35,6 +35,15 @@
 #define UART_PL011_RSR                  0x04	 /*  Receive status register (Read). */
 #define UART_PL011_ECR                  0x04	 /*  Error clear register (Write). */
 #define UART_PL011_FR                   0x18	 /*  Flag register (Read only). */
+#define UART_PL011_IBRD                 0x24
+#define UART_PL011_FBRD                 0x28
+#define UART_PL011_LCRH                 0x2C
+#define UART_PL011_CR                   0x30
+#define UART_PL011_IFLS			0x34	 /*  Interrupt FIFO level select register */
+#define UART_PL011_IMSC                 0x38
+#define UART_PL011_MIS                  0x40
+#define UART_PL011_ICR                  0x44
+#define UART_PL011_PERIPH_ID0           0xFE0
 
 #define UART_PL011_RSR_OE               0x08
 #define UART_PL011_RSR_BE               0x04
@@ -47,15 +56,6 @@
 #define UART_PL011_FR_RXFE              0x10
 #define UART_PL011_FR_BUSY              0x08
 #define UART_PL011_FR_TMSK              (UART_PL011_FR_TXFF + UART_PL011_FR_BUSY)
-
-#define UART_PL011_IBRD                 0x24
-#define UART_PL011_FBRD                 0x28
-#define UART_PL011_LCRH                 0x2C
-#define UART_PL011_CR                   0x30
-#define UART_PL011_IMSC                 0x38
-#define UART_PL011_MIS                  0x40
-#define UART_PL011_ICR                  0x44
-#define UART_PL011_PERIPH_ID0           0xFE0
 
 #define UART_PL011_LCRH_SPS             (1 << 7)
 #define UART_PL011_LCRH_WLEN_8          (3 << 5)
@@ -80,6 +80,11 @@
 #define UART_PL011_CR_IIRLP             (1 << 2)
 #define UART_PL011_CR_SIREN             (1 << 1)
 #define UART_PL011_CR_UARTEN            (1 << 0)
+
+#define UART_PL011_IFLS_RXIFL_MASK	0x00000038
+#define UART_PL011_IFLS_RXIFL_SHIFT	3
+#define UART_PL011_IFLS_TXIFL_MASK	0x00000007
+#define UART_PL011_IFLS_TXIFL_SHIFT	0
 
 #define UART_PL011_IMSC_OEIM            (1 << 10)
 #define UART_PL011_IMSC_BEIM            (1 << 9)

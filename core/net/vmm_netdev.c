@@ -48,7 +48,7 @@ struct vmm_netdev *vmm_alloc_netdev(const char *name)
 		vmm_printf("%s Failed to allocate net device\n", __func__);
 		return NULL;
 	}
- 
+
 	vmm_memset(ndev, 0, sizeof(struct vmm_netdev));
 	vmm_strcpy(ndev->name, name);
 	ndev->state = VMM_NETDEV_UNINITIALIZED;
@@ -82,12 +82,12 @@ int vmm_netdev_register(struct vmm_netdev * ndev)
 			   "with err 0x%x\n", __func__, ndev->name, rc);
 		goto fail_ndev_reg;
 	}
- 
+
 	if (ndev->dev_ops && ndev->dev_ops->ndev_init) {
 		rc = ndev->dev_ops->ndev_init(ndev);
 		if (rc != VMM_OK) {
 			vmm_printf("%s: Device %s Failed during initializaion"
-				   "with err %d!!!!\n", __func__ , 
+				   "with err %d!!!!\n", __func__ ,
 				   ndev->name, rc);
 			rc = vmm_devdrv_unregister_classdev(
 						VMM_NETDEV_CLASS_NAME, cd);
@@ -182,6 +182,21 @@ static int __init vmm_netdev_init(void)
 
 	rc = vmm_devdrv_register_class(c);
 	if (rc) {
+		vmm_printf("Failed to register %s class\n",
+			VMM_NETDEV_CLASS_NAME);
+		vmm_free(c);
+		return rc;
+	}
+
+	rc = vmm_netswitch_init();
+	if (rc) {
+		vmm_printf("Failed to init vmm net switch layer\n");
+		rc = vmm_devdrv_unregister_class(c);
+		if (rc) {
+			vmm_printf("Failed to unregister %s class\n",
+				VMM_NETDEV_CLASS_NAME);
+		}
+		vmm_printf("Class %s unregistered\n", VMM_NETDEV_CLASS_NAME);
 		vmm_free(c);
 		return rc;
 	}
@@ -193,6 +208,10 @@ static void vmm_netdev_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
+
+	rc = vmm_netswitch_exit();
+	if (rc)
+		return;
 
 	c = vmm_devdrv_find_class(VMM_NETDEV_CLASS_NAME);
 	if (!c) {

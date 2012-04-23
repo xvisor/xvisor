@@ -220,11 +220,12 @@ u32 vmm_host_free_initmem(void)
 int __init vmm_host_aspace_init(void)
 {
 	int rc;
-	physical_addr_t ram_start, resv_pa = 0x0;
+	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
 	physical_size_t ram_size;
-	virtual_addr_t vapool_start, resv_va = 0x0;
+	virtual_addr_t vapool_start, core_resv_va = 0x0, arch_resv_va = 0x0;
 	virtual_size_t vapool_size, vapool_hksize, ram_hksize;
-	virtual_size_t resv_sz = 0x0, hk_total_size = 0x0;
+	virtual_size_t hk_total_size = 0x0;
+	virtual_size_t core_resv_sz = 0x0, arch_resv_sz = 0x0;
 
 	/* Determine VAPOOL start, size, and hksize */
 	vapool_start = arch_code_vaddr_start();
@@ -250,50 +251,84 @@ int __init vmm_host_aspace_init(void)
 	ram_hksize = vmm_host_ram_estimate_hksize(ram_size);
 
 	/* Calculate physical address, virtual address, and size of 
-	 * reserved area for VAPOOL and RAM house-keeping */
+	 * core reserved space for VAPOOL and RAM house-keeping
+	 */
 	hk_total_size = vapool_hksize + ram_hksize;
 	hk_total_size = VMM_ROUNDUP2_PAGE_SIZE(hk_total_size);
-	resv_pa = ram_start;
-	resv_va = vapool_start + arch_code_size();
-	resv_sz = hk_total_size;
-	if ((rc = arch_cpu_aspace_init(&resv_pa, &resv_va, &resv_sz))) {
+	core_resv_pa = ram_start;
+	core_resv_va = vapool_start + arch_code_size();
+	core_resv_sz = hk_total_size;
+
+	/* We cannot estimate the physical address, virtual address, and size 
+	 * of arch reserved space so we set all of them to zero and expect that
+	 * arch_cpu_aspace_init() will update them if arch code is going to use
+	 * the arch reserved space
+	 */
+	arch_resv_pa = 0x0;
+	arch_resv_va = 0x0;
+	arch_resv_sz = 0x0;
+
+	/* Call arch_cpu_aspace_init() will estimated parameters for core 
+	 * reserved space and arch reserved space. The arch_cpu_aspace_init()
+	 * can change these parameter as per needed.
+	 */
+	if ((rc = arch_cpu_aspace_init(&core_resv_pa, 
+					&core_resv_va, 
+					&core_resv_sz,
+					&arch_resv_pa,
+					&arch_resv_va,
+					&arch_resv_sz))) {
 		return rc;
 	}
-	if (resv_sz < hk_total_size) {
+	if (core_resv_sz < hk_total_size) {
 		return VMM_EFAIL;
 	}
-	if ((vapool_size <= resv_sz) || 
-	    (ram_size <= resv_sz)) {
+	if ((vapool_size <= core_resv_sz) || 
+	    (ram_size <= core_resv_sz)) {
 		return VMM_EFAIL;
 	}
 
 	/* Initialize VAPOOL managment */
 	if ((rc = vmm_host_vapool_init(vapool_start, 
 					vapool_size, 
-					resv_va, 
-					resv_va, 
-					resv_sz))) {
+					core_resv_va, 
+					core_resv_va, 
+					core_resv_sz))) {
 		return rc;
 	}
 
-	/* Reserve pages used for Code in VAPOOL */
+	/* Reserve pages used for code in VAPOOL */
 	if ((rc = vmm_host_vapool_reserve(arch_code_vaddr_start(), 
 					  arch_code_size()))) {
+		return rc;
+	}
+
+	/* Reserve pages used for arch reserved space in VAPOOL */
+	if ((0x0 < arch_resv_sz) &&
+	    (rc = vmm_host_vapool_reserve(arch_resv_va, 
+					   arch_resv_sz))) {
 		return rc;
 	}
 
 	/* Initialize RAM managment */
 	if ((rc = vmm_host_ram_init(ram_start, 
 				    ram_size, 
-				    resv_va + vapool_hksize, 
-				    resv_pa, 
-				    resv_sz))) {
+				    core_resv_va + vapool_hksize, 
+				    core_resv_pa, 
+				    core_resv_sz))) {
 		return rc;
 	}
 
-	/* Reserve pages used for Code in RAM */
+	/* Reserve pages used for code in RAM */
 	if ((rc = vmm_host_ram_reserve(arch_code_paddr_start(), 
 				       arch_code_size()))) {
+		return rc;
+	}
+
+	/* Reserve pages used for arch reserved space in RAM */
+	if ((0x0 < arch_resv_sz) &&
+	    (rc = vmm_host_ram_reserve(arch_resv_pa, 
+				       arch_resv_sz))) {
 		return rc;
 	}
 

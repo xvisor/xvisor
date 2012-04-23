@@ -25,4 +25,5 @@ board-objs-y+=brd_defterm.o
 board-objs-y+=brd_timer.o
 board-objs-y+=brd_main.o
 board-objs-$(CONFIG_VEXPRESS_A15_ONE_GUEST_PBA8_DTS)+=dts/one_guest_pb-a8.o
+board-objs-$(CONFIG_VEXPRESS_A15_VE_ONE_GUEST_PBA8_DTS)+=dts/ve_one_guest_pb-a8.o
 
