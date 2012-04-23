@@ -28,6 +28,7 @@
 #include <vmm_error.h>
 #include <cpu_mmu.h>
 #include <arch_cpu.h>
+#include <cpu_private.h>
 
 struct cpu_apic apic;
 

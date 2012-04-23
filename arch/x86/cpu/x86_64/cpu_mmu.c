@@ -28,6 +28,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_types.h>
 #include <cpu_mmu.h>
+#include <arch_sections.h>
 
 extern u8 _code_end;
 extern u8 _code_start;

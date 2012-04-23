@@ -75,6 +75,10 @@ SECTIONS
                 PROVIDE(_stack_end = .);
                 . += 8192;
                 PROVIDE(_stack_start = .);
+		. = ALIGN(4096);
+		PROVIDE(_except_stack_end = .);
+		. += 8192;
+		PROVIDE(_except_stack_start = .);
         }
 
 	.init :

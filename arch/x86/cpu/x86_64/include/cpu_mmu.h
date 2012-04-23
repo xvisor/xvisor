@@ -23,6 +23,10 @@
 #ifndef __CPU_MMU_H_
 #define __CPU_MMU_H_
 
+#define VMM_CODE_SEG_SEL	0x08
+#define VMM_DATA_SEG_SEL	0x10
+#define VMM_TSS_SEG_SEL		0x18
+
 /*
  * Bit width and mask for 4 tree levels used in
  * virtual address mapping. 4 tree levels, 9 bit
@@ -66,8 +70,8 @@
 #define VIRT_TO_PGOFF(__virt)	(((u64)__virt & ~(PAGE_MASK)) >> PAGE_SHIFT)
 
 /* by plan we have identity mappings */
-#define VIRT_TO_PHYS(__virt)	(u64)(__virt)
-#define PHYS_TO_VIRT(__phys)	(u64)(__phys)
+#define VIRT_TO_PHYS(__virt)	(physical_addr_t)(__virt)
+#define PHYS_TO_VIRT(__phys)	(virtual_addr_t)(__phys)
 
 union page {
 	u64 _val;
