@@ -96,9 +96,11 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
 
   (Note: If you had patched zImage and rootfs images loaded in guest NOR flash
    then instead of above step you can start booting linux,
-   arm-test# copy 0x70400000 0x40100000 0x200000
+   arm-test# copy 0x70400000 0x40100000 0x300000
    arm-test# copy 0x71000000 0x40400000 0x400000
-   arm-test# start_linux 0x70400000 0x71000000 0x400000 )
+   arm-test# start_linux 0x70400000 0x71000000 0x400000 
+   OR
+   arm-test# nor_boot)
 
   [22. Say 'hello' to ARM Basic Test]
   [guest0/uart0] arm-test# hello
@@ -231,9 +233,11 @@ follows:
 
   (Note: If you had patched zImage and rootfs images loaded in guest NOR flash
    then instead of above step you can start booting linux,
-   arm-test# copy 0x70400000 0x40100000 0x200000
+   arm-test# copy 0x70400000 0x40100000 0x300000
    arm-test# copy 0x71000000 0x40400000 0x400000
-   arm-test# start_linux 0x70400000 0x71000000 0x400000 )
+   arm-test# start_linux 0x70400000 0x71000000 0x400000
+   OR
+   arm-test# nor_boot)
 
   [19. Say 'hello' to ARM Basic Test]
   [guest0/uart0] arm-test# hello
