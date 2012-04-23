@@ -98,19 +98,21 @@ Realview PB-A8 Host:
   [26. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
-  [27. Copy zImage binary from NOR flash to DDR]
-  [guest0/uart0] arm-test# copy 0x70400000 0x40100000 0x200000
-
-  [28. Copy roofs.img binary from NOR flash to DDR]
+  [27. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/uart0] arm-test# copy 0x70400000 0x40100000 0x300000
+  (Note: This command will copy zImage to RAM)
   [guest0/uart0] arm-test# copy 0x71000000 0x40400000 0x400000
-
-  [29. Start linux kernel]
+  (Note: This command will copy rootfs.img to RAM)
   [guest0/uart0] arm-test# start_linux 0x70400000 0x71000000 0x400000
+  (Note: This command will start linux booting)
+  OR
+  [guest0/uart0] arm-test# nor_boot
+  (Note: "nor_boot" is a short-cut command)
 
-  [30. Wait for Linux prompt to come-up and then try out some commands]
+  [28. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [31. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [29. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
