@@ -21,7 +21,7 @@
  * @brief Implementation of sempahore locks for Orphan VCPU (or Thread).
  */
 
-#include <arch_cpu.h>
+#include <arch_atomic.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>

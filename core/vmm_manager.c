@@ -21,7 +21,7 @@
  * @brief source file for hypervisor manager
  */
 
-#include <arch_cpu.h>
+#include <arch_vcpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_guest_aspace.h>

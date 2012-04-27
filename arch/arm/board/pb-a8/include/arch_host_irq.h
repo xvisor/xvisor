@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Anup Patel.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,51 +16,34 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arch_board.h
+ * @file arch_host_irq.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief board specific functions
+ * @brief board specific host irq functions
  */
-#ifndef _ARCH_BOARD_H__
-#define _ARCH_BOARD_H__
+#ifndef _ARCH_HOST_IRQ_H__
+#define _ARCH_HOST_IRQ_H__
 
 #include <vmm_types.h>
-#include <vmm_devtree.h>
 #include <vmm_host_aspace.h>
-#include <ca9x4_board.h>
 #include <gic.h>
 
-/** Default Terminal related function required by VMM core */
-int arch_defterm_getc(u8 *ch);
-int arch_defterm_putc(u8 ch);
-int arch_defterm_init(void);
-
-/** Host IRQ related function required by VMM core */
 #define ARCH_HOST_IRQ_COUNT			GIC_NR_IRQS
+
+/* Get current active host irq */
 static inline u32 arch_host_irq_active(u32 cpu_irq_no)
 {
 	return gic_active_irq(0);
 }
+
+/* Initialize board specifig host irq hardware (i.e PIC) */
 static inline int arch_host_irq_init(void)
 {
 	virtual_addr_t dist_base, cpu_base;
 
-	dist_base = vmm_host_iomap(A9_MPCORE_GIC_DIST, 0x1000);
-	cpu_base = vmm_host_iomap(A9_MPCORE_GIC_CPU, 0x1000);
+	dist_base = vmm_host_iomap(REALVIEW_PBA8_GIC_DIST_BASE, 0x1000);
+	cpu_base = vmm_host_iomap(REALVIEW_PBA8_GIC_CPU_BASE, 0x1000);
 
-	return gic_init(0, IRQ_CA9X4_GIC_START, cpu_base, dist_base);
+	return gic_init(0, IRQ_PBA8_GIC_START, cpu_base, dist_base);
 }
-
-/** RAM related functions required by VMM core */
-int arch_board_ram_start(physical_addr_t * addr);
-int arch_board_ram_size(physical_size_t * size);
-
-/** Device tree related function required by VMM core */
-int arch_devtree_populate(struct vmm_devtree_node ** root);
-
-/** Board specific functions */
-int arch_board_reset(void);
-int arch_board_shutdown(void);
-int arch_board_early_init(void);
-int arch_board_final_init(void);
 
 #endif

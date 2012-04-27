@@ -21,7 +21,7 @@
  * @brief source code for vcpu irq processing
  */
 
-#include <arch_cpu.h>
+#include <arch_vcpu.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>

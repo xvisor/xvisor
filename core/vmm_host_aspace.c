@@ -24,6 +24,7 @@
 
 #include <arch_cpu.h>
 #include <arch_board.h>
+#include <arch_sections.h>
 #include <vmm_error.h>
 #include <vmm_math.h>
 #include <vmm_list.h>

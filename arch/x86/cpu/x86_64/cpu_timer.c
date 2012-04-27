@@ -48,11 +48,11 @@
 
 unsigned long long jiffies;
 
-void arch_cpu_timer_enable(void)
+void arch_timer_enable(void)
 {
 }
 
-u64 arch_cpu_clocksource_cycles(void)
+u64 arch_clocksource_cycles(void)
 {
         return 0;
 }
@@ -62,54 +62,54 @@ u32 ns2count(u64 ticks_nsecs)
         return 0;
 }
 
-int arch_cpu_clockevent_start(u64 ticks_nsecs)
+int arch_clockevent_start(u64 ticks_nsecs)
 {
 	return VMM_OK;
 }
 
-int arch_cpu_clockevent_setup(void)
+int arch_clockevent_setup(void)
 {
 	return VMM_OK;
 }
 
-int arch_cpu_clockevent_shutdown(void)
+int arch_clockevent_shutdown(void)
 {
 	return VMM_OK;
 }
 
-u64 arch_cpu_clocksource_mask(void)
+u64 arch_clocksource_mask(void)
 {
 	return 0xFFFFFFFF;
 }
 
-u32 arch_cpu_clocksource_mult(void)
+u32 arch_clocksource_mult(void)
 {
         return 0;
 }
 
-u32 arch_cpu_clocksource_shift(void)
+u32 arch_clocksource_shift(void)
 {
         return 0;
 }
 
-int arch_cpu_clockevent_stop(void)
+int arch_clockevent_stop(void)
 {
 	return 0;
 }
 
-int arch_cpu_clockevent_expire(void)
+int arch_clockevent_expire(void)
 {
 	return 0;
 }
 
-int arch_cpu_clockevent_init(void)
+int arch_clockevent_init(void)
 {
 	/* FIXME */
 	while (1);
 	return VMM_OK;
 }
 
-int arch_cpu_clocksource_init(void)
+int arch_clocksource_init(void)
 {
 	/* FIXME */
 	while (1);

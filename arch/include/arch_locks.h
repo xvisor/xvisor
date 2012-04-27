@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Anup Patel.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,21 +16,18 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file brd_pic.c
+ * @file arch_locks.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief board specific progammable interrupt contoller
+ * @brief generic interface for arch specific locking operations
  */
+#ifndef _ARCH_LOCKS_H__
+#define _ARCH_LOCKS_H__
 
-#include <vmm_error.h>
-#include <arch_host_irq.h>
+#include <vmm_types.h>
 
-u32 arch_host_irq_active(u32 cpu_irq_no)
-{
-	return 0;
-}
+/** Spinlock functions required by VMM core */
+bool arch_spin_lock_check(spinlock_t * lock);
+void arch_spin_lock(spinlock_t * lock);
+void arch_spin_unlock(spinlock_t * lock);
 
-int __init arch_host_irq_init(void)
-{
-	return VMM_OK;
-}
-
+#endif

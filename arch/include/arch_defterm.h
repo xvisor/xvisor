@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Himanshu Chauhan.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,34 +16,18 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arch_board.h
- * @author Himanshu Chauhan (hschauhan@nulltrace.org)
- * @brief board specific initialization functions
+ * @file arch_defterm.h
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief generic interface for arch specific default terminal
  */
-#ifndef _ARCH_BOARD_H__
-#define _ARCH_BOARD_H__
+#ifndef _ARCH_DEFTERM_H__
+#define _ARCH_DEFTERM_H__
 
 #include <vmm_types.h>
-#include <vmm_devtree.h>
 
+/** Default Terminal related function required by VMM core */
 int arch_defterm_getc(u8 *ch);
 int arch_defterm_putc(u8 ch);
 int arch_defterm_init(void);
-
-/** Host IRQ related function required by VMM core */
-#define ARCH_HOST_IRQ_COUNT			0
-u32 arch_host_irq_active(u32 cpu_irq_no);
-int arch_host_irq_init(void);
-
-/** RAM related functions required by VMM core */
-int arch_board_ram_start(physical_addr_t * addr);
-int arch_board_ram_size(physical_size_t * size);
-
-int arch_devtree_populate(struct vmm_devtree_node **root);
-
-int arch_board_early_init(void);
-int arch_board_final_init(void);
-int arch_board_reset(void);
-int arch_board_shutdown(void);
 
 #endif

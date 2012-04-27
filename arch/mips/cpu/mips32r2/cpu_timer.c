@@ -49,7 +49,7 @@
 
 unsigned long long jiffies;
 
-void arch_cpu_timer_enable(void)
+void arch_timer_enable(void)
 {
 	u32 sr = read_c0_status();
 	sr |= ((0x1UL << 7) << 8);
@@ -66,7 +66,7 @@ s32 handle_internal_timer_interrupt(arch_regs_t *uregs)
 	return 0;
 }
 
-u64 arch_cpu_clocksource_cycles(void)
+u64 arch_clocksource_cycles(void)
 {
 	return read_c0_count();
 }
@@ -78,7 +78,7 @@ u32 ns2count(u64 ticks_nsecs)
 	return req_count;
 }
 
-int arch_cpu_clockevent_start(u64 ticks_nsecs)
+int arch_clockevent_start(u64 ticks_nsecs)
 {
 	/* Enable the timer interrupts. */
 	u32 sr = read_c0_status();
@@ -91,12 +91,12 @@ int arch_cpu_clockevent_start(u64 ticks_nsecs)
 	return VMM_OK;
 }
 
-int arch_cpu_clockevent_setup(void)
+int arch_clockevent_setup(void)
 {
 	return VMM_OK;
 }
 
-int arch_cpu_clockevent_shutdown(void)
+int arch_clockevent_shutdown(void)
 {
 	/* Disable the timer interrupts. */
 	u32 sr = read_c0_status();
@@ -106,32 +106,32 @@ int arch_cpu_clockevent_shutdown(void)
 	return VMM_OK;
 }
 
-u64 arch_cpu_clocksource_mask(void)
+u64 arch_clocksource_mask(void)
 {
 	return 0xFFFFFFFF;
 }
 
-u32 arch_cpu_clocksource_mult(void)
+u32 arch_clocksource_mult(void)
 {
 	return vmm_timer_clocksource_khz2mult(1000, 20);
 }
 
-u32 arch_cpu_clocksource_shift(void)
+u32 arch_clocksource_shift(void)
 {
 	return 20;
 }
 
-int arch_cpu_clockevent_stop(void)
+int arch_clockevent_stop(void)
 {
 	return 0;
 }
 
-int arch_cpu_clockevent_expire(void)
+int arch_clockevent_expire(void)
 {
 	return 0;
 }
 
-int arch_cpu_clockevent_init(void)
+int arch_clockevent_init(void)
 {
 	/* Disable the timer interrupts. */
 	u32 sr = read_c0_status();
@@ -143,7 +143,7 @@ int arch_cpu_clockevent_init(void)
 	return VMM_OK;
 }
 
-int arch_cpu_clocksource_init(void)
+int arch_clocksource_init(void)
 {
 	/* Enable the monotonic count. */
 	u32 cause = read_c0_cause();

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Anup Patel.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,21 +16,21 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file brd_pic.c
+ * @file arch_cpu_irq.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief board specific progammable interrupt contoller
+ * @brief interface for controlling CPU IRQs
  */
+#ifndef _ARCH_CPU_IRQ_H__
+#define _ARCH_CPU_IRQ_H__
 
-#include <vmm_error.h>
-#include <arch_host_irq.h>
+#include <vmm_types.h>
 
-u32 arch_host_irq_active(u32 cpu_irq_no)
-{
-	return 0;
-}
+/** CPU IRQ functions required by VMM core */
+int arch_cpu_irq_setup(void);
+void arch_cpu_irq_enable(void);
+void arch_cpu_irq_disable(void);
+irq_flags_t arch_cpu_irq_save(void);
+void arch_cpu_irq_restore(irq_flags_t flags);
+void arch_cpu_wait_for_irq(void);
 
-int __init arch_host_irq_init(void)
-{
-	return VMM_OK;
-}
-
+#endif

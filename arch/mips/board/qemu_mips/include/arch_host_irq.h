@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Anup Patel.
+ * Copyright (c) 2010 Himanshu Chauhan.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,21 +16,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file brd_pic.c
- * @author Anup Patel (anup@brainfault.org)
- * @brief board specific progammable interrupt contoller
+ * @file arch_board.h
+ * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @brief board specific host irq functions
  */
+#ifndef _ARCH_HOST_IRQ_H__
+#define _ARCH_HOST_IRQ_H__
 
-#include <vmm_error.h>
-#include <arch_host_irq.h>
+#include <vmm_types.h>
 
-u32 arch_host_irq_active(u32 cpu_irq_no)
-{
-	return 0;
-}
+#define ARCH_HOST_IRQ_COUNT			0
 
-int __init arch_host_irq_init(void)
-{
-	return VMM_OK;
-}
+u32 arch_host_irq_active(u32 cpu_irq_no);
 
+int arch_host_irq_init(void);
+
+#endif

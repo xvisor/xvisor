@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Anup Patel.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,21 +16,28 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file brd_pic.c
+ * @file arch_host_irq.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief board specific progammable interrupt contoller
+ * @brief board specific host irq functions
  */
+#ifndef _ARCH_HOST_IRQ_H__
+#define _ARCH_HOST_IRQ_H__
 
-#include <vmm_error.h>
-#include <arch_host_irq.h>
+#include <vmm_types.h>
+#include <omap3/intc.h>
 
-u32 arch_host_irq_active(u32 cpu_irq_no)
+#define ARCH_HOST_IRQ_COUNT			OMAP3_MPU_INTC_NRIRQ
+
+/* Get current active host irq */
+static inline u32 arch_host_irq_active(u32 cpu_irq_no)
 {
-	return 0;
+	return omap3_intc_active_irq(cpu_irq_no);
 }
 
-int __init arch_host_irq_init(void)
+/* Initialize board specifig host irq hardware (i.e PIC) */
+static inline int arch_host_irq_init(void)
 {
-	return VMM_OK;
+	return omap3_intc_init();
 }
 
+#endif

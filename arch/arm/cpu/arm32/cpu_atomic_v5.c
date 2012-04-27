@@ -24,8 +24,8 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <arch_cpu_irq.h>
 #include <cpu_barrier.h>
-#include <arch_cpu.h>
 
 long __lock arch_cpu_atomic_read(atomic_t * atom)
 {
