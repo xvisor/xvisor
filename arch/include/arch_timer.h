@@ -37,19 +37,7 @@ int arch_clockevent_stop(void);
 /** Initialize clockevent device */
 int arch_clockevent_init(void);
 
-/** Get clocksource cycles passed */
-u64 arch_clocksource_cycles(void);
-
-/** Mask of clocksource device */
-u64 arch_clocksource_mask(void);
-
-/** Multiplier of clocksource device */
-u32 arch_clocksource_mult(void);
-
-/** Shift of clocksource device */
-u32 arch_clocksource_shift(void);
-
-/** Initialize clocksource device */
+/** Initialize clocksource devices */
 int arch_clocksource_init(void);
 
 #endif

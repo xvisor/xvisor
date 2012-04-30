@@ -34,26 +34,6 @@
 static virtual_addr_t pba8_timer0_base;
 static virtual_addr_t pba8_timer1_base;
 
-u64 arch_clocksource_cycles(void)
-{
-	return ~sp804_timer_counter_value(pba8_timer1_base);
-}
-
-u64 arch_clocksource_mask(void)
-{
-	return 0xFFFFFFFF;
-}
-
-u32 arch_clocksource_mult(void)
-{
-	return vmm_timer_clocksource_khz2mult(1000, 20);
-}
-
-u32 arch_clocksource_shift(void)
-{
-	return 20;
-}
-
 int __init arch_clocksource_init(void)
 {
 	int rc;
@@ -78,24 +58,16 @@ int __init arch_clocksource_init(void)
 		return rc;
 	}
 
-	/* Map timer registers */
+	/* Map timer1 registers */
 	pba8_timer1_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
 	pba8_timer1_base += 0x20;
 
-	/* Initialize timers */
-	rc = sp804_timer_init(pba8_timer1_base,
-			      IRQ_PBA8_TIMER0_1,
-			      NULL);
+	/* Initialize timer1 as clocksource */
+	rc = sp804_clocksource_init(pba8_timer1_base, "sp804",
+				    300, 1000000, 0xFFFFFFFF, 20);
 	if (rc) {
 		return rc;
 	}
-
-	/* Configure timer1 as free running source */
-	rc = sp804_timer_counter_start(pba8_timer1_base);
-	if (rc) {
-		return rc;
-	}
-	sp804_timer_enable(pba8_timer1_base);
 
 	return VMM_OK;
 }

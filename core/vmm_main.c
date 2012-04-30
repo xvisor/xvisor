@@ -30,6 +30,7 @@
 #include <vmm_version.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
+#include <vmm_clocksource.h>
 #include <vmm_timer.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
@@ -115,6 +116,14 @@ void vmm_init(void)
 	vmm_printf("Initialize CPU Early\n");
 	vmm_printf("Initialize Board Early\n");
 	vmm_printf("Initialize Standard I/O Subsystem\n");
+
+	/* Initialize clocksource manager */
+	vmm_printf("Initialize Clocksource Manager\n");
+	ret = vmm_clocksource_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
 
 	/* Initialize hypervisor timer */
 	vmm_printf("Initialize Hypervisor Timer\n");

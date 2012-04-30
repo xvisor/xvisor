@@ -26,15 +26,13 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
+#include <vmm_stdio.h>
+#include <vmm_clocksource.h>
 #include <vmm_timer.h>
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_ctrl {
-	u64 cycles_last;
-	u64 cycles_mask;
-	u32 cycles_mult;
-	u32 cycles_shift;
-	u64 timestamp;
+	struct vmm_timecounter cpu_tc;
 	bool cpu_started;
 	bool cpu_inprocess;
 	u64 cpu_next_event;
@@ -45,34 +43,14 @@ struct vmm_timer_ctrl {
 
 static struct vmm_timer_ctrl tctrl;
 
-u64 vmm_timer_timestamp(void)
-{
-	u64 cycles_now, cycles_delta;
-	u64 ns_offset;
-
-	cycles_now = arch_clocksource_cycles();
-	cycles_delta = (cycles_now - tctrl.cycles_last) & tctrl.cycles_mask;
-	tctrl.cycles_last = cycles_now;
-
-	ns_offset = (cycles_delta * tctrl.cycles_mult) >> tctrl.cycles_shift;
-	tctrl.timestamp += ns_offset;
-
-	return tctrl.timestamp;
-}
-
 #ifdef CONFIG_PROFILE
 u64 __notrace vmm_timer_timestamp_for_profile(void)
-{
-	u64 cycles_now, cycles_delta;
-	u64 ns_offset;
-
-	cycles_now = arch_clocksource_cycles();
-	cycles_delta = (cycles_now - tctrl.cycles_last) & tctrl.cycles_mask;
-	ns_offset = (cycles_delta * tctrl.cycles_mult) >> tctrl.cycles_shift;
-
-	return tctrl.timestamp + ns_offset;
-}
+#else
+u64 vmm_timer_timestamp(void)
 #endif
+{
+	return vmm_timecounter_read(&tctrl.cpu_tc);
+}
 
 static void vmm_timer_schedule_next_event(void)
 {
@@ -422,7 +400,11 @@ void vmm_timer_stop(void)
 
 int __init vmm_timer_init(void)
 {
+	struct vmm_clocksource * cs;
 	int rc;
+
+	/* Clear timer control structure */
+	vmm_memset(&tctrl, 0, sizeof(tctrl));
 
 	/* Initialize Per CPU event status */
 	tctrl.cpu_started = FALSE;
@@ -442,19 +424,10 @@ int __init vmm_timer_init(void)
 		return rc;
 	}
 
-	/* Initialize arch specific timer cycle counter */
-	if ((rc = arch_clocksource_init())) {
-		return rc;
+	/* Find suitable clock source */
+	if (!(cs = vmm_clocksource_best())) {
+		vmm_panic("%s: No timer clock source\n", __func__);
 	}
 
-	/* Setup configuration for reading cycle counter */
-	tctrl.cycles_mask = arch_clocksource_mask();
-	tctrl.cycles_mult = arch_clocksource_mult();
-	tctrl.cycles_shift = arch_clocksource_shift();
-	tctrl.cycles_last = arch_clocksource_cycles();
-
-	/* Starting value of timestamp */
-	tctrl.timestamp = 0x0;
-
-	return VMM_OK;
+	return vmm_timecounter_init(&tctrl.cpu_tc, cs, 0);
 }

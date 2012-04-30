@@ -35,6 +35,8 @@
 #include <vmm_timer.h>
 #include <vmm_host_io.h>
 #include <vmm_stdio.h>
+#include <vmm_heap.h>
+#include <vmm_clocksource.h>
 #include <vmm_host_aspace.h>
 
 static struct omap3_gpt_cfg *omap3_gpt_config = NULL;
@@ -231,8 +233,48 @@ int omap3_gpt_instance_init(u32 gpt_num, u32 prm_domain,
 		}
 	}
 
-
 	return VMM_OK;
+}
+
+struct omap3_gpt_clocksource 
+{
+	u32 gpt_num;
+	struct vmm_clocksource clksrc;
+};
+
+static u64 omap3_gpt_clocksource_read(struct vmm_clocksource *cs)
+{
+	struct omap3_gpt_clocksource * omap3_cs = cs->priv;
+	return omap3_gpt_get_counter(omap3_cs->gpt_num);
+}
+
+int __init omap3_gpt_clocksource_init(u32 gpt_num, physical_addr_t prm_pa)
+{
+	int rc;
+	struct omap3_gpt_clocksource *cs;
+
+	if ((rc = omap3_gpt_instance_init(gpt_num, prm_pa, NULL))) {
+		return rc;
+	}
+
+	omap3_gpt_continuous(gpt_num);
+
+	cs = vmm_malloc(sizeof(struct omap3_gpt_clocksource));
+	if (!cs) {
+		return VMM_EFAIL;
+	}
+
+	cs->gpt_num = gpt_num;
+	cs->clksrc.name = omap3_gpt_config[gpt_num].name;
+	cs->clksrc.rating = 200;
+	cs->clksrc.read = &omap3_gpt_clocksource_read;
+	cs->clksrc.mask = 0xFFFFFFFF;
+	cs->clksrc.mult = 
+	vmm_clocksource_khz2mult((omap3_gpt_config[gpt_num].clk_hz)/1000, 24);
+	cs->clksrc.shift = 24;
+	cs->clksrc.priv = cs;
+
+	return vmm_clocksource_register(&cs->clksrc);
 }
 
 int __init omap3_gpt_global_init(u32 gpt_count, struct omap3_gpt_cfg *cfg)
@@ -241,7 +283,8 @@ int __init omap3_gpt_global_init(u32 gpt_count, struct omap3_gpt_cfg *cfg)
 	if(!omap3_gpt_config) {
 		omap3_gpt_config = cfg;
 		for(i=0; i<gpt_count; i++) {
-			omap3_gpt_config[i].base_va = vmm_host_iomap(omap3_gpt_config[i].base_pa, 0x1000);
+			omap3_gpt_config[i].base_va = 
+			vmm_host_iomap(omap3_gpt_config[i].base_pa, 0x1000);
 			if(!omap3_gpt_config[i].base_va)
 				return VMM_EFAIL;
 		}

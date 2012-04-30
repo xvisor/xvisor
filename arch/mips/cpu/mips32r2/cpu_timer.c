@@ -26,6 +26,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_stdio.h>
 #include <vmm_timer.h>
+#include <vmm_clocksource.h>
 #include <cpu_interrupts.h>
 #include <cpu_timer.h>
 #include <cpu_asm_macros.h>
@@ -66,11 +67,6 @@ s32 handle_internal_timer_interrupt(arch_regs_t *uregs)
 	return 0;
 }
 
-u64 arch_clocksource_cycles(void)
-{
-	return read_c0_count();
-}
-
 u32 ns2count(u64 ticks_nsecs)
 {
 	u32 req_count = ((u64)(MHZ2HZ(VMM_CPU_FREQ_MHZ) * ticks_nsecs))/SEC2NSEC(1);
@@ -106,21 +102,6 @@ int arch_clockevent_shutdown(void)
 	return VMM_OK;
 }
 
-u64 arch_clocksource_mask(void)
-{
-	return 0xFFFFFFFF;
-}
-
-u32 arch_clocksource_mult(void)
-{
-	return vmm_timer_clocksource_khz2mult(1000, 20);
-}
-
-u32 arch_clocksource_shift(void)
-{
-	return 20;
-}
-
 int arch_clockevent_stop(void)
 {
 	return 0;
@@ -143,8 +124,30 @@ int arch_clockevent_init(void)
 	return VMM_OK;
 }
 
+static u64 mips_clocksource_read(struct vmm_clocksource *cs)
+{
+	return read_c0_count();
+}
+
+static struct vmm_clocksource mips_cs =  
+{
+	.name = "mips_clksrc",
+	.rating = 300,
+	.mask = 0xFFFFFFFF,
+	.shift = 20,
+	.read = &mips_clocksource_read
+};
+
 int arch_clocksource_init(void)
 {
+	int rc;
+
+	/* Register clocksource */
+	mips_cs.mult = vmm_clocksource_khz2mult(1000, 20);
+	if ((rc = vmm_clocksource_register(&mips_cs))) {
+		return rc;
+	}
+
 	/* Enable the monotonic count. */
 	u32 cause = read_c0_cause();
 	cause &= ~(0x1UL << 27);

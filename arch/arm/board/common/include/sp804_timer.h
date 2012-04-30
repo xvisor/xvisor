@@ -54,11 +54,14 @@ bool sp804_timer_event_checkirq(virtual_addr_t base);
 
 int sp804_timer_event_start(virtual_addr_t base, u64 nsecs);
 
-u32 sp804_timer_counter_value(virtual_addr_t base);
-
-int sp804_timer_counter_start(virtual_addr_t base);
-
 int sp804_timer_init(virtual_addr_t base, u32 hirq,
 		     vmm_host_irq_handler_t hirq_handler);
+
+int sp804_clocksource_init(virtual_addr_t base, 
+			   const char *name, 
+			   int rating, 
+			   u32 freq_hz,
+			   u32 mask,
+			   u32 shift);
 
 #endif /* __SP804_TIMER_H__ */

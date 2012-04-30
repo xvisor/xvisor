@@ -22,7 +22,9 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_host_io.h>
+#include <vmm_clocksource.h>
 #include <sp804_timer.h>
 
 void sp804_timer_enable(virtual_addr_t base)
@@ -105,23 +107,6 @@ int sp804_timer_event_start(virtual_addr_t base, u64 nsecs)
 	return VMM_OK;
 }
 
-u32 sp804_timer_counter_value(virtual_addr_t base)
-{
-	return vmm_readl((void *)(base + TIMER_VALUE));
-}
-
-int sp804_timer_counter_start(virtual_addr_t base)
-{
-	u32 ctrl;
-
-	vmm_writel(0x0, (void *)(base + TIMER_CTRL));
-	vmm_writel(0xFFFFFFFF, (void *)(base + TIMER_LOAD));
-	ctrl = (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC);
-	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
-
-	return VMM_OK;
-}
-
 int __init sp804_timer_init(virtual_addr_t base, u32 hirq,
 			    vmm_host_irq_handler_t hirq_handler)
 {
@@ -146,3 +131,51 @@ int __init sp804_timer_init(virtual_addr_t base, u32 hirq,
 
 	return ret;
 }
+
+struct sp804_clocksource {
+	virtual_addr_t base;
+	struct vmm_clocksource clksrc;
+};
+
+u64 sp804_clocksource_read(struct vmm_clocksource *cs)
+{
+	u32 count;
+	struct sp804_clocksource *tcs = cs->priv;
+
+	count = vmm_readl((void *)(tcs->base + TIMER_VALUE));
+
+	return ~count;
+}
+
+int __init sp804_clocksource_init(virtual_addr_t base, 
+				  const char *name, 
+				  int rating, 
+				  u32 freq_hz,
+				  u32 mask,
+				  u32 shift)
+{
+	u32 ctrl;
+	struct sp804_clocksource *cs;
+
+	cs = vmm_malloc(sizeof(struct sp804_clocksource));
+	if (!cs) {
+		return VMM_EFAIL;
+	}
+
+	cs->base = base;
+	cs->clksrc.name = name;
+	cs->clksrc.rating = rating;
+	cs->clksrc.read = &sp804_clocksource_read;
+	cs->clksrc.mask = mask;
+	cs->clksrc.mult = vmm_clocksource_hz2mult(freq_hz, shift);
+	cs->clksrc.shift = shift;
+	cs->clksrc.priv = cs;
+
+	vmm_writel(0x0, (void *)(base + TIMER_CTRL));
+	vmm_writel(0xFFFFFFFF, (void *)(base + TIMER_LOAD));
+	ctrl = (TIMER_CTRL_ENABLE | TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC);
+	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
+
+	return vmm_clocksource_register(&cs->clksrc);
+}
+

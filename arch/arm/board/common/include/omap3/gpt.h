@@ -185,6 +185,7 @@
 #define OMAP3_GPT_TOWR_OVF_WRAPPING_VALUE_M	0x00FFFFFF
 
 struct omap3_gpt_cfg {
+	const char *name;
 	physical_addr_t base_pa;
 	virtual_addr_t base_va;
 	u32 cm_domain;
@@ -207,6 +208,7 @@ void omap3_gpt_oneshot(u32 gpt_num);
 void omap3_gpt_continuous(u32 gpt_num);
 int omap3_gpt_instance_init(u32 gpt_num, physical_addr_t prm_pa, 
 		vmm_host_irq_handler_t irq_handler);
+int omap3_gpt_clocksource_init(u32 gpt_num, physical_addr_t prm_pa);
 int omap3_gpt_global_init(u32 gpt_count, struct omap3_gpt_cfg *cfg);
 
 #endif

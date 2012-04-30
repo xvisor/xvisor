@@ -41,6 +41,7 @@
 
 struct omap3_gpt_cfg beagle_gpt_cfg[] = {
 	{
+		.name =		"gpt1",
 		.base_pa =	OMAP3_GPT1_BASE,
 		.cm_domain =	OMAP3_WKUP_CM,
 		.clksel_mask = 	OMAP3_CM_CLKSEL_WKUP_CLKSEL_GPT1_M,
@@ -50,6 +51,7 @@ struct omap3_gpt_cfg beagle_gpt_cfg[] = {
 		.irq_no	=	OMAP3_MPU_INTC_GPT1_IRQ
 	},
 	{
+		.name =		"gpt2",
 		.base_pa =	OMAP3_GPT2_BASE,
 		.cm_domain =	OMAP3_PER_CM,
 		.clksel_mask = 	OMAP3_CM_CLKSEL_PER_CLKSEL_GPT2_M,
@@ -60,61 +62,17 @@ struct omap3_gpt_cfg beagle_gpt_cfg[] = {
 	}
 };
 
+int __init arch_clocksource_init(void)
+{
 #ifdef CONFIG_OMAP3_CLKSRC_S32KT
-u64 arch_clocksource_cycles(void)
-{
-	return ((u64)omap3_s32k_get_counter());
-}
-
-u64 arch_clocksource_mask(void)
-{
-	return 0xFFFFFFFF;
-}
-
-u32 arch_clocksource_mult(void)
-{
-	return vmm_timer_clocksource_hz2mult(OMAP3_S32K_FREQ_HZ, 15);
-}
-
-u32 arch_clocksource_shift(void)
-{
-	return 15;
-}
-
-int arch_clocksource_init(void)
-{
-	return omap3_s32k_init();
-}
+	return omap3_s32k_clocksource_init();
 #else
-u64 arch_clocksource_cycles(void)
-{
-	return omap3_gpt_get_counter(BEAGLE_CLK_SRC_GPT);
-}
-
-u64 arch_clocksource_mask(void)
-{
-	return 0xFFFFFFFF;
-}
-
-u32 arch_clocksource_mult(void)
-{
-	return vmm_timer_clocksource_khz2mult((beagle_gpt_cfg[BEAGLE_CLK_SRC_GPT].clk_hz)/1000, 24);
-}
-
-u32 arch_clocksource_shift(void)
-{
-	return 24;
-}
-
-int arch_clocksource_init(void)
-{
 	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct omap3_gpt_cfg), 
 			beagle_gpt_cfg);
-	omap3_gpt_instance_init(BEAGLE_CLK_SRC_GPT, OMAP3_GLOBAL_REG_PRM, NULL);
-	omap3_gpt_continuous(BEAGLE_CLK_SRC_GPT);
-	return 0;
-}
+	return omap3_gpt_clocksource_init(BEAGLE_CLK_SRC_GPT, 
+					  OMAP3_GLOBAL_REG_PRM);
 #endif
+}
 
 static vmm_irq_return_t arch_clockevent_irq_handler(u32 irq_no, 
 						    arch_regs_t * regs, 
