@@ -48,41 +48,7 @@
 
 unsigned long long jiffies;
 
-void arch_timer_enable(void)
-{
-}
-
-u32 ns2count(u64 ticks_nsecs)
-{
-        return 0;
-}
-
-int arch_clockevent_start(u64 ticks_nsecs)
-{
-	return VMM_OK;
-}
-
-int arch_clockevent_setup(void)
-{
-	return VMM_OK;
-}
-
-int arch_clockevent_shutdown(void)
-{
-	return VMM_OK;
-}
-
-int arch_clockevent_stop(void)
-{
-	return 0;
-}
-
-int arch_clockevent_expire(void)
-{
-	return 0;
-}
-
-int arch_clockevent_init(void)
+int arch_clockchip_init(void)
 {
 	/* FIXME */
 	while (1);

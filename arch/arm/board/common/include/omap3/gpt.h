@@ -197,18 +197,8 @@ struct omap3_gpt_cfg {
 	u32 irq_no;
 };
 
-u32 omap3_gpt_get_counter(u32 gpt_num);
-void omap3_gpt_disable(u32 gpt_num);
-void omap3_gpt_stop(u32 gpt_num);
-void omap3_gpt_start(u32 gpt_num);
-void omap3_gpt_ack_irq(u32 gpt_num);
-void omap3_gpt_poll_overflow(u32 gpt_num);
-void omap3_gpt_load_start(u32 gpt_num, u32 usecs);
-void omap3_gpt_oneshot(u32 gpt_num);
-void omap3_gpt_continuous(u32 gpt_num);
-int omap3_gpt_instance_init(u32 gpt_num, physical_addr_t prm_pa, 
-		vmm_host_irq_handler_t irq_handler);
 int omap3_gpt_clocksource_init(u32 gpt_num, physical_addr_t prm_pa);
+int omap3_gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa);
 int omap3_gpt_global_init(u32 gpt_count, struct omap3_gpt_cfg *cfg);
 
 #endif

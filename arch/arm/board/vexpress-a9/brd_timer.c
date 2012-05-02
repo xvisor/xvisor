@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_timer.h>
 #include <vmm_host_aspace.h>
-#include <arch_timer.h>
 #include <ca9x4_board.h>
 #include <vexpress_plat.h>
 #include <sp810.h>
@@ -56,8 +55,8 @@ int __init arch_clocksource_init(void)
 	ca9x4_timer1_base = vmm_host_iomap(V2M_TIMER1, 0x1000);
 
 	/* Initialize timer1 as clocksource */
-	rc = sp804_clocksource_init(ca9x4_timer1_base, "sp804",
-				    300, 1000000, 0xFFFFFFFF, 20);
+	rc = sp804_clocksource_init(ca9x4_timer1_base, 
+				    "sp804_timer1", 300, 1000000, 20);
 	if (rc) {
 		return rc;
 	}
@@ -65,45 +64,7 @@ int __init arch_clocksource_init(void)
 	return VMM_OK;
 }
 
-int arch_clockevent_stop(void)
-{
-	return sp804_timer_event_stop(ca9x4_timer0_base);
-}
-
-static vmm_irq_return_t ca9x4_timer0_handler(u32 irq_no, 
-					     arch_regs_t * regs, 
-					     void *dev)
-{
-	sp804_timer_event_clearirq(ca9x4_timer0_base);
-
-	vmm_timer_clockevent_process(regs);
-
-	return VMM_IRQ_HANDLED;
-}
-
-int arch_clockevent_expire(void)
-{
-	int rc;
-
-	rc = sp804_timer_event_start(ca9x4_timer0_base, 0);
-
-	if (!rc) {
-		/* FIXME: The polling loop below is fine with emulators but,
-		 * for real hardware we might require some soft delay to
-		 * avoid bus contention.
-		 */
-		while (!sp804_timer_event_checkirq(ca9x4_timer0_base));
-	}
-
-	return rc;
-}
-
-int arch_clockevent_start(u64 tick_nsecs)
-{
-	return sp804_timer_event_start(ca9x4_timer0_base, tick_nsecs);
-}
-
-int __init arch_clockevent_init(void)
+int __init arch_clockchip_init(void)
 {
 	int rc;
 	u32 val;
@@ -122,13 +83,12 @@ int __init arch_clockevent_init(void)
 		return rc;
 	}
 
-	/* Map timer registers */
+	/* Map timer0 registers */
 	ca9x4_timer0_base = vmm_host_iomap(V2M_TIMER0, 0x1000);
 
-	/* Initialize timers */
-	rc = sp804_timer_init(ca9x4_timer0_base, 
-			      IRQ_V2M_TIMER0,
-			      ca9x4_timer0_handler);
+	/* Initialize timer0 as clockchip */
+	rc = sp804_clockchip_init(ca9x4_timer0_base, IRQ_V2M_TIMER0, 
+				  "sp804_timer0", 300, 1000000);
 	if (rc) {
 		return rc;
 	}

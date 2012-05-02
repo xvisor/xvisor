@@ -26,12 +26,12 @@
 #include <vmm_string.h>
 #include <vmm_clocksource.h>
 
-/** Control structure for Timer Subsystem */
+/** Control structure for clocksource manager */
 struct vmm_clocksource_ctrl {
 	struct dlist clksrc_list;
 };
 
-static struct vmm_clocksource_ctrl tcsctrl;
+static struct vmm_clocksource_ctrl csctrl;
 
 #ifdef CONFIG_PROFILE
 u64 __notrace vmm_timecounter_read(struct vmm_timecounter *tc)
@@ -105,7 +105,7 @@ int vmm_clocksource_register(struct vmm_clocksource *cs)
 
 	cst = NULL;
 	found = FALSE;
-	list_for_each(l, &tcsctrl.clksrc_list) {
+	list_for_each(l, &csctrl.clksrc_list) {
 		cst = list_entry(l, struct vmm_clocksource, head);
 		if (vmm_strcmp(cst->name, cs->name) == 0) {
 			found = TRUE;
@@ -118,7 +118,7 @@ int vmm_clocksource_register(struct vmm_clocksource *cs)
 	}
 
 	INIT_LIST_HEAD(&cs->head);
-	list_add_tail(&tcsctrl.clksrc_list, &cs->head);
+	list_add_tail(&csctrl.clksrc_list, &cs->head);
 
 	return VMM_OK;
 }
@@ -133,13 +133,13 @@ int vmm_clocksource_unregister(struct vmm_clocksource *cs)
 		return VMM_EFAIL;
 	}
 
-	if (list_empty(&tcsctrl.clksrc_list)) {
+	if (list_empty(&csctrl.clksrc_list)) {
 		return VMM_EFAIL;
 	}
 
 	cst = NULL;
 	found = FALSE;
-	list_for_each(l, &tcsctrl.clksrc_list) {
+	list_for_each(l, &csctrl.clksrc_list) {
 		cst = list_entry(l, struct vmm_clocksource, head);
 		if (vmm_strcmp(cst->name, cs->name) == 0) {
 			found = TRUE;
@@ -165,7 +165,7 @@ struct vmm_clocksource *vmm_clocksource_best(void)
 	cs = NULL;
 	best_cs = NULL;
 
-	list_for_each(l, &tcsctrl.clksrc_list) {
+	list_for_each(l, &csctrl.clksrc_list) {
 		cs = list_entry(l, struct vmm_clocksource, head);
 		if (cs->rating > rating) {
 			best_cs = cs;
@@ -189,7 +189,7 @@ struct vmm_clocksource *vmm_clocksource_find(const char *name)
 	found = FALSE;
 	cs = NULL;
 
-	list_for_each(l, &tcsctrl.clksrc_list) {
+	list_for_each(l, &csctrl.clksrc_list) {
 		cs = list_entry(l, struct vmm_clocksource, head);
 		if (vmm_strcmp(cs->name, name) == 0) {
 			found = TRUE;
@@ -217,7 +217,7 @@ struct vmm_clocksource *vmm_clocksource_get(int index)
 	ret = NULL;
 	found = FALSE;
 
-	list_for_each(l, &tcsctrl.clksrc_list) {
+	list_for_each(l, &csctrl.clksrc_list) {
 		ret = list_entry(l, struct vmm_clocksource, head);
 		if (!index) {
 			found = TRUE;
@@ -238,7 +238,7 @@ u32 vmm_clocksource_count(void)
 	u32 retval = 0;
 	struct dlist *l;
 
-	list_for_each(l, &tcsctrl.clksrc_list) {
+	list_for_each(l, &csctrl.clksrc_list) {
 		retval++;
 	}
 
@@ -250,7 +250,7 @@ int __init vmm_clocksource_init(void)
 	int rc;
 
 	/* Initialize clock source list */
-	INIT_LIST_HEAD(&tcsctrl.clksrc_list);
+	INIT_LIST_HEAD(&csctrl.clksrc_list);
 
 	/* Initialize arch specific timer clock sources */
 	if ((rc = arch_clocksource_init())) {

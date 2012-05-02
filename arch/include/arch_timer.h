@@ -25,17 +25,8 @@
 
 #include <vmm_types.h>
 
-/** Configure clockevent device to expire after given nano-seconds */
-int arch_clockevent_start(u64 tick_nsecs);
-
-/** Forcefully expire clockevent device */
-int arch_clockevent_expire(void);
-
-/** Stop clockevent device */
-int arch_clockevent_stop(void);
-
-/** Initialize clockevent device */
-int arch_clockevent_init(void);
+/** Initialize clockchip devices */
+int arch_clockchip_init(void);
 
 /** Initialize clocksource devices */
 int arch_clocksource_init(void);

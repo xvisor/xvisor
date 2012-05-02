@@ -22,17 +22,18 @@
  */
 
 #include <arch_cpu_irq.h>
-#include <arch_timer.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_clocksource.h>
+#include <vmm_clockchip.h>
 #include <vmm_timer.h>
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_ctrl {
 	struct vmm_timecounter cpu_tc;
+	struct vmm_clockchip *cpu_cc;
 	bool cpu_started;
 	bool cpu_inprocess;
 	u64 cpu_next_event;
@@ -77,10 +78,11 @@ static void vmm_timer_schedule_next_event(void)
 	tstamp = vmm_timer_timestamp();
 	if (tstamp < e->expiry_tstamp) {
 		tctrl.cpu_next_event = e->expiry_tstamp;
-		arch_clockevent_start(e->expiry_tstamp - tstamp);
+		vmm_clockchip_program_event(tctrl.cpu_cc, 
+				    tstamp, e->expiry_tstamp);
 	} else {
 		tctrl.cpu_next_event = tstamp;
-		arch_clockevent_expire();
+		vmm_clockchip_force_expiry(tctrl.cpu_cc, tstamp);
 	}
 }
 
@@ -88,7 +90,8 @@ static void vmm_timer_schedule_next_event(void)
  * This is call from interrupt context. So we don't need to protect the list
  * when manipulating it.
  */
-void vmm_timer_clockevent_process(arch_regs_t * regs)
+static void timer_clockchip_event_handler(struct vmm_clockchip *cc,
+					  arch_regs_t * regs)
 {
 	struct vmm_timer_event *e;
 
@@ -203,8 +206,8 @@ int vmm_timer_event_expire(struct vmm_timer_event * ev)
 	/* add the event on list head as it is going to expire now */
 	list_add(&tctrl.cpu_event_list, &ev->cpu_head);
 
-	/* trigger a timer interrupt */
-	arch_clockevent_expire();
+	/* Force a clockchip interrupt */
+	vmm_clockchip_force_expiry(tctrl.cpu_cc, vmm_timer_timestamp());
 
 	/* allow (timer) interrupts */
 	arch_cpu_irq_restore(flags);
@@ -384,16 +387,23 @@ u32 vmm_timer_event_count(void)
 
 void vmm_timer_start(void)
 {
-	arch_clockevent_start(1000000);
+	u64 tstamp;
 
-	tctrl.cpu_next_event = vmm_timer_timestamp() + 1000000;
+	vmm_clockchip_set_mode(tctrl.cpu_cc, VMM_CLOCKCHIP_MODE_ONESHOT);
+
+	tstamp = vmm_timer_timestamp();
+
+	tctrl.cpu_next_event = tstamp + 1000000;
+
+	vmm_clockchip_program_event(tctrl.cpu_cc, 
+				    tstamp, tctrl.cpu_next_event);
 
 	tctrl.cpu_started = TRUE;
 }
 
 void vmm_timer_stop(void)
 {
-	arch_clockevent_stop();
+	vmm_clockchip_set_mode(tctrl.cpu_cc, VMM_CLOCKCHIP_MODE_SHUTDOWN);
 
 	tctrl.cpu_started = FALSE;
 }
@@ -401,7 +411,6 @@ void vmm_timer_stop(void)
 int __init vmm_timer_init(void)
 {
 	struct vmm_clocksource * cs;
-	int rc;
 
 	/* Clear timer control structure */
 	vmm_memset(&tctrl, 0, sizeof(tctrl));
@@ -419,14 +428,18 @@ int __init vmm_timer_init(void)
 	/* Initialize event list */
 	INIT_LIST_HEAD(&tctrl.event_list);
 
-	/* Initialize arch specific timer event */
-	if ((rc = arch_clockevent_init())) {
-		return rc;
+	/* Find suitable clockchip */
+	if (!(tctrl.cpu_cc = vmm_clockchip_best())) {
+		vmm_panic("%s: No clockchip found\n", __func__);
 	}
 
-	/* Find suitable clock source */
+	/* Update event handler of clockchip */
+	vmm_clockchip_set_event_handler(tctrl.cpu_cc, 
+					&timer_clockchip_event_handler);
+
+	/* Find suitable clocksource */
 	if (!(cs = vmm_clocksource_best())) {
-		vmm_panic("%s: No timer clock source\n", __func__);
+		vmm_panic("%s: No clocksource found\n", __func__);
 	}
 
 	return vmm_timecounter_init(&tctrl.cpu_tc, cs, 0);

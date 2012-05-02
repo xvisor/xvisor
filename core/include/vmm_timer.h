@@ -45,9 +45,6 @@ struct vmm_timer_event {
 	void * priv;
 };
 
-/** Process timer event (Must be called from somewhere) */
-void vmm_timer_clockevent_process(arch_regs_t * regs);
-
 /** Start a timer event */
 int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs);
 

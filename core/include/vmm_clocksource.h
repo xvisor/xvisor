@@ -36,7 +36,7 @@ typedef void (*vmm_clocksource_suspend_t) (struct vmm_clocksource * cs);
 typedef void (*vmm_clocksource_resume_t) (struct vmm_clocksource * cs);
 
 /**
- * Hardware abstraction a timer subsystem clock source 
+ * Hardware abstraction a timer subsystem clocksource 
  * Provides mostly state-free accessors to the underlying hardware.
  * This is the structure used for tracking passsing time.
  *
@@ -85,10 +85,10 @@ struct vmm_clocksource {
 /**
  * Layer above a %struct vmm_clocksource which counts nanoseconds
  * Contains the state needed by vmm_timecounter_read() to detect 
- * clock source wrap around. Initialize with vmm_timecounter_init(). 
+ * clocksource wrap around. Initialize with vmm_timecounter_init(). 
  * Users of this code are responsible for initializing the underlying 
- * clock source hardware, locking issues and reading the time more often 
- * than the clock source wraps around. The nanosecond counter will only 
+ * clocksource hardware, locking issues and reading the time more often 
+ * than the clocksource wraps around. The nanosecond counter will only 
  * wrap around after ~585 years.
  *
  * @cs:			the cycle counter used by this instance
@@ -134,25 +134,25 @@ int vmm_timecounter_init(struct vmm_timecounter *tc,
 			 struct vmm_clocksource *cs,
 			 u64 start_nsec);
 
-/** Register timer clock source */
+/** Register clocksource */
 int vmm_clocksource_register(struct vmm_clocksource *cs);
 
-/** Register timer clock source */
+/** Register clocksource */
 int vmm_clocksource_unregister(struct vmm_clocksource *cs);
 
-/** Get best rated timer clock source */
+/** Get best rated clocksource */
 struct vmm_clocksource *vmm_clocksource_best(void);
 
-/** Find a timer clock source */
+/** Find a clocksource */
 struct vmm_clocksource *vmm_clocksource_find(const char *name);
 
-/** Retrive timer clock source with given index */
+/** Retrive clocksource with given index */
 struct vmm_clocksource *vmm_clocksource_get(int index);
 
-/** Count number of timer clock sources */
+/** Count number of clocksources */
 u32 vmm_clocksource_count(void);
 
-/** Initialize timer clock source managment subsystem */
+/** Initialize clocksource managment subsystem */
 int vmm_clocksource_init(void);
 
 #endif
