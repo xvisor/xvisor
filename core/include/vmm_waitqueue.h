@@ -24,7 +24,7 @@
 #ifndef __VMM_WAITQUEUE_H__
 #define __VMM_WAITQUEUE_H__
 
-#include <vmm_list.h>
+#include <list.h>
 #include <vmm_spinlocks.h>
 #include <vmm_manager.h>
 

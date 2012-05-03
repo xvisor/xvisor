@@ -23,8 +23,8 @@
 #ifndef _VMM_CLOCKSOURCE_H__
 #define _VMM_CLOCKSOURCE_H__
 
+#include <list.h>
 #include <vmm_types.h>
-#include <vmm_list.h>
 #include <vmm_math.h>
 
 struct vmm_clocksource;

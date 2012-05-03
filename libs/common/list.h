@@ -16,13 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_list.h
+ * @file list.h
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief Abstraction and functions for common list handling.
  */
 
-#ifndef __VMM_LIST_H__
-#define __VMM_LIST_H__
+#ifndef __LIST_H__
+#define __LIST_H__
 
 #include <vmm_macros.h>
 
@@ -118,4 +118,4 @@ static inline int list_empty(struct dlist *head)
 	return (head->next == head);
 }
 
-#endif /* __VMM_LIST_H__ */
+#endif /* __LIST_H__ */

@@ -26,8 +26,6 @@
 #include <arch_board.h>
 #include <arch_sections.h>
 #include <vmm_error.h>
-#include <vmm_math.h>
-#include <vmm_list.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_host_ram.h>

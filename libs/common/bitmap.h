@@ -16,13 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_bitmap.h
+ * @file bitmap.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief Abstraction and functions for bitmap handling.
  */
 
-#ifndef __VMM_BITMAP_H__
-#define __VMM_BITMAP_H__
+#ifndef __BITMAP_H__
+#define __BITMAP_H__
 
 #include <vmm_types.h>
 #include <vmm_macros.h>
@@ -88,4 +88,4 @@ static inline u32 bitmap_clearcount(u32 *bmap, u32 nbits)
 	return ret;
 }
 
-#endif /* __VMM_BITMAP_H__ */
+#endif /* __BITMAP_H__ */

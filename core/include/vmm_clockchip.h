@@ -23,8 +23,8 @@
 #ifndef _VMM_CLOCKCHIP_H__
 #define _VMM_CLOCKCHIP_H__
 
+#include <list.h>
 #include <vmm_types.h>
-#include <vmm_list.h>
 #include <vmm_math.h>
 #include <arch_regs.h>
 

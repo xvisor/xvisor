@@ -24,8 +24,8 @@
 #ifndef __VMM_DEVDRV_H_
 #define __VMM_DEVDRV_H_
 
+#include <list.h>
 #include <vmm_types.h>
-#include <vmm_list.h>
 #include <vmm_devtree.h>
 #include <vmm_spinlocks.h>
 

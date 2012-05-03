@@ -21,10 +21,9 @@
  * @brief Source file for virtual address pool management.
  */
 
+#include <bitmap.h>
 #include <vmm_error.h>
 #include <vmm_math.h>
-#include <vmm_list.h>
-#include <vmm_bitmap.h>
 #include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_vapool.h>
