@@ -22,6 +22,7 @@
  */
 
 #include <arch_cpu_irq.h>
+#include <arch_locks.h>
 #include <vmm_error.h>
 #include <vmm_scheduler.h>
 #include <vmm_spinlocks.h>
