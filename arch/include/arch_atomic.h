@@ -26,12 +26,12 @@
 #include <vmm_types.h>
 
 /** Atomic operations required by VMM core */
-long arch_cpu_atomic_read(atomic_t * atom);
-void arch_cpu_atomic_write(atomic_t * atom, long value);
-void arch_cpu_atomic_add(atomic_t * atom, long value);
-long arch_cpu_atomic_add_return(atomic_t * atom, long value);
-void arch_cpu_atomic_sub(atomic_t * atom, long value);
-long arch_cpu_atomic_sub_return(atomic_t * atom, long value);
-bool arch_cpu_atomic_testnset(atomic_t * atom, long test, long val);
+long arch_atomic_read(atomic_t * atom);
+void arch_atomic_write(atomic_t * atom, long value);
+void arch_atomic_add(atomic_t * atom, long value);
+long arch_atomic_add_return(atomic_t * atom, long value);
+void arch_atomic_sub(atomic_t * atom, long value);
+long arch_atomic_sub_return(atomic_t * atom, long value);
+bool arch_atomic_testnset(atomic_t * atom, long test, long val);
 
 #endif
