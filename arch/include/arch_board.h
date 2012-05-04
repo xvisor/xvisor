@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Pranav Sawargaonkar.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -17,40 +17,23 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arch_board.h
- * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief board specific initialization functions
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief generic interface for arch specific Board functions
  */
 #ifndef _ARCH_BOARD_H__
 #define _ARCH_BOARD_H__
 
 #include <vmm_types.h>
 #include <vmm_devtree.h>
-#include <omap3/intc.h>
-
-/** Default Terminal related function required by VMM core */
-int arch_defterm_getc(u8 *ch);
-int arch_defterm_putc(u8 ch);
-int arch_defterm_init(void);
-
-/** Host IRQ related function required by VMM core */
-#define ARCH_HOST_IRQ_COUNT			OMAP3_MPU_INTC_NRIRQ
-static inline u32 arch_host_irq_active(u32 cpu_irq_no)
-{
-	return omap3_intc_active_irq(cpu_irq_no);
-}
-static inline int arch_host_irq_init(void)
-{
-	return omap3_intc_init();
-}
 
 /** RAM related functions required by VMM core */
 int arch_board_ram_start(physical_addr_t * addr);
 int arch_board_ram_size(physical_size_t * size);
 
 /** Device tree related function required by VMM core */
-int arch_devtree_populate(struct vmm_devtree_node ** root);
+int arch_board_devtree_populate(struct vmm_devtree_node ** root);
 
-/** Get clock for given device name */
+/** Board specific functions */
 int arch_board_reset(void);
 int arch_board_shutdown(void);
 int arch_board_early_init(void);

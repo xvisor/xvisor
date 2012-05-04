@@ -21,8 +21,8 @@
  * @brief source file for buddy heap allocator
  */
 
+#include <list.h>
 #include <vmm_string.h>
-#include <vmm_list.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>

@@ -23,7 +23,6 @@
 #ifndef _VMM_GUEST_ASPACE_H__
 #define _VMM_GUEST_ASPACE_H__
 
-#include <vmm_list.h>
 #include <vmm_manager.h>
 
 /** Find region corresponding to a guest physical address and also

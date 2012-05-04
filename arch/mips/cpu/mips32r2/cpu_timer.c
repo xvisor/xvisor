@@ -23,128 +23,117 @@
 
 #include <vmm_types.h>
 #include <vmm_error.h>
-#include <vmm_host_irq.h>
 #include <vmm_stdio.h>
-#include <vmm_timer.h>
+#include <vmm_clocksource.h>
+#include <vmm_clockchip.h>
 #include <cpu_interrupts.h>
 #include <cpu_timer.h>
 #include <cpu_asm_macros.h>
 
-/** CPU frequency in MHz */
-#define VMM_CPU_FREQ_MHZ			100
+#define CPU_FREQ_MHZ			100
+#define MHZ2HZ(_x_)			(u64)(_x_ * 1000 * 1000)
 
-#define VMM_CLOCK_SOURCE_RATE			VMM_CPU_FREQ_MHZ
-
-/** Delay of VMM ticks in microseconds */
-#define VMM_CPU_TICK_DELAY_MICROSECS 		1000
-
-/** Counter Jiffies */
-#define VMM_COUNTER_JIFFIES			(VMM_CPU_FREQ_MHZ \
-						 * VMM_CPU_TICK_DELAY_MICROSECS)
-
-#define MHZ2HZ(_x_)				(u64)(_x_ * 1000 * 1000)
-#define SEC2NSEC(__x)				(__x * 1000 * 1000 * 1000)
-#define NS2COUNT(_x)				((MHZ2HZ(VMM_CPU_FREQ_MHZ) \
-						  * _x) / SEC2NSEC(1)) 
-
-unsigned long long jiffies;
-
-void arch_cpu_timer_enable(void)
+static void mips_clockchip_set_mode(enum vmm_clockchip_mode mode,
+				    struct vmm_clockchip *cc)
 {
 	u32 sr = read_c0_status();
+
+	switch (mode) {
+	case VMM_CLOCKCHIP_MODE_ONESHOT:
+		/* No need to do anything special for oneshot mode */
+		break;
+	case VMM_CLOCKCHIP_MODE_SHUTDOWN:
+		/* Disable the timer interrupts. */
+		sr &= ~((0x1UL << 7) << 8);
+		write_c0_status(sr);
+		break;
+	case VMM_CLOCKCHIP_MODE_PERIODIC:
+	case VMM_CLOCKCHIP_MODE_UNUSED:
+	default:
+		break;
+	}
+}
+
+static int mips_clockchip_set_next_event(unsigned long next,
+					 struct vmm_clockchip *cc)
+{
+	u32 sr = read_c0_status();
+
+	/* Disable the timer interrupts. */
+	sr &= ~((0x1UL << 7) << 8);
+	write_c0_status(sr);
+
+	/* Setup compare register */
+	write_c0_compare(read_c0_count() + next);
+
+	/* Enable the timer interrupts. */
 	sr |= ((0x1UL << 7) << 8);
 	write_c0_status(sr);
 
-	write_c0_compare(read_c0_count() + VMM_COUNTER_JIFFIES);
-}
-
-s32 handle_internal_timer_interrupt(arch_regs_t *uregs)
-{
-	jiffies++;
-	vmm_timer_clockevent_process(uregs);
-	write_c0_compare(read_c0_count() + VMM_COUNTER_JIFFIES);
 	return 0;
 }
 
-u64 arch_cpu_clocksource_cycles(void)
+static int mips_clockchip_expire(struct vmm_clockchip *cc)
+{
+	return 0;
+}
+
+static struct vmm_clockchip mips_cc = 
+{
+	.name = "mips_clkchip",
+	.rating = 300,
+	.features = VMM_CLOCKCHIP_FEAT_ONESHOT,
+	.shift = 32,
+	.set_mode = &mips_clockchip_set_mode,
+	.set_next_event = &mips_clockchip_set_next_event,
+	.expire = &mips_clockchip_expire,
+};
+
+s32 handle_internal_timer_interrupt(arch_regs_t *uregs)
+{
+	mips_cc.event_handler(&mips_cc, uregs);
+	return 0;
+}
+
+int arch_clockchip_init(void)
+{
+	mips_cc.mult = vmm_clockchip_hz2mult(MHZ2HZ(CPU_FREQ_MHZ), 32);
+	mips_cc.min_delta_ns = vmm_clockchip_delta2ns(0xF, &mips_cc);
+	mips_cc.max_delta_ns = vmm_clockchip_delta2ns(0xFFFFFFFF, &mips_cc);
+	mips_cc.priv = NULL;
+
+	/* Disable the timer interrupts. */
+	u32 sr = read_c0_status();
+	sr &= ~((0x1UL << 7) << 8);
+	write_c0_status(sr);
+
+	return vmm_clockchip_register(&mips_cc);
+}
+
+static u64 mips_clocksource_read(struct vmm_clocksource *cs)
 {
 	return read_c0_count();
 }
 
-u32 ns2count(u64 ticks_nsecs)
+static struct vmm_clocksource mips_cs =  
 {
-	u32 req_count = ((u64)(MHZ2HZ(VMM_CPU_FREQ_MHZ) * ticks_nsecs))/SEC2NSEC(1);
+	.name = "mips_clksrc",
+	.rating = 300,
+	.mask = 0xFFFFFFFF,
+	.shift = 20,
+	.read = &mips_clocksource_read
+};
 
-	return req_count;
-}
-
-int arch_cpu_clockevent_start(u64 ticks_nsecs)
+int arch_clocksource_init(void)
 {
-	/* Enable the timer interrupts. */
-	u32 sr = read_c0_status();
-	sr |= ((0x1UL << 7) << 8);
-	write_c0_status(sr);
+	int rc;
 
-	u32 next_ticks = ns2count(ticks_nsecs);
-	write_c0_compare(read_c0_count() + next_ticks);
+	/* Register clocksource */
+	mips_cs.mult = vmm_clocksource_khz2mult(1000, 20);
+	if ((rc = vmm_clocksource_register(&mips_cs))) {
+		return rc;
+	}
 
-	return VMM_OK;
-}
-
-int arch_cpu_clockevent_setup(void)
-{
-	return VMM_OK;
-}
-
-int arch_cpu_clockevent_shutdown(void)
-{
-	/* Disable the timer interrupts. */
-	u32 sr = read_c0_status();
-	sr &= ~((0x1UL << 7) << 8);
-	write_c0_status(sr);
-
-	return VMM_OK;
-}
-
-u64 arch_cpu_clocksource_mask(void)
-{
-	return 0xFFFFFFFF;
-}
-
-u32 arch_cpu_clocksource_mult(void)
-{
-	return vmm_timer_clocksource_khz2mult(1000, 20);
-}
-
-u32 arch_cpu_clocksource_shift(void)
-{
-	return 20;
-}
-
-int arch_cpu_clockevent_stop(void)
-{
-	return 0;
-}
-
-int arch_cpu_clockevent_expire(void)
-{
-	return 0;
-}
-
-int arch_cpu_clockevent_init(void)
-{
-	/* Disable the timer interrupts. */
-	u32 sr = read_c0_status();
-	sr &= ~((0x1UL << 7) << 8);
-	write_c0_status(sr);
-
-	jiffies = 0;
-
-	return VMM_OK;
-}
-
-int arch_cpu_clocksource_init(void)
-{
 	/* Enable the monotonic count. */
 	u32 cause = read_c0_cause();
 	cause &= ~(0x1UL << 27);

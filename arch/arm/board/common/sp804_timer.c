@@ -22,127 +22,174 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_host_io.h>
+#include <vmm_host_irq.h>
+#include <vmm_clocksource.h>
+#include <vmm_clockchip.h>
 #include <sp804_timer.h>
 
-void sp804_timer_enable(virtual_addr_t base)
+struct sp804_clocksource {
+	virtual_addr_t base;
+	struct vmm_clocksource clksrc;
+};
+
+u64 sp804_clocksource_read(struct vmm_clocksource *cs)
+{
+	u32 count;
+	struct sp804_clocksource *tcs = cs->priv;
+
+	count = vmm_readl((void *)(tcs->base + TIMER_VALUE));
+
+	return ~count;
+}
+
+int __init sp804_clocksource_init(virtual_addr_t base, 
+				  const char *name, 
+				  int rating, 
+				  u32 freq_hz,
+				  u32 shift)
 {
 	u32 ctrl;
+	struct sp804_clocksource *cs;
 
-	ctrl = vmm_readl((void *)(base + TIMER_CTRL));
-	ctrl |= TIMER_CTRL_ENABLE;
-	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
-}
-
-void sp804_timer_disable(virtual_addr_t base)
-{
-	u32 ctrl;
-
-	ctrl = vmm_readl((void *)(base + TIMER_CTRL));
-	ctrl &= ~TIMER_CTRL_ENABLE;
-	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
-}
-
-int sp804_timer_event_stop(virtual_addr_t base)
-{
-	vmm_writel(0x0, (void *)(base + TIMER_CTRL));
-
-	return VMM_OK;
-}
-
-void sp804_timer_event_clearirq(virtual_addr_t base)
-{
-	vmm_writel(1, (void *)(base + TIMER_INTCLR));
-}
-
-bool sp804_timer_event_checkirq(virtual_addr_t base)
-{
-	return vmm_readl((void *)(base + TIMER_MIS)) ? TRUE : FALSE;
-}
-
-int sp804_timer_event_start(virtual_addr_t base, u64 nsecs)
-{
-	u32 ctrl, usecs;
-
-	/* Expected microseconds is usecs = (nsecs / 1000).
-	 * In integer arithmetic this can be approximated 
-	 * as follows:
-	 * usecs = (nsecs / 1000)
-	 *       = (nsecs / 1024) * (1024 / 1000)
-	 *       = (nsecs / 1024) + (nsecs / 1024) * (24 / 1000)
-	 *       = (nsecs >> 10) + (nsecs >> 10) * (3 / 125)
-	 *       = (nsecs >> 10) + (nsecs >> 10) * (3 / 128) * (128 / 125)
-	 *       = (nsecs >> 10) + (nsecs >> 10) * (3 / 128) + 
-	 *                                (nsecs >> 10) * (3 / 128) * (3 / 125)
-	 *       ~ (nsecs >> 10) + (nsecs >> 10) * (3 / 128) + 
-	 *                                (nsecs >> 10) * (3 / 128) * (3 / 128)
-	 *       ~ (nsecs >> 10) + (((nsecs >> 10) * 3) >> 7) + 
-	 *                                          (((nsecs >> 10) * 9) >> 14)
-	 */
-	nsecs = nsecs >> 10;
-	usecs = nsecs + ((nsecs * 3) >> 7) + ((nsecs * 9) >> 14);
-	if (!usecs) {
-		usecs = 1;
+	cs = vmm_malloc(sizeof(struct sp804_clocksource));
+	if (!cs) {
+		return VMM_EFAIL;
 	}
 
-	/* Setup the registers */
-	ctrl = vmm_readl((void *)(base + TIMER_CTRL));
-	/* Stop the timer if started */
-	if (ctrl & TIMER_CTRL_ENABLE) {
-		ctrl &= ~TIMER_CTRL_ENABLE;
-		ctrl |= TIMER_CTRL_32BIT; /* Ensure 32-bit mode */
-		vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
-	}
-	/* write the new timer value */
-	vmm_writel(usecs, (void *)(base + TIMER_LOAD));
-	/* start the timer in One Shot mode */
-	ctrl |=	(TIMER_CTRL_32BIT | 
-		 TIMER_CTRL_ONESHOT | 
-		 TIMER_CTRL_IE |
-		 TIMER_CTRL_ENABLE);
-	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
-
-	return VMM_OK;
-}
-
-u32 sp804_timer_counter_value(virtual_addr_t base)
-{
-	return vmm_readl((void *)(base + TIMER_VALUE));
-}
-
-int sp804_timer_counter_start(virtual_addr_t base)
-{
-	u32 ctrl;
+	cs->base = base;
+	cs->clksrc.name = name;
+	cs->clksrc.rating = rating;
+	cs->clksrc.read = &sp804_clocksource_read;
+	cs->clksrc.mask = 0xFFFFFFFF;
+	cs->clksrc.mult = vmm_clocksource_hz2mult(freq_hz, shift);
+	cs->clksrc.shift = shift;
+	cs->clksrc.priv = cs;
 
 	vmm_writel(0x0, (void *)(base + TIMER_CTRL));
 	vmm_writel(0xFFFFFFFF, (void *)(base + TIMER_LOAD));
-	ctrl = (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC);
+	ctrl = (TIMER_CTRL_ENABLE | TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC);
 	vmm_writel(ctrl, (void *)(base + TIMER_CTRL));
 
-	return VMM_OK;
+	return vmm_clocksource_register(&cs->clksrc);
 }
 
-int __init sp804_timer_init(virtual_addr_t base, u32 hirq,
-			    vmm_host_irq_handler_t hirq_handler)
+struct sp804_clockchip {
+	virtual_addr_t base;
+	struct vmm_clockchip clkchip;
+};
+
+static vmm_irq_return_t sp804_clockchip_irq_handler(u32 irq_no, 
+						    arch_regs_t * regs, 
+						    void *dev)
 {
-	int ret = VMM_OK;
+	struct sp804_clockchip *tcc = dev;
 
-	/*
-	 * Initialise to a known state (all timers off)
-	 */
-	vmm_writel(0, (void *)(base + TIMER_CTRL));
+	/* clear the interrupt */
+	vmm_writel(1, (void *)(tcc->base + TIMER_INTCLR));
 
-	/* Register interrupt handler */
-	if (hirq_handler) {
-		ret = vmm_host_irq_register(hirq, hirq_handler, NULL);
-		if (ret) {
-			return ret;
-		}
-		ret = vmm_host_irq_enable(hirq);
-		if (ret) {
-			return ret;
-		}
+	tcc->clkchip.event_handler(&tcc->clkchip, regs);
+
+	return VMM_IRQ_HANDLED;
+}
+
+static void sp804_clockchip_set_mode(enum vmm_clockchip_mode mode,
+				     struct vmm_clockchip *cc)
+{
+	struct sp804_clockchip *tcc = cc->priv;
+	unsigned long ctrl = TIMER_CTRL_32BIT | TIMER_CTRL_IE;
+
+	vmm_writel(ctrl, (void *)(tcc->base + TIMER_CTRL));
+
+	switch (mode) {
+	case VMM_CLOCKCHIP_MODE_PERIODIC:
+		/* FIXME: */
+		vmm_writel(10000, (void *)(tcc->base + TIMER_LOAD));
+		ctrl |= TIMER_CTRL_PERIODIC | TIMER_CTRL_ENABLE;
+		break;
+	case VMM_CLOCKCHIP_MODE_ONESHOT:
+		ctrl |= TIMER_CTRL_ONESHOT;
+		break;
+	case VMM_CLOCKCHIP_MODE_UNUSED:
+	case VMM_CLOCKCHIP_MODE_SHUTDOWN:
+	default:
+		break;
 	}
 
-	return ret;
+	vmm_writel(ctrl, (void *)(tcc->base + TIMER_CTRL));
 }
+
+static int sp804_clockchip_set_next_event(unsigned long next,
+					  struct vmm_clockchip *cc)
+{
+	struct sp804_clockchip *tcc = cc->priv;
+	unsigned long ctrl = vmm_readl((void *)(tcc->base + TIMER_CTRL));
+
+	vmm_writel(next, (void *)(tcc->base + TIMER_LOAD));
+	vmm_writel(ctrl | TIMER_CTRL_ENABLE, (void *)(tcc->base + TIMER_CTRL));
+
+	return 0;
+}
+
+static int sp804_clockchip_expire(struct vmm_clockchip *cc)
+{
+	u32 i;
+	struct sp804_clockchip *tcc = cc->priv;
+	unsigned long ctrl = vmm_readl((void *)(tcc->base + TIMER_CTRL));
+
+	ctrl &= ~TIMER_CTRL_ENABLE;
+	vmm_writel(ctrl, (void *)(tcc->base + TIMER_CTRL));
+	vmm_writel(1, (void *)(tcc->base + TIMER_LOAD));
+	vmm_writel(ctrl | TIMER_CTRL_ENABLE, (void *)(tcc->base + TIMER_CTRL));
+
+	while (!vmm_readl((void *)(tcc->base + TIMER_MIS))) {
+		for (i = 0; i < 100; i++);
+	}
+
+	return 0;
+}
+
+int __init sp804_clockchip_init(virtual_addr_t base, 
+				u32 hirq,
+				const char *name, 
+				int rating, 
+				u32 freq_hz)
+{
+	int rc;
+	struct sp804_clockchip *cc;
+
+	cc = vmm_malloc(sizeof(struct sp804_clockchip));
+	if (!cc) {
+		return VMM_EFAIL;
+	}
+
+	cc->base = base;
+	cc->clkchip.name = name;
+	cc->clkchip.rating = rating;
+	cc->clkchip.features = 
+		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
+	cc->clkchip.mult = vmm_clockchip_hz2mult(freq_hz, 32);
+	cc->clkchip.shift = 32;
+	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &cc->clkchip);
+	cc->clkchip.max_delta_ns = 
+			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);
+	cc->clkchip.set_mode = &sp804_clockchip_set_mode;
+	cc->clkchip.set_next_event = &sp804_clockchip_set_next_event;
+	cc->clkchip.expire = &sp804_clockchip_expire;
+	cc->clkchip.priv = cc;
+
+	/* Register interrupt handler */
+	if ((rc = vmm_host_irq_register(hirq, 
+					&sp804_clockchip_irq_handler, cc))) {
+		return rc;
+	}
+
+	/* Enable host interrupt line */
+	if ((rc = vmm_host_irq_enable(hirq))) {
+		return rc;
+	}
+
+	return vmm_clockchip_register(&cc->clkchip);
+}
+

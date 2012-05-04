@@ -22,10 +22,8 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_timer.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <arch_cpu.h>
 #include <arch_board.h>
 #include <realview_plat.h>
 #include <pba8_board.h>
@@ -34,27 +32,7 @@
 static virtual_addr_t pba8_timer0_base;
 static virtual_addr_t pba8_timer1_base;
 
-u64 arch_cpu_clocksource_cycles(void)
-{
-	return ~sp804_timer_counter_value(pba8_timer1_base);
-}
-
-u64 arch_cpu_clocksource_mask(void)
-{
-	return 0xFFFFFFFF;
-}
-
-u32 arch_cpu_clocksource_mult(void)
-{
-	return vmm_timer_clocksource_khz2mult(1000, 20);
-}
-
-u32 arch_cpu_clocksource_shift(void)
-{
-	return 20;
-}
-
-int __init arch_cpu_clocksource_init(void)
+int __init arch_clocksource_init(void)
 {
 	int rc;
 	u32 val;
@@ -78,67 +56,21 @@ int __init arch_cpu_clocksource_init(void)
 		return rc;
 	}
 
-	/* Map timer registers */
+	/* Map timer1 registers */
 	pba8_timer1_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
 	pba8_timer1_base += 0x20;
 
-	/* Initialize timers */
-	rc = sp804_timer_init(pba8_timer1_base,
-			      IRQ_PBA8_TIMER0_1,
-			      NULL);
+	/* Initialize timer1 as clocksource */
+	rc = sp804_clocksource_init(pba8_timer1_base, 
+				    "sp804_timer1", 300, 1000000, 20);
 	if (rc) {
 		return rc;
 	}
-
-	/* Configure timer1 as free running source */
-	rc = sp804_timer_counter_start(pba8_timer1_base);
-	if (rc) {
-		return rc;
-	}
-	sp804_timer_enable(pba8_timer1_base);
 
 	return VMM_OK;
 }
 
-int arch_cpu_clockevent_stop(void)
-{
-	return sp804_timer_event_stop(pba8_timer0_base);
-}
-
-static vmm_irq_return_t pba8_timer0_handler(u32 irq_no, 
-					    arch_regs_t * regs, 
-					    void *dev)
-{
-	sp804_timer_event_clearirq(pba8_timer0_base);
-
-	vmm_timer_clockevent_process(regs);
-
-	return VMM_IRQ_HANDLED;
-}
-
-int arch_cpu_clockevent_expire(void)
-{
-	int rc;
-
-	rc = sp804_timer_event_start(pba8_timer0_base, 0);
-
-	if (!rc) {
-		/* FIXME: The polling loop below is fine with emulators but,
-		 * for real hardware we might require some soft delay to
-		 * avoid bus contention.
-		 */
-		while (!sp804_timer_event_checkirq(pba8_timer0_base));
-	}
-
-	return rc;
-}
-
-int arch_cpu_clockevent_start(u64 tick_nsecs)
-{
-	return sp804_timer_event_start(pba8_timer0_base, tick_nsecs);
-}
-
-int __init arch_cpu_clockevent_init(void)
+int __init arch_clockchip_init(void)
 {
 	int rc;
 	u32 val;
@@ -162,13 +94,12 @@ int __init arch_cpu_clockevent_init(void)
 		return rc;
 	}
 
-	/* Map timer registers */
+	/* Map timer0 registers */
 	pba8_timer0_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
 
-	/* Initialize timers */
-	rc = sp804_timer_init(pba8_timer0_base,
-			      IRQ_PBA8_TIMER0_1,
-			      pba8_timer0_handler);
+	/* Initialize timer0 as clockchip */
+	rc = sp804_clockchip_init(pba8_timer0_base, IRQ_PBA8_TIMER0_1, 
+				  "sp804_timer0", 300, 1000000);
 	if (rc) {
 		return rc;
 	}

@@ -21,7 +21,8 @@
  * @brief header file for spinlock synchronization mechanisms.
  */
 
-#include <arch_cpu.h>
+#include <arch_cpu_irq.h>
+#include <arch_locks.h>
 #include <vmm_error.h>
 #include <vmm_scheduler.h>
 #include <vmm_spinlocks.h>
@@ -30,7 +31,7 @@ bool __lock vmm_spin_lock_check(vmm_spinlock_t * lock)
 {
 #if defined(CONFIG_SMP)
 	/* Call CPU specific locking routine */
-	return arch_cpu_spin_lock_check(&lock->__the_lock);
+	return arch_spin_lock_check(&lock->__the_lock);
 #else
 	return FALSE;
 #endif
@@ -42,7 +43,7 @@ void __lock vmm_spin_lock(vmm_spinlock_t * lock)
 	vmm_scheduler_preempt_disable();
 #if defined(CONFIG_SMP)
 	/* Call CPU specific locking routine */
-	arch_cpu_spin_lock(&lock->__the_lock);
+	arch_spin_lock(&lock->__the_lock);
 #endif
 }
 
@@ -50,7 +51,7 @@ void __lock vmm_spin_unlock(vmm_spinlock_t * lock)
 {
 #if defined(CONFIG_SMP)
 	/* Call CPU specific unlocking routine */
-	arch_cpu_spin_unlock(&lock->__the_lock);
+	arch_spin_unlock(&lock->__the_lock);
 #endif
 	/* Enable preemption in scheduler */
 	vmm_scheduler_preempt_enable();
@@ -63,7 +64,7 @@ irq_flags_t __lock vmm_spin_lock_irqsave(vmm_spinlock_t * lock)
 	flags = arch_cpu_irq_save();
 #if defined(CONFIG_SMP)
 	/* Call CPU specific locking routine */
-	arch_cpu_spin_lock(&lock->__the_lock);
+	arch_spin_lock(&lock->__the_lock);
 #endif
 	/* Return saved interrupt flags*/
 	return flags;
@@ -74,7 +75,7 @@ void __lock vmm_spin_unlock_irqrestore(vmm_spinlock_t * lock,
 {
 #if defined(CONFIG_SMP)
 	/* Call CPU specific unlocking routine */
-	arch_cpu_spin_unlock(&lock->__the_lock);
+	arch_spin_unlock(&lock->__the_lock);
 #endif
 	/* Restore saved interrupt flags */
 	arch_cpu_irq_restore(flags);

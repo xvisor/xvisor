@@ -22,7 +22,7 @@
  */
 
 #include <stdarg.h>
-#include <arch_board.h>
+#include <arch_defterm.h>
 #include <vmm_error.h>
 #include <vmm_math.h>
 #include <vmm_string.h>

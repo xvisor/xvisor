@@ -23,9 +23,9 @@
 #ifndef _VMM_MANAGER_H__
 #define _VMM_MANAGER_H__
 
+#include <list.h>
 #include <arch_regs.h>
 #include <vmm_types.h>
-#include <vmm_list.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 

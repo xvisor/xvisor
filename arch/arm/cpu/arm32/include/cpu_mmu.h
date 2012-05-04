@@ -24,7 +24,7 @@
 #define _CPU_MMU_H__
 
 #include <vmm_types.h>
-#include <vmm_list.h>
+#include <list.h>
 
 /* Generic CPU page having superset of page 
  * attributes required by all ARM family 

@@ -21,7 +21,8 @@
  * @brief source file for hypervisor scheduler
  */
 
-#include <arch_cpu.h>
+#include <arch_cpu_irq.h>
+#include <arch_vcpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>

@@ -48,68 +48,14 @@
 
 unsigned long long jiffies;
 
-void arch_cpu_timer_enable(void)
-{
-}
-
-u64 arch_cpu_clocksource_cycles(void)
-{
-        return 0;
-}
-
-u32 ns2count(u64 ticks_nsecs)
-{
-        return 0;
-}
-
-int arch_cpu_clockevent_start(u64 ticks_nsecs)
-{
-	return VMM_OK;
-}
-
-int arch_cpu_clockevent_setup(void)
-{
-	return VMM_OK;
-}
-
-int arch_cpu_clockevent_shutdown(void)
-{
-	return VMM_OK;
-}
-
-u64 arch_cpu_clocksource_mask(void)
-{
-	return 0xFFFFFFFF;
-}
-
-u32 arch_cpu_clocksource_mult(void)
-{
-        return 0;
-}
-
-u32 arch_cpu_clocksource_shift(void)
-{
-        return 0;
-}
-
-int arch_cpu_clockevent_stop(void)
-{
-	return 0;
-}
-
-int arch_cpu_clockevent_expire(void)
-{
-	return 0;
-}
-
-int arch_cpu_clockevent_init(void)
+int arch_clockchip_init(void)
 {
 	/* FIXME */
 	while (1);
 	return VMM_OK;
 }
 
-int arch_cpu_clocksource_init(void)
+int arch_clocksource_init(void)
 {
 	/* FIXME */
 	while (1);

@@ -23,17 +23,18 @@
 
 #include <arch_cpu.h>
 #include <arch_board.h>
+#include <bitmap.h>
 #include <vmm_error.h>
 #include <vmm_math.h>
-#include <vmm_list.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 
 struct vmm_host_ram_ctrl {
 	u32 *ram_bmap;
-	u32 ram_bmap_len;
+	u32 ram_bmap_sz;
 	u32 ram_bmap_free;
+	u32 ram_frame_count;
 	physical_addr_t ram_start;
 	physical_size_t ram_size;
 };
@@ -72,8 +73,7 @@ int vmm_host_ram_alloc(physical_addr_t * pa, physical_size_t sz, bool aligned)
 	for ( ; bpos < (rctrl.ram_size >> VMM_PAGE_SHIFT); bpos += binc) {
 		bfree = 0;
 		for (i = bpos; i < (bpos + bcnt); i++) {
-			if (rctrl.ram_bmap[i >> 5] & 
-			    (0x1 << (31 - (i & 0x1F)))) {
+			if (bitmap_isset(rctrl.ram_bmap, i)) {
 				break;
 			}
 			bfree++;
@@ -89,7 +89,7 @@ int vmm_host_ram_alloc(physical_addr_t * pa, physical_size_t sz, bool aligned)
 
 	*pa = rctrl.ram_start + bpos * VMM_PAGE_SIZE;
 	for (i = bpos; i < (bpos + bcnt); i++) {
-		rctrl.ram_bmap[i >> 5] |= (0x1 << (31 - (i & 0x1F)));
+		bitmap_setbit(rctrl.ram_bmap, i);
 		rctrl.ram_bmap_free--;
 	}
 
@@ -122,8 +122,7 @@ int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz)
 	bpos = (pa - rctrl.ram_start) >> VMM_PAGE_SHIFT;
 	bfree = 0;
 	for (i = bpos; i < (bpos + bcnt); i++) {
-		if (rctrl.ram_bmap[i >> 5] & 
-		    (0x1 << (31 - (i & 0x1F)))) {
+		if (bitmap_isset(rctrl.ram_bmap, i)) {
 			break;
 		}
 		bfree++;
@@ -134,7 +133,7 @@ int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz)
 	}
 
 	for (i = bpos; i < (bpos + bcnt); i++) {
-		rctrl.ram_bmap[i >> 5] |= (0x1 << (31 - (i & 0x1F)));
+		bitmap_setbit(rctrl.ram_bmap, i);
 		rctrl.ram_bmap_free--;
 	}
 
@@ -163,7 +162,7 @@ int vmm_host_ram_free(physical_addr_t pa, physical_size_t sz)
 	bpos = (pa - rctrl.ram_start) >> VMM_PAGE_SHIFT;
 
 	for (i = bpos; i < (bpos + bcnt); i++) {
-		rctrl.ram_bmap[i >> 5] &= ~(0x1 << (31 - (i & 0x1F)));
+		bitmap_clearbit(rctrl.ram_bmap, i);
 		rctrl.ram_bmap_free++;
 	}
 
@@ -186,7 +185,7 @@ bool vmm_host_ram_frame_isfree(physical_addr_t pa)
 
 	bpos = (pa - rctrl.ram_start) >> VMM_PAGE_SHIFT;
 
-	if (rctrl.ram_bmap[bpos >> 5] & (0x1 << (31 - (bpos & 0x1F)))) {
+	if (bitmap_isset(rctrl.ram_bmap, bpos)) {
 		return FALSE;
 	}
 
@@ -200,7 +199,7 @@ u32 vmm_host_ram_free_frame_count(void)
 
 u32 vmm_host_ram_total_frame_count(void)
 {
-	return rctrl.ram_size >> VMM_PAGE_SHIFT;
+	return rctrl.ram_frame_count;
 }
 
 physical_size_t vmm_host_ram_size(void)
@@ -210,7 +209,7 @@ physical_size_t vmm_host_ram_size(void)
 
 virtual_size_t vmm_host_ram_estimate_hksize(physical_size_t ram_size)
 {
-	return ((ram_size >> (VMM_PAGE_SHIFT + 5)) + 1) * sizeof(u32);
+	return bitmap_estimate_size(ram_size >> VMM_PAGE_SHIFT);
 }
 
 int __init vmm_host_ram_init(physical_addr_t base, 
@@ -227,18 +226,18 @@ int __init vmm_host_ram_init(physical_addr_t base,
 	rctrl.ram_size = size;
 	rctrl.ram_start &= ~VMM_PAGE_MASK;
 	rctrl.ram_size &= ~VMM_PAGE_MASK;
+	rctrl.ram_frame_count = rctrl.ram_size >> VMM_PAGE_SHIFT;
 	rctrl.ram_bmap = (u32 *)hkbase;
-	rctrl.ram_bmap_len = rctrl.ram_size >> (VMM_PAGE_SHIFT + 5);
-	rctrl.ram_bmap_len += 1;
-	rctrl.ram_bmap_free = rctrl.ram_size >> VMM_PAGE_SHIFT;
+	rctrl.ram_bmap_sz = bitmap_estimate_size(rctrl.ram_frame_count);
+	rctrl.ram_bmap_free = rctrl.ram_frame_count;
 
-	vmm_memset(rctrl.ram_bmap, 0, sizeof(u32) * rctrl.ram_bmap_len);
+	bitmap_clearall(rctrl.ram_bmap, rctrl.ram_frame_count);
 
 	max = ((rctrl.ram_start + rctrl.ram_size) >> VMM_PAGE_SHIFT);
 	ite = ((resv_pa - rctrl.ram_start) >> VMM_PAGE_SHIFT);
 	last = ite + (resv_sz >> VMM_PAGE_SHIFT);
 	for ( ; (ite < last) && (ite < max); ite++) {
-		rctrl.ram_bmap[ite >> 5] |= (0x1 << (31 - (ite & 0x1F)));
+		bitmap_setbit(rctrl.ram_bmap, ite);
 		rctrl.ram_bmap_free--;
 	}
 

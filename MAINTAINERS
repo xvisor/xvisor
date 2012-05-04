@@ -94,7 +94,7 @@ P:	Himanshu Chauhan
 M:	hschauhan@nulltrace.org
 S:	Maintained
 L:	xvisor-devel@googlegroups.com
-F:	core/include/vmm_list.h
+F:	libs/common/list.h
 
 MANAGMENT TERMINAL DAEMON
 P:	Himanshu Chauhan

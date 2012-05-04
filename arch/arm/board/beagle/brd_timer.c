@@ -22,8 +22,7 @@
  *
  */
 
-#include <arch_cpu.h>
-#include <arch_board.h>
+#include <arch_timer.h>
 #include <omap3/intc.h>
 #include <omap3/gpt.h>
 #include <omap3/s32k-timer.h>
@@ -42,6 +41,7 @@
 
 struct omap3_gpt_cfg beagle_gpt_cfg[] = {
 	{
+		.name =		"gpt1",
 		.base_pa =	OMAP3_GPT1_BASE,
 		.cm_domain =	OMAP3_WKUP_CM,
 		.clksel_mask = 	OMAP3_CM_CLKSEL_WKUP_CLKSEL_GPT1_M,
@@ -51,6 +51,7 @@ struct omap3_gpt_cfg beagle_gpt_cfg[] = {
 		.irq_no	=	OMAP3_MPU_INTC_GPT1_IRQ
 	},
 	{
+		.name =		"gpt2",
 		.base_pa =	OMAP3_GPT2_BASE,
 		.cm_domain =	OMAP3_PER_CM,
 		.clksel_mask = 	OMAP3_CM_CLKSEL_PER_CLKSEL_GPT2_M,
@@ -61,137 +62,24 @@ struct omap3_gpt_cfg beagle_gpt_cfg[] = {
 	}
 };
 
+int __init arch_clocksource_init(void)
+{
 #ifdef CONFIG_OMAP3_CLKSRC_S32KT
-u64 arch_cpu_clocksource_cycles(void)
-{
-	return ((u64)omap3_s32k_get_counter());
-}
-
-u64 arch_cpu_clocksource_mask(void)
-{
-	return 0xFFFFFFFF;
-}
-
-u32 arch_cpu_clocksource_mult(void)
-{
-	return vmm_timer_clocksource_hz2mult(OMAP3_S32K_FREQ_HZ, 15);
-}
-
-u32 arch_cpu_clocksource_shift(void)
-{
-	return 15;
-}
-
-int arch_cpu_clocksource_init(void)
-{
-	return omap3_s32k_init();
-}
+	return omap3_s32k_clocksource_init();
 #else
-u64 arch_cpu_clocksource_cycles(void)
-{
-	return omap3_gpt_get_counter(BEAGLE_CLK_SRC_GPT);
-}
-
-u64 arch_cpu_clocksource_mask(void)
-{
-	return 0xFFFFFFFF;
-}
-
-u32 arch_cpu_clocksource_mult(void)
-{
-	return vmm_timer_clocksource_khz2mult((beagle_gpt_cfg[BEAGLE_CLK_SRC_GPT].clk_hz)/1000, 24);
-}
-
-u32 arch_cpu_clocksource_shift(void)
-{
-	return 24;
-}
-
-int arch_cpu_clocksource_init(void)
-{
 	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct omap3_gpt_cfg), 
 			beagle_gpt_cfg);
-	omap3_gpt_instance_init(BEAGLE_CLK_SRC_GPT, OMAP3_GLOBAL_REG_PRM, NULL);
-	omap3_gpt_continuous(BEAGLE_CLK_SRC_GPT);
-	return 0;
-}
+	return omap3_gpt_clocksource_init(BEAGLE_CLK_SRC_GPT, 
+					  OMAP3_GLOBAL_REG_PRM);
 #endif
-
-static vmm_irq_return_t arch_cpu_timer_irq_handler(u32 irq_no, 
-						   arch_regs_t * regs, 
-						   void *dev)
-{
-	omap3_gpt_ack_irq(BEAGLE_CLK_EVENT_GPT);
-	omap3_gpt_stop(BEAGLE_CLK_EVENT_GPT);
-	vmm_timer_clockevent_process(regs);
-
-	return VMM_IRQ_HANDLED;
 }
 
-int arch_cpu_clockevent_start(u64 nsecs)
+int __init arch_clockchip_init(void)
 {
-	u32 usecs;
-
-	/* Expected microseconds is usecs = (nsecs / 1000).
-	 * In integer arithmetic this can be approximated 
-	 * as follows:
-	 * usecs = (nsecs / 1000)
-	 *       = (nsecs / 1024) * (1024 / 1000)
-	 *       = (nsecs / 1024) + (nsecs / 1024) * (24 / 1000)
-	 *       = (nsecs >> 10) + (nsecs >> 10) * (3 / 125)
-	 *       = (nsecs >> 10) + (nsecs >> 10) * (3 / 128) * (128 / 125)
-	 *       = (nsecs >> 10) + (nsecs >> 10) * (3 / 128) + 
-	 *                                (nsecs >> 10) * (3 / 128) * (3 / 125)
-	 *       ~ (nsecs >> 10) + (nsecs >> 10) * (3 / 128) + 
-	 *                                (nsecs >> 10) * (3 / 128) * (3 / 128)
-	 *       ~ (nsecs >> 10) + (((nsecs >> 10) * 3) >> 7) + 
-	 *                                          (((nsecs >> 10) * 9) >> 14)
-	 */
-	nsecs = nsecs >> 10;
-	usecs = nsecs + ((nsecs * 3) >> 7) + ((nsecs * 9) >> 14);
-	if (!usecs) {
-		usecs = 1;
-	}
-
-	omap3_gpt_load_start(BEAGLE_CLK_EVENT_GPT, usecs);
-	return VMM_OK;
-}
-
-int arch_cpu_clockevent_stop(void)
-{
-	omap3_gpt_stop(BEAGLE_CLK_EVENT_GPT);
-	return VMM_OK;
-}
-
-int arch_cpu_clockevent_expire(void)
-{
-	omap3_gpt_load_start(BEAGLE_CLK_EVENT_GPT, 1);
-
-	/* No need to worry about irq-handler as irqs are disabled 
-	 * before calling this */
-	omap3_gpt_poll_overflow(BEAGLE_CLK_EVENT_GPT);
-
-	return VMM_OK;
-}
-
-int arch_cpu_clockevent_init(void)
-{
-	int rc = VMM_OK;
-
 	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct omap3_gpt_cfg), 
 			beagle_gpt_cfg);
 
-	rc = omap3_gpt_instance_init(BEAGLE_CLK_EVENT_GPT, OMAP3_GLOBAL_REG_PRM,
-			&arch_cpu_timer_irq_handler);
-	if (rc) {
-		return rc;
-	}
-
-	omap3_gpt_disable(BEAGLE_CLK_EVENT_GPT);
-	omap3_gpt_oneshot(BEAGLE_CLK_EVENT_GPT);
-
-	vmm_host_irq_enable(beagle_gpt_cfg[BEAGLE_CLK_EVENT_GPT].irq_no);
-
-	return VMM_OK;
+	return omap3_gpt_clockchip_init(BEAGLE_CLK_EVENT_GPT, 
+					OMAP3_GLOBAL_REG_PRM);
 }
 
