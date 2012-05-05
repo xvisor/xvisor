@@ -26,6 +26,8 @@
 #include <vmm_types.h>
 #include <arch_regs.h>
 
+#define NR_GATES		256
+
 /* Interrupt Descriptor Table */
 
 /* Segment Selector and Offset (SSO) */
@@ -89,6 +91,8 @@ struct idt64_ptr {
 #define _GATE_TYPE_INTERRUPT		0xE
 #define _GATE_TYPE_TRAP			0xF
 
+#define NR_IST_STACKS			7
+
 /* Task state segment:
  * We need one because, x86 requires at least one TSS be present
  * and we want to use interrupt stack table. In IA32e mode task
@@ -127,8 +131,8 @@ struct tss_64 {
 union tss_desc_base_limit {
 	u32 val;
 	struct {
-		u32 tss_base1:16;
 		u32 tss_limit:16;
+		u32 tss_base1:16;
 	} bits;
 } __packed;
 
@@ -161,5 +165,27 @@ struct tss64_desc {
 	union tss_desc_base tb;
 	u32 reserved;
 } __packed;
+
+/* Interrupt handlers. */
+extern void _irq0(void);
+extern void _irq1(void);
+extern void _irq2(void);
+extern void _irq3(void);
+extern void _irq4(void);
+extern void _irq5(void);
+extern void _irq6(void);
+extern void _irq7(void);
+extern void _irq8(void);
+extern void _irq9(void);
+extern void _irq10(void);
+extern void _irq11(void);
+extern void _irq12(void);
+extern void _irq13(void);
+extern void _irq14(void);
+extern void _irq16(void);
+extern void _irq17(void);
+extern void _irq18(void);
+extern void _irq19(void);
+extern void _irq128(void);
 
 #endif /* _CPU_INTERRYPTS_H__ */

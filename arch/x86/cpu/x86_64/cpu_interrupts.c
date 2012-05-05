@@ -59,14 +59,14 @@ static int install_idt(void)
 static int set_idt_gate_handler(u32 gatenum, physical_addr_t handler_base,
 				u32 flags)
 {
-	if (gatenum > 255)
+	if (gatenum >= NR_GATES)
 		return VMM_EFAIL;
 
 	struct gate_descriptor *idt_entry = &int_desc_table[gatenum];
 
 	idt_entry->ot.bits.z = 0;
 	idt_entry->ot.bits.dpl = 0; /* RING 0 */
-	idt_entry->ot.bits.ist = 0;
+	idt_entry->ot.bits.ist = 1;
 	idt_entry->ot.bits.offset = ((handler_base >> 16) & 0xFFFFUL);
 	idt_entry->ot.bits.rz = 0;
 
@@ -91,14 +91,38 @@ static int set_idt_gate_handler(u32 gatenum, physical_addr_t handler_base,
 	return VMM_OK;
 }
 
-static void install_tss_64_descriptor(void)
+static inline void set_interrupt_gate(u8 intrno, physical_addr_t addr)
 {
-	physical_addr_t tss_base = VIRT_TO_PHYS(&vmm_tss);
+	set_idt_gate_handler(intrno, addr, IDT_GATE_TYPE_INTERRUPT);
+}
+
+static inline void set_trap_gate(u8 trapno, physical_addr_t addr)
+{
+	set_idt_gate_handler(trapno, addr, IDT_GATE_TYPE_TRAP);
+}
+
+static void setup_tss64(struct tss_64 *init_tss)
+{
+	extern u8 _ist_stacks_start;
+	int i;
+	u32 *tss_stacks = (u32 *)(&init_tss->ist1_lo);
+	u64 stack_start = (u64)&_ist_stacks_start;
+
+	for (i = 0; i < (2 * NR_IST_STACKS); i += 2) {
+		tss_stacks[i] = (u32)(stack_start & 0xFFFFFFFFUL);
+		tss_stacks[i+1] = (u32)((stack_start >> 32) & 0xFFFFFFFFUL);
+		stack_start -= PAGE_SIZE;
+	}
+}
+
+static void install_tss_64_descriptor(struct tss_64 *init_tss)
+{
+	physical_addr_t tss_base = VIRT_TO_PHYS(init_tss);
 	unsigned int tss_seg_sel = VMM_TSS_SEG_SEL;
 	struct tss64_desc *tss_64_desc = &__xvisor_tss_64_desc;
 
 	tss_64_desc->tbl.bits.tss_base1 = (tss_base & 0xFFFFUL);
-	tss_64_desc->tbl.bits.tss_limit = sizeof(vmm_tss) - 1;
+	tss_64_desc->tbl.bits.tss_limit = sizeof(*init_tss) - 1;
 
 	tss_64_desc->tbt.bits.tss_base2 = ((tss_base >> 16) & 0xFFUL);
 	tss_64_desc->tbt.bits.type = _GATE_TYPE_TSS_AVAILABLE;
@@ -116,26 +140,41 @@ static void install_tss_64_descriptor(void)
 			 ::"r"(&tss_seg_sel));
 }
 
-static int break_point_handler(void)
-{
-	while(1);
-	return 0;
-}
-
 static void setup_gate_handlers(void)
 {
-	set_idt_gate_handler(3, VIRT_TO_PHYS(break_point_handler),
-			     IDT_GATE_TYPE_INTERRUPT);
+	set_trap_gate(0, VIRT_TO_PHYS(_irq0));	/* divide error */
+	set_trap_gate(1, VIRT_TO_PHYS(_irq1));	/* debug */
+	set_trap_gate(3, VIRT_TO_PHYS(_irq3));	/* Breakpoint */
+	set_trap_gate(4, VIRT_TO_PHYS(_irq4));	/* Overflow */
+	set_trap_gate(5, VIRT_TO_PHYS(_irq5));	/* Bounds error */
+	set_trap_gate(6, VIRT_TO_PHYS(_irq6));	/* Invalid Opcode */
+	set_trap_gate(7, VIRT_TO_PHYS(_irq7));	/* Dev not avail */
+	set_trap_gate(8, VIRT_TO_PHYS(_irq8));	/* double fault */
+	set_trap_gate(9, VIRT_TO_PHYS(_irq9));	/* coproc seg ovrn */
+	set_trap_gate(10, VIRT_TO_PHYS(_irq10));/* invalid tss */
+	set_trap_gate(11, VIRT_TO_PHYS(_irq11));/* seg not present */
+	set_trap_gate(12, VIRT_TO_PHYS(_irq12));/* stack segment */
+	set_trap_gate(13, VIRT_TO_PHYS(_irq13));/* GPF */
+	set_trap_gate(16, VIRT_TO_PHYS(_irq16));/* coproc error */
+	set_trap_gate(17, VIRT_TO_PHYS(_irq17));/* alignment check */
+	set_trap_gate(18, VIRT_TO_PHYS(_irq18));/* machine check */
+	set_trap_gate(19, VIRT_TO_PHYS(_irq19));/* simd coproc error */
+	set_trap_gate(128, VIRT_TO_PHYS(_irq128));/* system call */
+
+	set_interrupt_gate(2, VIRT_TO_PHYS(_irq2));/* NMI */
+	set_interrupt_gate(14, VIRT_TO_PHYS(_irq14));/* page fault */
 }
 
 int arch_cpu_irq_setup(void)
 {
-	install_tss_64_descriptor();
+	setup_tss64(&vmm_tss);
+	install_tss_64_descriptor(&vmm_tss);
 	install_idt();
 	setup_gate_handlers();
 
 	__asm__ volatile("int $3\n\t"::);
 
+	for (;;);
 #if CONFIG_LOCAL_APIC
 	apic_init();
 #endif
@@ -165,4 +204,10 @@ void arch_cpu_wait_for_irq(void)
 	/* FIXME: Use some hardware functionality to wait for interrupt */
 	/* OR */
 	/* FIXME: Use some soft delay */
+}
+
+/* All Handlers */
+int do_breakpoint(int intno, arch_regs_t *regs)
+{
+	return 0;
 }
