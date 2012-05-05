@@ -27,20 +27,20 @@
 #include <arch_cpu_irq.h>
 #include <cpu_barrier.h>
 
-long __lock arch_cpu_atomic_read(atomic_t * atom)
+long __lock arch_atomic_read(atomic_t * atom)
 {
 	long ret = atom->counter;
 	rmb();
 	return ret;
 }
 
-void __lock arch_cpu_atomic_write(atomic_t * atom, long value)
+void __lock arch_atomic_write(atomic_t * atom, long value)
 {
 	atom->counter = value;
 	wmb();
 }
 
-void __lock arch_cpu_atomic_add(atomic_t * atom, long value)
+void __lock arch_atomic_add(atomic_t * atom, long value)
 {
 	irq_flags_t flags;
 
@@ -49,7 +49,7 @@ void __lock arch_cpu_atomic_add(atomic_t * atom, long value)
 	arch_cpu_irq_restore(flags);
 }
 
-void __lock arch_cpu_atomic_sub(atomic_t * atom, long value)
+void __lock arch_atomic_sub(atomic_t * atom, long value)
 {
 	irq_flags_t flags;
 
@@ -58,7 +58,7 @@ void __lock arch_cpu_atomic_sub(atomic_t * atom, long value)
 	arch_cpu_irq_restore(flags);
 }
 
-bool __lock arch_cpu_atomic_testnset(atomic_t * atom, long test, long value)
+bool __lock arch_atomic_testnset(atomic_t * atom, long test, long value)
 {
 	bool ret = FALSE;
 	irq_flags_t flags;
@@ -73,7 +73,7 @@ bool __lock arch_cpu_atomic_testnset(atomic_t * atom, long test, long value)
         return ret;
 }
 
-long __lock arch_cpu_atomic_add_return(atomic_t * atom, long value)
+long __lock arch_atomic_add_return(atomic_t * atom, long value)
 {
 	long temp;
 	irq_flags_t flags;
@@ -86,7 +86,7 @@ long __lock arch_cpu_atomic_add_return(atomic_t * atom, long value)
 	return temp;
 }
 
-long __lock arch_cpu_atomic_sub_return(atomic_t * atom, long value)
+long __lock arch_atomic_sub_return(atomic_t * atom, long value)
 {
 	long temp;
 	irq_flags_t flags;
