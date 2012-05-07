@@ -292,7 +292,7 @@ void do_data_abort(arch_regs_t * uregs)
 	case DFSR_FS_PERM_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
 						dfar, fs, dom, wnr, 1);
-		if ((dfar & ~(sizeof(arm_priv(vcpu)->cp15.ovect) - 1)) != 
+		if ((dfar & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) != 
 						arm_priv(vcpu)->cp15.ovect_base) {
 			crash_dump = FALSE;
 		}

@@ -1609,7 +1609,7 @@ int cpu_vcpu_cp15_mem_read(struct vmm_vcpu *vcpu,
 	register int rc = VMM_OK;
 	register u32 vind, ecode;
 	register struct cpu_page *pgp = &pg;
-	if ((addr & ~(sizeof(arm_priv(vcpu)->cp15.ovect) - 1)) ==
+	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) ==
 	    arm_priv(vcpu)->cp15.ovect_base) {
 		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 			force_unpriv = TRUE;
@@ -1622,22 +1622,22 @@ int cpu_vcpu_cp15_mem_read(struct vmm_vcpu *vcpu,
 						   0, 1);
 			return VMM_EFAIL;
 		}
-		vind = addr & (sizeof(arm_priv(vcpu)->cp15.ovect) - 1);
+		vind = addr & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
 		switch (dst_len) {
 		case 4:
 			vind &= ~(0x4 - 1);
 			vind /= 0x4;
-			*((u32 *) dst) = arm_priv(vcpu)->cp15.ovect[vind];
+			*((u32 *) dst) = arm_guest_priv(vcpu->guest)->ovect[vind];
 			break;
 		case 2:
 			vind &= ~(0x2 - 1);
 			vind /= 0x2;
 			*((u16 *) dst) =
-			    ((u16 *) arm_priv(vcpu)->cp15.ovect)[vind];
+			    ((u16 *)arm_guest_priv(vcpu->guest)->ovect)[vind];
 			break;
 		case 1:
 			*((u8 *) dst) =
-			    ((u8 *) arm_priv(vcpu)->cp15.ovect)[vind];
+			    ((u8 *)arm_guest_priv(vcpu->guest)->ovect)[vind];
 			break;
 		default:
 			return VMM_EFAIL;
@@ -1732,7 +1732,7 @@ int cpu_vcpu_cp15_mem_write(struct vmm_vcpu *vcpu,
 	register int rc = VMM_OK;
 	register u32 vind, ecode;
 	register struct cpu_page *pgp = &pg;
-	if ((addr & ~(sizeof(arm_priv(vcpu)->cp15.ovect) - 1)) ==
+	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == 
 	    arm_priv(vcpu)->cp15.ovect_base) {
 		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 			force_unpriv = TRUE;
@@ -1745,21 +1745,21 @@ int cpu_vcpu_cp15_mem_write(struct vmm_vcpu *vcpu,
 						   1, 1);
 			return VMM_EFAIL;
 		}
-		vind = addr & (sizeof(arm_priv(vcpu)->cp15.ovect) - 1);
+		vind = addr & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
 		switch (src_len) {
 		case 4:
 			vind &= ~(0x4 - 1);
 			vind /= 0x4;
-			arm_priv(vcpu)->cp15.ovect[vind] = *((u32 *) src);
+			arm_guest_priv(vcpu->guest)->ovect[vind] = *((u32 *) src);
 			break;
 		case 2:
 			vind &= ~(0x2 - 1);
 			vind /= 0x2;
-			((u16 *) arm_priv(vcpu)->cp15.ovect)[vind] =
+			((u16 *)arm_guest_priv(vcpu->guest)->ovect)[vind] =
 			    *((u16 *) src);
 			break;
 		case 1:
-			((u8 *) arm_priv(vcpu)->cp15.ovect)[vind] =
+			((u8 *)arm_guest_priv(vcpu->guest)->ovect)[vind] =
 			    *((u8 *) src);
 			break;
 		default:
@@ -1854,7 +1854,7 @@ virtual_addr_t cpu_vcpu_cp15_vector_addr(struct vmm_vcpu * vcpu, u32 irq_no)
 	if (arm_priv(vcpu)->cp15.ovect_base == vaddr) {
 		/* FIXME: We assume that guest will use 
 		 * LDR PC, [PC, #xx] as first instruction of irq handler */
-		vaddr = arm_priv(vcpu)->cp15.ovect[irq_no + 8];
+		vaddr = arm_guest_priv(vcpu->guest)->ovect[irq_no + 8];
 	} else {
 		vaddr += 4 * irq_no;
 	}

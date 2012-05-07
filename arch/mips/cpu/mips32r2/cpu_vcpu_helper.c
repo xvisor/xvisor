@@ -115,7 +115,19 @@ static  __attribute__((unused)) int map_vcpu_rom(struct vmm_vcpu *vcpu)
 	return map_guest_region(vcpu, VMM_REGION_TYPE_ROM, 0);
 }
 
-int arch_vcpu_regs_init(struct vmm_vcpu *vcpu)
+int arch_guest_init(struct vmm_guest * guest)
+{
+	/* Don't have per guest arch context */
+	return VMM_OK;
+}
+
+int arch_guest_deinit(struct vmm_guest * guest)
+{
+	/* Don't have per guest arch context */
+	return VMM_OK;
+}
+
+int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
 	vmm_memset(mips_uregs(vcpu), 0, sizeof(arch_regs_t));
 
@@ -145,16 +157,16 @@ int arch_vcpu_regs_init(struct vmm_vcpu *vcpu)
 	return VMM_OK;
 }
 
-int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu)
+int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
 {
 	vmm_memset(mips_uregs(vcpu), 0, sizeof(arch_regs_t));
 
 	return VMM_OK;
 }
 
-void arch_vcpu_regs_switch(struct vmm_vcpu *tvcpu, 
-			  struct vmm_vcpu *vcpu,
-			  arch_regs_t *regs)
+void arch_vcpu_switch(struct vmm_vcpu *tvcpu, 
+		      struct vmm_vcpu *vcpu,
+		      arch_regs_t *regs)
 {
 	if (tvcpu) {
 		vmm_memcpy(mips_uregs(tvcpu), regs, sizeof(arch_regs_t));

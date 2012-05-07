@@ -663,7 +663,26 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu,
 	}
 }
 
-int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
+int arch_guest_init(struct vmm_guest * guest)
+{
+	if (!guest->reset_count) {
+		guest->arch_priv = vmm_malloc(sizeof(arm_guest_priv_t));
+		if (!guest->arch_priv) {
+			return VMM_EFAIL;
+		}
+	}
+	return VMM_OK;
+}
+
+int arch_guest_deinit(struct vmm_guest * guest)
+{
+	if (guest->arch_priv) {
+		vmm_free(guest->arch_priv);
+	}
+	return VMM_OK;
+}
+
+int arch_vcpu_init(struct vmm_vcpu * vcpu)
 {
 	u32 ite, cpuid;
 	const char * attr;
@@ -790,7 +809,7 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
-int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu)
+int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
 {
 	int rc;
 
@@ -813,8 +832,9 @@ int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
-			  struct vmm_vcpu * vcpu, arch_regs_t * regs)
+void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
+		      struct vmm_vcpu * vcpu, 
+                      arch_regs_t * regs)
 {
 	u32 ite;
 	/* Save user registers & banked registers */

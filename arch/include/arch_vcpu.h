@@ -26,12 +26,12 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
-/** Register functions required by VMM core */
-int arch_vcpu_regs_init(struct vmm_vcpu * vcpu);
-int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu);
-void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
-			  struct vmm_vcpu * vcpu, 
-			  arch_regs_t * regs);
+/** VCPU functions required by VMM core */
+int arch_vcpu_init(struct vmm_vcpu * vcpu);
+int arch_vcpu_deinit(struct vmm_vcpu * vcpu);
+void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
+		      struct vmm_vcpu * vcpu, 
+		      arch_regs_t * regs);
 void arch_vcpu_regs_dump(struct vmm_vcpu * vcpu);
 void arch_vcpu_stat_dump(struct vmm_vcpu * vcpu);
 

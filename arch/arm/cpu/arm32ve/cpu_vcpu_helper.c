@@ -439,7 +439,19 @@ int cpu_vcpu_spsr_update(struct vmm_vcpu * vcpu,
 	return VMM_OK;
 }
 
-int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
+int arch_guest_init(struct vmm_guest * guest)
+{
+	/* Don't have per guest arch context */
+	return VMM_OK;
+}
+
+int arch_guest_deinit(struct vmm_guest * guest)
+{
+	/* Don't have per guest arch context */
+	return VMM_OK;
+}
+
+int arch_vcpu_init(struct vmm_vcpu * vcpu)
 {
 	u32 ite, cpuid = 0;
 	const char * attr;
@@ -576,7 +588,7 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
-int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu)
+int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
 {
 	int rc;
 
@@ -684,8 +696,9 @@ static void cpu_vcpu_banked_regs_restore(struct vmm_vcpu * vcpu)
 		      ::"r" (arm_priv(vcpu)->spsr_fiq) :"memory", "cc");
 }
 
-void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
-			  struct vmm_vcpu * vcpu, arch_regs_t * regs)
+void arch_vcpu_switch(struct vmm_vcpu * tvcpu, 
+		      struct vmm_vcpu * vcpu, 
+		      arch_regs_t * regs)
 {
 	u32 ite;
 	/* Save user registers & banked registers */

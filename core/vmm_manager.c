@@ -22,6 +22,7 @@
  */
 
 #include <arch_vcpu.h>
+#include <arch_guest.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_guest_aspace.h>
@@ -84,7 +85,7 @@ static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			}
 			vcpu->state = VMM_VCPU_STATE_RESET;
 			vcpu->reset_count++;
-			if ((rc = arch_vcpu_regs_init(vcpu))) {
+			if ((rc = arch_vcpu_init(vcpu))) {
 				break;
 			}
 			if ((rc = vmm_vcpu_irq_init(vcpu))) {
@@ -227,8 +228,8 @@ struct vmm_vcpu * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->guest = NULL;
 	vcpu->arch_priv = NULL;
 
-	/* Initialize registers */
-	if (arch_vcpu_regs_init(vcpu)) {
+	/* Initialize VCPU */
+	if (arch_vcpu_init(vcpu)) {
 		mngr.vcpu_avail_array[vnum] = TRUE;
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 		return NULL;
@@ -301,8 +302,8 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu * vcpu)
 	/* Change VCPU state */
 	vcpu->state = VMM_VCPU_STATE_UNKNOWN;
 
-	/* Deinit VCPU registers */
-	if ((rc = arch_vcpu_regs_deinit(vcpu))) {
+	/* Deinit VCPU */
+	if ((rc = arch_vcpu_deinit(vcpu))) {
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 		return rc;
 	}
@@ -380,11 +381,15 @@ int vmm_manager_guest_reset(struct vmm_guest * guest)
 		list_for_each(lentry, &guest->vcpu_list) {
 			vcpu = list_entry(lentry, struct vmm_vcpu, head);
 			if ((rc = vmm_manager_vcpu_reset(vcpu))) {
-				break;
+				return rc;
 			}
 		}
-		if (!rc) {
-			rc = vmm_guest_aspace_reset(guest);
+		if ((rc = vmm_guest_aspace_reset(guest))) {
+			return rc;
+		}
+		guest->reset_count++;
+		if ((rc = arch_guest_init(guest))) {
+			return rc;
 		}
 	}
 	return rc;
@@ -533,8 +538,10 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 	INIT_SPIN_LOCK(&guest->lock);
 	list_add_tail(&mngr.guest_list, &guest->head);
 	guest->node = gnode;
+	guest->reset_count = 0;
 	guest->vcpu_count = 0;
 	INIT_LIST_HEAD(&guest->vcpu_list);
+	guest->arch_priv = NULL;
 
 	vsnode = vmm_devtree_getchild(gnode, VMM_DEVTREE_VCPUS_NODE_NAME);
 	if (!vsnode) {
@@ -615,7 +622,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 		}
 		vcpu->guest = guest;
 		vcpu->arch_priv = NULL;
-		if (arch_vcpu_regs_init(vcpu)) {
+		if (arch_vcpu_init(vcpu)) {
 			continue;
 		}
 		if (vmm_vcpu_irq_init(vcpu)) {
@@ -658,6 +665,12 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 		return NULL;
 	}
 
+	/* Initialize arch guest context */
+	if (arch_guest_init(guest)) {
+		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+		return NULL;
+	}
+
 	/* Increment guest count */
 	mngr.guest_count++;
 
@@ -691,8 +704,15 @@ int vmm_manager_guest_destroy(struct vmm_guest * guest)
 	/* Remove from guest list */
 	list_del(&guest->head);
 
+	/* Deinit arch guest context */
+	if ((rc = arch_guest_deinit(guest))) {
+		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+		return rc;
+	}
+
 	/* Deinit the guest aspace */
 	if ((rc = vmm_guest_aspace_deinit(guest))) {
+		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 		return rc;
 	}
 
@@ -715,8 +735,8 @@ int vmm_manager_guest_destroy(struct vmm_guest * guest)
 		/* Change VCPU state */
 		vcpu->state = VMM_VCPU_STATE_UNKNOWN;
 
-		/* Deinit VCPU registers */
-		if ((rc = arch_vcpu_regs_deinit(vcpu))) {
+		/* Deinit VCPU */
+		if ((rc = arch_vcpu_deinit(vcpu))) {
 			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 			return rc;
 		}

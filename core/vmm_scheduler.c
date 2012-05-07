@@ -62,7 +62,7 @@ static void vmm_scheduler_next(struct vmm_timer_event * ev, arch_regs_t * regs)
 			}
 			next = vmm_schedalgo_rq_dequeue(sched.rq);
 			if (next && (next->id != current->id)) {
-				arch_vcpu_regs_switch(current, next, regs);
+				arch_vcpu_switch(current, next, regs);
 			}
 		} else {
 			if (current->state == VMM_VCPU_STATE_READY) {
@@ -70,14 +70,14 @@ static void vmm_scheduler_next(struct vmm_timer_event * ev, arch_regs_t * regs)
 			}
 			next = vmm_schedalgo_rq_dequeue(sched.rq);
 			if (next) {
-				arch_vcpu_regs_switch(NULL, next, regs);
+				arch_vcpu_switch(NULL, next, regs);
 			}
 		}
 	} else {
 		/* First time scheduling */
 		next = vmm_schedalgo_rq_dequeue(sched.rq);
 		if (next) {
-			arch_vcpu_regs_switch(NULL, next, regs);
+			arch_vcpu_switch(NULL, next, regs);
 		} else {
 			/* This should never happen !!! */
 			while (1);
