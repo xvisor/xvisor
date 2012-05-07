@@ -75,6 +75,10 @@ SECTIONS
                 PROVIDE(_stack_end = .);
                 . += 8192;
                 PROVIDE(_stack_start = .);
+		/* IST Stacks */
+		PROVIDE(_ist_stacks_end = .);
+		. += 0x7000; /* 7 stacks for size 4K each */
+		PROVIDE(_ist_stacks_start = .);
         }
 
 	.init :

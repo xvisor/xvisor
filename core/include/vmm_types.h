@@ -52,6 +52,7 @@ typedef unsigned long long u64;
 #define __unused		__attribute__((unused))
 #define __noreturn		__attribute__((noreturn))
 #define __notrace		__attribute__((no_instrument_function))
+#define __packed		__attribute__((packed))
 
 #define __lock			__attribute__((section(".spinlock.text")))
 #define __modtbl		__attribute__((section(".modtbl")))
