@@ -1165,6 +1165,22 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				goto bad_reg;
 			};
 			break;
+		case 1: 
+			if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
+				/* TODO: Check if treating these as nop is ok */
+				switch (opc2) {
+				case 0:
+					/* Invalidate all I-caches to PoU 
+					 * innner-shareable - ICIALLUIS */
+				case 6:
+					/* Invalidate all branch predictors 
+					 * innner-shareable - BPIALLUIS */
+					break;
+				default:
+					goto bad_reg;
+				};
+			}
+			break;
 		case 4:
 			/* VA->PA translations. */
 			if (arm_feature(vcpu, ARM_FEATURE_VAPA)) {
