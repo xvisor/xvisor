@@ -248,6 +248,7 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 				   void *src, u32 src_len)
 {
 	int rc = VMM_OK, i;
+	bool do_reset = FALSE, do_shutdown = FALSE;
 	u32 regmask = 0x0, regval = 0x0;
 	struct realview_sysctl * s = edev->priv;
 
@@ -328,6 +329,9 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 		if (!(s->lockval & 0x10000)) {
 			s->resetlevel &= regmask;
 			s->resetlevel |= regval;
+			if (s->resetlevel & 0x04) {
+				do_reset = TRUE;
+			}
 		}
 		break;
 	case 0x44: /* PCICTL */
@@ -368,10 +372,10 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 		s->sys_cfgstat = 1;            /* complete */
 		switch (s->sys_cfgctrl) {
 		case 0xc0800000: /* SYS_CFG_SHUTDOWN to motherboard */
-			/* FIXME: system_shutdown_request(); */
+			do_shutdown = TRUE;
 			break;
 		case 0xc0900000: /* SYS_CFG_REBOOT to motherboard */
-			/* FIXME: system_reset_request(); */
+			do_reset = TRUE;
 			break;
 		default:
 			s->sys_cfgstat |= 2;        /* error */
@@ -392,14 +396,11 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 
 	vmm_spin_unlock(&s->lock);
 
-	/* FIXME: Comparision does not work with linux */
-#if 0 /* QEMU checks bit 8 which is wrong */
-	if (s->resetlevel & 0x100) {
-#else
-	if (s->resetlevel & 0x04) {
-#endif
+	if (do_reset) {
 		vmm_manager_guest_reset(s->guest);
 		vmm_manager_guest_kick(s->guest);
+	} else if (do_shutdown) {
+		vmm_manager_guest_reset(s->guest);
 	}
 
 	return rc;
