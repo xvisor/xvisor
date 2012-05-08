@@ -952,6 +952,8 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		arm_priv(tvcpu)->cp15.c5_dfsr = read_dfsr();
 		arm_priv(tvcpu)->cp15.c6_ifar = read_ifar();
 		arm_priv(tvcpu)->cp15.c6_dfar = read_dfar();
+		arm_priv(tvcpu)->cp15.c10_prrr = read_prrr();
+		arm_priv(tvcpu)->cp15.c10_nmrr = read_nmrr();
 		arm_priv(tvcpu)->cp15.c13_fcseidr = read_fcseidr();
 		arm_priv(tvcpu)->cp15.c13_contextidr = read_contextidr();
 		arm_priv(tvcpu)->cp15.c13_tls1 = read_tpidrurw();
@@ -972,6 +974,8 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		write_dfsr(arm_priv(vcpu)->cp15.c5_dfsr);
 		write_ifar(arm_priv(vcpu)->cp15.c6_ifar);
 		write_dfar(arm_priv(vcpu)->cp15.c6_dfar);
+		write_prrr(arm_priv(vcpu)->cp15.c10_prrr);
+		write_nmrr(arm_priv(vcpu)->cp15.c10_nmrr);
 		write_fcseidr(arm_priv(vcpu)->cp15.c13_fcseidr);
 		write_contextidr(arm_priv(vcpu)->cp15.c13_contextidr);
 		write_tpidrurw(arm_priv(vcpu)->cp15.c13_tls1);
