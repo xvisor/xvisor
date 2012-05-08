@@ -47,15 +47,14 @@ struct cpu_mmu_ctrl {
 	virtual_addr_t l1_base_va;
 	physical_addr_t l1_base_pa;
 	struct cpu_l1tbl * l1_array;
-	u8 * l1_bmap;
 	u32 l1_alloc_count;
 	virtual_addr_t l2_base_va;
 	physical_addr_t l2_base_pa;
 	struct cpu_l2tbl * l2_array;
-	u8 * l2_bmap;
 	u32 l2_alloc_count;
 	struct dlist l1tbl_list;
-	struct dlist l2tbl_list;
+	struct dlist free_l1tbl_list;
+	struct dlist free_l2tbl_list;
 };
 
 static struct cpu_mmu_ctrl mmuctrl;
@@ -117,7 +116,6 @@ int cpu_mmu_l2tbl_detach(struct cpu_l2tbl * l2)
 	vmm_memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
 
 	list_del(&l2->head);
-	list_add(&mmuctrl.l2tbl_list, &l2->head);
 
 	return VMM_OK;
 }
@@ -126,7 +124,6 @@ int cpu_mmu_l2tbl_detach(struct cpu_l2tbl * l2)
 int cpu_mmu_l2tbl_attach(struct cpu_l1tbl * l1, struct cpu_l2tbl * l2, u32 new_imp,
 			 u32 new_domain, virtual_addr_t new_map_va, bool force)
 {
-	int rc;
 	u32 *l1_tte, l1_tte_new;
 	u32 l1_tte_type;
 
@@ -135,10 +132,7 @@ int cpu_mmu_l2tbl_attach(struct cpu_l1tbl * l1, struct cpu_l2tbl * l2, u32 new_i
 	}
 
 	if (cpu_mmu_l2tbl_is_attached(l2)) {
-		rc = cpu_mmu_l2tbl_detach(l2);
-		if (rc) {
-			return rc;
-		}
+		return VMM_EFAIL;
 	}
 
 	l1_tte = (u32 *) (l1->tbl_va +
@@ -167,7 +161,6 @@ int cpu_mmu_l2tbl_attach(struct cpu_l1tbl * l1, struct cpu_l2tbl * l2, u32 new_i
 	}
 	l1->l2tbl_cnt++;
 
-	list_del(&l2->head);
 	list_add(&l1->l2tbl_list, &l2->head);
 
 	return VMM_OK;
@@ -176,28 +169,17 @@ int cpu_mmu_l2tbl_attach(struct cpu_l1tbl * l1, struct cpu_l2tbl * l2, u32 new_i
 /** Allocate a L2 page table of given type */
 struct cpu_l2tbl *cpu_mmu_l2tbl_alloc(void)
 {
-	u32 i;
 	struct cpu_l2tbl *l2;
 
-	if (!list_empty(&mmuctrl.l2tbl_list)) {
-		return list_entry(mmuctrl.l2tbl_list.next, struct cpu_l2tbl, head);
-	}
-
-	if (mmuctrl.l2_alloc_count < TTBL_MAX_L2TBL_COUNT) {
-		for (i = 0; i < TTBL_MAX_L2TBL_COUNT; i++) {
-			if (!mmuctrl.l2_bmap[i]) {
-				break;
-			}
-		}
-		if (i == TTBL_MAX_L2TBL_COUNT) {
-			return NULL;
-		}
-		mmuctrl.l2_bmap[i] = 1;
-		mmuctrl.l2_alloc_count++;
-		l2 = &mmuctrl.l2_array[i];
-	} else {
+	if (list_empty(&mmuctrl.free_l2tbl_list)) {
 		return NULL;
 	}
+
+	l2 = list_entry(list_first(&mmuctrl.free_l2tbl_list), 
+			struct cpu_l2tbl, head);
+	list_del(&l2->head);
+
+	INIT_LIST_HEAD(&l2->head);
 	l2->l1 = NULL;
 	l2->imp = 0;
 	l2->domain = 0;
@@ -205,7 +187,7 @@ struct cpu_l2tbl *cpu_mmu_l2tbl_alloc(void)
 	l2->tte_cnt = 0;
 	vmm_memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
 
-	list_add(&mmuctrl.l2tbl_list, &l2->head);
+	mmuctrl.l2_alloc_count++;
 
 	return l2;
 }
@@ -226,7 +208,10 @@ int cpu_mmu_l2tbl_free(struct cpu_l2tbl * l2)
 		}
 	}
 
-	mmuctrl.l2_bmap[l2->num] = 0;
+	INIT_LIST_HEAD(&l2->head);
+	l2->l1 = NULL;
+	list_add_tail(&mmuctrl.free_l2tbl_list, &l2->head);
+
 	mmuctrl.l2_alloc_count--;
 
 	return VMM_OK;
@@ -483,7 +468,7 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 				l2->tte_cnt--;				
 			}
 			if (!l2->tte_cnt) {
-				cpu_mmu_l2tbl_detach(l2);
+				cpu_mmu_l2tbl_free(l2);
 			}
 			ret = VMM_OK;
 		}
@@ -494,7 +479,7 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 			cpu_mmu_sync_tte(l2_tte);
 			l2->tte_cnt--;
 			if (!l2->tte_cnt) {
-				cpu_mmu_l2tbl_detach(l2);
+				cpu_mmu_l2tbl_free(l2);
 			}
 			ret = VMM_OK;
 		}
@@ -843,21 +828,13 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 	struct dlist *le;
 	struct cpu_l2tbl *l2, *nl2;
 
-	if (mmuctrl.l1_alloc_count < TTBL_MAX_L1TBL_COUNT) {
-		for (i = 0; i < TTBL_MAX_L1TBL_COUNT; i++) {
-			if (!mmuctrl.l1_bmap[i]) {
-				break;
-			}
-		}
-		if (i == TTBL_MAX_L1TBL_COUNT) {
-			return NULL;
-		}
-		mmuctrl.l1_bmap[i] = 1;
-		mmuctrl.l1_alloc_count++;
-		nl1 = &mmuctrl.l1_array[i];
-	} else {
+	if (list_empty(&mmuctrl.free_l1tbl_list)) {
 		return NULL;
 	}
+	nl1 = list_entry(list_first(&mmuctrl.free_l1tbl_list), 
+			 struct cpu_l1tbl, head);
+	list_del(&nl1->head);
+	mmuctrl.l1_alloc_count++;
 
 	INIT_LIST_HEAD(&nl1->l2tbl_list);
 	nl1->tte_cnt = 0;
@@ -903,7 +880,6 @@ l1tbl_alloc_fail:
 			nl2 = list_entry(le, struct cpu_l2tbl, head);
 			cpu_mmu_l2tbl_free(nl2);
 		}
-		mmuctrl.l1_bmap[nl1->num] = 0;
 		mmuctrl.l1_alloc_count--;
 	}
 
@@ -929,8 +905,8 @@ int cpu_mmu_l1tbl_free(struct cpu_l1tbl * l1)
 	}
 
 	list_del(&l1->head);
+	list_add_tail(&mmuctrl.free_l1tbl_list, &l1->head);
 
-	mmuctrl.l1_bmap[l1->num] = 0;
 	mmuctrl.l1_alloc_count--;
 
 	return VMM_OK;
@@ -1210,7 +1186,8 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 
 	/* Initialize list heads */
 	INIT_LIST_HEAD(&mmuctrl.l1tbl_list);
-	INIT_LIST_HEAD(&mmuctrl.l2tbl_list);
+	INIT_LIST_HEAD(&mmuctrl.free_l1tbl_list);
+	INIT_LIST_HEAD(&mmuctrl.free_l2tbl_list);
 
 	/* Handcraft default translation table */
 	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
@@ -1276,14 +1253,8 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	*arch_resv_pa = (resv_pa + resv_sz);
 	*arch_resv_sz = resv_sz;
 	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
-	mmuctrl.l1_bmap = (u8 *)(resv_va + resv_sz);
-	resv_sz += TTBL_MAX_L1TBL_COUNT;
-	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
 	mmuctrl.l1_array = (struct cpu_l1tbl *)(resv_va + resv_sz);
 	resv_sz += sizeof(struct cpu_l1tbl) * TTBL_MAX_L1TBL_COUNT;
-	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
-	mmuctrl.l2_bmap = (u8 *)(resv_va + resv_sz);
-	resv_sz += TTBL_MAX_L2TBL_COUNT;
 	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
 	mmuctrl.l2_array = (struct cpu_l2tbl *)(resv_va + resv_sz);
 	resv_sz += sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT;
@@ -1335,7 +1306,6 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	}
 
 	/* Setup up l1 array */
-	vmm_memset(mmuctrl.l1_bmap, 0x0, TTBL_MAX_L1TBL_COUNT);
 	vmm_memset(mmuctrl.l1_array, 0x0, 
 		   sizeof(struct cpu_l1tbl) * TTBL_MAX_L1TBL_COUNT);
 	for (i = 0; i < TTBL_MAX_L1TBL_COUNT; i++) {
@@ -1348,10 +1318,11 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		mmuctrl.l1_array[i].tte_cnt = 0;
 		mmuctrl.l1_array[i].l2tbl_cnt = 0;
 		INIT_LIST_HEAD(&mmuctrl.l1_array[i].l2tbl_list);
+		list_add_tail(&mmuctrl.free_l1tbl_list, 
+			      &mmuctrl.l1_array[i].head);
 	}
 
 	/* Setup up l2 array */
-	vmm_memset(mmuctrl.l2_bmap, 0x0, TTBL_MAX_L2TBL_COUNT);
 	vmm_memset(mmuctrl.l2_array, 0x0, 
 		   sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT);
 	for (i = 0; i < TTBL_MAX_L2TBL_COUNT; i++) {
@@ -1362,6 +1333,8 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		mmuctrl.l2_array[i].tbl_va = mmuctrl.l2_base_va + 
 						i * TTBL_L2TBL_SIZE;
 		mmuctrl.l2_array[i].tte_cnt = 0;
+		list_add_tail(&mmuctrl.free_l2tbl_list, 
+			      &mmuctrl.l2_array[i].head);
 	}
 
 	return VMM_OK;
