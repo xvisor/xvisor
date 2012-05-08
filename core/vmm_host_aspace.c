@@ -126,7 +126,7 @@ int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t * page_pa)
 		return rc;
 	}
 
-	if (!page_pa) {
+	if (page_pa) {
 		*page_pa = pa;
 	}
 
