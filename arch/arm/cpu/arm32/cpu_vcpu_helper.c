@@ -26,6 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_math.h>
 #include <vmm_stdio.h>
+#include <vmm_host_aspace.h>
 #include <vmm_manager.h>
 #include <cpu_defines.h>
 #include <cpu_vcpu_cp15.h>
@@ -665,17 +666,56 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu,
 
 int arch_guest_init(struct vmm_guest * guest)
 {
+	int rc;
+	u32 ovect_flags;
+	virtual_addr_t ovect_va;
+	struct cpu_page pg;
+
 	if (!guest->reset_count) {
 		guest->arch_priv = vmm_malloc(sizeof(arm_guest_priv_t));
 		if (!guest->arch_priv) {
 			return VMM_EFAIL;
 		}
+		ovect_flags = 0x0;
+		ovect_flags |= VMM_MEMORY_READABLE;
+		ovect_flags |= VMM_MEMORY_WRITEABLE;
+		ovect_flags |= VMM_MEMORY_CACHEABLE;
+		ovect_flags |= VMM_MEMORY_EXECUTABLE;
+		ovect_va = vmm_host_alloc_pages(1, ovect_flags);
+		if (!ovect_va) {
+			return VMM_EFAIL;
+		}
+		if ((rc = cpu_mmu_get_reserved_page(ovect_va, &pg))) {
+			return rc;
+		}
+		if ((rc = cpu_mmu_unmap_reserved_page(&pg))) {
+			return rc;
+		}
+		if (pg.ap == TTBL_AP_SRW_U) {
+			pg.ap = TTBL_AP_SRW_UR;
+		} else if (pg.ap == TTBL_AP_SR_U) {
+			pg.ap = TTBL_AP_SR_UR;
+		} else {
+			pg.ap = TTBL_AP_SRW_UR;
+		}
+		if ((rc = cpu_mmu_map_reserved_page(&pg))) {
+			return rc;
+		}
+		arm_guest_priv(guest)->ovect = (u32 *)ovect_va;
 	}
+
 	return VMM_OK;
 }
 
 int arch_guest_deinit(struct vmm_guest * guest)
 {
+	int rc;
+	if (!arm_guest_priv(guest)->ovect) {
+		rc = vmm_host_free_pages((virtual_addr_t)arm_guest_priv(guest)->ovect, 1);
+		if (rc) {
+			return rc;
+		}
+	}
 	if (guest->arch_priv) {
 		vmm_free(guest->arch_priv);
 	}

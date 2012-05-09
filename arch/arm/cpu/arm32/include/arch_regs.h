@@ -254,7 +254,7 @@ typedef struct arm_priv arm_priv_t;
 struct arm_guest_priv
 {
 	/* Overlapping vector page */
-	u32 ovect[TTBL_L2TBL_SMALL_PAGE_SIZE / 4];
+	u32 * ovect;
 }__attribute((packed));
 
 typedef struct arm_guest_priv arm_guest_priv_t;

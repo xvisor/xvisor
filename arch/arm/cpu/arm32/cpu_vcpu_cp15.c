@@ -1868,12 +1868,10 @@ virtual_addr_t cpu_vcpu_cp15_vector_addr(struct vmm_vcpu * vcpu, u32 irq_no)
 	}
 
 	if (arm_priv(vcpu)->cp15.ovect_base == vaddr) {
-		/* FIXME: We assume that guest will use 
-		 * LDR PC, [PC, #xx] as first instruction of irq handler */
-		vaddr = arm_guest_priv(vcpu->guest)->ovect[irq_no + 8];
-	} else {
-		vaddr += 4 * irq_no;
+		vaddr = (virtual_addr_t)arm_guest_priv(vcpu->guest)->ovect;	
 	}
+
+	vaddr += 4 * irq_no;
 
 	return vaddr;
 }
