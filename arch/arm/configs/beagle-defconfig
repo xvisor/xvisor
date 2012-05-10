@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Thu May  3 10:08:10 2012
+# Thu May 10 16:45:44 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -32,7 +32,6 @@ CONFIG_ARM32=y
 # CONFIG_ARM32_HIGHVEC is not set
 # CONFIG_ARM32_FUNCSTATS is not set
 CONFIG_ARMV7A_SECUREX=y
-CONFIG_EMU_REALVIEW=y
 CONFIG_BOARD_BEAGLE=y
 CONFIG_OMAP3=y
 
@@ -149,6 +148,11 @@ CONFIG_EMU_SERIAL_PL011=y
 #
 CONFIG_EMU_RTC=y
 CONFIG_EMU_RTC_PL031=y
+
+#
+# Miscellaneous Emulators
+#
+CONFIG_EMU_MISC_A9MP_PRIV=y
 
 #
 # Tool Options

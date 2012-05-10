@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Thu May  3 10:07:28 2012
+# Thu May 10 16:43:32 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -36,7 +36,6 @@ CONFIG_BOARD_PB_A8=y
 CONFIG_REALVIEW=y
 CONFIG_ARM_GIC=y
 CONFIG_ARM_TIMER_SP804=y
-CONFIG_EMU_REALVIEW=y
 
 #
 # Realview PB-A8 Options
@@ -153,6 +152,11 @@ CONFIG_EMU_SERIAL_PL011=y
 #
 CONFIG_EMU_RTC=y
 CONFIG_EMU_RTC_PL031=y
+
+#
+# Miscellaneous Emulators
+#
+CONFIG_EMU_MISC_A9MP_PRIV=y
 
 #
 # Tool Options

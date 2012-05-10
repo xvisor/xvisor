@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Wed Mar 21 22:22:41 2012
+# Thu May 10 17:19:08 2012
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -119,6 +119,11 @@ CONFIG_LIBFDT=y
 # Real-Time Clock Emulators
 #
 # CONFIG_EMU_RTC is not set
+
+#
+# Miscellaneous Emulators
+#
+# CONFIG_EMU_MISC_A9MP_PRIV is not set
 
 #
 # Tool Options
