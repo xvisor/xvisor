@@ -16,10 +16,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file realview.c
+ * @file arm_sysregs.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Realview Sysctl emulator.
- * @details This source file implements the Realview Sysctl emulator.
+ * @brief ARM Realview / Versatile Express System Registers emulator.
+ * @details This source file implements the ARM system-registers emulator.
  *
  * The source has been largely adapted from QEMU 0.14.xx hw/arm_sysctl.c 
  *
@@ -54,6 +54,7 @@
 #define REALVIEW_SYSID_PBA8		0x01780500
 #define REALVIEW_PROCID_PBA8		0x00000000
 #define REALVIEW_SYSID_VEXPRESS		0x01900000
+#define VEXPRESS_PROCID_CA9		0x0c000191
 
 struct realview_sysctl {
 	struct vmm_guest *guest;
@@ -474,10 +475,20 @@ static u32 realview_sysids[] = {
 	/* proc_id */ REALVIEW_PROCID_PBA8, 
 };
 
+static u32 vexpress_sysids[] = {
+	/* === PBA8 === */
+	/* sys_id */ REALVIEW_SYSID_VEXPRESS, 
+	/* proc_id */ VEXPRESS_PROCID_CA9, 
+};
+
 static struct vmm_emuid realview_emuid_table[] = {
 	{ .type = "sys", 
 	  .compatible = "realview,pb-a8", 
 	  .data = &realview_sysids[0] 
+	},
+	{ .type = "sys", 
+	  .compatible = "vexpress,a9", 
+	  .data = &vexpress_sysids[0] 
 	},
 	{ /* end of list */ },
 };
