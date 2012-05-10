@@ -7,8 +7,10 @@
 *.bin
 *.lnk
 *.dis
+*.bak
 gdbinit0
 gdbinit1
+typescript
 build/
 test_*objs/
 cscope.*
