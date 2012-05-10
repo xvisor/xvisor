@@ -31,19 +31,12 @@ enum gic_type {
 	GIC_TYPE_VEXPRESS,
 };
 
-/** Read function for GIC distributor */
-int gic_dist_read(struct gic_state *s, int cpu, u32 offset, u32 *dst);
-
-/** Write function for GIC distributor */
-int gic_dist_write(struct gic_state *s, int cpu, u32 offset, 
-		   u32 src_mask, u32 src);
-
-/** Read function for GIC cpu interface */
-int gic_cpu_read(struct gic_state * s, u32 cpu, u32 offset, u32 *dst);
-
-/** Write function for GIC cpu interface */
-int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset, 
+/* GIC register write */
+int gic_reg_write(struct gic_state *s, physical_addr_t offset,
 		  u32 src_mask, u32 src);
+
+/** GIC register read */
+int gic_reg_read(struct gic_state *s, physical_addr_t offset, u32 *dst);
 
 /** Resets the GIC state */
 int gic_state_reset(struct gic_state *s);

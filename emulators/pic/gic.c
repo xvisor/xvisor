@@ -589,7 +589,7 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 	return VMM_OK;
 }
 
-int gic_dist_read(struct gic_state *s, int cpu, u32 offset, u32 *dst)
+static int gic_dist_read(struct gic_state *s, int cpu, u32 offset, u32 *dst)
 {
 	int rc = VMM_OK, i;
 	u8 val;
@@ -612,7 +612,7 @@ int gic_dist_read(struct gic_state *s, int cpu, u32 offset, u32 *dst)
 	return VMM_OK;
 }
 
-int gic_dist_write(struct gic_state *s, int cpu, u32 offset, 
+static int gic_dist_write(struct gic_state *s, int cpu, u32 offset, 
 		   u32 src_mask, u32 src)
 {
 	int rc = VMM_OK, irq, mask, i;
@@ -661,7 +661,7 @@ int gic_dist_write(struct gic_state *s, int cpu, u32 offset,
 	return rc;
 }
 
-int gic_cpu_read(struct gic_state * s, u32 cpu, u32 offset, u32 *dst)
+static int gic_cpu_read(struct gic_state * s, u32 cpu, u32 offset, u32 *dst)
 {
 	if (!s || !dst) {
 		return VMM_EFAIL;
@@ -701,7 +701,7 @@ int gic_cpu_read(struct gic_state * s, u32 cpu, u32 offset, u32 *dst)
 	return VMM_OK;
 }
 
-int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset, 
+static int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset, 
 		  u32 src_mask, u32 src)
 {
 	if (!s) {
@@ -740,14 +740,9 @@ int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset,
 	return VMM_OK;
 }
 
-static int gic_emulator_read(struct vmm_emudev *edev,
-			     physical_addr_t offset, 
-			     void *dst, u32 dst_len)
+int gic_reg_read(struct gic_state *s, physical_addr_t offset, u32 *dst)
 {
-	struct vmm_vcpu * vcpu = NULL;
-	int rc = VMM_OK;
-	u32 regval = 0x0;
-	struct gic_state * s = edev->priv;
+	struct vmm_vcpu *vcpu;
 
 	vcpu = vmm_scheduler_current_vcpu();
 	if (!vcpu || !vcpu->guest) {
@@ -760,14 +755,52 @@ static int gic_emulator_read(struct vmm_emudev *edev,
 	if ((offset >= s->cpu_offset) && 
 	    (offset < (s->cpu_offset + s->cpu_length))) {
 		/* Read CPU Interface */
-		rc = gic_cpu_read(s, vcpu->subid, offset & 0xFC, &regval);
+		return gic_cpu_read(s, vcpu->subid, offset & 0xFC, dst);
 	} else if ((offset >= s->dist_offset) && 
 		   (offset < (s->dist_offset + s->dist_length)))  {
 		/* Read Distribution Control */
-		rc = gic_dist_read(s, vcpu->subid, offset & 0xFFC, &regval);
-	} else {
-		rc = VMM_EFAIL;
+		return gic_dist_read(s, vcpu->subid, offset & 0xFFC, dst);
 	}
+
+	return VMM_EFAIL;
+}
+
+int gic_reg_write(struct gic_state *s, physical_addr_t offset,
+		  u32 src_mask, u32 src)
+{
+	struct vmm_vcpu *vcpu;
+
+	vcpu = vmm_scheduler_current_vcpu();
+	if (!vcpu || !vcpu->guest) {
+		return VMM_EFAIL;
+	}
+	if (s->guest->id != vcpu->guest->id) {
+		return VMM_EFAIL;
+	}
+
+	if ((offset >= s->cpu_offset) && 
+	    (offset < (s->cpu_offset + s->cpu_length))) {
+		/* Write CPU Interface */
+		return gic_cpu_write(s, vcpu->subid, 
+				   offset & 0xFC, src_mask, src);
+	} else if ((offset >= s->dist_offset) && 
+		   (offset < (s->dist_offset + s->dist_length)))  {
+		/* Write Distribution Control */
+		return gic_dist_write(s, vcpu->subid, 
+				    offset & 0xFFC, src_mask, src);
+	}
+	return VMM_EFAIL;
+}
+
+static int gic_emulator_read(struct vmm_emudev *edev,
+			     physical_addr_t offset, 
+			     void *dst, u32 dst_len)
+{
+	int rc = VMM_OK;
+	u32 regval = 0x0;
+	struct gic_state * s = edev->priv;
+
+	gic_reg_read(s, offset, &regval);
 
 	if (!rc) {
 		regval = (regval >> ((offset & 0x3) * 8));
@@ -794,8 +827,7 @@ static int gic_emulator_write(struct vmm_emudev *edev,
 			      physical_addr_t offset, 
 			      void *src, u32 src_len)
 {
-	struct vmm_vcpu * vcpu = NULL;
-	int rc = VMM_OK, i;
+	int i;
 	u32 regmask = 0x0, regval = 0x0;
 	struct gic_state * s = edev->priv;
 
@@ -822,27 +854,7 @@ static int gic_emulator_write(struct vmm_emudev *edev,
 	}
 	regval = (regval << ((offset & 0x3) * 8));
 
-	vcpu = vmm_scheduler_current_vcpu();
-	if (!vcpu || !vcpu->guest) {
-		return VMM_EFAIL;
-	}
-	if (s->guest->id != vcpu->guest->id) {
-		return VMM_EFAIL;
-	}
-
-	if ((offset >= s->cpu_offset) && (offset < (s->cpu_offset + s->cpu_length))) {
-		/* Write CPU Interface */
-		rc = gic_cpu_write(s, vcpu->subid, 
-				   offset & 0xFC, regmask, regval);
-	} else if ((offset >= s->dist_offset) && (offset < (s->dist_offset + s->dist_length)))  {
-		/* Write Distribution Control */
-		rc = gic_dist_write(s, vcpu->subid, 
-				    offset & 0xFFC, regmask, regval);
-	} else {
-		rc = VMM_EFAIL;
-	}
-
-	return rc;
+	return gic_reg_write(s, offset, regmask, regval);
 }
 
 int gic_state_reset(struct gic_state *s)
