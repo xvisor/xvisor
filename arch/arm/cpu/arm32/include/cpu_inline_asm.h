@@ -33,11 +33,25 @@
 				" rev16   %0, %1\n\t" : "=r" (rval) : \
 				"r" (val) : "memory", "cc"); rval;})
 
+#if defined(CONFIG_ARMV5)
+
+/* FIXME: */
+#define ldrex(addr, data)	asm volatile("ldr	%0, [%1]\n\t" \
+				: "=r"(data) : "r"(addr))
+
+/* FIXME: */
+#define strex(addr, data, res)	asm volatile("str	%0, [%1]\n\t" \
+				: : "r"(data), "r"(addr))
+
+#else
+
 #define ldrex(addr, data)	asm volatile("ldrex	%0, [%1]\n\t" \
 				: "=r"(data) : "r"(addr))
 
 #define strex(addr, data, res)	asm volatile("strex	%0, %1, [%2]\n\t" \
 				: "=r"(res) : "r"(data), "r"(addr))
+
+#endif
 
 #define read_sctlr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c1, c0, 0\n\t" \
