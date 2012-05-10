@@ -26,6 +26,12 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
+enum cpu_vcpu_cp15_access_types {
+	CP15_ACCESS_READ = 0,
+	CP15_ACCESS_WRITE = 1,
+	CP15_ACCESS_EXECUTE = 2
+};
+
 /** Handle translation fault for a VCPU */
 int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu * vcpu, 
 			      arch_regs_t * regs, 
@@ -92,5 +98,16 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid);
 
 /** DeInitialize CP15 subsystem for a VCPU */
 int cpu_vcpu_cp15_deinit(struct vmm_vcpu * vcpu);
+
+/** Assert the appropriate abort/fault to vcpu */
+int cpu_vcpu_cp15_assert_fault(struct vmm_vcpu *vcpu,
+			      arch_regs_t * regs,
+			      u32 far, u32 fs, u32 dom, u32 wnr, u32 xn);
+
+/** Fill up the cpu_page object for given virtual address */
+u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
+			   virtual_addr_t va,
+			   int access_type,
+			   bool is_user, struct cpu_page *pg);
 
 #endif /* _CPU_VCPU_CP15_H */

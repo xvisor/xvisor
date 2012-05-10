@@ -169,12 +169,6 @@ static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-enum cpu_vcpu_cp15_access_types {
-	CP15_ACCESS_READ = 0,
-	CP15_ACCESS_WRITE = 1,
-	CP15_ACCESS_EXECUTE = 2
-};
-
 /* Check section/page access permissions.
  * Returns 1 - permitted, 0 - not-permitted
  */
@@ -506,10 +500,10 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	return VMM_EFAIL;
 }
 
-static u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
-				   virtual_addr_t va,
-				   int access_type,
-				   bool is_user, struct cpu_page *pg)
+u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
+			   virtual_addr_t va,
+			   int access_type,
+			   bool is_user, struct cpu_page *pg)
 {
 	int rc = VMM_OK;
 	u32 fs = 0x0;
@@ -550,9 +544,9 @@ static u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
 	return 0;
 }
 
-static int cpu_vcpu_cp15_assert_fault(struct vmm_vcpu *vcpu,
-				      arch_regs_t * regs,
-				      u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
+int cpu_vcpu_cp15_assert_fault(struct vmm_vcpu *vcpu,
+			      arch_regs_t * regs,
+			      u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
 {
 	u32 fsr = 0x0;
 	if (!(arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_M_MASK)) {
