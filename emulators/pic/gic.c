@@ -42,6 +42,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <pic/gic_emulator.h>
 
 #define MODULE_VARID			gic_emulator_module
 #define MODULE_NAME			"Realview GIC Emulator"
@@ -67,7 +68,7 @@ struct gic_state {
 	struct vmm_emupic *pic;
 	vmm_spinlock_t lock;
 
-	/* Coniguration */
+	/* Configuration */
 	u8 id[8];
 	u32 num_cpu;
 	u32 num_irq;
@@ -79,6 +80,8 @@ struct gic_state {
 	int enabled;
 
 	/* CPU Interface */
+	u32 cpu_offset;
+	u32 cpu_length;
 	int cpu_enabled[GIC_MAX_NCPU];
 	int priority_mask[GIC_MAX_NCPU];
 	int running_irq[GIC_MAX_NCPU];
@@ -86,6 +89,8 @@ struct gic_state {
 	int current_pending[GIC_MAX_NCPU];
 
 	/* Distribution Control */
+	u32 dist_offset;
+	u32 dist_length;
 	struct gic_irq_state irq_state[GIC_MAX_NIRQ];
 	int irq_target[GIC_MAX_NIRQ];
 	int priority1[32][GIC_MAX_NCPU];
@@ -584,7 +589,7 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 	return VMM_OK;
 }
 
-static int gic_dist_read(struct gic_state * s, int cpu, u32 offset, u32 *dst)
+int gic_dist_read(struct gic_state *s, int cpu, u32 offset, u32 *dst)
 {
 	int rc = VMM_OK, i;
 	u8 val;
@@ -607,8 +612,8 @@ static int gic_dist_read(struct gic_state * s, int cpu, u32 offset, u32 *dst)
 	return VMM_OK;
 }
 
-static int gic_dist_write(struct gic_state * s, int cpu, u32 offset, 
-			  u32 src_mask, u32 src)
+int gic_dist_write(struct gic_state *s, int cpu, u32 offset, 
+		   u32 src_mask, u32 src)
 {
 	int rc = VMM_OK, irq, mask, i;
 
@@ -656,7 +661,7 @@ static int gic_dist_write(struct gic_state * s, int cpu, u32 offset,
 	return rc;
 }
 
-static int gic_cpu_read(struct gic_state * s, u32 cpu, u32 offset, u32 *dst)
+int gic_cpu_read(struct gic_state * s, u32 cpu, u32 offset, u32 *dst)
 {
 	if (!s || !dst) {
 		return VMM_EFAIL;
@@ -696,8 +701,8 @@ static int gic_cpu_read(struct gic_state * s, u32 cpu, u32 offset, u32 *dst)
 	return VMM_OK;
 }
 
-static int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset, 
-			 u32 src_mask, u32 src)
+int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset, 
+		  u32 src_mask, u32 src)
 {
 	if (!s) {
 		return VMM_EFAIL;
@@ -752,12 +757,16 @@ static int gic_emulator_read(struct vmm_emudev *edev,
 		return VMM_EFAIL;
 	}
 
-	if (offset < 0x1000) {
+	if ((offset >= s->cpu_offset) && 
+	    (offset < (s->cpu_offset + s->cpu_length))) {
 		/* Read CPU Interface */
-		rc = gic_cpu_read(s, vcpu->subid, offset & 0xFFC, &regval);
-	} else {
+		rc = gic_cpu_read(s, vcpu->subid, offset & 0xFC, &regval);
+	} else if ((offset >= s->dist_offset) && 
+		   (offset < (s->dist_offset + s->dist_length)))  {
 		/* Read Distribution Control */
 		rc = gic_dist_read(s, vcpu->subid, offset & 0xFFC, &regval);
+	} else {
+		rc = VMM_EFAIL;
 	}
 
 	if (!rc) {
@@ -821,23 +830,24 @@ static int gic_emulator_write(struct vmm_emudev *edev,
 		return VMM_EFAIL;
 	}
 
-	if (offset < 0x1000) {
+	if ((offset >= s->cpu_offset) && (offset < (s->cpu_offset + s->cpu_length))) {
 		/* Write CPU Interface */
 		rc = gic_cpu_write(s, vcpu->subid, 
-				   offset & 0xFFC, regmask, regval);
-	} else {
+				   offset & 0xFC, regmask, regval);
+	} else if ((offset >= s->dist_offset) && (offset < (s->dist_offset + s->dist_length)))  {
 		/* Write Distribution Control */
 		rc = gic_dist_write(s, vcpu->subid, 
 				    offset & 0xFFC, regmask, regval);
+	} else {
+		rc = VMM_EFAIL;
 	}
 
 	return rc;
 }
 
-static int gic_emulator_reset(struct vmm_emudev *edev)
+int gic_state_reset(struct gic_state *s)
 {
 	u32 i;
-	struct gic_state * s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -871,123 +881,178 @@ static int gic_emulator_reset(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static int gic_emulator_probe(struct vmm_guest *guest,
-			      struct vmm_emudev *edev,
-			      const struct vmm_emuid *eid)
+static int gic_emulator_reset(struct vmm_emudev *edev)
 {
-	int rc = VMM_OK, i;
-	u32 attrlen;
-	const char *attr;
-	struct gic_state * s;
+	struct gic_state *s = edev->priv;
+	
+	return gic_state_reset(s);
+}
+
+static u32 gic_configs[][14] = {
+	{ 
+		/* num_irq */ 96,
+		/* num_base_irq */ 0,
+		/* id0 */ 0x90, 
+		/* id1 */ 0x13, 
+		/* id2 */ 0x04, 
+		/* id3 */ 0x00, 
+		/* id4 */ 0x0d, 
+		/* id5 */ 0xf0, 
+		/* id6 */ 0x05, 
+		/* id7 */ 0xb1,
+		/* cpu_offset */ 0x0,
+		/* cpu_length */ 0x100,
+		/* dist_offset */ 0x1000,
+		/* dist_length */ 0x1000,
+	},
+	{ 
+		/* num_irq */ 96,
+		/* num_base_irq */ 0,
+		/* id0 */ 0x90, 
+		/* id1 */ 0x13, 
+		/* id2 */ 0x04, 
+		/* id3 */ 0x00, 
+		/* id4 */ 0x0d, 
+		/* id5 */ 0xf0, 
+		/* id6 */ 0x05, 
+		/* id7 */ 0xb1,
+		/* cpu_offset */ 0x100,
+		/* cpu_length */ 0x100,
+		/* dist_offset */ 0x1000,
+		/* dist_length */ 0x1000,
+	},
+};
+
+struct gic_state* gic_state_alloc(struct vmm_guest *guest,
+			   enum gic_type type,
+			   u32 num_cpu,
+			   bool is_child_pic,
+	       		   u32 parent_irq[])
+{
+	int i;
+	struct gic_state *s = NULL;
 
 	s = vmm_malloc(sizeof(struct gic_state));
 	if (!s) {
-		rc = VMM_EFAIL;
-		goto gic_emulator_probe_done;
+		goto gic_emulator_init_done;
 	}
 	vmm_memset(s, 0x0, sizeof(struct gic_state));
 
 	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
 	if (!s->pic) {
-		rc = VMM_EFAIL;
-		goto gic_emulator_probe_freestate_fail;
+		goto gic_emulator_init_freestate_failed;
 	}
 	vmm_memset(s->pic, 0x0, sizeof(struct vmm_emupic));
 
 	vmm_strcpy(s->pic->name, "gic-pic");
 	s->pic->handle = &gic_irq_handle;
 	s->pic->priv = s;
-	if ((rc = vmm_devemu_register_pic(guest, s->pic))) {
-		rc = VMM_EFAIL;
-		goto gic_emulator_probe_freepic_fail;
+	if (vmm_devemu_register_pic(guest, s->pic)) {
+		goto gic_emulator_init_freepic_failed;
 	}
 
-	if (eid->data) {
-		s->num_cpu = ((u32 *)eid->data)[0];
-		s->num_irq = ((u32 *)eid->data)[1];
-		s->num_base_irq = ((u32 *)eid->data)[2];
-		s->id[0] = ((u32 *)eid->data)[3];
-		s->id[1] = ((u32 *)eid->data)[4];
-		s->id[2] = ((u32 *)eid->data)[5];
-		s->id[3] = ((u32 *)eid->data)[6];
-		s->id[4] = ((u32 *)eid->data)[7];
-		s->id[5] = ((u32 *)eid->data)[8];
-		s->id[6] = ((u32 *)eid->data)[9];
-		s->id[7] = ((u32 *)eid->data)[10];
-	}
+	s->num_cpu = num_cpu;
+	s->num_irq = gic_configs[type][0];
+	s->num_base_irq = gic_configs[type][1];
+	s->id[0] = gic_configs[type][2];
+	s->id[1] = gic_configs[type][3];
+	s->id[2] = gic_configs[type][4];
+	s->id[3] = gic_configs[type][5];
+	s->id[4] = gic_configs[type][6];
+	s->id[5] = gic_configs[type][7];
+	s->id[6] = gic_configs[type][8];
+	s->id[7] = gic_configs[type][9];
+	s->cpu_offset = gic_configs[type][10];
+	s->cpu_length = gic_configs[type][11];
+	s->dist_offset = gic_configs[type][12];
+	s->dist_length = gic_configs[type][13];
 
-	attr = vmm_devtree_attrval(edev->node, "child_pic");
-	if (attr) {
-		s->is_child_pic = TRUE;
-	} else {
-		s->is_child_pic = FALSE;
-	}
+	s->is_child_pic = is_child_pic;
 
-	attr = vmm_devtree_attrval(edev->node, "parent_irq");
-	attrlen = vmm_devtree_attrlen(edev->node, "parent_irq");
-	if (attr && (attrlen == (s->num_cpu * sizeof(u32)))) {
-		for (i = 0; i < s->num_cpu; i++) {
-			s->parent_irq[i] = ((u32 *)attr)[i];
-		}
-	} else {
-		rc = VMM_EFAIL;
-		goto gic_emulator_probe_freepic_fail;
+	for (i = 0; i < s->num_cpu; i++) {
+		s->parent_irq[i] = parent_irq[i];
 	}
-
-	edev->priv = s;
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
-	goto gic_emulator_probe_done;
+	goto gic_emulator_init_done;
 
-gic_emulator_probe_freepic_fail:
+gic_emulator_init_freepic_failed:
 	vmm_free(s->pic);
-gic_emulator_probe_freestate_fail:
+gic_emulator_init_freestate_failed:
 	vmm_free(s);
-gic_emulator_probe_done:
-	return rc;
+gic_emulator_init_done:
+	return s;
+}
+
+int gic_state_free(struct gic_state *s)
+{
+	if(s) {
+		if (s->pic) {
+			vmm_free(s->pic);
+		}
+		vmm_free(s);
+		return VMM_OK;
+	} else {
+		return VMM_EFAIL;
+	}
+}
+
+static int gic_emulator_probe(struct vmm_guest *guest,
+			      struct vmm_emudev *edev,
+			      const struct vmm_emuid *eid)
+{
+	u32 attrlen;
+	const char *attr;
+	struct gic_state * s;
+	bool is_child_pic;
+	enum gic_type type;
+	u32 *parent_irq;
+	u32 num_cpu;
+
+	attr = vmm_devtree_attrval(edev->node, "child_pic");
+	if (attr) {
+		is_child_pic = TRUE;
+	} else {
+		is_child_pic = FALSE;
+	}
+
+	attr = vmm_devtree_attrval(edev->node, "parent_irq");
+	attrlen = vmm_devtree_attrlen(edev->node, "parent_irq");
+	num_cpu = (attrlen / sizeof(u32));
+	if (!attr) {
+		return VMM_EFAIL;
+	}
+	parent_irq = (u32 *)attr;
+	
+	type = (enum gic_type)(eid->data);
+
+	s = gic_state_alloc(guest, type, num_cpu, is_child_pic, parent_irq);
+
+	edev->priv = s;
+
+	return VMM_OK;
 }
 
 static int gic_emulator_remove(struct vmm_emudev *edev)
 {
 	struct gic_state * s = edev->priv;
 
-	if (s) {
-		if (s->pic) {
-			vmm_free(s->pic);
-		}
-		vmm_free(s);
-		edev->priv = NULL;
-	}
+	gic_state_free(s);
+	edev->priv = NULL;
 
 	return VMM_OK;
 }
 
-static u32 gic_configs[] = {
-	/* === realview === */
-	/* num_cpu */ 1, 
-	/* num_irq */ 96,
-	/* num_base_irq */ 0,
-	/* id0 */ 0x90, 
-	/* id1 */ 0x13, 
-	/* id2 */ 0x04, 
-	/* id3 */ 0x00, 
-	/* id4 */ 0x0d, 
-	/* id5 */ 0xf0, 
-	/* id6 */ 0x05, 
-	/* id7 */ 0xb1,
-	/* reserved */ 0,
-	/* reserved */ 0,
-	/* reserved */ 0,
-	/* reserved */ 0,
-	/* reserved */ 0,
-};
-
 static struct vmm_emuid gic_emuid_table[] = {
 	{ .type = "pic", 
 	  .compatible = "realview,gic", 
-	  .data = &gic_configs[0],
+	  .data = (void *)GIC_TYPE_REALVIEW,
+	},
+	{ .type = "pic", 
+	  .compatible = "vexpress,gic", 
+	  .data = (void *)GIC_TYPE_VEXPRESS,
 	},
 	{ /* end of list */ },
 };
