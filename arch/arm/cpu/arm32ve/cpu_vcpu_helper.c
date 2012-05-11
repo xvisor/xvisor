@@ -480,6 +480,8 @@ int arch_vcpu_init(struct vmm_vcpu * vcpu)
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
 	if (vmm_strcmp(attr, "ARMv7a,cortex-a8") == 0) {
 		cpuid = ARM_CPUID_CORTEXA8;
+	} else if (vmm_strcmp(attr, "ARMv7a,cortex-a9") == 0) {
+		cpuid = ARM_CPUID_CORTEXA9;
 	} else {
 		return VMM_EFAIL;
 	}
