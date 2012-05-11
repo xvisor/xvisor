@@ -10,7 +10,7 @@
 	host {
 		#address-cells = <2>;
 		#size-cells = <1>;
-		model = "virtual-express-a9";
+		model = "vexpress-a9";
 		device_type = "host";
 		
 		cpus {
@@ -78,7 +78,7 @@
 		guest0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			model = "realview-pb-a8";
+			model = "vexpress-a9";
 			device_type = "guest";
 
 			vcpus {
@@ -103,6 +103,16 @@
 			aspace {
 				#address-cells = <1>;
 				#size-cells = <0>;
+
+				/* Assume the REMAP region is mapped to DDR */
+				mem0 {
+					manifest_type = "alias";
+					address_type = "memory";
+					guest_physical_addr = <0x00000000>;
+					alias_physical_addr = <0x60000000>;
+					physical_size = <0x04000000>; /* 64 MB */
+					device_type = "ram";
+				};
 
 				mem1 {
 					manifest_type = "real";
