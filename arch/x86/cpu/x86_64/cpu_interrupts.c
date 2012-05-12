@@ -172,9 +172,6 @@ int arch_cpu_irq_setup(void)
 	install_idt();
 	setup_gate_handlers();
 
-	__asm__ volatile("int $3\n\t"::);
-
-	for (;;);
 #if CONFIG_LOCAL_APIC
 	apic_init();
 #endif
