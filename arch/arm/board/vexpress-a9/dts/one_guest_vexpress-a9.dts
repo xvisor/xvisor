@@ -236,6 +236,15 @@
 					parent_irq = <6 6>;
 				};
 
+				l2x0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1E00A000>;
+					physical_size = <0x1000>;
+					device_type = "cache";
+					compatible = "corelink,l2c-310";
+				};
+
 				nor_flash {
 					manifest_type = "real";
 					address_type = "memory";

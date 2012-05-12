@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Fri May 11 12:40:52 2012
+# Sat May 12 12:47:55 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -149,6 +149,11 @@ CONFIG_EMU_SERIAL_PL011=y
 #
 CONFIG_EMU_RTC=y
 CONFIG_EMU_RTC_PL031=y
+
+#
+# Cache Controller Emulators
+#
+CONFIG_EMU_CACHE_L2X0=y
 
 #
 # Miscellaneous Emulators

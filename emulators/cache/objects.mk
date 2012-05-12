@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2012 Anup Patel.
+# Copyright (c) 2012 Sukanto Ghosh.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,17 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
-# @author Anup Patel (anup@brainfault.org)
-# @brief config file for emulator options
+# @file objects.mk
+# @author Sukanto Ghosh (sukantoghosh@gmail.com)
+# @brief list of cache controller emulator objects
 # */
 
-menu "Device Emulators"
-     source "emulators/sys/openconf.cfg"
-     source "emulators/pic/openconf.cfg"
-     source "emulators/timer/openconf.cfg"
-     source "emulators/serial/openconf.cfg"
-     source "emulators/rtc/openconf.cfg"
-     source "emulators/cache/openconf.cfg"
-     source "emulators/misc/openconf.cfg"
-endmenu
+emulators-objs-$(CONFIG_EMU_CACHE_L2X0)+= cache/l2x0.o
+
