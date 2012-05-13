@@ -74,7 +74,7 @@ static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		return rc;
 	}
 
-	flags = vmm_spin_lock_irqsave(&vcpu->lock);
+	vmm_spin_lock_irqsave(&vcpu->lock, flags);
 	switch(new_state) {
 	case VMM_VCPU_STATE_RESET:
 		if ((vcpu->state != VMM_VCPU_STATE_RESET) &&
@@ -149,7 +149,7 @@ int vmm_manager_vcpu_dumpreg(struct vmm_vcpu * vcpu)
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
 	if (vcpu) {
-		flags = vmm_spin_lock_irqsave(&vcpu->lock);
+		vmm_spin_lock_irqsave(&vcpu->lock, flags);
 		if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
 			arch_vcpu_regs_dump(vcpu);
 			rc = VMM_OK;
@@ -164,7 +164,7 @@ int vmm_manager_vcpu_dumpstat(struct vmm_vcpu * vcpu)
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
 	if (vcpu) {
-		flags = vmm_spin_lock_irqsave(&vcpu->lock);
+		vmm_spin_lock_irqsave(&vcpu->lock, flags);
 		if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
 			arch_vcpu_stat_dump(vcpu);
 			rc = VMM_OK;
@@ -193,7 +193,7 @@ struct vmm_vcpu * vmm_manager_vcpu_orphan_create(const char *name,
 	}
 
 	/* Acquire lock */
-	flags = vmm_spin_lock_irqsave(&mngr.lock);
+	vmm_spin_lock_irqsave(&mngr.lock, flags);
 
 	/* Find the next available vcpu */
 	found = 0;
@@ -283,7 +283,7 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu * vcpu)
 	}
 
 	/* Acquire lock */
-	flags = vmm_spin_lock_irqsave(&mngr.lock);
+	vmm_spin_lock_irqsave(&mngr.lock, flags);
 
 	/* Decrement vcpu count */
 	mngr.vcpu_count--;
@@ -505,7 +505,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 	}
 
 	/* Acquire lock */
-	flags = vmm_spin_lock_irqsave(&mngr.lock);
+	vmm_spin_lock_irqsave(&mngr.lock, flags);
 
 	/* Ensure guest node uniqueness */
 	list_for_each(l1, &mngr.guest_list) {
@@ -696,7 +696,7 @@ int vmm_manager_guest_destroy(struct vmm_guest * guest)
 	vmm_manager_guest_reset(guest);
 
 	/* Acquire lock */
-	flags = vmm_spin_lock_irqsave(&mngr.lock);
+	vmm_spin_lock_irqsave(&mngr.lock, flags);
 
 	/* Decrement guest count */
 	mngr.guest_count--;

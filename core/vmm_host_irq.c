@@ -137,7 +137,7 @@ int vmm_host_irq_register(u32 hirq_num,
 	struct vmm_host_irq *irq;
 	struct vmm_host_irq_hndl *hirq;
 	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
-		flags = vmm_spin_lock_irqsave(&hirqctrl.lock);
+		vmm_spin_lock_irqsave(&hirqctrl.lock, flags);
 		irq = &hirqctrl.irq[hirq_num];
 		found = FALSE;
 		list_for_each(l, &irq->hndl_list) {
@@ -175,7 +175,7 @@ int vmm_host_irq_unregister(u32 hirq_num,
 	struct vmm_host_irq *irq;
 	struct vmm_host_irq_hndl * hirq;
 	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
-		flags = vmm_spin_lock_irqsave(&hirqctrl.lock);
+		vmm_spin_lock_irqsave(&hirqctrl.lock, flags);
 		irq = &hirqctrl.irq[hirq_num];
 		found = FALSE;
 		list_for_each(l, &irq->hndl_list) {

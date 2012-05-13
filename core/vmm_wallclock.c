@@ -252,7 +252,7 @@ int vmm_wallclock_set_local_time(struct vmm_timeval * tv)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_spin_lock_irqsave(&wclk.lock);
+	vmm_spin_lock_irqsave(&wclk.lock, flags);
 
 	wclk.tv.tv_sec = tv->tv_sec;
 	wclk.tv.tv_nsec = tv->tv_nsec;
@@ -272,7 +272,7 @@ int vmm_wallclock_get_local_time(struct vmm_timeval * tv)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_spin_lock_irqsave(&wclk.lock);
+	vmm_spin_lock_irqsave(&wclk.lock, flags);
 
 	tv->tv_sec = wclk.tv.tv_sec;
 	tv->tv_nsec = wclk.tv.tv_nsec;
@@ -301,7 +301,7 @@ int vmm_wallclock_set_timezone(struct vmm_timezone * tz)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_spin_lock_irqsave(&wclk.lock);
+	vmm_spin_lock_irqsave(&wclk.lock, flags);
 
 	minuteswest = tz->tz_minuteswest - wclk.tz.tz_minuteswest;
 	wclk.tv.tv_sec += minuteswest * 60;
@@ -321,7 +321,7 @@ int vmm_wallclock_get_timezone(struct vmm_timezone * tz)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_spin_lock_irqsave(&wclk.lock);
+	vmm_spin_lock_irqsave(&wclk.lock, flags);
 
 	tz->tz_minuteswest = wclk.tz.tz_minuteswest;
 	tz->tz_dsttime = wclk.tz.tz_dsttime;
