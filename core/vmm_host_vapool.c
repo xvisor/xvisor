@@ -29,7 +29,7 @@
 #include <vmm_host_vapool.h>
 
 struct vmm_host_vapool_ctrl {
-	u32 *vapool_bmap;
+	unsigned long *vapool_bmap;
 	u32 vapool_bmap_sz;
 	u32 vapool_bmap_free;
 	u32 vapool_page_count;
@@ -86,10 +86,8 @@ int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 	}
 
 	*va = vpctrl.vapool_start + bpos * VMM_PAGE_SIZE;
-	for (i = bpos; i < (bpos + bcnt); i++) {
-		bitmap_setbit(vpctrl.vapool_bmap, i);
-		vpctrl.vapool_bmap_free--;
-	}
+	bitmap_set(vpctrl.vapool_bmap, bpos, bcnt);
+	vpctrl.vapool_bmap_free -= bcnt;
 
 	return VMM_OK;
 }
@@ -130,17 +128,15 @@ int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz)
 		return VMM_EFAIL;
 	}
 
-	for (i = bpos; i < (bpos + bcnt); i++) {
-		bitmap_setbit(vpctrl.vapool_bmap, i);
-		vpctrl.vapool_bmap_free--;
-	}
+	bitmap_set(vpctrl.vapool_bmap, bpos, bcnt);
+	vpctrl.vapool_bmap_free -= bcnt;
 
 	return VMM_OK;
 }
 
 int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz)
 {
-	u32 i, bcnt, bpos;
+	u32 bcnt, bpos;
 
 	if (va < vpctrl.vapool_start ||
 	    (vpctrl.vapool_start + vpctrl.vapool_size) <= va) {
@@ -159,10 +155,8 @@ int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz)
 
 	bpos = (va - vpctrl.vapool_start) >> VMM_PAGE_SHIFT;
 
-	for (i = bpos; i < (bpos + bcnt); i++) {
-		bitmap_clearbit(vpctrl.vapool_bmap, i);
-		vpctrl.vapool_bmap_free++;
-	}
+	bitmap_clear(vpctrl.vapool_bmap, bpos, bcnt);
+	vpctrl.vapool_bmap_free += bcnt;
 
 	return VMM_OK;
 }
@@ -216,7 +210,7 @@ int __init vmm_host_vapool_init(virtual_addr_t base,
 			 	virtual_addr_t resv_va, 
 				virtual_size_t resv_sz)
 {
-	int ite, last, max;
+	int start, last, max;
 
 	if ((hkbase < base) || ((base + size) <= hkbase)) {
 		return VMM_EFAIL;
@@ -232,19 +226,18 @@ int __init vmm_host_vapool_init(virtual_addr_t base,
 	vpctrl.vapool_start &= ~VMM_PAGE_MASK;
 	vpctrl.vapool_size &= ~VMM_PAGE_MASK;
 	vpctrl.vapool_page_count = vpctrl.vapool_size >> VMM_PAGE_SHIFT;
-	vpctrl.vapool_bmap = (u32 *)hkbase;
+	vpctrl.vapool_bmap = (unsigned long *)hkbase;
 	vpctrl.vapool_bmap_sz = bitmap_estimate_size(vpctrl.vapool_page_count);
 	vpctrl.vapool_bmap_free = vpctrl.vapool_page_count;
 
-	bitmap_clearall(vpctrl.vapool_bmap, vpctrl.vapool_page_count);
+	bitmap_zero(vpctrl.vapool_bmap, vpctrl.vapool_page_count);
 
 	max = ((vpctrl.vapool_start + vpctrl.vapool_size) >> VMM_PAGE_SHIFT);
-	ite = ((resv_va - vpctrl.vapool_start) >> VMM_PAGE_SHIFT);
-	last = ite + (resv_sz >> VMM_PAGE_SHIFT);
-	for ( ; (ite < last) && (ite < max); ite++) {
-		bitmap_setbit(vpctrl.vapool_bmap, ite);
-		vpctrl.vapool_bmap_free--;
-	}
+	start = ((resv_va - vpctrl.vapool_start) >> VMM_PAGE_SHIFT);
+	last = start + (resv_sz >> VMM_PAGE_SHIFT);
+	last = (last < max) ? last : max;
+	bitmap_set(vpctrl.vapool_bmap, start, last - start);
+	vpctrl.vapool_bmap_free -= last - start;
 
 	return VMM_OK;
 }
