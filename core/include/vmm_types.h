@@ -48,7 +48,7 @@ typedef unsigned long long u64;
 #define tostring(s)		#s
 #define barrier() 		__asm__ __volatile__("": : :"memory")
 
-#define __alwaysinline 		__attribute__((always_inline))
+#define __always_inline 	__attribute__((always_inline))
 #define __unused		__attribute__((unused))
 #define __noreturn		__attribute__((noreturn))
 #define __notrace		__attribute__((no_instrument_function))
