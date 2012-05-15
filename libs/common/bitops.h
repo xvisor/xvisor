@@ -36,12 +36,13 @@
 
 #define BITS_PER_BYTE			8
 #define BITS_PER_LONG			(ARCH_BITS_PER_LONG)
-#define BITS_TO_LONGS(nbits)		((nbits) >> 5)
+#define BITS_TO_LONGS(nbits)		(((nbits) + BITS_PER_LONG - 1) / \
+					 BITS_PER_LONG)
 
 #define BIT(nr)				(1UL << (nr))
 #define BIT_MASK(nr)			(1UL << ((nr) % BITS_PER_LONG))
 #define BIT_WORD(bit)			((bit) / BITS_PER_LONG)
-#define BIT_WORD_OFFSET(bit)		((bit) & 0x1F)
+#define BIT_WORD_OFFSET(bit)		((bit) & (BITS_PER_LONG - 1))
 
 /**
  * ffs - find first bit in word.
