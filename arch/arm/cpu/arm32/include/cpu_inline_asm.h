@@ -43,6 +43,9 @@
 #define strex(addr, data, res)	asm volatile("str	%0, [%1]\n\t" \
 				: : "r"(data), "r"(addr))
 
+/* FIXME: */
+#define clrex()
+
 #else
 
 #define ldrex(addr, data)	asm volatile("ldrex	%0, [%1]\n\t" \
@@ -50,6 +53,8 @@
 
 #define strex(addr, data, res)	asm volatile("strex	%0, %1, [%2]\n\t" \
 				: "=r"(res) : "r"(data), "r"(addr))
+
+#define clrex()			asm volatile("clrex\n\t")
 
 #endif
 

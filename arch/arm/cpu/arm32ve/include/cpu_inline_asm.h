@@ -33,6 +33,14 @@
 				" rev16   %0, %1\n\t" : "=r" (rval) : \
 				"r" (val) : "memory", "cc"); rval;})
 
+#define ldrex(addr, data)	asm volatile("ldrex	%0, [%1]\n\t" \
+				: "=r"(data) : "r"(addr))
+
+#define strex(addr, data, res)	asm volatile("strex	%0, %1, [%2]\n\t" \
+				: "=r"(res) : "r"(data), "r"(addr))
+
+#define clrex()			asm volatile("clrex\n\t")
+
 #define read_sctlr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c1, c0, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})

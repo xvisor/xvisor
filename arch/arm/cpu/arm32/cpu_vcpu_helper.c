@@ -29,6 +29,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_manager.h>
 #include <cpu_defines.h>
+#include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
 
@@ -905,6 +906,8 @@ void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
 	if (vcpu->is_normal) {
 		cpu_vcpu_banked_regs_restore(vcpu, regs);
 	}
+	/* Clear exclusive monitor */
+	clrex();
 }
 
 void cpu_vcpu_dump_user_reg(struct vmm_vcpu * vcpu, arch_regs_t * regs)

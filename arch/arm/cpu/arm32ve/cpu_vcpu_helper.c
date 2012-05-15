@@ -741,6 +741,8 @@ void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
 			write_hstr(arm_priv(vcpu)->hstr);
 		}
 	}
+	/* Clear exclusive monitor */
+	clrex();
 }
 
 void cpu_vcpu_dump_user_reg(arch_regs_t * regs)
