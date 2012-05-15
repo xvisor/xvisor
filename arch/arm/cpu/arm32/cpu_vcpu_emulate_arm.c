@@ -3529,7 +3529,7 @@ static int arm_inst_ldm(u32 inst,
 	u32 address = 0, old_address = 0;
 	int i = 0;
 
-	/* TODO: Add stat part of individual instructin of this type */
+	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDM);
 
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	op = ARM_INST_BITS(inst, ARM_INST_BRBLK_OP_END, ARM_INST_BRBLK_OP_START);
@@ -3609,6 +3609,8 @@ static int arm_inst_ldm(u32 inst,
 	}
 
 	regs->pc += 4;
+	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDM);
+
 	return VMM_OK;
 }
 
@@ -3624,7 +3626,7 @@ static int arm_inst_stm(u32 inst,
 	u32 address = 0, old_address = 0;
 	int i = 0;
 
-	/* TODO: Add stat part of individual instructin of this type */
+	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STM);
 
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	op = ARM_INST_BITS(inst, ARM_INST_BRBLK_OP_END, ARM_INST_BRBLK_OP_START);
@@ -3697,6 +3699,8 @@ static int arm_inst_stm(u32 inst,
 	}
 
 	regs->pc += 4;
+	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STM);
+
 	return VMM_OK;
 }
 
