@@ -145,9 +145,16 @@ void do_prefetch_abort(arch_regs_t * uregs)
 		return;
 	}
 
-	vmm_scheduler_irq_enter(uregs, TRUE);
-
 	vcpu = vmm_scheduler_current_vcpu();
+
+	if ((uregs->pc & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == 
+	    arm_priv(vcpu)->cp15.ovect_base) {
+		uregs->pc = (virtual_addr_t)arm_guest_priv(vcpu->guest)->ovect 
+			    + (uregs->pc & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1));
+		return;
+	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	switch(fs) {
 	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
@@ -255,9 +262,9 @@ void do_data_abort(arch_regs_t * uregs)
 		return;
 	}
 
-	vmm_scheduler_irq_enter(uregs, TRUE);
-
 	vcpu = vmm_scheduler_current_vcpu();
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	switch(fs) {
 	case DFSR_FS_ALIGN_FAULT:
