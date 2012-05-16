@@ -57,18 +57,18 @@ const unsigned long cpu_bit_bitmap[BITS_PER_LONG+1][BITS_TO_LONGS(CONFIG_CPU_COU
 #endif
 };
 
-const DEFINE_BITMAP(cpu_all_bits, CONFIG_CPU_COUNT) = VMM_CPU_BITS_ALL;
+const DECLARE_BITMAP(cpu_all_bits, CONFIG_CPU_COUNT) = VMM_CPU_BITS_ALL;
 
-static DEFINE_BITMAP(cpu_possible_bits, CONFIG_CPU_COUNT) = VMM_CPU_BITS_ALL;
+static DECLARE_BITMAP(cpu_possible_bits, CONFIG_CPU_COUNT) = VMM_CPU_BITS_ALL;
 const struct vmm_cpumask *const cpu_possible_mask = to_cpumask(cpu_possible_bits);
 
-static DEFINE_BITMAP(cpu_online_bits, CONFIG_CPU_COUNT);
+static DECLARE_BITMAP(cpu_online_bits, CONFIG_CPU_COUNT);
 const struct vmm_cpumask *const cpu_online_mask = to_cpumask(cpu_online_bits);
 
-static DEFINE_BITMAP(cpu_present_bits, CONFIG_CPU_COUNT);
+static DECLARE_BITMAP(cpu_present_bits, CONFIG_CPU_COUNT);
 const struct vmm_cpumask *const cpu_present_mask = to_cpumask(cpu_present_bits);
 
-static DEFINE_BITMAP(cpu_active_bits, CONFIG_CPU_COUNT);
+static DECLARE_BITMAP(cpu_active_bits, CONFIG_CPU_COUNT);
 const struct vmm_cpumask *const cpu_active_mask = to_cpumask(cpu_active_bits);
 
 void vmm_set_cpu_possible(unsigned int cpu, bool possible)
