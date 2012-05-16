@@ -63,14 +63,25 @@ _start:
 	blt	_start_relocate
 
 _secondary_loop:
+	/* Enable the GIC CPU interface for this core */
+	ldr	r0, _gic_cpu_enable_addr
+	mov	r1, #1
+	str	r1, [r0]
+	/* Send event to make sure the wfe doesn't block the first time */
 	sev
-	ldr	r0, _sys_flags_addr	
+	ldr	r0, _sys_flags_addr
 1:	
-	wfi	
+	/* Wait for an event before checking SYS_FLAGS */
+	wfe	
 	ldr	r1, [r0]
 	teq	r1, #0
+	/* Repeat if SYS_FLAGS == 0 */
 	beq	1b
+	/* Jump to the address stored the the SYS_FLAGS register */
 	bx	r1
+
+_gic_cpu_enable_addr:
+	.word	0x1e000100
 _sys_flags_addr:
 	.word 	0x10000030
 
