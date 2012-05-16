@@ -233,6 +233,7 @@
 					device_type = "misc";
 					num_cpu = <2>;
 					compatible = "a9mpcore,private";
+					timer_irq = <29 30>;
 					parent_irq = <6 6>;
 				};
 

@@ -22,4 +22,5 @@
 # */
 
 emulators-objs-$(CONFIG_EMU_TIMER_SP804)+= timer/sp804.o
+emulators-objs-$(CONFIG_EMU_TIMER_ARM_MPTIMER)+= timer/arm_mptimer.o
 

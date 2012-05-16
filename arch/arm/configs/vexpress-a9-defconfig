@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Sat May 12 12:46:30 2012
+# Wed May 16 23:04:14 2012
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -138,6 +138,7 @@ CONFIG_EMU_PIC_GIC=y
 #
 CONFIG_EMU_TIMER=y
 CONFIG_EMU_TIMER_SP804=y
+CONFIG_EMU_TIMER_ARM_MPTIMER=y
 
 #
 # Serial Port Emulators
