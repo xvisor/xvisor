@@ -656,6 +656,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 				reg->devemu_priv = NULL;
 				reg->node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
 				reg->node->priv = NULL;
+				return rc;
 			}
 			if ((rc = einst->reset(einst))) {
 				vmm_printf("%s: %s/%s reset error %d\n", 
@@ -664,6 +665,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 				reg->devemu_priv = NULL;
 				reg->node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
 				reg->node->priv = NULL;
+				return rc;
 			}
 			break;
 		}

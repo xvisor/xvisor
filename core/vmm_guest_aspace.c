@@ -421,7 +421,9 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	list_for_each(l, &guest->aspace.reg_list) {
 		reg = list_entry(l, struct vmm_region, head);
 		if (reg->flags & VMM_REGION_VIRTUAL) {
-			vmm_devemu_probe_region(guest, reg);
+			if ((rc = vmm_devemu_probe_region(guest, reg))) {
+				return rc;
+			}
 		}
 	}
 

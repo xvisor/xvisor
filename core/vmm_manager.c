@@ -545,7 +545,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 
 	vsnode = vmm_devtree_getchild(gnode, VMM_DEVTREE_VCPUS_NODE_NAME);
 	if (!vsnode) {
-		return guest;
+		goto guest_create_error;
 	}
 	list_for_each(l1, &vsnode->child_list) {
 		vnode = list_entry(l1, struct vmm_devtree_node, head);
@@ -655,20 +655,17 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 
 	/* Initialize guest address space */
 	if (vmm_guest_aspace_init(guest)) {
-		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
-		return NULL;
+		goto guest_create_error;
 	}
 
 	/* Reset guest address space */
 	if (vmm_guest_aspace_reset(guest)) {
-		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
-		return NULL;
+		goto guest_create_error;
 	}
 
 	/* Initialize arch guest context */
 	if (arch_guest_init(guest)) {
-		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
-		return NULL;
+		goto guest_create_error;
 	}
 
 	/* Increment guest count */
@@ -678,6 +675,12 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 
 	return guest;
+
+guest_create_error:
+	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+	vmm_manager_guest_destroy(guest);
+
+	return NULL;
 }
 
 int vmm_manager_guest_destroy(struct vmm_guest * guest)
