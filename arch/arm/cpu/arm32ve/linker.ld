@@ -74,6 +74,14 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
+	.percpu :
+	{
+		PROVIDE(_percpu_start = .);
+		*(.modtbl)
+		. = ALIGN(4);
+		PROVIDE(_percpu_end = .);
+	}
+
 	. = ALIGN(0x1000); /* init functions start is page aligned */
 	.init : /* Put init functions into separate pages */
 	{

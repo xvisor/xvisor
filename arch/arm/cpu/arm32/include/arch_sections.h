@@ -42,6 +42,18 @@ static inline virtual_size_t arch_modtbl_size(void)
 	return (virtual_size_t) (&_modtbl_end - &_modtbl_start);
 }
 
+/** PerCPU section */
+extern u8 _percpu_start;
+extern u8 _percpu_end;
+static inline virtual_addr_t arch_percpu_vaddr(void)
+{
+	return (virtual_addr_t) &_percpu_start;
+}
+static inline virtual_size_t arch_percpu_size(void)
+{
+	return (virtual_size_t) (&_percpu_end - &_percpu_start);
+}
+
 /** Init section */
 extern u8 _init_text_start;
 extern u8 _init_text_end;
