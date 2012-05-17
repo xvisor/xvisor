@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
-#include <vmm_math.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 #include <vmm_manager.h>
@@ -32,6 +31,7 @@
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
+#include <mathlib.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 {
@@ -987,7 +987,7 @@ void arch_vcpu_stat_dump(struct vmm_vcpu * vcpu)
 		if (arm_priv(vcpu)->funcstat[index].exit_count) { 
 			vmm_printf("%-30s %-10u %u\n", 
 			arm_priv(vcpu)->funcstat[index].function_name, 
-			(u32)vmm_udiv64(arm_priv(vcpu)->funcstat[index].time, 
+			(u32)udiv64(arm_priv(vcpu)->funcstat[index].time, 
 			arm_priv(vcpu)->funcstat[index].exit_count), 
 			arm_priv(vcpu)->funcstat[index].exit_count); 
 		} 

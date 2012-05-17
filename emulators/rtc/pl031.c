@@ -32,7 +32,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_math.h>
 #include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
@@ -40,6 +39,7 @@
 #include <vmm_wallclock.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <mathlib.h>
 
 #define MODULE_VARID			pl031_emulator_module
 #define MODULE_NAME			"PL011 Serial Emulator"
@@ -95,7 +95,7 @@ static u32 pl031_get_count(struct pl031_state *s)
 	 * the machine was created.
 	 */
 	return s->tick_offset + 
-	(u32)vmm_udiv64(vmm_timer_timestamp() - s->tick_tstamp, 1000000000);
+	(u32)udiv64(vmm_timer_timestamp() - s->tick_tstamp, 1000000000);
 }
 
 static void pl031_set_alarm(struct pl031_state *s)

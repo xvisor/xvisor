@@ -23,11 +23,10 @@
 #ifndef _VMM_TIMER_H__
 #define _VMM_TIMER_H__
 
-#include <list.h>
-#include <arch_regs.h>
 #include <vmm_types.h>
-#include <vmm_math.h>
 #include <vmm_spinlocks.h>
+#include <arch_regs.h>
+#include <list.h>
 
 struct vmm_timer_event;
 

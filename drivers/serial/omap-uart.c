@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_host_io.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
@@ -34,6 +33,7 @@
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
 #include <serial/omap-uart.h>
+#include <mathlib.h>
 
 #define OMAP_UART_POLLING 
 
@@ -98,7 +98,7 @@ void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 				u32 baudrate, u32 input_clock)
 {
 	u16 bdiv;
-	bdiv = vmm_udiv32(input_clock, (16 * baudrate));
+	bdiv = udiv32(input_clock, (16 * baudrate));
 
 	/* clear interrupt enable reg */
 	omap_serial_out(UART_IER, 0);
@@ -187,7 +187,7 @@ void uart_configure_xonxoff(struct omap_uart_omap_port *port)
 static int omap_uart_startup_configure(struct omap_uart_omap_port *port)
 {
 	u16 bdiv, cval;
-	bdiv = vmm_udiv32(port->input_clock, (16 * port->baudrate));
+	bdiv = udiv32(port->input_clock, (16 * port->baudrate));
 
         /*
          * Clear the FIFO buffers and disable them.

@@ -23,12 +23,12 @@
 
 #include <arch_cpu.h>
 #include <arch_board.h>
-#include <bitmap.h>
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
+#include <mathlib.h>
+#include <bitmap.h>
 
 struct vmm_host_ram_ctrl {
 	unsigned long *ram_bmap;
@@ -61,7 +61,7 @@ int vmm_host_ram_alloc(physical_addr_t * pa, physical_size_t sz, bool aligned)
 
 	found = 0;
 	if (aligned && (sz > VMM_PAGE_SIZE)) {
-		bpos = vmm_umod32(rctrl.ram_start, sz);
+		bpos = umod32(rctrl.ram_start, sz);
 		if (bpos) {
 			bpos = VMM_ROUNDUP2_PAGE_SIZE(sz) >> VMM_PAGE_SHIFT;
 		}

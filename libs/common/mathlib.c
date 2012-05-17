@@ -16,12 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_math.c
+ * @file mathlib.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Architecture specific math related functions
+ * @brief Software implementation common math operations
  */
 
-#include <arch_math.h>
+#include <mathlib.h>
+
+#if !defined(ARCH_HAS_DIV_OPERATION)
 
 static const unsigned char byte_reverse_table[] = 
 {
@@ -109,7 +111,6 @@ u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder)
 	dividend = quotient;
 	quotient = 0;
 
-	/* FIXME: Division loop has to be in arch specific assembly code */
 	while (num_bits) {
 		remaind = (remaind << 1) | (dividend & 0x1);
 		dividend = dividend >> 1;
@@ -180,7 +181,6 @@ u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder)
 	dividend = quotient;
 	quotient = 0;
 
-	/* FIXME: Division loop has to be in arch specific assembly code */
 	while (num_bits) {
 		remaind = (remaind << 1) | (dividend & 0x1);
 		dividend = dividend >> 1;
@@ -198,3 +198,4 @@ u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder)
 	return quotient;
 }
 
+#endif

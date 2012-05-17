@@ -23,9 +23,9 @@
 #ifndef _VMM_CLOCKSOURCE_H__
 #define _VMM_CLOCKSOURCE_H__
 
-#include <list.h>
 #include <vmm_types.h>
-#include <vmm_math.h>
+#include <mathlib.h>
+#include <list.h>
 
 struct vmm_clocksource;
 
@@ -107,7 +107,7 @@ static inline u32 vmm_clocksource_khz2mult(u32 khz, u32 shift)
 {
 	u64 tmp = ((u64)1000000) << shift;
 	tmp += khz >> 1;
-	tmp = vmm_udiv64(tmp, khz);
+	tmp = udiv64(tmp, khz);
 	return (u32)tmp;
 }
 
@@ -116,7 +116,7 @@ static inline u32 vmm_clocksource_hz2mult(u32 hz, u32 shift)
 {
 	u64 tmp = ((u64)1000000000) << shift;
 	tmp += hz >> 1;
-	tmp = vmm_udiv64(tmp, hz);
+	tmp = udiv64(tmp, hz);
 	return (u32)tmp;
 }
 

@@ -21,12 +21,12 @@
  * @brief Source file for virtual address pool management.
  */
 
-#include <bitmap.h>
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_vapool.h>
+#include <mathlib.h>
+#include <bitmap.h>
 
 struct vmm_host_vapool_ctrl {
 	unsigned long *vapool_bmap;
@@ -59,7 +59,7 @@ int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 
 	found = 0;
 	if (aligned && (sz > VMM_PAGE_SIZE)) {
-		bpos = vmm_umod32(vpctrl.vapool_start, sz);
+		bpos = umod32(vpctrl.vapool_start, sz);
 		if (bpos) {
 			bpos = VMM_ROUNDUP2_PAGE_SIZE(sz) >> VMM_PAGE_SHIFT;
 		}

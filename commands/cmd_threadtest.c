@@ -23,7 +23,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
@@ -31,6 +30,7 @@
 #include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <mathlib.h>
 
 #define MODULE_VARID			cmd_threadtest_module
 #define MODULE_NAME			"Thread Test Command"
@@ -129,7 +129,7 @@ void cmd_threadtest_list(struct vmm_chardev *cdev)
 {
 	int i, testcount = 0;
 
-	testcount = vmm_udiv32(sizeof(testcases), 
+	testcount = udiv32(sizeof(testcases), 
 				sizeof(struct threadtest_testcase));
 
 	for (i = 0; i < testcount; i++) {
@@ -149,7 +149,7 @@ int cmd_threadtest_exec(struct vmm_chardev *cdev, int argc, char **argv)
                         return VMM_OK;
 		} else if ((vmm_strcmp(argv[1], "exec") == 0) && (3 <= argc)) {
 			testid = vmm_str2int(argv[2], 10);
-			testcount = vmm_udiv32(sizeof(testcases), 
+			testcount = udiv32(sizeof(testcases), 
 					sizeof(struct threadtest_testcase));
 			if (testid == -1) {
 				for (i = 0; i < testcount; i++) {

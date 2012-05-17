@@ -34,7 +34,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_timer.h>
@@ -45,6 +44,7 @@
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_stdio.h>
+#include <mathlib.h>
 
 #define MODULE_VARID		mptimer_emulator_module
 #define MODULE_NAME		"MPCore Private Timer and Watchdog Emulator"
@@ -134,7 +134,7 @@ static u32 timer_block_counter_value(struct timer_block *timer)
 			cval = cval >> 10;
 			cval = cval + ((cval * 3) >> 7) + ((cval * 9) >> 14);
 		} else if (timer->freq != 1000000000) {
-			cval = vmm_udiv64(cval * timer->freq, (u64) 1000000000);
+			cval = udiv64(cval * timer->freq, (u64) 1000000000);
 		}
 
 		if (timer->control & TIMER_CTRL_ARELOAD) {
@@ -142,7 +142,7 @@ static u32 timer_block_counter_value(struct timer_block *timer)
 			 * We need to convert this number of ticks (on 
 			 * 64 bits) to a number on 32 bits.
 			 */
-			cval = vmm_umod64(cval, (u64) timer->load);
+			cval = umod64(cval, (u64) timer->load);
 			ret = timer->load - (u32)cval;
 		} else {
 			if (cval >= timer->count) {
@@ -182,7 +182,7 @@ static void timer_block_reload(struct timer_block *timer)
 	if (timer->freq == 1000000) {
 		nsecs *= 1000;
 	} else {
-		nsecs = vmm_udiv64((nsecs * 1000000000),
+		nsecs = udiv64((nsecs * 1000000000),
 					(u64) timer->freq);
 	}
 

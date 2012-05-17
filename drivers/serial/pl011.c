@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_host_io.h>
@@ -33,6 +32,7 @@
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
 #include <serial/pl011.h>
+#include <mathlib.h>
 
 #define MODULE_VARID			pl011_driver_module
 #define MODULE_NAME			"PL011 Serial Driver"
@@ -103,9 +103,9 @@ void pl011_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	 *        / (16 * BAUD_RATE))
 	 */
 	temp = 16 * baudrate;
-	divider = vmm_udiv32(input_clock, temp);
-	remainder = vmm_umod32(input_clock, temp);
-	temp = vmm_udiv32((8 * remainder), baudrate);
+	divider = udiv32(input_clock, temp);
+	remainder = umod32(input_clock, temp);
+	temp = udiv32((8 * remainder), baudrate);
 	fraction = (temp >> 1) + (temp & 1);
 
 	vmm_out_le16((void *)(base + UART_PL011_IBRD), (u16) divider);

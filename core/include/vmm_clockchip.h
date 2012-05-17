@@ -23,10 +23,10 @@
 #ifndef _VMM_CLOCKCHIP_H__
 #define _VMM_CLOCKCHIP_H__
 
-#include <list.h>
 #include <vmm_types.h>
-#include <vmm_math.h>
 #include <arch_regs.h>
+#include <mathlib.h>
+#include <list.h>
 
 /* Clockchip mode commands */
 enum vmm_clockchip_mode {
@@ -94,7 +94,7 @@ struct vmm_clockchip {
 static inline u32 vmm_clockchip_khz2mult(u32 khz, u32 shift)
 {
 	u64 tmp = ((u64)khz) << shift;
-	tmp = vmm_udiv64(tmp, (u64)1000000);
+	tmp = udiv64(tmp, (u64)1000000);
 	return (u32)tmp;
 }
 
@@ -102,7 +102,7 @@ static inline u32 vmm_clockchip_khz2mult(u32 khz, u32 shift)
 static inline u32 vmm_clockchip_hz2mult(u32 hz, u32 shift)
 {
 	u64 tmp = ((u64)hz) << shift;
-	tmp = vmm_udiv64(tmp, (u64)1000000000);
+	tmp = udiv64(tmp, (u64)1000000000);
 	return (u32)tmp;
 }
 
@@ -110,7 +110,7 @@ static inline u32 vmm_clockchip_hz2mult(u32 hz, u32 shift)
 static inline u64 vmm_clockchip_delta2ns(u32 delta, struct vmm_clockchip *cc)
 {
 	u64 tmp = (u64)delta << cc->shift;
-	return vmm_udiv64(tmp, cc->mult);
+	return udiv64(tmp, cc->mult);
 }
 
 /** Set event handler for clockchip */
