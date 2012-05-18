@@ -64,7 +64,7 @@ SECTIONS
 	.percpu :
 	{
 		PROVIDE(_percpu_start = .);
-		*(.modtbl)
+		*(.percpu)
 		. = ALIGN(4);
 		PROVIDE(_percpu_end = .);
 	}
