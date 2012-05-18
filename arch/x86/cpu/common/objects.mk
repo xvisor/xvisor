@@ -1,3 +1,4 @@
+#/**
 # Copyright (c) 2012 Himanshu Chauhan.
 # All rights reserved.
 #
@@ -5,45 +6,22 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
-#
+# 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#
+# 
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file    openconf.cfg
+# @file objects.mk
 # @version 1.0
-# @author  Himanshu Chauhan (hschauhan@nulltrace.org)
-# @brief   CPU config file for Intel-64 (x86_64)
+# @author Himanshu Chauhan (hschauhan@nulltrace.org)
+# @brief list of x86 common object files.
+# */
 
-choice
-	prompt "Target Processor"
-	default CONFIG_CPU_X86_64
-	help
-		This is the processor core of your CPU. This information is used for
-		determining the correct assembler instructions to use for the core.
+cpu-cflags +=-finline-functions -O0 -mcmodel=large
 
-		The default is to build for a 64-bit extension of x86 i.e. x86_64 or
-	        Intel 64.
-
-	config CONFIG_CPU_X86_64
-		bool "Generic x86_64"
-		help
-	  		Generic 64-bit extension of x86 (Intel 64)
-endchoice
-
-if CONFIG_CPU_X86_64
-
-source "arch/x86/cpu/x86_64/openconf.cfg"
-source "arch/x86/cpu/common/openconf.cfg"
-
-menu "Processor Features"
-source "arch/x86/cpu/x86_64/features.cfg"
-endmenu
-
-endif
-
+cpu-common-objs-$(CONFIG_ACPI) += acpi.o
