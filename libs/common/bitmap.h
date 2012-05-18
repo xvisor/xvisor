@@ -81,8 +81,8 @@
 #define small_const_nbits(nbits) \
 	(__builtin_constant_p(nbits) && (nbits) <= BITS_PER_LONG)
 
-#define DECLARE_BITMAP(name, nbits)	unsigned long name[BITS_TO_LONGS(nbits)]
-#define DEFINE_BITMAP(name)		extern unsigned long name[]
+#define DEFINE_BITMAP(name, nbits)	unsigned long name[BITS_TO_LONGS(nbits)]
+#define DECLARE_BITMAP(name)		extern unsigned long name[]
 
 static inline unsigned long bitmap_estimate_size(int nbits)
 {
