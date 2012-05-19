@@ -82,8 +82,9 @@ SECTIONS
 		PROVIDE(_percpu_end = .);
 	}
 
-	. = ALIGN(0x1000); /* init functions start is page aligned */
-	.init : /* Put init functions into separate pages */
+	. = ALIGN(0x1000); /* init section is page aligned */
+
+	.init : 
 	{
 		PROVIDE(_init_text_start = .);
 		*(.init.text)
@@ -91,7 +92,7 @@ SECTIONS
 		PROVIDE(_init_text_end = .);
 	}
 
-	. = ALIGN(0x1000); /* init functions end is page aligned */
+	. = ALIGN(0x1000); /* all stacks are page aligned */
 
 	.hvc_stack :
 	{
@@ -101,7 +102,7 @@ SECTIONS
 		PROVIDE(_hvc_stack_end = .);
 	}
 
-	. = ALIGN(0x1000); /* Need this to create proper sections */
+	. = ALIGN(0x1000); /* Need this to create proper pages */
 	
 	PROVIDE(_code_end = .);
 }
