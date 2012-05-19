@@ -29,14 +29,12 @@
 
 #ifdef CONFIG_SMP
 
-virtual_addr_t __percpu_base;
 virtual_addr_t __percpu_offset[CONFIG_CPU_COUNT];
 
 int __init vmm_percpu_init(void)
 {
 	/* FIXME: */
-	__percpu_base = arch_percpu_vaddr();
-	__percpu_offset[0] = arch_percpu_vaddr();
+	__percpu_offset[0] = 0x0;
 
 	return VMM_OK;
 }

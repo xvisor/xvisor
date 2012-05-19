@@ -30,15 +30,12 @@
 
 #include <arch_smp.h>
 
-extern virtual_addr_t __percpu_base;
 extern virtual_addr_t __percpu_offset[CONFIG_CPU_COUNT];
 
-#define RELOC_HIDE(ptr, base, off)	({ unsigned long __ptr;	\
-			__asm__ ("" : "=r"(__ptr) : "0"(ptr));	\
-			(typeof(ptr)) (__ptr - (base) + (off)); })
+#define RELOC_HIDE(ptr, off)	({ \
+		(typeof(ptr)) ((virtual_addr_t)(ptr) + (off)); })
 
-#define __get_cpu_var(var)	(*RELOC_HIDE(&percpu__##var,	\
-				__percpu_base,			\
+#define __get_cpu_var(var)	(*RELOC_HIDE(&percpu_##var,	\
 				__percpu_offset[arch_smp_id()]))
 
 #define this_cpu(var)		__get_cpu_var(var)
