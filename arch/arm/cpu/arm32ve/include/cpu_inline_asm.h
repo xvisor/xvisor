@@ -41,6 +41,10 @@
 
 #define clrex()			asm volatile("clrex\n\t")
 
+#define read_mpidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c0, 5\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
 #define read_sctlr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c1, c0, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})

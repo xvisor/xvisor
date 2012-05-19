@@ -16,37 +16,24 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_percpu.c
+ * @file cpu_init.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Implementation of per-cpu areas 
+ * @brief Implementation of SMP functions for CPU
  */
 
 #include <vmm_error.h>
-#include <vmm_cpumask.h>
-#include <vmm_host_aspace.h>
-#include <vmm_percpu.h>
-#include <arch_sections.h>
+#include <cpu_inline_asm.h>
+#include <arch_smp.h>
 
-#ifdef CONFIG_SMP
+u32 arch_smp_id(void)
+{
+	return read_mpidr() & 0xFF;
+}
 
-virtual_addr_t __percpu_base;
-virtual_addr_t __percpu_offset[CONFIG_CPU_COUNT];
-
-int __init vmm_percpu_init(void)
+int arch_smp_secondary_boot(void)
 {
 	/* FIXME: */
-	__percpu_base = arch_percpu_vaddr();
-	__percpu_offset[0] = arch_percpu_vaddr();
-
 	return VMM_OK;
 }
 
-#else
 
-int __init vmm_percpu_init(void)
-{
-	/* Don't require to do anything for UP */
-	return VMM_OK;
-}
-
-#endif
