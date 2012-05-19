@@ -16,24 +16,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_init.c
+ * @file cpu_smp.S
  * @author Anup Patel (anup@brainfault.org)
- * @brief Implementation of SMP functions for CPU
+ * @brief Low-level implementation of SMP functions 
  */
 
-#include <vmm_error.h>
-#include <cpu_inline_asm.h>
-#include <arch_smp.h>
-
-u32 arch_smp_id(void)
-{
-	return read_mpidr() & 0xFF;
-}
-
-int arch_smp_secondary_boot(void)
-{
-	/* FIXME: */
-	return VMM_OK;
-}
-
+	/* 
+	 * Retrive SMP ID of current processor
+	 */
+	.globl arch_smp_id
+arch_smp_id:
+	mrc     p15, 0, r0, c0, c0, 5
+	and	r0, r0, #0xFF
+	bx 	lr
 
