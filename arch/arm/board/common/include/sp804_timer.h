@@ -51,6 +51,7 @@ int sp804_clockchip_init(virtual_addr_t base,
 			 u32 hirq,
 			 const char *name, 
 			 int rating, 
-			 u32 freq_hz);
+			 u32 freq_hz,
+			 u32 target_cpu);
 
 #endif /* __SP804_TIMER_H__ */

@@ -320,7 +320,9 @@ int __init omap3_gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa)
 
 	cc->gpt_num = gpt_num;
 	cc->clkchip.name = omap3_gpt_config[gpt_num].name;
+	cc->clkchip.hirq = omap3_gpt_config[gpt_num].irq_no;
 	cc->clkchip.rating = 200;
+	cc->clkchip.cpumask = cpu_all_mask;
 	cc->clkchip.features = VMM_CLOCKCHIP_FEAT_ONESHOT;
 	cc->clkchip.mult = 
 		vmm_clockchip_hz2mult(omap3_gpt_config[gpt_num].clk_hz, 32);

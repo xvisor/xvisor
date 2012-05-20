@@ -24,6 +24,7 @@
 #define _VMM_CLOCKCHIP_H__
 
 #include <vmm_types.h>
+#include <vmm_cpumask.h>
 #include <arch_regs.h>
 #include <mathlib.h>
 #include <list.h>
@@ -58,6 +59,7 @@ typedef int (*vmm_clockchip_expire_t) (struct vmm_clockchip * cc);
  * @name:		ptr to clockchip name
  * @hirq:		host irq number
  * @rating:		variable to rate clock event devices
+ * @cpumask:		cpumask to indicate for which CPUs this device works
  * @event_handler:	Assigned by the framework to be called by the low
  *			level handler of the event source
  * @set_next_event:	set next event function
@@ -75,6 +77,7 @@ struct vmm_clockchip {
 	const char *name;
 	u32 hirq;
 	int rating;
+	const struct vmm_cpumask *cpumask;
 	unsigned int features;
 	u32 mult;
 	u32 shift;

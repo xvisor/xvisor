@@ -95,6 +95,20 @@ int vmm_host_irq_set_chip_data(u32 hirq_num, void * chip_data)
 	return VMM_EFAIL;
 }
 
+int vmm_host_irq_set_affinity(u32 hirq_num, 
+			      const struct vmm_cpumask *dest, 
+			      bool force)
+{
+	struct vmm_host_irq * irq;
+	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
+		irq = &hirqctrl.irq[hirq_num];
+		if (irq->chip && irq->chip->irq_set_affinity) {
+			return irq->chip->irq_set_affinity(irq, dest, force);
+		}
+	}
+	return VMM_EFAIL;
+}
+
 int vmm_host_irq_enable(u32 hirq_num)
 {
 	struct vmm_host_irq * irq;

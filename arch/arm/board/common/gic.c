@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_cpumask.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <gic.h>
@@ -93,11 +94,38 @@ void gic_unmask_irq(struct vmm_host_irq *irq)
 		  GIC_DIST_ENABLE_SET + (gic_irq(irq) / 32) * 4);
 }
 
+#ifdef CONFIG_SMP
+static int gic_set_affinity(struct vmm_host_irq *irq, 
+			    const struct vmm_cpumask *mask_val,
+			    bool force)
+{
+	virtual_addr_t reg;
+	u32 shift = (irq->num % 4) * 8;
+	u32 cpu = vmm_cpumask_first(mask_val);
+	u32 val, mask, bit;
+
+	if (cpu >= 8)
+		return VMM_EINVALID;
+
+	reg = gic_dist_base(irq) + GIC_DIST_TARGET + (gic_irq(irq) & ~3);
+	mask = 0xff << shift;
+	bit = 1 << (cpu + shift);
+
+	val = gic_read(reg) & ~mask;
+	gic_write(val | bit, reg);
+
+	return 0;
+}
+#endif
+
 static struct vmm_host_irq_chip gic_chip = {
 	.name			= "GIC",
 	.irq_mask		= gic_mask_irq,
 	.irq_unmask		= gic_unmask_irq,
 	.irq_eoi		= gic_eoi_irq,
+#ifdef CONFIG_SMP
+	.irq_set_affinity	= gic_set_affinity,
+#endif
 };
 
 void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)

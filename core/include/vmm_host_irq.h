@@ -23,9 +23,10 @@
 #ifndef _VMM_HOST_IRQ_H__
 #define _VMM_HOST_IRQ_H__
 
-#include <list.h>
-#include <arch_regs.h>
 #include <vmm_types.h>
+#include <vmm_cpumask.h>
+#include <arch_regs.h>
+#include <list.h>
 
 /**
  * enum vmm_irq_return
@@ -59,6 +60,9 @@ struct vmm_host_irq_chip {
 	void (*irq_mask)(struct vmm_host_irq *irq);
 	void (*irq_unmask)(struct vmm_host_irq *irq);
 	void (*irq_eoi)(struct vmm_host_irq *irq);
+	int  (*irq_set_affinity)(struct vmm_host_irq *irq, 
+				 const struct vmm_cpumask *dest, 
+				 bool force);
 };
 
 /** Host IRQ Abstraction */
@@ -116,6 +120,11 @@ static inline void * vmm_host_irq_get_chip_data(struct vmm_host_irq *irq)
 {
 	return (irq) ? irq->chip_data : NULL;
 }
+
+/** Set cpu affinity of given host irq */
+int vmm_host_irq_set_affinity(u32 hirq_num, 
+			      const struct vmm_cpumask *dest, 
+			      bool force);
 
 /** Enable a host irq (by default all irqs are enabled) */
 int vmm_host_irq_enable(u32 hirq_num);
