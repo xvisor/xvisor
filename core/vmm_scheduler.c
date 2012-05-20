@@ -296,10 +296,8 @@ void vmm_scheduler_yield(void)
 
 static void idle_orphan(void)
 {
-	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
-
 	while(1) {
-		if (vmm_schedalgo_rq_length(schedp->rq, 
+		if (vmm_schedalgo_rq_length(this_cpu(sched).rq, 
 					    IDLE_VCPU_PRIORITY) == 0) {
 			arch_cpu_wait_for_irq();
 		}
