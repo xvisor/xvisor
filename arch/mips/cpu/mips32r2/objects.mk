@@ -43,4 +43,4 @@ cpu-objs-y+= cpu_mmu.o
 cpu-objs-y+= cpu_vcpu_mmu.o
 cpu-objs-y+= cpu_genex.o
 cpu-objs-y+= cpu_vcpu_emulate.o
-cpu-objs-y+= cpu_math.o
+

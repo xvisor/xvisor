@@ -23,10 +23,11 @@
 #ifndef _VMM_CLOCKCHIP_H__
 #define _VMM_CLOCKCHIP_H__
 
-#include <list.h>
 #include <vmm_types.h>
-#include <vmm_math.h>
+#include <vmm_cpumask.h>
 #include <arch_regs.h>
+#include <mathlib.h>
+#include <list.h>
 
 /* Clockchip mode commands */
 enum vmm_clockchip_mode {
@@ -58,6 +59,7 @@ typedef int (*vmm_clockchip_expire_t) (struct vmm_clockchip * cc);
  * @name:		ptr to clockchip name
  * @hirq:		host irq number
  * @rating:		variable to rate clock event devices
+ * @cpumask:		cpumask to indicate for which CPUs this device works
  * @event_handler:	Assigned by the framework to be called by the low
  *			level handler of the event source
  * @set_next_event:	set next event function
@@ -75,6 +77,7 @@ struct vmm_clockchip {
 	const char *name;
 	u32 hirq;
 	int rating;
+	const struct vmm_cpumask *cpumask;
 	unsigned int features;
 	u32 mult;
 	u32 shift;
@@ -94,7 +97,7 @@ struct vmm_clockchip {
 static inline u32 vmm_clockchip_khz2mult(u32 khz, u32 shift)
 {
 	u64 tmp = ((u64)khz) << shift;
-	tmp = vmm_udiv64(tmp, (u64)1000000);
+	tmp = udiv64(tmp, (u64)1000000);
 	return (u32)tmp;
 }
 
@@ -102,7 +105,7 @@ static inline u32 vmm_clockchip_khz2mult(u32 khz, u32 shift)
 static inline u32 vmm_clockchip_hz2mult(u32 hz, u32 shift)
 {
 	u64 tmp = ((u64)hz) << shift;
-	tmp = vmm_udiv64(tmp, (u64)1000000000);
+	tmp = udiv64(tmp, (u64)1000000000);
 	return (u32)tmp;
 }
 
@@ -110,7 +113,7 @@ static inline u32 vmm_clockchip_hz2mult(u32 hz, u32 shift)
 static inline u64 vmm_clockchip_delta2ns(u32 delta, struct vmm_clockchip *cc)
 {
 	u64 tmp = (u64)delta << cc->shift;
-	return vmm_udiv64(tmp, cc->mult);
+	return udiv64(tmp, cc->mult);
 }
 
 /** Set event handler for clockchip */
@@ -134,11 +137,8 @@ int vmm_clockchip_register(struct vmm_clockchip *cc);
 /** Register clockchip */
 int vmm_clockchip_unregister(struct vmm_clockchip *cc);
 
-/** Get best rated clockchip */
-struct vmm_clockchip *vmm_clockchip_best(void);
-
-/** Find a clockchip */
-struct vmm_clockchip *vmm_clockchip_find(const char *name);
+/** Find best rated clockchip with given CPU affinity */
+struct vmm_clockchip *vmm_clockchip_find_best(const struct vmm_cpumask *mask);
 
 /** Retrive clockchip with given index */
 struct vmm_clockchip *vmm_clockchip_get(int index);

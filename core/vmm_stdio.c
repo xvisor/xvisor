@@ -21,13 +21,13 @@
  * @brief source file for standerd input/output
  */
 
-#include <stdarg.h>
 #include <arch_defterm.h>
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_string.h>
 #include <vmm_main.h>
 #include <vmm_stdio.h>
+#include <stdarg.h>
+#include <mathlib.h>
 
 /* NOTE: assuming sizeof(void *) == sizeof(int) */
 
@@ -159,11 +159,11 @@ static int printi(char **out, struct vmm_chardev *cdev,
 	*s = '\0';
 
 	while (u) {
-		t = vmm_umod64(u, b);
+		t = umod64(u, b);
 		if (t >= 10)
 			t += letbase - '0' - 10;
 		*--s = t + '0';
-		u = vmm_udiv64(u, b);
+		u = udiv64(u, b);
 	}
 
 	if (neg) {

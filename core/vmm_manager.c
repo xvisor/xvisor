@@ -74,7 +74,7 @@ static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		return rc;
 	}
 
-	flags = vmm_spin_lock_irqsave(&vcpu->lock);
+	vmm_spin_lock_irqsave(&vcpu->lock, flags);
 	switch(new_state) {
 	case VMM_VCPU_STATE_RESET:
 		if ((vcpu->state != VMM_VCPU_STATE_RESET) &&
@@ -149,7 +149,7 @@ int vmm_manager_vcpu_dumpreg(struct vmm_vcpu * vcpu)
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
 	if (vcpu) {
-		flags = vmm_spin_lock_irqsave(&vcpu->lock);
+		vmm_spin_lock_irqsave(&vcpu->lock, flags);
 		if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
 			arch_vcpu_regs_dump(vcpu);
 			rc = VMM_OK;
@@ -164,7 +164,7 @@ int vmm_manager_vcpu_dumpstat(struct vmm_vcpu * vcpu)
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
 	if (vcpu) {
-		flags = vmm_spin_lock_irqsave(&vcpu->lock);
+		vmm_spin_lock_irqsave(&vcpu->lock, flags);
 		if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
 			arch_vcpu_stat_dump(vcpu);
 			rc = VMM_OK;
@@ -193,7 +193,7 @@ struct vmm_vcpu * vmm_manager_vcpu_orphan_create(const char *name,
 	}
 
 	/* Acquire lock */
-	flags = vmm_spin_lock_irqsave(&mngr.lock);
+	vmm_spin_lock_irqsave(&mngr.lock, flags);
 
 	/* Find the next available vcpu */
 	found = 0;
@@ -283,7 +283,7 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu * vcpu)
 	}
 
 	/* Acquire lock */
-	flags = vmm_spin_lock_irqsave(&mngr.lock);
+	vmm_spin_lock_irqsave(&mngr.lock, flags);
 
 	/* Decrement vcpu count */
 	mngr.vcpu_count--;
@@ -505,7 +505,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 	}
 
 	/* Acquire lock */
-	flags = vmm_spin_lock_irqsave(&mngr.lock);
+	vmm_spin_lock_irqsave(&mngr.lock, flags);
 
 	/* Ensure guest node uniqueness */
 	list_for_each(l1, &mngr.guest_list) {
@@ -545,7 +545,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 
 	vsnode = vmm_devtree_getchild(gnode, VMM_DEVTREE_VCPUS_NODE_NAME);
 	if (!vsnode) {
-		return guest;
+		goto guest_create_error;
 	}
 	list_for_each(l1, &vsnode->child_list) {
 		vnode = list_entry(l1, struct vmm_devtree_node, head);
@@ -655,20 +655,17 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 
 	/* Initialize guest address space */
 	if (vmm_guest_aspace_init(guest)) {
-		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
-		return NULL;
+		goto guest_create_error;
 	}
 
 	/* Reset guest address space */
 	if (vmm_guest_aspace_reset(guest)) {
-		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
-		return NULL;
+		goto guest_create_error;
 	}
 
 	/* Initialize arch guest context */
 	if (arch_guest_init(guest)) {
-		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
-		return NULL;
+		goto guest_create_error;
 	}
 
 	/* Increment guest count */
@@ -678,6 +675,12 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 
 	return guest;
+
+guest_create_error:
+	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+	vmm_manager_guest_destroy(guest);
+
+	return NULL;
 }
 
 int vmm_manager_guest_destroy(struct vmm_guest * guest)
@@ -696,7 +699,7 @@ int vmm_manager_guest_destroy(struct vmm_guest * guest)
 	vmm_manager_guest_reset(guest);
 
 	/* Acquire lock */
-	flags = vmm_spin_lock_irqsave(&mngr.lock);
+	vmm_spin_lock_irqsave(&mngr.lock, flags);
 
 	/* Decrement guest count */
 	mngr.guest_count--;

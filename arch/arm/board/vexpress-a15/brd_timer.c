@@ -88,7 +88,7 @@ int __init arch_clockchip_init(void)
 
 	/* Initialize timer0 as clockchip */
 	rc = sp804_clockchip_init(ca15x4_timer0_base, IRQ_V2M_TIMER0, 
-				  "sp804_timer0", 300, 1000000);
+				  "sp804_timer0", 300, 1000000, 0);
 	if (rc) {
 		return rc;
 	}

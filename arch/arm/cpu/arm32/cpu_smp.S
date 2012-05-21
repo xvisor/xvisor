@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Himanshu Chauhan
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,26 +16,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_math.c
+ * @file cpu_smp.S
  * @author Anup Patel (anup@brainfault.org)
- * @brief Architecture specific math related functions
+ * @brief Low-level implementation of SMP functions 
  */
 
-#include <arch_math.h>
-
-u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder)
-{
-	if (remainder)
-		*remainder = dividend % divisor;
-
-	return (dividend / divisor);
-}
-
-u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder)
-{
-	if (remainder)
-		*remainder = dividend % divisor;
-
-	return (dividend/divisor);
-}
+	/* 
+	 * Retrive SMP ID of current processor
+	 */
+	.globl arch_smp_id
+arch_smp_id:
+	mrc     p15, 0, r0, c0, c0, 5
+	and	r0, r0, #0xFF
+	bx 	lr
 

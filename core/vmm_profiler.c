@@ -87,7 +87,7 @@ static void __notrace vmm_profile_enter(void *ip, void *parent_ip)
 		goto out;
 	}
 
-	flags = vmm_spin_lock_irqsave(&pctrl.lock);
+	vmm_spin_lock_irqsave(&pctrl.lock, flags);
 
 	pctrl.stat[index].counter++;
 	pctrl.stat[index].is_tracing = 1;
@@ -123,7 +123,7 @@ static void __notrace vmm_profile_exit(void *ip, void *parent_ip)
 		goto out;
 	}
 
-	flags = vmm_spin_lock_irqsave(&pctrl.lock);
+	vmm_spin_lock_irqsave(&pctrl.lock, flags);
 
 	time = vmm_timer_timestamp();
 

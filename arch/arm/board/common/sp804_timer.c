@@ -154,7 +154,8 @@ int __init sp804_clockchip_init(virtual_addr_t base,
 				u32 hirq,
 				const char *name, 
 				int rating, 
-				u32 freq_hz)
+				u32 freq_hz,
+				u32 target_cpu)
 {
 	int rc;
 	struct sp804_clockchip *cc;
@@ -166,7 +167,13 @@ int __init sp804_clockchip_init(virtual_addr_t base,
 
 	cc->base = base;
 	cc->clkchip.name = name;
+	cc->clkchip.hirq = hirq;
 	cc->clkchip.rating = rating;
+#ifdef CONFIG_SMP
+	cc->clkchip.cpumask = cpumask_of(target_cpu);
+#else
+	cc->clkchip.cpumask = cpu_all_mask;
+#endif
 	cc->clkchip.features = 
 		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
 	cc->clkchip.mult = vmm_clockchip_hz2mult(freq_hz, 32);
@@ -184,6 +191,14 @@ int __init sp804_clockchip_init(virtual_addr_t base,
 					&sp804_clockchip_irq_handler, cc))) {
 		return rc;
 	}
+
+#ifdef CONFIG_SMP
+	/* Set host irq affinity to target cpu */
+	if ((rc = vmm_host_irq_set_affinity(hirq, 
+					    cpumask_of(target_cpu), TRUE))) {
+		return rc;
+	}
+#endif
 
 	/* Enable host interrupt line */
 	if ((rc = vmm_host_irq_enable(hirq))) {

@@ -32,11 +32,11 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_string.h>
 #include <vmm_timer.h>
 #include <vmm_spinlocks.h>
 #include <vmm_wallclock.h>
+#include <mathlib.h>
 
 struct vmm_wallclock_ctrl {
 	vmm_spinlock_t lock;
@@ -100,7 +100,7 @@ struct vmm_timeval vmm_ns_to_timeval(const s64 nsec)
 		return tv;
 	}
 
-	tv.tv_sec = vmm_sdiv64(nsec, NSEC_PER_SEC);
+	tv.tv_sec = sdiv64(nsec, NSEC_PER_SEC);
 	tv.tv_nsec = nsec - tv.tv_sec * NSEC_PER_SEC;
 	if (tv.tv_nsec < 0) {
 		tv.tv_sec--;
@@ -122,7 +122,7 @@ static int __isleap(long year)
 /* do a mathdiv for long type */
 static long math_div(long a, long b)
 {
-	return vmm_sdiv64(a, b) - (vmm_smod64(a, b) < 0);
+	return sdiv64(a, b) - (smod64(a, b) < 0);
 }
 
 /* How many leap years between y1 and y2, y1 must less or equal to y2 */
@@ -152,7 +152,7 @@ void vmm_wallclock_mkinfo(s64 totalsecs, int offset,
 	long days, rem, y;
 	const unsigned short *ip;
 
-	days = vmm_sdiv64(totalsecs, SECS_PER_DAY);
+	days = sdiv64(totalsecs, SECS_PER_DAY);
 	rem = totalsecs - days * SECS_PER_DAY;
 	rem += offset;
 	while (rem < 0) {
@@ -252,7 +252,7 @@ int vmm_wallclock_set_local_time(struct vmm_timeval * tv)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_spin_lock_irqsave(&wclk.lock);
+	vmm_spin_lock_irqsave(&wclk.lock, flags);
 
 	wclk.tv.tv_sec = tv->tv_sec;
 	wclk.tv.tv_nsec = tv->tv_nsec;
@@ -272,7 +272,7 @@ int vmm_wallclock_get_local_time(struct vmm_timeval * tv)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_spin_lock_irqsave(&wclk.lock);
+	vmm_spin_lock_irqsave(&wclk.lock, flags);
 
 	tv->tv_sec = wclk.tv.tv_sec;
 	tv->tv_nsec = wclk.tv.tv_nsec;
@@ -280,7 +280,7 @@ int vmm_wallclock_get_local_time(struct vmm_timeval * tv)
 
 	vmm_spin_unlock_irqrestore(&wclk.lock, flags);
 
-	tdiv = vmm_udiv64(tdiff, NSEC_PER_SEC);
+	tdiv = udiv64(tdiff, NSEC_PER_SEC);
 	tmod = tdiff - tdiv * NSEC_PER_SEC;
 	tv->tv_nsec += tmod;
 	while (NSEC_PER_SEC <= tv->tv_nsec) {
@@ -301,7 +301,7 @@ int vmm_wallclock_set_timezone(struct vmm_timezone * tz)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_spin_lock_irqsave(&wclk.lock);
+	vmm_spin_lock_irqsave(&wclk.lock, flags);
 
 	minuteswest = tz->tz_minuteswest - wclk.tz.tz_minuteswest;
 	wclk.tv.tv_sec += minuteswest * 60;
@@ -321,7 +321,7 @@ int vmm_wallclock_get_timezone(struct vmm_timezone * tz)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_spin_lock_irqsave(&wclk.lock);
+	vmm_spin_lock_irqsave(&wclk.lock, flags);
 
 	tz->tz_minuteswest = wclk.tz.tz_minuteswest;
 	tz->tz_dsttime = wclk.tz.tz_dsttime;

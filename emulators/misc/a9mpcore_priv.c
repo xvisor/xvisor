@@ -41,6 +41,7 @@
 #include <vmm_scheduler.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <timer/arm_mptimer_emulator.h>
 #include <pic/gic_emulator.h>
 
 #define MODULE_VARID			a9mpcore_emulator_module
@@ -73,6 +74,9 @@ struct a9mp_priv_state {
 	/* Snoop Control Unit */
 	u32 scu_control;
 	u32 scu_status;
+
+	/* Private & Watchdog Timer Block */
+	struct mptimer_state *mpt;
 
 	/* GIC-state */
 	struct gic_state *gic;
@@ -183,6 +187,9 @@ static int a9mpcore_emulator_read(struct vmm_emudev *edev,
 	if (offset < 0x100) {
 		/* Read SCU block */
 		rc = a9_scu_read(s, offset & 0xFC, &regval);
+	} else if (offset >= 0x600 && offset < 0x700) {
+		/* Read Private & Watchdog Timer blocks */
+		rc = mptimer_reg_read(s->mpt, offset & 0xFC, &regval);
 	} else {
 		/* Read GIC */
 		rc = gic_reg_read(s->gic, offset, &regval);
@@ -243,6 +250,9 @@ static int a9mpcore_emulator_write(struct vmm_emudev *edev,
 	if (offset < 0x100) {
 		/* Write SCU */
 		rc = a9_scu_write(s, offset & 0xFC, regmask, regval);
+	} else if (offset >= 0x600 && offset < 0x700) {
+		/* Write Private & Watchdog Timer blocks */
+		rc = mptimer_reg_write(s->mpt, offset & 0xFC, regmask, regval);
 	} else {
 		/* Write GIC */
 		rc = gic_reg_write(s->gic, offset, regmask, regval);
@@ -262,6 +272,9 @@ static int a9mpcore_emulator_reset(struct vmm_emudev *edev)
 	/* Reset GIC state */
 	gic_state_reset(s->gic);
 
+	/* Reset Private & Watchdog Timer state */
+	mptimer_state_reset(s->mpt);
+
 	return VMM_OK;
 }
 
@@ -273,7 +286,7 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 	struct a9mp_priv_state *s;
 	u32 attrlen;
 	const char *attr;
-	u32 *parent_irq;
+	u32 *parent_irq, *timer_irq;
 
 	s = vmm_malloc(sizeof(struct a9mp_priv_state));
 	if (!s) {
@@ -295,10 +308,24 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 	}
 	parent_irq = (u32 *)attr;
 
+	attr = vmm_devtree_attrval(edev->node, "timer_irq");
+	attrlen = vmm_devtree_attrlen(edev->node, "timer_irq");
+	s->num_cpu = (attrlen / sizeof(u32));
+	if (!attr || ((2 * sizeof(u32)) != attrlen)) {
+		goto a9mp_probe_failed;
+	}
+	timer_irq = (u32 *)attr;
+
+	/* Allocate and init MPT state */
+	if(!(s->mpt = mptimer_state_alloc(guest, edev, s->num_cpu, 1000000,
+				 	  timer_irq))) {
+		goto a9mp_probe_failed;
+	}
+
 	/* Allocate and init GIC state */
 	if(!(s->gic = gic_state_alloc(guest, GIC_TYPE_VEXPRESS, s->num_cpu, 
 				 FALSE, parent_irq))) {
-		goto a9mp_probe_failed;
+		goto a9mp_gic_alloc_failed;
 	}
 
 	s->guest = guest;
@@ -307,6 +334,9 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 	edev->priv = s;
 
 	goto a9mp_probe_done;
+
+a9mp_gic_alloc_failed:
+	mptimer_state_free(s->mpt);
 
 a9mp_probe_failed:
 	vmm_free(s);

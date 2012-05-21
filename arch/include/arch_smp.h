@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-20 Himanshu Chauhan
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,26 +16,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_math.c
+ * @file arch_smp.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief Architecture specific math related functions
+ * @brief generic interface for arch specific SMP functions
  */
+#ifndef _ARCH_SMP_H__
+#define _ARCH_SMP_H__
 
-#include <arch_math.h>
+#include <vmm_types.h>
 
-u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder)
-{
-	if (remainder)
-		*remainder = dividend % divisor;
+/** Retrive current processor id */
+u32 arch_smp_id(void);
 
-	return (dividend / divisor);
-}
+/** Initialize secondary CPUs */
+int arch_smp_secondary_init(void);
 
-u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder)
-{
-	if (remainder)
-		*remainder = dividend % divisor;
-
-	return (dividend/divisor);
-}
-
+#endif

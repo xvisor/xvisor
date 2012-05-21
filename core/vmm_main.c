@@ -30,6 +30,7 @@
 #include <vmm_version.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
+#include <vmm_percpu.h>
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
 #include <vmm_timer.h>
@@ -80,7 +81,12 @@ void vmm_init(void)
 	/* Initialize host interrupts */
 	ret = vmm_host_irq_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize per-cpu area */
+	ret = vmm_percpu_init();
+	if (ret) {
 		vmm_hang();
 	}
 
@@ -114,6 +120,7 @@ void vmm_init(void)
 	vmm_printf("Initialize Heap Managment\n");
 	vmm_printf("Initialize Device Tree\n");
 	vmm_printf("Initialize Host Interrupt Subsystem\n");
+	vmm_printf("Initialize PerCPU Areas\n");
 	vmm_printf("Initialize CPU Early\n");
 	vmm_printf("Initialize Board Early\n");
 	vmm_printf("Initialize Standard I/O Subsystem\n");

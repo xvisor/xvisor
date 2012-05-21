@@ -74,8 +74,17 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
-	. = ALIGN(0x1000); /* init functions start is page aligned */
-	.init : /* Put init functions into separate pages */
+	.percpu :
+	{
+		PROVIDE(_percpu_start = .);
+		*(.percpu)
+		. = ALIGN(4);
+		PROVIDE(_percpu_end = .);
+	}
+
+	. = ALIGN(0x1000); /* init section is page aligned */
+
+	.init : 
 	{
 		PROVIDE(_init_text_start = .);
 		*(.init.text)
@@ -83,7 +92,7 @@ SECTIONS
 		PROVIDE(_init_text_end = .);
 	}
 
-	. = ALIGN(0x1000); /* init functions end is page aligned */
+	. = ALIGN(0x1000); /* all stacks are page aligned */
 
 	.svc_stack :
 	{

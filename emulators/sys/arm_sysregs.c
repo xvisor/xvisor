@@ -32,7 +32,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_modules.h>
@@ -42,6 +41,7 @@
 #include <vmm_manager.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <mathlib.h>
 
 #define MODULE_VARID			realview_emulator_module
 #define MODULE_NAME			"Realview Sysctl Emulator"
@@ -112,7 +112,7 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 		break;
 	case 0x24: /* 100HZ */
 		tdiff = vmm_timer_timestamp() - s->ref_100hz;
-		regval = vmm_udiv64(tdiff, 10000000);
+		regval = udiv64(tdiff, 10000000);
 		break;
 	case 0x28: /* CFGDATA1 */
 		regval = s->cfgdata1;
@@ -155,7 +155,7 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 	case 0x5c: /* 24MHz */
 		tdiff = vmm_timer_timestamp() - s->ref_100hz;
 		/* Note: What we want is the below value 
-		 * regval = vmm_udiv64(tdiff * 24, 1000);
+		 * regval = udiv64(tdiff * 24, 1000);
 		 * In integer arithmetic division by constant can be simplified
 		 * (a * 24) / 1000
 		 * = a * (24 / 1000)

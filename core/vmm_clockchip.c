@@ -110,7 +110,7 @@ int vmm_clockchip_register(struct vmm_clockchip *cc)
 	found = FALSE;
 	list_for_each(l, &ccctrl.clkchip_list) {
 		cct = list_entry(l, struct vmm_clockchip, head);
-		if (vmm_strcmp(cct->name, cc->name) == 0) {
+		if (cct == cc) {
 			found = TRUE;
 			break;
 		}
@@ -144,7 +144,7 @@ int vmm_clockchip_unregister(struct vmm_clockchip *cc)
 	found = FALSE;
 	list_for_each(l, &ccctrl.clkchip_list) {
 		cct = list_entry(l, struct vmm_clockchip, head);
-		if (vmm_strcmp(cct->name, cc->name) == 0) {
+		if (cct == cc) {
 			found = TRUE;
 			break;
 		}
@@ -159,7 +159,7 @@ int vmm_clockchip_unregister(struct vmm_clockchip *cc)
 	return VMM_OK;
 }
 
-struct vmm_clockchip *vmm_clockchip_best(void)
+struct vmm_clockchip *vmm_clockchip_find_best(const struct vmm_cpumask *mask)
 {
 	int rating = 0;
 	struct dlist *l;
@@ -177,34 +177,6 @@ struct vmm_clockchip *vmm_clockchip_best(void)
 	}
 
 	return best_cc;
-}
-
-struct vmm_clockchip *vmm_clockchip_find(const char *name)
-{
-	bool found;
-	struct dlist *l;
-	struct vmm_clockchip *cc;
-
-	if (!name) {
-		return NULL;
-	}
-
-	found = FALSE;
-	cc = NULL;
-
-	list_for_each(l, &ccctrl.clkchip_list) {
-		cc = list_entry(l, struct vmm_clockchip, head);
-		if (vmm_strcmp(cc->name, name) == 0) {
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (!found) {
-		return NULL;
-	}
-
-	return cc;
 }
 
 struct vmm_clockchip *vmm_clockchip_get(int index)

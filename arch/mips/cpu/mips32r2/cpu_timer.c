@@ -24,6 +24,7 @@
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_percpu.h>
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
 #include <cpu_interrupts.h>
@@ -81,6 +82,7 @@ static int mips_clockchip_expire(struct vmm_clockchip *cc)
 static struct vmm_clockchip mips_cc = 
 {
 	.name = "mips_clkchip",
+	.hirq = 0,
 	.rating = 300,
 	.features = VMM_CLOCKCHIP_FEAT_ONESHOT,
 	.shift = 32,
@@ -88,6 +90,8 @@ static struct vmm_clockchip mips_cc =
 	.set_next_event = &mips_clockchip_set_next_event,
 	.expire = &mips_clockchip_expire,
 };
+
+static DEFINE_PER_CPU(struct vmm_clockchip, mcc);
 
 s32 handle_internal_timer_interrupt(arch_regs_t *uregs)
 {
@@ -97,17 +101,26 @@ s32 handle_internal_timer_interrupt(arch_regs_t *uregs)
 
 int arch_clockchip_init(void)
 {
-	mips_cc.mult = vmm_clockchip_hz2mult(MHZ2HZ(CPU_FREQ_MHZ), 32);
-	mips_cc.min_delta_ns = vmm_clockchip_delta2ns(0xF, &mips_cc);
-	mips_cc.max_delta_ns = vmm_clockchip_delta2ns(0xFFFFFFFF, &mips_cc);
-	mips_cc.priv = NULL;
+	struct vmm_clockchip *cc = &this_cpu(mcc);
+
+	vmm_memcpy(cc, &mips_cc, sizeof(struct vmm_clockchip));
+
+#if CONFIG_SMP
+	cc->cpumask = cpumask_of(arch_smp_id());
+#else
+	cc->cpumask = cpumask_of(0);
+#endif
+	cc->mult = vmm_clockchip_hz2mult(MHZ2HZ(CPU_FREQ_MHZ), 32);
+	cc->min_delta_ns = vmm_clockchip_delta2ns(0xF, &mips_cc);
+	cc->max_delta_ns = vmm_clockchip_delta2ns(0xFFFFFFFF, &mips_cc);
+	cc->priv = NULL;
 
 	/* Disable the timer interrupts. */
 	u32 sr = read_c0_status();
 	sr &= ~((0x1UL << 7) << 8);
 	write_c0_status(sr);
 
-	return vmm_clockchip_register(&mips_cc);
+	return vmm_clockchip_register(cc);
 }
 
 static u64 mips_clocksource_read(struct vmm_clocksource *cs)

@@ -3517,10 +3517,236 @@ static int arm_instgrp_media(u32 inst,
 	return VMM_EFAIL;
 }
 
+/** Emulate Block load (LDMIA, LDMDA, LDMIB, LDMDB) instructions */
+static int arm_inst_ldm(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
+{
+	u32 cond, wback, Rn, op, reg_list, rc;
+	bool is_xx1xxx; /* whether increment or decrement */
+	bool is_x1xxxx; /* whether before or after */ 
+	u32 mask = 0, bit_count = 0;
+	u32 data = 0;
+	u32 address = 0, old_address = 0;
+	int i = 0;
+
+	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDM);
+
+	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
+	op = ARM_INST_BITS(inst, ARM_INST_BRBLK_OP_END, ARM_INST_BRBLK_OP_START);
+	Rn = ARM_INST_BITS(inst,
+			   ARM_INST_LDMSTM_RN_END,
+			   ARM_INST_LDMSTM_RN_START);
+	reg_list = ARM_INST_BITS(inst,
+				 ARM_INST_LDMSTM_REGLIST_END,
+				 ARM_INST_LDMSTM_REGLIST_START);
+
+	wback = ARM_INST_BITS(inst, ARM_INST_LDMSTM_W_END, ARM_INST_LDMSTM_W_START);
+
+	if ((Rn == 15) || (!reg_list)) {
+		arm_unpredictable(regs, vcpu);
+		return VMM_EFAIL;
+	}
+
+	if (wback && (reg_list & (0x1 << Rn))) {
+		arm_unpredictable(regs, vcpu);
+		return VMM_EFAIL;
+	}
+
+	/* get all the flags */
+	is_xx1xxx = !!(op & 0x08);
+	is_x1xxxx = !!(op & 0x10);   
+
+	mask = 0x1;
+	/* get the bitcount */
+	for (i = 0; i <= 15; i++) {
+		if (reg_list & mask) {
+			bit_count++;
+		}
+		mask = mask << 1;
+	}
+	
+	if (arm_condition_passed(cond, regs)) {
+		old_address = cpu_vcpu_reg_read(vcpu, regs, Rn);
+
+		if (is_xx1xxx){
+			/* increment operation, if before then add 4 to it */
+			address = old_address + (4 * is_x1xxxx);
+		} else {
+			/* decrement operation if after then add 4 to it */
+			address = old_address - (4 * bit_count) + (4 * !(is_x1xxxx));
+		}
+
+		mask = 0x1;
+		/* parse through reg_list */
+		for (i = 0; i < 15; i++) {
+			if (reg_list & mask) {
+				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
+						address, &data, 4, FALSE))) {
+					return rc;
+				}
+				cpu_vcpu_reg_write(vcpu, regs, i, data);
+				address = address + 4;			
+			} 
+			mask = mask << 1;
+		}
+		if (reg_list >> 15) {
+			/* TODO: check the address bits to select instruction set */
+			if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
+						address, &(regs->pc), 4, FALSE))) {
+				return rc;
+			}
+		}
+
+		if (wback) {
+			if (is_xx1xxx){
+				/* increment operation */
+				cpu_vcpu_reg_write(vcpu, regs, Rn, old_address + (4 * bit_count));
+			} else {
+				/* decrement operation */
+				cpu_vcpu_reg_write(vcpu, regs, Rn, old_address - (4 * bit_count));
+			}
+		}
+	}
+
+	regs->pc += 4;
+	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDM);
+
+	return VMM_OK;
+}
+
+/** Emulate Block store (STMIA, STMDA, STMIB, STMDB) instructions */
+static int arm_inst_stm(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
+{
+	u32 cond, wback, Rn, op, reg_list, rc;
+	bool is_xx1xxx; /* whether increment or decrement */
+	bool is_x1xxxx; /* whether before or after */ 
+	u32 mask = 0, bit_count = 0;
+	u32 data = 0;
+	u32 address = 0, old_address = 0;
+	int i = 0;
+
+	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STM);
+
+	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
+	op = ARM_INST_BITS(inst, ARM_INST_BRBLK_OP_END, ARM_INST_BRBLK_OP_START);
+	Rn = ARM_INST_BITS(inst,
+			   ARM_INST_LDMSTM_RN_END,
+			   ARM_INST_LDMSTM_RN_START);
+	reg_list = ARM_INST_BITS(inst,
+				 ARM_INST_LDMSTM_REGLIST_END,
+				 ARM_INST_LDMSTM_REGLIST_START);
+
+	wback = ARM_INST_BITS(inst, ARM_INST_LDMSTM_W_END, ARM_INST_LDMSTM_W_START);
+
+	if ((Rn == 15) || (!reg_list)) {
+		arm_unpredictable(regs, vcpu);
+		return VMM_EFAIL;
+	}
+
+	/* get all the flags */
+	is_xx1xxx = !!(op & 0x08);
+	is_x1xxxx = !!(op & 0x10);   
+
+	mask = 0x1;
+	/* get the bitcount */
+	for (i = 0; i <= 15; i++) {
+		if (reg_list & mask) {
+			bit_count++;
+		}
+		mask = mask << 1;
+	}
+	
+	if (arm_condition_passed(cond, regs)) {
+		old_address = cpu_vcpu_reg_read(vcpu, regs, Rn);
+
+		if (is_xx1xxx){
+			/* increment operation, if before then add 4 to it */
+			address = old_address + (4 * is_x1xxxx);
+		} else {
+			/* decrement operation if after then add 4 to it */
+			address = old_address - (4 * bit_count) + (4 * !(is_x1xxxx));
+		}
+
+		mask = 0x1;
+		/* parse through reg_list */
+		for (i = 0; i < 15; i++) {
+			if (reg_list & mask) {
+				data = cpu_vcpu_reg_read(vcpu, regs, i);
+				if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs,
+						address, &data, 4, FALSE))) {
+					return rc;
+				}
+				address = address + 4;			
+			}
+			mask = mask << 1;
+		}
+		if (reg_list >> 15) {
+			data = regs->pc + 8;
+			if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, &data, 4, FALSE))) {
+				return rc;
+			}
+		}
+		if (wback) {
+			if (is_xx1xxx){
+				/* increment operation */
+				cpu_vcpu_reg_write(vcpu, regs, Rn, old_address + (4 * bit_count));
+			} else {
+				/* decrement operation */
+				cpu_vcpu_reg_write(vcpu, regs, Rn, old_address - (4 * bit_count));
+			}
+		}
+	}
+
+	regs->pc += 4;
+	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STM);
+
+	return VMM_OK;
+}
+
 /** Emulate branch, branch with link, and block transfer instructions */
 static int arm_instgrp_brblk(u32 inst, 
 				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
+	u32 op, Rn, reg_list;
+	u32 is_1xxxxx; /* whether branch or block */
+	u32 is_xxxxx1; /* whether load or store */
+	bool is_list_geq_2; /* whether reg_list length is greater than equal to 2 */
+
+	op = ARM_INST_BITS(inst, ARM_INST_BRBLK_OP_END, ARM_INST_BRBLK_OP_START);
+	Rn = ARM_INST_BITS(inst, ARM_INST_LDMSTM_RN_END, ARM_INST_LDMSTM_RN_START);
+	reg_list = ARM_INST_BITS(inst,
+				 ARM_INST_LDMSTM_REGLIST_END,
+				 ARM_INST_LDMSTM_REGLIST_START);
+	is_1xxxxx = (op & 0x20);
+	is_list_geq_2 = !!(reg_list && ((reg_list - 1) & reg_list));	
+
+	if(!is_1xxxxx) {
+		is_xxxxx1 = (op & 0x01);
+		if (!is_xxxxx1) {
+			/* Emulate Store block transfer instructions */
+			if ((op == 0x12) && (Rn == 13) && is_list_geq_2){
+				/* TODO: Emulate PUSH instruction */				
+
+			} else {
+				/* Emulate rest of the store multiple */
+				return arm_inst_stm(inst, regs, vcpu);
+			}
+		} else {
+			/* Emulate Load block transfer instructions */	
+			if ((op == 0x0B) && (Rn == 13) && is_list_geq_2){
+				/* TODO: Emulate POP instruction */				
+
+			} else {
+				/* Emulate rest of the load multiple */
+				return arm_inst_ldm(inst, regs, vcpu);
+			}
+		}
+
+	} else {
+		/* TODO: Emulate branch and branch with link instructions */
+	}
+
 	arm_unpredictable(regs, vcpu);
 	return VMM_EFAIL;
 }

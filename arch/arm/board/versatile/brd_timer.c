@@ -100,7 +100,7 @@ int __init arch_clockchip_init(void)
 
 	/* Initialize timer0 as clockchip */
 	rc = sp804_clockchip_init(sp804_timer0_base, INT_TIMERINT0_1, 
-				  "sp804_timer0", 300, 1000000);
+				  "sp804_timer0", 300, 1000000, 0);
 	if (rc) {
 		return rc;
 	}

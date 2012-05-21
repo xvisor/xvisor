@@ -25,7 +25,9 @@
 
 #include <vmm_types.h>
 
-/** Initialize clockchip devices */
+/** Initialize clockchip devices 
+ * Note: In-case of SMP this function is called for each CPU
+ */
 int arch_clockchip_init(void);
 
 /** Initialize clocksource devices */

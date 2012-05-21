@@ -55,7 +55,7 @@
 #define GIC_MAX_NIRQ			96
 
 struct gic_irq_state {
-	u32 enabled:1;
+	u32 enabled:GIC_MAX_NCPU;
 	u32 pending:GIC_MAX_NCPU;
 	u32 active:GIC_MAX_NCPU;
 	u32 level:GIC_MAX_NCPU;
@@ -101,9 +101,9 @@ struct gic_state {
 #define GIC_ALL_CPU_MASK(s) ((1 << (s)->num_cpu) - 1)
 #define GIC_NUM_CPU(s) ((s)->num_cpu)
 #define GIC_NUM_IRQ(s) ((s)->num_irq)
-#define GIC_SET_ENABLED(s, irq) (s)->irq_state[irq].enabled = 1
-#define GIC_CLEAR_ENABLED(s, irq) (s)->irq_state[irq].enabled = 0
-#define GIC_TEST_ENABLED(s, irq) (s)->irq_state[irq].enabled
+#define GIC_SET_ENABLED(s, irq, cm) (s)->irq_state[irq].enabled |= (cm)
+#define GIC_CLEAR_ENABLED(s, irq, cm) (s)->irq_state[irq].enabled &= ~(cm)
+#define GIC_TEST_ENABLED(s, irq, cm) (((s)->irq_state[irq].enabled & (cm)) != 0)
 #define GIC_SET_PENDING(s, irq, cm) (s)->irq_state[irq].pending |= (cm)
 #define GIC_CLEAR_PENDING(s, irq, cm) (s)->irq_state[irq].pending &= ~(cm)
 #define GIC_TEST_PENDING(s, irq, cm) (((s)->irq_state[irq].pending & (cm)) != 0)
@@ -134,8 +134,9 @@ static void gic_update(struct gic_state *s)
 		s->current_pending[cpu] = 1023;
 		if (!s->enabled || !s->cpu_enabled[cpu]) {
 			if (s->is_child_pic) {
-				vmm_devemu_emulate_irq(s->guest, 
+				vmm_devemu_emulate_percpu_irq(s->guest, 
 						       s->parent_irq[cpu], 
+						       cpu,
 						       0);
 			}
 			return;
@@ -143,7 +144,7 @@ static void gic_update(struct gic_state *s)
 		best_prio = 0x100;
 		best_irq = 1023;
 		for (irq = 0; irq < GIC_NUM_IRQ(s); irq++) {
-			if (GIC_TEST_ENABLED(s, irq) && 
+			if (GIC_TEST_ENABLED(s, irq, cm) && 
 			    GIC_TEST_PENDING(s, irq, cm)) {
 				if (GIC_GET_PRIORITY(s, irq, cpu) < best_prio) {
 					best_prio = 
@@ -161,8 +162,8 @@ static void gic_update(struct gic_state *s)
 		}
 		if (s->is_child_pic) {
 			/* Assert irq to Parent PIC */
-			vmm_devemu_emulate_irq(s->guest, 
-					       s->parent_irq[cpu], level);
+			vmm_devemu_emulate_percpu_irq(s->guest, s->parent_irq[cpu], 
+						      cpu, level);
 		} else {
 			vcpu = vmm_manager_guest_vcpu(s->guest, cpu);
 			if (level && vcpu) {
@@ -180,30 +181,37 @@ static void gic_update(struct gic_state *s)
 }
 
 /* Process IRQ asserted in device emulation framework */
-static void gic_irq_handle(struct vmm_emupic *epic, u32 irq, int level)
+static void gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 {
 	struct gic_state * s = (struct gic_state *)epic->priv;
+	int cm, target;
 
-	/* Ensure irq is in range (base_irq, base_irq + num_irq)
-	 * Also irq should not be in (base_irq, base_irq + 32)
-	 * The first 32 irq in GIC are for inter processor communication */
-	if ((irq < (s->num_base_irq + 32)) || 
-	    ((s->num_base_irq + s->num_irq) <= irq)) {
+	/* Ensure irq is in range (base_irq, base_irq + num_irq) */
+	if ((s->num_base_irq + s->num_irq) <= irq) {
 		return;
 	}
 
-	if (level == GIC_TEST_LEVEL(s, irq, GIC_ALL_CPU_MASK(s)))
+	if (irq < (s->num_base_irq + 32)) {
+		/* In case of PPIs and SGIs */
+		cm = target = (1 << cpu);
+	} else {
+		/* In case of SGIs */
+		cm = GIC_ALL_CPU_MASK(s);
+		target = GIC_TARGET(s, irq);
+	}	
+
+	if (level == GIC_TEST_LEVEL(s, irq, cm))
 		return;
 
 	vmm_spin_lock(&s->lock);
 
 	if (level) {
-		GIC_SET_LEVEL(s, irq, GIC_ALL_CPU_MASK(s));
-		if (GIC_TEST_TRIGGER(s, irq) || GIC_TEST_ENABLED(s, irq)) {
-			GIC_SET_PENDING(s, irq, GIC_TARGET(s, irq));
+		GIC_SET_LEVEL(s, irq, cm);
+		if (GIC_TEST_TRIGGER(s, irq) || GIC_TEST_ENABLED(s, irq, cm)) {
+			GIC_SET_PENDING(s, irq, target);
 		}
 	} else {
-		GIC_CLEAR_LEVEL(s, irq, GIC_ALL_CPU_MASK(s));
+		GIC_CLEAR_LEVEL(s, irq, cm);
 	}
 
 	gic_update(s);
@@ -255,7 +263,7 @@ static void gic_complete_irq(struct gic_state * s, int cpu, int irq)
 		/* Mark level triggered interrupts as pending if 
 		 * they are still raised. */
 		if (!GIC_TEST_TRIGGER(s, irq) && 
-		    GIC_TEST_ENABLED(s, irq) &&
+		    GIC_TEST_ENABLED(s, irq, cm) &&
 		    GIC_TEST_LEVEL(s, irq, cm) && 
 		    (GIC_TARGET(s, irq) & cm) != 0) {
 			GIC_SET_PENDING(s, irq, cm);
@@ -320,7 +328,7 @@ static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 		irq = (offset & 0xF) * 8;
 		*dst = 0;
 		for (i = 0; i < 8; i++) {
-			*dst |= GIC_TEST_ENABLED(s, irq + i) ? 
+			*dst |= GIC_TEST_ENABLED(s, irq + i, (1 << cpu)) ? 
 				(1 << i) : 0x0;
 		}
 		break;
@@ -419,7 +427,7 @@ static int gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 
 static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 {
-	u32 done = 0, i, irq, mask;
+	u32 done = 0, i, irq, mask, cm;
 
 	if (!s) {
 		return VMM_EFAIL;
@@ -450,7 +458,9 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 			if (src & (1 << i)) {
 				mask = ((irq + i) < 32) ? 
 					(1 << cpu) : GIC_TARGET(s, (irq + i));
-				GIC_SET_ENABLED(s, irq + i);
+				cm = ((irq + i) < 32) ? 
+					(1 << cpu) : GIC_ALL_CPU_MASK(s);
+				GIC_SET_ENABLED(s, irq + i, cm);
 				/* If a raised level triggered IRQ enabled 
 				 * then mark is as pending.  */
 				if (GIC_TEST_LEVEL(s, (irq + i), mask) &&
@@ -473,7 +483,9 @@ static int gic_dist_writeb(struct gic_state * s, int cpu, u32 offset, u8 src)
 		}
 		for (i = 0; i < 8; i++) {
 			if (src & (1 << i)) {
-				GIC_CLEAR_ENABLED(s, irq + i);
+				int cm = ((irq + i) < 32) ? 
+					(1 << cpu) : GIC_ALL_CPU_MASK(s);
+				GIC_CLEAR_ENABLED(s, irq + i, cm);
 			}
 		}
 		break;
@@ -868,7 +880,7 @@ int gic_state_reset(struct gic_state *s)
 	 * have been raised already.
 	 */
 	for (i = 0; i < GIC_NUM_IRQ(s); i++) {
-		GIC_CLEAR_ENABLED(s, i);
+		GIC_CLEAR_ENABLED(s, i, GIC_ALL_CPU_MASK(s));
 		GIC_CLEAR_PENDING(s, i, GIC_ALL_CPU_MASK(s));
 		GIC_CLEAR_ACTIVE(s, i, GIC_ALL_CPU_MASK(s));
 		GIC_CLEAR_MODEL(s, i);
@@ -882,8 +894,9 @@ int gic_state_reset(struct gic_state *s)
 		s->running_priority[i] = 0x100;
 		s->cpu_enabled[i] = 0;
 	}
+	/* */
 	for (i = 0; i < 16; i++) {
-		GIC_SET_ENABLED(s, i);
+		GIC_SET_ENABLED(s, i, GIC_ALL_CPU_MASK(s));
 		GIC_SET_TRIGGER(s, i);
 	}
 	s->enabled = 0;
