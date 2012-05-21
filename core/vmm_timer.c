@@ -437,7 +437,7 @@ int __init vmm_timer_init(void)
 	INIT_LIST_HEAD(&tctrl.event_list);
 
 	/* Find suitable clockchip */
-	if (!(tctrl.cpu_cc = vmm_clockchip_find_best(cpumask_of(cpu)))) {
+	if (!(tctrl.cpu_cc = vmm_clockchip_find_best(vmm_cpumask_of(cpu)))) {
 		vmm_panic("%s: No clockchip for CPU%d\n", __func__, cpu);
 	}
 

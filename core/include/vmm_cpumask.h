@@ -41,16 +41,15 @@ typedef struct vmm_cpumask vmm_cpumask_t;
 /* Assuming CONFIG_CPU_COUNT is huge, a runtime limit is more efficient.  Also,
  * not all bits may be allocated. */
 extern int vmm_cpu_count;
-#define vmm_cpumask_bits	vmm_cpu_count
 
 /**
- * cpumask_bits - get the bits in a cpumask
+ * vmm_cpumask_bits - get the bits in a cpumask
  * @maskp: the struct vmm_cpumask *
  *
  * You should only assume vmm_cpu_count bits of this mask are valid.  This is
  * a macro so it's const-correct.
  */
-#define cpumask_bits(maskp) ((maskp)->bits)
+#define vmm_cpumask_bits(maskp) ((maskp)->bits)
 
 /**
  * to_cpumask - convert an CONFIG_CPU_COUNT bitmap to a struct vmm_cpumask *
@@ -85,19 +84,19 @@ static inline const struct vmm_cpumask *get_cpu_mask(unsigned int cpu)
 }
 
 /**
- * cpumask_of - the cpumask containing just a given cpu
+ * vmm_cpumask_of - the cpumask containing just a given cpu
  * @cpu: the cpu (<= vmm_cpu_count)
  */
-#define cpumask_of(cpu) (get_cpu_mask(cpu))
+#define vmm_cpumask_of(cpu) (get_cpu_mask(cpu))
 
 /**
- * cpumask_size - size to allocate for a 'struct vmm_cpumask' in bytes
+ * vmm_cpumask_size - size to allocate for a 'struct vmm_cpumask' in bytes
  * This will eventually be a runtime variable, depending on vmm_cpu_count.
  */
-static inline size_t cpumask_size(void)
+static inline size_t vmm_cpumask_size(void)
 {
 	/* FIXME: Once all cpumask assignments are eliminated, this
-	 * can be vmm_cpumask_bits */
+	 * can be vmm_cpu_count */
 	return BITS_TO_LONGS(CONFIG_CPU_COUNT) * sizeof(long);
 }
 
@@ -211,10 +210,10 @@ extern const struct vmm_cpumask *const cpu_active_mask;
 #endif
 
 /* verify cpu argument to vmm_cpumask_* operators */
-static inline unsigned int cpumask_check(unsigned int cpu)
+static inline unsigned int vmm_cpumask_check(unsigned int cpu)
 {
 #ifdef CONFIG_DEBUG_PER_CPU_MAPS
-	WARN_ON_ONCE(cpu >= vmm_cpumask_bits);
+	WARN_ON_ONCE(cpu >= vmm_cpu_count);
 #endif /* CONFIG_DEBUG_PER_CPU_MAPS */
 	return cpu;
 }
@@ -266,7 +265,7 @@ static inline unsigned int vmm_cpumask_any_but(const struct vmm_cpumask *mask,
  */
 static inline unsigned int vmm_cpumask_first(const struct vmm_cpumask *srcp)
 {
-	return find_first_bit(cpumask_bits(srcp), vmm_cpumask_bits);
+	return find_first_bit(vmm_cpumask_bits(srcp), vmm_cpu_count);
 }
 
 /**
@@ -280,8 +279,8 @@ static inline unsigned int vmm_cpumask_next(int n, const struct vmm_cpumask *src
 {
 	/* -1 is a legal arg here. */
 	if (n != -1)
-		cpumask_check(n);
-	return find_next_bit(cpumask_bits(srcp), vmm_cpumask_bits, n+1);
+		vmm_cpumask_check(n);
+	return find_next_bit(vmm_cpumask_bits(srcp), vmm_cpu_count, n+1);
 }
 
 /**
@@ -295,8 +294,8 @@ static inline unsigned int vmm_cpumask_next_zero(int n, const struct vmm_cpumask
 {
 	/* -1 is a legal arg here. */
 	if (n != -1)
-		cpumask_check(n);
-	return find_next_zero_bit(cpumask_bits(srcp), vmm_cpumask_bits, n+1);
+		vmm_cpumask_check(n);
+	return find_next_zero_bit(vmm_cpumask_bits(srcp), vmm_cpu_count, n+1);
 }
 
 int vmm_cpumask_next_and(int n, const struct vmm_cpumask *, const struct vmm_cpumask *);
@@ -353,7 +352,7 @@ int vmm_cpumask_any_but(const struct vmm_cpumask *mask, unsigned int cpu);
  */
 static inline void vmm_cpumask_set_cpu(unsigned int cpu, struct vmm_cpumask *dstp)
 {
-	set_bit(cpumask_check(cpu), cpumask_bits(dstp));
+	set_bit(vmm_cpumask_check(cpu), vmm_cpumask_bits(dstp));
 }
 
 /**
@@ -363,7 +362,7 @@ static inline void vmm_cpumask_set_cpu(unsigned int cpu, struct vmm_cpumask *dst
  */
 static inline void vmm_cpumask_clear_cpu(int cpu, struct vmm_cpumask *dstp)
 {
-	clear_bit(cpumask_check(cpu), cpumask_bits(dstp));
+	clear_bit(vmm_cpumask_check(cpu), vmm_cpumask_bits(dstp));
 }
 
 /**
@@ -374,7 +373,7 @@ static inline void vmm_cpumask_clear_cpu(int cpu, struct vmm_cpumask *dstp)
  * No static inline type checking - see Subtlety (1) above.
  */
 #define vmm_cpumask_test_cpu(cpu, cpumask) \
-	test_bit(cpumask_check(cpu), cpumask_bits((cpumask)))
+	test_bit(vmm_cpumask_check(cpu), vmm_cpumask_bits((cpumask)))
 
 /**
  * vmm_cpumask_test_and_set_cpu - atomically test and set a cpu in a cpumask
@@ -385,7 +384,7 @@ static inline void vmm_cpumask_clear_cpu(int cpu, struct vmm_cpumask *dstp)
  */
 static inline int vmm_cpumask_test_and_set_cpu(int cpu, struct vmm_cpumask *cpumask)
 {
-	return test_and_set_bit(cpumask_check(cpu), cpumask_bits(cpumask));
+	return test_and_set_bit(vmm_cpumask_check(cpu), vmm_cpumask_bits(cpumask));
 }
 
 /**
@@ -397,7 +396,7 @@ static inline int vmm_cpumask_test_and_set_cpu(int cpu, struct vmm_cpumask *cpum
  */
 static inline int vmm_cpumask_test_and_clear_cpu(int cpu, struct vmm_cpumask *cpumask)
 {
-	return test_and_clear_bit(cpumask_check(cpu), cpumask_bits(cpumask));
+	return test_and_clear_bit(vmm_cpumask_check(cpu), vmm_cpumask_bits(cpumask));
 }
 
 /**
@@ -406,7 +405,7 @@ static inline int vmm_cpumask_test_and_clear_cpu(int cpu, struct vmm_cpumask *cp
  */
 static inline void vmm_cpumask_setall(struct vmm_cpumask *dstp)
 {
-	bitmap_fill(cpumask_bits(dstp), vmm_cpumask_bits);
+	bitmap_fill(vmm_cpumask_bits(dstp), vmm_cpu_count);
 }
 
 /**
@@ -415,7 +414,7 @@ static inline void vmm_cpumask_setall(struct vmm_cpumask *dstp)
  */
 static inline void vmm_cpumask_clear(struct vmm_cpumask *dstp)
 {
-	bitmap_zero(cpumask_bits(dstp), vmm_cpumask_bits);
+	bitmap_zero(vmm_cpumask_bits(dstp), vmm_cpu_count);
 }
 
 /**
@@ -428,8 +427,8 @@ static inline int vmm_cpumask_and(struct vmm_cpumask *dstp,
 			       const struct vmm_cpumask *src1p,
 			       const struct vmm_cpumask *src2p)
 {
-	return bitmap_and(cpumask_bits(dstp), cpumask_bits(src1p),
-				       cpumask_bits(src2p), vmm_cpumask_bits);
+	return bitmap_and(vmm_cpumask_bits(dstp), vmm_cpumask_bits(src1p),
+				       vmm_cpumask_bits(src2p), vmm_cpu_count);
 }
 
 /**
@@ -441,8 +440,8 @@ static inline int vmm_cpumask_and(struct vmm_cpumask *dstp,
 static inline void vmm_cpumask_or(struct vmm_cpumask *dstp, const struct vmm_cpumask *src1p,
 			      const struct vmm_cpumask *src2p)
 {
-	bitmap_or(cpumask_bits(dstp), cpumask_bits(src1p),
-				      cpumask_bits(src2p), vmm_cpumask_bits);
+	bitmap_or(vmm_cpumask_bits(dstp), vmm_cpumask_bits(src1p),
+				      vmm_cpumask_bits(src2p), vmm_cpu_count);
 }
 
 /**
@@ -455,8 +454,8 @@ static inline void vmm_cpumask_xor(struct vmm_cpumask *dstp,
 			       const struct vmm_cpumask *src1p,
 			       const struct vmm_cpumask *src2p)
 {
-	bitmap_xor(cpumask_bits(dstp), cpumask_bits(src1p),
-				       cpumask_bits(src2p), vmm_cpumask_bits);
+	bitmap_xor(vmm_cpumask_bits(dstp), vmm_cpumask_bits(src1p),
+				       vmm_cpumask_bits(src2p), vmm_cpu_count);
 }
 
 /**
@@ -469,8 +468,8 @@ static inline int vmm_cpumask_andnot(struct vmm_cpumask *dstp,
 				  const struct vmm_cpumask *src1p,
 				  const struct vmm_cpumask *src2p)
 {
-	return bitmap_andnot(cpumask_bits(dstp), cpumask_bits(src1p),
-					  cpumask_bits(src2p), vmm_cpumask_bits);
+	return bitmap_andnot(vmm_cpumask_bits(dstp), vmm_cpumask_bits(src1p),
+					  vmm_cpumask_bits(src2p), vmm_cpu_count);
 }
 
 /**
@@ -481,8 +480,8 @@ static inline int vmm_cpumask_andnot(struct vmm_cpumask *dstp,
 static inline void vmm_cpumask_complement(struct vmm_cpumask *dstp,
 				      const struct vmm_cpumask *srcp)
 {
-	bitmap_complement(cpumask_bits(dstp), cpumask_bits(srcp),
-					      vmm_cpumask_bits);
+	bitmap_complement(vmm_cpumask_bits(dstp), vmm_cpumask_bits(srcp),
+					      vmm_cpu_count);
 }
 
 /**
@@ -493,8 +492,8 @@ static inline void vmm_cpumask_complement(struct vmm_cpumask *dstp,
 static inline bool vmm_cpumask_equal(const struct vmm_cpumask *src1p,
 				const struct vmm_cpumask *src2p)
 {
-	return bitmap_equal(cpumask_bits(src1p), cpumask_bits(src2p),
-						 vmm_cpumask_bits);
+	return bitmap_equal(vmm_cpumask_bits(src1p), vmm_cpumask_bits(src2p),
+						 vmm_cpu_count);
 }
 
 /**
@@ -505,8 +504,8 @@ static inline bool vmm_cpumask_equal(const struct vmm_cpumask *src1p,
 static inline bool vmm_cpumask_intersects(const struct vmm_cpumask *src1p,
 				     const struct vmm_cpumask *src2p)
 {
-	return bitmap_intersects(cpumask_bits(src1p), cpumask_bits(src2p),
-						      vmm_cpumask_bits);
+	return bitmap_intersects(vmm_cpumask_bits(src1p), vmm_cpumask_bits(src2p),
+						      vmm_cpu_count);
 }
 
 /**
@@ -517,8 +516,8 @@ static inline bool vmm_cpumask_intersects(const struct vmm_cpumask *src1p,
 static inline int vmm_cpumask_subset(const struct vmm_cpumask *src1p,
 				 const struct vmm_cpumask *src2p)
 {
-	return bitmap_subset(cpumask_bits(src1p), cpumask_bits(src2p),
-						  vmm_cpumask_bits);
+	return bitmap_subset(vmm_cpumask_bits(src1p), vmm_cpumask_bits(src2p),
+						  vmm_cpu_count);
 }
 
 /**
@@ -527,7 +526,7 @@ static inline int vmm_cpumask_subset(const struct vmm_cpumask *src1p,
  */
 static inline bool vmm_cpumask_empty(const struct vmm_cpumask *srcp)
 {
-	return bitmap_empty(cpumask_bits(srcp), vmm_cpumask_bits);
+	return bitmap_empty(vmm_cpumask_bits(srcp), vmm_cpu_count);
 }
 
 /**
@@ -536,7 +535,7 @@ static inline bool vmm_cpumask_empty(const struct vmm_cpumask *srcp)
  */
 static inline bool vmm_cpumask_full(const struct vmm_cpumask *srcp)
 {
-	return bitmap_full(cpumask_bits(srcp), vmm_cpumask_bits);
+	return bitmap_full(vmm_cpumask_bits(srcp), vmm_cpu_count);
 }
 
 /**
@@ -545,7 +544,7 @@ static inline bool vmm_cpumask_full(const struct vmm_cpumask *srcp)
  */
 static inline unsigned int vmm_cpumask_weight(const struct vmm_cpumask *srcp)
 {
-	return bitmap_weight(cpumask_bits(srcp), vmm_cpumask_bits);
+	return bitmap_weight(vmm_cpumask_bits(srcp), vmm_cpu_count);
 }
 
 /**
@@ -557,8 +556,8 @@ static inline unsigned int vmm_cpumask_weight(const struct vmm_cpumask *srcp)
 static inline void vmm_cpumask_shift_right(struct vmm_cpumask *dstp,
 				       const struct vmm_cpumask *srcp, int n)
 {
-	bitmap_shift_right(cpumask_bits(dstp), cpumask_bits(srcp), n,
-					       vmm_cpumask_bits);
+	bitmap_shift_right(vmm_cpumask_bits(dstp), vmm_cpumask_bits(srcp), n,
+					       vmm_cpu_count);
 }
 
 /**
@@ -570,8 +569,8 @@ static inline void vmm_cpumask_shift_right(struct vmm_cpumask *dstp,
 static inline void vmm_cpumask_shift_left(struct vmm_cpumask *dstp,
 				      const struct vmm_cpumask *srcp, int n)
 {
-	bitmap_shift_left(cpumask_bits(dstp), cpumask_bits(srcp), n,
-					      vmm_cpumask_bits);
+	bitmap_shift_left(vmm_cpumask_bits(dstp), vmm_cpumask_bits(srcp), n,
+					      vmm_cpu_count);
 }
 
 /**
@@ -582,7 +581,7 @@ static inline void vmm_cpumask_shift_left(struct vmm_cpumask *dstp,
 static inline void vmm_cpumask_copy(struct vmm_cpumask *dstp,
 				const struct vmm_cpumask *srcp)
 {
-	bitmap_copy(cpumask_bits(dstp), cpumask_bits(srcp), vmm_cpumask_bits);
+	bitmap_copy(vmm_cpumask_bits(dstp), vmm_cpumask_bits(srcp), vmm_cpu_count);
 }
 
 /**

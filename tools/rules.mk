@@ -33,7 +33,7 @@ $(build_dir)/%.dep: $(src_dir)/%.dts
 	$(if $(V), @echo " (dtc-dep)   $(subst $(build_dir)/,,$@)")
 	$(V)echo "$(@:.dep=.S): $<" > $@
 
-$(build_dir)/%.S: $(src_dir)/%.dts
+$(build_dir)/%.S: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
 ifdef CONFIG_CPU_LE

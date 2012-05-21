@@ -37,7 +37,7 @@ int vmm_cpu_count = CONFIG_CPU_COUNT;
  * cpu_bit_bitmap[] is a special, "compressed" data structure that
  * represents all CONFIG_CPU_COUNT bits binary values of 1<<nr.
  *
- * It is used by cpumask_of() to get a constant address to a CPU
+ * It is used by vmm_cpumask_of() to get a constant address to a CPU
  * mask value that has a single bit set only.
  */
 

@@ -18,7 +18,7 @@
  *
  * @file vmm_clockchip.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Implementation to manage timer subsystem clock sources
+ * @brief Implementation to clockchip managment
  */
 
 #include <arch_timer.h>
@@ -170,7 +170,8 @@ struct vmm_clockchip *vmm_clockchip_find_best(const struct vmm_cpumask *mask)
 
 	list_for_each(l, &ccctrl.clkchip_list) {
 		cc = list_entry(l, struct vmm_clockchip, head);
-		if (cc->rating > rating) {
+		if ((cc->rating > rating) &&
+		    vmm_cpumask_intersects(cc->cpumask, mask)) {
 			best_cc = cc;
 			rating = cc->rating;
 		}
