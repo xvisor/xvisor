@@ -27,5 +27,6 @@ board-ldflags+=
 board-objs-y+= brd_main.o
 board-objs-y+= brd_console.o
 board-objs-y+= brd_pic.o
+board-objs-y+= brd_timer.o
 board-objs-y+= vga.o
 board-objs-y+=dts/defconfig.o
