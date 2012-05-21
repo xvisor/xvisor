@@ -24,6 +24,7 @@
 #define _ARCH_IO_H__
 
 #include <vmm_types.h>
+#include <common_io.h>
 
 static inline u16 bswap16(u16 data)
 {
