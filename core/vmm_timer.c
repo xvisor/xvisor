@@ -21,7 +21,6 @@
  * @brief Implementation of timer subsystem
  */
 
-#include <arch_cpu_irq.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
@@ -29,6 +28,10 @@
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
 #include <vmm_timer.h>
+#include <arch_cpu_irq.h>
+#ifdef CONFIG_SMP
+#include <arch_smp.h>
+#endif
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_ctrl {
@@ -410,6 +413,11 @@ void vmm_timer_stop(void)
 
 int __init vmm_timer_init(void)
 {
+#ifdef CONFIG_SMP
+	u32 cpu = arch_smp_id();
+#else
+	u32 cpu = 0;
+#endif
 	struct vmm_clocksource * cs;
 
 	/* Clear timer control structure */
@@ -429,8 +437,8 @@ int __init vmm_timer_init(void)
 	INIT_LIST_HEAD(&tctrl.event_list);
 
 	/* Find suitable clockchip */
-	if (!(tctrl.cpu_cc = vmm_clockchip_best())) {
-		vmm_panic("%s: No clockchip found\n", __func__);
+	if (!(tctrl.cpu_cc = vmm_clockchip_find_best(cpumask_of(cpu)))) {
+		vmm_panic("%s: No clockchip for CPU%d\n", __func__, cpu);
 	}
 
 	/* Update event handler of clockchip */

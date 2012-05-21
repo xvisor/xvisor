@@ -137,11 +137,8 @@ int vmm_clockchip_register(struct vmm_clockchip *cc);
 /** Register clockchip */
 int vmm_clockchip_unregister(struct vmm_clockchip *cc);
 
-/** Get best rated clockchip */
-struct vmm_clockchip *vmm_clockchip_best(void);
-
-/** Find a clockchip */
-struct vmm_clockchip *vmm_clockchip_find(const char *name);
+/** Find best rated clockchip with given CPU affinity */
+struct vmm_clockchip *vmm_clockchip_find_best(const struct vmm_cpumask *mask);
 
 /** Retrive clockchip with given index */
 struct vmm_clockchip *vmm_clockchip_get(int index);
