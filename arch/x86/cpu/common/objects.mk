@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010-20 Himanshu Chauhan.
+# Copyright (c) 2012 Himanshu Chauhan.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,16 +17,11 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
+# @version 1.0
 # @author Himanshu Chauhan (hschauhan@nulltrace.org)
-# @brief list of board specific objects to be build
+# @brief list of x86 common object files.
 # */
 
-board-asflags+=
-board-ldflags+=
+cpu-cflags +=-finline-functions -O0 -mcmodel=large
 
-board-objs-y+= brd_main.o
-board-objs-y+= brd_console.o
-board-objs-y+= brd_pic.o
-board-objs-y+= brd_timer.o
-board-objs-y+= vga.o
-board-objs-y+=dts/defconfig.o
+cpu-common-objs-$(CONFIG_ACPI) += acpi.o

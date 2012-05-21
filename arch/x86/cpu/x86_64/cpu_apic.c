@@ -30,9 +30,10 @@
 #include <arch_cpu.h>
 #include <cpu_private.h>
 
-struct cpu_apic apic;
+struct cpu_lapic lapic; /* should be per-cpu for SMP */
+struct cpu_ioapic ioapic;
 
-static u32 is_apic_present(void)
+static u32 is_lapic_present(void)
 {
 	u32 a, b, c, d;
 
@@ -42,31 +43,71 @@ static u32 is_apic_present(void)
 	return (d & CPUID_FEAT_EDX_APIC);
 }
 
-int apic_init(void)
+static inline u32 lapic_read(virtual_addr_t base, u32 reg)
 {
-	u32 apic_version;
+	return (*((volatile u32 *)(base + reg)));
+}
 
-	/* Configuration says that  support APIC but its not present! */
-	BUG_ON(!is_apic_present(), "No Local APIC Detected in System!\n");
+static inline void lapic_write(virtual_addr_t base, u32 reg, u32 val)
+{
+	*((volatile u32 *)(base + reg)) = val;
+}
 
-	apic.msr = cpu_read_msr(MSR_APIC);
 
-	if (!APIC_ENABLED(apic.msr)) {
-		apic.msr |= (0x1UL << 11);
-		cpu_write_msr(MSR_APIC, apic.msr);
-	}
+static inline u32 ioapic_read(u32 reg)
+{
+	u32 *ioapic_vaddr = (u32 *)ioapic.vbase;
 
-	apic.pbase = (APIC_BASE(apic.msr) << 12);
+	ioapic_vaddr[0] = reg;
+	return ioapic_vaddr[4];
+}
+
+static inline void ioapic_write(u32 reg, u32 val)
+{
+	u32 *ioapic_vaddr = (u32 *)ioapic.vbase;
+
+	ioapic_vaddr[0] = reg;
+	ioapic_vaddr[4] = val;
+}
+
+static int setup_ioapic(void)
+{
+	ioapic.pbase = IOAPIC_PHYS_BASE;
 
 	/* remap base */
-	apic.vbase = vmm_host_iomap(apic.pbase, PAGE_SIZE);
+	ioapic.vbase = vmm_host_iomap(ioapic.pbase, PAGE_SIZE);
+	BUG_ON(unlikely(ioapic.vbase == 0), "IOAPIC Base mapping failed!\n");
 
-	BUG_ON(unlikely(apic.vbase == 0), "APIC Base mapping failed!\n");
+	ioapic.version = ioapic_read(1);
 
-	apic_version = apic_read(apic.vbase, APIC_VERSION);
+	return 0;
+}
 
-	apic.integrated = IS_INTEGRATED_APIC(apic_version);
-	apic.nr_lvt = NR_LVT_ENTRIES(apic_version);
+int apic_init(void)
+{
+	/* Configuration says that  support APIC but its not present! */
+	BUG_ON(!is_lapic_present(), "No Local APIC Detected in System!\n");
+
+	lapic.msr = cpu_read_msr(MSR_APIC);
+
+	if (!APIC_ENABLED(lapic.msr)) {
+		lapic.msr |= (0x1UL << 11);
+		cpu_write_msr(MSR_APIC, lapic.msr);
+	}
+
+	lapic.pbase = (APIC_BASE(lapic.msr) << 12);
+
+	/* remap base */
+	lapic.vbase = vmm_host_iomap(lapic.pbase, PAGE_SIZE);
+
+	BUG_ON(unlikely(lapic.vbase == 0), "APIC Base mapping failed!\n");
+
+	lapic.version = lapic_read(lapic.vbase, APIC_VERSION);
+
+	lapic.integrated = IS_INTEGRATED_APIC(lapic.version);
+	lapic.nr_lvt = NR_LVT_ENTRIES(lapic.version);
+
+	setup_ioapic(); /* in SMP only BSP should do it */
 
 	return VMM_OK;
 }

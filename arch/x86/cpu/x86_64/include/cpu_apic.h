@@ -27,6 +27,7 @@
 #include <vmm_types.h>
 
 #define APIC_PHYS_BASE		0xFEE00000ULL
+#define IOAPIC_PHYS_BASE	0xFEC00000ULL
 
 #define APIC_ID			(0x20)
 #define APIC_VERSION		(0x30)
@@ -102,25 +103,20 @@
 			(nr_lvt - 1);		\
 	})
 
-struct cpu_apic {
-	u32 pbase;
-	u32 vbase;
+struct cpu_ioapic {
+	physical_addr_t pbase;
+	virtual_addr_t vbase;
+	u32 version;
+};
+
+struct cpu_lapic {
+	physical_addr_t pbase;
+	virtual_addr_t vbase;
 	u32 msr;
 	u32 integrated;
 	u32 nr_lvt;
+	u32 version;
 };
-
-static inline u32
-apic_read(virtual_addr_t base, u32 reg)
-{
-	return (*((volatile u32 *)(base + reg)));
-}
-
-static inline
-void apic_write(virtual_addr_t base, u32 reg, u32 val)
-{
-	*((volatile u32 *)(base + reg)) = val;
-}
 
 int apic_init(void);
 
