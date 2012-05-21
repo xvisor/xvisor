@@ -106,9 +106,9 @@ int arch_clockchip_init(void)
 	vmm_memcpy(cc, &mips_cc, sizeof(struct vmm_clockchip));
 
 #if CONFIG_SMP
-	cc->cpumask = cpumask_of(arch_smp_id());
+	cc->cpumask = vmm_cpumask_of(arch_smp_id());
 #else
-	cc->cpumask = cpumask_of(0);
+	cc->cpumask = cpu_all_mask;
 #endif
 	cc->mult = vmm_clockchip_hz2mult(MHZ2HZ(CPU_FREQ_MHZ), 32);
 	cc->min_delta_ns = vmm_clockchip_delta2ns(0xF, &mips_cc);

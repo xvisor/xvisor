@@ -170,7 +170,7 @@ int __init sp804_clockchip_init(virtual_addr_t base,
 	cc->clkchip.hirq = hirq;
 	cc->clkchip.rating = rating;
 #ifdef CONFIG_SMP
-	cc->clkchip.cpumask = cpumask_of(target_cpu);
+	cc->clkchip.cpumask = vmm_cpumask_of(target_cpu);
 #else
 	cc->clkchip.cpumask = cpu_all_mask;
 #endif
@@ -195,7 +195,8 @@ int __init sp804_clockchip_init(virtual_addr_t base,
 #ifdef CONFIG_SMP
 	/* Set host irq affinity to target cpu */
 	if ((rc = vmm_host_irq_set_affinity(hirq, 
-					    cpumask_of(target_cpu), TRUE))) {
+					    vmm_cpumask_of(target_cpu), 
+					    TRUE))) {
 		return rc;
 	}
 #endif
