@@ -18,7 +18,7 @@
  *
  * @file vmm_clockchip.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief header file for clock chips
+ * @brief Interface for clockchip managment
  */
 #ifndef _VMM_CLOCKCHIP_H__
 #define _VMM_CLOCKCHIP_H__
