@@ -113,7 +113,13 @@ void do_prefetch_abort(arch_regs_t * uregs)
 	struct cpu_page pg;
 
 	ifsr = read_ifsr();
+#if defined(CONFIG_ARMV5)
+	/* TODO: if ifar is not implemented then R14 serves as ifar, add code to check ifar support */
+	ifar = uregs->pc;
+#else
 	ifar = read_ifar();
+#endif /* CONFIG_ARMV5 */
+
 	fs = (ifsr & IFSR_FS4_MASK) >> IFSR_FS4_SHIFT;
 	fs = (fs << 4) | (ifsr & IFSR_FS_MASK);
 
