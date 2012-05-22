@@ -153,6 +153,111 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 {
 	*data = 0x0;
 	switch (CRn) {
+	case 0:		/* ID codes.  */
+		switch (opc1) {
+		case 0:
+			switch (CRm) {
+			case 0:
+				switch (opc2) {
+				case 0:	/* Device ID.  */
+					*data = arm_priv(vcpu)->cp15.c0_cpuid;
+					break;
+				case 1:	/* Cache Type.  */
+					*data =
+					    arm_priv(vcpu)->cp15.c0_cachetype;
+					break;
+				case 2:	/* TCM status.  */
+					*data = 0;
+					break;
+				case 3:	/* TLB type register.  */
+					*data = 0;	/* No lockable TLB entries.  */
+					break;
+				case 5:	/* MPIDR */
+					/* The MPIDR was standardised in v7; prior to
+					 * this it was implemented only in the 11MPCore.
+					 * For all other pre-v7 cores it does not exist.
+					 */
+					if (arm_feature(vcpu, ARM_FEATURE_V7) ||
+					    arm_cpuid(vcpu) ==
+					    ARM_CPUID_ARM11MPCORE) {
+						int mpidr = vcpu->subid;
+						/* We don't support setting cluster ID ([8..11])
+						 * so these bits always RAZ.
+						 */
+						if (arm_feature
+						    (vcpu, ARM_FEATURE_V7MP)) {
+							mpidr |= (1 << 31);
+							/* Cores which are uniprocessor (non-coherent)
+							 * but still implement the MP extensions set
+							 * bit 30. (For instance, A9UP.) However we do
+							 * not currently model any of those cores.
+							 */
+						}
+						*data = mpidr;
+					}
+					/* otherwise fall through to the unimplemented-reg case */
+					break;
+				default:
+					goto bad_reg;
+				}
+				break;
+			case 1:
+				if (!arm_feature(vcpu, ARM_FEATURE_V6))
+					goto bad_reg;
+				*data = arm_priv(vcpu)->cp15.c0_c1[opc2];
+				break;
+			case 2:
+				if (!arm_feature(vcpu, ARM_FEATURE_V6))
+					goto bad_reg;
+				*data = arm_priv(vcpu)->cp15.c0_c2[opc2];
+				break;
+			case 3:
+			case 4:
+			case 5:
+			case 6:
+			case 7:
+				*data = 0;
+				break;
+			default:
+				goto bad_reg;
+			}
+			break;
+		case 1:
+			/* These registers aren't documented on arm11 cores.  However
+			 * Linux looks at them anyway.  */
+			if (!arm_feature(vcpu, ARM_FEATURE_V6))
+				goto bad_reg;
+			if (CRm != 0)
+				goto bad_reg;
+			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
+				*data = 0;
+				break;
+			}
+			switch (opc2) {
+			case 0:
+				*data =
+				    arm_priv(vcpu)->cp15.
+				    c0_ccsid[arm_priv(vcpu)->cp15.c0_cssel];
+				break;
+			case 1:
+				*data = arm_priv(vcpu)->cp15.c0_clid;
+				break;
+			case 7:
+				*data = 0;
+				break;
+			default:
+				goto bad_reg;
+			}
+			break;
+		case 2:
+			if (opc2 != 0 || CRm != 0)
+				goto bad_reg;
+			*data = arm_priv(vcpu)->cp15.c0_cssel;
+			break;
+		default:
+			goto bad_reg;
+		};
+		break;
 	case 1: /* System configuration.  */
 		switch (opc2) {
 		case 0: /* Control register.  */
@@ -201,6 +306,14 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			 u32 data)
 {
 	switch (CRn) {
+	case 0:
+		/* ID codes.  */
+		if (arm_feature(vcpu, ARM_FEATURE_V7) &&
+		    (opc1 == 2) && (CRm == 0) && (opc2 == 0)) {
+			arm_priv(vcpu)->cp15.c0_cssel = data & 0xf;
+			break;
+		}
+		goto bad_reg;
 	case 1: /* System configuration.  */
 		switch (opc2) {
 		case 0:
