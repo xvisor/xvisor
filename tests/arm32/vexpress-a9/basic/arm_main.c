@@ -36,9 +36,7 @@
 /* Works in supervisor mode */
 void arm_init(void)
 {
-#if 0
 	u32 sys_100hz;
-#endif
 
 	arm_heap_init();
 
@@ -48,11 +46,8 @@ void arm_init(void)
 
 	arm_stdio_init();
 
-#if 0
-	sys_100hz = arm_readl((void *)(REALVIEW_SYS_BASE + 
-					REALVIEW_SYS_100HZ_OFFSET));
-#endif
-	arm_timer_init(10000, 0, 1);
+	sys_100hz = arm_readl((void *)(V2M_SYS_100HZ));
+	arm_timer_init(10000, sys_100hz, 1);
 
 	arm_timer_enable();
 }
@@ -214,13 +209,10 @@ void arm_cmd_mmu_cleanup(int argc, char **argv)
 
 void arm_cmd_sysctl(int argc, char **argv)
 {
-#if 0
 	char str[32];
 	u32 sys_100hz, sys_24mhz;
-	sys_100hz = arm_readl((void *)(REALVIEW_SYS_BASE + 
-					REALVIEW_SYS_100HZ_OFFSET));
-	sys_24mhz = arm_readl((void *)(REALVIEW_SYS_BASE + 
-					REALVIEW_SYS_24MHz_OFFSET));
+	sys_100hz = arm_readl((void *)(V2M_SYS_100HZ));
+	sys_24mhz = arm_readl((void *)(V2M_SYS_24MHZ));
 	arm_puts("Sysctl Registers ...\n");
 	arm_puts("  SYS_100Hz: 0x");
 	arm_uint2hexstr(str, sys_100hz);
@@ -229,7 +221,6 @@ void arm_cmd_sysctl(int argc, char **argv)
 	arm_puts("  SYS_24MHz: 0x");
 	arm_uint2hexstr(str, sys_24mhz);
 	arm_puts(str);
-#endif
 	arm_puts("\n");
 }
 
@@ -436,11 +427,9 @@ void arm_cmd_reset(int argc, char **argv)
 {
 	arm_puts("System reset ...\n\n");
 
-#if 0
-	vmm_writel(0x0, (void *)(VEXPRESS_SYS_BASE + VEXPRESS_SYS_RESETCTL_OFFSET));
-	vmm_writel(VEXPRESS_SYS_CTRL_RESET_PLLRESET, 
-			(void *)(VEXPRESS_SYS_BASE + VEXPRESS_SYS_RESETCTL_OFFSET));
-#endif
+	arm_writel(~0x0, (void *)(V2M_SYS_FLAGSCLR));
+	arm_writel(0x0, (void *)(V2M_SYS_FLAGSSET));
+	arm_writel(0xc0900000, (void *)(V2M_SYS_CFGCTRL));
 
 	while (1);
 }
