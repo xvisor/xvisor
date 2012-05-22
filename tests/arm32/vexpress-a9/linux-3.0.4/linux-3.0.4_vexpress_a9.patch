@@ -1,0 +1,74 @@
+diff --git a/arch/arm/mach-vexpress/ct-ca9x4.c b/arch/arm/mach-vexpress/ct-ca9x4.c
+index 765a71f..be9c8df 100644
+--- a/arch/arm/mach-vexpress/ct-ca9x4.c
++++ b/arch/arm/mach-vexpress/ct-ca9x4.c
+@@ -115,13 +115,14 @@ static AMBA_DEVICE(smc, "ct:smc", CT_CA9X4_SMC, NULL);
+ static AMBA_DEVICE(gpio, "ct:gpio", CT_CA9X4_GPIO, NULL);
+ 
+ static struct amba_device *ct_ca9x4_amba_devs[] __initdata = {
+-	&clcd_device,
+-	&dmc_device,
+-	&smc_device,
+-	&gpio_device,
++	/*
++	 *&clcd_device,
++	 *&dmc_device,
++	 *&smc_device,
++	 *&gpio_device,
++	 */
+ };
+ 
+-
+ static long ct_round(struct clk *clk, unsigned long rate)
+ {
+ 	return rate;
+diff --git a/arch/arm/mach-vexpress/v2m.c b/arch/arm/mach-vexpress/v2m.c
+index 9e6b93b..daab48c 100644
+--- a/arch/arm/mach-vexpress/v2m.c
++++ b/arch/arm/mach-vexpress/v2m.c
+@@ -277,15 +277,19 @@ static AMBA_DEVICE(wdt,   "mb:wdt",   V2M_WDT, NULL);
+ static AMBA_DEVICE(rtc,   "mb:rtc",   V2M_RTC, NULL);
+ 
+ static struct amba_device *v2m_amba_devs[] __initdata = {
+-	&aaci_device,
+-	&mmci_device,
+-	&kmi0_device,
+-	&kmi1_device,
++	/*
++	 *&aaci_device,
++	 *&mmci_device,
++	 *&kmi0_device,
++	 *&kmi1_device,
++	 */
+ 	&uart0_device,
+ 	&uart1_device,
+ 	&uart2_device,
+ 	&uart3_device,
+-	&wdt_device,
++	/*
++	 *&wdt_device,
++	 */
+ 	&rtc_device,
+ };
+ 
+@@ -419,12 +423,14 @@ static void __init v2m_init(void)
+ {
+ 	int i;
+ 
+-	platform_device_register(&v2m_pcie_i2c_device);
+-	platform_device_register(&v2m_ddc_i2c_device);
+-	platform_device_register(&v2m_flash_device);
+-	platform_device_register(&v2m_cf_device);
+-	platform_device_register(&v2m_eth_device);
+-	platform_device_register(&v2m_usb_device);
++	/*
++	 *platform_device_register(&v2m_pcie_i2c_device);
++	 *platform_device_register(&v2m_ddc_i2c_device);
++	 *platform_device_register(&v2m_flash_device);
++	 *platform_device_register(&v2m_cf_device);
++	 *platform_device_register(&v2m_eth_device);
++	 *platform_device_register(&v2m_usb_device);
++	 */
+ 
+ 	for (i = 0; i < ARRAY_SIZE(v2m_amba_devs); i++)
+ 		amba_device_register(v2m_amba_devs[i], &iomem_resource);
