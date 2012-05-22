@@ -80,9 +80,9 @@
 
 				vcpu0 {
 					device_type = "vcpu";
-					model = "ARMv5te,ARM926ej";
+					compatible = "ARMv5te,ARM926ej";
 					time_slice = <50000000>;
-					start_pc = <0x40000000>;
+					start_pc = <0x34000000>;
 				};
 			};
 			
@@ -169,6 +169,15 @@
 					device_type = "pic";
 					compatible = "versatilepb,pic";
 					parent_irq = <6>;
+				};
+
+				nor_flash {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x34000000>;
+					host_physical_addr = <0x00800000>;
+					physical_size = <0x00800000>; /* 8 MB */
+					device_type = "rom";
 				};
 
 			};
