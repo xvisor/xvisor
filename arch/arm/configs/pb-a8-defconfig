@@ -2,13 +2,14 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Sat May 12 12:44:30 2012
+# Wed May 23 09:05:20 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
+CONFIG_CPU_COUNT=1
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
@@ -19,7 +20,6 @@ CONFIG_CPU_CORTEX_A8=y
 # CONFIG_CPU_CORTEX_A9 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
 # CONFIG_CPU_CORTEX_A15_VE is not set
-CONFIG_CPU_COUNT=1
 # CONFIG_ARMV5 is not set
 CONFIG_ARMV7A=y
 # CONFIG_ARMV7A_VE is not set
@@ -42,6 +42,7 @@ CONFIG_ARM_TIMER_SP804=y
 #
 CONFIG_ONE_GUEST_PBA8_DTS=y
 # CONFIG_ONE_PT_GUEST_PBA8_DTS is not set
+# CONFIG_ONE_GUEST_VEX_A9_DTS is not set
 # CONFIG_TWO_GUEST_PBA8_DTS is not set
 # CONFIG_TWO_PT_GUEST_PBA8_DTS is not set
 
@@ -140,6 +141,7 @@ CONFIG_EMU_PIC_GIC=y
 #
 CONFIG_EMU_TIMER=y
 CONFIG_EMU_TIMER_SP804=y
+CONFIG_EMU_TIMER_ARM_MPTIMER=y
 
 #
 # Serial Port Emulators
