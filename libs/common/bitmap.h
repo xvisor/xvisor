@@ -125,25 +125,25 @@ extern int bitmap_allocate_region(unsigned long *bitmap, int pos, int order);
  */
 static inline bool bitmap_isset(unsigned long *bmap, int bit)
 {
-	return (bmap[BIT_WORD(bit)] & (0x1 << BIT_WORD_OFFSET(bit))) ? 
-								TRUE : FALSE;
+	return (bmap[BIT_WORD(bit)] & (0x1UL << BIT_WORD_OFFSET(bit))) ?
+		TRUE : FALSE;
 }
 
 static inline void bitmap_setbit(unsigned long *bmap, unsigned long bit)
 {
-	bmap[BIT_WORD(bit)] |= (0x1 << BIT_WORD_OFFSET(bit));
+	bmap[BIT_WORD(bit)] |= (0x1UL << BIT_WORD_OFFSET(bit));
 }
 
 static inline void bitmap_clearbit(unsigned long *bmap, unsigned long bit)
 {
-	bmap[BIT_WORD(bit)] &= ~(0x1 << BIT_WORD_OFFSET(bit));
+	bmap[BIT_WORD(bit)] &= ~(0x1UL << BIT_WORD_OFFSET(bit));
 }
 
 static inline void bitmap_set(unsigned long *bmap, int start, int len)
 {
 	int bit;
 	for (bit = start; bit < (start + len); bit++) {
-		bmap[BIT_WORD(bit)] |= (0x1 << BIT_WORD_OFFSET(bit));
+		bmap[BIT_WORD(bit)] |= (0x1UL << BIT_WORD_OFFSET(bit));
 	}
 }
 
@@ -151,7 +151,7 @@ static inline void bitmap_clear(unsigned long *bmap, int start, int len)
 {
 	int bit;
 	for (bit = start; bit < (start + len); bit++) {
-		bmap[BIT_WORD(bit)] &= ~(0x1 << BIT_WORD_OFFSET(bit));
+		bmap[BIT_WORD(bit)] &= ~(0x1UL << BIT_WORD_OFFSET(bit));
 	}
 }
 
