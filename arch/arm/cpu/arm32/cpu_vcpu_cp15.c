@@ -69,6 +69,12 @@ static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu, struct cpu_page *p)
 	e->ng = p->ng;
 	p->ng = 1; 
 #endif
+#ifndef CONFIG_SMP
+	/* Ensure non-shareable pages for normal vcpu when running on UP host.
+	 * This will force usage of local monitors in case of UP host.
+         */
+	p->s = 0;
+#endif
 
 	/* Add victim page to L1 page table */
 	if ((rc = cpu_mmu_map_page(arm_priv(vcpu)->cp15.l1, p))) {
