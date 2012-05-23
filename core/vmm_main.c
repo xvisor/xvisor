@@ -72,6 +72,18 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
+	/* Initialize CPU early */
+	ret = arch_cpu_early_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize Board early */
+	ret = arch_board_early_init();
+	if (ret) {
+		vmm_hang();
+	}
+
 	/* Initialize device tree */
 	ret = vmm_devtree_init();
 	if (ret) {
@@ -86,18 +98,6 @@ void vmm_init(void)
 
 	/* Initialize per-cpu area */
 	ret = vmm_percpu_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize CPU early */
-	ret = arch_cpu_early_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize Board early */
-	ret = arch_board_early_init();
 	if (ret) {
 		vmm_hang();
 	}
@@ -118,11 +118,11 @@ void vmm_init(void)
 	/* Print initial messages that we missed */
 	vmm_printf("Initialize Host Address Space\n");
 	vmm_printf("Initialize Heap Managment\n");
+	vmm_printf("Initialize CPU Early\n");
+	vmm_printf("Initialize Board Early\n");
 	vmm_printf("Initialize Device Tree\n");
 	vmm_printf("Initialize Host Interrupt Subsystem\n");
 	vmm_printf("Initialize PerCPU Areas\n");
-	vmm_printf("Initialize CPU Early\n");
-	vmm_printf("Initialize Board Early\n");
 	vmm_printf("Initialize Standard I/O Subsystem\n");
 
 	/* Initialize clocksource manager */
