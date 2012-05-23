@@ -1897,17 +1897,21 @@ void cpu_vcpu_cp15_sync_cpsr(struct vmm_vcpu *vcpu)
 
 void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 {
+#if !defined(CONFIG_ARMV5)
 	if (tvcpu && tvcpu->is_normal) {
 		arm_priv(tvcpu)->cp15.c13_tls1 = read_tpidrurw();
 		arm_priv(tvcpu)->cp15.c13_tls2 = read_tpidruro();
 		arm_priv(tvcpu)->cp15.c13_tls3 = read_tpidrprw();
 	}
+#endif
 	if (vcpu->is_normal) {
 		cpu_mmu_chdacr(arm_priv(vcpu)->cp15.dacr);
 		cpu_mmu_chttbr(arm_priv(vcpu)->cp15.l1);
+#if !defined(CONFIG_ARMV5)
 		write_tpidrurw(arm_priv(vcpu)->cp15.c13_tls1);
 		write_tpidruro(arm_priv(vcpu)->cp15.c13_tls2);
 		write_tpidrprw(arm_priv(vcpu)->cp15.c13_tls3);
+#endif
 	} else {
 		if (tvcpu) {
 			if (tvcpu->is_normal) {

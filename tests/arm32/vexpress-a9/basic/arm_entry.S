@@ -67,12 +67,10 @@ _secondary_loop:
 	ldr	r0, _gic_cpu_enable_addr
 	mov	r1, #1
 	str	r1, [r0]
-	/* Send event to make sure the wfe doesn't block the first time */
-	sev
 	ldr	r0, _sys_flags_addr
 1:	
-	/* Wait for an event before checking SYS_FLAGS */
-	wfe	
+	/* Wait for interrupt before checking SYS_FLAGS */
+	wfi	
 	ldr	r1, [r0]
 	teq	r1, #0
 	/* Repeat if SYS_FLAGS == 0 */

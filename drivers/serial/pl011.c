@@ -34,6 +34,12 @@
 #include <serial/pl011.h>
 #include <mathlib.h>
 
+/* Enable UART_PL011_USE_TXINTR to use TX interrupt.
+ * Generally the FIFOs are small so its better to poll on Tx 
+ * for smoother vmm_prints.
+ */
+#undef UART_PL011_USE_TXINTR
+
 #define MODULE_VARID			pl011_driver_module
 #define MODULE_NAME			"PL011 Serial Driver"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -219,6 +225,7 @@ static u32 pl011_read(struct vmm_chardev *cdev,
 	return i;
 }
 
+#if defined(UART_PL011_USE_TXINTR)
 static void pl011_putc_sleepable(struct pl011_port *port, u8 ch)
 {
 	/* Wait until there is space in the FIFO */
@@ -235,6 +242,7 @@ static void pl011_putc_sleepable(struct pl011_port *port, u8 ch)
 	/* Write data to FIFO */
 	vmm_out_8((void *)(port->base + UART_PL011_DR), ch);
 }
+#endif
 
 static u32 pl011_write(struct vmm_chardev *cdev,
 		       u8 * src, u32 offset, u32 len, bool sleep)
@@ -248,6 +256,7 @@ static u32 pl011_write(struct vmm_chardev *cdev,
 
 	port = cdev->priv;
 
+#if defined(UART_PL011_USE_TXINTR)
 	if (sleep) {
 		for (i = 0; i < len; i++) {
 			pl011_putc_sleepable(port, src[i]);
@@ -260,6 +269,14 @@ static u32 pl011_write(struct vmm_chardev *cdev,
 			pl011_lowlevel_putc(port->base, src[i]);
 		}
 	}
+#else
+	for (i = 0; i < len; i++) {
+		if (!pl011_lowlevel_can_putc(port->base)) {
+			break;
+		}
+		pl011_lowlevel_putc(port->base, src[i]);
+	}
+#endif
 
 	return i;
 }
