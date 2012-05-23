@@ -88,14 +88,14 @@
 				vcpu0 {
 					device_type = "vcpu";
 					compatible = "ARMv7a,cortex-a9";
-					time_slice = <50000000>;
+					time_slice = <25000000>;
 					start_pc = <0x40000000>;
 				};
 
 				vcpu1 {
 					device_type = "vcpu";
 					compatible = "ARMv7a,cortex-a9";
-					time_slice = <50000000>;
+					time_slice = <25000000>;
 					start_pc = <0x40000000>;
 				};
 			};
@@ -119,7 +119,7 @@
 					address_type = "memory";
 					guest_physical_addr = <0x60000000ULL>;
 					host_physical_addr = <0x82000000ULL>;
-					physical_size = <0x06000000ULL>; /* 128M */
+					physical_size = <0x06000000ULL>; /* 96 MB */
 					device_type = "ram";
 				};
 
