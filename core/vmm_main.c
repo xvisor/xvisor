@@ -60,54 +60,6 @@ void vmm_init(void)
 	struct vmm_devtree_node *gnode, *gsnode;
 	struct vmm_guest *guest = NULL;
 
-	/* Initialize host virtual address space */
-	ret = vmm_host_aspace_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize heap */
-	ret = vmm_heap_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize CPU early */
-	ret = arch_cpu_early_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize Board early */
-	ret = arch_board_early_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize device tree */
-	ret = vmm_devtree_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize host interrupts */
-	ret = vmm_host_irq_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize per-cpu area */
-	ret = vmm_percpu_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize standerd input/output */
-	ret = vmm_stdio_init();
-	if (ret) {
-		vmm_hang();
-	}
-
 	/* Print version string */
 	vmm_printf("\n");
 	vmm_printf("%s v%d.%d.%d (%s %s)\n", VMM_NAME, 
@@ -115,15 +67,61 @@ void vmm_init(void)
 		   __DATE__, __TIME__);
 	vmm_printf("\n");
 
-	/* Print initial messages that we missed */
+	/* Initialize host virtual address space */
 	vmm_printf("Initialize Host Address Space\n");
+	ret = vmm_host_aspace_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize heap */
 	vmm_printf("Initialize Heap Managment\n");
+	ret = vmm_heap_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize CPU early */
 	vmm_printf("Initialize CPU Early\n");
+	ret = arch_cpu_early_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize Board early */
 	vmm_printf("Initialize Board Early\n");
+	ret = arch_board_early_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize device tree */
 	vmm_printf("Initialize Device Tree\n");
+	ret = vmm_devtree_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize host interrupts */
 	vmm_printf("Initialize Host Interrupt Subsystem\n");
+	ret = vmm_host_irq_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize per-cpu area */
 	vmm_printf("Initialize PerCPU Areas\n");
+	ret = vmm_percpu_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize standerd input/output */
 	vmm_printf("Initialize Standard I/O Subsystem\n");
+	ret = vmm_stdio_init();
+	if (ret) {
+		vmm_hang();
+	}
 
 	/* Initialize clocksource manager */
 	vmm_printf("Initialize Clocksource Manager\n");
