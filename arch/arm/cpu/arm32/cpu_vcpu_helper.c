@@ -35,6 +35,10 @@
 
 void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 {
+	if (!vcpu || !regs) {
+		return;
+	}
+
 	if (vcpu->state != VMM_VCPU_STATE_HALTED) {
 		vmm_printf("\n");
 		cpu_vcpu_dump_user_reg(vcpu, regs);
@@ -228,8 +232,9 @@ void cpu_vcpu_cpsr_update(struct vmm_vcpu * vcpu,
 			  u32 new_cpsr_mask)
 {
 	bool mode_change;
+
 	/* Sanity check */
-	if (!vcpu && !vcpu->is_normal) {
+	if (!vcpu && !vcpu->is_normal && !regs) {
 		return;
 	}
 	new_cpsr &= new_cpsr_mask;
@@ -692,13 +697,15 @@ int arch_guest_init(struct vmm_guest * guest)
 		if ((rc = cpu_mmu_unmap_reserved_page(&pg))) {
 			return rc;
 		}
-		if (pg.ap == TTBL_AP_SRW_U) {
-			pg.ap = TTBL_AP_SRW_UR;
-		} else if (pg.ap == TTBL_AP_SR_U) {
+#if defined(CONFIG_ARMV5)
+		pg.ap = TTBL_AP_SRW_UR;
+#else
+		if (pg.ap == TTBL_AP_SR_U) {
 			pg.ap = TTBL_AP_SR_UR;
 		} else {
 			pg.ap = TTBL_AP_SRW_UR;
 		}
+#endif
 		if ((rc = cpu_mmu_map_reserved_page(&pg))) {
 			return rc;
 		}
