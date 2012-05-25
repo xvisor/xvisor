@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Thu May 17 17:46:53 2012
+# Wed May 23 00:01:17 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -124,7 +124,7 @@ CONFIG_RTC_PL031=y
 # System Emulators
 #
 CONFIG_EMU_SYS=y
-# CONFIG_EMU_SYS_ARM_SYSREGS is not set
+CONFIG_EMU_SYS_ARM_SYSREGS=y
 CONFIG_EMU_SYS_SP810=y
 
 #
@@ -132,6 +132,7 @@ CONFIG_EMU_SYS_SP810=y
 #
 CONFIG_EMU_PIC=y
 # CONFIG_EMU_PIC_GIC is not set
+CONFIG_EMU_PIC_PL190=y
 
 #
 # Timer Emulators
