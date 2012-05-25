@@ -55,6 +55,8 @@
 #define REALVIEW_PROCID_PBA8		0x00000000
 #define REALVIEW_SYSID_VEXPRESS		0x01900000
 #define VEXPRESS_PROCID_CA9		0x0c000191
+#define REALVIEW_SYSID_VERSATILEPB	0x41008004
+#define REALVIEW_PROCID_VERSATILEPB	0x00000000
 
 struct realview_sysctl {
 	struct vmm_guest *guest;
@@ -469,6 +471,12 @@ static int realview_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
+static u32 versatile_sysids[] = {
+	/* === VERSATILE PB === */
+	/* sys_id */ REALVIEW_SYSID_VERSATILEPB, 
+	/* proc_id */ REALVIEW_PROCID_VERSATILEPB, 
+};
+
 static u32 realview_sysids[] = {
 	/* === PBA8 === */
 	/* sys_id */ REALVIEW_SYSID_PBA8, 
@@ -482,6 +490,10 @@ static u32 vexpress_sysids[] = {
 };
 
 static struct vmm_emuid realview_emuid_table[] = {
+	{ .type = "sys", 
+	  .compatible = "versatilepb,arm926", 
+	  .data = &versatile_sysids[0] 
+	},
 	{ .type = "sys", 
 	  .compatible = "realview,pb-a8", 
 	  .data = &realview_sysids[0] 
