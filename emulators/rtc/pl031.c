@@ -42,7 +42,7 @@
 #include <mathlib.h>
 
 #define MODULE_VARID			pl031_emulator_module
-#define MODULE_NAME			"PL011 Serial Emulator"
+#define MODULE_NAME			"PL031 RTC Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			pl031_emulator_init
