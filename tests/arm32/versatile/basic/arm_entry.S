@@ -153,9 +153,11 @@ _reset:
 _switch_to_user_mode:
 	sub	r0, sp
 	mov	r1, lr
-	SET_CURRENT_MODE CPSR_MODE_USER, r8
+	mov	r2, #0
+	SET_CURRENT_MODE CPSR_MODE_USER, r2
 	mov	sp, r0
 	mov	lr, r1
+	mov	r2, #0
 	bx	lr
 
 START_EXCEPTION_HANDLER _undefined_instruction, 4

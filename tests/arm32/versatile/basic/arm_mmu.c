@@ -27,13 +27,14 @@
 #include <arm_defines.h>
 #include <arm_mmu.h>
 #include <arm_stdio.h>
+#include <arm_string.h>
 
-u32 __attribute__((aligned(TTBL_L1TBL_SIZE))) l1[TTBL_L1TBL_SIZE / 4];
-u32 __attribute__((aligned(TTBL_L2TBL_SIZE))) l2[TTBL_L2TBL_SIZE / 4];
-u32 l2_mapva;
+static u32 __attribute__((aligned(TTBL_L1TBL_SIZE))) l1[TTBL_L1TBL_SIZE / 4];
+static u32 __attribute__((aligned(TTBL_L2TBL_SIZE))) l2[TTBL_L2TBL_SIZE / 4];
+static u32 l2_mapva;
 
-u32 test_area_pa;
-u32 test_area_size;
+static u32 test_area_pa;
+static u32 test_area_size;
 
 void arm_mmu_syscall(struct pt_regs *regs)
 {
@@ -47,13 +48,13 @@ void arm_mmu_syscall(struct pt_regs *regs)
 	}
 }
 
-extern void _switch_to_user_mode (u32, u32);
+extern void _switch_to_user_mode (u32, u32, u32);
 
-#define ARM_MMU_TEST_SWITCH_TO_USER()	_switch_to_user_mode(0x0, 0x0)
+#define ARM_MMU_TEST_SWITCH_TO_USER()	_switch_to_user_mode(0x0, 0x0, 0)
 #define ARM_MMU_TEST_SWITCH_TO_SUPER()	asm ("svc 0x1")
 
-u32 test_prefetch_abort_fs;
-u32 test_prefetch_abort_result;
+static u32 test_prefetch_abort_fs;
+static u32 test_prefetch_abort_result;
 
 void arm_mmu_prefetch_abort(struct pt_regs *regs)
 {
@@ -69,10 +70,10 @@ void arm_mmu_prefetch_abort(struct pt_regs *regs)
 	regs->pc += 4;
 }
 
-u32 test_data_abort_fs;
-u32 test_data_abort_far;
-u32 test_data_abort_dom;
-u32 test_data_abort_result;
+static u32 test_data_abort_fs;
+static u32 test_data_abort_far;
+static u32 test_data_abort_dom;
+static u32 test_data_abort_result;
 
 void arm_mmu_data_abort(struct pt_regs *regs)
 {
@@ -124,6 +125,7 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	} else {
 		(*fail)++;
 	}
+
 	/* 1.2 */
 	test_ptr = (u32 *)((free_sec0 << 
 			    TTBL_L1TBL_TTE_BASE20_SHIFT) + 
@@ -175,6 +177,7 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	tmp = 0x0;
 	tmp |= (TTBL_L1TBL_TTE_DOM_CHECKAP << TTBL_L1TBL_TTE_DOM_SHIFT);
 	tmp |= (TTBL_AP_SRW_URW << TTBL_L1TBL_TTE_AP_SHIFT);
+	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	tmp |= TTBL_L1TBL_TTE_C_MASK;
 	tmp |= TTBL_L1TBL_TTE_TYPE_SECTION;
 	l1[free_sec0] = tmp | (test_area_pa);
@@ -259,6 +262,7 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	tmp |= (TTBL_L1TBL_TTE_DOM_CHECKAP << TTBL_L1TBL_TTE_DOM_SHIFT);
 	tmp |= (TTBL_AP_S_U << TTBL_L1TBL_TTE_AP_SHIFT);
 	tmp |= TTBL_L1TBL_TTE_C_MASK;
+	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	tmp |= TTBL_L1TBL_TTE_TYPE_SECTION;
 	l1[free_sec0] = tmp | (test_area_pa);
 	test_ptr = (u32 *)(free_sec0 << TTBL_L1TBL_TTE_BASE20_SHIFT);
@@ -291,8 +295,8 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	tmp |= TTBL_L1TBL_TTE_TYPE_SECTION;
 	l1[free_sec0] = tmp | (test_area_pa);
 	test_ptr = (u32 *)(free_sec0 << TTBL_L1TBL_TTE_BASE20_SHIFT);
-	test_ptr[0] = 0xC001BABE;
-	test_ptr[1] = 0xD00DFEED;
+	test_ptr[0] = 0xD00DFEED;
+	test_ptr[1] = 0xC001BABE;
 	test_ptr = (u32 *)((free_sec0 << 
 			    TTBL_L1TBL_TTE_BASE20_SHIFT) + 
 			    TTBL_L1TBL_SECTION_PAGE_SIZE - 8);
@@ -300,7 +304,7 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	test_ptr[1] = 0xD00DFEED;
 	test_ptr = (u32 *)(free_sec0 << TTBL_L1TBL_TTE_BASE20_SHIFT);
 	(*total)++;
-	if (test_ptr[0] == 0xC001BABE && test_ptr[1] == 0xD00DFEED) {
+	if (test_ptr[1] == 0xC001BABE && test_ptr[0] == 0xD00DFEED) {
 		(*pass)++;
 	} else {
 		(*fail)++;
@@ -321,6 +325,7 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	tmp |= (TTBL_L1TBL_TTE_DOM_NOACCESS << TTBL_L1TBL_TTE_DOM_SHIFT);
 	tmp |= (TTBL_AP_SRW_URW << TTBL_L1TBL_TTE_AP_SHIFT);
 	tmp |= TTBL_L1TBL_TTE_C_MASK;
+	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	tmp |= TTBL_L1TBL_TTE_TYPE_SECTION;
 	l1[free_sec0] = tmp | (test_area_pa);
 	test_ptr = (u32 *)(free_sec0 << TTBL_L1TBL_TTE_BASE20_SHIFT);
@@ -392,6 +397,7 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	tmp |= (TTBL_L1TBL_TTE_DOM_CHECKAP << TTBL_L1TBL_TTE_DOM_SHIFT);
 	tmp |= (TTBL_AP_S_U << TTBL_L1TBL_TTE_AP_SHIFT);
 	tmp |= TTBL_L1TBL_TTE_C_MASK;
+	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	tmp |= TTBL_L1TBL_TTE_TYPE_SECTION;
 	l1[free_sec0] = tmp | (test_area_pa);
 	test_ptr = (u32 *)(free_sec0 << TTBL_L1TBL_TTE_BASE20_SHIFT);
@@ -414,7 +420,9 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	} else {
 		(*fail)++;
 	}
+
 	ARM_MMU_TEST_SWITCH_TO_USER();
+
 	test_data_abort_result = 0;
 	*(test_ptr) = 0xC001BABE;
 	(*total)++;
@@ -434,11 +442,13 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	ARM_MMU_TEST_SWITCH_TO_SUPER();
 	l1[free_sec0] = 0x0;
 	invalid_tlb();
+
 	/* 4.2 TTBL_AP_SRW_U */
 	tmp = 0x0;
 	tmp |= (TTBL_L1TBL_TTE_DOM_CHECKAP << TTBL_L1TBL_TTE_DOM_SHIFT);
 	tmp |= (TTBL_AP_SRW_U << TTBL_L1TBL_TTE_AP_SHIFT);
 	tmp |= TTBL_L1TBL_TTE_C_MASK;
+	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	tmp |= TTBL_L1TBL_TTE_TYPE_SECTION;
 	l1[free_sec0] = tmp | (test_area_pa);
 	test_ptr = (u32 *)(free_sec0 << TTBL_L1TBL_TTE_BASE20_SHIFT);
@@ -481,17 +491,21 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	ARM_MMU_TEST_SWITCH_TO_SUPER();
 	l1[free_sec0] = 0x0;
 	invalid_tlb();
+
 	/* 4.3 TTBL_AP_SRW_UR */
 	tmp = 0x0;
 	tmp |= (TTBL_L1TBL_TTE_DOM_CHECKAP << TTBL_L1TBL_TTE_DOM_SHIFT);
 	tmp |= (TTBL_AP_SRW_UR << TTBL_L1TBL_TTE_AP_SHIFT);
 	tmp |= TTBL_L1TBL_TTE_C_MASK;
+	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	tmp |= TTBL_L1TBL_TTE_TYPE_SECTION;
 	l1[free_sec0] = tmp | (test_area_pa);
 	test_ptr = (u32 *)(free_sec0 << TTBL_L1TBL_TTE_BASE20_SHIFT);
 	test_ptr[0] = 0x0;
 	test_ptr[1] = 0x0;
+
 	(*total)++;
+
 	if (test_ptr[0] == 0x0 && test_ptr[1] == 0x0) {
 		(*pass)++;
 	} else {
@@ -505,12 +519,14 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	} else {
 		(*fail)++;
 	}
+
 	ARM_MMU_TEST_SWITCH_TO_USER();
 	test_data_abort_fs = DFSR_FS_PERM_FAULT_SECTION;
 	test_data_abort_far = (u32)test_ptr;
 	test_data_abort_dom = TTBL_L1TBL_TTE_DOM_CHECKAP;
 	test_data_abort_result = 0;
 	test_ptr[0] = 0x0;
+
 	(*total)++;
 	if (test_data_abort_result) {
 		(*pass)++;
@@ -523,14 +539,19 @@ static void arm_mmu_section_test_iter(u32 free_sec0, u32 free_sec1,
 	} else {
 		(*fail)++;
 	}
+
 	ARM_MMU_TEST_SWITCH_TO_SUPER();
+
 	l1[free_sec0] = 0x0;
 	invalid_tlb();
+
 	/* 4.4 TTBL_AP_SRW_URW */
+
 	tmp = 0x0;
 	tmp |= (TTBL_L1TBL_TTE_DOM_CHECKAP << TTBL_L1TBL_TTE_DOM_SHIFT);
 	tmp |= (TTBL_AP_SRW_URW << TTBL_L1TBL_TTE_AP_SHIFT);
 	tmp |= TTBL_L1TBL_TTE_C_MASK;
+	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	tmp |= TTBL_L1TBL_TTE_TYPE_SECTION;
 	l1[free_sec0] = tmp | (test_area_pa);
 	test_ptr = (u32 *)(free_sec0 << TTBL_L1TBL_TTE_BASE20_SHIFT);
@@ -754,6 +775,7 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 	tmp = l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT];
 	tmp &= ~TTBL_L1TBL_TTE_DOM_MASK;
 	tmp |= (TTBL_L1TBL_TTE_DOM_CHECKAP << TTBL_L1TBL_TTE_DOM_SHIFT);
+	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp;
 	tmp = 0x0;
 	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP0_SHIFT);
@@ -791,6 +813,7 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 	tmp = l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT];
 	tmp &= ~TTBL_L1TBL_TTE_DOM_MASK;
 	tmp |= (TTBL_L1TBL_TTE_DOM_BYPASSAP << TTBL_L1TBL_TTE_DOM_SHIFT);
+	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp;
 	tmp = 0x0;
 	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP0_SHIFT);
@@ -835,6 +858,7 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 	tmp = l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT];
 	tmp &= ~TTBL_L1TBL_TTE_DOM_MASK;
 	tmp |= (TTBL_L1TBL_TTE_DOM_NOACCESS << TTBL_L1TBL_TTE_DOM_SHIFT);
+	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp;
 	tmp = 0x0;
 	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP0_SHIFT);
@@ -1012,6 +1036,7 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 	ARM_MMU_TEST_SWITCH_TO_SUPER();
 	l2[free_page0] = 0x0;
 	invalid_tlb();
+
 	/* 4.3 TTBL_AP_SRW_UR */
 	tmp = 0x0;
 	tmp |= (TTBL_AP_SRW_UR << TTBL_L2TBL_TTE_AP0_SHIFT);
@@ -1223,7 +1248,8 @@ extern u8 _code_end;
 
 void arm_mmu_setup(void)
 {
-	u32 sec, sec_tmpl = 0x0, sec_start = 0x0, sec_end = 0x0;
+	u32 sec, sec_tmpl, sec_start, sec_end;
+
 	u32 sctlr = read_sctlr();
 
 	/* If MMU already enabled then return */
@@ -1231,41 +1257,40 @@ void arm_mmu_setup(void)
 		return;
 	}
 
-	/* Reset memory for L1 */
+	/* Reset memory for L2 */
 	for (sec = 0; sec < (TTBL_L2TBL_SIZE / 4); sec++) {
 		l2[sec] = 0x0;
 	}
 
-	/* Reset memory for L2 */
+	/* Reset memory for L1 */
 	for (sec = 0; sec < (TTBL_L1TBL_SIZE / 4); sec++) {
 		l1[sec] = 0x0;
 	}
 
 	/* Section entry template for code */
-	sec_tmpl = 0x0;
+	sec_tmpl = TTBL_L1TBL_TTE_REQ_MASK;
 	sec_tmpl |= (TTBL_L1TBL_TTE_DOM_CHECKAP << TTBL_L1TBL_TTE_DOM_SHIFT);
 	sec_tmpl |= (TTBL_AP_SRW_URW << TTBL_L1TBL_TTE_AP_SHIFT);
 	sec_tmpl |= TTBL_L1TBL_TTE_C_MASK;
 	sec_tmpl |= TTBL_L1TBL_TTE_TYPE_SECTION;
 
-	/* Create section entries for code */
+	/* compute section start and end */
 	sec_start = ((u32)&_code_start) & ~(TTBL_L1TBL_SECTION_PAGE_SIZE - 1);
 	sec_end = ((u32)&_code_end) & ~(TTBL_L1TBL_SECTION_PAGE_SIZE - 1);
-	for (sec = sec_start; 
-	     sec <= sec_end; 
-	     sec += TTBL_L1TBL_SECTION_PAGE_SIZE) {
-		l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
-	}
-	sec_end += TTBL_L1TBL_SECTION_PAGE_SIZE;
 
 	/* Creation section entries for exception vectors */
 	if (sec_start > 0x0) {
 		l1[0] = sec_tmpl | 0x0;
 	}
 
+	/* Create section entries for code */
+	for (sec = sec_start; sec <= sec_end; sec += TTBL_L1TBL_SECTION_PAGE_SIZE) {
+		l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
+	}
+	sec_end += TTBL_L1TBL_SECTION_PAGE_SIZE;
+
 	/* Map an additional section after code */
-	sec = sec_end;
-	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
+	l1[sec_end / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec_end;
 	sec_end += TTBL_L1TBL_SECTION_PAGE_SIZE;
 
 	/* Section entry template for I/O */
@@ -1274,19 +1299,18 @@ void arm_mmu_setup(void)
 	/* Create section entries for Sysctl, GIC, Timer, PL01x, and Flash */
 	sec = VERSATILE_SYS_BASE;
 	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
+
 	sec = VERSATILE_VIC_BASE;
 	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
-	sec = VERSATILE_FLASH_BASE;
-	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
-	sec += TTBL_L1TBL_SECTION_PAGE_SIZE;
-	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
-	sec += TTBL_L1TBL_SECTION_PAGE_SIZE;
-	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
-	sec += TTBL_L1TBL_SECTION_PAGE_SIZE;
-	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
+
+	for (sec = VERSATILE_FLASH_BASE; 
+	     sec <= (VERSATILE_FLASH_BASE + 4 * TTBL_L1TBL_SECTION_PAGE_SIZE); 
+	     sec += TTBL_L1TBL_SECTION_PAGE_SIZE) {
+		l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
+	}
 
 	/* Map an l2 table after (code + additional section) */
-	sec_tmpl = 0x0;
+	sec_tmpl = TTBL_L1TBL_TTE_REQ_MASK;
 	sec_tmpl |= TTBL_L1TBL_TTE_TYPE_L2TBL;
 	l2_mapva = sec_end;
 	l1[l2_mapva / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | (u32)(&l2);
