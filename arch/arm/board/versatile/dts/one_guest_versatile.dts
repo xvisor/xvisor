@@ -105,7 +105,16 @@
 					guest_physical_addr = <0x10000000>;
 					physical_size = <0x1000>;
 					device_type = "sys";
-					compatible = "versatilepb";
+					compatible = "versatilepb,arm926";
+				};
+
+				sysctrl0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E0000>;
+					physical_size = <0x1000>;
+					device_type = "sys";
+					compatible = "primecell,sp810";
 				};
 
 				uart0 {
@@ -148,7 +157,7 @@
 					physical_size = <0x1000>;
 					device_type = "timer";
 					compatible = "primecell,sp804";
-					irq = <36>;
+					irq = <4>;
 				};
 
 				timer2_3 {
@@ -158,7 +167,7 @@
 					physical_size = <0x1000>;
 					device_type = "timer";
 					compatible = "primecell,sp804";
-					irq = <37>;
+					irq = <5>;
 				};
 
 				pic0 {
@@ -167,7 +176,7 @@
 					guest_physical_addr = <0x10140000>;
 					physical_size = <0x10000>;
 					device_type = "pic";
-					compatible = "versatilepb,pic";
+					compatible = "versatilepb,pl190";
 					parent_irq = <6>;
 				};
 
@@ -179,7 +188,6 @@
 					physical_size = <0x00800000>; /* 8 MB */
 					device_type = "rom";
 				};
-
 			};
 		};
 	};
