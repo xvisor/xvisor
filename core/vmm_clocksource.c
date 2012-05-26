@@ -18,7 +18,7 @@
  *
  * @file vmm_clocksource.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Implementation to manage timer subsystem clock sources
+ * @brief Implementation to manage clocksources
  */
 
 #include <arch_timer.h>
@@ -33,11 +33,26 @@ struct vmm_clocksource_ctrl {
 
 static struct vmm_clocksource_ctrl csctrl;
 
-#ifdef CONFIG_PROFILE
-u64 __notrace vmm_timecounter_read(struct vmm_timecounter *tc)
-#else
-u64 vmm_timecounter_read(struct vmm_timecounter *tc)
+#if defined(CONFIG_PROFILE)
+/**
+ * We need to have a special version of vmm_timecounter_read() for
+ * profile where we do not modify the vmm_timecounter structure members.
+ * Modifying them while profiling results in xvisor freezing.
+ */
+u64 __notrace vmm_timecounter_read_for_profile(struct vmm_timecounter *tc)
+{
+	u64 cycles_now, cycles_delta;
+	u64 ns_offset;
+
+	cycles_now = tc->cs->read(tc->cs);
+	cycles_delta = (cycles_now - tc->cycles_last) & tc->cs->mask;
+	ns_offset = (cycles_delta * tc->cs->mult) >> tc->cs->shift;
+
+	return tc->nsec + ns_offset;
+}
 #endif
+
+u64 vmm_timecounter_read(struct vmm_timecounter *tc)
 {
 	u64 cycles_now, cycles_delta;
 	u64 ns_offset;

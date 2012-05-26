@@ -123,6 +123,11 @@ static inline u32 vmm_clocksource_hz2mult(u32 hz, u32 shift)
 /** Get current value from nanosecond counter (nanoseconds elapsed) */
 u64 vmm_timecounter_read(struct vmm_timecounter *tc);
 
+#if defined(CONFIG_PROFILE)
+/** Special version for profile */
+u64 vmm_timecounter_read_for_profile(struct vmm_timecounter *tc);
+#endif
+
 /** Start nanosecond counter (nanoseconds elapsed) */
 int vmm_timecounter_start(struct vmm_timecounter *tc);
 

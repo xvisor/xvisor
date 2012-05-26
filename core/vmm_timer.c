@@ -47,11 +47,14 @@ struct vmm_timer_ctrl {
 
 static struct vmm_timer_ctrl tctrl;
 
-#ifdef CONFIG_PROFILE
+#if defined(CONFIG_PROFILE)
 u64 __notrace vmm_timer_timestamp_for_profile(void)
-#else
-u64 vmm_timer_timestamp(void)
+{
+	return vmm_timecounter_read_for_profile(&tctrl.cpu_tc);
+}
 #endif
+
+u64 vmm_timer_timestamp(void)
 {
 	return vmm_timecounter_read(&tctrl.cpu_tc);
 }
