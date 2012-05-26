@@ -2,13 +2,14 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Wed May 16 23:07:51 2012
+# Sat May 26 09:29:54 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
+CONFIG_CPU_COUNT=1
 CONFIG_CPU="arm32ve"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
@@ -19,7 +20,6 @@ CONFIG_BOARD="vexpress-a15"
 # CONFIG_CPU_CORTEX_A9 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
 CONFIG_CPU_CORTEX_A15_VE=y
-CONFIG_CPU_COUNT=1
 # CONFIG_ARMV5 is not set
 # CONFIG_ARMV7A is not set
 CONFIG_ARMV7A_VE=y
@@ -131,6 +131,7 @@ CONFIG_EMU_SYS_SP810=y
 #
 CONFIG_EMU_PIC=y
 CONFIG_EMU_PIC_GIC=y
+# CONFIG_EMU_PIC_PL190 is not set
 
 #
 # Timer Emulators
