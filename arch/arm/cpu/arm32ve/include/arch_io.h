@@ -31,10 +31,12 @@
 #define __raw_write8(a,v)	(*(volatile u8 *)(a) = (v))
 #define __raw_write16(a,v)	(*(volatile u16 *)(a) = (v))
 #define __raw_write32(a,v)	(*(volatile u32 *)(a) = (v))
+#define __raw_write64(a,v)	(*(volatile u64 *)(a) = (v))
 
 #define __raw_read8(a)		(*(volatile u8 *)(a))
 #define __raw_read16(a)		(*(volatile u16 *)(a))
 #define __raw_read32(a)		(*(volatile u32 *)(a))
+#define __raw_read64(a)		(*(volatile u64 *)(a))
 
 #define __iormb()		rmb()
 #define __iowmb()		wmb()
@@ -55,9 +57,9 @@
 
 #define arch_le32_to_cpu(v)	(v)
 
-#define arch_cpu_to_be32(v)	rev(v)
+#define arch_cpu_to_be32(v)	rev32(v)
 
-#define arch_be32_to_cpu(v)	rev(v)
+#define arch_be32_to_cpu(v)	rev32(v)
 
 /*
  * IO port access primitives
@@ -101,8 +103,16 @@
 
 #define arch_out_le32(a, v)	{__iowmb(); __raw_write32(a, v); }
 
-#define arch_in_be32(a)		({u32 v = __raw_read32(a); __iormb(); rev(v); })
+#define arch_in_be32(a)		({u32 v = __raw_read32(a); __iormb(); rev32(v); })
 
-#define arch_out_be32(a, v)	{__iowmb(); __raw_write32(a, rev(v)); }
+#define arch_out_be32(a, v)	{__iowmb(); __raw_write32(a, rev32(v)); }
+
+#define arch_in_le64(a)		({u32 v = __raw_read64(a); __iormb(); v; })
+
+#define arch_out_le64(a, v)	{__iowmb(); __raw_write64(a, v); }
+
+#define arch_in_be64(a)		({u32 v = __raw_read64(a); __iormb(); rev64(v); })
+
+#define arch_out_be64(a, v)	{__iowmb(); __raw_write64(a, rev64(v)); }
 
 #endif

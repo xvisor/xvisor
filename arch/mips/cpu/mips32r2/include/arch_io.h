@@ -39,6 +39,18 @@ static inline u32 bswap32(u32 data)
 		((data & 0xFF000000) >> 24));
 }
 
+static inline u64 bswap64(u64 data)
+{
+	return (((data & 0x00000000000000FFULL) << 48) |
+		((data & 0x000000000000FF00ULL) << 32) |
+		((data & 0x0000000000FF0000ULL) << 16) |
+		((data & 0x00000000FF000000ULL) << 8) |
+		((data & 0x000000FF00000000ULL) >> 8) |
+		((data & 0x0000FF0000000000ULL) >> 16) |
+		((data & 0x00FF000000000000ULL) >> 32) |
+		((data & 0xFF00000000000000ULL) >> 48));
+}
+
 /*
  * Endianness primitives
  * ------------------------
@@ -148,6 +160,30 @@ static inline u32 arch_in_be32(volatile u32 *addr)
 
 /** FIXME: */
 static inline void arch_out_be32(volatile u32* addr, u32 data)
+{
+	*addr = data;
+}
+
+/** FIXME: */
+static inline u64 arch_in_le64(volatile u64 *addr)
+{
+	return bswap64(*addr);
+}
+
+/** FIXME: */
+static inline void arch_out_le64(volatile u64* addr, u64 data)
+{
+	*addr = bswap64(data);
+}
+
+/** FIXME: */
+static inline u64 arch_in_be64(volatile u64 *addr)
+{
+	return *addr;
+}
+
+/** FIXME: */
+static inline void arch_out_be64(volatile u64* addr, u64 data)
 {
 	*addr = data;
 }

@@ -25,7 +25,15 @@
 
 #include <vmm_types.h>
 
-#define rev(val)		({ u32 rval; asm volatile(\
+#define rev64(val)		({ u32 d1, d2; \
+				d1 = (u32)((u64)val >> 32); d2 = (u32)val; \
+				asm volatile(" rev %0, %0\n\t" : "=r" (d1) : : \
+				"memory", "cc"); \
+				asm volatile(" rev %0, %0\n\t" : "=r" (d2) : : \
+				"memory", "cc"); \
+				(((u64)d2 << 32) | ((u64)d1));})
+
+#define rev32(val)		({ u32 rval; asm volatile(\
 				" rev     %0, %1\n\t" : "=r" (rval) : \
 				"r" (val) : "memory", "cc"); rval;})
 
