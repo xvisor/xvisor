@@ -23,8 +23,8 @@
 #ifndef _VMM_CMDMGR_H__
 #define _VMM_CMDMGR_H__
 
+#include <list.h>
 #include <vmm_types.h>
-#include <vmm_list.h>
 #include <vmm_chardev.h>
 
 typedef void (*vmm_cmd_usage_t) (struct vmm_chardev *);

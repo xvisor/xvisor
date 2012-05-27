@@ -126,6 +126,10 @@ enum arm_funcstats {
 	ARM_FUNCSTAT_LDRB_L,
 	ARM_FUNCSTAT_LDRB_R,
 	ARM_FUNCSTAT_LDRBT,
+	ARM_FUNCSTAT_STREX,
+	ARM_FUNCSTAT_LDREX,
+	ARM_FUNCSTAT_STM,
+	ARM_FUNCSTAT_LDM,
 	ARM_FUNCSTAT_STCX,
 	ARM_FUNCSTAT_LDCX_I,
 	ARM_FUNCSTAT_LDCX_L,
@@ -195,8 +199,7 @@ struct arm_priv {
 		u32 dacr;
 		/* Virtual TLB */
 		struct arm_vtlb vtlb;
-		/* Overlapping vector page */
-		u32 ovect[TTBL_L2TBL_SMALL_PAGE_SIZE / 4];
+		/* Overlapping vector page base */
 		u32 ovect_base;
 		/* Virtual IO */
 		bool virtio_active;
@@ -252,8 +255,17 @@ struct arm_priv {
 
 typedef struct arm_priv arm_priv_t;
 
+struct arm_guest_priv
+{
+	/* Overlapping vector page */
+	u32 * ovect;
+}__attribute((packed));
+
+typedef struct arm_guest_priv arm_guest_priv_t;
+
 #define arm_regs(vcpu)		(&((vcpu)->regs))
 #define arm_priv(vcpu)		((arm_priv_t *)((vcpu)->arch_priv))
+#define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
 
 #define arm_cpuid(vcpu) (arm_priv(vcpu)->cp15.c0_cpuid)
 #define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1 << (feat)))

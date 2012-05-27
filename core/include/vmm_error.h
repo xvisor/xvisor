@@ -30,5 +30,7 @@
 #define VMM_ENOTAVAIL		-3
 #define VMM_EALREADY		-4
 #define VMM_EINVALID		-5
+#define VMM_EOVERFLOW		-6
+#define VMM_ENOMEM		-7
 
 #endif

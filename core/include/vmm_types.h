@@ -48,13 +48,16 @@ typedef unsigned long long u64;
 #define tostring(s)		#s
 #define barrier() 		__asm__ __volatile__("": : :"memory")
 
-#define __alwaysinline 		__attribute__((always_inline))
+#define __always_inline 	__attribute__((always_inline))
 #define __unused		__attribute__((unused))
 #define __noreturn		__attribute__((noreturn))
 #define __notrace		__attribute__((no_instrument_function))
+#define __packed		__attribute__((packed))
 
+#define __read_mostly		__attribute__((section(".readmostly.data")))
 #define __lock			__attribute__((section(".spinlock.text")))
 #define __modtbl		__attribute__((section(".modtbl")))
+#define __percpu		__attribute__((section(".percpu")))
 #define __init			__attribute__((section(".init.text")))
 
 #define __cacheline_aligned	__attribute__((aligned(ARCH_CACHE_LINE_SIZE)))

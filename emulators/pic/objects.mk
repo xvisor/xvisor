@@ -22,4 +22,5 @@
 # */
 
 emulators-objs-$(CONFIG_EMU_PIC_GIC)+= pic/gic.o
+emulators-objs-$(CONFIG_EMU_PIC_PL190)+= pic/pl190.o
 

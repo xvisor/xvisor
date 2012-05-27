@@ -40,6 +40,10 @@ typedef struct {
 	atomic_t __cpu_lock;
 }spinlock_t;
 
+#define ARCH_HAS_DIVISON_OPERATION
+
+#define ARCH_BITS_PER_LONG		32
+
 #define ARCH_CACHE_LINE_SIZE		16
 #define ARCH_CACHE_LINE_SIZE_SHIFT	4
 

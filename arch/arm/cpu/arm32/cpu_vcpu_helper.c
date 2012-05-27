@@ -24,15 +24,21 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
-#include <vmm_math.h>
 #include <vmm_stdio.h>
+#include <vmm_host_aspace.h>
 #include <vmm_manager.h>
 #include <cpu_defines.h>
+#include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
+#include <mathlib.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 {
+	if (!vcpu || !regs) {
+		return;
+	}
+
 	if (vcpu->state != VMM_VCPU_STATE_HALTED) {
 		vmm_printf("\n");
 		cpu_vcpu_dump_user_reg(vcpu, regs);
@@ -226,8 +232,9 @@ void cpu_vcpu_cpsr_update(struct vmm_vcpu * vcpu,
 			  u32 new_cpsr_mask)
 {
 	bool mode_change;
+
 	/* Sanity check */
-	if (!vcpu && !vcpu->is_normal) {
+	if (!vcpu && !vcpu->is_normal && !regs) {
 		return;
 	}
 	new_cpsr &= new_cpsr_mask;
@@ -663,7 +670,67 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu,
 	}
 }
 
-int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
+int arch_guest_init(struct vmm_guest * guest)
+{
+	int rc;
+	u32 ovect_flags;
+	virtual_addr_t ovect_va;
+	struct cpu_page pg;
+
+	if (!guest->reset_count) {
+		guest->arch_priv = vmm_malloc(sizeof(arm_guest_priv_t));
+		if (!guest->arch_priv) {
+			return VMM_EFAIL;
+		}
+		ovect_flags = 0x0;
+		ovect_flags |= VMM_MEMORY_READABLE;
+		ovect_flags |= VMM_MEMORY_WRITEABLE;
+		ovect_flags |= VMM_MEMORY_CACHEABLE;
+		ovect_flags |= VMM_MEMORY_EXECUTABLE;
+		ovect_va = vmm_host_alloc_pages(1, ovect_flags);
+		if (!ovect_va) {
+			return VMM_EFAIL;
+		}
+		if ((rc = cpu_mmu_get_reserved_page(ovect_va, &pg))) {
+			return rc;
+		}
+		if ((rc = cpu_mmu_unmap_reserved_page(&pg))) {
+			return rc;
+		}
+#if defined(CONFIG_ARMV5)
+		pg.ap = TTBL_AP_SRW_UR;
+#else
+		if (pg.ap == TTBL_AP_SR_U) {
+			pg.ap = TTBL_AP_SR_UR;
+		} else {
+			pg.ap = TTBL_AP_SRW_UR;
+		}
+#endif
+		if ((rc = cpu_mmu_map_reserved_page(&pg))) {
+			return rc;
+		}
+		arm_guest_priv(guest)->ovect = (u32 *)ovect_va;
+	}
+
+	return VMM_OK;
+}
+
+int arch_guest_deinit(struct vmm_guest * guest)
+{
+	int rc;
+	if (!arm_guest_priv(guest)->ovect) {
+		rc = vmm_host_free_pages((virtual_addr_t)arm_guest_priv(guest)->ovect, 1);
+		if (rc) {
+			return rc;
+		}
+	}
+	if (guest->arch_priv) {
+		vmm_free(guest->arch_priv);
+	}
+	return VMM_OK;
+}
+
+int arch_vcpu_init(struct vmm_vcpu * vcpu)
 {
 	u32 ite, cpuid;
 	const char * attr;
@@ -691,6 +758,8 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
 	if (vmm_strcmp(attr, "ARMv7a,cortex-a8") == 0) {
 		cpuid = ARM_CPUID_CORTEXA8;
+	} else if (vmm_strcmp(attr, "ARMv7a,cortex-a9") == 0) {
+		cpuid = ARM_CPUID_CORTEXA9;
 	} else if (vmm_strcmp(attr, "ARMv5te,ARM926ej") == 0) {
 		cpuid = ARM_CPUID_ARM926;
 	} else {
@@ -790,7 +859,7 @@ int arch_vcpu_regs_init(struct vmm_vcpu * vcpu)
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
-int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu)
+int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
 {
 	int rc;
 
@@ -813,8 +882,9 @@ int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
-			  struct vmm_vcpu * vcpu, arch_regs_t * regs)
+void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
+		      struct vmm_vcpu * vcpu, 
+                      arch_regs_t * regs)
 {
 	u32 ite;
 	/* Save user registers & banked registers */
@@ -843,6 +913,8 @@ void arch_vcpu_regs_switch(struct vmm_vcpu * tvcpu,
 	if (vcpu->is_normal) {
 		cpu_vcpu_banked_regs_restore(vcpu, regs);
 	}
+	/* Clear exclusive monitor */
+	clrex();
 }
 
 void cpu_vcpu_dump_user_reg(struct vmm_vcpu * vcpu, arch_regs_t * regs)
@@ -922,7 +994,7 @@ void arch_vcpu_stat_dump(struct vmm_vcpu * vcpu)
 		if (arm_priv(vcpu)->funcstat[index].exit_count) { 
 			vmm_printf("%-30s %-10u %u\n", 
 			arm_priv(vcpu)->funcstat[index].function_name, 
-			(u32)vmm_udiv64(arm_priv(vcpu)->funcstat[index].time, 
+			(u32)udiv64(arm_priv(vcpu)->funcstat[index].time, 
 			arm_priv(vcpu)->funcstat[index].exit_count), 
 			arm_priv(vcpu)->funcstat[index].exit_count); 
 		} 

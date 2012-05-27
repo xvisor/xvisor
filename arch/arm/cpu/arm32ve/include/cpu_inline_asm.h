@@ -25,13 +25,33 @@
 
 #include <vmm_types.h>
 
-#define rev(val)		({ u32 rval; asm volatile(\
+#define rev64(val)		({ u32 d1, d2; \
+				d1 = (u32)((u64)val >> 32); d2 = (u32)val; \
+				asm volatile(" rev %0, %0\n\t" : "=r" (d1) : : \
+				"memory", "cc"); \
+				asm volatile(" rev %0, %0\n\t" : "=r" (d2) : : \
+				"memory", "cc"); \
+				(((u64)d2 << 32) | ((u64)d1));})
+
+#define rev32(val)		({ u32 rval; asm volatile(\
 				" rev     %0, %1\n\t" : "=r" (rval) : \
 				"r" (val) : "memory", "cc"); rval;})
 
 #define rev16(val)		({ u16 rval; asm volatile(\
 				" rev16   %0, %1\n\t" : "=r" (rval) : \
 				"r" (val) : "memory", "cc"); rval;})
+
+#define ldrex(addr, data)	asm volatile("ldrex	%0, [%1]\n\t" \
+				: "=r"(data) : "r"(addr))
+
+#define strex(addr, data, res)	asm volatile("strex	%0, %1, [%2]\n\t" \
+				: "=r"(res) : "r"(data), "r"(addr))
+
+#define clrex()			asm volatile("clrex\n\t")
+
+#define read_mpidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c0, 5\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
 
 #define read_sctlr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c1, c0, 0\n\t" \
@@ -136,6 +156,22 @@
 #define invalid_d_tlb_line(va)	asm volatile(\
 				" mcr     p15, 0, %0, c8, c6, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
+
+#define read_prrr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c10, c2, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_prrr(val)		asm volatile(\
+				" mcr     p15, 0, %0, c10, c2, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_nmrr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c10, c2, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_nmrr(val)		asm volatile(\
+				" mcr     p15, 0, %0, c10, c2, 1\n\t" \
+				:: "r" ((val)) : "memory", "cc")
 
 #define read_fcseidr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c13, c0, 0\n\t" \

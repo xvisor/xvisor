@@ -44,15 +44,12 @@ void flush_icache_line(u32 line)
 
 void flush_bpredictor(void)
 {
-	u32 tmp = 0;
-	asm volatile(" mcr     p15, 0, %0, c7, c5, 6\n\t"
-		     : : "r"(tmp) : );
+	/* FIXME: */
 }
 
 void flush_bpredictor_mva(virtual_addr_t mva)
 {
-	asm volatile(" mcr     p15, 0, %0, c7, c5, 7\n\t"
-		     : : "r"(mva) : );
+	/* FIXME: */
 }
 
 void flush_dcache(void)
@@ -165,7 +162,7 @@ void clean_flush_idcache_mva(virtual_addr_t mva)
 	 *   2. Clean & flush data cache
 	 */
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 1\n\t"
-		     " mcr     p15, 0, %0, c7, c11, 1\n\t"
+		     " mcr     p15, 0, %0, c7, c14, 1\n\t"
 		     : : "r"(mva) : );
 }
 

@@ -1,0 +1,260 @@
+
+/dts-v1/;
+
+/ {
+	vmm {
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	host {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		model = "vexpress-a15";
+		device_type = "host";
+		
+		cpus {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cpu_freq_mhz = <100>;
+
+			cpu0 {
+				device_type = "cpu";
+				model = "Cortex-A15";
+			};
+		};
+
+		memory {
+			/* NOTE: By default QEMU will only proivde 128 MB 
+			 * unless specified by "-m" option. If you have
+			 * X MB then we will be able to access only first
+			 * X MB starting at physical_addr.
+			 */
+			physical_addr = <0x80000000>;
+			physical_size = <0x10000000>; /* 256 MB */
+		};
+
+		nbridge {
+			#address-cells = <1>;
+			#size-cells = <0>;
+		
+			sbridge {
+				#address-cells = <1>;
+				#size-cells = <0>;
+		
+				uart0 {
+			      		device_type = "serial";
+			      		compatible = "pl011";
+			      		reg = <0x1C090000 0x1000>;
+					clock-rate = <24000000>;
+			      		baudrate = <115200>;
+					irq = <37>;
+				};
+
+				uart1 {
+			      		device_type = "serial";
+			      		compatible = "pl011";
+			      		reg = <0x1C0A0000 0x1000>;
+					clock-rate = <24000000>;
+			      		baudrate = <115200>;
+					irq = <38>;
+				};
+
+				rtc0 {
+			      		device_type = "rtc";
+			      		compatible = "pl031";
+			      		reg = <0x1C170000 0x1000>;
+					clock-rate = <1>;
+					irq = <36>;
+				};
+			};
+		};
+	};
+
+	guests {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		guest0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			model = "vexpress-a9";
+			device_type = "guest";
+
+			vcpus {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				vcpu0 {
+					device_type = "vcpu";
+					compatible = "ARMv7a,cortex-a9";
+					time_slice = <25000000>;
+					start_pc = <0x40000000>;
+				};
+
+				vcpu1 {
+					device_type = "vcpu";
+					compatible = "ARMv7a,cortex-a9";
+					time_slice = <25000000>;
+					start_pc = <0x40000000>;
+				};
+			};
+			
+			aspace {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				/* Assume the REMAP region is mapped to DDR */
+				mem0 {
+					manifest_type = "alias";
+					address_type = "memory";
+					guest_physical_addr = <0x00000000>;
+					alias_physical_addr = <0x60000000>;
+					physical_size = <0x04000000>; /* 64 MB */
+					device_type = "ram";
+				};
+
+				mem1 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x60000000>;
+					host_physical_addr = <0x82000000>;
+					physical_size = <0x06000000>; /* 96 MB */
+					device_type = "ram";
+				};
+
+				sysctl {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10000000>;
+					physical_size = <0x1000>;
+					device_type = "sys";
+					compatible = "vexpress,a9";
+				};
+
+				sysctrl0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10001000>;
+					physical_size = <0x1000>;
+					device_type = "sys";
+					compatible = "primecell,sp810";
+				};
+
+				uart0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10009000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <1024>;
+					irq = <37>;
+				};
+
+				uart1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1000A000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <1024>;
+					irq = <38>;
+				};
+
+				uart2 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1000B000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <1024>;
+					irq = <39>;
+				};
+
+				uart3 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1000C000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "primecell,arm,pl011";
+					fifo_size = <1024>;
+					irq = <40>;
+				};
+
+				timer0_1_legacy {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10011000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <34>;
+				};
+
+				timer2_3_legacy {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10012000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <35>;
+				};
+
+				timer_daughter {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x100E4000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <35>;
+				};
+
+				rtc0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10017000>;
+					physical_size = <0x1000>;
+					device_type = "rtc";
+					compatible = "primecell,pl031";
+					irq = <36>;
+				};
+
+				priv0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1E000000>;
+					physical_size = <0x2000>;
+					device_type = "misc";
+					num_cpu = <2>;
+					compatible = "a9mpcore,private";
+					timer_irq = <29 30>;
+					parent_irq = <6 6>;
+				};
+
+				l2x0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1E00A000>;
+					physical_size = <0x1000>;
+					device_type = "cache";
+					compatible = "corelink,l2c-310";
+				};
+
+				nor_flash {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x40000000>;
+					host_physical_addr = <0x80800000>;
+					physical_size = <0x00800000>; /* 8 MB */
+					device_type = "rom";
+				};
+			};
+		};
+	};
+};

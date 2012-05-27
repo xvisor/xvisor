@@ -21,19 +21,22 @@
  * @brief Implementation of timer subsystem
  */
 
-#include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
+#include <vmm_stdio.h>
+#include <vmm_clocksource.h>
+#include <vmm_clockchip.h>
 #include <vmm_timer.h>
+#include <arch_cpu_irq.h>
+#ifdef CONFIG_SMP
+#include <arch_smp.h>
+#endif
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_ctrl {
-	u64 cycles_last;
-	u64 cycles_mask;
-	u32 cycles_mult;
-	u32 cycles_shift;
-	u64 timestamp;
+	struct vmm_timecounter cpu_tc;
+	struct vmm_clockchip *cpu_cc;
 	bool cpu_started;
 	bool cpu_inprocess;
 	u64 cpu_next_event;
@@ -44,34 +47,17 @@ struct vmm_timer_ctrl {
 
 static struct vmm_timer_ctrl tctrl;
 
-u64 vmm_timer_timestamp(void)
-{
-	u64 cycles_now, cycles_delta;
-	u64 ns_offset;
-
-	cycles_now = arch_cpu_clocksource_cycles();
-	cycles_delta = (cycles_now - tctrl.cycles_last) & tctrl.cycles_mask;
-	tctrl.cycles_last = cycles_now;
-
-	ns_offset = (cycles_delta * tctrl.cycles_mult) >> tctrl.cycles_shift;
-	tctrl.timestamp += ns_offset;
-
-	return tctrl.timestamp;
-}
-
-#ifdef CONFIG_PROFILE
+#if defined(CONFIG_PROFILE)
 u64 __notrace vmm_timer_timestamp_for_profile(void)
 {
-	u64 cycles_now, cycles_delta;
-	u64 ns_offset;
-
-	cycles_now = arch_cpu_clocksource_cycles();
-	cycles_delta = (cycles_now - tctrl.cycles_last) & tctrl.cycles_mask;
-	ns_offset = (cycles_delta * tctrl.cycles_mult) >> tctrl.cycles_shift;
-
-	return tctrl.timestamp + ns_offset;
+	return vmm_timecounter_read_for_profile(&tctrl.cpu_tc);
 }
 #endif
+
+u64 vmm_timer_timestamp(void)
+{
+	return vmm_timecounter_read(&tctrl.cpu_tc);
+}
 
 static void vmm_timer_schedule_next_event(void)
 {
@@ -98,10 +84,11 @@ static void vmm_timer_schedule_next_event(void)
 	tstamp = vmm_timer_timestamp();
 	if (tstamp < e->expiry_tstamp) {
 		tctrl.cpu_next_event = e->expiry_tstamp;
-		arch_cpu_clockevent_start(e->expiry_tstamp - tstamp);
+		vmm_clockchip_program_event(tctrl.cpu_cc, 
+				    tstamp, e->expiry_tstamp);
 	} else {
 		tctrl.cpu_next_event = tstamp;
-		arch_cpu_clockevent_expire();
+		vmm_clockchip_force_expiry(tctrl.cpu_cc, tstamp);
 	}
 }
 
@@ -109,7 +96,8 @@ static void vmm_timer_schedule_next_event(void)
  * This is call from interrupt context. So we don't need to protect the list
  * when manipulating it.
  */
-void vmm_timer_clockevent_process(arch_regs_t * regs)
+static void timer_clockchip_event_handler(struct vmm_clockchip *cc,
+					  arch_regs_t * regs)
 {
 	struct vmm_timer_event *e;
 
@@ -224,8 +212,8 @@ int vmm_timer_event_expire(struct vmm_timer_event * ev)
 	/* add the event on list head as it is going to expire now */
 	list_add(&tctrl.cpu_event_list, &ev->cpu_head);
 
-	/* trigger a timer interrupt */
-	arch_cpu_clockevent_expire();
+	/* Force a clockchip interrupt */
+	vmm_clockchip_force_expiry(tctrl.cpu_cc, vmm_timer_timestamp());
 
 	/* allow (timer) interrupts */
 	arch_cpu_irq_restore(flags);
@@ -405,23 +393,38 @@ u32 vmm_timer_event_count(void)
 
 void vmm_timer_start(void)
 {
-	arch_cpu_clockevent_start(1000000);
+	u64 tstamp;
 
-	tctrl.cpu_next_event = vmm_timer_timestamp() + 1000000;
+	vmm_clockchip_set_mode(tctrl.cpu_cc, VMM_CLOCKCHIP_MODE_ONESHOT);
+
+	tstamp = vmm_timer_timestamp();
+
+	tctrl.cpu_next_event = tstamp + 1000000;
+
+	vmm_clockchip_program_event(tctrl.cpu_cc, 
+				    tstamp, tctrl.cpu_next_event);
 
 	tctrl.cpu_started = TRUE;
 }
 
 void vmm_timer_stop(void)
 {
-	arch_cpu_clockevent_stop();
+	vmm_clockchip_set_mode(tctrl.cpu_cc, VMM_CLOCKCHIP_MODE_SHUTDOWN);
 
 	tctrl.cpu_started = FALSE;
 }
 
 int __init vmm_timer_init(void)
 {
-	int rc;
+#ifdef CONFIG_SMP
+	u32 cpu = arch_smp_id();
+#else
+	u32 cpu = 0;
+#endif
+	struct vmm_clocksource * cs;
+
+	/* Clear timer control structure */
+	vmm_memset(&tctrl, 0, sizeof(tctrl));
 
 	/* Initialize Per CPU event status */
 	tctrl.cpu_started = FALSE;
@@ -436,24 +439,19 @@ int __init vmm_timer_init(void)
 	/* Initialize event list */
 	INIT_LIST_HEAD(&tctrl.event_list);
 
-	/* Initialize cpu specific timer event */
-	if ((rc = arch_cpu_clockevent_init())) {
-		return rc;
+	/* Find suitable clockchip */
+	if (!(tctrl.cpu_cc = vmm_clockchip_find_best(vmm_cpumask_of(cpu)))) {
+		vmm_panic("%s: No clockchip for CPU%d\n", __func__, cpu);
 	}
 
-	/* Initialize cpu specific timer cycle counter */
-	if ((rc = arch_cpu_clocksource_init())) {
-		return rc;
+	/* Update event handler of clockchip */
+	vmm_clockchip_set_event_handler(tctrl.cpu_cc, 
+					&timer_clockchip_event_handler);
+
+	/* Find suitable clocksource */
+	if (!(cs = vmm_clocksource_best())) {
+		vmm_panic("%s: No clocksource found\n", __func__);
 	}
 
-	/* Setup configuration for reading cycle counter */
-	tctrl.cycles_mask = arch_cpu_clocksource_mask();
-	tctrl.cycles_mult = arch_cpu_clocksource_mult();
-	tctrl.cycles_shift = arch_cpu_clocksource_shift();
-	tctrl.cycles_last = arch_cpu_clocksource_cycles();
-
-	/* Starting value of timestamp */
-	tctrl.timestamp = 0x0;
-
-	return VMM_OK;
+	return vmm_timecounter_init(&tctrl.cpu_tc, cs, 0);
 }

@@ -31,6 +31,7 @@
 #include <cpu_vcpu_coproc.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_emulate_arm.h>
+#include <cpu_inline_asm.h>
 
 #define arm_unpredictable(regs, vcpu)		cpu_vcpu_halt(vcpu, regs)
 #define arm_zero_extend(imm, bits)		((u32)(imm))
@@ -1184,9 +1185,131 @@ static int arm_inst_ldrht(u32 inst,
 	return VMM_OK;
 }
 
+/** Emulate 'ldrex' instruction */
+static int arm_inst_ldrex(u32 inst, 
+		arch_regs_t * regs, struct vmm_vcpu * vcpu)
+{
+	u32 cond, Rn, Rt;
+	u32 address; 
+	u32 data;
+	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDREX);
+	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
+	Rn = ARM_INST_BITS(inst,
+			ARM_INST_LDRSTR_RN_END,
+			ARM_INST_LDRSTR_RN_START);
+	Rt = ARM_INST_BITS(inst,
+			ARM_INST_LDRSTR_RT_END,
+			ARM_INST_LDRSTR_RT_START);
+	if ((Rt == 15) || (Rn == 15)) {
+		arm_unpredictable(regs, vcpu);
+		return VMM_EFAIL;
+	}
+
+	if (arm_condition_passed(cond, regs)) {
+		register int ecode;
+		bool force_unpriv;
+		struct cpu_page pg;
+		u32 vind;
+
+		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
+
+		force_unpriv = FALSE;
+		if ((address & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) ==
+				arm_priv(vcpu)->cp15.ovect_base) {
+			if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+				force_unpriv = TRUE;
+			}
+			if ((ecode = cpu_vcpu_cp15_find_page(vcpu, address,
+							CP15_ACCESS_READ,
+							force_unpriv, &pg))) {
+				cpu_vcpu_cp15_assert_fault(vcpu, regs, address,
+						(ecode >> 4), (ecode & 0xF),
+						0, 1);
+				return VMM_EFAIL;
+			}
+			vind = (address & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1))/4;
+			address = (u32)(&(arm_guest_priv(vcpu->guest)->ovect[vind]));
+
+			ldrex(address, data);
+			cpu_vcpu_reg_write(vcpu, regs, Rt, data);
+		} else {
+			/* We do not allow any faulting ldrex on non-ovect region */
+			return VMM_EFAIL;
+		}
+	}
+	regs->pc += 4;
+	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDREX);
+	return VMM_OK;
+}
+
+/** Emulate 'strex' instruction */
+static int arm_inst_strex(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
+{
+	u32 cond, Rn, Rt, Rd;
+	u32 address; 
+	u32 data;
+	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STREX);
+	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
+	Rn = ARM_INST_BITS(inst,
+			ARM_INST_LDRSTR_RN_END,
+			ARM_INST_LDRSTR_RN_START);
+	/* Rd field in strex encoding is in place of Rt */
+	Rd = ARM_INST_BITS(inst,
+			ARM_INST_LDRSTR_RT_END,
+			ARM_INST_LDRSTR_RT_START);
+	/* Rt field in strex encoding is in place of Rm */
+	Rt = ARM_INST_BITS(inst,
+			ARM_INST_LDRSTR_RM_END,
+			ARM_INST_LDRSTR_RM_START);
+	if ((Rd == 15) || (Rt == 15) || (Rn == 15)) {
+		arm_unpredictable(regs, vcpu);
+		return VMM_EFAIL;
+	}
+	if ((Rd == Rn) || (Rd == Rt)) {
+		arm_unpredictable(regs, vcpu);
+		return VMM_EFAIL;
+	}
+	if (arm_condition_passed(cond, regs)) {
+		register int ecode;
+		bool force_unpriv;
+		struct cpu_page pg;
+		u32 vind;
+
+		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
+		data = cpu_vcpu_reg_read(vcpu, regs, Rt);
+
+		force_unpriv = FALSE;
+		if ((address & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) ==
+				arm_priv(vcpu)->cp15.ovect_base) {
+			if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+				force_unpriv = TRUE;
+			}
+			if ((ecode = cpu_vcpu_cp15_find_page(vcpu, address,
+							CP15_ACCESS_WRITE,
+							force_unpriv, &pg))) {
+				cpu_vcpu_cp15_assert_fault(vcpu, regs, address,
+						(ecode >> 4), (ecode & 0xF),
+						0, 1);
+				return VMM_EFAIL;
+			}
+			vind = (address & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1))/4;
+			address = (u32)(&(arm_guest_priv(vcpu->guest)->ovect[vind]));
+			strex(address, data, ecode);
+			cpu_vcpu_reg_write(vcpu, regs, Rd, ecode);
+		} else {
+			/* We do not allow any faulting strex on non-ovect region */
+			return VMM_EFAIL;
+		}
+	}
+	regs->pc += 4;
+	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STREX);
+	return VMM_OK;
+}
+
 /** Emulate 'strh (immediate)' instruction */
 static int arm_inst_strh_i(u32 inst, 
-				arch_regs_t * regs, struct vmm_vcpu * vcpu)
+		arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	int rc;
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
@@ -2224,7 +2347,8 @@ static int arm_instgrp_dataproc(u32 inst,
 	u32 op, op1, Rn, op2;
 	u32 is_op1_0xx1x, is_op1_xx0x0, is_op1_xx0x1, is_op1_xx1x0;
 	u32 is_op1_xx1x1, is_op1_0xxxx;
-	u32 is_op2_1011, is_op2_1101, is_op2_1111, is_op2_11x1;
+	u32 is_op1_1xxxx, is_op1_11001, is_op1_11000;
+	u32 is_op2_1001, is_op2_1011, is_op2_1101, is_op2_1111, is_op2_11x1;
 
 	op = ARM_INST_DECODE(inst,
 			     ARM_INST_DATAPROC_OP_MASK,
@@ -2240,11 +2364,15 @@ static int arm_instgrp_dataproc(u32 inst,
 			      ARM_INST_DATAPROC_OP2_SHIFT);
 
 	is_op1_0xxxx = !(op1 & 0x10);
+	is_op1_1xxxx = !is_op1_0xxxx;
 	is_op1_0xx1x = !(op1 & 0x10) && (op1 & 0x2);
 	is_op1_xx0x0 = !(op1 & 0x4) && !(op1 & 0x1);
 	is_op1_xx0x1 = !(op1 & 0x4) && (op1 & 0x1);
 	is_op1_xx1x0 = (op1 & 0x4) && !(op1 & 0x1);
 	is_op1_xx1x1 = (op1 & 0x4) && (op1 & 0x1);
+	is_op1_11000 = (op1 == 0x18);
+	is_op1_11001 = (op1 == 0x19);
+	is_op2_1001 = (op2 == 0x9);
 	is_op2_1011 = (op2 == 0xB);
 	is_op2_1101 = (op2 == 0xD);
 	is_op2_1111 = (op2 == 0xF);
@@ -2333,10 +2461,19 @@ static int arm_instgrp_dataproc(u32 inst,
 			}
 		} else if (is_op2_1101 && !is_op1_0xxxx) {
 			/* LDRSBT */
-				return arm_inst_ldrsbt(inst, regs, vcpu);
+			return arm_inst_ldrsbt(inst, regs, vcpu);
 		} else if (is_op2_1111 && !is_op1_0xxxx) {
 			/* LDRSHT */
-				return arm_inst_ldrsht(inst, regs, vcpu);
+			return arm_inst_ldrsht(inst, regs, vcpu);
+		}
+	} if (!op && is_op1_1xxxx && is_op2_1001) {
+		/* Synchronization primitives */
+		if(is_op1_11000) {
+			/* STREX */
+			return arm_inst_strex(inst, regs, vcpu);
+		} else if (is_op1_11001) {
+			/* LDREX */
+			return arm_inst_ldrex(inst, regs, vcpu);
 		}
 	}
 
@@ -3380,10 +3517,236 @@ static int arm_instgrp_media(u32 inst,
 	return VMM_EFAIL;
 }
 
+/** Emulate Block load (LDMIA, LDMDA, LDMIB, LDMDB) instructions */
+static int arm_inst_ldm(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
+{
+	u32 cond, wback, Rn, op, reg_list, rc;
+	bool is_xx1xxx; /* whether increment or decrement */
+	bool is_x1xxxx; /* whether before or after */ 
+	u32 mask = 0, bit_count = 0;
+	u32 data = 0;
+	u32 address = 0, old_address = 0;
+	int i = 0;
+
+	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDM);
+
+	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
+	op = ARM_INST_BITS(inst, ARM_INST_BRBLK_OP_END, ARM_INST_BRBLK_OP_START);
+	Rn = ARM_INST_BITS(inst,
+			   ARM_INST_LDMSTM_RN_END,
+			   ARM_INST_LDMSTM_RN_START);
+	reg_list = ARM_INST_BITS(inst,
+				 ARM_INST_LDMSTM_REGLIST_END,
+				 ARM_INST_LDMSTM_REGLIST_START);
+
+	wback = ARM_INST_BITS(inst, ARM_INST_LDMSTM_W_END, ARM_INST_LDMSTM_W_START);
+
+	if ((Rn == 15) || (!reg_list)) {
+		arm_unpredictable(regs, vcpu);
+		return VMM_EFAIL;
+	}
+
+	if (wback && (reg_list & (0x1 << Rn))) {
+		arm_unpredictable(regs, vcpu);
+		return VMM_EFAIL;
+	}
+
+	/* get all the flags */
+	is_xx1xxx = !!(op & 0x08);
+	is_x1xxxx = !!(op & 0x10);   
+
+	mask = 0x1;
+	/* get the bitcount */
+	for (i = 0; i <= 15; i++) {
+		if (reg_list & mask) {
+			bit_count++;
+		}
+		mask = mask << 1;
+	}
+	
+	if (arm_condition_passed(cond, regs)) {
+		old_address = cpu_vcpu_reg_read(vcpu, regs, Rn);
+
+		if (is_xx1xxx){
+			/* increment operation, if before then add 4 to it */
+			address = old_address + (4 * is_x1xxxx);
+		} else {
+			/* decrement operation if after then add 4 to it */
+			address = old_address - (4 * bit_count) + (4 * !(is_x1xxxx));
+		}
+
+		mask = 0x1;
+		/* parse through reg_list */
+		for (i = 0; i < 15; i++) {
+			if (reg_list & mask) {
+				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
+						address, &data, 4, FALSE))) {
+					return rc;
+				}
+				cpu_vcpu_reg_write(vcpu, regs, i, data);
+				address = address + 4;			
+			} 
+			mask = mask << 1;
+		}
+		if (reg_list >> 15) {
+			/* TODO: check the address bits to select instruction set */
+			if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
+						address, &(regs->pc), 4, FALSE))) {
+				return rc;
+			}
+		}
+
+		if (wback) {
+			if (is_xx1xxx){
+				/* increment operation */
+				cpu_vcpu_reg_write(vcpu, regs, Rn, old_address + (4 * bit_count));
+			} else {
+				/* decrement operation */
+				cpu_vcpu_reg_write(vcpu, regs, Rn, old_address - (4 * bit_count));
+			}
+		}
+	}
+
+	regs->pc += 4;
+	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDM);
+
+	return VMM_OK;
+}
+
+/** Emulate Block store (STMIA, STMDA, STMIB, STMDB) instructions */
+static int arm_inst_stm(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
+{
+	u32 cond, wback, Rn, op, reg_list, rc;
+	bool is_xx1xxx; /* whether increment or decrement */
+	bool is_x1xxxx; /* whether before or after */ 
+	u32 mask = 0, bit_count = 0;
+	u32 data = 0;
+	u32 address = 0, old_address = 0;
+	int i = 0;
+
+	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STM);
+
+	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
+	op = ARM_INST_BITS(inst, ARM_INST_BRBLK_OP_END, ARM_INST_BRBLK_OP_START);
+	Rn = ARM_INST_BITS(inst,
+			   ARM_INST_LDMSTM_RN_END,
+			   ARM_INST_LDMSTM_RN_START);
+	reg_list = ARM_INST_BITS(inst,
+				 ARM_INST_LDMSTM_REGLIST_END,
+				 ARM_INST_LDMSTM_REGLIST_START);
+
+	wback = ARM_INST_BITS(inst, ARM_INST_LDMSTM_W_END, ARM_INST_LDMSTM_W_START);
+
+	if ((Rn == 15) || (!reg_list)) {
+		arm_unpredictable(regs, vcpu);
+		return VMM_EFAIL;
+	}
+
+	/* get all the flags */
+	is_xx1xxx = !!(op & 0x08);
+	is_x1xxxx = !!(op & 0x10);   
+
+	mask = 0x1;
+	/* get the bitcount */
+	for (i = 0; i <= 15; i++) {
+		if (reg_list & mask) {
+			bit_count++;
+		}
+		mask = mask << 1;
+	}
+	
+	if (arm_condition_passed(cond, regs)) {
+		old_address = cpu_vcpu_reg_read(vcpu, regs, Rn);
+
+		if (is_xx1xxx){
+			/* increment operation, if before then add 4 to it */
+			address = old_address + (4 * is_x1xxxx);
+		} else {
+			/* decrement operation if after then add 4 to it */
+			address = old_address - (4 * bit_count) + (4 * !(is_x1xxxx));
+		}
+
+		mask = 0x1;
+		/* parse through reg_list */
+		for (i = 0; i < 15; i++) {
+			if (reg_list & mask) {
+				data = cpu_vcpu_reg_read(vcpu, regs, i);
+				if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs,
+						address, &data, 4, FALSE))) {
+					return rc;
+				}
+				address = address + 4;			
+			}
+			mask = mask << 1;
+		}
+		if (reg_list >> 15) {
+			data = regs->pc + 8;
+			if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, &data, 4, FALSE))) {
+				return rc;
+			}
+		}
+		if (wback) {
+			if (is_xx1xxx){
+				/* increment operation */
+				cpu_vcpu_reg_write(vcpu, regs, Rn, old_address + (4 * bit_count));
+			} else {
+				/* decrement operation */
+				cpu_vcpu_reg_write(vcpu, regs, Rn, old_address - (4 * bit_count));
+			}
+		}
+	}
+
+	regs->pc += 4;
+	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STM);
+
+	return VMM_OK;
+}
+
 /** Emulate branch, branch with link, and block transfer instructions */
 static int arm_instgrp_brblk(u32 inst, 
 				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
+	u32 op, Rn, reg_list;
+	u32 is_1xxxxx; /* whether branch or block */
+	u32 is_xxxxx1; /* whether load or store */
+	bool is_list_geq_2; /* whether reg_list length is greater than equal to 2 */
+
+	op = ARM_INST_BITS(inst, ARM_INST_BRBLK_OP_END, ARM_INST_BRBLK_OP_START);
+	Rn = ARM_INST_BITS(inst, ARM_INST_LDMSTM_RN_END, ARM_INST_LDMSTM_RN_START);
+	reg_list = ARM_INST_BITS(inst,
+				 ARM_INST_LDMSTM_REGLIST_END,
+				 ARM_INST_LDMSTM_REGLIST_START);
+	is_1xxxxx = (op & 0x20);
+	is_list_geq_2 = !!(reg_list && ((reg_list - 1) & reg_list));	
+
+	if(!is_1xxxxx) {
+		is_xxxxx1 = (op & 0x01);
+		if (!is_xxxxx1) {
+			/* Emulate Store block transfer instructions */
+			if ((op == 0x12) && (Rn == 13) && is_list_geq_2){
+				/* TODO: Emulate PUSH instruction */				
+
+			} else {
+				/* Emulate rest of the store multiple */
+				return arm_inst_stm(inst, regs, vcpu);
+			}
+		} else {
+			/* Emulate Load block transfer instructions */	
+			if ((op == 0x0B) && (Rn == 13) && is_list_geq_2){
+				/* TODO: Emulate POP instruction */				
+
+			} else {
+				/* Emulate rest of the load multiple */
+				return arm_inst_ldm(inst, regs, vcpu);
+			}
+		}
+
+	} else {
+		/* TODO: Emulate branch and branch with link instructions */
+	}
+
 	arm_unpredictable(regs, vcpu);
 	return VMM_EFAIL;
 }

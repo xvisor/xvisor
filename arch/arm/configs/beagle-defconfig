@@ -2,13 +2,14 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Sun Apr 22 17:58:23 2012
+# Sat May 26 09:05:36 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
+CONFIG_CPU_COUNT=1
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
@@ -31,7 +32,6 @@ CONFIG_ARM32=y
 # CONFIG_ARM32_HIGHVEC is not set
 # CONFIG_ARM32_FUNCSTATS is not set
 CONFIG_ARMV7A_SECUREX=y
-CONFIG_EMU_REALVIEW=y
 CONFIG_BOARD_BEAGLE=y
 CONFIG_OMAP3=y
 
@@ -41,6 +41,7 @@ CONFIG_OMAP3=y
 CONFIG_OMAP3_CLKSRC_S32KT=y
 # CONFIG_OMAP3_CLKSRC_GPT is not set
 CONFIG_OMAP3_ONE_GUEST_PBA8_DTS=y
+# CONFIG_OMAP3_ONE_GUEST_VEX_A9_DTS is not set
 # CONFIG_OMAP3_TWO_GUEST_PBA8_DTS is not set
 
 #
@@ -122,7 +123,7 @@ CONFIG_SERIAL_OMAP_UART=y
 # System Emulators
 #
 CONFIG_EMU_SYS=y
-CONFIG_EMU_SYS_REALVIEW=y
+CONFIG_EMU_SYS_ARM_SYSREGS=y
 CONFIG_EMU_SYS_SP810=y
 
 #
@@ -130,12 +131,14 @@ CONFIG_EMU_SYS_SP810=y
 #
 CONFIG_EMU_PIC=y
 CONFIG_EMU_PIC_GIC=y
+# CONFIG_EMU_PIC_PL190 is not set
 
 #
 # Timer Emulators
 #
 CONFIG_EMU_TIMER=y
 CONFIG_EMU_TIMER_SP804=y
+CONFIG_EMU_TIMER_ARM_MPTIMER=y
 
 #
 # Serial Port Emulators
@@ -148,6 +151,16 @@ CONFIG_EMU_SERIAL_PL011=y
 #
 CONFIG_EMU_RTC=y
 CONFIG_EMU_RTC_PL031=y
+
+#
+# Cache Controller Emulators
+#
+CONFIG_EMU_CACHE_L2X0=y
+
+#
+# Miscellaneous Emulators
+#
+CONFIG_EMU_MISC_A9MP_PRIV=y
 
 #
 # Tool Options

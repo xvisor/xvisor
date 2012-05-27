@@ -21,20 +21,24 @@
  * @brief source file for standerd input/output
  */
 
-#include <stdarg.h>
-#include <arch_board.h>
+#include <arch_defterm.h>
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_string.h>
 #include <vmm_main.h>
 #include <vmm_stdio.h>
+#include <stdarg.h>
+#include <mathlib.h>
 
 /* NOTE: assuming sizeof(void *) == sizeof(int) */
 
-#define PAD_RIGHT 1
-#define PAD_ZERO 2
+#define PAD_RIGHT	1
+#define PAD_ZERO	2
 /* the following should be enough for 32 bit int */
-#define PRINT_BUF_LEN 64
+#define PRINT_BUF_LEN	64
+/* size of early buffer. 
+ * This should be enough to hold 80x25 characters
+ */
+#define EARLY_BUF_SZ	2048
 
 struct vmm_stdio_ctrl {
         vmm_spinlock_t lock;
@@ -43,6 +47,9 @@ struct vmm_stdio_ctrl {
 };
 
 static struct vmm_stdio_ctrl stdio_ctrl;
+static bool stdio_init_done = FALSE;
+static u32 stdio_early_count = 0;
+static char stdio_early_buffer[EARLY_BUF_SZ];
 
 bool vmm_iscontrol(char c)
 {
@@ -63,16 +70,24 @@ bool vmm_isprintable(char c)
 int vmm_printchar(char **str, struct vmm_chardev *cdev, char c, bool block)
 {
 	int rc ;
+
 	if (str && *str) {
 		**str = c;
 		++(*str);
 		rc = VMM_OK;
-	} else if (cdev) {
-		rc = ((vmm_chardev_dowrite(cdev, (u8 *)&c, 0, sizeof(c), 
-					   block)) ? VMM_OK : VMM_EFAIL);
+	} else if (stdio_init_done) {
+		if (cdev) {
+			rc = vmm_chardev_dowrite(cdev, (u8 *)&c, 0, sizeof(c), 
+						 block) ? VMM_OK : VMM_EFAIL;
+		} else {
+			while ((rc = arch_defterm_putc((u8)c)) && block);
+		}
 	} else {
-		while (((rc = arch_defterm_putc((u8)c)) == VMM_EFAIL) 
-		       && block);
+		if (stdio_early_count < EARLY_BUF_SZ) {
+			stdio_early_buffer[stdio_early_count] = c;
+			stdio_early_count++;
+		}
+		rc = VMM_OK;
 	}
 
 	return rc;
@@ -89,6 +104,19 @@ void vmm_cputc(struct vmm_chardev *cdev, char ch)
 void vmm_putc(char ch)
 {
 	vmm_cputc(stdio_ctrl.outdev, ch);
+}
+
+static void flush_early_buffer(void)
+{
+	int i;
+
+	if (!stdio_init_done) {
+		return;
+	}
+
+	for (i = 0; i < stdio_early_count; i++) {
+		vmm_putc(stdio_early_buffer[i]);
+	}
 }
 
 static void printc(char **str, struct vmm_chardev *cdev, char ch)
@@ -159,11 +187,11 @@ static int printi(char **out, struct vmm_chardev *cdev,
 	*s = '\0';
 
 	while (u) {
-		t = vmm_umod64(u, b);
+		t = umod64(u, b);
 		if (t >= 10)
 			t += letbase - '0' - 10;
 		*--s = t + '0';
-		u = vmm_udiv64(u, b);
+		u = udiv64(u, b);
 	}
 
 	if (neg) {
@@ -331,12 +359,16 @@ int vmm_scanchar(char **str, struct vmm_chardev *cdev, char *c, bool block)
 		*c = **str;
 		++(*str);
 		rc = VMM_OK;
-	} else if (cdev) {
-		rc = (vmm_chardev_doread(cdev, (u8 *)c, 0, sizeof(char), 
-					 block) ? VMM_OK : VMM_EFAIL);
+	} else if (stdio_init_done) {
+		if (cdev) {
+			rc = (vmm_chardev_doread(cdev, (u8 *)c, 0, sizeof(u8),
+						 block) ? VMM_OK : VMM_EFAIL);
+		} else {
+			while ((rc = arch_defterm_getc((u8 *)c)) && block);
+		}
 	} else {
-		while (((rc = arch_defterm_getc((u8 *)c)) == VMM_EFAIL) 
-		       && block);
+		*c = '\0';
+		rc = VMM_OK;
 	}
 
 	return rc;
@@ -530,6 +562,8 @@ int vmm_stdio_change_outdevice(struct vmm_chardev * cdev)
 
 int __init vmm_stdio_init(void)
 {
+	int rc;
+
 	/* Reset memory of control structure */
 	vmm_memset(&stdio_ctrl, 0, sizeof(stdio_ctrl));
 
@@ -541,5 +575,15 @@ int __init vmm_stdio_init(void)
 	stdio_ctrl.outdev = NULL;
 
 	/* Initialize default serial terminal (board specific) */
-	return arch_defterm_init();
+	if ((rc = arch_defterm_init())) {
+		return rc;
+	}
+
+	/* Update init done flag */
+	stdio_init_done = TRUE;
+
+	/* Flush early buffer */
+	flush_early_buffer();
+
+	return VMM_OK;
 }

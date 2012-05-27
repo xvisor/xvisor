@@ -45,7 +45,7 @@ bool vmm_workqueue_work_isnew(struct vmm_work * work)
 		return FALSE;
 	}
 
-	flags = vmm_spin_lock_irqsave(&work->lock);
+	vmm_spin_lock_irqsave(&work->lock, flags);
 
 	ret = (work->flags & VMM_WORK_STATE_CREATED) ? TRUE : FALSE;
 
@@ -63,7 +63,7 @@ bool vmm_workqueue_work_inprogress(struct vmm_work * work)
 		return FALSE;
 	}
 
-	flags = vmm_spin_lock_irqsave(&work->lock);
+	vmm_spin_lock_irqsave(&work->lock, flags);
 
 	ret = (work->flags & VMM_WORK_STATE_INPROGRESS) ? TRUE : FALSE;
 
@@ -81,7 +81,7 @@ bool vmm_workqueue_work_completed(struct vmm_work * work)
 		return FALSE;
 	}
 
-	flags = vmm_spin_lock_irqsave(&work->lock);
+	vmm_spin_lock_irqsave(&work->lock, flags);
 
 	ret = (work->flags & VMM_WORK_STATE_STOPPED) ? TRUE : FALSE;
 
@@ -98,7 +98,7 @@ int vmm_workqueue_stop_work(struct vmm_work * work)
 		return VMM_EFAIL;
 	}
 
-	flags = vmm_spin_lock_irqsave(&work->lock);
+	vmm_spin_lock_irqsave(&work->lock, flags);
 
 	if (work->flags & 
 		(VMM_WORK_STATE_INPROGRESS | VMM_WORK_STATE_STOPPED)) {
@@ -107,7 +107,7 @@ int vmm_workqueue_stop_work(struct vmm_work * work)
 	}
 
 	if (work->wq && (work->flags & VMM_WORK_STATE_SCHEDULED)) {
-		flags1 = vmm_spin_lock_irqsave(&(work->wq)->lock);
+		vmm_spin_lock_irqsave(&(work->wq)->lock, flags1);
 		list_del(&work->head);
 		vmm_spin_unlock_irqrestore(&(work->wq)->lock, flags1);
 	}
@@ -139,7 +139,7 @@ struct vmm_workqueue *vmm_workqueue_index2workqueue(int index)
 	ret = NULL;
 	found = FALSE;
 
-	flags = vmm_spin_lock_irqsave(&wqctrl.lock);
+	vmm_spin_lock_irqsave(&wqctrl.lock, flags);
 
 	list_for_each(l, &wqctrl.wq_list) {
 		ret = list_entry(l, struct vmm_workqueue, head);
@@ -199,7 +199,7 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue * wq,
 		wq = wqctrl.syswq;
 	}
 
-	flags = vmm_spin_lock_irqsave(&work->lock);
+	vmm_spin_lock_irqsave(&work->lock, flags);
 
 	if ((work->flags != VMM_WORK_STATE_CREATED) &&
 	    (work->flags != VMM_WORK_STATE_STOPPED)) {
@@ -210,7 +210,7 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue * wq,
 	work->flags = VMM_WORK_STATE_SCHEDULED;
 	work->wq = wq;
 
-	flags1 = vmm_spin_lock_irqsave(&wq->lock);
+	vmm_spin_lock_irqsave(&wq->lock, flags1);
 	list_add_tail(&wq->work_list, &work->head);
 	vmm_spin_unlock_irqrestore(&wq->lock, flags1);
 
@@ -234,7 +234,7 @@ static int workqueue_main(void *data)
 	}
 
 	while (1) {
-		flags = vmm_spin_lock_irqsave(&wq->lock);
+		vmm_spin_lock_irqsave(&wq->lock, flags);
 		
 		while (!list_empty(&wq->work_list)) {
 			l = list_pop(&wq->work_list);
@@ -242,7 +242,7 @@ static int workqueue_main(void *data)
 
 			work = list_entry(l, struct vmm_work, head);
 			do_work = FALSE;
-			flags = vmm_spin_lock_irqsave(&work->lock);
+			vmm_spin_lock_irqsave(&work->lock, flags);
 			if (work->flags & VMM_WORK_STATE_SCHEDULED) {
 				work->flags = VMM_WORK_STATE_INPROGRESS;
 				do_work = TRUE;
@@ -251,12 +251,12 @@ static int workqueue_main(void *data)
 
 			if (do_work) {
 				work->func(work);
-				flags = vmm_spin_lock_irqsave(&work->lock);
+				vmm_spin_lock_irqsave(&work->lock, flags);
 				work->flags = VMM_WORK_STATE_STOPPED;
 				vmm_spin_unlock_irqrestore(&work->lock, flags);
 			}
 
-			flags = vmm_spin_lock_irqsave(&wq->lock);
+			vmm_spin_lock_irqsave(&wq->lock, flags);
 		}
 
 		vmm_spin_unlock_irqrestore(&wq->lock, flags);
@@ -298,7 +298,7 @@ struct vmm_workqueue * vmm_workqueue_create(const char *name, u8 priority)
 		return NULL;
 	}
 
-	flags = vmm_spin_lock_irqsave(&wqctrl.lock);
+	vmm_spin_lock_irqsave(&wqctrl.lock, flags);
 
 	list_add_tail(&wqctrl.wq_list, &wq->head);
 	wqctrl.wq_count++;
@@ -325,7 +325,7 @@ int vmm_workqueue_destroy(struct vmm_workqueue * wq)
 		return rc;
 	}
 
-	flags = vmm_spin_lock_irqsave(&wqctrl.lock);
+	vmm_spin_lock_irqsave(&wqctrl.lock, flags);
 
 	list_del(&wq->head);
 	wqctrl.wq_count--;

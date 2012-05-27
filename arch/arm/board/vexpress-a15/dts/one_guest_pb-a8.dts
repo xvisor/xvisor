@@ -10,7 +10,7 @@
 	host {
 		#address-cells = <2>;
 		#size-cells = <1>;
-		model = "realview-pb-a8";
+		model = "vexpress-a15";
 		device_type = "host";
 		
 		cpus {
@@ -236,6 +236,5 @@
 				};
 			};
 		};
-
 	};
 };
