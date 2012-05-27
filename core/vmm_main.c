@@ -95,6 +95,13 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
+	/* Initialize per-cpu area */
+	vmm_printf("Initialize PerCPU Areas\n");
+	ret = vmm_percpu_init();
+	if (ret) {
+		vmm_hang();
+	}
+
 	/* Initialize device tree */
 	vmm_printf("Initialize Device Tree\n");
 	ret = vmm_devtree_init();
@@ -105,13 +112,6 @@ void vmm_init(void)
 	/* Initialize host interrupts */
 	vmm_printf("Initialize Host Interrupt Subsystem\n");
 	ret = vmm_host_irq_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize per-cpu area */
-	vmm_printf("Initialize PerCPU Areas\n");
-	ret = vmm_percpu_init();
 	if (ret) {
 		vmm_hang();
 	}
