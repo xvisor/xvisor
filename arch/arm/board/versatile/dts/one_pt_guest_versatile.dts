@@ -20,7 +20,7 @@
 
 			cpu0 {
 				device_type = "cpu";
-				model = "Cortex-A8";
+				model = "ARM926ej";
 			};
 		};
 
@@ -64,7 +64,7 @@
 
 				vcpu0 {
 					device_type = "vcpu";
-					model = "ARMv7a,cortex-a8";
+					model = "ARMv5te,ARM926ej";
 					time_slice = <50000000>;
 					start_pc = <0x40000000>;
 				};

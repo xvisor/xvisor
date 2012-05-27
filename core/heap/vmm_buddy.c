@@ -21,8 +21,8 @@
  * @brief source file for buddy heap allocator
  */
 
+#include <list.h>
 #include <vmm_string.h>
-#include <vmm_list.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
@@ -64,9 +64,9 @@ struct vmm_alloced_area {
 } __attribute__ ((packed));
 
 struct vmm_buddy_heap {
-	struct vmm_free_area * hk_fn_array;
+	struct vmm_free_area *hk_fn_array;
 	unsigned int hk_fn_count;
-	struct vmm_alloced_area * hk_an_array;
+	struct vmm_alloced_area *hk_an_array;
 	unsigned int hk_an_count;
 	struct vmm_alloced_area current;
 	void *mem_start;
@@ -118,9 +118,9 @@ static struct vmm_alloced_area *get_free_ac_node()
 int buddy_init(void *heap_start, unsigned int heap_size)
 {
 	int cntr = 0, tnodes = 0;
-	void * mem_start;
+	void *mem_start;
 	unsigned int mem_size, hk_total_size;
-	struct vmm_free_area * freenode = NULL;
+	struct vmm_free_area *freenode = NULL;
 
 	/* We manage heap space only in power of two */
 	if (!IS_POW_TWO(heap_size)) {
@@ -131,11 +131,12 @@ int buddy_init(void *heap_start, unsigned int heap_size)
 
 	/* keep 4K of initial heap area for our housekeeping */
 	buddy_heap.hk_fn_array = (struct vmm_free_area *)heap_start;
-	buddy_heap.hk_fn_count = (hk_total_size / 2) / sizeof(struct vmm_free_area);
-	buddy_heap.hk_an_array = 
-			(struct vmm_alloced_area *)(heap_start + (hk_total_size / 2));
-	buddy_heap.hk_an_count = (hk_total_size / 2) / 
-					sizeof(struct vmm_alloced_area);
+	buddy_heap.hk_fn_count =
+	    (hk_total_size / 2) / sizeof(struct vmm_free_area);
+	buddy_heap.hk_an_array =
+	    (struct vmm_alloced_area *)(heap_start + (hk_total_size / 2));
+	buddy_heap.hk_an_count =
+	    (hk_total_size / 2) / sizeof(struct vmm_alloced_area);
 	vmm_memset(buddy_heap.hk_fn_array, 0, hk_total_size);
 
 	INIT_LIST_HEAD(&buddy_heap.current.head);
@@ -165,7 +166,7 @@ int buddy_init(void *heap_start, unsigned int heap_size)
 		tnodes++;
 	}
 	DPRINTF("Total: %d nodes of size 0x%X added to last bin.\n",
-		    tnodes, MAX_BLOCK_SIZE);
+		tnodes, MAX_BLOCK_SIZE);
 
 	return 0;
 }
@@ -207,7 +208,7 @@ static struct vmm_free_area *buddy_get_contiguous_block(unsigned int num_blocks,
 				pnode = cnode;
 			}
 		}
-cont_blocks_found:
+ cont_blocks_found:
 		if (snode) {
 			cnode = get_free_hk_node();
 			BUG_ON(!cnode,
@@ -311,8 +312,8 @@ static int add_free_area_to_bin(struct vmm_free_area *free_area,
 			}
 		}
 		if (!added) {
-			list_add_tail(&buddy_heap.free_area[bin_num].head, 
-								&free_area->head);
+			list_add_tail(&buddy_heap.free_area[bin_num].head,
+				      &free_area->head);
 		}
 	}
 	buddy_heap.free_area[bin_num].count++;
@@ -326,7 +327,7 @@ static int coalesce_buddies(unsigned int bin)
 	struct vmm_free_area *lfa = NULL, *cfa = NULL;
 	void *lmap = NULL;
 
-restart:
+ restart:
 	if (bin == BINS_MAX_ORDER - 1) {
 		return 0;
 	}
@@ -407,7 +408,7 @@ void *buddy_malloc(unsigned int size)
 		if (farea) {
 			aarea = get_free_ac_node();
 			BUG_ON(!aarea, "Panic: No house keeping node "
-					"available for buddy allocator.!\n");
+			       "available for buddy allocator.!\n");
 			aarea->map = farea->map;
 			aarea->blk_sz = MAX_BLOCK_SIZE * bneeded;
 			aarea->bin_num = BINS_MAX_ORDER - 1;
@@ -459,7 +460,7 @@ void buddy_free(void *ptr)
 	u32 aarea_sz;
 	struct vmm_alloced_area *aarea = search_for_allocated_block(ptr);
 
-	BUG_ON(!aarea, "Panic: No allocation for 0x%08x!\n", (u32)ptr);
+	BUG_ON(!aarea, "Panic: No allocation for 0x%08x!\n", (u32) ptr);
 
 	if (MAX_BLOCK_SIZE < aarea->blk_sz) {
 		aarea_sz = aarea->blk_sz;
@@ -487,7 +488,7 @@ void vmm_free(void *pointer)
 	buddy_free(pointer);
 }
 
-int vmm_heap_allocator_name(char * name, int name_sz)
+int vmm_heap_allocator_name(char *name, int name_sz)
 {
 	if (!name && name_sz > 0) {
 		return VMM_EFAIL;
@@ -500,17 +501,17 @@ int vmm_heap_allocator_name(char * name, int name_sz)
 
 virtual_addr_t vmm_heap_start_va(void)
 {
-	return (virtual_addr_t)buddy_heap.heap_start;
+	return (virtual_addr_t) buddy_heap.heap_start;
 }
 
 virtual_size_t vmm_heap_size(void)
 {
-	return (virtual_size_t)buddy_heap.heap_size;
+	return (virtual_size_t) buddy_heap.heap_size;
 }
 
 virtual_size_t vmm_heap_hksize(void)
 {
-	return (virtual_size_t)(buddy_heap.heap_size - buddy_heap.mem_size);
+	return (virtual_size_t) (buddy_heap.heap_size - buddy_heap.mem_size);
 }
 
 int vmm_heap_print_state(struct vmm_chardev *cdev)
@@ -535,8 +536,8 @@ int vmm_heap_print_state(struct vmm_chardev *cdev)
 				balloced++;
 			}
 		}
-		vmm_cprintf(cdev, "%5d alloced, %5d free block(s)\n", 
-							balloced, bfree);
+		vmm_cprintf(cdev, "%5d alloced, %5d free block(s)\n",
+			    balloced, bfree);
 		bfree = 0;
 		balloced = 0;
 	}
@@ -550,8 +551,8 @@ int vmm_heap_print_state(struct vmm_chardev *cdev)
 		fren++;
 	}
 
-	vmm_cprintf(cdev, "  Free Node List: %d nodes free out of %d\n", 
-						free, buddy_heap.hk_fn_count);
+	vmm_cprintf(cdev, "  Free Node List: %d nodes free out of %d\n",
+		    free, buddy_heap.hk_fn_count);
 
 	free = 0;
 	for (idx = 0; idx < buddy_heap.hk_an_count; idx++) {
@@ -560,26 +561,26 @@ int vmm_heap_print_state(struct vmm_chardev *cdev)
 		}
 		acn++;
 	}
-	vmm_cprintf(cdev, "  Alloced Node List: %d nodes free out of %d\n", 
-						free, buddy_heap.hk_an_count);
+	vmm_cprintf(cdev, "  Allocated Node List: %d nodes free out of %d\n",
+		    free, buddy_heap.hk_an_count);
 
 	return VMM_OK;
 }
 
 int __init vmm_heap_init(void)
 {
-	u32 heap_size = 0, heap_page_count = 0, heap_mem_flags;
-	void * heap_start = NULL;
+	u32 heap_size, heap_page_count, heap_mem_flags;
+	void *heap_start;
 
 	heap_size = CONFIG_HEAP_SIZE * 1024;
-	heap_page_count =  VMM_ROUNDUP2_PAGE_SIZE(heap_size) / VMM_PAGE_SIZE;
-	heap_mem_flags = 0;
-	heap_mem_flags |= VMM_MEMORY_READABLE; 
-	heap_mem_flags |= VMM_MEMORY_WRITEABLE; 
-	heap_mem_flags |= VMM_MEMORY_CACHEABLE;
-	heap_mem_flags |= VMM_MEMORY_BUFFERABLE;
-	heap_start = (void *)vmm_host_alloc_pages(heap_page_count, 
-						  heap_mem_flags);
+	heap_page_count = VMM_SIZE_TO_PAGE(heap_size);
+	heap_mem_flags =
+	    (VMM_MEMORY_READABLE | VMM_MEMORY_WRITEABLE | VMM_MEMORY_CACHEABLE |
+	     VMM_MEMORY_BUFFERABLE);
+
+	heap_start =
+	    (void *)vmm_host_alloc_pages(heap_page_count, heap_mem_flags);
+
 	if (!heap_start) {
 		return VMM_EFAIL;
 	}

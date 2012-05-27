@@ -34,6 +34,7 @@
 
 u32 omap3_s32k_get_counter(void);
 int omap3_s32k_init(void);
+int omap3_s32k_clocksource_init(void);
 
 #endif  /*  __OMAP3_S32K_TIMER_H__ */
 

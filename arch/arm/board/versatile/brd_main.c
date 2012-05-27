@@ -103,7 +103,7 @@ int arch_board_ram_size(physical_size_t * size)
 	return VMM_OK;
 }
 
-int arch_devtree_populate(struct vmm_devtree_node **root)
+int arch_board_devtree_populate(struct vmm_devtree_node **root)
 {
 	struct fdt_fileinfo fdt;
 

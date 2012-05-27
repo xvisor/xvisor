@@ -34,6 +34,8 @@
 #define VMM_ROUNDUP2_PAGE_SIZE(x)	(((x) & VMM_PAGE_MASK) ? \
 					VMM_PAGE_NUM(x) + VMM_PAGE_SIZE : \
 					(x))
+#define VMM_SIZE_TO_PAGE(x)		((x >> VMM_PAGE_SHIFT) + \
+					((x & VMM_PAGE_MASK) ? 1:0))
 
 enum vmm_host_memory_flags {
 	VMM_MEMORY_READABLE=0x00000001,

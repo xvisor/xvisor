@@ -109,15 +109,18 @@ void do_prefetch_abort(arch_regs_t * uregs)
 	bool crash_dump = FALSE;
 	u32 ifsr, ifar, fs;
 	struct vmm_vcpu * vcpu;
-	struct cpu_l1tbl * l1;
-	struct cpu_page pg;
 
 	ifsr = read_ifsr();
 	ifar = read_ifar();
-	fs = (ifsr & IFSR_FS4_MASK) >> IFSR_FS4_SHIFT;
-	fs = (fs << 4) | (ifsr & IFSR_FS_MASK);
+
+	fs = (ifsr & IFSR_FS_MASK);
+#if !defined(CONFIG_ARMV5)
+	fs |= (ifsr & IFSR_FS4_MASK) >> (IFSR_FS4_SHIFT - 4);
+#endif
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+		struct cpu_l1tbl * l1;
+		struct cpu_page pg;
 		if (fs != IFSR_FS_TRANS_FAULT_SECTION &&
 		    fs != IFSR_FS_TRANS_FAULT_PAGE) {
 			vmm_panic("%s: unexpected prefetch abort\n"
@@ -145,9 +148,16 @@ void do_prefetch_abort(arch_regs_t * uregs)
 		return;
 	}
 
-	vmm_scheduler_irq_enter(uregs, TRUE);
-
 	vcpu = vmm_scheduler_current_vcpu();
+
+	if ((uregs->pc & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == 
+	    arm_priv(vcpu)->cp15.ovect_base) {
+		uregs->pc = (virtual_addr_t)arm_guest_priv(vcpu->guest)->ovect 
+			    + (uregs->pc & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1));
+		return;
+	}
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	switch(fs) {
 	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
@@ -212,8 +222,11 @@ void do_data_abort(arch_regs_t * uregs)
 
 	dfsr = read_dfsr();
 	dfar = read_dfar();
-	fs = (dfsr & DFSR_FS4_MASK) >> DFSR_FS4_SHIFT;
-	fs = (fs << 4) | (dfsr & DFSR_FS_MASK);
+
+	fs = (dfsr & DFSR_FS_MASK);
+#if !defined(CONFIG_ARMV5)
+	fs |= (dfsr & DFSR_FS4_MASK) >> (DFSR_FS4_SHIFT - 4);
+#endif
 	wnr = (dfsr & DFSR_WNR_MASK) >> DFSR_WNR_SHIFT;
 	dom = (dfsr & DFSR_DOM_MASK) >> DFSR_DOM_SHIFT;
 
@@ -255,9 +268,9 @@ void do_data_abort(arch_regs_t * uregs)
 		return;
 	}
 
-	vmm_scheduler_irq_enter(uregs, TRUE);
-
 	vcpu = vmm_scheduler_current_vcpu();
+
+	vmm_scheduler_irq_enter(uregs, TRUE);
 
 	switch(fs) {
 	case DFSR_FS_ALIGN_FAULT:
@@ -292,7 +305,7 @@ void do_data_abort(arch_regs_t * uregs)
 	case DFSR_FS_PERM_FAULT_PAGE:
 		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
 						dfar, fs, dom, wnr, 1);
-		if ((dfar & ~(sizeof(arm_priv(vcpu)->cp15.ovect) - 1)) != 
+		if ((dfar & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) != 
 						arm_priv(vcpu)->cp15.ovect_base) {
 			crash_dump = FALSE;
 		}

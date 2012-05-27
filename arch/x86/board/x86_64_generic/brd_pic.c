@@ -22,7 +22,7 @@
  */
 
 #include <vmm_error.h>
-#include <arch_board.h>
+#include <arch_host_irq.h>
 
 u32 arch_host_irq_active(u32 cpu_irq_no)
 {

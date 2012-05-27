@@ -21,6 +21,6 @@
 # @brief list of system device emulator objects
 # */
 
-emulators-objs-$(CONFIG_EMU_SYS_REALVIEW)+= sys/realview.o
+emulators-objs-$(CONFIG_EMU_SYS_ARM_SYSREGS)+= sys/arm_sysregs.o
 emulators-objs-$(CONFIG_EMU_SYS_SP810)+= sys/sp810.o
 

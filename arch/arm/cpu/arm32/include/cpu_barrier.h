@@ -23,14 +23,14 @@
 #ifndef __CPU_BARRIER_H__
 #define __CPU_BARRIER_H__
 
-#if defined CONFIG_ARMV5
+#if defined(CONFIG_ARMV5)
 
 #define isb()			asm volatile ("" : : : "memory")
 #define dsb()			asm volatile ("mcr p15, 0, %0, c7, c10, 4" \
 					      : : "r" (0) : "memory")
 #define dmb()			asm volatile ("" : : : "memory")
 
-#elif defined CONFIG_ARMV7A
+#elif defined(CONFIG_ARMV7A)
 
 #define isb() 			asm volatile ("isb" : : : "memory")
 #define dsb() 			asm volatile ("dsb" : : : "memory")

@@ -44,6 +44,16 @@
 
 #define vmm_be32_to_cpu(data)	arch_be32_to_cpu(data)
 
+#ifdef CONFIG_64BIT
+#define vmm_cpu_to_le64(data)	arch_cpu_to_le64(data)
+
+#define vmm_le64_to_cpu(data)	arch_le64_to_cpu(data)
+
+#define vmm_cpu_to_be64(data)	arch_cpu_to_be64(data)
+
+#define vmm_be64_to_cpu(data)	arch_be64_to_cpu(data)
+#endif
+
 /** I/O read/write legacy functions (Assumed to be Little Endian) */
 static inline u8 vmm_ioreadb(volatile void *addr)
 {
@@ -155,6 +165,26 @@ static inline u32 vmm_in_be32(volatile u32 * addr)
 static inline void vmm_out_be32(volatile u32 * addr, u32 data)
 {
 	arch_out_be32(addr, data);
+}
+
+static inline u64 vmm_in_le64(volatile u64 *addr)
+{
+	return arch_in_le64(addr);
+}
+
+static inline void vmm_out_le64(volatile u64 *addr, u64 data)
+{
+	arch_out_le64(addr, data);
+}
+
+static inline u64 vmm_in_be64(volatile u64 *addr)
+{
+	return arch_in_be64(addr);
+}
+
+static inline void vmm_out_be64(volatile u64 *addr, u64 data)
+{
+	arch_out_be64(addr, data);
 }
 
 #endif /* __VMM_HOST_IO_H_ */

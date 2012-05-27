@@ -75,6 +75,7 @@ CONFIG_CPU:=$(shell echo $(CONFIG_CPU))
 CONFIG_BOARD:=$(shell echo $(CONFIG_BOARD))
 
 # Setup path of directories
+export arch_dir=$(CURDIR)/arch
 export cpu_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/cpu/$(CONFIG_CPU)
 export cpu_common_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/cpu/common
 export board_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)
@@ -178,11 +179,12 @@ cppflags+=-I$(commands_dir)/include
 cppflags+=-I$(daemons_dir)/include
 cppflags+=-I$(drivers_dir)/include
 cppflags+=-I$(emulators_dir)/include
+cppflags+=-I$(arch_dir)/include
 cppflags+=$(cpu-cppflags)
 cppflags+=$(board-cppflags)
 cppflags+=$(libs-cppflags-y)
 cc=$(CROSS_COMPILE)gcc
-cflags=-g -Wall -nostdlib 
+cflags=-g -Wall -nostdlib -fno-builtin
 cflags+=$(board-cflags) 
 cflags+=$(cpu-cflags) 
 cflags+=$(libs-cflags-y) 

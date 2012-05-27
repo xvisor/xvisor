@@ -34,19 +34,29 @@ extern char _stack_start;
 #define VMM_REGION_TYPE_ROM	0
 #define VMM_REGION_TYPE_RAM	1
 
-int arch_vcpu_regs_init(struct vmm_vcpu *vcpu)
+int arch_guest_init(struct vmm_guest * guest)
 {
 	return VMM_OK;
 }
 
-int arch_vcpu_regs_deinit(struct vmm_vcpu * vcpu)
+int arch_guest_deinit(struct vmm_guest * guest)
 {
 	return VMM_OK;
 }
 
-void arch_vcpu_regs_switch(struct vmm_vcpu *tvcpu, 
-			  struct vmm_vcpu *vcpu,
-			  arch_regs_t *regs)
+int arch_vcpu_init(struct vmm_vcpu *vcpu)
+{
+	return VMM_OK;
+}
+
+int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
+{
+	return VMM_OK;
+}
+
+void arch_vcpu_switch(struct vmm_vcpu *tvcpu, 
+		      struct vmm_vcpu *vcpu,
+		      arch_regs_t *regs)
 {
 }
 

@@ -25,7 +25,12 @@
 #include <vmm_error.h>
 #include <vmm_types.h>
 
-void __lock __cpu_spin_lock(spinlock_t * lock)
+bool __lock arch_spin_lock_check(spinlock_t * lock)
+{
+	return (lock->lock) ? TRUE : FALSE;
+}
+
+void __lock arch_spin_lock(spinlock_t * lock)
 {
 	unsigned int tmp;
 	__asm__ __volatile__("@ __cpu_spin_lock\n"
@@ -50,7 +55,7 @@ void __lock __cpu_spin_lock(spinlock_t * lock)
 			     :"cc", "memory");
 }
 
-void __lock __cpu_spin_unlock(spinlock_t * lock)
+void __lock arch_spin_unlock(spinlock_t * lock)
 {
 	__asm__ __volatile__("@ __cpu_spin_unlock\n"
 			     "       str     %0, [%1]\n"
@@ -58,20 +63,5 @@ void __lock __cpu_spin_unlock(spinlock_t * lock)
 			     :
 			     :"r"(0), "r"(&lock->lock)
 			     :"memory");
-}
-
-bool __lock arch_cpu_spin_lock_check(spinlock_t * lock)
-{
-	return (lock->lock) ? TRUE : FALSE;
-}
-
-void __lock arch_cpu_spin_lock(spinlock_t * lock)
-{
-	return __cpu_spin_lock(lock);
-}
-
-void __lock arch_cpu_spin_unlock(spinlock_t * lock)
-{
-	__cpu_spin_unlock(lock);
 }
 

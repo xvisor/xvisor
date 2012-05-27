@@ -148,7 +148,7 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 	return edev->write(edev, gphys_addr - reg->gphys_addr, src, src_len);
 }
 
-int vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq_num, int irq_level)
+int __vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq_num, int cpu, int irq_level)
 {
 	struct dlist *l;
 	struct vmm_emupic *ep;
@@ -162,7 +162,7 @@ int vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq_num, int irq_level)
 
 	list_for_each(l, &eg->emupic_list) {
 		ep = list_entry(l, struct vmm_emupic, head);
-		ep->handle(ep, irq_num, irq_level);
+		ep->handle(ep, irq_num, cpu, irq_level);
 	}
 
 	return VMM_OK;
@@ -656,6 +656,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 				reg->devemu_priv = NULL;
 				reg->node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
 				reg->node->priv = NULL;
+				return rc;
 			}
 			if ((rc = einst->reset(einst))) {
 				vmm_printf("%s: %s/%s reset error %d\n", 
@@ -664,6 +665,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 				reg->devemu_priv = NULL;
 				reg->node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
 				reg->node->priv = NULL;
+				return rc;
 			}
 			break;
 		}

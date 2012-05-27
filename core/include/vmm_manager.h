@@ -23,9 +23,9 @@
 #ifndef _VMM_MANAGER_H__
 #define _VMM_MANAGER_H__
 
+#include <list.h>
 #include <arch_regs.h>
 #include <vmm_types.h>
-#include <vmm_list.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 
@@ -86,9 +86,11 @@ struct vmm_guest {
 	vmm_spinlock_t lock;
 	u32 id;
 	struct vmm_devtree_node *node;
+	u32 reset_count;
 	u32 vcpu_count;
 	struct dlist vcpu_list;
 	struct vmm_guest_aspace aspace;
+	void * arch_priv;
 };
 
 #define list_for_each_vcpu(curr, guest)	\

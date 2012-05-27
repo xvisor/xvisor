@@ -26,74 +26,44 @@
 
 #include <vmm_types.h>
 
-#define do_abs(x)  ((x) < 0 ? -(x) : (x))
-
-u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder);
-
 static inline u64 arch_udiv64(u64 value, u64 divisor)
 {
-	return do_udiv64(value, divisor, NULL);
+	return value / divisor;
 }
 
 static inline u64 arch_umod64(u64 value, u64 divisor)
 {
-	u64 r;
-	do_udiv64(value, divisor, &r);
-	return r;
+	return value % divisor;
 }
 
 static inline s64 arch_sdiv64(s64 value, s64 divisor)
 {
-	if ((value * divisor) < 0) {
-		return -do_udiv64( do_abs(value), do_abs(divisor), NULL );
-	} else { /* positive value */
-		return do_udiv64( do_abs(value), do_abs(divisor), NULL );
-	}
+	return value / divisor;
 }
 
 static inline s64 arch_smod64(s64 value, s64 divisor)
 {
-	u64 r;
-	do_udiv64( do_abs(value), do_abs(divisor), &r );
-	if (value < 0) {
-		return -r;
-	} else { /* positive value */
-		return r;
-	}
+	return value % divisor;
 }
-
-u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder);
 
 static inline u32 arch_udiv32(u32 value, u32 divisor)
 {
-	return do_udiv32(value, divisor, NULL);
+	return value / divisor;
 }
 
 static inline u32 arch_umod32(u32 value, u32 divisor)
 {
-	u32 r;
-	do_udiv32(value, divisor, &r);
-	return r;
+	return value % divisor;
 }
 
 static inline s32 arch_sdiv32(s32 value, s32 divisor)
 {
-	if ((value * divisor) < 0) {
-		return -do_udiv32( do_abs(value), do_abs(divisor), NULL );
-	} else { /* positive value */
-		return do_udiv32( do_abs(value), do_abs(divisor), NULL );
-	}
+	return value / divisor;
 }
 
 static inline s32 arch_smod32(s32 value, s32 divisor)
 {
-	u32 r;
-	do_udiv32( do_abs(value), do_abs(divisor), &r );
-	if (value < 0) {
-		return -r;
-	} else { /* positive value */
-		return r;
-	}
+	return value % divisor;
 }
 
 #endif /* __ARCH_MATH_H__ */

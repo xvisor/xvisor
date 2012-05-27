@@ -2,13 +2,14 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Sun Apr 22 17:54:49 2012
+# Wed May 23 00:01:17 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
+CONFIG_CPU_COUNT=1
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
@@ -34,7 +35,6 @@ CONFIG_ARM_TIMER_SP804=y
 CONFIG_BOARD_VERSATILE=y
 CONFIG_VERSATILE=y
 CONFIG_ARM_PL190=y
-CONFIG_EMU_VERSATILE=y
 
 #
 # Versatile PB Options
@@ -124,7 +124,7 @@ CONFIG_RTC_PL031=y
 # System Emulators
 #
 CONFIG_EMU_SYS=y
-# CONFIG_EMU_SYS_REALVIEW is not set
+CONFIG_EMU_SYS_ARM_SYSREGS=y
 CONFIG_EMU_SYS_SP810=y
 
 #
@@ -132,12 +132,14 @@ CONFIG_EMU_SYS_SP810=y
 #
 CONFIG_EMU_PIC=y
 # CONFIG_EMU_PIC_GIC is not set
+CONFIG_EMU_PIC_PL190=y
 
 #
 # Timer Emulators
 #
 CONFIG_EMU_TIMER=y
 CONFIG_EMU_TIMER_SP804=y
+# CONFIG_EMU_TIMER_ARM_MPTIMER is not set
 
 #
 # Serial Port Emulators
@@ -150,6 +152,16 @@ CONFIG_EMU_SERIAL_PL011=y
 #
 CONFIG_EMU_RTC=y
 CONFIG_EMU_RTC_PL031=y
+
+#
+# Cache Controller Emulators
+#
+# CONFIG_EMU_CACHE_L2X0 is not set
+
+#
+# Miscellaneous Emulators
+#
+# CONFIG_EMU_MISC_A9MP_PRIV is not set
 
 #
 # Tool Options

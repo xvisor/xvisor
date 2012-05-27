@@ -2,18 +2,30 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.2
-# Sat Mar 17 21:16:05 2012
+# Mon May 21 15:02:57 2012
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
 # CONFIG_ARCH_MIPS is not set
 CONFIG_ARCH_x86=y
 CONFIG_ARCH="x86"
+CONFIG_CPU_COUNT=1
 CONFIG_CPU="x86_64"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
 CONFIG_BOARD="x86_64_generic"
 CONFIG_CPU_X86_64=y
+
+#
+# x86 Machine Features
+#
+CONFIG_ACPI=y
+
+#
+# Processor Features
+#
+CONFIG_LOCAL_APIC=y
+# CONFIG_8259A is not set
 CONFIG_BOARD_X86_64_GENERIC=y
 CONFIG_X86_64_GENERIC=y
 
@@ -113,6 +125,16 @@ CONFIG_LIBFDT=y
 # Real-Time Clock Emulators
 #
 # CONFIG_EMU_RTC is not set
+
+#
+# Cache Controller Emulators
+#
+# CONFIG_EMU_CACHE_L2X0 is not set
+
+#
+# Miscellaneous Emulators
+#
+# CONFIG_EMU_MISC_A9MP_PRIV is not set
 
 #
 # Tool Options

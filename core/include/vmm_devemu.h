@@ -34,6 +34,7 @@ struct vmm_emulator;
 
 typedef void (*vmm_emupic_handle_t) (struct vmm_emupic *epic,
 				     u32 irq_num,
+				     int cpu,
 				     int irq_level);
 
 typedef int (*vmm_emulator_probe_t) (struct vmm_guest *guest,
@@ -98,9 +99,17 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 			     physical_addr_t gphys_addr,
 			     void *src, u32 src_len);
 
-/** Emulate irq for guest */
-int vmm_devemu_emulate_irq(struct vmm_guest *guest, 
-			   u32 irq_num, int irq_level);
+/** Internal function to emulate irq (should not be called directly) */
+extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq_num, 
+				    int cpu, int irq_level);
+
+/** Emulate shared irq for guest */
+#define vmm_devemu_emulate_irq(guest, irq, level)	\
+		__vmm_devemu_emulate_irq(guest, irq, -1, level) 
+
+/** Emulate percpu irq for guest */
+#define vmm_devemu_emulate_percpu_irq(guest, irq, cpu, level)	\
+		__vmm_devemu_emulate_irq(guest, irq, cpu, level) 
 
 /** Signal completion of host-to-guest mapped irq 
  *  (Note: For proper functioning of host-to-guest mapped irq, the PIC 

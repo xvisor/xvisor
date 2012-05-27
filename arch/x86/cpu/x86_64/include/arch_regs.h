@@ -26,8 +26,27 @@
 #include <vmm_types.h>
 #include <cpu_mmu.h>
 
-#define CPU_GPR_COUNT	16 /* Intel 64 has 16 GPRs */
-
+/*
+ * Stack State at the entry of exception.
+ *
+ *      |               |
+ *      |               |
+ *      +---------------+
+ *      |      SS       | +40
+ *      +---------------+
+ *      |     RSP       | +32
+ *      +---------------+
+ *      |    RFLAGS     | +24
+ *      +---------------+
+ *      |      CS       | +16
+ *      +---------------+
+ *      |     RIP       | +08
+ *      +---------------+
+ *      |  HW Err Code  | +00
+ *      +---------------+
+ *      |               |
+ *      |               |
+ */
 struct arch_regs {
         /*
          * x86_64_todo: With VT enabled, CPU saves the
@@ -35,8 +54,22 @@ struct arch_regs {
          * of particular format that needs to be defined
          * here for CPU to save context on a vm_exit.
          */
-	u32 gpr[CPU_GPR_COUNT];
-} __attribute((packed));
+	u64 rax;
+	u64 rbx;
+	u64 rcx;
+	u64 rdx;
+	u64 rdi;
+	u64 rsi;
+	u64 rbp;
+	u64 r8;
+	u64 r9;
+	u64 r10;
+	u64 r11;
+	u64 r12;
+	u64 r13;
+	u64 r14;
+	u64 r15;
+} __packed;
 
 typedef struct arch_regs arch_regs_t;
 

@@ -21,8 +21,8 @@
  * @brief Real-Time Clock Device framework source
  */
 
+#include <list.h>
 #include <vmm_error.h>
-#include <vmm_list.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>

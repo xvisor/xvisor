@@ -22,13 +22,13 @@
  */
 
 #include <arch_cpu.h>
+#include <arch_sections.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <cpu_mmu.h>
 #include <cpu_asm_macros.h>
-
 
 extern u8 _code_end;
 extern u8 _code_start;

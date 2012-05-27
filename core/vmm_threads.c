@@ -162,7 +162,7 @@ struct vmm_thread *vmm_threads_id2thread(u32 tid)
 	found = FALSE;
 
 	/* Lock threads control */
-	flags = vmm_spin_lock_irqsave(&thctrl.lock);
+	vmm_spin_lock_irqsave(&thctrl.lock, flags);
 
 	list_for_each(l, &thctrl.thread_list) {
 		ret = list_entry(l, struct vmm_thread, head);
@@ -197,7 +197,7 @@ struct vmm_thread *vmm_threads_index2thread(int index)
 	found = FALSE;
 
 	/* Lock threads control */
-	flags = vmm_spin_lock_irqsave(&thctrl.lock);
+	vmm_spin_lock_irqsave(&thctrl.lock, flags);
 
 	list_for_each(l, &thctrl.thread_list) {
 		ret = list_entry(l, struct vmm_thread, head);
@@ -282,7 +282,7 @@ struct vmm_thread *vmm_threads_create(const char *thread_name,
 	}
 
 	/* Lock threads control */
-	flags = vmm_spin_lock_irqsave(&thctrl.lock);
+	vmm_spin_lock_irqsave(&thctrl.lock, flags);
 
 	list_add_tail(&thctrl.thread_list, &tinfo->head);
 	thctrl.thread_count++;
@@ -304,7 +304,7 @@ int vmm_threads_destroy(struct vmm_thread * tinfo)
 	}
 
 	/* Lock threads control */
-	flags = vmm_spin_lock_irqsave(&thctrl.lock);
+	vmm_spin_lock_irqsave(&thctrl.lock, flags);
 
 	list_del(&tinfo->head);
 	thctrl.thread_count--;

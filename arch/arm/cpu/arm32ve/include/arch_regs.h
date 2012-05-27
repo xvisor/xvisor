@@ -155,6 +155,8 @@ struct arm_priv {
 		u32 c9_pmxevtyper; /* perf monitor event type */
 		u32 c9_pmuserenr; /* perf monitor user enable */
 		u32 c9_pminten; /* perf monitor interrupt enables */
+		u32 c10_prrr;
+		u32 c10_nmrr;
 		u32 c13_fcseidr; /* FCSE PID. */
 		u32 c13_contextidr; /* Context ID. */
 		u32 c13_tls1; /* User RW Thread register. */

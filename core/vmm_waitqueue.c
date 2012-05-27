@@ -49,7 +49,7 @@ int vmm_waitqueue_sleep(struct vmm_waitqueue * wq)
 	vcpu = vmm_scheduler_current_vcpu();
 
 	/* Lock waitqueue */
-	flags = vmm_spin_lock_irqsave(&wq->lock);
+	vmm_spin_lock_irqsave(&wq->lock, flags);
 	
 	/* Add VCPU to waitqueue */
 	list_add_tail(&wq->vcpu_list, &vcpu->wq_head);
@@ -68,7 +68,7 @@ int vmm_waitqueue_sleep(struct vmm_waitqueue * wq)
 		/* Failed to pause VCPU so remove from waitqueue */
 
 		/* Lock waitqueue */
-		flags = vmm_spin_lock_irqsave(&wq->lock);
+		vmm_spin_lock_irqsave(&wq->lock, flags);
 
 		/* Remove VCPU from waitqueue */
 		list_del(&vcpu->wq_head);
@@ -105,7 +105,7 @@ int vmm_waitqueue_wake(struct vmm_vcpu * vcpu)
 	wq = vcpu->wq_priv;
 
 	/* Lock waitqueue */
-	flags = vmm_spin_lock_irqsave(&wq->lock);
+	vmm_spin_lock_irqsave(&wq->lock, flags);
 	
 	/* Try to Resume VCPU */
 	if ((rc = vmm_manager_vcpu_resume(vcpu))) {
@@ -145,7 +145,7 @@ int vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq)
 	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
 
 	/* Lock waitqueue */
-	flags = vmm_spin_lock_irqsave(&wq->lock);
+	vmm_spin_lock_irqsave(&wq->lock, flags);
 
 	/* Get first VCPU from waitqueue list */
 	l = list_pop(&wq->vcpu_list);
@@ -186,7 +186,7 @@ int vmm_waitqueue_wakeall(struct vmm_waitqueue * wq)
 	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
 
 	/* Lock waitqueue */
-	flags = vmm_spin_lock_irqsave(&wq->lock);
+	vmm_spin_lock_irqsave(&wq->lock, flags);
 
 	/* For each VCPU in waitqueue */
 	wake_count = 0;

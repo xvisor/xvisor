@@ -32,7 +32,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_math.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_timer.h>
@@ -40,6 +39,7 @@
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <mathlib.h>
 
 #define MODULE_VARID			sp804_emulator_module
 #define MODULE_NAME			"SP804 Dual-Mode Timer Emulator"
@@ -159,8 +159,7 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 				nsecs *= 1000;
 			} else {
 				nsecs =
-				    vmm_udiv64((nsecs * 1000000000),
-					       (u64) t->freq);
+				  udiv64((nsecs * 1000000000), (u64) t->freq);
 			}
 
 			/* compute the tstamp */
@@ -289,7 +288,7 @@ static u32 sp804_timer_current_value(struct sp804_timer *t)
 			cval = cval >> 10;
 			cval = cval + ((cval * 3) >> 7) + ((cval * 9) >> 14);
 		} else if (t->freq != 1000000000) {
-			cval = vmm_udiv64(cval * t->freq, (u64) 1000000000);
+			cval = udiv64(cval * t->freq, (u64) 1000000000);
 		}
 
 		if (t->control & (TIMER_CTRL_ONESHOT)) {
@@ -309,7 +308,7 @@ static u32 sp804_timer_current_value(struct sp804_timer *t)
 				ret = t->value - ((u32)cval & t->value);
 				break;
 			default:
-				cval = vmm_umod64(cval, (u64) t->value);
+				cval = umod64(cval, (u64) t->value);
 				ret = t->value - (u32)cval;
 				break;
 			}

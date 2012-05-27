@@ -27,6 +27,8 @@
 #include <vmm_error.h>
 #include <vmm_main.h>
 #include <multiboot.h>
+#include <arch_cpu.h>
+#include <acpi.h>
 
 struct multiboot_info boot_info;
 
@@ -52,6 +54,15 @@ int __init arch_cpu_early_init(void)
 	 * Do necessary early stuff like iomapping devices
 	 * memory or boot time memory reservation here.
 	 */
+
+#if CONFIG_ACPI
+	/*
+	 * Initialize the ACPI table to help initialize
+	 * other devices.
+	 */
+	acpi_init();
+#endif
+
 	return 0;
 }
 
@@ -62,6 +73,8 @@ int __init arch_cpu_final_init(void)
 
 void __init cpu_init(struct multiboot_info *binfo)
 {
+	while (1);
+
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
 

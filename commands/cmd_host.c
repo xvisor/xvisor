@@ -21,7 +21,6 @@
  * @brief Implementation of host command
  */
 
-#include <vmm_math.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
@@ -31,6 +30,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <mathlib.h>
 
 #define MODULE_VARID			cmd_host_module
 #define MODULE_NAME			"Command host"
@@ -102,7 +102,7 @@ void cmd_host_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "0 : free\n");
 	vmm_cprintf(cdev, "1 : used");
 	for (ite = 0; ite < total; ite++) {
-		if (vmm_umod32(ite, colcnt) == 0) {
+		if (umod32(ite, colcnt) == 0) {
 			if (sizeof(u64) == sizeof(physical_addr_t)) {
 				vmm_cprintf(cdev, "\n0x%016llx: ", 
 						base + ite * VMM_PAGE_SIZE);
@@ -143,7 +143,7 @@ void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "0 : free\n");
 	vmm_cprintf(cdev, "1 : used");
 	for (ite = 0; ite < total; ite++) {
-		if (vmm_umod32(ite, colcnt) == 0) {
+		if (umod32(ite, colcnt) == 0) {
 			if (sizeof(u64) == sizeof(virtual_addr_t)) {
 				vmm_cprintf(cdev, "\n0x%016llx: ", 
 						base + ite * VMM_PAGE_SIZE);

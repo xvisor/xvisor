@@ -24,7 +24,6 @@
 #define __SP804_TIMER_H__
 
 #include <vmm_types.h>
-#include <vmm_host_irq.h>
 
 #define TIMER_LOAD		0x00
 #define TIMER_VALUE		0x04
@@ -42,23 +41,17 @@
 #define TIMER_MIS		0x14
 #define TIMER_BGLOAD		0x18
 
-void sp804_timer_enable(virtual_addr_t base);
+int sp804_clocksource_init(virtual_addr_t base, 
+			   const char *name, 
+			   int rating, 
+			   u32 freq_hz,
+			   u32 shift);
 
-void sp804_timer_disable(virtual_addr_t base);
-
-int sp804_timer_event_stop(virtual_addr_t base);
-
-void sp804_timer_event_clearirq(virtual_addr_t base);
-
-bool sp804_timer_event_checkirq(virtual_addr_t base);
-
-int sp804_timer_event_start(virtual_addr_t base, u64 nsecs);
-
-u32 sp804_timer_counter_value(virtual_addr_t base);
-
-int sp804_timer_counter_start(virtual_addr_t base);
-
-int sp804_timer_init(virtual_addr_t base, u32 hirq,
-		     vmm_host_irq_handler_t hirq_handler);
+int sp804_clockchip_init(virtual_addr_t base, 
+			 u32 hirq,
+			 const char *name, 
+			 int rating, 
+			 u32 freq_hz,
+			 u32 target_cpu);
 
 #endif /* __SP804_TIMER_H__ */

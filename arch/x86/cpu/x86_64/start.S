@@ -307,6 +307,12 @@ _gdt64:
         .word 0
         .long 0x9F9200
 
+	.type __xvisor_tss_64_desc, @object
+	.globl __xvisor_tss_64_desc
+	.size __xvisor_tss_64_desc, 16 /* 16 bytes */
+	__xvisor_tss_64_desc: /* TSS descriptor */
+	.zero 16 /* To be filled later */
+
         .GDT_POINTER:
         .word .-_gdt64 -1
         .long _gdt64

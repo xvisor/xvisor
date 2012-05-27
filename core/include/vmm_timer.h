@@ -23,11 +23,10 @@
 #ifndef _VMM_TIMER_H__
 #define _VMM_TIMER_H__
 
-#include <arch_regs.h>
 #include <vmm_types.h>
-#include <vmm_math.h>
-#include <vmm_list.h>
 #include <vmm_spinlocks.h>
+#include <arch_regs.h>
+#include <list.h>
 
 struct vmm_timer_event;
 
@@ -44,27 +43,6 @@ struct vmm_timer_event {
 	vmm_timer_event_handler_t handler;
 	void * priv;
 };
-
-/** Convert kHz clocksource to clocksource mult */
-static inline u32 vmm_timer_clocksource_khz2mult(u32 khz, u32 shift)
-{
-	u64 tmp = ((u64)1000000) << shift;
-	tmp += khz >> 1;
-	tmp = vmm_udiv64(tmp, khz);
-	return (u32)tmp;
-}
-
-/** Convert Hz clocksource to clocksource mult */
-static inline u32 vmm_timer_clocksource_hz2mult(u32 hz, u32 shift)
-{
-	u64 tmp = ((u64)1000000000) << shift;
-	tmp += hz >> 1;
-	tmp = vmm_udiv64(tmp, hz);
-	return (u32)tmp;
-}
-
-/** Process timer event (Must be called from somewhere) */
-void vmm_timer_clockevent_process(arch_regs_t * regs);
 
 /** Start a timer event */
 int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs);
@@ -98,8 +76,8 @@ u32 vmm_timer_event_count(void);
 /** Current global timestamp (nanoseconds elapsed) */
 u64 vmm_timer_timestamp(void);
 
-#ifdef CONFIG_PROFILE
-/** Current global timestamp (nanoseconds elapsed) */
+#if defined(CONFIG_PROFILE)
+/** Special version for profile */
 u64 vmm_timer_timestamp_for_profile(void);
 #endif
 
