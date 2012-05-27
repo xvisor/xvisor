@@ -142,11 +142,15 @@ static inline u32 read_dfsr(void)
 	 * all STM/STR/LDM/LDR instructions have bit 20 to indicate 
 	 * if it is a read or write operation. We test this bit
 	 * to set or clear bit 11 on the DFSR result.
-	 * FIXME: We need also to handle the swap instruction
+	 * SWP instruction is reading and writing to memory. So we 
+	 * assume write. SWP has 0 on bit 20 (like STM or STR).
 	 */
 	if (inst & (1 << 20)) {
+		/* LDM or LDR type instruction */
 		rval &= ~(1 << 11);
 	} else {
+		/* STM or STR type instruction */
+		/* SWP instruction is writing to memory */
 		rval |= (1 << 11);
 	}
 
