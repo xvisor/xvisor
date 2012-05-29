@@ -97,7 +97,7 @@ static inline u32 pl190_emulator_irq_level(struct pl190_emulator_state *s)
 static void pl190_emulator_update(struct pl190_emulator_state *s)
 {
 	u32 level;
-	int set;
+	int irqset, fiqset;
 	struct vmm_vcpu *vcpu = vmm_manager_guest_vcpu(s->guest, 0);
 
 	if (!vcpu) {
@@ -106,13 +106,19 @@ static void pl190_emulator_update(struct pl190_emulator_state *s)
 
 	level = pl190_emulator_irq_level(s);
 
-	set = ((level & s->prio_mask[s->priority]) != 0);
-	if (set) {
-		vmm_vcpu_irq_assert(vcpu, CPU_EXTERNAL_IRQ, 0x0);
-	}
-	set = (((s->level | s->soft_level) & s->fiq_select) != 0);
-	if (set) {
-		vmm_vcpu_irq_assert(vcpu, CPU_EXTERNAL_FIQ, 0x0);
+	if (s->is_child_pic) {
+		vmm_devemu_emulate_irq(s->guest, s->parent_irq, level);
+	} else {
+		irqset = ((level & s->prio_mask[s->priority]) != 0);
+		fiqset = (((s->level | s->soft_level) & s->fiq_select) != 0);
+		if (irqset) {
+			vmm_vcpu_irq_assert(vcpu, s->parent_irq, 0x0);
+		} else if (fiqset) {
+			vmm_vcpu_irq_assert(vcpu, s->parent_irq + 1, 0x0);
+		} else {
+			vmm_vcpu_irq_deassert(vcpu, s->parent_irq);
+			vmm_vcpu_irq_deassert(vcpu, s->parent_irq + 1);
+		}
 	}
 }
 
