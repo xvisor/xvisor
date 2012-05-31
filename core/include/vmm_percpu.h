@@ -26,6 +26,12 @@
 
 #include <vmm_types.h>
 
+#define DEFINE_PER_CPU(type, name)				\
+		__percpu __typeof__(type) percpu_##name
+
+#define DECLARE_PER_CPU(type, name)				\
+		extern __typeof__(type) percpu__##name
+
 #ifdef CONFIG_SMP
 
 #include <arch_smp.h>
@@ -35,22 +41,19 @@ extern virtual_addr_t __percpu_offset[CONFIG_CPU_COUNT];
 #define RELOC_HIDE(ptr, off)	({ \
 		(typeof(ptr)) ((virtual_addr_t)(ptr) + (off)); })
 
-#define __get_cpu_var(var)	(*RELOC_HIDE(&percpu_##var,	\
+#define this_cpu(var)		(*RELOC_HIDE(&percpu_##var,	\
 				__percpu_offset[arch_smp_id()]))
 
-#define this_cpu(var)		__get_cpu_var(var)
+#define per_cpu(var, cpu)	(*RELOC_HIDE(&percpu_##var,	\
+				__percpu_offset[(cpu)]))
 
 #else
 
 #define this_cpu(var)		percpu_##var
 
+#define per_cpu(var, cpu)	percpu_##var
+
 #endif
-
-#define DEFINE_PER_CPU(type, name)				\
-		__percpu __typeof__(type) percpu_##name
-
-#define DECLARE_PER_CPU(type, name)				\
-		extern __typeof__(type) percpu__##name
 
 #define get_cpu_var(var) this_cpu(var)
 
