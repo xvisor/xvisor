@@ -288,8 +288,8 @@ static u32 cortexa8_cp15_c0_c2[8] =
 
 int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 {
-	u32 i, val;
 	int rc = VMM_OK;
+	u32 i, cache_type, level_count;
 
 	if (!vcpu->reset_count) {
 		vmm_memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
@@ -318,16 +318,44 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 	default:
 		break;
 	};
-	/* Cache control register such as CTR, CLIDR, and CCSIDRx should be
-	 * same as that of host underlying host.
+	/* Cache config register such as CTR, CLIDR, and CCSIDRx
+	 * should be same as that of underlying host.
 	 */
 	arm_priv(vcpu)->cp15.c0_cachetype = read_ctr();
-	val = read_clidr();
-	arm_priv(vcpu)->cp15.c0_clid = val;
-	val = (val & CLIDR_LOUU_MASK) >> CLIDR_LOUU_SHIFT;
-	for (i = 0; i <= val; i++) {
-		write_csselr(i << 1);
-		arm_priv(vcpu)->cp15.c0_ccsid[i] = read_ccsidr();
+	arm_priv(vcpu)->cp15.c0_clid = read_clidr();
+	level_count = (arm_priv(vcpu)->cp15.c0_clid & CLIDR_LOUU_MASK) 
+						>> CLIDR_LOUU_SHIFT;
+	for (i = 0; i < level_count; i++) {
+		cache_type = arm_priv(vcpu)->cp15.c0_clid >> (i * 3);
+		cache_type &= 0x7;
+		switch (cache_type) {
+		case CLIDR_CTYPE_ICACHE:
+			write_csselr((i << 1) | 1);
+			arm_priv(vcpu)->cp15.c0_ccsid[(i << 1) | 1] = 
+							read_ccsidr();
+			break;
+		case CLIDR_CTYPE_DCACHE:
+		case CLIDR_CTYPE_UNICACHE:
+			write_csselr(i << 1);
+			arm_priv(vcpu)->cp15.c0_ccsid[i << 1] = 
+							read_ccsidr();
+			break;
+		case CLIDR_CTYPE_SPLITCACHE:
+			write_csselr(i << 1);
+			arm_priv(vcpu)->cp15.c0_ccsid[i << 1] = 
+							read_ccsidr();
+			write_csselr((i << 1) | 1);
+			arm_priv(vcpu)->cp15.c0_ccsid[(i << 1) | 1] = 
+							read_ccsidr();
+			break;
+		case CLIDR_CTYPE_NOCACHE:
+		case CLIDR_CTYPE_RESERVED1:
+		case CLIDR_CTYPE_RESERVED2:
+		case CLIDR_CTYPE_RESERVED3:
+			arm_priv(vcpu)->cp15.c0_ccsid[i << 1] = 0;
+			arm_priv(vcpu)->cp15.c0_ccsid[(i << 1) | 1] = 0;
+			break;
+		};
 	}
 
 	return rc;

@@ -168,6 +168,9 @@
 #define CLIDR_CTYPE_DCACHE				0x2
 #define CLIDR_CTYPE_SPLITCACHE				0x3
 #define CLIDR_CTYPE_UNICACHE				0x4
+#define CLIDR_CTYPE_RESERVED1				0x5
+#define CLIDR_CTYPE_RESERVED2				0x6
+#define CLIDR_CTYPE_RESERVED3				0x7
 
 /* CSSELR related macros & defines */
 #define CSSELR_LEVEL_MASK				0x0000000E
