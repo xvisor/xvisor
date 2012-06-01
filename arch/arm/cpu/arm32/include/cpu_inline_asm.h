@@ -66,6 +66,26 @@
 
 #endif
 
+#define read_ccsidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 1, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_csselr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 2, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_csselr(val)	asm volatile(\
+				" mcr     p15, 2, %0, c0, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_clidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 1, %0, c0, c0, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_ctr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c0, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
 #define read_mpidr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c0, c0, 5\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
