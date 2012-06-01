@@ -538,8 +538,7 @@ int arch_vcpu_init(struct vmm_vcpu * vcpu)
 		/* Initialize Hypervisor System Trap Register */
 		arm_priv(vcpu)->hstr = (HSTR_TJDBX_MASK |
 					HSTR_TTEE_MASK |
-					HSTR_T1_MASK |
-					HSTR_T0_MASK);
+					HSTR_T1_MASK);
 		/* Initialize VCPU features */
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {

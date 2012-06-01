@@ -153,111 +153,6 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 {
 	*data = 0x0;
 	switch (CRn) {
-	case 0:		/* ID codes.  */
-		switch (opc1) {
-		case 0:
-			switch (CRm) {
-			case 0:
-				switch (opc2) {
-				case 0:	/* Device ID.  */
-					*data = arm_priv(vcpu)->cp15.c0_cpuid;
-					break;
-				case 1:	/* Cache Type.  */
-					*data =
-					    arm_priv(vcpu)->cp15.c0_cachetype;
-					break;
-				case 2:	/* TCM status.  */
-					*data = 0;
-					break;
-				case 3:	/* TLB type register.  */
-					*data = 0;	/* No lockable TLB entries.  */
-					break;
-				case 5:	/* MPIDR */
-					/* The MPIDR was standardised in v7; prior to
-					 * this it was implemented only in the 11MPCore.
-					 * For all other pre-v7 cores it does not exist.
-					 */
-					if (arm_feature(vcpu, ARM_FEATURE_V7) ||
-					    arm_cpuid(vcpu) ==
-					    ARM_CPUID_ARM11MPCORE) {
-						int mpidr = vcpu->subid;
-						/* We don't support setting cluster ID ([8..11])
-						 * so these bits always RAZ.
-						 */
-						if (arm_feature
-						    (vcpu, ARM_FEATURE_V7MP)) {
-							mpidr |= (1 << 31);
-							/* Cores which are uniprocessor (non-coherent)
-							 * but still implement the MP extensions set
-							 * bit 30. (For instance, A9UP.) However we do
-							 * not currently model any of those cores.
-							 */
-						}
-						*data = mpidr;
-					}
-					/* otherwise fall through to the unimplemented-reg case */
-					break;
-				default:
-					goto bad_reg;
-				}
-				break;
-			case 1:
-				if (!arm_feature(vcpu, ARM_FEATURE_V6))
-					goto bad_reg;
-				*data = arm_priv(vcpu)->cp15.c0_c1[opc2];
-				break;
-			case 2:
-				if (!arm_feature(vcpu, ARM_FEATURE_V6))
-					goto bad_reg;
-				*data = arm_priv(vcpu)->cp15.c0_c2[opc2];
-				break;
-			case 3:
-			case 4:
-			case 5:
-			case 6:
-			case 7:
-				*data = 0;
-				break;
-			default:
-				goto bad_reg;
-			}
-			break;
-		case 1:
-			/* These registers aren't documented on arm11 cores.  However
-			 * Linux looks at them anyway.  */
-			if (!arm_feature(vcpu, ARM_FEATURE_V6))
-				goto bad_reg;
-			if (CRm != 0)
-				goto bad_reg;
-			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
-				*data = 0;
-				break;
-			}
-			switch (opc2) {
-			case 0:
-				*data =
-				    arm_priv(vcpu)->cp15.
-				    c0_ccsid[arm_priv(vcpu)->cp15.c0_cssel];
-				break;
-			case 1:
-				*data = arm_priv(vcpu)->cp15.c0_clid;
-				break;
-			case 7:
-				*data = 0;
-				break;
-			default:
-				goto bad_reg;
-			}
-			break;
-		case 2:
-			if (opc2 != 0 || CRm != 0)
-				goto bad_reg;
-			*data = arm_priv(vcpu)->cp15.c0_cssel;
-			break;
-		default:
-			goto bad_reg;
-		};
-		break;
 	case 1: /* System configuration.  */
 		switch (opc2) {
 		case 0: /* Control register.  */
@@ -306,14 +201,6 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			 u32 data)
 {
 	switch (CRn) {
-	case 0:
-		/* ID codes.  */
-		if (arm_feature(vcpu, ARM_FEATURE_V7) &&
-		    (opc1 == 2) && (CRm == 0) && (opc2 == 0)) {
-			arm_priv(vcpu)->cp15.c0_cssel = data & 0xf;
-			break;
-		}
-		goto bad_reg;
 	case 1: /* System configuration.  */
 		switch (opc2) {
 		case 0:
@@ -341,6 +228,7 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 				  struct vmm_vcpu * vcpu)
 {
 	if (tvcpu && tvcpu->is_normal) {
+		arm_priv(tvcpu)->cp15.c0_cssel = read_csselr();
 		arm_priv(tvcpu)->cp15.c2_ttbr0 = read_ttbr0();
 		arm_priv(tvcpu)->cp15.c2_ttbr1 = read_ttbr1();
 		arm_priv(tvcpu)->cp15.c2_ttbcr = read_ttbcr();
@@ -360,7 +248,12 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 	if (vcpu->is_normal) {
 		cpu_mmu_stage2_chttbl(vcpu->id, arm_priv(vcpu)->cp15.ttbl);
 		write_vpidr(arm_priv(vcpu)->cp15.c0_cpuid);
-		write_vmpidr(vcpu->subid);
+		if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
+			write_vmpidr((1 << 31) | vcpu->subid);
+		} else {
+			write_vmpidr(vcpu->subid);
+		}
+		write_csselr(arm_priv(vcpu)->cp15.c0_cssel);
 		write_sctlr(arm_priv(vcpu)->cp15.c1_sctlr & ~(SCTLR_A_MASK));
 		write_cpacr(arm_priv(vcpu)->cp15.c1_cpacr);
 		write_ttbr0(arm_priv(vcpu)->cp15.c2_ttbr0);
@@ -395,6 +288,7 @@ static u32 cortexa8_cp15_c0_c2[8] =
 
 int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 {
+	u32 i, val;
 	int rc = VMM_OK;
 
 	if (!vcpu->reset_count) {
@@ -412,11 +306,6 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 							8 * sizeof(u32));
 		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa8_cp15_c0_c2, 
 							8 * sizeof(u32));
-		arm_priv(vcpu)->cp15.c0_cachetype = 0x82048004;
-		arm_priv(vcpu)->cp15.c0_clid = (1 << 27) | (2 << 24) | 3;
-		arm_priv(vcpu)->cp15.c0_ccsid[0] = 0xe007e01a; /* 16k L1 dcache. */
-		arm_priv(vcpu)->cp15.c0_ccsid[1] = 0x2007e01a; /* 16k L1 icache. */
-		arm_priv(vcpu)->cp15.c0_ccsid[2] = 0xf0000000; /* No L2 icache. */
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;
 	case ARM_CPUID_CORTEXA9:
@@ -424,15 +313,22 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 							8 * sizeof(u32));
 		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa9_cp15_c0_c2, 
 							8 * sizeof(u32));
-		arm_priv(vcpu)->cp15.c0_cachetype = 0x80038003;
-		arm_priv(vcpu)->cp15.c0_clid = (1 << 27) | (1 << 24) | 3;
-		arm_priv(vcpu)->cp15.c0_ccsid[0] = 0xe00fe015; /* 16k L1 dcache. */
-		arm_priv(vcpu)->cp15.c0_ccsid[1] = 0x200fe015; /* 16k L1 icache. */
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;
 	default:
 		break;
 	};
+	/* Cache control register such as CTR, CLIDR, and CCSIDRx should be
+	 * same as that of host underlying host.
+	 */
+	arm_priv(vcpu)->cp15.c0_cachetype = read_ctr();
+	val = read_clidr();
+	arm_priv(vcpu)->cp15.c0_clid = val;
+	val = (val & CLIDR_LOUU_MASK) >> CLIDR_LOUU_SHIFT;
+	for (i = 0; i <= val; i++) {
+		write_csselr(i << 1);
+		arm_priv(vcpu)->cp15.c0_ccsid[i] = read_ccsidr();
+	}
 
 	return rc;
 }
