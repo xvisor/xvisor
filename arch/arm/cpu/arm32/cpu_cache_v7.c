@@ -78,7 +78,7 @@ void flush_idcache(void)
 	/* flush instruction cache */
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
 		     : : "r"(tmp) : );
-	/* FIXME: flush data cache */
+	flush_dcache();
 }
 
 void flush_idcache_mva(virtual_addr_t mva)
@@ -97,7 +97,7 @@ void flush_idcache_line(u32 line)
 
 void clean_dcache(void)
 {	
-	/* FIXME: */
+	/* FIXME: clean data cache */
 }
 
 void clean_dcache_mva(virtual_addr_t mva)
@@ -114,7 +114,7 @@ void clean_dcache_line(u32 line)
 
 void clean_idcache(void)
 {
-	/* FIXME: */
+	clean_dcache();
 }
 
 void clean_idcache_mva(virtual_addr_t mva)
@@ -137,7 +137,7 @@ void clean_idcache_line(u32 line)
 
 void clean_flush_dcache(void)
 {
-	/* FIXME: */
+	/* FIXME: clean & flush dcache */
 }
 
 void clean_flush_dcache_mva(virtual_addr_t mva)
@@ -154,7 +154,8 @@ void clean_flush_dcache_line(u32 line)
 
 void clean_flush_idcache(void)
 {
-	/* FIXME: */
+	flush_icache();
+	clean_flush_dcache();
 }
 
 void clean_flush_idcache_mva(virtual_addr_t mva)

@@ -1342,23 +1342,26 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 0:
 				/* Invalidate data caches */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness ignore 
-				 * this cache operation.
+				/* For safety and correctness upgrade it to 
+				 * Clean and invalidate data cache.
 				 */
+				clean_flush_dcache();
 				break;
 			case 1:
 				/* Invalidate data cache line by MVA to PoC. */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				/* For safety and correctness ignore 
-				 * this cache operation.
+				/* For safety and correctness upgrade it to 
+				 * Clean and invalidate data cache.
 				 */
+				clean_flush_dcache_mva(data);
 				break;
 			case 2:
 				/* Invalidate data cache line by set/way. */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				/* For safety and correctness ignore 
-				 * this cache operation.
+				/* For safety and correctness upgrade it to 
+				 * Clean and invalidate data cache.
 				 */
+				clean_flush_dcache_line(data);
 				break;
 			default:
 				goto bad_reg;
@@ -1367,28 +1370,28 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		case 7:
 			switch (opc2) {
 			case 0:
-				/* Invalidate unified (instruction or data) cache */
+				/* Invalidate unified cache */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness 
-				 * only flush instruction cache.
+				/* For safety and correctness upgrade it to
+				 * Clean and invalidate unified cache
 				 */
-				flush_icache();
+				clean_flush_idcache();
 				break;
 			case 1:
 				/* Invalidate unified cache line by MVA */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness 
-				 * only flush instruction cache.
+				/* For safety and correctness upgrade it to
+				 * Clean and invalidate unified cache
 				 */
-				flush_icache_mva(data);
+				clean_flush_idcache_mva(data);
 				break;
 			case 2:
 				/* Invalidate unified cache line by set/way */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness 
-				 * only flush instruction cache.
+				/* For safety and correctness upgrade it to
+				 * Clean and invalidate unified cache
 				 */
-				flush_icache_line(data);
+				clean_flush_idcache_line(data);
 				break;
 			default:
 				goto bad_reg;
@@ -1508,32 +1511,17 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 0:
 				/* Clean and invalidate unified cache */
 				/* Emulation for ARMv6 */
-				/* For safety and correctness 
-				 * clean data cache and
-				 * flush instruction cache.
-				 */
-				clean_dcache();
-				flush_icache();
+				clean_flush_idcache();
 				break;
 			case 1:
 				/* Clean and Invalidate unified cache line by MVA */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness 
-				 * clean data cache and
-				 * flush instruction cache.
-				 */
-				clean_dcache_mva(data);
-				flush_icache_mva(data);
+				clean_flush_idcache_mva(data);
 				break;
 			case 2:
 				/* Clean and Invalidate unified cache line by set/way */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness 
-				 * clean data cache and
-				 * flush instruction cache.
-				 */
-				clean_dcache_line(data);
-				flush_icache_line(data);
+				clean_flush_idcache_line(data);
 				break;
 			default:
 				goto bad_reg;
@@ -2051,6 +2039,9 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	int rc = VMM_OK;
 	u32 vtlb_count;
+#if defined(CONFIG_ARMV7A)
+	u32 i, cache_type, last_level;
+#endif
 
 	if (!vcpu->reset_count) {
 		vmm_memset(&arm_priv(vcpu)->cp15, 0,
@@ -2127,6 +2118,49 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	default:
 		break;
 	};
+#if defined(CONFIG_ARMV7A)
+	if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+		/* Cache config register such as CTR, CLIDR, and CCSIDRx
+		 * should be same as that of underlying host.
+		 */
+		arm_priv(vcpu)->cp15.c0_cachetype = read_ctr();
+		arm_priv(vcpu)->cp15.c0_clid = read_clidr();
+		last_level = (arm_priv(vcpu)->cp15.c0_clid & CLIDR_LOUU_MASK) 
+							>> CLIDR_LOUU_SHIFT;
+		for (i = 0; i <= last_level; i++) {
+			cache_type = arm_priv(vcpu)->cp15.c0_clid >> (i * 3);
+			cache_type &= 0x7;
+			switch (cache_type) {
+			case CLIDR_CTYPE_ICACHE:
+				write_csselr((i << 1) | 1);
+				arm_priv(vcpu)->cp15.c0_ccsid[(i << 1) | 1] = 
+								read_ccsidr();
+				break;
+			case CLIDR_CTYPE_DCACHE:
+			case CLIDR_CTYPE_UNICACHE:
+				write_csselr(i << 1);
+				arm_priv(vcpu)->cp15.c0_ccsid[i << 1] = 
+								read_ccsidr();
+				break;
+			case CLIDR_CTYPE_SPLITCACHE:
+				write_csselr(i << 1);
+				arm_priv(vcpu)->cp15.c0_ccsid[i << 1] = 
+								read_ccsidr();
+				write_csselr((i << 1) | 1);
+				arm_priv(vcpu)->cp15.c0_ccsid[(i << 1) | 1] = 
+								read_ccsidr();
+				break;
+			case CLIDR_CTYPE_NOCACHE:
+			case CLIDR_CTYPE_RESERVED1:
+			case CLIDR_CTYPE_RESERVED2:
+			case CLIDR_CTYPE_RESERVED3:
+				arm_priv(vcpu)->cp15.c0_ccsid[i << 1] = 0;
+				arm_priv(vcpu)->cp15.c0_ccsid[(i << 1) | 1] = 0;
+				break;
+			};
+		}
+	}
+#endif
 
 	return rc;
 }
