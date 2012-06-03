@@ -20,6 +20,8 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief Implementation of cache operations for ARMv7a family
  */
+
+#include <cpu_barrier.h>
 #include <cpu_cache.h>
 
 void flush_icache(void)
@@ -104,12 +106,14 @@ void clean_dcache_mva(virtual_addr_t mva)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c10, 1\n\t"
 		     : : "r"(mva) : );
+	dsb();
 }
 
 void clean_dcache_line(u32 line)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c10, 2\n\t"
 		     : : "r"(line) : );
+	dsb();
 }
 
 void clean_idcache(void)
@@ -124,6 +128,7 @@ void clean_idcache_mva(virtual_addr_t mva)
 	 */
 	asm volatile(" mcr     p15, 0, %0, c7, c10, 1\n\t"
 		     : : "r"(mva) : );
+	dsb();
 }
 
 void clean_idcache_line(u32 line)
@@ -133,6 +138,7 @@ void clean_idcache_line(u32 line)
 	 */
 	asm volatile(" mcr     p15, 0, %0, c7, c10, 2\n\t"
 		     : : "r"(line) : );
+	dsb();
 }
 
 void clean_flush_dcache(void)
@@ -144,12 +150,14 @@ void clean_flush_dcache_mva(virtual_addr_t mva)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c14, 1\n\t"
 		     : : "r"(mva) : );
+	dsb();
 }
 
 void clean_flush_dcache_line(u32 line)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c14, 2\n\t"
 		     : : "r"(line) : );
+	dsb();
 }
 
 void clean_flush_idcache(void)
@@ -168,6 +176,7 @@ void clean_flush_idcache_mva(virtual_addr_t mva)
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 1\n\t"
 		     " mcr     p15, 0, %0, c7, c11, 1\n\t"
 		     : : "r"(mva) : );
+	dsb();
 }
 
 void clean_flush_idcache_line(u32 line)
@@ -180,5 +189,6 @@ void clean_flush_idcache_line(u32 line)
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
 		     " mcr     p15, 0, %0, c7, c14, 2\n\t"
 		     : : "r"(line) : );
+	dsb();
 }
 
