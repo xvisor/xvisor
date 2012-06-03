@@ -289,7 +289,7 @@ static u32 cortexa8_cp15_c0_c2[8] =
 int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 {
 	int rc = VMM_OK;
-	u32 i, cache_type, level_count;
+	u32 i, cache_type, last_level;
 
 	if (!vcpu->reset_count) {
 		vmm_memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
@@ -323,9 +323,9 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 	 */
 	arm_priv(vcpu)->cp15.c0_cachetype = read_ctr();
 	arm_priv(vcpu)->cp15.c0_clid = read_clidr();
-	level_count = (arm_priv(vcpu)->cp15.c0_clid & CLIDR_LOUU_MASK) 
+	last_level = (arm_priv(vcpu)->cp15.c0_clid & CLIDR_LOUU_MASK) 
 						>> CLIDR_LOUU_SHIFT;
-	for (i = 0; i < level_count; i++) {
+	for (i = 0; i <= last_level; i++) {
 		cache_type = arm_priv(vcpu)->cp15.c0_clid >> (i * 3);
 		cache_type &= 0x7;
 		switch (cache_type) {
