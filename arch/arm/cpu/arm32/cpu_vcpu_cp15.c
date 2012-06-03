@@ -1280,9 +1280,12 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				case 0:
 					/* Invalidate all I-caches to PoU 
 					 * innner-shareable - ICIALLUIS */
+					flush_icache();
+					break;
 				case 6:
 					/* Invalidate all branch predictors 
 					 * innner-shareable - BPIALLUIS */
+					flush_bpredictor();
 					break;
 				default:
 					goto bad_reg;
