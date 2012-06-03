@@ -1481,26 +1481,17 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 0:
 				/* Clean and invalidate data cache */
 				/* Emulation for ARMv6 */
-				/* For safety and correctness 
-				 * only clean data cache.
-				 */
-				clean_dcache();
+				clean_flush_dcache();
 				break;
 			case 1:
 				/* Clean and invalidate data cache line by MVA */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				/* For safety and correctness 
-				 * only clean data cache.
-				 */
-				/* FIXME: clean_dcache_mva(data); */
+				clean_flush_dcache_mva(data);
 				break;
 			case 2:
 				/* Clean and invalidate data cache line by set/way */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				/* For safety and correctness 
-				 * only clean data cache.
-				 */
-				clean_dcache_line(data);
+				clean_flush_dcache_line(data);
 				break;
 			default:
 				goto bad_reg;
