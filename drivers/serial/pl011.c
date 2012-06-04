@@ -332,7 +332,8 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 	port->irq = *((u32 *) attr);
-	if ((rc = vmm_host_irq_register(port->irq, pl011_irq_handler, port))) {
+	if ((rc = vmm_host_irq_register(port->irq, dev->node->name, 
+					pl011_irq_handler, port))) {
 		goto free_port;
 	}
 	if ((rc = vmm_host_irq_enable(port->irq))) {

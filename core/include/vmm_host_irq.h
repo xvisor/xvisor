@@ -68,6 +68,7 @@ struct vmm_host_irq_chip {
 /** Host IRQ Abstraction */
 struct vmm_host_irq {
 	u32 num;
+	const char *name;
 	bool enabled;
 	u32 count;
 	void * chip_data;
@@ -134,6 +135,7 @@ int vmm_host_irq_disable(u32 hirq_num);
 
 /** Register handler for given irq */
 int vmm_host_irq_register(u32 hirq_num, 
+			  const char *name,
 			  vmm_host_irq_handler_t handler,
 			  void *dev);
 

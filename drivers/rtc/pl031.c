@@ -157,7 +157,8 @@ static int pl031_driver_probe(struct vmm_device *dev,
 		goto free_ldata;
 	}
 	ldata->irq = *((u32 *) attr);
-	if ((rc = vmm_host_irq_register(ldata->irq, pl031_irq_handler, ldata))) {
+	if ((rc = vmm_host_irq_register(ldata->irq, dev->node->name,
+					pl031_irq_handler, ldata))) {
 		goto free_ldata;
 	}
 	if ((rc = vmm_host_irq_enable(ldata->irq))) {
