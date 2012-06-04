@@ -53,8 +53,9 @@ void cmd_host_usage(struct vmm_chardev *cdev)
 
 void cmd_host_info(struct vmm_chardev *cdev)
 {
-	vmm_cprintf(cdev, "CPU   : %s\n", CONFIG_CPU);
-	vmm_cprintf(cdev, "Board : %s\n", CONFIG_BOARD);
+	vmm_cprintf(cdev, "CPU Name   : %s\n", CONFIG_CPU);
+	vmm_cprintf(cdev, "CPU Count  : %d\n", CONFIG_CPU_COUNT);
+	vmm_cprintf(cdev, "Board Name : %s\n", CONFIG_BOARD);
 }
 
 void cmd_host_irq_stats(struct vmm_chardev *cdev)
@@ -62,10 +63,12 @@ void cmd_host_irq_stats(struct vmm_chardev *cdev)
 	u32 num, stats, count = vmm_host_irq_count();
 	struct vmm_host_irq *irq;
 	struct vmm_host_irq_chip *chip;
-	vmm_cprintf(cdev, "----------------------------------------\n");
-	vmm_cprintf(cdev, "| %-8s| %-10s| %-15s|\n", 
-			  "IRQ Num", "IRQ Chip", "IRQ Count");
-	vmm_cprintf(cdev, "----------------------------------------\n");
+	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev, "--------------------\n");
+	vmm_cprintf(cdev, "| %-8s| %-18s| %-10s| %-15s|\n", 
+			  "IRQ Num", "IRQ Name", "IRQ Chip", "IRQ Count");
+	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev, "--------------------\n");
 	for (num = 0; num < count; num++) {
 		irq = vmm_host_irq_get(num);
 		if (!vmm_host_irq_isenabled(irq)) {
@@ -73,10 +76,11 @@ void cmd_host_irq_stats(struct vmm_chardev *cdev)
 		}
 		stats = vmm_host_irq_get_count(irq);
 		chip = vmm_host_irq_get_chip(irq);
-		vmm_cprintf(cdev, "| %-8d| %-10s| %-15d|\n", 
-				  num, chip->name, stats);
+		vmm_cprintf(cdev, "| %-8d| %-18s| %-10s| %-15d|\n", 
+				  num, irq->name, chip->name, stats);
 	}
-	vmm_cprintf(cdev, "----------------------------------------\n");
+	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev, "--------------------\n");
 }
 
 void cmd_host_ram_stats(struct vmm_chardev *cdev)
