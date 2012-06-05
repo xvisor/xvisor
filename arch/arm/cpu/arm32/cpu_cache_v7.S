@@ -48,10 +48,10 @@
 	mrc 	p15, 1, r1, c0, c0, 0 	/* reads current Cache Size ID register */; \
 	and 	r2, r1, #7 		/* extract the line length field */; \
 	add 	r2, r2, #4 		/* add 4 for the line length offset (log2 16 bytes) */; \
-	ldr 	r4, 6f			;\
+	ldr 	r4, =0x3FF		;\
 	ands	r4, r4, r1, LSR #3 	/* r4 is the max number on the way size (right aligned) */; \
 	clz 	r5, r4 			/* r5 is the bit position of the way size increment */; \
-	ldr 	r7, 7f			;\
+	ldr 	r7, =0x00007FFF		;\
 	ands	r7, r7, r1, LSR #13 	/* r7 is the max number of the index size (right aligned) */; \
 2: 					;\
 	mov 	r9, r4 			/* r9 working copy of the max way size (right aligned) */; \
@@ -69,11 +69,7 @@
 	bgt 	1b			;\
 					\
 5:					;\
-	ldmia   sp!, {r0-r9}		/* restore registers */;\
-6:					;\
-	.word 0x3FF			;\
-7:					;\
-	.word 0x00007FFF
+	ldmia   sp!, {r0-r9}		/* restore registers */;
 
 	/* 
 	 * Operations on entire data Cache to POC 
