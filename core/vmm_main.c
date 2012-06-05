@@ -21,8 +21,6 @@
  * @brief main file for core code
  */
 
-#include <arch_cpu.h>
-#include <arch_board.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
@@ -46,6 +44,11 @@
 #include <vmm_chardev.h>
 #include <vmm_vserial.h>
 #include <vmm_modules.h>
+#include <arch_cpu.h>
+#include <arch_board.h>
+#if defined(CONFIG_SMP)
+#include <arch_smp.h>
+#endif
 
 void vmm_hang(void)
 {
@@ -55,10 +58,17 @@ void vmm_hang(void)
 void vmm_init(void)
 {
 	int ret;
-	u32 freed;
+	u32 c, freed, cpu = 0;
 	struct dlist *l;
 	struct vmm_devtree_node *gnode, *gsnode;
 	struct vmm_guest *guest = NULL;
+
+#if defined(CONFIG_SMP)
+	cpu = arch_smp_id();
+#endif
+
+	/* Mark this CPU present */
+	vmm_set_cpu_present(cpu, TRUE);
 
 	/* Print version string */
 	vmm_printf("\n");
@@ -163,6 +173,24 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
+#if defined(CONFIG_SMP)
+	/* Initialize secondary CPUs */
+	vmm_printf("Initialize Secondary CPUs\n");
+	ret = arch_smp_prepare_cpus();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Start each possible secondary CPUs */
+	for_each_possible_cpu(c) {
+		ret = arch_smp_start_cpu(c);
+		if (ret) {
+			vmm_printf("Failed to start CPU%d\n", ret);
+		}
+	}
+#endif
+
 	/* Initialize hypervisor threads */
 	vmm_printf("Initialize Hypervisor Threads\n");
 	ret = vmm_threads_init();
@@ -265,7 +293,7 @@ void vmm_init(void)
 	vmm_printf("%dK\n", freed);
 
 	/* Populate guest instances (Must be second last step) */
-	vmm_printf("Creating Pre-Configured Guest Instances\n");
+	vmm_printf("Creating Pre-Configured Guests\n");
 	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
 	if (!gsnode) {
@@ -284,13 +312,53 @@ void vmm_init(void)
 		}
 	}
 
+	/* Print status of host CPUs */
+	for_each_possible_cpu(c) {
+		if (vmm_cpu_online(c)) {
+			vmm_printf("CPU%d: Online\n", c);
+		} else if (vmm_cpu_present(c)) {
+			vmm_printf("CPU%d: Present\n", c);
+		} else {
+			vmm_printf("CPU%d: Possible\n", c);
+		}
+	}
+	vmm_printf("Brought Up %d CPUs\n", vmm_num_online_cpus());
+
 	/* Start timer (Must be last step) */
-	vmm_printf("Starting Hypervisor Timer\n");
 	vmm_timer_start();
 
 	/* Wait here till scheduler gets invoked by timer */
 	vmm_hang();
 }
+
+#if defined(CONFIG_SMP)
+void vmm_init_secondary(void)
+{
+	int ret;
+	u32 cpu = arch_smp_id();
+
+	/* Mark this CPU present */
+	vmm_set_cpu_present(cpu, TRUE);
+
+	/* Initialize hypervisor timer */
+	ret = vmm_timer_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize hypervisor scheduler */
+	ret = vmm_scheduler_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Start timer (Must be last step) */
+	vmm_timer_start();
+
+	/* Wait here till scheduler gets invoked by timer */
+	vmm_hang();
+}
+#endif
 
 void vmm_reset(void)
 {

@@ -31,6 +31,11 @@ void vmm_hang(void);
 /** Initialize hypervisor */
 void vmm_init(void);
 
+#if defined(CONFIG_SMP)
+/** Initialize hypervisor for secondary CPUs */
+void vmm_init_secondary(void);
+#endif
+
 /** Reset hypervisor */
 void vmm_reset(void);
 

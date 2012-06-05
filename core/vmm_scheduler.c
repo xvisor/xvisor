@@ -21,16 +21,17 @@
  * @brief source file for hypervisor scheduler
  */
 
-#include <arch_cpu_irq.h>
-#include <arch_vcpu.h>
 #include <vmm_error.h>
 #include <vmm_percpu.h>
+#include <vmm_cpumask.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_timer.h>
 #include <vmm_schedalgo.h>
 #include <vmm_scheduler.h>
+#include <arch_cpu_irq.h>
+#include <arch_vcpu.h>
 
 #define IDLE_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
 #define IDLE_VCPU_PRIORITY 		VMM_VCPU_MIN_PRIORITY
@@ -353,6 +354,13 @@ int __init vmm_scheduler_init(void)
 
 	/* Start scheduler timer event */
 	vmm_timer_event_start(schedp->ev, 0);
+
+	/* Mark this CPU online */
+#if defined(CONFIG_SMP)
+	vmm_set_cpu_online(arch_smp_id(), TRUE);
+#else
+	vmm_set_cpu_online(0, TRUE);
+#endif
 
 	return VMM_OK;
 }
