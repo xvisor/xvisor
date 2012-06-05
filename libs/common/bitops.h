@@ -441,4 +441,14 @@ static inline int test_and_change_bit(int nr, volatile unsigned long *addr)
 	return (old & mask) != 0;
 }
 
+/**
+ * test_bit - Determine whether a bit is set
+ * @nr: bit number to test
+ * @addr: Address to start counting from
+ */
+static inline int test_bit(int nr, const volatile unsigned long *addr)
+{
+	return 1UL & (addr[BIT_WORD(nr)] >> (nr & (BITS_PER_LONG-1)));
+}
+
 #endif /* __BITOPS_H__ */
