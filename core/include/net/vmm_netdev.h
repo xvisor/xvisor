@@ -70,7 +70,7 @@ extern int vmm_netswitch_init(void);
 extern int vmm_netswitch_exit(void);
 
 /** Allocate new network device */
-struct vmm_netdev *vmm_netdev_alloc(char *name);
+struct vmm_netdev *vmm_netdev_alloc(const char *name);
 
 /** Register network device to device driver framework */
 int vmm_netdev_register(struct vmm_netdev *ndev);

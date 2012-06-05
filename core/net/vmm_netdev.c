@@ -37,7 +37,7 @@
 #define	MODULE_INIT			vmm_netdev_init
 #define	MODULE_EXIT			vmm_netdev_exit
 
-struct vmm_netdev *vmm_alloc_netdev(const char *name)
+struct vmm_netdev *vmm_netdev_alloc(const char *name)
 {
 	struct vmm_netdev *ndev;
 
