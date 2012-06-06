@@ -42,10 +42,12 @@ struct vmm_scheduler_ctrl {
 	void * rq;
 	struct vmm_vcpu *current_vcpu;
 	struct vmm_vcpu *idle_vcpu;
+	char idle_vcpu_name[16];
 	u8 idle_vcpu_stack[IDLE_VCPU_STACK_SZ];
 	bool irq_context;
 	bool yield_on_irq_exit;
-	struct vmm_timer_event * ev;
+	char ev_name[16];
+	struct vmm_timer_event *ev;
 };
 
 static DEFINE_PER_CPU(struct vmm_scheduler_ctrl, sched);
@@ -310,6 +312,11 @@ static void idle_orphan(void)
 int __init vmm_scheduler_init(void)
 {
 	int rc;
+#if defined(CONFIG_SMP)
+	u32 cpu = arch_smp_id();
+#else
+	u32 cpu = 0;
+#endif
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
 	/* Reset the scheduler control structure */
@@ -331,7 +338,8 @@ int __init vmm_scheduler_init(void)
 	schedp->yield_on_irq_exit = FALSE;
 
 	/* Create timer event and start it. (Per Host CPU) */
-	schedp->ev = vmm_timer_event_create("sched", 
+	vmm_sprintf(schedp->ev_name, "sched/%d", cpu);
+	schedp->ev = vmm_timer_event_create(schedp->ev_name, 
 					    &vmm_scheduler_timer_event, 
 					    NULL);
 	if (!schedp->ev) {
@@ -339,7 +347,9 @@ int __init vmm_scheduler_init(void)
 	}
 
 	/* Create idle orphan vcpu with default time slice. (Per Host CPU) */
-	schedp->idle_vcpu = vmm_manager_vcpu_orphan_create("idle/0",
+	vmm_sprintf(schedp->idle_vcpu_name, "idle/%d", cpu);
+	schedp->idle_vcpu = vmm_manager_vcpu_orphan_create(
+	schedp->idle_vcpu_name,
 	(virtual_addr_t)&idle_orphan,
 	(virtual_addr_t)&schedp->idle_vcpu_stack[IDLE_VCPU_STACK_SZ - 4],
 	IDLE_VCPU_PRIORITY, IDLE_VCPU_TIMESLICE);
@@ -356,11 +366,7 @@ int __init vmm_scheduler_init(void)
 	vmm_timer_event_start(schedp->ev, 0);
 
 	/* Mark this CPU online */
-#if defined(CONFIG_SMP)
-	vmm_set_cpu_online(arch_smp_id(), TRUE);
-#else
-	vmm_set_cpu_online(0, TRUE);
-#endif
+	vmm_set_cpu_online(cpu, TRUE);
 
 	return VMM_OK;
 }
