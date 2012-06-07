@@ -25,19 +25,19 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
-#include <cpu_barrier.h>
+#include <arch_barrier.h>
 
 long __lock arch_atomic_read(atomic_t * atom)
 {
 	long ret = atom->counter;
-	rmb();
+	arch_rmb();
 	return ret;
 }
 
 void __lock arch_atomic_write(atomic_t * atom, long value)
 {
 	atom->counter = value;
-	wmb();
+	arch_wmb();
 }
 
 static void __lock __cpu_atomic_add(atomic_t * atom, long value)

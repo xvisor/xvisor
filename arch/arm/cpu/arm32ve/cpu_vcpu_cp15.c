@@ -34,8 +34,6 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <cpu_mmu.h>
-#include <cpu_cache.h>
-#include <cpu_barrier.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate.h>

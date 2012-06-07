@@ -27,11 +27,11 @@
 #include <vmm_main.h>
 #include <vmm_stdio.h>
 #include <vmm_types.h>
+#include <arch_barrier.h>
 #include <arch_cpu_irq.h>
 #include <arch_sections.h>
 #include <cpu_defines.h>
 #include <cpu_cache.h>
-#include <cpu_barrier.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
 
