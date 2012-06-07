@@ -91,7 +91,7 @@ static void __notrace vmm_profile_enter(void *ip, void *parent_ip)
 
 	pctrl.stat[index].counter++;
 	pctrl.stat[index].is_tracing = 1;
-	pctrl.stat[index].time_in = vmm_timer_timestamp();
+	pctrl.stat[index].time_in = vmm_timer_timestamp_for_profile();
 
 	vmm_spin_unlock_irqrestore(&pctrl.lock, flags);
 
@@ -125,7 +125,7 @@ static void __notrace vmm_profile_exit(void *ip, void *parent_ip)
 
 	vmm_spin_lock_irqsave(&pctrl.lock, flags);
 
-	time = vmm_timer_timestamp();
+	time = vmm_timer_timestamp_for_profile();
 
 	if (pctrl.stat[index].time_in < time) {
 		pctrl.stat[index].time += time - pctrl.stat[index].time_in;

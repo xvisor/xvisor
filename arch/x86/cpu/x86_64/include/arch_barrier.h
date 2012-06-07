@@ -16,22 +16,29 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arch_smp.h
+ * @file arch_barrier.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief generic interface for arch specific SMP functions
+ * @brief  architecure specific memory barriers
  */
-#ifndef _ARCH_SMP_H__
-#define _ARCH_SMP_H__
+#ifndef __ARCH_BARRIER_H__
+#define __ARCH_BARRIER_H__
 
-#include <vmm_types.h>
+/* FIXME: Read & Write Memory barrier */
+#define arch_mb()			
 
-/** Retrive current processor id */
-u32 arch_smp_id(void);
+/* FIXME: Read Memory barrier */
+#define arch_rmb()			
 
-/** Prepare secondary CPUs */
-int arch_smp_prepare_cpus(void);
+/* FIXME: Write Memory barrier */
+#define arch_wmb()			
 
-/** Start secondary CPU */
-int arch_smp_start_cpu(u32 cpu);
+/* FIXME: SMP Read & Write Memory barrier */
+#define arch_smp_mb()			
 
-#endif
+/* FIXME: SMP Read Memory barrier */
+#define arch_smp_rmb()			
+
+/* FIXME: SMP Write Memory barrier */
+#define arch_smp_wmb()			
+
+#endif /* __ARCH_BARRIER_H__ */

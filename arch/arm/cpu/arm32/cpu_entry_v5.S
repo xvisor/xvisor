@@ -213,7 +213,7 @@ _start_hang:
 #define SECTION_ATTR 	((TTBL_AP_SRW_U << TTBL_L1TBL_TTE_AP_SHIFT) | \
 			(TTBL_L1TBL_TTE_DOM_RESERVED << TTBL_L1TBL_TTE_DOM_SHIFT) | \
 			TTBL_L1TBL_TTE_REQ_MASK | TTBL_L1TBL_TTE_C_MASK | \
-			TTBL_L1TBL_TTE_TYPE_SECTION)
+			TTBL_L1TBL_TTE_TYPE_SECTION | TTBL_L1TBL_TTE_REQ_MASK)
 
 __mmu_section_attr:
 	.word SECTION_ATTR
@@ -235,6 +235,12 @@ __copy_end:
 	.word _copy_end
 __defl1_mem:
 	.word defl1_mem
+	.globl _ifar
+_ifar:
+	.word 0x0
+	.globl _abort_inst
+_abort_inst:
+	.word 0x0
 
 	/* 
 	 * Load start address storage
@@ -476,6 +482,8 @@ EXCEPTION_HANDLER _soft_irq, 4
 	 */
 EXCEPTION_HANDLER _prefetch_abort, 4
 	PUSH_REGS _prefetch_abort_push
+	ldr r0, _ifar;
+	str lr, [r0];
 	CALL_EXCEPTION_CFUNC do_prefetch_abort
 	PULL_REGS _prefetch_abort_pull _prefetch_abort_pull1
 
@@ -484,6 +492,8 @@ EXCEPTION_HANDLER _prefetch_abort, 4
 	 */
 EXCEPTION_HANDLER _data_abort, 8
 	PUSH_REGS _data_abort_push
+	ldr r0, _abort_inst;
+	str lr, [r0];
 	CALL_EXCEPTION_CFUNC do_data_abort
 	PULL_REGS _data_abort_pull _data_abort_pull1
 

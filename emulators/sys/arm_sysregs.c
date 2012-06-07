@@ -50,11 +50,14 @@
 #define	MODULE_INIT			realview_emulator_init
 #define	MODULE_EXIT			realview_emulator_exit
 
-#define REALVIEW_LOCK_VAL		0x0000a05f
+#define LOCK_VAL			0x0000a05f
+
 #define REALVIEW_SYSID_PBA8		0x01780500
 #define REALVIEW_PROCID_PBA8		0x00000000
-#define REALVIEW_SYSID_VEXPRESS		0x01900000
+#define VEXPRESS_SYSID_CA9		0x01900000
 #define VEXPRESS_PROCID_CA9		0x0c000191
+#define VERSATILEPB_SYSID_ARM926	0x41008004
+#define VERSATILEPB_PROCID_ARM926	0x00000000
 
 struct realview_sysctl {
 	struct vmm_guest *guest;
@@ -127,7 +130,7 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 		regval = s->nvflags;
 		break;
 	case 0x40: /* RESETCTL */
-		if (s->sys_id == REALVIEW_SYSID_VEXPRESS) {
+		if (s->sys_id == VEXPRESS_SYSID_CA9) {
 			/* reserved: RAZ/WI */
 			regval = 0;
 		} else {
@@ -196,21 +199,21 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 		regval = 0;
 		break;
 	case 0xa0: /* SYS_CFGDATA */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (s->sys_id != VEXPRESS_SYSID_CA9) {
 			rc = VMM_EFAIL;
 		} else {
 			regval = s->sys_cfgdata;
 		}
 		break;
 	case 0xa4: /* SYS_CFGCTRL */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (s->sys_id != VEXPRESS_SYSID_CA9) {
 			rc = VMM_EFAIL;
 		} else {
 			regval = s->sys_cfgctrl;
 		}
 		break;
 	case 0xa8: /* SYS_CFGSTAT */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (s->sys_id != VEXPRESS_SYSID_CA9) {
 			rc = VMM_EFAIL;
 		} else {
 			regval = s->sys_cfgstat;
@@ -292,12 +295,10 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 		break;
 	case 0x20: /* LOCK */
 		s->lockval &= regmask;
-		if (regval == REALVIEW_LOCK_VAL) {
-			s->lockval |= (regval & 0xffff);
-			s->lockval &= ~(0x10000);
+		if (regval == LOCK_VAL) {
+			s->lockval = regval;
 		} else {
-			s->lockval |= (regval & 0xffff);
-			s->lockval |= (0x10000);
+			s->lockval = regval & 0x7fff;
 		}
 		break;
 	case 0x28: /* CFGDATA1 */
@@ -323,17 +324,30 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 		s->nvflags &= ~regval;
 		break;
 	case 0x40: /* RESETCTL */
-		if (s->sys_id == REALVIEW_SYSID_VEXPRESS) {
+		switch (s->sys_id) {
+		case VERSATILEPB_SYSID_ARM926:
+			if (s->lockval == LOCK_VAL) {
+				s->resetlevel &= regmask;
+				s->resetlevel |= regval;
+				if (s->resetlevel & 0x100) {
+					do_reset = TRUE;
+				}
+			}
+			break;
+		case REALVIEW_SYSID_PBA8:
+			if (s->lockval == LOCK_VAL) {
+				s->resetlevel &= regmask;
+				s->resetlevel |= regval;
+				if (s->resetlevel & 0x04) {
+					do_reset = TRUE;
+				}
+			}
+			break;
+		case VEXPRESS_SYSID_CA9:
+		default:
 			/* reserved: RAZ/WI */
 			break;
-		}
-		if (!(s->lockval & 0x10000)) {
-			s->resetlevel &= regmask;
-			s->resetlevel |= regval;
-			if (s->resetlevel & 0x04) {
-				do_reset = TRUE;
-			}
-		}
+		};
 		break;
 	case 0x44: /* PCICTL */
 		/* nothing to do.  */
@@ -356,7 +370,7 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 	case 0x9c: /* OSCRESET4 */
 		break;
 	case 0xa0: /* SYS_CFGDATA */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (s->sys_id != VEXPRESS_SYSID_CA9) {
 			rc =  VMM_EFAIL;
 			break;
 		}
@@ -364,7 +378,7 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 		s->sys_cfgdata |= regval;
 		break;
 	case 0xa4: /* SYS_CFGCTRL */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (s->sys_id != VEXPRESS_SYSID_CA9) {
 			rc =  VMM_EFAIL;
 			break;
 		}
@@ -383,7 +397,7 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 		}
 		break;
 	case 0xa8: /* SYS_CFGSTAT */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (s->sys_id != VEXPRESS_SYSID_CA9) {
 			rc =  VMM_EFAIL;
 			break;
 		}
@@ -469,6 +483,12 @@ static int realview_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
+static u32 versatile_sysids[] = {
+	/* === VERSATILE PB === */
+	/* sys_id */ VERSATILEPB_SYSID_ARM926, 
+	/* proc_id */ VERSATILEPB_PROCID_ARM926, 
+};
+
 static u32 realview_sysids[] = {
 	/* === PBA8 === */
 	/* sys_id */ REALVIEW_SYSID_PBA8, 
@@ -477,11 +497,15 @@ static u32 realview_sysids[] = {
 
 static u32 vexpress_sysids[] = {
 	/* === PBA8 === */
-	/* sys_id */ REALVIEW_SYSID_VEXPRESS, 
+	/* sys_id */ VEXPRESS_SYSID_CA9, 
 	/* proc_id */ VEXPRESS_PROCID_CA9, 
 };
 
 static struct vmm_emuid realview_emuid_table[] = {
+	{ .type = "sys", 
+	  .compatible = "versatilepb,arm926", 
+	  .data = &versatile_sysids[0] 
+	},
 	{ .type = "sys", 
 	  .compatible = "realview,pb-a8", 
 	  .data = &realview_sysids[0] 

@@ -187,14 +187,14 @@ int __init sp804_clockchip_init(virtual_addr_t base,
 	cc->clkchip.priv = cc;
 
 	/* Register interrupt handler */
-	if ((rc = vmm_host_irq_register(hirq, 
+	if ((rc = vmm_host_irq_register(hirq, name,
 					&sp804_clockchip_irq_handler, cc))) {
 		return rc;
 	}
 
 #ifdef CONFIG_SMP
 	/* Set host irq affinity to target cpu */
-	if ((rc = vmm_host_irq_set_affinity(hirq, 
+	if ((rc = vmm_host_irq_set_affinity(hirq,
 					    vmm_cpumask_of(target_cpu), 
 					    TRUE))) {
 		return rc;

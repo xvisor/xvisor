@@ -16,22 +16,29 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_barrier.h
+ * @file arch_barrier.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief  ARM specific memory barriers
+ * @brief  architecure specific memory barriers
  */
-#ifndef __CPU_BARRIER_H__
-#define __CPU_BARRIER_H__
+#ifndef __ARCH_BARRIER_H__
+#define __ARCH_BARRIER_H__
 
-#define isb() 			asm volatile ("isb" : : : "memory")
-#define dsb() 			asm volatile ("dsb" : : : "memory")
-#define dmb() 			asm volatile ("dmb" : : : "memory")
+/* FIXME: Read & Write Memory barrier */
+#define arch_mb()			
 
-#define mb()			dsb()
-#define rmb()			dsb()
-#define wmb()			dsb()
-#define smp_mb()		dmb()
-#define smp_rmb()		dmb()
-#define smp_wmb()		dmb()
+/* FIXME: Read Memory barrier */
+#define arch_rmb()			
 
-#endif /* __CPU_BARRIER_H__ */
+/* FIXME: Write Memory barrier */
+#define arch_wmb()			
+
+/* FIXME: SMP Read & Write Memory barrier */
+#define arch_smp_mb()			
+
+/* FIXME: SMP Read Memory barrier */
+#define arch_smp_rmb()			
+
+/* FIXME: SMP Write Memory barrier */
+#define arch_smp_wmb()			
+
+#endif /* __ARCH_BARRIER_H__ */

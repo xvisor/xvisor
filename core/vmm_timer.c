@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_percpu.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
@@ -34,58 +35,67 @@
 #endif
 
 /** Control structure for Timer Subsystem */
-struct vmm_timer_ctrl {
-	struct vmm_timecounter cpu_tc;
-	struct vmm_clockchip *cpu_cc;
-	bool cpu_started;
-	bool cpu_inprocess;
-	u64 cpu_next_event;
-	struct vmm_timer_event *cpu_curr;
-	struct dlist cpu_event_list;
+struct vmm_timer_local_ctrl {
+	struct vmm_timecounter tc;
+	struct vmm_clockchip *cc;
+	bool started;
+	bool inprocess;
+	u64 next_event;
+	struct vmm_timer_event *curr;
 	struct dlist event_list;
 };
 
-static struct vmm_timer_ctrl tctrl;
+static DEFINE_PER_CPU(struct vmm_timer_local_ctrl, tlc);
 
-#ifdef CONFIG_PROFILE
+struct vmm_timer_global_ctrl {
+	struct dlist event_list;
+};
+
+static struct vmm_timer_global_ctrl tgc;
+
+#if defined(CONFIG_PROFILE)
 u64 __notrace vmm_timer_timestamp_for_profile(void)
-#else
-u64 vmm_timer_timestamp(void)
-#endif
 {
-	return vmm_timecounter_read(&tctrl.cpu_tc);
+	return vmm_timecounter_read_for_profile(&(this_cpu(tlc).tc));
+}
+#endif
+
+u64 vmm_timer_timestamp(void)
+{
+	return vmm_timecounter_read(&(this_cpu(tlc).tc));
 }
 
 static void vmm_timer_schedule_next_event(void)
 {
 	u64 tstamp;
 	struct vmm_timer_event *e;
+	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
 
 	/* If not started yet or still processing events then we give up */
-	if (!tctrl.cpu_started || tctrl.cpu_inprocess) {
+	if (!tlcp->started || tlcp->inprocess) {
 		return;
 	}
 
 	/* If no events, we give up */
-	if (list_empty(&tctrl.cpu_event_list)) {
+	if (list_empty(&tlcp->event_list)) {
 		return;
 	}
 
 	/* Retrieve first event from list of active events */
-	e = list_entry(list_first(&tctrl.cpu_event_list), 
+	e = list_entry(list_first(&tlcp->event_list), 
 		       struct vmm_timer_event,
 		       cpu_head);
 
 	/* Configure clockevent device for first event */
-	tctrl.cpu_curr = e;
+	tlcp->curr = e;
 	tstamp = vmm_timer_timestamp();
 	if (tstamp < e->expiry_tstamp) {
-		tctrl.cpu_next_event = e->expiry_tstamp;
-		vmm_clockchip_program_event(tctrl.cpu_cc, 
+		tlcp->next_event = e->expiry_tstamp;
+		vmm_clockchip_program_event(tlcp->cc, 
 				    tstamp, e->expiry_tstamp);
 	} else {
-		tctrl.cpu_next_event = tstamp;
-		vmm_clockchip_force_expiry(tctrl.cpu_cc, tstamp);
+		tlcp->next_event = tstamp;
+		vmm_clockchip_force_expiry(tlcp->cc, tstamp);
 	}
 }
 
@@ -97,17 +107,18 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc,
 					  arch_regs_t * regs)
 {
 	struct vmm_timer_event *e;
+	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
 
-	tctrl.cpu_inprocess = TRUE;
+	tlcp->inprocess = TRUE;
 
 	/* process expired active events */
-	while (!list_empty(&tctrl.cpu_event_list)) {
-		e = list_entry(list_first(&tctrl.cpu_event_list),
+	while (!list_empty(&tlcp->event_list)) {
+		e = list_entry(list_first(&tlcp->event_list),
 			       struct vmm_timer_event, cpu_head);
 		/* Current timestamp */
 		if (e->expiry_tstamp <= vmm_timer_timestamp()) {
 			/* Set current CPU event to NULL */
-			tctrl.cpu_curr = NULL;
+			tlcp->curr = NULL;
 			/* consume expired active events */
 			list_del(&e->cpu_head);
 			e->expiry_tstamp = 0;
@@ -121,7 +132,7 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc,
 		}
 	}
 
-	tctrl.cpu_inprocess = FALSE;
+	tlcp->inprocess = FALSE;
 
 	/* Schedule next timer event */
 	vmm_timer_schedule_next_event();
@@ -134,6 +145,7 @@ int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs)
 	struct dlist *l;
 	struct vmm_timer_event *e;
 	u64 tstamp;
+	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
 
 	if (!ev) {
 		return VMM_EFAIL;
@@ -156,7 +168,7 @@ int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs)
 	ev->active = TRUE;
 	added = FALSE;
 	e = NULL;
-	list_for_each(l, &tctrl.cpu_event_list) {
+	list_for_each(l, &tlcp->event_list) {
 		e = list_entry(l, struct vmm_timer_event, cpu_head);
 		if (ev->expiry_tstamp < e->expiry_tstamp) {
 			list_add_tail(&e->cpu_head, &ev->cpu_head);
@@ -166,7 +178,7 @@ int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs)
 	}
 
 	if (!added) {
-		list_add_tail(&tctrl.cpu_event_list, &ev->cpu_head);
+		list_add_tail(&tlcp->event_list, &ev->cpu_head);
 	}
 
 	vmm_timer_schedule_next_event();
@@ -188,6 +200,7 @@ int vmm_timer_event_restart(struct vmm_timer_event * ev)
 int vmm_timer_event_expire(struct vmm_timer_event * ev)
 {
 	irq_flags_t flags;
+	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
 
 	if (!ev) {
 		return VMM_EFAIL;
@@ -207,10 +220,10 @@ int vmm_timer_event_expire(struct vmm_timer_event * ev)
 	ev->active = TRUE;
 
 	/* add the event on list head as it is going to expire now */
-	list_add(&tctrl.cpu_event_list, &ev->cpu_head);
+	list_add(&tlcp->event_list, &ev->cpu_head);
 
 	/* Force a clockchip interrupt */
-	vmm_clockchip_force_expiry(tctrl.cpu_cc, vmm_timer_timestamp());
+	vmm_clockchip_force_expiry(tlcp->cc, vmm_timer_timestamp());
 
 	/* allow (timer) interrupts */
 	arch_cpu_irq_restore(flags);
@@ -252,7 +265,7 @@ struct vmm_timer_event *vmm_timer_event_create(const char *name,
 
 	e = NULL;
 	found = FALSE;
-	list_for_each(l, &tctrl.event_list) {
+	list_for_each(l, &tgc.event_list) {
 		e = list_entry(l, struct vmm_timer_event, head);
 		if (vmm_strcmp(name, e->name) == 0) {
 			found = TRUE;
@@ -279,7 +292,7 @@ struct vmm_timer_event *vmm_timer_event_create(const char *name,
 	e->handler = handler;
 	e->priv = priv;
 
-	list_add_tail(&tctrl.event_list, &e->head);
+	list_add_tail(&tgc.event_list, &e->head);
 
 	return e;
 }
@@ -294,13 +307,13 @@ int vmm_timer_event_destroy(struct vmm_timer_event * ev)
 		return VMM_EFAIL;
 	}
 
-	if (list_empty(&tctrl.event_list)) {
+	if (list_empty(&tgc.event_list)) {
 		return VMM_EFAIL;
 	}
 
 	e = NULL;
 	found = FALSE;
-	list_for_each(l, &tctrl.event_list) {
+	list_for_each(l, &tgc.event_list) {
 		e = list_entry(l, struct vmm_timer_event, head);
 		if (vmm_strcmp(e->name, ev->name) == 0) {
 			found = TRUE;
@@ -332,7 +345,7 @@ struct vmm_timer_event *vmm_timer_event_find(const char *name)
 	found = FALSE;
 	e = NULL;
 
-	list_for_each(l, &tctrl.event_list) {
+	list_for_each(l, &tgc.event_list) {
 		e = list_entry(l, struct vmm_timer_event, head);
 		if (vmm_strcmp(e->name, name) == 0) {
 			found = TRUE;
@@ -360,7 +373,7 @@ struct vmm_timer_event *vmm_timer_event_get(int index)
 	ret = NULL;
 	found = FALSE;
 
-	list_for_each(l, &tctrl.event_list) {
+	list_for_each(l, &tgc.event_list) {
 		ret = list_entry(l, struct vmm_timer_event, head);
 		if (!index) {
 			found = TRUE;
@@ -381,7 +394,7 @@ u32 vmm_timer_event_count(void)
 	u32 retval = 0;
 	struct dlist *l;
 
-	list_for_each(l, &tctrl.event_list) {
+	list_for_each(l, &tgc.event_list) {
 		retval++;
 	}
 
@@ -391,24 +404,26 @@ u32 vmm_timer_event_count(void)
 void vmm_timer_start(void)
 {
 	u64 tstamp;
+	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
 
-	vmm_clockchip_set_mode(tctrl.cpu_cc, VMM_CLOCKCHIP_MODE_ONESHOT);
+	vmm_clockchip_set_mode(tlcp->cc, VMM_CLOCKCHIP_MODE_ONESHOT);
 
 	tstamp = vmm_timer_timestamp();
 
-	tctrl.cpu_next_event = tstamp + 1000000;
+	tlcp->next_event = tstamp + tlcp->cc->min_delta_ns;
 
-	vmm_clockchip_program_event(tctrl.cpu_cc, 
-				    tstamp, tctrl.cpu_next_event);
+	vmm_clockchip_program_event(tlcp->cc, tstamp, tlcp->next_event);
 
-	tctrl.cpu_started = TRUE;
+	tlcp->started = TRUE;
 }
 
 void vmm_timer_stop(void)
 {
-	vmm_clockchip_set_mode(tctrl.cpu_cc, VMM_CLOCKCHIP_MODE_SHUTDOWN);
+	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
 
-	tctrl.cpu_started = FALSE;
+	vmm_clockchip_set_mode(tlcp->cc, VMM_CLOCKCHIP_MODE_SHUTDOWN);
+
+	tlcp->started = FALSE;
 }
 
 int __init vmm_timer_init(void)
@@ -419,30 +434,36 @@ int __init vmm_timer_init(void)
 	u32 cpu = 0;
 #endif
 	struct vmm_clocksource * cs;
+	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
+
+	if (!cpu) {
+		/* Clear global timer control structure */
+		vmm_memset(&tgc, 0, sizeof(tgc));
+
+		/* Initialize global event list */
+		INIT_LIST_HEAD(&tgc.event_list);
+	}
 
 	/* Clear timer control structure */
-	vmm_memset(&tctrl, 0, sizeof(tctrl));
+	vmm_memset(tlcp, 0, sizeof(*tlcp));
 
 	/* Initialize Per CPU event status */
-	tctrl.cpu_started = FALSE;
-	tctrl.cpu_inprocess = FALSE;
+	tlcp->started = FALSE;
+	tlcp->inprocess = FALSE;
 
 	/* Initialize Per CPU current event pointer */
-	tctrl.cpu_curr = NULL;
+	tlcp->curr = NULL;
 
 	/* Initialize Per CPU event list */
-	INIT_LIST_HEAD(&tctrl.cpu_event_list);
-
-	/* Initialize event list */
-	INIT_LIST_HEAD(&tctrl.event_list);
+	INIT_LIST_HEAD(&tlcp->event_list);
 
 	/* Find suitable clockchip */
-	if (!(tctrl.cpu_cc = vmm_clockchip_find_best(vmm_cpumask_of(cpu)))) {
+	if (!(tlcp->cc = vmm_clockchip_find_best(vmm_cpumask_of(cpu)))) {
 		vmm_panic("%s: No clockchip for CPU%d\n", __func__, cpu);
 	}
 
 	/* Update event handler of clockchip */
-	vmm_clockchip_set_event_handler(tctrl.cpu_cc, 
+	vmm_clockchip_set_event_handler(tlcp->cc, 
 					&timer_clockchip_event_handler);
 
 	/* Find suitable clocksource */
@@ -450,5 +471,5 @@ int __init vmm_timer_init(void)
 		vmm_panic("%s: No clocksource found\n", __func__);
 	}
 
-	return vmm_timecounter_init(&tctrl.cpu_tc, cs, 0);
+	return vmm_timecounter_init(&tlcp->tc, cs, 0);
 }

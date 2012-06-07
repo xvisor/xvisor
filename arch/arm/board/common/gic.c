@@ -39,7 +39,6 @@ struct gic_chip_data {
 #define GIC_MAX_NR	1
 #endif
 
-static virtual_addr_t gic_cpu_base_addr;
 static struct gic_chip_data gic_data[GIC_MAX_NR];
 
 #define gic_write(val, addr)	vmm_writel((val), (void *)(addr))
@@ -240,10 +239,6 @@ int __init gic_init(u32 gic_nr, u32 irq_start,
 	gic->dist_base = dist_base;
 	gic->cpu_base = cpu_base;
 	gic->irq_offset = (irq_start - 1) & ~31;
-
-	if (gic_nr == 0) {
-		gic_cpu_base_addr = cpu_base;
-	}
 
 	gic_dist_init(gic, irq_start);
 	gic_cpu_init(gic);

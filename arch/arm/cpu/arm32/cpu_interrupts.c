@@ -109,21 +109,18 @@ void do_prefetch_abort(arch_regs_t * uregs)
 	bool crash_dump = FALSE;
 	u32 ifsr, ifar, fs;
 	struct vmm_vcpu * vcpu;
-	struct cpu_l1tbl * l1;
-	struct cpu_page pg;
 
 	ifsr = read_ifsr();
-#if defined(CONFIG_ARMV5)
-	/* TODO: if ifar is not implemented then R14 serves as ifar, add code to check ifar support */
-	ifar = uregs->pc;
-#else
 	ifar = read_ifar();
-#endif /* CONFIG_ARMV5 */
 
-	fs = (ifsr & IFSR_FS4_MASK) >> IFSR_FS4_SHIFT;
-	fs = (fs << 4) | (ifsr & IFSR_FS_MASK);
+	fs = (ifsr & IFSR_FS_MASK);
+#if !defined(CONFIG_ARMV5)
+	fs |= (ifsr & IFSR_FS4_MASK) >> (IFSR_FS4_SHIFT - 4);
+#endif
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+		struct cpu_l1tbl * l1;
+		struct cpu_page pg;
 		if (fs != IFSR_FS_TRANS_FAULT_SECTION &&
 		    fs != IFSR_FS_TRANS_FAULT_PAGE) {
 			vmm_panic("%s: unexpected prefetch abort\n"
@@ -225,8 +222,11 @@ void do_data_abort(arch_regs_t * uregs)
 
 	dfsr = read_dfsr();
 	dfar = read_dfar();
-	fs = (dfsr & DFSR_FS4_MASK) >> DFSR_FS4_SHIFT;
-	fs = (fs << 4) | (dfsr & DFSR_FS_MASK);
+
+	fs = (dfsr & DFSR_FS_MASK);
+#if !defined(CONFIG_ARMV5)
+	fs |= (dfsr & DFSR_FS4_MASK) >> (DFSR_FS4_SHIFT - 4);
+#endif
 	wnr = (dfsr & DFSR_WNR_MASK) >> DFSR_WNR_SHIFT;
 	dom = (dfsr & DFSR_DOM_MASK) >> DFSR_DOM_SHIFT;
 

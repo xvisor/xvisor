@@ -47,7 +47,8 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 		BUG_ON("%s: Don't have space\n", __func__);
 	}
 
-	tpa = pa & ~(VMM_PAGE_SIZE - 1);
+	tpa = pa & ~VMM_PAGE_MASK;
+
 	for (ite = 0; ite < (sz >> VMM_PAGE_SHIFT); ite++) {
 		rc = arch_cpu_aspace_map(va + ite * VMM_PAGE_SIZE, 
 					VMM_PAGE_SIZE, 
@@ -59,7 +60,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 		}
 	}
 
-	return va + (pa & (VMM_PAGE_SIZE - 1));
+	return va + (pa & VMM_PAGE_MASK);
 }
 
 int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
@@ -67,7 +68,7 @@ int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
 	int rc, ite;
 
 	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
-	va &= ~(VMM_PAGE_SIZE - 1);
+	va &= ~VMM_PAGE_MASK;
 
 	for (ite = 0; ite < (sz >> VMM_PAGE_SHIFT); ite++) {
 		rc = arch_cpu_aspace_unmap(va + ite * VMM_PAGE_SIZE, 
@@ -142,20 +143,23 @@ u32 vmm_host_physical_read(physical_addr_t hphys_addr,
 	/* FIXME: Added more sanity checkes for 
 	 * allowable physical address 
 	 */
-
 	while (bytes_read < len) {
-		if (hphys_addr & (VMM_PAGE_SIZE - 1)) {
-			to_read = hphys_addr & (VMM_PAGE_SIZE - 1);
-		} else {
+
+		to_read = hphys_addr & VMM_PAGE_MASK;
+
+		if (!to_read) {
 			to_read = VMM_PAGE_SIZE;
 		}
+
 		to_read = (to_read < (len - bytes_read)) ? 
 			   to_read : (len - bytes_read);
 
 		src = vmm_host_memmap(hphys_addr, 
 				      VMM_PAGE_SIZE, 
 				      VMM_MEMORY_READABLE);
+
 		vmm_memcpy(dst, (void *)src, to_read);
+
 		vmm_host_memunmap(src, VMM_PAGE_SIZE);
 
 		hphys_addr += to_read;
@@ -177,11 +181,13 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 	 */
 
 	while (bytes_written < len) {
-		if (hphys_addr & (VMM_PAGE_SIZE - 1)) {
-			to_write = hphys_addr & (VMM_PAGE_SIZE - 1);
-		} else {
+
+		to_write = hphys_addr & VMM_PAGE_MASK;
+
+		if (!to_write) {
 			to_write = VMM_PAGE_SIZE;
 		}
+
 		to_write = (to_write < (len - bytes_written)) ? 
 			    to_write : (len - bytes_written);
 
@@ -333,4 +339,3 @@ int __init vmm_host_aspace_init(void)
 
 	return VMM_OK;
 }
-

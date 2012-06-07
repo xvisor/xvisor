@@ -339,7 +339,8 @@ int __init omap3_gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa)
 	vmm_host_irq_disable(omap3_gpt_config[gpt_num].irq_no);
 
 	/* Register interrupt handler */
-	rc = vmm_host_irq_register(omap3_gpt_config[gpt_num].irq_no, 
+	rc = vmm_host_irq_register(omap3_gpt_config[gpt_num].irq_no,
+				   omap3_gpt_config[gpt_num].name,
 				   &omap3_gpt_clockevent_irq_handler, cc);
 	if (rc) {
 		return rc;

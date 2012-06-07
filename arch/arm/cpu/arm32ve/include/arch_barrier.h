@@ -16,22 +16,33 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arch_smp.h
+ * @file arch_barrier.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief generic interface for arch specific SMP functions
+ * @brief  architecure specific memory barriers
  */
-#ifndef _ARCH_SMP_H__
-#define _ARCH_SMP_H__
+#ifndef __ARCH_BARRIER_H__
+#define __ARCH_BARRIER_H__
 
-#include <vmm_types.h>
+#define isb() 			asm volatile ("isb" : : : "memory")
+#define dsb() 			asm volatile ("dsb" : : : "memory")
+#define dmb() 			asm volatile ("dmb" : : : "memory")
 
-/** Retrive current processor id */
-u32 arch_smp_id(void);
+/* Read & Write Memory barrier */
+#define arch_mb()			dsb()
 
-/** Prepare secondary CPUs */
-int arch_smp_prepare_cpus(void);
+/* Read Memory barrier */
+#define arch_rmb()			dsb()
 
-/** Start secondary CPU */
-int arch_smp_start_cpu(u32 cpu);
+/* Write Memory barrier */
+#define arch_wmb()			dsb()
 
-#endif
+/* SMP Read & Write Memory barrier */
+#define arch_smp_mb()			dmb()
+
+/* SMP Read Memory barrier */
+#define arch_smp_rmb()			dmb()
+
+/* SMP Write Memory barrier */
+#define arch_smp_wmb()			dmb()
+
+#endif /* __ARCH_BARRIER_H__ */

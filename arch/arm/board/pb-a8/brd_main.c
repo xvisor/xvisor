@@ -114,15 +114,10 @@ int arch_board_devtree_populate(struct vmm_devtree_node ** root)
 
 int arch_board_reset(void)
 {
-#if 0 /* QEMU checks bit 8 which is wrong */
-	vmm_writel(0x100, 
-		   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
-#else
 	vmm_writel(0x0, 
 		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
 	vmm_writel(REALVIEW_SYS_CTRL_RESET_PLLRESET, 
 		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
-#endif
 	return VMM_OK;
 }
 

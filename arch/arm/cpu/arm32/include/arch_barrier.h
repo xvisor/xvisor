@@ -16,21 +16,21 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_barrier.h
+ * @file arch_barrier.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief  ARM specific memory barriers
+ * @brief  architecure specific memory barriers
  */
-#ifndef __CPU_BARRIER_H__
-#define __CPU_BARRIER_H__
+#ifndef __ARCH_BARRIER_H__
+#define __ARCH_BARRIER_H__
 
-#if defined CONFIG_ARMV5
+#if defined(CONFIG_ARMV5)
 
 #define isb()			asm volatile ("" : : : "memory")
 #define dsb()			asm volatile ("mcr p15, 0, %0, c7, c10, 4" \
 					      : : "r" (0) : "memory")
 #define dmb()			asm volatile ("" : : : "memory")
 
-#elif defined CONFIG_ARMV7A
+#elif defined(CONFIG_ARMV7A)
 
 #define isb() 			asm volatile ("isb" : : : "memory")
 #define dsb() 			asm volatile ("dsb" : : : "memory")
@@ -38,11 +38,22 @@
 
 #endif
 
-#define mb()			dsb()
-#define rmb()			dsb()
-#define wmb()			dsb()
-#define smp_mb()		dmb()
-#define smp_rmb()		dmb()
-#define smp_wmb()		dmb()
+/* Read & Write Memory barrier */
+#define arch_mb()			dsb()
 
-#endif /* __CPU_BARRIER_H__ */
+/* Read Memory barrier */
+#define arch_rmb()			dsb()
+
+/* Write Memory barrier */
+#define arch_wmb()			dsb()
+
+/* SMP Read & Write Memory barrier */
+#define arch_smp_mb()			dmb()
+
+/* SMP Read Memory barrier */
+#define arch_smp_rmb()			dmb()
+
+/* SMP Write Memory barrier */
+#define arch_smp_wmb()			dmb()
+
+#endif /* __ARCH_BARRIER_H__ */

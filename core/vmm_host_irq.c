@@ -142,6 +142,7 @@ int vmm_host_irq_disable(u32 hirq_num)
 }
 
 int vmm_host_irq_register(u32 hirq_num, 
+			  const char *name,
 			  vmm_host_irq_handler_t handler,
 			  void *dev)
 {
@@ -165,6 +166,7 @@ int vmm_host_irq_register(u32 hirq_num,
 			vmm_spin_unlock_irqrestore(&hirqctrl.lock, flags);
 			return VMM_EFAIL;
 		}
+		irq->name = name;
 		hirq = vmm_malloc(sizeof(struct vmm_host_irq_hndl));
 		if (!hirq) {
 			vmm_spin_unlock_irqrestore(&hirqctrl.lock, flags);
@@ -232,6 +234,7 @@ int __init vmm_host_irq_init(void)
 	/* Reset the handler array */
 	for (ite = 0; ite < ARCH_HOST_IRQ_COUNT; ite++) {
 		hirqctrl.irq[ite].num = ite;
+		hirqctrl.irq[ite].name = NULL;
 		hirqctrl.irq[ite].enabled = FALSE;
 		hirqctrl.irq[ite].count = 0;
 		hirqctrl.irq[ite].chip = NULL;

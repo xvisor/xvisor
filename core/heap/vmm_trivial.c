@@ -97,7 +97,7 @@ int __init vmm_heap_init(void)
 	virtual_addr_t heap_start = 0x0;
 
 	heap_size = CONFIG_HEAP_SIZE * 1024;
-	heap_page_count =  VMM_ROUNDUP2_PAGE_SIZE(heap_size) / VMM_PAGE_SIZE;
+	heap_page_count =  VMM_SIZE_TO_PAGE(heap_size);
 	heap_mem_flags = 0;
 	heap_mem_flags |= VMM_MEMORY_READABLE; 
 	heap_mem_flags |= VMM_MEMORY_WRITEABLE; 

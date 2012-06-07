@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_string.h>
+#include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
@@ -30,15 +31,14 @@
 #include <vmm_stdio.h>
 #include <vmm_chardev.h>
 #include <rtc/vmm_rtcdev.h>
+#include <arch_barrier.h>
 #include <libfdt.h>
 #include <vexpress_plat.h>
 #include <ca15x4_board.h>
 
 extern u32 dt_blob_start;
-
-#if 0 /* FIXME: */
-virtual_addr_t ca15x4_sys_base;
-#endif
+virtual_addr_t v2m_sys_base;
+vmm_spinlock_t v2m_cfg_lock;
 
 int arch_board_ram_start(physical_addr_t * addr)
 {
@@ -115,20 +115,65 @@ int arch_board_devtree_populate(struct vmm_devtree_node ** root)
 	return libfdt_parse_devtree(&fdt, root);
 }
 
+int v2m_cfg_write(u32 devfn, u32 data)
+{
+	u32 val;
+	irq_flags_t flags;
+
+	devfn |= SYS_CFG_START | SYS_CFG_WRITE;
+
+	vmm_spin_lock_irqsave(&v2m_cfg_lock, flags);
+	val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
+	vmm_writel(val & ~SYS_CFG_COMPLETE, (void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
+
+	vmm_writel(data, (void *)(v2m_sys_base + V2M_SYS_CFGDATA));
+	vmm_writel(devfn, (void *)(v2m_sys_base + V2M_SYS_CFGCTRL));
+
+	do {
+		val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
+	} while (val == 0);
+	vmm_spin_unlock_irqrestore(&v2m_cfg_lock, flags);
+
+	return !!(val & SYS_CFG_ERR);
+}
+
+int v2m_cfg_read(u32 devfn, u32 *data)
+{
+	u32 val;
+	irq_flags_t flags;
+
+	devfn |= SYS_CFG_START;
+
+	vmm_spin_lock_irqsave(&v2m_cfg_lock, flags);
+	vmm_writel(0, (void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
+	vmm_writel(devfn, (void *)(v2m_sys_base + V2M_SYS_CFGCTRL));
+
+	arch_mb();
+
+	do {
+		/* FIXME: cpu_relax() */
+		val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
+	} while (val == 0);
+
+	*data = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGDATA));
+	vmm_spin_unlock_irqrestore(&v2m_cfg_lock, flags);
+
+	return !!(val & SYS_CFG_ERR);
+}
+
 int arch_board_reset(void)
 {
-#if 0 /* FIXME: */
-	vmm_writel(0x0, 
-		   (void *)(ca15x4_sys_base + VEXPRESS_SYS_RESETCTL_OFFSET));
-	vmm_writel(VEXPRESS_SYS_CTRL_RESET_PLLRESET, 
-		   (void *)(ca15x4_sys_base + VEXPRESS_SYS_RESETCTL_OFFSET));
-#endif
+	if (v2m_cfg_write(SYS_CFG_REBOOT | SYS_CFG_SITE_MB, 0)) {
+		vmm_panic("Unable to reboot\n");
+	}
 	return VMM_OK;
 }
 
 int arch_board_shutdown(void)
 {
-	/* FIXME: TBD */
+	if (v2m_cfg_write(SYS_CFG_SHUTDOWN | SYS_CFG_SITE_MB, 0)) {
+		vmm_panic("Unable to shutdown\n");
+	}
 	return VMM_OK;
 }
 
@@ -155,14 +200,9 @@ int __init arch_board_final_init(void)
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
-#if 0 /* FIXME: */
 	/* Map control registers */
-	ca15x4_sys_base = vmm_host_iomap(VEXPRESS_SYS_BASE, 0x1000);
-
-	/* Unlock Lockable registers */
-	vmm_writel(VEXPRESS_SYS_LOCKVAL, 
-		   (void *)(ca15x4_sys_base + VEXPRESS_SYS_LOCK_OFFSET));
-#endif
+	v2m_sys_base = vmm_host_iomap(V2M_SYSREGS, 0x1000);
+	INIT_SPIN_LOCK(&v2m_cfg_lock);
 
 	/* Do Probing using device driver framework */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING

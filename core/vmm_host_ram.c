@@ -63,7 +63,7 @@ int vmm_host_ram_alloc(physical_addr_t * pa, physical_size_t sz, bool aligned)
 	if (aligned && (sz > VMM_PAGE_SIZE)) {
 		bpos = umod32(rctrl.ram_start, sz);
 		if (bpos) {
-			bpos = VMM_ROUNDUP2_PAGE_SIZE(sz) >> VMM_PAGE_SHIFT;
+			bpos = VMM_SIZE_TO_PAGE(sz);
 		}
 		binc = bcnt;
 	} else {

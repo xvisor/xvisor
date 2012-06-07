@@ -16,22 +16,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arch_smp.h
+ * @file brd_smp.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief generic interface for arch specific SMP functions
+ * @brief board specific smp functions
  */
-#ifndef _ARCH_SMP_H__
-#define _ARCH_SMP_H__
 
+#include <vmm_error.h>
 #include <vmm_types.h>
 
-/** Retrive current processor id */
-u32 arch_smp_id(void);
+int __init arch_smp_prepare_cpus(void)
+{
+	/* FIXME: */
+	return VMM_OK;
+}
 
-/** Prepare secondary CPUs */
-int arch_smp_prepare_cpus(void);
+int __init arch_smp_start_cpu(u32 cpu)
+{
+	/* FIXME: */
+	return VMM_OK;
+}
 
-/** Start secondary CPU */
-int arch_smp_start_cpu(u32 cpu);
-
-#endif

@@ -1,0 +1,43 @@
+			Xvisor v0.1.3
+	(Last Commit: eae864541e98846a57f4d577469784d8d6adc68c)
+		(Release Date: 27-May-2012)
+
+In this release, we have few updates in core code, 4 new processor supports
+and SMP guest support.
+
+New Features/Updates:
+ - Updated Host IRQ subsytem to have PIC driver APIs Linux compatible
+ - Updated Timer subsytem to have Clocksource driver APIs and Clockchip 
+   driver APIs Linux compatible
+ - Added support for having per-guest architecture specific context
+ - Centralized architecture specific interface header files to reduce
+   duplicate header files
+ - Generic bitmap APIs under libs
+
+New Emulators:
+ - ARM local timer emulator
+ - ARM A9MP private memory emulator
+
+ARM 32-bit Port:
+ - Added support for ARM9 processor and Versatilepb host. We are able run
+   basic test for Versatilepb guest on Versatilepb host.
+ - Added support for Cortex-A9 processor (UP) and VExpress-A9 host. We are
+   able to boot unmodified Realview-PB-A8 linux guest on this port. 
+ - Added support for Cortex-A15 processor (UP) and VExpress-A15 host. We are
+   able to boot unmodified Realview-PB-A8 linux guest on this port.
+ - Fixes for sharing same exception vector base with Linux guest
+ - Fixes for supporting SMP Linux guest. We are able to boot unmodified 
+   VExpress-A9 SMP linux guest Realview-PB-A8, VExpress-A9, VExpress-A15,  
+   and BeagleBoard hosts
+
+ARM 32-bit with VE Port:
+ - New CPU port supporting ARM processors with virtualization extensions
+ - We are able to boot multiple unmodified linux for Realview-PB-A8 guest on 
+   VExpress-A15 host using virtualization extension
+ - We are able to boot unmodified VExpress-A9 SMP linux guest on VExpress-A15 
+   host using viruatlization extensions
+
+x86 64-bit Port:
+ - Host apsace init works on QEMU & HW
+ - Host IRQ init works on QEMU & HW
+

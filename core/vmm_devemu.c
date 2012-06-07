@@ -754,7 +754,8 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 			eg->h2g_irq[ite].guest = guest;
 			eg->h2g_irq[ite].host_irq = ((u32 *)attr)[2 * ite];
 			eg->h2g_irq[ite].guest_irq = ((u32 *)attr)[(2 * ite) + 1];
-			rc = vmm_host_irq_register(eg->h2g_irq[ite].host_irq, 
+			rc = vmm_host_irq_register(eg->h2g_irq[ite].host_irq,
+						   "devemu_h2g", 
 						   vmm_devemu_handle_h2g_irq, 
 						   &eg->h2g_irq[ite]);
 			if (rc) {
