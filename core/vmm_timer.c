@@ -410,10 +410,9 @@ void vmm_timer_start(void)
 
 	tstamp = vmm_timer_timestamp();
 
-	tlcp->next_event = tstamp + 1000000;
+	tlcp->next_event = tstamp + tlcp->cc->min_delta_ns;
 
-	vmm_clockchip_program_event(tlcp->cc, 
-				    tstamp, tlcp->next_event);
+	vmm_clockchip_program_event(tlcp->cc, tstamp, tlcp->next_event);
 
 	tlcp->started = TRUE;
 }
