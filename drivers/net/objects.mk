@@ -22,3 +22,4 @@
 # */
 
 drivers-objs-$(CONFIG_ETHER_NE2K)+= net/ne2k-isa.o
+drivers-objs-$(CONFIG_ETHER_SMSC_911x)+= net/smsc-911x.o
