@@ -21,13 +21,15 @@
  * @brief Implementation to manage clocksources
  */
 
-#include <arch_timer.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
+#include <vmm_spinlocks.h>
 #include <vmm_clocksource.h>
+#include <arch_timer.h>
 
 /** Control structure for clocksource manager */
 struct vmm_clocksource_ctrl {
+	vmm_spinlock_t lock;
 	struct dlist clksrc_list;
 };
 
@@ -111,6 +113,7 @@ int vmm_timecounter_init(struct vmm_timecounter *tc,
 int vmm_clocksource_register(struct vmm_clocksource *cs)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_clocksource *cst;
 
@@ -120,6 +123,9 @@ int vmm_clocksource_register(struct vmm_clocksource *cs)
 
 	cst = NULL;
 	found = FALSE;
+
+	vmm_spin_lock_irqsave(&csctrl.lock, flags);
+
 	list_for_each(l, &csctrl.clksrc_list) {
 		cst = list_entry(l, struct vmm_clocksource, head);
 		if (vmm_strcmp(cst->name, cs->name) == 0) {
@@ -129,11 +135,14 @@ int vmm_clocksource_register(struct vmm_clocksource *cs)
 	}
 
 	if (found) {
+		vmm_spin_unlock_irqrestore(&csctrl.lock, flags);
 		return VMM_EFAIL;
 	}
 
 	INIT_LIST_HEAD(&cs->head);
 	list_add_tail(&csctrl.clksrc_list, &cs->head);
+
+	vmm_spin_unlock_irqrestore(&csctrl.lock, flags);
 
 	return VMM_OK;
 }
@@ -141,6 +150,7 @@ int vmm_clocksource_register(struct vmm_clocksource *cs)
 int vmm_clocksource_unregister(struct vmm_clocksource *cs)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_clocksource *cst;
 
@@ -148,7 +158,10 @@ int vmm_clocksource_unregister(struct vmm_clocksource *cs)
 		return VMM_EFAIL;
 	}
 
+	vmm_spin_lock_irqsave(&csctrl.lock, flags);
+
 	if (list_empty(&csctrl.clksrc_list)) {
+		vmm_spin_unlock_irqrestore(&csctrl.lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -163,10 +176,13 @@ int vmm_clocksource_unregister(struct vmm_clocksource *cs)
 	}
 
 	if (!found) {
+		vmm_spin_unlock_irqrestore(&csctrl.lock, flags);
 		return VMM_ENOTAVAIL;
 	}
 
 	list_del(&cs->head);
+
+	vmm_spin_unlock_irqrestore(&csctrl.lock, flags);
 
 	return VMM_OK;
 }
@@ -174,11 +190,14 @@ int vmm_clocksource_unregister(struct vmm_clocksource *cs)
 struct vmm_clocksource *vmm_clocksource_best(void)
 {
 	int rating = 0;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_clocksource *cs, *best_cs;
 
 	cs = NULL;
 	best_cs = NULL;
+
+	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
 	list_for_each(l, &csctrl.clksrc_list) {
 		cs = list_entry(l, struct vmm_clocksource, head);
@@ -188,12 +207,15 @@ struct vmm_clocksource *vmm_clocksource_best(void)
 		}
 	}
 
+	vmm_spin_unlock_irqrestore(&csctrl.lock, flags);
+
 	return best_cs;
 }
 
 struct vmm_clocksource *vmm_clocksource_find(const char *name)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_clocksource *cs;
 
@@ -204,6 +226,8 @@ struct vmm_clocksource *vmm_clocksource_find(const char *name)
 	found = FALSE;
 	cs = NULL;
 
+	vmm_spin_lock_irqsave(&csctrl.lock, flags);
+
 	list_for_each(l, &csctrl.clksrc_list) {
 		cs = list_entry(l, struct vmm_clocksource, head);
 		if (vmm_strcmp(cs->name, name) == 0) {
@@ -211,6 +235,8 @@ struct vmm_clocksource *vmm_clocksource_find(const char *name)
 			break;
 		}
 	}
+
+	vmm_spin_unlock_irqrestore(&csctrl.lock, flags);
 
 	if (!found) {
 		return NULL;
@@ -222,6 +248,7 @@ struct vmm_clocksource *vmm_clocksource_find(const char *name)
 struct vmm_clocksource *vmm_clocksource_get(int index)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_clocksource *ret;
 
@@ -232,6 +259,8 @@ struct vmm_clocksource *vmm_clocksource_get(int index)
 	ret = NULL;
 	found = FALSE;
 
+	vmm_spin_lock_irqsave(&csctrl.lock, flags);
+
 	list_for_each(l, &csctrl.clksrc_list) {
 		ret = list_entry(l, struct vmm_clocksource, head);
 		if (!index) {
@@ -240,6 +269,8 @@ struct vmm_clocksource *vmm_clocksource_get(int index)
 		}
 		index--;
 	}
+
+	vmm_spin_unlock_irqrestore(&csctrl.lock, flags);
 
 	if (!found) {
 		return NULL;
@@ -251,11 +282,16 @@ struct vmm_clocksource *vmm_clocksource_get(int index)
 u32 vmm_clocksource_count(void)
 {
 	u32 retval = 0;
+	irq_flags_t flags;
 	struct dlist *l;
+
+	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
 	list_for_each(l, &csctrl.clksrc_list) {
 		retval++;
 	}
+
+	vmm_spin_unlock_irqrestore(&csctrl.lock, flags);
 
 	return retval;
 }
@@ -264,10 +300,13 @@ int __init vmm_clocksource_init(void)
 {
 	int rc;
 
+	/* Initialize clock source list lock */
+	INIT_SPIN_LOCK(&csctrl.lock);
+
 	/* Initialize clock source list */
 	INIT_LIST_HEAD(&csctrl.clksrc_list);
 
-	/* Initialize arch specific timer clock sources */
+	/* Initialize arch specific clock sources */
 	if ((rc = arch_clocksource_init())) {
 		return rc;
 	}

@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_percpu.h>
 #include <vmm_string.h>
+#include <vmm_spinlocks.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_clocksource.h>
@@ -48,6 +49,7 @@ struct vmm_timer_local_ctrl {
 static DEFINE_PER_CPU(struct vmm_timer_local_ctrl, tlc);
 
 struct vmm_timer_global_ctrl {
+	vmm_spinlock_t lock;
 	struct dlist event_list;
 };
 
@@ -260,11 +262,15 @@ struct vmm_timer_event *vmm_timer_event_create(const char *name,
 					void *priv)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_timer_event *e;
 
 	e = NULL;
 	found = FALSE;
+
+	vmm_spin_lock_irqsave(&tgc.lock, flags);
+
 	list_for_each(l, &tgc.event_list) {
 		e = list_entry(l, struct vmm_timer_event, head);
 		if (vmm_strcmp(name, e->name) == 0) {
@@ -274,11 +280,13 @@ struct vmm_timer_event *vmm_timer_event_create(const char *name,
 	}
 
 	if (found) {
+		vmm_spin_unlock_irqrestore(&tgc.lock, flags);
 		return NULL;
 	}
 
 	e = vmm_malloc(sizeof(struct vmm_timer_event));
 	if (!e) {
+		vmm_spin_unlock_irqrestore(&tgc.lock, flags);
 		return NULL;
 	}
 
@@ -294,12 +302,15 @@ struct vmm_timer_event *vmm_timer_event_create(const char *name,
 
 	list_add_tail(&tgc.event_list, &e->head);
 
+	vmm_spin_unlock_irqrestore(&tgc.lock, flags);
+
 	return e;
 }
 
 int vmm_timer_event_destroy(struct vmm_timer_event * ev)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_timer_event *e;
 
@@ -307,7 +318,10 @@ int vmm_timer_event_destroy(struct vmm_timer_event * ev)
 		return VMM_EFAIL;
 	}
 
+	vmm_spin_lock_irqsave(&tgc.lock, flags);
+
 	if (list_empty(&tgc.event_list)) {
+		vmm_spin_unlock_irqrestore(&tgc.lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -322,10 +336,13 @@ int vmm_timer_event_destroy(struct vmm_timer_event * ev)
 	}
 
 	if (!found) {
+		vmm_spin_unlock_irqrestore(&tgc.lock, flags);
 		return VMM_ENOTAVAIL;
 	}
 
 	list_del(&e->head);
+
+	vmm_spin_unlock_irqrestore(&tgc.lock, flags);
 
 	vmm_free(e);
 
@@ -335,6 +352,7 @@ int vmm_timer_event_destroy(struct vmm_timer_event * ev)
 struct vmm_timer_event *vmm_timer_event_find(const char *name)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_timer_event *e;
 
@@ -345,6 +363,8 @@ struct vmm_timer_event *vmm_timer_event_find(const char *name)
 	found = FALSE;
 	e = NULL;
 
+	vmm_spin_lock_irqsave(&tgc.lock, flags);
+
 	list_for_each(l, &tgc.event_list) {
 		e = list_entry(l, struct vmm_timer_event, head);
 		if (vmm_strcmp(e->name, name) == 0) {
@@ -352,6 +372,8 @@ struct vmm_timer_event *vmm_timer_event_find(const char *name)
 			break;
 		}
 	}
+
+	vmm_spin_unlock_irqrestore(&tgc.lock, flags);
 
 	if (!found) {
 		return NULL;
@@ -363,6 +385,7 @@ struct vmm_timer_event *vmm_timer_event_find(const char *name)
 struct vmm_timer_event *vmm_timer_event_get(int index)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_timer_event *ret;
 
@@ -373,6 +396,8 @@ struct vmm_timer_event *vmm_timer_event_get(int index)
 	ret = NULL;
 	found = FALSE;
 
+	vmm_spin_lock_irqsave(&tgc.lock, flags);
+
 	list_for_each(l, &tgc.event_list) {
 		ret = list_entry(l, struct vmm_timer_event, head);
 		if (!index) {
@@ -381,6 +406,8 @@ struct vmm_timer_event *vmm_timer_event_get(int index)
 		}
 		index--;
 	}
+
+	vmm_spin_unlock_irqrestore(&tgc.lock, flags);
 
 	if (!found) {
 		return NULL;
@@ -392,11 +419,16 @@ struct vmm_timer_event *vmm_timer_event_get(int index)
 u32 vmm_timer_event_count(void)
 {
 	u32 retval = 0;
+	irq_flags_t flags;
 	struct dlist *l;
+
+	vmm_spin_lock_irqsave(&tgc.lock, flags);
 
 	list_for_each(l, &tgc.event_list) {
 		retval++;
 	}
+
+	vmm_spin_unlock_irqrestore(&tgc.lock, flags);
 
 	return retval;
 }
@@ -428,6 +460,7 @@ void vmm_timer_stop(void)
 
 int __init vmm_timer_init(void)
 {
+	int rc;
 #ifdef CONFIG_SMP
 	u32 cpu = arch_smp_id();
 #else
@@ -439,6 +472,9 @@ int __init vmm_timer_init(void)
 	if (!cpu) {
 		/* Clear global timer control structure */
 		vmm_memset(&tgc, 0, sizeof(tgc));
+
+		/* Initialize global even lisk lock */
+		INIT_SPIN_LOCK(&tgc.lock);
 
 		/* Initialize global event list */
 		INIT_LIST_HEAD(&tgc.event_list);
@@ -466,10 +502,26 @@ int __init vmm_timer_init(void)
 	vmm_clockchip_set_event_handler(tlcp->cc, 
 					&timer_clockchip_event_handler);
 
-	/* Find suitable clocksource */
-	if (!(cs = vmm_clocksource_best())) {
-		vmm_panic("%s: No clocksource found\n", __func__);
+	if (!cpu) {
+		/* Find suitable clocksource */
+		if (!(cs = vmm_clocksource_best())) {
+			vmm_panic("%s: No clocksource found\n", __func__);
+		}
+
+		/* Initialize timecounter wrapper */
+		if ((rc = vmm_timecounter_init(&tlcp->tc, cs, 0))) {
+			return rc;
+		}
+	} else {
+		/* Initialize timecounter wrapper of secondary CPUs
+		 * such that time stamps visible on all CPUs is same;
+		 */
+		if ((rc = vmm_timecounter_init(&tlcp->tc, 
+			per_cpu(tlc, cpu).tc.cs, 
+			vmm_timecounter_read(&per_cpu(tlc, cpu).tc)))) {
+			return rc;
+		}
 	}
 
-	return vmm_timecounter_init(&tlcp->tc, cs, 0);
+	return VMM_OK;
 }
