@@ -1016,8 +1016,13 @@ gic_emulator_init_done:
 
 int gic_state_free(struct gic_state *s)
 {
+	int rc;
 	if(s) {
 		if (s->pic) {
+			rc = vmm_devemu_unregister_pic(s->guest, s->pic);
+			if (rc) {
+				return rc;
+			}
 			vmm_free(s->pic);
 		}
 		vmm_free(s);
