@@ -972,6 +972,7 @@ struct gic_state* gic_state_alloc(struct vmm_guest *guest,
 	vmm_memset(s->pic, 0x0, sizeof(struct vmm_emupic));
 
 	vmm_strcpy(s->pic->name, "gic-pic");
+	s->pic->type = VMM_EMUPIC_IRQCHIP;
 	s->pic->handle = &gic_irq_handle;
 	s->pic->priv = s;
 	if (vmm_devemu_register_pic(guest, s->pic)) {

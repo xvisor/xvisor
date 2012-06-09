@@ -216,15 +216,17 @@ int vmm_devemu_complete_h2g_irq(struct vmm_guest *guest, u32 irq_num)
 int vmm_devemu_register_pic(struct vmm_guest *guest, 
 			    struct vmm_emupic * pic)
 {
-	bool found;
+	bool found, added;
 	struct dlist *l;
 	struct vmm_emupic *ep;
 	struct vmm_devemu_guest_context *eg;
 
+	/* Sanity checks */
 	if (!guest || !pic) {
 		return VMM_EFAIL;
 	}
 
+	/* Ensure pic has unique name within a guest */
 	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
 	ep = NULL;
 	found = FALSE;
@@ -235,14 +237,27 @@ int vmm_devemu_register_pic(struct vmm_guest *guest,
 			break;
 		}
 	}
-
 	if (found) {
 		return VMM_EINVALID;
 	}
 
+	/* Initialize pic list head */
 	INIT_LIST_HEAD(&pic->head);
 
-	list_add_tail(&eg->emupic_list, &pic->head);
+	/* Add pic such that pic list is sorted by pic type */
+	ep = NULL;
+	added = FALSE;
+	list_for_each(l, &eg->emupic_list) {
+		ep = list_entry(l, struct vmm_emupic, head);
+		if (pic->type < ep->type) {
+			list_add_tail(&ep->head, &pic->head);
+			added = TRUE;
+			break;
+		}
+	}
+	if (!added) {
+		list_add_tail(&eg->emupic_list, &pic->head);
+	}
 
 	return VMM_OK;
 }

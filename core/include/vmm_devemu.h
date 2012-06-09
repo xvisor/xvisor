@@ -32,9 +32,16 @@ struct vmm_emupic;
 struct vmm_emuid;
 struct vmm_emulator;
 
+enum vmm_emupic_type {
+	VMM_EMUPIC_IRQCHIP = 0,
+	VMM_EMUPIC_GPIO = 1,
+	VMM_EMUPIC_UNKNOWN = 3
+};
+
 enum vmm_emupic_return {
 	VMM_EMUPIC_IRQ_HANDLED = 0,
-	VMM_EMUPIC_IRQ_UNHANDLED = 1
+	VMM_EMUPIC_IRQ_UNHANDLED = 1,
+	VMM_EMUPIC_GPIO_HANDLED = 2
 };
 
 typedef int (*vmm_emupic_handle_t) (struct vmm_emupic *epic,
@@ -72,6 +79,7 @@ struct vmm_emudev {
 struct vmm_emupic {
 	struct dlist head;
 	char name[32];
+	u32 type;
 	vmm_emupic_handle_t handle;
 	void *priv;
 };

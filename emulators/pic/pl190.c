@@ -455,7 +455,7 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 	vmm_memset(s->pic, 0x0, sizeof(struct vmm_emupic));
 
 	vmm_strcpy(s->pic->name, "pl190-pic");
-
+	s->pic->type = VMM_EMUPIC_IRQCHIP;
 	s->pic->handle = pl190_emulator_irq_handle;
 	s->pic->priv = s;
 
