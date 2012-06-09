@@ -135,19 +135,19 @@ static void pl190_emulator_set_irq(struct pl190_emulator_state *s, int irq,
 }
 
 /* Process IRQ asserted in device emulation framework */
-static void pl190_emulator_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu,
-				      int level)
+static int pl190_emulator_irq_handle(struct vmm_emupic *epic, 
+				     u32 irq, int cpu, int level)
 {
 	struct pl190_emulator_state *s =
 	    (struct pl190_emulator_state *)epic->priv;
 
 	/* Ensure irq is in range (base_irq, base_irq + num_irq) */
 	if ((irq < s->num_base_irq) || ((s->num_base_irq + s->num_irq) <= irq)) {
-		return;
+		return VMM_EMUPIC_IRQ_UNHANDLED;
 	}
 
 	if (level == (s->level & (1u << irq))) {
-		return;
+		return VMM_EMUPIC_IRQ_HANDLED;
 	}
 
 	vmm_spin_lock(&s->lock);
@@ -155,6 +155,8 @@ static void pl190_emulator_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu,
 	pl190_emulator_set_irq(s, irq, level);
 
 	vmm_spin_unlock(&s->lock);
+
+	return VMM_EMUPIC_IRQ_HANDLED;
 }
 
 static void pl190_emulator_update_vectors(struct pl190_emulator_state *s)

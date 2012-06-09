@@ -32,10 +32,15 @@ struct vmm_emupic;
 struct vmm_emuid;
 struct vmm_emulator;
 
-typedef void (*vmm_emupic_handle_t) (struct vmm_emupic *epic,
-				     u32 irq_num,
-				     int cpu,
-				     int irq_level);
+enum vmm_emupic_return {
+	VMM_EMUPIC_IRQ_HANDLED = 0,
+	VMM_EMUPIC_IRQ_UNHANDLED = 1
+};
+
+typedef int (*vmm_emupic_handle_t) (struct vmm_emupic *epic,
+				    u32 irq_num,
+				    int cpu,
+				    int irq_level);
 
 typedef int (*vmm_emulator_probe_t) (struct vmm_guest *guest,
 				     struct vmm_emudev *edev,

@@ -181,14 +181,14 @@ static void gic_update(struct gic_state *s)
 }
 
 /* Process IRQ asserted in device emulation framework */
-static void gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
+static int gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 {
 	struct gic_state * s = (struct gic_state *)epic->priv;
 	int cm, target;
 
 	/* Ensure irq is in range (base_irq, base_irq + num_irq) */
 	if ((s->num_base_irq + s->num_irq) <= irq) {
-		return;
+		return VMM_EMUPIC_IRQ_UNHANDLED;
 	}
 
 	if (irq < (s->num_base_irq + 32)) {
@@ -201,7 +201,7 @@ static void gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 	}	
 
 	if (level == GIC_TEST_LEVEL(s, irq, cm))
-		return;
+		return VMM_EMUPIC_IRQ_HANDLED;
 
 	vmm_spin_lock(&s->lock);
 
@@ -217,6 +217,8 @@ static void gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 	gic_update(s);
 
 	vmm_spin_unlock(&s->lock);
+
+	return VMM_EMUPIC_IRQ_HANDLED;
 }
 
 static void gic_set_running_irq(struct gic_state *s, int cpu, int irq)
