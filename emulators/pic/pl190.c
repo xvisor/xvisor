@@ -490,7 +490,7 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 		s->parent_irq = *(u32 *) attr;
 	} else {
 		rc = VMM_EFAIL;
-		goto pl190_emulator_probe_freepic_fail;
+		goto pl190_emulator_probe_unregpic_fail;
 	}
 
 	edev->priv = s;
@@ -500,9 +500,11 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 
 	goto pl190_emulator_probe_done;
 
- pl190_emulator_probe_freepic_fail:
+pl190_emulator_probe_unregpic_fail:
+	vmm_devemu_unregister_pic(s->guest, s->pic);
+pl190_emulator_probe_freepic_fail:
 	vmm_free(s->pic);
- pl190_emulator_probe_freestate_fail:
+pl190_emulator_probe_freestate_fail:
 	vmm_free(s);
  pl190_emulator_probe_done:
 	return rc;
@@ -510,10 +512,15 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 
 static int pl190_emulator_remove(struct vmm_emudev *edev)
 {
+	int rc;
 	struct pl190_emulator_state *s = edev->priv;
 
 	if (s) {
 		if (s->pic) {
+			rc = vmm_devemu_unregister_pic(s->guest, s->pic);
+			if (rc) {
+				return rc;
+			}
 			vmm_free(s->pic);
 		}
 		vmm_free(s);
