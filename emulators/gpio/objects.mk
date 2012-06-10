@@ -16,18 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for emulator options
+# @brief list of GPIO emulator objects
 # */
 
-menu "Device Emulators"
-     source "emulators/sys/openconf.cfg"
-     source "emulators/pic/openconf.cfg"
-     source "emulators/timer/openconf.cfg"
-     source "emulators/serial/openconf.cfg"
-     source "emulators/rtc/openconf.cfg"
-     source "emulators/cache/openconf.cfg"
-     source "emulators/gpio/openconf.cfg"
-     source "emulators/misc/openconf.cfg"
-endmenu
+emulators-objs-$(CONFIG_EMU_GPIO_PL061)+= gpio/pl061.o
+
