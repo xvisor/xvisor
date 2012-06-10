@@ -41,7 +41,8 @@ enum vmm_emupic_type {
 enum vmm_emupic_return {
 	VMM_EMUPIC_IRQ_HANDLED = 0,
 	VMM_EMUPIC_IRQ_UNHANDLED = 1,
-	VMM_EMUPIC_GPIO_HANDLED = 2
+	VMM_EMUPIC_GPIO_HANDLED = 2,
+	VMM_EMUPIC_GPIO_UNHANDLED = 3
 };
 
 typedef int (*vmm_emupic_handle_t) (struct vmm_emupic *epic,
