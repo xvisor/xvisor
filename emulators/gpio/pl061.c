@@ -19,6 +19,16 @@
  * @file pl061.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief PrimeCell PL061 GPIO Controller Emulator.
+ *
+ * The source has been largely adapted from QEMU 0.14.xx hw/pl061.c 
+ *
+ * Arm PrimeCell PL061 General Purpose IO with additional
+ * Luminary Micro Stellaris bits.
+ *
+ * Copyright (c) 2007 CodeSourcery.
+ * Written by Paul Brook
+ *
+ * The original code is licensed under the GPL.
  */
 
 #include <vmm_error.h>
@@ -72,7 +82,7 @@ struct pl061_state {
 /* Call update function with lock held */
 static void pl061_update(struct pl061_state *s)
 {
-	int i;
+	int line;
 	u8 changed, mask, out;
 
 	/* Outputs float high.  */
@@ -83,11 +93,11 @@ static void pl061_update(struct pl061_state *s)
 		return;
 
 	s->old_data = out;
-	for (i = 0; i < 8; i++) {
-		mask = 1 << i;
+	for (line = 0; line < 8; line++) {
+		mask = 1 << line;
 		if (changed & mask) {
 			vmm_devemu_emulate_irq(s->guest, 
-					       s->out_irq[i], 
+					       s->out_irq[line], 
 					       (out & mask) != 0);
 		}
 	}
@@ -341,24 +351,24 @@ static int pl061_irq_handle(struct vmm_emupic *epic,
 			    u32 irq, int cpu, int level)
 {
 	u8 mask;
-	int i, in_num = 0;
+	int i, line;
 	struct pl061_state * s = epic->priv;
 
-	in_num = -1;
+	line = -1;
 	for (i = 0; i < 8; i++) {
 		if (s->in_irq[i] == irq) {
-			in_num = i;
+			line = i;
 			break;
 		}
 	}
-	if (in_num == -1) {
+	if (line == -1) {
 		return VMM_EMUPIC_GPIO_UNHANDLED;
 	}
 
-	if (s->in_invert[in_num]) {
+	if (s->in_invert[line]) {
 		level = (level) ? 0 : 1;
 	}
-	mask = 1 << in_num;
+	mask = 1 << line;
 
 	vmm_spin_lock(&s->lock);
 
