@@ -85,7 +85,7 @@ void vmm_init(void)
 	}
 
 	/* Initialize heap */
-	vmm_printf("Initialize Heap Managment\n");
+	vmm_printf("Initialize Heap Management\n");
 	ret = vmm_heap_init();
 	if (ret) {
 		vmm_hang();
