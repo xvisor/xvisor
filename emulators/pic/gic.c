@@ -814,7 +814,7 @@ static int gic_emulator_read(struct vmm_emudev *edev,
 	u32 regval = 0x0;
 	struct gic_state * s = edev->priv;
 
-	gic_reg_read(s, offset, &regval);
+	rc = gic_reg_read(s, offset, &regval);
 
 	if (!rc) {
 		regval = (regval >> ((offset & 0x3) * 8));
