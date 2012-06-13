@@ -318,6 +318,10 @@ int vmm_timer_event_destroy(struct vmm_timer_event * ev)
 		return VMM_EFAIL;
 	}
 
+	if (ev->active) {
+		vmm_timer_event_stop(ev);
+	}
+
 	vmm_spin_lock_irqsave(&tgc.lock, flags);
 
 	if (list_empty(&tgc.event_list)) {
