@@ -4158,7 +4158,12 @@ static int arm_inst_mrcx(u32 inst,
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_OK;
 		}
-		cpu_vcpu_reg_write(vcpu, regs, Rt, data);
+		/* If the PC is the target register then the mrc
+		 * instruction does not change its value.
+		 */
+		if (Rt < 15) {
+			cpu_vcpu_reg_write(vcpu, regs, Rt, data);
+		}
 	}
 	regs->pc += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MRCX);
