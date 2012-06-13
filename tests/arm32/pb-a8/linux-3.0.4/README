@@ -34,71 +34,65 @@ Realview PB-A8 Host:
   [5. Build Basic Test Code]
   # make -C tests/arm32/pb-a8/basic
 
-  [6. Copy patch to Linux-3.0.4 source directory]
-  # cp tests/arm32/pb-a8/linux-3.0.4/linux-3.0.4_realview_pba8.patch <linux-3.0.4_source_directory>
-
-  [7. Copy defconfig to Linux-3.0.4 build directory]
+  [6. Copy defconfig to Linux-3.0.4 build directory]
   # cp tests/arm32/pb-a8/linux-3.0.4/linux-3.0.4_realview_pba8_defconfig <linux-3.0.4_build_directory>/.config
 
-  [8. Copy defconfig to Busybox-1.19.2 source directory]
+  [7. Copy defconfig to Busybox-1.19.2 source directory]
   # cp tests/arm32/pb-a8/linux-3.0.4/busybox-1.19.2_defconfig <busybox-1.19.2_source_directory>/.config
 
-  [9. GoTo Linux-3.0.4 source directory]
+  [8. GoTo Linux-3.0.4 source directory]
   # cd <linux-3.0.4_source_directory>
 
-  [10. Patch Linux-3.0.4 source]
-  # patch -p1 <./linux-3.0.4_realview_pba8.patch
-
-  [11. Configure Linux-3.0.4 in build directory]
+  [9. Configure Linux-3.0.4 in build directory]
   # make O=<linux-3.0.4_build_directory> ARCH=arm oldconfig
 
-  [12. Build Linux-3.0.4 in build directory]
+  [10. Build Linux-3.0.4 in build directory]
   # make O=<linux-3.0.4_build_directory> ARCH=arm zImage
 
-  [13. Patch Linux-3.0.4 kernel to replace sensitive non-priviledged instructions]
+  [11. Patch Linux-3.0.4 kernel to replace sensitive non-priviledged instructions]
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux-3.0.4_build_directory>/vmlinux .text.head .init .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux-3.0.4_build_directory>/vmlinux 0
 
-  [14. Build Linux-3.0.4 in build directory to reflect changes in kernel image]
+  [12. Build Linux-3.0.4 in build directory to reflect changes in kernel image]
   # make O=<linux-3.0.4_build_directory> ARCH=arm zImage
 
-  [15. Patch Linux-3.0.4 compressed kernel to replace sensitive non-priviledged instructions]
+  [13. Patch Linux-3.0.4 compressed kernel to replace sensitive non-priviledged instructions]
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux-3.0.4_build_directory>/arch/arm/boot/compressed/vmlinux .text.head .init .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux-3.0.4_build_directory>/arch/arm/boot/compressed/vmlinux 0
 
-  [16. Create final compressed kernel image]
+  [14. Create final compressed kernel image]
   # $(CROSS_COMPILE)objcopy -O binary <linux-3.0.4_build_directory>/arch/arm/boot/compressed/vmlinux <linux-3.0.4_build_directory>/arch/arm/boot/zImage
 
-  [17. GoTo Busybox-1.19.2 source directory]
+  [15. GoTo Busybox-1.19.2 source directory]
   # cd <busybox-1.19.2_source_directory>
 
-  [18. Configure Busybox-1.19.2 source]
+  [16. Configure Busybox-1.19.2 source]
   # make oldconfig
 
-  [19. Build Busybox-1.19.2 RootFS]
+  [17. Build Busybox-1.19.2 RootFS]
   # make install
 
-  [20. Change ownership of installed RootFS]
+  [18. Change ownership of installed RootFS]
   # sudo chown -R root:root ./_install
 
-  [21. Create RootFS image]
+  [19. Create RootFS image]
   # fakeroot /bin/bash -c "genext2fs -b 3096 -N 1024 -D <xvisor_source_directory>/tests/arm32/pb-a8/linux-3.0.4/busybox-1.19.2_dev.txt -d ./_install <linux-3.0.4_build_directory>/rootfs.img"
 
-  [22. GoTo Linux-3.0.4 build directory]
+  [20. GoTo Linux-3.0.4 build directory]
   # cd <linux-3.0.4_build_directory>
 
-  [23. Create xvisor_linux-3.0.4_qemu.img for running it on QEMU]
+  [21. Create xvisor_linux-3.0.4_qemu.img for running it on QEMU]
   # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x70010000 -o xvisor_linux-3.0.4_qemu.img <xvisor_source_directory>/build/vmm.bin@0x70010000 <xvisor_source_directory>/build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x70800000 ./arch/arm/boot/zImage@0x70900000 ./rootfs.img@0x70C00000
   (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x71000000 ./arch/arm/boot/zImage@0x71100000 ./rootfs.img@0x71400000")
 
-  [24. Launch QEMU 0.14.xx or higher]
+  [22. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel ./xvisor_linux-3.0.4_qemu.img
 
-  [25. Kick Guest0 for starting Basic Test]
+  [23. Kick Guest0 for starting Basic Test]
   XVisor# guest kick 0
 
-  [26. Bind to virtual UART0 of Linux Guest]
+  [24. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
-  [27. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [25. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] arm-test# copy 0x70400000 0x40100000 0x300000
   (Note: This command will copy zImage to RAM)
   [guest0/uart0] arm-test# copy 0x71000000 0x40400000 0x400000
@@ -109,10 +103,10 @@ Realview PB-A8 Host:
   [guest0/uart0] arm-test# nor_boot
   (Note: "nor_boot" is a short-cut command)
 
-  [28. Wait for Linux prompt to come-up and then try out some commands]
+  [26. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [29. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [27. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
