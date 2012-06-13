@@ -172,6 +172,16 @@
 					irq = <5>;
 				};
 
+				rtc0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E8000>;
+					physical_size = <0x1000>;
+					device_type = "rtc";
+					compatible = "primecell,pl031";
+					irq = <42>;
+				};
+
 				pic0 {
 					manifest_type = "virtual";
 					address_type = "memory";
@@ -179,7 +189,17 @@
 					physical_size = <0x10000>;
 					device_type = "pic";
 					compatible = "versatilepb,pl190";
-					parent_irq = <6>;
+				};
+
+				pic1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10003000>;
+					physical_size = <0x10000>;
+					device_type = "pic";
+					compatible = "versatilepb,pl190";
+					parent_irq = <31>;
+					child_pic = <1>;
 				};
 
 				nor_flash {
