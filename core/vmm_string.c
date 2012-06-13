@@ -241,6 +241,49 @@ void *vmm_memcpy(void *dest, const void *src, size_t count)
 	return dest;
 }
 
+void *vmm_memmove(void *dest, const void *src, size_t count)
+{
+	u8 *dst8 = (u8 *) dest;
+	const u8 *src8 = (u8 *) src;
+
+	if (src8 > dst8) {
+		if (count & 1) {
+			dst8[0] = src8[0];
+			dst8 += 1;
+			src8 += 1;
+		}
+
+		count /= 2;
+		while (count--) {
+			dst8[0] = src8[0];
+			dst8[1] = src8[1];
+
+			dst8 += 2;
+			src8 += 2;
+		}
+	} else {
+		dst8 += count;
+		src8 += count;
+
+		if (count & 1) {
+			dst8 -= 1;
+			src8 -= 1;
+			dst8[0] = src8[0];
+		}
+
+		count /= 2;
+		while (count--) {
+			dst8 -= 2;
+			src8 -= 2;
+
+			dst8[0] = src8[0];
+			dst8[1] = src8[1];
+		}
+	}
+
+	return dest;
+}
+
 void *vmm_memset(void *dest, int c, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;

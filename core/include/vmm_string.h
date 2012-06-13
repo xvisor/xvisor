@@ -51,6 +51,8 @@ unsigned long long vmm_str2ulonglong(const char *s, unsigned int base);
 
 void *vmm_memcpy(void *dest, const void *src, size_t count);
 
+void *vmm_memmove(void *dest, const void *src, size_t count);
+
 void *vmm_memset(void *dest, int c, size_t count);
 
 int vmm_memcmp(const void *s1, const void *s2, size_t count);
