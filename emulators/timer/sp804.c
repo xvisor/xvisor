@@ -436,6 +436,14 @@ static int sp804_timer_init(struct sp804_timer *t,
 	return VMM_OK;
 }
 
+static int sp804_timer_exit(struct sp804_timer *t)
+{
+	if (t && t->event) {
+		return vmm_timer_event_destroy(t->event);
+	}
+	return VMM_OK;
+}
+
 static int sp804_emulator_read(struct vmm_emudev * edev,
 			       physical_addr_t offset, void *dst, u32 dst_len)
 {
@@ -565,9 +573,16 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 
 static int sp804_emulator_remove(struct vmm_emudev * edev)
 {
+	int rc;
 	struct sp804_state *s = edev->priv;
 
 	if (s) {
+		if ((rc = sp804_timer_exit(&s->t[0]))) {
+			return rc;
+		}
+		if ((rc = sp804_timer_exit(&s->t[1]))) {
+			return rc;
+		}
 		vmm_free(s);
 		edev->priv = NULL;
 	}
