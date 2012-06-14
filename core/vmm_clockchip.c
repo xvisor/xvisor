@@ -255,12 +255,19 @@ u32 vmm_clockchip_count(void)
 int __init vmm_clockchip_init(void)
 {
 	int rc;
+#ifdef CONFIG_SMP
+	u32 cpu = arch_smp_id();
+#else
+	u32 cpu = 0;
+#endif
 
-	/* Initialize clock chip list lock */
-	INIT_SPIN_LOCK(&ccctrl.lock);
+	if (!cpu) {
+		/* Initialize clock chip list lock */
+		INIT_SPIN_LOCK(&ccctrl.lock);
 
-	/* Initialize clock chip list */
-	INIT_LIST_HEAD(&ccctrl.clkchip_list);
+		/* Initialize clock chip list */
+		INIT_LIST_HEAD(&ccctrl.clkchip_list);
+	}
 
 	/* Initialize arch specific clock chips */
 	if ((rc = arch_clockchip_init())) {

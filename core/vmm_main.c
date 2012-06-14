@@ -340,6 +340,13 @@ void vmm_init_secondary(void)
 	/* Mark this CPU present */
 	vmm_set_cpu_present(cpu, TRUE);
 
+	/* Initialize clockchip manager */
+	ret = vmm_clockchip_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
 	/* Initialize hypervisor timer */
 	ret = vmm_timer_init();
 	if (ret) {
