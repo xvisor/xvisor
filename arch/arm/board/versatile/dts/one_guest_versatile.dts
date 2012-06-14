@@ -189,6 +189,7 @@
 					physical_size = <0x10000>;
 					device_type = "pic";
 					compatible = "versatilepb,pl190";
+					base_irq = <0>;
 				};
 
 				pic1 {
@@ -198,6 +199,7 @@
 					physical_size = <0x10000>;
 					device_type = "pic";
 					compatible = "versatilepb,pl190";
+					base_irq = <32>;
 					parent_irq = <31>;
 					child_pic = <1>;
 				};

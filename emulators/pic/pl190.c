@@ -146,6 +146,8 @@ static int pl190_emulator_irq_handle(struct vmm_emupic *epic,
 		return VMM_EMUPIC_IRQ_UNHANDLED;
 	}
 
+	irq -= s->num_base_irq;
+
 	if (level == (s->level & (1u << irq))) {
 		return VMM_EMUPIC_IRQ_HANDLED;
 	}
@@ -479,6 +481,15 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 		s->id[5] = ((u32 *) eid->data)[7];
 		s->id[6] = ((u32 *) eid->data)[8];
 		s->id[7] = ((u32 *) eid->data)[9];
+	}
+
+	attr = vmm_devtree_attrval(edev->node, "base_irq");
+	attrlen = vmm_devtree_attrlen(edev->node, "base_irq");
+	if (attr && (attrlen == sizeof(u32))) {
+		s->num_base_irq = *(u32 *) attr;
+	} else {
+		rc = VMM_EFAIL;
+		goto pl190_emulator_probe_unregpic_fail;
 	}
 
 	attr = vmm_devtree_attrval(edev->node, "child_pic");
