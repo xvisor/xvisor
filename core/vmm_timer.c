@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_percpu.h>
 #include <vmm_string.h>
 #include <vmm_spinlocks.h>
@@ -31,9 +32,6 @@
 #include <vmm_clockchip.h>
 #include <vmm_timer.h>
 #include <arch_cpu_irq.h>
-#ifdef CONFIG_SMP
-#include <arch_smp.h>
-#endif
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_local_ctrl {
@@ -465,11 +463,7 @@ void vmm_timer_stop(void)
 int __init vmm_timer_init(void)
 {
 	int rc;
-#ifdef CONFIG_SMP
-	u32 cpu = arch_smp_id();
-#else
-	u32 cpu = 0;
-#endif
+	u32 cpu = vmm_smp_processor_id();
 	struct vmm_clocksource * cs;
 	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
 

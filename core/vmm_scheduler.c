@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_percpu.h>
 #include <vmm_cpumask.h>
 #include <vmm_string.h>
@@ -312,11 +313,7 @@ static void idle_orphan(void)
 int __init vmm_scheduler_init(void)
 {
 	int rc;
-#if defined(CONFIG_SMP)
-	u32 cpu = arch_smp_id();
-#else
-	u32 cpu = 0;
-#endif
+	u32 cpu = vmm_smp_processor_id();
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
 	/* Reset the scheduler control structure */

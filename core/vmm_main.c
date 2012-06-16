@@ -28,6 +28,7 @@
 #include <vmm_version.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
+#include <vmm_smp.h>
 #include <vmm_percpu.h>
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
@@ -46,9 +47,6 @@
 #include <vmm_modules.h>
 #include <arch_cpu.h>
 #include <arch_board.h>
-#if defined(CONFIG_SMP)
-#include <arch_smp.h>
-#endif
 
 void vmm_hang(void)
 {
@@ -58,14 +56,10 @@ void vmm_hang(void)
 void vmm_init(void)
 {
 	int ret;
-	u32 c, freed, cpu = 0;
+	u32 c, freed, cpu = vmm_smp_processor_id();
 	struct dlist *l;
 	struct vmm_devtree_node *gnode, *gsnode;
 	struct vmm_guest *guest = NULL;
-
-#if defined(CONFIG_SMP)
-	cpu = arch_smp_id();
-#endif
 
 	/* Mark this CPU present */
 	vmm_set_cpu_present(cpu, TRUE);
@@ -335,7 +329,7 @@ void vmm_init(void)
 void vmm_init_secondary(void)
 {
 	int ret;
-	u32 cpu = arch_smp_id();
+	u32 cpu = vmm_smp_processor_id();
 
 	/* Mark this CPU present */
 	vmm_set_cpu_present(cpu, TRUE);

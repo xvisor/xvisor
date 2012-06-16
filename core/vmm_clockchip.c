@@ -24,9 +24,9 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_spinlocks.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_clockchip.h>
-#include <arch_smp.h>
 #include <arch_timer.h>
 
 /** Control structure for clockchip manager */
@@ -256,11 +256,7 @@ u32 vmm_clockchip_count(void)
 int __init vmm_clockchip_init(void)
 {
 	int rc;
-#ifdef CONFIG_SMP
-	u32 cpu = arch_smp_id();
-#else
-	u32 cpu = 0;
-#endif
+	u32 cpu = vmm_smp_processor_id();
 
 	if (!cpu) {
 		/* Initialize clock chip list lock */
