@@ -116,6 +116,106 @@ static inline void vmm_writel(u32 data, volatile void *addr)
 	arch_out_le32(addr, data);
 }
 
+static inline u8 vmm_inb(unsigned long addr)
+{
+	return vmm_readb((volatile void *) addr);
+}
+
+static inline u16 vmm_inw(unsigned long addr)
+{
+	return vmm_readw((volatile void *) addr);
+}
+
+static inline u32 vmm_inl(unsigned long addr)
+{
+	return vmm_readl((volatile void *) addr);
+}
+
+static inline void vmm_outb(u8 b, unsigned long addr)
+{
+	vmm_writeb(b, (volatile void *) addr);
+}
+
+static inline void vmm_outw(u16 b, unsigned long addr)
+{
+	vmm_writew(b, (volatile void *) addr);
+}
+
+static inline void vmm_outl(u32 b, unsigned long addr)
+{
+	vmm_writel(b, (volatile void *) addr);
+}
+
+#define vmm_inb_p(addr)		vmm_inb(addr)
+#define vmm_inw_p(addr)		vmm_inw(addr)
+#define vmm_inl_p(addr)		vmm_inl(addr)
+#define vmm_outb_p(x, addr)	vmm_outb((x), (addr))
+#define vmm_outw_p(x, addr)	vmm_outw((x), (addr))
+#define vmm_outl_p(x, addr)	vmm_outl((x), (addr))
+
+static inline void vmm_insb(unsigned long addr, void *buffer, int count)
+{
+	if (count) {
+		u8 *buf = buffer;
+		do {
+			u8 x = vmm_inb(addr);
+			*buf++ = x;
+		} while (--count);
+	}
+}
+
+static inline void vmm_insw(unsigned long addr, void *buffer, int count)
+{
+	if (count) {
+		u16 *buf = buffer;
+		do {
+			u16 x = vmm_inw(addr);
+			*buf++ = x;
+		} while (--count);
+	}
+}
+
+static inline void vmm_insl(unsigned long addr, void *buffer, int count)
+{
+	if (count) {
+		u32 *buf = buffer;
+		do {
+			u32 x = vmm_inl(addr);
+			*buf++ = x;
+		} while (--count);
+	}
+}
+
+static inline void vmm_outsb(unsigned long addr, const void *buffer, int count)
+{
+	if (count) {
+		const u8 *buf = buffer;
+		do {
+			vmm_outb(*buf++, addr);
+		} while (--count);
+	}
+}
+
+static inline void vmm_outsw(unsigned long addr, const void *buffer, int count)
+{
+	if (count) {
+		const u16 *buf = buffer;
+		do {
+			vmm_outw(*buf++, addr);
+		} while (--count);
+	}
+}
+
+static inline void vmm_outsl(unsigned long addr, const void *buffer, int count)
+{
+	if (count) {
+		const u32 *buf = buffer;
+		do {
+			vmm_outl(*buf++, addr);
+		} while (--count);
+	}
+}
+
 /** Memory read/write functions */
 static inline u8 vmm_in_8(volatile u8 * addr)
 {
