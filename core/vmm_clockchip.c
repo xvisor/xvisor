@@ -26,6 +26,7 @@
 #include <vmm_spinlocks.h>
 #include <vmm_stdio.h>
 #include <vmm_clockchip.h>
+#include <arch_smp.h>
 #include <arch_timer.h>
 
 /** Control structure for clockchip manager */
