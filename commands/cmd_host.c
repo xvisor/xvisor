@@ -71,7 +71,7 @@ void cmd_host_irq_stats(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "--------------------\n");
 	for (num = 0; num < count; num++) {
 		irq = vmm_host_irq_get(num);
-		if (!vmm_host_irq_isenabled(irq)) {
+		if (vmm_host_irq_is_disabled(irq)) {
 			continue;
 		}
 		stats = vmm_host_irq_get_count(irq);
