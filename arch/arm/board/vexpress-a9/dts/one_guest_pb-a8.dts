@@ -88,7 +88,6 @@
 				vcpu0 {
 					device_type = "vcpu";
 					compatible = "ARMv7a,cortex-a8";
-					time_slice = <50000000>;
 					start_pc = <0x40000000>;
 				};
 			};

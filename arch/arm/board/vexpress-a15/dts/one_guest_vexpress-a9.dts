@@ -88,14 +88,12 @@
 				vcpu0 {
 					device_type = "vcpu";
 					compatible = "ARMv7a,cortex-a9";
-					time_slice = <25000000>;
 					start_pc = <0x40000000>;
 				};
 
 				vcpu1 {
 					device_type = "vcpu";
 					compatible = "ARMv7a,cortex-a9";
-					time_slice = <25000000>;
 					start_pc = <0x40000000>;
 				};
 			};
