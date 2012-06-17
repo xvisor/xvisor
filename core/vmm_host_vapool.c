@@ -23,12 +23,14 @@
 
 #include <vmm_error.h>
 #include <vmm_string.h>
+#include <vmm_spinlocks.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_vapool.h>
 #include <mathlib.h>
 #include <bitmap.h>
 
 struct vmm_host_vapool_ctrl {
+	vmm_spinlock_t vapool_bmap_lock;
 	unsigned long *vapool_bmap;
 	u32 vapool_bmap_sz;
 	u32 vapool_bmap_free;
@@ -42,6 +44,7 @@ static struct vmm_host_vapool_ctrl vpctrl;
 int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 {
 	u32 i, found, binc, bcnt, bpos, bfree;
+	irq_flags_t flags;
 
 	bcnt = 0;
 	while (sz > 0) {
@@ -53,7 +56,10 @@ int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 		}
 	}
 
+	vmm_spin_lock_irqsave(&vpctrl.vapool_bmap_lock, flags);
+
 	if (vpctrl.vapool_bmap_free < bcnt) {
+		vmm_spin_unlock_irqrestore(&vpctrl.vapool_bmap_lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -82,6 +88,7 @@ int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 		}
 	}
 	if (!found) {
+		vmm_spin_unlock_irqrestore(&vpctrl.vapool_bmap_lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -89,12 +96,15 @@ int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 	bitmap_set(vpctrl.vapool_bmap, bpos, bcnt);
 	vpctrl.vapool_bmap_free -= bcnt;
 
+	vmm_spin_unlock_irqrestore(&vpctrl.vapool_bmap_lock, flags);
+
 	return VMM_OK;
 }
 
 int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz)
 {
 	u32 i, bcnt, bpos, bfree;
+	irq_flags_t flags;
 
 	if ((va < vpctrl.vapool_start) ||
 	    ((vpctrl.vapool_start + vpctrl.vapool_size) <= va)) {
@@ -111,7 +121,10 @@ int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz)
 		}
 	}
 
+	vmm_spin_lock_irqsave(&vpctrl.vapool_bmap_lock, flags);
+
 	if (vpctrl.vapool_bmap_free < bcnt) {
+		vmm_spin_unlock_irqrestore(&vpctrl.vapool_bmap_lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -125,11 +138,14 @@ int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz)
 	}
 
 	if (bfree != bcnt) {
+		vmm_spin_unlock_irqrestore(&vpctrl.vapool_bmap_lock, flags);
 		return VMM_EFAIL;
 	}
 
 	bitmap_set(vpctrl.vapool_bmap, bpos, bcnt);
 	vpctrl.vapool_bmap_free -= bcnt;
+
+	vmm_spin_unlock_irqrestore(&vpctrl.vapool_bmap_lock, flags);
 
 	return VMM_OK;
 }
@@ -137,6 +153,7 @@ int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz)
 int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz)
 {
 	u32 bcnt, bpos;
+	irq_flags_t flags;
 
 	if (va < vpctrl.vapool_start ||
 	    (vpctrl.vapool_start + vpctrl.vapool_size) <= va) {
@@ -155,8 +172,12 @@ int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz)
 
 	bpos = (va - vpctrl.vapool_start) >> VMM_PAGE_SHIFT;
 
+	vmm_spin_lock_irqsave(&vpctrl.vapool_bmap_lock, flags);
+
 	bitmap_clear(vpctrl.vapool_bmap, bpos, bcnt);
 	vpctrl.vapool_bmap_free += bcnt;
+
+	vmm_spin_unlock_irqrestore(&vpctrl.vapool_bmap_lock, flags);
 
 	return VMM_OK;
 }
@@ -169,24 +190,37 @@ virtual_addr_t vmm_host_vapool_base(void)
 bool vmm_host_vapool_page_isfree(virtual_addr_t va)
 {
 	u32 bpos;
+	bool ret = TRUE;
+	irq_flags_t flags;
 
 	if (va < vpctrl.vapool_start ||
 	    (vpctrl.vapool_start + vpctrl.vapool_size) <= va) {
-		return TRUE;
+		return ret;
 	}
 
 	bpos = (va - vpctrl.vapool_start) >> VMM_PAGE_SHIFT;
 
+	vmm_spin_lock_irqsave(&vpctrl.vapool_bmap_lock, flags);
+
 	if (bitmap_isset(vpctrl.vapool_bmap, bpos)) {
-		return FALSE;
+		ret = FALSE;
 	}
 
-	return TRUE;
+	vmm_spin_unlock_irqrestore(&vpctrl.vapool_bmap_lock, flags);
+
+	return ret;
 }
 
 u32 vmm_host_vapool_free_page_count(void)
 {
-	return vpctrl.vapool_bmap_free;
+	u32 ret;
+	irq_flags_t flags;
+
+	vmm_spin_lock_irqsave(&vpctrl.vapool_bmap_lock, flags);
+	ret = vpctrl.vapool_bmap_free;
+	vmm_spin_unlock_irqrestore(&vpctrl.vapool_bmap_lock, flags);
+
+	return ret;
 }
 
 u32 vmm_host_vapool_total_page_count(void)
@@ -220,6 +254,8 @@ int __init vmm_host_vapool_init(virtual_addr_t base,
 	}
 
 	vmm_memset(&vpctrl, 0, sizeof(vpctrl));
+
+	INIT_SPIN_LOCK(&vpctrl.vapool_bmap_lock);
 
 	vpctrl.vapool_start = base;
 	vpctrl.vapool_size = size;
