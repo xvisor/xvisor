@@ -1297,7 +1297,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		if (opc1 != 0) {
 			goto bad_reg;
 		}
-		/* Note: Data cache invaidate/flush is a dangerous 
+		/* Note: Data cache invalidate/flush is a dangerous 
 		 * operation since it is possible that Xvisor had its 
 		 * own updates in data cache which are not written to 
 		 * main memory we might end-up losing those updates 
