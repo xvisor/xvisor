@@ -47,15 +47,7 @@ int vmm_host_ram_alloc(physical_addr_t * pa, physical_size_t sz, bool aligned)
 	u32 i, found, binc, bcnt, bpos, bfree;
 	irq_flags_t flags;
 
-	bcnt = 0;
-	while (sz > 0) {
-		bcnt++;
-		if (sz > VMM_PAGE_SIZE) {
-			sz -= VMM_PAGE_SIZE;
-		} else {
-			sz = 0;
-		}
-	}
+	bcnt = VMM_SIZE_TO_PAGE(sz);
 
 	vmm_spin_lock_irqsave(&rctrl.ram_bmap_lock, flags);
 
@@ -112,15 +104,7 @@ int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz)
 		return VMM_EFAIL;
 	}
 
-	bcnt = 0;
-	while (sz > 0) {
-		bcnt++;
-		if (sz > VMM_PAGE_SIZE) {
-			sz -= VMM_PAGE_SIZE;
-		} else {
-			sz = 0;
-		}
-	}
+	bcnt = VMM_SIZE_TO_PAGE(sz);
 
 	vmm_spin_lock_irqsave(&rctrl.ram_bmap_lock, flags);
 
@@ -161,16 +145,7 @@ int vmm_host_ram_free(physical_addr_t pa, physical_size_t sz)
 		return VMM_EFAIL;
 	}
 
-	bcnt = 0;
-	while (sz > 0) {
-		bcnt++;
-		if (sz > VMM_PAGE_SIZE) {
-			sz -= VMM_PAGE_SIZE;
-		} else {
-			sz = 0;
-		}
-	}
-
+	bcnt = VMM_SIZE_TO_PAGE(sz);
 	bpos = (pa - rctrl.ram_start) >> VMM_PAGE_SHIFT;
 
 	vmm_spin_lock_irqsave(&rctrl.ram_bmap_lock, flags);

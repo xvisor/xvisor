@@ -46,15 +46,7 @@ int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
 	u32 i, found, binc, bcnt, bpos, bfree;
 	irq_flags_t flags;
 
-	bcnt = 0;
-	while (sz > 0) {
-		bcnt++;
-		if (sz > VMM_PAGE_SIZE) {
-			sz -= VMM_PAGE_SIZE;
-		} else {
-			sz = 0;
-		}
-	}
+	bcnt = VMM_SIZE_TO_PAGE(sz);
 
 	vmm_spin_lock_irqsave(&vpctrl.vapool_bmap_lock, flags);
 
@@ -111,15 +103,7 @@ int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz)
 		return VMM_EFAIL;
 	}
 
-	bcnt = 0;
-	while (sz > 0) {
-		bcnt++;
-		if (sz > VMM_PAGE_SIZE) {
-			sz -= VMM_PAGE_SIZE;
-		} else {
-			sz = 0;
-		}
-	}
+	bcnt = VMM_SIZE_TO_PAGE(sz);
 
 	vmm_spin_lock_irqsave(&vpctrl.vapool_bmap_lock, flags);
 
@@ -160,16 +144,7 @@ int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz)
 		return VMM_EFAIL;
 	}
 
-	bcnt = 0;
-	while (sz > 0) {
-		bcnt++;
-		if (sz > VMM_PAGE_SIZE) {
-			sz -= VMM_PAGE_SIZE;
-		} else {
-			sz = 0;
-		}
-	}
-
+	bcnt = VMM_SIZE_TO_PAGE(sz);
 	bpos = (va - vpctrl.vapool_start) >> VMM_PAGE_SHIFT;
 
 	vmm_spin_lock_irqsave(&vpctrl.vapool_bmap_lock, flags);
