@@ -81,7 +81,6 @@
 				vcpu0 {
 					device_type = "vcpu";
 					compatible = "ARMv5te,ARM926ej";
-					time_slice = <50000000>;
 					start_pc = <0x34000000>;
 				};
 			};
