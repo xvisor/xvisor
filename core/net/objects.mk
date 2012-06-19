@@ -21,6 +21,10 @@
 # @brief list of core objects to be build
 # */
 
+core-objs-$(CONFIG_NET)+= net/vmm_mbuf.o
+core-objs-$(CONFIG_NET)+= net/vmm_net.o
 core-objs-$(CONFIG_NET)+= net/vmm_netdev.o
 core-objs-$(CONFIG_NET)+= net/vmm_netswitch.o
+core-objs-$(CONFIG_NET)+= net/vmm_netport.o
+core-objs-$(CONFIG_NET)+= net/switch/vmm_net_bridge.o
 

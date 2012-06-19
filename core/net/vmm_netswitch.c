@@ -18,7 +18,7 @@
  *
  * @file vmm_netswitch.c
  * @author Pranav Sawargaonkar <pranav.sawargaonkar@gmail.com>
- * @brief Switch/Bridge layer for packet switching.
+ * @brief NetSwitch framework.
  */
 
 #include <vmm_error.h>
@@ -27,7 +27,9 @@
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
+#include <net/ethernet.h>
 #include <net/vmm_netswitch.h>
+#include <net/vmm_netport.h>
 
 struct vmm_netswitch *vmm_netswitch_alloc(char *name)
 {
@@ -41,6 +43,11 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name)
 	}
 
 	vmm_memset(nsw, 0, sizeof(struct vmm_netswitch));
+	nsw->name = vmm_malloc(vmm_strlen(name)+1);
+	if (!nsw->name) {
+		vmm_printf("%s Failed to allocate for net switch\n", __func__);
+		return NULL;
+	}
 	vmm_strcpy(nsw->name, name);
 
 	INIT_LIST_HEAD(&nsw->port_list);
@@ -74,7 +81,9 @@ int vmm_netswitch_register(struct vmm_netswitch *nsw)
 		goto fail_nsw_reg;
 	}
 
+#ifdef CONFIG_VERBOSE_MODE
 	vmm_printf("Successfully registered VMM net switch: %s\n", nsw->name);
+#endif
 
 	return rc;
 
@@ -104,6 +113,48 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 		vmm_free(cd);
 
 	return rc;
+}
+
+int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
+			   struct vmm_netport *port)
+{
+	if(!port) {
+		return VMM_EFAIL;
+	}
+	/* If port has invalid mac, assign a random one */
+	if(!is_valid_ether_addr(port->macaddr)) {
+		random_ether_addr(port->macaddr);
+	}
+	/* Add the port to switch's port_list */
+	list_add_tail(&nsw->port_list, &port->head);
+	port->nsw = nsw;
+	/* Call the netswitch's enable handler */
+	nsw->enable_port(port);
+
+#ifdef CONFIG_VERBOSE_MODE
+	vmm_printf("NET: Port(\"%s\") added to Switch(\"%s\")\n",
+		   port->name, nsw->name);
+#endif
+
+	return VMM_OK;
+}
+
+int vmm_netswitch_port_remove(struct vmm_netport *port)
+{
+	if(!port || !(port->nsw)) {
+		return VMM_EFAIL;
+	}
+#ifdef CONFIG_VERBOSE_MODE
+	vmm_printf("NET: Port(\"%s\") removed from Switch(\"%s\")\n",
+			port->name, port->nsw->name);
+#endif
+	/* Call the netswitch's disable handler */
+	port->nsw->disable_port(port);
+	/* Remove the port from switch's port_list */
+	port->nsw = NULL;
+	list_del(&port->head);
+
+	return VMM_OK;
 }
 
 struct vmm_netswitch *vmm_netswitch_find(const char *name)
@@ -140,7 +191,7 @@ int vmm_netswitch_init(void)
 	int rc;
 	struct vmm_class *c;
 
-	vmm_printf("Initialize Networking Patcket Switch layer Framework\n");
+	vmm_printf("Initialize Networking Packet Switch Framework\n");
 
 	c = vmm_malloc(sizeof(struct vmm_class));
 	if (!c)
@@ -152,6 +203,8 @@ int vmm_netswitch_init(void)
 
 	rc = vmm_devdrv_register_class(c);
 	if (rc) {
+		vmm_printf("Failed to register %s class\n",
+			VMM_NETSWITCH_CLASS_NAME);
 		vmm_free(c);
 		return rc;
 	}
@@ -159,23 +212,23 @@ int vmm_netswitch_init(void)
 	return VMM_OK;
 }
 
-int vmm_netswitch_exit(void)
+void vmm_netswitch_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
 
 	c = vmm_devdrv_find_class(VMM_NETSWITCH_CLASS_NAME);
 	if (!c)
-		return VMM_OK;
+		return;
 
 	rc = vmm_devdrv_unregister_class(c);
 	if (rc) {
 		vmm_printf("Failed to unregister %s class",
 			VMM_NETSWITCH_CLASS_NAME);
-		return rc;
+		return;
 	}
 
 	vmm_free(c);
 
-	return VMM_OK;
+	return;
 }
