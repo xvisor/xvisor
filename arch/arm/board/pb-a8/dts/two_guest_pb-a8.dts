@@ -7,7 +7,7 @@
 		#size-cells = <0>;
 
 		net {
-			netbridge {
+			netbridge0 {
 				device_type = "netswitch";
 				compatible = "bridge";
 			};
@@ -388,7 +388,7 @@
 					physical_size = <0x10000>;
 					device_type = "nic";
 					compatible = "smsc,lan9118";
-					switch = "netbridge";
+					switch = "netbridge0";
 					irq = <60>;
 				};
 			};
@@ -700,7 +700,7 @@
 					physical_size = <0x10000>;
 					device_type = "nic";
 					compatible = "smsc,lan9118";
-					switch = "netbridge";
+					switch = "netbridge0";
 					irq = <60>;
 				};
 			};

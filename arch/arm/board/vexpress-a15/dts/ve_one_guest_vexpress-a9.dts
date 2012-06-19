@@ -5,6 +5,13 @@
 	vmm {
 		#address-cells = <1>;
 		#size-cells = <0>;
+
+		net {
+			netbridge0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
 	};
 
 	host {
@@ -372,13 +379,15 @@
 					compatible = "zero";
 				};
 
-				lan9118 { /* No Ethernet Controller */
+				lan9118 { /* Ethernet Controller */
 					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x4E000000ULL>;
-					physical_size = <0x1000ULL>;
-					device_type = "misc";
-					compatible = "zero";
+					physical_size = <0x10000ULL>;
+					device_type = "nic";
+					compatible = "smsc,lan9118";
+					switch = "netbridge0";
+					irq = <47>;
 				};
 
 				isp1760 { /* No USB Controller */

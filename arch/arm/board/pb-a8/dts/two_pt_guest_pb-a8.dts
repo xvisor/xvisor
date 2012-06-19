@@ -5,6 +5,13 @@
 	vmm {
 		#address-cells = <1>;
 		#size-cells = <0>;
+
+		net {
+			netbridge0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
 	};
 
 	host {
@@ -92,8 +99,6 @@
 				h2g_irq_map = </* Host => Guest */
 						  /* uart0 */
 						   45      44 
-						  /*  eth0 */
-						   60      60 
 					      >;
 
 				mem0 {
@@ -373,15 +378,16 @@
 					device_type = "rom";
 				};
 
-				/* Pass Through Device SMSC9118 */
-				lan9118 {
-					manifest_type = "real";
+				lan9118 { /* Ethernet Controller */
+					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x4E000000>;
-					host_physical_addr = <0x4E000000>;
-					physical_size = <0x1000>;
-					device_type = "ethernet";
-                               };
+					physical_size = <0x10000>;
+					device_type = "nic";
+					compatible = "smsc,lan9118";
+					switch = "netbridge0";
+					irq = <60>;
+				};
 			};
 		};
 
@@ -690,13 +696,15 @@
 					device_type = "rom";
 				};
 
-				lan9118 { /* No Ethernet Controller */
+				lan9118 { /* Ethernet Controller */
 					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x4E000000>;
-					physical_size = <0x1000>;
-					device_type = "misc";
-					compatible = "zero";
+					physical_size = <0x10000>;
+					device_type = "nic";
+					compatible = "smsc,lan9118";
+					switch = "netbridge0";
+					irq = <60>;
 				};
 			};
 		};
