@@ -124,7 +124,7 @@ int vmm_netbridge_probe(struct vmm_device *dev,
 	struct vmm_netswitch *nsw;
 	int rc = VMM_OK;
 
-	nsw = vmm_netswitch_alloc("netbridge");
+	nsw = vmm_netswitch_alloc(dev->node->name);
 	if(!nsw) {
 		rc = VMM_EFAIL;
 		goto vmm_netbridge_probe_failed;
