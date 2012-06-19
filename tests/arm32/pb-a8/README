@@ -7,9 +7,7 @@ We have following guest OSes tested for this guest:
 
   1. basic - Basic test and/or bootloader used by xvisor developers
   2. atomthreads - Atomthreads RTOS
-  3. busybox-1.19.2 - Busybox 1.19.2 Root File System
-  4. linux-3.0.4 - Linux Kernel 3.0.4 
+  3. linux-3.0.4 - Linux Kernel 3.0.4 
 
 Please follow the README under specific guest OS directory for detailed
 steps to configure, compile and run.
-
