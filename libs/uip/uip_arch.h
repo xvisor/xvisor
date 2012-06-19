@@ -61,7 +61,7 @@
 #ifndef __UIP_ARCH_H__
 #define __UIP_ARCH_H__
 
-#include <uip/uip.h>
+#include "uip.h"
 
 /**
  * Carry out a 32-bit addition.

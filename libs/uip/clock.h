@@ -1,19 +1,22 @@
 /**
- * \addtogroup uipopt
- * @{
- */
-
-/**
- * \name Project-specific configuration options
- * @{
+ * \defgroup clock Clock interface
  *
- * uIP has a number of configuration options that can be overridden
- * for each project. These are kept in a project-specific uip-conf.h
- * file and all configuration names have the prefix UIP_CONF.
+ * The clock interface is the interface between the \ref timer "timer library"
+ * and the platform specific clock functionality. The clock
+ * interface must be implemented for each platform that uses the \ref
+ * timer "timer library".
+ *
+ * The clock interface does only one this: it measures time. The clock
+ * interface provides a macro, CLOCK_SECOND, which corresponds to one
+ * second of system time.
+ *
+ * \sa \ref timer "Timer library"
+ *
+ * @{
  */
 
 /*
- * Copyright (c) 2006, Swedish Institute of Computer Science.
+ * Copyright (c) 2004, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,91 +45,40 @@
  *
  * This file is part of the uIP TCP/IP stack
  *
- * $Id: uip-conf.h,v 1.6 2006/06/12 08:00:31 adam Exp $
- */
-
-/**
- * \file
- *         An example uIP configuration file
- * \author
- *         Adam Dunkels <adam@sics.se>
- */
-
-#ifndef __UIP_CONF_H__
-#define __UIP_CONF_H__
-
-#include <vmm_types.h>
-
-/**
- * 8 bit datatype
+ * Author: Adam Dunkels <adam@sics.se>
  *
- * This typedef defines the 8-bit type used throughout uIP.
+ * $Id: clock.h,v 1.1 2007/01/04 11:06:40 adamdunkels Exp $
+ */
+#ifndef __CLOCK_H__
+#define __CLOCK_H__
+
+#include "clock-arch.h"
+
+/**
+ * Initialize the clock library.
+ *
+ * This function initializes the clock library and should be called
+ * from the main() function of the system.
+ *
+ */
+void clock_init(void);
+
+/**
+ * Get the current clock time.
+ *
+ * This function returns the current system clock time.
+ *
+ * \return The current clock time, measured in system ticks.
+ */
+clock_time_t clock_time(void);
+
+/**
+ * A second, measured in system clock time.
  *
  * \hideinitializer
  */
-typedef u8 u8_t;
+#define CLOCK_SECOND CLOCK_CONF_SECOND
 
-/**
- * 16 bit datatype
- *
- * This typedef defines the 16-bit type used throughout uIP.
- *
- * \hideinitializer
- */
-typedef u16 u16_t;
-/**
- * Statistics datatype
- *
- * This typedef defines the dataype used for keeping statistics in
- * uIP.
- *
- * \hideinitializer
- */
-typedef unsigned short uip_stats_t;
+#endif /* __CLOCK_H__ */
 
-/**
- * Maximum number of TCP connections.
- *
- * \hideinitializer
- */
-#define UIP_CONF_MAX_CONNECTIONS 40
-
-/**
- * Maximum number of listening TCP ports.
- *
- * \hideinitializer
- */
-#define UIP_CONF_MAX_LISTENPORTS 40
-
-/**
- * uIP buffer size.
- *
- * \hideinitializer
- */
-#define UIP_CONF_BUFFER_SIZE     420
-
-/**
- * CPU byte order.
- *
- * \hideinitializer
- */
-#define UIP_CONF_BYTE_ORDER      LITTLE_ENDIAN
-
-/**
- * Logging on or off
- *
- * \hideinitializer
- */
-#define UIP_CONF_LOGGING         1
-
-/**
- * uIP statistics on or off
- *
- * \hideinitializer
- */
-#define UIP_CONF_STATISTICS      0
-
-#endif /* __UIP_CONF_H__ */
-
-/** @} */
 /** @} */

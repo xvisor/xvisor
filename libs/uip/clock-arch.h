@@ -1,17 +1,3 @@
-/**
- * \addtogroup uipopt
- * @{
- */
-
-/**
- * \name Project-specific configuration options
- * @{
- *
- * uIP has a number of configuration options that can be overridden
- * for each project. These are kept in a project-specific uip-conf.h
- * file and all configuration names have the prefix UIP_CONF.
- */
-
 /*
  * Copyright (c) 2006, Swedish Institute of Computer Science.
  * All rights reserved.
@@ -42,91 +28,24 @@
  *
  * This file is part of the uIP TCP/IP stack
  *
- * $Id: uip-conf.h,v 1.6 2006/06/12 08:00:31 adam Exp $
+ * $Id: clock-arch.h,v 1.1 2007/01/04 11:06:41 adamdunkels Exp $
  */
 
-/**
- * \file
- *         An example uIP configuration file
- * \author
- *         Adam Dunkels <adam@sics.se>
- */
+#ifndef __CLOCK_ARCH_H__
+#define __CLOCK_ARCH_H__
 
-#ifndef __UIP_CONF_H__
-#define __UIP_CONF_H__
+#include<vmm_timer.h>
+#include<mathlib.h>
 
-#include <vmm_types.h>
+typedef u32 clock_time_t;
+#define CLOCK_CONF_SECOND 1000
 
-/**
- * 8 bit datatype
- *
- * This typedef defines the 8-bit type used throughout uIP.
- *
- * \hideinitializer
- */
-typedef u8 u8_t;
+static inline clock_time_t clock_time(void)
+{
+	u64 nsecs = vmm_timer_timestamp();
+	return (clock_time_t)udiv64(nsecs,1000000);
+}
+		
 
-/**
- * 16 bit datatype
- *
- * This typedef defines the 16-bit type used throughout uIP.
- *
- * \hideinitializer
- */
-typedef u16 u16_t;
-/**
- * Statistics datatype
- *
- * This typedef defines the dataype used for keeping statistics in
- * uIP.
- *
- * \hideinitializer
- */
-typedef unsigned short uip_stats_t;
+#endif /* __CLOCK_ARCH_H__ */
 
-/**
- * Maximum number of TCP connections.
- *
- * \hideinitializer
- */
-#define UIP_CONF_MAX_CONNECTIONS 40
-
-/**
- * Maximum number of listening TCP ports.
- *
- * \hideinitializer
- */
-#define UIP_CONF_MAX_LISTENPORTS 40
-
-/**
- * uIP buffer size.
- *
- * \hideinitializer
- */
-#define UIP_CONF_BUFFER_SIZE     420
-
-/**
- * CPU byte order.
- *
- * \hideinitializer
- */
-#define UIP_CONF_BYTE_ORDER      LITTLE_ENDIAN
-
-/**
- * Logging on or off
- *
- * \hideinitializer
- */
-#define UIP_CONF_LOGGING         1
-
-/**
- * uIP statistics on or off
- *
- * \hideinitializer
- */
-#define UIP_CONF_STATISTICS      0
-
-#endif /* __UIP_CONF_H__ */
-
-/** @} */
-/** @} */

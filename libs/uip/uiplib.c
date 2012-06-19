@@ -34,8 +34,8 @@
  */
 
 
-#include <uip/uip.h>
-#include <uip/uiplib.h>
+#include "uip.h"
+#include "uiplib.h"
 
 
 /*-----------------------------------------------------------------------------------*/

@@ -33,9 +33,9 @@
  * $Id: psock.c,v 1.2 2006/06/12 08:00:30 adam Exp $
  */
 
-#include <uip/uipopt.h>
-#include <uip/psock.h>
-#include <uip/uip.h>
+#include "uipopt.h"
+#include "psock.h"
+#include "uip.h"
 #include <vmm_string.h>
 
 #define STATE_NONE 0

@@ -54,7 +54,7 @@
 #define __UIP_H__
 
 #include <vmm_types.h>
-#include <uip/uipopt.h>
+#include "uipopt.h"
 
 /**
  * Repressentation of an IP address.

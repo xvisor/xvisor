@@ -59,7 +59,7 @@
  */
 
 
-#include <uip/uip_arp.h>
+#include "uip_arp.h"
 #include <vmm_string.h>
 #include <vmm_types.h>
 
