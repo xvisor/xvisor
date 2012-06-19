@@ -48,7 +48,18 @@
 #include <vmm_scheduler.h>
 #include <vmm_stdio.h>
 #include <mathlib.h>
-//#include <net/vmm_netswitch.h>
+#include <net/ethernet.h>
+#include <net/vmm_mbuf.h>
+#include <net/vmm_net.h>
+#include <net/vmm_netswitch.h>
+#include <net/vmm_netport.h>
+
+#define MODULE_VARID			lan9118_emulator_module
+#define MODULE_NAME			"SMSC LAN9118 Emulator"
+#define MODULE_AUTHOR			"Sukanto Ghosh"
+#define MODULE_IPRIORITY		(VMM_NET_CLASS_IPRIORITY+1)
+#define	MODULE_INIT			lan9118_emulator_init
+#define	MODULE_EXIT			lan9118_emulator_exit
 
 static inline u32 bswap32(u32 data)
 {
@@ -70,18 +81,11 @@ static u32 crc32_le(u32 crc, unsigned char const *p, u32 len)
 	return crc;
 }
 
-#define MODULE_VARID			lan9118_emulator_module
-#define MODULE_NAME			"SMSC LAN9118 Emulator"
-#define MODULE_AUTHOR			"Sukanto Ghosh"
-#define MODULE_IPRIORITY		1
-#define	MODULE_INIT			lan9118_emulator_init
-#define	MODULE_EXIT			lan9118_emulator_exit
-
 #undef DEBUG_LAN9118
 
 #ifdef DEBUG_LAN9118
 #define DPRINTF(fmt, ...) \
-	do { vmm_printf("lan9118: " fmt , ## __VA_ARGS__); } while (0)
+	do { vmm_printf(fmt , ## __VA_ARGS__); } while (0)
 #define BADF(fmt, ...) \
 	do { vmm_printf("lan9118: error: " fmt , ## __VA_ARGS__);} while (0)
 #else
@@ -198,6 +202,8 @@ enum tx_state {
 	TX_DATA
 };
 
+#define LAN9118_MTU	2048
+
 struct LAN9118Packet{
 	enum tx_state state;
 	u32 cmd_a;
@@ -206,19 +212,17 @@ struct LAN9118Packet{
 	s32 offset;
 	s32 pad;
 	s32 fifo_used;
-	s32 len;
-	u8 data[2048];
+	struct vmm_mbuf *mbuf;
 };
 
 struct lan9118_state {
-	/* FIXME: Add netswitch-port config pointer */
+	struct vmm_netport *port;
 
 	vmm_spinlock_t lock;
 	struct vmm_guest *guest;
 	u32 irq;
 	struct vmm_timer_event *event;
 	u16 gpt_count;
-	u8 macaddr[6];
 	bool link_down; 
 
 	u32 irq_cfg;
@@ -291,6 +295,9 @@ struct lan9118_state {
 	u32 mode_16bit;
 };
 
+#define txp_mbuf(s)	((s)->txp->mbuf)
+#define txp_mbuf_len(s)	((s)->txp->mbuf->m_len)
+
 static void lan9118_update(struct lan9118_state *s)
 {
 	int level;
@@ -362,7 +369,14 @@ static void gpt_event(struct vmm_timer_event *event)
 
 static void lan9118_mac_changed(struct lan9118_state *s)
 {
-	/* FIXME: any action on change in MAC ? */
+#ifdef DEBUG_LAN9118
+	int i;
+	DPRINTF("MAC of \"%s\" changed to ", s->port->name);
+	for (i = 0; i < 6; i++) {
+		DPRINTF("%02x:", vmm_netport_mac(s->port)[i]);
+	}
+	DPRINTF("\b \n");
+#endif
 }
 
 static void lan9118_reload_eeprom(struct lan9118_state *s)
@@ -374,7 +388,7 @@ static void lan9118_reload_eeprom(struct lan9118_state *s)
 		return;
 	}
 	for (i = 0; i < 6; i++) {
-	/* FIXME: Update netswitch about mac-addr as read from s->eeprom[1..6] */
+		vmm_netport_mac(s->port)[i] = s->eeprom[i + 1];
 	}
 	s->e2p_cmd |= 0x10;
 	DPRINTF("MACADDR loaded from eeprom\n");
@@ -405,14 +419,12 @@ static void phy_update_link(struct lan9118_state *s)
 	phy_update_irq(s);
 }
 
-/* FIXME: Register the callback with netswitch port 
- *
- * static void lan9118_set_link(struct lan9118_state *s, bool link_down)
- * {
- * 	   s->link_down = link_down;
- *         phy_update_link(s);
- * }
- */
+static void lan9118_set_link(struct vmm_netport *port)
+{
+	struct lan9118_state *s = (struct lan9118_state *)port->priv;
+	s->link_down = !(port->flags & VMM_NETPORT_LINK_UP);
+	phy_update_link(s);
+}
 
 static void phy_reset(struct lan9118_state *s)
 {
@@ -442,7 +454,12 @@ static int lan9118_state_reset(struct lan9118_state *s)
 	s->txp->state = TX_IDLE;
 	s->txp->cmd_a = 0xffffffffu;
 	s->txp->cmd_b = 0xffffffffu;
-	s->txp->len = 0;
+	if(txp_mbuf(s)) {
+		/* Reset previously allocated mbuf */
+	} else {
+		MGETHDR(txp_mbuf(s), 0, 0);
+		MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, M_WAIT);
+	}
 	s->txp->fifo_used = 0;
 	s->tx_fifo_size = 4608;
 	s->tx_status_fifo_used = 0;
@@ -523,8 +540,7 @@ static int lan9118_filter(struct lan9118_state *s, const u8 *addr)
 	if (multicast ? (s->mac_cr & MAC_CR_HPFILT) == 0
 			: (s->mac_cr & MAC_CR_HO) == 0) {
 		/* Exact matching.  */
-		/* FIXME: macaddr should be a property of netswitch_port ? */
-		hash = vmm_memcmp(addr, s->macaddr, 6);
+		hash = vmm_memcmp(addr, vmm_netport_mac(s->port), 6);
 		if (s->mac_cr & MAC_CR_INVFILT) {
 			return hash != 0;
 		} else {
@@ -541,8 +557,7 @@ static int lan9118_filter(struct lan9118_state *s, const u8 *addr)
 	}
 }
 
-static u32 lan9118_receive(struct lan9118_state *s, const u8 *buf,
-			   u32 size)
+static u32 lan9118_receive(struct lan9118_state *s, struct vmm_mbuf *mbuf)
 {
 	int fifo_len;
 	int offset;
@@ -552,6 +567,10 @@ static u32 lan9118_receive(struct lan9118_state *s, const u8 *buf,
 	u32 val;
 	u32 crc;
 	u32 status;
+
+	/* FIXME: Handle chained/fragmented mbufs */
+	u8 *buf = mtod(mbuf, u8 *);
+	u32 size = mbuf->m_len;
 
 	if ((s->mac_cr & MAC_CR_RXEN) == 0) {
 		return -1;
@@ -626,8 +645,33 @@ static u32 lan9118_receive(struct lan9118_state *s, const u8 *buf,
 		s->int_sts |= RSFL_INT;
 	}
 	lan9118_update(s);
+	m_freem(mbuf);
 
 	return size;
+}
+
+static int lan9118_switch2port_xfer(struct vmm_netport *port,
+				    struct vmm_mbuf *mbuf)
+{
+	int rc = VMM_OK;
+	struct lan9118_state *s = port->priv;
+	char *buf;
+	int len;
+
+	if(mbuf->m_next) {
+		/* Cannot avoid a copy in case of fragmented mbuf data */
+		len = min(LAN9118_MTU, mbuf->m_pktlen);
+		buf = vmm_malloc(len);
+		m_copydata(mbuf, 0, len, buf);
+		m_freem(mbuf);
+		MGETHDR(mbuf, 0, 0);
+		MEXTADD(mbuf, buf, len, 0, 0);
+	}
+	DPRINTF("LAN9118: RX(data: 0x%8X, len: %d)\n", \
+			mbuf->m_data, mbuf->m_len);
+	lan9118_receive(s, mbuf);
+
+	return rc;
 }
 
 static u32 rx_fifo_pop(struct lan9118_state *s)
@@ -684,14 +728,44 @@ static void do_tx_packet(struct lan9118_state *s)
 {
 	int n;
 	u32 status;
+#ifdef DEBUG_LAN9118
+	int i;
+	struct vmm_mbuf *mbuf = txp_mbuf(s);
 
+	DPRINTF("LAN9118: %s pkt with srcaddr:", __func__);
+	for (i = 0; i < 6; i++) {
+		DPRINTF("%02x:", ether_srcmac(mtod(mbuf, u8 *))[i]);
+	}
+	DPRINTF("\b ");
+	DPRINTF(", dstaddr:");
+	for (i = 0; i < 6; i++) {
+		DPRINTF("%02x:", ether_dstmac(mtod(mbuf, u8 *))[i]);
+	}
+	DPRINTF("\b ");
+	DPRINTF(", ethertype: 0x%04X\n", ether_type(mtod(mbuf, u8 *)));
+	DPRINTF("LAN9118: %s[mbuf(data: 0x%X, len: %d)] to ", __func__,
+			   txp_mbuf(s)->m_data, txp_mbuf(s)->m_len);
+#endif
 	/* FIXME: Honor TX disable, and allow queueing of packets.  */
 	if (s->phy_control & 0x4000)  {
-		/* This assumes the receive routine doesn't touch the VLANClient.  */
-		lan9118_receive(s, s->txp->data, s->txp->len);
+		DPRINTF(" - phy-loopback\n");
+		lan9118_receive(s, txp_mbuf(s));
 	} else {
-		/* FIXME: Add the port2netswitch_tx() call */
+		if(s->port->nsw) {
+			DPRINTF(" - switch\n");
+			vmm_port2switch_xfer(s->port, txp_mbuf(s));
+		} else {
+		/* TODO: Optimizations possible - 
+		 *  -  reuse the same mbuf without reallocating again */
+			m_freem(txp_mbuf(s));
+		}
 	}
+	/* We are done with this mbuf-chain, the receiver frees
+	 * the mbuf & ext-storage */
+	/* Allocate replacement mbuf */
+	MGETHDR(txp_mbuf(s), 0, 0);
+	MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, M_WAIT);
+
 	s->txp->fifo_used = 0;
 
 	if (s->tx_status_fifo_used == 512) {
@@ -700,7 +774,7 @@ static void do_tx_packet(struct lan9118_state *s)
 	}
 	/* Add entry to status FIFO.  */
 	status = s->txp->cmd_b & 0xffff0000u;
-	DPRINTF("Sent packet tag:%04x len %d\n", status >> 16, s->txp->len);
+	DPRINTF("Sent packet tag:%04x len %d\n", status >> 16, txp_mbuf_len(s));
 	n = (s->tx_status_fifo_head + s->tx_status_fifo_used) & 511;
 	s->tx_status_fifo[n] = status;
 	s->tx_status_fifo_used++;
@@ -774,7 +848,7 @@ static void tx_fifo_push(struct lan9118_state *s, u32 val)
 					n = 0;
 			}
 			s->txp->pad = n;
-			s->txp->len = 0;
+			txp_mbuf_len(s) = 0;
 		}
 		DPRINTF("Block len:%d offset:%d pad:%d cmd %08x\n",
 				s->txp->buffer_size, s->txp->offset, s->txp->pad,
@@ -800,8 +874,8 @@ static void tx_fifo_push(struct lan9118_state *s, u32 val)
 			   */
 			/* TODO: FIFO overflow checking.  */
 			while (n--) {
-				s->txp->data[s->txp->len] = val & 0xff;
-				s->txp->len++;
+				*(mtod(txp_mbuf(s), u8 *) + txp_mbuf_len(s)) = val & 0xff;
+				txp_mbuf_len(s)++;
 				val >>= 8;
 				s->txp->buffer_size--;
 			}
@@ -891,15 +965,15 @@ static void do_mac_write(struct lan9118_state *s, int reg, u32 val)
 		DPRINTF("MAC_CR: %08x\n", val);
 		break;
 	case MAC_ADDRH:
-		s->macaddr[4] = val & 0xff;
-		s->macaddr[5] = (val >> 8) & 0xff;
+		vmm_netport_mac(s->port)[4] = val & 0xff;
+		vmm_netport_mac(s->port)[5] = (val >> 8) & 0xff;
 		lan9118_mac_changed(s);
 		break;
 	case MAC_ADDRL:
-		s->macaddr[0] = val & 0xff;
-		s->macaddr[1] = (val >> 8) & 0xff;
-		s->macaddr[2] = (val >> 16) & 0xff;
-		s->macaddr[3] = (val >> 24) & 0xff;
+		vmm_netport_mac(s->port)[0] = val & 0xff;
+		vmm_netport_mac(s->port)[1] = (val >> 8) & 0xff;
+		vmm_netport_mac(s->port)[2] = (val >> 16) & 0xff;
+		vmm_netport_mac(s->port)[3] = (val >> 24) & 0xff;
 		lan9118_mac_changed(s);
 		break;
 	case MAC_HASHH:
@@ -944,10 +1018,10 @@ static u32 do_mac_read(struct lan9118_state *s, int reg)
 	case MAC_CR:
 		return s->mac_cr;
 	case MAC_ADDRH:
-		return s->macaddr[4] | (s->macaddr[5] << 8);
+		return vmm_netport_mac(s->port)[4] | (vmm_netport_mac(s->port)[5] << 8);
 	case MAC_ADDRL:
-		return s->macaddr[0] | (s->macaddr[1] << 8)
-			| (s->macaddr[2] << 16) | (s->macaddr[3] << 24);
+		return vmm_netport_mac(s->port)[0] | (vmm_netport_mac(s->port)[1] << 8)
+			| (vmm_netport_mac(s->port)[2] << 16) | (vmm_netport_mac(s->port)[3] << 24);
 	case MAC_HASHH:
 		return s->mac_hashh;
 		break;
@@ -1343,9 +1417,11 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 	int i, rc = VMM_OK;
 	char tname[64];
 	void *attr;
+	struct vmm_netswitch *nsw;
 
 	s = vmm_malloc(sizeof(struct lan9118_state));
 	if(!s) {
+		vmm_printf("LAN9118 state alloc failed\n");
 		rc = VMM_EFAIL;
 		goto lan9118_emulator_probe_done;
 	}
@@ -1355,24 +1431,50 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 	if (attr) {
 		s->irq = *((u32 *)attr);
 	} else {
+		vmm_printf("LAN9118: no irq node found\n");
 		rc = VMM_EFAIL;
 		goto lan9118_emulator_probe_failed;
 	}
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
+	edev->priv = s;
 
-	/* FIXME: Register with the netswitch as a port */
+	vmm_sprintf(tname, "%s%s%s",
+		    guest->node->name,
+		    VMM_DEVTREE_PATH_SEPARATOR_STRING,
+		    edev->node->name);
+	s->port = vmm_netport_alloc(tname);
+	if(!s->port) {
+		vmm_printf("LAN9118_state->netport alloc failed\n");
+		rc = VMM_EFAIL;
+		goto lan9118_emulator_probe_failed;
+	}
+	s->port->mtu = LAN9118_MTU;
+	s->port->link_changed = lan9118_set_link;
+	s->port->can_receive = NULL;
+	s->port->switch2port_xfer = lan9118_switch2port_xfer;
+	s->port->priv = s;
+	vmm_netport_register(s->port);
+
+	attr = vmm_devtree_attrval(edev->node, "switch");
+	if (attr) {
+		nsw = vmm_netswitch_find((char *)attr);
+		if(!nsw) {
+			vmm_panic("LAN9118: Cannot find netswitch \"%s\"\n", (char *)attr);
+		}
+		vmm_netswitch_port_add(nsw, s->port);
+	}
 
 	s->eeprom[0] = 0xa5;
 	for (i = 0; i < 6; i++) {
-		/* FIXME: Get the mac fron the netswitch */
-		s->eeprom[i + 1] = 0x0;
+		s->eeprom[i + 1] = vmm_netport_mac(s->port)[i];
 	}
+
 	s->pmt_ctrl = 1;
 	s->txp = &s->tx_packet;
 
-	vmm_sprintf(tname, " %s%s%s(lan9118_gpt)",
+	vmm_sprintf(tname, " %s%s%s_gpt",
 		    guest->node->name,
 		    VMM_DEVTREE_PATH_SEPARATOR_STRING,
 		    edev->node->name);
@@ -1382,6 +1484,7 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 	}
 
 lan9118_emulator_probe_failed:
+	vmm_printf("LAN9118-probe failed\n");
 	vmm_free(s);
 lan9118_emulator_probe_done:
 	return rc;
@@ -1394,8 +1497,11 @@ static int lan9118_emulator_remove(struct vmm_emudev *edev)
 
 	if(s) {
 		rc = vmm_timer_event_destroy(s->event);
+		m_freem(txp_mbuf(s));
 		vmm_free(s);
 	}
+	vmm_netswitch_port_remove(s->port);
+	vmm_netport_unregister(s->port);
 	edev->priv = NULL;
 	return rc;
 }
