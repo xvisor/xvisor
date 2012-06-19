@@ -148,7 +148,7 @@ int vmm_netport_init(void)
 	int rc;
 	struct vmm_class *c;
 
-	vmm_printf("Initialize Networking Switch Port Framework\n");
+	vmm_printf("Initialize Network Port Framework\n");
 
 	c = vmm_malloc(sizeof(struct vmm_class));
 	if (!c)

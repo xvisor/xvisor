@@ -168,7 +168,7 @@ int __init vmm_netdev_init(void)
 	int rc;
 	struct vmm_class *c;
 
-	vmm_printf("Initialize Networking Device Framework\n");
+	vmm_printf("Initialize Network Device Framework\n");
 
 	c = vmm_malloc(sizeof(struct vmm_class));
 	if (!c) {

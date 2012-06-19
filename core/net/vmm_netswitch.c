@@ -191,7 +191,7 @@ int vmm_netswitch_init(void)
 	int rc;
 	struct vmm_class *c;
 
-	vmm_printf("Initialize Networking Packet Switch Framework\n");
+	vmm_printf("Initialize Network Switch Framework\n");
 
 	c = vmm_malloc(sizeof(struct vmm_class));
 	if (!c)
