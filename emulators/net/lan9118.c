@@ -1100,6 +1100,7 @@ static void lan9118_eeprom_cmd(struct lan9118_state *s, int cmd, int addr)
 static int lan9118_reg_write(struct lan9118_state *s, physical_addr_t offset,
 			     u32 src_mask, u32 src)
 {
+	bool do_reset = FALSE;
 	offset &= 0xff;
 	src = src & ~src_mask;
 
@@ -1153,7 +1154,7 @@ static int lan9118_reg_write(struct lan9118_state *s, physical_addr_t offset,
 	case CSR_HW_CFG:
 		if (src & 1) {
 			/* SRST */
-			lan9118_state_reset(s);
+			do_reset = TRUE;
 		} else {
 			s->hw_cfg = (src & 0x003f300) | (s->hw_cfg & 0x4);
 		}
@@ -1233,6 +1234,9 @@ static int lan9118_reg_write(struct lan9118_state *s, physical_addr_t offset,
 	}
 	lan9118_update(s);
 	vmm_spin_unlock(&s->lock);
+	if (do_reset) {
+		lan9118_state_reset(s);
+	}
 	return VMM_OK;
 }
 
