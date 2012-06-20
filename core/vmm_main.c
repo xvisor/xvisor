@@ -235,8 +235,8 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
-	/* Initialize wall-clock */
-	vmm_printf("Initialize Wall-Clock Subsystem\n");
+	/* Initialize wallclock */
+	vmm_printf("Initialize Wallclock Subsystem\n");
 	ret = vmm_wallclock_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
