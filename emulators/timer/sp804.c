@@ -178,7 +178,17 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 					adjust_duration -= nsecs;
 				}
 
-				nsecs -= adjust_duration;
+				/* Calculate nsecs after which next periodic event
+				 * will be triggered. 
+				 * Ensure that next periodic event occurs atleast
+				 * after 1 msec. (Our Limitation)
+				 */
+				if ((nsecs - adjust_duration) < 1000000) {
+					t->value_tstamp -= (nsecs - 1000000);
+					nsecs = 1000000;
+				} else {
+					nsecs -= adjust_duration;
+				}
 			} else {
 				/* This is a simple one shot timer or the first
 				 * run of a periodic timer
