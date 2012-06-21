@@ -87,13 +87,24 @@ int vmm_def_switch_rx_handler(struct vmm_netport *src_port,
 		DPRINTF("netbridge: broadcasting\n");
 		list_for_each(l, &nsw->port_list) {
 			   if(compare_ether_addr(list_port(l)->macaddr, srcmac)) {
-				MADDREFERENCE(mbuf);
+				if(list_port(l)->can_receive && 
+				   !list_port(l)->can_receive(list_port(l))) {
+				   continue;
+				}
+ 				MADDREFERENCE(mbuf);
+				MCLADDREFERENCE(mbuf);
 				list_port(l)->switch2port_xfer(list_port(l), mbuf);
 			   }
 		}
+		m_freem(mbuf);
 	} else {
 		DPRINTF("netbridge: unicasting to \"%s\"\n", dst_port->name);
-		dst_port->switch2port_xfer(dst_port, mbuf);
+		if(!dst_port->can_receive || dst_port->can_receive(dst_port)) {
+	 		dst_port->switch2port_xfer(dst_port, mbuf);
+		} else {
+			/* Free the mbuf if destination cannot do rx */
+			m_freem(mbuf);
+		}
 	}
 
 	/* Forward the skb to the target port if we know exactly */
