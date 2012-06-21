@@ -22,9 +22,11 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_cpumask.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
+#include <arch_barrier.h>
 #include <gic.h>
 
 #define max(a,b)	((a) < (b) ? (b) : (a))
@@ -93,7 +95,76 @@ void gic_unmask_irq(struct vmm_host_irq *irq)
 		  GIC_DIST_ENABLE_SET + (gic_irq(irq) / 32) * 4);
 }
 
+void gic_enable_ppi(u32 irq)
+{
+	irq_flags_t flags;
+
+	flags = arch_cpu_irq_save();
+	gic_unmask_irq(vmm_host_irq_get(irq));
+	arch_cpu_irq_restore(flags);
+}
+
+static int gic_set_type(struct vmm_host_irq *irq, u32 type)
+{
+	virtual_addr_t base = gic_dist_base(irq);
+	u32 gicirq = gic_irq(irq);
+	u32 enablemask = 1 << (gicirq % 32);
+	u32 enableoff = (gicirq / 32) * 4;
+	u32 confmask = 0x2 << ((gicirq % 16) * 2);
+	u32 confoff = (gicirq / 16) * 4;
+	bool enabled = FALSE;
+	u32 val;
+
+	/* Interrupt configuration for SGIs can't be changed */
+	if (gicirq < 16) {
+		return VMM_EINVALID;
+	}
+
+	if (type != VMM_IRQ_TYPE_LEVEL_HIGH && 
+	    type != VMM_IRQ_TYPE_EDGE_RISING) {
+		return VMM_EINVALID;
+	}
+
+	val = gic_read(base + GIC_DIST_CONFIG + confoff);
+	if (type == VMM_IRQ_TYPE_LEVEL_HIGH) {
+		val &= ~confmask;
+	} else if (type == VMM_IRQ_TYPE_EDGE_RISING) {
+		val |= confmask;
+	}
+
+	/*
+	 * As recommended by the spec, disable the interrupt before changing
+	 * the configuration
+	 */
+	if (gic_read(base + GIC_DIST_ENABLE_SET + enableoff) & enablemask) {
+		gic_write(enablemask, base + GIC_DIST_ENABLE_CLEAR + enableoff);
+		enabled = TRUE;
+	}
+
+	gic_write(val, base + GIC_DIST_CONFIG + confoff);
+
+	if (enabled) {
+		gic_write(enablemask, base + GIC_DIST_ENABLE_SET + enableoff);
+	}
+
+	return 0;
+}
+
 #ifdef CONFIG_SMP
+void gic_raise_softirq(const struct vmm_cpumask *mask, u32 irq)
+{
+	unsigned long map = *vmm_cpumask_bits(mask);
+
+	/*
+	 * Ensure that stores to Normal memory are visible to the
+	 * other CPUs before issuing the IPI.
+	 */
+	arch_wmb();
+
+	/* This always happens on GIC0 */
+	gic_write(map << 16 | irq, gic_data[0].dist_base + GIC_DIST_SOFTINT);
+}
+
 static int gic_set_affinity(struct vmm_host_irq *irq, 
 			    const struct vmm_cpumask *mask_val,
 			    bool force)
@@ -122,6 +193,7 @@ static struct vmm_host_irq_chip gic_chip = {
 	.irq_mask		= gic_mask_irq,
 	.irq_unmask		= gic_unmask_irq,
 	.irq_eoi		= gic_eoi_irq,
+	.irq_set_type		= gic_set_type,
 #ifdef CONFIG_SMP
 	.irq_set_affinity	= gic_set_affinity,
 #endif
@@ -130,7 +202,7 @@ static struct vmm_host_irq_chip gic_chip = {
 void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)
 {
 	unsigned int max_irq, irq_limit, i;
-	u32 cpumask = 1 << 0;	/* FIXME: smp_processor_id(); */
+	u32 cpumask = 1 << vmm_smp_processor_id();
 	virtual_addr_t base = gic->dist_base;
 
 	cpumask |= cpumask << 8;

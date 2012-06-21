@@ -50,7 +50,7 @@
 #define CPU_EXTERNAL_IRQ				6
 #define CPU_EXTERNAL_FIQ				7
 
-/* CPSR related macors & defines */
+/* CPSR related macros & defines */
 #define CPSR_MODE_MASK					0x0000001f
 #define CPSR_MODE_USER					0x00000010
 #define CPSR_MODE_FIQ					0x00000011

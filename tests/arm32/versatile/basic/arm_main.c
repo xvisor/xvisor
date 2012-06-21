@@ -338,7 +338,7 @@ typedef void (* linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args);
 void arm_cmd_start_linux(int argc, char **argv)
 {
 	char  * cmdline = "root=/dev/ram rw ramdisk_size=0x1000000 earlyprintk console=ttyAMA0 mem=96M" ;
-	u32 * kernel_args = (u32 *)(RAM_START + 0x100);
+	u32 * kernel_args = (u32 *)(RAM_START + 0x1000);
 	u32 cmdline_size, p;
 	u32 kernel_addr, initrd_addr, initrd_size;
 
@@ -390,10 +390,10 @@ void arm_cmd_start_linux(int argc, char **argv)
 
 	/* Jump to Linux Kernel
 	 * r0 -> zero
-	 * r1 -> machine type (0x769)
+	 * r1 -> machine type (0x183)
 	 * r2 -> kernel args address 
 	 */
-	((linux_entry_t)kernel_addr)(0x0, 0x769, (u32)kernel_args);
+	((linux_entry_t)kernel_addr)(0x0, 0x183, (u32)kernel_args);
 
 	/* We should never reach here */
 	while (1);

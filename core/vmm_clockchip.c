@@ -21,14 +21,17 @@
  * @brief Implementation to clockchip managment
  */
 
-#include <arch_timer.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
+#include <vmm_spinlocks.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_clockchip.h>
+#include <arch_timer.h>
 
 /** Control structure for clockchip manager */
 struct vmm_clockchip_ctrl {
+	vmm_spinlock_t lock;
 	struct dlist clkchip_list;
 };
 
@@ -99,6 +102,7 @@ void vmm_clockchip_set_mode(struct vmm_clockchip *cc,
 int vmm_clockchip_register(struct vmm_clockchip *cc)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_clockchip *cct;
 
@@ -108,6 +112,9 @@ int vmm_clockchip_register(struct vmm_clockchip *cc)
 
 	cct = NULL;
 	found = FALSE;
+
+	vmm_spin_lock_irqsave(&ccctrl.lock, flags);
+
 	list_for_each(l, &ccctrl.clkchip_list) {
 		cct = list_entry(l, struct vmm_clockchip, head);
 		if (cct == cc) {
@@ -117,11 +124,14 @@ int vmm_clockchip_register(struct vmm_clockchip *cc)
 	}
 
 	if (found) {
+		vmm_spin_unlock_irqrestore(&ccctrl.lock, flags);
 		return VMM_EFAIL;
 	}
 
 	INIT_LIST_HEAD(&cc->head);
 	list_add_tail(&ccctrl.clkchip_list, &cc->head);
+
+	vmm_spin_unlock_irqrestore(&ccctrl.lock, flags);
 
 	return VMM_OK;
 }
@@ -129,6 +139,7 @@ int vmm_clockchip_register(struct vmm_clockchip *cc)
 int vmm_clockchip_unregister(struct vmm_clockchip *cc)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_clockchip *cct;
 
@@ -136,7 +147,10 @@ int vmm_clockchip_unregister(struct vmm_clockchip *cc)
 		return VMM_EFAIL;
 	}
 
+	vmm_spin_lock_irqsave(&ccctrl.lock, flags);
+
 	if (list_empty(&ccctrl.clkchip_list)) {
+		vmm_spin_unlock_irqrestore(&ccctrl.lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -151,10 +165,13 @@ int vmm_clockchip_unregister(struct vmm_clockchip *cc)
 	}
 
 	if (!found) {
+		vmm_spin_unlock_irqrestore(&ccctrl.lock, flags);
 		return VMM_ENOTAVAIL;
 	}
 
 	list_del(&cc->head);
+
+	vmm_spin_unlock_irqrestore(&ccctrl.lock, flags);
 
 	return VMM_OK;
 }
@@ -162,11 +179,14 @@ int vmm_clockchip_unregister(struct vmm_clockchip *cc)
 struct vmm_clockchip *vmm_clockchip_find_best(const struct vmm_cpumask *mask)
 {
 	int rating = 0;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_clockchip *cc, *best_cc;
 
 	cc = NULL;
 	best_cc = NULL;
+
+	vmm_spin_lock_irqsave(&ccctrl.lock, flags);
 
 	list_for_each(l, &ccctrl.clkchip_list) {
 		cc = list_entry(l, struct vmm_clockchip, head);
@@ -177,18 +197,23 @@ struct vmm_clockchip *vmm_clockchip_find_best(const struct vmm_cpumask *mask)
 		}
 	}
 
+	vmm_spin_unlock_irqrestore(&ccctrl.lock, flags);
+
 	return best_cc;
 }
 
 struct vmm_clockchip *vmm_clockchip_get(int index)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_clockchip *ret;
 
 	if (index < 0) {
 		return NULL;
 	}
+
+	vmm_spin_lock_irqsave(&ccctrl.lock, flags);
 
 	ret = NULL;
 	found = FALSE;
@@ -202,6 +227,8 @@ struct vmm_clockchip *vmm_clockchip_get(int index)
 		index--;
 	}
 
+	vmm_spin_unlock_irqrestore(&ccctrl.lock, flags);
+
 	if (!found) {
 		return NULL;
 	}
@@ -212,11 +239,16 @@ struct vmm_clockchip *vmm_clockchip_get(int index)
 u32 vmm_clockchip_count(void)
 {
 	u32 retval = 0;
+	irq_flags_t flags;
 	struct dlist *l;
+
+	vmm_spin_lock_irqsave(&ccctrl.lock, flags);
 
 	list_for_each(l, &ccctrl.clkchip_list) {
 		retval++;
 	}
+
+	vmm_spin_unlock_irqrestore(&ccctrl.lock, flags);
 
 	return retval;
 }
@@ -224,11 +256,17 @@ u32 vmm_clockchip_count(void)
 int __init vmm_clockchip_init(void)
 {
 	int rc;
+	u32 cpu = vmm_smp_processor_id();
 
-	/* Initialize clock source list */
-	INIT_LIST_HEAD(&ccctrl.clkchip_list);
+	if (!cpu) {
+		/* Initialize clock chip list lock */
+		INIT_SPIN_LOCK(&ccctrl.lock);
 
-	/* Initialize arch specific timer clock sources */
+		/* Initialize clock chip list */
+		INIT_LIST_HEAD(&ccctrl.clkchip_list);
+	}
+
+	/* Initialize arch specific clock chips */
 	if ((rc = arch_clockchip_init())) {
 		return rc;
 	}

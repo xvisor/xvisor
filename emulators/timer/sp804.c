@@ -178,7 +178,17 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 					adjust_duration -= nsecs;
 				}
 
-				nsecs -= adjust_duration;
+				/* Calculate nsecs after which next periodic event
+				 * will be triggered. 
+				 * Ensure that next periodic event occurs atleast
+				 * after 1 msec. (Our Limitation)
+				 */
+				if ((nsecs - adjust_duration) < 1000000) {
+					t->value_tstamp -= (nsecs - 1000000);
+					nsecs = 1000000;
+				} else {
+					nsecs -= adjust_duration;
+				}
 			} else {
 				/* This is a simple one shot timer or the first
 				 * run of a periodic timer
@@ -436,6 +446,14 @@ static int sp804_timer_init(struct sp804_timer *t,
 	return VMM_OK;
 }
 
+static int sp804_timer_exit(struct sp804_timer *t)
+{
+	if (t && t->event) {
+		return vmm_timer_event_destroy(t->event);
+	}
+	return VMM_OK;
+}
+
 static int sp804_emulator_read(struct vmm_emudev * edev,
 			       physical_addr_t offset, void *dst, u32 dst_len)
 {
@@ -565,9 +583,16 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 
 static int sp804_emulator_remove(struct vmm_emudev * edev)
 {
+	int rc;
 	struct sp804_state *s = edev->priv;
 
 	if (s) {
+		if ((rc = sp804_timer_exit(&s->t[0]))) {
+			return rc;
+		}
+		if ((rc = sp804_timer_exit(&s->t[1]))) {
+			return rc;
+		}
 		vmm_free(s);
 		edev->priv = NULL;
 	}

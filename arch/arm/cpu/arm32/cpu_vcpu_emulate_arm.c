@@ -505,7 +505,7 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 }
 
 /** Emulate 'ldm_ue' hypercall */
-int arm_hypercall_ldm_ue(u32 id, u32 inst,
+static int arm_hypercall_ldm_ue(u32 id, u32 inst,
 			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 pos, data, ndata[16];
@@ -671,7 +671,7 @@ int arm_hypercall_ldm_ue(u32 id, u32 inst,
 }
 
 /** Emulate 'stm_u' hypercall */
-int arm_hypercall_stm_u(u32 id, u32 inst,
+static int arm_hypercall_stm_u(u32 id, u32 inst,
 			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 pos, ndata[16];
@@ -746,7 +746,7 @@ int arm_hypercall_stm_u(u32 id, u32 inst,
 }
 
 /** Emulate 'subs_rel' hypercall */
-int arm_hypercall_subs_rel(u32 id, u32 inst,
+static int arm_hypercall_subs_rel(u32 id, u32 inst,
 			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 shift_t;
@@ -879,69 +879,66 @@ int arm_hypercall_subs_rel(u32 id, u32 inst,
 	return VMM_OK;
 }
 
+static int arm_hypercall_subid(u32 id, u32 subid, u32 inst, arch_regs_t * regs, struct vmm_vcpu * vcpu)
+{
+	return VMM_EFAIL;
+}
+
+static int arm_hypercall_cps_and_co(u32 id, u32 inst, arch_regs_t * regs, struct vmm_vcpu * vcpu)
+{
+	u32 subid = ARM_INST_DECODE(inst,
+			ARM_INST_HYPERCALL_SUBID_MASK,
+			ARM_INST_HYPERCALL_SUBID_SHIFT);
+
+	static int (* const func[]) (u32 id, u32 subid, u32 inst, arch_regs_t * regs, struct vmm_vcpu * vcpu) = 
+	{
+		arm_hypercall_cps,	/* ARM_HYPERCALL_CPS_SUBID */
+		arm_hypercall_mrs,	/* ARM_HYPERCALL_MRS_SUBID */
+		arm_hypercall_msr_i,	/* ARM_HYPERCALL_MSR_I_SUBID */
+		arm_hypercall_msr_r,	/* ARM_HYPERCALL_MSR_R_SUBID */
+		arm_hypercall_rfe,	/* ARM_HYPERCALL_RFE_SUBID */
+		arm_hypercall_srs,	/* ARM_HYPERCALL_SRS_SUBID */
+		arm_hypercall_wfi,	/* ARM_HYPERCALL_WFI_SUBID */
+		arm_hypercall_subid	/* not used yet */
+	};
+
+	return func[subid] (id, subid, inst, regs, vcpu);
+}
+
+static int arm_hypercall_id(u32 id, u32 inst, arch_regs_t * regs, struct vmm_vcpu * vcpu)
+{
+	return VMM_EFAIL;
+}
+
 /** Emulate hypercall instruction */
 static int arm_instgrp_hypercall(u32 inst, 
 				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
-	u32 id, subid;
-	id = ARM_INST_DECODE(inst,
+	u32 id = ARM_INST_DECODE(inst,
 			     ARM_INST_HYPERCALL_ID_MASK,
 			     ARM_INST_HYPERCALL_ID_SHIFT);
-	switch (id) {
-	case ARM_HYPERCALL_CPS_ID:
-		subid = ARM_INST_DECODE(inst,
-				ARM_INST_HYPERCALL_SUBID_MASK,
-				ARM_INST_HYPERCALL_SUBID_SHIFT);
-		switch (subid) {
-		case ARM_HYPERCALL_CPS_SUBID:
-			return arm_hypercall_cps(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_MRS_SUBID:
-			return arm_hypercall_mrs(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_MSR_I_SUBID:
-			return arm_hypercall_msr_i(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_MSR_R_SUBID:
-			return arm_hypercall_msr_r(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_RFE_SUBID:
-			return arm_hypercall_rfe(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_SRS_SUBID:
-			return arm_hypercall_srs(id, subid, inst, regs, vcpu);
-			break;
-		case ARM_HYPERCALL_WFI_SUBID:
-			return arm_hypercall_wfi(id, subid, inst, regs, vcpu);
-			break;
-		default:
-			break;
-		};
-		break;
-	case ARM_HYPERCALL_LDM_UE_ID0:
-	case ARM_HYPERCALL_LDM_UE_ID1:
-	case ARM_HYPERCALL_LDM_UE_ID2:
-	case ARM_HYPERCALL_LDM_UE_ID3:
-	case ARM_HYPERCALL_LDM_UE_ID4:
-	case ARM_HYPERCALL_LDM_UE_ID5:
-	case ARM_HYPERCALL_LDM_UE_ID6:
-	case ARM_HYPERCALL_LDM_UE_ID7:
-			return arm_hypercall_ldm_ue(id, inst, regs, vcpu);
-			break;
-	case ARM_HYPERCALL_STM_U_ID0:
-	case ARM_HYPERCALL_STM_U_ID1:
-	case ARM_HYPERCALL_STM_U_ID2:
-	case ARM_HYPERCALL_STM_U_ID3:
-		return arm_hypercall_stm_u(id, inst, regs, vcpu);
-		break;
-	case ARM_HYPERCALL_SUBS_REL_ID0:
-	case ARM_HYPERCALL_SUBS_REL_ID1:
-		return arm_hypercall_subs_rel(id, inst, regs, vcpu);
-		break;
-	default:
-		break;
+
+	static int (* const func[]) (u32 id, u32 inst, arch_regs_t * regs, struct vmm_vcpu * vcpu) = 
+	{
+		arm_hypercall_cps_and_co,	/* ARM_HYPERCALL_CPS_ID */
+		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID0 */
+		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID1 */
+		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID2 */
+		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID3 */
+		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID4 */
+		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID5 */
+		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID6 */
+		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID7 */
+		arm_hypercall_stm_u,		/* ARM_HYPERCALL_STM_U_ID0 */
+		arm_hypercall_stm_u,		/* ARM_HYPERCALL_STM_U_ID1 */
+		arm_hypercall_stm_u,		/* ARM_HYPERCALL_STM_U_ID2 */
+		arm_hypercall_stm_u,		/* ARM_HYPERCALL_STM_U_ID3 */
+		arm_hypercall_subs_rel,		/* ARM_HYPERCALL_SUBS_REL_ID0 */
+		arm_hypercall_subs_rel,		/* ARM_HYPERCALL_SUBS_REL_ID1 */
+		arm_hypercall_id		/* not used yet */
 	};
-	return VMM_EFAIL;
+
+	return func[id] (id, inst, regs, vcpu);
 }
 
 /** Emulate 'ldrh (immediate)' instruction */
@@ -4158,7 +4155,12 @@ static int arm_inst_mrcx(u32 inst,
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_OK;
 		}
-		cpu_vcpu_reg_write(vcpu, regs, Rt, data);
+		/* If the PC is the target register then the mrc
+		 * instruction does not change its value.
+		 */
+		if (Rt < 15) {
+			cpu_vcpu_reg_write(vcpu, regs, Rt, data);
+		}
 	}
 	regs->pc += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MRCX);

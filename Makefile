@@ -361,14 +361,13 @@ menuconfig:
 oldconfig:
 	$(V)mkdir -p $(OPENCONF_TMPDIR)
 	$(V)$(MAKE) -C tools/openconf oldconfig
-	$(V)cp $(src_dir)/arch/$(ARCH)/board/$(BOARD)/defconfig $(OPENCONF_CONFIG)
 	./tools/openconf/conf -o $(OPENCONF_INPUT)
 
-# Rule for "make defconfig"
+# Rule for "make xxx-defconfig"
 %-defconfig:
 	$(V)mkdir -p $(OPENCONF_TMPDIR)
 	$(V)$(MAKE) -C tools/openconf defconfig
-	$(V)cp $(src_dir)/arch/$(ARCH)/configs/$@ $(OPENCONF_CONFIG)
+	./tools/openconf/conf -D $(src_dir)/arch/$(ARCH)/configs/$@ $(OPENCONF_INPUT)
 	./tools/openconf/conf -s $(OPENCONF_INPUT)
 
 .PHONY: tags

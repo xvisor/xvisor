@@ -1,0 +1,41 @@
+	BusyBox-1.19.2 RootFS for ARM Guest
+
+BusyBox provides several stripped-down Unix tools in a single executable. It 
+runs in a variety of POSIX environments such as Linux, Android,[6] FreeBSD[7] 
+and others, such as proprietary kernels, although many of the tools it provides
+are designed to work with interfaces provided by the Linux kernel. It was 
+created for embedded operating systems with very limited resources. It is 
+released under the terms of the GNU General Public License. For more info
+read the BusyBox wiki page http://en.wikipedia.org/wiki/BusyBox
+
+Please follow the steps below to build a RAMDISK using BusyBox-1.19.2, to be
+used as RootFS for ARM Linux guest:
+
+  [1. Build environment for Xvisor]
+  # CROSS_COMPILE=arm-none-linux-gnueabi-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Copy defconfig to Busybox-1.19.2 source directory]
+  # cp tests/arm32/busybox-1.19.2/busybox-1.19.2_defconfig <busybox-1.19.2_source_directory>/.config
+
+  [4. GoTo Busybox-1.19.2 source directory]
+  # cd <busybox-1.19.2_source_directory>
+
+  [5. Configure Busybox-1.19.2 source]
+  # make oldconfig
+
+  [6. Build Busybox-1.19.2 RootFS]
+  # make install
+
+  [7. Change ownership of installed RootFS]
+  # sudo chown -R root:root ./_install
+
+  [8. Create RootFS image]
+  # fakeroot /bin/bash -c "genext2fs -b 3096 -N 1024 -D <xvisor_source_directory>/tests/arm32/busybox-1.19.2/busybox-1.19.2_dev.txt -d ./_install <busybox_rootfs_directory>/rootfs.img"
+
+  (Note: <busybox_rootfs_directory>/rootfs.img is our final RAMDISK)
+  (Note: replace all <> brackets based on your workspace)
+  (Note: you are free to the change ordering of above steps based on your workspace)
+

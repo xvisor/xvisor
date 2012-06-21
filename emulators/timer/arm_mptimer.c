@@ -387,14 +387,22 @@ int mptimer_state_reset(struct mptimer_state *mpt)
 
 int mptimer_state_free(struct mptimer_state *s)
 {
+	int rc = VMM_OK, i=0;
 	if (s) {
 		if (s->timers) {
+			while(i<(NUM_TIMERS_PER_CPU * s->num_cpu)) {
+				if(vmm_timer_event_destroy(s->timers[i].event) 
+						!= VMM_OK) {
+					rc = VMM_EFAIL;
+				}
+				i++;
+			}
 			vmm_free(s->timers);
 		}
 
 		vmm_free(s);
 	}
-	return VMM_OK;
+	return rc;
 }
 
 struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,

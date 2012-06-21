@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_percpu.h>
 #include <vmm_cpumask.h>
 #include <vmm_string.h>
@@ -42,11 +43,9 @@ struct vmm_scheduler_ctrl {
 	void * rq;
 	struct vmm_vcpu *current_vcpu;
 	struct vmm_vcpu *idle_vcpu;
-	char idle_vcpu_name[16];
 	u8 idle_vcpu_stack[IDLE_VCPU_STACK_SZ];
 	bool irq_context;
 	bool yield_on_irq_exit;
-	char ev_name[16];
 	struct vmm_timer_event *ev;
 };
 
@@ -312,11 +311,8 @@ static void idle_orphan(void)
 int __init vmm_scheduler_init(void)
 {
 	int rc;
-#if defined(CONFIG_SMP)
-	u32 cpu = arch_smp_id();
-#else
-	u32 cpu = 0;
-#endif
+	char vcpu_name[32], ev_name[32];
+	u32 cpu = vmm_smp_processor_id();
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
 	/* Reset the scheduler control structure */
@@ -338,8 +334,8 @@ int __init vmm_scheduler_init(void)
 	schedp->yield_on_irq_exit = FALSE;
 
 	/* Create timer event and start it. (Per Host CPU) */
-	vmm_sprintf(schedp->ev_name, "sched/%d", cpu);
-	schedp->ev = vmm_timer_event_create(schedp->ev_name, 
+	vmm_sprintf(ev_name, "sched/%d", cpu);
+	schedp->ev = vmm_timer_event_create(ev_name, 
 					    &vmm_scheduler_timer_event, 
 					    NULL);
 	if (!schedp->ev) {
@@ -347,9 +343,8 @@ int __init vmm_scheduler_init(void)
 	}
 
 	/* Create idle orphan vcpu with default time slice. (Per Host CPU) */
-	vmm_sprintf(schedp->idle_vcpu_name, "idle/%d", cpu);
-	schedp->idle_vcpu = vmm_manager_vcpu_orphan_create(
-	schedp->idle_vcpu_name,
+	vmm_sprintf(vcpu_name, "idle/%d", cpu);
+	schedp->idle_vcpu = vmm_manager_vcpu_orphan_create(vcpu_name,
 	(virtual_addr_t)&idle_orphan,
 	(virtual_addr_t)&schedp->idle_vcpu_stack[IDLE_VCPU_STACK_SZ - 4],
 	IDLE_VCPU_PRIORITY, IDLE_VCPU_TIMESLICE);

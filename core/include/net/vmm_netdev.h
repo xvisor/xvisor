@@ -29,8 +29,7 @@
 #include <vmm_spinlocks.h>
 #include <vmm_devdrv.h>
 
-#define VMM_NETDEV_CLASS_NAME			"network"
-#define VMM_NETDEV_CLASS_IPRIORITY		1
+#define VMM_NETDEV_CLASS_NAME                  "netdev"
 
 #define MAX_VMM_NETDEV_NAME_LEN			32
 #define MAX_VMM_NDEV_HW_ADDRESS			32
@@ -65,9 +64,6 @@ struct vmm_netdev {
 	unsigned int hw_addr_len;
 };
 
-/** Packet Switch layer initialization routines */
-extern int vmm_netswitch_init(void);
-extern int vmm_netswitch_exit(void);
 
 /** Allocate new network device */
 struct vmm_netdev *vmm_netdev_alloc(const char *name);
@@ -86,5 +82,6 @@ struct vmm_netdev *vmm_netdev_get(int num);
 
 /** Count number of network devices */
 u32 vmm_netdev_count(void);
+
 
 #endif /* __VMM_NETDEV_H_ */

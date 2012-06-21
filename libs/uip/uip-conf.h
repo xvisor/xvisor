@@ -55,6 +55,25 @@
 #ifndef __UIP_CONF_H__
 #define __UIP_CONF_H__
 
+#include <vmm_types.h>
+
+/**
+ * 8 bit datatype
+ *
+ * This typedef defines the 8-bit type used throughout uIP.
+ *
+ * \hideinitializer
+ */
+typedef u8 u8_t;
+
+/**
+ * 16 bit datatype
+ *
+ * This typedef defines the 16-bit type used throughout uIP.
+ *
+ * \hideinitializer
+ */
+typedef u16 u16_t;
 /**
  * Statistics datatype
  *
@@ -98,7 +117,7 @@ typedef unsigned short uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_CONF_LOGGING         0
+#define UIP_CONF_LOGGING         1
 
 /**
  * uIP statistics on or off

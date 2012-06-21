@@ -10,7 +10,7 @@
 	host {
 		#address-cells = <2>;
 		#size-cells = <1>;
-		model = "verstilepb";
+		model = "versatilepb";
 		device_type = "host";
 		
 		cpus {
@@ -81,7 +81,6 @@
 				vcpu0 {
 					device_type = "vcpu";
 					compatible = "ARMv5te,ARM926ej";
-					time_slice = <50000000>;
 					start_pc = <0x34000000>;
 				};
 			};
@@ -106,6 +105,8 @@
 					physical_size = <0x1000>;
 					device_type = "sys";
 					compatible = "versatilepb,arm926";
+					mux_in_irq = <2000 2001>;
+					mux_out_irq = <2002>;
 				};
 
 				sysctrl0 {
@@ -170,6 +171,16 @@
 					irq = <5>;
 				};
 
+				rtc0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E8000>;
+					physical_size = <0x1000>;
+					device_type = "rtc";
+					compatible = "primecell,pl031";
+					irq = <10>;
+				};
+
 				pic0 {
 					manifest_type = "virtual";
 					address_type = "memory";
@@ -177,7 +188,19 @@
 					physical_size = <0x10000>;
 					device_type = "pic";
 					compatible = "versatilepb,pl190";
-					parent_irq = <6>;
+					base_irq = <0>;
+				};
+
+				pic1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10003000>;
+					physical_size = <0x10000>;
+					device_type = "pic";
+					compatible = "versatilepb,pl190";
+					base_irq = <32>;
+					parent_irq = <31>;
+					child_pic = <1>;
 				};
 
 				nor_flash {

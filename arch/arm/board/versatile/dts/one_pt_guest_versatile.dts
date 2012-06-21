@@ -107,7 +107,9 @@
 					guest_physical_addr = <0x10000000>;
 					physical_size = <0x1000>;
 					device_type = "sys";
-					compatible = "realview,pb-a8";
+					compatible = "versatilepb,arm926";
+					mux_in_irq = <2000 2001>;
+					mux_out_irq = <2002>;
 				};
 
 				sysctrl0 {

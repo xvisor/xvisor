@@ -55,13 +55,13 @@ struct vmm_workqueue {
 	struct vmm_thread * thread;
 };
 
-#define INIT_WORK(work, func, data)	do { \
+#define INIT_WORK(work, _func, _data)	do { \
 					INIT_SPIN_LOCK(&work->lock); \
 					INIT_LIST_HEAD(&work->head); \
 					work->flags = VMM_WORK_STATE_CREATED; \
 					work->wq = NULL; \
-					work->func = func; \
-					work->data = data; \
+					work->func = _func; \
+					work->data = _data; \
 					} while (0); 
 
 /** Check if work is new */

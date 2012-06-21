@@ -54,7 +54,7 @@
 #define __UIP_H__
 
 #include <vmm_types.h>
-#include <uip/uipopt.h>
+#include "uipopt.h"
 
 /**
  * Repressentation of an IP address.
@@ -416,7 +416,7 @@ void uip_setipid(u16 id);
  }
  \endcode
  */
-extern u8 uip_buf[UIP_BUFSIZE+2];
+extern u8 *uip_buf;
 
 /** @} */
 

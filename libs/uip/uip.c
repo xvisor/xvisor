@@ -77,13 +77,12 @@
  * the packet back to the peer.
 */
 
-#include <uip/uip.h>
-#include <uip/uipopt.h>
-#include <uip/uip_arch.h>
+#include "uip.h"
+#include "uipopt.h"
+#include "uip-arch.h"
 #include <vmm_types.h>
 #include <vmm_stdio.h>
 #include <vmm_string.h>
-#include <vmm_netdev.h>
 
 /*-----------------------*/
 /* Variable definitions. */
@@ -419,7 +418,7 @@ again:
 	conn->lport = HTONS(lastport);
 	conn->rport = rport;
 	if(ripaddr == NULL) {
-		memset(conn->ripaddr, 0, sizeof(uip_ipaddr_t));
+		vmm_memset(conn->ripaddr, 0, sizeof(uip_ipaddr_t));
 	} else {
 		uip_ipaddr_copy(&conn->ripaddr, ripaddr);
 	}
@@ -472,11 +471,11 @@ static u8 uip_reass(void)
 	   write the IP header of the fragment into the reassembly
 	   buffer. The timer is updated with the maximum age. */
 	if(uip_reasstmr == 0) {
-		memcpy(uip_reassbuf, &BUF->vhl, UIP_IPH_LEN);
+		vmm_memcpy(uip_reassbuf, &BUF->vhl, UIP_IPH_LEN);
 		uip_reasstmr = UIP_REASS_MAXAGE;
 		uip_reassflags = 0;
 		/* Clear the bitmap. */
-		memset(uip_reassbitmap, 0, sizeof(uip_reassbitmap));
+		vmm_memset(uip_reassbitmap, 0, sizeof(uip_reassbitmap));
 	}
 
 	/* Check if the incoming fragment matches the one currently present
@@ -502,7 +501,7 @@ static u8 uip_reass(void)
 
 		/* Copy the fragment into the reassembly buffer, at the right
 		   offset. */
-		memcpy(&uip_reassbuf[UIP_IPH_LEN + offset],
+		vmm_memcpy(&uip_reassbuf[UIP_IPH_LEN + offset],
 			(char *)BUF + (int)((BUF->vhl & 0x0f) * 4),
 			len);
 
@@ -560,7 +559,7 @@ static u8 uip_reass(void)
 			   buffer, so we allocate a pbuf and copy the packet into it. We
 			   also reset the timer. */
 			uip_reasstmr = 0;
-			memcpy(BUF, FBUF, uip_reasslen);
+			vmm_memcpy(BUF, FBUF, uip_reasslen);
 
 			/* Pretend to be a "normal" (i.e., not fragmented) IP packet
 			   from now on. */

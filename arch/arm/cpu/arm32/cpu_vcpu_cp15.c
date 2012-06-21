@@ -673,11 +673,9 @@ int cpu_vcpu_cp15_assert_fault(struct vmm_vcpu *vcpu,
 		fsr = fs & IFSR_FS_MASK;
 		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 			fsr |= ((fs >> 4) << IFSR_FS4_SHIFT);
-		}
-		arm_priv(vcpu)->cp15.c5_ifsr = fsr;
-		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 			arm_priv(vcpu)->cp15.c6_ifar = far;
 		}
+		arm_priv(vcpu)->cp15.c5_ifsr = fsr;
 		vmm_vcpu_irq_assert(vcpu, CPU_PREFETCH_ABORT_IRQ, 0x0);
 	}
 	return VMM_OK;
@@ -1082,13 +1080,41 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 		};
 		break;
 	case 7:		/* Cache control.  */
-		if (CRm == 4 && opc1 == 0 && opc2 == 0) {
-			*data = arm_priv(vcpu)->cp15.c7_par;
+		switch (opc2) {
+		case 0:
+			if (CRm == 4 && opc1 == 0) {
+				*data = arm_priv(vcpu)->cp15.c7_par;
+			} else {
+				/* FIXME: Should only clear Z flag if destination is r15.  */
+				regs->cpsr &= ~CPSR_ZERO_MASK;
+				*data = 0;
+			}
+			break;
+		case 3:
+			switch (CRm) {
+			case 10:	/* Test and clean DCache */
+				clean_dcache();
+				regs->cpsr |= CPSR_ZERO_MASK;
+				*data = 0;
+				break;
+			case 14:	/* Test, clean and invalidate DCache */
+				clean_dcache();
+				regs->cpsr |= CPSR_ZERO_MASK;
+				*data = 0;
+				break;
+			default:
+				/* FIXME: Should only clear Z flag if destination is r15.  */
+				regs->cpsr &= ~CPSR_ZERO_MASK;
+				*data = 0;
+				break;
+			}
+			break;
+		default:
+			/* FIXME: Should only clear Z flag if destination is r15.  */
+			regs->cpsr &= ~CPSR_ZERO_MASK;
+			*data = 0;
 			break;
 		}
-		/* FIXME: Should only clear Z flag if destination is r15.  */
-		regs->cpsr &= ~CPSR_ZERO_MASK;
-		*data = 0;
 		break;
 	case 8:		/* MMU TLB control.  */
 		goto bad_reg;
@@ -1133,15 +1159,27 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 			break;
 		case 2:
 			/* TPIDRURW */
-			*data = arm_priv(vcpu)->cp15.c13_tls1;
+			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+				*data = arm_priv(vcpu)->cp15.c13_tls1;
+			} else {
+				goto bad_reg;
+			}
 			break;
 		case 3:
 			/* TPIDRURO */
-			*data = arm_priv(vcpu)->cp15.c13_tls2;
+			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+				*data = arm_priv(vcpu)->cp15.c13_tls2;
+			} else {
+				goto bad_reg;
+			}
 			break;
 		case 4:
 			/* TPIDRPRW */
-			*data = arm_priv(vcpu)->cp15.c13_tls3;
+			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+				*data = arm_priv(vcpu)->cp15.c13_tls3;
+			} else {
+				goto bad_reg;
+			}
 			break;
 		default:
 			goto bad_reg;
@@ -1243,7 +1281,11 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			break;
 		case 1:	/* ??? This is WFAR on armv6 */
 		case 2:
-			arm_priv(vcpu)->cp15.c6_ifar = data;
+			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+				arm_priv(vcpu)->cp15.c6_ifar = data;
+			} else {
+				goto bad_reg;
+			}
 			break;
 		default:
 			goto bad_reg;
@@ -1255,7 +1297,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		if (opc1 != 0) {
 			goto bad_reg;
 		}
-		/* Note: Data cache invaidate/flush is a dangerous 
+		/* Note: Data cache invalidate/flush is a dangerous 
 		 * operation since it is possible that Xvisor had its 
 		 * own updates in data cache which are not written to 
 		 * main memory we might end-up losing those updates 
@@ -1678,16 +1720,25 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			arm_priv(vcpu)->cp15.c13_context = data;
 			break;
 		case 2:
+			if (!arm_feature(vcpu, ARM_FEATURE_V6)) {
+				goto bad_reg;
+			}
 			/* TPIDRURW */
 			arm_priv(vcpu)->cp15.c13_tls1 = data;
 			write_tpidrurw(data);
 			break;
 		case 3:
+			if (!arm_feature(vcpu, ARM_FEATURE_V6)) {
+				goto bad_reg;
+			}
 			/* TPIDRURO */
 			arm_priv(vcpu)->cp15.c13_tls2 = data;
 			write_tpidruro(data);
 			break;
 		case 4:
+			if (!arm_feature(vcpu, ARM_FEATURE_V6)) {
+				goto bad_reg;
+			}
 			/* TPIDRPRW */
 			arm_priv(vcpu)->cp15.c13_tls3 = data;
 			write_tpidrprw(data);
@@ -2113,7 +2164,8 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		break;
 	default:
 		break;
-	};
+	}
+
 #if defined(CONFIG_ARMV7A)
 	if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 		/* Cache config register such as CTR, CLIDR, and CCSIDRx

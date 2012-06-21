@@ -163,12 +163,12 @@ u32 vmm_netdev_count(void)
 	return vmm_devdrv_classdev_count(VMM_NETDEV_CLASS_NAME);
 }
 
-static int __init vmm_netdev_init(void)
+int __init vmm_netdev_init(void)
 {
 	int rc;
 	struct vmm_class *c;
 
-	vmm_printf("Initialize Networking Device Framework\n");
+	vmm_printf("Initialize Network Device Framework\n");
 
 	c = vmm_malloc(sizeof(struct vmm_class));
 	if (!c) {
@@ -187,30 +187,13 @@ static int __init vmm_netdev_init(void)
 		return rc;
 	}
 
-	rc = vmm_netswitch_init();
-	if (rc) {
-		vmm_printf("Failed to init vmm net switch layer\n");
-		rc = vmm_devdrv_unregister_class(c);
-		if (rc) {
-			vmm_printf("Failed to unregister %s class\n",
-				VMM_NETDEV_CLASS_NAME);
-		}
-		vmm_printf("Class %s unregistered\n", VMM_NETDEV_CLASS_NAME);
-		vmm_free(c);
-		return rc;
-	}
-
 	return VMM_OK;
 }
 
-static void vmm_netdev_exit(void)
+void vmm_netdev_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
-
-	rc = vmm_netswitch_exit();
-	if (rc)
-		return;
 
 	c = vmm_devdrv_find_class(VMM_NETDEV_CLASS_NAME);
 	if (!c) {
@@ -225,9 +208,3 @@ static void vmm_netdev_exit(void)
 	vmm_free(c);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
