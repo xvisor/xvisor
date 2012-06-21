@@ -161,7 +161,7 @@ void m_ext_free(struct vmm_mbuf *m)
 {
 	if (!(--(m->m_extref))) {
 		/* dropping the last reference */
-		if (m->m_ext.ext_free) {
+		if (m->m_extfree) {
 			(*m->m_extfree)(m, m->m_extbuf, m->m_extlen, m->m_extarg);
 		} else {
 			vmm_free(m->m_extbuf);
