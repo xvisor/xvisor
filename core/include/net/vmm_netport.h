@@ -34,9 +34,9 @@
 /* Port Flags (should be defined as bits) */
 #define VMM_NETPORT_LINK_UP		1	/* If this bit is set link is up */
 
-typedef void (*vmm_net_port_can_rx_t) (struct vmm_netport *port); 
+typedef int (*vmm_net_port_can_rx_t) (struct vmm_netport *port); 
 typedef int (*vmm_net_port_rx_handle_t) (struct vmm_netport *port, 
-					  struct vmm_mbuf *mbuf);
+					 struct vmm_mbuf *mbuf);
 typedef void (*vmm_net_port_link_change_t) (struct vmm_netport *port); 
 
 struct vmm_netport {
