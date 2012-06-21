@@ -10,7 +10,7 @@
 	host {
 		#address-cells = <2>;
 		#size-cells = <1>;
-		model = "verstilepb";
+		model = "versatilepb";
 		device_type = "host";
 		
 		cpus {
@@ -178,7 +178,7 @@
 					physical_size = <0x1000>;
 					device_type = "rtc";
 					compatible = "primecell,pl031";
-					irq = <42>;
+					irq = <10>;
 				};
 
 				pic0 {
