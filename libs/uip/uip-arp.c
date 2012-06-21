@@ -59,7 +59,7 @@
  */
 
 
-#include "uip_arp.h"
+#include "uip-arp.h"
 #include <vmm_string.h>
 #include <vmm_types.h>
 
@@ -229,9 +229,8 @@ uip_arp_update(u16 *ipaddr, struct uip_eth_addr *ethaddr)
  * variable uip_len.
  */
 /*-----------------------------------------------------------------------------------*/
-#if 0
-void
-uip_arp_ipin(void)
+#if 1
+void uip_arp_ipin(void)
 {
 	uip_len -= sizeof(struct uip_eth_hdr);
 

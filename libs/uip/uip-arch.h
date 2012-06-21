@@ -132,4 +132,7 @@ u16 uip_tcpchksum(void);
 
 u16 uip_udpchksum(void);
 
+#define UIP_CONF_EXTERNAL_BUFFER
+extern u8 *uip_buf;
+
 #endif /* __UIP_ARCH_H__ */

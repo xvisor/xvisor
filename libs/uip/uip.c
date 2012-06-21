@@ -79,7 +79,7 @@
 
 #include "uip.h"
 #include "uipopt.h"
-#include "uip_arch.h"
+#include "uip-arch.h"
 #include <vmm_types.h>
 #include <vmm_stdio.h>
 #include <vmm_string.h>

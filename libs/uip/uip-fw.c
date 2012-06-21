@@ -54,9 +54,8 @@
  */
 
 #include "uip.h"
-#include "uip_arch.h"
+#include "uip-arch.h"
 #include "uip-fw.h"
-
 #include <vmm_string.h> /* for vmm_memcpy() */
 
 /*
@@ -371,10 +370,10 @@ uip_fw_output(void)
      BUF->destipaddr[0] == 0xffff &&
      BUF->destipaddr[1] == 0xffff) {
     if(defaultnetif != NULL) {
-      defaultnetif->output();
+      defaultnetif->output(defaultnetif->priv);
     }
     for(netif = netifs; netif != NULL; netif = netif->next) {
-      netif->output();
+      netif->output(netif->priv);
     }
     return UIP_FW_OK;
   }
@@ -390,7 +389,7 @@ uip_fw_output(void)
   }
   /* If we now have found a suitable network interface, we call its
      output function to send out the packet. */
-  return netif->output();
+  return netif->output(netif->priv);
 }
 /*------------------------------------------------------------------------------*/
 /**
