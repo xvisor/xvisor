@@ -743,6 +743,10 @@ int vmm_manager_guest_destroy(struct vmm_guest * guest)
 			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 			return rc;
 		}
+		if ((rc = vmm_vcpu_irq_deinit(vcpu))) {
+			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+			return rc;
+		}
 
 		/* Mark VCPU as available */
 		mngr.vcpu_avail_array[vcpu->id] = TRUE;

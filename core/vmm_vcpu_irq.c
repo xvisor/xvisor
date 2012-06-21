@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
+#include <vmm_stdio.h>
 #include <vmm_timer.h>
 #include <vmm_scheduler.h>
 #include <vmm_devtree.h>
@@ -76,6 +77,29 @@ void vmm_vcpu_irq_process(arch_regs_t * regs)
 	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
 }
 
+static void vmm_vcpu_irq_wfi_timeout(struct vmm_timer_event * ev)
+{
+	irq_flags_t flags;
+	struct vmm_vcpu *vcpu = ev->priv;
+
+	if (!vcpu) {
+		return;
+	}
+
+	/* Lock VCPU irqs */
+	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
+
+	/* If VCPU was wfi state then resume it. */
+	if (vcpu->irqs.wfi_state) {
+		if (!(vmm_manager_vcpu_resume(vcpu))) {
+			vcpu->irqs.wfi_state = FALSE;
+		}
+	}
+
+	/* Unlock VCPU irqs */
+	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
+}
+
 void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 {
 	irq_flags_t flags;
@@ -105,6 +129,7 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 	if (vcpu->irqs.wfi_state) {
 		if (!(vmm_manager_vcpu_resume(vcpu))) {
 			vcpu->irqs.wfi_state = FALSE;
+			vmm_timer_event_stop(vcpu->irqs.wfi_priv);
 		}
 	}
 
@@ -161,6 +186,9 @@ int vmm_vcpu_irq_wait(struct vmm_vcpu *vcpu)
 		vcpu->irqs.wfi_state = TRUE;
 		/* Get timestamp for wait for irq */
 		vcpu->irqs.wfi_tstamp = vmm_timer_timestamp();
+		/* Start wait for irq timeout event */
+		vmm_timer_event_start(vcpu->irqs.wfi_priv, 
+				      CONFIG_WFI_TIMEOUT_SECS*1000000000ULL);
 	}
 
 	/* Unlock VCPU irqs */
@@ -171,8 +199,10 @@ int vmm_vcpu_irq_wait(struct vmm_vcpu *vcpu)
 
 int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 {
+	int rc;
 	u32 ite, irq_count;
 	irq_flags_t flags;
+	char ev_name[32];
 
 	/* Sanity Checks */
 	if (!vcpu) {
@@ -199,6 +229,15 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 		vcpu->irqs.assert = vmm_malloc(sizeof(bool) * irq_count);
 		vcpu->irqs.execute = vmm_malloc(sizeof(bool) * irq_count);
 		vcpu->irqs.reason = vmm_malloc(sizeof(u32) * irq_count);
+
+		/* Create wfi_timeout event */
+		vmm_sprintf(ev_name, "wfi_timeout/%d", vcpu->id);				
+		vcpu->irqs.wfi_priv = vmm_timer_event_create(ev_name, 
+					    &vmm_vcpu_irq_wfi_timeout, 
+					    vcpu);
+		if (!vcpu->irqs.wfi_priv) {
+			return VMM_EFAIL;
+		}
 	}
 
 	/* Lock VCPU irqs */
@@ -219,12 +258,43 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 		vcpu->irqs.execute[ite] = FALSE;
 	}
 
-	/* Clear wait for irq flag */
+	/* Setup wait for irq context */
 	vcpu->irqs.wfi_state = FALSE;
 	vcpu->irqs.wfi_tstamp = 0;
+	rc = vmm_timer_event_stop(vcpu->irqs.wfi_priv);
 
 	/* Unlock VCPU irqs */
 	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
 
-	return VMM_OK;
+	return rc;
+}
+
+int vmm_vcpu_irq_deinit(struct vmm_vcpu *vcpu)
+{
+	int rc;
+	irq_flags_t flags;
+
+	/* Sanity Checks */
+	if (!vcpu) {
+		return VMM_EFAIL;
+	}
+
+	/* For Orphan VCPU just return */
+	if (!vcpu->is_normal) {
+		return VMM_OK;
+	}
+
+	/* Lock VCPU irqs */
+	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
+
+	/* Stop wfi_timeout event */
+	vmm_timer_event_stop(vcpu->irqs.wfi_priv);
+
+	/* Destroy wfi_timeout event */
+	rc = vmm_timer_event_destroy(vcpu->irqs.wfi_priv);
+
+	/* Unlock VCPU irqs */
+	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
+
+	return rc;
 }
