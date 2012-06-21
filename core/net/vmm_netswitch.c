@@ -132,8 +132,15 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 	nsw->enable_port(port);
 
 #ifdef CONFIG_VERBOSE_MODE
-	vmm_printf("NET: Port(\"%s\") added to Switch(\"%s\")\n",
+	vmm_printf("NET: Port(\"%s\") added to Switch(\"%s\"), MAC",
 		   port->name, nsw->name);
+	{
+		int i;
+		for (i = 0; i < 6; i++) {
+			vmm_printf(":%02x", port->macaddr[i]);
+		}
+		vmm_printf("\n");
+	}
 #endif
 
 	return VMM_OK;
