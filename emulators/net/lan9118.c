@@ -557,6 +557,12 @@ static int lan9118_filter(struct lan9118_state *s, const u8 *addr)
 	}
 }
 
+static int lan9118_can_receive(struct vmm_netport *port)
+{
+	struct lan9118_state *s = port->priv;
+	return ((s->mac_cr & MAC_CR_RXEN) != 0);
+}
+
 static u32 lan9118_receive(struct lan9118_state *s, struct vmm_mbuf *mbuf)
 {
 	int fifo_len;
@@ -645,7 +651,6 @@ static u32 lan9118_receive(struct lan9118_state *s, struct vmm_mbuf *mbuf)
 		s->int_sts |= RSFL_INT;
 	}
 	lan9118_update(s);
-	m_freem(mbuf);
 
 	return size;
 }
@@ -670,6 +675,7 @@ static int lan9118_switch2port_xfer(struct vmm_netport *port,
 	DPRINTF("LAN9118: RX(data: 0x%8X, len: %d)\n", \
 			mbuf->m_data, mbuf->m_len);
 	lan9118_receive(s, mbuf);
+	m_freem(mbuf);
 
 	return rc;
 }
@@ -753,19 +759,14 @@ static void do_tx_packet(struct lan9118_state *s)
 	} else {
 		if(s->port->nsw) {
 			DPRINTF(" - switch\n");
+			/* we know the data is contiguous in this mbuf,
+			 * so we update mbuf->m_pktlen */
+			txp_mbuf(s)->m_pktlen = txp_mbuf(s)->m_len;
 			vmm_port2switch_xfer(s->port, txp_mbuf(s));
-		} else {
-		/* TODO: Optimizations possible - 
-		 *  -  reuse the same mbuf without reallocating again */
-			m_freem(txp_mbuf(s));
+			MGETHDR(txp_mbuf(s), 0, 0);
+			MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, M_WAIT);
 		}
 	}
-	/* We are done with this mbuf-chain, the receiver frees
-	 * the mbuf & ext-storage */
-	/* Allocate replacement mbuf */
-	MGETHDR(txp_mbuf(s), 0, 0);
-	MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, M_WAIT);
-
 	s->txp->fifo_used = 0;
 
 	if (s->tx_status_fifo_used == 512) {
@@ -1104,7 +1105,7 @@ static int lan9118_reg_write(struct lan9118_state *s, physical_addr_t offset,
 	offset &= 0xff;
 	src = src & ~src_mask;
 
-	DPRINTF("Write reg 0x%02x = 0x%08x\n", (int)offset, val);
+	DPRINTF("Write reg 0x%02x = 0x%08x\n", (int)offset, src);
 	if (offset >= 0x20 && offset < 0x40) {
 		vmm_spin_lock(&s->lock);
 		/* TX FIFO */
@@ -1456,7 +1457,7 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 	}
 	s->port->mtu = LAN9118_MTU;
 	s->port->link_changed = lan9118_set_link;
-	s->port->can_receive = NULL;
+	s->port->can_receive = lan9118_can_receive;
 	s->port->switch2port_xfer = lan9118_switch2port_xfer;
 	s->port->priv = s;
 	vmm_netport_register(s->port);
