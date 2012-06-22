@@ -21,12 +21,14 @@
  * @brief Default packet switch implementation.
  */
 
-#include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
+#include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_modules.h>
+#include <vmm_string.h>
 #include <vmm_devdrv.h>
+#include <vmm_modules.h>
+#include <vmm_spinlocks.h>
+#include <vmm_workqueue.h>
 #include <list.h>
 #include <net/ethernet.h>
 #include <net/vmm_mbuf.h>
@@ -42,28 +44,79 @@
 #define DPRINTF(fmt, ...) do {} while(0)
 #endif
 
-int vmm_def_switch_rx_handler(struct vmm_netport *src_port, 
-			      struct vmm_mbuf *mbuf)
-{
-	bool broadcast = TRUE;
-	struct dlist *l;
-	struct vmm_netport *dst_port;
-	struct vmm_netswitch *nsw = src_port->nsw;
-	const u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));
-	const u8 *dstmac = ether_dstmac(mtod(mbuf, u8 *));
-	int i;
+#define VMM_NETBRIDGE_RX_BUFLEN		20
 
-	DPRINTF("netbridge: got pkt with srcaddr:");
-	for (i = 0; i < 6; i++) {
-		DPRINTF("%02x:", srcmac[i]);
+static struct vmm_netbridge_ctrl {
+	int head;
+	int tail;
+	struct vmm_netport **src_port;
+	struct vmm_mbuf **mbuf;
+	struct vmm_work **work;
+	struct vmm_workqueue *wqueue;
+	vmm_spinlock_t lock;
+} netbridge_ctrl;
+
+#define rxbuf_head		(netbridge_ctrl.head)
+#define rxbuf_tail		(netbridge_ctrl.tail)
+#define rxbuf_empty(void) 	(netbridge_ctrl.head == -1)
+#define rxbuf_full(void) 	(netbridge_ctrl.head ==	((netbridge_ctrl.tail+1)%VMM_NETBRIDGE_RX_BUFLEN))
+
+/* Should be called before enqueue to determine the enqueue location
+ *
+ * Returns the location where to place the new data
+ *
+ * Assumptions:	- lock is held
+ * 		- rxbuf_full() is FALSE
+ */
+static int rxbuf_enqueue(void)
+{
+	if(netbridge_ctrl.head == -1) {
+		netbridge_ctrl.head = netbridge_ctrl.tail = 0;
+	} else {
+		netbridge_ctrl.tail = 
+			(netbridge_ctrl.tail+1)%VMM_NETBRIDGE_RX_BUFLEN;
 	}
-	DPRINTF("\b ");
-	DPRINTF(", dstaddr:");
-	for (i = 0; i < 6; i++) {
-		DPRINTF("%02x:", dstmac[i]);
+	return netbridge_ctrl.tail;
+}
+
+/* Should be called after dequeue to update the head/tail pointers
+ *
+ * Assumptions: - lock is held
+ * 		- rxbuf_empty() is false
+ */
+static void rxbuf_dequeue(void)
+{
+	if(netbridge_ctrl.head == netbridge_ctrl.tail) {
+		netbridge_ctrl.head = netbridge_ctrl.tail = -1;
+	} else {
+		netbridge_ctrl.head = 
+			(netbridge_ctrl.head+1)%VMM_NETBRIDGE_RX_BUFLEN;
 	}
-	DPRINTF("\b ");
-	DPRINTF(", ethertype: 0x%04X\n", ether_type(mtod(mbuf, u8 *)));
+}
+
+void vmm_netbridge_tx(struct vmm_work *work)
+{
+	struct dlist *l;
+	bool broadcast = TRUE;
+	struct vmm_mbuf *mbuf; 		
+	struct vmm_netswitch *nsw; 	
+	const u8 *srcmac, *dstmac;	 	
+	struct vmm_netport *dst_port, *src_port;
+
+	vmm_spin_lock(&netbridge_ctrl.lock);
+	if(unlikely(rxbuf_empty())) {
+		vmm_spin_unlock(&netbridge_ctrl.lock);
+		return;
+	} else {
+		mbuf = netbridge_ctrl.mbuf[rxbuf_head];
+		src_port = netbridge_ctrl.src_port[rxbuf_head];
+		rxbuf_dequeue();
+	}
+	vmm_spin_unlock(&netbridge_ctrl.lock);
+
+	nsw = src_port->nsw;
+	srcmac = ether_srcmac(mtod(mbuf, u8 *));
+	dstmac = ether_dstmac(mtod(mbuf, u8 *));
 
 	/* TODO: Learning not required as it is assumed that every port notifies 
 	 * its macaddr change, multiple macs will still work because of 
@@ -106,12 +159,47 @@ int vmm_def_switch_rx_handler(struct vmm_netport *src_port,
 			m_freem(mbuf);
 		}
 	}
+}	
+
+int vmm_netbridge_rx_handler(struct vmm_netport *src_port, 
+			      struct vmm_mbuf *mbuf)
+{
+	int index;
+#ifdef DEBUG_NETBRIDGE
+	const u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));
+	const u8 *dstmac = ether_dstmac(mtod(mbuf, u8 *));
+	int i;
+
+	DPRINTF("netbridge: got pkt with srcaddr:");
+	for (i = 0; i < 6; i++) {
+		DPRINTF("%02x:", srcmac[i]);
+	}
+	DPRINTF("\b ");
+	DPRINTF(", dstaddr:");
+	for (i = 0; i < 6; i++) {
+		DPRINTF("%02x:", dstmac[i]);
+	}
+	DPRINTF("\b ");
+	DPRINTF(", ethertype: 0x%04X\n", ether_type(mtod(mbuf, u8 *)));
+#endif
+	vmm_spin_lock(&netbridge_ctrl.lock);
+	if(rxbuf_full()) {
+		vmm_spin_unlock(&netbridge_ctrl.lock);
+		return VMM_EFAIL;
+	}
+	index = rxbuf_enqueue();
+	vmm_spin_unlock(&netbridge_ctrl.lock);
+	netbridge_ctrl.src_port[index] = src_port;
+	netbridge_ctrl.mbuf[index] = mbuf;
+	INIT_WORK(netbridge_ctrl.work[index], vmm_netbridge_tx, (void *)index);
+
+	vmm_workqueue_schedule_work(netbridge_ctrl.wqueue, netbridge_ctrl.work[index]);	
 
 	/* Forward the skb to the target port if we know exactly */
 	return VMM_OK;
 }
 
-int vmm_def_switch_enable_port(struct vmm_netport *port)
+int vmm_netbridge_enable_port(struct vmm_netport *port)
 {
 	/* Notify the port about the link-status change */
 	port->flags |= VMM_NETPORT_LINK_UP;
@@ -120,7 +208,7 @@ int vmm_def_switch_enable_port(struct vmm_netport *port)
 	return VMM_OK;
 }
 
-int vmm_def_switch_disable_port(struct vmm_netport *port)
+int vmm_netbridge_disable_port(struct vmm_netport *port)
 {
 	/* Notify the port about the link-status change */
 	port->flags &= ~VMM_NETPORT_LINK_UP;
@@ -134,15 +222,41 @@ int vmm_netbridge_probe(struct vmm_device *dev,
 {
 	struct vmm_netswitch *nsw;
 	int rc = VMM_OK;
+	int i;
 
 	nsw = vmm_netswitch_alloc(dev->node->name);
 	if(!nsw) {
 		rc = VMM_EFAIL;
 		goto vmm_netbridge_probe_failed;
 	}
-	nsw->port2switch_xfer = vmm_def_switch_rx_handler;
-	nsw->enable_port = vmm_def_switch_enable_port;
-	nsw->disable_port = vmm_def_switch_disable_port;
+	nsw->port2switch_xfer = vmm_netbridge_rx_handler;
+	nsw->enable_port = vmm_netbridge_enable_port;
+	nsw->disable_port = vmm_netbridge_disable_port;
+
+	netbridge_ctrl.head = -1;
+	netbridge_ctrl.tail = -1;
+	netbridge_ctrl.src_port = vmm_malloc(sizeof(struct vmm_netport *) 
+			* VMM_NETBRIDGE_RX_BUFLEN);
+	netbridge_ctrl.mbuf = vmm_malloc(sizeof(struct vmm_mbuf *) 
+			* VMM_NETBRIDGE_RX_BUFLEN);
+	netbridge_ctrl.work = vmm_malloc(sizeof(struct vmm_work *) 
+			* VMM_NETBRIDGE_RX_BUFLEN);
+	netbridge_ctrl.wqueue = vmm_workqueue_create(nsw->name, VMM_THREAD_DEF_PRIORITY);
+	if(!netbridge_ctrl.wqueue ||
+	   !netbridge_ctrl.src_port ||
+	   !netbridge_ctrl.mbuf ||
+	   !netbridge_ctrl.work) {
+		vmm_panic("netbridge: allocations failed");
+	}
+
+	for(i=0; i<VMM_NETBRIDGE_RX_BUFLEN; i++) {
+		netbridge_ctrl.work[i] = vmm_malloc(sizeof(struct vmm_work));
+		if(!netbridge_ctrl.work[i]) {
+			vmm_panic("netbridge: allocations failed");
+		}
+	}
+
+	INIT_SPIN_LOCK(&netbridge_ctrl.lock);
 
 	vmm_netswitch_register(nsw);
 
