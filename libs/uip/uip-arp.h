@@ -130,11 +130,11 @@ void uip_arp_timer(void);
  *
  * \hideinitializer
  */
-#define uip_setethaddr(eaddr) do {uip_ethaddr.addr[0] = eaddr.addr[0]; \
-		uip_ethaddr.addr[1] = eaddr.addr[1];		       \
-		uip_ethaddr.addr[2] = eaddr.addr[2];		       \
-		uip_ethaddr.addr[3] = eaddr.addr[3];		       \
-		uip_ethaddr.addr[4] = eaddr.addr[4];			\
-		uip_ethaddr.addr[5] = eaddr.addr[5];} while(0)
+#define uip_setethaddr(eaddr) do {uip_ethaddr.addr[0] = (eaddr)->addr[0]; \
+		uip_ethaddr.addr[1] = (eaddr)->addr[1];		       \
+		uip_ethaddr.addr[2] = (eaddr)->addr[2];		       \
+		uip_ethaddr.addr[3] = (eaddr)->addr[3];		       \
+		uip_ethaddr.addr[4] = (eaddr)->addr[4];			\
+		uip_ethaddr.addr[5] = (eaddr)->addr[5];} while(0)
 
 #endif /* __UIP_ARP_H__ */
