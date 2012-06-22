@@ -136,7 +136,6 @@ static int uip_loop(void *data)
 				uip_arp_timer();
 			}
 		}
-		vmm_scheduler_yield();
 	}
 	return VMM_OK;
 }
