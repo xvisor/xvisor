@@ -84,6 +84,7 @@
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  */
 
+#include <list.h>
 #include <vmm_macros.h>
 #include <vmm_types.h>
 #include <vmm_stdio.h>
@@ -141,6 +142,7 @@ struct vmm_mbuf *m_get(int nowait, int flags)
 	if (m == NULL)
 		return NULL;
 
+	INIT_LIST_HEAD(&m->m_list);
 	m->m_next = NULL;
 	m->m_data = NULL;
 	m->m_len = 0;
