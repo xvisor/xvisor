@@ -33,6 +33,7 @@
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
 #include <vmm_timer.h>
+#include <vmm_delay.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_threads.h>
@@ -146,6 +147,14 @@ void vmm_init(void)
 	/* Initialize hypervisor timer */
 	vmm_printf("Initialize Hypervisor Timer\n");
 	ret = vmm_timer_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize soft delay subsystem */
+	vmm_printf("Initialize Soft Delay Subsystem\n");
+	ret = vmm_delay_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();

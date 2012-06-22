@@ -30,6 +30,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_delay.h>
 #include <mathlib.h>
 
 #define MODULE_VARID			cmd_host_module
@@ -55,6 +56,8 @@ void cmd_host_info(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "CPU Name   : %s\n", CONFIG_CPU);
 	vmm_cprintf(cdev, "CPU Count  : %d\n", CONFIG_CPU_COUNT);
+	vmm_cprintf(cdev, "CPU Speed  : %d MHz (Estimated)\n", 
+					vmm_delay_estimate_cpu_mhz());
 	vmm_cprintf(cdev, "Board Name : %s\n", CONFIG_BOARD);
 }
 

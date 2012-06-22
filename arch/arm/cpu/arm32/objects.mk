@@ -54,6 +54,7 @@ cpu-objs-$(CONFIG_ARMV7A)+= cpu_atomic_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_interrupts_v7.o
 
 cpu-objs-y+= cpu_init.o
+cpu-objs-y+= cpu_delay.o
 ifdef CONFIG_ARMV7A
 cpu-objs-$(CONFIG_SMP)+= cpu_smp.o
 endif
