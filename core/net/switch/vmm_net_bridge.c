@@ -36,6 +36,7 @@
 #include <net/vmm_netport.h>
 
 #undef DEBUG_NETBRIDGE
+#undef DUMP_NETBRIDGE_PKT
 
 #ifdef DEBUG_NETBRIDGE
 #define DPRINTF(fmt, ...) \
@@ -98,21 +99,22 @@ void vmm_netbridge_tx(struct vmm_work *work)
 {
 	struct dlist *l;
 	bool broadcast = TRUE;
-	struct vmm_mbuf *mbuf; 		
-	struct vmm_netswitch *nsw; 	
-	const u8 *srcmac, *dstmac;	 	
+	struct vmm_mbuf *mbuf;
+	struct vmm_netswitch *nsw;
+	const u8 *srcmac, *dstmac;
+	unsigned long flags;
 	struct vmm_netport *dst_port, *src_port;
 
-	vmm_spin_lock(&netbridge_ctrl.lock);
+	vmm_spin_lock_irqsave(&netbridge_ctrl.lock, flags);
 	if(unlikely(rxbuf_empty())) {
-		vmm_spin_unlock(&netbridge_ctrl.lock);
+		vmm_spin_unlock_irqrestore(&netbridge_ctrl.lock, flags);
 		return;
 	} else {
 		mbuf = netbridge_ctrl.mbuf[rxbuf_head];
 		src_port = netbridge_ctrl.src_port[rxbuf_head];
 		rxbuf_dequeue();
 	}
-	vmm_spin_unlock(&netbridge_ctrl.lock);
+	vmm_spin_unlock_irqrestore(&netbridge_ctrl.lock, flags);
 
 	nsw = src_port->nsw;
 	srcmac = ether_srcmac(mtod(mbuf, u8 *));
@@ -165,6 +167,7 @@ int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 			      struct vmm_mbuf *mbuf)
 {
 	int index;
+	unsigned long flags;
 #ifdef DEBUG_NETBRIDGE
 	const u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));
 	const u8 *dstmac = ether_dstmac(mtod(mbuf, u8 *));
@@ -189,13 +192,13 @@ int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 	}
 #endif
 #endif
-	vmm_spin_lock(&netbridge_ctrl.lock);
+	vmm_spin_lock_irqsave(&netbridge_ctrl.lock, flags);
 	if(rxbuf_full()) {
-		vmm_spin_unlock(&netbridge_ctrl.lock);
+		vmm_spin_unlock_irqrestore(&netbridge_ctrl.lock, flags);
 		return VMM_EFAIL;
 	}
 	index = rxbuf_enqueue();
-	vmm_spin_unlock(&netbridge_ctrl.lock);
+	vmm_spin_unlock_irqrestore(&netbridge_ctrl.lock, flags);
 	netbridge_ctrl.src_port[index] = src_port;
 	netbridge_ctrl.mbuf[index] = mbuf;
 	INIT_WORK(netbridge_ctrl.work[index], vmm_netbridge_tx, (void *)index);
