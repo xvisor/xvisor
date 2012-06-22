@@ -194,8 +194,6 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue * wq,
 	}
 
 	if (!wq) {
-		/* For SMP we will have to do load balancing 
-		 * among multiple system workqueues */
 		wq = wqctrl.syswq;
 	}
 
@@ -351,8 +349,8 @@ int __init vmm_workqueue_init(void)
 	/* Initialize workqueue count */
 	wqctrl.wq_count = 0;
 
-	/* Create system workqueus (Per Host CPU) */
-	wqctrl.syswq = vmm_workqueue_create("syswq/0", 
+	/* Create one system workqueue */
+	wqctrl.syswq = vmm_workqueue_create("syswq", 
 					    VMM_THREAD_DEF_PRIORITY);
 	if (!wqctrl.syswq) {
 		return VMM_EFAIL;
