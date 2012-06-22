@@ -62,6 +62,8 @@ struct vmm_netdev {
 				 */
 	unsigned char hw_addr[MAX_VMM_NDEV_HW_ADDRESS];
 	unsigned int hw_addr_len;
+	int irq;
+	physical_addr_t base_addr;
 };
 
 
