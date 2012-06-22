@@ -29,7 +29,7 @@
 #include <vmm_string.h>
 #include <vmm_spinlocks.h>
 #include <list.h>
-#include <net/ethernet.h>
+#include <net/protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netport.h>
 
@@ -98,13 +98,14 @@ static int uip_switch2port_xfer(struct vmm_netport *port,
 {
 	struct uip_port_state *s = &uip_port_state;
 	int rc = VMM_OK, i;
+#ifdef UIP_DEBUG
+	char tname[30];
+#endif
 	u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));
 	/* do not accept frames which do not have either 
 	 * our MAC or broadcast MAC */
-	DPRINTF("UIP received frame with MAC");
-	for (i = 0; i < 6; i++) {
-		DPRINTF(":%02x", srcmac[i]);
-	}
+	DPRINTF("UIP received frame with MAC[%s]",
+			ethaddr_to_str(tname, srcmac));
 	if(!compare_ether_addr(srcmac, port->macaddr)
 		|| is_broadcast_ether_addr(srcmac)) {
 		DPRINTF("  and rejected \n");
