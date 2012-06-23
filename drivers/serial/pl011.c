@@ -313,7 +313,7 @@ static int pl011_driver_probe(struct vmm_device *dev,
 	INIT_COMPLETION(&port->read_possible);
 	INIT_COMPLETION(&port->write_possible);
 
-	rc = vmm_devdrv_ioremap(dev, &port->base, 0);
+	rc = vmm_devdrv_regmap(dev, &port->base, 0);
 	if (rc) {
 		goto free_port;
 	}

@@ -179,7 +179,7 @@ static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devi
 	cd->write = uart_write;
 	cd->priv = port;
 
-	rc = vmm_devdrv_ioremap(dev, &port->base, 0);
+	rc = vmm_devdrv_regmap(dev, &port->base, 0);
 	if(rc) {
 		goto free_port;
 	}

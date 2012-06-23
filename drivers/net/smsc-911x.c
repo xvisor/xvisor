@@ -296,13 +296,13 @@ static int smsc_911x_driver_probe(struct vmm_device *dev,
 	ndev->dev_ops = &smsc_911x_vmm_netdev_ops;
 	vmm_netdev_set_priv(ndev, lp);
 
-	rc = vmm_devdrv_ioremap(dev, &addr, 0);
+	rc = vmm_devdrv_regmap(dev, &addr, 0);
 	if (rc) {
 		vmm_printf("Failed to ioreamp\n");
 		goto free_ndev;
 	}
 
-	vmm_printf("vmm_devdrv_ioremap success at address 0x%02X\n", addr);
+	vmm_printf("vmm_devdrv_regmap success at address 0x%02X\n", addr);
 	lp->base = (void *) addr;
 
 	attr = vmm_devtree_attrval(dev->node, "irq");
