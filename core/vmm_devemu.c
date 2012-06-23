@@ -813,9 +813,10 @@ devemu_init_context_done:
 
 }
 
-/* FIXME: TBD */
 int vmm_devemu_deinit_context(struct vmm_guest *guest)
 {
+	int rc = VMM_OK;
+	u32 ite;
 	struct dlist * l;
 	struct vmm_vcpu * vcpu;
 	struct vmm_devemu_guest_context *eg;
@@ -835,6 +836,17 @@ int vmm_devemu_deinit_context(struct vmm_guest *guest)
 	eg = guest->aspace.devemu_priv;
 
 	if (eg->h2g_irq) {
+		for (ite = 0; ite < eg->h2g_irq_count; ite++) {
+			rc = vmm_host_irq_unregister(eg->h2g_irq[ite].host_irq,
+						vmm_devemu_handle_h2g_irq);
+			if (rc) {
+				break;
+			}
+			rc = vmm_host_irq_disable(eg->h2g_irq[ite].host_irq);
+			if (rc) {
+				break;
+			}
+		}
 		vmm_free(eg->h2g_irq);
 		eg->h2g_irq = NULL;
 	}
@@ -842,7 +854,7 @@ int vmm_devemu_deinit_context(struct vmm_guest *guest)
 	vmm_free(guest->aspace.devemu_priv);
 	guest->aspace.devemu_priv = NULL;
 
-	return VMM_OK;
+	return rc;
 }
 
 int __init vmm_devemu_init(void)
