@@ -44,6 +44,14 @@
 			      		baudrate = <115200>;
 					irq = <12>;
 				};
+
+				rtc0 {
+					device_type = "rtc";
+					compatible = "pl031";
+					reg = <0x101E8000 0x1000>;
+					clock-rate = <1>;
+					irq = <10>;
+				};
 			};
 		};
 	};

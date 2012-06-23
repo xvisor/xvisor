@@ -45,20 +45,12 @@
 					irq = <12>;
 				};
 
-				uart1 {
-			      		device_type = "serial";
-			      		compatible = "pl011";
-			      		reg = <0x101F2000 0x1000>;
-			      		baudrate = <115200>;
-					irq = <13>;
-				};
-
-				uart2 {
-			      		device_type = "serial";
-			      		compatible = "pl011";
-			      		reg = <0x101F3000 0x1000>;
-			      		baudrate = <115200>;
-					irq = <14>;
+				rtc0 {
+					device_type = "rtc";
+					compatible = "pl031";
+					reg = <0x101E8000 0x1000>;
+					clock-rate = <1>;
+					irq = <10>;
 				};
 			};
 		};
