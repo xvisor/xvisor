@@ -27,6 +27,7 @@
 #include <arm_types.h>
 
 char *arm_strcpy(char *dest, const char *src);
+char *arm_strcat(char *dest, const char *src);
 int arm_strcmp(const char *a, const char *b);
 size_t arm_strlen(const char *s);
 int arm_str2int(char * src);

@@ -42,6 +42,13 @@ char *arm_strcpy(char *dest, const char *src)
 	return dest;
 }
 
+char *arm_strcat(char *dest, const char *src)
+{
+	arm_strcpy(&dest[arm_strlen(dest)], src);
+
+	return dest;
+}
+
 int arm_strcmp(const char *a, const char *b)
 {
 	while (*a == *b) {
