@@ -61,8 +61,8 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("hello       - Say hello to ARM test code\n");
 	arm_puts("\n");
 	arm_puts("wfi_test    - Run wait for irq instruction test for ARM test code\n");
-	arm_puts("              Usage: wfi_test [<msecs>]\n");
-	arm_puts("              <msecs>  = delay in milliseconds to wait for\n");
+	arm_puts("            Usage: wfi_test [<msecs>]\n");
+	arm_puts("            <msecs>  = delay in milliseconds to wait for\n");
 	arm_puts("\n");
 	arm_puts("mmu_setup   - Setup MMU for ARM test code\n");
 	arm_puts("\n");
@@ -77,28 +77,39 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("timer       - Display timer information\n");
 	arm_puts("\n");
 	arm_puts("dhrystone   - Dhrystone 2.1 benchmark\n");
-	arm_puts("              Usage: dhrystone [<iterations>]\n");
+	arm_puts("            Usage: dhrystone [<iterations>]\n");
 	arm_puts("\n");
 	arm_puts("hexdump     - Dump memory contents in hex format\n");
-	arm_puts("              Usage: hexdump <addr> <count>\n");
-	arm_puts("              <addr>  = memory address in hex\n");
-	arm_puts("              <count> = byte count in hex\n");
+	arm_puts("            Usage: hexdump <addr> <count>\n");
+	arm_puts("            <addr>  = memory address in hex\n");
+	arm_puts("            <count> = byte count in hex\n");
 	arm_puts("\n");
 	arm_puts("copy        - Copy to target memory from source memory\n");
-	arm_puts("              Usage: copy <dest> <src> <count>\n");
-	arm_puts("              <dest>  = destination address in hex\n");
-	arm_puts("              <src>   = source address in hex\n");
-	arm_puts("              <count> = byte count in hex\n");
+	arm_puts("            Usage: copy <dest> <src> <count>\n");
+	arm_puts("            <dest>  = destination address in hex\n");
+	arm_puts("            <src>   = source address in hex\n");
+	arm_puts("            <count> = byte count in hex\n");
 	arm_puts("\n");
 	arm_puts("start_linux - Start linux kernel\n");
-	arm_puts("              Usage: start_linux <kernel_addr> <initrd_addr> <initrd_size>\n");
-	arm_puts("                <kernel_addr>  = kernel load address\n");
-	arm_puts("                <initrd_addr>  = initrd load address\n");
-	arm_puts("                <initrd_size>  = initrd size\n");
+	arm_puts("            Usage: start_linux <kernel_addr> <initrd_addr> <initrd_size>\n");
+	arm_puts("            <kernel_addr>  = kernel load address\n");
+	arm_puts("            <initrd_addr>  = initrd load address\n");
+	arm_puts("            <initrd_size>  = initrd size\n");
+	arm_puts("\n");
+	arm_puts("change_linux_cmdline - Change linux command line\n");
+	arm_puts("            Usage: change_linux_cmdline <new_linux_cmdline> \n");
+	arm_puts("            <new_linux_cmdline>  = linux command line\n");
+	arm_puts("\n");
+	arm_puts("change_linux_memory_size - Change linux memory size\n");
+	arm_puts("            Usage: change_linux_memory_size <memory_size> \n");
+	arm_puts("            <memory_size>  = memory size in hex\n");
+	arm_puts("\n");
+	arm_puts("autoexec    - autoexec command list in SSRAM\n");
+	arm_puts("            Usage: autoexec\n");
 	arm_puts("\n");
 	arm_puts("go          - Jump to a given address\n");
-	arm_puts("              Usage: go <addr>\n");
-	arm_puts("                <addr>  = jump address in hex\n");
+	arm_puts("            Usage: go <addr>\n");
+	arm_puts("            <addr>  = jump address in hex\n");
 	arm_puts("\n");
 	arm_puts("reset       - Reset the system\n");
 	arm_puts("\n");
@@ -119,18 +130,18 @@ void wfi()
 	unsigned long reg_r0, reg_r1, reg_r2, reg_r3, reg_ip;
 
 	asm volatile (
-                "       mov     %0, #0\n"
-                "       mrc     p15, 0, %1, c1, c0, 0   @ Read control register\n"
-                "       mcr     p15, 0, %0, c7, c10, 4  @ Drain write buffer\n"
-                "       bic     %2, %1, #1 << 12\n"
-                "       mrs     %3, cpsr                @ Disable FIQs while Icache\n"
-                "       orr     %4, %3, #0x00000040     @ is disabled\n"
-                "       msr     cpsr_c, %4\n"
-                "       mcr     p15, 0, %2, c1, c0, 0   @ Disable I cache\n"
-                "       mcr     p15, 0, %0, c7, c0, 4   @ Wait for interrupt\n"
-                "       mcr     p15, 0, %1, c1, c0, 0   @ Restore ICache enable\n"
-                "       msr     cpsr_c, %3              @ Restore FIQ state"
-                :"=r" (reg_r0), "=r" (reg_r1), "=r" (reg_r2), "=r" (reg_r3), "=r" (reg_ip)::"memory", "cc" );
+			"       mov     %0, #0\n"
+			"       mrc     p15, 0, %1, c1, c0, 0   @ Read control register\n"
+			"       mcr     p15, 0, %0, c7, c10, 4  @ Drain write buffer\n"
+			"       bic     %2, %1, #1 << 12\n"
+			"       mrs     %3, cpsr		@ Disable FIQs while Icache\n"
+			"       orr     %4, %3, #0x00000040     @ is disabled\n"
+			"       msr     cpsr_c, %4\n"
+			"       mcr     p15, 0, %2, c1, c0, 0   @ Disable I cache\n"
+			"       mcr     p15, 0, %0, c7, c0, 4   @ Wait for interrupt\n"
+			"       mcr     p15, 0, %1, c1, c0, 0   @ Restore ICache enable\n"
+			"       msr     cpsr_c, %3	      @ Restore FIQ state"
+			:"=r" (reg_r0), "=r" (reg_r1), "=r" (reg_r2), "=r" (reg_r3), "=r" (reg_ip)::"memory", "cc" );
 }
 
 void arm_cmd_wfi_test(int argc, char **argv)
@@ -333,11 +344,14 @@ void arm_cmd_copy(int argc, char **argv)
 #define RAM_START	0x00000000
 #define RAM_SIZE	0x06000000
 
+static char  cmdline[1024];
+static char *default_cmdline = "root=/dev/ram rw ramdisk_size=0x1000000 earlyprintk console=ttyAMA0" ;
+static int memory_size = RAM_SIZE;
+
 typedef void (* linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args);
 
 void arm_cmd_start_linux(int argc, char **argv)
 {
-	char  * cmdline = "root=/dev/ram rw ramdisk_size=0x1000000 earlyprintk console=ttyAMA0 mem=96M" ;
 	u32 * kernel_args = (u32 *)(RAM_START + 0x1000);
 	u32 cmdline_size, p;
 	u32 kernel_addr, initrd_addr, initrd_size;
@@ -366,20 +380,25 @@ void arm_cmd_start_linux(int argc, char **argv)
 	/* ATAG_MEM */
 	kernel_args[p++] = 4;
 	kernel_args[p++] = 0x54410002;
-	kernel_args[p++] = RAM_SIZE;
+	kernel_args[p++] = memory_size;
 	kernel_args[p++] = RAM_START;
 	/* ATAG_INITRD2 */
 	kernel_args[p++] = 4;
-        kernel_args[p++] = 0x54420005;
-        kernel_args[p++] = initrd_addr;
-        kernel_args[p++] = initrd_size;
-	/* ATAG_CMDLINE */
+	kernel_args[p++] = 0x54420005;
+	kernel_args[p++] = initrd_addr;
+	kernel_args[p++] = initrd_size;
+
+	/* if a cmdline is provided, we add it */
 	cmdline_size = arm_strlen(cmdline);
-	arm_strcpy((char *)&kernel_args[p + 2], cmdline);
-	cmdline_size = (cmdline_size >> 2) + 1;
-	kernel_args[p++] = cmdline_size + 2;
-	kernel_args[p++] = 0x54410009;
-	p += cmdline_size;
+	if (cmdline_size) {
+		/* ATAG_CMDLINE */
+		arm_strcpy((char *)&kernel_args[p + 2], cmdline);
+		cmdline_size = (cmdline_size >> 2) + 1;
+		kernel_args[p++] = cmdline_size + 2;
+		kernel_args[p++] = 0x54410009;
+		p += cmdline_size;
+	}
+
 	/* ATAG_END */
 	kernel_args[p++] = 0;
 	kernel_args[p++] = 0;
@@ -397,6 +416,94 @@ void arm_cmd_start_linux(int argc, char **argv)
 
 	/* We should never reach here */
 	while (1);
+
+	return;
+}
+
+void arm_cmd_change_linux_cmdline(int argc, char **argv)
+{
+	if (argc >= 2) {
+		int cnt = 1;
+		cmdline[0] = 0;
+
+		while (cnt < argc) {
+			arm_strcat(cmdline, argv[cnt]);
+			arm_strcat(cmdline, " ");
+			cnt++;
+		}
+	}
+
+	arm_puts ("linux cmdline is set to \"");
+	arm_puts(cmdline);
+	arm_puts ("\"\n");
+
+	return;
+}
+
+void arm_cmd_change_linux_memory_size(int argc, char **argv)
+{
+	char str[32];
+
+	if (argc == 2) {
+		memory_size = (u32)arm_hexstr2uint(argv[1]);
+	}
+
+	arm_puts ("linux memory size is set to 0x");
+	arm_uint2hexstr(str, memory_size);
+	arm_puts(str);
+	arm_puts (" Bytes\n");
+
+	return;
+}
+
+void arm_exec(char *line);
+
+void arm_cmd_autoexec(int argc, char **argv)
+{
+	static int lock = 0;
+	int len;
+	/* commands to execute are stored in NOR flash */
+	char *ptr = (char *)(VERSATILE_FLASH_BASE + 0xFF000);
+	char buffer[4096];
+
+	/* autoexec is not recursive */
+	if (lock) {
+		arm_puts("ignoring autoexec calling autoexec\n");
+		return;
+	}
+
+	lock = 1;
+
+	if ((len = arm_strlen(ptr))) {
+		int pos = 0;
+
+		/* copy commands from NOR flash */
+		arm_strcpy(buffer, ptr);
+
+		/* now we process them */
+		while (pos < len) {
+			ptr = &buffer[pos];
+
+			/* We need to separate the commands */
+			while ((buffer[pos] != '\r') &&
+				(buffer[pos] != '\n') &&
+				(buffer[pos] != 0)) {
+				pos++;
+			}
+			buffer[pos] = '\0';
+			pos++;
+
+			/* print the command */
+			arm_puts("autoexec(");
+			arm_puts(ptr);
+			arm_puts(")\n");
+			/* execute it */
+			arm_exec(ptr);
+		}
+
+	}
+
+	lock = 0;
 
 	return;
 }
@@ -429,53 +536,35 @@ void arm_cmd_reset(int argc, char **argv)
 	while (1);
 }
 
-#define ARM_MAX_CMD_STR_SIZE	256
 #define ARM_MAX_ARG_SIZE	32
 
-/* Works in user mode */
-void arm_main(void)
+void arm_exec(char *line)
 {
-	int argc, pos, cnt;
-	char line[ARM_MAX_CMD_STR_SIZE];
+	int argc = 0, pos = 0, cnt = 0;
 	char *argv[ARM_MAX_ARG_SIZE];
 
-	arm_puts("ARM Versatile PB Basic Test\n\n");
-
-	/* Unlock Lockable reigsters */
-	arm_writel(VERSATILE_SYS_LOCKVAL, 
-		   (void *)(VERSATILE_SYS_BASE + VERSATILE_SYS_LOCK_OFFSET));
-
-	while(1) {
-		arm_puts("arm-test# ");
-
-		argc = 0;
-		cnt = 0;
-		pos = 0;
-		arm_gets(line, ARM_MAX_CMD_STR_SIZE, '\n');
-		while (line[pos] && (argc < ARM_MAX_ARG_SIZE)) {
-			if ((line[pos] == '\r') ||
-			    (line[pos] == '\n')) {
+	while (line[pos] && (argc < ARM_MAX_ARG_SIZE)) {
+		if ((line[pos] == '\r') ||
+		    (line[pos] == '\n')) {
+			line[pos] = '\0';
+			break;
+		}
+		if (line[pos] == ' ') {
+			if (cnt > 0) {
 				line[pos] = '\0';
-				break;
+				cnt = 0;
 			}
-			if (line[pos] == ' ') {
-				if (cnt > 0) {
-					line[pos] = '\0';
-					cnt = 0;
-				}
-			} else {
-				if (cnt == 0) {
-					argv[argc] = &line[pos];
-					argc++;
-				}
-				cnt++;
+		} else {
+			if (cnt == 0) {
+				argv[argc] = &line[pos];
+				argc++;
 			}
-			pos++;
+			cnt++;
 		}
-		if (!argc) {
-			continue;
-		}
+		pos++;
+	}
 
+	if (argc) {
 		if (arm_strcmp(argv[0], "help") == 0) {
 			arm_cmd_help(argc, argv);
 		} else if (arm_strcmp(argv[0], "hi") == 0) {
@@ -504,10 +593,41 @@ void arm_main(void)
 			arm_cmd_copy(argc, argv);
 		} else if (arm_strcmp(argv[0], "start_linux") == 0) {
 			arm_cmd_start_linux(argc, argv);
+		} else if (arm_strcmp(argv[0], "linux_cmdline") == 0) {
+			arm_cmd_change_linux_cmdline(argc, argv);
+		} else if (arm_strcmp(argv[0], "linux_memory_size") == 0) {
+			arm_cmd_change_linux_memory_size(argc, argv);
+		} else if (arm_strcmp(argv[0], "autoexec") == 0) {
+			arm_cmd_autoexec(argc, argv);
 		} else if (arm_strcmp(argv[0], "go") == 0) {
 			arm_cmd_go(argc, argv);
 		} else if (arm_strcmp(argv[0], "reset") == 0) {
 			arm_cmd_reset(argc, argv);
 		}
+	}
+}
+
+#define ARM_MAX_CMD_STR_SIZE	256
+
+/* Works in user mode */
+void arm_main(void)
+{
+	char line[ARM_MAX_CMD_STR_SIZE];
+
+	/* copy the default_cmdline in the active cmdline */
+	arm_strcpy(cmdline, default_cmdline);
+
+	arm_puts("ARM Versatile PB Basic Test\n\n");
+
+	/* Unlock Lockable reigsters */
+	arm_writel(VERSATILE_SYS_LOCKVAL, 
+		   (void *)(VERSATILE_SYS_BASE + VERSATILE_SYS_LOCK_OFFSET));
+
+	while(1) {
+		arm_puts("arm-test# ");
+
+		arm_gets(line, ARM_MAX_CMD_STR_SIZE, '\n');
+
+		arm_exec(line);
 	}
 }
