@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <vmm_cpumask.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
@@ -63,27 +64,45 @@ void cmd_host_info(struct vmm_chardev *cdev)
 
 void cmd_host_irq_stats(struct vmm_chardev *cdev)
 {
-	u32 num, stats, count = vmm_host_irq_count();
+	u32 num, cpu, stats, count = vmm_host_irq_count();
 	struct vmm_host_irq *irq;
 	struct vmm_host_irq_chip *chip;
-	vmm_cprintf(cdev, "----------------------------------------");
-	vmm_cprintf(cdev, "--------------------\n");
-	vmm_cprintf(cdev, "| %-8s| %-18s| %-10s| %-15s|\n", 
-			  "IRQ Num", "IRQ Name", "IRQ Chip", "IRQ Count");
-	vmm_cprintf(cdev, "----------------------------------------");
-	vmm_cprintf(cdev, "--------------------\n");
+
+	vmm_cprintf(cdev, "-----------------------------------");
+	for_each_online_cpu(cpu) {
+		vmm_cprintf(cdev, "------------");
+	}
+	vmm_cprintf(cdev, "\n");
+	vmm_cprintf(cdev, " %-7s %-15s %-10s", 
+			  "IRQ#", "Name", "Chip");
+	for_each_online_cpu(cpu) {
+		vmm_cprintf(cdev, " CPU%-8d", cpu);
+	}
+	vmm_cprintf(cdev, "\n");
+	vmm_cprintf(cdev, "-----------------------------------");
+	for_each_online_cpu(cpu) {
+		vmm_cprintf(cdev, "------------");
+	}
+	vmm_cprintf(cdev, "\n");
 	for (num = 0; num < count; num++) {
 		irq = vmm_host_irq_get(num);
 		if (vmm_host_irq_is_disabled(irq)) {
 			continue;
 		}
-		stats = vmm_host_irq_get_count(irq);
 		chip = vmm_host_irq_get_chip(irq);
-		vmm_cprintf(cdev, "| %-8d| %-18s| %-10s| %-15d|\n", 
+		vmm_cprintf(cdev, " %-7d %-15s %-10s", 
 				  num, irq->name, chip->name, stats);
+		for_each_online_cpu(cpu) {
+			stats = vmm_host_irq_get_count(irq, cpu);
+			vmm_cprintf(cdev, " %-11d", stats);
+		}
+		vmm_cprintf(cdev, "\n");
 	}
-	vmm_cprintf(cdev, "----------------------------------------");
-	vmm_cprintf(cdev, "--------------------\n");
+	vmm_cprintf(cdev, "-----------------------------------");
+	for_each_online_cpu(cpu) {
+		vmm_cprintf(cdev, "------------");
+	}
+	vmm_cprintf(cdev, "\n");
 }
 
 void cmd_host_ram_stats(struct vmm_chardev *cdev)

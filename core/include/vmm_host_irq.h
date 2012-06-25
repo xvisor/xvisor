@@ -126,7 +126,7 @@ struct vmm_host_irq {
 	u32 num;
 	const char *name;
 	u32 state;
-	u32 count;
+	u32 count[CONFIG_CPU_COUNT];
 	void * chip_data;
 	struct vmm_host_irq_chip * chip;
 	struct dlist hndl_list;
@@ -207,9 +207,12 @@ static inline bool vmm_host_irq_irq_inprogress(struct vmm_host_irq *irq)
 }
 
 /** Get host irq count from host irq instance */
-static inline u32 vmm_host_irq_get_count(struct vmm_host_irq *irq)
+static inline u32 vmm_host_irq_get_count(struct vmm_host_irq *irq, u32 cpu)
 {
-	return (irq) ? irq->count : 0;
+	if (cpu < CONFIG_CPU_COUNT) {
+		return (irq) ? irq->count[cpu] : 0;
+	}
+	return 0;
 }
 
 /** Get host irq chip instance from host irq instance */
