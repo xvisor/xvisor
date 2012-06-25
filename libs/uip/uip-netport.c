@@ -32,7 +32,7 @@
 #include <vmm_string.h>
 #include <vmm_spinlocks.h>
 #include <vmm_completion.h>
-#include <net/protocol.h>
+#include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netport.h>
 
@@ -126,12 +126,19 @@ int uip_netport_read(void)
 	struct vmm_mbuf *mbuf;
 	struct dlist *node;
 	unsigned long flags;
+	u64 timeout = 50000000;
 	struct uip_port_state *s = &uip_port_state;
 
 	vmm_spin_lock_irqsave(&s->lock, flags);
 	while(list_empty(&s->rxbuf)) {
 		vmm_spin_unlock_irqrestore(&s->lock, flags);
-		vmm_completion_wait(&s->rx_possible);
+		if(timeout) {
+			vmm_completion_wait_timeout(&s->rx_possible, &timeout);
+		} else {
+			/* We timed-out and buffer is still empty, so return */
+			uip_len = 0;
+			return uip_len;
+		}
 		vmm_spin_lock_irqsave(&s->lock, flags);
 	}
 	node = list_pop(&s->rxbuf);
