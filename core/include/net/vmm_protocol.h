@@ -32,6 +32,8 @@
 #include <vmm_types.h>
 #include <vmm_host_io.h>
 #include <vmm_timer.h>
+#include <vmm_string.h>
+#include <vmm_stdio.h>
 
 
 /**
