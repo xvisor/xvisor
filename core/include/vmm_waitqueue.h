@@ -46,6 +46,10 @@ u32 vmm_waitqueue_count(struct vmm_waitqueue * wq);
 /* Put current VCPU to sleep on given waitqueue */
 int vmm_waitqueue_sleep(struct vmm_waitqueue * wq);
 
+/* Put current VCPU to sleep on given waitqueue at most for timeout usecs */
+int vmm_waitqueue_sleep_timeout(struct vmm_waitqueue * wq,
+				u64 * timeout_usecs);
+
 /* Wakeup VCPU from its waitqueue */
 int vmm_waitqueue_wake(struct vmm_vcpu * vcpu);
 

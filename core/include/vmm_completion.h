@@ -37,6 +37,8 @@ static inline bool vmm_completion_done(struct vmm_completion * cmpl)
 
 #define vmm_completion_wait(cmpl)		vmm_waitqueue_sleep(cmpl)
 
+#define vmm_completion_wait_timeout(cmpl, nsec)	vmm_waitqueue_sleep_timeout(cmpl, nsec)
+
 #define vmm_completion_complete_first(cmpl)	vmm_waitqueue_wakefirst(cmpl)
 
 #define vmm_completion_complete_all(cmpl)	vmm_waitqueue_wakeall(cmpl)

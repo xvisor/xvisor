@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_timer.h>
 #include <vmm_scheduler.h>
 #include <vmm_waitqueue.h>
 
@@ -33,11 +34,19 @@ u32 vmm_waitqueue_count(struct vmm_waitqueue * wq)
 	return wq->vcpu_count;
 }
 
-int vmm_waitqueue_sleep(struct vmm_waitqueue * wq) 
+static void vmm_waitqueue_timeout(struct vmm_timer_event * event)
+{
+	struct vmm_vcpu *vcpu = event->priv;
+
+	vmm_waitqueue_wake(vcpu);
+}
+
+static int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
 	struct vmm_vcpu * vcpu;
+	struct vmm_timer_event *wake_event;
 
 	/* Sanity checks */
 	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
@@ -60,12 +69,23 @@ int vmm_waitqueue_sleep(struct vmm_waitqueue * wq)
 	/* Update VCPU waitqueue context */
 	vcpu->wq_priv = wq;
 
+	/* If timeout is required then create timer event */
+	if (timeout_nsecs) {
+		wake_event = vmm_timer_event_create(vcpu->name, 
+				&vmm_waitqueue_timeout, vcpu);
+		vmm_timer_event_start(wake_event, *timeout_nsecs);
+	}
+
 	/* Unlock waitqueue */
 	vmm_spin_unlock_irqrestore(&wq->lock, flags);
 	
 	/* Try to Pause VCPU */
 	if ((rc = vmm_manager_vcpu_pause(vcpu))) {
 		/* Failed to pause VCPU so remove from waitqueue */
+
+		if(timeout_nsecs) {
+			vmm_timer_event_destroy(wake_event);
+		}
 
 		/* Lock waitqueue */
 		vmm_spin_lock_irqsave(&wq->lock, flags);
@@ -87,7 +107,27 @@ int vmm_waitqueue_sleep(struct vmm_waitqueue * wq)
 		return rc;
 	}
 
+	/* If timeout was used than destroy timer event */
+	if(timeout_nsecs) {
+		u64 now, expiry;
+
+		expiry = wake_event->expiry_tstamp;
+		vmm_timer_event_destroy(wake_event);
+		now = vmm_timer_timestamp();
+		*timeout_nsecs = (now > expiry) ? 0 : (expiry - now);
+	}
+
 	return VMM_OK;
+}
+
+int vmm_waitqueue_sleep(struct vmm_waitqueue * wq) 
+{
+	return __vmm_waitqueue_sleep(wq, NULL);
+}
+
+int vmm_waitqueue_sleep_timeout(struct vmm_waitqueue * wq, u64 * timeout_usecs)
+{
+	return __vmm_waitqueue_sleep(wq, timeout_usecs);
 }
 
 int vmm_waitqueue_wake(struct vmm_vcpu * vcpu)
