@@ -157,8 +157,7 @@ static void twd_caliberate_freq(virtual_addr_t base,
 int __init twd_clockchip_init(virtual_addr_t base, 
 			      virtual_addr_t ref_counter_addr,
 			      u32 ref_counter_freq,
-			      u32 ppi_hirq,
-			      int rating)
+			      u32 ppi_hirq)
 {
 	int rc;
 	u32 cpu = vmm_smp_processor_id();
@@ -171,12 +170,12 @@ int __init twd_clockchip_init(virtual_addr_t base,
 	cc->base = base;
 	cc->clkchip.name = cc->name;
 	cc->clkchip.hirq = ppi_hirq;
-	cc->clkchip.rating = rating;
+	cc->clkchip.rating = 350;
 	cc->clkchip.cpumask = vmm_cpumask_of(cpu);
 	cc->clkchip.features = 
 		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
-	cc->clkchip.mult = vmm_clockchip_hz2mult(twd_freq_hz, 32);
-	cc->clkchip.shift = 32;
+	cc->clkchip.shift = 20;
+	cc->clkchip.mult = vmm_clockchip_hz2mult(twd_freq_hz, cc->clkchip.shift);
 	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &cc->clkchip);
 	cc->clkchip.max_delta_ns = 
 			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);

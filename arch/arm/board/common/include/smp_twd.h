@@ -45,7 +45,6 @@
 int twd_clockchip_init(virtual_addr_t base, 
 		       virtual_addr_t ref_counter_addr,
 		       u32 ref_counter_freq,
-		       u32 ppi_hirq,
-		       int rating);
+		       u32 ppi_hirq);
 
 #endif /* __SMP_TWD_H__ */

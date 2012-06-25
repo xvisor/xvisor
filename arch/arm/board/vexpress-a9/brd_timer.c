@@ -83,7 +83,7 @@ int __init arch_clockchip_init(void)
 
 	/* Initialize SMP twd local timer as clockchip */
 	rc = twd_clockchip_init(ca9x4_twd_base, ca9x4_sys_24mhz, 24000000, 
-				IRQ_CT_CA9X4_LOCALTIMER, 400);
+				IRQ_CT_CA9X4_LOCALTIMER);
 	if (rc) {
 		return rc;
 	}
