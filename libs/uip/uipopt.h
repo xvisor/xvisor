@@ -53,7 +53,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.4 2006/06/12 08:00:31 adam Exp $
+ * $Id: uipopt.h,v 1.1 2007/01/04 11:06:41 adamdunkels Exp $
  *
  */
 
@@ -86,6 +86,17 @@
 */
 
 /**
+ * Determines if uIP should use a fixed IP address or not.
+ *
+ * If uIP should use a fixed IP address, the settings are set in the
+ * uipopt.h file. If not, the macros uip_sethostaddr(),
+ * uip_setdraddr() and uip_setnetmask() should be used instead.
+ *
+ * \hideinitializer
+ */
+#define UIP_FIXEDADDR    0
+
+/**
  * Ping IP address asignment.
  *
  * uIP uses a "ping" packets for setting its own IP address if this
@@ -93,9 +104,27 @@
  * the destination IP address of the first incoming "ping" (ICMP echo)
  * packet will be used for setting the hosts IP address.
  *
+ * \note This works only if UIP_FIXEDADDR is 0.
+ *
  * \hideinitializer
  */
+#ifdef UIP_CONF_PINGADDRCONF
+#define UIP_PINGADDRCONF UIP_CONF_PINGADDRCONF
+#else /* UIP_CONF_PINGADDRCONF */
 #define UIP_PINGADDRCONF 0
+#endif /* UIP_CONF_PINGADDRCONF */
+
+
+/**
+ * Specifies if the uIP ARP module should be compiled with a fixed
+ * Ethernet MAC address or not.
+ *
+ * If this configuration option is 0, the macro uip_setethaddr() can
+ * be used to specify the Ethernet address at run-time.
+ *
+ * \hideinitializer
+ */
+#define UIP_FIXEDETHADDR 0
 
 /** @} */
 /*------------------------------------------------------------------------------*/
@@ -112,15 +141,70 @@
 #define UIP_TTL         64
 
 /**
+ * Turn on support for IP packet reassembly.
+ *
+ * uIP supports reassembly of fragmented IP packets. This features
+ * requires an additonal amount of RAM to hold the reassembly buffer
+ * and the reassembly code size is approximately 700 bytes.  The
+ * reassembly buffer is of the same size as the uip_buf buffer
+ * (configured by UIP_BUFSIZE).
+ *
+ * \note IP packet reassembly is not heavily tested.
+ *
+ * \hideinitializer
+ */
+#define UIP_REASSEMBLY 0
+
+/**
  * The maximum time an IP fragment should wait in the reassembly
  * buffer before it is dropped.
  *
  */
-#define UIP_REASS_MAXAGE 90
+#define UIP_REASS_MAXAGE 40
 
 /** @} */
 
+/*------------------------------------------------------------------------------*/
+/**
+ * \name UDP configuration options
+ * @{
+ */
+
+/**
+ * Toggles wether UDP support should be compiled in or not.
+ *
+ * \hideinitializer
+ */
+#ifdef UIP_CONF_UDP
+#define UIP_UDP UIP_CONF_UDP
+#else /* UIP_CONF_UDP */
+#define UIP_UDP           0
+#endif /* UIP_CONF_UDP */
+
+/**
+ * Toggles if UDP checksums should be used or not.
+ *
+ * \note Support for UDP checksums is currently not included in uIP,
+ * so this option has no function.
+ *
+ * \hideinitializer
+ */
+#ifdef UIP_CONF_UDP_CHECKSUMS
+#define UIP_UDP_CHECKSUMS UIP_CONF_UDP_CHECKSUMS
+#else
+#define UIP_UDP_CHECKSUMS 0
+#endif
+
+/**
+ * The maximum amount of concurrent UDP connections.
+ *
+ * \hideinitializer
+ */
+#ifdef UIP_CONF_UDP_CONNS
+#define UIP_UDP_CONNS UIP_CONF_UDP_CONNS
+#else /* UIP_CONF_UDP_CONNS */
 #define UIP_UDP_CONNS    10
+#endif /* UIP_CONF_UDP_CONNS */
 
 /**
  * The name of the function that should be called when UDP datagrams arrive.
@@ -157,9 +241,36 @@
  *
  * \hideinitializer
  */
-#define UIP_CONNS       20
+#ifndef UIP_CONF_MAX_CONNECTIONS
+#define UIP_CONNS       10
+#else /* UIP_CONF_MAX_CONNECTIONS */
+#define UIP_CONNS UIP_CONF_MAX_CONNECTIONS
+#endif /* UIP_CONF_MAX_CONNECTIONS */
 
+
+/**
+ * The maximum number of simultaneously listening TCP ports.
+ *
+ * Each listening TCP port requires 2 bytes of memory.
+ *
+ * \hideinitializer
+ */
+#ifndef UIP_CONF_MAX_LISTENPORTS
 #define UIP_LISTENPORTS 20
+#else /* UIP_CONF_MAX_LISTENPORTS */
+#define UIP_LISTENPORTS UIP_CONF_MAX_LISTENPORTS
+#endif /* UIP_CONF_MAX_LISTENPORTS */
+
+/**
+ * Determines if support for TCP urgent data notification should be
+ * compiled in.
+ *
+ * Urgent data (out-of-band data) is a rarely used TCP feature that
+ * very seldom would be required.
+ *
+ * \hideinitializer
+ */
+#define UIP_URGDATA      0
 
 /**
  * The initial retransmission timeout counted in timer pulses.
@@ -193,7 +304,20 @@
  */
 #define UIP_TCP_MSS     (UIP_BUFSIZE - UIP_LLH_LEN - UIP_TCPIP_HLEN)
 
+/**
+ * The size of the advertised receiver's window.
+ *
+ * Should be set low (i.e., to the size of the uip_buf buffer) is the
+ * application is slow to process incoming data, or high (32768 bytes)
+ * if the application processes data quickly.
+ *
+ * \hideinitializer
+ */
+#ifndef UIP_CONF_RECEIVE_WINDOW
 #define UIP_RECEIVE_WINDOW UIP_TCP_MSS
+#else
+#define UIP_RECEIVE_WINDOW UIP_CONF_RECEIVE_WINDOW
+#endif
 
 /**
  * How long a connection should stay in the TIME_WAIT state.
@@ -219,7 +343,11 @@
  *
  * \hideinitializer
  */
+#ifdef UIP_CONF_ARPTAB_SIZE
+#define UIP_ARPTAB_SIZE UIP_CONF_ARPTAB_SIZE
+#else
 #define UIP_ARPTAB_SIZE 8
+#endif
 
 /**
  * The maxium age of ARP table entries measured in 10ths of seconds.
@@ -247,7 +375,12 @@
  *
  * \hideinitializer
  */
-#define UIP_BUFSIZE     800
+#ifndef UIP_CONF_BUFFER_SIZE
+#define UIP_BUFSIZE     400
+#else /* UIP_CONF_BUFFER_SIZE */
+#define UIP_BUFSIZE UIP_CONF_BUFFER_SIZE
+#endif /* UIP_CONF_BUFFER_SIZE */
+
 
 /**
  * Determines if statistics support should be compiled in.
@@ -256,7 +389,11 @@
  *
  * \hideinitializer
  */
+#ifndef UIP_CONF_STATISTICS
 #define UIP_STATISTICS  0
+#else /* UIP_CONF_STATISTICS */
+#define UIP_STATISTICS UIP_CONF_STATISTICS
+#endif /* UIP_CONF_STATISTICS */
 
 /**
  * Determines if logging of certain events should be compiled in.
@@ -267,7 +404,11 @@
  *
  * \hideinitializer
  */
+#ifndef UIP_CONF_LOGGING
 #define UIP_LOGGING     0
+#else /* UIP_CONF_LOGGING */
+#define UIP_LOGGING     UIP_CONF_LOGGING
+#endif /* UIP_CONF_LOGGING */
 
 /**
  * Broadcast support.
@@ -278,7 +419,11 @@
  * \hideinitializer
  *
  */
-#define UIP_BROADCAST 1
+#ifndef UIP_CONF_BROADCAST
+#define UIP_BROADCAST 0
+#else /* UIP_CONF_BROADCAST */
+#define UIP_BROADCAST UIP_CONF_BROADCAST
+#endif /* UIP_CONF_BROADCAST */
 
 /**
  * Print out a uIP log message.
@@ -297,7 +442,11 @@ void uip_log(char *msg);
  *
  * \hideinitializer
  */
+#ifdef UIP_CONF_LLH_LEN
+#define UIP_LLH_LEN UIP_CONF_LLH_LEN
+#else /* UIP_CONF_LLH_LEN */
 #define UIP_LLH_LEN     14
+#endif /* UIP_CONF_LLH_LEN */
 
 /** @} */
 /*------------------------------------------------------------------------------*/
@@ -325,5 +474,66 @@ void uip_log(char *msg);
 #else /* UIP_CONF_BYTE_ORDER */
 #define UIP_BYTE_ORDER     UIP_LITTLE_ENDIAN
 #endif /* UIP_CONF_BYTE_ORDER */
+
+/** @} */
+/*------------------------------------------------------------------------------*/
+
+/**
+ * \name Appication specific configurations
+ * @{
+ *
+ * An uIP application is implemented using a single application
+ * function that is called by uIP whenever a TCP/IP event occurs. The
+ * name of this function must be registered with uIP at compile time
+ * using the UIP_APPCALL definition.
+ *
+ * uIP applications can store the application state within the
+ * uip_conn structure by specifying the type of the application
+ * structure by typedef:ing the type uip_tcp_appstate_t and uip_udp_appstate_t.
+ *
+ * The file containing the definitions must be included in the
+ * uipopt.h file.
+ *
+ * The following example illustrates how this can look.
+ \code
+
+void httpd_appcall(void);
+#define UIP_APPCALL     httpd_appcall
+
+struct httpd_state {
+  u8_t state;
+  u16_t count;
+  char *dataptr;
+  char *script;
+};
+typedef struct httpd_state uip_tcp_appstate_t
+ \endcode
+ */
+
+/**
+ * \var #define UIP_APPCALL
+ *
+ * The name of the application function that uIP should call in
+ * response to TCP/IP events.
+ *
+ */
+
+/**
+ * \var typedef uip_tcp_appstate_t
+ *
+ * The type of the application state that is to be stored in the
+ * uip_conn structure. This usually is typedef:ed to a struct holding
+ * application state information.
+ */
+
+/**
+ * \var typedef uip_udp_appstate_t
+ *
+ * The type of the application state that is to be stored in the
+ * uip_conn structure. This usually is typedef:ed to a struct holding
+ * application state information.
+ */
+/** @} */
+/** @} */
 
 #endif /* __UIPOPT_H__ */
