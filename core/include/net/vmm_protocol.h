@@ -173,7 +173,7 @@ struct eth_header {
  *
  * Returns str
  */
-static inline char *ethaddr_to_str(char *str, u8 *addr)
+static inline char *ethaddr_to_str(char *str, const u8 *addr)
 {
 	vmm_sprintf(str, "%02X:%02X:%02X:%02X:%02X:%02X", addr[0], addr[1], 
 			addr[2], addr[3], addr[4], addr[5]);
@@ -189,7 +189,7 @@ static inline char *ethaddr_to_str(char *str, u8 *addr)
  *
  * Returns str
  */
-static inline char *ip4addr_to_str(char *str, u8 *addr)
+static inline char *ip4addr_to_str(char *str, const u8 *addr)
 {
 	vmm_sprintf(str, "%d.%d.%d.%d",	addr[0], addr[1], addr[2], addr[3]);
 	return str;

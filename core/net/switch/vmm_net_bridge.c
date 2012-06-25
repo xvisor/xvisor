@@ -171,7 +171,6 @@ int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 #ifdef DEBUG_NETBRIDGE
 	const u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));
 	const u8 *dstmac = ether_dstmac(mtod(mbuf, u8 *));
-	int i;
 	char tname[30];
 
 	DPRINTF("netbridge: got pkt with srcaddr[%s]", ethaddr_to_str(tname, srcmac));
@@ -179,15 +178,15 @@ int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 	DPRINTF(", ethertype: 0x%04X\n", ether_type(mtod(mbuf, u8 *)));
 #ifdef DUMP_NETBRIDGE_PKT
 	if(ether_type(mtod(mbuf, u8 *)) == 0x0806	/* ARP */) {
-		DPRINTF("\tARP-HType: 0x%04X",	  arp_htype(ether_payload(mtod(mbuf, u8 *)));
-		DPRINTF("\n\tARP-PType: 0x%04X",  arp_ptype(ether_payload(mtod(mbuf, u8 *)));
-		DPRINTF("\n\tARP-Hlen: 0x%02X",   arp_hlen(ether_payload(mtod(mbuf, u8 *)));
-		DPRINTF("\n\tARP-Plen: 0x%02X",   arp_plen(ether_payload(mtod(mbuf, u8 *)));
-		DPRINTF("\n\tARP-Oper: 0x%04X",   arp_oper(ether_payload(mtod(mbuf, u8 *)));
-		DPRINTF("\n\tARP-SHA: %s",  	  ethaddr_to_str(tname, arp_sha(ether_payload((mtod(mbuf, u8 *)))));
-		DPRINTF("\n\tARP-SPA: %s",  	  ipaddr_to_str(tname, arp_spa(ether_payload((mtod(mbuf, u8 *)))));
-		DPRINTF("\n\tARP-THA: %s",  	  ethaddr_to_str(tname, arp_tha(ether_payload((mtod(mbuf, u8 *)))));
-		DPRINTF("\n\tARP-TPA: %s",  	  ipaddr_to_str(tname, arp_tpa(ether_payload((mtod(mbuf, u8 *)))));
+		DPRINTF("\tARP-HType: 0x%04X",	  arp_htype(ether_payload(mtod(mbuf, u8 *))));
+		DPRINTF("\n\tARP-PType: 0x%04X",  arp_ptype(ether_payload(mtod(mbuf, u8 *))));
+		DPRINTF("\n\tARP-Hlen: 0x%02X",   arp_hlen(ether_payload(mtod(mbuf, u8 *))));
+		DPRINTF("\n\tARP-Plen: 0x%02X",   arp_plen(ether_payload(mtod(mbuf, u8 *))));
+		DPRINTF("\n\tARP-Oper: 0x%04X",   arp_oper(ether_payload(mtod(mbuf, u8 *))));
+		DPRINTF("\n\tARP-SHA: %s",  	  ethaddr_to_str(tname, arp_sha(ether_payload((mtod(mbuf, u8 *))))));
+		DPRINTF("\n\tARP-SPA: %s",  	  ip4addr_to_str(tname, arp_spa(ether_payload((mtod(mbuf, u8 *))))));
+		DPRINTF("\n\tARP-THA: %s",  	  ethaddr_to_str(tname, arp_tha(ether_payload((mtod(mbuf, u8 *))))));
+		DPRINTF("\n\tARP-TPA: %s",  	  ip4addr_to_str(tname, arp_tpa(ether_payload((mtod(mbuf, u8 *))))));
 		DPRINTF("\n");
 	}
 #endif
