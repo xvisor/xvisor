@@ -64,7 +64,7 @@ static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 	struct vmm_vcpu *vcpu;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, "| %-5s| %-6s| %-9s| %-16s| %-33s|\n", 
+	vmm_cprintf(cdev, " %-6s %-7s %-10s %-17s %-35s\n", 
 		   "ID ", "Prio", "State", "Name", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
@@ -98,11 +98,11 @@ static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 		}
 		if (vcpu->node) {
 			vmm_devtree_getpath(path, vcpu->node);
-			vmm_cprintf(cdev, "| %-5d| %-6d| %-9s| %-16s| %-33s|\n", 
+			vmm_cprintf(cdev, " %-6d %-7d %-10s %-17s %-35s\n", 
 					  id, vcpu->priority, 
 					  state, vcpu->name, path);
 		} else {
-			vmm_cprintf(cdev, "| %-5d| %-6d| %-9s| %-16s| %-33s|\n", 
+			vmm_cprintf(cdev, " %-6d %-7d %-10s %-17s %-35s\n", 
 					  id, vcpu->priority, 
 					  state, vcpu->name, "(NA)");
 		}
