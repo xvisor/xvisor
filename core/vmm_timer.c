@@ -510,6 +510,11 @@ int __init vmm_timer_init(void)
 		if ((rc = vmm_timecounter_init(&tlcp->tc, cs, 0))) {
 			return rc;
 		}
+
+		/* Start timecounter */
+		if ((rc = vmm_timecounter_start(&tlcp->tc))) {
+			return rc;
+		}
 	} else {
 		/* Initialize timecounter wrapper of secondary CPUs
 		 * such that time stamps visible on all CPUs is same;

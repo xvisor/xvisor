@@ -51,7 +51,7 @@ void cmd_thread_list(struct vmm_chardev *cdev)
 	struct vmm_thread *tinfo;
 	vmm_cprintf(cdev, "----------------------------------------"
 		   	  "----------------------------------------\n");
-	vmm_cprintf(cdev, "| %-5s| %-6s| %-9s| %-51s|\n", 
+	vmm_cprintf(cdev, " %-6s %-7s %-10s %-53s\n", 
 		   	  "ID ", "Prio", "State", "Name");
 	vmm_cprintf(cdev, "----------------------------------------"
 		   	  "----------------------------------------\n");
@@ -78,7 +78,7 @@ void cmd_thread_list(struct vmm_chardev *cdev)
 		if ((rc = vmm_threads_get_name(name, tinfo))) {
 			vmm_strcpy(name, "(NA)");
 		}
-		vmm_cprintf(cdev, "| %-5d| %-6d| %-9s| %-51s|\n", 
+		vmm_cprintf(cdev, " %-6d %-7d %-10s %-53s\n", 
 				  vmm_threads_get_id(tinfo), 
 				  vmm_threads_get_priority(tinfo), 
 				  state, name);

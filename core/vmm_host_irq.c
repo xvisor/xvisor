@@ -21,13 +21,14 @@
  * @brief source code for host interrupts
  */
 
-#include <arch_cpu_irq.h>
-#include <arch_host_irq.h>
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_spinlocks.h>
+#include <vmm_smp.h>
 #include <vmm_heap.h>
 #include <vmm_host_irq.h>
+#include <arch_cpu_irq.h>
+#include <arch_host_irq.h>
 
 struct vmm_host_irqs_ctrl {
 	vmm_spinlock_t lock;
@@ -44,7 +45,7 @@ int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs)
 	u32 hirq_num = arch_host_irq_active(cpu_irq_no);
 	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
-		irq->count++;
+		irq->count[vmm_smp_processor_id()]++;
 		if (!(irq->state & VMM_IRQ_STATE_PER_CPU)) {
 			irq->state |= VMM_IRQ_STATE_INPROGRESS;
 		}
@@ -309,7 +310,7 @@ int vmm_host_irq_unregister(u32 hirq_num,
 int __init vmm_host_irq_init(void)
 {
 	int ret;
-	u32 ite;
+	u32 ite, cpu;
 
 	/* Clear the memory of control structure */
 	vmm_memset(&hirqctrl, 0, sizeof(hirqctrl));
@@ -328,7 +329,9 @@ int __init vmm_host_irq_init(void)
 		hirqctrl.irq[ite].state = (VMM_IRQ_TYPE_NONE | 
 					   VMM_IRQ_STATE_DISABLED | 
 					   VMM_IRQ_STATE_MASKED);
-		hirqctrl.irq[ite].count = 0;
+		for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
+			hirqctrl.irq[ite].count[cpu] = 0;
+		}
 		hirqctrl.irq[ite].chip = NULL;
 		hirqctrl.irq[ite].chip_data = NULL;
 		INIT_LIST_HEAD(&hirqctrl.irq[ite].hndl_list);

@@ -451,7 +451,7 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 
 	INIT_COMPLETION(&port->read_possible);
 
-	rc = vmm_devdrv_ioremap(dev, &port->base, 0);
+	rc = vmm_devdrv_regmap(dev, &port->base, 0);
 	if(rc) {
 		goto free_port;
 	}

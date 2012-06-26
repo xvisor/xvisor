@@ -27,8 +27,10 @@
 #include "uip-arp.h"
 #include "uip-netport.h"
 #include <net/vmm_net.h>
+#include <net/vmm_netstack.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_string.h>
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_modules.h>
@@ -64,6 +66,8 @@ static int uip_loop(void *data)
 
 	uip_ipaddr(ipaddr, 192,168,0,1);
 	uip_sethostaddr(ipaddr);
+	uip_ipaddr(ipaddr, 255,255,255,0);
+	uip_setnetmask(ipaddr);
 
 	while(1) {
 		uip_len = uip_netport_read();
@@ -136,10 +140,56 @@ static int uip_loop(void *data)
 				uip_arp_timer();
 			}
 		}
-		vmm_scheduler_yield();
 	}
 	return VMM_OK;
 }
+
+int uip_set_ipaddr(u8 *addr)
+{
+	uip_ipaddr_t ipaddr;
+	uip_ipaddr(ipaddr, addr[0], addr[1], addr[2], addr[3]);
+	uip_sethostaddr(ipaddr);
+	return VMM_OK;
+}
+
+int uip_get_ipaddr(u8 *addr)
+{
+	uip_ipaddr_t ipaddr;
+	uip_gethostaddr(ipaddr);
+	vmm_memcpy(addr, ipaddr, 4);
+	return VMM_OK;
+}
+
+int uip_set_ipmask(u8 *addr)
+{
+	uip_ipaddr_t ipaddr;
+	uip_ipaddr(ipaddr, addr[0], addr[1], addr[2], addr[3]);
+	uip_setnetmask(ipaddr);
+	return VMM_OK;
+}
+
+int uip_get_ipmask(u8 *addr)
+{
+	uip_ipaddr_t ipaddr;
+	uip_getnetmask(ipaddr);
+	vmm_memcpy(addr, ipaddr, 4);
+	return VMM_OK;
+}
+
+int uip_get_hwaddr(u8 *addr)
+{
+	vmm_memcpy(addr, &uip_ethaddr, 6);
+	return VMM_OK;
+}
+
+static struct vmm_netstack uip_stack  = {
+	.name = "uIP",
+	.set_ipaddr = uip_set_ipaddr,
+	.get_ipaddr = uip_get_ipaddr,
+	.set_ipmask = uip_set_ipmask,
+	.get_ipmask = uip_get_ipmask,
+	.get_hwaddr = uip_get_hwaddr,
+};
 
 /*---------------------------------------------------------------------------*/
 static int __init daemon_uip_init(void)
@@ -170,7 +220,6 @@ static int __init daemon_uip_init(void)
 		uip_time_slice = VMM_THREAD_DEF_TIME_SLICE;
 	}
 
-	/* Create mterm thread */
 	uip_thread = vmm_threads_create("uip", 
 					   &uip_loop, 
 					   NULL, 
@@ -180,8 +229,9 @@ static int __init daemon_uip_init(void)
 		vmm_panic("Creation of uip thread failed.\n");
 	}
 
-	/* Start the mterm thread */
 	vmm_threads_start(uip_thread);
+
+	vmm_netstack_register(&uip_stack);
 
 	return VMM_OK;
 }

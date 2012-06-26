@@ -677,6 +677,8 @@ static int gic_dist_write(struct gic_state *s, int cpu, u32 offset,
 
 static int gic_cpu_read(struct gic_state * s, u32 cpu, u32 offset, u32 *dst)
 {
+	int rc = VMM_OK;
+
 	if (!s || !dst) {
 		return VMM_EFAIL;
 	}
@@ -706,18 +708,20 @@ static int gic_cpu_read(struct gic_state * s, u32 cpu, u32 offset, u32 *dst)
 		*dst = s->current_pending[cpu];
 		break;
 	default:
-		return VMM_EFAIL;
+		rc = VMM_EFAIL;
 		break;
 	}
 
 	vmm_spin_unlock(&s->lock);
 
-	return VMM_OK;
+	return rc;
 }
 
 static int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset, 
 		  u32 src_mask, u32 src)
 {
+	int rc = VMM_OK;
+
 	if (!s) {
 		return VMM_EFAIL;
 	}
@@ -743,7 +747,7 @@ static int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset,
 		gic_complete_irq(s, cpu, src & 0x3ff);
 		break;
 	default:
-		return VMM_EFAIL;
+		rc = VMM_EFAIL;
 		break;
 	};
 
@@ -751,7 +755,7 @@ static int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset,
 
 	vmm_spin_unlock(&s->lock);
 
-	return VMM_OK;
+	return rc;
 }
 
 int gic_reg_read(struct gic_state *s, physical_addr_t offset, u32 *dst)

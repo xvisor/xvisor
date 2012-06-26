@@ -27,7 +27,7 @@
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
-#include <net/ethernet.h>
+#include <net/vmm_protocol.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
 
@@ -132,14 +132,10 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 	nsw->enable_port(port);
 
 #ifdef CONFIG_VERBOSE_MODE
-	vmm_printf("NET: Port(\"%s\") added to Switch(\"%s\"), MAC",
-		   port->name, nsw->name);
 	{
-		int i;
-		for (i = 0; i < 6; i++) {
-			vmm_printf(":%02x", port->macaddr[i]);
-		}
-		vmm_printf("\n");
+		char tname[30];
+		vmm_printf("NET: Port(\"%s\") added to Switch(\"%s\"), MAC[%s]\n",
+			   port->name, nsw->name, ethaddr_to_str(tname, port->macaddr));
 	}
 #endif
 

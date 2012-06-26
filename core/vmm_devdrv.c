@@ -199,8 +199,8 @@ int vmm_devdrv_remove(struct vmm_devtree_node * node,
 	return rc;
 }
 
-int vmm_devdrv_ioremap(struct vmm_device * dev, 
-			virtual_addr_t * addr, int regset)
+int vmm_devdrv_regmap(struct vmm_device * dev, 
+		      virtual_addr_t * addr, int regset)
 {
 	const char *aval;
 	physical_addr_t pa;

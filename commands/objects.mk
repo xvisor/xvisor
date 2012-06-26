@@ -37,6 +37,7 @@ commands-objs-$(CONFIG_CMD_HEAP)+= cmd_heap.o
 commands-objs-$(CONFIG_CMD_WALLCLOCK)+= cmd_wallclock.o
 commands-objs-$(CONFIG_CMD_RTCDEV)+= cmd_rtcdev.o
 commands-objs-$(CONFIG_CMD_BLOCKDEV)+= cmd_blockdev.o
+commands-objs-$(CONFIG_CMD_NET)+= cmd_net.o
 commands-objs-$(CONFIG_CMD_PING)+= cmd_ping.o
 commands-objs-$(CONFIG_CMD_PROFILE)+= cmd_profile.o
 commands-objs-$(CONFIG_CMD_THREADTEST)+= cmd_threadtest.o

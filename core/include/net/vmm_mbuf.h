@@ -87,6 +87,7 @@
 #ifndef __VMM_MBUF_H_
 #define __VMM_MBUF_H_
 
+#include <list.h>
 #include <vmm_types.h>
 #include <vmm_macros.h>
 #include <vmm_stdio.h>
@@ -120,6 +121,7 @@ struct m_ext {
 };
 
 struct vmm_mbuf {
+	struct dlist m_list;		/* for list of mbufs */
 	struct m_hdr m_hdr;
 	struct m_pkthdr m_pkthdr;
 	struct m_ext m_ext;
@@ -137,6 +139,7 @@ struct vmm_mbuf {
 #define m_extfree	m_ext.ext_free
 #define m_extarg	m_ext.ext_arg
 
+#define m_list_entry(l)	list_entry(l, struct vmm_mbuf, m_list)
 /*
  * Macros for type conversion
  * mtod(m,t) -	convert mbuf pointer to data pointer of correct type

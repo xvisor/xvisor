@@ -67,7 +67,7 @@ void cmd_guest_list(struct vmm_chardev *cdev)
 	struct vmm_guest *guest;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, "| %-5s| %-16s| %-52s|\n", 
+	vmm_cprintf(cdev, " %-6s %-18s %-53s\n", 
 			 "ID ", "Name", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
@@ -77,7 +77,7 @@ void cmd_guest_list(struct vmm_chardev *cdev)
 			continue;
 		}
 		vmm_devtree_getpath(path, guest->node);
-		vmm_cprintf(cdev, "| %-5d| %-16s| %-52s|\n", 
+		vmm_cprintf(cdev, " %-6d %-18s %-53s\n", 
 				  id, guest->node->name, path);
 	}
 	vmm_cprintf(cdev, "----------------------------------------"

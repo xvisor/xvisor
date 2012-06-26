@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file ethernet.h
+ * @file vmm_protocol.h
  * @author Sukanto Ghosh <sukantoghosh@gmail.com>
- * @brief Ethernet Helper
+ * @brief Helper utils for various network protocols
  *
  * Portions of this file have been adapted from linux source header
  * include/linux/etherdevice.hi which is licensed under GPLv2:
@@ -27,12 +27,14 @@
  * 	Ross Biro
  *	Fred N. van Kempen <waltje@uWalt.NL.Mugnet.ORG>
  *	Alan Cox <gw4pts@gw4pts.ampr.org> 
- *
  */
 
 #include <vmm_types.h>
 #include <vmm_host_io.h>
 #include <vmm_timer.h>
+#include <vmm_string.h>
+#include <vmm_stdio.h>
+
 
 /**
  * is_zero_ether_addr - Determine if give Ethernet address is all zeros.
@@ -153,7 +155,67 @@ static inline unsigned compare_ether_addr(const u8 *addr1, const u8 *addr2)
 	return ((a[0] ^ b[0]) | (a[1] ^ b[1]) | (a[2] ^ b[2])) != 0;
 }
 
-#define ether_srcmac(ether_hdr)	((u8 *)(ether_hdr)+6)
-#define ether_dstmac(ether_hdr)	((u8 *)(ether_hdr)+0)
-#define ether_type(ether_hdr)	vmm_be16_to_cpu(*(u16 *)((u8 *)(ether_hdr)+12))
+struct eth_header {
+	u8 dstmac[6];
+	u8 srcmac[6];
+	u16 ethertype;
+	u8 payload[0];
+} __packed;
+
+#define ether_srcmac(ether_frame)	(((struct eth_header *)(ether_frame))->srcmac)
+#define ether_dstmac(ether_frame)	(((struct eth_header *)(ether_frame))->dstmac)
+#define ether_type(ether_frame)		vmm_be16_to_cpu(((struct eth_header *)(ether_frame))->ethertype)
+#define ether_payload(ether_frame)	(((struct eth_header *)(ether_frame))->payload)
+
+/**
+ * ethaddr_to_str - Convert an ethernet address to string
+ *
+ * @str: Destination resultant string
+ * @addr: ethernet address in network byte order (bug-endian)
+ *
+ * Returns str
+ */
+static inline char *ethaddr_to_str(char *str, const u8 *addr)
+{
+	vmm_sprintf(str, "%02X:%02X:%02X:%02X:%02X:%02X", addr[0], addr[1], 
+			addr[2], addr[3], addr[4], addr[5]);
+	return str;
+}
+
+
+/**
+ * ipddr_to_str - Convert an ipv4 address to string
+ *
+ * @str: Destination resultant string
+ * @addr: IPv4 address in network byte order (bug-endian)
+ *
+ * Returns str
+ */
+static inline char *ip4addr_to_str(char *str, const u8 *addr)
+{
+	vmm_sprintf(str, "%d.%d.%d.%d",	addr[0], addr[1], addr[2], addr[3]);
+	return str;
+}
+
+struct arp_header {
+	u16 htype;
+	u16 ptype;
+	u8 hlen;
+	u8 plen;
+	u16 oper;
+	u8 sha[6];
+	u8 spa[4];
+	u8 tha[6];
+	u8 tpa[4];
+} __packed;
+
+#define	arp_htype(arp_frame)	vmm_be16_to_cpu(((struct arp_header *)(arp_frame))->htype) 
+#define	arp_ptype(arp_frame)	vmm_be16_to_cpu(((struct arp_header *)(arp_frame))->ptype) 
+#define	arp_hlen(arp_frame)	(((struct arp_header *)(arp_frame))->hlen) 
+#define	arp_plen(arp_frame)	(((struct arp_header *)(arp_frame))->plen) 
+#define	arp_oper(arp_frame)	vmm_be16_to_cpu(((struct arp_header *)(arp_frame))->oper) 
+#define	arp_sha(arp_frame)	(((struct arp_header *)(arp_frame))->sha) 
+#define	arp_spa(arp_frame)	(((struct arp_header *)(arp_frame))->spa) 
+#define	arp_tha(arp_frame)	(((struct arp_header *)(arp_frame))->tha) 
+#define	arp_tpa(arp_frame)	(((struct arp_header *)(arp_frame))->tpa) 
 

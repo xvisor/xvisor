@@ -48,7 +48,7 @@
 #include <vmm_scheduler.h>
 #include <vmm_stdio.h>
 #include <mathlib.h>
-#include <net/ethernet.h>
+#include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_net.h>
 #include <net/vmm_netswitch.h>
@@ -369,13 +369,10 @@ static void gpt_event(struct vmm_timer_event *event)
 
 static void lan9118_mac_changed(struct lan9118_state *s)
 {
-#ifdef DEBUG_LAN9118
-	int i;
-	DPRINTF("MAC of \"%s\" changed to ", s->port->name);
-	for (i = 0; i < 6; i++) {
-		DPRINTF("%02x:", vmm_netport_mac(s->port)[i]);
-	}
-	DPRINTF("\b \n");
+#if DEBUG_LAN9118
+	char tname[30];
+	DPRINTF("MAC of \"%s\" changed to [%s]\n", s->port->name,
+		ethaddr_to_str(tname, vmm_netport_mac(s->port)));
 #endif
 }
 
@@ -736,18 +733,12 @@ static void do_tx_packet(struct lan9118_state *s)
 	u32 status;
 #ifdef DEBUG_LAN9118
 	int i;
+	char tname[30];
 	struct vmm_mbuf *mbuf = txp_mbuf(s);
 
-	DPRINTF("LAN9118: %s pkt with srcaddr:", __func__);
-	for (i = 0; i < 6; i++) {
-		DPRINTF("%02x:", ether_srcmac(mtod(mbuf, u8 *))[i]);
-	}
-	DPRINTF("\b ");
-	DPRINTF(", dstaddr:");
-	for (i = 0; i < 6; i++) {
-		DPRINTF("%02x:", ether_dstmac(mtod(mbuf, u8 *))[i]);
-	}
-	DPRINTF("\b ");
+	DPRINTF("LAN9118: %s pkt with srcaddr[%s]", __func__, 
+			ethaddr_to_str(tname, ether_srcmac(mtod(mbuf, u8 *))));
+	DPRINTF(", dstaddr[%s]", ethaddr_to_str(tname, ether_dstmac(mtod(mbuf, u8 *))));
 	DPRINTF(", ethertype: 0x%04X\n", ether_type(mtod(mbuf, u8 *)));
 	DPRINTF("LAN9118: %s[mbuf(data: 0x%X, len: %d)] to ", __func__,
 			   txp_mbuf(s)->m_data, txp_mbuf(s)->m_len);

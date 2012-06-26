@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Anup Patel.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,31 +16,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_completion.h
+ * @file cpu_delay.S
  * @author Anup Patel (anup@brainfault.org)
- * @brief Header file of completion locks for Orphan VCPU (or Thread).
+ * @brief Low-level implementation of delay functions 
  */
 
-#ifndef __VMM_COMPLETION_H__
-#define __VMM_COMPLETION_H__
+	/* 
+	 * arch specific delay loop
+	 */
+	.globl arch_delay_loop
+arch_delay_loop:
+	subs	r0, r0, #1
+	bhi	arch_delay_loop
+	mov	pc, lr
 
-#include <vmm_waitqueue.h>
-
-#define vmm_completion				vmm_waitqueue
-
-#define INIT_COMPLETION(cptr)			INIT_WAITQUEUE(cptr)
-
-static inline bool vmm_completion_done(struct vmm_completion * cmpl)
-{
-	return vmm_waitqueue_count(cmpl) ? FALSE : TRUE;
-}
-
-#define vmm_completion_wait(cmpl)		vmm_waitqueue_sleep(cmpl)
-
-#define vmm_completion_wait_timeout(cmpl, nsec)	vmm_waitqueue_sleep_timeout(cmpl, nsec)
-
-#define vmm_completion_complete_first(cmpl)	vmm_waitqueue_wakefirst(cmpl)
-
-#define vmm_completion_complete_all(cmpl)	vmm_waitqueue_wakeall(cmpl)
-
-#endif /* __VMM_COMPLETION_H__ */

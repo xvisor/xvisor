@@ -28,8 +28,10 @@
 #include <vexpress_plat.h>
 #include <sp810.h>
 #include <sp804_timer.h>
+#include <smp_twd.h>
 
-static virtual_addr_t ca9x4_timer0_base;
+static virtual_addr_t ca9x4_twd_base;
+static virtual_addr_t ca9x4_sys_24mhz;
 static virtual_addr_t ca9x4_timer1_base;
 
 int __init arch_clocksource_init(void)
@@ -67,28 +69,21 @@ int __init arch_clocksource_init(void)
 int __init arch_clockchip_init(void)
 {
 	int rc;
-	u32 val;
-	virtual_addr_t sctl_base;
 
-	/* Map control registers */
-	sctl_base = vmm_host_iomap(V2M_SYSCTL, 0x1000);
-
-	/* Select 1MHz TIMCLK as the reference clock for SP804 timers */
-	val = vmm_readl((void *)sctl_base) | SCCTRL_TIMEREN0SEL_TIMCLK;
-	vmm_writel(val, (void *)sctl_base);
-
-	/* Unmap control register */
-	rc = vmm_host_iounmap(sctl_base, 0x1000);
-	if (rc) {
-		return rc;
+	/* Map reference counter register */
+	if (!ca9x4_sys_24mhz) {
+		ca9x4_sys_24mhz = 
+			vmm_host_iomap(V2M_SYSREGS + V2M_SYS_24MHZ, 0x1000);
 	}
 
-	/* Map timer0 registers */
-	ca9x4_timer0_base = vmm_host_iomap(V2M_TIMER0, 0x1000);
+	/* Map SMP twd local timer registers */
+	if (!ca9x4_twd_base) {
+		ca9x4_twd_base = vmm_host_iomap(A9_MPCORE_TWD, 0x1000);
+	}
 
-	/* Initialize timer0 as clockchip */
-	rc = sp804_clockchip_init(ca9x4_timer0_base, IRQ_V2M_TIMER0, 
-				  "sp804_timer0", 300, 1000000, 0);
+	/* Initialize SMP twd local timer as clockchip */
+	rc = twd_clockchip_init(ca9x4_twd_base, ca9x4_sys_24mhz, 24000000, 
+				IRQ_CT_CA9X4_LOCALTIMER);
 	if (rc) {
 		return rc;
 	}

@@ -1,0 +1,149 @@
+/**
+ * Copyright (c) 2012 Sukanto Ghosh.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file cmd_net.c
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @brief command for heap status.
+ */
+
+#include <net/vmm_netport.h>
+#include <net/vmm_netswitch.h>
+#include <net/vmm_protocol.h>
+#include <net/vmm_netstack.h>
+#include <vmm_error.h>
+#include <vmm_stdio.h>
+#include <vmm_version.h>
+#include <vmm_string.h>
+#include <vmm_heap.h>
+#include <vmm_host_aspace.h>
+#include <vmm_modules.h>
+#include <vmm_cmdmgr.h>
+
+#define MODULE_VARID			cmd_net_module
+#define MODULE_NAME			"Command net"
+#define MODULE_AUTHOR			"Sukanto Ghosh"
+#define MODULE_IPRIORITY		0
+#define	MODULE_INIT			cmd_net_init
+#define	MODULE_EXIT			cmd_net_exit
+
+void cmd_net_usage(struct vmm_chardev *cdev)
+{
+	vmm_cprintf(cdev, "Usage:\n");
+	vmm_cprintf(cdev, "   net help\n");
+	vmm_cprintf(cdev, "   net info\n");
+	vmm_cprintf(cdev, "   net ports\n");
+	vmm_cprintf(cdev, "   net switches\n");
+}
+
+int cmd_net_port_list(struct vmm_chardev *cdev)
+{
+	int num, count;
+	struct vmm_netport *port;
+	count = vmm_netport_count();
+	vmm_cprintf(cdev, "-----------------------: ----------------\n");
+	vmm_cprintf(cdev, "%13s          :     %s\n", "Port", "Switch");
+	vmm_cprintf(cdev, "-----------------------: ----------------\n");
+	for (num = 0; num < count; num++) {
+		port = vmm_netport_get(num);
+		vmm_cprintf(cdev, "%17s      :    %s\n", port->name, port->nsw->name);
+		
+	}
+	vmm_cprintf(cdev, "-----------------------: ----------------\n");
+	return VMM_OK;
+}
+
+int cmd_net_switch_list(struct vmm_chardev *cdev)
+{
+	int num, count;
+	struct vmm_netswitch *nsw;
+	struct dlist *list;
+	struct vmm_netport *port;
+	count = vmm_netswitch_count();
+	vmm_cprintf(cdev, "----------------: -----------------------\n");
+	vmm_cprintf(cdev, "%11s     :     %s\n", "Switch", "Port List");
+	for (num = 0; num < count; num++) {
+		vmm_cprintf(cdev, "----------------: -----------------------\n");
+		nsw = vmm_netswitch_get(num);
+		vmm_cprintf(cdev, "%13s   : \n", nsw->name);
+		list_for_each(list, &nsw->port_list) {
+			port = list_port(list);
+			vmm_cprintf(cdev, "%13s   : -- %s\n", "", port->name);
+		}
+	}
+	vmm_cprintf(cdev, "----------------: -----------------------\n");
+	return VMM_OK;
+}
+
+int cmd_net_info(struct vmm_chardev *cdev)
+{
+	u8 buf[10];
+	char str[30];
+	vmm_cprintf(cdev, "Hypervisor Network-Stack Info:\n");
+	vmm_netstack_get_ipaddr(buf);
+	vmm_cprintf(cdev, "   IP address  : %s\n", ip4addr_to_str(str, buf));
+	vmm_netstack_get_ipmask(buf);
+	vmm_cprintf(cdev, "   IP netmask  : %s\n", ip4addr_to_str(str, buf));
+	vmm_netstack_get_hwaddr(buf);
+	vmm_cprintf(cdev, "   HW address  : %s\n", ethaddr_to_str(str, buf));
+	vmm_cprintf(cdev, "   TCP/IP-stack: %s\n", vmm_netstack_get_name());
+	return VMM_OK;
+}
+
+int cmd_net_exec(struct vmm_chardev *cdev, int argc, char **argv)
+{
+	if (argc == 2) {
+		if (vmm_strcmp(argv[1], "help") == 0) {
+			cmd_net_usage(cdev);
+			return VMM_OK;
+		} else if (vmm_strcmp(argv[1], "info") == 0) {
+			return cmd_net_info(cdev);
+		} else if (vmm_strcmp(argv[1], "ports") == 0) {
+			return cmd_net_port_list(cdev);
+		} else if (vmm_strcmp(argv[1], "switches") == 0) {
+			return cmd_net_switch_list(cdev);
+		}
+	}
+	cmd_net_usage(cdev);
+	return VMM_EFAIL;
+}
+
+static struct vmm_cmd cmd_net = {
+	.name = "net",
+	.desc = "network commands",
+	.usage = cmd_net_usage,
+	.exec = cmd_net_exec,
+};
+
+static int __init cmd_net_init(void)
+{
+	return vmm_cmdmgr_register_cmd(&cmd_net);
+}
+
+static void cmd_net_exit(void)
+{
+	vmm_cmdmgr_unregister_cmd(&cmd_net);
+}
+
+VMM_DECLARE_MODULE(MODULE_VARID, 
+			MODULE_NAME, 
+			MODULE_AUTHOR, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);
+
+

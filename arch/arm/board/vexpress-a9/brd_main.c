@@ -37,8 +37,8 @@
 #include <ca9x4_board.h>
 
 extern u32 dt_blob_start;
-virtual_addr_t v2m_sys_base;
-vmm_spinlock_t v2m_cfg_lock;
+static virtual_addr_t v2m_sys_base;
+static vmm_spinlock_t v2m_cfg_lock;
 
 int arch_board_ram_start(physical_addr_t * addr)
 {
