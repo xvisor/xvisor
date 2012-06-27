@@ -292,7 +292,6 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 				const struct vmm_emuid *eid)
 {
 	int rc = VMM_OK;
-	char tname[64];
 	const char *attr;
 	struct vmm_timeval tv;
 	struct vmm_timezone tz;
@@ -316,10 +315,7 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 		goto pl031_emulator_probe_freestate_fail;
 	}
 
-	vmm_strcpy(tname, guest->node->name);
-	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPARATOR_STRING);
-	vmm_strcat(tname, edev->node->name);
-	s->event = vmm_timer_event_create(tname, &pl031_timer_event, s);
+	s->event = vmm_timer_event_create(&pl031_timer_event, s);
 	if (!(s->event)) {
 		rc = VMM_EFAIL;
 		goto pl031_emulator_probe_freestate_fail;

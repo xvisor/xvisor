@@ -428,10 +428,9 @@ static int sp804_timer_reset(struct sp804_timer *t)
 }
 
 static int sp804_timer_init(struct sp804_timer *t,
-			    const char *t_name,
 			    struct vmm_guest * guest, u32 freq, u32 irq)
 {
-	t->event = vmm_timer_event_create(t_name, &sp804_timer_event, t);
+	t->event = vmm_timer_event_create(&sp804_timer_event, t);
 
 	if (t->event == NULL) {
 		return VMM_EFAIL;
@@ -533,7 +532,6 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 {
 	int rc = VMM_OK;
 	u32 irq;
-	char tname[32];
 	const char *attr;
 	struct sp804_state *s;
 
@@ -554,20 +552,12 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 
 	/* ??? The timers are actually configurable between 32kHz and 1MHz, 
 	 * but we don't implement that.  */
-	vmm_strcpy(tname, guest->node->name);
-	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPARATOR_STRING);
-	vmm_strcat(tname, edev->node->name);
-	vmm_strcat(tname, "(0)");
 	s->t[0].state = s;
-	if ((rc = sp804_timer_init(&s->t[0], tname, guest, 1000000, irq))) {
+	if ((rc = sp804_timer_init(&s->t[0], guest, 1000000, irq))) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
-	vmm_strcpy(tname, guest->node->name);
-	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPARATOR_STRING);
-	vmm_strcat(tname, edev->node->name);
-	vmm_strcat(tname, "(1)");
 	s->t[1].state = s;
-	if ((rc = sp804_timer_init(&s->t[1], tname, guest, 1000000, irq))) {
+	if ((rc = sp804_timer_init(&s->t[1], guest, 1000000, irq))) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
 

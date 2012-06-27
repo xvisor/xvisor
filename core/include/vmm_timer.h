@@ -36,7 +36,6 @@ struct vmm_timer_event {
 	struct dlist cpu_head;
 	struct dlist head;
 	arch_regs_t * regs;
-	char name[32];
 	bool active;
 	u64 expiry_tstamp;
 	u64 duration_nsecs;
@@ -57,15 +56,12 @@ int vmm_timer_event_expire(struct vmm_timer_event * ev);
 int vmm_timer_event_stop(struct vmm_timer_event * ev);
 
 /** Create a timer event */
-struct vmm_timer_event * vmm_timer_event_create(const char *name,
+struct vmm_timer_event * vmm_timer_event_create(
 					   vmm_timer_event_handler_t handler,
 					   void * priv);
 
 /** Destroy a timer event */
 int vmm_timer_event_destroy(struct vmm_timer_event * ev);
-
-/** Find a timer event */
-struct vmm_timer_event *vmm_timer_event_find(const char *name);
 
 /** Retrive timer event with given index */
 struct vmm_timer_event *vmm_timer_event_get(int index);

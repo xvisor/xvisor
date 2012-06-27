@@ -311,7 +311,7 @@ static void idle_orphan(void)
 int __init vmm_scheduler_init(void)
 {
 	int rc;
-	char vcpu_name[32], ev_name[32];
+	char vcpu_name[32];
 	u32 cpu = vmm_smp_processor_id();
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
@@ -334,10 +334,8 @@ int __init vmm_scheduler_init(void)
 	schedp->yield_on_irq_exit = FALSE;
 
 	/* Create timer event and start it. (Per Host CPU) */
-	vmm_sprintf(ev_name, "sched/%d", cpu);
-	schedp->ev = vmm_timer_event_create(ev_name, 
-					    &vmm_scheduler_timer_event, 
-					    NULL);
+	schedp->ev = vmm_timer_event_create(&vmm_scheduler_timer_event, 
+					    schedp);
 	if (!schedp->ev) {
 		return VMM_EFAIL;
 	}

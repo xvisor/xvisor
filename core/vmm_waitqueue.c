@@ -34,7 +34,7 @@ u32 vmm_waitqueue_count(struct vmm_waitqueue * wq)
 	return wq->vcpu_count;
 }
 
-static void vmm_waitqueue_timeout(struct vmm_timer_event * event)
+static void waitqueue_timeout(struct vmm_timer_event * event)
 {
 	struct vmm_vcpu *vcpu = event->priv;
 
@@ -71,8 +71,7 @@ static int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 
 	/* If timeout is required then create timer event */
 	if (timeout_nsecs) {
-		wake_event = vmm_timer_event_create(vcpu->name, 
-				&vmm_waitqueue_timeout, vcpu);
+		wake_event = vmm_timer_event_create(&waitqueue_timeout, vcpu);
 		vmm_timer_event_start(wake_event, *timeout_nsecs);
 	}
 
@@ -110,7 +109,6 @@ static int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 	/* If timeout was used than destroy timer event */
 	if(timeout_nsecs) {
 		u64 now, expiry;
-
 		expiry = wake_event->expiry_tstamp;
 		vmm_timer_event_destroy(wake_event);
 		now = vmm_timer_timestamp();
