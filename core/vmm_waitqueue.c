@@ -41,10 +41,9 @@ static void waitqueue_timeout(struct vmm_timer_event * event)
 	vmm_waitqueue_wake(vcpu);
 }
 
-static int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
+int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 {
 	int rc = VMM_OK;
-	irq_flags_t flags;
 	struct vmm_vcpu * vcpu;
 	struct vmm_timer_event *wake_event;
 
@@ -57,9 +56,6 @@ static int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 	/* Get current VCPU */
 	vcpu = vmm_scheduler_current_vcpu();
 
-	/* Lock waitqueue */
-	vmm_spin_lock_irqsave(&wq->lock, flags);
-	
 	/* Add VCPU to waitqueue */
 	list_add_tail(&wq->vcpu_list, &vcpu->wq_head);
 
@@ -69,25 +65,26 @@ static int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 	/* Update VCPU waitqueue context */
 	vcpu->wq_priv = wq;
 
+	/* Unlock waitqueue */
+	vmm_spin_unlock_irq(&wq->lock);
+	
 	/* If timeout is required then create timer event */
 	if (timeout_nsecs) {
 		wake_event = vmm_timer_event_create(&waitqueue_timeout, vcpu);
 		vmm_timer_event_start(wake_event, *timeout_nsecs);
 	}
 
-	/* Unlock waitqueue */
-	vmm_spin_unlock_irqrestore(&wq->lock, flags);
-	
 	/* Try to Pause VCPU */
 	if ((rc = vmm_manager_vcpu_pause(vcpu))) {
 		/* Failed to pause VCPU so remove from waitqueue */
 
+		/* Destroy timeout event */
 		if(timeout_nsecs) {
 			vmm_timer_event_destroy(wake_event);
 		}
 
 		/* Lock waitqueue */
-		vmm_spin_lock_irqsave(&wq->lock, flags);
+		vmm_spin_lock_irq(&wq->lock);
 
 		/* Remove VCPU from waitqueue */
 		list_del(&vcpu->wq_head);
@@ -99,9 +96,6 @@ static int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 
 		/* Set VCPU waitqueue context to NULL */
 		vcpu->wq_priv = NULL;
-
-		/* Unlock waitqueue */
-		vmm_spin_unlock_irqrestore(&wq->lock, flags);
 
 		return rc;
 	}
@@ -115,17 +109,46 @@ static int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 		*timeout_nsecs = (now > expiry) ? 0 : (expiry - now);
 	}
 
+	/* Lock waitqueue */
+	vmm_spin_lock_irq(&wq->lock);
+
 	return VMM_OK;
 }
 
 int vmm_waitqueue_sleep(struct vmm_waitqueue * wq) 
 {
-	return __vmm_waitqueue_sleep(wq, NULL);
+	int rc;
+
+	/* Sanity checks */
+	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
+
+	/* Lock waitqueue */
+	vmm_spin_lock_irq(&wq->lock);
+	
+	rc = __vmm_waitqueue_sleep(wq, NULL);
+
+	/* Unlock waitqueue */
+	vmm_spin_unlock_irq(&wq->lock);
+
+	return rc;
 }
 
 int vmm_waitqueue_sleep_timeout(struct vmm_waitqueue * wq, u64 * timeout_usecs)
 {
-	return __vmm_waitqueue_sleep(wq, timeout_usecs);
+	int rc;
+
+	/* Sanity checks */
+	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
+
+	/* Lock waitqueue */
+	vmm_spin_lock_irq(&wq->lock);
+	
+	rc = __vmm_waitqueue_sleep(wq, timeout_usecs);
+
+	/* Unlock waitqueue */
+	vmm_spin_unlock_irq(&wq->lock);
+
+	return rc;
 }
 
 int vmm_waitqueue_wake(struct vmm_vcpu * vcpu)
@@ -172,18 +195,14 @@ int vmm_waitqueue_wake(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-int vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq)
+int __vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq)
 {
 	int rc = VMM_OK;
 	struct dlist *l;
 	struct vmm_vcpu * vcpu;
-	irq_flags_t flags;
 
 	/* Sanity checks */
 	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
-
-	/* Lock waitqueue */
-	vmm_spin_lock_irqsave(&wq->lock, flags);
 
 	/* Get first VCPU from waitqueue list */
 	l = list_pop(&wq->vcpu_list);
@@ -193,9 +212,6 @@ int vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq)
 	if ((rc = vmm_manager_vcpu_resume(vcpu))) {
 		/* Failed to resume VCPU so continue */
 		list_add_tail(&wq->vcpu_list, &vcpu->wq_head);
-
-		/* Unlock waitqueue */
-		vmm_spin_unlock_irqrestore(&wq->lock, flags);
 
 		/* Return Failure */
 		return rc;
@@ -207,17 +223,12 @@ int vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq)
 	/* Decrement VCPU count in waitqueue */
 	wq->vcpu_count--;
 
-	/* Unlock waitqueue */
-	vmm_spin_unlock_irqrestore(&wq->lock, flags);
-	
 	return VMM_OK;
 }
 
-int vmm_waitqueue_wakeall(struct vmm_waitqueue * wq)
+int vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq)
 {
-	int i, wake_count, rc = VMM_OK;
-	struct dlist *l;
-	struct vmm_vcpu * vcpu;
+	int rc;
 	irq_flags_t flags;
 
 	/* Sanity checks */
@@ -225,6 +236,24 @@ int vmm_waitqueue_wakeall(struct vmm_waitqueue * wq)
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irqsave(&wq->lock, flags);
+
+	/* Wakeup first VCPU from waitqueue list */
+	rc = __vmm_waitqueue_wakefirst(wq);
+
+	/* Unlock waitqueue */
+	vmm_spin_unlock_irqrestore(&wq->lock, flags);
+	
+	return rc;
+}
+
+int __vmm_waitqueue_wakeall(struct vmm_waitqueue * wq)
+{
+	int i, wake_count, rc = VMM_OK;
+	struct dlist *l;
+	struct vmm_vcpu * vcpu;
+
+	/* Sanity checks */
+	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
 
 	/* For each VCPU in waitqueue */
 	wake_count = 0;
@@ -250,9 +279,26 @@ int vmm_waitqueue_wakeall(struct vmm_waitqueue * wq)
 	/* Decrement VCPU count in waitqueue */
 	wq->vcpu_count -= wake_count;
 
+	return VMM_OK;
+}
+
+int vmm_waitqueue_wakeall(struct vmm_waitqueue * wq)
+{
+	int rc;
+	irq_flags_t flags;
+
+	/* Sanity checks */
+	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
+
+	/* Lock waitqueue */
+	vmm_spin_lock_irqsave(&wq->lock, flags);
+
+	/* Wakeup all VCPUs from waitqueue list */
+	rc = __vmm_waitqueue_wakeall(wq);
+
 	/* Unlock waitqueue */
 	vmm_spin_unlock_irqrestore(&wq->lock, flags);
 	
-	return VMM_OK;
+	return rc;
 }
 
