@@ -98,6 +98,34 @@ extern void vmm_scheduler_preempt_enable(void);
 					} while (0)
 #endif
 
+/** Disable irq and lock the spinlock
+ *  PROTOTYPE: void vmm_spin_lock_irq(vmm_spinlock_t * lock) 
+ */
+#if defined(CONFIG_SMP)
+#define vmm_spin_lock_irq(lock) 	do { \
+					arch_cpu_irq_disable(); \
+					arch_spin_lock(&(lock)->__tlock); \
+					} while (0)
+#else
+#define vmm_spin_lock_irq(lock) 	do { \
+					arch_cpu_irq_disable(); \
+					} while (0)
+#endif
+
+/** Unlock the spinlock and enable irq 
+ *  PROTOTYPE: void vmm_spin_unlock_irq(vmm_spinlock_t * lock)
+ */
+#if defined(CONFIG_SMP)
+#define vmm_spin_unlock_irq(lock)	do { \
+					arch_spin_unlock(&(lock)->__tlock); \
+					arch_cpu_irq_enable(); \
+					} while (0)
+#else
+#define vmm_spin_unlock_irq(lock) 	do { \
+					arch_cpu_irq_enable(); \
+					} while (0)
+#endif
+
 /** Save irq flags and lock the spinlock
  *  PROTOTYPE: irq_flags_t vmm_spin_lock_irqsave(vmm_spinlock_t * lock) 
  */
