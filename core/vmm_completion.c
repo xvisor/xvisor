@@ -61,9 +61,9 @@ int vmm_completion_wait(struct vmm_completion *cmpl)
 	return completion_wait_common(cmpl, NULL);
 }
 
-int vmm_completion_wait_timeout(struct vmm_completion *cmpl, u64 nsec)
+int vmm_completion_wait_timeout(struct vmm_completion *cmpl, u64 *timeout)
 {
-	return completion_wait_common(cmpl, &nsec);
+	return completion_wait_common(cmpl, timeout);
 }
 
 int vmm_completion_complete(struct vmm_completion *cmpl)

@@ -52,8 +52,8 @@ bool vmm_completion_done(struct vmm_completion *cmpl);
 /** Wait for completion */
 int vmm_completion_wait(struct vmm_completion *cmpl);
 
-/** Wait for completion with timeout */
-int vmm_completion_wait_timeout(struct vmm_completion *cmpl, u64 nsec);
+/** Wait for completion for given timeout */
+int vmm_completion_wait_timeout(struct vmm_completion *cmpl, u64 *timeout);
 
 /** Signal completion and wake first sleeping Orphan VCPU */
 int vmm_completion_complete(struct vmm_completion *cmpl);
