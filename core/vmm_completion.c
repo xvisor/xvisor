@@ -48,6 +48,9 @@ static int completion_wait_common(struct vmm_completion *cmpl, u64 *timeout)
 
 	if (!cmpl->done) {
 		rc = __vmm_waitqueue_sleep(&cmpl->wq, timeout);
+		if((timeout != NULL) && (*timeout == 0)) {
+			cmpl->done++;
+		}
 	}
 	cmpl->done--;
 
