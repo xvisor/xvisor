@@ -66,31 +66,6 @@ static int uip_can_receive(struct vmm_netport *port)
 	return TRUE;
 }
 
-void uip_netport_send(void)
-{
-	struct vmm_mbuf *mbuf;
-	struct uip_port_state *s = &uip_port_state;
-	struct vmm_netport *port = s->port;
-	if(!s->link_down && (uip_len > 0)) {
-		/* Create a mbuf out of the uip_buf and uip_len */
-		MGETHDR(mbuf, 0, 0);
-		MEXTADD(mbuf, uip_buf, UIP_BUFSIZE + 2, NULL, NULL);
-		mbuf->m_len = uip_len;
-		/* send this mbuf out of the port->nsw */
-		vmm_port2switch_xfer(port, mbuf);
-		/* Allocate a new uip_buf and uip_len to replace sent one */
-		uip_buf = vmm_malloc(UIP_BUFSIZE + 2);
-	}
-	/* Do we need the following ? perhaps not */
-	/* uip_len = 0; */
-}
-
-static u8 uip_netport_output(void *priv)
-{
-	uip_netport_send();
-	return 0;
-}
-
 static int uip_switch2port_xfer(struct vmm_netport *port,
 			 	struct vmm_mbuf *mbuf)
 {
@@ -100,13 +75,13 @@ static int uip_switch2port_xfer(struct vmm_netport *port,
 #ifdef UIP_DEBUG
 	char tname[30];
 #endif
-	u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));
+	u8 *dstmac = ether_dstmac(mtod(mbuf, u8 *));
 	/* do not accept frames which do not have either 
 	 * our MAC or broadcast MAC */
 	DPRINTF("UIP received frame with MAC[%s]",
 			ethaddr_to_str(tname, srcmac));
-	if(!compare_ether_addr(srcmac, port->macaddr)
-		|| is_broadcast_ether_addr(srcmac)) {
+	if(compare_ether_addr(dstmac, port->macaddr)
+		&& !is_broadcast_ether_addr(dstmac)) {
 		/* Reject packets addressed for someone else */
 		DPRINTF("  and rejected \n");
 		return VMM_EFAIL;
@@ -121,6 +96,61 @@ static int uip_switch2port_xfer(struct vmm_netport *port,
 	return rc;
 }
 
+int uip_netport_loopback_send(struct vmm_mbuf *mbuf)
+{
+	struct uip_port_state *s = &uip_port_state;
+	if(mbuf == NULL)
+		vmm_panic("%s: mbuf NULL\n", __func__);
+	u8 *dstmac = ether_dstmac(mtod(mbuf, u8 *));
+	u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));
+
+	vmm_memcpy(dstmac, s->port->macaddr, 6);
+	vmm_memcpy(srcmac, s->port->macaddr, 6);
+	return uip_switch2port_xfer(s->port, mbuf);
+}
+
+/**
+ *  uIP-daemon calls this directly to send out the frame 
+ *  present in uip_buf 
+ */
+void uip_netport_send(void)
+{
+	struct vmm_mbuf *mbuf;
+	struct uip_port_state *s = &uip_port_state;
+	struct vmm_netport *port = s->port;
+	if(!s->link_down && (uip_len > 0)) {
+		/* Create a mbuf out of the uip_buf and uip_len */
+		MGETHDR(mbuf, 0, 0);
+		MEXTADD(mbuf, uip_buf, UIP_BUFSIZE + 2, NULL, NULL);
+		mbuf->m_len = mbuf->m_pktlen = uip_len;
+
+		if(vmm_memcmp(ether_dstmac(uip_buf), uip_ethaddr.addr, 6)) {
+			/* send this mbuf to the netswitch if it is
+			 * not addressed to us */
+			vmm_port2switch_xfer(port, mbuf);
+		} else {
+			uip_netport_loopback_send(mbuf);
+		}
+		/* Allocate a new replacement uip_buf */
+		uip_buf = vmm_malloc(UIP_BUFSIZE + 2);
+	}
+	/* Do we need the following ? perhaps not */
+	/* uip_len = 0; */
+}
+
+/**
+ *  TX hook for the netport interface (netif) as required by uip_fw
+ */
+static u8 uip_netport_output(void *priv)
+{
+	uip_netport_send();
+	return 0;
+}
+
+/**
+ *  Fills the uip_buf with packet from RX queue. In case RX queue is
+ *  empty, we wait for sometime.
+ */
 int uip_netport_read(void)
 {
 	struct vmm_mbuf *mbuf;
@@ -129,10 +159,12 @@ int uip_netport_read(void)
 	u64 timeout = 50000000;
 	struct uip_port_state *s = &uip_port_state;
 
+	/* Keep trying till RX buf is not empty */
 	vmm_spin_lock_irqsave(&s->lock, flags);
 	while(list_empty(&s->rxbuf)) {
 		vmm_spin_unlock_irqrestore(&s->lock, flags);
 		if(timeout) {
+			/* Still time left for timeout so we wait */
 			vmm_completion_wait_timeout(&s->rx_possible, &timeout);
 		} else {
 			/* We timed-out and buffer is still empty, so return */
@@ -141,14 +173,19 @@ int uip_netport_read(void)
 		}
 		vmm_spin_lock_irqsave(&s->lock, flags);
 	}
+	/* At this point we are sure rxbuf is non-empty, so we just
+	 * dequeue a packet */
 	node = list_pop(&s->rxbuf);
 	mbuf = m_list_entry(node);
 	vmm_spin_unlock_irqrestore(&s->lock, flags);
-	/* Copy the data from mbuf to uip_buf */
-	uip_len = min(UIP_BUFSIZE, mbuf->m_pktlen);
+	if(mbuf == NULL) {
+		vmm_panic("%s: mbuf is null\n", __func__);
+	}
 	if(!uip_buf) {
 		vmm_panic("%s: uip_buf is null\n", __func__);
 	}
+	/* Copy the data from mbuf to uip_buf */
+	uip_len = min(UIP_BUFSIZE, mbuf->m_pktlen);
 	m_copydata(mbuf, 0, uip_len, uip_buf);
 	/* Free the mbuf */
 	m_freem(mbuf);

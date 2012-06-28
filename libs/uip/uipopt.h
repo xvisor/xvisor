@@ -533,6 +533,21 @@ typedef struct httpd_state uip_tcp_appstate_t
  * uip_conn structure. This usually is typedef:ed to a struct holding
  * application state information.
  */
+
+#include <net/vmm_netstack.h>
+
+struct uip_icmp_echo_request {
+	u8 ripaddr[4];
+	u16 len;
+	u16 seqno;
+};
+#define UIP_ICMP_HLEN		8
+#define UIP_ICMP_IPH_LEN	(UIP_IPH_LEN + UIP_ICMP_HLEN)
+#define UIP_ICMP_LLH_LEN	(UIP_LLH_LEN + UIP_ICMP_IPH_LEN)
+#define UIP_ICMP_ECHO_DLEN 	(sizeof(struct uip_icmp_echo_request))
+
+void uip_ping_callback(struct vmm_icmp_echo_reply *reply);
+
 /** @} */
 /** @} */
 
