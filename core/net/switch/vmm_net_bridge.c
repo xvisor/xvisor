@@ -95,7 +95,11 @@ static void rxbuf_dequeue(void)
 	}
 }
 
-void vmm_netbridge_tx(struct vmm_work *work)
+/**
+ *  Workqueue thread body responsible for sending the RX buffer packets 
+ *  to the destination port(s)
+ */
+static void vmm_netbridge_tx(struct vmm_work *work)
 {
 	struct dlist *l;
 	bool broadcast = TRUE;
@@ -161,10 +165,13 @@ void vmm_netbridge_tx(struct vmm_work *work)
 			m_freem(mbuf);
 		}
 	}
-}	
+}
 
-int vmm_netbridge_rx_handler(struct vmm_netport *src_port, 
-			      struct vmm_mbuf *mbuf)
+/**
+ *  Handler for filling up the received packets at the RX buffer
+ */
+static int vmm_netbridge_rx_handler(struct vmm_netport *src_port, 
+				    struct vmm_mbuf *mbuf)
 {
 	int index;
 	unsigned long flags;
@@ -178,19 +185,26 @@ int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 	DPRINTF(", ethertype: 0x%04X\n", ether_type(mtod(mbuf, u8 *)));
 #ifdef DUMP_NETBRIDGE_PKT
 	if(ether_type(mtod(mbuf, u8 *)) == 0x0806	/* ARP */) {
-		DPRINTF("\tARP-HType: 0x%04X",	  arp_htype(ether_payload(mtod(mbuf, u8 *))));
-		DPRINTF("\n\tARP-PType: 0x%04X",  arp_ptype(ether_payload(mtod(mbuf, u8 *))));
-		DPRINTF("\n\tARP-Hlen: 0x%02X",   arp_hlen(ether_payload(mtod(mbuf, u8 *))));
-		DPRINTF("\n\tARP-Plen: 0x%02X",   arp_plen(ether_payload(mtod(mbuf, u8 *))));
-		DPRINTF("\n\tARP-Oper: 0x%04X",   arp_oper(ether_payload(mtod(mbuf, u8 *))));
-		DPRINTF("\n\tARP-SHA: %s",  	  ethaddr_to_str(tname, arp_sha(ether_payload((mtod(mbuf, u8 *))))));
-		DPRINTF("\n\tARP-SPA: %s",  	  ip4addr_to_str(tname, arp_spa(ether_payload((mtod(mbuf, u8 *))))));
-		DPRINTF("\n\tARP-THA: %s",  	  ethaddr_to_str(tname, arp_tha(ether_payload((mtod(mbuf, u8 *))))));
-		DPRINTF("\n\tARP-TPA: %s",  	  ip4addr_to_str(tname, arp_tpa(ether_payload((mtod(mbuf, u8 *))))));
-		DPRINTF("\n");
+		DPRINTF("\tARP-HType: 0x%04X\n",  arp_htype(ether_payload(mtod(mbuf, u8 *))));
+		DPRINTF("\tARP-PType: 0x%04X\n",  arp_ptype(ether_payload(mtod(mbuf, u8 *))));
+		DPRINTF("\tARP-Hlen: 0x%02X\n",   arp_hlen(ether_payload(mtod(mbuf, u8 *))));
+		DPRINTF("\tARP-Plen: 0x%02X\n",   arp_plen(ether_payload(mtod(mbuf, u8 *))));
+		DPRINTF("\tARP-Oper: 0x%04X\n",   arp_oper(ether_payload(mtod(mbuf, u8 *))));
+		DPRINTF("\tARP-SHA: %s\n",  	  ethaddr_to_str(tname, arp_sha(ether_payload((mtod(mbuf, u8 *))))));
+		DPRINTF("\tARP-SPA: %s\n",  	  ip4addr_to_str(tname, arp_spa(ether_payload((mtod(mbuf, u8 *))))));
+		DPRINTF("\tARP-THA: %s\n",  	  ethaddr_to_str(tname, arp_tha(ether_payload((mtod(mbuf, u8 *))))));
+		DPRINTF("\tARP-TPA: %s\n",  	  ip4addr_to_str(tname, arp_tpa(ether_payload((mtod(mbuf, u8 *))))));
+	} else if(ether_type(mtod(mbuf, u8 *)) == 0x0800	/* IPv4 */) {
+		DPRINTF("\tIP-SRC: %s\n",	ip4addr_to_str(tname, ip_srcaddr(ether_payload((mtod(mbuf, u8 *))))));
+		DPRINTF("\tIP-DST: %s\n",	ip4addr_to_str(tname, ip_dstaddr(ether_payload((mtod(mbuf, u8 *))))));
+		DPRINTF("\tIP-LEN: %d\n",	ip_len(ether_payload((mtod(mbuf, u8 *)))));
+		DPRINTF("\tIP-TTL: %d\n",	ip_ttl(ether_payload((mtod(mbuf, u8 *)))));
+		DPRINTF("\tIP-CHKSUM: 0x%04X\n",ip_chksum(ether_payload((mtod(mbuf, u8 *)))));
+		DPRINTF("\tIP-PROTOCOL: %d\n",	ip_protocol(ether_payload((mtod(mbuf, u8 *)))));
 	}
 #endif
 #endif
+	/* Get the next location in the RX buffer */
 	vmm_spin_lock_irqsave(&netbridge_ctrl.lock, flags);
 	if(rxbuf_full()) {
 		vmm_spin_unlock_irqrestore(&netbridge_ctrl.lock, flags);
@@ -198,17 +212,19 @@ int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 	}
 	index = rxbuf_enqueue();
 	vmm_spin_unlock_irqrestore(&netbridge_ctrl.lock, flags);
+
+	/* Fillup the RX buffer location */
 	netbridge_ctrl.src_port[index] = src_port;
 	netbridge_ctrl.mbuf[index] = mbuf;
 	INIT_WORK(netbridge_ctrl.work[index], vmm_netbridge_tx, (void *)index);
 
+	/* Schedule a work for the TX workqueue thread to clear the RX buffer */
 	vmm_workqueue_schedule_work(netbridge_ctrl.wqueue, netbridge_ctrl.work[index]);	
 
-	/* Forward the skb to the target port if we know exactly */
 	return VMM_OK;
 }
 
-int vmm_netbridge_enable_port(struct vmm_netport *port)
+static int vmm_netbridge_enable_port(struct vmm_netport *port)
 {
 	/* Notify the port about the link-status change */
 	port->flags |= VMM_NETPORT_LINK_UP;
@@ -217,7 +233,7 @@ int vmm_netbridge_enable_port(struct vmm_netport *port)
 	return VMM_OK;
 }
 
-int vmm_netbridge_disable_port(struct vmm_netport *port)
+static int vmm_netbridge_disable_port(struct vmm_netport *port)
 {
 	/* Notify the port about the link-status change */
 	port->flags &= ~VMM_NETPORT_LINK_UP;
@@ -226,13 +242,14 @@ int vmm_netbridge_disable_port(struct vmm_netport *port)
 	return VMM_OK;
 }
 
-int vmm_netbridge_probe(struct vmm_device *dev,
-		     const struct vmm_devid *devid)
+static int vmm_netbridge_probe(struct vmm_device *dev,
+			       const struct vmm_devid *devid)
 {
 	struct vmm_netswitch *nsw;
 	int rc = VMM_OK;
 	int i;
 
+	/* Allocate and initialize the vmm_netswitch struct */
 	nsw = vmm_netswitch_alloc(dev->node->name);
 	if(!nsw) {
 		rc = VMM_EFAIL;
@@ -242,14 +259,15 @@ int vmm_netbridge_probe(struct vmm_device *dev,
 	nsw->enable_port = vmm_netbridge_enable_port;
 	nsw->disable_port = vmm_netbridge_disable_port;
 
+	/* Initialize the RX buffer parameters */
 	netbridge_ctrl.head = -1;
 	netbridge_ctrl.tail = -1;
 	netbridge_ctrl.src_port = vmm_malloc(sizeof(struct vmm_netport *) 
-			* VMM_NETBRIDGE_RX_BUFLEN);
+						* VMM_NETBRIDGE_RX_BUFLEN);
 	netbridge_ctrl.mbuf = vmm_malloc(sizeof(struct vmm_mbuf *) 
-			* VMM_NETBRIDGE_RX_BUFLEN);
+						* VMM_NETBRIDGE_RX_BUFLEN);
 	netbridge_ctrl.work = vmm_malloc(sizeof(struct vmm_work *) 
-			* VMM_NETBRIDGE_RX_BUFLEN);
+						* VMM_NETBRIDGE_RX_BUFLEN);
 	netbridge_ctrl.wqueue = vmm_workqueue_create(nsw->name, VMM_THREAD_DEF_PRIORITY);
 	if(!netbridge_ctrl.wqueue ||
 	   !netbridge_ctrl.src_port ||
