@@ -1055,7 +1055,7 @@ uip_process(u8_t flag)
      */
        uip_ipaddr_copy(&echo_reply.ripaddr, ICMPBUF->srcipaddr);
        echo_reply.len = vmm_be16_to_cpu(*(u16_t *)(&ICMPBUF->len)) - 
-             	          (UIP_IPH_LEN + 8); 
+             	          (UIP_IPH_LEN); 
        echo_reply.rtt = (udiv64(vmm_timer_timestamp(), 1000) - uip_ping_time);
        echo_reply.seqno = ntohs(*(u16_t *)(&ICMPBUF->seqno));
        echo_reply.ttl = ICMPBUF->ttl;
