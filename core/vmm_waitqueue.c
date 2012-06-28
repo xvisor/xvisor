@@ -204,6 +204,10 @@ int __vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq)
 	/* Sanity checks */
 	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
 
+	if(wq->vcpu_count == 0) {
+		return VMM_OK;
+	}
+
 	/* Get first VCPU from waitqueue list */
 	l = list_pop(&wq->vcpu_list);
 	vcpu = list_entry(l, struct vmm_vcpu, wq_head);
