@@ -220,11 +220,9 @@ static int uip_send_icmp_echo(u8 *ripaddr, u16 size, u16 seqno,
 	struct uip_icmp_echo_request *echo_req;
 	u16 all_zeroes_addr[] = {0, 0}; 
 	u8 *tmp;
-	u64 timeout = (u64)5000000000;
+	u64 timeout = (u64)20000000000;
 	u16 ethsize;
 
-	/* Update pointer to store uip_ping_reply */
-	uip_ping_reply = reply;
 	/* Create a mbuf */
 	MGETHDR(mbuf, 0, 0);
 	ethsize = UIP_ICMP_LLH_LEN + UIP_ICMP_ECHO_DLEN;
@@ -248,15 +246,18 @@ static int uip_send_icmp_echo(u8 *ripaddr, u16 size, u16 seqno,
 	uip_create_icmp_pkt(tmp, ICMP_ECHO_REPLY, 
 			    (ethsize - UIP_LLH_LEN - UIP_IPH_LEN), 0);
 
+	/* Update pointer to store uip_ping_reply */
+	uip_ping_reply = reply;
+
 	/* Send the mbuf to self to trigger ICMP_ECHO */
 	uip_netport_loopback_send(mbuf);
 	/* Wait for the reply until timeout */
 	vmm_completion_wait_timeout(&uip_ping_done, &timeout);
-	if(timeout == (u64)0) 
-		return VMM_EFAIL;
 	/* The callback has copied the reply data before completing, so we
 	 * can safely set the pointer as NULL to prevent unwanted callbacks */
 	uip_ping_reply = NULL;
+	if(timeout == (u64)0) 
+		return VMM_EFAIL;
 	return VMM_OK;
 }
 
