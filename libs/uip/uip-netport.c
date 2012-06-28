@@ -116,7 +116,7 @@ static int uip_switch2port_xfer(struct vmm_netport *port,
 	vmm_spin_lock_irqsave(&s->lock, flags);
 	list_add_tail(&s->rxbuf, &mbuf->m_list);
 	vmm_spin_unlock_irqrestore(&s->lock, flags);
-	vmm_completion_complete_all(&s->rx_possible);
+	vmm_completion_complete(&s->rx_possible);
 
 	return rc;
 }
