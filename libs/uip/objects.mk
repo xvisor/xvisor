@@ -27,7 +27,6 @@ libs-objs-$(CONFIG_UIP)+= uip/uip-daemon.o
 libs-objs-$(CONFIG_UIP)+= uip/uip-netport.o
 libs-objs-$(CONFIG_UIP)+= uip/uip-arp.o
 libs-objs-$(CONFIG_UIP)+= uip/uip.o
-libs-objs-$(CONFIG_UIP)+= uip/uiplib.o
 libs-objs-$(CONFIG_UIP)+= uip/psock.o
 libs-objs-$(CONFIG_UIP)+= uip/timer.o
 libs-objs-$(CONFIG_UIP)+= uip/uip-fw.o
