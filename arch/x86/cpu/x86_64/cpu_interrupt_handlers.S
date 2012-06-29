@@ -104,6 +104,9 @@ IRQ_HANDLER(_irq12) /* stack seg. */
 END_IRQ_HANDLER
 
 IRQ_HANDLER(_irq13) /* GPF */
+	movq	$13, %rdi /* first arg as int num */
+	movq	%rsp, %rsi /* pt_regs */
+	callq	do_gpf
 END_IRQ_HANDLER
 
 IRQ_HANDLER(_irq14) /* page fault */

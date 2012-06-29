@@ -243,5 +243,6 @@ extern void _irq17(void);
 extern void _irq18(void);
 extern void _irq19(void);
 extern void _irq128(void);
+extern void _generic_handler(void);
 
 #endif /* _CPU_INTERRYPTS_H__ */

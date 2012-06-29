@@ -22,16 +22,18 @@
  */
 
 #include <vmm_types.h>
-#include <cpu_apic.h>
 #include <vmm_host_aspace.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
+#include <vmm_string.h>
+#include <vmm_host_io.h>
 #include <cpu_mmu.h>
 #include <arch_cpu.h>
 #include <arch_io.h>
 #include <cpu_private.h>
 #include <cpu_interrupts.h>
 #include <acpi.h>
+#include <cpu_apic.h>
 
 /* FIXME we should spread the irqs across as many priority levels as possible
  * due to buggy hw */
@@ -85,24 +87,24 @@ static u32 is_lapic_present(void)
 
 static inline u32 lapic_read(virtual_addr_t base)
 {
-	return (*((volatile u32 *)base));
+	return vmm_ioreadl((void *)base);
 }
 
 static inline void lapic_write(virtual_addr_t base, u32 val)
 {
-	*((volatile u32 *)(base)) = val;
+	vmm_iowritel((void *)base, val);
 }
 
 static u32 ioapic_read(virtual_addr_t ioa_base, u32 reg)
 {
-        *((volatile u32 *)(ioa_base + IOAPIC_IOREGSEL)) = (reg & 0xff);
-        return *(volatile u32 *)(ioa_base + IOAPIC_IOWIN);
+	vmm_iowritel((void *)(ioa_base + IOAPIC_IOREGSEL), (reg & 0xff));
+	return vmm_ioreadl((void *)(ioa_base + IOAPIC_IOWIN));
 }
 
 static void ioapic_write(virtual_addr_t ioa_base, u8 reg, u32 val)
 {
-        *((volatile u32 *)(ioa_base + IOAPIC_IOREGSEL)) = reg;
-        *((volatile u32 *)(ioa_base + IOAPIC_IOWIN)) = val;
+	vmm_iowritel((void *)(ioa_base + IOAPIC_IOREGSEL), reg);
+	vmm_iowritel((void *)(ioa_base + IOAPIC_IOWIN), val);
 }
 
 static void ioapic_enable_pin(virtual_addr_t ioapic_addr, int pin)
@@ -119,6 +121,41 @@ static void ioapic_disable_pin(virtual_addr_t ioapic_addr, int pin)
 
 	lo |= APIC_ICR_INT_MASK;
 	ioapic_write(ioapic_addr, IOAPIC_REDIR_TABLE + pin * 2, lo);
+}
+
+static int __unused ioapic_read_irt_entry(virtual_addr_t ioapic_addr, int pin, u64 *entry)
+{
+	u8 loa = IOAPIC_REDIR_TABLE + pin * 2;
+	u8 hia = loa++;
+
+	u32 lo = ioapic_read(ioapic_addr, loa);
+	u32 hi = ioapic_read(ioapic_addr, hia);
+	*entry = (u64)((((u64)hi) << 32) | lo);
+
+	return VMM_OK;
+}
+
+static int ioapic_write_irt_entry(virtual_addr_t ioapic_addr, int pin, u64 entry)
+{
+	u8 loa = IOAPIC_REDIR_TABLE + pin * 2;
+	u8 hia = loa++;
+	u32 lo = (u32)(entry & 0xFFFFFFFFUL);
+	u32 hi = (u32)((entry >> 32) & 0xFFFFFFFFUL);
+
+	ioapic_write(ioapic_addr, loa, lo);
+	ioapic_write(ioapic_addr, hia, hi);
+
+	return VMM_OK;
+}
+
+int ioapic_route_pin_to_irq(u32 pin, u32 irqno)
+{
+	union ioapic_irt_entry entry;
+	vmm_memset(&entry, 0, sizeof(entry));
+
+	entry.bits.intvec = irqno;
+
+	return ioapic_write_irt_entry(io_apic[0].vaddr, pin, entry.val);
 }
 
 static int acpi_get_ioapics(struct cpu_ioapic *ioa, unsigned *nioa, unsigned max)

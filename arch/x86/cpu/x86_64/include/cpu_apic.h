@@ -208,6 +208,23 @@ struct cpu_lapic {
 	u32 version;
 };
 
+union ioapic_irt_entry {
+	u64 val;
+	struct _bits {
+		u32 intvec:8;
+		u32 delmod:3;
+		u32 destmod:1;
+		u32 delivs:1;
+		u32 intpol:1;
+		u32 rirr:1;
+		u32 trigger:1;
+		u32 mask:1;
+		u64 resvd1:39;
+		u32 dest:8;
+	} bits;
+};
+
 int apic_init(void);
+int ioapic_route_pin_to_irq(u32 pin, u32 irqno);
 
 #endif /* __CPU_APIC_H__ */

@@ -25,7 +25,7 @@
 
 #include <vmm_types.h>
 
-#define ARCH_HOST_IRQ_COUNT			0
+#define ARCH_HOST_IRQ_COUNT			256
 
 u32 arch_host_irq_active(u32 cpu_irq_no);
 
