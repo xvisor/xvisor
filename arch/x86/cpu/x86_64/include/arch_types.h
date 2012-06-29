@@ -40,6 +40,8 @@ typedef struct {
 	volatile long lock;
 } spinlock_t;
 
+#define ARCH_HAS_DIVISON_OPERATION
+
 #define ARCH_BITS_PER_LONG		64
 
 #define ARCH_CACHE_LINE_SIZE		16
