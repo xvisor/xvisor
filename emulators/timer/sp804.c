@@ -72,6 +72,7 @@ struct sp804_timer {
 	u32 ref_freq;
 	u32 freq;
 	u32 irq;
+	bool maintain_irq_rate;
 	/* Registers */
 	u32 control;
 	u32 value;
@@ -163,8 +164,9 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 			}
 
 			/* compute the tstamp */
-			if (t->value_tstamp
-			    && (!(t->control & TIMER_CTRL_ONESHOT))) {
+			if (t->maintain_irq_rate && 
+			    t->value_tstamp &&
+			    (!(t->control & TIMER_CTRL_ONESHOT))) {
 				/* This is a restart of a periodic or free
 				 * running timer
 				 * We need to adjust our duration and start 
@@ -190,8 +192,11 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 					nsecs -= adjust_duration;
 				}
 			} else {
-				/* This is a simple one shot timer or the first
-				 * run of a periodic timer
+				/* This is a simple one shot timer 
+				 * OR 
+				 * The first run of a periodic timer
+				 * OR
+				 * Maintain irq rate is off for periodic timer
 				 */
 				t->value_tstamp = tstamp;
 			}
@@ -428,7 +433,8 @@ static int sp804_timer_reset(struct sp804_timer *t)
 }
 
 static int sp804_timer_init(struct sp804_timer *t,
-			    struct vmm_guest * guest, u32 freq, u32 irq)
+			    struct vmm_guest * guest, 
+			    u32 freq, u32 irq, bool maintain_irq_rate)
 {
 	t->event = vmm_timer_event_create(&sp804_timer_event, t);
 
@@ -440,6 +446,7 @@ static int sp804_timer_init(struct sp804_timer *t,
 	t->ref_freq = freq;
 	t->freq = sp804_get_freq(t);
 	t->irq = irq;
+	t->maintain_irq_rate = maintain_irq_rate;
 	INIT_SPIN_LOCK(&t->lock);
 
 	return VMM_OK;
@@ -532,6 +539,7 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 {
 	int rc = VMM_OK;
 	u32 irq;
+	bool mrate;
 	const char *attr;
 	struct sp804_state *s;
 
@@ -550,14 +558,21 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 		goto sp804_emulator_probe_freestate_fail;
 	}
 
+	attr = vmm_devtree_attrval(edev->node, "maintain_irq_rate");
+	if (attr) {
+		mrate = (*((u32 *) attr)) ? TRUE : FALSE;
+	} else {
+		mrate = FALSE;
+	}
+
 	/* ??? The timers are actually configurable between 32kHz and 1MHz, 
 	 * but we don't implement that.  */
 	s->t[0].state = s;
-	if ((rc = sp804_timer_init(&s->t[0], guest, 1000000, irq))) {
+	if ((rc = sp804_timer_init(&s->t[0], guest, 1000000, irq, mrate))) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
 	s->t[1].state = s;
-	if ((rc = sp804_timer_init(&s->t[1], guest, 1000000, irq))) {
+	if ((rc = sp804_timer_init(&s->t[1], guest, 1000000, irq, mrate))) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
 
