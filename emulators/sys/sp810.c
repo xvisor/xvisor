@@ -51,13 +51,19 @@ static int sp810_emulator_read(struct vmm_emudev *edev,
 
 	vmm_spin_lock(&s->lock);
 
-	switch (offset & ~0x3) {
-	case 0x00: /* SYSCTRL */
-		regval = s->sysctrl;
-		break;
-	default:
-		rc = VMM_EFAIL;
-		break;
+	if (offset >= 0xfe0 && offset < 0x1000) {
+		/* it is not clear what ID shall be returned by the sp810 */
+		/* for now we return 0. It seems to work for linux */
+		regval = 0;
+	} else {
+		switch (offset & ~0x3) {
+		case 0x00: /* SYSCTRL */
+			regval = s->sysctrl;
+			break;
+		default:
+			rc = VMM_EFAIL;
+			break;
+		}
 	}
 
 	vmm_spin_unlock(&s->lock);
