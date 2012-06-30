@@ -24,6 +24,7 @@
 #libs-cppflags-$(CONFIG_UIP)+= -I$(libs_dir)/uip
 
 libs-objs-$(CONFIG_UIP)+= uip/uip-daemon.o
+libs-objs-$(CONFIG_UIP)+= uip/uip-netstack.o
 libs-objs-$(CONFIG_UIP)+= uip/uip-netport.o
 libs-objs-$(CONFIG_UIP)+= uip/uip-arp.o
 libs-objs-$(CONFIG_UIP)+= uip/uip.o

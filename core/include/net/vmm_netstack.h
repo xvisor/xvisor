@@ -28,7 +28,7 @@
 #include <vmm_error.h>
 
 /**
- *  Structure containing the ICMP_ECHO_REPLY parameters
+ * Structure containing the ICMP_ECHO_REPLY parameters
  */
 struct vmm_icmp_echo_reply {
 	u8 ripaddr[4];
@@ -38,67 +38,39 @@ struct vmm_icmp_echo_reply {
 	u64 rtt;
 };
 
-/**
- *  Interface of a network-stack which every network-stack should
- *  implement for use with Xvisor
- */
-struct vmm_netstack {
-	char *name;
-	int (*set_ipaddr)(u8 *ipaddr);
-	int (*get_ipaddr)(u8 *ipaddr);
-	int (*set_ipmask)(u8 *ipmask);
-	int (*get_ipmask)(u8 *ipmask);
-	int (*get_hwaddr)(u8 *hwaddr);
-	int (*send_icmp_echo)(u8 *ripaddr, u16 size, u16 seqno, 
-			      struct vmm_icmp_echo_reply *reply);
-	void (*prefetch_arp_mapping)(u8 *ipaddr);
-};
-
-/**
- *  API to register a netstack
- *
- *  Please note that only one netstack can be registered. It is
- *  erroneous to compile and use multiple network-stacks at the
- *  same time. 
- */
-int vmm_netstack_register(struct vmm_netstack *stack);
-
 /** 
- *  Returns a pointer to the registered netstack
+ * Returns the name of the netstack
  */
-struct vmm_netstack *vmm_netstack_get(void);
-
-/** 
- *  Returns the name of the netstack
- */
-inline static char *vmm_netstack_get_name(void)
-{
-	struct vmm_netstack *stack = vmm_netstack_get();
-	if(stack)
-		return stack->name;
-	else
-		return NULL;
-}
-
-#define VMM_NETSTACK_OP_DEFINE(op)				\
-inline static int vmm_netstack_##op(u8 *param)			\
-{								\
-	struct vmm_netstack *stack = vmm_netstack_get();	\
-	if(stack) {						\
-		return stack->op(param);			\
-	}							\
-	return VMM_EFAIL;					\
-}
-
-VMM_NETSTACK_OP_DEFINE(set_ipaddr);
-VMM_NETSTACK_OP_DEFINE(get_ipaddr);
-VMM_NETSTACK_OP_DEFINE(set_ipmask);
-VMM_NETSTACK_OP_DEFINE(get_ipmask);
-VMM_NETSTACK_OP_DEFINE(get_hwaddr);
+char *vmm_netstack_get_name(void);
 
 /**
- *  Generates an ICMP echo request to a remote host and blocks
- *  for sometime till the reply is received.
+ * Set IP-address of the host
+ */
+int vmm_netstack_set_ipaddr(u8 *ipaddr);
+
+/**
+ * Get IP-address of the host
+ */
+int vmm_netstack_get_ipaddr(u8 *ipaddr);
+
+/**
+ * Set IP-netmask of the host
+ */
+int vmm_netstack_set_ipmask(u8 *ipmask);
+
+/**
+ * Get IP-netmask of the host
+ */
+int vmm_netstack_get_ipmask(u8 *ipmask);
+
+/**
+ * Get HW-address of the host
+ */
+int vmm_netstack_get_hwaddr(u8 *hwaddr);
+
+/**
+ *  Generates an ICMP echo request to a remote host and blocks for 
+ *  sometime till the reply is received.
  *
  *  @ipaddr - IP address of the remote host
  *  @size - size of the payload inside the ICMP msg
@@ -109,19 +81,12 @@ VMM_NETSTACK_OP_DEFINE(get_hwaddr);
  *    - VMM_OK - if the echo reply was received.
  *    - VMM_EFAIL - if timedout or no network-stack present
  */
-static inline int vmm_netstack_send_icmp_echo(u8 * ipaddr, u16 size,
-			u16 seqno, struct vmm_icmp_echo_reply *reply)
-{
-	struct vmm_netstack *stack = vmm_netstack_get();
-	if(stack) {
-		return stack->send_icmp_echo(ipaddr, size, seqno, reply);
-	}
-	return VMM_EFAIL;
-}
+int vmm_netstack_send_icmp_echo(u8 * ipaddr, u16 size, u16 seqno, 
+				struct vmm_icmp_echo_reply *reply);
 
 /** 
- *  An optional hook primarily meant for network-stacks which do not 
- *  support reliable arp output processing
+ *  This is meant for network-stacks which do not support reliable 
+ *  arp output processing
  *
  *  e.g. In case of uIP, if there is no ARP mapping for the destination 
  *  ipaddr of an outgoing packet, an ARP request is sent out but the
@@ -131,13 +96,7 @@ static inline int vmm_netstack_send_icmp_echo(u8 * ipaddr, u16 size,
  *
  *  @ipaddr - IP address whose ARP mapping is to be prefetched/refreshed
  */
-static inline void vmm_netstack_prefetch_arp_mapping(u8 * ipaddr)
-{
-	struct vmm_netstack *stack = vmm_netstack_get();
-	if(stack && stack->prefetch_arp_mapping) {
-		stack->prefetch_arp_mapping(ipaddr);
-	}
-}
+void vmm_netstack_prefetch_arp_mapping(u8 * ipaddr);
 
 #endif  /* __VMM_NETSTACK_H_ */
 
