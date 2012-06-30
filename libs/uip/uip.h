@@ -76,6 +76,7 @@
 #define __UIP_H__
 
 #include "uipopt.h"
+#include <vmm_host_io.h>
 
 /**
  * Repressentation of an IP address.
@@ -1108,6 +1109,9 @@ u16_t htons(u16_t val);
 #ifndef ntohs
 #define ntohs htons
 #endif
+
+#define ntohl	vmm_cpu_to_be32
+#define htonl	ntohl
 
 /** @} */
 

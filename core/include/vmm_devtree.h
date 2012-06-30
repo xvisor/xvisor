@@ -42,6 +42,8 @@
 #define VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME	"virtual-reg"
 
 #define VMM_DEVTREE_VMMINFO_NODE_NAME		"vmm"
+#define VMM_DEVTREE_VMMNET_NODE_NAME		"net"
+#define VMM_DEVTREE_NETSTACK_NODE_NAME		"hoststack"
 
 #define VMM_DEVTREE_HOSTINFO_NODE_NAME		"host"
 #define VMM_DEVTREE_CPUS_NODE_NAME		"cpus"

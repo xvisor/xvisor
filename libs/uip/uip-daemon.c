@@ -57,7 +57,6 @@ struct vmm_thread *uip_thread;
 static int uip_loop(void *data)
 {
 	int i;
-	uip_ipaddr_t ipaddr;
 	struct timer periodic_timer, arp_timer;
 
 	timer_set(&periodic_timer, CLOCK_SECOND / 2);
@@ -65,11 +64,6 @@ static int uip_loop(void *data)
 
 	uip_netport_init();
 	uip_init();
-
-	uip_ipaddr(ipaddr, 192,168,0,1);
-	uip_sethostaddr(ipaddr);
-	uip_ipaddr(ipaddr, 255,255,255,0);
-	uip_setnetmask(ipaddr);
 
 	while(1) {
 		uip_len = uip_netport_read();
@@ -155,11 +149,19 @@ static int __init daemon_uip_init(void)
 	u32 uip_time_slice;
 	struct vmm_devtree_node * node;
 	const char * attrval;
+	uip_ipaddr_t ipaddr;
+	u8 ip_def[] = {192, 168, 0, 1};
+	u8 ip_set[] = {192, 168, 0, 1};
+	u8 def_mask[4];
 
-	/* Retrive mterm time slice */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_VMMINFO_NODE_NAME);
+				   VMM_DEVTREE_VMMINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_VMMNET_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_NETSTACK_NODE_NAME);
 	if (!node) {
+		vmm_printf("dts node not found\n");
 		return VMM_EFAIL;
 	}
 	attrval = vmm_devtree_attrval(node,
@@ -177,6 +179,29 @@ static int __init daemon_uip_init(void)
 		uip_time_slice = VMM_THREAD_DEF_TIME_SLICE;
 	}
 
+	attrval = vmm_devtree_attrval(node, "ipaddr");
+	if (attrval) {
+		/* Read ip address from DTS */
+		vmm_str_to_ipaddr(ip_set, attrval);
+	}
+	if(ipv4_class_netmask(ip_set, def_mask) == -1) {
+		vmm_printf("uIP: Bad IP address in DTS reverting to default IP\n");
+		uip_ipaddr(ipaddr, ip_def[0],ip_def[1],ip_def[2],ip_def[3]);
+	} else {
+		uip_ipaddr(ipaddr, ip_set[0],ip_set[1],ip_set[2],ip_set[3]);
+	}
+	uip_sethostaddr(ipaddr);
+
+	attrval = vmm_devtree_attrval(node, "netmask");
+	if (attrval) {
+		/* Read mask address from DTS */
+		vmm_str_to_ipaddr(ip_set, attrval);
+		uip_ipaddr(ipaddr, ip_set[0],ip_set[1],ip_set[2],ip_set[3]);
+	} else {
+		/* Apply default netmask as per the IP class */
+		uip_ipaddr(ipaddr, def_mask[0],def_mask[1],def_mask[2],def_mask[3]);
+	}
+	uip_setnetmask(ipaddr);
 
 	uip_netstack_init();
 

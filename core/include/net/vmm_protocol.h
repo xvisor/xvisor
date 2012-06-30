@@ -259,4 +259,42 @@ struct icmp_echo_header {
 
 #define ICMP_HLEN	(sizeof(struct icmp_echo_header))
 
+#define	IN_CLASSA(a)		((((u8 *)(a))[0] & 0x80) == 0)
+#define	IN_CLASSB(a)		((((u8 *)(a))[0] & 0xc0) == 0x80)
+#define	IN_CLASSC(a)		((((u8 *)(a))[0] & 0xe0) == 0xc0)
+#define	IN_CLASSD(a)		((((u8 *)(a))[0] & 0xf0) == 0xe0)
+#define	IN_MULTICAST(a)		IN_CLASSD(a)
+#define	IN_EXPERIMENTAL(a)	((((u8 *)(a))[0] & 0xf0) == 0xf0)
+#define	IN_BADCLASS(a)		IN_EXPERIMENTAL((a))
+
+static inline bool ipv4_is_zeronet(const u8 *addr)
+{
+	return (*addr == 0x00000000);
+}
+
+#ifndef htonl
+#define htonl	vmm_cpu_to_be32
+#define ntohl	htonl
+#endif
+
+static inline int ipv4_class_netmask(const u8 *addr, u8 *mask)
+{
+	if (!ipv4_is_zeronet(addr)) {
+		if (IN_CLASSA(addr)) {
+			mask[0] = 0xff;
+			mask[1] = mask[2] = mask[3] = 0;
+		} else if (IN_CLASSB(addr)) {
+			mask[0] = mask[1] = 0xff;
+			mask[2] = mask[3] = 0;
+		} else if (IN_CLASSC(addr)) {
+			mask[0] = mask[1] = mask[2] = 0xff;
+			mask[3] = 0;
+		} else { /* Something else, probably a multicast. */
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 #endif /* __VMM_PROTOCOL_H_ */

@@ -7,6 +7,10 @@
 		#size-cells = <0>;
 
 		net {
+			hoststack {
+				ipaddr = "10.0.1.1";	
+			};
+
 			netbridge0 {
 				device_type = "netswitch";
 				compatible = "bridge";
