@@ -102,17 +102,18 @@ static inline unsigned char *__skb_put(struct sk_buff *skb, unsigned int len)
 	unsigned char *tmp = skb_tail_pointer(skb);
 	SKB_LINEAR_ASSERT(skb);
 	skb_len(skb) += len;
+	skb->m_pktlen += len;
 	return tmp;
 }
 
 /**
- *	skb_put - add data to a buffer
- *	@skb: buffer to use
- *	@len: amount of data to add
- *
- *	This function extends the used data area of the buffer. If this would
- *	exceed the total buffer size the kernel will panic. A pointer to the
- *	first byte of the extra data is returned.
+ * skb_put - add data to a buffer
+ * @skb: buffer to use
+ * @len: amount of data to add
+ * 
+ * This function extends the used data area of the buffer. If this would
+ * exceed the total buffer size the kernel will panic. A pointer to the
+ * first byte of the extra data is returned.
  */
 static inline unsigned char *skb_put(struct sk_buff *skb, unsigned int len)
 {
@@ -137,6 +138,7 @@ static inline unsigned char *skb_push(struct sk_buff *skb, unsigned int len)
 {
 	skb_data(skb) -= len;
 	skb_len(skb)  += len;
+	skb->m_pktlen += len;
 	if (unlikely(skb_data(skb) < skb_head(skb))) {
 		vmm_panic("%s: skb->data crossing skb->head\n", __func__);
 	}
