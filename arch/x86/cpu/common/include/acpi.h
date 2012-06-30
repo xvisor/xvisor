@@ -42,6 +42,8 @@ extern struct acpi_search_area acpi_areas[];
 #define RSDT_SIGNATURE		"RSDT"
 #define HPET_SIGNATURE		"HPET"
 
+#define NR_HPET_TIMER_BLOCKS	8
+
 /* Root system description pointer */
 struct acpi_rsdp {
 	u8 signature[RSDP_SIGN_LEN];
@@ -127,6 +129,23 @@ struct acpi_madt_nmi {
 	u32	global_int;
 } __packed;
 
+struct acpi_timer_blocks {
+	u32 blkid;
+	u8 asid;
+	u8 rbw;
+	u8 rbo;
+	u8 resvd;
+	u32 base;
+	u8 id;
+	u16 min_clk_tick;
+	u8 pg_prot;
+} __packed;
+
+struct acpi_hpet {
+	struct acpi_sdt_hdr hdr;
+	struct acpi_timer_blocks tmr_blks[NR_HPET_TIMER_BLOCKS];
+} __packed;
+
 int acpi_init(void);
 
 /*
@@ -138,5 +157,10 @@ struct acpi_madt_ioapic * acpi_get_ioapic_next(void);
 
 /* same as above for local APICs */
 struct acpi_madt_lapic * acpi_get_lapic_next(void);
+
+/* Get base address of HPET blocks one after other.
+ * Returns 0 when all HPETs have been iterated.
+ */
+u64 acpi_get_hpet_base_next(void);
 
 #endif /* __ACPI_H__ */

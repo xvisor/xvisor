@@ -47,10 +47,12 @@ struct acpi_context {
 	struct acpi_rsdp *root_desc;
 	struct acpi_rsdt *rsdt;
 	struct acpi_madt_hdr *madt_hdr;
+	struct acpi_hpet *hpet;
 	struct sdt_lookup_table sdt_trans[MAX_RSDT];
 };
 
-struct acpi_context *acpi_ctxt = NULL;
+static struct acpi_context *acpi_ctxt = NULL;
+static u32 nr_hpet_blks = 0;
 
 struct acpi_search_area acpi_areas[] = {
 	{ "Extended BIOS Data Area (EBDA)", 0x0009FC00, 0x0009FFFF },
@@ -188,6 +190,7 @@ static virtual_addr_t find_root_system_descriptor(void)
 	virtual_addr_t rsdp_base = 0;
 
 	while (carea->area_name) {
+		vmm_printf("Search for RSDP in %s... ", carea->area_name);
 		area_map = vmm_host_iomap(carea->phys_start,
 					  (carea->phys_end
 					   - carea->phys_start));
@@ -199,6 +202,7 @@ static virtual_addr_t find_root_system_descriptor(void)
 		     = locate_rsdp_in_area(area_map,
 					   (carea->phys_end
 					    - carea->phys_start))) != 0) {
+			vmm_printf("found.\n");
 			break;
 		}
 
@@ -206,7 +210,11 @@ static virtual_addr_t find_root_system_descriptor(void)
 		carea++;
 		vmm_host_iounmap(area_map,
 				 (carea->phys_end - carea->phys_start));
+		vmm_printf("not found.\n");
 	}
+
+	if (likely(rsdp_base))
+		vmm_printf("RSDP Base: 0x%x\n", rsdp_base);
 
 	return rsdp_base;
 }
@@ -216,6 +224,7 @@ int acpi_init(void)
 	int i;
 
 	if (!acpi_ctxt) {
+		vmm_printf("Starting to parse ACPI tables...\n");
 		acpi_ctxt = vmm_malloc(sizeof(struct acpi_context));
 		if (!acpi_ctxt) {
 			vmm_printf("ACPI ERROR: Failed to allocate memory for"
@@ -255,6 +264,8 @@ int acpi_init(void)
 		acpi_ctxt->nr_sys_hdr = (acpi_ctxt->rsdt->hdr.len
 					 - sizeof(struct acpi_sdt_hdr))/sizeof(u32);
 
+		vmm_printf("Number of system headers: %d: ", acpi_ctxt->nr_sys_hdr);
+
 		for (i = 0; i < acpi_ctxt->nr_sys_hdr; i++) {
 			struct acpi_sdt_hdr *hdr;
 
@@ -271,17 +282,48 @@ int acpi_init(void)
 			vmm_memcpy(&acpi_ctxt->sdt_trans[i].signature, &hdr->signature, SDT_SIGN_LEN);
 
 			acpi_ctxt->sdt_trans[i].signature[SDT_SIGN_LEN] = '\0';
+			vmm_printf("%s ", acpi_ctxt->sdt_trans[i].signature);
 			acpi_ctxt->sdt_trans[i].length = hdr->len;
 
+			/* FIXME: Cleanup required. All this mapping should be freed
+			 * as and when required otherwise we will end up using all
+			 * VMM virtual address space.
+			 *
+			 * host_iounmap also requires fix. Page need to marked absent
+			 * and it needs to be flushed from TLB.
+			 */
 			//vmm_host_iounmap((virtual_addr_t)hdr, PAGE_SIZE);
 		}
 
+		vmm_printf("\n");
 		acpi_ctxt->madt_hdr = (struct acpi_madt_hdr *)
 			vmm_host_iomap(acpi_get_table_base("APIC"),
 				       PAGE_SIZE);
 		if (acpi_ctxt->madt_hdr == NULL)
 			goto sdt_fail;
 
+		acpi_ctxt->hpet = (struct acpi_hpet *)
+			vmm_malloc(sizeof(struct acpi_hpet));
+
+		if (!acpi_ctxt->hpet)
+			goto sdt_fail;
+
+		if (acpi_read_sdt_at(acpi_get_table_base(HPET_SIGNATURE),
+				     (struct acpi_sdt_hdr *)acpi_ctxt->hpet,
+				     sizeof(struct acpi_hpet),
+				     HPET_SIGNATURE) < 0) {
+			vmm_free(acpi_ctxt->hpet);
+			goto sdt_fail;
+		}
+
+		nr_hpet_blks = (acpi_ctxt->hpet->hdr.len - sizeof(struct acpi_sdt_hdr))/sizeof(struct acpi_timer_blocks);
+
+		vmm_printf("Total %d HPET Timer Blocks:\n", nr_hpet_blks);
+		for (i = 0; i < nr_hpet_blks; i++) {
+			vmm_printf("%d. Base: %llx\n",
+				   acpi_ctxt->hpet->tmr_blks[i].asid+1,
+				   acpi_ctxt->hpet->tmr_blks[i].base);
+		}
 	}
 
 	return VMM_OK;
@@ -333,4 +375,19 @@ struct acpi_madt_lapic * acpi_get_lapic_next(void)
 	}
 
 	return ret;
+}
+
+u64 acpi_get_hpet_base_next(void)
+{
+	static unsigned int idx = 0;
+	u64 base;
+
+	if (idx >= nr_hpet_blks) {
+		return 0;
+	}
+
+	base = acpi_ctxt->hpet->tmr_blks[idx].base;
+	idx++;
+
+	return base;
 }

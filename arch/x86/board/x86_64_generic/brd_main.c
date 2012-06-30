@@ -118,6 +118,7 @@ int __init arch_board_early_init(void)
 
 int __init arch_board_final_init(void)
 {
+#if 0
 	int rc;
 	struct vmm_devtree_node *node;
 
@@ -138,7 +139,7 @@ int __init arch_board_final_init(void)
 	if(rc) {
 		return rc;
 	}
-
+#endif
 	return VMM_OK;
 }
 
