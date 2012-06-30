@@ -35,7 +35,12 @@
 #include <serial/omap-uart.h>
 #include <mathlib.h>
 
-#define OMAP_UART_POLLING 
+/* Enable OMAP_UART_POLLING to force OMAP UART polling
+ * More precisely this will force OMAP UART character device to use polling 
+ * which will reduce performance.
+ * Only enable this option for debugging purpose.
+ */
+#undef OMAP_UART_POLLING 
 
 #define MODULE_VARID			omap_uart_driver_module
 #define MODULE_NAME			"OMAP UART Driver"
