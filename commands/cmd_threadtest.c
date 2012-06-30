@@ -71,7 +71,7 @@ static int test1_thread_main(void *data)
 		d->counter++;
 	}
 
-	vmm_completion_complete_all(&d->cmpl);
+	vmm_completion_complete(&d->cmpl);
 
 	return VMM_OK;
 }

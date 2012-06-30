@@ -1470,11 +1470,7 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 	s->pmt_ctrl = 1;
 	s->txp = &s->tx_packet;
 
-	vmm_sprintf(tname, " %s%s%s_gpt",
-		    guest->node->name,
-		    VMM_DEVTREE_PATH_SEPARATOR_STRING,
-		    edev->node->name);
-	s->event = vmm_timer_event_create(tname, &gpt_event, s);
+	s->event = vmm_timer_event_create(&gpt_event, s);
 	if(s->event) {
 		goto lan9118_emulator_probe_done;
 	}

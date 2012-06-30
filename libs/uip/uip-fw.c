@@ -68,51 +68,6 @@ static struct uip_fw_netif *netifs = NULL;
  */
 static struct uip_fw_netif *defaultnetif = NULL;
 
-struct tcpip_hdr {
-  /* IP header. */
-  u8_t vhl,
-    tos;
-  u16_t len,
-    ipid,
-    ipoffset;
-  u8_t ttl,
-    proto;
-  u16_t ipchksum;
-  u16_t srcipaddr[2],
-    destipaddr[2];
-  
-  /* TCP header. */
-  u16_t srcport,
-    destport;
-  u8_t seqno[4],
-    ackno[4],
-    tcpoffset,
-    flags,
-    wnd[2];
-  u16_t tcpchksum;
-  u8_t urgp[2];
-  u8_t optdata[4];
-};
-
-struct icmpip_hdr {
-  /* IP header. */
-  u8_t vhl,
-    tos,
-    len[2],
-    ipid[2],
-    ipoffset[2],
-    ttl,
-    proto;
-  u16_t ipchksum;
-  u16_t srcipaddr[2],
-    destipaddr[2];
-  /* ICMP (echo) header. */
-  u8_t type, icode;
-  u16_t icmpchksum;
-  u16_t id, seqno;
-  u8_t payload[1];
-};
-
 /* ICMP ECHO. */
 #define ICMP_ECHO 8
 

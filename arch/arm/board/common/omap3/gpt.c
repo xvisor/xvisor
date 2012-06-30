@@ -335,9 +335,6 @@ int __init omap3_gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa)
 	cc->clkchip.expire = &omap3_gpt_clockchip_expire;
 	cc->clkchip.priv = cc;
 
-	/* Disable GPT irq for sanity */
-	vmm_host_irq_disable(omap3_gpt_config[gpt_num].irq_no);
-
 	/* Register interrupt handler */
 	rc = vmm_host_irq_register(omap3_gpt_config[gpt_num].irq_no,
 				   omap3_gpt_config[gpt_num].name,

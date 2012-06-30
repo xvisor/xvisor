@@ -1007,6 +1007,11 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 				break;
 			case ARM_CPUID_CORTEXA9:
 				*data = 0;
+				if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
+					*data |= (1 << 6);
+				} else {
+					*data &= ~(1 << 6);
+				}
 				break;
 			default:
 				goto bad_reg;

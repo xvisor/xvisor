@@ -57,4 +57,6 @@ void *vmm_memset(void *dest, int c, size_t count);
 
 int vmm_memcmp(const void *s1, const void *s2, size_t count);
 
+int vmm_str_to_ipaddr(char *str, unsigned char *ipaddr);
+
 #endif

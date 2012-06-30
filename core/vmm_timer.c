@@ -255,7 +255,7 @@ int vmm_timer_event_stop(struct vmm_timer_event * ev)
 	return VMM_OK;
 }
 
-struct vmm_timer_event *vmm_timer_event_create(const char *name,
+struct vmm_timer_event *vmm_timer_event_create(
 					vmm_timer_event_handler_t handler,
 					void *priv)
 {
@@ -271,7 +271,8 @@ struct vmm_timer_event *vmm_timer_event_create(const char *name,
 
 	list_for_each(l, &tgc.event_list) {
 		e = list_entry(l, struct vmm_timer_event, head);
-		if (vmm_strcmp(name, e->name) == 0) {
+		if ((handler == e->handler) &&
+		    (priv == e->priv)) {
 			found = TRUE;
 			break;
 		}
@@ -289,7 +290,6 @@ struct vmm_timer_event *vmm_timer_event_create(const char *name,
 	}
 
 	INIT_LIST_HEAD(&e->head);
-	vmm_strcpy(e->name, name);
 	e->active = FALSE;
 	INIT_LIST_HEAD(&e->cpu_head);
 	e->regs = NULL;
@@ -331,7 +331,8 @@ int vmm_timer_event_destroy(struct vmm_timer_event * ev)
 	found = FALSE;
 	list_for_each(l, &tgc.event_list) {
 		e = list_entry(l, struct vmm_timer_event, head);
-		if (vmm_strcmp(e->name, ev->name) == 0) {
+		if ((e->handler == ev->handler) &&
+		    (e->priv == ev->priv)) {
 			found = TRUE;
 			break;
 		}
@@ -349,39 +350,6 @@ int vmm_timer_event_destroy(struct vmm_timer_event * ev)
 	vmm_free(e);
 
 	return VMM_OK;
-}
-
-struct vmm_timer_event *vmm_timer_event_find(const char *name)
-{
-	bool found;
-	irq_flags_t flags;
-	struct dlist *l;
-	struct vmm_timer_event *e;
-
-	if (!name) {
-		return NULL;
-	}
-
-	found = FALSE;
-	e = NULL;
-
-	vmm_spin_lock_irqsave(&tgc.lock, flags);
-
-	list_for_each(l, &tgc.event_list) {
-		e = list_entry(l, struct vmm_timer_event, head);
-		if (vmm_strcmp(e->name, name) == 0) {
-			found = TRUE;
-			break;
-		}
-	}
-
-	vmm_spin_unlock_irqrestore(&tgc.lock, flags);
-
-	if (!found) {
-		return NULL;
-	}
-
-	return e;
 }
 
 struct vmm_timer_event *vmm_timer_event_get(int index)

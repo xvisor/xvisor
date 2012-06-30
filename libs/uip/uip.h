@@ -1,7 +1,29 @@
-
 /**
- * \addtogroup uip
- * @{
+ * Copyright (c) 2012 Sukanto Ghosh.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file uip.h
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @brief header file for uIP TCP/IP stack
+ *
+ * This file is adapted from uIP source file uip/uip/uip.h
+ *
+ * Changes by Sukanto Ghosh:
+ * - Added macros to fill IPv4 and ICMP packet headers
  */
 
 /**
@@ -1605,6 +1627,126 @@ u16_t uip_tcpchksum(void);
  * to by uip_appdata.
  */
 u16_t uip_udpchksum(void);
+
+struct tcpip_hdr {
+  /* IP header. */
+  u8_t vhl,
+    tos;
+  u16_t len,
+    ipid,
+    ipoffset;
+  u8_t ttl,
+    proto;
+  u16_t ipchksum;
+  u16_t srcipaddr[2],
+    destipaddr[2];
+  
+  /* TCP header. */
+  u16_t srcport,
+    destport;
+  u8_t seqno[4],
+    ackno[4],
+    tcpoffset,
+    flags,
+    wnd[2];
+  u16_t tcpchksum;
+  u8_t urgp[2];
+  u8_t optdata[4];
+};
+
+struct icmpip_hdr {
+  /* IP header. */
+  u8_t vhl,
+    tos,
+    len[2],
+    ipid[2],
+    ipoffset[2],
+    ttl,
+    proto;
+  u16_t ipchksum;
+  u16_t srcipaddr[2],
+    destipaddr[2];
+  /* ICMP (echo) header. */
+  u8_t type, icode;
+  u16_t icmpchksum;
+  u16_t id, seqno;
+  u8_t payload[1];
+};
+
+#define ICMP_ECHO_REPLY 0
+#define ICMP_ECHO       8
+
+#if 0
+#define UIP_DUMP_CHKSUM(str, buf, len, chksum)			\
+do {								\
+	u16_t sum;						\
+	vmm_printf("%s: %s-chksum: 0x%04X\n", __func__,	(str),	\
+			ntohs(chksum));				\
+	sum = uip_chksum((u16_t *)(buf), (len));		\
+	sum = ~((sum == 0) ? 0xffff : (sum));			\
+	vmm_printf("%s: Verify %s-chksum: 0x%04X\n", __func__,	\
+			(str), ntohs(sum));			\
+}while (0)
+#else
+#define UIP_DUMP_CHKSUM(str, bufm, len, chksum)
+#endif
+
+/**
+ * Fill the buffer pointed by 'buf' with an outgoing IPv4 header
+ *
+ * @buf - pointer to the IPv4 packet
+ * @ripaddr - IP address of the remote host
+ * @iplen - total length of IPv4 packet 
+ */
+#define uip_create_ip_pkt(buf, ripaddr, iplen)			\
+do {								\
+	u16_t sum;						\
+	struct icmpip_hdr * icmpip_buf = (void *)(buf);		\
+	/* IP fields */						\
+	icmpip_buf->vhl = 0x45;					\
+	icmpip_buf->tos = 0;					\
+	icmpip_buf->len[0] = ((iplen) >> 8) & 0xff;		\
+	icmpip_buf->len[1] = ((iplen) >> 0) & 0xff;		\
+	icmpip_buf->ipid[0] = icmpip_buf->ipid[1] = 0;		\
+	icmpip_buf->ipoffset[0] = icmpip_buf->ipoffset[1] = 0;	\
+	icmpip_buf->ttl = 64;					\
+	icmpip_buf->proto = UIP_PROTO_ICMP;			\
+	uip_ipaddr_copy(icmpip_buf->destipaddr, (ripaddr));	\
+	uip_ipaddr_copy(icmpip_buf->srcipaddr, uip_hostaddr);	\
+	icmpip_buf->ipchksum = 0;				\
+	sum = uip_chksum((u16_t *)icmpip_buf, UIP_IPH_LEN);	\
+	icmpip_buf->ipchksum = ~((sum) ? (sum) : 0xffff);	\
+	UIP_DUMP_CHKSUM("IP", icmpip_buf, UIP_IPH_LEN,		\
+			(icmpip_buf->ipchksum));		\
+}while(0)
+
+/**
+ * Fill the buffer pointed by 'buf' with ICMP header after
+ * skipping over the IPv4 header
+ *
+ * Note that this should be called after the ICMP payload has
+ * been filled.
+ *
+ * @buf - pointer to the IPv4 packet that should be holding an 
+ * 	  ICMP message as payload
+ * @echotype - type of ICMP_ECHO message
+ * @len - length of entire ICMP message
+ */
+#define uip_create_icmp_pkt(buf, echotype, len, seq)		\
+do {								\
+	u16_t sum;						\
+	struct icmpip_hdr * icmpip_buf = (void *)(buf);		\
+	/* ICMP fields */					\
+	icmpip_buf->type = (echotype);				\
+	icmpip_buf->icode = 0;					\
+	icmpip_buf->id = 0;					\
+	icmpip_buf->seqno = htons(seq);				\
+	icmpip_buf->icmpchksum = 0;				\
+	sum = uip_chksum((u16_t *)&(icmpip_buf->type), (len));	\
+	icmpip_buf->icmpchksum = ~((sum) ? (sum) : 0xffff);	\
+	UIP_DUMP_CHKSUM("ICMP", (&(icmpip_buf->type)), (len),	\
+			(icmpip_buf->icmpchksum));		\
+}while(0)
 
 
 #endif /* __UIP_H__ */

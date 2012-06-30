@@ -1,6 +1,30 @@
 /**
- * \addtogroup uip
- * @{
+ * Copyright (c) 2012 Sukanto Ghosh.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file uip-arp.c
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @brief source file of uIP ARP over ethernet
+ *
+ * This file is adapted from uIP source file uip/uip/uip-arp.c
+ *
+ * Changes by Sukanto Ghosh:
+ * - Hack to refresh/prefetch ARP mapping for an IP address to get over
+ *   the unreliable IP packet delivery of uIP
  */
 
 /**
@@ -62,19 +86,7 @@
 #include "uip-arp.h"
 #include <vmm_string.h>
 #include <vmm_types.h>
-
-struct arp_hdr {
-	struct uip_eth_hdr ethhdr;
-	u16 hwtype;
-	u16 protocol;
-	u8 hwlen;
-	u8 protolen;
-	u16 opcode;
-	struct uip_eth_addr shwaddr;
-	u16 sipaddr[2];
-	struct uip_eth_addr dhwaddr;
-	u16 dipaddr[2];
-};
+#include <vmm_completion.h>
 
 struct ethip_hdr {
 	struct uip_eth_hdr ethhdr;
@@ -91,10 +103,8 @@ struct ethip_hdr {
 	u16 destipaddr[2];
 };
 
-#define ARP_REQUEST 1
-#define ARP_REPLY   2
-
-#define ARP_HWTYPE_ETH 1
+/** Completion pointer to notify prefetching of ARP mapping */
+extern struct vmm_completion uip_arp_prefetch_done;
 
 struct arp_entry {
 	u16 ipaddr[2];
@@ -152,9 +162,19 @@ uip_arp_timer(void)
 	}
 
 }
+/**
+ *  Updates any existing ARP mapping entry for the 'ipaddr' with the 'ethaddr'
+ *  If any mapping doesn't exist, create one. In case 'ethaddr' is a broadcast 
+ *  MAC address, just update the timestamp if the mapping is present. Else 
+ *  return with failure.  
+ *
+ *  returns - 1, if no existing entry was present for the ipaddr and no new
+ *  		 entry could be created as 'ethaddr' is broadcast MAC address
+ *  	    - 0, otherwise 
+ */
 /*-----------------------------------------------------------------------------------*/
-static void
-uip_arp_update(u16 *ipaddr, struct uip_eth_addr *ethaddr)
+static int
+uip_arp_update(u16 *ipaddr, const struct uip_eth_addr *ethaddr)
 {
 	register struct arp_entry *tabptr;
 	/* Walk through the ARP mapping table and try to find an entry to
@@ -167,22 +187,34 @@ uip_arp_update(u16 *ipaddr, struct uip_eth_addr *ethaddr)
 		if(tabptr->ipaddr[0] != 0 &&
 			tabptr->ipaddr[1] != 0) {
 
-			/* Check if the source IP address of the incoming packet matches
-			   the IP address in this ARP table entry. */
+			/* Check if the source IP address of the incoming packet 
+			 * matches the IP address in this ARP table entry. */
 			if(ipaddr[0] == tabptr->ipaddr[0] &&
 				ipaddr[1] == tabptr->ipaddr[1]) {
 
-				/* An old entry found, update this and return. */
-				vmm_memcpy(tabptr->ethaddr.addr, ethaddr->addr, 6);
+				/* If the ethaddr is not broadcast addr, we 
+				 * update this old entry */
+				if(vmm_memcmp(ethaddr->addr, broadcast_ethaddr.addr, 6)) {
+					vmm_memcpy(tabptr->ethaddr.addr, ethaddr->addr, 6);
+				} else {
+					/* Also notify anyone waiting for this arp_prefetch */
+					vmm_completion_complete(&uip_arp_prefetch_done);
+				}
 				tabptr->time = arptime;
 
-				return;
+				return 0;
 			}
 		}
 	}
 
-	/* If we get here, no existing ARP table entry was found, so we
-	   create one. */
+	/* If we get here, no existing ARP table entry was found */
+
+	/* If the ethaddr is broadcast address, we return with failure */
+	if(!vmm_memcmp(ethaddr->addr, broadcast_ethaddr.addr, 6)) {
+		return 1;
+	}
+
+	/* Otherwise we create one mapping */
 
 	/* First, we try to find an unused entry in the ARP table. */
 	for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
@@ -214,6 +246,8 @@ uip_arp_update(u16 *ipaddr, struct uip_eth_addr *ethaddr)
 	vmm_memcpy(tabptr->ipaddr, ipaddr, 4);
 	vmm_memcpy(tabptr->ethaddr.addr, ethaddr->addr, 6);
 	tabptr->time = arptime;
+
+	return 0;
 }
 /*-----------------------------------------------------------------------------------*/
 /**
@@ -244,6 +278,9 @@ void uip_arp_ipin(void)
 		(uip_hostaddr[1] & uip_netmask[1])) {
 		return;
 	}
+	/* Don't bother to update if srcipaddr is all-zeroes */
+	if((IPBUF->srcipaddr[0] | IPBUF->srcipaddr[1]) == 0)
+		return;
 	uip_arp_update(IPBUF->srcipaddr, &(IPBUF->ethhdr.src));
 
 	return;
@@ -275,7 +312,6 @@ void uip_arp_ipin(void)
 void
 uip_arp_arpin(void)
 {
-
 	if(uip_len < sizeof(struct arp_hdr)) {
 		uip_len = 0;
 		return;
@@ -283,6 +319,29 @@ uip_arp_arpin(void)
 	uip_len = 0;
 
 	switch(BUF->opcode) {
+	case HTONS(ARP_HINT):
+		/* Please note this is not a valid ARP type, this is just a 
+		 * hint to implement prefetch/refresh of ARP mapping */
+
+		/* This is a valid hint if we are the source of this request,
+		 * the requested ipaddr is in dipaddress */
+		if(uip_ipaddr_cmp(BUF->sipaddr, uip_hostaddr)) {
+			/* We first try to check for the destination address 
+			 * in our ARP table */
+			if(uip_arp_update(BUF->dipaddr, &broadcast_ethaddr)) {
+			/* If the destination address was not in our ARP table, 
+			 * we send out an ARP request for the same */
+				vmm_memset(BUF->ethhdr.dest.addr, 0xff, 6);
+				BUF->opcode = HTONS(ARP_REQUEST);
+				/* The other ARP fields of incoming hint are 
+				 * supposed to be same as ARP broadcast except
+				 * the opcode field */
+
+				uip_len = sizeof(struct arp_hdr);
+			}
+		}
+		break;
+
 	case HTONS(ARP_REQUEST):
 		/* ARP request. If it asked for our address, we send out a
 		   reply. */
@@ -292,8 +351,7 @@ uip_arp_arpin(void)
 			   with this host in the future. */
 			uip_arp_update(BUF->sipaddr, &BUF->shwaddr);
 
-			/* The reply opcode is 2. */
-			BUF->opcode = HTONS(2);
+			BUF->opcode = HTONS(ARP_REPLY);
 
 			vmm_memcpy(BUF->dhwaddr.addr, BUF->shwaddr.addr, 6);
 			vmm_memcpy(BUF->shwaddr.addr, uip_ethaddr.addr, 6);
@@ -314,6 +372,7 @@ uip_arp_arpin(void)
 		   for us. */
 		if(uip_ipaddr_cmp(BUF->dipaddr, uip_hostaddr)) {
 			uip_arp_update(BUF->sipaddr, &BUF->shwaddr);
+			vmm_completion_complete(&uip_arp_prefetch_done);
 		}
 		break;
 	}
@@ -386,6 +445,7 @@ uip_arp_out(void)
 			/* The destination address was not in our ARP table, so we
 			   overwrite the IP packet with an ARP request. */
 
+#if 0	
 			vmm_memset(BUF->ethhdr.dest.addr, 0xff, 6);
 			vmm_memset(BUF->dhwaddr.addr, 0x00, 6);
 			vmm_memcpy(BUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
@@ -399,6 +459,10 @@ uip_arp_out(void)
 			BUF->hwlen = 6;
 			BUF->protolen = 4;
 			BUF->ethhdr.type = HTONS(UIP_ETHTYPE_ARP);
+#else
+			uip_create_broadcast_eth_arp_pkt(BUF, ipaddr,
+							 ARP_REQUEST);
+#endif
 
 			uip_appdata = &uip_buf[UIP_TCPIP_HLEN + UIP_LLH_LEN];
 

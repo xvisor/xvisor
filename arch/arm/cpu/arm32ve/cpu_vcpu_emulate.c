@@ -162,6 +162,37 @@ static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
 	return imm & ((1 << bits) - 1);
 }
 
+/**
+ * Update ITSTATE when emulating instructions inside an IT-block
+ *
+ * When IO abort occurs from Thumb IF-THEN blocks, the ITSTATE field 
+ * of the CPSR is not updated, so we do this manually.
+ */
+static void cpu_vcpu_update_itstate(struct vmm_vcpu * vcpu, 
+				    arch_regs_t * regs)
+{
+	u32 itbits, cond;
+
+	if (!(regs->cpsr & CPSR_IT_MASK)) {
+		return;
+	}
+
+	cond = (regs->cpsr & 0xe000) >> 13;
+	itbits = (regs->cpsr & 0x1c00) >> (10 - 2);
+	itbits |= (regs->cpsr & (0x3 << 25)) >> 25;
+
+	/* Perform ITAdvance (see page A-52 in ARM DDI 0406C) */
+	if ((itbits & 0x7) == 0)
+		itbits = cond = 0;
+	else
+		itbits = (itbits << 1) & 0x1f;
+
+	regs->cpsr &= ~CPSR_IT_MASK;
+	regs->cpsr |= cond << 13;
+	regs->cpsr |= (itbits & 0x1c) << (10 - 2);
+	regs->cpsr |= (itbits & 0x3) << 25;
+}
+
 int cpu_vcpu_emulate_load(struct vmm_vcpu * vcpu, 
 			  arch_regs_t * regs,
 			  u32 il, u32 iss,
@@ -218,6 +249,10 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu * vcpu,
 	if (!rc) {
 		/* Next instruction */
 		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->cpsr & CPSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
 	}
 
 	return rc;
@@ -260,6 +295,10 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu,
 	if (!rc) {
 		/* Next instruction */
 		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->cpsr & CPSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
 	}
 
 	return rc;

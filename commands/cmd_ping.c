@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Himanshu Chauhan.
+ * Copyright (c) 2012 Sukanto Ghosh.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -17,19 +17,23 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cmd_ping.c
- * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief Implementation of ping command
  */
 
+#include <mathlib.h>
+#include <net/vmm_netstack.h>
+#include <net/vmm_protocol.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_string.h>
 #include <vmm_version.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 
 #define MODULE_VARID			cmd_ping_module
 #define MODULE_NAME			"Command ping"
-#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_AUTHOR			"Sukanto Ghosh"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_ping_init
 #define	MODULE_EXIT			cmd_ping_exit
@@ -37,15 +41,50 @@
 void cmd_ping_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage: ");
-	vmm_cprintf(cdev, "   ping\n");
+	vmm_cprintf(cdev, "   ping <ipaddr> [<count>] [<size>]\n");
 }
 
 int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
+	u16 sent, rcvd, count = 1, size = 56;
+	struct vmm_icmp_echo_reply reply;
+	char ip_addr_str[30];
+	u32 rtt_usecs, rtt_msecs;
+	u8 ipaddr[4];
+	if((argc < 2) || (argc > 4)) {
+		cmd_ping_usage(cdev);
+		return VMM_EFAIL;
+	}
+	if(argc > 2) {
+		count = vmm_str2int(argv[2], 10);
+	}
+	if(argc > 3) {
+		size = vmm_str2int(argv[3], 10);
+	}
+	vmm_str_to_ipaddr(argv[1], ipaddr);
+
+	vmm_cprintf(cdev, "PING (%s) %d(%d) bytes of data.\n", 
+			  argv[1], size, (size + IP4_HLEN + ICMP_HLEN));
+
+	vmm_netstack_prefetch_arp_mapping(ipaddr);
+
+	for(sent=0, rcvd=0; sent<count; sent++) {
+		if(!vmm_netstack_send_icmp_echo(ipaddr, size, sent, &reply)) {
+			rtt_msecs = udiv64(reply.rtt, 1000);
+			rtt_usecs = umod64(reply.rtt, 1000);
+			ip4addr_to_str(ip_addr_str, (const u8 *)&reply.ripaddr);
+			vmm_cprintf(cdev, "%d bytes from %s: seq=%d "
+				    "ttl=%d time=%d.%03dms\n", reply.len,
+				    ip_addr_str, reply.seqno, reply.ttl,
+				    rtt_msecs, rtt_usecs);
+			rcvd++;
+		}
+	}
+	vmm_cprintf(cdev, "\n----- %s ping statistics -----\n", argv[1]);
+	vmm_cprintf(cdev, "%d packets transmitted, %d packets received\n", 
+								sent, rcvd);
 	return VMM_OK;
 }
-
-VMM_DECLARE_CMD(ping, , cmd_ping_exec, NULL);
 
 static struct vmm_cmd cmd_ping = {
 	.name = "ping",
@@ -65,8 +104,8 @@ static void cmd_ping_exit(void)
 }
 
 VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
-			MODULE_AUTHOR, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
-			MODULE_EXIT);
+		   MODULE_NAME, 
+		   MODULE_AUTHOR, 
+		   MODULE_IPRIORITY, 
+		   MODULE_INIT, 
+		   MODULE_EXIT);

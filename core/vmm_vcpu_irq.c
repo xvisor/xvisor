@@ -77,7 +77,7 @@ void vmm_vcpu_irq_process(arch_regs_t * regs)
 	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
 }
 
-static void vmm_vcpu_irq_wfi_timeout(struct vmm_timer_event * ev)
+static void vcpu_irq_wfi_timeout(struct vmm_timer_event * ev)
 {
 	irq_flags_t flags;
 	struct vmm_vcpu *vcpu = ev->priv;
@@ -202,7 +202,6 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	int rc;
 	u32 ite, irq_count;
 	irq_flags_t flags;
-	char ev_name[32];
 
 	/* Sanity Checks */
 	if (!vcpu) {
@@ -231,10 +230,8 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 		vcpu->irqs.reason = vmm_malloc(sizeof(u32) * irq_count);
 
 		/* Create wfi_timeout event */
-		vmm_sprintf(ev_name, "wfi_timeout/%d", vcpu->id);				
-		vcpu->irqs.wfi_priv = vmm_timer_event_create(ev_name, 
-					    &vmm_vcpu_irq_wfi_timeout, 
-					    vcpu);
+		vcpu->irqs.wfi_priv = 
+			vmm_timer_event_create(&vcpu_irq_wfi_timeout, vcpu);
 		if (!vcpu->irqs.wfi_priv) {
 			return VMM_EFAIL;
 		}

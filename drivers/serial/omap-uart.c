@@ -304,8 +304,8 @@ static vmm_irq_return_t omap_uart_irq_handler(u32 irq_no, arch_regs_t * regs, vo
 		if (lsr & UART_LSR_DR) {
 			/* Mask RX interrupts till RX FIFO is empty */
 			port->ier &= ~(UART_IER_RDI | UART_IER_RLSI);
-			/* Signal work completions to all sleeping threads */
-			vmm_completion_complete_all(&port->read_possible);
+			/* Signal work completion to sleeping thread */
+			vmm_completion_complete(&port->read_possible);
 		} else if (lsr & (UART_LSR_OE | UART_LSR_PE | UART_LSR_BI | UART_LSR_FE) ) {
 			while(1);
 		}
@@ -315,7 +315,7 @@ static vmm_irq_return_t omap_uart_irq_handler(u32 irq_no, arch_regs_t * regs, vo
 	if ((lsr & UART_LSR_THRE) && (iir & UART_IIR_THRI)) {
 		/* Mask TX interrupts till TX FIFO is full */
 		port->ier &= ~UART_IER_THRI;
-		/* Signal work completions to all sleeping threads */
+		/* Signal work completion to sleeping thread */
 		vmm_completion_complete_all(&port->write_possible);
 	}
 

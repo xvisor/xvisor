@@ -413,7 +413,6 @@ struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 {
 	struct mptimer_state *s = NULL;
 	int i;
-	char tname[64];
 
 	s = vmm_malloc(sizeof(struct mptimer_state));
 	if (!s) {
@@ -425,11 +424,13 @@ struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 	s->num_cpu = num_cpu;
 	s->ref_freq = periphclk; 
 
-	s->timers = vmm_malloc(NUM_TIMERS_PER_CPU * s->num_cpu * sizeof(struct timer_block));
+	s->timers = vmm_malloc(NUM_TIMERS_PER_CPU * s->num_cpu * 
+			       sizeof(struct timer_block));
 	if (!s->timers) {
 		goto mptimer_timerblock_alloc_failed;
 	}
-	vmm_memset(s->timers, 0x0, NUM_TIMERS_PER_CPU * s->num_cpu * sizeof(struct timer_block));
+	vmm_memset(s->timers, 0x0, NUM_TIMERS_PER_CPU * s->num_cpu * 
+		   sizeof(struct timer_block));
 
 	/* Init the timer blocks */
 	for(i=0; i<(NUM_TIMERS_PER_CPU * num_cpu); i++) {
@@ -438,13 +439,7 @@ struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 		s->timers[i].cpu = (i >> 1);
 		s->timers[i].is_wdt = (i & 0x1);
 		INIT_SPIN_LOCK(&(s->timers[i].lock));
-		vmm_sprintf(tname, " %s%s%s(%d/%d)",
-			    guest->node->name,
-			    VMM_DEVTREE_PATH_SEPARATOR_STRING,
-			    edev->node->name,
-			    (i >> 1),
-			    (i & 0x1));
-		s->timers[i].event = vmm_timer_event_create(tname, &timer_block_event, 
+		s->timers[i].event = vmm_timer_event_create(&timer_block_event,
 							    &(s->timers[i]));
 	}
 

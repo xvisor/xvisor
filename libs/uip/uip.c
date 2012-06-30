@@ -1,22 +1,30 @@
-#undef DEBUG
-
-#ifdef DEBUG
-#define DEBUG_PRINTF(...) vmm_printf(__VA_ARGS__)
-#else
-#define DEBUG_PRINTF(...)
-#endif
-
 /**
- * \defgroup uip The uIP TCP/IP stack
- * @{
+ * Copyright (c) 2012 Sukanto Ghosh.
+ * All rights reserved.
  *
- * uIP is an implementation of the TCP/IP protocol stack intended for
- * small 8-bit and 16-bit microcontrollers.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * uIP provides the necessary protocols for Internet communication,
- * with a very small code footprint and RAM requirements - the uIP
- * code size is on the order of a few kilobytes and RAM usage is on
- * the order of a few hundred bytes.
+ * @file uip.c
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @brief source file of uIP TCP/IP stack core
+ *
+ * This file is adapted from uIP source file uip/uip/uip.c
+ *
+ * Changes by Sukanto Ghosh:
+ * - Hack to send a ICMP_ECHO on receiving a reply from self with
+ *   destination IP as all-zeroes 
  */
 
 /**
@@ -78,7 +86,7 @@
  * a byte stream if needed. The application will not be fed with data
  * that is out of sequence.
  *
- * If the application whishes to send data to the peer, it should put
+ * If the application wishes to send data to the peer, it should put
  * its data into the uip_buf. The uip_appdata pointer points to the
  * first available byte. The TCP/IP stack will calculate the
  * checksums, and fill in the necessary header fields and finally send
@@ -88,13 +96,46 @@
 #include "uip.h"
 #include "uipopt.h"
 #include "uip-arch.h"
+#include <mathlib.h>
 #include <vmm_types.h>
+#include <vmm_timer.h>
 #include <vmm_stdio.h>
 #include <vmm_string.h>
+#include <vmm_host_io.h>
 
 #if UIP_CONF_IPV6
 #include "uip-neighbor.h"
 #endif /* UIP_CONF_IPV6 */
+
+#undef DEBUG
+#undef DEBUG_DUMP_PACKET
+
+#ifdef DEBUG
+#define DEBUG_PRINTF(...) vmm_printf(__VA_ARGS__)
+#else
+#define DEBUG_PRINTF(...)
+#endif
+
+#ifdef DEBUG_DUMP_PACKET
+#define DUMP_ICMP(ipbuf, len)					\
+do {								\
+	  int i, j;						\
+	  u8 *p = (u8 *)(ipbuf);				\
+	  vmm_printf("\nIP starts (pkt-len: %d)", len);		\
+	  for(i = 0, j = 0; i < (len); i++, j++) {		\
+		  if(i == UIP_IPH_LEN) {			\
+			  vmm_printf("\nICMP starts\n");	\
+			  j = 0;				\
+		  }						\
+		  if((j%16) == 0)				\
+			  vmm_printf("\n 0x%04X: ", j);		\
+		  vmm_printf("0x%02X ", *p++);			\
+	  }							\
+	  vmm_printf("\n");					\
+} while (0)
+#else
+#define DUMP_ICMP(ipbuf, len)
+#endif
 
 /*---------------------------------------------------------------------------*/
 /* Variable definitions. */
@@ -214,9 +255,6 @@ static u16_t tmp16;
 #define TCP_OPT_MSS     2   /* Maximum segment size TCP option */
 
 #define TCP_OPT_MSS_LEN 4   /* Length of TCP MSS option. */
-
-#define ICMP_ECHO_REPLY 0
-#define ICMP_ECHO       8
 
 #define ICMP6_ECHO_REPLY             129
 #define ICMP6_ECHO                   128
@@ -925,7 +963,8 @@ uip_process(u8_t flag)
     
     /* Check if the packet is destined for our IP address. */
 #if !UIP_CONF_IPV6
-    if(!uip_ipaddr_cmp(BUF->destipaddr, uip_hostaddr)) {
+    if((!uip_ipaddr_cmp(BUF->destipaddr, uip_hostaddr)) && 
+       (BUF->proto != UIP_PROTO_ICMP)) {
       UIP_STAT(++uip_stat.ip.drop);
       goto drop;
     }
@@ -946,6 +985,7 @@ uip_process(u8_t flag)
 #if !UIP_CONF_IPV6
   if(uip_ipchksum() != 0xffff) { /* Compute and check the IP header
 				    checksum. */
+    vmm_printf("%s: Bad IP-chksum: 0x%04X\n", __func__, uip_ipchksum());
     UIP_STAT(++uip_stat.ip.drop);
     UIP_STAT(++uip_stat.ip.chkerr);
     UIP_LOG("ip: bad checksum.");
@@ -980,14 +1020,56 @@ uip_process(u8_t flag)
 #endif /* UIP_PINGADDRCONF */
   UIP_STAT(++uip_stat.icmp.recv);
 
-  /* ICMP echo (i.e., ping) processing. This is simple, we only change
-     the ICMP type from ECHO to ECHO_REPLY and adjust the ICMP
-     checksum before we return the packet. */
+  /* Hook for ping application to receive ICMP_ECHO_REPLY */
+  if(ICMPBUF->type == ICMP_ECHO_REPLY) {
+    struct vmm_icmp_echo_reply echo_reply;
+    static u64 uip_ping_time;
+
+
+    if(!vmm_memcmp(ICMPBUF->destipaddr, all_zeroes_addr, 4)) {
+    /*  
+     *  While requesting for ping sequence, the ping-app sends a dummy
+     *  ICMP_ECHO_REPLY to itself with all-zeroes destipaddr and the
+     *  remote ipaddr, payload-len & sequence no is filled in the payload
+     *  part as a struct uip_icmp_echo_request
+     */
+       struct uip_icmp_echo_request *echo_req;
+       DUMP_ICMP((BUF), (uip_len));
+       echo_req = (struct uip_icmp_echo_request *)((u8 *)BUF+UIP_ICMP_IPH_LEN);
+       uip_len = (UIP_ICMP_IPH_LEN + echo_req->len); 
+       ICMPBUF->len[0] = ((uip_len) >> 8) & 0xff;
+       ICMPBUF->len[1] = ((uip_len) >> 0) & 0xff;
+       /* ttl, proto & srcipaddr are same as recvd dummy icmp_echo_req */
+       uip_ipaddr_copy(ICMPBUF->destipaddr, (echo_req->ripaddr));
+       uip_create_icmp_pkt(ICMPBUF, ICMP_ECHO, (uip_len - UIP_IPH_LEN), 
+		           (echo_req->seqno));
+       uip_ping_time = udiv64(vmm_timer_timestamp(), 1000);
+       UIP_STAT(++uip_stat.icmp.sent);
+       goto ip_send_nolen;
+
+    } else {
+    /*  
+     *  On receiving an actual ECHO_REPLY from remote ipaddr, the
+     *  ping callback is called, with a parameter providing the info 
+     *  about the reply packet
+     */
+       uip_ipaddr_copy(&echo_reply.ripaddr, ICMPBUF->srcipaddr);
+       echo_reply.len = vmm_be16_to_cpu(*(u16_t *)(&ICMPBUF->len)) - 
+             	          (UIP_IPH_LEN); 
+       echo_reply.rtt = (udiv64(vmm_timer_timestamp(), 1000) - uip_ping_time);
+       echo_reply.seqno = ntohs(*(u16_t *)(&ICMPBUF->seqno));
+       echo_reply.ttl = ICMPBUF->ttl;
+       /* Notify the application about the reply */
+       uip_ping_callback(&echo_reply);
+       goto drop;
+    }
+
+  }
+
   if(ICMPBUF->type != ICMP_ECHO) {
-    /* TODO: Hook for ping application to receive ICMP_ECHO_REPLY */
     UIP_STAT(++uip_stat.icmp.drop);
     UIP_STAT(++uip_stat.icmp.typeerr);
-    UIP_LOG("icmp: not icmp echo.");
+    UIP_LOG("icmp: not icmp echo or echo_reply");
     goto drop;
   }
 
@@ -1000,6 +1082,11 @@ uip_process(u8_t flag)
     uip_hostaddr[1] = BUF->destipaddr[1];
   }
 #endif /* UIP_PINGADDRCONF */
+
+  DUMP_ICMP((BUF), (uip_len));
+  /* ICMP echo (i.e., ping) processing. This is simple, we only change
+     the ICMP type from ECHO to ECHO_REPLY and adjust the ICMP
+     checksum before we return the packet. */
 
   ICMPBUF->type = ICMP_ECHO_REPLY;
 
@@ -1868,7 +1955,7 @@ ip_send_nolen:
   /* Calculate IP checksum. */
   BUF->ipchksum = 0;
   BUF->ipchksum = ~(uip_ipchksum());
-  DEBUG_PRINTF("uip ip_send_nolen: chkecum 0x%04x\n", uip_ipchksum());
+  DEBUG_PRINTF("uip ip_send_nolen: checksum 0x%04x\n", uip_ipchksum());
 #endif /* UIP_CONF_IPV6 */
    
   UIP_STAT(++uip_stat.tcp.sent);

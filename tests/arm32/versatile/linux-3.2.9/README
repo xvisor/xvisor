@@ -8,8 +8,6 @@ Linux read the wiki page http://en.wikipedia.org/wiki/Linux
 
 The Linux-3.2.9 version of Linux already contains a support for Versatile
 PB Board. We can use this kernel unmodified to run it as a xvisor guest.
-We have provided a patch for linux-3.2.9 kernel but that is for disabling
-devices (which we don't emulate in xvisor) and for supportting early printk.
 We have also provided a Versatile PB defconfig for linux-3.2.9 kernel
 for ease in building kernel. To obtain Linux-3.2.9 sources visit the 
 following site: http://www.kernel.org

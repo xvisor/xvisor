@@ -105,19 +105,19 @@ void m_copydata(struct vmm_mbuf *m, int off, int len, void *vp)
 	unsigned count;
 	void *cp = vp;
 
+	if(m == NULL || vp == NULL)
+		vmm_panic("%s: either m or vp is NULL\n", __func__);
 	if (off < 0 || len < 0)
-		vmm_panic("m_copydata: off %d, len %d", off, len);
+		vmm_panic("%s: off %d, len %d", __func__, off, len);
 	while (off > 0) {
 		if (m == NULL)
-			vmm_panic("m_copydata: m == NULL, off %d", off);
+			vmm_panic("%s: m == NULL, off %d", __func__, off);
 		if (off < m->m_len)
 			break;
 		off -= m->m_len;
 		m = m->m_next;
 	}
 	while (len > 0) {
-		if (m == NULL)
-			vmm_panic("m_copydata: m == NULL, len %d", len);
 		count = min(m->m_len - off, len);
 		vmm_memcpy(cp, mtod(m, char *) + off, count);
 		len -= count;

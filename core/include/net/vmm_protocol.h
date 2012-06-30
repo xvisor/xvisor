@@ -21,13 +21,16 @@
  * @brief Helper utils for various network protocols
  *
  * Portions of this file have been adapted from linux source header
- * include/linux/etherdevice.hi which is licensed under GPLv2:
+ * include/linux/etherdevice.h which is licensed under GPLv2:
  *
  * Original authors:
  * 	Ross Biro
  *	Fred N. van Kempen <waltje@uWalt.NL.Mugnet.ORG>
  *	Alan Cox <gw4pts@gw4pts.ampr.org> 
  */
+
+#ifndef __VMM_PROTOCOL_H_
+#define __VMM_PROTOCOL_H_
 
 #include <vmm_types.h>
 #include <vmm_host_io.h>
@@ -155,18 +158,6 @@ static inline unsigned compare_ether_addr(const u8 *addr1, const u8 *addr2)
 	return ((a[0] ^ b[0]) | (a[1] ^ b[1]) | (a[2] ^ b[2])) != 0;
 }
 
-struct eth_header {
-	u8 dstmac[6];
-	u8 srcmac[6];
-	u16 ethertype;
-	u8 payload[0];
-} __packed;
-
-#define ether_srcmac(ether_frame)	(((struct eth_header *)(ether_frame))->srcmac)
-#define ether_dstmac(ether_frame)	(((struct eth_header *)(ether_frame))->dstmac)
-#define ether_type(ether_frame)		vmm_be16_to_cpu(((struct eth_header *)(ether_frame))->ethertype)
-#define ether_payload(ether_frame)	(((struct eth_header *)(ether_frame))->payload)
-
 /**
  * ethaddr_to_str - Convert an ethernet address to string
  *
@@ -182,7 +173,6 @@ static inline char *ethaddr_to_str(char *str, const u8 *addr)
 	return str;
 }
 
-
 /**
  * ipddr_to_str - Convert an ipv4 address to string
  *
@@ -197,6 +187,44 @@ static inline char *ip4addr_to_str(char *str, const u8 *addr)
 	return str;
 }
 
+struct eth_header {
+	u8 dstmac[6];
+	u8 srcmac[6];
+	u16 ethertype;
+	u8 payload[0];
+} __packed;
+
+#define ETH_HLEN	(sizeof(struct eth_header))
+
+#define ether_srcmac(ether_frame)	(((struct eth_header *)(ether_frame))->srcmac)
+#define ether_dstmac(ether_frame)	(((struct eth_header *)(ether_frame))->dstmac)
+#define ether_type(ether_frame)		vmm_be16_to_cpu(((struct eth_header *)(ether_frame))->ethertype)
+#define ether_payload(ether_frame)	(((struct eth_header *)(ether_frame))->payload)
+
+struct ip_header {
+	u8 vhl;
+	u8 tos;
+	u16 len;
+	u16 ipid;
+	u16 ipoffset;
+	u8 ttl;
+	u8 protocol;
+	u16 ipchksum;
+	u8 srcipaddr[4];
+	u8 dstipaddr[4];
+	u8 payload[0];
+} __packed;
+
+#define IP4_HLEN	(sizeof(struct ip_header))
+
+#define ip_srcaddr(ip_frame)	(((struct ip_header *)(ip_frame))->srcipaddr)
+#define ip_dstaddr(ip_frame)	(((struct ip_header *)(ip_frame))->dstipaddr)
+#define ip_ttl(ip_frame)	(((struct ip_header *)(ip_frame))->ttl)
+#define ip_protocol(ip_frame)	(((struct ip_header *)(ip_frame))->protocol)
+#define ip_len(ip_frame)	vmm_be16_to_cpu(((struct ip_header *)(ip_frame))->len)
+#define ip_chksum(ip_frame)	vmm_be16_to_cpu(((struct ip_header *)(ip_frame))->ipchksum)
+#define ip_payload(ip_frame)	(((struct ip_header *)(ip_frame))->payload)
+
 struct arp_header {
 	u16 htype;
 	u16 ptype;
@@ -209,6 +237,8 @@ struct arp_header {
 	u8 tpa[4];
 } __packed;
 
+#define ARP_HLEN	(sizeof(struct arp_header))
+
 #define	arp_htype(arp_frame)	vmm_be16_to_cpu(((struct arp_header *)(arp_frame))->htype) 
 #define	arp_ptype(arp_frame)	vmm_be16_to_cpu(((struct arp_header *)(arp_frame))->ptype) 
 #define	arp_hlen(arp_frame)	(((struct arp_header *)(arp_frame))->hlen) 
@@ -219,3 +249,14 @@ struct arp_header {
 #define	arp_tha(arp_frame)	(((struct arp_header *)(arp_frame))->tha) 
 #define	arp_tpa(arp_frame)	(((struct arp_header *)(arp_frame))->tpa) 
 
+struct icmp_echo_header {
+	u8 type;
+	u8 icode;
+	u16 chksum;
+	u16 id;
+	u16 seqno;
+} __packed;
+
+#define ICMP_HLEN	(sizeof(struct icmp_echo_header))
+
+#endif /* __VMM_PROTOCOL_H_ */

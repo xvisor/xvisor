@@ -53,6 +53,7 @@
 #define __UIP_ARP_H__
 
 #include "uip.h"
+#include <vmm_string.h>
 
 
 extern struct uip_eth_addr uip_ethaddr;
@@ -66,10 +67,55 @@ struct uip_eth_hdr {
 	u16 type;
 };
 
+/**
+ * The ARP over Ethernet frame
+ */
+struct arp_hdr {
+	struct uip_eth_hdr ethhdr;
+	u16 hwtype;
+	u16 protocol;
+	u8 hwlen;
+	u8 protolen;
+	u16 opcode;
+	struct uip_eth_addr shwaddr;
+	u16 sipaddr[2];
+	struct uip_eth_addr dhwaddr;
+	u16 dipaddr[2];
+};
+
 #define UIP_ETHTYPE_ARP 0x0806
 #define UIP_ETHTYPE_IP  0x0800
 #define UIP_ETHTYPE_IP6 0x86dd
 
+#define ARP_HINT    0
+#define ARP_REQUEST 1
+#define ARP_REPLY   2
+
+#define ARP_HWTYPE_ETH 1
+
+/**
+ * Fill the fields of an ARP broadcast frame
+ *
+ * @buf - Start of the ARP frame
+ * @ipaddr - Destination IP address
+ * @op - operation field of the ARP frame
+ */
+#define uip_create_broadcast_eth_arp_pkt(buf, ipaddr, op)	\
+do {								\
+	struct arp_hdr *arp = (void *)(buf);			\
+	vmm_memset(arp->ethhdr.dest.addr, 0xff, 6);		\
+	vmm_memset(arp->dhwaddr.addr, 0x00, 6);			\
+	vmm_memcpy(arp->ethhdr.src.addr, uip_ethaddr.addr, 6);	\
+	vmm_memcpy(arp->shwaddr.addr, uip_ethaddr.addr, 6);	\
+	uip_ipaddr_copy(arp->dipaddr, (ipaddr));		\
+	uip_ipaddr_copy(arp->sipaddr, uip_hostaddr);		\
+	arp->opcode = HTONS((op));				\
+	arp->hwtype = HTONS(ARP_HWTYPE_ETH);			\
+	arp->protocol = HTONS(UIP_ETHTYPE_IP);			\
+	arp->hwlen = 6;						\
+	arp->protolen = 4;					\
+	arp->ethhdr.type = HTONS(UIP_ETHTYPE_ARP);		\
+}while (0);
 
 /* The uip_arp_init() function must be called before any of the other
    ARP functions. */

@@ -161,8 +161,8 @@ static vmm_irq_return_t pl011_irq_handler(u32 irq_no,
 		/* Mask RX interrupts till RX FIFO is empty */
 		port->mask &= ~(UART_PL011_IMSC_RXIM | UART_PL011_IMSC_RTIM);
 		vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
-		/* Signal work completions to all sleeping threads */
-		vmm_completion_complete_all(&port->read_possible);
+		/* Signal work completion sleeping thread */
+		vmm_completion_complete(&port->read_possible);
 	}
 
 	/* handle TX FIFO not full */
@@ -170,8 +170,8 @@ static vmm_irq_return_t pl011_irq_handler(u32 irq_no,
 		/* Mask TX interrupts till TX FIFO is full */
 		port->mask &= ~UART_PL011_IMSC_TXIM;
 		vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
-		/* Signal work completions to all sleeping threads */
-		vmm_completion_complete_all(&port->write_possible);
+		/* Signal work completion to sleeping thread */
+		vmm_completion_complete(&port->write_possible);
 	}
 
 	/* Clear all interrupts */
