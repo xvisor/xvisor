@@ -317,7 +317,7 @@ int vmm_memcmp(const void *s1, const void *s2, size_t count)
 	return (0);
 }
 
-int vmm_str_to_ipaddr(char *str, unsigned char *ipaddr)
+int vmm_str_to_ipaddr(unsigned char *ipaddr, const char *str)
 {
 	unsigned char tmp;
 	char c;

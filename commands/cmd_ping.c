@@ -61,7 +61,7 @@ int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	if(argc > 3) {
 		size = vmm_str2int(argv[3], 10);
 	}
-	vmm_str_to_ipaddr(argv[1], ipaddr);
+	vmm_str_to_ipaddr(ipaddr, argv[1]);
 
 	vmm_cprintf(cdev, "PING (%s) %d(%d) bytes of data.\n", 
 			  argv[1], size, (size + IP4_HLEN + ICMP_HLEN));
