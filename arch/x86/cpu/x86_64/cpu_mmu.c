@@ -158,7 +158,26 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 int arch_cpu_aspace_unmap(virtual_addr_t va,
 			 virtual_size_t sz)
 {
-	/* FIXME: */
+	u32 offset;
+	union page *pg;
+	int i;
+
+	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
+
+	for (i = 0; i < sz / PAGE_SIZE; i++) {
+		/*
+		 * FIXME: As all the PGTI is freed, mark PGD, PMD, and PML
+		 * as not present.
+		 */
+		offset = VIRT_TO_PGTI(va) + (VIRT_TO_PGDI(va) * 512);
+		pg = (union page *)&pgti[offset];
+		pg->_val = 0;
+
+		invalidate_vaddr_tlb(va);
+
+		va += PAGE_SIZE;
+	}
+
 	return VMM_OK;
 }
 
@@ -239,6 +258,38 @@ int arch_cpu_aspace_init(physical_addr_t *core_resv_pa,
 
 int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 {
+	u32 offset;
+	union page *pg;
+	u64 *pg_e, fpa;
+
+	/* PML4 */
+	offset = VIRT_TO_PML4(va);
+	pg = (union page *)&pml4[offset];
+	if (!pg->bits.present) return VMM_EFAIL;
+
+	/* PGDP */
+	pg_e = (u64 *)PHYS_TO_VIRT((pg->bits.paddr << PAGE_SHIFT));
+	offset = VIRT_TO_PGDP(va);
+	pg = (union page *)&pg_e[offset];
+	if (!pg->bits.present) return VMM_EFAIL;
+
+	/* PGDI */
+	pg_e = (u64 *)PHYS_TO_VIRT((pg->bits.paddr << PAGE_SHIFT));
+	offset = VIRT_TO_PGDI(va);
+	pg = (union page *)&pg_e[offset];
+	if (!pg->bits.present) return VMM_EFAIL;
+
+	/* PGTI */
+	pg_e = (u64 *)PHYS_TO_VIRT((pg->bits.paddr << PAGE_SHIFT));
+	offset = VIRT_TO_PGTI(va);
+	pg = (union page *)&pg_e[offset];
+	if (!pg->bits.present) return VMM_EFAIL;
+
+	fpa = (u64)(pg->bits.paddr << PAGE_SHIFT);
+	fpa |= va & ~PAGE_MASK;
+
+	*pa = fpa;
+
 	return VMM_OK;
 }
 
