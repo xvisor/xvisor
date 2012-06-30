@@ -45,15 +45,19 @@ void cmd_net_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   net help\n");
-	vmm_cprintf(cdev, "   net info\n");
+	vmm_cprintf(cdev, "   net ipconfig [<ipaddr>] [<netmask>]\n");
 	vmm_cprintf(cdev, "   net ports\n");
 	vmm_cprintf(cdev, "   net switches\n");
 }
 
-int cmd_net_port_list(struct vmm_chardev *cdev)
+int cmd_net_port_list(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int num, count;
 	struct vmm_netport *port;
+	if(argc != 2) {
+		cmd_net_usage(cdev);
+		return VMM_EFAIL;
+	}
 	count = vmm_netport_count();
 	vmm_cprintf(cdev, "-----------------------: ----------------\n");
 	vmm_cprintf(cdev, "%13s          :     %s\n", "Port", "Switch");
@@ -67,12 +71,16 @@ int cmd_net_port_list(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
-int cmd_net_switch_list(struct vmm_chardev *cdev)
+int cmd_net_switch_list(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int num, count;
 	struct vmm_netswitch *nsw;
 	struct dlist *list;
 	struct vmm_netport *port;
+	if(argc != 2) {
+		cmd_net_usage(cdev);
+		return VMM_EFAIL;
+	}
 	count = vmm_netswitch_count();
 	vmm_cprintf(cdev, "----------------: -----------------------\n");
 	vmm_cprintf(cdev, "%11s     :     %s\n", "Switch", "Port List");
@@ -89,34 +97,64 @@ int cmd_net_switch_list(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
-int cmd_net_info(struct vmm_chardev *cdev)
+int cmd_net_ipconfig(struct vmm_chardev *cdev, int argc, char **argv)
 {
-	u8 buf[10];
+	u8 buf[4];
+	u8 mask[4];
+	int rc = VMM_OK;
 	char str[30];
-	vmm_cprintf(cdev, "Hypervisor Network-Stack Info:\n");
-	vmm_netstack_get_ipaddr(buf);
-	vmm_cprintf(cdev, "   IP address  : %s\n", ip4addr_to_str(str, buf));
-	vmm_netstack_get_ipmask(buf);
-	vmm_cprintf(cdev, "   IP netmask  : %s\n", ip4addr_to_str(str, buf));
-	vmm_netstack_get_hwaddr(buf);
-	vmm_cprintf(cdev, "   HW address  : %s\n", ethaddr_to_str(str, buf));
-	vmm_cprintf(cdev, "   TCP/IP-stack: %s\n", vmm_netstack_get_name());
-	return VMM_OK;
+	if((argc < 2) || (argc > 4)) {
+		cmd_net_usage(cdev);
+		return VMM_EFAIL;
+	}
+	switch(argc) {
+	case 2:
+		vmm_cprintf(cdev, "Hypervisor Network-Stack Info:\n");
+		vmm_netstack_get_ipaddr(buf);
+		vmm_cprintf(cdev, "   IP address  : %s\n", ip4addr_to_str(str, buf));
+		vmm_netstack_get_ipmask(buf);
+		vmm_cprintf(cdev, "   IP netmask  : %s\n", ip4addr_to_str(str, buf));
+		vmm_netstack_get_hwaddr(buf);
+		vmm_cprintf(cdev, "   HW address  : %s\n", ethaddr_to_str(str, buf));
+		vmm_cprintf(cdev, "   TCP/IP-stack: %s\n", vmm_netstack_get_name());
+		break;
+	case 3:
+		vmm_str_to_ipaddr(buf, argv[2]);
+		if(ipv4_class_netmask(buf,mask) != -1) {
+			vmm_netstack_set_ipaddr(buf);
+			vmm_netstack_set_ipmask(mask);
+		} else {
+			vmm_cprintf(cdev, "ERROR: Invalid IP address\n");
+			rc = VMM_EFAIL;
+		}
+		break;
+	case 4:
+		vmm_str_to_ipaddr(buf, argv[2]);
+		if(ipv4_class_netmask(buf,mask) != -1) {
+			vmm_netstack_set_ipaddr(buf);
+			vmm_str_to_ipaddr(buf, argv[3]);
+			vmm_netstack_set_ipmask(buf);
+		} else {
+			vmm_cprintf(cdev, "ERROR: Invalid IP address\n");
+			rc = VMM_EFAIL;
+		}
+		break;
+	};
+
+	return rc;
 }
 
 int cmd_net_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
-	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
-			cmd_net_usage(cdev);
-			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "info") == 0) {
-			return cmd_net_info(cdev);
-		} else if (vmm_strcmp(argv[1], "ports") == 0) {
-			return cmd_net_port_list(cdev);
-		} else if (vmm_strcmp(argv[1], "switches") == 0) {
-			return cmd_net_switch_list(cdev);
-		}
+	if (vmm_strcmp(argv[1], "help") == 0) {
+		cmd_net_usage(cdev);
+		return VMM_OK;
+	} else if (vmm_strcmp(argv[1], "ipconfig") == 0) {
+		return cmd_net_ipconfig(cdev, argc, argv);
+	} else if (vmm_strcmp(argv[1], "ports") == 0) {
+		return cmd_net_port_list(cdev, argc, argv);
+	} else if (vmm_strcmp(argv[1], "switches") == 0) {
+		return cmd_net_switch_list(cdev, argc, argv);
 	}
 	cmd_net_usage(cdev);
 	return VMM_EFAIL;
