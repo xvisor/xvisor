@@ -54,20 +54,26 @@ int cmd_net_port_list(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int num, count;
 	struct vmm_netport *port;
+	char hwaddr[20];
 	if(argc != 2) {
 		cmd_net_usage(cdev);
 		return VMM_EFAIL;
 	}
 	count = vmm_netport_count();
-	vmm_cprintf(cdev, "-----------------------: ----------------\n");
-	vmm_cprintf(cdev, "%13s          :     %s\n", "Port", "Switch");
-	vmm_cprintf(cdev, "-----------------------: ----------------\n");
+	vmm_cprintf(cdev, "---------------------------------------------------------------------------\n");
+	vmm_cprintf(cdev, " %-3s %-18s %-13s %-6s %-18s %-5s\n", "ID", "Port", "Switch", "Link", "HW-Address", "MTU");
+	vmm_cprintf(cdev, "---------------------------------------------------------------------------\n");
 	for (num = 0; num < count; num++) {
 		port = vmm_netport_get(num);
-		vmm_cprintf(cdev, "%17s      :    %s\n", port->name, port->nsw->name);
-		
+		vmm_cprintf(cdev, " %-3d %-18s %-13s", num, port->name, port->nsw->name);
+		if(port->flags & VMM_NETPORT_LINK_UP) {
+			vmm_cprintf(cdev, " %-6s", "UP");
+		} else {
+			vmm_cprintf(cdev, " %-6s", "DOWN");
+		}
+		vmm_cprintf(cdev, " %-18s %-5d\n", ethaddr_to_str(hwaddr, port->macaddr), port->mtu);
 	}
-	vmm_cprintf(cdev, "-----------------------: ----------------\n");
+	vmm_cprintf(cdev, "---------------------------------------------------------------------------\n");
 	return VMM_OK;
 }
 
@@ -82,18 +88,18 @@ int cmd_net_switch_list(struct vmm_chardev *cdev, int argc, char **argv)
 		return VMM_EFAIL;
 	}
 	count = vmm_netswitch_count();
-	vmm_cprintf(cdev, "----------------: -----------------------\n");
-	vmm_cprintf(cdev, "%11s     :     %s\n", "Switch", "Port List");
+	vmm_cprintf(cdev, "-----------------------------------------\n");
+	vmm_cprintf(cdev, " %-13s     %s\n", "Switch", "Port List");
 	for (num = 0; num < count; num++) {
-		vmm_cprintf(cdev, "----------------: -----------------------\n");
+		vmm_cprintf(cdev, "\r-----------------------------------------\n");
 		nsw = vmm_netswitch_get(num);
-		vmm_cprintf(cdev, "%13s   : \n", nsw->name);
+		vmm_cprintf(cdev, " %-13s +", nsw->name);
 		list_for_each(list, &nsw->port_list) {
 			port = list_port(list);
-			vmm_cprintf(cdev, "%13s   : -- %s\n", "", port->name);
+			vmm_cprintf(cdev, "-- %s\n %-13s +", port->name, "");
 		}
 	}
-	vmm_cprintf(cdev, "----------------: -----------------------\n");
+	vmm_cprintf(cdev, "\r-----------------------------------------\n");
 	return VMM_OK;
 }
 
