@@ -117,11 +117,21 @@ void arm_cmd_help(int argc, char **argv)
 
 void arm_cmd_hi(int argc, char **argv)
 {
+	if (argc != 1) {
+		arm_puts ("hi: no parameters required\n");
+		return;
+	}
+
 	arm_puts("hello\n");
 }
 
 void arm_cmd_hello(int argc, char **argv)
 {
+	if (argc != 1) {
+		arm_puts ("hello: no parameters required\n");
+		return;
+	}
+
 	arm_puts("hi\n");
 }
 
@@ -150,7 +160,10 @@ void arm_cmd_wfi_test(int argc, char **argv)
 	char time[256];
 	int delay = 1000;
 
-	if (argc > 1) {
+	if (argc > 2) {
+		arm_puts ("wfi_test: could provide only <delay>\n");
+		return;
+	} else if (argc == 2) {
 		delay = arm_str2int(argv[1]);
 	}
 
@@ -173,11 +186,21 @@ void arm_cmd_wfi_test(int argc, char **argv)
 
 void arm_cmd_mmu_setup(int argc, char **argv)
 {
+	if (argc != 1) {
+		arm_puts ("mmu_setup: no parameters required\n");
+		return;
+	}
+
 	arm_mmu_setup();
 }
 
 void arm_cmd_mmu_state(int argc, char **argv)
 {
+	if (argc != 1) {
+		arm_puts ("mmu_state: no parameters required\n");
+		return;
+	}
+
 	if (arm_mmu_is_enabled()) {
 		arm_puts("MMU Enabled\n");
 	} else {
@@ -189,6 +212,12 @@ void arm_cmd_mmu_test(int argc, char **argv)
 {
 	char str[32];
 	u32 total = 0x0, pass = 0x0, fail = 0x0;
+
+	if (argc != 1) {
+		arm_puts ("mmu_test: no parameters required\n");
+		return;
+	}
+
 	arm_puts("MMU Section Test Suite ...\n");
 	total = 0x0;
 	pass = 0x0;
@@ -227,6 +256,11 @@ void arm_cmd_mmu_test(int argc, char **argv)
 
 void arm_cmd_mmu_cleanup(int argc, char **argv)
 {
+	if (argc != 1) {
+		arm_puts ("mmu_cleanup: no parameters required\n");
+		return;
+	}
+
 	arm_mmu_cleanup();
 }
 
@@ -234,6 +268,12 @@ void arm_cmd_sysctl(int argc, char **argv)
 {
 	char str[32];
 	u32 sys_100hz, sys_24mhz;
+
+	if (argc != 1) {
+		arm_puts ("sysctl: no parameters required\n");
+		return;
+	}
+
 	sys_100hz = arm_readl((void *)VERSATILE_SYS_100HZ);
 	sys_24mhz = arm_readl((void *)VERSATILE_SYS_24MHz);
 	arm_puts("Sysctl Registers ...\n");
@@ -251,6 +291,12 @@ void arm_cmd_timer(int argc, char **argv)
 {
 	char str[32];
 	u64 irq_count, irq_delay, tstamp;
+
+	if (argc != 1) {
+		arm_puts ("timer: no parameters required\n");
+		return;
+	}
+
 	irq_count = arm_timer_irqcount();
 	irq_delay = arm_timer_irqdelay();
 	tstamp = arm_timer_timestamp();
@@ -273,7 +319,10 @@ void arm_cmd_dhrystone(int argc, char **argv)
 {
 	char str[32];
 	int iters = 1000000;
-	if (argc > 1) {
+	if (argc > 2) {
+		arm_puts ("dhrystone: could provide only <iter_number>\n");
+		return;
+	} else if (argc == 2) {
 		iters = arm_str2int(argv[1]);
 	} else {
 		arm_puts ("dhrystone: number of iterations not provided\n");
@@ -292,7 +341,7 @@ void arm_cmd_hexdump(int argc, char **argv)
 	char str[32];
 	u32 *addr;
 	u32 i, count, len;
-	if (argc < 3) {
+	if (argc != 3) {
 		arm_puts ("hexdump: must provide <addr> and <count>\n");
 		return;
 	}
@@ -327,18 +376,30 @@ void arm_cmd_hexdump(int argc, char **argv)
 
 void arm_cmd_copy(int argc, char **argv)
 {
+	u64 tstamp;
+	char time[256];
 	u8 *dest, *src;
 	u32 i, count;
-	if (argc < 4) {
+	if (argc != 4) {
 		arm_puts ("copy: must provide <dest>, <src>, and <count>\n");
 		return;
 	}
 	dest = (u8 *)arm_hexstr2uint(argv[1]);
 	src = (u8 *)arm_hexstr2uint(argv[2]);
 	count = arm_hexstr2uint(argv[3]);
+	arm_timer_disable();
+	tstamp = arm_timer_timestamp();
 	for (i = 0; i < count; i++) {
 		dest[i] = src[i];
 	}
+	tstamp = arm_timer_timestamp() - tstamp;
+	arm_timer_enable();
+	arm_ulonglong2str(time, tstamp);
+	arm_puts("copy took ");
+	arm_puts(time);
+	arm_puts(" ns for ");
+	arm_puts(argv[3]);
+	arm_puts(" bytes\n");
 }
 
 #define RAM_START	0x00000000
@@ -356,7 +417,7 @@ void arm_cmd_start_linux(int argc, char **argv)
 	u32 cmdline_size, p;
 	u32 kernel_addr, initrd_addr, initrd_size;
 
-	if (argc < 4) {
+	if (argc != 4) {
 		arm_puts ("start_linux: must provide <kernel_addr>, <initrd_addr>, and <initrd_size>\n");
 		return;
 	}
@@ -466,6 +527,11 @@ void arm_cmd_autoexec(int argc, char **argv)
 	char *ptr = (char *)(VERSATILE_FLASH_BASE + 0xFF000);
 	char buffer[4096];
 
+	if (argc != 1) {
+		arm_puts ("autoexec: no parameters required\n");
+		return;
+	}
+
 	/* autoexec is not recursive */
 	if (lock) {
 		arm_puts("ignoring autoexec calling autoexec\n");
@@ -512,22 +578,31 @@ void arm_cmd_go(int argc, char **argv)
 {
 	char str[32];
 	void (* jump)(void);
-	if (argc < 2) {
+
+	if (argc != 2) {
 		arm_puts ("go: must provide destination address\n");
 		return;
 	}
+
 	arm_timer_disable();
+
 	jump = (void (*)(void))arm_hexstr2uint(argv[1]);
 	arm_uint2hexstr(str, (u32)jump);
 	arm_puts("Jumping to location 0x");
 	arm_puts(str);
 	arm_puts(" ...\n");
 	jump ();
+
 	arm_timer_enable();
 }
 
 void arm_cmd_reset(int argc, char **argv)
 {
+	if (argc != 1) {
+		arm_puts ("reset: no parameters required\n");
+		return;
+	}
+
 	arm_puts("System reset ...\n\n");
 
 	arm_writel(0x101, 
@@ -603,6 +678,8 @@ void arm_exec(char *line)
 			arm_cmd_go(argc, argv);
 		} else if (arm_strcmp(argv[0], "reset") == 0) {
 			arm_cmd_reset(argc, argv);
+		} else {
+			arm_puts("Unknown command\n");
 		}
 	}
 }
