@@ -127,5 +127,9 @@ END_IRQ_HANDLER
 IRQ_HANDLER(_irq128) /* sys call */
 END_IRQ_HANDLER
 
+.extern do_generic_int_handler
 IRQ_HANDLER(_generic_handler) /* other interrupts */
+	movq	$13, %rdi /* first arg as int num */
+	movq	%rsp, %rsi /* pt_regs */
+	callq	do_generic_int_handler
 END_IRQ_HANDLER

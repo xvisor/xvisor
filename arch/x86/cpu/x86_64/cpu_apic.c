@@ -87,24 +87,24 @@ static u32 is_lapic_present(void)
 
 static inline u32 lapic_read(virtual_addr_t base)
 {
-	return vmm_ioreadl((void *)base);
+	return vmm_readl((void *)base);
 }
 
 static inline void lapic_write(virtual_addr_t base, u32 val)
 {
-	vmm_iowritel((void *)base, val);
+	vmm_writel(val, (void *)base);
 }
 
 static u32 ioapic_read(virtual_addr_t ioa_base, u32 reg)
 {
-	vmm_iowritel((void *)(ioa_base + IOAPIC_IOREGSEL), (reg & 0xff));
-	return vmm_ioreadl((void *)(ioa_base + IOAPIC_IOWIN));
+	vmm_writel((reg & 0xff), (void *)(ioa_base + IOAPIC_IOREGSEL));
+	return vmm_readl((void *)(ioa_base + IOAPIC_IOWIN));
 }
 
 static void ioapic_write(virtual_addr_t ioa_base, u8 reg, u32 val)
 {
-	vmm_iowritel((void *)(ioa_base + IOAPIC_IOREGSEL), reg);
-	vmm_iowritel((void *)(ioa_base + IOAPIC_IOWIN), val);
+	vmm_writel(reg, (void *)(ioa_base + IOAPIC_IOREGSEL));
+	vmm_writel(val, (void *)(ioa_base + IOAPIC_IOWIN));
 }
 
 static void ioapic_enable_pin(virtual_addr_t ioapic_addr, int pin)
@@ -142,8 +142,13 @@ static int ioapic_write_irt_entry(virtual_addr_t ioapic_addr, int pin, u64 entry
 	u32 lo = (u32)(entry & 0xFFFFFFFFUL);
 	u32 hi = (u32)((entry >> 32) & 0xFFFFFFFFUL);
 
+#if 0
 	ioapic_write(ioapic_addr, loa, lo);
 	ioapic_write(ioapic_addr, hia, hi);
+#else
+	ioapic_write(ioapic_addr, loa, hi);
+	ioapic_write(ioapic_addr, hia, lo);
+#endif
 
 	return VMM_OK;
 }
