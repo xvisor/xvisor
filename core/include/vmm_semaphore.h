@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Anup Patel.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -27,28 +27,33 @@
 #include <vmm_types.h>
 #include <vmm_waitqueue.h>
 
+/** Semaphore lock structure */
 struct vmm_semaphore {
 	u32 limit;
-	atomic_t value;
+	u32 value;
 	struct vmm_waitqueue wq;
 };
 
+/** Initialize semaphore lock */
 #define INIT_SEMAPHORE(sem, value)	do { \
 					(sem)->limit = (value); \
-					vmm_cpu_atomic_write(&(sem)->value, value); \
+					(sem)->value = (value); \
 					INIT_WAITQUEUE(&(sem)->wq); \
 					} while (0);
 
 /** Check if semaphore is available */
-bool vmm_semaphore_avail(struct vmm_semaphore * sem);
+bool vmm_semaphore_avail(struct vmm_semaphore *sem);
 
 /** Get maximum value (or limit) of semaphore */
-u32 vmm_semaphore_limit(struct vmm_semaphore * sem);
+u32 vmm_semaphore_limit(struct vmm_semaphore *sem);
 
 /** Release (or increment) semaphore */
-int vmm_semaphore_up(struct vmm_semaphore * sem);
+int vmm_semaphore_up(struct vmm_semaphore *sem);
 
 /** Acquire (or decrement) semaphore */
-int vmm_semaphore_down(struct vmm_semaphore * sem);
+int vmm_semaphore_down(struct vmm_semaphore *sem);
+
+/** Acquire (or decrement) semaphore with timeout */
+int vmm_semaphore_down_timeout(struct vmm_semaphore *sem, u64 *timeout);
 
 #endif /* __VMM_SEMAPHORE_H__ */

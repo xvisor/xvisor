@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Anup Patel.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,73 +21,89 @@
  * @brief Implementation of sempahore locks for Orphan VCPU (or Thread).
  */
 
-#include <arch_atomic.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_scheduler.h>
 #include <vmm_semaphore.h>
 
-bool vmm_semaphore_avail(struct vmm_semaphore * sem)
+bool vmm_semaphore_avail(struct vmm_semaphore *sem)
 {
+	bool ret;
+	irq_flags_t flags;
+
 	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
 
-	return arch_atomic_read(&(sem)->value) ? TRUE : FALSE;
+	vmm_spin_lock_irqsave(&sem->wq.lock, flags);
+
+	ret = (sem->value) ? TRUE : FALSE;
+
+	vmm_spin_unlock_irqrestore(&sem->wq.lock, flags);
+
+	return ret;
 }
 
-u32 vmm_semaphore_limit(struct vmm_semaphore * sem)
+u32 vmm_semaphore_limit(struct vmm_semaphore *sem)
 {
+	u32 ret;
+	irq_flags_t flags;
+
 	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
 
-	return sem->limit;
+	vmm_spin_lock_irqsave(&sem->wq.lock, flags);
+
+	ret = sem->limit;
+
+	vmm_spin_unlock_irqrestore(&sem->wq.lock, flags);
+
+	return ret;
 }
 
-int vmm_semaphore_up(struct vmm_semaphore * sem)
+int vmm_semaphore_up(struct vmm_semaphore *sem)
 {
-	int rc;
-	u32 value;
+	int rc = VMM_OK;
+	irq_flags_t flags;
 
-	/* Sanity Check */
 	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
 
-	/* Try to increment the semaphore */
-	rc = VMM_EFAIL;
-	value = arch_atomic_read(&sem->value);
-	while ((value < sem->limit) && 
-		(rc = arch_atomic_testnset(&sem->value, value, value + 1))) {
-		value = arch_atomic_read(&sem->value);
+	vmm_spin_lock_irqsave(&sem->wq.lock, flags);
+
+	if (sem->value < sem->limit) {
+		sem->value++;
+		rc = __vmm_waitqueue_wakeall(&sem->wq);
 	}
 
-	/* If successful then wakeup all sleeping threads */
-	if (!rc) {
-		vmm_waitqueue_wakeall(&sem->wq);
-	}
+	vmm_spin_unlock_irqrestore(&sem->wq.lock, flags);
 
 	return rc;
 }
 
-int vmm_semaphore_down(struct vmm_semaphore * sem)
+static int semaphore_down_common(struct vmm_semaphore *sem, u64 *timeout)
 {
-	int rc;
-	u32 value;
+	int rc = VMM_OK;
 
-	/* Sanity Check */
 	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
-	BUG_ON(!vmm_scheduler_orphan_context(), 
-		"%s: Down allowed in Orphan VCPU (or Thread) context only\n",
-		 __func__);
 
-	/* Decrement the semaphore */
-	rc = VMM_EFAIL;
-	while (rc) {
-		/* Sleep if semaphore not available */
-		while (!(value = arch_atomic_read(&sem->value))) {
-			vmm_waitqueue_sleep(&sem->wq);
+	vmm_spin_lock_irq(&sem->wq.lock);
+
+	if (!sem->value) {
+		rc = __vmm_waitqueue_sleep(&sem->wq, timeout);
+		if((timeout != NULL) && (*timeout == 0)) {
+			sem->value++;
 		}
-
-		/* Try to decrement the semaphore */
-		rc = arch_atomic_testnset(&sem->value, value, value - 1);
 	}
+	sem->value--;
+
+	vmm_spin_unlock_irq(&sem->wq.lock);
 
 	return rc;
+}
+
+int vmm_semaphore_down(struct vmm_semaphore *sem)
+{
+	return semaphore_down_common(sem, NULL);
+}
+
+int vmm_semaphore_down_timeout(struct vmm_semaphore *sem, u64 *timeout)
+{
+	return semaphore_down_common(sem, timeout);
 }
 
