@@ -178,10 +178,12 @@ int arch_cpu_irq_setup(void)
 
 void arch_cpu_irq_enable(void)
 {
+	__asm__ __volatile__("sti\n\t");
 }
 
 void arch_cpu_irq_disable(void)
 {
+	__asm__ __volatile__("cli\n\t");
 }
 
 irq_flags_t arch_cpu_irq_save(void)
@@ -210,6 +212,17 @@ int do_gpf(int intno, arch_regs_t *regs)
 {
 	vmm_printf("!!!! GENERAL PROTECTION FAULT !!!!\n");
 	while(1);
+
+	return 0;
+}
+
+int do_generic_int_handler(int intno, arch_regs_t *regs)
+{
+	vmm_printf("Generic int no %d\n", intno);
+
+	vmm_scheduler_irq_enter(regs, FALSE);
+	vmm_host_irq_exec(intno, regs);
+	vmm_scheduler_irq_exit(regs);
 
 	return 0;
 }

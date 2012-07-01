@@ -92,6 +92,20 @@ static void hpet_disarm_timer(u8 timer_id)
 	hpet_timer_write(hpet->vbase, HPET_TIMER_N_CONF_BASE(timer_id), _v);
 }
 
+static void hpet_set_timer_periodic(u8 timer_id)
+{
+	u64 _v = hpet_timer_read(hpet->vbase, HPET_TIMER_N_CONF_BASE(timer_id));
+	_v |= (0x01UL << 3);
+	hpet_timer_write(hpet->vbase, HPET_TIMER_N_CONF_BASE(timer_id), _v);
+}
+
+static void hpet_set_timer_non_periodic(u8 timer_id)
+{
+	u64 _v = hpet_timer_read(hpet->vbase, HPET_TIMER_N_CONF_BASE(timer_id));
+	_v &= ~(0x01UL << 3);
+	hpet_timer_write(hpet->vbase, HPET_TIMER_N_CONF_BASE(timer_id), _v);
+}
+
 static int hpet_initialize_timer(u8 timer_id, u8 dest_int, u32 flags)
 {
 	u64 tmr = 0;
@@ -173,10 +187,10 @@ hpet_clockchip_irq_handler(u32 irq_no,
 			   arch_regs_t * regs,
 			   void *dev)
 {
-	/*struct hpet_clockchip *cc = dev;*/
-
 	/* clear the interrupt */
 	/* call the event handler */
+
+	for (;;);
 
 	return VMM_IRQ_HANDLED;
 }
@@ -184,11 +198,16 @@ hpet_clockchip_irq_handler(u32 irq_no,
 static void hpet_clockchip_set_mode(enum vmm_clockchip_mode mode,
 				    struct vmm_clockchip *cc)
 {
+	struct hpet_clockchip *hpet_tmr = container_of(cc, struct hpet_clockchip, clkchip);
+
+	BUG_ON(hpet_tmr == NULL, "Error: A clockchip without a parent HPET!\n");
+
 	switch (mode) {
 	case VMM_CLOCKCHIP_MODE_PERIODIC:
-		/* FIXME: */
+		hpet_set_timer_periodic(hpet_tmr->hpet_timer_id);
 		break;
 	case VMM_CLOCKCHIP_MODE_ONESHOT:
+		hpet_set_timer_non_periodic(hpet_tmr->hpet_timer_id);
 		break;
 	case VMM_CLOCKCHIP_MODE_UNUSED:
 	case VMM_CLOCKCHIP_MODE_SHUTDOWN:
@@ -200,12 +219,17 @@ static void hpet_clockchip_set_mode(enum vmm_clockchip_mode mode,
 static int hpet_clockchip_set_next_event(unsigned long next,
 					 struct vmm_clockchip *cc)
 {
-	/*	struct sp804_clockchip *tcc = cc->priv;
-	unsigned long ctrl = vmm_readl((void *)(tcc->base + TIMER_CTRL));
+	struct hpet_clockchip *hpet_tmr = container_of(cc, struct hpet_clockchip, clkchip);
+	BUG_ON(hpet_tmr == NULL, "Error: A clockchip without a parent HPET\n");
 
-	vmm_writel(next, (void *)(tcc->base + TIMER_LOAD));
-	vmm_writel(ctrl | TIMER_CTRL_ENABLE, (void *)(tcc->base + TIMER_CTRL));
-	*/
+	hpet_disarm_timer(hpet_tmr->hpet_timer_id);
+	hpet_timer_write(hpet->vbase,
+			 HPET_TIMER_N_COMP_BASE(hpet_tmr->hpet_timer_id), next);
+	hpet_arm_timer(hpet_tmr->hpet_timer_id);
+
+	vmm_printf("%s: comp value: %lx\n", __func__,
+		   hpet_timer_read(hpet->vbase,
+				   HPET_TIMER_N_COMP_BASE(hpet_tmr->hpet_timer_id)));
 	return 0;
 }
 
@@ -254,9 +278,6 @@ static int __init hpet_clockchip_init(u8 timer_id, const char *chip_name,
 
 	vmm_printf("Initialized HPET timer %d and routed its "
 		   "interrupt to %d pin on I/O APIC.\n", timer_id, pinno);
-
-	hpet_arm_timer(rc);
-	vmm_printf("HPET Timer %d has been armed.\n", timer_id);
 
 	cc = vmm_malloc(sizeof(struct hpet_clockchip));
 	if (!cc) {
