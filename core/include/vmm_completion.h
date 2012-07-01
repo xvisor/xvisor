@@ -26,7 +26,7 @@
 
 #include <vmm_waitqueue.h>
 
-/** Completion lock structure */
+/** Completion event structure */
 struct vmm_completion {
 	u32 done;
 	struct vmm_waitqueue wq;

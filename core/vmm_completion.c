@@ -22,12 +22,15 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_stdio.h>
 #include <vmm_completion.h>
 
-bool vmm_completion_done(struct vmm_completion * cmpl)
+bool vmm_completion_done(struct vmm_completion *cmpl)
 {
 	bool ret = TRUE;
 	irq_flags_t flags;
+
+	BUG_ON(!cmpl, "%s: NULL poniter to completion event\n", __func__);
 
 	vmm_spin_lock_irqsave(&cmpl->wq.lock, flags);
 
@@ -43,6 +46,8 @@ bool vmm_completion_done(struct vmm_completion * cmpl)
 static int completion_wait_common(struct vmm_completion *cmpl, u64 *timeout)
 {
 	int rc = VMM_OK;
+
+	BUG_ON(!cmpl, "%s: NULL poniter to completion event\n", __func__);
 
 	vmm_spin_lock_irq(&cmpl->wq.lock);
 
@@ -74,6 +79,8 @@ int vmm_completion_complete(struct vmm_completion *cmpl)
 	int rc = VMM_OK;
 	irq_flags_t flags;
 
+	BUG_ON(!cmpl, "%s: NULL poniter to completion event\n", __func__);
+
 	vmm_spin_lock_irqsave(&cmpl->wq.lock, flags);
 
 	cmpl->done++;
@@ -88,6 +95,8 @@ int vmm_completion_complete_all(struct vmm_completion *cmpl)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
+
+	BUG_ON(!cmpl, "%s: NULL poniter to completion event\n", __func__);
 
 	vmm_spin_lock_irqsave(&cmpl->wq.lock, flags);
 
