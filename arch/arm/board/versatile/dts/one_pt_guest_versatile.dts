@@ -81,11 +81,11 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-			       h2g_irq_map = </* Host => Guest */
+				h2g_irq_map = </* Host => Guest */
 						/* uart0 */
-						13	12
+						13      12
 						/* eth0 */
-						25	25
+						25      25
 					      >;
 
 				mem0 {
@@ -108,6 +108,165 @@
 					mux_out_irq = <2002>;
 				};
 
+				i2c { /* No I2C */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10002000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				sic {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10003000>;
+					physical_size = <0x10000>;
+					device_type = "pic";
+					compatible = "versatilepb,pl190";
+					base_irq = <32>;
+					parent_irq = <31>;
+					child_pic = <1>;
+				};
+
+
+				aaci { /* No Audio Controller */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10004000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				mmc0 { /* No Multimedia Card 0 Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10005000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				kmi0 { /* No Keyboard/Mouse Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10006000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				kmi1 { /* No Keyboard/Mouse Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10007000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				lcd { /* No character LCD Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10008000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				uart3 { /* No uart3 Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10009000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				sci1 { /* No MMC 1 Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1000A000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				mmc1 { /* No MMC 1 Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1000B000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				/* Pass Through Device SMSC9118 */
+				eth {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x10010000>;
+					host_physical_addr = <0x10010000>;
+					physical_size = <0x10000>;
+					device_type = "ethernet";
+				};
+
+				usb { /* No USB Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10020000>;
+					physical_size = <0x10000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				ssmc { /* No SSMC Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10100000>;
+					physical_size = <0x10000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				mpmc { /* No MPMC Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10110000>;
+					physical_size = <0x10000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				clcd { /* No colour LCD Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10120000>;
+					physical_size = <0x10000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				dmac { /* No DMAC Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10130000>;
+					physical_size = <0x10000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				pic {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10140000>;
+					physical_size = <0x10000>;
+					device_type = "pic";
+					compatible = "versatilepb,pl190";
+					base_irq = <0>;
+				};
+
 				sysctrl0 {
 					manifest_type = "virtual";
 					address_type = "memory";
@@ -115,6 +274,90 @@
 					physical_size = <0x1000>;
 					device_type = "sys";
 					compatible = "primecell,sp810";
+				};
+
+				wdog { /* No Watchdog Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E1000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				timer0_1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E2000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <4>;
+				};
+
+				timer2_3 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E3000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "primecell,sp804";
+					irq = <5>;
+				};
+
+				gpio0 { /* No GPIO 0 Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E4000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				gpio1 { /* No GPIO 1 Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E5000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				gpio2 { /* No GPIO 2 Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E6000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				gpio3 { /* No GPIO 3 Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E7000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				rtc0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E8000>;
+					physical_size = <0x1000>;
+					device_type = "rtc";
+					compatible = "primecell,pl031";
+					irq = <10>;
+				};
+
+				sci0 { /* No Smart Card 0 Interface */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101F0000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
 				};
 
 				/* Pass Through Device PL011 */
@@ -149,56 +392,13 @@
 					irq = <14>;
 				};
 
-				timer0_1 {
+				ssp0 { /* No Synchronous Serial Port Interface */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x101E2000>;
+					guest_physical_addr = <0x101F4000>;
 					physical_size = <0x1000>;
-					device_type = "timer";
-					compatible = "primecell,sp804";
-					irq = <4>;
-				};
-
-				timer2_3 {
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x101E3000>;
-					physical_size = <0x1000>;
-					device_type = "timer";
-					compatible = "primecell,sp804";
-					irq = <5>;
-				};
-
-				rtc0 {
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x101E8000>;
-					physical_size = <0x1000>;
-					device_type = "rtc";
-					compatible = "primecell,pl031";
-					irq = <10>;
-				};
-
-				pic0 {
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x10140000>;
-					physical_size = <0x10000>;
-					device_type = "pic";
-					compatible = "versatilepb,pl190";
-					base_irq = <0>;
-				};
-
-				pic1 {
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x10003000>;
-					physical_size = <0x10000>;
-					device_type = "pic";
-					compatible = "versatilepb,pl190";
-					base_irq = <32>;
-					parent_irq = <31>;
-					child_pic = <1>;
+					device_type = "misc";
+					compatible = "zero";
 				};
 
 				nor_flash {
@@ -208,16 +408,6 @@
 					host_physical_addr = <0x00800000>;
 					physical_size = <0x00800000>; /* 8 MB */
 					device_type = "rom";
-				};
-
-				/* Pass Through Device SMSC9118 */
-				eth0 {
-					manifest_type = "real";
-					address_type = "memory";
-					guest_physical_addr = <0x10010000>;
-					host_physical_addr = <0x10010000>;
-					physical_size = <0x10000>;
-					device_type = "ethernet";
 				};
 			};
 		};

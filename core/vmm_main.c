@@ -296,22 +296,20 @@ void vmm_init(void)
 	vmm_printf("%dK\n", freed);
 
 	/* Populate guest instances (Must be second last step) */
-	vmm_printf("Creating Pre-Configured Guests\n");
 	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
-	if (!gsnode) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-	list_for_each(l, &gsnode->child_list) {
-		gnode = list_entry(l, struct vmm_devtree_node, head);
+	if (likely(!!gsnode)) {
+		vmm_printf("Creating Pre-Configured Guests\n");
+		list_for_each(l, &gsnode->child_list) {
+			gnode = list_entry(l, struct vmm_devtree_node, head);
 #if defined(CONFIG_VERBOSE_MODE)
-		vmm_printf("Creating %s\n", gnode->name);
+			vmm_printf("Creating %s\n", gnode->name);
 #endif
-		guest = vmm_manager_guest_create(gnode);
-		if (!guest) {
-			vmm_printf("%s: failed to create %s\n", 
-					__func__, gnode->name);
+			guest = vmm_manager_guest_create(gnode);
+			if (!guest) {
+				vmm_printf("%s: failed to create %s\n",
+					   __func__, gnode->name);
+			}
 		}
 	}
 
