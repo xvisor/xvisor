@@ -78,12 +78,13 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 	vmm_spin_unlock_irq(&wq->lock);
 	
 	/* Try to Pause VCPU */
-	if ((rc = vmm_manager_vcpu_pause(vcpu))) {
+	rc = vmm_manager_vcpu_pause(vcpu);
+
+	/* Lock waitqueue */
+	vmm_spin_lock_irq(&wq->lock);
+
+	if (rc) {
 		/* Failed to pause VCPU so remove from waitqueue */
-
-		/* Lock waitqueue */
-		vmm_spin_lock_irq(&wq->lock);
-
 		/* Destroy timeout event */
 		if(wake_event) {
 			vmm_timer_event_destroy(wake_event);
@@ -99,22 +100,18 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 
 		/* Set VCPU waitqueue context to NULL */
 		vcpu->wq_priv = NULL;
-
-		return rc;
-	}
-
-	/* Lock waitqueue */
-	vmm_spin_lock_irq(&wq->lock);
-
-	/* If timeout was used than destroy timer event */
-	if(timeout_nsecs) {
-		u64 now, expiry;
-		expiry = wake_event->expiry_tstamp;
-		vmm_timer_event_destroy(wake_event);
-		now = vmm_timer_timestamp();
-		*timeout_nsecs = (now > expiry) ? 0 : (expiry - now);
-		if (*timeout_nsecs == 0) {
-			rc = VMM_ETIMEDOUT;
+	} else {
+		/* VCPU Wakeup so remove from waitqueue */
+		/* If timeout was used than destroy timer event */
+		if(timeout_nsecs) {
+			u64 now, expiry;
+			expiry = wake_event->expiry_tstamp;
+			vmm_timer_event_destroy(wake_event);
+			now = vmm_timer_timestamp();
+			*timeout_nsecs = (now > expiry) ? 0 : (expiry - now);
+			if (*timeout_nsecs == 0) {
+				rc = VMM_ETIMEDOUT;
+			}
 		}
 	}
 

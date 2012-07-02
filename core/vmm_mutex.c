@@ -84,7 +84,6 @@ int vmm_mutex_unlock(struct vmm_mutex *mut)
 static int mutex_lock_common(struct vmm_mutex *mut, u64 *timeout)
 {
 	int rc = VMM_OK;
-	bool timedout = FALSE;
 
 	BUG_ON(!mut, "%s: NULL poniter to mutex\n", __func__);
 
@@ -92,12 +91,12 @@ static int mutex_lock_common(struct vmm_mutex *mut, u64 *timeout)
 
 	while (mut->lock) {
 		rc = __vmm_waitqueue_sleep(&mut->wq, timeout);
-		if((timeout != NULL) && (*timeout == 0)) {
-			timedout = TRUE;
+		if (rc) {
+			/* Timeout or some other failure */
 			break;
 		}
 	}
-	if (!timedout) {
+	if (rc == VMM_OK) {
 		mut->lock = 1;
 		mut->owner = vmm_scheduler_current_vcpu();
 	}
