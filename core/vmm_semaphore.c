@@ -79,18 +79,22 @@ int vmm_semaphore_up(struct vmm_semaphore *sem)
 static int semaphore_down_common(struct vmm_semaphore *sem, u64 *timeout)
 {
 	int rc = VMM_OK;
+	bool timedout = FALSE;
 
 	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
 
 	vmm_spin_lock_irq(&sem->wq.lock);
 
-	if (!sem->value) {
+	while (!sem->value) {
 		rc = __vmm_waitqueue_sleep(&sem->wq, timeout);
 		if((timeout != NULL) && (*timeout == 0)) {
-			sem->value++;
+			timedout = TRUE;
+			break;
 		}
 	}
-	sem->value--;
+	if (!timedout) {
+		sem->value--;
+	}
 
 	vmm_spin_unlock_irq(&sem->wq.lock);
 
