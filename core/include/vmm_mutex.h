@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Anup Patel.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -24,16 +24,36 @@
 #ifndef __VMM_MUTEX_H__
 #define __VMM_MUTEX_H__
 
-#include <vmm_semaphore.h>
+#include <vmm_types.h>
+#include <vmm_waitqueue.h>
 
-#define vmm_mutex				vmm_semaphore
+/** Mutex lock structure */
+struct vmm_mutex {
+	u32 lock;
+	struct vmm_vcpu *owner;
+	struct vmm_waitqueue wq;
+};
 
-#define INIT_MUTEX(mptr)			INIT_SEMAPHORE(mptr, 1)
+/** Initialize mutex lock */
+#define INIT_MUTEX(mut)			do { \
+					(mut)->lock = 0; \
+					(mut)->owner = NULL; \
+					INIT_WAITQUEUE(&(mut)->wq); \
+					} while (0);
 
-#define vmm_mutex_avail(mut)			vmm_semaphore_avail(mut)
+/** Check if mutex is available */
+bool vmm_mutex_avail(struct vmm_mutex *mut);
 
-#define vmm_mutex_lock(mut)			vmm_semaphore_dowm(mut)
+/** Get mutex owner */
+struct vmm_vcpu *vmm_mutex_owner(struct vmm_mutex *mut);
 
-#define vmm_mutex_unlock(mut)			vmm_semaphore_up(mut)
+/** Unlock mutex */
+int vmm_mutex_unlock(struct vmm_mutex *mut);
+
+/** Lock mutex */
+int vmm_mutex_lock(struct vmm_mutex *mut);
+
+/** Lock mutex with timeout */
+int vmm_mutex_lock_timeout(struct vmm_mutex *mut, u64 *timeout);
 
 #endif /* __VMM_MUTEX_H__ */
