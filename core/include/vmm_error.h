@@ -33,5 +33,6 @@
 #define VMM_EOVERFLOW		-6
 #define VMM_ENOMEM		-7
 #define VMM_ENODEV		-8
+#define VMM_ETIMEDOUT		-9
 
 #endif

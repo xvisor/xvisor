@@ -44,14 +44,17 @@ static void waitqueue_timeout(struct vmm_timer_event * event)
 int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 {
 	int rc = VMM_OK;
-	struct vmm_vcpu * vcpu;
-	struct vmm_timer_event *wake_event;
+	struct vmm_vcpu *vcpu;
+	struct vmm_timer_event *wake_event = NULL;
 
 	/* Sanity checks */
 	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
 	BUG_ON(!vmm_scheduler_orphan_context(), 
 		"%s: Sleep allowed in Orphan VCPU (or Thread) context only\n",
 		 __func__);
+	if (timeout_nsecs && (*timeout_nsecs == 0)) {
+		return VMM_ETIMEDOUT;
+	}
 
 	/* Get current VCPU */
 	vcpu = vmm_scheduler_current_vcpu();
@@ -65,26 +68,26 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 	/* Update VCPU waitqueue context */
 	vcpu->wq_priv = wq;
 
-	/* Unlock waitqueue */
-	vmm_spin_unlock_irq(&wq->lock);
-	
 	/* If timeout is required then create timer event */
 	if (timeout_nsecs) {
 		wake_event = vmm_timer_event_create(&waitqueue_timeout, vcpu);
 		vmm_timer_event_start(wake_event, *timeout_nsecs);
 	}
 
+	/* Unlock waitqueue */
+	vmm_spin_unlock_irq(&wq->lock);
+	
 	/* Try to Pause VCPU */
 	if ((rc = vmm_manager_vcpu_pause(vcpu))) {
 		/* Failed to pause VCPU so remove from waitqueue */
 
-		/* Destroy timeout event */
-		if(timeout_nsecs) {
-			vmm_timer_event_destroy(wake_event);
-		}
-
 		/* Lock waitqueue */
 		vmm_spin_lock_irq(&wq->lock);
+
+		/* Destroy timeout event */
+		if(wake_event) {
+			vmm_timer_event_destroy(wake_event);
+		}
 
 		/* Remove VCPU from waitqueue */
 		list_del(&vcpu->wq_head);
@@ -100,6 +103,9 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 		return rc;
 	}
 
+	/* Lock waitqueue */
+	vmm_spin_lock_irq(&wq->lock);
+
 	/* If timeout was used than destroy timer event */
 	if(timeout_nsecs) {
 		u64 now, expiry;
@@ -107,12 +113,12 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 		vmm_timer_event_destroy(wake_event);
 		now = vmm_timer_timestamp();
 		*timeout_nsecs = (now > expiry) ? 0 : (expiry - now);
+		if (*timeout_nsecs == 0) {
+			rc = VMM_ETIMEDOUT;
+		}
 	}
 
-	/* Lock waitqueue */
-	vmm_spin_lock_irq(&wq->lock);
-
-	return VMM_OK;
+	return rc;
 }
 
 int vmm_waitqueue_sleep(struct vmm_waitqueue * wq) 
