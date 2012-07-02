@@ -46,6 +46,7 @@ bool vmm_completion_done(struct vmm_completion *cmpl)
 static int completion_wait_common(struct vmm_completion *cmpl, u64 *timeout)
 {
 	int rc = VMM_OK;
+	bool timedout = FALSE;
 
 	BUG_ON(!cmpl, "%s: NULL poniter to completion event\n", __func__);
 
@@ -54,10 +55,12 @@ static int completion_wait_common(struct vmm_completion *cmpl, u64 *timeout)
 	if (!cmpl->done) {
 		rc = __vmm_waitqueue_sleep(&cmpl->wq, timeout);
 		if((timeout != NULL) && (*timeout == 0)) {
-			cmpl->done++;
+			timedout = TRUE;
 		}
 	}
-	cmpl->done--;
+	if (!timedout) {
+		cmpl->done--;
+	}
 
 	vmm_spin_unlock_irq(&cmpl->wq.lock);
 
