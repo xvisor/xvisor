@@ -24,25 +24,6 @@
 #define _ARM_TIMER_H__
 
 #include <arm_types.h>
-#include <arm_irq.h>
-#include <arm_plat.h>
-
-#define TIMER_LOAD		0x00
-#define TIMER_VALUE		0x04
-#define TIMER_CTRL		0x08
-#define TIMER_CTRL_ONESHOT	(1 << 0)
-#define TIMER_CTRL_32BIT	(1 << 1)
-#define TIMER_CTRL_DIV1		(0 << 2)
-#define TIMER_CTRL_DIV16	(1 << 2)
-#define TIMER_CTRL_DIV256	(2 << 2)
-#define TIMER_CTRL_IE		(1 << 5)	/* Interrupt Enable (versatile only) */
-#define TIMER_CTRL_PERIODIC	(1 << 6)
-#define TIMER_CTRL_ENABLE	(1 << 7)
-
-#define TIMER_INTCLR		0x0c
-#define TIMER_RIS		0x10
-#define TIMER_MIS		0x14
-#define TIMER_BGLOAD		0x18
 
 void arm_timer_enable(void);
 void arm_timer_disable(void);
@@ -50,7 +31,7 @@ void arm_timer_clearirq(void);
 u64 arm_timer_irqcount(void);
 u64 arm_timer_irqdelay(void);
 u64 arm_timer_timestamp(void);
-int arm_timer_init(u32 usecs, u32 init_irqcount, u32 ensel);
+int arm_timer_init(u32 usecs, u32 ensel);
 void arm_timer_change_period(u32 usec);
 
 #endif

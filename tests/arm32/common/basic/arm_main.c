@@ -28,13 +28,12 @@
 #include <arm_timer.h>
 #include <arm_string.h>
 #include <arm_stdio.h>
-#include "dhry.h"
+#include <arm_board.h>
+#include <dhry.h>
 
 /* Works in supervisor mode */
 void arm_init(void)
 {
-	u32 sys_100hz;
-
 	arm_heap_init();
 
 	arm_irq_disable();
@@ -43,9 +42,7 @@ void arm_init(void)
 
 	arm_stdio_init();
 
-	sys_100hz = arm_readl((void *)VERSATILE_SYS_100HZ);
-
-	arm_timer_init(10000, sys_100hz, 1);
+	arm_timer_init(10000, 1);
 
 	arm_timer_enable();
 
@@ -71,8 +68,6 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("mmu_test    - Run MMU test suite for ARM test code\n");
 	arm_puts("\n");
 	arm_puts("mmu_cleanup - Cleanup MMU for ARM test code\n");
-	arm_puts("\n");
-	arm_puts("sysctl      - Display sysctl registers\n");
 	arm_puts("\n");
 	arm_puts("timer       - Display timer information\n");
 	arm_puts("\n");
@@ -135,25 +130,6 @@ void arm_cmd_hello(int argc, char **argv)
 	arm_puts("hi\n");
 }
 
-void wfi()
-{
-	unsigned long reg_r0, reg_r1, reg_r2, reg_r3, reg_ip;
-
-	asm volatile (
-			"       mov     %0, #0\n"
-			"       mrc     p15, 0, %1, c1, c0, 0   @ Read control register\n"
-			"       mcr     p15, 0, %0, c7, c10, 4  @ Drain write buffer\n"
-			"       bic     %2, %1, #1 << 12\n"
-			"       mrs     %3, cpsr		@ Disable FIQs while Icache\n"
-			"       orr     %4, %3, #0x00000040     @ is disabled\n"
-			"       msr     cpsr_c, %4\n"
-			"       mcr     p15, 0, %2, c1, c0, 0   @ Disable I cache\n"
-			"       mcr     p15, 0, %0, c7, c0, 4   @ Wait for interrupt\n"
-			"       mcr     p15, 0, %1, c1, c0, 0   @ Restore ICache enable\n"
-			"       msr     cpsr_c, %3	      @ Restore FIQ state"
-			:"=r" (reg_r0), "=r" (reg_r1), "=r" (reg_r2), "=r" (reg_r3), "=r" (reg_ip)::"memory", "cc" );
-}
-
 void arm_cmd_wfi_test(int argc, char **argv)
 {
 	u64 tstamp;
@@ -172,7 +148,7 @@ void arm_cmd_wfi_test(int argc, char **argv)
 	arm_timer_change_period(delay*1000);
 	arm_timer_enable();
 	tstamp = arm_timer_timestamp();
-	wfi();
+	arm_irq_wfi();
 	tstamp = arm_timer_timestamp() - tstamp;
 	arm_timer_disable();
 	arm_timer_change_period(10000);
@@ -262,29 +238,6 @@ void arm_cmd_mmu_cleanup(int argc, char **argv)
 	}
 
 	arm_mmu_cleanup();
-}
-
-void arm_cmd_sysctl(int argc, char **argv)
-{
-	char str[32];
-	u32 sys_100hz, sys_24mhz;
-
-	if (argc != 1) {
-		arm_puts ("sysctl: no parameters required\n");
-		return;
-	}
-
-	sys_100hz = arm_readl((void *)VERSATILE_SYS_100HZ);
-	sys_24mhz = arm_readl((void *)VERSATILE_SYS_24MHz);
-	arm_puts("Sysctl Registers ...\n");
-	arm_puts("  SYS_100Hz: 0x");
-	arm_uint2hexstr(str, sys_100hz);
-	arm_puts(str);
-	arm_puts("\n");
-	arm_puts("  SYS_24MHz: 0x");
-	arm_uint2hexstr(str, sys_24mhz);
-	arm_puts(str);
-	arm_puts("\n");
 }
 
 void arm_cmd_timer(int argc, char **argv)
@@ -524,7 +477,7 @@ void arm_cmd_autoexec(int argc, char **argv)
 	static int lock = 0;
 	int len;
 	/* commands to execute are stored in NOR flash */
-	char *ptr = (char *)(VERSATILE_FLASH_BASE + 0xFF000);
+	char *ptr = (char *)(arm_board_flash_addr() + 0xFF000);
 	char buffer[4096];
 
 	if (argc != 1) {
@@ -605,8 +558,7 @@ void arm_cmd_reset(int argc, char **argv)
 
 	arm_puts("System reset ...\n\n");
 
-	arm_writel(0x101, 
-		   (void *)(VERSATILE_SYS_BASE + VERSATILE_SYS_RESETCTL_OFFSET));
+	arm_board_reset();
 
 	while (1);
 }
@@ -656,8 +608,6 @@ void arm_exec(char *line)
 			arm_cmd_mmu_test(argc, argv);
 		} else if (arm_strcmp(argv[0], "mmu_cleanup") == 0) {
 			arm_cmd_mmu_cleanup(argc, argv);
-		} else if (arm_strcmp(argv[0], "sysctl") == 0) {
-			arm_cmd_sysctl(argc, argv);
 		} else if (arm_strcmp(argv[0], "timer") == 0) {
 			arm_cmd_timer(argc, argv);
 		} else if (arm_strcmp(argv[0], "dhrystone") == 0) {
@@ -694,11 +644,10 @@ void arm_main(void)
 	/* copy the default_cmdline in the active cmdline */
 	arm_strcpy(cmdline, default_cmdline);
 
-	arm_puts("ARM Versatile PB Basic Test\n\n");
+	arm_puts(arm_board_name());
+	arm_puts(" Basic Test\n\n");
 
-	/* Unlock Lockable reigsters */
-	arm_writel(VERSATILE_SYS_LOCKVAL, 
-		   (void *)(VERSATILE_SYS_BASE + VERSATILE_SYS_LOCK_OFFSET));
+	arm_board_init();
 
 	while(1) {
 		arm_puts("arm-test# ");

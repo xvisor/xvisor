@@ -21,7 +21,6 @@
  * @brief PL190 Vectored Interrupt Controller source
  */
 
-#include <arm_config.h>
 #include <arm_io.h>
 #include <arm_pl190.h>
 #include <arm_plat.h>

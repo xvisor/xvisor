@@ -21,7 +21,6 @@
  * @brief source file for MMU functions
  */
 
-#include <arm_config.h>
 #include <arm_plat.h>
 #include <arm_inline_asm.h>
 #include <arm_defines.h>
@@ -675,10 +674,10 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 
 	/* 2. Mapped Read/Write test */
 	tmp = 0x0;
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP0_SHIFT);
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP1_SHIFT);
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP2_SHIFT);
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP3_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP00_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP01_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP02_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP03_SHIFT);
 	tmp |= TTBL_L2TBL_TTE_C_MASK;
 	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
 	l2[free_page0] = tmp | (test_area_pa);
@@ -778,10 +777,10 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp;
 	tmp = 0x0;
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP0_SHIFT);
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP1_SHIFT);
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP2_SHIFT);
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP3_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP00_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP01_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP02_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP03_SHIFT);
 	tmp |= TTBL_L2TBL_TTE_C_MASK;
 	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
 	l2[free_page0] = tmp | (test_area_pa);
@@ -816,10 +815,10 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp;
 	tmp = 0x0;
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP0_SHIFT);
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP1_SHIFT);
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP2_SHIFT);
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP3_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP00_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP01_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP02_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP03_SHIFT);
 	tmp |= TTBL_L2TBL_TTE_C_MASK;
 	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
 	l2[free_page0] = tmp | (test_area_pa);
@@ -861,10 +860,10 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 	tmp |= TTBL_L1TBL_TTE_REQ_MASK;
 	l1[l2_mapva >> TTBL_L1TBL_TTE_BASE20_SHIFT] = tmp;
 	tmp = 0x0;
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP0_SHIFT);
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP1_SHIFT);
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP2_SHIFT);
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP3_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP00_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP01_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP02_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP03_SHIFT);
 	tmp |= TTBL_L2TBL_TTE_C_MASK;
 	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
 	l2[free_page0] = tmp | (test_area_pa);
@@ -938,10 +937,10 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 	/* 4. Permission Access test */
 	/* 4.1 TTBL_AP_S_U */
 	tmp = 0x0;
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP0_SHIFT);
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP1_SHIFT);
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP2_SHIFT);
-	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP3_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP00_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP01_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP02_SHIFT);
+	tmp |= (TTBL_AP_S_U << TTBL_L2TBL_TTE_AP03_SHIFT);
 	tmp |= TTBL_L2TBL_TTE_C_MASK;
 	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
 	l2[free_page0] = tmp | (test_area_pa);
@@ -988,10 +987,10 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 	invalid_tlb();
 	/* 4.2 TTBL_AP_SRW_U */
 	tmp = 0x0;
-	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP0_SHIFT);
-	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP1_SHIFT);
-	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP2_SHIFT);
-	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP3_SHIFT);
+	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP00_SHIFT);
+	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP01_SHIFT);
+	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP02_SHIFT);
+	tmp |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP03_SHIFT);
 	tmp |= TTBL_L2TBL_TTE_C_MASK;
 	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
 	l2[free_page0] = tmp | (test_area_pa);
@@ -1039,10 +1038,10 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 
 	/* 4.3 TTBL_AP_SRW_UR */
 	tmp = 0x0;
-	tmp |= (TTBL_AP_SRW_UR << TTBL_L2TBL_TTE_AP0_SHIFT);
-	tmp |= (TTBL_AP_SRW_UR << TTBL_L2TBL_TTE_AP1_SHIFT);
-	tmp |= (TTBL_AP_SRW_UR << TTBL_L2TBL_TTE_AP2_SHIFT);
-	tmp |= (TTBL_AP_SRW_UR << TTBL_L2TBL_TTE_AP3_SHIFT);
+	tmp |= (TTBL_AP_SRW_UR << TTBL_L2TBL_TTE_AP00_SHIFT);
+	tmp |= (TTBL_AP_SRW_UR << TTBL_L2TBL_TTE_AP01_SHIFT);
+	tmp |= (TTBL_AP_SRW_UR << TTBL_L2TBL_TTE_AP02_SHIFT);
+	tmp |= (TTBL_AP_SRW_UR << TTBL_L2TBL_TTE_AP03_SHIFT);
 	tmp |= TTBL_L2TBL_TTE_C_MASK;
 	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
 	l2[free_page0] = tmp | (test_area_pa);
@@ -1087,10 +1086,10 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 	invalid_tlb();
 	/* 4.4 TTBL_AP_SRW_URW */
 	tmp = 0x0;
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP0_SHIFT);
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP1_SHIFT);
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP2_SHIFT);
-	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP3_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP00_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP01_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP02_SHIFT);
+	tmp |= (TTBL_AP_SRW_URW << TTBL_L2TBL_TTE_AP03_SHIFT);
 	tmp |= TTBL_L2TBL_TTE_C_MASK;
 	tmp |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
 	l2[free_page0] = tmp | (test_area_pa);

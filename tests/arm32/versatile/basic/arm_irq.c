@@ -21,10 +21,10 @@
  * @brief source code for handling ARM test code interrupts
  */
 
-#include <arm_config.h>
 #include <arm_pl190.h>
 #include <arm_mmu.h>
 #include <arm_irq.h>
+#include <arm_plat.h>
 
 #include <arm_stdio.h>
 
@@ -83,36 +83,36 @@ void do_fiq(struct pt_regs *uregs)
 void arm_irq_setup(void)
 {
 	extern u32 _start_vect[];
-        u32 *vectors = (u32 *)NULL;
-        u32 *vectors_data = vectors + CPU_IRQ_NR;
-        int vec;
+	u32 *vectors = (u32 *)NULL;
+	u32 *vectors_data = vectors + CPU_IRQ_NR;
+	int vec;
 
-        /*
-         * Loop through the vectors we're taking over, and copy the
-         * vector's insn and data word.
-         */
-        for (vec = 0; vec < CPU_IRQ_NR; vec++) {
-                vectors[vec] = _start_vect[vec];
-                vectors_data[vec] = _start_vect[vec+CPU_IRQ_NR];
-        }
+	/*
+	 * Loop through the vectors we're taking over, and copy the
+	 * vector's insn and data word.
+	 */
+	for (vec = 0; vec < CPU_IRQ_NR; vec++) {
+		vectors[vec] = _start_vect[vec];
+		vectors_data[vec] = _start_vect[vec+CPU_IRQ_NR];
+	}
 
-        /*
-         * Check if verctors are set properly
-         */
-        for (vec = 0; vec < CPU_IRQ_NR; vec++) {
-                if ((vectors[vec] != _start_vect[vec]) ||
-                    (vectors_data[vec] != _start_vect[vec+CPU_IRQ_NR])) {
-                        /* Hang */
-                        while(1);
-                }
-        }
+	/*
+	 * Check if verctors are set properly
+	 */
+	for (vec = 0; vec < CPU_IRQ_NR; vec++) {
+		if ((vectors[vec] != _start_vect[vec]) ||
+		    (vectors_data[vec] != _start_vect[vec+CPU_IRQ_NR])) {
+			/* Hang */
+			while(1);
+		}
+	}
 
-        /*
-         * Reset irq handlers
-         */
-        for (vec = 0; vec < NR_IRQS_VERSATILE; vec++) {
-                irq_hndls[vec] = NULL;
-        }
+	/*
+	 * Reset irq handlers
+	 */
+	for (vec = 0; vec < NR_IRQS_VERSATILE; vec++) {
+		irq_hndls[vec] = NULL;
+	}
  
 	vec = arm_pl190_cpu_init(0, VERSATILE_VIC_BASE);
 	if (vec) {
@@ -139,24 +139,43 @@ void arm_irq_enable(void)
 {
 	unsigned long temp;
 
-        asm volatile(
-                "       mrs     %0, cpsr\n"
-                "       bic     %0, %0, #128\n"
-                "       msr     cpsr_c, %0"
-                : "=r" (temp)
-                :
-                : "memory", "cc");
+	asm volatile(
+		"       mrs     %0, cpsr\n"
+		"       bic     %0, %0, #128\n"
+		"       msr     cpsr_c, %0"
+		: "=r" (temp)
+		:
+		: "memory", "cc");
 }
 
 void arm_irq_disable(void)
 {
 	unsigned long temp;
 
-        asm volatile(
-                "       mrs     %0, cpsr\n"
-                "       orr     %0, %0, #128\n"
-                "       msr     cpsr_c, %0"
-                : "=r" (temp)
-                :
-                : "memory", "cc");
+	asm volatile(
+		"       mrs     %0, cpsr\n"
+		"       orr     %0, %0, #128\n"
+		"       msr     cpsr_c, %0"
+		: "=r" (temp)
+		:
+		: "memory", "cc");
+}
+
+void arm_irq_wfi()
+{
+	unsigned long reg_r0, reg_r1, reg_r2, reg_r3, reg_ip;
+
+	asm volatile (
+			"       mov     %0, #0\n"
+			"       mrc     p15, 0, %1, c1, c0, 0   @ Read control register\n"
+			"       mcr     p15, 0, %0, c7, c10, 4  @ Drain write buffer\n"
+			"       bic     %2, %1, #1 << 12\n"
+			"       mrs     %3, cpsr		@ Disable FIQs while Icache\n"
+			"       orr     %4, %3, #0x00000040     @ is disabled\n"
+			"       msr     cpsr_c, %4\n"
+			"       mcr     p15, 0, %2, c1, c0, 0   @ Disable I cache\n"
+			"       mcr     p15, 0, %0, c7, c0, 4   @ Wait for interrupt\n"
+			"       mcr     p15, 0, %1, c1, c0, 0   @ Restore ICache enable\n"
+			"       msr     cpsr_c, %3	    @ Restore FIQ state"
+			:"=r" (reg_r0), "=r" (reg_r1), "=r" (reg_r2), "=r" (reg_r3), "=r" (reg_ip)::"memory", "cc" );
 }
