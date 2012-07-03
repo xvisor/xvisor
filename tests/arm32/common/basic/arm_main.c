@@ -31,6 +31,8 @@
 #include <arm_board.h>
 #include <dhry.h>
 
+static int memory_size = 0x0;
+
 /* Works in supervisor mode */
 void arm_init(void)
 {
@@ -43,6 +45,8 @@ void arm_init(void)
 	arm_stdio_init();
 
 	arm_timer_init(10000, 1);
+
+	memory_size = arm_board_ram_size();
 
 	arm_timer_enable();
 
@@ -91,15 +95,15 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("            <initrd_addr>  = initrd load address\n");
 	arm_puts("            <initrd_size>  = initrd size\n");
 	arm_puts("\n");
-	arm_puts("change_linux_cmdline - Change linux command line\n");
-	arm_puts("            Usage: change_linux_cmdline <new_linux_cmdline> \n");
+	arm_puts("linux_cmdline - Show/Update linux command line\n");
+	arm_puts("            Usage: linux_cmdline <new_linux_cmdline> \n");
 	arm_puts("            <new_linux_cmdline>  = linux command line\n");
 	arm_puts("\n");
-	arm_puts("change_linux_memory_size - Change linux memory size\n");
-	arm_puts("            Usage: change_linux_memory_size <memory_size> \n");
+	arm_puts("linux_memory_size - Show/Update linux memory size\n");
+	arm_puts("            Usage: linux_memory_size <memory_size> \n");
 	arm_puts("            <memory_size>  = memory size in hex\n");
 	arm_puts("\n");
-	arm_puts("autoexec    - autoexec command list in SSRAM\n");
+	arm_puts("autoexec    - autoexec command list from flash\n");
 	arm_puts("            Usage: autoexec\n");
 	arm_puts("\n");
 	arm_puts("go          - Jump to a given address\n");
@@ -355,18 +359,15 @@ void arm_cmd_copy(int argc, char **argv)
 	arm_puts(" bytes\n");
 }
 
-#define RAM_START	0x00000000
-#define RAM_SIZE	0x06000000
-
 static char  cmdline[1024];
 static char *default_cmdline = "root=/dev/ram rw ramdisk_size=0x1000000 earlyprintk console=ttyAMA0" ;
-static int memory_size = RAM_SIZE;
 
 typedef void (* linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args);
 
 void arm_cmd_start_linux(int argc, char **argv)
 {
-	u32 * kernel_args = (u32 *)(RAM_START + 0x1000);
+	char memsz[16];
+	u32 * kernel_args = (u32 *)(arm_board_ram_start() + 0x1000);
 	u32 cmdline_size, p;
 	u32 kernel_addr, initrd_addr, initrd_size;
 
@@ -395,7 +396,7 @@ void arm_cmd_start_linux(int argc, char **argv)
 	kernel_args[p++] = 4;
 	kernel_args[p++] = 0x54410002;
 	kernel_args[p++] = memory_size;
-	kernel_args[p++] = RAM_START;
+	kernel_args[p++] = arm_board_ram_start();
 	/* ATAG_INITRD2 */
 	kernel_args[p++] = 4;
 	kernel_args[p++] = 0x54420005;
@@ -403,6 +404,10 @@ void arm_cmd_start_linux(int argc, char **argv)
 	kernel_args[p++] = initrd_size;
 
 	/* if a cmdline is provided, we add it */
+	arm_strcat(cmdline, " mem=");
+	arm_int2str(memsz, memory_size >> 20);
+	arm_strcat(cmdline, memsz);
+	arm_strcat(cmdline, "M");
 	cmdline_size = arm_strlen(cmdline);
 	if (cmdline_size) {
 		/* ATAG_CMDLINE */
@@ -423,10 +428,10 @@ void arm_cmd_start_linux(int argc, char **argv)
 
 	/* Jump to Linux Kernel
 	 * r0 -> zero
-	 * r1 -> machine type (0x183)
+	 * r1 -> board machine type
 	 * r2 -> kernel args address 
 	 */
-	((linux_entry_t)kernel_addr)(0x0, 0x183, (u32)kernel_args);
+	((linux_entry_t)kernel_addr)(0x0, arm_board_linux_machine_type(), (u32)kernel_args);
 
 	/* We should never reach here */
 	while (1);
@@ -434,7 +439,7 @@ void arm_cmd_start_linux(int argc, char **argv)
 	return;
 }
 
-void arm_cmd_change_linux_cmdline(int argc, char **argv)
+void arm_cmd_linux_cmdline(int argc, char **argv)
 {
 	if (argc >= 2) {
 		int cnt = 1;
@@ -447,14 +452,14 @@ void arm_cmd_change_linux_cmdline(int argc, char **argv)
 		}
 	}
 
-	arm_puts ("linux cmdline is set to \"");
+	arm_puts ("linux_cmdline = \"");
 	arm_puts(cmdline);
 	arm_puts ("\"\n");
 
 	return;
 }
 
-void arm_cmd_change_linux_memory_size(int argc, char **argv)
+void arm_cmd_linux_memory_size(int argc, char **argv)
 {
 	char str[32];
 
@@ -462,7 +467,7 @@ void arm_cmd_change_linux_memory_size(int argc, char **argv)
 		memory_size = (u32)arm_hexstr2uint(argv[1]);
 	}
 
-	arm_puts ("linux memory size is set to 0x");
+	arm_puts ("linux_memory_size = 0x");
 	arm_uint2hexstr(str, memory_size);
 	arm_puts(str);
 	arm_puts (" Bytes\n");
@@ -619,9 +624,9 @@ void arm_exec(char *line)
 		} else if (arm_strcmp(argv[0], "start_linux") == 0) {
 			arm_cmd_start_linux(argc, argv);
 		} else if (arm_strcmp(argv[0], "linux_cmdline") == 0) {
-			arm_cmd_change_linux_cmdline(argc, argv);
+			arm_cmd_linux_cmdline(argc, argv);
 		} else if (arm_strcmp(argv[0], "linux_memory_size") == 0) {
-			arm_cmd_change_linux_memory_size(argc, argv);
+			arm_cmd_linux_memory_size(argc, argv);
 		} else if (arm_strcmp(argv[0], "autoexec") == 0) {
 			arm_cmd_autoexec(argc, argv);
 		} else if (arm_strcmp(argv[0], "go") == 0) {

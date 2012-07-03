@@ -26,6 +26,9 @@
 void arm_board_reset(void);
 void arm_board_init(void);
 char *arm_board_name(void);
+u32 arm_board_ram_start(void);
+u32 arm_board_ram_size(void);
+u32 arm_board_linux_machine_type(void);
 u32 arm_board_flash_addr(void);
 
 #endif

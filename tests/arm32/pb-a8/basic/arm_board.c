@@ -22,31 +22,39 @@
  */
 
 #include <arm_plat.h>
+#include <arm_config.h>
 #include <arm_types.h>
 #include <arm_io.h>
 #include <arm_board.h>
 
 void arm_board_reset(void)
 {
-	arm_writel(0x101,
-		   (void *)(VERSATILE_SYS_BASE + VERSATILE_SYS_RESETCTL_OFFSET));
+#if 0 /* QEMU checks bit 8 which is wrong */
+        arm_writel(0x100,
+                   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
+#else
+        arm_writel(0x0,
+                   (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
+        arm_writel(REALVIEW_SYS_CTRL_RESET_PLLRESET,
+                   (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
+#endif
 }
 
 void arm_board_init(void)
 {
 	/* Unlock Lockable reigsters */
-	arm_writel(VERSATILE_SYS_LOCKVAL,
-		   (void *)(VERSATILE_SYS_BASE + VERSATILE_SYS_LOCK_OFFSET));
+	arm_writel(REALVIEW_SYS_LOCKVAL,
+                   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_LOCK_OFFSET));
 }
 
 char *arm_board_name(void)
 {
-	return "ARM Versatile PB";
+	return "ARM PB-A8";
 }
 
 u32 arm_board_ram_start(void)
 {
-	return 0x0;
+	return 0x70000000;
 }
 
 u32 arm_board_ram_size(void)
@@ -56,10 +64,10 @@ u32 arm_board_ram_size(void)
 
 u32 arm_board_linux_machine_type(void)
 {
-	return 0x183;
+	return 0x769;
 }
 
 u32 arm_board_flash_addr(void)
 {
-	return (u32)(VERSATILE_FLASH_BASE);
+	return (u32)(REALVIEW_PBA8_FLASH0_BASE);
 }

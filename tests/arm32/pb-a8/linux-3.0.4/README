@@ -65,8 +65,8 @@ RootFS on Realview PB-A8 Guest with Xvisor running on QEMU Realview PB-A8 Host:
   # cd <linux-3.0.4_build_directory>
 
   [16. Create xvisor_linux-3.0.4_qemu.img for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x70010000 -o xvisor_linux-3.0.4_qemu.img <xvisor_source_directory>/build/vmm.bin@0x70010000 <xvisor_source_directory>/build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x70800000 ./arch/arm/boot/zImage@0x70900000 <busybox_rootfs_directory>/rootfs.img@0x70C00000
-  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x71000000 ./arch/arm/boot/zImage@0x71100000 <busybox_rootfs_directory>/rootfs.img@0x71400000")
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x70010000 -o xvisor_linux-3.0.4_qemu.img <xvisor_source_directory>/build/vmm.bin@0x70010000 <xvisor_source_directory>/build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x70800000 <xvisor_source_directory>/tests/arm32/pb-a8/linux-3.0.4/cmdlist@0x708FF000 ./arch/arm/boot/zImage@0x70900000 <busybox_rootfs_directory>/rootfs.img@0x70C00000
+  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x71000000 <xvisor_source_directory>/tests/arm32/pb-a8/linux-3.0.4/cmdlist@0x710FF000 ./arch/arm/boot/zImage@0x71100000 <busybox_rootfs_directory>/rootfs.img@0x71400000")
 
   [17. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel ./xvisor_linux-3.0.4_qemu.img
@@ -85,8 +85,8 @@ RootFS on Realview PB-A8 Guest with Xvisor running on QEMU Realview PB-A8 Host:
   [guest0/uart0] arm-test# start_linux 0x70400000 0x71000000 0x400000
   (Note: This command will start linux booting)
   OR
-  [guest0/uart0] arm-test# nor_boot
-  (Note: "nor_boot" is a short-cut command)
+  [guest0/uart0] arm-test# autoexec
+  (Note: "autoexec" is a short-cut command)
 
   [21. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
