@@ -68,7 +68,7 @@ RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   # cd <linux-3.0.4_build_directory>
 
   [17. Create xvisor_linux-3.0.4_qemu.img for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x60010000 -o xvisor_linux-3.0.4_qemu.img <xvisor_source_directory>/build/vmm.bin@0x60010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a9/basic/arm_test.bin.patched@0x60800000 ./arch/arm/boot/zImage@0x60900000 <busybox_rootfs_directory>/rootfs.img@0x60C00000
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x60010000 -o xvisor_linux-3.0.4_qemu.img <xvisor_source_directory>/build/vmm.bin@0x60010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a9/basic/arm_test.bin.patched@0x60800000 <xvisor_source_directory>/tests/arm32/vexpress-a9/linux-3.0.4/cmdlist@0x608FF000 ./arch/arm/boot/zImage@0x60900000 <busybox_rootfs_directory>/rootfs.img@0x60C00000
 
   [18. Launch QEMU 0.15.xx or higher]
   # qemu-system-arm -M vexpress-a9 -display none -serial stdio -kernel ./xvisor_linux-3.0.4_qemu.img
@@ -87,8 +87,8 @@ RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   [guest0/uart0] arm-test# start_linux 0x60400000 0x61000000 0x400000
   (Note: This command will start linux booting)
   OR
-  [guest0/uart0] arm-test# nor_boot
-  (Note: "nor_boot" is a short-cut command)
+  [guest0/uart0] arm-test# autoexec
+  (Note: "autoexec" is a short-cut command)
 
   [22. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls

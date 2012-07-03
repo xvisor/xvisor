@@ -148,3 +148,8 @@ void arm_irq_disable(void)
 	__asm( "cpsid if" );
 }
 
+void arm_irq_wfi(void)
+{
+	__asm ("wfi\n");
+}
+

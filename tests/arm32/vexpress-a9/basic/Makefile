@@ -35,13 +35,14 @@ endif
 -include $(build_dir)/.config
 
 obj_dir=$(build_dir)/tests/arm32/vexpress-a9/basic
+common_dir=$(top_dir)/tests/arm32/common/basic
 
 ifdef CROSS_COMPILE
 ARM_CROSS_COMPILE=$(CROSS_COMPILE)
 else
 ARM_CROSS_COMPILE=arm-none-eabi-
 endif
-ARM_CPPFLAGS=-I. -DTEXT_START=0x60010000
+ARM_CPPFLAGS=-I. -I$(common_dir) -DTEXT_START=0x60010000
 ARM_CFLAGS=-g -Wall -Werror -nostdlib -msoft-float -march=armv7-a -marm $(ARM_CPPFLAGS)
 ARM_ASFLAGS=-g -Wall -Werror -nostdlib -msoft-float -march=armv7-a -marm $(ARM_CPPFLAGS) -D__ASSEMBLY__
 ARM_LDFLAGS=$(ARM_CFLAGS)
@@ -52,6 +53,7 @@ ARM_OBJCOPY=$(ARM_CROSS_COMPILE)objcopy
 
 ARM_TEST_OBJS=$(obj_dir)/arm_entry.o \
 		$(obj_dir)/arm_main.o \
+		$(obj_dir)/arm_board.o \
 		$(obj_dir)/arm_heap.o \
 		$(obj_dir)/arm_irq.o \
 		$(obj_dir)/arm_stdio.o \
@@ -71,7 +73,7 @@ ARM_TEST_ASFLAGS=$(ARM_TEST_CPPFLAGS)
 ARM_TEST_LINK_SCRIPT=$(obj_dir)/arm_test.lnk
 ARM_TEST_LDFLAGS=-Wl,-T$(ARM_TEST_LINK_SCRIPT) $(ARM_TEST_CPPFLAGS)
 
-ARM_COMMON_DEPS=arm_asm_macro.h arm_math.h arm_defines.h arm_types.h
+ARM_COMMON_DEPS=arm_asm_macro.h $(common_dir)/arm_math.h $(common_dir)/arm_defines.h $(common_dir)/arm_types.h
 
 CPATCH32=$(build_dir)/tools/cpatch/cpatch32
 ELF2CPATCH=$(top_dir)/arch/arm/cpu/arm32/elf2cpatch.py
@@ -108,7 +110,7 @@ $(obj_dir)/arm_test.elf: $(ARM_TEST_OBJS) $(ARM_TEST_LINK_SCRIPT)
 	@echo " (LD)        $(subst $(obj_dir)/,,$@)"
 	@$(ARM_CC) $(ARM_TEST_OBJS) $(ARM_LDFLAGS) $(ARM_TEST_LDFLAGS) -o $@
 
-$(obj_dir)/%.lnk: %.ld
+$(obj_dir)/%.lnk: $(common_dir)/%.ld
 	@mkdir -p `dirname $@`
 	@echo " (CPP)       $(subst $(obj_dir)/,,$@)"
 	@$(ARM_CPP) $(ARM_CPPFLAGS) $(ARM_TEST_CPPFLAGS) $< | grep -v "\#" > $@
@@ -122,6 +124,11 @@ $(obj_dir)/%.o: %.S $(ARM_COMMON_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (AS)        $(subst $(obj_dir)/,,$@)"
 	@$(ARM_AS) $(ARM_ASFLAGS) $(ARM_TEST_ASFLAGS) -c $< -o $@
+
+$(obj_dir)/%.o: $(common_dir)/%.c $(ARM_COMMON_DEPS)
+	@mkdir -p `dirname $@`
+	@echo " (CC)        $(subst $(obj_dir)/,,$@)"
+	@$(ARM_CC) $(ARM_CFLAGS) $(ARM_TEST_CFLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:
