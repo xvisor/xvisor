@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.1.2
-# Sat May 26 09:29:54 2012
+# Version: 0.1.3
+# Wed Jul  4 10:22:04 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -57,7 +57,7 @@ CONFIG_VGPA2REG_CACHE_SIZE=8
 CONFIG_VAPOOL_SIZE=8
 CONFIG_RTC=y
 # CONFIG_BLOCK is not set
-# CONFIG_NET is not set
+CONFIG_NET=y
 # CONFIG_PROFILE is not set
 # CONFIG_SCHEDALGO_RR is not set
 CONFIG_SCHEDALGO_PRR=y
@@ -65,11 +65,11 @@ CONFIG_SCHEDALGO_PRR=y
 CONFIG_TSLICE_10MS=y
 # CONFIG_TSLICE_100MS is not set
 CONFIG_TSLICE_MS=10
+CONFIG_WFI_TIMEOUT_SECS=10
 CONFIG_IRQ_STACK_SIZE=4096
 CONFIG_THREAD_STACK_SIZE=4096
 CONFIG_HEAP_SIZE=1024
 CONFIG_HEAP_BUDDY=y
-# CONFIG_HEAP_TRIVIAL is not set
 
 #
 # Command Options
@@ -95,6 +95,7 @@ CONFIG_CMD_RTCDEV=y
 # Library Options
 #
 CONFIG_LIBFDT=y
+# CONFIG_NET_STACK is not set
 # CONFIG_KALLSYMS is not set
 # CONFIG_LIBSORT is not set
 
@@ -116,6 +117,11 @@ CONFIG_SERIAL_PL01X=y
 CONFIG_RTC_PL031=y
 
 #
+# Network Drivers
+#
+# CONFIG_NET_DRIVERS is not set
+
+#
 # Device Emulators
 #
 
@@ -132,6 +138,12 @@ CONFIG_EMU_SYS_SP810=y
 CONFIG_EMU_PIC=y
 CONFIG_EMU_PIC_GIC=y
 # CONFIG_EMU_PIC_PL190 is not set
+
+#
+# Network Interface Controller Emulators
+#
+CONFIG_EMU_NET=y
+CONFIG_EMU_NET_LAN9118=y
 
 #
 # Timer Emulators
@@ -158,8 +170,15 @@ CONFIG_EMU_RTC_PL031=y
 CONFIG_EMU_CACHE_L2X0=y
 
 #
+# GPIO Emulators
+#
+CONFIG_EMU_GPIO=y
+CONFIG_EMU_GPIO_PL061=y
+
+#
 # Miscellaneous Emulators
 #
+CONFIG_EMU_MISC_ZERO=y
 CONFIG_EMU_MISC_A9MP_PRIV=y
 
 #
