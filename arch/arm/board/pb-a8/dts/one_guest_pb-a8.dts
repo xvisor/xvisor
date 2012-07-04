@@ -82,7 +82,6 @@
 					irq = <60>;
 					switch = "netbridge0";
 				};
-
 			};
 		};
 	};
