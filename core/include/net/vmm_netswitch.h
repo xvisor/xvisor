@@ -29,7 +29,6 @@
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devdrv.h>
-#include <net/vmm_netdev.h>
 
 #define VMM_NETSWITCH_CLASS_NAME	"netswitch"
 

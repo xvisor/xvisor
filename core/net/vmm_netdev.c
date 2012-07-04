@@ -99,6 +99,9 @@ int vmm_netdev_register(struct vmm_netdev * ndev)
 		}
 	}
 
+	ndev->state &= ~VMM_NETDEV_UNINITIALIZED;
+	ndev->state |= VMM_NETDEV_REGISTERED;
+
 	return rc;
 
 fail_ndev_reg:
@@ -128,6 +131,8 @@ int vmm_netdev_unregister(struct vmm_netdev * ndev)
 	if (!rc) {
 		vmm_free(cd);
 	}
+
+	ndev->state &= ~(VMM_NETDEV_REGISTERED | VMM_NETDEV_TX_ALLOWED);
 
 	return rc;
 }

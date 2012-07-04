@@ -1,41 +1,41 @@
-/*------------------------------------------------------------------------
- . smc911x.h - macros for SMSC's LAN911{5,6,7,8} single-chip Ethernet device.
- .
- . Copyright (C) 2005 Sensoria Corp.
- . Derived from the unified SMC91x driver by Nicolas Pitre
- .
- . This program is free software; you can redistribute it and/or modify
- . it under the terms of the GNU General Public License as published by
- . the Free Software Foundation; either version 2 of the License, or
- . (at your option) any later version.
- .
- . This program is distributed in the hope that it will be useful,
- . but WITHOUT ANY WARRANTY; without even the implied warranty of
- . MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- . GNU General Public License for more details.
- .
- . You should have received a copy of the GNU General Public License
- . along with this program; if not, write to the Free Software
- . Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- .
- . Information contained in this file was obtained from the LAN9118
- . manual from SMC.  To get a copy, if you really want one, you can find
- . information under www.smsc.com.
- .
- . Authors
- .	 Dustin McIntire		 <dustin@sensoria.com>
- .
- ---------------------------------------------------------------------------*/
+/**
+ * Copyright (c) 2012 Pranav Sawargaonkar.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file smsc-911x.h
+ * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
+ * @brief macros for SMSC's LAN911{5,6,7,8} single-chip Ethernet device.
+ *
+ * The source has been largely adapted from Linux 3.x or higher:
+ * drivers/net/sms911x.h
+ *
+ * Copyright (C) 2005 Sensoria Corp
+ *
+ * The original code is licensed under the GPL.
+ */
+
 #ifndef __SMSC_911X_H___
 #define __SMSC_911X_H___
-
-#if 0
-#include <linux/smc911x.h>
-#endif
 
 #include <vmm_host_io.h>
 #include <vmm_spinlocks.h>
 #include <vmm_workqueue.h>
+#include <net/vmm_mbuf.h>
+#include <linux/mii.h>
 
 #define local_irq_save(flags) \
 		flags = arch_cpu_irq_save()
@@ -52,12 +52,12 @@
  */
 
 /* Constants for platform_device irq polarity configuration */
-#define SMSC911X_IRQ_POLARITY_ACTIVE_LOW        0
-#define SMSC911X_IRQ_POLARITY_ACTIVE_HIGH       1
+#define SMSC911X_IRQ_POLARITY_ACTIVE_LOW	0
+#define SMSC911X_IRQ_POLARITY_ACTIVE_HIGH	1
 
 /* Constants for platform_device irq type configuration */
-#define SMSC911X_IRQ_TYPE_OPEN_DRAIN            0
-#define SMSC911X_IRQ_TYPE_PUSH_PULL             1
+#define SMSC911X_IRQ_TYPE_OPEN_DRAIN		0
+#define SMSC911X_IRQ_TYPE_PUSH_PULL		1
 
 /* end of copy from include/linux/smsc911x.h */
 
@@ -76,24 +76,24 @@ struct smc911x_platdata {
  * Use the DMA feature on PXA chips
  */
 #ifdef CONFIG_ARCH_PXA
-  #define SMC_USE_PXA_DMA	1
-  #define SMC_USE_16BIT		0
-  #define SMC_USE_32BIT		1
-  #define SMC_IRQ_SENSE		IRQF_TRIGGER_FALLING
+#define SMC_USE_PXA_DMA		1
+#define SMC_USE_16BIT		0
+#define SMC_USE_32BIT		1
+#define SMC_IRQ_SENSE		IRQF_TRIGGER_FALLING
 #elif defined(CONFIG_SH_MAGIC_PANEL_R2)
-  #define SMC_USE_16BIT		0
-  #define SMC_USE_32BIT		1
-  #define SMC_IRQ_SENSE		IRQF_TRIGGER_LOW
+#define SMC_USE_16BIT		0
+#define SMC_USE_32BIT		1
+#define SMC_IRQ_SENSE		IRQF_TRIGGER_LOW
 #elif defined(CONFIG_ARCH_OMAP34XX)
-  #define SMC_USE_16BIT		0
-  #define SMC_USE_32BIT		1
-  #define SMC_IRQ_SENSE		IRQF_TRIGGER_LOW
-  #define SMC_MEM_RESERVED	1
+#define SMC_USE_16BIT		0
+#define SMC_USE_32BIT		1
+#define SMC_IRQ_SENSE		IRQF_TRIGGER_LOW
+#define SMC_MEM_RESERVED	1
 #elif defined(CONFIG_ARCH_OMAP24XX)
-  #define SMC_USE_16BIT		0
-  #define SMC_USE_32BIT		1
-  #define SMC_IRQ_SENSE		IRQF_TRIGGER_LOW
-  #define SMC_MEM_RESERVED	1
+#define SMC_USE_16BIT		0
+#define SMC_USE_32BIT		1
+#define SMC_IRQ_SENSE		IRQF_TRIGGER_LOW
+#define SMC_MEM_RESERVED	1
 #else
 /*
  * Default configuration
@@ -113,10 +113,7 @@ struct smc911x_local {
 	 * packet, I will store the skbuff here. Then, the DMA will send it
 	 * out and free it.
 	 */
-#if 0
-	// Fixme
-	struct sk_buff *pending_tx_skb;
-#endif
+	struct vmm_mbuf *pending_tx_mbuf;
 
 	/* version/revision of the SMC911x chip */
 	u16 version;
@@ -134,19 +131,13 @@ struct smc911x_local {
 
 	u32 msg_enable;
 	u32 phy_type;
-#if 0
 	struct mii_if_info mii;
 
-	/* work queue */
-	struct work_struct phy_configure;
-#endif
-	struct vmm_workqueue phy_configure;
-	int tx_throttle;
-#if 0
-	spinlock_t lock;
+	/* Fixme: work queue */
+	//struct work_struct phy_configure;
 
-	struct net_device *netdev;
-#endif
+	struct vmm_work phy_configure;
+	int tx_throttle;
 	struct vmm_spinlock lock;
 	struct vmm_netdev *netdev;
 
@@ -161,9 +152,6 @@ struct smc911x_local {
 	struct sk_buff *current_tx_skb;
 	struct device *dev;
 #endif
-#if 0
-	void __iomem *base;
-#endif
 	void *base;
 #ifdef SMC_DYNAMIC_BUS_CONFIG
 	struct smc911x_platdata cfg;
@@ -177,18 +165,6 @@ struct smc911x_local {
 #ifdef SMC_DYNAMIC_BUS_CONFIG
 static inline unsigned int SMC_inl(struct smc911x_local *lp, int reg)
 {
-#if 0
-	void __iomem *ioaddr = lp->base + reg;
-	void __iomem *ioaddr = lp->base + reg;
-
-	if (lp->cfg.flags & SMC911X_USE_32BIT)
-		return readl(ioaddr);
-
-	if (lp->cfg.flags & SMC911X_USE_16BIT)
-		return readw(ioaddr) | (readw(ioaddr + 2) << 16);
-
-	BUG();
-#endif
 	volatile void *ioaddr = lp->base + reg;
 
 	if (lp->cfg.flags & SMC911X_USE_32BIT)
@@ -197,31 +173,13 @@ static inline unsigned int SMC_inl(struct smc911x_local *lp, int reg)
 	if (lp->cfg.flags & SMC911X_USE_16BIT)
 		return vmm_readw(ioaddr) | (vmm_readw(ioaddr + 2) << 16);
 
-	// Fixme
+	//BUG_ON(1, __func__);
 	return -1;
-
 }
 
 static inline void SMC_outl(unsigned int value, struct smc911x_local *lp,
 			    int reg)
 {
-#if 0
-	void __iomem *ioaddr = lp->base + reg;
-
-	if (lp->cfg.flags & SMC911X_USE_32BIT) {
-		writel(value, ioaddr);
-		return;
-	}
-
-	if (lp->cfg.flags & SMC911X_USE_16BIT) {
-		writew(value & 0xffff, ioaddr);
-		writew(value >> 16, ioaddr + 2);
-		return;
-	}
-
-	BUG();
-#endif
-
 	volatile void *ioaddr = lp->base + reg;
 
 	if (lp->cfg.flags & SMC911X_USE_32BIT) {
@@ -235,28 +193,12 @@ static inline void SMC_outl(unsigned int value, struct smc911x_local *lp,
 		return;
 	}
 
-
-
+	BUG_ON(1, __func__);
 }
 
 static inline void SMC_insl(struct smc911x_local *lp, int reg,
 			      void *addr, unsigned int count)
 {
-#if 0
-	void __iomem *ioaddr = lp->base + reg;
-
-	if (lp->cfg.flags & SMC911X_USE_32BIT) {
-		readsl(ioaddr, addr, count);
-		return;
-	}
-
-	if (lp->cfg.flags & SMC911X_USE_16BIT) {
-		readsw(ioaddr, addr, count * 2);
-		return;
-	}
-
-	BUG();
-#endif
 	volatile void *ioaddr = lp->base + reg;
 
 	if (lp->cfg.flags & SMC911X_USE_32BIT) {
@@ -274,21 +216,6 @@ static inline void SMC_insl(struct smc911x_local *lp, int reg,
 static inline void SMC_outsl(struct smc911x_local *lp, int reg,
 			     void *addr, unsigned int count)
 {
-#if 0
-	void __iomem *ioaddr = lp->base + reg;
-
-	if (lp->cfg.flags & SMC911X_USE_32BIT) {
-		writesl(ioaddr, addr, count);
-		return;
-	}
-
-	if (lp->cfg.flags & SMC911X_USE_16BIT) {
-		writesw(ioaddr, addr, count * 2);
-		return;
-	}
-
-	BUG();
-#endif
 	volatile void *ioaddr = lp->base + reg;
 
 	if (lp->cfg.flags & SMC911X_USE_32BIT) {
@@ -301,13 +228,13 @@ static inline void SMC_outsl(struct smc911x_local *lp, int reg,
 		return;
 	}
 
-
+	//BUG();  // Fixme
 }
 #else
 #if	SMC_USE_16BIT
 #define SMC_inl(lp, r)		 ((vmm_readw((lp)->base + (r)) & 0xFFFF) + \
 					(vmm_readw((lp)->base + (r) + 2) << 16))
-#define SMC_outl(v, lp, r) 			 \
+#define SMC_outl(v, lp, r)			 \
 	do{					 \
 		 vmm_writew(v & 0xFFFF, (lp)->base + (r));	 \
 		 vmm_writew(v >> 16, (lp)->base + (r) + 2); \
@@ -325,93 +252,6 @@ static inline void SMC_outsl(struct smc911x_local *lp, int reg,
 #endif /* SMC_DYNAMIC_BUS_CONFIG */
 
 
-#ifdef SMC_USE_PXA_DMA
-
-#include <mach/dma.h>
-
-/*
- * Define the request and free functions
- * These are unfortunately architecture specific as no generic allocation
- * mechanism exits
- */
-#define SMC_DMA_REQUEST(dev, handler) \
-	 pxa_request_dma(dev->name, DMA_PRIO_LOW, handler, dev)
-
-#define SMC_DMA_FREE(dev, dma) \
-	 pxa_free_dma(dma)
-
-#define SMC_DMA_ACK_IRQ(dev, dma)					\
-{									\
-	if (DCSR(dma) & DCSR_BUSERR) {					\
-		printk("%s: DMA %d bus error!\n", dev->name, dma);	\
-	}								\
-	DCSR(dma) = DCSR_STARTINTR|DCSR_ENDINTR|DCSR_BUSERR;		\
-}
-
-/*
- * Use a DMA for RX and TX packets.
- */
-#include <linux/dma-mapping.h>
-
-static dma_addr_t rx_dmabuf, tx_dmabuf;
-static int rx_dmalen, tx_dmalen;
-
-#ifdef SMC_insl
-#undef SMC_insl
-#define SMC_insl(lp, r, p, l) \
-	smc_pxa_dma_insl(lp, lp->physaddr, r, lp->rxdma, p, l)
-
-static inline void
-smc_pxa_dma_insl(struct smc911x_local *lp, u_long physaddr,
-		int reg, int dma, u_char *buf, int len)
-{
-	/* 64 bit alignment is required for memory to memory DMA */
-	if ((long)buf & 4) {
-		*((u32 *)buf) = SMC_inl(lp, reg);
-		buf += 4;
-		len--;
-	}
-
-	len *= 4;
-	rx_dmabuf = dma_map_single(lp->dev, buf, len, DMA_FROM_DEVICE);
-	rx_dmalen = len;
-	DCSR(dma) = DCSR_NODESC;
-	DTADR(dma) = rx_dmabuf;
-	DSADR(dma) = physaddr + reg;
-	DCMD(dma) = (DCMD_INCTRGADDR | DCMD_BURST32 |
-		DCMD_WIDTH4 | DCMD_ENDIRQEN | (DCMD_LENGTH & rx_dmalen));
-	DCSR(dma) = DCSR_NODESC | DCSR_RUN;
-}
-#endif
-
-#ifdef SMC_outsl
-#undef SMC_outsl
-#define SMC_outsl(lp, r, p, l) \
-	 smc_pxa_dma_outsl(lp, lp->physaddr, r, lp->txdma, p, l)
-
-static inline void
-smc_pxa_dma_outsl(struct smc911x_local *lp, u_long physaddr,
-		int reg, int dma, u_char *buf, int len)
-{
-	/* 64 bit alignment is required for memory to memory DMA */
-	if ((long)buf & 4) {
-		SMC_outl(*((u32 *)buf), lp, reg);
-		buf += 4;
-		len--;
-	}
-
-	len *= 4;
-	tx_dmabuf = dma_map_single(lp->dev, buf, len, DMA_TO_DEVICE);
-	tx_dmalen = len;
-	DCSR(dma) = DCSR_NODESC;
-	DSADR(dma) = tx_dmabuf;
-	DTADR(dma) = physaddr + reg;
-	DCMD(dma) = (DCMD_INCSRCADDR | DCMD_BURST32 |
-		DCMD_WIDTH4 | DCMD_ENDIRQEN | (DCMD_LENGTH & tx_dmalen));
-	DCSR(dma) = DCSR_NODESC | DCSR_RUN;
-}
-#endif
-#endif	 /* SMC_USE_PXA_DMA */
 
 
 /* Chip Parameters and Register Definitions */
@@ -456,7 +296,7 @@ smc_pxa_dma_outsl(struct smc911x_local *lp, u_long physaddr,
 #define	RX_STS_MII_ERR_			(0x00000008)
 #define	RX_STS_DRIBBLING_		(0x00000004)
 #define	RX_STS_CRC_ERR_			(0x00000002)
-#define RX_STATUS_FIFO_PEEK 	(0x44)
+#define RX_STATUS_FIFO_PEEK	(0x44)
 #define TX_STATUS_FIFO		(0x48)
 #define	TX_STS_TAG_			(0xFFFF0000)
 #define	TX_STS_ES_			(0x00008000)
@@ -762,7 +602,7 @@ smc_pxa_dma_outsl(struct smc911x_local *lp, u_long physaddr,
 //#define MODE_CTRL_STS_REFCLKEN_	   ((u16)0x0010)
 //#define MODE_CTRL_STS_PHYADBP_	   ((u16)0x0008)
 //#define MODE_CTRL_STS_FORCE_G_LINK_ ((u16)0x0004)
-#define MODE_CTRL_STS_ENERGYON_	 	((u16)0x0002)
+#define MODE_CTRL_STS_ENERGYON_		((u16)0x0002)
 
 #define PHY_INT_SRC			((u32)29)
 #define PHY_INT_SRC_ENERGY_ON_			((u16)0x0080)
@@ -809,7 +649,7 @@ struct chip_id {
 	char *name;
 };
 
-static const struct chip_id chip_ids[] =  {
+static const struct chip_id chip_ids[] = {
 	{ CHIP_9115, "LAN9115" },
 	{ CHIP_9116, "LAN9116" },
 	{ CHIP_9117, "LAN9117" },
