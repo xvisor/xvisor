@@ -27,6 +27,8 @@
  * Their authors are
  *	Alan Cox, <gw4pts@gw4pts.ampr.org>
  *	Florian La Roche, <rzsfl@rz.uni-sb.de>
+ *
+ * The original code is licensed under the GPL.
  */
 
 #ifndef __LINUX_SKBUFF_H_

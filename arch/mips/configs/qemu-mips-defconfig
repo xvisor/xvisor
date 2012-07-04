@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.1.2
-# Thu May 17 17:34:51 2012
+# Version: 0.1.3
+# Wed Jul  4 10:23:06 2012
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -41,11 +41,11 @@ CONFIG_SCHEDALGO_PRR=y
 CONFIG_TSLICE_10MS=y
 # CONFIG_TSLICE_100MS is not set
 CONFIG_TSLICE_MS=10
+CONFIG_WFI_TIMEOUT_SECS=10
 CONFIG_IRQ_STACK_SIZE=4096
 CONFIG_THREAD_STACK_SIZE=4096
 CONFIG_HEAP_SIZE=1024
 CONFIG_HEAP_BUDDY=y
-# CONFIG_HEAP_TRIVIAL is not set
 
 #
 # Command Options
@@ -90,6 +90,10 @@ CONFIG_SERIAL_UART=y
 #
 
 #
+# Network Drivers
+#
+
+#
 # Device Emulators
 #
 
@@ -102,6 +106,11 @@ CONFIG_SERIAL_UART=y
 # PIC Emulators
 #
 # CONFIG_EMU_PIC is not set
+
+#
+# Network Interface Controller Emulators
+#
+# CONFIG_EMU_NET is not set
 
 #
 # Timer Emulators
@@ -124,8 +133,14 @@ CONFIG_SERIAL_UART=y
 # CONFIG_EMU_CACHE_L2X0 is not set
 
 #
+# GPIO Emulators
+#
+# CONFIG_EMU_GPIO is not set
+
+#
 # Miscellaneous Emulators
 #
+# CONFIG_EMU_MISC_ZERO is not set
 # CONFIG_EMU_MISC_A9MP_PRIV is not set
 
 #

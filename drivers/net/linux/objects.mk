@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Himanshu Chauhan.
+# Copyright (c) 2012 Pranav Sawargaonkar.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,33 +16,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
-# @author Himanshu Chauhan (hschauhan@nulltrace.org)
-# @brief config file for serial console drivers supported by xvisor.
+# @file objects.mk
+# @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
+# @brief list of driver objects
 # */
 
-menu "Network Drivers"
-
-config CONFIG_NET_DRIVERS
-	bool "Enable Networking Drivers"
-	default n
-	depends on CONFIG_NET
-	help
-		Select networking drivers TCP, Bluetooth etc.
-
-config CONFIG_ETHER_NE2K
-	bool "NS NE2000"
-	default n
-	depends on CONFIG_NET_DRIVERS
-	help
-	  National semiconductor's NE2000 ethernet card.
-
-config CONFIG_ETHER_SMSC_911x
-	bool "SMSC_911x"
-	default n
-	depends on CONFIG_NET_DRIVERS
-	help
-	SMSC Lan 911x based Ethernet cards .
-
-endmenu
-
+drivers-objs-$(CONFIG_NET_DRIVERS)+= net/linux/mii.o
