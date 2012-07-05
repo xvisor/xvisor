@@ -48,53 +48,24 @@
 
 #define VMM_NETBRIDGE_RX_BUFLEN		20
 
-struct vmm_netbridge_ctrl {
-	int head;
-	int tail;
-	struct vmm_netport **src_port;
-	struct vmm_mbuf **mbuf;
-	struct vmm_thread *thread;
-	struct vmm_completion rx_not_empty;
-	vmm_spinlock_t lock;
+struct netbridge_xfer {
+	struct dlist head;
+	struct vmm_netport *src_port;
+	struct vmm_mbuf *mbuf;
 };
 
-#define rxbuf_head(nb_ctrl)	(nb_ctrl->head)
-#define rxbuf_tail(nb_ctrl)	(nb_ctrl->tail)
-#define rxbuf_empty(nb_ctrl) 	(nb_ctrl->head == -1)
-#define rxbuf_full(nb_ctrl) 	(nb_ctrl->head == ((nb_ctrl->tail+1)%VMM_NETBRIDGE_RX_BUFLEN))
-
-/* Should be called before enqueue to determine the enqueue location
- *
- * Returns the location where to place the new data
- *
- * Assumptions:	- lock is held
- * 		- rxbuf_full() is FALSE
- */
-static int rxbuf_enqueue(struct vmm_netbridge_ctrl *netbridge_ctrl)
-{
-	if(netbridge_ctrl->head == -1) {
-		netbridge_ctrl->head = netbridge_ctrl->tail = 0;
-	} else {
-		netbridge_ctrl->tail =
-			(netbridge_ctrl->tail+1)%VMM_NETBRIDGE_RX_BUFLEN;
-	}
-	return netbridge_ctrl->tail;
-}
-
-/* Should be called after dequeue to update the head/tail pointers
- *
- * Assumptions: - lock is held
- * 		- rxbuf_empty() is false
- */
-static void rxbuf_dequeue(struct vmm_netbridge_ctrl *netbridge_ctrl)
-{
-	if(netbridge_ctrl->head == netbridge_ctrl->tail) {
-		netbridge_ctrl->head = netbridge_ctrl->tail = -1;
-	} else {
-		netbridge_ctrl->head =
-			(netbridge_ctrl->head+1)%VMM_NETBRIDGE_RX_BUFLEN;
-	}
-}
+struct vmm_netbridge_ctrl {
+	struct vmm_thread *thread;
+	struct vmm_completion rx_not_empty;
+	struct dlist free_list;
+	vmm_spinlock_t free_list_lock;
+	struct dlist rx_list;
+	vmm_spinlock_t rx_list_lock;
+	/* Pool of xfer elements used in the rx_buffer
+	 * Having all these blocks contiguous eases alloc
+	 * and free operations */
+	struct netbridge_xfer *xfer_pool;
+};
 
 /**
  *  Thread body responsible for sending the RX buffer packets
@@ -103,6 +74,7 @@ static void rxbuf_dequeue(struct vmm_netbridge_ctrl *netbridge_ctrl)
 static int vmm_netbridge_tx(void *param)
 {
 	struct dlist *l;
+	struct netbridge_xfer *xfer;
 	bool broadcast;
 	struct vmm_mbuf *mbuf;
 	struct vmm_netswitch *nsw;
@@ -114,20 +86,26 @@ static int vmm_netbridge_tx(void *param)
 	netbridge_ctrl = param;
 
 	while(1) {
-		vmm_spin_lock_irqsave(&netbridge_ctrl->lock, flags);
-		while(unlikely(rxbuf_empty(netbridge_ctrl))) {
-			vmm_spin_unlock_irqrestore(&netbridge_ctrl->lock, flags);
+		vmm_spin_lock_irqsave(&netbridge_ctrl->rx_list_lock, flags);
+		while(list_empty(&netbridge_ctrl->rx_list)) {
+			vmm_spin_unlock_irqrestore(&netbridge_ctrl->rx_list_lock, flags);
 			vmm_completion_wait(&netbridge_ctrl->rx_not_empty);
-			vmm_spin_lock_irqsave(&netbridge_ctrl->lock, flags);
+			vmm_spin_lock_irqsave(&netbridge_ctrl->rx_list_lock, flags);
 		}
+		l = list_pop(&netbridge_ctrl->rx_list);
+		vmm_spin_unlock_irqrestore(&netbridge_ctrl->rx_list_lock, flags);
+
+		xfer = list_entry(l, struct netbridge_xfer, head);
+
+		mbuf = xfer->mbuf;
+		src_port = xfer->src_port;
+
+		/* Return the node back to free list */
+		vmm_spin_lock_irqsave(&netbridge_ctrl->free_list_lock, flags);
+		list_add_tail(&netbridge_ctrl->free_list, &xfer->head);
+		vmm_spin_unlock_irqrestore(&netbridge_ctrl->free_list_lock, flags);
 
 		broadcast = TRUE;
-
-		mbuf = netbridge_ctrl->mbuf[rxbuf_head(netbridge_ctrl)];
-		src_port = netbridge_ctrl->src_port[rxbuf_head(netbridge_ctrl)];
-		rxbuf_dequeue(netbridge_ctrl);
-
-		vmm_spin_unlock_irqrestore(&netbridge_ctrl->lock, flags);
 
 		nsw = src_port->nsw;
 		srcmac = ether_srcmac(mtod(mbuf, u8 *));
@@ -172,7 +150,7 @@ static int vmm_netbridge_tx(void *param)
 			list_for_each(l, &nsw->port_list) {
 				   if(!compare_ether_addr(list_port(l)->macaddr, dstmac)) {
 					DPRINTF("%s: port->macaddr[%s]\n", __func__,
-							ethaddr_to_str(tname, list_port(l)->macaddr));
+						ethaddr_to_str(tname, list_port(l)->macaddr));
 					dst_port = list_port(l);
 					broadcast = FALSE;
 					break;
@@ -203,6 +181,7 @@ static int vmm_netbridge_tx(void *param)
 				m_freem(mbuf);
 			}
 		}
+
 	}
 	return VMM_OK;
 }
@@ -213,7 +192,8 @@ static int vmm_netbridge_tx(void *param)
 static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 				    struct vmm_mbuf *mbuf)
 {
-	int index;
+	struct dlist *l;
+	struct netbridge_xfer *xfer;
 	unsigned long flags;
 	struct vmm_netbridge_ctrl *netbridge_ctrl;
 
@@ -223,18 +203,27 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 	if(!(netbridge_ctrl = src_port->nsw->priv)) {
 		return VMM_EFAIL;
 	}
-	/* Get the next location in the RX buffer */
-	vmm_spin_lock_irqsave(&netbridge_ctrl->lock, flags);
-	if(rxbuf_full(netbridge_ctrl)) {
-		vmm_spin_unlock_irqrestore(&netbridge_ctrl->lock, flags);
+	/* Get a free netbridge_xfer instance from free_list */
+	vmm_spin_lock_irqsave(&netbridge_ctrl->free_list_lock, flags);
+	if(list_empty(&netbridge_ctrl->free_list)) {
+		vmm_spin_unlock_irqrestore(&netbridge_ctrl->free_list_lock, 
+					   flags);
+		m_freem(mbuf);
 		return VMM_EFAIL;
 	}
-	index = rxbuf_enqueue(netbridge_ctrl);
-	vmm_spin_unlock_irqrestore(&netbridge_ctrl->lock, flags);
+	l = list_pop(&netbridge_ctrl->free_list);
+	vmm_spin_unlock_irqrestore(&netbridge_ctrl->free_list_lock, flags);
 
-	/* Fillup the RX buffer location */
-	netbridge_ctrl->src_port[index] = src_port;
-	netbridge_ctrl->mbuf[index] = mbuf;
+	xfer = list_entry(l, struct netbridge_xfer, head);
+
+	/* Fillup the netbridge_xfer */
+	xfer->src_port = src_port;
+	xfer->mbuf = mbuf;
+
+	/* Add this new xfer to the rx_list */
+	vmm_spin_lock_irqsave(&netbridge_ctrl->rx_list_lock, flags);
+	list_add_tail(&netbridge_ctrl->rx_list, &xfer->head);
+	vmm_spin_unlock_irqrestore(&netbridge_ctrl->rx_list_lock, flags);
 
 	vmm_completion_complete(&netbridge_ctrl->rx_not_empty);
 
@@ -263,8 +252,9 @@ static int vmm_netbridge_probe(struct vmm_device *dev,
 			       const struct vmm_devid *devid)
 {
 	struct vmm_netswitch *nsw;
+	struct dlist *tmp_node;
 	struct vmm_netbridge_ctrl *netbridge_ctrl;
-	int rc = VMM_OK;
+	int i, rc = VMM_OK;
 
 	nsw = vmm_netswitch_alloc(dev->node->name);
 	if(!nsw) {
@@ -278,33 +268,37 @@ static int vmm_netbridge_probe(struct vmm_device *dev,
 	netbridge_ctrl = vmm_malloc(sizeof(struct vmm_netbridge_ctrl));
 	if(!netbridge_ctrl) {
 		rc = VMM_EFAIL;
-		goto vmm_netbridge_alloc_failed;
+		goto vmm_netbridge_probe_failed;
 	}
 	vmm_memset(netbridge_ctrl, 0, sizeof(struct vmm_netbridge_ctrl));
-	netbridge_ctrl->head = -1;
-	netbridge_ctrl->tail = -1;
-	netbridge_ctrl->src_port = vmm_malloc(sizeof(struct vmm_netport *)
-						* VMM_NETBRIDGE_RX_BUFLEN);
-	netbridge_ctrl->mbuf = vmm_malloc(sizeof(struct vmm_mbuf *)
+
+	INIT_COMPLETION(&netbridge_ctrl->rx_not_empty);
+	INIT_SPIN_LOCK(&netbridge_ctrl->free_list_lock);
+	INIT_LIST_HEAD(&netbridge_ctrl->free_list);
+	INIT_SPIN_LOCK(&netbridge_ctrl->rx_list_lock);
+	INIT_LIST_HEAD(&netbridge_ctrl->rx_list);
+
+	netbridge_ctrl->xfer_pool = vmm_malloc(sizeof(struct netbridge_xfer)
 						* VMM_NETBRIDGE_RX_BUFLEN);
 	netbridge_ctrl->thread = vmm_threads_create(nsw->name,
-						vmm_netbridge_tx,
-						netbridge_ctrl,
-						VMM_THREAD_DEF_PRIORITY,
-						VMM_THREAD_DEF_TIME_SLICE);
-	if(!netbridge_ctrl->src_port ||
-	   !netbridge_ctrl->mbuf ||
-	   !netbridge_ctrl->thread) {
+						   vmm_netbridge_tx,
+						   netbridge_ctrl,
+						   VMM_THREAD_DEF_PRIORITY,
+						   VMM_THREAD_DEF_TIME_SLICE);
+	if(!netbridge_ctrl->xfer_pool || !netbridge_ctrl->thread) {
 		rc = VMM_EFAIL;
 		goto vmm_netbridge_alloc_failed;
+	}
+
+	/* Fill the free_list of netbridge_xfer */
+	for(i=0; i<VMM_NETBRIDGE_RX_BUFLEN; i++) {
+		tmp_node = &((netbridge_ctrl->xfer_pool + i)->head);
+		list_add_tail(&netbridge_ctrl->free_list, tmp_node);
 	}
 
 	nsw->dev = dev;
 	nsw->priv = netbridge_ctrl;
 	dev->priv = nsw;
-
-	INIT_COMPLETION(&netbridge_ctrl->rx_not_empty);
-	INIT_SPIN_LOCK(&netbridge_ctrl->lock);
 
 	vmm_netswitch_register(nsw);
 
@@ -314,11 +308,8 @@ static int vmm_netbridge_probe(struct vmm_device *dev,
 
 vmm_netbridge_alloc_failed:
 	if(netbridge_ctrl) {
-		if(netbridge_ctrl->src_port) {
-			vmm_free(netbridge_ctrl->src_port);
-		}
-		if(netbridge_ctrl->mbuf) {
-			vmm_free(netbridge_ctrl->mbuf);
+		if(netbridge_ctrl->xfer_pool) {
+			vmm_free(netbridge_ctrl->xfer_pool);
 		}
 		if(netbridge_ctrl->thread) {
 			vmm_threads_destroy(netbridge_ctrl->thread);
@@ -339,11 +330,8 @@ static int vmm_netbridge_remove(struct vmm_device *dev)
 		vmm_netswitch_unregister(nsw);
 		netbridge_ctrl = nsw->priv;
 		if(netbridge_ctrl) {
-			if(netbridge_ctrl->src_port) {
-				vmm_free(netbridge_ctrl->src_port);
-			}
-			if(netbridge_ctrl->mbuf) {
-				vmm_free(netbridge_ctrl->mbuf);
+			if(netbridge_ctrl->xfer_pool) {
+				vmm_free(netbridge_ctrl->xfer_pool);
 			}
 			if(netbridge_ctrl->thread) {
 				vmm_threads_destroy(netbridge_ctrl->thread);
