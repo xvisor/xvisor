@@ -34,10 +34,10 @@
 /* Port Flags (should be defined as bits) */
 #define VMM_NETPORT_LINK_UP		1	/* If this bit is set link is up */
 
-typedef int (*vmm_net_port_can_rx_t) (struct vmm_netport *port); 
-typedef int (*vmm_net_port_rx_handle_t) (struct vmm_netport *port, 
-					 struct vmm_mbuf *mbuf);
-typedef void (*vmm_net_port_link_change_t) (struct vmm_netport *port); 
+typedef int (*vmm_netport_can_rx_t) (struct vmm_netport *port); 
+typedef int (*vmm_netport_rx_handle_t) (struct vmm_netport *port, 
+					struct vmm_mbuf *mbuf);
+typedef void (*vmm_netport_link_change_t) (struct vmm_netport *port); 
 
 struct vmm_netport {
 	char *name;
@@ -49,11 +49,11 @@ struct vmm_netport {
 	struct vmm_device *dev;
 	void *priv;
 	/* Link status changed */
-	vmm_net_port_link_change_t link_changed;
+	vmm_netport_link_change_t link_changed;
 	/* Callback to determine if the port can RX */
-	vmm_net_port_can_rx_t  can_receive;
+	vmm_netport_can_rx_t  can_receive;
 	/* Handle RX from switch to port */
-	vmm_net_port_rx_handle_t switch2port_xfer;
+	vmm_netport_rx_handle_t switch2port_xfer;
 };
 
 #define list_port(node)		(container_of((node), struct vmm_netport, head))
@@ -76,10 +76,7 @@ struct vmm_netport *vmm_netport_find(const char *name);
 /** Get network port with given number */
 struct vmm_netport *vmm_netport_get(int num);
 
-#define vmm_port2switch_xfer(netport, mbuf) 	\
-	if(netport->nsw) { \
-		netport->nsw->port2switch_xfer(netport, mbuf); \
-	}
+#define vmm_port2switch_xfer 	vmm_netswitch_port2switch
 
 #define vmm_netport_mac(port)	((port)->macaddr)
 
