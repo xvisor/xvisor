@@ -50,6 +50,7 @@ int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	struct vmm_icmp_echo_reply reply;
 	char ip_addr_str[30];
 	u32 rtt_usecs, rtt_msecs;
+	u64 min_rtt = -1, max_rtt = 0, avg_rtt = 0;
 	u8 ipaddr[4];
 	if((argc < 2) || (argc > 4)) {
 		cmd_ping_usage(cdev);
@@ -70,6 +71,11 @@ int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 
 	for(sent=0, rcvd=0; sent<count; sent++) {
 		if(!vmm_netstack_send_icmp_echo(ipaddr, size, sent, &reply)) {
+			if(reply.rtt < min_rtt)
+				min_rtt = reply.rtt;
+			if(reply.rtt > max_rtt)
+				max_rtt = reply.rtt;
+			avg_rtt += reply.rtt;
 			rtt_msecs = udiv64(reply.rtt, 1000);
 			rtt_usecs = umod64(reply.rtt, 1000);
 			ip4addr_to_str(ip_addr_str, (const u8 *)&reply.ripaddr);
@@ -80,9 +86,26 @@ int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			rcvd++;
 		}
 	}
+	if(rcvd) {
+		avg_rtt = udiv64(avg_rtt, rcvd);
+	}
+	else {
+		avg_rtt = 0;
+	}
 	vmm_cprintf(cdev, "\n----- %s ping statistics -----\n", argv[1]);
 	vmm_cprintf(cdev, "%d packets transmitted, %d packets received\n", 
 								sent, rcvd);
+	vmm_cprintf(cdev, "round-trip min/avg/max = ");
+	rtt_msecs = udiv64(min_rtt, 1000);
+	rtt_usecs = umod64(min_rtt, 1000);
+	vmm_cprintf(cdev, "%d.%03d/", rtt_msecs, rtt_usecs); 
+	rtt_msecs = udiv64(avg_rtt, 1000);
+	rtt_usecs = umod64(avg_rtt, 1000);
+	vmm_cprintf(cdev, "%d.%03d/", rtt_msecs, rtt_usecs); 
+	rtt_msecs = udiv64(max_rtt, 1000);
+	rtt_usecs = umod64(max_rtt, 1000);
+	vmm_cprintf(cdev, "%d.%03d ms\n", rtt_msecs, rtt_usecs); 
+
 	return VMM_OK;
 }
 
