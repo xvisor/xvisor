@@ -38,7 +38,7 @@
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
 
-#define DEBUG
+#undef DEBUG
 
 #ifdef DEBUG
 #define DPRINTF(fmt, ...) \
@@ -50,7 +50,7 @@ do{									\
 	const u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));		\
 	const u8 *dstmac = ether_dstmac(mtod(mbuf, u8 *));		\
 									\
-	DPRINTF("%s: got pkt with srcaddr[%s]", 			\
+	DPRINTF("%s: got pkt with srcaddr[%s]", __func__,		\
 			ethaddr_to_str(tname, srcmac));			\
 	DPRINTF(", dstaddr[%s]", ethaddr_to_str(tname, dstmac));	\
 	DPRINTF(", ethertype: 0x%04X\n", ether_type(mtod(mbuf, u8 *)));	\
