@@ -65,7 +65,12 @@ int cmd_net_port_list(struct vmm_chardev *cdev, int argc, char **argv)
 	vmm_cprintf(cdev, "---------------------------------------------------------------------------\n");
 	for (num = 0; num < count; num++) {
 		port = vmm_netport_get(num);
-		vmm_cprintf(cdev, " %-3d %-18s %-13s", num, port->name, port->nsw->name);
+		vmm_cprintf(cdev, " %-3d %-18s", num, port->name);
+		if(port->nsw) {
+			vmm_cprintf(cdev, " %-13s", port->nsw->name);
+		} else {
+			vmm_cprintf(cdev, " %-13s", "--");
+		}
 		if(port->flags & VMM_NETPORT_LINK_UP) {
 			vmm_cprintf(cdev, " %-6s", "UP");
 		} else {
