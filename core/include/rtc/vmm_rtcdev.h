@@ -40,8 +40,10 @@ typedef int (*vmm_rtcdev_set_time_t) (struct vmm_rtcdev * rdev,
 typedef int (*vmm_rtcdev_get_time_t) (struct vmm_rtcdev * rdev,
 				      struct vmm_rtc_time * tm);
 
+#define VMM_RTCDEV_NAME_SIZE				32
+
 struct vmm_rtcdev {
-	char name[32];
+	char name[VMM_RTCDEV_NAME_SIZE];
 	struct vmm_device *dev;
 	vmm_rtcdev_set_time_t set_time;
 	vmm_rtcdev_get_time_t get_time;
