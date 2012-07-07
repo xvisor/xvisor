@@ -1013,7 +1013,7 @@ struct vmm_input_dev {
  * struct vmm_input_handler - represents an input handler
  * @head: list head for global input handlers list
  * @connected: flag showing whether input handler is connected to events
- * @connect_head: list head for connected input handlers list
+ * @conn_head: list heads for connected input handlers list
  * @name: unique name of the input handler
  * @evbit: bitmap of types of events supported by the device (EV_KEY,
  *	EV_REL, etc.)
@@ -1025,14 +1025,14 @@ struct vmm_input_handler
 	struct dlist head;
 
 	bool connected;
-	struct dlist connect_head;
+	struct dlist conn_head[EV_CNT];
 
 	const char *name;
 
 	unsigned long evbit[BITS_TO_LONGS(EV_CNT)];
 
-	int (*event)(struct vmm_input_dev *idev, 
-		     struct vmm_input_handler *ihnd, 
+	int (*event)(struct vmm_input_handler *ihnd, 
+		     struct vmm_input_dev *idev, 
 		     unsigned int type, unsigned int code, int value);
 
 	void *priv;
@@ -1060,16 +1060,10 @@ int vmm_input_flush_device(struct vmm_input_dev *idev);
 struct vmm_input_dev *vmm_input_find_device(const char *name);
 
 /** Get input device with given index */
-struct vmm_input_dev *vmm_input_get_device(int num);
+struct vmm_input_dev *vmm_input_get_device(int index);
 
 /** Count number of input devices */
 u32 vmm_input_count_device(void);
-
-/** Allocate an input handler */
-struct vmm_input_handler *vmm_input_alloc_handler(void);
-
-/** Free an input handler */
-void vmm_input_free_handler(struct vmm_input_handler *ihnd);
 
 /** Register input handler */
 int vmm_input_register_handler(struct vmm_input_handler *ihnd);
@@ -1077,17 +1071,17 @@ int vmm_input_register_handler(struct vmm_input_handler *ihnd);
 /** Unregister input handler */
 int vmm_input_unregister_handler(struct vmm_input_handler *ihnd);
 
-/** Connect input handler to listen for events */
+/** Connect input handler to start receiving events */
 int vmm_input_connect_handler(struct vmm_input_handler *ihnd);
 
-/** Disconnect input handler */
+/** Disconnect input handler to stop receiving events */
 int vmm_input_disconnect_handler(struct vmm_input_handler *ihnd);
 
 /** Find a input handler */
 struct vmm_input_handler *vmm_input_find_handler(const char *name);
 
 /** Get input handler with given index */
-struct vmm_input_handler *vmm_input_get_handler(int num);
+struct vmm_input_handler *vmm_input_get_handler(int index);
 
 /** Count number of input handler */
 u32 vmm_input_count_handler(void);
@@ -1141,7 +1135,14 @@ static inline void vmm_input_mt_sync(struct vmm_input_dev *idev)
 	vmm_input_event(idev, EV_SYN, SYN_MT_REPORT, 0);
 }
 
-/** Set capability of input device to generate event of give type and code */
+/** Set capability of input device to generate event of give type and code 
+ * @dev: device that is capable of emitting or accepting event
+ * @type: type of the event (EV_KEY, EV_REL, etc...)
+ * @code: event code
+ *
+ * In addition to setting up corresponding bit in appropriate capability
+ * bitmap the function also adjusts idev->evbit.
+ */
 void vmm_input_set_capability(struct vmm_input_dev *idev, 
 			      unsigned int type, unsigned int code);
 
@@ -1161,7 +1162,15 @@ static inline void vmm_input_set_events_per_packet(struct vmm_input_dev *idev,
 	idev->hint_events_per_packet = n_events;
 }
 
-/** Convert input keymap scancode to scalar value */
+/** Convert input keymap scancode to scalar value 
+ * @ke: keymap entry containing scancode to be converted.
+ * @scancode: pointer to the location where converted scancode should
+ *	be stored.
+ *
+ * This function is used to convert scancode stored in &struct keymap_entry
+ * into scalar form understood by legacy keymap handling methods. These
+ * methods expect scancodes to be represented as 'unsigned int'.
+ */
 int vmm_input_scancode_to_scalar(const struct vmm_input_keymap_entry *ke,
 				 unsigned int *scancode);
 
