@@ -45,7 +45,9 @@ void cmd_net_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   net help\n");
+#if defined(CONFIG_NET_STACK)
 	vmm_cprintf(cdev, "   net ipconfig [<ipaddr>] [<netmask>]\n");
+#endif
 	vmm_cprintf(cdev, "   net ports\n");
 	vmm_cprintf(cdev, "   net switches\n");
 }
@@ -108,6 +110,7 @@ int cmd_net_switch_list(struct vmm_chardev *cdev, int argc, char **argv)
 	return VMM_OK;
 }
 
+#if defined(CONFIG_NET_STACK)
 int cmd_net_ipconfig(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u8 buf[4];
@@ -154,14 +157,17 @@ int cmd_net_ipconfig(struct vmm_chardev *cdev, int argc, char **argv)
 
 	return rc;
 }
+#endif
 
 int cmd_net_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (vmm_strcmp(argv[1], "help") == 0) {
 		cmd_net_usage(cdev);
 		return VMM_OK;
+#if defined(CONFIG_NET_STACK)
 	} else if (vmm_strcmp(argv[1], "ipconfig") == 0) {
 		return cmd_net_ipconfig(cdev, argc, argv);
+#endif
 	} else if (vmm_strcmp(argv[1], "ports") == 0) {
 		return cmd_net_port_list(cdev, argc, argv);
 	} else if (vmm_strcmp(argv[1], "switches") == 0) {
