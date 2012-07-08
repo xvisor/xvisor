@@ -24,11 +24,11 @@
 #include <vmm_heap.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_timer.h>
 #include <vmm_string.h>
 #include <vmm_devdrv.h>
+#include <vmm_threads.h>
 #include <vmm_modules.h>
-#include <vmm_spinlocks.h>
-#include <vmm_workqueue.h>
 #include <list.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
@@ -36,7 +36,6 @@
 #include <net/vmm_netport.h>
 
 #undef DEBUG_NETBRIDGE
-#undef DUMP_NETBRIDGE_PKT
 
 #ifdef DEBUG_NETBRIDGE
 #define DPRINTF(fmt, ...) \
@@ -45,199 +44,143 @@
 #define DPRINTF(fmt, ...) do {} while(0)
 #endif
 
-#define VMM_NETBRIDGE_RX_BUFLEN		20
+#define VMM_NETBRIDGE_RXQ_LEN	20
 
-static struct vmm_netbridge_ctrl {
-	int head;
-	int tail;
-	struct vmm_netport **src_port;
-	struct vmm_mbuf **mbuf;
-	struct vmm_work **work;
-	struct vmm_workqueue *wqueue;
-	vmm_spinlock_t lock;
-} netbridge_ctrl;
+/* We maintain a table of learned mac addresses 
+ * (please note that the mac of the immediate netports are not 
+ * kept in this table) */
+struct vmm_netbridge_mac_entry {
+	struct dlist head;
+	u8 macaddr[6];
+	struct vmm_netport *port;
+	u64 timestamp;
+};
 
-#define rxbuf_head		(netbridge_ctrl.head)
-#define rxbuf_tail		(netbridge_ctrl.tail)
-#define rxbuf_empty(void) 	(netbridge_ctrl.head == -1)
-#define rxbuf_full(void) 	(netbridge_ctrl.head ==	((netbridge_ctrl.tail+1)%VMM_NETBRIDGE_RX_BUFLEN))
+#define list_mac_entry(l) list_entry(l, struct vmm_netbridge_mac_entry, head)
 
-/* Should be called before enqueue to determine the enqueue location
- *
- * Returns the location where to place the new data
- *
- * Assumptions:	- lock is held
- * 		- rxbuf_full() is FALSE
- */
-static int rxbuf_enqueue(void)
+#define VMM_NETBRIDGE_MAC_EXPIRY	60000000000LLU
+
+struct vmm_netbridge_ctrl
 {
-	if(netbridge_ctrl.head == -1) {
-		netbridge_ctrl.head = netbridge_ctrl.tail = 0;
-	} else {
-		netbridge_ctrl.tail = 
-			(netbridge_ctrl.tail+1)%VMM_NETBRIDGE_RX_BUFLEN;
-	}
-	return netbridge_ctrl.tail;
-}
-
-/* Should be called after dequeue to update the head/tail pointers
- *
- * Assumptions: - lock is held
- * 		- rxbuf_empty() is false
- */
-static void rxbuf_dequeue(void)
-{
-	if(netbridge_ctrl.head == netbridge_ctrl.tail) {
-		netbridge_ctrl.head = netbridge_ctrl.tail = -1;
-	} else {
-		netbridge_ctrl.head = 
-			(netbridge_ctrl.head+1)%VMM_NETBRIDGE_RX_BUFLEN;
-	}
-}
+	struct dlist mac_table;
+};
 
 /**
- *  Workqueue thread body responsible for sending the RX buffer packets 
+ *  Thread body responsible for sending the RX buffer packets
  *  to the destination port(s)
  */
-static void vmm_netbridge_tx(struct vmm_work *work)
+static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
+				    struct vmm_mbuf *mbuf)
 {
 	struct dlist *l;
-	bool broadcast = TRUE;
-	struct vmm_mbuf *mbuf;
-	struct vmm_netswitch *nsw;
+	bool broadcast, learn;
 	const u8 *srcmac, *dstmac;
-	unsigned long flags;
-	struct vmm_netport *dst_port, *src_port;
+	struct vmm_netport *dst_port;
+	struct vmm_netswitch *nsw;
+	struct vmm_netbridge_mac_entry *mac_entry;
+	struct vmm_netbridge_ctrl *nbctrl;
+#ifdef DEBUG_NETBRIDGE
+	char tname[30];
+#endif
 
-	vmm_spin_lock_irqsave(&netbridge_ctrl.lock, flags);
-	if(unlikely(rxbuf_empty())) {
-		vmm_spin_unlock_irqrestore(&netbridge_ctrl.lock, flags);
-		return;
-	} else {
-		mbuf = netbridge_ctrl.mbuf[rxbuf_head];
-		src_port = netbridge_ctrl.src_port[rxbuf_head];
-		rxbuf_dequeue();
-	}
-	vmm_spin_unlock_irqrestore(&netbridge_ctrl.lock, flags);
+	dst_port = NULL;
+	broadcast = TRUE;
+	learn = TRUE;
 
 	nsw = src_port->nsw;
+	nbctrl = nsw->priv;
+
 	srcmac = ether_srcmac(mtod(mbuf, u8 *));
 	dstmac = ether_dstmac(mtod(mbuf, u8 *));
 
-	/* TODO: Learning not required as it is assumed that every port notifies 
-	 * its macaddr change, multiple macs will still work because of 
-	 * broadcast (but need to optimize such case)  */
+	/* Learn the (srcmac, src_port) mapping iff the sender is not immediate netport */
+	if(!compare_ether_addr(srcmac, src_port->macaddr)) {
+		learn = FALSE;
+	}
+	DPRINTF("%s: learn: %d\n", __func__, learn);
 
 	/* Find if the frame should be unicast because it satisfies both of these:
 	 * Case 1: It is not a broadcast MAC address, and
-	 * Case 2: We do have the MAC->port mapping 
+	 * Case 2: We do have the MAC->port mapping
 	 */
 	if(!is_broadcast_ether_addr(dstmac)) {
+		/* First check our immediate netports */
 		list_for_each(l, &nsw->port_list) {
 			   if(!compare_ether_addr(list_port(l)->macaddr, dstmac)) {
-				dst_port = list_port(l); 
+				DPRINTF("%s: port->macaddr[%s]\n", __func__,
+					ethaddr_to_str(tname, list_port(l)->macaddr));
+				dst_port = list_port(l);
 				broadcast = FALSE;
 				break;
 			   }
 		}
-	}		
+	}
+
+	/* Iterate over mac_table for new srcmac mapping and to search for dst_port */
+	list_for_each(l, &nbctrl->mac_table) {
+		if(!learn && dst_port) {
+			break;
+		}
+
+		mac_entry = list_mac_entry(l);
+
+		/* if possible update mac_table */
+		if(learn && !compare_ether_addr(mac_entry->macaddr, srcmac)) {
+			mac_entry->port = src_port;
+			mac_entry->timestamp = vmm_timer_timestamp();
+			learn = FALSE;
+
+			/* purge this entry if too old */
+		} else if((vmm_timer_timestamp() - mac_entry->timestamp) 
+						> VMM_NETBRIDGE_MAC_EXPIRY) {
+			l = mac_entry->head.next;
+			list_del(&mac_entry->head);
+			vmm_free(mac_entry);
+			continue;
+		}
+
+		/* check dstmac */
+		if(broadcast && !compare_ether_addr(mac_entry->macaddr, dstmac)) {
+			dst_port = mac_entry->port;
+			broadcast = FALSE;
+		}
+	}
+
+	if(learn) {
+		mac_entry = vmm_malloc(sizeof(struct vmm_netbridge_mac_entry));
+		if(mac_entry) {
+			mac_entry->port = src_port;
+			vmm_memcpy(mac_entry->macaddr, srcmac, 6);
+			mac_entry->timestamp = vmm_timer_timestamp();
+			list_add_tail(&nbctrl->mac_table, &mac_entry->head);
+		} else {
+			DPRINTF("%s: allocation failure\n", __func__);
+		}
+	}
 
 	if(broadcast) {
-		DPRINTF("netbridge: broadcasting\n");
+		DPRINTF("%s: broadcasting\n", __func__);
 		list_for_each(l, &nsw->port_list) {
-			   if(compare_ether_addr(list_port(l)->macaddr, srcmac)) {
-				if(list_port(l)->can_receive && 
+			   if(list_port(l) != src_port) {
+				if(list_port(l)->can_receive &&
 				   !list_port(l)->can_receive(list_port(l))) {
 				   continue;
 				}
- 				MADDREFERENCE(mbuf);
+				MADDREFERENCE(mbuf);
 				MCLADDREFERENCE(mbuf);
 				list_port(l)->switch2port_xfer(list_port(l), mbuf);
 			   }
 		}
 		m_freem(mbuf);
 	} else {
-		DPRINTF("netbridge: unicasting to \"%s\"\n", dst_port->name);
+		DPRINTF("%s: unicasting to \"%s\"\n", __func__, dst_port->name);
 		if(!dst_port->can_receive || dst_port->can_receive(dst_port)) {
-	 		dst_port->switch2port_xfer(dst_port, mbuf);
+			dst_port->switch2port_xfer(dst_port, mbuf);
 		} else {
 			/* Free the mbuf if destination cannot do rx */
 			m_freem(mbuf);
 		}
 	}
-}
-
-/**
- *  Handler for filling up the received packets at the RX buffer
- */
-static int vmm_netbridge_rx_handler(struct vmm_netport *src_port, 
-				    struct vmm_mbuf *mbuf)
-{
-	int index;
-	unsigned long flags;
-#ifdef DEBUG_NETBRIDGE
-	const u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));
-	const u8 *dstmac = ether_dstmac(mtod(mbuf, u8 *));
-	char tname[30];
-
-	DPRINTF("netbridge: got pkt with srcaddr[%s]", ethaddr_to_str(tname, srcmac));
-	DPRINTF(", dstaddr[%s]", ethaddr_to_str(tname, dstmac));
-	DPRINTF(", ethertype: 0x%04X\n", ether_type(mtod(mbuf, u8 *)));
-#ifdef DUMP_NETBRIDGE_PKT
-	if(ether_type(mtod(mbuf, u8 *)) == 0x0806	/* ARP */) {
-		DPRINTF("\tARP-HType: 0x%04X\n",  arp_htype(ether_payload(mtod(mbuf, u8 *))));
-		DPRINTF("\tARP-PType: 0x%04X\n",  arp_ptype(ether_payload(mtod(mbuf, u8 *))));
-		DPRINTF("\tARP-Hlen: 0x%02X\n",   arp_hlen(ether_payload(mtod(mbuf, u8 *))));
-		DPRINTF("\tARP-Plen: 0x%02X\n",   arp_plen(ether_payload(mtod(mbuf, u8 *))));
-		DPRINTF("\tARP-Oper: 0x%04X\n",   arp_oper(ether_payload(mtod(mbuf, u8 *))));
-		DPRINTF("\tARP-SHA: %s\n",  	  ethaddr_to_str(tname, arp_sha(ether_payload((mtod(mbuf, u8 *))))));
-		DPRINTF("\tARP-SPA: %s\n",  	  ip4addr_to_str(tname, arp_spa(ether_payload((mtod(mbuf, u8 *))))));
-		DPRINTF("\tARP-THA: %s\n",  	  ethaddr_to_str(tname, arp_tha(ether_payload((mtod(mbuf, u8 *))))));
-		DPRINTF("\tARP-TPA: %s\n",  	  ip4addr_to_str(tname, arp_tpa(ether_payload((mtod(mbuf, u8 *))))));
-	} else if(ether_type(mtod(mbuf, u8 *)) == 0x0800	/* IPv4 */) {
-		DPRINTF("\tIP-SRC: %s\n",	ip4addr_to_str(tname, ip_srcaddr(ether_payload((mtod(mbuf, u8 *))))));
-		DPRINTF("\tIP-DST: %s\n",	ip4addr_to_str(tname, ip_dstaddr(ether_payload((mtod(mbuf, u8 *))))));
-		DPRINTF("\tIP-LEN: %d\n",	ip_len(ether_payload((mtod(mbuf, u8 *)))));
-		DPRINTF("\tIP-TTL: %d\n",	ip_ttl(ether_payload((mtod(mbuf, u8 *)))));
-		DPRINTF("\tIP-CHKSUM: 0x%04X\n",ip_chksum(ether_payload((mtod(mbuf, u8 *)))));
-		DPRINTF("\tIP-PROTOCOL: %d\n",	ip_protocol(ether_payload((mtod(mbuf, u8 *)))));
-	}
-#endif
-#endif
-	/* Get the next location in the RX buffer */
-	vmm_spin_lock_irqsave(&netbridge_ctrl.lock, flags);
-	if(rxbuf_full()) {
-		vmm_spin_unlock_irqrestore(&netbridge_ctrl.lock, flags);
-		return VMM_EFAIL;
-	}
-	index = rxbuf_enqueue();
-	vmm_spin_unlock_irqrestore(&netbridge_ctrl.lock, flags);
-
-	/* Fillup the RX buffer location */
-	netbridge_ctrl.src_port[index] = src_port;
-	netbridge_ctrl.mbuf[index] = mbuf;
-	INIT_WORK(netbridge_ctrl.work[index], vmm_netbridge_tx, (void *)index);
-
-	/* Schedule a work for the TX workqueue thread to clear the RX buffer */
-	vmm_workqueue_schedule_work(netbridge_ctrl.wqueue, netbridge_ctrl.work[index]);	
-
-	return VMM_OK;
-}
-
-static int vmm_netbridge_enable_port(struct vmm_netport *port)
-{
-	/* Notify the port about the link-status change */
-	port->flags |= VMM_NETPORT_LINK_UP;
-	port->link_changed(port);
-
-	return VMM_OK;
-}
-
-static int vmm_netbridge_disable_port(struct vmm_netport *port)
-{
-	/* Notify the port about the link-status change */
-	port->flags &= ~VMM_NETPORT_LINK_UP;
-	port->link_changed(port);
 
 	return VMM_OK;
 }
@@ -245,56 +188,64 @@ static int vmm_netbridge_disable_port(struct vmm_netport *port)
 static int vmm_netbridge_probe(struct vmm_device *dev,
 			       const struct vmm_devid *devid)
 {
-	struct vmm_netswitch *nsw;
+	struct vmm_netswitch *nsw = NULL;
+	struct vmm_netbridge_ctrl *nbctrl;
 	int rc = VMM_OK;
-	int i;
 
-	/* Allocate and initialize the vmm_netswitch struct */
-	nsw = vmm_netswitch_alloc(dev->node->name);
+	nsw = vmm_netswitch_alloc(dev->node->name,
+		       		  VMM_NETBRIDGE_RXQ_LEN,	
+				  VMM_THREAD_DEF_PRIORITY, 
+				  VMM_THREAD_DEF_TIME_SLICE);
 	if(!nsw) {
 		rc = VMM_EFAIL;
 		goto vmm_netbridge_probe_failed;
 	}
 	nsw->port2switch_xfer = vmm_netbridge_rx_handler;
-	nsw->enable_port = vmm_netbridge_enable_port;
-	nsw->disable_port = vmm_netbridge_disable_port;
 
-	/* Initialize the RX buffer parameters */
-	netbridge_ctrl.head = -1;
-	netbridge_ctrl.tail = -1;
-	netbridge_ctrl.src_port = vmm_malloc(sizeof(struct vmm_netport *) 
-						* VMM_NETBRIDGE_RX_BUFLEN);
-	netbridge_ctrl.mbuf = vmm_malloc(sizeof(struct vmm_mbuf *) 
-						* VMM_NETBRIDGE_RX_BUFLEN);
-	netbridge_ctrl.work = vmm_malloc(sizeof(struct vmm_work *) 
-						* VMM_NETBRIDGE_RX_BUFLEN);
-	netbridge_ctrl.wqueue = vmm_workqueue_create(nsw->name, VMM_THREAD_DEF_PRIORITY);
-	if(!netbridge_ctrl.wqueue ||
-	   !netbridge_ctrl.src_port ||
-	   !netbridge_ctrl.mbuf ||
-	   !netbridge_ctrl.work) {
-		vmm_panic("netbridge: allocations failed");
+	dev->priv = nsw;
+
+	nbctrl = vmm_malloc(sizeof(struct vmm_netbridge_ctrl));
+	if(!nbctrl) {
+		rc = VMM_EFAIL;
+		goto vmm_netbridge_probe_failed;
 	}
 
-	for(i=0; i<VMM_NETBRIDGE_RX_BUFLEN; i++) {
-		netbridge_ctrl.work[i] = vmm_malloc(sizeof(struct vmm_work));
-		if(!netbridge_ctrl.work[i]) {
-			vmm_panic("netbridge: allocations failed");
-		}
+	INIT_LIST_HEAD(&nbctrl->mac_table);
+
+	if(vmm_netswitch_register(nsw, dev, nbctrl) == VMM_OK) {
+		goto vmm_netbridge_probe_done;
 	}
-
-	INIT_SPIN_LOCK(&netbridge_ctrl.lock);
-
-	vmm_netswitch_register(nsw);
 
 vmm_netbridge_probe_failed:
+	if(nsw) {
+		if(nbctrl) {
+			vmm_free(nbctrl);
+		}
+		vmm_netswitch_free(nsw);
+	}
+vmm_netbridge_probe_done:
 	return rc;
 }
 
 static int vmm_netbridge_remove(struct vmm_device *dev)
 {
-	struct vmm_netswitch *nsw = dev->priv;
-	vmm_netswitch_unregister(nsw);
+	struct dlist *l;
+	struct vmm_netswitch *nsw;
+	struct vmm_netbridge_ctrl *nbctrl;
+
+        nsw = dev->priv;
+	nbctrl = nsw->priv;
+	if(nsw) {
+		if(nbctrl) {
+			while(!list_empty(&nbctrl->mac_table)) {
+				l = list_pop(&nbctrl->mac_table);
+				vmm_free(l);
+			}
+			vmm_free(nbctrl);
+		}
+		vmm_netswitch_unregister(nsw);
+		vmm_netswitch_free(nsw);
+	}
 	return VMM_OK;
 }
 

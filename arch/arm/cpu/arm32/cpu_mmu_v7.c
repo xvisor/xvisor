@@ -926,6 +926,32 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_current(void)
 	return cpu_mmu_l1tbl_find_tbl_pa(ttbr0);
 }
 
+#define PHYSICAL_TTE	(((TTBL_L1TBL_TTE_DOM_RESERVED <<		\
+			   TTBL_L1TBL_TTE_DOM_SHIFT) &			\
+			  TTBL_L1TBL_TTE_DOM_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_NS2_SHIFT) &		\
+			  TTBL_L1TBL_TTE_NS2_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_NG_SHIFT) &		\
+			  TTBL_L1TBL_TTE_NG_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_S_SHIFT) &		\
+			  TTBL_L1TBL_TTE_S_MASK)		|	\
+			 ((TTBL_AP_SRW_U << 				\
+			   (TTBL_L1TBL_TTE_AP2_SHIFT - 2)) &		\
+			  TTBL_L1TBL_TTE_AP2_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_TEX_SHIFT) &		\
+			  TTBL_L1TBL_TTE_TEX_MASK)		|	\
+			 ((TTBL_AP_SRW_U << TTBL_L1TBL_TTE_AP_SHIFT) &	\
+			  TTBL_L1TBL_TTE_AP_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_IMP_SHIFT) &		\
+			  TTBL_L1TBL_TTE_IMP_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_XN_SHIFT) &		\
+			  TTBL_L1TBL_TTE_XN_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_C_SHIFT) &		\
+			  TTBL_L1TBL_TTE_C_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_B_SHIFT) &		\
+			  TTBL_L1TBL_TTE_B_MASK)		|	\
+			 (TTBL_L1TBL_TTE_TYPE_SECTION))
+
 u32 cpu_mmu_physical_read32(physical_addr_t pa)
 {
 	u32 ret = 0x0, ite, found;
@@ -948,34 +974,8 @@ u32 cpu_mmu_physical_read32(physical_addr_t pa)
 			}
 		}
 		if (found) {
-			l1_tte[ite] = 0x0;
+			l1_tte[ite] = PHYSICAL_TTE;
 			l1_tte[ite] |= (pa & TTBL_L1TBL_TTE_BASE20_MASK);
-			l1_tte[ite] |= (TTBL_L1TBL_TTE_DOM_RESERVED << 
-					TTBL_L1TBL_TTE_DOM_SHIFT) &
-					TTBL_L1TBL_TTE_DOM_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_NS2_SHIFT) &
-					TTBL_L1TBL_TTE_NS2_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_NG_SHIFT) &
-					TTBL_L1TBL_TTE_NG_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_S_SHIFT) &
-					TTBL_L1TBL_TTE_S_MASK;
-			l1_tte[ite] |= (TTBL_AP_SRW_U << 
-					(TTBL_L1TBL_TTE_AP2_SHIFT - 2)) &
-					TTBL_L1TBL_TTE_AP2_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_TEX_SHIFT) &
-					TTBL_L1TBL_TTE_TEX_MASK;
-			l1_tte[ite] |= (TTBL_AP_SRW_U << 
-					TTBL_L1TBL_TTE_AP_SHIFT) &
-					TTBL_L1TBL_TTE_AP_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_IMP_SHIFT) &
-					TTBL_L1TBL_TTE_IMP_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_XN_SHIFT) &
-					TTBL_L1TBL_TTE_XN_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_C_SHIFT) &
-					TTBL_L1TBL_TTE_C_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_B_SHIFT) &
-					TTBL_L1TBL_TTE_B_MASK;
-			l1_tte[ite] |= TTBL_L1TBL_TTE_TYPE_SECTION;
 			cpu_mmu_sync_tte(&l1_tte[ite]);
 			va = (ite << TTBL_L1TBL_TTE_BASE20_SHIFT) + 
 			     (pa & ~TTBL_L1TBL_TTE_BASE20_MASK);
@@ -1014,34 +1014,8 @@ void cpu_mmu_physical_write32(physical_addr_t pa, u32 val)
 			}
 		}
 		if (found) {
-			l1_tte[ite] = 0x0;
+			l1_tte[ite] = PHYSICAL_TTE;
 			l1_tte[ite] |= (pa & TTBL_L1TBL_TTE_BASE20_MASK);
-			l1_tte[ite] |= (TTBL_L1TBL_TTE_DOM_RESERVED << 
-					TTBL_L1TBL_TTE_DOM_SHIFT) &
-					TTBL_L1TBL_TTE_DOM_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_NS2_SHIFT) &
-					TTBL_L1TBL_TTE_NS2_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_NG_SHIFT) &
-					TTBL_L1TBL_TTE_NG_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_S_SHIFT) &
-					TTBL_L1TBL_TTE_S_MASK;
-			l1_tte[ite] |= (TTBL_AP_SRW_U << 
-					(TTBL_L1TBL_TTE_AP2_SHIFT - 2)) &
-					TTBL_L1TBL_TTE_AP2_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_TEX_SHIFT) &
-					TTBL_L1TBL_TTE_TEX_MASK;
-			l1_tte[ite] |= (TTBL_AP_SRW_U << 
-					TTBL_L1TBL_TTE_AP_SHIFT) &
-					TTBL_L1TBL_TTE_AP_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_IMP_SHIFT) &
-					TTBL_L1TBL_TTE_IMP_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_XN_SHIFT) &
-					TTBL_L1TBL_TTE_XN_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_C_SHIFT) &
-					TTBL_L1TBL_TTE_C_MASK;
-			l1_tte[ite] |= (0x0 << TTBL_L1TBL_TTE_B_SHIFT) &
-					TTBL_L1TBL_TTE_B_MASK;
-			l1_tte[ite] |= TTBL_L1TBL_TTE_TYPE_SECTION;
 			cpu_mmu_sync_tte(&l1_tte[ite]);
 			va = (ite << TTBL_L1TBL_TTE_BASE20_SHIFT) + 
 			     (pa & ~TTBL_L1TBL_TTE_BASE20_MASK);

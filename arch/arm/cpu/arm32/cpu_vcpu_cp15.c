@@ -1585,7 +1585,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			break;
 		case 3:	/* Invalidate single entry on MVA.  */
 			/* ??? This is like case 1, but ignores ASID.  */
-			cpu_vcpu_cp15_vtlb_flush(vcpu);
+			cpu_vcpu_cp15_vtlb_flush_va(vcpu, data);
 			break;
 		default:
 			goto bad_reg;

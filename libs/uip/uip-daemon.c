@@ -160,10 +160,6 @@ static int __init daemon_uip_init(void)
 				   VMM_DEVTREE_VMMNET_NODE_NAME
 				   VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_NETSTACK_NODE_NAME);
-	if (!node) {
-		vmm_printf("dts node not found\n");
-		return VMM_EFAIL;
-	}
 	attrval = vmm_devtree_attrval(node,
 				      "uip_priority");
 	if (attrval) {
