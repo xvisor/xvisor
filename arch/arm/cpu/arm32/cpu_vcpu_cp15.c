@@ -1232,15 +1232,20 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			/* ??? Lots of these bits are not implemented.  */
 
 			if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
-				/* For multi-core guests always flush VTLB.
+				/* For SMP guests always flush entire VTLB.
 				 * This is for stability. ???
 				 */
 				cpu_vcpu_cp15_vtlb_flush(vcpu);
 			} else if (tmp != arm_priv(vcpu)->cp15.c1_sctlr) {
-				/* For multi-core guests flush VTLB only when
+				/* For single-core guests flush VTLB only when
 				 * SCTLR changes
 				 */
 				cpu_vcpu_cp15_vtlb_flush(vcpu);
+			} else {
+				/* If no change in SCTLR then flush 
+				 * non-global pages from VTLB
+				 */
+				cpu_vcpu_cp15_vtlb_flush_ng(vcpu);
 			}
 			break;
 		case 1:	/* Auxiliary control register.  */
