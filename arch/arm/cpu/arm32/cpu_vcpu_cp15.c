@@ -1205,6 +1205,8 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			 arch_regs_t * regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, u32 data)
 {
+	u32 tmp;
+
 	switch (CRn) {
 	case 0:
 		/* ID codes.  */
@@ -1217,6 +1219,8 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 	case 1:		/* System configuration.  */
 		switch (opc2) {
 		case 0:
+			/* store old value of sctlr */
+			tmp =  arm_priv(vcpu)->cp15.c1_sctlr;
 			if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 				arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_ROBITS_MASK;
 				arm_priv(vcpu)->cp15.c1_sctlr |= (data & ~SCTLR_ROBITS_MASK);
@@ -1224,9 +1228,20 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_V5_ROBITS_MASK;
 				arm_priv(vcpu)->cp15.c1_sctlr |= (data & ~SCTLR_V5_ROBITS_MASK);
 			}
+
 			/* ??? Lots of these bits are not implemented.  */
-			/* This may enable/disable the MMU, so do a TLB flush. */
-			cpu_vcpu_cp15_vtlb_flush(vcpu);
+
+			if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
+				/* For multi-core guests always flush VTLB.
+				 * This is for stability. ???
+				 */
+				cpu_vcpu_cp15_vtlb_flush(vcpu);
+			} else if (tmp != arm_priv(vcpu)->cp15.c1_sctlr) {
+				/* For multi-core guests flush VTLB only when
+				 * SCTLR changes
+				 */
+				cpu_vcpu_cp15_vtlb_flush(vcpu);
+			}
 			break;
 		case 1:	/* Auxiliary control register.  */
 			/* Not implemented.  */
@@ -2099,15 +2114,6 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		vmm_memset(&arm_priv(vcpu)->cp15, 0,
 			   sizeof(arm_priv(vcpu)->cp15));
 		arm_priv(vcpu)->cp15.l1 = cpu_mmu_l1tbl_alloc();
-		arm_priv(vcpu)->cp15.dacr = 0x0;
-		arm_priv(vcpu)->cp15.dacr |= (TTBL_DOM_CLIENT <<
-					      (TTBL_L1TBL_TTE_DOM_VCPU_SUPER *
-					       2));
-		arm_priv(vcpu)->cp15.dacr |=
-		    (TTBL_DOM_MANAGER <<
-		     (TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R * 2));
-		arm_priv(vcpu)->cp15.dacr |=
-		    (TTBL_DOM_CLIENT << (TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
 		vtlb_count = CPU_VCPU_VTLB_ENTRY_COUNT;
 		arm_priv(vcpu)->cp15.vtlb.table = vmm_malloc(vtlb_count *
 							     sizeof(struct
@@ -2116,17 +2122,28 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 			   vtlb_count * sizeof(struct arm_vtlb_entry));
 		vmm_memset(&arm_priv(vcpu)->cp15.vtlb.victim, 0,
 			   sizeof(arm_priv(vcpu)->cp15.vtlb.victim));
-
-		if (read_sctlr() & SCTLR_V_MASK) {
-			arm_priv(vcpu)->cp15.ovect_base = CPU_IRQ_HIGHVEC_BASE;
-		} else {
-			arm_priv(vcpu)->cp15.ovect_base = CPU_IRQ_LOWVEC_BASE;
-		}
 	} else {
 		if ((rc = cpu_vcpu_cp15_vtlb_flush(vcpu))) {
 			return rc;
 		}
 	}
+
+	arm_priv(vcpu)->cp15.dacr = 0x0;
+	arm_priv(vcpu)->cp15.dacr |= (TTBL_DOM_CLIENT <<
+				      (TTBL_L1TBL_TTE_DOM_VCPU_SUPER *
+				       2));
+	arm_priv(vcpu)->cp15.dacr |=
+		    (TTBL_DOM_MANAGER <<
+		     (TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R * 2));
+	arm_priv(vcpu)->cp15.dacr |=
+		    (TTBL_DOM_CLIENT << (TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
+
+	if (read_sctlr() & SCTLR_V_MASK) {
+		arm_priv(vcpu)->cp15.ovect_base = CPU_IRQ_HIGHVEC_BASE;
+	} else {
+		arm_priv(vcpu)->cp15.ovect_base = CPU_IRQ_LOWVEC_BASE;
+	}
+
 	arm_priv(vcpu)->cp15.virtio_active = FALSE;
 	vmm_memset(&arm_priv(vcpu)->cp15.virtio_page, 0,
 		   sizeof(struct cpu_page));
