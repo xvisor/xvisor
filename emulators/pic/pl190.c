@@ -138,6 +138,7 @@ static void pl190_emulator_set_irq(struct pl190_emulator_state *s, int irq,
 static int pl190_emulator_irq_handle(struct vmm_emupic *epic, 
 				     u32 irq, int cpu, int level)
 {
+	irq_flags_t flags;
 	struct pl190_emulator_state *s =
 	    (struct pl190_emulator_state *)epic->priv;
 
@@ -152,11 +153,11 @@ static int pl190_emulator_irq_handle(struct vmm_emupic *epic,
 		return VMM_EMUPIC_IRQ_HANDLED;
 	}
 
-	vmm_spin_lock(&s->lock);
+	vmm_spin_lock_irqsave(&s->lock, flags);
 
 	pl190_emulator_set_irq(s, irq, level);
 
-	vmm_spin_unlock(&s->lock);
+	vmm_spin_unlock_irqrestore(&s->lock, flags);
 
 	return VMM_EMUPIC_IRQ_HANDLED;
 }
