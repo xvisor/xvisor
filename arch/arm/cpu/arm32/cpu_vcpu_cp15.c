@@ -1219,7 +1219,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		switch (opc2) {
 		case 0:
 			/* store old value of sctlr */
-			tmp =  arm_priv(vcpu)->cp15.c1_sctlr;
+			tmp =  arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_MMU_MASK;
 			if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 				arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_ROBITS_MASK;
 				arm_priv(vcpu)->cp15.c1_sctlr |= (data & ~SCTLR_ROBITS_MASK);
@@ -1235,7 +1235,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				 * This is for stability. ???
 				 */
 				cpu_vcpu_cp15_vtlb_flush(vcpu);
-			} else if (tmp != arm_priv(vcpu)->cp15.c1_sctlr) {
+			} else if (tmp != (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_MMU_MASK)) {
 				/* For single-core guests flush VTLB only when
 				 * SCTLR changes
 				 */
