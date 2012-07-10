@@ -298,9 +298,9 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		pg->dom = 0;
 	} else {
 		/* Section or page.  */
-		pg->dom = (desc >> 4) & 0x1e;
+		pg->dom = (desc >> 5) & 0xF;
 	}
-	domain = (arm_priv(vcpu)->cp15.c3 >> pg->dom) & 3;
+	domain = (arm_priv(vcpu)->cp15.c3 >> (pg->dom << 1)) & 3;
 	if (domain == 0 || domain == 2) {
 		if (type == 2)
 			*fs = 9;	/* Section domain fault.  */
@@ -628,8 +628,8 @@ u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
 		}
 		if (rc) {
 			/* FIXME: should be ORed with (pg->dom & 0xF) */
-			return (fs << 4) | ((arm_priv(vcpu)->cp15.c3 >> pg->dom)
-					    & 0x3);
+			return (fs << 4) | ((arm_priv(vcpu)->cp15.c3 >> 
+						(pg->dom << 1)) & 0x3);
 		}
 		pg->va = va;
 	} else {
