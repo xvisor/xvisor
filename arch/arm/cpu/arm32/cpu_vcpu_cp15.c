@@ -43,7 +43,8 @@
 #include <cpu_vcpu_cp15.h>
 
 /* Update Virtual TLB */
-static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu, struct cpu_page *p)
+static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu, 
+				     struct cpu_page *p, u32 domain)
 {
 	int rc;
 	u32 entry, victim, line;
@@ -62,7 +63,11 @@ static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu, struct cpu_page *p)
 		}
 		e->valid = 0;
 		e->ng = 0;
+		e->dom = 0;
 	}
+
+	/* Save original domain */
+	e->dom = domain;
 
 	/* Ensure pages for normal vcpu are non-global */
 	e->ng = p->ng;
@@ -111,6 +116,7 @@ static int cpu_vcpu_cp15_vtlb_flush(struct vmm_vcpu *vcpu)
 			}
 			e->valid = 0;
 			e->ng = 0;
+			e->dom = 0;
 		}
 	}
 
@@ -141,6 +147,7 @@ static int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu *vcpu, virtual_addr_t va)
 				}
 				e->valid = 0;
 				e->ng = 0;
+				e->dom = 0;
 				break;
 			}
 		}
@@ -149,6 +156,7 @@ static int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu *vcpu, virtual_addr_t va)
 	return VMM_OK;
 }
 
+/** Flush non-global pages from Virtual TLB */
 static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 {
 	int rc;
@@ -166,12 +174,41 @@ static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 				}
 				e->valid = 0;
 				e->ng = 0;
+				e->dom = 0;
 			}
 		}
 	}
 
 	return VMM_OK;
 }
+
+/** Flush pages whos domain permissions have changed from Virtual TLB */
+static int cpu_vcpu_cp15_vtlb_flush_domain(struct vmm_vcpu * vcpu, 
+					   u32 dacr_xor_diff)
+{
+	int rc;
+	u32 vtlb;
+	struct arm_vtlb_entry * e;
+
+	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
+		if (arm_priv(vcpu)->cp15.vtlb.table[vtlb].valid) {
+			e = &arm_priv(vcpu)->cp15.vtlb.table[vtlb];
+			if ((dacr_xor_diff >> ((e->dom & 0xF) << 1)) & 0x3) {
+				rc = cpu_mmu_unmap_page(arm_priv(vcpu)->cp15.l1,
+						&e->page);
+				if (rc) {
+					return rc;
+				}
+				e->valid = 0;
+				e->ng = 0;
+				e->dom = 0;
+			}
+		}
+	}
+
+	return VMM_OK;
+}
+
 
 enum cpu_vcpu_cp15_access_permission {
 	CP15_ACCESS_DENIED = 0,
@@ -685,6 +722,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 			      u32 far, u32 fs, u32 dom,
 			      u32 wnr, u32 xn, bool force_user)
 {
+	u32 orig_domain;
 	u32 ecode, reg_flags;
 	bool is_user;
 	int rc, access_type;
@@ -733,6 +771,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 	if (availsz < TTBL_L2TBL_SMALL_PAGE_SIZE) {
 		return rc;
 	}
+	orig_domain = pg.dom;
 	pg.sz = cpu_mmu_best_page_size(pg.va, pg.pa, availsz);
 	switch (pg.ap) {
 	case TTBL_AP_S_U:
@@ -799,7 +838,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 	pg.c = pg.c && (reg_flags & VMM_REGION_CACHEABLE);
 	pg.b = pg.b && (reg_flags & VMM_REGION_BUFFERABLE);
 
-	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg);
+	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg, orig_domain);
 }
 
 int cpu_vcpu_cp15_access_fault(struct vmm_vcpu *vcpu,
@@ -1280,9 +1319,12 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		};
 		break;
 	case 3:		/* MMU Domain access control / MPU write buffer control.  */
+		tmp = arm_priv(vcpu)->cp15.c3;
 		arm_priv(vcpu)->cp15.c3 = data;
-		/* Flush TLB as domain not tracked in TLB */
-		cpu_vcpu_cp15_vtlb_flush(vcpu);
+
+		if (tmp != data) {
+			cpu_vcpu_cp15_vtlb_flush_domain(vcpu, tmp ^ data);
+		}
 		break;
 	case 4:		/* Reserved.  */
 		goto bad_reg;
