@@ -1269,13 +1269,18 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 
 			/* ??? Lots of these bits are not implemented.  */
 
-			if (tmp != (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_MMU_MASK)) {
-				/* When MMU related bits of SCTLR changes flush
-				 * entire VTLB
+			if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
+				/* For SMP guests always flush entire VTLB.
+				 * This is for stability. ???
+				 */
+				cpu_vcpu_cp15_vtlb_flush(vcpu);
+			} else if (tmp != (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_MMU_MASK)) {
+				/* For single-core guests flush VTLB only when
+				 * MMU related bits in SCTLR changes
 				 */
 				cpu_vcpu_cp15_vtlb_flush(vcpu);
 			} else {
-				/* For rest of the SCTLR changes flush 
+				/* If no change in SCTLR then flush 
 				 * non-global pages from VTLB
 				 */
 				cpu_vcpu_cp15_vtlb_flush_ng(vcpu);
