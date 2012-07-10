@@ -166,7 +166,6 @@ static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 				}
 				e->valid = 0;
 				e->ng = 0;
-				break;
 			}
 		}
 	}
