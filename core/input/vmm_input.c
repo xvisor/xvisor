@@ -29,11 +29,13 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_macros.h>
 #include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <input/vmm_input.h>
+#include <input/vmm_input_mt.h>
 
 #define MODULE_VARID			input_framework_module
 #define MODULE_NAME			"Input Device Framework"
@@ -43,18 +45,327 @@
 #define	MODULE_EXIT			vmm_input_exit
 
 struct vmm_input_ctrl {
+	vmm_spinlock_t dev_list_lock;
+	struct dlist dev_list;
 	vmm_spinlock_t hnd_list_lock;
 	struct dlist hnd_list;
 	vmm_spinlock_t hnd_conn_lock[EV_CNT];
 	struct dlist hnd_conn[EV_CNT];
+	u32 hnd_conn_count[EV_CNT];
 };
 
 static struct vmm_input_ctrl ictrl;
 
-/* FIXME: */
+static inline int is_event_supported(unsigned int code,
+				     unsigned long *bm, unsigned int max)
+{
+	return code <= max && test_bit(code, bm);
+}
+
+static int input_defuzz_abs_event(int value, int old_val, int fuzz)
+{
+	if (fuzz) {
+		if (value > old_val - fuzz / 2 && value < old_val + fuzz / 2)
+			return old_val;
+
+		if (value > old_val - fuzz && value < old_val + fuzz)
+			return (old_val * 3 + value) / 4;
+
+		if (value > old_val - fuzz * 2 && value < old_val + fuzz * 2)
+			return (old_val + value) / 2;
+	}
+
+	return value;
+}
+
+#define INPUT_DO_TOGGLE(dev, type, bits, on)				\
+	do {								\
+		int i;							\
+		bool active;						\
+									\
+		if (!test_bit(EV_##type, dev->evbit))			\
+			break;						\
+									\
+		for (i = 0; i < type##_MAX; i++) {			\
+			if (!test_bit(i, dev->bits##bit))		\
+				continue;				\
+									\
+			active = test_bit(i, dev->bits);		\
+			if (!active && !on)				\
+				continue;				\
+									\
+			dev->event(dev, EV_##type, i, on ? active : 0);	\
+		}							\
+	} while (0)
+
+static void input_dev_toggle(struct vmm_input_dev *idev, bool activate)
+{
+	if (!idev->event)
+		return;
+
+	INPUT_DO_TOGGLE(idev, LED, led, activate);
+	INPUT_DO_TOGGLE(idev, SND, snd, activate);
+
+	if (activate && test_bit(EV_REP, idev->evbit)) {
+		idev->event(idev, EV_REP, REP_PERIOD, idev->rep[REP_PERIOD]);
+		idev->event(idev, EV_REP, REP_DELAY, idev->rep[REP_DELAY]);
+	}
+}
+
+/* Pass event to all relevant input handlers. This function is called with
+ * idev->event_lock held and interrupts disabled.
+ */
+static void input_pass_event(struct vmm_input_dev *idev,
+			     unsigned int type, unsigned int code, int value)
+{
+	irq_flags_t flags;
+	struct dlist *l;
+	struct vmm_input_handler *handler;
+
+	vmm_spin_lock_irqsave(&ictrl.hnd_conn_lock[type], flags);
+
+	list_for_each(l, &ictrl.hnd_conn[type]) {
+		handler = list_entry(l, struct vmm_input_handler, head);
+		handler->event(handler, idev, type, code, value);
+	}
+
+	vmm_spin_unlock_irqrestore(&ictrl.hnd_conn_lock[type], flags);
+}
+
+/*
+ * Generate software autorepeat event. Note that we take
+ * idev->event_lock here to avoid racing with input_event
+ * which may cause keys get "stuck".
+ */
+static void input_repeat_key(struct vmm_timer_event *ev)
+{
+	u64 duration;
+	irq_flags_t flags;
+	struct vmm_input_dev *idev = (void *)ev->priv;
+
+	vmm_spin_lock_irqsave(&idev->event_lock, flags);
+
+	if (test_bit(idev->repeat_key, idev->key) &&
+	    is_event_supported(idev->repeat_key, idev->keybit, KEY_MAX)) {
+
+		input_pass_event(idev, EV_KEY, idev->repeat_key, 2);
+
+		if (idev->sync) {
+			/*
+			 * Only send SYN_REPORT if we are not in a middle
+			 * of driver parsing a new hardware packet.
+			 * Otherwise assume that the driver will send
+			 * SYN_REPORT once it's done.
+			 */
+			input_pass_event(idev, EV_SYN, SYN_REPORT, 1);
+		}
+
+		if (idev->rep[REP_PERIOD]) {
+			duration = idev->rep[REP_PERIOD];
+			duration = duration * 1000000;
+			vmm_timer_event_start(idev->repeat_ev, duration);
+		}
+	}
+
+	vmm_spin_unlock_irqrestore(&idev->event_lock, flags);
+}
+
+static void input_start_autorepeat(struct vmm_input_dev *idev, int code)
+{
+	u32 duration;
+	if (test_bit(EV_REP, idev->evbit) &&
+	    idev->rep[REP_PERIOD] && idev->rep[REP_DELAY] &&
+	    idev->repeat_ev->priv) {
+		idev->repeat_key = code;
+		duration = idev->rep[REP_DELAY];
+		duration = duration * 1000000;
+		vmm_timer_event_start(idev->repeat_ev, duration);
+	}
+}
+
+static void input_stop_autorepeat(struct vmm_input_dev *idev)
+{
+	vmm_timer_event_stop(idev->repeat_ev);
+}
+
+#define INPUT_IGNORE_EVENT	0
+#define INPUT_PASS_TO_HANDLERS	1
+#define INPUT_PASS_TO_DEVICE	2
+#define INPUT_PASS_TO_ALL	(INPUT_PASS_TO_HANDLERS | INPUT_PASS_TO_DEVICE)
+
+static int input_handle_abs_event(struct vmm_input_dev *idev,
+				  unsigned int code, int *pval)
+{
+	bool is_mt_event;
+	int *pold;
+
+	if (code == ABS_MT_SLOT) {
+		/*
+		 * "Stage" the event; we'll flush it later, when we
+		 * get actual touch data.
+		 */
+		if (*pval >= 0 && *pval < idev->mtsize)
+			idev->slot = *pval;
+
+		return INPUT_IGNORE_EVENT;
+	}
+
+	is_mt_event = code >= ABS_MT_FIRST && code <= ABS_MT_LAST;
+
+	if (!is_mt_event) {
+		pold = &idev->absinfo[code].value;
+	} else if (idev->mt) {
+		struct vmm_input_mt_slot *mtslot = &idev->mt[idev->slot];
+		pold = &mtslot->abs[code - ABS_MT_FIRST];
+	} else {
+		/*
+		 * Bypass filtering for multi-touch events when
+		 * not employing slots.
+		 */
+		pold = NULL;
+	}
+
+	if (pold) {
+		*pval = input_defuzz_abs_event(*pval, *pold,
+						idev->absinfo[code].fuzz);
+		if (*pold == *pval)
+			return INPUT_IGNORE_EVENT;
+
+		*pold = *pval;
+	}
+
+	/* Flush pending "slot" event */
+	if (is_mt_event && idev->slot != vmm_input_abs_get_val(idev, ABS_MT_SLOT)) {
+		vmm_input_abs_set_val(idev, ABS_MT_SLOT, idev->slot);
+		input_pass_event(idev, EV_ABS, ABS_MT_SLOT, idev->slot);
+	}
+
+	return INPUT_PASS_TO_HANDLERS;
+}
+
+static void input_handle_event(struct vmm_input_dev *idev,
+			       unsigned int type, unsigned int code, int value)
+{
+	int disposition = INPUT_IGNORE_EVENT;
+
+	switch (type) {
+
+	case EV_SYN:
+		switch (code) {
+		case SYN_CONFIG:
+			disposition = INPUT_PASS_TO_ALL;
+			break;
+
+		case SYN_REPORT:
+			if (!idev->sync) {
+				idev->sync = TRUE;
+				disposition = INPUT_PASS_TO_HANDLERS;
+			}
+			break;
+		case SYN_MT_REPORT:
+			idev->sync = FALSE;
+			disposition = INPUT_PASS_TO_HANDLERS;
+			break;
+		}
+		break;
+
+	case EV_KEY:
+		if (is_event_supported(code, idev->keybit, KEY_MAX) &&
+		    !!test_bit(code, idev->key) != value) {
+
+			if (value != 2) {
+				__change_bit(code, idev->key);
+				if (value)
+					input_start_autorepeat(idev, code);
+				else
+					input_stop_autorepeat(idev);
+			}
+
+			disposition = INPUT_PASS_TO_HANDLERS;
+		}
+		break;
+
+	case EV_SW:
+		if (is_event_supported(code, idev->swbit, SW_MAX) &&
+		    !!test_bit(code, idev->sw) != value) {
+
+			disposition = INPUT_PASS_TO_HANDLERS;
+		}
+		break;
+
+	case EV_ABS:
+		if (is_event_supported(code, idev->absbit, ABS_MAX))
+			disposition = input_handle_abs_event(idev, code, &value);
+
+		break;
+
+	case EV_REL:
+		if (is_event_supported(code, idev->relbit, REL_MAX) && value)
+			disposition = INPUT_PASS_TO_HANDLERS;
+
+		break;
+
+	case EV_MSC:
+		if (is_event_supported(code, idev->mscbit, MSC_MAX))
+			disposition = INPUT_PASS_TO_ALL;
+
+		break;
+
+	case EV_LED:
+		if (is_event_supported(code, idev->ledbit, LED_MAX) &&
+		    !!test_bit(code, idev->led) != value) {
+
+			__change_bit(code, idev->led);
+			disposition = INPUT_PASS_TO_ALL;
+		}
+		break;
+
+	case EV_SND:
+		if (is_event_supported(code, idev->sndbit, SND_MAX)) {
+
+			if (!!test_bit(code, idev->snd) != !!value)
+				__change_bit(code, idev->snd);
+			disposition = INPUT_PASS_TO_ALL;
+		}
+		break;
+
+	case EV_REP:
+		if (code <= REP_MAX && value >= 0 && idev->rep[code] != value) {
+			idev->rep[code] = value;
+			disposition = INPUT_PASS_TO_ALL;
+		}
+		break;
+
+	case EV_FF:
+		if (value >= 0)
+			disposition = INPUT_PASS_TO_ALL;
+		break;
+
+	case EV_PWR:
+		disposition = INPUT_PASS_TO_ALL;
+		break;
+	};
+
+	if (disposition != INPUT_IGNORE_EVENT && type != EV_SYN)
+		idev->sync = FALSE;
+
+	if ((disposition & INPUT_PASS_TO_DEVICE) && idev->event)
+		idev->event(idev, type, code, value);
+
+	if (disposition & INPUT_PASS_TO_HANDLERS)
+		input_pass_event(idev, type, code, value);
+}
+
 void vmm_input_event(struct vmm_input_dev *idev, 
 		     unsigned int type, unsigned int code, int value)
 {
+	irq_flags_t flags;
+
+	if (is_event_supported(type, idev->evbit, EV_MAX)) {
+		vmm_spin_lock_irqsave(&idev->event_lock, flags);
+		input_handle_event(idev, type, code, value);
+		vmm_spin_unlock_irqrestore(&idev->event_lock, flags);
+	}
 }
 
 void vmm_input_set_capability(struct vmm_input_dev *idev, 
@@ -62,35 +373,35 @@ void vmm_input_set_capability(struct vmm_input_dev *idev,
 {
 	switch (type) {
 	case EV_KEY:
-		set_bit(code, idev->keybit);
+		__set_bit(code, idev->keybit);
 		break;
 
 	case EV_REL:
-		set_bit(code, idev->relbit);
+		__set_bit(code, idev->relbit);
 		break;
 
 	case EV_ABS:
-		set_bit(code, idev->absbit);
+		__set_bit(code, idev->absbit);
 		break;
 
 	case EV_MSC:
-		set_bit(code, idev->mscbit);
+		__set_bit(code, idev->mscbit);
 		break;
 
 	case EV_SW:
-		set_bit(code, idev->swbit);
+		__set_bit(code, idev->swbit);
 		break;
 
 	case EV_LED:
-		set_bit(code, idev->ledbit);
+		__set_bit(code, idev->ledbit);
 		break;
 
 	case EV_SND:
-		set_bit(code, idev->sndbit);
+		__set_bit(code, idev->sndbit);
 		break;
 
 	case EV_FF:
-		set_bit(code, idev->ffbit);
+		__set_bit(code, idev->ffbit);
 		break;
 
 	case EV_PWR:
@@ -103,7 +414,7 @@ void vmm_input_set_capability(struct vmm_input_dev *idev,
 		return;
 	}
 
-	set_bit(type, idev->evbit);
+	__set_bit(type, idev->evbit);
 }
 
 int vmm_input_scancode_to_scalar(const struct vmm_input_keymap_entry *ke,
@@ -129,21 +440,194 @@ int vmm_input_scancode_to_scalar(const struct vmm_input_keymap_entry *ke,
 	return VMM_OK;
 }
 
-/* FIXME: */
+static unsigned int input_fetch_keycode(struct vmm_input_dev *idev,
+					unsigned int index)
+{
+	switch (idev->keycodesize) {
+	case 1:
+		return ((u8 *)idev->keycode)[index];
+
+	case 2:
+		return ((u16 *)idev->keycode)[index];
+
+	default:
+		return ((u32 *)idev->keycode)[index];
+	}
+}
+
+static int input_default_getkeycode(struct vmm_input_dev *idev,
+				    struct vmm_input_keymap_entry *ke)
+{
+	unsigned int index;
+	int error;
+
+	if (!idev->keycodesize) {
+		return VMM_EINVALID;
+	}
+
+	if (ke->flags & INPUT_KEYMAP_BY_INDEX) {
+		index = ke->index;
+	} else {
+		error = vmm_input_scancode_to_scalar(ke, &index);
+		if (error) {
+			return error;
+		}
+	}
+
+	if (index >= idev->keycodemax)
+		return VMM_EINVALID;
+
+	ke->keycode = input_fetch_keycode(idev, index);
+	ke->index = index;
+	ke->len = sizeof(index);
+	vmm_memcpy(ke->scancode, &index, sizeof(index));
+
+	return 0;
+}
+
+static int input_default_setkeycode(struct vmm_input_dev *idev,
+				    const struct vmm_input_keymap_entry *ke,
+				    unsigned int *old_keycode)
+{
+	unsigned int index;
+	int error;
+	int i;
+
+	if (!idev->keycodesize) {
+		return VMM_EINVALID;
+	}
+
+	if (ke->flags & INPUT_KEYMAP_BY_INDEX) {
+		index = ke->index;
+	} else {
+		error = vmm_input_scancode_to_scalar(ke, &index);
+		if (error) {
+			return error;
+		}
+	}
+
+	if (index >= idev->keycodemax)
+		return VMM_EINVALID;
+
+	if (idev->keycodesize < sizeof(ke->keycode) &&
+	    (ke->keycode >> (idev->keycodesize * 8)))
+		return VMM_EINVALID;
+
+	switch (idev->keycodesize) {
+		case 1: {
+			u8 *k = (u8 *)idev->keycode;
+			*old_keycode = k[index];
+			k[index] = ke->keycode;
+			break;
+		}
+		case 2: {
+			u16 *k = (u16 *)idev->keycode;
+			*old_keycode = k[index];
+			k[index] = ke->keycode;
+			break;
+		}
+		default: {
+			u32 *k = (u32 *)idev->keycode;
+			*old_keycode = k[index];
+			k[index] = ke->keycode;
+			break;
+		}
+	}
+
+	__clear_bit(*old_keycode, idev->keybit);
+	__set_bit(ke->keycode, idev->keybit);
+
+	for (i = 0; i < idev->keycodemax; i++) {
+		if (input_fetch_keycode(idev, i) == *old_keycode) {
+			__set_bit(*old_keycode, idev->keybit);
+			break; /* Setting the bit twice is useless, so break */
+		}
+	}
+
+	return 0;
+}
+
+void vmm_input_alloc_absinfo(struct vmm_input_dev *idev)
+{
+	if (!idev->absinfo) {
+		idev->absinfo = 
+			vmm_malloc(ABS_CNT * sizeof(struct vmm_input_absinfo));
+	}
+
+	BUG_ON(!idev->absinfo, "%s(): vmm_malloc() failed?\n", __func__);
+}
+
+void vmm_input_set_abs_params(struct vmm_input_dev *idev, unsigned int axis,
+			  int min, int max, int fuzz, int flat)
+{
+	struct vmm_input_absinfo *absinfo;
+
+	vmm_input_alloc_absinfo(idev);
+	if (!idev->absinfo)
+		return;
+
+	absinfo = &idev->absinfo[axis];
+	absinfo->minimum = min;
+	absinfo->maximum = max;
+	absinfo->fuzz = fuzz;
+	absinfo->flat = flat;
+
+	idev->absbit[BIT_WORD(axis)] |= BIT_MASK(axis);
+}
+
 int vmm_input_get_keycode(struct vmm_input_dev *idev, 
 			  struct vmm_input_keymap_entry *ke)
 {
-	return VMM_OK;
+	irq_flags_t flags;
+	int rc;
+
+	vmm_spin_lock_irqsave(&idev->event_lock, flags);
+	rc = idev->getkeycode(idev, ke);
+	vmm_spin_unlock_irqrestore(&idev->event_lock, flags);
+
+	return rc;
 }
 
-/* FIXME: */
 int vmm_input_set_keycode(struct vmm_input_dev *idev,
 			  const struct vmm_input_keymap_entry *ke)
 {
-	return VMM_OK;
+	int rc;
+	irq_flags_t flags;
+	unsigned int old_keycode;
+
+	if (ke->keycode > KEY_MAX)
+		return VMM_EINVALID;
+
+	vmm_spin_lock_irqsave(&idev->event_lock, flags);
+
+	rc = idev->setkeycode(idev, ke, &old_keycode);
+	if (rc) {
+		goto out;
+	}
+
+	/* Make sure KEY_RESERVED did not get enabled. */
+	__clear_bit(KEY_RESERVED, idev->keybit);
+
+	/*
+	 * Simulate keyup event if keycode is not present
+	 * in the keymap anymore
+	 */
+	if (test_bit(EV_KEY, idev->evbit) &&
+	    !is_event_supported(old_keycode, idev->keybit, KEY_MAX) &&
+	    __test_and_clear_bit(old_keycode, idev->key)) {
+
+		input_pass_event(idev, EV_KEY, old_keycode, 0);
+		if (idev->sync) {
+			input_pass_event(idev, EV_SYN, SYN_REPORT, 1);
+		}
+	}
+
+ out:
+	vmm_spin_unlock_irqrestore(&idev->event_lock, flags);
+
+	return rc;
 }
 
-/* FIXME: */
 struct vmm_input_dev *vmm_input_alloc_device(void)
 {
 	struct vmm_input_dev *idev;
@@ -154,12 +638,14 @@ struct vmm_input_dev *vmm_input_alloc_device(void)
 	}
 
 	vmm_memset(idev, 0, sizeof(struct vmm_input_dev));
+
+	INIT_LIST_HEAD(&idev->head);
 	INIT_SPIN_LOCK(&idev->event_lock);
+	INIT_SPIN_LOCK(&idev->ops_lock);
 
 	return idev;
 }
 
-/* FIXME: */
 void vmm_input_free_device(struct vmm_input_dev *idev)
 {
 	if (!idev) {
@@ -167,17 +653,71 @@ void vmm_input_free_device(struct vmm_input_dev *idev)
 	}
 }
 
-/* FIXME: */
-int vmm_input_register(struct vmm_input_dev *idev)
+static unsigned int input_estimate_events_per_packet(struct vmm_input_dev *idev)
 {
-	int rc;
+	int mt_slots;
+	int i;
+	unsigned int events;
+
+	if (idev->mtsize) {
+		mt_slots = idev->mtsize;
+	} else if (test_bit(ABS_MT_TRACKING_ID, idev->absbit)) {
+		mt_slots = idev->absinfo[ABS_MT_TRACKING_ID].maximum -
+			   idev->absinfo[ABS_MT_TRACKING_ID].minimum + 1,
+		mt_slots = clamp(mt_slots, 2, 32);
+	} else if (test_bit(ABS_MT_POSITION_X, idev->absbit)) {
+		mt_slots = 2;
+	} else {
+		mt_slots = 0;
+	}
+
+	events = mt_slots + 1; /* count SYN_MT_REPORT and SYN_REPORT */
+
+	for (i = 0; i < ABS_CNT; i++) {
+		if (test_bit(i, idev->absbit)) {
+			if (vmm_input_is_mt_axis(i)) {
+				events += mt_slots;
+			} else {
+				events++;
+			}
+		}
+	}
+
+	for (i = 0; i < REL_CNT; i++) {
+		if (test_bit(i, idev->relbit)) {
+			events++;
+		}
+	}
+
+	return events;
+}
+
+#define INPUT_CLEANSE_BITMASK(dev, type, bits)				\
+	do {								\
+		if (!test_bit(EV_##type, dev->evbit))			\
+			vmm_memset(dev->bits##bit, 0,			\
+				sizeof(dev->bits##bit));		\
+	} while (0)
+
+static void input_cleanse_bitmasks(struct vmm_input_dev *idev)
+{
+	INPUT_CLEANSE_BITMASK(idev, KEY, key);
+	INPUT_CLEANSE_BITMASK(idev, REL, rel);
+	INPUT_CLEANSE_BITMASK(idev, ABS, abs);
+	INPUT_CLEANSE_BITMASK(idev, MSC, msc);
+	INPUT_CLEANSE_BITMASK(idev, LED, led);
+	INPUT_CLEANSE_BITMASK(idev, SND, snd);
+	INPUT_CLEANSE_BITMASK(idev, FF, ff);
+	INPUT_CLEANSE_BITMASK(idev, SW, sw);
+}
+
+int vmm_input_register_device(struct vmm_input_dev *idev)
+{
+	int i, rc;
+	irq_flags_t flags, flags1;
 	struct vmm_classdev *cd;
 
-	if (!(idev && 
-	      idev->name && 
-	      idev->open && 
-	      idev->close && 
-	      idev->flush)) {
+	if (!(idev && idev->name)) {
 		return VMM_EFAIL;
 	}
 
@@ -196,20 +736,88 @@ int vmm_input_register(struct vmm_input_dev *idev)
 	rc = vmm_devdrv_register_classdev(VMM_INPUT_DEV_CLASS_NAME, cd);
 	if (rc != VMM_OK) {
 		vmm_free(cd);
+		return rc;
 	}
+
+	/* Every input device generates EV_SYN/SYN_REPORT events. */
+	__set_bit(EV_SYN, idev->evbit);
+
+	/* KEY_RESERVED is not supposed to be transmitted to userspace. */
+	__clear_bit(KEY_RESERVED, idev->keybit);
+
+	/* Make sure that bitmasks not mentioned in dev->evbit are clean. */
+	input_cleanse_bitmasks(idev);
+
+	if (!idev->hint_events_per_packet) {
+		idev->hint_events_per_packet =
+				input_estimate_events_per_packet(idev);
+	}
+
+	/* If delay and period are pre-set by the driver, then autorepeating
+	 * is handled by the driver itself and we don't do it in input.c.
+	 */
+	idev->repeat_ev = vmm_timer_event_create(input_repeat_key, idev);
+	if (!idev->repeat_ev) {
+		return VMM_EFAIL;
+	}
+	if (!idev->rep[REP_DELAY] && !idev->rep[REP_PERIOD]) {
+		idev->rep[REP_DELAY] = 250;
+		idev->rep[REP_PERIOD] = 33;
+	}
+
+	if (!idev->getkeycode) {
+		idev->getkeycode = input_default_getkeycode;
+	}
+
+	if (!idev->setkeycode) {
+		idev->setkeycode = input_default_setkeycode;
+	}
+
+	vmm_spin_lock_irqsave(&idev->ops_lock, flags);
+	idev->users = 0;
+	for (i = 0; i < EV_CNT; i++) {
+		if (!test_bit(i, &idev->evbit[0])) {
+			continue;
+		}
+		vmm_spin_lock_irqsave(&ictrl.hnd_conn_lock, flags1);
+		idev->users += ictrl.hnd_conn_count[i];
+		vmm_spin_unlock_irqrestore(&ictrl.hnd_conn_lock, flags1);
+	}
+	if (idev->users && idev->open) {
+		rc = idev->open(idev);
+	}
+	vmm_spin_unlock_irqrestore(&idev->ops_lock, flags);
+
+	vmm_spin_lock_irqsave(&ictrl.dev_list_lock, flags);
+	list_add_tail(&ictrl.dev_list, &idev->head);
+	vmm_spin_unlock_irqrestore(&ictrl.dev_list_lock, flags);
 
 	return rc;
 }
 
-/* FIXME: */
 int vmm_input_unregister_device(struct vmm_input_dev *idev)
 {
 	int rc;
+	irq_flags_t flags;
 	struct vmm_classdev *cd;
 
 	if (!idev) {
 		return VMM_EFAIL;
 	}
+
+	vmm_spin_lock_irqsave(&ictrl.dev_list_lock, flags);
+	list_del(&idev->head);
+	vmm_spin_unlock_irqrestore(&ictrl.dev_list_lock, flags);	
+
+	vmm_timer_event_stop(idev->repeat_ev);
+	vmm_timer_event_destroy(idev->repeat_ev);
+
+	vmm_spin_lock_irqsave(&idev->ops_lock, flags);
+	if (idev->users && idev->close) {
+		idev->users = 0;
+		idev->close(idev);
+	}
+	vmm_spin_unlock_irqrestore(&idev->ops_lock, flags);
 
 	cd = vmm_devdrv_find_classdev(VMM_INPUT_DEV_CLASS_NAME, idev->name);
 	if (!cd) {
@@ -224,15 +832,61 @@ int vmm_input_unregister_device(struct vmm_input_dev *idev)
 	return rc;
 }
 
-/* FIXME: */
-void vmm_input_reset_device(struct vmm_input_dev *idev)
+/*
+ * Simulate keyup events for all keys that are marked as pressed.
+ * The function must be called with dev->event_lock held.
+ */
+static void input_dev_release_keys(struct vmm_input_dev *idev)
 {
+	int code;
+
+	if (is_event_supported(EV_KEY, idev->evbit, EV_MAX)) {
+		for (code = 0; code <= KEY_MAX; code++) {
+			if (is_event_supported(code, idev->keybit, KEY_MAX) &&
+			    __test_and_clear_bit(code, idev->key)) {
+				input_pass_event(idev, EV_KEY, code, 0);
+			}
+		}
+		input_pass_event(idev, EV_SYN, SYN_REPORT, 1);
+	}
 }
 
-/* FIXME: */
+void vmm_input_reset_device(struct vmm_input_dev *idev)
+{
+	irq_flags_t flags, flags1;
+
+	vmm_spin_lock_irqsave(&idev->ops_lock, flags);
+
+	if (idev && idev->users) {
+		input_dev_toggle(idev, TRUE);
+
+		/* Keys that have been pressed at suspend time are unlikely
+		 * to be still pressed when we resume.
+		 */
+		vmm_spin_lock_irqsave(&idev->event_lock, flags1);
+		input_dev_release_keys(idev);
+		vmm_spin_unlock_irqrestore(&idev->event_lock, flags1);
+	}
+
+	vmm_spin_unlock_irqrestore(&idev->ops_lock, flags);
+}
+
 int vmm_input_flush_device(struct vmm_input_dev *idev)
 {
-	return VMM_OK;
+	int rc = VMM_OK;
+	irq_flags_t flags;
+
+	if (!idev) {
+		return VMM_EFAIL;
+	}
+
+	if (idev->flush) {
+		vmm_spin_lock_irqsave(&idev->ops_lock, flags);
+		rc = idev->flush(idev);
+		vmm_spin_unlock_irqrestore(&idev->ops_lock, flags);
+	}
+
+	return rc;
 }
 
 struct vmm_input_dev *vmm_input_find_device(const char *name)
@@ -349,15 +1003,14 @@ int vmm_input_unregister_handler(struct vmm_input_handler *ihnd)
 
 int vmm_input_connect_handler(struct vmm_input_handler *ihnd)
 {
-	int i, conn;
-	irq_flags_t flags;
+	int i, rc;
+	irq_flags_t flags, flags1;
+	struct dlist *l;
+	struct vmm_input_dev *idev;
 
 	if (!ihnd || ihnd->connected) {
 		return VMM_EFAIL;
 	}
-
-	conn = 0;
-	ihnd->connected = FALSE;
 
 	for (i = 0; i < EV_CNT; i++) {
 		if (!test_bit(i, &ihnd->evbit[0])) {
@@ -365,18 +1018,32 @@ int vmm_input_connect_handler(struct vmm_input_handler *ihnd)
 		}
 
 		vmm_spin_lock_irqsave(&ictrl.hnd_conn_lock[i], flags);
-
 		INIT_LIST_HEAD(&ihnd->conn_head[i]);
 		list_add_tail(&ictrl.hnd_conn[i], &ihnd->conn_head[i]);
-
+		ictrl.hnd_conn_count[i]++;
 		vmm_spin_unlock_irqrestore(&ictrl.hnd_conn_lock[i], flags);
 
-		conn++;
+		vmm_spin_lock_irqsave(&ictrl.dev_list_lock, flags);
+		list_for_each(l, &ictrl.dev_list) {
+			idev = list_entry(l, struct vmm_input_dev, head);
+			if (!test_bit(i, &idev->evbit[0])) {
+				continue;
+			}
+			vmm_spin_lock_irqsave(&idev->ops_lock, flags1);
+			if (!idev->users && idev->open) {
+				rc = idev->open(idev);
+				if (rc) {
+					vmm_printf("%s: failed to open %s", 
+						   __func__, idev->name);
+				}
+			}
+			idev->users++;
+			vmm_spin_unlock_irqrestore(&idev->ops_lock, flags1);
+		}
+		vmm_spin_unlock_irqrestore(&ictrl.dev_list_lock, flags);
 	}
 
-	if (conn) {
-		ihnd->connected = TRUE;
-	}
+	ihnd->connected = TRUE;
 
 	return VMM_OK;
 }
@@ -384,7 +1051,9 @@ int vmm_input_connect_handler(struct vmm_input_handler *ihnd)
 int vmm_input_disconnect_handler(struct vmm_input_handler *ihnd)
 {
 	int i;
-	irq_flags_t flags;
+	irq_flags_t flags, flags1;
+	struct dlist *l;
+	struct vmm_input_dev *idev;
 
 	if (!ihnd || !ihnd->connected) {
 		return VMM_EFAIL;
@@ -396,10 +1065,28 @@ int vmm_input_disconnect_handler(struct vmm_input_handler *ihnd)
 		}
 
 		vmm_spin_lock_irqsave(&ictrl.hnd_conn_lock[i], flags);
-
 		list_del(&ihnd->conn_head[i]);
-
+		if (ictrl.hnd_conn_count[i]) {
+			ictrl.hnd_conn_count[i]--;
+		}
 		vmm_spin_unlock_irqrestore(&ictrl.hnd_conn_lock[i], flags);
+
+		vmm_spin_lock_irqsave(&ictrl.dev_list_lock, flags);
+		list_for_each(l, &ictrl.dev_list) {
+			idev = list_entry(l, struct vmm_input_dev, head);
+			if (!test_bit(i, &idev->evbit[0])) {
+				continue;
+			}
+			vmm_spin_lock_irqsave(&idev->ops_lock, flags1);
+			if ((idev->users == 1) && idev->close) {
+				idev->close(idev);
+			}
+			if (idev->users) {
+				idev->users--;
+			}
+			vmm_spin_unlock_irqrestore(&idev->ops_lock, flags1);
+		}
+		vmm_spin_unlock_irqrestore(&ictrl.dev_list_lock, flags);
 	}
 
 	ihnd->connected = FALSE;
@@ -500,11 +1187,14 @@ static int __init vmm_input_init(void)
 
 	vmm_memset(&ictrl, 0, sizeof(struct vmm_input_ctrl));
 
+	INIT_SPIN_LOCK(&ictrl.dev_list_lock);
+	INIT_LIST_HEAD(&ictrl.dev_list);
 	INIT_SPIN_LOCK(&ictrl.hnd_list_lock);
 	INIT_LIST_HEAD(&ictrl.hnd_list);
 	for (i = 0; i < EV_CNT; i++) {
 		INIT_SPIN_LOCK(&ictrl.hnd_conn_lock[i]);
 		INIT_LIST_HEAD(&ictrl.hnd_conn[i]);
+		ictrl.hnd_conn_count[i] = 0;
 	}
 
 	c = vmm_malloc(sizeof(struct vmm_class));
