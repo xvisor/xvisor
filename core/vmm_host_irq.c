@@ -266,7 +266,7 @@ int vmm_host_irq_register(u32 hirq_num,
 		INIT_LIST_HEAD(&hirq->head);
 		hirq->hndl = handler;
 		hirq->dev = dev;
-		list_add_tail(&irq->hndl_list, &hirq->head);
+		list_add_tail(&hirq->head, &irq->hndl_list);
 		vmm_spin_unlock_irqrestore(&hirqctrl.lock, flags);
 		return VMM_OK;
 	}

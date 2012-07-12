@@ -168,7 +168,7 @@ static int cpu_mmu_l2tbl_attach(struct cpu_l1tbl *l1, struct cpu_l2tbl *l2,
 
 	l1->l2tbl_cnt++;
 
-	list_add(&l1->l2tbl_list, &l2->head);
+	list_add(&l2->head, &l1->l2tbl_list);
 
 	return VMM_OK;
 }
@@ -220,7 +220,7 @@ static int cpu_mmu_l2tbl_free(struct cpu_l2tbl *l2)
 
 	INIT_LIST_HEAD(&l2->head);
 	l2->l1 = NULL;
-	list_add_tail(&mmuctrl.free_l2tbl_list, &l2->head);
+	list_add_tail(&l2->head, &mmuctrl.free_l2tbl_list);
 
 	mmuctrl.l2_alloc_count--;
 
@@ -803,7 +803,7 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 	}
 	nl1->l2tbl_cnt = mmuctrl.defl1.l2tbl_cnt;
 
-	list_add(&mmuctrl.l1tbl_list, &nl1->head);
+	list_add(&nl1->head, &mmuctrl.l1tbl_list);
 
 	return nl1;
 
@@ -841,7 +841,7 @@ int cpu_mmu_l1tbl_free(struct cpu_l1tbl *l1)
 	}
 
 	list_del(&l1->head);
-	list_add_tail(&mmuctrl.free_l1tbl_list, &l1->head);
+	list_add_tail(&l1->head, &mmuctrl.free_l1tbl_list);
 
 	mmuctrl.l1_alloc_count--;
 
@@ -1226,8 +1226,8 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		mmuctrl.l1_array[i].tte_cnt = 0;
 		mmuctrl.l1_array[i].l2tbl_cnt = 0;
 		INIT_LIST_HEAD(&mmuctrl.l1_array[i].l2tbl_list);
-		list_add_tail(&mmuctrl.free_l1tbl_list,
-			      &mmuctrl.l1_array[i].head);
+		list_add_tail(&mmuctrl.l1_array[i].head,
+			      &mmuctrl.free_l1tbl_list);
 	}
 
 	/* Setup up l2 array */
@@ -1242,8 +1242,8 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		mmuctrl.l2_array[i].tbl_va = mmuctrl.l2_base_va +
 		    i * TTBL_L2TBL_SIZE;
 		mmuctrl.l2_array[i].tte_cnt = 0;
-		list_add_tail(&mmuctrl.free_l2tbl_list,
-			      &mmuctrl.l2_array[i].head);
+		list_add_tail(&mmuctrl.l2_array[i].head,
+			      &mmuctrl.free_l2tbl_list);
 	}
 
  mmu_init_error:

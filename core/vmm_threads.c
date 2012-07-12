@@ -284,7 +284,7 @@ struct vmm_thread *vmm_threads_create(const char *thread_name,
 	/* Lock threads control */
 	vmm_spin_lock_irqsave(&thctrl.lock, flags);
 
-	list_add_tail(&thctrl.thread_list, &tinfo->head);
+	list_add_tail(&tinfo->head, &thctrl.thread_list);
 	thctrl.thread_count++;
 
 	/* Unlock threads control */

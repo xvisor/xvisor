@@ -374,7 +374,7 @@ int vmm_devdrv_register_class(struct vmm_class * cls)
 
 	INIT_LIST_HEAD(&cls->head);
 
-	list_add_tail(&ddctrl.class_list, &cls->head);
+	list_add_tail(&cls->head, &ddctrl.class_list);
 
 	return VMM_OK;
 }
@@ -513,7 +513,7 @@ int vmm_devdrv_register_classdev(const char *cname, struct vmm_classdev * cdev)
 		vmm_spin_unlock(&cdev->dev->lock);
 	}
 	INIT_LIST_HEAD(&cdev->head);
-	list_add_tail(&c->classdev_list, &cdev->head);
+	list_add_tail(&cdev->head, &c->classdev_list);
 
 	return VMM_OK;
 }
@@ -670,7 +670,7 @@ int vmm_devdrv_register_driver(struct vmm_driver * drv)
 
 	INIT_LIST_HEAD(&drv->head);
 
-	list_add_tail(&ddctrl.driver_list, &drv->head);
+	list_add_tail(&drv->head, &ddctrl.driver_list);
 
 	return VMM_OK;
 }

@@ -789,7 +789,7 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 	vmm_spin_unlock_irqrestore(&idev->ops_lock, flags);
 
 	vmm_spin_lock_irqsave(&ictrl.dev_list_lock, flags);
-	list_add_tail(&ictrl.dev_list, &idev->head);
+	list_add_tail(&idev->head, &ictrl.dev_list);
 	vmm_spin_unlock_irqrestore(&ictrl.dev_list_lock, flags);
 
 	return rc;
@@ -954,7 +954,7 @@ int vmm_input_register_handler(struct vmm_input_handler *ihnd)
 		INIT_LIST_HEAD(&ihnd->conn_head[i]);
 	}
 
-	list_add_tail(&ictrl.hnd_list, &ihnd->head);
+	list_add_tail(&ihnd->head, &ictrl.hnd_list);
 
 	vmm_spin_unlock_irqrestore(&ictrl.hnd_list_lock, flags);
 
@@ -1019,7 +1019,7 @@ int vmm_input_connect_handler(struct vmm_input_handler *ihnd)
 
 		vmm_spin_lock_irqsave(&ictrl.hnd_conn_lock[i], flags);
 		INIT_LIST_HEAD(&ihnd->conn_head[i]);
-		list_add_tail(&ictrl.hnd_conn[i], &ihnd->conn_head[i]);
+		list_add_tail(&ihnd->conn_head[i], &ictrl.hnd_conn[i]);
 		ictrl.hnd_conn_count[i]++;
 		vmm_spin_unlock_irqrestore(&ictrl.hnd_conn_lock[i], flags);
 

@@ -140,7 +140,7 @@ int vmm_clocksource_register(struct vmm_clocksource *cs)
 	}
 
 	INIT_LIST_HEAD(&cs->head);
-	list_add_tail(&csctrl.clksrc_list, &cs->head);
+	list_add_tail(&cs->head, &csctrl.clksrc_list);
 
 	vmm_spin_unlock_irqrestore(&csctrl.lock, flags);
 

@@ -152,7 +152,7 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 			mac_entry->port = src_port;
 			vmm_memcpy(mac_entry->macaddr, srcmac, 6);
 			mac_entry->timestamp = vmm_timer_timestamp();
-			list_add_tail(&nbctrl->mac_table, &mac_entry->head);
+			list_add_tail(&mac_entry->head, &nbctrl->mac_table);
 		} else {
 			DPRINTF("%s: allocation failure\n", __func__);
 		}

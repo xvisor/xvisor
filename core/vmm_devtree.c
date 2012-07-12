@@ -158,7 +158,7 @@ int vmm_devtree_setattr(struct vmm_devtree_node * node,
 		vmm_strncpy(attr->name, name, len);
 		attr->value = vmm_malloc(attr->len);
 		vmm_memcpy(attr->value, value, attr->len);
-		list_add_tail(&node->attr_list, &attr->head);
+		list_add_tail(&attr->head, &node->attr_list);
 	} else {
 		if (attr->len != len) {
 			attr->len = len;
@@ -341,7 +341,7 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node * parent,
 	node->priv = priv;
 	node->parent = parent;
 	if (parent) {
-		list_add_tail(&parent->child_list, &node->head);
+		list_add_tail(&node->head, &parent->child_list);
 	}
 
 	return node;

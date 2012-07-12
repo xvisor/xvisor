@@ -205,8 +205,8 @@ static struct vmm_free_area *buddy_get_block(unsigned int idx)
 			rarea = get_free_hk_node();
 			if (rarea) {
 				blk_sz = MIN_BLOCK_SIZE << idx;
-				list_add_tail(&bheap.free_area[idx].head,
-					      &farea->head);
+				list_add_tail(&farea->head,
+					      &bheap.free_area[idx].head);
 				bheap.free_area[idx].count++;
 				/* this is our buddy we will give to caller */
 				rarea->map = farea->map + blk_sz;
@@ -247,19 +247,19 @@ static int add_free_area_to_bin(struct vmm_free_area *free_area,
 	struct dlist *pos;
 
 	if (list_empty(&bheap.free_area[bin_num].head)) {
-		list_add(&bheap.free_area[bin_num].head, &free_area->head);
+		list_add(&free_area->head, &bheap.free_area[bin_num].head);
 	} else {
 		list_for_each(pos, &bheap.free_area[bin_num].head) {
 			carea = list_entry(pos, struct vmm_free_area, head);
 			if (free_area->map < carea->map) {
-				list_add_tail(&carea->head, &free_area->head);
+				list_add_tail(&free_area->head, &carea->head);
 				added = TRUE;
 				break;
 			}
 		}
 		if (!added) {
-			list_add_tail(&bheap.free_area[bin_num].head,
-				      &free_area->head);
+			list_add_tail(&free_area->head,
+				      &bheap.free_area[bin_num].head);
 		}
 	}
 	bheap.free_area[bin_num].count++;
@@ -362,7 +362,7 @@ void *buddy_malloc(unsigned int size)
 			aarea->map = farea->map;
 			aarea->blk_sz = MAX_BLOCK_SIZE * bneeded;
 			aarea->bin_num = BINS_MAX_ORDER - 1;
-			list_add_tail(&bheap.current.head, &aarea->head);
+			list_add_tail(&aarea->head, &bheap.current.head);
 			bheap.current.count++;
 			free_hk_node(farea);
 			vmm_spin_unlock_irqrestore(&bheap.lock, flags);
@@ -384,8 +384,8 @@ void *buddy_malloc(unsigned int size)
 				vmm_memset(farea, 0,
 					   sizeof(struct vmm_free_area));
 				free_hk_node(farea);
-				list_add_tail(&bheap.current.head,
-					      &aarea->head);
+				list_add_tail(&aarea->head,
+					      &bheap.current.head);
 				bheap.current.count++;
 				vmm_spin_unlock_irqrestore(&bheap.lock, flags);
 				return aarea->map;
@@ -475,8 +475,8 @@ int buddy_init(void *heap_start, unsigned int heap_size)
 		freenode->map = mem_start;
 		mem_size -= MAX_BLOCK_SIZE;
 		mem_start += MAX_BLOCK_SIZE;
-		list_add_tail(&bheap.free_area[BINS_MAX_ORDER - 1].head,
-			      &freenode->head);
+		list_add_tail(&freenode->head,
+			      &bheap.free_area[BINS_MAX_ORDER - 1].head);
 		bheap.free_area[BINS_MAX_ORDER - 1].count++;
 		tnodes++;
 	}

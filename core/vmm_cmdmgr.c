@@ -64,7 +64,7 @@ int vmm_cmdmgr_register_cmd(struct vmm_cmd * cmd)
 
 	INIT_LIST_HEAD(&cmd->head);
 
-	list_add_tail(&cmctrl.cmd_list, &cmd->head);
+	list_add_tail(&cmd->head, &cmctrl.cmd_list);
 
 	return VMM_OK;
 }
