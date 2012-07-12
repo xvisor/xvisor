@@ -70,17 +70,11 @@ char vmm_getc(void);
 /** Get string from default terminal */
 char *vmm_gets(char *s, int maxwidth, char endchar);
 
-/** Get input character device used by stdio */
-struct vmm_chardev *vmm_stdio_indevice(void);
+/** Get character device used by stdio */
+struct vmm_chardev *vmm_stdio_device(void);
 
-/** Get output character device used by stdio */
-struct vmm_chardev *vmm_stdio_outdevice(void);
-
-/** Change input character device used by stdio */
-int vmm_stdio_change_indevice(struct vmm_chardev * cdev);
-
-/** Change output character device used by stdio */
-int vmm_stdio_change_outdevice(struct vmm_chardev * cdev);
+/** Change character device used by stdio */
+int vmm_stdio_change_device(struct vmm_chardev * cdev);
 
 /** Initialize standerd IO library */
 int vmm_stdio_init(void);

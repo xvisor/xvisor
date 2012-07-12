@@ -42,24 +42,16 @@ void cmd_stdio_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   stdio help\n");
 	vmm_cprintf(cdev, "   stdio curdev\n");
 	vmm_cprintf(cdev, "   stdio chdev <chardev_name>\n");
-	vmm_cprintf(cdev, "   stdio chindev <chardev_name>\n");
-	vmm_cprintf(cdev, "   stdio choutdev <chardev_name>\n");
 }
 
 int cmd_stdio_curdev(struct vmm_chardev *cdev)
 {
 	struct vmm_chardev *cd;
-	cd = vmm_stdio_indevice();
+	cd = vmm_stdio_device();
 	if (!cd) {
-		vmm_cprintf(cdev, "Input Device : ---\n");
+		vmm_cprintf(cdev, "Current Device : ---\n");
 	} else {
-		vmm_cprintf(cdev, "Input Device : %s\n", cd->name);
-	}
-	cd = vmm_stdio_outdevice();
-	if (!cd) {
-		vmm_cprintf(cdev, "Output Device: ---\n");
-	} else {
-		vmm_cprintf(cdev, "Output Device: %s\n", cd->name);
+		vmm_cprintf(cdev, "Current Device : %s\n", cd->name);
 	}
 	return VMM_OK;
 }
@@ -70,55 +62,11 @@ int cmd_stdio_chdev(struct vmm_chardev *cdev, char *chardev_name)
 	struct vmm_chardev *cd = vmm_chardev_find(chardev_name);
 	if (cd) {
 		vmm_cprintf(cdev, 
-			    "New input & output device: %s\n", 
+			    "New I/O Device: %s\n", 
 			    cd->name);
-		if ((ret = vmm_stdio_change_indevice(cd))) {
+		if ((ret = vmm_stdio_change_device(cd))) {
 			vmm_cprintf(cdev, 
-				    "Failed to change input device %s\n",
-				    cd->name);
-			return ret;
-		}
-		if ((ret = vmm_stdio_change_outdevice(cd))) {
-			vmm_cprintf(cdev, 
-				    "Failed to change output device %s\n",
-				    cd->name);
-			return ret;
-		}
-	} else {
-		vmm_cprintf(cdev, "Device %s not found\n", chardev_name);
-		return VMM_EFAIL;
-	}
-	return VMM_OK;
-}
-
-int cmd_stdio_chindev(struct vmm_chardev *cdev, char *chardev_name)
-{
-	int ret;
-	struct vmm_chardev *cd = vmm_chardev_find(chardev_name);
-	if (cd) {
-		vmm_cprintf(cdev, "New input device: %s\n", cd->name);
-		if ((ret = vmm_stdio_change_indevice(cd))) {
-			vmm_cprintf(cdev, 
-				    "Failed to change input device %s\n",
-				    cd->name);
-			return ret;
-		}
-	} else {
-		vmm_cprintf(cdev, "Device %s not found\n", chardev_name);
-		return VMM_EFAIL;
-	}
-	return VMM_OK;
-}
-
-int cmd_stdio_choutdev(struct vmm_chardev *cdev, char *chardev_name)
-{
-	int ret;
-	struct vmm_chardev *cd = vmm_chardev_find(chardev_name);
-	if (cd) {
-		vmm_cprintf(cdev, "New output device: %s\n", cd->name);
-		if ((ret = vmm_stdio_change_outdevice(cd))) {
-			vmm_cprintf(cdev, 
-				    "Failed to change output device %s\n",
+				    "Failed to change device %s\n",
 				    cd->name);
 			return ret;
 		}
@@ -145,10 +93,6 @@ int cmd_stdio_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	}
 	if (vmm_strcmp(argv[1], "chdev") == 0) {
 		return cmd_stdio_chdev(cdev, argv[2]);
-	} else if (vmm_strcmp(argv[1], "chindev") == 0) {
-		return cmd_stdio_chindev(cdev, argv[2]);
-	} else if (vmm_strcmp(argv[1], "choutdev") == 0) {
-		return cmd_stdio_choutdev(cdev, argv[2]);
 	} else {
 		cmd_stdio_usage(cdev);
 		return VMM_EFAIL;
