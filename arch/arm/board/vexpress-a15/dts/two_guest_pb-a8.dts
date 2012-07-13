@@ -1,91 +1,9 @@
 
 /dts-v1/;
 
+/include/ "vexpress-a15.dtsi"
+
 / {
-	vmm {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		net {
-			netbridge0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
-	host {
-		#address-cells = <2>;
-		#size-cells = <1>;
-		model = "vexpress-a15";
-		device_type = "host";
-		
-		cpus {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			cpu_freq_mhz = <100>;
-
-			cpu0 {
-				device_type = "cpu";
-				model = "Cortex-A15";
-			};
-		};
-
-		memory {
-			/* NOTE: By default QEMU will only proivde 128 MB 
-			 * unless specified by "-m" option. If you have
-			 * X MB then we will be able to access only first
-			 * X MB starting at physical_addr.
-			 */
-			physical_addr = <0x80000000>;
-			physical_size = <0x10000000>; /* 256 MB */
-		};
-
-		nbridge {
-			#address-cells = <1>;
-			#size-cells = <0>;
-		
-			sbridge {
-				#address-cells = <1>;
-				#size-cells = <0>;
-		
-				uart0 {
-			      		device_type = "serial";
-			      		compatible = "pl011";
-			      		reg = <0x1C090000 0x1000>;
-					clock-rate = <24000000>;
-			      		baudrate = <115200>;
-					irq = <37>;
-				};
-
-				uart1 {
-			      		device_type = "serial";
-			      		compatible = "pl011";
-			      		reg = <0x1C0A0000 0x1000>;
-					clock-rate = <24000000>;
-			      		baudrate = <115200>;
-					irq = <38>;
-				};
-
-				rtc0 {
-			      		device_type = "rtc";
-			      		compatible = "pl031";
-			      		reg = <0x1C170000 0x1000>;
-					clock-rate = <1>;
-					irq = <36>;
-				};
-
-				eth0 {
-					device_type = "nic";
-					compatible = "smsc911x";
-					reg = <0x1a000000 0x1000>;
-					irq = <47>;
-					switch = "netbridge0";
-				};
-			};
-		};
-	};
-
 	guests {
 		#address-cells = <1>;
 		#size-cells = <0>;
