@@ -42,12 +42,13 @@ dtc-objs-y+=$(build_dir)/livetree.o
 dtc-objs-y+=$(build_dir)/treesource.o
 dtc-objs-y+=$(build_dir)/srcpos.o
 dtc-objs-y+=$(build_dir)/checks.o
+dtc-objs-y+=$(build_dir)/util.o
 dtc-objs-y+=$(build_dir)/dtc-parser.tab.o
 dtc-objs-y+=$(build_dir)/dtc-lexer.lex.o
 
 dtc-cp=cp
 dtc-cc=gcc
-dtc-cflags=
+dtc-cflags=-I$(src_dir)/libfdt
 dtc-ld=gcc
 dtc-ldflags=
 dtc-lex=flex

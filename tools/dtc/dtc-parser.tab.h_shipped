@@ -43,14 +43,13 @@
      DT_MEMRESERVE = 259,
      DT_PROPNODENAME = 260,
      DT_LITERAL = 261,
-     DT_LEGACYLITERAL = 262,
-     DT_LITERAL64 = 263,
-     DT_BASE = 264,
-     DT_BYTE = 265,
-     DT_STRING = 266,
-     DT_LABEL = 267,
-     DT_REF = 268,
-     DT_INCBIN = 269
+     DT_LITERAL64 = 262,
+     DT_BASE = 263,
+     DT_BYTE = 264,
+     DT_STRING = 265,
+     DT_LABEL = 266,
+     DT_REF = 267,
+     DT_INCBIN = 268
    };
 #endif
 
@@ -61,10 +60,11 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 37 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 39 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
 
 	char *propnodename;
 	char *literal;
+	char *literal64;
 	char *labelref;
 	unsigned int cbase;
 	uint8_t byte;
@@ -91,18 +91,4 @@ typedef union YYSTYPE
 
 extern YYSTYPE yylval;
 
-#if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
-typedef struct YYLTYPE
-{
-  int first_line;
-  int first_column;
-  int last_line;
-  int last_column;
-} YYLTYPE;
-# define yyltype YYLTYPE /* obsolescent; will be withdrawn */
-# define YYLTYPE_IS_DECLARED 1
-# define YYLTYPE_IS_TRIVIAL 1
-#endif
-
-extern YYLTYPE yylloc;
 

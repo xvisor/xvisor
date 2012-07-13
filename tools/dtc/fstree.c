@@ -1,13 +1,17 @@
 /*
  * (C) Copyright David Gibson <dwg@au1.ibm.com>, IBM Corporation.  2005.
+ *
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  General Public License for more details.
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
@@ -54,10 +58,9 @@ static struct node *read_fstree(const char *dirname)
 					"WARNING: Cannot open %s: %s\n",
 					tmpnam, strerror(errno));
 			} else {
-				prop = build_property(strdup(de->d_name),
+				prop = build_property(xstrdup(de->d_name),
 						      data_copy_file(pfile,
-								     st.st_size),
-						      NULL);
+								     st.st_size));
 				add_property(tree, prop);
 				fclose(pfile);
 			}
@@ -65,14 +68,14 @@ static struct node *read_fstree(const char *dirname)
 			struct node *newchild;
 
 			newchild = read_fstree(tmpnam);
-			newchild = name_node(newchild, strdup(de->d_name),
-					     NULL);
+			newchild = name_node(newchild, xstrdup(de->d_name));
 			add_child(tree, newchild);
 		}
 
 		free(tmpnam);
 	}
 
+	closedir(d);
 	return tree;
 }
 
@@ -81,8 +84,8 @@ struct boot_info *dt_from_fs(const char *dirname)
 	struct node *tree;
 
 	tree = read_fstree(dirname);
-	tree = name_node(tree, "", NULL);
+	tree = name_node(tree, "");
 
-	return build_boot_info(NULL, tree, 0);
+	return build_boot_info(NULL, tree, guess_boot_cpuid(tree));
 }
 

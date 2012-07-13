@@ -3,14 +3,18 @@
 
 /*
  * (C) Copyright David Gibson <dwg@au1.ibm.com>, IBM Corporation.  2005.
+ *
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  General Public License for more details.
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
@@ -27,10 +31,20 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include <libfdt/libfdt_env.h>
-#include <libfdt/fdt.h>
+#include <libfdt_env.h>
+#include <fdt.h>
+
+#include "util.h"
+
+#ifdef DEBUG
+#define debug(fmt,args...)	printf(fmt, ##args)
+#else
+#define debug(fmt,args...)
+#endif
+
 
 #define DEFAULT_FDT_VERSION	17
+
 /*
  * Command line options
  */
@@ -39,36 +53,11 @@ extern int little_endian; 	/* Target system is little endian */
 extern int reservenum;		/* Number of memory reservation slots */
 extern int minsize;		/* Minimum blob size */
 extern int padsize;		/* Additional padding to blob */
+extern int phandle_format;	/* Use linux,phandle or phandle properties */
 
-static inline void __attribute__((noreturn)) die(char * str, ...)
-{
-	va_list ap;
-
-	va_start(ap, str);
-	fprintf(stderr, "FATAL ERROR: ");
-	vfprintf(stderr, str, ap);
-	exit(1);
-}
-
-static inline void *xmalloc(size_t len)
-{
-	void *new = malloc(len);
-
-	if (! new)
-		die("malloc() failed\n");
-
-	return new;
-}
-
-static inline void *xrealloc(void *p, size_t len)
-{
-	void *new = realloc(p, len);
-
-	if (! new)
-		die("realloc() failed (len=%d)\n", len);
-
-	return new;
-}
+#define PHANDLE_LEGACY	0x1
+#define PHANDLE_EPAPR	0x2
+#define PHANDLE_BOTH	0x3
 
 typedef uint32_t cell_t;
 
@@ -138,13 +127,18 @@ int data_is_one_string(struct data d);
 #define MAX_NODENAME_LEN	31
 
 /* Live trees */
+struct label {
+	char *label;
+	struct label *next;
+};
+
 struct property {
 	char *name;
 	struct data val;
 
 	struct property *next;
 
-	char *label;
+	struct label *labels;
 };
 
 struct node {
@@ -161,8 +155,11 @@ struct node {
 	cell_t phandle;
 	int addr_cells, size_cells;
 
-	char *label;
+	struct label *labels;
 };
+
+#define for_each_label(l0, l) \
+	for ((l) = (l0); (l); (l) = (l)->next)
 
 #define for_each_property(n, p) \
 	for ((p) = (n)->proplist; (p); (p) = (p)->next)
@@ -170,13 +167,16 @@ struct node {
 #define for_each_child(n, c)	\
 	for ((c) = (n)->children; (c); (c) = (c)->next_sibling)
 
-struct property *build_property(char *name, struct data val, char *label);
+void add_label(struct label **labels, char *label);
+
+struct property *build_property(char *name, struct data val);
 struct property *chain_property(struct property *first, struct property *list);
 struct property *reverse_properties(struct property *first);
 
 struct node *build_node(struct property *proplist, struct node *children);
-struct node *name_node(struct node *node, char *name, char *label);
+struct node *name_node(struct node *node, char *name);
 struct node *chain_node(struct node *first, struct node *list);
+struct node *merge_nodes(struct node *old_node, struct node *new_node);
 
 void add_property(struct node *node, struct property *prop);
 void add_child(struct node *parent, struct node *child);
@@ -184,12 +184,18 @@ void add_child(struct node *parent, struct node *child);
 const char *get_unitname(struct node *node);
 struct property *get_property(struct node *node, const char *propname);
 cell_t propval_cell(struct property *prop);
+struct property *get_property_by_label(struct node *tree, const char *label,
+				       struct node **node);
+struct marker *get_marker_label(struct node *tree, const char *label,
+				struct node **node, struct property **prop);
 struct node *get_subnode(struct node *node, const char *nodename);
 struct node *get_node_by_path(struct node *tree, const char *path);
 struct node *get_node_by_label(struct node *tree, const char *label);
 struct node *get_node_by_phandle(struct node *tree, cell_t phandle);
 struct node *get_node_by_ref(struct node *tree, const char *ref);
 cell_t get_node_phandle(struct node *root, struct node *node);
+
+uint32_t guess_boot_cpuid(struct node *tree);
 
 /* Boot info (tree plus memreserve information */
 
@@ -198,10 +204,10 @@ struct reserve_info {
 
 	struct reserve_info *next;
 
-	char *label;
+	struct label *labels;
 };
 
-struct reserve_info *build_reserve_entry(uint64_t start, uint64_t len, char *label);
+struct reserve_info *build_reserve_entry(uint64_t start, uint64_t len);
 struct reserve_info *chain_reserve_entry(struct reserve_info *first,
 					 struct reserve_info *list);
 struct reserve_info *add_reserve_entry(struct reserve_info *list,
@@ -216,6 +222,7 @@ struct boot_info {
 
 struct boot_info *build_boot_info(struct reserve_info *reservelist,
 				  struct node *tree, uint32_t boot_cpuid_phys);
+void sort_tree(struct boot_info *bi);
 
 /* Checks */
 
@@ -236,9 +243,5 @@ struct boot_info *dt_from_source(const char *f);
 /* FS trees */
 
 struct boot_info *dt_from_fs(const char *dirname);
-
-/* misc */
-
-char *join_path(const char *path, const char *name);
 
 #endif /* _DTC_H */
