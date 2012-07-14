@@ -44,7 +44,6 @@
 
 #define vmm_be32_to_cpu(data)	arch_be32_to_cpu(data)
 
-#ifdef CONFIG_64BIT
 #define vmm_cpu_to_le64(data)	arch_cpu_to_le64(data)
 
 #define vmm_le64_to_cpu(data)	arch_le64_to_cpu(data)
@@ -52,7 +51,6 @@
 #define vmm_cpu_to_be64(data)	arch_cpu_to_be64(data)
 
 #define vmm_be64_to_cpu(data)	arch_be64_to_cpu(data)
-#endif
 
 /** I/O read/write legacy functions (Assumed to be Little Endian) */
 static inline u8 vmm_ioreadb(volatile void *addr)

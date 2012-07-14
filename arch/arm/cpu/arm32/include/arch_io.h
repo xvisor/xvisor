@@ -61,6 +61,14 @@
 
 #define arch_be32_to_cpu(v)	rev32(v)
 
+#define arch_cpu_to_le64(v)	(v)
+
+#define arch_le64_to_cpu(v)	(v)
+
+#define arch_cpu_to_be64(v)	rev64(v)
+
+#define arch_be64_to_cpu(v)	rev64(v)
+
 /*
  * IO port access primitives
  * -------------------------

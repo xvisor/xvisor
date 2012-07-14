@@ -25,6 +25,36 @@
 
 #include <vmm_types.h>
 
+#if defined(CONFIG_ARMV5)
+
+static inline u64 rev64(u64 v)
+{
+	return ((v & 0x00000000000000FFULL) << 56) | 
+	       ((v & 0x000000000000FF00ULL) << 40) |
+	       ((v & 0x0000000000FF0000ULL) << 24) |
+	       ((v & 0x00000000FF000000ULL) << 8) |
+	       ((v & 0x000000FF00000000ULL) >> 8) |
+	       ((v & 0x0000FF0000000000ULL) >> 24) |
+	       ((v & 0x00FF000000000000ULL) >> 40) |
+	       ((v & 0xFF00000000000000ULL) >> 56);
+}
+
+static inline u32 rev32(u32 v)
+{
+	return ((v & 0x000000FF) << 24) | 
+	       ((v & 0x0000FF00) << 8) |
+	       ((v & 0x00FF0000) >> 8) |
+	       ((v & 0xFF000000) >> 24);
+}
+
+static inline u16 rev16(u16 v)
+{
+	return ((v & 0x00FF) << 8) | 
+	       ((v & 0xFF00) >> 8);
+}
+
+#else
+
 #define rev64(val)		({ u32 d1, d2; \
 				d1 = (u32)((u64)val >> 32); d2 = (u32)val; \
 				asm volatile(" rev %0, %0\n\t" : "=r" (d1) : : \
@@ -40,6 +70,8 @@
 #define rev16(val)		({ u16 rval; asm volatile(\
 				" rev16   %0, %1\n\t" : "=r" (rval) : \
 				"r" (val) : "memory", "cc"); rval;})
+
+#endif
 
 #if defined(CONFIG_ARMV5)
 
