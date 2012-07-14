@@ -24,7 +24,11 @@
 #ifndef __VMM_MACROS_H__
 #define __VMM_MACROS_H__
 
+#if __GNUC__ >= 4
+#define offsetof(type, member) __builtin_offsetof(type, member)
+#else
 #define offsetof(type, member) ((size_t) &((type *)0)->member)
+#endif
 
 /*
  * min()/max()/clamp() macros that also do
