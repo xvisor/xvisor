@@ -121,7 +121,7 @@ static int vmm_netswitch_rx_handler(void *param)
 
 		/* Return the node back to free list */
 		vmm_spin_lock_irqsave(&nsw->free_list_lock, flags);
-		list_add_tail(&nsw->free_list, &xfer->head);
+		list_add_tail(&xfer->head, &nsw->free_list);
 		vmm_spin_unlock_irqrestore(&nsw->free_list_lock, flags);
 
 		DUMP_NETSWITCH_PKT(mbuf);
@@ -163,7 +163,7 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 
 	/* Add this new xfer to the rx_list */
 	vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
-	list_add_tail(&nsw->rx_list, &xfer->head);
+	list_add_tail(&xfer->head, &nsw->rx_list);
 	vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
 
 	vmm_completion_complete(&nsw->rx_not_empty);
@@ -217,7 +217,7 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name, u16 rxq_size,
 	/* Fill the free_list of vmm_netswitch_xfer */
 	for(i = 0; i < rxq_size; i++) {
 		tmp_node = &((nsw->xfer_pool + i)->head);
-		list_add_tail(&nsw->free_list, tmp_node);
+		list_add_tail(tmp_node, &nsw->free_list);
 	}
 
 	goto vmm_netswitch_alloc_done;
@@ -345,7 +345,7 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 		random_ether_addr(port->macaddr);
 	}
 	/* Add the port to the port_list */
-	list_add_tail(&nsw->port_list, &port->head);
+	list_add_tail(&port->head, &nsw->port_list);
 	port->nsw = nsw;
 	/* Call the netswitch's port_add callback */
 	if(nsw->port_add) {

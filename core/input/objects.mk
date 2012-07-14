@@ -22,4 +22,5 @@
 # */
 
 core-objs-$(CONFIG_INPUT)+= input/vmm_input.o
+core-objs-$(CONFIG_INPUT)+= input/vmm_input_mt.o
 

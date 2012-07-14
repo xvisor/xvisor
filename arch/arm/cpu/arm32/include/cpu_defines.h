@@ -141,6 +141,10 @@
 #define SCTLR_M_MASK					0x00000001
 #define SCTLR_ROBITS_MASK				0x849D8378
 #define SCTLR_V5_ROBITS_MASK				0xFFFF0C78
+#define SCTLR_MMU_MASK					(SCTLR_M_MASK | \
+							 SCTLR_TRE_MASK | \
+							 SCTLR_AFE_MASK | \
+							 SCTLR_U_MASK)
 
 /* CTR related macros & defines */
 #define CTR_FORMAT_MASK					0xE0000000

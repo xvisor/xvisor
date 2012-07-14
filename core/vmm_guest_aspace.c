@@ -409,7 +409,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 			}
 		}
 
-		list_add_tail(&guest->aspace.reg_list, &reg->head);
+		list_add_tail(&reg->head, &guest->aspace.reg_list);
 	}
 
 	/* Initialize device emulation context */

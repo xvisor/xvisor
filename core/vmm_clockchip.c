@@ -129,7 +129,7 @@ int vmm_clockchip_register(struct vmm_clockchip *cc)
 	}
 
 	INIT_LIST_HEAD(&cc->head);
-	list_add_tail(&ccctrl.clkchip_list, &cc->head);
+	list_add_tail(&cc->head, &ccctrl.clkchip_list);
 
 	vmm_spin_unlock_irqrestore(&ccctrl.lock, flags);
 

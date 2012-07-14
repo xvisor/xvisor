@@ -1,0 +1,58 @@
+
+/ {
+	vmm {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		net {
+			netbridge0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	host {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		model = "beagle-omap3530";
+		device_type = "host";
+		
+		cpus {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cpu_freq_mhz = <100>;
+
+			cpu@0 {
+				device_type = "cpu";
+				model = "Cortex-A8";
+			};
+		};
+
+		memory {
+			physical_addr = <0x88000000>;
+			physical_size = <0x10000000>; /* 256 MB */
+		};
+
+		l3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			l4 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+			
+				uart0 {
+					device_type = "serial";
+					compatible = "st16654";
+					reg = <0x49020000 0x1000>;
+					clock-rate = <48000000>;
+					baudrate = <115200>;
+					reg_offset = <0x0>;
+					reg_align = <0x4>;
+					irq = <74>;
+				};
+			};
+		};
+	};
+};

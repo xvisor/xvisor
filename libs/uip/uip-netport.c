@@ -89,7 +89,7 @@ static int uip_switch2port_xfer(struct vmm_netport *port,
 		DPRINTF("  and accepted \n");
 	}	
 	vmm_spin_lock_irqsave(&s->lock, flags);
-	list_add_tail(&s->rxbuf, &mbuf->m_list);
+	list_add_tail(&mbuf->m_list, &s->rxbuf);
 	vmm_spin_unlock_irqrestore(&s->lock, flags);
 	vmm_completion_complete(&s->rx_possible);
 

@@ -155,6 +155,7 @@ typedef struct arch_regs arch_regs_t;
 struct arm_vtlb_entry {
 	u8 valid;
 	u8 ng;
+	u8 dom;
 	struct cpu_page page;
 };
 

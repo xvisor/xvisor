@@ -250,13 +250,13 @@ int vmm_devemu_register_pic(struct vmm_guest *guest,
 	list_for_each(l, &eg->emupic_list) {
 		ep = list_entry(l, struct vmm_emupic, head);
 		if (pic->type < ep->type) {
-			list_add_tail(&ep->head, &pic->head);
+			list_add_tail(&pic->head, &ep->head);
 			added = TRUE;
 			break;
 		}
 	}
 	if (!added) {
-		list_add_tail(&eg->emupic_list, &pic->head);
+		list_add_tail(&pic->head, &eg->emupic_list);
 	}
 
 	return VMM_OK;
@@ -409,7 +409,7 @@ int vmm_devemu_register_emulator(struct vmm_emulator * emu)
 
 	INIT_LIST_HEAD(&emu->head);
 
-	list_add_tail(&dectrl.emu_list, &emu->head);
+	list_add_tail(&emu->head, &dectrl.emu_list);
 
 	return VMM_OK;
 }

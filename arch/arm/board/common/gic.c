@@ -22,14 +22,13 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_macros.h>
 #include <vmm_smp.h>
 #include <vmm_cpumask.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <arch_barrier.h>
 #include <gic.h>
-
-#define max(a,b)	((a) < (b) ? (b) : (a))
 
 struct gic_chip_data {
 	u32 irq_offset;

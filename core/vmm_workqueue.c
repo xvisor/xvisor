@@ -209,7 +209,7 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue * wq,
 	work->wq = wq;
 
 	vmm_spin_lock_irqsave(&wq->lock, flags1);
-	list_add_tail(&wq->work_list, &work->head);
+	list_add_tail(&work->head, &wq->work_list);
 	vmm_spin_unlock_irqrestore(&wq->lock, flags1);
 
 	vmm_spin_unlock_irqrestore(&work->lock, flags);
@@ -298,7 +298,7 @@ struct vmm_workqueue * vmm_workqueue_create(const char *name, u8 priority)
 
 	vmm_spin_lock_irqsave(&wqctrl.lock, flags);
 
-	list_add_tail(&wqctrl.wq_list, &wq->head);
+	list_add_tail(&wq->head, &wqctrl.wq_list);
 	wqctrl.wq_count++;
 
 	vmm_spin_unlock_irqrestore(&wqctrl.lock, flags);

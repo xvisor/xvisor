@@ -253,7 +253,7 @@ struct vmm_vcpu * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->devemu_priv = NULL;
 
 	/* Add VCPU to orphan list */
-	list_add_tail(&mngr.orphan_vcpu_list, &vcpu->head);
+	list_add_tail(&vcpu->head, &mngr.orphan_vcpu_list);
 
 	/* Increment vcpu count */
 	mngr.vcpu_count++;
@@ -536,7 +536,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 
 	/* Initialize guest instance */
 	INIT_SPIN_LOCK(&guest->lock);
-	list_add_tail(&mngr.guest_list, &guest->head);
+	list_add_tail(&guest->head, &mngr.guest_list);
 	guest->node = gnode;
 	guest->reset_count = 0;
 	guest->vcpu_count = 0;
@@ -646,7 +646,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 		vcpu->devemu_priv = NULL;
 
 		/* Add VCPU to Guest child list */
-		list_add_tail(&guest->vcpu_list, &vcpu->head);
+		list_add_tail(&vcpu->head, &guest->vcpu_list);
 
 		/* Increment vcpu count */
 		mngr.vcpu_count++;

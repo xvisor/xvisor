@@ -60,7 +60,7 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs)
 	vcpu = vmm_scheduler_current_vcpu();
 
 	/* Add VCPU to waitqueue */
-	list_add_tail(&wq->vcpu_list, &vcpu->wq_head);
+	list_add_tail(&vcpu->wq_head, &wq->vcpu_list);
 
 	/* Increment VCPU count in waitqueue */
 	wq->vcpu_count++;
@@ -218,7 +218,7 @@ int __vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq)
 	/* Try to Resume VCPU */
 	if ((rc = vmm_manager_vcpu_resume(vcpu))) {
 		/* Failed to resume VCPU so continue */
-		list_add_tail(&wq->vcpu_list, &vcpu->wq_head);
+		list_add_tail(&vcpu->wq_head, &wq->vcpu_list);
 
 		/* Return Failure */
 		return rc;
@@ -272,7 +272,7 @@ int __vmm_waitqueue_wakeall(struct vmm_waitqueue * wq)
 		/* Try to Resume VCPU */
 		if ((rc = vmm_manager_vcpu_resume(vcpu))) {
 			/* Failed to resume VCPU so continue */
-			list_add_tail(&wq->vcpu_list, &vcpu->wq_head);
+			list_add_tail(&vcpu->wq_head, &wq->vcpu_list);
 			continue;
 		}
 

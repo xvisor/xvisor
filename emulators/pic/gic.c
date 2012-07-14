@@ -184,6 +184,7 @@ static void gic_update(struct gic_state *s)
 static int gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 {
 	struct gic_state * s = (struct gic_state *)epic->priv;
+	irq_flags_t flags;
 	int cm, target;
 
 	/* Ensure irq is in range (base_irq, base_irq + num_irq) */
@@ -203,7 +204,7 @@ static int gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 	if (level == GIC_TEST_LEVEL(s, irq, cm))
 		return VMM_EMUPIC_IRQ_HANDLED;
 
-	vmm_spin_lock(&s->lock);
+	vmm_spin_lock_irqsave(&s->lock, flags);
 
 	if (level) {
 		GIC_SET_LEVEL(s, irq, cm);
@@ -216,7 +217,7 @@ static int gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 
 	gic_update(s);
 
-	vmm_spin_unlock(&s->lock);
+	vmm_spin_unlock_irqrestore(&s->lock, flags);
 
 	return VMM_EMUPIC_IRQ_HANDLED;
 }

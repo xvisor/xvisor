@@ -1,61 +1,9 @@
 
 /dts-v1/;
 
+/include/ "versatile.dtsi"
+
 / {
-	vmm {
-		#address-cells = <1>;
-		#size-cells = <0>;
-	};
-
-	host {
-		#address-cells = <2>;
-		#size-cells = <1>;
-		model = "versatilepb";
-		device_type = "host";
-		
-		cpus {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			cpu_freq_mhz = <100>;
-
-			cpu0 {
-				device_type = "cpu";
-				model = "ARM926ej";
-			};
-		};
-
-		memory {
-			physical_addr = <0x00000000>;
-			physical_size = <0x08000000>; /* 128 MB */
-		};
-
-		nbridge {
-			#address-cells = <1>;
-			#size-cells = <0>;
-		
-			sbridge {
-				#address-cells = <1>;
-				#size-cells = <0>;
-		
-				uart0 {
-			      		device_type = "serial";
-			      		compatible = "pl011";
-			      		reg = <0x101F1000 0x1000>;
-			      		baudrate = <115200>;
-					irq = <12>;
-				};
-
-				rtc0 {
-					device_type = "rtc";
-					compatible = "pl031";
-					reg = <0x101E8000 0x1000>;
-					clock-rate = <1>;
-					irq = <10>;
-				};
-			};
-		};
-	};
-
 	guests {
 		#address-cells = <1>;
 		#size-cells = <0>;

@@ -171,14 +171,14 @@ int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs)
 	list_for_each(l, &tlcp->event_list) {
 		e = list_entry(l, struct vmm_timer_event, cpu_head);
 		if (ev->expiry_tstamp < e->expiry_tstamp) {
-			list_add_tail(&e->cpu_head, &ev->cpu_head);
+			list_add_tail(&ev->cpu_head, &e->cpu_head);
 			added = TRUE;
 			break;
 		}
 	}
 
 	if (!added) {
-		list_add_tail(&tlcp->event_list, &ev->cpu_head);
+		list_add_tail(&ev->cpu_head, &tlcp->event_list);
 	}
 
 	vmm_timer_schedule_next_event();
@@ -220,7 +220,7 @@ int vmm_timer_event_expire(struct vmm_timer_event * ev)
 	ev->active = TRUE;
 
 	/* add the event on list head as it is going to expire now */
-	list_add(&tlcp->event_list, &ev->cpu_head);
+	list_add(&ev->cpu_head, &tlcp->event_list);
 
 	/* Force a clockchip interrupt */
 	vmm_clockchip_force_expiry(tlcp->cc, vmm_timer_timestamp());
@@ -298,7 +298,7 @@ struct vmm_timer_event *vmm_timer_event_create(
 	e->handler = handler;
 	e->priv = priv;
 
-	list_add_tail(&tgc.event_list, &e->head);
+	list_add_tail(&e->head, &tgc.event_list);
 
 	vmm_spin_unlock_irqrestore(&tgc.lock, flags);
 

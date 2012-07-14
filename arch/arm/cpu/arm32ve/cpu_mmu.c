@@ -180,7 +180,7 @@ static int cpu_mmu_ttbl_attach(struct cpu_ttbl * parent,
 	child->map_ia = map_ia & cpu_mmu_level_map_mask(parent->level);
 	parent->tte_cnt++;
 	parent->child_cnt++;
-	list_add(&parent->child_list, &child->head);
+	list_add(&child->head, &parent->child_list);
 
 	return VMM_OK;
 }
@@ -268,7 +268,7 @@ int cpu_mmu_ttbl_free(struct cpu_ttbl *ttbl)
 	ttbl->tte_cnt = 0;
 	vmm_memset((void *)ttbl->tbl_va, 0, TTBL_TABLE_SIZE);
 
-	list_add_tail(&mmuctrl.free_ttbl_list, &ttbl->head);
+	list_add_tail(&ttbl->head, &mmuctrl.free_ttbl_list);
 
 	return VMM_OK;
 }
@@ -732,7 +732,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		ttbl->tbl_va = mmuctrl.ittbl_base_va + i * TTBL_TABLE_SIZE;
 		INIT_LIST_HEAD(&ttbl->head);
 		INIT_LIST_HEAD(&ttbl->child_list);
-		list_add_tail(&mmuctrl.free_ttbl_list, &ttbl->head);
+		list_add_tail(&ttbl->head, &mmuctrl.free_ttbl_list);
 	}
 	for (i = 0; i < TTBL_MAX_TABLE_COUNT; i++) {
 		ttbl = &mmuctrl.ttbl_array[i];
@@ -741,7 +741,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		ttbl->tbl_va = mmuctrl.ttbl_base_va + i * TTBL_TABLE_SIZE;
 		INIT_LIST_HEAD(&ttbl->head);
 		INIT_LIST_HEAD(&ttbl->child_list);
-		list_add_tail(&mmuctrl.free_ttbl_list, &ttbl->head);
+		list_add_tail(&ttbl->head, &mmuctrl.free_ttbl_list);
 	}
 
 	/* Handcraft hypervisor translation table */
@@ -803,7 +803,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		}
 		/* Update parent */
 		parent->child_cnt++;
-		list_add_tail(&parent->child_list, &ttbl->head);
+		list_add_tail(&ttbl->head, &parent->child_list);
 		/* Update MMU control */
 		mmuctrl.ttbl_alloc_count++;
 	}

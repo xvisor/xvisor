@@ -118,7 +118,7 @@ int vmm_vserial_register_receiver(struct vmm_vserial * vser,
 	receiver->recv = recv;
 	receiver->priv = priv;
 
-	list_add_tail(&vser->receiver_list, &receiver->head);
+	list_add_tail(&receiver->head, &vser->receiver_list);
 
 	while (!vmm_ringbuf_isempty(vser->receive_buf)) {
 		if (!vmm_ringbuf_dequeue(vser->receive_buf, &chval)) {
@@ -213,7 +213,7 @@ struct vmm_vserial * vmm_vserial_alloc(const char * name,
 	INIT_LIST_HEAD(&vser->receiver_list);
 	vser->priv = priv;
 
-	list_add_tail(&vsctrl.vser_list, &vser->head);
+	list_add_tail(&vser->head, &vsctrl.vser_list);
 
 	return vser;
 }
