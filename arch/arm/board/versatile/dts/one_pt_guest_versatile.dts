@@ -5,19 +5,11 @@
 
 / {
 	guests {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
 		guest0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
 			model = "versatilepb";
 			device_type = "guest";
 
 			vcpus {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
 				vcpu0 {
 					device_type = "vcpu";
 					compatible = "ARMv5te,ARM926ej";
@@ -26,9 +18,6 @@
 			};
 			
 			aspace {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
 				h2g_irq_map = </* Host => Guest */
 						/* uart0 */
 						13      12
