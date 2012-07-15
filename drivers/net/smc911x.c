@@ -21,7 +21,7 @@
  * @brief Driver for SMSC's LAN911{5,6,7,8} single-chip Ethernet devices.
  *
  * The source has been largely adapted from Linux 3.x or higher:
- * drivers/net/sms911x.c
+ * drivers/net/smc911x.c
  *
  * Copyright (C) 2005 Sensoria Corp
  *
@@ -44,7 +44,9 @@
 #include <net/vmm_netdev.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
-#include <smsc-911x.h>
+#include <smc911x.h>
+
+#include <linux/delay.h>
 
 #define MODULE_VARID			smsc_911x_driver_module
 #define MODULE_NAME			"SMSC 911x Ethernet Controller Driver"
@@ -53,7 +55,6 @@
 #define	MODULE_INIT			smsc_911x_driver_init
 #define	MODULE_EXIT			smsc_911x_driver_exit
 
-#define	msleep vmm_udelay
 
 /* Debugging options */
 #if 0
@@ -179,7 +180,7 @@ static void smc911x_reset(struct vmm_netdev *dev)
 		SMC_SET_BYTE_TEST(lp, 0);
 		timeout = 10;
 		do {
-			vmm_udelay(10);
+			udelay(10);
 			reg = SMC_GET_PMT_CTRL(lp) & PMT_CTRL_READY_;
 		} while (--timeout && !reg);
 		if (timeout == 0) {
@@ -190,15 +191,15 @@ static void smc911x_reset(struct vmm_netdev *dev)
 	}
 
 	/* Disable all interrupts */
-	vmm_spin_lock_irqsave(&lp->lock, flags);
+	spin_lock_irqsave(&lp->lock, flags);
 	SMC_SET_INT_EN(lp, 0);
-	vmm_spin_unlock_irqrestore(&lp->lock, flags);
+	spin_unlock_irqrestore(&lp->lock, flags);
 
 	while (resets--) {
 		SMC_SET_HW_CFG(lp, HW_CFG_SRST_);
 		timeout = 10;
 		do {
-			vmm_udelay(10);
+			udelay(10);
 			reg = SMC_GET_HW_CFG(lp);
 			/* If chip indicates reset timeout then try again */
 			if (reg & HW_CFG_SRST_TO_) {
@@ -219,7 +220,7 @@ static void smc911x_reset(struct vmm_netdev *dev)
 	/* make sure EEPROM has finished loading before setting GPIO_CFG */
 	timeout=1000;
 	while (--timeout && (SMC_GET_E2P_CMD(lp) & E2P_CMD_EPC_BUSY_))
-		vmm_udelay(10);
+		udelay(10);
 
 	if (timeout == 0){
 		PRINTK("%s: smc911x_reset timeout waiting for "
@@ -272,7 +273,7 @@ static void smc911x_enable(struct vmm_netdev *dev)
 
 	DBG(SMC_DEBUG_FUNC, "%s: --> %s\n", dev->name, __func__);
 
-	vmm_spin_lock_irqsave(&lp->lock, flags);
+	spin_lock_irqsave(&lp->lock, flags);
 
 	SMC_SET_MAC_ADDR(lp, dev->hw_addr);
 
@@ -315,7 +316,7 @@ static void smc911x_enable(struct vmm_netdev *dev)
 	}
 	SMC_ENABLE_INT(lp, mask);
 
-	vmm_spin_unlock_irqrestore(&lp->lock, flags);
+	spin_unlock_irqrestore(&lp->lock, flags);
 }
 
 /*
@@ -333,12 +334,12 @@ static void smc911x_shutdown(struct vmm_netdev *dev)
 	SMC_SET_INT_EN(lp, 0);
 
 	/* Turn of Rx and TX */
-	vmm_spin_lock_irqsave(&lp->lock, flags);
+	spin_lock_irqsave(&lp->lock, flags);
 	SMC_GET_MAC_CR(lp, cr);
 	cr &= ~(MAC_CR_TXEN_ | MAC_CR_RXEN_ | MAC_CR_HBDIS_);
 	SMC_SET_MAC_CR(lp, cr);
 	SMC_SET_TX_CFG(lp, TX_CFG_STOP_TX_);
-	vmm_spin_unlock_irqrestore(&lp->lock, flags);
+	spin_unlock_irqrestore(&lp->lock, flags);
 }
 
 static inline void smc911x_drop_pkt(struct vmm_netdev *dev)
@@ -357,7 +358,7 @@ static inline void smc911x_drop_pkt(struct vmm_netdev *dev)
 		SMC_SET_RX_DP_CTRL(lp, RX_DP_CTRL_FFWD_BUSY_);
 		timeout=50;
 		do {
-			vmm_udelay(10);
+			udelay(10);
 			reg = SMC_GET_RX_DP_CTRL(lp) & RX_DP_CTRL_FFWD_BUSY_;
 		} while (--timeout && reg);
 		if (timeout == 0) {
@@ -545,7 +546,7 @@ static int smc911x_hard_start_xmit(struct vmm_netdev *dev, void *tx_buf)
 	DBG(SMC_DEBUG_FUNC | SMC_DEBUG_TX, "%s: --> %s\n",
 			dev->name, __func__);
 
-	vmm_spin_lock_irqsave(&lp->lock, flags);
+	spin_lock_irqsave(&lp->lock, flags);
 
 	BUG_ON(lp->pending_tx_mbuf != NULL, __func__);
 
@@ -576,7 +577,7 @@ static int smc911x_hard_start_xmit(struct vmm_netdev *dev, void *tx_buf)
 		lp->pending_tx_mbuf = NULL;
 		dev->stats.tx_errors++;
 		dev->stats.tx_dropped++;
-		vmm_spin_unlock_irqrestore(&lp->lock, flags);
+		spin_unlock_irqrestore(&lp->lock, flags);
 		//m_freem(mb);	// dev_kfree_skb(skb);
 		return VMM_OK;
 	}
@@ -590,7 +591,7 @@ static int smc911x_hard_start_xmit(struct vmm_netdev *dev, void *tx_buf)
 			DBG(SMC_DEBUG_TX | SMC_DEBUG_DMA, "%s: Tx DMA running, deferring packet\n", dev->name);
 			lp->pending_tx_mbuf = mb
 			vmm_netif_stop_queue(dev);
-			vmm_spin_unlock_irqrestore(&lp->lock, flags);
+			spin_unlock_irqrestore(&lp->lock, flags);
 			return VMM_OK; // return NETDEV_TX_OK;
 		} else {
 			DBG(SMC_DEBUG_TX | SMC_DEBUG_DMA, "%s: Activating Tx DMA\n", dev->name);
@@ -600,7 +601,7 @@ static int smc911x_hard_start_xmit(struct vmm_netdev *dev, void *tx_buf)
 #endif
 	lp->pending_tx_mbuf = mb;
 	smc911x_hardware_send_pkt(dev);
-	vmm_spin_unlock_irqrestore(&lp->lock, flags);
+	spin_unlock_irqrestore(&lp->lock, flags);
 
 	return VMM_OK;	// return NETDEV_TX_OK;
 }
@@ -714,16 +715,16 @@ static void smc911x_phy_detect(struct vmm_netdev*dev)
 				cfg &= ~HW_CFG_PHY_CLK_SEL_;
 				cfg |= HW_CFG_PHY_CLK_SEL_CLK_DIS_;
 				SMC_SET_HW_CFG(lp, cfg);
-				vmm_udelay(10); /* Wait for clocks to stop */
+				udelay(10); /* Wait for clocks to stop */
 
 				cfg |= HW_CFG_EXT_PHY_EN_;
 				SMC_SET_HW_CFG(lp, cfg);
-				vmm_udelay(10); /* Wait for clocks to stop */
+				udelay(10); /* Wait for clocks to stop */
 
 				cfg &= ~HW_CFG_PHY_CLK_SEL_;
 				cfg |= HW_CFG_PHY_CLK_SEL_EXT_PHY_;
 				SMC_SET_HW_CFG(lp, cfg);
-				vmm_udelay(10); /* Wait for clocks to stop */
+				udelay(10); /* Wait for clocks to stop */
 
 				cfg |= HW_CFG_SMI_SEL_;
 				SMC_SET_HW_CFG(lp, cfg);
@@ -821,24 +822,24 @@ static int smc911x_phy_reset(struct vmm_netdev *dev, int phy)
 
 	DBG(SMC_DEBUG_FUNC, "%s: --> %s()\n", dev->name, __func__);
 
-	vmm_spin_lock_irqsave(&lp->lock, flags);
+	spin_lock_irqsave(&lp->lock, flags);
 	reg = SMC_GET_PMT_CTRL(lp);
 	reg &= ~0xfffff030;
 	reg |= PMT_CTRL_PHY_RST_;
 	SMC_SET_PMT_CTRL(lp, reg);
-	vmm_spin_unlock_irqrestore(&lp->lock, flags);
+	spin_unlock_irqrestore(&lp->lock, flags);
 	for (timeout = 2; timeout; timeout--) {
 		msleep(50);
-		vmm_spin_lock_irqsave(&lp->lock, flags);
+		spin_lock_irqsave(&lp->lock, flags);
 		reg = SMC_GET_PMT_CTRL(lp);
-		vmm_spin_unlock_irqrestore(&lp->lock, flags);
+		spin_unlock_irqrestore(&lp->lock, flags);
 		if (!(reg & PMT_CTRL_PHY_RST_)) {
 			/* extra delay required because the phy may
 			 * not be completed with its reset
 			 * when PHY_BCR_RESET_ is cleared. 256us
 			 * should suffice, but use 500us to be safe
 			 */
-			vmm_udelay(500);
+			udelay(500);
 			break;
 		}
 	}
@@ -931,7 +932,7 @@ static void smc911x_phy_configure(struct vmm_work *work)
 		vmm_printf("%s: PHY reset timed out\n", dev->name);
 		return;
 	}
-	vmm_spin_lock_irqsave(&lp->lock, flags);
+	spin_lock_irqsave(&lp->lock, flags);
 
 	/*
 	 * Enable PHY Interrupts (for register 18)
@@ -986,7 +987,7 @@ static void smc911x_phy_configure(struct vmm_work *work)
 	 * auto-negotiation is restarted, sometimes it isn't ready and
 	 * the link does not come up.
 	 */
-	vmm_udelay(10);
+	udelay(10);
 	SMC_GET_PHY_MII_ADV(lp, phyaddr, status);
 	(void)(status); /* FIXME: Added to remove warning */
 
@@ -999,7 +1000,7 @@ static void smc911x_phy_configure(struct vmm_work *work)
 	smc911x_phy_check_media(dev, 1);
 
 smc911x_phy_configure_exit:
-	vmm_spin_unlock_irqrestore(&lp->lock, flags);
+	spin_unlock_irqrestore(&lp->lock, flags);
 }
 
 /*
@@ -1048,12 +1049,12 @@ static vmm_irq_return_t smc911x_interrupt(u32 irq_no,
 
 	DBG(SMC_DEBUG_FUNC, "%s: --> %s\n", dev->name, __func__);
 
-	vmm_spin_lock_irqsave(&lp->lock, flags);
+	spin_lock_irqsave(&lp->lock, flags);
 
 	/* Spurious interrupt check */
 	if ((SMC_GET_IRQ_CFG(lp) & (INT_CFG_IRQ_INT_ | INT_CFG_IRQ_EN_)) !=
 		(INT_CFG_IRQ_INT_ | INT_CFG_IRQ_EN_)) {
-		vmm_spin_unlock_irqrestore(&lp->lock, flags);
+		spin_unlock_irqrestore(&lp->lock, flags);
 		return VMM_IRQ_NONE;
 	}
 
@@ -1203,7 +1204,7 @@ static vmm_irq_return_t smc911x_interrupt(u32 irq_no,
 	DBG(SMC_DEBUG_MISC, "%s: Interrupt done (%d loops)\n",
 		dev->name, 8-timeout);
 
-	vmm_spin_unlock_irqrestore(&lp->lock, flags);
+	spin_unlock_irqrestore(&lp->lock, flags);
 
 	return VMM_IRQ_HANDLED;
 }
