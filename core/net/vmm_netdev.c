@@ -22,7 +22,6 @@
  * @brief Network Device framework source
  */
 
-#include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_string.h>
 #include <vmm_stdio.h>
@@ -127,7 +126,6 @@ int vmm_netdev_unregister(struct vmm_netdev * ndev)
 	}
 
 	rc = vmm_devdrv_unregister_classdev(VMM_NETDEV_CLASS_NAME, cd);
-
 	if (!rc) {
 		vmm_free(cd);
 	}
@@ -142,7 +140,6 @@ struct vmm_netdev *vmm_netdev_find(const char *name)
 	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_find_classdev(VMM_NETDEV_CLASS_NAME, name);
-
 	if (!cd) {
 		return NULL;
 	}
@@ -155,7 +152,6 @@ struct vmm_netdev *vmm_netdev_get(int num)
 	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_classdev(VMM_NETDEV_CLASS_NAME, num);
-
 	if (!cd) {
 		return NULL;
 	}
@@ -167,6 +163,51 @@ u32 vmm_netdev_count(void)
 {
 	return vmm_devdrv_classdev_count(VMM_NETDEV_CLASS_NAME);
 }
+
+void vmm_netdev_set_link(struct vmm_netport *port)
+{
+	struct vmm_netdev *dev = (struct vmm_netdev *)port->priv;
+
+	if (port->flags & VMM_NETPORT_LINK_UP) {
+		dev->dev_ops->ndev_open(dev);
+	} else {
+		dev->dev_ops->ndev_close(dev);
+	}
+}
+
+int vmm_netdev_can_receive(struct vmm_netport *port)
+{
+	struct vmm_netdev *dev = (struct vmm_netdev *) port->priv;
+
+	if (vmm_netif_queue_stopped(dev))
+		return 0;
+
+	return 1;
+}
+
+int vmm_netdev_switch2port_xfer(struct vmm_netport *port,
+		struct vmm_mbuf *mbuf)
+{
+	int rc = VMM_OK;
+	struct vmm_netdev *dev = (struct vmm_netdev *) port->priv;
+	char *buf;
+	int len;
+
+	if(mbuf->m_next) {
+		/* Cannot avoid a copy in case of fragmented mbuf data */
+		len = min(dev->mtu, (unsigned int)mbuf->m_pktlen);
+		buf = vmm_malloc(len);
+		m_copydata(mbuf, 0, len, buf);
+		m_freem(mbuf);
+		MGETHDR(mbuf, 0, 0);
+		MEXTADD(mbuf, buf, len, 0, 0);
+	}
+
+	dev->dev_ops->ndev_xmit(mbuf, dev);
+
+	return rc;
+}
+
 
 int __init vmm_netdev_init(void)
 {

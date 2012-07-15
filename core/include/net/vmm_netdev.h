@@ -28,6 +28,7 @@
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devdrv.h>
+#include <vmm_error.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netport.h>
 
@@ -60,7 +61,7 @@ struct vmm_netdev_ops {
 	int (*ndev_init) (struct vmm_netdev *ndev);
 	int (*ndev_open) (struct vmm_netdev *ndev);
 	int (*ndev_close) (struct vmm_netdev *ndev);
-	int (*ndev_xmit) (struct vmm_netdev *ndev, void *buf);
+	int (*ndev_xmit) (struct vmm_mbuf *buf, struct vmm_netdev *ndev);
 };
 
 struct vmm_netdev_stats {
@@ -108,7 +109,7 @@ struct vmm_netdev {
 	void *net_priv;		/* VMM specific private data -
 				 * Usecase is currently undefined
 				 */
-	unsigned char hw_addr[MAX_VMM_NDEV_HW_ADDRESS];
+	unsigned char dev_addr[MAX_VMM_NDEV_HW_ADDRESS];
 	unsigned int hw_addr_len;
 	unsigned int mtu;
 	int irq;
@@ -193,7 +194,6 @@ static inline int vmm_netif_rx(struct vmm_mbuf *mb, struct vmm_netdev *dev)
 	return VMM_OK;
 }
 
-
 /** Allocate new network device */
 struct vmm_netdev *vmm_netdev_alloc(const char *name);
 
@@ -212,6 +212,10 @@ struct vmm_netdev *vmm_netdev_get(int num);
 /** Count number of network devices */
 u32 vmm_netdev_count(void);
 
+void vmm_netdev_set_link(struct vmm_netport *port);
+int vmm_netdev_can_receive(struct vmm_netport *port);
+int vmm_netdev_switch2port_xfer(struct vmm_netport *port,
+			struct vmm_mbuf *mbuf);
 
 
 #endif /* __VMM_NETDEV_H_ */
