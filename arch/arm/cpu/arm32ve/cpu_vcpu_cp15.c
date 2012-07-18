@@ -44,6 +44,7 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu * vcpu,
 				    physical_addr_t fipa)
 {
 	int rc;
+	irq_flags_t f;
 	u32 reg_flags = 0x0;
 	struct cpu_page pg;
 	physical_size_t availsz;
@@ -88,12 +89,11 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu * vcpu,
 	 * }
 	 */
 
-	rc = cpu_mmu_map_page(arm_priv(vcpu)->cp15.ttbl, &pg);
-	if (rc) {
-		return rc;
-	}
+	vmm_spin_lock_irqsave(&arm_guest_priv(vcpu->guest)->ttbl_lock, f);
+	rc = cpu_mmu_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
+	vmm_spin_unlock_irqrestore(&arm_guest_priv(vcpu->guest)->ttbl_lock, f);
 
-	return VMM_OK;
+	return rc;
 }
 
 int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu * vcpu, 
@@ -250,7 +250,8 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		arm_priv(tvcpu)->cp15.c13_tls3 = read_tpidrprw();
 	}
 	if (vcpu->is_normal) {
-		cpu_mmu_stage2_chttbl(vcpu->id, arm_priv(vcpu)->cp15.ttbl);
+		cpu_mmu_stage2_chttbl(vcpu->guest->id, 
+				      arm_guest_priv(vcpu->guest)->ttbl);
 		write_vpidr(arm_priv(vcpu)->cp15.c0_cpuid);
 		if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
 			write_vmpidr((1 << 31) | vcpu->subid);
@@ -291,14 +292,12 @@ static u32 cortexa8_cp15_c0_c1[8] =
 static u32 cortexa8_cp15_c0_c2[8] =
 { 0x00101111, 0x12112111, 0x21232031, 0x11112131, 0x00111142, 0, 0, 0 };
 
-int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
+int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
-	int rc = VMM_OK;
 	u32 i, cache_type, last_level;
 
 	if (!vcpu->reset_count) {
 		vmm_memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
-		arm_priv(vcpu)->cp15.ttbl = cpu_mmu_ttbl_alloc(TTBL_STAGE2);
 	}
 
 	arm_priv(vcpu)->cp15.c0_cpuid = cpuid;
@@ -363,17 +362,11 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu * vcpu, u32 cpuid)
 		};
 	}
 
-	return rc;
+	return VMM_OK;
 }
 
-int cpu_vcpu_cp15_deinit(struct vmm_vcpu * vcpu)
+int cpu_vcpu_cp15_deinit(struct vmm_vcpu *vcpu)
 {
-	int rc;
-
-	if ((rc = cpu_mmu_ttbl_free(arm_priv(vcpu)->cp15.ttbl))) {
-		return rc;
-	}
-
 	vmm_memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
 
 	return VMM_OK;
