@@ -2116,8 +2116,6 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 		arm_priv(tvcpu)->cp15.c13_tls1 = read_tpidrurw();
 		arm_priv(tvcpu)->cp15.c13_tls2 = read_tpidruro();
 		arm_priv(tvcpu)->cp15.c13_tls3 = read_tpidrprw();
-		/* Ensure pending memory operations are complete */
-		dsb();
 	}
 	if (vcpu->is_normal) {
 		cpu_mmu_chdacr(arm_priv(vcpu)->cp15.dacr);
@@ -2134,6 +2132,9 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 			cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
 		}
 	}
+	/* Ensure pending memory operations are complete */
+	dsb();
+	isb();
 }
 
 static u32 cortexa9_cp15_c0_c1[8] =
