@@ -1037,12 +1037,14 @@ int cpu_mmu_chdacr(u32 new_dacr)
 	u32 old_dacr;
 
 	old_dacr = read_dacr();
+	isb();
 
 	new_dacr &= ~0x3;
 	new_dacr |= old_dacr & 0x3;
 
 	if (new_dacr != old_dacr) {
 		write_dacr(new_dacr);
+		isb();
 	}
 
 	return VMM_OK;
@@ -1062,25 +1064,23 @@ int cpu_mmu_chttbr(struct cpu_l1tbl * l1)
 		return VMM_OK;
 	}
 
-	/* Update TTBR0 to point to default translation table */
-	write_ttbr0(mmuctrl.defl1.tbl_pa);
+	/* Set ASID to default L1 table */
+	write_contextidr((((u32)mmuctrl.defl1.num) & 0xFF));
 
 	/* Instruction barrier */
 	isb();
 
-	/* Update Context ID register */
+	/* Update TTBR0 to point to new L1 table */
+	write_ttbr0(l1->tbl_pa);
+
+	/* Instruction barrier */
+	isb();
+
+	/* Set ASID to new L1 table */
 	write_contextidr((((u32)l1->num) & 0xFF));
 
 	/* Instruction barrier */
 	isb();
-
-	if (mmuctrl.defl1.tbl_pa != l1->tbl_pa) {
-		/* Update TTBR0 to point to new L1 table */
-		write_ttbr0(l1->tbl_pa);
-
-		/* Instruction barrier */
-		isb();
-	}
 
 	return VMM_OK;
 }
