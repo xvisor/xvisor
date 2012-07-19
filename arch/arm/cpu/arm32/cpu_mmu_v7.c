@@ -1062,14 +1062,25 @@ int cpu_mmu_chttbr(struct cpu_l1tbl * l1)
 		return VMM_OK;
 	}
 
-	/* Update TTBR0 to point to new L1 table */
-	write_ttbr0(l1->tbl_pa);
+	/* Update TTBR0 to point to default translation table */
+	write_ttbr0(mmuctrl.defl1.tbl_pa);
 
 	/* Instruction barrier */
 	isb();
 
 	/* Update Context ID register */
 	write_contextidr((((u32)l1->num) & 0xFF));
+
+	/* Instruction barrier */
+	isb();
+
+	if (mmuctrl.defl1.tbl_pa != l1->tbl_pa) {
+		/* Update TTBR0 to point to new L1 table */
+		write_ttbr0(l1->tbl_pa);
+
+		/* Instruction barrier */
+		isb();
+	}
 
 	return VMM_OK;
 }
