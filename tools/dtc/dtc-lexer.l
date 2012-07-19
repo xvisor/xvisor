@@ -109,12 +109,6 @@ static int pop_input_file(void);
 			return DT_LITERAL;
 		}
 
-<V1>0[xX][0-9a-fA-F]+ULL	{
-			yylval.literal64 = xstrdup(yytext);
-			DPRINT("Literal64: '%s'\n", yylval.literal64);
-			return DT_LITERAL64;
-		}
-
 <*>\&{LABEL}	{	/* label reference */
 			DPRINT("Ref: %s\n", yytext+1);
 			yylval.labelref = xstrdup(yytext+1);

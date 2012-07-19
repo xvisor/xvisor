@@ -43,13 +43,12 @@
      DT_MEMRESERVE = 259,
      DT_PROPNODENAME = 260,
      DT_LITERAL = 261,
-     DT_LITERAL64 = 262,
-     DT_BASE = 263,
-     DT_BYTE = 264,
-     DT_STRING = 265,
-     DT_LABEL = 266,
-     DT_REF = 267,
-     DT_INCBIN = 268
+     DT_BASE = 262,
+     DT_BYTE = 263,
+     DT_STRING = 264,
+     DT_LABEL = 265,
+     DT_REF = 266,
+     DT_INCBIN = 267
    };
 #endif
 
@@ -64,7 +63,6 @@ typedef union YYSTYPE
 
 	char *propnodename;
 	char *literal;
-	char *literal64;
 	char *labelref;
 	unsigned int cbase;
 	uint8_t byte;
@@ -72,7 +70,6 @@ typedef union YYSTYPE
 
 	uint64_t addr;
 	cell_t cell;
-	uint64_t cell64;
 	struct property *prop;
 	struct property *proplist;
 	struct node *node;
@@ -82,7 +79,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 86 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.tab.h"
+#line 83 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

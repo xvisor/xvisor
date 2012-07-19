@@ -119,13 +119,12 @@ static unsigned long long eval_literal(const char *s, int base, int bits);
      DT_MEMRESERVE = 259,
      DT_PROPNODENAME = 260,
      DT_LITERAL = 261,
-     DT_LITERAL64 = 262,
-     DT_BASE = 263,
-     DT_BYTE = 264,
-     DT_STRING = 265,
-     DT_LABEL = 266,
-     DT_REF = 267,
-     DT_INCBIN = 268
+     DT_BASE = 262,
+     DT_BYTE = 263,
+     DT_STRING = 264,
+     DT_LABEL = 265,
+     DT_REF = 266,
+     DT_INCBIN = 267
    };
 #endif
 
@@ -140,7 +139,6 @@ typedef union YYSTYPE
 
 	char *propnodename;
 	char *literal;
-	char *literal64;
 	char *labelref;
 	unsigned int cbase;
 	uint8_t byte;
@@ -148,7 +146,6 @@ typedef union YYSTYPE
 
 	uint64_t addr;
 	cell_t cell;
-	uint64_t cell64;
 	struct property *prop;
 	struct property *proplist;
 	struct node *node;
@@ -158,7 +155,7 @@ typedef union YYSTYPE
 
 
 /* Line 214 of yacc.c  */
-#line 162 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.tab.c"
+#line 159 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.tab.c"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -170,7 +167,7 @@ typedef union YYSTYPE
 
 
 /* Line 264 of yacc.c  */
-#line 174 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.tab.c"
+#line 171 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.tab.c"
 
 #ifdef short
 # undef short
@@ -385,20 +382,20 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  4
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   57
+#define YYLAST   56
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS  26
+#define YYNTOKENS  25
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  17
+#define YYNNTS  16
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  41
+#define YYNRULES  39
 /* YYNRULES -- Number of states.  */
-#define YYNSTATES  69
+#define YYNSTATES  67
 
 /* YYTRANSLATE(YYLEX) -- Bison symbol number corresponding to YYLEX.  */
 #define YYUNDEFTOK  2
-#define YYMAXUTOK   268
+#define YYMAXUTOK   267
 
 #define YYTRANSLATE(YYX)						\
   ((unsigned int) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
@@ -410,15 +407,15 @@ static const yytype_uint8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-      23,    25,     2,     2,    24,     2,     2,    15,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,    14,
-      19,    18,    20,     2,     2,     2,     2,     2,     2,     2,
+      22,    24,     2,     2,    23,     2,     2,    14,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,    13,
+      18,    17,    19,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,    21,     2,    22,     2,     2,     2,     2,     2,     2,
+       2,    20,     2,    21,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,    16,     2,    17,     2,     2,     2,     2,
+       2,     2,     2,    15,     2,    16,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -432,7 +429,7 @@ static const yytype_uint8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
-       5,     6,     7,     8,     9,    10,    11,    12,    13
+       5,     6,     7,     8,     9,    10,    11,    12
 };
 
 #if YYDEBUG
@@ -443,37 +440,34 @@ static const yytype_uint8 yyprhs[] =
        0,     0,     3,     8,     9,    12,    17,    20,    22,    25,
       29,    33,    39,    40,    43,    48,    51,    54,    57,    62,
       67,    70,    80,    86,    89,    90,    93,    96,    97,   100,
-     103,   106,   109,   111,   113,   114,   117,   120,   121,   124,
-     127,   130
+     103,   106,   108,   109,   112,   115,   116,   119,   122,   125
 };
 
 /* YYRHS -- A `-1'-separated list of the rules' RHS.  */
 static const yytype_int8 yyrhs[] =
 {
-      27,     0,    -1,     3,    14,    28,    31,    -1,    -1,    29,
-      28,    -1,     4,    30,    30,    14,    -1,    11,    29,    -1,
-       6,    -1,    15,    32,    -1,    31,    15,    32,    -1,    31,
-      12,    32,    -1,    16,    33,    41,    17,    14,    -1,    -1,
-      33,    34,    -1,     5,    18,    35,    14,    -1,     5,    14,
-      -1,    11,    34,    -1,    36,    10,    -1,    36,    19,    37,
-      20,    -1,    36,    21,    40,    22,    -1,    36,    12,    -1,
-      36,    13,    23,    10,    24,    30,    24,    30,    25,    -1,
-      36,    13,    23,    10,    25,    -1,    35,    11,    -1,    -1,
-      35,    24,    -1,    36,    11,    -1,    -1,    37,    38,    -1,
-      37,    39,    -1,    37,    12,    -1,    37,    11,    -1,     6,
-      -1,     7,    -1,    -1,    40,     9,    -1,    40,    11,    -1,
-      -1,    42,    41,    -1,    42,    34,    -1,     5,    32,    -1,
-      11,    42,    -1
+      26,     0,    -1,     3,    13,    27,    30,    -1,    -1,    28,
+      27,    -1,     4,    29,    29,    13,    -1,    10,    28,    -1,
+       6,    -1,    14,    31,    -1,    30,    14,    31,    -1,    30,
+      11,    31,    -1,    15,    32,    39,    16,    13,    -1,    -1,
+      32,    33,    -1,     5,    17,    34,    13,    -1,     5,    13,
+      -1,    10,    33,    -1,    35,     9,    -1,    35,    18,    36,
+      19,    -1,    35,    20,    38,    21,    -1,    35,    11,    -1,
+      35,    12,    22,     9,    23,    29,    23,    29,    24,    -1,
+      35,    12,    22,     9,    24,    -1,    34,    10,    -1,    -1,
+      34,    23,    -1,    35,    10,    -1,    -1,    36,    37,    -1,
+      36,    11,    -1,    36,    10,    -1,     6,    -1,    -1,    38,
+       8,    -1,    38,    10,    -1,    -1,    40,    39,    -1,    40,
+      33,    -1,     5,    31,    -1,    10,    40,    -1
 };
 
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,    90,    90,    99,   102,   109,   113,   121,   128,   132,
-     136,   149,   157,   160,   167,   171,   175,   183,   187,   191,
-     195,   199,   216,   226,   234,   237,   241,   249,   252,   256,
-     264,   269,   276,   283,   291,   294,   298,   306,   309,   313,
-     321,   325
+       0,    86,    86,    95,    98,   105,   109,   117,   124,   128,
+     132,   145,   153,   156,   163,   167,   171,   179,   183,   187,
+     191,   195,   212,   222,   230,   233,   237,   245,   248,   252,
+     257,   264,   272,   275,   279,   287,   290,   294,   302,   306
 };
 #endif
 
@@ -483,12 +477,12 @@ static const yytype_uint16 yyrline[] =
 static const char *const yytname[] =
 {
   "$end", "error", "$undefined", "DT_V1", "DT_MEMRESERVE",
-  "DT_PROPNODENAME", "DT_LITERAL", "DT_LITERAL64", "DT_BASE", "DT_BYTE",
-  "DT_STRING", "DT_LABEL", "DT_REF", "DT_INCBIN", "';'", "'/'", "'{'",
-  "'}'", "'='", "'<'", "'>'", "'['", "']'", "'('", "','", "')'", "$accept",
-  "sourcefile", "memreserves", "memreserve", "addr", "devicetree",
-  "nodedef", "proplist", "propdef", "propdata", "propdataprefix",
-  "celllist", "cellval", "cellval64", "bytestring", "subnodes", "subnode", 0
+  "DT_PROPNODENAME", "DT_LITERAL", "DT_BASE", "DT_BYTE", "DT_STRING",
+  "DT_LABEL", "DT_REF", "DT_INCBIN", "';'", "'/'", "'{'", "'}'", "'='",
+  "'<'", "'>'", "'['", "']'", "'('", "','", "')'", "$accept", "sourcefile",
+  "memreserves", "memreserve", "addr", "devicetree", "nodedef", "proplist",
+  "propdef", "propdata", "propdataprefix", "celllist", "cellval",
+  "bytestring", "subnodes", "subnode", 0
 };
 #endif
 
@@ -498,19 +492,18 @@ static const char *const yytname[] =
 static const yytype_uint16 yytoknum[] =
 {
        0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
-     265,   266,   267,   268,    59,    47,   123,   125,    61,    60,
-      62,    91,    93,    40,    44,    41
+     265,   266,   267,    59,    47,   123,   125,    61,    60,    62,
+      91,    93,    40,    44,    41
 };
 # endif
 
 /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
 static const yytype_uint8 yyr1[] =
 {
-       0,    26,    27,    28,    28,    29,    29,    30,    31,    31,
-      31,    32,    33,    33,    34,    34,    34,    35,    35,    35,
-      35,    35,    35,    35,    36,    36,    36,    37,    37,    37,
-      37,    37,    38,    39,    40,    40,    40,    41,    41,    41,
-      42,    42
+       0,    25,    26,    27,    27,    28,    28,    29,    30,    30,
+      30,    31,    32,    32,    33,    33,    33,    34,    34,    34,
+      34,    34,    34,    34,    35,    35,    35,    36,    36,    36,
+      36,    37,    38,    38,    38,    39,    39,    39,    40,    40
 };
 
 /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
@@ -519,8 +512,7 @@ static const yytype_uint8 yyr2[] =
        0,     2,     4,     0,     2,     4,     2,     1,     2,     3,
        3,     5,     0,     2,     4,     2,     2,     2,     4,     4,
        2,     9,     5,     2,     0,     2,     2,     0,     2,     2,
-       2,     2,     1,     1,     0,     2,     2,     0,     2,     2,
-       2,     2
+       2,     1,     0,     2,     2,     0,     2,     2,     2,     2
 };
 
 /* YYDEFACT[STATE-NAME] -- Default rule to reduce with in state
@@ -530,39 +522,39 @@ static const yytype_uint8 yydefact[] =
 {
        0,     0,     0,     3,     1,     0,     0,     0,     3,     7,
        0,     6,     0,     2,     4,     0,    12,     8,     0,     0,
-       5,    37,    10,     9,     0,     0,    13,     0,    37,    15,
-      24,    40,    16,    41,     0,    39,    38,     0,     0,    11,
-      23,    14,    25,    17,    26,    20,     0,    27,    34,     0,
-       0,     0,     0,    32,    33,    31,    30,    18,    28,    29,
-      35,    36,    19,     0,    22,     0,     0,     0,    21
+       5,    35,    10,     9,     0,     0,    13,     0,    35,    15,
+      24,    38,    16,    39,     0,    37,    36,     0,     0,    11,
+      23,    14,    25,    17,    26,    20,     0,    27,    32,     0,
+       0,     0,     0,    31,    30,    29,    18,    28,    33,    34,
+      19,     0,    22,     0,     0,     0,    21
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
       -1,     2,     7,     8,    10,    13,    17,    21,    26,    37,
-      38,    50,    58,    59,    51,    27,    28
+      38,    50,    57,    51,    27,    28
 };
 
 /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
    STATE-NUM.  */
-#define YYPACT_NINF -11
+#define YYPACT_NINF -12
 static const yytype_int8 yypact[] =
 {
-       1,     7,    29,    -1,   -11,    30,    -1,    22,    -1,   -11,
-      30,   -11,    23,     5,   -11,    26,   -11,   -11,    23,    23,
-     -11,     8,   -11,   -11,    -2,     8,   -11,    24,     8,   -11,
-     -11,   -11,   -11,   -11,    28,   -11,   -11,    -6,    13,   -11,
-     -11,   -11,   -11,   -11,   -11,   -11,    20,   -11,   -11,    34,
-      -5,     0,     6,   -11,   -11,   -11,   -11,   -11,   -11,   -11,
-     -11,   -11,   -11,    30,   -11,    21,    30,    25,   -11
+      10,   -11,    18,    -1,   -12,    22,    -1,    15,    -1,   -12,
+      22,   -12,    20,     1,   -12,    17,   -12,   -12,    20,    20,
+     -12,     6,   -12,   -12,    21,     6,   -12,    23,     6,   -12,
+     -12,   -12,   -12,   -12,    28,   -12,   -12,    -6,    13,   -12,
+     -12,   -12,   -12,   -12,   -12,   -12,    24,   -12,   -12,    33,
+      -5,     0,    -4,   -12,   -12,   -12,   -12,   -12,   -12,   -12,
+     -12,    22,   -12,    25,    22,    19,   -12
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -11,   -11,    38,    41,   -10,   -11,     9,   -11,    10,   -11,
-     -11,   -11,   -11,   -11,   -11,    27,    32
+     -12,   -12,    36,    39,   -10,   -12,     8,   -12,    12,   -12,
+     -12,   -12,   -12,   -12,    27,    31
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -572,35 +564,35 @@ static const yytype_int8 yypgoto[] =
 #define YYTABLE_NINF -1
 static const yytype_uint8 yytable[] =
 {
-      15,    53,    54,     5,     1,    40,    55,    56,    41,    60,
-       6,    61,    29,    24,    16,    57,    30,    18,    42,    25,
-      19,     3,    62,    43,    44,    45,    46,    22,    23,     4,
-      63,    64,    47,    31,    48,    32,     9,    12,    35,    16,
-      20,    34,    39,    49,    52,    66,    14,    11,     0,     0,
-      68,     0,     0,    65,     0,    36,    67,    33
+      15,    53,     3,     5,    40,    54,    55,    41,    58,     6,
+      59,    24,    18,     1,    56,    19,    25,    42,     4,    61,
+      62,    60,    43,    44,    45,    46,    22,    23,     9,    12,
+      20,    47,    31,    48,    29,    16,    16,    32,    30,    34,
+      35,    39,    52,    66,    14,    11,    49,     0,    64,     0,
+       0,    63,     0,     0,    65,    36,    33
 };
 
 static const yytype_int8 yycheck[] =
 {
-      10,     6,     7,     4,     3,    11,    11,    12,    14,     9,
-      11,    11,    14,     5,    16,    20,    18,    12,    24,    11,
-      15,    14,    22,    10,    11,    12,    13,    18,    19,     0,
-      24,    25,    19,    24,    21,    25,     6,    15,    28,    16,
-      14,    17,    14,    23,    10,    24,     8,     6,    -1,    -1,
-      25,    -1,    -1,    63,    -1,    28,    66,    25
+      10,     6,    13,     4,    10,    10,    11,    13,     8,    10,
+      10,     5,    11,     3,    19,    14,    10,    23,     0,    23,
+      24,    21,     9,    10,    11,    12,    18,    19,     6,    14,
+      13,    18,    24,    20,    13,    15,    15,    25,    17,    16,
+      28,    13,     9,    24,     8,     6,    22,    -1,    23,    -1,
+      -1,    61,    -1,    -1,    64,    28,    25
 };
 
 /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
    symbol of state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
-       0,     3,    27,    14,     0,     4,    11,    28,    29,     6,
-      30,    29,    15,    31,    28,    30,    16,    32,    12,    15,
-      14,    33,    32,    32,     5,    11,    34,    41,    42,    14,
-      18,    32,    34,    42,    17,    34,    41,    35,    36,    14,
-      11,    14,    24,    10,    11,    12,    13,    19,    21,    23,
-      37,    40,    10,     6,     7,    11,    12,    20,    38,    39,
-       9,    11,    22,    24,    25,    30,    24,    30,    25
+       0,     3,    26,    13,     0,     4,    10,    27,    28,     6,
+      29,    28,    14,    30,    27,    29,    15,    31,    11,    14,
+      13,    32,    31,    31,     5,    10,    33,    39,    40,    13,
+      17,    31,    33,    40,    16,    33,    39,    34,    35,    13,
+      10,    13,    23,     9,    10,    11,    12,    18,    20,    22,
+      36,    38,     9,     6,    10,    11,    19,    37,     8,    10,
+      21,    23,    24,    29,    23,    29,    24
 };
 
 #define yyerrok		(yyerrstatus = 0)
@@ -1414,7 +1406,7 @@ yyreduce:
         case 2:
 
 /* Line 1455 of yacc.c  */
-#line 91 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 87 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			the_boot_info = build_boot_info((yyvsp[(3) - (4)].re), (yyvsp[(4) - (4)].node),
 							guess_boot_cpuid((yyvsp[(4) - (4)].node)));
@@ -1424,7 +1416,7 @@ yyreduce:
   case 3:
 
 /* Line 1455 of yacc.c  */
-#line 99 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 95 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.re) = NULL;
 		;}
@@ -1433,7 +1425,7 @@ yyreduce:
   case 4:
 
 /* Line 1455 of yacc.c  */
-#line 103 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 99 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.re) = chain_reserve_entry((yyvsp[(1) - (2)].re), (yyvsp[(2) - (2)].re));
 		;}
@@ -1442,7 +1434,7 @@ yyreduce:
   case 5:
 
 /* Line 1455 of yacc.c  */
-#line 110 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 106 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.re) = build_reserve_entry((yyvsp[(2) - (4)].addr), (yyvsp[(3) - (4)].addr));
 		;}
@@ -1451,7 +1443,7 @@ yyreduce:
   case 6:
 
 /* Line 1455 of yacc.c  */
-#line 114 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 110 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			add_label(&(yyvsp[(2) - (2)].re)->labels, (yyvsp[(1) - (2)].labelref));
 			(yyval.re) = (yyvsp[(2) - (2)].re);
@@ -1461,7 +1453,7 @@ yyreduce:
   case 7:
 
 /* Line 1455 of yacc.c  */
-#line 122 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 118 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.addr) = eval_literal((yyvsp[(1) - (1)].literal), 0, 64);
 		;}
@@ -1470,7 +1462,7 @@ yyreduce:
   case 8:
 
 /* Line 1455 of yacc.c  */
-#line 129 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 125 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.node) = name_node((yyvsp[(2) - (2)].node), "");
 		;}
@@ -1479,7 +1471,7 @@ yyreduce:
   case 9:
 
 /* Line 1455 of yacc.c  */
-#line 133 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 129 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.node) = merge_nodes((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
 		;}
@@ -1488,7 +1480,7 @@ yyreduce:
   case 10:
 
 /* Line 1455 of yacc.c  */
-#line 137 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 133 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			struct node *target = get_node_by_ref((yyvsp[(1) - (3)].node), (yyvsp[(2) - (3)].labelref));
 
@@ -1503,7 +1495,7 @@ yyreduce:
   case 11:
 
 /* Line 1455 of yacc.c  */
-#line 150 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 146 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.node) = build_node((yyvsp[(2) - (5)].proplist), (yyvsp[(3) - (5)].nodelist));
 		;}
@@ -1512,7 +1504,7 @@ yyreduce:
   case 12:
 
 /* Line 1455 of yacc.c  */
-#line 157 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 153 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.proplist) = NULL;
 		;}
@@ -1521,7 +1513,7 @@ yyreduce:
   case 13:
 
 /* Line 1455 of yacc.c  */
-#line 161 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 157 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.proplist) = chain_property((yyvsp[(2) - (2)].prop), (yyvsp[(1) - (2)].proplist));
 		;}
@@ -1530,7 +1522,7 @@ yyreduce:
   case 14:
 
 /* Line 1455 of yacc.c  */
-#line 168 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 164 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.prop) = build_property((yyvsp[(1) - (4)].propnodename), (yyvsp[(3) - (4)].data));
 		;}
@@ -1539,7 +1531,7 @@ yyreduce:
   case 15:
 
 /* Line 1455 of yacc.c  */
-#line 172 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 168 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.prop) = build_property((yyvsp[(1) - (2)].propnodename), empty_data);
 		;}
@@ -1548,7 +1540,7 @@ yyreduce:
   case 16:
 
 /* Line 1455 of yacc.c  */
-#line 176 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 172 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			add_label(&(yyvsp[(2) - (2)].prop)->labels, (yyvsp[(1) - (2)].labelref));
 			(yyval.prop) = (yyvsp[(2) - (2)].prop);
@@ -1558,7 +1550,7 @@ yyreduce:
   case 17:
 
 /* Line 1455 of yacc.c  */
-#line 184 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 180 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.data) = data_merge((yyvsp[(1) - (2)].data), (yyvsp[(2) - (2)].data));
 		;}
@@ -1567,7 +1559,7 @@ yyreduce:
   case 18:
 
 /* Line 1455 of yacc.c  */
-#line 188 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 184 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.data) = data_merge((yyvsp[(1) - (4)].data), (yyvsp[(3) - (4)].data));
 		;}
@@ -1576,7 +1568,7 @@ yyreduce:
   case 19:
 
 /* Line 1455 of yacc.c  */
-#line 192 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 188 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.data) = data_merge((yyvsp[(1) - (4)].data), (yyvsp[(3) - (4)].data));
 		;}
@@ -1585,7 +1577,7 @@ yyreduce:
   case 20:
 
 /* Line 1455 of yacc.c  */
-#line 196 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 192 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.data) = data_add_marker((yyvsp[(1) - (2)].data), REF_PATH, (yyvsp[(2) - (2)].labelref));
 		;}
@@ -1594,7 +1586,7 @@ yyreduce:
   case 21:
 
 /* Line 1455 of yacc.c  */
-#line 200 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 196 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			FILE *f = srcfile_relative_open((yyvsp[(4) - (9)].data).val, NULL);
 			struct data d;
@@ -1616,7 +1608,7 @@ yyreduce:
   case 22:
 
 /* Line 1455 of yacc.c  */
-#line 217 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 213 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			FILE *f = srcfile_relative_open((yyvsp[(4) - (5)].data).val, NULL);
 			struct data d = empty_data;
@@ -1631,7 +1623,7 @@ yyreduce:
   case 23:
 
 /* Line 1455 of yacc.c  */
-#line 227 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 223 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.data) = data_add_marker((yyvsp[(1) - (2)].data), LABEL, (yyvsp[(2) - (2)].labelref));
 		;}
@@ -1640,7 +1632,7 @@ yyreduce:
   case 24:
 
 /* Line 1455 of yacc.c  */
-#line 234 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 230 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.data) = empty_data;
 		;}
@@ -1649,7 +1641,7 @@ yyreduce:
   case 25:
 
 /* Line 1455 of yacc.c  */
-#line 238 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 234 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.data) = (yyvsp[(1) - (2)].data);
 		;}
@@ -1658,7 +1650,7 @@ yyreduce:
   case 26:
 
 /* Line 1455 of yacc.c  */
-#line 242 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 238 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.data) = data_add_marker((yyvsp[(1) - (2)].data), LABEL, (yyvsp[(2) - (2)].labelref));
 		;}
@@ -1667,7 +1659,7 @@ yyreduce:
   case 27:
 
 /* Line 1455 of yacc.c  */
-#line 249 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 245 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.data) = empty_data;
 		;}
@@ -1676,7 +1668,7 @@ yyreduce:
   case 28:
 
 /* Line 1455 of yacc.c  */
-#line 253 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 249 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.data) = data_append_cell((yyvsp[(1) - (2)].data), (yyvsp[(2) - (2)].cell));
 		;}
@@ -1685,121 +1677,99 @@ yyreduce:
   case 29:
 
 /* Line 1455 of yacc.c  */
-#line 257 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
-    {
-			if (little_endian) {
-				(yyval.data) = data_append_cell2((yyvsp[(1) - (2)].data), (uint32_t)((yyvsp[(2) - (2)].cell64)), (uint32_t)((yyvsp[(2) - (2)].cell64) >> 32));
-			} else {
-				(yyval.data) = data_append_cell2((yyvsp[(1) - (2)].data), (uint32_t)((yyvsp[(2) - (2)].cell64) >> 32), (uint32_t)((yyvsp[(2) - (2)].cell64)));
-			}
-		;}
-    break;
-
-  case 30:
-
-/* Line 1455 of yacc.c  */
-#line 265 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 253 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.data) = data_append_cell(data_add_marker((yyvsp[(1) - (2)].data), REF_PHANDLE,
 							      (yyvsp[(2) - (2)].labelref)), -1);
 		;}
     break;
 
+  case 30:
+
+/* Line 1455 of yacc.c  */
+#line 258 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+    {
+			(yyval.data) = data_add_marker((yyvsp[(1) - (2)].data), LABEL, (yyvsp[(2) - (2)].labelref));
+		;}
+    break;
+
   case 31:
 
 /* Line 1455 of yacc.c  */
-#line 270 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 265 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
-			(yyval.data) = data_add_marker((yyvsp[(1) - (2)].data), LABEL, (yyvsp[(2) - (2)].labelref));
+			(yyval.cell) = eval_literal((yyvsp[(1) - (1)].literal), 0, 32);
 		;}
     break;
 
   case 32:
 
 /* Line 1455 of yacc.c  */
-#line 277 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 272 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
-			(yyval.cell) = eval_literal((yyvsp[(1) - (1)].literal), 0, 32);
+			(yyval.data) = empty_data;
 		;}
     break;
 
   case 33:
 
 /* Line 1455 of yacc.c  */
-#line 284 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 276 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
-			(yyval.cell64) = eval_literal((yyvsp[(1) - (1)].literal64), 0, 64);
+			(yyval.data) = data_append_byte((yyvsp[(1) - (2)].data), (yyvsp[(2) - (2)].byte));
 		;}
     break;
 
   case 34:
 
 /* Line 1455 of yacc.c  */
-#line 291 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 280 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
-			(yyval.data) = empty_data;
+			(yyval.data) = data_add_marker((yyvsp[(1) - (2)].data), LABEL, (yyvsp[(2) - (2)].labelref));
 		;}
     break;
 
   case 35:
 
 /* Line 1455 of yacc.c  */
-#line 295 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 287 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
-			(yyval.data) = data_append_byte((yyvsp[(1) - (2)].data), (yyvsp[(2) - (2)].byte));
+			(yyval.nodelist) = NULL;
 		;}
     break;
 
   case 36:
 
 /* Line 1455 of yacc.c  */
-#line 299 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 291 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
-			(yyval.data) = data_add_marker((yyvsp[(1) - (2)].data), LABEL, (yyvsp[(2) - (2)].labelref));
+			(yyval.nodelist) = chain_node((yyvsp[(1) - (2)].node), (yyvsp[(2) - (2)].nodelist));
 		;}
     break;
 
   case 37:
 
 /* Line 1455 of yacc.c  */
-#line 306 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
-    {
-			(yyval.nodelist) = NULL;
-		;}
-    break;
-
-  case 38:
-
-/* Line 1455 of yacc.c  */
-#line 310 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
-    {
-			(yyval.nodelist) = chain_node((yyvsp[(1) - (2)].node), (yyvsp[(2) - (2)].nodelist));
-		;}
-    break;
-
-  case 39:
-
-/* Line 1455 of yacc.c  */
-#line 314 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 295 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			print_error("syntax error: properties must precede subnodes");
 			YYERROR;
 		;}
     break;
 
-  case 40:
+  case 38:
 
 /* Line 1455 of yacc.c  */
-#line 322 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 303 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			(yyval.node) = name_node((yyvsp[(2) - (2)].node), (yyvsp[(1) - (2)].propnodename));
 		;}
     break;
 
-  case 41:
+  case 39:
 
 /* Line 1455 of yacc.c  */
-#line 326 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 307 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
     {
 			add_label(&(yyvsp[(2) - (2)].node)->labels, (yyvsp[(1) - (2)].labelref));
 			(yyval.node) = (yyvsp[(2) - (2)].node);
@@ -1809,7 +1779,7 @@ yyreduce:
 
 
 /* Line 1455 of yacc.c  */
-#line 1813 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.tab.c"
+#line 1783 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2021,7 +1991,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 332 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
+#line 313 "/home/anup/Development/xvisor-next/tools/dtc/dtc-parser.y"
 
 
 void print_error(char const *fmt, ...)
@@ -2041,24 +2011,11 @@ void yyerror(char const *s) {
 
 static unsigned long long eval_literal(const char *s, int base, int bits)
 {
-	int len;
 	unsigned long long val;
-	char *e, str[256];
+	char *e;
 
 	errno = 0;
-	len = strlen(s);
-	if (256 <= len) {
-		yyerror("too many characters in literal");
-	}
-	strcpy(str, s);
-	if (len > 5) {
-		if ((str[len - 3] == 'U') && 
-	    	    (str[len - 2] == 'L') && 
-		    (str[len - 1] == 'L')) {
-			str[len - 3] = '\0';
-		}
-	}
-	val = strtoull(str, &e, base);
+	val = strtoull(s, &e, base);
 	if (*e)
 		print_error("bad characters in literal");
 	else if ((errno == ERANGE)
