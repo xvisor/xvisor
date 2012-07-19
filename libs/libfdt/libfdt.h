@@ -95,12 +95,12 @@ int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
 int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
 			 struct vmm_devtree_node **root);
 
-struct fdt_node_header * libfdt_find_node(struct fdt_fileinfo *fdt, 
-					  const char *node_path);
+struct fdt_node_header *libfdt_find_node(struct fdt_fileinfo *fdt, 
+					 const char *node_path);
 
-int libfdt_get_property(struct fdt_fileinfo * fdt, 
-			struct fdt_node_header * fdt_node, 
-			const char * property,
+int libfdt_get_property(struct fdt_fileinfo *fdt, 
+			struct fdt_node_header *fdt_node, 
+			const char *property,
 			void *property_value);
 
 #endif /* __LIBFDT_H_ */

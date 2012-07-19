@@ -204,7 +204,7 @@ int vmm_devdrv_regmap(struct vmm_device * dev,
 {
 	const char *aval;
 	physical_addr_t pa;
-	virtual_size_t sz;
+	physical_size_t sz;
 
 	if (!dev || !addr || regset < 0) {
 		return VMM_EFAIL;
@@ -223,7 +223,7 @@ int vmm_devdrv_regmap(struct vmm_device * dev,
 			aval += regset * (sizeof(pa) + sizeof(sz));
 			pa = *((physical_addr_t *)aval);
 			aval += sizeof(pa);
-			sz = *((virtual_size_t *)aval);
+			sz = *((physical_size_t *)aval);
 			*addr = vmm_host_iomap(pa, sz);
 		} else {
 			return VMM_EFAIL;
