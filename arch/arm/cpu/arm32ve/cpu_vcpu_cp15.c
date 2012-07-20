@@ -20,10 +20,6 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief VCPU CP15 Emulation
  * @details This source file implements CP15 coprocessor for each VCPU.
- *
- * The Translation table walk and CP15 register read/write has been 
- * largely adapted from QEMU 0.14.xx targe-arm/helper.c source file
- * which is licensed under GPL.
  */
 
 #include <vmm_heap.h>
@@ -39,8 +35,8 @@
 #include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_cp15.h>
 
-static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu * vcpu, 
-				    arch_regs_t * regs,
+static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu, 
+				    arch_regs_t *regs,
 				    physical_addr_t fipa)
 {
 	int rc;
@@ -96,8 +92,8 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu * vcpu,
 	return rc;
 }
 
-int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu * vcpu, 
-			     arch_regs_t * regs,
+int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu *vcpu, 
+			     arch_regs_t *regs,
 			     u32 il, u32 iss, 
 			     physical_addr_t fipa)
 {
@@ -113,8 +109,8 @@ int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu * vcpu,
 	return VMM_EFAIL;
 }
 
-int cpu_vcpu_cp15_data_abort(struct vmm_vcpu * vcpu, 
-			     arch_regs_t * regs,
+int cpu_vcpu_cp15_data_abort(struct vmm_vcpu *vcpu, 
+			     arch_regs_t *regs,
 			     u32 il, u32 iss, 
 			     physical_addr_t fipa)
 {
@@ -144,7 +140,7 @@ int cpu_vcpu_cp15_data_abort(struct vmm_vcpu * vcpu,
 }
 
 
-bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu, 
+bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu, 
 			arch_regs_t *regs,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			u32 *data)
@@ -192,13 +188,39 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 			goto bad_reg;
 		};
 		break;
+	case 9:
+		switch (opc1) {
+		case 0:	/* L1 cache.  */
+			switch (opc2) {
+			case 0:
+				*data = arm_priv(vcpu)->cp15.c9_data;
+				break;
+			case 1:
+				*data = arm_priv(vcpu)->cp15.c9_insn;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 1:	/* L2 cache */
+			if (CRm != 0)
+				goto bad_reg;
+			/* L2 Lockdown and Auxiliary control.  */
+			*data = 0;
+			break;
+		default:
+			goto bad_reg;
+		};
+		break;
+	default:
+		goto bad_reg;
 	}
 	return TRUE;
 bad_reg:
 	return FALSE;
 }
 
-bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu, 
+bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu, 
 			 arch_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data)
@@ -221,6 +243,114 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			goto bad_reg;
 		};
 		break;
+	case 9:
+		switch (CRm) {
+		case 0:	/* Cache lockdown.  */
+			switch (opc1) {
+			case 0:	/* L1 cache.  */
+				switch (opc2) {
+				case 0:
+					arm_priv(vcpu)->cp15.c9_data = data;
+					break;
+				case 1:
+					arm_priv(vcpu)->cp15.c9_insn = data;
+					break;
+				default:
+					goto bad_reg;
+				}
+				break;
+			case 1:	/* L2 cache.  */
+				/* Ignore writes to L2 lockdown/auxiliary registers.  */
+				break;
+			default:
+				goto bad_reg;
+			}
+			break;
+		case 1:	/* TCM memory region registers.  */
+			/* Not implemented.  */
+			goto bad_reg;
+		case 12:	/* Performance monitor control */
+			/* Performance monitors are implementation defined in v7,
+			 * but with an ARM recommended set of registers, which we
+			 * follow (although we don't actually implement any counters)
+			 */
+			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
+				goto bad_reg;
+			}
+			switch (opc2) {
+			case 0:	/* performance monitor control register */
+				/* only the DP, X, D and E bits are writable */
+				arm_priv(vcpu)->cp15.c9_pmcr &= ~0x39;
+				arm_priv(vcpu)->cp15.c9_pmcr |= (data & 0x39);
+				break;
+			case 1:	/* Count enable set register */
+				data &= (1 << 31);
+				arm_priv(vcpu)->cp15.c9_pmcnten |= data;
+				break;
+			case 2:	/* Count enable clear */
+				data &= (1 << 31);
+				arm_priv(vcpu)->cp15.c9_pmcnten &= ~data;
+				break;
+			case 3:	/* Overflow flag status */
+				arm_priv(vcpu)->cp15.c9_pmovsr &= ~data;
+				break;
+			case 4:	/* Software increment */
+				/* RAZ/WI since we don't implement 
+				 * the software-count event */
+				break;
+			case 5:	/* Event counter selection register */
+				/* Since we don't implement any events, writing to this register
+				 * is actually UNPREDICTABLE. So we choose to RAZ/WI.
+				 */
+				break;
+			default:
+				goto bad_reg;
+			}
+			break;
+		case 13:	/* Performance counters */
+			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
+				goto bad_reg;
+			}
+			switch (opc2) {
+			case 0:	/* Cycle count register: not implemented, so RAZ/WI */
+				break;
+			case 1:	/* Event type select */
+				arm_priv(vcpu)->cp15.c9_pmxevtyper =
+				    data & 0xff;
+				break;
+			case 2:	/* Event count register */
+				/* Unimplemented (we have no events), RAZ/WI */
+				break;
+			default:
+				goto bad_reg;
+			}
+			break;
+		case 14:	/* Performance monitor control */
+			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
+				goto bad_reg;
+			}
+			switch (opc2) {
+			case 0:	/* user enable */
+				arm_priv(vcpu)->cp15.c9_pmuserenr = data & 1;
+				/* changes access rights for cp registers, so flush tbs */
+				break;
+			case 1:	/* interrupt enable set */
+				/* We have no event counters so only the C bit can be changed */
+				data &= (1 << 31);
+				arm_priv(vcpu)->cp15.c9_pminten |= data;
+				break;
+			case 2:	/* interrupt enable clear */
+				data &= (1 << 31);
+				arm_priv(vcpu)->cp15.c9_pminten &= ~data;
+				break;
+			}
+			break;
+		default:
+			goto bad_reg;
+		}
+		break;
+	default:
+		goto bad_reg;
 	}
 	return TRUE;
 bad_reg:
