@@ -206,8 +206,6 @@ static int cpu_mmu_ttbl_deattach(struct cpu_ttbl * child)
 	tte[index] = 0x0;
 
 	child->parent = NULL;
-	child->level = TTBL_FIRST_LEVEL;
-	child->map_ia = 0;
 	parent->tte_cnt--;
 	parent->child_cnt--;
 	list_del(&child->head);
@@ -268,6 +266,8 @@ int cpu_mmu_ttbl_free(struct cpu_ttbl *ttbl)
 	ttbl->tte_cnt = 0;
 	vmm_memset((void *)ttbl->tbl_va, 0, TTBL_TABLE_SIZE);
 
+	ttbl->level = TTBL_FIRST_LEVEL;
+	ttbl->map_ia = 0;
 	list_add_tail(&ttbl->head, &mmuctrl.free_ttbl_list);
 
 	return VMM_OK;
