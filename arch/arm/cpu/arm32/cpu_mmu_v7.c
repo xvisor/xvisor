@@ -494,6 +494,8 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 		 */
 		if(read_ttbr0() == l1->tbl_pa) {
 			invalid_tlb_line(pg->va);
+			dsb();
+			isb();
 		}
 	}
 
@@ -742,6 +744,8 @@ static int cpu_mmu_split_reserved_page(struct cpu_page *pg, virtual_size_t rsize
 			cpu_mmu_l2tbl_attach(l1, l2, pg->imp, pg->dom, pg->va,
 					     TRUE);
 			invalid_tlb();
+			dsb();
+			isb();
 			break;
 		default:
 			BUG_ON("%s: Unimplemented (target size 0x%x)\n",
@@ -984,6 +988,8 @@ u32 cpu_mmu_physical_read32(physical_addr_t pa)
 			l1_tte[ite] = 0x0;
 			cpu_mmu_sync_tte(&l1_tte[ite]);
 			invalid_tlb_line(va);
+			dsb();
+			isb();
 		}
 	}
 
@@ -1024,6 +1030,8 @@ void cpu_mmu_physical_write32(physical_addr_t pa, u32 val)
 			l1_tte[ite] = 0x0;
 			cpu_mmu_sync_tte(&l1_tte[ite]);
 			invalid_tlb_line(va);
+			dsb();
+			isb();
 		}
 	}
 
@@ -1185,6 +1193,8 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		val = val << 2;
 		*((u32 *)(mmuctrl.defl1.tbl_va + val)) = 0x0;
 		invalid_tlb();
+		dsb();
+		isb();
 	}
 	mmuctrl.defl1.tte_cnt = 0;
 	for (i = 0; i < TTBL_L1TBL_SIZE; i += 4) {
