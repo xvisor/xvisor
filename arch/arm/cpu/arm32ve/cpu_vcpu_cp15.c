@@ -71,19 +71,15 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 		pg.ap = TTBL_HAP_READWRITE;
 	}
 
-	if (reg_flags & VMM_REGION_ISRAM) {
-		pg.memattr = 0xf;
+	if (reg_flags & VMM_REGION_CACHEABLE) {
+		if (reg_flags & VMM_REGION_BUFFERABLE) {
+			pg.memattr = 0xF;
+		} else {
+			pg.memattr = 0xA;
+		}
+	} else {
+		pg.memattr = 0x0;
 	}
-
-	/* FIXME: Handle Cacheable Regions
-	 * if (reg_flags & VMM_REGION_CACHEABLE) {
-	 * }
-	 */
-
-	/* FIXME: Handle Cacheable Regions
-	 * if (reg_flags & VMM_REGION_BUFFERABLE) {
-	 * }
-	 */
 
 	vmm_spin_lock_irqsave(&arm_guest_priv(vcpu->guest)->ttbl_lock, f);
 	rc = cpu_mmu_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
@@ -362,6 +358,7 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 {
 	if (tvcpu && tvcpu->is_normal) {
 		arm_priv(tvcpu)->cp15.c0_cssel = read_csselr();
+		arm_priv(tvcpu)->cp15.c1_sctlr = read_sctlr();
 		arm_priv(tvcpu)->cp15.c2_ttbr0 = read_ttbr0();
 		arm_priv(tvcpu)->cp15.c2_ttbr1 = read_ttbr1();
 		arm_priv(tvcpu)->cp15.c2_ttbcr = read_ttbcr();
