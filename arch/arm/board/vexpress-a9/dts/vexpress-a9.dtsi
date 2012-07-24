@@ -35,6 +35,22 @@
 				#address-cells = <1>;
 				#size-cells = <1>;
 
+				kmi0 { /* Keyboard */
+			      		device_type = "serio";
+			      		compatible = "ambakmi";
+			      		reg = <0x10006000 0x1000>;
+					clock-rate = <24000000>;
+					irq = <44>;
+				};
+
+				kmi1 { /* Mouse */
+			      		device_type = "serio";
+			      		compatible = "ambakmi";
+			      		reg = <0x10007000 0x1000>;
+					clock-rate = <24000000>;
+					irq = <45>;
+				};
+
 				uart0 {
 			      		device_type = "serial";
 			      		compatible = "pl011";
