@@ -63,7 +63,7 @@
 
 				eth0 {
 					device_type = "nic";
-					compatible = "smsc911x";
+					compatible = "smc911x";
 					reg = <0x4E000000 0x1000>;
 					irq = <47>;
 					switch = "netbridge0";

@@ -28,8 +28,8 @@
  * The original code is licensed under the GPL.
  */
 
-#ifndef __SMSC_911X_H___
-#define __SMSC_911X_H___
+#ifndef __SMC911X_H___
+#define __SMC911X_H___
 
 #include <vmm_host_io.h>
 #include <vmm_workqueue.h>

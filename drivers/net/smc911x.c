@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file smsc-911x.c
+ * @file smc911x.c
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @brief Driver for SMSC's LAN911{5,6,7,8} single-chip Ethernet devices.
  *
@@ -53,12 +53,12 @@
 
 
 
-#define MODULE_VARID			smsc_911x_driver_module
+#define MODULE_VARID			smc911x_driver_module
 #define MODULE_NAME			"SMSC 911x Ethernet Controller Driver"
 #define MODULE_AUTHOR			"Pranav Sawargaonkar"
 #define MODULE_IPRIORITY		(VMM_NET_CLASS_IPRIORITY + 1)
-#define	MODULE_INIT			smsc_911x_driver_init
-#define	MODULE_EXIT			smsc_911x_driver_exit
+#define	MODULE_INIT			smc911x_driver_init
+#define	MODULE_EXIT			smc911x_driver_exit
 
 
 /* Debugging options */
@@ -1566,15 +1566,15 @@ static int smc911x_register_vmm(struct vmm_netdev *dev, struct vmm_device *vmm_d
 	return VMM_OK;
 }
 
-static struct vmm_netdev_ops smsc_911x_vmm_netdev_ops = {
+static struct vmm_netdev_ops smc911x_vmm_netdev_ops = {
 	.ndev_init = NULL,
 	.ndev_open = smc911x_open,
 	.ndev_close = smc911x_close,
 	.ndev_xmit = smc911x_hard_start_xmit,
 };
 
-static int smsc_911x_driver_probe(struct vmm_device *dev,
-				  const struct vmm_devid *devid)
+static int smc911x_driver_probe(struct vmm_device *dev,
+				const struct vmm_devid *devid)
 {
 	int rc = VMM_OK;
 	struct vmm_netdev *ndev;
@@ -1602,7 +1602,7 @@ static int smsc_911x_driver_probe(struct vmm_device *dev,
 
 
 	dev->priv = (void *) ndev;
-	ndev->dev_ops = &smsc_911x_vmm_netdev_ops;
+	ndev->dev_ops = &smc911x_vmm_netdev_ops;
 	vmm_netdev_set_priv(ndev, lp);
 	lp->netdev = ndev;
 
@@ -1645,7 +1645,7 @@ free_nothing:
 	return rc;
 }
 
-static int smsc_911x_driver_remove(struct vmm_device *dev)
+static int smc911x_driver_remove(struct vmm_device *dev)
 {
 	int rc = VMM_OK;
 	struct vmm_netdev *ndev = (struct vmm_netdev *) dev->priv;
@@ -1661,26 +1661,26 @@ static int smsc_911x_driver_remove(struct vmm_device *dev)
 }
 
 
-static struct vmm_devid smsc_911x_devid_table[] = {
-	{ .type = "nic", .compatible = "smsc911x"},
+static struct vmm_devid smc911x_devid_table[] = {
+	{ .type = "nic", .compatible = "smc911x"},
 	{ /* end of list */ },
 };
 
-static struct vmm_driver smsc_911x_driver = {
-	.name = "smsc_911x_driver",
-	.match_table = smsc_911x_devid_table,
-	.probe = smsc_911x_driver_probe,
-	.remove = smsc_911x_driver_remove,
+static struct vmm_driver smc911x_driver = {
+	.name = "smc911x_driver",
+	.match_table = smc911x_devid_table,
+	.probe = smc911x_driver_probe,
+	.remove = smc911x_driver_remove,
 };
 
-static int __init smsc_911x_driver_init(void)
+static int __init smc911x_driver_init(void)
 {
-	return vmm_devdrv_register_driver(&smsc_911x_driver);
+	return vmm_devdrv_register_driver(&smc911x_driver);
 }
 
-static void smsc_911x_driver_exit(void)
+static void smc911x_driver_exit(void)
 {
-	vmm_devdrv_unregister_driver(&smsc_911x_driver);
+	vmm_devdrv_unregister_driver(&smc911x_driver);
 }
 
 VMM_DECLARE_MODULE(MODULE_VARID,
