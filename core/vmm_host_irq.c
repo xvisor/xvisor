@@ -248,7 +248,7 @@ int vmm_host_irq_register(u32 hirq_num,
 		found = FALSE;
 		list_for_each(l, &irq->hndl_list) {
 			hirq = list_entry(l, struct vmm_host_irq_hndl, head);
-			if (hirq->hndl == handler) {
+			if (hirq->dev == dev) {
 				found = TRUE;
 				break;
 			}
@@ -268,13 +268,12 @@ int vmm_host_irq_register(u32 hirq_num,
 		hirq->dev = dev;
 		list_add_tail(&hirq->head, &irq->hndl_list);
 		vmm_spin_unlock_irqrestore(&hirqctrl.lock, flags);
-		return VMM_OK;
+		return vmm_host_irq_enable(hirq_num);
 	}
 	return VMM_EFAIL;
 }
 
-int vmm_host_irq_unregister(u32 hirq_num, 
-			    vmm_host_irq_handler_t handler)
+int vmm_host_irq_unregister(u32 hirq_num, void *dev)
 {
 	bool found;
 	irq_flags_t flags;
@@ -287,7 +286,7 @@ int vmm_host_irq_unregister(u32 hirq_num,
 		found = FALSE;
 		list_for_each(l, &irq->hndl_list) {
 			hirq = list_entry(l, struct vmm_host_irq_hndl, head);
-			if (hirq->hndl == handler) {
+			if (hirq->dev == dev) {
 				found = TRUE;
 				break;
 			}

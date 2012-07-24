@@ -343,12 +343,6 @@ int __init omap3_gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa)
 		return rc;
 	}
 
-	/* Enabled GPT irq */
-	rc = vmm_host_irq_enable(omap3_gpt_config[gpt_num].irq_no);
-	if (rc) {
-		return rc;
-	}
-
 	return vmm_clockchip_register(&cc->clkchip);
 }
 

@@ -161,9 +161,6 @@ static int pl031_driver_probe(struct vmm_device *dev,
 					pl031_irq_handler, ldata))) {
 		goto free_ldata;
 	}
-	if ((rc = vmm_host_irq_enable(ldata->irq))) {
-		goto free_ldata;
-	}
 
 	rc = vmm_rtcdev_register(rd);
 	if (rc) {

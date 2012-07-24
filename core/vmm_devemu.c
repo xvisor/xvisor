@@ -838,11 +838,7 @@ int vmm_devemu_deinit_context(struct vmm_guest *guest)
 	if (eg->h2g_irq) {
 		for (ite = 0; ite < eg->h2g_irq_count; ite++) {
 			rc = vmm_host_irq_unregister(eg->h2g_irq[ite].host_irq,
-						vmm_devemu_handle_h2g_irq);
-			if (rc) {
-				break;
-			}
-			rc = vmm_host_irq_disable(eg->h2g_irq[ite].host_irq);
+						&eg->h2g_irq[ite]);
 			if (rc) {
 				break;
 			}

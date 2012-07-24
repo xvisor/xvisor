@@ -262,7 +262,7 @@ int vmm_host_irq_register(u32 hirq_num,
 
 /** Unregister handler for given irq */
 int vmm_host_irq_unregister(u32 hirq_num, 
-			    vmm_host_irq_handler_t handler);
+			    void *dev);
 
 /** Interrupts initialization function */
 int vmm_host_irq_init(void);

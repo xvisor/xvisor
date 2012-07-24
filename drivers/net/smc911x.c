@@ -1218,7 +1218,6 @@ static int
 smc911x_open(struct net_device *dev)
 {
 	struct smc911x_local *lp = netdev_priv(dev);
-	unsigned int rc;
 
 	DBG(SMC_DEBUG_FUNC, "%s: --> %s\n", dev->name, __func__);
 
@@ -1242,12 +1241,6 @@ smc911x_open(struct net_device *dev)
 	smc911x_enable(dev);
 
 	netif_start_queue(dev);
-
-	if ((rc = vmm_host_irq_enable(dev->irq))) {
-		vmm_printf("%s: failed to enable irq %02x for dev %s",
-				__func__, dev->irq, dev->name);
-		return VMM_EFAIL;
-	}
 
 	return 0;
 }
