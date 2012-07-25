@@ -56,13 +56,33 @@ struct vmm_workqueue {
 };
 
 #define INIT_WORK(work, _func, _data)	do { \
-					INIT_SPIN_LOCK(&work->lock); \
-					INIT_LIST_HEAD(&work->head); \
-					work->flags = VMM_WORK_STATE_CREATED; \
-					work->wq = NULL; \
-					work->func = _func; \
-					work->data = _data; \
-					} while (0); 
+					INIT_SPIN_LOCK(&(work)->lock); \
+					INIT_LIST_HEAD(&(work)->head); \
+					(work)->flags = VMM_WORK_STATE_CREATED; \
+					(work)->wq = NULL; \
+					(work)->func = _func; \
+					(work)->data = _data; \
+					} while (0);
+
+#define __WORK_INITIALIZER(n, f) {				\
+	.lock = __SPINLOCK_INITIALIZER((n).lock),		\
+	.flags = VMM_WORK_STATE_CREATED,			\
+	.head	= { &(n).head, &(n).head },			\
+	.wq = NULL,						\
+	.func = (f),						\
+	.data = NULL,						\
+	}
+
+#define DECLARE_WORK(n, f)					\
+	struct vmm_work n = __WORK_INITIALIZER(n, f)
+
+/*
+ * initialize a work item's function pointer
+ */
+#define PREPARE_WORK(_work, _func)				\
+	do {							\
+		(_work)->func = (_func);			\
+	} while (0)
 
 /** Check if work is new */
 bool vmm_workqueue_work_isnew(struct vmm_work * work);
