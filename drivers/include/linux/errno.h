@@ -1,5 +1,5 @@
-#ifndef _LINUX_ERROR_H
-#define _LINUX_ERROR_H
+#ifndef _LINUX_ERRNO_H
+#define _LINUX_ERRNO_H
 
 #include <vmm_error.h>
 
@@ -13,4 +13,4 @@
 #define ENODEV			-(VMM_ENODEV)
 #define ETIMEDOUT		-(VMM_ETIMEDOUT)
 
-#endif /* defined(_LINUX_ERROR_H) */
+#endif /* defined(_LINUX_ERRNO_H) */
