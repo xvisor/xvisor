@@ -31,7 +31,9 @@
 #ifndef _SERIO_H
 #define _SERIO_H
 
+#include <linux/mutex.h>
 #include <linux/types.h>
+#include <linux/device.h>
 #include <linux/bitops.h>
 #include <linux/interrupt.h>
 #include <linux/list.h>
@@ -65,9 +67,9 @@ struct serio {
 	unsigned int depth;		/* level of nesting in serio hierarchy */
 
 	struct serio_driver *drv;	/* accessed from interrupt, must be protected by serio->lock and serio->sem */
-	spinlock_t drv_lock;		/* protects serio->drv so attributes can pin driver */
+	struct mutex drv_mutex;		/* protects serio->drv so attributes can pin driver */
 
-	void *priv;
+	struct device dev;
 
 	struct list_head node;
 };
@@ -133,12 +135,12 @@ static inline void serio_drv_write_wakeup(struct serio *serio)
  */
 static inline void *serio_get_drvdata(struct serio *serio)
 {
-	return serio->priv;
+	return serio->dev.priv;
 }
 
 static inline void serio_set_drvdata(struct serio *serio, void *data)
 {
-	serio->priv = data;
+	serio->dev.priv = data;
 }
 
 /*

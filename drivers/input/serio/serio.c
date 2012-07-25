@@ -30,9 +30,11 @@
  * The original code is licensed under the GPL.
  */
 
-#include <vmm_error.h>
-#include <vmm_heap.h>
 #include <vmm_modules.h>
+#include <linux/errno.h>
+#include <linux/printk.h>
+#include <linux/slab.h>
+#include <linux/workqueue.h>
 #include <linux/serio.h>
 
 #define MODULE_VARID			serio_framework_module
@@ -43,10 +45,10 @@
 #define	MODULE_EXIT			serio_exit
 
 /*
- * serio_lock protects entire serio subsystem and is taken every time
+ * serio_mutex protects entire serio subsystem and is taken every time
  * serio port or driver registered or unregistered.
  */
-static spinlock_t serio_lock;
+static DEFINE_MUTEX(serio_mutex);
 
 static LIST_HEAD(serio_list);
 
@@ -61,11 +63,10 @@ static void serio_attach_driver(struct serio_driver *drv);
 static int serio_connect_driver(struct serio *serio, struct serio_driver *drv)
 {
 	int retval;
-	irq_flags_t flags;
 
-	spin_lock_irqsave(&serio->drv_lock, flags);
+	mutex_lock(&serio->drv_mutex);
 	retval = drv->connect(serio, drv);
-	spin_unlock_irqrestore(&serio->drv_lock, flags);
+	mutex_unlock(&serio->drv_mutex);
 
 	return retval;
 }
@@ -73,24 +74,21 @@ static int serio_connect_driver(struct serio *serio, struct serio_driver *drv)
 static int serio_reconnect_driver(struct serio *serio)
 {
 	int retval = -1;
-	irq_flags_t flags;
 
-	spin_lock_irqsave(&serio->drv_lock, flags);
+	mutex_lock(&serio->drv_mutex);
 	if (serio->drv && serio->drv->reconnect)
 		retval = serio->drv->reconnect(serio);
-	spin_unlock_irqrestore(&serio->drv_lock, flags);
+	mutex_unlock(&serio->drv_mutex);
 
 	return retval;
 }
 
 static void serio_disconnect_driver(struct serio *serio)
 {
-	irq_flags_t flags;
-
-	spin_lock_irqsave(&serio->drv_lock, flags);
+	mutex_lock(&serio->drv_mutex);
 	if (serio->drv)
 		serio->drv->disconnect(serio);
-	spin_unlock_irqrestore(&serio->drv_lock, flags);
+	mutex_unlock(&serio->drv_mutex);
 }
 
 static int serio_match_port(const struct serio_device_id *ids, struct serio *serio)
@@ -116,7 +114,7 @@ static int serio_bind_driver(struct serio *serio, struct serio_driver *drv)
 		serio->drv = drv;
 		if (serio_connect_driver(serio, drv)) {
 			serio->drv = NULL;
-			return VMM_ENODEV;
+			return -ENODEV;
 		}
 	}
 	return 0;
@@ -139,21 +137,205 @@ static void serio_find_driver(struct serio *serio)
 	}
 }
 
-static void serio_attach_driver(struct serio_driver *drv)
-{
-	struct list_head *l;
-	struct serio *serio;
+/*
+ * Serio event processing.
+ */
 
-	if (!drv) {
-		return;
+enum serio_event_type {
+	SERIO_RESCAN_PORT,
+	SERIO_RECONNECT_PORT,
+	SERIO_RECONNECT_SUBTREE,
+	SERIO_REGISTER_PORT,
+	SERIO_ATTACH_DRIVER,
+};
+
+struct serio_event {
+	enum serio_event_type type;
+	void *object;
+	struct list_head node;
+};
+
+static DEFINE_SPINLOCK(serio_event_lock);	/* protects serio_event_list */
+static LIST_HEAD(serio_event_list);
+
+static struct serio_event *serio_get_event(void)
+{
+	struct serio_event *event = NULL;
+	irq_flags_t flags;
+
+	spin_lock_irqsave(&serio_event_lock, flags);
+
+	if (!list_empty(&serio_event_list)) {
+		event = list_first_entry(&serio_event_list,
+					 struct serio_event, node);
+		list_del_init(&event->node);
 	}
 
-	list_for_each(l, &serio_list) {
-		serio = list_entry(l, struct serio, node);
-		if (!serio->drv) {
-			serio_bind_driver(serio, drv);
+	spin_unlock_irqrestore(&serio_event_lock, flags);
+	return event;
+}
+
+static void serio_free_event(struct serio_event *event)
+{
+	kfree(event);
+}
+
+static void serio_remove_duplicate_events(void *object,
+					  enum serio_event_type type)
+{
+	struct serio_event *e, *next;
+	irq_flags_t flags;
+
+	spin_lock_irqsave(&serio_event_lock, flags);
+
+	list_for_each_entry_safe(e, next, &serio_event_list, node) {
+		if (object == e->object) {
+			/*
+			 * If this event is of different type we should not
+			 * look further - we only suppress duplicate events
+			 * that were sent back-to-back.
+			 */
+			if (type != e->type)
+				break;
+
+			list_del_init(&e->node);
+			serio_free_event(e);
 		}
 	}
+
+	spin_unlock_irqrestore(&serio_event_lock, flags);
+}
+
+static void serio_handle_event(struct vmm_work *work)
+{
+	struct serio_event *event;
+
+	mutex_lock(&serio_mutex);
+
+	while ((event = serio_get_event())) {
+
+		switch (event->type) {
+
+		case SERIO_REGISTER_PORT:
+			serio_add_port(event->object);
+			break;
+
+		case SERIO_RECONNECT_PORT:
+			serio_reconnect_port(event->object);
+			break;
+
+		case SERIO_RESCAN_PORT:
+			serio_disconnect_port(event->object);
+			serio_find_driver(event->object);
+			break;
+
+		case SERIO_RECONNECT_SUBTREE:
+			serio_reconnect_subtree(event->object);
+			break;
+
+		case SERIO_ATTACH_DRIVER:
+			serio_attach_driver(event->object);
+			break;
+		}
+
+		serio_remove_duplicate_events(event->object, event->type);
+		serio_free_event(event);
+	}
+
+	mutex_unlock(&serio_mutex);
+}
+
+static DECLARE_WORK(serio_event_work, serio_handle_event);
+
+static int serio_queue_event(void *object,
+			     enum serio_event_type event_type)
+{
+	unsigned long flags;
+	struct serio_event *event;
+	int retval = 0;
+
+	spin_lock_irqsave(&serio_event_lock, flags);
+
+	/*
+	 * Scan event list for the other events for the same serio port,
+	 * starting with the most recent one. If event is the same we
+	 * do not need add new one. If event is of different type we
+	 * need to add this event and should not look further because
+	 * we need to preseve sequence of distinct events.
+	 */
+	list_for_each_entry_reverse(event, &serio_event_list, node) {
+		if (event->object == object) {
+			if (event->type == event_type)
+				goto out;
+			break;
+		}
+	}
+
+	event = kmalloc(sizeof(struct serio_event), GFP_ATOMIC);
+	if (!event) {
+		printk("Not enough memory to queue event %d\n", event_type);
+		retval = -ENOMEM;
+		goto out;
+	}
+
+	event->type = event_type;
+	event->object = object;
+
+	list_add_tail(&event->node, &serio_event_list);
+	queue_work(system_long_wq, &serio_event_work);
+
+out:
+	spin_unlock_irqrestore(&serio_event_lock, flags);
+	return retval;
+}
+
+/*
+ * Remove all events that have been submitted for a given
+ * object, be it serio port or driver.
+ */
+static void serio_remove_pending_events(void *object)
+{
+	struct serio_event *event, *next;
+	unsigned long flags;
+
+	spin_lock_irqsave(&serio_event_lock, flags);
+
+	list_for_each_entry_safe(event, next, &serio_event_list, node) {
+		if (event->object == object) {
+			list_del_init(&event->node);
+			serio_free_event(event);
+		}
+	}
+
+	spin_unlock_irqrestore(&serio_event_lock, flags);
+}
+
+/*
+ * Locate child serio port (if any) that has not been fully registered yet.
+ *
+ * Children are registered by driver's connect() handler so there can't be a
+ * grandchild pending registration together with a child.
+ */
+static struct serio *serio_get_pending_child(struct serio *parent)
+{
+	struct serio_event *event;
+	struct serio *serio, *child = NULL;
+	unsigned long flags;
+
+	spin_lock_irqsave(&serio_event_lock, flags);
+
+	list_for_each_entry(event, &serio_event_list, node) {
+		if (event->type == SERIO_REGISTER_PORT) {
+			serio = event->object;
+			if (serio->parent == parent) {
+				child = serio;
+				break;
+			}
+		}
+	}
+
+	spin_unlock_irqrestore(&serio_event_lock, flags);
+	return child;
 }
 
 /*
@@ -164,8 +346,8 @@ static void serio_init_port(struct serio *serio)
 	INIT_LIST_HEAD(&serio->node);
 	INIT_LIST_HEAD(&serio->child_node);
 	INIT_LIST_HEAD(&serio->children);
-	INIT_SPIN_LOCK(&serio->lock);
-	INIT_SPIN_LOCK(&serio->drv_lock);
+	spin_lock_init(&serio->lock);
+	mutex_init(&serio->drv_mutex);
 	serio->drv = NULL;
 	if (serio->parent) {
 		serio->depth = serio->parent->depth + 1;
@@ -202,6 +384,12 @@ static void serio_add_port(struct serio *serio)
  */
 static void serio_destroy_port(struct serio *serio)
 {
+	struct serio *child;
+
+	while ((child = serio_get_pending_child(serio)) != NULL) {
+		serio_remove_pending_events(child);
+	}
+
 	if (serio->stop)
 		serio->stop(serio);
 
@@ -337,23 +525,31 @@ static void serio_cleanup(struct serio *serio)
 }
 #endif
 
+static void serio_attach_driver(struct serio_driver *drv)
+{
+	struct list_head *l;
+	struct serio *serio;
+
+	if (!drv) {
+		return;
+	}
+
+	list_for_each(l, &serio_list) {
+		serio = list_entry(l, struct serio, node);
+		if (!serio->drv) {
+			serio_bind_driver(serio, drv);
+		}
+	}
+}
+
 void serio_rescan(struct serio *serio)
 {
-	irq_flags_t flags;
-
-	spin_lock_irqsave(&serio_lock, flags);
-	serio_disconnect_port(serio);
-	serio_find_driver(serio);
-	spin_unlock_irqrestore(&serio_lock, flags);
+	serio_queue_event(serio, SERIO_RESCAN_PORT);
 }
 
 void serio_reconnect(struct serio *serio)
 {
-	irq_flags_t flags;
-
-	spin_lock_irqsave(&serio_lock, flags);
-	serio_reconnect_subtree(serio);
-	spin_unlock_irqrestore(&serio_lock, flags);
+	serio_queue_event(serio, SERIO_RECONNECT_SUBTREE);
 }
 
 /*
@@ -362,12 +558,8 @@ void serio_reconnect(struct serio *serio)
  */
 void __serio_register_port(struct serio *serio)
 {
-	irq_flags_t flags;
-
 	serio_init_port(serio);
-	spin_lock_irqsave(&serio_lock, flags);
-	serio_add_port(serio);
-	spin_unlock_irqrestore(&serio_lock, flags);
+	serio_queue_event(serio, SERIO_REGISTER_PORT);
 }
 
 /*
@@ -375,12 +567,10 @@ void __serio_register_port(struct serio *serio)
  */
 void serio_unregister_port(struct serio *serio)
 {
-	irq_flags_t flags;
-
-	spin_lock_irqsave(&serio_lock, flags);
+	mutex_lock(&serio_mutex);
 	serio_disconnect_port(serio);
 	serio_destroy_port(serio);
-	spin_unlock_irqrestore(&serio_lock, flags);
+	mutex_unlock(&serio_mutex);
 }
 
 /*
@@ -388,32 +578,30 @@ void serio_unregister_port(struct serio *serio)
  */
 void serio_unregister_child_port(struct serio *serio)
 {
-	irq_flags_t flags;
 	struct serio *s, *next;
 
-	spin_lock_irqsave(&serio_lock, flags);
+	mutex_lock(&serio_mutex);
 	list_for_each_entry_safe(s, next, &serio->children, child_node) {
 		serio_disconnect_port(s);
 		serio_destroy_port(s);
 	}
-	spin_unlock_irqrestore(&serio_lock, flags);
+	mutex_unlock(&serio_mutex);
 }
 
 int __serio_register_driver(struct serio_driver *drv, const char *name)
 {
 	bool found;
-	irq_flags_t flags;
 	struct dlist *l;
 	struct serio_driver *sdrv;
 
 	if (!(drv && name)) {
-		return VMM_EFAIL;
+		return -EFAIL;
 	}
 
 	sdrv = NULL;
 	found = FALSE;
 
-	spin_lock_irqsave(&serio_lock, flags);
+	mutex_lock(&serio_mutex);
 
 	list_for_each(l, &serio_drv_list) {
 		sdrv = list_entry(l, struct serio_driver, node);
@@ -424,8 +612,8 @@ int __serio_register_driver(struct serio_driver *drv, const char *name)
 	}
 
 	if (found) {
-		spin_unlock_irqrestore(&serio_lock, flags);
-		return VMM_EFAIL;
+		mutex_unlock(&serio_mutex);
+		return -EFAIL;
 	}
 
 	drv->name = name;
@@ -433,19 +621,20 @@ int __serio_register_driver(struct serio_driver *drv, const char *name)
 	INIT_LIST_HEAD(&drv->node);
 	list_add_tail(&drv->node, &serio_drv_list);
 
-	serio_attach_driver(drv);
+	mutex_unlock(&serio_mutex);
 
-	spin_unlock_irqrestore(&serio_lock, flags);
-
-	return VMM_OK;
+	return serio_queue_event(drv, SERIO_ATTACH_DRIVER);
 }
 
 void serio_unregister_driver(struct serio_driver *drv)
 {
-	irq_flags_t flags;
 	struct serio *serio;
 
-	spin_lock_irqsave(&serio_lock, flags);
+	mutex_lock(&serio_mutex);
+
+	serio_remove_pending_events(drv);
+
+	list_del(&drv->node);
 
 start_over:
 	list_for_each_entry(serio, &serio_list, node) {
@@ -457,9 +646,7 @@ start_over:
 		}
 	}
 
-	list_del(&drv->node);
-
-	spin_unlock_irqrestore(&serio_lock, flags);
+	mutex_unlock(&serio_mutex);
 }
 
 /* called from serio_driver->connect/disconnect methods under serio_mutex */
@@ -505,11 +692,7 @@ irqreturn_t serio_interrupt(struct serio *serio,
 
 static int __init serio_init(void)
 {
-	INIT_LIST_HEAD(&serio_list);
-	INIT_LIST_HEAD(&serio_drv_list);
-	INIT_SPIN_LOCK(&serio_lock);
-
-	return VMM_OK;
+	return 0;
 }
 
 static void serio_exit(void)
