@@ -40,6 +40,13 @@ struct vmm_waitqueue {
 				(wqptr)->vcpu_count = 0; \
 				} while (0);
 
+#define __WAITQUEUE_INITIALIZER(wq) \
+		{ \
+			.lock = __SPINLOCK_INITIALIZER((wq).lock), \
+			.vcpu_list = { &(wq).vcpu_list, &(wq).vcpu_list }, \
+			.vcpu_count = 0, \
+		}
+
 /** Lowlevel waitqueue sleep.
  *  Note: This function should only be called with wq->lock held using
  *  vmm_spin_lock_irq() API
