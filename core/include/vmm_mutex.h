@@ -41,6 +41,16 @@ struct vmm_mutex {
 					INIT_WAITQUEUE(&(mut)->wq); \
 					} while (0);
 
+#define __MUTEX_INITIALIZER(mut) \
+		{ \
+			.lock = 0, \
+			.owner = NULL, \
+			.wq = __WAITQUEUE_INITIALIZER(mut.wq), \
+		}
+
+#define DEFINE_MUTEX(mut) \
+	struct vmm_mutex mut = __MUTEX_INITIALIZER(mut)
+
 /** Check if mutex is available */
 bool vmm_mutex_avail(struct vmm_mutex *mut);
 
