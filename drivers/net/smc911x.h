@@ -16,26 +16,26 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file smsc-911x.h
+ * @file smc911x.h
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @brief macros for SMSC's LAN911{5,6,7,8} single-chip Ethernet device.
  *
  * The source has been largely adapted from Linux 3.x or higher:
- * drivers/net/sms911x.h
+ * drivers/net/smc911x.h
  *
  * Copyright (C) 2005 Sensoria Corp
  *
  * The original code is licensed under the GPL.
  */
 
-#ifndef __SMSC_911X_H___
-#define __SMSC_911X_H___
+#ifndef __SMC911X_H___
+#define __SMC911X_H___
 
 #include <vmm_host_io.h>
-#include <vmm_spinlocks.h>
 #include <vmm_workqueue.h>
 #include <net/vmm_mbuf.h>
 #include <linux/mii.h>
+#include <linux/spinlock.h>
 
 #define local_irq_save(flags) \
 		flags = arch_cpu_irq_save()
@@ -138,7 +138,7 @@ struct smc911x_local {
 
 	struct vmm_work phy_configure;
 	int tx_throttle;
-	struct vmm_spinlock lock;
+	spinlock_t lock;
 	struct vmm_netdev *netdev;
 
 #ifdef SMC_USE_DMA

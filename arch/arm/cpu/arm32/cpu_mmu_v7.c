@@ -494,6 +494,8 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 		 */
 		if(read_ttbr0() == l1->tbl_pa) {
 			invalid_tlb_line(pg->va);
+			dsb();
+			isb();
 		}
 	}
 
@@ -742,6 +744,8 @@ static int cpu_mmu_split_reserved_page(struct cpu_page *pg, virtual_size_t rsize
 			cpu_mmu_l2tbl_attach(l1, l2, pg->imp, pg->dom, pg->va,
 					     TRUE);
 			invalid_tlb();
+			dsb();
+			isb();
 			break;
 		default:
 			BUG_ON("%s: Unimplemented (target size 0x%x)\n",
@@ -984,6 +988,8 @@ u32 cpu_mmu_physical_read32(physical_addr_t pa)
 			l1_tte[ite] = 0x0;
 			cpu_mmu_sync_tte(&l1_tte[ite]);
 			invalid_tlb_line(va);
+			dsb();
+			isb();
 		}
 	}
 
@@ -1024,6 +1030,8 @@ void cpu_mmu_physical_write32(physical_addr_t pa, u32 val)
 			l1_tte[ite] = 0x0;
 			cpu_mmu_sync_tte(&l1_tte[ite]);
 			invalid_tlb_line(va);
+			dsb();
+			isb();
 		}
 	}
 
@@ -1037,12 +1045,14 @@ int cpu_mmu_chdacr(u32 new_dacr)
 	u32 old_dacr;
 
 	old_dacr = read_dacr();
+	isb();
 
 	new_dacr &= ~0x3;
 	new_dacr |= old_dacr & 0x3;
 
 	if (new_dacr != old_dacr) {
 		write_dacr(new_dacr);
+		isb();
 	}
 
 	return VMM_OK;
@@ -1062,14 +1072,23 @@ int cpu_mmu_chttbr(struct cpu_l1tbl * l1)
 		return VMM_OK;
 	}
 
+	/* Set ASID to default L1 table */
+	write_contextidr((((u32)mmuctrl.defl1.num) & 0xFF));
+
+	/* Instruction barrier */
+	isb();
+
 	/* Update TTBR0 to point to new L1 table */
 	write_ttbr0(l1->tbl_pa);
 
 	/* Instruction barrier */
 	isb();
 
-	/* Update Context ID register */
+	/* Set ASID to new L1 table */
 	write_contextidr((((u32)l1->num) & 0xFF));
+
+	/* Instruction barrier */
+	isb();
 
 	return VMM_OK;
 }
@@ -1174,6 +1193,8 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		val = val << 2;
 		*((u32 *)(mmuctrl.defl1.tbl_va + val)) = 0x0;
 		invalid_tlb();
+		dsb();
+		isb();
 	}
 	mmuctrl.defl1.tte_cnt = 0;
 	for (i = 0; i < TTBL_L1TBL_SIZE; i += 4) {

@@ -201,11 +201,6 @@ int __init sp804_clockchip_init(virtual_addr_t base,
 	}
 #endif
 
-	/* Enable host interrupt line */
-	if ((rc = vmm_host_irq_enable(hirq))) {
-		return rc;
-	}
-
 	return vmm_clockchip_register(&cc->clkchip);
 }
 

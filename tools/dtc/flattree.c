@@ -129,34 +129,19 @@ static void emit_offset_label(FILE *f, const char *label, int offset)
 
 #define ASM_EMIT_BELONG(f, fmt, ...) \
 	{ \
-	if (little_endian) { \
-		fprintf((f), "\t.byte\t(" fmt ") & 0xff\n", __VA_ARGS__); \
-		fprintf((f), "\t.byte\t((" fmt ") >> 8) & 0xff\n", __VA_ARGS__); \
-		fprintf((f), "\t.byte\t((" fmt ") >> 16) & 0xff\n", __VA_ARGS__); \
-		fprintf((f), "\t.byte\t((" fmt ") >> 24) & 0xff\n", __VA_ARGS__); \
-	} else { \
 		fprintf((f), "\t.byte\t((" fmt ") >> 24) & 0xff\n", __VA_ARGS__); \
 		fprintf((f), "\t.byte\t((" fmt ") >> 16) & 0xff\n", __VA_ARGS__); \
 		fprintf((f), "\t.byte\t((" fmt ") >> 8) & 0xff\n", __VA_ARGS__); \
 		fprintf((f), "\t.byte\t(" fmt ") & 0xff\n", __VA_ARGS__); \
-	} \
 	}
 
 static void asm_emit_cell(void *e, cell_t val)
 {
 	FILE *f = e;
 
-	if (little_endian) {
-		fprintf(f, "\t.byte 0x%02x; .byte 0x%02x; "
-			   ".byte 0x%02x; .byte 0x%02x\n",
-			val & 0xff, (val >> 8) & 0xff,
-			(val >> 16) & 0xff, (val >> 24) & 0xff);
-	} else {
-		fprintf(f, "\t.byte 0x%02x; .byte 0x%02x; "
-			   ".byte 0x%02x; .byte 0x%02x\n",
-			(val >> 24) & 0xff, (val >> 16) & 0xff,
-			(val >> 8) & 0xff, val & 0xff);
-	}
+	fprintf(f, "\t.byte 0x%02x; .byte 0x%02x; .byte 0x%02x; .byte 0x%02x\n",
+		(val >> 24) & 0xff, (val >> 16) & 0xff,
+		(val >> 8) & 0xff, val & 0xff);
 }
 
 static void asm_emit_string(void *e, char *str, int len)

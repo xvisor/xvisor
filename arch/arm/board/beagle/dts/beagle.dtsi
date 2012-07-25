@@ -1,9 +1,6 @@
 
 / {
 	vmm {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
 		net {
 			netbridge0 {
 				device_type = "netswitch";
@@ -13,16 +10,10 @@
 	};
 
 	host {
-		#address-cells = <2>;
-		#size-cells = <1>;
 		model = "beagle-omap3530";
 		device_type = "host";
 		
 		cpus {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			cpu_freq_mhz = <100>;
-
 			cpu@0 {
 				device_type = "cpu";
 				model = "Cortex-A8";
@@ -35,13 +26,10 @@
 		};
 
 		l3 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
 			l4 {
 				#address-cells = <1>;
-				#size-cells = <0>;
-			
+				#size-cells = <1>;
+
 				uart0 {
 					device_type = "serial";
 					compatible = "st16654";

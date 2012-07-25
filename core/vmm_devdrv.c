@@ -204,7 +204,7 @@ int vmm_devdrv_regmap(struct vmm_device * dev,
 {
 	const char *aval;
 	physical_addr_t pa;
-	virtual_size_t sz;
+	physical_size_t sz;
 
 	if (!dev || !addr || regset < 0) {
 		return VMM_EFAIL;
@@ -223,7 +223,7 @@ int vmm_devdrv_regmap(struct vmm_device * dev,
 			aval += regset * (sizeof(pa) + sizeof(sz));
 			pa = *((physical_addr_t *)aval);
 			aval += sizeof(pa);
-			sz = *((virtual_size_t *)aval);
+			sz = *((physical_size_t *)aval);
 			*addr = vmm_host_iomap(pa, sz);
 		} else {
 			return VMM_EFAIL;
@@ -231,6 +231,36 @@ int vmm_devdrv_regmap(struct vmm_device * dev,
 	}
 
 	return VMM_OK;
+}
+
+int vmm_devdrv_regunmap(struct vmm_device * dev, 
+		      virtual_addr_t addr, int regset)
+{
+	const char *aval;
+	physical_addr_t pa;
+	physical_size_t sz;
+
+	if (!dev || regset < 0) {
+		return VMM_EFAIL;
+	}
+
+	aval = vmm_devtree_attrval(dev->node,
+				   VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME);
+	if (aval) {
+		return VMM_OK;
+	}
+
+	aval = vmm_devtree_attrval(dev->node,
+				   VMM_DEVTREE_REG_ATTR_NAME);
+	if (aval) {
+		aval += regset * (sizeof(pa) + sizeof(sz));
+		pa = *((physical_addr_t *)aval);
+		aval += sizeof(pa);
+		sz = *((physical_size_t *)aval);
+		return vmm_host_iounmap(addr, sz);
+	}
+
+	return VMM_EFAIL;
 }
 
 bool vmm_devdrv_clock_isenabled(struct vmm_device * dev)

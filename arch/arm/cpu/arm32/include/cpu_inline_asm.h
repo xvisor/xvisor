@@ -55,17 +55,14 @@ static inline u16 rev16(u16 v)
 
 #else
 
-#define rev64(val)		({ u32 d1, d2; \
-				d1 = (u32)((u64)val >> 32); d2 = (u32)val; \
-				asm volatile(" rev %0, %0\n\t" : "=r" (d1) : : \
-				"memory", "cc"); \
-				asm volatile(" rev %0, %0\n\t" : "=r" (d2) : : \
-				"memory", "cc"); \
-				(((u64)d2 << 32) | ((u64)d1));})
-
 #define rev32(val)		({ u32 rval; asm volatile(\
 				" rev     %0, %1\n\t" : "=r" (rval) : \
 				"r" (val) : "memory", "cc"); rval;})
+
+#define rev64(val)		({ u32 d1, d2; \
+				d1 = (u32)((u64)val >> 32); d2 = (u32)val; \
+				d1 = rev32(d1); d2 = rev32(d2); \
+				(((u64)d2 << 32) | ((u64)d1));})
 
 #define rev16(val)		({ u16 rval; asm volatile(\
 				" rev16   %0, %1\n\t" : "=r" (rval) : \

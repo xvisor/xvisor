@@ -5,38 +5,25 @@
 
 / {
 	guests {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
 		guest0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
 			model = "vexpress-a9";
 			device_type = "guest";
 
 			vcpus {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
 				vcpu0 {
 					device_type = "vcpu";
 					compatible = "ARMv7a,cortex-a9";
-					time_slice = <50000000>;
 					start_pc = <0x40000000>;
 				};
 
 				vcpu1 {
 					device_type = "vcpu";
 					compatible = "ARMv7a,cortex-a9";
-					time_slice = <50000000>;
 					start_pc = <0x40000000>;
 				};
 			};
 			
 			aspace {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
 				/* Assume the REMAP region is mapped to DDR */
 				mem0 {
 					manifest_type = "alias";
@@ -328,6 +315,5 @@
 				};
 			};
 		};
-
 	};
 };

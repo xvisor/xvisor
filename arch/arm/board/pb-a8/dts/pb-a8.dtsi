@@ -1,9 +1,6 @@
 
 / {
 	vmm {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
 		net {
 			netbridge0 {
 				device_type = "netswitch";
@@ -13,16 +10,10 @@
 	};
 
 	host {
-		#address-cells = <2>;
-		#size-cells = <1>;
 		model = "realview-pb-a8";
 		device_type = "host";
 		
 		cpus {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			cpu_freq_mhz = <100>;
-
 			cpu0 {
 				device_type = "cpu";
 				model = "Cortex-A8";
@@ -40,13 +31,26 @@
 		};
 
 		nbridge {
-			#address-cells = <1>;
-			#size-cells = <0>;
-		
 			sbridge {
 				#address-cells = <1>;
-				#size-cells = <0>;
-		
+				#size-cells = <1>;
+
+				kmi0 { /* Keyboard */
+			      		device_type = "serio";
+			      		compatible = "ambakmi";
+			      		reg = <0x10006000 0x1000>;
+					clock-rate = <24000000>;
+					irq = <52>;
+				};
+
+				kmi1 { /* Mouse */
+			      		device_type = "serio";
+			      		compatible = "ambakmi";
+			      		reg = <0x10007000 0x1000>;
+					clock-rate = <24000000>;
+					irq = <53>;
+				};
+
 				uart0 {
 			      		device_type = "serial";
 			      		compatible = "pl011";
@@ -66,7 +70,7 @@
 
 				eth0 {
 					device_type = "nic";
-					compatible = "smsc911x";
+					compatible = "smc911x";
 					reg = <0x4E000000 0x1000>;
 					irq = <60>;
 					switch = "netbridge0";

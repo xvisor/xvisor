@@ -1,21 +1,13 @@
 
 / {
 	vmm {
-		#address-cells = <1>;
-		#size-cells = <0>;
 	};
 
 	host {
-		#address-cells = <2>;
-		#size-cells = <1>;
 		model = "versatilepb";
 		device_type = "host";
 		
 		cpus {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			cpu_freq_mhz = <100>;
-
 			cpu0 {
 				device_type = "cpu";
 				model = "ARM926ej";
@@ -28,13 +20,10 @@
 		};
 
 		nbridge {
-			#address-cells = <1>;
-			#size-cells = <0>;
-		
 			sbridge {
 				#address-cells = <1>;
-				#size-cells = <0>;
-		
+				#size-cells = <1>;
+
 				uart0 {
 			      		device_type = "serial";
 			      		compatible = "pl011";

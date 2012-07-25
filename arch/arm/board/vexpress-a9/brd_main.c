@@ -40,12 +40,11 @@ extern u32 dt_blob_start;
 static virtual_addr_t v2m_sys_base;
 static vmm_spinlock_t v2m_cfg_lock;
 
-int arch_board_ram_start(physical_addr_t * addr)
+int arch_board_ram_start(physical_addr_t *addr)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
-	struct fdt_node_header * fdt_node;
-	struct fdt_property * prop;
+	struct fdt_node_header *fdt_node;
 	
 	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
 	if (rc) {
@@ -61,22 +60,20 @@ int arch_board_ram_start(physical_addr_t * addr)
 		return VMM_EFAIL;
 	}
 
-	prop = libfdt_get_property(&fdt, fdt_node,
-				   VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME);
-	if (!prop) {
-		return VMM_EFAIL;
+	rc = libfdt_get_property(&fdt, fdt_node,
+				 VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME, addr);
+	if (rc) {
+		return rc;
 	}
-	*addr = *((physical_addr_t *)prop->data);
 
 	return VMM_OK;
 }
 
-int arch_board_ram_size(physical_size_t * size)
+int arch_board_ram_size(physical_size_t *size)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
-	struct fdt_node_header * fdt_node;
-	struct fdt_property * prop;
+	struct fdt_node_header *fdt_node;
 	
 	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
 	if (rc) {
@@ -92,12 +89,11 @@ int arch_board_ram_size(physical_size_t * size)
 		return VMM_EFAIL;
 	}
 
-	prop = libfdt_get_property(&fdt, fdt_node,
-				   VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME);
-	if (!prop) {
-		return VMM_EFAIL;
+	rc = libfdt_get_property(&fdt, fdt_node,
+				 VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME, size);
+	if (rc) {
+		return rc;
 	}
-	*size = *((physical_size_t *)prop->data);
 
 	return VMM_OK;
 }

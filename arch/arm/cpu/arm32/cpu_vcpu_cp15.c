@@ -722,7 +722,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 			      u32 far, u32 fs, u32 dom,
 			      u32 wnr, u32 xn, bool force_user)
 {
-	u32 orig_domain;
+	u32 orig_domain, tre_index, tre_inner, tre_outer, tre_type;
 	u32 ecode, reg_flags;
 	bool is_user;
 	int rc, access_type;
@@ -835,8 +835,68 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	pg.c = pg.c && (reg_flags & VMM_REGION_CACHEABLE);
-	pg.b = pg.b && (reg_flags & VMM_REGION_BUFFERABLE);
+	if (arm_feature(vcpu, ARM_FEATURE_V7) &&
+	    (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_TRE_MASK)) {
+		tre_index = ((pg.tex & 0x1) << 2) |
+			    ((pg.c & 0x1) << 1) |
+			    (pg.b & 0x1);
+		tre_inner = arm_priv(vcpu)->cp15.c10_nmrr >> (tre_index * 2);
+		tre_inner &= 0x3;
+		tre_outer = arm_priv(vcpu)->cp15.c10_nmrr >> (tre_index * 2);
+		tre_outer = (tre_outer >> 16) & 0x3;
+		tre_type = arm_priv(vcpu)->cp15.c10_prrr >> (tre_index * 2);
+		tre_type &= 0x3;
+		switch (tre_type) {
+		case 0: /* Strongly-Ordered Memory */
+			pg.c = 0;
+			pg.b = 0;
+			pg.tex = 0;
+			pg.s = 1;
+			break;
+		case 1: /* Device Memory */
+			pg.c = (tre_inner & 0x2) >> 1;
+			pg.b = (tre_inner & 0x1);
+			pg.tex = 0x4 | tre_outer;
+			pg.s = arm_priv(vcpu)->cp15.c10_prrr >> (16 + pg.s);
+			break;
+		case 2: /* Normal Memory */
+			pg.c = (tre_inner & 0x2) >> 1;
+			pg.b = (tre_inner & 0x1);
+			pg.tex = 0x4 | tre_outer;
+			pg.s = arm_priv(vcpu)->cp15.c10_prrr >> (18 + pg.s);
+			break;
+		case 3:
+		default:
+			pg.c = 0;
+			pg.b = 0;
+			pg.tex = 0;
+			pg.s = 0;
+			break;
+		};
+	}
+
+	if (pg.tex & 0x4) {
+		if (reg_flags & VMM_REGION_CACHEABLE) {
+			if (!(reg_flags & VMM_REGION_BUFFERABLE)) {
+				if ((pg.c == 0 && pg.b == 1) ||
+				    (pg.c == 1 && pg.b == 1)) {
+					pg.c = 1;
+					pg.b = 0;
+				}
+				if (((pg.tex & 0x3) == 0x1) ||
+				    ((pg.tex & 0x3) == 0x3)) {
+					pg.tex = 0x6;
+				}
+			}
+		} else {
+			pg.c = 0;
+			pg.b = 0;
+			pg.tex = 0x4;
+		}
+	} else {
+		pg.c = pg.c && (reg_flags & VMM_REGION_CACHEABLE);
+		pg.b = pg.b && (reg_flags & VMM_REGION_BUFFERABLE);
+	}
 
 	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg, orig_domain);
 }
@@ -1188,6 +1248,22 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 	case 10:		/* MMU TLB lockdown.  */
 		/* ??? TLB lockdown not implemented.  */
 		*data = 0;
+		switch (CRm) {
+		case 2:
+			switch (opc2) {
+			case 0:
+				*data = arm_priv(vcpu)->cp15.c10_prrr;
+				break;
+			case 1:
+				*data = arm_priv(vcpu)->cp15.c10_nmrr;
+				break;
+			default:
+				break;
+			}
+			break;
+		default:
+			break;
+		};
 		break;
 	case 11:		/* TCM DMA control.  */
 	case 12:		/* Reserved.  */
@@ -1268,13 +1344,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			}
 
 			/* ??? Lots of these bits are not implemented.  */
-
-			if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
-				/* For SMP guests always flush entire VTLB.
-				 * This is for stability. ???
-				 */
-				cpu_vcpu_cp15_vtlb_flush(vcpu);
-			} else if (tmp != (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_MMU_MASK)) {
+			if (tmp != (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_MMU_MASK)) {
 				/* For single-core guests flush VTLB only when
 				 * MMU related bits in SCTLR changes
 				 */
@@ -1760,6 +1830,22 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		break;
 	case 10:		/* MMU TLB lockdown.  */
 		/* ??? TLB lockdown not implemented.  */
+		switch (CRm) {
+		case 2:
+			switch (opc2) {
+			case 0:
+				arm_priv(vcpu)->cp15.c10_prrr = data;
+				break;
+			case 1:
+				arm_priv(vcpu)->cp15.c10_nmrr = data;
+				break;
+			default:
+				break;
+			}
+			break;
+		default:
+			break;
+		};
 		break;
 	case 12:		/* Reserved.  */
 		goto bad_reg;
@@ -2116,8 +2202,6 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 		arm_priv(tvcpu)->cp15.c13_tls1 = read_tpidrurw();
 		arm_priv(tvcpu)->cp15.c13_tls2 = read_tpidruro();
 		arm_priv(tvcpu)->cp15.c13_tls3 = read_tpidrprw();
-		/* Ensure pending memory operations are complete */
-		dsb();
 	}
 	if (vcpu->is_normal) {
 		cpu_mmu_chdacr(arm_priv(vcpu)->cp15.dacr);
@@ -2134,6 +2218,9 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 			cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
 		}
 	}
+	/* Ensure pending memory operations are complete */
+	dsb();
+	isb();
 }
 
 static u32 cortexa9_cp15_c0_c1[8] =
@@ -2201,6 +2288,8 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	arm_priv(vcpu)->cp15.c2_mask = 0x0;
 	arm_priv(vcpu)->cp15.c2_base_mask = 0xFFFFC000;
 	arm_priv(vcpu)->cp15.c9_pmcr = (cpuid & 0xFF000000);
+	arm_priv(vcpu)->cp15.c10_prrr = 0x0;
+	arm_priv(vcpu)->cp15.c10_nmrr = 0x0;
 	/* Reset values of important registers */
 	switch (cpuid) {
 	case ARM_CPUID_ARM926:

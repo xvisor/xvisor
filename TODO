@@ -1,25 +1,24 @@
 
 		High-Priority Features (For version 0.2.0)
 
- * Add testsuit for completion, threads, workqueues, semaphore, mutex, etc.
-
-
-		Medium-Priority Features (For version 1.0.0)
-
- * Add support for SMP systems
-
-
-		Low-Priority Features (Our Wishlist)
-
  * Add networking capabilities.
  * Add remote command line interface for managment
  * Add network virtualization
+
+
+		Medium-Priority Features (For version 0.3.0)
+
+ * Add support for SMP systems
  * Add block device virtualization
  * Add light-weight virtual file system with at least 
    Ext2, FAT32, and ISO9660 support.
  * Add frame buffer virtualization
  * Add input device (mouse/keyboard) virtualization
  * Add libvirt tools support
+
+
+		Low-Priority Features (Our Wishlist)
+
  * Add VNC support
  * Add standalone tool for virtualbox image import
  * Support open virtualization format (create, modify and edit)

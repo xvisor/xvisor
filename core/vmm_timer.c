@@ -62,7 +62,14 @@ u64 __notrace vmm_timer_timestamp_for_profile(void)
 
 u64 vmm_timer_timestamp(void)
 {
-	return vmm_timecounter_read(&(this_cpu(tlc).tc));
+	u64 ret;
+	irq_flags_t flags;
+
+	flags = arch_cpu_irq_save();
+	ret = vmm_timecounter_read(&(this_cpu(tlc).tc));
+	arch_cpu_irq_restore(flags);
+
+	return ret;
 }
 
 static void vmm_timer_schedule_next_event(void)

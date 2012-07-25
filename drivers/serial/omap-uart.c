@@ -494,9 +494,6 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 					omap_uart_irq_handler, port))) {
 		goto free_port;
 	}
-	if ((rc = vmm_host_irq_enable(port->irq))) {
-		goto free_port;
-	}
 #else
 	omap_uart_lowlevel_init(port->base, port->reg_align,
 				port->baudrate, port->input_clock);

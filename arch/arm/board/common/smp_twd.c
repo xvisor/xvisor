@@ -196,11 +196,6 @@ int __init twd_clockchip_init(virtual_addr_t base,
 		if ((rc = vmm_host_irq_mark_per_cpu(ppi_hirq))) {
 			return rc;
 		}
-
-		/* Enable host interrupt line */
-		if ((rc = vmm_host_irq_enable(ppi_hirq))) {
-			return rc;
-		}
 	}
 
 	/* Explicitly enable local timer PPI in GIC 

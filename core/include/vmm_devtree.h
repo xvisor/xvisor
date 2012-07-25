@@ -71,6 +71,7 @@
 #define VMM_DEVTREE_HOST_PHYS_ATTR_NAME		"host_physical_addr"
 #define VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME	"alias_physical_addr"
 #define VMM_DEVTREE_PHYS_SIZE_ATTR_NAME		"physical_size"
+#define VMM_DEVTREE_SWITCH_ATTR_NAME		"switch"
 
 enum vmm_devtree_attrypes {
 	VMM_DEVTREE_ATTRTYPE_UNKNOWN = 0,
@@ -107,6 +108,14 @@ struct vmm_devtree_node {
 	struct dlist attr_list;
 	struct dlist child_list;
 };
+
+/** Check whether given attribute type is literal or literal list 
+ *  Note: literal means 32-bit or 64-bit number
+ */
+bool vmm_devtree_isliteral(u32 attrtype);
+
+/** Get size of literal corresponding to attribute type */
+u32 vmm_devtree_literal_size(u32 attrtype);
 
 /** Estimate type of attribute from its name */
 u32 vmm_devtree_estimate_attrtype(const char * name);

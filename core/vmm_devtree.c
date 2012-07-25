@@ -33,6 +33,56 @@ struct vmm_devtree_ctrl {
 
 static struct vmm_devtree_ctrl dtree_ctrl;
 
+bool vmm_devtree_isliteral(u32 attrtype)
+{
+	bool ret = FALSE;
+
+	switch(attrtype) {
+	case VMM_DEVTREE_ATTRTYPE_UNKNOWN:
+	case VMM_DEVTREE_ATTRTYPE_UINT32:
+	case VMM_DEVTREE_ATTRTYPE_UINT64:
+	case VMM_DEVTREE_ATTRTYPE_VIRTADDR:
+	case VMM_DEVTREE_ATTRTYPE_VIRTSIZE:
+	case VMM_DEVTREE_ATTRTYPE_PHYSADDR:
+	case VMM_DEVTREE_ATTRTYPE_PHYSSIZE:
+		ret = TRUE;
+		break;
+	};
+
+	return ret;
+}
+
+u32 vmm_devtree_literal_size(u32 attrtype)
+{
+	u32 ret = 0;
+
+	switch(attrtype) {
+	case VMM_DEVTREE_ATTRTYPE_UNKNOWN:
+		ret = sizeof(u32);
+		break;
+	case VMM_DEVTREE_ATTRTYPE_UINT32:
+		ret = sizeof(u32);
+		break;
+	case VMM_DEVTREE_ATTRTYPE_UINT64:
+		ret = sizeof(u64);
+		break;
+	case VMM_DEVTREE_ATTRTYPE_VIRTADDR:
+		ret = sizeof(virtual_addr_t);
+		break;
+	case VMM_DEVTREE_ATTRTYPE_VIRTSIZE:
+		ret = sizeof(virtual_size_t);
+		break;
+	case VMM_DEVTREE_ATTRTYPE_PHYSADDR:
+		ret = sizeof(physical_addr_t);
+		break;
+	case VMM_DEVTREE_ATTRTYPE_PHYSSIZE:
+		ret = sizeof(physical_size_t);
+		break;
+	};
+
+	return ret;
+}
+
 u32 vmm_devtree_estimate_attrtype(const char * name)
 {
 	u32 ret = VMM_DEVTREE_ATTRTYPE_UNKNOWN;
@@ -81,6 +131,8 @@ u32 vmm_devtree_estimate_attrtype(const char * name)
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
 	} else if (!vmm_strcmp(name, VMM_DEVTREE_PHYS_SIZE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
+	} else if (!vmm_strcmp(name, VMM_DEVTREE_SWITCH_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_STRING;
 	}
 
 	return ret;

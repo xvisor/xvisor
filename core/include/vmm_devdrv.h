@@ -114,6 +114,12 @@ int vmm_devdrv_remove(struct vmm_devtree_node * node,
 int vmm_devdrv_regmap(struct vmm_device * dev, 
 		      virtual_addr_t * addr, int regset);
 
+/** Unmap device registers from virtual address based on
+ *  'reg' and 'virtual-reg' attributes of device tree node
+ */
+int vmm_devdrv_regunmap(struct vmm_device * dev, 
+		      virtual_addr_t addr, int regset);
+
 /** Check if clock is enabled for given device */
 bool vmm_devdrv_clock_isenabled(struct vmm_device * dev);
 

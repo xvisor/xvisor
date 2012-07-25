@@ -68,6 +68,14 @@ static inline u64 bswap64(u64 data)
 
 #define arch_be32_to_cpu(v)	bswap32(v)
 
+#define arch_cpu_to_le64(v)	(v)
+
+#define arch_le64_to_cpu(v)	(v)
+
+#define arch_cpu_to_be64(v)	bswap64(v)
+
+#define arch_be64_to_cpu(v)	bswap64(v)
+
 static inline u8 arch_ioreadb(volatile void *addr)
 {
 	return (u8)(*((u8 *)addr));

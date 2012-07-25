@@ -49,7 +49,6 @@
  * Command line options
  */
 extern int quiet;		/* Level of quietness */
-extern int little_endian; 	/* Target system is little endian */
 extern int reservenum;		/* Number of memory reservation slots */
 extern int minsize;		/* Minimum blob size */
 extern int padsize;		/* Additional padding to blob */
@@ -110,7 +109,6 @@ struct data data_insert_at_marker(struct data d, struct marker *m,
 				  const void *p, int len);
 struct data data_merge(struct data d1, struct data d2);
 struct data data_append_cell(struct data d, cell_t word);
-struct data data_append_cell2(struct data d, cell_t word1, cell_t word2);
 struct data data_append_re(struct data d, const struct fdt_reserve_entry *re);
 struct data data_append_addr(struct data d, uint64_t addr);
 struct data data_append_byte(struct data d, uint8_t byte);

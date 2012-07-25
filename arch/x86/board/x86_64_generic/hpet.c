@@ -322,12 +322,6 @@ static int __init hpet_clockchip_init(u8 timer_id, const char *chip_name,
 	}
 #endif
 
-	/* Enable host interrupt line */
-	/* FIXME_FIRST: remove hardcoding */
-	if ((rc = vmm_host_irq_enable(20))) {
-		return rc;
-	}
-
 	return vmm_clockchip_register(&cc->clkchip);
 }
 

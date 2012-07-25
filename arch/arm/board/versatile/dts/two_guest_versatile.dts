@@ -5,19 +5,11 @@
 
 / {
 	guests {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
 		guest0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
 			model = "versatilepb";
 			device_type = "guest";
 
 			vcpus {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
 				vcpu0 {
 					device_type = "vcpu";
 					compatible = "ARMv5te,ARM926ej";
@@ -26,9 +18,6 @@
 			};
 			
 			aspace {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
 				mem0 {
 					manifest_type = "real";
 					address_type = "memory";
@@ -69,7 +58,6 @@
 					parent_irq = <31>;
 					child_pic = <1>;
 				};
-
 
 				aaci { /* No Audio Controller */
 					manifest_type = "virtual";
@@ -354,15 +342,10 @@
 		};
 
 		guest1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
 			model = "versatilepb";
 			device_type = "guest";
 
 			vcpus {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
 				vcpu0 {
 					device_type = "vcpu";
 					compatible = "ARMv5te,ARM926ej";
@@ -371,9 +354,6 @@
 			};
 			
 			aspace {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
 				mem0 {
 					manifest_type = "real";
 					address_type = "memory";
@@ -414,7 +394,6 @@
 					parent_irq = <31>;
 					child_pic = <1>;
 				};
-
 
 				aaci { /* No Audio Controller */
 					manifest_type = "virtual";
