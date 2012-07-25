@@ -54,13 +54,80 @@ void vmm_hang(void)
 	while (1) ;
 }
 
-void vmm_init(void)
+static void system_init_work(struct vmm_work *work)
 {
 	int ret;
-	u32 c, freed, cpu = vmm_smp_processor_id();
+	u32 c, freed;
 	struct dlist *l;
 	struct vmm_devtree_node *gnode, *gsnode;
 	struct vmm_guest *guest = NULL;
+
+	/* Initialize modules */
+	ret = vmm_modules_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize cpu final */
+	vmm_printf("Initialize CPU Final\n");
+	ret = arch_cpu_final_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Intialize board final */
+	vmm_printf("Initialize Board Final\n");
+	ret = arch_board_final_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Free init memory (Must be third last step) */
+	vmm_printf("Freeing init memory: ");
+	freed = vmm_host_free_initmem();
+	vmm_printf("%dK\n", freed);
+
+	/* Populate guest instances (Must be second last step) */
+	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	if (likely(!!gsnode)) {
+		vmm_printf("Creating Pre-Configured Guests\n");
+		list_for_each(l, &gsnode->child_list) {
+			gnode = list_entry(l, struct vmm_devtree_node, head);
+#if defined(CONFIG_VERBOSE_MODE)
+			vmm_printf("Creating %s\n", gnode->name);
+#endif
+			guest = vmm_manager_guest_create(gnode);
+			if (!guest) {
+				vmm_printf("%s: failed to create %s\n",
+					   __func__, gnode->name);
+			}
+		}
+	}
+
+	/* Print status of host CPUs */
+	for_each_possible_cpu(c) {
+		if (vmm_cpu_online(c)) {
+			vmm_printf("CPU%d: Online\n", c);
+		} else if (vmm_cpu_present(c)) {
+			vmm_printf("CPU%d: Present\n", c);
+		} else {
+			vmm_printf("CPU%d: Possible\n", c);
+		}
+	}
+	vmm_printf("Brought Up %d CPUs\n", vmm_num_online_cpus());
+}
+
+void vmm_init(void)
+{
+	int ret;
+#if defined(CONFIG_SMP)
+	u32 c;
+#endif
+	u32 cpu = vmm_smp_processor_id();
+	struct vmm_work sysinit;
 
 	/* Mark this CPU present */
 	vmm_set_cpu_present(cpu, TRUE);
@@ -268,62 +335,9 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
-	/* Initialize modules */
-	ret = vmm_modules_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize cpu final */
-	vmm_printf("Initialize CPU Final\n");
-	ret = arch_cpu_final_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Intialize board final */
-	vmm_printf("Initialize Board Final\n");
-	ret = arch_board_final_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Free init memory (Must be third last step) */
-	vmm_printf("Freeing init memory: ");
-	freed = vmm_host_free_initmem();
-	vmm_printf("%dK\n", freed);
-
-	/* Populate guest instances (Must be second last step) */
-	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
-	if (likely(!!gsnode)) {
-		vmm_printf("Creating Pre-Configured Guests\n");
-		list_for_each(l, &gsnode->child_list) {
-			gnode = list_entry(l, struct vmm_devtree_node, head);
-#if defined(CONFIG_VERBOSE_MODE)
-			vmm_printf("Creating %s\n", gnode->name);
-#endif
-			guest = vmm_manager_guest_create(gnode);
-			if (!guest) {
-				vmm_printf("%s: failed to create %s\n",
-					   __func__, gnode->name);
-			}
-		}
-	}
-
-	/* Print status of host CPUs */
-	for_each_possible_cpu(c) {
-		if (vmm_cpu_online(c)) {
-			vmm_printf("CPU%d: Online\n", c);
-		} else if (vmm_cpu_present(c)) {
-			vmm_printf("CPU%d: Present\n", c);
-		} else {
-			vmm_printf("CPU%d: Possible\n", c);
-		}
-	}
-	vmm_printf("Brought Up %d CPUs\n", vmm_num_online_cpus());
+	/* Schedule system initialization work */
+	INIT_WORK(&sysinit, &system_init_work, NULL);
+	vmm_workqueue_schedule_work(NULL, &sysinit);
 
 	/* Start timer (Must be last step) */
 	vmm_timer_start();
