@@ -349,9 +349,11 @@ int __init vmm_workqueue_init(void)
 	/* Initialize workqueue count */
 	wqctrl.wq_count = 0;
 
-	/* Create one system workqueue */
+	/* Create one system workqueue with thread priority
+	 * higher than default priority.
+	 */
 	wqctrl.syswq = vmm_workqueue_create("syswq", 
-					    VMM_THREAD_DEF_PRIORITY);
+					    VMM_THREAD_DEF_PRIORITY + 1);
 	if (!wqctrl.syswq) {
 		return VMM_EFAIL;
 	}
