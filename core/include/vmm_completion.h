@@ -35,7 +35,7 @@ struct vmm_completion {
 /** Initialize completion event */
 #define INIT_COMPLETION(cptr)			do { \
 						(cptr)->done = 0; \
-						INIT_WAITQUEUE(&(cptr)->wq); \
+						INIT_WAITQUEUE(&(cptr)->wq, (cptr)); \
 						} while (0)
 
 /** Re-initialize completion event. 
@@ -46,6 +46,16 @@ struct vmm_completion {
 #define REINIT_COMPLETION(cptr)			do { \
 						(cptr)->done = 0; \
 						} while (0)
+
+#define __COMPLETION_INITIALIZER(cmpl) \
+		{ \
+			.done = 0, \
+			.wq = __WAITQUEUE_INITIALIZER((cmpl).wq, &(cmpl)), \
+		}
+
+#define DECLARE_COMPLETION(cmpl) \
+	struct vmm_completion cmpl = __COMPLETION_INITIALIZER(cmpl)
+
 /** Check if completion is done */
 bool vmm_completion_done(struct vmm_completion *cmpl);
 

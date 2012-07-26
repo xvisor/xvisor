@@ -22,9 +22,7 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_stdio.h>
 #include <vmm_timer.h>
-#include <vmm_scheduler.h>
 #include <vmm_waitqueue.h>
 
 u32 vmm_waitqueue_count(struct vmm_waitqueue * wq) 

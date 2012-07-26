@@ -38,8 +38,18 @@ struct vmm_semaphore {
 #define INIT_SEMAPHORE(sem, value)	do { \
 					(sem)->limit = (value); \
 					(sem)->value = (value); \
-					INIT_WAITQUEUE(&(sem)->wq); \
+					INIT_WAITQUEUE(&(sem)->wq, (sem)); \
 					} while (0);
+
+#define __SEMAPHORE_INITIALIZER(sem, val) \
+		{ \
+			.limit = (val), \
+			.value = (val), \
+			.wq = __WAITQUEUE_INITIALIZER((sem).wq, &(sem)), \
+		}
+
+#define DEFINE_SEMAPHORE(sem, value) \
+	struct vmm_semaphore sem = __SEMAPHORE_INITIALIZER(sem)
 
 /** Check if semaphore is available */
 bool vmm_semaphore_avail(struct vmm_semaphore *sem);

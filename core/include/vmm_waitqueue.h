@@ -25,27 +25,35 @@
 #define __VMM_WAITQUEUE_H__
 
 #include <list.h>
+#include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
+#include <vmm_scheduler.h>
 #include <vmm_manager.h>
 
 struct vmm_waitqueue {
 	vmm_spinlock_t lock;
 	struct dlist vcpu_list;
 	u32 vcpu_count;
+	void *priv;
 };
 
-#define INIT_WAITQUEUE(wqptr)	do { \
+#define INIT_WAITQUEUE(wqptr, p)	do { \
 				INIT_SPIN_LOCK(&((wqptr)->lock)); \
 				INIT_LIST_HEAD(&((wqptr)->vcpu_list)); \
 				(wqptr)->vcpu_count = 0; \
+				(wqptr)->priv = (p); \
 				} while (0);
 
-#define __WAITQUEUE_INITIALIZER(wq) \
+#define __WAITQUEUE_INITIALIZER(wq, p) \
 		{ \
 			.lock = __SPINLOCK_INITIALIZER((wq).lock), \
 			.vcpu_list = { &(wq).vcpu_list, &(wq).vcpu_list }, \
 			.vcpu_count = 0, \
+			.priv = (p), \
 		}
+
+#define DECLARE_WAITQUEUE(name, tsk)					\
+	struct vmm_waitqueue name = __WAITQUEUE_INITIALIZER(name, tsk)
 
 /** Lowlevel waitqueue sleep.
  *  Note: This function should only be called with wq->lock held using
@@ -86,5 +94,39 @@ int vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq);
 
 /** Wakeup all VCPUs in a given waitqueue */
 int vmm_waitqueue_wakeall(struct vmm_waitqueue * wq);
+
+/**
+ * Sleep until a condition gets true
+ * @condition: a C expression for the event to wait for
+ */
+#define vmm_waitqueue_sleep_event(condition)				\
+do {									\
+	BUG_ON(!vmm_scheduler_orphan_context(), 			\
+		"%s: Sleep allowed in Orphan VCPU (or Thread) "		\
+		 "context only\n", __func__);				\
+	for (;;) {							\
+		if (condition)						\
+			break;						\
+		vmm_scheduler_yield();					\
+	}								\
+} while (0)
+
+/**
+ * Sleep until a condition gets true or a timeout elapses
+ * @wq: the waitqueue to wait on
+ * @condition: a C expression for the event to wait for
+ * @timeout: timeout in nano-seconds
+ */
+#define vmm_waitqueue_sleep_event_timeout(wq, condition, timeout)	\
+do {									\
+	u64 _tout = *(timeout);						\
+	for (;;) {							\
+		_tout = *(timeout);					\
+		if (condition)						\
+			break;						\
+		vmm_waitqueue_sleep_timeout((wq), &_tout);		\
+	}								\
+	*(timeout) = _tout;						\
+} while (0)
 
 #endif /* __VMM_WAITQUEUE_H__ */
