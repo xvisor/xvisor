@@ -49,7 +49,7 @@ struct serio {
 	char name[32];
 	char phys[32];
 
-	bool manual_bind;	/* For xvisor, we ignore this field */
+	bool manual_bind;		/* For xvisor, we ignore this field */
 
 	struct serio_device_id id;
 
@@ -76,11 +76,11 @@ struct serio {
 #define to_serio_port(d)	container_of(d, struct serio, dev)
 
 struct serio_driver {
-	const char *name;	/* Only for xvisor */
+	const char *name;		/* Only for xvisor */
 	const char *description;
 
 	const struct serio_device_id *id_table;
-	bool manual_bind;	/* For xvisor, we ignore this field */
+	bool manual_bind;		/* For xvisor, we ignore this field */
 
 	void (*write_wakeup)(struct serio *);
 	irqreturn_t (*interrupt)(struct serio *, unsigned char, unsigned int);

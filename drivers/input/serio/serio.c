@@ -338,6 +338,16 @@ static struct serio *serio_get_pending_child(struct serio *parent)
 	return child;
 }
 
+#if 0
+static void serio_release_port(struct device *dev)
+{
+	struct serio *serio = to_serio_port(dev);
+
+	kfree(serio);
+	module_put(THIS_MODULE);
+}
+#endif
+
 /*
  * Prepare serio port for registration.
  */
@@ -401,6 +411,7 @@ static void serio_destroy_port(struct serio *serio)
 	}
 
 	list_del(&serio->node);
+	serio_remove_pending_events(serio);
 }
 
 /*
@@ -502,46 +513,6 @@ static void serio_disconnect_port(struct serio *serio)
 	serio_disconnect_driver(serio);
 }
 
-static void serio_set_drv(struct serio *serio, struct serio_driver *drv)
-{
-	serio_pause_rx(serio);
-	serio->drv = drv;
-	serio_continue_rx(serio);
-}
-
-#if 0
-/* FIXME:
- * Cleanup serio driver when doing PM suspend()
- */
-static void serio_cleanup(struct serio *serio)
-{
-	irq_flags_t flags;
-
-	spin_lock_irqsave(&serio->drv_lock, flags);
-	if (serio->drv && serio->drv->cleanup) {
-		serio->drv->cleanup(serio);
-	}
-	spin_unlock_irqrestore(&serio->drv_lock, flags);
-}
-#endif
-
-static void serio_attach_driver(struct serio_driver *drv)
-{
-	struct list_head *l;
-	struct serio *serio;
-
-	if (!drv) {
-		return;
-	}
-
-	list_for_each(l, &serio_list) {
-		serio = list_entry(l, struct serio, node);
-		if (!serio->drv) {
-			serio_bind_driver(serio, drv);
-		}
-	}
-}
-
 void serio_rescan(struct serio *serio)
 {
 	serio_queue_event(serio, SERIO_RESCAN_PORT);
@@ -586,6 +557,36 @@ void serio_unregister_child_port(struct serio *serio)
 		serio_destroy_port(s);
 	}
 	mutex_unlock(&serio_mutex);
+}
+
+#if 0
+/* FIXME:
+ * Cleanup serio driver when doing PM suspend()
+ */
+static void serio_cleanup(struct serio *serio)
+{
+	mutex_lock(&serio->drv_mutex);
+	if (serio->drv && serio->drv->cleanup)
+		serio->drv->cleanup(serio);
+	mutex_unlock(&serio->drv_mutex);
+}
+#endif
+
+static void serio_attach_driver(struct serio_driver *drv)
+{
+	struct list_head *l;
+	struct serio *serio;
+
+	if (!drv) {
+		return;
+	}
+
+	list_for_each(l, &serio_list) {
+		serio = list_entry(l, struct serio, node);
+		if (!serio->drv) {
+			serio_bind_driver(serio, drv);
+		}
+	}
 }
 
 int __serio_register_driver(struct serio_driver *drv, const char *name)
@@ -647,6 +648,13 @@ start_over:
 	}
 
 	mutex_unlock(&serio_mutex);
+}
+
+static void serio_set_drv(struct serio *serio, struct serio_driver *drv)
+{
+	serio_pause_rx(serio);
+	serio->drv = drv;
+	serio_continue_rx(serio);
 }
 
 /* called from serio_driver->connect/disconnect methods under serio_mutex */
