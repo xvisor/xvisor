@@ -35,9 +35,9 @@
 #define __LINUX_SKBUFF_H_
 
 #include <net/vmm_mbuf.h>
-#include <vmm_types.h>
-#include <vmm_stdio.h>
 #include <vmm_macros.h>
+#include <linux/printk.h>
+#include <linux/types.h>
 
 /**
  * Our goal is not to be 100% compatibilty with sk_buff (as much as 
@@ -96,8 +96,7 @@ static inline int skb_is_nonlinear(const struct sk_buff *skb)
 	return (skb->m_next != NULL);
 }
 
-#define SKB_LINEAR_ASSERT(skb)  	\
-	BUG_ON(skb_is_nonlinear(skb), "%s: skb is nonlinear\n", __func__)
+#define SKB_LINEAR_ASSERT(skb)  	BUG_ON(skb_is_nonlinear(skb))
 
 static inline unsigned char *__skb_put(struct sk_buff *skb, unsigned int len)
 {

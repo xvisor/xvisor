@@ -474,7 +474,7 @@ static void smc911x_hardware_send_pkt(struct vmm_netdev *dev)
 	unsigned char *buf;
 
 	DBG(SMC_DEBUG_FUNC | SMC_DEBUG_TX, "%s: --> %s\n", dev->name, __func__);
-	BUG_ON(lp->pending_tx_mbuf == NULL, __func__);
+	BUG_ON(lp->pending_tx_mbuf == NULL);
 
 	mb = lp->pending_tx_mbuf; // skb = lp->pending_tx_skb;
 	lp->pending_tx_mbuf = NULL; // lp->pending_tx_skb = NULL
@@ -544,7 +544,7 @@ static int smc911x_hard_start_xmit(struct sk_buff *mb, struct net_device *dev)
 
 	spin_lock_irqsave(&lp->lock, flags);
 
-	BUG_ON(lp->pending_tx_mbuf != NULL, __func__);
+	BUG_ON(lp->pending_tx_mbuf != NULL);
 
 	free = SMC_GET_TX_FIFO_INF(lp) & TX_FIFO_INF_TDFREE_;
 	DBG(SMC_DEBUG_TX, "%s: TX free space %d\n", dev->name, free);

@@ -3,6 +3,24 @@
 
 #include <vmm_stdio.h>
 
+#undef BUG_ON
+#define BUG_ON(x)						\
+	do {							\
+		if (x) {					\
+			vmm_panic("Bug at %s:%d", 		\
+					__FILE__, __LINE__);	\
+		}						\
+	} while(0)
+
+#undef WARN_ON
+#define WARN_ON(x)						\
+	do {							\
+		if (x) {					\
+			vmm_printf("Warning at %s:%d", 		\
+					__FILE__, __LINE__);	\
+		}						\
+	} while(0)
+
 #define	KERN_EMERG
 #define	KERN_ALERT
 #define	KERN_CRIT
