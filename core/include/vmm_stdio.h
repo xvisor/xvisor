@@ -32,7 +32,14 @@
 		if (x) {					\
 			vmm_panic(bug_string, #__VA_ARGS__);	\
 		}						\
-	} while(0);
+	} while(0)
+
+#define WARN_ON(x, bug_string, ...)				\
+	do {							\
+		if (x) {					\
+			vmm_printf(bug_string, #__VA_ARGS__);	\
+		}						\
+	} while(0)
 
 /** Check if a character is a control character */
 bool vmm_iscontrol(char c);
