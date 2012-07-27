@@ -3,6 +3,7 @@
 
 #include <vmm_timer.h>
 #include <linux/types.h>
+#include <linux/typecheck.h>
 
 /* Assume HZ based on default timeslice */
 #define	HZ					(1000 / CONFIG_TSLICE_MS)

@@ -32,4 +32,15 @@
 
 #define printk(args...) vmm_printf(args)
 
+#if defined(DEV_DEBUG)
+#define dev_dbg(args...) vmm_printf(args)
+#else
+#define dev_dbg(...)
+#endif
+
+#define dev_warn(dev, args...) vmm_printf(args)
+#define dev_err(dev, args...)  vmm_printf(args)
+
+#define printk_ratelimit()			0
+
 #endif
