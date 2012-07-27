@@ -152,7 +152,7 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 	vmm_strncpy(io->name, dev->node->name, sizeof(io->name));
 	vmm_strncpy(io->phys, dev->node->name, sizeof(io->phys));
 	io->port_data	= kmi;
-	io->dev.parent	= dev;
+	io->dev		= dev;
 
 	kmi->io		= io;
 	kmi->dev	= dev;
@@ -214,7 +214,7 @@ static int __init amba_kmi_driver_init(void)
 	return vmm_devdrv_register_driver(&amba_kmi_driver);
 }
 
-static void amba_kmi_driver_exit(void)
+static void __exit amba_kmi_driver_exit(void)
 {
 	vmm_devdrv_unregister_driver(&amba_kmi_driver);
 }

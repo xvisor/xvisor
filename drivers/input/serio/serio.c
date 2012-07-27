@@ -589,13 +589,13 @@ static void serio_attach_driver(struct serio_driver *drv)
 	}
 }
 
-int __serio_register_driver(struct serio_driver *drv, const char *name)
+int __serio_register_driver(struct serio_driver *drv)
 {
 	bool found;
 	struct dlist *l;
 	struct serio_driver *sdrv;
 
-	if (!(drv && name)) {
+	if (!drv) {
 		return -EFAIL;
 	}
 
@@ -617,7 +617,6 @@ int __serio_register_driver(struct serio_driver *drv, const char *name)
 		return -EFAIL;
 	}
 
-	drv->name = name;
 	drv->manual_bind = FALSE; /* Xvisor ignores this */
 	INIT_LIST_HEAD(&drv->node);
 	list_add_tail(&drv->node, &serio_drv_list);

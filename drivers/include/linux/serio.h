@@ -69,7 +69,8 @@ struct serio {
 	struct serio_driver *drv;	/* accessed from interrupt, must be protected by serio->lock and serio->sem */
 	struct mutex drv_mutex;		/* protects serio->drv so attributes can pin driver */
 
-	struct device dev;
+	struct vmm_device *dev;
+	void *priv;
 
 	struct list_head node;
 };
@@ -108,10 +109,10 @@ static inline void serio_register_port(struct serio *serio)
 void serio_unregister_port(struct serio *serio);
 void serio_unregister_child_port(struct serio *serio);
 
-int __serio_register_driver(struct serio_driver *drv, const char *name);
-static inline int serio_register_driver(struct serio_driver *drv, const char *name)
+int __serio_register_driver(struct serio_driver *drv);
+static inline int serio_register_driver(struct serio_driver *drv)
 {
-	return __serio_register_driver(drv, name);
+	return __serio_register_driver(drv);
 }
 void serio_unregister_driver(struct serio_driver *drv);
 
@@ -135,12 +136,12 @@ static inline void serio_drv_write_wakeup(struct serio *serio)
  */
 static inline void *serio_get_drvdata(struct serio *serio)
 {
-	return serio->dev.priv;
+	return serio->priv;
 }
 
 static inline void serio_set_drvdata(struct serio *serio, void *data)
 {
-	serio->dev.priv = data;
+	serio->priv = data;
 }
 
 /*
