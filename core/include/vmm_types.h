@@ -61,6 +61,8 @@ typedef unsigned long long u64;
 #define __modtbl		__attribute__((section(".modtbl")))
 #define __percpu		__attribute__((section(".percpu")))
 #define __init			__attribute__((section(".init.text")))
+#define __initconst		__attribute__((section(".init.text")))
+#define __exit
 
 #define __cacheline_aligned	__attribute__((aligned(ARCH_CACHE_LINE_SIZE)))
 
