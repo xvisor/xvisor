@@ -1027,7 +1027,7 @@ struct vmm_input_dev {
 			  struct vmm_input_keymap_entry *ke);
 
 	unsigned int repeat_key;
-	struct vmm_timer_event *repeat_ev;
+	struct vmm_timer_event repeat_ev;
 
 	int rep[REP_CNT];
 
@@ -1089,6 +1089,16 @@ struct vmm_input_handler
 
 	void *priv;
 };
+
+static inline void *vmm_input_get_drvdata(struct vmm_input_dev *idev)
+{
+	return idev->priv;
+}
+
+static inline void vmm_input_set_drvdata(struct vmm_input_dev *idev, void *data)
+{
+	idev->priv = data;
+}
 
 /** Allocate an input device 
  *

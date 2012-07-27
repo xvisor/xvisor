@@ -163,7 +163,7 @@ static void input_repeat_key(struct vmm_timer_event *ev)
 		if (idev->rep[REP_PERIOD]) {
 			duration = idev->rep[REP_PERIOD];
 			duration = duration * 1000000;
-			vmm_timer_event_start(idev->repeat_ev, duration);
+			vmm_timer_event_start(&idev->repeat_ev, duration);
 		}
 	}
 
@@ -175,17 +175,17 @@ static void input_start_autorepeat(struct vmm_input_dev *idev, int code)
 	u32 duration;
 	if (test_bit(EV_REP, idev->evbit) &&
 	    idev->rep[REP_PERIOD] && idev->rep[REP_DELAY] &&
-	    idev->repeat_ev->priv) {
+	    idev->repeat_ev.priv) {
 		idev->repeat_key = code;
 		duration = idev->rep[REP_DELAY];
 		duration = duration * 1000000;
-		vmm_timer_event_start(idev->repeat_ev, duration);
+		vmm_timer_event_start(&idev->repeat_ev, duration);
 	}
 }
 
 static void input_stop_autorepeat(struct vmm_input_dev *idev)
 {
-	vmm_timer_event_stop(idev->repeat_ev);
+	vmm_timer_event_stop(&idev->repeat_ev);
 }
 
 #define INPUT_IGNORE_EVENT	0
@@ -756,10 +756,7 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 	/* If delay and period are pre-set by the driver, then autorepeating
 	 * is handled by the driver itself and we don't do it in input.c.
 	 */
-	idev->repeat_ev = vmm_timer_event_create(input_repeat_key, idev);
-	if (!idev->repeat_ev) {
-		return VMM_EFAIL;
-	}
+	INIT_TIMER_EVENT(&idev->repeat_ev, input_repeat_key, idev);
 	if (!idev->rep[REP_DELAY] && !idev->rep[REP_PERIOD]) {
 		idev->rep[REP_DELAY] = 250;
 		idev->rep[REP_PERIOD] = 33;
@@ -809,8 +806,7 @@ int vmm_input_unregister_device(struct vmm_input_dev *idev)
 	list_del(&idev->head);
 	vmm_spin_unlock_irqrestore(&ictrl.dev_list_lock, flags);	
 
-	vmm_timer_event_stop(idev->repeat_ev);
-	vmm_timer_event_destroy(idev->repeat_ev);
+	vmm_timer_event_stop(&idev->repeat_ev);
 
 	vmm_spin_lock_irqsave(&idev->ops_lock, flags);
 	if (idev->users && idev->close) {

@@ -63,7 +63,7 @@ struct timer_block {
 	struct mptimer_state *mptimer;
 	u32 cpu;
 	vmm_spinlock_t lock;
-	struct vmm_timer_event *event;
+	struct vmm_timer_event event;
 
 	/* Configuration */
 	u32 irq;
@@ -186,8 +186,8 @@ static void timer_block_reload(struct timer_block *timer)
 					(u64) timer->freq);
 	}
 
-	vmm_timer_event_stop(timer->event); 
-	vmm_timer_event_start(timer->event, nsecs);
+	vmm_timer_event_stop(&timer->event); 
+	vmm_timer_event_start(&timer->event, nsecs);
 }
 
 static void timer_block_event(struct vmm_timer_event *event)
@@ -313,7 +313,7 @@ int mptimer_reg_write(struct mptimer_state *s, u32 offset, u32 src_mask,
 			if ((timer->control & TIMER_CTRL_ENABLE) && 
 			    timer->count) {
 				/* Cancel the previous timer.  */
-				vmm_timer_event_stop(timer->event); 
+				vmm_timer_event_stop(&timer->event); 
 			}
 			timer->count = src;
 			if (timer->control & TIMER_CTRL_ENABLE) {
@@ -370,7 +370,7 @@ int mptimer_state_reset(struct mptimer_state *mpt)
 
 		vmm_spin_lock(&timer->lock);
 
-		vmm_timer_event_stop(timer->event);
+		vmm_timer_event_stop(&timer->event);
 		timer->load = 0;
 		timer->control = 0;
 		timer->status = 0;
@@ -387,16 +387,9 @@ int mptimer_state_reset(struct mptimer_state *mpt)
 
 int mptimer_state_free(struct mptimer_state *s)
 {
-	int rc = VMM_OK, i=0;
+	int rc = VMM_OK;
 	if (s) {
 		if (s->timers) {
-			while(i<(NUM_TIMERS_PER_CPU * s->num_cpu)) {
-				if(vmm_timer_event_destroy(s->timers[i].event) 
-						!= VMM_OK) {
-					rc = VMM_EFAIL;
-				}
-				i++;
-			}
 			vmm_free(s->timers);
 		}
 
@@ -406,7 +399,7 @@ int mptimer_state_free(struct mptimer_state *s)
 }
 
 struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
-					  struct vmm_emudev * edev, 
+					  struct vmm_emudev *edev, 
 					  u32 num_cpu,
 					  u32 periphclk,
 					  u32 irq[])
@@ -439,8 +432,9 @@ struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 		s->timers[i].cpu = (i >> 1);
 		s->timers[i].is_wdt = (i & 0x1);
 		INIT_SPIN_LOCK(&(s->timers[i].lock));
-		s->timers[i].event = vmm_timer_event_create(&timer_block_event,
-							    &(s->timers[i]));
+		INIT_TIMER_EVENT(&s->timers[i].event, 
+				 &timer_block_event,
+				 &(s->timers[i]));
 	}
 
 	goto mptimer_state_alloc_done;

@@ -30,44 +30,39 @@
 
 struct vmm_timer_event;
 
-typedef void (*vmm_timer_event_handler_t) (struct vmm_timer_event * event);
+typedef void (*vmm_timer_event_handler_t) (struct vmm_timer_event *);
 
 struct vmm_timer_event {
-	struct dlist cpu_head;
 	struct dlist head;
-	arch_regs_t * regs;
+	arch_regs_t *regs;
 	bool active;
 	u64 expiry_tstamp;
 	u64 duration_nsecs;
 	vmm_timer_event_handler_t handler;
-	void * priv;
+	void *priv;
 };
 
+#define INIT_TIMER_EVENT(ev, _handler, _priv)	do { \
+						INIT_LIST_HEAD(&(ev)->head); \
+						(ev)->regs = NULL; \
+						(ev)->active = FALSE; \
+						(ev)->expiry_tstamp = 0; \
+						(ev)->duration_nsecs = 0; \
+						(ev)->handler = _handler; \
+						(ev)->priv = _priv; \
+						} while (0)
+
 /** Start a timer event */
-int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs);
+int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs);
 
 /** Restart a timer event */
-int vmm_timer_event_restart(struct vmm_timer_event * ev);
+int vmm_timer_event_restart(struct vmm_timer_event *ev);
 
 /** Expire a timer event */
-int vmm_timer_event_expire(struct vmm_timer_event * ev);
+int vmm_timer_event_expire(struct vmm_timer_event *ev);
 
 /** Stop a timer event */
-int vmm_timer_event_stop(struct vmm_timer_event * ev);
-
-/** Create a timer event */
-struct vmm_timer_event * vmm_timer_event_create(
-					   vmm_timer_event_handler_t handler,
-					   void * priv);
-
-/** Destroy a timer event */
-int vmm_timer_event_destroy(struct vmm_timer_event * ev);
-
-/** Retrive timer event with given index */
-struct vmm_timer_event *vmm_timer_event_get(int index);
-
-/** Count number of timer events */
-u32 vmm_timer_event_count(void);
+int vmm_timer_event_stop(struct vmm_timer_event *ev);
 
 /** Current global timestamp (nanoseconds elapsed) */
 u64 vmm_timer_timestamp(void);
