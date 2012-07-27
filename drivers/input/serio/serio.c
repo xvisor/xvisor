@@ -702,8 +702,13 @@ static int __init serio_init(void)
 	return 0;
 }
 
-static void serio_exit(void)
+static void __exit serio_exit(void)
 {
+	/*
+	 * There should not be any outstanding events but work may
+	 * still be scheduled so simply cancel it.
+	 */
+	cancel_work_sync(&serio_event_work);
 }
 
 VMM_DECLARE_MODULE(MODULE_VARID,
