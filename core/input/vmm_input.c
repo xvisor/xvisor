@@ -776,9 +776,9 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 		if (!test_bit(i, &idev->evbit[0])) {
 			continue;
 		}
-		vmm_spin_lock_irqsave(&ictrl.hnd_conn_lock, flags1);
+		vmm_spin_lock_irqsave(&ictrl.hnd_conn_lock[i], flags1);
 		idev->users += ictrl.hnd_conn_count[i];
-		vmm_spin_unlock_irqrestore(&ictrl.hnd_conn_lock, flags1);
+		vmm_spin_unlock_irqrestore(&ictrl.hnd_conn_lock[i], flags1);
 	}
 	if (idev->users && idev->open) {
 		rc = idev->open(idev);
