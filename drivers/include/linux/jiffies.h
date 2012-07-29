@@ -134,13 +134,13 @@ static inline unsigned int jiffies_to_usecs(const unsigned long j)
 
 static inline unsigned long msecs_to_jiffies(const unsigned int m)
 {
-	unsigned long __r = m / HZ;
+	unsigned long __r = (m * HZ);
 	return (__r / 1000);
 }
 
 static inline unsigned long usecs_to_jiffies(const unsigned int u)
 {
-	unsigned long __r = u / HZ;
+	unsigned long __r = (u * HZ);
 	return (__r / 1000000);
 }
 
