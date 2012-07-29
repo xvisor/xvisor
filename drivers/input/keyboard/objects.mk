@@ -16,22 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for input device drivers.
+# @brief list of driver objects
 # */
 
-menu "Input Device Support"
-
-if CONFIG_INPUT
-     comment "Input Device Drivers"
-
-     source "drivers/input/keyboard/openconf.cfg"
-endif
-
-menu "Hardware I/O ports"
-     source "drivers/input/serio/openconf.cfg"
-endmenu
-
-endmenu
+drivers-objs-$(CONFIG_KEYBOARD_ATKBD)+= input/keyboard/atkbd.o
 
