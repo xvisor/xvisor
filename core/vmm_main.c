@@ -336,7 +336,7 @@ void vmm_init(void)
 	}
 
 	/* Schedule system initialization work */
-	INIT_WORK(&sysinit, &system_init_work, NULL);
+	INIT_WORK(&sysinit, &system_init_work);
 	vmm_workqueue_schedule_work(NULL, &sysinit);
 
 	/* Start timer (Must be last step) */

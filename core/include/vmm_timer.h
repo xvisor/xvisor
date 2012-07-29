@@ -42,15 +42,28 @@ struct vmm_timer_event {
 	void *priv;
 };
 
-#define INIT_TIMER_EVENT(ev, _handler, _priv)	do { \
+#define INIT_TIMER_EVENT(ev, _hndl, _priv)	do { \
 						INIT_LIST_HEAD(&(ev)->head); \
 						(ev)->regs = NULL; \
 						(ev)->active = FALSE; \
 						(ev)->expiry_tstamp = 0; \
 						(ev)->duration_nsecs = 0; \
-						(ev)->handler = _handler; \
+						(ev)->handler = _hndl; \
 						(ev)->priv = _priv; \
 						} while (0)
+
+#define __TIMER_EVENT_INITIALIZER(ev, _hndl, _priv)	{	\
+	.head	= { &(ev).head, &(ev).head },			\
+	.regs	= NULL,						\
+	.active = FALSE,					\
+	.expiry_tstamp = 0,					\
+	.duration_nsecs = 0,					\
+	.handler = _hndl,					\
+	.priv = _priv,						\
+	}
+
+#define DECLARE_TIMER_EVENT(ev, _hndl, _priv)		\
+	struct vmm_timer_event ev = __TIMER_EVENT_INITIALIZER(ev, _hndl, _priv)
 
 /** Start a timer event */
 int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs);
