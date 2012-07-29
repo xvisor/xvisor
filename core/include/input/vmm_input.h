@@ -1144,8 +1144,8 @@ void vmm_input_reset_device(struct vmm_input_dev *idev);
  */
 int vmm_input_flush_device(struct vmm_input_dev *idev);
 
-/** Find a input device */
-struct vmm_input_dev *vmm_input_find_device(const char *name);
+/** Find a input device based on its physical name */
+struct vmm_input_dev *vmm_input_find_device(const char *phys);
 
 /** Get input device with given index */
 struct vmm_input_dev *vmm_input_get_device(int index);

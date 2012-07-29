@@ -717,7 +717,7 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 	irq_flags_t flags, flags1;
 	struct vmm_classdev *cd;
 
-	if (!(idev && idev->name)) {
+	if (!(idev && idev->phys && idev->name)) {
 		return VMM_EFAIL;
 	}
 
@@ -729,7 +729,7 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 	vmm_memset(cd, 0, sizeof(struct vmm_classdev));
 
 	INIT_LIST_HEAD(&cd->head);
-	vmm_strcpy(cd->name, idev->name);
+	vmm_strcpy(cd->name, idev->phys);
 	cd->dev = idev->dev;
 	cd->priv = idev;
 
@@ -815,7 +815,7 @@ int vmm_input_unregister_device(struct vmm_input_dev *idev)
 	}
 	vmm_spin_unlock_irqrestore(&idev->ops_lock, flags);
 
-	cd = vmm_devdrv_find_classdev(VMM_INPUT_DEV_CLASS_NAME, idev->name);
+	cd = vmm_devdrv_find_classdev(VMM_INPUT_DEV_CLASS_NAME, idev->phys);
 	if (!cd) {
 		return VMM_EFAIL;
 	}
@@ -885,11 +885,11 @@ int vmm_input_flush_device(struct vmm_input_dev *idev)
 	return rc;
 }
 
-struct vmm_input_dev *vmm_input_find_device(const char *name)
+struct vmm_input_dev *vmm_input_find_device(const char *phys)
 {
 	struct vmm_classdev *cd;
 
-	cd = vmm_devdrv_find_classdev(VMM_INPUT_DEV_CLASS_NAME, name);
+	cd = vmm_devdrv_find_classdev(VMM_INPUT_DEV_CLASS_NAME, phys);
 	if (!cd) {
 		return NULL;
 	}
@@ -1030,7 +1030,7 @@ int vmm_input_connect_handler(struct vmm_input_handler *ihnd)
 				rc = idev->open(idev);
 				if (rc) {
 					vmm_printf("%s: failed to open %s", 
-						   __func__, idev->name);
+						   __func__, idev->phys);
 				}
 			}
 			idev->users++;
