@@ -125,6 +125,8 @@ do {									\
 		if (condition)						\
 			break;						\
 		vmm_waitqueue_sleep_timeout((wq), &_tout);		\
+		if (!_tout)						\
+			break;						\
 	}								\
 	*(timeout) = _tout;						\
 } while (0)
