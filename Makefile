@@ -213,9 +213,7 @@ nm=$(CROSS_COMPILE)nm
 
 # Setup list of final objects
 final-y=$(all-y)
-ifdef CONFIG_KALLSYMS
 final-y+=$(build_dir)/system_map.o
-endif
 
 # Default rule "make"
 .PHONY: all
