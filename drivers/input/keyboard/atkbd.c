@@ -29,14 +29,14 @@
 #include <linux/mutex.h>
 #include <linux/dmi.h>
 
+#define DRIVER_DESC	"AT and PS/2 keyboard driver"
+
 #define MODULE_VARID			atkbd_driver_module
-#define MODULE_NAME			"AMBA KMI Driver"
+#define MODULE_NAME			DRIVER_DESC
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		(SERIO_IPRIORITY+1)
 #define	MODULE_INIT			atkbd_init
 #define	MODULE_EXIT			atkbd_exit
-
-#define DRIVER_DESC	"AT and PS/2 keyboard driver"
 
 /* Parameter */
 static int atkbd_set = 2;
