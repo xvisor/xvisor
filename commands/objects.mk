@@ -35,6 +35,7 @@ commands-objs-$(CONFIG_CMD_VSERIAL)+= cmd_vserial.o
 commands-objs-$(CONFIG_CMD_STDIO)+= cmd_stdio.o
 commands-objs-$(CONFIG_CMD_HEAP)+= cmd_heap.o
 commands-objs-$(CONFIG_CMD_WALLCLOCK)+= cmd_wallclock.o
+commands-objs-$(CONFIG_CMD_MODULE)+= cmd_module.o
 commands-objs-$(CONFIG_CMD_RTCDEV)+= cmd_rtcdev.o
 commands-objs-$(CONFIG_CMD_INPUT)+= cmd_input.o
 commands-objs-$(CONFIG_CMD_BLOCKDEV)+= cmd_blockdev.o

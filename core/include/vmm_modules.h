@@ -32,8 +32,8 @@ typedef void (*vmm_module_exit_t) (void);
 
 struct vmm_module {
 	u32 signature;
-	s8 name[44];
-	s8 author[32];
+	char name[44];
+	char author[32];
 	u32 ipriority;
 	s32 istatus;
 	vmm_module_init_t init;
