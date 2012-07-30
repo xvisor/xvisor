@@ -40,6 +40,8 @@ void cmd_module_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   module help\n");
 	vmm_cprintf(cdev, "   module list\n");
+	vmm_cprintf(cdev, "   module info <index>\n");
+	vmm_cprintf(cdev, "   module unload <index>\n");
 }
 
 void cmd_module_list(struct vmm_chardev *cdev)
@@ -48,24 +50,69 @@ void cmd_module_list(struct vmm_chardev *cdev)
 	struct vmm_module *mod;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-5s %-40s %-7s %-24s\n", 
-			  "Num", "Name", "iPrio", "Author");
+	vmm_cprintf(cdev, " %-5s %-40s %-20s %-12s\n", 
+			  "Num", "Name", "Author", "Type");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	count = vmm_modules_count();
 	for (num = 0; num < count; num++) {
 		mod = vmm_modules_getmodule(num);
-		vmm_cprintf(cdev, " %-5d %-40s %-7d %-24s\n", 
-				  num, mod->name, 
-				  mod->ipriority, mod->author);
+		vmm_cprintf(cdev, " %-5d %-40s %-20s %-12s\n", 
+				  num, mod->name, mod->author, 
+				  vmm_modules_isbuiltin(mod) ? 
+				  "built-in" : "loadable");
 	}
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	vmm_cprintf(cdev, "Total %d modules\n", count);
 }
 
+int cmd_module_info(struct vmm_chardev *cdev, u32 index)
+{
+	struct vmm_module *mod;
+
+	mod = vmm_modules_getmodule(index);
+	if (!mod) {
+		return VMM_EFAIL;
+	}
+
+	vmm_cprintf(cdev, "Name:      %s\n", mod->name);
+	vmm_cprintf(cdev, "Author:    %s\n", mod->author);
+	vmm_cprintf(cdev, "iPriority: %d\n", mod->ipriority);
+	vmm_cprintf(cdev, "iStatus:   %d\n", mod->istatus);
+	vmm_cprintf(cdev, "Type:      %s\n", vmm_modules_isbuiltin(mod) ? 
+					 "built-in" : "loadable");
+
+	return VMM_OK;
+}
+
+int cmd_module_unload(struct vmm_chardev *cdev, u32 index)
+{
+	int rc = VMM_OK;
+	struct vmm_module *mod;
+
+	mod = vmm_modules_getmodule(index);
+	if (!mod) {
+		return VMM_EFAIL;
+	}
+
+	if (vmm_modules_isbuiltin(mod)) {
+		vmm_cprintf(cdev, "Can't unload built-in module\n");
+		return VMM_EFAIL;
+	}
+
+	if ((rc = vmm_modules_unload(mod))) {
+		vmm_cprintf(cdev, "Failed to unload module (error %d)\n", rc);
+	} else {
+		vmm_cprintf(cdev, "Unloaded module succesfully\n");
+	}
+
+	return rc;
+}
+
 int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
+	int index;
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
 			cmd_module_usage(cdev);
@@ -75,8 +122,20 @@ int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return VMM_OK;
 		}
 	}
-	cmd_module_usage(cdev);
-	return VMM_EFAIL;
+	if (argc < 3) {
+		cmd_module_usage(cdev);
+		return VMM_EFAIL;
+	}
+	index = vmm_str2int(argv[2], 10);
+	if (vmm_strcmp(argv[1], "info") == 0) {
+		return cmd_module_info(cdev, index);
+	} else if (vmm_strcmp(argv[1], "unload") == 0) {
+		return cmd_module_unload(cdev, index);
+	} else {
+		cmd_module_usage(cdev);
+		return VMM_EFAIL;
+	}
+	return VMM_OK;
 }
 
 static struct vmm_cmd cmd_module = {

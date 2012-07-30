@@ -44,7 +44,13 @@ struct vmm_module {
 __modtbl struct vmm_module varid = \
 { VMM_MODULE_SIGNATURE, name, author, ipriority, 0, init, exit }
 
-/** Retrive a module at given position in table */
+/** Check if module is built-in */
+bool vmm_modules_isbuiltin(struct vmm_module *mod);
+
+/** Unload a loadable module */
+int vmm_modules_unload(struct vmm_module *mod);
+
+/** Retrive a module at with given index */
 struct vmm_module *vmm_modules_getmodule(u32 index);
 
 /** Count number of valid modules */
