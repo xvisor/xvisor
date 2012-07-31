@@ -754,8 +754,8 @@ int conf_write_autoconf(void)
 			case no:
 				break;
 			case mod:
-				fprintf(out, "CONFIG_%s=m\n", sym->name);
-				fprintf(out_h, "#define CONFIG_%s_MODULE 1\n", sym->name);
+				fprintf(out, "%s=m\n", sym->name);
+				fprintf(out_h, "#define %s_MODULE 1\n", sym->name);
 				break;
 			case yes:
 				fprintf(out, "%s=y\n", sym->name);
