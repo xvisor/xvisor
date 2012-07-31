@@ -296,12 +296,6 @@ $(build_dir)/vmm.bin: $(build_dir)/vmm.elf
 $(build_dir)/vmm.elf: $(build_dir)/linker.ld $(all-y) $(build_dir)/system.o
 	$(call compile_ld,$@,$(build_dir)/linker.ld,$(all-y) $(build_dir)/system.o)
 
-#$(build_dir)/system_map.S: $(build_dir)/tools/kallsyms/kallsyms
-#$(build_dir)/system_map.S: $(build_dir)/system.map
-#	$(V)mkdir -p `dirname $@`
-#	$(if $(V), @echo " (kallsyms)  $(subst $(build_dir)/,,$@)")
-#	$(V)$(build_dir)/tools/kallsyms/kallsyms --all-symbols < $< > $@
-
 $(build_dir)/system.map: $(build_dir)/vmm_tmp.elf
 	$(call compile_nm,$@,$<)
 
