@@ -88,6 +88,97 @@ export daemons_dir=$(CURDIR)/daemons
 export drivers_dir=$(CURDIR)/drivers
 export emulators_dir=$(CURDIR)/emulators
 
+# Setup list of tools for compilation
+include $(tools_dir)/tools.mk
+
+# Setup list of targets for compilation
+targets-y+=$(build_dir)/vmm.elf
+targets-y+=$(build_dir)/vmm.bin
+targets-y+=$(build_dir)/system.map
+
+# Setup compilation environment
+cpp=$(CROSS_COMPILE)cpp
+cppflags=-include $(OPENCONF_TMPDIR)/$(OPENCONF_AUTOHEADER)
+cppflags+=-DCONFIG_MAJOR=$(MAJOR)
+cppflags+=-DCONFIG_MINOR=$(MINOR)
+cppflags+=-DCONFIG_RELEASE=$(RELEASE)
+cppflags+=-I$(cpu_dir)/include
+cppflags+=-I$(cpu_common_dir)/include
+cppflags+=-I$(board_dir)/include
+cppflags+=-I$(board_common_dir)/include
+cppflags+=-I$(core_dir)/include
+cppflags+=-I$(commands_dir)/include
+cppflags+=-I$(daemons_dir)/include
+cppflags+=-I$(drivers_dir)/include
+cppflags+=-I$(emulators_dir)/include
+cppflags+=-I$(arch_dir)/include
+cppflags+=$(cpu-cppflags)
+cppflags+=$(board-cppflags)
+cppflags+=$(libs-cppflags-y)
+cc=$(CROSS_COMPILE)gcc
+cflags=-g -Wall -nostdlib -fno-builtin -D__VMM__
+cflags+=$(board-cflags) 
+cflags+=$(cpu-cflags) 
+cflags+=$(libs-cflags-y) 
+cflags+=$(cppflags)
+ifdef CONFIG_PROFILE
+cflags+=-finstrument-functions
+endif
+as=$(CROSS_COMPILE)gcc
+asflags=-g -Wall -nostdlib -D__ASSEMBLY__ 
+asflags+=$(board-asflags) 
+asflags+=$(cpu-asflags) 
+asflags+=$(libs-asflags-y) 
+asflags+=$(cppflags)
+ar=$(CROSS_COMPILE)ar
+arflags=rcs
+ld=$(CROSS_COMPILE)gcc
+ldflags=-g -Wall -nostdlib 
+ldflags+=$(board-ldflags) 
+ldflags+=$(cpu-ldflags) 
+ldflags+=$(libs-ldflags-y) 
+merge=$(CROSS_COMPILE)ld
+mergeflags=-r
+objcopy=$(CROSS_COMPILE)objcopy
+nm=$(CROSS_COMPILE)nm
+
+# Setup functions for compilation
+merge_objs = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (merge)     $(subst $(build_dir)/,,$(1))"; \
+	     $(merge) $(mergeflags) $(2) -o $(1)
+merge_deps = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (merge-dep) $(subst $(build_dir)/,,$(1))"; \
+	     cat $(2) > $(1)
+copy_file =  $(V)mkdir -p `dirname $(1)`; \
+	     echo " (copy)      $(subst $(build_dir)/,,$(1))"; \
+	     cp -f $(2) $(1)
+compile_cpp = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (cpp)       $(subst $(build_dir)/,,$(1))"; \
+	     $(cpp) $(cppflags) $(2) | grep -v "\#" > $(1)
+compile_cc_dep = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (cc-dep)    $(subst $(build_dir)/,,$(1))"; \
+	     echo -n `dirname $(1)`/ > $(1); \
+	     $(cc) $(cflags) -I`dirname $(2)` -MM $(2) >> $(1)
+compile_cc = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (cc)        $(subst $(build_dir)/,,$(1))"; \
+	     $(cc) $(cflags) -I`dirname $<` -c $(2) -o $(1)
+compile_as_dep = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (as-dep)    $(subst $(build_dir)/,,$(1))"; \
+	     echo -n `dirname $(1)`/ > $(1); \
+	     $(as) $(asflags) -I`dirname $(2)` -MM $(2) >> $(1)
+compile_as = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (as)        $(subst $(build_dir)/,,$(1))"; \
+	     $(as) $(asflags) -I`dirname $<` -c $(2) -o $(1)
+compile_ld = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (ld)        $(subst $(build_dir)/,,$(1))"; \
+	     $(ld) $(3) $(ldflags) -Wl,-T$(2) -o $(1)
+compile_nm = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (nm)        $(subst $(build_dir)/,,$(1))"; \
+	     $(nm) -n $(2) | grep -v '\( [aNUw] \)\|\(__crc_\)\|\( \$[adt]\)' > $(1)
+compile_objcopy = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (objcopy)   $(subst $(build_dir)/,,$(1))"; \
+	     $(objcopy) -O binary $(2) $(1)
+
 # Setup list of objects.mk files
 cpu-object-mks=$(shell if [ -d $(cpu_dir) ]; then find $(cpu_dir) -iname "objects.mk" | sort -r; fi)
 cpu-common-object-mks=$(shell if [ -d $(cpu_common_dir) ]; then find $(cpu_common_dir) -iname "objects.mk" | sort -r; fi)
@@ -184,61 +275,6 @@ all-m+=$(daemons-m:.o=.xo)
 all-m+=$(drivers-m:.o=.xo)
 all-m+=$(emulators-m:.o=.xo)
 
-# Setup list of tools for compilation
-include $(tools_dir)/tools.mk
-
-# Setup list of targets for compilation
-targets-y+=$(build_dir)/vmm.elf
-targets-y+=$(build_dir)/vmm.bin
-targets-y+=$(build_dir)/system.map
-
-# Setup compilation environment
-cpp=$(CROSS_COMPILE)cpp
-cppflags=-include $(OPENCONF_TMPDIR)/$(OPENCONF_AUTOHEADER)
-cppflags+=-DCONFIG_MAJOR=$(MAJOR)
-cppflags+=-DCONFIG_MINOR=$(MINOR)
-cppflags+=-DCONFIG_RELEASE=$(RELEASE)
-cppflags+=-I$(cpu_dir)/include
-cppflags+=-I$(cpu_common_dir)/include
-cppflags+=-I$(board_dir)/include
-cppflags+=-I$(board_common_dir)/include
-cppflags+=-I$(core_dir)/include
-cppflags+=-I$(commands_dir)/include
-cppflags+=-I$(daemons_dir)/include
-cppflags+=-I$(drivers_dir)/include
-cppflags+=-I$(emulators_dir)/include
-cppflags+=-I$(arch_dir)/include
-cppflags+=$(cpu-cppflags)
-cppflags+=$(board-cppflags)
-cppflags+=$(libs-cppflags-y)
-cc=$(CROSS_COMPILE)gcc
-cflags=-g -Wall -nostdlib -fno-builtin -D__VMM__
-cflags+=$(board-cflags) 
-cflags+=$(cpu-cflags) 
-cflags+=$(libs-cflags-y) 
-cflags+=$(cppflags)
-ifdef CONFIG_PROFILE
-cflags+=-finstrument-functions
-endif
-as=$(CROSS_COMPILE)gcc
-asflags=-g -Wall -nostdlib -D__ASSEMBLY__ 
-asflags+=$(board-asflags) 
-asflags+=$(cpu-asflags) 
-asflags+=$(libs-asflags-y) 
-asflags+=$(cppflags)
-ar=$(CROSS_COMPILE)ar
-arflags=rcs
-ld=$(CROSS_COMPILE)gcc
-ldflags=-g -Wall -nostdlib 
-ldflags+=$(board-ldflags) 
-ldflags+=$(cpu-ldflags) 
-ldflags+=$(libs-ldflags-y) 
-ldflags+=-Wl,-T$(build_dir)/linker.ld
-merge=$(CROSS_COMPILE)ld
-mergeflags=-r
-objcopy=$(CROSS_COMPILE)objcopy
-nm=$(CROSS_COMPILE)nm
-
 # Default rule "make"
 .PHONY: all
 all: $(CONFIG_FILE) $(DEPENDENCY_FILE) $(tools-y) $(targets-y)
@@ -255,112 +291,70 @@ $(DEPENDENCY_FILE): $(CONFIG_FILE) $(deps-y)
 include $(tools_dir)/rules.mk
 
 $(build_dir)/vmm.bin: $(build_dir)/vmm.elf
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (objcopy)   $(subst $(build_dir)/,,$@)")
-	$(V)$(objcopy) -O binary $< $@
+	$(call compile_objcopy,$@,$<)
 
-$(build_dir)/vmm.elf: $(build_dir)/linker.ld $(all-y) $(build_dir)/system_map.o
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (ld)        $(subst $(build_dir)/,,$@)")
-	$(V)$(ld) $(all-y) $(build_dir)/system_map.o $(ldflags) -o $@
+$(build_dir)/vmm.elf: $(build_dir)/linker.ld $(all-y) $(build_dir)/system.o
+	$(call compile_ld,$@,$(build_dir)/linker.ld,$(all-y) $(build_dir)/system.o)
 
-$(build_dir)/system_map.S: $(build_dir)/tools/kallsyms/kallsyms
-$(build_dir)/system_map.S: $(build_dir)/system.map
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (kallsyms)  $(subst $(build_dir)/,,$@)")
-	$(V)$(build_dir)/tools/kallsyms/kallsyms --all-symbols < $< > $@
+#$(build_dir)/system_map.S: $(build_dir)/tools/kallsyms/kallsyms
+#$(build_dir)/system_map.S: $(build_dir)/system.map
+#	$(V)mkdir -p `dirname $@`
+#	$(if $(V), @echo " (kallsyms)  $(subst $(build_dir)/,,$@)")
+#	$(V)$(build_dir)/tools/kallsyms/kallsyms --all-symbols < $< > $@
 
 $(build_dir)/system.map: $(build_dir)/vmm_tmp.elf
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (nm)        $(subst $(build_dir)/,,$@)")
-	$(V)$(nm) -n $< | grep -v '\( [aNUw] \)\|\(__crc_\)\|\( \$[adt]\)' > $@
+	$(call compile_nm,$@,$<)
 
 $(build_dir)/vmm_tmp.elf: $(build_dir)/linker.ld $(all-y)
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (ld)        $(subst $(build_dir)/,,$@)")
-	$(V)$(ld) $(all-y) $(ldflags) -o $@
+	$(call compile_ld,$@,$(build_dir)/linker.ld,$(all-y))
 
 $(build_dir)/linker.ld: $(cpu_dir)/linker.ld
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (cpp)       $(subst $(build_dir)/,,$@)")
-	$(V)$(cpp) $(cppflags) $< | grep -v "\#" > $@
+	$(call compile_cpp,$@,$<)
 
 $(build_dir)/arch/$(CONFIG_ARCH)/cpu/cpu.o: $(cpu-y) $(cpu-common-y)
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (merge)     $(subst $(build_dir)/,,$@)")
-	$(V)$(merge) $(mergeflags) $(cpu-y) $(cpu-common-y) -o $@
+	$(call merge_objs,$@,$^)
 
 $(build_dir)/arch/$(CONFIG_ARCH)/board/board.o: $(board-y) $(board-common-y)
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (merge)     $(subst $(build_dir)/,,$@)")
-	$(V)$(merge) $(mergeflags) $(board-y) $(board-common-y) -o $@
+	$(call merge_objs,$@,$^)
 
 $(build_dir)/core/core.o: $(core-y)
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (merge)     $(subst $(build_dir)/,,$@)")
-	$(V)$(merge) $(mergeflags) $(core-y) -o $@
+	$(call merge_objs,$@,$^)
 
 $(build_dir)/libs/libs.o: $(libs-y)
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (merge)     $(subst $(build_dir)/,,$@)")
-	$(V)$(merge) $(mergeflags) $(libs-y) -o $@
+	$(call merge_objs,$@,$^)
 
 $(build_dir)/commands/commands.o: $(commands-y)
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (merge)     $(subst $(build_dir)/,,$@)")
-	$(V)$(merge) $(mergeflags) $(commands-y) -o $@
+	$(call merge_objs,$@,$^)
 
 $(build_dir)/daemons/daemons.o: $(daemons-y)
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (merge)     $(subst $(build_dir)/,,$@)")
-	$(V)$(merge) $(mergeflags) $(daemons-y) -o $@
+	$(call merge_objs,$@,$^)
 
 $(build_dir)/drivers/drivers.o: $(drivers-y)
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (merge)     $(subst $(build_dir)/,,$@)")
-	$(V)$(merge) $(mergeflags) $(drivers-y) -o $@
+	$(call merge_objs,$@,$^)
 
 $(build_dir)/emulators/emulators.o: $(emulators-y)
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (merge)     $(subst $(build_dir)/,,$@)")
-	$(V)$(merge) $(mergeflags) $(emulators-y) -o $@
+	$(call merge_objs,$@,$^)
 
 $(build_dir)/%.dep: $(src_dir)/%.S
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (as-dep)    $(subst $(build_dir)/,,$@)")
-	$(V)echo -n `dirname $@`/ > $@
-	$(V)$(as) $(asflags) -I`dirname $<` -MM $< >> $@
+	$(call compile_as_dep,$@,$<)
 
 $(build_dir)/%.dep: $(src_dir)/%.c
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (cc-dep)    $(subst $(build_dir)/,,$@)")
-	$(V)echo -n `dirname $@`/ > $@
-	$(V)$(cc) $(cflags) -I`dirname $<` -MM $< >> $@
+	$(call compile_cc_dep,$@,$<)
 
 $(build_dir)/%.o: $(src_dir)/%.S
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (as)        $(subst $(build_dir)/,,$@)")
-	$(V)$(as) $(asflags) -I`dirname $<` -c $< -o $@
+	$(call compile_as,$@,$<)
 
 $(build_dir)/%.o: $(build_dir)/%.S
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (as)        $(subst $(build_dir)/,,$@)")
-	$(V)$(as) $(asflags) -I`dirname $<` -c $< -o $@
+	$(call compile_as,$@,$<)
 
 $(build_dir)/%.o: $(src_dir)/%.c
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (cc)        $(subst $(build_dir)/,,$@)")
-	$(V)$(cc) $(cflags) -I`dirname $<` -c $< -o $@
+	$(call compile_cc,$@,$<)
 
 $(build_dir)/%.o: $(build_dir)/%.c
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (cc)        $(subst $(build_dir)/,,$@)")
-	$(V)$(cc) $(cflags) -I`dirname $<` -c $< -o $@
+	$(call compile_cp,$@,$<)
 
 $(build_dir)/%.xo: $(build_dir)/%.o
-	$(V)mkdir -p `dirname $@`
-	$(if $(V), @echo " (copy)      $(subst $(build_dir)/,,$@)")
-	$(V)cp -f $< $@
+	$(call copy_file,$@,$^)
 
 # Rule for "make clean"
 .PHONY: clean

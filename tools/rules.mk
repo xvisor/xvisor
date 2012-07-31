@@ -63,3 +63,8 @@ $(build_dir)/tools/kallsyms/kallsyms: $(CURDIR)/tools/kallsyms/Makefile
 	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
 	$(V)$(MAKE) -C $(CURDIR)/tools/kallsyms O=$(build_dir)/tools/kallsyms
 
+$(build_dir)/%.S: $(build_dir)/%.map $(build_dir)/tools/kallsyms/kallsyms
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (kallsyms)  $(subst $(build_dir)/,,$@)")
+	$(V)$(build_dir)/tools/kallsyms/kallsyms --all-symbols < $< > $@
+
