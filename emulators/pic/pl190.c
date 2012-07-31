@@ -44,7 +44,6 @@
 #include <vmm_devemu.h>
 #include <vmm_stdio.h>
 
-#define MODULE_VARID			pl190_emulator_module
 #define MODULE_NAME			"ARM PL190 Emulator"
 #define MODULE_AUTHOR			"Jean-Christophe Dubois"
 #define MODULE_IPRIORITY		0
@@ -591,14 +590,13 @@ static int __init pl190_emulator_init(void)
 	return vmm_devemu_register_emulator(&pl190_emulator);
 }
 
-static void pl190_emulator_exit(void)
+static void __exit pl190_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&pl190_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

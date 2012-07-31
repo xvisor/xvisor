@@ -29,7 +29,6 @@
 #include <vmm_cmdmgr.h>
 #include <input/vmm_input.h>
 
-#define MODULE_VARID			cmd_input_module
 #define MODULE_NAME			"Command input"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -108,13 +107,12 @@ static int __init cmd_input_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_input);
 }
 
-static void cmd_input_exit(void)
+static void __exit cmd_input_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_input);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_NAME, 
 			MODULE_AUTHOR, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 

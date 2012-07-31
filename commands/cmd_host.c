@@ -34,7 +34,6 @@
 #include <vmm_delay.h>
 #include <mathlib.h>
 
-#define MODULE_VARID			cmd_host_module
 #define MODULE_NAME			"Command host"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -246,13 +245,12 @@ static int __init cmd_host_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_host);
 }
 
-static void cmd_host_exit(void)
+static void __exit cmd_host_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_host);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_NAME, 
 			MODULE_AUTHOR, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 

@@ -52,9 +52,7 @@
 #include <linux/skbuff.h>
 
 
-
-#define MODULE_VARID			smc911x_driver_module
-#define MODULE_NAME			"SMSC 911x Ethernet Controller Driver"
+#define MODULE_NAME			"SMC911x Ethernet Driver"
 #define MODULE_AUTHOR			"Pranav Sawargaonkar"
 #define MODULE_IPRIORITY		(VMM_NET_CLASS_IPRIORITY + 1)
 #define	MODULE_INIT			smc911x_driver_init
@@ -1671,14 +1669,13 @@ static int __init smc911x_driver_init(void)
 	return vmm_devdrv_register_driver(&smc911x_driver);
 }
 
-static void smc911x_driver_exit(void)
+static void __exit smc911x_driver_exit(void)
 {
 	vmm_devdrv_unregister_driver(&smc911x_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		MODULE_NAME,
-		MODULE_AUTHOR,
-		MODULE_IPRIORITY,
-		MODULE_INIT,
-		MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

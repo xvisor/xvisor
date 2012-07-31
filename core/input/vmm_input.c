@@ -37,7 +37,6 @@
 #include <input/vmm_input.h>
 #include <input/vmm_input_mt.h>
 
-#define MODULE_VARID			input_framework_module
 #define MODULE_NAME			"Input Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		VMM_INPUT_IPRIORITY
@@ -1230,9 +1229,8 @@ static void vmm_input_exit(void)
 	vmm_free(c);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

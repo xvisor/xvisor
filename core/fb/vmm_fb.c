@@ -29,7 +29,6 @@
 #include <vmm_devdrv.h>
 #include <fb/vmm_fb.h>
 
-#define MODULE_VARID			fb_framework_module
 #define MODULE_NAME			"Frame Buffer Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		VMM_FB_CLASS_IPRIORITY
@@ -143,7 +142,7 @@ static int __init vmm_fb_init(void)
 	return VMM_OK;
 }
 
-static void vmm_fb_exit(void)
+static void __exit vmm_fb_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
@@ -161,9 +160,8 @@ static void vmm_fb_exit(void)
 	vmm_free(c);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

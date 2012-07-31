@@ -40,8 +40,8 @@ struct vmm_module {
 	vmm_module_exit_t exit;
 };
 
-#define VMM_DECLARE_MODULE(varid,name,author,ipriority,init,exit) \
-__modtbl struct vmm_module varid = \
+#define VMM_DECLARE_MODULE(name,author,ipriority,init,exit) \
+static __unused __modtbl struct vmm_module __moddecl__ = \
 { VMM_MODULE_SIGNATURE, name, author, ipriority, 0, init, exit }
 
 /** Check if module is built-in */

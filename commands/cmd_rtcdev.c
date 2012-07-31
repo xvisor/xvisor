@@ -29,7 +29,6 @@
 #include <vmm_cmdmgr.h>
 #include <rtc/vmm_rtcdev.h>
 
-#define MODULE_VARID			cmd_rtcdev_module
 #define MODULE_NAME			"Command rtcdev"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		(VMM_RTCDEV_CLASS_IPRIORITY+1)
@@ -332,13 +331,12 @@ static int __init cmd_rtcdev_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_rtcdev);
 }
 
-static void cmd_rtcdev_exit(void)
+static void __exit cmd_rtcdev_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_rtcdev);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_NAME, 
 			MODULE_AUTHOR, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 

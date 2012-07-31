@@ -42,7 +42,6 @@
 #include <asm/io.h>
 #include <asm/irq.h>
 
-#define MODULE_VARID			amba_kmi_driver_module
 #define MODULE_NAME			"AMBA KMI Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		(SERIO_IPRIORITY+1)
@@ -219,9 +218,8 @@ static void __exit amba_kmi_driver_exit(void)
 	vmm_devdrv_unregister_driver(&amba_kmi_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

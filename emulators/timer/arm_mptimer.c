@@ -46,7 +46,6 @@
 #include <vmm_stdio.h>
 #include <mathlib.h>
 
-#define MODULE_VARID		mptimer_emulator_module
 #define MODULE_NAME		"MPCore Private Timer and Watchdog Emulator"
 #define MODULE_AUTHOR		"Sukanto Ghosh"
 #define MODULE_IPRIORITY	0

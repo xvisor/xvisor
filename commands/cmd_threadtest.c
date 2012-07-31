@@ -32,7 +32,6 @@
 #include <vmm_cmdmgr.h>
 #include <mathlib.h>
 
-#define MODULE_VARID			cmd_threadtest_module
 #define MODULE_NAME			"Thread Test Command"
 #define MODULE_AUTHOR			"Sanjeev Pandita"
 #define MODULE_IPRIORITY		0
@@ -195,14 +194,13 @@ static int __init cmd_threadtest_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_threadtest);
 }
 
-static void cmd_threadtest_exit(void)
+static void __exit cmd_threadtest_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_threadtest);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-		   MODULE_NAME, 
-		   MODULE_AUTHOR, 
-		   MODULE_IPRIORITY, 
-		   MODULE_INIT, 
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME, 
+			MODULE_AUTHOR, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

@@ -33,7 +33,6 @@
 #include <kallsyms.h>
 #include <libsort.h>
 
-#define MODULE_VARID			cmd_profile_module
 #define MODULE_NAME			"Command profile"
 #define MODULE_AUTHOR			"Jean-Christophe Dubois"
 #define MODULE_IPRIORITY		0
@@ -295,7 +294,7 @@ static int __init cmd_profile_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_profile);
 }
 
-static void cmd_profile_exit(void)
+static void __exit cmd_profile_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_profile);
 
@@ -304,9 +303,8 @@ static void cmd_profile_exit(void)
 	count_array = NULL;
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

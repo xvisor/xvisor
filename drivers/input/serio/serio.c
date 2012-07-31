@@ -37,7 +37,6 @@
 #include <linux/workqueue.h>
 #include <linux/serio.h>
 
-#define MODULE_VARID			serio_framework_module
 #define MODULE_NAME			"Serial IO Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		SERIO_IPRIORITY
@@ -711,9 +710,8 @@ static void __exit serio_exit(void)
 	cancel_work_sync(&serio_event_work);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

@@ -29,7 +29,6 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 
-#define MODULE_VARID			cmd_vserial_module
 #define MODULE_NAME			"Command vserial"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -260,13 +259,12 @@ static int __init cmd_vserial_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_vserial);
 }
 
-static void cmd_vserial_exit(void)
+static void __exit cmd_vserial_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_vserial);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_NAME, 
 			MODULE_AUTHOR, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 

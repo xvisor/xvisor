@@ -29,7 +29,6 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 
-#define MODULE_VARID			cmd_stdio_module
 #define MODULE_NAME			"Command stdio"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -112,13 +111,12 @@ static int __init cmd_stdio_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_stdio);
 }
 
-static void cmd_stdio_exit(void)
+static void __exit cmd_stdio_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_stdio);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_NAME, 
 			MODULE_AUTHOR, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 

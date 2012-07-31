@@ -35,7 +35,6 @@
 #include <serial/uart.h>
 #include <mathlib.h>
 
-#define MODULE_VARID			uart_driver_module
 #define MODULE_NAME			"Generic UART Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -260,13 +259,12 @@ static int __init uart_driver_init(void)
 	return vmm_devdrv_register_driver(&uart_driver);
 }
 
-static void uart_driver_exit(void)
+static void __exit uart_driver_exit(void)
 {
 	vmm_devdrv_unregister_driver(&uart_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_NAME, 
 			MODULE_AUTHOR, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 

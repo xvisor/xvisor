@@ -44,7 +44,6 @@
 #include <vmm_devemu.h>
 #include <pic/gic_emulator.h>
 
-#define MODULE_VARID			gic_emulator_module
 #define MODULE_NAME			"Realview GIC Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -1110,13 +1109,12 @@ static int __init gic_emulator_init(void)
 	return vmm_devemu_register_emulator(&gic_emulator);
 }
 
-static void gic_emulator_exit(void)
+static void __exit gic_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&gic_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_NAME, 
 			MODULE_AUTHOR, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 

@@ -31,7 +31,6 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 
-#define MODULE_VARID			daemon_mterm_module
 #define MODULE_NAME			"Managment Terminal"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -120,15 +119,14 @@ static int __init daemon_mterm_init(void)
 	return VMM_OK;
 }
 
-static void daemon_mterm_exit(void)
+static void __exit daemon_mterm_exit(void)
 {
 	vmm_threads_stop(mtctrl.thread);
 
 	vmm_threads_destroy(mtctrl.thread);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_NAME, 
 			MODULE_AUTHOR, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 

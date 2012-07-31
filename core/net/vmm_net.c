@@ -29,7 +29,6 @@
 #include <vmm_stdio.h>
 #include <net/vmm_net.h>
 
-#define MODULE_VARID			vmm_net_module
 #define MODULE_NAME			"Network Framework"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
 #define MODULE_IPRIORITY		(VMM_NET_CLASS_IPRIORITY)
@@ -92,7 +91,7 @@ vmm_net_init_done:
 	return rc;
 }
 
-static void vmm_net_exit(void)
+static void __exit vmm_net_exit(void)
 {
 	vmm_netport_exit();
 	vmm_netbridge_exit();
@@ -100,9 +99,8 @@ static void vmm_net_exit(void)
 	vmm_netdev_exit();
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-		   MODULE_NAME, 
-		   MODULE_AUTHOR, 
-		   MODULE_IPRIORITY, 
-		   MODULE_INIT, 
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME, 
+			MODULE_AUTHOR, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

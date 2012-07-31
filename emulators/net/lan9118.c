@@ -54,7 +54,6 @@
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
 
-#define MODULE_VARID			lan9118_emulator_module
 #define MODULE_NAME			"SMSC LAN9118 Emulator"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
 #define MODULE_IPRIORITY		(VMM_NET_CLASS_IPRIORITY+1)
@@ -1520,15 +1519,14 @@ static int __init lan9118_emulator_init(void)
 	return vmm_devemu_register_emulator(&lan9118_emulator);
 }
 
-static void lan9118_emulator_exit(void)
+static void __exit lan9118_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&lan9118_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-		   MODULE_NAME, 
-		   MODULE_AUTHOR, 
-		   MODULE_IPRIORITY, 
-		   MODULE_INIT, 
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME, 
+			MODULE_AUTHOR, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);
 
