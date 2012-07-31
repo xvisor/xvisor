@@ -100,6 +100,10 @@ daemons-object-mks=$(shell if [ -d $(daemons_dir) ]; then find $(daemons_dir) -i
 drivers-object-mks=$(shell if [ -d $(drivers_dir) ]; then find $(drivers_dir) -iname "objects.mk" | sort -r; fi)
 emulators-object-mks=$(shell if [ -d $(emulators_dir) ]; then find $(emulators_dir) -iname "objects.mk" | sort -r; fi)
 
+# Default rule "make" should always be first rule
+.PHONY: all
+all:
+
 # Include all object.mk files
 include $(cpu-object-mks) 
 include $(cpu-common-object-mks) 
@@ -112,7 +116,7 @@ include $(daemons-object-mks)
 include $(drivers-object-mks)
 include $(emulators-object-mks)
 
-# Setup list of output objects
+# Setup list of built-in objects
 cpu-y=$(foreach obj,$(cpu-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/cpu/$(CONFIG_CPU)/$(obj))
 cpu-common-y=$(foreach obj,$(cpu-common-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/cpu/common/$(obj))
 board-y=$(foreach obj,$(board-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)/$(obj))
@@ -124,7 +128,15 @@ daemons-y=$(foreach obj,$(daemons-objs-y),$(build_dir)/daemons/$(obj))
 drivers-y=$(foreach obj,$(drivers-objs-y),$(build_dir)/drivers/$(obj))
 emulators-y=$(foreach obj,$(emulators-objs-y),$(build_dir)/emulators/$(obj))
 
-# Setup list of deps files for compilation
+# Setup list of module objects
+core-m=$(foreach obj,$(core-objs-m),$(build_dir)/core/$(obj))
+libs-m=$(foreach obj,$(libs-objs-m),$(build_dir)/libs/$(obj))
+commands-m=$(foreach obj,$(commands-objs-m),$(build_dir)/commands/$(obj))
+daemons-m=$(foreach obj,$(daemons-objs-m),$(build_dir)/daemons/$(obj))
+drivers-m=$(foreach obj,$(drivers-objs-m),$(build_dir)/drivers/$(obj))
+emulators-m=$(foreach obj,$(emulators-objs-m),$(build_dir)/emulators/$(obj))
+
+# Setup list of deps files for built-in objects
 deps-y=$(cpu-y:.o=.dep)
 deps-y+=$(cpu-common-y:.o=.dep)
 deps-y+=$(board-y:.o=.dep)
@@ -136,7 +148,15 @@ deps-y+=$(daemons-y:.o=.dep)
 deps-y+=$(drivers-y:.o=.dep)
 deps-y+=$(emulators-y:.o=.dep)
 
-# Setup list of all objects
+# Setup list of deps files for module objects
+deps-y+=$(core-m:.o=.dep)
+deps-y+=$(libs-m:.o=.dep)
+deps-y+=$(commands-m:.o=.dep)
+deps-y+=$(daemons-m:.o=.dep)
+deps-y+=$(drivers-m:.o=.dep)
+deps-y+=$(emulators-m:.o=.dep)
+
+# Setup list of all built-in objects
 all-y=$(build_dir)/arch/$(CONFIG_ARCH)/cpu/cpu.o
 all-y+=$(build_dir)/arch/$(CONFIG_ARCH)/board/board.o
 all-y+=$(build_dir)/core/core.o
@@ -155,6 +175,14 @@ endif
 ifneq ($(words $(emulators-y)), 0)
 all-y+=$(build_dir)/emulators/emulators.o
 endif
+
+# Setup list of all module objects
+all-m+=$(core-m:.o=.xo)
+all-m+=$(libs-m:.o=.xo)
+all-m+=$(commands-m:.o=.xo)
+all-m+=$(daemons-m:.o=.xo)
+all-m+=$(drivers-m:.o=.xo)
+all-m+=$(emulators-m:.o=.xo)
 
 # Setup list of tools for compilation
 include $(tools_dir)/tools.mk
@@ -184,7 +212,7 @@ cppflags+=$(cpu-cppflags)
 cppflags+=$(board-cppflags)
 cppflags+=$(libs-cppflags-y)
 cc=$(CROSS_COMPILE)gcc
-cflags=-g -Wall -nostdlib -fno-builtin
+cflags=-g -Wall -nostdlib -fno-builtin -D__VMM__
 cflags+=$(board-cflags) 
 cflags+=$(cpu-cflags) 
 cflags+=$(libs-cflags-y) 
@@ -211,15 +239,14 @@ mergeflags=-r
 objcopy=$(CROSS_COMPILE)objcopy
 nm=$(CROSS_COMPILE)nm
 
-# Setup list of final objects
-final-y=$(all-y)
-final-y+=$(build_dir)/system_map.o
-
 # Default rule "make"
 .PHONY: all
 all: $(CONFIG_FILE) $(DEPENDENCY_FILE) $(tools-y) $(targets-y)
 
-# Generate and Include dependency rules
+.PHONY: modules
+modules: $(CONFIG_FILE) $(DEPENDENCY_FILE) $(all-m)
+
+# Generate and include built-in dependency rules
 -include $(DEPENDENCY_FILE)
 $(DEPENDENCY_FILE): $(CONFIG_FILE) $(deps-y)
 	$(V)cat $(deps-y) > $(DEPENDENCY_FILE)
@@ -232,10 +259,10 @@ $(build_dir)/vmm.bin: $(build_dir)/vmm.elf
 	$(if $(V), @echo " (objcopy)   $(subst $(build_dir)/,,$@)")
 	$(V)$(objcopy) -O binary $< $@
 
-$(build_dir)/vmm.elf: $(build_dir)/linker.ld $(final-y)
+$(build_dir)/vmm.elf: $(build_dir)/linker.ld $(all-y) $(build_dir)/system_map.o
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (ld)        $(subst $(build_dir)/,,$@)")
-	$(V)$(ld) $(final-y) $(ldflags) -o $@
+	$(V)$(ld) $(all-y) $(build_dir)/system_map.o $(ldflags) -o $@
 
 $(build_dir)/system_map.S: $(build_dir)/tools/kallsyms/kallsyms
 $(build_dir)/system_map.S: $(build_dir)/system.map
@@ -330,9 +357,14 @@ $(build_dir)/%.o: $(build_dir)/%.c
 	$(if $(V), @echo " (cc)        $(subst $(build_dir)/,,$@)")
 	$(V)$(cc) $(cflags) -I`dirname $<` -c $< -o $@
 
+$(build_dir)/%.xo: $(build_dir)/%.o
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (copy)      $(subst $(build_dir)/,,$@)")
+	$(V)cp -f $< $@
+
 # Rule for "make clean"
 .PHONY: clean
-clean: $(CONFIG_FILE)
+clean:
 ifeq ($(build_dir),$(CURDIR)/build)
 	$(if $(V), @echo " (rm)        $(build_dir)")
 	$(V)rm -rf $(build_dir)
