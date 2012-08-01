@@ -142,6 +142,18 @@ mergeflags=-r
 objcopy=$(CROSS_COMPILE)objcopy
 nm=$(CROSS_COMPILE)nm
 
+# If only "modules" is specified as make goals then
+# define __VMM_MODULES__ in cflags.
+# Also, when "modules" is a make goal then no other
+# goal can be specified along with it.
+ifneq ($(filter modules,$(MAKECMDGOALS)),)
+ifeq ($(filter-out modules,$(MAKECMDGOALS)),)
+cflags+=-D__VMM_MODULES__
+else
+$(error Invalid make targets. Cannot use target modules with any other target.)
+endif
+endif
+
 # Setup functions for compilation
 merge_objs = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (merge)     $(subst $(build_dir)/,,$(1))"; \
