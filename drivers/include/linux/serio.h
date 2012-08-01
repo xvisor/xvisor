@@ -31,7 +31,9 @@
 #ifndef _SERIO_H
 #define _SERIO_H
 
+#include <linux/mutex.h>
 #include <linux/types.h>
+#include <linux/device.h>
 #include <linux/bitops.h>
 #include <linux/interrupt.h>
 #include <linux/list.h>
@@ -47,7 +49,7 @@ struct serio {
 	char name[32];
 	char phys[32];
 
-	bool manual_bind;	/* For xvisor, we ignore this field */
+	bool manual_bind;		/* For xvisor, we ignore this field */
 
 	struct serio_device_id id;
 
@@ -65,8 +67,9 @@ struct serio {
 	unsigned int depth;		/* level of nesting in serio hierarchy */
 
 	struct serio_driver *drv;	/* accessed from interrupt, must be protected by serio->lock and serio->sem */
-	spinlock_t drv_lock;		/* protects serio->drv so attributes can pin driver */
+	struct mutex drv_mutex;		/* protects serio->drv so attributes can pin driver */
 
+	struct vmm_device *dev;
 	void *priv;
 
 	struct list_head node;
@@ -74,11 +77,11 @@ struct serio {
 #define to_serio_port(d)	container_of(d, struct serio, dev)
 
 struct serio_driver {
-	const char *name;	/* Only for xvisor */
+	const char *name;		/* Only for xvisor */
 	const char *description;
 
 	const struct serio_device_id *id_table;
-	bool manual_bind;	/* For xvisor, we ignore this field */
+	bool manual_bind;		/* For xvisor, we ignore this field */
 
 	void (*write_wakeup)(struct serio *);
 	irqreturn_t (*interrupt)(struct serio *, unsigned char, unsigned int);
@@ -106,10 +109,10 @@ static inline void serio_register_port(struct serio *serio)
 void serio_unregister_port(struct serio *serio);
 void serio_unregister_child_port(struct serio *serio);
 
-int __serio_register_driver(struct serio_driver *drv, const char *name);
-static inline int serio_register_driver(struct serio_driver *drv, const char *name)
+int __serio_register_driver(struct serio_driver *drv);
+static inline int serio_register_driver(struct serio_driver *drv)
 {
-	return __serio_register_driver(drv, name);
+	return __serio_register_driver(drv);
 }
 void serio_unregister_driver(struct serio_driver *drv);
 

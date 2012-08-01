@@ -41,7 +41,6 @@
 #include <vmm_devemu.h>
 #include <mathlib.h>
 
-#define MODULE_VARID			pl031_emulator_module
 #define MODULE_NAME			"PL031 RTC Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -59,7 +58,7 @@
 
 struct pl031_state {
 	struct vmm_guest *guest;
-	struct vmm_timer_event *event;
+	struct vmm_timer_event event;
 	vmm_spinlock_t lock;
 	u32 irq;
 	u32 tick_offset;
@@ -106,11 +105,11 @@ static void pl031_set_alarm(struct pl031_state *s)
 	 * and gives correct results when alarm < now_ticks.  */
 	ticks = s->mr - ticks;
 	if (ticks == 0) {
-		vmm_timer_event_stop(s->event);
+		vmm_timer_event_stop(&s->event);
 		s->im = 1;
 		pl031_update(s);
 	} else {
-		vmm_timer_event_start(s->event, 
+		vmm_timer_event_start(&s->event, 
 				      ((u64)ticks) * ((u64)1000000000));
 	}
 }
@@ -278,7 +277,7 @@ static int pl031_emulator_reset(struct vmm_emudev *edev)
 
 	vmm_spin_lock(&s->lock);
 
-	vmm_timer_event_stop(s->event);
+	vmm_timer_event_stop(&s->event);
 	s->im = 0;
 	pl031_update(s);
 
@@ -315,14 +314,10 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 		goto pl031_emulator_probe_freestate_fail;
 	}
 
-	s->event = vmm_timer_event_create(&pl031_timer_event, s);
-	if (!(s->event)) {
-		rc = VMM_EFAIL;
-		goto pl031_emulator_probe_freestate_fail;
-	}
+	INIT_TIMER_EVENT(&s->event, &pl031_timer_event, s);
 
 	if ((rc = vmm_wallclock_get_timeofday(&tv, &tz))) {
-		goto pl031_emulator_probe_freeevent_fail;
+		goto pl031_emulator_probe_freestate_fail;
 	}
         s->tick_offset = (u32)(tv.tv_sec - (tz.tz_minuteswest * 60));
 	s->tick_tstamp = vmm_timer_timestamp();
@@ -331,8 +326,6 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 
 	goto pl031_emulator_probe_done;
 
-pl031_emulator_probe_freeevent_fail:
-	vmm_timer_event_destroy(s->event);
 pl031_emulator_probe_freestate_fail:
 	vmm_free(s);
 pl031_emulator_probe_done:
@@ -344,7 +337,6 @@ static int pl031_emulator_remove(struct vmm_emudev *edev)
 	struct pl031_state * s = edev->priv;
 
 	if (s) {
-		vmm_timer_event_destroy(s->event);
 		vmm_free(s);
 		edev->priv = NULL;
 	}
@@ -375,13 +367,12 @@ static int __init pl031_emulator_init(void)
 	return vmm_devemu_register_emulator(&pl031_emulator);
 }
 
-static void pl031_emulator_exit(void)
+static void __exit pl031_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&pl031_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_NAME, 
 			MODULE_AUTHOR, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 

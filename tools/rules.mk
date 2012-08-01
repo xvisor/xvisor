@@ -58,12 +58,13 @@ $(build_dir)/tools/bbflash/bb_nandflash_ecc: $(CURDIR)/tools/bbflash/Makefile
 
 endif
 
-ifdef CONFIG_KALLSYMS_GENERATOR
-
 $(build_dir)/tools/kallsyms/kallsyms: $(CURDIR)/tools/kallsyms/Makefile
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
 	$(V)$(MAKE) -C $(CURDIR)/tools/kallsyms O=$(build_dir)/tools/kallsyms
 
-endif
+$(build_dir)/%.S: $(build_dir)/%.map $(build_dir)/tools/kallsyms/kallsyms
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (kallsyms)  $(subst $(build_dir)/,,$@)")
+	$(V)$(build_dir)/tools/kallsyms/kallsyms --all-symbols < $< > $@
 

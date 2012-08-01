@@ -211,8 +211,8 @@ u32 vmm_host_free_initmem(void)
 	virtual_addr_t init_start;
 	virtual_size_t init_size;
 
-	init_start = arch_init_text_vaddr();
-	init_size = arch_init_text_size();
+	init_start = arch_init_vaddr();
+	init_size = arch_init_size();
 	init_size = VMM_ROUNDUP2_PAGE_SIZE(init_size);
 
 	if ((rc = vmm_host_free_pages(init_start, init_size >> VMM_PAGE_SHIFT))) {

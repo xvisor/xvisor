@@ -120,6 +120,22 @@ int vmm_workqueue_stop_work(struct vmm_work * work)
 	return VMM_OK;
 }
 
+int vmm_workqueue_stop_delayed_work(struct vmm_delayed_work *work)
+{
+	int rc;
+
+	if (!work) {
+		return VMM_EFAIL;
+	}
+
+	rc = vmm_timer_event_stop(&work->event);
+	if (rc) {
+		return rc;
+	}
+
+	return vmm_workqueue_stop_work(&work->work);
+}
+
 struct vmm_thread *vmm_workqueue_get_thread(struct vmm_workqueue * wq)
 {
 	return (wq) ? wq->thread : NULL;
@@ -217,6 +233,31 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue * wq,
 	vmm_threads_wakeup(wq->thread);
 
 	return VMM_OK;
+}
+
+static void delayed_work_timer_event(struct vmm_timer_event *ev)
+{
+	struct vmm_delayed_work *work = ev->priv;
+
+	vmm_workqueue_schedule_work(work->work.wq, &work->work);
+}
+
+int vmm_workqueue_schedule_delayed_work(struct vmm_workqueue *wq, 
+					struct vmm_delayed_work *work,
+					u64 nsecs)
+{
+	if (!wq || !work) {
+		return VMM_EFAIL;
+	}
+
+	if (!nsecs) {
+		return vmm_workqueue_schedule_work(wq, &work->work);
+	}
+
+	work->work.wq = wq;
+	INIT_TIMER_EVENT(&work->event, delayed_work_timer_event, work);
+
+	return vmm_timer_event_start(&work->event, nsecs);
 }
 
 static int workqueue_main(void *data)
@@ -349,9 +390,11 @@ int __init vmm_workqueue_init(void)
 	/* Initialize workqueue count */
 	wqctrl.wq_count = 0;
 
-	/* Create one system workqueue */
+	/* Create one system workqueue with thread priority
+	 * higher than default priority.
+	 */
 	wqctrl.syswq = vmm_workqueue_create("syswq", 
-					    VMM_THREAD_DEF_PRIORITY);
+					    VMM_THREAD_DEF_PRIORITY + 1);
 	if (!wqctrl.syswq) {
 		return VMM_EFAIL;
 	}

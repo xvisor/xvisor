@@ -23,4 +23,5 @@
 
 drivers-objs-$(CONFIG_SERIO)+= input/serio/serio.o
 drivers-objs-$(CONFIG_SERIO_AMBAKMI)+= input/serio/ambakmi.o
+drivers-objs-$(CONFIG_SERIO_LIBPS2)+= input/serio/libps2.o
 

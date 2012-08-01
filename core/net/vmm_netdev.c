@@ -29,7 +29,6 @@
 #include <vmm_devdrv.h>
 #include <net/vmm_netdev.h>
 
-#define MODULE_VARID			netdev_framework_module
 #define MODULE_NAME			"Network Device Framework"
 #define MODULE_AUTHOR			"Himanshu Chauhan"
 #define MODULE_IPRIORITY		VMM_NETDEV_CLASS_IPRIORITY
@@ -236,7 +235,7 @@ int __init vmm_netdev_init(void)
 	return VMM_OK;
 }
 
-void vmm_netdev_exit(void)
+void __exit vmm_netdev_exit(void)
 {
 	int rc;
 	struct vmm_class *c;

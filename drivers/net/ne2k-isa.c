@@ -48,7 +48,6 @@ DEFINE_WAIT_LIST(rx_wait_queue);
 #define PRINTK(fmt,...)
 #endif
 
-#define MODULE_VARID			ne2k_driver_module
 #define MODULE_NAME			"NE2000 Based NIC Driver"
 #define MODULE_AUTHOR			"Himanshu Chauhan"
 #define MODULE_IPRIORITY		0
@@ -787,14 +786,13 @@ static int __init ne2k_driver_init(void)
 	return vmm_devdrv_register_driver(&ne2k_driver);
 }
 
-static void ne2k_driver_exit(void)
+static void __exit ne2k_driver_exit(void)
 {
 	vmm_devdrv_unregister_driver(&ne2k_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		MODULE_NAME,
-		MODULE_AUTHOR,
-		MODULE_IPRIORITY,
-		MODULE_INIT,
-		MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

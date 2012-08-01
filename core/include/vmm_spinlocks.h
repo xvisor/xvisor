@@ -40,11 +40,9 @@ struct vmm_spinlock {
 	spinlock_t __tlock;
 };
 
-#define __SPIN_LOCK_INITIALIZER(_lptr) 	ARCH_SPIN_LOCK_INIT(&((_lptr)->__tlock))
-#define DEFINE_SPIN_LOCK(_lock) 	vmm_spinlock_t _lock = __SPIN_LOCK_INITIALIZER(&_lock);
-
-#define DECLARE_SPIN_LOCK(_lock)	vmm_spinlock_t _lock;
-#define INIT_SPIN_LOCK(_lptr)		__SPIN_LOCK_INITIALIZER(_lptr)
+#define INIT_SPIN_LOCK(_lptr)		ARCH_SPIN_LOCK_INIT(&((_lptr)->__tlock))
+#define __SPINLOCK_INITIALIZER(_lock) 	\
+		{ .__tlock = ARCH_SPIN_LOCK_INITIALIZER((_lock).__tlock), }
 
 #else 
 
@@ -53,8 +51,14 @@ struct vmm_spinlock {
 };
 
 #define INIT_SPIN_LOCK(_lptr)		((_lptr)->__tlock = 0)
+#define __SPINLOCK_INITIALIZER(_lock) 	{ .__tlock = 0, }
 
 #endif
+
+#define DEFINE_SPINLOCK(_lock) 	vmm_spinlock_t _lock = __SPINLOCK_INITIALIZER(_lock)
+
+#define DECLARE_SPINLOCK(_lock)	vmm_spinlock_t _lock
+
 
 typedef struct vmm_spinlock vmm_spinlock_t;
 

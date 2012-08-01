@@ -40,7 +40,6 @@
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
 
-#define MODULE_VARID			l2x0_cc_emulator_module
 #define MODULE_NAME			"L2X0 Cache Emulator"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
 #define MODULE_IPRIORITY		0
@@ -292,15 +291,14 @@ static int __init l2x0_cc_emulator_init(void)
 	return vmm_devemu_register_emulator(&l2x0_cc_emulator);
 }
 
-static void l2x0_cc_emulator_exit(void)
+static void __exit l2x0_cc_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&l2x0_cc_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-		MODULE_NAME, 
-		MODULE_AUTHOR, 
-		MODULE_IPRIORITY, 
-		MODULE_INIT, 
-		MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME, 
+			MODULE_AUTHOR, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);
 

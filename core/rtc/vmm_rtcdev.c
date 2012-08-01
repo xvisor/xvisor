@@ -31,7 +31,6 @@
 #include <vmm_wallclock.h>
 #include <rtc/vmm_rtcdev.h>
 
-#define MODULE_VARID			rtcdev_framework_module
 #define MODULE_NAME			"RTC Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		VMM_RTCDEV_CLASS_IPRIORITY
@@ -230,7 +229,7 @@ static int __init vmm_rtcdev_init(void)
 	return rc;
 }
 
-static void vmm_rtcdev_exit(void)
+static void __exit vmm_rtcdev_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
@@ -248,9 +247,8 @@ static void vmm_rtcdev_exit(void)
 	vmm_free(c);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

@@ -28,7 +28,6 @@
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
 
-#define MODULE_VARID			sp810_emulator_module
 #define MODULE_NAME			"SP810 Serial Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -207,13 +206,12 @@ static int __init sp810_emulator_init(void)
 	return vmm_devemu_register_emulator(&sp810_emulator);
 }
 
-static void sp810_emulator_exit(void)
+static void __exit sp810_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&sp810_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_NAME, 
 			MODULE_AUTHOR, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 

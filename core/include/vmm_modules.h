@@ -32,19 +32,25 @@ typedef void (*vmm_module_exit_t) (void);
 
 struct vmm_module {
 	u32 signature;
-	s8 name[44];
-	s8 author[32];
+	char name[44];
+	char author[32];
 	u32 ipriority;
 	s32 istatus;
 	vmm_module_init_t init;
 	vmm_module_exit_t exit;
 };
 
-#define VMM_DECLARE_MODULE(varid,name,author,ipriority,init,exit) \
-__modtbl struct vmm_module varid = \
+#define VMM_DECLARE_MODULE(name,author,ipriority,init,exit) \
+static __unused __modtbl struct vmm_module __moddecl__ = \
 { VMM_MODULE_SIGNATURE, name, author, ipriority, 0, init, exit }
 
-/** Retrive a module at given position in table */
+/** Check if module is built-in */
+bool vmm_modules_isbuiltin(struct vmm_module *mod);
+
+/** Unload a loadable module */
+int vmm_modules_unload(struct vmm_module *mod);
+
+/** Retrive a module at with given index */
 struct vmm_module *vmm_modules_getmodule(u32 index);
 
 /** Count number of valid modules */

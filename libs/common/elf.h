@@ -1,24 +1,22 @@
-#ifndef _ELF_H
-#define _ELF_H
-
-#include <inttypes.h>
+#ifndef __ELF_H_
+#define __ELF_H_
 
 /* 32-bit ELF base types. */
-typedef uint32_t Elf32_Addr;
-typedef uint16_t Elf32_Half;
-typedef uint32_t Elf32_Off;
-typedef int32_t  Elf32_Sword;
-typedef uint32_t Elf32_Word;
+typedef u32 Elf32_Addr;
+typedef u16 Elf32_Half;
+typedef u32 Elf32_Off;
+typedef s32 Elf32_Sword;
+typedef u32 Elf32_Word;
 
 /* 64-bit ELF base types. */
-typedef uint64_t Elf64_Addr;
-typedef uint16_t Elf64_Half;
-typedef int16_t	 Elf64_SHalf;
-typedef uint64_t Elf64_Off;
-typedef int32_t	 Elf64_Sword;
-typedef uint32_t Elf64_Word;
-typedef uint64_t Elf64_Xword;
-typedef int64_t  Elf64_Sxword;
+typedef u64 Elf64_Addr;
+typedef u16 Elf64_Half;
+typedef s16 Elf64_SHalf;
+typedef u64 Elf64_Off;
+typedef s32 Elf64_Sword;
+typedef u32 Elf64_Word;
+typedef u64 Elf64_Xword;
+typedef s64 Elf64_Sxword;
 
 /* These constants are for the segment types stored in the image headers */
 #define PT_NULL    0
@@ -1193,4 +1191,4 @@ typedef struct elf64_note {
 #endif /* ELF_CLASS */
 
 
-#endif /* _QEMU_ELF_H */
+#endif /* __ELF_H_ */

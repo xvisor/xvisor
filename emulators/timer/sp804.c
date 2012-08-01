@@ -41,7 +41,6 @@
 #include <vmm_devemu.h>
 #include <mathlib.h>
 
-#define MODULE_VARID			sp804_emulator_module
 #define MODULE_NAME			"SP804 Dual-Mode Timer Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -66,7 +65,7 @@ struct sp804_state;
 struct sp804_timer {
 	struct sp804_state *state;
 	struct vmm_guest *guest;
-	struct vmm_timer_event *event;
+	struct vmm_timer_event event;
 	vmm_spinlock_t lock;
 	/* Configuration */
 	u32 ref_freq;
@@ -207,7 +206,7 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 		/*
 		 * We start our timer
 		 */
-		if (vmm_timer_event_start(t->event, nsecs) == VMM_EFAIL) {
+		if (vmm_timer_event_start(&t->event, nsecs) == VMM_EFAIL) {
 			/* FIXME: What should we do??? */
 		}
 	} else {
@@ -215,7 +214,7 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 		 * This timer is not enabled ...
 		 * To be safe, we stop the timer
 		 */
-		if (vmm_timer_event_stop(t->event) == VMM_EFAIL) {
+		if (vmm_timer_event_stop(&t->event) == VMM_EFAIL) {
 			/* FIXME: What should we do??? */
 		}
 		/*
@@ -418,7 +417,7 @@ static int sp804_timer_reset(struct sp804_timer *t)
 {
 	vmm_spin_lock(&t->lock);
 
-	vmm_timer_event_stop(t->event);
+	vmm_timer_event_stop(&t->event);
 	t->limit = 0xFFFFFFFF;
 	t->control = TIMER_CTRL_IE;
 	t->irq_level = 0;
@@ -436,11 +435,7 @@ static int sp804_timer_init(struct sp804_timer *t,
 			    struct vmm_guest * guest, 
 			    u32 freq, u32 irq, bool maintain_irq_rate)
 {
-	t->event = vmm_timer_event_create(&sp804_timer_event, t);
-
-	if (t->event == NULL) {
-		return VMM_EFAIL;
-	}
+	INIT_TIMER_EVENT(&t->event, &sp804_timer_event, t);
 
 	t->guest = guest;
 	t->ref_freq = freq;
@@ -454,9 +449,6 @@ static int sp804_timer_init(struct sp804_timer *t,
 
 static int sp804_timer_exit(struct sp804_timer *t)
 {
-	if (t && t->event) {
-		return vmm_timer_event_destroy(t->event);
-	}
 	return VMM_OK;
 }
 
@@ -627,14 +619,13 @@ static int __init sp804_emulator_init(void)
 	return vmm_devemu_register_emulator(&sp804_emulator);
 }
 
-static void sp804_emulator_exit(void)
+static void __exit sp804_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&sp804_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

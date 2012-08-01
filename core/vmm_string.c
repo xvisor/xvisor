@@ -317,6 +317,19 @@ int vmm_memcmp(const void *s1, const void *s2, size_t count)
 	return (0);
 }
 
+void *vmm_memchr(const void *s, int c, size_t n)
+{
+	u32 i;
+
+	for (i = 0; i < n; i++) {
+		if (((const char *)s)[i] == (char)c) {
+			return (void *)(s + i);
+		}
+	}
+
+	return NULL;
+}
+
 int vmm_str_to_ipaddr(unsigned char *ipaddr, const char *str)
 {
 	unsigned char tmp;

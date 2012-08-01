@@ -54,7 +54,6 @@
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
 
-#define MODULE_VARID			lan9118_emulator_module
 #define MODULE_NAME			"SMSC LAN9118 Emulator"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
 #define MODULE_IPRIORITY		(VMM_NET_CLASS_IPRIORITY+1)
@@ -221,7 +220,7 @@ struct lan9118_state {
 	vmm_spinlock_t lock;
 	struct vmm_guest *guest;
 	u32 irq;
-	struct vmm_timer_event *event;
+	struct vmm_timer_event event;
 	u16 gpt_count;
 	bool link_down; 
 
@@ -335,8 +334,8 @@ static void gpt_reload(struct lan9118_state *s, bool preload)
 
 	nsecs *= 100000;   /* 10KHz */
 
-	vmm_timer_event_stop(s->event); 
-	vmm_timer_event_start(s->event, nsecs);
+	vmm_timer_event_stop(&s->event); 
+	vmm_timer_event_start(&s->event, nsecs);
 }
 
 
@@ -477,7 +476,7 @@ static int lan9118_state_reset(struct lan9118_state *s)
 	s->e2p_data = 0;
 	s->free_timer_start_tstamp = vmm_timer_timestamp();
 
-	vmm_timer_event_stop(s->event);
+	vmm_timer_event_stop(&s->event);
 	s->gpt_count = 0xffff;
 	s->gpt_cfg = 0xffff;
 
@@ -1185,7 +1184,7 @@ static int lan9118_reg_write(struct lan9118_state *s, physical_addr_t offset,
 				s->gpt_count = (src & 0xffff);
 				gpt_reload(s, 1);				
 			} else {
-				vmm_timer_event_stop(s->event);
+				vmm_timer_event_stop(&s->event);
 				s->gpt_count = (src & 0xffff);
 			}
 		}
@@ -1470,10 +1469,9 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 	s->pmt_ctrl = 1;
 	s->txp = &s->tx_packet;
 
-	s->event = vmm_timer_event_create(&gpt_event, s);
-	if(s->event) {
-		goto lan9118_emulator_probe_done;
-	}
+	INIT_TIMER_EVENT(&s->event, &gpt_event, s);
+
+	goto lan9118_emulator_probe_done;
 
 lan9118_emulator_probe_failed:
 	vmm_printf("LAN9118-probe failed\n");
@@ -1488,7 +1486,6 @@ static int lan9118_emulator_remove(struct vmm_emudev *edev)
 	int rc = VMM_OK;
 
 	if(s) {
-		rc = vmm_timer_event_destroy(s->event);
 		m_freem(txp_mbuf(s));
 		vmm_free(s);
 	}
@@ -1522,15 +1519,14 @@ static int __init lan9118_emulator_init(void)
 	return vmm_devemu_register_emulator(&lan9118_emulator);
 }
 
-static void lan9118_emulator_exit(void)
+static void __exit lan9118_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&lan9118_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-		   MODULE_NAME, 
-		   MODULE_AUTHOR, 
-		   MODULE_IPRIORITY, 
-		   MODULE_INIT, 
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME, 
+			MODULE_AUTHOR, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);
 

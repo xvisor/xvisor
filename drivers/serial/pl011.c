@@ -40,7 +40,6 @@
  */
 #undef UART_PL011_USE_TXINTR
 
-#define MODULE_VARID			pl011_driver_module
 #define MODULE_NAME			"PL011 Serial Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -387,14 +386,13 @@ static int __init pl011_driver_init(void)
 	return vmm_devdrv_register_driver(&pl011_driver);
 }
 
-static void pl011_driver_exit(void)
+static void __exit pl011_driver_exit(void)
 {
 	vmm_devdrv_unregister_driver(&pl011_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

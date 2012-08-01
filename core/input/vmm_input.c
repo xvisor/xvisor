@@ -37,7 +37,6 @@
 #include <input/vmm_input.h>
 #include <input/vmm_input_mt.h>
 
-#define MODULE_VARID			input_framework_module
 #define MODULE_NAME			"Input Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		VMM_INPUT_IPRIORITY
@@ -163,7 +162,7 @@ static void input_repeat_key(struct vmm_timer_event *ev)
 		if (idev->rep[REP_PERIOD]) {
 			duration = idev->rep[REP_PERIOD];
 			duration = duration * 1000000;
-			vmm_timer_event_start(idev->repeat_ev, duration);
+			vmm_timer_event_start(&idev->repeat_ev, duration);
 		}
 	}
 
@@ -175,17 +174,17 @@ static void input_start_autorepeat(struct vmm_input_dev *idev, int code)
 	u32 duration;
 	if (test_bit(EV_REP, idev->evbit) &&
 	    idev->rep[REP_PERIOD] && idev->rep[REP_DELAY] &&
-	    idev->repeat_ev->priv) {
+	    idev->repeat_ev.priv) {
 		idev->repeat_key = code;
 		duration = idev->rep[REP_DELAY];
 		duration = duration * 1000000;
-		vmm_timer_event_start(idev->repeat_ev, duration);
+		vmm_timer_event_start(&idev->repeat_ev, duration);
 	}
 }
 
 static void input_stop_autorepeat(struct vmm_input_dev *idev)
 {
-	vmm_timer_event_stop(idev->repeat_ev);
+	vmm_timer_event_stop(&idev->repeat_ev);
 }
 
 #define INPUT_IGNORE_EVENT	0
@@ -717,7 +716,7 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 	irq_flags_t flags, flags1;
 	struct vmm_classdev *cd;
 
-	if (!(idev && idev->name)) {
+	if (!(idev && idev->phys && idev->name)) {
 		return VMM_EFAIL;
 	}
 
@@ -729,7 +728,7 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 	vmm_memset(cd, 0, sizeof(struct vmm_classdev));
 
 	INIT_LIST_HEAD(&cd->head);
-	vmm_strcpy(cd->name, idev->name);
+	vmm_strcpy(cd->name, idev->phys);
 	cd->dev = idev->dev;
 	cd->priv = idev;
 
@@ -756,10 +755,7 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 	/* If delay and period are pre-set by the driver, then autorepeating
 	 * is handled by the driver itself and we don't do it in input.c.
 	 */
-	idev->repeat_ev = vmm_timer_event_create(input_repeat_key, idev);
-	if (!idev->repeat_ev) {
-		return VMM_EFAIL;
-	}
+	INIT_TIMER_EVENT(&idev->repeat_ev, input_repeat_key, idev);
 	if (!idev->rep[REP_DELAY] && !idev->rep[REP_PERIOD]) {
 		idev->rep[REP_DELAY] = 250;
 		idev->rep[REP_PERIOD] = 33;
@@ -779,9 +775,9 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 		if (!test_bit(i, &idev->evbit[0])) {
 			continue;
 		}
-		vmm_spin_lock_irqsave(&ictrl.hnd_conn_lock, flags1);
+		vmm_spin_lock_irqsave(&ictrl.hnd_conn_lock[i], flags1);
 		idev->users += ictrl.hnd_conn_count[i];
-		vmm_spin_unlock_irqrestore(&ictrl.hnd_conn_lock, flags1);
+		vmm_spin_unlock_irqrestore(&ictrl.hnd_conn_lock[i], flags1);
 	}
 	if (idev->users && idev->open) {
 		rc = idev->open(idev);
@@ -809,8 +805,7 @@ int vmm_input_unregister_device(struct vmm_input_dev *idev)
 	list_del(&idev->head);
 	vmm_spin_unlock_irqrestore(&ictrl.dev_list_lock, flags);	
 
-	vmm_timer_event_stop(idev->repeat_ev);
-	vmm_timer_event_destroy(idev->repeat_ev);
+	vmm_timer_event_stop(&idev->repeat_ev);
 
 	vmm_spin_lock_irqsave(&idev->ops_lock, flags);
 	if (idev->users && idev->close) {
@@ -819,7 +814,7 @@ int vmm_input_unregister_device(struct vmm_input_dev *idev)
 	}
 	vmm_spin_unlock_irqrestore(&idev->ops_lock, flags);
 
-	cd = vmm_devdrv_find_classdev(VMM_INPUT_DEV_CLASS_NAME, idev->name);
+	cd = vmm_devdrv_find_classdev(VMM_INPUT_DEV_CLASS_NAME, idev->phys);
 	if (!cd) {
 		return VMM_EFAIL;
 	}
@@ -889,11 +884,11 @@ int vmm_input_flush_device(struct vmm_input_dev *idev)
 	return rc;
 }
 
-struct vmm_input_dev *vmm_input_find_device(const char *name)
+struct vmm_input_dev *vmm_input_find_device(const char *phys)
 {
 	struct vmm_classdev *cd;
 
-	cd = vmm_devdrv_find_classdev(VMM_INPUT_DEV_CLASS_NAME, name);
+	cd = vmm_devdrv_find_classdev(VMM_INPUT_DEV_CLASS_NAME, phys);
 	if (!cd) {
 		return NULL;
 	}
@@ -1034,7 +1029,7 @@ int vmm_input_connect_handler(struct vmm_input_handler *ihnd)
 				rc = idev->open(idev);
 				if (rc) {
 					vmm_printf("%s: failed to open %s", 
-						   __func__, idev->name);
+						   __func__, idev->phys);
 				}
 			}
 			idev->users++;
@@ -1234,9 +1229,8 @@ static void vmm_input_exit(void)
 	vmm_free(c);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_NAME,
+			MODULE_AUTHOR,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

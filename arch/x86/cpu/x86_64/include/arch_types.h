@@ -53,4 +53,7 @@ typedef struct {
 #define ARCH_SPIN_LOCK_INIT(_lptr)		\
 	(_lptr)->lock = __ARCH_SPIN_UNLOCKED
 
+#define ARCH_SPIN_LOCK_INITIALIZER(_lock)	\
+	{ .lock = __ARCH_SPIN_UNLOCKED, }
+
 #endif /* _ARCH_TYPES_H__ */

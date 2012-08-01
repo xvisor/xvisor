@@ -29,7 +29,6 @@
 #include <vmm_cmdmgr.h>
 #include <vmm_wallclock.h>
 
-#define MODULE_VARID			cmd_wallclock_module
 #define MODULE_NAME			"Command wallclock"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_IPRIORITY		0
@@ -391,13 +390,12 @@ static int __init cmd_wallclock_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_wallclock);
 }
 
-static void cmd_wallclock_exit(void)
+static void __exit cmd_wallclock_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_wallclock);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_NAME, 
 			MODULE_AUTHOR, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
