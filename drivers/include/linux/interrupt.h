@@ -21,4 +21,9 @@ static inline void free_irq(unsigned int irq, void *dev)
 	vmm_host_irq_unregister(irq, dev);
 }
 
+#define local_irq_save(flags) \
+		flags = arch_cpu_irq_save()
+#define local_irq_restore(flags) \
+		arch_cpu_irq_restore(flags)
+
 #endif /* _INTERRUPT_H */

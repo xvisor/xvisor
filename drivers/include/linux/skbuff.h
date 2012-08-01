@@ -174,7 +174,7 @@ static inline struct sk_buff *dev_alloc_skb(unsigned int length)
 	return skb;
 }
 
-#define dev_kfree_skb(skb)		m_freem(skb)
+#define dev_kfree_skb(skb)		m_freem((struct vmm_mbuf *) skb)
 
 #define netdev_alloc_skb(dev, length)	dev_alloc_skb(length)
 

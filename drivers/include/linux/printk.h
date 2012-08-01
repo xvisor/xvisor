@@ -21,6 +21,9 @@
 		}						\
 	} while(0)
 
+#undef BUG
+#define BUG() BUG_ON(1)
+
 #define	KERN_EMERG
 #define	KERN_ALERT
 #define	KERN_CRIT

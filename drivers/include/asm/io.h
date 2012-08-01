@@ -55,4 +55,11 @@
 #define in_be64				vmm_in_be64
 #define out_be64			vmm_out_be64
 
+#define	readsl				vmm_insl
+#define	readsw				vmm_insw
+#define	writesl				vmm_outsl
+#define	writesw				vmm_outsw
+
+#define	__iomem
+
 #endif /* _ASM_IO_H_ */

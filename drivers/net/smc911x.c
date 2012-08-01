@@ -252,9 +252,9 @@ static void smc911x_reset(struct net_device *dev)
 	SMC_SET_IRQ_CFG(lp, irq_cfg);
 
 	/* clear anything saved */
-	if (lp->pending_tx_mbuf != NULL) {
-		dev_kfree_skb (lp->pending_tx_mbuf);
-		lp->pending_tx_mbuf = NULL;
+	if (lp->pending_tx_skb != NULL) {
+		dev_kfree_skb (lp->pending_tx_skb);
+		lp->pending_tx_skb = NULL;
 		dev->stats.tx_errors++;
 		dev->stats.tx_aborted_errors++;
 	}
@@ -472,10 +472,10 @@ static void smc911x_hardware_send_pkt(struct vmm_netdev *dev)
 	unsigned char *buf;
 
 	DBG(SMC_DEBUG_FUNC | SMC_DEBUG_TX, "%s: --> %s\n", dev->name, __func__);
-	BUG_ON(lp->pending_tx_mbuf == NULL);
+	BUG_ON(lp->pending_tx_skb == NULL);
 
-	mb = lp->pending_tx_mbuf; // skb = lp->pending_tx_skb;
-	lp->pending_tx_mbuf = NULL; // lp->pending_tx_skb = NULL
+	mb = lp->pending_tx_skb; // skb = lp->pending_tx_skb;
+	lp->pending_tx_skb = NULL; // lp->pending_tx_skb = NULL
 
 	/* cmdA {25:24] data alignment [20:16] start offset [10:0] buffer length */
 	/* cmdB {31:16] pkt tag [10:0] length */
@@ -542,7 +542,7 @@ static int smc911x_hard_start_xmit(struct sk_buff *mb, struct net_device *dev)
 
 	spin_lock_irqsave(&lp->lock, flags);
 
-	BUG_ON(lp->pending_tx_mbuf != NULL);
+	BUG_ON(lp->pending_tx_skb != NULL);
 
 	free = SMC_GET_TX_FIFO_INF(lp) & TX_FIFO_INF_TDFREE_;
 	DBG(SMC_DEBUG_TX, "%s: TX free space %d\n", dev->name, free);
@@ -570,7 +570,7 @@ static int smc911x_hard_start_xmit(struct sk_buff *mb, struct net_device *dev)
 	if (unlikely(free < (mb->m_len + 8 + 15 + 15))) {
 		printk("%s: No Tx free space %d < %d\n",
 			dev->name, free, mb->m_len);
-		lp->pending_tx_mbuf = NULL;
+		lp->pending_tx_skb = NULL;
 		dev->stats.tx_errors++;
 		dev->stats.tx_dropped++;
 		spin_unlock_irqrestore(&lp->lock, flags);
@@ -585,7 +585,7 @@ static int smc911x_hard_start_xmit(struct sk_buff *mb, struct net_device *dev)
 		 */
 		if (lp->txdma_active) {
 			DBG(SMC_DEBUG_TX | SMC_DEBUG_DMA, "%s: Tx DMA running, deferring packet\n", dev->name);
-			lp->pending_tx_mbuf = mb
+			lp->pending_tx_skb = mb
 			netif_stop_queue(dev);
 			spin_unlock_irqrestore(&lp->lock, flags);
 			return VMM_OK; // return NETDEV_TX_OK;
@@ -595,7 +595,7 @@ static int smc911x_hard_start_xmit(struct sk_buff *mb, struct net_device *dev)
 		}
 	}
 #endif
-	lp->pending_tx_mbuf = mb;
+	lp->pending_tx_skb = mb;
 	smc911x_hardware_send_pkt(dev);
 	spin_unlock_irqrestore(&lp->lock, flags);
 
@@ -1270,9 +1270,9 @@ static int smc911x_close(struct net_device *dev)
 		smc911x_phy_powerdown(dev, lp->mii.phy_id);
 	}
 
-	if (lp->pending_tx_mbuf != NULL) {
-		dev_kfree_skb(lp->pending_tx_mbuf); // dev_kfree_skb(lp->pending_tx_skb);
-		lp->pending_tx_mbuf = NULL;
+	if (lp->pending_tx_skb != NULL) {
+		dev_kfree_skb(lp->pending_tx_skb); // dev_kfree_skb(lp->pending_tx_skb);
+		lp->pending_tx_skb = NULL;
 	}
 
 	return 0;
@@ -1457,8 +1457,11 @@ static int smc911x_probe(struct vmm_netdev *dev)
 	(void)(irq_flags); /* FIXME: Added to remove warning */
 
 	/* Grab the IRQ */
+#if 1
 	retval = vmm_host_irq_register(dev->irq, dev->name, &smc911x_interrupt,
 			dev);
+#endif
+
 	if (retval)
 		goto err_out;
 
