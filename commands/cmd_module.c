@@ -26,6 +26,7 @@
 #include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
+#include <vmm_host_aspace.h>
 #include <vmm_cmdmgr.h>
 
 #define MODULE_NAME			"Command module"
@@ -40,6 +41,7 @@ void cmd_module_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   module help\n");
 	vmm_cprintf(cdev, "   module list\n");
 	vmm_cprintf(cdev, "   module info <index>\n");
+	vmm_cprintf(cdev, "   module load <phys_addr> <phys_size> (EXPERIMENTAL)\n");
 	vmm_cprintf(cdev, "   module unload <index>\n");
 }
 
@@ -85,6 +87,31 @@ int cmd_module_info(struct vmm_chardev *cdev, u32 index)
 	return VMM_OK;
 }
 
+int cmd_module_load(struct vmm_chardev *cdev, 
+		    physical_addr_t phys_addr, physical_size_t phys_size)
+{
+	int rc;
+	virtual_addr_t mod_va;
+	virtual_size_t mod_sz = phys_size;
+
+	mod_va = vmm_host_iomap(phys_addr, mod_sz);
+
+	if ((rc = vmm_modules_load(mod_va, mod_sz))) {
+		vmm_host_iounmap(mod_va, mod_sz);
+		return rc;
+	} else {
+		vmm_cprintf(cdev, "Loaded module succesfully\n");
+	}
+
+	rc = vmm_host_iounmap(mod_va, mod_sz);
+	if (rc) {
+		vmm_cprintf(cdev, "Error: Failed to unmap memory.\n");
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
 int cmd_module_unload(struct vmm_chardev *cdev, u32 index)
 {
 	int rc = VMM_OK;
@@ -112,6 +139,8 @@ int cmd_module_unload(struct vmm_chardev *cdev, u32 index)
 int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int index;
+	physical_addr_t addr;
+	physical_size_t size;
 	if (argc == 2) {
 		if (vmm_strcmp(argv[1], "help") == 0) {
 			cmd_module_usage(cdev);
@@ -125,10 +154,15 @@ int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		cmd_module_usage(cdev);
 		return VMM_EFAIL;
 	}
-	index = vmm_str2int(argv[2], 10);
 	if (vmm_strcmp(argv[1], "info") == 0) {
+		index = vmm_str2int(argv[2], 10);
 		return cmd_module_info(cdev, index);
+	} else if (vmm_strcmp(argv[1], "load") == 0 && argc == 4) {
+		addr = (physical_addr_t)vmm_str2ulonglong(argv[2], 10);
+		size = (physical_size_t)vmm_str2ulonglong(argv[3], 10);
+		return cmd_module_load(cdev, addr, size);
 	} else if (vmm_strcmp(argv[1], "unload") == 0) {
+		index = vmm_str2int(argv[2], 10);
 		return cmd_module_unload(cdev, index);
 	} else {
 		cmd_module_usage(cdev);
