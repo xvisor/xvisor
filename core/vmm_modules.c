@@ -63,6 +63,12 @@ bool vmm_modules_isbuiltin(struct vmm_module *mod)
 	return (mwrap->built_in) ? TRUE : FALSE;
 }
 
+/* FIXME: */
+int vmm_modules_load(virtual_addr_t load_addr, virtual_size_t load_size)
+{
+	return VMM_OK;
+}
+
 int vmm_modules_unload(struct vmm_module *mod)
 {
 	struct module_wrap *mwrap;

@@ -59,6 +59,7 @@ typedef unsigned long long u64;
 #define __read_mostly		__attribute__((section(".readmostly.data")))
 #define __lock			__attribute__((section(".spinlock.text")))
 #define __modtbl		__attribute__((section(".modtbl")))
+#define __symtbl		__attribute__((section(".symtbl")))
 #define __percpu		__attribute__((section(".percpu")))
 #define __init			__attribute__((section(".init.text")))
 #define __initconst		__attribute__((section(".init.data")))
