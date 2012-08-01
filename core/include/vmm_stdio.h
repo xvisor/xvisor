@@ -66,7 +66,7 @@ int vmm_sprintf(char *out, const char *format, ...);
 int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
 
 /** Panic & Print formatted message */
-int vmm_panic(const char *format, ...);
+void __noreturn vmm_panic(const char *format, ...);
 
 /** Low-level scan character function */
 int vmm_scanchar(char **str, struct vmm_chardev *cdev, char *c, bool block);

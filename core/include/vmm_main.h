@@ -26,7 +26,7 @@
 #include <vmm_types.h>
 
 /** Hang hypervisor */
-void vmm_hang(void);
+void __noreturn vmm_hang(void);
 
 /** Initialize hypervisor */
 void vmm_init(void);

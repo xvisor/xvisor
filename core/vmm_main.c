@@ -49,7 +49,7 @@
 #include <arch_cpu.h>
 #include <arch_board.h>
 
-void vmm_hang(void)
+void __noreturn vmm_hang(void)
 {
 	while (1) ;
 }

@@ -339,15 +339,13 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 	return retval;
 }
 
-int vmm_panic(const char *format, ...)
+void __noreturn vmm_panic(const char *format, ...)
 {
 	va_list args;
-	int retval;
 	va_start(args, format);
-	retval = print(NULL, stdio_ctrl.dev, format, args);
+	print(NULL, stdio_ctrl.dev, format, args);
 	va_end(args);
 	vmm_hang();
-	return retval;
 }
 
 int vmm_scanchar(char **str, struct vmm_chardev *cdev, char *c, bool block)
