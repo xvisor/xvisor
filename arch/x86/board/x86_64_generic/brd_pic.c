@@ -30,7 +30,7 @@
 
 u32 arch_host_irq_active(u32 cpu_irq_no)
 {
-	return 0;
+	return cpu_irq_no;
 }
 
 int __init arch_host_irq_init(void)

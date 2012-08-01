@@ -27,6 +27,7 @@
 #include <vmm_error.h>
 #include <vmm_string.h>
 #include <vmm_host_io.h>
+#include <vmm_host_irq.h>
 #include <cpu_mmu.h>
 #include <arch_cpu.h>
 #include <arch_io.h>
@@ -47,25 +48,21 @@
 
 #define IOAPIC_IOREGSEL			0x0
 #define IOAPIC_IOWIN			0x10
-#define MAX_NR_IOAPICS			32
+#define MAX_NR_IOAPICS			8
 
 struct cpu_lapic lapic; /* should be per-cpu for SMP */
 struct cpu_ioapic io_apic[MAX_NR_IOAPICS];
 unsigned int nioapics;
-virtual_addr_t lapic_eoi_addr;
-
-struct irq;
-typedef void (* eoi_method_t)(struct irq *);
 
 struct irq {
-        struct cpu_ioapic *ioa;
-        unsigned int pin;
+        unsigned int ioapic_pin;
         unsigned int vector;
-        eoi_method_t eoi;
-        unsigned int state;
+        struct cpu_ioapic *ioapic;
+	struct cpu_lapic *lapic;
+	struct vmm_host_irq_chip irq_chip;
 };
 
-static struct irq io_apic_irq[NR_IRQ_VECTORS];
+static struct irq host_sys_irq[NR_IRQ_VECTORS];
 
 /* Disable 8259 - write 0xFF in OCW1 master and slave. */
 void i8259_disable(void)
@@ -123,32 +120,36 @@ static void ioapic_disable_pin(virtual_addr_t ioapic_addr, int pin)
 	ioapic_write(ioapic_addr, IOAPIC_REDIR_TABLE + pin * 2, lo);
 }
 
-static int __unused ioapic_read_irt_entry(virtual_addr_t ioapic_addr, int pin, u64 *entry)
+static void ioapic_irq_mask(struct vmm_host_irq *irq)
 {
-	u8 loa = IOAPIC_REDIR_TABLE + pin * 2;
-	u8 hia = loa++;
+	struct irq *hirq = irq->chip_data;
 
-	u32 lo = ioapic_read(ioapic_addr, loa);
-	u32 hi = ioapic_read(ioapic_addr, hia);
-	*entry = (u64)((((u64)hi) << 32) | lo);
+	ioapic_disable_pin(hirq->ioapic->vaddr, hirq->ioapic_pin);
+}
 
-	return VMM_OK;
+static void ioapic_irq_unmask(struct vmm_host_irq *irq)
+{
+	struct irq *hirq = irq->chip_data;
+
+	ioapic_enable_pin(hirq->ioapic->vaddr, hirq->ioapic_pin);
+}
+
+static void apic_irq_eoi(struct vmm_host_irq *irq)
+{
+	struct irq *hirq = irq->chip_data;
+
+	lapic_write(LAPIC_EOI(hirq->lapic->vbase), 0);
 }
 
 static int ioapic_write_irt_entry(virtual_addr_t ioapic_addr, int pin, u64 entry)
 {
-	u8 loa = IOAPIC_REDIR_TABLE + pin * 2;
-	u8 hia = loa++;
+	u8 hia = IOAPIC_REDIR_TABLE + pin * 2;
+	u8 loa = hia++;
 	u32 lo = (u32)(entry & 0xFFFFFFFFUL);
 	u32 hi = (u32)((entry >> 32) & 0xFFFFFFFFUL);
 
-#if 0
 	ioapic_write(ioapic_addr, loa, lo);
 	ioapic_write(ioapic_addr, hia, hi);
-#else
-	ioapic_write(ioapic_addr, loa, hi);
-	ioapic_write(ioapic_addr, hia, lo);
-#endif
 
 	return VMM_OK;
 }
@@ -156,11 +157,32 @@ static int ioapic_write_irt_entry(virtual_addr_t ioapic_addr, int pin, u64 entry
 int ioapic_route_pin_to_irq(u32 pin, u32 irqno)
 {
 	union ioapic_irt_entry entry;
+	struct irq *hirq;
+
+	if (irqno >= NR_IRQ_VECTORS)
+		return VMM_EFAIL;
+
 	vmm_memset(&entry, 0, sizeof(entry));
+
+	hirq = &host_sys_irq[irqno];
+	hirq->ioapic_pin = pin;
+	hirq->vector = irqno;
+	/* FIXME: For multiple IOAPIC presence, this has to go. */
+	hirq->ioapic = &io_apic[0];
+	hirq->lapic = &lapic;
+	hirq->irq_chip.irq_mask = &ioapic_irq_mask;
+	hirq->irq_chip.irq_unmask = &ioapic_irq_unmask;
+	hirq->irq_chip.irq_eoi = &apic_irq_eoi;
 
 	entry.bits.intvec = irqno;
 
-	return ioapic_write_irt_entry(io_apic[0].vaddr, pin, entry.val);
+	if (ioapic_write_irt_entry(io_apic[0].vaddr, pin, entry.val) != VMM_OK)
+		return VMM_EFAIL;
+
+	vmm_host_irq_set_chip(irqno, &hirq->irq_chip);
+	vmm_host_irq_set_chip_data(irqno, hirq);
+
+	return VMM_OK;
 }
 
 static int acpi_get_ioapics(struct cpu_ioapic *ioa, unsigned *nioa, unsigned max)
@@ -193,11 +215,6 @@ int detect_ioapics(void)
 	return ret;
 }
 
-void ioapic_eoi(int irq)
-{
-	io_apic_irq[irq].eoi(&io_apic_irq[irq]);
-}
-
 void ioapic_set_id(u32 addr, unsigned int id)
 {
 	ioapic_write(addr, IOAPIC_ID, id << 24);
@@ -210,34 +227,6 @@ void ioapic_enable(void)
 	/* Select IMCR and disconnect 8259s. */
 	outb(0x22, 0x70);
 	outb(0x23, 0x01);
-}
-
-static void ioapic_disable_irq(unsigned int irq)
-{
-	BUG_ON(io_apic_irq[irq].ioa == NULL,
-	       "Disabling unregistered IRQ!!\n");
-
-	ioapic_disable_pin(io_apic_irq[irq].ioa->vaddr, io_apic_irq[irq].pin);
-	io_apic_irq[irq].state |= IOAPIC_IRQ_STATE_MASKED;
-}
-
-static void ioapic_enable_irq(unsigned int irq)
-{
-	BUG_ON(io_apic_irq[irq].ioa == NULL,
-	       "Trying to enable an unregistered IRQ!!\n");
-
-	ioapic_enable_pin(io_apic_irq[irq].ioa->vaddr, io_apic_irq[irq].pin);
-	io_apic_irq[irq].state &= ~IOAPIC_IRQ_STATE_MASKED;
-}
-
-void ioapic_unmask_irq(unsigned irq)
-{
-	ioapic_enable_irq(irq);
-}
-
-void ioapic_mask_irq(unsigned irq)
-{
-	ioapic_disable_irq(irq);
 }
 
 static int setup_ioapic(void)
@@ -258,7 +247,6 @@ int lapic_enable(unsigned cpu)
 	/* set the highest priority for ever */
 	lapic_write(LAPIC_TPR(lapic.vbase), 0x0);
 
-	lapic_eoi_addr = LAPIC_EOI(lapic.vbase);
 	/* clear error state register. */
 	//val = lapic_errstatus();
 
@@ -268,8 +256,6 @@ int lapic_enable(unsigned cpu)
 	val &= ~APIC_FOCUS_DISABLED;
 	lapic_write(LAPIC_SIVR(lapic.vbase), val);
 	(void) lapic_read(LAPIC_SIVR(lapic.vbase));
-
-	apic_eoi();
 
 	/* Program Logical Destination Register. */
 	val = lapic_read(LAPIC_LDR(lapic.vbase)) & ~0xFF000000;
@@ -301,7 +287,6 @@ int lapic_enable(unsigned cpu)
 	lapic_write(LAPIC_TPR(lapic.vbase), val & ~0xFF);
 
 	(void)lapic_read(LAPIC_SIVR(lapic.vbase));
-	apic_eoi();
 
 	return 1;
 }
@@ -329,7 +314,6 @@ static int setup_lapic(int cpu)
 
 	lapic.integrated = IS_INTEGRATED_APIC(lapic.version);
 	lapic.nr_lvt = NR_LVT_ENTRIES(lapic.version);
-	lapic_eoi_addr = LAPIC_EOI(lapic.vbase);
 
 	lapic_enable(cpu);
 

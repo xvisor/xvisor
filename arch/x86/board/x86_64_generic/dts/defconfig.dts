@@ -30,8 +30,8 @@
 			 * X MB then we will be able to access only first
 			 * X MB starting at physical_addr.
 			 */
-			physical_addr = <0x00100000ULL>;
-			physical_size = <0x10000000ULL>; /* 256M */
+			physical_addr = <0x00100000>;
+			physical_size = <0x10000000>; /* 256M */
 		};
 	};
 };
