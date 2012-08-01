@@ -29,8 +29,9 @@
 #include <vmm_devdrv.h>
 #include <block/vmm_blockdev.h>
 
-#define MODULE_NAME			"Block Device Framework"
+#define MODULE_DESC			"Block Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		VMM_BLOCKDEV_CLASS_IPRIORITY
 #define	MODULE_INIT			vmm_blockdev_init
 #define	MODULE_EXIT			vmm_blockdev_exit
@@ -211,8 +212,9 @@ static void __exit vmm_blockdev_exit(void)
 	vmm_free(c);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME,
+VMM_DECLARE_MODULE(MODULE_DESC,
 			MODULE_AUTHOR,
+			MODULE_LICENSE,
 			MODULE_IPRIORITY,
 			MODULE_INIT,
 			MODULE_EXIT);

@@ -32,8 +32,9 @@
 #include <vmm_cmdmgr.h>
 #include <mathlib.h>
 
-#define MODULE_NAME			"Thread Test Command"
+#define MODULE_DESC			"Thread Test Command"
 #define MODULE_AUTHOR			"Sanjeev Pandita"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_threadtest_init
 #define	MODULE_EXIT			cmd_threadtest_exit
@@ -199,8 +200,9 @@ static void __exit cmd_threadtest_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_threadtest);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

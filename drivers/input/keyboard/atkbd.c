@@ -31,8 +31,9 @@
 
 #define DRIVER_DESC	"AT and PS/2 keyboard driver"
 
-#define MODULE_NAME			DRIVER_DESC
+#define MODULE_DESC			DRIVER_DESC
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		(SERIO_IPRIORITY+1)
 #define	MODULE_INIT			atkbd_init
 #define	MODULE_EXIT			atkbd_exit
@@ -1387,8 +1388,9 @@ static void __exit atkbd_exit(void)
 	serio_unregister_driver(&atkbd_drv);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME,
+VMM_DECLARE_MODULE(MODULE_DESC,
 			MODULE_AUTHOR,
+			MODULE_LICENSE,
 			MODULE_IPRIORITY,
 			MODULE_INIT,
 			MODULE_EXIT);

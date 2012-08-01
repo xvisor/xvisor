@@ -27,8 +27,9 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 
-#define MODULE_NAME			"Command version"
+#define MODULE_DESC			"Command version"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_version_init
 #define	MODULE_EXIT			cmd_version_exit
@@ -64,8 +65,9 @@ static void __exit cmd_version_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_version);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

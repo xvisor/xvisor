@@ -41,8 +41,9 @@
 #include <vmm_devemu.h>
 #include <mathlib.h>
 
-#define MODULE_NAME			"SP804 Dual-Mode Timer Emulator"
+#define MODULE_DESC			"SP804 Dual-Mode Timer Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			sp804_emulator_init
 #define	MODULE_EXIT			sp804_emulator_exit
@@ -624,8 +625,9 @@ static void __exit sp804_emulator_exit(void)
 	vmm_devemu_unregister_emulator(&sp804_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME,
+VMM_DECLARE_MODULE(MODULE_DESC,
 			MODULE_AUTHOR,
+			MODULE_LICENSE,
 			MODULE_IPRIORITY,
 			MODULE_INIT,
 			MODULE_EXIT);

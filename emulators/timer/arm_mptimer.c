@@ -46,8 +46,9 @@
 #include <vmm_stdio.h>
 #include <mathlib.h>
 
-#define MODULE_NAME		"MPCore Private Timer and Watchdog Emulator"
+#define MODULE_DESC		"MPCore Private Timer and Watchdog Emulator"
 #define MODULE_AUTHOR		"Sukanto Ghosh"
+#define MODULE_LICENSE		"GPL"
 #define MODULE_IPRIORITY	0
 #define	MODULE_INIT		mptimer_emulator_init
 #define	MODULE_EXIT		mptimer_emulator_exit

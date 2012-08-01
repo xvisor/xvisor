@@ -33,8 +33,9 @@
 #include <kallsyms.h>
 #include <libsort.h>
 
-#define MODULE_NAME			"Command profile"
+#define MODULE_DESC			"Command profile"
 #define MODULE_AUTHOR			"Jean-Christophe Dubois"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_profile_init
 #define	MODULE_EXIT			cmd_profile_exit
@@ -303,8 +304,9 @@ static void __exit cmd_profile_exit(void)
 	count_array = NULL;
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME,
+VMM_DECLARE_MODULE(MODULE_DESC,
 			MODULE_AUTHOR,
+			MODULE_LICENSE,
 			MODULE_IPRIORITY,
 			MODULE_INIT,
 			MODULE_EXIT);

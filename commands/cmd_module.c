@@ -29,8 +29,9 @@
 #include <vmm_host_aspace.h>
 #include <vmm_cmdmgr.h>
 
-#define MODULE_NAME			"Command module"
+#define MODULE_DESC			"Command module"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_module_init
 #define	MODULE_EXIT			cmd_module_exit
@@ -51,15 +52,15 @@ void cmd_module_list(struct vmm_chardev *cdev)
 	struct vmm_module *mod;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-5s %-40s %-20s %-12s\n", 
-			  "Num", "Name", "Author", "Type");
+	vmm_cprintf(cdev, " %-5s %-25s %-25s %-10s %-11s\n", 
+			  "Num", "Name", "Author", "License", "Type");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	count = vmm_modules_count();
 	for (num = 0; num < count; num++) {
 		mod = vmm_modules_getmodule(num);
-		vmm_cprintf(cdev, " %-5d %-40s %-20s %-12s\n", 
-				  num, mod->name, mod->author, 
+		vmm_cprintf(cdev, " %-5d %-25s %-25s %-10s %-11s\n", 
+				  num, mod->name, mod->author, mod->license,
 				  vmm_modules_isbuiltin(mod) ? 
 				  "built-in" : "loadable");
 	}
@@ -77,11 +78,12 @@ int cmd_module_info(struct vmm_chardev *cdev, u32 index)
 		return VMM_EFAIL;
 	}
 
-	vmm_cprintf(cdev, "Name:      %s\n", mod->name);
-	vmm_cprintf(cdev, "Author:    %s\n", mod->author);
-	vmm_cprintf(cdev, "iPriority: %d\n", mod->ipriority);
-	vmm_cprintf(cdev, "iStatus:   %d\n", mod->istatus);
-	vmm_cprintf(cdev, "Type:      %s\n", vmm_modules_isbuiltin(mod) ? 
+	vmm_cprintf(cdev, "Name:        %s\n", mod->name);
+	vmm_cprintf(cdev, "Description: %s\n", mod->desc);
+	vmm_cprintf(cdev, "Author:      %s\n", mod->author);
+	vmm_cprintf(cdev, "License:     %s\n", mod->license);
+	vmm_cprintf(cdev, "iPriority:   %d\n", mod->ipriority);
+	vmm_cprintf(cdev, "Type:        %s\n", vmm_modules_isbuiltin(mod) ? 
 					 "built-in" : "loadable");
 
 	return VMM_OK;
@@ -188,8 +190,9 @@ static void __exit cmd_module_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_module);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

@@ -30,8 +30,9 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 
-#define MODULE_NAME			"Command thread"
+#define MODULE_DESC			"Command thread"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_thread_init
 #define	MODULE_EXIT			cmd_thread_exit
@@ -118,8 +119,9 @@ static void __exit cmd_thread_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_thread);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

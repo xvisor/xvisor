@@ -28,8 +28,9 @@
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
 
-#define MODULE_NAME			"SP810 Serial Emulator"
+#define MODULE_DESC			"SP810 Serial Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			sp810_emulator_init
 #define	MODULE_EXIT			sp810_emulator_exit
@@ -211,8 +212,9 @@ static void __exit sp810_emulator_exit(void)
 	vmm_devemu_unregister_emulator(&sp810_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

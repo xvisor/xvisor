@@ -29,8 +29,9 @@
 #include <vmm_cmdmgr.h>
 #include <vmm_wallclock.h>
 
-#define MODULE_NAME			"Command wallclock"
+#define MODULE_DESC			"Command wallclock"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_wallclock_init
 #define	MODULE_EXIT			cmd_wallclock_exit
@@ -395,8 +396,9 @@ static void __exit cmd_wallclock_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_wallclock);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

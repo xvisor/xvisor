@@ -31,8 +31,9 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 
-#define MODULE_NAME			"Managment Terminal"
+#define MODULE_DESC			"Managment Terminal"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			daemon_mterm_init
 #define	MODULE_EXIT			daemon_mterm_exit
@@ -126,8 +127,9 @@ static void __exit daemon_mterm_exit(void)
 	vmm_threads_destroy(mtctrl.thread);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

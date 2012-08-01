@@ -44,8 +44,9 @@
 #include <timer/arm_mptimer_emulator.h>
 #include <pic/gic_emulator.h>
 
-#define MODULE_NAME			"A9MPCore Private Region Emulator"
+#define MODULE_DESC			"A9MPCore Private Region Emulator"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			a9mpcore_emulator_init
 #define	MODULE_EXIT			a9mpcore_emulator_exit
@@ -388,8 +389,9 @@ static void __exit a9mpcore_emulator_exit(void)
 	vmm_devemu_unregister_emulator(&a9mpcore_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

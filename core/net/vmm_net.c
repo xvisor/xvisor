@@ -29,8 +29,9 @@
 #include <vmm_stdio.h>
 #include <net/vmm_net.h>
 
-#define MODULE_NAME			"Network Framework"
+#define MODULE_DESC			"Network Framework"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		(VMM_NET_CLASS_IPRIORITY)
 #define	MODULE_INIT			vmm_net_init
 #define	MODULE_EXIT			vmm_net_exit
@@ -99,8 +100,9 @@ static void __exit vmm_net_exit(void)
 	vmm_netdev_exit();
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

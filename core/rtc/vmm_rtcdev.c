@@ -31,8 +31,9 @@
 #include <vmm_wallclock.h>
 #include <rtc/vmm_rtcdev.h>
 
-#define MODULE_NAME			"RTC Device Framework"
+#define MODULE_DESC			"RTC Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		VMM_RTCDEV_CLASS_IPRIORITY
 #define	MODULE_INIT			vmm_rtcdev_init
 #define	MODULE_EXIT			vmm_rtcdev_exit
@@ -247,8 +248,9 @@ static void __exit vmm_rtcdev_exit(void)
 	vmm_free(c);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME,
+VMM_DECLARE_MODULE(MODULE_DESC,
 			MODULE_AUTHOR,
+			MODULE_LICENSE,
 			MODULE_IPRIORITY,
 			MODULE_INIT,
 			MODULE_EXIT);

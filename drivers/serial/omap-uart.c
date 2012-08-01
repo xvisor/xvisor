@@ -42,8 +42,9 @@
  */
 #undef OMAP_UART_POLLING 
 
-#define MODULE_NAME			"OMAP UART Driver"
+#define MODULE_DESC			"OMAP UART Driver"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			omap_uart_driver_init
 #define	MODULE_EXIT			omap_uart_driver_exit
@@ -550,8 +551,9 @@ static void __exit omap_uart_driver_exit(void)
 	vmm_devdrv_unregister_driver(&omap_uart_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

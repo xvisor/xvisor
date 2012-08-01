@@ -39,8 +39,9 @@
 #include <vmm_threads.h>
 #include <vmm_completion.h>
 
-#define MODULE_NAME			"uIP Network Daemon"
+#define MODULE_DESC			"uIP Network Daemon"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		(VMM_NET_CLASS_IPRIORITY + 1)
 #define	MODULE_INIT			daemon_uip_init
 #define	MODULE_EXIT			daemon_uip_exit
@@ -221,8 +222,9 @@ static void __exit daemon_uip_exit(void)
 	vmm_threads_destroy(uip_thread);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

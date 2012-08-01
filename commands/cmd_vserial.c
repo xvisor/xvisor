@@ -29,8 +29,9 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 
-#define MODULE_NAME			"Command vserial"
+#define MODULE_DESC			"Command vserial"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_vserial_init
 #define	MODULE_EXIT			cmd_vserial_exit
@@ -264,8 +265,9 @@ static void __exit cmd_vserial_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_vserial);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

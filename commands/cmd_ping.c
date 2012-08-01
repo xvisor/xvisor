@@ -31,8 +31,9 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 
-#define MODULE_NAME			"Command ping"
+#define MODULE_DESC			"Command ping"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_ping_init
 #define	MODULE_EXIT			cmd_ping_exit
@@ -125,8 +126,9 @@ static void __exit cmd_ping_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_ping);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

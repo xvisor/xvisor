@@ -52,8 +52,9 @@
 #include <linux/skbuff.h>
 
 
-#define MODULE_NAME			"SMC911x Ethernet Driver"
+#define MODULE_DESC			"SMC911x Ethernet Driver"
 #define MODULE_AUTHOR			"Pranav Sawargaonkar"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		(VMM_NET_CLASS_IPRIORITY + 1)
 #define	MODULE_INIT			smc911x_driver_init
 #define	MODULE_EXIT			smc911x_driver_exit
@@ -1677,8 +1678,9 @@ static void __exit smc911x_driver_exit(void)
 	vmm_devdrv_unregister_driver(&smc911x_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME,
+VMM_DECLARE_MODULE(MODULE_DESC,
 			MODULE_AUTHOR,
+			MODULE_LICENSE,
 			MODULE_IPRIORITY,
 			MODULE_INIT,
 			MODULE_EXIT);

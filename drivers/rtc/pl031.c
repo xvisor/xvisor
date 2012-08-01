@@ -33,8 +33,9 @@
 #include <vmm_devdrv.h>
 #include <rtc/vmm_rtcdev.h>
 
-#define MODULE_NAME			"PL031 RTC Driver"
+#define MODULE_DESC			"PL031 RTC Driver"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		(VMM_RTCDEV_CLASS_IPRIORITY+1)
 #define	MODULE_INIT			pl031_driver_init
 #define	MODULE_EXIT			pl031_driver_exit
@@ -213,8 +214,9 @@ static void __exit pl031_driver_exit(void)
 	vmm_devdrv_unregister_driver(&pl031_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME,
+VMM_DECLARE_MODULE(MODULE_DESC,
 			MODULE_AUTHOR,
+			MODULE_LICENSE,
 			MODULE_IPRIORITY,
 			MODULE_INIT,
 			MODULE_EXIT);

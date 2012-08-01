@@ -34,6 +34,7 @@
 struct module_wrap {
 	struct dlist head;
 	struct vmm_module mod;
+	int mod_ret;
 	bool built_in;
 	virtual_addr_t start_va;
 	u32 pg_count;
@@ -199,7 +200,7 @@ int __init vmm_modules_init(void)
 				vmm_printf("%s: %s init error %d\n", 
 					   __func__, mwrap->mod.name, ret);
 			}
-			mwrap->mod.istatus = ret;
+			mwrap->mod_ret = ret;
 		}
 
 		list_add_tail(&mwrap->head, &modctrl.mod_list);

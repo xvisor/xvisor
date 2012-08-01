@@ -29,8 +29,9 @@
 #include <vmm_devdrv.h>
 #include <fb/vmm_fb.h>
 
-#define MODULE_NAME			"Frame Buffer Framework"
+#define MODULE_DESC			"Frame Buffer Framework"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		VMM_FB_CLASS_IPRIORITY
 #define	MODULE_INIT			vmm_fb_init
 #define	MODULE_EXIT			vmm_fb_exit
@@ -160,8 +161,9 @@ static void __exit vmm_fb_exit(void)
 	vmm_free(c);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME,
+VMM_DECLARE_MODULE(MODULE_DESC,
 			MODULE_AUTHOR,
+			MODULE_LICENSE,
 			MODULE_IPRIORITY,
 			MODULE_INIT,
 			MODULE_EXIT);

@@ -41,8 +41,9 @@
 #include <vmm_devemu.h>
 #include <mathlib.h>
 
-#define MODULE_NAME			"PL031 RTC Emulator"
+#define MODULE_DESC			"PL031 RTC Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			pl031_emulator_init
 #define	MODULE_EXIT			pl031_emulator_exit
@@ -372,8 +373,9 @@ static void __exit pl031_emulator_exit(void)
 	vmm_devemu_unregister_emulator(&pl031_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);
