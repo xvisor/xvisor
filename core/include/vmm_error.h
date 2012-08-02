@@ -34,5 +34,7 @@
 #define VMM_ENOMEM		-7
 #define VMM_ENODEV		-8
 #define VMM_ETIMEDOUT		-9
+#define VMM_ENOEXEC		-10
+#define VMM_ENOENT		-11
 
 #endif
