@@ -151,6 +151,10 @@
 #define swap(a, b) \
 	do { typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while (0)
 
+#define __align_vmm(x, a)		__align_vmm_mask(x, (typeof(x))(a) - 1)
+#define __align_vmm_mask(x, mask)	(((x) + (mask)) & ~(mask))
+#define align(x, a)			__align_vmm((x), (a))
+
 /**
  * container_of - cast a member of a structure out to the containing structure
  * @ptr:	the pointer to the member.
