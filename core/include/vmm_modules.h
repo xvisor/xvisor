@@ -120,6 +120,9 @@ static __unused __modtbl struct vmm_module __moddecl__ = \
 #define VMM_EXPORT_SYMBOL_UNUSED_GPL(sym) \
 	__VMM_EXPORT_SYMBOL(sym,VMM_SYMBOL_UNUSED_GPL)
 
+/** Find a symbol from exported symbols & kallsyms */
+int vmm_modules_find_symbol(const char *symname, struct vmm_symbol *sym);
+
 /** Check if module is built-in */
 bool vmm_modules_isbuiltin(struct vmm_module *mod);
 
