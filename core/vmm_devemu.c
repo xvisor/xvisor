@@ -628,6 +628,7 @@ int vmm_devemu_reset_region(struct vmm_guest *guest, struct vmm_region *reg)
 int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 {
 	int rc;
+	bool found;
 	struct dlist *l1;
 	struct vmm_emudev *einst;
 	struct vmm_emulator *emu;
@@ -642,11 +643,13 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 		return VMM_EFAIL;
 	}
 
+	found = FALSE;
 	list_for_each(l1, &dectrl.emu_list) {
 		emu = list_entry(l1, struct vmm_emulator, head);
 		matches = emu->match_table;
 		match = devemu_match_node(matches, reg->node);
 		if (match) {
+			found = TRUE;
 			einst = vmm_malloc(sizeof(struct vmm_emudev));
 			if (einst == NULL) {
 				/* FIXME: There is more cleanup to do */
@@ -688,6 +691,10 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 			}
 			break;
 		}
+	}
+
+	if (!found) {
+		return VMM_ENOTAVAIL;
 	}
 
 	return VMM_OK;
