@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.3
-# Thu Jul 19 11:41:54 2012
+# Fri Aug  3 09:34:44 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -47,6 +47,7 @@ CONFIG_VEXPRESS_A15_ONE_GUEST_PBA8_DTS=y
 #
 # Hypervisor Options
 #
+MODULES=y
 # CONFIG_VERBOSE_MODE is not set
 CONFIG_BANNER_NONE=y
 # CONFIG_BANNER_BANNER4 is not set
@@ -58,7 +59,8 @@ CONFIG_MAX_GUEST_COUNT=2
 CONFIG_VGPA2REG_CACHE_SIZE=8
 CONFIG_VAPOOL_SIZE=8
 CONFIG_RTC=y
-# CONFIG_INPUT is not set
+CONFIG_INPUT=y
+# CONFIG_FB is not set
 # CONFIG_BLOCK is not set
 CONFIG_NET=y
 # CONFIG_PROFILE is not set
@@ -91,7 +93,9 @@ CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
+CONFIG_CMD_MODULE=y
 CONFIG_CMD_RTCDEV=y
+CONFIG_CMD_INPUT=y
 CONFIG_CMD_NET=y
 # CONFIG_CMD_THREADTEST is not set
 
@@ -100,7 +104,6 @@ CONFIG_CMD_NET=y
 #
 CONFIG_LIBFDT=y
 # CONFIG_NET_STACK is not set
-# CONFIG_KALLSYMS is not set
 # CONFIG_LIBSORT is not set
 
 #
@@ -119,6 +122,24 @@ CONFIG_SERIAL_PL01X=y
 # RTC Drivers
 #
 CONFIG_RTC_PL031=y
+
+#
+# Input Device Support
+#
+
+#
+# Input Device Drivers
+#
+CONFIG_INPUT_KEYBOARD=y
+CONFIG_KEYBOARD_ATKBD=y
+# CONFIG_KEYBOARD_ATKBD_HP_KEYCODES is not set
+
+#
+# Hardware I/O ports
+#
+CONFIG_SERIO=y
+CONFIG_SERIO_AMBAKMI=y
+CONFIG_SERIO_LIBPS2=y
 
 #
 # Network Drivers
@@ -193,4 +214,3 @@ CONFIG_EMU_MISC_A9MP_PRIV=y
 CONFIG_DTC=y
 CONFIG_CPATCH=y
 # CONFIG_BBFLASH is not set
-# CONFIG_KALLSYMS_GENERATOR is not set

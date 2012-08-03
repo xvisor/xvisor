@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.3
-# Wed Jul  4 10:20:24 2012
+# Fri Aug  3 09:17:36 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -46,6 +46,7 @@ CONFIG_ONE_GUEST_VERSATILE_DTS=y
 #
 # Hypervisor Options
 #
+MODULES=y
 # CONFIG_VERBOSE_MODE is not set
 CONFIG_BANNER_NONE=y
 # CONFIG_BANNER_BANNER4 is not set
@@ -57,6 +58,8 @@ CONFIG_MAX_GUEST_COUNT=2
 CONFIG_VGPA2REG_CACHE_SIZE=8
 CONFIG_VAPOOL_SIZE=8
 CONFIG_RTC=y
+# CONFIG_INPUT is not set
+# CONFIG_FB is not set
 # CONFIG_BLOCK is not set
 # CONFIG_NET is not set
 # CONFIG_PROFILE is not set
@@ -89,6 +92,7 @@ CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
+CONFIG_CMD_MODULE=y
 CONFIG_CMD_RTCDEV=y
 # CONFIG_CMD_THREADTEST is not set
 
@@ -96,7 +100,6 @@ CONFIG_CMD_RTCDEV=y
 # Library Options
 #
 CONFIG_LIBFDT=y
-# CONFIG_KALLSYMS is not set
 # CONFIG_LIBSORT is not set
 
 #
@@ -115,6 +118,15 @@ CONFIG_SERIAL_PL01X=y
 # RTC Drivers
 #
 CONFIG_RTC_PL031=y
+
+#
+# Input Device Support
+#
+
+#
+# Hardware I/O ports
+#
+# CONFIG_SERIO is not set
 
 #
 # Network Drivers
@@ -184,4 +196,3 @@ CONFIG_EMU_MISC_ZERO=y
 CONFIG_DTC=y
 CONFIG_CPATCH=y
 # CONFIG_BBFLASH is not set
-# CONFIG_KALLSYMS_GENERATOR is not set
