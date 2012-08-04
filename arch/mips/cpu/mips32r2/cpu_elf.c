@@ -32,7 +32,7 @@ int arch_elf_check_hdr(const struct elf32_hdr *x)
 }
 
 /* FIXME: */
-int arch_elf_apply_relocate(Elf32_Shdr *sechdrs, 
+int arch_elf_apply_relocate(struct elf32_shdr *sechdrs, 
 			    const char *strtab, 
 			    unsigned int symindex,
 			    unsigned int relindex, 
@@ -42,7 +42,7 @@ int arch_elf_apply_relocate(Elf32_Shdr *sechdrs,
 }
 
 /* FIXME: */
-int arch_elf_apply_relocate_add(Elf32_Shdr *sechdrs, 
+int arch_elf_apply_relocate_add(struct elf32_shdr *sechdrs, 
 				const char *strtab,
 				unsigned int symindex, 
 				unsigned int relsec, 
