@@ -279,22 +279,6 @@ void vmm_init(void)
 	}
 #endif
 
-	/* Initialize device driver framework */
-	vmm_printf("Initialize Device Driver Framework\n");
-	ret = vmm_devdrv_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Initialize device emulation framework */
-	vmm_printf("Initialize Device Emulation Framework\n");
-	ret = vmm_devemu_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
 	/* Initialize workqueue framework */
 	vmm_printf("Initialize Workqueue Framework\n");
 	ret = vmm_workqueue_init();
@@ -314,6 +298,22 @@ void vmm_init(void)
 	/* Initialize wallclock */
 	vmm_printf("Initialize Wallclock Subsystem\n");
 	ret = vmm_wallclock_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize device driver framework */
+	vmm_printf("Initialize Device Driver Framework\n");
+	ret = vmm_devdrv_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize device emulation framework */
+	vmm_printf("Initialize Device Emulation Framework\n");
+	ret = vmm_devemu_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
