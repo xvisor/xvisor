@@ -44,21 +44,21 @@ int arch_elf_check_hdr(const struct elf32_hdr *x)
 	return 1;
 }
 
-int arch_elf_apply_relocate(Elf32_Shdr *sechdrs, 
+int arch_elf_apply_relocate(struct elf32_shdr *sechdrs, 
 			    const char *strtab, 
 			    unsigned int symindex,
 			    unsigned int relindex, 
 			    struct vmm_module *mod)
 {
-	Elf32_Shdr *symsec = sechdrs + symindex;
-	Elf32_Shdr *relsec = sechdrs + relindex;
-	Elf32_Shdr *dstsec = sechdrs + relsec->sh_info;
-	Elf32_Rel *rel = (void *)relsec->sh_addr;
+	struct elf32_shdr *symsec = sechdrs + symindex;
+	struct elf32_shdr *relsec = sechdrs + relindex;
+	struct elf32_shdr *dstsec = sechdrs + relsec->sh_info;
+	struct elf32_rel *rel = (void *)relsec->sh_addr;
 	u32 i;
 
 	for (i = 0; i < relsec->sh_size / sizeof(Elf32_Rel); i++, rel++) {
 		virtual_addr_t loc;
-		Elf32_Sym *sym;
+		struct elf32_sym *sym;
 		const char *symname;
 		s32 offset;
 
