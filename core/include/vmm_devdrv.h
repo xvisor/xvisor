@@ -38,20 +38,6 @@ struct vmm_classdev;
 
 struct vmm_driver;
 
-typedef struct vmm_devclk * (*vmm_devdrv_getclk_t) (struct vmm_devtree_node *);
-typedef void (*vmm_devdrv_putclk_t) (struct vmm_devclk *);
-
-typedef int (*vmm_devclk_isenabled_t) (struct vmm_devclk *);
-typedef int (*vmm_devclk_enable_t) (struct vmm_devclk *);
-typedef int (*vmm_devclk_disable_t) (struct vmm_devclk *);
-typedef u32 (*vmm_devclk_getrate_t) (struct vmm_devclk *);
-
-typedef int (*vmm_driver_probe_t) (struct vmm_device *, 
-				   const struct vmm_devid *);
-typedef int (*vmm_driver_suspend_t) (struct vmm_device *);
-typedef int (*vmm_driver_resume_t) (struct vmm_device *);
-typedef int (*vmm_driver_remove_t) (struct vmm_device *);
-
 struct vmm_devid {
 	char name[32];
 	char type[32];
@@ -60,12 +46,13 @@ struct vmm_devid {
 };
 
 struct vmm_devclk {
-	struct vmm_devclk * parent;
-	vmm_devclk_isenabled_t isenabled;
-	vmm_devclk_enable_t enable;
-	vmm_devclk_disable_t disable;
-	vmm_devclk_getrate_t getrate;
-	void * priv;
+	struct vmm_devclk *parent;
+	int (*isenabled) (struct vmm_devclk *);
+	int (*enable) (struct vmm_devclk *);
+	int (*disable) (struct vmm_devclk *);
+	u32 (*getrate) (struct vmm_devclk *);
+	u32 (*setrate) (struct vmm_devclk *, u32);
+	void *priv;
 };
 
 struct vmm_device {
@@ -74,6 +61,7 @@ struct vmm_device {
 	struct vmm_devtree_node *node;
 	struct vmm_class *class;
 	struct vmm_classdev *classdev;
+	struct vmm_driver *drv;
 	void *priv;
 };
 
@@ -94,51 +82,56 @@ struct vmm_driver {
 	struct dlist head;
 	char name[32];
 	const struct vmm_devid *match_table;
-	vmm_driver_probe_t probe;
-	vmm_driver_suspend_t suspend;
-	vmm_driver_resume_t resume;
-	vmm_driver_remove_t remove;
+	int (*probe) (struct vmm_device *, const struct vmm_devid *);
+	int (*suspend) (struct vmm_device *);
+	int (*resume) (struct vmm_device *);
+	int (*remove) (struct vmm_device *);
 };
 
 /** Probe device instances under a given device tree node */
-int vmm_devdrv_probe(struct vmm_devtree_node * node, 
-		     vmm_devdrv_getclk_t getclk);
+int vmm_devdrv_probe(struct vmm_devtree_node *node, 
+		     struct vmm_devclk *(*getclk) (struct vmm_devtree_node *));
 
 /** Remove device instances under a given device tree node */
-int vmm_devdrv_remove(struct vmm_devtree_node * node,
-		      vmm_devdrv_putclk_t putclk);
+int vmm_devdrv_remove(struct vmm_devtree_node *node,
+		      void (*putclk) (struct vmm_devclk *));
 
 /** Map device registers to virtual address based on
  *  'reg' and 'virtual-reg' attributes of device tree node
  */
-int vmm_devdrv_regmap(struct vmm_device * dev, 
-		      virtual_addr_t * addr, int regset);
+int vmm_devdrv_regmap(struct vmm_device *dev, 
+		      virtual_addr_t *addr, int regset);
 
 /** Unmap device registers from virtual address based on
  *  'reg' and 'virtual-reg' attributes of device tree node
  */
-int vmm_devdrv_regunmap(struct vmm_device * dev, 
-		      virtual_addr_t addr, int regset);
+int vmm_devdrv_regunmap(struct vmm_device *dev, 
+			virtual_addr_t addr, int regset);
 
 /** Check if clock is enabled for given device */
-bool vmm_devdrv_clock_isenabled(struct vmm_device * dev);
+bool vmm_devdrv_clock_isenabled(struct vmm_device *dev);
 
 /** Enable clock for given device */
-int vmm_devdrv_clock_enable(struct vmm_device * dev);
+int vmm_devdrv_clock_enable(struct vmm_device *dev);
 
 /** Disable clock for given device */
-int vmm_devdrv_clock_disable(struct vmm_device * dev);
+int vmm_devdrv_clock_disable(struct vmm_device *dev);
 
 /** Get clock rate for given device 
  *  NOTE: If clock is not enabled then this will enable clock first.
  */
-u32 vmm_devdrv_clock_rate(struct vmm_device * dev);
+u32 vmm_devdrv_clock_getrate(struct vmm_device *dev);
+
+/** Set clock rate for given device 
+ *  NOTE: If clock is not enabled then this will enable clock first.
+ */
+int vmm_devdrv_clock_setrate(struct vmm_device *dev, u32 rate);
 
 /** Register class */
-int vmm_devdrv_register_class(struct vmm_class * cls);
+int vmm_devdrv_register_class(struct vmm_class *cls);
 
 /** Unregister class */
-int vmm_devdrv_unregister_class(struct vmm_class * cls);
+int vmm_devdrv_unregister_class(struct vmm_class *cls);
 
 /** Find a registered class */
 struct vmm_class *vmm_devdrv_find_class(const char *cname);
@@ -151,11 +144,11 @@ u32 vmm_devdrv_class_count(void);
 
 /** Register device to a class */
 int vmm_devdrv_register_classdev(const char *cname, 
-				 struct vmm_classdev * cdev);
+				 struct vmm_classdev *cdev);
 
 /** Unregister device from a class */
 int vmm_devdrv_unregister_classdev(const char *cname, 
-				   struct vmm_classdev * cdev);
+				   struct vmm_classdev *cdev);
 
 /** Find a class device under a class */
 struct vmm_classdev *vmm_devdrv_find_classdev(const char *cname,
@@ -168,10 +161,10 @@ struct vmm_classdev *vmm_devdrv_classdev(const char *cname, int index);
 u32 vmm_devdrv_classdev_count(const char *cname);
 
 /** Register device driver */
-int vmm_devdrv_register_driver(struct vmm_driver * drv);
+int vmm_devdrv_register_driver(struct vmm_driver *drv);
 
 /** Unregister device driver */
-int vmm_devdrv_unregister_driver(struct vmm_driver * drv);
+int vmm_devdrv_unregister_driver(struct vmm_driver *drv);
 
 /** Find a registered driver */
 struct vmm_driver *vmm_devdrv_find_driver(const char *name);
