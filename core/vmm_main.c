@@ -62,6 +62,46 @@ static void system_init_work(struct vmm_work *work)
 	struct vmm_devtree_node *gnode, *gsnode;
 	struct vmm_guest *guest = NULL;
 
+	/* Initialize command manager */
+	vmm_printf("Initialize Command Manager\n");
+	ret = vmm_cmdmgr_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize device driver framework */
+	vmm_printf("Initialize Device Driver Framework\n");
+	ret = vmm_devdrv_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize device emulation framework */
+	vmm_printf("Initialize Device Emulation Framework\n");
+	ret = vmm_devemu_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize character device framework */
+	vmm_printf("Initialize Character Device Framework\n");
+	ret = vmm_chardev_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Initialize character device framework */
+	vmm_printf("Initialize Virtual Serial Port Framework\n");
+	ret = vmm_vserial_init();
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
 	/* Initialize modules */
 	ret = vmm_modules_init();
 	if (ret) {
@@ -287,49 +327,9 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
-	/* Initialize command manager */
-	vmm_printf("Initialize Command Manager\n");
-	ret = vmm_cmdmgr_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
 	/* Initialize wallclock */
 	vmm_printf("Initialize Wallclock Subsystem\n");
 	ret = vmm_wallclock_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Initialize device driver framework */
-	vmm_printf("Initialize Device Driver Framework\n");
-	ret = vmm_devdrv_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Initialize device emulation framework */
-	vmm_printf("Initialize Device Emulation Framework\n");
-	ret = vmm_devemu_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Initialize character device framework */
-	vmm_printf("Initialize Character Device Framework\n");
-	ret = vmm_chardev_init();
-	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
-	}
-
-	/* Initialize character device framework */
-	vmm_printf("Initialize Virtual Serial Port Framework\n");
-	ret = vmm_vserial_init();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
