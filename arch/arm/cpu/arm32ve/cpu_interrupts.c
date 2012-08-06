@@ -94,7 +94,7 @@ void do_hyp_trap(arch_regs_t * regs)
 		break;
 	case EC_TRAP_WFI_WFE:
 		/* WFI emulation */
-		rc = cpu_vcpu_emulate_wfi(vcpu, regs, il, iss);
+		rc = cpu_vcpu_emulate_wfi_wfe(vcpu, regs, il, iss);
 		break;
 	case EC_TRAP_MCR_MRC_CP15:
 		/* MCR/MRC CP15 emulation */

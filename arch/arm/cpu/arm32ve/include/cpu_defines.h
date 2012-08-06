@@ -363,6 +363,30 @@
 #define EC_TRAP_STAGE2_DATA_ABORT			0x24
 #define EC_TRAP_STAGE1_DATA_ABORT			0x25
 
+/* Condition Field ISS Encodings */
+#define ISS_CV_MASK					0x01000000
+#define ISS_CV_SHIFT					24
+#define ISS_COND_MASK					0x00F00000
+#define ISS_COND_SHIFT					20
+
+/* WFI/WFE ISS Encodings */
+#define ISS_WFI_WFE_TRAPPED_MASK			0x00080000
+#define ISS_WFI_WFE_TRAPPED_SHIFT			19
+
+/* MCR/MRC ISS Encodings */
+#define ISS_MCR_MRC_OPC2_MASK				0x000E0000
+#define ISS_MCR_MRC_OPC2_SHIFT				17
+#define ISS_MCR_MRC_OPC1_MASK				0x0001C000
+#define ISS_MCR_MRC_OPC1_SHIFT				14
+#define ISS_MCR_MRC_CRN_MASK				0x00003C00
+#define ISS_MCR_MRC_CRN_SHIFT				10
+#define ISS_MCR_MRC_RT_MASK				0x000001E0
+#define ISS_MCR_MRC_RT_SHIFT				5
+#define ISS_MCR_MRC_CRM_MASK				0x0000001E
+#define ISS_MCR_MRC_CRM_SHIFT				1
+#define ISS_MCR_MRC_DIR_MASK				0x00000001
+#define ISS_MCR_MRC_DIR_SHIFT				0
+
 /* Instruction/Data Abort ISS Encodings */
 #define ISS_ABORT_ISV_MASK				0x01000000
 #define ISS_ABORT_ISV_SHIFT				24
