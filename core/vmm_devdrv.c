@@ -28,10 +28,13 @@
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
+#include <vmm_mutex.h>
 #include <vmm_host_aspace.h>
 
 struct vmm_devdrv_ctrl {
+	struct vmm_mutex driver_lock;
 	struct dlist driver_list;
+	struct vmm_mutex class_lock;
 	struct dlist class_list;
 };
 
@@ -174,6 +177,9 @@ int vmm_devdrv_probe(struct vmm_devtree_node *node,
 	}
 
 	rc = VMM_ENODEV;
+
+	vmm_mutex_lock(&ddctrl.driver_lock);
+
 	list_for_each(l, &ddctrl.driver_list) {
 		drv = list_entry(l, struct vmm_driver, head);
 		rc = devdrv_probe(node, drv, getclk);
@@ -182,9 +188,12 @@ int vmm_devdrv_probe(struct vmm_devtree_node *node,
 		} else if (rc == VMM_OK) {
 			break;
 		} else {
+			vmm_mutex_unlock(&ddctrl.driver_lock);
 			return rc;
 		}
 	}
+
+	vmm_mutex_unlock(&ddctrl.driver_lock);
 
 	list_for_each(l, &node->child_list) {
 		child = list_entry(l, struct vmm_devtree_node, head);
@@ -410,6 +419,9 @@ int vmm_devdrv_register_class(struct vmm_class *cls)
 
 	c = NULL;
 	found = FALSE;
+
+	vmm_mutex_lock(&ddctrl.class_lock);
+
 	list_for_each(l, &ddctrl.class_list) {
 		c = list_entry(l, struct vmm_class, head);
 		if (vmm_strcmp(c->name, cls->name) == 0) {
@@ -419,12 +431,15 @@ int vmm_devdrv_register_class(struct vmm_class *cls)
 	}
 
 	if (found) {
+		vmm_mutex_unlock(&ddctrl.class_lock);
 		return VMM_EINVALID;
 	}
 
 	INIT_LIST_HEAD(&cls->head);
 
 	list_add_tail(&cls->head, &ddctrl.class_list);
+
+	vmm_mutex_unlock(&ddctrl.class_lock);
 
 	return VMM_OK;
 }
@@ -435,7 +450,10 @@ int vmm_devdrv_unregister_class(struct vmm_class *cls)
 	struct dlist *l;
 	struct vmm_class *c;
 
+	vmm_mutex_lock(&ddctrl.class_lock);
+
 	if (cls == NULL || list_empty(&ddctrl.class_list)) {
+		vmm_mutex_unlock(&ddctrl.class_lock);
 		return VMM_EFAIL;
 	}
 
@@ -450,10 +468,13 @@ int vmm_devdrv_unregister_class(struct vmm_class *cls)
 	}
 
 	if (!found) {
+		vmm_mutex_unlock(&ddctrl.class_lock);
 		return VMM_ENOTAVAIL;
 	}
 
 	list_del(&c->head);
+
+	vmm_mutex_unlock(&ddctrl.class_lock);
 
 	return VMM_OK;
 }
@@ -471,6 +492,8 @@ struct vmm_class *vmm_devdrv_find_class(const char *cname)
 	found = FALSE;
 	cls = NULL;
 
+	vmm_mutex_lock(&ddctrl.class_lock);
+
 	list_for_each(l, &ddctrl.class_list) {
 		cls = list_entry(l, struct vmm_class, head);
 		if (vmm_strcmp(cls->name, cname) == 0) {
@@ -478,6 +501,8 @@ struct vmm_class *vmm_devdrv_find_class(const char *cname)
 			break;
 		}
 	}
+
+	vmm_mutex_unlock(&ddctrl.class_lock);
 
 	if (!found) {
 		return NULL;
@@ -499,6 +524,8 @@ struct vmm_class *vmm_devdrv_class(int index)
 	retval = NULL;
 	found = FALSE;
 
+	vmm_mutex_lock(&ddctrl.class_lock);
+
 	list_for_each(l, &ddctrl.class_list) {
 		retval = list_entry(l, struct vmm_class, head);
 		if (!index) {
@@ -507,6 +534,8 @@ struct vmm_class *vmm_devdrv_class(int index)
 		}
 		index--;
 	}
+
+	vmm_mutex_unlock(&ddctrl.class_lock);
 
 	if (!found) {
 		return NULL;
@@ -522,9 +551,13 @@ u32 vmm_devdrv_class_count(void)
 
 	retval = 0;
 
+	vmm_mutex_lock(&ddctrl.class_lock);
+
 	list_for_each(l, &ddctrl.class_list) {
 		retval++;
 	}
+
+	vmm_mutex_unlock(&ddctrl.class_lock);
 
 	return retval;
 }
@@ -706,6 +739,9 @@ int vmm_devdrv_register_driver(struct vmm_driver *drv)
 
 	d = NULL;
 	found = FALSE;
+
+	vmm_mutex_lock(&ddctrl.driver_lock);
+
 	list_for_each(l, &ddctrl.driver_list) {
 		d = list_entry(l, struct vmm_driver, head);
 		if (vmm_strcmp(d->name, drv->name) == 0) {
@@ -715,12 +751,15 @@ int vmm_devdrv_register_driver(struct vmm_driver *drv)
 	}
 
 	if (found) {
+		vmm_mutex_unlock(&ddctrl.driver_lock);
 		return VMM_EINVALID;
 	}
 
 	INIT_LIST_HEAD(&drv->head);
 
 	list_add_tail(&drv->head, &ddctrl.driver_list);
+
+	vmm_mutex_unlock(&ddctrl.driver_lock);
 
 	return VMM_OK;
 }
@@ -731,7 +770,10 @@ int vmm_devdrv_unregister_driver(struct vmm_driver *drv)
 	struct dlist *l;
 	struct vmm_driver *d;
 
+	vmm_mutex_lock(&ddctrl.driver_lock);
+
 	if (drv == NULL || list_empty(&ddctrl.driver_list)) {
+		vmm_mutex_unlock(&ddctrl.driver_lock);
 		return VMM_EFAIL;
 	}
 
@@ -746,10 +788,13 @@ int vmm_devdrv_unregister_driver(struct vmm_driver *drv)
 	}
 
 	if (!found) {
+		vmm_mutex_unlock(&ddctrl.driver_lock);
 		return VMM_ENOTAVAIL;
 	}
 
 	list_del(&d->head);
+
+	vmm_mutex_unlock(&ddctrl.driver_lock);
 
 	return VMM_OK;
 }
@@ -767,6 +812,8 @@ struct vmm_driver *vmm_devdrv_find_driver(const char *name)
 	found = FALSE;
 	drv = NULL;
 
+	vmm_mutex_lock(&ddctrl.driver_lock);
+
 	list_for_each(l, &ddctrl.driver_list) {
 		drv = list_entry(l, struct vmm_driver, head);
 		if (vmm_strcmp(drv->name, name) == 0) {
@@ -774,6 +821,8 @@ struct vmm_driver *vmm_devdrv_find_driver(const char *name)
 			break;
 		}
 	}
+
+	vmm_mutex_unlock(&ddctrl.driver_lock);
 
 	if (!found) {
 		return NULL;
@@ -795,6 +844,8 @@ struct vmm_driver *vmm_devdrv_driver(int index)
 	retval = NULL;
 	found = FALSE;
 
+	vmm_mutex_lock(&ddctrl.driver_lock);
+
 	list_for_each(l, &ddctrl.driver_list) {
 		retval = list_entry(l, struct vmm_driver, head);
 		if (!index) {
@@ -803,6 +854,8 @@ struct vmm_driver *vmm_devdrv_driver(int index)
 		}
 		index--;
 	}
+
+	vmm_mutex_unlock(&ddctrl.driver_lock);
 
 	if (!found) {
 		return NULL;
@@ -818,9 +871,13 @@ u32 vmm_devdrv_driver_count(void)
 
 	retval = 0;
 
+	vmm_mutex_lock(&ddctrl.driver_lock);
+
 	list_for_each(l, &ddctrl.driver_list) {
 		retval++;
 	}
+
+	vmm_mutex_unlock(&ddctrl.driver_lock);
 
 	return retval;
 }
@@ -829,7 +886,9 @@ int __init vmm_devdrv_init(void)
 {
 	vmm_memset(&ddctrl, 0, sizeof(ddctrl));
 
+	INIT_MUTEX(&ddctrl.driver_lock);
 	INIT_LIST_HEAD(&ddctrl.driver_list);
+	INIT_MUTEX(&ddctrl.class_lock);
 	INIT_LIST_HEAD(&ddctrl.class_list);
 
 	return VMM_OK;
