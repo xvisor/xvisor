@@ -761,6 +761,7 @@ int __init vmm_modules_init(void)
 	table_size = arch_modtbl_size() / sizeof(struct vmm_module);
 
 	/* Find and count valid built-in modules */
+	mod_count = 0;
 	for (i = 0; i < table_size; i++) {
 		/* Check validity of module table entry */
 		if (table[i].signature == VMM_MODULE_SIGNATURE) {
