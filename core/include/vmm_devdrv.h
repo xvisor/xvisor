@@ -90,11 +90,11 @@ struct vmm_driver {
 
 /** Probe device instances under a given device tree node */
 int vmm_devdrv_probe(struct vmm_devtree_node *node, 
-		     struct vmm_devclk *(*getclk) (struct vmm_devtree_node *));
+		     struct vmm_devclk *(*getclk) (struct vmm_devtree_node *),
+		     void (*putclk) (struct vmm_devclk *));
 
 /** Remove device instances under a given device tree node */
-int vmm_devdrv_remove(struct vmm_devtree_node *node,
-		      void (*putclk) (struct vmm_devclk *));
+int vmm_devdrv_remove(struct vmm_devtree_node *node);
 
 /** Map device registers to virtual address based on
  *  'reg' and 'virtual-reg' attributes of device tree node

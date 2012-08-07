@@ -72,7 +72,7 @@ static int __init vmm_net_init(void)
 		vmm_printf("VMM_NET: devtree node not found\n");
 		goto vmm_net_devtree_probe_failed;
 	}
-	rc = vmm_devdrv_probe(node, NULL);
+	rc = vmm_devdrv_probe(node, NULL, NULL);
 	if (rc) {
 		vmm_printf("VMM_NET: devtree node probe failed\n");
 		goto vmm_net_devtree_probe_failed;
