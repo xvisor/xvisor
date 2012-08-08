@@ -56,6 +56,7 @@ struct vmm_devclk {
 };
 
 struct vmm_device {
+	struct dlist head;
 	vmm_spinlock_t lock;
 	struct vmm_devclk *clk;
 	struct vmm_devtree_node *node;

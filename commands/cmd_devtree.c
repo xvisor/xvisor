@@ -175,19 +175,6 @@ void cmd_devtree_print_node(struct vmm_chardev *cdev,
 		vmm_cprintf(cdev, "%s", node->name);
 	}
 
-	switch (node->type) {
-	case VMM_DEVTREE_NODETYPE_UNKNOWN:
-		break;
-	case VMM_DEVTREE_NODETYPE_DEVICE:
-		vmm_cprintf(cdev, " /* [device] */");
-		break;
-	case VMM_DEVTREE_NODETYPE_EDEVICE:
-		vmm_cprintf(cdev, " /* [edevice] */");
-		break;
-	default:
-		break;
-	};
-
 	braceopen = FALSE;
 	if (showattr) {
 		if (!list_empty(&node->child_list) ||
@@ -408,8 +395,7 @@ int cmd_devtree_node_add(struct vmm_chardev *cdev, char *path, char *name)
 		return VMM_EFAIL;
 	}
 
-	node = vmm_devtree_addnode(parent, name, 
-				   VMM_DEVTREE_NODETYPE_UNKNOWN, NULL);
+	node = vmm_devtree_addnode(parent, name, NULL);
 	if (!node) {
 		vmm_cprintf(cdev, "Error: Unable to add node %s. "
 				  "Probably node already exist\n", name);

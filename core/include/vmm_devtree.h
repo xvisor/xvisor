@@ -92,17 +92,9 @@ struct vmm_devtree_attr {
 	u32 len;
 };
 
-enum vmm_devtree_nodetypes {
-	VMM_DEVTREE_NODETYPE_UNKNOWN = 0,
-	VMM_DEVTREE_NODETYPE_DEVICE = 1,
-	VMM_DEVTREE_NODETYPE_EDEVICE = 2,
-	VMM_DEVTREE_NODETYPE_MAXTYPES = 3
-};
-
 struct vmm_devtree_node {
 	struct dlist head;
 	char *name;
-	u32 type;
 	void *priv;
 	struct vmm_devtree_node *parent;
 	struct dlist attr_list;
@@ -118,53 +110,52 @@ bool vmm_devtree_isliteral(u32 attrtype);
 u32 vmm_devtree_literal_size(u32 attrtype);
 
 /** Estimate type of attribute from its name */
-u32 vmm_devtree_estimate_attrtype(const char * name);
+u32 vmm_devtree_estimate_attrtype(const char *name);
 
 /** Get attribute value */
-void * vmm_devtree_attrval(struct vmm_devtree_node * node, 
+void * vmm_devtree_attrval(struct vmm_devtree_node *node, 
 			   const char *attrib);
 
 /** Get length of attribute value */
-u32 vmm_devtree_attrlen(struct vmm_devtree_node * node, 
+u32 vmm_devtree_attrlen(struct vmm_devtree_node *node, 
 			const char *attrib);
 
 /** Set an attribute for a device tree node */
-int vmm_devtree_setattr(struct vmm_devtree_node * node,
+int vmm_devtree_setattr(struct vmm_devtree_node *node,
 			const char *name,
-			void * value,
+			void *value,
 			u32 type,
 			u32 len);
 
 /** Get an attribute from a device tree node */
-struct vmm_devtree_attr * vmm_devtree_getattr(struct vmm_devtree_node * node,
+struct vmm_devtree_attr * vmm_devtree_getattr(struct vmm_devtree_node *node,
 					      const char *name);
 
 /** Delete an attribute from a device tree node */
-int vmm_devtree_delattr(struct vmm_devtree_node * node, const char *name);
+int vmm_devtree_delattr(struct vmm_devtree_node *node, const char *name);
 
 /** Create a path string for a given node */
-int vmm_devtree_getpath(char *out, struct vmm_devtree_node * node);
+int vmm_devtree_getpath(char *out, struct vmm_devtree_node *node);
 
 /** Get node corresponding to a path string */
 struct vmm_devtree_node *vmm_devtree_getnode(const char *path);
 
 /** Get child node below a given node */
-struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node * node,
+struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 					      const char *path);
 
 /** Add new node to device tree */
-struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node * parent,
-					     const char * name,
-					     u32 type,
-					     void * priv);
+struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
+					     const char *name,
+					     void *priv);
 
 /** Copy a node to another location in device tree */
-int vmm_devtree_copynode(struct vmm_devtree_node * parent,
-			 const char * name,
-			 struct vmm_devtree_node * src);
+int vmm_devtree_copynode(struct vmm_devtree_node *parent,
+			 const char *name,
+			 struct vmm_devtree_node *src);
 
 /** Delete a node from device tree */
-int vmm_devtree_delnode(struct vmm_devtree_node * node);
+int vmm_devtree_delnode(struct vmm_devtree_node *node);
 
 /** Get the root node */
 struct vmm_devtree_node *vmm_devtree_rootnode(void);

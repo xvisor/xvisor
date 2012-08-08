@@ -39,6 +39,8 @@ struct probe_node {
 };
 
 struct vmm_devdrv_ctrl {
+	struct vmm_mutex device_lock;
+	struct dlist device_list;
 	struct vmm_mutex driver_lock;
 	struct dlist driver_list;
 	struct vmm_mutex class_lock;
@@ -102,22 +104,34 @@ static const struct vmm_devid *devdrv_match_node(
 	return NULL;
 }
 
+/* Must be called with 'ddctrl.device_lock' held */
 static void devdrv_probe(struct vmm_devtree_node *node, 
 		struct vmm_driver *drv,
 		struct vmm_devclk *(*getclk) (struct vmm_devtree_node *))
 {
 	int rc;
+	bool found;
 	struct dlist *l;
 	struct vmm_devtree_node *child;
 	struct vmm_device *dinst;
 	const struct vmm_devid *matches;
 	const struct vmm_devid *match;
 
-	if (node->type == VMM_DEVTREE_NODETYPE_UNKNOWN && node->priv == NULL) {
+	found = FALSE;
+	list_for_each(l, &ddctrl.device_list) {
+		dinst = list_entry(l, struct vmm_device, head);
+		if (dinst->node == node) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
 		matches = drv->match_table;
 		match = devdrv_match_node(matches, node);
 		if (match) {
 			dinst = vmm_malloc(sizeof(struct vmm_device));
+			INIT_LIST_HEAD(&dinst->head);
 			INIT_SPIN_LOCK(&dinst->lock);
 			dinst->clk = (getclk) ? getclk(node) : NULL;
 			dinst->node = node;
@@ -125,8 +139,6 @@ static void devdrv_probe(struct vmm_devtree_node *node,
 			dinst->classdev = NULL;
 			dinst->drv = drv;
 			dinst->priv = NULL;
-			node->type = VMM_DEVTREE_NODETYPE_DEVICE;
-			node->priv = dinst;
 #if defined(CONFIG_VERBOSE_MODE)
 			vmm_printf("Probe device %s\n", node->name);
 #endif
@@ -135,8 +147,8 @@ static void devdrv_probe(struct vmm_devtree_node *node,
 				vmm_printf("%s: %s probe error %d\n", 
 					   __func__, node->name, rc);
 				vmm_free(dinst);
-				node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
-				node->priv = NULL;
+			} else {
+				list_add_tail(&dinst->head, &ddctrl.device_list);
 			}
 		}
 	}
@@ -147,11 +159,13 @@ static void devdrv_probe(struct vmm_devtree_node *node,
 	}
 }
 
+/* Must be called with 'ddctrl.device_lock' held */
 static void devdrv_remove(struct vmm_devtree_node *node,
 			  struct vmm_driver *drv,
 			  void (*putclk) (struct vmm_devclk *))
 {
 	int rc;
+	bool found;
 	struct dlist *l;
 	struct vmm_devtree_node *child;
 	struct vmm_device *dinst;
@@ -161,8 +175,16 @@ static void devdrv_remove(struct vmm_devtree_node *node,
 		devdrv_remove(child, drv, putclk);
 	}
 
-	if (node->type == VMM_DEVTREE_NODETYPE_DEVICE && node->priv != NULL) {
-		dinst = node->priv;
+	found = FALSE;
+	list_for_each(l, &ddctrl.device_list) {
+		dinst = list_entry(l, struct vmm_device, head);
+		if (dinst->node == node) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (found) {
 		if (dinst->drv != drv) {
 			return;
 		}
@@ -170,17 +192,15 @@ static void devdrv_remove(struct vmm_devtree_node *node,
 		vmm_printf("Remove device %s\n", node->name);
 #endif
 		rc = drv->remove(dinst);
-		if (!rc) {
-			if (dinst->clk && putclk) {
-				putclk(dinst->clk);
-			}
-			vmm_free(dinst);
-			node->type = VMM_DEVTREE_NODETYPE_UNKNOWN;
-			node->priv = NULL;
-		} else {
+		if (rc) {
 			vmm_printf("%s: %s remove error %d\n", 
 				   __func__, node->name, rc);
 		}
+		if (dinst->clk && putclk) {
+			putclk(dinst->clk);
+		}
+		vmm_free(dinst);
+		list_del(&dinst->head);
 	}
 }
 
@@ -225,6 +245,7 @@ int vmm_devdrv_probe(struct vmm_devtree_node *node,
 
 	vmm_mutex_unlock(&ddctrl.pnode_lock);
 
+	vmm_mutex_lock(&ddctrl.device_lock);
 	vmm_mutex_lock(&ddctrl.driver_lock);
 
 	list_for_each(l, &ddctrl.driver_list) {
@@ -233,6 +254,7 @@ int vmm_devdrv_probe(struct vmm_devtree_node *node,
 	}
 
 	vmm_mutex_unlock(&ddctrl.driver_lock);
+	vmm_mutex_unlock(&ddctrl.device_lock);
 
 	return VMM_OK;
 }
@@ -268,6 +290,7 @@ int vmm_devdrv_remove(struct vmm_devtree_node *node)
 
 	vmm_mutex_unlock(&ddctrl.pnode_lock);
 
+	vmm_mutex_lock(&ddctrl.device_lock);
 	vmm_mutex_lock(&ddctrl.driver_lock);
 
 	list_for_each(l, &ddctrl.driver_list) {
@@ -276,6 +299,7 @@ int vmm_devdrv_remove(struct vmm_devtree_node *node)
 	}
 
 	vmm_mutex_unlock(&ddctrl.driver_lock);
+	vmm_mutex_unlock(&ddctrl.device_lock);
 
 	vmm_free(pnode);
 
@@ -816,6 +840,7 @@ int vmm_devdrv_register_driver(struct vmm_driver *drv)
 
 	vmm_mutex_unlock(&ddctrl.driver_lock);
 
+	vmm_mutex_lock(&ddctrl.device_lock);
 	vmm_mutex_lock(&ddctrl.pnode_lock);
 
 	list_for_each(l, &ddctrl.pnode_list) {
@@ -824,6 +849,7 @@ int vmm_devdrv_register_driver(struct vmm_driver *drv)
 	}
 
 	vmm_mutex_unlock(&ddctrl.pnode_lock);
+	vmm_mutex_unlock(&ddctrl.device_lock);
 
 	return VMM_OK;
 }
@@ -861,6 +887,7 @@ int vmm_devdrv_unregister_driver(struct vmm_driver *drv)
 
 	vmm_mutex_unlock(&ddctrl.driver_lock);
 
+	vmm_mutex_lock(&ddctrl.device_lock);
 	vmm_mutex_lock(&ddctrl.pnode_lock);
 
 	list_for_each(l, &ddctrl.pnode_list) {
@@ -869,6 +896,7 @@ int vmm_devdrv_unregister_driver(struct vmm_driver *drv)
 	}
 
 	vmm_mutex_unlock(&ddctrl.pnode_lock);
+	vmm_mutex_unlock(&ddctrl.device_lock);
 
 	return VMM_OK;
 }
@@ -960,6 +988,8 @@ int __init vmm_devdrv_init(void)
 {
 	vmm_memset(&ddctrl, 0, sizeof(ddctrl));
 
+	INIT_MUTEX(&ddctrl.device_lock);
+	INIT_LIST_HEAD(&ddctrl.device_list);
 	INIT_MUTEX(&ddctrl.driver_lock);
 	INIT_LIST_HEAD(&ddctrl.driver_list);
 	INIT_MUTEX(&ddctrl.class_lock);

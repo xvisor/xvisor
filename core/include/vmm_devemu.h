@@ -133,11 +133,11 @@ int vmm_devemu_complete_h2g_irq(struct vmm_guest *guest, u32 irq_num);
 
 /** Register emulated pic */
 int vmm_devemu_register_pic(struct vmm_guest *guest, 
-			    struct vmm_emupic * emu);
+			    struct vmm_emupic *emu);
 
 /** Unregister emulated pic */
 int vmm_devemu_unregister_pic(struct vmm_guest *guest, 
-			      struct vmm_emupic * emu);
+			      struct vmm_emupic *emu);
 
 /** Find a registered emulated pic */
 struct vmm_emupic *vmm_devemu_find_pic(struct vmm_guest *guest, 
@@ -150,10 +150,10 @@ struct vmm_emupic *vmm_devemu_pic(struct vmm_guest *guest, int index);
 u32 vmm_devemu_pic_count(struct vmm_guest *guest);
 
 /** Register emulator */
-int vmm_devemu_register_emulator(struct vmm_emulator * emu);
+int vmm_devemu_register_emulator(struct vmm_emulator *emu);
 
 /** Unregister emulator */
-int vmm_devemu_unregister_emulator(struct vmm_emulator * emu);
+int vmm_devemu_unregister_emulator(struct vmm_emulator *emu);
 
 /** Find a registered emulator */
 struct vmm_emulator *vmm_devemu_find_emulator(const char *name);

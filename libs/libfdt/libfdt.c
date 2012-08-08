@@ -233,8 +233,7 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 			break;
 		case FDT_BEGIN_NODE:
 			*data += sizeof(fdt_cell_t);
-			type = VMM_DEVTREE_NODETYPE_UNKNOWN;
-			child = vmm_devtree_addnode(node, *data, type, NULL);
+			child = vmm_devtree_addnode(node, *data, NULL);
 			*data += vmm_strlen(*data) + 1;
 			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
 				(*data)++;
@@ -273,8 +272,7 @@ int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
 	data += sizeof(fdt_cell_t);
 
 	/* Create root node */
-	*root = vmm_devtree_addnode(NULL, data, 
-				    VMM_DEVTREE_NODETYPE_UNKNOWN, NULL);
+	*root = vmm_devtree_addnode(NULL, data, NULL);
 
 	/* Skip root node name */
 	data += vmm_strlen(data) + 1;
