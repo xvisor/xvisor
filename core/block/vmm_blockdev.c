@@ -89,6 +89,7 @@ int vmm_blockdev_dowriteblk(struct vmm_blockdev * bdev,
 
 int vmm_blockdev_register(struct vmm_blockdev * bdev)
 {
+	int rc;
 	struct vmm_classdev *cd;
 
 	if (bdev == NULL) {
@@ -108,7 +109,13 @@ int vmm_blockdev_register(struct vmm_blockdev * bdev)
 	cd->dev = bdev->dev;
 	cd->priv = bdev;
 
-	vmm_devdrv_register_classdev(VMM_BLOCKDEV_CLASS_NAME, cd);
+	rc = vmm_devdrv_register_classdev(VMM_BLOCKDEV_CLASS_NAME, cd);
+	if (rc) {
+		cd->dev = NULL;
+		cd->priv = NULL;
+		vmm_free(cd);
+		return rc;
+	}
 
 	return VMM_OK;
 }
