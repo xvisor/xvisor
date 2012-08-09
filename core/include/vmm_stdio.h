@@ -62,6 +62,9 @@ int vmm_printf(const char *format, ...);
 /** Print formatted string to another string */
 int vmm_sprintf(char *out, const char *format, ...);
 
+/** Print formatted string to another string */
+int vmm_snprintf(char *out, u32 out_sz, const char *format, ...);
+
 /** Print formatted string to character device */
 int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
 

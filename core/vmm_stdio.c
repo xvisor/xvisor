@@ -329,6 +329,17 @@ int vmm_sprintf(char *out, const char *format, ...)
 	return retval;
 }
 
+/* FIXME: */
+int vmm_snprintf(char *out, u32 out_sz, const char *format, ...)
+{
+	va_list args;
+	int retval;
+	va_start(args, format);
+	retval = print(&out, stdio_ctrl.dev, format, args);
+	va_end(args);
+	return retval;
+}
+
 int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 {
 	va_list args;
