@@ -101,12 +101,12 @@ int mii_nway_restart (struct mii_if_info *mii)
 void mii_check_link (struct mii_if_info *mii)
 {
 	int cur_link = mii_link_ok(mii);
-	int prev_link = vmm_netif_carrier_ok(mii->dev);
+	int prev_link = netif_carrier_ok(mii->dev);
 
 	if (cur_link && !prev_link)
-		vmm_netif_carrier_on(mii->dev);
+		netif_carrier_on(mii->dev);
 	else if (prev_link && !cur_link)
-		vmm_netif_carrier_off(mii->dev);
+		netif_carrier_off(mii->dev);
 }
 
 /**
@@ -131,7 +131,7 @@ unsigned int mii_check_media (struct mii_if_info *mii,
 		return 0; /* duplex did not change */
 
 	/* check current and old link status */
-	old_carrier = vmm_netif_carrier_ok(mii->dev) ? 1 : 0;
+	old_carrier = netif_carrier_ok(mii->dev) ? 1 : 0;
 	new_carrier = (unsigned int) mii_link_ok(mii);
 
 	/* if carrier state did not change, this is a "bounce",
@@ -142,7 +142,7 @@ unsigned int mii_check_media (struct mii_if_info *mii,
 
 	/* no carrier, nothing much to do */
 	if (!new_carrier) {
-		vmm_netif_carrier_off(mii->dev);
+		netif_carrier_off(mii->dev);
 		if (ok_to_print)
 			vmm_printf("%s: link down\n", mii->dev->name);
 
@@ -152,7 +152,7 @@ unsigned int mii_check_media (struct mii_if_info *mii,
 	/*
 	 * we have carrier, see who's on the other end
 	 */
-	vmm_netif_carrier_on(mii->dev);
+	netif_carrier_on(mii->dev);
 
 	/* get MII advertise and LPA values */
 	if ((!init_media) && (mii->advertising))

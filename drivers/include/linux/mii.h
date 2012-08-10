@@ -31,7 +31,7 @@
 #ifndef __LINUX_MII_H__
 #define __LINUX_MII_H__
 
-#include <net/vmm_netdev.h>
+#include <linux/netdevice.h>
 
 /* Generic MII registers. */
 
@@ -172,9 +172,9 @@ struct mii_if_info {
 	unsigned int force_media : 1;	/* is autoneg. disabled? */
 	unsigned int supports_gmii : 1; /* are GMII registers supported? */
 
-	struct vmm_netdev *dev;
-	int (*mdio_read) (struct vmm_netdev *dev, int phy_id, int location);
-	void (*mdio_write) (struct vmm_netdev *dev, int phy_id, int location, int val);
+	struct net_device *dev;
+	int (*mdio_read) (struct net_device *dev, int phy_id, int location);
+	void (*mdio_write) (struct net_device *dev, int phy_id, int location, int val);
 };
 
 extern int mii_link_ok (struct mii_if_info *mii);

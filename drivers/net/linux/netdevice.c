@@ -1,0 +1,128 @@
+/**
+ * Copyright (c) 2010 Himanshu Chauhan.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file netdevice.c
+ * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @author Pranav Sawargaonkar <pranav.sawargaonkar@gmail.com>
+ * @brief Network Device framework source
+ */
+
+#include <linux/netdevice.h>
+
+struct net_device *netdev_alloc(const char *name)
+{
+	struct net_device *ndev;
+
+	ndev = vmm_malloc(sizeof(struct net_device));
+
+	if (!ndev) {
+		vmm_printf("%s Failed to allocate net device\n", __func__);
+		return NULL;
+	}
+
+	vmm_memset(ndev, 0, sizeof(struct net_device));
+	vmm_strcpy(ndev->name, name);
+	ndev->state = NETDEV_UNINITIALIZED;
+
+	return ndev;
+}
+
+int netdev_register(struct net_device *ndev)
+{
+	int rc = VMM_OK;
+
+	if (ndev == NULL) {
+		return VMM_EFAIL;
+	}
+
+	if (ndev->dev_ops && ndev->dev_ops->ndev_init) {
+		rc = ndev->dev_ops->ndev_init(ndev);
+		if (rc != VMM_OK) {
+			vmm_printf("%s: Device %s Failed during initializaion"
+				   "with err %d!!!!\n", __func__ ,
+				   ndev->name, rc);
+			goto fail_ndev_reg;
+		}
+	}
+
+	ndev->state &= ~NETDEV_UNINITIALIZED;
+	ndev->state |= NETDEV_REGISTERED;
+
+	return rc;
+
+fail_ndev_reg:
+	return rc;
+}
+
+int netdev_unregister(struct net_device *ndev)
+{
+	int rc = VMM_OK;
+
+	if (ndev == NULL) {
+		return VMM_EFAIL;
+	}
+
+	ndev->state &= ~(NETDEV_REGISTERED | NETDEV_TX_ALLOWED);
+
+	return rc;
+}
+
+void netdev_set_link(struct vmm_netport *port)
+{
+	struct net_device *dev = (struct net_device *)port->priv;
+
+	if (port->flags & VMM_NETPORT_LINK_UP) {
+		dev->dev_ops->ndev_open(dev);
+	} else {
+		dev->dev_ops->ndev_close(dev);
+	}
+}
+
+int netdev_can_receive(struct vmm_netport *port)
+{
+	struct net_device *dev = (struct net_device *) port->priv;
+
+	if (netif_queue_stopped(dev))
+		return 0;
+
+	return 1;
+}
+
+int netdev_switch2port_xfer(struct vmm_netport *port,
+		struct vmm_mbuf *mbuf)
+{
+	int rc = VMM_OK;
+	struct net_device *dev = (struct net_device *) port->priv;
+	char *buf;
+	int len;
+
+	if(mbuf->m_next) {
+		/* Cannot avoid a copy in case of fragmented mbuf data */
+		len = min(dev->mtu, (unsigned int)mbuf->m_pktlen);
+		buf = vmm_malloc(len);
+		m_copydata(mbuf, 0, len, buf);
+		m_freem(mbuf);
+		MGETHDR(mbuf, 0, 0);
+		MEXTADD(mbuf, buf, len, 0, 0);
+	}
+
+	dev->dev_ops->ndev_xmit(mbuf, dev);
+
+	return rc;
+}
+
