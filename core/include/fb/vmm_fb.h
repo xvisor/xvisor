@@ -33,6 +33,7 @@
 #include <vmm_mutex.h>
 #include <vmm_devdrv.h>
 #include <list.h>
+#include <mathlib.h>
 
 #define VMM_FB_CLASS_NAME			"fb"
 #define VMM_FB_CLASS_IPRIORITY			1
@@ -235,8 +236,8 @@ struct vmm_fb_bitfield {
 #define FB_ROTATE_UD      2
 #define FB_ROTATE_CCW     3
 
-#define PICOS2KHZ(a) (1000000000UL/(a))
-#define KHZ2PICOS(a) (1000000000UL/(a))
+#define PICOS2KHZ(a) udiv32(1000000000UL, (a))
+#define KHZ2PICOS(a) udiv32(1000000000UL, (a))
 
 struct vmm_fb_var_screeninfo {
 	u32 xres;			/* visible resolution		*/
@@ -692,8 +693,6 @@ struct vmm_fb_tile_ops {
 struct vmm_fb {
 	struct vmm_device *dev;			/* This is this fb device */
 
-	atomic_t count;
-	int node;
 	int flags;
 	struct vmm_mutex lock;			/* Lock for open/release/ioctl funcs */
 	struct vmm_fb_var_screeninfo var;	/* Current var */
@@ -734,5 +733,104 @@ struct vmm_fb *vmm_fb_get(int num);
 
 /** Count number of frame buffers */
 u32 vmm_fb_count(void);
+
+int vmm_fb_lock(struct vmm_fb *fb);
+
+void vmm_fb_unlock(struct vmm_fb *fb);
+
+static inline bool vmm_fb_be_math(struct vmm_fb *fb)
+{
+#ifdef CONFIG_FB_FOREIGN_ENDIAN
+#if defined(CONFIG_FB_BOTH_ENDIAN)
+	return fb->flags & FBINFO_BE_MATH;
+#elif defined(CONFIG_FB_BIG_ENDIAN)
+	return TRUE;
+#elif defined(CONFIG_FB_LITTLE_ENDIAN)
+	return FALSE;
+#endif /* CONFIG_FB_BOTH_ENDIAN */
+#else
+#ifdef CONFIG_CPU_BE
+	return TRUE;
+#else
+	return FALSE;
+#endif /* CONFIG_CPU_BE */
+#endif /* CONFIG_FB_FOREIGN_ENDIAN */
+}
+
+/* fb/vmm_fbmon.c */
+#define FB_MAXTIMINGS		0
+#define FB_VSYNCTIMINGS		1
+#define FB_HSYNCTIMINGS		2
+#define FB_DCLKTIMINGS		3
+#define FB_IGNOREMON		0x100
+
+#define FB_MODE_IS_UNKNOWN	0
+#define FB_MODE_IS_DETAILED	1
+#define FB_MODE_IS_STANDARD	2
+#define FB_MODE_IS_VESA		4
+#define FB_MODE_IS_CALCULATED	8
+#define FB_MODE_IS_FIRST	16
+#define FB_MODE_IS_FROM_VAR     32
+
+/* fb/vmm_fbcvt.c */
+int vmm_fb_find_mode_cvt(struct vmm_fb_videomode *mode, int margins, int rb);
+
+/* fb/vmm_modedb.c */
+#define VESA_MODEDB_SIZE 34
+
+void vmm_fb_var_to_videomode(struct vmm_fb_videomode *mode,
+			     const struct vmm_fb_var_screeninfo *var);
+void vmm_fb_videomode_to_var(struct vmm_fb_var_screeninfo *var,
+			     const struct vmm_fb_videomode *mode);
+int vmm_fb_mode_is_equal(const struct vmm_fb_videomode *mode1,
+			 const struct vmm_fb_videomode *mode2);
+int vmm_fb_add_videomode(const struct vmm_fb_videomode *mode,
+			 struct dlist *head);
+void vmm_fb_delete_videomode(const struct vmm_fb_videomode *mode,
+			     struct dlist *head);
+const struct vmm_fb_videomode *vmm_fb_match_mode(const struct vmm_fb_var_screeninfo *var,
+						 struct dlist *head);
+const struct vmm_fb_videomode *vmm_fb_find_best_mode(const struct vmm_fb_var_screeninfo *var,
+						     struct dlist *head);
+const struct vmm_fb_videomode *vmm_fb_find_nearest_mode(const struct vmm_fb_videomode *mode,
+						        struct dlist *head);
+void vmm_fb_destroy_modelist(struct dlist *head);
+void vmm_fb_videomode_to_modelist(const struct vmm_fb_videomode *modedb, int num,
+				  struct dlist *head);
+const struct vmm_fb_videomode *vmm_fb_find_best_display(const struct vmm_fb_monspecs *specs,
+							struct dlist *head);
+/* fb/vmm_fbcmap.c */
+int vmm_fb_alloc_cmap(struct vmm_fb_cmap *cmap, int len, int transp);
+void vmm_fb_dealloc_cmap(struct vmm_fb_cmap *cmap);
+int vmm_fb_copy_cmap(const struct vmm_fb_cmap *from, struct vmm_fb_cmap *to);
+int vmm_fb_set_cmap(struct vmm_fb_cmap *cmap, struct vmm_fb *fb);
+const struct vmm_fb_cmap *vmm_fb_default_cmap(int len);
+void vmm_fb_invert_cmaps(void);
+
+struct vmm_fb_videomode {
+	const char *name;	/* optional */
+	u32 refresh;		/* optional */
+	u32 xres;
+	u32 yres;
+	u32 pixclock;
+	u32 left_margin;
+	u32 right_margin;
+	u32 upper_margin;
+	u32 lower_margin;
+	u32 hsync_len;
+	u32 vsync_len;
+	u32 sync;
+	u32 vmode;
+	u32 flag;
+};
+
+extern const char *fb_mode_option;
+extern const struct vmm_fb_videomode vesa_modes[];
+extern const struct vmm_fb_videomode cea_modes[64];
+
+struct vmm_fb_modelist {
+	struct dlist list;
+	struct vmm_fb_videomode mode;
+};
 
 #endif /* __VMM_FB_H_ */

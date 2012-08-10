@@ -36,8 +36,52 @@
 #define	MODULE_INIT			vmm_fb_init
 #define	MODULE_EXIT			vmm_fb_exit
 
+#define FBPIXMAPSIZE  (1024 * 8)
+
+static int vmm_fb_check_foreignness(struct vmm_fb *fi)
+{
+	const bool foreign_endian = fi->flags & FBINFO_FOREIGN_ENDIAN;
+
+	fi->flags &= ~FBINFO_FOREIGN_ENDIAN;
+
+#ifdef CONFIG_CPU_BE
+	fi->flags |= foreign_endian ? 0 : FBINFO_BE_MATH;
+#else
+	fi->flags |= foreign_endian ? FBINFO_BE_MATH : 0;
+#endif /* CONFIG_CPU_BE */
+
+	if (fi->flags & FBINFO_BE_MATH && !vmm_fb_be_math(fi)) {
+		vmm_printf("%s: enable CONFIG_FB_BIG_ENDIAN to "
+		       "support this framebuffer\n", fi->fix.id);
+		return VMM_ENOSYS;
+	} else if (!(fi->flags & FBINFO_BE_MATH) && vmm_fb_be_math(fi)) {
+		vmm_printf("%s: enable CONFIG_FB_LITTLE_ENDIAN to "
+		       "support this framebuffer\n", fi->fix.id);
+		return VMM_ENOSYS;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_fb_lock(struct vmm_fb *fb)
+{
+	vmm_mutex_lock(&fb->lock);
+	if (!fb->fbops) {
+		vmm_mutex_unlock(&fb->lock);
+		return 0;
+	}
+	return 1;
+}
+
+void vmm_fb_unlock(struct vmm_fb *fb)
+{
+	vmm_mutex_unlock(&fb->lock);
+}
+
 int vmm_fb_register(struct vmm_fb *fb)
 {
+	int rc;
+	struct vmm_fb_videomode mode;
 	struct vmm_classdev *cd;
 
 	if (fb == NULL) {
@@ -47,9 +91,41 @@ int vmm_fb_register(struct vmm_fb *fb)
 		return VMM_EFAIL;
 	}
 
+	if ((rc = vmm_fb_check_foreignness(fb))) {
+		return rc;
+	}
+
+	INIT_MUTEX(&fb->lock);
+
+	if (fb->pixmap.addr == NULL) {
+		fb->pixmap.addr = vmm_malloc(FBPIXMAPSIZE);
+		if (fb->pixmap.addr) {
+			fb->pixmap.size = FBPIXMAPSIZE;
+			fb->pixmap.buf_align = 1;
+			fb->pixmap.scan_align = 1;
+			fb->pixmap.access_align = 32;
+			fb->pixmap.flags = FB_PIXMAP_DEFAULT;
+		}
+	}	
+	fb->pixmap.offset = 0;
+
+	if (!fb->pixmap.blit_x)
+		fb->pixmap.blit_x = ~(u32)0;
+
+	if (!fb->pixmap.blit_y)
+		fb->pixmap.blit_y = ~(u32)0;
+
+	if (!fb->modelist.prev || !fb->modelist.next) {
+		INIT_LIST_HEAD(&fb->modelist);
+	}
+
+	vmm_fb_var_to_videomode(&mode, &fb->var);
+	vmm_fb_add_videomode(&mode, &fb->modelist);
+
 	cd = vmm_malloc(sizeof(struct vmm_classdev));
 	if (!cd) {
-		return VMM_EFAIL;
+		rc = VMM_EFAIL;
+		goto free_pixmap;
 	}
 
 	INIT_LIST_HEAD(&cd->head);
@@ -57,9 +133,22 @@ int vmm_fb_register(struct vmm_fb *fb)
 	cd->dev = fb->dev;
 	cd->priv = fb;
 
-	vmm_devdrv_register_classdev(VMM_FB_CLASS_NAME, cd);
+	rc = vmm_devdrv_register_classdev(VMM_FB_CLASS_NAME, cd);
+	if (rc) {
+		goto free_classdev;
+	}
 
 	return VMM_OK;
+
+free_classdev:
+	cd->dev = NULL;
+	cd->priv = NULL;
+	vmm_free(cd);
+free_pixmap:
+	if (fb->pixmap.flags & FB_PIXMAP_DEFAULT) {
+		vmm_free(fb->pixmap.addr);
+	}
+	return rc;
 }
 
 int vmm_fb_unregister(struct vmm_fb *fb)
@@ -83,6 +172,12 @@ int vmm_fb_unregister(struct vmm_fb *fb)
 	if (!rc) {
 		vmm_free(cd);
 	}
+
+	if (fb->pixmap.addr &&
+	    (fb->pixmap.flags & FB_PIXMAP_DEFAULT)) {
+		vmm_free(fb->pixmap.addr);
+	}
+	vmm_fb_destroy_modelist(&fb->modelist);
 
 	return rc;
 }

@@ -22,4 +22,7 @@
 # */
 
 core-objs-$(CONFIG_FB)+= fb/vmm_fb.o
+core-objs-$(CONFIG_FB)+= fb/vmm_fbcmap.o
+core-objs-$(CONFIG_FB)+= fb/vmm_fbcvt.o
+core-objs-$(CONFIG_FB)+= fb/vmm_modedb.o
 
