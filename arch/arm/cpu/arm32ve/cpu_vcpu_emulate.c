@@ -148,12 +148,14 @@ int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu,
 {
 	/* Check instruction condition */
 	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
-		return VMM_OK;
+		/* Skip this instruction */
+		goto done;
 	}
 
 	/* Wait for irq on this vcpu */
 	vmm_vcpu_irq_wait(vcpu);
 
+done:
 	/* Next instruction */
 	regs->pc += (il) ? 4 : 2;
 
@@ -174,7 +176,8 @@ int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu,
 
 	/* Check instruction condition */
 	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
-		return VMM_OK;
+		/* Skip this instruction */
+		goto done;
 	}
 
 	/* More MCR/MRC parameters */
@@ -200,6 +203,7 @@ int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu,
 		}
 	}
 
+done:
 	if (!rc) {
 		/* Next instruction */
 		regs->pc += (il) ? 4 : 2;
