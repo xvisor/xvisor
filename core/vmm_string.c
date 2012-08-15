@@ -23,6 +23,7 @@
 
 #include <vmm_types.h>
 #include <vmm_string.h>
+#include <vmm_host_io.h>
 
 size_t vmm_strlen(const char *s)
 {
@@ -241,6 +242,52 @@ void *vmm_memcpy(void *dest, const void *src, size_t count)
 	return dest;
 }
 
+void *vmm_memcpy_toio(void *dest, const void *src, size_t count)
+{
+	u8 *dst8 = (u8 *) dest;
+	u8 *src8 = (u8 *) src;
+
+	if (count & 1) {
+		vmm_writeb(src8[0], &dst8[0]);
+		dst8 += 1;
+		src8 += 1;
+	}
+
+	count /= 2;
+	while (count--) {
+		vmm_writeb(src8[0], &dst8[0]);
+		vmm_writeb(src8[1], &dst8[1]);
+
+		dst8 += 2;
+		src8 += 2;
+	}
+
+	return dest;
+}
+
+void *vmm_memcpy_fromio(void *dest, const void *src, size_t count)
+{
+	u8 *dst8 = (u8 *) dest;
+	u8 *src8 = (u8 *) src;
+
+	if (count & 1) {
+		dst8[0] = vmm_readb(&src8[0]);
+		dst8 += 1;
+		src8 += 1;
+	}
+
+	count /= 2;
+	while (count--) {
+		dst8[0] = vmm_readb(&src8[0]);
+		dst8[1] = vmm_readb(&src8[1]);
+
+		dst8 += 2;
+		src8 += 2;
+	}
+
+	return dest;
+}
+
 void *vmm_memmove(void *dest, const void *src, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
@@ -298,6 +345,26 @@ void *vmm_memset(void *dest, int c, size_t count)
 	while (count--) {
 		dst8[0] = ch;
 		dst8[1] = ch;
+		dst8 += 2;
+	}
+
+	return dest;
+}
+
+void *vmm_memset_io(void *dest, int c, size_t count)
+{
+	u8 *dst8 = (u8 *) dest;
+	u8 ch = (u8) c;
+
+	if (count & 1) {
+		vmm_writeb(ch, &dst8[0]);
+		dst8 += 1;
+	}
+
+	count /= 2;
+	while (count--) {
+		vmm_writeb(ch, &dst8[0]);
+		vmm_writeb(ch, &dst8[1]);
 		dst8 += 2;
 	}
 
