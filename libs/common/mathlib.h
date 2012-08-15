@@ -148,4 +148,12 @@ static inline s32 smod32(s32 value, s32 divisor)
 
 #endif
 
+/**
+ * Rough approximation to sqrt
+ * @x: integer of which to calculate the sqrt
+ *
+ * A very rough approximation to the sqrt() function.
+ */
+unsigned long int_sqrt(unsigned long x);
+
 #endif /* __MATHLIB_H__ */
