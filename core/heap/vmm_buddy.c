@@ -491,6 +491,17 @@ void *vmm_malloc(virtual_size_t size)
 	return buddy_malloc(size);
 }
 
+void *vmm_zalloc(virtual_size_t size)
+{
+	void *ret = buddy_malloc(size);
+
+	if (ret) {
+		vmm_memset(ret, 0, size);
+	}
+
+	return ret;
+}
+
 void vmm_free(void *pointer)
 {
 	buddy_free(pointer);
