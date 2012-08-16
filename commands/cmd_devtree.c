@@ -395,7 +395,7 @@ int cmd_devtree_node_add(struct vmm_chardev *cdev, char *path, char *name)
 		return VMM_EFAIL;
 	}
 
-	node = vmm_devtree_addnode(parent, name, NULL);
+	node = vmm_devtree_addnode(parent, name);
 	if (!node) {
 		vmm_cprintf(cdev, "Error: Unable to add node %s. "
 				  "Probably node already exist\n", name);

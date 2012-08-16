@@ -362,8 +362,7 @@ struct vmm_devtree_node *vmm_devtree_getnode(const char *path)
  * root node using vmm_devtree_addnode().
  */
 struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
-					     const char *name,
-					     void *priv)
+					     const char *name)
 {
 	u32 len;
 	struct dlist *l;
@@ -388,7 +387,8 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	len = vmm_strlen(name) + 1;
 	node->name = vmm_malloc(len);
 	vmm_strncpy(node->name, name, len);
-	node->priv = priv;
+	node->system_data = NULL;
+	node->priv = NULL;
 	node->parent = parent;
 	if (parent) {
 		list_add_tail(&node->head, &parent->child_list);
@@ -416,7 +416,7 @@ static int devtree_copynode_recursive(struct vmm_devtree_node *dst,
 
 	list_for_each(l, &src->child_list) {
 		schild = list_entry(l, struct vmm_devtree_node, head);
-		child = vmm_devtree_addnode(dst, schild->name, NULL);
+		child = vmm_devtree_addnode(dst, schild->name);
 		if (!child) {
 			return VMM_EFAIL;
 		}
@@ -447,7 +447,7 @@ int vmm_devtree_copynode(struct vmm_devtree_node *parent,
 	}
 	node = NULL;
 
-	node = vmm_devtree_addnode(parent, name, NULL);
+	node = vmm_devtree_addnode(parent, name);
 	if (!node) {
 		return VMM_EFAIL;
 	}

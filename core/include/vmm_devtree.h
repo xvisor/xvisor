@@ -95,7 +95,10 @@ struct vmm_devtree_attr {
 struct vmm_devtree_node {
 	struct dlist head;
 	char *name;
-	void *priv;
+	void *system_data; /* System data pointer 
+			      (Arch. specific code can use this to 
+			       pass inforation to device driver) */
+	void *priv; /* Generic Private pointer */
 	struct vmm_devtree_node *parent;
 	struct dlist attr_list;
 	struct dlist child_list;
@@ -146,8 +149,7 @@ struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 
 /** Add new node to device tree */
 struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
-					     const char *name,
-					     void *priv);
+					     const char *name);
 
 /** Copy a node to another location in device tree */
 int vmm_devtree_copynode(struct vmm_devtree_node *parent,
