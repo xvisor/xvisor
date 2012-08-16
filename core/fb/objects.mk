@@ -21,8 +21,16 @@
 # @brief list of core objects to be build
 # */
 
-core-objs-$(CONFIG_FB)+= fb/vmm_fb.o
+core-objs-$(CONFIG_FB)+= fb/vmm_fbmem.o
 core-objs-$(CONFIG_FB)+= fb/vmm_fbcmap.o
+core-objs-$(CONFIG_FB)+= fb/vmm_fbmon.o
 core-objs-$(CONFIG_FB)+= fb/vmm_fbcvt.o
 core-objs-$(CONFIG_FB)+= fb/vmm_modedb.o
 
+core-objs-$(CONFIG_FB_CFB_COPYAREA)+= fb/vmm_cfbcopyarea.o
+core-objs-$(CONFIG_FB_CFB_FILLRECT)+= fb/vmm_cfbfillrect.o
+core-objs-$(CONFIG_FB_CFB_IMAGEBLIT)+= fb/vmm_cfbimgblt.o
+
+core-objs-$(CONFIG_FB_SYS_COPYAREA)+= fb/vmm_syscopyarea.o
+core-objs-$(CONFIG_FB_SYS_FILLRECT)+= fb/vmm_sysfillrect.o
+core-objs-$(CONFIG_FB_SYS_IMAGEBLIT)+= fb/vmm_sysimgblt.o

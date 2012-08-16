@@ -31,6 +31,7 @@
 
 #include <vmm_types.h>
 #include <vmm_mutex.h>
+#include <vmm_host_io.h>
 #include <vmm_devdrv.h>
 #include <list.h>
 #include <mathlib.h>
@@ -449,7 +450,7 @@ struct vmm_fb_blit_caps {
 	u32 flags;
 };
 
-struct vmm_fb;
+struct vmm_fb_info;
 
 /*
  * Pixmap structure definition
@@ -477,8 +478,8 @@ struct vmm_fb_pixmap {
 	                        /*         blit_y = 1 << (height - 1)   */
 	                        /* if 0, will be set to 0xffffffff (all)*/
 	/* access methods */
-	void (*writeio)(struct vmm_fb *fb, void *dst, void *src, unsigned int size);
-	void (*readio) (struct vmm_fb *fb, void *dst, void *src, unsigned int size);
+	void (*writeio)(struct vmm_fb_info *info, void *dst, void *src, unsigned int size);
+	void (*readio) (struct vmm_fb_info *info, void *dst, void *src, unsigned int size);
 };
 
 /*
@@ -497,59 +498,59 @@ struct vmm_fb_pixmap {
 
 struct vmm_fb_ops {
 	/* open/release and usage marking */
-	int (*fb_open)(struct vmm_fb *fb, int user);
-	int (*fb_release)(struct vmm_fb *fb, int user);
+	int (*fb_open)(struct vmm_fb_info *info, int user);
+	int (*fb_release)(struct vmm_fb_info *info, int user);
 
 	/* checks var and eventually tweaks it to something supported,
 	 * DO NOT MODIFY PAR */
-	int (*fb_check_var)(struct vmm_fb_var_screeninfo *var, struct vmm_fb *fb);
+	int (*fb_check_var)(struct vmm_fb_var_screeninfo *var, struct vmm_fb_info *info);
 
 	/* set the video mode according to info->var */
-	int (*fb_set_par)(struct vmm_fb *fb);
+	int (*fb_set_par)(struct vmm_fb_info *info);
 
 	/* set color register */
 	int (*fb_setcolreg)(unsigned regno, unsigned red, unsigned green,
-			    unsigned blue, unsigned transp, struct vmm_fb *fb);
+			    unsigned blue, unsigned transp, struct vmm_fb_info *info);
 
 	/* set color registers in batch */
-	int (*fb_setcmap)(struct vmm_fb_cmap *cmap, struct vmm_fb *fb);
+	int (*fb_setcmap)(struct vmm_fb_cmap *cmap, struct vmm_fb_info *info);
 
 	/* blank display */
-	int (*fb_blank)(int blank, struct vmm_fb *fb);
+	int (*fb_blank)(int blank, struct vmm_fb_info *info);
 
 	/* pan display */
-	int (*fb_pan_display)(struct vmm_fb_var_screeninfo *var, struct vmm_fb *fb);
+	int (*fb_pan_display)(struct vmm_fb_var_screeninfo *var, struct vmm_fb_info *info);
 
 	/* Draws a rectangle */
-	void (*fb_fillrect) (struct vmm_fb *fb, const struct vmm_fb_fillrect *rect);
+	void (*fb_fillrect) (struct vmm_fb_info *info, const struct vmm_fb_fillrect *rect);
 	/* Copy data from area to another */
-	void (*fb_copyarea) (struct vmm_fb *fb, const struct vmm_fb_copyarea *region);
+	void (*fb_copyarea) (struct vmm_fb_info *info, const struct vmm_fb_copyarea *region);
 	/* Draws a image to the display */
-	void (*fb_imageblit) (struct vmm_fb *fb, const struct vmm_fb_image *image);
+	void (*fb_imageblit) (struct vmm_fb_info *info, const struct vmm_fb_image *image);
 
 	/* Draws cursor */
-	int (*fb_cursor) (struct vmm_fb *fb, struct vmm_fb_cursor *cursor);
+	int (*fb_cursor) (struct vmm_fb_info *info, struct vmm_fb_cursor *cursor);
 
 	/* Rotates the display */
-	void (*fb_rotate)(struct vmm_fb *fb, int angle);
+	void (*fb_rotate)(struct vmm_fb_info *info, int angle);
 
 	/* wait for blit idle, optional */
-	int (*fb_sync)(struct vmm_fb *fb);
+	int (*fb_sync)(struct vmm_fb_info *info);
 
 	/* perform fb specific ioctl (optional) */
-	int (*fb_ioctl)(struct vmm_fb *fb, unsigned int cmd,
+	int (*fb_ioctl)(struct vmm_fb_info *info, unsigned int cmd,
 			unsigned long arg);
 
 	/* Handle 32bit compat ioctl (optional) */
-	int (*fb_compat_ioctl)(struct vmm_fb *fb, unsigned cmd,
+	int (*fb_compat_ioctl)(struct vmm_fb_info *info, unsigned cmd,
 			unsigned long arg);
 
 	/* get capability given var */
-	void (*fb_get_caps)(struct vmm_fb *fb, struct vmm_fb_blit_caps *caps,
+	void (*fb_get_caps)(struct vmm_fb_info *info, struct vmm_fb_blit_caps *caps,
 			    struct vmm_fb_var_screeninfo *var);
 
 	/* teardown any resources to do with this framebuffer */
-	void (*fb_destroy)(struct vmm_fb *fb);
+	void (*fb_destroy)(struct vmm_fb_info *info);
 };
 
 #ifdef CONFIG_FB_TILEBLITTING
@@ -611,21 +612,21 @@ struct vmm_fb_tilecursor {
 
 struct vmm_fb_tile_ops {
 	/* set tile characteristics */
-	void (*fb_settile)(struct vmm_fb *fb, struct vmm_fb_tilemap *map);
+	void (*fb_settile)(struct vmm_fb_info *info, struct vmm_fb_tilemap *map);
 
 	/* all dimensions from hereon are in terms of tiles */
 
 	/* move a rectangular region of tiles from one area to another*/
-	void (*fb_tilecopy)(struct vmm_fb *fb, struct vmm_fb_tilearea *area);
+	void (*fb_tilecopy)(struct vmm_fb_info *info, struct vmm_fb_tilearea *area);
 	/* fill a rectangular region with a tile */
-	void (*fb_tilefill)(struct vmm_fb *fb, struct vmm_fb_tilerect *rect);
+	void (*fb_tilefill)(struct vmm_fb_info *info, struct vmm_fb_tilerect *rect);
 	/* copy an array of tiles */
-	void (*fb_tileblit)(struct vmm_fb *fb, struct vmm_fb_tileblit *blit);
+	void (*fb_tileblit)(struct vmm_fb_info *info, struct vmm_fb_tileblit *blit);
 	/* cursor */
-	void (*fb_tilecursor)(struct vmm_fb *fb,
+	void (*fb_tilecursor)(struct vmm_fb_info *info,
 			      struct vmm_fb_tilecursor *cursor);
 	/* get maximum length of the tile map */
-	int (*fb_get_tilemax)(struct vmm_fb *fb);
+	int (*fb_get_tilemax)(struct vmm_fb_info *info);
 };
 #endif /* CONFIG_FB_TILEBLITTING */
 
@@ -690,7 +691,8 @@ struct vmm_fb_tile_ops {
    output like oopses */
 #define FBINFO_CAN_FORCE_OUTPUT     0x200000
 
-struct vmm_fb {
+struct vmm_fb_info {
+	atomic_t count;				/* Reference counting for open operation */
 	struct vmm_device *dev;			/* This is this fb device */
 
 	int flags;
@@ -719,26 +721,67 @@ struct vmm_fb {
 	void *par;
 };
 
+/*
+ *  `Generic' versions of the frame buffer device operations
+ */
+int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var); 
+int vmm_fb_pan_display(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var); 
+int vmm_fb_blank(struct vmm_fb_info *info, int blank);
+void vmm_cfb_fillrect(struct vmm_fb_info *info, const struct vmm_fb_fillrect *rect); 
+void vmm_cfb_copyarea(struct vmm_fb_info *info, const struct vmm_fb_copyarea *area); 
+void vmm_cfb_imageblit(struct vmm_fb_info *info, const struct vmm_fb_image *image);
+
+/*
+ * Drawing operations where framebuffer is in system RAM
+ */
+void vmm_sys_fillrect(struct vmm_fb_info *info, const struct vmm_fb_fillrect *rect);
+void vmm_sys_copyarea(struct vmm_fb_info *info, const struct vmm_fb_copyarea *area);
+void vmm_sys_imageblit(struct vmm_fb_info *info, const struct vmm_fb_image *image);
+
+/* 
+ * fb/vmm_fbmem.c 
+ */
+/* Open frame buffer. (Xvisor specific)
+ * Note: Must be called before accessing frame buffer
+ */
+int vmm_fb_open(struct vmm_fb_info *info);
+
+/* Release frame buffer. (Xvisor specific)
+ * Note: Must be called after accessing frame buffer
+ */
+int vmm_fb_release(struct vmm_fb_info *info);
+
 /** Register frame buffer to device driver framework */
-int vmm_fb_register(struct vmm_fb *fb);
+int vmm_fb_register(struct vmm_fb_info *info);
 
 /** Unregister frame buffer from device driver framework */
-int vmm_fb_unregister(struct vmm_fb *fb);
+int vmm_fb_unregister(struct vmm_fb_info *info);
 
 /** Find a frame buffer in device driver framework */
-struct vmm_fb *vmm_fb_find(const char *name);
+struct vmm_fb_info *vmm_fb_find(const char *name);
 
 /** Get frame buffer with given number */
-struct vmm_fb *vmm_fb_get(int num);
+struct vmm_fb_info *vmm_fb_get(int num);
 
 /** Count number of frame buffers */
 u32 vmm_fb_count(void);
 
-int vmm_fb_lock(struct vmm_fb *fb);
+int vmm_lock_fb_info(struct vmm_fb_info *info);
 
-void vmm_fb_unlock(struct vmm_fb *fb);
+void vmm_unlock_fb_info(struct vmm_fb_info *info);
 
-static inline bool vmm_fb_be_math(struct vmm_fb *fb)
+/**
+ *	Low level driver signals suspend
+ *	@info: framebuffer affected
+ *	@state: 0 = resuming, !=0 = suspending
+ *
+ *	This is meant to be used by low level drivers to
+ * 	signal suspend/resume to the core & clients.
+ *	It must be called with the console semaphore held
+ */
+void vmm_fb_set_suspend(struct vmm_fb_info *info, int state);
+
+static inline bool vmm_fb_be_math(struct vmm_fb_info *info)
 {
 #ifdef CONFIG_FB_FOREIGN_ENDIAN
 #if defined(CONFIG_FB_BOTH_ENDIAN)
@@ -757,7 +800,27 @@ static inline bool vmm_fb_be_math(struct vmm_fb *fb)
 #endif /* CONFIG_FB_FOREIGN_ENDIAN */
 }
 
-/* fb/vmm_fbmon.c */
+#define fb_readb vmm_readb
+#define fb_readw vmm_readw
+#define fb_readl vmm_readl
+#define fb_readq vmm_readq
+#define fb_writeb vmm_writeb
+#define fb_writew vmm_writew
+#define fb_writel vmm_writel
+#define fb_writeq vmm_writeq
+#define fb_memset vmm_memset_io
+#define fb_memcpy_fromfb vmm_memcpy_fromio
+#define fb_memcpy_tofb vmm_memcpy_toio
+
+#define FB_LEFT_POS(p, bpp)          (vmm_fb_be_math(p) ? (32 - (bpp)) : 0)
+#define FB_SHIFT_HIGH(p, val, bits)  (vmm_fb_be_math(p) ? (val) >> (bits) : \
+						      (val) << (bits))
+#define FB_SHIFT_LOW(p, val, bits)   (vmm_fb_be_math(p) ? (val) << (bits) : \
+						      (val) >> (bits))
+
+/* 
+ * fb/vmm_fbmon.c 
+ */
 #define FB_MAXTIMINGS		0
 #define FB_VSYNCTIMINGS		1
 #define FB_HSYNCTIMINGS		2
@@ -772,10 +835,25 @@ static inline bool vmm_fb_be_math(struct vmm_fb *fb)
 #define FB_MODE_IS_FIRST	16
 #define FB_MODE_IS_FROM_VAR     32
 
-/* fb/vmm_fbcvt.c */
+int vmm_fb_get_mode(int flags, u32 val, struct vmm_fb_var_screeninfo *var,
+		       struct vmm_fb_info *info);
+int vmm_fb_validate_mode(const struct vmm_fb_var_screeninfo *var,
+			    struct vmm_fb_info *info);
+int vmm_fb_parse_edid(unsigned char *edid, struct vmm_fb_var_screeninfo *var);
+void vmm_fb_edid_to_monspecs(unsigned char *edid,
+				struct vmm_fb_monspecs *specs);
+void vmm_fb_edid_add_monspecs(unsigned char *edid,
+				struct vmm_fb_monspecs *specs);
+void vmm_fb_destroy_modedb(struct vmm_fb_videomode *modedb);
+
+/* 
+ * fb/vmm_fbcvt.c 
+ */
 int vmm_fb_find_mode_cvt(struct vmm_fb_videomode *mode, int margins, int rb);
 
-/* fb/vmm_modedb.c */
+/* 
+ * fb/vmm_modedb.c 
+ */
 #define VESA_MODEDB_SIZE 34
 
 void vmm_fb_var_to_videomode(struct vmm_fb_videomode *mode,
@@ -799,11 +877,13 @@ void vmm_fb_videomode_to_modelist(const struct vmm_fb_videomode *modedb, int num
 				  struct dlist *head);
 const struct vmm_fb_videomode *vmm_fb_find_best_display(const struct vmm_fb_monspecs *specs,
 							struct dlist *head);
-/* fb/vmm_fbcmap.c */
+/* 
+ * fb/vmm_fbcmap.c 
+ */
 int vmm_fb_alloc_cmap(struct vmm_fb_cmap *cmap, int len, int transp);
 void vmm_fb_dealloc_cmap(struct vmm_fb_cmap *cmap);
 int vmm_fb_copy_cmap(const struct vmm_fb_cmap *from, struct vmm_fb_cmap *to);
-int vmm_fb_set_cmap(struct vmm_fb_cmap *cmap, struct vmm_fb *fb);
+int vmm_fb_set_cmap(struct vmm_fb_cmap *cmap, struct vmm_fb_info *info);
 const struct vmm_fb_cmap *vmm_fb_default_cmap(int len);
 void vmm_fb_invert_cmaps(void);
 

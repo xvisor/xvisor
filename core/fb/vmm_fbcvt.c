@@ -19,6 +19,17 @@
  * @file vmm_fbcvt.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief VESA(TM) Coordinated Video Timings
+ *
+ * The source has been largely adapted from Linux 3.x or higher:
+ * drivers/video/fbcvt.c
+ *
+ * Copyright (C) 2005 Antonino Daplas <adaplas@pol.net>
+ *
+ *      Based from the VESA(TM) Coordinated Video Timing Generator by
+ *      Graham Loveridge April 9, 2003 available at
+ *      http://www.elo.utfsm.cl/~elo212/docs/CVTd6r1.xls
+ *
+ * The original code is licensed under the GPL.
  */
 
 #include <vmm_error.h>
@@ -226,7 +237,7 @@ static void vmm_fb_cvt_print_name(struct vmm_fb_cvt_data *cvt)
 {
 	u32 pixcount, pixcount_mod;
 	int cnt = 255, offset = 0, read = 0;
-	char *buf = vmm_malloc(256);
+	char *buf = vmm_zalloc(256);
 
 	if (!buf)
 		return;

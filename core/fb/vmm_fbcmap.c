@@ -19,6 +19,16 @@
  * @file vmm_fbcmap.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Colormap handling for frame buffer devices
+ *
+ * The source has been largely adapted from Linux 3.x or higher:
+ * drivers/video/fbcmap.c
+ *
+ *	Created 15 Jun 1997 by Geert Uytterhoeven
+ *
+ *	2001 - Documented with DocBook
+ *	- Brad Douglas <brad@neruo.com>
+ *
+ * The original code is licensed under the GPL.
  */
 
 #include <vmm_error.h>
@@ -200,7 +210,7 @@ int vmm_fb_copy_cmap(const struct vmm_fb_cmap *from, struct vmm_fb_cmap *to)
  *
  */
 
-int vmm_fb_set_cmap(struct vmm_fb_cmap *cmap, struct vmm_fb *fb)
+int vmm_fb_set_cmap(struct vmm_fb_cmap *cmap, struct vmm_fb_info *info)
 {
 	int i, start, rc = 0;
 	u16 *red, *green, *blue, *transp;
@@ -212,11 +222,11 @@ int vmm_fb_set_cmap(struct vmm_fb_cmap *cmap, struct vmm_fb *fb)
 	transp = cmap->transp;
 	start = cmap->start;
 
-	if (start < 0 || (!fb->fbops->fb_setcolreg &&
-			  !fb->fbops->fb_setcmap))
+	if (start < 0 || (!info->fbops->fb_setcolreg &&
+			  !info->fbops->fb_setcmap))
 		return VMM_EINVALID;
-	if (fb->fbops->fb_setcmap) {
-		rc = fb->fbops->fb_setcmap(cmap, fb);
+	if (info->fbops->fb_setcmap) {
+		rc = info->fbops->fb_setcmap(cmap, info);
 	} else {
 		for (i = 0; i < cmap->len; i++) {
 			hred = *red++;
@@ -224,14 +234,14 @@ int vmm_fb_set_cmap(struct vmm_fb_cmap *cmap, struct vmm_fb *fb)
 			hblue = *blue++;
 			if (transp)
 				htransp = *transp++;
-			if (fb->fbops->fb_setcolreg(start++,
+			if (info->fbops->fb_setcolreg(start++,
 						      hred, hgreen, hblue,
-						      htransp, fb))
+						      htransp, info))
 				break;
 		}
 	}
 	if (rc == 0)
-		vmm_fb_copy_cmap(cmap, &fb->cmap);
+		vmm_fb_copy_cmap(cmap, &info->cmap);
 
 	return rc;
 }

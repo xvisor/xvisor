@@ -19,6 +19,16 @@
  * @file vmm_modedb.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Standard video mode database management
+ *
+ * The source has been largely adapted from Linux 3.x or higher:
+ * drivers/video/modedb.c
+ *
+ *	Copyright (C) 1999 Geert Uytterhoeven
+ *
+ *	2001 - Documented with DocBook
+ *	- Brad Douglas <brad@neruo.com>
+ *
+ * The original code is licensed under the GPL.
  */
 
 #include <vmm_error.h>
@@ -302,7 +312,7 @@ static const struct vmm_fb_videomode modedb[] = {
 };
 
 #ifdef CONFIG_FB_MODE_HELPERS
-const struct fb_videomode cea_modes[64] = {
+const struct vmm_fb_videomode cea_modes[64] = {
 	/* #1: 640x480p@59.94/60Hz */
 	[1] = {
 		NULL, 60, 640, 480, 39722, 48, 16, 33, 10, 96, 2, 0,
@@ -359,7 +369,7 @@ const struct fb_videomode cea_modes[64] = {
 	},
 };
 
-const struct fb_videomode vesa_modes[] = {
+const struct vmm_fb_videomode vesa_modes[] = {
 	/* 0 640x350-85 VESA */
 	{ NULL, 85, 640, 350, 31746,  96, 32, 60, 32, 64, 3,
 	  FB_SYNC_HOR_HIGH_ACT, FB_VMODE_NONINTERLACED, FB_MODE_IS_VESA},
@@ -497,7 +507,7 @@ const struct fb_videomode vesa_modes[] = {
  *
  */
 
-static int vmm_fb_try_mode(struct vmm_fb_var_screeninfo *var, struct vmm_fb *info,
+static int vmm_fb_try_mode(struct vmm_fb_var_screeninfo *var, struct vmm_fb_info *info,
 		       const struct vmm_fb_videomode *mode, unsigned int bpp)
 {
     int err = 0;
@@ -570,7 +580,7 @@ static int vmm_fb_try_mode(struct vmm_fb_var_screeninfo *var, struct vmm_fb *inf
  */
 
 int vmm_fb_find_mode(struct vmm_fb_var_screeninfo *var,
-		     struct vmm_fb *info, const char *mode_option,
+		     struct vmm_fb_info *info, const char *mode_option,
 		     const struct vmm_fb_videomode *db, unsigned int dbsize,
 		     const struct vmm_fb_videomode *default_mode,
 		     unsigned int default_bpp)
