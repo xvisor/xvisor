@@ -5,6 +5,7 @@
 
 #define EFAIL			-(VMM_EFAIL)
 #define EUNKNOWN		-(VMM_EUNKOWN)
+#define EINVAL			-(VMM_EINVALID)
 #define ENOTAVAIL		-(VMM_ENOTAVAIL)
 #define EALREADY		-(VMM_EALREADY)
 #define EINVALID		-(VMM_EINVALID)
