@@ -163,8 +163,8 @@ struct clcd_board {
 	void	(*remove)(struct clcd_fb *);
 };
 
-struct amba_device;
-struct clk;
+/* struct amba_device; */
+/* struct clk; */
 
 /* this data structure describes each frame buffer device we find */
 struct clcd_fb {

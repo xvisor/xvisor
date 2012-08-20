@@ -6,6 +6,7 @@
 #include <linux/errno.h>
 #include <linux/printk.h>
 #include <linux/sched.h>
+#include <linux/io.h>
 
 #define ARRAY_SIZE	array_size
 

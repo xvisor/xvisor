@@ -41,6 +41,7 @@
 #define dev_dbg(...)
 #endif
 
+#define dev_info(dev, args...) vmm_printf(args)
 #define dev_warn(dev, args...) vmm_printf(args)
 #define dev_err(dev, args...)  vmm_printf(args)
 

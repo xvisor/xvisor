@@ -14,11 +14,7 @@ static inline void *kmalloc(u32 size, u32 flags)
 
 static inline void *kzalloc(u32 size, u32 flags)
 {
-	void *ret = vmm_malloc(size);
-
-	vmm_memset(ret, 0, size);
-
-	return ret;
+	return vmm_zalloc(size);
 }
 
 static inline void kfree(void *ptr)

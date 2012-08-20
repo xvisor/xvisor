@@ -5,6 +5,8 @@
 #include <mathlib.h>
 #include <linux/jiffies.h>
 
+#define in_atomic()			1
+
 typedef struct vmm_waitqueue wait_queue_head_t;
 
 #define init_waitqueue_head(wqptr)	INIT_WAITQUEUE(wqptr, NULL)
