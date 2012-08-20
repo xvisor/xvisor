@@ -800,6 +800,16 @@ static inline bool vmm_fb_be_math(struct vmm_fb_info *info)
 #endif /* CONFIG_FB_FOREIGN_ENDIAN */
 }
 
+#ifdef __VMM_MODULES__
+#define FBINFO_DEFAULT	FBINFO_MODULE
+#else
+#define FBINFO_DEFAULT	0
+#endif
+
+// This will go away
+#define FBINFO_FLAG_MODULE	FBINFO_MODULE
+#define FBINFO_FLAG_DEFAULT	FBINFO_DEFAULT
+
 #define fb_readb vmm_readb
 #define fb_readw vmm_readw
 #define fb_readl vmm_readl
