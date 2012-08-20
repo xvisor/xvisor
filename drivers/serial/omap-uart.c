@@ -479,7 +479,7 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 		goto free_port;
 	}
 	port->baudrate = *((u32 *)attr);
-	port->input_clock = vmm_devdrv_clock_getrate(dev);
+	port->input_clock = vmm_devdrv_clock_get_rate(dev);
 
 #ifndef OMAP_UART_POLLING
 	omap_uart_startup_configure(port);

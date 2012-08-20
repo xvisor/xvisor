@@ -202,7 +202,7 @@ static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devi
 		goto free_port;
 	}
 	port->baudrate = *((u32 *)attr);
-	port->input_clock = vmm_devdrv_clock_getrate(dev);
+	port->input_clock = vmm_devdrv_clock_get_rate(dev);
 
 	/* Call low-level init function */
 	uart_lowlevel_init(port->base, port->reg_align, 

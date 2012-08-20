@@ -49,9 +49,10 @@ struct vmm_devclk {
 	struct vmm_devclk *parent;
 	int (*isenabled) (struct vmm_devclk *);
 	int (*enable) (struct vmm_devclk *);
-	int (*disable) (struct vmm_devclk *);
-	u32 (*getrate) (struct vmm_devclk *);
-	u32 (*setrate) (struct vmm_devclk *, u32);
+	void (*disable) (struct vmm_devclk *);
+	unsigned long (*round_rate) (struct vmm_devclk *, unsigned long);
+	unsigned long (*get_rate) (struct vmm_devclk *);
+	int (*set_rate) (struct vmm_devclk *, unsigned long);
 	void *priv;
 };
 
@@ -97,14 +98,30 @@ int vmm_devdrv_probe(struct vmm_devtree_node *node,
 /** Remove device instances under a given device tree node */
 int vmm_devdrv_remove(struct vmm_devtree_node *node);
 
-/** Map device registers to virtual address based on
- *  'reg' and 'virtual-reg' attributes of device tree node
+/** Map device registers to virtual address
+ *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  of device tree node
  */
 int vmm_devdrv_regmap(struct vmm_device *dev, 
 		      virtual_addr_t *addr, int regset);
 
-/** Unmap device registers from virtual address based on
- *  'reg' and 'virtual-reg' attributes of device tree node
+/** Get physical size of device registers
+ *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  of device tree node
+ */
+int vmm_devdrv_regsize(struct vmm_device *dev, 
+		       physical_size_t *size, int regset);
+
+/** Get physical address of device registers
+ *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  of device tree node
+ */
+int vmm_devdrv_regaddr(struct vmm_device *dev, 
+		       physical_addr_t *addr, int regset);
+
+/** Unmap device registers from virtual address
+ *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  of device tree node
  */
 int vmm_devdrv_regunmap(struct vmm_device *dev, 
 			virtual_addr_t addr, int regset);
@@ -118,15 +135,20 @@ int vmm_devdrv_clock_enable(struct vmm_device *dev);
 /** Disable clock for given device */
 int vmm_devdrv_clock_disable(struct vmm_device *dev);
 
+/** Round clock rate for given device 
+ */
+unsigned long vmm_devdrv_clock_round_rate(struct vmm_device *dev,
+					  unsigned long rate);
+
 /** Get clock rate for given device 
  *  NOTE: If clock is not enabled then this will enable clock first.
  */
-u32 vmm_devdrv_clock_getrate(struct vmm_device *dev);
+unsigned long vmm_devdrv_clock_get_rate(struct vmm_device *dev);
 
 /** Set clock rate for given device 
  *  NOTE: If clock is not enabled then this will enable clock first.
  */
-int vmm_devdrv_clock_setrate(struct vmm_device *dev, u32 rate);
+int vmm_devdrv_clock_set_rate(struct vmm_device *dev, unsigned long rate);
 
 /** Register class */
 int vmm_devdrv_register_class(struct vmm_class *cls);

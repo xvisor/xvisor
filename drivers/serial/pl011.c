@@ -324,7 +324,7 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 	port->baudrate = *((u32 *) attr);
-	port->input_clock = vmm_devdrv_clock_getrate(dev);
+	port->input_clock = vmm_devdrv_clock_get_rate(dev);
 
 	attr = vmm_devtree_attrval(dev->node, "irq");
 	if (!attr) {

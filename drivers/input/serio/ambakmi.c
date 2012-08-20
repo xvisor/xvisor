@@ -99,7 +99,7 @@ static int amba_kmi_open(struct serio *io)
 	if (ret)
 		goto out;
 
-	divisor = vmm_devdrv_clock_getrate(kmi->dev) / 8000000 - 1;
+	divisor = vmm_devdrv_clock_get_rate(kmi->dev) / 8000000 - 1;
 	writeb(divisor, KMICLKDIV);
 	writeb(KMICR_EN, KMICR);
 

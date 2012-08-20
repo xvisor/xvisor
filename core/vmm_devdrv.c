@@ -322,16 +322,77 @@ int vmm_devdrv_regmap(struct vmm_device *dev,
 
 	if (aval) {
 		/* Directly return the "virtual-reg" attribute */
-		*addr = ((virtual_addr_t *) aval)[regset];
+		aval += regset * sizeof(virtual_addr_t);
+		*addr = *((virtual_addr_t *)aval);
 	} else {
 		aval = vmm_devtree_attrval(dev->node,
 					   VMM_DEVTREE_REG_ATTR_NAME);
 		if (aval) {
-			aval += regset * (sizeof(pa) + sizeof(sz));
+			aval += regset * (sizeof(physical_addr_t) + 
+					  sizeof(physical_size_t));
 			pa = *((physical_addr_t *)aval);
-			aval += sizeof(pa);
+			aval += sizeof(physical_addr_t);
 			sz = *((physical_size_t *)aval);
 			*addr = vmm_host_iomap(pa, sz);
+		} else {
+			return VMM_EFAIL;
+		}
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devdrv_regsize(struct vmm_device *dev, 
+		       physical_size_t *size, int regset)
+{
+	const char *aval;
+
+	if (!dev || !size || regset < 0) {
+		return VMM_EFAIL;
+	}
+
+	aval = vmm_devtree_attrval(dev->node,
+				   VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME);
+
+	if (aval) {
+		return VMM_EFAIL;
+	} else {
+		aval = vmm_devtree_attrval(dev->node,
+					   VMM_DEVTREE_REG_ATTR_NAME);
+		if (aval) {
+			aval += regset * (sizeof(physical_addr_t) + 
+					  sizeof(physical_size_t));
+			aval += sizeof(physical_addr_t);
+			*size = *((physical_size_t *)aval);
+		} else {
+			return VMM_EFAIL;
+		}
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devdrv_regaddr(struct vmm_device *dev, 
+		       physical_addr_t *addr, int regset)
+{
+	const char *aval;
+
+	if (!dev || !addr || regset < 0) {
+		return VMM_EFAIL;
+	}
+
+	aval = vmm_devtree_attrval(dev->node,
+				   VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME);
+
+	if (aval) {
+		return VMM_EFAIL;
+	} else {
+		aval = vmm_devtree_attrval(dev->node,
+					   VMM_DEVTREE_REG_ATTR_NAME);
+		if (aval) {
+			aval += regset * (sizeof(physical_addr_t) + 
+					  sizeof(physical_size_t));
+			*addr = *((physical_addr_t *)aval);
 		} else {
 			return VMM_EFAIL;
 		}
@@ -427,13 +488,15 @@ int vmm_devdrv_clock_disable(struct vmm_device *dev)
 	}
 
 	if (dev->clk && dev->clk->disable) {
-		return dev->clk->disable(dev->clk);
+		dev->clk->disable(dev->clk);
+		return VMM_OK;
 	}
 
 	return VMM_EFAIL;
 }
 
-u32 vmm_devdrv_clock_getrate(struct vmm_device *dev)
+unsigned long vmm_devdrv_clock_round_rate(struct vmm_device *dev, 
+					  unsigned long rate)
 {
 	const char *clkattr;
 
@@ -447,19 +510,40 @@ u32 vmm_devdrv_clock_getrate(struct vmm_device *dev)
 		return *((u32 *)clkattr);
 	}
 
-	if (dev->clk && dev->clk->getrate) {
+	if (dev->clk && dev->clk->round_rate) {
+		return dev->clk->round_rate(dev->clk, rate);
+	}
+
+	return rate;
+}
+
+unsigned long vmm_devdrv_clock_get_rate(struct vmm_device *dev)
+{
+	const char *clkattr;
+
+	if (!dev) {
+		return 0;
+	}
+
+	clkattr = vmm_devtree_attrval(dev->node,
+				      VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
+	if (clkattr) {
+		return *((u32 *)clkattr);
+	}
+
+	if (dev->clk && dev->clk->get_rate) {
 		if (!vmm_devdrv_clock_isenabled(dev)) {
 			if (vmm_devdrv_clock_enable(dev)) {
 				return 0;
 			}
 		}
-		return dev->clk->getrate(dev->clk);
+		return dev->clk->get_rate(dev->clk);
 	}
 
 	return 0;
 }
 
-int vmm_devdrv_clock_setrate(struct vmm_device *dev, u32 rate)
+int vmm_devdrv_clock_set_rate(struct vmm_device *dev, unsigned long rate)
 {
 	const char *clkattr;
 
@@ -473,13 +557,13 @@ int vmm_devdrv_clock_setrate(struct vmm_device *dev, u32 rate)
 		return VMM_OK;
 	}
 
-	if (dev->clk && dev->clk->setrate) {
+	if (dev->clk && dev->clk->set_rate) {
 		if (!vmm_devdrv_clock_isenabled(dev)) {
 			if (vmm_devdrv_clock_enable(dev)) {
 				return 0;
 			}
 		}
-		return dev->clk->setrate(dev->clk, rate);
+		return dev->clk->set_rate(dev->clk, rate);
 	}
 
 	return VMM_OK;
