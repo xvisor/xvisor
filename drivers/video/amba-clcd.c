@@ -531,7 +531,7 @@ static int clcdfb_register(struct clcd_fb *fb)
 
 	fb_set_var(&fb->fb, &fb->fb.var);
 
-	dev_info(&fb->dev, "%s hardware, %s display\n",
+	dev_info(fb->dev, "%s hardware, %s display\n",
 	         fb->board->name, fb->panel->mode.name);
 
 	ret = register_framebuffer(&fb->fb);
@@ -568,7 +568,7 @@ static int clcdfb_probe(struct vmm_device *dev, const struct vmm_devid *id)
 	fb->dev = dev;
 	fb->board = board;
 
-	dev_info(&fb->dev, "PL%03x rev%u\n",
+	dev_info(fb->dev, "PL%03x rev%u\n",
 		amba_part(dev), amba_rev(dev));
 
 	ret = fb->board->setup(fb);
@@ -611,7 +611,7 @@ static int clcdfb_remove(struct vmm_device *dev)
 static struct vmm_devid clcdfb_devid_table[] = {
 	{.type = "fb",.compatible = "pl110"},
 	{.type = "fb",.compatible = "pl111"},
-	{.type = "fb",.compatible = "ambacldc"},
+	{.type = "fb",.compatible = "ambaclcd"},
 	{ /* end of list */ },
 };
 
