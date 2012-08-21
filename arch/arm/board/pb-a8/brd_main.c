@@ -33,6 +33,7 @@
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 #include <versatile/clcd.h>
+#include <versatile/clock.h>
 #include <libfdt.h>
 #include <realview_plat.h>
 #include <pba8_board.h>
@@ -113,10 +114,15 @@ int arch_board_devtree_populate(struct vmm_devtree_node ** root)
 
 int arch_board_reset(void)
 {
+	void *sys_lock = (void *)pba8_sys_base + REALVIEW_SYS_LOCK_OFFSET;
+
+	vmm_writel(REALVIEW_SYS_LOCKVAL, sys_lock);
 	vmm_writel(0x0, 
 		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
 	vmm_writel(REALVIEW_SYS_CTRL_RESET_PLLRESET, 
 		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
+	vmm_writel(0, sys_lock);
+
 	return VMM_OK;
 }
 
@@ -135,6 +141,63 @@ int __init arch_board_early_init(void)
 	 * memory or boot time memory reservation here.
 	 */
 	return 0;
+}
+
+/*
+ * Clock handling
+ */
+static const struct icst_params realview_oscvco_params = {
+	.ref		= 24000000,
+	.vco_max	= ICST307_VCO_MAX,
+	.vco_min	= ICST307_VCO_MIN,
+	.vd_min		= 4 + 8,
+	.vd_max		= 511 + 8,
+	.rd_min		= 1 + 2,
+	.rd_max		= 127 + 2,
+	.s2div		= icst307_s2div,
+	.idx2s		= icst307_idx2s,
+};
+
+static void realview_oscvco_set(struct versatile_clk *vclk, struct icst_vco vco)
+{
+	void *sys_lock = (void *)pba8_sys_base + REALVIEW_SYS_LOCK_OFFSET;
+	u32 val;
+
+	val = vmm_readl(vclk->vcoreg) & ~0x7ffff;
+	val |= vco.v | (vco.r << 9) | (vco.s << 16);
+
+	vmm_writel(REALVIEW_SYS_LOCKVAL, sys_lock);
+	vmm_writel(val, vclk->vcoreg);
+	vmm_writel(0, sys_lock);
+}
+
+static const struct versatile_clk_ops oscvco_clk_ops = {
+	.round	= icst_clk_round,
+	.set	= icst_clk_set,
+	.setvco	= realview_oscvco_set,
+};
+
+static struct versatile_clk oscvco_clk = {
+	.ops	= &oscvco_clk_ops,
+	.params	= &realview_oscvco_params,
+};
+
+static struct vmm_devclk clcd_clk = {
+	.enable = versatile_clk_enable,
+	.disable = versatile_clk_disable,
+	.get_rate = versatile_clk_get_rate,
+	.round_rate = versatile_clk_round_rate,
+	.set_rate = versatile_clk_set_rate,
+	.priv = &oscvco_clk,
+};
+
+static struct vmm_devclk *realview_getclk(struct vmm_devtree_node *node)
+{
+	if (vmm_strcmp(node->name, "clcd") == 0) {
+		return &clcd_clk;
+	}
+
+	return NULL;
 }
 
 /*
@@ -245,11 +308,10 @@ int __init arch_board_final_init(void)
 	/* Map control registers */
 	pba8_sys_base = vmm_host_iomap(REALVIEW_SYS_BASE, 0x1000);
 
-	/* Unlock Lockable registers */
-	vmm_writel(REALVIEW_SYS_LOCKVAL, 
-		   (void *)(pba8_sys_base + REALVIEW_SYS_LOCK_OFFSET));
+	/* Setup Clocks (before probing) */
+	oscvco_clk.vcoreg = (void *)pba8_sys_base + REALVIEW_SYS_OSC4_OFFSET;
 
-	/* Setup CLCD system data (before probing) */
+	/* Setup CLCD (before probing) */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
 				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
@@ -267,7 +329,7 @@ int __init arch_board_final_init(void)
 		return VMM_ENOTAVAIL;
 	}
 
-	rc = vmm_devdrv_probe(node, NULL, NULL);
+	rc = vmm_devdrv_probe(node, realview_getclk, NULL);
 	if (rc) {
 		return rc;
 	}
