@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_main.h>
 #include <vmm_stdio.h>
@@ -30,6 +29,7 @@
 #include <arch_barrier.h>
 #include <arch_cpu_irq.h>
 #include <arch_sections.h>
+#include <stringlib.h>
 #include <cpu_defines.h>
 #include <cpu_cache.h>
 #include <cpu_inline_asm.h>
@@ -113,7 +113,7 @@ int cpu_mmu_l2tbl_detach(struct cpu_l2tbl * l2)
 	l2->l1->l2tbl_cnt--;
 	l2->l1 = NULL;
 	l2->tte_cnt = 0;
-	vmm_memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
+	memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
 
 	list_del(&l2->head);
 
@@ -185,7 +185,7 @@ struct cpu_l2tbl *cpu_mmu_l2tbl_alloc(void)
 	l2->domain = 0;
 	l2->map_va = 0;
 	l2->tte_cnt = 0;
-	vmm_memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
+	memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
 
 	mmuctrl.l2_alloc_count++;
 
@@ -275,7 +275,7 @@ int cpu_mmu_get_page(struct cpu_l1tbl * l1, virtual_addr_t va, struct cpu_page *
 
 	switch (l1_tte_type) {
 	case TTBL_L1TBL_TTE_TYPE_FAULT:
-		vmm_memset(pg, 0, sizeof(struct cpu_page));
+		memset(pg, 0, sizeof(struct cpu_page));
 		break;
 	case TTBL_L1TBL_TTE_TYPE_SECTION:
 		pg->va = va & TTBL_L1TBL_TTE_OFFSET_MASK;
@@ -365,7 +365,7 @@ int cpu_mmu_get_page(struct cpu_l1tbl * l1, virtual_addr_t va, struct cpu_page *
 		}
 		break;
 	default:
-		vmm_memset(pg, 0, sizeof(struct cpu_page));
+		memset(pg, 0, sizeof(struct cpu_page));
 		ret = VMM_ENOTAVAIL;
 		break;
 	};
@@ -1099,7 +1099,7 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 			u32 mem_flags)
 {
 	struct cpu_page p;
-	vmm_memset(&p, 0, sizeof(p));
+	memset(&p, 0, sizeof(p));
 	p.pa = pa;
 	p.va = va;
 	p.sz = sz;
@@ -1175,7 +1175,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	struct cpu_page respg;
 
 	/* Reset the memory of MMU control structure */
-	vmm_memset(&mmuctrl, 0, sizeof(mmuctrl));
+	memset(&mmuctrl, 0, sizeof(mmuctrl));
 
 	/* Initialize list heads */
 	INIT_LIST_HEAD(&mmuctrl.l1tbl_list);
@@ -1279,7 +1279,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	va = resv_va;
 	sz = resv_sz;
 	while (sz) {
-		vmm_memset(&respg, 0, sizeof(respg));
+		memset(&respg, 0, sizeof(respg));
 		respg.pa = pa;
 		respg.va = va;
 		respg.sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
@@ -1301,7 +1301,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	}
 
 	/* Setup up l1 array */
-	vmm_memset(mmuctrl.l1_array, 0x0, 
+	memset(mmuctrl.l1_array, 0x0, 
 		   sizeof(struct cpu_l1tbl) * TTBL_MAX_L1TBL_COUNT);
 	for (i = 0; i < TTBL_MAX_L1TBL_COUNT; i++) {
 		INIT_LIST_HEAD(&mmuctrl.l1_array[i].head);
@@ -1318,7 +1318,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	}
 
 	/* Setup up l2 array */
-	vmm_memset(mmuctrl.l2_array, 0x0, 
+	memset(mmuctrl.l2_array, 0x0, 
 		   sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT);
 	for (i = 0; i < TTBL_MAX_L2TBL_COUNT; i++) {
 		INIT_LIST_HEAD(&mmuctrl.l2_array[i].head);

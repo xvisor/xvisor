@@ -23,10 +23,10 @@
 
 #include <arch_defterm.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_main.h>
 #include <vmm_stdio.h>
 #include <stdarg.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
 /* NOTE: assuming sizeof(void *) == sizeof(int) */
@@ -403,7 +403,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 	if (!s) {
 		return NULL;
 	}
-	vmm_memset(s, 0, maxwidth);
+	memset(s, 0, maxwidth);
 	while (count < maxwidth) {
 		to_left = FALSE;
 		to_right = FALSE;
@@ -555,7 +555,7 @@ int __init vmm_stdio_init(void)
 	int rc;
 
 	/* Reset memory of control structure */
-	vmm_memset(&stdio_ctrl, 0, sizeof(stdio_ctrl));
+	memset(&stdio_ctrl, 0, sizeof(stdio_ctrl));
 
 	/* Initialize lock */
 	INIT_SPIN_LOCK(&stdio_ctrl.lock);

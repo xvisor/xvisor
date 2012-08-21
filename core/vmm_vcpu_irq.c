@@ -24,12 +24,12 @@
 #include <arch_vcpu.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_timer.h>
 #include <vmm_scheduler.h>
 #include <vmm_devtree.h>
 #include <vmm_vcpu_irq.h>
+#include <stringlib.h>
 
 void vmm_vcpu_irq_process(arch_regs_t * regs)
 {
@@ -220,7 +220,7 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	/* Only first time */
 	if (!vcpu->reset_count) {
 		/* Clear the memory of irq */
-		vmm_memset(&vcpu->irqs, 0, sizeof(struct vmm_vcpu_irqs));
+		memset(&vcpu->irqs, 0, sizeof(struct vmm_vcpu_irqs));
 
 		/* Initialize irq lock */
 		INIT_SPIN_LOCK(&vcpu->irqs.lock);

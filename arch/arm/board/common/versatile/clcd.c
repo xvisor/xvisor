@@ -1,7 +1,7 @@
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_host_aspace.h>
+#include <stringlib.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 #include <versatile/clcd.h>
@@ -141,7 +141,7 @@ struct clcd_panel *versatile_clcd_get_panel(const char *name)
 	int i;
 
 	for (i = 0; i < array_size(panels); i++)
-		if (vmm_strcmp(panels[i]->mode.name, name) == 0)
+		if (strcmp(panels[i]->mode.name, name) == 0)
 			break;
 
 	if (i < array_size(panels))

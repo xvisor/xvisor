@@ -157,7 +157,7 @@ clcdfb_set_bitfields(struct clcd_fb *fb, struct fb_var_screeninfo *var)
 	if (!(fb->panel->cntl & CNTL_LCDTFT))
 		caps &= ~CLCD_CAP_888;
 
-	vmm_memset(&var->transp, 0, sizeof(var->transp));
+	memset(&var->transp, 0, sizeof(var->transp));
 
 	var->red.msb_right = 0;
 	var->green.msb_right = 0;
@@ -476,7 +476,7 @@ static int clcdfb_register(struct clcd_fb *fb)
 	fb->fb.flags		= FBINFO_FLAG_DEFAULT;
 	fb->fb.pseudo_palette	= fb->cmap;
 
-	vmm_strncpy(fb->fb.fix.id, clcd_name, sizeof(fb->fb.fix.id));
+	strncpy(fb->fb.fix.id, clcd_name, sizeof(fb->fb.fix.id));
 	fb->fb.fix.type		= FB_TYPE_PACKED_PIXELS;
 	fb->fb.fix.type_aux	= 0;
 	fb->fb.fix.xpanstep	= 0;

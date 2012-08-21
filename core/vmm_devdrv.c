@@ -23,13 +23,13 @@
 
 #include <arch_board.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_mutex.h>
 #include <vmm_host_aspace.h>
+#include <stringlib.h>
 
 struct probe_node {
 	struct dlist head;
@@ -62,9 +62,9 @@ static int devdrv_device_is_compatible(struct vmm_devtree_node *node,
 	if (cp == NULL)
 		return 0;
 	while (cplen > 0) {
-		if (vmm_strncmp(cp, compat, vmm_strlen(compat)) == 0)
+		if (strncmp(cp, compat, strlen(compat)) == 0)
 			return 1;
-		l = vmm_strlen(cp) + 1;
+		l = strlen(cp) + 1;
 		cp += l;
 		cplen -= l;
 	}
@@ -88,10 +88,10 @@ static const struct vmm_devid *devdrv_match_node(
 		int match = 1;
 		if (matches->name[0])
 			match &= node->name
-			    && !vmm_strcmp(matches->name, node->name);
+			    && !strcmp(matches->name, node->name);
 		if (matches->type[0])
 			match &= node_type
-			    && !vmm_strcmp(matches->type, node_type);
+			    && !strcmp(matches->type, node_type);
 		if (matches->compatible[0])
 			match &= devdrv_device_is_compatible(node,
 							     matches->
@@ -586,7 +586,7 @@ int vmm_devdrv_register_class(struct vmm_class *cls)
 
 	list_for_each(l, &ddctrl.class_list) {
 		c = list_entry(l, struct vmm_class, head);
-		if (vmm_strcmp(c->name, cls->name) == 0) {
+		if (strcmp(c->name, cls->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -623,7 +623,7 @@ int vmm_devdrv_unregister_class(struct vmm_class *cls)
 	found = FALSE;
 	list_for_each(l, &ddctrl.class_list) {
 		c = list_entry(l, struct vmm_class, head);
-		if (vmm_strcmp(c->name, cls->name) == 0) {
+		if (strcmp(c->name, cls->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -658,7 +658,7 @@ struct vmm_class *vmm_devdrv_find_class(const char *cname)
 
 	list_for_each(l, &ddctrl.class_list) {
 		cls = list_entry(l, struct vmm_class, head);
-		if (vmm_strcmp(cls->name, cname) == 0) {
+		if (strcmp(cls->name, cname) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -741,7 +741,7 @@ int vmm_devdrv_register_classdev(const char *cname, struct vmm_classdev *cdev)
 	found = FALSE;
 	list_for_each(l, &c->classdev_list) {
 		cd = list_entry(l, struct vmm_classdev, head);
-		if (vmm_strcmp(cd->name, cdev->name) == 0) {
+		if (strcmp(cd->name, cdev->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -783,7 +783,7 @@ int vmm_devdrv_unregister_classdev(const char *cname, struct vmm_classdev *cdev)
 	found = FALSE;
 	list_for_each(l, &c->classdev_list) {
 		cd = list_entry(l, struct vmm_classdev, head);
-		if (vmm_strcmp(cd->name, cdev->name) == 0) {
+		if (strcmp(cd->name, cdev->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -823,7 +823,7 @@ struct vmm_classdev *vmm_devdrv_find_classdev(const char *cname,
 
 	list_for_each(l, &c->classdev_list) {
 		cd = list_entry(l, struct vmm_classdev, head);
-		if (vmm_strcmp(cd->name, cdev_name) == 0) {
+		if (strcmp(cd->name, cdev_name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -907,7 +907,7 @@ int vmm_devdrv_register_driver(struct vmm_driver *drv)
 
 	list_for_each(l, &ddctrl.driver_list) {
 		d = list_entry(l, struct vmm_driver, head);
-		if (vmm_strcmp(d->name, drv->name) == 0) {
+		if (strcmp(d->name, drv->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -956,7 +956,7 @@ int vmm_devdrv_unregister_driver(struct vmm_driver *drv)
 	found = FALSE;
 	list_for_each(l, &ddctrl.driver_list) {
 		d = list_entry(l, struct vmm_driver, head);
-		if (vmm_strcmp(d->name, drv->name) == 0) {
+		if (strcmp(d->name, drv->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -1002,7 +1002,7 @@ struct vmm_driver *vmm_devdrv_find_driver(const char *name)
 
 	list_for_each(l, &ddctrl.driver_list) {
 		drv = list_entry(l, struct vmm_driver, head);
-		if (vmm_strcmp(drv->name, name) == 0) {
+		if (strcmp(drv->name, name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -1070,7 +1070,7 @@ u32 vmm_devdrv_driver_count(void)
 
 int __init vmm_devdrv_init(void)
 {
-	vmm_memset(&ddctrl, 0, sizeof(ddctrl));
+	memset(&ddctrl, 0, sizeof(ddctrl));
 
 	INIT_MUTEX(&ddctrl.device_lock);
 	INIT_LIST_HEAD(&ddctrl.device_list);

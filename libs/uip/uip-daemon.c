@@ -26,18 +26,18 @@
 #include "uip-fw.h"
 #include "uip-arp.h"
 #include "uip-netport.h"
-#include <net/vmm_net.h>
-#include <net/vmm_mbuf.h>
-#include <net/vmm_protocol.h>
-#include <net/vmm_netstack.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_modules.h>
 #include <vmm_threads.h>
 #include <vmm_completion.h>
+#include <net/vmm_net.h>
+#include <net/vmm_mbuf.h>
+#include <net/vmm_protocol.h>
+#include <net/vmm_netstack.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"uIP Network Daemon"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
@@ -178,7 +178,7 @@ static int __init daemon_uip_init(void)
 	attrval = vmm_devtree_attrval(node, "ipaddr");
 	if (attrval) {
 		/* Read ip address from DTS */
-		vmm_str_to_ipaddr(ip_set, attrval);
+		str2ipaddr(ip_set, attrval);
 	}
 	if(ipv4_class_netmask(ip_set, def_mask) == -1) {
 		vmm_printf("uIP: Bad IP address in DTS reverting to default IP\n");
@@ -191,7 +191,7 @@ static int __init daemon_uip_init(void)
 	attrval = vmm_devtree_attrval(node, "netmask");
 	if (attrval) {
 		/* Read mask address from DTS */
-		vmm_str_to_ipaddr(ip_set, attrval);
+		str2ipaddr(ip_set, attrval);
 		uip_ipaddr(ipaddr, ip_set[0],ip_set[1],ip_set[2],ip_set[3]);
 	} else {
 		/* Apply default netmask as per the IP class */

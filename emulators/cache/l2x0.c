@@ -33,12 +33,12 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"L2X0 Cache Emulator"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
@@ -236,7 +236,7 @@ static int l2x0_cc_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto l2x0_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct l2x0_state));
+	memset(s, 0x0, sizeof(struct l2x0_state));
 
 	INIT_SPIN_LOCK(&s->lock);
 	s->id = (enum l2x0_id)(eid->data);

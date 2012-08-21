@@ -606,7 +606,7 @@ int __serio_register_driver(struct serio_driver *drv)
 
 	list_for_each(l, &serio_drv_list) {
 		sdrv = list_entry(l, struct serio_driver, node);
-		if (vmm_strcmp(sdrv->name, drv->name) == 0) {
+		if (strcmp(sdrv->name, drv->name) == 0) {
 			found = TRUE;
 			break;
 		}

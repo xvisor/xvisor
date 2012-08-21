@@ -23,7 +23,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_completion.h>
@@ -31,8 +30,9 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <serial/pl011.h>
+#include <stringlib.h>
 #include <mathlib.h>
+#include <serial/pl011.h>
 
 /* Enable UART_PL011_USE_TXINTR to use TX interrupt.
  * Generally the FIFOs are small so its better to poll on Tx 
@@ -294,16 +294,16 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
-	vmm_memset(cd, 0, sizeof(struct vmm_chardev));
+	memset(cd, 0, sizeof(struct vmm_chardev));
 
 	port = vmm_malloc(sizeof(struct pl011_port));
 	if (!port) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
 	}
-	vmm_memset(port, 0, sizeof(struct pl011_port));
+	memset(port, 0, sizeof(struct pl011_port));
 
-	vmm_strcpy(cd->name, dev->node->name);
+	strcpy(cd->name, dev->node->name);
 	cd->dev = dev;
 	cd->ioctl = NULL;
 	cd->read = pl011_read;

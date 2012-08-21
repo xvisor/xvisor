@@ -84,9 +84,9 @@
 
 
 #include "uip-arp.h"
-#include <vmm_string.h>
 #include <vmm_types.h>
 #include <vmm_completion.h>
+#include <stringlib.h>
 
 struct ethip_hdr {
 	struct uip_eth_hdr ethhdr;
@@ -134,7 +134,7 @@ void
 uip_arp_init(void)
 {
 	for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
-		vmm_memset(arp_table[i].ipaddr, 0, 4);
+		memset(arp_table[i].ipaddr, 0, 4);
 	}
 }
 /*-----------------------------------------------------------------------------------*/
@@ -157,7 +157,7 @@ uip_arp_timer(void)
 		tabptr = &arp_table[i];
 		if((tabptr->ipaddr[0] | tabptr->ipaddr[1]) != 0 &&
 			arptime - tabptr->time >= UIP_ARP_MAXAGE) {
-			vmm_memset(tabptr->ipaddr, 0, 4);
+			memset(tabptr->ipaddr, 0, 4);
 		}
 	}
 
@@ -194,8 +194,8 @@ uip_arp_update(u16 *ipaddr, const struct uip_eth_addr *ethaddr)
 
 				/* If the ethaddr is not broadcast addr, we 
 				 * update this old entry */
-				if(vmm_memcmp(ethaddr->addr, broadcast_ethaddr.addr, 6)) {
-					vmm_memcpy(tabptr->ethaddr.addr, ethaddr->addr, 6);
+				if(memcmp(ethaddr->addr, broadcast_ethaddr.addr, 6)) {
+					memcpy(tabptr->ethaddr.addr, ethaddr->addr, 6);
 				} else {
 					/* Also notify anyone waiting for this arp_prefetch */
 					vmm_completion_complete(&uip_arp_prefetch_done);
@@ -210,7 +210,7 @@ uip_arp_update(u16 *ipaddr, const struct uip_eth_addr *ethaddr)
 	/* If we get here, no existing ARP table entry was found */
 
 	/* If the ethaddr is broadcast address, we return with failure */
-	if(!vmm_memcmp(ethaddr->addr, broadcast_ethaddr.addr, 6)) {
+	if(!memcmp(ethaddr->addr, broadcast_ethaddr.addr, 6)) {
 		return 1;
 	}
 
@@ -243,8 +243,8 @@ uip_arp_update(u16 *ipaddr, const struct uip_eth_addr *ethaddr)
 
 	/* Now, i is the ARP table entry which we will fill with the new
 	   information. */
-	vmm_memcpy(tabptr->ipaddr, ipaddr, 4);
-	vmm_memcpy(tabptr->ethaddr.addr, ethaddr->addr, 6);
+	memcpy(tabptr->ipaddr, ipaddr, 4);
+	memcpy(tabptr->ethaddr.addr, ethaddr->addr, 6);
 	tabptr->time = arptime;
 
 	return 0;
@@ -331,7 +331,7 @@ uip_arp_arpin(void)
 			if(uip_arp_update(BUF->dipaddr, &broadcast_ethaddr)) {
 			/* If the destination address was not in our ARP table, 
 			 * we send out an ARP request for the same */
-				vmm_memset(BUF->ethhdr.dest.addr, 0xff, 6);
+				memset(BUF->ethhdr.dest.addr, 0xff, 6);
 				BUF->opcode = HTONS(ARP_REQUEST);
 				/* The other ARP fields of incoming hint are 
 				 * supposed to be same as ARP broadcast except
@@ -353,10 +353,10 @@ uip_arp_arpin(void)
 
 			BUF->opcode = HTONS(ARP_REPLY);
 
-			vmm_memcpy(BUF->dhwaddr.addr, BUF->shwaddr.addr, 6);
-			vmm_memcpy(BUF->shwaddr.addr, uip_ethaddr.addr, 6);
-			vmm_memcpy(BUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
-			vmm_memcpy(BUF->ethhdr.dest.addr, BUF->dhwaddr.addr, 6);
+			memcpy(BUF->dhwaddr.addr, BUF->shwaddr.addr, 6);
+			memcpy(BUF->shwaddr.addr, uip_ethaddr.addr, 6);
+			memcpy(BUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
+			memcpy(BUF->ethhdr.dest.addr, BUF->dhwaddr.addr, 6);
 
 			BUF->dipaddr[0] = BUF->sipaddr[0];
 			BUF->dipaddr[1] = BUF->sipaddr[1];
@@ -421,7 +421,7 @@ uip_arp_out(void)
 
 	/* First check if destination is a local broadcast. */
 	if(uip_ipaddr_cmp(IPBUF->destipaddr, broadcast_ipaddr)) {
-		vmm_memcpy(IPBUF->ethhdr.dest.addr, broadcast_ethaddr.addr, 6);
+		memcpy(IPBUF->ethhdr.dest.addr, broadcast_ethaddr.addr, 6);
 	} else {
 		/* Check if the destination address is on the local network. */
 		if(!uip_ipaddr_maskcmp(IPBUF->destipaddr, uip_hostaddr, uip_netmask)) {
@@ -446,10 +446,10 @@ uip_arp_out(void)
 			   overwrite the IP packet with an ARP request. */
 
 #if 0	
-			vmm_memset(BUF->ethhdr.dest.addr, 0xff, 6);
-			vmm_memset(BUF->dhwaddr.addr, 0x00, 6);
-			vmm_memcpy(BUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
-			vmm_memcpy(BUF->shwaddr.addr, uip_ethaddr.addr, 6);
+			memset(BUF->ethhdr.dest.addr, 0xff, 6);
+			memset(BUF->dhwaddr.addr, 0x00, 6);
+			memcpy(BUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
+			memcpy(BUF->shwaddr.addr, uip_ethaddr.addr, 6);
 
 			uip_ipaddr_copy(BUF->dipaddr, ipaddr);
 			uip_ipaddr_copy(BUF->sipaddr, uip_hostaddr);
@@ -471,9 +471,9 @@ uip_arp_out(void)
 		}
 
 		/* Build an ethernet header. */
-		vmm_memcpy(IPBUF->ethhdr.dest.addr, tabptr->ethaddr.addr, 6);
+		memcpy(IPBUF->ethhdr.dest.addr, tabptr->ethaddr.addr, 6);
 	}
-	vmm_memcpy(IPBUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
+	memcpy(IPBUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
 
 	IPBUF->ethhdr.type = HTONS(UIP_ETHTYPE_IP);
 

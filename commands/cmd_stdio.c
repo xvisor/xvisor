@@ -23,11 +23,11 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_chardev.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"Command stdio"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -80,10 +80,10 @@ int cmd_stdio_chdev(struct vmm_chardev *cdev, char *chardev_name)
 int cmd_stdio_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_stdio_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "curdev") == 0) {
+		} else if (strcmp(argv[1], "curdev") == 0) {
 			return cmd_stdio_curdev(cdev);
 		}
 	}
@@ -91,7 +91,7 @@ int cmd_stdio_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		cmd_stdio_usage(cdev);
 		return VMM_EFAIL;
 	}
-	if (vmm_strcmp(argv[1], "chdev") == 0) {
+	if (strcmp(argv[1], "chdev") == 0) {
 		return cmd_stdio_chdev(cdev, argv[2]);
 	} else {
 		cmd_stdio_usage(cdev);

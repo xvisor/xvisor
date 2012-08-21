@@ -21,15 +21,15 @@
  * @brief Implementation of ping command
  */
 
-#include <mathlib.h>
-#include <net/vmm_netstack.h>
-#include <net/vmm_protocol.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_version.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <net/vmm_netstack.h>
+#include <net/vmm_protocol.h>
+#include <stringlib.h>
+#include <mathlib.h>
 
 #define MODULE_DESC			"Command ping"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
@@ -57,12 +57,12 @@ int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return VMM_EFAIL;
 	}
 	if(argc > 2) {
-		count = vmm_str2int(argv[2], 10);
+		count = str2int(argv[2], 10);
 	}
 	if(argc > 3) {
-		size = vmm_str2int(argv[3], 10);
+		size = str2int(argv[3], 10);
 	}
-	vmm_str_to_ipaddr(ipaddr, argv[1]);
+	str_to_ipaddr(ipaddr, argv[1]);
 
 	vmm_cprintf(cdev, "PING (%s) %d(%d) bytes of data.\n", 
 			  argv[1], size, (size + IP4_HLEN + ICMP_HLEN));

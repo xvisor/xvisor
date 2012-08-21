@@ -107,7 +107,7 @@ int ps2_is_keyboard_id(char id_byte)
 		0x47,	/* NMB SGI keyboard		*/
 	};
 
-	return vmm_memchr(keyboard_ids, id_byte, sizeof(keyboard_ids)) != NULL;
+	return memchr(keyboard_ids, id_byte, sizeof(keyboard_ids)) != NULL;
 }
 
 /*

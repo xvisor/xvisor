@@ -22,13 +22,13 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_spinlocks.h>
 #include <vmm_smp.h>
 #include <vmm_heap.h>
 #include <vmm_host_irq.h>
 #include <arch_cpu_irq.h>
 #include <arch_host_irq.h>
+#include <stringlib.h>
 
 struct vmm_host_irqs_ctrl {
 	vmm_spinlock_t lock;
@@ -312,7 +312,7 @@ int __init vmm_host_irq_init(void)
 	u32 ite, cpu;
 
 	/* Clear the memory of control structure */
-	vmm_memset(&hirqctrl, 0, sizeof(hirqctrl));
+	memset(&hirqctrl, 0, sizeof(hirqctrl));
 
 	/* Initialize spin lock */
 	INIT_SPIN_LOCK(&hirqctrl.lock);

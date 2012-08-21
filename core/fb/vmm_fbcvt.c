@@ -34,8 +34,8 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <stringlib.h>
 #include <fb/vmm_fb.h>
 
 #define FB_CVT_CELLSIZE               8
@@ -328,7 +328,7 @@ int vmm_fb_find_mode_cvt(struct vmm_fb_videomode *mode, int margins, int rb)
 {
 	struct vmm_fb_cvt_data cvt;
 
-	vmm_memset(&cvt, 0, sizeof(cvt));
+	memset(&cvt, 0, sizeof(cvt));
 
 	if (margins)
 	    cvt.flags |= FB_CVT_FLAG_MARGINS;

@@ -23,10 +23,10 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"SP810 Serial Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -162,7 +162,7 @@ static int sp810_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto sp810_emulator_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct sp810_state));
+	memset(s, 0x0, sizeof(struct sp810_state));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);

@@ -23,13 +23,13 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <vmm_threads.h>
 #include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
 #define MODULE_DESC			"Thread Test Command"
@@ -141,14 +141,14 @@ int cmd_threadtest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int i, rc, testid = 0, testcount = 0;	
 	if ((argc > 1) && (argc < 4)) {
-                if (vmm_strcmp(argv[1], "help") == 0) {
+                if (strcmp(argv[1], "help") == 0) {
                         cmd_threadtest_usage(cdev);
                         return VMM_OK;
-                } else if (vmm_strcmp(argv[1], "list") == 0) {
+                } else if (strcmp(argv[1], "list") == 0) {
                         cmd_threadtest_list(cdev);
                         return VMM_OK;
-		} else if ((vmm_strcmp(argv[1], "exec") == 0) && (3 <= argc)) {
-			testid = vmm_str2int(argv[2], 10);
+		} else if ((strcmp(argv[1], "exec") == 0) && (3 <= argc)) {
+			testid = str2int(argv[2], 10);
 			testcount = udiv32(sizeof(testcases), 
 					sizeof(struct threadtest_testcase));
 			if (testid == -1) {

@@ -23,13 +23,13 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
 #include <vmm_devtree.h>
 #include <vmm_threads.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"Managment Terminal"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -56,11 +56,11 @@ static int mterm_main(void *udata)
 	while (1) {
 		/* Show prompt */
 		vmm_printf("XVisor# ");
-		vmm_memset(cmds, 0, sizeof(cmds));
+		memset(cmds, 0, sizeof(cmds));
 
 		/* Get command string */
 		vmm_gets(cmds, MTERM_CMD_STRING_SIZE, '\n');
-		cmds_len = vmm_strlen(cmds);
+		cmds_len = strlen(cmds);
 		if (cmds_len > 0) {
 			if (cmds[cmds_len - 1] == '\r')
 				cmds[cmds_len - 1] = '\0';
@@ -81,7 +81,7 @@ static int __init daemon_mterm_init(void)
 	const char * attrval;
 
 	/* Reset the control structure */
-	vmm_memset(&mtctrl, 0, sizeof(mtctrl));
+	memset(&mtctrl, 0, sizeof(mtctrl));
 
 	/* Retrive mterm time slice */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING

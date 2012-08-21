@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_spinlocks.h>
 #include <vmm_smp.h>
 #include <vmm_stdio.h>

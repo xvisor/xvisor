@@ -31,7 +31,6 @@
 
 #include <vmm_stdio.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <linux/mii.h>
 
 /**

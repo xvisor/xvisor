@@ -21,13 +21,13 @@
  * @brief source file for buddy heap allocator
  */
 
-#include <list.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_spinlocks.h>
 #include <vmm_host_aspace.h>
 #include <vmm_heap.h>
+#include <list.h>
+#include <stringlib.h>
 
 #ifndef NULL
 #define NULL			((void *)0)
@@ -159,7 +159,7 @@ static struct vmm_free_area *buddy_get_contiguous_block(unsigned int num_blocks,
 			cnode = get_free_hk_node();
 			BUG_ON(!cnode,
 			       "Panic: No free house keeping nodes for buddy allocator!\n");
-			vmm_memcpy(cnode, snode, sizeof(struct vmm_free_area));
+			memcpy(cnode, snode, sizeof(struct vmm_free_area));
 			while (count) {
 				/*
 				 * Latch the next node to be released because
@@ -288,8 +288,7 @@ static int coalesce_buddies(unsigned int bin)
 				     (unsigned int)cfa->map, bin + 1);
 				list_del(&cfa->head);
 				list_del(&lfa->head);
-				vmm_memset(cfa, 0,
-					   sizeof(struct vmm_free_area));
+				memset(cfa, 0, sizeof(struct vmm_free_area));
 				add_free_area_to_bin(lfa, bin + 1);
 				lmap = NULL;
 				lfa = NULL;
@@ -381,8 +380,7 @@ void *buddy_malloc(unsigned int size)
 				aarea->map = farea->map;
 				aarea->blk_sz = curr_blk;
 				aarea->bin_num = idx;
-				vmm_memset(farea, 0,
-					   sizeof(struct vmm_free_area));
+				memset(farea, 0, sizeof(struct vmm_free_area));
 				free_hk_node(farea);
 				list_add_tail(&aarea->head,
 					      &bheap.current.head);
@@ -422,7 +420,7 @@ void buddy_free(void *ptr)
 	}
 
 	list_del(&aarea->head);
-	vmm_memset(aarea, 0, sizeof(struct vmm_alloced_area));
+	memset(aarea, 0, sizeof(struct vmm_alloced_area));
 
 	vmm_spin_unlock_irqrestore(&bheap.lock, flags);
 }
@@ -452,7 +450,7 @@ int buddy_init(void *heap_start, unsigned int heap_size)
 	    (struct vmm_alloced_area *)(heap_start + (hk_total_size / 2));
 	bheap.hk_an_count =
 	    (hk_total_size / 2) / sizeof(struct vmm_alloced_area);
-	vmm_memset(bheap.hk_fn_array, 0, hk_total_size);
+	memset(bheap.hk_fn_array, 0, hk_total_size);
 
 	INIT_LIST_HEAD(&bheap.current.head);
 
@@ -462,7 +460,7 @@ int buddy_init(void *heap_start, unsigned int heap_size)
 	bheap.mem_size = mem_size;
 	bheap.heap_start = heap_start;
 	bheap.heap_size = heap_size;
-	vmm_memset(&bheap.free_area[0], 0, sizeof(bheap.free_area));
+	memset(&bheap.free_area[0], 0, sizeof(bheap.free_area));
 	for (cntr = 0; cntr < BINS_MAX_ORDER; cntr++) {
 		INIT_LIST_HEAD(&bheap.free_area[cntr].head);
 	}
@@ -496,7 +494,7 @@ void *vmm_zalloc(virtual_size_t size)
 	void *ret = buddy_malloc(size);
 
 	if (ret) {
-		vmm_memset(ret, 0, size);
+		memset(ret, 0, size);
 	}
 
 	return ret;
@@ -513,7 +511,7 @@ int vmm_heap_allocator_name(char *name, int name_sz)
 		return VMM_EFAIL;
 	}
 
-	vmm_strncpy(name, "Buddy System", name_sz);
+	strncpy(name, "Buddy System", name_sz);
 
 	return VMM_OK;
 }

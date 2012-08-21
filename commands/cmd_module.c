@@ -23,11 +23,11 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_host_aspace.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"Command module"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -144,10 +144,10 @@ int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	physical_addr_t addr;
 	physical_size_t size;
 	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_module_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "list") == 0) {
+		} else if (strcmp(argv[1], "list") == 0) {
 			cmd_module_list(cdev);
 			return VMM_OK;
 		}
@@ -156,15 +156,15 @@ int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		cmd_module_usage(cdev);
 		return VMM_EFAIL;
 	}
-	if (vmm_strcmp(argv[1], "info") == 0) {
-		index = vmm_str2int(argv[2], 10);
+	if (strcmp(argv[1], "info") == 0) {
+		index = str2int(argv[2], 10);
 		return cmd_module_info(cdev, index);
-	} else if (vmm_strcmp(argv[1], "load") == 0 && argc == 4) {
-		addr = (physical_addr_t)vmm_str2ulonglong(argv[2], 10);
-		size = (physical_size_t)vmm_str2ulonglong(argv[3], 10);
+	} else if (strcmp(argv[1], "load") == 0 && argc == 4) {
+		addr = (physical_addr_t)str2ulonglong(argv[2], 10);
+		size = (physical_size_t)str2ulonglong(argv[3], 10);
 		return cmd_module_load(cdev, addr, size);
-	} else if (vmm_strcmp(argv[1], "unload") == 0) {
-		index = vmm_str2int(argv[2], 10);
+	} else if (strcmp(argv[1], "unload") == 0) {
+		index = str2int(argv[2], 10);
 		return cmd_module_unload(cdev, index);
 	} else {
 		cmd_module_usage(cdev);

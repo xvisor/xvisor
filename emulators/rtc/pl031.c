@@ -32,13 +32,13 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_timer.h>
 #include <vmm_wallclock.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
 #define MODULE_DESC			"PL031 RTC Emulator"
@@ -302,7 +302,7 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto pl031_emulator_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct pl031_state));
+	memset(s, 0x0, sizeof(struct pl031_state));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);

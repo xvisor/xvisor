@@ -23,10 +23,10 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
+#include <stringlib.h>
 #include <block/vmm_blockdev.h>
 
 #define MODULE_DESC			"Block Device Framework"
@@ -105,7 +105,7 @@ int vmm_blockdev_register(struct vmm_blockdev * bdev)
 	}
 
 	INIT_LIST_HEAD(&cd->head);
-	vmm_strcpy(cd->name, bdev->name);
+	strcpy(cd->name, bdev->name);
 	cd->dev = bdev->dev;
 	cd->priv = bdev;
 
@@ -189,7 +189,7 @@ static int __init vmm_blockdev_init(void)
 	}
 
 	INIT_LIST_HEAD(&c->head);
-	vmm_strcpy(c->name, VMM_BLOCKDEV_CLASS_NAME);
+	strcpy(c->name, VMM_BLOCKDEV_CLASS_NAME);
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);

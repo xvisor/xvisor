@@ -32,10 +32,10 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_timer.h>
 #include <vmm_spinlocks.h>
 #include <vmm_wallclock.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
 struct vmm_wallclock_ctrl {
@@ -373,7 +373,7 @@ int vmm_wallclock_get_timeofday(struct vmm_timeval * tv,
 
 int vmm_wallclock_init(void)
 {
-	vmm_memset(&wclk, 0, sizeof(wclk));
+	memset(&wclk, 0, sizeof(wclk));
 
 	INIT_SPIN_LOCK(&wclk.lock);
 

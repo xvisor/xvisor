@@ -36,7 +36,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <fb/vmm_fb.h>
 #include <bitops.h>

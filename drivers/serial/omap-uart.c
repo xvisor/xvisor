@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_completion.h>
@@ -32,8 +31,9 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <serial/omap-uart.h>
+#include <stringlib.h>
 #include <mathlib.h>
+#include <serial/omap-uart.h>
 
 /* Enable OMAP_UART_POLLING to force OMAP UART polling
  * More precisely this will force OMAP UART character device to use polling 
@@ -438,16 +438,16 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
-	vmm_memset(cd, 0, sizeof(struct vmm_chardev));
+	memset(cd, 0, sizeof(struct vmm_chardev));
 
 	port = vmm_malloc(sizeof(struct omap_uart_omap_port));
 	if(!port) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
 	}
-	vmm_memset(port, 0, sizeof(struct omap_uart_omap_port));
+	memset(port, 0, sizeof(struct omap_uart_omap_port));
 
-	vmm_strcpy(cd->name, dev->node->name);
+	strcpy(cd->name, dev->node->name);
 	cd->dev = dev;
 	cd->ioctl = NULL;
 	cd->read = omap_uart_read;

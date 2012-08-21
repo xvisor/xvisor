@@ -30,7 +30,6 @@
 
 #include <vmm_error.h>
 #include <vmm_macros.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <input/vmm_input_mt.h>

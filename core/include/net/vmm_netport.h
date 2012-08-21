@@ -83,12 +83,12 @@ struct vmm_netport *vmm_netport_get(int num);
 #if 0
 static inline void vmm_netport_getmac(struct vmm_netport *port, char *dst)
 {
-	vmm_memcpy(dst, port->macaddr, 6);
+	memcpy(dst, port->macaddr, 6);
 }
 
 static inline void vmm_netport_setmac(struct vmm_netport *port, char *src)
 {
-	vmm_memcpy(port->macaddr, src, 6);
+	memcpy(port->macaddr, src, 6);
 }
 #endif
 

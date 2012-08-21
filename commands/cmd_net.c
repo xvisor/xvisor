@@ -21,18 +21,18 @@
  * @brief command for heap status.
  */
 
-#include <net/vmm_netport.h>
-#include <net/vmm_netswitch.h>
-#include <net/vmm_protocol.h>
-#include <net/vmm_netstack.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <net/vmm_netport.h>
+#include <net/vmm_netswitch.h>
+#include <net/vmm_protocol.h>
+#include <net/vmm_netstack.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"Command net"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
@@ -133,7 +133,7 @@ int cmd_net_ipconfig(struct vmm_chardev *cdev, int argc, char **argv)
 		vmm_cprintf(cdev, "   TCP/IP-stack: %s\n", vmm_netstack_get_name());
 		break;
 	case 3:
-		vmm_str_to_ipaddr(buf, argv[2]);
+		str2ipaddr(buf, argv[2]);
 		if(ipv4_class_netmask(buf,mask) != -1) {
 			vmm_netstack_set_ipaddr(buf);
 			vmm_netstack_set_ipmask(mask);
@@ -143,10 +143,10 @@ int cmd_net_ipconfig(struct vmm_chardev *cdev, int argc, char **argv)
 		}
 		break;
 	case 4:
-		vmm_str_to_ipaddr(buf, argv[2]);
+		str2ipaddr(buf, argv[2]);
 		if(ipv4_class_netmask(buf,mask) != -1) {
 			vmm_netstack_set_ipaddr(buf);
-			vmm_str_to_ipaddr(buf, argv[3]);
+			str2ipaddr(buf, argv[3]);
 			vmm_netstack_set_ipmask(buf);
 		} else {
 			vmm_cprintf(cdev, "ERROR: Invalid IP address\n");
@@ -161,16 +161,16 @@ int cmd_net_ipconfig(struct vmm_chardev *cdev, int argc, char **argv)
 
 int cmd_net_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
-	if (vmm_strcmp(argv[1], "help") == 0) {
+	if (strcmp(argv[1], "help") == 0) {
 		cmd_net_usage(cdev);
 		return VMM_OK;
 #if defined(CONFIG_NET_STACK)
-	} else if (vmm_strcmp(argv[1], "ipconfig") == 0) {
+	} else if (strcmp(argv[1], "ipconfig") == 0) {
 		return cmd_net_ipconfig(cdev, argc, argv);
 #endif
-	} else if (vmm_strcmp(argv[1], "ports") == 0) {
+	} else if (strcmp(argv[1], "ports") == 0) {
 		return cmd_net_port_list(cdev, argc, argv);
-	} else if (vmm_strcmp(argv[1], "switches") == 0) {
+	} else if (strcmp(argv[1], "switches") == 0) {
 		return cmd_net_switch_list(cdev, argc, argv);
 	}
 	cmd_net_usage(cdev);

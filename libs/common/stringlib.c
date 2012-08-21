@@ -16,16 +16,16 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_string.c
+ * @file stringlib.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for CPU specific string functions required by VMM
+ * @brief implementation of string library
  */
 
 #include <vmm_types.h>
-#include <vmm_string.h>
 #include <vmm_host_io.h>
+#include <stringlib.h>
 
-size_t vmm_strlen(const char *s)
+size_t strlen(const char *s)
 {
 	size_t ret = 0;
 	while (s[ret]) {
@@ -34,7 +34,7 @@ size_t vmm_strlen(const char *s)
 	return ret;
 }
 
-char *vmm_strcpy(char *dest, const char *src)
+char *strcpy(char *dest, const char *src)
 {
 	u32 i;
 	for (i = 0; src[i] != '\0'; ++i)
@@ -43,7 +43,7 @@ char *vmm_strcpy(char *dest, const char *src)
 	return dest;
 }
 
-char *vmm_strncpy(char *dest, const char *src, size_t n)
+char *strncpy(char *dest, const char *src, size_t n)
 {
 	u32 i;
 	for (i = 0; src[i] != '\0' && n; ++i, n--)
@@ -52,7 +52,7 @@ char *vmm_strncpy(char *dest, const char *src, size_t n)
 	return dest;
 }
 
-char *vmm_strcat(char *dest, const char *src)
+char *strcat(char *dest, const char *src)
 {
 	char *save = dest;
 
@@ -62,7 +62,7 @@ char *vmm_strcat(char *dest, const char *src)
 	return (save);
 }
 
-int vmm_strcmp(const char *a, const char *b)
+int strcmp(const char *a, const char *b)
 {
 	while (*a == *b) {
 		if (*a == '\0' || *b == '\0') {
@@ -74,7 +74,7 @@ int vmm_strcmp(const char *a, const char *b)
 	return (unsigned char)*a - (unsigned char)*b;
 }
 
-int vmm_strncmp(const char *a, const char *b, int n)
+int strncmp(const char *a, const char *b, size_t n)
 {
 	if (n == 0)
 		return 0;
@@ -97,7 +97,7 @@ int vmm_strncmp(const char *a, const char *b, int n)
 	}
 }
 
-void vmm_str2lower(char * s)
+void str2lower(char * s)
 {
 	if (!s) {
 		return;
@@ -111,7 +111,7 @@ void vmm_str2lower(char * s)
 	}
 }
 
-void vmm_str2upper(char * s)
+void str2upper(char * s)
 {
 	if (!s) {
 		return;
@@ -125,7 +125,7 @@ void vmm_str2upper(char * s)
 	}
 }
 
-long long vmm_str2longlong(const char *s, unsigned int base)
+long long str2longlong(const char *s, unsigned int base)
 {
 	long long val = 0;
 	unsigned int digit;
@@ -173,12 +173,12 @@ long long vmm_str2longlong(const char *s, unsigned int base)
 	return val;
 }
 
-int vmm_str2int(const char *s, unsigned int base)
+int str2int(const char *s, unsigned int base)
 {
-	return vmm_str2longlong(s, base);
+	return str2longlong(s, base);
 }
 
-unsigned long long vmm_str2ulonglong(const char *s, unsigned int base)
+unsigned long long str2ulonglong(const char *s, unsigned int base)
 {
 	unsigned long long val = 0;
 	unsigned int digit;
@@ -214,12 +214,43 @@ unsigned long long vmm_str2ulonglong(const char *s, unsigned int base)
 	return val;
 }
 
-unsigned int vmm_str2uint(const char *s, unsigned int base)
+unsigned int str2uint(const char *s, unsigned int base)
 {
-	return vmm_str2ulonglong(s, base);
+	return str2ulonglong(s, base);
 }
 
-void *vmm_memcpy(void *dest, const void *src, size_t count)
+int str2ipaddr(unsigned char *ipaddr, const char *str)
+{
+	unsigned char tmp;
+	char c;
+	unsigned char i, j;
+
+	tmp = 0;
+
+	for(i = 0; i < 4; ++i) {
+		j = 0;
+		do {
+			c = *str;
+			++j;
+			if(j > 4) {
+				return 0;
+			}
+			if(c == '.' || c == 0) {
+				*ipaddr = tmp;
+				++ipaddr;
+				tmp = 0;
+			} else if(c >= '0' && c <= '9') {
+				tmp = (tmp * 10) + (c - '0');
+			} else {
+				return 0;
+			}
+			++str;
+		} while(c != '.' && c != 0);
+	}
+	return 1;
+}
+
+void *memcpy(void *dest, const void *src, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
 	u8 *src8 = (u8 *) src;
@@ -242,7 +273,7 @@ void *vmm_memcpy(void *dest, const void *src, size_t count)
 	return dest;
 }
 
-void *vmm_memcpy_toio(void *dest, const void *src, size_t count)
+void *memcpy_toio(void *dest, const void *src, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
 	u8 *src8 = (u8 *) src;
@@ -265,7 +296,7 @@ void *vmm_memcpy_toio(void *dest, const void *src, size_t count)
 	return dest;
 }
 
-void *vmm_memcpy_fromio(void *dest, const void *src, size_t count)
+void *memcpy_fromio(void *dest, const void *src, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
 	u8 *src8 = (u8 *) src;
@@ -288,7 +319,7 @@ void *vmm_memcpy_fromio(void *dest, const void *src, size_t count)
 	return dest;
 }
 
-void *vmm_memmove(void *dest, const void *src, size_t count)
+void *memmove(void *dest, const void *src, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
 	const u8 *src8 = (u8 *) src;
@@ -331,7 +362,7 @@ void *vmm_memmove(void *dest, const void *src, size_t count)
 	return dest;
 }
 
-void *vmm_memset(void *dest, int c, size_t count)
+void *memset(void *dest, int c, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
 	u8 ch = (u8) c;
@@ -351,7 +382,7 @@ void *vmm_memset(void *dest, int c, size_t count)
 	return dest;
 }
 
-void *vmm_memset_io(void *dest, int c, size_t count)
+void *memset_io(void *dest, int c, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
 	u8 ch = (u8) c;
@@ -371,7 +402,7 @@ void *vmm_memset_io(void *dest, int c, size_t count)
 	return dest;
 }
 
-int vmm_memcmp(const void *s1, const void *s2, size_t count)
+int memcmp(const void *s1, const void *s2, size_t count)
 {
 	u8 *p1 = (u8 *) s1;
 	u8 *p2 = (u8 *) s2;
@@ -384,7 +415,7 @@ int vmm_memcmp(const void *s1, const void *s2, size_t count)
 	return (0);
 }
 
-void *vmm_memchr(const void *s, int c, size_t n)
+void *memchr(const void *s, int c, size_t n)
 {
 	u32 i;
 
@@ -397,33 +428,3 @@ void *vmm_memchr(const void *s, int c, size_t n)
 	return NULL;
 }
 
-int vmm_str_to_ipaddr(unsigned char *ipaddr, const char *str)
-{
-	unsigned char tmp;
-	char c;
-	unsigned char i, j;
-
-	tmp = 0;
-
-	for(i = 0; i < 4; ++i) {
-		j = 0;
-		do {
-			c = *str;
-			++j;
-			if(j > 4) {
-				return 0;
-			}
-			if(c == '.' || c == 0) {
-				*ipaddr = tmp;
-				++ipaddr;
-				tmp = 0;
-			} else if(c >= '0' && c <= '9') {
-				tmp = (tmp * 10) + (c - '0');
-			} else {
-				return 0;
-			}
-			++str;
-		} while(c != '.' && c != 0);
-	}
-	return 1;
-}

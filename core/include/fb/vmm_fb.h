@@ -34,6 +34,7 @@
 #include <vmm_host_io.h>
 #include <vmm_devdrv.h>
 #include <list.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
 #define VMM_FB_CLASS_NAME			"fb"
@@ -818,9 +819,9 @@ static inline bool vmm_fb_be_math(struct vmm_fb_info *info)
 #define fb_writew vmm_writew
 #define fb_writel vmm_writel
 #define fb_writeq vmm_writeq
-#define fb_memset vmm_memset_io
-#define fb_memcpy_fromfb vmm_memcpy_fromio
-#define fb_memcpy_tofb vmm_memcpy_toio
+#define fb_memset memset_io
+#define fb_memcpy_fromfb memcpy_fromio
+#define fb_memcpy_tofb memcpy_toio
 
 #define FB_LEFT_POS(p, bpp)          (vmm_fb_be_math(p) ? (32 - (bpp)) : 0)
 #define FB_SHIFT_HIGH(p, val, bits)  (vmm_fb_be_math(p) ? (val) >> (bits) : \

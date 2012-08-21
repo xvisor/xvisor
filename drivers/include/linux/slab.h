@@ -2,7 +2,6 @@
 #define _LINUX_SLAB_H_
 
 #include <vmm_heap.h>
-#include <vmm_string.h>
 
 #define GFP_KERNEL		0x00000001
 #define GFP_ATOMIC		0x00000002

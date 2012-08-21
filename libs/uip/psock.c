@@ -36,7 +36,7 @@
 #include "uipopt.h"
 #include "psock.h"
 #include "uip.h"
-#include <vmm_string.h>
+#include <stringlib.h>
 
 #define STATE_NONE 0
 #define STATE_ACKED 1
@@ -82,21 +82,21 @@ buf_bufdata(struct psock_buf *buf, u16_t len,
 	    u8_t **dataptr, u16_t *datalen)
 {
   if(*datalen < buf->left) {
-    vmm_memcpy(buf->ptr, *dataptr, *datalen);
+    memcpy(buf->ptr, *dataptr, *datalen);
     buf->ptr += *datalen;
     buf->left -= *datalen;
     *dataptr += *datalen;
     *datalen = 0;
     return BUF_NOT_FULL;
   } else if(*datalen == buf->left) {
-    vmm_memcpy(buf->ptr, *dataptr, *datalen);
+    memcpy(buf->ptr, *dataptr, *datalen);
     buf->ptr += *datalen;
     buf->left = 0;
     *dataptr += *datalen;
     *datalen = 0;
     return BUF_FULL;
   } else {
-    vmm_memcpy(buf->ptr, *dataptr, buf->left);
+    memcpy(buf->ptr, *dataptr, buf->left);
     buf->ptr += buf->left;
     *datalen -= buf->left;
     *dataptr += buf->left;

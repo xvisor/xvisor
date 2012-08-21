@@ -23,30 +23,29 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
+#include <stringlib.h>
 #include <net/vmm_netport.h>
 
 struct vmm_netport *vmm_netport_alloc(char *name)
 {
 	struct vmm_netport *port;
 
-	port = vmm_malloc(sizeof(struct vmm_netport));
+	port = vmm_zalloc(sizeof(struct vmm_netport));
 	if (!port) {
 		vmm_printf("%s Failed to allocate net port\n", __func__);
 		return NULL;
 	}
-	vmm_memset(port, 0, sizeof(struct vmm_netport));
-	port->name = vmm_malloc(vmm_strlen(name)+1);
+
+	port->name = vmm_malloc(strlen(name)+1);
 	if (!port->name) {
 		vmm_printf("%s Failed to allocate for net port\n", __func__);
 		return NULL;
 	}
 
-	vmm_strcpy(port->name, name);
-
+	strcpy(port->name, name);
 	INIT_LIST_HEAD(&port->head);
 
 	return port;
@@ -67,7 +66,7 @@ int vmm_netport_register(struct vmm_netport *port)
 	}
 
 	INIT_LIST_HEAD(&cd->head);
-	vmm_strcpy(cd->name, port->name);
+	strcpy(cd->name, port->name);
 	cd->dev = port->dev;
 	cd->priv = port;
 
@@ -155,7 +154,7 @@ int vmm_netport_init(void)
 		return VMM_EFAIL;
 
 	INIT_LIST_HEAD(&c->head);
-	vmm_strcpy(c->name, VMM_NETPORT_CLASS_NAME);
+	strcpy(c->name, VMM_NETPORT_CLASS_NAME);
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);

@@ -33,8 +33,8 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <stringlib.h>
 #include <fb/vmm_fb.h>
 
 static u16 red2[] __read_mostly = {
@@ -195,11 +195,11 @@ int vmm_fb_copy_cmap(const struct vmm_fb_cmap *from, struct vmm_fb_cmap *to)
 		return VMM_EINVALID;
 	size *= sizeof(u16);
 
-	vmm_memcpy(to->red+tooff, from->red+fromoff, size);
-	vmm_memcpy(to->green+tooff, from->green+fromoff, size);
-	vmm_memcpy(to->blue+tooff, from->blue+fromoff, size);
+	memcpy(to->red+tooff, from->red+fromoff, size);
+	memcpy(to->green+tooff, from->green+fromoff, size);
+	memcpy(to->blue+tooff, from->blue+fromoff, size);
 	if (from->transp && to->transp)
-		vmm_memcpy(to->transp+tooff, from->transp+fromoff, size);
+		memcpy(to->transp+tooff, from->transp+fromoff, size);
 	return 0;
 }
 

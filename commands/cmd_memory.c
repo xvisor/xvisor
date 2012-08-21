@@ -23,10 +23,10 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"Command memory"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -158,15 +158,15 @@ int cmd_memory_modify(struct vmm_chardev *cdev, physical_addr_t addr,
 		switch (wsz) {
 		case 1:
 			*((u8 *)(page_va + addr_offset)) = 
-						(u8)vmm_str2uint(valv[w], 10);
+						(u8)str2uint(valv[w], 10);
 			break;
 		case 2:
 			*((u16 *)(page_va + addr_offset)) = 
-						(u16)vmm_str2uint(valv[w], 10);
+						(u16)str2uint(valv[w], 10);
 			break;
 		case 4:
 			*((u32 *)(page_va + addr_offset)) = 
-						(u32)vmm_str2uint(valv[w], 10);
+						(u32)str2uint(valv[w], 10);
 			break;
 		default:
 			break;
@@ -236,7 +236,7 @@ int cmd_memory_copy(struct vmm_chardev *cdev, physical_addr_t daddr,
 			b2copy = VMM_PAGE_SIZE - (u32)(daddr & VMM_PAGE_MASK);
 		}
 		b2copy = ((bcnt - b) < b2copy) ? (bcnt - b) : b2copy;
-		vmm_memcpy((void *)dva, (void *)sva, b2copy);
+		memcpy((void *)dva, (void *)sva, b2copy);
 		b += b2copy;
 		daddr += b2copy;
 		saddr += b2copy;
@@ -270,7 +270,7 @@ int cmd_memory_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return VMM_EFAIL;
 	} else {
 		if (argc == 2) {
-			if (vmm_strcmp(argv[1], "help") == 0) {
+			if (strcmp(argv[1], "help") == 0) {
 				cmd_memory_usage(cdev);
 				return VMM_OK;
 			} else {
@@ -282,25 +282,25 @@ int cmd_memory_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return VMM_EFAIL;
 		}
 	}
-	addr = (physical_addr_t)vmm_str2ulonglong(argv[2], 10);
-	if (vmm_strcmp(argv[1], "dump8") == 0) {
-		tmp = vmm_str2ulonglong(argv[3], 10);
+	addr = (physical_addr_t)str2ulonglong(argv[2], 10);
+	if (strcmp(argv[1], "dump8") == 0) {
+		tmp = str2ulonglong(argv[3], 10);
 		return cmd_memory_dump(cdev, addr, 1, (u32)tmp);
-	} else if (vmm_strcmp(argv[1], "dump16") == 0) {
-		tmp = vmm_str2ulonglong(argv[3], 10);
+	} else if (strcmp(argv[1], "dump16") == 0) {
+		tmp = str2ulonglong(argv[3], 10);
 		return cmd_memory_dump(cdev, addr, 2, (u32)tmp);
-	} else if (vmm_strcmp(argv[1], "dump32") == 0) {
-		tmp = vmm_str2ulonglong(argv[3], 10);
+	} else if (strcmp(argv[1], "dump32") == 0) {
+		tmp = str2ulonglong(argv[3], 10);
 		return cmd_memory_dump(cdev, addr, 4, (u32)tmp);
-	} else if (vmm_strcmp(argv[1], "modify8") == 0) {
+	} else if (strcmp(argv[1], "modify8") == 0) {
 		return cmd_memory_modify(cdev, addr, 1, argc - 3, &argv[3]);
-	} else if (vmm_strcmp(argv[1], "modify16") == 0) {
+	} else if (strcmp(argv[1], "modify16") == 0) {
 		return cmd_memory_modify(cdev, addr, 2, argc - 3, &argv[3]);
-	} else if (vmm_strcmp(argv[1], "modify32") == 0) {
+	} else if (strcmp(argv[1], "modify32") == 0) {
 		return cmd_memory_modify(cdev, addr, 4, argc - 3, &argv[3]);
-	} else if (vmm_strcmp(argv[1], "copy") == 0 && argc > 4) {
-		src_addr = (physical_addr_t)vmm_str2ulonglong(argv[3], 10);
-		tmp = vmm_str2uint(argv[4], 10);
+	} else if (strcmp(argv[1], "copy") == 0 && argc > 4) {
+		src_addr = (physical_addr_t)str2ulonglong(argv[3], 10);
+		tmp = str2uint(argv[4], 10);
 		return cmd_memory_copy(cdev, addr, src_addr, tmp);
 	}
 	cmd_memory_usage(cdev);

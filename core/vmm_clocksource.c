@@ -22,10 +22,10 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_spinlocks.h>
 #include <vmm_clocksource.h>
 #include <arch_timer.h>
+#include <stringlib.h>
 
 /** Control structure for clocksource manager */
 struct vmm_clocksource_ctrl {
@@ -128,7 +128,7 @@ int vmm_clocksource_register(struct vmm_clocksource *cs)
 
 	list_for_each(l, &csctrl.clksrc_list) {
 		cst = list_entry(l, struct vmm_clocksource, head);
-		if (vmm_strcmp(cst->name, cs->name) == 0) {
+		if (strcmp(cst->name, cs->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -169,7 +169,7 @@ int vmm_clocksource_unregister(struct vmm_clocksource *cs)
 	found = FALSE;
 	list_for_each(l, &csctrl.clksrc_list) {
 		cst = list_entry(l, struct vmm_clocksource, head);
-		if (vmm_strcmp(cst->name, cs->name) == 0) {
+		if (strcmp(cst->name, cs->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -230,7 +230,7 @@ struct vmm_clocksource *vmm_clocksource_find(const char *name)
 
 	list_for_each(l, &csctrl.clksrc_list) {
 		cs = list_entry(l, struct vmm_clocksource, head);
-		if (vmm_strcmp(cs->name, name) == 0) {
+		if (strcmp(cs->name, name) == 0) {
 			found = TRUE;
 			break;
 		}

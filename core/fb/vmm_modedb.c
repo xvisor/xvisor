@@ -32,15 +32,15 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
+#include <stringlib.h>
 #include <fb/vmm_fb.h>
 
 #undef DEBUG
 
 #define name_matches(v, s, l) \
-    ((v).name && !vmm_strncmp((s), (v).name, (l)) && vmm_strlen((v).name) == (l))
+    ((v).name && !strncmp((s), (v).name, (l)) && strlen((v).name) == (l))
 #define res_matches(v, x, y) \
     ((v).xres == (x) && (v).yres == (y))
 
@@ -604,7 +604,7 @@ int vmm_fb_find_mode(struct vmm_fb_var_screeninfo *var,
 	mode_option = fb_mode_option;
     if (mode_option) {
 	const char *name = mode_option;
-	unsigned int namelen = vmm_strlen(name);
+	unsigned int namelen = strlen(name);
 	int res_specified = 0, bpp_specified = 0, refresh_specified = 0;
 	unsigned int xres = 0, yres = 0, bpp = default_bpp, refresh = 0;
 	int yres_specified = 0, cvt = 0, rb = 0, interlace = 0, margins = 0;
@@ -616,7 +616,7 @@ int vmm_fb_find_mode(struct vmm_fb_var_screeninfo *var,
 		    namelen = i;
 		    if (!refresh_specified && !bpp_specified &&
 			!yres_specified) {
-			refresh = vmm_str2uint(&name[i+1], 10);
+			refresh = str2uint(&name[i+1], 10);
 			refresh_specified = 1;
 			if (cvt || rb)
 			    cvt = 0;
@@ -626,7 +626,7 @@ int vmm_fb_find_mode(struct vmm_fb_var_screeninfo *var,
 		case '-':
 		    namelen = i;
 		    if (!bpp_specified && !yres_specified) {
-			bpp = vmm_str2uint(&name[i+1], 10);
+			bpp = str2uint(&name[i+1], 10);
 			bpp_specified = 1;
 			if (cvt || rb)
 			    cvt = 0;
@@ -635,7 +635,7 @@ int vmm_fb_find_mode(struct vmm_fb_var_screeninfo *var,
 		    break;
 		case 'x':
 		    if (!yres_specified) {
-			yres = vmm_str2uint(&name[i+1], 10);
+			yres = str2uint(&name[i+1], 10);
 			yres_specified = 1;
 		    } else
 			goto done;
@@ -663,7 +663,7 @@ int vmm_fb_find_mode(struct vmm_fb_var_screeninfo *var,
 	    }
 	}
 	if (i < 0 && yres_specified) {
-	    xres = vmm_str2uint(name, 10);
+	    xres = str2uint(name, 10);
 	    res_specified = 1;
 	}
 done:
@@ -676,7 +676,7 @@ done:
 		    "", (margins) ? " with margins" : "", (interlace) ?
 		    " interlaced" : "");
 
-	    vmm_memset(&cvt_mode, 0, sizeof(cvt_mode));
+	    memset(&cvt_mode, 0, sizeof(cvt_mode));
 	    cvt_mode.xres = xres;
 	    cvt_mode.yres = yres;
 	    cvt_mode.refresh = (refresh) ? refresh : 60;
@@ -1114,7 +1114,7 @@ const struct vmm_fb_videomode *fb_find_best_display(const struct vmm_fb_monspecs
 	if (specs->max_x && specs->max_y) {
 		struct vmm_fb_var_screeninfo var;
 
-		vmm_memset(&var, 0, sizeof(struct vmm_fb_var_screeninfo));
+		memset(&var, 0, sizeof(struct vmm_fb_var_screeninfo));
 		var.xres = (specs->max_x * 7200)/254;
 		var.yres = (specs->max_y * 7200)/254;
 		m = vmm_fb_find_best_mode(&var, head);

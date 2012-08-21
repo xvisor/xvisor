@@ -23,7 +23,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>

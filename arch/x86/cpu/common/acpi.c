@@ -30,8 +30,8 @@
 #include <vmm_host_aspace.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
+#include <stringlib.h>
 #include <cpu_mmu.h>
 #include <arch_cpu.h>
 #include <cpu_private.h>
@@ -65,7 +65,7 @@ static u64 locate_rsdp_in_area(virtual_addr_t vaddr, u32 size)
 	virtual_addr_t addr;
 
 	for (addr = vaddr; addr < (vaddr + size); addr += 16) {
-		if (!vmm_memcmp((const void *)addr, RSDP_SIGNATURE,
+		if (!memcmp((const void *)addr, RSDP_SIGNATURE,
 				RSDP_SIGN_LEN)) {
 			return addr;
 		}
@@ -86,7 +86,7 @@ static int acpi_check_csum(struct acpi_sdt_hdr * tb, size_t size)
 
 static int acpi_check_signature(const char *orig, const char *match)
 {
-	return vmm_strncmp(orig, match, SDT_SIGN_LEN);
+	return strncmp(orig, match, SDT_SIGN_LEN);
 }
 
 static physical_addr_t acpi_get_table_base(const char * name)
@@ -94,7 +94,7 @@ static physical_addr_t acpi_get_table_base(const char * name)
 	int i;
 
 	for(i = 0; i < acpi_ctxt->nr_sys_hdr; i++) {
-		if (vmm_strncmp(name, acpi_ctxt->sdt_trans[i].signature,
+		if (strncmp(name, acpi_ctxt->sdt_trans[i].signature,
 				SDT_SIGN_LEN) == 0)
 			return acpi_ctxt->rsdt->data[i];
 	}
@@ -119,11 +119,11 @@ static int acpi_read_sdt_at(physical_addr_t addr,
 
 	/* if NULL is supplied, we only return the size of the table */
 	if (tb == NULL) {
-		vmm_memcpy(&hdr, sdt_va, sizeof(struct acpi_sdt_hdr));
+		memcpy(&hdr, sdt_va, sizeof(struct acpi_sdt_hdr));
 		return hdr.len;
 	}
 
-	vmm_memcpy(tb, sdt_va, sizeof(struct acpi_sdt_hdr));
+	memcpy(tb, sdt_va, sizeof(struct acpi_sdt_hdr));
 
 	if (acpi_check_signature((const char *)tb->signature,
 				 (const char *)name)) {
@@ -136,7 +136,7 @@ static int acpi_read_sdt_at(physical_addr_t addr,
 		return VMM_EFAIL;
 	}
 
-	vmm_memcpy(tb, sdt_va, size);
+	memcpy(tb, sdt_va, size);
 
 	if (acpi_check_csum(tb, tb->len)) {
 		vmm_printf("ACPI ERROR: acpi %s checksum does not match\n", name);
@@ -151,7 +151,7 @@ size_t acpi_get_table_length(const char * name)
 	int i;
 
 	for(i = 0; i < acpi_ctxt->nr_sys_hdr; i++) {
-		if (vmm_strncmp(name, acpi_ctxt->sdt_trans[i].signature,
+		if (strncmp(name, acpi_ctxt->sdt_trans[i].signature,
 				SDT_SIGN_LEN) == 0)
 			return acpi_ctxt->sdt_trans[i].length;
 	}
@@ -279,7 +279,7 @@ int acpi_init(void)
 				goto sdt_fail;
 			}
 
-			vmm_memcpy(&acpi_ctxt->sdt_trans[i].signature, &hdr->signature, SDT_SIGN_LEN);
+			memcpy(&acpi_ctxt->sdt_trans[i].signature, &hdr->signature, SDT_SIGN_LEN);
 
 			acpi_ctxt->sdt_trans[i].signature[SDT_SIGN_LEN] = '\0';
 			vmm_printf("%s ", acpi_ctxt->sdt_trans[i].signature);

@@ -22,11 +22,11 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_ram.h>
+#include <stringlib.h>
 #include <mathlib.h>
 #include <bitmap.h>
 
@@ -222,7 +222,7 @@ int __init vmm_host_ram_init(physical_addr_t base,
 {
 	int start, last, max;
 
-	vmm_memset(&rctrl, 0, sizeof(rctrl));
+	memset(&rctrl, 0, sizeof(rctrl));
 
 	INIT_SPIN_LOCK(&rctrl.ram_bmap_lock);
 

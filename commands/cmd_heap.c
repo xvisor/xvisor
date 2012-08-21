@@ -24,11 +24,11 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"Command heap"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -101,12 +101,12 @@ int cmd_heap_state(struct vmm_chardev *cdev)
 int cmd_heap_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_heap_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "info") == 0) {
+		} else if (strcmp(argv[1], "info") == 0) {
 			return cmd_heap_info(cdev);
-		} else if (vmm_strcmp(argv[1], "state") == 0) {
+		} else if (strcmp(argv[1], "state") == 0) {
 			return cmd_heap_state(cdev);
 		}
 	}

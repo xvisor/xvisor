@@ -23,11 +23,11 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_manager.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"Command vcpu"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -75,25 +75,25 @@ static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 		}
 		switch (vcpu->state) {
 		case VMM_VCPU_STATE_UNKNOWN:
-			vmm_strcpy(state, "Unknown");
+			strcpy(state, "Unknown");
 			break;
 		case VMM_VCPU_STATE_RESET:
-			vmm_strcpy(state, "Reset");
+			strcpy(state, "Reset");
 			break;
 		case VMM_VCPU_STATE_READY:
-			vmm_strcpy(state, "Ready");
+			strcpy(state, "Ready");
 			break;
 		case VMM_VCPU_STATE_RUNNING:
-			vmm_strcpy(state, "Running");
+			strcpy(state, "Running");
 			break;
 		case VMM_VCPU_STATE_PAUSED:
-			vmm_strcpy(state, "Paused");
+			strcpy(state, "Paused");
 			break;
 		case VMM_VCPU_STATE_HALTED:
-			vmm_strcpy(state, "Halted");
+			strcpy(state, "Halted");
 			break;
 		default:
-			vmm_strcpy(state, "Invalid");
+			strcpy(state, "Invalid");
 			break;
 		}
 		if (vcpu->node) {
@@ -251,11 +251,11 @@ static int cmd_vcpu_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	}
 
 	if (argc == 3) {
-		id = vmm_str2int(argv[2], 10);
+		id = str2int(argv[2], 10);
 	}
 	
 	while (command[index].name) {
-		if (vmm_strcmp(argv[1], command[index].name) == 0) {
+		if (strcmp(argv[1], command[index].name) == 0) {
 			return command[index].function(cdev, id);
 		}
 		index++;

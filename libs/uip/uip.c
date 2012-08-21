@@ -100,8 +100,8 @@
 #include <vmm_types.h>
 #include <vmm_timer.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_host_io.h>
+#include <stringlib.h>
 
 #if UIP_CONF_IPV6
 #include "uip-neighbor.h"
@@ -549,7 +549,7 @@ uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport)
   conn->lport = HTONS(lastport);
   conn->rport = rport;
   if(ripaddr == NULL) {
-    vmm_memset(conn->ripaddr, 0, sizeof(uip_ipaddr_t));
+    memset(conn->ripaddr, 0, sizeof(uip_ipaddr_t));
   } else {
     uip_ipaddr_copy(&conn->ripaddr, ripaddr);
   }
@@ -606,11 +606,11 @@ uip_reass(void)
      write the IP header of the fragment into the reassembly
      buffer. The timer is updated with the maximum age. */
   if(uip_reasstmr == 0) {
-    vmm_memcpy(uip_reassbuf, &BUF->vhl, UIP_IPH_LEN);
+    memcpy(uip_reassbuf, &BUF->vhl, UIP_IPH_LEN);
     uip_reasstmr = UIP_REASS_MAXAGE;
     uip_reassflags = 0;
     /* Clear the bitmap. */
-    vmm_memset(uip_reassbitmap, 0, sizeof(uip_reassbitmap));
+    memset(uip_reassbitmap, 0, sizeof(uip_reassbitmap));
   }
 
   /* Check if the incoming fragment matches the one currently present
@@ -636,7 +636,7 @@ uip_reass(void)
 
     /* Copy the fragment into the reassembly buffer, at the right
        offset. */
-    vmm_memcpy(&uip_reassbuf[UIP_IPH_LEN + offset],
+    memcpy(&uip_reassbuf[UIP_IPH_LEN + offset],
 	   (char *)BUF + (int)((BUF->vhl & 0x0f) * 4),
 	   len);
       
@@ -694,7 +694,7 @@ uip_reass(void)
 	 buffer, so we allocate a pbuf and copy the packet into it. We
 	 also reset the timer. */
       uip_reasstmr = 0;
-      vmm_memcpy(BUF, FBUF, uip_reasslen);
+      memcpy(BUF, FBUF, uip_reasslen);
 
       /* Pretend to be a "normal" (i.e., not fragmented) IP packet
 	 from now on. */
@@ -1026,7 +1026,7 @@ uip_process(u8_t flag)
     static u64 uip_ping_time;
 
 
-    if(!vmm_memcmp(ICMPBUF->destipaddr, all_zeroes_addr, 4)) {
+    if(!memcmp(ICMPBUF->destipaddr, all_zeroes_addr, 4)) {
     /*  
      *  While requesting for ping sequence, the ping-app sends a dummy
      *  ICMP_ECHO_REPLY to itself with all-zeroes destipaddr and the
@@ -1140,7 +1140,7 @@ uip_process(u8_t flag)
       uip_ipaddr_copy(ICMPBUF->srcipaddr, uip_hostaddr);
       ICMPBUF->options[0] = ICMP6_OPTION_TARGET_LINK_ADDRESS;
       ICMPBUF->options[1] = 1;  /* Options length, 1 = 8 bytes. */
-      vmm_memcpy(&(ICMPBUF->options[2]), &uip_ethaddr, sizeof(uip_ethaddr));
+      memcpy(&(ICMPBUF->options[2]), &uip_ethaddr, sizeof(uip_ethaddr));
       ICMPBUF->icmpchksum = 0;
       ICMPBUF->icmpchksum = ~uip_icmp6chksum();
       goto send;
@@ -1985,7 +1985,7 @@ uip_send(const void *data, int len)
   if(len > 0) {
     uip_slen = len;
     if(data != uip_sappdata) {
-      vmm_memcpy(uip_sappdata, (data), uip_slen);
+      memcpy(uip_sappdata, (data), uip_slen);
     }
   }
 }

@@ -33,12 +33,12 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_timer.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
 #define MODULE_DESC			"SP804 Dual-Mode Timer Emulator"
@@ -541,7 +541,7 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 		rc = VMM_EFAIL;
 		goto sp804_emulator_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct sp804_state));
+	memset(s, 0x0, sizeof(struct sp804_state));
 
 	attr = vmm_devtree_attrval(edev->node, "irq");
 	if (attr) {

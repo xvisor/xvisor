@@ -38,7 +38,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_timer.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
@@ -47,12 +46,13 @@
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_stdio.h>
-#include <mathlib.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_net.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
+#include <stringlib.h>
+#include <mathlib.h>
 
 #define MODULE_DESC			"SMSC LAN9118 Emulator"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
@@ -537,7 +537,7 @@ static int lan9118_filter(struct lan9118_state *s, const u8 *addr)
 	if (multicast ? (s->mac_cr & MAC_CR_HPFILT) == 0
 			: (s->mac_cr & MAC_CR_HO) == 0) {
 		/* Exact matching.  */
-		hash = vmm_memcmp(addr, vmm_netport_mac(s->port), 6);
+		hash = memcmp(addr, vmm_netport_mac(s->port), 6);
 		if (s->mac_cr & MAC_CR_INVFILT) {
 			return hash != 0;
 		} else {
@@ -1077,7 +1077,7 @@ static void lan9118_eeprom_cmd(struct lan9118_state *s, int cmd, int addr)
 		break;
 	case 6: /* ERAL */
 		if (s->eeprom_writable) {
-			vmm_memset(s->eeprom, 0xff, 128);
+			memset(s->eeprom, 0xff, 128);
 			DPRINTF("EEPROM Erase All\n");
 		} else {
 			DPRINTF("EEPROM Erase All (ignored)\n");
@@ -1421,7 +1421,7 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto lan9118_emulator_probe_done;
 	}
-	vmm_memset(s, 0, sizeof(struct lan9118_state));
+	memset(s, 0, sizeof(struct lan9118_state));
 
 	attr = vmm_devtree_attrval(edev->node, "irq");
 	if (attr) {

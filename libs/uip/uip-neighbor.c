@@ -41,8 +41,8 @@
 
 #include "uip-neighbor.h"
 
-#include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <stringlib.h>
 
 #define MAX_TIME 128
 
@@ -114,7 +114,7 @@ uip_neighbor_add(uip_ipaddr_t ipaddr, struct uip_neighbor_addr *addr)
      "oldest" variable). */
   entries[oldest].time = 0;
   uip_ipaddr_copy(entries[oldest].ipaddr, ipaddr);
-  vmm_memcpy(&entries[oldest].addr, addr, sizeof(struct uip_neighbor_addr));
+  memcpy(&entries[oldest].addr, addr, sizeof(struct uip_neighbor_addr));
 }
 /*---------------------------------------------------------------------------*/
 static struct neighbor_entry *

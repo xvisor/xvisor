@@ -938,7 +938,7 @@ static void atkbd_set_keycode_table(struct atkbd *atkbd)
 	unsigned int scancode;
 	int i, j;
 
-	vmm_memset(atkbd->keycode, 0, sizeof(atkbd->keycode));
+	memset(atkbd->keycode, 0, sizeof(atkbd->keycode));
 	bitmap_zero(atkbd->force_release_mask, ATKBD_KEYMAP_SIZE);
 
 	if (atkbd->translated) {
@@ -952,9 +952,9 @@ static void atkbd_set_keycode_table(struct atkbd *atkbd)
 						atkbd->keycode[i | 0x80] = atkbd_scroll_keys[j].keycode;
 		}
 	} else if (atkbd->set == 3) {
-		vmm_memcpy(atkbd->keycode, atkbd_set3_keycode, sizeof(atkbd->keycode));
+		memcpy(atkbd->keycode, atkbd_set3_keycode, sizeof(atkbd->keycode));
 	} else {
-		vmm_memcpy(atkbd->keycode, atkbd_set2_keycode, sizeof(atkbd->keycode));
+		memcpy(atkbd->keycode, atkbd_set2_keycode, sizeof(atkbd->keycode));
 
 		if (atkbd->scroll)
 			for (i = 0; i < ARRAY_SIZE(atkbd_scroll_keys); i++) {

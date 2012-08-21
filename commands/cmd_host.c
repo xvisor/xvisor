@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_cpumask.h>
 #include <vmm_host_irq.h>
@@ -32,6 +31,7 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <vmm_delay.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
 #define MODULE_DESC			"Command host"
@@ -191,37 +191,37 @@ int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int colcnt;
 	if (1 < argc) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_host_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "info") == 0) {
+		} else if (strcmp(argv[1], "info") == 0) {
 			cmd_host_info(cdev);
 			return VMM_OK;
-		} else if ((vmm_strcmp(argv[1], "irq") == 0) && (2 < argc)) {
-			if (vmm_strcmp(argv[2], "stats") == 0) {
+		} else if ((strcmp(argv[1], "irq") == 0) && (2 < argc)) {
+			if (strcmp(argv[2], "stats") == 0) {
 				cmd_host_irq_stats(cdev);
 				return VMM_OK;
 			}
-		} else if ((vmm_strcmp(argv[1], "ram") == 0) && (2 < argc)) {
-			if (vmm_strcmp(argv[2], "stats") == 0) {
+		} else if ((strcmp(argv[1], "ram") == 0) && (2 < argc)) {
+			if (strcmp(argv[2], "stats") == 0) {
 				cmd_host_ram_stats(cdev);
 				return VMM_OK;
-			} else if (vmm_strcmp(argv[2], "bitmap") == 0) {
+			} else if (strcmp(argv[2], "bitmap") == 0) {
 				if (3 < argc) {
-					colcnt = vmm_str2int(argv[3], 10);
+					colcnt = str2int(argv[3], 10);
 				} else {
 					colcnt = 64;
 				}
 				cmd_host_ram_bitmap(cdev, colcnt);
 				return VMM_OK;
 			}
-		} else if ((vmm_strcmp(argv[1], "vapool") == 0) && (2 < argc)) {
-			if (vmm_strcmp(argv[2], "stats") == 0) {
+		} else if ((strcmp(argv[1], "vapool") == 0) && (2 < argc)) {
+			if (strcmp(argv[2], "stats") == 0) {
 				cmd_host_vapool_stats(cdev);
 				return VMM_OK;
-			} else if (vmm_strcmp(argv[2], "bitmap") == 0) {
+			} else if (strcmp(argv[2], "bitmap") == 0) {
 				if (3 < argc) {
-					colcnt = vmm_str2int(argv[3], 10);
+					colcnt = str2int(argv[3], 10);
 				} else {
 					colcnt = 64;
 				}

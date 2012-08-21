@@ -21,14 +21,14 @@
  * @brief Real-Time Clock Device framework source
  */
 
-#include <list.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
 #include <vmm_wallclock.h>
+#include <list.h>
+#include <stringlib.h>
 #include <rtc/vmm_rtcdev.h>
 
 #define MODULE_DESC			"RTC Device Framework"
@@ -133,15 +133,13 @@ int vmm_rtcdev_register(struct vmm_rtcdev * rdev)
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_malloc(sizeof(struct vmm_classdev));
+	cd = vmm_zalloc(sizeof(struct vmm_classdev));
 	if (!cd) {
 		return VMM_EFAIL;
 	}
 
-	vmm_memset(cd, 0, sizeof(struct vmm_classdev));
-
 	INIT_LIST_HEAD(&cd->head);
-	vmm_strcpy(cd->name, rdev->name);
+	strcpy(cd->name, rdev->name);
 	cd->dev = rdev->dev;
 	cd->priv = rdev;
 
@@ -211,15 +209,13 @@ static int __init vmm_rtcdev_init(void)
 
 	vmm_printf("Initialize RTC Device Framework\n");
 
-	c = vmm_malloc(sizeof(struct vmm_class));
+	c = vmm_zalloc(sizeof(struct vmm_class));
 	if (!c) {
 		return VMM_EFAIL;
 	}
 
-	vmm_memset(c, 0, sizeof(struct vmm_class));
-
 	INIT_LIST_HEAD(&c->head);
-	vmm_strcpy(c->name, VMM_RTCDEV_CLASS_NAME);
+	strcpy(c->name, VMM_RTCDEV_CLASS_NAME);
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);

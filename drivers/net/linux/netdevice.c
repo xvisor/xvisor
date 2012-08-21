@@ -35,8 +35,8 @@ struct net_device *netdev_alloc(const char *name)
 		return NULL;
 	}
 
-	vmm_memset(ndev, 0, sizeof(struct net_device));
-	vmm_strcpy(ndev->name, name);
+	memset(ndev, 0, sizeof(struct net_device));
+	strcpy(ndev->name, name);
 	ndev->state = NETDEV_UNINITIALIZED;
 
 	return ndev;
@@ -61,7 +61,7 @@ static int netdev_register_port(struct net_device *ndev)
         port->can_receive = netdev_can_receive;
         port->switch2port_xfer = netdev_switch2port_xfer;
         port->priv = ndev;
-        vmm_memcpy(port->macaddr, ndev->dev_addr, ETH_ALEN);
+        memcpy(port->macaddr, ndev->dev_addr, ETH_ALEN);
 
         ndev->nsw_priv = port;
 
@@ -181,7 +181,7 @@ struct net_device *alloc_etherdev(int sizeof_priv)
 		return NULL;
 	}
 
-	vmm_memset(ndev, 0, sizeof(struct net_device));
+	memset(ndev, 0, sizeof(struct net_device));
 
 	ndev->priv = (void *) vmm_malloc(sizeof_priv);
 	if (!ndev->priv) {
@@ -191,7 +191,7 @@ struct net_device *alloc_etherdev(int sizeof_priv)
 		return NULL;
 	}
 
-	vmm_memset(ndev->priv, 0, sizeof_priv);
+	memset(ndev->priv, 0, sizeof_priv);
 
 	ndev->state = NETDEV_UNINITIALIZED;
 

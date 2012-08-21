@@ -23,12 +23,12 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
 #include <vmm_spinlocks.h>
 #include <vmm_scheduler.h>
 #include <vmm_threads.h>
+#include <stringlib.h>
 
 struct vmm_threads_ctrl {
         vmm_spinlock_t lock;
@@ -122,7 +122,7 @@ int vmm_threads_get_name(char * dst, struct vmm_thread * tinfo)
 		return VMM_EFAIL;
 	}
 
-	vmm_strcpy(dst, tinfo->tvcpu->name);
+	strcpy(dst, tinfo->tvcpu->name);
 
 	return VMM_OK;
 }
@@ -269,7 +269,7 @@ struct vmm_thread *vmm_threads_create(const char *thread_name,
 	tinfo->tfn = thread_fn;
 	tinfo->tdata = thread_data;
 	tinfo->tnsecs = thread_nsecs;
-	vmm_memset(&tinfo->tstack, 0, CONFIG_THREAD_STACK_SIZE);
+	memset(&tinfo->tstack, 0, CONFIG_THREAD_STACK_SIZE);
 
 	/* Create an orphan vcpu for this thread */
 	tinfo->tvcpu = vmm_manager_vcpu_orphan_create(thread_name,
@@ -325,7 +325,7 @@ int vmm_threads_destroy(struct vmm_thread * tinfo)
 
 int __init vmm_threads_init(void)
 {
-	vmm_memset(&thctrl, 0, sizeof(thctrl));
+	memset(&thctrl, 0, sizeof(thctrl));
 
 	INIT_SPIN_LOCK(&thctrl.lock);
 	INIT_LIST_HEAD(&thctrl.thread_list);

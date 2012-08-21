@@ -22,9 +22,9 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
+#include <stringlib.h>
 #include <mathlib.h>
 #include <libfdt.h>
 
@@ -37,7 +37,7 @@ static u32 libfdt_property_len(const char *prop,
 	u32 lsz, type, reg_cells, reg_count;
 
 	/* Special way of handling 'reg' property */
-	if (vmm_strcmp(prop, "reg") == 0) {
+	if (strcmp(prop, "reg") == 0) {
 		reg_cells = len / sizeof(fdt_cell_t);
 		reg_count = udiv32(reg_cells, address_cells + size_cells);
 		if (umod32(reg_cells, address_cells + size_cells)) {
@@ -73,7 +73,7 @@ static void libfdt_property_read(const char *prop, void *dst, void *src,
 	u64 val64;
 
 	/* Special way of handling 'reg' property */
-	if (vmm_strcmp(prop, "reg") == 0) {
+	if (strcmp(prop, "reg") == 0) {
 		reg_cells = len / sizeof(fdt_cell_t);
 		reg_count = udiv32(reg_cells, address_cells + size_cells);
 		if (umod32(reg_cells, address_cells + size_cells)) {
@@ -106,7 +106,7 @@ static void libfdt_property_read(const char *prop, void *dst, void *src,
 
 	/* Special way of handling non-literal property */
 	if (!vmm_devtree_isliteral(type)) {
-		vmm_memcpy(dst, src, len);
+		memcpy(dst, src, len);
 		return;
 	}
 
@@ -152,7 +152,7 @@ int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
 	}
 
 	/* Retrive header */
-	vmm_memcpy(&fdt->header, (void *)fdt_addr, sizeof(fdt->header));
+	memcpy(&fdt->header, (void *)fdt_addr, sizeof(fdt->header));
 	fdt->header.magic = LIBFDT_DATA32(&fdt->header.magic);
 	fdt->header.totalsize = LIBFDT_DATA32(&fdt->header.totalsize);
 	fdt->header.off_dt_struct = LIBFDT_DATA32(&fdt->header.off_dt_struct);
@@ -234,7 +234,7 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 		case FDT_BEGIN_NODE:
 			*data += sizeof(fdt_cell_t);
 			child = vmm_devtree_addnode(node, *data);
-			*data += vmm_strlen(*data) + 1;
+			*data += strlen(*data) + 1;
 			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
 				(*data)++;
 			}
@@ -275,7 +275,7 @@ int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
 	*root = vmm_devtree_addnode(NULL, data);
 
 	/* Skip root node name */
-	data += vmm_strlen(data) + 1;
+	data += strlen(data) + 1;
 	while ((virtual_addr_t) (data) % sizeof(fdt_cell_t) != 0) {
 		(data)++;
 	}
@@ -305,7 +305,7 @@ static struct fdt_node_header *libfdt_find_node_recursive(char **data,
 
 	*data += sizeof(fdt_cell_t);
 
-	len = vmm_strlen(*data);
+	len = strlen(*data);
 	valid = 1;
 	for (i = 0; i < len; i++) {
 		if (!node_path[i]) {
@@ -412,7 +412,7 @@ int libfdt_get_property(struct fdt_fileinfo *fdt,
 	data += sizeof(fdt_cell_t);
 
 	/* Skip node name */
-	len = vmm_strlen(data);
+	len = strlen(data);
 	data += len + 1;
 	while ((virtual_addr_t) (data) % sizeof(fdt_cell_t) != 0) {
 		data++;
@@ -424,7 +424,7 @@ int libfdt_get_property(struct fdt_fileinfo *fdt,
 		data += sizeof(fdt_cell_t);
 		len = LIBFDT_DATA32(data);
 		data += sizeof(fdt_cell_t);
-		if (!vmm_strcmp(&fdt->str[LIBFDT_DATA32(data)], 
+		if (!strcmp(&fdt->str[LIBFDT_DATA32(data)], 
 				property)) {
 			data -= sizeof(fdt_cell_t) * 2;
 			ret = (struct fdt_property *)data;

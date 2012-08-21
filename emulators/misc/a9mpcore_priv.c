@@ -35,12 +35,12 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 #include <timer/arm_mptimer_emulator.h>
 #include <pic/gic_emulator.h>
 
@@ -293,7 +293,7 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto a9mp_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct a9mp_priv_state));
+	memset(s, 0x0, sizeof(struct a9mp_priv_state));
 
 	s->num_cpu = (u32)vmm_devtree_attrval(edev->node, "num_cpu");
 	if(!s->num_cpu) {

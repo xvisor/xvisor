@@ -25,11 +25,11 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_timer.h>
-#include <vmm_string.h>
 #include <vmm_devdrv.h>
 #include <vmm_threads.h>
 #include <vmm_modules.h>
 #include <list.h>
+#include <stringlib.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netswitch.h>
@@ -150,7 +150,7 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 		mac_entry = vmm_malloc(sizeof(struct vmm_netbridge_mac_entry));
 		if(mac_entry) {
 			mac_entry->port = src_port;
-			vmm_memcpy(mac_entry->macaddr, srcmac, 6);
+			memcpy(mac_entry->macaddr, srcmac, 6);
 			mac_entry->timestamp = vmm_timer_timestamp();
 			list_add_tail(&mac_entry->head, &nbctrl->mac_table);
 		} else {

@@ -53,7 +53,7 @@
 #define __UIP_ARP_H__
 
 #include "uip.h"
-#include <vmm_string.h>
+#include <stringlib.h>
 
 
 extern struct uip_eth_addr uip_ethaddr;
@@ -103,10 +103,10 @@ struct arp_hdr {
 #define uip_create_broadcast_eth_arp_pkt(buf, ipaddr, op)	\
 do {								\
 	struct arp_hdr *arp = (void *)(buf);			\
-	vmm_memset(arp->ethhdr.dest.addr, 0xff, 6);		\
-	vmm_memset(arp->dhwaddr.addr, 0x00, 6);			\
-	vmm_memcpy(arp->ethhdr.src.addr, uip_ethaddr.addr, 6);	\
-	vmm_memcpy(arp->shwaddr.addr, uip_ethaddr.addr, 6);	\
+	memset(arp->ethhdr.dest.addr, 0xff, 6);		\
+	memset(arp->dhwaddr.addr, 0x00, 6);			\
+	memcpy(arp->ethhdr.src.addr, uip_ethaddr.addr, 6);	\
+	memcpy(arp->shwaddr.addr, uip_ethaddr.addr, 6);	\
 	uip_ipaddr_copy(arp->dipaddr, (ipaddr));		\
 	uip_ipaddr_copy(arp->sipaddr, uip_hostaddr);		\
 	arp->opcode = HTONS((op));				\

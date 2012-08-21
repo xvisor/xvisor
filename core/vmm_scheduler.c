@@ -25,7 +25,6 @@
 #include <vmm_smp.h>
 #include <vmm_percpu.h>
 #include <vmm_cpumask.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_timer.h>
@@ -33,6 +32,7 @@
 #include <vmm_scheduler.h>
 #include <arch_cpu_irq.h>
 #include <arch_vcpu.h>
+#include <stringlib.h>
 
 #define IDLE_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
 #define IDLE_VCPU_PRIORITY 		VMM_VCPU_MIN_PRIORITY
@@ -316,7 +316,7 @@ int __init vmm_scheduler_init(void)
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
 	/* Reset the scheduler control structure */
-	vmm_memset(schedp, 0, sizeof(struct vmm_scheduler_ctrl));
+	memset(schedp, 0, sizeof(struct vmm_scheduler_ctrl));
 
 	/* Create ready queue (Per Host CPU) */
 	schedp->rq = vmm_schedalgo_rq_create();

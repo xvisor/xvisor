@@ -22,10 +22,10 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_spinlocks.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_vapool.h>
+#include <stringlib.h>
 #include <mathlib.h>
 #include <bitmap.h>
 
@@ -228,7 +228,7 @@ int __init vmm_host_vapool_init(virtual_addr_t base,
 		return VMM_EFAIL;
 	}
 
-	vmm_memset(&vpctrl, 0, sizeof(vpctrl));
+	memset(&vpctrl, 0, sizeof(vpctrl));
 
 	INIT_SPIN_LOCK(&vpctrl.vapool_bmap_lock);
 

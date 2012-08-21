@@ -27,10 +27,10 @@
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netstack.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_completion.h>
+#include <stringlib.h>
 
 struct vmm_completion uip_arp_prefetch_done;
 static struct vmm_completion uip_ping_done;
@@ -59,7 +59,7 @@ int vmm_netstack_get_ipaddr(u8 *addr)
 {
 	uip_ipaddr_t ipaddr;
 	uip_gethostaddr(ipaddr);
-	vmm_memcpy(addr, ipaddr, 4);
+	memcpy(addr, ipaddr, 4);
 	return VMM_OK;
 }
 
@@ -75,13 +75,13 @@ int vmm_netstack_get_ipmask(u8 *addr)
 {
 	uip_ipaddr_t ipaddr;
 	uip_getnetmask(ipaddr);
-	vmm_memcpy(addr, ipaddr, 4);
+	memcpy(addr, ipaddr, 4);
 	return VMM_OK;
 }
 
 int vmm_netstack_get_hwaddr(u8 *addr)
 {
-	vmm_memcpy(addr, &uip_ethaddr, 6);
+	memcpy(addr, &uip_ethaddr, 6);
 	return VMM_OK;
 }
 
@@ -93,7 +93,7 @@ static struct vmm_icmp_echo_reply *uip_ping_reply;
 void uip_ping_callback(struct vmm_icmp_echo_reply *reply)
 {
 	if(uip_ping_reply) {
-		vmm_memcpy(uip_ping_reply, reply, 
+		memcpy(uip_ping_reply, reply, 
 				sizeof(struct vmm_icmp_echo_reply));
 		vmm_completion_complete(&uip_ping_done);
 	}
@@ -166,7 +166,7 @@ void vmm_netstack_prefetch_arp_mapping(u8 *ipaddr)
 	u64 timeout = (u64)5000000000;
 
 	/* No need to prefetch our own mapping */
-	if(!vmm_memcmp(ipaddr, uip_hostaddr, 4)) {
+	if(!memcmp(ipaddr, uip_hostaddr, 4)) {
 		return;
 	}
 

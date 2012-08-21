@@ -23,11 +23,11 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <rtc/vmm_rtcdev.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"Command rtcdev"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -247,36 +247,36 @@ int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
 		s++;
 	}
 	rc = 0;
-	tm.tm_mday = vmm_str2int(targv[1], 10);
-	vmm_str2lower(targv[2]);
-	if (vmm_strcmp(targv[2], "jan") == 0) {
+	tm.tm_mday = str2int(targv[1], 10);
+	str2lower(targv[2]);
+	if (strcmp(targv[2], "jan") == 0) {
 		tm.tm_mon = 0;
-	} else if (vmm_strcmp(targv[2], "feb") == 0) {
+	} else if (strcmp(targv[2], "feb") == 0) {
 		tm.tm_mon = 1;
-	} else if (vmm_strcmp(targv[2], "mar") == 0) {
+	} else if (strcmp(targv[2], "mar") == 0) {
 		tm.tm_mon = 2;
-	} else if (vmm_strcmp(targv[2], "apr") == 0) {
+	} else if (strcmp(targv[2], "apr") == 0) {
 		tm.tm_mon = 3;
-	} else if (vmm_strcmp(targv[2], "may") == 0) {
+	} else if (strcmp(targv[2], "may") == 0) {
 		tm.tm_mon = 4;
-	} else if (vmm_strcmp(targv[2], "jun") == 0) {
+	} else if (strcmp(targv[2], "jun") == 0) {
 		tm.tm_mon = 5;
-	} else if (vmm_strcmp(targv[2], "jul") == 0) {
+	} else if (strcmp(targv[2], "jul") == 0) {
 		tm.tm_mon = 6;
-	} else if (vmm_strcmp(targv[2], "aug") == 0) {
+	} else if (strcmp(targv[2], "aug") == 0) {
 		tm.tm_mon = 7;
-	} else if (vmm_strcmp(targv[2], "sep") == 0) {
+	} else if (strcmp(targv[2], "sep") == 0) {
 		tm.tm_mon = 8;
-	} else if (vmm_strcmp(targv[2], "oct") == 0) {
+	} else if (strcmp(targv[2], "oct") == 0) {
 		tm.tm_mon = 9;
-	} else if (vmm_strcmp(targv[2], "nov") == 0) {
+	} else if (strcmp(targv[2], "nov") == 0) {
 		tm.tm_mon = 10;
-	} else if (vmm_strcmp(targv[2], "dec") == 0) {
+	} else if (strcmp(targv[2], "dec") == 0) {
 		tm.tm_mon = 11;
 	} else {
-		tm.tm_mon = vmm_str2int(targv[2], 10);
+		tm.tm_mon = str2int(targv[2], 10);
 	}
-	tm.tm_year = vmm_str2int(targv[3], 10) - 1900;
+	tm.tm_year = str2int(targv[3], 10) - 1900;
 
 	if (!vmm_rtc_valid_tm(&tm)) {
 		vmm_cprintf(cdev, "Error: invalid date-time\n");
@@ -295,10 +295,10 @@ int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
 int cmd_rtcdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_rtcdev_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "list") == 0) {
+		} else if (strcmp(argv[1], "list") == 0) {
 			cmd_rtcdev_list(cdev);
 			return VMM_OK;
 		}
@@ -307,13 +307,13 @@ int cmd_rtcdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		cmd_rtcdev_usage(cdev);
 		return VMM_EFAIL;
 	}
-	if (vmm_strcmp(argv[1], "sync_wallclock") == 0) {
+	if (strcmp(argv[1], "sync_wallclock") == 0) {
 		return cmd_rtcdev_sync_wallclock(cdev, argv[2]);
-	} else if (vmm_strcmp(argv[1], "sync_device") == 0) {
+	} else if (strcmp(argv[1], "sync_device") == 0) {
 		return cmd_rtcdev_sync_device(cdev, argv[2]);
-	} else if (vmm_strcmp(argv[1], "get_time") == 0) {
+	} else if (strcmp(argv[1], "get_time") == 0) {
 		return cmd_rtcdev_get_time(cdev, argv[2]);
-	} else if ((vmm_strcmp(argv[1], "set_time") == 0) && argc == 7) {
+	} else if ((strcmp(argv[1], "set_time") == 0) && argc == 7) {
 		return cmd_rtcdev_set_time(cdev, argv[2], argc - 3, &argv[3]);
 	}
 	cmd_rtcdev_usage(cdev);

@@ -25,18 +25,18 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
 #include <vmm_spinlocks.h>
 #include <vmm_threads.h>
 #include <vmm_completion.h>
-#include <list.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
+#include <list.h>
+#include <stringlib.h>
 
 #undef DEBUG
 
@@ -185,13 +185,13 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name, u16 rxq_size,
 		goto vmm_netswitch_alloc_failed;
 	}
 
-	vmm_memset(nsw, 0, sizeof(struct vmm_netswitch));
-	nsw->name = vmm_malloc(vmm_strlen(name)+1);
+	memset(nsw, 0, sizeof(struct vmm_netswitch));
+	nsw->name = vmm_malloc(strlen(name)+1);
 	if (!nsw->name) {
 		vmm_printf("%s Failed to allocate for net switch\n", __func__);
 		goto vmm_netswitch_alloc_failed;
 	}
-	vmm_strcpy(nsw->name, name);
+	strcpy(nsw->name, name);
 
 	nsw->xfer_pool = vmm_malloc(sizeof(struct vmm_netswitch_xfer) * rxq_size);
 	if (!nsw->xfer_pool) {
@@ -272,7 +272,7 @@ int vmm_netswitch_register(struct vmm_netswitch *nsw, struct vmm_device *dev,
 	}
 
 	INIT_LIST_HEAD(&cd->head);
-	vmm_strcpy(cd->name, nsw->name);
+	strcpy(cd->name, nsw->name);
 	cd->dev = nsw->dev;
 	cd->priv = nsw;
 
@@ -431,7 +431,7 @@ int vmm_netswitch_init(void)
 		return VMM_EFAIL;
 
 	INIT_LIST_HEAD(&c->head);
-	vmm_strcpy(c->name, VMM_NETSWITCH_CLASS_NAME);
+	strcpy(c->name, VMM_NETSWITCH_CLASS_NAME);
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);

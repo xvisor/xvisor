@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
@@ -30,6 +29,7 @@
 #include <vmm_stdio.h>
 #include <vmm_chardev.h>
 #include <rtc/vmm_rtcdev.h>
+#include <stringlib.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 #include <versatile/clcd.h>
@@ -193,7 +193,7 @@ static struct vmm_devclk clcd_clk = {
 
 static struct vmm_devclk *realview_getclk(struct vmm_devtree_node *node)
 {
-	if (vmm_strcmp(node->name, "clcd") == 0) {
+	if (strcmp(node->name, "clcd") == 0) {
 		return &clcd_clk;
 	}
 

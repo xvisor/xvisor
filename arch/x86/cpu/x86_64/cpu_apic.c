@@ -25,7 +25,6 @@
 #include <vmm_host_aspace.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <cpu_mmu.h>
@@ -33,8 +32,9 @@
 #include <arch_io.h>
 #include <cpu_private.h>
 #include <cpu_interrupts.h>
-#include <acpi.h>
 #include <cpu_apic.h>
+#include <stringlib.h>
+#include <acpi.h>
 
 /* FIXME we should spread the irqs across as many priority levels as possible
  * due to buggy hw */
@@ -162,7 +162,7 @@ int ioapic_route_pin_to_irq(u32 pin, u32 irqno)
 	if (irqno >= NR_IRQ_VECTORS)
 		return VMM_EFAIL;
 
-	vmm_memset(&entry, 0, sizeof(entry));
+	memset(&entry, 0, sizeof(entry));
 
 	hirq = &host_sys_irq[irqno];
 	hirq->ioapic_pin = pin;

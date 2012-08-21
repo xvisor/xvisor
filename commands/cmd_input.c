@@ -23,11 +23,11 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <input/vmm_input.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"Command input"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -81,13 +81,13 @@ void cmd_input_handlers(struct vmm_chardev *cdev)
 int cmd_input_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_input_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "devices") == 0) {
+		} else if (strcmp(argv[1], "devices") == 0) {
 			cmd_input_devices(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "handlers") == 0) {
+		} else if (strcmp(argv[1], "handlers") == 0) {
 			cmd_input_handlers(cdev);
 			return VMM_OK;
 		}

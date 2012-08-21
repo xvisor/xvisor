@@ -23,7 +23,6 @@
 
 #include <arch_cpu.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
 #include <vmm_guest_aspace.h>

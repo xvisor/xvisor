@@ -28,12 +28,12 @@
 
 #include <vmm_heap.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_devemu.h>
 #include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <arch_barrier.h>
+#include <stringlib.h>
 #include <cpu_mmu.h>
 #include <cpu_cache.h>
 #include <cpu_inline_asm.h>
@@ -86,7 +86,7 @@ static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu,
 	}
 
 	/* Mark entry as valid */
-	vmm_memcpy(&e->page, p, sizeof(struct cpu_page));
+	memcpy(&e->page, p, sizeof(struct cpu_page));
 	e->valid = 1;
 
 	/* Point to next victim of TLB line */
@@ -651,7 +651,7 @@ u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
 	}
 
 	/* zeroize our page descriptor */
-	vmm_memset(pg, 0, sizeof(*pg));
+	memset(pg, 0, sizeof(*pg));
 
 	/* Get the required page for vcpu */
 	if (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_M_MASK) {
@@ -2244,16 +2244,16 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 #endif
 
 	if (!vcpu->reset_count) {
-		vmm_memset(&arm_priv(vcpu)->cp15, 0,
+		memset(&arm_priv(vcpu)->cp15, 0,
 			   sizeof(arm_priv(vcpu)->cp15));
 		arm_priv(vcpu)->cp15.l1 = cpu_mmu_l1tbl_alloc();
 		vtlb_count = CPU_VCPU_VTLB_ENTRY_COUNT;
 		arm_priv(vcpu)->cp15.vtlb.table = vmm_malloc(vtlb_count *
 							     sizeof(struct
 								    arm_vtlb_entry));
-		vmm_memset(arm_priv(vcpu)->cp15.vtlb.table, 0,
+		memset(arm_priv(vcpu)->cp15.vtlb.table, 0,
 			   vtlb_count * sizeof(struct arm_vtlb_entry));
-		vmm_memset(&arm_priv(vcpu)->cp15.vtlb.victim, 0,
+		memset(&arm_priv(vcpu)->cp15.vtlb.victim, 0,
 			   sizeof(arm_priv(vcpu)->cp15.vtlb.victim));
 	} else {
 		if ((rc = cpu_vcpu_cp15_vtlb_flush(vcpu))) {
@@ -2278,7 +2278,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	}
 
 	arm_priv(vcpu)->cp15.virtio_active = FALSE;
-	vmm_memset(&arm_priv(vcpu)->cp15.virtio_page, 0,
+	memset(&arm_priv(vcpu)->cp15.virtio_page, 0,
 		   sizeof(struct cpu_page));
 
 	arm_priv(vcpu)->cp15.c0_cpuid = cpuid;
@@ -2297,9 +2297,9 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00090078;
 		break;
 	case ARM_CPUID_CORTEXA8:
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa8_cp15_c0_c1,
+		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa8_cp15_c0_c1,
 			   8 * sizeof(u32));
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa8_cp15_c0_c2,
+		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa8_cp15_c0_c2,
 			   8 * sizeof(u32));
 		arm_priv(vcpu)->cp15.c0_cachetype = 0x82048004;
 		arm_priv(vcpu)->cp15.c0_clid = (1 << 27) | (2 << 24) | 3;
@@ -2309,9 +2309,9 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;
 	case ARM_CPUID_CORTEXA9:
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa9_cp15_c0_c1,
+		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa9_cp15_c0_c1,
 			   8 * sizeof(u32));
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa9_cp15_c0_c2,
+		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa9_cp15_c0_c2,
 			   8 * sizeof(u32));
 		arm_priv(vcpu)->cp15.c0_cachetype = 0x80038003;
 		arm_priv(vcpu)->cp15.c0_clid = (1 << 27) | (1 << 24) | 3;
@@ -2380,7 +2380,7 @@ int cpu_vcpu_cp15_deinit(struct vmm_vcpu *vcpu)
 
 	vmm_free(arm_priv(vcpu)->cp15.vtlb.table);
 
-	vmm_memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
+	memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
 
 	return VMM_OK;
 }

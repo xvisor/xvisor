@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_smp.h>
 #include <vmm_percpu.h>
-#include <vmm_string.h>
 #include <vmm_spinlocks.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
@@ -32,6 +31,7 @@
 #include <vmm_clockchip.h>
 #include <vmm_timer.h>
 #include <arch_cpu_irq.h>
+#include <stringlib.h>
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_local_ctrl {
@@ -288,7 +288,7 @@ int __init vmm_timer_init(void)
 	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
 
 	/* Clear timer control structure */
-	vmm_memset(tlcp, 0, sizeof(*tlcp));
+	memset(tlcp, 0, sizeof(*tlcp));
 
 	/* Initialize Per CPU event status */
 	tlcp->started = FALSE;

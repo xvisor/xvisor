@@ -24,12 +24,12 @@
 #include <arch_sections.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <list.h>
+#include <stringlib.h>
 #include <mathlib.h>
 #include <bitmap.h>
 #include <elf.h>
@@ -106,7 +106,7 @@ int vmm_modules_find_symbol(const char *symname, struct vmm_symbol *sym)
 
 	sym->addr = kallsyms_lookup_name(symname);
 	if (sym->addr) {
-		vmm_strncpy(sym->name, symname, KSYM_NAME_LEN);
+		strncpy(sym->name, symname, KSYM_NAME_LEN);
 		sym->type = VMM_SYMBOL_GPL;
 		return VMM_OK;
 	}
@@ -117,8 +117,8 @@ int vmm_modules_find_symbol(const char *symname, struct vmm_symbol *sym)
 	list_for_each(l, &modctrl.mod_list) {
 		mwrap = list_entry(l, struct module_wrap, head);
 		for (s = 0; s < mwrap->num_syms; s++) {
-			if (vmm_strcmp(mwrap->syms[s].name, symname) == 0) {
-				vmm_memcpy(sym, &mwrap->syms[s], sizeof(*sym));
+			if (strcmp(mwrap->syms[s].name, symname) == 0) {
+				memcpy(sym, &mwrap->syms[s], sizeof(*sym));
 				found = TRUE;
 				break;
 			}
@@ -162,7 +162,7 @@ static u32 find_sec(const struct load_info *info, const char *name)
 		Elf_Shdr *shdr = &info->sechdrs[i];
 		/* Alloc bit cleared means "ignore it." */
 		if ((shdr->sh_flags & SHF_ALLOC) &&
-		    vmm_strcmp(info->secstrings + shdr->sh_name, name) == 0)
+		    strcmp(info->secstrings + shdr->sh_name, name) == 0)
 			return i;
 	}
 	return 0;
@@ -184,7 +184,7 @@ static int sethdr_and_check(struct load_info *info,
 
 	/* Sanity checks against loading binaries or wrong arch,
 	   weird elf version */
-	if (vmm_memcmp(hdr->e_ident, ELFMAG, SELFMAG) != 0
+	if (memcmp(hdr->e_ident, ELFMAG, SELFMAG) != 0
 	    || hdr->e_type != ET_REL
 	    || !arch_elf_check_hdr(hdr)
 	    || hdr->e_shentsize != sizeof(Elf_Shdr)) {
@@ -267,9 +267,9 @@ static int alloc_and_load_modtbl(struct module_wrap *mwrap,
 	if (!i) {
 		return VMM_ENOEXEC;
 	}
-	vmm_memcpy(&mwrap->mod, 
-		   (void *)info->sechdrs[i].sh_addr, 
-		   sizeof(mwrap->mod));
+	memcpy(&mwrap->mod, 
+		(void *)info->sechdrs[i].sh_addr, 
+		sizeof(mwrap->mod));
 	if (mwrap->mod.signature != VMM_MODULE_SIGNATURE) {
 		return VMM_ENOEXEC;
 	}
@@ -297,9 +297,9 @@ static int alloc_and_load_symtbl(struct module_wrap *mwrap,
 	if (!mwrap->syms) {
 		return VMM_ENOMEM;
 	}
-	vmm_memcpy(&mwrap->syms, 
-		   (void *)info->sechdrs[i].sh_addr, 
-		   sizeof(mwrap->mod));
+	memcpy(&mwrap->syms, 
+		(void *)info->sechdrs[i].sh_addr, 
+		sizeof(mwrap->mod));
 	mwrap->num_syms = info->sechdrs[i].sh_size / sizeof(struct vmm_symbol);
 
 	info->sechdrs[i].sh_flags &= ~SHF_ALLOC;
@@ -445,7 +445,7 @@ static int move_module(struct module_wrap *mwrap,
 						VMM_MEMORY_CACHEABLE |
 						VMM_MEMORY_BUFFERABLE);
 
-	vmm_memset((void *)mwrap->pg_start, 0, mwrap->core_size);
+	memset((void *)mwrap->pg_start, 0, mwrap->core_size);
 
 	/* Transfer each section which specifies SHF_ALLOC */
 	for (i = 0; i < info->hdr->e_shnum; i++) {
@@ -458,7 +458,7 @@ static int move_module(struct module_wrap *mwrap,
 		dest = (void *)mwrap->pg_start + shdr->sh_entsize;
 
 		if (shdr->sh_type != SHT_NOBITS)
-			vmm_memcpy(dest, (void *)shdr->sh_addr, shdr->sh_size);
+			memcpy(dest, (void *)shdr->sh_addr, shdr->sh_size);
 		/* Update sh_addr to point to copy in image. */
 		shdr->sh_addr = (unsigned long)dest;
 	}
@@ -508,8 +508,8 @@ static int simplify_symbols(struct module_wrap *mwrap,
 
 	for (i = 1; i < symsec->sh_size / sizeof(Elf_Sym); i++) {
 		const char *name = info->strtab + sym[i].st_name;
-		if (vmm_strcmp(name, "test_func") == 0) {
-		vmm_printf("%s: sym %s\n", __func__, name);
+		if (strcmp(name, "test_func") == 0) {
+			vmm_printf("%s: sym %s\n", __func__, name);
 		}
 
 		ret = VMM_OK;
@@ -599,11 +599,10 @@ int vmm_modules_load(virtual_addr_t load_addr, virtual_size_t load_size)
 		return rc;
 	}
 
-	mwrap = vmm_malloc(sizeof(*mwrap));
+	mwrap = vmm_zalloc(sizeof(*mwrap));
 	if (!mwrap) {
 		return VMM_ENOMEM;
 	}
-	vmm_memset(mwrap, 0, sizeof(struct module_wrap));
 	INIT_LIST_HEAD(&mwrap->head);
 
 	/* Allocate and load .modtbl section 
@@ -630,9 +629,9 @@ int vmm_modules_load(virtual_addr_t load_addr, virtual_size_t load_size)
 	 */
 	for (i = 1; i < info.hdr->e_shnum; i++) {
 		const char *name = info.secstrings + info.sechdrs[i].sh_name;
-		if (vmm_strcmp(name, ".modtbl") == 0) {
+		if (strcmp(name, ".modtbl") == 0) {
 			info.sechdrs[i].sh_flags |= SHF_ALLOC;
-		} else if (vmm_strcmp(name, ".symtbl") == 0) {
+		} else if (strcmp(name, ".symtbl") == 0) {
 			info.sechdrs[i].sh_flags |= SHF_ALLOC;
 		}
 	}
@@ -751,7 +750,7 @@ int __init vmm_modules_init(void)
 	struct vmm_module tmp;
 
 	/* Reset the control structure */
-	vmm_memset(&modctrl, 0, sizeof(modctrl));
+	memset(&modctrl, 0, sizeof(modctrl));
 	INIT_SPIN_LOCK(&modctrl.lock);
 	INIT_LIST_HEAD(&modctrl.mod_list);
 	modctrl.mod_count = 0;
@@ -781,9 +780,9 @@ int __init vmm_modules_init(void)
 	for (i = 0; i < (mod_count - 1); i++) {
 		for (j = (i + 1); j < mod_count; j++) {
 			if (table[j].ipriority < table[i].ipriority) {
-				vmm_memcpy(&tmp, &table[i], sizeof(tmp));
-				vmm_memcpy(&table[i], &table[j], sizeof(tmp));
-				vmm_memcpy(&table[j], &tmp, sizeof(tmp));
+				memcpy(&tmp, &table[i], sizeof(tmp));
+				memcpy(&table[i], &table[j], sizeof(tmp));
+				memcpy(&table[j], &tmp, sizeof(tmp));
 			}
 		}
 	}
@@ -795,9 +794,9 @@ int __init vmm_modules_init(void)
 			break;
 		}
 
-		vmm_memset(mwrap, 0, sizeof(struct module_wrap));
+		memset(mwrap, 0, sizeof(struct module_wrap));
 		INIT_LIST_HEAD(&mwrap->head);
-		vmm_memcpy(&mwrap->mod, &table[i], sizeof(struct vmm_module));
+		memcpy(&mwrap->mod, &table[i], sizeof(struct vmm_module));
 		mwrap->built_in = TRUE;
 
 		/* Initialize module if required */

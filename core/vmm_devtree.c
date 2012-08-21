@@ -23,9 +23,9 @@
 
 #include <arch_board.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
+#include <stringlib.h>
 
 struct vmm_devtree_ctrl {
         struct vmm_devtree_node *root;
@@ -91,47 +91,47 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 		return ret;
 	}
 
-	if (!vmm_strcmp(name, VMM_DEVTREE_MODEL_ATTR_NAME)) {
+	if (!strcmp(name, VMM_DEVTREE_MODEL_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_COMPATIBLE_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_COMPATIBLE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_REG_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_REG_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_CPU_FREQ_MHZ_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_CPU_FREQ_MHZ_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_START_PC_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_START_PC_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_START_SP_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_START_SP_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_VIRTSIZE;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_PRIORITY_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_PRIORITY_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_TIME_SLICE_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_TIME_SLICE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_H2GIRQMAP_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_H2GIRQMAP_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_GUEST_PHYS_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_GUEST_PHYS_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_HOST_PHYS_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_HOST_PHYS_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_PHYS_SIZE_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_PHYS_SIZE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
-	} else if (!vmm_strcmp(name, VMM_DEVTREE_SWITCH_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_SWITCH_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
 	}
 
@@ -150,7 +150,7 @@ void * vmm_devtree_attrval(struct vmm_devtree_node *node,
 
 	list_for_each(l, &node->attr_list) {
 		attr = list_entry(l, struct vmm_devtree_attr, head);
-		if (vmm_strcmp(attr->name, attrib) == 0) {
+		if (strcmp(attr->name, attrib) == 0) {
 			return attr->value;
 		}
 	}
@@ -169,7 +169,7 @@ u32 vmm_devtree_attrlen(struct vmm_devtree_node *node, const char *attrib)
 
 	list_for_each(l, &node->attr_list) {
 		attr = list_entry(l, struct vmm_devtree_attr, head);
-		if (vmm_strcmp(attr->name, attrib) == 0) {
+		if (strcmp(attr->name, attrib) == 0) {
 			return attr->len;
 		}
 	}
@@ -194,7 +194,7 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 	found = FALSE;
 	list_for_each(l, &node->attr_list) {
 		attr = list_entry(l, struct vmm_devtree_attr, head);
-		if (vmm_strcmp(attr->name, name) == 0) {
+		if (strcmp(attr->name, name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -205,11 +205,11 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 		INIT_LIST_HEAD(&attr->head);
 		attr->len = len;
 		attr->type = type;
-		len = vmm_strlen(name) + 1;
+		len = strlen(name) + 1;
 		attr->name = vmm_malloc(len);
-		vmm_strncpy(attr->name, name, len);
+		strncpy(attr->name, name, len);
 		attr->value = vmm_malloc(attr->len);
-		vmm_memcpy(attr->value, value, attr->len);
+		memcpy(attr->value, value, attr->len);
 		list_add_tail(&attr->head, &node->attr_list);
 	} else {
 		if (attr->len != len) {
@@ -218,7 +218,7 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 			attr->value = vmm_malloc(attr->len);
 		}
 		attr->type = type;
-		vmm_memcpy(attr->value, value, attr->len);
+		memcpy(attr->value, value, attr->len);
 	}
 
 	return VMM_OK;
@@ -236,7 +236,7 @@ struct vmm_devtree_attr * vmm_devtree_getattr(struct vmm_devtree_node *node,
 
 	list_for_each(l, &node->attr_list) {
 		attr = list_entry(l, struct vmm_devtree_attr, head);
-		if (vmm_strcmp(attr->name, name) == 0) {
+		if (strcmp(attr->name, name) == 0) {
 			return attr;
 		}
 	}
@@ -277,8 +277,8 @@ void recursive_getpath(char **out, struct vmm_devtree_node *node)
 		**out = '\0';
 	}
 
-	vmm_strcat(*out, node->name);
-	(*out) += vmm_strlen(node->name);
+	strcat(*out, node->name);
+	(*out) += strlen(node->name);
 }
 
 int vmm_devtree_getpath(char *out, struct vmm_devtree_node *node)
@@ -288,11 +288,11 @@ int vmm_devtree_getpath(char *out, struct vmm_devtree_node *node)
 	if (!node)
 		return VMM_EFAIL;
 
-	vmm_strcpy(out, "");
+	strcpy(out, "");
 
 	recursive_getpath(&out_ptr, node);
 
-	if (vmm_strcmp(out, "") == 0) {
+	if (strcmp(out, "") == 0) {
 		out[0] = VMM_DEVTREE_PATH_SEPARATOR;
 		out[1] = '\0';
 	}
@@ -314,10 +314,9 @@ struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 		found = FALSE;
 		list_for_each(lentry, &node->child_list) {
 			child = list_entry(lentry, struct vmm_devtree_node, head);
-			if (vmm_strncmp(child->name, path,
-					vmm_strlen(child->name)) == 0) {
+			if (strncmp(child->name, path, strlen(child->name)) == 0) {
 				found = TRUE;
-				path += vmm_strlen(child->name);
+				path += strlen(child->name);
 				if (*path) {
 					if (*path != VMM_DEVTREE_PATH_SEPARATOR
 					    && *(path + 1) != '\0')
@@ -343,10 +342,10 @@ struct vmm_devtree_node *vmm_devtree_getnode(const char *path)
 	if (!path || !node)
 		return NULL;
 
-	if (vmm_strncmp(node->name, path, vmm_strlen(node->name)) != 0)
+	if (strncmp(node->name, path, strlen(node->name)) != 0)
 		return NULL;
 
-	path += vmm_strlen(node->name);
+	path += strlen(node->name);
 
 	if (*path) {
 		if (*path != VMM_DEVTREE_PATH_SEPARATOR && *(path + 1) != '\0')
@@ -374,7 +373,7 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	if (parent) {
 		list_for_each(l, &parent->child_list) {
 			node = list_entry(l, struct vmm_devtree_node, head);
-			if (vmm_strcmp(node->name, name) == 0) {
+			if (strcmp(node->name, name) == 0) {
 				return NULL;
 			}
 		}
@@ -384,9 +383,9 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	INIT_LIST_HEAD(&node->head);
 	INIT_LIST_HEAD(&node->attr_list);
 	INIT_LIST_HEAD(&node->child_list);
-	len = vmm_strlen(name) + 1;
+	len = strlen(name) + 1;
 	node->name = vmm_malloc(len);
-	vmm_strncpy(node->name, name, len);
+	strncpy(node->name, name, len);
 	node->system_data = NULL;
 	node->priv = NULL;
 	node->parent = parent;
@@ -497,7 +496,7 @@ struct vmm_devtree_node *vmm_devtree_rootnode(void)
 int __init vmm_devtree_init(void)
 {
 	/* Reset the control structure */
-	vmm_memset(&dtree_ctrl, 0, sizeof(dtree_ctrl));
+	memset(&dtree_ctrl, 0, sizeof(dtree_ctrl));
 
 	/* Populate Board Specific Device Tree */
 	return arch_board_devtree_populate(&dtree_ctrl.root);

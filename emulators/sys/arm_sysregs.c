@@ -33,7 +33,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
@@ -41,6 +40,7 @@
 #include <vmm_manager.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
 #define MODULE_DESC			"Realview Sysctl Emulator"
@@ -554,7 +554,7 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto arm_sysregs_emulator_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct arm_sysregs));
+	memset(s, 0x0, sizeof(struct arm_sysregs));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
@@ -570,9 +570,9 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 	if (!s->pic) {
 		goto arm_sysregs_emulator_probe_freestate_fail;
 	}
-	vmm_memset(s->pic, 0x0, sizeof(struct vmm_emupic));
+	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
 
-	vmm_strcpy(s->pic->name, edev->node->name);
+	strcpy(s->pic->name, edev->node->name);
 	s->pic->type = VMM_EMUPIC_GPIO;
 	s->pic->handle = &arm_sysregs_irq_handle;
 	s->pic->priv = s;

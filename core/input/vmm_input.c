@@ -30,10 +30,10 @@
 
 #include <vmm_error.h>
 #include <vmm_macros.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
+#include <stringlib.h>
 #include <input/vmm_input.h>
 #include <input/vmm_input_mt.h>
 
@@ -480,7 +480,7 @@ static int input_default_getkeycode(struct vmm_input_dev *idev,
 	ke->keycode = input_fetch_keycode(idev, index);
 	ke->index = index;
 	ke->len = sizeof(index);
-	vmm_memcpy(ke->scancode, &index, sizeof(index));
+	memcpy(ke->scancode, &index, sizeof(index));
 
 	return 0;
 }
@@ -637,7 +637,7 @@ struct vmm_input_dev *vmm_input_alloc_device(void)
 		return NULL;
 	}
 
-	vmm_memset(idev, 0, sizeof(struct vmm_input_dev));
+	memset(idev, 0, sizeof(struct vmm_input_dev));
 
 	INIT_LIST_HEAD(&idev->head);
 	INIT_SPIN_LOCK(&idev->event_lock);
@@ -695,7 +695,7 @@ static unsigned int input_estimate_events_per_packet(struct vmm_input_dev *idev)
 #define INPUT_CLEANSE_BITMASK(dev, type, bits)				\
 	do {								\
 		if (!test_bit(EV_##type, dev->evbit))			\
-			vmm_memset(dev->bits##bit, 0,			\
+			memset(dev->bits##bit, 0,			\
 				sizeof(dev->bits##bit));		\
 	} while (0)
 
@@ -726,10 +726,10 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 		return VMM_EFAIL;
 	}
 
-	vmm_memset(cd, 0, sizeof(struct vmm_classdev));
+	memset(cd, 0, sizeof(struct vmm_classdev));
 
 	INIT_LIST_HEAD(&cd->head);
-	vmm_strcpy(cd->name, idev->phys);
+	strcpy(cd->name, idev->phys);
 	cd->dev = idev->dev;
 	cd->priv = idev;
 
@@ -933,7 +933,7 @@ int vmm_input_register_handler(struct vmm_input_handler *ihnd)
 
 	list_for_each(l, &ictrl.hnd_list) {
 		ih = list_entry(l, struct vmm_input_handler, head);
-		if (vmm_strcmp(ih->name, ihnd->name) == 0) {
+		if (strcmp(ih->name, ihnd->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -979,7 +979,7 @@ int vmm_input_unregister_handler(struct vmm_input_handler *ihnd)
 	found = FALSE;
 	list_for_each(l, &ictrl.hnd_list) {
 		ih = list_entry(l, struct vmm_input_handler, head);
-		if (vmm_strcmp(ih->name, ihnd->name) == 0) {
+		if (strcmp(ih->name, ihnd->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -1108,7 +1108,7 @@ struct vmm_input_handler *vmm_input_find_handler(const char *name)
 
 	list_for_each(l, &ictrl.hnd_list) {
 		ihnd = list_entry(l, struct vmm_input_handler, head);
-		if (vmm_strcmp(ihnd->name, name) == 0) {
+		if (strcmp(ihnd->name, name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -1181,7 +1181,7 @@ static int __init vmm_input_init(void)
 
 	vmm_printf("Initialize Input Device Framework\n");
 
-	vmm_memset(&ictrl, 0, sizeof(struct vmm_input_ctrl));
+	memset(&ictrl, 0, sizeof(struct vmm_input_ctrl));
 
 	INIT_SPIN_LOCK(&ictrl.dev_list_lock);
 	INIT_LIST_HEAD(&ictrl.dev_list);
@@ -1198,10 +1198,10 @@ static int __init vmm_input_init(void)
 		return VMM_EFAIL;
 	}
 
-	vmm_memset(c, 0, sizeof(struct vmm_class));
+	memset(c, 0, sizeof(struct vmm_class));
 
 	INIT_LIST_HEAD(&c->head);
-	vmm_strcpy(c->name, VMM_INPUT_DEV_CLASS_NAME);
+	strcpy(c->name, VMM_INPUT_DEV_CLASS_NAME);
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);

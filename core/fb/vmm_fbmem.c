@@ -33,12 +33,11 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
+#include <stringlib.h>
 #include <fb/vmm_fb.h>
-
 #include <arch_atomic.h>
 
 #define MODULE_DESC			"Frame Buffer Framework"
@@ -98,8 +97,8 @@ static int vmm_fb_check_caps(struct vmm_fb_info *info,
 	struct vmm_fb_blit_caps caps, fbcaps;
 	int err = 0;
 
-	vmm_memset(&caps, 0, sizeof(caps));
-	vmm_memset(&fbcaps, 0, sizeof(fbcaps));
+	memset(&caps, 0, sizeof(caps));
+	memset(&fbcaps, 0, sizeof(fbcaps));
 	caps.flags = (activate & FB_ACTIVATE_ALL) ? 1 : 0;
 	info->fbops->fb_get_caps(info, &fbcaps, var);
 
@@ -131,11 +130,11 @@ int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
 	}
 
 	if ((var->activate & FB_ACTIVATE_FORCE) ||
-	    vmm_memcmp(&info->var, var, sizeof(struct vmm_fb_var_screeninfo))) {
+	    memcmp(&info->var, var, sizeof(struct vmm_fb_var_screeninfo))) {
 		u32 activate = var->activate;
 
 		if (!info->fbops->fb_check_var) {
-			vmm_memcpy(var, &info->var, sizeof(*var));
+			memcpy(var, &info->var, sizeof(*var));
 			goto done;
 		}
 
@@ -155,14 +154,14 @@ int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
 					goto done;
 			}
 
-			vmm_memcpy(&old_var, &info->var, sizeof(old_var));
-			vmm_memcpy(&info->var, var, sizeof(info->var));
+			memcpy(&old_var, &info->var, sizeof(old_var));
+			memcpy(&info->var, var, sizeof(info->var));
 
 			if (info->fbops->fb_set_par) {
 				ret = info->fbops->fb_set_par(info);
 
 				if (ret) {
-					vmm_memcpy(&info->var, &old_var, sizeof(info->var));
+					memcpy(&info->var, &old_var, sizeof(info->var));
 					vmm_printf("detected fb_set_par error,"
 						   " error code: %d\n", ret);
 					goto done;
@@ -357,7 +356,7 @@ int vmm_fb_register(struct vmm_fb_info *info)
 	}
 
 	INIT_LIST_HEAD(&cd->head);
-	vmm_strcpy(cd->name, info->dev->node->name);
+	strcpy(cd->name, info->dev->node->name);
 	cd->dev = info->dev;
 	cd->priv = info;
 
@@ -454,7 +453,7 @@ static int __init vmm_fb_init(void)
 	}
 
 	INIT_LIST_HEAD(&c->head);
-	vmm_strcpy(c->name, VMM_FB_CLASS_NAME);
+	strcpy(c->name, VMM_FB_CLASS_NAME);
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);

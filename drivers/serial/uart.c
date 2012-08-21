@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_completion.h>
@@ -32,8 +31,9 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <serial/uart.h>
+#include <stringlib.h>
 #include <mathlib.h>
+#include <serial/uart.h>
 
 #define MODULE_DESC			"Generic UART Driver"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -163,16 +163,16 @@ static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devi
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
-	vmm_memset(cd, 0, sizeof(struct vmm_chardev));
+	memset(cd, 0, sizeof(struct vmm_chardev));
 
 	port = vmm_malloc(sizeof(struct uart_port));
 	if(!port) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
 	}
-	vmm_memset(port, 0, sizeof(struct uart_port));
+	memset(port, 0, sizeof(struct uart_port));
 
-	vmm_strcpy(cd->name, dev->node->name);
+	strcpy(cd->name, dev->node->name);
 	cd->dev = dev;
 	cd->ioctl = NULL;
 	cd->read = uart_read;

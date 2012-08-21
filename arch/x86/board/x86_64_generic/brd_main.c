@@ -24,7 +24,6 @@
 #include <vmm_main.h>
 #include <vmm_devtree.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devdrv.h>
 #include <libfdt.h>

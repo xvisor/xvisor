@@ -25,7 +25,6 @@
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_scheduler.h>
 #include <cpu_asm_macros.h>
 #include <cpu_vcpu_mmu.h>

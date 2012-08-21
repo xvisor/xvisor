@@ -48,8 +48,8 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <stringlib.h>
 #include <fb/vmm_fb.h>
 
 #include "edid.h"
@@ -180,7 +180,7 @@ static int check_edid(unsigned char *edid)
 	model = block[2] + (block[3] << 8);
 
 	for (i = 0; i < array_size(brokendb); i++) {
-		if (!vmm_strncmp((char *)manufacturer, (char *)brokendb[i].manufacturer, 4) &&
+		if (!strncmp((char *)manufacturer, (char *)brokendb[i].manufacturer, 4) &&
 			brokendb[i].model == model) {
 			fix = brokendb[i].fix;
 			break;
@@ -235,7 +235,7 @@ static void fix_edid(unsigned char *edid, int fix)
 	switch (fix) {
 	case FBMON_FIX_HEADER:
 		vmm_printf("fbmon: trying a header reconstruct\n");
-		vmm_memcpy(edid, edid_v1_header, 8);
+		memcpy(edid, edid_v1_header, 8);
 		break;
 	case FBMON_FIX_INPUT:
 		vmm_printf("fbmon: trying to fix input type\n");
@@ -671,7 +671,7 @@ static struct vmm_fb_videomode *vmm_fb_create_modedb(unsigned char *edid, int *d
 	m = vmm_malloc(num * sizeof(struct vmm_fb_videomode));
 	if (!m)
 		return mode;
-	vmm_memmove(m, mode, num * sizeof(struct vmm_fb_videomode));
+	memmove(m, mode, num * sizeof(struct vmm_fb_videomode));
 	vmm_free(mode);
 	return m;
 }
@@ -944,7 +944,7 @@ void vmm_fb_edid_to_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
 	if (!(edid_check_header(edid)))
 		return;
 
-	vmm_memset(specs, 0, sizeof(struct vmm_fb_monspecs));
+	memset(specs, 0, sizeof(struct vmm_fb_monspecs));
 
 	specs->version = edid[EDID_STRUCT_VERSION];
 	specs->revision = edid[EDID_STRUCT_REVISION];
@@ -1051,7 +1051,7 @@ void vmm_fb_edid_add_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs
 	if (!m)
 		return;
 
-	vmm_memcpy(m, specs->modedb, specs->modedb_len * sizeof(struct vmm_fb_videomode));
+	memcpy(m, specs->modedb, specs->modedb_len * sizeof(struct vmm_fb_videomode));
 
 	for (i = specs->modedb_len; i < specs->modedb_len + num; i++) {
 		get_detailed_timing(edid + edt[i - specs->modedb_len], &m[i]);
@@ -1067,7 +1067,7 @@ void vmm_fb_edid_add_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs
 		} else if (idx > array_size(cea_modes) || !cea_modes[idx].xres) {
 			pr_warning("Unimplemented SVD code %d\n", idx);
 		} else {
-			vmm_memcpy(&m[i], cea_modes + idx, sizeof(m[i]));
+			memcpy(&m[i], cea_modes + idx, sizeof(m[i]));
 			pr_debug("Adding SVD #%d: %ux%u@%u\n", idx,
 				 m[i].xres, m[i].yres, m[i].refresh);
 		}

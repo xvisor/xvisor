@@ -56,7 +56,7 @@
 #include "uip.h"
 #include "uip-arch.h"
 #include "uip-fw.h"
-#include <vmm_string.h> /* for vmm_memcpy() */
+#include <stringlib.h> /* for memcpy() */
 
 /*
  * The list of registered network interfaces.
@@ -183,7 +183,7 @@ time_exceeded(void)
     return;
   }
   /* Copy fields from packet header into payload of this ICMP packet. */
-  vmm_memcpy(&(ICMPBUF->payload[0]), ICMPBUF, 28);
+  memcpy(&(ICMPBUF->payload[0]), ICMPBUF, 28);
 
   /* Set the ICMP type and code. */
   ICMPBUF->type = ICMP_TE;

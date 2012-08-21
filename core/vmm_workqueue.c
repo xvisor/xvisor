@@ -22,10 +22,10 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_scheduler.h>
 #include <vmm_workqueue.h>
+#include <stringlib.h>
 
 struct vmm_workqueue_ctrl {
 	vmm_spinlock_t lock;
@@ -379,7 +379,7 @@ int vmm_workqueue_destroy(struct vmm_workqueue * wq)
 int __init vmm_workqueue_init(void)
 {
 	/* Reset control structure */
-	vmm_memset(&wqctrl, 0, sizeof(wqctrl));
+	memset(&wqctrl, 0, sizeof(wqctrl));
 
 	/* Initialize lock in control structure */
 	INIT_SPIN_LOCK(&wqctrl.lock);

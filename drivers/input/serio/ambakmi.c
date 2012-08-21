@@ -149,8 +149,8 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 	io->write	= amba_kmi_write;
 	io->open	= amba_kmi_open;
 	io->close	= amba_kmi_close;
-	vmm_strncpy(io->name, dev->node->name, sizeof(io->name));
-	vmm_strncpy(io->phys, dev->node->name, sizeof(io->phys));
+	strncpy(io->name, dev->node->name, sizeof(io->name));
+	strncpy(io->phys, dev->node->name, sizeof(io->phys));
 	io->port_data	= kmi;
 	io->dev		= dev;
 

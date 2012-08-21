@@ -24,17 +24,16 @@
 #include "uip.h"
 #include "uip-fw.h"
 #include "uip-arp.h"
-#include <list.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_spinlocks.h>
 #include <vmm_completion.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netport.h>
+#include <list.h>
+#include <stringlib.h>
 
 #undef UIP_DEBUG
 
@@ -104,8 +103,8 @@ int uip_netport_loopback_send(struct vmm_mbuf *mbuf)
 	u8 *dstmac = ether_dstmac(mtod(mbuf, u8 *));
 	u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));
 
-	vmm_memcpy(dstmac, s->port->macaddr, 6);
-	vmm_memcpy(srcmac, s->port->macaddr, 6);
+	memcpy(dstmac, s->port->macaddr, 6);
+	memcpy(srcmac, s->port->macaddr, 6);
 	return uip_switch2port_xfer(s->port, mbuf);
 }
 
@@ -124,7 +123,7 @@ void uip_netport_send(void)
 		MEXTADD(mbuf, uip_buf, UIP_BUFSIZE + 2, NULL, NULL);
 		mbuf->m_len = mbuf->m_pktlen = uip_len;
 
-		if(vmm_memcmp(ether_dstmac(uip_buf), uip_ethaddr.addr, 6)) {
+		if(memcmp(ether_dstmac(uip_buf), uip_ethaddr.addr, 6)) {
 			/* send this mbuf to the netswitch if it is
 			 * not addressed to us */
 			vmm_port2switch_xfer(port, mbuf);

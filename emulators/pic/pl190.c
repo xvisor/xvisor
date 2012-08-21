@@ -34,7 +34,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
@@ -43,6 +42,7 @@
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
 #include <vmm_stdio.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"ARM PL190 Emulator"
 #define MODULE_AUTHOR			"Jean-Christophe Dubois"
@@ -449,14 +449,14 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto pl190_emulator_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct pl190_emulator_state));
+	memset(s, 0x0, sizeof(struct pl190_emulator_state));
 
 	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
 	if (!s->pic) {
 		rc = VMM_EFAIL;
 		goto pl190_emulator_probe_freestate_fail;
 	}
-	vmm_memset(s->pic, 0x0, sizeof(struct vmm_emupic));
+	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
 
 	vmm_sprintf(s->pic->name, "pl190-pic%d", pic_number);
 	pic_number++;

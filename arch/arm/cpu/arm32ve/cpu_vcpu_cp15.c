@@ -24,11 +24,11 @@
 
 #include <vmm_heap.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_devemu.h>
 #include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
+#include <stringlib.h>
 #include <cpu_mmu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
@@ -45,7 +45,7 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 	struct cpu_page pg;
 	physical_size_t availsz;
 
-	vmm_memset(&pg, 0, sizeof(pg));
+	memset(&pg, 0, sizeof(pg));
 
 	pg.ia = fipa & TTBL_L3_MAP_MASK;
 	pg.sz = TTBL_L3_BLOCK_SIZE;
@@ -424,7 +424,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	u32 i, cache_type, last_level;
 
 	if (!vcpu->reset_count) {
-		vmm_memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
+		memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
 	}
 
 	arm_priv(vcpu)->cp15.c0_cpuid = cpuid;
@@ -433,16 +433,16 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	/* Reset values of important registers */
 	switch (cpuid) {
 	case ARM_CPUID_CORTEXA8:
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa8_cp15_c0_c1, 
+		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa8_cp15_c0_c1, 
 							8 * sizeof(u32));
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa8_cp15_c0_c2, 
+		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa8_cp15_c0_c2, 
 							8 * sizeof(u32));
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;
 	case ARM_CPUID_CORTEXA9:
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa9_cp15_c0_c1, 
+		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa9_cp15_c0_c1, 
 							8 * sizeof(u32));
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa9_cp15_c0_c2, 
+		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa9_cp15_c0_c2, 
 							8 * sizeof(u32));
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;
@@ -494,7 +494,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 
 int cpu_vcpu_cp15_deinit(struct vmm_vcpu *vcpu)
 {
-	vmm_memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
+	memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
 
 	return VMM_OK;
 }

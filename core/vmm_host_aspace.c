@@ -26,11 +26,11 @@
 #include <arch_board.h>
 #include <arch_sections.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
+#include <stringlib.h>
 
 virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
 			       virtual_size_t sz, 
@@ -158,7 +158,7 @@ u32 vmm_host_physical_read(physical_addr_t hphys_addr,
 				      VMM_PAGE_SIZE, 
 				      VMM_MEMORY_READABLE);
 
-		vmm_memcpy(dst, (void *)src, to_read);
+		memcpy(dst, (void *)src, to_read);
 
 		vmm_host_memunmap(src, VMM_PAGE_SIZE);
 
@@ -194,7 +194,7 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 		dst = vmm_host_memmap(hphys_addr, 
 				      VMM_PAGE_SIZE, 
 				      VMM_MEMORY_WRITEABLE);
-		vmm_memcpy((void *)dst, src, to_write);
+		memcpy((void *)dst, src, to_write);
 		vmm_host_memunmap(dst, VMM_PAGE_SIZE);
 
 		hphys_addr += to_write;

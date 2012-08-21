@@ -33,13 +33,12 @@
  * $Id: uip-split.c,v 1.1 2007/01/04 11:06:41 adamdunkels Exp $
  */
 
-#include <vmm_string.h>
-
 #include "uip-split.h"
 #include "uip.h"
 #include "uip-fw.h"
 #include "uip-arch.h"
 
+#include <stringlib.h>
 
 
 #define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
@@ -108,7 +107,7 @@ uip_split_output(void)
 #endif /* UIP_CONF_IPV6 */
     
     /*    uip_appdata += len1;*/
-    vmm_memcpy(uip_appdata, (u8_t *)uip_appdata + len1, len2);
+    memcpy(uip_appdata, (u8_t *)uip_appdata + len1, len2);
 
     uip_add32(BUF->seqno, len1);
     BUF->seqno[0] = uip_acc32[0];

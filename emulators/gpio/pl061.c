@@ -33,10 +33,10 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 
 #define MODULE_DESC			"PL061 GPIO Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -397,15 +397,15 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto pl061_emulator_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct pl061_state));
+	memset(s, 0x0, sizeof(struct pl061_state));
 
 	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
 	if (!s->pic) {
 		goto pl061_emulator_probe_freestate_failed;
 	}
-	vmm_memset(s->pic, 0x0, sizeof(struct vmm_emupic));
+	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
 
-	vmm_strcpy(s->pic->name, edev->node->name);
+	strcpy(s->pic->name, edev->node->name);
 	s->pic->type = VMM_EMUPIC_GPIO;
 	s->pic->handle = &pl061_irq_handle;
 	s->pic->priv = s;

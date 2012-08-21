@@ -22,9 +22,9 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_vserial.h>
+#include <stringlib.h>
 
 struct vmm_vserial_ctrl {
         struct dlist vser_list;
@@ -185,7 +185,7 @@ struct vmm_vserial * vmm_vserial_alloc(const char * name,
 	found = FALSE;
 	list_for_each(l, &vsctrl.vser_list) {
 		vser = list_entry(l, struct vmm_vserial, head);
-		if (vmm_strcmp(name, vser->name) == 0) {
+		if (strcmp(name, vser->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -207,7 +207,7 @@ struct vmm_vserial * vmm_vserial_alloc(const char * name,
 	}
 
 	INIT_LIST_HEAD(&vser->head);
-	vmm_strcpy(vser->name, name);
+	strcpy(vser->name, name);
 	vser->can_send = can_send;
 	vser->send = send;
 	INIT_LIST_HEAD(&vser->receiver_list);
@@ -236,7 +236,7 @@ int vmm_vserial_free(struct vmm_vserial * vser)
 	found = FALSE;
 	list_for_each(l, &vsctrl.vser_list) {
 		vs = list_entry(l, struct vmm_vserial, head);
-		if (vmm_strcmp(vs->name, vser->name) == 0) {
+		if (strcmp(vs->name, vser->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -268,7 +268,7 @@ struct vmm_vserial * vmm_vserial_find(const char *name)
 	vs = NULL;
 	list_for_each(l, &vsctrl.vser_list) {
 		vs = list_entry(l, struct vmm_vserial, head);
-		if (vmm_strcmp(vs->name, name) == 0) {
+		if (strcmp(vs->name, name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -324,7 +324,7 @@ u32 vmm_vserial_count(void)
 
 int __init vmm_vserial_init(void)
 {
-	vmm_memset(&vsctrl, 0, sizeof(vsctrl));
+	memset(&vsctrl, 0, sizeof(vsctrl));
 
 	INIT_LIST_HEAD(&vsctrl.vser_list);
 

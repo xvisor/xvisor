@@ -35,8 +35,8 @@
 #include <vmm_types.h>
 #include <vmm_host_io.h>
 #include <vmm_timer.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <stringlib.h>
 
 
 /**
@@ -118,11 +118,11 @@ static inline void get_random_bytes(u8 *buf, int len)
 	while(len > 0) {
 		tstamp = vmm_timer_timestamp();
 		if(len < sizeof(u64)) {
-			vmm_memcpy(buf + off, &tstamp, len);
+			memcpy(buf + off, &tstamp, len);
 			off += len;
 			len -= len;
 		} else {
-			vmm_memcpy(buf + off, &tstamp, sizeof(u64));
+			memcpy(buf + off, &tstamp, sizeof(u64));
 			off += sizeof(u64);
 			len -= sizeof(u64);
 		}

@@ -84,12 +84,12 @@
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  */
 
-#include <list.h>
 #include <vmm_macros.h>
 #include <vmm_types.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
+#include <list.h>
+#include <stringlib.h>
 #include <net/vmm_mbuf.h>
 
 /*
@@ -119,7 +119,7 @@ void m_copydata(struct vmm_mbuf *m, int off, int len, void *vp)
 	}
 	while (len > 0) {
 		count = min(m->m_len - off, len);
-		vmm_memcpy(cp, mtod(m, char *) + off, count);
+		memcpy(cp, mtod(m, char *) + off, count);
 		len -= count;
 		cp = (char *)cp + count;
 		off = 0;

@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
@@ -31,6 +30,7 @@
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
@@ -473,7 +473,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	const char *attr;
 	/* Initialize User Mode Registers */
 	/* For both Orphan & Normal VCPUs */
-	vmm_memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
+	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
 	arm_regs(vcpu)->pc = vcpu->start_pc;
 	if (vcpu->is_normal) {
 		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
@@ -494,9 +494,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
-	if (vmm_strcmp(attr, "ARMv7a,cortex-a8") == 0) {
+	if (strcmp(attr, "ARMv7a,cortex-a8") == 0) {
 		cpuid = ARM_CPUID_CORTEXA8;
-	} else if (vmm_strcmp(attr, "ARMv7a,cortex-a9") == 0) {
+	} else if (strcmp(attr, "ARMv7a,cortex-a9") == 0) {
 		cpuid = ARM_CPUID_CORTEXA9;
 	} else {
 		return VMM_EFAIL;
@@ -506,7 +506,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		if (!vcpu->arch_priv) {
 			return VMM_EFAIL;
 		}
-		vmm_memset(arm_priv(vcpu), 0, sizeof(arm_priv_t));
+		memset(arm_priv(vcpu), 0, sizeof(arm_priv_t));
 		arm_priv(vcpu)->hyp_stack = vmm_malloc(CONFIG_IRQ_STACK_SIZE);
 		if (!arm_priv(vcpu)->hyp_stack) {
 			vmm_free(vcpu->arch_priv);
@@ -612,7 +612,7 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	int rc;
 
 	/* For both Orphan & Normal VCPUs */
-	vmm_memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
+	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
 
 	/* For Orphan VCPUs do nothing else */
 	if (!vcpu->is_normal) {

@@ -34,7 +34,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
@@ -42,6 +41,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 #include <pic/gic_emulator.h>
 
 #define MODULE_DESC			"Realview GIC Emulator"
@@ -968,15 +968,15 @@ struct gic_state* gic_state_alloc(struct vmm_guest *guest,
 	if (!s) {
 		goto gic_emulator_init_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct gic_state));
+	memset(s, 0x0, sizeof(struct gic_state));
 
 	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
 	if (!s->pic) {
 		goto gic_emulator_init_freestate_failed;
 	}
-	vmm_memset(s->pic, 0x0, sizeof(struct vmm_emupic));
+	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
 
-	vmm_strcpy(s->pic->name, "gic-pic");
+	strcpy(s->pic->name, "gic-pic");
 	s->pic->type = VMM_EMUPIC_IRQCHIP;
 	s->pic->handle = &gic_irq_handle;
 	s->pic->priv = s;

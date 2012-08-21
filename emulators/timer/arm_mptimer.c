@@ -35,7 +35,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_timer.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
@@ -44,6 +43,7 @@
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_stdio.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
 #define MODULE_DESC		"MPCore Private Timer and Watchdog Emulator"
@@ -411,7 +411,7 @@ struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 	if (!s) {
 		goto mptimer_state_alloc_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct mptimer_state));
+	memset(s, 0x0, sizeof(struct mptimer_state));
 
 	s->guest = guest;
 	s->num_cpu = num_cpu;
@@ -422,7 +422,7 @@ struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 	if (!s->timers) {
 		goto mptimer_timerblock_alloc_failed;
 	}
-	vmm_memset(s->timers, 0x0, NUM_TIMERS_PER_CPU * s->num_cpu * 
+	memset(s->timers, 0x0, NUM_TIMERS_PER_CPU * s->num_cpu * 
 		   sizeof(struct timer_block));
 
 	/* Init the timer blocks */

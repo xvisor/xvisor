@@ -2049,7 +2049,7 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 
 	dev->priv = (void *) ndev;
 	ndev->vmm_dev = dev;
-	vmm_strcpy(ndev->name, dev->node->name);
+	strcpy(ndev->name, dev->node->name);
 
 	lp = netdev_priv(ndev);
 	lp->netdev = ndev;
