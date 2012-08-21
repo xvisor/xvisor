@@ -158,6 +158,10 @@ fail:
 
 void vmm_fb_dealloc_cmap(struct vmm_fb_cmap *cmap)
 {
+	if (!cmap->len) {
+		return;
+	}
+
 	vmm_free(cmap->red);
 	vmm_free(cmap->green);
 	vmm_free(cmap->blue);
