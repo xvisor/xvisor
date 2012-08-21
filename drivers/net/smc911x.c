@@ -28,20 +28,7 @@
  * The original code is licensed under the GPL.
  */
 
-#include <vmm_heap.h>
-#include <vmm_host_io.h>
-#include <vmm_host_aspace.h>
-#include <vmm_host_irq.h>
-#include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
-#include <vmm_devtree.h>
-#include <vmm_devdrv.h>
-#include <vmm_delay.h>
-#include <net/vmm_protocol.h>
-#include <net/vmm_net.h>
-#include <net/vmm_netswitch.h>
-#include <net/vmm_netport.h>
 #include <smc911x.h>
 
 #include <linux/delay.h>
@@ -376,7 +363,7 @@ static inline void	 smc911x_rcv(struct net_device *dev)
 {
 	struct smc911x_local *lp = netdev_priv(dev);
 	unsigned int pkt_len, status;
-	struct sk_buff *mb;
+	struct sk_buff *skb;
 	unsigned char *data;
 
 	DBG(SMC_DEBUG_FUNC | SMC_DEBUG_RX, "%s: --> %s\n",
@@ -401,37 +388,21 @@ static inline void	 smc911x_rcv(struct net_device *dev)
 	} else {
 		/* Receive a valid packet */
 		/* Alloc a buffer with extra room for DMA alignment */
-#if 0
 		skb=dev_alloc_skb(pkt_len+32);
-
 		if (unlikely(skb == NULL)) {
-#endif
-		MGETHDR(mb, 0, 0);
-		if (!mb)
-			goto mb_alloc_fail;
-		MEXTMALLOC(mb, pkt_len + 32, M_WAIT);
-		if (!mb->m_extbuf) {
-mb_alloc_fail:
 			PRINTK( "%s: Low memory, rcvd packet dropped.\n",
 				dev->name);
 			dev->stats.rx_dropped++;
 			smc911x_drop_pkt(dev);
 			return;
 		}
-
 		/* Align IP header to 32 bits
 		 * Note that the device is configured to add a 2
 		 * byte padding to the packet start, so we really
 		 * want to write to the orignal data pointer */
-#if 0
-		data = skb->data;
+		data = (unsigned char *) skb_data(skb);
 		skb_reserve(skb, 2);
 		skb_put(skb,pkt_len-4);
-#endif
-		data = mtod(mb, unsigned char *);
-		mb->m_data += 2; // SKb reseve
-		mb->m_pkthdr.len = mb->m_len =  pkt_len - 4;
-
 #ifdef SMC_USE_DMA
 		{
 		unsigned int fifo;
@@ -455,7 +426,7 @@ mb_alloc_fail:
 		DBG(SMC_DEBUG_PKTS, "%s: Received packet\n", dev->name);
 		PRINT_PKT(data, ((pkt_len - 4) <= 64) ? pkt_len - 4 : 64);
 		//Fixme: skb->protocol = eth_type_trans(skb, dev);
-		netif_rx(mb, dev);
+		netif_rx(skb, dev);
 		dev->stats.rx_packets++;
 		dev->stats.rx_bytes += pkt_len-4;
 #endif
@@ -468,37 +439,37 @@ mb_alloc_fail:
 static void smc911x_hardware_send_pkt(struct net_device *dev)
 {
 	struct smc911x_local *lp = netdev_priv(dev);
-	struct sk_buff *mb; // struct sk_buff *skb;
+	struct sk_buff *skb;
 	unsigned int cmdA, cmdB, len;
 	unsigned char *buf;
 
 	DBG(SMC_DEBUG_FUNC | SMC_DEBUG_TX, "%s: --> %s\n", dev->name, __func__);
 	BUG_ON(lp->pending_tx_skb == NULL);
 
-	mb = lp->pending_tx_skb; // skb = lp->pending_tx_skb;
-	lp->pending_tx_skb = NULL; // lp->pending_tx_skb = NULL
+	skb = lp->pending_tx_skb;
+	lp->pending_tx_skb = NULL;
 
 	/* cmdA {25:24] data alignment [20:16] start offset [10:0] buffer length */
 	/* cmdB {31:16] pkt tag [10:0] length */
 #ifdef SMC_USE_DMA
 	/* 16 byte buffer alignment mode */
-	buf = mb->m_data;
-	buf = (unsigned char *) ((u32) buf & ~0xF);
-	len = (mb->m_len + 0xF +( mb->m_len & 0xF)) & ~0xF;
-	cmdA = (1<<24) | (((u32)mb->m_data & 0xF)<<16) |
+	buf = (char*)((u32)(skb_data(skb)) & ~0xF);
+	len = (skb_len(skb) + 0xF + ((u32)skb_data(skb) & 0xF)) & ~0xF;
+	cmdA = (1<<24) | (((u32)skb_data(skb) & 0xF)<<16) |
 		TX_CMD_A_INT_FIRST_SEG_ | TX_CMD_A_INT_LAST_SEG_ |
-		mb->m_len;
+		skb_len(skb);
+
+
 #else
-	buf = mtod(mb, unsigned char *);
-	buf = (unsigned char *) ((u32) buf & ~0x3);
-	len = (mb->m_len + 3 + (mb->m_len & 3)) & ~0x3;
-	cmdA = (((u32)mb->m_data & 0x3) << 16) |
-		TX_CMD_A_INT_FIRST_SEG_ | TX_CMD_A_INT_LAST_SEG_ |
-		mb->m_len;
+	buf = (unsigned char*)((u32) skb_data(skb) & ~0x3);
+	len = (skb_len(skb) + 3 + ((u32)skb_data(skb) & 3)) & ~0x3;
+	cmdA = (((u32)skb_data(skb) & 0x3) << 16) |
+		TX_CMD_A_INT_FIRST_SEG_| TX_CMD_A_INT_LAST_SEG_ |
+		skb_len(skb);
 
 #endif
 	/* tag is packet length so we can use this in stats update later */
-	cmdB = (mb->m_len  << 16) | (mb->m_len & 0x7FF); // skb->len
+	cmdB = (skb_len(skb)  << 16) | (skb_len(skb) & 0x7FF);
 
 
 	DBG(SMC_DEBUG_TX, "%s: TX PKT LENGTH 0x%04x (%d) BUF 0x%p CMDA 0x%08x CMDB 0x%08x\n",
@@ -511,14 +482,13 @@ static void smc911x_hardware_send_pkt(struct net_device *dev)
 
 	/* Send pkt via PIO or DMA */
 #ifdef SMC_USE_DMA
-	lp->current_tx_mb = mb;
+	lp->current_tx_skb = skb;
 	SMC_PUSH_DATA(lp, buf, len);
 	/* DMA complete IRQ will free buffer and set jiffies */
 #else
 	SMC_PUSH_DATA(lp, buf, len);
 
-	// Fixme : Can i free mbuf here ?
-	dev_kfree_skb(mb); // dev_kfree_skb_irq(skb);
+	dev_kfree_skb(skb);
 #endif
 	if (!lp->tx_throttle) {
 		netif_wake_queue(dev);
@@ -532,7 +502,7 @@ static void smc911x_hardware_send_pkt(struct net_device *dev)
  * now, or set the card to generates an interrupt when ready
  * for the packet.
  */
-static int smc911x_hard_start_xmit(struct sk_buff *mb, struct net_device *dev)
+static int smc911x_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct smc911x_local *lp = netdev_priv(dev);
 	unsigned int free;
@@ -565,17 +535,14 @@ static int smc911x_hard_start_xmit(struct sk_buff *mb, struct net_device *dev)
 	 *	  Start offset				 15 bytes
 	 *	  End padding				 15 bytes
 	 */
-
-
-
-	if (unlikely(free < (mb->m_len + 8 + 15 + 15))) {
+	if (unlikely(free < (skb_len(skb) + 8 + 15 + 15))) {
 		printk("%s: No Tx free space %d < %d\n",
-			dev->name, free, mb->m_len);
+			dev->name, free, skb_len(skb));
 		lp->pending_tx_skb = NULL;
 		dev->stats.tx_errors++;
 		dev->stats.tx_dropped++;
 		spin_unlock_irqrestore(&lp->lock, flags);
-		//m_freem(mb);	// dev_kfree_skb(skb);
+		dev_kfree_skb(skb);
 		return VMM_OK;
 	}
 
@@ -586,7 +553,7 @@ static int smc911x_hard_start_xmit(struct sk_buff *mb, struct net_device *dev)
 		 */
 		if (lp->txdma_active) {
 			DBG(SMC_DEBUG_TX | SMC_DEBUG_DMA, "%s: Tx DMA running, deferring packet\n", dev->name);
-			lp->pending_tx_skb = mb
+			lp->pending_tx_skb = skb;
 			netif_stop_queue(dev);
 			spin_unlock_irqrestore(&lp->lock, flags);
 			return VMM_OK; // return NETDEV_TX_OK;
@@ -596,7 +563,7 @@ static int smc911x_hard_start_xmit(struct sk_buff *mb, struct net_device *dev)
 		}
 	}
 #endif
-	lp->pending_tx_skb = mb;
+	lp->pending_tx_skb = skb;
 	smc911x_hardware_send_pkt(dev);
 	spin_unlock_irqrestore(&lp->lock, flags);
 
@@ -1966,7 +1933,7 @@ static int smc911x_probe(struct net_device *dev)
 #endif
 
 	/* Fill in the fields of the device structure with ethernet values. */
-        ether_setup(dev);
+	ether_setup(dev);
 
 	dev->netdev_ops = &smc911x_netdev_ops;
 #if 0

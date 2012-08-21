@@ -31,9 +31,6 @@
 #ifndef __SMC911X_H___
 #define __SMC911X_H___
 
-#include <vmm_host_io.h>
-#include <vmm_workqueue.h>
-#include <net/vmm_mbuf.h>
 #include <linux/mii.h>
 #include <linux/spinlock.h>
 #include <linux/skbuff.h>

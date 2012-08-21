@@ -28,6 +28,8 @@
 #include <vmm_types.h>
 #include <vmm_devdrv.h>
 #include <vmm_error.h>
+#include <net/vmm_protocol.h>
+#include <net/vmm_net.h>
 #include <net/vmm_netport.h>
 #include <linux/interrupt.h>
 #include <linux/skbuff.h>
