@@ -68,6 +68,12 @@
 					irq = <42>;
 				};
 
+				clcd {
+			      		device_type = "fb";
+			      		compatible = "ambaclcd";
+			      		reg = <0x10020000 0x1000>;
+				};
+
 				eth0 {
 					device_type = "nic";
 					compatible = "smc911x";
