@@ -495,7 +495,7 @@ int vmm_devdrv_clock_disable(struct vmm_device *dev)
 	return VMM_EFAIL;
 }
 
-unsigned long vmm_devdrv_clock_round_rate(struct vmm_device *dev, 
+long vmm_devdrv_clock_round_rate(struct vmm_device *dev, 
 					  unsigned long rate)
 {
 	const char *clkattr;

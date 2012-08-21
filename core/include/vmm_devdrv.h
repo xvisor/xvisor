@@ -47,10 +47,10 @@ struct vmm_devid {
 
 struct vmm_devclk {
 	struct vmm_devclk *parent;
-	int (*isenabled) (struct vmm_devclk *);
+	bool (*isenabled) (struct vmm_devclk *);
 	int (*enable) (struct vmm_devclk *);
 	void (*disable) (struct vmm_devclk *);
-	unsigned long (*round_rate) (struct vmm_devclk *, unsigned long);
+	long (*round_rate) (struct vmm_devclk *, unsigned long);
 	unsigned long (*get_rate) (struct vmm_devclk *);
 	int (*set_rate) (struct vmm_devclk *, unsigned long);
 	void *priv;
@@ -137,8 +137,8 @@ int vmm_devdrv_clock_disable(struct vmm_device *dev);
 
 /** Round clock rate for given device 
  */
-unsigned long vmm_devdrv_clock_round_rate(struct vmm_device *dev,
-					  unsigned long rate);
+long vmm_devdrv_clock_round_rate(struct vmm_device *dev,
+				 unsigned long rate);
 
 /** Get clock rate for given device 
  *  NOTE: If clock is not enabled then this will enable clock first.
