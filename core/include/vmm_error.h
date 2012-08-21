@@ -37,5 +37,6 @@
 #define VMM_ENOEXEC		-10
 #define VMM_ENOENT		-11
 #define VMM_ENOSYS		-12
+#define VMM_EIO			-13
 
 #endif
