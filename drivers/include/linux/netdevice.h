@@ -209,6 +209,6 @@ void netdev_set_link(struct vmm_netport *port);
 int netdev_can_receive(struct vmm_netport *port);
 int netdev_switch2port_xfer(struct vmm_netport *port,
 			struct vmm_mbuf *mbuf);
-
+struct net_device *alloc_etherdev(int sizeof_priv);
 
 #endif /* __LINUX_NETDEVICE_H_ */

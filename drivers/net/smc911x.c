@@ -2112,28 +2112,20 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 	struct smc911x_local *lp;
 	const char *attr;
 
-	lp = vmm_malloc(sizeof(struct smc911x_local));
-	if (!lp) {
-		vmm_printf("%s Failed to allocate private data structure for"
-			"%s\n", __func__, dev->node->name);
-			rc = VMM_EFAIL;
-			goto free_nothing;
-	}
-
-	vmm_memset(lp, 0, sizeof(struct smc911x_local));
-
-	ndev = netdev_alloc(dev->node->name);
+	ndev = alloc_etherdev(sizeof(struct smc911x_local));
 	if (!ndev) {
 		vmm_printf("%s Failed to allocate netdev for %s\n", __func__,
 				dev->node->name);
 		rc = VMM_EFAIL;
-		goto free_lp;
+		goto exit_probe;
 	}
 
 
 	dev->priv = (void *) ndev;
 	ndev->dev_ops = &smc911x_netdev_ops;
-	netdev_set_priv(ndev, lp);
+	vmm_strcpy(ndev->name, dev->node->name);
+
+	lp = netdev_priv(ndev);
 	lp->netdev = ndev;
 
 	rc = vmm_devdrv_regmap(dev, &addr, 0);
@@ -2168,10 +2160,9 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 
 free_ioreamp_mem:
 free_ndev:
-	vmm_free(ndev);
-free_lp:
 	vmm_free(lp);
-free_nothing:
+	vmm_free(ndev);
+exit_probe:
 	return rc;
 }
 
