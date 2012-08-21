@@ -58,10 +58,10 @@ enum netdev_link_state {
 struct net_device;
 
 struct net_device_ops {
-	int (*ndev_init) (struct net_device *ndev);
-	int (*ndev_open) (struct net_device *ndev);
-	int (*ndev_close) (struct net_device *ndev);
-	int (*ndev_xmit) (struct sk_buff *buf, struct net_device *ndev);
+	int (*ndo_init) (struct net_device *ndev);
+	int (*ndo_open) (struct net_device *ndev);
+	int (*ndo_stop) (struct net_device *ndev);
+	int (*ndo_start_xmit) (struct sk_buff *buf, struct net_device *ndev);
 };
 
 struct net_device_stats {
@@ -99,7 +99,7 @@ struct net_device_stats {
 struct net_device {
 	char name[MAX_NETDEV_NAME_LEN];
 	struct vmm_device *dev;
-	struct net_device_ops *dev_ops;
+	const struct net_device_ops *netdev_ops;
 	unsigned int state;
 	unsigned int link_state;
 	void *priv;		/* Driver specific private data */
@@ -115,6 +115,7 @@ struct net_device {
 	int irq;
 	physical_addr_t base_addr;
 	struct net_device_stats stats;
+	struct vmm_device *vmm_dev;
 };
 
 static inline int netif_carrier_ok(const struct net_device *dev)

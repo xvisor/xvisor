@@ -1804,11 +1804,13 @@ static int __devinit smc911x_findirq(struct net_device *dev)
 	/* and return what I found */
 	return probe_irq_off(cookie);
 }
+#endif
 
 static const struct net_device_ops smc911x_netdev_ops = {
 	.ndo_open		= smc911x_open,
 	.ndo_stop		= smc911x_close,
 	.ndo_start_xmit		= smc911x_hard_start_xmit,
+#if 0
 	.ndo_tx_timeout		= smc911x_timeout,
 	.ndo_set_multicast_list	= smc911x_set_multicast_list,
 	.ndo_change_mtu		= eth_change_mtu,
@@ -1817,8 +1819,9 @@ static const struct net_device_ops smc911x_netdev_ops = {
 #ifdef CONFIG_NET_POLL_CONTROLLER
 	.ndo_poll_controller	= smc911x_poll_controller,
 #endif
-};
 #endif
+};
+
 
 static int smc911x_probe(struct net_device *dev)
 {
@@ -1965,8 +1968,8 @@ static int smc911x_probe(struct net_device *dev)
 	/* Fill in the fields of the device structure with ethernet values. */
         ether_setup(dev);
 
-#if 0
 	dev->netdev_ops = &smc911x_netdev_ops;
+#if 0
 	dev->watchdog_timeo = msecs_to_jiffies(watchdog);
 	dev->ethtool_ops = &smc911x_ethtool_ops;
 
@@ -2059,50 +2062,6 @@ err_out:
 	return retval;
 }
 
-static int smc911x_register_vmm(struct net_device *dev, struct vmm_device *vmm_dev)
-{
-	struct vmm_netport *port;
-	const char *attr;
-	struct vmm_netswitch *nsw;
-
-	port = vmm_netport_alloc(dev->name);
-
-	if (!port) {
-		vmm_printf("Failed to allocate netport for %s\n", dev->name);
-		return VMM_ENOMEM;
-	}
-
-	port->mtu = dev->mtu;
-	port->link_changed = netdev_set_link;
-	port->can_receive = netdev_can_receive;
-	port->switch2port_xfer = netdev_switch2port_xfer;
-	port->priv = dev;
-	vmm_memcpy(port->macaddr, dev->dev_addr, ETH_ALEN);
-
-	dev->nsw_priv = port;
-
-	vmm_netport_register(port);
-
-        attr = vmm_devtree_attrval(vmm_dev->node, "switch");
-        if (attr) {
-                nsw = vmm_netswitch_find((char *)attr);
-                if(!nsw) {
-                        vmm_panic("%s: Cannot find netswitch \"%s\"\n", dev->name, (char *)attr);
-                }
-                vmm_netswitch_port_add(nsw, port);
-        }
-
-
-	return VMM_OK;
-}
-
-static struct net_device_ops smc911x_netdev_ops = {
-	.ndev_init = NULL,
-	.ndev_open = smc911x_open,
-	.ndev_close = smc911x_close,
-	.ndev_xmit = smc911x_hard_start_xmit,
-};
-
 static int smc911x_driver_probe(struct vmm_device *dev,
 				const struct vmm_devid *devid)
 {
@@ -2122,7 +2081,7 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 
 
 	dev->priv = (void *) ndev;
-	ndev->dev_ops = &smc911x_netdev_ops;
+	ndev->vmm_dev = dev;
 	vmm_strcpy(ndev->name, dev->node->name);
 
 	lp = netdev_priv(ndev);
@@ -2153,8 +2112,6 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 #endif
 
 	rc = smc911x_probe(ndev);
-
-	smc911x_register_vmm(ndev, dev);
 
 	return rc;
 

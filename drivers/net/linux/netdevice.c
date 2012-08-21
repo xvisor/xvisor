@@ -42,6 +42,48 @@ struct net_device *netdev_alloc(const char *name)
 	return ndev;
 }
 
+static int netdev_register_port(struct net_device *ndev)
+{
+        struct vmm_netport *port;
+        const char *attr;
+        struct vmm_netswitch *nsw;
+	struct vmm_device *vmm_dev = ndev->vmm_dev;
+
+        port = vmm_netport_alloc(ndev->name);
+
+        if (!port) {
+                vmm_printf("Failed to allocate netport for %s\n", ndev->name);
+                return VMM_ENOMEM;
+        }
+
+        port->mtu = ndev->mtu;
+        port->link_changed = netdev_set_link;
+        port->can_receive = netdev_can_receive;
+        port->switch2port_xfer = netdev_switch2port_xfer;
+        port->priv = ndev;
+        vmm_memcpy(port->macaddr, ndev->dev_addr, ETH_ALEN);
+
+        ndev->nsw_priv = port;
+
+        vmm_netport_register(port);
+
+	if (vmm_dev) {
+
+		attr = vmm_devtree_attrval(vmm_dev->node, "switch");
+		if (attr) {
+			nsw = vmm_netswitch_find((char *)attr);
+			if(!nsw) {
+				vmm_panic("%s: Cannot find netswitch \"%s\"\n",
+						ndev->name, (char *)attr);
+			}
+			vmm_netswitch_port_add(nsw, port);
+		}
+	}
+
+        return VMM_OK;
+}
+
+
 int netdev_register(struct net_device *ndev)
 {
 	int rc = VMM_OK;
@@ -50,8 +92,8 @@ int netdev_register(struct net_device *ndev)
 		return VMM_EFAIL;
 	}
 
-	if (ndev->dev_ops && ndev->dev_ops->ndev_init) {
-		rc = ndev->dev_ops->ndev_init(ndev);
+	if (ndev->netdev_ops && ndev->netdev_ops->ndo_init) {
+		rc = ndev->netdev_ops->ndo_init(ndev);
 		if (rc != VMM_OK) {
 			vmm_printf("%s: Device %s Failed during initializaion"
 				   "with err %d!!!!\n", __func__ ,
@@ -62,6 +104,8 @@ int netdev_register(struct net_device *ndev)
 
 	ndev->state &= ~NETDEV_UNINITIALIZED;
 	ndev->state |= NETDEV_REGISTERED;
+
+	rc = netdev_register_port(ndev);
 
 	return rc;
 
@@ -87,9 +131,9 @@ void netdev_set_link(struct vmm_netport *port)
 	struct net_device *dev = (struct net_device *)port->priv;
 
 	if (port->flags & VMM_NETPORT_LINK_UP) {
-		dev->dev_ops->ndev_open(dev);
+		dev->netdev_ops->ndo_open(dev);
 	} else {
-		dev->dev_ops->ndev_close(dev);
+		dev->netdev_ops->ndo_stop(dev);
 	}
 }
 
@@ -121,7 +165,7 @@ int netdev_switch2port_xfer(struct vmm_netport *port,
 		MEXTADD(mbuf, buf, len, 0, 0);
 	}
 
-	dev->dev_ops->ndev_xmit(mbuf, dev);
+	dev->netdev_ops->ndo_start_xmit(mbuf, dev);
 
 	return rc;
 }
