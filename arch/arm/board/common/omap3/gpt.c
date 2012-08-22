@@ -200,7 +200,7 @@ int __init omap3_gpt_clocksource_init(u32 gpt_num, physical_addr_t prm_pa)
 
 	omap3_gpt_continuous(gpt_num);
 
-	cs = vmm_malloc(sizeof(struct omap3_gpt_clocksource));
+	cs = vmm_zalloc(sizeof(struct omap3_gpt_clocksource));
 	if (!cs) {
 		return VMM_EFAIL;
 	}
@@ -313,7 +313,7 @@ int __init omap3_gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa)
 
 	omap3_gpt_write(gpt_num, OMAP3_GPT_TCLR, 0);
 
-	cc = vmm_malloc(sizeof(struct omap3_gpt_clockchip));
+	cc = vmm_zalloc(sizeof(struct omap3_gpt_clockchip));
 	if (!cc) {
 		return VMM_EFAIL;
 	}

@@ -279,7 +279,7 @@ static int __init hpet_clockchip_init(u8 timer_id, const char *chip_name,
 	vmm_printf("Initialized HPET timer %d and routed its "
 		   "interrupt to %d pin on I/O APIC.\n", timer_id, pinno);
 
-	cc = vmm_malloc(sizeof(struct hpet_clockchip));
+	cc = vmm_zalloc(sizeof(struct hpet_clockchip));
 	if (!cc) {
 		return VMM_EFAIL;
 	}

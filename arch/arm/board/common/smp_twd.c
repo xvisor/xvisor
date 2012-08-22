@@ -162,6 +162,7 @@ int __init twd_clockchip_init(virtual_addr_t base,
 	int rc;
 	u32 cpu = vmm_smp_processor_id();
 	struct twd_clockchip *cc = &this_cpu(twd_cc);
+	vmm_memset(cc, 0, sizeof(struct twd_clockchip));
 
 	twd_caliberate_freq(base, ref_counter_addr, ref_counter_freq);
 

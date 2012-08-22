@@ -53,7 +53,7 @@ int __init sp804_clocksource_init(virtual_addr_t base,
 	u32 ctrl;
 	struct sp804_clocksource *cs;
 
-	cs = vmm_malloc(sizeof(struct sp804_clocksource));
+	cs = vmm_zalloc(sizeof(struct sp804_clocksource));
 	if (!cs) {
 		return VMM_EFAIL;
 	}
@@ -160,7 +160,7 @@ int __init sp804_clockchip_init(virtual_addr_t base,
 	int rc;
 	struct sp804_clockchip *cc;
 
-	cc = vmm_malloc(sizeof(struct sp804_clockchip));
+	cc = vmm_zalloc(sizeof(struct sp804_clockchip));
 	if (!cc) {
 		return VMM_EFAIL;
 	}
