@@ -771,6 +771,9 @@ int vmm_lock_fb_info(struct vmm_fb_info *info);
 
 void vmm_unlock_fb_info(struct vmm_fb_info *info);
 
+int vmm_fb_get_color_depth(struct vmm_fb_var_screeninfo *var,
+			   struct vmm_fb_fix_screeninfo *fix);
+
 /**
  *	Low level driver signals suspend
  *	@info: framebuffer affected
