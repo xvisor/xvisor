@@ -27,7 +27,7 @@
 #include <vmm_chardev.h>
 #include <stringlib.h>
 
-int vmm_chardev_doioctl(struct vmm_chardev * cdev,
+int vmm_chardev_doioctl(struct vmm_chardev *cdev,
 			int cmd, void *buf, u32 len)
 {
 	if (cdev && cdev->ioctl) {
@@ -37,7 +37,7 @@ int vmm_chardev_doioctl(struct vmm_chardev * cdev,
 	}
 }
 
-u32 vmm_chardev_doread(struct vmm_chardev * cdev,
+u32 vmm_chardev_doread(struct vmm_chardev *cdev,
 		       u8 *dest, u32 offset, u32 len, bool block)
 {
 	u32 b;
@@ -60,7 +60,7 @@ u32 vmm_chardev_doread(struct vmm_chardev * cdev,
 	}
 }
 
-u32 vmm_chardev_dowrite(struct vmm_chardev * cdev,
+u32 vmm_chardev_dowrite(struct vmm_chardev *cdev,
 			u8 *src, u32 offset, u32 len, bool block)
 {
 	u32 b;
@@ -83,7 +83,7 @@ u32 vmm_chardev_dowrite(struct vmm_chardev * cdev,
 	}
 }
 
-int vmm_chardev_register(struct vmm_chardev * cdev)
+int vmm_chardev_register(struct vmm_chardev *cdev)
 {
 	int rc;
 	struct vmm_classdev *cd;
@@ -112,7 +112,7 @@ int vmm_chardev_register(struct vmm_chardev * cdev)
 	return rc;
 }
 
-int vmm_chardev_unregister(struct vmm_chardev * cdev)
+int vmm_chardev_unregister(struct vmm_chardev *cdev)
 {
 	int rc;
 	struct vmm_classdev *cd;
