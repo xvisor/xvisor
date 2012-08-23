@@ -125,7 +125,7 @@ static void input_pass_event(struct vmm_input_dev *idev,
 	vmm_spin_lock_irqsave(&ictrl.hnd_conn_lock[type], flags);
 
 	list_for_each(l, &ictrl.hnd_conn[type]) {
-		handler = list_entry(l, struct vmm_input_handler, head);
+		handler = list_entry(l, struct vmm_input_handler, conn_head[type]);
 		handler->event(handler, idev, type, code, value);
 	}
 
