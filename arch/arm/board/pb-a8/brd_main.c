@@ -35,11 +35,15 @@
 #include <versatile/clcd.h>
 #include <versatile/clock.h>
 #include <libfdt.h>
+#include <vtemu.h>
 #include <realview_plat.h>
 #include <pba8_board.h>
 
 extern u32 dt_blob_start;
 virtual_addr_t pba8_sys_base;
+#if defined(CONFIG_VTEMU)
+struct vtemu *pba8_vt;
+#endif
 
 int arch_board_ram_start(physical_addr_t *addr)
 {
@@ -297,9 +301,12 @@ int __init arch_board_final_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
-	struct vmm_chardev * cdev;
+	struct vmm_chardev *cdev;
 #if defined(CONFIG_RTC)
-	struct vmm_rtcdev * rdev;
+	struct vmm_rtcdev *rdev;
+#endif
+#if defined(CONFIG_VTEMU)
+	struct vmm_fb_info *info;
 #endif
 
 	/* All VMM API's are available here */
@@ -346,6 +353,14 @@ int __init arch_board_final_init(void)
 		if ((rc = vmm_rtcdev_sync_wallclock(rdev))) {
 			return rc;
 		}
+	}
+#endif
+
+	/* Create VTEMU instace if available*/
+#if defined(CONFIG_VTEMU)
+	info = vmm_fb_find("clcd");
+	if (info) {
+		pba8_vt = vtemu_create("clcd-vtemu", info, NULL);
 	}
 #endif
 
