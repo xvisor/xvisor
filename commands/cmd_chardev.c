@@ -48,16 +48,24 @@ void cmd_chardev_list(struct vmm_chardev *cdev)
 	int num, count;
 	char path[1024];
 	struct vmm_chardev *cd;
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
+	vmm_cprintf(cdev, " %-24s %-53s\n", 
+			  "Name", "Device Path");
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
 	count = vmm_chardev_count();
 	for (num = 0; num < count; num++) {
 		cd = vmm_chardev_get(num);
 		if (!cd->dev) {
-			vmm_cprintf(cdev, "%s: ---\n", cd->name);
+			strcpy(path, "-----");
 		} else {
 			vmm_devtree_getpath(path, cd->dev->node);
-			vmm_cprintf(cdev, "%s: %s\n", cd->name, path);
 		}
+		vmm_cprintf(cdev, " %-24s %-53s\n", cd->name, path);
 	}
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
 }
 
 int cmd_chardev_exec(struct vmm_chardev *cdev, int argc, char **argv)
