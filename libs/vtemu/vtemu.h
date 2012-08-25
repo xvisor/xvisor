@@ -81,12 +81,14 @@ struct vtemu {
 	/* freeze state of vtemu */
 	bool freeze;
 
-	/* output data */
+	/* screen data */
 	struct vtemu_cell *cell;
 	u32 cell_head;
 	u32 cell_tail;
 	u32 cell_count;
 	u32 cell_len;
+	u8 *cursor_bkp;
+	u32 cursor_bkp_size;
 	u8 esc_cmd[VTEMU_ESCMD_SIZE];
 	u32 esc_cmd_count;
 	bool esc_cmd_active;

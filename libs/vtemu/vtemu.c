@@ -27,8 +27,7 @@
 #include <mathlib.h>
 #include <vtemu.h>
 
-#define VTEMU_CURSOR_ERASE_CHAR			'\0'
-#define VTEMU_CURSOR_DRAW_CHAR			'_'
+#define VTEMU_ERASE_CHAR			'\0'
 #define VTEMU_TABSPACE_COUNT			5
 
 static void vtemu_cell_draw(struct vtemu *v, struct vtemu_cell *vcell)
@@ -60,24 +59,52 @@ static void vtemu_cell_draw(struct vtemu *v, struct vtemu_cell *vcell)
 
 static void vtemu_cursor_erase(struct vtemu *v)
 {
-	struct vmm_fb_fillrect rect;
+	u8 *fbdst;
+	u32 dx, dy, fboffset;
 
 	if ((v->start_y + v->h) <= v->y) {
 		return;
 	}
 
-	rect.dx = v->x * v->font->width;
-	rect.dy = (v->y - v->start_y) * v->font->height;
-	rect.width = 1;
-	rect.height = v->font->height;
-	rect.color = v->bc;
-	rect.rop = ROP_COPY;
+	dx = v->x * v->font->width;
+	dy = (v->y - v->start_y + 1) * v->font->height - 2;
+	fboffset = ((dy * v->info->var.xres_virtual) + dx) * 
+					v->info->var.bits_per_pixel;
+	fboffset = fboffset / 8;
+	fbdst = (u8 *)v->info->screen_base + fboffset;
 
-	v->info->fbops->fb_fillrect(v->info, &rect);
+	fb_memcpy_tofb(fbdst, v->cursor_bkp, v->cursor_bkp_size);
 }
 
 static void vtemu_cursor_draw(struct vtemu *v)
 {
+	u8 *fbsrc;
+	u32 fboffset;
+	struct vmm_fb_fillrect rect;
+
+	if ((v->start_y + v->h) <= v->y) {
+		return;
+	}
+
+	rect.dx = v->x * v->font->width;
+	rect.dy = (v->y - v->start_y + 1) * v->font->height - 2;
+	rect.width = v->font->width;
+	rect.height = 1;
+	rect.color = v->fc;
+	rect.rop = ROP_COPY;
+
+	fboffset = ((rect.dy * v->info->var.xres_virtual) + rect.dx) * 
+						v->info->var.bits_per_pixel;
+	fboffset = fboffset / 8;
+	fbsrc = (u8 *)v->info->screen_base + fboffset;
+	fb_memcpy_fromfb(v->cursor_bkp, fbsrc, v->cursor_bkp_size);
+
+	v->info->fbops->fb_fillrect(v->info, &rect);
+}
+
+static void vtemu_cursor_clear_down(struct vtemu *v)
+{
+	u32 pos, c;
 	struct vmm_fb_fillrect rect;
 
 	if ((v->start_y + v->h) <= v->y) {
@@ -86,12 +113,26 @@ static void vtemu_cursor_draw(struct vtemu *v)
 
 	rect.dx = v->x * v->font->width;
 	rect.dy = (v->y - v->start_y) * v->font->height;
-	rect.width = 1;
-	rect.height = v->font->height;
-	rect.color = v->fc;
+	rect.width = (v->w - v->x - 1) * v->font->width;
+	rect.height = v->font->height - 1;
+	rect.color = v->bc;
 	rect.rop = ROP_COPY;
 
 	v->info->fbops->fb_fillrect(v->info, &rect);
+
+	vtemu_cursor_draw(v);
+
+	pos = v->cell_head;
+	for (c = 0; c < v->cell_count; c++) {
+		if ((v->x <= v->cell[pos].x) &&
+		    (v->y == v->cell[pos].y)) {
+			v->cell[pos].ch = VTEMU_ERASE_CHAR;
+		}
+		pos++;
+		if (pos == v->cell_len) {
+			pos = 0;
+		}
+	}
 }
 
 static void vtemu_scroll_down(struct vtemu *v, u32 lines)
@@ -129,6 +170,8 @@ static int vtemu_startesc(struct vtemu *v)
 
 static int vtemu_putesc(struct vtemu *v, u8 ch)
 {
+	u32 tmp;
+
 	if (v->esc_cmd_count < VTEMU_ESCMD_SIZE) {
 		v->esc_cmd[v->esc_cmd_count] = ch;
 		v->esc_cmd_count++;
@@ -139,64 +182,70 @@ static int vtemu_putesc(struct vtemu *v, u8 ch)
 
 	if ((v->esc_cmd_count > 1) && 
 	    (v->esc_cmd[0] == '[')) {
-		if (v->esc_cmd[1] == 'D') { /* Move Left */
+		if (v->esc_cmd[v->esc_cmd_count - 1] == 'D') { /* Move Left */
 			/* Erase cursor */
 			vtemu_cursor_erase(v);
 
-			if (v->x) {
+			tmp = 0;
+			if (v->esc_cmd_count > 2) {
+				v->esc_cmd[v->esc_cmd_count - 1] = '\0';
+				tmp = str2uint((char *)&v->esc_cmd[1], 10);
+			}
+			tmp = (tmp) ? tmp : 1;
+			while (v->x && tmp) {
 				v->x--;
+				tmp--;
 			}
 			v->esc_cmd_active = FALSE;
 
 			/* Draw cursor */
 			vtemu_cursor_draw(v);
-		} else if (v->esc_cmd[1] == 'C') { /* Move Right */
+		} else if (v->esc_cmd[v->esc_cmd_count - 1] == 'C') { /* Move Right */
 			/* Erase cursor */
 			vtemu_cursor_erase(v);
 
-			v->x++;
-			if (v->x == v->w) {
-				v->x = 0;
-				v->y++;
-				if (v->y == (v->start_y + v->h)) {
-					vtemu_scroll_down(v, 1);
+			tmp = 0;
+			if (v->esc_cmd_count > 2) {
+				v->esc_cmd[v->esc_cmd_count - 1] = '\0';
+				tmp = str2uint((char *)&v->esc_cmd[1], 10);
+			}
+			tmp = (tmp) ? tmp : 1;
+			while (tmp) {
+				v->x++;
+				if (v->x == v->w) {
+					v->x = 0;
+					v->y++;
+					if (v->y == (v->start_y + v->h)) {
+						vtemu_scroll_down(v, 1);
+					}
 				}
+				tmp--;
 			}
 			v->esc_cmd_active = FALSE;
 
 			/* Draw cursor */
 			vtemu_cursor_draw(v);
-		} else if (v->esc_cmd[1] == 'm') { /* Turn off character attributes */
-			/* FIXME: */
-			v->esc_cmd_active = FALSE;
-		} else if ((v->esc_cmd_count > 2) && 
-			   (v->esc_cmd[1] == '0')) {
-			if (v->esc_cmd[2] == 'm') { /* Turn off character attributes */
+		} else if (v->esc_cmd[v->esc_cmd_count - 1] == 'm') {
+			if ((v->esc_cmd_count == 2) ||
+			    ((v->esc_cmd_count > 2) && 
+			     (v->esc_cmd[1] == '0'))) { /* Turn off character attributes */
 				/* FIXME: */
 				v->esc_cmd_active = FALSE;
-			} else {
-				goto unhandled;
-			}
-		} else if ((v->esc_cmd_count > 2) && 
-			   (v->esc_cmd[1] == '1')) {
-			if (v->esc_cmd[2] == 'm') { /* Turn bold mode on */
-				/* FIXME: */
-				v->esc_cmd_active = FALSE;
-			} else if ((v->esc_cmd[2] == ';') &&
-				   (v->esc_cmd[v->esc_cmd_count - 1] == 'm')) {
+			} else if ((v->esc_cmd_count > 2) && 
+				   (v->esc_cmd[1] == '1')) { /* Turn bold mode on */
 				/* FIXME: */
 				v->esc_cmd_active = FALSE;
 			}
-		} else if ((v->esc_cmd_count > 2) && 
-			   (v->esc_cmd[1] == '6')) {
-			if (v->esc_cmd[2] == 'n') { /* ??? */
-				/* FIXME: */
+		} else if (v->esc_cmd[v->esc_cmd_count - 1] == 'n') {
+			if ((v->esc_cmd_count > 2) && 
+			   (v->esc_cmd[1] == '6')) { /* ??? */
+				/* FIXME: [6n */
 				v->esc_cmd_active = FALSE;
 			} else {
 				goto unhandled;
 			}
 		} else if (v->esc_cmd[1] == 'J') { /* Clear screen from cursor down */
-			/* FIXME: */
+			vtemu_cursor_clear_down(v);
 			v->esc_cmd_active = FALSE;
 		}
 	}
@@ -212,11 +261,11 @@ static int vtemu_putchar(struct vtemu *v, u8 ch)
 {
 	u32 i;
 
+	/* Erase cursor */
+	vtemu_cursor_erase(v);
+
 	switch (ch) {
 	case '\t':
-		/* Erase cursor */
-		vtemu_cursor_erase(v);
-
 		/* Update location */
 		for (i = 0; i < VTEMU_TABSPACE_COUNT; i++) {
 			if (v->x == v->w) {
@@ -232,48 +281,31 @@ static int vtemu_putchar(struct vtemu *v, u8 ch)
 			}
 		}
 
-		/* Draw cursor */
-		vtemu_cursor_draw(v);
-
 		break;
-	case '\b':
-		/* Erase cursor */
-		vtemu_cursor_erase(v);
 
+	case '\b':
 		/* Update location */
 		if (v->x) {
 			v->x--;
 		}
 
-		/* Draw cursor */
-		vtemu_cursor_draw(v);
-
 		break;
-	case '\r':
-		/* Erase cursor */
-		vtemu_cursor_erase(v);
 
+	case '\r':
 		/* Update location */
 		v->x = 0;
 
-		/* Draw cursor */
-		vtemu_cursor_draw(v);
-
 		break;
-	case '\n':
-		/* Erase cursor */
-		vtemu_cursor_erase(v);
 
+	case '\n':
 		/* Update location */
 		v->y++;
 		if (v->y == (v->start_y + v->h)) {
 			vtemu_scroll_down(v, 1);
 		}
 
-		/* Draw cursor */
-		vtemu_cursor_draw(v);
-
 		break;
+
 	default:
 		/* Pop cell if full */
 		if ((v->cell_tail == v->cell_head) &&
@@ -311,12 +343,13 @@ static int vtemu_putchar(struct vtemu *v, u8 ch)
 				vtemu_scroll_down(v, 1);
 			}
 		}
-	
-		/* Draw cursor */
-		vtemu_cursor_draw(v);
 
 		break;
 	};
+
+	
+	/* Draw cursor */
+	vtemu_cursor_draw(v);
 
 	return VMM_OK;
 }
@@ -871,6 +904,12 @@ struct vtemu *vtemu_create(const char *name,
 		v->cell[c].x = 0xFFFFFFFF;
 		v->cell[c].y = 0xFFFFFFFF;
 	}
+	v->cursor_bkp_size = v->font->height * v->info->var.bits_per_pixel;
+	v->cursor_bkp_size = v->cursor_bkp_size / 8;
+	v->cursor_bkp = vmm_zalloc(v->cursor_bkp_size);
+	if (!v->cursor_bkp) {
+		goto free_cells;
+	}
 	v->esc_cmd_count = 0;
 	v->esc_cmd_active = FALSE;
 
@@ -887,6 +926,8 @@ struct vtemu *vtemu_create(const char *name,
 
 	return v;
 
+free_cells:
+	vmm_free(v->cell);
 dealloc_cmap:
 	vmm_fb_dealloc_cmap(&v->cmap);
 release_fb:
@@ -908,6 +949,7 @@ int vtemu_destroy(struct vtemu *v)
 		return VMM_EFAIL;
 	}
 
+	vmm_free(v->cursor_bkp);
 	vmm_free(v->cell);
 	vmm_fb_dealloc_cmap(&v->cmap);
 	rc  = vmm_fb_release(v->info);
