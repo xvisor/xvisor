@@ -70,7 +70,9 @@ void cmd_vserial_recv(struct vmm_vserial *vser, void * priv, u8 ch)
 		recvcntx->chpos = 0;
 	} else if (ch == '\r') {
 		/* Emulate the effect of '\r' character */
-		vmm_cprintf(recvcntx->cdev, "\e[%dD", recvcntx->chpos);
+		if (recvcntx->chpos) {
+			vmm_cprintf(recvcntx->cdev, "\e[%dD", recvcntx->chpos);
+		}
 		recvcntx->chpos = 0;
 	} else if (ch == '\e' || recvcntx->ecount > 0) {
 		/* Increment ecount till entire ANSI/VT100
