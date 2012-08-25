@@ -47,16 +47,22 @@ bool vmm_iscontrol(char c);
 /** Check if a character is printable */
 bool vmm_isprintable(char c);
 
-/** Low-level print char function */
-int vmm_printchar(char **str, struct vmm_chardev *cdev, char c, bool block);
-
-/** Put character to default terminal */
-void vmm_putc(char ch);
+/** Low-level print characters function */
+int vmm_printchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block);
 
 /** Put character to character device */
 void vmm_cputc(struct vmm_chardev *cdev, char ch);
 
-/** Print formatted string to default terminal */
+/** Put character to default device */
+void vmm_putc(char ch);
+
+/** Put string to character device */
+void vmm_cputs(struct vmm_chardev *cdev, char *str);
+
+/** Put string to default device */
+void vmm_puts(char *str);
+
+/** Print formatted string to default device */
 int vmm_printf(const char *format, ...);
 
 /** Print formatted string to another string */
@@ -71,19 +77,25 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
 /** Panic & Print formatted message */
 void __noreturn vmm_panic(const char *format, ...);
 
-/** Low-level scan character function */
-int vmm_scanchar(char **str, struct vmm_chardev *cdev, char *c, bool block);
+/** Low-level scan characters function */
+int vmm_scanchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block);
 
-/** Get character from default terminal */
+/** Get character from character device */
+char vmm_cgetc(struct vmm_chardev *cdev) ;
+
+/** Get character from default device */
 char vmm_getc(void);
 
-/** Get string from default terminal */
+/** Get string from character device */
+char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, char endchar);
+
+/** Get string from default device */
 char *vmm_gets(char *s, int maxwidth, char endchar);
 
-/** Get character device used by stdio */
+/** Get default character device used by stdio */
 struct vmm_chardev *vmm_stdio_device(void);
 
-/** Change character device used by stdio */
+/** Change default character device used by stdio */
 int vmm_stdio_change_device(struct vmm_chardev * cdev);
 
 /** Initialize standerd IO library */

@@ -140,7 +140,7 @@ int cmd_vserial_bind(struct vmm_chardev *cdev, const char *name)
 
 	epos = 0;
 	while(1) {
-		if (!vmm_scanchar(NULL, cdev, &ch, TRUE)) {
+		if (!vmm_scanchars(cdev, &ch, 1, TRUE)) {
 			if (epos < sizeof(estr)) {
 				if (estr[epos] == ch) {
 					epos++;
