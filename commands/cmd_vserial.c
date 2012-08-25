@@ -70,12 +70,8 @@ void cmd_vserial_recv(struct vmm_vserial *vser, void * priv, u8 ch)
 		recvcntx->chpos = 0;
 	} else if (ch == '\r') {
 		/* Emulate the effect of '\r' character */
-		while (recvcntx->chpos) {
-			vmm_cputc(recvcntx->cdev, '\e');
-			vmm_cputc(recvcntx->cdev, '[');
-			vmm_cputc(recvcntx->cdev, 'D');
-			recvcntx->chpos--;
-		}
+		vmm_cprintf(recvcntx->cdev, "\e[%dD", recvcntx->chpos);
+		recvcntx->chpos = 0;
 	} else if (ch == '\e' || recvcntx->ecount > 0) {
 		/* Increment ecount till entire ANSI/VT100
 		 * command is detected. Upon detecting end 
