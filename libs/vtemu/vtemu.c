@@ -254,10 +254,7 @@ static int vtemu_putchar(struct vtemu *v, u8 ch)
 		vtemu_cursor_erase(v);
 
 		/* Update location */
-		v->y++;
-		if (v->y == (v->start_y + v->h)) {
-			vtemu_scroll_down(v, 1);
-		}
+		v->x = 0;
 
 		/* Draw cursor */
 		vtemu_cursor_draw(v);
@@ -268,7 +265,10 @@ static int vtemu_putchar(struct vtemu *v, u8 ch)
 		vtemu_cursor_erase(v);
 
 		/* Update location */
-		v->x = 0;
+		v->y++;
+		if (v->y == (v->start_y + v->h)) {
+			vtemu_scroll_down(v, 1);
+		}
 
 		/* Draw cursor */
 		vtemu_cursor_draw(v);
