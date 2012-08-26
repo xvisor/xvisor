@@ -138,12 +138,26 @@ static void vtemu_cursor_clear_down(struct vtemu *v)
 static void vtemu_scroll_down(struct vtemu *v, u32 lines)
 {
 	u32 c, pos;
+	struct vmm_fb_copyarea reg;
 	struct vmm_fb_fillrect rect;
 
+	if (!lines) {
+		return;
+	}
+
+	reg.dx = 0;
+	reg.dy = 0;
+	reg.width = (v->w - lines) * v->font->width;
+	reg.height = (v->h - lines) * v->font->height;
+	reg.sx = 0;
+	reg.sy = lines * v->font->height;
+
+	v->info->fbops->fb_copyarea(v->info, &reg);
+
 	rect.dx = 0;
-	rect.dy = 0;
+	rect.dy = (v->h - lines) * v->font->height;
 	rect.width = v->w * v->font->width;
-	rect.height = v->h * v->font->height;
+	rect.height = lines * v->font->height;
 	rect.color = v->bc;
 	rect.rop = ROP_COPY;
 
@@ -153,7 +167,9 @@ static void vtemu_scroll_down(struct vtemu *v, u32 lines)
 
 	pos = v->cell_head;
 	for (c = 0; c < v->cell_count; c++) {
-		vtemu_cell_draw(v, &v->cell[pos]);
+		if ((v->start_y + v->h - lines) <= v->cell[pos].y) {
+			vtemu_cell_draw(v, &v->cell[pos]);
+		}
 		pos++;
 		if (pos == v->cell_len) {
 			pos = 0;
