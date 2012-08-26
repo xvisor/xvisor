@@ -113,8 +113,8 @@ static void vtemu_cursor_clear_down(struct vtemu *v)
 
 	rect.dx = v->x * v->font->width;
 	rect.dy = (v->y - v->start_y) * v->font->height;
-	rect.width = (v->w - v->x - 1) * v->font->width;
-	rect.height = v->font->height - 1;
+	rect.width = (v->w - v->x) * v->font->width;
+	rect.height = (v->h - v->y + v->start_y) * v->font->height;
 	rect.color = v->bc;
 	rect.rop = ROP_COPY;
 
@@ -125,7 +125,7 @@ static void vtemu_cursor_clear_down(struct vtemu *v)
 	pos = v->cell_head;
 	for (c = 0; c < v->cell_count; c++) {
 		if ((v->x <= v->cell[pos].x) &&
-		    (v->y == v->cell[pos].y)) {
+		    (v->y <= v->cell[pos].y)) {
 			v->cell[pos].ch = VTEMU_ERASE_CHAR;
 		}
 		pos++;
@@ -159,102 +159,6 @@ static void vtemu_scroll_down(struct vtemu *v, u32 lines)
 			pos = 0;
 		}
 	}
-}
-
-static int vtemu_startesc(struct vtemu *v)
-{
-	v->esc_cmd_active = TRUE;
-	v->esc_cmd_count = 0;
-	return VMM_OK;
-}
-
-static int vtemu_putesc(struct vtemu *v, u8 ch)
-{
-	u32 tmp;
-
-	if (v->esc_cmd_count < VTEMU_ESCMD_SIZE) {
-		v->esc_cmd[v->esc_cmd_count] = ch;
-		v->esc_cmd_count++;
-	} else {
-		v->esc_cmd_active = FALSE;
-		return VMM_OK;
-	}
-
-	if ((v->esc_cmd_count > 1) && 
-	    (v->esc_cmd[0] == '[')) {
-		if (v->esc_cmd[v->esc_cmd_count - 1] == 'D') { /* Move Left */
-			/* Erase cursor */
-			vtemu_cursor_erase(v);
-
-			tmp = 0;
-			if (v->esc_cmd_count > 2) {
-				v->esc_cmd[v->esc_cmd_count - 1] = '\0';
-				tmp = str2uint((char *)&v->esc_cmd[1], 10);
-			}
-			tmp = (tmp) ? tmp : 1;
-			while (v->x && tmp) {
-				v->x--;
-				tmp--;
-			}
-			v->esc_cmd_active = FALSE;
-
-			/* Draw cursor */
-			vtemu_cursor_draw(v);
-		} else if (v->esc_cmd[v->esc_cmd_count - 1] == 'C') { /* Move Right */
-			/* Erase cursor */
-			vtemu_cursor_erase(v);
-
-			tmp = 0;
-			if (v->esc_cmd_count > 2) {
-				v->esc_cmd[v->esc_cmd_count - 1] = '\0';
-				tmp = str2uint((char *)&v->esc_cmd[1], 10);
-			}
-			tmp = (tmp) ? tmp : 1;
-			while (tmp) {
-				v->x++;
-				if (v->x == v->w) {
-					v->x = 0;
-					v->y++;
-					if (v->y == (v->start_y + v->h)) {
-						vtemu_scroll_down(v, 1);
-					}
-				}
-				tmp--;
-			}
-			v->esc_cmd_active = FALSE;
-
-			/* Draw cursor */
-			vtemu_cursor_draw(v);
-		} else if (v->esc_cmd[v->esc_cmd_count - 1] == 'm') {
-			if ((v->esc_cmd_count == 2) ||
-			    ((v->esc_cmd_count > 2) && 
-			     (v->esc_cmd[1] == '0'))) { /* Turn off character attributes */
-				/* FIXME: */
-				v->esc_cmd_active = FALSE;
-			} else if ((v->esc_cmd_count > 2) && 
-				   (v->esc_cmd[1] == '1')) { /* Turn bold mode on */
-				/* FIXME: */
-				v->esc_cmd_active = FALSE;
-			}
-		} else if (v->esc_cmd[v->esc_cmd_count - 1] == 'n') {
-			if ((v->esc_cmd_count > 2) && 
-			   (v->esc_cmd[1] == '6')) { /* ??? */
-				/* FIXME: [6n */
-				v->esc_cmd_active = FALSE;
-			} else {
-				goto unhandled;
-			}
-		} else if (v->esc_cmd[1] == 'J') { /* Clear screen from cursor down */
-			vtemu_cursor_clear_down(v);
-			v->esc_cmd_active = FALSE;
-		}
-	}
-
-	return VMM_OK;
-
-unhandled:
-	v->esc_cmd_active = FALSE;
-	return VMM_OK;
 }
 
 static int vtemu_putchar(struct vtemu *v, u8 ch)
@@ -351,6 +255,206 @@ static int vtemu_putchar(struct vtemu *v, u8 ch)
 	/* Draw cursor */
 	vtemu_cursor_draw(v);
 
+	return VMM_OK;
+}
+
+static int vtemu_startesc(struct vtemu *v)
+{
+	v->esc_cmd_active = TRUE;
+	v->esc_cmd_count = 0;
+	v->esc_attrib_count = 0;
+	v->esc_attrib[0] = 0;
+	return VMM_OK;
+}
+
+static int vtemu_putesc(struct vtemu *v, u8 ch)
+{
+	u32 tmp;
+
+	if (v->esc_cmd_count < VTEMU_ESCMD_SIZE) {
+		v->esc_cmd[v->esc_cmd_count] = ch;
+		v->esc_cmd_count++;
+	} else {
+		v->esc_cmd_active = FALSE;
+		return VMM_OK;
+	}
+
+	switch(v->esc_cmd[0]) {
+	case 'c':	/* Reset */
+		/* FIXME */
+		v->fc = VTEMU_DEFAULT_FC;
+		v->bc = VTEMU_DEFAULT_BC;
+		v->esc_cmd_active = FALSE;
+		break;
+	case 'r':	/* Enable Scrolling */
+	case 'D':	/* Scroll Down one line or linefeed */
+	case 'M':	/* Scroll Up one line or reverse-linefeed */
+		/* FIXME */
+		v->esc_cmd_active = FALSE;
+		break;
+	case 'E':	/* Newline */
+		/* FIXME */
+		v->esc_cmd_active = FALSE;
+		break;
+	case '7':	/* Save Cursor Position and Attrs */
+		v->saved_x = v->x;
+		v->saved_y = v->y;
+		v->saved_fc = v->fc;
+		v->saved_bc = v->bc;
+		v->esc_cmd_active = FALSE;
+		break;
+	case '8':	/* Restore Cursor Position and Attrs */
+		v->x = v->saved_x;
+		v->y = v->saved_y;
+		v->fc = v->saved_fc;
+		v->bc = v->saved_bc;
+		v->esc_cmd_active = FALSE;
+		break;
+	case '[':		/* CSI codes */
+		if(v->esc_cmd_count == 1) {
+			break;
+		}
+
+		switch(v->esc_cmd[v->esc_cmd_count - 1]) {
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+			v->esc_attrib[v->esc_attrib_count] *= 10;
+			v->esc_attrib[v->esc_attrib_count] += 
+					(v->esc_cmd[v->esc_cmd_count - 1] - '0');
+			break;
+		case ';':
+			v->esc_attrib_count++;
+			v->esc_attrib[v->esc_attrib_count] = 0;
+			break;
+		case 'D':		/* Move Left */
+			tmp = v->esc_attrib[0];
+			tmp = (tmp) ? tmp : 1;
+
+			vtemu_cursor_erase(v);
+
+			while (v->x && tmp) {
+				v->x--;
+				tmp--;
+			}
+			v->esc_cmd_active = FALSE;
+
+			vtemu_cursor_draw(v);
+			break;
+		case 'C':		/* Move Right */
+			tmp = v->esc_attrib[0];
+			tmp = (tmp) ? tmp : 1;
+
+			vtemu_cursor_erase(v);
+
+			while (tmp) {
+				v->x++;
+				if (v->x == v->w) {
+					v->x = 0;
+					v->y++;
+					if (v->y == (v->start_y + v->h)) {
+						vtemu_scroll_down(v, 1);
+					}
+				}
+				tmp--;
+			}
+			v->esc_cmd_active = FALSE;
+
+			vtemu_cursor_draw(v);
+			break;
+		case 'm':		/* Set Display Attributes */
+			for(tmp = 0; tmp <= v->esc_attrib_count; tmp++) {
+				switch(v->esc_attrib[tmp]) {
+				case 0:		/* Reset all attribs */
+					v->fc = VTEMU_DEFAULT_FC;
+					v->bc = VTEMU_DEFAULT_BC;
+					break;
+				case 1:		/* Bold or Bright */
+				case 2:		/* Dim */
+				case 4:		/* Underscore */
+				case 5:		/* Blink */
+					break;
+				case 7:		/* Reverse */
+					tmp = v->fc;
+					v->fc = v->bc;
+					v->bc = tmp;
+					break;
+				case 30:	/* Set FG color */
+				case 31:
+				case 32:
+				case 33:
+				case 34:
+				case 35:
+				case 36:
+				case 37:
+					v->fc = (v->esc_attrib[tmp] - 30);
+					break;
+				case 40:	/* Set BG color */
+				case 41:
+				case 42:
+				case 43:
+				case 44:
+				case 45:
+				case 46:
+				case 47:
+					v->bc = (v->esc_attrib[tmp] - 40);
+					break;
+				case 49:
+					v->bc = VTEMU_DEFAULT_BC;
+					break;
+				};
+			}
+			v->esc_cmd_active = FALSE;
+			break;
+		case 'c':		/* Device status */
+		case 'n':
+			v->esc_cmd_active = FALSE;
+			break;
+		case 's':		/* Save Cursor Position */
+			v->saved_x = v->x;
+			v->saved_y = v->y;
+			v->esc_cmd_active = FALSE;
+			break;
+		case 'u':		/* Restore Cursor Position */
+			v->x = v->saved_x;
+			v->y = v->saved_y;
+			v->esc_cmd_active = FALSE;
+			break;
+		case 'H':		/* Cursor Home */
+		case 'f':		/* Force Cursor Position */
+			if(v->esc_attrib_count == 0) {
+				v->x = 0;
+				v->y = v->start_y;
+			} else {
+				v->x = v->esc_attrib[0];
+				v->y = v->esc_attrib[1];
+			}
+			v->esc_cmd_active = FALSE;
+			break;
+		case 'J':		/* Clear screen */
+			/* FIXME: */
+			vtemu_cursor_clear_down(v);
+			v->esc_cmd_active = FALSE;
+			break;
+		default:
+			goto unhandled;
+		}
+		break;
+	default:
+		goto unhandled;
+	};
+
+	return VMM_OK;
+
+unhandled:
+	v->esc_cmd_active = FALSE;
 	return VMM_OK;
 }
 
@@ -837,17 +941,35 @@ struct vtemu *vtemu_create(const char *name,
 	/* Find color map */
 	if (v->info->fix.visual == FB_VISUAL_TRUECOLOR ||
 	    v->info->fix.visual == FB_VISUAL_DIRECTCOLOR) {
-		if (vmm_fb_alloc_cmap(&v->cmap, 2, 0)) {
+		if (vmm_fb_alloc_cmap(&v->cmap, 8, 0)) {
 			goto release_fb;
 		}
-		v->cmap.red[0] = 0x0;
-		v->cmap.green[0] = 0x0;
-		v->cmap.blue[0] = 0x0;
-		v->cmap.red[1] = 0xaaaa;
-		v->cmap.green[1] = 0xaaaa;
-		v->cmap.blue[1] = 0xaaaa;
-		v->fc = 0x1;
-		v->bc = 0x0;
+		v->cmap.red[VTEMU_COLOR_BLACK] = 0x0000;
+		v->cmap.green[VTEMU_COLOR_BLACK] = 0x0000;
+		v->cmap.blue[VTEMU_COLOR_BLACK] = 0x0000;
+		v->cmap.red[VTEMU_COLOR_RED] = 0xffff;
+		v->cmap.green[VTEMU_COLOR_RED] = 0x0000;
+		v->cmap.blue[VTEMU_COLOR_RED] = 0x0000;
+		v->cmap.red[VTEMU_COLOR_GREEN] = 0x0000;
+		v->cmap.green[VTEMU_COLOR_GREEN] = 0xffff;
+		v->cmap.blue[VTEMU_COLOR_GREEN] = 0x0000;
+		v->cmap.red[VTEMU_COLOR_YELLOW] = 0xffff;
+		v->cmap.green[VTEMU_COLOR_YELLOW] = 0xffff;
+		v->cmap.blue[VTEMU_COLOR_YELLOW] = 0x0000;
+		v->cmap.red[VTEMU_COLOR_BLUE] = 0x0000;
+		v->cmap.green[VTEMU_COLOR_BLUE] = 0x0000;
+		v->cmap.blue[VTEMU_COLOR_BLUE] = 0xffff;
+		v->cmap.red[VTEMU_COLOR_MAGENTA] = 0xffff;
+		v->cmap.green[VTEMU_COLOR_MAGENTA] = 0x0000;
+		v->cmap.blue[VTEMU_COLOR_MAGENTA] = 0xffff;
+		v->cmap.red[VTEMU_COLOR_CYAN] = 0x0000;
+		v->cmap.green[VTEMU_COLOR_CYAN] = 0xffff;
+		v->cmap.blue[VTEMU_COLOR_CYAN] = 0xffff;
+		v->cmap.red[VTEMU_COLOR_WHITE] = 0xffff;
+		v->cmap.green[VTEMU_COLOR_WHITE] = 0xffff;
+		v->cmap.blue[VTEMU_COLOR_WHITE] = 0xffff;
+		v->fc = VTEMU_DEFAULT_FC;
+		v->bc = VTEMU_DEFAULT_BC;
 	} else {
 		/* Don't require color map for 32-bit colors */
 		v->fc = 0xFFFFFFFF; /* White foreground color (default) */
@@ -910,8 +1032,10 @@ struct vtemu *vtemu_create(const char *name,
 	if (!v->cursor_bkp) {
 		goto free_cells;
 	}
-	v->esc_cmd_count = 0;
 	v->esc_cmd_active = FALSE;
+	v->esc_cmd_count = 0;
+	v->esc_attrib_count = 0;
+	v->esc_attrib[0] = 0;
 
 	/* Setup input data */
 	v->in_head = 0;

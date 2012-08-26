@@ -32,9 +32,23 @@
 #include <fb/vmm_fb.h>
 #include <vtemu_font.h>
 
-#define VTEMU_NAME_SIZE			VMM_CHARDEV_NAME_SIZE
-#define VTEMU_INBUF_SIZE		32
-#define VTEMU_ESCMD_SIZE		16
+#define VTEMU_NAME_SIZE		VMM_CHARDEV_NAME_SIZE
+#define VTEMU_INBUF_SIZE	32
+#define VTEMU_ESCMD_SIZE	(17 * 3)
+#define VTEMU_ESC_NPAR		(16)
+
+typedef enum {
+	VTEMU_COLOR_BLACK,
+	VTEMU_COLOR_RED,
+	VTEMU_COLOR_GREEN,
+	VTEMU_COLOR_YELLOW,
+	VTEMU_COLOR_BLUE,
+	VTEMU_COLOR_MAGENTA,
+	VTEMU_COLOR_CYAN,
+	VTEMU_COLOR_WHITE,
+}vtemu_color;
+#define VTEMU_DEFAULT_FC	VTEMU_COLOR_WHITE
+#define VTEMU_DEFAULT_BC	VTEMU_COLOR_BLACK
 
 struct vtemu_cell
 {
@@ -75,8 +89,14 @@ struct vtemu {
 	u32 x, y;
 	u32 start_y;
 
+	/* saved x, y */
+	u32 saved_x, saved_y;
+
 	/* current foreground color and background color */
 	u32 fc, bc;
+
+	/* saved fc, bc */
+	u32 saved_fc, saved_bc;
 
 	/* freeze state of vtemu */
 	bool freeze;
@@ -90,7 +110,9 @@ struct vtemu {
 	u8 *cursor_bkp;
 	u32 cursor_bkp_size;
 	u8 esc_cmd[VTEMU_ESCMD_SIZE];
-	u32 esc_cmd_count;
+	u8 esc_attrib[VTEMU_ESC_NPAR];
+	u8 esc_cmd_count;
+	u8 esc_attrib_count;
 	bool esc_cmd_active;
 
 	/* input data */
