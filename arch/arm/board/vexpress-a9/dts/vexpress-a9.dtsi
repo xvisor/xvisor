@@ -60,21 +60,18 @@
 					irq = <37>;
 				};
 
-				uart1 {
-			      		device_type = "serial";
-			      		compatible = "pl011";
-			      		reg = <0x1000A000 0x1000>;
-					clock-rate = <24000000>;
-			      		baudrate = <115200>;
-					irq = <38>;
-				};
-
 				rtc0 {
 			      		device_type = "rtc";
 			      		compatible = "pl031";
 			      		reg = <0x10017000 0x1000>;
 					clock-rate = <1>;
 					irq = <36>;
+				};
+
+				clcd {
+			      		device_type = "fb";
+			      		compatible = "ambaclcd";
+			      		reg = <0x10020000 0x1000>;
 				};
 
 				eth0 {
