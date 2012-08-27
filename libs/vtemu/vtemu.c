@@ -809,7 +809,7 @@ int vtemu_key_event(struct vmm_input_handler *ihnd,
 	irq_flags_t flags;
 	struct vtemu *v = ihnd->priv;
 
-	if (value) {
+	if (value == 1) {
 		/* Update input key flags */
 		key_flags = vtemu_key2flags(code);
 		if ((key_flags & VTEMU_KEYFLAG_LOCKS) &&
@@ -849,7 +849,7 @@ int vtemu_key_event(struct vmm_input_handler *ihnd,
 
 		/* Signal completion */
 		vmm_completion_complete_all(&v->in_done);
-	} else  {
+	} else if (value == 0)  {
 		/* Update input key flags */
 		key_flags = vtemu_key2flags(code);
 		if (!(key_flags & VTEMU_KEYFLAG_LOCKS)) {
