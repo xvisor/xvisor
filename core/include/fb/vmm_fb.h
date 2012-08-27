@@ -814,6 +814,8 @@ static inline bool vmm_fb_be_math(struct vmm_fb_info *info)
 #define FBINFO_FLAG_MODULE	FBINFO_MODULE
 #define FBINFO_FLAG_DEFAULT	FBINFO_DEFAULT
 
+#ifdef CONFIG_ARCH_x86
+
 #define fb_readb vmm_readb
 #define fb_readw vmm_readw
 #define fb_readl vmm_readl
@@ -825,6 +827,22 @@ static inline bool vmm_fb_be_math(struct vmm_fb_info *info)
 #define fb_memset memset_io
 #define fb_memcpy_fromfb memcpy_fromio
 #define fb_memcpy_tofb memcpy_toio
+
+#else
+
+#define fb_readb(addr) (*(volatile u8 *) (addr))
+#define fb_readw(addr) (*(volatile u16 *) (addr))
+#define fb_readl(addr) (*(volatile u32 *) (addr))
+#define fb_readq(addr) (*(volatile u64 *) (addr))
+#define fb_writeb(b,addr) (*(volatile u8 *) (addr) = (b))
+#define fb_writew(b,addr) (*(volatile u16 *) (addr) = (b))
+#define fb_writel(b,addr) (*(volatile u32 *) (addr) = (b))
+#define fb_writeq(b,addr) (*(volatile u64 *) (addr) = (b))
+#define fb_memset memset
+#define fb_memcpy_fromfb memcpy
+#define fb_memcpy_tofb memcpy
+
+#endif
 
 #define FB_LEFT_POS(p, bpp)          (vmm_fb_be_math(p) ? (32 - (bpp)) : 0)
 #define FB_SHIFT_HIGH(p, val, bits)  (vmm_fb_be_math(p) ? (val) >> (bits) : \
