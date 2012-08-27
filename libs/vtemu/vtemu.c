@@ -446,11 +446,15 @@ static int vtemu_putesc(struct vtemu *v, u8 ch)
 		case 'H':		/* Cursor Home */
 		case 'f':		/* Force Cursor Position */
 			if(v->esc_attrib_count == 0) {
-				v->x = 0;
 				v->y = v->start_y;
+				v->x = 0;
 			} else {
-				v->x = v->esc_attrib[0];
-				v->y = v->esc_attrib[1];
+				v->y = (v->esc_attrib[0] < v->h)
+					? (v->esc_attrib[0] + v->start_y)
+					: (v->start_y + v->h - 1);
+				v->x = (v->esc_attrib[1] < v->w)
+					? v->esc_attrib[1]
+					: (v->w - 1);
 			}
 			v->esc_cmd_active = FALSE;
 			break;

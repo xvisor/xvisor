@@ -110,7 +110,7 @@ struct vtemu {
 	u8 *cursor_bkp;
 	u32 cursor_bkp_size;
 	u8 esc_cmd[VTEMU_ESCMD_SIZE];
-	u8 esc_attrib[VTEMU_ESC_NPAR];
+	u16 esc_attrib[VTEMU_ESC_NPAR];
 	u8 esc_cmd_count;
 	u8 esc_attrib_count;
 	bool esc_cmd_active;
