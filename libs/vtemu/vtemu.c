@@ -27,6 +27,410 @@
 #include <mathlib.h>
 #include <vtemu.h>
 
+#define VTEMU_KEYFLAG_LEFTCTRL		0x00000001
+#define VTEMU_KEYFLAG_RIGHTCTRL		0x00000002
+#define VTEMU_KEYFLAG_LEFTALT		0x00000004
+#define VTEMU_KEYFLAG_RIGHTALT		0x00000008
+#define VTEMU_KEYFLAG_LEFTSHIFT		0x00000010
+#define VTEMU_KEYFLAG_RIGHTSHIFT	0x00000020
+#define VTEMU_KEYFLAG_CAPSLOCK		0x00000040
+#define VTEMU_KEYFLAG_NUMLOCK		0x00000080
+#define VTEMU_KEYFLAG_SCROLLLOCK	0x00000100
+
+#define VTEMU_KEYFLAG_LOCKS		(VTEMU_KEYFLAG_CAPSLOCK | \
+					 VTEMU_KEYFLAG_NUMLOCK | \
+					 VTEMU_KEYFLAG_SCROLLLOCK)
+
+static u32 vtemu_key2flags(unsigned int code)
+{
+	u32 ret = 0;
+
+	switch (code) {
+	case KEY_LEFTCTRL:
+		ret = VTEMU_KEYFLAG_LEFTCTRL;
+		break;
+	case KEY_RIGHTCTRL:
+		ret = VTEMU_KEYFLAG_RIGHTCTRL;
+		break;
+	case KEY_LEFTSHIFT:
+		ret = VTEMU_KEYFLAG_LEFTSHIFT;
+		break;
+	case KEY_RIGHTSHIFT:
+		ret = VTEMU_KEYFLAG_RIGHTSHIFT;
+		break;
+	case KEY_LEFTALT:
+		ret = VTEMU_KEYFLAG_LEFTALT;
+		break;
+	case KEY_RIGHTALT:
+		ret = VTEMU_KEYFLAG_RIGHTALT;
+		break;
+	case KEY_CAPSLOCK:
+		ret = VTEMU_KEYFLAG_CAPSLOCK;
+		break;
+	case KEY_NUMLOCK:
+		ret = VTEMU_KEYFLAG_NUMLOCK;
+		break;
+	case KEY_SCROLLLOCK:
+		ret = VTEMU_KEYFLAG_SCROLLLOCK;
+		break;
+	}
+
+	return ret;
+}
+
+/* FIXME: */
+static int vtemu_key2str(unsigned int code, u32 flags, char *out)
+{
+	bool uc = FALSE;
+
+	if (flags & (VTEMU_KEYFLAG_LEFTSHIFT | VTEMU_KEYFLAG_RIGHTSHIFT)) {
+		uc = (uc) ? FALSE : TRUE;
+	}
+	if (flags & VTEMU_KEYFLAG_CAPSLOCK) {
+		uc = (uc) ? FALSE : TRUE;
+	}
+
+	switch (code) {
+	case KEY_ESC:
+		out[0] = '\e'; out[1] = '\0';
+		break;
+	case KEY_1:
+		out[0] = (uc) ? '!' : '1'; out[1] = '\0';
+		break;
+	case KEY_2:
+		out[0] = (uc) ? '@' : '2'; out[1] = '\0';
+		break;
+	case KEY_3:
+		out[0] = (uc) ? '#' : '3'; out[1] = '\0';
+		break;
+	case KEY_4:
+		out[0] = (uc) ? '$' : '4'; out[1] = '\0';
+		break;
+	case KEY_5:
+		out[0] = (uc) ? '%' : '5'; out[1] = '\0';
+		break;
+	case KEY_6:
+		out[0] = (uc) ? '^' : '6'; out[1] = '\0';
+		break;
+	case KEY_7:
+		out[0] = (uc) ? '&' : '7'; out[1] = '\0';
+		break;
+	case KEY_8:
+		out[0] = (uc) ? '*' : '8'; out[1] = '\0';
+		break;
+	case KEY_9:
+		out[0] = (uc) ? '(' : '9'; out[1] = '\0';
+		break;
+	case KEY_0:
+		out[0] = (uc) ? ')' : '0'; out[1] = '\0';
+		break;
+	case KEY_MINUS:
+		out[0] = (uc) ? '_' : '-'; out[1] = '\0';
+		break;
+	case KEY_EQUAL:
+		out[0] = (uc) ? '+' : '='; out[1] = '\0';
+		break;
+	case KEY_BACKSPACE:
+		out[0] = 127; out[1] = '\0';
+		break;
+	case KEY_TAB:
+		out[0] = '\t'; out[1] = '\0';
+		break;
+	case KEY_Q:
+		out[0] = (uc) ? 'Q' : 'q'; out[1] = '\0';
+		break;
+	case KEY_W:
+		out[0] = (uc) ? 'W' : 'w'; out[1] = '\0';
+		break;
+	case KEY_E:
+		out[0] = (uc) ? 'E' : 'e'; out[1] = '\0';
+		break;
+	case KEY_R:
+		out[0] = (uc) ? 'R' : 'r'; out[1] = '\0';
+		break;
+	case KEY_T:
+		out[0] = (uc) ? 'T' : 't'; out[1] = '\0';
+		break;
+	case KEY_Y:
+		out[0] = (uc) ? 'Y' : 'y'; out[1] = '\0';
+		break;
+	case KEY_U:
+		out[0] = (uc) ? 'U' : 'u'; out[1] = '\0';
+		break;
+	case KEY_I:
+		out[0] = (uc) ? 'I' : 'i'; out[1] = '\0';
+		break;
+	case KEY_O:
+		out[0] = (uc) ? 'O' : 'o'; out[1] = '\0';
+		break;
+	case KEY_P:
+		out[0] = (uc) ? 'P' : 'p'; out[1] = '\0';
+		break;
+	case KEY_LEFTBRACE:
+		out[0] = (uc) ? '{' : '['; out[1] = '\0';
+		break;
+	case KEY_RIGHTBRACE:
+		out[0] = (uc) ? '}' : ']'; out[1] = '\0';
+		break;
+	case KEY_ENTER:
+		out[0] = '\n'; out[1] = '\0';
+		break;
+	case KEY_A:
+		out[0] = (uc) ? 'A' : 'a'; out[1] = '\0';
+		break;
+	case KEY_S:
+		out[0] = (uc) ? 'S' : 's'; out[1] = '\0';
+		break;
+	case KEY_D:
+		out[0] = (uc) ? 'D' : 'd'; out[1] = '\0';
+		break;
+	case KEY_F:
+		out[0] = (uc) ? 'F' : 'f'; out[1] = '\0';
+		break;
+	case KEY_G:
+		out[0] = (uc) ? 'G' : 'g'; out[1] = '\0';
+		break;
+	case KEY_H:
+		out[0] = (uc) ? 'H' : 'h'; out[1] = '\0';
+		break;
+	case KEY_J:
+		out[0] = (uc) ? 'J' : 'j'; out[1] = '\0';
+		break;
+	case KEY_K:
+		out[0] = (uc) ? 'K' : 'k'; out[1] = '\0';
+		break;
+	case KEY_L:
+		out[0] = (uc) ? 'L' :  'l'; out[1] = '\0';
+		break;
+	case KEY_SEMICOLON:
+		out[0] = (uc) ? ':' : ';'; out[1] = '\0';
+		break;
+	case KEY_APOSTROPHE:
+		out[0] = (uc) ? '\"' : '\''; out[1] = '\0';
+		break;
+	case KEY_GRAVE:
+		out[0] = (uc) ? '~' : '`'; out[1] = '\0';
+		break;
+	case KEY_BACKSLASH:
+		out[0] = (uc) ? '|' : '\\'; out[1] = '\0';
+		break;
+	case KEY_Z:
+		out[0] = (uc) ? 'Z' : 'z'; out[1] = '\0';
+		break;
+	case KEY_X:
+		out[0] = (uc) ? 'X' : 'x'; out[1] = '\0';
+		break;
+	case KEY_C:
+		out[0] = (uc) ? 'C' : 'c'; out[1] = '\0';
+		break;
+	case KEY_V:
+		out[0] = (uc) ? 'V' : 'v'; out[1] = '\0';
+		break;
+	case KEY_B:
+		out[0] = (uc) ? 'B' : 'b'; out[1] = '\0';
+		break;
+	case KEY_N:
+		out[0] = (uc) ? 'N' : 'n'; out[1] = '\0';
+		break;
+	case KEY_M:
+		out[0] = (uc) ? 'M' : 'm'; out[1] = '\0';
+		break;
+	case KEY_COMMA:
+		out[0] = (uc) ? '<' : ','; out[1] = '\0';
+		break;
+	case KEY_DOT:
+		out[0] = (uc) ? '>' : '.'; out[1] = '\0';
+		break;
+	case KEY_SLASH:
+		out[0] = (uc) ? '?' : '/'; out[1] = '\0';
+		break;
+	case KEY_KPASTERISK:
+		out[0] = '*'; out[1] = '\0';
+		break;
+	case KEY_SPACE:
+		out[0] = ' '; out[1] = '\0';
+		break;
+	case KEY_KP7:
+		out[0] = '7'; out[1] = '\0';
+		break;
+	case KEY_KP8:
+		out[0] = '8'; out[1] = '\0';
+		break;
+	case KEY_KP9:
+		out[0] = '9'; out[1] = '\0';
+		break;
+	case KEY_KPMINUS:
+		out[0] = '-'; out[1] = '\0';
+		break;
+	case KEY_KP4:
+		out[0] = '4'; out[1] = '\0';
+		break;
+	case KEY_KP5:
+		out[0] = '5'; out[1] = '\0';
+		break;
+	case KEY_KP6:
+		out[0] = '6'; out[1] = '\0';
+		break;
+	case KEY_KPPLUS:
+		out[0] = '+'; out[1] = '\0';
+		break;
+	case KEY_KP1:
+		out[0] = '1'; out[1] = '\0';
+		break;
+	case KEY_KP2:
+		out[0] = '2'; out[1] = '\0';
+		break;
+	case KEY_KP3:
+		out[0] = '3'; out[1] = '\0';
+		break;
+	case KEY_KP0:
+		out[0] = '0'; out[1] = '\0';
+		break;
+	case KEY_KPDOT:
+		out[0] = '.'; out[1] = '\0';
+		break;
+	case KEY_KPENTER:
+		out[0] = '\n'; out[1] = '\0';
+		break;
+	case KEY_KPSLASH:
+		out[0] = '/'; out[1] = '\0';
+		break;
+	case KEY_HOME:
+		out[0] = '\e'; out[1] = '['; out[2] = 'H'; out[3] = '\0';
+		break;
+	case KEY_UP:
+		out[0] = '\e'; out[1] = '['; out[2] = 'A'; out[3] = '\0';
+		break;
+	case KEY_LEFT:
+		out[0] = '\e'; out[1] = '['; out[2] = 'D'; out[3] = '\0';
+		break;
+	case KEY_RIGHT:
+		out[0] = '\e'; out[1] = '['; out[2] = 'C'; out[3] = '\0';
+		break;
+	case KEY_END:
+		out[0] = '\e'; out[1] = '['; out[2] = 'F'; out[3] = '\0';
+		break;
+	case KEY_DOWN:
+		out[0] = '\e'; out[1] = '['; out[2] = 'B'; out[3] = '\0';
+		break;
+	case KEY_DELETE:
+		out[0] = '\e'; out[1] = '['; out[2] = '3'; out[3] = '~'; out[4] = '\0';
+		break;
+	default:
+		out[0] = '\0';
+		break;
+	}
+
+	return VMM_OK;
+}
+
+static int vtemu_add_input(struct vtemu *v, char *str)
+{
+	int i;
+	irq_flags_t flags;
+
+	/* Save input key string */
+	i = 0;
+	vmm_spin_lock_irqsave(&v->in_lock, flags);
+	while(str[i] != '\0') {
+		if ((v->in_tail == v->in_head) && 
+		    (v->in_count == VTEMU_INBUF_SIZE)) {
+			v->in_head++;
+			if (v->in_head == VTEMU_INBUF_SIZE) {
+				v->in_head = 0;
+			}
+			v->in_count--;
+		}
+		v->in_buf[v->in_tail] = str[i];
+		v->in_tail++;
+		if (v->in_tail == VTEMU_INBUF_SIZE) {
+			v->in_tail = 0;
+		}
+		v->in_count++;
+		i++;
+	}
+	vmm_spin_unlock_irqrestore(&v->in_lock, flags);
+
+	/* Signal completion */
+	vmm_completion_complete_all(&v->in_done);
+
+	return VMM_OK;
+}
+
+static int vtemu_key_event(struct vmm_input_handler *ihnd, 
+			   struct vmm_input_dev *idev, 
+			   unsigned int type, unsigned int code, int value)
+{
+	int rc;
+	char str[16];
+	u32 key_flags;
+	struct vtemu *v = ihnd->priv;
+
+	if (value == 1) {
+		/* Update input key flags */
+		key_flags = vtemu_key2flags(code);
+		if ((key_flags & VTEMU_KEYFLAG_LOCKS) &&
+		    (v->in_key_flags & key_flags)) {
+			v->in_key_flags &= ~key_flags;
+		} else {
+			v->in_key_flags |= key_flags;
+		}
+
+		/* Retrive input key string */
+		rc = vtemu_key2str(code, v->in_key_flags, str);
+		if (rc) {
+			return VMM_OK;
+		}
+
+		/* Add input key string to input buffer */
+		vtemu_add_input(v, str);
+	} else if (value == 0)  {
+		/* Update input key flags */
+		key_flags = vtemu_key2flags(code);
+		if (!(key_flags & VTEMU_KEYFLAG_LOCKS)) {
+			v->in_key_flags &= ~key_flags;
+		}
+	}
+
+	return VMM_OK;
+}
+
+static u32 vtemu_read(struct vmm_chardev *cdev,
+			u8 *dest, u32 offset, u32 len,
+			bool sleep)
+{
+	u32 i;
+	irq_flags_t flags;
+	struct vtemu *v = cdev->priv;
+
+	if (!v) {
+		return 0;
+	}
+
+	vmm_spin_lock_irqsave(&v->in_lock, flags);
+	for (i = 0; i < len; i++) {
+		if (!v->in_count) {
+			if (sleep) {
+				vmm_spin_unlock_irqrestore(&v->in_lock, flags);
+				REINIT_COMPLETION(&v->in_done);
+				vmm_completion_wait(&v->in_done);
+				vmm_spin_lock_irqsave(&v->in_lock, flags);
+			} else {
+				break;
+			}
+		}
+		dest[i] = v->in_buf[v->in_head];
+		v->in_head++;
+		if (v->in_head == VTEMU_INBUF_SIZE) {
+			v->in_head = 0;
+		}
+		v->in_count--;
+	}
+	vmm_spin_unlock_irqrestore(&v->in_lock, flags);
+
+	return i;
+}
+
 #define VTEMU_ERASE_CHAR			'\0'
 #define VTEMU_TABSPACE_COUNT			5
 
@@ -286,6 +690,7 @@ static int vtemu_startesc(struct vtemu *v)
 static int vtemu_putesc(struct vtemu *v, u8 ch)
 {
 	u32 tmp;
+	char str[16];
 
 	if (v->esc_cmd_count < VTEMU_ESCMD_SIZE) {
 		v->esc_cmd[v->esc_cmd_count] = ch;
@@ -385,6 +790,34 @@ static int vtemu_putesc(struct vtemu *v, u8 ch)
 
 			vtemu_cursor_draw(v);
 			break;
+		case 'B':		/* Move Down */
+			tmp = v->esc_attrib[0];
+			tmp = (tmp) ? tmp : 1;
+
+			vtemu_cursor_erase(v);
+
+			while ((v->y - v->start_y) < v->h) {
+				v->y++;
+				tmp--;
+			}
+			v->esc_cmd_active = FALSE;
+
+			vtemu_cursor_draw(v);
+			break;
+		case 'A':		/* Move Up */
+			tmp = v->esc_attrib[0];
+			tmp = (tmp) ? tmp : 1;
+
+			vtemu_cursor_erase(v);
+
+			while ((v->y - v->start_y) && tmp) {
+				v->y--;
+				tmp--;
+			}
+			v->esc_cmd_active = FALSE;
+
+			vtemu_cursor_draw(v);
+			break;
 		case 'm':		/* Set Display Attributes */
 			for(tmp = 0; tmp <= v->esc_attrib_count; tmp++) {
 				switch(v->esc_attrib[tmp]) {
@@ -429,8 +862,22 @@ static int vtemu_putesc(struct vtemu *v, u8 ch)
 			}
 			v->esc_cmd_active = FALSE;
 			break;
-		case 'c':		/* Device status */
+		case 'c':		/* Request Terminal Type */
+			vmm_sprintf(str, "\e[?1;0c");	/* Type VT100 */
+			vtemu_add_input(v, str);
+			v->esc_cmd_active = FALSE;
+			break;
 		case 'n':
+			switch(v->esc_attrib[0]) {
+			case 5:		/* Request Terminal Status */
+				vmm_sprintf(str, "\e[0n");	/* status OK */
+				vtemu_add_input(v, str);
+				break;
+			case 6:		/* Request Cursor Position */
+				vmm_sprintf(str, "\e[%d;%dR", v->y - v->start_y + 1, v->x + 1);
+				vtemu_add_input(v, str);
+				break;
+			};
 			v->esc_cmd_active = FALSE;
 			break;
 		case 's':		/* Save Cursor Position */
@@ -502,399 +949,6 @@ static u32 vtemu_write (struct vmm_chardev *cdev,
 			break;
 		}
 	}
-
-	return i;
-}
-
-#define VTEMU_KEYFLAG_LEFTCTRL		0x00000001
-#define VTEMU_KEYFLAG_RIGHTCTRL		0x00000002
-#define VTEMU_KEYFLAG_LEFTALT		0x00000004
-#define VTEMU_KEYFLAG_RIGHTALT		0x00000008
-#define VTEMU_KEYFLAG_LEFTSHIFT		0x00000010
-#define VTEMU_KEYFLAG_RIGHTSHIFT	0x00000020
-#define VTEMU_KEYFLAG_CAPSLOCK		0x00000040
-#define VTEMU_KEYFLAG_NUMLOCK		0x00000080
-#define VTEMU_KEYFLAG_SCROLLLOCK	0x00000100
-
-#define VTEMU_KEYFLAG_LOCKS		(VTEMU_KEYFLAG_CAPSLOCK | \
-					 VTEMU_KEYFLAG_NUMLOCK | \
-					 VTEMU_KEYFLAG_SCROLLLOCK)
-
-u32 vtemu_key2flags(unsigned int code)
-{
-	u32 ret = 0;
-
-	switch (code) {
-	case KEY_LEFTCTRL:
-		ret = VTEMU_KEYFLAG_LEFTCTRL;
-		break;
-	case KEY_RIGHTCTRL:
-		ret = VTEMU_KEYFLAG_RIGHTCTRL;
-		break;
-	case KEY_LEFTSHIFT:
-		ret = VTEMU_KEYFLAG_LEFTSHIFT;
-		break;
-	case KEY_RIGHTSHIFT:
-		ret = VTEMU_KEYFLAG_RIGHTSHIFT;
-		break;
-	case KEY_LEFTALT:
-		ret = VTEMU_KEYFLAG_LEFTALT;
-		break;
-	case KEY_RIGHTALT:
-		ret = VTEMU_KEYFLAG_RIGHTALT;
-		break;
-	case KEY_CAPSLOCK:
-		ret = VTEMU_KEYFLAG_CAPSLOCK;
-		break;
-	case KEY_NUMLOCK:
-		ret = VTEMU_KEYFLAG_NUMLOCK;
-		break;
-	case KEY_SCROLLLOCK:
-		ret = VTEMU_KEYFLAG_SCROLLLOCK;
-		break;
-	}
-
-	return ret;
-}
-
-/* FIXME: */
-int vtemu_key2str(unsigned int code, u32 flags, char *out)
-{
-	bool uc = FALSE;
-
-	if (flags & (VTEMU_KEYFLAG_LEFTSHIFT | VTEMU_KEYFLAG_RIGHTSHIFT)) {
-		uc = (uc) ? FALSE : TRUE;
-	}
-	if (flags & VTEMU_KEYFLAG_CAPSLOCK) {
-		uc = (uc) ? FALSE : TRUE;
-	}
-
-	switch (code) {
-	case KEY_ESC:
-		out[0] = '\e'; out[1] = '\0';
-		break;
-	case KEY_1:
-		out[0] = (uc) ? '!' : '1'; out[1] = '\0';
-		break;
-	case KEY_2:
-		out[0] = (uc) ? '@' : '2'; out[1] = '\0';
-		break;
-	case KEY_3:
-		out[0] = (uc) ? '#' : '3'; out[1] = '\0';
-		break;
-	case KEY_4:
-		out[0] = (uc) ? '$' : '4'; out[1] = '\0';
-		break;
-	case KEY_5:
-		out[0] = (uc) ? '%' : '5'; out[1] = '\0';
-		break;
-	case KEY_6:
-		out[0] = (uc) ? '^' : '6'; out[1] = '\0';
-		break;
-	case KEY_7:
-		out[0] = (uc) ? '&' : '7'; out[1] = '\0';
-		break;
-	case KEY_8:
-		out[0] = (uc) ? '*' : '8'; out[1] = '\0';
-		break;
-	case KEY_9:
-		out[0] = (uc) ? '(' : '9'; out[1] = '\0';
-		break;
-	case KEY_0:
-		out[0] = (uc) ? ')' : '0'; out[1] = '\0';
-		break;
-	case KEY_MINUS:
-		out[0] = (uc) ? '_' : '-'; out[1] = '\0';
-		break;
-	case KEY_EQUAL:
-		out[0] = (uc) ? '+' : '='; out[1] = '\0';
-		break;
-	case KEY_BACKSPACE:
-		out[0] = 127; out[1] = '\0';
-		break;
-	case KEY_TAB:
-		out[0] = '\t'; out[1] = '\0';
-		break;
-	case KEY_Q:
-		out[0] = (uc) ? 'Q' : 'q'; out[1] = '\0';
-		break;
-	case KEY_W:
-		out[0] = (uc) ? 'W' : 'w'; out[1] = '\0';
-		break;
-	case KEY_E:
-		out[0] = (uc) ? 'E' : 'e'; out[1] = '\0';
-		break;
-	case KEY_R:
-		out[0] = (uc) ? 'R' : 'r'; out[1] = '\0';
-		break;
-	case KEY_T:
-		out[0] = (uc) ? 'T' : 't'; out[1] = '\0';
-		break;
-	case KEY_Y:
-		out[0] = (uc) ? 'Y' : 'y'; out[1] = '\0';
-		break;
-	case KEY_U:
-		out[0] = (uc) ? 'U' : 'u'; out[1] = '\0';
-		break;
-	case KEY_I:
-		out[0] = (uc) ? 'I' : 'i'; out[1] = '\0';
-		break;
-	case KEY_O:
-		out[0] = (uc) ? 'O' : 'o'; out[1] = '\0';
-		break;
-	case KEY_P:
-		out[0] = (uc) ? 'P' : 'p'; out[1] = '\0';
-		break;
-	case KEY_LEFTBRACE:
-		out[0] = (uc) ? '{' : '['; out[1] = '\0';
-		break;
-	case KEY_RIGHTBRACE:
-		out[0] = (uc) ? '}' : ']'; out[1] = '\0';
-		break;
-	case KEY_ENTER:
-		out[0] = '\n'; out[1] = '\0';
-		break;
-	case KEY_A:
-		out[0] = (uc) ? 'A' : 'a'; out[1] = '\0';
-		break;
-	case KEY_S:
-		out[0] = (uc) ? 'S' : 's'; out[1] = '\0';
-		break;
-	case KEY_D:
-		out[0] = (uc) ? 'D' : 'd'; out[1] = '\0';
-		break;
-	case KEY_F:
-		out[0] = (uc) ? 'F' : 'f'; out[1] = '\0';
-		break;
-	case KEY_G:
-		out[0] = (uc) ? 'G' : 'g'; out[1] = '\0';
-		break;
-	case KEY_H:
-		out[0] = (uc) ? 'H' : 'h'; out[1] = '\0';
-		break;
-	case KEY_J:
-		out[0] = (uc) ? 'J' : 'j'; out[1] = '\0';
-		break;
-	case KEY_K:
-		out[0] = (uc) ? 'K' : 'k'; out[1] = '\0';
-		break;
-	case KEY_L:
-		out[0] = (uc) ? 'L' :  'l'; out[1] = '\0';
-		break;
-	case KEY_SEMICOLON:
-		out[0] = (uc) ? ':' : ';'; out[1] = '\0';
-		break;
-	case KEY_APOSTROPHE:
-		out[0] = (uc) ? '\"' : '\''; out[1] = '\0';
-		break;
-	case KEY_GRAVE:
-		out[0] = (uc) ? '~' : '`'; out[1] = '\0';
-		break;
-	case KEY_BACKSLASH:
-		out[0] = (uc) ? '|' : '\\'; out[1] = '\0';
-		break;
-	case KEY_Z:
-		out[0] = (uc) ? 'Z' : 'z'; out[1] = '\0';
-		break;
-	case KEY_X:
-		out[0] = (uc) ? 'X' : 'x'; out[1] = '\0';
-		break;
-	case KEY_C:
-		out[0] = (uc) ? 'C' : 'c'; out[1] = '\0';
-		break;
-	case KEY_V:
-		out[0] = (uc) ? 'V' : 'v'; out[1] = '\0';
-		break;
-	case KEY_B:
-		out[0] = (uc) ? 'B' : 'b'; out[1] = '\0';
-		break;
-	case KEY_N:
-		out[0] = (uc) ? 'N' : 'n'; out[1] = '\0';
-		break;
-	case KEY_M:
-		out[0] = (uc) ? 'M' : 'm'; out[1] = '\0';
-		break;
-	case KEY_COMMA:
-		out[0] = (uc) ? '<' : ','; out[1] = '\0';
-		break;
-	case KEY_DOT:
-		out[0] = (uc) ? '>' : '.'; out[1] = '\0';
-		break;
-	case KEY_SLASH:
-		out[0] = (uc) ? '?' : '/'; out[1] = '\0';
-		break;
-	case KEY_KPASTERISK:
-		out[0] = '*'; out[1] = '\0';
-		break;
-	case KEY_SPACE:
-		out[0] = ' '; out[1] = '\0';
-		break;
-	case KEY_KP7:
-		out[0] = '7'; out[1] = '\0';
-		break;
-	case KEY_KP8:
-		out[0] = '8'; out[1] = '\0';
-		break;
-	case KEY_KP9:
-		out[0] = '9'; out[1] = '\0';
-		break;
-	case KEY_KPMINUS:
-		out[0] = '-'; out[1] = '\0';
-		break;
-	case KEY_KP4:
-		out[0] = '4'; out[1] = '\0';
-		break;
-	case KEY_KP5:
-		out[0] = '5'; out[1] = '\0';
-		break;
-	case KEY_KP6:
-		out[0] = '6'; out[1] = '\0';
-		break;
-	case KEY_KPPLUS:
-		out[0] = '+'; out[1] = '\0';
-		break;
-	case KEY_KP1:
-		out[0] = '1'; out[1] = '\0';
-		break;
-	case KEY_KP2:
-		out[0] = '2'; out[1] = '\0';
-		break;
-	case KEY_KP3:
-		out[0] = '3'; out[1] = '\0';
-		break;
-	case KEY_KP0:
-		out[0] = '0'; out[1] = '\0';
-		break;
-	case KEY_KPDOT:
-		out[0] = '.'; out[1] = '\0';
-		break;
-	case KEY_KPENTER:
-		out[0] = '\n'; out[1] = '\0';
-		break;
-	case KEY_KPSLASH:
-		out[0] = '/'; out[1] = '\0';
-		break;
-	case KEY_HOME:
-		out[0] = '\e'; out[1] = '['; out[2] = 'H'; out[3] = '\0';
-		break;
-	case KEY_UP:
-		out[0] = '\e'; out[1] = '['; out[2] = 'A'; out[3] = '\0';
-		break;
-	case KEY_LEFT:
-		out[0] = '\e'; out[1] = '['; out[2] = 'D'; out[3] = '\0';
-		break;
-	case KEY_RIGHT:
-		out[0] = '\e'; out[1] = '['; out[2] = 'C'; out[3] = '\0';
-		break;
-	case KEY_END:
-		out[0] = '\e'; out[1] = '['; out[2] = 'F'; out[3] = '\0';
-		break;
-	case KEY_DOWN:
-		out[0] = '\e'; out[1] = '['; out[2] = 'B'; out[3] = '\0';
-		break;
-	case KEY_DELETE:
-		out[0] = '\e'; out[1] = '['; out[2] = '3'; out[3] = '~'; out[4] = '\0';
-		break;
-	default:
-		out[0] = '\0';
-		break;
-	}
-
-	return VMM_OK;
-}
-
-int vtemu_key_event(struct vmm_input_handler *ihnd, 
-		    struct vmm_input_dev *idev, 
-		    unsigned int type, unsigned int code, int value)
-{
-	int rc, i;
-	char str[16];
-	u32 key_flags;
-	irq_flags_t flags;
-	struct vtemu *v = ihnd->priv;
-
-	if (value == 1) {
-		/* Update input key flags */
-		key_flags = vtemu_key2flags(code);
-		if ((key_flags & VTEMU_KEYFLAG_LOCKS) &&
-		    (v->in_key_flags & key_flags)) {
-			v->in_key_flags &= ~key_flags;
-		} else {
-			v->in_key_flags |= key_flags;
-		}
-
-		/* Retrive input key string */
-		rc = vtemu_key2str(code, v->in_key_flags, str);
-		if (rc) {
-			return VMM_OK;
-		}
-
-		/* Save input key string */
-		i = 0;
-		vmm_spin_lock_irqsave(&v->in_lock, flags);
-		while(str[i] != '\0') {
-			if ((v->in_tail == v->in_head) && 
-			    (v->in_count == VTEMU_INBUF_SIZE)) {
-				v->in_head++;
-				if (v->in_head == VTEMU_INBUF_SIZE) {
-					v->in_head = 0;
-				}
-				v->in_count--;
-			}
-			v->in_buf[v->in_tail] = str[i];
-			v->in_tail++;
-			if (v->in_tail == VTEMU_INBUF_SIZE) {
-				v->in_tail = 0;
-			}
-			v->in_count++;
-			i++;
-		}
-		vmm_spin_unlock_irqrestore(&v->in_lock, flags);
-
-		/* Signal completion */
-		vmm_completion_complete_all(&v->in_done);
-	} else if (value == 0)  {
-		/* Update input key flags */
-		key_flags = vtemu_key2flags(code);
-		if (!(key_flags & VTEMU_KEYFLAG_LOCKS)) {
-			v->in_key_flags &= ~key_flags;
-		}
-	}
-
-	return VMM_OK;
-}
-
-static u32 vtemu_read(struct vmm_chardev *cdev,
-			u8 *dest, u32 offset, u32 len,
-			bool sleep)
-{
-	u32 i;
-	irq_flags_t flags;
-	struct vtemu *v = cdev->priv;
-
-	if (!v) {
-		return 0;
-	}
-
-	vmm_spin_lock_irqsave(&v->in_lock, flags);
-	for (i = 0; i < len; i++) {
-		if (!v->in_count) {
-			if (sleep) {
-				vmm_spin_unlock_irqrestore(&v->in_lock, flags);
-				REINIT_COMPLETION(&v->in_done);
-				vmm_completion_wait(&v->in_done);
-				vmm_spin_lock_irqsave(&v->in_lock, flags);
-			}
-			break;
-		}
-		dest[i] = v->in_buf[v->in_head];
-		v->in_head++;
-		if (v->in_head == VTEMU_INBUF_SIZE) {
-			v->in_head = 0;
-		}
-		v->in_count--;
-	}
-	vmm_spin_unlock_irqrestore(&v->in_lock, flags);
 
 	return i;
 }
