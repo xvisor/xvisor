@@ -31,13 +31,21 @@
 #include <vmm_chardev.h>
 #include <rtc/vmm_rtcdev.h>
 #include <arch_barrier.h>
+#include <linux/amba/bus.h>
+#include <linux/amba/clcd.h>
+#include <versatile/clcd.h>
+#include <versatile/clock.h>
 #include <libfdt.h>
+#include <vtemu.h>
 #include <vexpress_plat.h>
 #include <ca15x4_board.h>
 
 extern u32 dt_blob_start;
 virtual_addr_t v2m_sys_base;
 vmm_spinlock_t v2m_cfg_lock;
+#if defined(CONFIG_VTEMU)
+struct vtemu *vea9_vt;
+#endif
 
 int arch_board_ram_start(physical_addr_t *addr)
 {
@@ -183,6 +191,79 @@ int __init arch_board_early_init(void)
 	return 0;
 }
 
+/*
+ * Clock handling
+ */
+
+static long ct_round(struct versatile_clk *clk, unsigned long rate)
+{
+	return rate;
+}
+
+static int ct_set(struct versatile_clk *clk, unsigned long rate)
+{
+	return v2m_cfg_write(SYS_CFG_OSC | SYS_CFG_SITE_DB1 | 1, rate);
+}
+
+static const struct versatile_clk_ops osc1_clk_ops = {
+	.round	= ct_round,
+	.set	= ct_set,
+};
+
+static struct versatile_clk osc1_clk = {
+	.ops	= &osc1_clk_ops,
+	.rate	= 24000000,
+};
+
+static struct vmm_devclk clcd_clk = {
+	.enable = versatile_clk_enable,
+	.disable = versatile_clk_disable,
+	.get_rate = versatile_clk_get_rate,
+	.round_rate = versatile_clk_round_rate,
+	.set_rate = versatile_clk_set_rate,
+	.priv = &osc1_clk,
+};
+
+static struct vmm_devclk *vexpress_getclk(struct vmm_devtree_node *node)
+{
+	if (strcmp(node->name, "clcd") == 0) {
+		return &clcd_clk;
+	}
+
+	return NULL;
+}
+
+/*
+ * CLCD support.
+ */
+
+static void vexpress_clcd_enable(struct clcd_fb *fb)
+{
+	v2m_cfg_write(SYS_CFG_MUXFPGA | SYS_CFG_SITE_DB1, 0);
+	v2m_cfg_write(SYS_CFG_DVIMODE | SYS_CFG_SITE_DB1, 2);
+}
+
+static int vexpress_clcd_setup(struct clcd_fb *fb)
+{
+	unsigned long framesize = 1024 * 768 * 2;
+
+	fb->panel = versatile_clcd_get_panel("XVGA");
+	if (!fb->panel)
+		return VMM_EINVALID;
+
+	return versatile_clcd_setup(fb, framesize);
+}
+
+static struct clcd_board clcd_system_data = {
+	.name		= "VExpress-A15",
+	.caps		= CLCD_CAP_5551 | CLCD_CAP_565,
+	.check		= clcdfb_check,
+	.decode		= clcdfb_decode,
+	.enable		= vexpress_clcd_enable,
+	.setup		= vexpress_clcd_setup,
+	.remove		= versatile_clcd_remove,
+};
+
 int __init arch_board_final_init(void)
 {
 	int rc;
@@ -191,6 +272,9 @@ int __init arch_board_final_init(void)
 #if defined(CONFIG_RTC)
 	struct vmm_rtcdev * rdev;
 #endif
+#if defined(CONFIG_VTEMU)
+	struct vmm_fb_info *info;
+#endif
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
@@ -198,6 +282,16 @@ int __init arch_board_final_init(void)
 	/* Map control registers */
 	v2m_sys_base = vmm_host_iomap(V2M_SYSREGS, 0x1000);
 	INIT_SPIN_LOCK(&v2m_cfg_lock);
+
+	/* Setup CLCD (before probing) */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "clcd");
+	if (node) {
+		node->system_data = &clcd_system_data;
+	}
 
 	/* Do Probing using device driver framework */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
@@ -208,7 +302,7 @@ int __init arch_board_final_init(void)
 		return VMM_ENOTAVAIL;
 	}
 
-	rc = vmm_devdrv_probe(node, NULL, NULL);
+	rc = vmm_devdrv_probe(node, vexpress_getclk, NULL);
 	if (rc) {
 		return rc;
 	}
@@ -225,6 +319,14 @@ int __init arch_board_final_init(void)
 		if ((rc = vmm_rtcdev_sync_wallclock(rdev))) {
 			return rc;
 		}
+	}
+#endif
+
+	/* Create VTEMU instace if available*/
+#if defined(CONFIG_VTEMU)
+	info = vmm_fb_find("clcd");
+	if (info) {
+		vea9_vt = vtemu_create("clcd-vtemu", info, NULL);
 	}
 #endif
 

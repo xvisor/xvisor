@@ -67,6 +67,12 @@
 					clock-rate = <1>;
 					irq = <36>;
 				};
+
+				clcd {
+			      		device_type = "fb";
+			      		compatible = "ambaclcd";
+			      		reg = <0x1C1F0000 0x1000>;
+				};
 			};
 		};
 	};
