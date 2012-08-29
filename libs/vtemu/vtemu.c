@@ -333,8 +333,7 @@ static int vtemu_add_input(struct vtemu *v, char *str)
 	i = 0;
 	vmm_spin_lock_irqsave(&v->in_lock, flags);
 	while(str[i] != '\0') {
-		if ((v->in_tail == v->in_head) && 
-		    (v->in_count == VTEMU_INBUF_SIZE)) {
+		if (v->in_count == VTEMU_INBUF_SIZE) {
 			v->in_head++;
 			if (v->in_head == VTEMU_INBUF_SIZE) {
 				v->in_head = 0;
@@ -351,8 +350,10 @@ static int vtemu_add_input(struct vtemu *v, char *str)
 	}
 	vmm_spin_unlock_irqrestore(&v->in_lock, flags);
 
-	/* Signal completion */
-	vmm_completion_complete_all(&v->in_done);
+	/* Signal completion if we added characters to input buffer */
+	if (str[0] != '\0') {
+		vmm_completion_complete_all(&v->in_done);
+	}
 
 	return VMM_OK;
 }
