@@ -5,16 +5,10 @@
 #include <linux/types.h>
 #include <linux/typecheck.h>
 
-/* Assume HZ based on default timeslice */
-#define	HZ					(1000 / CONFIG_TSLICE_MS)
-
-#define jiffies					\
-((unsigned long)udiv64(vmm_timer_timestamp(),	\
-		((u64)1000000000 * (u64)HZ)))
-
-#define jiffies_64				\
-(udiv64(vmm_timer_timestamp(), 			\
-		((u64)1000000000 * (u64)HZ)))
+/* Assume some value of HZ */
+#define	HZ					1000
+#define NSEC_TO_HZ_SHIFT			32
+#define NSEC_TO_HZ_MULT				4295
 
 /*
  * The following defines establish the engineering parameters of the PLL
@@ -46,6 +40,10 @@
 #else
 # error Invalid value of HZ.
 #endif
+
+#define jiffies_64				\
+((vmm_timer_timestamp() * NSEC_TO_HZ_MULT) >> NSEC_TO_HZ_SHIFT)
+#define jiffies					((unsigned long)jiffies_64)
 
 /*
  *	These inlines deal with timer wrapping correctly. You are 
