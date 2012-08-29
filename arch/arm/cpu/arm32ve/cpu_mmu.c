@@ -60,6 +60,13 @@ static struct cpu_mmu_ctrl mmuctrl;
 u8 __attribute__ ((aligned(TTBL_TABLE_SIZE))) def_ttbl[TTBL_INITIAL_TABLE_SIZE];
 int def_ttbl_tree[TTBL_INITIAL_TABLE_COUNT];
 
+static inline void cpu_mmu_sync_tte(u64 *tte)
+{
+	clean_dcache_mva((virtual_addr_t)tte);
+	isb();
+	dsb();
+}
+
 static struct cpu_ttbl * cpu_mmu_ttbl_find(physical_addr_t tbl_pa)
 {
 	int index;
@@ -174,6 +181,7 @@ static int cpu_mmu_ttbl_attach(struct cpu_ttbl * parent,
 	tte[index] = 0x0;
 	tte[index] |= (child->tbl_pa & TTBL_OUTADDR_MASK);
 	tte[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
+	cpu_mmu_sync_tte(&tte[index]);
 
 	child->parent = parent;
 	child->level = parent->level + 1;
@@ -204,6 +212,7 @@ static int cpu_mmu_ttbl_deattach(struct cpu_ttbl * child)
 	}
 
 	tte[index] = 0x0;
+	cpu_mmu_sync_tte(&tte[index]);
 
 	child->parent = NULL;
 	parent->tte_cnt--;
@@ -455,6 +464,7 @@ int cpu_mmu_unmap_page(struct cpu_ttbl * ttbl, struct cpu_page * pg)
 	}
 
 	tte[index] = 0x0;
+	cpu_mmu_sync_tte(&tte[index]);
 
 	if (ttbl->stage == TTBL_STAGE2) {
 		invalid_nhtlb();
@@ -551,6 +561,8 @@ int cpu_mmu_map_page(struct cpu_ttbl * ttbl, struct cpu_page * pg)
 	}
 	tte[index] |= TTBL_VALID_MASK;
 
+	cpu_mmu_sync_tte(&tte[index]);
+
 	ttbl->tte_cnt++;
 
 	return VMM_OK;
@@ -621,10 +633,8 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 
 	if ((mem_flags & VMM_MEMORY_CACHEABLE) && 
 	    (mem_flags & VMM_MEMORY_BUFFERABLE)) {
-		/* FIXME: */
-		p.aindex = AINDEX_NORMAL_WT;
+		p.aindex = AINDEX_NORMAL_WB;
 	} else if (mem_flags & VMM_MEMORY_CACHEABLE) {
-		/* FIXME: */
 		p.aindex = AINDEX_NORMAL_WT;
 	} else if (mem_flags & VMM_MEMORY_BUFFERABLE) {
 		/* FIXME: */
@@ -841,7 +851,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		hyppg.sz = TTBL_L3_BLOCK_SIZE;
 		hyppg.af = 1;
 		hyppg.ap = TTBL_AP_SRW_U;
-		hyppg.aindex = AINDEX_NORMAL_WT;
+		hyppg.aindex = AINDEX_NORMAL_WB;
 		if ((rc = cpu_mmu_map_hypervisor_page(&hyppg))) {
 			goto mmu_init_error;
 		}
