@@ -71,11 +71,21 @@ void cmd_input_handlers(struct vmm_chardev *cdev)
 {
 	int num, count;
 	struct vmm_input_handler *ihnd;
+
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
+	vmm_cprintf(cdev, " %-10s %-67s\n", 
+			  "Num", "Name");
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
 	count = vmm_input_count_handler();
 	for (num = 0; num < count; num++) {
 		ihnd = vmm_input_get_handler(num);
-		vmm_cprintf(cdev, "%d: %s\n", num, ihnd->name);
+		vmm_cprintf(cdev, " %-10d %-67s\n", num, ihnd->name);
 	}
+
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
 }
 
 int cmd_input_exec(struct vmm_chardev *cdev, int argc, char **argv)
