@@ -55,10 +55,11 @@ void cmd_host_usage(struct vmm_chardev *cdev)
 
 void cmd_host_info(struct vmm_chardev *cdev)
 {
+	u32 khz = vmm_delay_estimate_cpu_khz();
 	vmm_cprintf(cdev, "CPU Name   : %s\n", CONFIG_CPU);
 	vmm_cprintf(cdev, "CPU Count  : %d\n", CONFIG_CPU_COUNT);
-	vmm_cprintf(cdev, "CPU Speed  : %d MHz (Estimated)\n", 
-					vmm_delay_estimate_cpu_mhz());
+	vmm_cprintf(cdev, "CPU Speed  : %d.%d MHz (Estimated)\n", 
+					udiv32(khz, 1000), umod32(khz, 1000));
 	vmm_cprintf(cdev, "Board Name : %s\n", CONFIG_BOARD);
 }
 

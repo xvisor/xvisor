@@ -34,6 +34,9 @@ void vmm_mdelay(u32 msecs);
 /** Get estimated cpu speed in MHz */
 u32 vmm_delay_estimate_cpu_mhz(void);
 
+/** Get estimated cpu speed in KHz */
+u32 vmm_delay_estimate_cpu_khz(void);
+
 /** Recaliberate soft delay subsystem */
 void vmm_delay_recaliberate(void);
 

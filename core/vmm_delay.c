@@ -58,6 +58,11 @@ u32 vmm_delay_estimate_cpu_mhz(void)
 	return arch_delay_loop_cycles(loops_per_usec);
 }
 
+u32 vmm_delay_estimate_cpu_khz(void)
+{
+	return arch_delay_loop_cycles(loops_per_msec);
+}
+
 void vmm_delay_recaliberate(void)
 {
 	u64 nsecs, tstamp;
@@ -71,8 +76,8 @@ void vmm_delay_recaliberate(void)
 
 	nsecs = vmm_timer_timestamp() - tstamp;
 
-	loops_per_usec = udiv32(1000 * 1000000, nsecs);
-	loops_per_msec = udiv32(loops_per_usec, 1000);
+	loops_per_usec = udiv64(1000ULL * 1000000ULL, nsecs);
+	loops_per_msec = udiv64(1000000ULL * 1000000ULL, nsecs);
 
 	arch_cpu_irq_restore(flags);
 }
