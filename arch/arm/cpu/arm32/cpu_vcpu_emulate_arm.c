@@ -2347,6 +2347,40 @@ static int arm_inst_strd_r(u32 inst,
 	return VMM_OK;
 }
 
+/** Emulate 'movw (immediate)' instruction */
+static int arm_inst_movw_i(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
+{
+	u32 cond, Rd, imm4, imm12;
+	u32 result;
+	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MOVW_I);
+	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
+	Rd = ARM_INST_BITS(inst,
+			  ARM_INST_MOVW_I_RD_END,
+			  ARM_INST_MOVW_I_RD_START);
+	imm4 = ARM_INST_BITS(inst,
+			  ARM_INST_MOVW_I_IMM4_END,
+			  ARM_INST_MOVW_I_IMM4_START);
+	imm12 = ARM_INST_BITS(inst,
+			  ARM_INST_MOVW_I_IMM12_END,
+			  ARM_INST_MOVW_I_IMM12_START);
+	if (Rd == 15) {
+		arm_unpredictable(regs, vcpu, inst, __func__);
+		return VMM_EFAIL;
+	}
+	result = (imm4 << 12) | imm12;
+	if (arm_condition_passed(cond, regs)) {
+		if (Rd == 15) {
+			regs->pc = result;
+		} else {
+			cpu_vcpu_reg_write(vcpu, regs, Rd, result);
+		}
+	}
+	regs->pc += 4;
+	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MOVW_I);
+	return VMM_OK;
+}
+
 /** Emulate data processing instructions */
 static int arm_instgrp_dataproc(u32 inst, 
 				arch_regs_t * regs, struct vmm_vcpu * vcpu)
@@ -2354,7 +2388,7 @@ static int arm_instgrp_dataproc(u32 inst,
 	u32 op, op1, Rn, op2;
 	u32 is_op1_0xx1x, is_op1_xx0x0, is_op1_xx0x1, is_op1_xx1x0;
 	u32 is_op1_xx1x1, is_op1_0xxxx;
-	u32 is_op1_1xxxx, is_op1_11001, is_op1_11000;
+	u32 is_op1_1xxxx, is_op1_10000, is_op1_11001, is_op1_11000;
 	u32 is_op2_1001, is_op2_1011, is_op2_1101, is_op2_1111, is_op2_11x1;
 
 	op = ARM_INST_DECODE(inst,
@@ -2377,6 +2411,7 @@ static int arm_instgrp_dataproc(u32 inst,
 	is_op1_xx0x1 = !(op1 & 0x4) && (op1 & 0x1);
 	is_op1_xx1x0 = (op1 & 0x4) && !(op1 & 0x1);
 	is_op1_xx1x1 = (op1 & 0x4) && (op1 & 0x1);
+	is_op1_10000 = (op1 == 0x10);
 	is_op1_11000 = (op1 == 0x18);
 	is_op1_11001 = (op1 == 0x19);
 	is_op2_1001 = (op2 == 0x9);
@@ -2456,7 +2491,7 @@ static int arm_instgrp_dataproc(u32 inst,
 		default:
 			break;
 		};
-	} if (!op && is_op1_0xx1x && (is_op2_1011 || is_op2_11x1)) {
+	} else if (!op && is_op1_0xx1x && (is_op2_1011 || is_op2_11x1)) {
 		/* Extra load/store instructions (unpriviledged) */
 		if (is_op2_1011) {
 			if (is_op1_0xxxx) {
@@ -2473,7 +2508,7 @@ static int arm_instgrp_dataproc(u32 inst,
 			/* LDRSHT */
 			return arm_inst_ldrsht(inst, regs, vcpu);
 		}
-	} if (!op && is_op1_1xxxx && is_op2_1001) {
+	} else if (!op && is_op1_1xxxx && is_op2_1001) {
 		/* Synchronization primitives */
 		if(is_op1_11000) {
 			/* STREX */
@@ -2482,6 +2517,9 @@ static int arm_instgrp_dataproc(u32 inst,
 			/* LDREX */
 			return arm_inst_ldrex(inst, regs, vcpu);
 		}
+	} else if (op && is_op1_10000) {
+		/* MOVW (immediate) */
+		return arm_inst_movw_i(inst, regs, vcpu);
 	}
 
 	arm_unpredictable(regs, vcpu, inst, __func__);
