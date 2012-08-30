@@ -288,14 +288,14 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 	const char *attr;
 	u32 *parent_irq, *timer_irq;
 
-	s = vmm_malloc(sizeof(struct a9mp_priv_state));
+	s = vmm_zalloc(sizeof(struct a9mp_priv_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto a9mp_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct a9mp_priv_state));
 
-	s->num_cpu = (u32)vmm_devtree_attrval(edev->node, "num_cpu");
+	attr = vmm_devtree_attrval(edev->node, "num_cpu");
+	s->num_cpu = *(u32 *)attr;
 	if(!s->num_cpu) {
 		goto a9mp_probe_failed;
 	}
