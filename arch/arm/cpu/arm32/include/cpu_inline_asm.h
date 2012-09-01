@@ -95,8 +95,64 @@ static inline u16 rev16(u16 v)
 
 #endif
 
-#define read_cpuid()		({ u32 rval; asm volatile(\
+#define read_midr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_pfr0()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_pfr1()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_dfr0()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 2\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_afr0()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 3\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_mmfr0()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 4\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_mmfr1()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 5\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_mmfr2()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 6\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_mmfr3()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 7\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar0()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar1()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar2()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 2\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar3()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 3\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar4()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 4\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar5()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 5\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
 #define read_ccsidr()		({ u32 rval; asm volatile(\
