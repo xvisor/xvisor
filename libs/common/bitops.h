@@ -231,6 +231,43 @@ static inline __always_inline int fls64(u64 x)
 #endif
 
 /**
+ * sign_extend32 - sign extend a 32-bit value using specified bit as sign-bit
+ * @value: value to sign extend
+ * @index: 0 based bit index (0<=index<32) to sign bit
+ */
+static inline s32 sign_extend32(u32 value, int index)
+{
+	u8 shift = 31 - index;
+	return (s32)(value << shift) >> shift;
+}
+
+static inline unsigned fls_long(unsigned long l)
+{
+	if (sizeof(l) == 4)
+		return fls(l);
+	return fls64(l);
+}
+
+/**
+ * __ffs64 - find first set bit in a 64 bit word
+ * @word: The 64 bit word
+ *
+ * On 64 bit arches this is a synomyn for __ffs
+ * The result is not defined if no bits are set, so check that @word
+ * is non-zero before calling this.
+ */
+static inline unsigned long __ffs64(u64 word)
+{
+#if BITS_PER_LONG == 32
+	if (((u32)word) == 0UL)
+		return __ffs((u32)(word >> 32)) + 32;
+#elif BITS_PER_LONG != 64
+#error BITS_PER_LONG not 32 or 64
+#endif
+	return __ffs((unsigned long)word);
+}
+
+/**
  * rol32 - rotate a 32-bit value left
  * @word: value to rotate
  * @shift: bits to roll
