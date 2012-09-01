@@ -1027,12 +1027,62 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 			case 1:
 				if (!arm_feature(vcpu, ARM_FEATURE_V6))
 					goto bad_reg;
-				*data = arm_priv(vcpu)->cp15.c0_c1[opc2];
+				switch (opc2) {
+				case 0:
+					*data = arm_priv(vcpu)->cp15.c0_pfr0;
+					break;
+				case 1:
+					*data = arm_priv(vcpu)->cp15.c0_pfr1;
+					break;
+				case 2:
+					*data = arm_priv(vcpu)->cp15.c0_dfr0;
+					break;
+				case 3:
+					*data = arm_priv(vcpu)->cp15.c0_afr0;
+					break;
+				case 4:
+					*data = arm_priv(vcpu)->cp15.c0_mmfr0;
+					break;
+				case 5:
+					*data = arm_priv(vcpu)->cp15.c0_mmfr1;
+					break;
+				case 6:
+					*data = arm_priv(vcpu)->cp15.c0_mmfr2;
+					break;
+				case 7:
+					*data = arm_priv(vcpu)->cp15.c0_mmfr3;
+					break;
+				default:
+					*data = 0;
+					break;
+				};
 				break;
 			case 2:
 				if (!arm_feature(vcpu, ARM_FEATURE_V6))
 					goto bad_reg;
-				*data = arm_priv(vcpu)->cp15.c0_c2[opc2];
+				switch (opc2) {
+				case 0:
+					*data = arm_priv(vcpu)->cp15.c0_isar0;
+					break;
+				case 1:
+					*data = arm_priv(vcpu)->cp15.c0_isar1;
+					break;
+				case 2:
+					*data = arm_priv(vcpu)->cp15.c0_isar2;
+					break;
+				case 3:
+					*data = arm_priv(vcpu)->cp15.c0_isar3;
+					break;
+				case 4:
+					*data = arm_priv(vcpu)->cp15.c0_isar4;
+					break;
+				case 5:
+					*data = arm_priv(vcpu)->cp15.c0_isar5;
+					break;
+				default:
+					*data = 0;
+					break;
+				};
 				break;
 			case 3:
 			case 4:
@@ -2223,18 +2273,6 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 	isb();
 }
 
-static u32 cortexa9_cp15_c0_c1[8] =
-    { 0x1031, 0x11, 0x000, 0, 0x00100103, 0x20000000, 0x01230000, 0x00002111 };
-
-static u32 cortexa9_cp15_c0_c2[8] =
-    { 0x00101111, 0x13112111, 0x21232041, 0x11112131, 0x00111142, 0, 0, 0 };
-
-static u32 cortexa8_cp15_c0_c1[8] =
-    { 0x1031, 0x11, 0x400, 0, 0x31100003, 0x20000000, 0x01202000, 0x11 };
-
-static u32 cortexa8_cp15_c0_c2[8] =
-    { 0x00101111, 0x12112111, 0x21232031, 0x11112131, 0x00111142, 0, 0, 0 };
-
 int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	int rc = VMM_OK;
@@ -2297,11 +2335,21 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00090078;
 		break;
 	case ARM_CPUID_CORTEXA8:
-		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa8_cp15_c0_c1,
-			   8 * sizeof(u32));
-		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa8_cp15_c0_c2,
-			   8 * sizeof(u32));
 		arm_priv(vcpu)->cp15.c0_cachetype = 0x82048004;
+		arm_priv(vcpu)->cp15.c0_pfr0 = 0x1031;
+		arm_priv(vcpu)->cp15.c0_pfr1 = 0x11;
+		arm_priv(vcpu)->cp15.c0_dfr0 = 0x400;
+		arm_priv(vcpu)->cp15.c0_afr0 = 0x0;
+		arm_priv(vcpu)->cp15.c0_mmfr0 = 0x31100003;
+		arm_priv(vcpu)->cp15.c0_mmfr1 = 0x20000000;
+		arm_priv(vcpu)->cp15.c0_mmfr2 = 0x01202000;
+		arm_priv(vcpu)->cp15.c0_mmfr3 = 0x11;
+		arm_priv(vcpu)->cp15.c0_isar0 = 0x00101111;
+		arm_priv(vcpu)->cp15.c0_isar1 = 0x12112111;
+		arm_priv(vcpu)->cp15.c0_isar2 = 0x21232031;
+		arm_priv(vcpu)->cp15.c0_isar3 = 0x11112131;
+		arm_priv(vcpu)->cp15.c0_isar4 = 0x00111142;
+		arm_priv(vcpu)->cp15.c0_isar5 = 0x0;
 		arm_priv(vcpu)->cp15.c0_clid = (1 << 27) | (2 << 24) | 3;
 		arm_priv(vcpu)->cp15.c0_ccsid[0] = 0xe007e01a;	/* 16k L1 dcache. */
 		arm_priv(vcpu)->cp15.c0_ccsid[1] = 0x2007e01a;	/* 16k L1 icache. */
@@ -2309,11 +2357,21 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;
 	case ARM_CPUID_CORTEXA9:
-		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa9_cp15_c0_c1,
-			   8 * sizeof(u32));
-		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa9_cp15_c0_c2,
-			   8 * sizeof(u32));
 		arm_priv(vcpu)->cp15.c0_cachetype = 0x80038003;
+		arm_priv(vcpu)->cp15.c0_pfr0 = 0x1031;
+		arm_priv(vcpu)->cp15.c0_pfr1 = 0x11;
+		arm_priv(vcpu)->cp15.c0_dfr0 = 0x000;
+		arm_priv(vcpu)->cp15.c0_afr0 = 0x0;
+		arm_priv(vcpu)->cp15.c0_mmfr0 = 0x00100103;
+		arm_priv(vcpu)->cp15.c0_mmfr1 = 0x20000000;
+		arm_priv(vcpu)->cp15.c0_mmfr2 = 0x01230000;
+		arm_priv(vcpu)->cp15.c0_mmfr3 = 0x00002111;
+		arm_priv(vcpu)->cp15.c0_isar0 = 0x00101111;
+		arm_priv(vcpu)->cp15.c0_isar1 = 0x13112111;
+		arm_priv(vcpu)->cp15.c0_isar2 = 0x21232041;
+		arm_priv(vcpu)->cp15.c0_isar3 = 0x11112131;
+		arm_priv(vcpu)->cp15.c0_isar4 = 0x00111142;
+		arm_priv(vcpu)->cp15.c0_isar5 = 0x0;
 		arm_priv(vcpu)->cp15.c0_clid = (1 << 27) | (1 << 24) | 3;
 		arm_priv(vcpu)->cp15.c0_ccsid[0] = 0xe00fe015;	/* 16k L1 dcache. */
 		arm_priv(vcpu)->cp15.c0_ccsid[1] = 0x200fe015;	/* 16k L1 icache. */

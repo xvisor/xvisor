@@ -209,11 +209,23 @@ struct arm_priv {
 		/* Coprocessor Registers */
 		u32 c0_cpuid;
 		u32 c0_cachetype;
+		u32 c0_pfr0;
+		u32 c0_pfr1;
+		u32 c0_dfr0;
+		u32 c0_afr0;
+		u32 c0_mmfr0;
+		u32 c0_mmfr1;
+		u32 c0_mmfr2;
+		u32 c0_mmfr3;
+		u32 c0_isar0;
+		u32 c0_isar1;
+		u32 c0_isar2;
+		u32 c0_isar3;
+		u32 c0_isar4;
+		u32 c0_isar5;
 		u32 c0_ccsid[16]; /* Cache size. */
 		u32 c0_clid; /* Cache level. */
 		u32 c0_cssel; /* Cache size selection. */
-		u32 c0_c1[8]; /* Feature registers. */
-		u32 c0_c2[8]; /* Instruction set registers. */
 		u32 c1_sctlr; /* System control register. */
 		u32 c1_coproc; /* Coprocessor access register.  */
 		u32 c2_base0; /* MMU translation table base 0. */
