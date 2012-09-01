@@ -38,12 +38,22 @@
 #include <vtemu.h>
 #include <realview_plat.h>
 #include <pba8_board.h>
+#include <sp804_timer.h>
 
-extern u32 dt_blob_start;
+/*
+ * Global board context
+ */
+
 virtual_addr_t pba8_sys_base;
 #if defined(CONFIG_VTEMU)
 struct vtemu *pba8_vt;
 #endif
+
+/*
+ * Device Tree support
+ */
+
+extern u32 dt_blob_start;
 
 int arch_board_ram_start(physical_addr_t *addr)
 {
@@ -116,6 +126,10 @@ int arch_board_devtree_populate(struct vmm_devtree_node ** root)
 	return libfdt_parse_devtree(&fdt, root);
 }
 
+/*
+ * Reset & Shutdown
+ */
+
 int arch_board_reset(void)
 {
 	void *sys_lock = (void *)pba8_sys_base + REALVIEW_SYS_LOCK_OFFSET;
@@ -136,20 +150,10 @@ int arch_board_shutdown(void)
 	return VMM_OK;
 }
 
-int __init arch_board_early_init(void)
-{
-	/*
-	 * TODO:
-	 * Host virtual memory, device tree, heap is up.
-	 * Do necessary early stuff like iomapping devices
-	 * memory or boot time memory reservation here.
-	 */
-	return 0;
-}
-
 /*
- * Clock handling
+ * Clocking support
  */
+
 static const struct icst_params realview_oscvco_params = {
 	.ref		= 24000000,
 	.vco_max	= ICST307_VCO_MAX,
@@ -207,6 +211,7 @@ static struct vmm_devclk *realview_getclk(struct vmm_devtree_node *node)
 /*
  * CLCD support.
  */
+
 #define SYS_CLCD_NLCDIOON	(1 << 2)
 #define SYS_CLCD_VDDPOSSWITCH	(1 << 3)
 #define SYS_CLCD_PWR3V5SWITCH	(1 << 4)
@@ -296,6 +301,99 @@ struct clcd_board clcd_system_data = {
 	.setup		= realview_clcd_setup,
 	.remove		= versatile_clcd_remove,
 };
+
+/*
+ * Initialization functions
+ */
+
+int __init arch_board_early_init(void)
+{
+	/*
+	 * TODO:
+	 * Host virtual memory, device tree, heap is up.
+	 * Do necessary early stuff like iomapping devices
+	 * memory or boot time memory reservation here.
+	 */
+	return 0;
+}
+
+static virtual_addr_t pba8_timer0_base;
+static virtual_addr_t pba8_timer1_base;
+
+int __init arch_clocksource_init(void)
+{
+	int rc;
+	u32 val;
+	virtual_addr_t sctl_base;
+
+	/* Map control registers */
+	sctl_base = vmm_host_iomap(REALVIEW_SCTL_BASE, 0x1000);
+
+	/* 
+	 * set clock frequency: 
+	 *      REALVIEW_REFCLK is 32KHz
+	 *      REALVIEW_TIMCLK is 1MHz
+	 */
+	val = vmm_readl((void *)sctl_base) | 
+			(REALVIEW_TIMCLK << REALVIEW_TIMER2_EnSel);
+	vmm_writel(val, (void *)sctl_base);
+
+	/* Unmap control register */
+	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	if (rc) {
+		return rc;
+	}
+
+	/* Map timer1 registers */
+	pba8_timer1_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
+	pba8_timer1_base += 0x20;
+
+	/* Initialize timer1 as clocksource */
+	rc = sp804_clocksource_init(pba8_timer1_base, 
+				    "sp804_timer1", 300, 1000000, 20);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int __init arch_clockchip_init(void)
+{
+	int rc;
+	u32 val;
+	virtual_addr_t sctl_base;
+
+	/* Map control registers */
+	sctl_base = vmm_host_iomap(REALVIEW_SCTL_BASE, 0x1000);
+
+	/* 
+	 * set clock frequency: 
+	 *      REALVIEW_REFCLK is 32KHz
+	 *      REALVIEW_TIMCLK is 1MHz
+	 */
+	val = vmm_readl((void *)sctl_base) | 
+			(REALVIEW_TIMCLK << REALVIEW_TIMER1_EnSel);
+	vmm_writel(val, (void *)sctl_base);
+
+	/* Unmap control register */
+	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	if (rc) {
+		return rc;
+	}
+
+	/* Map timer0 registers */
+	pba8_timer0_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
+
+	/* Initialize timer0 as clockchip */
+	rc = sp804_clockchip_init(pba8_timer0_base, IRQ_PBA8_TIMER0_1, 
+				  "sp804_timer0", 300, 1000000, 0);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
 
 int __init arch_board_final_init(void)
 {

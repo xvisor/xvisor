@@ -39,13 +39,70 @@
 #include <vtemu.h>
 #include <vexpress_plat.h>
 #include <ca15x4_board.h>
+#include <sp810.h>
+#include <sp804_timer.h>
 
-extern u32 dt_blob_start;
+/*
+ * Global board context
+ */
+
 virtual_addr_t v2m_sys_base;
 vmm_spinlock_t v2m_cfg_lock;
 #if defined(CONFIG_VTEMU)
 struct vtemu *vea9_vt;
 #endif
+
+int v2m_cfg_write(u32 devfn, u32 data)
+{
+	u32 val;
+	irq_flags_t flags;
+
+	devfn |= SYS_CFG_START | SYS_CFG_WRITE;
+
+	vmm_spin_lock_irqsave(&v2m_cfg_lock, flags);
+	val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
+	vmm_writel(val & ~SYS_CFG_COMPLETE, (void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
+
+	vmm_writel(data, (void *)(v2m_sys_base + V2M_SYS_CFGDATA));
+	vmm_writel(devfn, (void *)(v2m_sys_base + V2M_SYS_CFGCTRL));
+
+	do {
+		val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
+	} while (val == 0);
+	vmm_spin_unlock_irqrestore(&v2m_cfg_lock, flags);
+
+	return !!(val & SYS_CFG_ERR);
+}
+
+int v2m_cfg_read(u32 devfn, u32 *data)
+{
+	u32 val;
+	irq_flags_t flags;
+
+	devfn |= SYS_CFG_START;
+
+	vmm_spin_lock_irqsave(&v2m_cfg_lock, flags);
+	vmm_writel(0, (void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
+	vmm_writel(devfn, (void *)(v2m_sys_base + V2M_SYS_CFGCTRL));
+
+	arch_mb();
+
+	do {
+		/* FIXME: cpu_relax() */
+		val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
+	} while (val == 0);
+
+	*data = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGDATA));
+	vmm_spin_unlock_irqrestore(&v2m_cfg_lock, flags);
+
+	return !!(val & SYS_CFG_ERR);
+}
+
+/*
+ * Device Tree support
+ */
+
+extern u32 dt_blob_start;
 
 int arch_board_ram_start(physical_addr_t *addr)
 {
@@ -118,51 +175,9 @@ int arch_board_devtree_populate(struct vmm_devtree_node ** root)
 	return libfdt_parse_devtree(&fdt, root);
 }
 
-int v2m_cfg_write(u32 devfn, u32 data)
-{
-	u32 val;
-	irq_flags_t flags;
-
-	devfn |= SYS_CFG_START | SYS_CFG_WRITE;
-
-	vmm_spin_lock_irqsave(&v2m_cfg_lock, flags);
-	val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
-	vmm_writel(val & ~SYS_CFG_COMPLETE, (void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
-
-	vmm_writel(data, (void *)(v2m_sys_base + V2M_SYS_CFGDATA));
-	vmm_writel(devfn, (void *)(v2m_sys_base + V2M_SYS_CFGCTRL));
-
-	do {
-		val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
-	} while (val == 0);
-	vmm_spin_unlock_irqrestore(&v2m_cfg_lock, flags);
-
-	return !!(val & SYS_CFG_ERR);
-}
-
-int v2m_cfg_read(u32 devfn, u32 *data)
-{
-	u32 val;
-	irq_flags_t flags;
-
-	devfn |= SYS_CFG_START;
-
-	vmm_spin_lock_irqsave(&v2m_cfg_lock, flags);
-	vmm_writel(0, (void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
-	vmm_writel(devfn, (void *)(v2m_sys_base + V2M_SYS_CFGCTRL));
-
-	arch_mb();
-
-	do {
-		/* FIXME: cpu_relax() */
-		val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
-	} while (val == 0);
-
-	*data = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGDATA));
-	vmm_spin_unlock_irqrestore(&v2m_cfg_lock, flags);
-
-	return !!(val & SYS_CFG_ERR);
-}
+/*
+ * Reset & Shutdown
+ */
 
 int arch_board_reset(void)
 {
@@ -180,19 +195,8 @@ int arch_board_shutdown(void)
 	return VMM_OK;
 }
 
-int __init arch_board_early_init(void)
-{
-	/*
-	 * TODO:
-	 * Host virtual memory, device tree, heap is up.
-	 * Do necessary early stuff like iomapping devices
-	 * memory or boot time memory reservation here.
-	 */
-	return 0;
-}
-
 /*
- * Clock handling
+ * Clocking support
  */
 
 static long ct_round(struct versatile_clk *clk, unsigned long rate)
@@ -263,6 +267,88 @@ static struct clcd_board clcd_system_data = {
 	.setup		= vexpress_clcd_setup,
 	.remove		= versatile_clcd_remove,
 };
+
+/*
+ * Initialization functions
+ */
+
+int __init arch_board_early_init(void)
+{
+	/*
+	 * TODO:
+	 * Host virtual memory, device tree, heap is up.
+	 * Do necessary early stuff like iomapping devices
+	 * memory or boot time memory reservation here.
+	 */
+	return 0;
+}
+
+static virtual_addr_t ca15x4_timer0_base;
+static virtual_addr_t ca15x4_timer1_base;
+
+int __init arch_clocksource_init(void)
+{
+	int rc;
+	u32 val;
+	virtual_addr_t sctl_base;
+
+	/* Map control registers */
+	sctl_base = vmm_host_iomap(V2M_SYSCTL, 0x1000);
+
+	/* Select 1MHz TIMCLK as the reference clock for SP804 timers */
+	val = vmm_readl((void *)sctl_base) | SCCTRL_TIMEREN1SEL_TIMCLK;
+	vmm_writel(val, (void *)sctl_base);
+
+	/* Unmap control register */
+	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	if (rc) {
+		return rc;
+	}
+
+	/* Map timer1 registers */
+	ca15x4_timer1_base = vmm_host_iomap(V2M_TIMER1, 0x1000);
+
+	/* Initialize timer1 as clocksource */
+	rc = sp804_clocksource_init(ca15x4_timer1_base, 
+				    "sp804_timer1", 300, 1000000, 20);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int __init arch_clockchip_init(void)
+{
+	int rc;
+	u32 val;
+	virtual_addr_t sctl_base;
+
+	/* Map control registers */
+	sctl_base = vmm_host_iomap(V2M_SYSCTL, 0x1000);
+
+	/* Select 1MHz TIMCLK as the reference clock for SP804 timers */
+	val = vmm_readl((void *)sctl_base) | SCCTRL_TIMEREN0SEL_TIMCLK;
+	vmm_writel(val, (void *)sctl_base);
+
+	/* Unmap control register */
+	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	if (rc) {
+		return rc;
+	}
+
+	/* Map timer0 registers */
+	ca15x4_timer0_base = vmm_host_iomap(V2M_TIMER0, 0x1000);
+
+	/* Initialize timer0 as clockchip */
+	rc = sp804_clockchip_init(ca15x4_timer0_base, IRQ_V2M_TIMER0, 
+				  "sp804_timer0", 300, 1000000, 0);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
 
 int __init arch_board_final_init(void)
 {

@@ -22,7 +22,6 @@
 # */
 
 board-objs-y+=brd_defterm.o
-board-objs-y+=brd_timer.o
 board-objs-y+=brd_main.o
 board-objs-$(CONFIG_ONE_GUEST_PBA8_DTS)+=dts/one_guest_pb-a8.o
 board-objs-$(CONFIG_ONE_PT_GUEST_PBA8_DTS)+=dts/one_pt_guest_pb-a8.o

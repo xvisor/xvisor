@@ -34,6 +34,10 @@
 #include <versatile_board.h>
 #include <sp804_timer.h>
 
+/*
+ * Device Tree support
+ */
+
 extern u32 dt_blob_start;
 static virtual_addr_t versatile_sys_base;
 
@@ -108,6 +112,10 @@ int arch_board_devtree_populate(struct vmm_devtree_node **root)
 	return libfdt_parse_devtree(&fdt, root);
 }
 
+/*
+ * Reset & Shutdown
+ */
+
 int arch_board_reset(void)
 {
 	vmm_writel(0x101,
@@ -123,6 +131,10 @@ int arch_board_shutdown(void)
 	return VMM_OK;
 }
 
+/*
+ * Initialization functions
+ */
+
 int __init arch_board_early_init(void)
 {
 	/*
@@ -131,6 +143,85 @@ int __init arch_board_early_init(void)
 	 * Do necessary early stuff like iomapping devices
 	 * memory or boot time memory reservation here.
 	 */
+	return VMM_OK;
+}
+
+static virtual_addr_t sp804_timer0_base;
+static virtual_addr_t sp804_timer1_base;
+
+int __init arch_clocksource_init(void)
+{
+	int rc;
+	u32 val;
+	virtual_addr_t sctl_base;
+
+	/* Map control registers */
+	sctl_base = vmm_host_iomap(VERSATILE_SCTL_BASE, 0x1000);
+
+        /*
+         * set clock frequency:
+         *      REALVIEW_REFCLK is 32KHz
+         *      REALVIEW_TIMCLK is 1MHz
+         */
+        val = vmm_readl((void *)sctl_base) |
+                        (VERSATILE_TIMCLK << VERSATILE_TIMER2_EnSel);
+        vmm_writel(val, (void *)sctl_base);
+
+	/* Unmap control register */
+	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	if (rc) {
+		return rc;
+	}
+
+	/* Configure timer1 as free running source */
+	/* Map timer registers */
+	sp804_timer1_base = vmm_host_iomap(VERSATILE_TIMER0_1_BASE, 0x1000);
+	sp804_timer1_base += 0x20;
+
+	/* Initialize timer1 as clocksource */
+	rc = sp804_clocksource_init(sp804_timer1_base, 
+				    "sp804_timer1", 300, 1000000, 20);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int __init arch_clockchip_init(void)
+{
+	int rc;
+	u32 val;
+	virtual_addr_t sctl_base;
+
+	/* Map control registers */
+	sctl_base = vmm_host_iomap(VERSATILE_SCTL_BASE, 0x1000);
+
+        /*
+         * set clock frequency:
+         *      REALVIEW_REFCLK is 32KHz
+         *      REALVIEW_TIMCLK is 1MHz
+         */
+        val = vmm_readl((void *)sctl_base) |
+                        (VERSATILE_TIMCLK << VERSATILE_TIMER1_EnSel);
+        vmm_writel(val, (void *)sctl_base);
+
+	/* Unmap control register */
+	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	if (rc) {
+		return rc;
+	}
+
+	/* Map timer0 registers */
+	sp804_timer0_base = vmm_host_iomap(VERSATILE_TIMER0_1_BASE, 0x1000);
+
+	/* Initialize timer0 as clockchip */
+	rc = sp804_clockchip_init(sp804_timer0_base, INT_TIMERINT0_1, 
+				  "sp804_timer0", 300, 1000000, 0);
+	if (rc) {
+		return rc;
+	}
+
 	return VMM_OK;
 }
 

@@ -26,9 +26,18 @@
 #include <vmm_devdrv.h>
 #include <vmm_stdio.h>
 #include <vmm_chardev.h>
+#include <arch_timer.h>
 #include <libfdt.h>
 #include <omap3/prcm.h>
 #include <omap3/sdrc.h>
+#include <omap3/intc.h>
+#include <omap3/gpt.h>
+#include <omap3/s32k-timer.h>
+#include <omap3/prcm.h>
+
+/*
+ * Device Tree support
+ */
 
 extern u32 dt_blob_start;
 
@@ -103,6 +112,10 @@ int arch_board_devtree_populate(struct vmm_devtree_node ** root)
 	return libfdt_parse_devtree(&fdt, root);
 }
 
+/*
+ * Reset & Shutdown
+ */
+
 int arch_board_reset(void)
 {
 	/* FIXME: TBD */
@@ -114,6 +127,10 @@ int arch_board_shutdown(void)
 	/* FIXME: TBD */
 	return VMM_OK;
 }
+
+/*
+ * Initialization functions
+ */
 
 /* Micron MT46H32M32LF-6 */
 /* XXX Using ARE = 0x1 (no autorefresh burst) -- can this be changed? */
@@ -187,6 +204,56 @@ int __init arch_board_early_init(void)
 	}
 
 	return 0;
+}
+
+#define BEAGLE_CLK_EVENT_GPT	0 
+
+#ifndef CONFIG_OMAP3_CLKSRC_S32KT
+#define BEAGLE_CLK_SRC_GPT	1 
+#endif
+
+struct omap3_gpt_cfg beagle_gpt_cfg[] = {
+	{
+		.name =		"gpt1",
+		.base_pa =	OMAP3_GPT1_BASE,
+		.cm_domain =	OMAP3_WKUP_CM,
+		.clksel_mask = 	OMAP3_CM_CLKSEL_WKUP_CLKSEL_GPT1_M,
+		.iclken_mask =	OMAP3_CM_ICLKEN_WKUP_EN_GPT1_M,
+		.fclken_mask =  OMAP3_CM_FCLKEN_WKUP_EN_GPT1_M,	
+		.src_sys_clk =	TRUE,
+		.irq_no	=	OMAP3_MPU_INTC_GPT1_IRQ
+	},
+	{
+		.name =		"gpt2",
+		.base_pa =	OMAP3_GPT2_BASE,
+		.cm_domain =	OMAP3_PER_CM,
+		.clksel_mask = 	OMAP3_CM_CLKSEL_PER_CLKSEL_GPT2_M,
+		.iclken_mask =	OMAP3_CM_ICLKEN_PER_EN_GPT2_M,
+		.fclken_mask =  OMAP3_CM_FCLKEN_PER_EN_GPT2_M,	
+		.src_sys_clk =	TRUE,
+		.irq_no	=	OMAP3_MPU_INTC_GPT2_IRQ
+	}
+};
+
+int __init arch_clocksource_init(void)
+{
+#ifdef CONFIG_OMAP3_CLKSRC_S32KT
+	return omap3_s32k_clocksource_init();
+#else
+	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct omap3_gpt_cfg), 
+			beagle_gpt_cfg);
+	return omap3_gpt_clocksource_init(BEAGLE_CLK_SRC_GPT, 
+					  OMAP3_GLOBAL_REG_PRM);
+#endif
+}
+
+int __init arch_clockchip_init(void)
+{
+	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct omap3_gpt_cfg), 
+			beagle_gpt_cfg);
+
+	return omap3_gpt_clockchip_init(BEAGLE_CLK_EVENT_GPT, 
+					OMAP3_GLOBAL_REG_PRM);
 }
 
 int __init arch_board_final_init(void)
