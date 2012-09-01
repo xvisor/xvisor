@@ -132,20 +132,28 @@ struct vmm_host_irq {
 	struct dlist hndl_list;
 };
 
-/** Execute host interrupts (To be called from architecture specific code) */
-int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t * regs);
+/** Explicity report a host irq 
+ * (Note: To be called from architecture specific code)
+ * (Note: This will be typically called by nested/secondary PICs) 
+ */
+int vmm_host_generic_irq_exec(u32 cpu_irq_no, arch_regs_t *regs);
+
+/** Report external irq as seen from CPU 
+ * (Note: To be called from architecture specific code) 
+ */
+int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t *regs);
 
 /** Get host irq count */
 u32 vmm_host_irq_count(void);
 
 /** Get host irq instance from host irq number */
-struct vmm_host_irq * vmm_host_irq_get(u32 hirq_num);
+struct vmm_host_irq *vmm_host_irq_get(u32 hirq_num);
 
 /* Set host irq chip for given host irq number */
 int vmm_host_irq_set_chip(u32 hirq_num, struct vmm_host_irq_chip *chip);
 
 /* Set host irq chip data for given host irq number */
-int vmm_host_irq_set_chip_data(u32 hirq_num, void * chip_data);
+int vmm_host_irq_set_chip_data(u32 hirq_num, void *chip_data);
 
 /** Get host irq number from host irq instance */
 static inline u32 vmm_host_irq_get_num(struct vmm_host_irq *irq)
