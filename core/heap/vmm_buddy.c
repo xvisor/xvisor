@@ -157,8 +157,7 @@ static struct vmm_free_area *buddy_get_contiguous_block(unsigned int num_blocks,
  cont_blocks_found:
 		if (snode) {
 			cnode = get_free_hk_node();
-			BUG_ON(!cnode,
-			       "Panic: No free house keeping nodes for buddy allocator!\n");
+			BUG_ON(!cnode);
 			memcpy(cnode, snode, sizeof(struct vmm_free_area));
 			while (count) {
 				/*
@@ -356,8 +355,7 @@ void *buddy_malloc(unsigned int size)
 		farea = buddy_get_contiguous_block(bneeded, BINS_MAX_ORDER - 1);
 		if (farea) {
 			aarea = get_free_ac_node();
-			BUG_ON(!aarea, "Panic: No house keeping node "
-			       "available for buddy allocator.!\n");
+			BUG_ON(!aarea);
 			aarea->map = farea->map;
 			aarea->blk_sz = MAX_BLOCK_SIZE * bneeded;
 			aarea->bin_num = BINS_MAX_ORDER - 1;
@@ -376,7 +374,7 @@ void *buddy_malloc(unsigned int size)
 			farea = buddy_get_block(idx);
 			if (farea) {
 				aarea = get_free_ac_node();
-				BUG_ON(!aarea, "Bummer! No free alloc node\n");
+				BUG_ON(!aarea);
 				aarea->map = farea->map;
 				aarea->blk_sz = curr_blk;
 				aarea->bin_num = idx;
@@ -405,7 +403,7 @@ void buddy_free(void *ptr)
 	vmm_spin_lock_irqsave(&bheap.lock, flags);
 
 	aarea = search_for_allocated_block(ptr);
-	BUG_ON(!aarea, "Panic: No allocation for 0x%08x!\n", (u32) ptr);
+	BUG_ON(!aarea);
 
 	if (MAX_BLOCK_SIZE < aarea->blk_sz) {
 		aarea_sz = aarea->blk_sz;

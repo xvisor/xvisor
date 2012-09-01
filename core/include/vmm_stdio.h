@@ -27,19 +27,25 @@
 #include <vmm_spinlocks.h>
 #include <vmm_chardev.h>
 
-#define BUG_ON(x, bug_string, ...)				\
-	do {							\
-		if (x) {					\
-			vmm_panic(bug_string, #__VA_ARGS__);	\
-		}						\
+#define BUG_ON(x)							\
+	do {								\
+		if (x) {						\
+			vmm_panic("Bug in %s() at %s:%d\n",		\
+				   __func__, __FILE__, __LINE__);	\
+		}							\
 	} while(0)
 
-#define WARN_ON(x, bug_string, ...)				\
-	do {							\
-		if (x) {					\
-			vmm_printf(bug_string, #__VA_ARGS__);	\
-		}						\
+#define BUG()	BUG_ON(1)
+
+#define WARN_ON(x)							\
+	do {								\
+		if (x) {						\
+			vmm_printf("Warning in %s() at %s:%d\n",	\
+				   __func__, __FILE__, __LINE__);	\
+		}							\
 	} while(0)
+
+#define WARN()	WARN_ON(1)
 
 /** Check if a character is a control character */
 bool vmm_iscontrol(char c);

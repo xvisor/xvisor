@@ -154,13 +154,13 @@ static int __init hpet_init(void)
 
 	if (!hpet) {
 		hpet = (struct hpet *)vmm_malloc(sizeof(struct hpet));
-		BUG_ON(hpet == NULL, "HPET: Not enough memory to allocate context.\n");
+		BUG_ON(hpet == NULL);
 
 		hpet->pbase = acpi_get_hpet_base_next();
-		BUG_ON(hpet->pbase == 0, "HPET: Cannot find HPET base address.\n");
+		BUG_ON(hpet->pbase == 0);
 
 		hpet->vbase = vmm_host_iomap(hpet->pbase, VMM_PAGE_SIZE);
-		BUG_ON(hpet->vbase == 0, "HPET: Failed to map HPET physical address.\n");
+		BUG_ON(hpet->vbase == 0);
 
 		cap_reg = hpet_timer_read(hpet->vbase, HPET_GEN_CAP_ID_BASE);
 		vmm_printf("HPET Rev ID: %x\n", cap_reg & 0xFF);
@@ -200,7 +200,7 @@ static void hpet_clockchip_set_mode(enum vmm_clockchip_mode mode,
 {
 	struct hpet_clockchip *hpet_tmr = container_of(cc, struct hpet_clockchip, clkchip);
 
-	BUG_ON(hpet_tmr == NULL, "Error: A clockchip without a parent HPET!\n");
+	BUG_ON(hpet_tmr == NULL);
 
 	switch (mode) {
 	case VMM_CLOCKCHIP_MODE_PERIODIC:
@@ -220,7 +220,7 @@ static int hpet_clockchip_set_next_event(unsigned long next,
 					 struct vmm_clockchip *cc)
 {
 	struct hpet_clockchip *hpet_tmr = container_of(cc, struct hpet_clockchip, clkchip);
-	BUG_ON(hpet_tmr == NULL, "Error: A clockchip without a parent HPET\n");
+	BUG_ON(hpet_tmr == NULL);
 
 	hpet_disarm_timer(hpet_tmr->hpet_timer_id);
 	hpet_timer_write(hpet->vbase,
@@ -265,7 +265,7 @@ static int __init hpet_clockchip_init(u8 timer_id, const char *chip_name,
 		if (int_dest & (0x01UL << pinno)) {
 			rc = hpet_initialize_timer(timer_id,
 						   pinno, HPET_TIMER_INT_EDGE);
-			BUG_ON(rc != VMM_OK, "Failed to initialize the system timer.\n");
+			BUG_ON(rc != VMM_OK);
 
 			/* route the IOAPIC pin to CPU IRQ/Exception vector */
 			ioapic_route_pin_to_irq(pinno, irqno);
@@ -273,8 +273,7 @@ static int __init hpet_clockchip_init(u8 timer_id, const char *chip_name,
 		}
 	}
 
-	BUG_ON(pinno == 32,
-	       "Error: Could not find a routing for system timer interrupt.\n");
+	BUG_ON(pinno == 32);
 
 	vmm_printf("Initialized HPET timer %d and routed its "
 		   "interrupt to %d pin on I/O APIC.\n", timer_id, pinno);
@@ -327,7 +326,7 @@ static int __init hpet_clockchip_init(u8 timer_id, const char *chip_name,
 
 int arch_clockchip_init(void)
 {
-	BUG_ON(hpet_init() != VMM_OK, "Failed to initialize the timer subsystem.\n");
+	BUG_ON(hpet_init() != VMM_OK);
 
 	return hpet_clockchip_init(DEFAULT_HPET_SYS_TIMER, "system_timer",
 				   20, 0);
@@ -368,7 +367,7 @@ static int hpet_clocksource_init(void)
 {
 	u64 t1, t2;
 
-	BUG_ON(hpet_init() != VMM_OK, "Failed to initialize the timer subsystem.\n");
+	BUG_ON(hpet_init() != VMM_OK);
 
 	vmm_printf("Initializing HPET main counter.\n");
 	/* stop the free running counter. */

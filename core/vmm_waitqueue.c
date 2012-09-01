@@ -27,7 +27,7 @@
 
 u32 vmm_waitqueue_count(struct vmm_waitqueue *wq) 
 {
-	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
+	BUG_ON(!wq);
 
 	return wq->vcpu_count;
 }
@@ -46,10 +46,9 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 	struct vmm_timer_event wake_event;
 
 	/* Sanity checks */
-	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
-	BUG_ON(!vmm_scheduler_orphan_context(), 
-		"%s: Sleep allowed in Orphan VCPU (or Thread) context only\n",
-		 __func__);
+	BUG_ON(!wq);
+	BUG_ON(!vmm_scheduler_orphan_context());
+
 	if (timeout_nsecs && (*timeout_nsecs == 0)) {
 		return VMM_ETIMEDOUT;
 	}
@@ -120,7 +119,7 @@ int vmm_waitqueue_sleep(struct vmm_waitqueue * wq)
 	int rc;
 
 	/* Sanity checks */
-	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
+	BUG_ON(!wq);
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irq(&wq->lock);
@@ -138,7 +137,7 @@ int vmm_waitqueue_sleep_timeout(struct vmm_waitqueue *wq, u64 *timeout_usecs)
 	int rc;
 
 	/* Sanity checks */
-	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
+	BUG_ON(!wq);
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irq(&wq->lock);
@@ -202,7 +201,7 @@ int __vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq)
 	struct vmm_vcpu * vcpu;
 
 	/* Sanity checks */
-	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
+	BUG_ON(!wq);
 
 	if(wq->vcpu_count == 0) {
 		return VMM_OK;
@@ -236,7 +235,7 @@ int vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq)
 	irq_flags_t flags;
 
 	/* Sanity checks */
-	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
+	BUG_ON(!wq);
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irqsave(&wq->lock, flags);
@@ -257,7 +256,7 @@ int __vmm_waitqueue_wakeall(struct vmm_waitqueue *wq)
 	struct vmm_vcpu * vcpu;
 
 	/* Sanity checks */
-	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
+	BUG_ON(!wq);
 
 	/* For each VCPU in waitqueue */
 	wake_count = 0;
@@ -292,7 +291,7 @@ int vmm_waitqueue_wakeall(struct vmm_waitqueue *wq)
 	irq_flags_t flags;
 
 	/* Sanity checks */
-	BUG_ON(!wq, "%s: NULL poniter to waitqueue\n", __func__);
+	BUG_ON(!wq);
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irqsave(&wq->lock, flags);

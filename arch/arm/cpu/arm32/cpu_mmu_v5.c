@@ -675,15 +675,16 @@ static int cpu_mmu_split_reserved_page(struct cpu_page *pg,
 
 			break;
 		default:
-			BUG_ON("%s: Unimplemented (target size 0x%x)\n",
+			vmm_printf("%s: Unimplemented (target size 0x%x)\n",
 			       __func__, rsize);
-
+			BUG();
 			break;
 		}
 		break;
 	default:
-		BUG_ON("%s: Unimplemented (source size 0x%x)\n", __func__,
+		vmm_printf("%s: Unimplemented (source size 0x%x)\n", __func__,
 		       pg->sz);
+		BUG();
 		break;
 	}
 

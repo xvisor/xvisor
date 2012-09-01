@@ -554,7 +554,7 @@ void vmm_input_alloc_absinfo(struct vmm_input_dev *idev)
 			vmm_malloc(ABS_CNT * sizeof(struct vmm_input_absinfo));
 	}
 
-	BUG_ON(!idev->absinfo, "%s(): vmm_malloc() failed?\n", __func__);
+	BUG_ON(!idev->absinfo);
 }
 
 void vmm_input_set_abs_params(struct vmm_input_dev *idev, unsigned int axis,

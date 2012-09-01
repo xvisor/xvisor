@@ -194,9 +194,7 @@ static virtual_addr_t find_root_system_descriptor(void)
 		area_map = vmm_host_iomap(carea->phys_start,
 					  (carea->phys_end
 					   - carea->phys_start));
-		BUG_ON((void *)area_map == NULL,
-		       "Failed to map the %s for RSDP search.\n",
-		       carea->area_name);
+		BUG_ON((void *)area_map == NULL);
 
 		if ((rsdp_base
 		     = locate_rsdp_in_area(area_map,

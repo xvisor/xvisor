@@ -232,8 +232,7 @@ void ioapic_enable(void)
 static int setup_ioapic(void)
 {
 	/* FIXME: Get away with this lousy behaviour */
-	BUG_ON(!detect_ioapics(), "NO IOAPIC Detected.\n"
-	       "System doesn't support boot without IOAPIC.\n");
+	BUG_ON(!detect_ioapics());
 
 	ioapic_enable();
 
@@ -294,7 +293,7 @@ int lapic_enable(unsigned cpu)
 static int setup_lapic(int cpu)
 {
 	/* Configuration says that  support APIC but its not present! */
-	BUG_ON(!is_lapic_present(), "No Local APIC Detected in System!\n");
+	BUG_ON(!is_lapic_present());
 
 	lapic.msr = cpu_read_msr(MSR_APIC);
 
@@ -308,7 +307,7 @@ static int setup_lapic(int cpu)
 	/* remap base */
 	lapic.vbase = vmm_host_iomap(lapic.pbase, PAGE_SIZE);
 
-	BUG_ON(unlikely(lapic.vbase == 0), "APIC Base mapping failed!\n");
+	BUG_ON(unlikely(lapic.vbase == 0));
 
 	lapic.version = lapic_read(LAPIC_VERSION(lapic.vbase));
 

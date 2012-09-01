@@ -31,7 +31,7 @@ bool vmm_mutex_avail(struct vmm_mutex *mut)
 	bool ret;
 	irq_flags_t flags;
 
-	BUG_ON(!mut, "%s: NULL poniter to mutex\n", __func__);
+	BUG_ON(!mut);
 
 	vmm_spin_lock_irqsave(&mut->wq.lock, flags);
 
@@ -47,7 +47,7 @@ struct vmm_vcpu *vmm_mutex_owner(struct vmm_mutex *mut)
 	struct vmm_vcpu *ret;
 	irq_flags_t flags;
 
-	BUG_ON(!mut, "%s: NULL poniter to mutex\n", __func__);
+	BUG_ON(!mut);
 
 	vmm_spin_lock_irqsave(&mut->wq.lock, flags);
 
@@ -63,10 +63,8 @@ int vmm_mutex_unlock(struct vmm_mutex *mut)
 	int rc = VMM_OK;
 	irq_flags_t flags;
 
-	BUG_ON(!mut, "%s: NULL poniter to mutex\n", __func__);
-	BUG_ON(!vmm_scheduler_orphan_context(), 
-	"%s: Unlock mutex allowed in Orphan VCPU (or Thread) context only\n",
-	 __func__);
+	BUG_ON(!mut);
+	BUG_ON(!vmm_scheduler_orphan_context());
 
 	vmm_spin_lock_irqsave(&mut->wq.lock, flags);
 
@@ -85,7 +83,7 @@ static int mutex_lock_common(struct vmm_mutex *mut, u64 *timeout)
 {
 	int rc = VMM_OK;
 
-	BUG_ON(!mut, "%s: NULL poniter to mutex\n", __func__);
+	BUG_ON(!mut);
 
 	vmm_spin_lock_irq(&mut->wq.lock);
 

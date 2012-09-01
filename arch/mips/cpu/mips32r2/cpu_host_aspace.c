@@ -194,8 +194,7 @@ pte_t *cpu_va2pte(virtual_addr_t vaddr)
 	u32 ptab_offset = ((vaddr >> PTAB_SHIFT) & PTAB_MASK);
 	ptab = (ptab_t *)host_pgd[pgd_offset];
 
-	BUG_ON(ptab == NULL, "Bummer! Can't handle page fault at address %X."
-	       "No pagetable entry found.\n", vaddr);
+	BUG_ON(ptab == NULL);
 
 	pte = (pte_t *)ptab[ptab_offset];
 

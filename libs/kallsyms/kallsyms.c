@@ -86,7 +86,7 @@ __notrace unsigned long kallsyms_get_symbol_pos(unsigned long addr, unsigned lon
 	unsigned long i, low, high, mid;
 
 	/* This kernel should never had been booted. */
-	//BUG_ON(!kallsyms_addresses);
+	BUG_ON(!kallsyms_addresses);
 
 	/* Do a binary search on the sorted kallsyms_addresses array. */
 	low = 0;

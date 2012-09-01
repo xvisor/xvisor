@@ -101,9 +101,7 @@ int vmm_waitqueue_wakeall(struct vmm_waitqueue * wq);
  */
 #define vmm_waitqueue_sleep_event(condition)				\
 do {									\
-	BUG_ON(!vmm_scheduler_orphan_context(), 			\
-		"%s: Sleep allowed in Orphan VCPU (or Thread) "		\
-		 "context only\n", __func__);				\
+	BUG_ON(!vmm_scheduler_orphan_context());			\
 	for (;;) {							\
 		if (condition)						\
 			break;						\

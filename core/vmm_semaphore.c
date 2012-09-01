@@ -30,7 +30,7 @@ bool vmm_semaphore_avail(struct vmm_semaphore *sem)
 	bool ret;
 	irq_flags_t flags;
 
-	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
+	BUG_ON(!sem);
 
 	vmm_spin_lock_irqsave(&sem->wq.lock, flags);
 
@@ -46,7 +46,7 @@ u32 vmm_semaphore_limit(struct vmm_semaphore *sem)
 	u32 ret;
 	irq_flags_t flags;
 
-	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
+	BUG_ON(!sem);
 
 	vmm_spin_lock_irqsave(&sem->wq.lock, flags);
 
@@ -62,7 +62,7 @@ int vmm_semaphore_up(struct vmm_semaphore *sem)
 	int rc = VMM_OK;
 	irq_flags_t flags;
 
-	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
+	BUG_ON(!sem);
 
 	vmm_spin_lock_irqsave(&sem->wq.lock, flags);
 
@@ -80,7 +80,7 @@ static int semaphore_down_common(struct vmm_semaphore *sem, u64 *timeout)
 {
 	int rc = VMM_OK;
 
-	BUG_ON(!sem, "%s: NULL poniter to semaphore\n", __func__);
+	BUG_ON(!sem);
 
 	vmm_spin_lock_irq(&sem->wq.lock);
 

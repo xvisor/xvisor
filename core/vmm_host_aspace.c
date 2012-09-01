@@ -44,7 +44,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 
 	if ((rc = vmm_host_vapool_alloc(&va, sz, FALSE))) {
 		/* Don't have space */
-		BUG_ON("%s: Don't have space\n", __func__);
+		BUG();
 	}
 
 	tpa = pa & ~VMM_PAGE_MASK;
@@ -56,7 +56,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 					mem_flags);
 		if (rc) {
 			/* We were not able to map physical address */
-			BUG_ON("%s: map physical address failed\n", __func__);
+			BUG();
 		}
 	}
 
@@ -216,7 +216,7 @@ u32 vmm_host_free_initmem(void)
 	init_size = VMM_ROUNDUP2_PAGE_SIZE(init_size);
 
 	if ((rc = vmm_host_free_pages(init_start, init_size >> VMM_PAGE_SHIFT))) {
-		BUG_ON("%s: Unable to free pages\n", __func__);
+		BUG();
 	}
 
 	return (init_size >> VMM_PAGE_SHIFT) * VMM_PAGE_SIZE / 1024;
