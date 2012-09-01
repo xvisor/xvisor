@@ -30,6 +30,8 @@
 #define VMM_PAGE_SHIFT			12
 #define VMM_PAGE_SIZE			(0x01UL << VMM_PAGE_SHIFT)
 #define VMM_PAGE_MASK			(VMM_PAGE_SIZE - 1)
+#define VMM_PAGE_ADDR(ptr)		(((virtual_addr_t)(ptr)) & ~VMM_PAGE_MASK)
+#define VMM_PAGE_OFFSET(ptr)		(((virtual_addr_t)(ptr)) & VMM_PAGE_MASK)
 #define VMM_PAGE_NUM(x)			((x) & ~VMM_PAGE_MASK)
 #define VMM_ROUNDUP2_PAGE_SIZE(x)	(((x) & VMM_PAGE_MASK) ? \
 					VMM_PAGE_NUM(x) + VMM_PAGE_SIZE : \
@@ -100,7 +102,7 @@ virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags);
 int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count);
 
 /** Convert virtual address of a page to its physical address */
-int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t * page_pa);
+int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t *page_pa);
 
 /** Read from host physical memory */
 u32 vmm_host_physical_read(physical_addr_t hphys_addr, 
