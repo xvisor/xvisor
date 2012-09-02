@@ -1483,7 +1483,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		if (opc1 != 0) {
 			goto bad_reg;
 		}
-		/* Note: Data cache invalidate/flush is a dangerous 
+		/* Note: Data cache invalidate is a dangerous 
 		 * operation since it is possible that Xvisor had its 
 		 * own updates in data cache which are not written to 
 		 * main memory we might end-up losing those updates 
@@ -1508,12 +1508,12 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				case 0:
 					/* Invalidate all I-caches to PoU 
 					 * innner-shareable - ICIALLUIS */
-					flush_icache();
+					invalidate_icache();
 					break;
 				case 6:
 					/* Invalidate all branch predictors 
 					 * innner-shareable - BPIALLUIS */
-					flush_bpredictor();
+					invalidate_bpredictor();
 					break;
 				default:
 					goto bad_reg;
@@ -1537,17 +1537,17 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 0:
 				/* Invalidate all instruction caches to PoU */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				flush_icache();
+				invalidate_icache();
 				break;
 			case 1:
 				/* Invalidate instruction cache line by MVA to PoU */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				flush_icache_mva(data);
+				invalidate_icache_mva(data);
 				break;
 			case 2:
 				/* Invalidate instruction cache line by set/way. */
 				/* Emulation for ARMv5, ARMv6 */
-				flush_icache_line(data);
+				invalidate_icache_line(data);
 				break;
 			case 4:
 				/* Instruction synchroization barrier */
@@ -1557,12 +1557,12 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 6:
 				/* Invalidate entire branch predictor array */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				flush_bpredictor();
+				invalidate_bpredictor();
 				break;
 			case 7:
 				/* Invalidate MVA from branch predictor array */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				flush_bpredictor_mva(data);
+				invalidate_bpredictor_mva(data);
 				break;
 			default:
 				goto bad_reg;
@@ -1576,7 +1576,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				/* For safety and correctness upgrade it to 
 				 * Clean and invalidate data cache.
 				 */
-				clean_flush_dcache();
+				clean_invalidate_dcache();
 				break;
 			case 1:
 				/* Invalidate data cache line by MVA to PoC. */
@@ -1584,7 +1584,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				/* For safety and correctness upgrade it to 
 				 * Clean and invalidate data cache.
 				 */
-				clean_flush_dcache_mva(data);
+				clean_invalidate_dcache_mva(data);
 				break;
 			case 2:
 				/* Invalidate data cache line by set/way. */
@@ -1592,7 +1592,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				/* For safety and correctness upgrade it to 
 				 * Clean and invalidate data cache.
 				 */
-				clean_flush_dcache_line(data);
+				clean_invalidate_dcache_line(data);
 				break;
 			default:
 				goto bad_reg;
@@ -1606,7 +1606,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				/* For safety and correctness upgrade it to
 				 * Clean and invalidate unified cache
 				 */
-				clean_flush_idcache();
+				clean_invalidate_idcache();
 				break;
 			case 1:
 				/* Invalidate unified cache line by MVA */
@@ -1614,7 +1614,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				/* For safety and correctness upgrade it to
 				 * Clean and invalidate unified cache
 				 */
-				clean_flush_idcache_mva(data);
+				clean_invalidate_idcache_mva(data);
 				break;
 			case 2:
 				/* Invalidate unified cache line by set/way */
@@ -1622,7 +1622,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				/* For safety and correctness upgrade it to
 				 * Clean and invalidate unified cache
 				 */
-				clean_flush_idcache_line(data);
+				clean_invalidate_idcache_line(data);
 				break;
 			default:
 				goto bad_reg;
@@ -1712,17 +1712,17 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 0:
 				/* Clean and invalidate data cache */
 				/* Emulation for ARMv6 */
-				clean_flush_dcache();
+				clean_invalidate_dcache();
 				break;
 			case 1:
 				/* Clean and invalidate data cache line by MVA */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				clean_flush_dcache_mva(data);
+				clean_invalidate_dcache_mva(data);
 				break;
 			case 2:
 				/* Clean and invalidate data cache line by set/way */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				clean_flush_dcache_line(data);
+				clean_invalidate_dcache_line(data);
 				break;
 			default:
 				goto bad_reg;
@@ -1733,17 +1733,17 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 0:
 				/* Clean and invalidate unified cache */
 				/* Emulation for ARMv6 */
-				clean_flush_idcache();
+				clean_invalidate_idcache();
 				break;
 			case 1:
 				/* Clean and Invalidate unified cache line by MVA */
 				/* Emulation for ARMv5, ARMv6 */
-				clean_flush_idcache_mva(data);
+				clean_invalidate_idcache_mva(data);
 				break;
 			case 2:
 				/* Clean and Invalidate unified cache line by set/way */
 				/* Emulation for ARMv5, ARMv6 */
-				clean_flush_idcache_line(data);
+				clean_invalidate_idcache_line(data);
 				break;
 			default:
 				goto bad_reg;

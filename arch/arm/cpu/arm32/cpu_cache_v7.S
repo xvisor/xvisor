@@ -75,9 +75,9 @@
 	 * Operations on entire data Cache to POC 
 	 */
 
-	/* flush the entire d-cache */
-	.globl flush_dcache
-flush_dcache:
+	/* invalidate the entire d-cache */
+	.globl invalidate_dcache
+invalidate_dcache:
 	ARM_ENTIRE_DCACHE_OP(c6) 	/* invalidate all */
 	dsb
 	bx	lr
@@ -89,9 +89,9 @@ clean_dcache:
 	dsb
 	bx	lr
 
-	/* clean & flush the entire data cache */	
- 	.globl clean_flush_dcache
-clean_flush_dcache:
+	/* clean & invalidate the entire data cache */	
+ 	.globl clean_invalidate_dcache
+clean_invalidate_dcache:
 	ARM_ENTIRE_DCACHE_OP(c14) 	/* clean and invalidate all */
 	dsb
 	bx	lr
@@ -100,9 +100,9 @@ clean_flush_dcache:
 	 * Operations on data cache by MVA 
 	 */
 
-	/* flush by MVA */
-	.globl flush_dcache_mva
-flush_dcache_mva:
+	/* invalidate by MVA */
+	.globl invalidate_dcache_mva
+invalidate_dcache_mva:
 	mcr     p15, 0, r0, c7, c6, 1
 	dsb
 	bx	lr
@@ -114,9 +114,9 @@ clean_dcache_mva:
 	dsb
 	bx	lr
 
-	/* clean and flush by mva */
-	.globl clean_flush_dcache_mva
-clean_flush_dcache_mva:
+	/* clean and invalidate by mva */
+	.globl clean_invalidate_dcache_mva
+clean_invalidate_dcache_mva:
 	mcr     p15, 0, r0, c7, c14, 1
 	dsb
 	bx	lr
@@ -125,9 +125,9 @@ clean_flush_dcache_mva:
 	 * Operations on data cache line by set/way
 	 */
 
-	/* flush line by set/way */
-	.globl flush_dcache_line
-flush_dcache_line:
+	/* invalidate line by set/way */
+	.globl invalidate_dcache_line
+invalidate_dcache_line:
 	mcr     p15, 0, r0, c7, c6, 2
 	dsb
 	bx	lr
@@ -139,9 +139,9 @@ clean_dcache_line:
 	dsb
 	bx	lr
 
-	/* clean and flush line by set/way */
-	.globl clean_flush_dcache_line
-clean_flush_dcache_line:
+	/* clean and invalidate line by set/way */
+	.globl clean_invalidate_dcache_line
+clean_invalidate_dcache_line:
 	mcr     p15, 0, r0, c7, c14, 2
 	dsb
 	bx	lr
@@ -150,9 +150,9 @@ clean_flush_dcache_line:
 	 * Operation on entire Instruction cache 
 	 */
 
-	/* flush the entire i-cache */
-	.globl flush_icache
-flush_icache:
+	/* invalidate the entire i-cache */
+	.globl invalidate_icache
+invalidate_icache:
         stmfd   sp!, {r0}		/* save registers */;\
 
 	mov	r0, #0
@@ -161,16 +161,16 @@ flush_icache:
 	ldmia   sp!, {r0}		/* restore registers */;
 	bx	lr
 
-	/* flush i-cache by mva */
-	.globl flush_icache_mva
-flush_icache_mva:
+	/* invalidate i-cache by mva */
+	.globl invalidate_icache_mva
+invalidate_icache_mva:
 	mcr     p15, 0, r0, c7, c5, 0 	/* invalidate all */
 	bx	lr
 
-	/* flush the i-cache line by set/way */ 
-	/* no such instruction so flush everything */
-	.globl flush_icache_line
-flush_icache_line:
+	/* invalidate the i-cache line by set/way */ 
+	/* no such instruction so invalidate everything */
+	.globl invalidate_icache_line
+invalidate_icache_line:
         stmfd   sp!, {r0}		/* save registers */;\
 
 	mov	r0, #0
@@ -183,13 +183,13 @@ flush_icache_line:
 	 * Operations on entire instruction an data cache 
 	 */
 
-	/* flush the entire i-cache and d-cache */
-	.globl flush_idcache
-flush_idcache:
+	/* invalidate the entire i-cache and d-cache */
+	.globl invalidate_idcache
+invalidate_idcache:
         stmfd   sp!, {lr}		/* save registers */;\
 	
-	bl	flush_icache
-	bl	flush_dcache
+	bl	invalidate_icache
+	bl	invalidate_dcache
 
 	ldmia   sp!, {lr}		/* restore registers */;
 	bx	lr
@@ -204,13 +204,13 @@ clean_idcache:
 	ldmia   sp!, {lr}		/* restore registers */;
 	bx	lr
 
-	/* clean and flush the entire i-cache and d-cache */
-	.globl clean_flush_idcache
-clean_flush_idcache:
+	/* clean and invalidate the entire i-cache and d-cache */
+	.globl clean_invalidate_idcache
+clean_invalidate_idcache:
         stmfd   sp!, {lr}		/* save registers */;\
 	
-	bl	flush_icache
-	bl	clean_flush_dcache
+	bl	invalidate_icache
+	bl	clean_invalidate_dcache
 
 	ldmia   sp!, {lr}		/* restore registers */;
 	bx	lr
@@ -219,13 +219,13 @@ clean_flush_idcache:
 	 * operation on both i-cache and d-cache by mva
 	 */
 
-	/* flush both i-cache and d-cache by mva */
-	.globl flush_idcache_mva
-flush_idcache_mva:
+	/* invalidate both i-cache and d-cache by mva */
+	.globl invalidate_idcache_mva
+invalidate_idcache_mva:
         stmfd   sp!, {lr}		/* save registers */;\
 	
-	bl	flush_icache_mva
-	bl	flush_dcache_mva
+	bl	invalidate_icache_mva
+	bl	invalidate_dcache_mva
 
 	ldmia   sp!, {lr}		/* restore registers */;
 	bx	lr
@@ -240,13 +240,13 @@ clean_idcache_mva:
 	ldmia   sp!, {lr}		/* restore registers */;
 	bx	lr
 
-	/* clean and flush both i-cache and d-cache by mva */
-	.globl clean_flush_idcache_mva
-clean_flush_idcache_mva:
+	/* clean and invalidate both i-cache and d-cache by mva */
+	.globl clean_invalidate_idcache_mva
+clean_invalidate_idcache_mva:
         stmfd   sp!, {lr}		/* save registers */;\
 	
-	bl	flush_icache_mva
-	bl	clean_flush_dcache_mva
+	bl	invalidate_icache_mva
+	bl	clean_invalidate_dcache_mva
 
 	ldmia   sp!, {lr}		/* restore registers */;
 	bx	lr
@@ -255,13 +255,13 @@ clean_flush_idcache_mva:
 	 * operation on both i-cache and d-cache line by set/way
 	 */
 
-	/* flush both i-cache and d-cache line by set/way */
-	.globl flush_idcache_line
-flush_idcache_line:
+	/* invalidate both i-cache and d-cache line by set/way */
+	.globl invalidate_idcache_line
+invalidate_idcache_line:
         stmfd   sp!, {lr}		/* save registers */;\
 	
-	bl	flush_icache_line
-	bl	flush_dcache_line
+	bl	invalidate_icache_line
+	bl	invalidate_dcache_line
 
 	ldmia   sp!, {lr}		/* restore registers */;
 	bx	lr
@@ -276,13 +276,13 @@ clean_idcache_line:
 	ldmia   sp!, {lr}		/* restore registers */;
 	bx	lr
 
-	/* clean and flush both i-cache and d-cache line by set/way */
-	.globl clean_flush_idcache_line
-clean_flush_idcache_line:
+	/* clean and invalidate both i-cache and d-cache line by set/way */
+	.globl clean_invalidate_idcache_line
+clean_invalidate_idcache_line:
         stmfd   sp!, {lr}		/* save registers */;\
 	
-	bl	flush_icache
-	bl	clean_flush_dcache_line
+	bl	invalidate_icache
+	bl	clean_invalidate_dcache_line
 
 	ldmia   sp!, {lr}		/* restore registers */;
 	bx	lr
@@ -291,9 +291,9 @@ clean_flush_idcache_line:
 	 * branch predictor maintenence operation 
 	 */
 
-	/* flush entire branch predictor */
-	.globl flush_bpredictor
-flush_bpredictor:
+	/* invalidate entire branch predictor */
+	.globl invalidate_bpredictor
+invalidate_bpredictor:
         stmfd   sp!, {r0}		/* save registers */;\
 
 	mov	r0, #0
@@ -302,9 +302,9 @@ flush_bpredictor:
 	ldmia   sp!, {r0}		/* restore registers */;
 	bx	lr
 
-	/* flush branch predictor by mva */
-	.globl flush_bpredictor_mva
-flush_bpredictor_mva:
+	/* invalidate branch predictor by mva */
+	.globl invalidate_bpredictor_mva
+invalidate_bpredictor_mva:
 	mcr     p15, 0, r0, c7, c5, 7 	/* invalidate all */
 
 	bx	lr
