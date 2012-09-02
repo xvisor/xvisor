@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <vmm_heap.h>
 #include <vmm_vserial.h>
 #include <stringlib.h>

@@ -24,10 +24,13 @@
 #ifndef __VMM_MACROS_H__
 #define __VMM_MACROS_H__
 
-#if __GNUC__ >= 4
-#define offsetof(type, member) __builtin_offsetof(type, member)
+#include <vmm_compiler.h>
+
+#undef offsetof
+#ifdef __compiler_offsetof
+#define offsetof(TYPE,MEMBER) __compiler_offsetof(TYPE,MEMBER)
 #else
-#define offsetof(type, member) ((size_t) &((type *)0)->member)
+#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 #endif
 
 /*
@@ -192,10 +195,5 @@
 #define array_size(x) (sizeof(x) / sizeof((x)[0]))
 
 #define field_sizeof(t, f) (sizeof(((t*)0)->f))
-
-/* Help in branch prediction */
-#define likely(x) __builtin_expect((x), 1)
-
-#define unlikely(x) __builtin_expect((x), 0)
 
 #endif /* __VMM_MACROS_H__ */

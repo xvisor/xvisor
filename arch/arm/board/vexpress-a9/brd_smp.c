@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 
 int __init arch_smp_prepare_cpus(void)
 {

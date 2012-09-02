@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 #include <arch_cpu_irq.h>
 #include <arch_barrier.h>
 

@@ -21,10 +21,11 @@
  * @brief Device Tree Implementation.
  */
 
-#include <arch_board.h>
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
+#include <arch_board.h>
 #include <stringlib.h>
 
 struct vmm_devtree_ctrl {

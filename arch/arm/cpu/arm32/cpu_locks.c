@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 #include <arch_barrier.h>
 
 bool __lock arch_spin_lock_check(spinlock_t * lock)

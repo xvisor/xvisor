@@ -21,8 +21,9 @@
  * @brief default serial terminal
  */
 
-#include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_types.h>
+#include <vmm_compiler.h>
 #include <vmm_host_aspace.h>
 #include <serial/pl011.h>
 #include <vexpress_plat.h>

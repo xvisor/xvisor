@@ -21,13 +21,14 @@
  * @brief source file for hypervisor manager
  */
 
-#include <arch_vcpu.h>
-#include <arch_guest.h>
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 #include <vmm_manager.h>
+#include <arch_vcpu.h>
+#include <arch_guest.h>
 #include <stringlib.h>
 
 /** Control structure for Scheduler */

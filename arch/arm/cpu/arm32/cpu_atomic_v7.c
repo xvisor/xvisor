@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 #include <arch_barrier.h>
 
 long __lock arch_atomic_read(atomic_t * atom)

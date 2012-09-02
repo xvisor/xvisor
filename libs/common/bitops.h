@@ -31,8 +31,9 @@
 #ifndef __BITOPS_H__
 #define __BITOPS_H__
 
-#include <arch_cpu.h>
 #include <vmm_types.h>
+#include <vmm_compiler.h>
+#include <arch_cpu.h>
 
 #define BITS_PER_BYTE			8
 #define BITS_PER_LONG			(ARCH_BITS_PER_LONG)

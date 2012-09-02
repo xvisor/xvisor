@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <vmm_heap.h>
 #include <vmm_scheduler.h>
 #include <vmm_chardev.h>

@@ -24,6 +24,7 @@
 #define _VMM_STDIO_H__
 
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 #include <vmm_spinlocks.h>
 #include <vmm_chardev.h>
 

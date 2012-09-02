@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <vmm_spinlocks.h>
 #include <vmm_clocksource.h>
 #include <arch_timer.h>

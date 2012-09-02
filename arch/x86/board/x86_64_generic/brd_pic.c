@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <arch_host_irq.h>
 
 #if CONFIG_LOCAL_APIC

@@ -24,6 +24,7 @@
 #define _VMM_MAIN_H__
 
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 
 /** Hang hypervisor */
 void __noreturn vmm_hang(void);
