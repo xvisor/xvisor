@@ -380,6 +380,7 @@ unsigned long find_next_zero_bit(const unsigned long *addr,
 
 #ifdef CONFIG_SMP
 
+#include <arch_cache.h>
 #include <arch_locks.h>
 
 /* Use an array of spinlocks for our atomic_ts.

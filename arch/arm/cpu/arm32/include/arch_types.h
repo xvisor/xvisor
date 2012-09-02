@@ -42,9 +42,6 @@ typedef struct {
 
 #define ARCH_BITS_PER_LONG		32
 
-#define ARCH_CACHE_LINE_SIZE		16
-#define ARCH_CACHE_LINE_SIZE_SHIFT	4
-
 #define __ARCH_SPIN_UNLOCKED		0
 
 /* FIXME: Need memory barrier for this. */

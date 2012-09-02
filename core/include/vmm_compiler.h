@@ -24,8 +24,6 @@
 #ifndef __VMM_COMPILER_H__
 #define __VMM_COMPILER_H__
 
-#include <vmm_types.h>
-
 #define stringify(s)		tostring(s)
 #define tostring(s)		#s
 #define barrier() 		__asm__ __volatile__("": : :"memory")
@@ -44,8 +42,6 @@
 #define __init			__attribute__((section(".init.text")))
 #define __initconst		__attribute__((section(".init.data")))
 #define __exit
-
-#define __cacheline_aligned	__attribute__((aligned(ARCH_CACHE_LINE_SIZE)))
 
 /* Help in branch prediction */
 #define likely(x) __builtin_expect((x), 1)
