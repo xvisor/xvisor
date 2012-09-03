@@ -25,8 +25,72 @@
 #define __VMM_CACHE_H__
 
 #include <vmm_types.h>
+#include <vmm_macros.h>
 #include <arch_cache.h>
 
-#define __cacheline_aligned	__attribute__((aligned(ARCH_CACHE_LINE_SIZE)))
+#ifndef ARCH_CACHE_LINE_SIZE
+#error "Architecture support must provide ARCH_CACHE_LINE_SIZE."
+#endif
+
+#ifndef ARCH_CACHE_LINE_SHIFT
+#error "Architecture support must provide ARCH_CACHE_LINE_SHIFT."
+#endif
+
+#define VMM_CACHE_LINE_SIZE			ARCH_CACHE_LINE_SIZE
+#define VMM_CACHE_LINE_SHIFT			ARCH_CACHE_LINE_SHIFT
+
+#ifndef VMM_CACHE_ALIGN
+#define VMM_CACHE_ALIGN(x) 			align(x, VMM_CACHE_LINE_SIZE)
+#endif
+
+#ifndef __cacheline_aligned
+#define __cacheline_aligned			__attribute__((aligned(VMM_CACHE_LINE_SIZE)))
+#endif
+
+#ifndef __cacheline_aligned_in_smp
+#define __cacheline_aligned_in_smp		__attribute__((aligned(VMM_CACHE_LINE_SIZE)))
+#endif
+
+#ifndef ARCH_HAS_FLUSH_CACHE_ALL
+#define vmm_flush_cache_all()			do { } while (0)
+#else
+#define vmm_flush_cache_all()			arch_flush_cache_all()
+#endif
+
+#ifndef ARCH_HAS_FLUSH_CACHE_RANGE
+#define vmm_flush_cache_range(start, end)	do { } while (0)
+#else
+#define vmm_flush_cache_range(start, end)	arch_flush_cache_range(start, end)
+#endif
+
+#ifndef ARCH_HAS_FLUSH_CACHE_PAGE
+#define vmm_flush_cache_page(page_va)		do { } while (0)
+#else
+#define vmm_flush_cache_page(page_va)		arch_flush_cache_page(page_va)
+#endif
+
+#ifndef ARCH_HAS_FLUSH_ICACHE_RANGE
+#define vmm_flush_icache_range(start, end)	do { } while (0)
+#else
+#define vmm_flush_icache_range(start, end)	arch_flush_icache_range(start, end)
+#endif
+
+#ifndef ARCH_HAS_FLUSH_ICACHE_PAGE
+#define vmm_flush_icache_page(page_va)		do { } while (0)
+#else
+#define vmm_flush_icache_page(page_va)		arch_flush_icache_page(page_va)
+#endif
+
+#ifndef ARCH_HAS_FLUSH_DCACHE_RANGE
+#define vmm_flush_dcache_range(start, end)	do { } while (0)
+#else
+#define vmm_flush_dcache_range(start, end)	arch_flush_dcache_range(start, end)
+#endif
+
+#ifndef ARCH_HAS_FLUSH_DCACHE_PAGE
+#define vmm_flush_dcache_page(page_va)		do { } while (0)
+#else
+#define vmm_flush_dcache_page(page_va)		arch_flush_dcache_page(page_va)
+#endif
 
 #endif /* __VMM_CACHE_H__ */

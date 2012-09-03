@@ -25,6 +25,6 @@
 
 /* FIXME: */
 #define ARCH_CACHE_LINE_SIZE		16
-#define ARCH_CACHE_LINE_SIZE_SHIFT	4
+#define ARCH_CACHE_LINE_SHIFT		4
 
 #endif /* _ARCH_CACHE_H__ */

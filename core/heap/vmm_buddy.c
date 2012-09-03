@@ -26,7 +26,7 @@
 #include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
 #include <vmm_host_aspace.h>
-#include <arch_cache.h>
+#include <vmm_cache.h>
 #include <list.h>
 #include <stringlib.h>
 
@@ -45,7 +45,7 @@
 #define IS_POW_TWO(x)		(x && !(x & (x - 1)))
 
 #define HOUSE_KEEPING_PERCENT	(25) /* 25 per-cent for house keeping */
-#define MIN_BLOCK_SHIFT		(ARCH_CACHE_LINE_SIZE_SHIFT)
+#define MIN_BLOCK_SHIFT		(VMM_CACHE_LINE_SHIFT)
 #define MAX_BLOCK_SHIFT		(VMM_PAGE_SHIFT)
 #define MIN_BLOCK_SIZE		(0x01UL << MIN_BLOCK_SHIFT)	/* Minimum alloc of bus width */
 #define MAX_BLOCK_SIZE		(0x01UL << MAX_BLOCK_SHIFT)	/* Maximum alloc of bus width */
