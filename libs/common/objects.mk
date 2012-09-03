@@ -25,6 +25,7 @@ libs-cppflags-y+= -I$(libs_dir)/common
 
 libs-objs-y+= common/bitops.o
 libs-objs-y+= common/bitmap.o
+libs-objs-y+= common/scatterlist.o
 libs-objs-y+= common/stringlib.o
 libs-objs-y+= common/mathlib.o
 
