@@ -1,4 +1,4 @@
-		Linux on Xvisor VersatilePB Guest
+		Linux on Xvisor Realview-PB-A8 Guest
 
 Linux is a computer operating system which is based on free and open source 
 software. the underlying source code can be used, freely modified, and 
@@ -6,14 +6,14 @@ redistributed, both commercially and non-commercially, by anyone under
 licenses such as the GNU General Public License. For more information on 
 Linux read the wiki page http://en.wikipedia.org/wiki/Linux
 
-Linux already contains a support for VersatilePB Board. We can use 
+Linux already contains a support for Realview-PB-A8 Board. We can use 
 this kernel unmodified to run it as a xvisor guest. We have also provide 
-VersatilePB defconfig for various linux kernel versions for ease in 
+Realview-PB-A8 defconfig for various linux kernel versions for ease in 
 building kernel. To obtain Linux kernel sources visit the following 
 url: http://www.kernel.org
 
 Please follow the steps below to build & run Linux kernel with Busybox 
-RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
+RootFS on Realview-PB-A8 Guest with Xvisor running on QEMU Realview-PB-A8 Host:
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=arm-none-linux-gnueabi-
@@ -21,18 +21,18 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with VersatilePB default settings]
-  # make ARCH=arm versatile-defconfig 
-  (Note: versatile-defconfig will select device tree configuration with only one preconfigured guest. For enabling two preconfigured guest use "make ARCH=arm menuconfig" after the above step to change the device tree configuration for two guests)
+  [3. Configure Xvisor with Realview-PB-A8 default settings]
+  # make ARCH=arm pb-a8-defconfig 
+  (Note: pb-a8-defconfig will select device tree configuration with only one preconfigured guest. For enabling two preconfigured guest use "make ARCH=arm menuconfig" after the above step and select device tree configuration for two guests from Realview-PB-A8 options.)
 
   [4. Build Xvisor]
   # make
 
   [5. Build Basic Test Code]
-  # make -C tests/arm32/versatile/basic
+  # make -C tests/arm32/pb-a8/basic
 
   [6. Copy defconfig to Linux build directory]
-  # cp tests/arm32/versatile/linux/linux-<linux_version>_versatilepb_defconfig <linux_build_directory>/.config
+  # cp tests/arm32/pb-a8/linux/linux-<linux_version>_realview_pba8_defconfig <linux_build_directory>/.config
 
   [7. GoTo Linux source directory]
   # cd <linux_source_directory>
@@ -44,13 +44,13 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # make O=<linux_build_directory> ARCH=arm zImage
 
   [10. Patch Linux kernel to replace sensitive non-priviledged instructions]
-  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux .head.text .text .init.text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux .text.head .init .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
 
   [11. Build Linux in build directory to reflect changes in kernel image]
   # make O=<linux_build_directory> ARCH=arm zImage
 
   [12. Patch Linux compressed kernel to replace sensitive non-priviledged instructions]
-  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/arch/arm/boot/compressed/vmlinux .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/arch/arm/boot/compressed/vmlinux 0
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/arch/arm/boot/compressed/vmlinux .text.head .init .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/arch/arm/boot/compressed/vmlinux 0
 
   [13. Create final compressed kernel image]
   # $(CROSS_COMPILE)objcopy -O binary <linux_build_directory>/arch/arm/boot/compressed/vmlinux <linux_build_directory>/arch/arm/boot/zImage
@@ -63,11 +63,11 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # cd <linux_build_directory>
 
   [16. Create xvisor_linux_qemu.img for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x00010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x00010000 <xvisor_source_directory>/build/tests/arm32/versatile/basic/arm_test.bin.patched@0x00800000 <xvisor_source_directory>/tests/arm32/versatile/linux/cmdlist@0x008FF000 ./arch/arm/boot/zImage@0x00900000 <busybox_rootfs_directory>/rootfs.img@0x00C00000
-  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/versatile/basic/arm_test.bin.patched@0x01000000 <xvisor_source_directory>/tests/arm32/versatile/linux/cmdlist@0x010FF000 ./arch/arm/boot/zImage@0x01100000 <busybox_rootfs_directory>/rootfs.img@0x01400000")
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x70010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x70010000 <xvisor_source_directory>/build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x70800000 <xvisor_source_directory>/tests/arm32/pb-a8/linux/cmdlist@0x708FF000 ./arch/arm/boot/zImage@0x70900000 <busybox_rootfs_directory>/rootfs.img@0x70C00000
+  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x71000000 <xvisor_source_directory>/tests/arm32/pb-a8/linux/cmdlist@0x710FF000 ./arch/arm/boot/zImage@0x71100000 <busybox_rootfs_directory>/rootfs.img@0x71400000")
 
   [17. Launch QEMU 0.14.xx or higher]
-  # qemu-system-arm -M versatilepb -display none -serial stdio -kernel ./xvisor_linux_qemu.img
+  # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel ./xvisor_linux_qemu.img
 
   [18. Kick Guest0 for starting Basic Test]
   XVisor# guest kick 0
@@ -76,18 +76,15 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   XVisor# vserial bind guest0/uart0
 
   [20. Copy linux from NOR flash to RAM and start linux booting from RAM]
-  [guest0/uart0] arm-test# copy 0x00400000 0x34100000 0x300000
+  [guest0/uart0] arm-test# copy 0x70400000 0x40100000 0x300000
   (Note: This command will copy zImage to RAM)
-  [guest0/uart0] arm-test# copy 0x01000000 0x34400000 0x400000
+  [guest0/uart0] arm-test# copy 0x71000000 0x40400000 0x400000
   (Note: This command will copy rootfs.img to RAM)
-  [guest0/uart0] arm-test# start_linux 0x00400000 0x01000000 0x400000
+  [guest0/uart0] arm-test# start_linux 0x70400000 0x71000000 0x400000
   (Note: This command will start linux booting)
   OR
   [guest0/uart0] arm-test# autoexec
-  (Note: "autoexec" is a short-cut command for executing commands from NOR flash)
-  (Note: The <xvisor_source_directory>/tests/arm32/versatile/linux/cmdlist file 
-   which we have added to guest NOR flash contains set of commands for booting 
-   linux from NOR flash)
+  (Note: "autoexec" is a short-cut command)
 
   [21. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
@@ -100,5 +97,5 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
    by QEMU 0.14.xx or higher. For other types of ARM host some of the above 
    steps will need to be adapted for that specfic ARM host. For more info on 
    your desired ARM host refer docs/arm/)
-  (Note: you are free to change the ordering of above steps based on your 
-   workspace)
+  (Note: you are free to change the ordering of above steps based on your workspace)
+
