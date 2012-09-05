@@ -20,15 +20,32 @@
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief ARM Platform misc functions Header
  */
-#ifndef _ARM_MISC_H__
-#define _ARM_MISC_H__
+#ifndef _ARM_BOARD_H__
+#define _ARM_BOARD_H__
+
+#include <arm_types.h>
 
 void arm_board_reset(void);
 void arm_board_init(void);
 char *arm_board_name(void);
 u32 arm_board_ram_start(void);
 u32 arm_board_ram_size(void);
-u32 arm_board_linux_machine_type(void);
 u32 arm_board_flash_addr(void);
+u32 arm_board_linux_machine_type(void);
+
+u32 arm_board_iosection_count(void);
+physical_addr_t arm_board_iosection_addr(int num);
+
+u32 arm_board_pic_nr_irqs(void);
+int arm_board_pic_init(void);
+u32 arm_board_pic_active_irq(void);
+int arm_board_pic_ack_irq(u32 irq);
+int arm_board_pic_eoi_irq(u32 irq);
+int arm_board_pic_mask(u32 irq);
+int arm_board_pic_unmask(u32 irq);
+
+int arm_board_serial_init(void);
+void arm_board_serial_putc(char ch);
+char arm_board_serial_getc(void);
 
 #endif

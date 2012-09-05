@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Anup Patel.
+ * Copyright (c) 2012 Jean-Christophe Dubois.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,8 +16,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_entry.S
- * @author Anup Patel (anup@brainfault.org)
+ * @file arm_entry_v5.S
+ * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief Entry point code for ARM test code
  */
 
@@ -32,7 +32,8 @@
 	.globl _start
 _start:
 	add	r0, pc, #-0x8
-	cpsid	if
+	mov	r8, #0
+	SET_CURRENT_FLAGS (CPSR_FIQ_DISABLED | CPSR_IRQ_DISABLED), r8
 	ldr	r2, __code_start
 	ldr	r3, __code_end
 	sub	r4, r3, r2
@@ -100,6 +101,7 @@ __fiq:
 	.word _fiq
 	.global _end_vect
 _end_vect:
+	b	.
 
 __svc_stack_end:
 	.word _svc_stack_end
@@ -119,27 +121,27 @@ _reset:
 	/* Clear a register for temporary usage */
 	mov	r8, #0
 	/* Disable IRQ & FIQ */
-	cpsid if
+	SET_CURRENT_FLAGS (CPSR_FIQ_DISABLED | CPSR_IRQ_DISABLED), r8
 	/* Set Supervisor Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR
+	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR, r8
 	SET_CURRENT_STACK __svc_stack_end
 	/* Set Undefined Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_UNDEFINED
+	SET_CURRENT_MODE CPSR_MODE_UNDEFINED, r8
 	SET_CURRENT_STACK __und_stack_end
 	/* Set Abort Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_ABORT
+	SET_CURRENT_MODE CPSR_MODE_ABORT, r8
 	SET_CURRENT_STACK __abt_stack_end
 	/* Set IRQ Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_IRQ
+	SET_CURRENT_MODE CPSR_MODE_IRQ, r8
 	SET_CURRENT_STACK __irq_stack_end
 	/* Set FIQ Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_FIQ
+	SET_CURRENT_MODE CPSR_MODE_FIQ, r8
 	SET_CURRENT_STACK __fiq_stack_end
 	/* Set System Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_SYSTEM
+	SET_CURRENT_MODE CPSR_MODE_SYSTEM, r8
 	SET_CURRENT_STACK __usr_stack_end
 	/* Set to Supervisor Mode */
-	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR
+	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR, r8
 	/* Call init function */
 	bl	arm_init
 	/* Call main function */
@@ -151,9 +153,11 @@ _reset:
 _switch_to_user_mode:
 	sub	r0, sp
 	mov	r1, lr
-	SET_CURRENT_MODE CPSR_MODE_USER
+	mov	r2, #0
+	SET_CURRENT_MODE CPSR_MODE_USER, r2
 	mov	sp, r0
 	mov	lr, r1
+	mov	r2, #0
 	bx	lr
 
 START_EXCEPTION_HANDLER _undefined_instruction, 4

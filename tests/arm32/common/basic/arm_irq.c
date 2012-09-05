@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Jean-Christophe Dubois.
+ * Copyright (c) 2010 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -17,20 +17,20 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arm_irq.c
- * @author Jean-Christophe Dubois (jcd@tribudubois.net)
+ * @author Anup Patel (anup@brainfault.org)
  * @brief source code for handling ARM test code interrupts
  */
 
-#include <arm_pl190.h>
+#include <arm_board.h>
 #include <arm_mmu.h>
 #include <arm_irq.h>
-#include <arm_plat.h>
 
-#include <arm_stdio.h>
+#define MAX_NR_IRQS		1024
 
-#define NR_IRQS_VERSATILE	64
+arm_irq_handler_t irq_hndls[MAX_NR_IRQS];
 
-arm_irq_handler_t irq_hndls[NR_IRQS_VERSATILE];
+#define PIC_NR_IRQS		((arm_board_pic_nr_irqs() < MAX_NR_IRQS) ? \
+				  arm_board_pic_nr_irqs() : MAX_NR_IRQS)
 
 void do_undefined_instruction(struct pt_regs *regs)
 {
@@ -58,18 +58,20 @@ void do_not_used(struct pt_regs *regs)
 void do_irq(struct pt_regs *uregs)
 {
 	int rc = 0;
-	int irq;
+	int irq = arm_board_pic_active_irq();
 
-	irq = arm_pl190_active_irq(0);
-
-	if (irq > -1) {
+	if (-1 < irq) {
+		rc = arm_board_pic_ack_irq(irq);
+		if (rc) {
+			while (1);
+		}
 		if (irq_hndls[irq]) {
 			rc = irq_hndls[irq](irq, uregs);
 			if (rc) {
 				while (1);
 			}
 		}
-		rc = arm_pl190_ack_irq(0, irq);
+		rc = arm_board_pic_eoi_irq(irq);
 		if (rc) {
 			while (1);
 		}
@@ -86,7 +88,7 @@ void arm_irq_setup(void)
 	u32 *vectors = (u32 *)NULL;
 	u32 *vectors_data = vectors + CPU_IRQ_NR;
 	int vec;
-
+ 
 	/*
 	 * Loop through the vectors we're taking over, and copy the
 	 * vector's insn and data word.
@@ -110,30 +112,34 @@ void arm_irq_setup(void)
 	/*
 	 * Reset irq handlers
 	 */
-	for (vec = 0; vec < NR_IRQS_VERSATILE; vec++) {
+	for (vec = 0; vec < PIC_NR_IRQS; vec++) {
 		irq_hndls[vec] = NULL;
 	}
- 
-	vec = arm_pl190_cpu_init(0, VERSATILE_VIC_BASE);
+
+	/*
+	 * Initialize board PIC
+	 */
+	vec = arm_board_pic_init();
 	if (vec) {
-		while(1);
+		while (1);
 	}
 }
 
 void arm_irq_register(u32 irq, arm_irq_handler_t hndl)
 {
 	int rc = 0;
-
-	if (irq < NR_IRQS_VERSATILE) {
+	if (irq < PIC_NR_IRQS) {
 		irq_hndls[irq] = hndl;
 		if (irq_hndls[irq]) {
-			rc = arm_pl190_unmask(0, irq);
+			rc = arm_board_pic_unmask(irq);
 			if (rc) {
 				while (1);
 			}
 		}
 	}
 }
+
+#ifdef ARM_ARCH_v5
 
 void arm_irq_enable(void)
 {
@@ -179,3 +185,25 @@ void arm_irq_wfi()
 			"       msr     cpsr_c, %3	    @ Restore FIQ state"
 			:"=r" (reg_r0), "=r" (reg_r1), "=r" (reg_r2), "=r" (reg_r3), "=r" (reg_ip)::"memory", "cc" );
 }
+
+#endif
+
+#ifdef ARM_ARCH_v7
+
+void arm_irq_enable(void)
+{
+	__asm( "cpsie if" );
+}
+
+void arm_irq_disable(void)
+{
+	__asm( "cpsid if" );
+}
+
+void arm_irq_wfi(void)
+{
+	__asm ("wfi\n");
+}
+
+#endif
+

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Sukanto Ghosh.
+ * Copyright (c) 2011 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,15 +16,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_gic.h
- * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @file gic.h
+ * @author Anup Patel (anup@brainfault.org)
  * @brief ARM Generic Interrupt Controller header
- *
- * Adapted from tests/arm32/pb-a8/basic/arm_gic.h
- *
  */
-#ifndef _ARM_GIC_H__
-#define _ARM_GIC_H__
+#ifndef _GIC_H__
+#define _GIC_H__
 
 #include <arm_types.h>
 #include <arm_plat.h>
@@ -49,11 +46,11 @@
 #define GIC_DIST_CONFIG			0xc00
 #define GIC_DIST_SOFTINT		0xf00
 
-int arm_gic_active_irq(u32 gic_nr);
-int arm_gic_ack_irq(u32 gic_nr, u32 irq);
-int arm_gic_mask(u32 gic_nr, u32 irq);
-int arm_gic_unmask(u32 gic_nr, u32 irq);
-int arm_gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start);
-int arm_gic_cpu_init(u32 gic_nr, virtual_addr_t base);
+int gic_active_irq(u32 gic_nr);
+int gic_eoi_irq(u32 gic_nr, u32 irq);
+int gic_mask(u32 gic_nr, u32 irq);
+int gic_unmask(u32 gic_nr, u32 irq);
+int gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start);
+int gic_cpu_init(u32 gic_nr, virtual_addr_t base);
 
 #endif

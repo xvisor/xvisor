@@ -21,44 +21,23 @@
  * @brief source file for common input/output functions
  */
 
-#include <arm_pl01x.h>
+#include <arm_board.h>
 #include <arm_stdio.h>
-
-#define	PBA8_UART_BASE			0x10009000
-#define	PBA8_UART_TYPE			PL01X_TYPE_1
-#define	PBA8_UART_INCLK			24000000
-#define	PBA8_UART_BAUD			115200
-
-void arm_putc(char ch)
-{
-	if (ch == '\n') {
-		arm_pl01x_putc(PBA8_UART_BASE, PBA8_UART_TYPE, '\r');
-	}
-	arm_pl01x_putc(PBA8_UART_BASE, PBA8_UART_TYPE, ch);
-}
-
-char arm_getc(void)
-{
-	char ch = arm_pl01x_getc(PBA8_UART_BASE, PBA8_UART_TYPE);
-	if (ch == '\r') {
-		ch = '\n';
-	}
-	arm_putc(ch);
-	return ch;
-}
 
 void arm_stdio_init(void)
 {
-	arm_pl01x_init(PBA8_UART_BASE, 
-			PBA8_UART_TYPE, 
-			PBA8_UART_BAUD, 
-			PBA8_UART_INCLK);
+	int rc;
+
+	rc = arm_board_serial_init();
+	if (rc) {
+		while (1);
+	}
 }
 
 void arm_puts(const char * str)
 {
 	while (*str) {
-		arm_putc(*str);
+		arm_board_serial_putc(*str);
 		str++;
 	}
 }
@@ -68,14 +47,14 @@ void arm_gets(char *s, int maxwidth, char endchar)
 	char *retval;
 	char ch;
 	retval = s;
-	ch = arm_getc();
+	ch = arm_board_serial_getc();
 	while (ch != endchar && maxwidth > 0) {
 		*retval = ch;
 		retval++;
 		maxwidth--;
 		if (maxwidth == 0)
 			break;
-		ch = arm_getc();
+		ch = arm_board_serial_getc();
 	}
 	*retval = '\0';
 	return;

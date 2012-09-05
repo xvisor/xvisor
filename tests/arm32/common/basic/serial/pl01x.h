@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Sukanto Ghosh.
+ * Copyright (c) 2011 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,15 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_pl01x.h
- * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @file pl01x.h
+ * @author Anup Patel (anup@brainfault.org)
  * @brief Header file for PrimeCell PL011/PL010 serial port driver.
- *
- * Adapted from tests/arm32/pb-a8/basic/arm_pl01x.h
  */
 
-#ifndef __ARM_PL01X_H_
-#define __ARM_PL01X_H_
+#ifndef __PL01X_H_
+#define __PL01X_H_
 
 #include <arm_types.h>
 
@@ -145,8 +143,8 @@
 #define UART_PL011_IMSC_CTSMIM          (1 << 1)
 #define UART_PL011_IMSC_RIMIM           (1 << 0)
 
-char arm_pl01x_getc(u32 base, u32 type);
-void arm_pl01x_putc(u32 base, u32 type, char ch);
-void arm_pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock);
+char pl01x_getc(u32 base, u32 type);
+void pl01x_putc(u32 base, u32 type, char ch);
+void pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock);
 
-#endif /* __ARM_PL01X_H_ */
+#endif /* __PL01X_H_ */

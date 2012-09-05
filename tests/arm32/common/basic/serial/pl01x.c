@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Sukanto Ghosh.
+ * Copyright (c) 2011 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,18 +16,16 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_pl01x.c
- * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @file pl01x.c
+ * @author Anup Patel (anup@brainfault.org)
  * @brief source file for PrimeCell PL011/PL010 serial port driver.
- *
- * Adapted from tests/arm32/pb-a8/basic/arm_pl01x.c
  */
 
 #include <arm_io.h>
 #include <arm_math.h>
-#include <arm_pl01x.h>
+#include <serial/pl01x.h>
 
-void arm_pl01x_putc(u32 base, u32 type, char ch)
+void pl01x_putc(u32 base, u32 type, char ch)
 {
 	/* Wait until there is space in the FIFO */
 	while (arm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF);
@@ -36,7 +34,7 @@ void arm_pl01x_putc(u32 base, u32 type, char ch)
 	arm_writel(ch, (void*)(base + UART_PL01x_DR));
 }
 
-char arm_pl01x_getc(u32 base, u32 type)
+char pl01x_getc(u32 base, u32 type)
 {
 	char data;
 
@@ -55,7 +53,7 @@ char arm_pl01x_getc(u32 base, u32 type)
 	return data;
 }
 
-void arm_pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock)
+void pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock)
 {
 	unsigned int divider;
 	unsigned int temp;

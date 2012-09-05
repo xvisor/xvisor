@@ -21,10 +21,12 @@
  * @brief various platform specific functions
  */
 
-#include <arm_plat.h>
 #include <arm_types.h>
 #include <arm_io.h>
 #include <arm_board.h>
+#include <arm_plat.h>
+#include <pic/pl190.h>
+#include <serial/pl01x.h>
 
 void arm_board_reset(void)
 {
@@ -63,3 +65,114 @@ u32 arm_board_flash_addr(void)
 {
 	return (u32)(VERSATILE_FLASH_BASE);
 }
+
+u32 arm_board_iosection_count(void)
+{
+	return 6;
+}
+
+physical_addr_t arm_board_iosection_addr(int num)
+{
+	physical_addr_t ret = 0;
+
+	switch (num) {
+	case 0:
+		ret = VERSATILE_SYS_BASE;
+		break;
+	case 1:
+		ret = VERSATILE_VIC_BASE;
+		break;
+	case 2:
+	case 3:
+	case 4:
+	case 5:
+		ret = VERSATILE_FLASH_BASE + (num - 2) * 0x100000;
+		break;
+	default:
+		while (1);
+		break;
+	}
+
+	return ret;
+}
+
+#define NR_IRQS_VERSATILE	64
+
+u32 arm_board_pic_nr_irqs(void)
+{
+	return NR_IRQS_VERSATILE;
+}
+
+int arm_board_pic_init(void)
+{
+	int rc;
+
+	/*
+	 * Initialize Vectored Interrupt Controller
+	 */
+	rc = pl190_cpu_init(0, VERSATILE_VIC_BASE);
+	if (rc) {
+		return rc;
+	}
+
+	return 0;
+}
+
+u32 arm_board_pic_active_irq(void)
+{
+	return pl190_active_irq(0);
+}
+
+int arm_board_pic_ack_irq(u32 irq)
+{
+	return 0;
+}
+
+int arm_board_pic_eoi_irq(u32 irq)
+{
+	return pl190_eoi_irq(0, irq);
+}
+
+int arm_board_pic_mask(u32 irq)
+{
+	return pl190_mask(0, irq);
+}
+
+int arm_board_pic_unmask(u32 irq)
+{
+	return pl190_unmask(0, irq);
+}
+
+#define	VERSATILE_UART_BASE			0x101F1000
+#define	VERSATILE_UART_TYPE			PL01X_TYPE_1
+#define	VERSATILE_UART_INCLK			24000000
+#define	VERSATILE_UART_BAUD			115200
+
+int arm_board_serial_init(void)
+{
+	pl01x_init(VERSATILE_UART_BASE, 
+			VERSATILE_UART_TYPE, 
+			VERSATILE_UART_BAUD, 
+			VERSATILE_UART_INCLK);
+
+	return 0;
+}
+
+void arm_board_serial_putc(char ch)
+{
+	if (ch == '\n') {
+		pl01x_putc(VERSATILE_UART_BASE, VERSATILE_UART_TYPE, '\r');
+	}
+	pl01x_putc(VERSATILE_UART_BASE, VERSATILE_UART_TYPE, ch);
+}
+
+char arm_board_serial_getc(void)
+{
+	char ch = pl01x_getc(VERSATILE_UART_BASE, VERSATILE_UART_TYPE);
+	if (ch == '\r') {
+		ch = '\n';
+	}
+	arm_board_serial_putc(ch);
+	return ch;
+}
+

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Jean-Christophe Dubois.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,8 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_entry.S
- * @author Jean-Christophe Dubois (jcd@tribudubois.net)
+ * @file arm_entry_v7.S
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @author Anup Patel (anup@brainfault.org)
  * @brief Entry point code for ARM test code
  */
 
@@ -32,8 +33,7 @@
 	.globl _start
 _start:
 	add	r0, pc, #-0x8
-	mov	r8, #0
-	SET_CURRENT_FLAGS (CPSR_FIQ_DISABLED | CPSR_IRQ_DISABLED), r8
+	cpsid	if
 	ldr	r2, __code_start
 	ldr	r3, __code_end
 	sub	r4, r3, r2
@@ -48,12 +48,39 @@ _start:
 	 * from intended execution address. If necessary do relocation from
 	 * load memory to execution memory.
 	 */
+	/* Core-1 should spin and core-0 should go ahead */
+	mrc	p15, 0, r5, c0, c0, 5
+	ands	r5, r5, #0x3
+	bne	_secondary_loop
+
 	cmp	r0, r2
 	beq	_start_done
 	cmp	r1, r2
 	blt	_start_relocate
 	cmp	r3, r0
 	blt	_start_relocate
+
+_secondary_loop:
+	/* Enable the GIC CPU interface for this core */
+	ldr	r0, _gic_cpu_enable_addr
+	mov	r1, #1
+	str	r1, [r0]
+	ldr	r0, _sys_flags_addr
+1:	
+	/* Wait for interrupt before checking SYS_FLAGS */
+	wfi	
+	ldr	r1, [r0]
+	teq	r1, #0
+	/* Repeat if SYS_FLAGS == 0 */
+	beq	1b
+	/* Jump to the address stored the the SYS_FLAGS register */
+	bx	r1
+
+_gic_cpu_enable_addr:
+	.word	0x1e000100
+_sys_flags_addr:
+	.word 	0x10000030
+
 _start_hang:
 	b	.
 _start_relocate:
@@ -101,7 +128,6 @@ __fiq:
 	.word _fiq
 	.global _end_vect
 _end_vect:
-	b	.
 
 __svc_stack_end:
 	.word _svc_stack_end
@@ -121,27 +147,27 @@ _reset:
 	/* Clear a register for temporary usage */
 	mov	r8, #0
 	/* Disable IRQ & FIQ */
-	SET_CURRENT_FLAGS (CPSR_FIQ_DISABLED | CPSR_IRQ_DISABLED), r8
+	cpsid if
 	/* Set Supervisor Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR, r8
+	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR
 	SET_CURRENT_STACK __svc_stack_end
 	/* Set Undefined Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_UNDEFINED, r8
+	SET_CURRENT_MODE CPSR_MODE_UNDEFINED
 	SET_CURRENT_STACK __und_stack_end
 	/* Set Abort Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_ABORT, r8
+	SET_CURRENT_MODE CPSR_MODE_ABORT
 	SET_CURRENT_STACK __abt_stack_end
 	/* Set IRQ Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_IRQ, r8
+	SET_CURRENT_MODE CPSR_MODE_IRQ
 	SET_CURRENT_STACK __irq_stack_end
 	/* Set FIQ Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_FIQ, r8
+	SET_CURRENT_MODE CPSR_MODE_FIQ
 	SET_CURRENT_STACK __fiq_stack_end
 	/* Set System Mode Stack */
-	SET_CURRENT_MODE CPSR_MODE_SYSTEM, r8
+	SET_CURRENT_MODE CPSR_MODE_SYSTEM
 	SET_CURRENT_STACK __usr_stack_end
 	/* Set to Supervisor Mode */
-	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR, r8
+	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR
 	/* Call init function */
 	bl	arm_init
 	/* Call main function */
@@ -153,11 +179,9 @@ _reset:
 _switch_to_user_mode:
 	sub	r0, sp
 	mov	r1, lr
-	mov	r2, #0
-	SET_CURRENT_MODE CPSR_MODE_USER, r2
+	SET_CURRENT_MODE CPSR_MODE_USER
 	mov	sp, r0
 	mov	lr, r1
-	mov	r2, #0
 	bx	lr
 
 START_EXCEPTION_HANDLER _undefined_instruction, 4

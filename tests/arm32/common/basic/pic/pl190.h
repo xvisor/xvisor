@@ -16,12 +16,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vic.h
+ * @file pl190.h
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief Versatile Generic Interrupt Controller header
  */
-#ifndef __VERSATILE_PL190_H__
-#define __VERSATILE_PL190_H__
+#ifndef __PL190_H__
+#define __PL190_H__
 
 #include <arm_types.h>
 
@@ -45,10 +45,10 @@
 
 #define PL190_PL192_VECT_ADDR             0xF00
 
-int arm_pl190_active_irq(u32 gic_nr);
-int arm_pl190_ack_irq(u32 gic_nr, u32 irq);
-int arm_pl190_mask(u32 gic_nr, u32 irq);
-int arm_pl190_unmask(u32 gic_nr, u32 irq);
-int arm_pl190_cpu_init(u32 gic_nr, virtual_addr_t base);
+int pl190_active_irq(u32 vic_nr);
+int pl190_eoi_irq(u32 vic_nr, u32 irq);
+int pl190_mask(u32 vic_nr, u32 irq);
+int pl190_unmask(u32 vic_nr, u32 irq);
+int pl190_cpu_init(u32 vic_nr, virtual_addr_t base);
 
 #endif

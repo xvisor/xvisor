@@ -16,13 +16,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_mmu.c
+ * @file arm_mmu_v7.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief source file for MMU functions
  */
 
-#include <arm_config.h>
-#include <arm_plat.h>
+#include <arm_board.h>
 #include <arm_inline_asm.h>
 #include <arm_defines.h>
 #include <arm_mmu.h>
@@ -1608,7 +1607,7 @@ extern u8 _code_end;
 
 void arm_mmu_setup(void)
 {
-	u32 sec, sec_tmpl = 0x0, sec_start = 0x0, sec_end = 0x0;
+	u32 s, sec, sec_tmpl = 0x0, sec_start = 0x0, sec_end = 0x0;
 	u32 sctlr = read_sctlr();
 
 	/* If MMU already enabled then return */
@@ -1657,19 +1656,11 @@ void arm_mmu_setup(void)
 	sec_tmpl &= ~TTBL_L1TBL_TTE_C_MASK;
 	sec_tmpl |= TTBL_L1TBL_TTE_XN_MASK;
 
-	/* Create section entries for Sysctl, GIC, Timer, PL01x, and Flash */
-	sec = REALVIEW_SYS_BASE;
-	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
-	sec = REALVIEW_PBA8_GIC_CPU_BASE;
-	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
-	sec = REALVIEW_PBA8_FLASH0_BASE;
-	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
-	sec += TTBL_L1TBL_SECTION_PAGE_SIZE;
-	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
-	sec += TTBL_L1TBL_SECTION_PAGE_SIZE;
-	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
-	sec += TTBL_L1TBL_SECTION_PAGE_SIZE;
-	l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
+	/* Create section entries for IO */
+	for (s = 0; s < arm_board_iosection_count(); s++) {
+		sec = arm_board_iosection_addr(s);
+		l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
+	}
 
 	/* Map an l2 table after (code + additional section) */
 	sec_tmpl = 0x0;

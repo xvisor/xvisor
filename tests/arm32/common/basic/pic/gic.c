@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Sukanto Ghosh.
+ * Copyright (c) 2011 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,17 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_gic.c
- * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @file gic.c
+ * @author Anup Patel (anup@brainfault.org)
  * @brief ARM Generic Interrupt Controller
- *
- * Adapted from tests/arm32/pb-a8/basic/arm_gic.c
- *
  */
 
-#include <arm_config.h>
 #include <arm_io.h>
-#include <arm_gic.h>
+#include <gic_config.h>
+#include <pic/gic.h>
 
 #define max(a,b)	((a) < (b) ? (b) : (a))
 
@@ -36,39 +33,39 @@ struct gic_chip_data {
 	virtual_addr_t cpu_base;
 };
 
-static struct gic_chip_data gic_data[ARM_GIC_MAX_NR];
+static struct gic_chip_data gic_data[GIC_MAX_NR];
 
-static inline void arm_gic_write(u32 val, virtual_addr_t addr)
+static inline void gic_write(u32 val, virtual_addr_t addr)
 {
 	arm_writel(val, (void *)(addr));
 }
 
-static inline u32 arm_gic_read(virtual_addr_t addr)
+static inline u32 gic_read(virtual_addr_t addr)
 {
 	return arm_readl((void *)(addr));
 }
 
-int arm_gic_active_irq(u32 gic_nr)
+int gic_active_irq(u32 gic_nr)
 {
 	int ret = -1;
 
-	if (ARM_GIC_MAX_NR <= gic_nr) {
+	if (GIC_MAX_NR <= gic_nr) {
 		return -1;
 	}
 
-	ret = arm_gic_read(gic_data[gic_nr].cpu_base +
+	ret = gic_read(gic_data[gic_nr].cpu_base +
 				GIC_CPU_INTACK) & 0x3FF;
 	ret += gic_data[gic_nr].irq_offset;
 
 	return ret;
 }
 
-int arm_gic_ack_irq(u32 gic_nr, u32 irq)
+int gic_eoi_irq(u32 gic_nr, u32 irq)
 {
 	u32 mask = 1 << (irq % 32);
 	u32 gic_irq;
 
-	if (ARM_GIC_MAX_NR <= gic_nr) {
+	if (GIC_MAX_NR <= gic_nr) {
 		return -1;
 	}
 
@@ -78,21 +75,21 @@ int arm_gic_ack_irq(u32 gic_nr, u32 irq)
 
 	gic_irq = irq - gic_data[gic_nr].irq_offset;
 
-	arm_gic_write(mask, gic_data[gic_nr].dist_base + 
+	gic_write(mask, gic_data[gic_nr].dist_base + 
 				GIC_DIST_ENABLE_CLEAR + (gic_irq / 32) * 4);
-	arm_gic_write(gic_irq, gic_data[gic_nr].cpu_base + GIC_CPU_EOI);
-	arm_gic_write(mask, gic_data[gic_nr].dist_base + 
+	gic_write(gic_irq, gic_data[gic_nr].cpu_base + GIC_CPU_EOI);
+	gic_write(mask, gic_data[gic_nr].dist_base + 
 				GIC_DIST_ENABLE_SET + (gic_irq / 32) * 4);
 
 	return 0;
 }
 
-int arm_gic_mask(u32 gic_nr, u32 irq)
+int gic_mask(u32 gic_nr, u32 irq)
 {
 	u32 mask = 1 << (irq % 32);
 	u32 gic_irq;
 
-	if (ARM_GIC_MAX_NR <= gic_nr) {
+	if (GIC_MAX_NR <= gic_nr) {
 		return -1;
 	}
 
@@ -102,18 +99,18 @@ int arm_gic_mask(u32 gic_nr, u32 irq)
 
 	gic_irq = irq - gic_data[gic_nr].irq_offset;
 
-	arm_gic_write(mask, gic_data[gic_nr].dist_base +
+	gic_write(mask, gic_data[gic_nr].dist_base +
 			   GIC_DIST_ENABLE_CLEAR + (gic_irq / 32) * 4);
 
 	return 0;
 }
 
-int arm_gic_unmask(u32 gic_nr, u32 irq)
+int gic_unmask(u32 gic_nr, u32 irq)
 {
 	u32 mask = 1 << (irq % 32);
 	u32 gic_irq;
 
-	if (ARM_GIC_MAX_NR <= gic_nr) {
+	if (GIC_MAX_NR <= gic_nr) {
 		return -1;
 	}
 
@@ -123,18 +120,18 @@ int arm_gic_unmask(u32 gic_nr, u32 irq)
 
 	gic_irq = irq - gic_data[gic_nr].irq_offset;
 
-	arm_gic_write(mask, gic_data[gic_nr].dist_base +
+	gic_write(mask, gic_data[gic_nr].dist_base +
 			   GIC_DIST_ENABLE_SET + (gic_irq / 32) * 4);
 
 	return 0;
 }
 
-int arm_gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start)
+int gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start)
 {
 	unsigned int max_irq, i;
 	u32 cpumask = 1 << 0;	/*smp_processor_id(); */
 
-	if (ARM_GIC_MAX_NR <= gic_nr) {
+	if (GIC_MAX_NR <= gic_nr) {
 		return -1;
 	}
 
@@ -144,12 +141,12 @@ int arm_gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start)
 	gic_data[gic_nr].dist_base = base;
 	gic_data[gic_nr].irq_offset = (irq_start - 1) & ~31;
 
-	arm_gic_write(0, base + GIC_DIST_CTRL);
+	gic_write(0, base + GIC_DIST_CTRL);
 
 	/*
 	 * Find out how many interrupts are supported.
 	 */
-	max_irq = arm_gic_read(base + GIC_DIST_CTR) & 0x1f;
+	max_irq = gic_read(base + GIC_DIST_CTR) & 0x1f;
 	max_irq = (max_irq + 1) * 32;
 
 	/*
@@ -157,49 +154,49 @@ int arm_gic_dist_init(u32 gic_nr, virtual_addr_t base, u32 irq_start)
 	 * Limit this to either the architected maximum, or the
 	 * platform maximum.
 	 */
-	if (max_irq > max(1020, ARM_GIC_NR_IRQS))
-		max_irq = max(1020, ARM_GIC_NR_IRQS);
+	if (max_irq > max(1020, GIC_NR_IRQS))
+		max_irq = max(1020, GIC_NR_IRQS);
 
 	/*
 	 * Set all global interrupts to be level triggered, active low.
 	 */
 	for (i = 32; i < max_irq; i += 16)
-		arm_gic_write(0, base + GIC_DIST_CONFIG + i * 4 / 16);
+		gic_write(0, base + GIC_DIST_CONFIG + i * 4 / 16);
 
 	/*
 	 * Set all global interrupts to this CPU only.
 	 */
 	for (i = 32; i < max_irq; i += 4)
-		arm_gic_write(cpumask, base + GIC_DIST_TARGET + i * 4 / 4);
+		gic_write(cpumask, base + GIC_DIST_TARGET + i * 4 / 4);
 
 	/*
 	 * Set priority on all interrupts.
 	 */
 	for (i = 0; i < max_irq; i += 4)
-		arm_gic_write(0xa0a0a0a0, base + GIC_DIST_PRI + i * 4 / 4);
+		gic_write(0xa0a0a0a0, base + GIC_DIST_PRI + i * 4 / 4);
 
 	/*
 	 * Disable all interrupts.
 	 */
 	for (i = 0; i < max_irq; i += 32)
-		arm_gic_write(0xffffffff,
+		gic_write(0xffffffff,
 				   base + GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
 
-	arm_gic_write(1, base + GIC_DIST_CTRL);
+	gic_write(1, base + GIC_DIST_CTRL);
 
 	return 0;
 }
 
-int arm_gic_cpu_init(u32 gic_nr, virtual_addr_t base)
+int gic_cpu_init(u32 gic_nr, virtual_addr_t base)
 {
-	if (ARM_GIC_MAX_NR <= gic_nr) {
+	if (GIC_MAX_NR <= gic_nr) {
 		return -1;
 	}
 
 	gic_data[gic_nr].cpu_base = base;
 
-	arm_gic_write(0xf0, base + GIC_CPU_PRIMASK);
-	arm_gic_write(1, base + GIC_CPU_CTRL);
+	gic_write(0xf0, base + GIC_CPU_PRIMASK);
+	gic_write(1, base + GIC_CPU_CTRL);
 
 	return 0;
 }
