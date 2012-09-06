@@ -20,8 +20,8 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief Core Tile Cortex A15x4 board configuration
  */
-#ifndef _CA15X4_BOARD_H__
-#define _CA15X4_BOARD_H__
+#ifndef _CT_CA15X4_H__
+#define _CT_CA15X4_H__
 
 /*
  * On-Chip Peripherials Physical Addresses
@@ -48,9 +48,6 @@
 /* A15MPCore private memory region (GIC) */
 #define CT_CA15X4_MPIC			(0x2c000000)
 
-#define CT_CA15X4_TIMER0		(CT_CA15X4_SP804_TIMER + 0x000)
-#define CT_CA15X4_TIMER1		(CT_CA15X4_SP804_TIMER + 0x020)
-
 #define A15_MPCORE_GIC_CPU		(CT_CA15X4_MPIC + 0x2000)
 #define A15_MPCORE_GIC_DIST		(CT_CA15X4_MPIC + 0x1000)
 
@@ -67,12 +64,5 @@
 #define IRQ_CT_CA15X4_PMU_CPU1		93
 #define IRQ_CT_CA15X4_PMU_CPU2		94
 #define IRQ_CT_CA15X4_PMU_CPU3		95
-
-#define IRQ_CT_CA15X4_LOCALTIMER		29
-#define IRQ_CT_CA15X4_LOCALWDOG		30
-
-#define IRQ_CA15X4_GIC_START		29
-#define NR_IRQS_CA15X4			128
-#define NR_GIC_CA15X4			1
 
 #endif

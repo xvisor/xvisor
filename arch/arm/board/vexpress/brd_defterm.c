@@ -26,37 +26,36 @@
 #include <vmm_compiler.h>
 #include <vmm_host_aspace.h>
 #include <serial/pl011.h>
-#include <vexpress_plat.h>
-#include <ca15x4_board.h>
+#include <motherboard.h>
 
-#define	CA15X4_DEFAULT_UART_BASE		V2M_UART0
-#define	CA15X4_DEFAULT_UART_INCLK		24000000
-#define	CA15X4_DEFAULT_UART_BAUD		115200
+#define	V2M_DEFAULT_UART_BASE			V2M_UART0
+#define	V2M_DEFAULT_UART_INCLK			24000000
+#define	V2M_DEFAULT_UART_BAUD			115200
 
-static virtual_addr_t ca15x4_defterm_base;
+static virtual_addr_t v2m_defterm_base;
 
 int arch_defterm_putc(u8 ch)
 {
-	if (!pl011_lowlevel_can_putc(ca15x4_defterm_base)) {
+	if (!pl011_lowlevel_can_putc(v2m_defterm_base)) {
 		return VMM_EFAIL;
 	}
-	pl011_lowlevel_putc(ca15x4_defterm_base, ch);
+	pl011_lowlevel_putc(v2m_defterm_base, ch);
 	return VMM_OK;
 }
 
 int arch_defterm_getc(u8 * ch)
 {
-	if (!pl011_lowlevel_can_getc(ca15x4_defterm_base)) {
+	if (!pl011_lowlevel_can_getc(v2m_defterm_base)) {
 		return VMM_EFAIL;
 	}
-	*ch = pl011_lowlevel_getc(ca15x4_defterm_base);
+	*ch = pl011_lowlevel_getc(v2m_defterm_base);
 	return VMM_OK;
 }
 
 int __init arch_defterm_init(void)
 {
-	ca15x4_defterm_base = vmm_host_iomap(CA15X4_DEFAULT_UART_BASE, 0x1000);
-	pl011_lowlevel_init(ca15x4_defterm_base,
-			    CA15X4_DEFAULT_UART_BAUD, CA15X4_DEFAULT_UART_INCLK);
+	v2m_defterm_base = vmm_host_iomap(V2M_DEFAULT_UART_BASE, 0x1000);
+	pl011_lowlevel_init(v2m_defterm_base,
+			    V2M_DEFAULT_UART_BAUD, V2M_DEFAULT_UART_INCLK);
 	return VMM_OK;
 }

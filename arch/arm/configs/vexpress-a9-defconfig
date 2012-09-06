@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.3
-# Sun Aug 26 17:53:35 2012
+# Thu Sep  6 15:23:07 2012
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -13,7 +13,7 @@ CONFIG_CPU_COUNT=2
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
-CONFIG_BOARD="vexpress-a9"
+CONFIG_BOARD="vexpress"
 # CONFIG_CPU_ARM9 is not set
 # CONFIG_CPU_CORTEX_A8 is not set
 # CONFIG_CPU_OMAP3 is not set
@@ -40,13 +40,19 @@ CONFIG_ICST=y
 CONFIG_VERSATILE_CLOCK=y
 CONFIG_VERSATILE_CLCD=y
 # CONFIG_OMAP3 is not set
-CONFIG_BOARD_VEXPRESS_A9=y
+# CONFIG_BOARD_VERSATILE is not set
+# CONFIG_BOARD_PB_A8 is not set
+# CONFIG_BOARD_BEAGLE is not set
+CONFIG_BOARD_VEXPRESS=y
 
 #
-# VExpress-A9 Options
+# VExpress Options
 #
 CONFIG_VEXPRESS_A9_ONE_GUEST_PBA8_DTS=y
 # CONFIG_VEXPRESS_A9_ONE_GUEST_VEX_A9_DTS is not set
+# CONFIG_VEXPRESS_A15_ONE_GUEST_PBA8_DTS is not set
+# CONFIG_VEXPRESS_A15_ONE_GUEST_VEX_A9_DTS is not set
+# CONFIG_VEXPRESS_A15_TWO_GUEST_PBA8_DTS is not set
 
 #
 # Hypervisor Options
@@ -126,6 +132,7 @@ CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
 CONFIG_CMD_RTCDEV=y
 CONFIG_CMD_INPUT=y
+CONFIG_CMD_FB=y
 CONFIG_CMD_NET=y
 # CONFIG_CMD_THREADTEST is not set
 

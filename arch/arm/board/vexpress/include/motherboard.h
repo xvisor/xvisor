@@ -16,16 +16,68 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vexpress_plat.h
+ * @file motherboard.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief Versatile Express V2M platform configuration
+ * @brief VExpress V2M platform configuration
  */
-#ifndef __VEXPRESS_PLAT_H__
-#define __VEXPRESS_PLAT_H__
+#ifndef __MOTHERBOARD_H__
+#define __MOTHERBOARD_H__
+
+#if defined(CONFIG_CPU_CORTEX_A9)
+
+#include <ct-ca9x4.h>
 
 /*
  * V2M Chip Select Physical Addresses 
  */
+#define V2M_PA_CS0		0x40000000
+#define V2M_PA_CS1		0x44000000
+#define V2M_PA_CS2		0x48000000
+#define V2M_PA_CS3		0x4c000000
+#define V2M_PA_CS7		0x10000000
+
+/*
+ * Physical addresses, offset from V2M_PA_CS0-3
+ */
+#define V2M_NOR0		(V2M_PA_CS0)
+#define V2M_NOR1		(V2M_PA_CS1)
+#define V2M_SRAM		(V2M_PA_CS2)
+#define V2M_VIDEO_SRAM		(V2M_PA_CS3 + 0x00000000)
+#define V2M_LAN9118		(V2M_PA_CS3 + 0x02000000)
+#define V2M_ISP1761		(V2M_PA_CS3 + 0x03000000)
+
+/*
+ * Physical addresses, offset from V2M_PA_CS7
+ */
+#define V2M_SYSREGS		(V2M_PA_CS7 + 0x00000000)
+#define V2M_SYSCTL		(V2M_PA_CS7 + 0x00001000)
+#define V2M_SERIAL_BUS_PCI	(V2M_PA_CS7 + 0x00002000)
+
+#define V2M_AACI		(V2M_PA_CS7 + 0x00004000)
+#define V2M_MMCI		(V2M_PA_CS7 + 0x00005000)
+#define V2M_KMI0		(V2M_PA_CS7 + 0x00006000)
+#define V2M_KMI1		(V2M_PA_CS7 + 0x00007000)
+
+#define V2M_UART0		(V2M_PA_CS7 + 0x00009000)
+#define V2M_UART1		(V2M_PA_CS7 + 0x0000a000)
+#define V2M_UART2		(V2M_PA_CS7 + 0x0000b000)
+#define V2M_UART3		(V2M_PA_CS7 + 0x0000c000)
+
+#define V2M_WDT			(V2M_PA_CS7 + 0x0000f000)
+
+#define V2M_TIMER01		(V2M_PA_CS7 + 0x00011000)
+#define V2M_TIMER23		(V2M_PA_CS7 + 0x00012000)
+
+#define V2M_SERIAL_BUS_DVI	(V2M_PA_CS7 + 0x00016000)
+#define V2M_RTC			(V2M_PA_CS7 + 0x00017000)
+
+#define V2M_CF			(V2M_PA_CS7 + 0x0001a000)
+#define V2M_CLCD		(V2M_PA_CS7 + 0x0001f000)
+
+#elif defined(CONFIG_CPU_CORTEX_A15) || defined(CONFIG_CPU_CORTEX_A15_VE)
+
+#include <ct-ca15x4.h>
+
 /* CS0: 0x00000000 .. 0x0c000000 */
 #define V2M_PA_CS0		0x00000000
 /* CS4: 0x0c000000 .. 0x10000000 */
@@ -40,8 +92,8 @@
 #define V2M_PA_CS3		0x1c000000
 
 /*
- * Physical addresses, offset from V2M_PA_CS0-3
- */
+* Physical addresses, offset from V2M_PA_CS0-3
+*/
 #define V2M_NOR0		(V2M_PA_CS0)
 #define V2M_NOR0ALIAS		(V2M_PA_CS0 + 0x08000000)
 #define V2M_NOR1		(V2M_PA_CS4)
@@ -51,8 +103,8 @@
 #define V2M_ISP1761		(V2M_PA_CS2 + 0x03000000)
 
 /*
- * Physical addresses, offset from V2M_PA_CS3
- */
+* Physical addresses, offset from V2M_PA_CS3
+*/
 #define V2M_SYSREGS		(V2M_PA_CS3 + 0x00010000)
 #define V2M_SYSCTL		(V2M_PA_CS3 + 0x00020000)
 #define V2M_SERIAL_BUS_PCI	(V2M_PA_CS3 + 0x00030000)
@@ -78,33 +130,33 @@
 #define V2M_CF			(V2M_PA_CS3 + 0x001a0000)
 #define V2M_CLCD		(V2M_PA_CS3 + 0x001f0000)
 
-#define V2M_SYS_ID		(0x000)
-#define V2M_SYS_SW		(0x004)
-#define V2M_SYS_LED		(0x008)
-#define V2M_SYS_100HZ		(0x024)
-#define V2M_SYS_FLAGS		(0x030)
-#define V2M_SYS_FLAGSSET	(0x030)
-#define V2M_SYS_FLAGSCLR	(0x034)
-#define V2M_SYS_NVFLAGS		(0x038)
-#define V2M_SYS_NVFLAGSSET	(0x038)
-#define V2M_SYS_NVFLAGSCLR	(0x03c)
-#define V2M_SYS_MCI		(0x048)
-#define V2M_SYS_FLASH		(0x03c)
-#define V2M_SYS_CFGSW		(0x058)
-#define V2M_SYS_24MHZ		(0x05c)
-#define V2M_SYS_MISC		(0x060)
-#define V2M_SYS_DMA		(0x064)
-#define V2M_SYS_PROCID0		(0x084)
-#define V2M_SYS_PROCID1		(0x088)
-#define V2M_SYS_CFGDATA		(0x0a0)
-#define V2M_SYS_CFGCTRL		(0x0a4)
-#define V2M_SYS_CFGSTAT		(0x0a8)
+#endif
 
-#define V2M_TIMER0		(V2M_TIMER01 + 0x000)
-#define V2M_TIMER1		(V2M_TIMER01 + 0x020)
+/*
+ * Offsets from SYSREGS base
+ */
+#define V2M_SYS_ID		0x000
+#define V2M_SYS_SW		0x004
+#define V2M_SYS_LED		0x008
+#define V2M_SYS_100HZ		0x024
+#define V2M_SYS_FLAGS		0x030
+#define V2M_SYS_FLAGSSET	0x030
+#define V2M_SYS_FLAGSCLR	0x034
+#define V2M_SYS_NVFLAGS		0x038
+#define V2M_SYS_NVFLAGSSET	0x038
+#define V2M_SYS_NVFLAGSCLR	0x03c
+#define V2M_SYS_MCI		0x048
+#define V2M_SYS_FLASH		0x03c
+#define V2M_SYS_CFGSW		0x058
+#define V2M_SYS_24MHZ		0x05c
+#define V2M_SYS_MISC		0x060
+#define V2M_SYS_DMA		0x064
+#define V2M_SYS_PROCID0		0x084
+#define V2M_SYS_PROCID1		0x088
+#define V2M_SYS_CFGDATA		0x0a0
+#define V2M_SYS_CFGCTRL		0x0a4
+#define V2M_SYS_CFGSTAT		0x0a8
 
-#define V2M_TIMER2		(V2M_TIMER23 + 0x000)
-#define V2M_TIMER3		(V2M_TIMER23 + 0x020)
 
 /*
  * Interrupts.  Those in {} are for AMBA devices
@@ -127,6 +179,10 @@
 #define IRQ_V2M_LAN9118		(32 + 15)
 #define IRQ_V2M_ISP1761		(32 + 16)
 #define IRQ_V2M_PCIE		(32 + 17)
+
+#define IRQ_LOCALTIMER		29
+#define IRQ_LOCALWDOG		30
+
 
 /*
  * Configuration
@@ -151,6 +207,16 @@
 
 #define SYS_CFG_ERR		(1 << 1)
 #define SYS_CFG_COMPLETE	(1 << 0)
+
+int v2m_cfg_write(u32 devfn, u32 data);
+int v2m_cfg_read(u32 devfn, u32 *data);
+void v2m_flags_set(u32 data);
+
+/*
+ * Miscellaneous
+ */
+#define SYS_MISC_MASTERSITE	(1 << 14)
+#define SYS_PROCIDx_HBI_MASK	0xfff
 
 /*
  * Core tile IDs

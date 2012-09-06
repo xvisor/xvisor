@@ -23,16 +23,8 @@
 #ifndef __GIC_CONFIG_H__
 #define __GIC_CONFIG_H__
 
-#include <ca9x4_board.h>
-
-#if !defined(GIC_NR_IRQS) || (GIC_NR_IRQS < NR_IRQS_CA9X4)
-#undef GIC_NR_IRQS
-#define GIC_NR_IRQS		NR_IRQS_CA9X4
-#endif
-
-#if !defined(GIC_MAX_NR) || (GIC_MAX_NR < NR_GIC_CA9X4)
-#undef GIC_MAX_NR
-#define GIC_MAX_NR		NR_GIC_CA9X4
-#endif
+#define GIC_NR_IRQS		256
+#define GIC_IRQ_START		29
+#define GIC_MAX_NR		1
 
 #endif /* __GIC_CONFIG_H__ */

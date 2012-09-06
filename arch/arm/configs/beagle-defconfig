@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.3
-# Sun Aug 19 10:24:19 2012
+# Thu Sep  6 15:22:07 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -36,9 +36,14 @@ CONFIG_ARMV7A_SECUREX=y
 # CONFIG_ARM_GIC is not set
 # CONFIG_ARM_TIMER_SP804 is not set
 # CONFIG_ARM_TWD is not set
+# CONFIG_ICST is not set
+# CONFIG_VERSATILE_CLOCK is not set
 # CONFIG_VERSATILE_CLCD is not set
 CONFIG_OMAP3=y
+# CONFIG_BOARD_VERSATILE is not set
+# CONFIG_BOARD_PB_A8 is not set
 CONFIG_BOARD_BEAGLE=y
+# CONFIG_BOARD_VEXPRESS is not set
 
 #
 # Beagleboard Options
