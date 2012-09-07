@@ -183,6 +183,10 @@
 #define IRQ_LOCALTIMER		29
 #define IRQ_LOCALWDOG		30
 
+#define IRQ_HYPTIMER		26
+#define IRQ_VIRTIMER		27
+#define IRQ_SPHYSTIMER		29
+#define IRQ_NSPHYSTIMER		30
 
 /*
  * Configuration

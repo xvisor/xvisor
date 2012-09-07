@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
@@ -41,6 +42,7 @@
 #include <sp810.h>
 #include <sp804_timer.h>
 #include <smp_twd.h>
+#include <generic_timer.h>
 
 /*
  * Global board context
@@ -314,19 +316,56 @@ int __init arch_clocksource_init(void)
 		return rc;
 	}
 
+#if defined(CONFIG_ARM_GENERIC_TIMER)
+	rc = generic_timer_clocksource_init("gen-clksrc", 400, 100000000, 27);
+	if (rc) {
+		return rc;
+	}
+#endif
+
 	return VMM_OK;
 }
 
-#if defined(CONFIG_CPU_CORTEX_A9)
-
+static virtual_addr_t v2m_timer1_base;
+#if defined(CONFIG_ARM_TWD)
 static virtual_addr_t v2m_sys_24mhz;
 static virtual_addr_t v2m_twd_base;
+#endif
 
 int __init arch_clockchip_init(void)
 {
 	int rc;
+	u32 val, cpu = vmm_smp_processor_id();
 
-	/* Map reference counter register */
+	if (!cpu) {
+		virtual_addr_t sctl_base;
+
+		/* Map control registers */
+		sctl_base = vmm_host_iomap(V2M_SYSCTL, 0x1000);
+
+		/* Select 1MHz TIMCLK as the reference clock for SP804 timers */
+		val = vmm_readl((void *)sctl_base) | SCCTRL_TIMEREN1SEL_TIMCLK;
+		vmm_writel(val, (void *)sctl_base);
+
+		/* Unmap control register */
+		rc = vmm_host_iounmap(sctl_base, 0x1000);
+		if (rc) {
+			return rc;
+		}
+
+		/* Map timer1 registers */
+		v2m_timer1_base = vmm_host_iomap(V2M_TIMER01 + 0x20, 0x1000);
+
+		/* Initialize timer1 as clockchip */
+		rc = sp804_clockchip_init(v2m_timer1_base, IRQ_V2M_TIMER1, 
+				  "sp804_timer1", 300, 1000000, 0);
+		if (rc) {
+			return rc;
+		}
+	}
+
+#if defined(CONFIG_ARM_TWD)
+	/* Map 24mhz reference counter register */
 	if (!v2m_sys_24mhz) {
 		v2m_sys_24mhz = 
 			vmm_host_iomap(V2M_SYSREGS + V2M_SYS_24MHZ, 0x1000);
@@ -343,47 +382,15 @@ int __init arch_clockchip_init(void)
 	if (rc) {
 		return rc;
 	}
-
-	return VMM_OK;
-}
-
-#elif defined(CONFIG_CPU_CORTEX_A15) || defined(CONFIG_CPU_CORTEX_A15_VE)
-
-static virtual_addr_t v2m_timer1_base;
-
-int __init arch_clockchip_init(void)
-{
-	int rc;
-	u32 val;
-	virtual_addr_t sctl_base;
-
-	/* Map control registers */
-	sctl_base = vmm_host_iomap(V2M_SYSCTL, 0x1000);
-
-	/* Select 1MHz TIMCLK as the reference clock for SP804 timers */
-	val = vmm_readl((void *)sctl_base) | SCCTRL_TIMEREN1SEL_TIMCLK;
-	vmm_writel(val, (void *)sctl_base);
-
-	/* Unmap control register */
-	rc = vmm_host_iounmap(sctl_base, 0x1000);
+#elif defined(CONFIG_ARM_GENERIC_TIMER)
+	rc = generic_timer_clockchip_init("gen-clkchip", IRQ_HYPTIMER, 400, 100000000);
 	if (rc) {
 		return rc;
 	}
-
-	/* Map timer1 registers */
-	v2m_timer1_base = vmm_host_iomap(V2M_TIMER01 + 0x20, 0x1000);
-
-	/* Initialize timer1 as clockchip */
-	rc = sp804_clockchip_init(v2m_timer1_base, IRQ_V2M_TIMER1, 
-				  "sp804_timer1", 300, 1000000, 0);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
 #endif
+
+	return VMM_OK;
+}
 
 int __init arch_board_final_init(void)
 {

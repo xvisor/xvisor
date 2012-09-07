@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.3
-# Thu Sep  6 15:23:07 2012
+# Fri Sep  7 13:38:27 2012
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -25,6 +25,11 @@ CONFIG_ARMV7A=y
 # CONFIG_ARMV7A_VE is not set
 CONFIG_ARM32=y
 # CONFIG_ARM32VE is not set
+
+#
+# ARM Common Options
+#
+# CONFIG_ARM_GENERIC_TIMER is not set
 
 #
 # ARM 32-Bit Options
