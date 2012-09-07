@@ -2054,13 +2054,13 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 	lp = netdev_priv(ndev);
 	lp->netdev = ndev;
 
-	rc = vmm_devdrv_regmap(dev, &addr, 0);
+	rc = vmm_devtree_regmap(dev->node, &addr, 0);
 	if (rc) {
 		vmm_printf("Failed to ioreamp\n");
 		goto free_ndev;
 	}
 
-	DBG(SMC_DEBUG_MISC, "vmm_devdrv_regmap success at address 0x%02X\n",
+	DBG(SMC_DEBUG_MISC, "vmm_devtree_regmap success at address 0x%02X\n",
 									addr);
 	lp->base = (void *) addr;
 

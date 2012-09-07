@@ -115,6 +115,34 @@ u32 vmm_devtree_literal_size(u32 attrtype);
 /** Estimate type of attribute from its name */
 u32 vmm_devtree_estimate_attrtype(const char *name);
 
+/** Map device registers to virtual address
+ *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  of device tree node
+ */
+int vmm_devtree_regmap(struct vmm_devtree_node *node, 
+		       virtual_addr_t *addr, int regset);
+
+/** Get physical size of device registers
+ *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  of device tree node
+ */
+int vmm_devtree_regsize(struct vmm_devtree_node *node, 
+		        physical_size_t *size, int regset);
+
+/** Get physical address of device registers
+ *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  of device tree node
+ */
+int vmm_devtree_regaddr(struct vmm_devtree_node *node, 
+		        physical_addr_t *addr, int regset);
+
+/** Unmap device registers from virtual address
+ *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  of device tree node
+ */
+int vmm_devtree_regunmap(struct vmm_devtree_node *node, 
+			 virtual_addr_t addr, int regset);
+
 /** Get attribute value */
 void * vmm_devtree_attrval(struct vmm_devtree_node *node, 
 			   const char *attrib);

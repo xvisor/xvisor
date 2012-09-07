@@ -98,34 +98,6 @@ int vmm_devdrv_probe(struct vmm_devtree_node *node,
 /** Remove device instances under a given device tree node */
 int vmm_devdrv_remove(struct vmm_devtree_node *node);
 
-/** Map device registers to virtual address
- *  Note: This is based on 'reg' and 'virtual-reg' attributes 
- *  of device tree node
- */
-int vmm_devdrv_regmap(struct vmm_device *dev, 
-		      virtual_addr_t *addr, int regset);
-
-/** Get physical size of device registers
- *  Note: This is based on 'reg' and 'virtual-reg' attributes 
- *  of device tree node
- */
-int vmm_devdrv_regsize(struct vmm_device *dev, 
-		       physical_size_t *size, int regset);
-
-/** Get physical address of device registers
- *  Note: This is based on 'reg' and 'virtual-reg' attributes 
- *  of device tree node
- */
-int vmm_devdrv_regaddr(struct vmm_device *dev, 
-		       physical_addr_t *addr, int regset);
-
-/** Unmap device registers from virtual address
- *  Note: This is based on 'reg' and 'virtual-reg' attributes 
- *  of device tree node
- */
-int vmm_devdrv_regunmap(struct vmm_device *dev, 
-			virtual_addr_t addr, int regset);
-
 /** Check if clock is enabled for given device */
 bool vmm_devdrv_clock_isenabled(struct vmm_device *dev);
 
@@ -135,8 +107,7 @@ int vmm_devdrv_clock_enable(struct vmm_device *dev);
 /** Disable clock for given device */
 int vmm_devdrv_clock_disable(struct vmm_device *dev);
 
-/** Round clock rate for given device 
- */
+/** Round clock rate for given device */
 long vmm_devdrv_clock_round_rate(struct vmm_device *dev,
 				 unsigned long rate);
 

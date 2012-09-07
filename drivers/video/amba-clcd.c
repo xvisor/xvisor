@@ -453,21 +453,21 @@ static int clcdfb_register(struct clcd_fb *fb)
 
 	fb->fb.dev		= fb->dev;
 
-	ret = vmm_devdrv_regaddr(fb->dev, &mmio_pa, 0);
+	ret = vmm_devtree_regaddr(fb->dev->node, &mmio_pa, 0);
 	if (ret) {
 		goto out;
 	}
 	fb->fb.fix.mmio_start	= mmio_pa;
 
-	ret = vmm_devdrv_regsize(fb->dev, &mmio_sz, 0);
+	ret = vmm_devtree_regsize(fb->dev->node, &mmio_sz, 0);
 	if (ret) {
 		goto out;
 	}
 	fb->fb.fix.mmio_len	= mmio_sz;
 
-	ret = vmm_devdrv_regmap(fb->dev, (virtual_addr_t *)&fb->regs, 0);
+	ret = vmm_devtree_regmap(fb->dev->node, (virtual_addr_t *)&fb->regs, 0);
 	if (ret) {
-		printk(KERN_ERR "CLCD: unable to remap registers\n");
+		printk(KERN_ERR "CLCD: unable to map registers\n");
 		ret = -ENOMEM;
 		goto free_clk;
 	}
@@ -542,7 +542,7 @@ static int clcdfb_register(struct clcd_fb *fb)
 
 	fb_dealloc_cmap(&fb->fb.cmap);
  unmap:
-	vmm_devdrv_regunmap(fb->dev, (virtual_addr_t)fb->regs, 0);
+	vmm_devtree_regunmap(fb->dev->node, (virtual_addr_t)fb->regs, 0);
  free_clk:
 	vmm_devdrv_clock_disable(fb->dev);
  out:
@@ -598,7 +598,7 @@ static int clcdfb_remove(struct vmm_device *dev)
 	unregister_framebuffer(&fb->fb);
 	if (fb->fb.cmap.len)
 		fb_dealloc_cmap(&fb->fb.cmap);
-	vmm_devdrv_regunmap(fb->dev, (virtual_addr_t)fb->regs, 0);
+	vmm_devtree_regunmap(fb->dev->node, (virtual_addr_t)fb->regs, 0);
 	vmm_devdrv_clock_disable(fb->dev);
 
 	fb->board->remove(fb);

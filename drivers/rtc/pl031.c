@@ -146,7 +146,7 @@ static int pl031_driver_probe(struct vmm_device *dev,
 	rd->set_time = pl031_set_time;
 	rd->priv = ldata;
 
-	rc = vmm_devdrv_regmap(dev, &ldata->base, 0);
+	rc = vmm_devtree_regmap(dev->node, &ldata->base, 0);
 	if (rc) {
 		goto free_ldata;
 	}
