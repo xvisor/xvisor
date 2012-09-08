@@ -292,14 +292,13 @@ static void write_src(void)
 	unsigned int *markers;
 	char buf[KSYM_NAME_LEN];
 
-	//printf("#include <asm/types.h>\n");
-	//printf("#if BITS_PER_LONG == 64\n");
-	//printf("#define PTR .quad\n");
-	//printf("#define ALGN .align 8\n");
-	//printf("#else\n");
+	printf("#ifdef CONFIG_64BIT\n");
+	printf("#define PTR .quad\n");
+	printf("#define ALGN .align 3\n");
+	printf("#else\n");
 	printf("#define PTR .long\n");
-	printf("#define ALGN .align 4\n");
-	//printf("#endif\n");
+	printf("#define ALGN .align 2\n");
+	printf("#endif\n");
 
 	printf("\t.section .rodata, \"a\"\n");
 
