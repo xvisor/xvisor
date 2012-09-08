@@ -596,7 +596,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 					 HCR_VI_MASK | 
 					 HCR_VF_MASK);
 	}
-#ifdef CONFIG_ARM32_FUNCSTATS
+#ifdef CONFIG_ARM32VE_FUNCSTATS
 	for (ite=0; ite < ARM_FUNCSTAT_MAX; ite++) {
 		arm_priv(vcpu)->funcstat[ite].function_name = NULL;
 		arm_priv(vcpu)->funcstat[ite].entry_count = 0;
@@ -821,7 +821,7 @@ void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu)
 
 void arch_vcpu_stat_dump(struct vmm_vcpu *vcpu)
 {
-#ifdef CONFIG_ARM32_FUNCSTATS
+#ifdef CONFIG_ARM32VE_FUNCSTATS
 	int index;
 
 	if (!vcpu || !arm_priv(vcpu)) {

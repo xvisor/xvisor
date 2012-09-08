@@ -34,6 +34,9 @@ tune-$(CONFIG_CPU_CORTEX_A15_VE) += -mcpu=cortex-a15
 # Need -Uarm for gcc < 3.x
 cpu-cppflags+=-DTEXT_START=0xFF000000
 cpu-cflags += -msoft-float -marm -Uarm $(arch-y) $(tune-y)
+ifeq ($(CONFIG_ARM32VE_STACKTRACE), y)
+cpu-cflags += -fno-omit-frame-pointer -mapcs -mno-sched-prolog
+endif
 cpu-asflags += -marm $(arch-y) $(tune-y)
 cpu-ldflags += -msoft-float
 
@@ -45,6 +48,7 @@ cpu-objs-y+= cpu_cache.o
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_delay.o
 cpu-objs-y+= cpu_elf.o
+cpu-objs-$(CONFIG_ARM32VE_STACKTRACE)+= cpu_stacktrace.o
 cpu-objs-$(CONFIG_SMP)+= cpu_smp.o
 cpu-objs-$(CONFIG_SMP)+= cpu_locks.o
 cpu-objs-y+= cpu_atomic.o

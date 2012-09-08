@@ -166,7 +166,7 @@ struct arm_priv {
 		u32 c15_i_min; /* Minimum D-cache dirty line index. */
 	} cp15;
 	/* Statistics Gathering */
-#ifdef CONFIG_ARM32_FUNCSTATS
+#ifdef CONFIG_ARM32VE_FUNCSTATS
 	struct {
 		char const *function_name;
 		u32 entry_count;
@@ -196,7 +196,7 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1 << (feat)))
 #define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1 << (feat)))
 
-#ifdef CONFIG_ARM32_FUNCSTATS
+#ifdef CONFIG_ARM32VE_FUNCSTATS
 
 #include <vmm_timer.h>
 

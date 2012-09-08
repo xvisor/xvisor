@@ -38,6 +38,9 @@ tune-$(CONFIG_CPU_CORTEX_A15) += -mcpu=cortex-a15
 # Need -Uarm for gcc < 3.x
 cpu-cppflags+=-DCPU_TEXT_START=0xFF000000
 cpu-cflags += -msoft-float -marm -Uarm $(arch-y) $(tune-y)
+ifeq ($(CONFIG_ARM32_STACKTRACE), y)
+cpu-cflags += -fno-omit-frame-pointer -mapcs -mno-sched-prolog
+endif
 cpu-asflags += -marm $(arch-y) $(tune-y)
 cpu-ldflags += -msoft-float
 
@@ -56,6 +59,7 @@ cpu-objs-$(CONFIG_ARMV7A)+= cpu_interrupts_v7.o
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_delay.o
 cpu-objs-y+= cpu_elf.o
+cpu-objs-$(CONFIG_ARM32_STACKTRACE)+= cpu_stacktrace.o
 ifdef CONFIG_ARMV7A
 cpu-objs-$(CONFIG_SMP)+= cpu_smp.o
 endif
@@ -67,3 +71,4 @@ cpu-objs-y+= cpu_vcpu_cp15.o
 cpu-objs-y+= cpu_vcpu_irq.o
 cpu-objs-y+= cpu_vcpu_emulate_arm.o
 cpu-objs-y+= cpu_vcpu_emulate_thumb.o
+
