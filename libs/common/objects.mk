@@ -28,4 +28,5 @@ libs-objs-y+= common/bitmap.o
 libs-objs-y+= common/scatterlist.o
 libs-objs-y+= common/stringlib.o
 libs-objs-y+= common/mathlib.o
+libs-objs-y+= common/stacktrace.o
 
