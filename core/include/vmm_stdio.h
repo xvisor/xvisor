@@ -40,13 +40,14 @@
 #define BUG()	BUG_ON(1)
 
 #define WARN_ON(x)							\
-	do {								\
+	({								\
 		if (x) {						\
 			vmm_printf("Warning in %s() at %s:%d\n",	\
 				   __func__, __FILE__, __LINE__);	\
 			dump_stacktrace();				\
 		}							\
-	} while(0)
+		(x);							\
+	})
 
 #define WARN()	WARN_ON(1)
 
