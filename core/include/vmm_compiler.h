@@ -33,6 +33,7 @@
 #define __noreturn		__attribute__((noreturn))
 #define __notrace		__attribute__((no_instrument_function))
 #define __packed		__attribute__((packed))
+#define __weak			__attribute__((weak))
 
 #define __read_mostly		__attribute__((section(".readmostly.data")))
 #define __lock			__attribute__((section(".spinlock.text")))
