@@ -379,6 +379,7 @@ void __noreturn vmm_panic(const char *format, ...)
 	va_start(args, format);
 	print(NULL, stdio_ctrl.dev, format, args);
 	va_end(args);
+	dump_stacktrace();
 	vmm_hang();
 }
 

@@ -27,6 +27,7 @@
 #include <vmm_compiler.h>
 #include <vmm_spinlocks.h>
 #include <vmm_chardev.h>
+#include <stacktrace.h>
 
 #define BUG_ON(x)							\
 	do {								\
@@ -43,6 +44,7 @@
 		if (x) {						\
 			vmm_printf("Warning in %s() at %s:%d\n",	\
 				   __func__, __FILE__, __LINE__);	\
+			dump_stacktrace();				\
 		}							\
 	} while(0)
 
