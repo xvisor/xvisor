@@ -311,7 +311,13 @@ $(build_dir)/vmm.elf: $(build_dir)/linker.ld $(all-y) $(build_dir)/system.o
 $(build_dir)/system.map: $(build_dir)/vmm_tmp.elf
 	$(call compile_nm,$@,$<)
 
-$(build_dir)/vmm_tmp.elf: $(build_dir)/linker.ld $(all-y)
+$(build_dir)/vmm_tmp.elf: $(build_dir)/linker.ld $(all-y) $(build_dir)/system_tmp1.o
+	$(call compile_ld,$@,$(build_dir)/linker.ld,$(all-y) $(build_dir)/system_tmp1.o)
+
+$(build_dir)/system_tmp1.map: $(build_dir)/vmm_tmp1.elf
+	$(call compile_nm,$@,$<)
+
+$(build_dir)/vmm_tmp1.elf: $(build_dir)/linker.ld $(all-y)
 	$(call compile_ld,$@,$(build_dir)/linker.ld,$(all-y))
 
 $(build_dir)/linker.ld: $(cpu_dir)/linker.ld
