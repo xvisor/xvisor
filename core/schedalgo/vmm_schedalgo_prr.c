@@ -104,7 +104,7 @@ int vmm_schedalgo_rq_enqueue(void * rq, struct vmm_vcpu * vcpu)
 		return VMM_EFAIL;
 	}
 
-	list_add_tail(&rqi->list[vcpu->priority], &rq_entry->head);
+	list_add_tail(&rq_entry->head, &rqi->list[vcpu->priority]);
 
 	return VMM_OK;
 }

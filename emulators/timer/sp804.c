@@ -33,17 +33,17 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_timer.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
-#define MODULE_VARID			sp804_emulator_module
-#define MODULE_NAME			"SP804 Dual-Mode Timer Emulator"
+#define MODULE_DESC			"SP804 Dual-Mode Timer Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			sp804_emulator_init
 #define	MODULE_EXIT			sp804_emulator_exit
@@ -66,12 +66,13 @@ struct sp804_state;
 struct sp804_timer {
 	struct sp804_state *state;
 	struct vmm_guest *guest;
-	struct vmm_timer_event *event;
+	struct vmm_timer_event event;
 	vmm_spinlock_t lock;
 	/* Configuration */
 	u32 ref_freq;
 	u32 freq;
 	u32 irq;
+	bool maintain_irq_rate;
 	/* Registers */
 	u32 control;
 	u32 value;
@@ -163,8 +164,9 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 			}
 
 			/* compute the tstamp */
-			if (t->value_tstamp
-			    && (!(t->control & TIMER_CTRL_ONESHOT))) {
+			if (t->maintain_irq_rate && 
+			    t->value_tstamp &&
+			    (!(t->control & TIMER_CTRL_ONESHOT))) {
 				/* This is a restart of a periodic or free
 				 * running timer
 				 * We need to adjust our duration and start 
@@ -178,10 +180,23 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 					adjust_duration -= nsecs;
 				}
 
-				nsecs -= adjust_duration;
+				/* Calculate nsecs after which next periodic event
+				 * will be triggered. 
+				 * Ensure that next periodic event occurs atleast
+				 * after 1 msec. (Our Limitation)
+				 */
+				if ((nsecs - adjust_duration) < 1000000) {
+					t->value_tstamp -= (nsecs - 1000000);
+					nsecs = 1000000;
+				} else {
+					nsecs -= adjust_duration;
+				}
 			} else {
-				/* This is a simple one shot timer or the first
-				 * run of a periodic timer
+				/* This is a simple one shot timer 
+				 * OR 
+				 * The first run of a periodic timer
+				 * OR
+				 * Maintain irq rate is off for periodic timer
 				 */
 				t->value_tstamp = tstamp;
 			}
@@ -192,7 +207,7 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 		/*
 		 * We start our timer
 		 */
-		if (vmm_timer_event_start(t->event, nsecs) == VMM_EFAIL) {
+		if (vmm_timer_event_start(&t->event, nsecs) == VMM_EFAIL) {
 			/* FIXME: What should we do??? */
 		}
 	} else {
@@ -200,7 +215,7 @@ static void sp804_timer_init_timer(struct sp804_timer *t)
 		 * This timer is not enabled ...
 		 * To be safe, we stop the timer
 		 */
-		if (vmm_timer_event_stop(t->event) == VMM_EFAIL) {
+		if (vmm_timer_event_stop(&t->event) == VMM_EFAIL) {
 			/* FIXME: What should we do??? */
 		}
 		/*
@@ -403,7 +418,7 @@ static int sp804_timer_reset(struct sp804_timer *t)
 {
 	vmm_spin_lock(&t->lock);
 
-	vmm_timer_event_stop(t->event);
+	vmm_timer_event_stop(&t->event);
 	t->limit = 0xFFFFFFFF;
 	t->control = TIMER_CTRL_IE;
 	t->irq_level = 0;
@@ -418,21 +433,23 @@ static int sp804_timer_reset(struct sp804_timer *t)
 }
 
 static int sp804_timer_init(struct sp804_timer *t,
-			    const char *t_name,
-			    struct vmm_guest * guest, u32 freq, u32 irq)
+			    struct vmm_guest * guest, 
+			    u32 freq, u32 irq, bool maintain_irq_rate)
 {
-	t->event = vmm_timer_event_create(t_name, &sp804_timer_event, t);
-
-	if (t->event == NULL) {
-		return VMM_EFAIL;
-	}
+	INIT_TIMER_EVENT(&t->event, &sp804_timer_event, t);
 
 	t->guest = guest;
 	t->ref_freq = freq;
 	t->freq = sp804_get_freq(t);
 	t->irq = irq;
+	t->maintain_irq_rate = maintain_irq_rate;
 	INIT_SPIN_LOCK(&t->lock);
 
+	return VMM_OK;
+}
+
+static int sp804_timer_exit(struct sp804_timer *t)
+{
 	return VMM_OK;
 }
 
@@ -515,7 +532,7 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 {
 	int rc = VMM_OK;
 	u32 irq;
-	char tname[32];
+	bool mrate;
 	const char *attr;
 	struct sp804_state *s;
 
@@ -524,7 +541,7 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 		rc = VMM_EFAIL;
 		goto sp804_emulator_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct sp804_state));
+	memset(s, 0x0, sizeof(struct sp804_state));
 
 	attr = vmm_devtree_attrval(edev->node, "irq");
 	if (attr) {
@@ -534,22 +551,21 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 		goto sp804_emulator_probe_freestate_fail;
 	}
 
+	attr = vmm_devtree_attrval(edev->node, "maintain_irq_rate");
+	if (attr) {
+		mrate = (*((u32 *) attr)) ? TRUE : FALSE;
+	} else {
+		mrate = FALSE;
+	}
+
 	/* ??? The timers are actually configurable between 32kHz and 1MHz, 
 	 * but we don't implement that.  */
-	vmm_strcpy(tname, guest->node->name);
-	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPARATOR_STRING);
-	vmm_strcat(tname, edev->node->name);
-	vmm_strcat(tname, "(0)");
 	s->t[0].state = s;
-	if ((rc = sp804_timer_init(&s->t[0], tname, guest, 1000000, irq))) {
+	if ((rc = sp804_timer_init(&s->t[0], guest, 1000000, irq, mrate))) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
-	vmm_strcpy(tname, guest->node->name);
-	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPARATOR_STRING);
-	vmm_strcat(tname, edev->node->name);
-	vmm_strcat(tname, "(1)");
 	s->t[1].state = s;
-	if ((rc = sp804_timer_init(&s->t[1], tname, guest, 1000000, irq))) {
+	if ((rc = sp804_timer_init(&s->t[1], guest, 1000000, irq, mrate))) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
 
@@ -565,9 +581,16 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 
 static int sp804_emulator_remove(struct vmm_emudev * edev)
 {
+	int rc;
 	struct sp804_state *s = edev->priv;
 
 	if (s) {
+		if ((rc = sp804_timer_exit(&s->t[0]))) {
+			return rc;
+		}
+		if ((rc = sp804_timer_exit(&s->t[1]))) {
+			return rc;
+		}
 		vmm_free(s);
 		edev->priv = NULL;
 	}
@@ -597,14 +620,14 @@ static int __init sp804_emulator_init(void)
 	return vmm_devemu_register_emulator(&sp804_emulator);
 }
 
-static void sp804_emulator_exit(void)
+static void __exit sp804_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&sp804_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

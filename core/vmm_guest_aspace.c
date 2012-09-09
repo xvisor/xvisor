@@ -23,11 +23,11 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_devemu.h>
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
+#include <stringlib.h>
 
 struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 					 physical_addr_t gphys_addr,
@@ -215,15 +215,15 @@ bool is_address_node_valid(struct vmm_devtree_node * anode)
 	if (!attrval) {
 		return FALSE;
 	}
-	if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) != 0 &&
-	    vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL) != 0 && 
-	    vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) != 0) {
+	if (strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) != 0 &&
+	    strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL) != 0 && 
+	    strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) != 0) {
 		return FALSE;
 	}
-	if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) == 0) {
+	if (strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) == 0) {
 		is_real = TRUE;
 	}
-	if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) == 0) {
+	if (strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) == 0) {
 		is_alias = TRUE;
 	}
 
@@ -232,8 +232,8 @@ bool is_address_node_valid(struct vmm_devtree_node * anode)
 	if (!attrval) {
 		return FALSE;
 	}
-	if (vmm_strcmp(attrval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO) != 0 &&
-	    vmm_strcmp(attrval, VMM_DEVTREE_ADDRESS_TYPE_VAL_MEMORY) != 0) {
+	if (strcmp(attrval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO) != 0 &&
+	    strcmp(attrval, VMM_DEVTREE_ADDRESS_TYPE_VAL_MEMORY) != 0) {
 		return FALSE;
 	}
 
@@ -303,7 +303,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	}
 
 	/* Reset the address space for guest */
-	vmm_memset(&guest->aspace, 0, sizeof(struct vmm_guest_aspace));
+	memset(&guest->aspace, 0, sizeof(struct vmm_guest_aspace));
 
 	/* Get address space node under guest node */
 	guest->aspace.node = vmm_devtree_getchild(gnode, 
@@ -334,7 +334,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 
 		reg = vmm_malloc(sizeof(struct vmm_region));
 
-		vmm_memset(reg, 0, sizeof(struct vmm_region));
+		memset(reg, 0, sizeof(struct vmm_region));
 
 		INIT_LIST_HEAD(&reg->head);
 
@@ -344,9 +344,9 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 
 		attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME);
-		if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) == 0) {
+		if (strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) == 0) {
 			reg->flags |= VMM_REGION_REAL;
-		} else if (vmm_strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) == 0) {
+		} else if (strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) == 0) {
 			reg->flags |= VMM_REGION_ALIAS;
 		} else {
 			reg->flags |= VMM_REGION_VIRTUAL;
@@ -354,7 +354,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 
 		attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME);
-		if (vmm_strcmp(attrval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO) == 0) {
+		if (strcmp(attrval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO) == 0) {
 			reg->flags |= VMM_REGION_IO;
 		} else {
 			reg->flags |= VMM_REGION_MEMORY;
@@ -362,9 +362,9 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 
 		attrval = vmm_devtree_attrval(anode,
 					      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
-		if (vmm_strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) == 0) {
+		if (strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) == 0) {
 			reg->flags |= VMM_REGION_ISRAM;
-		} else if (vmm_strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_ROM) == 0) {
+		} else if (strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_ROM) == 0) {
 			reg->flags |= VMM_REGION_READONLY;
 			reg->flags |= VMM_REGION_ISROM;
 		} else {
@@ -409,7 +409,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 			}
 		}
 
-		list_add_tail(&guest->aspace.reg_list, &reg->head);
+		list_add_tail(&reg->head, &guest->aspace.reg_list);
 	}
 
 	/* Initialize device emulation context */

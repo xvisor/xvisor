@@ -140,7 +140,7 @@ void __bitmap_shift_right(unsigned long *dst,
 			dst[k] &= mask;
 	}
 	if (off)
-		vmm_memset(&dst[lim - off], 0, off*sizeof(unsigned long));
+		memset(&dst[lim - off], 0, off*sizeof(unsigned long));
 }
 
 /**
@@ -179,7 +179,7 @@ void __bitmap_shift_left(unsigned long *dst,
 			dst[k + off] &= (1UL << left) - 1;
 	}
 	if (off)
-		vmm_memset(dst, 0, off*sizeof(unsigned long));
+		memset(dst, 0, off*sizeof(unsigned long));
 }
 
 int __bitmap_and(unsigned long *dst, const unsigned long *bitmap1,

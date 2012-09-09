@@ -25,24 +25,44 @@
 
 #include <vmm_types.h>
 #include <vmm_host_aspace.h>
-#include <pl190.h>
+#include <vic_config.h>
+#include <vic.h>
+#include <vmm_host_io.h>
 
 #define ARCH_HOST_IRQ_COUNT		NR_IRQS_VERSATILE
+
+/* This mask is used to route interrupts 21 to 31 on VIC */
+#define PIC_MASK	0xFFD00000
 
 /* Get current active host irq */
 static inline u32 arch_host_irq_active(u32 cpu_irq_no)
 {
-        return pl190_active_irq(0);
+	return vic_active_irq(0);
 }
 
 /* Initialize board specifig host irq hardware (i.e PIC) */
 static inline int arch_host_irq_init(void)
 {
-        virtual_addr_t cpu_base;
+	virtual_addr_t cpu_base;
+	virtual_addr_t sic_base;
+	int ret;
 
-        cpu_base = vmm_host_iomap(VERSATILE_VIC_BASE, 0x1000);
+	cpu_base = vmm_host_iomap(VERSATILE_VIC_BASE, 0x1000);
+	sic_base = vmm_host_iomap(VERSATILE_SIC_BASE, 0x1000);
 
-        return pl190_init(0, 0, cpu_base);
+	ret = vic_init(0, 0, cpu_base);
+	vmm_writel(~0, (volatile void *)sic_base + SIC_IRQ_ENABLE_CLEAR);
+
+	/*
+	 * Using Linux Method: Interrupts on secondary controller from 0 to 8
+	 * are routed to source 31 on PIC.
+	 * Interrupts from 21 to 31 are routed directly to the VIC on
+	 * the corresponding number on primary controller. This is controlled
+	 * by setting PIC_ENABLEx.
+	 */
+	vmm_writel(PIC_MASK, (volatile void *) sic_base + SIC_INT_PIC_ENABLE);
+
+	return ret;
 }
 
 #endif

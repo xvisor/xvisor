@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.1.2
-# Thu May 17 17:46:53 2012
+# Version: 0.1.3
+# Sat Sep  8 12:51:31 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -27,17 +27,34 @@ CONFIG_ARM32=y
 # CONFIG_ARM32VE is not set
 
 #
-# ARM 32-Bit Options
+# ARM Common Options
 #
-# CONFIG_ARM32_HIGHVEC is not set
-# CONFIG_ARM32_FUNCSTATS is not set
-CONFIG_ARM_TIMER_SP804=y
-CONFIG_BOARD_VERSATILE=y
-CONFIG_VERSATILE=y
-CONFIG_ARM_PL190=y
 
 #
-# Versatile PB Options
+# ARM 32-Bit Options
+#
+CONFIG_ARM32_STACKTRACE=y
+# CONFIG_ARM32_HIGHVEC is not set
+# CONFIG_ARM32_FUNCSTATS is not set
+
+#
+# ARM Board Common Options
+#
+CONFIG_ARM_VIC=y
+# CONFIG_ARM_GIC is not set
+CONFIG_ARM_TIMER_SP804=y
+# CONFIG_ARM_TWD is not set
+# CONFIG_ICST is not set
+# CONFIG_VERSATILE_CLOCK is not set
+# CONFIG_VERSATILE_CLCD is not set
+# CONFIG_OMAP3 is not set
+CONFIG_BOARD_VERSATILE=y
+# CONFIG_BOARD_PB_A8 is not set
+# CONFIG_BOARD_BEAGLE is not set
+# CONFIG_BOARD_VEXPRESS is not set
+
+#
+# VersatilePB Options
 #
 CONFIG_ONE_GUEST_VERSATILE_DTS=y
 # CONFIG_ONE_PT_GUEST_VERSATILE_DTS is not set
@@ -46,6 +63,11 @@ CONFIG_ONE_GUEST_VERSATILE_DTS=y
 #
 # Hypervisor Options
 #
+
+#
+# General Configuration
+#
+MODULES=y
 # CONFIG_VERBOSE_MODE is not set
 CONFIG_BANNER_NONE=y
 # CONFIG_BANNER_BANNER4 is not set
@@ -56,21 +78,35 @@ CONFIG_MAX_VCPU_COUNT=8
 CONFIG_MAX_GUEST_COUNT=2
 CONFIG_VGPA2REG_CACHE_SIZE=8
 CONFIG_VAPOOL_SIZE=8
-CONFIG_RTC=y
-# CONFIG_BLOCK is not set
-# CONFIG_NET is not set
 # CONFIG_PROFILE is not set
+
+#
+# Heap Configuration
+#
+CONFIG_HEAP_SIZE=1024
+CONFIG_HEAP_BUDDY=y
+
+#
+# Scheduler Configuration
+#
 # CONFIG_SCHEDALGO_RR is not set
 CONFIG_SCHEDALGO_PRR=y
 # CONFIG_TSLICE_1MS is not set
 CONFIG_TSLICE_10MS=y
 # CONFIG_TSLICE_100MS is not set
 CONFIG_TSLICE_MS=10
+CONFIG_WFI_TIMEOUT_SECS=10
 CONFIG_IRQ_STACK_SIZE=4096
 CONFIG_THREAD_STACK_SIZE=4096
-CONFIG_HEAP_SIZE=1024
-CONFIG_HEAP_BUDDY=y
-# CONFIG_HEAP_TRIVIAL is not set
+
+#
+# Device Support
+#
+CONFIG_RTC=y
+# CONFIG_INPUT is not set
+# CONFIG_FB is not set
+# CONFIG_BLOCK is not set
+# CONFIG_NET is not set
 
 #
 # Command Options
@@ -89,6 +125,7 @@ CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
+CONFIG_CMD_MODULE=y
 CONFIG_CMD_RTCDEV=y
 # CONFIG_CMD_THREADTEST is not set
 
@@ -96,7 +133,6 @@ CONFIG_CMD_RTCDEV=y
 # Library Options
 #
 CONFIG_LIBFDT=y
-# CONFIG_KALLSYMS is not set
 # CONFIG_LIBSORT is not set
 
 #
@@ -117,6 +153,19 @@ CONFIG_SERIAL_PL01X=y
 CONFIG_RTC_PL031=y
 
 #
+# Input Device Support
+#
+
+#
+# Hardware I/O ports
+#
+# CONFIG_SERIO is not set
+
+#
+# Network Drivers
+#
+
+#
 # Device Emulators
 #
 
@@ -124,7 +173,7 @@ CONFIG_RTC_PL031=y
 # System Emulators
 #
 CONFIG_EMU_SYS=y
-# CONFIG_EMU_SYS_ARM_SYSREGS is not set
+CONFIG_EMU_SYS_ARM_SYSREGS=y
 CONFIG_EMU_SYS_SP810=y
 
 #
@@ -132,6 +181,12 @@ CONFIG_EMU_SYS_SP810=y
 #
 CONFIG_EMU_PIC=y
 # CONFIG_EMU_PIC_GIC is not set
+CONFIG_EMU_PIC_PL190=y
+
+#
+# Network Interface Controller Emulators
+#
+# CONFIG_EMU_NET is not set
 
 #
 # Timer Emulators
@@ -158,9 +213,14 @@ CONFIG_EMU_RTC_PL031=y
 # CONFIG_EMU_CACHE_L2X0 is not set
 
 #
+# GPIO Emulators
+#
+# CONFIG_EMU_GPIO is not set
+
+#
 # Miscellaneous Emulators
 #
-# CONFIG_EMU_MISC_A9MP_PRIV is not set
+CONFIG_EMU_MISC_ZERO=y
 
 #
 # Tool Options
@@ -168,4 +228,3 @@ CONFIG_EMU_RTC_PL031=y
 CONFIG_DTC=y
 CONFIG_CPATCH=y
 # CONFIG_BBFLASH is not set
-# CONFIG_KALLSYMS_GENERATOR is not set

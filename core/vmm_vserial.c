@@ -22,9 +22,10 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
+#include <vmm_compiler.h>
 #include <vmm_heap.h>
 #include <vmm_vserial.h>
+#include <stringlib.h>
 
 struct vmm_vserial_ctrl {
         struct dlist vser_list;
@@ -118,7 +119,7 @@ int vmm_vserial_register_receiver(struct vmm_vserial * vser,
 	receiver->recv = recv;
 	receiver->priv = priv;
 
-	list_add_tail(&vser->receiver_list, &receiver->head);
+	list_add_tail(&receiver->head, &vser->receiver_list);
 
 	while (!vmm_ringbuf_isempty(vser->receive_buf)) {
 		if (!vmm_ringbuf_dequeue(vser->receive_buf, &chval)) {
@@ -185,7 +186,7 @@ struct vmm_vserial * vmm_vserial_alloc(const char * name,
 	found = FALSE;
 	list_for_each(l, &vsctrl.vser_list) {
 		vser = list_entry(l, struct vmm_vserial, head);
-		if (vmm_strcmp(name, vser->name) == 0) {
+		if (strcmp(name, vser->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -207,13 +208,13 @@ struct vmm_vserial * vmm_vserial_alloc(const char * name,
 	}
 
 	INIT_LIST_HEAD(&vser->head);
-	vmm_strcpy(vser->name, name);
+	strcpy(vser->name, name);
 	vser->can_send = can_send;
 	vser->send = send;
 	INIT_LIST_HEAD(&vser->receiver_list);
 	vser->priv = priv;
 
-	list_add_tail(&vsctrl.vser_list, &vser->head);
+	list_add_tail(&vser->head, &vsctrl.vser_list);
 
 	return vser;
 }
@@ -236,7 +237,7 @@ int vmm_vserial_free(struct vmm_vserial * vser)
 	found = FALSE;
 	list_for_each(l, &vsctrl.vser_list) {
 		vs = list_entry(l, struct vmm_vserial, head);
-		if (vmm_strcmp(vs->name, vser->name) == 0) {
+		if (strcmp(vs->name, vser->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -268,7 +269,7 @@ struct vmm_vserial * vmm_vserial_find(const char *name)
 	vs = NULL;
 	list_for_each(l, &vsctrl.vser_list) {
 		vs = list_entry(l, struct vmm_vserial, head);
-		if (vmm_strcmp(vs->name, name) == 0) {
+		if (strcmp(vs->name, name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -324,7 +325,7 @@ u32 vmm_vserial_count(void)
 
 int __init vmm_vserial_init(void)
 {
-	vmm_memset(&vsctrl, 0, sizeof(vsctrl));
+	memset(&vsctrl, 0, sizeof(vsctrl));
 
 	INIT_LIST_HEAD(&vsctrl.vser_list);
 

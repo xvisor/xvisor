@@ -32,5 +32,11 @@
 #define VMM_EINVALID		-5
 #define VMM_EOVERFLOW		-6
 #define VMM_ENOMEM		-7
+#define VMM_ENODEV		-8
+#define VMM_ETIMEDOUT		-9
+#define VMM_ENOEXEC		-10
+#define VMM_ENOENT		-11
+#define VMM_ENOSYS		-12
+#define VMM_EIO			-13
 
 #endif

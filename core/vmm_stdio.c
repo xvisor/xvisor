@@ -23,26 +23,32 @@
 
 #include <arch_defterm.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_main.h>
 #include <vmm_stdio.h>
 #include <stdarg.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
 /* NOTE: assuming sizeof(void *) == sizeof(int) */
 
-#define PAD_RIGHT 1
-#define PAD_ZERO 2
+#define PAD_RIGHT	1
+#define PAD_ZERO	2
 /* the following should be enough for 32 bit int */
-#define PRINT_BUF_LEN 64
+#define PRINT_BUF_LEN	64
+/* size of early buffer. 
+ * This should be enough to hold 80x25 characters
+ */
+#define EARLY_BUF_SZ	2048
 
 struct vmm_stdio_ctrl {
         vmm_spinlock_t lock;
-        struct vmm_chardev *indev;
-        struct vmm_chardev *outdev;
+        struct vmm_chardev *dev;
 };
 
 static struct vmm_stdio_ctrl stdio_ctrl;
+static bool stdio_init_done = FALSE;
+static u32 stdio_early_count = 0;
+static char stdio_early_buffer[EARLY_BUF_SZ];
 
 bool vmm_iscontrol(char c)
 {
@@ -60,19 +66,31 @@ bool vmm_isprintable(char c)
 	return FALSE;
 }
 
-int vmm_printchar(char **str, struct vmm_chardev *cdev, char c, bool block)
+int vmm_printchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 {
-	int rc ;
-	if (str && *str) {
-		**str = c;
-		++(*str);
-		rc = VMM_OK;
-	} else if (cdev) {
-		rc = ((vmm_chardev_dowrite(cdev, (u8 *)&c, 0, sizeof(c), 
-					   block)) ? VMM_OK : VMM_EFAIL);
+	int i, rc;
+
+	if (!ch || !num_ch) {
+		return VMM_EFAIL;
+	}
+
+	if (stdio_init_done) {
+		if (cdev) {
+			rc = vmm_chardev_dowrite(cdev, (u8 *)ch, 0, num_ch, 
+						 block) ? VMM_OK : VMM_EFAIL;
+		} else {
+			for (i = 0; i < num_ch; i++) {
+				while ((rc = arch_defterm_putc((u8)ch[i])) && block);
+			}
+		}
 	} else {
-		while (((rc = arch_defterm_putc((u8)c)) == VMM_EFAIL) 
-		       && block);
+		for (i = 0; i < num_ch; i++) {
+			if (stdio_early_count < EARLY_BUF_SZ) {
+				stdio_early_buffer[stdio_early_count] = ch[i];
+				stdio_early_count++;
+			}
+		}
+		rc = VMM_OK;
 	}
 
 	return rc;
@@ -81,20 +99,52 @@ int vmm_printchar(char **str, struct vmm_chardev *cdev, char c, bool block)
 void vmm_cputc(struct vmm_chardev *cdev, char ch)
 {
 	if (ch == '\n') {
-		vmm_printchar(NULL, cdev, '\r', TRUE);
+		vmm_printchars(cdev, "\r", 1, TRUE);
 	}
-	vmm_printchar(NULL, cdev, ch, TRUE);
+	vmm_printchars(cdev, &ch, 1, TRUE);
 }
 
 void vmm_putc(char ch)
 {
-	vmm_cputc(stdio_ctrl.outdev, ch);
+	vmm_cputc(stdio_ctrl.dev, ch);
+}
+
+void vmm_cputs(struct vmm_chardev *cdev, char *str)
+{
+	if (!str) {
+		return;
+	}
+	while (*str) {
+		vmm_cputc(cdev, *str);
+		str++;
+	}
+}
+
+void vmm_puts(char *str)
+{
+	vmm_cputs(stdio_ctrl.dev, str);
+}
+
+static void flush_early_buffer(void)
+{
+	int i;
+
+	if (!stdio_init_done) {
+		return;
+	}
+
+	for (i = 0; i < stdio_early_count; i++) {
+		vmm_putc(stdio_early_buffer[i]);
+	}
 }
 
 static void printc(char **str, struct vmm_chardev *cdev, char ch)
 {
 	if (str) {
-		vmm_printchar(str, cdev, ch, TRUE);
+		if (*str) {
+			**str = ch;
+			++(*str);
+		}
 	} else {
 		vmm_cputc(cdev, ch);
 	}
@@ -287,7 +337,7 @@ int vmm_printf(const char *format, ...)
 	va_list args;
 	int retval;
 	va_start(args, format);
-	retval = print(NULL, stdio_ctrl.outdev, format, args);
+	retval = print(NULL, stdio_ctrl.dev, format, args);
 	va_end(args);
 	return retval;
 }
@@ -297,7 +347,18 @@ int vmm_sprintf(char *out, const char *format, ...)
 	va_list args;
 	int retval;
 	va_start(args, format);
-	retval = print(&out, stdio_ctrl.outdev, format, args);
+	retval = print(&out, stdio_ctrl.dev, format, args);
+	va_end(args);
+	return retval;
+}
+
+/* FIXME: */
+int vmm_snprintf(char *out, u32 out_sz, const char *format, ...)
+{
+	va_list args;
+	int retval;
+	va_start(args, format);
+	retval = print(&out, stdio_ctrl.dev, format, args);
 	va_end(args);
 	return retval;
 }
@@ -312,50 +373,62 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 	return retval;
 }
 
-int vmm_panic(const char *format, ...)
+void __noreturn vmm_panic(const char *format, ...)
 {
 	va_list args;
-	int retval;
 	va_start(args, format);
-	retval = print(NULL, stdio_ctrl.outdev, format, args);
+	print(NULL, stdio_ctrl.dev, format, args);
 	va_end(args);
+	dump_stacktrace();
 	vmm_hang();
-	return retval;
 }
 
-int vmm_scanchar(char **str, struct vmm_chardev *cdev, char *c, bool block)
+int vmm_scanchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 {
-	int rc;
+	int i, rc;
 
-	if (str && *str) {
-		*c = **str;
-		++(*str);
-		rc = VMM_OK;
-	} else if (cdev) {
-		rc = (vmm_chardev_doread(cdev, (u8 *)c, 0, sizeof(char), 
-					 block) ? VMM_OK : VMM_EFAIL);
+	if (!ch || !num_ch) {
+		return VMM_EFAIL;
+	}
+
+	if (stdio_init_done) {
+		if (cdev) {
+			rc = (vmm_chardev_doread(cdev, (u8 *)ch, 0, num_ch,
+						 block) ? VMM_OK : VMM_EFAIL);
+		} else {
+			for (i = 0; i < num_ch; i++) {
+				while ((rc = arch_defterm_getc((u8 *)&ch[i])) && block);
+			}
+		}
 	} else {
-		while (((rc = arch_defterm_getc((u8 *)c)) == VMM_EFAIL) 
-		       && block);
+		for (i = 0; i < num_ch; i++) {
+			ch[i] = '\0';
+		}
+		rc = VMM_OK;
 	}
 
 	return rc;
 }
 
-char vmm_getc(void)
+char vmm_cgetc(struct vmm_chardev *cdev) 
 {
 	char ch = 0;
-	vmm_scanchar(NULL, stdio_ctrl.indev, &ch, TRUE);
+	vmm_scanchars(cdev, &ch, 1, TRUE);
 	if (ch == '\r') {
 		ch = '\n';
 	}
 	if (vmm_isprintable(ch)) {
-		vmm_putc(ch);
+		vmm_cputc(cdev, ch);
 	}
 	return ch;
 }
 
-char *vmm_gets(char *s, int maxwidth, char endchar)
+char vmm_getc(void)
+{
+	return vmm_cgetc(stdio_ctrl.dev);
+}
+
+char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, char endchar)
 {
 	char ch, ch1;
 	bool add_ch, del_ch, to_left, to_right, to_start, to_end;
@@ -363,7 +436,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 	if (!s) {
 		return NULL;
 	}
-	vmm_memset(s, 0, maxwidth);
+	memset(s, 0, maxwidth);
 	while (count < maxwidth) {
 		to_left = FALSE;
 		to_right = FALSE;
@@ -371,7 +444,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 		to_end = FALSE;
 		add_ch = FALSE;
 		del_ch = FALSE;
-		if ((ch = vmm_getc()) == endchar) {
+		if ((ch = vmm_cgetc(cdev)) == endchar) {
 			break;
 		}
 		/* Note: we have to process all the required 
@@ -379,8 +452,8 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 		if (vmm_isprintable(ch)) {
 			add_ch = TRUE;
 		} else if (ch == '\e') { /* Escape character */
-			vmm_scanchar(NULL, stdio_ctrl.indev, &ch, TRUE);
-			vmm_scanchar(NULL, stdio_ctrl.indev, &ch1, TRUE);
+			vmm_scanchars(cdev, &ch, 1, TRUE);
+			vmm_scanchars(cdev, &ch1, 1, TRUE);
 			if (ch == '[') {
 				if (ch1 == 'A') { /* Up Key */
 					/* Ignore it. */ 
@@ -397,7 +470,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 				} else if (ch1 == 'F') { /* End Key */
 					to_end = TRUE;
 				} else if (ch1 == '3') {
-					vmm_scanchar(NULL, stdio_ctrl.indev, &ch, TRUE);
+					vmm_scanchars(cdev, &ch, 1, TRUE);
 					if (ch == '~') { /* Delete Key */
 						if (pos < count) {
 							to_right = TRUE;
@@ -419,33 +492,25 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 		}
 		if (to_left) {
 			if (pos > 0) {
-				vmm_putc('\e');
-				vmm_putc('[');
-				vmm_putc('D');
+				vmm_cputs(cdev, "\e[D");
 				pos--;
 			}
 		}
 		if (to_right) {
 			if (pos < count) {
-				vmm_putc('\e');
-				vmm_putc('[');
-				vmm_putc('C');
+				vmm_cputs(cdev, "\e[C");
 				pos++;
 			}
 		}
 		if (to_start) {
-			for (ite = 0; ite < pos; ite++) {
-				vmm_putc('\e');
-				vmm_putc('[');
-				vmm_putc('D');
+			if (pos > 0) {
+				vmm_cprintf(cdev, "\e[%dD", pos);
 			}
 			pos = 0;
 		}
 		if (to_end) {
-			for (ite = pos; ite < count; ite++) {
-				vmm_putc('\e');
-				vmm_putc('[');
-				vmm_putc('C');
+			if (pos < count) {
+				vmm_cprintf(cdev, "\e[%dC", count - pos);
 			}
 			pos = count;
 		}
@@ -454,12 +519,10 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 				s[count - ite] = s[(count - 1) - ite];
 			}
 			for (ite = pos; ite < count; ite++) {
-				vmm_putc(s[ite + 1]);
+				vmm_cputc(cdev, s[ite + 1]);
 			}
 			for (ite = pos; ite < count; ite++) {
-				vmm_putc('\e');
-				vmm_putc('[');
-				vmm_putc('D');
+				vmm_cputs(cdev, "\e[D");
 			}
 			s[pos] = ch;
 			count++;
@@ -474,17 +537,13 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 				pos--;
 				count--;
 			}
-			vmm_putc('\e');
-			vmm_putc('[');
-			vmm_putc('D');
+			vmm_cputs(cdev, "\e[D");
 			for (ite = pos; ite < count; ite++) {
-				vmm_putc(s[ite]);
+				vmm_cputc(cdev, s[ite]);
 			}
-			vmm_putc(' ');
+			vmm_cputc(cdev, ' ');
 			for (ite = pos; ite <= count; ite++) {
-				vmm_putc('\e');
-				vmm_putc('[');
-				vmm_putc('D');
+				vmm_cputs(cdev, "\e[D");
 			}
 		}
 	}
@@ -492,37 +551,24 @@ char *vmm_gets(char *s, int maxwidth, char endchar)
 	return s;
 }
 
-struct vmm_chardev *vmm_stdio_indevice(void)
+char *vmm_gets(char *s, int maxwidth, char endchar)
 {
-	return stdio_ctrl.indev;
+	return vmm_cgets(stdio_ctrl.dev, s, maxwidth, endchar);
 }
 
-struct vmm_chardev *vmm_stdio_outdevice(void)
+struct vmm_chardev *vmm_stdio_device(void)
 {
-	return stdio_ctrl.outdev;
+	return stdio_ctrl.dev;
 }
 
-int vmm_stdio_change_indevice(struct vmm_chardev * cdev)
+int vmm_stdio_change_device(struct vmm_chardev * cdev)
 {
 	if (!cdev) {
 		return VMM_EFAIL;
 	}
 
 	vmm_spin_lock(&stdio_ctrl.lock);
-	stdio_ctrl.indev = cdev;
-	vmm_spin_unlock(&stdio_ctrl.lock);
-
-	return VMM_OK;
-}
-
-int vmm_stdio_change_outdevice(struct vmm_chardev * cdev)
-{
-	if (!cdev) {
-		return VMM_EFAIL;
-	}
-
-	vmm_spin_lock(&stdio_ctrl.lock);
-	stdio_ctrl.outdev = cdev;
+	stdio_ctrl.dev = cdev;
 	vmm_spin_unlock(&stdio_ctrl.lock);
 
 	return VMM_OK;
@@ -530,16 +576,27 @@ int vmm_stdio_change_outdevice(struct vmm_chardev * cdev)
 
 int __init vmm_stdio_init(void)
 {
+	int rc;
+
 	/* Reset memory of control structure */
-	vmm_memset(&stdio_ctrl, 0, sizeof(stdio_ctrl));
+	memset(&stdio_ctrl, 0, sizeof(stdio_ctrl));
 
 	/* Initialize lock */
 	INIT_SPIN_LOCK(&stdio_ctrl.lock);
 
-	/* Set current devices to NULL */
-	stdio_ctrl.indev = NULL;
-	stdio_ctrl.outdev = NULL;
+	/* Set current device to NULL */
+	stdio_ctrl.dev = NULL;
 
 	/* Initialize default serial terminal (board specific) */
-	return arch_defterm_init();
+	if ((rc = arch_defterm_init())) {
+		return rc;
+	}
+
+	/* Update init done flag */
+	stdio_init_done = TRUE;
+
+	/* Flush early buffer */
+	flush_early_buffer();
+
+	return VMM_OK;
 }

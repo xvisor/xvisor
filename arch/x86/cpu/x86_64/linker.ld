@@ -91,8 +91,8 @@ SECTIONS
 
 	.init :
 	{
-		PROVIDE(_init_text_start = .);
-		*(.init.text)
+		PROVIDE(_init_start = .);
+		*(.init.*)
 		. = ALIGN(4096);
 
         	PROVIDE(_code_bootstrap_start = .);
@@ -111,7 +111,7 @@ SECTIONS
                 . = ALIGN(8192);
 
                 PROVIDE(_code_bootstrap_end = .);
-		PROVIDE(_init_text_end = .);
+		PROVIDE(_init_end = .);
 	}
 
 	PROVIDE(_code_end = .);

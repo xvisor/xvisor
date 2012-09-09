@@ -81,6 +81,12 @@ void arch_cpu_irq_disable(void)
 #endif
 }
 
+/* FIXME: */
+bool arch_cpu_irq_disabled(void)
+{
+	return FALSE;
+}
+
 irq_flags_t arch_cpu_irq_save(void)
 {
 	irq_flags_t flags;

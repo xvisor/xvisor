@@ -23,15 +23,15 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
+#include <stringlib.h>
 #include <block/vmm_blockdev.h>
 
-#define MODULE_VARID			blockdev_framework_module
-#define MODULE_NAME			"Block Device Framework"
+#define MODULE_DESC			"Block Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		VMM_BLOCKDEV_CLASS_IPRIORITY
 #define	MODULE_INIT			vmm_blockdev_init
 #define	MODULE_EXIT			vmm_blockdev_exit
@@ -89,6 +89,7 @@ int vmm_blockdev_dowriteblk(struct vmm_blockdev * bdev,
 
 int vmm_blockdev_register(struct vmm_blockdev * bdev)
 {
+	int rc;
 	struct vmm_classdev *cd;
 
 	if (bdev == NULL) {
@@ -104,11 +105,17 @@ int vmm_blockdev_register(struct vmm_blockdev * bdev)
 	}
 
 	INIT_LIST_HEAD(&cd->head);
-	vmm_strcpy(cd->name, bdev->name);
+	strcpy(cd->name, bdev->name);
 	cd->dev = bdev->dev;
 	cd->priv = bdev;
 
-	vmm_devdrv_register_classdev(VMM_BLOCKDEV_CLASS_NAME, cd);
+	rc = vmm_devdrv_register_classdev(VMM_BLOCKDEV_CLASS_NAME, cd);
+	if (rc) {
+		cd->dev = NULL;
+		cd->priv = NULL;
+		vmm_free(cd);
+		return rc;
+	}
 
 	return VMM_OK;
 }
@@ -182,7 +189,7 @@ static int __init vmm_blockdev_init(void)
 	}
 
 	INIT_LIST_HEAD(&c->head);
-	vmm_strcpy(c->name, VMM_BLOCKDEV_CLASS_NAME);
+	strcpy(c->name, VMM_BLOCKDEV_CLASS_NAME);
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);
@@ -194,7 +201,7 @@ static int __init vmm_blockdev_init(void)
 	return VMM_OK;
 }
 
-static void vmm_blockdev_exit(void)
+static void __exit vmm_blockdev_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
@@ -212,9 +219,9 @@ static void vmm_blockdev_exit(void)
 	vmm_free(c);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

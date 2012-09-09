@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
@@ -35,14 +34,18 @@
 #include <versatile_board.h>
 #include <sp804_timer.h>
 
+/*
+ * Device Tree support
+ */
+
 extern u32 dt_blob_start;
 static virtual_addr_t versatile_sys_base;
 
-int arch_board_ram_start(physical_addr_t * addr)
+int arch_board_ram_start(physical_addr_t *addr)
 {
+	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
 	struct fdt_node_header *fdt_node;
-	struct fdt_property *prop;
 
 	*addr = 0xffffffff;
 
@@ -59,23 +62,20 @@ int arch_board_ram_start(physical_addr_t * addr)
 		return VMM_EFAIL;
 	}
 
-	prop = libfdt_get_property(&fdt, fdt_node,
-				   VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME);
-
-	if (!prop) {
-		return VMM_EFAIL;
+	rc = libfdt_get_property(&fdt, fdt_node,
+				 VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME, addr);
+	if (rc) {
+		return rc;
 	}
-
-	*addr = *((physical_addr_t *) prop->data);
 
 	return VMM_OK;
 }
 
-int arch_board_ram_size(physical_size_t * size)
+int arch_board_ram_size(physical_size_t *size)
 {
+	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
 	struct fdt_node_header *fdt_node;
-	struct fdt_property *prop;
 
 	*size = 0;
 
@@ -92,13 +92,11 @@ int arch_board_ram_size(physical_size_t * size)
 		return VMM_EFAIL;
 	}
 
-	prop = libfdt_get_property(&fdt, fdt_node,
-				   VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME);
-	if (!prop) {
-		return VMM_EFAIL;
+	rc = libfdt_get_property(&fdt, fdt_node,
+				 VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME, size);
+	if (rc) {
+		return rc;
 	}
-
-	*size = *((physical_size_t *) prop->data);
 
 	return VMM_OK;
 }
@@ -113,6 +111,10 @@ int arch_board_devtree_populate(struct vmm_devtree_node **root)
 
 	return libfdt_parse_devtree(&fdt, root);
 }
+
+/*
+ * Reset & Shutdown
+ */
 
 int arch_board_reset(void)
 {
@@ -129,6 +131,10 @@ int arch_board_shutdown(void)
 	return VMM_OK;
 }
 
+/*
+ * Initialization functions
+ */
+
 int __init arch_board_early_init(void)
 {
 	/*
@@ -137,6 +143,85 @@ int __init arch_board_early_init(void)
 	 * Do necessary early stuff like iomapping devices
 	 * memory or boot time memory reservation here.
 	 */
+	return VMM_OK;
+}
+
+static virtual_addr_t sp804_timer0_base;
+static virtual_addr_t sp804_timer1_base;
+
+int __init arch_clocksource_init(void)
+{
+	int rc;
+	u32 val;
+	virtual_addr_t sctl_base;
+
+	/* Map control registers */
+	sctl_base = vmm_host_iomap(VERSATILE_SCTL_BASE, 0x1000);
+
+        /*
+         * set clock frequency:
+         *      REALVIEW_REFCLK is 32KHz
+         *      REALVIEW_TIMCLK is 1MHz
+         */
+        val = vmm_readl((void *)sctl_base) |
+                        (VERSATILE_TIMCLK << VERSATILE_TIMER2_EnSel);
+        vmm_writel(val, (void *)sctl_base);
+
+	/* Unmap control register */
+	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	if (rc) {
+		return rc;
+	}
+
+	/* Configure timer1 as free running source */
+	/* Map timer registers */
+	sp804_timer1_base = vmm_host_iomap(VERSATILE_TIMER0_1_BASE, 0x1000);
+	sp804_timer1_base += 0x20;
+
+	/* Initialize timer1 as clocksource */
+	rc = sp804_clocksource_init(sp804_timer1_base, 
+				    "sp804_timer1", 300, 1000000, 20);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int __init arch_clockchip_init(void)
+{
+	int rc;
+	u32 val;
+	virtual_addr_t sctl_base;
+
+	/* Map control registers */
+	sctl_base = vmm_host_iomap(VERSATILE_SCTL_BASE, 0x1000);
+
+        /*
+         * set clock frequency:
+         *      REALVIEW_REFCLK is 32KHz
+         *      REALVIEW_TIMCLK is 1MHz
+         */
+        val = vmm_readl((void *)sctl_base) |
+                        (VERSATILE_TIMCLK << VERSATILE_TIMER1_EnSel);
+        vmm_writel(val, (void *)sctl_base);
+
+	/* Unmap control register */
+	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	if (rc) {
+		return rc;
+	}
+
+	/* Map timer0 registers */
+	sp804_timer0_base = vmm_host_iomap(VERSATILE_TIMER0_1_BASE, 0x1000);
+
+	/* Initialize timer0 as clockchip */
+	rc = sp804_clockchip_init(sp804_timer0_base, INT_TIMERINT0_1, 
+				  "sp804_timer0", 300, 1000000, 0);
+	if (rc) {
+		return rc;
+	}
+
 	return VMM_OK;
 }
 
@@ -167,15 +252,14 @@ int __init arch_board_final_init(void)
 		return VMM_ENOTAVAIL;
 	}
 
-	if (vmm_devdrv_probe(node, NULL)) {
+	if (vmm_devdrv_probe(node, NULL, NULL)) {
 		return VMM_EFAIL;
 	}
 
 	/* Find uart0 character device and 
 	 * set it as vmm_stdio character device */
 	if ((cdev = vmm_chardev_find("uart0"))) {
-		vmm_stdio_change_indevice(cdev);
-		vmm_stdio_change_outdevice(cdev);
+		vmm_stdio_change_device(cdev);
 	}
 
 	/* Syncup wall-clock time from rtc0 */

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Anup Patel.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
  *
  * @file vmm_completion.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief Header file of completion locks for Orphan VCPU (or Thread).
+ * @brief Header file of completion events for Orphan VCPU (or Thread).
  */
 
 #ifndef __VMM_COMPLETION_H__
@@ -26,19 +26,49 @@
 
 #include <vmm_waitqueue.h>
 
-#define vmm_completion				vmm_waitqueue
+/** Completion event structure */
+struct vmm_completion {
+	u32 done;
+	struct vmm_waitqueue wq;
+};
 
-#define INIT_COMPLETION(cptr)			INIT_WAITQUEUE(cptr)
+/** Initialize completion event */
+#define INIT_COMPLETION(cptr)			do { \
+						(cptr)->done = 0; \
+						INIT_WAITQUEUE(&(cptr)->wq, (cptr)); \
+						} while (0)
 
-static inline bool vmm_completion_done(struct vmm_completion * cmpl)
-{
-	return vmm_waitqueue_count(cmpl) ? FALSE : TRUE;
-}
+/** Re-initialize completion event. 
+ *
+ * This macro should be used to reinitialize a completion structure so it can
+ * be reused. This is especially important after complete_all() is used.
+ */
+#define REINIT_COMPLETION(cptr)			do { \
+						(cptr)->done = 0; \
+						} while (0)
 
-#define vmm_completion_wait(cmpl)		vmm_waitqueue_sleep(cmpl)
+#define __COMPLETION_INITIALIZER(cmpl) \
+		{ \
+			.done = 0, \
+			.wq = __WAITQUEUE_INITIALIZER((cmpl).wq, &(cmpl)), \
+		}
 
-#define vmm_completion_complete_first(cmpl)	vmm_waitqueue_wakefirst(cmpl)
+#define DECLARE_COMPLETION(cmpl) \
+	struct vmm_completion cmpl = __COMPLETION_INITIALIZER(cmpl)
 
-#define vmm_completion_complete_all(cmpl)	vmm_waitqueue_wakeall(cmpl)
+/** Check if completion is done */
+bool vmm_completion_done(struct vmm_completion *cmpl);
+
+/** Wait for completion */
+int vmm_completion_wait(struct vmm_completion *cmpl);
+
+/** Wait for completion for given timeout */
+int vmm_completion_wait_timeout(struct vmm_completion *cmpl, u64 *timeout);
+
+/** Signal completion and wake first sleeping Orphan VCPU */
+int vmm_completion_complete(struct vmm_completion *cmpl);
+
+/** Signal completion and wake all sleeping Orphan VCPUs */
+int vmm_completion_complete_all(struct vmm_completion *cmpl);
 
 #endif /* __VMM_COMPLETION_H__ */

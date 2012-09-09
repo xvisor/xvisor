@@ -21,6 +21,7 @@
  * @brief Software implementation common math operations
  */
 
+#include <bitops.h>
 #include <mathlib.h>
 
 #if !defined(ARCH_HAS_DIV_OPERATION)
@@ -199,3 +200,26 @@ u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder)
 }
 
 #endif
+
+unsigned long int_sqrt(unsigned long x)
+{
+	unsigned long op, res, one;
+
+	op = x;
+	res = 0;
+
+	one = 1UL << (BITS_PER_LONG - 2);
+	while (one > op)
+		one >>= 2;
+
+	while (one != 0) {
+		if (op >= res + one) {
+			op = op - (res + one);
+			res = res +  2 * one;
+		}
+		res /= 2;
+		one /= 4;
+	}
+	return res;
+}
+

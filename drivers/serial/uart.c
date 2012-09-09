@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_completion.h>
@@ -32,12 +31,13 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <serial/uart.h>
+#include <stringlib.h>
 #include <mathlib.h>
+#include <serial/uart.h>
 
-#define MODULE_VARID			uart_driver_module
-#define MODULE_NAME			"Generic UART Driver"
+#define MODULE_DESC			"Generic UART Driver"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			uart_driver_init
 #define	MODULE_EXIT			uart_driver_exit
@@ -163,23 +163,23 @@ static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devi
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
-	vmm_memset(cd, 0, sizeof(struct vmm_chardev));
+	memset(cd, 0, sizeof(struct vmm_chardev));
 
 	port = vmm_malloc(sizeof(struct uart_port));
 	if(!port) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
 	}
-	vmm_memset(port, 0, sizeof(struct uart_port));
+	memset(port, 0, sizeof(struct uart_port));
 
-	vmm_strcpy(cd->name, dev->node->name);
+	strcpy(cd->name, dev->node->name);
 	cd->dev = dev;
 	cd->ioctl = NULL;
 	cd->read = uart_read;
 	cd->write = uart_write;
 	cd->priv = port;
 
-	rc = vmm_devdrv_ioremap(dev, &port->base, 0);
+	rc = vmm_devtree_regmap(dev->node, &port->base, 0);
 	if(rc) {
 		goto free_port;
 	}
@@ -202,7 +202,7 @@ static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devi
 		goto free_port;
 	}
 	port->baudrate = *((u32 *)attr);
-	port->input_clock = vmm_devdrv_clock_rate(dev);
+	port->input_clock = vmm_devdrv_clock_get_rate(dev);
 
 	/* Call low-level init function */
 	uart_lowlevel_init(port->base, port->reg_align, 
@@ -260,14 +260,14 @@ static int __init uart_driver_init(void)
 	return vmm_devdrv_register_driver(&uart_driver);
 }
 
-static void uart_driver_exit(void)
+static void __exit uart_driver_exit(void)
 {
 	vmm_devdrv_unregister_driver(&uart_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

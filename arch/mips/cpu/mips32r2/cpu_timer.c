@@ -103,7 +103,7 @@ int arch_clockchip_init(void)
 {
 	struct vmm_clockchip *cc = &this_cpu(mcc);
 
-	vmm_memcpy(cc, &mips_cc, sizeof(struct vmm_clockchip));
+	memcpy(cc, &mips_cc, sizeof(struct vmm_clockchip));
 
 #if CONFIG_SMP
 	cc->cpumask = vmm_cpumask_of(arch_smp_id());

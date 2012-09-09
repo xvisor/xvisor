@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -40,117 +40,140 @@ static inline u32 bswap32(u32 data)
 		((data & 0xFF000000) >> 24));
 }
 
+static inline u64 bswap64(u64 data)
+{
+	return (u64)(bswap32((u32)(data >> 32))
+		     | (((u64)(bswap32((u32)(data
+					     & 0xFFFFFFFFUL))))
+			<< 32));
+}
+
 /*
  * Endianness primitives
  * ------------------------
  */
-#define arch_cpu_to_le16(v)	bswap16(v)
+#define arch_cpu_to_le16(v)	(v)
 
-#define arch_le16_to_cpu(v)	bswap16(v)
+#define arch_le16_to_cpu(v)	(v)
 
-#define arch_cpu_to_be16(v)	(v)
+#define arch_cpu_to_be16(v)	bswap16(v)
 
-#define arch_be16_to_cpu(v)	(v)
+#define arch_be16_to_cpu(v)	bswap16(v)
 
-#define arch_cpu_to_le32(v)	bswap32(v)
+#define arch_cpu_to_le32(v)	(v)
 
-#define arch_le32_to_cpu(v)	bswap32(v)
+#define arch_le32_to_cpu(v)	(v)
 
-#define arch_cpu_to_be32(v)	(v)
+#define arch_cpu_to_be32(v)	bswap32(v)
 
-#define arch_be32_to_cpu(v)	(v)
+#define arch_be32_to_cpu(v)	bswap32(v)
 
-/** FIXME: */
+#define arch_cpu_to_le64(v)	(v)
+
+#define arch_le64_to_cpu(v)	(v)
+
+#define arch_cpu_to_be64(v)	bswap64(v)
+
+#define arch_be64_to_cpu(v)	bswap64(v)
+
 static inline u8 arch_ioreadb(volatile void *addr)
 {
-	return 0;
+	return (u8)(*((u8 *)addr));
 }
 
-/** FIXME: */
 static inline void arch_iowriteb(volatile void *addr, u8 data)
 {
+	*((u8 *)addr) = data;
 }
 
-/** FIXME: */
 static inline u16 arch_ioreadw(volatile void *addr)
 {
-	return 0;
+	return (u16)(*((u16 *)addr));
 }
 
-/** FIXME: */
 static inline void arch_iowritew(volatile void *addr, u16 data)
 {
+	*((u16 *)addr) = data;
 }
 
-/** FIXME: */
 static inline u32 arch_ioreadl(volatile void *addr)
 {
-	return 0;
+	return (u32)(*((u32 *)addr));
 }
 
-/** FIXME: */
 static inline void arch_iowritel(volatile void *addr, u32 data)
 {
+	*((u32 *)addr) = data;
 }
 
-/** FIXME: */
 static inline u8 arch_in_8(volatile u8 *addr)
 {
 	return *addr;
 }
 
-/** FIXME: */
 static inline void arch_out_8(volatile u8 *addr, u8 data)
 {
 	*addr = data;
 }
 
-/** FIXME: */
 static inline u16 arch_in_le16(volatile u16 *addr)
 {
 	return bswap16(*addr);
 }
 
-/** FIXME: */
 static inline void arch_out_le16(volatile u16* addr, u16 data)
+{
+	*addr = data;
+}
+
+static inline u16 arch_in_be16(volatile u16 *addr)
+{
+	return bswap16(*addr);
+}
+
+static inline void arch_out_be16(volatile u16* addr, u16 data)
 {
 	*addr = bswap16(data);
 }
 
-/** FIXME: */
-static inline u16 arch_in_be16(volatile u16 *addr)
-{
-	return *addr;
-}
-
-/** FIXME: */
-static inline void arch_out_be16(volatile u16* addr, u16 data)
-{
-	*addr = data;
-}
-
-/** FIXME: */
 static inline u32 arch_in_le32(volatile u32 *addr)
+{
+	return (*addr);
+}
+
+static inline void arch_out_le32(volatile u32* addr, u32 data)
+{
+	*addr = (data);
+}
+
+static inline u32 arch_in_be32(volatile u32 *addr)
 {
 	return bswap32(*addr);
 }
 
-/** FIXME: */
-static inline void arch_out_le32(volatile u32* addr, u32 data)
+static inline void arch_out_be32(volatile u32* addr, u32 data)
 {
 	*addr = bswap32(data);
 }
 
-/** FIXME: */
-static inline u32 arch_in_be32(volatile u32 *addr)
+static inline u64 arch_in_le64(volatile u64 *addr)
 {
-	return *addr;
+	return (*addr);
 }
 
-/** FIXME: */
-static inline void arch_out_be32(volatile u32* addr, u32 data)
+static inline void arch_out_le64(volatile u64* addr, u64 data)
 {
-	*addr = data;
+	*addr = (data);
+}
+
+static inline u64 arch_in_be64(volatile u64 *addr)
+{
+	return bswap64(*addr);
+}
+
+static inline void arch_out_be64(volatile u64* addr, u64 data)
+{
+	*addr = bswap64(data);
 }
 
 #endif

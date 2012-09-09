@@ -30,34 +30,164 @@
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_emulate.h>
 
-int cpu_vcpu_emulate_wfi(struct vmm_vcpu * vcpu, 
-			 arch_regs_t * regs,
-			 u32 il, u32 iss)
+/**
+ * A conditional instruction can trap, even though its condition was
+ * FALSE. Hence emulate condition checking in software!
+ */
+static bool cpu_vcpu_condition_check(struct vmm_vcpu *vcpu, 
+				     arch_regs_t *regs,
+				     u32 iss)
 {
+	bool ret = FALSE;
+	u32 cond;
+
+	/* Condition check parameters */
+	if (iss & ISS_CV_MASK) {
+		cond = (iss & ISS_COND_MASK) >> ISS_COND_SHIFT;
+	} else {
+		/* This can happen in Thumb mode: examine IT state. */
+		u32 it;
+
+		it = ((regs->cpsr >> 8) & 0xFC) | ((regs->cpsr >> 25) & 0x3);
+
+		/* it == 0 => unconditional. */
+		if (it == 0)
+                       return TRUE;
+
+               /* The cond for this insn works out as the top 4 bits. */
+               cond = (it >> 4);
+	}
+
+	/* Emulate condition checking */
+	switch (cond >> 1) {
+	case 0:
+		ret = (regs->cpsr & CPSR_ZERO_MASK) ? TRUE : FALSE;
+		break;
+	case 1:
+		ret = (regs->cpsr & CPSR_CARRY_MASK) ? TRUE : FALSE;
+		break;
+	case 2:
+		ret = (regs->cpsr & CPSR_NEGATIVE_MASK) ? TRUE : FALSE;
+		break;
+	case 3:
+		ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? TRUE : FALSE;
+		break;
+	case 4:
+		ret = (regs->cpsr & CPSR_CARRY_MASK) ? TRUE : FALSE;
+		ret = (ret && !(regs->cpsr & CPSR_ZERO_MASK)) ? 
+								TRUE : FALSE;
+		break;
+	case 5:
+		if (regs->cpsr & CPSR_NEGATIVE_MASK) {
+			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
+								TRUE : FALSE;
+		} else {
+			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
+								FALSE : TRUE;
+		}
+		break;
+	case 6:
+		if (regs->cpsr & CPSR_NEGATIVE_MASK) {
+			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
+								TRUE : FALSE;
+		} else {
+			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
+								FALSE : TRUE;
+		}
+		ret = (ret && !(regs->cpsr & CPSR_ZERO_MASK)) ? 
+								TRUE : FALSE;
+		break;
+	case 7:
+		ret = TRUE;
+		break;
+	default:
+		break;
+	};
+
+	if ((cond & 0x1) && (cond != 0xF)) {
+		ret = !ret;
+	}
+
+	return ret;
+}
+
+/**
+ * Update ITSTATE when emulating instructions inside an IT-block
+ *
+ * When IO abort occurs from Thumb IF-THEN blocks, the ITSTATE field 
+ * of the CPSR is not updated, so we do this manually.
+ */
+static void cpu_vcpu_update_itstate(struct vmm_vcpu *vcpu, 
+				    arch_regs_t *regs)
+{
+	u32 itbits, cond;
+
+	if (!(regs->cpsr & CPSR_IT_MASK)) {
+		return;
+	}
+
+	cond = (regs->cpsr & 0xe000) >> 13;
+	itbits = (regs->cpsr & 0x1c00) >> (10 - 2);
+	itbits |= (regs->cpsr & (0x3 << 25)) >> 25;
+
+	/* Perform ITAdvance (see page A-52 in ARM DDI 0406C) */
+	if ((itbits & 0x7) == 0)
+		itbits = cond = 0;
+	else
+		itbits = (itbits << 1) & 0x1f;
+
+	regs->cpsr &= ~CPSR_IT_MASK;
+	regs->cpsr |= cond << 13;
+	regs->cpsr |= (itbits & 0x1c) << (10 - 2);
+	regs->cpsr |= (itbits & 0x3) << 25;
+}
+
+int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu, 
+			     arch_regs_t *regs,
+			     u32 il, u32 iss)
+{
+	/* Check instruction condition */
+	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
+		/* Skip this instruction */
+		goto done;
+	}
+
 	/* Wait for irq on this vcpu */
 	vmm_vcpu_irq_wait(vcpu);
 
+done:
 	/* Next instruction */
 	regs->pc += (il) ? 4 : 2;
+
+	/* Update ITSTATE for Thumb mode */
+	if (regs->cpsr & CPSR_THUMB_ENABLED) {
+		cpu_vcpu_update_itstate(vcpu, regs);
+	}
 
 	return VMM_OK;
 }
 
-int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu * vcpu, 
-				  arch_regs_t * regs, 
+int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu, 
+				  arch_regs_t *regs, 
 				  u32 il, u32 iss)
 {
 	int rc = VMM_OK;
 	u32 opc2, opc1, CRn, Rt, CRm, t;
 
-	/* Retrive MCR/MRC parameters */
-	opc2 = (iss & 0x000E0000) >> 17;
-	opc1 = (iss & 0x0001C000) >> 14;
-	CRn  = (iss & 0x00003C00) >> 10;
-	Rt   = (iss & 0x000001E0) >> 5;
-	CRm  = (iss & 0x0000001E) >> 1;
+	/* Check instruction condition */
+	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
+		/* Skip this instruction */
+		goto done;
+	}
 
-	if (iss & 0x1) {
+	/* More MCR/MRC parameters */
+	opc2 = (iss & ISS_MCR_MRC_OPC2_MASK) >> ISS_MCR_MRC_OPC2_SHIFT;
+	opc1 = (iss & ISS_MCR_MRC_OPC1_MASK) >> ISS_MCR_MRC_OPC1_SHIFT;
+	CRn  = (iss & ISS_MCR_MRC_CRN_MASK) >> ISS_MCR_MRC_CRN_SHIFT;
+	Rt   = (iss & ISS_MCR_MRC_RT_MASK) >> ISS_MCR_MRC_RT_SHIFT;
+	CRm  = (iss & ISS_MCR_MRC_CRM_MASK) >> ISS_MCR_MRC_CRM_SHIFT;
+
+	if (iss & ISS_MCR_MRC_DIR_MASK) {
 		/* MRC CP15 */
 		if (!cpu_vcpu_cp15_read(vcpu, regs, opc1, opc2, CRn, CRm, &t)) {
 			rc = VMM_EFAIL;
@@ -73,17 +203,22 @@ int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu * vcpu,
 		}
 	}
 
+done:
 	if (!rc) {
 		/* Next instruction */
 		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->cpsr & CPSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
 	}
 
 	return rc;
 }
 
 /* TODO: To be implemeted later */
-int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu * vcpu, 
-				    arch_regs_t * regs, 
+int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu *vcpu, 
+				    arch_regs_t *regs, 
 				    u32 il, u32 iss)
 {
 	return VMM_EFAIL;
@@ -91,64 +226,64 @@ int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu * vcpu,
 
 
 /* TODO: To be implemeted later */
-int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu * vcpu, 
-				  arch_regs_t * regs, 
+int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu, 
+				  arch_regs_t *regs, 
 				  u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
 
 /* TODO: To be implemeted later */
-int cpu_vcpu_emulate_ldc_stc_cp14(struct vmm_vcpu * vcpu, 
-				  arch_regs_t * regs, 
+int cpu_vcpu_emulate_ldc_stc_cp14(struct vmm_vcpu *vcpu, 
+				  arch_regs_t *regs, 
 				  u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
 
 /* TODO: To be implemeted later */
-int cpu_vcpu_emulate_cp0_cp13(struct vmm_vcpu * vcpu, 
-			      arch_regs_t * regs, 
+int cpu_vcpu_emulate_cp0_cp13(struct vmm_vcpu *vcpu, 
+			      arch_regs_t *regs, 
 			      u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
 
 /* TODO: To be implemeted later */
-int cpu_vcpu_emulate_vmrs(struct vmm_vcpu * vcpu, 
-			  arch_regs_t * regs, 
+int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu, 
+			  arch_regs_t *regs, 
 			  u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
 
 /* TODO: To be implemeted later */
-int cpu_vcpu_emulate_jazelle(struct vmm_vcpu * vcpu, 
-			     arch_regs_t * regs, 
+int cpu_vcpu_emulate_jazelle(struct vmm_vcpu *vcpu, 
+			     arch_regs_t *regs, 
 			     u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
 
 /* TODO: To be implemeted later */
-int cpu_vcpu_emulate_bxj(struct vmm_vcpu * vcpu, 
-			 arch_regs_t * regs, 
+int cpu_vcpu_emulate_bxj(struct vmm_vcpu *vcpu, 
+			 arch_regs_t *regs, 
 			 u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
 
 /* TODO: To be implemeted later */
-int cpu_vcpu_emulate_mrrc_cp14(struct vmm_vcpu * vcpu, 
-			       arch_regs_t * regs, 
+int cpu_vcpu_emulate_mrrc_cp14(struct vmm_vcpu *vcpu, 
+			       arch_regs_t *regs, 
 			       u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
 
 /* TODO: To be implemeted later */
-int cpu_vcpu_emulate_hvc(struct vmm_vcpu * vcpu, 
-			 arch_regs_t * regs, 
+int cpu_vcpu_emulate_hvc(struct vmm_vcpu *vcpu, 
+			 arch_regs_t *regs, 
 			 u32 il, u32 iss)
 {
 	return VMM_EFAIL;
@@ -162,8 +297,8 @@ static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
 	return imm & ((1 << bits) - 1);
 }
 
-int cpu_vcpu_emulate_load(struct vmm_vcpu * vcpu, 
-			  arch_regs_t * regs,
+int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu, 
+			  arch_regs_t *regs,
 			  u32 il, u32 iss,
 			  physical_addr_t ipa)
 {
@@ -218,6 +353,10 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu * vcpu,
 	if (!rc) {
 		/* Next instruction */
 		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->cpsr & CPSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
 	}
 
 	return rc;
@@ -260,6 +399,10 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu,
 	if (!rc) {
 		/* Next instruction */
 		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->cpsr & CPSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
 	}
 
 	return rc;

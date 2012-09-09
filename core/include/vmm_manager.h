@@ -71,6 +71,7 @@ struct vmm_guest_aspace {
 			list_for_each(curr, &(aspace->reg_list))
 
 struct vmm_vcpu_irqs {
+	vmm_spinlock_t lock;
 	bool *assert;
 	bool *execute;
 	u32 *reason;
@@ -78,7 +79,9 @@ struct vmm_vcpu_irqs {
 	u64 assert_count;
 	u64 execute_count;
 	u64 deassert_count;
-	bool wait_for_irq;
+	bool wfi_state;
+	u64 wfi_tstamp;
+	void * wfi_priv;
 };
 
 struct vmm_guest {

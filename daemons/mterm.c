@@ -23,17 +23,17 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
 #include <vmm_devtree.h>
 #include <vmm_threads.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			daemon_mterm_module
-#define MODULE_NAME			"Managment Terminal"
+#define MODULE_DESC			"Managment Terminal"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			daemon_mterm_init
 #define	MODULE_EXIT			daemon_mterm_exit
@@ -56,17 +56,17 @@ static int mterm_main(void *udata)
 	while (1) {
 		/* Show prompt */
 		vmm_printf("XVisor# ");
-		vmm_memset(cmds, 0, sizeof(cmds));
+		memset(cmds, 0, sizeof(cmds));
 
 		/* Get command string */
 		vmm_gets(cmds, MTERM_CMD_STRING_SIZE, '\n');
-		cmds_len = vmm_strlen(cmds);
+		cmds_len = strlen(cmds);
 		if (cmds_len > 0) {
 			if (cmds[cmds_len - 1] == '\r')
 				cmds[cmds_len - 1] = '\0';
 
 			/* Execute command string */
-			vmm_cmdmgr_execute_cmdstr(vmm_stdio_outdevice(), cmds);
+			vmm_cmdmgr_execute_cmdstr(vmm_stdio_device(), cmds);
 		}
 	}
 
@@ -81,7 +81,7 @@ static int __init daemon_mterm_init(void)
 	const char * attrval;
 
 	/* Reset the control structure */
-	vmm_memset(&mtctrl, 0, sizeof(mtctrl));
+	memset(&mtctrl, 0, sizeof(mtctrl));
 
 	/* Retrive mterm time slice */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
@@ -120,16 +120,16 @@ static int __init daemon_mterm_init(void)
 	return VMM_OK;
 }
 
-static void daemon_mterm_exit(void)
+static void __exit daemon_mterm_exit(void)
 {
 	vmm_threads_stop(mtctrl.thread);
 
 	vmm_threads_destroy(mtctrl.thread);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

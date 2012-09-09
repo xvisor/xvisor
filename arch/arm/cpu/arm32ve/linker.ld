@@ -86,10 +86,10 @@ SECTIONS
 
 	.init : 
 	{
-		PROVIDE(_init_text_start = .);
-		*(.init.text)
+		PROVIDE(_init_start = .);
+		*(.init.*)
 		. = ALIGN(4);
-		PROVIDE(_init_text_end = .);
+		PROVIDE(_init_end = .);
 	}
 
 	. = ALIGN(0x1000); /* all stacks are page aligned */

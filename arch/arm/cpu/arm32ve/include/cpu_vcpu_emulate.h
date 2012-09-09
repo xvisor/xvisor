@@ -26,70 +26,70 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
-/** Emulate WFI instruction */
-int cpu_vcpu_emulate_wfi(struct vmm_vcpu * vcpu, 
-			 arch_regs_t * regs,
-			 u32 il, u32 iss);
+/** Emulate WFI/WFE instruction */
+int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu, 
+			     arch_regs_t *regs,
+			     u32 il, u32 iss);
 
 /** Emulate MCR/MRC CP15 instruction */
-int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu * vcpu, 
-				  arch_regs_t * regs, 
+int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu, 
+				  arch_regs_t *regs, 
 				  u32 il, u32 iss);
 
 /** Emulate MCRR/MRRC CP15 instruction */
-int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu * vcpu, 
-				    arch_regs_t * regs, 
+int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu *vcpu, 
+				    arch_regs_t *regs, 
 				    u32 il, u32 iss);
 
 /** Emulate MCR/MRC CP14 instruction */
-int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu * vcpu, 
-				  arch_regs_t * regs, 
+int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu, 
+				  arch_regs_t *regs, 
 				  u32 il, u32 iss);
 
 /** Emulate LDC/STC CP14 instruction */
-int cpu_vcpu_emulate_ldc_stc_cp14(struct vmm_vcpu * vcpu, 
-				  arch_regs_t * regs, 
+int cpu_vcpu_emulate_ldc_stc_cp14(struct vmm_vcpu *vcpu, 
+				  arch_regs_t *regs, 
 				  u32 il, u32 iss);
 
 /** Emulate CP0 to CP13 instruction */
-int cpu_vcpu_emulate_cp0_cp13(struct vmm_vcpu * vcpu, 
-			      arch_regs_t * regs, 
+int cpu_vcpu_emulate_cp0_cp13(struct vmm_vcpu *vcpu, 
+			      arch_regs_t *regs, 
 			      u32 il, u32 iss);
 
 /** Emulate MRC (or VMRS) to CP10 instruction */
-int cpu_vcpu_emulate_vmrs(struct vmm_vcpu * vcpu, 
-			  arch_regs_t * regs, 
+int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu, 
+			  arch_regs_t *regs, 
 			  u32 il, u32 iss);
 
 /** Emulate Jazelle instruction */
 int cpu_vcpu_emulate_jazelle(struct vmm_vcpu * vcpu, 
-			     arch_regs_t * regs, 
+			     arch_regs_t *regs, 
 			     u32 il, u32 iss);
 
 /** Emulate BXJ instruction */
-int cpu_vcpu_emulate_bxj(struct vmm_vcpu * vcpu, 
-			 arch_regs_t * regs, 
+int cpu_vcpu_emulate_bxj(struct vmm_vcpu *vcpu, 
+			 arch_regs_t *regs, 
 			 u32 il, u32 iss);
 
 /** Emulate MRRC to CP14 instruction */
-int cpu_vcpu_emulate_mrrc_cp14(struct vmm_vcpu * vcpu, 
-			       arch_regs_t * regs, 
+int cpu_vcpu_emulate_mrrc_cp14(struct vmm_vcpu *vcpu, 
+			       arch_regs_t *regs, 
 			       u32 il, u32 iss);
 
 /** Emulate HVC instruction (or Handle Hypercall) */
-int cpu_vcpu_emulate_hvc(struct vmm_vcpu * vcpu, 
-			 arch_regs_t * regs, 
+int cpu_vcpu_emulate_hvc(struct vmm_vcpu *vcpu, 
+			 arch_regs_t *regs, 
 			 u32 il, u32 iss);
 
 /** Emulate Load instruction */
-int cpu_vcpu_emulate_load(struct vmm_vcpu * vcpu, 
-			  arch_regs_t * regs,
+int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu, 
+			  arch_regs_t *regs,
 			  u32 il, u32 iss,
 			  physical_addr_t ipa);
 
 /** Emulate Store instruction */
-int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu, 
-			   arch_regs_t * regs,
+int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu, 
+			   arch_regs_t *regs,
 			   u32 il, u32 iss,
 			   physical_addr_t ipa);
 

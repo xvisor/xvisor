@@ -28,14 +28,14 @@
 
 #include <vmm_heap.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_devemu.h>
 #include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
+#include <arch_barrier.h>
+#include <stringlib.h>
 #include <cpu_mmu.h>
 #include <cpu_cache.h>
-#include <cpu_barrier.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate_arm.h>
@@ -43,7 +43,8 @@
 #include <cpu_vcpu_cp15.h>
 
 /* Update Virtual TLB */
-static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu, struct cpu_page *p)
+static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu, 
+				     struct cpu_page *p, u32 domain)
 {
 	int rc;
 	u32 entry, victim, line;
@@ -62,13 +63,16 @@ static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu, struct cpu_page *p)
 		}
 		e->valid = 0;
 		e->ng = 0;
+		e->dom = 0;
 	}
 
-#ifdef CONFIG_ARMV7A
+	/* Save original domain */
+	e->dom = domain;
+
 	/* Ensure pages for normal vcpu are non-global */
 	e->ng = p->ng;
-	p->ng = 1; 
-#endif
+	p->ng = 1;
+
 #ifndef CONFIG_SMP
 	/* Ensure non-shareable pages for normal vcpu when running on UP host.
 	 * This will force usage of local monitors in case of UP host.
@@ -82,7 +86,7 @@ static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu, struct cpu_page *p)
 	}
 
 	/* Mark entry as valid */
-	vmm_memcpy(&e->page, p, sizeof(struct cpu_page));
+	memcpy(&e->page, p, sizeof(struct cpu_page));
 	e->valid = 1;
 
 	/* Point to next victim of TLB line */
@@ -112,6 +116,7 @@ static int cpu_vcpu_cp15_vtlb_flush(struct vmm_vcpu *vcpu)
 			}
 			e->valid = 0;
 			e->ng = 0;
+			e->dom = 0;
 		}
 	}
 
@@ -142,6 +147,7 @@ static int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu *vcpu, virtual_addr_t va)
 				}
 				e->valid = 0;
 				e->ng = 0;
+				e->dom = 0;
 				break;
 			}
 		}
@@ -150,6 +156,7 @@ static int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu *vcpu, virtual_addr_t va)
 	return VMM_OK;
 }
 
+/** Flush non-global pages from Virtual TLB */
 static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 {
 	int rc;
@@ -167,7 +174,7 @@ static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 				}
 				e->valid = 0;
 				e->ng = 0;
-				break;
+				e->dom = 0;
 			}
 		}
 	}
@@ -175,55 +182,108 @@ static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
+/** Flush pages whos domain permissions have changed from Virtual TLB */
+static int cpu_vcpu_cp15_vtlb_flush_domain(struct vmm_vcpu * vcpu, 
+					   u32 dacr_xor_diff)
+{
+	int rc;
+	u32 vtlb;
+	struct arm_vtlb_entry * e;
+
+	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
+		if (arm_priv(vcpu)->cp15.vtlb.table[vtlb].valid) {
+			e = &arm_priv(vcpu)->cp15.vtlb.table[vtlb];
+			if ((dacr_xor_diff >> ((e->dom & 0xF) << 1)) & 0x3) {
+				rc = cpu_mmu_unmap_page(arm_priv(vcpu)->cp15.l1,
+						&e->page);
+				if (rc) {
+					return rc;
+				}
+				e->valid = 0;
+				e->ng = 0;
+				e->dom = 0;
+			}
+		}
+	}
+
+	return VMM_OK;
+}
+
+
+enum cpu_vcpu_cp15_access_permission {
+	CP15_ACCESS_DENIED = 0,
+	CP15_ACCESS_GRANTED = 1
+};
+
 /* Check section/page access permissions.
  * Returns 1 - permitted, 0 - not-permitted
  */
-static inline int check_ap(struct vmm_vcpu *vcpu,
+static inline enum cpu_vcpu_cp15_access_permission check_ap(struct vmm_vcpu *vcpu,
 			   int ap, int access_type, int is_user)
 {
 	switch (ap) {
-	case 0:
-		if (access_type == 1)
-			return 0;
-		switch ((arm_priv(vcpu)->cp15.c1_sctlr >> 8) & 3) {
-		case 1:
-			if (is_user)
-				return 0;
-			else
-				return (access_type !=
-					CP15_ACCESS_WRITE) ? 1 : 0;
-		case 2:
-			return (access_type != CP15_ACCESS_WRITE) ? 1 : 0;
-		default:
-			return 0;
+	case TTBL_AP_S_U:
+		if (access_type == CP15_ACCESS_WRITE) {
+			return CP15_ACCESS_DENIED;
 		}
-	case 1:
-		return is_user ? 0 : 1;
-	case 2:
-		if (is_user)
-			return (access_type != CP15_ACCESS_WRITE) ? 1 : 0;
-		else
-			return 1;
-	case 3:
-		return 1;
-	case 4:		/* Reserved. */
-		return 0;
-	case 5:
-		if (is_user)
-			return 0;
-		else
-			return (access_type != CP15_ACCESS_WRITE) ? 1 : 0;
-	case 6:
-		return (access_type != CP15_ACCESS_WRITE) ? 1 : 0;
-	case 7:
-		if (!arm_feature(vcpu, ARM_FEATURE_V6K))
-			return 0;
-		return (access_type != CP15_ACCESS_WRITE) ? 1 : 0;
+
+		switch (arm_priv(vcpu)->cp15.c1_sctlr & (SCTLR_R_MASK | SCTLR_S_MASK))
+		{
+		case SCTLR_S_MASK:
+			if (is_user) {
+				return CP15_ACCESS_DENIED;
+			}
+
+			return CP15_ACCESS_GRANTED;
+			break;
+		case SCTLR_R_MASK:
+			return CP15_ACCESS_GRANTED;
+			break;
+		default:
+			return CP15_ACCESS_DENIED;
+			break;
+		}
+		break;
+	case TTBL_AP_SRW_U:
+		if (is_user) {
+			return CP15_ACCESS_DENIED;
+		}
+
+		return CP15_ACCESS_GRANTED;
+		break;
+	case TTBL_AP_SRW_UR:
+		if (is_user) {
+			return (access_type != CP15_ACCESS_WRITE) ? CP15_ACCESS_GRANTED : CP15_ACCESS_DENIED;
+		}
+
+		return CP15_ACCESS_GRANTED;
+		break;
+	case TTBL_AP_SRW_URW:
+		return CP15_ACCESS_GRANTED;
+		break;
+	case TTBL_AP_SR_U:
+		if (is_user) {
+			return CP15_ACCESS_DENIED;
+		}
+
+		return (access_type != CP15_ACCESS_WRITE) ? CP15_ACCESS_GRANTED : CP15_ACCESS_DENIED;
+		break;
+	case TTBL_AP_SR_UR_DEPRECATED:
+		return (access_type != CP15_ACCESS_WRITE) ? CP15_ACCESS_GRANTED : CP15_ACCESS_DENIED;
+		break;
+	case TTBL_AP_SR_UR:
+		if (!arm_feature(vcpu, ARM_FEATURE_V6K)) {
+			return CP15_ACCESS_DENIED;
+		}
+
+		return (access_type != CP15_ACCESS_WRITE) ? CP15_ACCESS_GRANTED : CP15_ACCESS_DENIED;
+		break;
 	default:
-		return 0;
+		return CP15_ACCESS_DENIED;
+		break;
 	};
 
-	return 0;
+	return CP15_ACCESS_DENIED;
 }
 
 static physical_addr_t get_level1_table_pa(struct vmm_vcpu *vcpu,
@@ -231,11 +291,9 @@ static physical_addr_t get_level1_table_pa(struct vmm_vcpu *vcpu,
 {
 	if (va & arm_priv(vcpu)->cp15.c2_mask) {
 		return arm_priv(vcpu)->cp15.c2_base1 & 0xffffc000;
-	} else {
-		return arm_priv(vcpu)->cp15.c2_base0 &
-		    arm_priv(vcpu)->cp15.c2_base_mask;
 	}
-	return 0x0;
+
+	return arm_priv(vcpu)->cp15.c2_base0 & arm_priv(vcpu)->cp15.c2_base_mask;
 }
 
 static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va, 
@@ -277,9 +335,9 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		pg->dom = 0;
 	} else {
 		/* Section or page.  */
-		pg->dom = (desc >> 4) & 0x1e;
+		pg->dom = (desc >> 5) & 0xF;
 	}
-	domain = (arm_priv(vcpu)->cp15.c3 >> pg->dom) & 3;
+	domain = (arm_priv(vcpu)->cp15.c3 >> (pg->dom << 1)) & 3;
 	if (domain == 0 || domain == 2) {
 		if (type == 2)
 			*fs = 9;	/* Section domain fault.  */
@@ -370,7 +428,7 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 			*fs = (*fs == 15) ? 6 : 3;
 			goto do_fault;
 		}
-		if (!check_ap(vcpu, pg->ap, access_type, is_user)) {
+		if (check_ap(vcpu, pg->ap, access_type, is_user) == CP15_ACCESS_DENIED) {
 			/* Access permission fault.  */
 			goto do_fault;
 		}
@@ -394,12 +452,14 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	/* Lookup l1 descriptor.  */
 	table = get_level1_table_pa(vcpu, va);
 
-	if (vmm_guest_physical_map
-	    (vcpu->guest, table, 0x4000, &table, &table_sz, &reg_flags)) {
+	/* map it to xvisor */
+	if (vmm_guest_physical_map(vcpu->guest, table, TTBL_L1TBL_SIZE, 
+				   &table, &table_sz, &reg_flags)) {
 		goto do_fault;
 	}
 
-	if (table_sz < 0x4000) {
+	/* some sanity check */
+	if (table_sz < TTBL_L1TBL_SIZE) {
 		goto do_fault;
 	}
 
@@ -407,52 +467,57 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		goto do_fault;
 	}
 
+	/* compute the L1 descripto physical location */
 	table |= (va >> 18) & 0x3ffc;
 
+	/* get it */
 	desc = cpu_mmu_physical_read32(table);
 
-	type = (desc & 3);
+	/* extract type */
+	type = (desc & TTBL_L1TBL_TTE_TYPE_MASK);
 
-	if (type == 0) {
-		/* Section translation fault.  */
-		*fs = 5;
-		goto do_fault;
-	}
+	/* retreive domain info */
+	pg->dom = (desc & TTBL_L1TBL_TTE_DOM_MASK) >> TTBL_L1TBL_TTE_DOM_SHIFT;
+	domain = (arm_priv(vcpu)->cp15.c3 >> (pg->dom << 1)) & 3;
 
-	domain = (arm_priv(vcpu)->cp15.c3 >> ((desc >> 4) & 0x1e)) & 3;
-
-	if (domain == 0 || domain == 2) {
-		if (type == 2) {
-			*fs = 9;	/* Section domain fault.  */
-		} else {
-			*fs = 11;	/* Page domain fault.  */
-		}
-		goto do_fault;
-	}
-
-	if (type == 2) {
-		/* 1Mb section.  */
-		pg->pa = (desc & 0xfff00000) | (va & 0x000fffff);
-		pg->ap = (desc >> 10) & 3;
-		pg->sz = 1024 * 1024;
-		*fs = 13;
-	} else {
-		/* Lookup l2 entry.  */
-		if (type == 1) {
-			/* Coarse pagetable.  */
-			table = (desc & 0xfffffc00) | ((va >> 10) & 0x3fc);
-		} else {
-			/* Fine pagetable.  */
-			table = (desc & 0xfffff000) | ((va >> 8) & 0xffc);
+	switch (type) {
+	case TTBL_L1TBL_TTE_TYPE_SECTION: /* 1Mb section.  */
+		if (domain == 0 || domain == 2) {
+			/* Section domain fault.  */
+			*fs = DFSR_FS_DOMAIN_FAULT_SECTION;
+			goto do_fault;
+			break;
 		}
 
-		if (vmm_guest_physical_map
-		    (vcpu->guest, table, 0x400, &table, &table_sz,
-		     &reg_flags)) {
+		/* compute physical address */
+		pg->pa = (desc & ~TTBL_L1TBL_SECTION_PAGE_MASK) | (va & TTBL_L1TBL_SECTION_PAGE_MASK);
+		/* extract access protection */
+		pg->ap = (desc & TTBL_L1TBL_TTE_AP_MASK) >> TTBL_L1TBL_TTE_AP_SHIFT;
+		/* Set Section size */
+		pg->sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
+		pg->c = (desc & TTBL_L1TBL_TTE_C_MASK) >> TTBL_L1TBL_TTE_C_SHIFT;
+		pg->b = (desc & TTBL_L1TBL_TTE_B_MASK) >> TTBL_L1TBL_TTE_B_SHIFT;
+
+		*fs = DFSR_FS_PERM_FAULT_SECTION;
+		break;
+	case TTBL_L1TBL_TTE_TYPE_COARSE_L2TBL: /* Coarse pagetable. */
+		if (domain == 0 || domain == 2) {
+			/* Page domain fault.  */
+			*fs = DFSR_FS_DOMAIN_FAULT_PAGE;
+			goto do_fault;
+			break;
+		}
+
+		/* compute L2 table physical address */
+		table = desc & 0xfffffc00;
+
+		/* map it to xvisor */
+		if (vmm_guest_physical_map (vcpu->guest, table, TTBL_L2TBL_SIZE, &table, &table_sz, &reg_flags)) {
 			goto do_fault;
 		}
 
-		if (table_sz < 0x400) {
+		/* sanity check */
+		if (table_sz < TTBL_L2TBL_SIZE) {
 			goto do_fault;
 		}
 
@@ -460,48 +525,113 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 			goto do_fault;
 		}
 
+		/* compute L2 desc physical address */
 		table |= ((va >> 10) & 0x3fc);
+
+		/* get it */
 		desc = cpu_mmu_physical_read32(table);
 
-		switch (desc & 3) {
-		case 0:	/* Page translation fault.  */
-			*fs = 7;
-			goto do_fault;
-		case 1:	/* 64k page.  */
+		switch (desc & TTBL_L2TBL_TTE_TYPE_MASK) {
+		case TTBL_L2TBL_TTE_TYPE_LARGE:	/* 64k page.  */
 			pg->pa = (desc & 0xffff0000) | (va & 0xffff);
 			pg->ap = (desc >> (4 + ((va >> 13) & 6))) & 3;
-			pg->sz = 0x10000;
+			pg->sz = TTBL_L2TBL_LARGE_PAGE_SIZE;
+			*fs = DFSR_FS_PERM_FAULT_PAGE;
 			break;
-		case 2:	/* 4k page.  */
+		case TTBL_L2TBL_TTE_TYPE_SMALL:	/* 4k page.  */
 			pg->pa = (desc & 0xfffff000) | (va & 0xfff);
 			pg->ap = (desc >> (4 + ((va >> 13) & 6))) & 3;
-			pg->sz = 0x1000;
+			pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+			*fs = DFSR_FS_PERM_FAULT_PAGE;
 			break;
-		case 3:	/* 1k page.  */
-			if (type == 1) {
-				/* Page translation fault.  */
-				*fs = 7;
-				goto do_fault;
-			}
-			pg->pa = (desc & 0xfffffc00) | (va & 0x3ff);
-			pg->ap = (desc >> 4) & 3;
-			pg->sz = 0x400;
-			break;
+		case TTBL_L2TBL_TTE_TYPE_FAULT:
 		default:
-			/* Never happens, but compiler
-			 * isn't smart enough to tell.
-			 */
+			/* Page translation fault.  */
+			*fs = DFSR_FS_TRANS_FAULT_PAGE;
+			goto do_fault;
+			break;
+		}
+
+		pg->c = (desc & TTBL_L2TBL_TTE_C_MASK) >> TTBL_L2TBL_TTE_C_SHIFT;
+		pg->b = (desc & TTBL_L2TBL_TTE_B_MASK) >> TTBL_L2TBL_TTE_B_SHIFT;
+
+		break;
+	case TTBL_L1TBL_TTE_TYPE_FINE_L2TBL: /* Fine pagetable. */
+		if (domain == 0 || domain == 2) {
+			/* Page domain fault.  */
+			*fs = DFSR_FS_DOMAIN_FAULT_PAGE;
+			goto do_fault;
+			break;
+		}
+
+		table = (desc & 0xfffff000);
+
+		if (vmm_guest_physical_map (vcpu->guest, table, 0x1000, &table, &table_sz, &reg_flags)) {
 			goto do_fault;
 		}
-		*fs = 15;
-	}
 
-	if (!check_ap(vcpu, pg->ap, access_type, is_user)) {
+		if (table_sz < 0x1000) {
+			goto do_fault;
+		}
+
+		if (reg_flags & VMM_REGION_VIRTUAL) {
+			goto do_fault;
+		}
+
+		table |= ((va >> 8) & 0xffc);
+		desc = cpu_mmu_physical_read32(table);
+
+		switch (desc & TTBL_L2TBL_TTE_TYPE_MASK) {
+		case TTBL_L2TBL_TTE_TYPE_LARGE:	/* 64k page.  */
+			pg->pa = (desc & 0xffff0000) | (va & 0xffff);
+			pg->ap = (desc >> (4 + ((va >> 13) & 6))) & 3;
+			pg->sz = TTBL_L2TBL_LARGE_PAGE_SIZE;
+			*fs = DFSR_FS_PERM_FAULT_PAGE;
+			break;
+		case TTBL_L2TBL_TTE_TYPE_SMALL:	/* 4k page.  */
+			pg->pa = (desc & 0xfffff000) | (va & 0xfff);
+			pg->ap = (desc >> (4 + ((va >> 13) & 6))) & 3;
+			pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+			*fs = DFSR_FS_PERM_FAULT_PAGE;
+			break;
+		case TTBL_L2TBL_TTE_TYPE_TINY:	/* 1k page.  */
+			pg->pa = (desc & 0xfffffc00) | (va & 0x3ff);
+			pg->ap = (desc >> 4) & 3;
+			pg->sz = TTBL_L2TBL_TINY_PAGE_SIZE;
+			*fs = DFSR_FS_PERM_FAULT_PAGE;
+			break;
+		case TTBL_L2TBL_TTE_TYPE_FAULT:	/* Page translation fault.  */
+		default:
+			*fs = DFSR_FS_TRANS_FAULT_PAGE;
+			goto do_fault;
+			break;
+		}
+
+		pg->c = (desc & TTBL_L2TBL_TTE_C_MASK) >> TTBL_L2TBL_TTE_C_SHIFT;
+		pg->b = (desc & TTBL_L2TBL_TTE_B_MASK) >> TTBL_L2TBL_TTE_B_SHIFT;
+
+		break;
+	case TTBL_L1TBL_TTE_TYPE_FAULT:
+	default:
+		pg->dom = 0;
+		/* Section translation fault.  */
+		*fs = DFSR_FS_TRANS_FAULT_SECTION;
+		goto do_fault;
+		break;
+	}
+		
+	if (domain == 3) {
+		/* Page permission not to be checked so, 
+		 * give full access using access permissions.
+		 */
+		pg->ap = TTBL_AP_SRW_URW;
+	} else if (check_ap(vcpu, pg->ap, access_type, is_user) == CP15_ACCESS_DENIED) {
 		/* Access permission fault.  */
 		goto do_fault;
 	}
 
 	return VMM_OK;
+
  do_fault:
 	return VMM_EFAIL;
 }
@@ -513,15 +643,20 @@ u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
 {
 	int rc = VMM_OK;
 	u32 fs = 0x0;
-	virtual_addr_t mva = (va < 0x02000000) ?
-	    (va + arm_priv(vcpu)->cp15.c13_fcse) : va;
+	virtual_addr_t mva = va;
 
-	vmm_memset(pg, 0, sizeof(*pg));
+	/* Fast Context Switch Extension. */
+	if (mva < 0x02000000) {
+		mva += arm_priv(vcpu)->cp15.c13_fcse;
+	}
+
+	/* zeroize our page descriptor */
+	memset(pg, 0, sizeof(*pg));
 
 	/* Get the required page for vcpu */
 	if (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_M_MASK) {
 		/* MMU enabled for vcpu */
-		if (arm_priv(vcpu)->cp15.c1_sctlr & (1 << 23)) {
+		if (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_V6_MASK) {
 			rc = ttbl_walk_v6(vcpu, mva, access_type, 
 					  is_user, pg, &fs);
 		} else {
@@ -530,8 +665,8 @@ u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
 		}
 		if (rc) {
 			/* FIXME: should be ORed with (pg->dom & 0xF) */
-			return (fs << 4) | ((arm_priv(vcpu)->cp15.c3 >> pg->dom)
-					    & 0x3);
+			return (fs << 4) | ((arm_priv(vcpu)->cp15.c3 >> 
+						(pg->dom << 1)) & 0x3);
 		}
 		pg->va = va;
 	} else {
@@ -554,24 +689,29 @@ int cpu_vcpu_cp15_assert_fault(struct vmm_vcpu *vcpu,
 			      arch_regs_t * regs,
 			      u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
 {
-	u32 fsr = 0x0;
+	u32 fsr;
+
 	if (!(arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_M_MASK)) {
 		cpu_vcpu_halt(vcpu, regs);
 		return VMM_EFAIL;
 	}
 	if (xn) {
-		fsr |= ((fs >> 4) << DFSR_FS4_SHIFT);
-		fsr |= (fs & DFSR_FS_MASK);
-		fsr |= ((wnr << DFSR_WNR_SHIFT) & DFSR_WNR_MASK);
+		fsr = (fs & DFSR_FS_MASK);
 		fsr |= ((dom << DFSR_DOM_SHIFT) & DFSR_DOM_MASK);
+		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+			fsr |= ((fs >> 4) << DFSR_FS4_SHIFT);
+			fsr |= ((wnr << DFSR_WNR_SHIFT) & DFSR_WNR_MASK);
+		}
 		arm_priv(vcpu)->cp15.c5_dfsr = fsr;
 		arm_priv(vcpu)->cp15.c6_dfar = far;
 		vmm_vcpu_irq_assert(vcpu, CPU_DATA_ABORT_IRQ, 0x0);
 	} else {
-		fsr |= ((fs >> 4) << IFSR_FS4_SHIFT);
-		fsr |= (fs & IFSR_FS_MASK);
+		fsr = fs & IFSR_FS_MASK;
+		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+			fsr |= ((fs >> 4) << IFSR_FS4_SHIFT);
+			arm_priv(vcpu)->cp15.c6_ifar = far;
+		}
 		arm_priv(vcpu)->cp15.c5_ifsr = fsr;
-		arm_priv(vcpu)->cp15.c6_ifar = far;
 		vmm_vcpu_irq_assert(vcpu, CPU_PREFETCH_ABORT_IRQ, 0x0);
 	}
 	return VMM_OK;
@@ -582,6 +722,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 			      u32 far, u32 fs, u32 dom,
 			      u32 wnr, u32 xn, bool force_user)
 {
+	u32 orig_domain, tre_index, tre_inner, tre_outer, tre_type;
 	u32 ecode, reg_flags;
 	bool is_user;
 	int rc, access_type;
@@ -630,6 +771,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 	if (availsz < TTBL_L2TBL_SMALL_PAGE_SIZE) {
 		return rc;
 	}
+	orig_domain = pg.dom;
 	pg.sz = cpu_mmu_best_page_size(pg.va, pg.pa, availsz);
 	switch (pg.ap) {
 	case TTBL_AP_S_U:
@@ -648,7 +790,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_USER;
 		pg.ap = TTBL_AP_SRW_URW;
 		break;
-#ifdef CONFIG_ARMV7A
+#if !defined(CONFIG_ARMV5)
 	case TTBL_AP_SR_U:
 		pg.dom = TTBL_L1TBL_TTE_DOM_VCPU_SUPER;
 		pg.ap = TTBL_AP_SRW_UR;
@@ -670,10 +812,13 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 			pg.ap = TTBL_AP_S_U;
 			break;
 		case TTBL_AP_SRW_UR:
-#ifdef CONFIG_ARMV7A
+#if !defined(CONFIG_ARMV5)
 			pg.ap = TTBL_AP_SR_U;
-			break;
+#else
+			/* FIXME: I am not sure this is right */
+			pg.ap = TTBL_AP_SRW_U;
 #endif
+			break;
 		case TTBL_AP_SRW_URW:
 			pg.ap = TTBL_AP_SRW_U;
 			break;
@@ -689,18 +834,71 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 			break;
 		}
 	}
-	if (pg.c && (reg_flags & VMM_REGION_CACHEABLE)) {
-		pg.c = 1;
-	} else {
-		pg.c = 0;
-	}
-	if (pg.b && (reg_flags & VMM_REGION_BUFFERABLE)) {
-		pg.b = 1;
-	} else {
-		pg.b = 0;
+
+	if (arm_feature(vcpu, ARM_FEATURE_V7) &&
+	    (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_TRE_MASK)) {
+		tre_index = ((pg.tex & 0x1) << 2) |
+			    ((pg.c & 0x1) << 1) |
+			    (pg.b & 0x1);
+		tre_inner = arm_priv(vcpu)->cp15.c10_nmrr >> (tre_index * 2);
+		tre_inner &= 0x3;
+		tre_outer = arm_priv(vcpu)->cp15.c10_nmrr >> (tre_index * 2);
+		tre_outer = (tre_outer >> 16) & 0x3;
+		tre_type = arm_priv(vcpu)->cp15.c10_prrr >> (tre_index * 2);
+		tre_type &= 0x3;
+		switch (tre_type) {
+		case 0: /* Strongly-Ordered Memory */
+			pg.c = 0;
+			pg.b = 0;
+			pg.tex = 0;
+			pg.s = 1;
+			break;
+		case 1: /* Device Memory */
+			pg.c = (tre_inner & 0x2) >> 1;
+			pg.b = (tre_inner & 0x1);
+			pg.tex = 0x4 | tre_outer;
+			pg.s = arm_priv(vcpu)->cp15.c10_prrr >> (16 + pg.s);
+			break;
+		case 2: /* Normal Memory */
+			pg.c = (tre_inner & 0x2) >> 1;
+			pg.b = (tre_inner & 0x1);
+			pg.tex = 0x4 | tre_outer;
+			pg.s = arm_priv(vcpu)->cp15.c10_prrr >> (18 + pg.s);
+			break;
+		case 3:
+		default:
+			pg.c = 0;
+			pg.b = 0;
+			pg.tex = 0;
+			pg.s = 0;
+			break;
+		};
 	}
 
-	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg);
+	if (pg.tex & 0x4) {
+		if (reg_flags & VMM_REGION_CACHEABLE) {
+			if (!(reg_flags & VMM_REGION_BUFFERABLE)) {
+				if ((pg.c == 0 && pg.b == 1) ||
+				    (pg.c == 1 && pg.b == 1)) {
+					pg.c = 1;
+					pg.b = 0;
+				}
+				if (((pg.tex & 0x3) == 0x1) ||
+				    ((pg.tex & 0x3) == 0x3)) {
+					pg.tex = 0x6;
+				}
+			}
+		} else {
+			pg.c = 0;
+			pg.b = 0;
+			pg.tex = 0x4;
+		}
+	} else {
+		pg.c = pg.c && (reg_flags & VMM_REGION_CACHEABLE);
+		pg.b = pg.b && (reg_flags & VMM_REGION_BUFFERABLE);
+	}
+
+	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg, orig_domain);
 }
 
 int cpu_vcpu_cp15_access_fault(struct vmm_vcpu *vcpu,
@@ -718,6 +916,7 @@ int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu *vcpu,
 {
 	int rc = VMM_OK;
 	struct cpu_page pg;
+
 	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1, far, &pg))) {
 		cpu_vcpu_halt(vcpu, regs);
@@ -743,6 +942,7 @@ int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu *vcpu,
 {
 	int rc = VMM_OK;
 	struct cpu_page *pg = &arm_priv(vcpu)->cp15.virtio_page;
+
 	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1, far, pg))) {
 		/* Remove fault address from VTLB and restart.
@@ -827,12 +1027,62 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 			case 1:
 				if (!arm_feature(vcpu, ARM_FEATURE_V6))
 					goto bad_reg;
-				*data = arm_priv(vcpu)->cp15.c0_c1[opc2];
+				switch (opc2) {
+				case 0:
+					*data = arm_priv(vcpu)->cp15.c0_pfr0;
+					break;
+				case 1:
+					*data = arm_priv(vcpu)->cp15.c0_pfr1;
+					break;
+				case 2:
+					*data = arm_priv(vcpu)->cp15.c0_dfr0;
+					break;
+				case 3:
+					*data = arm_priv(vcpu)->cp15.c0_afr0;
+					break;
+				case 4:
+					*data = arm_priv(vcpu)->cp15.c0_mmfr0;
+					break;
+				case 5:
+					*data = arm_priv(vcpu)->cp15.c0_mmfr1;
+					break;
+				case 6:
+					*data = arm_priv(vcpu)->cp15.c0_mmfr2;
+					break;
+				case 7:
+					*data = arm_priv(vcpu)->cp15.c0_mmfr3;
+					break;
+				default:
+					*data = 0;
+					break;
+				};
 				break;
 			case 2:
 				if (!arm_feature(vcpu, ARM_FEATURE_V6))
 					goto bad_reg;
-				*data = arm_priv(vcpu)->cp15.c0_c2[opc2];
+				switch (opc2) {
+				case 0:
+					*data = arm_priv(vcpu)->cp15.c0_isar0;
+					break;
+				case 1:
+					*data = arm_priv(vcpu)->cp15.c0_isar1;
+					break;
+				case 2:
+					*data = arm_priv(vcpu)->cp15.c0_isar2;
+					break;
+				case 3:
+					*data = arm_priv(vcpu)->cp15.c0_isar3;
+					break;
+				case 4:
+					*data = arm_priv(vcpu)->cp15.c0_isar4;
+					break;
+				case 5:
+					*data = arm_priv(vcpu)->cp15.c0_isar5;
+					break;
+				default:
+					*data = 0;
+					break;
+				};
 				break;
 			case 3:
 			case 4:
@@ -905,6 +1155,11 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 				break;
 			case ARM_CPUID_CORTEXA9:
 				*data = 0;
+				if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
+					*data |= (1 << 6);
+				} else {
+					*data &= ~(1 << 6);
+				}
 				break;
 			default:
 				goto bad_reg;
@@ -978,13 +1233,41 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 		};
 		break;
 	case 7:		/* Cache control.  */
-		if (CRm == 4 && opc1 == 0 && opc2 == 0) {
-			*data = arm_priv(vcpu)->cp15.c7_par;
+		switch (opc2) {
+		case 0:
+			if (CRm == 4 && opc1 == 0) {
+				*data = arm_priv(vcpu)->cp15.c7_par;
+			} else {
+				/* FIXME: Should only clear Z flag if destination is r15.  */
+				regs->cpsr &= ~CPSR_ZERO_MASK;
+				*data = 0;
+			}
+			break;
+		case 3:
+			switch (CRm) {
+			case 10:	/* Test and clean DCache */
+				clean_dcache();
+				regs->cpsr |= CPSR_ZERO_MASK;
+				*data = 0;
+				break;
+			case 14:	/* Test, clean and invalidate DCache */
+				clean_dcache();
+				regs->cpsr |= CPSR_ZERO_MASK;
+				*data = 0;
+				break;
+			default:
+				/* FIXME: Should only clear Z flag if destination is r15.  */
+				regs->cpsr &= ~CPSR_ZERO_MASK;
+				*data = 0;
+				break;
+			}
+			break;
+		default:
+			/* FIXME: Should only clear Z flag if destination is r15.  */
+			regs->cpsr &= ~CPSR_ZERO_MASK;
+			*data = 0;
 			break;
 		}
-		/* FIXME: Should only clear Z flag if destination is r15.  */
-		regs->cpsr &= ~CPSR_ZERO_MASK;
-		*data = 0;
 		break;
 	case 8:		/* MMU TLB control.  */
 		goto bad_reg;
@@ -1015,6 +1298,22 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 	case 10:		/* MMU TLB lockdown.  */
 		/* ??? TLB lockdown not implemented.  */
 		*data = 0;
+		switch (CRm) {
+		case 2:
+			switch (opc2) {
+			case 0:
+				*data = arm_priv(vcpu)->cp15.c10_prrr;
+				break;
+			case 1:
+				*data = arm_priv(vcpu)->cp15.c10_nmrr;
+				break;
+			default:
+				break;
+			}
+			break;
+		default:
+			break;
+		};
 		break;
 	case 11:		/* TCM DMA control.  */
 	case 12:		/* Reserved.  */
@@ -1029,15 +1328,27 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 			break;
 		case 2:
 			/* TPIDRURW */
-			*data = arm_priv(vcpu)->cp15.c13_tls1;
+			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+				*data = arm_priv(vcpu)->cp15.c13_tls1;
+			} else {
+				goto bad_reg;
+			}
 			break;
 		case 3:
 			/* TPIDRURO */
-			*data = arm_priv(vcpu)->cp15.c13_tls2;
+			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+				*data = arm_priv(vcpu)->cp15.c13_tls2;
+			} else {
+				goto bad_reg;
+			}
 			break;
 		case 4:
 			/* TPIDRPRW */
-			*data = arm_priv(vcpu)->cp15.c13_tls3;
+			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+				*data = arm_priv(vcpu)->cp15.c13_tls3;
+			} else {
+				goto bad_reg;
+			}
 			break;
 		default:
 			goto bad_reg;
@@ -1058,6 +1369,8 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			 arch_regs_t * regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, u32 data)
 {
+	u32 tmp;
+
 	switch (CRn) {
 	case 0:
 		/* ID codes.  */
@@ -1070,12 +1383,28 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 	case 1:		/* System configuration.  */
 		switch (opc2) {
 		case 0:
-			arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_ROBITS_MASK;
-			arm_priv(vcpu)->cp15.c1_sctlr |= 
-						(data & ~SCTLR_ROBITS_MASK);
+			/* store old value of sctlr */
+			tmp =  arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_MMU_MASK;
+			if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+				arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_ROBITS_MASK;
+				arm_priv(vcpu)->cp15.c1_sctlr |= (data & ~SCTLR_ROBITS_MASK);
+			} else {
+				arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_V5_ROBITS_MASK;
+				arm_priv(vcpu)->cp15.c1_sctlr |= (data & ~SCTLR_V5_ROBITS_MASK);
+			}
+
 			/* ??? Lots of these bits are not implemented.  */
-			/* This may enable/disable the MMU, so do a TLB flush. */
-			cpu_vcpu_cp15_vtlb_flush(vcpu);
+			if (tmp != (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_MMU_MASK)) {
+				/* For single-core guests flush VTLB only when
+				 * MMU related bits in SCTLR changes
+				 */
+				cpu_vcpu_cp15_vtlb_flush(vcpu);
+			} else {
+				/* If no change in SCTLR then flush 
+				 * non-global pages from VTLB
+				 */
+				cpu_vcpu_cp15_vtlb_flush_ng(vcpu);
+			}
 			break;
 		case 1:	/* Auxiliary control register.  */
 			/* Not implemented.  */
@@ -1110,9 +1439,12 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		};
 		break;
 	case 3:		/* MMU Domain access control / MPU write buffer control.  */
+		tmp = arm_priv(vcpu)->cp15.c3;
 		arm_priv(vcpu)->cp15.c3 = data;
-		/* Flush TLB as domain not tracked in TLB */
-		cpu_vcpu_cp15_vtlb_flush(vcpu);
+
+		if (tmp != data) {
+			cpu_vcpu_cp15_vtlb_flush_domain(vcpu, tmp ^ data);
+		}
 		break;
 	case 4:		/* Reserved.  */
 		goto bad_reg;
@@ -1135,7 +1467,11 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			break;
 		case 1:	/* ??? This is WFAR on armv6 */
 		case 2:
-			arm_priv(vcpu)->cp15.c6_ifar = data;
+			if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+				arm_priv(vcpu)->cp15.c6_ifar = data;
+			} else {
+				goto bad_reg;
+			}
 			break;
 		default:
 			goto bad_reg;
@@ -1147,7 +1483,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		if (opc1 != 0) {
 			goto bad_reg;
 		}
-		/* Note: Data cache invaidate/flush is a dangerous 
+		/* Note: Data cache invalidate is a dangerous 
 		 * operation since it is possible that Xvisor had its 
 		 * own updates in data cache which are not written to 
 		 * main memory we might end-up losing those updates 
@@ -1172,9 +1508,12 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 				case 0:
 					/* Invalidate all I-caches to PoU 
 					 * innner-shareable - ICIALLUIS */
+					invalidate_icache();
+					break;
 				case 6:
 					/* Invalidate all branch predictors 
 					 * innner-shareable - BPIALLUIS */
+					invalidate_bpredictor();
 					break;
 				default:
 					goto bad_reg;
@@ -1198,17 +1537,17 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 0:
 				/* Invalidate all instruction caches to PoU */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				flush_icache();
+				invalidate_icache();
 				break;
 			case 1:
 				/* Invalidate instruction cache line by MVA to PoU */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				flush_icache_mva(data);
+				invalidate_icache_mva(data);
 				break;
 			case 2:
 				/* Invalidate instruction cache line by set/way. */
 				/* Emulation for ARMv5, ARMv6 */
-				flush_icache_line(data);
+				invalidate_icache_line(data);
 				break;
 			case 4:
 				/* Instruction synchroization barrier */
@@ -1218,12 +1557,12 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 6:
 				/* Invalidate entire branch predictor array */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				flush_bpredictor();
+				invalidate_bpredictor();
 				break;
 			case 7:
 				/* Invalidate MVA from branch predictor array */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				flush_bpredictor_mva(data);
+				invalidate_bpredictor_mva(data);
 				break;
 			default:
 				goto bad_reg;
@@ -1234,23 +1573,26 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 0:
 				/* Invalidate data caches */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness ignore 
-				 * this cache operation.
+				/* For safety and correctness upgrade it to 
+				 * Clean and invalidate data cache.
 				 */
+				clean_invalidate_dcache();
 				break;
 			case 1:
 				/* Invalidate data cache line by MVA to PoC. */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				/* For safety and correctness ignore 
-				 * this cache operation.
+				/* For safety and correctness upgrade it to 
+				 * Clean and invalidate data cache.
 				 */
+				clean_invalidate_dcache_mva(data);
 				break;
 			case 2:
 				/* Invalidate data cache line by set/way. */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				/* For safety and correctness ignore 
-				 * this cache operation.
+				/* For safety and correctness upgrade it to 
+				 * Clean and invalidate data cache.
 				 */
+				clean_invalidate_dcache_line(data);
 				break;
 			default:
 				goto bad_reg;
@@ -1259,28 +1601,28 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		case 7:
 			switch (opc2) {
 			case 0:
-				/* Invalidate unified (instruction or data) cache */
+				/* Invalidate unified cache */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness 
-				 * only flush instruction cache.
+				/* For safety and correctness upgrade it to
+				 * Clean and invalidate unified cache
 				 */
-				flush_icache();
+				clean_invalidate_idcache();
 				break;
 			case 1:
 				/* Invalidate unified cache line by MVA */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness 
-				 * only flush instruction cache.
+				/* For safety and correctness upgrade it to
+				 * Clean and invalidate unified cache
 				 */
-				flush_icache_mva(data);
+				clean_invalidate_idcache_mva(data);
 				break;
 			case 2:
 				/* Invalidate unified cache line by set/way */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness 
-				 * only flush instruction cache.
+				/* For safety and correctness upgrade it to
+				 * Clean and invalidate unified cache
 				 */
-				flush_icache_line(data);
+				clean_invalidate_idcache_line(data);
 				break;
 			default:
 				goto bad_reg;
@@ -1370,26 +1712,17 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 0:
 				/* Clean and invalidate data cache */
 				/* Emulation for ARMv6 */
-				/* For safety and correctness 
-				 * only clean data cache.
-				 */
-				clean_dcache();
+				clean_invalidate_dcache();
 				break;
 			case 1:
 				/* Clean and invalidate data cache line by MVA */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				/* For safety and correctness 
-				 * only clean data cache.
-				 */
-				/* FIXME: clean_dcache_mva(data); */
+				clean_invalidate_dcache_mva(data);
 				break;
 			case 2:
 				/* Clean and invalidate data cache line by set/way */
 				/* Emulation for ARMv5, ARMv6, ARMv7 */
-				/* For safety and correctness 
-				 * only clean data cache.
-				 */
-				clean_dcache_line(data);
+				clean_invalidate_dcache_line(data);
 				break;
 			default:
 				goto bad_reg;
@@ -1400,32 +1733,17 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			case 0:
 				/* Clean and invalidate unified cache */
 				/* Emulation for ARMv6 */
-				/* For safety and correctness 
-				 * clean data cache and
-				 * flush instruction cache.
-				 */
-				clean_dcache();
-				flush_icache();
+				clean_invalidate_idcache();
 				break;
 			case 1:
 				/* Clean and Invalidate unified cache line by MVA */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness 
-				 * clean data cache and
-				 * flush instruction cache.
-				 */
-				clean_dcache_mva(data);
-				flush_icache_mva(data);
+				clean_invalidate_idcache_mva(data);
 				break;
 			case 2:
 				/* Clean and Invalidate unified cache line by set/way */
 				/* Emulation for ARMv5, ARMv6 */
-				/* For safety and correctness 
-				 * clean data cache and
-				 * flush instruction cache.
-				 */
-				clean_dcache_line(data);
-				flush_icache_line(data);
+				clean_invalidate_idcache_line(data);
 				break;
 			default:
 				goto bad_reg;
@@ -1448,7 +1766,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			break;
 		case 3:	/* Invalidate single entry on MVA.  */
 			/* ??? This is like case 1, but ignores ASID.  */
-			cpu_vcpu_cp15_vtlb_flush(vcpu);
+			cpu_vcpu_cp15_vtlb_flush_va(vcpu, data);
 			break;
 		default:
 			goto bad_reg;
@@ -1562,6 +1880,22 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 		break;
 	case 10:		/* MMU TLB lockdown.  */
 		/* ??? TLB lockdown not implemented.  */
+		switch (CRm) {
+		case 2:
+			switch (opc2) {
+			case 0:
+				arm_priv(vcpu)->cp15.c10_prrr = data;
+				break;
+			case 1:
+				arm_priv(vcpu)->cp15.c10_nmrr = data;
+				break;
+			default:
+				break;
+			}
+			break;
+		default:
+			break;
+		};
 		break;
 	case 12:		/* Reserved.  */
 		goto bad_reg;
@@ -1588,16 +1922,25 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			arm_priv(vcpu)->cp15.c13_context = data;
 			break;
 		case 2:
+			if (!arm_feature(vcpu, ARM_FEATURE_V6)) {
+				goto bad_reg;
+			}
 			/* TPIDRURW */
 			arm_priv(vcpu)->cp15.c13_tls1 = data;
 			write_tpidrurw(data);
 			break;
 		case 3:
+			if (!arm_feature(vcpu, ARM_FEATURE_V6)) {
+				goto bad_reg;
+			}
 			/* TPIDRURO */
 			arm_priv(vcpu)->cp15.c13_tls2 = data;
 			write_tpidruro(data);
 			break;
 		case 4:
+			if (!arm_feature(vcpu, ARM_FEATURE_V6)) {
+				goto bad_reg;
+			}
 			/* TPIDRPRW */
 			arm_priv(vcpu)->cp15.c13_tls3 = data;
 			write_tpidrprw(data);
@@ -1691,7 +2034,7 @@ int cpu_vcpu_cp15_mem_read(struct vmm_vcpu *vcpu,
 			return rc;
 		}
 		switch (pgp->ap) {
-#ifdef CONFIG_ARMV7A
+#if !defined(CONFIG_ARMV5)
 		case TTBL_AP_SR_U:
 #endif
 		case TTBL_AP_SRW_U:
@@ -1883,6 +2226,7 @@ void cpu_vcpu_cp15_sync_cpsr(struct vmm_vcpu *vcpu)
 	    ~(0x3 << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER));
 	arm_priv(vcpu)->cp15.dacr &=
 	    ~(0x3 << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R));
+
 	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		arm_priv(vcpu)->cp15.dacr |=
 		    (TTBL_DOM_NOACCESS << (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER));
@@ -1896,6 +2240,7 @@ void cpu_vcpu_cp15_sync_cpsr(struct vmm_vcpu *vcpu)
 		    (TTBL_DOM_MANAGER <<
 		     (2 * TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R));
 	}
+
 	if (cvcpu->id == vcpu->id) {
 		cpu_mmu_chdacr(arm_priv(vcpu)->cp15.dacr);
 	}
@@ -1903,21 +2248,17 @@ void cpu_vcpu_cp15_sync_cpsr(struct vmm_vcpu *vcpu)
 
 void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 {
-#if !defined(CONFIG_ARMV5)
 	if (tvcpu && tvcpu->is_normal) {
 		arm_priv(tvcpu)->cp15.c13_tls1 = read_tpidrurw();
 		arm_priv(tvcpu)->cp15.c13_tls2 = read_tpidruro();
 		arm_priv(tvcpu)->cp15.c13_tls3 = read_tpidrprw();
 	}
-#endif
 	if (vcpu->is_normal) {
 		cpu_mmu_chdacr(arm_priv(vcpu)->cp15.dacr);
 		cpu_mmu_chttbr(arm_priv(vcpu)->cp15.l1);
-#if !defined(CONFIG_ARMV5)
 		write_tpidrurw(arm_priv(vcpu)->cp15.c13_tls1);
 		write_tpidruro(arm_priv(vcpu)->cp15.c13_tls2);
 		write_tpidrprw(arm_priv(vcpu)->cp15.c13_tls3);
-#endif
 	} else {
 		if (tvcpu) {
 			if (tvcpu->is_normal) {
@@ -1927,66 +2268,66 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 			cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
 		}
 	}
+	/* Ensure pending memory operations are complete */
+	dsb();
+	isb();
 }
-
-static u32 cortexa9_cp15_c0_c1[8] =
-    { 0x1031, 0x11, 0x000, 0, 0x00100103, 0x20000000, 0x01230000, 0x00002111 };
-
-static u32 cortexa9_cp15_c0_c2[8] =
-    { 0x00101111, 0x13112111, 0x21232041, 0x11112131, 0x00111142, 0, 0, 0 };
-
-static u32 cortexa8_cp15_c0_c1[8] =
-    { 0x1031, 0x11, 0x400, 0, 0x31100003, 0x20000000, 0x01202000, 0x11 };
-
-static u32 cortexa8_cp15_c0_c2[8] =
-    { 0x00101111, 0x12112111, 0x21232031, 0x11112131, 0x00111142, 0, 0, 0 };
 
 int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	int rc = VMM_OK;
 	u32 vtlb_count;
+#if defined(CONFIG_ARMV7A)
+	u32 i, cache_type, last_level;
+#endif
 
 	if (!vcpu->reset_count) {
-		vmm_memset(&arm_priv(vcpu)->cp15, 0,
+		memset(&arm_priv(vcpu)->cp15, 0,
 			   sizeof(arm_priv(vcpu)->cp15));
 		arm_priv(vcpu)->cp15.l1 = cpu_mmu_l1tbl_alloc();
-		arm_priv(vcpu)->cp15.dacr = 0x0;
-		arm_priv(vcpu)->cp15.dacr |= (TTBL_DOM_CLIENT <<
-					      (TTBL_L1TBL_TTE_DOM_VCPU_SUPER *
-					       2));
-		arm_priv(vcpu)->cp15.dacr |=
-		    (TTBL_DOM_MANAGER <<
-		     (TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R * 2));
-		arm_priv(vcpu)->cp15.dacr |=
-		    (TTBL_DOM_CLIENT << (TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
 		vtlb_count = CPU_VCPU_VTLB_ENTRY_COUNT;
 		arm_priv(vcpu)->cp15.vtlb.table = vmm_malloc(vtlb_count *
 							     sizeof(struct
 								    arm_vtlb_entry));
-		vmm_memset(arm_priv(vcpu)->cp15.vtlb.table, 0,
+		memset(arm_priv(vcpu)->cp15.vtlb.table, 0,
 			   vtlb_count * sizeof(struct arm_vtlb_entry));
-		vmm_memset(&arm_priv(vcpu)->cp15.vtlb.victim, 0,
+		memset(&arm_priv(vcpu)->cp15.vtlb.victim, 0,
 			   sizeof(arm_priv(vcpu)->cp15.vtlb.victim));
-
-		if (read_sctlr() & SCTLR_V_MASK) {
-			arm_priv(vcpu)->cp15.ovect_base = CPU_IRQ_HIGHVEC_BASE;
-		} else {
-			arm_priv(vcpu)->cp15.ovect_base = CPU_IRQ_LOWVEC_BASE;
-		}
 	} else {
 		if ((rc = cpu_vcpu_cp15_vtlb_flush(vcpu))) {
 			return rc;
 		}
 	}
+
+	arm_priv(vcpu)->cp15.dacr = 0x0;
+	arm_priv(vcpu)->cp15.dacr |= (TTBL_DOM_CLIENT <<
+				      (TTBL_L1TBL_TTE_DOM_VCPU_SUPER *
+				       2));
+	arm_priv(vcpu)->cp15.dacr |=
+		    (TTBL_DOM_MANAGER <<
+		     (TTBL_L1TBL_TTE_DOM_VCPU_SUPER_RW_USER_R * 2));
+	arm_priv(vcpu)->cp15.dacr |=
+		    (TTBL_DOM_CLIENT << (TTBL_L1TBL_TTE_DOM_VCPU_USER * 2));
+
+	if (read_sctlr() & SCTLR_V_MASK) {
+		arm_priv(vcpu)->cp15.ovect_base = CPU_IRQ_HIGHVEC_BASE;
+	} else {
+		arm_priv(vcpu)->cp15.ovect_base = CPU_IRQ_LOWVEC_BASE;
+	}
+
 	arm_priv(vcpu)->cp15.virtio_active = FALSE;
-	vmm_memset(&arm_priv(vcpu)->cp15.virtio_page, 0,
+	memset(&arm_priv(vcpu)->cp15.virtio_page, 0,
 		   sizeof(struct cpu_page));
 
 	arm_priv(vcpu)->cp15.c0_cpuid = cpuid;
 	arm_priv(vcpu)->cp15.c2_control = 0x0;
+	arm_priv(vcpu)->cp15.c2_base0 = 0x0;
+	arm_priv(vcpu)->cp15.c2_base1 = 0x0;
 	arm_priv(vcpu)->cp15.c2_mask = 0x0;
 	arm_priv(vcpu)->cp15.c2_base_mask = 0xFFFFC000;
 	arm_priv(vcpu)->cp15.c9_pmcr = (cpuid & 0xFF000000);
+	arm_priv(vcpu)->cp15.c10_prrr = 0x0;
+	arm_priv(vcpu)->cp15.c10_nmrr = 0x0;
 	/* Reset values of important registers */
 	switch (cpuid) {
 	case ARM_CPUID_ARM926:
@@ -1994,11 +2335,21 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00090078;
 		break;
 	case ARM_CPUID_CORTEXA8:
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa8_cp15_c0_c1,
-			   8 * sizeof(u32));
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa8_cp15_c0_c2,
-			   8 * sizeof(u32));
 		arm_priv(vcpu)->cp15.c0_cachetype = 0x82048004;
+		arm_priv(vcpu)->cp15.c0_pfr0 = 0x1031;
+		arm_priv(vcpu)->cp15.c0_pfr1 = 0x11;
+		arm_priv(vcpu)->cp15.c0_dfr0 = 0x400;
+		arm_priv(vcpu)->cp15.c0_afr0 = 0x0;
+		arm_priv(vcpu)->cp15.c0_mmfr0 = 0x31100003;
+		arm_priv(vcpu)->cp15.c0_mmfr1 = 0x20000000;
+		arm_priv(vcpu)->cp15.c0_mmfr2 = 0x01202000;
+		arm_priv(vcpu)->cp15.c0_mmfr3 = 0x11;
+		arm_priv(vcpu)->cp15.c0_isar0 = 0x00101111;
+		arm_priv(vcpu)->cp15.c0_isar1 = 0x12112111;
+		arm_priv(vcpu)->cp15.c0_isar2 = 0x21232031;
+		arm_priv(vcpu)->cp15.c0_isar3 = 0x11112131;
+		arm_priv(vcpu)->cp15.c0_isar4 = 0x00111142;
+		arm_priv(vcpu)->cp15.c0_isar5 = 0x0;
 		arm_priv(vcpu)->cp15.c0_clid = (1 << 27) | (2 << 24) | 3;
 		arm_priv(vcpu)->cp15.c0_ccsid[0] = 0xe007e01a;	/* 16k L1 dcache. */
 		arm_priv(vcpu)->cp15.c0_ccsid[1] = 0x2007e01a;	/* 16k L1 icache. */
@@ -2006,11 +2357,21 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;
 	case ARM_CPUID_CORTEXA9:
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa9_cp15_c0_c1,
-			   8 * sizeof(u32));
-		vmm_memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa9_cp15_c0_c2,
-			   8 * sizeof(u32));
 		arm_priv(vcpu)->cp15.c0_cachetype = 0x80038003;
+		arm_priv(vcpu)->cp15.c0_pfr0 = 0x1031;
+		arm_priv(vcpu)->cp15.c0_pfr1 = 0x11;
+		arm_priv(vcpu)->cp15.c0_dfr0 = 0x000;
+		arm_priv(vcpu)->cp15.c0_afr0 = 0x0;
+		arm_priv(vcpu)->cp15.c0_mmfr0 = 0x00100103;
+		arm_priv(vcpu)->cp15.c0_mmfr1 = 0x20000000;
+		arm_priv(vcpu)->cp15.c0_mmfr2 = 0x01230000;
+		arm_priv(vcpu)->cp15.c0_mmfr3 = 0x00002111;
+		arm_priv(vcpu)->cp15.c0_isar0 = 0x00101111;
+		arm_priv(vcpu)->cp15.c0_isar1 = 0x13112111;
+		arm_priv(vcpu)->cp15.c0_isar2 = 0x21232041;
+		arm_priv(vcpu)->cp15.c0_isar3 = 0x11112131;
+		arm_priv(vcpu)->cp15.c0_isar4 = 0x00111142;
+		arm_priv(vcpu)->cp15.c0_isar5 = 0x0;
 		arm_priv(vcpu)->cp15.c0_clid = (1 << 27) | (1 << 24) | 3;
 		arm_priv(vcpu)->cp15.c0_ccsid[0] = 0xe00fe015;	/* 16k L1 dcache. */
 		arm_priv(vcpu)->cp15.c0_ccsid[1] = 0x200fe015;	/* 16k L1 icache. */
@@ -2018,7 +2379,51 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		break;
 	default:
 		break;
-	};
+	}
+
+#if defined(CONFIG_ARMV7A)
+	if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+		/* Cache config register such as CTR, CLIDR, and CCSIDRx
+		 * should be same as that of underlying host.
+		 */
+		arm_priv(vcpu)->cp15.c0_cachetype = read_ctr();
+		arm_priv(vcpu)->cp15.c0_clid = read_clidr();
+		last_level = (arm_priv(vcpu)->cp15.c0_clid & CLIDR_LOUU_MASK) 
+							>> CLIDR_LOUU_SHIFT;
+		for (i = 0; i <= last_level; i++) {
+			cache_type = arm_priv(vcpu)->cp15.c0_clid >> (i * 3);
+			cache_type &= 0x7;
+			switch (cache_type) {
+			case CLIDR_CTYPE_ICACHE:
+				write_csselr((i << 1) | 1);
+				arm_priv(vcpu)->cp15.c0_ccsid[(i << 1) | 1] = 
+								read_ccsidr();
+				break;
+			case CLIDR_CTYPE_DCACHE:
+			case CLIDR_CTYPE_UNICACHE:
+				write_csselr(i << 1);
+				arm_priv(vcpu)->cp15.c0_ccsid[i << 1] = 
+								read_ccsidr();
+				break;
+			case CLIDR_CTYPE_SPLITCACHE:
+				write_csselr(i << 1);
+				arm_priv(vcpu)->cp15.c0_ccsid[i << 1] = 
+								read_ccsidr();
+				write_csselr((i << 1) | 1);
+				arm_priv(vcpu)->cp15.c0_ccsid[(i << 1) | 1] = 
+								read_ccsidr();
+				break;
+			case CLIDR_CTYPE_NOCACHE:
+			case CLIDR_CTYPE_RESERVED1:
+			case CLIDR_CTYPE_RESERVED2:
+			case CLIDR_CTYPE_RESERVED3:
+				arm_priv(vcpu)->cp15.c0_ccsid[i << 1] = 0;
+				arm_priv(vcpu)->cp15.c0_ccsid[(i << 1) | 1] = 0;
+				break;
+			};
+		}
+	}
+#endif
 
 	return rc;
 }
@@ -2033,7 +2438,7 @@ int cpu_vcpu_cp15_deinit(struct vmm_vcpu *vcpu)
 
 	vmm_free(arm_priv(vcpu)->cp15.vtlb.table);
 
-	vmm_memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
+	memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
 
 	return VMM_OK;
 }

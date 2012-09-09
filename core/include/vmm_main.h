@@ -24,12 +24,18 @@
 #define _VMM_MAIN_H__
 
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 
 /** Hang hypervisor */
-void vmm_hang(void);
+void __noreturn vmm_hang(void);
 
 /** Initialize hypervisor */
 void vmm_init(void);
+
+#if defined(CONFIG_SMP)
+/** Initialize hypervisor for secondary CPUs */
+void vmm_init_secondary(void);
+#endif
 
 /** Reset hypervisor */
 void vmm_reset(void);

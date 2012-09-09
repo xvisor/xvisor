@@ -23,15 +23,15 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_vserial.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			cmd_vserial_module
-#define MODULE_NAME			"Command vserial"
+#define MODULE_DESC			"Command vserial"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_vserial_init
 #define	MODULE_EXIT			cmd_vserial_exit
@@ -70,12 +70,10 @@ void cmd_vserial_recv(struct vmm_vserial *vser, void * priv, u8 ch)
 		recvcntx->chpos = 0;
 	} else if (ch == '\r') {
 		/* Emulate the effect of '\r' character */
-		while (recvcntx->chpos) {
-			vmm_cputc(recvcntx->cdev, '\e');
-			vmm_cputc(recvcntx->cdev, '[');
-			vmm_cputc(recvcntx->cdev, 'D');
-			recvcntx->chpos--;
+		if (recvcntx->chpos) {
+			vmm_cprintf(recvcntx->cdev, "\e[%dD", recvcntx->chpos);
 		}
+		recvcntx->chpos = 0;
 	} else if (ch == '\e' || recvcntx->ecount > 0) {
 		/* Increment ecount till entire ANSI/VT100
 		 * command is detected. Upon detecting end 
@@ -144,7 +142,7 @@ int cmd_vserial_bind(struct vmm_chardev *cdev, const char *name)
 
 	epos = 0;
 	while(1) {
-		if (!vmm_scanchar(NULL, cdev, &ch, TRUE)) {
+		if (!vmm_scanchars(cdev, &ch, 1, TRUE)) {
 			if (epos < sizeof(estr)) {
 				if (estr[epos] == ch) {
 					epos++;
@@ -222,10 +220,10 @@ int cmd_vserial_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int bcount = -1;
 	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_vserial_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "list") == 0) {
+		} else if (strcmp(argv[1], "list") == 0) {
 			cmd_vserial_list(cdev);
 			return VMM_OK;
 		}
@@ -234,11 +232,11 @@ int cmd_vserial_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		cmd_vserial_usage(cdev);
 		return VMM_EFAIL;
 	}
-	if (vmm_strcmp(argv[1], "bind") == 0) {
+	if (strcmp(argv[1], "bind") == 0) {
 		return cmd_vserial_bind(cdev, argv[2]);
-	} else if (vmm_strcmp(argv[1], "dump") == 0) {
+	} else if (strcmp(argv[1], "dump") == 0) {
 		if (4 <= argc) {
-			bcount = vmm_str2int(argv[3], 10);
+			bcount = str2int(argv[3], 10);
 		}
 		return cmd_vserial_dump(cdev, argv[2], bcount);
 	} else {
@@ -260,14 +258,14 @@ static int __init cmd_vserial_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_vserial);
 }
 
-static void cmd_vserial_exit(void)
+static void __exit cmd_vserial_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_vserial);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

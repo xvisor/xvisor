@@ -24,6 +24,7 @@
 #define __GIC_H__
 
 #include <vmm_types.h>
+#include <vmm_cpumask.h>
 
 /* Include GIC configuration defines/macros 
  * provided by board specific code 
@@ -51,6 +52,12 @@
 #define GIC_DIST_SOFTINT		0xf00
 
 u32 gic_active_irq(u32 gic_nr);
+
+void gic_enable_ppi(u32 irq);
+
+#if defined(CONFIG_SMP)
+void gic_raise_softirq(const struct vmm_cpumask *mask, u32 irq);
+#endif
 
 int gic_init(u32 gic_nr, u32 irq_start, 
 	     virtual_addr_t cpu_base, virtual_addr_t dist_base);

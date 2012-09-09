@@ -23,7 +23,7 @@
 
 #include <vmm_main.h>
 #include <vmm_error.h>
-#include <arch_cpu.h>
+#include <vmm_smp.h>
 #include <cpu_mmu.h>
 
 extern u8 _code_start;
@@ -66,8 +66,18 @@ int __init arch_cpu_final_init(void)
 
 void __init cpu_init(void)
 {
+#if defined(CONFIG_SMP)
+	u32 cpu = vmm_smp_processor_id();
+
+	if (!cpu) { /* Primary CPU */
+		vmm_init();
+	} else { /* Secondary CPUs */
+		vmm_init_secondary();
+	}
+#else
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
+#endif
 
 	/* We will never come back here. */
 	while (1);

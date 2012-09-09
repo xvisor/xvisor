@@ -32,18 +32,18 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_timer.h>
 #include <vmm_wallclock.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
-#define MODULE_VARID			pl031_emulator_module
-#define MODULE_NAME			"PL011 Serial Emulator"
+#define MODULE_DESC			"PL031 RTC Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			pl031_emulator_init
 #define	MODULE_EXIT			pl031_emulator_exit
@@ -59,7 +59,7 @@
 
 struct pl031_state {
 	struct vmm_guest *guest;
-	struct vmm_timer_event *event;
+	struct vmm_timer_event event;
 	vmm_spinlock_t lock;
 	u32 irq;
 	u32 tick_offset;
@@ -106,11 +106,11 @@ static void pl031_set_alarm(struct pl031_state *s)
 	 * and gives correct results when alarm < now_ticks.  */
 	ticks = s->mr - ticks;
 	if (ticks == 0) {
-		vmm_timer_event_stop(s->event);
+		vmm_timer_event_stop(&s->event);
 		s->im = 1;
 		pl031_update(s);
 	} else {
-		vmm_timer_event_start(s->event, 
+		vmm_timer_event_start(&s->event, 
 				      ((u64)ticks) * ((u64)1000000000));
 	}
 }
@@ -278,7 +278,7 @@ static int pl031_emulator_reset(struct vmm_emudev *edev)
 
 	vmm_spin_lock(&s->lock);
 
-	vmm_timer_event_stop(s->event);
+	vmm_timer_event_stop(&s->event);
 	s->im = 0;
 	pl031_update(s);
 
@@ -292,7 +292,6 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 				const struct vmm_emuid *eid)
 {
 	int rc = VMM_OK;
-	char tname[64];
 	const char *attr;
 	struct vmm_timeval tv;
 	struct vmm_timezone tz;
@@ -303,7 +302,7 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto pl031_emulator_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct pl031_state));
+	memset(s, 0x0, sizeof(struct pl031_state));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
@@ -316,17 +315,10 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 		goto pl031_emulator_probe_freestate_fail;
 	}
 
-	vmm_strcpy(tname, guest->node->name);
-	vmm_strcat(tname, VMM_DEVTREE_PATH_SEPARATOR_STRING);
-	vmm_strcat(tname, edev->node->name);
-	s->event = vmm_timer_event_create(tname, &pl031_timer_event, s);
-	if (!(s->event)) {
-		rc = VMM_EFAIL;
-		goto pl031_emulator_probe_freestate_fail;
-	}
+	INIT_TIMER_EVENT(&s->event, &pl031_timer_event, s);
 
 	if ((rc = vmm_wallclock_get_timeofday(&tv, &tz))) {
-		goto pl031_emulator_probe_freeevent_fail;
+		goto pl031_emulator_probe_freestate_fail;
 	}
         s->tick_offset = (u32)(tv.tv_sec - (tz.tz_minuteswest * 60));
 	s->tick_tstamp = vmm_timer_timestamp();
@@ -335,8 +327,6 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 
 	goto pl031_emulator_probe_done;
 
-pl031_emulator_probe_freeevent_fail:
-	vmm_timer_event_destroy(s->event);
 pl031_emulator_probe_freestate_fail:
 	vmm_free(s);
 pl031_emulator_probe_done:
@@ -348,7 +338,6 @@ static int pl031_emulator_remove(struct vmm_emudev *edev)
 	struct pl031_state * s = edev->priv;
 
 	if (s) {
-		vmm_timer_event_destroy(s->event);
 		vmm_free(s);
 		edev->priv = NULL;
 	}
@@ -379,14 +368,14 @@ static int __init pl031_emulator_init(void)
 	return vmm_devemu_register_emulator(&pl031_emulator);
 }
 
-static void pl031_emulator_exit(void)
+static void __exit pl031_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&pl031_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

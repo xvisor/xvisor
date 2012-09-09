@@ -200,7 +200,7 @@ int __init omap3_gpt_clocksource_init(u32 gpt_num, physical_addr_t prm_pa)
 
 	omap3_gpt_continuous(gpt_num);
 
-	cs = vmm_malloc(sizeof(struct omap3_gpt_clocksource));
+	cs = vmm_zalloc(sizeof(struct omap3_gpt_clocksource));
 	if (!cs) {
 		return VMM_EFAIL;
 	}
@@ -313,7 +313,7 @@ int __init omap3_gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa)
 
 	omap3_gpt_write(gpt_num, OMAP3_GPT_TCLR, 0);
 
-	cc = vmm_malloc(sizeof(struct omap3_gpt_clockchip));
+	cc = vmm_zalloc(sizeof(struct omap3_gpt_clockchip));
 	if (!cc) {
 		return VMM_EFAIL;
 	}
@@ -335,18 +335,10 @@ int __init omap3_gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa)
 	cc->clkchip.expire = &omap3_gpt_clockchip_expire;
 	cc->clkchip.priv = cc;
 
-	/* Disable GPT irq for sanity */
-	vmm_host_irq_disable(omap3_gpt_config[gpt_num].irq_no);
-
 	/* Register interrupt handler */
-	rc = vmm_host_irq_register(omap3_gpt_config[gpt_num].irq_no, 
+	rc = vmm_host_irq_register(omap3_gpt_config[gpt_num].irq_no,
+				   omap3_gpt_config[gpt_num].name,
 				   &omap3_gpt_clockevent_irq_handler, cc);
-	if (rc) {
-		return rc;
-	}
-
-	/* Enabled GPT irq */
-	rc = vmm_host_irq_enable(omap3_gpt_config[gpt_num].irq_no);
 	if (rc) {
 		return rc;
 	}

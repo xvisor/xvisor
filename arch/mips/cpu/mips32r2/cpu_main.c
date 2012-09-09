@@ -22,7 +22,6 @@
  */
 
 #include <arch_cpu.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_main.h>

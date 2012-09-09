@@ -22,13 +22,13 @@
  */
 
 #include <arch_cpu.h>
+#include <arch_sections.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_types.h>
+#include <stringlib.h>
 #include <cpu_mmu.h>
-#include <arch_sections.h>
 
 extern u8 _code_end;
 extern u8 _code_start;
@@ -59,13 +59,13 @@ create_cpu_boot_pgtable_entry(virtual_addr_t va,
 
 	for (i = 0; i < sz / PAGE_SIZE; i++) {
 		offset = VIRT_TO_PGTI(va) + (VIRT_TO_PGDI(va) * 512);
-		vmm_memset((void *)&pg, 0, sizeof(pg));
+		memset((void *)&pg, 0, sizeof(pg));
 		pg.bits.paddr = (pa >> PAGE_SHIFT);
 		pg.bits.present = 1;
 		pg.bits.rw = 1;
 		__pgti[offset] = pg._val;
 
-		vmm_memset((void *)&pg, 0, sizeof(pg));
+		memset((void *)&pg, 0, sizeof(pg));
 		pg.bits.paddr = VIRT_TO_PHYS((u64)(&__pgti[offset])
 					     & PAGE_MASK) >> PAGE_SHIFT;
 		pg.bits.present = 1;
@@ -73,7 +73,7 @@ create_cpu_boot_pgtable_entry(virtual_addr_t va,
 		offset = VIRT_TO_PGDI(va);
 		__pgdi[offset] = pg._val;
 
-		vmm_memset((void *)&pg, 0, sizeof(pg));
+		memset((void *)&pg, 0, sizeof(pg));
 		pg.bits.paddr = VIRT_TO_PHYS((u64)(&__pgdi[offset])
 					     & PAGE_MASK) >> PAGE_SHIFT;
 		pg.bits.present = 1;
@@ -81,7 +81,7 @@ create_cpu_boot_pgtable_entry(virtual_addr_t va,
 		offset = VIRT_TO_PGDP(va);
 		__pgdp[offset] = pg._val;
 
-		vmm_memset((void *)&pg, 0, sizeof(pg));
+		memset((void *)&pg, 0, sizeof(pg));
 		pg.bits.paddr = VIRT_TO_PHYS((u64)(&__pgdp[offset])
 					     & PAGE_MASK) >> PAGE_SHIFT;
 		pg.bits.present = 1;
@@ -118,13 +118,13 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 
 	for (i = 0; i < sz / PAGE_SIZE; i++) {
 		offset = VIRT_TO_PGTI(va) + (VIRT_TO_PGDI(va) * 512);
-		vmm_memset((void *)&pg, 0, sizeof(pg));
+		memset((void *)&pg, 0, sizeof(pg));
 		pg.bits.paddr = (pa >> PAGE_SHIFT);
 		pg.bits.present = 1;
 		pg.bits.rw = 1;
 		pgti[offset] = pg._val;
 
-		vmm_memset((void *)&pg, 0, sizeof(pg));
+		memset((void *)&pg, 0, sizeof(pg));
 		pg.bits.paddr = VIRT_TO_PHYS((u64)(&pgti[offset])
 					     & PAGE_MASK) >> PAGE_SHIFT;
 		pg.bits.present = 1;
@@ -132,7 +132,7 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 		offset = VIRT_TO_PGDI(va);
 		pgdi[offset] = pg._val;
 
-		vmm_memset((void *)&pg, 0, sizeof(pg));
+		memset((void *)&pg, 0, sizeof(pg));
 		pg.bits.paddr = VIRT_TO_PHYS((u64)(&pgdi[offset])
 					     & PAGE_MASK) >> PAGE_SHIFT;
 		pg.bits.present = 1;
@@ -140,7 +140,7 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 		offset = VIRT_TO_PGDP(va);
 		pgdp[offset] = pg._val;
 
-		vmm_memset((void *)&pg, 0, sizeof(pg));
+		memset((void *)&pg, 0, sizeof(pg));
 		pg.bits.paddr = VIRT_TO_PHYS((u64)(&pgdp[offset])
 					     & PAGE_MASK) >> PAGE_SHIFT;
 		pg.bits.present = 1;
@@ -158,7 +158,26 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 int arch_cpu_aspace_unmap(virtual_addr_t va,
 			 virtual_size_t sz)
 {
-	/* FIXME: */
+	u32 offset;
+	union page *pg;
+	int i;
+
+	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
+
+	for (i = 0; i < sz / PAGE_SIZE; i++) {
+		/*
+		 * FIXME: As all the PGTI is freed, mark PGD, PMD, and PML
+		 * as not present.
+		 */
+		offset = VIRT_TO_PGTI(va) + (VIRT_TO_PGDI(va) * 512);
+		pg = (union page *)&pgti[offset];
+		pg->_val = 0;
+
+		invalidate_vaddr_tlb(va);
+
+		va += PAGE_SIZE;
+	}
+
 	return VMM_OK;
 }
 
@@ -239,6 +258,38 @@ int arch_cpu_aspace_init(physical_addr_t *core_resv_pa,
 
 int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 {
+	u32 offset;
+	union page *pg;
+	u64 *pg_e, fpa;
+
+	/* PML4 */
+	offset = VIRT_TO_PML4(va);
+	pg = (union page *)&pml4[offset];
+	if (!pg->bits.present) return VMM_EFAIL;
+
+	/* PGDP */
+	pg_e = (u64 *)PHYS_TO_VIRT((pg->bits.paddr << PAGE_SHIFT));
+	offset = VIRT_TO_PGDP(va);
+	pg = (union page *)&pg_e[offset];
+	if (!pg->bits.present) return VMM_EFAIL;
+
+	/* PGDI */
+	pg_e = (u64 *)PHYS_TO_VIRT((pg->bits.paddr << PAGE_SHIFT));
+	offset = VIRT_TO_PGDI(va);
+	pg = (union page *)&pg_e[offset];
+	if (!pg->bits.present) return VMM_EFAIL;
+
+	/* PGTI */
+	pg_e = (u64 *)PHYS_TO_VIRT((pg->bits.paddr << PAGE_SHIFT));
+	offset = VIRT_TO_PGTI(va);
+	pg = (union page *)&pg_e[offset];
+	if (!pg->bits.present) return VMM_EFAIL;
+
+	fpa = (u64)(pg->bits.paddr << PAGE_SHIFT);
+	fpa |= va & ~PAGE_MASK;
+
+	*pa = fpa;
+
 	return VMM_OK;
 }
 

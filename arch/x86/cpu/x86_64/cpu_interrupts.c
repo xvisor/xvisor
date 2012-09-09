@@ -25,17 +25,13 @@
 #include <vmm_types.h>
 #include <vmm_host_irq.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
-#include <cpu_timer.h>
-#include <cpu_mmu.h>
-#include <cpu_interrupts.h>
 #include <vmm_scheduler.h>
 #include <arch_cpu.h>
 #include <arch_sections.h>
-
-#if CONFIG_LOCAL_APIC
-#include <cpu_apic.h>
-#endif
+#include <stringlib.h>
+#include <cpu_timer.h>
+#include <cpu_mmu.h>
+#include <cpu_interrupts.h>
 
 static struct gate_descriptor int_desc_table[256] __attribute__((aligned(8)));
 static struct idt64_ptr iptr;
@@ -44,7 +40,7 @@ extern struct tss64_desc __xvisor_tss_64_desc;
 
 static int install_idt(void)
 {
-	vmm_memset(&int_desc_table, 0, sizeof(int_desc_table));
+	memset(&int_desc_table, 0, sizeof(int_desc_table));
 
 	iptr.idt_base = VIRT_TO_PHYS(&int_desc_table[0]);
 	iptr.idt_limit = sizeof(int_desc_table) - 1;
@@ -77,7 +73,7 @@ static int set_idt_gate_handler(u32 gatenum, physical_addr_t handler_base,
 	else if (flags & IDT_GATE_TYPE_CALL)
 		idt_entry->ot.bits.type = _GATE_TYPE_CALL;
 	else {
-		vmm_memset(idt_entry, 0, sizeof(*idt_entry));
+		memset(idt_entry, 0, sizeof(*idt_entry));
 		return VMM_EFAIL;
 	}
 
@@ -142,6 +138,12 @@ static void install_tss_64_descriptor(struct tss_64 *init_tss)
 
 static void setup_gate_handlers(void)
 {
+	u32 i;
+
+	/* Install default handler for all interrupts, then cherry pick */
+	for (i = 0; i < 256; i++)
+		set_interrupt_gate(i, VIRT_TO_PHYS(_generic_handler));
+
 	set_trap_gate(0, VIRT_TO_PHYS(_irq0));	/* divide error */
 	set_trap_gate(1, VIRT_TO_PHYS(_irq1));	/* debug */
 	set_trap_gate(3, VIRT_TO_PHYS(_irq3));	/* Breakpoint */
@@ -159,7 +161,6 @@ static void setup_gate_handlers(void)
 	set_trap_gate(17, VIRT_TO_PHYS(_irq17));/* alignment check */
 	set_trap_gate(18, VIRT_TO_PHYS(_irq18));/* machine check */
 	set_trap_gate(19, VIRT_TO_PHYS(_irq19));/* simd coproc error */
-	set_trap_gate(128, VIRT_TO_PHYS(_irq128));/* system call */
 
 	set_interrupt_gate(2, VIRT_TO_PHYS(_irq2));/* NMI */
 	set_interrupt_gate(14, VIRT_TO_PHYS(_irq14));/* page fault */
@@ -172,19 +173,23 @@ int arch_cpu_irq_setup(void)
 	install_idt();
 	setup_gate_handlers();
 
-#if CONFIG_LOCAL_APIC
-	apic_init();
-#endif
-
         return 0;
 }
 
 void arch_cpu_irq_enable(void)
 {
+	__asm__ __volatile__("sti\n\t");
 }
 
 void arch_cpu_irq_disable(void)
 {
+	__asm__ __volatile__("cli\n\t");
+}
+
+/* FIXME: */
+bool arch_cpu_irq_disabled(void)
+{
+	return FALSE;
 }
 
 irq_flags_t arch_cpu_irq_save(void)
@@ -206,5 +211,24 @@ void arch_cpu_wait_for_irq(void)
 /* All Handlers */
 int do_breakpoint(int intno, arch_regs_t *regs)
 {
+	return 0;
+}
+
+int do_gpf(int intno, arch_regs_t *regs)
+{
+	vmm_printf("!!!! GENERAL PROTECTION FAULT !!!!\n");
+	while(1);
+
+	return 0;
+}
+
+int do_generic_int_handler(int intno, arch_regs_t *regs)
+{
+	vmm_printf("Generic int no %d\n", intno);
+
+	vmm_scheduler_irq_enter(regs, FALSE);
+	vmm_host_irq_exec(intno, regs);
+	vmm_scheduler_irq_exit(regs);
+
 	return 0;
 }

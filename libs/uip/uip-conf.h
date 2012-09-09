@@ -42,7 +42,7 @@
  *
  * This file is part of the uIP TCP/IP stack
  *
- * $Id: uip-conf.h,v 1.6 2006/06/12 08:00:31 adam Exp $
+ * $Id: uip-conf.h,v 1.1 2007/01/04 11:06:42 adamdunkels Exp $
  */
 
 /**
@@ -55,6 +55,25 @@
 #ifndef __UIP_CONF_H__
 #define __UIP_CONF_H__
 
+#include <vmm_types.h>
+
+/**
+ * 8 bit datatype
+ *
+ * This typedef defines the 8-bit type used throughout uIP.
+ *
+ * \hideinitializer
+ */
+typedef u8 u8_t;
+
+/**
+ * 16 bit datatype
+ *
+ * This typedef defines the 16-bit type used throughout uIP.
+ *
+ * \hideinitializer
+ */
+typedef u16 u16_t;
 /**
  * Statistics datatype
  *
@@ -101,11 +120,35 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_LOGGING         0
 
 /**
+ * UDP support on or off
+ *
+ * \hideinitializer
+ */
+#define UIP_CONF_UDP             1
+
+/**
+ * UDP checksums on or off
+ *
+ * \hideinitializer
+ */
+#define UIP_CONF_UDP_CHECKSUMS   1
+
+/**
  * uIP statistics on or off
  *
  * \hideinitializer
  */
 #define UIP_CONF_STATISTICS      0
+
+/* Here we include the header file for the application(s) we use in
+   our project. */
+/*#include "smtp.h"*/
+/*#include "hello-world.h"*/
+/*#include "telnetd.h"*/
+/*#include "webserver.h"*/
+/*#include "dhcpc.h"*/
+/*#include "resolv.h"*/
+/*#include "webclient.h"*/
 
 #endif /* __UIP_CONF_H__ */
 
