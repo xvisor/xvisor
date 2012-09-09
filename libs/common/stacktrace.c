@@ -38,8 +38,7 @@ void print_stacktrace(struct stack_trace *trace)
 	int i;
 	char symname[KSYM_NAME_LEN];
 
-	if(!trace->entries) {
-		WARN();
+	if(WARN_ON(!trace->entries)) {
 		return;
 	}
 

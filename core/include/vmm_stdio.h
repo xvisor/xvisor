@@ -49,7 +49,17 @@
 		(x);							\
 	})
 
-#define WARN()	WARN_ON(1)
+#define WARN(x, msg...)							\
+	({								\
+		if (x) {						\
+			vmm_printf("Warning: " msg);			\
+			vmm_printf("Warning in %s() at %s:%d\n",	\
+				   __func__, __FILE__, __LINE__);	\
+			dump_stacktrace();				\
+		}							\
+		(x);							\
+	})
+
 
 /** Check if a character is a control character */
 bool vmm_iscontrol(char c);
