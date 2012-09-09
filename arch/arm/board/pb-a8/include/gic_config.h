@@ -23,16 +23,7 @@
 #ifndef _GIC_CONFIG_H__
 #define _GIC_CONFIG_H__
 
-#include <pba8_board.h>
-
-#if !defined(GIC_NR_IRQS) || (GIC_NR_IRQS < NR_IRQS_PBA8)
-#undef GIC_NR_IRQS
-#define GIC_NR_IRQS		NR_IRQS_PBA8
-#endif
-
-#if !defined(GIC_MAX_NR) || (GIC_MAX_NR < NR_GIC_PBA8)
-#undef GIC_MAX_NR
-#define GIC_MAX_NR		NR_GIC_PBA8
-#endif
+#define GIC_NR_IRQS		96
+#define GIC_MAX_NR		1
 
 #endif /* _GIC_CONFIG_H__ */

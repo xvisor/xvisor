@@ -10,6 +10,8 @@
 	};
 
 	host {
+		#address-cells = <1>;
+		#size-cells = <1>;
 		model = "vexpress-a15";
 		device_type = "host";
 		
@@ -30,8 +32,19 @@
 			physical_size = <0x10000000>; /* 256 MB */
 		};
 
-		nbridge {
-			sbridge {
+		gic { /* Generic Interrupt Controller */
+	      		device_type = "pic";
+	      		compatible = "arm,gic";
+	      		reg = <0x2C001000 0x1000
+			       0x2C002000 0x1000>;
+			irq_start = <26>;
+		};
+
+		motherboard {
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			iofpga {
 				#address-cells = <1>;
 				#size-cells = <1>;
 

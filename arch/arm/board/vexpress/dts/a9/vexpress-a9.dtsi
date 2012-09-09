@@ -10,6 +10,8 @@
 	};
 
 	host {
+		#address-cells = <1>;
+		#size-cells = <1>;
 		model = "vexpress-a9";
 		device_type = "host";
 		
@@ -30,8 +32,27 @@
 			physical_size = <0x10000000>; /* 256 MB */
 		};
 
-		nbridge {
-			sbridge {
+		gic { /* Generic Interrupt Controller */
+	      		device_type = "pic";
+	      		compatible = "arm,gic";
+	      		reg = <0x1E001000 0x1000
+			       0x1E000100 0x1000>;
+			irq_start = <29>;
+		};
+
+		motherboard {
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			eth0 {
+				device_type = "nic";
+				compatible = "smc911x";
+				reg = <0x4E000000 0x1000>;
+				irq = <47>;
+				switch = "netbridge0";
+			};
+
+			iofpga {
 				#address-cells = <1>;
 				#size-cells = <1>;
 
@@ -72,14 +93,6 @@
 			      		device_type = "fb";
 			      		compatible = "ambaclcd";
 			      		reg = <0x10020000 0x1000>;
-				};
-
-				eth0 {
-					device_type = "nic";
-					compatible = "smc911x";
-					reg = <0x4E000000 0x1000>;
-					irq = <47>;
-					switch = "netbridge0";
 				};
 			};
 		};

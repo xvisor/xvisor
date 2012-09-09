@@ -24,7 +24,6 @@
 #define _ARCH_HOST_IRQ_H__
 
 #include <vmm_types.h>
-#include <vmm_host_aspace.h>
 #include <gic.h>
 
 #define ARCH_HOST_IRQ_COUNT			GIC_NR_IRQS
@@ -38,12 +37,18 @@ static inline u32 arch_host_irq_active(u32 cpu_irq_no)
 /* Initialize board specifig host irq hardware (i.e PIC) */
 static inline int arch_host_irq_init(void)
 {
-	virtual_addr_t dist_base, cpu_base;
+	struct vmm_devtree_node *node;
 
-	dist_base = vmm_host_iomap(REALVIEW_PBA8_GIC_DIST_BASE, 0x1000);
-	cpu_base = vmm_host_iomap(REALVIEW_PBA8_GIC_CPU_BASE, 0x1000);
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "gic");
+	if (!node) {
+		return VMM_ENODEV;
+	}
 
-	return gic_init(0, IRQ_PBA8_GIC_START, cpu_base, dist_base);
+	return gic_devtree_init(node, NULL);
 }
 
 #endif

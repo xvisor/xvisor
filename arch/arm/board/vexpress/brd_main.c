@@ -414,8 +414,8 @@ int __init arch_board_final_init(void)
 	/* Setup CLCD (before probing) */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
 				   VMM_DEVTREE_PATH_SEPARATOR_STRING "clcd");
 	if (node) {
 		node->system_data = &clcd_system_data;
@@ -424,7 +424,7 @@ int __init arch_board_final_init(void)
 	/* Do Probing using device driver framework */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge");
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard");
 
 	if (!node) {
 		return VMM_ENOTAVAIL;

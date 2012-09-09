@@ -74,7 +74,7 @@
 #define V2M_CF			(V2M_PA_CS7 + 0x0001a000)
 #define V2M_CLCD		(V2M_PA_CS7 + 0x0001f000)
 
-#elif defined(CONFIG_CPU_CORTEX_A15) || defined(CONFIG_CPU_CORTEX_A15_VE)
+#else /* Assume VExpress for Cortex-A15 or later */
 
 #include <ct-ca15x4.h>
 

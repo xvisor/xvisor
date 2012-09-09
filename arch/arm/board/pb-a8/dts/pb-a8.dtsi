@@ -31,9 +31,31 @@
 		};
 
 		nbridge {
+			clcd {
+		      		device_type = "fb";
+		      		compatible = "ambaclcd";
+		      		reg = <0x10020000 0x1000>;
+			};
+
+			eth0 {
+				device_type = "nic";
+				compatible = "smc911x";
+				reg = <0x4E000000 0x1000>;
+				irq = <60>;
+				switch = "netbridge0";
+			};
+
 			sbridge {
 				#address-cells = <1>;
 				#size-cells = <1>;
+
+				gic { /* Generic Interrupt Controller */
+			      		device_type = "pic";
+			      		compatible = "arm,gic";
+			      		reg = <0x1E001000 0x1000
+					       0x1E000000 0x1000>;
+					irq_start = <32>;
+				};
 
 				kmi0 { /* Keyboard */
 			      		device_type = "serio";
@@ -66,20 +88,6 @@
 			      		reg = <0x10017000 0x1000>;
 					clock-rate = <1>;
 					irq = <42>;
-				};
-
-				clcd {
-			      		device_type = "fb";
-			      		compatible = "ambaclcd";
-			      		reg = <0x10020000 0x1000>;
-				};
-
-				eth0 {
-					device_type = "nic";
-					compatible = "smc911x";
-					reg = <0x4E000000 0x1000>;
-					irq = <60>;
-					switch = "netbridge0";
 				};
 			};
 		};

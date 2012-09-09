@@ -420,7 +420,6 @@ int __init arch_board_final_init(void)
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
 				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
 				   VMM_DEVTREE_PATH_SEPARATOR_STRING "clcd");
 	if (node) {
 		node->system_data = &clcd_system_data;
