@@ -23,115 +23,6 @@
 #ifndef __MOTHERBOARD_H__
 #define __MOTHERBOARD_H__
 
-#if defined(CONFIG_CPU_CORTEX_A9)
-
-#include <ct-ca9x4.h>
-
-/*
- * V2M Chip Select Physical Addresses 
- */
-#define V2M_PA_CS0		0x40000000
-#define V2M_PA_CS1		0x44000000
-#define V2M_PA_CS2		0x48000000
-#define V2M_PA_CS3		0x4c000000
-#define V2M_PA_CS7		0x10000000
-
-/*
- * Physical addresses, offset from V2M_PA_CS0-3
- */
-#define V2M_NOR0		(V2M_PA_CS0)
-#define V2M_NOR1		(V2M_PA_CS1)
-#define V2M_SRAM		(V2M_PA_CS2)
-#define V2M_VIDEO_SRAM		(V2M_PA_CS3 + 0x00000000)
-#define V2M_LAN9118		(V2M_PA_CS3 + 0x02000000)
-#define V2M_ISP1761		(V2M_PA_CS3 + 0x03000000)
-
-/*
- * Physical addresses, offset from V2M_PA_CS7
- */
-#define V2M_SYSREGS		(V2M_PA_CS7 + 0x00000000)
-#define V2M_SYSCTL		(V2M_PA_CS7 + 0x00001000)
-#define V2M_SERIAL_BUS_PCI	(V2M_PA_CS7 + 0x00002000)
-
-#define V2M_AACI		(V2M_PA_CS7 + 0x00004000)
-#define V2M_MMCI		(V2M_PA_CS7 + 0x00005000)
-#define V2M_KMI0		(V2M_PA_CS7 + 0x00006000)
-#define V2M_KMI1		(V2M_PA_CS7 + 0x00007000)
-
-#define V2M_UART0		(V2M_PA_CS7 + 0x00009000)
-#define V2M_UART1		(V2M_PA_CS7 + 0x0000a000)
-#define V2M_UART2		(V2M_PA_CS7 + 0x0000b000)
-#define V2M_UART3		(V2M_PA_CS7 + 0x0000c000)
-
-#define V2M_WDT			(V2M_PA_CS7 + 0x0000f000)
-
-#define V2M_TIMER01		(V2M_PA_CS7 + 0x00011000)
-#define V2M_TIMER23		(V2M_PA_CS7 + 0x00012000)
-
-#define V2M_SERIAL_BUS_DVI	(V2M_PA_CS7 + 0x00016000)
-#define V2M_RTC			(V2M_PA_CS7 + 0x00017000)
-
-#define V2M_CF			(V2M_PA_CS7 + 0x0001a000)
-#define V2M_CLCD		(V2M_PA_CS7 + 0x0001f000)
-
-#else /* Assume VExpress for Cortex-A15 or later */
-
-#include <ct-ca15x4.h>
-
-/* CS0: 0x00000000 .. 0x0c000000 */
-#define V2M_PA_CS0		0x00000000
-/* CS4: 0x0c000000 .. 0x10000000 */
-#define V2M_PA_CS4		0x0c000000
-/* CS5: 0x10000000 .. 0x14000000 */
-#define V2M_PA_CS5		0x10000000
-/* CS1: 0x14000000 .. 0x18000000 */
-#define V2M_PA_CS1		0x14000000
-/* CS2: 0x18000000 .. 0x1c000000 */
-#define V2M_PA_CS2		0x18000000
-/* CS3: 0x1c000000 .. 0x20000000 */
-#define V2M_PA_CS3		0x1c000000
-
-/*
-* Physical addresses, offset from V2M_PA_CS0-3
-*/
-#define V2M_NOR0		(V2M_PA_CS0)
-#define V2M_NOR0ALIAS		(V2M_PA_CS0 + 0x08000000)
-#define V2M_NOR1		(V2M_PA_CS4)
-#define V2M_SRAM		(V2M_PA_CS1)
-#define V2M_VIDEO_SRAM		(V2M_PA_CS2 + 0x00000000)
-#define V2M_LAN9118		(V2M_PA_CS2 + 0x02000000)
-#define V2M_ISP1761		(V2M_PA_CS2 + 0x03000000)
-
-/*
-* Physical addresses, offset from V2M_PA_CS3
-*/
-#define V2M_SYSREGS		(V2M_PA_CS3 + 0x00010000)
-#define V2M_SYSCTL		(V2M_PA_CS3 + 0x00020000)
-#define V2M_SERIAL_BUS_PCI	(V2M_PA_CS3 + 0x00030000)
-
-#define V2M_AACI		(V2M_PA_CS3 + 0x00040000)
-#define V2M_MMCI		(V2M_PA_CS3 + 0x00050000)
-#define V2M_KMI0		(V2M_PA_CS3 + 0x00060000)
-#define V2M_KMI1		(V2M_PA_CS3 + 0x00070000)
-
-#define V2M_UART0		(V2M_PA_CS3 + 0x00090000)
-#define V2M_UART1		(V2M_PA_CS3 + 0x000a0000)
-#define V2M_UART2		(V2M_PA_CS3 + 0x000b0000)
-#define V2M_UART3		(V2M_PA_CS3 + 0x000c0000)
-
-#define V2M_WDT			(V2M_PA_CS3 + 0x000f0000)
-
-#define V2M_TIMER01		(V2M_PA_CS3 + 0x00110000)
-#define V2M_TIMER23		(V2M_PA_CS3 + 0x00120000)
-
-#define V2M_SERIAL_BUS_DVI	(V2M_PA_CS3 + 0x00160000)
-#define V2M_RTC			(V2M_PA_CS3 + 0x00170000)
-
-#define V2M_CF			(V2M_PA_CS3 + 0x001a0000)
-#define V2M_CLCD		(V2M_PA_CS3 + 0x001f0000)
-
-#endif
-
 /*
  * Offsets from SYSREGS base
  */
@@ -179,14 +70,6 @@
 #define IRQ_V2M_LAN9118		(32 + 15)
 #define IRQ_V2M_ISP1761		(32 + 16)
 #define IRQ_V2M_PCIE		(32 + 17)
-
-#define IRQ_LOCALTIMER		29
-#define IRQ_LOCALWDOG		30
-
-#define IRQ_HYPTIMER		26
-#define IRQ_VIRTIMER		27
-#define IRQ_SPHYSTIMER		29
-#define IRQ_NSPHYSTIMER		30
 
 /*
  * Configuration

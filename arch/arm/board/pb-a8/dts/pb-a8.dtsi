@@ -31,6 +31,9 @@
 		};
 
 		nbridge {
+			#address-cells = <1>;
+			#size-cells = <1>;
+
 			clcd {
 		      		device_type = "fb";
 		      		compatible = "ambaclcd";
@@ -51,10 +54,22 @@
 
 				gic { /* Generic Interrupt Controller */
 			      		device_type = "pic";
-			      		compatible = "arm,gic";
+			      		compatible = "arm,realview-gic";
 			      		reg = <0x1E001000 0x1000
 					       0x1E000000 0x1000>;
 					irq_start = <32>;
+				};
+
+				sysreg { /* System Registers */
+			      		device_type = "sys";
+			      		compatible = "arm,realview-sysreg";
+			      		reg = <0x10000000 0x1000>;
+				};
+
+				sysctl0 { /* System Controller */
+			      		device_type = "sys";
+			      		compatible = "arm,sp810";
+			      		reg = <0x10001000 0x1000>;
 				};
 
 				kmi0 { /* Keyboard */
@@ -82,12 +97,32 @@
 					irq = <44>;
 				};
 
+				timer01 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x10011000 0x1000>;
+					irq = <36>;
+				};
+
+				timer23 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x10012000 0x1000>;
+					irq = <37>;
+				};
+
 				rtc0 {
 			      		device_type = "rtc";
 			      		compatible = "pl031";
 			      		reg = <0x10017000 0x1000>;
 					clock-rate = <1>;
 					irq = <42>;
+				};
+
+				sysctl1 { /* System Controller */
+			      		device_type = "sys";
+			      		compatible = "arm,sp810";
+			      		reg = <0x1001A000 0x1000>;
 				};
 			};
 		};
