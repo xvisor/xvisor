@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_cpumask.h>
+#include <vmm_devtree.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
@@ -55,12 +56,25 @@ void cmd_host_usage(struct vmm_chardev *cdev)
 
 void cmd_host_info(struct vmm_chardev *cdev)
 {
+	char *attr;
+	struct vmm_devtree_node *node;
 	u32 khz = vmm_delay_estimate_cpu_khz();
+
+	attr = NULL;
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
+	if (node) {
+		attr = vmm_devtree_attrval(node, VMM_DEVTREE_MODEL_ATTR_NAME);
+	}
+	if (attr) {
+		vmm_cprintf(cdev, "Board Name : %s\n", attr);
+	} else {
+		vmm_cprintf(cdev, "Board Name : %s\n", CONFIG_BOARD);
+	}
 	vmm_cprintf(cdev, "CPU Name   : %s\n", CONFIG_CPU);
 	vmm_cprintf(cdev, "CPU Count  : %d\n", CONFIG_CPU_COUNT);
 	vmm_cprintf(cdev, "CPU Speed  : %d.%d MHz (Estimated)\n", 
 					udiv32(khz, 1000), umod32(khz, 1000));
-	vmm_cprintf(cdev, "Board Name : %s\n", CONFIG_BOARD);
 }
 
 void cmd_host_irq_stats(struct vmm_chardev *cdev)
