@@ -161,8 +161,8 @@ struct arm_vtlb_entry {
 };
 
 struct arm_vtlb {
-	struct arm_vtlb_entry * table;
-	u32 victim[CPU_VCPU_VTLB_LINE_COUNT];
+	struct arm_vtlb_entry *table;
+	u32 victim[CPU_VCPU_VTLB_ZONE_COUNT];
 };
 
 struct arm_priv {
@@ -274,7 +274,7 @@ typedef struct arm_priv arm_priv_t;
 struct arm_guest_priv
 {
 	/* Overlapping vector page */
-	u32 * ovect;
+	u32 *ovect;
 }__attribute((packed));
 
 typedef struct arm_guest_priv arm_guest_priv_t;

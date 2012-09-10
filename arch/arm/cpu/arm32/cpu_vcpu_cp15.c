@@ -44,16 +44,26 @@
 
 /* Update Virtual TLB */
 static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu, 
-				     struct cpu_page *p, u32 domain)
+				     struct cpu_page *p, 
+				     u32 domain,
+				     bool is_virtual)
 {
 	int rc;
-	u32 entry, victim, line;
+	u32 entry, victim, zone;
 	struct arm_vtlb_entry *e = NULL;
 
+	/* Find appropriate zone */
+	if (is_virtual) {
+		zone = CPU_VCPU_VTLB_ZONE_V;
+	} else if (p->ng) {
+		zone = CPU_VCPU_VTLB_ZONE_NG;
+	} else {
+		zone = CPU_VCPU_VTLB_ZONE_G;
+	}
+
 	/* Find out next victim entry from TLB */
-	line = (p->va & CPU_VCPU_VTLB_LINE_MASK) >> CPU_VCPU_VTLB_LINE_SHIFT;
-	victim = arm_priv(vcpu)->cp15.vtlb.victim[line];
-	entry = victim + line * CPU_VCPU_VTLB_LINE_ENTRY_COUNT;
+	victim = arm_priv(vcpu)->cp15.vtlb.victim[zone];
+	entry = victim + CPU_VCPU_VTLB_ZONE_START(zone);
 	e = &arm_priv(vcpu)->cp15.vtlb.table[entry];
 	if (e->valid) {
 		/* Remove valid victim page from L1 Page Table */
@@ -91,10 +101,10 @@ static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu,
 
 	/* Point to next victim of TLB line */
 	victim = victim + 1;
-	if (CPU_VCPU_VTLB_LINE_ENTRY_COUNT <= victim) {
-		victim = victim - CPU_VCPU_VTLB_LINE_ENTRY_COUNT;
+	if (CPU_VCPU_VTLB_ZONE_LEN(zone) <= victim) {
+		victim = 0;
 	}
-	arm_priv(vcpu)->cp15.vtlb.victim[line] = victim;
+	arm_priv(vcpu)->cp15.vtlb.victim[zone] = victim;
 
 	return VMM_OK;
 }
@@ -103,7 +113,7 @@ static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu,
 static int cpu_vcpu_cp15_vtlb_flush(struct vmm_vcpu *vcpu)
 {
 	int rc;
-	u32 vtlb, line;
+	u32 vtlb, zone;
 	struct arm_vtlb_entry *e;
 
 	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
@@ -120,8 +130,8 @@ static int cpu_vcpu_cp15_vtlb_flush(struct vmm_vcpu *vcpu)
 		}
 	}
 
-	for (line = 0; line < CPU_VCPU_VTLB_LINE_COUNT; line++) {
-		arm_priv(vcpu)->cp15.vtlb.victim[line] = 0;
+	for (zone = 0; zone < CPU_VCPU_VTLB_ZONE_COUNT; zone++) {
+		arm_priv(vcpu)->cp15.vtlb.victim[zone] = 0;
 	}
 
 	return VMM_OK;
@@ -131,12 +141,10 @@ static int cpu_vcpu_cp15_vtlb_flush(struct vmm_vcpu *vcpu)
 static int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu *vcpu, virtual_addr_t va)
 {
 	int rc;
-	u32 vtlb, line;
+	u32 vtlb;
 	struct arm_vtlb_entry *e;
 
-	line = (va & CPU_VCPU_VTLB_LINE_MASK) >> CPU_VCPU_VTLB_LINE_SHIFT;
-	for (vtlb = line * CPU_VCPU_VTLB_LINE_ENTRY_COUNT;
-	     vtlb < CPU_VCPU_VTLB_LINE_ENTRY_COUNT; vtlb++) {
+	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
 		if (arm_priv(vcpu)->cp15.vtlb.table[vtlb].valid) {
 			e = &arm_priv(vcpu)->cp15.vtlb.table[vtlb];
 			if (e->page.va <= va && va < (e->page.va + e->page.sz)) {
@@ -160,10 +168,12 @@ static int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu *vcpu, virtual_addr_t va)
 static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 {
 	int rc;
-	u32 vtlb;
+	u32 vtlb, vtlb_last;
 	struct arm_vtlb_entry * e;
 
-	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
+	vtlb = CPU_VCPU_VTLB_ZONE_START(CPU_VCPU_VTLB_ZONE_NG);
+	vtlb_last = vtlb + CPU_VCPU_VTLB_ZONE_LEN(CPU_VCPU_VTLB_ZONE_NG);
+	while (vtlb < vtlb_last) {
 		if (arm_priv(vcpu)->cp15.vtlb.table[vtlb].valid) {
 			e = &arm_priv(vcpu)->cp15.vtlb.table[vtlb];
 			if (e->ng) {
@@ -177,6 +187,7 @@ static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 				e->dom = 0;
 			}
 		}
+		vtlb++;
 	}
 
 	return VMM_OK;
@@ -724,7 +735,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 {
 	u32 orig_domain, tre_index, tre_inner, tre_outer, tre_type;
 	u32 ecode, reg_flags;
-	bool is_user;
+	bool is_user, is_virtual;
 	int rc, access_type;
 	struct cpu_page pg;
 	physical_size_t availsz;
@@ -806,7 +817,9 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 		pg.ap = TTBL_AP_S_U;
 		break;
 	};
+	is_virtual = FALSE;
 	if (reg_flags & VMM_REGION_VIRTUAL) {
+		is_virtual = TRUE;
 		switch (pg.ap) {
 		case TTBL_AP_SRW_U:
 			pg.ap = TTBL_AP_S_U;
@@ -898,7 +911,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 		pg.b = pg.b && (reg_flags & VMM_REGION_BUFFERABLE);
 	}
 
-	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg, orig_domain);
+	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg, orig_domain, is_virtual);
 }
 
 int cpu_vcpu_cp15_access_fault(struct vmm_vcpu *vcpu,
