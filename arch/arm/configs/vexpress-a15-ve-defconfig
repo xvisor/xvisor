@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.3
-# Sat Sep  8 12:54:10 2012
+# Mon Sep 10 17:00:40 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -36,18 +36,6 @@ CONFIG_ARM_GENERIC_TIMER=y
 #
 CONFIG_ARM32VE_STACKTRACE=y
 # CONFIG_ARM32VE_FUNCSTATS is not set
-
-#
-# ARM Board Common Options
-#
-# CONFIG_ARM_VIC is not set
-CONFIG_ARM_GIC=y
-CONFIG_ARM_TIMER_SP804=y
-# CONFIG_ARM_TWD is not set
-CONFIG_ICST=y
-CONFIG_VERSATILE_CLOCK=y
-CONFIG_VERSATILE_CLCD=y
-# CONFIG_OMAP3 is not set
 # CONFIG_BOARD_VERSATILE is not set
 # CONFIG_BOARD_PB_A8 is not set
 # CONFIG_BOARD_BEAGLE is not set
@@ -61,6 +49,14 @@ CONFIG_BOARD_VEXPRESS=y
 CONFIG_VEXPRESS_A15_ONE_GUEST_PBA8_DTS=y
 # CONFIG_VEXPRESS_A15_ONE_GUEST_VEX_A9_DTS is not set
 # CONFIG_VEXPRESS_A15_TWO_GUEST_PBA8_DTS is not set
+# CONFIG_ARM_VIC is not set
+CONFIG_ARM_GIC=y
+CONFIG_ARM_TIMER_SP804=y
+# CONFIG_ARM_TWD is not set
+CONFIG_ICST=y
+CONFIG_VERSATILE_CLOCK=y
+CONFIG_VERSATILE_CLCD=y
+# CONFIG_OMAP3 is not set
 
 #
 # Hypervisor Options
