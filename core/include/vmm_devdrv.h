@@ -85,7 +85,7 @@ struct vmm_driver {
 	char name[32];
 	const struct vmm_devid *match_table;
 	int (*probe) (struct vmm_device *, const struct vmm_devid *);
-	int (*suspend) (struct vmm_device *);
+	int (*suspend) (struct vmm_device *, u32);
 	int (*resume) (struct vmm_device *);
 	int (*remove) (struct vmm_device *);
 };
