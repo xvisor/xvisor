@@ -29,6 +29,7 @@
 #define __SCATTERLIST_H
 
 #include <vmm_types.h>
+#include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 
 struct scatterlist {
