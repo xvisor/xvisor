@@ -3,7 +3,10 @@
 
 #include <vmm_waitqueue.h>
 #include <mathlib.h>
+
 #include <linux/jiffies.h>
+#include <linux/kthread.h>
+#include <linux/workqueue.h>
 
 #define in_atomic()			1
 

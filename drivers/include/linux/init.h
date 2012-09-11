@@ -7,8 +7,7 @@
 #include <linux/printk.h>
 #include <linux/sched.h>
 #include <linux/io.h>
-
-#define ARRAY_SIZE	array_size
+#include <linux/kernel.h>
 
 #define mb()		arch_mb()
 #define rmb()		arch_rmb()
