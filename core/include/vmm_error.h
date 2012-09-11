@@ -38,5 +38,9 @@
 #define VMM_ENOENT		-11
 #define VMM_ENOSYS		-12
 #define VMM_EIO			-13
+#define VMM_ETIME		-14
+#define VMM_ERANGE		-15
+#define VMM_EILSEQ		-16
+#define VMM_EOPNOTSUPP		-17
 
 #endif
