@@ -45,70 +45,180 @@ void cmd_vserial_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vserial list\n");
 }
 
+#define VSERIAL_ESCMD_SIZE	(17 * 3)
+#define VSERIAL_ESC_NPAR	(16)
+
 struct cmd_vserial_recvcntx {
-	const char * name;
-	u32 chpos;
+	const char *name;
 	int chcount;
-	int ecount;
+	u8 esc_cmd[VSERIAL_ESCMD_SIZE];
+	u16 esc_attrib[VSERIAL_ESC_NPAR];
+	u8 esc_cmd_count;
+	u8 esc_attrib_count;
+	bool esc_cmd_active;
 	struct vmm_chardev *cdev;
 };
 
-void cmd_vserial_recv(struct vmm_vserial *vser, void * priv, u8 ch)
+static int cmd_vserial_recv_putchar(struct cmd_vserial_recvcntx *v, u8 ch)
 {
-	struct cmd_vserial_recvcntx * recvcntx;
-	recvcntx = (struct cmd_vserial_recvcntx *)priv;
-	if (!recvcntx) {
-		return;
-	}
-	if (!recvcntx->chcount) {
-		return;
-	}
-	if (ch == '\n') {
-		/* Emulate the effect of '\n' character */
-		vmm_cputc(recvcntx->cdev, ch);
-		vmm_cprintf(recvcntx->cdev, "[%s] ", recvcntx->name);
-		recvcntx->chpos = 0;
-	} else if (ch == '\r') {
-		/* Emulate the effect of '\r' character */
-		if (recvcntx->chpos) {
-			vmm_cprintf(recvcntx->cdev, "\e[%dD", recvcntx->chpos);
-		}
-		recvcntx->chpos = 0;
-	} else if (ch == '\e' || recvcntx->ecount > 0) {
-		/* Increment ecount till entire ANSI/VT100
-		 * command is detected. Upon detecting end 
-		 * of ANSI/VT100 command set ecount to 0
-		 */
-		vmm_cputc(recvcntx->cdev, ch);
-		if (('a' <= ch && ch <= 'z') ||
-		    ('A' <= ch && ch <= 'Z')) {
-			/* ANSI/VT100 command usually ends 
-			 * with an alphbet lower or upper case
-			 */
-			recvcntx->ecount = 0;
-		} else if ((recvcntx->ecount == 1) &&
-			   (ch == '7' || ch == '8')) {
-			/* ANSI/VT100 <ESC>7 or <ESC>8 */
-			recvcntx->ecount = 0;
-		} else if ((recvcntx->ecount == 1) &&
-			   (ch == '(' || ch == ')')) {
-			/* ANSI/VT100 <ESC>( or <ESC>) */
-			recvcntx->ecount = 0;
-		} else {
-			recvcntx->ecount++;
-		}
+	switch (ch) {
+	case '\r':
+		vmm_cprintf(v->cdev, "\r[%s] ", v->name);
+		break;
+
+	case '\n':
+		vmm_cprintf(v->cdev, "\n[%s] ", v->name);
+		break;
+
+	default:
+		vmm_cputc(v->cdev, ch);
+		break;
+	};
+	
+	return VMM_OK;
+}
+
+static int cmd_vserial_recv_startesc(struct cmd_vserial_recvcntx *v)
+{
+	v->esc_cmd_active = TRUE;
+	v->esc_cmd_count = 0;
+	v->esc_attrib_count = 0;
+	v->esc_attrib[0] = 0;
+	return VMM_OK;
+}
+
+static int cmd_vserial_recv_flushesc(struct cmd_vserial_recvcntx *v)
+{
+	vmm_cputc(v->cdev, '\e');
+	v->esc_cmd[v->esc_cmd_count] = '\0';
+	vmm_cputs(v->cdev, (char *)&v->esc_cmd);
+	v->esc_cmd_active = FALSE;
+	return VMM_OK;
+}
+
+static int cmd_vserial_recv_putesc(struct cmd_vserial_recvcntx *v, u8 ch)
+{
+	char str[32];
+
+	if (v->esc_cmd_count < VSERIAL_ESCMD_SIZE) {
+		v->esc_cmd[v->esc_cmd_count] = ch;
+		v->esc_cmd_count++;
 	} else {
-		/* By default keep printing incoming character
-		 * but increment chpos for only printable characters.
-		 */
-		vmm_cputc(recvcntx->cdev, ch);
-		if (vmm_isprintable(ch)) {
-			recvcntx->chpos++;
-		}
+		cmd_vserial_recv_flushesc(v);
+		return VMM_OK;
 	}
-	if (-1 < recvcntx->chcount) {
-		if (recvcntx->chcount) {
-			recvcntx->chcount--;
+
+	switch(v->esc_cmd[0]) {
+	case 'c':	/* Reset */
+	case 'r':	/* Enable Scrolling */
+	case 'D':	/* Scroll Down one line or linefeed */
+	case 'M':	/* Scroll Up one line or reverse-linefeed */
+	case 'E':	/* Newline */
+	case '7':	/* Save Cursor Position and Attrs */
+	case '8':	/* Restore Cursor Position and Attrs */
+		cmd_vserial_recv_flushesc(v);
+		break;
+	case '[':	/* CSI codes */
+		if(v->esc_cmd_count == 1) {
+			break;
+		}
+
+		switch(v->esc_cmd[v->esc_cmd_count - 1]) {
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+			v->esc_attrib[v->esc_attrib_count] *= 10;
+			v->esc_attrib[v->esc_attrib_count] += 
+					(v->esc_cmd[v->esc_cmd_count - 1] - '0');
+			break;
+		case ';':
+			v->esc_attrib_count++;
+			v->esc_attrib[v->esc_attrib_count] = 0;
+			break;
+		case 'D':		/* Move Left */
+		case 'C':		/* Move Right */
+		case 'B':		/* Move Down */
+		case 'A':		/* Move Up */
+		case 'm':		/* Set Display Attributes */
+		case 'c':		/* Request Terminal Type */
+			cmd_vserial_recv_flushesc(v);
+			break;
+		case 'n':
+			switch(v->esc_attrib[0]) {
+			case 5:		/* Request Terminal Status */
+			case 6:		/* Request Cursor Position */
+				cmd_vserial_recv_flushesc(v);
+				break;
+			};
+			v->esc_cmd_active = FALSE;
+			break;
+		case 's':		/* Save Cursor Position */
+		case 'u':		/* Restore Cursor Position */
+			cmd_vserial_recv_flushesc(v);
+			break;
+		case 'H':		/* Cursor Home */
+		case 'f':		/* Force Cursor Position */
+			vmm_sprintf(str,  "[%s] ", v->name);
+			if(v->esc_attrib_count == 0) {
+				cmd_vserial_recv_flushesc(v);
+				vmm_cputs(v->cdev, str);
+			} else {
+				vmm_cprintf(v->cdev, "\e[%d;%df", 
+					    v->esc_attrib[0], 0);
+				vmm_cputs(v->cdev, str);
+				vmm_cprintf(v->cdev, "\e[%d;%df", 
+					    v->esc_attrib[0], 
+					    v->esc_attrib[1] + strlen(str));
+			}
+			v->esc_cmd_active = FALSE;
+			break;
+		case 'J':		/* Clear screen */
+			cmd_vserial_recv_flushesc(v);
+			break;
+		default:
+			goto unhandled;
+		}
+		break;
+	default:
+		goto unhandled;
+	};
+
+	return VMM_OK;
+
+unhandled:
+	cmd_vserial_recv_flushesc(v);
+	return VMM_OK;
+}
+
+void cmd_vserial_recv(struct vmm_vserial *vser, void *priv, u8 ch)
+{
+	struct cmd_vserial_recvcntx *v;
+	v = (struct cmd_vserial_recvcntx *)priv;
+
+	if (!v) {
+		return;
+	}
+	if (!v->chcount) {
+		return;
+	}
+
+	if (v->esc_cmd_active) {
+		cmd_vserial_recv_putesc(v, ch);
+	} else if (ch == '\e') {
+		cmd_vserial_recv_startesc(v);
+	} else {
+		cmd_vserial_recv_putchar(v, ch);
+		if (-1 < v->chcount) {
+			if (v->chcount) {
+				v->chcount--;
+			}
 		}
 	}
 }
@@ -116,9 +226,9 @@ void cmd_vserial_recv(struct vmm_vserial *vser, void * priv, u8 ch)
 int cmd_vserial_bind(struct vmm_chardev *cdev, const char *name)
 {
 	int rc = VMM_OK;
-	u32 ite, epos = 0;
-	char ch;
-	static const char estr[3] = {'\e', 'x', 'q'}; /* estr is escape string. */
+	u32 tmp, ecount, eattrib[2], eacount;
+	bool eactive = FALSE;
+	char ecmd[VSERIAL_ESCMD_SIZE], ch;
 	struct vmm_vserial *vser = vmm_vserial_find(name);
 	struct cmd_vserial_recvcntx recvcntx;
 
@@ -130,9 +240,11 @@ int cmd_vserial_bind(struct vmm_chardev *cdev, const char *name)
 	vmm_cprintf(cdev, "[%s] ", name);
 
 	recvcntx.name = name;
-	recvcntx.chpos = 0;
 	recvcntx.chcount = -1;
-	recvcntx.ecount = 0;
+	recvcntx.esc_cmd_active = FALSE;
+	recvcntx.esc_cmd_count = 0;
+	recvcntx.esc_attrib_count = 0;
+	recvcntx.esc_attrib[0] = 0;
 	recvcntx.cdev = cdev;
 
 	rc = vmm_vserial_register_receiver(vser, &cmd_vserial_recv, &recvcntx);
@@ -140,25 +252,95 @@ int cmd_vserial_bind(struct vmm_chardev *cdev, const char *name)
 		return rc;
 	}
 
-	epos = 0;
+	eactive = FALSE;
+	eattrib[0] = 0;
+	eacount = 0;
 	while(1) {
 		if (!vmm_scanchars(cdev, &ch, 1, TRUE)) {
-			if (epos < sizeof(estr)) {
-				if (estr[epos] == ch) {
-					epos++;
+			if (eactive) {
+				if (ecount < VSERIAL_ESCMD_SIZE) {
+					ecmd[ecount] = ch;
+					ecount++;
 				} else {
-					for (ite = 0; ite < epos; ite++) {
-						while (!vmm_vserial_send(vser, (u8 *)&estr[ite], 1)) ;
-					}
-					epos = 0;
-					while (!vmm_vserial_send(vser, (u8 *)&ch, 1)) ;
+					goto send_eflush_continue;
 				}
-			} 
-			if (epos == sizeof(estr)) {
-				epos = 0;
-				break;
+				switch(ecmd[0]) {
+				case 'x':
+					if(ecount == 1) {
+						break;
+					}
+					switch (ecmd[1]) {
+					case 'q':
+						goto send_break;
+					default:
+						goto send_eflush_continue;
+					}
+					break;
+				case '[':
+					if(ecount == 1) {
+						break;
+					}
+					switch(ecmd[ecount - 1]) {
+					case '0':
+					case '1':
+					case '2':
+					case '3':
+					case '4':
+					case '5':
+					case '6':
+					case '7':
+					case '8':
+					case '9':
+						eattrib[eacount] *= 10;
+						eattrib[eacount] += (ecmd[ecount - 1] - '0');
+						break;
+					case ';':
+						if (eacount == 2) {
+							goto send_eflush_continue;
+						}
+						eacount++;
+						eattrib[eacount] = 0;
+						break;
+					case 'R':		/* Response */
+						tmp = strlen(name) + 3;
+						if (eattrib[1] < tmp) {
+							tmp = 0;
+						} else {
+							tmp = eattrib[1] - tmp;
+						}
+						vmm_sprintf(ecmd, "[%d;%dR", 
+							    eattrib[0], tmp);
+						goto send_eflush_continue;
+					default:
+						goto send_eflush_continue;
+					}
+					break;
+				default:
+					goto send_eflush_continue;
+				};
+			} else {
+				if (ch == '\e') {
+					eactive = TRUE;
+					ecount = 0;
+				} else {
+					goto send_ch_continue;
+				}
 			}
 		}
+		continue;
+send_ch_continue:
+		while (!vmm_vserial_send(vser, (u8 *)&ch, 1)) ;
+		continue;
+send_eflush_continue:
+		ch = '\e';
+		while (!vmm_vserial_send(vser, (u8 *)&ch, 1)) ;
+		while (!vmm_vserial_send(vser, (u8 *)&ecmd, ecount)) ;
+		eactive = FALSE;
+		eattrib[0] = 0;
+		eacount = 0;
+		continue;
+send_break:
+		break;
 	}
 
 	vmm_cprintf(cdev, "\n");
@@ -185,9 +367,11 @@ int cmd_vserial_dump(struct vmm_chardev *cdev, const char *name, int bcount)
 	vmm_cprintf(cdev, "[%s] ", name);
 
 	recvcntx.name = name;
-	recvcntx.chpos = 0;
 	recvcntx.chcount = (0 < bcount) ? bcount : -1;
-	recvcntx.ecount = 0;
+	recvcntx.esc_cmd_active = FALSE;
+	recvcntx.esc_cmd_count = 0;
+	recvcntx.esc_attrib_count = 0;
+	recvcntx.esc_attrib[0] = 0;
 	recvcntx.cdev = cdev;
 
 	rc = vmm_vserial_register_receiver(vser, &cmd_vserial_recv, &recvcntx);
