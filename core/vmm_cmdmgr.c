@@ -22,10 +22,10 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
 #define VMM_CMD_DELIM_CHAR	';'
 #define VMM_CMD_ARG_MAXCOUNT	32
@@ -52,7 +52,7 @@ int vmm_cmdmgr_register_cmd(struct vmm_cmd * cmd)
 	found = FALSE;
 	list_for_each(l, &cmctrl.cmd_list) {
 		c = list_entry(l, struct vmm_cmd, head);
-		if (vmm_strcmp(c->name, cmd->name) == 0) {
+		if (strcmp(c->name, cmd->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -64,7 +64,7 @@ int vmm_cmdmgr_register_cmd(struct vmm_cmd * cmd)
 
 	INIT_LIST_HEAD(&cmd->head);
 
-	list_add_tail(&cmctrl.cmd_list, &cmd->head);
+	list_add_tail(&cmd->head, &cmctrl.cmd_list);
 
 	return VMM_OK;
 }
@@ -83,7 +83,7 @@ int vmm_cmdmgr_unregister_cmd(struct vmm_cmd * cmd)
 	found = FALSE;
 	list_for_each(l, &cmctrl.cmd_list) {
 		c = list_entry(l, struct vmm_cmd, head);
-		if (vmm_strcmp(c->name, cmd->name) == 0) {
+		if (strcmp(c->name, cmd->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -113,7 +113,7 @@ struct vmm_cmd * vmm_cmdmgr_cmd_find(const char *cmd_name)
 
 	list_for_each(l, &cmctrl.cmd_list) {
 		c = list_entry(l, struct vmm_cmd, head);
-		if (vmm_strcmp(c->name, cmd_name) == 0) {
+		if (strcmp(c->name, cmd_name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -277,7 +277,7 @@ static struct vmm_cmd help_cmd = {
 
 int __init vmm_cmdmgr_init(void)
 {
-	vmm_memset(&cmctrl, 0, sizeof(cmctrl));
+	memset(&cmctrl, 0, sizeof(cmctrl));
 
 	INIT_LIST_HEAD(&cmctrl.cmd_list);
 

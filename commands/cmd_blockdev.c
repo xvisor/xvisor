@@ -23,15 +23,15 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 #include <block/vmm_blockdev.h>
 
-#define MODULE_VARID			cmd_blockdev_module
-#define MODULE_NAME			"Command blockdev"
+#define MODULE_DESC			"Command blockdev"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_blockdev_init
 #define	MODULE_EXIT			cmd_blockdev_exit
@@ -63,10 +63,10 @@ void cmd_blockdev_list(struct vmm_chardev *cdev)
 int cmd_blockdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_blockdev_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "list") == 0) {
+		} else if (strcmp(argv[1], "list") == 0) {
 			cmd_blockdev_list(cdev);
 			return VMM_OK;
 		}
@@ -90,14 +90,14 @@ static int __init cmd_blockdev_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_blockdev);
 }
 
-static void cmd_blockdev_exit(void)
+static void __exit cmd_blockdev_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_blockdev);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

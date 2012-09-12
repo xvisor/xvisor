@@ -29,6 +29,7 @@
 int arch_cpu_irq_setup(void);
 void arch_cpu_irq_enable(void);
 void arch_cpu_irq_disable(void);
+bool arch_cpu_irq_disabled(void);
 irq_flags_t arch_cpu_irq_save(void);
 void arch_cpu_irq_restore(irq_flags_t flags);
 void arch_cpu_wait_for_irq(void);

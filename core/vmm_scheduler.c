@@ -21,16 +21,18 @@
  * @brief source file for hypervisor scheduler
  */
 
-#include <arch_cpu_irq.h>
-#include <arch_vcpu.h>
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_percpu.h>
-#include <vmm_string.h>
+#include <vmm_cpumask.h>
 #include <vmm_stdio.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_timer.h>
 #include <vmm_schedalgo.h>
 #include <vmm_scheduler.h>
+#include <arch_cpu_irq.h>
+#include <arch_vcpu.h>
+#include <stringlib.h>
 
 #define IDLE_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
 #define IDLE_VCPU_PRIORITY 		VMM_VCPU_MIN_PRIORITY
@@ -44,12 +46,12 @@ struct vmm_scheduler_ctrl {
 	u8 idle_vcpu_stack[IDLE_VCPU_STACK_SZ];
 	bool irq_context;
 	bool yield_on_irq_exit;
-	struct vmm_timer_event * ev;
+	struct vmm_timer_event ev;
 };
 
 static DEFINE_PER_CPU(struct vmm_scheduler_ctrl, sched);
 
-static void vmm_scheduler_next(struct vmm_timer_event * ev, arch_regs_t * regs)
+static void vmm_scheduler_next(struct vmm_timer_event *ev, arch_regs_t *regs)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 	struct vmm_vcpu *current = schedp->current_vcpu;
@@ -94,7 +96,7 @@ static void vmm_scheduler_next(struct vmm_timer_event * ev, arch_regs_t * regs)
 	}
 }
 
-static void vmm_scheduler_timer_event(struct vmm_timer_event * ev)
+static void vmm_scheduler_timer_event(struct vmm_timer_event *ev)
 {
 	struct vmm_vcpu * vcpu = this_cpu(sched).current_vcpu;
 	if (vcpu) {
@@ -108,7 +110,7 @@ static void vmm_scheduler_timer_event(struct vmm_timer_event * ev)
 	}
 }
 
-int vmm_scheduler_notify_state_change(struct vmm_vcpu * vcpu, u32 new_state)
+int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
 	int rc = VMM_OK;
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
@@ -142,7 +144,7 @@ int vmm_scheduler_notify_state_change(struct vmm_vcpu * vcpu, u32 new_state)
 			if (!rc && schedp->current_vcpu) {
 				if (vmm_schedalgo_rq_prempt_needed(schedp->rq, 
 							schedp->current_vcpu)) {
-					vmm_timer_event_expire(schedp->ev);
+					vmm_timer_event_expire(&schedp->ev);
 				}
 			}
 		}
@@ -152,7 +154,7 @@ int vmm_scheduler_notify_state_change(struct vmm_vcpu * vcpu, u32 new_state)
 		/* Expire timer event if current VCPU is paused or halted */
 		if(schedp->current_vcpu == vcpu) {
 			if (!vcpu->is_normal) {
-				vmm_timer_event_expire(schedp->ev);
+				vmm_timer_event_expire(&schedp->ev);
 			}
 		} else {
 			/* Make sure VCPU is not in a ready queue */
@@ -166,7 +168,7 @@ int vmm_scheduler_notify_state_change(struct vmm_vcpu * vcpu, u32 new_state)
 	return rc;
 }
 
-void vmm_scheduler_irq_enter(arch_regs_t * regs, bool vcpu_context)
+void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
@@ -177,7 +179,7 @@ void vmm_scheduler_irq_enter(arch_regs_t * regs, bool vcpu_context)
 	schedp->yield_on_irq_exit = FALSE;
 }
 
-void vmm_scheduler_irq_exit(arch_regs_t * regs)
+void vmm_scheduler_irq_exit(arch_regs_t *regs)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 	struct vmm_vcpu * vcpu = NULL;
@@ -192,7 +194,7 @@ void vmm_scheduler_irq_exit(arch_regs_t * regs)
 	 * current vcpu is not RUNNING */
 	if ((vcpu->state != VMM_VCPU_STATE_RUNNING) ||
 	    schedp->yield_on_irq_exit) {
-		vmm_scheduler_next(schedp->ev, regs);
+		vmm_scheduler_next(&schedp->ev, regs);
 		schedp->yield_on_irq_exit = FALSE;
 	}
 
@@ -281,7 +283,7 @@ void vmm_scheduler_yield(void)
 		/* For Orphan VCPU
 		 * Forcefully expire timeslice 
 		 */
-		vmm_timer_event_expire(schedp->ev);
+		vmm_timer_event_expire(&schedp->ev);
 	} else if (vmm_scheduler_normal_context()) {
 		/* For Normal VCPU
 		 * Just enable yield on exit and rest will be taken care
@@ -309,10 +311,12 @@ static void idle_orphan(void)
 int __init vmm_scheduler_init(void)
 {
 	int rc;
+	char vcpu_name[32];
+	u32 cpu = vmm_smp_processor_id();
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
 	/* Reset the scheduler control structure */
-	vmm_memset(schedp, 0, sizeof(struct vmm_scheduler_ctrl));
+	memset(schedp, 0, sizeof(struct vmm_scheduler_ctrl));
 
 	/* Create ready queue (Per Host CPU) */
 	schedp->rq = vmm_schedalgo_rq_create();
@@ -330,15 +334,11 @@ int __init vmm_scheduler_init(void)
 	schedp->yield_on_irq_exit = FALSE;
 
 	/* Create timer event and start it. (Per Host CPU) */
-	schedp->ev = vmm_timer_event_create("sched", 
-					    &vmm_scheduler_timer_event, 
-					    NULL);
-	if (!schedp->ev) {
-		return VMM_EFAIL;
-	}
+	INIT_TIMER_EVENT(&schedp->ev, &vmm_scheduler_timer_event, schedp);
 
 	/* Create idle orphan vcpu with default time slice. (Per Host CPU) */
-	schedp->idle_vcpu = vmm_manager_vcpu_orphan_create("idle/0",
+	vmm_sprintf(vcpu_name, "idle/%d", cpu);
+	schedp->idle_vcpu = vmm_manager_vcpu_orphan_create(vcpu_name,
 	(virtual_addr_t)&idle_orphan,
 	(virtual_addr_t)&schedp->idle_vcpu_stack[IDLE_VCPU_STACK_SZ - 4],
 	IDLE_VCPU_PRIORITY, IDLE_VCPU_TIMESLICE);
@@ -352,7 +352,10 @@ int __init vmm_scheduler_init(void)
 	}
 
 	/* Start scheduler timer event */
-	vmm_timer_event_start(schedp->ev, 0);
+	vmm_timer_event_start(&schedp->ev, 0);
+
+	/* Mark this CPU online */
+	vmm_set_cpu_online(cpu, TRUE);
 
 	return VMM_OK;
 }

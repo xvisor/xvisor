@@ -24,11 +24,27 @@
 #include <arm_io.h>
 #include <arm_irq.h>
 #include <arm_math.h>
-#include <arm_config.h>
 #include <arm_plat.h>
 #include <arm_timer.h>
 
 #include <arm_stdio.h>
+
+#define TIMER_LOAD              0x00
+#define TIMER_VALUE             0x04
+#define TIMER_CTRL              0x08
+#define TIMER_CTRL_ONESHOT      (1 << 0)
+#define TIMER_CTRL_32BIT        (1 << 1)
+#define TIMER_CTRL_DIV1         (0 << 2)
+#define TIMER_CTRL_DIV16        (1 << 2)
+#define TIMER_CTRL_DIV256       (2 << 2)
+#define TIMER_CTRL_IE           (1 << 5)        /* Interrupt Enable (versatile only) */
+#define TIMER_CTRL_PERIODIC     (1 << 6)
+#define TIMER_CTRL_ENABLE       (1 << 7)
+
+#define TIMER_INTCLR            0x0c
+#define TIMER_RIS               0x10
+#define TIMER_MIS               0x14
+#define TIMER_BGLOAD            0x18
 
 static u64 timer_irq_count;
 static u64 timer_irq_tcount;
@@ -107,7 +123,7 @@ int arm_timer_irqhndl(u32 irq_no, struct pt_regs * regs)
 	return 0;
 }
 
-int arm_timer_init(u32 usecs, u32 init_irqcount, u32 ensel)
+int arm_timer_init(u32 usecs, u32 ensel)
 {
 	u32 val;
 
@@ -119,7 +135,7 @@ int arm_timer_init(u32 usecs, u32 init_irqcount, u32 ensel)
 	timer_counter_last = 0; 
 	timer_time_stamp = 0;
 
-	timer_irq_count = init_irqcount;
+	timer_irq_count = arm_readl((void *)VERSATILE_SYS_100HZ);
 	timer_irq_tcount = 0;
 	timer_irq_tstamp = 0;
 	timer_irq_delay = 0;

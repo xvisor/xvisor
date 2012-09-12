@@ -1,0 +1,9 @@
+			  ARM common code
+
+This directory contains directories:
+
+  1. busybox-1.19.2 - Busybox 1.19.2 Root File System for all ARM systems
+  2. basic - Some common code for the "basic test" environement
+
+Please follow the README under specific platform directory for detailed
+steps to configure, compile and run.

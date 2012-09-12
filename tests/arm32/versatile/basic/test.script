@@ -6,8 +6,6 @@ guest list
 vserial bind guest0/uart0
 # Input in ARM test code
 hi
-# Display sysctl registers
-sysctl
 # Display timer information
 timer
 # Run dhrystone benchmark

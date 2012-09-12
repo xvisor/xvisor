@@ -21,8 +21,9 @@
  * @brief source code for OMAP3 SDRC controller
  */
 
-#include <vmm_host_io.h>
 #include <vmm_error.h>
+#include <vmm_compiler.h>
+#include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <omap3/sdrc.h>
 

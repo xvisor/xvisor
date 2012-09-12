@@ -23,19 +23,19 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <vmm_heap.h>
 #include <vmm_timer.h>
 #include <vmm_profiler.h>
+#include <stringlib.h>
 #include <mathlib.h>
 #include <kallsyms.h>
 #include <libsort.h>
 
-#define MODULE_VARID			cmd_profile_module
-#define MODULE_NAME			"Command profile"
+#define MODULE_DESC			"Command profile"
 #define MODULE_AUTHOR			"Jean-Christophe Dubois"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_profile_init
 #define	MODULE_EXIT			cmd_profile_exit
@@ -88,7 +88,7 @@ struct count_record {
 static int cmd_profile_name_cmp(void *m, size_t a, size_t b)
 {
 	struct count_record *ptr = m;
-	int result = vmm_strcmp(&ptr[a].function_name[0], &ptr[b].function_name[0]);
+	int result = strcmp(&ptr[a].function_name[0], &ptr[b].function_name[0]);
 
 	if (result < 0) {
 		return 1;
@@ -104,7 +104,7 @@ static int cmd_profile_count_cmp(void *m, size_t a, size_t b)
 	if (ptr[a].count < ptr[b].count) {
 		return 1;
 	} else if (ptr[a].count == ptr[b].count) {
-		if (vmm_strcmp
+		if (strcmp
 		    (&ptr[a].function_name[0], &ptr[b].function_name[0]) < 0) {
 			return 1;
 		}
@@ -120,7 +120,7 @@ static int cmd_profile_total_time_cmp(void *m, size_t a, size_t b)
 	if (ptr[a].total_time < ptr[b].total_time) {
 		return 1;
 	} else if (ptr[a].total_time == ptr[b].total_time) {
-		if (vmm_strcmp
+		if (strcmp
 		    (&ptr[a].function_name[0], &ptr[b].function_name[0]) < 0) {
 			return 1;
 		}
@@ -136,7 +136,7 @@ static int cmd_profile_time_per_call_cmp(void *m, size_t a, size_t b)
 	if (ptr[a].time_per_call < ptr[b].time_per_call) {
 		return 1;
 	} else if (ptr[a].time_per_call == ptr[b].time_per_call) {
-		if (vmm_strcmp
+		if (strcmp
 		    (&ptr[a].function_name[0], &ptr[b].function_name[0]) < 0) {
 			return 1;
 		}
@@ -166,7 +166,7 @@ static int cmd_profile_count_iterator(void *data, const char *name,
 	ptr += index;
 
 	/* It would be nice to have the strncpy variant */
-	vmm_strcpy(ptr->function_name, name);
+	strcpy(ptr->function_name, name);
 	ptr->function_name[39] = 0;
 	ptr->count = count;
 	ptr->total_time = time;
@@ -207,7 +207,7 @@ static int cmd_profile_dump(struct vmm_chardev * cdev, char *filter_mode)
 	if (filter_mode != NULL) {
 		cmp_function = NULL;
 		while (filters[index].name) {
-			if (vmm_strcmp(filter_mode, filters[index].name) == 0) {
+			if (strcmp(filter_mode, filters[index].name) == 0) {
 				cmp_function = filters[index].function;
 				break;
 			}
@@ -265,7 +265,7 @@ static int cmd_profile_exec(struct vmm_chardev * cdev, int argc, char **argv)
 	}
 
 	while (command[index].name) {
-		if (vmm_strcmp(argv[1], command[index].name) == 0) {
+		if (strcmp(argv[1], command[index].name) == 0) {
 			return command[index].function(cdev, param);
 		}
 		index++;
@@ -295,7 +295,7 @@ static int __init cmd_profile_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_profile);
 }
 
-static void cmd_profile_exit(void)
+static void __exit cmd_profile_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_profile);
 
@@ -304,9 +304,9 @@ static void cmd_profile_exit(void)
 	count_array = NULL;
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

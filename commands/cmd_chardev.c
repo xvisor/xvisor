@@ -23,15 +23,15 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_chardev.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			cmd_chardev_module
-#define MODULE_NAME			"Command chardev"
+#define MODULE_DESC			"Command chardev"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_chardev_init
 #define	MODULE_EXIT			cmd_chardev_exit
@@ -48,25 +48,33 @@ void cmd_chardev_list(struct vmm_chardev *cdev)
 	int num, count;
 	char path[1024];
 	struct vmm_chardev *cd;
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
+	vmm_cprintf(cdev, " %-24s %-53s\n", 
+			  "Name", "Device Path");
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
 	count = vmm_chardev_count();
 	for (num = 0; num < count; num++) {
 		cd = vmm_chardev_get(num);
 		if (!cd->dev) {
-			vmm_cprintf(cdev, "%s: ---\n", cd->name);
+			strcpy(path, "-----");
 		} else {
 			vmm_devtree_getpath(path, cd->dev->node);
-			vmm_cprintf(cdev, "%s: %s\n", cd->name, path);
 		}
+		vmm_cprintf(cdev, " %-24s %-53s\n", cd->name, path);
 	}
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
 }
 
 int cmd_chardev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_chardev_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "list") == 0) {
+		} else if (strcmp(argv[1], "list") == 0) {
 			cmd_chardev_list(cdev);
 			return VMM_OK;
 		}
@@ -90,14 +98,14 @@ static int __init cmd_chardev_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_chardev);
 }
 
-static void cmd_chardev_exit(void)
+static void __exit cmd_chardev_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_chardev);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

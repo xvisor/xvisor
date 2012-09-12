@@ -1,13 +1,17 @@
 /*
  * (C) Copyright David Gibson <dwg@au1.ibm.com>, IBM Corporation.  2005.
+ *
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  General Public License for more details.
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
@@ -243,17 +247,7 @@ struct data data_merge(struct data d1, struct data d2)
 
 struct data data_append_cell(struct data d, cell_t word)
 {
-	cell_t beword = cpu_to_fdt32_e(word, little_endian);
-
-	return data_append_data(d, &beword, sizeof(beword));
-}
-
-struct data data_append_cell2(struct data d, cell_t word1, cell_t word2)
-{
-	cell_t beword[2];
-
-	beword[0] = cpu_to_fdt32_e(word1, little_endian);
-	beword[1] = cpu_to_fdt32_e(word2, little_endian);
+	cell_t beword = cpu_to_fdt32(word);
 
 	return data_append_data(d, &beword, sizeof(beword));
 }
@@ -262,15 +256,15 @@ struct data data_append_re(struct data d, const struct fdt_reserve_entry *re)
 {
 	struct fdt_reserve_entry bere;
 
-	bere.address = cpu_to_fdt64_e(re->address, little_endian);
-	bere.size = cpu_to_fdt64_e(re->size, little_endian);
+	bere.address = cpu_to_fdt64(re->address);
+	bere.size = cpu_to_fdt64(re->size);
 
 	return data_append_data(d, &bere, sizeof(bere));
 }
 
 struct data data_append_addr(struct data d, uint64_t addr)
 {
-	uint64_t beaddr = cpu_to_fdt64_e(addr, little_endian);
+	uint64_t beaddr = cpu_to_fdt64(addr);
 
 	return data_append_data(d, &beaddr, sizeof(beaddr));
 }

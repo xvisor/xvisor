@@ -94,6 +94,12 @@ union page {
 
 #define __bootstrap_text __attribute__((section(".bootstrap.text")))
 
+static inline void invalidate_vaddr_tlb(virtual_addr_t vaddr)
+{
+	__asm__ __volatile__("invlpg 0(%0)\n\t"
+			     ::"r"(&vaddr));
+}
+
 #endif
 
 #endif /* __CPU_MMU_H_ */

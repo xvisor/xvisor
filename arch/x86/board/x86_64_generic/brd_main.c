@@ -24,20 +24,17 @@
 #include <vmm_main.h>
 #include <vmm_devtree.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devdrv.h>
 #include <libfdt.h>
 
 extern u32 dt_blob_start;
 
-int arch_board_ram_start(physical_addr_t * addr)
+int arch_board_ram_start(physical_addr_t *addr)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
 	struct fdt_node_header * fdt_node = NULL;
-	struct fdt_property * prop = NULL;
-	physical_addr_t *phys_adr = NULL;
 
 	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
 	if (rc) {
@@ -53,25 +50,20 @@ int arch_board_ram_start(physical_addr_t * addr)
 		return VMM_EFAIL;
 	}
 
-	prop = libfdt_get_property(&fdt, fdt_node,
-				   VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME);
-	if (!prop) {
-		return VMM_EFAIL;
+	rc = libfdt_get_property(&fdt, fdt_node,
+				 VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME, addr);
+	if (rc) {
+		return rc;
 	}
-
-	phys_adr = (physical_addr_t *)prop->data;
-	*addr = *phys_adr;
 
 	return VMM_OK;
 }
 
-int arch_board_ram_size(physical_size_t * size)
+int arch_board_ram_size(physical_size_t *size)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
-	struct fdt_node_header * fdt_node;
-	struct fdt_property * prop;
-	physical_size_t *phys_sz;
+	struct fdt_node_header *fdt_node;
 
 	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
 	if (rc) {
@@ -87,13 +79,11 @@ int arch_board_ram_size(physical_size_t * size)
 		return VMM_EFAIL;
 	}
 
-	prop = libfdt_get_property(&fdt, fdt_node,
-				   VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME);
-	if (!prop) {
-		return VMM_EFAIL;
+	rc = libfdt_get_property(&fdt, fdt_node,
+				 VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME, size);
+	if (rc) {
+		return rc;
 	}
-	phys_sz = (physical_size_t *)prop->data;
-	*size = *phys_sz;
 
 	return VMM_OK;
 }
@@ -118,6 +108,7 @@ int __init arch_board_early_init(void)
 
 int __init arch_board_final_init(void)
 {
+#if 0
 	int rc;
 	struct vmm_devtree_node *node;
 
@@ -134,11 +125,11 @@ int __init arch_board_final_init(void)
 		return VMM_ENOTAVAIL;
 	}
 
-	rc = vmm_devdrv_probe(node, NULL);
+	rc = vmm_devdrv_probe(node, NULL, NULL);
 	if(rc) {
 		return rc;
 	}
-
+#endif
 	return VMM_OK;
 }
 

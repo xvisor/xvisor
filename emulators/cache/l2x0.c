@@ -33,16 +33,16 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			l2x0_cc_emulator_module
-#define MODULE_NAME			"L2X0 Cache Emulator"
+#define MODULE_DESC			"L2X0 Cache Emulator"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			l2x0_cc_emulator_init
 #define	MODULE_EXIT			l2x0_cc_emulator_exit
@@ -236,7 +236,7 @@ static int l2x0_cc_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto l2x0_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct l2x0_state));
+	memset(s, 0x0, sizeof(struct l2x0_state));
 
 	INIT_SPIN_LOCK(&s->lock);
 	s->id = (enum l2x0_id)(eid->data);
@@ -292,15 +292,15 @@ static int __init l2x0_cc_emulator_init(void)
 	return vmm_devemu_register_emulator(&l2x0_cc_emulator);
 }
 
-static void l2x0_cc_emulator_exit(void)
+static void __exit l2x0_cc_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&l2x0_cc_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-		MODULE_NAME, 
-		MODULE_AUTHOR, 
-		MODULE_IPRIORITY, 
-		MODULE_INIT, 
-		MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_DESC, 
+			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);
 

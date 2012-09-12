@@ -22,10 +22,11 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
+#include <vmm_compiler.h>
 #include <vmm_heap.h>
 #include <vmm_scheduler.h>
 #include <vmm_workqueue.h>
+#include <stringlib.h>
 
 struct vmm_workqueue_ctrl {
 	vmm_spinlock_t lock;
@@ -120,6 +121,22 @@ int vmm_workqueue_stop_work(struct vmm_work * work)
 	return VMM_OK;
 }
 
+int vmm_workqueue_stop_delayed_work(struct vmm_delayed_work *work)
+{
+	int rc;
+
+	if (!work) {
+		return VMM_EFAIL;
+	}
+
+	rc = vmm_timer_event_stop(&work->event);
+	if (rc) {
+		return rc;
+	}
+
+	return vmm_workqueue_stop_work(&work->work);
+}
+
 struct vmm_thread *vmm_workqueue_get_thread(struct vmm_workqueue * wq)
 {
 	return (wq) ? wq->thread : NULL;
@@ -194,8 +211,6 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue * wq,
 	}
 
 	if (!wq) {
-		/* For SMP we will have to do load balancing 
-		 * among multiple system workqueues */
 		wq = wqctrl.syswq;
 	}
 
@@ -211,7 +226,7 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue * wq,
 	work->wq = wq;
 
 	vmm_spin_lock_irqsave(&wq->lock, flags1);
-	list_add_tail(&wq->work_list, &work->head);
+	list_add_tail(&work->head, &wq->work_list);
 	vmm_spin_unlock_irqrestore(&wq->lock, flags1);
 
 	vmm_spin_unlock_irqrestore(&work->lock, flags);
@@ -219,6 +234,31 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue * wq,
 	vmm_threads_wakeup(wq->thread);
 
 	return VMM_OK;
+}
+
+static void delayed_work_timer_event(struct vmm_timer_event *ev)
+{
+	struct vmm_delayed_work *work = ev->priv;
+
+	vmm_workqueue_schedule_work(work->work.wq, &work->work);
+}
+
+int vmm_workqueue_schedule_delayed_work(struct vmm_workqueue *wq, 
+					struct vmm_delayed_work *work,
+					u64 nsecs)
+{
+	if (!wq || !work) {
+		return VMM_EFAIL;
+	}
+
+	if (!nsecs) {
+		return vmm_workqueue_schedule_work(wq, &work->work);
+	}
+
+	work->work.wq = wq;
+	INIT_TIMER_EVENT(&work->event, delayed_work_timer_event, work);
+
+	return vmm_timer_event_start(&work->event, nsecs);
 }
 
 static int workqueue_main(void *data)
@@ -300,7 +340,7 @@ struct vmm_workqueue * vmm_workqueue_create(const char *name, u8 priority)
 
 	vmm_spin_lock_irqsave(&wqctrl.lock, flags);
 
-	list_add_tail(&wqctrl.wq_list, &wq->head);
+	list_add_tail(&wq->head, &wqctrl.wq_list);
 	wqctrl.wq_count++;
 
 	vmm_spin_unlock_irqrestore(&wqctrl.lock, flags);
@@ -340,7 +380,7 @@ int vmm_workqueue_destroy(struct vmm_workqueue * wq)
 int __init vmm_workqueue_init(void)
 {
 	/* Reset control structure */
-	vmm_memset(&wqctrl, 0, sizeof(wqctrl));
+	memset(&wqctrl, 0, sizeof(wqctrl));
 
 	/* Initialize lock in control structure */
 	INIT_SPIN_LOCK(&wqctrl.lock);
@@ -351,9 +391,11 @@ int __init vmm_workqueue_init(void)
 	/* Initialize workqueue count */
 	wqctrl.wq_count = 0;
 
-	/* Create system workqueus (Per Host CPU) */
-	wqctrl.syswq = vmm_workqueue_create("syswq/0", 
-					    VMM_THREAD_DEF_PRIORITY);
+	/* Create one system workqueue with thread priority
+	 * higher than default priority.
+	 */
+	wqctrl.syswq = vmm_workqueue_create("syswq", 
+					    VMM_THREAD_DEF_PRIORITY + 1);
 	if (!wqctrl.syswq) {
 		return VMM_EFAIL;
 	}

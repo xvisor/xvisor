@@ -24,6 +24,8 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <vmm_compiler.h>
+#include <arch_barrier.h>
 
 bool __lock arch_spin_lock_check(spinlock_t * lock)
 {
@@ -32,36 +34,29 @@ bool __lock arch_spin_lock_check(spinlock_t * lock)
 
 void __lock arch_spin_lock(spinlock_t * lock)
 {
-	unsigned int tmp;
-	__asm__ __volatile__("@ __cpu_spin_lock\n"
-			     "1:\n"
-			     "       ldrex   %0, [%2]\n"
-				/* Load lock->__cpu_lock([%2]) to tmp (%0) */
-			     "       teq     %0, #0\n"
-				/* If the physical address is tagged as exclusive access,
-				 * lock->__cpu_lock should equal to 0  */
-			     "       it      eq\n"
-			     "       strexeq %0, %1, [%2]\n"
-				/* Save 1 to lock->__cpu_lock
-				 * Result of this operation would be in tmp (%0).
-				 * if store operation success, result will be 0 or else 1
-				 */
-			     "       teq     %0, #0\n"
-				/* Compare result with 0 again */
-			     "       bne     1b\n"
-				/* If fails go back to 1 and retry else return */
-			     :"=&r"(tmp)
-			     :"r"(1), "r"(&lock->lock)
-			     :"cc", "memory");
+	unsigned long tmp;
+
+	__asm__ __volatile__(
+"1:	ldrex	%0, [%1]\n"
+"	teq	%0, #0\n"
+"	strexeq	%0, %2, [%1]\n"
+"	teqeq	%0, #0\n"
+"	bne	1b"
+	: "=&r" (tmp)
+	: "r" (&lock->lock), "r" (1)
+	: "cc");
+
+	arch_smp_mb();
 }
 
 void __lock arch_spin_unlock(spinlock_t * lock)
 {
-	__asm__ __volatile__("@ __cpu_spin_unlock\n"
-			     "       str     %0, [%1]\n"
-				/* Save 0 to lock->__cpu_lock in order to unlock */
-			     :
-			     :"r"(0), "r"(&lock->lock)
-			     :"memory");
+	arch_smp_mb();
+
+	__asm__ __volatile__(
+"	str	%1, [%0]\n"
+	:
+	: "r" (&lock->lock), "r" (0)
+	: "cc");
 }
 

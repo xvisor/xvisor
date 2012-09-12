@@ -24,7 +24,6 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 #include <vmm_vcpu_irq.h>
@@ -61,6 +60,18 @@ void arch_cpu_irq_disable(void)
 		: "=r" (temp)
 		:
 		: "memory", "cc");
+}
+
+bool arch_cpu_irq_disabled(void)
+{
+	unsigned long flags;
+
+	asm volatile (" mrs     %0, cpsr\n\t"
+		      :"=r" (flags)
+		      :
+		      :"memory", "cc");
+
+	return (flags & CPSR_IRQ_DISABLED) ? TRUE : FALSE;
 }
 
 irq_flags_t arch_cpu_irq_save(void)

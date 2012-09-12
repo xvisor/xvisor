@@ -26,11 +26,11 @@
 #include <arch_board.h>
 #include <arch_sections.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
+#include <stringlib.h>
 
 virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
 			       virtual_size_t sz, 
@@ -44,7 +44,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 
 	if ((rc = vmm_host_vapool_alloc(&va, sz, FALSE))) {
 		/* Don't have space */
-		BUG_ON("%s: Don't have space\n", __func__);
+		BUG();
 	}
 
 	tpa = pa & ~VMM_PAGE_MASK;
@@ -56,7 +56,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 					mem_flags);
 		if (rc) {
 			/* We were not able to map physical address */
-			BUG_ON("%s: map physical address failed\n", __func__);
+			BUG();
 		}
 	}
 
@@ -158,7 +158,7 @@ u32 vmm_host_physical_read(physical_addr_t hphys_addr,
 				      VMM_PAGE_SIZE, 
 				      VMM_MEMORY_READABLE);
 
-		vmm_memcpy(dst, (void *)src, to_read);
+		memcpy(dst, (void *)src, to_read);
 
 		vmm_host_memunmap(src, VMM_PAGE_SIZE);
 
@@ -194,7 +194,7 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 		dst = vmm_host_memmap(hphys_addr, 
 				      VMM_PAGE_SIZE, 
 				      VMM_MEMORY_WRITEABLE);
-		vmm_memcpy((void *)dst, src, to_write);
+		memcpy((void *)dst, src, to_write);
 		vmm_host_memunmap(dst, VMM_PAGE_SIZE);
 
 		hphys_addr += to_write;
@@ -211,12 +211,12 @@ u32 vmm_host_free_initmem(void)
 	virtual_addr_t init_start;
 	virtual_size_t init_size;
 
-	init_start = arch_init_text_vaddr();
-	init_size = arch_init_text_size();
+	init_start = arch_init_vaddr();
+	init_size = arch_init_size();
 	init_size = VMM_ROUNDUP2_PAGE_SIZE(init_size);
 
 	if ((rc = vmm_host_free_pages(init_start, init_size >> VMM_PAGE_SHIFT))) {
-		BUG_ON("%s: Unable to free pages\n", __func__);
+		BUG();
 	}
 
 	return (init_size >> VMM_PAGE_SHIFT) * VMM_PAGE_SIZE / 1024;

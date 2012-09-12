@@ -22,70 +22,70 @@
  */
 #include <cpu_cache.h>
 
-void flush_icache(void)
+void invalidate_icache(void)
 {
 	u32 tmp = 0;
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
 		     : : "r"(tmp) : );
 }
 
-void flush_icache_mva(virtual_addr_t mva)
+void invalidate_icache_mva(virtual_addr_t mva)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 1\n\t"
 		     : : "r"(mva) : );
 }
 
-void flush_icache_line(u32 line)
+void invalidate_icache_line(u32 line)
 {
-	/* No such instruction so flush everything */
+	/* No such instruction so invalidate everything */
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
 		     : : "r"(line) : );
 }
 
-void flush_bpredictor(void)
+void invalidate_bpredictor(void)
 {
 	/* FIXME: */
 }
 
-void flush_bpredictor_mva(virtual_addr_t mva)
+void invalidate_bpredictor_mva(virtual_addr_t mva)
 {
 	/* FIXME: */
 }
 
-void flush_dcache(void)
+void invalidate_dcache(void)
 {
-	/* FIXME: flush data cache */
+	/* FIXME: invalidate data cache */
 }
 
-void flush_dcache_mva(virtual_addr_t mva)
+void invalidate_dcache_mva(virtual_addr_t mva)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c6, 1\n\t"
 		     : : "r"(mva) : );
 }
 
-void flush_dcache_line(u32 line)
+void invalidate_dcache_line(u32 line)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c6, 2\n\t"
 		     : : "r"(line) : );
 }
 
-void flush_idcache(void)
+void invalidate_idcache(void)
 {
 	u32 tmp = 0;
-	/* flush instruction cache */
+	/* invalidate instruction cache */
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
 		     : : "r"(tmp) : );
-	/* FIXME: flush data cache */
+	/* FIXME: invalidate data cache */
 }
 
-void flush_idcache_mva(virtual_addr_t mva)
+void invalidate_idcache_mva(virtual_addr_t mva)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 1\n\t"
 		     " mcr     p15, 0, %0, c7, c6, 1\n\t"
 		     : : "r"(mva) : );
 }
 
-void flush_idcache_line(u32 line)
+void invalidate_idcache_line(u32 line)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 2\n\t"
 		     " mcr     p15, 0, %0, c7, c6, 2\n\t"
@@ -132,46 +132,46 @@ void clean_idcache_line(u32 line)
 		     : : "r"(line) : );
 }
 
-void clean_flush_dcache(void)
+void clean_invalidate_dcache(void)
 {
 	/* FIXME: */
 }
 
-void clean_flush_dcache_mva(virtual_addr_t mva)
+void clean_invalidate_dcache_mva(virtual_addr_t mva)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c14, 1\n\t"
 		     : : "r"(mva) : );
 }
 
-void clean_flush_dcache_line(u32 line)
+void clean_invalidate_dcache_line(u32 line)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c14, 2\n\t"
 		     : : "r"(line) : );
 }
 
-void clean_flush_idcache(void)
+void clean_invalidate_idcache(void)
 {
 	/* FIXME: */
 }
 
-void clean_flush_idcache_mva(virtual_addr_t mva)
+void clean_invalidate_idcache_mva(virtual_addr_t mva)
 {
 	/* Instruction cache does not require cleaning so,
 	 * this operation reduces to following:
 	 *   1. Flush instruction cache
-	 *   2. Clean & flush data cache
+	 *   2. Clean & invalidate data cache
 	 */
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 1\n\t"
 		     " mcr     p15, 0, %0, c7, c14, 1\n\t"
 		     : : "r"(mva) : );
 }
 
-void clean_flush_idcache_line(u32 line)
+void clean_invalidate_idcache_line(u32 line)
 {
 	/* Instruction cache does not require cleaning so,
 	 * this operation reduces to following:
 	 *   1. Flush entire instruction cache
-	 *   2. Clean & flush data cache
+	 *   2. Clean & invalidate data cache
 	 */
 	asm volatile(" mcr     p15, 0, %0, c7, c5, 0\n\t"
 		     " mcr     p15, 0, %0, c7, c14, 2\n\t"

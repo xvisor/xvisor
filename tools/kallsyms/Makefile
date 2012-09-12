@@ -18,7 +18,10 @@
 #
 # @file Makefile
 # @author Jean-Christophe Dubois <jcd@tribudubois.net>
-# @brief toplevel makefile for Beagleboard Nandflash ECC tool
+# @brief toplevel makefile for kallsyms generator tool
+# NOTE: This tool is required by KALLSYMS library !!!!
+# Many crucial things depend on KALLSYMS such as stack trace,
+# runtime module loading, profiling, etc. 
 # */
 
 src_dir=$(CURDIR)

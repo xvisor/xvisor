@@ -23,10 +23,10 @@
 
 #include <arch_cpu.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
 #include <vmm_guest_aspace.h>
+#include <stringlib.h>
 #include <cpu_asm_macros.h>
 #include <cpu_mmu.h>
 
@@ -99,7 +99,7 @@ static int map_guest_region(struct vmm_vcpu *vcpu, int region_type, int tlb_inde
 	shadow_entry.entrylo1._s_entrylo.cacheable = 0;
 	shadow_entry.entrylo1._s_entrylo.pfn = 0;
 
-	vmm_memcpy((void *)&mips_sregs(vcpu)->shadow_tlb_entries[tlb_index],
+	memcpy((void *)&mips_sregs(vcpu)->shadow_tlb_entries[tlb_index],
 		   (void *)&shadow_entry, sizeof(mips32_tlb_entry_t));
 
 	return VMM_OK;
@@ -129,7 +129,7 @@ int arch_guest_deinit(struct vmm_guest * guest)
 
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
-	vmm_memset(mips_uregs(vcpu), 0, sizeof(arch_regs_t));
+	memset(mips_uregs(vcpu), 0, sizeof(arch_regs_t));
 
         if (!vcpu->is_normal) {
 		/* For orphan vcpu */
@@ -159,7 +159,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
 {
-	vmm_memset(mips_uregs(vcpu), 0, sizeof(arch_regs_t));
+	memset(mips_uregs(vcpu), 0, sizeof(arch_regs_t));
 
 	return VMM_OK;
 }
@@ -169,7 +169,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		      arch_regs_t *regs)
 {
 	if (tvcpu) {
-		vmm_memcpy(mips_uregs(tvcpu), regs, sizeof(arch_regs_t));
+		memcpy(mips_uregs(tvcpu), regs, sizeof(arch_regs_t));
 	}
 
 	if (vcpu) {
@@ -179,7 +179,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			mips_uregs(vcpu)->cp0_status = read_c0_status() | (0x01UL << CP0_STATUS_UM_SHIFT);
 		}
 
-		vmm_memcpy(regs, mips_uregs(vcpu), sizeof(arch_regs_t));
+		memcpy(regs, mips_uregs(vcpu), sizeof(arch_regs_t));
 	}
 }
 

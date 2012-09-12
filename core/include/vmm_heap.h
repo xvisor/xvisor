@@ -29,6 +29,9 @@
 /** Allocate memory */
 void *vmm_malloc(virtual_size_t size);
 
+/** Allocate memory and zero set */
+void *vmm_zalloc(virtual_size_t size);
+
 /** Free memory */
 void vmm_free(void *pointer);
 

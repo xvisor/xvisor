@@ -35,7 +35,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_timer.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
@@ -44,11 +43,12 @@
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_stdio.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
-#define MODULE_VARID		mptimer_emulator_module
-#define MODULE_NAME		"MPCore Private Timer and Watchdog Emulator"
+#define MODULE_DESC		"MPCore Private Timer and Watchdog Emulator"
 #define MODULE_AUTHOR		"Sukanto Ghosh"
+#define MODULE_LICENSE		"GPL"
 #define MODULE_IPRIORITY	0
 #define	MODULE_INIT		mptimer_emulator_init
 #define	MODULE_EXIT		mptimer_emulator_exit
@@ -63,7 +63,7 @@ struct timer_block {
 	struct mptimer_state *mptimer;
 	u32 cpu;
 	vmm_spinlock_t lock;
-	struct vmm_timer_event *event;
+	struct vmm_timer_event event;
 
 	/* Configuration */
 	u32 irq;
@@ -186,8 +186,8 @@ static void timer_block_reload(struct timer_block *timer)
 					(u64) timer->freq);
 	}
 
-	vmm_timer_event_stop(timer->event); 
-	vmm_timer_event_start(timer->event, nsecs);
+	vmm_timer_event_stop(&timer->event); 
+	vmm_timer_event_start(&timer->event, nsecs);
 }
 
 static void timer_block_event(struct vmm_timer_event *event)
@@ -313,7 +313,7 @@ int mptimer_reg_write(struct mptimer_state *s, u32 offset, u32 src_mask,
 			if ((timer->control & TIMER_CTRL_ENABLE) && 
 			    timer->count) {
 				/* Cancel the previous timer.  */
-				vmm_timer_event_stop(timer->event); 
+				vmm_timer_event_stop(&timer->event); 
 			}
 			timer->count = src;
 			if (timer->control & TIMER_CTRL_ENABLE) {
@@ -370,7 +370,7 @@ int mptimer_state_reset(struct mptimer_state *mpt)
 
 		vmm_spin_lock(&timer->lock);
 
-		vmm_timer_event_stop(timer->event);
+		vmm_timer_event_stop(&timer->event);
 		timer->load = 0;
 		timer->control = 0;
 		timer->status = 0;
@@ -387,6 +387,7 @@ int mptimer_state_reset(struct mptimer_state *mpt)
 
 int mptimer_state_free(struct mptimer_state *s)
 {
+	int rc = VMM_OK;
 	if (s) {
 		if (s->timers) {
 			vmm_free(s->timers);
@@ -394,34 +395,35 @@ int mptimer_state_free(struct mptimer_state *s)
 
 		vmm_free(s);
 	}
-	return VMM_OK;
+	return rc;
 }
 
 struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
-					  struct vmm_emudev * edev, 
+					  struct vmm_emudev *edev, 
 					  u32 num_cpu,
 					  u32 periphclk,
 					  u32 irq[])
 {
 	struct mptimer_state *s = NULL;
 	int i;
-	char tname[64];
 
 	s = vmm_malloc(sizeof(struct mptimer_state));
 	if (!s) {
 		goto mptimer_state_alloc_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct mptimer_state));
+	memset(s, 0x0, sizeof(struct mptimer_state));
 
 	s->guest = guest;
 	s->num_cpu = num_cpu;
 	s->ref_freq = periphclk; 
 
-	s->timers = vmm_malloc(NUM_TIMERS_PER_CPU * s->num_cpu * sizeof(struct timer_block));
+	s->timers = vmm_malloc(NUM_TIMERS_PER_CPU * s->num_cpu * 
+			       sizeof(struct timer_block));
 	if (!s->timers) {
 		goto mptimer_timerblock_alloc_failed;
 	}
-	vmm_memset(s->timers, 0x0, NUM_TIMERS_PER_CPU * s->num_cpu * sizeof(struct timer_block));
+	memset(s->timers, 0x0, NUM_TIMERS_PER_CPU * s->num_cpu * 
+		   sizeof(struct timer_block));
 
 	/* Init the timer blocks */
 	for(i=0; i<(NUM_TIMERS_PER_CPU * num_cpu); i++) {
@@ -430,14 +432,9 @@ struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 		s->timers[i].cpu = (i >> 1);
 		s->timers[i].is_wdt = (i & 0x1);
 		INIT_SPIN_LOCK(&(s->timers[i].lock));
-		vmm_sprintf(tname, " %s%s%s(%d/%d)",
-			    guest->node->name,
-			    VMM_DEVTREE_PATH_SEPARATOR_STRING,
-			    edev->node->name,
-			    (i >> 1),
-			    (i & 0x1));
-		s->timers[i].event = vmm_timer_event_create(tname, &timer_block_event, 
-							    &(s->timers[i]));
+		INIT_TIMER_EVENT(&s->timers[i].event, 
+				 &timer_block_event,
+				 &(s->timers[i]));
 	}
 
 	goto mptimer_state_alloc_done;

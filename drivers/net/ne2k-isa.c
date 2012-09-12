@@ -26,7 +26,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
+#include <stringlib.h>
 #include <vmm_modules.h>
 #include <vmm_ringbuf.h>
 
@@ -48,9 +48,9 @@ DEFINE_WAIT_LIST(rx_wait_queue);
 #define PRINTK(fmt,...)
 #endif
 
-#define MODULE_VARID			ne2k_driver_module
-#define MODULE_NAME			"NE2000 Based NIC Driver"
+#define MODULE_DESC			"NE2000 Based NIC Driver"
 #define MODULE_AUTHOR			"Himanshu Chauhan"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			ne2k_driver_init
 #define	MODULE_EXIT			ne2k_driver_exit
@@ -611,7 +611,7 @@ int ne2k_init(struct nic_priv_data *nic_data)
 	nic_data->tx_buf2 = START_PG2;
 	nic_data->rx_buf_start = RX_START;
 	nic_data->rx_buf_end = RX_END;
-	vmm_memcpy(nic_data->esa, eth_addr, sizeof(nic_data->esa));
+	memcpy(nic_data->esa, eth_addr, sizeof(nic_data->esa));
 
 	if (dp83902a_init(nic_data) != true) {
 		return VMM_EFAIL;
@@ -703,14 +703,14 @@ static int ne2k_driver_probe(struct vmm_driver *dev, const struct vmm_devid *dev
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
-	vmm_memset(ndev,0, sizeof(struct vmm_netdev));
+	memset(ndev,0, sizeof(struct vmm_netdev));
 
 	priv_data = vmm_malloc(sizeof(struct nic_priv_data));
 	if(!priv_data) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
 	}
-	vmm_memset(priv_data,0, sizeof(struct nic_priv_data));
+	memset(priv_data,0, sizeof(struct nic_priv_data));
 
 	if (ne2k_init(priv_data)) {
 		rc = VMM_EFAIL;
@@ -726,7 +726,7 @@ static int ne2k_driver_probe(struct vmm_driver *dev, const struct vmm_devid *dev
 
 	vmm_hyperthread_run(priv_data->txrx_thread);
 
-	vmm_strcpy(ndev->name, dev->node->name);
+	strcpy(ndev->name, dev->node->name);
 	ndev->dev = dev;
 	ndev->ioctl = NULL;
 	ndev->read = ne2k_read;
@@ -787,14 +787,14 @@ static int __init ne2k_driver_init(void)
 	return vmm_devdrv_register_driver(&ne2k_driver);
 }
 
-static void ne2k_driver_exit(void)
+static void __exit ne2k_driver_exit(void)
 {
 	vmm_devdrv_unregister_driver(&ne2k_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		MODULE_NAME,
-		MODULE_AUTHOR,
-		MODULE_IPRIORITY,
-		MODULE_INIT,
-		MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

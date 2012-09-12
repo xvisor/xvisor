@@ -22,7 +22,6 @@
  */
 
 #include <arch_cpu.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_main.h>
@@ -73,7 +72,7 @@ int __init arch_cpu_final_init(void)
 
 void __init cpu_init(struct multiboot_info *binfo)
 {
-	while (1);
+	while(1);
 
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();

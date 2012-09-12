@@ -28,9 +28,8 @@
  *	Adapted the file to xvisor
  */
 
-#include <vmm_string.h>
 #include <vmm_stdio.h>
-
+#include <stringlib.h>
 #include <kallsyms.h>
 
 extern unsigned char _code_end;
@@ -87,7 +86,7 @@ __notrace unsigned long kallsyms_get_symbol_pos(unsigned long addr, unsigned lon
 	unsigned long i, low, high, mid;
 
 	/* This kernel should never had been booted. */
-	//BUG_ON(!kallsyms_addresses);
+	BUG_ON(!kallsyms_addresses);
 
 	/* Do a binary search on the sorted kallsyms_addresses array. */
 	low = 0;
@@ -184,7 +183,7 @@ __notrace unsigned long kallsyms_lookup_name(const char *name)
 	for (i = 0, off = 0; i < kallsyms_num_syms; i++) {
 		off = kallsyms_expand_symbol(off, namebuf);
 
-		if (vmm_strcmp(namebuf, name) == 0)
+		if (strcmp(namebuf, name) == 0)
 			return kallsyms_addresses[i];
 	}
 
@@ -234,8 +233,8 @@ static __notrace int __sprint_symbol(char *buffer, unsigned long address,
 		return vmm_sprintf(buffer, "0x%lx", address);
 
 	if (name != buffer)
-		vmm_strcpy(buffer, name);
-	len = vmm_strlen(buffer);
+		strcpy(buffer, name);
+	len = strlen(buffer);
 	buffer += len;
 	offset -= symbol_offset;
 

@@ -22,19 +22,22 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
+#include <vmm_cpumask.h>
+#include <vmm_devtree.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_delay.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
-#define MODULE_VARID			cmd_host_module
-#define MODULE_NAME			"Command host"
+#define MODULE_DESC			"Command host"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_host_init
 #define	MODULE_EXIT			cmd_host_exit
@@ -53,30 +56,68 @@ void cmd_host_usage(struct vmm_chardev *cdev)
 
 void cmd_host_info(struct vmm_chardev *cdev)
 {
-	vmm_cprintf(cdev, "CPU   : %s\n", CONFIG_CPU);
-	vmm_cprintf(cdev, "Board : %s\n", CONFIG_BOARD);
+	char *attr;
+	struct vmm_devtree_node *node;
+	u32 khz = vmm_delay_estimate_cpu_khz();
+
+	attr = NULL;
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
+	if (node) {
+		attr = vmm_devtree_attrval(node, VMM_DEVTREE_MODEL_ATTR_NAME);
+	}
+	if (attr) {
+		vmm_cprintf(cdev, "Board Name : %s\n", attr);
+	} else {
+		vmm_cprintf(cdev, "Board Name : %s\n", CONFIG_BOARD);
+	}
+	vmm_cprintf(cdev, "CPU Name   : %s\n", CONFIG_CPU);
+	vmm_cprintf(cdev, "CPU Count  : %d\n", CONFIG_CPU_COUNT);
+	vmm_cprintf(cdev, "CPU Speed  : %d.%d MHz (Estimated)\n", 
+					udiv32(khz, 1000), umod32(khz, 1000));
 }
 
 void cmd_host_irq_stats(struct vmm_chardev *cdev)
 {
-	u32 num, stats, count = vmm_host_irq_count();
+	u32 num, cpu, stats, count = vmm_host_irq_count();
 	struct vmm_host_irq *irq;
 	struct vmm_host_irq_chip *chip;
-	vmm_cprintf(cdev, "----------------------------------------\n");
-	vmm_cprintf(cdev, "| %-8s| %-10s| %-15s|\n", 
-			  "IRQ Num", "IRQ Chip", "IRQ Count");
-	vmm_cprintf(cdev, "----------------------------------------\n");
+
+	vmm_cprintf(cdev, "-----------------------------------");
+	for_each_online_cpu(cpu) {
+		vmm_cprintf(cdev, "------------");
+	}
+	vmm_cprintf(cdev, "\n");
+	vmm_cprintf(cdev, " %-7s %-15s %-10s", 
+			  "IRQ#", "Name", "Chip");
+	for_each_online_cpu(cpu) {
+		vmm_cprintf(cdev, " CPU%-8d", cpu);
+	}
+	vmm_cprintf(cdev, "\n");
+	vmm_cprintf(cdev, "-----------------------------------");
+	for_each_online_cpu(cpu) {
+		vmm_cprintf(cdev, "------------");
+	}
+	vmm_cprintf(cdev, "\n");
 	for (num = 0; num < count; num++) {
 		irq = vmm_host_irq_get(num);
-		if (!vmm_host_irq_isenabled(irq)) {
+		if (vmm_host_irq_is_disabled(irq)) {
 			continue;
 		}
-		stats = vmm_host_irq_get_count(irq);
 		chip = vmm_host_irq_get_chip(irq);
-		vmm_cprintf(cdev, "| %-8d| %-10s| %-15d|\n", 
-				  num, chip->name, stats);
+		vmm_cprintf(cdev, " %-7d %-15s %-10s", 
+				  num, irq->name, chip->name, stats);
+		for_each_online_cpu(cpu) {
+			stats = vmm_host_irq_get_count(irq, cpu);
+			vmm_cprintf(cdev, " %-11d", stats);
+		}
+		vmm_cprintf(cdev, "\n");
 	}
-	vmm_cprintf(cdev, "----------------------------------------\n");
+	vmm_cprintf(cdev, "-----------------------------------");
+	for_each_online_cpu(cpu) {
+		vmm_cprintf(cdev, "------------");
+	}
+	vmm_cprintf(cdev, "\n");
 }
 
 void cmd_host_ram_stats(struct vmm_chardev *cdev)
@@ -165,37 +206,37 @@ int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int colcnt;
 	if (1 < argc) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_host_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "info") == 0) {
+		} else if (strcmp(argv[1], "info") == 0) {
 			cmd_host_info(cdev);
 			return VMM_OK;
-		} else if ((vmm_strcmp(argv[1], "irq") == 0) && (2 < argc)) {
-			if (vmm_strcmp(argv[2], "stats") == 0) {
+		} else if ((strcmp(argv[1], "irq") == 0) && (2 < argc)) {
+			if (strcmp(argv[2], "stats") == 0) {
 				cmd_host_irq_stats(cdev);
 				return VMM_OK;
 			}
-		} else if ((vmm_strcmp(argv[1], "ram") == 0) && (2 < argc)) {
-			if (vmm_strcmp(argv[2], "stats") == 0) {
+		} else if ((strcmp(argv[1], "ram") == 0) && (2 < argc)) {
+			if (strcmp(argv[2], "stats") == 0) {
 				cmd_host_ram_stats(cdev);
 				return VMM_OK;
-			} else if (vmm_strcmp(argv[2], "bitmap") == 0) {
+			} else if (strcmp(argv[2], "bitmap") == 0) {
 				if (3 < argc) {
-					colcnt = vmm_str2int(argv[3], 10);
+					colcnt = str2int(argv[3], 10);
 				} else {
 					colcnt = 64;
 				}
 				cmd_host_ram_bitmap(cdev, colcnt);
 				return VMM_OK;
 			}
-		} else if ((vmm_strcmp(argv[1], "vapool") == 0) && (2 < argc)) {
-			if (vmm_strcmp(argv[2], "stats") == 0) {
+		} else if ((strcmp(argv[1], "vapool") == 0) && (2 < argc)) {
+			if (strcmp(argv[2], "stats") == 0) {
 				cmd_host_vapool_stats(cdev);
 				return VMM_OK;
-			} else if (vmm_strcmp(argv[2], "bitmap") == 0) {
+			} else if (strcmp(argv[2], "bitmap") == 0) {
 				if (3 < argc) {
-					colcnt = vmm_str2int(argv[3], 10);
+					colcnt = str2int(argv[3], 10);
 				} else {
 					colcnt = 64;
 				}
@@ -220,14 +261,14 @@ static int __init cmd_host_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_host);
 }
 
-static void cmd_host_exit(void)
+static void __exit cmd_host_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_host);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

@@ -22,15 +22,24 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <arch_host_irq.h>
+
+#if CONFIG_LOCAL_APIC
+#include <cpu_apic.h>
+#endif
 
 u32 arch_host_irq_active(u32 cpu_irq_no)
 {
-	return 0;
+	return cpu_irq_no;
 }
 
 int __init arch_host_irq_init(void)
 {
+#if CONFIG_LOCAL_APIC
+	apic_init();
+#endif
+
 	return VMM_OK;
 }
 

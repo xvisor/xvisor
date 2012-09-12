@@ -33,7 +33,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
@@ -41,28 +40,43 @@
 #include <vmm_manager.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
-#define MODULE_VARID			realview_emulator_module
-#define MODULE_NAME			"Realview Sysctl Emulator"
+#define MODULE_DESC			"Realview Sysctl Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
-#define	MODULE_INIT			realview_emulator_init
-#define	MODULE_EXIT			realview_emulator_exit
+#define	MODULE_INIT			arm_sysregs_emulator_init
+#define	MODULE_EXIT			arm_sysregs_emulator_exit
 
-#define REALVIEW_LOCK_VAL		0x0000a05f
+#define LOCK_VAL			0x0000a05f
+
 #define REALVIEW_SYSID_PBA8		0x01780500
 #define REALVIEW_PROCID_PBA8		0x00000000
-#define REALVIEW_SYSID_VEXPRESS		0x01900000
+#define VEXPRESS_SYSID_CA9		0x01900000
 #define VEXPRESS_PROCID_CA9		0x0c000191
-#define REALVIEW_SYSID_VERSATILEPB	0x41008004
-#define REALVIEW_PROCID_VERSATILEPB	0x00000000
+#define VERSATILEPB_SYSID_ARM926	0x41008004
+#define VERSATILEPB_PROCID_ARM926	0x00000000
 
-struct realview_sysctl {
+/* The PB926 actually uses a different format for
+ * its SYS_ID register. Fortunately the bits which are
+ * board type on later boards are distinct.
+ */
+#define BOARD_ID_PB926			0x0100
+#define BOARD_ID_EB			0x0140
+#define BOARD_ID_PBA8			0x0178
+#define BOARD_ID_PBX			0x0182
+#define BOARD_ID_VEXPRESS		0x0190
+
+struct arm_sysregs {
 	struct vmm_guest *guest;
+	struct vmm_emupic *pic;
 	vmm_spinlock_t lock;
 	u64 ref_100hz;
 	u64 ref_24mhz;
+	u32 mux_in_irq[2];
+	u32 mux_out_irq;
 
 	u32 sys_id;
 	u32 leds;
@@ -77,16 +91,23 @@ struct realview_sysctl {
 	u32 sys_cfgdata;
 	u32 sys_cfgctrl;
 	u32 sys_cfgstat;
+	u32 sys_clcd;
 };
 
-static int realview_emulator_read(struct vmm_emudev *edev,
-			    	  physical_addr_t offset, 
-				  void *dst, u32 dst_len)
+static int board_id(struct arm_sysregs *s)
+{
+    /* Extract the board ID field from the SYS_ID register value */
+    return (s->sys_id >> 16) & 0xfff;
+}
+
+static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
+			    	     physical_addr_t offset, 
+				     void *dst, u32 dst_len)
 {
 	int rc = VMM_OK;
 	u32 regval = 0x0;
 	u64 tdiff;
-	struct realview_sysctl * s = edev->priv;
+	struct arm_sysregs * s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -129,7 +150,7 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 		regval = s->nvflags;
 		break;
 	case 0x40: /* RESETCTL */
-		if (s->sys_id == REALVIEW_SYSID_VEXPRESS) {
+		if (board_id(s) == BOARD_ID_VEXPRESS) {
 			/* reserved: RAZ/WI */
 			regval = 0;
 		} else {
@@ -146,7 +167,7 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 		regval = 0;
 		break;
 	case 0x50: /* CLCD */
-		regval = 0x1000;
+		regval = s->sys_clcd;
 		break;
 	case 0x54: /* CLCDSER */
 		regval = 0;
@@ -198,21 +219,21 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 		regval = 0;
 		break;
 	case 0xa0: /* SYS_CFGDATA */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (board_id(s) != BOARD_ID_VEXPRESS) {
 			rc = VMM_EFAIL;
 		} else {
 			regval = s->sys_cfgdata;
 		}
 		break;
 	case 0xa4: /* SYS_CFGCTRL */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (board_id(s) != BOARD_ID_VEXPRESS) {
 			rc = VMM_EFAIL;
 		} else {
 			regval = s->sys_cfgctrl;
 		}
 		break;
 	case 0xa8: /* SYS_CFGSTAT */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (board_id(s) != BOARD_ID_VEXPRESS) {
 			rc = VMM_EFAIL;
 		} else {
 			regval = s->sys_cfgstat;
@@ -246,14 +267,14 @@ static int realview_emulator_read(struct vmm_emudev *edev,
 	return rc;
 }
 
-static int realview_emulator_write(struct vmm_emudev *edev,
-				   physical_addr_t offset, 
-				   void *src, u32 src_len)
+static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
+				      physical_addr_t offset, 
+				      void *src, u32 src_len)
 {
 	int rc = VMM_OK, i;
 	bool do_reset = FALSE, do_shutdown = FALSE;
 	u32 regmask = 0x0, regval = 0x0;
-	struct realview_sysctl * s = edev->priv;
+	struct arm_sysregs * s = edev->priv;
 
 	switch (src_len) {
 	case 1:
@@ -294,12 +315,10 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 		break;
 	case 0x20: /* LOCK */
 		s->lockval &= regmask;
-		if (regval == REALVIEW_LOCK_VAL) {
-			s->lockval |= (regval & 0xffff);
-			s->lockval &= ~(0x10000);
+		if (regval == LOCK_VAL) {
+			s->lockval = regval;
 		} else {
-			s->lockval |= (regval & 0xffff);
-			s->lockval |= (0x10000);
+			s->lockval = regval & 0x7fff;
 		}
 		break;
 	case 0x28: /* CFGDATA1 */
@@ -325,23 +344,72 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 		s->nvflags &= ~regval;
 		break;
 	case 0x40: /* RESETCTL */
-		if (s->sys_id == REALVIEW_SYSID_VEXPRESS) {
+		switch (board_id(s)) {
+		case BOARD_ID_PB926:
+			if (s->lockval == LOCK_VAL) {
+				s->resetlevel &= regmask;
+				s->resetlevel |= regval;
+				if (s->resetlevel & 0x100) {
+					do_reset = TRUE;
+				}
+			}
+			break;
+		case BOARD_ID_PBX:
+		case BOARD_ID_PBA8:
+			if (s->lockval == LOCK_VAL) {
+				s->resetlevel &= regmask;
+				s->resetlevel |= regval;
+				if (s->resetlevel & 0x04) {
+					do_reset = TRUE;
+				}
+			}
+			break;
+		case BOARD_ID_VEXPRESS:
+		case BOARD_ID_EB:
+		default:
 			/* reserved: RAZ/WI */
 			break;
-		}
-		if (!(s->lockval & 0x10000)) {
-			s->resetlevel &= regmask;
-			s->resetlevel |= regval;
-			if (s->resetlevel & 0x04) {
-				do_reset = TRUE;
-			}
-		}
+		};
 		break;
 	case 0x44: /* PCICTL */
 		/* nothing to do.  */
 		break;
 	case 0x4c: /* FLASH */
 	case 0x50: /* CLCD */
+		switch (board_id(s)) {
+		case BOARD_ID_PB926:
+			/* On 926 bits 13:8 are R/O, bits 1:0 control
+			 * the mux that defines how to interpret the PL110
+			 * graphics format, and other bits are r/w but we
+			 * don't implement them to do anything.
+			 */
+			s->sys_clcd &= 0x3f00;
+			s->sys_clcd |= regval & ~0x3f00;
+			vmm_devemu_emulate_irq(s->guest, 
+					       s->mux_out_irq, regval & 0x3);
+			break;
+		case BOARD_ID_EB:
+			/* The EB is the same except that there is no mux since
+			 * the EB has a PL111.
+			 */
+			s->sys_clcd &= 0x3f00;
+			s->sys_clcd |= regval & ~0x3f00;
+			break;
+		case BOARD_ID_PBA8:
+		case BOARD_ID_PBX:
+			/* On PBA8 and PBX bit 7 is r/w and all other bits
+			 * are either r/o or RAZ/WI.
+			 */
+			s->sys_clcd &= (1 << 7);
+			s->sys_clcd |= regval & ~(1 << 7);
+			break;
+		case BOARD_ID_VEXPRESS:
+		default:
+			/* On VExpress this register is unimplemented 
+			 * and will RAZ/WI */
+			break;
+		};
+		break;
 	case 0x54: /* CLCDSER */
 	case 0x64: /* DMAPSR0 */
 	case 0x68: /* DMAPSR1 */
@@ -358,7 +426,7 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 	case 0x9c: /* OSCRESET4 */
 		break;
 	case 0xa0: /* SYS_CFGDATA */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (board_id(s) != BOARD_ID_VEXPRESS) {
 			rc =  VMM_EFAIL;
 			break;
 		}
@@ -366,7 +434,7 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 		s->sys_cfgdata |= regval;
 		break;
 	case 0xa4: /* SYS_CFGCTRL */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (board_id(s) != BOARD_ID_VEXPRESS) {
 			rc =  VMM_EFAIL;
 			break;
 		}
@@ -385,7 +453,7 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 		}
 		break;
 	case 0xa8: /* SYS_CFGSTAT */
-		if (s->sys_id != REALVIEW_SYSID_VEXPRESS) {
+		if (board_id(s) != BOARD_ID_VEXPRESS) {
 			rc =  VMM_EFAIL;
 			break;
 		}
@@ -409,9 +477,9 @@ static int realview_emulator_write(struct vmm_emudev *edev,
 	return rc;
 }
 
-static int realview_emulator_reset(struct vmm_emudev *edev)
+static int arm_sysregs_emulator_reset(struct vmm_emudev *edev)
 {
-	struct realview_sysctl * s = edev->priv;
+	struct arm_sysregs * s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -424,46 +492,138 @@ static int realview_emulator_reset(struct vmm_emudev *edev)
 	s->cfgdata2 = 0;
 	s->flags = 0;
 	s->resetlevel = 0;
+	if (board_id(s) == BOARD_ID_VEXPRESS) {
+		/* On VExpress this register will RAZ/WI */
+		s->sys_clcd = 0;
+	} else {
+		/* All others: CLCDID 0x1f, indicating VGA */
+		s->sys_clcd = 0x1f00;
+	}
 
 	vmm_spin_unlock(&s->lock);
 
 	return VMM_OK;
 }
 
-static int realview_emulator_probe(struct vmm_guest *guest,
+/* Process IRQ asserted in device emulation framework */
+static int arm_sysregs_irq_handle(struct vmm_emupic *epic, 
+				  u32 irq, int cpu, int level)
+{
+	int bit;
+	struct arm_sysregs * s = epic->priv;
+
+	if (s->mux_in_irq[0] == irq) {
+		/* For PB926 and EB write-protect is bit 2 of SYS_MCI;
+		 * for all later boards it is bit 1.
+		 */
+		vmm_spin_lock(&s->lock);
+		bit = 2;
+		if ((board_id(s) == BOARD_ID_PB926) || 
+		    (board_id(s) == BOARD_ID_EB)) {
+			bit = 4;
+		}
+		s->sys_mci &= ~bit;
+		if (level) {
+			s->sys_mci |= bit;
+		}
+		vmm_spin_unlock(&s->lock);
+	} else if (s->mux_in_irq[1] == irq) {
+		vmm_spin_lock(&s->lock);
+		s->sys_mci &= ~1;
+		if (level) {
+			s->sys_mci |= 1;
+		}
+		vmm_spin_unlock(&s->lock);
+	} else {
+		return VMM_EMUPIC_GPIO_UNHANDLED;
+	}
+
+	return VMM_EMUPIC_GPIO_HANDLED;
+}
+
+static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 				   struct vmm_emudev *edev,
 				   const struct vmm_emuid *eid)
 {
 	int rc = VMM_OK;
-	struct realview_sysctl * s;
+	const char * attr;
+	struct arm_sysregs *s;
 
-	s = vmm_malloc(sizeof(struct realview_sysctl));
+	s = vmm_malloc(sizeof(struct arm_sysregs));
 	if (!s) {
 		rc = VMM_EFAIL;
-		goto realview_emulator_probe_done;
+		goto arm_sysregs_emulator_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct realview_sysctl));
-
-	edev->priv = s;
+	memset(s, 0x0, sizeof(struct arm_sysregs));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 	s->ref_100hz = vmm_timer_timestamp();
 	s->ref_24mhz = s->ref_100hz;
+
 	if (eid->data) {
 		s->sys_id = ((u32 *)eid->data)[0];
 		s->proc_id = ((u32 *)eid->data)[1];
 	}
 
-realview_emulator_probe_done:
+	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
+	if (!s->pic) {
+		goto arm_sysregs_emulator_probe_freestate_fail;
+	}
+	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
+
+	strcpy(s->pic->name, edev->node->name);
+	s->pic->type = VMM_EMUPIC_GPIO;
+	s->pic->handle = &arm_sysregs_irq_handle;
+	s->pic->priv = s;
+	if ((rc = vmm_devemu_register_pic(guest, s->pic))) {
+		goto arm_sysregs_emulator_probe_freepic_fail;
+	}
+
+	attr = vmm_devtree_attrval(edev->node, "mux_in_irq");
+	if (attr) {
+		s->mux_in_irq[0] = ((u32 *)attr)[0];
+		s->mux_in_irq[1] = ((u32 *)attr)[1];
+	} else {
+		rc = VMM_EFAIL;
+		goto arm_sysregs_emulator_probe_unregpic_fail;
+	}
+
+	attr = vmm_devtree_attrval(edev->node, "mux_out_irq");
+	if (attr) {
+		s->mux_out_irq = ((u32 *)attr)[0];
+	} else {
+		rc = VMM_EFAIL;
+		goto arm_sysregs_emulator_probe_unregpic_fail;
+	}
+
+	edev->priv = s;
+
+	goto arm_sysregs_emulator_probe_done;
+
+arm_sysregs_emulator_probe_unregpic_fail:
+	vmm_devemu_unregister_pic(s->guest, s->pic);
+arm_sysregs_emulator_probe_freepic_fail:
+	vmm_free(s->pic);
+arm_sysregs_emulator_probe_freestate_fail:
+	vmm_free(s);
+arm_sysregs_emulator_probe_done:
 	return rc;
 }
 
-static int realview_emulator_remove(struct vmm_emudev *edev)
+static int arm_sysregs_emulator_remove(struct vmm_emudev *edev)
 {
-	struct realview_sysctl * s = edev->priv;
+	int rc;
+	struct arm_sysregs *s = edev->priv;
 
 	if (s) {
+		if (s->pic) {
+			rc = vmm_devemu_unregister_pic(s->guest, s->pic);
+			if (rc) {
+				return rc;
+			}
+			vmm_free(s->pic);
+		}
 		vmm_free(s);
 		edev->priv = NULL;
 	}
@@ -473,8 +633,8 @@ static int realview_emulator_remove(struct vmm_emudev *edev)
 
 static u32 versatile_sysids[] = {
 	/* === VERSATILE PB === */
-	/* sys_id */ REALVIEW_SYSID_VERSATILEPB, 
-	/* proc_id */ REALVIEW_PROCID_VERSATILEPB, 
+	/* sys_id */ VERSATILEPB_SYSID_ARM926, 
+	/* proc_id */ VERSATILEPB_PROCID_ARM926, 
 };
 
 static u32 realview_sysids[] = {
@@ -485,11 +645,11 @@ static u32 realview_sysids[] = {
 
 static u32 vexpress_sysids[] = {
 	/* === PBA8 === */
-	/* sys_id */ REALVIEW_SYSID_VEXPRESS, 
+	/* sys_id */ VEXPRESS_SYSID_CA9, 
 	/* proc_id */ VEXPRESS_PROCID_CA9, 
 };
 
-static struct vmm_emuid realview_emuid_table[] = {
+static struct vmm_emuid arm_sysregs_emuid_table[] = {
 	{ .type = "sys", 
 	  .compatible = "versatilepb,arm926", 
 	  .data = &versatile_sysids[0] 
@@ -505,29 +665,29 @@ static struct vmm_emuid realview_emuid_table[] = {
 	{ /* end of list */ },
 };
 
-static struct vmm_emulator realview_emulator = {
-	.name = "realview",
-	.match_table = realview_emuid_table,
-	.probe = realview_emulator_probe,
-	.read = realview_emulator_read,
-	.write = realview_emulator_write,
-	.reset = realview_emulator_reset,
-	.remove = realview_emulator_remove,
+static struct vmm_emulator arm_sysregs_emulator = {
+	.name = "arm_sysregs",
+	.match_table = arm_sysregs_emuid_table,
+	.probe = arm_sysregs_emulator_probe,
+	.read = arm_sysregs_emulator_read,
+	.write = arm_sysregs_emulator_write,
+	.reset = arm_sysregs_emulator_reset,
+	.remove = arm_sysregs_emulator_remove,
 };
 
-static int __init realview_emulator_init(void)
+static int __init arm_sysregs_emulator_init(void)
 {
-	return vmm_devemu_register_emulator(&realview_emulator);
+	return vmm_devemu_register_emulator(&arm_sysregs_emulator);
 }
 
-static void realview_emulator_exit(void)
+static void __exit arm_sysregs_emulator_exit(void)
 {
-	vmm_devemu_unregister_emulator(&realview_emulator);
+	vmm_devemu_unregister_emulator(&arm_sysregs_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 
 /* FIXME: Need memory barrier for this. */
 long  __lock arch_atomic_read(atomic_t * atom)
