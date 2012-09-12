@@ -321,6 +321,11 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	/* Initialize devemu_priv pointer of aspace */
 	guest->aspace.devemu_priv = NULL;
 
+	/* Initialize device emulation context */
+	if ((rc = vmm_devemu_init_context(guest))) {
+		return rc;
+	}
+
 	/* Populate valid regions */
 	list_for_each(l, &(guest->aspace.node->child_list)) {
 		anode = list_entry(l, struct vmm_devtree_node, head);
@@ -410,11 +415,6 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 		}
 
 		list_add_tail(&reg->head, &guest->aspace.reg_list);
-	}
-
-	/* Initialize device emulation context */
-	if ((rc = vmm_devemu_init_context(guest))) {
-		return rc;
 	}
 
 	/* Probe device emulation for virutal regions */
