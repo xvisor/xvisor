@@ -26,37 +26,37 @@
 #include <vmm_types.h>
 
 /** Invalidate all instruction caches */
-void flush_icache(void);
+void invalidate_icache(void);
 
 /** Invalidate instruction cache line by MVA to PoU */
-void flush_icache_mva(virtual_addr_t mva);
+void invalidate_icache_mva(virtual_addr_t mva);
 
 /** Invalidate instruction cache line by set/way */
-void flush_icache_line(u32 line);
+void invalidate_icache_line(u32 line);
 
 /** Invalidate entire branch predictor array */
-void flush_bpredictor(void);
+void invalidate_bpredictor(void);
 
 /** Invalidate MVA from branch predictor array */
-void flush_bpredictor_mva(virtual_addr_t mva);
+void invalidate_bpredictor_mva(virtual_addr_t mva);
 
 /** Invalidate data caches */
-void flush_dcache(void);
+void invalidate_dcache(void);
 
 /** Invalidate data cache line by MVA */
-void flush_dcache_mva(virtual_addr_t mva);
+void invalidate_dcache_mva(virtual_addr_t mva);
 
 /** Invalidate data cache line by set/way */
-void flush_dcache_line(u32 line);
+void invalidate_dcache_line(u32 line);
 
 /** Invalidate unified (instruction or data) cache */
-void flush_idcache(void);
+void invalidate_idcache(void);
 
 /** Invalidate unified cache line by MVA */
-void flush_idcache_mva(virtual_addr_t mva);
+void invalidate_idcache_mva(virtual_addr_t mva);
 
 /** Invalidate unified cache line by set/way */
-void flush_idcache_line(u32 line);
+void invalidate_idcache_line(u32 line);
 
 /** Clean data cache */
 void clean_dcache(void);
@@ -77,21 +77,21 @@ void clean_idcache_mva(virtual_addr_t mva);
 void clean_idcache_line(u32 line);
 
 /** Clean and invalidate data cache */
-void clean_flush_dcache(void);
+void clean_invalidate_dcache(void);
 
 /** Clean and invalidate data cache line by MVA */
-void clean_flush_dcache_mva(virtual_addr_t mva);
+void clean_invalidate_dcache_mva(virtual_addr_t mva);
 
 /** Clean and invalidate data cache line by set/way */
-void clean_flush_dcache_line(u32 line);
+void clean_invalidate_dcache_line(u32 line);
 
 /** Clean and invalidate unified (instruction or data) cache */
-void clean_flush_idcache(void);
+void clean_invalidate_idcache(void);
 
 /** Clean and invalidate unified cache line by MVA */
-void clean_flush_idcache_mva(virtual_addr_t mva);
+void clean_invalidate_idcache_mva(virtual_addr_t mva);
 
 /** Clean and invalidate unified cache line by set/way */
-void clean_flush_idcache_line(u32 line);
+void clean_invalidate_idcache_line(u32 line);
 
 #endif /* __CPU_CACHE_H__ */

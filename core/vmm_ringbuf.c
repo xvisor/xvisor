@@ -25,8 +25,8 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_ringbuf.h>
+#include <stringlib.h>
 
 struct vmm_ringbuf *vmm_ringbuf_alloc(u32 key_size, u32 key_count)
 {
@@ -141,9 +141,8 @@ bool vmm_ringbuf_enqueue(struct vmm_ringbuf *rb, void *srckey, bool overwrite)
 			= *((u32 *)srckey);
 			break;
 		default:
-			vmm_memcpy(rb->keys + (rb->write_pos * rb->key_size), 
-				   srckey, 
-				   rb->key_size);
+			memcpy(rb->keys + (rb->write_pos * rb->key_size), 
+				srckey, rb->key_size);
 			break;
 		};
 		rb->write_pos = write_pos_mod;
@@ -183,9 +182,9 @@ bool vmm_ringbuf_dequeue(struct vmm_ringbuf *rb, void *dstkey)
 			*((u32 *)(rb->keys + (rb->read_pos * rb->key_size)));
 			break;
 		default:
-			vmm_memcpy(dstkey, 
-				   rb->keys + (rb->read_pos * rb->key_size),
-				   rb->key_size);
+			memcpy(dstkey, 
+				rb->keys + (rb->read_pos * rb->key_size),
+				rb->key_size);
 			break;
 		};
 		read_pos_mod = (rb->read_pos + 1);
@@ -231,9 +230,9 @@ bool vmm_ringbuf_getkey(struct vmm_ringbuf *rb, u32 index, void *dstkey)
 		*((u32 *)(rb->keys + (index * rb->key_size)));
 		break;
 	default:
-		vmm_memcpy(dstkey, 
-			   rb->keys + (index * rb->key_size),
-			   rb->key_size);
+		memcpy(dstkey, 
+			rb->keys + (index * rb->key_size),
+			rb->key_size);
 		break;
 	};
 

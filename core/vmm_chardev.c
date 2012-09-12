@@ -22,12 +22,13 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
+#include <vmm_compiler.h>
 #include <vmm_heap.h>
 #include <vmm_scheduler.h>
 #include <vmm_chardev.h>
+#include <stringlib.h>
 
-int vmm_chardev_doioctl(struct vmm_chardev * cdev,
+int vmm_chardev_doioctl(struct vmm_chardev *cdev,
 			int cmd, void *buf, u32 len)
 {
 	if (cdev && cdev->ioctl) {
@@ -37,7 +38,7 @@ int vmm_chardev_doioctl(struct vmm_chardev * cdev,
 	}
 }
 
-u32 vmm_chardev_doread(struct vmm_chardev * cdev,
+u32 vmm_chardev_doread(struct vmm_chardev *cdev,
 		       u8 *dest, u32 offset, u32 len, bool block)
 {
 	u32 b;
@@ -60,7 +61,7 @@ u32 vmm_chardev_doread(struct vmm_chardev * cdev,
 	}
 }
 
-u32 vmm_chardev_dowrite(struct vmm_chardev * cdev,
+u32 vmm_chardev_dowrite(struct vmm_chardev *cdev,
 			u8 *src, u32 offset, u32 len, bool block)
 {
 	u32 b;
@@ -83,7 +84,7 @@ u32 vmm_chardev_dowrite(struct vmm_chardev * cdev,
 	}
 }
 
-int vmm_chardev_register(struct vmm_chardev * cdev)
+int vmm_chardev_register(struct vmm_chardev *cdev)
 {
 	int rc;
 	struct vmm_classdev *cd;
@@ -97,10 +98,10 @@ int vmm_chardev_register(struct vmm_chardev * cdev)
 		return VMM_EFAIL;
 	}
 
-	vmm_memset(cd, 0, sizeof(struct vmm_classdev));
+	memset(cd, 0, sizeof(struct vmm_classdev));
 
 	INIT_LIST_HEAD(&cd->head);
-	vmm_strcpy(cd->name, cdev->name);
+	strcpy(cd->name, cdev->name);
 	cd->dev = cdev->dev;
 	cd->priv = cdev;
 
@@ -112,7 +113,7 @@ int vmm_chardev_register(struct vmm_chardev * cdev)
 	return rc;
 }
 
-int vmm_chardev_unregister(struct vmm_chardev * cdev)
+int vmm_chardev_unregister(struct vmm_chardev *cdev)
 {
 	int rc;
 	struct vmm_classdev *cd;
@@ -173,10 +174,10 @@ int __init vmm_chardev_init(void)
 		return VMM_EFAIL;
 	}
 
-	vmm_memset(c, 0, sizeof(struct vmm_class));
+	memset(c, 0, sizeof(struct vmm_class));
 
 	INIT_LIST_HEAD(&c->head);
-	vmm_strcpy(c->name, VMM_CHARDEV_CLASS_NAME);
+	strcpy(c->name, VMM_CHARDEV_CLASS_NAME);
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);

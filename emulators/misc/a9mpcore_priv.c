@@ -35,18 +35,18 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 #include <timer/arm_mptimer_emulator.h>
 #include <pic/gic_emulator.h>
 
-#define MODULE_VARID			a9mpcore_emulator_module
-#define MODULE_NAME			"ARM A9MPCore Private Region Emulator"
+#define MODULE_DESC			"A9MPCore Private Region Emulator"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			a9mpcore_emulator_init
 #define	MODULE_EXIT			a9mpcore_emulator_exit
@@ -288,14 +288,14 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 	const char *attr;
 	u32 *parent_irq, *timer_irq;
 
-	s = vmm_malloc(sizeof(struct a9mp_priv_state));
+	s = vmm_zalloc(sizeof(struct a9mp_priv_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto a9mp_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct a9mp_priv_state));
 
-	s->num_cpu = (u32)vmm_devtree_attrval(edev->node, "num_cpu");
+	attr = vmm_devtree_attrval(edev->node, "num_cpu");
+	s->num_cpu = *(u32 *)attr;
 	if(!s->num_cpu) {
 		goto a9mp_probe_failed;
 	}
@@ -384,14 +384,14 @@ static int __init a9mpcore_emulator_init(void)
 	return vmm_devemu_register_emulator(&a9mpcore_emulator);
 }
 
-static void a9mpcore_emulator_exit(void)
+static void __exit a9mpcore_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&a9mpcore_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-		   MODULE_NAME, 
-		   MODULE_AUTHOR, 
-		   MODULE_IPRIORITY, 
-		   MODULE_INIT, 
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_DESC, 
+			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

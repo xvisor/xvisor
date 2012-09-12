@@ -23,15 +23,15 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <vmm_wallclock.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			cmd_wallclock_module
-#define MODULE_NAME			"Command wallclock"
+#define MODULE_DESC			"Command wallclock"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_wallclock_init
 #define	MODULE_EXIT			cmd_wallclock_exit
@@ -235,36 +235,36 @@ int cmd_wallclock_set_time(struct vmm_chardev *cdev,
 		s++;
 	}
 	rc = 0;
-	ti.tm_mday = vmm_str2int(targv[1], 10);
-	vmm_str2lower(targv[2]);
-	if (vmm_strcmp(targv[2], "jan") == 0) {
+	ti.tm_mday = str2int(targv[1], 10);
+	str2lower(targv[2]);
+	if (strcmp(targv[2], "jan") == 0) {
 		ti.tm_mon = 0;
-	} else if (vmm_strcmp(targv[2], "feb") == 0) {
+	} else if (strcmp(targv[2], "feb") == 0) {
 		ti.tm_mon = 1;
-	} else if (vmm_strcmp(targv[2], "mar") == 0) {
+	} else if (strcmp(targv[2], "mar") == 0) {
 		ti.tm_mon = 2;
-	} else if (vmm_strcmp(targv[2], "apr") == 0) {
+	} else if (strcmp(targv[2], "apr") == 0) {
 		ti.tm_mon = 3;
-	} else if (vmm_strcmp(targv[2], "may") == 0) {
+	} else if (strcmp(targv[2], "may") == 0) {
 		ti.tm_mon = 4;
-	} else if (vmm_strcmp(targv[2], "jun") == 0) {
+	} else if (strcmp(targv[2], "jun") == 0) {
 		ti.tm_mon = 5;
-	} else if (vmm_strcmp(targv[2], "jul") == 0) {
+	} else if (strcmp(targv[2], "jul") == 0) {
 		ti.tm_mon = 6;
-	} else if (vmm_strcmp(targv[2], "aug") == 0) {
+	} else if (strcmp(targv[2], "aug") == 0) {
 		ti.tm_mon = 7;
-	} else if (vmm_strcmp(targv[2], "sep") == 0) {
+	} else if (strcmp(targv[2], "sep") == 0) {
 		ti.tm_mon = 8;
-	} else if (vmm_strcmp(targv[2], "oct") == 0) {
+	} else if (strcmp(targv[2], "oct") == 0) {
 		ti.tm_mon = 9;
-	} else if (vmm_strcmp(targv[2], "nov") == 0) {
+	} else if (strcmp(targv[2], "nov") == 0) {
 		ti.tm_mon = 10;
-	} else if (vmm_strcmp(targv[2], "dec") == 0) {
+	} else if (strcmp(targv[2], "dec") == 0) {
 		ti.tm_mon = 11;
 	} else {
-		ti.tm_mon = vmm_str2int(targv[2], 10);
+		ti.tm_mon = str2int(targv[2], 10);
 	}
-	ti.tm_year = vmm_str2int(targv[3], 10) - 1900;
+	ti.tm_year = str2int(targv[3], 10) - 1900;
 
 	tv.tv_sec = vmm_wallclock_mktime(ti.tm_year + 1900, 
 					 ti.tm_mon + 1, 
@@ -357,7 +357,7 @@ int cmd_wallclock_set_timezone(struct vmm_chardev *cdev, char *tzstr)
 int cmd_wallclock_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_wallclock_usage(cdev);
 			return VMM_OK;
 		}
@@ -366,13 +366,13 @@ int cmd_wallclock_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		cmd_wallclock_usage(cdev);
 		return VMM_EFAIL;
 	}
-	if (vmm_strcmp(argv[1], "get_time") == 0) {
+	if (strcmp(argv[1], "get_time") == 0) {
 		return cmd_wallclock_get_time(cdev);
-	} else if ((vmm_strcmp(argv[1], "set_time") == 0) && argc >= 6) {
+	} else if ((strcmp(argv[1], "set_time") == 0) && argc >= 6) {
 		return cmd_wallclock_set_time(cdev, argc - 2, &argv[2]);
-	} else if (vmm_strcmp(argv[1], "get_timezone") == 0) {
+	} else if (strcmp(argv[1], "get_timezone") == 0) {
 		return cmd_wallclock_get_timezone(cdev);
-	} else if ((vmm_strcmp(argv[1], "set_timezone") == 0) && argc == 3) {
+	} else if ((strcmp(argv[1], "set_timezone") == 0) && argc == 3) {
 		return cmd_wallclock_set_timezone(cdev, argv[2]);
 	}
 	cmd_wallclock_usage(cdev);
@@ -391,14 +391,14 @@ static int __init cmd_wallclock_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_wallclock);
 }
 
-static void cmd_wallclock_exit(void)
+static void __exit cmd_wallclock_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_wallclock);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

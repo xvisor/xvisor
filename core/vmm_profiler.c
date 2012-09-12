@@ -24,11 +24,11 @@
 #include <vmm_profiler.h>
 #include <vmm_heap.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_timer.h>
-#include <arch_cpu.h>
 #include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
+#include <arch_cpu.h>
+#include <stringlib.h>
 #include <kallsyms.h>
 
 typedef void (*vmm_profile_callback_t) (void *, void *);
@@ -153,9 +153,9 @@ int vmm_profiler_start(void)
 	if (!vmm_profiler_isactive()) {
 		irq_flags_t flags = arch_cpu_irq_save();
 
-		vmm_memset(pctrl.stat, 0,
-			   sizeof(struct vmm_profiler_stat) *
-			   kallsyms_num_syms);
+		memset(pctrl.stat, 0,
+			sizeof(struct vmm_profiler_stat) *
+			kallsyms_num_syms);
 		_vmm_profile_enter = vmm_profile_enter;
 		_vmm_profile_exit = vmm_profile_exit;
 		pctrl.is_active = 1;
@@ -204,7 +204,7 @@ int __init vmm_profiler_init(void)
 		return VMM_EFAIL;
 	}
 
-	vmm_memset(pctrl.stat, 0, sizeof(struct vmm_profiler_stat) *
+	memset(pctrl.stat, 0, sizeof(struct vmm_profiler_stat) *
 		   kallsyms_num_syms);
 
 	INIT_SPIN_LOCK(&pctrl.lock);

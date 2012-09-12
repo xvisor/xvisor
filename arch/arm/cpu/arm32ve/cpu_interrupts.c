@@ -94,7 +94,7 @@ void do_hyp_trap(arch_regs_t * regs)
 		break;
 	case EC_TRAP_WFI_WFE:
 		/* WFI emulation */
-		rc = cpu_vcpu_emulate_wfi(vcpu, regs, il, iss);
+		rc = cpu_vcpu_emulate_wfi_wfe(vcpu, regs, il, iss);
 		break;
 	case EC_TRAP_MCR_MRC_CP15:
 		/* MCR/MRC CP15 emulation */
@@ -219,6 +219,18 @@ void arch_cpu_irq_enable(void)
 void arch_cpu_irq_disable(void)
 {
 	__asm("cpsid i");
+}
+
+bool arch_cpu_irq_disabled(void)
+{
+	unsigned long flags;
+
+	asm volatile (" mrs     %0, cpsr\n\t"
+		      :"=r" (flags)
+		      :
+		      :"memory", "cc");
+
+	return (flags & CPSR_IRQ_DISABLED) ? TRUE : FALSE;
 }
 
 irq_flags_t arch_cpu_irq_save(void)

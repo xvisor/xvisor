@@ -21,17 +21,16 @@
  * @brief default serial terminal
  */
 
-#include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_types.h>
+#include <vmm_compiler.h>
+#include <vmm_devtree.h>
 #include <vmm_host_aspace.h>
-#include <pba8_board.h>
 #include <serial/pl011.h>
 
-#define	PBA8_DEFAULT_UART_BASE			REALVIEW_PBA8_UART0_BASE
-#define	PBA8_DEFAULT_UART_INCLK			24000000
-#define	PBA8_DEFAULT_UART_BAUD			115200
-
 static virtual_addr_t pba8_defterm_base;
+static u32 pba8_defterm_inclk;
+static u32 pba8_defterm_baud;
 
 int arch_defterm_putc(u8 ch)
 {
@@ -53,8 +52,31 @@ int arch_defterm_getc(u8 * ch)
 
 int __init arch_defterm_init(void)
 {
-	pba8_defterm_base = vmm_host_iomap(PBA8_DEFAULT_UART_BASE, 0x1000);
+	int rc;
+	u32 *val;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "uart0");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	rc = vmm_devtree_regmap(node, &pba8_defterm_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	val = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
+	pba8_defterm_inclk = (val) ? *val : 24000000;
+
+	val = vmm_devtree_attrval(node, "baudrate");
+	pba8_defterm_baud = (val) ? *val : 115200;
+
 	pl011_lowlevel_init(pba8_defterm_base,
-			    PBA8_DEFAULT_UART_BAUD, PBA8_DEFAULT_UART_INCLK);
+			    pba8_defterm_baud, 
+			    pba8_defterm_inclk);
 	return VMM_OK;
 }

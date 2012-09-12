@@ -44,8 +44,8 @@ typedef struct {
 /** Description of array */
 typedef struct {
 	void *m;
-	int (*less) (void *m, size_t a, size_t b);
-	void (*swap) (void *m, size_t a, size_t b);
+	int (*do_less) (void *m, size_t a, size_t b);
+	void (*do_swap) (void *m, size_t a, size_t b);
 } array;
 
 static inline size_t stretch_up(stretch s[1])
@@ -104,17 +104,17 @@ static void sift(array const *array, size_t r, stretch s)
 	while (s.b >= 3) {
 		size_t r2 = r - s.b + s.c;
 
-		if (!array->less(array->m, r - 1, r2)) {
+		if (!array->do_less(array->m, r - 1, r2)) {
 			r2 = r - 1;
 			stretch_down(&s, 0);
 		}
 
-		if (array->less(array->m, r2, r))
+		if (array->do_less(array->m, r2, r))
 			break;
 
 		DEBUG(("\tswap(%p @%zu <=> @%zu)\n", array, r, r2));
 
-		array->swap(array->m, r, r2);
+		array->do_swap(array->m, r, r2);
 		r = r2;
 
 		stretch_down(&s, 0);
@@ -142,7 +142,7 @@ static void trinkle(array const *array, size_t r, stretch s)
 
 		r3 = r - s.b;
 
-		if (array->less(array->m, r3, r))
+		if (array->do_less(array->m, r3, r))
 			break;
 
 		s.p--;
@@ -150,27 +150,27 @@ static void trinkle(array const *array, size_t r, stretch s)
 		if (s.b < 3) {
 			DEBUG(("\tswap(%p @%zu <=> @%zu b=%u)\n", array, r, r3,
 			       s.b));
-			array->swap(array->m, r, r3);
+			array->do_swap(array->m, r, r3);
 			r = r3;
 			continue;
 		}
 
 		r2 = r - s.b + s.c;
 
-		if (array->less(array->m, r2, r - 1)) {
+		if (array->do_less(array->m, r2, r - 1)) {
 			r2 = r - 1;
 			stretch_down(&s, 0);
 		}
 
-		if (array->less(array->m, r2, r3)) {
+		if (array->do_less(array->m, r2, r3)) {
 			DEBUG(("swap(%p [%zu]=[%zu])\n", array, r, r3));
-			array->swap(array->m, r, r3);
+			array->do_swap(array->m, r, r3);
 			r = r3;
 			continue;
 		}
 
 		DEBUG(("\tswap(%p @%zu <=> @%zu b=%u)\n", array, r, r2, s.b));
-		array->swap(array->m, r, r2);
+		array->do_swap(array->m, r, r2);
 		r = r2;
 		stretch_down(&s, 0);
 		break;
@@ -191,9 +191,9 @@ static void semitrinkle(array const *array, size_t r, stretch s)
 
 	DEBUG(("semitrinkle(%p, %zu, (%u, %s))\n", array, r, s.b, binary(s.p)));
 
-	if (array->less(array->m, r, r1)) {
+	if (array->do_less(array->m, r, r1)) {
 		DEBUG(("\tswap(%p @%zu <=> @%zu b=%u)\n", array, r, r1, s.b));
-		array->swap(array->m, r, r1);
+		array->do_swap(array->m, r, r1);
 		trinkle(array, r1, s);
 	}
 }
@@ -209,8 +209,8 @@ static void semitrinkle(array const *array, size_t r, stretch s)
  * @param swap  swapper function exchanging elements m[a] and m[b]
  */
 int libsort_smoothsort(void *base, size_t r, size_t N,
-		       int (*less) (void *m, size_t a, size_t b),
-		       void (*swap) (void *m, size_t a, size_t b))
+		       int (*do_less) (void *m, size_t a, size_t b),
+		       void (*do_swap) (void *m, size_t a, size_t b))
 {
 	stretch s = { 1, 1, 1 };
 	size_t q;
@@ -218,14 +218,14 @@ int libsort_smoothsort(void *base, size_t r, size_t N,
 	array array_i;
 	array *const array = &array_i;
 
-	if (!less || !swap)
+	if (!do_less || !do_swap)
 		return VMM_EFAIL;
 
-	array->less = less;
-	array->swap = swap;
+	array->do_less = do_less;
+	array->do_swap = do_swap;
 	array->m = base;
 
-	if (base == NULL || N <= 1 || less == NULL || swap == NULL)
+	if (base == NULL || N <= 1 || do_less == NULL || do_swap == NULL)
 		return VMM_EFAIL;
 
 	DEBUG(("\nsmoothsort(%p, %zu)\n", array, nmemb));

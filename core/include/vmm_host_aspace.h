@@ -30,13 +30,34 @@
 #define VMM_PAGE_SHIFT			12
 #define VMM_PAGE_SIZE			(0x01UL << VMM_PAGE_SHIFT)
 #define VMM_PAGE_MASK			(VMM_PAGE_SIZE - 1)
-#define VMM_PAGE_NUM(x)			((x) & ~VMM_PAGE_MASK)
-#define VMM_ROUNDUP2_PAGE_SIZE(x)	(((x) & VMM_PAGE_MASK) ? \
-					VMM_PAGE_NUM(x) + VMM_PAGE_SIZE : \
-					(x))
-#define VMM_SIZE_TO_PAGE(x)		((x >> VMM_PAGE_SHIFT) + \
-					((x & VMM_PAGE_MASK) ? 1:0))
 
+/** Convert virtual address to page base virtual address */
+#define VMM_PAGE_BASE(x)		((x) & ~VMM_PAGE_MASK)
+
+/** Roundup size to multiple of page size */
+#define VMM_ROUNDUP2_PAGE_SIZE(x)	(((x) & VMM_PAGE_MASK) ? \
+					VMM_PAGE_BASE(x) + VMM_PAGE_SIZE : \
+					(x))
+
+/** Convert size to page count */
+#define VMM_SIZE_TO_PAGE(x)		(((x) >> VMM_PAGE_SHIFT) + \
+					(((x) & VMM_PAGE_MASK) ? 1:0))
+
+/** Convert pointer or virtual address 
+ *  to valid page base virtual address 
+ */
+#define VMM_PAGE_ADDR(ptr)		(((virtual_addr_t)(ptr)) & ~VMM_PAGE_MASK)
+
+/** Get page offset from pointer or virtual address */
+#define VMM_PAGE_OFFSET(ptr)		(((virtual_addr_t)(ptr)) & VMM_PAGE_MASK)
+
+/** Get nth page base address starting from page
+ *  to which given pointer or virtual address belongs
+ *  (Note: Unlike Linux, we assume that pointer or 
+ *   virtual address points to a contiguous memory)
+ */
+#define VMM_PAGE_NTH(ptr, n)		((((virtual_addr_t)(ptr)) & ~VMM_PAGE_MASK) + \
+					((n) << VMM_PAGE_SHIFT))
 enum vmm_host_memory_flags {
 	VMM_MEMORY_READABLE=0x00000001,
 	VMM_MEMORY_WRITEABLE=0x00000002,
@@ -100,7 +121,7 @@ virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags);
 int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count);
 
 /** Convert virtual address of a page to its physical address */
-int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t * page_pa);
+int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t *page_pa);
 
 /** Read from host physical memory */
 u32 vmm_host_physical_read(physical_addr_t hphys_addr, 

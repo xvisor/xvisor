@@ -74,14 +74,4 @@
 #define NR_IRQS_CA9X4			128
 #define NR_GIC_CA9X4			1
 
-#if !defined(ARM_GIC_NR_IRQS) || (ARM_GIC_NR_IRQS < NR_IRQS_CA9X4)
-#undef ARM_GIC_NR_IRQS
-#define ARM_GIC_NR_IRQS		NR_IRQS_CA9X4
-#endif
-
-#if !defined(ARM_GIC_MAX_NR) || (ARM_GIC_MAX_NR < NR_GIC_CA9X4)
-#undef ARM_GIC_MAX_NR
-#define ARM_GIC_MAX_NR		NR_GIC_CA9X4
-#endif
-
 #endif

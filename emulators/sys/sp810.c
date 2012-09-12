@@ -23,14 +23,14 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			sp810_emulator_module
-#define MODULE_NAME			"SP810 Serial Emulator"
+#define MODULE_DESC			"SP810 Serial Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			sp810_emulator_init
 #define	MODULE_EXIT			sp810_emulator_exit
@@ -51,13 +51,19 @@ static int sp810_emulator_read(struct vmm_emudev *edev,
 
 	vmm_spin_lock(&s->lock);
 
-	switch (offset & ~0x3) {
-	case 0x00: /* SYSCTRL */
-		regval = s->sysctrl;
-		break;
-	default:
-		rc = VMM_EFAIL;
-		break;
+	if (offset >= 0xfe0 && offset < 0x1000) {
+		/* it is not clear what ID shall be returned by the sp810 */
+		/* for now we return 0. It seems to work for linux */
+		regval = 0;
+	} else {
+		switch (offset & ~0x3) {
+		case 0x00: /* SYSCTRL */
+			regval = s->sysctrl;
+			break;
+		default:
+			rc = VMM_EFAIL;
+			break;
+		}
 	}
 
 	vmm_spin_unlock(&s->lock);
@@ -156,7 +162,7 @@ static int sp810_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto sp810_emulator_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct sp810_state));
+	memset(s, 0x0, sizeof(struct sp810_state));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
@@ -201,14 +207,14 @@ static int __init sp810_emulator_init(void)
 	return vmm_devemu_register_emulator(&sp810_emulator);
 }
 
-static void sp810_emulator_exit(void)
+static void __exit sp810_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&sp810_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

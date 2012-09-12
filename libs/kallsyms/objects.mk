@@ -19,7 +19,10 @@
 # @file objects.mk
 # @author Jean-Christophe Dubois (jcd@tribudubois.net)
 # @brief kallsyms functions borrowed from linux
+# NOTE: This library should be always enabled !!!!
+# Many crucial things depend on KALLSYMS such as stack trace,
+# runtime module loading, profiling, etc. 
 # */
 
-libs-cppflags-$(CONFIG_KALLSYMS)+= -I$(libs_dir)/kallsyms
-libs-objs-$(CONFIG_KALLSYMS)+= kallsyms/kallsyms.o
+libs-cppflags-y+= -I$(libs_dir)/kallsyms
+libs-objs-y+= kallsyms/kallsyms.o

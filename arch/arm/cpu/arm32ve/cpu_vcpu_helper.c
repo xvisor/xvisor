@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
@@ -31,9 +30,10 @@
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
-void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs)
+void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	if (vcpu->state != VMM_VCPU_STATE_HALTED) {
 		vmm_printf("\n");
@@ -42,8 +42,8 @@ void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 	}
 }
 
-u32 cpu_vcpu_regmode_read(struct vmm_vcpu * vcpu, 
-			  arch_regs_t * regs, 
+u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu, 
+			  arch_regs_t *regs, 
 			  u32 mode,
 			  u32 reg_num)
 {
@@ -184,8 +184,8 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu * vcpu,
 	return 0x0;
 }
 
-void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu, 
-			    arch_regs_t * regs, 
+void cpu_vcpu_regmode_write(struct vmm_vcpu *vcpu, 
+			    arch_regs_t *regs, 
 			    u32 mode,
 			    u32 reg_num,
 			    u32 reg_val)
@@ -331,8 +331,8 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu,
 	};
 }
 
-u32 cpu_vcpu_reg_read(struct vmm_vcpu * vcpu, 
-		      arch_regs_t * regs, 
+u32 cpu_vcpu_reg_read(struct vmm_vcpu *vcpu, 
+		      arch_regs_t *regs, 
 		      u32 reg_num) 
 {
 	return cpu_vcpu_regmode_read(vcpu, 
@@ -341,8 +341,8 @@ u32 cpu_vcpu_reg_read(struct vmm_vcpu * vcpu,
 				     reg_num);
 }
 
-void cpu_vcpu_reg_write(struct vmm_vcpu * vcpu, 
-			arch_regs_t * regs, 
+void cpu_vcpu_reg_write(struct vmm_vcpu *vcpu, 
+			arch_regs_t *regs, 
 			u32 reg_num, 
 			u32 reg_val) 
 {
@@ -353,7 +353,7 @@ void cpu_vcpu_reg_write(struct vmm_vcpu * vcpu,
 			       reg_val);
 }
 
-u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu * vcpu, u32 mode)
+u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu *vcpu, u32 mode)
 {
 	u32 hwreg;
 	if (vcpu != vmm_scheduler_current_vcpu()) {
@@ -393,7 +393,7 @@ u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu * vcpu, u32 mode)
 	return 0;
 }
 
-int cpu_vcpu_spsr_update(struct vmm_vcpu * vcpu, 
+int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu, 
 			 u32 mode,
 			 u32 new_spsr)
 {
@@ -439,25 +439,41 @@ int cpu_vcpu_spsr_update(struct vmm_vcpu * vcpu,
 	return VMM_OK;
 }
 
-int arch_guest_init(struct vmm_guest * guest)
+int arch_guest_init(struct vmm_guest *guest)
 {
-	/* Don't have per guest arch context */
+	if (!guest->reset_count) {
+		guest->arch_priv = vmm_malloc(sizeof(arm_guest_priv_t));
+		if (!guest->arch_priv) {
+			return VMM_EFAIL;
+		}
+		INIT_SPIN_LOCK(&arm_guest_priv(guest)->ttbl_lock);
+		arm_guest_priv(guest)->ttbl = cpu_mmu_ttbl_alloc(TTBL_STAGE2);
+	}
 	return VMM_OK;
 }
 
-int arch_guest_deinit(struct vmm_guest * guest)
+int arch_guest_deinit(struct vmm_guest *guest)
 {
-	/* Don't have per guest arch context */
+	int rc;
+
+	if ((rc = cpu_mmu_ttbl_free(arm_guest_priv(guest)->ttbl))) {
+		return rc;
+	}
+
+	if (guest->arch_priv) {
+		vmm_free(guest->arch_priv);
+	}
+
 	return VMM_OK;
 }
 
-int arch_vcpu_init(struct vmm_vcpu * vcpu)
+int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
 	u32 ite, cpuid = 0;
-	const char * attr;
+	const char *attr;
 	/* Initialize User Mode Registers */
 	/* For both Orphan & Normal VCPUs */
-	vmm_memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
+	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
 	arm_regs(vcpu)->pc = vcpu->start_pc;
 	if (vcpu->is_normal) {
 		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
@@ -478,9 +494,9 @@ int arch_vcpu_init(struct vmm_vcpu * vcpu)
 	}
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
-	if (vmm_strcmp(attr, "ARMv7a,cortex-a8") == 0) {
+	if (strcmp(attr, "ARMv7a,cortex-a8") == 0) {
 		cpuid = ARM_CPUID_CORTEXA8;
-	} else if (vmm_strcmp(attr, "ARMv7a,cortex-a9") == 0) {
+	} else if (strcmp(attr, "ARMv7a,cortex-a9") == 0) {
 		cpuid = ARM_CPUID_CORTEXA9;
 	} else {
 		return VMM_EFAIL;
@@ -490,7 +506,7 @@ int arch_vcpu_init(struct vmm_vcpu * vcpu)
 		if (!vcpu->arch_priv) {
 			return VMM_EFAIL;
 		}
-		vmm_memset(arm_priv(vcpu), 0, sizeof(arm_priv_t));
+		memset(arm_priv(vcpu), 0, sizeof(arm_priv_t));
 		arm_priv(vcpu)->hyp_stack = vmm_malloc(CONFIG_IRQ_STACK_SIZE);
 		if (!arm_priv(vcpu)->hyp_stack) {
 			vmm_free(vcpu->arch_priv);
@@ -538,8 +554,8 @@ int arch_vcpu_init(struct vmm_vcpu * vcpu)
 		/* Initialize Hypervisor System Trap Register */
 		arm_priv(vcpu)->hstr = (HSTR_TJDBX_MASK |
 					HSTR_TTEE_MASK |
-					HSTR_T1_MASK |
-					HSTR_T0_MASK);
+					HSTR_T9_MASK |
+					HSTR_T1_MASK);
 		/* Initialize VCPU features */
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
@@ -580,7 +596,7 @@ int arch_vcpu_init(struct vmm_vcpu * vcpu)
 					 HCR_VI_MASK | 
 					 HCR_VF_MASK);
 	}
-#ifdef CONFIG_ARM32_FUNCSTATS
+#ifdef CONFIG_ARM32VE_FUNCSTATS
 	for (ite=0; ite < ARM_FUNCSTAT_MAX; ite++) {
 		arm_priv(vcpu)->funcstat[ite].function_name = NULL;
 		arm_priv(vcpu)->funcstat[ite].entry_count = 0;
@@ -591,12 +607,12 @@ int arch_vcpu_init(struct vmm_vcpu * vcpu)
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
-int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
+int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 {
 	int rc;
 
 	/* For both Orphan & Normal VCPUs */
-	vmm_memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
+	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
 
 	/* For Orphan VCPUs do nothing else */
 	if (!vcpu->is_normal) {
@@ -617,7 +633,7 @@ int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-static void cpu_vcpu_banked_regs_save(struct vmm_vcpu * vcpu)
+static void cpu_vcpu_banked_regs_save(struct vmm_vcpu *vcpu)
 {
 	asm volatile (" mrs     %0, sp_usr\n\t" 
 		      :"=r" (arm_priv(vcpu)->sp_usr)::"memory", "cc");
@@ -653,7 +669,7 @@ static void cpu_vcpu_banked_regs_save(struct vmm_vcpu * vcpu)
 		      :"=r" (arm_priv(vcpu)->spsr_fiq)::"memory", "cc");
 }
 
-static void cpu_vcpu_banked_regs_restore(struct vmm_vcpu * vcpu)
+static void cpu_vcpu_banked_regs_restore(struct vmm_vcpu *vcpu)
 {
 	asm volatile (" msr     sp_usr, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->sp_usr) :"memory", "cc");
@@ -699,9 +715,9 @@ static void cpu_vcpu_banked_regs_restore(struct vmm_vcpu * vcpu)
 		      ::"r" (arm_priv(vcpu)->spsr_fiq) :"memory", "cc");
 }
 
-void arch_vcpu_switch(struct vmm_vcpu * tvcpu, 
-		      struct vmm_vcpu * vcpu, 
-		      arch_regs_t * regs)
+void arch_vcpu_switch(struct vmm_vcpu *tvcpu, 
+		      struct vmm_vcpu *vcpu, 
+		      arch_regs_t *regs)
 {
 	u32 ite;
 	/* Save user registers & banked registers */
@@ -746,7 +762,7 @@ void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
 	clrex();
 }
 
-void cpu_vcpu_dump_user_reg(arch_regs_t * regs)
+void cpu_vcpu_dump_user_reg(arch_regs_t *regs)
 {
 	u32 ite;
 	vmm_printf("  Core Registers\n");
@@ -762,7 +778,7 @@ void cpu_vcpu_dump_user_reg(arch_regs_t * regs)
 	vmm_printf("\n");
 }
 
-void arch_vcpu_regs_dump(struct vmm_vcpu * vcpu)
+void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu)
 {
 	u32 ite;
 	/* For both Normal & Orphan VCPUs */
@@ -803,9 +819,9 @@ void arch_vcpu_regs_dump(struct vmm_vcpu * vcpu)
 	vmm_printf("\n");
 }
 
-void arch_vcpu_stat_dump(struct vmm_vcpu * vcpu)
+void arch_vcpu_stat_dump(struct vmm_vcpu *vcpu)
 {
-#ifdef CONFIG_ARM32_FUNCSTATS
+#ifdef CONFIG_ARM32VE_FUNCSTATS
 	int index;
 
 	if (!vcpu || !arm_priv(vcpu)) {

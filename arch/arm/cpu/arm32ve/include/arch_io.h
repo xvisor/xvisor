@@ -25,7 +25,7 @@
 #define _ARCH_IO_H__
 
 #include <vmm_types.h>
-#include <cpu_barrier.h>
+#include <arch_barrier.h>
 #include <cpu_inline_asm.h>
 
 #define __raw_write8(a,v)	(*(volatile u8 *)(a) = (v))
@@ -38,8 +38,8 @@
 #define __raw_read32(a)		(*(volatile u32 *)(a))
 #define __raw_read64(a)		(*(volatile u64 *)(a))
 
-#define __iormb()		rmb()
-#define __iowmb()		wmb()
+#define __iormb()		arch_rmb()
+#define __iowmb()		arch_wmb()
 
 /*
  * Endianness primitives
@@ -60,6 +60,14 @@
 #define arch_cpu_to_be32(v)	rev32(v)
 
 #define arch_be32_to_cpu(v)	rev32(v)
+
+#define arch_cpu_to_le64(v)	(v)
+
+#define arch_le64_to_cpu(v)	(v)
+
+#define arch_cpu_to_be64(v)	rev64(v)
+
+#define arch_be64_to_cpu(v)	rev64(v)
 
 /*
  * IO port access primitives

@@ -5,59 +5,19 @@
 #include <stdint.h>
 #include <string.h>
 
-#define _B(n)	((((unsigned long long)x) >> (8*n)) & 0xFF)
-
-static inline uint32_t fdt32_to_cpu_e(uint32_t x, int32_t is_le)
+#define _B(n)	((unsigned long long)((uint8_t *)&x)[n])
+static inline uint32_t fdt32_to_cpu(uint32_t x)
 {
-	uint32_t rx = 0x0;
-	uint8_t * xp = (uint8_t *)&rx;
-	if (is_le) {
-		xp[0] = _B(0);
-		xp[1] = _B(1);
-		xp[2] = _B(2);
-		xp[3] = _B(3);
-	} else {
-		xp[0] = _B(3);
-		xp[1] = _B(2);
-		xp[2] = _B(1);
-		xp[3] = _B(0);
-	}
-	return rx;
+	return (_B(0) << 24) | (_B(1) << 16) | (_B(2) << 8) | _B(3);
 }
-#define cpu_to_fdt32_e(x, is_le) fdt32_to_cpu_e(x, is_le)
+#define cpu_to_fdt32(x) fdt32_to_cpu(x)
 
-static inline uint64_t fdt64_to_cpu_e(uint64_t x, int32_t is_le)
+static inline uint64_t fdt64_to_cpu(uint64_t x)
 {
-	uint64_t rx = 0x0;
-	uint8_t * xp = (uint8_t *)&rx;
-	if (is_le) {
-		xp[0] = _B(0);
-		xp[1] = _B(1);
-		xp[2] = _B(2);
-		xp[3] = _B(3);
-		xp[4] = _B(4);
-		xp[5] = _B(5);
-		xp[6] = _B(6);
-		xp[7] = _B(7);
-	} else {
-		xp[0] = _B(7);
-		xp[1] = _B(6);
-		xp[2] = _B(5);
-		xp[3] = _B(4);
-		xp[4] = _B(3);
-		xp[5] = _B(2);
-		xp[6] = _B(1);
-		xp[7] = _B(0);
-	}
-	return rx;
+	return (_B(0) << 56) | (_B(1) << 48) | (_B(2) << 40) | (_B(3) << 32)
+		| (_B(4) << 24) | (_B(5) << 16) | (_B(6) << 8) | _B(7);
 }
-#define cpu_to_fdt64_e(x, is_le) fdt64_to_cpu_e(x, is_le)
-
-#define fdt32_to_cpu(x) fdt32_to_cpu_e(x, 0)
-#define cpu_to_fdt32(x) fdt32_to_cpu_e(x, 0)
-#define cpu_to_fdt64(x) fdt64_to_cpu_e(x, 0)
-#define fdt64_to_cpu(x) fdt64_to_cpu_e(x, 0)
-
+#define cpu_to_fdt64(x) fdt64_to_cpu(x)
 #undef _B
 
 #endif /* _LIBFDT_ENV_H */

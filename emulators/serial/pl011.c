@@ -33,17 +33,17 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_ringbuf.h>
 #include <vmm_vserial.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			pl011_emulator_module
-#define MODULE_NAME			"PL011 Serial Emulator"
+#define MODULE_DESC			"PL011 Serial Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			pl011_emulator_init
 #define	MODULE_EXIT			pl011_emulator_exit
@@ -371,7 +371,7 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto pl011_emulator_probe_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct pl011_state));
+	memset(s, 0x0, sizeof(struct pl011_state));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
@@ -409,9 +409,9 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 		goto pl011_emulator_probe_freestate_fail;
 	}
 
-	vmm_strcpy(name, guest->node->name);
-	vmm_strcat(name, "/");
-	vmm_strcat(name, edev->node->name);
+	strcpy(name, guest->node->name);
+	strcat(name, "/");
+	strcat(name, edev->node->name);
 	s->vser = vmm_vserial_alloc(name, 
 				    &pl011_vserial_can_send, 
 				    &pl011_vserial_send, 
@@ -495,14 +495,14 @@ static int __init pl011_emulator_init(void)
 	return vmm_devemu_register_emulator(&pl011_emulator);
 }
 
-static void pl011_emulator_exit(void)
+static void __exit pl011_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&pl011_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

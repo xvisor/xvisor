@@ -23,7 +23,6 @@
 
 board-objs-y+=brd_defterm.o
 board-objs-y+=brd_main.o
-board-objs-y+=brd_timer.o
 board-objs-$(CONFIG_OMAP3_ONE_GUEST_PBA8_DTS)+=dts/one_guest_pb-a8.o
 board-objs-$(CONFIG_OMAP3_ONE_GUEST_VEX_A9_DTS)+=dts/one_guest_vexpress-a9.o
 board-objs-$(CONFIG_OMAP3_TWO_GUEST_PBA8_DTS)+=dts/two_guest_pb-a8.o

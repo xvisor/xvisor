@@ -286,17 +286,6 @@ puts "The mmu_test Command passed \n :: MMU TEST TESTCASE PASS :: \n\n"
         puts "The mmu_test Command Failed \n :: MMU TEST TESTCASE FAIL :: \n\n"
 }
 
-
-send -- "sysctl\r"
-expect $arm_prompt
-set sysctl_out $expect_out(buffer)
-#puts $sysctl_out
-if { [string first "SYS_24MHz" $sysctl_out] > -1 } {
-        puts "The sysctl Command passed \n :: SYSCTL TESTCASE PASS :: \n\n"
-} else {
-        puts "The sysctl Command Failed \n :: SYSCTL TESTCASE FAIL :: \n\n"
-}
-
 send -- "timer\r"
 expect $arm_prompt
 set timer_out $expect_out(buffer)

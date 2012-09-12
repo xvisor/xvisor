@@ -23,15 +23,15 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			cmd_devtree_module
-#define MODULE_NAME			"Command devtree"
+#define MODULE_DESC			"Command devtree"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_devtree_init
 #define	MODULE_EXIT			cmd_devtree_exit
@@ -175,19 +175,6 @@ void cmd_devtree_print_node(struct vmm_chardev *cdev,
 		vmm_cprintf(cdev, "%s", node->name);
 	}
 
-	switch (node->type) {
-	case VMM_DEVTREE_NODETYPE_UNKNOWN:
-		break;
-	case VMM_DEVTREE_NODETYPE_DEVICE:
-		vmm_cprintf(cdev, " /* [device] */");
-		break;
-	case VMM_DEVTREE_NODETYPE_EDEVICE:
-		vmm_cprintf(cdev, " /* [edevice] */");
-		break;
-	default:
-		break;
-	};
-
 	braceopen = FALSE;
 	if (showattr) {
 		if (!list_empty(&node->child_list) ||
@@ -254,67 +241,67 @@ int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
 		return VMM_EFAIL;
 	}
 
-	if (!vmm_strcmp(type, "unknown")) {
+	if (!strcmp(type, "unknown")) {
 		val = NULL;
 		val_len = 0;
 		val_type = VMM_DEVTREE_ATTRTYPE_UNKNOWN;
-	} else if (!vmm_strcmp(type, "string")) {
+	} else if (!strcmp(type, "string")) {
 		for (i = 0; i < valc; i++) {
-			val_len += vmm_strlen(valv[i]);
+			val_len += strlen(valv[i]);
 			val_len += 1;
 		}
 		val = vmm_malloc(val_len);
-		vmm_strcpy(val, valv[0]);
+		strcpy(val, valv[0]);
 		for (i = 1; i < valc; i++) {
-			vmm_strcat(val, " ");
-			vmm_strcat(val, valv[i]);
+			strcat(val, " ");
+			strcat(val, valv[i]);
 		}
-		val_len = vmm_strlen((char *)val);
+		val_len = strlen((char *)val);
 		val_type = VMM_DEVTREE_ATTRTYPE_STRING;
-	} else if (!vmm_strcmp(type, "uint32")) {
+	} else if (!strcmp(type, "uint32")) {
 		val_len = valc * sizeof(u32);
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
-			((u32 *)val)[i] = vmm_str2uint(valv[i], 10);
+			((u32 *)val)[i] = str2uint(valv[i], 10);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_UINT32;
-	} else if (!vmm_strcmp(type, "uint64")) {
+	} else if (!strcmp(type, "uint64")) {
 		val_len = valc * sizeof(u64);
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
-			((u64 *)val)[i] = vmm_str2ulonglong(valv[i], 10);
+			((u64 *)val)[i] = str2ulonglong(valv[i], 10);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_UINT64;
-	} else if (!vmm_strcmp(type, "physaddr")) {
+	} else if (!strcmp(type, "physaddr")) {
 		val_len = valc * sizeof(physical_addr_t);
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
 			((physical_addr_t *)val)[i] = 
-			(physical_addr_t)vmm_str2ulonglong(valv[i], 10);
+			(physical_addr_t)str2ulonglong(valv[i], 10);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
-	} else if (!vmm_strcmp(type, "physsize")) {
+	} else if (!strcmp(type, "physsize")) {
 		val_len = valc * sizeof(physical_size_t);
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
 			((physical_size_t *)val)[i] = 
-			(physical_size_t)vmm_str2ulonglong(valv[i], 10);
+			(physical_size_t)str2ulonglong(valv[i], 10);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
-	} else if (!vmm_strcmp(type, "virtaddr")) {
+	} else if (!strcmp(type, "virtaddr")) {
 		val_len = valc * sizeof(virtual_addr_t);
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
 			((virtual_addr_t *)val)[i] = 
-			(virtual_addr_t)vmm_str2ulonglong(valv[i], 10);
+			(virtual_addr_t)str2ulonglong(valv[i], 10);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
-	} else if (!vmm_strcmp(type, "virtsize")) {
+	} else if (!strcmp(type, "virtsize")) {
 		val_len = valc * sizeof(virtual_size_t);
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
 			((virtual_size_t *)val)[i] = 
-			(virtual_size_t)vmm_str2ulonglong(valv[i], 10);
+			(virtual_size_t)str2ulonglong(valv[i], 10);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_VIRTSIZE;
 	} else {
@@ -408,8 +395,7 @@ int cmd_devtree_node_add(struct vmm_chardev *cdev, char *path, char *name)
 		return VMM_EFAIL;
 	}
 
-	node = vmm_devtree_addnode(parent, name, 
-				   VMM_DEVTREE_NODETYPE_UNKNOWN, NULL);
+	node = vmm_devtree_addnode(parent, name);
 	if (!node) {
 		vmm_cprintf(cdev, "Error: Unable to add node %s. "
 				  "Probably node already exist\n", name);
@@ -464,7 +450,7 @@ int cmd_devtree_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return VMM_EFAIL;
 	} else {
 		if (argc == 2) {
-			if (vmm_strcmp(argv[1], "help") == 0) {
+			if (strcmp(argv[1], "help") == 0) {
 				cmd_devtree_usage(cdev);
 				return VMM_OK;
 			} else {
@@ -476,28 +462,28 @@ int cmd_devtree_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return VMM_EFAIL;
 		}
 	}
-	if (vmm_strcmp(argv[1], "attr") == 0) {
-		if (vmm_strcmp(argv[2], "show") == 0) {
+	if (strcmp(argv[1], "attr") == 0) {
+		if (strcmp(argv[2], "show") == 0) {
 			return cmd_devtree_attr_show(cdev, argv[3]);
-		} else if ((vmm_strcmp(argv[2], "set") == 0) && (argc > 6)) {
+		} else if ((strcmp(argv[2], "set") == 0) && (argc > 6)) {
 			return cmd_devtree_attr_set(cdev, argv[3], argv[4], 
 						argv[5], argc - 6, &argv[6]);
-		} else if ((vmm_strcmp(argv[2], "get") == 0) && (argc == 5)) {
+		} else if ((strcmp(argv[2], "get") == 0) && (argc == 5)) {
 			return cmd_devtree_attr_get(cdev, argv[3], argv[4]);
-		} else if ((vmm_strcmp(argv[2], "del") == 0) && (argc == 5)) {
+		} else if ((strcmp(argv[2], "del") == 0) && (argc == 5)) {
 			return cmd_devtree_attr_del(cdev, argv[3], argv[4]);
 		}
-	} else if (vmm_strcmp(argv[1], "node") == 0) {
-		if (vmm_strcmp(argv[2], "show") == 0) {
+	} else if (strcmp(argv[1], "node") == 0) {
+		if (strcmp(argv[2], "show") == 0) {
 			return cmd_devtree_node_show(cdev, argv[3]);
-		} else 	if (vmm_strcmp(argv[2], "dump") == 0) {
+		} else 	if (strcmp(argv[2], "dump") == 0) {
 			return cmd_devtree_node_dump(cdev, argv[3]);
-		} else if ((vmm_strcmp(argv[2], "add") == 0) && (argc == 5)) {
+		} else if ((strcmp(argv[2], "add") == 0) && (argc == 5)) {
 			return cmd_devtree_node_add(cdev, argv[3], argv[4]);
-		} else if ((vmm_strcmp(argv[2], "copy") == 0) && (argc == 6)) {
+		} else if ((strcmp(argv[2], "copy") == 0) && (argc == 6)) {
 			return cmd_devtree_node_copy(cdev, argv[3], 
 							argv[4], argv[5]);
-		} else if (vmm_strcmp(argv[2], "del") == 0) {
+		} else if (strcmp(argv[2], "del") == 0) {
 			return cmd_devtree_node_del(cdev, argv[3]);
 		}
 	}
@@ -517,14 +503,14 @@ static int __init cmd_devtree_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_devtree);
 }
 
-static void cmd_devtree_exit(void)
+static void __exit cmd_devtree_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_devtree);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

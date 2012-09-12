@@ -26,10 +26,21 @@
 #include <vmm_types.h>
 #include <arch_regs.h>
 
+/* 8259A interrupt controller ports. */
+#define INT_CTL         0x20	/* I/O port for interrupt controller */
+#define INT_CTLMASK     0x21	/* setting bits in this port disables ints */
+#define INT2_CTL        0xA0	/* I/O port for second interrupt controller */
+#define INT2_CTLMASK    0xA1	/* setting bits in this port disables ints */
+
+/* Magic numbers for interrupt controller. */
+#define END_OF_INT      0x20	/* code used to re-enable after an interrupt */
+
+
+/* Hardware interrupt numbers. */
 #define NR_GATES		256
+#define NR_IRQ_VECTORS		NR_GATES
 
 /* Interrupt Descriptor Table */
-
 /* Segment Selector and Offset (SSO) */
 union _sso {
 	u32 val;
@@ -187,5 +198,6 @@ extern void _irq17(void);
 extern void _irq18(void);
 extern void _irq19(void);
 extern void _irq128(void);
+extern void _generic_handler(void);
 
 #endif /* _CPU_INTERRYPTS_H__ */

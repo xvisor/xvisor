@@ -22,23 +22,30 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_host_aspace.h>
 #include <vmm_main.h>
 #include <vmm_stdio.h>
 #include <vmm_types.h>
+#include <arch_barrier.h>
 #include <arch_cpu_irq.h>
 #include <arch_sections.h>
+#include <stringlib.h>
 #include <cpu_defines.h>
 #include <cpu_cache.h>
-#include <cpu_barrier.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
 
-#define TTBL_MAX_L1TBL_COUNT	(CONFIG_MAX_VCPU_COUNT + 1)
+/* Note: we use 1/8th or 12.5% of VAPOOL memory as translation table pool. 
+ * For example if VAPOOL is 8 MB then translation table pool will be 1 MB
+ * or 1 MB / 4 KB = 256 translation tables
+ */
+#define TTBL_POOL_MAX_SIZE 	(CONFIG_VAPOOL_SIZE << (20 - 3))
 
-#define TTBL_MAX_L2TBL_COUNT	(CPU_VCPU_VTLB_ENTRY_COUNT * \
-				 (CONFIG_MAX_VCPU_COUNT + 1))
+#define TTBL_MAX_L1TBL_COUNT	(CONFIG_MAX_VCPU_COUNT)
+
+#define TTBL_MAX_L2TBL_COUNT	(((TTBL_POOL_MAX_SIZE - \
+				  (TTBL_MAX_L1TBL_COUNT * TTBL_L1TBL_SIZE))) / \
+				 TTBL_L2TBL_SIZE)
 
 u8 __attribute__ ((aligned(TTBL_L1TBL_SIZE))) defl1_mem[TTBL_L1TBL_SIZE];
 
@@ -115,7 +122,7 @@ static int cpu_mmu_l2tbl_detach(struct cpu_l2tbl *l2)
 	l2->l1 = NULL;
 	l2->tte_cnt = 0;
 
-	vmm_memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
+	memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
 
 	/* remove the L2 page table from this list it is attached */
 	list_del(&l2->head);
@@ -168,7 +175,7 @@ static int cpu_mmu_l2tbl_attach(struct cpu_l1tbl *l1, struct cpu_l2tbl *l2,
 
 	l1->l2tbl_cnt++;
 
-	list_add(&l1->l2tbl_list, &l2->head);
+	list_add(&l2->head, &l1->l2tbl_list);
 
 	return VMM_OK;
 }
@@ -192,7 +199,7 @@ static struct cpu_l2tbl *cpu_mmu_l2tbl_alloc(void)
 	l2->map_va = 0;
 	l2->tte_cnt = 0;
 
-	vmm_memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
+	memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
 
 	mmuctrl.l2_alloc_count++;
 
@@ -220,7 +227,7 @@ static int cpu_mmu_l2tbl_free(struct cpu_l2tbl *l2)
 
 	INIT_LIST_HEAD(&l2->head);
 	l2->l1 = NULL;
-	list_add_tail(&mmuctrl.free_l2tbl_list, &l2->head);
+	list_add_tail(&l2->head, &mmuctrl.free_l2tbl_list);
 
 	mmuctrl.l2_alloc_count--;
 
@@ -334,10 +341,10 @@ int cpu_mmu_get_page(struct cpu_l1tbl *l1, virtual_addr_t va,
 		}
 		break;
 	case TTBL_L1TBL_TTE_TYPE_FAULT:
-		vmm_memset(pg, 0, sizeof(struct cpu_page));
+		memset(pg, 0, sizeof(struct cpu_page));
 		break;
 	default:
-		vmm_memset(pg, 0, sizeof(struct cpu_page));
+		memset(pg, 0, sizeof(struct cpu_page));
 		ret = VMM_ENOTAVAIL;
 		break;
 	}
@@ -675,15 +682,16 @@ static int cpu_mmu_split_reserved_page(struct cpu_page *pg,
 
 			break;
 		default:
-			BUG_ON("%s: Unimplemented (target size 0x%x)\n",
+			vmm_printf("%s: Unimplemented (target size 0x%x)\n",
 			       __func__, rsize);
-
+			BUG();
 			break;
 		}
 		break;
 	default:
-		BUG_ON("%s: Unimplemented (source size 0x%x)\n", __func__,
+		vmm_printf("%s: Unimplemented (source size 0x%x)\n", __func__,
 		       pg->sz);
+		BUG();
 		break;
 	}
 
@@ -803,7 +811,7 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 	}
 	nl1->l2tbl_cnt = mmuctrl.defl1.l2tbl_cnt;
 
-	list_add(&mmuctrl.l1tbl_list, &nl1->head);
+	list_add(&nl1->head, &mmuctrl.l1tbl_list);
 
 	return nl1;
 
@@ -841,7 +849,7 @@ int cpu_mmu_l1tbl_free(struct cpu_l1tbl *l1)
 	}
 
 	list_del(&l1->head);
-	list_add_tail(&mmuctrl.free_l1tbl_list, &l1->head);
+	list_add_tail(&l1->head, &mmuctrl.free_l1tbl_list);
 
 	mmuctrl.l1_alloc_count--;
 
@@ -1072,7 +1080,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	struct cpu_page respg;
 
 	/* Reset the memory of MMU control structure */
-	vmm_memset(&mmuctrl, 0, sizeof(mmuctrl));
+	memset(&mmuctrl, 0, sizeof(mmuctrl));
 
 	pa = arch_code_paddr_start();
 	va = arch_code_vaddr_start();
@@ -1196,7 +1204,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	va = resv_va;
 	sz = resv_sz;
 	while (sz) {
-		vmm_memset(&respg, 0, sizeof(respg));
+		memset(&respg, 0, sizeof(respg));
 		respg.pa = pa;
 		respg.va = va;
 		respg.sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
@@ -1213,7 +1221,7 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	}
 
 	/* Setup up l1 array */
-	vmm_memset(mmuctrl.l1_array, 0x0,
+	memset(mmuctrl.l1_array, 0x0,
 		   sizeof(struct cpu_l1tbl) * TTBL_MAX_L1TBL_COUNT);
 
 	for (i = 0; i < TTBL_MAX_L1TBL_COUNT; i++) {
@@ -1226,13 +1234,13 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		mmuctrl.l1_array[i].tte_cnt = 0;
 		mmuctrl.l1_array[i].l2tbl_cnt = 0;
 		INIT_LIST_HEAD(&mmuctrl.l1_array[i].l2tbl_list);
-		list_add_tail(&mmuctrl.free_l1tbl_list,
-			      &mmuctrl.l1_array[i].head);
+		list_add_tail(&mmuctrl.l1_array[i].head,
+			      &mmuctrl.free_l1tbl_list);
 	}
 
 	/* Setup up l2 array */
-	vmm_memset(mmuctrl.l2_array, 0x0,
-		   sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT);
+	memset(mmuctrl.l2_array, 0x0,
+		sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT);
 
 	for (i = 0; i < TTBL_MAX_L2TBL_COUNT; i++) {
 		INIT_LIST_HEAD(&mmuctrl.l2_array[i].head);
@@ -1242,8 +1250,8 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 		mmuctrl.l2_array[i].tbl_va = mmuctrl.l2_base_va +
 		    i * TTBL_L2TBL_SIZE;
 		mmuctrl.l2_array[i].tte_cnt = 0;
-		list_add_tail(&mmuctrl.free_l2tbl_list,
-			      &mmuctrl.l2_array[i].head);
+		list_add_tail(&mmuctrl.l2_array[i].head,
+			      &mmuctrl.free_l2tbl_list);
 	}
 
  mmu_init_error:

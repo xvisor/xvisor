@@ -24,15 +24,15 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
-#include <vmm_string.h>
 #include <vmm_heap.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			cmd_heap_module
-#define MODULE_NAME			"Command heap"
+#define MODULE_DESC			"Command heap"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_heap_init
 #define	MODULE_EXIT			cmd_heap_exit
@@ -101,12 +101,12 @@ int cmd_heap_state(struct vmm_chardev *cdev)
 int cmd_heap_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_heap_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "info") == 0) {
+		} else if (strcmp(argv[1], "info") == 0) {
 			return cmd_heap_info(cdev);
-		} else if (vmm_strcmp(argv[1], "state") == 0) {
+		} else if (strcmp(argv[1], "state") == 0) {
 			return cmd_heap_state(cdev);
 		}
 	}
@@ -126,14 +126,14 @@ static int __init cmd_heap_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_heap);
 }
 
-static void cmd_heap_exit(void)
+static void __exit cmd_heap_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_heap);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

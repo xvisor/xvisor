@@ -29,9 +29,9 @@
 #define __BITMAP_H__
 
 #include <vmm_types.h>
-#include <vmm_string.h>
 #include <vmm_macros.h>
 #include <bitops.h>
+#include <stringlib.h>
 
 /*
  * bitmaps provide bit arrays that consume one or more unsigned
@@ -161,7 +161,7 @@ static inline void bitmap_zero(unsigned long *dst, int nbits)
 		*dst = 0UL;
 	else {
 		int len = BIT_WORD(nbits) * sizeof(unsigned long);
-		vmm_memset(dst, 0, len);
+		memset(dst, 0, len);
 	}
 }
 
@@ -170,7 +170,7 @@ static inline void bitmap_fill(unsigned long *dst, int nbits)
 	size_t nlongs = BIT_WORD(nbits);
 	if (!small_const_nbits(nbits)) {
 		int len = (nlongs - 1) * sizeof(unsigned long);
-		vmm_memset(dst, 0xff,  len);
+		memset(dst, 0xff,  len);
 	}
 	dst[nlongs - 1] = BITMAP_LAST_WORD_MASK(nbits);
 }
@@ -181,7 +181,7 @@ static inline void bitmap_copy(unsigned long *dst, const unsigned long *src, int
 		*dst = *src;
 	else {
 		int len = BIT_WORD(nbits) * sizeof(unsigned long);
-		vmm_memcpy(dst, src, len);
+		memcpy(dst, src, len);
 	}
 }
 

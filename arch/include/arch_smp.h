@@ -28,7 +28,10 @@
 /** Retrive current processor id */
 u32 arch_smp_id(void);
 
-/** Initialize secondary CPUs */
-int arch_smp_secondary_init(void);
+/** Prepare secondary CPUs */
+int arch_smp_prepare_cpus(void);
+
+/** Start secondary CPU */
+int arch_smp_start_cpu(u32 cpu);
 
 #endif

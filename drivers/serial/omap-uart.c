@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_completion.h>
@@ -32,14 +31,20 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <serial/omap-uart.h>
+#include <stringlib.h>
 #include <mathlib.h>
+#include <serial/omap-uart.h>
 
-#define OMAP_UART_POLLING 
+/* Enable OMAP_UART_POLLING to force OMAP UART polling
+ * More precisely this will force OMAP UART character device to use polling 
+ * which will reduce performance.
+ * Only enable this option for debugging purpose.
+ */
+#undef OMAP_UART_POLLING 
 
-#define MODULE_VARID			omap_uart_driver_module
-#define MODULE_NAME			"OMAP UART Driver"
+#define MODULE_DESC			"OMAP UART Driver"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			omap_uart_driver_init
 #define	MODULE_EXIT			omap_uart_driver_exit
@@ -304,8 +309,8 @@ static vmm_irq_return_t omap_uart_irq_handler(u32 irq_no, arch_regs_t * regs, vo
 		if (lsr & UART_LSR_DR) {
 			/* Mask RX interrupts till RX FIFO is empty */
 			port->ier &= ~(UART_IER_RDI | UART_IER_RLSI);
-			/* Signal work completions to all sleeping threads */
-			vmm_completion_complete_all(&port->read_possible);
+			/* Signal work completion to sleeping thread */
+			vmm_completion_complete(&port->read_possible);
 		} else if (lsr & (UART_LSR_OE | UART_LSR_PE | UART_LSR_BI | UART_LSR_FE) ) {
 			while(1);
 		}
@@ -315,7 +320,7 @@ static vmm_irq_return_t omap_uart_irq_handler(u32 irq_no, arch_regs_t * regs, vo
 	if ((lsr & UART_LSR_THRE) && (iir & UART_IIR_THRI)) {
 		/* Mask TX interrupts till TX FIFO is full */
 		port->ier &= ~UART_IER_THRI;
-		/* Signal work completions to all sleeping threads */
+		/* Signal work completion to sleeping thread */
 		vmm_completion_complete_all(&port->write_possible);
 	}
 
@@ -433,16 +438,16 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
-	vmm_memset(cd, 0, sizeof(struct vmm_chardev));
+	memset(cd, 0, sizeof(struct vmm_chardev));
 
 	port = vmm_malloc(sizeof(struct omap_uart_omap_port));
 	if(!port) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
 	}
-	vmm_memset(port, 0, sizeof(struct omap_uart_omap_port));
+	memset(port, 0, sizeof(struct omap_uart_omap_port));
 
-	vmm_strcpy(cd->name, dev->node->name);
+	strcpy(cd->name, dev->node->name);
 	cd->dev = dev;
 	cd->ioctl = NULL;
 	cd->read = omap_uart_read;
@@ -451,7 +456,7 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 
 	INIT_COMPLETION(&port->read_possible);
 
-	rc = vmm_devdrv_ioremap(dev, &port->base, 0);
+	rc = vmm_devtree_regmap(dev->node, &port->base, 0);
 	if(rc) {
 		goto free_port;
 	}
@@ -474,7 +479,7 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 		goto free_port;
 	}
 	port->baudrate = *((u32 *)attr);
-	port->input_clock = vmm_devdrv_clock_rate(dev);
+	port->input_clock = vmm_devdrv_clock_get_rate(dev);
 
 #ifndef OMAP_UART_POLLING
 	omap_uart_startup_configure(port);
@@ -485,10 +490,8 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 		goto free_port;
 	}
 	port->irq = *((u32 *) attr);
-	if ((rc = vmm_host_irq_register(port->irq, omap_uart_irq_handler, port))) {
-		goto free_port;
-	}
-	if ((rc = vmm_host_irq_enable(port->irq))) {
+	if ((rc = vmm_host_irq_register(port->irq, dev->node->name,
+					omap_uart_irq_handler, port))) {
 		goto free_port;
 	}
 #else
@@ -543,14 +546,14 @@ static int __init omap_uart_driver_init(void)
 	return vmm_devdrv_register_driver(&omap_uart_driver);
 }
 
-static void omap_uart_driver_exit(void)
+static void __exit omap_uart_driver_exit(void)
 {
 	vmm_devdrv_unregister_driver(&omap_uart_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

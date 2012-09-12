@@ -23,18 +23,18 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_string.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <vmm_threads.h>
 #include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 #include <mathlib.h>
 
-#define MODULE_VARID			cmd_threadtest_module
-#define MODULE_NAME			"Thread Test Command"
+#define MODULE_DESC			"Thread Test Command"
 #define MODULE_AUTHOR			"Sanjeev Pandita"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_threadtest_init
 #define	MODULE_EXIT			cmd_threadtest_exit
@@ -71,7 +71,7 @@ static int test1_thread_main(void *data)
 		d->counter++;
 	}
 
-	vmm_completion_complete_all(&d->cmpl);
+	vmm_completion_complete(&d->cmpl);
 
 	return VMM_OK;
 }
@@ -141,14 +141,14 @@ int cmd_threadtest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int i, rc, testid = 0, testcount = 0;	
 	if ((argc > 1) && (argc < 4)) {
-                if (vmm_strcmp(argv[1], "help") == 0) {
+                if (strcmp(argv[1], "help") == 0) {
                         cmd_threadtest_usage(cdev);
                         return VMM_OK;
-                } else if (vmm_strcmp(argv[1], "list") == 0) {
+                } else if (strcmp(argv[1], "list") == 0) {
                         cmd_threadtest_list(cdev);
                         return VMM_OK;
-		} else if ((vmm_strcmp(argv[1], "exec") == 0) && (3 <= argc)) {
-			testid = vmm_str2int(argv[2], 10);
+		} else if ((strcmp(argv[1], "exec") == 0) && (3 <= argc)) {
+			testid = str2int(argv[2], 10);
 			testcount = udiv32(sizeof(testcases), 
 					sizeof(struct threadtest_testcase));
 			if (testid == -1) {
@@ -195,14 +195,14 @@ static int __init cmd_threadtest_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_threadtest);
 }
 
-static void cmd_threadtest_exit(void)
+static void __exit cmd_threadtest_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_threadtest);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-		   MODULE_NAME, 
-		   MODULE_AUTHOR, 
-		   MODULE_IPRIORITY, 
-		   MODULE_INIT, 
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_DESC, 
+			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

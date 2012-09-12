@@ -55,15 +55,15 @@ static inline virtual_size_t arch_percpu_size(void)
 }
 
 /** Init section */
-extern u8 _init_text_start;
-extern u8 _init_text_end;
-static inline virtual_addr_t arch_init_text_vaddr(void)
+extern u8 _init_start;
+extern u8 _init_end;
+static inline virtual_addr_t arch_init_vaddr(void)
 {
-	return (virtual_addr_t) ((&_init_text_start - CPU_TEXT_START) + 0xC0000000);
+	return (virtual_addr_t) ((&_init_start - CPU_TEXT_START) + 0xC0000000);
 }
-static inline virtual_size_t arch_init_text_size(void)
+static inline virtual_size_t arch_init_size(void)
 {
-	return (virtual_size_t) (&_init_text_end - &_init_text_start);
+	return (virtual_size_t) (&_init_end - &_init_start);
 }
 
 #endif

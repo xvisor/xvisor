@@ -133,14 +133,4 @@
  */
 #define NR_IRQS_PBA8		(IRQ_PBA8_GIC_START + 64)
 
-#if !defined(ARM_GIC_NR_IRQS) || (ARM_GIC_NR_IRQS < NR_IRQS_PBA8)
-#undef ARM_GIC_NR_IRQS
-#define ARM_GIC_NR_IRQS			NR_IRQS_PBA8
-#endif
-
-#if !defined(ARM_GIC_MAX_NR) || (REALVIEW_GIC_MAX_NR < NR_GIC_PBA8)
-#undef ARM_GIC_MAX_NR
-#define ARM_GIC_MAX_NR		NR_GIC_PBA8
-#endif
-
 #endif

@@ -23,7 +23,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_completion.h>
@@ -31,8 +30,9 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <serial/pl011.h>
+#include <stringlib.h>
 #include <mathlib.h>
+#include <serial/pl011.h>
 
 /* Enable UART_PL011_USE_TXINTR to use TX interrupt.
  * Generally the FIFOs are small so its better to poll on Tx 
@@ -40,9 +40,9 @@
  */
 #undef UART_PL011_USE_TXINTR
 
-#define MODULE_VARID			pl011_driver_module
-#define MODULE_NAME			"PL011 Serial Driver"
+#define MODULE_DESC			"PL011 Serial Driver"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			pl011_driver_init
 #define	MODULE_EXIT			pl011_driver_exit
@@ -161,8 +161,8 @@ static vmm_irq_return_t pl011_irq_handler(u32 irq_no,
 		/* Mask RX interrupts till RX FIFO is empty */
 		port->mask &= ~(UART_PL011_IMSC_RXIM | UART_PL011_IMSC_RTIM);
 		vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
-		/* Signal work completions to all sleeping threads */
-		vmm_completion_complete_all(&port->read_possible);
+		/* Signal work completion sleeping thread */
+		vmm_completion_complete(&port->read_possible);
 	}
 
 	/* handle TX FIFO not full */
@@ -170,8 +170,8 @@ static vmm_irq_return_t pl011_irq_handler(u32 irq_no,
 		/* Mask TX interrupts till TX FIFO is full */
 		port->mask &= ~UART_PL011_IMSC_TXIM;
 		vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
-		/* Signal work completions to all sleeping threads */
-		vmm_completion_complete_all(&port->write_possible);
+		/* Signal work completion to sleeping thread */
+		vmm_completion_complete(&port->write_possible);
 	}
 
 	/* Clear all interrupts */
@@ -294,16 +294,16 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
-	vmm_memset(cd, 0, sizeof(struct vmm_chardev));
+	memset(cd, 0, sizeof(struct vmm_chardev));
 
 	port = vmm_malloc(sizeof(struct pl011_port));
 	if (!port) {
 		rc = VMM_EFAIL;
 		goto free_chardev;
 	}
-	vmm_memset(port, 0, sizeof(struct pl011_port));
+	memset(port, 0, sizeof(struct pl011_port));
 
-	vmm_strcpy(cd->name, dev->node->name);
+	strcpy(cd->name, dev->node->name);
 	cd->dev = dev;
 	cd->ioctl = NULL;
 	cd->read = pl011_read;
@@ -313,7 +313,7 @@ static int pl011_driver_probe(struct vmm_device *dev,
 	INIT_COMPLETION(&port->read_possible);
 	INIT_COMPLETION(&port->write_possible);
 
-	rc = vmm_devdrv_ioremap(dev, &port->base, 0);
+	rc = vmm_devtree_regmap(dev->node, &port->base, 0);
 	if (rc) {
 		goto free_port;
 	}
@@ -324,7 +324,7 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 	port->baudrate = *((u32 *) attr);
-	port->input_clock = vmm_devdrv_clock_rate(dev);
+	port->input_clock = vmm_devdrv_clock_get_rate(dev);
 
 	attr = vmm_devtree_attrval(dev->node, "irq");
 	if (!attr) {
@@ -332,10 +332,8 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 	port->irq = *((u32 *) attr);
-	if ((rc = vmm_host_irq_register(port->irq, pl011_irq_handler, port))) {
-		goto free_port;
-	}
-	if ((rc = vmm_host_irq_enable(port->irq))) {
+	if ((rc = vmm_host_irq_register(port->irq, dev->node->name, 
+					pl011_irq_handler, port))) {
 		goto free_port;
 	}
 
@@ -389,14 +387,14 @@ static int __init pl011_driver_init(void)
 	return vmm_devdrv_register_driver(&pl011_driver);
 }
 
-static void pl011_driver_exit(void)
+static void __exit pl011_driver_exit(void)
 {
 	vmm_devdrv_unregister_driver(&pl011_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

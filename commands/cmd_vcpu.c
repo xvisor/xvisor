@@ -23,15 +23,15 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_string.h>
 #include <vmm_devtree.h>
 #include <vmm_manager.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			cmd_vcpu_module
-#define MODULE_NAME			"Command vcpu"
+#define MODULE_DESC			"Command vcpu"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_vcpu_init
 #define	MODULE_EXIT			cmd_vcpu_exit
@@ -64,7 +64,7 @@ static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 	struct vmm_vcpu *vcpu;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, "| %-5s| %-6s| %-9s| %-16s| %-33s|\n", 
+	vmm_cprintf(cdev, " %-6s %-7s %-10s %-17s %-35s\n", 
 		   "ID ", "Prio", "State", "Name", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
@@ -75,34 +75,34 @@ static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 		}
 		switch (vcpu->state) {
 		case VMM_VCPU_STATE_UNKNOWN:
-			vmm_strcpy(state, "Unknown");
+			strcpy(state, "Unknown");
 			break;
 		case VMM_VCPU_STATE_RESET:
-			vmm_strcpy(state, "Reset");
+			strcpy(state, "Reset");
 			break;
 		case VMM_VCPU_STATE_READY:
-			vmm_strcpy(state, "Ready");
+			strcpy(state, "Ready");
 			break;
 		case VMM_VCPU_STATE_RUNNING:
-			vmm_strcpy(state, "Running");
+			strcpy(state, "Running");
 			break;
 		case VMM_VCPU_STATE_PAUSED:
-			vmm_strcpy(state, "Paused");
+			strcpy(state, "Paused");
 			break;
 		case VMM_VCPU_STATE_HALTED:
-			vmm_strcpy(state, "Halted");
+			strcpy(state, "Halted");
 			break;
 		default:
-			vmm_strcpy(state, "Invalid");
+			strcpy(state, "Invalid");
 			break;
 		}
 		if (vcpu->node) {
 			vmm_devtree_getpath(path, vcpu->node);
-			vmm_cprintf(cdev, "| %-5d| %-6d| %-9s| %-16s| %-33s|\n", 
+			vmm_cprintf(cdev, " %-6d %-7d %-10s %-17s %-35s\n", 
 					  id, vcpu->priority, 
 					  state, vcpu->name, path);
 		} else {
-			vmm_cprintf(cdev, "| %-5d| %-6d| %-9s| %-16s| %-33s|\n", 
+			vmm_cprintf(cdev, " %-6d %-7d %-10s %-17s %-35s\n", 
 					  id, vcpu->priority, 
 					  state, vcpu->name, "(NA)");
 		}
@@ -251,11 +251,11 @@ static int cmd_vcpu_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	}
 
 	if (argc == 3) {
-		id = vmm_str2int(argv[2], 10);
+		id = str2int(argv[2], 10);
 	}
 	
 	while (command[index].name) {
-		if (vmm_strcmp(argv[1], command[index].name) == 0) {
+		if (strcmp(argv[1], command[index].name) == 0) {
 			return command[index].function(cdev, id);
 		}
 		index++;
@@ -278,14 +278,14 @@ static int __init cmd_vcpu_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_vcpu);
 }
 
-static void cmd_vcpu_exit(void)
+static void __exit cmd_vcpu_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_vcpu);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

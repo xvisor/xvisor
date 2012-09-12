@@ -24,6 +24,7 @@
 #define _ARCH_REGS_H__
 
 #include <vmm_types.h>
+#include <vmm_spinlocks.h>
 #include <cpu_defines.h>
 #include <cpu_mmu.h>
 
@@ -126,8 +127,6 @@ struct arm_priv {
 	u32 features;
 	/* System control coprocessor (cp15) */
 	struct {
-		/* Stage2 L1 */
-		struct cpu_ttbl *ttbl;
 		/* Coprocessor Registers */
 		u32 c0_cpuid;
 		u32 c0_cachetype;
@@ -157,6 +156,7 @@ struct arm_priv {
 		u32 c9_pminten; /* perf monitor interrupt enables */
 		u32 c10_prrr;
 		u32 c10_nmrr;
+		u32 c12_vbar; /* Vector base address register */
 		u32 c13_fcseidr; /* FCSE PID. */
 		u32 c13_contextidr; /* Context ID. */
 		u32 c13_tls1; /* User RW Thread register. */
@@ -166,7 +166,7 @@ struct arm_priv {
 		u32 c15_i_min; /* Minimum D-cache dirty line index. */
 	} cp15;
 	/* Statistics Gathering */
-#ifdef CONFIG_ARM32_FUNCSTATS
+#ifdef CONFIG_ARM32VE_FUNCSTATS
 	struct {
 		char const *function_name;
 		u32 entry_count;
@@ -179,14 +179,24 @@ struct arm_priv {
 
 typedef struct arm_priv arm_priv_t;
 
+struct arm_guest_priv {
+	/* Stage2 table lock */
+	vmm_spinlock_t ttbl_lock;
+	/* Stage2 table */
+	struct cpu_ttbl *ttbl;
+};
+
+typedef struct arm_guest_priv arm_guest_priv_t;
+
 #define arm_regs(vcpu)		(&((vcpu)->regs))
 #define arm_priv(vcpu)		((arm_priv_t *)((vcpu)->arch_priv))
+#define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
 
 #define arm_cpuid(vcpu) (arm_priv(vcpu)->cp15.c0_cpuid)
 #define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1 << (feat)))
 #define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1 << (feat)))
 
-#ifdef CONFIG_ARM32_FUNCSTATS
+#ifdef CONFIG_ARM32VE_FUNCSTATS
 
 #include <vmm_timer.h>
 

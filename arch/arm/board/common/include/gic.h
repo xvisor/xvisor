@@ -24,6 +24,8 @@
 #define __GIC_H__
 
 #include <vmm_types.h>
+#include <vmm_cpumask.h>
+#include <vmm_devtree.h>
 
 /* Include GIC configuration defines/macros 
  * provided by board specific code 
@@ -52,7 +54,21 @@
 
 u32 gic_active_irq(u32 gic_nr);
 
-int gic_init(u32 gic_nr, u32 irq_start, 
-	     virtual_addr_t cpu_base, virtual_addr_t dist_base);
+void gic_enable_ppi(u32 irq);
+
+#if defined(CONFIG_SMP)
+void gic_raise_softirq(const struct vmm_cpumask *mask, u32 irq);
+#endif
+
+void gic_cascade_irq(u32 gic_nr, u32 irq);
+
+int gic_init_bases(u32 gic_nr, u32 irq_start, 
+		   virtual_addr_t cpu_base, 
+		   virtual_addr_t dist_base);
+
+void gic_secondary_init(u32 gic_nr);
+
+int gic_devtree_init(struct vmm_devtree_node *node, 
+		     struct vmm_devtree_node *parent);
 
 #endif /* __GIC_H__ */

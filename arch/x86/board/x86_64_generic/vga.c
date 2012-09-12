@@ -21,8 +21,8 @@
  * @brief VGA programming.
  */
 #include <vmm_types.h>
-#include <vmm_string.h>
 #include <vmm_host_aspace.h>
+#include <stringlib.h>
 
 /* 
  * These define our textpointer, our background and foreground
@@ -57,7 +57,7 @@ void scroll(void)
 		 * back in the buffer by a line.
 		 */
 		temp = csr_y - 25 + 1;
-		vmm_memcpy(textmemptr, textmemptr + temp * 80, ((25 - temp) * 80 * 2));
+		memcpy(textmemptr, textmemptr + temp * 80, ((25 - temp) * 80 * 2));
 
 		/* 
 		 * Finally, we set the chunk of memory that occupies

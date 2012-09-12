@@ -53,7 +53,7 @@ int __init sp804_clocksource_init(virtual_addr_t base,
 	u32 ctrl;
 	struct sp804_clocksource *cs;
 
-	cs = vmm_malloc(sizeof(struct sp804_clocksource));
+	cs = vmm_zalloc(sizeof(struct sp804_clocksource));
 	if (!cs) {
 		return VMM_EFAIL;
 	}
@@ -160,7 +160,7 @@ int __init sp804_clockchip_init(virtual_addr_t base,
 	int rc;
 	struct sp804_clockchip *cc;
 
-	cc = vmm_malloc(sizeof(struct sp804_clockchip));
+	cc = vmm_zalloc(sizeof(struct sp804_clockchip));
 	if (!cc) {
 		return VMM_EFAIL;
 	}
@@ -187,24 +187,19 @@ int __init sp804_clockchip_init(virtual_addr_t base,
 	cc->clkchip.priv = cc;
 
 	/* Register interrupt handler */
-	if ((rc = vmm_host_irq_register(hirq, 
+	if ((rc = vmm_host_irq_register(hirq, name,
 					&sp804_clockchip_irq_handler, cc))) {
 		return rc;
 	}
 
 #ifdef CONFIG_SMP
 	/* Set host irq affinity to target cpu */
-	if ((rc = vmm_host_irq_set_affinity(hirq, 
+	if ((rc = vmm_host_irq_set_affinity(hirq,
 					    vmm_cpumask_of(target_cpu), 
 					    TRUE))) {
 		return rc;
 	}
 #endif
-
-	/* Enable host interrupt line */
-	if ((rc = vmm_host_irq_enable(hirq))) {
-		return rc;
-	}
 
 	return vmm_clockchip_register(&cc->clkchip);
 }

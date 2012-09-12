@@ -25,14 +25,14 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
-#include <vmm_string.h>
 #include <vmm_threads.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			cmd_thread_module
-#define MODULE_NAME			"Command thread"
+#define MODULE_DESC			"Command thread"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			cmd_thread_init
 #define	MODULE_EXIT			cmd_thread_exit
@@ -51,7 +51,7 @@ void cmd_thread_list(struct vmm_chardev *cdev)
 	struct vmm_thread *tinfo;
 	vmm_cprintf(cdev, "----------------------------------------"
 		   	  "----------------------------------------\n");
-	vmm_cprintf(cdev, "| %-5s| %-6s| %-9s| %-51s|\n", 
+	vmm_cprintf(cdev, " %-6s %-7s %-10s %-53s\n", 
 		   	  "ID ", "Prio", "State", "Name");
 	vmm_cprintf(cdev, "----------------------------------------"
 		   	  "----------------------------------------\n");
@@ -60,25 +60,25 @@ void cmd_thread_list(struct vmm_chardev *cdev)
 		tinfo = vmm_threads_index2thread(index);
 		switch (vmm_threads_get_state(tinfo)) {
 		case VMM_THREAD_STATE_CREATED:
-			vmm_strcpy(state, "Created");
+			strcpy(state, "Created");
 			break;
 		case VMM_THREAD_STATE_RUNNING:
-			vmm_strcpy(state, "Running");
+			strcpy(state, "Running");
 			break;
 		case VMM_THREAD_STATE_SLEEPING:
-			vmm_strcpy(state, "Sleeping");
+			strcpy(state, "Sleeping");
 			break;
 		case VMM_THREAD_STATE_STOPPED:
-			vmm_strcpy(state, "Stopped");
+			strcpy(state, "Stopped");
 			break;
 		default:
-			vmm_strcpy(state, "Invalid");
+			strcpy(state, "Invalid");
 			break;
 		}
 		if ((rc = vmm_threads_get_name(name, tinfo))) {
-			vmm_strcpy(name, "(NA)");
+			strcpy(name, "(NA)");
 		}
-		vmm_cprintf(cdev, "| %-5d| %-6d| %-9s| %-51s|\n", 
+		vmm_cprintf(cdev, " %-6d %-7d %-10s %-53s\n", 
 				  vmm_threads_get_id(tinfo), 
 				  vmm_threads_get_priority(tinfo), 
 				  state, name);
@@ -90,10 +90,10 @@ void cmd_thread_list(struct vmm_chardev *cdev)
 int cmd_thread_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
-		if (vmm_strcmp(argv[1], "help") == 0) {
+		if (strcmp(argv[1], "help") == 0) {
 			cmd_thread_usage(cdev);
 			return VMM_OK;
-		} else if (vmm_strcmp(argv[1], "list") == 0) {
+		} else if (strcmp(argv[1], "list") == 0) {
 			cmd_thread_list(cdev);
 			return VMM_OK;
 		}
@@ -114,14 +114,14 @@ static int __init cmd_thread_init(void)
 	return vmm_cmdmgr_register_cmd(&cmd_thread);
 }
 
-static void cmd_thread_exit(void)
+static void __exit cmd_thread_exit(void)
 {
 	vmm_cmdmgr_unregister_cmd(&cmd_thread);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

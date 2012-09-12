@@ -21,14 +21,15 @@
  * @brief source file for hypervisor manager
  */
 
-#include <arch_vcpu.h>
-#include <arch_guest.h>
 #include <vmm_error.h>
-#include <vmm_string.h>
+#include <vmm_compiler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 #include <vmm_manager.h>
+#include <arch_vcpu.h>
+#include <arch_guest.h>
+#include <stringlib.h>
 
 /** Control structure for Scheduler */
 struct vmm_manager_ctrl {
@@ -215,7 +216,7 @@ struct vmm_vcpu * vmm_manager_vcpu_orphan_create(const char *name,
 	INIT_SPIN_LOCK(&vcpu->lock);
 	INIT_LIST_HEAD(&vcpu->head);
 	vcpu->subid = 0;
-	vmm_strcpy(vcpu->name, name);
+	strcpy(vcpu->name, name);
 	vcpu->node = NULL;
 	vcpu->is_normal = FALSE;
 	vcpu->state = VMM_VCPU_STATE_UNKNOWN;
@@ -253,7 +254,7 @@ struct vmm_vcpu * vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->devemu_priv = NULL;
 
 	/* Add VCPU to orphan list */
-	list_add_tail(&mngr.orphan_vcpu_list, &vcpu->head);
+	list_add_tail(&vcpu->head, &mngr.orphan_vcpu_list);
 
 	/* Increment vcpu count */
 	mngr.vcpu_count++;
@@ -500,7 +501,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 	if (!attrval) {
 		return NULL;
 	}
-	if (vmm_strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_GUEST) != 0) {
+	if (strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_GUEST) != 0) {
 		return NULL;
 	}
 
@@ -511,7 +512,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 	list_for_each(l1, &mngr.guest_list) {
 		guest = list_entry(l1, struct vmm_guest, head);
 		if ((guest->node == gnode) ||
-		    (vmm_strcmp(guest->node->name, gnode->name) == 0)) {
+		    (strcmp(guest->node->name, gnode->name) == 0)) {
 			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 			return NULL;
 		}
@@ -536,7 +537,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 
 	/* Initialize guest instance */
 	INIT_SPIN_LOCK(&guest->lock);
-	list_add_tail(&mngr.guest_list, &guest->head);
+	list_add_tail(&guest->head, &mngr.guest_list);
 	guest->node = gnode;
 	guest->reset_count = 0;
 	guest->vcpu_count = 0;
@@ -559,8 +560,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 		if (!attrval) {
 			continue;
 		}
-		if (vmm_strcmp(attrval,
-			       VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU) != 0) {
+		if (strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU) != 0) {
 			continue;
 		}
 
@@ -582,10 +582,9 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 		/* Initialize vcpu instance */
 		INIT_SPIN_LOCK(&vcpu->lock);
 		vcpu->subid = guest->vcpu_count;
-		vmm_strcpy(vcpu->name, gnode->name);
-		vmm_strcat(vcpu->name,
-			   VMM_DEVTREE_PATH_SEPARATOR_STRING);
-		vmm_strcat(vcpu->name, vnode->name);
+		strcpy(vcpu->name, gnode->name);
+		strcat(vcpu->name, VMM_DEVTREE_PATH_SEPARATOR_STRING);
+		strcat(vcpu->name, vnode->name);
 		vcpu->node = vnode;
 		vcpu->is_normal = TRUE;
 		vcpu->state = VMM_VCPU_STATE_UNKNOWN;
@@ -646,7 +645,7 @@ struct vmm_guest * vmm_manager_guest_create(struct vmm_devtree_node * gnode)
 		vcpu->devemu_priv = NULL;
 
 		/* Add VCPU to Guest child list */
-		list_add_tail(&guest->vcpu_list, &vcpu->head);
+		list_add_tail(&vcpu->head, &guest->vcpu_list);
 
 		/* Increment vcpu count */
 		mngr.vcpu_count++;
@@ -743,6 +742,10 @@ int vmm_manager_guest_destroy(struct vmm_guest * guest)
 			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 			return rc;
 		}
+		if ((rc = vmm_vcpu_irq_deinit(vcpu))) {
+			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+			return rc;
+		}
 
 		/* Mark VCPU as available */
 		mngr.vcpu_avail_array[vcpu->id] = TRUE;
@@ -765,7 +768,7 @@ int __init vmm_manager_init(void)
 	u32 vnum, gnum;
 
 	/* Reset the manager control structure */
-	vmm_memset(&mngr, 0, sizeof(mngr));
+	memset(&mngr, 0, sizeof(mngr));
 
 	/* Intialize guest & vcpu managment parameters */
 	INIT_SPIN_LOCK(&mngr.lock);
@@ -789,7 +792,7 @@ int __init vmm_manager_init(void)
 		INIT_LIST_HEAD(&mngr.vcpu_array[vnum].head);
 		INIT_SPIN_LOCK(&mngr.vcpu_array[vnum].lock);
 		mngr.vcpu_array[vnum].id = vnum;
-		vmm_strcpy(mngr.vcpu_array[vnum].name, "");
+		strcpy(mngr.vcpu_array[vnum].name, "");
 		mngr.vcpu_array[vnum].node = NULL;
 		mngr.vcpu_array[vnum].is_normal = FALSE;
 		mngr.vcpu_array[vnum].state = VMM_VCPU_STATE_UNKNOWN;

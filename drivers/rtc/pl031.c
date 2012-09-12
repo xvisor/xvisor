@@ -23,7 +23,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_scheduler.h>
@@ -32,10 +31,11 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <rtc/vmm_rtcdev.h>
+#include <stringlib.h>
 
-#define MODULE_VARID			pl031_driver_module
-#define MODULE_NAME			"PL031 RTC Driver"
+#define MODULE_DESC			"PL031 RTC Driver"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		(VMM_RTCDEV_CLASS_IPRIORITY+1)
 #define	MODULE_INIT			pl031_driver_init
 #define	MODULE_EXIT			pl031_driver_exit
@@ -131,22 +131,22 @@ static int pl031_driver_probe(struct vmm_device *dev,
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
-	vmm_memset(rd, 0, sizeof(struct vmm_rtcdev));
+	memset(rd, 0, sizeof(struct vmm_rtcdev));
 
 	ldata = vmm_malloc(sizeof(struct pl031_local));
 	if (!ldata) {
 		rc = VMM_EFAIL;
 		goto free_rtcdev;
 	}
-	vmm_memset(ldata, 0, sizeof(struct pl031_local));
+	memset(ldata, 0, sizeof(struct pl031_local));
 
-	vmm_strcpy(rd->name, dev->node->name);
+	strcpy(rd->name, dev->node->name);
 	rd->dev = dev;
 	rd->get_time = pl031_get_time;
 	rd->set_time = pl031_set_time;
 	rd->priv = ldata;
 
-	rc = vmm_devdrv_ioremap(dev, &ldata->base, 0);
+	rc = vmm_devtree_regmap(dev->node, &ldata->base, 0);
 	if (rc) {
 		goto free_ldata;
 	}
@@ -157,10 +157,8 @@ static int pl031_driver_probe(struct vmm_device *dev,
 		goto free_ldata;
 	}
 	ldata->irq = *((u32 *) attr);
-	if ((rc = vmm_host_irq_register(ldata->irq, pl031_irq_handler, ldata))) {
-		goto free_ldata;
-	}
-	if ((rc = vmm_host_irq_enable(ldata->irq))) {
+	if ((rc = vmm_host_irq_register(ldata->irq, dev->node->name,
+					pl031_irq_handler, ldata))) {
 		goto free_ldata;
 	}
 
@@ -211,14 +209,14 @@ static int __init pl031_driver_init(void)
 	return vmm_devdrv_register_driver(&pl031_driver);
 }
 
-static void pl031_driver_exit(void)
+static void __exit pl031_driver_exit(void)
 {
 	vmm_devdrv_unregister_driver(&pl031_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID,
-		   MODULE_NAME,
-		   MODULE_AUTHOR,
-		   MODULE_IPRIORITY,
-		   MODULE_INIT,
-		   MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

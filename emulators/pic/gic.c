@@ -34,7 +34,6 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_string.h>
 #include <vmm_modules.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
@@ -42,11 +41,12 @@
 #include <vmm_host_irq.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <stringlib.h>
 #include <pic/gic_emulator.h>
 
-#define MODULE_VARID			gic_emulator_module
-#define MODULE_NAME			"Realview GIC Emulator"
+#define MODULE_DESC			"Realview GIC Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			gic_emulator_init
 #define	MODULE_EXIT			gic_emulator_exit
@@ -181,14 +181,15 @@ static void gic_update(struct gic_state *s)
 }
 
 /* Process IRQ asserted in device emulation framework */
-static void gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
+static int gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 {
 	struct gic_state * s = (struct gic_state *)epic->priv;
+	irq_flags_t flags;
 	int cm, target;
 
 	/* Ensure irq is in range (base_irq, base_irq + num_irq) */
 	if ((s->num_base_irq + s->num_irq) <= irq) {
-		return;
+		return VMM_EMUPIC_IRQ_UNHANDLED;
 	}
 
 	if (irq < (s->num_base_irq + 32)) {
@@ -201,9 +202,9 @@ static void gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 	}	
 
 	if (level == GIC_TEST_LEVEL(s, irq, cm))
-		return;
+		return VMM_EMUPIC_IRQ_HANDLED;
 
-	vmm_spin_lock(&s->lock);
+	vmm_spin_lock_irqsave(&s->lock, flags);
 
 	if (level) {
 		GIC_SET_LEVEL(s, irq, cm);
@@ -216,7 +217,9 @@ static void gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 
 	gic_update(s);
 
-	vmm_spin_unlock(&s->lock);
+	vmm_spin_unlock_irqrestore(&s->lock, flags);
+
+	return VMM_EMUPIC_IRQ_HANDLED;
 }
 
 static void gic_set_running_irq(struct gic_state *s, int cpu, int irq)
@@ -675,6 +678,8 @@ static int gic_dist_write(struct gic_state *s, int cpu, u32 offset,
 
 static int gic_cpu_read(struct gic_state * s, u32 cpu, u32 offset, u32 *dst)
 {
+	int rc = VMM_OK;
+
 	if (!s || !dst) {
 		return VMM_EFAIL;
 	}
@@ -704,18 +709,20 @@ static int gic_cpu_read(struct gic_state * s, u32 cpu, u32 offset, u32 *dst)
 		*dst = s->current_pending[cpu];
 		break;
 	default:
-		return VMM_EFAIL;
+		rc = VMM_EFAIL;
 		break;
 	}
 
 	vmm_spin_unlock(&s->lock);
 
-	return VMM_OK;
+	return rc;
 }
 
 static int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset, 
 		  u32 src_mask, u32 src)
 {
+	int rc = VMM_OK;
+
 	if (!s) {
 		return VMM_EFAIL;
 	}
@@ -741,7 +748,7 @@ static int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset,
 		gic_complete_irq(s, cpu, src & 0x3ff);
 		break;
 	default:
-		return VMM_EFAIL;
+		rc = VMM_EFAIL;
 		break;
 	};
 
@@ -749,7 +756,7 @@ static int gic_cpu_write(struct gic_state * s, u32 cpu, u32 offset,
 
 	vmm_spin_unlock(&s->lock);
 
-	return VMM_OK;
+	return rc;
 }
 
 int gic_reg_read(struct gic_state *s, physical_addr_t offset, u32 *dst)
@@ -812,7 +819,7 @@ static int gic_emulator_read(struct vmm_emudev *edev,
 	u32 regval = 0x0;
 	struct gic_state * s = edev->priv;
 
-	gic_reg_read(s, offset, &regval);
+	rc = gic_reg_read(s, offset, &regval);
 
 	if (!rc) {
 		regval = (regval >> ((offset & 0x3) * 8));
@@ -961,15 +968,16 @@ struct gic_state* gic_state_alloc(struct vmm_guest *guest,
 	if (!s) {
 		goto gic_emulator_init_done;
 	}
-	vmm_memset(s, 0x0, sizeof(struct gic_state));
+	memset(s, 0x0, sizeof(struct gic_state));
 
 	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
 	if (!s->pic) {
 		goto gic_emulator_init_freestate_failed;
 	}
-	vmm_memset(s->pic, 0x0, sizeof(struct vmm_emupic));
+	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
 
-	vmm_strcpy(s->pic->name, "gic-pic");
+	strcpy(s->pic->name, "gic-pic");
+	s->pic->type = VMM_EMUPIC_IRQCHIP;
 	s->pic->handle = &gic_irq_handle;
 	s->pic->priv = s;
 	if (vmm_devemu_register_pic(guest, s->pic)) {
@@ -1013,8 +1021,13 @@ gic_emulator_init_done:
 
 int gic_state_free(struct gic_state *s)
 {
+	int rc;
 	if(s) {
 		if (s->pic) {
+			rc = vmm_devemu_unregister_pic(s->guest, s->pic);
+			if (rc) {
+				return rc;
+			}
 			vmm_free(s->pic);
 		}
 		vmm_free(s);
@@ -1097,14 +1110,14 @@ static int __init gic_emulator_init(void)
 	return vmm_devemu_register_emulator(&gic_emulator);
 }
 
-static void gic_emulator_exit(void)
+static void __exit gic_emulator_exit(void)
 {
 	vmm_devemu_unregister_emulator(&gic_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_VARID, 
-			MODULE_NAME, 
+VMM_DECLARE_MODULE(MODULE_DESC, 
 			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);

@@ -32,10 +32,23 @@ struct vmm_emupic;
 struct vmm_emuid;
 struct vmm_emulator;
 
-typedef void (*vmm_emupic_handle_t) (struct vmm_emupic *epic,
-				     u32 irq_num,
-				     int cpu,
-				     int irq_level);
+enum vmm_emupic_type {
+	VMM_EMUPIC_IRQCHIP = 0,
+	VMM_EMUPIC_GPIO = 1,
+	VMM_EMUPIC_UNKNOWN = 3
+};
+
+enum vmm_emupic_return {
+	VMM_EMUPIC_IRQ_HANDLED = 0,
+	VMM_EMUPIC_IRQ_UNHANDLED = 1,
+	VMM_EMUPIC_GPIO_HANDLED = 2,
+	VMM_EMUPIC_GPIO_UNHANDLED = 3
+};
+
+typedef int (*vmm_emupic_handle_t) (struct vmm_emupic *epic,
+				    u32 irq_num,
+				    int cpu,
+				    int irq_level);
 
 typedef int (*vmm_emulator_probe_t) (struct vmm_guest *guest,
 				     struct vmm_emudev *edev,
@@ -67,6 +80,7 @@ struct vmm_emudev {
 struct vmm_emupic {
 	struct dlist head;
 	char name[32];
+	u32 type;
 	vmm_emupic_handle_t handle;
 	void *priv;
 };
@@ -119,11 +133,11 @@ int vmm_devemu_complete_h2g_irq(struct vmm_guest *guest, u32 irq_num);
 
 /** Register emulated pic */
 int vmm_devemu_register_pic(struct vmm_guest *guest, 
-			    struct vmm_emupic * emu);
+			    struct vmm_emupic *emu);
 
 /** Unregister emulated pic */
 int vmm_devemu_unregister_pic(struct vmm_guest *guest, 
-			      struct vmm_emupic * emu);
+			      struct vmm_emupic *emu);
 
 /** Find a registered emulated pic */
 struct vmm_emupic *vmm_devemu_find_pic(struct vmm_guest *guest, 
@@ -136,10 +150,10 @@ struct vmm_emupic *vmm_devemu_pic(struct vmm_guest *guest, int index);
 u32 vmm_devemu_pic_count(struct vmm_guest *guest);
 
 /** Register emulator */
-int vmm_devemu_register_emulator(struct vmm_emulator * emu);
+int vmm_devemu_register_emulator(struct vmm_emulator *emu);
 
 /** Unregister emulator */
-int vmm_devemu_unregister_emulator(struct vmm_emulator * emu);
+int vmm_devemu_unregister_emulator(struct vmm_emulator *emu);
 
 /** Find a registered emulator */
 struct vmm_emulator *vmm_devemu_find_emulator(const char *name);

@@ -223,15 +223,6 @@ if { $last_fail > $first_fail } {
         puts "\n :: MMU TEST TESTCASE FAIL :: \n\n"
 }
 
-send -- "sysctl\r"
-expect $arm_prompt
-set sysctl_out $expect_out(buffer)
-if { [string first "SYS_24MHz" $sysctl_out] > -1 } {
-        puts "\n :: SYSCTL TESTCASE PASS :: \n\n"
-} else {
-        puts "\n :: SYSCTL TESTCASE FAIL :: \n\n"
-}
-
 send -- "timer\r"
 expect $arm_prompt
 set timer_out $expect_out(buffer)
