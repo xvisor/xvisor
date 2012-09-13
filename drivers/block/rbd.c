@@ -38,93 +38,29 @@
 #define	MODULE_INIT			rbd_driver_init
 #define	MODULE_EXIT			rbd_driver_exit
 
-static struct rbd_request *rbd_alloc_request(struct rbd *d)
-{
-	irq_flags_t flags;
-	struct rbd_request *rr = NULL;
-
-	vmm_spin_lock_irqsave(&d->reqs_lock, flags);
-	if (!d->reqs_free_count) {
-		vmm_spin_unlock_irqrestore(&d->reqs_lock, flags);
-		return NULL;
-	}
-
-	rr = &d->reqs[d->reqs_pos];
-	d->reqs_pos++;
-	if (d->reqs_pos == RBD_MAX_REQUEST) {
-		d->reqs_pos = 0;
-	}
-	d->reqs_free_count--;
-
-	vmm_spin_unlock_irqrestore(&d->reqs_lock, flags);
-
-	memset(rr, 0, sizeof(struct rbd_request));
-
-	return rr;
-}
-
-static void rbd_free_request(struct rbd *d, struct rbd_request *rr)
-{
-	irq_flags_t flags;
-
-	vmm_spin_lock_irqsave(&d->reqs_lock, flags);
-	if (d->reqs_free_count == RBD_MAX_REQUEST) {
-		vmm_spin_unlock_irqrestore(&d->reqs_lock, flags);
-		return;
-	}
-
-	d->reqs_free_count++;
-
-	vmm_spin_unlock_irqrestore(&d->reqs_lock, flags);
-}
-
-static void rbd_work_func(struct vmm_work *work)
-{
-	struct rbd_request *rr = container_of(work, struct rbd_request, w);
-	struct rbd *d = rr->rq->priv;
-	physical_addr_t pa;
-	physical_size_t sz;
-
-	pa = d->addr + rr->r->lba * RBD_BLOCK_SIZE;
-	sz = rr->r->bcnt * RBD_BLOCK_SIZE;
-
-	switch (rr->r->type) {
-	case VMM_REQUEST_READ:
-		vmm_host_physical_read(pa, rr->r->data, sz);
-		vmm_blockdev_complete_request(rr->r);
-		break;
-	case VMM_REQUEST_WRITE:
-		vmm_host_physical_write(pa, rr->r->data, sz);
-		vmm_blockdev_complete_request(rr->r);
-		break;
-	default:
-		vmm_blockdev_fail_request(rr->r);
-		break;
-	};
-
-	rbd_free_request(d, rr);
-}
-
 static int rbd_make_request(struct vmm_request_queue *rq, 
 			    struct vmm_request *r)
 {
-	int rc;
 	struct rbd *d = rq->priv;
-	struct rbd_request *rr;
+	physical_addr_t pa;
+	physical_size_t sz;
 
-	rr = rbd_alloc_request(d);
-	if (!rr) {
-		return VMM_ENOMEM;
-	}
+	pa = d->addr + r->lba * RBD_BLOCK_SIZE;
+	sz = r->bcnt * RBD_BLOCK_SIZE;
 
-	INIT_WORK(&rr->w, rbd_work_func);
-	rr->r = r;
-	rr->rq = rq;
-
-	if ((rc = vmm_workqueue_schedule_work(NULL, &rr->w))) {
-		vmm_free(rr);
-		return rc;
-	}
+	switch (r->type) {
+	case VMM_REQUEST_READ:
+		vmm_host_physical_read(pa, r->data, sz);
+		vmm_blockdev_complete_request(r);
+		break;
+	case VMM_REQUEST_WRITE:
+		vmm_host_physical_write(pa, r->data, sz);
+		vmm_blockdev_complete_request(r);
+		break;
+	default:
+		vmm_blockdev_fail_request(r);
+		break;
+	};
 
 	return VMM_OK;
 }
@@ -170,11 +106,6 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 	d->bdev->rq->make_request = rbd_make_request;
 	d->bdev->rq->abort_request = rbd_abort_request;
 	d->bdev->rq->priv = d;
-
-	/* Setup request pool */
-	INIT_SPIN_LOCK(&d->reqs_lock);
-	d->reqs_pos = 0;
-	d->reqs_free_count = RBD_MAX_REQUEST;
 
 	/* Register block device instance */
 	if (vmm_blockdev_register(d->bdev)) {

@@ -25,28 +25,15 @@
 #define __RBD_H_
 
 #include <vmm_types.h>
-#include <vmm_workqueue.h>
 #include <block/vmm_blockdev.h>
 
 #define RBD_BLOCK_SIZE				512
-#define RBD_MAX_REQUEST				32
-
-/* RAM backed device (RBD) request */
-struct rbd_request {
-	struct vmm_work w;
-	struct vmm_request *r;
-	struct vmm_request_queue *rq;
-};
 
 /* RAM backed device (RBD) context */
 struct rbd {
 	struct vmm_blockdev *bdev;
 	physical_addr_t addr;
 	physical_size_t size;
-	vmm_spinlock_t reqs_lock;
-	u32 reqs_pos;
-	u32 reqs_free_count;
-	struct rbd_request reqs[RBD_MAX_REQUEST];
 };
 
 /** Create RBD instance */
