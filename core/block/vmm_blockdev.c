@@ -57,7 +57,7 @@ int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 		return VMM_ERANGE;
 	}
 
-	if (r->bdev->rq->make_request) {
+	if (bdev->rq->make_request) {
 		r->bdev = bdev;
 		vmm_spin_lock_irqsave(&r->bdev->rq->lock, flags);
 		rc = r->bdev->rq->make_request(r->bdev->rq, r);
