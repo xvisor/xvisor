@@ -199,12 +199,6 @@ static int printi(char **out, u32 *out_len, struct vmm_chardev *cdev,
 	int t, neg = 0, pc = 0;
 	unsigned long long u = i;
 
-	if (i == 0) {
-		print_buf[0] = '0';
-		print_buf[1] = '\0';
-		return prints(out, out_len, cdev, print_buf, width, flags);
-	}
-
 	if (sg && b == 10 && i < 0) {
 		neg = 1;
 		u = -i;
@@ -213,12 +207,16 @@ static int printi(char **out, u32 *out_len, struct vmm_chardev *cdev,
 	s = print_buf + PRINT_BUF_LEN - 1;
 	*s = '\0';
 
-	while (u) {
-		t = umod64(u, b);
-		if (t >= 10)
-			t += letbase - '0' - 10;
-		*--s = t + '0';
-		u = udiv64(u, b);
+	if (!u) {
+		*--s = '0';
+	} else {
+		while (u) {
+			t = umod64(u, b);
+			if (t >= 10)
+				t += letbase - '0' - 10;
+			*--s = t + '0';
+			u = udiv64(u, b);
+		}
 	}
 
 	if (flags & PAD_ALTERNATE) {
@@ -249,7 +247,7 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 	int width, flags, acnt = 0;
 	int pc = 0;
 	char scr[2];
-	long long tmp;
+	unsigned long long tmp;
 
 	for (; *format != 0; ++format) {
 		if (*format == '%') {
@@ -285,39 +283,39 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 				continue;
 			}
 			if (*format == 'd') {
-				pc +=
-				    printi(out, out_len, cdev, va_arg(args, int), 
-					   10, 1, width, flags, '0');
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, int), 
+					10, 1, width, flags, '0');
 				acnt += sizeof(int);
 				continue;
 			}
 			if (*format == 'x') {
-				pc +=
-				    printi(out, out_len, cdev, va_arg(args, unsigned int), 
-					   16, 0, width, flags, 'a');
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, unsigned int), 
+					16, 0, width, flags, 'a');
 				acnt += sizeof(unsigned int);
 				continue;
 			}
 			if (*format == 'X') {
-				pc +=
-				    printi(out, out_len, cdev, va_arg(args, unsigned int), 
-					   16, 0, width, flags, 'A');
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, unsigned int), 
+					16, 0, width, flags, 'A');
 				acnt += sizeof(unsigned int);
 				continue;
 			}
 			if (*format == 'u') {
-				pc +=
-				    printi(out, out_len, cdev, va_arg(args, unsigned int), 
-					   10, 0, width, flags, 'a');
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, unsigned int), 
+					10, 0, width, flags, 'a');
 				acnt += sizeof(unsigned int);
 				continue;
 			}
 			if (*format == 'l' && *(format + 1) == 'l') {
-				while (acnt & (sizeof(long long) - 1)) {
-					va_arg(args, unsigned int);
-					acnt += sizeof(unsigned int);
+				while (acnt & (sizeof(unsigned long long)-1)) {
+					va_arg(args, int);
+					acnt += sizeof(int);
 				}
-				if (sizeof(long long) == 
+				if (sizeof(unsigned long long) == 
 						sizeof(unsigned long)) {
 					tmp = va_arg(args, unsigned long long);
 					acnt += sizeof(unsigned long long);
@@ -326,8 +324,7 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 						va_arg(args, unsigned long);
 					((unsigned long *)&tmp)[1] = 
 						va_arg(args, unsigned long);
-					acnt += sizeof(unsigned long);
-					acnt += sizeof(unsigned long);
+					acnt += 2*sizeof(unsigned long);
 				}
 				if (*(format + 2) == 'u') {
 					format += 2;
@@ -348,19 +345,23 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 				}
 				continue;
 			} else if (*format == 'l') {
-				tmp = va_arg(args, unsigned long);
-				acnt += sizeof(unsigned long);
 				if (*(format + 1) == 'x') {
 					format += 1;
-					pc += printi(out, out_len, cdev, tmp,
+					pc += printi(out, out_len, cdev, 
+						va_arg(args, unsigned long),
 						16, 0, width, flags, 'a');
+					acnt += sizeof(unsigned long);
 				} else if (*(format + 1) == 'X') {
 					format += 1;
-					pc += printi(out, out_len, cdev, tmp,
+					pc += printi(out, out_len, cdev, 
+						va_arg(args, unsigned long),
 						16, 0, width, flags, 'A');
+					acnt += sizeof(unsigned long);
 				} else {
-					pc += printi(out, out_len, cdev, tmp,
+					pc += printi(out, out_len, cdev, 
+						va_arg(args, long),
 						10, 1, width, flags, '0');
+					acnt += sizeof(long);
 				}
 			}
 			if (*format == 'c') {
@@ -380,16 +381,6 @@ out:
 	if (out)
 		**out = '\0';
 	return pc;
-}
-
-int vmm_printf(const char *format, ...)
-{
-	va_list args;
-	int retval;
-	va_start(args, format);
-	retval = print(NULL, NULL, stdio_ctrl.dev, format, args);
-	va_end(args);
-	return retval;
 }
 
 int vmm_sprintf(char *out, const char *format, ...)
