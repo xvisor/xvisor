@@ -145,7 +145,8 @@ struct arm_priv {
 		u32 c5_dfsr; /* Fault status registers. */
 		u32 c6_ifar; /* Fault address registers. */
 		u32 c6_dfar; /* Fault address registers. */
-		u32 c7_par; /* Translation result. */
+		u32 c7_par;  /* VA2PA Translation result. */
+		u64 c7_par64;  /* VA2PA Translation result. */
 		u32 c9_insn; /* Cache lockdown registers. */
 		u32 c9_data;
 		u32 c9_pmcr; /* performance monitor control register */

@@ -502,11 +502,10 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		return VMM_EFAIL;
 	}
 	if (!vcpu->reset_count) {
-		vcpu->arch_priv = vmm_malloc(sizeof(arm_priv_t));
+		vcpu->arch_priv = vmm_zalloc(sizeof(arm_priv_t));
 		if (!vcpu->arch_priv) {
 			return VMM_EFAIL;
 		}
-		memset(arm_priv(vcpu), 0, sizeof(arm_priv_t));
 		arm_priv(vcpu)->hyp_stack = vmm_malloc(CONFIG_IRQ_STACK_SIZE);
 		if (!arm_priv(vcpu)->hyp_stack) {
 			vmm_free(vcpu->arch_priv);

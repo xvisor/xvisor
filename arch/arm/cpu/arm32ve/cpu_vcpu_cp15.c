@@ -376,6 +376,8 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		arm_priv(tvcpu)->cp15.c5_dfsr = read_dfsr();
 		arm_priv(tvcpu)->cp15.c6_ifar = read_ifar();
 		arm_priv(tvcpu)->cp15.c6_dfar = read_dfar();
+		arm_priv(tvcpu)->cp15.c7_par = read_par();
+		arm_priv(tvcpu)->cp15.c7_par64 = read_par64();
 		arm_priv(tvcpu)->cp15.c10_prrr = read_prrr();
 		arm_priv(tvcpu)->cp15.c10_nmrr = read_nmrr();
 		arm_priv(tvcpu)->cp15.c12_vbar = read_vbar();
@@ -405,6 +407,8 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		write_dfsr(arm_priv(vcpu)->cp15.c5_dfsr);
 		write_ifar(arm_priv(vcpu)->cp15.c6_ifar);
 		write_dfar(arm_priv(vcpu)->cp15.c6_dfar);
+		write_par(arm_priv(vcpu)->cp15.c7_par);
+		write_par64(arm_priv(vcpu)->cp15.c7_par64);
 		write_prrr(arm_priv(vcpu)->cp15.c10_prrr);
 		write_nmrr(arm_priv(vcpu)->cp15.c10_nmrr);
 		write_vbar(arm_priv(vcpu)->cp15.c12_vbar);
@@ -432,9 +436,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	u32 i, cache_type, last_level;
 
-	if (!vcpu->reset_count) {
-		memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
-	}
+	memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
 
 	arm_priv(vcpu)->cp15.c0_cpuid = cpuid;
 	arm_priv(vcpu)->cp15.c2_ttbcr = 0x0;
