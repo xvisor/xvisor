@@ -91,6 +91,7 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu *vcpu, 
 			     arch_regs_t *regs,
 			     u32 il, u32 iss, 
+			     virtual_addr_t ifar,
 			     physical_addr_t fipa)
 {
 	switch (iss & ISS_ABORT_FSR_MASK) {
@@ -108,6 +109,7 @@ int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu *vcpu,
 int cpu_vcpu_cp15_data_abort(struct vmm_vcpu *vcpu, 
 			     arch_regs_t *regs,
 			     u32 il, u32 iss, 
+			     virtual_addr_t dfar,
 			     physical_addr_t fipa)
 {
 	switch (iss & ISS_ABORT_FSR_MASK) {
@@ -119,14 +121,21 @@ int cpu_vcpu_cp15_data_abort(struct vmm_vcpu *vcpu,
 	case FSR_ACCESS_FAULT_LEVEL2:
 	case FSR_ACCESS_FAULT_LEVEL3:
 		if (!(iss & ISS_ABORT_ISV_MASK)) {
-			return VMM_EFAIL;
-		}
-		if (iss & ISS_ABORT_WNR_MASK) {
-			return cpu_vcpu_emulate_store(vcpu, regs, 
-						      il, iss, fipa);
+			if (iss & ISS_ABORT_WNR_MASK) {
+				return cpu_vcpu_emulate_nohw_store(vcpu, regs,
+								dfar);
+			} else {
+				return cpu_vcpu_emulate_nohw_load(vcpu, regs, 
+								dfar);
+			}
 		} else {
-			return cpu_vcpu_emulate_load(vcpu, regs, 
+			if (iss & ISS_ABORT_WNR_MASK) {
+				return cpu_vcpu_emulate_store(vcpu, regs, 
+						      il, iss, fipa);
+			} else {
+				return cpu_vcpu_emulate_load(vcpu, regs, 
 						     il, iss, fipa);
+			}
 		}
 	default:
 		break;

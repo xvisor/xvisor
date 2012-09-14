@@ -30,12 +30,14 @@
 int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu * vcpu, 
 			     arch_regs_t * regs,
 			     u32 il, u32 iss, 
+			     virtual_addr_t ifar,
 			     physical_addr_t fipa);
 
 /** Handle stage2 data abort */
 int cpu_vcpu_cp15_data_abort(struct vmm_vcpu * vcpu, 
 			     arch_regs_t * regs,
 			     u32 il, u32 iss, 
+			     virtual_addr_t dfar,
 			     physical_addr_t fipa);
 
 /** Read one registers from CP15 */

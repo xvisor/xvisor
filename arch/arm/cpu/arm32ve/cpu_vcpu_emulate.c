@@ -408,4 +408,19 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu,
 	return rc;
 }
 
+/* FIXME: */
+int cpu_vcpu_emulate_nohw_load(struct vmm_vcpu *vcpu, 
+				arch_regs_t *regs,
+			   	virtual_addr_t far)
+{
+	return VMM_EFAIL;
+}
+
+/* FIXME: */
+int cpu_vcpu_emulate_nohw_store(struct vmm_vcpu *vcpu, 
+				arch_regs_t *regs,
+			   	virtual_addr_t far)
+{
+	return VMM_EFAIL;
+}
 
