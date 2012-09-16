@@ -408,7 +408,7 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 	va_list args;
 	int retval;
 	va_start(args, format);
-	retval = print(NULL, NULL, cdev, format, args);
+	retval = print(NULL, NULL, (cdev) ? cdev : stdio_ctrl.dev, format, args);
 	va_end(args);
 	return retval;
 }
