@@ -24,7 +24,7 @@
 #include <bitops.h>
 #include <mathlib.h>
 
-#if !defined(ARCH_HAS_DIV_OPERATION)
+#if !defined(ARCH_HAS_DIVISON_OPERATION)
 
 static const unsigned char byte_reverse_table[] = 
 {
