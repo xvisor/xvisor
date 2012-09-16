@@ -25,20 +25,40 @@
 
 #include <vmm_types.h>
 
-/** Address space functions required by VMM core */
-int arch_cpu_aspace_init(physical_addr_t * core_resv_pa, 
-			 virtual_addr_t * core_resv_va,
-			 virtual_size_t * core_resv_sz,
-			 physical_addr_t * arch_resv_pa,
-			 virtual_addr_t * arch_resv_va,
-			 virtual_size_t * arch_resv_sz);
+/** Initialize address space */
+int arch_cpu_aspace_init(physical_addr_t *core_resv_pa, 
+			 virtual_addr_t *core_resv_va,
+			 virtual_size_t *core_resv_sz,
+			 physical_addr_t *arch_resv_pa,
+			 virtual_addr_t *arch_resv_va,
+			 virtual_size_t *arch_resv_sz);
+
+/** Map given physical address to given virtual address */
 int arch_cpu_aspace_map(virtual_addr_t va, 
 			virtual_size_t sz, 
 			physical_addr_t pa,
 			u32 mem_flags);
+
+/** Unmap given virtual address */
 int arch_cpu_aspace_unmap(virtual_addr_t va, 
 			 virtual_size_t sz);
+
+/** Find out physical address mapped by given virtual address */
 int arch_cpu_aspace_va2pa(virtual_addr_t va, 
-			 physical_addr_t * pa);
+			  physical_addr_t *pa);
+
+/** Read data from given physical adress 
+ *  NOTE: This function is optional.
+ *  NOTE: If arch implments this function then arch_config.h
+ *  will define ARCH_HAS_PHYSICAL_READ feature.
+ */
+u32 arch_cpu_aspace_phys_read(physical_addr_t src, void *dst, u32 len);
+
+/** Write data to given physical adress
+ *  NOTE: This function is optional.
+ *  NOTE: If arch implments this function then arch_config.h
+ *  will define ARCH_HAS_PHYSICAL_WRITE feature.
+ */
+u32 arch_cpu_aspace_phys_write(physical_addr_t dst, void *src, u32 len);
 
 #endif

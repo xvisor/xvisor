@@ -28,6 +28,7 @@
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
 #include <stringlib.h>
+#include <arch_config.h>
 #include <arch_sections.h>
 #include <arch_cpu_aspace.h>
 #include <arch_board.h>
@@ -137,6 +138,7 @@ int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t * page_pa)
 u32 vmm_host_physical_read(physical_addr_t hphys_addr, 
 			   void * dst, u32 len)
 {
+#if !defined(ARCH_HAS_PHYSICAL_READ)
 	u32 bytes_read = 0, to_read = 0;
 	virtual_addr_t src = 0x0;
 
@@ -168,11 +170,15 @@ u32 vmm_host_physical_read(physical_addr_t hphys_addr,
 	}
 
 	return bytes_read;
+#else
+	return arch_cpu_aspace_phys_read(hphys_addr, dst, len);
+#endif
 }
 
 u32 vmm_host_physical_write(physical_addr_t hphys_addr, 
 			    void * src, u32 len)
 {
+#if !defined(ARCH_HAS_PHYSICAL_WRITE)
 	u32 bytes_written = 0, to_write = 0;
 	virtual_addr_t dst = 0x0;
 
@@ -203,6 +209,9 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 	}
 
 	return bytes_written;
+#else
+	return arch_cpu_aspace_phys_write(hphys_addr, src, len);
+#endif
 }
 
 u32 vmm_host_free_initmem(void)
