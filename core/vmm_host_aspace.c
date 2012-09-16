@@ -22,15 +22,15 @@
  * @brief Source file for host virtual address space management.
  */
 
-#include <arch_cpu.h>
-#include <arch_board.h>
-#include <arch_sections.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
 #include <stringlib.h>
+#include <arch_sections.h>
+#include <arch_cpu_aspace.h>
+#include <arch_board.h>
 
 virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
 			       virtual_size_t sz, 

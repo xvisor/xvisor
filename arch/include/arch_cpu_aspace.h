@@ -18,15 +18,27 @@
  *
  * @file arch_cpu.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief generic interface for arch specific CPU functions
+ * @brief generic interface for arch specific CPU address space functions
  */
-#ifndef _ARCH_CPU_H__
-#define _ARCH_CPU_H__
+#ifndef _ARCH_CPU_ASPACE_H__
+#define _ARCH_CPU_ASPACE_H__
 
 #include <vmm_types.h>
 
-/** CPU functions required by VMM core */
-int arch_cpu_early_init(void);
-int arch_cpu_final_init(void);
+/** Address space functions required by VMM core */
+int arch_cpu_aspace_init(physical_addr_t * core_resv_pa, 
+			 virtual_addr_t * core_resv_va,
+			 virtual_size_t * core_resv_sz,
+			 physical_addr_t * arch_resv_pa,
+			 virtual_addr_t * arch_resv_va,
+			 virtual_size_t * arch_resv_sz);
+int arch_cpu_aspace_map(virtual_addr_t va, 
+			virtual_size_t sz, 
+			physical_addr_t pa,
+			u32 mem_flags);
+int arch_cpu_aspace_unmap(virtual_addr_t va, 
+			 virtual_size_t sz);
+int arch_cpu_aspace_va2pa(virtual_addr_t va, 
+			 physical_addr_t * pa);
 
 #endif
