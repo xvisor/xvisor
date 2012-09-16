@@ -29,8 +29,6 @@ typedef unsigned int virtual_addr_t;
 typedef unsigned int virtual_size_t;
 typedef unsigned long physical_addr_t;
 typedef unsigned long physical_size_t;
-typedef volatile unsigned long long jiffies_t;
-typedef unsigned int clock_freq_t;
 
 typedef struct {
 	volatile long counter;
