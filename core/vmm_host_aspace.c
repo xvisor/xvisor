@@ -23,6 +23,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
@@ -32,6 +33,11 @@
 #include <arch_sections.h>
 #include <arch_cpu_aspace.h>
 #include <arch_board.h>
+
+#if !defined(ARCH_HAS_PHYSICAL_READ) || \
+    !defined(ARCH_HAS_PHYSICAL_WRITE)
+static virtual_addr_t phys_rw_va[CONFIG_CPU_COUNT];
+#endif
 
 virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
 			       virtual_size_t sz, 
@@ -136,37 +142,45 @@ int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t * page_pa)
 }
 
 u32 vmm_host_physical_read(physical_addr_t hphys_addr, 
-			   void * dst, u32 len)
+			   void *dst, u32 len)
 {
 #if !defined(ARCH_HAS_PHYSICAL_READ)
-	u32 bytes_read = 0, to_read = 0;
-	virtual_addr_t src = 0x0;
+	int rc;
+	irq_flags_t flags;
+	u32 bytes_read = 0, page_offset, page_read;
+	virtual_addr_t src = phys_rw_va[vmm_smp_processor_id()];
 
-	/* FIXME: Added more sanity checkes for 
-	 * allowable physical address 
+	/* Read one page at time with irqs disabled since, we use
+	 * one virtual address per-host CPU to do read/write.
 	 */
 	while (bytes_read < len) {
+		page_offset = hphys_addr & VMM_PAGE_MASK;
 
-		to_read = hphys_addr & VMM_PAGE_MASK;
+		page_read = VMM_PAGE_SIZE - page_offset;
+		page_read = (page_read < (len - bytes_read)) ? 
+			     page_read : (len - bytes_read);
 
-		if (!to_read) {
-			to_read = VMM_PAGE_SIZE;
+		flags = arch_cpu_irq_save();
+
+		rc = arch_cpu_aspace_map(src, VMM_PAGE_SIZE, 
+					 hphys_addr & ~VMM_PAGE_MASK, 
+					 VMM_MEMORY_READABLE);
+		if (rc) {
+			break;
 		}
 
-		to_read = (to_read < (len - bytes_read)) ? 
-			   to_read : (len - bytes_read);
+		memcpy(dst, (void *)(src + page_offset), page_read);
 
-		src = vmm_host_memmap(hphys_addr, 
-				      VMM_PAGE_SIZE, 
-				      VMM_MEMORY_READABLE);
+		rc = arch_cpu_aspace_unmap(src, VMM_PAGE_SIZE);
+		if (rc) {
+			break;
+		}
 
-		memcpy(dst, (void *)src, to_read);
+		arch_cpu_irq_restore(flags);
 
-		vmm_host_memunmap(src, VMM_PAGE_SIZE);
-
-		hphys_addr += to_read;
-		bytes_read += to_read;
-		dst += to_read;
+		hphys_addr += page_read;
+		bytes_read += page_read;
+		dst += page_read;
 	}
 
 	return bytes_read;
@@ -176,36 +190,45 @@ u32 vmm_host_physical_read(physical_addr_t hphys_addr,
 }
 
 u32 vmm_host_physical_write(physical_addr_t hphys_addr, 
-			    void * src, u32 len)
+			    void *src, u32 len)
 {
 #if !defined(ARCH_HAS_PHYSICAL_WRITE)
-	u32 bytes_written = 0, to_write = 0;
-	virtual_addr_t dst = 0x0;
+	int rc;
+	irq_flags_t flags;
+	u32 bytes_written = 0, page_offset, page_write;
+	virtual_addr_t dst = phys_rw_va[vmm_smp_processor_id()];
 
-	/* FIXME: Added more sanity checkes for 
-	 * allowable physical address 
+	/* Write one page at time with irqs disabled since, we use
+	 * one virtual address per-host CPU to do read/write.
 	 */
-
 	while (bytes_written < len) {
+		page_offset = hphys_addr & VMM_PAGE_MASK;
 
-		to_write = hphys_addr & VMM_PAGE_MASK;
+		page_write = VMM_PAGE_SIZE - page_offset;
+		page_write = (page_write < (len - bytes_written)) ? 
+			      page_write : (len - bytes_written);
 
-		if (!to_write) {
-			to_write = VMM_PAGE_SIZE;
+		flags = arch_cpu_irq_save();
+
+		rc = arch_cpu_aspace_map(dst, VMM_PAGE_SIZE, 
+					 hphys_addr & ~VMM_PAGE_MASK, 
+					 VMM_MEMORY_WRITEABLE);
+		if (rc) {
+			break;
 		}
 
-		to_write = (to_write < (len - bytes_written)) ? 
-			    to_write : (len - bytes_written);
+		memcpy((void *)(dst + page_offset), src, page_write);
 
-		dst = vmm_host_memmap(hphys_addr, 
-				      VMM_PAGE_SIZE, 
-				      VMM_MEMORY_WRITEABLE);
-		memcpy((void *)dst, src, to_write);
-		vmm_host_memunmap(dst, VMM_PAGE_SIZE);
+		rc = arch_cpu_aspace_unmap(dst, VMM_PAGE_SIZE);
+		if (rc) {
+			break;
+		}
 
-		hphys_addr += to_write;
-		bytes_written += to_write;
-		src += to_write;
+		arch_cpu_irq_restore(flags);
+
+		hphys_addr += page_write;
+		bytes_written += page_write;
+		src += page_write;
 	}
 
 	return bytes_written;
@@ -233,6 +256,10 @@ u32 vmm_host_free_initmem(void)
 
 int __init vmm_host_aspace_init(void)
 {
+#if !defined(ARCH_HAS_PHYSICAL_READ) || \
+    !defined(ARCH_HAS_PHYSICAL_WRITE)
+	int cpu;
+#endif
 	int rc;
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
 	physical_size_t ram_size;
@@ -345,6 +372,17 @@ int __init vmm_host_aspace_init(void)
 				       arch_resv_sz))) {
 		return rc;
 	}
+
+#if !defined(ARCH_HAS_PHYSICAL_READ) || \
+    !defined(ARCH_HAS_PHYSICAL_WRITE)
+	for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
+		rc = vmm_host_vapool_alloc(&phys_rw_va[cpu], 
+					   VMM_PAGE_SIZE, FALSE);
+		if (rc) {
+			return rc;
+		}
+	}
+#endif
 
 	return VMM_OK;
 }
