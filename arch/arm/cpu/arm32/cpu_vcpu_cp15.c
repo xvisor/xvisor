@@ -311,9 +311,8 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		int access_type, int is_user, struct cpu_page *pg, u32 * fs)
 {
 	physical_addr_t table;
-	physical_size_t table_sz;
-	int rc, type, domain;
-	u32 desc, reg_flags;
+	int type, domain;
+	u32 desc;
 
 	pg->va = va;
 
@@ -321,20 +320,11 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	/* Lookup l1 descriptor.  */
 	table = get_level1_table_pa(vcpu, va);
 
-	rc = vmm_guest_physical_map(vcpu->guest,
-				    table,
-				    0x4000, &table, &table_sz, &reg_flags);
-	if (rc) {
-		return rc;
-	}
-	if (table_sz < 0x4000) {
-		return VMM_EFAIL;
-	}
-	if (reg_flags & VMM_REGION_VIRTUAL) {
-		return VMM_EFAIL;
-	}
 	table |= (va >> 18) & 0x3ffc;
-	desc = cpu_mmu_physical_read32(table);
+	if (!vmm_guest_physical_read(vcpu->guest, 
+				     table, &desc, sizeof(desc))) {
+		return VMM_EFAIL;
+	}
 	type = (desc & 3);
 	if (type == 0) {
 		/* Section translation fault.  */
@@ -377,22 +367,11 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	} else {
 		/* Lookup l2 entry.  */
 		table = (desc & 0xfffffc00);
-		reg_flags = 0x0;
-		rc = vmm_guest_physical_map(vcpu->guest,
-					    table,
-					    0x400,
-					    &table, &table_sz, &reg_flags);
-		if (rc) {
-			return rc;
-		}
-		if (table_sz < 0x400) {
-			return VMM_EFAIL;
-		}
-		if (reg_flags & VMM_REGION_VIRTUAL) {
-			return VMM_EFAIL;
-		}
 		table |= ((va >> 10) & 0x3fc);
-		desc = cpu_mmu_physical_read32(table);
+		if (!vmm_guest_physical_read(vcpu->guest, 
+					     table, &desc, sizeof(desc))) {
+			return VMM_EFAIL;
+		}
 		switch (desc & 3) {
 		case 0:	/* Page translation fault.  */
 			*fs = 7;
@@ -453,9 +432,8 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		int access_type, int is_user, struct cpu_page *pg, u32 * fs)
 {
 	physical_addr_t table;
-	physical_size_t table_sz;
 	int type, domain;
-	u32 desc, reg_flags;
+	u32 desc;
 
 	pg->va = va;
 
@@ -463,26 +441,14 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	/* Lookup l1 descriptor.  */
 	table = get_level1_table_pa(vcpu, va);
 
-	/* map it to xvisor */
-	if (vmm_guest_physical_map(vcpu->guest, table, TTBL_L1TBL_SIZE, 
-				   &table, &table_sz, &reg_flags)) {
-		goto do_fault;
-	}
-
-	/* some sanity check */
-	if (table_sz < TTBL_L1TBL_SIZE) {
-		goto do_fault;
-	}
-
-	if (reg_flags & VMM_REGION_VIRTUAL) {
-		goto do_fault;
-	}
-
 	/* compute the L1 descripto physical location */
 	table |= (va >> 18) & 0x3ffc;
 
 	/* get it */
-	desc = cpu_mmu_physical_read32(table);
+	if (!vmm_guest_physical_read(vcpu->guest, 
+				     table, &desc, sizeof(desc))) {
+		goto do_fault;
+	}
 
 	/* extract type */
 	type = (desc & TTBL_L1TBL_TTE_TYPE_MASK);
@@ -522,25 +488,14 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		/* compute L2 table physical address */
 		table = desc & 0xfffffc00;
 
-		/* map it to xvisor */
-		if (vmm_guest_physical_map (vcpu->guest, table, TTBL_L2TBL_SIZE, &table, &table_sz, &reg_flags)) {
-			goto do_fault;
-		}
-
-		/* sanity check */
-		if (table_sz < TTBL_L2TBL_SIZE) {
-			goto do_fault;
-		}
-
-		if (reg_flags & VMM_REGION_VIRTUAL) {
-			goto do_fault;
-		}
-
 		/* compute L2 desc physical address */
 		table |= ((va >> 10) & 0x3fc);
 
 		/* get it */
-		desc = cpu_mmu_physical_read32(table);
+		if (!vmm_guest_physical_read(vcpu->guest, 
+				     table, &desc, sizeof(desc))) {
+			goto do_fault;
+		}
 
 		switch (desc & TTBL_L2TBL_TTE_TYPE_MASK) {
 		case TTBL_L2TBL_TTE_TYPE_LARGE:	/* 64k page.  */
@@ -576,21 +531,12 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		}
 
 		table = (desc & 0xfffff000);
-
-		if (vmm_guest_physical_map (vcpu->guest, table, 0x1000, &table, &table_sz, &reg_flags)) {
-			goto do_fault;
-		}
-
-		if (table_sz < 0x1000) {
-			goto do_fault;
-		}
-
-		if (reg_flags & VMM_REGION_VIRTUAL) {
-			goto do_fault;
-		}
-
 		table |= ((va >> 8) & 0xffc);
-		desc = cpu_mmu_physical_read32(table);
+
+		if (!vmm_guest_physical_read(vcpu->guest, 
+				     table, &desc, sizeof(desc))) {
+			goto do_fault;
+		}
 
 		switch (desc & TTBL_L2TBL_TTE_TYPE_MASK) {
 		case TTBL_L2TBL_TTE_TYPE_LARGE:	/* 64k page.  */
