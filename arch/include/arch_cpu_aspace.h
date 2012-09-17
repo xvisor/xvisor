@@ -46,17 +46,29 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va,
 			  physical_addr_t *pa);
 
 /** Read data from given physical adress 
- *  NOTE: This function is optional.
+ *  NOTE: This arch function is optional.
+ *  NOTE: The tmp_va or temporary virtual address can be optionally
+ *  used to access the physical memory.
+ *  NOTE: The len field will be less than or equal to VMM_PAGE_SIZE.
+ *  is to ensure that no VCPU over-haul the CPU.
  *  NOTE: If arch implments this function then arch_config.h
  *  will define ARCH_HAS_PHYSICAL_READ feature.
  */
-u32 arch_cpu_aspace_phys_read(physical_addr_t src, void *dst, u32 len);
+int arch_cpu_aspace_phys_read(virtual_addr_t tmp_va, 
+			      physical_addr_t src, 
+			      void *dst, u32 len);
 
 /** Write data to given physical adress
- *  NOTE: This function is optional.
+ *  NOTE: This arch function is optional.
+ *  NOTE: The tmp_va or temporary virtual address can be optionally
+ *  used to access the physical memory.
+ *  NOTE: The len field will be less than or equal to VMM_PAGE_SIZE.
+ *  This is to ensure that no VCPU over-haul the CPU.
  *  NOTE: If arch implments this function then arch_config.h
  *  will define ARCH_HAS_PHYSICAL_WRITE feature.
  */
-u32 arch_cpu_aspace_phys_write(physical_addr_t dst, void *src, u32 len);
+int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va, 
+			       physical_addr_t dst, 
+			       void *src, u32 len);
 
 #endif

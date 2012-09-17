@@ -124,12 +124,10 @@ int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count);
 int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t *page_pa);
 
 /** Read from host physical memory */
-u32 vmm_host_physical_read(physical_addr_t hphys_addr, 
-			   void *dst, u32 len);
+u32 vmm_host_physical_read(physical_addr_t hpa, void *dst, u32 len);
 
 /** Write to host physical memory */
-u32 vmm_host_physical_write(physical_addr_t hphys_addr, 
-			    void *src, u32 len);
+u32 vmm_host_physical_write(physical_addr_t hpa, void *src, u32 len);
 
 /** Free memory used by initialization functions */
 u32 vmm_host_free_initmem(void);
