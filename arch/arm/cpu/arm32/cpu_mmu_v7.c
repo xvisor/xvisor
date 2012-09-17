@@ -1102,6 +1102,106 @@ int cpu_mmu_chttbr(struct cpu_l1tbl * l1)
 	return VMM_OK;
 }
 
+int arch_cpu_aspace_phys_read(virtual_addr_t tmp_va, 
+			      physical_addr_t src, 
+			      void *dst, u32 len)
+{
+	int rc;
+	struct cpu_page p;
+	struct cpu_l1tbl *l1 = NULL;
+
+	l1 = cpu_mmu_l1tbl_current();
+	if (!l1) {
+		return VMM_EFAIL;
+	}
+
+	p.pa = src & ~VMM_PAGE_MASK;
+	p.va = tmp_va;
+	p.sz = VMM_PAGE_SIZE;
+	p.imp = 0;
+	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+	p.ap = TTBL_AP_SRW_U;
+	p.xn = 1;
+	p.tex = 0;
+	p.c = 0;
+	p.b = 0;
+	p.ng = 0;
+	p.s = 0;
+
+	if ((rc = cpu_mmu_map_page(l1, &p))) {
+		return rc;
+	}
+
+	switch (len) {
+	case 1:
+		*((u8 *)dst) = *(u8 *)(tmp_va + (src & VMM_PAGE_MASK));
+	case 2:
+		*((u16 *)dst) = *(u16 *)(tmp_va + (src & VMM_PAGE_MASK));
+	case 4:
+		*((u32 *)dst) = *(u32 *)(tmp_va + (src & VMM_PAGE_MASK));
+		break;
+	default:
+		memcpy(dst, (void *)(tmp_va + (src & VMM_PAGE_MASK)), len);
+		break;
+	};
+
+	if ((rc = cpu_mmu_unmap_page(l1, &p))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va, 
+			       physical_addr_t dst, 
+			       void *src, u32 len)
+{
+	int rc;
+	struct cpu_page p;
+	struct cpu_l1tbl *l1 = NULL;
+
+	l1 = cpu_mmu_l1tbl_current();
+	if (!l1) {
+		return VMM_EFAIL;
+	}
+
+	p.pa = dst & ~VMM_PAGE_MASK;
+	p.va = tmp_va;
+	p.sz = VMM_PAGE_SIZE;
+	p.imp = 0;
+	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+	p.ap = TTBL_AP_SRW_U;
+	p.xn = 1;
+	p.tex = 0;
+	p.c = 0;
+	p.b = 0;
+	p.ng = 0;
+	p.s = 0;
+
+	if ((rc = cpu_mmu_map_page(l1, &p))) {
+		return rc;
+	}
+
+	switch (len) {
+	case 1:
+		*(u8 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u8 *)src);
+	case 2:
+		*(u16 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u16 *)src);
+	case 4:
+		*(u32 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u32 *)src);
+		break;
+	default:
+		memcpy((void *)(tmp_va + (dst & VMM_PAGE_MASK)), src, len);
+		break;
+	};
+
+	if ((rc = cpu_mmu_unmap_page(l1, &p))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
 int arch_cpu_aspace_map(virtual_addr_t page_va, 
 			physical_addr_t page_pa,
 			u32 mem_flags)
