@@ -33,15 +33,13 @@ int arch_cpu_aspace_init(physical_addr_t *core_resv_pa,
 			 virtual_addr_t *arch_resv_va,
 			 virtual_size_t *arch_resv_sz);
 
-/** Map given physical address to given virtual address */
-int arch_cpu_aspace_map(virtual_addr_t va, 
-			virtual_size_t sz, 
-			physical_addr_t pa,
+/** Map given page virtual address to page physical address */
+int arch_cpu_aspace_map(virtual_addr_t page_va, 
+			physical_addr_t page_pa,
 			u32 mem_flags);
 
-/** Unmap given virtual address */
-int arch_cpu_aspace_unmap(virtual_addr_t va, 
-			 virtual_size_t sz);
+/** Unmap given page based on its virtual address */
+int arch_cpu_aspace_unmap(virtual_addr_t page_va);
 
 /** Find out physical address mapped by given virtual address */
 int arch_cpu_aspace_va2pa(virtual_addr_t va, 

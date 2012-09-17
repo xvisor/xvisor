@@ -58,7 +58,6 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 
 	for (ite = 0; ite < (sz >> VMM_PAGE_SHIFT); ite++) {
 		rc = arch_cpu_aspace_map(va + ite * VMM_PAGE_SIZE, 
-					VMM_PAGE_SIZE, 
 					tpa + ite * VMM_PAGE_SIZE, 
 					mem_flags);
 		if (rc) {
@@ -78,8 +77,7 @@ int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
 	va &= ~VMM_PAGE_MASK;
 
 	for (ite = 0; ite < (sz >> VMM_PAGE_SHIFT); ite++) {
-		rc = arch_cpu_aspace_unmap(va + ite * VMM_PAGE_SIZE, 
-					  VMM_PAGE_SIZE);
+		rc = arch_cpu_aspace_unmap(va + ite * VMM_PAGE_SIZE);
 		if (rc) {
 			return rc;
 		}
@@ -162,8 +160,7 @@ u32 vmm_host_physical_read(physical_addr_t hphys_addr,
 
 		flags = arch_cpu_irq_save();
 
-		rc = arch_cpu_aspace_map(src, VMM_PAGE_SIZE, 
-					 hphys_addr & ~VMM_PAGE_MASK, 
+		rc = arch_cpu_aspace_map(src, hphys_addr & ~VMM_PAGE_MASK, 
 					 VMM_MEMORY_READABLE);
 		if (rc) {
 			break;
@@ -171,7 +168,7 @@ u32 vmm_host_physical_read(physical_addr_t hphys_addr,
 
 		memcpy(dst, (void *)(src + page_offset), page_read);
 
-		rc = arch_cpu_aspace_unmap(src, VMM_PAGE_SIZE);
+		rc = arch_cpu_aspace_unmap(src);
 		if (rc) {
 			break;
 		}
@@ -210,8 +207,7 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 
 		flags = arch_cpu_irq_save();
 
-		rc = arch_cpu_aspace_map(dst, VMM_PAGE_SIZE, 
-					 hphys_addr & ~VMM_PAGE_MASK, 
+		rc = arch_cpu_aspace_map(dst, hphys_addr & ~VMM_PAGE_MASK, 
 					 VMM_MEMORY_WRITEABLE);
 		if (rc) {
 			break;
@@ -219,7 +215,7 @@ u32 vmm_host_physical_write(physical_addr_t hphys_addr,
 
 		memcpy((void *)(dst + page_offset), src, page_write);
 
-		rc = arch_cpu_aspace_unmap(dst, VMM_PAGE_SIZE);
+		rc = arch_cpu_aspace_unmap(dst);
 		if (rc) {
 			break;
 		}

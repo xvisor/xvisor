@@ -1005,17 +1005,18 @@ int cpu_mmu_chttbr(struct cpu_l1tbl *l1)
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_map(virtual_addr_t va,
-			virtual_size_t sz, physical_addr_t pa, u32 mem_flags)
+int arch_cpu_aspace_map(virtual_addr_t page_va, 
+			physical_addr_t page_pa, 
+			u32 mem_flags)
 {
 	static const struct cpu_page zero_filled_cpu_page = { 0 };
 	/* Get a 0 filled page struct */
 	struct cpu_page p = zero_filled_cpu_page;
 
 	/* initialize the page struct */
-	p.pa = pa;
-	p.va = va;
-	p.sz = sz;
+	p.pa = page_pa;
+	p.va = page_va;
+	p.sz = VMM_PAGE_SIZE;
 	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 
 	/* For ARMV5 we cannot prevent writing to priviledge mode */
@@ -1031,21 +1032,21 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 	return cpu_mmu_map_reserved_page(&p);
 }
 
-int arch_cpu_aspace_unmap(virtual_addr_t va, virtual_size_t sz)
+int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 {
 	int rc;
 	struct cpu_page p;
 
-	if ((rc = cpu_mmu_get_reserved_page(va, &p))) {
+	if ((rc = cpu_mmu_get_reserved_page(page_va, &p))) {
 		return rc;
 	}
 
-	if (p.sz > sz) {
-		if ((rc = cpu_mmu_split_reserved_page(&p, sz))) {
+	if (p.sz > VMM_PAGE_SIZE) {
+		if ((rc = cpu_mmu_split_reserved_page(&p, VMM_PAGE_SIZE))) {
 			return rc;
 		}
 
-		if ((rc = cpu_mmu_get_reserved_page(va, &p))) {
+		if ((rc = cpu_mmu_get_reserved_page(page_va, &p))) {
 			return rc;
 		}
 	}

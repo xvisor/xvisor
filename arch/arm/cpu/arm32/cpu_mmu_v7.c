@@ -1102,16 +1102,15 @@ int cpu_mmu_chttbr(struct cpu_l1tbl * l1)
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_map(virtual_addr_t va, 
-			virtual_size_t sz, 
-			physical_addr_t pa,
+int arch_cpu_aspace_map(virtual_addr_t page_va, 
+			physical_addr_t page_pa,
 			u32 mem_flags)
 {
 	struct cpu_page p;
 	memset(&p, 0, sizeof(p));
-	p.pa = pa;
-	p.va = va;
-	p.sz = sz;
+	p.pa = page_pa;
+	p.va = page_va;
+	p.sz = VMM_PAGE_SIZE;
 	p.imp = 0;
 	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 	if (mem_flags & VMM_MEMORY_WRITEABLE) {
@@ -1130,23 +1129,22 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 	return cpu_mmu_map_reserved_page(&p);
 }
 
-int arch_cpu_aspace_unmap(virtual_addr_t va, 
-			 virtual_size_t sz)
+int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 {
 	int rc;
 	struct cpu_page p;
 
-	rc = cpu_mmu_get_reserved_page(va, &p);
+	rc = cpu_mmu_get_reserved_page(page_va, &p);
 	if (rc) {
 		return rc;
 	}
 
-	if (p.sz > sz) {
-		rc = cpu_mmu_split_reserved_page(&p, sz);
+	if (p.sz > VMM_PAGE_SIZE) {
+		rc = cpu_mmu_split_reserved_page(&p, VMM_PAGE_SIZE);
 		if (rc) {
 			return rc;
 		}
-		rc = cpu_mmu_get_reserved_page(va, &p);
+		rc = cpu_mmu_get_reserved_page(page_va, &p);
 		if (rc) {
 			return rc;
 		}
