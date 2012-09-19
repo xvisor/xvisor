@@ -410,15 +410,15 @@ extern unsigned int *_ifar;
 				" mcr     p15, 4, %0, c14, c2, 1\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
-#define read_cnthp_cval()	({ u64 rval; u32 hi, lo; asm volatile(\
+#define read_cnthp_cval()	({ u32 v1, v2; asm volatile(\
 				" mrrc     p15, 6, %0, %1, c14\n\t" \
-				: "=r" (lo), "=r" (hi) : : "memory", "cc"); \
-				rval = ((u64)hi << 32 | (u64)lo); rval })
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
 
-#define write_cnthp_cval(val)	({ u32 hi, lo; hi = (val >> 32); \
-				lo = (val & 0xffffffff); asm volatile(\
+#define write_cnthp_cval(val)	asm volatile(\
 				" mcrr     p15, 6, %0, %1, c14\n\t" \
-				:: "r" ((lo)), "r" ((hi)) : "memory", "cc") })
+				:: "r" ((val) & 0xFFFFFFFF), "r" ((val) >> 32) \
+				: "memory", "cc")
 
 #define read_cnthp_tval()	({ u32 rval; asm volatile(\
 				" mrc     p15, 4, %0, c14, c2, 0\n\t" \
@@ -444,15 +444,15 @@ extern unsigned int *_ifar;
 				" mcr     p15, 0, %0, c14, c2, 1\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
-#define read_cntp_cval()	({ u64 rval; u32 hi, lo; asm volatile(\
+#define read_cntp_cval()	({ u32 v1, v2; asm volatile(\
 				" mrrc     p15, 2, %0, %1, c14\n\t" \
-				: "=r" (lo), "=r" (hi) : : "memory", "cc"); \
-				rval = ((u64)hi << 32 | (u64)lo); rval })
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
 
-#define write_cntp_cval(val)	({ u32 hi, lo; hi = (val >> 32); \
-				lo = (val & 0xffffffff); asm volatile(\
+#define write_cntp_cval(val)	asm volatile(\
 				" mcrr     p15, 2, %0, %1, c14\n\t" \
-				:: "r" ((lo)), "r" ((hi)) : "memory", "cc") })
+				:: "r" ((val) & 0xFFFFFFFF), "r" ((val) >> 32) \
+				: "memory", "cc")
 
 #define read_cntp_tval()	({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c14, c2, 0\n\t" \
@@ -462,10 +462,10 @@ extern unsigned int *_ifar;
 				" mcr     p15, 0, %0, c14, c2, 0\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
-#define read_cntpct()		({ u64 rval; u32 hi, lo; asm volatile(\
+#define read_cntpct()		({ u32 v1, v2; asm volatile(\
 				" mrrc     p15, 0, %0, %1, c14\n\t" \
-				: "=r" (lo), "=r" (hi) : : "memory", "cc"); \
-				rval = ((u64)hi << 32 | (u64)lo); rval; })
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
 
 #define read_cntv_ctl()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c14, c3, 1\n\t" \
@@ -475,15 +475,15 @@ extern unsigned int *_ifar;
 				" mcr     p15, 0, %0, c14, c3, 1\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
-#define read_cntv_cval()	({ u64 rval; u32 hi, lo; asm volatile(\
+#define read_cntv_cval()	({ u32 v1, v2; asm volatile(\
 				" mrrc     p15, 3, %0, %1, c14\n\t" \
-				: "=r" (lo), "=r" (hi) : : "memory", "cc"); \
-				rval = ((u64)hi << 32 | (u64)lo); rval; })
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
 
-#define write_cntv_cval(val)	({ u32 hi, lo; hi = (val >> 32); \
-				lo = (val & 0xffffffff); asm volatile(\
+#define write_cntv_cval(val)	asm volatile(\
 				" mcrr     p15, 3, %0, %1, c14\n\t" \
-				:: "r" ((lo)), "r" ((hi)) : "memory", "cc") })
+				:: "r" ((val) & 0xFFFFFFFF), "r" ((val) >> 32) \
+				: "memory", "cc")
 
 #define read_cntv_tval()	({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c14, c3, 0\n\t" \
@@ -493,20 +493,20 @@ extern unsigned int *_ifar;
 				" mcr     p15, 0, %0, c14, c3, 0\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
-#define read_cntvct()		({ u64 rval; u32 hi, lo; asm volatile(\
+#define read_cntvct()		({ u32 v1, v2; asm volatile(\
 				" mrrc     p15, 1, %0, %1, c14\n\t" \
-				: "=r" (lo), "=r" (hi) : : "memory", "cc"); \
-				rval = ((u64)hi << 32 | (u64)lo); rval; })
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
 
-#define read_cntvoff()		({ u64 rval; u32 hi, lo; asm volatile(\
+#define read_cntvoff()		({ u32 v1, v2; asm volatile(\
 				" mrrc     p15, 4, %0, %1, c14\n\t" \
-				: "=r" (lo), "=r" (hi) : : "memory", "cc"); \
-				rval = ((u64)hi << 32 | (u64)lo); rval; })
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
 
-#define write_cntvoff(val)	({ u32 hi, lo; hi = (val >> 32); \
-				lo = (val & 0xffffffff); asm volatile(\
+#define write_cntvoff(val)	asm volatile(\
 				" mcrr     p15, 4, %0, %1, c14\n\t" \
-				:: "r" ((lo)), "r" ((hi)) : "memory", "cc") })
+				:: "r" ((val) & 0xFFFFFFFF), "r" ((val) >> 32) \
+				: "memory", "cc")
 
 #endif
 
