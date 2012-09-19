@@ -93,11 +93,4 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 			   u32 il, u32 iss,
 			   physical_addr_t ipa);
 
-
-/** Emulate instruction (no HW help) */
-int cpu_vcpu_emulate_nohw_inst(struct vmm_vcpu *vcpu, 
-				arch_regs_t *regs,
-				u32 il, u32 iss,
-			   	virtual_addr_t far);
-
 #endif

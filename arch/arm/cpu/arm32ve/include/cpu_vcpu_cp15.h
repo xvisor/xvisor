@@ -52,6 +52,20 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data);
 
+/** Read from memory using VCPU CP15 */
+int cpu_vcpu_cp15_mem_read(struct vmm_vcpu * vcpu, 
+			   arch_regs_t * regs,
+			   virtual_addr_t addr, 
+			   void *dst, u32 dst_len, 
+			   bool force_unpriv);
+
+/** Write to memory using VCPU CP15 */
+int cpu_vcpu_cp15_mem_write(struct vmm_vcpu * vcpu, 
+			    arch_regs_t * regs,
+			    virtual_addr_t addr, 
+			    void *src, u32 src_len,
+			    bool force_unpriv);
+
 /** Switch CP15 context for given VCPU */
 void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu, 
 				  struct vmm_vcpu * vcpu);

@@ -409,29 +409,3 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu,
 	return rc;
 }
 
-int cpu_vcpu_emulate_nohw_inst(struct vmm_vcpu *vcpu, 
-				arch_regs_t *regs,
-				u32 il, u32 iss,
-			   	virtual_addr_t far)
-{
-	int rc;
-	u32 inst;
-	physical_addr_t inst_pa;
-
-	/* Determine instruction physical address */
-	va2pa_ns_pr(regs->pc);
-	inst_pa = read_par64();
-	inst_pa &= PAR64_PA_MASK;
-	inst_pa |= (regs->pc & 0x00000FFF);
-
-	/* Read the faulting instruction */
-	rc = vmm_host_physical_read(inst_pa, &inst, sizeof(inst));
-	if (rc != sizeof(inst)) {
-		return VMM_EFAIL;
-	}
-
-	/* FIXME: Decode & emulate faulting instruction */
-
-	return VMM_EFAIL;
-}
-
