@@ -48,10 +48,6 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu,
 			  u32 reg_num)
 {
 	u32 hwreg;
-	if (vcpu != vmm_scheduler_current_vcpu()) {
-		/* This function should only be called for current VCPU */
-		while (1); /* Hang !!! */
-	}
 	switch (reg_num) {
 	case 0:
 	case 1:
@@ -190,10 +186,6 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu *vcpu,
 			    u32 reg_num,
 			    u32 reg_val)
 {
-	if (vcpu != vmm_scheduler_current_vcpu()) {
-		/* This function should only be called for current VCPU */
-		while (1); /* Hang !!! */
-	}
 	switch (reg_num) {
 	case 0:
 	case 1:
