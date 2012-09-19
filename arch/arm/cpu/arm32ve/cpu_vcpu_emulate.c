@@ -24,6 +24,7 @@
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_vcpu_irq.h>
+#include <vmm_host_aspace.h>
 #include <vmm_devemu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
@@ -408,19 +409,29 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu,
 	return rc;
 }
 
-/* FIXME: */
-int cpu_vcpu_emulate_nohw_load(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_emulate_nohw_inst(struct vmm_vcpu *vcpu, 
 				arch_regs_t *regs,
+				u32 il, u32 iss,
 			   	virtual_addr_t far)
 {
-	return VMM_EFAIL;
-}
+	int rc;
+	u32 inst;
+	physical_addr_t inst_pa;
 
-/* FIXME: */
-int cpu_vcpu_emulate_nohw_store(struct vmm_vcpu *vcpu, 
-				arch_regs_t *regs,
-			   	virtual_addr_t far)
-{
+	/* Determine instruction physical address */
+	va2pa_ns_pr(regs->pc);
+	inst_pa = read_par64();
+	inst_pa &= PAR64_PA_MASK;
+	inst_pa |= (regs->pc & 0x00000FFF);
+
+	/* Read the faulting instruction */
+	rc = vmm_host_physical_read(inst_pa, &inst, sizeof(inst));
+	if (rc != sizeof(inst)) {
+		return VMM_EFAIL;
+	}
+
+	/* FIXME: Decode & emulate faulting instruction */
+
 	return VMM_EFAIL;
 }
 
