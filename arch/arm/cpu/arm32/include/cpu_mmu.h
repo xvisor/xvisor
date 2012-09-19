@@ -106,12 +106,6 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_default(void);
 /** Current L1 table */
 struct cpu_l1tbl *cpu_mmu_l1tbl_current(void);
 
-/** Optimized read word from a physical address */
-u32 cpu_mmu_physical_read32(physical_addr_t pa);
-
-/** Optimized write word from a physical address */
-void cpu_mmu_physical_write32(physical_addr_t pa, u32 val);
-
 /** Change domain access control register */
 int cpu_mmu_chdacr(u32 new_dacr);
 

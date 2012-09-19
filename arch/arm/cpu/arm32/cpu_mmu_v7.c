@@ -939,116 +939,6 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_current(void)
 	return cpu_mmu_l1tbl_find_tbl_pa(ttbr0);
 }
 
-#define PHYSICAL_TTE	(((TTBL_L1TBL_TTE_DOM_RESERVED <<		\
-			   TTBL_L1TBL_TTE_DOM_SHIFT) &			\
-			  TTBL_L1TBL_TTE_DOM_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_NS2_SHIFT) &		\
-			  TTBL_L1TBL_TTE_NS2_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_NG_SHIFT) &		\
-			  TTBL_L1TBL_TTE_NG_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_S_SHIFT) &		\
-			  TTBL_L1TBL_TTE_S_MASK)		|	\
-			 ((TTBL_AP_SRW_U << 				\
-			   (TTBL_L1TBL_TTE_AP2_SHIFT - 2)) &		\
-			  TTBL_L1TBL_TTE_AP2_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_TEX_SHIFT) &		\
-			  TTBL_L1TBL_TTE_TEX_MASK)		|	\
-			 ((TTBL_AP_SRW_U << TTBL_L1TBL_TTE_AP_SHIFT) &	\
-			  TTBL_L1TBL_TTE_AP_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_IMP_SHIFT) &		\
-			  TTBL_L1TBL_TTE_IMP_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_XN_SHIFT) &		\
-			  TTBL_L1TBL_TTE_XN_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_C_SHIFT) &		\
-			  TTBL_L1TBL_TTE_C_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_B_SHIFT) &		\
-			  TTBL_L1TBL_TTE_B_MASK)		|	\
-			 (TTBL_L1TBL_TTE_TYPE_SECTION))
-
-u32 cpu_mmu_physical_read32(physical_addr_t pa)
-{
-	u32 ret = 0x0, ite, found;
-	u32 * l1_tte = NULL;
-	struct cpu_l1tbl * l1 = NULL;
-	virtual_addr_t va = 0x0;
-	irq_flags_t flags;
-
-	flags = arch_cpu_irq_save();
-
-	l1 = cpu_mmu_l1tbl_current();
-	if (l1) {
-		found = 0;
-		l1_tte = (u32 *)(l1->tbl_va);
-		for (ite = 0; ite < (TTBL_L1TBL_SIZE / 4); ite++) {
-			if ((l1_tte[ite] & TTBL_L2TBL_TTE_TYPE_MASK) == 
-			    TTBL_L2TBL_TTE_TYPE_FAULT) {
-				found = 1;
-				break;
-			}
-		}
-		if (found) {
-			l1_tte[ite] = PHYSICAL_TTE;
-			l1_tte[ite] |= (pa & TTBL_L1TBL_TTE_BASE20_MASK);
-			cpu_mmu_sync_tte(&l1_tte[ite]);
-			va = (ite << TTBL_L1TBL_TTE_BASE20_SHIFT) + 
-			     (pa & ~TTBL_L1TBL_TTE_BASE20_MASK);
-			va &= ~0x3;
-			ret = *(u32 *)(va);
-			l1_tte[ite] = 0x0;
-			cpu_mmu_sync_tte(&l1_tte[ite]);
-			invalid_tlb_line(va);
-			dsb();
-			isb();
-		}
-	}
-
-	arch_cpu_irq_restore(flags);
-
-	return ret;
-}
-
-void cpu_mmu_physical_write32(physical_addr_t pa, u32 val)
-{
-	u32 ite, found;
-	u32 * l1_tte = NULL;
-	struct cpu_l1tbl * l1 = NULL;
-	virtual_addr_t va = 0x0;
-	irq_flags_t flags;
-
-	flags = arch_cpu_irq_save();
-
-	l1 = cpu_mmu_l1tbl_current();
-	if (l1) {
-		found = 0;
-		l1_tte = (u32 *)(l1->tbl_va);
-		for (ite = 0; ite < (TTBL_L1TBL_SIZE / 4); ite++) {
-			if ((l1_tte[ite] & TTBL_L2TBL_TTE_TYPE_MASK) == 
-			    TTBL_L2TBL_TTE_TYPE_FAULT) {
-				found = 1;
-				break;
-			}
-		}
-		if (found) {
-			l1_tte[ite] = PHYSICAL_TTE;
-			l1_tte[ite] |= (pa & TTBL_L1TBL_TTE_BASE20_MASK);
-			cpu_mmu_sync_tte(&l1_tte[ite]);
-			va = (ite << TTBL_L1TBL_TTE_BASE20_SHIFT) + 
-			     (pa & ~TTBL_L1TBL_TTE_BASE20_MASK);
-			va &= ~0x3;
-			*(u32 *)(va) = val;
-			l1_tte[ite] = 0x0;
-			cpu_mmu_sync_tte(&l1_tte[ite]);
-			invalid_tlb_line(va);
-			dsb();
-			isb();
-		}
-	}
-
-	arch_cpu_irq_restore(flags);
-
-	return;
-}
-
 int cpu_mmu_chdacr(u32 new_dacr)
 {
 	u32 old_dacr;
@@ -1102,34 +992,90 @@ int cpu_mmu_chttbr(struct cpu_l1tbl * l1)
 	return VMM_OK;
 }
 
+#define PHYS_RW_L1_TTE	(((TTBL_L1TBL_TTE_DOM_RESERVED <<		\
+			   TTBL_L1TBL_TTE_DOM_SHIFT) &			\
+			  TTBL_L1TBL_TTE_DOM_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_NS2_SHIFT) &		\
+			  TTBL_L1TBL_TTE_NS2_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_NG_SHIFT) &		\
+			  TTBL_L1TBL_TTE_NG_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_S_SHIFT) &		\
+			  TTBL_L1TBL_TTE_S_MASK)		|	\
+			 ((TTBL_AP_SRW_U << 				\
+			   (TTBL_L1TBL_TTE_AP2_SHIFT - 2)) &		\
+			  TTBL_L1TBL_TTE_AP2_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_TEX_SHIFT) &		\
+			  TTBL_L1TBL_TTE_TEX_MASK)		|	\
+			 ((TTBL_AP_SRW_U << TTBL_L1TBL_TTE_AP_SHIFT) &	\
+			  TTBL_L1TBL_TTE_AP_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_IMP_SHIFT) &		\
+			  TTBL_L1TBL_TTE_IMP_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_XN_SHIFT) &		\
+			  TTBL_L1TBL_TTE_XN_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_C_SHIFT) &		\
+			  TTBL_L1TBL_TTE_C_MASK)		|	\
+			 ((0x0 << TTBL_L1TBL_TTE_B_SHIFT) &		\
+			  TTBL_L1TBL_TTE_B_MASK)		|	\
+			 (TTBL_L1TBL_TTE_TYPE_SECTION))
+
+#define PHYS_RW_L2_TTE	((TTBL_L2TBL_TTE_TYPE_SMALL_XN)		|	\
+			 ((0x0 << TTBL_L2TBL_TTE_STEX_SHIFT) &		\
+			  TTBL_L2TBL_TTE_STEX_MASK)		|	\
+			 ((0x0 << TTBL_L2TBL_TTE_NG_SHIFT) &		\
+			    TTBL_L2TBL_TTE_NG_MASK)		|	\
+			 ((0x0 << TTBL_L2TBL_TTE_S_SHIFT) &		\
+			    TTBL_L2TBL_TTE_S_MASK)		|	\
+			 ((TTBL_AP_SRW_U << (TTBL_L2TBL_TTE_AP2_SHIFT - 2)) & \
+			    TTBL_L2TBL_TTE_AP2_MASK)		|	\
+			 ((TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP_SHIFT) &	\
+			    TTBL_L2TBL_TTE_AP_MASK)		|	\
+			 ((0x0 << TTBL_L2TBL_TTE_C_SHIFT) &		\
+			    TTBL_L2TBL_TTE_C_MASK)		|	\
+			 ((0x0 << TTBL_L2TBL_TTE_B_SHIFT) &		\
+			    TTBL_L2TBL_TTE_B_MASK))
+
 int arch_cpu_aspace_phys_read(virtual_addr_t tmp_va, 
 			      physical_addr_t src, 
 			      void *dst, u32 len)
 {
-	int rc;
-	struct cpu_page p;
+	u32 *l1_tte = NULL, *l2_tte = NULL;
+	u32 l1_tte_type;
+	physical_addr_t l2base;
 	struct cpu_l1tbl *l1 = NULL;
+	struct cpu_l2tbl *l2 = NULL;
 
 	l1 = cpu_mmu_l1tbl_current();
 	if (!l1) {
 		return VMM_EFAIL;
 	}
 
-	p.pa = src & ~VMM_PAGE_MASK;
-	p.va = tmp_va;
-	p.sz = VMM_PAGE_SIZE;
-	p.imp = 0;
-	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
-	p.ap = TTBL_AP_SRW_U;
-	p.xn = 1;
-	p.tex = 0;
-	p.c = 0;
-	p.b = 0;
-	p.ng = 0;
-	p.s = 0;
+	l1_tte = (u32 *) (l1->tbl_va +
+			  ((tmp_va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 
-	if ((rc = cpu_mmu_map_page(l1, &p))) {
-		return rc;
+	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
+	if (l1_tte_type != TTBL_L1TBL_TTE_TYPE_FAULT) {
+		if (l1_tte_type == TTBL_L1TBL_TTE_TYPE_L2TBL) {
+			l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
+			l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base);
+			if (!l2) {
+				return VMM_EFAIL;
+			}
+			l2_tte = (u32 *) ((tmp_va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
+				  TTBL_L2TBL_TTE_OFFSET_SHIFT);
+			l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
+		} else {
+			return VMM_EFAIL;
+		}
+	}
+
+	if (l2_tte) {
+		*l2_tte = PHYS_RW_L2_TTE;
+		*l2_tte |= (src & TTBL_L2TBL_TTE_BASE12_MASK);
+		cpu_mmu_sync_tte(l2_tte);
+	} else {
+		*l1_tte = PHYS_RW_L1_TTE;
+		*l1_tte |= (src & TTBL_L1TBL_TTE_BASE20_MASK);
+		cpu_mmu_sync_tte(l1_tte);
 	}
 
 	switch (len) {
@@ -1145,9 +1091,16 @@ int arch_cpu_aspace_phys_read(virtual_addr_t tmp_va,
 		break;
 	};
 
-	if ((rc = cpu_mmu_unmap_page(l1, &p))) {
-		return rc;
+	if (l2_tte) {
+		*l2_tte = 0x0;
+		cpu_mmu_sync_tte(l2_tte);
+	} else {
+		*l1_tte = 0x0;
+		cpu_mmu_sync_tte(l1_tte);
 	}
+	invalid_tlb_line(tmp_va);
+	dsb();
+	isb();
 
 	return VMM_OK;
 }
@@ -1156,30 +1109,44 @@ int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va,
 			       physical_addr_t dst, 
 			       void *src, u32 len)
 {
-	int rc;
-	struct cpu_page p;
+	u32 *l1_tte = NULL, *l2_tte = NULL;
+	u32 l1_tte_type;
+	physical_addr_t l2base;
 	struct cpu_l1tbl *l1 = NULL;
+	struct cpu_l2tbl *l2 = NULL;
 
 	l1 = cpu_mmu_l1tbl_current();
 	if (!l1) {
 		return VMM_EFAIL;
 	}
 
-	p.pa = dst & ~VMM_PAGE_MASK;
-	p.va = tmp_va;
-	p.sz = VMM_PAGE_SIZE;
-	p.imp = 0;
-	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
-	p.ap = TTBL_AP_SRW_U;
-	p.xn = 1;
-	p.tex = 0;
-	p.c = 0;
-	p.b = 0;
-	p.ng = 0;
-	p.s = 0;
+	l1_tte = (u32 *) (l1->tbl_va +
+			  ((tmp_va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 
-	if ((rc = cpu_mmu_map_page(l1, &p))) {
-		return rc;
+	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
+	if (l1_tte_type != TTBL_L1TBL_TTE_TYPE_FAULT) {
+		if (l1_tte_type == TTBL_L1TBL_TTE_TYPE_L2TBL) {
+			l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
+			l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base);
+			if (!l2) {
+				return VMM_EFAIL;
+			}
+			l2_tte = (u32 *) ((tmp_va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
+				  TTBL_L2TBL_TTE_OFFSET_SHIFT);
+			l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
+		} else {
+			return VMM_EFAIL;
+		}
+	}
+
+	if (l2_tte) {
+		*l2_tte = PHYS_RW_L2_TTE;
+		*l2_tte |= (dst & TTBL_L2TBL_TTE_BASE12_MASK);
+		cpu_mmu_sync_tte(l2_tte);
+	} else {
+		*l1_tte = PHYS_RW_L1_TTE;
+		*l1_tte |= (dst & TTBL_L1TBL_TTE_BASE20_MASK);
+		cpu_mmu_sync_tte(l1_tte);
 	}
 
 	switch (len) {
@@ -1195,9 +1162,16 @@ int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va,
 		break;
 	};
 
-	if ((rc = cpu_mmu_unmap_page(l1, &p))) {
-		return rc;
+	if (l2_tte) {
+		*l2_tte = 0x0;
+		cpu_mmu_sync_tte(l2_tte);
+	} else {
+		*l1_tte = 0x0;
+		cpu_mmu_sync_tte(l1_tte);
 	}
+	invalid_tlb_line(tmp_va);
+	dsb();
+	isb();
 
 	return VMM_OK;
 }
