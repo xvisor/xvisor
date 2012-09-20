@@ -206,7 +206,6 @@ static int arm_inst_ldrh_i(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
 	u32 imm32, offset_addr, address; u16 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRH_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -257,7 +256,6 @@ static int arm_inst_ldrh_i(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRH_I);
 	return VMM_OK;
 }
 
@@ -269,7 +267,6 @@ static int arm_inst_ldrh_l(u32 inst,
 	u32 cond, U, Rt, imm4H, imm4L;
 	u32 imm32, address; u16 data;
 	bool add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRH_L);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -300,7 +297,6 @@ static int arm_inst_ldrh_l(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRH_L);
 	return VMM_OK;
 }
 
@@ -312,7 +308,6 @@ static int arm_inst_ldrh_r(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u16 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRH_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -369,7 +364,6 @@ static int arm_inst_ldrh_r(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRH_R);
 	return VMM_OK;
 }
 
@@ -381,7 +375,6 @@ static int arm_inst_ldrht(u32 inst,
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
 	u32 imm32, offset, offset_addr, address; u16 data;
 	bool regform, postindex, add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRHT);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -435,7 +428,6 @@ static int arm_inst_ldrht(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRHT);
 	return VMM_OK;
 }
 
@@ -446,7 +438,6 @@ static int arm_inst_ldrex(u32 inst,
 	int rc;
 	u32 cond, Rn, Rt;
 	u32 address, data; 
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDREX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
 			ARM_INST_LDRSTR_RN_END,
@@ -470,7 +461,6 @@ static int arm_inst_ldrex(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, data);
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDREX);
 	return VMM_OK;
 }
 
@@ -481,7 +471,6 @@ static int arm_inst_strex(u32 inst,
 	int rc;
 	u32 cond, Rn, Rt, Rd;
 	u32 address, data;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STREX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
 			ARM_INST_LDRSTR_RN_END,
@@ -514,7 +503,6 @@ static int arm_inst_strex(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rd, (!rc) ? 0 : 1);
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STREX);
 	return VMM_OK;
 }
 
@@ -526,7 +514,6 @@ static int arm_inst_strh_i(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
 	u32 imm32, address, offset_addr; u16 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STRH_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -575,7 +562,6 @@ static int arm_inst_strh_i(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRH_I);
 	return VMM_OK;
 }
 
@@ -587,7 +573,6 @@ static int arm_inst_strh_r(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u16 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STRH_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -642,7 +627,6 @@ static int arm_inst_strh_r(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRH_R);
 	return VMM_OK;
 }
 
@@ -654,7 +638,6 @@ static int arm_inst_strht(u32 inst,
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
 	u32 imm32, offset, offset_addr, address; u16 data;
 	bool regform, postindex, add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STRHT);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -707,7 +690,6 @@ static int arm_inst_strht(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRHT);
 	return VMM_OK;
 }
 
@@ -719,7 +701,6 @@ static int arm_inst_ldrsh_i(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
 	u32 imm32, offset_addr, address; u16 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRSH_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -771,7 +752,6 @@ static int arm_inst_ldrsh_i(u32 inst,
 					arm_sign_extend(data, 16, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSH_I);
 	return VMM_OK;
 }
 
@@ -783,7 +763,6 @@ static int arm_inst_ldrsh_l(u32 inst,
 	u32 cond, U, Rt, imm4H, imm4L;
 	u32 imm32, address; u16 data;
 	bool add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRSH_L);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -815,7 +794,6 @@ static int arm_inst_ldrsh_l(u32 inst,
 					arm_sign_extend(data, 16, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSH_L);
 	return VMM_OK;
 }
 
@@ -827,7 +805,6 @@ static int arm_inst_ldrsh_r(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u16 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRSH_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -885,7 +862,6 @@ static int arm_inst_ldrsh_r(u32 inst,
 					arm_sign_extend(data, 16, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSH_R);
 	return VMM_OK;
 }
 
@@ -897,7 +873,6 @@ static int arm_inst_ldrsht(u32 inst,
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
 	u32 imm32, offset, offset_addr, address; u16 data;
 	bool regform, postindex, add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRSHT);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -952,7 +927,6 @@ static int arm_inst_ldrsht(u32 inst,
 					arm_sign_extend(data, 16, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSHT);
 	return VMM_OK;
 }
 
@@ -964,7 +938,6 @@ static int arm_inst_ldrsb_i(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
 	u32 imm32, offset_addr, address; u8 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRSB_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -1016,7 +989,6 @@ static int arm_inst_ldrsb_i(u32 inst,
 					arm_sign_extend(data, 8, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSB_I);
 	return VMM_OK;
 }
 
@@ -1028,7 +1000,6 @@ static int arm_inst_ldrsb_l(u32 inst,
 	u32 cond, U, Rt, imm4H, imm4L;
 	u32 imm32, address; u8 data;
 	bool add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRSB_L);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -1060,7 +1031,6 @@ static int arm_inst_ldrsb_l(u32 inst,
 					arm_sign_extend(data, 8, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSB_L);
 	return VMM_OK;
 }
 
@@ -1072,7 +1042,6 @@ static int arm_inst_ldrsb_r(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u8 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRSB_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -1130,7 +1099,6 @@ static int arm_inst_ldrsb_r(u32 inst,
 					arm_sign_extend(data, 8, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSB_R);
 	return VMM_OK;
 }
 
@@ -1142,7 +1110,6 @@ static int arm_inst_ldrsbt(u32 inst,
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
 	u32 imm32, offset, offset_addr, address; u8 data;
 	bool regform, postindex, add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRSBT);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -1197,7 +1164,6 @@ static int arm_inst_ldrsbt(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSBT);
 	return VMM_OK;
 }
 
@@ -1209,7 +1175,6 @@ static int arm_inst_ldrd_i(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
 	u32 imm32, offset_addr, address, data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRD_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -1274,7 +1239,6 @@ static int arm_inst_ldrd_i(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRD_I);
 	return VMM_OK;
 }
 
@@ -1286,7 +1250,6 @@ static int arm_inst_ldrd_l(u32 inst,
 	u32 cond, U, Rt, imm4H, imm4L;
 	u32 imm32, address, data;
 	bool add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRD_L);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -1327,7 +1290,6 @@ static int arm_inst_ldrd_l(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt + 1, data);
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRD_L);
 	return VMM_OK;
 }
 
@@ -1339,7 +1301,6 @@ static int arm_inst_ldrd_r(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, Rm;
 	u32 offset, offset_addr, address, data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRD_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -1400,7 +1361,6 @@ static int arm_inst_ldrd_r(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRD_R);
 	return VMM_OK;
 }
 
@@ -1412,7 +1372,6 @@ static int arm_inst_strd_i(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm4H, imm4L;
 	u32 imm32, offset_addr, address, data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STRD_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -1475,7 +1434,6 @@ static int arm_inst_strd_i(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRD_I);
 	return VMM_OK;
 }
 
@@ -1487,7 +1445,6 @@ static int arm_inst_strd_r(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, Rm;
 	u32 offset, offset_addr, address, data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STRD_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -1547,7 +1504,6 @@ static int arm_inst_strd_r(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRD_R);
 	return VMM_OK;
 }
 
@@ -1557,7 +1513,6 @@ static int arm_inst_movw_i(u32 inst,
 {
 	u32 cond, Rd, imm4, imm12;
 	u32 result;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MOVW_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rd = ARM_INST_BITS(inst,
 			  ARM_INST_MOVW_I_RD_END,
@@ -1581,7 +1536,6 @@ static int arm_inst_movw_i(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MOVW_I);
 	return VMM_OK;
 }
 
@@ -1738,7 +1692,6 @@ static int arm_inst_str_i(u32 inst,
 	register int rc;
 	register u32 cond, P, U, W, Rn, Rt, imm32;
 	register u32 address, offset_addr;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STR_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BIT(inst, ARM_INST_LDRSTR_P_START);
 	U = ARM_INST_BIT(inst, ARM_INST_LDRSTR_U_START);
@@ -1775,7 +1728,6 @@ static int arm_inst_str_i(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STR_I);
 	return VMM_OK;
 }
 
@@ -1787,7 +1739,6 @@ static int arm_inst_str_r(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address, data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STR_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -1847,7 +1798,6 @@ static int arm_inst_str_r(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STR_R);
 	return VMM_OK;
 }
 
@@ -1859,7 +1809,6 @@ static int arm_inst_strt(u32 inst,
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u32 data;
 	bool regform, postindex, add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STRT);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -1924,7 +1873,6 @@ static int arm_inst_strt(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRT);
 	return VMM_OK;
 }
 
@@ -1936,7 +1884,6 @@ static int arm_inst_strb_i(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm12;
 	u32 imm32, offset_addr, address; u8 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STRB_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -1986,7 +1933,6 @@ static int arm_inst_strb_i(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRB_I);
 	return VMM_OK;
 }
 
@@ -1998,7 +1944,6 @@ static int arm_inst_strb_r(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u8 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STRB_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -2059,7 +2004,6 @@ static int arm_inst_strb_r(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRB_R);
 	return VMM_OK;
 }
 
@@ -2071,7 +2015,6 @@ static int arm_inst_strbt(u32 inst,
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u8 data;
 	bool regform, postindex, add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STRBT);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -2136,7 +2079,6 @@ static int arm_inst_strbt(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRBT);
 	return VMM_OK;
 }
 
@@ -2148,7 +2090,6 @@ static int arm_inst_ldr_i(u32 inst,
 	register int rc;
 	register u32 cond, P, U, W, Rn, Rt, imm32;
 	register u32 offset_addr, address;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDR_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BIT(inst, ARM_INST_LDRSTR_P_START);
 	W = ARM_INST_BIT(inst, ARM_INST_LDRSTR_W_START);
@@ -2187,7 +2128,6 @@ static int arm_inst_ldr_i(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDR_I);
 	return VMM_OK;
 }
 
@@ -2199,7 +2139,6 @@ static int arm_inst_ldr_l(u32 inst,
 	u32 cond, U, Rt, imm12;
 	u32 imm32, address, data;
 	bool add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDR_L);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -2223,7 +2162,6 @@ static int arm_inst_ldr_l(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, data);
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDR_L);
 	return VMM_OK;
 }
 
@@ -2235,7 +2173,6 @@ static int arm_inst_ldr_r(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address, data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDR_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -2297,7 +2234,6 @@ static int arm_inst_ldr_r(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDR_R);
 	return VMM_OK;
 }
 
@@ -2309,7 +2245,6 @@ static int arm_inst_ldrt(u32 inst,
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u32 data;
 	bool regform, postindex, add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRT);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -2375,7 +2310,6 @@ static int arm_inst_ldrt(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRT);
 	return VMM_OK;
 }
 
@@ -2387,7 +2321,6 @@ static int arm_inst_ldrb_i(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm12;
 	u32 imm32, offset_addr, address; u8 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRB_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -2439,7 +2372,6 @@ static int arm_inst_ldrb_i(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRB_I);
 	return VMM_OK;
 }
 
@@ -2451,7 +2383,6 @@ static int arm_inst_ldrb_l(u32 inst,
 	u32 cond, U, Rt, imm12;
 	u32 imm32, address; u8 data;
 	bool add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRB_L);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -2479,7 +2410,6 @@ static int arm_inst_ldrb_l(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRB_L);
 	return VMM_OK;
 }
 
@@ -2491,7 +2421,6 @@ static int arm_inst_ldrb_r(u32 inst,
 	u32 cond, P, U, W, Rn, Rt, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u8 data;
 	bool index, add, wback;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRB_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_P_END,
@@ -2553,7 +2482,6 @@ static int arm_inst_ldrb_r(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRB_R);
 	return VMM_OK;
 }
 
@@ -2565,7 +2493,6 @@ static int arm_inst_ldrbt(u32 inst,
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u8 data;
 	bool regform, postindex, add;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDRBT);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -2631,7 +2558,6 @@ static int arm_inst_ldrbt(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRBT);
 	return VMM_OK;
 }
 
@@ -2778,8 +2704,6 @@ static int arm_inst_ldm(u32 inst,
 	u32 address = 0, old_address = 0;
 	int i = 0;
 
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDM);
-
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	op = ARM_INST_BITS(inst, ARM_INST_BRBLK_OP_END, ARM_INST_BRBLK_OP_START);
 	Rn = ARM_INST_BITS(inst,
@@ -2858,7 +2782,6 @@ static int arm_inst_ldm(u32 inst,
 	}
 
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDM);
 
 	return VMM_OK;
 }
@@ -2874,8 +2797,6 @@ static int arm_inst_stm(u32 inst,
 	u32 data = 0;
 	u32 address = 0, old_address = 0;
 	int i = 0;
-
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STM);
 
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	op = ARM_INST_BITS(inst, ARM_INST_BRBLK_OP_END, ARM_INST_BRBLK_OP_START);
@@ -2948,7 +2869,6 @@ static int arm_inst_stm(u32 inst,
 	}
 
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STM);
 
 	return VMM_OK;
 }
@@ -3008,7 +2928,6 @@ static int arm_inst_stcx(u32 inst,
 	u32 cond, P, U, D, W, Rn, CRd, coproc, imm8;
 	u32 imm32, offset_addr, address, i, data;
 	bool index, add, wback, uopt;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STCX);
 	struct cpu_vcpu_coproc *cp = NULL;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst, ARM_INST_STCX_P_END, ARM_INST_STCX_P_START);
@@ -3064,7 +2983,6 @@ static int arm_inst_stcx(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STCX);
 	return VMM_OK;
 }
 
@@ -3077,7 +2995,6 @@ static int arm_inst_ldcx_i(u32 inst,
 	u32 imm32, offset_addr, address, i, data;
 	bool index, add, wback, uopt;
 	struct cpu_vcpu_coproc *cp = NULL;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDCX_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst, ARM_INST_LDCX_I_P_END, ARM_INST_LDCX_I_P_START);
 	U = ARM_INST_BITS(inst, ARM_INST_LDCX_I_U_END, ARM_INST_LDCX_I_U_START);
@@ -3135,7 +3052,6 @@ static int arm_inst_ldcx_i(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDCX_I);
 	return VMM_OK;
 }
 
@@ -3148,7 +3064,6 @@ static int arm_inst_ldcx_l(u32 inst,
 	u32 imm32, offset_addr, address, i, data;
 	bool index, add, uopt;
 	struct cpu_vcpu_coproc *cp = NULL;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDCX_L);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	P = ARM_INST_BITS(inst, ARM_INST_LDCX_L_P_END, ARM_INST_LDCX_L_P_START);
 	U = ARM_INST_BITS(inst, ARM_INST_LDCX_L_U_END, ARM_INST_LDCX_L_U_START);
@@ -3200,7 +3115,6 @@ static int arm_inst_ldcx_l(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDCX_L);
 	return VMM_OK;
 }
 
@@ -3211,7 +3125,6 @@ static int arm_inst_mcrrx(u32 inst,
 	u32 cond, Rt2, Rt, coproc, opc1, CRm;
 	u32 data, data2;
 	struct cpu_vcpu_coproc *cp = NULL;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MCRRX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rt2 = ARM_INST_BITS(inst,
 			    ARM_INST_MCRRX_RT2_END, 
@@ -3246,7 +3159,6 @@ static int arm_inst_mcrrx(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MCRRX);
 	return VMM_OK;
 }
 
@@ -3257,7 +3169,6 @@ static int arm_inst_mrrcx(u32 inst,
 	u32 cond, Rt2, Rt, coproc, opc1, CRm;
 	u32 data, data2;
 	struct cpu_vcpu_coproc *cp = NULL;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MRRCX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rt2 = ARM_INST_BITS(inst,
 			    ARM_INST_MRRCX_RT2_END, 
@@ -3294,7 +3205,6 @@ static int arm_inst_mrrcx(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt2, data2);
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MRRCX);
 	return VMM_OK;
 }
 
@@ -3304,7 +3214,6 @@ static int arm_inst_cdpx(u32 inst,
 {
 	u32 cond, opc1, opc2, coproc, CRd, CRn, CRm;
 	struct cpu_vcpu_coproc *cp = NULL;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_CDPX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	opc1 = ARM_INST_BITS(inst, 
 			     ARM_INST_CDPX_OPC1_END, ARM_INST_CDPX_OPC1_START);
@@ -3331,7 +3240,6 @@ static int arm_inst_cdpx(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_CDPX);
 	return VMM_OK;
 }
 
@@ -3342,7 +3250,6 @@ static int arm_inst_mcrx(u32 inst,
 	u32 cond, opc1, opc2, coproc, Rt, CRn, CRm;
 	u32 data;
 	struct cpu_vcpu_coproc *cp = NULL;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MCRX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	opc1 = ARM_INST_BITS(inst, 
 			     ARM_INST_MCRX_OPC1_END, ARM_INST_MCRX_OPC1_START);
@@ -3370,7 +3277,6 @@ static int arm_inst_mcrx(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MCRX);
 	return VMM_OK;
 }
 
@@ -3381,7 +3287,6 @@ static int arm_inst_mrcx(u32 inst,
 	u32 cond, opc1, opc2, coproc, Rt, CRn, CRm;
 	u32 data;
 	struct cpu_vcpu_coproc *cp = NULL;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MRCX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	opc1 = ARM_INST_BITS(inst, 
 			     ARM_INST_MRCX_OPC1_END, ARM_INST_MRCX_OPC1_START);
@@ -3415,7 +3320,6 @@ static int arm_inst_mrcx(u32 inst,
 		}
 	}
 	arm_pc(regs) += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MRCX);
 	return VMM_OK;
 }
 

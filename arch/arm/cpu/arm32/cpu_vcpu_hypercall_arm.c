@@ -37,7 +37,6 @@ static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 		       arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	register u32 cpsr, mask, imod, mode;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_CPS);
 	imod = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_CPS_IMOD_END,
 			     ARM_HYPERCALL_CPS_IMOD_START);
@@ -76,7 +75,6 @@ static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 	}
 	cpu_vcpu_cpsr_update(vcpu, regs, cpsr, mask);
 	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_CPS);
 	return VMM_OK;
 }
 
@@ -85,7 +83,6 @@ static int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
 		       arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	register u32 cond, Rd, psr;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MRS);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rd = ARM_INST_BITS(inst,
 			   ARM_HYPERCALL_MRS_RD_END,
@@ -104,7 +101,6 @@ static int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
 		}
 	}
 	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MRS);
 	return VMM_OK;
 }
 
@@ -113,7 +109,6 @@ static int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	register u32 cond, mask, imm12, psr, tmask;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MSR_I);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	mask = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_MSR_I_MASK_END,
@@ -140,7 +135,6 @@ static int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 		}
 	}
 	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MSR_I);
 	return VMM_OK;
 }
 
@@ -149,7 +143,6 @@ static int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
 			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	register u32 cond, mask, Rn, psr, tmask;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MSR_R);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	mask = ARM_INST_BITS(inst,
 			     ARM_HYPERCALL_MSR_R_MASK_END,
@@ -181,7 +174,6 @@ static int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
 		}
 	}
 	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MSR_R);
 	return VMM_OK;
 }
 
@@ -193,7 +185,6 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 	register int rc;
 	register u32 cond, Rn, P, U, W;
 	register u32 address;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_RFE);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
 			   ARM_HYPERCALL_RFE_RN_END,
@@ -250,7 +241,6 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 	} else {
 		regs->pc += 4;
 	}
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_RFE);
 	return VMM_OK;
 }
 
@@ -259,14 +249,12 @@ static int arm_hypercall_wfi(u32 id, u32 subid, u32 inst,
 			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	register u32 cond;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_WFI);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	if (arm_condition_passed(cond, regs)) {
 		/* Wait for irq on this vcpu */
 		vmm_vcpu_irq_wait(vcpu);
 	}
 	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_WFI);
 	return VMM_OK;
 }
 
@@ -278,7 +266,6 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 	register int rc;
 	register u32 cond, P, U, W, mode;
 	register u32 cpsr, base, address;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_SRS);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	if (arm_condition_passed(cond, regs)) {
 		P = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_P_START);
@@ -312,7 +299,6 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 			cpu_vcpu_regmode_write(vcpu, regs, mode, 13, address);
 		}
 	}
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_SRS);
 	return VMM_OK;
 }
 
@@ -324,7 +310,6 @@ static int arm_hypercall_ldm_ue(u32 id, u32 inst,
 	register int rc;
 	register u32 cond, Rn, U, P, W, reg_list;
 	register u32 cpsr, address, i, mask, length;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDM_UE);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
 			   ARM_HYPERCALL_LDM_UE_RN_END,
@@ -478,7 +463,6 @@ static int arm_hypercall_ldm_ue(u32 id, u32 inst,
 		}
 		regs->pc += 4;
 	}
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDM_UE);
 	return VMM_OK;
 }
 
@@ -490,7 +474,6 @@ static int arm_hypercall_stm_u(u32 id, u32 inst,
 	register int rc;
 	register u32 cond, Rn, P, U, reg_list;
 	register u32 i, cpsr, mask, length, address;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STM_U);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
 			   ARM_HYPERCALL_STM_U_RN_END,
@@ -553,7 +536,6 @@ static int arm_hypercall_stm_u(u32 id, u32 inst,
 		}
 	}
 	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STM_U);
 	return VMM_OK;
 }
 
@@ -565,7 +547,6 @@ static int arm_hypercall_subs_rel(u32 id, u32 inst,
 	register u32 cond, opcode, Rn, imm12, imm5, type, Rm;
 	register bool register_form, shift_n;
 	register u32 operand2, result, spsr;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_SUBS_REL);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	opcode = ARM_INST_BITS(inst,
 				ARM_HYPERCALL_SUBS_REL_OPCODE_END,
@@ -687,7 +668,6 @@ static int arm_hypercall_subs_rel(u32 id, u32 inst,
 	} else {
 		regs->pc += 4;
 	}
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_SUBS_REL);
 	return VMM_OK;
 }
 

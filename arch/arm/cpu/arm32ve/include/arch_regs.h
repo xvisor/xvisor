@@ -81,8 +81,6 @@ enum arm_features {
 	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
 };
 
-#define	ARM_FUNCSTAT_MAX	128
-
 struct arch_regs {
 	u32 cpsr; /* CPSR */
 	u32 pc;	/* Program Counter */
@@ -163,16 +161,6 @@ struct arm_priv {
 		u32 c15_i_max; /* Maximum D-cache dirty line index. */
 		u32 c15_i_min; /* Minimum D-cache dirty line index. */
 	} cp15;
-	/* Statistics Gathering */
-#ifdef CONFIG_ARM32VE_FUNCSTATS
-	struct {
-		char const *function_name;
-		u32 entry_count;
-		u32 exit_count;
-		u64 time;
-	} funcstat[ARM_FUNCSTAT_MAX];
-#endif
-
 } __attribute((packed));
 
 typedef struct arm_priv arm_priv_t;
@@ -199,25 +187,5 @@ typedef struct arm_guest_priv arm_guest_priv_t;
  */
 #define arm_pc(regs)		((regs)->pc)
 #define arm_cpsr(regs)		((regs)->cpsr)
-
-#ifdef CONFIG_ARM32VE_FUNCSTATS
-
-#include <vmm_timer.h>
-
-#define arm_funcstat_start(vcpu, funcid)	{ \
-	u64 _time_stamp = vmm_timer_timestamp(); \
-	arm_priv(vcpu)->funcstat[funcid].function_name = __FUNCTION__; \
-	arm_priv(vcpu)->funcstat[funcid].entry_count++
-
-#define arm_funcstat_end(vcpu, funcid) 	  \
-	arm_priv(vcpu)->funcstat[funcid].time += (vmm_timer_timestamp() - _time_stamp); \
-	arm_priv(vcpu)->funcstat[funcid].exit_count++; }
-
-#else
-
-#define arm_funcstat_start(vcpu, funcid)
-#define arm_funcstat_end(vcpu, funcid)
-
-#endif
 
 #endif
