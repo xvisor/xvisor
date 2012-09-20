@@ -21,5 +21,7 @@
 # @brief list of common objects.
 # */
 
+cpu-common-objs-y+=emulate_arm.o
+cpu-common-objs-y+=emulate_thumb.o
 cpu-common-objs-$(CONFIG_ARM_GENERIC_TIMER)+=generic_timer.o
 

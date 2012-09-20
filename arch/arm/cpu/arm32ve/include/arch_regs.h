@@ -81,10 +81,7 @@ enum arm_features {
 	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
 };
 
-/* FIXME: Function statistics related enumeration */
-enum arm_funcstats {
-	ARM_FUNCSTAT_MAX
-};
+#define	ARM_FUNCSTAT_MAX	128
 
 struct arch_regs {
 	u32 cpsr; /* CPSR */
@@ -196,6 +193,12 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_cpuid(vcpu) (arm_priv(vcpu)->cp15.c0_cpuid)
 #define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1 << (feat)))
 #define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1 << (feat)))
+
+/**
+ *  Instruction emulation support macros
+ */
+#define arm_pc(regs)		((regs)->pc)
+#define arm_cpsr(regs)		((regs)->cpsr)
 
 #ifdef CONFIG_ARM32VE_FUNCSTATS
 

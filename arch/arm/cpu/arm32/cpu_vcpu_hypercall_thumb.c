@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Anup Patel.
+ * Copyright (c) 2011 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,19 +16,33 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_vcpu_emulate_thumb.h
+ * @file cpu_vcpu_emulate_thumb.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Inferace for non-hardware assisted Thumb instruction emulation
+ * @brief source code to emulate Thumb instructions
  */
-#ifndef _CPU_VCPU_EMULATE_THUMB_H__
-#define _CPU_VCPU_EMULATE_THUMB_H__
 
-#include <vmm_types.h>
-#include <vmm_manager.h>
+#include <vmm_error.h>
+#include <vmm_vcpu_irq.h>
+#include <vmm_scheduler.h>
+#include <arch_cpu.h>
+#include <arch_regs.h>
+#include <emulate_thumb.h>
+#include <cpu_vcpu_helper.h>
+#include <cpu_vcpu_hypercall_thumb.h>
 
-/** Emulate Thumb instruction (no HW help) */
-int cpu_vcpu_emulate_thumb_inst(struct vmm_vcpu *vcpu, 
-				arch_regs_t *regs, 
-				bool is_hypercall);
+/* FIXME: */
+int cpu_vcpu_hypercall_thumb(struct vmm_vcpu *vcpu, arch_regs_t *regs, u32 inst)
+{
+	/* Sanity check */
+	if (!vcpu) {
+		return VMM_EFAIL;
+	}
+	if (!vcpu->is_normal) {
+		return VMM_EFAIL;
+	}
 
-#endif
+	/* Thumb mode emulation not supported so halt the VCPU */
+	cpu_vcpu_halt(vcpu, regs);
+
+	return VMM_OK;
+}

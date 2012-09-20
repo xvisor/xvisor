@@ -16,14 +16,75 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_vcpu_emulate_arm.h
+ * @file emulate_arm.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief header file to emulate ARM instructions
  */
-#ifndef _CPU_VCPU_EMULATE_ARM_H__
-#define _CPU_VCPU_EMULATE_ARM_H__
+#ifndef _EMULATE_ARM_H__
+#define _EMULATE_ARM_H__
 
 #include <vmm_types.h>
+
+/* Function statistics IDs for ARM instructions */
+enum arm_funcstats {
+	ARM_FUNCSTAT_CPS = 0,
+	ARM_FUNCSTAT_MRS,
+	ARM_FUNCSTAT_MSR_I,
+	ARM_FUNCSTAT_MSR_R,
+	ARM_FUNCSTAT_RFE,
+	ARM_FUNCSTAT_SRS,
+	ARM_FUNCSTAT_LDM_UE,
+	ARM_FUNCSTAT_STM_U,
+	ARM_FUNCSTAT_SUBS_REL,
+	ARM_FUNCSTAT_LDRH_I,
+	ARM_FUNCSTAT_LDRH_L,
+	ARM_FUNCSTAT_LDRH_R,
+	ARM_FUNCSTAT_LDRHT,
+	ARM_FUNCSTAT_STRH_I,
+	ARM_FUNCSTAT_STRH_R,
+	ARM_FUNCSTAT_STRHT,
+	ARM_FUNCSTAT_LDRSH_I,
+	ARM_FUNCSTAT_LDRSH_L,
+	ARM_FUNCSTAT_LDRSH_R,
+	ARM_FUNCSTAT_LDRSHT,
+	ARM_FUNCSTAT_LDRSB_I,
+	ARM_FUNCSTAT_LDRSB_L,
+	ARM_FUNCSTAT_LDRSB_R,
+	ARM_FUNCSTAT_LDRSBT,
+	ARM_FUNCSTAT_LDRD_I,
+	ARM_FUNCSTAT_LDRD_L,
+	ARM_FUNCSTAT_LDRD_R,
+	ARM_FUNCSTAT_STRD_I,
+	ARM_FUNCSTAT_STRD_R,
+	ARM_FUNCSTAT_STR_I,
+	ARM_FUNCSTAT_STR_R,
+	ARM_FUNCSTAT_STRT,
+	ARM_FUNCSTAT_STRB_I,
+	ARM_FUNCSTAT_STRB_R,
+	ARM_FUNCSTAT_STRBT,
+	ARM_FUNCSTAT_LDR_I,
+	ARM_FUNCSTAT_LDR_L,
+	ARM_FUNCSTAT_LDR_R,
+	ARM_FUNCSTAT_LDRT,
+	ARM_FUNCSTAT_LDRB_I,
+	ARM_FUNCSTAT_LDRB_L,
+	ARM_FUNCSTAT_LDRB_R,
+	ARM_FUNCSTAT_LDRBT,
+	ARM_FUNCSTAT_STREX,
+	ARM_FUNCSTAT_LDREX,
+	ARM_FUNCSTAT_STM,
+	ARM_FUNCSTAT_LDM,
+	ARM_FUNCSTAT_MOVW_I,
+	ARM_FUNCSTAT_STCX,
+	ARM_FUNCSTAT_LDCX_I,
+	ARM_FUNCSTAT_LDCX_L,
+	ARM_FUNCSTAT_MCRRX,
+	ARM_FUNCSTAT_MRRCX,
+	ARM_FUNCSTAT_CDPX,
+	ARM_FUNCSTAT_MCRX,
+	ARM_FUNCSTAT_MRCX,	
+	ARM_FUNCSTAT_WFI
+};
 
 enum arm_shift_type {
 	arm_shift_lsl,
@@ -37,113 +98,6 @@ enum arm_shift_type {
 #define ARM_INST_BITS(inst, end, start)		(((inst) << (31-(end))) >> (31+(start)-(end)))
 #define ARM_INST_DECODE(inst, mask, shift)	(((inst) & (mask)) >> (shift))
 #define ARM_INST_ENCODE(val, mask, shift)	(((val) << (shift)) & (mask))
-
-#define ARM_HYPERCALL_CPS_ID			0
-#define ARM_HYPERCALL_CPS_SUBID			0
-#define ARM_HYPERCALL_CPS_IMOD_END		16
-#define ARM_HYPERCALL_CPS_IMOD_START		15
-#define ARM_HYPERCALL_CPS_M_END			14
-#define ARM_HYPERCALL_CPS_M_START		14
-#define ARM_HYPERCALL_CPS_A_END			13
-#define ARM_HYPERCALL_CPS_A_START		13
-#define ARM_HYPERCALL_CPS_I_END			12
-#define ARM_HYPERCALL_CPS_I_START		12
-#define ARM_HYPERCALL_CPS_F_END			11
-#define ARM_HYPERCALL_CPS_F_START		11
-#define ARM_HYPERCALL_CPS_MODE_END		10
-#define ARM_HYPERCALL_CPS_MODE_START		6
-
-#define ARM_HYPERCALL_MRS_ID			0
-#define ARM_HYPERCALL_MRS_SUBID			1
-#define ARM_HYPERCALL_MRS_RD_END		16
-#define ARM_HYPERCALL_MRS_RD_START		13
-#define ARM_HYPERCALL_MRS_R_END			12
-#define ARM_HYPERCALL_MRS_R_START		12
-
-#define ARM_HYPERCALL_MSR_I_ID			0
-#define ARM_HYPERCALL_MSR_I_SUBID		2
-#define ARM_HYPERCALL_MSR_I_MASK_END		16
-#define ARM_HYPERCALL_MSR_I_MASK_START		13
-#define ARM_HYPERCALL_MSR_I_IMM12_END		12
-#define ARM_HYPERCALL_MSR_I_IMM12_START		1
-#define ARM_HYPERCALL_MSR_I_R_END		0
-#define ARM_HYPERCALL_MSR_I_R_START		0
-
-#define ARM_HYPERCALL_MSR_R_ID			0
-#define ARM_HYPERCALL_MSR_R_SUBID		3
-#define ARM_HYPERCALL_MSR_R_MASK_END		16
-#define ARM_HYPERCALL_MSR_R_MASK_START		13
-#define ARM_HYPERCALL_MSR_R_RN_END		12
-#define ARM_HYPERCALL_MSR_R_RN_START		9
-#define ARM_HYPERCALL_MSR_R_R_END		8
-#define ARM_HYPERCALL_MSR_R_R_START		8
-
-#define ARM_HYPERCALL_RFE_ID			0
-#define ARM_HYPERCALL_RFE_SUBID			4
-#define ARM_HYPERCALL_RFE_P_END			16
-#define ARM_HYPERCALL_RFE_P_START		16
-#define ARM_HYPERCALL_RFE_U_END			15
-#define ARM_HYPERCALL_RFE_U_START		15
-#define ARM_HYPERCALL_RFE_W_END			14
-#define ARM_HYPERCALL_RFE_W_START		14
-#define ARM_HYPERCALL_RFE_RN_END		13
-#define ARM_HYPERCALL_RFE_RN_START		10
-
-#define ARM_HYPERCALL_SRS_ID			0
-#define ARM_HYPERCALL_SRS_SUBID			5
-#define ARM_HYPERCALL_SRS_P_END			16
-#define ARM_HYPERCALL_SRS_P_START		16
-#define ARM_HYPERCALL_SRS_U_END			15
-#define ARM_HYPERCALL_SRS_U_START		15
-#define ARM_HYPERCALL_SRS_W_END			14
-#define ARM_HYPERCALL_SRS_W_START		14
-#define ARM_HYPERCALL_SRS_MODE_END		13
-#define ARM_HYPERCALL_SRS_MODE_START		10
-
-#define ARM_HYPERCALL_WFI_ID			0
-#define ARM_HYPERCALL_WFI_SUBID			6
-
-#define ARM_HYPERCALL_LDM_UE_ID0		1
-#define ARM_HYPERCALL_LDM_UE_ID1		2
-#define ARM_HYPERCALL_LDM_UE_ID2		3
-#define ARM_HYPERCALL_LDM_UE_ID3		4
-#define ARM_HYPERCALL_LDM_UE_ID4		5
-#define ARM_HYPERCALL_LDM_UE_ID5		6
-#define ARM_HYPERCALL_LDM_UE_ID6		7
-#define ARM_HYPERCALL_LDM_UE_ID7		8
-#define ARM_HYPERCALL_LDM_UE_RN_END		19
-#define ARM_HYPERCALL_LDM_UE_RN_START		16
-#define ARM_HYPERCALL_LDM_UE_REGLIST_END	15
-#define ARM_HYPERCALL_LDM_UE_REGLIST_START	0
-
-#define ARM_HYPERCALL_STM_U_ID0			9
-#define ARM_HYPERCALL_STM_U_ID1			10
-#define ARM_HYPERCALL_STM_U_ID2			11
-#define ARM_HYPERCALL_STM_U_ID3			12
-#define ARM_HYPERCALL_STM_U_RN_END		19
-#define ARM_HYPERCALL_STM_U_RN_START		16
-#define ARM_HYPERCALL_STM_U_REGLIST_END		15
-#define ARM_HYPERCALL_STM_U_REGLIST_START	0
-
-#define ARM_HYPERCALL_SUBS_REL_ID0		13
-#define ARM_HYPERCALL_SUBS_REL_ID1		14
-#define ARM_HYPERCALL_SUBS_REL_OPCODE_END	19
-#define ARM_HYPERCALL_SUBS_REL_OPCODE_START	16
-#define ARM_HYPERCALL_SUBS_REL_RN_END		15
-#define ARM_HYPERCALL_SUBS_REL_RN_START		12
-#define ARM_HYPERCALL_SUBS_REL_IMM12_END	11
-#define ARM_HYPERCALL_SUBS_REL_IMM12_START	0
-#define ARM_HYPERCALL_SUBS_REL_IMM5_END		11
-#define ARM_HYPERCALL_SUBS_REL_IMM5_START	7
-#define ARM_HYPERCALL_SUBS_REL_TYPE_END		6
-#define ARM_HYPERCALL_SUBS_REL_TYPE_START	5
-#define ARM_HYPERCALL_SUBS_REL_RM_END		3
-#define ARM_HYPERCALL_SUBS_REL_RM_START		0
-
-#define ARM_INST_HYPERCALL_ID_MASK		0x00F00000
-#define ARM_INST_HYPERCALL_ID_SHIFT		20
-#define ARM_INST_HYPERCALL_SUBID_MASK		0x000E0000
-#define ARM_INST_HYPERCALL_SUBID_SHIFT		17
 
 #define ARM_INST_LDRSTR_REGFORM2_END		25
 #define ARM_INST_LDRSTR_REGFORM2_START		25
@@ -333,8 +287,47 @@ enum arm_shift_type {
 #define ARM_INST_OP_MASK			0x00000010
 #define ARM_INST_OP_SHIFT			4
 
-/** Emulate Priviledged ARM instructions */
-int cpu_vcpu_emulate_arm_inst(struct vmm_vcpu *vcpu, 
-			      arch_regs_t * regs, bool is_hypercall);
+#define arm_zero_extend(imm, bits)		((u32)(imm))
+#define arm_align(addr, nbytes)			((addr) - ((addr) % (nbytes)))
+
+void arm_unpredictable(arch_regs_t *regs, struct vmm_vcpu *vcpu, 
+			u32 inst, const char *reason);
+
+u32 arm_sign_extend(u32 imm, u32 len, u32 bits);
+
+bool arm_condition_check(u32 cond, arch_regs_t *regs);
+
+#define arm_condition_passed(cond, regs) (((cond) == 0xE) ? \
+					 TRUE : \
+					 arm_condition_check((cond), (regs)))
+
+u32 arm_decode_imm_shift(u32 type, u32 imm5, u32 *shift_t);
+
+u32 arm_shift_c(u32 val, u32 shift_t, u32 shift_n, u32 cin, u32 *cout);
+
+static inline u32 arm_shift(u32 val, u32 shift_t, u32 shift_n, u32 cin)
+{
+	return arm_shift_c(val, shift_t, shift_n, cin, NULL);
+}
+
+static inline u32 arm_expand_imm_c(u32 imm12, u32 cin, u32 *cout)
+{
+	return arm_shift_c((imm12 & 0xFF), 
+			   arm_shift_ror, 
+			   2 * (imm12 >> 8), 
+			   cin, cout);
+}
+
+static inline u32 arm_expand_imm(arch_regs_t *regs, u32 imm12)
+{
+	return arm_expand_imm_c(imm12, 
+				(regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1,
+				NULL);
+}
+
+u32 arm_add_with_carry(u32 x, u32 y, u32 cin, u32 *cout, u32 *oout);
+
+/** Emulate ARM instructions */
+int emulate_arm_inst(struct vmm_vcpu *vcpu, arch_regs_t *regs, u32 inst);
 
 #endif

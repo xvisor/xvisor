@@ -16,38 +16,30 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_vcpu_emulate_arm.c
+ * @file emulate_arm.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief source code to emulate ARM instructions
  */
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_scheduler.h>
 #include <vmm_vcpu_irq.h>
-#include <arch_cpu.h>
 #include <arch_regs.h>
 #include <cpu_defines.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_coproc.h>
-#include <cpu_vcpu_cp15.h>
-#include <cpu_vcpu_emulate_arm.h>
-#include <cpu_inline_asm.h>
+#include <cpu_vcpu_mem.h>
+#include <emulate_arm.h>
 
-#define arm_zero_extend(imm, bits)		((u32)(imm))
-#define arm_align(addr, nbytes)			((addr) - ((addr) % (nbytes)))
-
-static void arm_unpredictable(arch_regs_t * regs, 
-			      struct vmm_vcpu * vcpu, 
-			      u32 inst,
-			      const char *reason)
+void arm_unpredictable(arch_regs_t * regs, struct vmm_vcpu * vcpu, 
+			u32 inst, const char *reason)
 {
 	vmm_printf("Unprecidable Instruction 0x%08x\n", inst);
 	vmm_printf("Reason: %s\n", reason);
 	cpu_vcpu_halt(vcpu, regs);
 }
 
-static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
+u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
 {
 	if (imm & (1 << (len - 1))) {
 		imm = imm | (~((1 << len) - 1));
@@ -55,7 +47,7 @@ static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
 	return imm & ((1 << bits) - 1);
 }
 
-static bool arm_condition_check(u32 cond, arch_regs_t * regs)
+bool arm_condition_check(u32 cond, arch_regs_t * regs)
 {
 	bool ret = FALSE;
 	if (cond == 0xE) {
@@ -63,40 +55,40 @@ static bool arm_condition_check(u32 cond, arch_regs_t * regs)
 	}
 	switch (cond >> 1) {
 	case 0:
-		ret = (regs->cpsr & CPSR_ZERO_MASK) ? TRUE : FALSE;
+		ret = (arm_cpsr(regs) & CPSR_ZERO_MASK) ? TRUE : FALSE;
 		break;
 	case 1:
-		ret = (regs->cpsr & CPSR_CARRY_MASK) ? TRUE : FALSE;
+		ret = (arm_cpsr(regs) & CPSR_CARRY_MASK) ? TRUE : FALSE;
 		break;
 	case 2:
-		ret = (regs->cpsr & CPSR_NEGATIVE_MASK) ? TRUE : FALSE;
+		ret = (arm_cpsr(regs) & CPSR_NEGATIVE_MASK) ? TRUE : FALSE;
 		break;
 	case 3:
-		ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? TRUE : FALSE;
+		ret = (arm_cpsr(regs) & CPSR_OVERFLOW_MASK) ? TRUE : FALSE;
 		break;
 	case 4:
-		ret = (regs->cpsr & CPSR_CARRY_MASK) ? TRUE : FALSE;
-		ret = (ret && !(regs->cpsr & CPSR_ZERO_MASK)) ? 
+		ret = (arm_cpsr(regs) & CPSR_CARRY_MASK) ? TRUE : FALSE;
+		ret = (ret && !(arm_cpsr(regs) & CPSR_ZERO_MASK)) ? 
 								TRUE : FALSE;
 		break;
 	case 5:
-		if (regs->cpsr & CPSR_NEGATIVE_MASK) {
-			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
+		if (arm_cpsr(regs) & CPSR_NEGATIVE_MASK) {
+			ret = (arm_cpsr(regs) & CPSR_OVERFLOW_MASK) ? 
 								TRUE : FALSE;
 		} else {
-			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
+			ret = (arm_cpsr(regs) & CPSR_OVERFLOW_MASK) ? 
 								FALSE : TRUE;
 		}
 		break;
 	case 6:
-		if (regs->cpsr & CPSR_NEGATIVE_MASK) {
-			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
+		if (arm_cpsr(regs) & CPSR_NEGATIVE_MASK) {
+			ret = (arm_cpsr(regs) & CPSR_OVERFLOW_MASK) ? 
 								TRUE : FALSE;
 		} else {
-			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
+			ret = (arm_cpsr(regs) & CPSR_OVERFLOW_MASK) ? 
 								FALSE : TRUE;
 		}
-		ret = (ret && !(regs->cpsr & CPSR_ZERO_MASK)) ? 
+		ret = (ret && !(arm_cpsr(regs) & CPSR_ZERO_MASK)) ? 
 								TRUE : FALSE;
 		break;
 	case 7:
@@ -111,11 +103,7 @@ static bool arm_condition_check(u32 cond, arch_regs_t * regs)
 	return ret;
 }
 
-#define arm_condition_passed(cond, regs) (((cond) == 0xE) ? \
-					 TRUE : \
-					 arm_condition_check((cond), (regs)))
-
-static u32 arm_decode_imm_shift(u32 type, u32 imm5, u32 *shift_t)
+u32 arm_decode_imm_shift(u32 type, u32 imm5, u32 *shift_t)
 {
 	switch (type) {
 	case 0:
@@ -145,7 +133,7 @@ static u32 arm_decode_imm_shift(u32 type, u32 imm5, u32 *shift_t)
 	return 0;
 }
 
-static u32 arm_shift_c(u32 val, u32 shift_t, u32 shift_n, u32 cin, u32 *cout)
+u32 arm_shift_c(u32 val, u32 shift_t, u32 shift_n, u32 cin, u32 *cout)
 {
 	u64 rval;
 	u32 carry = cin;
@@ -189,27 +177,7 @@ static u32 arm_shift_c(u32 val, u32 shift_t, u32 shift_n, u32 cin, u32 *cout)
 	return val;
 }
 
-static inline u32 arm_shift(u32 val, u32 shift_t, u32 shift_n, u32 cin)
-{
-	return arm_shift_c(val, shift_t, shift_n, cin, NULL);
-}
-
-static inline u32 arm_expand_imm_c(u32 imm12, u32 cin, u32 *cout)
-{
-	return arm_shift_c((imm12 & 0xFF), 
-			   arm_shift_ror, 
-			   2 * (imm12 >> 8), 
-			   cin, cout);
-}
-
-static inline u32 arm_expand_imm(arch_regs_t * regs, u32 imm12)
-{
-	return arm_expand_imm_c(imm12, 
-				(regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1,
-				NULL);
-}
-
-static u32 arm_add_with_carry(u32 x, u32 y, u32 cin, u32 *cout, u32 *oout)
+u32 arm_add_with_carry(u32 x, u32 y, u32 cin, u32 *cout, u32 *oout)
 {
 	u32 uresult = x + y + cin;
 	if (cout) {
@@ -228,727 +196,6 @@ static u32 arm_add_with_carry(u32 x, u32 y, u32 cin, u32 *cout, u32 *oout)
 		}
 	}
 	return uresult;
-}
-
-/** Emulate 'cps' hypercall */
-static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
-		       arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	register u32 cpsr, mask, imod, mode;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_CPS);
-	imod = ARM_INST_BITS(inst,
-			     ARM_HYPERCALL_CPS_IMOD_END,
-			     ARM_HYPERCALL_CPS_IMOD_START);
-	mode = ARM_INST_BITS(inst,
-			     ARM_HYPERCALL_CPS_MODE_END,
-			     ARM_HYPERCALL_CPS_MODE_START);
-	cpsr = 0x0;
-	mask = 0x0;
-	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_M_START)) {
-		cpsr |= mode;
-		mask |= CPSR_MODE_MASK;
-	}
-	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_A_START)) {
-		if (imod == 0x2) {
-			cpsr &= ~CPSR_ASYNC_ABORT_DISABLED;
-		} else if (imod == 0x3) {
-			cpsr |= CPSR_ASYNC_ABORT_DISABLED;
-		}
-		mask |= CPSR_ASYNC_ABORT_DISABLED;
-	}
-	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_I_START)) {
-		if (imod == 0x2) {
-			cpsr &= ~CPSR_IRQ_DISABLED;
-		} else if (imod == 0x3) {
-			cpsr |= CPSR_IRQ_DISABLED;
-		}
-		mask |= CPSR_IRQ_DISABLED;
-	}
-	if (ARM_INST_BIT(inst, ARM_HYPERCALL_CPS_F_START)) {
-		if (imod == 0x2) {
-			cpsr &= ~CPSR_FIQ_DISABLED;
-		} else if (imod == 0x3) {
-			cpsr |= CPSR_FIQ_DISABLED;
-		}
-		mask |= CPSR_FIQ_DISABLED;
-	}
-	cpu_vcpu_cpsr_update(vcpu, regs, cpsr, mask);
-	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_CPS);
-	return VMM_OK;
-}
-
-/** Emulate 'mrs' hypercall */
-static int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
-		       arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	register u32 cond, Rd, psr;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MRS);
-	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
-	Rd = ARM_INST_BITS(inst,
-			   ARM_HYPERCALL_MRS_RD_END,
-			   ARM_HYPERCALL_MRS_RD_START);
-	if (arm_condition_passed(cond, regs)) {
-		if (ARM_INST_BIT(inst, ARM_HYPERCALL_MRS_R_START)) {
-			psr = cpu_vcpu_spsr_retrieve(vcpu);
-		} else {
-			psr = cpu_vcpu_cpsr_retrieve(vcpu, regs);
-		}
-		if (Rd < 15) {
-			cpu_vcpu_reg_write(vcpu, regs, Rd, psr);
-		} else {
-			arm_unpredictable(regs, vcpu, inst, __func__);
-			return VMM_EFAIL;
-		}
-	}
-	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MRS);
-	return VMM_OK;
-}
-
-/** Emulate 'msr_i' hypercall */
-static int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	register u32 cond, mask, imm12, psr, tmask;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MSR_I);
-	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
-	mask = ARM_INST_BITS(inst,
-			     ARM_HYPERCALL_MSR_I_MASK_END,
-			     ARM_HYPERCALL_MSR_I_MASK_START);
-	imm12 = ARM_INST_BITS(inst,
-			      ARM_HYPERCALL_MSR_I_IMM12_END,
-			      ARM_HYPERCALL_MSR_I_IMM12_START);
-	if (arm_condition_passed(cond, regs)) {
-		psr = arm_expand_imm(regs, imm12);
-		if (!mask) {
-			arm_unpredictable(regs, vcpu, inst, __func__);
-			return VMM_EFAIL;
-		}
-		tmask = 0x0;
-		tmask |= (mask & 0x1) ? 0xFF : 0x00;
-		tmask |= (mask & 0x2) ? 0xFF00 : 0x00;
-		tmask |= (mask & 0x4) ? 0xFF0000 : 0x00;
-		tmask |= (mask & 0x8) ? 0xFF000000 : 0x00;
-		psr &= tmask;
-		if (ARM_INST_BIT(inst, ARM_HYPERCALL_MSR_I_R_START)) {
-			cpu_vcpu_spsr_update(vcpu, psr, tmask);
-		} else {
-			cpu_vcpu_cpsr_update(vcpu, regs, psr, tmask);
-		}
-	}
-	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MSR_I);
-	return VMM_OK;
-}
-
-/** Emulate 'msr_r' hypercall */
-static int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	register u32 cond, mask, Rn, psr, tmask;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_MSR_R);
-	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
-	mask = ARM_INST_BITS(inst,
-			     ARM_HYPERCALL_MSR_R_MASK_END,
-			     ARM_HYPERCALL_MSR_R_MASK_START);
-	Rn = ARM_INST_BITS(inst,
-			   ARM_HYPERCALL_MSR_R_RN_END,
-			   ARM_HYPERCALL_MSR_R_RN_START);
-	if (arm_condition_passed(cond, regs)) {
-		if (Rn < 15) {
-			psr = cpu_vcpu_reg_read(vcpu, regs, Rn);
-		} else {
-			arm_unpredictable(regs, vcpu, inst, __func__);
-			return VMM_EFAIL;
-		}
-		if (!mask) {
-			arm_unpredictable(regs, vcpu, inst, __func__);
-			return VMM_EFAIL;
-		}
-		tmask = 0x0;
-		tmask |= (mask & 0x1) ? 0xFF : 0x00;
-		tmask |= (mask & 0x2) ? 0xFF00 : 0x00;
-		tmask |= (mask & 0x4) ? 0xFF0000 : 0x00;
-		tmask |= (mask & 0x8) ? 0xFF000000 : 0x00;
-		psr &= tmask;
-		if (ARM_INST_BIT(inst, ARM_HYPERCALL_MSR_R_R_START)) {
-			cpu_vcpu_spsr_update(vcpu, psr, tmask);
-		} else {
-			cpu_vcpu_cpsr_update(vcpu, regs, psr, tmask);
-		}
-	}
-	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MSR_R);
-	return VMM_OK;
-}
-
-/** Emulate 'rfe' hypercall */
-static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	u32 data;
-	register int rc;
-	register u32 cond, Rn, P, U, W;
-	register u32 address;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_RFE);
-	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
-	Rn = ARM_INST_BITS(inst,
-			   ARM_HYPERCALL_RFE_RN_END,
-			   ARM_HYPERCALL_RFE_RN_START);
-	if (Rn == 15) {
-		arm_unpredictable(regs, vcpu, inst, __func__);
-		return VMM_EFAIL;
-	}
-	if (arm_condition_passed(cond, regs)) {
-		P = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_P_START);
-		U = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_U_START);
-		W = ARM_INST_BIT(inst, ARM_HYPERCALL_RFE_W_START);
-		switch (arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) {
-		case CPSR_MODE_FIQ:
-			vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_FIQ);
-			break;
-		case CPSR_MODE_IRQ:
-			vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_IRQ);
-			break;
-		case CPSR_MODE_SUPERVISOR:
-			vmm_vcpu_irq_deassert(vcpu, CPU_SOFT_IRQ);
-			break;
-		case CPSR_MODE_ABORT:
-			vmm_vcpu_irq_deassert(vcpu, CPU_PREFETCH_ABORT_IRQ);
-			vmm_vcpu_irq_deassert(vcpu, CPU_DATA_ABORT_IRQ);
-			break;
-		case CPSR_MODE_UNDEFINED:
-			vmm_vcpu_irq_deassert(vcpu, CPU_UNDEF_INST_IRQ);
-			break;
-		default:
-			arm_unpredictable(regs, vcpu, inst, __func__);
-			return VMM_EFAIL;
-		};
-		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-		address = (U == 1) ? address : (address - 8);
-		address = (P == U) ? (address + 4) : address;
-		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address + 4, 
-						 &data, 4, FALSE))) {
-			return rc;
-		}
-		cpu_vcpu_cpsr_update(vcpu, regs, data, CPSR_ALLBITS_MASK);
-		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
-						 &data, 4, FALSE))) {
-			return rc;
-		}
-		regs->pc = data;
-		if (W == 1) {
-			address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-			address = (U == 1) ? (address + 8) : (address - 8);
-			cpu_vcpu_reg_write(vcpu, regs, Rn, address);
-		}
-	} else {
-		regs->pc += 4;
-	}
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_RFE);
-	return VMM_OK;
-}
-
-/** Emulate 'wfi' hypercall */
-static int arm_hypercall_wfi(u32 id, u32 subid, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	register u32 cond;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_WFI);
-	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
-	if (arm_condition_passed(cond, regs)) {
-		/* Wait for irq on this vcpu */
-		vmm_vcpu_irq_wait(vcpu);
-	}
-	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_WFI);
-	return VMM_OK;
-}
-
-/** Emulate 'srs' hypercall */
-static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	u32 data;
-	register int rc;
-	register u32 cond, P, U, W, mode;
-	register u32 cpsr, base, address;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_SRS);
-	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
-	if (arm_condition_passed(cond, regs)) {
-		P = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_P_START);
-		U = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_U_START);
-		W = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_W_START);
-		mode = ARM_INST_BITS(inst,
-			     ARM_HYPERCALL_SRS_MODE_END,
-			     ARM_HYPERCALL_SRS_MODE_START);
-		cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
-		if ((cpsr == CPSR_MODE_USER) ||
-		    (cpsr == CPSR_MODE_SYSTEM)) {
-			arm_unpredictable(regs, vcpu, inst, __func__);
-			return VMM_EFAIL;
-		}
-		base = cpu_vcpu_regmode_read(vcpu, regs, mode, 13);
-		address = (U == 1) ? base : (base - 8);
-		address = (P == U) ? (address + 4) : address;
-		data = regs->lr;
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
-						  &data, 4, FALSE))) {
-			return rc;
-		}
-		address += 4;
-		data = cpu_vcpu_spsr_retrieve(vcpu);
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
-						  &data, 4, FALSE))) {
-			return rc;
-		}
-		if (W == 1) {
-			address = (U == 1) ? (base + 8) : (base - 8);
-			cpu_vcpu_regmode_write(vcpu, regs, mode, 13, address);
-		}
-	}
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_SRS);
-	return VMM_OK;
-}
-
-/** Emulate 'ldm_ue' hypercall */
-static int arm_hypercall_ldm_ue(u32 id, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	u32 pos, data, ndata[16];
-	register int rc;
-	register u32 cond, Rn, U, P, W, reg_list;
-	register u32 cpsr, address, i, mask, length;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDM_UE);
-	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
-	Rn = ARM_INST_BITS(inst,
-			   ARM_HYPERCALL_LDM_UE_RN_END,
-			   ARM_HYPERCALL_LDM_UE_RN_START);
-	P = ((id - ARM_HYPERCALL_LDM_UE_ID0) & 0x4) >> 2;
-	U = ((id - ARM_HYPERCALL_LDM_UE_ID0) & 0x2) >> 1;
-	W = ((id - ARM_HYPERCALL_LDM_UE_ID0) & 0x1);
-	reg_list = ARM_INST_BITS(inst,
-				 ARM_HYPERCALL_LDM_UE_REGLIST_END,
-				 ARM_HYPERCALL_LDM_UE_REGLIST_START);
-	if (Rn == 15) {
-		arm_unpredictable(regs, vcpu, inst, __func__);
-		return VMM_EFAIL;
-	}
-	if (reg_list & 0x8000) { 
-		/* LDM (Exception Return) */
-		if ((W == 1) && (reg_list & (0x1 << Rn))) {
-			arm_unpredictable(regs, vcpu, inst, __func__);
-			return VMM_EFAIL;
-		}
-		if (arm_condition_passed(cond, regs)) {
-			switch (arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) {
-			case CPSR_MODE_FIQ:
-				vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_FIQ);
-				break;
-			case CPSR_MODE_IRQ:
-				vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_IRQ);
-				break;
-			case CPSR_MODE_SUPERVISOR:
-				vmm_vcpu_irq_deassert(vcpu, CPU_SOFT_IRQ);
-				break;
-			case CPSR_MODE_ABORT:
-				vmm_vcpu_irq_deassert(vcpu, CPU_PREFETCH_ABORT_IRQ);
-				vmm_vcpu_irq_deassert(vcpu, CPU_DATA_ABORT_IRQ);
-				break;
-			case CPSR_MODE_UNDEFINED:
-				vmm_vcpu_irq_deassert(vcpu, CPU_UNDEF_INST_IRQ);
-				break;
-			default:
-				arm_unpredictable(regs, vcpu, inst, __func__);
-				return VMM_EFAIL;
-			};
-			mask = 0x1;
-			length = 4;
-			for (i = 0; i < 15; i++) {
-				if (reg_list & mask) {
-					length += 4;
-				}
-				mask = mask << 1;
-			}
-			address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-			address = (U == 1) ? address : address - length;
-			address = (P == U) ? (address + 4) : address;
-			if (((address + length - 4) & ~TTBL_MIN_PAGE_MASK) !=
-				(address & ~TTBL_MIN_PAGE_MASK)) {
-				pos = TTBL_MIN_PAGE_SIZE -
-						(address & TTBL_MIN_PAGE_MASK);
-				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
-					address, &ndata, pos, FALSE))) {
-					return rc;
-				}
-				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
-					address + pos, &ndata[pos >> 2], 
-					length - pos, FALSE))) {
-					return rc;
-				}
-			} else {
-				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
-					address, &ndata, length, FALSE))) {
-					return rc;
-				}
-			}
-			address = address + length - 4;
-			mask = 0x1;
-			pos = 0;
-			for (i = 0; i < 15; i++) {
-				if (reg_list & mask) {
-					cpu_vcpu_reg_write(vcpu, regs, 
-							   i, ndata[pos]);
-					pos++;
-				}
-				mask = mask << 1;
-			}
-			data = ndata[pos];
-			if ((W == 1) && !(reg_list & (0x1 << Rn))) {
-				address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-				address = (U == 1) ? address + length : 
-							address - length;
-				cpu_vcpu_reg_write(vcpu, regs, Rn, address);
-			}
-			cpsr = cpu_vcpu_spsr_retrieve(vcpu);
-			cpu_vcpu_cpsr_update(vcpu, regs, cpsr, CPSR_ALLBITS_MASK);
-			regs->pc = data;
-		} else {
-			regs->pc += 4;
-		}
-	} else {
-		/* LDM (User Registers) */
-		if ((W == 1) || !reg_list) {
-			arm_unpredictable(regs, vcpu, inst, __func__);
-			return VMM_EFAIL;
-		}
-		if (arm_condition_passed(cond, regs)) {
-			cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
-			if ((cpsr == CPSR_MODE_USER) ||
-			    (cpsr == CPSR_MODE_SYSTEM)) {
-				arm_unpredictable(regs, vcpu, inst, __func__);
-				return VMM_EFAIL;
-			}
-			mask = 0x1;
-			length = 0;
-			for (i = 0; i < 15; i++) {
-				if (reg_list & mask) {
-					length += 4;
-				}
-				mask = mask << 1;
-			}
-			address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-			address = (U == 1) ? address : address - length;
-			address = (P == U) ? (address + 4) : address;
-			if (((address + length - 4) & ~TTBL_MIN_PAGE_MASK) !=
-				(address & ~TTBL_MIN_PAGE_MASK)) {
-				pos = TTBL_MIN_PAGE_SIZE -
-						(address & TTBL_MIN_PAGE_MASK);
-				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
-					address, &ndata, pos, FALSE))) {
-					return rc;
-				}
-				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
-					address + pos, &ndata[pos >> 2], 
-					length - pos, FALSE))) {
-					return rc;
-				}
-			} else {
-				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, 
-					address, &ndata, length, FALSE))) {
-					return rc;
-				}
-			}
-			mask = 0x1;
-			pos = 0;
-			for (i = 0; i < 15; i++) {
-				if (reg_list & mask) {
-					cpu_vcpu_regmode_write(vcpu, regs, 
-								CPSR_MODE_USER,
-								i, ndata[pos]);
-					pos++;
-				}
-				mask = mask << 1;
-			}
-		}
-		regs->pc += 4;
-	}
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDM_UE);
-	return VMM_OK;
-}
-
-/** Emulate 'stm_u' hypercall */
-static int arm_hypercall_stm_u(u32 id, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	u32 pos, ndata[16];
-	register int rc;
-	register u32 cond, Rn, P, U, reg_list;
-	register u32 i, cpsr, mask, length, address;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STM_U);
-	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
-	Rn = ARM_INST_BITS(inst,
-			   ARM_HYPERCALL_STM_U_RN_END,
-			   ARM_HYPERCALL_STM_U_RN_START);
-	reg_list = ARM_INST_BITS(inst,
-				 ARM_HYPERCALL_STM_U_REGLIST_END,
-				 ARM_HYPERCALL_STM_U_REGLIST_START);
-	if ((Rn == 15) || !reg_list) {
-		arm_unpredictable(regs, vcpu, inst, __func__);
-		return VMM_EFAIL;
-	}
-	if (arm_condition_passed(cond, regs)) {
-		P = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x2) >> 1;
-		U = ((id - ARM_HYPERCALL_STM_U_ID0) & 0x1);
-		cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
-		if ((cpsr == CPSR_MODE_USER) ||
-		    (cpsr == CPSR_MODE_SYSTEM)) {
-			arm_unpredictable(regs, vcpu, inst, __func__);
-			return VMM_EFAIL;
-		}
-		mask = 0x1;
-		length = 0;
-		for (i = 0; i < 16; i++) {
-			if (reg_list & mask) {
-				length += 4;
-			}
-			mask = mask << 1;
-		}
-		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
-		address = (U == 1) ? address : address - length;
-		address = (P == U) ? address + 4 : address;
-		mask = 0x1;
-		pos = 0;
-		for (i = 0; i < 16; i++) {
-			if (reg_list & mask) {
-				ndata[pos] = cpu_vcpu_regmode_read(vcpu, regs, 
-							CPSR_MODE_USER, i);
-				pos++;
-			}
-			mask = mask << 1;
-		}
-		if (((address + length - 4) & ~TTBL_MIN_PAGE_MASK) !=
-					(address & ~TTBL_MIN_PAGE_MASK)) {
-			pos = TTBL_MIN_PAGE_SIZE -
-					(address & TTBL_MIN_PAGE_MASK);
-			if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
-				address, &ndata, pos, FALSE))) {
-				return rc;
-			}
-			if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
-				address + pos, &ndata[pos >> 2], 
-				length - pos, FALSE))) {
-				return rc;
-			}
-		} else {
-			if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, 
-				address, &ndata, length, FALSE))) {
-				return rc;
-			}
-		}
-	}
-	regs->pc += 4;
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STM_U);
-	return VMM_OK;
-}
-
-/** Emulate 'subs_rel' hypercall */
-static int arm_hypercall_subs_rel(u32 id, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	u32 shift_t;
-	register u32 cond, opcode, Rn, imm12, imm5, type, Rm;
-	register bool register_form, shift_n;
-	register u32 operand2, result, spsr;
-	arm_funcstat_start(vcpu, ARM_FUNCSTAT_SUBS_REL);
-	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
-	opcode = ARM_INST_BITS(inst,
-				ARM_HYPERCALL_SUBS_REL_OPCODE_END,
-				ARM_HYPERCALL_SUBS_REL_OPCODE_START);
-	Rn = ARM_INST_BITS(inst,
-			   ARM_HYPERCALL_SUBS_REL_RN_END,
-			   ARM_HYPERCALL_SUBS_REL_RN_START);
-	register_form = (id == ARM_HYPERCALL_SUBS_REL_ID0) ? TRUE : FALSE;
-	if (arm_condition_passed(cond, regs)) {
-		switch (arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) {
-		case CPSR_MODE_FIQ:
-			vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_FIQ);
-			break;
-		case CPSR_MODE_IRQ:
-			vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_IRQ);
-			break;
-		case CPSR_MODE_SUPERVISOR:
-			vmm_vcpu_irq_deassert(vcpu, CPU_SOFT_IRQ);
-			break;
-		case CPSR_MODE_ABORT:
-			vmm_vcpu_irq_deassert(vcpu, CPU_PREFETCH_ABORT_IRQ);
-			vmm_vcpu_irq_deassert(vcpu, CPU_DATA_ABORT_IRQ);
-			break;
-		case CPSR_MODE_UNDEFINED:
-			vmm_vcpu_irq_deassert(vcpu, CPU_UNDEF_INST_IRQ);
-			break;
-		default:
-			arm_unpredictable(regs, vcpu, inst, __func__);
-			return VMM_EFAIL;
-		};
-		if (register_form) {
-			imm5 = ARM_INST_BITS(inst,
-					     ARM_HYPERCALL_SUBS_REL_IMM5_END,
-					     ARM_HYPERCALL_SUBS_REL_IMM5_START);
-			type = ARM_INST_BITS(inst,
-					     ARM_HYPERCALL_SUBS_REL_TYPE_END,
-					     ARM_HYPERCALL_SUBS_REL_TYPE_START);
-			Rm = ARM_INST_BITS(inst,
-					   ARM_HYPERCALL_SUBS_REL_RM_END,
-					   ARM_HYPERCALL_SUBS_REL_RM_START);
-			shift_n = arm_decode_imm_shift(type, imm5, &shift_t);
-			operand2 = cpu_vcpu_reg_read(vcpu, regs, Rm);
-			operand2 = arm_shift(operand2, shift_t, shift_n, 
-					 (regs->cpsr & CPSR_CARRY_MASK) >>
-					 CPSR_CARRY_SHIFT);
-		} else {
-			imm12 = ARM_INST_BITS(inst,
-			      ARM_HYPERCALL_SUBS_REL_IMM12_END,
-			      ARM_HYPERCALL_SUBS_REL_IMM12_START);
-			operand2 = arm_expand_imm(regs, imm12);
-		}
-		result = cpu_vcpu_reg_read(vcpu, regs, Rn);
-		switch (opcode) {
-		case 0x0: /* AND */
-			result = result & operand2;
-			break;
-		case 0x1: /* EOR */
-			result = result ^ operand2;
-			break;
-		case 0x2: /* SUB */
-			result = arm_add_with_carry(result, ~operand2, 
-								1, NULL, NULL);
-			break;
-		case 0x3: /* RSB */
-			result = arm_add_with_carry(~result, operand2, 
-								1, NULL, NULL);
-			break;
-		case 0x4: /* ADD */
-			result = arm_add_with_carry(result, operand2, 
-								0, NULL, NULL);
-			break;
-		case 0x5: /* ADC */
-			if (regs->cpsr & CPSR_CARRY_MASK) {
-				result = arm_add_with_carry(result, operand2, 
-								1, NULL, NULL);
-			} else {
-				result = arm_add_with_carry(result, operand2, 
-								0, NULL, NULL);
-			}
-			break;
-		case 0x6: /* SBC */
-			if (regs->cpsr & CPSR_CARRY_MASK) {
-				result = arm_add_with_carry(result, ~operand2, 
-								1, NULL, NULL);
-			} else {
-				result = arm_add_with_carry(result, ~operand2, 
-								0, NULL, NULL);
-			}
-			break;
-		case 0x7: /* RSC */
-			if (regs->cpsr & CPSR_CARRY_MASK) {
-				result = arm_add_with_carry(~result, operand2, 
-								1, NULL, NULL);
-			} else {
-				result = arm_add_with_carry(~result, operand2, 
-								0, NULL, NULL);
-			}
-			break;
-		case 0xC: /* ORR*/
-			result = result | operand2;
-			break;
-		case 0xD: /* MOV */
-			result = operand2;
-			break;
-		case 0xE: /* BIC */
-			result = result & ~operand2;
-			break;
-		case 0xF: /* MVN */
-			result = ~operand2;
-			break;
-		default:
-			arm_unpredictable(regs, vcpu, inst, __func__);
-			return VMM_EFAIL;
-			break;
-		};
-		spsr = cpu_vcpu_spsr_retrieve(vcpu);
-		cpu_vcpu_cpsr_update(vcpu, regs, spsr, CPSR_ALLBITS_MASK);
-		regs->pc = result;
-	} else {
-		regs->pc += 4;
-	}
-	arm_funcstat_end(vcpu, ARM_FUNCSTAT_SUBS_REL);
-	return VMM_OK;
-}
-
-static int arm_hypercall_subid(u32 id, u32 subid, u32 inst, arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	return VMM_EFAIL;
-}
-
-static int arm_hypercall_cps_and_co(u32 id, u32 inst, arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	u32 subid = ARM_INST_DECODE(inst,
-			ARM_INST_HYPERCALL_SUBID_MASK,
-			ARM_INST_HYPERCALL_SUBID_SHIFT);
-
-	static int (* const func[]) (u32 id, u32 subid, u32 inst, arch_regs_t * regs, struct vmm_vcpu * vcpu) = 
-	{
-		arm_hypercall_cps,	/* ARM_HYPERCALL_CPS_SUBID */
-		arm_hypercall_mrs,	/* ARM_HYPERCALL_MRS_SUBID */
-		arm_hypercall_msr_i,	/* ARM_HYPERCALL_MSR_I_SUBID */
-		arm_hypercall_msr_r,	/* ARM_HYPERCALL_MSR_R_SUBID */
-		arm_hypercall_rfe,	/* ARM_HYPERCALL_RFE_SUBID */
-		arm_hypercall_srs,	/* ARM_HYPERCALL_SRS_SUBID */
-		arm_hypercall_wfi,	/* ARM_HYPERCALL_WFI_SUBID */
-		arm_hypercall_subid	/* not used yet */
-	};
-
-	return func[subid] (id, subid, inst, regs, vcpu);
-}
-
-static int arm_hypercall_id(u32 id, u32 inst, arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	return VMM_EFAIL;
-}
-
-/** Emulate hypercall instruction */
-static int arm_instgrp_hypercall(u32 inst, 
-				arch_regs_t * regs, struct vmm_vcpu * vcpu)
-{
-	u32 id = ARM_INST_DECODE(inst,
-			     ARM_INST_HYPERCALL_ID_MASK,
-			     ARM_INST_HYPERCALL_ID_SHIFT);
-
-	static int (* const func[]) (u32 id, u32 inst, arch_regs_t * regs, struct vmm_vcpu * vcpu) = 
-	{
-		arm_hypercall_cps_and_co,	/* ARM_HYPERCALL_CPS_ID */
-		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID0 */
-		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID1 */
-		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID2 */
-		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID3 */
-		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID4 */
-		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID5 */
-		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID6 */
-		arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID7 */
-		arm_hypercall_stm_u,		/* ARM_HYPERCALL_STM_U_ID0 */
-		arm_hypercall_stm_u,		/* ARM_HYPERCALL_STM_U_ID1 */
-		arm_hypercall_stm_u,		/* ARM_HYPERCALL_STM_U_ID2 */
-		arm_hypercall_stm_u,		/* ARM_HYPERCALL_STM_U_ID3 */
-		arm_hypercall_subs_rel,		/* ARM_HYPERCALL_SUBS_REL_ID0 */
-		arm_hypercall_subs_rel,		/* ARM_HYPERCALL_SUBS_REL_ID1 */
-		arm_hypercall_id		/* not used yet */
-	};
-
-	return func[id] (id, inst, regs, vcpu);
 }
 
 /** Emulate 'ldrh (immediate)' instruction */
@@ -1000,7 +247,7 @@ static int arm_inst_ldrh_i(u32 inst,
 					(address - imm32);
 		address = (index) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 2, FALSE))) {
 			return rc;
 		}
@@ -1009,7 +256,7 @@ static int arm_inst_ldrh_i(u32 inst,
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRH_I);
 	return VMM_OK;
 }
@@ -1043,16 +290,16 @@ static int arm_inst_ldrh_l(u32 inst,
 		return VMM_EFAIL;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		address = arm_align(regs->pc, 4);
+		address = arm_align(arm_pc(regs), 4);
 		address = (add) ? (address + imm32) : (address - imm32);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 2, FALSE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRH_L);
 	return VMM_OK;
 }
@@ -1106,13 +353,13 @@ static int arm_inst_ldrh_r(u32 inst,
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
+				  (arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
 		address = (index) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 2, FALSE))) {
 			return rc;
 		}
@@ -1121,7 +368,7 @@ static int arm_inst_ldrh_r(u32 inst,
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRH_R);
 	return VMM_OK;
 }
@@ -1178,7 +425,7 @@ static int arm_inst_ldrht(u32 inst,
 		offset_addr = (add) ? (address + offset) : (address - offset);
 		address = (postindex) ? address : offset_addr;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 2, TRUE))) {
 			return rc;
 		}
@@ -1187,7 +434,7 @@ static int arm_inst_ldrht(u32 inst,
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRHT);
 	return VMM_OK;
 }
@@ -1196,9 +443,9 @@ static int arm_inst_ldrht(u32 inst,
 static int arm_inst_ldrex(u32 inst, 
 		arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
+	int rc;
 	u32 cond, Rn, Rt;
-	u32 address; 
-	u32 data;
+	u32 address, data; 
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_LDREX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
@@ -1213,38 +460,16 @@ static int arm_inst_ldrex(u32 inst,
 	}
 
 	if (arm_condition_passed(cond, regs)) {
-		register int ecode;
-		bool force_unpriv;
-		struct cpu_page pg;
-		u32 vind;
-
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 
-		force_unpriv = FALSE;
-		if ((address & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) ==
-				arm_priv(vcpu)->cp15.ovect_base) {
-			if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
-				force_unpriv = TRUE;
-			}
-			if ((ecode = cpu_vcpu_cp15_find_page(vcpu, address,
-							CP15_ACCESS_READ,
-							force_unpriv, &pg))) {
-				cpu_vcpu_cp15_assert_fault(vcpu, regs, address,
-						(ecode >> 4), (ecode & 0xF),
-						0, 1);
-				return VMM_EFAIL;
-			}
-			vind = (address & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1))/4;
-			address = (u32)(&(arm_guest_priv(vcpu->guest)->ovect[vind]));
-
-			ldrex(address, data);
-			cpu_vcpu_reg_write(vcpu, regs, Rt, data);
-		} else {
-			/* We do not allow any faulting ldrex on non-ovect region */
-			return VMM_EFAIL;
+		if ((rc = cpu_vcpu_mem_readex(vcpu, regs, address, 
+						&data, sizeof(data), FALSE))) {
+			return rc;
 		}
+
+		cpu_vcpu_reg_write(vcpu, regs, Rt, data);
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDREX);
 	return VMM_OK;
 }
@@ -1253,9 +478,9 @@ static int arm_inst_ldrex(u32 inst,
 static int arm_inst_strex(u32 inst, 
 				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
+	int rc;
 	u32 cond, Rn, Rt, Rd;
-	u32 address; 
-	u32 data;
+	u32 address, data;
 	arm_funcstat_start(vcpu, ARM_FUNCSTAT_STREX);
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	Rn = ARM_INST_BITS(inst,
@@ -1278,38 +503,17 @@ static int arm_inst_strex(u32 inst,
 		return VMM_EFAIL;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		register int ecode;
-		bool force_unpriv;
-		struct cpu_page pg;
-		u32 vind;
-
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt);
 
-		force_unpriv = FALSE;
-		if ((address & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) ==
-				arm_priv(vcpu)->cp15.ovect_base) {
-			if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
-				force_unpriv = TRUE;
-			}
-			if ((ecode = cpu_vcpu_cp15_find_page(vcpu, address,
-							CP15_ACCESS_WRITE,
-							force_unpriv, &pg))) {
-				cpu_vcpu_cp15_assert_fault(vcpu, regs, address,
-						(ecode >> 4), (ecode & 0xF),
-						0, 1);
-				return VMM_EFAIL;
-			}
-			vind = (address & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1))/4;
-			address = (u32)(&(arm_guest_priv(vcpu->guest)->ovect[vind]));
-			strex(address, data, ecode);
-			cpu_vcpu_reg_write(vcpu, regs, Rd, ecode);
-		} else {
-			/* We do not allow any faulting strex on non-ovect region */
-			return VMM_EFAIL;
+		if ((rc = cpu_vcpu_mem_writeex(vcpu, regs, address, 
+						&data, sizeof(data), FALSE))) {
+			return rc;
 		}
+
+		cpu_vcpu_reg_write(vcpu, regs, Rd, (!rc) ? 0 : 1);
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STREX);
 	return VMM_OK;
 }
@@ -1362,7 +566,7 @@ static int arm_inst_strh_i(u32 inst,
 		offset_addr = (add) ? (address + imm32) : (address - imm32);
 		address = (index) ? offset_addr : address;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt) & 0xFFFF;
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 2, FALSE))) {
 			return rc;
 		}
@@ -1370,7 +574,7 @@ static int arm_inst_strh_i(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRH_I);
 	return VMM_OK;
 }
@@ -1424,12 +628,12 @@ static int arm_inst_strh_r(u32 inst,
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
+				  (arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : (address - offset);
 		address = (index) ? offset_addr : address;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt) & 0xFFFF;
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 2, FALSE))) {
 			return rc;
 		}
@@ -1437,7 +641,7 @@ static int arm_inst_strh_r(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRH_R);
 	return VMM_OK;
 }
@@ -1494,7 +698,7 @@ static int arm_inst_strht(u32 inst,
 		offset_addr = (add) ? (address + offset) : (address - offset);
 		address = (postindex) ? address : offset_addr;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt) & 0xFFFF;
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 2, TRUE))) {
 			return rc;
 		}
@@ -1502,7 +706,7 @@ static int arm_inst_strht(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRHT);
 	return VMM_OK;
 }
@@ -1556,7 +760,7 @@ static int arm_inst_ldrsh_i(u32 inst,
 					(address - imm32);
 		address = (index) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 2, FALSE))) {
 			return rc;
 		}
@@ -1566,7 +770,7 @@ static int arm_inst_ldrsh_i(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, 
 					arm_sign_extend(data, 16, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSH_I);
 	return VMM_OK;
 }
@@ -1600,17 +804,17 @@ static int arm_inst_ldrsh_l(u32 inst,
 		return VMM_EFAIL;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		address = arm_align(regs->pc, 4);
+		address = arm_align(arm_pc(regs), 4);
 		address = (add) ? (address + imm32) : (address - imm32);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 2, FALSE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, 
 					arm_sign_extend(data, 16, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSH_L);
 	return VMM_OK;
 }
@@ -1664,13 +868,13 @@ static int arm_inst_ldrsh_r(u32 inst,
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
+				  (arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
 		address = (index) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 2, FALSE))) {
 			return rc;
 		}
@@ -1680,7 +884,7 @@ static int arm_inst_ldrsh_r(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, 
 					arm_sign_extend(data, 16, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSH_R);
 	return VMM_OK;
 }
@@ -1737,7 +941,7 @@ static int arm_inst_ldrsht(u32 inst,
 		offset_addr = (add) ? (address + offset) : (address - offset);
 		address = (postindex) ? address : offset_addr;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 2, TRUE))) {
 			return rc;
 		}
@@ -1747,7 +951,7 @@ static int arm_inst_ldrsht(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, 
 					arm_sign_extend(data, 16, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSHT);
 	return VMM_OK;
 }
@@ -1801,7 +1005,7 @@ static int arm_inst_ldrsb_i(u32 inst,
 					(address - imm32);
 		address = (index) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 1, FALSE))) {
 			return rc;
 		}
@@ -1811,7 +1015,7 @@ static int arm_inst_ldrsb_i(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, 
 					arm_sign_extend(data, 8, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSB_I);
 	return VMM_OK;
 }
@@ -1845,17 +1049,17 @@ static int arm_inst_ldrsb_l(u32 inst,
 		return VMM_EFAIL;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		address = arm_align(regs->pc, 4);
+		address = arm_align(arm_pc(regs), 4);
 		address = (add) ? (address + imm32) : (address - imm32);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 1, FALSE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, 
 					arm_sign_extend(data, 8, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSB_L);
 	return VMM_OK;
 }
@@ -1909,13 +1113,13 @@ static int arm_inst_ldrsb_r(u32 inst,
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
+				  (arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
 		address = (index) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 1, FALSE))) {
 			return rc;
 		}
@@ -1925,7 +1129,7 @@ static int arm_inst_ldrsb_r(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, 
 					arm_sign_extend(data, 8, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSB_R);
 	return VMM_OK;
 }
@@ -1982,7 +1186,7 @@ static int arm_inst_ldrsbt(u32 inst,
 		offset_addr = (add) ? (address + offset) : (address - offset);
 		address = (postindex) ? address : offset_addr;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 1, TRUE))) {
 			return rc;
 		}
@@ -1992,7 +1196,7 @@ static int arm_inst_ldrsbt(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRSBT);
 	return VMM_OK;
 }
@@ -2054,13 +1258,13 @@ static int arm_inst_ldrd_i(u32 inst,
 					(address - imm32);
 		address = (index) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 4, FALSE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, data);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address + 4, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address + 4, 
 						 &data, 4, FALSE))) {
 			return rc;
 		}
@@ -2069,7 +1273,7 @@ static int arm_inst_ldrd_i(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRD_I);
 	return VMM_OK;
 }
@@ -2107,22 +1311,22 @@ static int arm_inst_ldrd_l(u32 inst,
 		return VMM_EFAIL;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		address = arm_align(regs->pc, 4);
+		address = arm_align(arm_pc(regs), 4);
 		address = (add) ? (address + imm32) : (address - imm32);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 4, FALSE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, data);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address + 4, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address + 4, 
 						 &data, 4, FALSE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt + 1, data);
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRD_L);
 	return VMM_OK;
 }
@@ -2180,13 +1384,13 @@ static int arm_inst_ldrd_r(u32 inst,
 		offset_addr = (add) ? (address + offset) : (address - offset);
 		address = (index) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 4, FALSE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, data);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address + 4, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address + 4, 
 						 &data, 4, FALSE))) {
 			return rc;
 		}
@@ -2195,7 +1399,7 @@ static int arm_inst_ldrd_r(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRD_R);
 	return VMM_OK;
 }
@@ -2257,12 +1461,12 @@ static int arm_inst_strd_i(u32 inst,
 					(address - imm32);
 		address = (index) ? offset_addr : address;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt);
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 4, FALSE))) {
 			return rc;
 		}
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt + 1);
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address + 4, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address + 4, 
 						  &data, 4, FALSE))) {
 			return rc;
 		}
@@ -2270,7 +1474,7 @@ static int arm_inst_strd_i(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRD_I);
 	return VMM_OK;
 }
@@ -2329,12 +1533,12 @@ static int arm_inst_strd_r(u32 inst,
 					(address - offset);
 		address = (index) ? offset_addr : address;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt);
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 4, FALSE))) {
 			return rc;
 		}
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt + 1);
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address + 4, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address + 4, 
 						  &data, 4, FALSE))) {
 			return rc;
 		}
@@ -2342,7 +1546,7 @@ static int arm_inst_strd_r(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRD_R);
 	return VMM_OK;
 }
@@ -2371,12 +1575,12 @@ static int arm_inst_movw_i(u32 inst,
 	result = (imm4 << 12) | imm12;
 	if (arm_condition_passed(cond, regs)) {
 		if (Rd == 15) {
-			regs->pc = result;
+			arm_pc(regs) = result;
 		} else {
 			cpu_vcpu_reg_write(vcpu, regs, Rd, result);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MOVW_I);
 	return VMM_OK;
 }
@@ -2562,7 +1766,7 @@ static int arm_inst_str_i(u32 inst,
 		offset_addr = (U == 1) ? (address + imm32) : (address - imm32);
 		address = (P == 1) ? offset_addr : address;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt);
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 4, FALSE))) {
 			return rc;
 		}
@@ -2570,7 +1774,7 @@ static int arm_inst_str_i(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STR_I);
 	return VMM_OK;
 }
@@ -2629,12 +1833,12 @@ static int arm_inst_str_r(u32 inst,
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
+				  (arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : (address - offset);
 		address = (index) ? offset_addr : address;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt);
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 4, FALSE))) {
 			return rc;
 		}
@@ -2642,7 +1846,7 @@ static int arm_inst_str_r(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STR_R);
 	return VMM_OK;
 }
@@ -2704,14 +1908,14 @@ static int arm_inst_strt(u32 inst,
 			 arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				  shift_t, 
 				  shift_n, 
-				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1)
+				  (arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1)
 				  : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
 		address = (postindex) ? address : offset_addr;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt);
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 4, TRUE))) {
 			return rc;
 		}
@@ -2719,7 +1923,7 @@ static int arm_inst_strt(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRT);
 	return VMM_OK;
 }
@@ -2773,7 +1977,7 @@ static int arm_inst_strb_i(u32 inst,
 		offset_addr = (add) ? (address + imm32) : (address - imm32);
 		address = (index) ? offset_addr : address;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt) & 0xFF;
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 1, FALSE))) {
 			return rc;
 		}
@@ -2781,7 +1985,7 @@ static int arm_inst_strb_i(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRB_I);
 	return VMM_OK;
 }
@@ -2840,13 +2044,13 @@ static int arm_inst_strb_r(u32 inst,
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr & CPSR_CARRY_SHIFT) & 0x1);
+				  (arm_cpsr(regs) & CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
 		address = (index) ? offset_addr : address;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt) & 0xFF;
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 1, FALSE))) {
 			return rc;
 		}
@@ -2854,7 +2058,7 @@ static int arm_inst_strb_r(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRB_R);
 	return VMM_OK;
 }
@@ -2916,14 +2120,14 @@ static int arm_inst_strbt(u32 inst,
 			 arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				  shift_t, 
 				  shift_n, 
-				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1)
+				  (arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1)
 				  : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
 		address = (postindex) ? address : offset_addr;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt) & 0xFF;
-		if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 1, TRUE))) {
 			return rc;
 		}
@@ -2931,7 +2135,7 @@ static int arm_inst_strbt(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STRBT);
 	return VMM_OK;
 }
@@ -2973,7 +2177,7 @@ static int arm_inst_ldr_i(u32 inst,
 					(address - imm32);
 		address = (P == 1) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 4, FALSE))) {
 			return rc;
 		}
@@ -2982,7 +2186,7 @@ static int arm_inst_ldr_i(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDR_I);
 	return VMM_OK;
 }
@@ -3009,16 +2213,16 @@ static int arm_inst_ldr_l(u32 inst,
 	imm32 = arm_zero_extend(imm12, 32);
 	add = (U == 1) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
-		address = arm_align(regs->pc, 4);
+		address = arm_align(arm_pc(regs), 4);
 		address = (add) ? (address + imm32) : (address - imm32);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 4, FALSE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, data);
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDR_L);
 	return VMM_OK;
 }
@@ -3077,13 +2281,13 @@ static int arm_inst_ldr_r(u32 inst,
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
+				  (arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
 		address = (index) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 4, FALSE))) {
 			return rc;
 		}
@@ -3092,7 +2296,7 @@ static int arm_inst_ldr_r(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDR_R);
 	return VMM_OK;
 }
@@ -3154,7 +2358,7 @@ static int arm_inst_ldrt(u32 inst,
 			 arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				  shift_t, 
 				  shift_n, 
-				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1)
+				  (arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1)
 				  : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
@@ -3164,13 +2368,13 @@ static int arm_inst_ldrt(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 4, TRUE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRT);
 	return VMM_OK;
 }
@@ -3225,7 +2429,7 @@ static int arm_inst_ldrb_i(u32 inst,
 					(address - imm32);
 		address = (index) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 1, FALSE))) {
 			return rc;
 		}
@@ -3234,7 +2438,7 @@ static int arm_inst_ldrb_i(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRB_I);
 	return VMM_OK;
 }
@@ -3265,16 +2469,16 @@ static int arm_inst_ldrb_l(u32 inst,
 		return VMM_EFAIL;
 	}
 	if (arm_condition_passed(cond, regs)) {
-		address = arm_align(regs->pc, 4);
+		address = arm_align(arm_pc(regs), 4);
 		address = (add) ? (address + imm32) : (address - imm32);
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 1, FALSE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRB_L);
 	return VMM_OK;
 }
@@ -3333,13 +2537,13 @@ static int arm_inst_ldrb_r(u32 inst,
 		offset = arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				   shift_t, 
 				   shift_n, 
-				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1);
+				  (arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1);
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
 		address = (index) ? offset_addr : address;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 1, FALSE))) {
 			return rc;
 		}
@@ -3348,7 +2552,7 @@ static int arm_inst_ldrb_r(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRB_R);
 	return VMM_OK;
 }
@@ -3410,14 +2614,14 @@ static int arm_inst_ldrbt(u32 inst,
 			 arm_shift(cpu_vcpu_reg_read(vcpu, regs, Rm), 
 				  shift_t, 
 				  shift_n, 
-				  (regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1)
+				  (arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1)
 				  : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
 		address = (postindex) ? address : offset_addr;
 		data = 0x0;
-		if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs, address, 
+		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 1, TRUE))) {
 			return rc;
 		}
@@ -3426,7 +2630,7 @@ static int arm_inst_ldrbt(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDRBT);
 	return VMM_OK;
 }
@@ -3625,7 +2829,7 @@ static int arm_inst_ldm(u32 inst,
 		/* parse through reg_list */
 		for (i = 0; i < 15; i++) {
 			if (reg_list & mask) {
-				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
+				if ((rc = cpu_vcpu_mem_read(vcpu, regs,
 						address, &data, 4, FALSE))) {
 					return rc;
 				}
@@ -3636,8 +2840,8 @@ static int arm_inst_ldm(u32 inst,
 		}
 		if (reg_list >> 15) {
 			/* TODO: check the address bits to select instruction set */
-			if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
-						address, &(regs->pc), 4, FALSE))) {
+			if ((rc = cpu_vcpu_mem_read(vcpu, regs,
+						address, &(arm_pc(regs)), 4, FALSE))) {
 				return rc;
 			}
 		}
@@ -3653,7 +2857,7 @@ static int arm_inst_ldm(u32 inst,
 		}
 	}
 
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDM);
 
 	return VMM_OK;
@@ -3718,7 +2922,7 @@ static int arm_inst_stm(u32 inst,
 		for (i = 0; i < 15; i++) {
 			if (reg_list & mask) {
 				data = cpu_vcpu_reg_read(vcpu, regs, i);
-				if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs,
+				if ((rc = cpu_vcpu_mem_write(vcpu, regs,
 						address, &data, 4, FALSE))) {
 					return rc;
 				}
@@ -3727,8 +2931,8 @@ static int arm_inst_stm(u32 inst,
 			mask = mask << 1;
 		}
 		if (reg_list >> 15) {
-			data = regs->pc + 8;
-			if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs, address, &data, 4, FALSE))) {
+			data = arm_pc(regs) + 8;
+			if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, &data, 4, FALSE))) {
 				return rc;
 			}
 		}
@@ -3743,7 +2947,7 @@ static int arm_inst_stm(u32 inst,
 		}
 	}
 
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STM);
 
 	return VMM_OK;
@@ -3848,7 +3052,7 @@ static int arm_inst_stcx(u32 inst,
 							CRd, uopt, imm8)) {
 				data = cp->ldcstc_read(vcpu, regs, i, D, 
 								CRd, uopt, imm8);
-				if ((rc = cpu_vcpu_cp15_mem_write(vcpu, regs,
+				if ((rc = cpu_vcpu_mem_write(vcpu, regs,
 						address, &data, 4, FALSE))) {
 					return rc;
 				}
@@ -3859,7 +3063,7 @@ static int arm_inst_stcx(u32 inst,
 			}
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_STCX);
 	return VMM_OK;
 }
@@ -3917,7 +3121,7 @@ static int arm_inst_ldcx_i(u32 inst,
 			while (!cp->ldcstc_done(vcpu, regs, i, D, 
 							CRd, uopt, imm8)) {
 				data = 0x0;
-				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
+				if ((rc = cpu_vcpu_mem_read(vcpu, regs,
 						address, &data, 4, FALSE))) {
 					return rc;
 				}
@@ -3930,7 +3134,7 @@ static int arm_inst_ldcx_i(u32 inst,
 			}
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDCX_I);
 	return VMM_OK;
 }
@@ -3978,14 +3182,14 @@ static int arm_inst_ldcx_l(u32 inst,
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 			return VMM_OK;
 		} else {
-			offset_addr = (add) ? (arm_align(regs->pc, 4) + imm32) :
-					      (arm_align(regs->pc, 4) - imm32);
-			address = (index) ? offset_addr : arm_align(regs->pc, 4);
+			offset_addr = (add) ? (arm_align(arm_pc(regs), 4) + imm32) :
+					      (arm_align(arm_pc(regs), 4) - imm32);
+			address = (index) ? offset_addr : arm_align(arm_pc(regs), 4);
 			i = 0;
 			while (!cp->ldcstc_done(vcpu, regs, i, D, 
 							CRd, uopt, imm8)) {
 				data = 0x0;
-				if ((rc = cpu_vcpu_cp15_mem_read(vcpu, regs,
+				if ((rc = cpu_vcpu_mem_read(vcpu, regs,
 						address, &data, 4, FALSE))) {
 					return rc;
 				}
@@ -3995,7 +3199,7 @@ static int arm_inst_ldcx_l(u32 inst,
 			}
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_LDCX_L);
 	return VMM_OK;
 }
@@ -4041,7 +3245,7 @@ static int arm_inst_mcrrx(u32 inst,
 			return VMM_OK;
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MCRRX);
 	return VMM_OK;
 }
@@ -4089,7 +3293,7 @@ static int arm_inst_mrrcx(u32 inst,
 		cpu_vcpu_reg_write(vcpu, regs, Rt, data);
 		cpu_vcpu_reg_write(vcpu, regs, Rt2, data2);
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MRRCX);
 	return VMM_OK;
 }
@@ -4126,7 +3330,7 @@ static int arm_inst_cdpx(u32 inst,
 			return VMM_OK;
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_CDPX);
 	return VMM_OK;
 }
@@ -4165,7 +3369,7 @@ static int arm_inst_mcrx(u32 inst,
 			return VMM_OK;
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MCRX);
 	return VMM_OK;
 }
@@ -4210,8 +3414,17 @@ static int arm_inst_mrcx(u32 inst,
 			cpu_vcpu_reg_write(vcpu, regs, Rt, data);
 		}
 	}
-	regs->pc += 4;
+	arm_pc(regs) += 4;
 	arm_funcstat_end(vcpu, ARM_FUNCSTAT_MRCX);
+	return VMM_OK;
+}
+
+/** Emulate 'svc' instruction */
+static int arm_inst_svc(u32 inst, 
+				arch_regs_t * regs, struct vmm_vcpu * vcpu)
+{
+	/* For now don't do anything for SVC instructions */
+	arm_pc(regs) += 4;
 	return VMM_OK;
 }
 
@@ -4319,16 +3532,15 @@ static int arm_instgrp_coproc(u32 inst,
 		return arm_inst_mrcx(inst, regs, vcpu);
 	} else if (is_op1_11xxxx) {
 		/* Supervisor Call SVC (previously SWI) */
-		return arm_instgrp_hypercall(inst, regs, vcpu);
+		return arm_inst_svc(inst, regs, vcpu);
 	}
 	arm_unpredictable(regs, vcpu, inst, __func__);
 	return VMM_EFAIL;
 }
 
-int cpu_vcpu_emulate_arm_inst(struct vmm_vcpu *vcpu, 
-				arch_regs_t * regs, bool is_hypercall)
+int emulate_arm_inst(struct vmm_vcpu *vcpu, arch_regs_t *regs, u32 inst)
 {
-	u32 inst, op1, op;
+	u32 op1, op;
 
 	/* Sanity check */
 	if (!vcpu) {
@@ -4336,15 +3548,6 @@ int cpu_vcpu_emulate_arm_inst(struct vmm_vcpu *vcpu,
 	}
 	if (!vcpu->is_normal) {
 		return VMM_EFAIL;
-	}
-
-	/* Fetch the faulting instruction from vcpu address-space */
-	inst = *((u32 *) regs->pc);
-
-	/* If we know that we are in a hypercall 
-	 * then skip unnecessary instruction decoding */
-	if (is_hypercall) {
-		return arm_instgrp_hypercall(inst, regs, vcpu);
 	}
 
 	op1 = ARM_INST_DECODE(inst,

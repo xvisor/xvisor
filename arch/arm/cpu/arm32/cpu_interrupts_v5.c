@@ -16,24 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_interrupts.c
+ * @file cpu_interrupts_v5.c
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @author Anup Patel (anup@brainfault.org)
  * @brief source code for handling cpu interrupts
  */
 
-#include <vmm_error.h>
-#include <vmm_stdio.h>
-#include <vmm_host_aspace.h>
-#include <vmm_host_irq.h>
-#include <vmm_vcpu_irq.h>
-#include <vmm_scheduler.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
-#include <cpu_vcpu_emulate_arm.h>
-#include <cpu_vcpu_emulate_thumb.h>
-#include <cpu_vcpu_cp15.h>
-#include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
 
 void arch_cpu_irq_enable(void)
