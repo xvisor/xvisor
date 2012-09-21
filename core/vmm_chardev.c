@@ -26,7 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_scheduler.h>
 #include <vmm_chardev.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 int vmm_chardev_doioctl(struct vmm_chardev *cdev,
 			int cmd, void *buf, u32 len)

@@ -21,11 +21,6 @@
  * @brief source file of uip daemon
  */
 
-#include "uip.h"
-#include "timer.h"
-#include "uip-fw.h"
-#include "uip-arp.h"
-#include "uip-netport.h"
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_types.h>
@@ -37,7 +32,13 @@
 #include <net/vmm_mbuf.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_netstack.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
+
+#include "uip.h"
+#include "timer.h"
+#include "uip-fw.h"
+#include "uip-arp.h"
+#include "uip-netport.h"
 
 #define MODULE_DESC			"uIP Network Daemon"
 #define MODULE_AUTHOR			"Sukanto Ghosh"

@@ -27,7 +27,7 @@
 #include <vmm_stdio.h>
 #include <vmm_chardev.h>
 #include <arch_timer.h>
-#include <libfdt.h>
+#include <libs/libfdt.h>
 #include <omap3/prcm.h>
 #include <omap3/sdrc.h>
 #include <omap3/intc.h>

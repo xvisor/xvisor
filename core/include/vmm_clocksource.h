@@ -24,8 +24,8 @@
 #define _VMM_CLOCKSOURCE_H__
 
 #include <vmm_types.h>
-#include <mathlib.h>
-#include <list.h>
+#include <libs/mathlib.h>
+#include <libs/list.h>
 
 struct vmm_clocksource;
 

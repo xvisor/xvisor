@@ -1,6 +1,6 @@
 #ifndef _LINUX_STRING_H
 #define _LINUX_STRING_H
 
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #endif /* _LINUX_STRING_H */

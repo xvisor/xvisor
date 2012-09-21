@@ -27,8 +27,8 @@
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
-#include <mathlib.h>
-#include <stringlib.h>
+#include <libs/mathlib.h>
+#include <libs/stringlib.h>
 #include <block/rbd.h>
 
 #define MODULE_DESC			"RAM Backed Block Driver"

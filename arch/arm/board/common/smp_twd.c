@@ -29,8 +29,8 @@
 #include <vmm_host_irq.h>
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 #include <gic.h>
 #include <smp_twd.h>
 

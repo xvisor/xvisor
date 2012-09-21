@@ -35,8 +35,8 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
-#include <stringlib.h>
 #include <fb/vmm_fb.h>
+#include <libs/stringlib.h>
 
 #define FB_CVT_CELLSIZE               8
 #define FB_CVT_GTF_C                 40

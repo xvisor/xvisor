@@ -3,7 +3,7 @@
 /* by Jurriaan Kalkman 05-2005        */
 /**************************************/
 
-#include <vtemu_font.h>
+#include <libs/vtemu_font.h>
 
 #define FONTDATAMAX 3584
 

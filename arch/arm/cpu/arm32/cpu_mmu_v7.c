@@ -29,7 +29,7 @@
 #include <arch_barrier.h>
 #include <arch_cpu_irq.h>
 #include <arch_sections.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 #include <cpu_defines.h>
 #include <cpu_cache.h>
 #include <cpu_inline_asm.h>

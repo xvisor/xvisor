@@ -28,10 +28,10 @@
 #include <vmm_heap.h>
 #include <vmm_timer.h>
 #include <vmm_profiler.h>
-#include <stringlib.h>
-#include <mathlib.h>
-#include <kallsyms.h>
-#include <libsort.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+#include <libs/kallsyms.h>
+#include <libs/libsort.h>
 
 #define MODULE_DESC			"Command profile"
 #define MODULE_AUTHOR			"Jean-Christophe Dubois"

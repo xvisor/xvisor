@@ -34,8 +34,8 @@
 #ifndef __CLOCK_ARCH_H__
 #define __CLOCK_ARCH_H__
 
-#include<vmm_timer.h>
-#include<mathlib.h>
+#include <vmm_timer.h>
+#include <libs/mathlib.h>
 
 typedef u32 clock_time_t;
 #define CLOCK_CONF_SECOND 1000

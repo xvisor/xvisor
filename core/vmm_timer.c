@@ -31,7 +31,7 @@
 #include <vmm_clockchip.h>
 #include <vmm_timer.h>
 #include <arch_cpu_irq.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_local_ctrl {

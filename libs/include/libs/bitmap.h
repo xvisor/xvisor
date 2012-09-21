@@ -30,8 +30,8 @@
 
 #include <vmm_types.h>
 #include <vmm_macros.h>
-#include <bitops.h>
-#include <stringlib.h>
+#include <libs/bitops.h>
+#include <libs/stringlib.h>
 
 /*
  * bitmaps provide bit arrays that consume one or more unsigned

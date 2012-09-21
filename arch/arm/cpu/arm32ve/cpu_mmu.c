@@ -28,7 +28,7 @@
 #include <vmm_types.h>
 #include <arch_sections.h>
 #include <arch_barrier.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 #include <cpu_defines.h>
 #include <cpu_cache.h>
 #include <cpu_inline_asm.h>

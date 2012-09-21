@@ -23,7 +23,7 @@
 
 #include <vmm_types.h>
 #include <vmm_host_io.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 size_t strlen(const char *s)
 {

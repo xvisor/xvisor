@@ -26,9 +26,9 @@
 #include <vmm_host_irq.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
+#include <libs/stringlib.h>
 #include <arch_cpu.h>
 #include <arch_sections.h>
-#include <stringlib.h>
 #include <cpu_timer.h>
 #include <cpu_mmu.h>
 #include <cpu_interrupts.h>

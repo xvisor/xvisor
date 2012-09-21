@@ -28,8 +28,8 @@
 #include <vmm_compiler.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
-#include <kallsyms.h>
-#include <stacktrace.h>
+#include <libs/kallsyms.h>
+#include <libs/stacktrace.h>
 
 struct stackframe {
 	unsigned long fp;

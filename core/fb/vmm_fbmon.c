@@ -49,8 +49,8 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
-#include <stringlib.h>
 #include <fb/vmm_fb.h>
+#include <libs/stringlib.h>
 
 #include "edid.h"
 

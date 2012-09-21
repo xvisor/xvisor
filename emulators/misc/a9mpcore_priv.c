@@ -40,7 +40,7 @@
 #include <vmm_scheduler.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 #include <timer/arm_mptimer_emulator.h>
 #include <pic/gic_emulator.h>
 

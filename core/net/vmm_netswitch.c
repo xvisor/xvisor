@@ -35,8 +35,8 @@
 #include <net/vmm_protocol.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
-#include <list.h>
-#include <stringlib.h>
+#include <libs/list.h>
+#include <libs/stringlib.h>
 
 #undef DEBUG
 

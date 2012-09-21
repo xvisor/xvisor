@@ -22,7 +22,7 @@
  */
 #include <vmm_types.h>
 #include <vmm_host_aspace.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 /* 
  * These define our textpointer, our background and foreground

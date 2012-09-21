@@ -75,8 +75,9 @@
 #ifndef __UIP_H__
 #define __UIP_H__
 
-#include "uipopt.h"
 #include <vmm_host_io.h>
+
+#include "uipopt.h"
 
 /**
  * Repressentation of an IP address.

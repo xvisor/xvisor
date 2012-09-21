@@ -28,11 +28,11 @@
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
-#include <stringlib.h>
 #include <arch_config.h>
 #include <arch_sections.h>
 #include <arch_cpu_aspace.h>
 #include <arch_board.h>
+#include <libs/stringlib.h>
 
 static virtual_addr_t host_phys_rw_va[CONFIG_CPU_COUNT];
 

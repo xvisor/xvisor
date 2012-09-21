@@ -21,7 +21,6 @@
 # @brief list of vtemu objects to be build
 # */
 
-libs-cppflags-$(CONFIG_LIBFDT)+= -I$(libs_dir)/vtemu
 libs-objs-$(CONFIG_VTEMU)+= vtemu/vtemu.o
 libs-objs-$(CONFIG_VTEMU)+= vtemu/vtemu_font.o
 libs-objs-$(CONFIG_VTEMU_FONT_6x11)+= vtemu/vtemu_font_6x11.o

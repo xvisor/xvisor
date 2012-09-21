@@ -26,8 +26,8 @@
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
-#include <stringlib.h>
 #include <block/vmm_blockdev.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"Block Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"

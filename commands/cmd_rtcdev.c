@@ -27,7 +27,7 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <rtc/vmm_rtcdev.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"Command rtcdev"
 #define MODULE_AUTHOR			"Anup Patel"

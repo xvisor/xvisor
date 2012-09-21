@@ -27,7 +27,7 @@
 #include <vmm_compiler.h>
 #include <vmm_spinlocks.h>
 #include <vmm_chardev.h>
-#include <stacktrace.h>
+#include <libs/stacktrace.h>
 
 #define BUG_ON(x)							\
 	do {								\

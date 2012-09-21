@@ -26,7 +26,7 @@
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 #include <arch_regs.h>
-#include <list.h>
+#include <libs/list.h>
 
 struct vmm_timer_event;
 

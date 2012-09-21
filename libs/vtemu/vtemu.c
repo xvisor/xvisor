@@ -23,9 +23,9 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <stringlib.h>
-#include <mathlib.h>
-#include <vtemu.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+#include <libs/vtemu.h>
 
 #define VTEMU_KEYFLAG_LEFTCTRL		0x00000001
 #define VTEMU_KEYFLAG_RIGHTCTRL		0x00000002

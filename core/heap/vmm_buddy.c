@@ -27,8 +27,8 @@
 #include <vmm_spinlocks.h>
 #include <vmm_host_aspace.h>
 #include <vmm_cache.h>
-#include <list.h>
-#include <stringlib.h>
+#include <libs/list.h>
+#include <libs/stringlib.h>
 
 #ifndef NULL
 #define NULL			((void *)0)

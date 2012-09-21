@@ -51,8 +51,8 @@
 #include <net/vmm_net.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC			"SMSC LAN9118 Emulator"
 #define MODULE_AUTHOR			"Sukanto Ghosh"

@@ -26,7 +26,7 @@
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
 #include <vmm_ringbuf.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 struct vmm_ringbuf *vmm_ringbuf_alloc(u32 key_size, u32 key_count)
 {

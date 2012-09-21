@@ -25,7 +25,7 @@
 #include <vmm_compiler.h>
 #include <vmm_heap.h>
 #include <vmm_vserial.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 struct vmm_vserial_ctrl {
         struct dlist vser_list;

@@ -30,7 +30,7 @@
 #include <vmm_chardev.h>
 #include <input/vmm_input.h>
 #include <fb/vmm_fb.h>
-#include <vtemu_font.h>
+#include <libs/vtemu_font.h>
 
 #define VTEMU_NAME_SIZE		VMM_CHARDEV_NAME_SIZE
 #define VTEMU_INBUF_SIZE	32

@@ -29,7 +29,7 @@
 #include <vmm_scheduler.h>
 #include <vmm_devtree.h>
 #include <vmm_vcpu_irq.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 void vmm_vcpu_irq_process(arch_regs_t * regs)
 {

@@ -26,7 +26,7 @@
 #include <vmm_types.h>
 #include <vmm_cpumask.h>
 #include <arch_regs.h>
-#include <list.h>
+#include <libs/list.h>
 
 /**
  * enum vmm_irq_trigger_types

@@ -34,8 +34,8 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
-#include <stringlib.h>
 #include <fb/vmm_fb.h>
+#include <libs/stringlib.h>
 
 #undef DEBUG
 

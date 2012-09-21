@@ -33,9 +33,9 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
-#include <stringlib.h>
 #include <input/vmm_input.h>
 #include <input/vmm_input_mt.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"Input Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"

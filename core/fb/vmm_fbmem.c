@@ -36,9 +36,9 @@
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
-#include <stringlib.h>
-#include <fb/vmm_fb.h>
 #include <arch_atomic.h>
+#include <fb/vmm_fb.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"Frame Buffer Framework"
 #define MODULE_AUTHOR			"Anup Patel"

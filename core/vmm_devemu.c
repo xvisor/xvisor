@@ -28,7 +28,7 @@
 #include <vmm_mutex.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_devemu.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 struct vmm_devemu_vcpu_context {
 	u32 rd_victim;

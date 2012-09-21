@@ -28,7 +28,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 #include <emulate_arm.h>
 #include <emulate_thumb.h>
 #include <cpu_mmu.h>

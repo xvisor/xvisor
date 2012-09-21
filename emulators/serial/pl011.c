@@ -39,7 +39,7 @@
 #include <vmm_vserial.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"PL011 Serial Emulator"
 #define MODULE_AUTHOR			"Anup Patel"

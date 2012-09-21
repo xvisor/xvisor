@@ -27,7 +27,7 @@
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 #include <vmm_types.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 #include <cpu_mmu.h>
 
 extern u8 _code_end;

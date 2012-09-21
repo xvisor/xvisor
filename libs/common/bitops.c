@@ -27,7 +27,7 @@
  * The original code is licensed under the GPL.
  */
 
-#include <bitops.h>
+#include <libs/bitops.h>
 
 #ifdef CONFIG_SMP
 spinlock_t __atomic_hash[ATOMIC_HASH_SIZE];

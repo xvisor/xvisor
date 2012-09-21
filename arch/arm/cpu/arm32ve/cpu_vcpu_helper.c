@@ -26,12 +26,12 @@
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
-#include <stringlib.h>
-#include <mathlib.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {

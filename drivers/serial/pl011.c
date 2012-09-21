@@ -30,8 +30,8 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 #include <serial/pl011.h>
 
 /* Enable UART_PL011_USE_TXINTR to use TX interrupt.

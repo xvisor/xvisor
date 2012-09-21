@@ -27,9 +27,9 @@
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
 #include <vmm_wallclock.h>
-#include <list.h>
-#include <stringlib.h>
 #include <rtc/vmm_rtcdev.h>
+#include <libs/list.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"RTC Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"

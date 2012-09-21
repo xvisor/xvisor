@@ -26,8 +26,8 @@
 #include <vmm_main.h>
 #include <vmm_stdio.h>
 #include <stdarg.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define PAD_RIGHT	1
 #define PAD_ZERO	2

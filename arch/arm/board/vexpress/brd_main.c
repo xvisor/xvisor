@@ -21,6 +21,7 @@
  * @brief main source file for board specific code
  */
 
+#include <arch_barrier.h>
 #include <vmm_error.h>
 #include <vmm_smp.h>
 #include <vmm_spinlocks.h>
@@ -31,13 +32,12 @@
 #include <vmm_stdio.h>
 #include <vmm_chardev.h>
 #include <rtc/vmm_rtcdev.h>
-#include <arch_barrier.h>
+#include <libs/libfdt.h>
+#include <libs/vtemu.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 #include <versatile/clcd.h>
 #include <versatile/clock.h>
-#include <libfdt.h>
-#include <vtemu.h>
 #include <motherboard.h>
 #include <sp810.h>
 #include <sp804_timer.h>

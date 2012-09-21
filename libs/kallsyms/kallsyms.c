@@ -29,8 +29,8 @@
  */
 
 #include <vmm_stdio.h>
-#include <stringlib.h>
-#include <kallsyms.h>
+#include <libs/stringlib.h>
+#include <libs/kallsyms.h>
 
 extern unsigned char _code_end;
 

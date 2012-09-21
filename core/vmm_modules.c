@@ -28,12 +28,12 @@
 #include <vmm_spinlocks.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
-#include <list.h>
-#include <stringlib.h>
-#include <mathlib.h>
-#include <bitmap.h>
-#include <elf.h>
-#include <kallsyms.h>
+#include <libs/list.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+#include <libs/bitmap.h>
+#include <libs/elf.h>
+#include <libs/kallsyms.h>
 
 #ifndef ARCH_SHF_SMALL
 #define ARCH_SHF_SMALL 0

@@ -43,8 +43,8 @@
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_stdio.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC		"MPCore Private Timer and Watchdog Emulator"
 #define MODULE_AUTHOR		"Sukanto Ghosh"

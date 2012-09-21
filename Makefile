@@ -111,6 +111,7 @@ cppflags+=-I$(commands_dir)/include
 cppflags+=-I$(daemons_dir)/include
 cppflags+=-I$(drivers_dir)/include
 cppflags+=-I$(emulators_dir)/include
+cppflags+=-I$(libs_dir)/include
 cppflags+=-I$(arch_dir)/include
 cppflags+=$(cpu-cppflags)
 cppflags+=$(board-cppflags)

@@ -28,12 +28,12 @@
 #include <vmm_devdrv.h>
 #include <vmm_threads.h>
 #include <vmm_modules.h>
-#include <list.h>
-#include <stringlib.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
+#include <libs/list.h>
+#include <libs/stringlib.h>
 
 #undef DEBUG_NETBRIDGE
 

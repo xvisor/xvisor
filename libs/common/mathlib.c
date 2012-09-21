@@ -21,8 +21,8 @@
  * @brief Software implementation common math operations
  */
 
-#include <bitops.h>
-#include <mathlib.h>
+#include <libs/bitops.h>
+#include <libs/mathlib.h>
 
 #if !defined(ARCH_HAS_DIVISON_OPERATION)
 

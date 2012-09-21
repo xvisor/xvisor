@@ -29,7 +29,7 @@
 #include <vmm_manager.h>
 #include <arch_vcpu.h>
 #include <arch_guest.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 /** Control structure for Scheduler */
 struct vmm_manager_ctrl {

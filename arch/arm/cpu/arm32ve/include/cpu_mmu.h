@@ -24,7 +24,7 @@
 #define _CPU_MMU_H__
 
 #include <vmm_types.h>
-#include <list.h>
+#include <libs/list.h>
 
 /** LPAE page/block */
 struct cpu_page {

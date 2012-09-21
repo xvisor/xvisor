@@ -27,7 +27,7 @@
 #include <vmm_devemu.h>
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 					 physical_addr_t gphys_addr,

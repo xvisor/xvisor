@@ -33,9 +33,9 @@
 #include <vmm_mutex.h>
 #include <vmm_host_io.h>
 #include <vmm_devdrv.h>
-#include <list.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/list.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define VMM_FB_CLASS_NAME			"fb"
 #define VMM_FB_CLASS_IPRIORITY			1

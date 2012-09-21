@@ -26,14 +26,14 @@
  */
 
 #include <vmm_types.h>
-#include <cpu_apic.h>
 #include <vmm_host_aspace.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <stringlib.h>
-#include <cpu_mmu.h>
+#include <libs/stringlib.h>
 #include <arch_cpu.h>
+#include <cpu_mmu.h>
+#include <cpu_apic.h>
 #include <cpu_private.h>
 #include <acpi.h>
 
