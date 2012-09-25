@@ -62,6 +62,19 @@ char *strcat(char *dest, const char *src)
 	return (save);
 }
 
+char *strncat(char *dest, const char *src, size_t n)
+{
+	char *save = dest;
+
+	for (; n && *dest; ++dest, n--) ;
+	while (n && ((*dest++ = *src++) != 0)) {
+		n--;
+	}
+
+	return (save);
+}
+
+
 int strcmp(const char *a, const char *b)
 {
 	while (*a == *b) {
@@ -95,6 +108,34 @@ int strncmp(const char *a, const char *b, size_t n)
 	} else {
 		return 0;
 	}
+}
+
+char *strchr(const char *s, int c)
+{
+	for (; *s != (char)c; ++s)
+		if (*s == '\0')
+			return NULL;
+	return (char *)s;
+}
+
+char *strrchr(const char *s, int c)
+{
+	const char * p = s + strlen(s);
+
+	do {
+	   if (*p == (char)c)
+		   return (char *)p;
+	} while (--p >= s);
+
+	return NULL;
+}
+
+char *strnchr(const char *s, size_t n, int c)
+{
+	for (; n-- && *s != '\0'; ++s)
+		if (*s == (char)c)
+			return (char *)s;
+	return NULL;
 }
 
 void str2lower(char * s)
