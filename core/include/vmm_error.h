@@ -35,13 +35,14 @@
 #define VMM_ENODEV		-8
 #define VMM_EBUSY		-9
 #define VMM_ETIMEDOUT		-10
-#define VMM_ENOEXEC		-11
-#define VMM_ENOENT		-12
-#define VMM_ENOSYS		-13
-#define VMM_EIO			-14
-#define VMM_ETIME		-15
-#define VMM_ERANGE		-16
-#define VMM_EILSEQ		-17
-#define VMM_EOPNOTSUPP		-18
+#define VMM_EACCESS		-11
+#define VMM_ENOEXEC		-12
+#define VMM_ENOENT		-13
+#define VMM_ENOSYS		-14
+#define VMM_EIO			-15
+#define VMM_ETIME		-16
+#define VMM_ERANGE		-17
+#define VMM_EILSEQ		-18
+#define VMM_EOPNOTSUPP		-19
 
 #endif
