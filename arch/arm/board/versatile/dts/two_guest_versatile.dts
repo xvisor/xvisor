@@ -51,7 +51,7 @@
 					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x10003000>;
-					physical_size = <0x10000>;
+					physical_size = <0x1000>;
 					device_type = "pic";
 					compatible = "versatilepb,pl190";
 					base_irq = <32>;
@@ -387,7 +387,7 @@
 					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x10003000>;
-					physical_size = <0x10000>;
+					physical_size = <0x1000>;
 					device_type = "pic";
 					compatible = "versatilepb,pl190";
 					base_irq = <32>;
