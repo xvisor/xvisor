@@ -115,6 +115,7 @@ struct stat {
 
 /** file structure */
 struct file {
+	struct vmm_mutex f_lock;	/* file lock */
 	u32 f_flags;			/* open flag */
 	loff_t f_offset;		/* current position in file */
 	struct vnode *f_vnode;		/* vnode */
@@ -232,7 +233,7 @@ struct filesystem {
 	int (*vput)(struct mount *, struct vnode *);
 
 	/* Vnode operations */
-	int (*open)(struct vnode *, int);
+	int (*open)(struct vnode *, struct file *);
 	int (*close)(struct vnode *, struct file *);
 	int (*read)(struct vnode *, struct file *, void *, size_t);
 	int (*write)(struct vnode *, struct file *, void *, size_t);
@@ -251,7 +252,9 @@ struct filesystem {
 	int (*truncate)(struct vnode *, loff_t);
 };
 
-/** Get root directory and mount point for specified path. */
+/** Get root directory and mount point for specified path. 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
 int vfs_findroot(const char *path, struct mount **mp, char **root);
 
 /** Create a mount point
@@ -264,10 +267,14 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags);
  */
 int vfs_unmount(const char *path);
 
-/** Get mount point by index */
+/** Get mount point by index 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
 struct mount *vfs_mount_get(int index);
 
-/** Count number of mount points */
+/** Count number of mount points 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
 u32 vfs_mount_count(void);
 
 /** Open a file 
@@ -355,19 +362,29 @@ int vfs_access(const char *path, u32 mode);
  */
 int vfs_stat(const char *path, struct stat *st);
 
-/** Register filesystem */
+/** Register filesystem 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
 int vfs_filesystem_register(struct filesystem *fs);
 
-/** Unregister filesystem */
+/** Unregister filesystem 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
 int vfs_filesystem_unregister(struct filesystem *fs);
 
-/** Find filesystem by name */
+/** Find filesystem by name 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
 struct filesystem *vfs_filesystem_find(const char *name);
 
-/** Get filesystem by index */
+/** Get filesystem by index 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
 struct filesystem *vfs_filesystem_get(int index);
 
-/** Count number of available filesystems */
+/** Count number of available filesystems 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
 u32 vfs_filesystem_count(void);
 
 #endif /* __VFS_H_ */

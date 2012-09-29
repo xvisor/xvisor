@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
-#include <vmm_spinlocks.h>
 #include <vmm_scheduler.h>
 #include <vmm_modules.h>
 #include <arch_atomic.h>
@@ -43,13 +42,13 @@
 #define VFS_VNODE_HASH_SIZE		(32)
 
 struct vfs_ctrl {
-	vmm_spinlock_t fs_list_lock;
+	struct vmm_mutex fs_list_lock;
 	struct dlist fs_list;
-	vmm_spinlock_t mnt_list_lock;
+	struct vmm_mutex mnt_list_lock;
 	struct dlist mnt_list;
-	vmm_spinlock_t vnode_list_lock[VFS_VNODE_HASH_SIZE];
+	struct vmm_mutex vnode_list_lock[VFS_VNODE_HASH_SIZE];
 	struct list_head vnode_list[VFS_VNODE_HASH_SIZE];
-	vmm_spinlock_t fd_bmap_lock;
+	struct vmm_mutex fd_bmap_lock;
 	unsigned long *fd_bmap;
 	struct file fd[VFS_MAX_FD];
 };
@@ -59,9 +58,8 @@ static struct vfs_ctrl vfsc;
 static int vfs_fd_alloc(void)
 {
 	int i, ret = -1;
-	irq_flags_t flags;
 
-	vmm_spin_lock_irqsave(&vfsc.fd_bmap_lock, flags);
+	vmm_mutex_lock(&vfsc.fd_bmap_lock);
 
 	for (i = 0; i < VFS_MAX_FD; i++) {
 		if (!bitmap_isset(vfsc.fd_bmap, i)) {
@@ -70,62 +68,60 @@ static int vfs_fd_alloc(void)
 		}
 	}
 
-	vmm_spin_unlock_irqrestore(&vfsc.fd_bmap_lock, flags);
+	vmm_mutex_unlock(&vfsc.fd_bmap_lock);
 
 	return ret;
 }
 
-/* FIXME: */
-static void vfs_fd_flush_vnode(struct vnode *v)
+/* FIXME: If a mount point is removed abruptly (probably due to
+ * unplugging of a pluggable block device) then we need to
+ * flush all file descriptors and vnodes under this mount point.
+ *
+ * Not sure whether:
+ * vfs_fd_umount_flush() handles all possible scenarios !!!!
+ */
+static void vfs_fd_unmount_flush(struct mount *m)
 {
 	int i;
-	irq_flags_t flags;
 
-	vmm_spin_lock_irqsave(&vfsc.fd_bmap_lock, flags);
+	vmm_mutex_lock(&vfsc.fd_bmap_lock);
 
 	for (i = 0; i < VFS_MAX_FD; i++) {
 		if (bitmap_isset(vfsc.fd_bmap, i) &&
-		    (vfsc.fd[i].f_vnode == v)) {
-			memset(&vfsc.fd[i], 0, sizeof(struct file));
+		    (vfsc.fd[i].f_vnode->v_mount == m)) {
+			vmm_mutex_lock(&vfsc.fd[i].f_lock);
+			vfsc.fd[i].f_flags = 0;
+			vfsc.fd[i].f_offset = 0;
+			vfsc.fd[i].f_vnode = NULL;
+			vmm_mutex_unlock(&vfsc.fd[i].f_lock);
 			bitmap_clear(vfsc.fd_bmap, i, 1);
 		}
 	}
 
-	vmm_spin_unlock_irqrestore(&vfsc.fd_bmap_lock, flags);
+	vmm_mutex_unlock(&vfsc.fd_bmap_lock);
 }
 
 static void vfs_fd_free(int fd)
 {
-	irq_flags_t flags;
-
 	if (-1 < fd && fd < VFS_MAX_FD) {
-		vmm_spin_lock_irqsave(&vfsc.fd_bmap_lock, flags);
+		vmm_mutex_lock(&vfsc.fd_bmap_lock);
 
 		if (bitmap_isset(vfsc.fd_bmap, fd)) {
-			memset(&vfsc.fd[fd], 0, sizeof(struct file));
+			vmm_mutex_lock(&vfsc.fd[fd].f_lock);
+			vfsc.fd[fd].f_flags = 0;
+			vfsc.fd[fd].f_offset = 0;
+			vfsc.fd[fd].f_vnode = NULL;
+			vmm_mutex_unlock(&vfsc.fd[fd].f_lock);
 			bitmap_clear(vfsc.fd_bmap, fd, 1);
 		}
 
-		vmm_spin_unlock_irqrestore(&vfsc.fd_bmap_lock, flags);
+		vmm_mutex_unlock(&vfsc.fd_bmap_lock);
 	}
 }
 
 static struct file *vfs_fd_to_file(int fd)
 {
-	irq_flags_t flags;
-	struct file *ret = NULL;
-
-	if (-1 < fd && fd < VFS_MAX_FD) {
-		vmm_spin_lock_irqsave(&vfsc.fd_bmap_lock, flags);
-
-		if (bitmap_isset(vfsc.fd_bmap, fd)) {
-			ret = &vfsc.fd[fd];
-		}
-
-		vmm_spin_unlock_irqrestore(&vfsc.fd_bmap_lock, flags);
-	}
-
-	return ret;
+	return (-1 < fd && fd < VFS_MAX_FD) ? &vfsc.fd[fd] : NULL;
 }
 
 /** Compute hash value from mount point and path name. */
@@ -146,7 +142,6 @@ static struct vnode *vfs_vnode_vget(struct mount *m, const char *path)
 {
 	int err, len;
 	u32 hash;
-	irq_flags_t flags;
 	struct vnode *v;
 
 	v = NULL;
@@ -180,9 +175,9 @@ static struct vnode *vfs_vnode_vget(struct mount *m, const char *path)
 
 	arch_atomic_add(&m->m_refcnt, 1);
 
-	vmm_spin_lock_irqsave(&vfsc.vnode_list_lock[hash], flags);
+	vmm_mutex_lock(&vfsc.vnode_list_lock[hash]);
 	list_add(&v->v_link, &vfsc.vnode_list[hash]);
-	vmm_spin_unlock_irqrestore(&vfsc.vnode_list_lock[hash], flags);
+	vmm_mutex_unlock(&vfsc.vnode_list_lock[hash]);
 
 	return v;
 }
@@ -190,14 +185,13 @@ static struct vnode *vfs_vnode_vget(struct mount *m, const char *path)
 static struct vnode *vfs_vnode_lookup(struct mount *m, const char *path)
 {
 	u32 hash;
-	irq_flags_t flags;
 	struct dlist *l;
 	struct vnode *v;
 
 	v = NULL;
 	hash = vfs_vnode_hash(m, path);
 
-	vmm_spin_lock_irqsave(&vfsc.vnode_list_lock[hash], flags);
+	vmm_mutex_lock(&vfsc.vnode_list_lock[hash]);
 
 	list_for_each(l, &vfsc.vnode_list[hash]) {
 		v = list_entry(l, struct vnode, v_link);
@@ -207,7 +201,7 @@ static struct vnode *vfs_vnode_lookup(struct mount *m, const char *path)
 		}
 	}
 
-	vmm_spin_unlock_irqrestore(&vfsc.vnode_list_lock[hash], flags);
+	vmm_mutex_unlock(&vfsc.vnode_list_lock[hash]);
 
 	if (v) {
 		arch_atomic_add(&v->v_refcnt, 1);
@@ -224,7 +218,6 @@ static void vfs_vnode_vref(struct vnode *v)
 static void vfs_vnode_vput(struct vnode *v)
 {
 	u32 hash;
-	irq_flags_t flags;
 
 	if (arch_atomic_sub_return(&v->v_refcnt, 1)) {
 		return;
@@ -232,9 +225,9 @@ static void vfs_vnode_vput(struct vnode *v)
 
 	hash = vfs_vnode_hash(v->v_mount, v->v_path);
 
-	vmm_spin_lock_irqsave(&vfsc.vnode_list_lock[hash], flags);
+	vmm_mutex_lock(&vfsc.vnode_list_lock[hash]);
 	list_del(&v->v_link);
-	vmm_spin_unlock_irqrestore(&vfsc.vnode_list_lock[hash], flags);
+	vmm_mutex_unlock(&vfsc.vnode_list_lock[hash]);
 
 	/* deallocate fs specific data from this vnode */
 	vmm_mutex_lock(&v->v_mount->m_lock);
@@ -247,46 +240,33 @@ static void vfs_vnode_vput(struct vnode *v)
 	vmm_free(v);
 }
 
-static void vfs_vnode_flush(struct mount *m)
+static void vfs_vnode_unmount_flush(struct mount *m)
 {
 	int i;
-	bool found;
-	irq_flags_t flags;
 	struct dlist *l;
 	struct vnode *v;
 
 	for(i = 0; i < VFS_VNODE_HASH_SIZE; i++) {
-this_hash_again:
-		vmm_spin_lock_irqsave(&vfsc.vnode_list_lock[i], flags);
+		vmm_mutex_lock(&vfsc.vnode_list_lock[i]);
 
-		found = FALSE;
 		list_for_each(l, &vfsc.vnode_list[i]) {
 			v = list_entry(l, struct vnode, v_link);
-			if(v->v_mount == m) {
-				list_del(&v->v_link);
-				found = TRUE;
-				break;
+			if(v->v_mount != m) {
+				continue;
 			}
-		}
 
-		vmm_spin_unlock_irqrestore(&vfsc.vnode_list_lock[i], flags);
-
-		if (found) {
-			/* close file descriptors using this vnode */
-			vfs_fd_flush_vnode(v);
+			list_del(&v->v_link);
 
 			/* deallocate fs specific data from this vnode */
-			vmm_mutex_lock(&v->v_mount->m_lock);
 			v->v_mount->m_fs->vput(v->v_mount, v);
-			vmm_mutex_unlock(&v->v_mount->m_lock);
 
 			arch_atomic_sub(&v->v_mount->m_refcnt, 1);
 
 			vmm_free(v->v_path);
 			vmm_free(v);
-
-			goto this_hash_again;
 		}
+
+		vmm_mutex_unlock(&vfsc.vnode_list_lock[i]);
 	}
 }
 
@@ -521,7 +501,6 @@ static int count_match(const char *path, char *mount_root)
 int vfs_findroot(const char *path, struct mount **mp, char **root)
 {
 	struct dlist *l;
-	irq_flags_t flags;
 	struct mount *m, *tmp;
 	int len, max_len = 0;
 
@@ -532,7 +511,7 @@ int vfs_findroot(const char *path, struct mount **mp, char **root)
 	/* find mount point from nearest path */
 	m = NULL;
 
-	vmm_spin_lock_irqsave(&vfsc.mnt_list_lock, flags);
+	vmm_mutex_lock(&vfsc.mnt_list_lock);
 
 	list_for_each(l, &vfsc.mnt_list) {
 		tmp = list_entry(l, struct mount, m_link);
@@ -543,7 +522,7 @@ int vfs_findroot(const char *path, struct mount **mp, char **root)
 		}
 	}
 
-	vmm_spin_unlock_irqrestore(&vfsc.mnt_list_lock, flags);
+	vmm_mutex_unlock(&vfsc.mnt_list_lock);
 
 	if(m == NULL) {
 		return VMM_EFAIL;
@@ -561,7 +540,6 @@ int vfs_findroot(const char *path, struct mount **mp, char **root)
 int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 {
 	int err;
-	irq_flags_t f;
 	struct dlist *l;
 	struct vmm_blockdev *bdev;
 	struct filesystem *fs;
@@ -651,13 +629,13 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 	}
 
 	/* add to mount list */
-	vmm_spin_lock_irqsave(&vfsc.mnt_list_lock, f);
+	vmm_mutex_lock(&vfsc.mnt_list_lock);
 
 	list_for_each(l, &vfsc.mnt_list) {
 		m = list_entry(l, struct mount, m_link);
 		if (!strcmp(m->m_path, dir) ||
 		    ((dev != NULL) && (m->m_dev == bdev))) {
-			vmm_spin_unlock_irqrestore(&vfsc.mnt_list_lock, flags);
+			vmm_mutex_unlock(&vfsc.mnt_list_lock);
 			vmm_mutex_lock(&m->m_lock);
 			m->m_fs->unmount(m);
 			vmm_mutex_unlock(&m->m_lock);
@@ -672,7 +650,62 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 
 	list_add(&m->m_link, &vfsc.mnt_list);
 
-	vmm_spin_unlock_irqrestore(&vfsc.mnt_list_lock, f);
+	vmm_mutex_unlock(&vfsc.mnt_list_lock);
+
+	return VMM_OK;
+}
+
+int vfs_unmount(const char *path)
+{
+	int err;
+	bool found;
+	struct dlist *l;
+	struct mount *m;
+
+	BUG_ON(!vmm_scheduler_orphan_context());
+
+	vmm_mutex_lock(&vfsc.mnt_list_lock);
+
+	found = FALSE;
+	list_for_each(l, &vfsc.mnt_list) {
+		m = list_entry(l, struct mount, m_link);
+		if (!strcmp(path, m->m_path)) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	/* root fs can not be unmounted. */
+	if (!found || !m->m_covered) {
+		vmm_mutex_unlock(&vfsc.mnt_list_lock);
+		return VMM_EINVALID;
+	}
+
+	/* remove mount point and break */
+	list_del(&m->m_link);
+
+	vmm_mutex_unlock(&vfsc.mnt_list_lock);
+
+	/* close file descriptors using any vnode 
+	 * belonging to this mount point;
+	 */
+	vfs_fd_unmount_flush(m);
+
+	/* release all vnodes */
+	vfs_vnode_unmount_flush(m);
+
+	/* call filesytem unmount */
+	vmm_mutex_lock(&m->m_lock);
+	err = m->m_fs->unmount(m);
+	vmm_mutex_unlock(&m->m_lock);
+	if(err != 0) {
+		return err;
+	}
+
+	/* release covering filesystem vnode */
+	vfs_vnode_release(m->m_covered);
+
+	vmm_free(m);
 
 	return VMM_OK;
 }
@@ -680,15 +713,16 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 struct mount *vfs_mount_get(int index)
 {
 	bool found;
-	irq_flags_t flags;
 	struct dlist *l;
 	struct mount *ret;
+
+	BUG_ON(!vmm_scheduler_orphan_context());
 
 	if (index < 0) {
 		return NULL;
 	}
 
-	vmm_spin_lock_irqsave(&vfsc.mnt_list_lock, flags);
+	vmm_mutex_lock(&vfsc.mnt_list_lock);
 
 	ret = NULL;
 	found = FALSE;
@@ -702,7 +736,7 @@ struct mount *vfs_mount_get(int index)
 		index--;
 	}
 
-	vmm_spin_unlock_irqrestore(&vfsc.mnt_list_lock, flags);
+	vmm_mutex_unlock(&vfsc.mnt_list_lock);
 
 	if (!found) {
 		return NULL;
@@ -714,70 +748,19 @@ struct mount *vfs_mount_get(int index)
 u32 vfs_mount_count(void)
 {
 	u32 retval = 0;
-	irq_flags_t flags;
 	struct dlist *l;
 
-	vmm_spin_lock_irqsave(&vfsc.mnt_list_lock, flags);
+	BUG_ON(!vmm_scheduler_orphan_context());
+
+	vmm_mutex_lock(&vfsc.mnt_list_lock);
 
 	list_for_each(l, &vfsc.mnt_list) {
 		retval++;
 	}
 
-	vmm_spin_unlock_irqrestore(&vfsc.mnt_list_lock, flags);
+	vmm_mutex_unlock(&vfsc.mnt_list_lock);
 
 	return retval;
-}
-
-
-int vfs_unmount(const char *path)
-{
-	int err;
-	bool found;
-	irq_flags_t f;
-	struct dlist *l;
-	struct mount *m;
-
-	BUG_ON(!vmm_scheduler_orphan_context());
-
-	vmm_spin_lock_irqsave(&vfsc.mnt_list_lock, f);
-
-	found = FALSE;
-	list_for_each(l, &vfsc.mnt_list) {
-		m = list_entry(l, struct mount, m_link);
-		if (!strcmp(path, m->m_path)) {
-			found = TRUE;
-			break;
-		}
-	}
-
-	/* root fs can not be unmounted. */
-	if (!found || !m->m_covered) {
-		vmm_spin_unlock_irqrestore(&vfsc.mnt_list_lock, f);
-		return VMM_EINVALID;
-	}
-
-	/* remove mount point and break */
-	list_del(&m->m_link);
-
-	vmm_spin_unlock_irqrestore(&vfsc.mnt_list_lock, f);
-
-	/* call filesytem unmount */
-	vmm_mutex_lock(&m->m_lock);
-	err = m->m_fs->unmount(m);
-	vmm_mutex_unlock(&m->m_lock);
-	if(err != 0) {
-		return err;
-	}
-
-	/* release all vnodes */
-	vfs_vnode_flush(m);
-
-	/* release covering filesystem vnode */
-	vfs_vnode_release(m->m_covered);
-
-	vmm_free(m);
-
-	return VMM_OK;
 }
 
 static int vfs_lookup_dir(const char *path, struct vnode **vp, char **name)
@@ -900,20 +883,25 @@ int vfs_open(const char *path, u32 flags, u32 mode)
 	}
 	f = vfs_fd_to_file(fd);
 
-	/* request to file system */
-	vmm_mutex_lock(&v->v_lock);
-	err = v->v_mount->m_fs->open(v, flags);
-	vmm_mutex_unlock(&v->v_lock);
-	if (err) {
-		vfs_fd_free(fd);
-		vfs_vnode_release(v);
-		return err;
-	}
+	vmm_mutex_lock(&f->f_lock);
 
 	/* setup file descriptor contents */
 	f->f_vnode = v;
 	f->f_flags = flags;
 	f->f_offset = 0;
+
+	/* request to file system */
+	vmm_mutex_lock(&v->v_lock);
+	err = v->v_mount->m_fs->open(v, f);
+	vmm_mutex_unlock(&v->v_lock);
+	if (err) {
+		vmm_mutex_unlock(&f->f_lock);
+		vfs_fd_free(fd);
+		vfs_vnode_release(v);
+		return err;
+	}
+
+	vmm_mutex_unlock(&f->f_lock);
 
 	return fd;
 }
@@ -930,16 +918,26 @@ int vfs_close(int fd)
 	if (!f) {
 		return VMM_EINVALID;
 	}
+
+	vmm_mutex_lock(&f->f_lock);
+
 	v = f->f_vnode;
+	if (!v) {
+		vmm_mutex_unlock(&f->f_lock);
+		return VMM_EINVALID;
+	}
 
 	vmm_mutex_lock(&v->v_lock);
 	err = v->v_mount->m_fs->close(v, f);
 	vmm_mutex_unlock(&v->v_lock);
 	if (err) {
+		vmm_mutex_unlock(&f->f_lock);
 		return err;
 	}
 
 	vfs_vnode_release(v);
+
+	vmm_mutex_unlock(&f->f_lock);
 
 	vfs_fd_free(fd);
 
@@ -962,9 +960,17 @@ size_t vfs_read(int fd, void *buf, size_t len)
 	if (!f) {
 		return 0;
 	}
+
+	vmm_mutex_lock(&f->f_lock);
+
 	v = f->f_vnode;
+	if (!v) {
+		vmm_mutex_unlock(&f->f_lock);
+		return 0;
+	}
 
 	if (!(f->f_flags & O_RDONLY)) {
+		vmm_mutex_unlock(&f->f_lock);
 		return 0;
 	}
 
@@ -973,6 +979,8 @@ size_t vfs_read(int fd, void *buf, size_t len)
 	vmm_mutex_unlock(&v->v_lock);
 
 	f->f_offset += ret;
+
+	vmm_mutex_unlock(&f->f_lock);
 
 	return ret;
 }
@@ -993,9 +1001,17 @@ size_t vfs_write(int fd, void *buf, size_t len)
 	if (!f) {
 		return 0;
 	}
+
+	vmm_mutex_lock(&f->f_lock);
+
 	v = f->f_vnode;
+	if (!v) {
+		vmm_mutex_unlock(&f->f_lock);
+		return 0;
+	}
 
 	if (!(f->f_flags & O_WRONLY)) {
+		vmm_mutex_unlock(&f->f_lock);
 		return 0;
 	}
 
@@ -1005,11 +1021,14 @@ size_t vfs_write(int fd, void *buf, size_t len)
 
 	f->f_offset += ret;
 
+	vmm_mutex_unlock(&f->f_lock);
+
 	return ret;
 }
 
 loff_t vfs_lseek(int fd, loff_t off, int whence)
 {
+	loff_t ret;
 	struct vnode *v;
 	struct file *f;
 
@@ -1019,7 +1038,14 @@ loff_t vfs_lseek(int fd, loff_t off, int whence)
 	if (!f) {
 		return 0;
 	}
+
+	vmm_mutex_lock(&f->f_lock);
+
 	v = f->f_vnode;
+	if (!v) {
+		vmm_mutex_unlock(&f->f_lock);
+		return 0;
+	}
 
 	vmm_mutex_lock(&v->v_lock);
 
@@ -1055,7 +1081,9 @@ loff_t vfs_lseek(int fd, loff_t off, int whence)
 
 	default:
 		vmm_mutex_unlock(&v->v_lock);
-		return f->f_offset;
+		ret = f->f_offset;
+		vmm_mutex_unlock(&f->f_lock);
+		return ret;
 	}
 
 	if (v->v_mount->m_fs->seek(v, f, off)) {
@@ -1064,7 +1092,11 @@ loff_t vfs_lseek(int fd, loff_t off, int whence)
 
 	vmm_mutex_unlock(&v->v_lock);
 
-	return f->f_offset;
+	ret = f->f_offset;
+
+	vmm_mutex_unlock(&f->f_lock);
+
+	return ret;
 }
 
 int vfs_fsync(int fd)
@@ -1079,15 +1111,25 @@ int vfs_fsync(int fd)
 	if (!f) {
 		return VMM_EINVALID;
 	}
+
+	vmm_mutex_lock(&f->f_lock);
+
 	v = f->f_vnode;
+	if (!v) {
+		vmm_mutex_unlock(&f->f_lock);
+		return VMM_EINVALID;
+	}
 
 	if (!(f->f_flags & O_WRONLY)) {
+		vmm_mutex_unlock(&f->f_lock);
 		return VMM_EINVALID;
 	}
 
 	vmm_mutex_lock(&v->v_lock);
 	err = v->v_mount->m_fs->fsync(v, f);
 	vmm_mutex_unlock(&v->v_lock);
+
+	vmm_mutex_unlock(&f->f_lock);
 
 	return err;
 }
@@ -1108,9 +1150,18 @@ int vfs_fstat(int fd, struct stat *st)
 	if (!f) {
 		return VMM_EINVALID;
 	}
+
+	vmm_mutex_lock(&f->f_lock);
+
 	v = f->f_vnode;
+	if (!v) {
+		vmm_mutex_unlock(&f->f_lock);
+		return VMM_EINVALID;
+	}
 
 	err = vfs_vnode_stat(v, st);
+
+	vmm_mutex_unlock(&f->f_lock);
 
 	return err;
 }
@@ -1135,19 +1186,28 @@ int vfs_opendir(const char *name)
 	if (!f) {
 		return VMM_EINVALID;
 	}
+
+	vmm_mutex_lock(&f->f_lock);
+
 	v = f->f_vnode;
+	if (!v) {
+		vmm_mutex_unlock(&f->f_lock);
+		return VMM_EINVALID;
+	}
 
 	if(v->v_type != VDIR) {
+		vmm_mutex_unlock(&f->f_lock);
 		vfs_close(fd);
 		return VMM_EINVALID;
 	}
+
+	vmm_mutex_unlock(&f->f_lock);
 
 	return fd;
 }
 
 int vfs_closedir(int fd)
 {
-	int err;
 	struct vnode *v;
 	struct file *f;
 
@@ -1157,15 +1217,23 @@ int vfs_closedir(int fd)
 	if (!f) {
 		return VMM_EINVALID;
 	}
-	v = f->f_vnode;
 
-	if(v->v_type != VDIR) {
+	vmm_mutex_lock(&f->f_lock);
+
+	v = f->f_vnode;
+	if (!v) {
+		vmm_mutex_unlock(&f->f_lock);
 		return VMM_EINVALID;
 	}
 
-	err = vfs_close(fd);
+	if(v->v_type != VDIR) {
+		vmm_mutex_unlock(&f->f_lock);
+		return VMM_EINVALID;
+	}
 
-	return err;
+	vmm_mutex_unlock(&f->f_lock);
+
+	return vfs_close(fd);
 }
 
 int vfs_readdir(int fd, struct dirent *dir)
@@ -1184,9 +1252,17 @@ int vfs_readdir(int fd, struct dirent *dir)
 	if (!f) {
 		return VMM_EINVALID;
 	}
-	v = f->f_vnode;
 
-	if(v->v_type != VDIR) {
+	vmm_mutex_lock(&f->f_lock);
+
+	v = f->f_vnode;
+	if (!v) {
+		vmm_mutex_unlock(&f->f_lock);
+		return VMM_EINVALID;
+	}
+
+	if (v->v_type != VDIR) {
+		vmm_mutex_unlock(&f->f_lock);
 		return VMM_EINVALID;
 	}
 
@@ -1196,6 +1272,8 @@ int vfs_readdir(int fd, struct dirent *dir)
 	if (!err) {
 		f->f_offset += dir->d_reclen;
 	}
+
+	vmm_mutex_unlock(&f->f_lock);
 
 	return err;
 }
@@ -1211,13 +1289,23 @@ int vfs_rewinddir(int fd)
 	if (!f) {
 		return VMM_EINVALID;
 	}
-	v = f->f_vnode;
 
-	if(v->v_type != VDIR) {
+	vmm_mutex_lock(&f->f_lock);
+
+	v = f->f_vnode;
+	if (!v) {
+		vmm_mutex_unlock(&f->f_lock);
+		return VMM_EINVALID;
+	}
+
+	if (v->v_type != VDIR) {
+		vmm_mutex_unlock(&f->f_lock);
 		return VMM_EINVALID;
 	}
 
 	f->f_offset = 0;
+
+	vmm_mutex_unlock(&f->f_lock);
 
 	return VMM_OK;
 }
@@ -1546,9 +1634,10 @@ int vfs_stat(const char *path, struct stat *st)
 int vfs_filesystem_register(struct filesystem *fs)
 {
 	bool found;
-	irq_flags_t flags;
 	struct dlist *l;
 	struct filesystem *fst;
+
+	BUG_ON(!vmm_scheduler_orphan_context());
 
 	if (!fs || !fs->name) {
 		return VMM_EFAIL;
@@ -1557,7 +1646,7 @@ int vfs_filesystem_register(struct filesystem *fs)
 	fst = NULL;
 	found = FALSE;
 
-	vmm_spin_lock_irqsave(&vfsc.fs_list_lock, flags);
+	vmm_mutex_lock(&vfsc.fs_list_lock);
 
 	list_for_each(l, &vfsc.fs_list) {
 		fst = list_entry(l, struct filesystem, head);
@@ -1568,14 +1657,14 @@ int vfs_filesystem_register(struct filesystem *fs)
 	}
 
 	if (found) {
-		vmm_spin_unlock_irqrestore(&vfsc.fs_list_lock, flags);
+		vmm_mutex_unlock(&vfsc.fs_list_lock);
 		return VMM_EFAIL;
 	}
 
 	INIT_LIST_HEAD(&fs->head);
 	list_add_tail(&fs->head, &vfsc.fs_list);
 
-	vmm_spin_unlock_irqrestore(&vfsc.fs_list_lock, flags);
+	vmm_mutex_unlock(&vfsc.fs_list_lock);
 
 	return VMM_OK;
 }
@@ -1583,18 +1672,19 @@ int vfs_filesystem_register(struct filesystem *fs)
 int vfs_filesystem_unregister(struct filesystem *fs)
 {
 	bool found;
-	irq_flags_t flags;
 	struct dlist *l;
 	struct filesystem *fst;
+
+	BUG_ON(!vmm_scheduler_orphan_context());
 
 	if (!fs || !fs->name) {
 		return VMM_EFAIL;
 	}
 
-	vmm_spin_lock_irqsave(&vfsc.fs_list_lock, flags);
+	vmm_mutex_lock(&vfsc.fs_list_lock);
 
 	if (list_empty(&vfsc.fs_list)) {
-		vmm_spin_unlock_irqrestore(&vfsc.fs_list_lock, flags);
+		vmm_mutex_unlock(&vfsc.fs_list_lock);
 		return VMM_EFAIL;
 	}
 
@@ -1609,13 +1699,13 @@ int vfs_filesystem_unregister(struct filesystem *fs)
 	}
 
 	if (!found) {
-		vmm_spin_unlock_irqrestore(&vfsc.fs_list_lock, flags);
+		vmm_mutex_unlock(&vfsc.fs_list_lock);
 		return VMM_ENOTAVAIL;
 	}
 
 	list_del(&fs->head);
 
-	vmm_spin_unlock_irqrestore(&vfsc.fs_list_lock, flags);
+	vmm_mutex_unlock(&vfsc.fs_list_lock);
 
 	return VMM_OK;
 }
@@ -1623,15 +1713,16 @@ int vfs_filesystem_unregister(struct filesystem *fs)
 struct filesystem *vfs_filesystem_find(const char *name)
 {
 	bool found;
-	irq_flags_t flags;
 	struct dlist *l;
 	struct filesystem *ret;
+
+	BUG_ON(!vmm_scheduler_orphan_context());
 
 	if (!name) {
 		return NULL;
 	}
 
-	vmm_spin_lock_irqsave(&vfsc.fs_list_lock, flags);
+	vmm_mutex_lock(&vfsc.fs_list_lock);
 
 	ret = NULL;
 	found = FALSE;
@@ -1644,7 +1735,7 @@ struct filesystem *vfs_filesystem_find(const char *name)
 		}
 	}
 
-	vmm_spin_unlock_irqrestore(&vfsc.fs_list_lock, flags);
+	vmm_mutex_unlock(&vfsc.fs_list_lock);
 
 	if (!found) {
 		return NULL;
@@ -1656,15 +1747,16 @@ struct filesystem *vfs_filesystem_find(const char *name)
 struct filesystem *vfs_filesystem_get(int index)
 {
 	bool found;
-	irq_flags_t flags;
 	struct dlist *l;
 	struct filesystem *ret;
+
+	BUG_ON(!vmm_scheduler_orphan_context());
 
 	if (index < 0) {
 		return NULL;
 	}
 
-	vmm_spin_lock_irqsave(&vfsc.fs_list_lock, flags);
+	vmm_mutex_lock(&vfsc.fs_list_lock);
 
 	ret = NULL;
 	found = FALSE;
@@ -1678,7 +1770,7 @@ struct filesystem *vfs_filesystem_get(int index)
 		index--;
 	}
 
-	vmm_spin_unlock_irqrestore(&vfsc.fs_list_lock, flags);
+	vmm_mutex_unlock(&vfsc.fs_list_lock);
 
 	if (!found) {
 		return NULL;
@@ -1690,16 +1782,17 @@ struct filesystem *vfs_filesystem_get(int index)
 u32 vfs_filesystem_count(void)
 {
 	u32 retval = 0;
-	irq_flags_t flags;
 	struct dlist *l;
 
-	vmm_spin_lock_irqsave(&vfsc.fs_list_lock, flags);
+	BUG_ON(!vmm_scheduler_orphan_context());
+
+	vmm_mutex_lock(&vfsc.fs_list_lock);
 
 	list_for_each(l, &vfsc.fs_list) {
 		retval++;
 	}
 
-	vmm_spin_unlock_irqrestore(&vfsc.fs_list_lock, flags);
+	vmm_mutex_unlock(&vfsc.fs_list_lock);
 
 	return retval;
 }
@@ -1710,24 +1803,27 @@ static int __init vfs_init(void)
 
 	memset(&vfsc, 0, sizeof(struct vfs_ctrl));
 
-	INIT_SPIN_LOCK(&vfsc.fs_list_lock);
+	INIT_MUTEX(&vfsc.fs_list_lock);
 	INIT_LIST_HEAD(&vfsc.fs_list);
 
-	INIT_SPIN_LOCK(&vfsc.mnt_list_lock);
+	INIT_MUTEX(&vfsc.mnt_list_lock);
 	INIT_LIST_HEAD(&vfsc.mnt_list);
 
 	for (i = 0; i < VFS_VNODE_HASH_SIZE; i++) {
-		INIT_SPIN_LOCK(&vfsc.vnode_list_lock[i]);
+		INIT_MUTEX(&vfsc.vnode_list_lock[i]);
 		INIT_LIST_HEAD(&vfsc.vnode_list[i]);
 	};
 
-	INIT_SPIN_LOCK(&vfsc.fd_bmap_lock);
+	INIT_MUTEX(&vfsc.fd_bmap_lock);
 	vfsc.fd_bmap = vmm_zalloc(bitmap_estimate_size(VFS_MAX_FD));
 	if (!vfsc.fd_bmap) {
 		return VMM_ENOMEM;
 	}
 	bitmap_zero(vfsc.fd_bmap, VFS_MAX_FD);
 	memset(&vfsc.fd, 0, sizeof(vfsc.fd));
+	for (i = 0; i < VFS_MAX_FD; i++) {
+		INIT_MUTEX(&vfsc.fd[i].f_lock);
+	}
 
 	return VMM_OK;
 }
