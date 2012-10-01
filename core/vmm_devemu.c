@@ -32,10 +32,12 @@
 
 struct vmm_devemu_vcpu_context {
 	u32 rd_victim;
-	physical_addr_t rd_gphys[CONFIG_VGPA2REG_CACHE_SIZE];
+	physical_addr_t rd_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
+	physical_size_t rd_gend[CONFIG_VGPA2REG_CACHE_SIZE];
 	struct vmm_region *rd_reg[CONFIG_VGPA2REG_CACHE_SIZE];
 	u32 wr_victim;
-	physical_addr_t wr_gphys[CONFIG_VGPA2REG_CACHE_SIZE];
+	physical_addr_t wr_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
+	physical_size_t wr_gend[CONFIG_VGPA2REG_CACHE_SIZE];
 	struct vmm_region *wr_reg[CONFIG_VGPA2REG_CACHE_SIZE];
 };
 
@@ -75,7 +77,9 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 	ev = vcpu->devemu_priv;
 	found = FALSE;
 	for (ite = 0; ite < CONFIG_VGPA2REG_CACHE_SIZE; ite++) {
-		if (ev->rd_reg[ite] && (ev->rd_gphys[ite] == gphys_addr)) {
+		if (ev->rd_reg[ite] && 
+		    (ev->rd_gstart[ite] <= gphys_addr) &&
+		    (gphys_addr < ev->rd_gend[ite])) {
 			reg = ev->rd_reg[ite];
 			found = TRUE;
 			break;
@@ -87,7 +91,8 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 		if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
 			return VMM_EFAIL;
 		}
-		ev->rd_gphys[ev->rd_victim] = gphys_addr;
+		ev->rd_gstart[ev->rd_victim] = reg->gphys_addr;
+		ev->rd_gend[ev->rd_victim] = reg->gphys_addr + reg->phys_size;
 		ev->rd_reg[ev->rd_victim] = reg;
 		if (ev->rd_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
 			ev->rd_victim = 0;
@@ -121,7 +126,9 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 	ev = vcpu->devemu_priv;
 	found = FALSE;
 	for (ite = 0; ite < CONFIG_VGPA2REG_CACHE_SIZE; ite++) {
-		if (ev->wr_reg[ite] && (ev->wr_gphys[ite] == gphys_addr)) {
+		if (ev->wr_reg[ite] && 
+		    (ev->wr_gstart[ite] <= gphys_addr) &&
+		    (gphys_addr < ev->wr_gend[ite])) {
 			reg = ev->wr_reg[ite];
 			found = TRUE;
 			break;
@@ -133,7 +140,8 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 		if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
 			return VMM_EFAIL;
 		}
-		ev->wr_gphys[ev->wr_victim] = gphys_addr;
+		ev->wr_gstart[ev->wr_victim] = reg->gphys_addr;
+		ev->wr_gend[ev->wr_victim] = gphys_addr + reg->phys_size;
 		ev->wr_reg[ev->wr_victim] = reg;
 		if (ev->wr_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
 			ev->wr_victim = 0;
@@ -619,9 +627,11 @@ int vmm_devemu_reset_context(struct vmm_guest *guest)
 			for (ite = 0; 
 			     ite < CONFIG_VGPA2REG_CACHE_SIZE; 
 			     ite++) {
-				ev->rd_gphys[ite] = 0;
+				ev->rd_gstart[ite] = 0;
+				ev->rd_gend[ite] = 0;
 				ev->rd_reg[ite] = NULL;
-				ev->wr_gphys[ite] = 0;
+				ev->wr_gstart[ite] = 0;
+				ev->wr_gend[ite] = 0;
 				ev->wr_reg[ite] = NULL;
 			}
 		}
@@ -826,9 +836,11 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 			for (ite = 0; 
 			     ite < CONFIG_VGPA2REG_CACHE_SIZE; 
 			     ite++) {
-				ev->rd_gphys[ite] = 0;
+				ev->rd_gstart[ite] = 0;
+				ev->rd_gend[ite] = 0;
 				ev->rd_reg[ite] = NULL;
-				ev->wr_gphys[ite] = 0;
+				ev->wr_gstart[ite] = 0;
+				ev->wr_gend[ite] = 0;
 				ev->wr_reg[ite] = NULL;
 			}
 			vcpu->devemu_priv = ev;
