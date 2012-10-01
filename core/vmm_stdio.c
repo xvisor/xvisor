@@ -310,6 +310,20 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 				acnt += sizeof(unsigned int);
 				continue;
 			}
+			if (*format == 'p') {
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, unsigned long),
+					16, 0, width, flags, 'a');
+				acnt += sizeof(unsigned long);
+				continue;
+			}
+			if (*format == 'P') {
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, unsigned long),
+					16, 0, width, flags, 'A');
+				acnt += sizeof(unsigned long);
+				continue;
+			}
 			if (*format == 'l' && *(format + 1) == 'l') {
 				while (acnt & (sizeof(unsigned long long)-1)) {
 					va_arg(args, int);
