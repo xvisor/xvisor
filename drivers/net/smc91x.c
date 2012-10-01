@@ -2461,7 +2461,7 @@ module_exit(smc_cleanup);
 static int __devinit smc_drv_probe(struct vmm_device *pdev,
                                 const struct vmm_devid *devid)
 {
-	struct smc91x_platdata *pd;
+	struct smc91x_platdata *pd = pdev->node->system_data;
 	struct smc_local *lp;
 	struct net_device *ndev;
 	//struct resource *res, *ires;
@@ -2485,12 +2485,6 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
 	 */
 
 	lp = netdev_priv(ndev);
-
-#if defined(CONFIG_ARCH_VERSATILE)
-	pd = NULL;
-#else
-	/* Add a function to read and fill pd using dts */
-#endif
 
 	if (pd) {
 		memcpy(&lp->cfg, pd, sizeof(lp->cfg));
