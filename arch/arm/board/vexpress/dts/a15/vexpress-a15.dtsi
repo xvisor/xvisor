@@ -50,6 +50,14 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
+			eth0 {
+				device_type = "nic";
+				compatible = "smc91x";
+				reg = <0x1A000000 0x1000>;
+				irq = <47>;
+				switch = "netbridge0";
+			};
+
 			iofpga {
 				#address-cells = <1>;
 				#size-cells = <1>;

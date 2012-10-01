@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.1.3
-# Mon Sep 10 17:00:40 2012
+# Mon Oct  1 10:28:16 2012
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -145,6 +145,10 @@ CONFIG_CMD_NET=y
 CONFIG_LIBFDT=y
 # CONFIG_NET_STACK is not set
 # CONFIG_LIBSORT is not set
+
+#
+# Virtual Terminal Emulator Options
+#
 CONFIG_VTEMU=y
 CONFIG_VTEMU_FONT_8x8=y
 CONFIG_VTEMU_FONT_8x16=y
@@ -202,7 +206,8 @@ CONFIG_FB_ARMCLCD=y
 #
 CONFIG_NET_DRIVERS=y
 # CONFIG_ETHER_NE2K is not set
-CONFIG_ETHER_SMSC_911x=y
+# CONFIG_ETHER_SMSC_911x is not set
+CONFIG_ETHER_SMSC_91x=y
 
 #
 # Device Emulators
