@@ -24,11 +24,11 @@
 #ifndef __VMM_WAITQUEUE_H__
 #define __VMM_WAITQUEUE_H__
 
-#include <list.h>
 #include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
 #include <vmm_scheduler.h>
 #include <vmm_manager.h>
+#include <libs/list.h>
 
 struct vmm_waitqueue {
 	vmm_spinlock_t lock;

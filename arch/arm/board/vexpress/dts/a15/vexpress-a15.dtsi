@@ -10,6 +10,8 @@
 	};
 
 	host {
+		#address-cells = <1>;
+		#size-cells = <1>;
 		model = "vexpress-a15";
 		device_type = "host";
 		
@@ -30,10 +32,47 @@
 			physical_size = <0x10000000>; /* 256 MB */
 		};
 
-		nbridge {
-			sbridge {
+		gic { /* Generic Interrupt Controller */
+	      		device_type = "pic";
+	      		compatible = "arm,cortex-a15-gic";
+	      		reg = <0x2C001000 0x1000
+			       0x2C002000 0x1000>;
+			irq_start = <26>;
+		};
+
+		gen-timer { /* Generic Timer */
+	      		device_type = "timer";
+	      		compatible = "arm,cortex-a15-gen-timer";
+			irq = <26>;
+		};
+
+		motherboard {
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			eth0 {
+				device_type = "nic";
+				compatible = "smc91x";
+				reg = <0x1A000000 0x1000>;
+				irq = <47>;
+				switch = "netbridge0";
+			};
+
+			iofpga {
 				#address-cells = <1>;
 				#size-cells = <1>;
+
+				sysreg { /* System Registers */
+			      		device_type = "sys";
+			      		compatible = "arm,vexpress-sysreg";
+			      		reg = <0x1C010000 0x1000>;
+				};
+
+				sysctl { /* System Controller */
+			      		device_type = "sys";
+			      		compatible = "arm,sp810";
+			      		reg = <0x1C020000 0x1000>;
+				};
 
 				kmi0 { /* Keyboard */
 			      		device_type = "serio";
@@ -58,6 +97,20 @@
 					clock-rate = <24000000>;
 			      		baudrate = <115200>;
 					irq = <37>;
+				};
+
+				timer01 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x1C110000 0x1000>;
+					irq = <34>;
+				};
+
+				timer23 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x1C120000 0x1000>;
+					irq = <35>;
 				};
 
 				rtc0 {

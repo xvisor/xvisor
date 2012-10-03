@@ -26,12 +26,9 @@
 #include <vmm_host_aspace.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
-#include <stringlib.h>
 #include <vmm_modules.h>
 #include <vmm_ringbuf.h>
-
-#include <vmm_hyperthreads.h>
-#include <vmm_wait.h>
+#include <libs/stringlib.h>
 
 #include <net/ne2k.h>
 

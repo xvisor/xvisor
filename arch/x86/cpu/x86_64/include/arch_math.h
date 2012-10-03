@@ -21,8 +21,8 @@
  * @brief Architecture specific math related functions
  */
 
-#ifndef __arch_MATH_H__
-#define __arch_MATH_H__
+#ifndef __ARCH_MATH_H__
+#define __ARCH_MATH_H__
 
 #include <vmm_types.h>
 

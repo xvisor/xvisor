@@ -23,9 +23,9 @@
 #ifndef _VMM_CMDMGR_H__
 #define _VMM_CMDMGR_H__
 
-#include <list.h>
 #include <vmm_types.h>
 #include <vmm_chardev.h>
+#include <libs/list.h>
 
 typedef void (*vmm_cmd_usage_t) (struct vmm_chardev *);
 typedef int (*vmm_cmd_exec_t) (struct vmm_chardev *, int, char **);

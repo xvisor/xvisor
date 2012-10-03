@@ -33,10 +33,11 @@
  * $Id: psock.c,v 1.2 2006/06/12 08:00:30 adam Exp $
  */
 
+#include <libs/stringlib.h>
+
 #include "uipopt.h"
 #include "psock.h"
 #include "uip.h"
-#include <stringlib.h>
 
 #define STATE_NONE 0
 #define STATE_ACKED 1

@@ -21,6 +21,7 @@
  * @brief main source file for board specific code
  */
 
+#include <arch_barrier.h>
 #include <vmm_error.h>
 #include <vmm_smp.h>
 #include <vmm_spinlocks.h>
@@ -31,13 +32,12 @@
 #include <vmm_stdio.h>
 #include <vmm_chardev.h>
 #include <rtc/vmm_rtcdev.h>
-#include <arch_barrier.h>
+#include <libs/libfdt.h>
+#include <libs/vtemu.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 #include <versatile/clcd.h>
 #include <versatile/clock.h>
-#include <libfdt.h>
-#include <vtemu.h>
 #include <motherboard.h>
 #include <sp810.h>
 #include <sp804_timer.h>
@@ -291,36 +291,70 @@ int __init arch_clocksource_init(void)
 {
 	int rc;
 	u32 val;
+	struct vmm_devtree_node *node;
 	virtual_addr_t sctl_base;
 
 	/* Map control registers */
-	sctl_base = vmm_host_iomap(V2M_SYSCTL, 0x1000);
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysctl");
+	if (!node) {
+		goto skip_sp804_init;
+	}
+	rc = vmm_devtree_regmap(node, &sctl_base, 0);
+	if (rc) {
+		return rc;
+	}
 
 	/* Select 1MHz TIMCLK as the reference clock for SP804 timers */
 	val = vmm_readl((void *)sctl_base) | SCCTRL_TIMEREN0SEL_TIMCLK;
 	vmm_writel(val, (void *)sctl_base);
 
 	/* Unmap control register */
-	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	rc = vmm_devtree_regunmap(node, sctl_base, 0);
 	if (rc) {
 		return rc;
 	}
 
 	/* Map timer0 registers */
-	v2m_timer0_base = vmm_host_iomap(V2M_TIMER01, 0x1000);
-
-	/* Initialize timer0 as clocksource */
-	rc = sp804_clocksource_init(v2m_timer0_base, 
-				    "sp804_timer0", 300, 1000000, 20);
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "timer01");
+	if (!node) {
+		goto skip_sp804_init;
+	}
+	rc = vmm_devtree_regmap(node, &v2m_timer0_base, 0);
 	if (rc) {
 		return rc;
 	}
 
+	/* Initialize timer0 as clocksource */
+	rc = sp804_clocksource_init(v2m_timer0_base, 
+				    node->name, 300, 1000000, 20);
+	if (rc) {
+		return rc;
+	}
+skip_sp804_init:
+
 #if defined(CONFIG_ARM_GENERIC_TIMER)
+	/* Find generic timer node */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "gen-timer");
+	if (!node) {
+		goto skip_gen_init;
+	}
+
+	/* Initialize generic timer as clock source */
 	rc = generic_timer_clocksource_init("gen-clksrc", 400, 100000000, 27);
 	if (rc) {
 		return rc;
 	}
+skip_gen_init:
 #endif
 
 	return VMM_OK;
@@ -335,58 +369,138 @@ static virtual_addr_t v2m_twd_base;
 int __init arch_clockchip_init(void)
 {
 	int rc;
-	u32 val, cpu = vmm_smp_processor_id();
+	struct vmm_devtree_node *node;
+	u32 val, *valp, cpu = vmm_smp_processor_id();
 
 	if (!cpu) {
 		virtual_addr_t sctl_base;
 
 		/* Map control registers */
-		sctl_base = vmm_host_iomap(V2M_SYSCTL, 0x1000);
+		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+					   VMM_DEVTREE_HOSTINFO_NODE_NAME
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysctl");
+		if (!node) {
+			goto skip_sp804_init;
+		}
+		rc = vmm_devtree_regmap(node, &sctl_base, 0);
+		if (rc) {
+			return rc;
+		}
 
 		/* Select 1MHz TIMCLK as the reference clock for SP804 timers */
 		val = vmm_readl((void *)sctl_base) | SCCTRL_TIMEREN1SEL_TIMCLK;
 		vmm_writel(val, (void *)sctl_base);
 
 		/* Unmap control register */
-		rc = vmm_host_iounmap(sctl_base, 0x1000);
+		rc = vmm_devtree_regunmap(node, sctl_base, 0);
 		if (rc) {
 			return rc;
 		}
 
 		/* Map timer1 registers */
-		v2m_timer1_base = vmm_host_iomap(V2M_TIMER01 + 0x20, 0x1000);
+		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+					   VMM_DEVTREE_HOSTINFO_NODE_NAME
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "timer01");
+		if (!node) {
+			goto skip_sp804_init;
+		}
+		rc = vmm_devtree_regmap(node, &v2m_timer1_base, 0);
+		if (rc) {
+			return rc;
+		}
+		v2m_timer1_base += 0x20;
+
+		/* Get timer1 irq */
+		valp = vmm_devtree_attrval(node, "irq");
+		if (!valp) {
+			return VMM_EFAIL;
+		}
+		val = *valp; 
 
 		/* Initialize timer1 as clockchip */
-		rc = sp804_clockchip_init(v2m_timer1_base, IRQ_V2M_TIMER1, 
-				  "sp804_timer1", 300, 1000000, 0);
+		rc = sp804_clockchip_init(v2m_timer1_base, val, 
+					  node->name, 300, 1000000, 0);
+		if (rc) {
+			return rc;
+		}
+	}
+skip_sp804_init:
+
+#if defined(CONFIG_ARM_TWD)
+	/* Map 24mhz reference counter register */
+	if (!v2m_sys_24mhz) {
+		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+					   VMM_DEVTREE_HOSTINFO_NODE_NAME
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysreg");
+		if (!node) {
+			goto skip_twd_init;
+		}
+		rc = vmm_devtree_regmap(node, &v2m_sys_24mhz, 0);
+		if (rc) {
+			return rc;
+		}
+		v2m_sys_24mhz += V2M_SYS_24MHZ;
+	}
+
+	/* Find local timer node */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "twd-timer");
+	if (!node) {
+		goto skip_twd_init;
+	}
+
+	/* Get twd-timer irq */
+	valp = vmm_devtree_attrval(node, "irq");
+	if (!valp) {
+		return VMM_EFAIL;
+	}
+	val = *valp; 
+
+	/* Map SMP twd local timer registers */
+	if (!v2m_twd_base) {
+		rc = vmm_devtree_regmap(node, &v2m_twd_base, 0);
 		if (rc) {
 			return rc;
 		}
 	}
 
-#if defined(CONFIG_ARM_TWD)
-	/* Map 24mhz reference counter register */
-	if (!v2m_sys_24mhz) {
-		v2m_sys_24mhz = 
-			vmm_host_iomap(V2M_SYSREGS + V2M_SYS_24MHZ, 0x1000);
-	}
-
-	/* Map SMP twd local timer registers */
-	if (!v2m_twd_base) {
-		v2m_twd_base = vmm_host_iomap(A9_MPCORE_TWD, 0x1000);
-	}
-
 	/* Initialize SMP twd local timer as clockchip */
-	rc = twd_clockchip_init(v2m_twd_base, v2m_sys_24mhz, 24000000, 
-				IRQ_LOCALTIMER);
+	rc = twd_clockchip_init(v2m_twd_base, v2m_sys_24mhz, 24000000, val);
 	if (rc) {
 		return rc;
 	}
-#elif defined(CONFIG_ARM_GENERIC_TIMER)
-	rc = generic_timer_clockchip_init("gen-clkchip", IRQ_HYPTIMER, 400, 100000000);
+skip_twd_init:
+#endif
+
+#if defined(CONFIG_ARM_GENERIC_TIMER)
+	/* Find generic timer node */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "gen-timer");
+	if (!node) {
+		goto skip_gen_init;
+	}
+
+	/* Get generic timer irq */
+	valp = vmm_devtree_attrval(node, "irq");
+	if (!valp) {
+		return VMM_EFAIL;
+	}
+	val = *valp; 
+
+	/* Initialize generic timer as clockchip */
+	rc = generic_timer_clockchip_init(node->name, val, 400, 100000000);
 	if (rc) {
 		return rc;
 	}
+skip_gen_init:
 #endif
 
 	return VMM_OK;
@@ -408,14 +522,25 @@ int __init arch_board_final_init(void)
 	/* We can register a Board specific resource here */
 
 	/* Map control registers */
-	v2m_sys_base = vmm_host_iomap(V2M_SYSREGS, 0x1000);
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysreg");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	rc = vmm_devtree_regmap(node, &v2m_sys_base, 0);
+	if (rc) {
+		return rc;
+	}
 	INIT_SPIN_LOCK(&v2m_cfg_lock);
 
 	/* Setup CLCD (before probing) */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
 				   VMM_DEVTREE_PATH_SEPARATOR_STRING "clcd");
 	if (node) {
 		node->system_data = &clcd_system_data;
@@ -424,7 +549,7 @@ int __init arch_board_final_init(void)
 	/* Do Probing using device driver framework */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge");
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard");
 
 	if (!node) {
 		return VMM_ENOTAVAIL;

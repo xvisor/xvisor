@@ -88,9 +88,9 @@
 #include <vmm_types.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
-#include <list.h>
-#include <stringlib.h>
 #include <net/vmm_mbuf.h>
+#include <libs/list.h>
+#include <libs/stringlib.h>
 
 /*
  * Mbuffer utility routines.

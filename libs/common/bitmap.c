@@ -26,7 +26,7 @@
  */
 
 #include <vmm_error.h>
-#include <bitmap.h>
+#include <libs/bitmap.h>
 
 /*
  * bitmaps provide an array of bits, implemented using an an

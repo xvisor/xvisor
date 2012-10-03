@@ -41,7 +41,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 #include <pic/gic_emulator.h>
 
 #define MODULE_DESC			"Realview GIC Emulator"

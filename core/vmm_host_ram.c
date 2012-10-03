@@ -26,9 +26,9 @@
 #include <vmm_spinlocks.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_ram.h>
-#include <stringlib.h>
-#include <mathlib.h>
-#include <bitmap.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+#include <libs/bitmap.h>
 
 struct vmm_host_ram_ctrl {
 	vmm_spinlock_t ram_bmap_lock;

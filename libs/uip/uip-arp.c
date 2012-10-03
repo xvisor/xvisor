@@ -83,10 +83,11 @@
  */
 
 
-#include "uip-arp.h"
 #include <vmm_types.h>
 #include <vmm_completion.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
+
+#include "uip-arp.h"
 
 struct ethip_hdr {
 	struct uip_eth_hdr ethhdr;

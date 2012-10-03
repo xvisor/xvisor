@@ -28,8 +28,8 @@
 #include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
 #include <arch_cpu.h>
-#include <stringlib.h>
-#include <kallsyms.h>
+#include <libs/stringlib.h>
+#include <libs/kallsyms.h>
 
 typedef void (*vmm_profile_callback_t) (void *, void *);
 

@@ -26,8 +26,8 @@
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
-#include <stringlib.h>
 #include <net/vmm_netport.h>
+#include <libs/stringlib.h>
 
 struct vmm_netport *vmm_netport_alloc(char *name)
 {

@@ -48,7 +48,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <fb/vmm_fb.h>
-#include <bitops.h>
+#include <libs/bitops.h>
 #include "fb_draw.h"
 
 #if BITS_PER_LONG == 32

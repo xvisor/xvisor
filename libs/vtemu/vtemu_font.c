@@ -36,8 +36,8 @@
  */
 
 #include <vmm_macros.h>
-#include <stringlib.h>
-#include <vtemu_font.h>
+#include <libs/stringlib.h>
+#include <libs/vtemu_font.h>
 
 #define VTEMU_NO_FONTS
 

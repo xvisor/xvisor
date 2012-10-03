@@ -16,18 +16,16 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_emulate_thumb.h
+ * @file emulate_thumb.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief header file to emulate Thumb instructions
  */
-#ifndef _CPU_VCPU_EMULATE_THUMB_H__
-#define _CPU_VCPU_EMULATE_THUMB_H__
+#ifndef _EMULATE_THUMB_H__
+#define _EMULATE_THUMB_H__
 
 #include <vmm_types.h>
 
-/** Emulate Priviledged Thumb instructions */
-int cpu_vcpu_emulate_thumb_inst(struct vmm_vcpu *vcpu, 
-				arch_regs_t * regs, 
-				bool is_hypercall);
+/** Emulate Thumb instructions */
+int emulate_thumb_inst(struct vmm_vcpu *vcpu, arch_regs_t *regs, u32 inst);
 
 #endif

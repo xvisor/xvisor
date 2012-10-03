@@ -24,9 +24,9 @@
 #include <vmm_error.h>
 #include <vmm_timer.h>
 #include <vmm_delay.h>
-#include <mathlib.h>
 #include <arch_delay.h>
 #include <arch_cpu.h>
+#include <libs/mathlib.h>
 
 static u32 loops_per_msec;
 static u32 loops_per_usec;

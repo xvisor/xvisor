@@ -84,7 +84,7 @@ static int netdev_register_port(struct net_device *ndev)
 }
 
 
-int netdev_register(struct net_device *ndev)
+int register_netdev(struct net_device *ndev)
 {
 	int rc = VMM_OK;
 

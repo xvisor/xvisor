@@ -23,9 +23,9 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <stringlib.h>
-#include <mathlib.h>
-#include <vtemu.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+#include <libs/vtemu.h>
 
 #define VTEMU_KEYFLAG_LEFTCTRL		0x00000001
 #define VTEMU_KEYFLAG_RIGHTCTRL		0x00000002
@@ -367,7 +367,7 @@ static int vtemu_key_event(struct vmm_input_handler *ihnd,
 	u32 key_flags;
 	struct vtemu *v = ihnd->priv;
 
-	if (value == 1) {
+	if (value) { /* value=1 (key-up) or value=2 (auto-repeat) */
 		/* Update input key flags */
 		key_flags = vtemu_key2flags(code);
 		if ((key_flags & VTEMU_KEYFLAG_LOCKS) &&
@@ -385,7 +385,7 @@ static int vtemu_key_event(struct vmm_input_handler *ihnd,
 
 		/* Add input key string to input buffer */
 		vtemu_add_input(v, str);
-	} else if (value == 0)  {
+	} else { /* value=0 (key-down) */
 		/* Update input key flags */
 		key_flags = vtemu_key2flags(code);
 		if (!(key_flags & VTEMU_KEYFLAG_LOCKS)) {

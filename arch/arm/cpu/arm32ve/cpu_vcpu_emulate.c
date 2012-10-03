@@ -24,6 +24,7 @@
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_vcpu_irq.h>
+#include <vmm_host_aspace.h>
 #include <vmm_devemu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
@@ -407,5 +408,4 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu,
 
 	return rc;
 }
-
 

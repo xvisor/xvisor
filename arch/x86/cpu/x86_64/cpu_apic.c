@@ -27,13 +27,13 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
-#include <cpu_mmu.h>
+#include <libs/stringlib.h>
 #include <arch_cpu.h>
 #include <arch_io.h>
+#include <cpu_mmu.h>
 #include <cpu_private.h>
 #include <cpu_interrupts.h>
 #include <cpu_apic.h>
-#include <stringlib.h>
 #include <acpi.h>
 
 /* FIXME we should spread the irqs across as many priority levels as possible

@@ -31,7 +31,7 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <rtc/vmm_rtcdev.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"PL031 RTC Driver"
 #define MODULE_AUTHOR			"Anup Patel"

@@ -21,11 +21,11 @@
  * @brief C code for cpu functions
  */
 
-#include <arch_cpu.h>
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_main.h>
 #include <multiboot.h>
+#include <arch_regs.h>
 #include <arch_cpu.h>
 #include <acpi.h>
 

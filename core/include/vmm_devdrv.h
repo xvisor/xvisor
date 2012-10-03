@@ -24,10 +24,10 @@
 #ifndef __VMM_DEVDRV_H_
 #define __VMM_DEVDRV_H_
 
-#include <list.h>
 #include <vmm_types.h>
 #include <vmm_devtree.h>
 #include <vmm_spinlocks.h>
+#include <libs/list.h>
 
 struct vmm_devid;
 struct vmm_devclk;
@@ -85,7 +85,7 @@ struct vmm_driver {
 	char name[32];
 	const struct vmm_devid *match_table;
 	int (*probe) (struct vmm_device *, const struct vmm_devid *);
-	int (*suspend) (struct vmm_device *);
+	int (*suspend) (struct vmm_device *, u32);
 	int (*resume) (struct vmm_device *);
 	int (*remove) (struct vmm_device *);
 };

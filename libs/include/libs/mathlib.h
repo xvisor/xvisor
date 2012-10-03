@@ -25,6 +25,7 @@
 #define __MATHLIB_H__
 
 #include <vmm_types.h>
+#include <arch_config.h>
 
 #if !defined(ARCH_HAS_DIVISON_OPERATION)
 

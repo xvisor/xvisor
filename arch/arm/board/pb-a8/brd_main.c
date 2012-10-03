@@ -29,15 +29,14 @@
 #include <vmm_stdio.h>
 #include <vmm_chardev.h>
 #include <rtc/vmm_rtcdev.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
+#include <libs/libfdt.h>
+#include <libs/vtemu.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 #include <versatile/clcd.h>
 #include <versatile/clock.h>
-#include <libfdt.h>
-#include <vtemu.h>
 #include <realview_plat.h>
-#include <pba8_board.h>
 #include <sp804_timer.h>
 
 /*
@@ -324,10 +323,22 @@ int __init arch_clocksource_init(void)
 {
 	int rc;
 	u32 val;
+	struct vmm_devtree_node *node;
 	virtual_addr_t sctl_base;
 
 	/* Map control registers */
-	sctl_base = vmm_host_iomap(REALVIEW_SCTL_BASE, 0x1000);
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysctl0");
+	if (!node) {
+		goto skip_clocksource_init;
+	}
+	rc = vmm_devtree_regmap(node, &sctl_base, 0);
+	if (rc) {
+		return rc;
+	}
 
 	/* 
 	 * set clock frequency: 
@@ -339,33 +350,57 @@ int __init arch_clocksource_init(void)
 	vmm_writel(val, (void *)sctl_base);
 
 	/* Unmap control register */
-	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	rc = vmm_devtree_regunmap(node, sctl_base, 0);
 	if (rc) {
 		return rc;
 	}
 
 	/* Map timer1 registers */
-	pba8_timer1_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "timer01");
+	if (!node) {
+		goto skip_clocksource_init;
+	}
+	rc = vmm_devtree_regmap(node, &pba8_timer1_base, 0);
+	if (rc) {
+		return rc;
+	}
 	pba8_timer1_base += 0x20;
 
 	/* Initialize timer1 as clocksource */
 	rc = sp804_clocksource_init(pba8_timer1_base, 
-				    "sp804_timer1", 300, 1000000, 20);
+				    node->name, 300, 1000000, 20);
 	if (rc) {
 		return rc;
 	}
 
+skip_clocksource_init:
 	return VMM_OK;
 }
 
 int __init arch_clockchip_init(void)
 {
 	int rc;
-	u32 val;
+	u32 val, *valp;
+	struct vmm_devtree_node *node;
 	virtual_addr_t sctl_base;
 
 	/* Map control registers */
-	sctl_base = vmm_host_iomap(REALVIEW_SCTL_BASE, 0x1000);
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysctl0");
+	if (!node) {
+		goto skip_clockchip_init;
+	}
+	rc = vmm_devtree_regmap(node, &sctl_base, 0);
+	if (rc) {
+		return rc;
+	}
 
 	/* 
 	 * set clock frequency: 
@@ -376,22 +411,41 @@ int __init arch_clockchip_init(void)
 			(REALVIEW_TIMCLK << REALVIEW_TIMER1_EnSel);
 	vmm_writel(val, (void *)sctl_base);
 
-	/* Unmap control register */
-	rc = vmm_host_iounmap(sctl_base, 0x1000);
+	/* Unmap control registers */
+	rc = vmm_devtree_regunmap(node, sctl_base, 0);
 	if (rc) {
 		return rc;
 	}
 
 	/* Map timer0 registers */
-	pba8_timer0_base = vmm_host_iomap(REALVIEW_PBA8_TIMER0_1_BASE, 0x1000);
-
-	/* Initialize timer0 as clockchip */
-	rc = sp804_clockchip_init(pba8_timer0_base, IRQ_PBA8_TIMER0_1, 
-				  "sp804_timer0", 300, 1000000, 0);
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "timer01");
+	if (!node) {
+		goto skip_clockchip_init;
+	}
+	rc = vmm_devtree_regmap(node, &pba8_timer0_base, 0);
 	if (rc) {
 		return rc;
 	}
 
+	/* Get timer0 irq */
+	valp = vmm_devtree_attrval(node, "irq");
+	if (!valp) {
+		return VMM_EFAIL;
+	}
+	val = *valp; 
+
+	/* Initialize timer0 as clockchip */
+	rc = sp804_clockchip_init(pba8_timer0_base, val, 
+				  node->name, 300, 1000000, 0);
+	if (rc) {
+		return rc;
+	}
+
+skip_clockchip_init:
 	return VMM_OK;
 }
 
@@ -410,8 +464,19 @@ int __init arch_board_final_init(void)
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
-	/* Map control registers */
-	pba8_sys_base = vmm_host_iomap(REALVIEW_SYS_BASE, 0x1000);
+	/* Map system registers */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysreg");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	rc = vmm_devtree_regmap(node, &pba8_sys_base, 0);
+	if (rc) {
+		return rc;
+	}
 
 	/* Setup Clocks (before probing) */
 	oscvco_clk.vcoreg = (void *)pba8_sys_base + REALVIEW_SYS_OSC4_OFFSET;
@@ -420,7 +485,6 @@ int __init arch_board_final_init(void)
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
 				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
 				   VMM_DEVTREE_PATH_SEPARATOR_STRING "clcd");
 	if (node) {
 		node->system_data = &clcd_system_data;

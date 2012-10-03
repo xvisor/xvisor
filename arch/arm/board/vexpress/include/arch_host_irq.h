@@ -24,8 +24,6 @@
 #define _ARCH_HOST_IRQ_H__
 
 #include <vmm_types.h>
-#include <vmm_host_aspace.h>
-#include <motherboard.h>
 #include <gic.h>
 
 #define ARCH_HOST_IRQ_COUNT			GIC_NR_IRQS
@@ -39,17 +37,16 @@ static inline u32 arch_host_irq_active(u32 cpu_irq_no)
 /* Initialize board specifig host irq hardware (i.e PIC) */
 static inline int arch_host_irq_init(void)
 {
-	virtual_addr_t dist_base, cpu_base;
+	struct vmm_devtree_node *node;
 
-#if defined(CONFIG_CPU_CORTEX_A9)
-	dist_base = vmm_host_iomap(A9_MPCORE_GIC_DIST, 0x1000);
-	cpu_base = vmm_host_iomap(A9_MPCORE_GIC_CPU, 0x1000);
-#elif defined(CONFIG_CPU_CORTEX_A15) || defined(CONFIG_CPU_CORTEX_A15_VE)
-	dist_base = vmm_host_iomap(A15_MPCORE_GIC_DIST, 0x1000);
-	cpu_base = vmm_host_iomap(A15_MPCORE_GIC_CPU, 0x1000);
-#endif
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "gic");
+	if (!node) {
+		return VMM_ENODEV;
+	}
 
-	return gic_init(0, GIC_IRQ_START, cpu_base, dist_base);
+	return gic_devtree_init(node, NULL);
 }
 
 #endif

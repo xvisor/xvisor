@@ -28,7 +28,7 @@
 #include <vmm_types.h>
 #include <arch_sections.h>
 #include <arch_barrier.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 #include <cpu_defines.h>
 #include <cpu_cache.h>
 #include <cpu_inline_asm.h>
@@ -610,17 +610,16 @@ int cpu_mmu_stage2_chttbl(u8 vmid, struct cpu_ttbl * ttbl)
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_map(virtual_addr_t va, 
-			virtual_size_t sz, 
-			physical_addr_t pa,
+int arch_cpu_aspace_map(virtual_addr_t page_va, 
+			physical_addr_t page_pa,
 			u32 mem_flags)
 {
 	struct cpu_page p;
 
 	memset(&p, 0, sizeof(p));
-	p.ia = va;
-	p.oa = pa;
-	p.sz = sz;
+	p.ia = page_va;
+	p.oa = page_pa;
+	p.sz = VMM_PAGE_SIZE;
 	p.af = 1;
 	if (mem_flags & VMM_MEMORY_WRITEABLE) {
 		p.ap = TTBL_AP_SRW_U;
@@ -646,12 +645,12 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 	return cpu_mmu_map_hypervisor_page(&p);
 }
 
-int arch_cpu_aspace_unmap(virtual_addr_t va, virtual_size_t sz)
+int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 {
 	int rc;
 	struct cpu_page p;
 
-	rc = cpu_mmu_get_hypervisor_page(va, &p);
+	rc = cpu_mmu_get_hypervisor_page(page_va, &p);
 	if (rc) {
 		return rc;
 	}

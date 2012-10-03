@@ -93,15 +93,16 @@
  * the packet back to the peer.
 */
 
-#include "uip.h"
-#include "uipopt.h"
-#include "uip-arch.h"
-#include <mathlib.h>
 #include <vmm_types.h>
 #include <vmm_timer.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+
+#include "uip.h"
+#include "uipopt.h"
+#include "uip-arch.h"
 
 #if UIP_CONF_IPV6
 #include "uip-neighbor.h"

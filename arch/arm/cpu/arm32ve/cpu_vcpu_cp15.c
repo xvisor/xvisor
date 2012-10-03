@@ -24,11 +24,13 @@
 
 #include <vmm_heap.h>
 #include <vmm_error.h>
-#include <vmm_devemu.h>
 #include <vmm_scheduler.h>
+#include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
+#include <emulate_arm.h>
+#include <emulate_thumb.h>
 #include <cpu_mmu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
@@ -91,6 +93,7 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu *vcpu, 
 			     arch_regs_t *regs,
 			     u32 il, u32 iss, 
+			     virtual_addr_t ifar,
 			     physical_addr_t fipa)
 {
 	switch (iss & ISS_ABORT_FSR_MASK) {
@@ -108,8 +111,12 @@ int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu *vcpu,
 int cpu_vcpu_cp15_data_abort(struct vmm_vcpu *vcpu, 
 			     arch_regs_t *regs,
 			     u32 il, u32 iss, 
+			     virtual_addr_t dfar,
 			     physical_addr_t fipa)
 {
+	u32 read_count, inst;
+	physical_addr_t inst_pa;
+
 	switch (iss & ISS_ABORT_FSR_MASK) {
 	case FSR_TRANS_FAULT_LEVEL1:
 	case FSR_TRANS_FAULT_LEVEL2:
@@ -119,14 +126,30 @@ int cpu_vcpu_cp15_data_abort(struct vmm_vcpu *vcpu,
 	case FSR_ACCESS_FAULT_LEVEL2:
 	case FSR_ACCESS_FAULT_LEVEL3:
 		if (!(iss & ISS_ABORT_ISV_MASK)) {
-			return VMM_EFAIL;
-		}
-		if (iss & ISS_ABORT_WNR_MASK) {
-			return cpu_vcpu_emulate_store(vcpu, regs, 
-						      il, iss, fipa);
+			/* Determine instruction physical address */
+			va2pa_ns_pr(regs->pc);
+			inst_pa = read_par64();
+			inst_pa &= PAR64_PA_MASK;
+			inst_pa |= (regs->pc & 0x00000FFF);
+
+			/* Read the faulting instruction */
+			read_count = vmm_host_physical_read(inst_pa, &inst, sizeof(inst));
+			if (read_count != sizeof(inst)) {
+				return VMM_EFAIL;
+			}
+			if (regs->cpsr & CPSR_THUMB_ENABLED) {
+				return emulate_thumb_inst(vcpu, regs, inst);
+			} else {
+				return emulate_arm_inst(vcpu, regs, inst);
+			}
 		} else {
-			return cpu_vcpu_emulate_load(vcpu, regs, 
-						     il, iss, fipa);
+			if (iss & ISS_ABORT_WNR_MASK) {
+				return cpu_vcpu_emulate_store(vcpu, regs, 
+							      il, iss, fipa);
+			} else {
+				return cpu_vcpu_emulate_load(vcpu, regs, 
+							     il, iss, fipa);
+			}
 		}
 	default:
 		break;
@@ -367,6 +390,8 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		arm_priv(tvcpu)->cp15.c5_dfsr = read_dfsr();
 		arm_priv(tvcpu)->cp15.c6_ifar = read_ifar();
 		arm_priv(tvcpu)->cp15.c6_dfar = read_dfar();
+		arm_priv(tvcpu)->cp15.c7_par = read_par();
+		arm_priv(tvcpu)->cp15.c7_par64 = read_par64();
 		arm_priv(tvcpu)->cp15.c10_prrr = read_prrr();
 		arm_priv(tvcpu)->cp15.c10_nmrr = read_nmrr();
 		arm_priv(tvcpu)->cp15.c12_vbar = read_vbar();
@@ -396,6 +421,8 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		write_dfsr(arm_priv(vcpu)->cp15.c5_dfsr);
 		write_ifar(arm_priv(vcpu)->cp15.c6_ifar);
 		write_dfar(arm_priv(vcpu)->cp15.c6_dfar);
+		write_par(arm_priv(vcpu)->cp15.c7_par);
+		write_par64(arm_priv(vcpu)->cp15.c7_par64);
 		write_prrr(arm_priv(vcpu)->cp15.c10_prrr);
 		write_nmrr(arm_priv(vcpu)->cp15.c10_nmrr);
 		write_vbar(arm_priv(vcpu)->cp15.c12_vbar);
@@ -423,9 +450,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	u32 i, cache_type, last_level;
 
-	if (!vcpu->reset_count) {
-		memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
-	}
+	memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
 
 	arm_priv(vcpu)->cp15.c0_cpuid = cpuid;
 	arm_priv(vcpu)->cp15.c2_ttbcr = 0x0;

@@ -32,7 +32,7 @@
  * The original code is licensed under the GPL.
  */
 
-#include <mathlib.h>
+#include <libs/mathlib.h>
 #include <icst.h>
 
 /*

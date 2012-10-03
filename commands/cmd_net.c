@@ -32,7 +32,7 @@
 #include <net/vmm_netswitch.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_netstack.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"Command net"
 #define MODULE_AUTHOR			"Sukanto Ghosh"

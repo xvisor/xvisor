@@ -4,7 +4,7 @@
 #ifdef __VMM__
 #include <vmm_types.h>
 #include <arch_elf.h>
-#include <elf-em.h>
+#include <libs/elf-em.h>
 
 #ifdef CONFIG_64BIT
 #define Elf_Shdr Elf64_Shdr

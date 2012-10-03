@@ -32,8 +32,8 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <arch_cpu_irq.h>
-#include <stringlib.h>
-#include <scatterlist.h>
+#include <libs/stringlib.h>
+#include <libs/scatterlist.h>
 
 /**
  * sg_next - return the next scatterlist entry in a list

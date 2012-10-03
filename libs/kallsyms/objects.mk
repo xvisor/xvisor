@@ -24,5 +24,4 @@
 # runtime module loading, profiling, etc. 
 # */
 
-libs-cppflags-y+= -I$(libs_dir)/kallsyms
 libs-objs-y+= kallsyms/kallsyms.o

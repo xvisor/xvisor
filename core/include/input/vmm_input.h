@@ -35,8 +35,8 @@
 #include <vmm_spinlocks.h>
 #include <vmm_timer.h>
 #include <vmm_devdrv.h>
-#include <list.h>
-#include <bitmap.h>
+#include <libs/list.h>
+#include <libs/bitmap.h>
 
 /** Input module intialization priority */
 #define VMM_INPUT_IPRIORITY				1

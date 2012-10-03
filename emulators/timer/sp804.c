@@ -38,8 +38,8 @@
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC			"SP804 Dual-Mode Timer Emulator"
 #define MODULE_AUTHOR			"Anup Patel"

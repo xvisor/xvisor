@@ -38,7 +38,7 @@
 #include <vmm_scheduler.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"L2X0 Cache Emulator"
 #define MODULE_AUTHOR			"Sukanto Ghosh"

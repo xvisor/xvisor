@@ -31,8 +31,8 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 #include <serial/omap-uart.h>
 
 /* Enable OMAP_UART_POLLING to force OMAP UART polling

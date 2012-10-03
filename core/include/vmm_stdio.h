@@ -27,7 +27,7 @@
 #include <vmm_compiler.h>
 #include <vmm_spinlocks.h>
 #include <vmm_chardev.h>
-#include <stacktrace.h>
+#include <libs/stacktrace.h>
 
 #define BUG_ON(x)							\
 	do {								\
@@ -40,15 +40,26 @@
 #define BUG()	BUG_ON(1)
 
 #define WARN_ON(x)							\
-	do {								\
+	({								\
 		if (x) {						\
 			vmm_printf("Warning in %s() at %s:%d\n",	\
 				   __func__, __FILE__, __LINE__);	\
 			dump_stacktrace();				\
 		}							\
-	} while(0)
+		(x);							\
+	})
 
-#define WARN()	WARN_ON(1)
+#define WARN(x, msg...)							\
+	({								\
+		if (x) {						\
+			vmm_printf("Warning: " msg);			\
+			vmm_printf("Warning in %s() at %s:%d\n",	\
+				   __func__, __FILE__, __LINE__);	\
+			dump_stacktrace();				\
+		}							\
+		(x);							\
+	})
+
 
 /** Check if a character is a control character */
 bool vmm_iscontrol(char c);
@@ -71,9 +82,6 @@ void vmm_cputs(struct vmm_chardev *cdev, char *str);
 /** Put string to default device */
 void vmm_puts(char *str);
 
-/** Print formatted string to default device */
-int vmm_printf(const char *format, ...);
-
 /** Print formatted string to another string */
 int vmm_sprintf(char *out, const char *format, ...);
 
@@ -82,6 +90,9 @@ int vmm_snprintf(char *out, u32 out_sz, const char *format, ...);
 
 /** Print formatted string to character device */
 int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
+
+/** Print formatted string to default device */
+#define vmm_printf(...)	vmm_cprintf(NULL, __VA_ARGS__);
 
 /** Panic & Print formatted message */
 void __noreturn vmm_panic(const char *format, ...);

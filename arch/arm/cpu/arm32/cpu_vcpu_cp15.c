@@ -28,32 +28,41 @@
 
 #include <vmm_heap.h>
 #include <vmm_error.h>
-#include <vmm_devemu.h>
 #include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <arch_barrier.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
+#include <emulate_arm.h>
+#include <emulate_thumb.h>
 #include <cpu_mmu.h>
 #include <cpu_cache.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
-#include <cpu_vcpu_emulate_arm.h>
-#include <cpu_vcpu_emulate_thumb.h>
 #include <cpu_vcpu_cp15.h>
 
 /* Update Virtual TLB */
 static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu, 
-				     struct cpu_page *p, u32 domain)
+				     struct cpu_page *p, 
+				     u32 domain,
+				     bool is_virtual)
 {
 	int rc;
-	u32 entry, victim, line;
+	u32 entry, victim, zone;
 	struct arm_vtlb_entry *e = NULL;
 
+	/* Find appropriate zone */
+	if (is_virtual) {
+		zone = CPU_VCPU_VTLB_ZONE_V;
+	} else if (p->ng) {
+		zone = CPU_VCPU_VTLB_ZONE_NG;
+	} else {
+		zone = CPU_VCPU_VTLB_ZONE_G;
+	}
+
 	/* Find out next victim entry from TLB */
-	line = (p->va & CPU_VCPU_VTLB_LINE_MASK) >> CPU_VCPU_VTLB_LINE_SHIFT;
-	victim = arm_priv(vcpu)->cp15.vtlb.victim[line];
-	entry = victim + line * CPU_VCPU_VTLB_LINE_ENTRY_COUNT;
+	victim = arm_priv(vcpu)->cp15.vtlb.victim[zone];
+	entry = victim + CPU_VCPU_VTLB_ZONE_START(zone);
 	e = &arm_priv(vcpu)->cp15.vtlb.table[entry];
 	if (e->valid) {
 		/* Remove valid victim page from L1 Page Table */
@@ -91,19 +100,18 @@ static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu,
 
 	/* Point to next victim of TLB line */
 	victim = victim + 1;
-	if (CPU_VCPU_VTLB_LINE_ENTRY_COUNT <= victim) {
-		victim = victim - CPU_VCPU_VTLB_LINE_ENTRY_COUNT;
+	if (CPU_VCPU_VTLB_ZONE_LEN(zone) <= victim) {
+		victim = 0;
 	}
-	arm_priv(vcpu)->cp15.vtlb.victim[line] = victim;
+	arm_priv(vcpu)->cp15.vtlb.victim[zone] = victim;
 
 	return VMM_OK;
 }
 
-/** Flush Virtual TLB */
-static int cpu_vcpu_cp15_vtlb_flush(struct vmm_vcpu *vcpu)
+int cpu_vcpu_cp15_vtlb_flush(struct vmm_vcpu *vcpu)
 {
 	int rc;
-	u32 vtlb, line;
+	u32 vtlb, zone;
 	struct arm_vtlb_entry *e;
 
 	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
@@ -120,23 +128,21 @@ static int cpu_vcpu_cp15_vtlb_flush(struct vmm_vcpu *vcpu)
 		}
 	}
 
-	for (line = 0; line < CPU_VCPU_VTLB_LINE_COUNT; line++) {
-		arm_priv(vcpu)->cp15.vtlb.victim[line] = 0;
+	for (zone = 0; zone < CPU_VCPU_VTLB_ZONE_COUNT; zone++) {
+		arm_priv(vcpu)->cp15.vtlb.victim[zone] = 0;
 	}
 
 	return VMM_OK;
 }
 
-/** Flush given virtual address from Virtual TLB */
-static int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu *vcpu, virtual_addr_t va)
+
+int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu *vcpu, virtual_addr_t va)
 {
 	int rc;
-	u32 vtlb, line;
+	u32 vtlb;
 	struct arm_vtlb_entry *e;
 
-	line = (va & CPU_VCPU_VTLB_LINE_MASK) >> CPU_VCPU_VTLB_LINE_SHIFT;
-	for (vtlb = line * CPU_VCPU_VTLB_LINE_ENTRY_COUNT;
-	     vtlb < CPU_VCPU_VTLB_LINE_ENTRY_COUNT; vtlb++) {
+	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
 		if (arm_priv(vcpu)->cp15.vtlb.table[vtlb].valid) {
 			e = &arm_priv(vcpu)->cp15.vtlb.table[vtlb];
 			if (e->page.va <= va && va < (e->page.va + e->page.sz)) {
@@ -156,14 +162,15 @@ static int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu *vcpu, virtual_addr_t va)
 	return VMM_OK;
 }
 
-/** Flush non-global pages from Virtual TLB */
-static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
+int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 {
 	int rc;
-	u32 vtlb;
+	u32 vtlb, vtlb_last;
 	struct arm_vtlb_entry * e;
 
-	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
+	vtlb = CPU_VCPU_VTLB_ZONE_START(CPU_VCPU_VTLB_ZONE_NG);
+	vtlb_last = vtlb + CPU_VCPU_VTLB_ZONE_LEN(CPU_VCPU_VTLB_ZONE_NG);
+	while (vtlb < vtlb_last) {
 		if (arm_priv(vcpu)->cp15.vtlb.table[vtlb].valid) {
 			e = &arm_priv(vcpu)->cp15.vtlb.table[vtlb];
 			if (e->ng) {
@@ -177,14 +184,14 @@ static int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 				e->dom = 0;
 			}
 		}
+		vtlb++;
 	}
 
 	return VMM_OK;
 }
 
-/** Flush pages whos domain permissions have changed from Virtual TLB */
-static int cpu_vcpu_cp15_vtlb_flush_domain(struct vmm_vcpu * vcpu, 
-					   u32 dacr_xor_diff)
+int cpu_vcpu_cp15_vtlb_flush_domain(struct vmm_vcpu * vcpu, 
+				    u32 dacr_xor_diff)
 {
 	int rc;
 	u32 vtlb;
@@ -300,9 +307,8 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		int access_type, int is_user, struct cpu_page *pg, u32 * fs)
 {
 	physical_addr_t table;
-	physical_size_t table_sz;
-	int rc, type, domain;
-	u32 desc, reg_flags;
+	int type, domain;
+	u32 desc;
 
 	pg->va = va;
 
@@ -310,20 +316,11 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	/* Lookup l1 descriptor.  */
 	table = get_level1_table_pa(vcpu, va);
 
-	rc = vmm_guest_physical_map(vcpu->guest,
-				    table,
-				    0x4000, &table, &table_sz, &reg_flags);
-	if (rc) {
-		return rc;
-	}
-	if (table_sz < 0x4000) {
-		return VMM_EFAIL;
-	}
-	if (reg_flags & VMM_REGION_VIRTUAL) {
-		return VMM_EFAIL;
-	}
 	table |= (va >> 18) & 0x3ffc;
-	desc = cpu_mmu_physical_read32(table);
+	if (!vmm_guest_physical_read(vcpu->guest, 
+				     table, &desc, sizeof(desc))) {
+		return VMM_EFAIL;
+	}
 	type = (desc & 3);
 	if (type == 0) {
 		/* Section translation fault.  */
@@ -366,22 +363,11 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	} else {
 		/* Lookup l2 entry.  */
 		table = (desc & 0xfffffc00);
-		reg_flags = 0x0;
-		rc = vmm_guest_physical_map(vcpu->guest,
-					    table,
-					    0x400,
-					    &table, &table_sz, &reg_flags);
-		if (rc) {
-			return rc;
-		}
-		if (table_sz < 0x400) {
-			return VMM_EFAIL;
-		}
-		if (reg_flags & VMM_REGION_VIRTUAL) {
-			return VMM_EFAIL;
-		}
 		table |= ((va >> 10) & 0x3fc);
-		desc = cpu_mmu_physical_read32(table);
+		if (!vmm_guest_physical_read(vcpu->guest, 
+					     table, &desc, sizeof(desc))) {
+			return VMM_EFAIL;
+		}
 		switch (desc & 3) {
 		case 0:	/* Page translation fault.  */
 			*fs = 7;
@@ -442,9 +428,8 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		int access_type, int is_user, struct cpu_page *pg, u32 * fs)
 {
 	physical_addr_t table;
-	physical_size_t table_sz;
 	int type, domain;
-	u32 desc, reg_flags;
+	u32 desc;
 
 	pg->va = va;
 
@@ -452,26 +437,14 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	/* Lookup l1 descriptor.  */
 	table = get_level1_table_pa(vcpu, va);
 
-	/* map it to xvisor */
-	if (vmm_guest_physical_map(vcpu->guest, table, TTBL_L1TBL_SIZE, 
-				   &table, &table_sz, &reg_flags)) {
-		goto do_fault;
-	}
-
-	/* some sanity check */
-	if (table_sz < TTBL_L1TBL_SIZE) {
-		goto do_fault;
-	}
-
-	if (reg_flags & VMM_REGION_VIRTUAL) {
-		goto do_fault;
-	}
-
 	/* compute the L1 descripto physical location */
 	table |= (va >> 18) & 0x3ffc;
 
 	/* get it */
-	desc = cpu_mmu_physical_read32(table);
+	if (!vmm_guest_physical_read(vcpu->guest, 
+				     table, &desc, sizeof(desc))) {
+		goto do_fault;
+	}
 
 	/* extract type */
 	type = (desc & TTBL_L1TBL_TTE_TYPE_MASK);
@@ -511,25 +484,14 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		/* compute L2 table physical address */
 		table = desc & 0xfffffc00;
 
-		/* map it to xvisor */
-		if (vmm_guest_physical_map (vcpu->guest, table, TTBL_L2TBL_SIZE, &table, &table_sz, &reg_flags)) {
-			goto do_fault;
-		}
-
-		/* sanity check */
-		if (table_sz < TTBL_L2TBL_SIZE) {
-			goto do_fault;
-		}
-
-		if (reg_flags & VMM_REGION_VIRTUAL) {
-			goto do_fault;
-		}
-
 		/* compute L2 desc physical address */
 		table |= ((va >> 10) & 0x3fc);
 
 		/* get it */
-		desc = cpu_mmu_physical_read32(table);
+		if (!vmm_guest_physical_read(vcpu->guest, 
+				     table, &desc, sizeof(desc))) {
+			goto do_fault;
+		}
 
 		switch (desc & TTBL_L2TBL_TTE_TYPE_MASK) {
 		case TTBL_L2TBL_TTE_TYPE_LARGE:	/* 64k page.  */
@@ -565,21 +527,12 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		}
 
 		table = (desc & 0xfffff000);
-
-		if (vmm_guest_physical_map (vcpu->guest, table, 0x1000, &table, &table_sz, &reg_flags)) {
-			goto do_fault;
-		}
-
-		if (table_sz < 0x1000) {
-			goto do_fault;
-		}
-
-		if (reg_flags & VMM_REGION_VIRTUAL) {
-			goto do_fault;
-		}
-
 		table |= ((va >> 8) & 0xffc);
-		desc = cpu_mmu_physical_read32(table);
+
+		if (!vmm_guest_physical_read(vcpu->guest, 
+				     table, &desc, sizeof(desc))) {
+			goto do_fault;
+		}
 
 		switch (desc & TTBL_L2TBL_TTE_TYPE_MASK) {
 		case TTBL_L2TBL_TTE_TYPE_LARGE:	/* 64k page.  */
@@ -724,7 +677,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 {
 	u32 orig_domain, tre_index, tre_inner, tre_outer, tre_type;
 	u32 ecode, reg_flags;
-	bool is_user;
+	bool is_user, is_virtual;
 	int rc, access_type;
 	struct cpu_page pg;
 	physical_size_t availsz;
@@ -806,7 +759,9 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 		pg.ap = TTBL_AP_S_U;
 		break;
 	};
+	is_virtual = FALSE;
 	if (reg_flags & VMM_REGION_VIRTUAL) {
+		is_virtual = TRUE;
 		switch (pg.ap) {
 		case TTBL_AP_SRW_U:
 			pg.ap = TTBL_AP_S_U;
@@ -898,7 +853,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 		pg.b = pg.b && (reg_flags & VMM_REGION_BUFFERABLE);
 	}
 
-	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg, orig_domain);
+	return cpu_vcpu_cp15_vtlb_update(vcpu, &pg, orig_domain, is_virtual);
 }
 
 int cpu_vcpu_cp15_access_fault(struct vmm_vcpu *vcpu,
@@ -956,9 +911,11 @@ int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu *vcpu,
 		/* Emulate load/store instructions */
 		arm_priv(vcpu)->cp15.virtio_active = TRUE;
 		if (regs->cpsr & CPSR_THUMB_ENABLED) {
-			rc = cpu_vcpu_emulate_thumb_inst(vcpu, regs, FALSE);
+			rc = emulate_thumb_inst(vcpu, regs, 
+						*((u32 *) regs->pc));
 		} else {
-			rc = cpu_vcpu_emulate_arm_inst(vcpu, regs, FALSE);
+			rc = emulate_arm_inst(vcpu, regs, 
+						*((u32 *) regs->pc));
 		}
 		arm_priv(vcpu)->cp15.virtio_active = FALSE;
 		return rc;
@@ -1957,246 +1914,6 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 	return TRUE;
  bad_reg:
 	return FALSE;
-}
-
-int cpu_vcpu_cp15_mem_read(struct vmm_vcpu *vcpu,
-			   arch_regs_t * regs,
-			   virtual_addr_t addr,
-			   void *dst, u32 dst_len, bool force_unpriv)
-{
-	struct cpu_page pg;
-	register int rc = VMM_OK;
-	register u32 vind, ecode;
-	register struct cpu_page *pgp = &pg;
-	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) ==
-	    arm_priv(vcpu)->cp15.ovect_base) {
-		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
-			force_unpriv = TRUE;
-		}
-		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr,
-						     CP15_ACCESS_READ,
-						     force_unpriv, &pg))) {
-			cpu_vcpu_cp15_assert_fault(vcpu, regs, addr,
-						   (ecode >> 4), (ecode & 0xF),
-						   0, 1);
-			return VMM_EFAIL;
-		}
-		vind = addr & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
-		switch (dst_len) {
-		case 4:
-			vind &= ~(0x4 - 1);
-			vind /= 0x4;
-			*((u32 *) dst) = arm_guest_priv(vcpu->guest)->ovect[vind];
-			break;
-		case 2:
-			vind &= ~(0x2 - 1);
-			vind /= 0x2;
-			*((u16 *) dst) =
-			    ((u16 *)arm_guest_priv(vcpu->guest)->ovect)[vind];
-			break;
-		case 1:
-			*((u8 *) dst) =
-			    ((u8 *)arm_guest_priv(vcpu->guest)->ovect)[vind];
-			break;
-		default:
-			return VMM_EFAIL;
-			break;
-		};
-	} else {
-		if (arm_priv(vcpu)->cp15.virtio_active) {
-			pgp = &arm_priv(vcpu)->cp15.virtio_page;
-			rc = VMM_OK;
-		} else {
-			rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1, addr,
-					      &pg);
-		}
-		if (rc == VMM_ENOTAVAIL) {
-			if (pgp->va) {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-							       addr,
-							       DFSR_FS_TRANS_FAULT_PAGE,
-							       0, 0, 1,
-							       force_unpriv);
-			} else {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-							       addr,
-							       DFSR_FS_TRANS_FAULT_SECTION,
-							       0, 0, 1,
-							       force_unpriv);
-			}
-			if (!rc) {
-				rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1,
-						      addr, pgp);
-			}
-		}
-		if (rc) {
-			cpu_vcpu_halt(vcpu, regs);
-			return rc;
-		}
-		switch (pgp->ap) {
-#if !defined(CONFIG_ARMV5)
-		case TTBL_AP_SR_U:
-#endif
-		case TTBL_AP_SRW_U:
-			return vmm_devemu_emulate_read(vcpu,
-						       (addr - pgp->va) +
-						       pgp->pa, dst, dst_len);
-			break;
-		case TTBL_AP_SRW_UR:
-		case TTBL_AP_SRW_URW:
-			switch (dst_len) {
-			case 4:
-				*((u32 *) dst) = *((u32 *) addr);
-				break;
-			case 2:
-				*((u16 *) dst) = *((u16 *) addr);
-				break;
-			case 1:
-				*((u8 *) dst) = *((u8 *) addr);
-				break;
-			default:
-				if (dst_len > 4) {
-					vind = 0;
-					while (dst_len >= 4) {
-						((u32 *) dst)[vind] =
-						    ((u32 *) addr)[vind];
-						vind++;
-						dst_len = dst_len - 4;
-					}
-				} else {
-					return VMM_EFAIL;
-				}
-				break;
-			};
-			break;
-		default:
-			/* Remove fault address from VTLB and restart.
-			 * Doing this will force us to do TTBL walk If MMU 
-			 * is enabled then appropriate fault will be generated 
-			 */
-			cpu_vcpu_cp15_vtlb_flush_va(vcpu, addr);
-			return VMM_EFAIL;
-			break;
-		};
-	}
-	return VMM_OK;
-}
-
-int cpu_vcpu_cp15_mem_write(struct vmm_vcpu *vcpu,
-			    arch_regs_t * regs,
-			    virtual_addr_t addr,
-			    void *src, u32 src_len, bool force_unpriv)
-{
-	struct cpu_page pg;
-	register int rc = VMM_OK;
-	register u32 vind, ecode;
-	register struct cpu_page *pgp = &pg;
-	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == 
-	    arm_priv(vcpu)->cp15.ovect_base) {
-		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
-			force_unpriv = TRUE;
-		}
-		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr,
-						     CP15_ACCESS_WRITE,
-						     force_unpriv, &pg))) {
-			cpu_vcpu_cp15_assert_fault(vcpu, regs, addr,
-						   (ecode >> 4), (ecode & 0xF),
-						   1, 1);
-			return VMM_EFAIL;
-		}
-		vind = addr & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
-		switch (src_len) {
-		case 4:
-			vind &= ~(0x4 - 1);
-			vind /= 0x4;
-			arm_guest_priv(vcpu->guest)->ovect[vind] = *((u32 *) src);
-			break;
-		case 2:
-			vind &= ~(0x2 - 1);
-			vind /= 0x2;
-			((u16 *)arm_guest_priv(vcpu->guest)->ovect)[vind] =
-			    *((u16 *) src);
-			break;
-		case 1:
-			((u8 *)arm_guest_priv(vcpu->guest)->ovect)[vind] =
-			    *((u8 *) src);
-			break;
-		default:
-			return VMM_EFAIL;
-			break;
-		};
-	} else {
-		if (arm_priv(vcpu)->cp15.virtio_active) {
-			pgp = &arm_priv(vcpu)->cp15.virtio_page;
-			rc = VMM_OK;
-		} else {
-			rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1, addr,
-					      &pg);
-		}
-		if (rc == VMM_ENOTAVAIL) {
-			if (pgp->va) {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, addr,
-							       DFSR_FS_TRANS_FAULT_PAGE,
-							       0, 1, 1,
-							       force_unpriv);
-			} else {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, addr,
-							       DFSR_FS_TRANS_FAULT_SECTION,
-							       0, 1, 1,
-							       force_unpriv);
-			}
-			if (!rc) {
-				rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1,
-						      addr, pgp);
-			}
-		}
-		if (rc) {
-			cpu_vcpu_halt(vcpu, regs);
-			return rc;
-		}
-		switch (pgp->ap) {
-		case TTBL_AP_SRW_U:
-			return vmm_devemu_emulate_write(vcpu,
-							(addr - pgp->va) +
-							pgp->pa, src, src_len);
-			break;
-		case TTBL_AP_SRW_URW:
-			switch (src_len) {
-			case 4:
-				*((u32 *) addr) = *((u32 *) src);
-				break;
-			case 2:
-				*((u16 *) addr) = *((u16 *) src);
-				break;
-			case 1:
-				*((u8 *) addr) = *((u8 *) src);
-				break;
-			default:
-				if (src_len > 4) {
-					vind = 0;
-					while (src_len >= 4) {
-						((u32 *) addr)[vind] =
-						    ((u32 *) src)[vind];
-						vind++;
-						src_len = src_len - 4;
-					}
-				} else {
-					return VMM_EFAIL;
-				}
-				break;
-			};
-			break;
-		default:
-			/* Remove fault address from VTLB and restart.
-			 * Doing this will force us to do TTBL walk If MMU 
-			 * is enabled then appropriate fault will be generated 
-			 */
-			cpu_vcpu_cp15_vtlb_flush_va(vcpu, addr);
-			return VMM_EFAIL;
-			break;
-		};
-	}
-	return VMM_OK;
 }
 
 virtual_addr_t cpu_vcpu_cp15_vector_addr(struct vmm_vcpu * vcpu, u32 irq_no)

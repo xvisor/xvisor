@@ -24,15 +24,17 @@
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_compiler.h>
+#include <vmm_devtree.h>
 #include <vmm_host_aspace.h>
 #include <serial/pl011.h>
-#include <motherboard.h>
 
 #define	V2M_DEFAULT_UART_BASE			V2M_UART0
 #define	V2M_DEFAULT_UART_INCLK			24000000
 #define	V2M_DEFAULT_UART_BAUD			115200
 
 static virtual_addr_t v2m_defterm_base;
+static u32 v2m_defterm_inclk;
+static u32 v2m_defterm_baud;
 
 int arch_defterm_putc(u8 ch)
 {
@@ -54,8 +56,31 @@ int arch_defterm_getc(u8 * ch)
 
 int __init arch_defterm_init(void)
 {
-	v2m_defterm_base = vmm_host_iomap(V2M_DEFAULT_UART_BASE, 0x1000);
+	int rc;
+	u32 *val;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
+				   VMM_DEVTREE_PATH_SEPARATOR_STRING "uart0");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	rc = vmm_devtree_regmap(node, &v2m_defterm_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	val = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
+	v2m_defterm_inclk = (val) ? *val : 24000000;
+
+	val = vmm_devtree_attrval(node, "baudrate");
+	v2m_defterm_baud = (val) ? *val : 115200;
+
 	pl011_lowlevel_init(v2m_defterm_base,
-			    V2M_DEFAULT_UART_BAUD, V2M_DEFAULT_UART_INCLK);
+			    v2m_defterm_baud, 
+			    v2m_defterm_inclk);
 	return VMM_OK;
 }

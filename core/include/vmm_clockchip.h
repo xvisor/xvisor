@@ -26,8 +26,8 @@
 #include <vmm_types.h>
 #include <vmm_cpumask.h>
 #include <arch_regs.h>
-#include <mathlib.h>
-#include <list.h>
+#include <libs/mathlib.h>
+#include <libs/list.h>
 
 /* Clockchip mode commands */
 enum vmm_clockchip_mode {

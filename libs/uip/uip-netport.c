@@ -21,9 +21,6 @@
  * @brief source file of netport interface of uip
  */
 
-#include "uip.h"
-#include "uip-fw.h"
-#include "uip-arp.h"
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
 #include <vmm_error.h>
@@ -32,8 +29,12 @@
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netport.h>
-#include <list.h>
-#include <stringlib.h>
+#include <libs/list.h>
+#include <libs/stringlib.h>
+
+#include "uip.h"
+#include "uip-fw.h"
+#include "uip-arp.h"
 
 #undef UIP_DEBUG
 

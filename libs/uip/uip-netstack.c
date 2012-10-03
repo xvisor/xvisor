@@ -21,16 +21,17 @@
  * @brief Source for implementation of vmm_netstack interface for uIP
  */
 
-#include "uip.h"
-#include "uip-arp.h"
-#include "uip-netport.h"
-#include <net/vmm_mbuf.h>
-#include <net/vmm_netstack.h>
 #include <vmm_stdio.h>
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_completion.h>
-#include <stringlib.h>
+#include <net/vmm_mbuf.h>
+#include <net/vmm_netstack.h>
+#include <libs/stringlib.h>
+
+#include "uip.h"
+#include "uip-arp.h"
+#include "uip-netport.h"
 
 struct vmm_completion uip_arp_prefetch_done;
 static struct vmm_completion uip_ping_done;

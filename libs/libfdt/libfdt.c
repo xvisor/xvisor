@@ -24,9 +24,9 @@
 #include <vmm_error.h>
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
-#include <stringlib.h>
-#include <mathlib.h>
-#include <libfdt.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+#include <libs/libfdt.h>
 
 #define LIBFDT_DATA32(ptr)	vmm_be32_to_cpu(*((u32*)ptr))
 #define LIBFDT_DATA64(ptr)	vmm_be64_to_cpu(*((u64*)ptr))

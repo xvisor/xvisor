@@ -26,7 +26,7 @@
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
 #include <vmm_guest_aspace.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 #include <cpu_asm_macros.h>
 #include <cpu_mmu.h>
 

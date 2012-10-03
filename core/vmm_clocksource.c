@@ -26,7 +26,7 @@
 #include <vmm_spinlocks.h>
 #include <vmm_clocksource.h>
 #include <arch_timer.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 /** Control structure for clocksource manager */
 struct vmm_clocksource_ctrl {

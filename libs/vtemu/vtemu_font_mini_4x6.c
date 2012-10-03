@@ -39,7 +39,7 @@ __END__;
    MSBit to LSBit = left to right.
  */
 
-#include <vtemu_font.h>
+#include <libs/vtemu_font.h>
 
 #define FONTDATAMAX 1536
 

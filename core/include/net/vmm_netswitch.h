@@ -26,11 +26,11 @@
 #ifndef __VMM_NETSWITCH_H_
 #define __VMM_NETSWITCH_H_
 
-#include <list.h>
 #include <vmm_types.h>
 #include <vmm_devdrv.h>
 #include <vmm_spinlocks.h>
 #include <vmm_completion.h>
+#include <libs/list.h>
 
 #define VMM_NETSWITCH_CLASS_NAME	"netswitch"
 

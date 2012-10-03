@@ -31,8 +31,8 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 #include <serial/uart.h>
 
 #define MODULE_DESC			"Generic UART Driver"

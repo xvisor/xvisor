@@ -39,10 +39,10 @@
  *         Adam Dunkels <adam@sics.se>
  */
 
-#include "uip-neighbor.h"
-
 #include <vmm_stdio.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
+
+#include "uip-neighbor.h"
 
 #define MAX_TIME 128
 

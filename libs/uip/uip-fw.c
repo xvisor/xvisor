@@ -53,10 +53,11 @@
  *
  */
 
+#include <libs/stringlib.h> /* for memcpy() */
+
 #include "uip.h"
 #include "uip-arch.h"
 #include "uip-fw.h"
-#include <stringlib.h> /* for memcpy() */
 
 /*
  * The list of registered network interfaces.

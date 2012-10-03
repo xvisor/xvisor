@@ -31,9 +31,46 @@
 		};
 
 		nbridge {
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			clcd {
+		      		device_type = "fb";
+		      		compatible = "ambaclcd";
+		      		reg = <0x10020000 0x1000>;
+			};
+
+			eth0 {
+				device_type = "nic";
+				compatible = "smc911x";
+				reg = <0x4E000000 0x1000>;
+				irq = <60>;
+				switch = "netbridge0";
+			};
+
 			sbridge {
 				#address-cells = <1>;
 				#size-cells = <1>;
+
+				gic { /* Generic Interrupt Controller */
+			      		device_type = "pic";
+			      		compatible = "arm,realview-gic";
+			      		reg = <0x1E001000 0x1000
+					       0x1E000000 0x1000>;
+					irq_start = <32>;
+				};
+
+				sysreg { /* System Registers */
+			      		device_type = "sys";
+			      		compatible = "arm,realview-sysreg";
+			      		reg = <0x10000000 0x1000>;
+				};
+
+				sysctl0 { /* System Controller */
+			      		device_type = "sys";
+			      		compatible = "arm,sp810";
+			      		reg = <0x10001000 0x1000>;
+				};
 
 				kmi0 { /* Keyboard */
 			      		device_type = "serio";
@@ -60,6 +97,20 @@
 					irq = <44>;
 				};
 
+				timer01 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x10011000 0x1000>;
+					irq = <36>;
+				};
+
+				timer23 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x10012000 0x1000>;
+					irq = <37>;
+				};
+
 				rtc0 {
 			      		device_type = "rtc";
 			      		compatible = "pl031";
@@ -68,18 +119,10 @@
 					irq = <42>;
 				};
 
-				clcd {
-			      		device_type = "fb";
-			      		compatible = "ambaclcd";
-			      		reg = <0x10020000 0x1000>;
-				};
-
-				eth0 {
-					device_type = "nic";
-					compatible = "smc911x";
-					reg = <0x4E000000 0x1000>;
-					irq = <60>;
-					switch = "netbridge0";
+				sysctl1 { /* System Controller */
+			      		device_type = "sys";
+			      		compatible = "arm,sp810";
+			      		reg = <0x1001A000 0x1000>;
 				};
 			};
 		};

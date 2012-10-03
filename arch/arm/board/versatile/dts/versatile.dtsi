@@ -1,6 +1,12 @@
 
 / {
 	vmm {
+		net {
+			netbridge0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
 	};
 
 	host {
@@ -39,6 +45,16 @@
 					clock-rate = <1>;
 					irq = <10>;
 				};
+
+				eth0 {
+					device_type = "nic";
+					compatible = "smc91x";
+					reg = <0x10010000 0x1000>;
+					irq = <25>;
+					switch = "netbridge0";
+				};
+
+
 			};
 		};
 	};

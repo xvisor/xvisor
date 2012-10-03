@@ -28,8 +28,8 @@
 #include <vmm_cmdmgr.h>
 #include <net/vmm_netstack.h>
 #include <net/vmm_protocol.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC			"Command ping"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
