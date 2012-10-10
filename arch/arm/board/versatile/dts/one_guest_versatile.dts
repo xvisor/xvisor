@@ -136,8 +136,11 @@
 					address_type = "memory";
 					guest_physical_addr = <0x10010000>;
 					physical_size = <0x10000>;
-					device_type = "misc";
-					compatible = "zero";
+					device_type = "nic";
+					compatible = "smsc,smc91c111";
+					irq = <25>;
+					switch = "netbridge0";
+
 				};
 
 				usb { /* No USB Interface */

@@ -185,7 +185,9 @@ CONFIG_EMU_PIC_PL190=y
 #
 # Network Interface Controller Emulators
 #
-# CONFIG_EMU_NET is not set
+CONFIG_EMU_NET=y
+# CONFIG_EMU_NET_LAN9118 is not set
+CONFIG_EMU_NET_SMC91C111=y
 
 #
 # Timer Emulators
