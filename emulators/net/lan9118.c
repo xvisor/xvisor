@@ -602,7 +602,10 @@ static u32 lan9118_receive(struct lan9118_state *s, struct vmm_mbuf *mbuf)
 	DPRINTF("Got packet len:%d fifo:%d filter:%s\n",
 			(int)size, fifo_len, filter ? "pass" : "fail");
 	val = 0;
-	crc = bswap32(crc32(~0, buf, size));
+	/* As a Emulator, we don't need to insert CRC
+	 * crc = bswap32(crc32(~0, buf, size));
+	 */
+	crc = 0; /* CRC computation skipped !!! */
 	for (src_pos = 0; src_pos < size; src_pos++) {
 		val = (val >> 8) | ((u32)buf[src_pos] << 24);
 		n++;
