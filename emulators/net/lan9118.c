@@ -20,9 +20,6 @@
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief SMSC LAN 9118 Ethernet Interface Emulator.
  *
- * @details This source file implements the emulator for SMSC LAN 
- * 9118 Ethernet Interface
- *
  * The source has been largely adapted from QEMU hw/lan9118.c 
  *
  * SMSC LAN9118 Ethernet interface emulation
