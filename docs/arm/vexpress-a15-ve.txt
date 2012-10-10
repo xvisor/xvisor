@@ -27,7 +27,7 @@ Vexpress-A15 Host:
   # make -C tests/arm32/pb-a8/basic
 
   [6. Create fast_model_boot.axf for running it on ARM Fast Models]
-  # ./tools/scripts/memimg.py -a 0x80010000 -o build/fast_model_boot.img build/vmm.bin@0x80010000 build/tests/arm32/pb-a8/basic/arm_test.bin@0x80800000
+  # ./tools/scripts/memimg.py -a 0x80010000 -o build/fast_model_boot.img build/vmm.bin@0x80010000 build/tests/arm32/pb-a8/basic/arm_test.bin@0x81000000
   # cd build/; ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSMP -DVEXPRESS_A15 -DGIC_DIST_NONSECURED ../docs/arm/fast_model_boot.S -o fast_model_boot.axf; cd ..
 
   [7. Launch ARM fast models 7.0 or higher]

@@ -281,7 +281,7 @@
 					address_type = "memory";
 					guest_physical_addr = <0x40000000>;
 					host_physical_addr = <0x89000000>;
-					physical_size = <0x00800000>; /* 8 MB */
+					physical_size = <0x01000000>; /* 16 MB */
 					device_type = "rom";
 				};
 
@@ -289,7 +289,7 @@
 					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x44000000>;
-					physical_size = <0x1000000>; /* 16 MB */
+					physical_size = <0x01000000>; /* 16 MB */
 					device_type = "misc";
 					compatible = "zero";
 				};

@@ -63,8 +63,8 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # cd <linux_build_directory>
 
   [16. Create xvisor_linux_qemu.img for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x00010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x00010000 <xvisor_source_directory>/build/tests/arm32/versatile/basic/arm_test.bin.patched@0x00800000 <xvisor_source_directory>/tests/arm32/versatile/linux/cmdlist@0x008FF000 ./arch/arm/boot/zImage@0x00900000 <busybox_rootfs_directory>/rootfs.img@0x00C00000
-  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/versatile/basic/arm_test.bin.patched@0x01000000 <xvisor_source_directory>/tests/arm32/versatile/linux/cmdlist@0x010FF000 ./arch/arm/boot/zImage@0x01100000 <busybox_rootfs_directory>/rootfs.img@0x01400000")
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x00010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x00010000 <xvisor_source_directory>/build/tests/arm32/versatile/basic/arm_test.bin.patched@0x01000000 <xvisor_source_directory>/tests/arm32/versatile/linux/cmdlist@0x010FF000 ./arch/arm/boot/zImage@0x01100000 <busybox_rootfs_directory>/rootfs.img@0x01400000
+  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/versatile/basic/arm_test.bin.patched@0x08000000 <xvisor_source_directory>/tests/arm32/versatile/linux/cmdlist@0x080FF000 ./arch/arm/boot/zImage@0x08100000 <busybox_rootfs_directory>/rootfs.img@0x08400000")
 
   [17. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M versatilepb -display none -serial stdio -kernel ./xvisor_linux_qemu.img
@@ -78,9 +78,9 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   [20. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] arm-test# copy 0x00400000 0x34100000 0x300000
   (Note: This command will copy zImage to RAM)
-  [guest0/uart0] arm-test# copy 0x01000000 0x34400000 0x400000
+  [guest0/uart0] arm-test# copy 0x01000000 0x34400000 0x600000
   (Note: This command will copy rootfs.img to RAM)
-  [guest0/uart0] arm-test# start_linux 0x00400000 0x01000000 0x400000
+  [guest0/uart0] arm-test# start_linux 0x00400000 0x01000000 0x600000
   (Note: This command will start linux booting)
   OR
   [guest0/uart0] arm-test# autoexec

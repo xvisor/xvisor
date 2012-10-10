@@ -27,7 +27,7 @@ with Xvisor running on QEMU Vexpress-A15 Host:
   # make -C tests/arm32/pb-a8/basic
 
   [6. Create qemu.img for running it on QEMU]
-  # ./tools/scripts/memimg.py -a 0x80010000 -o build/qemu.img build/vmm.bin@0x80010000 build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x80800000
+  # ./tools/scripts/memimg.py -a 0x80010000 -o build/qemu.img build/vmm.bin@0x80010000 build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x81000000
 
   [7. Launch QEMU Linaro 2.02 or higher]
   # qemu-system-arm -M vexpress-a15 -display none -serial stdio -kernel build/qemu.img
