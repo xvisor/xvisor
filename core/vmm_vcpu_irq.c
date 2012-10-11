@@ -31,23 +31,28 @@
 #include <vmm_vcpu_irq.h>
 #include <libs/stringlib.h>
 
-void vmm_vcpu_irq_process(arch_regs_t * regs)
+void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	int irq_no;
 	irq_flags_t flags;
 	u32 i, irq_prio, irq_reas, tmp_prio, irq_count;
-	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 
 	/* For non-normal vcpu dont do anything */
 	if (!vcpu || !vcpu->is_normal) {
 		return;
 	}
 
-	/* Get irq count */
-	irq_count = arch_vcpu_irq_count(vcpu);
-
 	/* Lock VCPU irqs */
 	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
+
+	/* Proceed only if we have pending asserts */
+	if (vcpu->irqs.assert_pending < 1) {
+		vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
+		return;
+	}
+
+	/* Get saved irq count */
+	irq_count = vcpu->irqs.irq_count;
 
 	/* Find the irq number to process */
 	irq_no = -1;
@@ -69,6 +74,7 @@ void vmm_vcpu_irq_process(arch_regs_t * regs)
 		if (arch_vcpu_irq_execute(vcpu, regs, irq_no, irq_reas) == VMM_OK) {
 			vcpu->irqs.assert[irq_no] = FALSE;
 			vcpu->irqs.execute[irq_no] = TRUE;
+			vcpu->irqs.assert_pending--;
 			vcpu->irqs.execute_count++;
 		}
 	}
@@ -109,18 +115,20 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 		return;
 	}
 
-	if (irq_no > arch_vcpu_irq_count(vcpu)) {
-		return;
-	}
-
 	/* Lock VCPU irqs */
 	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
+
+	if (irq_no > vcpu->irqs.irq_count) {
+		vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
+		return;
+	}
 
 	/* Assert the irq */
 	if (!vcpu->irqs.assert[irq_no]) {
 		if (arch_vcpu_irq_assert(vcpu, irq_no, reason) == VMM_OK) {
 			vcpu->irqs.reason[irq_no] = reason;
 			vcpu->irqs.assert[irq_no] = TRUE;
+			vcpu->irqs.assert_pending++;
 			vcpu->irqs.assert_count++;
 		}
 	}
@@ -242,10 +250,13 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	/* Lock VCPU irqs */
 	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
 
-	/* Set default irq depth */
-	vcpu->irqs.depth = 0;
+	/* Save irq count */
+	vcpu->irqs.irq_count = irq_count;
 
-	/* Set default assert & deassert count */
+	/* Set assert pending to zero */
+	vcpu->irqs.assert_pending = 0;
+
+	/* Set default assert & deassert counts */
 	vcpu->irqs.assert_count = 0;
 	vcpu->irqs.execute_count = 0;
 	vcpu->irqs.deassert_count = 0;

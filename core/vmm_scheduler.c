@@ -182,7 +182,7 @@ void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 void vmm_scheduler_irq_exit(arch_regs_t *regs)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
-	struct vmm_vcpu * vcpu = NULL;
+	struct vmm_vcpu *vcpu = NULL;
 
 	/* Determine current vcpu */
 	vcpu = schedp->current_vcpu;
@@ -199,7 +199,7 @@ void vmm_scheduler_irq_exit(arch_regs_t *regs)
 	}
 
 	/* VCPU irq processing */
-	vmm_vcpu_irq_process(regs);
+	vmm_vcpu_irq_process(vcpu, regs);
 
 	/* Indicate that we have exited IRQ */
 	schedp->irq_context = FALSE;
