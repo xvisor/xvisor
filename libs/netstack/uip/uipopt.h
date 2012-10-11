@@ -534,7 +534,7 @@ typedef struct httpd_state uip_tcp_appstate_t
  * application state information.
  */
 
-#include <net/vmm_netstack.h>
+#include <libs/netstack.h>
 
 struct uip_icmp_echo_request {
 	u8 ripaddr[4];
@@ -546,7 +546,7 @@ struct uip_icmp_echo_request {
 #define UIP_ICMP_LLH_LEN	(UIP_LLH_LEN + UIP_ICMP_IPH_LEN)
 #define UIP_ICMP_ECHO_DLEN 	(sizeof(struct uip_icmp_echo_request))
 
-void uip_ping_callback(struct vmm_icmp_echo_reply *reply);
+void uip_ping_callback(struct icmp_echo_reply *reply);
 
 /** @} */
 /** @} */

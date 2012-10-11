@@ -31,7 +31,6 @@
 #include <net/vmm_net.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_protocol.h>
-#include <net/vmm_netstack.h>
 #include <libs/stringlib.h>
 
 #include "uip.h"

@@ -1023,7 +1023,7 @@ uip_process(u8_t flag)
 
   /* Hook for ping application to receive ICMP_ECHO_REPLY */
   if(ICMPBUF->type == ICMP_ECHO_REPLY) {
-    struct vmm_icmp_echo_reply echo_reply;
+    struct icmp_echo_reply echo_reply;
     static u64 uip_ping_time;
 
 

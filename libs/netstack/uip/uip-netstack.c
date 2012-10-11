@@ -18,7 +18,7 @@
  *
  * @file uip-netstack.c
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief Source for implementation of vmm_netstack interface for uIP
+ * @brief Source for implementation of netstack interface for uIP
  */
 
 #include <vmm_stdio.h>
@@ -26,8 +26,8 @@
 #include <vmm_error.h>
 #include <vmm_completion.h>
 #include <net/vmm_mbuf.h>
-#include <net/vmm_netstack.h>
 #include <libs/stringlib.h>
+#include <libs/netstack.h>
 
 #include "uip.h"
 #include "uip-arp.h"
@@ -43,12 +43,12 @@ int uip_netstack_init(void)
 	return VMM_OK;
 }
 
-char *vmm_netstack_get_name(void)
+char *netstack_get_name(void)
 {
 	return "uIP";
 }
 
-int vmm_netstack_set_ipaddr(u8 *addr)
+int netstack_set_ipaddr(u8 *addr)
 {
 	uip_ipaddr_t ipaddr;
 	uip_ipaddr(ipaddr, addr[0], addr[1], addr[2], addr[3]);
@@ -56,7 +56,7 @@ int vmm_netstack_set_ipaddr(u8 *addr)
 	return VMM_OK;
 }
 
-int vmm_netstack_get_ipaddr(u8 *addr)
+int netstack_get_ipaddr(u8 *addr)
 {
 	uip_ipaddr_t ipaddr;
 	uip_gethostaddr(ipaddr);
@@ -64,7 +64,7 @@ int vmm_netstack_get_ipaddr(u8 *addr)
 	return VMM_OK;
 }
 
-int vmm_netstack_set_ipmask(u8 *addr)
+int netstack_set_ipmask(u8 *addr)
 {
 	uip_ipaddr_t ipaddr;
 	uip_ipaddr(ipaddr, addr[0], addr[1], addr[2], addr[3]);
@@ -72,7 +72,7 @@ int vmm_netstack_set_ipmask(u8 *addr)
 	return VMM_OK;
 }
 
-int vmm_netstack_get_ipmask(u8 *addr)
+int netstack_get_ipmask(u8 *addr)
 {
 	uip_ipaddr_t ipaddr;
 	uip_getnetmask(ipaddr);
@@ -80,22 +80,22 @@ int vmm_netstack_get_ipmask(u8 *addr)
 	return VMM_OK;
 }
 
-int vmm_netstack_get_hwaddr(u8 *addr)
+int netstack_get_hwaddr(u8 *addr)
 {
 	memcpy(addr, &uip_ethaddr, 6);
 	return VMM_OK;
 }
 
-static struct vmm_icmp_echo_reply *uip_ping_reply;
+static struct icmp_echo_reply *uip_ping_reply;
 
 /** 
  * Callback to notify reception of a ICMP_ECHO_REPLY
  */
-void uip_ping_callback(struct vmm_icmp_echo_reply *reply)
+void uip_ping_callback(struct icmp_echo_reply *reply)
 {
 	if(uip_ping_reply) {
 		memcpy(uip_ping_reply, reply, 
-				sizeof(struct vmm_icmp_echo_reply));
+				sizeof(struct icmp_echo_reply));
 		vmm_completion_complete(&uip_ping_done);
 	}
 }
@@ -108,8 +108,8 @@ void uip_ping_callback(struct vmm_icmp_echo_reply *reply)
  * A global completion variable is used to notify the reception 
  * of the actual ECHO_REPLY
  */
-int vmm_netstack_send_icmp_echo(u8 *ripaddr, u16 size, u16 seqno, 
-			      struct vmm_icmp_echo_reply *reply)
+int netstack_send_icmp_echo(u8 *ripaddr, u16 size, u16 seqno, 
+			    struct icmp_echo_reply *reply)
 {
 	struct vmm_mbuf *mbuf;
 	struct uip_icmp_echo_request *echo_req;
@@ -160,7 +160,7 @@ int vmm_netstack_send_icmp_echo(u8 *ripaddr, u16 size, u16 seqno,
  *  Prefetching of ARP mapping is done by sending ourself a broadcast ARP 
  *  message with ARP_HINT as opcode.
  */
-void vmm_netstack_prefetch_arp_mapping(u8 *ipaddr)
+void netstack_prefetch_arp_mapping(u8 *ipaddr)
 {
 	struct vmm_mbuf *mbuf;
 	int size;

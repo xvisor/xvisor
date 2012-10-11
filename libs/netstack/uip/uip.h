@@ -1111,9 +1111,6 @@ u16_t htons(u16_t val);
 #define ntohs htons
 #endif
 
-#define ntohl	vmm_cpu_to_be32
-#define htonl	ntohl
-
 /** @} */
 
 /**

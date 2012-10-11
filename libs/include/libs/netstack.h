@@ -16,13 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_netstack.h
+ * @file netstack.h
  * @author Sukanto Ghosh <sukantoghosh@gmail.com>
  * @brief Network Stack Interface APIs
  */
 
-#ifndef __VMM_NETSTACK_H_
-#define __VMM_NETSTACK_H_
+#ifndef __NETSTACK_H_
+#define __NETSTACK_H_
 
 #include <vmm_types.h>
 #include <vmm_error.h>
@@ -30,7 +30,7 @@
 /**
  * Structure containing the ICMP_ECHO_REPLY parameters
  */
-struct vmm_icmp_echo_reply {
+struct icmp_echo_reply {
 	u8 ripaddr[4];
 	u8 ttl;
 	u16 len;
@@ -41,32 +41,32 @@ struct vmm_icmp_echo_reply {
 /** 
  * Returns the name of the netstack
  */
-char *vmm_netstack_get_name(void);
+char *netstack_get_name(void);
 
 /**
  * Set IP-address of the host
  */
-int vmm_netstack_set_ipaddr(u8 *ipaddr);
+int netstack_set_ipaddr(u8 *ipaddr);
 
 /**
  * Get IP-address of the host
  */
-int vmm_netstack_get_ipaddr(u8 *ipaddr);
+int netstack_get_ipaddr(u8 *ipaddr);
 
 /**
  * Set IP-netmask of the host
  */
-int vmm_netstack_set_ipmask(u8 *ipmask);
+int netstack_set_ipmask(u8 *ipmask);
 
 /**
  * Get IP-netmask of the host
  */
-int vmm_netstack_get_ipmask(u8 *ipmask);
+int netstack_get_ipmask(u8 *ipmask);
 
 /**
  * Get HW-address of the host
  */
-int vmm_netstack_get_hwaddr(u8 *hwaddr);
+int netstack_get_hwaddr(u8 *hwaddr);
 
 /**
  *  Generates an ICMP echo request to a remote host and blocks for 
@@ -81,8 +81,8 @@ int vmm_netstack_get_hwaddr(u8 *hwaddr);
  *    - VMM_OK - if the echo reply was received.
  *    - VMM_EFAIL - if timedout or no network-stack present
  */
-int vmm_netstack_send_icmp_echo(u8 * ipaddr, u16 size, u16 seqno, 
-				struct vmm_icmp_echo_reply *reply);
+int netstack_send_icmp_echo(u8 *ipaddr, u16 size, u16 seqno, 
+			    struct icmp_echo_reply *reply);
 
 /** 
  *  This is meant for network-stacks which do not support reliable 
@@ -96,7 +96,7 @@ int vmm_netstack_send_icmp_echo(u8 * ipaddr, u16 size, u16 seqno,
  *
  *  @ipaddr - IP address whose ARP mapping is to be prefetched/refreshed
  */
-void vmm_netstack_prefetch_arp_mapping(u8 * ipaddr);
+void netstack_prefetch_arp_mapping(u8 *ipaddr);
 
 #endif  /* __VMM_NETSTACK_H_ */
 
