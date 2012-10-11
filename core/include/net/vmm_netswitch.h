@@ -55,8 +55,10 @@ struct vmm_netswitch {
 	int flags;
 	struct vmm_thread *thread;
 	struct vmm_completion rx_not_empty;
+	u32 free_count;
 	struct dlist free_list;
 	vmm_spinlock_t free_list_lock;
+	u32 rx_count;
 	struct dlist rx_list;
 	vmm_spinlock_t rx_list_lock;
 	struct vmm_device *dev;

@@ -96,7 +96,7 @@ do{									\
 static int vmm_netswitch_rx_handler(void *param)
 {
 	struct dlist *l;
-	struct vmm_netport *src_port;
+	struct vmm_netport *src;
 	struct vmm_mbuf *mbuf;
 	struct vmm_netswitch_xfer *xfer;
 	struct vmm_netswitch *nsw;
@@ -112,22 +112,24 @@ static int vmm_netswitch_rx_handler(void *param)
 			vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
 		}
 		l = list_pop(&nsw->rx_list);
+		nsw->rx_count--;
 		vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
 
 		xfer = list_entry(l, struct vmm_netswitch_xfer, head);
 
 		mbuf = xfer->mbuf;
-		src_port = xfer->src_port;
+		src = xfer->src_port;
 
 		/* Return the node back to free list */
 		vmm_spin_lock_irqsave(&nsw->free_list_lock, flags);
 		list_add_tail(&xfer->head, &nsw->free_list);
+		nsw->free_count++;
 		vmm_spin_unlock_irqrestore(&nsw->free_list_lock, flags);
 
 		DUMP_NETSWITCH_PKT(mbuf);
 
 		/* Call the rx function of corresponding switch */
-		nsw->port2switch_xfer(src_port, mbuf);
+		nsw->port2switch_xfer(src, mbuf);
 	}
 
 	return VMM_OK;
@@ -144,6 +146,7 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 		return VMM_EFAIL;
 	}
 	nsw = src->nsw;
+
 	/* Get a free vmm_netswitch_xfer instance from free_list */
 	vmm_spin_lock_irqsave(&nsw->free_list_lock, flags);
 	if(list_empty(&nsw->free_list)) {
@@ -153,6 +156,7 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 		return VMM_EFAIL;
 	}
 	l = list_pop(&nsw->free_list);
+	nsw->free_count--;
 	vmm_spin_unlock_irqrestore(&nsw->free_list_lock, flags);
 
 	xfer = list_entry(l, struct vmm_netswitch_xfer, head);
@@ -164,6 +168,7 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	/* Add this new xfer to the rx_list */
 	vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
 	list_add_tail(&xfer->head, &nsw->rx_list);
+	nsw->rx_count++;
 	vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
 
 	vmm_completion_complete(&nsw->rx_not_empty);
@@ -208,8 +213,10 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name, u16 rxq_size,
 	}
 
 	INIT_COMPLETION(&nsw->rx_not_empty);
+	nsw->free_count = rxq_size;
 	INIT_SPIN_LOCK(&nsw->free_list_lock);
 	INIT_LIST_HEAD(&nsw->free_list);
+	nsw->rx_count = 0;
 	INIT_SPIN_LOCK(&nsw->rx_list_lock);
 	INIT_LIST_HEAD(&nsw->rx_list);
 	INIT_LIST_HEAD(&nsw->port_list);
