@@ -253,7 +253,7 @@ void vmm_scheduler_preempt_disable(void)
 	irq_flags_t flags;
 	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 	if (vcpu) {
-		flags = arch_cpu_irq_save();
+		arch_cpu_irq_save(flags);
 		vcpu->preempt_count++;
 		arch_cpu_irq_restore(flags);
 	}
@@ -264,7 +264,7 @@ void vmm_scheduler_preempt_enable(void)
 	irq_flags_t flags;
 	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 	if (vcpu && vcpu->preempt_count) {
-		flags = arch_cpu_irq_save();
+		arch_cpu_irq_save(flags);
 		vcpu->preempt_count--;
 		arch_cpu_irq_restore(flags);
 	}

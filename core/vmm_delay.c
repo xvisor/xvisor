@@ -35,7 +35,7 @@ void vmm_udelay(u32 usecs)
 {
 	irq_flags_t flags;
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	arch_delay_loop(usecs * loops_per_usec);
 
@@ -46,7 +46,7 @@ void vmm_mdelay(u32 msecs)
 {
 	irq_flags_t flags;
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	arch_delay_loop(msecs * loops_per_msec);
 
@@ -68,7 +68,7 @@ void vmm_delay_recaliberate(void)
 	u64 nsecs, tstamp;
 	irq_flags_t flags;
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	tstamp = vmm_timer_timestamp();
 

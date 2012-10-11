@@ -395,21 +395,21 @@ extern spinlock_t __atomic_hash[ATOMIC_HASH_SIZE];
 /* Can't use raw_spin_lock_irq because of #include problems, so
  * this is the substitute */
 #define _atomic_spin_lock_irqsave(l,f) do {	\
-	spinlock_t *s = ATOMIC_HASH(l);	\
-	f = arch_cpu_irq_save();			\
+	spinlock_t *s = ATOMIC_HASH(l);		\
+	arch_cpu_irq_save(f);			\
 	arch_spin_lock(s);			\
 } while(0)
 
 #define _atomic_spin_unlock_irqrestore(l,f) do {	\
-	spinlock_t *s = ATOMIC_HASH(l);		\
+	spinlock_t *s = ATOMIC_HASH(l);			\
 	arch_spin_unlock(s);				\
-	arch_cpu_irq_restore(f);				\
+	arch_cpu_irq_restore(f);			\
 } while(0)
 
 #else
 
 #define _atomic_spin_lock_irqsave(l,f)		do { \
-						f = arch_cpu_irq_save(); \
+						arch_cpu_irq_save(f); \
 						} while (0)
 #define _atomic_spin_unlock_irqrestore(l,f)	do { \
 						arch_cpu_irq_restore(f); \

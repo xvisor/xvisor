@@ -25,13 +25,45 @@
 
 #include <vmm_types.h>
 
-/** CPU IRQ functions required by VMM core */
+/** Setup IRQ for CPU */
 int arch_cpu_irq_setup(void);
-void arch_cpu_irq_enable(void);
-void arch_cpu_irq_disable(void);
-bool arch_cpu_irq_disabled(void);
-irq_flags_t arch_cpu_irq_save(void);
-void arch_cpu_irq_restore(irq_flags_t flags);
-void arch_cpu_wait_for_irq(void);
+
+/** Enable IRQ
+ *  Prototype: void arch_cpu_irq_enable(void); 
+ */
+#define arch_cpu_irq_enable()	do { \
+				__asm__ __volatile__("sti\n\t"); \
+				} while (0)
+
+/** Disable IRQ
+ *  Prototype: void arch_cpu_irq_disable(void); 
+ */
+#define arch_cpu_irq_disable()	do { \
+				__asm__ __volatile__("cli\n\t"); \
+				} while (0)
+
+/** FIXME: Check whether IRQs are disabled
+ *  Prototype: bool arch_cpu_irq_disabled(void); 
+ */
+#define arch_cpu_irq_disabled()	FALSE
+
+/** FIXME: Save IRQ flags and disable IRQ
+ *  Prototype: void arch_cpu_irq_save(irq_flags_t flags);
+ */
+#define arch_cpu_irq_save(flags)	do { \
+					(flags) = 0; \
+					} while (0)
+
+/** FIXME: Restore IRQ flags
+ *  Prototype: void arch_cpu_irq_restore(irq_flags_t flags);
+ */
+#define arch_cpu_irq_restore(flags)	do { \
+					(void)(flags); \
+					} while (0)
+
+/** FIXME: Wait for IRQ
+ *  Prototype: void arch_cpu_wait_for_irq(void);
+ */
+#define arch_cpu_wait_for_irq()
 
 #endif

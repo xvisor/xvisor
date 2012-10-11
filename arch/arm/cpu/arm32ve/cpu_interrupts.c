@@ -29,7 +29,6 @@
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_helper.h>
-#include <cpu_defines.h>
 
 void do_undef_inst(arch_regs_t * regs)
 {
@@ -214,49 +213,3 @@ int __init arch_cpu_irq_setup(void)
 	return VMM_OK;
 }
 
-void arch_cpu_irq_enable(void)
-{
-	__asm("cpsie i");
-}
-
-void arch_cpu_irq_disable(void)
-{
-	__asm("cpsid i");
-}
-
-bool arch_cpu_irq_disabled(void)
-{
-	unsigned long flags;
-
-	asm volatile (" mrs     %0, cpsr\n\t"
-		      :"=r" (flags)
-		      :
-		      :"memory", "cc");
-
-	return (flags & CPSR_IRQ_DISABLED) ? TRUE : FALSE;
-}
-
-irq_flags_t arch_cpu_irq_save(void)
-{
-	unsigned long retval;
-
-	asm volatile (" mrs     %0, cpsr\n\t" " cpsid   i"	/* Syntax CPSID <iflags> {, #<p_mode>}
-								 * Note: This instruction is supported 
-								 * from ARM6 and above
-								 */
-		      :"=r" (retval)::"memory", "cc");
-
-	return retval;
-}
-
-void arch_cpu_irq_restore(irq_flags_t flags)
-{
-	asm volatile (" msr     cpsr_c, %0"::"r" (flags)
-		      :"memory", "cc");
-}
-
-void arch_cpu_wait_for_irq(void)
-{
-	/* We could also use soft delay here. */
-	asm volatile (" wfi ");
-}

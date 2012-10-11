@@ -153,7 +153,7 @@ u32 vmm_host_physical_read(physical_addr_t hpa, void *dst, u32 len)
 		page_read = (page_read < (len - bytes_read)) ? 
 			     page_read : (len - bytes_read);
 
-		flags = arch_cpu_irq_save();
+		arch_cpu_irq_save(flags);
 
 #if !defined(ARCH_HAS_PHYSICAL_READ)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
@@ -202,7 +202,7 @@ u32 vmm_host_physical_write(physical_addr_t hpa, void *src, u32 len)
 		page_write = (page_write < (len - bytes_written)) ? 
 			      page_write : (len - bytes_written);
 
-		flags = arch_cpu_irq_save();
+		arch_cpu_irq_save(flags);
 
 #if !defined(ARCH_HAS_PHYSICAL_WRITE)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 

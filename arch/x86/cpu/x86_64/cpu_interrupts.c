@@ -176,38 +176,6 @@ int arch_cpu_irq_setup(void)
         return 0;
 }
 
-void arch_cpu_irq_enable(void)
-{
-	__asm__ __volatile__("sti\n\t");
-}
-
-void arch_cpu_irq_disable(void)
-{
-	__asm__ __volatile__("cli\n\t");
-}
-
-/* FIXME: */
-bool arch_cpu_irq_disabled(void)
-{
-	return FALSE;
-}
-
-irq_flags_t arch_cpu_irq_save(void)
-{
-        return 0;
-}
-
-void arch_cpu_irq_restore(irq_flags_t flags)
-{
-}
-
-void arch_cpu_wait_for_irq(void)
-{
-	/* FIXME: Use some hardware functionality to wait for interrupt */
-	/* OR */
-	/* FIXME: Use some soft delay */
-}
-
 /* All Handlers */
 int do_breakpoint(int intno, arch_regs_t *regs)
 {

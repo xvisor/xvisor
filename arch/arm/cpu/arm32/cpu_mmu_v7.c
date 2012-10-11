@@ -799,7 +799,7 @@ int cpu_mmu_unmap_reserved_page(struct cpu_page * pg)
 	 * of this page from other l1 tables.
 	 */
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	list_for_each(le, &mmuctrl.l1tbl_list) {
 		l1 = list_entry(le, struct cpu_l1tbl, head);

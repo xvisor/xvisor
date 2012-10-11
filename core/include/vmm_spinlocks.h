@@ -140,13 +140,13 @@ extern void vmm_scheduler_preempt_enable(void);
 #if defined(CONFIG_SMP)
 #define vmm_spin_lock_irqsave(lock, flags) \
 					do { \
-					flags = arch_cpu_irq_save(); \
+					arch_cpu_irq_save((flags)); \
 					arch_spin_lock(&(lock)->__tlock); \
 					} while (0)
 #else
 #define vmm_spin_lock_irqsave(lock, flags) \
 					do { \
-					flags = arch_cpu_irq_save(); \
+					arch_cpu_irq_save((flags)); \
 					(void)(lock); \
 					} while (0)
 #endif
