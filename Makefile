@@ -288,6 +288,9 @@ all-m+=$(daemons-m:.o=.xo)
 all-m+=$(drivers-m:.o=.xo)
 all-m+=$(emulators-m:.o=.xo)
 
+# Preserve all intermediate files
+.SECONDARY:
+
 # Default rule "make"
 .PHONY: all
 all: $(CONFIG_FILE) $(DEPENDENCY_FILE) $(tools-y) $(targets-y)
