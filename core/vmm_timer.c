@@ -246,9 +246,8 @@ int vmm_timer_event_stop(struct vmm_timer_event * ev)
 	if (ev->active) {
 		list_del(&ev->head);
 		ev->active = FALSE;
+		vmm_timer_schedule_next_event();
 	}
-
-	vmm_timer_schedule_next_event();
 
 	arch_cpu_irq_restore(flags);
 
