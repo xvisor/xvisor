@@ -54,6 +54,9 @@ struct vmm_netswitch {
 	char *name;
 	int flags;
 	struct vmm_device *dev;
+	/* Lock to protect net switch */
+	vmm_spinlock_t lock;
+	/* List of ports */
 	struct dlist port_list;
 	/* Handle RX packets from port to switch */
 	vmm_netswitch_rx_handle_t port2switch_xfer;
@@ -82,6 +85,10 @@ struct vmm_netswitch {
 	struct vmm_netswitch_xfer *xfer_pool;
 };
 
+/** Handler for receiving packets by the switch */
+int vmm_netswitch_port2switch(struct vmm_netport *src, 
+			      struct vmm_mbuf *mbuf);
+
 /** Allocate new network switch 
  *  @name name of the network switch
  *  @thread_based is the network switch thread-based
@@ -94,14 +101,6 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name,
 /** Deallocate a network switch */
 void vmm_netswitch_free(struct vmm_netswitch *nsw);
 
-/** Register network switch to network switch framework */
-int vmm_netswitch_register(struct vmm_netswitch *nsw, 
-			   struct vmm_device *dev,
-			   void *priv);
-
-/** Unregister network switch from network switch framework */
-int vmm_netswitch_unregister(struct vmm_netswitch *nsw);
-
 /** Add a port to the netswitch */
 int vmm_netswitch_port_add(struct vmm_netswitch *nsw, 
 			   struct vmm_netport *port);
@@ -109,9 +108,13 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 /** Remove a port to the netswitch */
 int vmm_netswitch_port_remove(struct vmm_netport *port);
 
-/** Handler for receiving packets by the switch */
-int vmm_netswitch_port2switch(struct vmm_netport *src, 
-			      struct vmm_mbuf *mbuf);
+/** Register network switch to network switch framework */
+int vmm_netswitch_register(struct vmm_netswitch *nsw, 
+			   struct vmm_device *dev,
+			   void *priv);
+
+/** Unregister network switch from network switch framework */
+int vmm_netswitch_unregister(struct vmm_netswitch *nsw);
 
 /** Count number of network switches */
 u32 vmm_netswitch_count(void);

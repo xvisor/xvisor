@@ -97,11 +97,11 @@ do{									\
 static int vmm_netswitch_rx_handler(void *param)
 {
 	struct dlist *l;
+	irq_flags_t flags;
 	struct vmm_netport *src;
 	struct vmm_mbuf *mbuf;
 	struct vmm_netswitch_xfer *xfer;
 	struct vmm_netswitch *nsw;
-	unsigned long flags;
 
 	nsw = param;
 
@@ -130,7 +130,9 @@ static int vmm_netswitch_rx_handler(void *param)
 		DUMP_NETSWITCH_PKT(mbuf);
 
 		/* Call the rx function of corresponding switch */
+		vmm_spin_lock_irqsave(&nsw->lock, flags);
 		nsw->port2switch_xfer(src, mbuf);
+		vmm_spin_unlock_irqrestore(&nsw->lock, flags);
 	}
 
 	return VMM_OK;
@@ -138,9 +140,10 @@ static int vmm_netswitch_rx_handler(void *param)
 
 int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 {
+	int rc;
 	struct dlist *l;
+	irq_flags_t flags;
 	struct vmm_netswitch_xfer *xfer;
-	unsigned long flags;
 	struct vmm_netswitch *nsw;
 
 	if(!src || !src->nsw) {
@@ -152,7 +155,10 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	 * directly call rx function of corresponding switch
 	 */
 	if (!nsw->thread_based) {
-		return nsw->port2switch_xfer(src, mbuf);
+		vmm_spin_lock_irqsave(&nsw->lock, flags);
+		rc = nsw->port2switch_xfer(src, mbuf);
+		vmm_spin_unlock_irqrestore(&nsw->lock, flags);
+		return rc;
 	}
 
 	/* Get a free vmm_netswitch_xfer instance from free_list */
@@ -207,6 +213,7 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name,
 	}
 	strcpy(nsw->name, name);
 
+	INIT_SPIN_LOCK(&nsw->lock);
 	INIT_LIST_HEAD(&nsw->port_list);
 
 	nsw->thread_based = thread_based;
@@ -286,15 +293,102 @@ void vmm_netswitch_free(struct vmm_netswitch *nsw)
 	}
 }
 
+int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
+			   struct vmm_netport *port)
+{
+	int rc = VMM_OK;
+	irq_flags_t flags;
+
+	if (!nsw || !port) {
+		return VMM_EFAIL;
+	}
+
+	/* If port has invalid mac, assign a random one */
+	if (!is_valid_ether_addr(port->macaddr)) {
+		random_ether_addr(port->macaddr);
+	}
+
+	port->nsw = nsw;
+
+	vmm_spin_lock_irqsave(&nsw->lock, flags);
+
+	/* Add the port to the port_list */
+	list_add_tail(&port->head, &nsw->port_list);
+
+	/* Call the netswitch's port_add callback */
+	if(nsw->port_add) {
+		rc = nsw->port_add(nsw, port);
+	}
+
+	vmm_spin_unlock_irqrestore(&nsw->lock, flags);
+
+	if (rc == VMM_OK) {
+		/* Notify the port about the link-status change */
+		port->flags |= VMM_NETPORT_LINK_UP;
+		port->link_changed(port);
+	}
+
+#ifdef CONFIG_VERBOSE_MODE
+	{
+		char tname[30];
+		vmm_printf("NET: Port(\"%s\") added to Switch(\"%s\"), " \
+			   "MAC[%s]\n", port->name, nsw->name,
+			   ethaddr_to_str(tname, port->macaddr));
+	}
+#endif
+
+	return rc;
+}
+
+static void __netswitch_port_remove(struct vmm_netswitch *nsw,
+				    struct vmm_netport *port)
+{
+	/* Call the netswitch's port_remove handler */
+	if (nsw->port_remove) {
+		nsw->port_remove(port);
+	}
+
+	/* Remove the port from port_list */
+	port->nsw = NULL;
+	list_del(&port->head);
+}
+
+int vmm_netswitch_port_remove(struct vmm_netport *port)
+{
+	irq_flags_t flags;
+	struct vmm_netswitch *nsw;
+
+	if (!port || !(port->nsw)) {
+		return VMM_EFAIL;
+	}
+	nsw = port->nsw;
+
+#ifdef CONFIG_VERBOSE_MODE
+	vmm_printf("NET: Port(\"%s\") removed from Switch(\"%s\")\n",
+			port->name, port->nsw->name);
+#endif
+
+	/* Notify the port about the link-status change */
+	port->flags &= ~VMM_NETPORT_LINK_UP;
+	port->link_changed(port);
+
+	vmm_spin_lock_irqsave(&nsw->lock, flags);
+	__netswitch_port_remove(nsw, port);
+	vmm_spin_unlock_irqrestore(&nsw->lock, flags);
+
+	return VMM_OK;
+}
+
 int vmm_netswitch_register(struct vmm_netswitch *nsw, 
 			   struct vmm_device *dev,
 			   void *priv)
 {
-	struct vmm_classdev *cd;
 	int rc;
+	struct vmm_classdev *cd;
 
-	if (nsw == NULL)
+	if (!nsw) {
 		return VMM_EFAIL;
+	}
 
 	cd = vmm_malloc(sizeof(struct vmm_classdev));
 	if (!cd) {
@@ -339,10 +433,11 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 {
 	int rc;
 	struct dlist *list;
+	irq_flags_t flags;
 	struct vmm_netport *port;
 	struct vmm_classdev *cd;
 
-	if (nsw == NULL) {
+	if (!nsw) {
 		return VMM_EFAIL;
 	}
 
@@ -355,11 +450,15 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 		vmm_threads_stop(nsw->thread);
 	}
 
+	vmm_spin_lock_irqsave(&nsw->lock, flags);
+
 	/* Remove any ports still attached to this nsw */
 	list_for_each(list, &nsw->port_list) {
 		port = list_port(list);
-		vmm_netswitch_port_remove(port);
+		__netswitch_port_remove(nsw, port);
 	}
+
+	vmm_spin_unlock_irqrestore(&nsw->lock, flags);
 
 	rc = vmm_devdrv_unregister_classdev(VMM_NETSWITCH_CLASS_NAME, cd);
 	if (!rc) {
@@ -369,81 +468,14 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 	return rc;
 }
 
-int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
-			   struct vmm_netport *port)
-{
-	int rc = VMM_OK;
-
-	if(!nsw || !port) {
-		return VMM_EFAIL;
-	}
-
-	/* If port has invalid mac, assign a random one */
-	if(!is_valid_ether_addr(port->macaddr)) {
-		random_ether_addr(port->macaddr);
-	}
-
-	/* Add the port to the port_list */
-	list_add_tail(&port->head, &nsw->port_list);
-	port->nsw = nsw;
-
-	/* Call the netswitch's port_add callback */
-	if(nsw->port_add) {
-		rc = nsw->port_add(nsw, port);
-	}
-	if(rc == VMM_OK) {
-		/* Notify the port about the link-status change */
-		port->flags |= VMM_NETPORT_LINK_UP;
-		port->link_changed(port);
-	}
-
-#ifdef CONFIG_VERBOSE_MODE
-	{
-		char tname[30];
-		vmm_printf("NET: Port(\"%s\") added to Switch(\"%s\"), " \
-			   "MAC[%s]\n", port->name, nsw->name,
-			   ethaddr_to_str(tname, port->macaddr));
-	}
-#endif
-
-	return rc;
-}
-
-int vmm_netswitch_port_remove(struct vmm_netport *port)
-{
-	if(!port || !(port->nsw)) {
-		return VMM_EFAIL;
-	}
-
-#ifdef CONFIG_VERBOSE_MODE
-	vmm_printf("NET: Port(\"%s\") removed from Switch(\"%s\")\n",
-			port->name, port->nsw->name);
-#endif
-
-	/* Notify the port about the link-status change */
-	port->flags &= ~VMM_NETPORT_LINK_UP;
-	port->link_changed(port);
-
-	/* Call the netswitch's port_remove handler */
-	if(port->nsw->port_remove) {
-		port->nsw->port_remove(port);
-	}
-
-	/* Remove the port from port_list */
-	port->nsw = NULL;
-	list_del(&port->head);
-
-	return VMM_OK;
-}
-
 struct vmm_netswitch *vmm_netswitch_find(const char *name)
 {
 	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_find_classdev(VMM_NETSWITCH_CLASS_NAME, name);
-
-	if (!cd)
+	if (!cd) {
 		return NULL;
+	}
 
 	return cd->priv;
 }
@@ -453,9 +485,9 @@ struct vmm_netswitch *vmm_netswitch_get(int num)
 	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_classdev(VMM_NETSWITCH_CLASS_NAME, num);
-
-	if (!cd)
+	if (!cd) {
 		return NULL;
+	}
 
 	return cd->priv;
 }
@@ -473,8 +505,9 @@ int vmm_netswitch_init(void)
 	vmm_printf("Initialize Network Switch Framework\n");
 
 	c = vmm_malloc(sizeof(struct vmm_class));
-	if (!c)
+	if (!c) {
 		return VMM_EFAIL;
+	}
 
 	INIT_LIST_HEAD(&c->head);
 	strcpy(c->name, VMM_NETSWITCH_CLASS_NAME);
@@ -497,8 +530,9 @@ void vmm_netswitch_exit(void)
 	struct vmm_class *c;
 
 	c = vmm_devdrv_find_class(VMM_NETSWITCH_CLASS_NAME);
-	if (!c)
+	if (!c) {
 		return;
+	}
 
 	rc = vmm_devdrv_unregister_class(c);
 	if (rc) {
