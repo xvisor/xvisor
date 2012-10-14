@@ -140,7 +140,6 @@ static int vmm_netswitch_rx_handler(void *param)
 
 int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 {
-	int rc;
 	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_netswitch_xfer *xfer;
@@ -150,16 +149,6 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 		return VMM_EFAIL;
 	}
 	nsw = src->nsw;
-
-	/* If the switch is not thread-based then 
-	 * directly call rx function of corresponding switch
-	 */
-	if (!nsw->thread_based) {
-		vmm_spin_lock_irqsave(&nsw->lock, flags);
-		rc = nsw->port2switch_xfer(src, mbuf);
-		vmm_spin_unlock_irqrestore(&nsw->lock, flags);
-		return rc;
-	}
 
 	/* Get a free vmm_netswitch_xfer instance from free_list */
 	vmm_spin_lock_irqsave(&nsw->free_list_lock, flags);
@@ -191,7 +180,7 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 }
 
 struct vmm_netswitch *vmm_netswitch_alloc(char *name, 
-					  bool thread_based, 
+					  u32 thread_priority, 
 					  u16 thread_rxq_size)
 {
 	int i;
@@ -216,13 +205,6 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name,
 	INIT_SPIN_LOCK(&nsw->lock);
 	INIT_LIST_HEAD(&nsw->port_list);
 
-	nsw->thread_based = thread_based;
-
-	/* For non-thread-based switch return immediatly */
-	if (!nsw->thread_based) {
-		return nsw;
-	}
-
 	nsw->xfer_pool = vmm_malloc(sizeof(struct vmm_netswitch_xfer) * 
 					thread_rxq_size);
 	if (!nsw->xfer_pool) {
@@ -231,7 +213,7 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name,
 	}
 
 	nsw->thread = vmm_threads_create(nsw->name, vmm_netswitch_rx_handler,
-					 nsw,  VMM_THREAD_DEF_PRIORITY, 
+					 nsw, thread_priority, 
 					 VMM_THREAD_DEF_TIME_SLICE);
 	if (!nsw->thread) {
 		vmm_printf("%s Failed to create thread for net switch\n",
@@ -260,13 +242,11 @@ vmm_netswitch_alloc_failed:
 		if(nsw->name) {
 			vmm_free(nsw->name);
 		}
-		if (nsw->thread_based) {
-			if(nsw->xfer_pool) {
-				vmm_free(nsw->xfer_pool);
-			}
-			if(nsw->thread) {
-				vmm_threads_destroy(nsw->thread);
-			}
+		if(nsw->xfer_pool) {
+			vmm_free(nsw->xfer_pool);
+		}
+		if(nsw->thread) {
+			vmm_threads_destroy(nsw->thread);
 		}
 		vmm_free(nsw);
 		nsw = NULL;
@@ -281,13 +261,11 @@ void vmm_netswitch_free(struct vmm_netswitch *nsw)
 		if (nsw->name) {
 			vmm_free(nsw->name);
 		}
-		if (nsw->thread_based) {
-			if(nsw->xfer_pool) {
-				vmm_free(nsw->xfer_pool);
-			}
-			if(nsw->thread) {
-				vmm_threads_destroy(nsw->thread);
-			}
+		if(nsw->xfer_pool) {
+			vmm_free(nsw->xfer_pool);
+		}
+		if(nsw->thread) {
+			vmm_threads_destroy(nsw->thread);
 		}
 		vmm_free(nsw);
 	}
@@ -411,9 +389,7 @@ int vmm_netswitch_register(struct vmm_netswitch *nsw,
 	nsw->dev = dev;
 	nsw->priv = priv;
 
-	if (nsw->thread_based) {
-		vmm_threads_start(nsw->thread);
-	}
+	vmm_threads_start(nsw->thread);
 
 #ifdef CONFIG_VERBOSE_MODE
 	vmm_printf("Successfully registered VMM net switch: %s\n", nsw->name);
@@ -446,9 +422,7 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 		return VMM_EFAIL;
 	}
 
-	if (nsw->thread_based) {
-		vmm_threads_stop(nsw->thread);
-	}
+	vmm_threads_stop(nsw->thread);
 
 	vmm_spin_lock_irqsave(&nsw->lock, flags);
 

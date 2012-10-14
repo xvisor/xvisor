@@ -70,7 +70,6 @@ struct vmm_netswitch {
 	/* Additional fields for managing a thread-based
 	 * network switch 
 	 */
-	bool thread_based;
 	struct vmm_thread *thread;
 	struct vmm_completion rx_not_empty;
 	u32 free_count;
@@ -95,7 +94,7 @@ int vmm_netswitch_port2switch(struct vmm_netport *src,
  *  @thread_rxq_size Rx queue size size of thread-based switch
  */
 struct vmm_netswitch *vmm_netswitch_alloc(char *name, 
-					  bool thread_based, 
+					  u32 thread_priority, 
 					  u16 thread_rxq_size);
 
 /** Deallocate a network switch */
