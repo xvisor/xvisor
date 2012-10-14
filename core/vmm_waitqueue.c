@@ -103,6 +103,7 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 		if(timeout_nsecs) {
 			u64 now, expiry;
 			expiry = wake_event.expiry_tstamp;
+			vmm_timer_event_stop(&wake_event);
 			now = vmm_timer_timestamp();
 			*timeout_nsecs = (now > expiry) ? 0 : (expiry - now);
 			if (*timeout_nsecs == 0) {
