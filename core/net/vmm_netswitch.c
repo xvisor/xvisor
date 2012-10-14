@@ -29,6 +29,7 @@
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
 #include <vmm_spinlocks.h>
+#include <vmm_scheduler.h>
 #include <vmm_threads.h>
 #include <vmm_completion.h>
 #include <net/vmm_mbuf.h>
@@ -147,6 +148,13 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	}
 	nsw = src->nsw;
 
+	/* If the switch is not thread-based then 
+	 * directly call rx function of corresponding switch
+	 */
+	if (!nsw->thread_based) {
+		return nsw->port2switch_xfer(src, mbuf);
+	}
+
 	/* Get a free vmm_netswitch_xfer instance from free_list */
 	vmm_spin_lock_irqsave(&nsw->free_list_lock, flags);
 	if(list_empty(&nsw->free_list)) {
@@ -176,8 +184,9 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	return VMM_OK;
 }
 
-struct vmm_netswitch *vmm_netswitch_alloc(char *name, u16 rxq_size,
-					  u8 prio, u64 tslice)
+struct vmm_netswitch *vmm_netswitch_alloc(char *name, 
+					  bool thread_based, 
+					  u16 thread_rxq_size)
 {
 	int i;
 	struct dlist *tmp_node;
@@ -198,14 +207,25 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name, u16 rxq_size,
 	}
 	strcpy(nsw->name, name);
 
-	nsw->xfer_pool = vmm_malloc(sizeof(struct vmm_netswitch_xfer) * rxq_size);
+	INIT_LIST_HEAD(&nsw->port_list);
+
+	nsw->thread_based = thread_based;
+
+	/* For non-thread-based switch return immediatly */
+	if (!nsw->thread_based) {
+		return nsw;
+	}
+
+	nsw->xfer_pool = vmm_malloc(sizeof(struct vmm_netswitch_xfer) * 
+					thread_rxq_size);
 	if (!nsw->xfer_pool) {
 		vmm_printf("%s Failed to allocate for net switch\n", __func__);
 		goto vmm_netswitch_alloc_failed;
 	}
 
 	nsw->thread = vmm_threads_create(nsw->name, vmm_netswitch_rx_handler,
-					 nsw, prio, tslice);
+					 nsw,  VMM_THREAD_DEF_PRIORITY, 
+					 VMM_THREAD_DEF_TIME_SLICE);
 	if (!nsw->thread) {
 		vmm_printf("%s Failed to create thread for net switch\n",
 			   __func__);
@@ -213,16 +233,15 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name, u16 rxq_size,
 	}
 
 	INIT_COMPLETION(&nsw->rx_not_empty);
-	nsw->free_count = rxq_size;
+	nsw->free_count = thread_rxq_size;
 	INIT_SPIN_LOCK(&nsw->free_list_lock);
 	INIT_LIST_HEAD(&nsw->free_list);
 	nsw->rx_count = 0;
 	INIT_SPIN_LOCK(&nsw->rx_list_lock);
 	INIT_LIST_HEAD(&nsw->rx_list);
-	INIT_LIST_HEAD(&nsw->port_list);
 
 	/* Fill the free_list of vmm_netswitch_xfer */
-	for(i = 0; i < rxq_size; i++) {
+	for(i = 0; i < thread_rxq_size; i++) {
 		tmp_node = &((nsw->xfer_pool + i)->head);
 		list_add_tail(tmp_node, &nsw->free_list);
 	}
@@ -234,11 +253,13 @@ vmm_netswitch_alloc_failed:
 		if(nsw->name) {
 			vmm_free(nsw->name);
 		}
-		if(nsw->xfer_pool) {
-			vmm_free(nsw->xfer_pool);
-		}
-		if(nsw->thread) {
-			vmm_threads_destroy(nsw->thread);
+		if (nsw->thread_based) {
+			if(nsw->xfer_pool) {
+				vmm_free(nsw->xfer_pool);
+			}
+			if(nsw->thread) {
+				vmm_threads_destroy(nsw->thread);
+			}
 		}
 		vmm_free(nsw);
 		nsw = NULL;
@@ -249,21 +270,24 @@ vmm_netswitch_alloc_done:
 
 void vmm_netswitch_free(struct vmm_netswitch *nsw)
 {
-	if(nsw) {
-		if(nsw->name) {
+	if (nsw) {
+		if (nsw->name) {
 			vmm_free(nsw->name);
 		}
-		if(nsw->xfer_pool) {
-			vmm_free(nsw->xfer_pool);
-		}
-		if(nsw->thread) {
-			vmm_threads_destroy(nsw->thread);
+		if (nsw->thread_based) {
+			if(nsw->xfer_pool) {
+				vmm_free(nsw->xfer_pool);
+			}
+			if(nsw->thread) {
+				vmm_threads_destroy(nsw->thread);
+			}
 		}
 		vmm_free(nsw);
 	}
 }
 
-int vmm_netswitch_register(struct vmm_netswitch *nsw, struct vmm_device *dev,
+int vmm_netswitch_register(struct vmm_netswitch *nsw, 
+			   struct vmm_device *dev,
 			   void *priv)
 {
 	struct vmm_classdev *cd;
@@ -293,7 +317,9 @@ int vmm_netswitch_register(struct vmm_netswitch *nsw, struct vmm_device *dev,
 	nsw->dev = dev;
 	nsw->priv = priv;
 
-	vmm_threads_start(nsw->thread);
+	if (nsw->thread_based) {
+		vmm_threads_start(nsw->thread);
+	}
 
 #ifdef CONFIG_VERBOSE_MODE
 	vmm_printf("Successfully registered VMM net switch: %s\n", nsw->name);
@@ -316,14 +342,18 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 	struct vmm_netport *port;
 	struct vmm_classdev *cd;
 
-	if (nsw == NULL)
+	if (nsw == NULL) {
 		return VMM_EFAIL;
+	}
 
 	cd = vmm_devdrv_find_classdev(VMM_NETSWITCH_CLASS_NAME, nsw->name);
-	if (!cd)
+	if (!cd) {
 		return VMM_EFAIL;
+	}
 
-	vmm_threads_stop(nsw->thread);
+	if (nsw->thread_based) {
+		vmm_threads_stop(nsw->thread);
+	}
 
 	/* Remove any ports still attached to this nsw */
 	list_for_each(list, &nsw->port_list) {
@@ -332,9 +362,9 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 	}
 
 	rc = vmm_devdrv_unregister_classdev(VMM_NETSWITCH_CLASS_NAME, cd);
-
-	if (!rc)
+	if (!rc) {
 		vmm_free(cd);
+	}
 
 	return rc;
 }
@@ -347,13 +377,16 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 	if(!nsw || !port) {
 		return VMM_EFAIL;
 	}
+
 	/* If port has invalid mac, assign a random one */
 	if(!is_valid_ether_addr(port->macaddr)) {
 		random_ether_addr(port->macaddr);
 	}
+
 	/* Add the port to the port_list */
 	list_add_tail(&port->head, &nsw->port_list);
 	port->nsw = nsw;
+
 	/* Call the netswitch's port_add callback */
 	if(nsw->port_add) {
 		rc = nsw->port_add(nsw, port);
@@ -363,6 +396,7 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 		port->flags |= VMM_NETPORT_LINK_UP;
 		port->link_changed(port);
 	}
+
 #ifdef CONFIG_VERBOSE_MODE
 	{
 		char tname[30];
@@ -371,6 +405,7 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 			   ethaddr_to_str(tname, port->macaddr));
 	}
 #endif
+
 	return rc;
 }
 
@@ -379,17 +414,21 @@ int vmm_netswitch_port_remove(struct vmm_netport *port)
 	if(!port || !(port->nsw)) {
 		return VMM_EFAIL;
 	}
+
 #ifdef CONFIG_VERBOSE_MODE
 	vmm_printf("NET: Port(\"%s\") removed from Switch(\"%s\")\n",
 			port->name, port->nsw->name);
 #endif
+
 	/* Notify the port about the link-status change */
 	port->flags &= ~VMM_NETPORT_LINK_UP;
 	port->link_changed(port);
+
 	/* Call the netswitch's port_remove handler */
 	if(port->nsw->port_remove) {
 		port->nsw->port_remove(port);
 	}
+
 	/* Remove the port from port_list */
 	port->nsw = NULL;
 	list_del(&port->head);

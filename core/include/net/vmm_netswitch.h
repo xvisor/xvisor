@@ -53,6 +53,21 @@ struct vmm_netswitch_xfer {
 struct vmm_netswitch {
 	char *name;
 	int flags;
+	struct vmm_device *dev;
+	struct dlist port_list;
+	/* Handle RX packets from port to switch */
+	vmm_netswitch_rx_handle_t port2switch_xfer;
+	/* Handle enabling of a port */
+	vmm_netswitch_port_add_handle_t	port_add;
+	/* Handle disabling of a port */
+	vmm_netswitch_port_remove_handle_t port_remove;
+	/* Switch private data */
+	void *priv;
+
+	/* Additional fields for managing a thread-based
+	 * network switch 
+	 */
+	bool thread_based;
 	struct vmm_thread *thread;
 	struct vmm_completion rx_not_empty;
 	u32 free_count;
@@ -61,30 +76,27 @@ struct vmm_netswitch {
 	u32 rx_count;
 	struct dlist rx_list;
 	vmm_spinlock_t rx_list_lock;
-	struct vmm_device *dev;
-	struct dlist port_list;
-	void *priv;
 	/* Pool of xfer elements used in the rx_buffer
 	 * Having all these blocks contiguous eases alloc
 	 * and free operations */
 	struct vmm_netswitch_xfer *xfer_pool;
-	/* Handle RX packets from port to switch */
-	vmm_netswitch_rx_handle_t port2switch_xfer;
-	/* Handle enabling of a port */
-	vmm_netswitch_port_add_handle_t	port_add;
-	/* Handle disabling of a port */
-	vmm_netswitch_port_remove_handle_t port_remove;
 };
 
-/** Allocate new network switch */
-struct vmm_netswitch *vmm_netswitch_alloc(char *name, u16 rxq_size, 
-					  u8 prio, u64 tslice);
+/** Allocate new network switch 
+ *  @name name of the network switch
+ *  @thread_based is the network switch thread-based
+ *  @thread_rxq_size Rx queue size size of thread-based switch
+ */
+struct vmm_netswitch *vmm_netswitch_alloc(char *name, 
+					  bool thread_based, 
+					  u16 thread_rxq_size);
 
 /** Deallocate a network switch */
 void vmm_netswitch_free(struct vmm_netswitch *nsw);
 
 /** Register network switch to network switch framework */
-int vmm_netswitch_register(struct vmm_netswitch *nsw, struct vmm_device *dev,
+int vmm_netswitch_register(struct vmm_netswitch *nsw, 
+			   struct vmm_device *dev,
 			   void *priv);
 
 /** Unregister network switch from network switch framework */
@@ -98,7 +110,8 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 int vmm_netswitch_port_remove(struct vmm_netport *port);
 
 /** Handler for receiving packets by the switch */
-int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf);
+int vmm_netswitch_port2switch(struct vmm_netport *src, 
+			      struct vmm_mbuf *mbuf);
 
 /** Count number of network switches */
 u32 vmm_netswitch_count(void);

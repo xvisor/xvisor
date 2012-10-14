@@ -192,10 +192,8 @@ static int vmm_netbridge_probe(struct vmm_device *dev,
 	struct vmm_netbridge_ctrl *nbctrl;
 	int rc = VMM_OK;
 
-	nsw = vmm_netswitch_alloc(dev->node->name,
-		       		  VMM_NETBRIDGE_RXQ_LEN,	
-				  VMM_THREAD_DEF_PRIORITY, 
-				  VMM_THREAD_DEF_TIME_SLICE);
+	nsw = vmm_netswitch_alloc(dev->node->name, FALSE,
+		       		  VMM_NETBRIDGE_RXQ_LEN);
 	if(!nsw) {
 		rc = VMM_EFAIL;
 		goto vmm_netbridge_probe_failed;
