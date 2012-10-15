@@ -21,16 +21,24 @@
 # @brief list of vtemu objects to be build
 # */
 
-libs-objs-$(CONFIG_VTEMU)+= vtemu/vtemu.o
-libs-objs-$(CONFIG_VTEMU)+= vtemu/vtemu_font.o
-libs-objs-$(CONFIG_VTEMU_FONT_6x11)+= vtemu/vtemu_font_6x11.o
-libs-objs-$(CONFIG_VTEMU_FONT_7x14)+= vtemu/vtemu_font_7x14.o
-libs-objs-$(CONFIG_VTEMU_FONT_8x8)+= vtemu/vtemu_font_8x8.o
-libs-objs-$(CONFIG_VTEMU_FONT_8x16)+= vtemu/vtemu_font_8x16.o
-libs-objs-$(CONFIG_VTEMU_FONT_10x18)+= vtemu/vtemu_font_10x18.o
-libs-objs-$(CONFIG_VTEMU_FONT_ACORN_8x8)+= vtemu/vtemu_font_acorn_8x8.o
-libs-objs-$(CONFIG_VTEMU_FONT_MINI_8x8)+= vtemu/vtemu_font_mini_4x6.o
-libs-objs-$(CONFIG_VTEMU_FONT_PEARL_8x8)+= vtemu/vtemu_font_pearl_8x8.o
-libs-objs-$(CONFIG_VTEMU_FONT_SUN8x16)+= vtemu/vtemu_font_sun8x16.o
-libs-objs-$(CONFIG_VTEMU_FONT_SUN12x22)+= vtemu/vtemu_font_sun12x22.o
+libs-objs-$(CONFIG_VTEMU)+= vtemu/vtemu_lib.o
+
+vtemu_lib-y+= vtemu.o
+vtemu_lib-y+= vtemu_font.o
+vtemu_lib-$(CONFIG_VTEMU_FONT_6x11)+= vtemu_font_6x11.o
+vtemu_lib-$(CONFIG_VTEMU_FONT_7x14)+= vtemu_font_7x14.o
+vtemu_lib-$(CONFIG_VTEMU_FONT_8x8)+= vtemu_font_8x8.o
+vtemu_lib-$(CONFIG_VTEMU_FONT_8x16)+= vtemu_font_8x16.o
+vtemu_lib-$(CONFIG_VTEMU_FONT_10x18)+= vtemu_font_10x18.o
+vtemu_lib-$(CONFIG_VTEMU_FONT_ACORN_8x8)+= vtemu_font_acorn_8x8.o
+vtemu_lib-$(CONFIG_VTEMU_FONT_MINI_8x8)+= vtemu_font_mini_4x6.o
+vtemu_lib-$(CONFIG_VTEMU_FONT_PEARL_8x8)+= vtemu_font_pearl_8x8.o
+vtemu_lib-$(CONFIG_VTEMU_FONT_SUN8x16)+= vtemu_font_sun8x16.o
+vtemu_lib-$(CONFIG_VTEMU_FONT_SUN12x22)+= vtemu_font_sun12x22.o
+
+%/vtemu_lib.o: $(foreach obj,$(vtemu_lib-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/vtemu_lib.dep: $(foreach dep,$(vtemu_lib-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)
 

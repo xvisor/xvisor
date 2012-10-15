@@ -23,9 +23,18 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_modules.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <libs/vtemu.h>
+
+#define MODULE_DESC			"VTEMU library"
+#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
+#define MODULE_IPRIORITY		(VMM_INPUT_IPRIORITY + \
+					 VMM_FB_CLASS_IPRIORITY + 1)
+#define	MODULE_INIT			NULL
+#define	MODULE_EXIT			NULL
 
 #define VTEMU_KEYFLAG_LEFTCTRL		0x00000001
 #define VTEMU_KEYFLAG_RIGHTCTRL		0x00000002
@@ -1139,6 +1148,7 @@ free_vtemu:
 	vmm_free(v);
 	return NULL;
 }
+VMM_EXPORT_SYMBOL(vtemu_create);
 
 int vtemu_destroy(struct vtemu *v)
 {
@@ -1169,4 +1179,11 @@ int vtemu_destroy(struct vtemu *v)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vtemu_destroy);
 
+VMM_DECLARE_MODULE(MODULE_DESC, 
+			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

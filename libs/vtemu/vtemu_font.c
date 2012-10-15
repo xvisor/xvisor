@@ -36,6 +36,7 @@
  */
 
 #include <vmm_macros.h>
+#include <vmm_modules.h>
 #include <libs/stringlib.h>
 #include <libs/vtemu_font.h>
 
@@ -110,7 +111,7 @@ const struct vtemu_font *vtemu_find_font(const char *name)
 	  return fonts[i];
    return NULL;
 }
-
+VMM_EXPORT_SYMBOL(vtemu_find_font);
 
 /**
  *	Get default font
@@ -162,4 +163,5 @@ const struct vtemu_font *vtemu_get_default_font(int xres, int yres,
     }
     return g;
 }
+VMM_EXPORT_SYMBOL(vtemu_get_default_font);
 
