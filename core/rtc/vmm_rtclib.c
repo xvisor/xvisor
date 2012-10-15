@@ -32,6 +32,7 @@
 
 #include <vmm_error.h>
 #include <vmm_wallclock.h>
+#include <vmm_modules.h>
 #include <rtc/vmm_rtclib.h>
 
 static const unsigned char rtc_days_in_month[] = {
@@ -51,18 +52,21 @@ bool vmm_rtc_is_leap_year(unsigned int year)
 {
 	return (!(year % 4) && (year % 100)) || !(year % 400);
 }
+VMM_EXPORT_SYMBOL(vmm_rtc_is_leap_year);
 
 unsigned int vmm_rtc_month_days(unsigned int month, unsigned int year)
 {
 	return rtc_days_in_month[month] + 
 		(vmm_rtc_is_leap_year(year) && month == 1);
 }
+VMM_EXPORT_SYMBOL(vmm_rtc_month_days);
 
 unsigned int vmm_rtc_year_days(unsigned int day, 
 				unsigned int month, unsigned int year)
 {
 	return rtc_ydays[vmm_rtc_is_leap_year(year)][month] + day-1;
 }
+VMM_EXPORT_SYMBOL(vmm_rtc_year_days);
 
 bool vmm_rtc_valid_tm(struct vmm_rtc_time *tm)
 {
@@ -77,19 +81,27 @@ bool vmm_rtc_valid_tm(struct vmm_rtc_time *tm)
 	}
 	return TRUE;
 }
+VMM_EXPORT_SYMBOL(vmm_rtc_valid_tm);
 
 /* WARNING: this function will overflow on 2106-02-07 06:28:16 on
  * machines where long is 32-bit!
  */
-void vmm_rtc_tm_to_time(struct vmm_rtc_time *tm, unsigned long *time)
+int vmm_rtc_tm_to_time(struct vmm_rtc_time *tm, unsigned long *time)
 {
+	if (!tm || !time) {
+		return VMM_EFAIL;
+	}
+
 	*time = (unsigned long)vmm_wallclock_mktime(tm->tm_year + 1900, 
 						    tm->tm_mon + 1, 
 						    tm->tm_mday, 
 						    tm->tm_hour, 
 						    tm->tm_min, 
 						    tm->tm_sec);
+
+	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_rtc_tm_to_time);
 
 void vmm_rtc_time_to_tm(unsigned long time, struct vmm_rtc_time *tm)
 {
@@ -129,5 +141,5 @@ void vmm_rtc_time_to_tm(unsigned long time, struct vmm_rtc_time *tm)
 	tm->tm_min = time / 60;
 	tm->tm_sec = time - tm->tm_min * 60;
 }
-
+VMM_EXPORT_SYMBOL(vmm_rtc_time_to_tm);
 

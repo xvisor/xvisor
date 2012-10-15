@@ -21,6 +21,13 @@
 # @brief list of core objects to be build
 # */
 
-core-objs-$(CONFIG_RTC)+= rtc/vmm_rtclib.o
-core-objs-$(CONFIG_RTC)+= rtc/vmm_rtcdev.o
+core-objs-$(CONFIG_RTC)+= rtc/vmm_rtc.o
 
+vmm_rtc-y += vmm_rtclib.o
+vmm_rtc-y += vmm_rtcdev.o
+
+%/vmm_rtc.o: $(foreach obj,$(vmm_rtc-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/vmm_rtc.dep: $(foreach dep,$(vmm_rtc-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)

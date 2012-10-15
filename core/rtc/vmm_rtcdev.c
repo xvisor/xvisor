@@ -47,6 +47,7 @@ int vmm_rtcdev_get_time(struct vmm_rtcdev * rdev,
 
 	return VMM_EFAIL;
 }
+VMM_EXPORT_SYMBOL(vmm_rtcdev_get_time);
 
 int vmm_rtcdev_set_time(struct vmm_rtcdev * rdev,
 			struct vmm_rtc_time * tm)
@@ -57,6 +58,7 @@ int vmm_rtcdev_set_time(struct vmm_rtcdev * rdev,
 
 	return VMM_EFAIL;
 }
+VMM_EXPORT_SYMBOL(vmm_rtcdev_set_time);
 
 int vmm_rtcdev_sync_wallclock(struct vmm_rtcdev * rdev)
 {
@@ -98,6 +100,7 @@ int vmm_rtcdev_sync_wallclock(struct vmm_rtcdev * rdev)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_rtcdev_sync_wallclock);
 
 int vmm_rtcdev_sync_device(struct vmm_rtcdev * rdev)
 {
@@ -123,6 +126,7 @@ int vmm_rtcdev_sync_device(struct vmm_rtcdev * rdev)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_rtcdev_sync_device);
 
 int vmm_rtcdev_register(struct vmm_rtcdev * rdev)
 {
@@ -150,6 +154,7 @@ int vmm_rtcdev_register(struct vmm_rtcdev * rdev)
 
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_rtcdev_register);
 
 int vmm_rtcdev_unregister(struct vmm_rtcdev * rdev)
 {
@@ -172,6 +177,7 @@ int vmm_rtcdev_unregister(struct vmm_rtcdev * rdev)
 
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_rtcdev_unregister);
 
 struct vmm_rtcdev *vmm_rtcdev_find(const char *name)
 {
@@ -184,6 +190,7 @@ struct vmm_rtcdev *vmm_rtcdev_find(const char *name)
 
 	return cd->priv;
 }
+VMM_EXPORT_SYMBOL(vmm_rtcdev_find);
 
 struct vmm_rtcdev *vmm_rtcdev_get(int num)
 {
@@ -196,11 +203,13 @@ struct vmm_rtcdev *vmm_rtcdev_get(int num)
 
 	return cd->priv;
 }
+VMM_EXPORT_SYMBOL(vmm_rtcdev_get);
 
 u32 vmm_rtcdev_count(void)
 {
 	return vmm_devdrv_classdev_count(VMM_RTCDEV_CLASS_NAME);
 }
+VMM_EXPORT_SYMBOL(vmm_rtcdev_count);
 
 static int __init vmm_rtcdev_init(void)
 {
