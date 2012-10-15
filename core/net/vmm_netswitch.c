@@ -105,23 +105,26 @@ static int vmm_netswitch_rx_handler(void *param)
 
 	nsw = param;
 
-	while(1) {
+	while (1) {
+		/* Try to wait for xfer request */
+		vmm_completion_wait(&nsw->rx_not_empty);
+
+		/* Try to get xfer request from rx_list */
 		vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
-		while(list_empty(&nsw->rx_list)) {
+		if (list_empty(&nsw->rx_list)) {
 			vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
-			vmm_completion_wait(&nsw->rx_not_empty);
-			vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
+			continue;
 		}
 		l = list_pop(&nsw->rx_list);
 		nsw->rx_count--;
 		vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
 
+		/* Extract info from xfer request */
 		xfer = list_entry(l, struct vmm_netswitch_xfer, head);
-
 		mbuf = xfer->mbuf;
 		src = xfer->src_port;
 
-		/* Return the node back to free list */
+		/* Return xfer request to free_list */
 		vmm_spin_lock_irqsave(&nsw->free_list_lock, flags);
 		list_add_tail(&xfer->head, &nsw->free_list);
 		nsw->free_count++;
@@ -129,10 +132,10 @@ static int vmm_netswitch_rx_handler(void *param)
 
 		DUMP_NETSWITCH_PKT(mbuf);
 
-		/* Call the rx function of corresponding switch */
-		vmm_spin_lock_irqsave(&nsw->lock, flags);
+		/* Call the rx function of net switch */
+		vmm_mutex_lock(&nsw->lock);
 		nsw->port2switch_xfer(src, mbuf);
-		vmm_spin_unlock_irqrestore(&nsw->lock, flags);
+		vmm_mutex_unlock(&nsw->lock);
 	}
 
 	return VMM_OK;
@@ -150,7 +153,7 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	}
 	nsw = src->nsw;
 
-	/* Get a free vmm_netswitch_xfer instance from free_list */
+	/* Get a xfer request from free_list */
 	vmm_spin_lock_irqsave(&nsw->free_list_lock, flags);
 	if(list_empty(&nsw->free_list)) {
 		vmm_spin_unlock_irqrestore(&nsw->free_list_lock,
@@ -164,16 +167,17 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 
 	xfer = list_entry(l, struct vmm_netswitch_xfer, head);
 
-	/* Fillup the vmm_netswitch_xfer */
+	/* Fill-up xfer request */
 	xfer->src_port = src;
 	xfer->mbuf = mbuf;
 
-	/* Add this new xfer to the rx_list */
+	/* Add xfer request to rx_list */
 	vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
 	list_add_tail(&xfer->head, &nsw->rx_list);
 	nsw->rx_count++;
 	vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
 
+	/* Signal completion to net switch bottom-half thread */
 	vmm_completion_complete(&nsw->rx_not_empty);
 
 	return VMM_OK;
@@ -202,7 +206,7 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name,
 	}
 	strcpy(nsw->name, name);
 
-	INIT_SPIN_LOCK(&nsw->lock);
+	INIT_MUTEX(&nsw->lock);
 	INIT_LIST_HEAD(&nsw->port_list);
 
 	nsw->xfer_pool = vmm_malloc(sizeof(struct vmm_netswitch_xfer) * 
@@ -275,7 +279,6 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 			   struct vmm_netport *port)
 {
 	int rc = VMM_OK;
-	irq_flags_t flags;
 
 	if (!nsw || !port) {
 		return VMM_EFAIL;
@@ -288,7 +291,7 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 
 	port->nsw = nsw;
 
-	vmm_spin_lock_irqsave(&nsw->lock, flags);
+	vmm_mutex_lock(&nsw->lock);
 
 	/* Add the port to the port_list */
 	list_add_tail(&port->head, &nsw->port_list);
@@ -298,7 +301,7 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 		rc = nsw->port_add(nsw, port);
 	}
 
-	vmm_spin_unlock_irqrestore(&nsw->lock, flags);
+	vmm_mutex_unlock(&nsw->lock);
 
 	if (rc == VMM_OK) {
 		/* Notify the port about the link-status change */
@@ -333,7 +336,6 @@ static void __netswitch_port_remove(struct vmm_netswitch *nsw,
 
 int vmm_netswitch_port_remove(struct vmm_netport *port)
 {
-	irq_flags_t flags;
 	struct vmm_netswitch *nsw;
 
 	if (!port || !(port->nsw)) {
@@ -350,9 +352,9 @@ int vmm_netswitch_port_remove(struct vmm_netport *port)
 	port->flags &= ~VMM_NETPORT_LINK_UP;
 	port->link_changed(port);
 
-	vmm_spin_lock_irqsave(&nsw->lock, flags);
+	vmm_mutex_lock(&nsw->lock);
 	__netswitch_port_remove(nsw, port);
-	vmm_spin_unlock_irqrestore(&nsw->lock, flags);
+	vmm_mutex_unlock(&nsw->lock);
 
 	return VMM_OK;
 }
@@ -409,7 +411,6 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 {
 	int rc;
 	struct dlist *list;
-	irq_flags_t flags;
 	struct vmm_netport *port;
 	struct vmm_classdev *cd;
 
@@ -424,7 +425,7 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 
 	vmm_threads_stop(nsw->thread);
 
-	vmm_spin_lock_irqsave(&nsw->lock, flags);
+	vmm_mutex_lock(&nsw->lock);
 
 	/* Remove any ports still attached to this nsw */
 	list_for_each(list, &nsw->port_list) {
@@ -432,7 +433,7 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 		__netswitch_port_remove(nsw, port);
 	}
 
-	vmm_spin_unlock_irqrestore(&nsw->lock, flags);
+	vmm_mutex_unlock(&nsw->lock);
 
 	rc = vmm_devdrv_unregister_classdev(VMM_NETSWITCH_CLASS_NAME, cd);
 	if (!rc) {

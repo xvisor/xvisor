@@ -28,6 +28,7 @@
 
 #include <vmm_types.h>
 #include <vmm_devdrv.h>
+#include <vmm_mutex.h>
 #include <vmm_spinlocks.h>
 #include <vmm_completion.h>
 #include <libs/list.h>
@@ -54,8 +55,8 @@ struct vmm_netswitch {
 	char *name;
 	int flags;
 	struct vmm_device *dev;
-	/* Lock to protect net switch */
-	vmm_spinlock_t lock;
+	/* Mutex to protect net switch */
+	struct vmm_mutex lock;
 	/* List of ports */
 	struct dlist port_list;
 	/* Handle RX packets from port to switch */
@@ -67,8 +68,8 @@ struct vmm_netswitch {
 	/* Switch private data */
 	void *priv;
 
-	/* Additional fields for managing a thread-based
-	 * network switch 
+	/* Additional fields for thread-based bottom-half of net switch
+	 * Note: this fields should not be accessed directly
 	 */
 	struct vmm_thread *thread;
 	struct vmm_completion rx_not_empty;
