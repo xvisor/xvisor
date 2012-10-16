@@ -181,6 +181,7 @@ int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
  done:
 	return ret;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_set_var);
 
 int vmm_fb_pan_display(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
 {
@@ -217,6 +218,7 @@ int vmm_fb_pan_display(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *v
 		info->var.vmode &= ~FB_VMODE_YWRAP;
 	return 0;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_pan_display);
 
 int vmm_fb_blank(struct vmm_fb_info *info, int blank)
 {	
@@ -230,6 +232,7 @@ int vmm_fb_blank(struct vmm_fb_info *info, int blank)
 
  	return ret;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_blank);
 
 int vmm_lock_fb_info(struct vmm_fb_info *info)
 {
@@ -240,11 +243,13 @@ int vmm_lock_fb_info(struct vmm_fb_info *info)
 	}
 	return 1;
 }
+VMM_EXPORT_SYMBOL(vmm_lock_fb_info);
 
 void vmm_unlock_fb_info(struct vmm_fb_info *info)
 {
 	vmm_mutex_unlock(&info->lock);
 }
+VMM_EXPORT_SYMBOL(vmm_unlock_fb_info);
 
 void vmm_fb_set_suspend(struct vmm_fb_info *info, int state)
 {
@@ -257,6 +262,7 @@ void vmm_fb_set_suspend(struct vmm_fb_info *info, int state)
 	}
 	vmm_unlock_fb_info(info);
 }
+VMM_EXPORT_SYMBOL(vmm_fb_set_suspend);
 
 int vmm_fb_get_color_depth(struct vmm_fb_var_screeninfo *var,
 			   struct vmm_fb_fix_screeninfo *fix)
@@ -279,6 +285,7 @@ int vmm_fb_get_color_depth(struct vmm_fb_var_screeninfo *var,
 
 	return depth;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_get_color_depth);
 
 int vmm_fb_open(struct vmm_fb_info *info)
 {
@@ -305,6 +312,7 @@ int vmm_fb_open(struct vmm_fb_info *info)
 
 	return res;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_open);
 
 int vmm_fb_release(struct vmm_fb_info *info)
 {
@@ -325,6 +333,7 @@ int vmm_fb_release(struct vmm_fb_info *info)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_release);
 
 int vmm_fb_register(struct vmm_fb_info *info)
 {
@@ -399,6 +408,7 @@ free_pixmap:
 	}
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_register);
 
 int vmm_fb_unregister(struct vmm_fb_info *info)
 {
@@ -430,6 +440,7 @@ int vmm_fb_unregister(struct vmm_fb_info *info)
 
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_unregister);
 
 struct vmm_fb_info *vmm_fb_find(const char *name)
 {
@@ -443,6 +454,7 @@ struct vmm_fb_info *vmm_fb_find(const char *name)
 
 	return cd->priv;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_find);
 
 struct vmm_fb_info *vmm_fb_get(int num)
 {
@@ -456,11 +468,13 @@ struct vmm_fb_info *vmm_fb_get(int num)
 
 	return cd->priv;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_get);
 
 u32 vmm_fb_count(void)
 {
 	return vmm_devdrv_classdev_count(VMM_FB_CLASS_NAME);
 }
+VMM_EXPORT_SYMBOL(vmm_fb_count);
 
 static int __init vmm_fb_init(void)
 {

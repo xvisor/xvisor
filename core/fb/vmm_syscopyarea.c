@@ -37,6 +37,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_modules.h>
 #include <fb/vmm_fb.h>
 #include <libs/bitops.h>
 #include "fb_draw.h"
@@ -389,4 +390,5 @@ void vmm_sys_copyarea(struct vmm_fb_info *p, const struct vmm_fb_copyarea *area)
 		}
 	}
 }
+VMM_EXPORT_SYMBOL(vmm_sys_copyarea);
 
