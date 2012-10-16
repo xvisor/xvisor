@@ -363,7 +363,7 @@ static void omap_uart_putc_sleepable(struct omap_uart_omap_port *port, u8 ch)
 #endif
 
 static u32 omap_uart_read(struct vmm_chardev *cdev, 
-			  u8 *dest, u32 offset, u32 len, bool sleep)
+			  u8 *dest, u32 len, bool sleep)
 {
 	u32 i;
 	struct omap_uart_omap_port *port;
@@ -395,7 +395,7 @@ static u32 omap_uart_read(struct vmm_chardev *cdev,
 }
 
 static u32 omap_uart_write(struct vmm_chardev *cdev, 
-			   u8 *src, u32 offset, u32 len, bool sleep)
+			   u8 *src, u32 len, bool sleep)
 {
 	u32 i;
 	struct omap_uart_omap_port *port;

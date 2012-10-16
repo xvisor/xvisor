@@ -39,7 +39,7 @@ int vmm_chardev_doioctl(struct vmm_chardev *cdev,
 }
 
 u32 vmm_chardev_doread(struct vmm_chardev *cdev,
-		       u8 *dest, u32 offset, u32 len, bool block)
+		       u8 *dest, u32 len, bool block)
 {
 	u32 b;
 	bool sleep;
@@ -50,11 +50,11 @@ u32 vmm_chardev_doread(struct vmm_chardev *cdev,
 			sleep = vmm_scheduler_orphan_context() ? TRUE : FALSE;
 			while (b < len) {
 				b += cdev->read(cdev, &dest[b], 
-					        offset + b, len - b, sleep);
+						len - b, sleep);
 			}
 			return b;
 		} else {
-			return cdev->read(cdev, dest, offset, len, FALSE);
+			return cdev->read(cdev, dest, len, FALSE);
 		}
 	} else {
 		return 0;
@@ -62,7 +62,7 @@ u32 vmm_chardev_doread(struct vmm_chardev *cdev,
 }
 
 u32 vmm_chardev_dowrite(struct vmm_chardev *cdev,
-			u8 *src, u32 offset, u32 len, bool block)
+			u8 *src, u32 len, bool block)
 {
 	u32 b;
 	bool sleep;
@@ -73,11 +73,11 @@ u32 vmm_chardev_dowrite(struct vmm_chardev *cdev,
 			sleep = vmm_scheduler_orphan_context() ? TRUE : FALSE;
 			while (b < len) {
 				b += cdev->write(cdev, &src[b], 
-					         offset + b, len - b, sleep);
+						 len - b, sleep);
 			}
 			return b;
 		} else {
-			return cdev->write(cdev, src, offset, len, FALSE);
+			return cdev->write(cdev, src, len, FALSE);
 		}
 	} else {
 		return 0;

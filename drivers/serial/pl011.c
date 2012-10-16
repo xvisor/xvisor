@@ -198,7 +198,7 @@ static u8 pl011_getc_sleepable(struct pl011_port *port)
 }
 
 static u32 pl011_read(struct vmm_chardev *cdev,
-		      u8 * dest, u32 offset, u32 len, bool sleep)
+		      u8 * dest, u32 len, bool sleep)
 {
 	u32 i;
 	struct pl011_port *port;
@@ -245,7 +245,7 @@ static void pl011_putc_sleepable(struct pl011_port *port, u8 ch)
 #endif
 
 static u32 pl011_write(struct vmm_chardev *cdev,
-		       u8 * src, u32 offset, u32 len, bool sleep)
+		       u8 * src, u32 len, bool sleep)
 {
 	u32 i;
 	struct pl011_port *port;

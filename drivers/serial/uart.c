@@ -108,7 +108,7 @@ void uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 }
 
 static u32 uart_read(struct vmm_chardev *cdev, 
-		     u8 *dest, u32 offset, u32 len, bool sleep)
+		     u8 *dest, u32 len, bool sleep)
 {
 	u32 i;
 	struct uart_port *port;
@@ -130,7 +130,7 @@ static u32 uart_read(struct vmm_chardev *cdev,
 }
 
 static u32 uart_write(struct vmm_chardev *cdev, 
-		      u8 *src, u32 offset, u32 len, bool sleep)
+		      u8 *src, u32 len, bool sleep)
 {
 	u32 i;
 	struct uart_port *port;

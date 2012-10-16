@@ -406,8 +406,7 @@ static int vtemu_key_event(struct vmm_input_handler *ihnd,
 }
 
 static u32 vtemu_read(struct vmm_chardev *cdev,
-			u8 *dest, u32 offset, u32 len,
-			bool sleep)
+			u8 *dest, u32 len, bool sleep)
 {
 	u32 i;
 	irq_flags_t flags;
@@ -936,8 +935,7 @@ unhandled:
 }
 
 static u32 vtemu_write (struct vmm_chardev *cdev,
-			 u8 *src, u32 offset, u32 len,
-			 bool sleep)
+			 u8 *src, u32 len, bool sleep)
 {
 	int rc;
 	u32 i;
