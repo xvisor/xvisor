@@ -182,6 +182,7 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_netswitch_port2switch);
 
 struct vmm_netswitch *vmm_netswitch_alloc(char *name, 
 					  u32 thread_priority, 
@@ -258,6 +259,7 @@ vmm_netswitch_alloc_failed:
 vmm_netswitch_alloc_done:
 	return nsw;
 }
+VMM_EXPORT_SYMBOL(vmm_netswitch_alloc);
 
 void vmm_netswitch_free(struct vmm_netswitch *nsw)
 {
@@ -274,6 +276,7 @@ void vmm_netswitch_free(struct vmm_netswitch *nsw)
 		vmm_free(nsw);
 	}
 }
+VMM_EXPORT_SYMBOL(vmm_netswitch_free);
 
 int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 			   struct vmm_netport *port)
@@ -320,6 +323,7 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_netswitch_port_add);
 
 static void __netswitch_port_remove(struct vmm_netswitch *nsw,
 				    struct vmm_netport *port)
@@ -358,6 +362,7 @@ int vmm_netswitch_port_remove(struct vmm_netport *port)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_netswitch_port_remove);
 
 int vmm_netswitch_register(struct vmm_netswitch *nsw, 
 			   struct vmm_device *dev,
@@ -406,6 +411,7 @@ fail_nsw_reg:
 ret:
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_netswitch_register);
 
 int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 {
@@ -442,6 +448,7 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_netswitch_unregister);
 
 struct vmm_netswitch *vmm_netswitch_find(const char *name)
 {
@@ -454,6 +461,7 @@ struct vmm_netswitch *vmm_netswitch_find(const char *name)
 
 	return cd->priv;
 }
+VMM_EXPORT_SYMBOL(vmm_netswitch_find);
 
 struct vmm_netswitch *vmm_netswitch_get(int num)
 {
@@ -466,13 +474,15 @@ struct vmm_netswitch *vmm_netswitch_get(int num)
 
 	return cd->priv;
 }
+VMM_EXPORT_SYMBOL(vmm_netswitch_get);
 
 u32 vmm_netswitch_count(void)
 {
 	return vmm_devdrv_classdev_count(VMM_NETSWITCH_CLASS_NAME);
 }
+VMM_EXPORT_SYMBOL(vmm_netswitch_count);
 
-int vmm_netswitch_init(void)
+int __init vmm_netswitch_init(void)
 {
 	int rc;
 	struct vmm_class *c;
@@ -499,7 +509,7 @@ int vmm_netswitch_init(void)
 	return VMM_OK;
 }
 
-void vmm_netswitch_exit(void)
+void __exit vmm_netswitch_exit(void)
 {
 	int rc;
 	struct vmm_class *c;

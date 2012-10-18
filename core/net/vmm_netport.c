@@ -50,6 +50,7 @@ struct vmm_netport *vmm_netport_alloc(char *name)
 
 	return port;
 }
+VMM_EXPORT_SYMBOL(vmm_netport_alloc);
 
 int vmm_netport_register(struct vmm_netport *port)
 {
@@ -92,6 +93,7 @@ fail_port_reg:
 ret:
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_netport_register);
 
 int vmm_netport_unregister(struct vmm_netport *port)
 {
@@ -112,6 +114,7 @@ int vmm_netport_unregister(struct vmm_netport *port)
 
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_netport_unregister);
 
 struct vmm_netport *vmm_netport_find(const char *name)
 {
@@ -124,6 +127,7 @@ struct vmm_netport *vmm_netport_find(const char *name)
 
 	return cd->priv;
 }
+VMM_EXPORT_SYMBOL(vmm_netport_find);
 
 struct vmm_netport *vmm_netport_get(int num)
 {
@@ -136,13 +140,15 @@ struct vmm_netport *vmm_netport_get(int num)
 
 	return cd->priv;
 }
+VMM_EXPORT_SYMBOL(vmm_netport_get);
 
 u32 vmm_netport_count(void)
 {
 	return vmm_devdrv_classdev_count(VMM_NETPORT_CLASS_NAME);
 }
+VMM_EXPORT_SYMBOL(vmm_netport_count);
 
-int vmm_netport_init(void)
+int __init vmm_netport_init(void)
 {
 	int rc;
 	struct vmm_class *c;
@@ -168,7 +174,7 @@ int vmm_netport_init(void)
 	return VMM_OK;
 }
 
-int vmm_netport_exit(void)
+int __exit vmm_netport_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
