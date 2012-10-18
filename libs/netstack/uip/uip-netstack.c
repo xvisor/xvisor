@@ -21,9 +21,10 @@
  * @brief Source for implementation of netstack interface for uIP
  */
 
-#include <vmm_stdio.h>
-#include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_types.h>
+#include <vmm_stdio.h>
+#include <vmm_modules.h>
 #include <vmm_completion.h>
 #include <net/vmm_mbuf.h>
 #include <libs/stringlib.h>
@@ -47,6 +48,7 @@ char *netstack_get_name(void)
 {
 	return "uIP";
 }
+VMM_EXPORT_SYMBOL(netstack_get_name);
 
 int netstack_set_ipaddr(u8 *addr)
 {
@@ -55,6 +57,7 @@ int netstack_set_ipaddr(u8 *addr)
 	uip_sethostaddr(ipaddr);
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(netstack_set_ipaddr);
 
 int netstack_get_ipaddr(u8 *addr)
 {
@@ -63,6 +66,7 @@ int netstack_get_ipaddr(u8 *addr)
 	memcpy(addr, ipaddr, 4);
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(netstack_get_ipaddr);
 
 int netstack_set_ipmask(u8 *addr)
 {
@@ -71,6 +75,7 @@ int netstack_set_ipmask(u8 *addr)
 	uip_setnetmask(ipaddr);
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(netstack_set_ipmask);
 
 int netstack_get_ipmask(u8 *addr)
 {
@@ -79,12 +84,14 @@ int netstack_get_ipmask(u8 *addr)
 	memcpy(addr, ipaddr, 4);
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(netstack_get_ipmask);
 
 int netstack_get_hwaddr(u8 *addr)
 {
 	memcpy(addr, &uip_ethaddr, 6);
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(netstack_get_hwaddr);
 
 static struct icmp_echo_reply *uip_ping_reply;
 
@@ -155,6 +162,7 @@ int netstack_send_icmp_echo(u8 *ripaddr, u16 size, u16 seqno,
 		return VMM_EFAIL;
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(netstack_send_icmp_echo);
 
 /**
  *  Prefetching of ARP mapping is done by sending ourself a broadcast ARP 
@@ -184,5 +192,5 @@ void netstack_prefetch_arp_mapping(u8 *ipaddr)
 	/* Block till arp prefetch is done */
 	vmm_completion_wait_timeout(&uip_arp_prefetch_done, &timeout);
 }
-
+VMM_EXPORT_SYMBOL(netstack_prefetch_arp_mapping);
 

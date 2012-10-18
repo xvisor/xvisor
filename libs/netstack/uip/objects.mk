@@ -21,13 +21,21 @@
 # @brief list of uip objects to be built.
 # */
 
-libs-objs-$(CONFIG_UIP)+= netstack/uip/uip-daemon.o
-libs-objs-$(CONFIG_UIP)+= netstack/uip/uip-netstack.o
-libs-objs-$(CONFIG_UIP)+= netstack/uip/uip-netport.o
-libs-objs-$(CONFIG_UIP)+= netstack/uip/uip-arp.o
-libs-objs-$(CONFIG_UIP)+= netstack/uip/uip.o
-libs-objs-$(CONFIG_UIP)+= netstack/uip/psock.o
-libs-objs-$(CONFIG_UIP)+= netstack/uip/timer.o
-libs-objs-$(CONFIG_UIP)+= netstack/uip/uip-fw.o
-libs-objs-$(CONFIG_UIP)+= netstack/uip/uip-neighbor.o
-libs-objs-$(CONFIG_UIP)+= netstack/uip/uip-split.o
+libs-objs-$(CONFIG_UIP)+= netstack/uip/uip_lib.o
+
+uip_lib-y+= uip-daemon.o
+uip_lib-y+= uip-netstack.o
+uip_lib-y+= uip-netport.o
+uip_lib-y+= uip-arp.o
+uip_lib-y+= uip.o
+uip_lib-y+= psock.o
+uip_lib-y+= timer.o
+uip_lib-y+= uip-fw.o
+uip_lib-y+= uip-neighbor.o
+uip_lib-y+= uip-split.o
+
+%/uip_lib.o: $(foreach obj,$(uip_lib-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/uip_lib.dep: $(foreach dep,$(uip_lib-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)
