@@ -1993,7 +1993,6 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	int rc = VMM_OK;
-	u32 vtlb_count;
 #if defined(CONFIG_ARMV7A)
 	u32 i, cache_type, last_level;
 #endif
