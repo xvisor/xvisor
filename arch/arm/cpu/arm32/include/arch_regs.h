@@ -99,7 +99,7 @@ struct arm_vtlb_entry {
 };
 
 struct arm_vtlb {
-	struct arm_vtlb_entry *table;
+	struct arm_vtlb_entry table[CPU_VCPU_VTLB_ENTRY_COUNT];
 	u32 victim[CPU_VCPU_VTLB_ZONE_COUNT];
 };
 
