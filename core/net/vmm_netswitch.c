@@ -140,7 +140,11 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	struct vmm_netport_xfer *xfer;
 	struct vmm_netswitch *nsw;
 
-	if(!src || !src->nsw) {
+	if (!mbuf) {
+		return VMM_EFAIL;
+	}
+	if (!src || !src->nsw) {
+		m_freem(mbuf);
 		return VMM_EFAIL;
 	}
 	nsw = src->nsw;
