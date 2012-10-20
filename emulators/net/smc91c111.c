@@ -920,7 +920,7 @@ static int smc91c111_emulator_probe(struct vmm_guest *guest,
 			guest->node->name,
 			VMM_DEVTREE_PATH_SEPARATOR_STRING,
 			edev->node->name);
-	s->port = vmm_netport_alloc(tname);
+	s->port = vmm_netport_alloc(tname, VMM_NETPORT_DEF_QUEUE_SIZE);
 	if(!s->port) {
 		vmm_printf("smc91c111state->netport alloc failed\n");
 		rc = VMM_EFAIL;

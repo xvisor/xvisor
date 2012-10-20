@@ -39,18 +39,6 @@ struct vmm_netswitch;
 struct vmm_netport;
 struct vmm_mbuf;
 
-typedef int (*vmm_netswitch_rx_handle_t) (struct vmm_netport *src_port, 
-					  struct vmm_mbuf *mbuf);
-typedef int (*vmm_netswitch_port_add_handle_t) (struct vmm_netswitch *nsw,
-						struct vmm_netport *port);
-typedef int (*vmm_netswitch_port_remove_handle_t) (struct vmm_netport *port);
-
-struct vmm_netswitch_xfer {
-	struct dlist head;
-	struct vmm_netport *src_port;
-	struct vmm_mbuf *mbuf;
-};
-
 struct vmm_netswitch {
 	char *name;
 	int flags;
@@ -60,11 +48,11 @@ struct vmm_netswitch {
 	/* List of ports */
 	struct dlist port_list;
 	/* Handle RX packets from port to switch */
-	vmm_netswitch_rx_handle_t port2switch_xfer;
+	int (*port2switch_xfer) (struct vmm_netport *, struct vmm_mbuf *);
 	/* Handle enabling of a port */
-	vmm_netswitch_port_add_handle_t	port_add;
+	int (*port_add) (struct vmm_netswitch *, struct vmm_netport *);
 	/* Handle disabling of a port */
-	vmm_netswitch_port_remove_handle_t port_remove;
+	int (*port_remove) (struct vmm_netport *);
 	/* Switch private data */
 	void *priv;
 
@@ -73,30 +61,22 @@ struct vmm_netswitch {
 	 */
 	struct vmm_thread *thread;
 	struct vmm_completion rx_not_empty;
-	u32 free_count;
-	struct dlist free_list;
-	vmm_spinlock_t free_list_lock;
 	u32 rx_count;
 	struct dlist rx_list;
 	vmm_spinlock_t rx_list_lock;
-	/* Pool of xfer elements used in the rx_buffer
-	 * Having all these blocks contiguous eases alloc
-	 * and free operations */
-	struct vmm_netswitch_xfer *xfer_pool;
 };
 
 /** Handler for receiving packets by the switch */
 int vmm_netswitch_port2switch(struct vmm_netport *src, 
 			      struct vmm_mbuf *mbuf);
 
+#define vmm_port2switch_xfer 	vmm_netswitch_port2switch
+
 /** Allocate new network switch 
  *  @name name of the network switch
- *  @thread_based is the network switch thread-based
- *  @thread_rxq_size Rx queue size size of thread-based switch
+ *  @thread_prio priority of the network switch thread
  */
-struct vmm_netswitch *vmm_netswitch_alloc(char *name, 
-					  u32 thread_priority, 
-					  u16 thread_rxq_size);
+struct vmm_netswitch *vmm_netswitch_alloc(char *name, u32 thread_prio);
 
 /** Deallocate a network switch */
 void vmm_netswitch_free(struct vmm_netswitch *nsw);

@@ -217,7 +217,7 @@ int uip_netport_init(void)
 	/* Create a port-name */
 	vmm_sprintf(tname, "%s-uip", nsw->name); 
 	/* Allocate a netport for this netswitch */
-	s->port = vmm_netport_alloc(tname);
+	s->port = vmm_netport_alloc(tname, VMM_NETPORT_DEF_QUEUE_SIZE);
 	if(!s->port) {
 		vmm_printf("UIP->netport alloc failed\n");
 		return VMM_EFAIL;

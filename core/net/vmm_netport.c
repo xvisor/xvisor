@@ -29,8 +29,48 @@
 #include <net/vmm_netport.h>
 #include <libs/stringlib.h>
 
-struct vmm_netport *vmm_netport_alloc(char *name)
+struct vmm_netport_xfer *vmm_netport_alloc_xfer(struct vmm_netport *port)
 {
+	struct dlist *l;
+	irq_flags_t flags;
+
+	if (!port) {
+		return NULL;
+	}
+
+	vmm_spin_lock_irqsave(&port->free_list_lock, flags);
+	if (list_empty(&port->free_list)) {
+		vmm_spin_unlock_irqrestore(&port->free_list_lock, flags);
+		return NULL;
+	}
+	l = list_pop(&port->free_list);
+	port->free_count--;
+	vmm_spin_unlock_irqrestore(&port->free_list_lock, flags);
+
+	return list_entry(l, struct vmm_netport_xfer, head);;
+}
+VMM_EXPORT_SYMBOL(vmm_netport_alloc_xfer);
+
+void vmm_netport_free_xfer(struct vmm_netport *port, 
+			   struct vmm_netport_xfer *xfer)
+{
+	irq_flags_t flags;
+
+	if (!port || !xfer) {
+		return;
+	}
+
+	vmm_spin_lock_irqsave(&port->free_list_lock, flags);
+	list_add_tail(&xfer->head, &port->free_list);
+	port->free_count++;
+	vmm_spin_unlock_irqrestore(&port->free_list_lock, flags);
+}
+VMM_EXPORT_SYMBOL(vmm_netport_free_xfer);
+
+struct vmm_netport *vmm_netport_alloc(char *name, u32 queue_size)
+{
+	u32 i;
+	struct dlist *l;
 	struct vmm_netport *port;
 
 	port = vmm_zalloc(sizeof(struct vmm_netport));
@@ -45,8 +85,26 @@ struct vmm_netport *vmm_netport_alloc(char *name)
 		return NULL;
 	}
 
-	strcpy(port->name, name);
 	INIT_LIST_HEAD(&port->head);
+	strcpy(port->name, name);
+	port->queue_size = (queue_size < VMM_NETPORT_MAX_QUEUE_SIZE) ?
+				queue_size : VMM_NETPORT_MAX_QUEUE_SIZE;
+
+	port->xfer_pool = vmm_malloc(sizeof(struct vmm_netport_xfer) * 
+					port->queue_size);
+	if (!port->xfer_pool) {
+		vmm_printf("%s Failed to allocate for netport xfer pool\n", __func__);
+		return NULL;
+	}
+
+	port->free_count = port->queue_size;
+	INIT_SPIN_LOCK(&port->free_list_lock);
+	INIT_LIST_HEAD(&port->free_list);
+
+	for(i = 0; i < port->queue_size; i++) {
+		l = &((port->xfer_pool + i)->head);
+		list_add_tail(l, &port->free_list);
+	}
 
 	return port;
 }
@@ -108,7 +166,6 @@ int vmm_netport_unregister(struct vmm_netport *port)
 		return VMM_EFAIL;
 
 	rc = vmm_devdrv_unregister_classdev(VMM_NETPORT_CLASS_NAME, cd);
-
 	if (!rc)
 		vmm_free(cd);
 

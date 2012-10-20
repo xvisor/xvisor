@@ -1440,7 +1440,7 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 		    guest->node->name,
 		    VMM_DEVTREE_PATH_SEPARATOR_STRING,
 		    edev->node->name);
-	s->port = vmm_netport_alloc(tname);
+	s->port = vmm_netport_alloc(tname, VMM_NETPORT_DEF_QUEUE_SIZE);
 	if(!s->port) {
 		vmm_printf("LAN9118_state->netport alloc failed\n");
 		rc = VMM_EFAIL;

@@ -98,9 +98,7 @@ static int vmm_netswitch_rx_handler(void *param)
 {
 	struct dlist *l;
 	irq_flags_t flags;
-	struct vmm_netport *src;
-	struct vmm_mbuf *mbuf;
-	struct vmm_netswitch_xfer *xfer;
+	struct vmm_netport_xfer *xfer;
 	struct vmm_netswitch *nsw;
 
 	nsw = param;
@@ -120,22 +118,17 @@ static int vmm_netswitch_rx_handler(void *param)
 		vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
 
 		/* Extract info from xfer request */
-		xfer = list_entry(l, struct vmm_netswitch_xfer, head);
-		mbuf = xfer->mbuf;
-		src = xfer->src_port;
+		xfer = list_entry(l, struct vmm_netport_xfer, head);
 
-		/* Return xfer request to free_list */
-		vmm_spin_lock_irqsave(&nsw->free_list_lock, flags);
-		list_add_tail(&xfer->head, &nsw->free_list);
-		nsw->free_count++;
-		vmm_spin_unlock_irqrestore(&nsw->free_list_lock, flags);
-
-		DUMP_NETSWITCH_PKT(mbuf);
+		DUMP_NETSWITCH_PKT(xfer->mbuf);
 
 		/* Call the rx function of net switch */
 		vmm_mutex_lock(&nsw->lock);
-		nsw->port2switch_xfer(src, mbuf);
+		nsw->port2switch_xfer(xfer->port, xfer->mbuf);
 		vmm_mutex_unlock(&nsw->lock);
+
+		/* Free netport xfer request */
+		vmm_netport_free_xfer(xfer->port, xfer);
 	}
 
 	return VMM_OK;
@@ -143,9 +136,8 @@ static int vmm_netswitch_rx_handler(void *param)
 
 int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 {
-	struct dlist *l;
 	irq_flags_t flags;
-	struct vmm_netswitch_xfer *xfer;
+	struct vmm_netport_xfer *xfer;
 	struct vmm_netswitch *nsw;
 
 	if(!src || !src->nsw) {
@@ -153,22 +145,15 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	}
 	nsw = src->nsw;
 
-	/* Get a xfer request from free_list */
-	vmm_spin_lock_irqsave(&nsw->free_list_lock, flags);
-	if(list_empty(&nsw->free_list)) {
-		vmm_spin_unlock_irqrestore(&nsw->free_list_lock,
-					   flags);
+	/* Alloc netport xfer request */
+	xfer = vmm_netport_alloc_xfer(src);
+	if (!xfer) {
 		m_freem(mbuf);
 		return VMM_EFAIL;
 	}
-	l = list_pop(&nsw->free_list);
-	nsw->free_count--;
-	vmm_spin_unlock_irqrestore(&nsw->free_list_lock, flags);
-
-	xfer = list_entry(l, struct vmm_netswitch_xfer, head);
 
 	/* Fill-up xfer request */
-	xfer->src_port = src;
+	xfer->port = src;
 	xfer->mbuf = mbuf;
 
 	/* Add xfer request to rx_list */
@@ -184,12 +169,8 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_port2switch);
 
-struct vmm_netswitch *vmm_netswitch_alloc(char *name, 
-					  u32 thread_priority, 
-					  u16 thread_rxq_size)
+struct vmm_netswitch *vmm_netswitch_alloc(char *name, u32 thread_prio)
 {
-	int i;
-	struct dlist *tmp_node;
 	struct vmm_netswitch *nsw;
 
 	nsw = vmm_malloc(sizeof(struct vmm_netswitch));
@@ -210,15 +191,8 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name,
 	INIT_MUTEX(&nsw->lock);
 	INIT_LIST_HEAD(&nsw->port_list);
 
-	nsw->xfer_pool = vmm_malloc(sizeof(struct vmm_netswitch_xfer) * 
-					thread_rxq_size);
-	if (!nsw->xfer_pool) {
-		vmm_printf("%s Failed to allocate for net switch\n", __func__);
-		goto vmm_netswitch_alloc_failed;
-	}
-
 	nsw->thread = vmm_threads_create(nsw->name, vmm_netswitch_rx_handler,
-					 nsw, thread_priority, 
+					 nsw, thread_prio, 
 					 VMM_THREAD_DEF_TIME_SLICE);
 	if (!nsw->thread) {
 		vmm_printf("%s Failed to create thread for net switch\n",
@@ -227,18 +201,9 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name,
 	}
 
 	INIT_COMPLETION(&nsw->rx_not_empty);
-	nsw->free_count = thread_rxq_size;
-	INIT_SPIN_LOCK(&nsw->free_list_lock);
-	INIT_LIST_HEAD(&nsw->free_list);
 	nsw->rx_count = 0;
 	INIT_SPIN_LOCK(&nsw->rx_list_lock);
 	INIT_LIST_HEAD(&nsw->rx_list);
-
-	/* Fill the free_list of vmm_netswitch_xfer */
-	for(i = 0; i < thread_rxq_size; i++) {
-		tmp_node = &((nsw->xfer_pool + i)->head);
-		list_add_tail(tmp_node, &nsw->free_list);
-	}
 
 	goto vmm_netswitch_alloc_done;
 
@@ -246,9 +211,6 @@ vmm_netswitch_alloc_failed:
 	if(nsw) {
 		if(nsw->name) {
 			vmm_free(nsw->name);
-		}
-		if(nsw->xfer_pool) {
-			vmm_free(nsw->xfer_pool);
 		}
 		if(nsw->thread) {
 			vmm_threads_destroy(nsw->thread);
@@ -266,9 +228,6 @@ void vmm_netswitch_free(struct vmm_netswitch *nsw)
 	if (nsw) {
 		if (nsw->name) {
 			vmm_free(nsw->name);
-		}
-		if(nsw->xfer_pool) {
-			vmm_free(nsw->xfer_pool);
 		}
 		if(nsw->thread) {
 			vmm_threads_destroy(nsw->thread);
