@@ -260,7 +260,7 @@ static inline u32 arm_expand_imm_c(u32 imm12, u32 cin, u32 *cout)
 static inline u32 arm_expand_imm(arch_regs_t *regs, u32 imm12)
 {
 	return arm_expand_imm_c(imm12, 
-				(regs->cpsr >> CPSR_CARRY_SHIFT) & 0x1,
+				(arm_cpsr(regs) >> CPSR_CARRY_SHIFT) & 0x1,
 				NULL);
 }
 
