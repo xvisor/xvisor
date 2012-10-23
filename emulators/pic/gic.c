@@ -42,7 +42,7 @@
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
 #include <libs/stringlib.h>
-#include <pic/gic_emulator.h>
+#include <emu/gic_emulator.h>
 
 #define MODULE_DESC			"Realview GIC Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -783,6 +783,7 @@ int gic_reg_read(struct gic_state *s, physical_addr_t offset, u32 *dst)
 
 	return VMM_EFAIL;
 }
+VMM_EXPORT_SYMBOL(gic_reg_read);
 
 int gic_reg_write(struct gic_state *s, physical_addr_t offset,
 		  u32 src_mask, u32 src)
@@ -810,6 +811,7 @@ int gic_reg_write(struct gic_state *s, physical_addr_t offset,
 	}
 	return VMM_EFAIL;
 }
+VMM_EXPORT_SYMBOL(gic_reg_write);
 
 static int gic_emulator_read(struct vmm_emudev *edev,
 			     physical_addr_t offset, 
@@ -912,6 +914,7 @@ int gic_state_reset(struct gic_state *s)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(gic_state_reset);
 
 static int gic_emulator_reset(struct vmm_emudev *edev)
 {
@@ -1018,6 +1021,7 @@ gic_emulator_init_freestate_failed:
 gic_emulator_init_done:
 	return s;
 }
+VMM_EXPORT_SYMBOL(gic_state_alloc);
 
 int gic_state_free(struct gic_state *s)
 {
@@ -1036,6 +1040,7 @@ int gic_state_free(struct gic_state *s)
 		return VMM_EFAIL;
 	}
 }
+VMM_EXPORT_SYMBOL(gic_state_free);
 
 static int gic_emulator_probe(struct vmm_guest *guest,
 			      struct vmm_emudev *edev,
