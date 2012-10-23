@@ -32,7 +32,7 @@
 #include <vmm_chardev.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
-#include <serial/pl011.h>
+#include <drv/pl011.h>
 
 /* Enable UART_PL011_USE_TXINTR to use TX interrupt.
  * Generally the FIFOs are small so its better to poll on Tx 

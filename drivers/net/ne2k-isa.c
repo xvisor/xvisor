@@ -30,7 +30,7 @@
 #include <vmm_ringbuf.h>
 #include <libs/stringlib.h>
 
-#include <net/ne2k.h>
+#include <drv/ne2k.h>
 
 extern virtual_addr_t isa_vbase;
 

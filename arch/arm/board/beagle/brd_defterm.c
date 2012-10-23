@@ -25,7 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <serial/omap-uart.h>
+#include <drv/omap-uart.h>
 #include <omap3/uart.h>
 
 static virtual_addr_t omap3_uart_base;

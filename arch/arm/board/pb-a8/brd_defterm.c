@@ -26,7 +26,7 @@
 #include <vmm_compiler.h>
 #include <vmm_devtree.h>
 #include <vmm_host_aspace.h>
-#include <serial/pl011.h>
+#include <drv/pl011.h>
 
 static virtual_addr_t pba8_defterm_base;
 static u32 pba8_defterm_inclk;

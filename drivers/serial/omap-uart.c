@@ -33,7 +33,7 @@
 #include <vmm_chardev.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
-#include <serial/omap-uart.h>
+#include <drv/omap-uart.h>
 
 /* Enable OMAP_UART_POLLING to force OMAP UART polling
  * More precisely this will force OMAP UART character device to use polling 

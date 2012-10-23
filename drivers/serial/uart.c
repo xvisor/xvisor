@@ -33,7 +33,7 @@
 #include <vmm_chardev.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
-#include <serial/uart.h>
+#include <drv/uart.h>
 
 #define MODULE_DESC			"Generic UART Driver"
 #define MODULE_AUTHOR			"Anup Patel"
