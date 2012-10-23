@@ -175,7 +175,7 @@ void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no)
 	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
 }
 
-int vmm_vcpu_irq_wait(struct vmm_vcpu *vcpu)
+int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 {
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
@@ -195,8 +195,10 @@ int vmm_vcpu_irq_wait(struct vmm_vcpu *vcpu)
 		/* Get timestamp for wait for irq */
 		vcpu->irqs.wfi_tstamp = vmm_timer_timestamp();
 		/* Start wait for irq timeout event */
-		vmm_timer_event_start(vcpu->irqs.wfi_priv, 
-				      CONFIG_WFI_TIMEOUT_SECS*1000000000ULL);
+		if (!nsecs) {
+			nsecs = CONFIG_WFI_TIMEOUT_SECS*1000000000ULL;
+		}
+		vmm_timer_event_start(vcpu->irqs.wfi_priv, nsecs);
 	}
 
 	/* Unlock VCPU irqs */
