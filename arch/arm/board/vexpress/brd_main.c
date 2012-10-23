@@ -350,7 +350,7 @@ skip_sp804_init:
 	}
 
 	/* Initialize generic timer as clock source */
-	rc = generic_timer_clocksource_init("gen-clksrc", 400, 100000000, 27);
+	rc = generic_timer_clocksource_init(node);
 	if (rc) {
 		return rc;
 	}
@@ -488,15 +488,8 @@ skip_twd_init:
 		goto skip_gen_init;
 	}
 
-	/* Get generic timer irq */
-	valp = vmm_devtree_attrval(node, "irq");
-	if (!valp) {
-		return VMM_EFAIL;
-	}
-	val = *valp; 
-
-	/* Initialize generic timer as clockchip */
-	rc = generic_timer_clockchip_init(node->name, val, 400, 100000000);
+	/* Initialize generic timer as clock source */
+	rc = generic_timer_clockchip_init(node);
 	if (rc) {
 		return rc;
 	}

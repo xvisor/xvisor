@@ -32,6 +32,7 @@
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
+#include <generic_timer.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
@@ -587,6 +588,14 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 					 HCR_VI_MASK | 
 					 HCR_VF_MASK);
 	}
+	if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+		/* Generic timer physical & virtual irq for the vcpu */
+		attr = vmm_devtree_attrval(vcpu->node, "gentimer_phys_irq");
+		arm_gentimer_context(vcpu)->phys_timer_irq = (attr) ? (*(u32 *)attr) : 0;
+		attr = vmm_devtree_attrval(vcpu->node, "gentimer_virt_irq");
+		arm_gentimer_context(vcpu)->virt_timer_irq = (attr) ? (*(u32 *)attr) : 0;
+		generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
+	}
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
@@ -712,7 +721,10 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			arm_regs(tvcpu)->gpr[ite] = regs->gpr[ite];
 		}
 		arm_regs(tvcpu)->cpsr = regs->cpsr;
-		if(tvcpu->is_normal) {
+		if (tvcpu->is_normal) {
+			if (arm_feature(tvcpu, ARM_FEATURE_GENTIMER)) {
+				generic_timer_vcpu_context_save(arm_gentimer_context(vcpu));
+			}
 			cpu_vcpu_banked_regs_save(tvcpu);
 			arm_priv(tvcpu)->hcr = read_hcr();
 			arm_priv(tvcpu)->hcptr = read_hcptr();
@@ -731,6 +743,9 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	regs->cpsr = arm_regs(vcpu)->cpsr;
 	if (vcpu->is_normal) {
 		cpu_vcpu_banked_regs_restore(vcpu);
+		if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
+		}
 		if (read_hcr() != arm_priv(vcpu)->hcr) {
 			write_hcr(arm_priv(vcpu)->hcr);
 		}
