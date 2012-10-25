@@ -390,8 +390,8 @@ void generic_timer_vcpu_context_save(struct generic_timer_context *context)
 {
 	context->cntpctl = generic_timer_reg_read(GENERIC_TIMER_REG_PHYS_CTRL);
 	context->cntvctl = generic_timer_reg_read(GENERIC_TIMER_REG_VIRT_CTRL);
-	context->cntpcval = generic_timer_reg_read(GENERIC_TIMER_REG_PHYS_CVAL);
-	context->cntvcval = generic_timer_reg_read(GENERIC_TIMER_REG_VIRT_CVAL);
+	context->cntpcval = generic_timer_reg_read64(GENERIC_TIMER_REG_PHYS_CVAL);
+	context->cntvcval = generic_timer_reg_read64(GENERIC_TIMER_REG_VIRT_CVAL);
 	context->cntkctl = generic_timer_reg_read(GENERIC_TIMER_REG_KCTL);
 	generic_timer_reg_write(GENERIC_TIMER_REG_PHYS_CTRL, 0);
 	generic_timer_reg_write(GENERIC_TIMER_REG_VIRT_CTRL, 0);
@@ -406,10 +406,10 @@ void generic_timer_vcpu_context_restore(struct generic_timer_context *context)
 	if (context->cntvoff == 0) {
 		context->cntvoff = generic_timer_counter_read();
 	}
-	generic_timer_reg_write(GENERIC_TIMER_REG_VIRT_OFF, context->cntvoff);
+	generic_timer_reg_write64(GENERIC_TIMER_REG_VIRT_OFF, context->cntvoff);
 	generic_timer_reg_write(GENERIC_TIMER_REG_KCTL, context->cntkctl);
-	generic_timer_reg_write(GENERIC_TIMER_REG_PHYS_CVAL, context->cntpcval);
-	generic_timer_reg_write(GENERIC_TIMER_REG_VIRT_CVAL, context->cntvcval);
+	generic_timer_reg_write64(GENERIC_TIMER_REG_PHYS_CVAL, context->cntpcval);
+	generic_timer_reg_write64(GENERIC_TIMER_REG_VIRT_CVAL, context->cntvcval);
 	generic_timer_reg_write(GENERIC_TIMER_REG_PHYS_CTRL, context->cntpctl);
 	generic_timer_reg_write(GENERIC_TIMER_REG_VIRT_CTRL, context->cntvctl);
 }

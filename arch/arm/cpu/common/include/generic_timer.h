@@ -32,6 +32,7 @@ enum {
 	GENERIC_TIMER_REG_KCTL,
 	GENERIC_TIMER_REG_HYP_CTRL,
 	GENERIC_TIMER_REG_HYP_TVAL,
+	GENERIC_TIMER_REG_HYP_CVAL,
 	GENERIC_TIMER_REG_PHYS_CTRL,
 	GENERIC_TIMER_REG_PHYS_TVAL,
 	GENERIC_TIMER_REG_PHYS_CVAL,
@@ -63,10 +64,10 @@ u64 generic_timer_wakeup_timeout(void);
 
 struct generic_timer_context {
 	u64 cntvoff;
+	u64 cntpcval;
+	u64 cntvcval;
 	u32 cntkctl;
-	u32 cntpcval;
 	u32 cntpctl;
-	u32 cntvcval;
 	u32 cntvctl;
 	u32 phys_timer_irq;
 	u32 virt_timer_irq;
