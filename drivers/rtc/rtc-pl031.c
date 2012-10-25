@@ -94,7 +94,7 @@
 #define RTC_TIMER_FREQ 32768
 
 struct pl031_local {
-	struct rtc_device *rtc;
+	struct rtc_device rtc;
 	void *base;
 	u32 irq;
 	u8 hw_designer;
@@ -327,15 +327,13 @@ static int pl031_driver_probe(struct vmm_device *dev,
 	u32 periphid;
 	const char *attr;
 	virtual_addr_t reg_base;
-	struct rtc_device *rd;
 	struct pl031_local *ldata;
 
-	ldata = vmm_malloc(sizeof(struct pl031_local));
+	ldata = vmm_zalloc(sizeof(struct pl031_local));
 	if (!ldata) {
-		rc = VMM_EFAIL;
+		rc = VMM_ENOMEM;
 		goto free_nothing;
 	}
-	memset(ldata, 0, sizeof(struct pl031_local));
 
 	rc = vmm_devtree_regmap(dev->node, &reg_base, 0);
 	if (rc) {
@@ -349,79 +347,74 @@ static int pl031_driver_probe(struct vmm_device *dev,
 	attr = vmm_devtree_attrval(dev->node, "irq");
 	if (!attr) {
 		rc = VMM_EFAIL;
-		goto free_ldata;
+		goto free_reg;
 	}
 	ldata->irq = *((u32 *) attr);
 	if ((rc = vmm_host_irq_register(ldata->irq, dev->node->name,
 					pl031_irq_handler, ldata))) {
-		goto free_ldata;
+		goto free_reg;
 	}
 
-	rd = vmm_malloc(sizeof(struct rtc_device));
-	if (!rd) {
-		rc = VMM_EFAIL;
-		goto free_ldata;
-	}
-	memset(rd, 0, sizeof(struct rtc_device));
-
-	strcpy(rd->name, dev->node->name);
-	rd->dev = dev;
+	strcpy(ldata->rtc.name, dev->node->name);
+	ldata->rtc.dev = dev;
 	periphid = amba_periphid(dev);
 	if ((periphid & 0x000fffff) == 0x00041031) {
 		/* ARM variant */
-		rd->get_time = pl031_read_time;
-		rd->set_time = pl031_set_time;
-		rd->get_alarm = pl031_read_alarm;
-		rd->set_alarm = pl031_set_alarm;
-		rd->alarm_irq_enable = pl031_alarm_irq_enable;
+		ldata->rtc.get_time = pl031_read_time;
+		ldata->rtc.set_time = pl031_set_time;
+		ldata->rtc.get_alarm = pl031_read_alarm;
+		ldata->rtc.set_alarm = pl031_set_alarm;
+		ldata->rtc.alarm_irq_enable = pl031_alarm_irq_enable;
 	} else if ((periphid & 0x00ffffff) == 0x00180031) {
 		/* ST Micro variant - stv1 */
-		rd->get_time = pl031_read_time;
-		rd->set_time = pl031_set_time;
-		rd->get_alarm = pl031_read_alarm;
-		rd->set_alarm = pl031_set_alarm;
-		rd->alarm_irq_enable = pl031_alarm_irq_enable;
+		ldata->rtc.get_time = pl031_read_time;
+		ldata->rtc.set_time = pl031_set_time;
+		ldata->rtc.get_alarm = pl031_read_alarm;
+		ldata->rtc.set_alarm = pl031_set_alarm;
+		ldata->rtc.alarm_irq_enable = pl031_alarm_irq_enable;
 	} else if ((periphid & 0x00ffffff) == 0x00280031) {
 		/* ST Micro variant - stv2 */
-		rd->get_time = pl031_stv2_read_time;
-		rd->set_time = pl031_stv2_set_time;
-		rd->get_alarm = pl031_stv2_read_alarm;
-		rd->set_alarm = pl031_stv2_set_alarm;
-		rd->alarm_irq_enable = pl031_alarm_irq_enable;
+		ldata->rtc.get_time = pl031_stv2_read_time;
+		ldata->rtc.set_time = pl031_stv2_set_time;
+		ldata->rtc.get_alarm = pl031_stv2_read_alarm;
+		ldata->rtc.set_alarm = pl031_stv2_set_alarm;
+		ldata->rtc.alarm_irq_enable = pl031_alarm_irq_enable;
 	} else {
 		rc = VMM_EFAIL;
-		goto free_rtcdev;
+		goto free_irq;
 	}
-	rd->priv = ldata;
+	ldata->rtc.priv = ldata;
 
-	dev->priv = rd;
-
-	rc = vmm_rtcdev_register(rd);
+	rc = vmm_rtcdev_register(&ldata->rtc);
 	if (rc) {
-		goto free_rtcdev;
+		goto free_irq;
 	}
+
+	dev->priv = ldata;
 
 	return VMM_OK;
 
- free_rtcdev:
-	vmm_free(rd);
- free_ldata:
+free_irq:
+	vmm_host_irq_unregister(ldata->irq, ldata);
+free_reg:
+	vmm_devtree_regunmap(dev->node, (virtual_addr_t)ldata->base, 0);
+free_ldata:
 	vmm_free(ldata);
- free_nothing:
+free_nothing:
 	return rc;
 }
 
 static int pl031_driver_remove(struct vmm_device *dev)
 {
-	struct rtc_device *rd = (struct rtc_device *)dev->priv;
-	struct pl031_local *ldata = rd->priv;
+	struct pl031_local *ldata = dev->priv;
 
-	vmm_rtcdev_unregister(rd);
-	vmm_free(rd);
-	vmm_host_irq_unregister(ldata->irq, ldata);
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)ldata->base, 0);
-	vmm_free(ldata);
-	dev->priv = NULL;
+	if (ldata) {
+		vmm_rtcdev_unregister(&ldata->rtc);
+		vmm_host_irq_unregister(ldata->irq, ldata);
+		vmm_devtree_regunmap(dev->node, (virtual_addr_t)ldata->base, 0);
+		vmm_free(ldata);
+		dev->priv = NULL;
+	}
 
 	return VMM_OK;
 }
