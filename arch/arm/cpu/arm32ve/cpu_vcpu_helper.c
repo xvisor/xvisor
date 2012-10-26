@@ -727,8 +727,6 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			}
 			cpu_vcpu_banked_regs_save(tvcpu);
 			arm_priv(tvcpu)->hcr = read_hcr();
-			arm_priv(tvcpu)->hcptr = read_hcptr();
-			arm_priv(tvcpu)->hstr = read_hstr();
 		}
 	}
 	/* Switch CP15 context */
@@ -746,15 +744,9 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
 			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
 		}
-		if (read_hcr() != arm_priv(vcpu)->hcr) {
-			write_hcr(arm_priv(vcpu)->hcr);
-		}
-		if (read_hcptr() != arm_priv(vcpu)->hcptr) {
-			write_hcptr(arm_priv(vcpu)->hcptr);
-		}
-		if (read_hstr() != arm_priv(vcpu)->hstr) {
-			write_hstr(arm_priv(vcpu)->hstr);
-		}
+		write_hcr(arm_priv(vcpu)->hcr);
+		write_hcptr(arm_priv(vcpu)->hcptr);
+		write_hstr(arm_priv(vcpu)->hstr);
 	}
 	/* Clear exclusive monitor */
 	clrex();
