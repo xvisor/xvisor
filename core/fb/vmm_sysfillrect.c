@@ -37,8 +37,9 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_modules.h>
 #include <fb/vmm_fb.h>
-#include <bitops.h>
+#include <libs/bitops.h>
 #include "fb_draw.h"
 
     /*
@@ -351,4 +352,4 @@ void vmm_sys_fillrect(struct vmm_fb_info *p, const struct vmm_fb_fillrect *rect)
 		}
 	}
 }
-
+VMM_EXPORT_SYMBOL(vmm_sys_fillrect);

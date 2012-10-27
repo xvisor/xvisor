@@ -24,7 +24,9 @@
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_vcpu_irq.h>
+#include <vmm_host_aspace.h>
 #include <vmm_devemu.h>
+#include <generic_timer.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_cp15.h>
@@ -146,14 +148,21 @@ int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu,
 			     arch_regs_t *regs,
 			     u32 il, u32 iss)
 {
+	u64 timeout_nsecs = 0;
+
 	/* Check instruction condition */
 	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
 		/* Skip this instruction */
 		goto done;
 	}
 
+	/* Estimate wakeup timeout if possible */
+	if(arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+		timeout_nsecs = generic_timer_wakeup_timeout();
+	}
+
 	/* Wait for irq on this vcpu */
-	vmm_vcpu_irq_wait(vcpu);
+	vmm_vcpu_irq_wait_timeout(vcpu, timeout_nsecs);
 
 done:
 	/* Next instruction */
@@ -407,5 +416,4 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu,
 
 	return rc;
 }
-
 

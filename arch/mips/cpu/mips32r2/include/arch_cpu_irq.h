@@ -24,14 +24,69 @@
 #define _ARCH_CPU_IRQ_H__
 
 #include <vmm_types.h>
+#include <cpu_asm_macros.h>
 
-/** CPU IRQ functions required by VMM core */
+#ifdef CONFIG_I8259
+#include <pics/i8259.h>
+#endif
+
+/** Setup IRQ for CPU */
 int arch_cpu_irq_setup(void);
-void arch_cpu_irq_enable(void);
-void arch_cpu_irq_disable(void);
-bool arch_cpu_irq_disabled(void);
-irq_flags_t arch_cpu_irq_save(void);
-void arch_cpu_irq_restore(irq_flags_t flags);
-void arch_cpu_wait_for_irq(void);
+
+/** Enable IRQ
+ *  Prototype: void arch_cpu_irq_enable(void); 
+ */
+#ifdef CONFIG_I8259
+#define arch_cpu_irq_enable()	do { \
+				__asm__ __volatile__("ei $0\n\t"); \
+				i8259_enable_int(-1); \
+				} while (0)
+#else
+#define arch_cpu_irq_enable()	do { \
+				__asm__ __volatile__("ei $0\n\t"); \
+				} while (0)
+#endif
+
+/** Disable IRQ
+ *  Prototype: void arch_cpu_irq_disable(void); 
+ */
+#ifdef CONFIG_I8259
+#define arch_cpu_irq_disable()	do { \
+				__asm__ __volatile__("di $0\n\t"); \
+				i8259_disable_int(-1); \
+				} while (0)
+#else
+#define arch_cpu_irq_disable()	do { \
+				__asm__ __volatile__("di $0\n\t"); \
+				} while (0)
+#endif
+
+/** FIXME: Check whether IRQs are disabled
+ *  Prototype: bool arch_cpu_irq_disabled(void); 
+ */
+#define arch_cpu_irq_disabled()	FALSE
+
+/** FIXME: Save IRQ flags and disable IRQ
+ *  Prototype: void arch_cpu_irq_save(irq_flags_t flags);
+ */
+#define arch_cpu_irq_save(flags)	do { \
+					__asm__ __volatile__("di %0\n\t" \
+					:"=r"((flags))); \
+					flags &= (0x0000FF00UL); \
+					} while (0)
+
+/** FIXME: Restore IRQ flags
+ *  Prototype: void arch_cpu_irq_restore(irq_flags_t flags);
+ */
+#define arch_cpu_irq_restore(flags)	do { irq_flags_t temp; \
+					write_c0_status(read_c0_status() | (flags)); \
+					__asm__ __volatile__("ei %0\n\t" \
+					:"=r"(temp)); \
+					} while (0)
+
+/** FIXME: Wait for IRQ
+ *  Prototype: void arch_cpu_wait_for_irq(void);
+ */
+#define arch_cpu_wait_for_irq()
 
 #endif

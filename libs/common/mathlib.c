@@ -21,10 +21,10 @@
  * @brief Software implementation common math operations
  */
 
-#include <bitops.h>
-#include <mathlib.h>
+#include <libs/bitops.h>
+#include <libs/mathlib.h>
 
-#if !defined(ARCH_HAS_DIV_OPERATION)
+#if !defined(ARCH_HAS_DIVISON_OPERATION)
 
 static const unsigned char byte_reverse_table[] = 
 {

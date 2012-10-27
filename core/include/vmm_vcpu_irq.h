@@ -26,8 +26,11 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
-/** Process interrupts for current vcpu */
-void vmm_vcpu_irq_process(arch_regs_t * regs);
+/** Process interrupts for current vcpu 
+ *  Note: Don't call this function directly it's meant to be called
+ *  from vmm_scheduler only.
+ */
+void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs);
 
 /** Assert an irq to given vcpu */
 void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason);
@@ -36,7 +39,9 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason);
 void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no);
 
 /** Wait for irq on given vcpu */
-int vmm_vcpu_irq_wait(struct vmm_vcpu *vcpu);
+int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs);
+
+#define vmm_vcpu_irq_wait(vcpu)	vmm_vcpu_irq_wait_timeout(vcpu, 0)
 
 /** Initialize interrupts for given vcpu */
 int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu);

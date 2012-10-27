@@ -54,6 +54,11 @@ static inline u32 amba_periphid(struct vmm_device *dev)
 	return pid;
 }
 
+enum amba_vendor {
+	AMBA_VENDOR_ARM = 0x41,
+	AMBA_VENDOR_ST = 0x80,
+};
+
 /* Some drivers don't use the struct amba_device */
 #define AMBA_CONFIG_BITS(a) (((a) >> 24) & 0xff)
 #define AMBA_REV_BITS(a) (((a) >> 20) & 0x0f)

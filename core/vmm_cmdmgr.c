@@ -25,7 +25,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_cmdmgr.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #define VMM_CMD_DELIM_CHAR	';'
 #define VMM_CMD_ARG_MAXCOUNT	32

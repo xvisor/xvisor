@@ -35,8 +35,8 @@
 #include <vmm_timer.h>
 #include <vmm_spinlocks.h>
 #include <vmm_wallclock.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 struct vmm_wallclock_ctrl {
 	vmm_spinlock_t lock;

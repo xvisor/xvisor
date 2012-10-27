@@ -31,16 +31,9 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <stringlib.h>
-#include <mathlib.h>
-#include <serial/omap-uart.h>
-
-/* Enable OMAP_UART_POLLING to force OMAP UART polling
- * More precisely this will force OMAP UART character device to use polling 
- * which will reduce performance.
- * Only enable this option for debugging purpose.
- */
-#undef OMAP_UART_POLLING 
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+#include <drv/omap-uart.h>
 
 #define MODULE_DESC			"OMAP UART Driver"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
@@ -49,7 +42,8 @@
 #define	MODULE_INIT			omap_uart_driver_init
 #define	MODULE_EXIT			omap_uart_driver_exit
 
-struct omap_uart_omap_port {
+struct omap_uart_port {
+	struct vmm_chardev cd;
 	struct vmm_completion read_possible;
 	struct vmm_completion write_possible;
 	virtual_addr_t base;
@@ -137,8 +131,7 @@ void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 #define omap_serial_in(port, reg) (vmm_in_8((u8 *)REG_##reg(port->base, port->reg_align))) 
 #define omap_serial_out(port, reg, val) vmm_out_8((u8 *)REG_##reg(port->base, port->reg_align), (val))
 
-#ifndef OMAP_UART_POLLING
-void uart_configure_xonxoff(struct omap_uart_omap_port *port)
+void uart_configure_xonxoff(struct omap_uart_port *port)
 {
 	u16 efr;
 
@@ -189,7 +182,7 @@ void uart_configure_xonxoff(struct omap_uart_omap_port *port)
 	omap_serial_out(port, UART_LCR, port->lcr);
 }
 
-static int omap_uart_startup_configure(struct omap_uart_omap_port *port)
+static int omap_uart_startup_configure(struct omap_uart_port *port)
 {
 	u16 bdiv, cval;
 	bdiv = udiv32(port->input_clock, (16 * port->baudrate));
@@ -296,7 +289,7 @@ static int omap_uart_startup_configure(struct omap_uart_omap_port *port)
 static vmm_irq_return_t omap_uart_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
 {
 	u16 iir, lsr;
-	struct omap_uart_omap_port *port = (struct omap_uart_omap_port *)dev;
+	struct omap_uart_port *port = (struct omap_uart_port *)dev;
 
         iir = omap_serial_in(port, UART_IIR);
         if (iir & UART_IIR_NO_INT)
@@ -329,7 +322,7 @@ static vmm_irq_return_t omap_uart_irq_handler(u32 irq_no, arch_regs_t * regs, vo
 	return VMM_IRQ_HANDLED;
 }
 
-static u8 omap_uart_getc_sleepable(struct omap_uart_omap_port *port)
+static u8 omap_uart_getc_sleepable(struct omap_uart_port *port)
 {
 	/* Wait until there is data in the FIFO */
 	if (!(omap_serial_in(port, UART_LSR) & UART_LSR_DR)) {
@@ -345,7 +338,7 @@ static u8 omap_uart_getc_sleepable(struct omap_uart_omap_port *port)
 	return (omap_serial_in(port, UART_RBR));
 }
 
-static void omap_uart_putc_sleepable(struct omap_uart_omap_port *port, u8 ch)
+static void omap_uart_putc_sleepable(struct omap_uart_port *port, u8 ch)
 {
 	/* Wait until there is space in the FIFO */
 	if (!omap_uart_lowlevel_can_putc(port->base, port->reg_align)) {
@@ -360,13 +353,12 @@ static void omap_uart_putc_sleepable(struct omap_uart_omap_port *port, u8 ch)
 	/* Write data to FIFO */
 	omap_serial_out(port, UART_THR, ch);
 }
-#endif
 
 static u32 omap_uart_read(struct vmm_chardev *cdev, 
-			  u8 *dest, u32 offset, u32 len, bool sleep)
+			  u8 *dest, u32 len, bool sleep)
 {
 	u32 i;
-	struct omap_uart_omap_port *port;
+	struct omap_uart_port *port;
 
 	if (!(cdev && dest && cdev->priv)) {
 		return 0;
@@ -376,11 +368,7 @@ static u32 omap_uart_read(struct vmm_chardev *cdev,
 
 	if (sleep) {
 		for (i = 0; i < len; i++) {
-#ifndef OMAP_UART_POLLING
 			dest[i] = omap_uart_getc_sleepable(port);
-#else
-			dest[i] = omap_uart_lowlevel_getc(port->base, port->reg_align);
-#endif
 		}
 	} else {
 		for(i = 0; i < len; i++) {
@@ -395,10 +383,10 @@ static u32 omap_uart_read(struct vmm_chardev *cdev,
 }
 
 static u32 omap_uart_write(struct vmm_chardev *cdev, 
-			   u8 *src, u32 offset, u32 len, bool sleep)
+			   u8 *src, u32 len, bool sleep)
 {
 	u32 i;
-	struct omap_uart_omap_port *port;
+	struct omap_uart_port *port;
 
 	if (!(cdev && src && cdev->priv)) {
 		return 0;
@@ -408,11 +396,7 @@ static u32 omap_uart_write(struct vmm_chardev *cdev,
 
 	if (sleep) {
 		for (i = 0; i < len; i++) {
-#ifndef OMAP_UART_POLLING
 			omap_uart_putc_sleepable(port, src[i]);
-#else
-			omap_uart_lowlevel_putc(port->base, port->reg_align, src[i]);
-#endif
 		}
 	} else {
 		for (i = 0; i < len; i++) {
@@ -430,29 +414,20 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 {
 	int rc;
 	const char *attr;
-	struct vmm_chardev *cd;
-	struct omap_uart_omap_port *port;
+	struct omap_uart_port *port;
 	
-	cd = vmm_malloc(sizeof(struct vmm_chardev));
-	if(!cd) {
-		rc = VMM_EFAIL;
+	port = vmm_zalloc(sizeof(struct omap_uart_port));
+	if(!port) {
+		rc = VMM_ENOMEM;
 		goto free_nothing;
 	}
-	memset(cd, 0, sizeof(struct vmm_chardev));
 
-	port = vmm_malloc(sizeof(struct omap_uart_omap_port));
-	if(!port) {
-		rc = VMM_EFAIL;
-		goto free_chardev;
-	}
-	memset(port, 0, sizeof(struct omap_uart_omap_port));
-
-	strcpy(cd->name, dev->node->name);
-	cd->dev = dev;
-	cd->ioctl = NULL;
-	cd->read = omap_uart_read;
-	cd->write = omap_uart_write;
-	cd->priv = port;
+	strcpy(port->cd.name, dev->node->name);
+	port->cd.dev = dev;
+	port->cd.ioctl = NULL;
+	port->cd.read = omap_uart_read;
+	port->cd.write = omap_uart_write;
+	port->cd.priv = port;
 
 	INIT_COMPLETION(&port->read_possible);
 
@@ -476,57 +451,56 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 	attr = vmm_devtree_attrval(dev->node, "baudrate");
 	if(!attr) {
 		rc = VMM_EFAIL;
-		goto free_port;
+		goto free_reg;
 	}
 	port->baudrate = *((u32 *)attr);
 	port->input_clock = vmm_devdrv_clock_get_rate(dev);
 
-#ifndef OMAP_UART_POLLING
 	omap_uart_startup_configure(port);
 
 	attr = vmm_devtree_attrval(dev->node, "irq");
 	if (!attr) {
 		rc = VMM_EFAIL;
-		goto free_port;
+		goto free_reg;
 	}
 	port->irq = *((u32 *) attr);
 	if ((rc = vmm_host_irq_register(port->irq, dev->node->name,
 					omap_uart_irq_handler, port))) {
-		goto free_port;
+		goto free_reg;
 	}
-#else
-	omap_uart_lowlevel_init(port->base, port->reg_align,
-				port->baudrate, port->input_clock);
-#endif
 
-	rc = vmm_chardev_register(cd);
+	rc = vmm_chardev_register(&port->cd);
 	if(rc) {
-		goto free_port;
+		goto free_irq;
 	}
+
+	dev->priv = port;
 
 	return VMM_OK;
 
+free_irq:
+	vmm_host_irq_unregister(port->irq, port);
+free_reg:
+	vmm_devtree_regunmap(dev->node, port->base, 0);
 free_port:
 	vmm_free(port);
-free_chardev:
-	vmm_free(cd);
 free_nothing:
 	return rc;
 }
 
 static int omap_uart_driver_remove(struct vmm_device *dev)
 {
-	int rc = VMM_OK;
-	struct vmm_chardev *cd =(struct vmm_chardev*)dev->priv;
+	struct omap_uart_port *port = dev->priv;
 
-	if (cd) {
-		rc = vmm_chardev_unregister(cd);
-		vmm_free(cd->priv);
-		vmm_free(cd);
+	if (port) {
+		vmm_chardev_unregister(&port->cd);
+		vmm_host_irq_unregister(port->irq, port);
+		vmm_devtree_regunmap(dev->node, port->base, 0);
+		vmm_free(port);
 		dev->priv = NULL;
 	}
 
-	return rc;
+	return VMM_OK;
 }
 
 static struct vmm_devid omap_uart_devid_table[] = {

@@ -27,6 +27,7 @@
 #include <vmm_spinlocks.h>
 #include <cpu_defines.h>
 #include <cpu_mmu.h>
+#include <generic_timer.h>
 
 /* CPUID related macors & defines */
 #define ARM_CPUID_ARM1026     0x4106a262
@@ -79,11 +80,7 @@ enum arm_features {
 	ARM_FEATURE_V5,
 	ARM_FEATURE_STRONGARM,
 	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
-};
-
-/* FIXME: Function statistics related enumeration */
-enum arm_funcstats {
-	ARM_FUNCSTAT_MAX
+	ARM_FEATURE_GENTIMER,	/* ARM generic timer extension */
 };
 
 struct arch_regs {
@@ -145,7 +142,8 @@ struct arm_priv {
 		u32 c5_dfsr; /* Fault status registers. */
 		u32 c6_ifar; /* Fault address registers. */
 		u32 c6_dfar; /* Fault address registers. */
-		u32 c7_par; /* Translation result. */
+		u32 c7_par;  /* VA2PA Translation result. */
+		u64 c7_par64;  /* VA2PA Translation result. */
 		u32 c9_insn; /* Cache lockdown registers. */
 		u32 c9_data;
 		u32 c9_pmcr; /* performance monitor control register */
@@ -165,16 +163,8 @@ struct arm_priv {
 		u32 c15_i_max; /* Maximum D-cache dirty line index. */
 		u32 c15_i_min; /* Minimum D-cache dirty line index. */
 	} cp15;
-	/* Statistics Gathering */
-#ifdef CONFIG_ARM32VE_FUNCSTATS
-	struct {
-		char const *function_name;
-		u32 entry_count;
-		u32 exit_count;
-		u64 time;
-	} funcstat[ARM_FUNCSTAT_MAX];
-#endif
-
+	/* Generic timer context */
+	struct generic_timer_context gentimer_context;
 } __attribute((packed));
 
 typedef struct arm_priv arm_priv_t;
@@ -196,24 +186,15 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1 << (feat)))
 #define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1 << (feat)))
 
-#ifdef CONFIG_ARM32VE_FUNCSTATS
+/**
+ *  Instruction emulation support macros
+ */
+#define arm_pc(regs)		((regs)->pc)
+#define arm_cpsr(regs)		((regs)->cpsr)
 
-#include <vmm_timer.h>
-
-#define arm_funcstat_start(vcpu, funcid)	{ \
-	u64 _time_stamp = vmm_timer_timestamp(); \
-	arm_priv(vcpu)->funcstat[funcid].function_name = __FUNCTION__; \
-	arm_priv(vcpu)->funcstat[funcid].entry_count++
-
-#define arm_funcstat_end(vcpu, funcid) 	  \
-	arm_priv(vcpu)->funcstat[funcid].time += (vmm_timer_timestamp() - _time_stamp); \
-	arm_priv(vcpu)->funcstat[funcid].exit_count++; }
-
-#else
-
-#define arm_funcstat_start(vcpu, funcid)
-#define arm_funcstat_end(vcpu, funcid)
-
-#endif
+/**
+ *  Generic timers support macro
+ */
+#define arm_gentimer_context(vcpu)	(&(arm_priv(vcpu)->gentimer_context))
 
 #endif

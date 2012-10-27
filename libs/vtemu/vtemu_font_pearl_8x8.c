@@ -9,7 +9,7 @@
 /*                                            */
 /**********************************************/
 
-#include <vtemu_font.h>
+#include <libs/vtemu_font.h>
 
 #define FONTDATAMAX 2048
 

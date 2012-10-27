@@ -26,12 +26,13 @@
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <generic_timer.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
@@ -48,10 +49,6 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu,
 			  u32 reg_num)
 {
 	u32 hwreg;
-	if (vcpu != vmm_scheduler_current_vcpu()) {
-		/* This function should only be called for current VCPU */
-		while (1); /* Hang !!! */
-	}
 	switch (reg_num) {
 	case 0:
 	case 1:
@@ -190,10 +187,6 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu *vcpu,
 			    u32 reg_num,
 			    u32 reg_val)
 {
-	if (vcpu != vmm_scheduler_current_vcpu()) {
-		/* This function should only be called for current VCPU */
-		while (1); /* Hang !!! */
-	}
 	switch (reg_num) {
 	case 0:
 	case 1:
@@ -502,11 +495,10 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		return VMM_EFAIL;
 	}
 	if (!vcpu->reset_count) {
-		vcpu->arch_priv = vmm_malloc(sizeof(arm_priv_t));
+		vcpu->arch_priv = vmm_zalloc(sizeof(arm_priv_t));
 		if (!vcpu->arch_priv) {
 			return VMM_EFAIL;
 		}
-		memset(arm_priv(vcpu), 0, sizeof(arm_priv_t));
 		arm_priv(vcpu)->hyp_stack = vmm_malloc(CONFIG_IRQ_STACK_SIZE);
 		if (!arm_priv(vcpu)->hyp_stack) {
 			vmm_free(vcpu->arch_priv);
@@ -596,14 +588,14 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 					 HCR_VI_MASK | 
 					 HCR_VF_MASK);
 	}
-#ifdef CONFIG_ARM32VE_FUNCSTATS
-	for (ite=0; ite < ARM_FUNCSTAT_MAX; ite++) {
-		arm_priv(vcpu)->funcstat[ite].function_name = NULL;
-		arm_priv(vcpu)->funcstat[ite].entry_count = 0;
-		arm_priv(vcpu)->funcstat[ite].exit_count = 0;
-		arm_priv(vcpu)->funcstat[ite].time = 0;
+	if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+		/* Generic timer physical & virtual irq for the vcpu */
+		attr = vmm_devtree_attrval(vcpu->node, "gentimer_phys_irq");
+		arm_gentimer_context(vcpu)->phys_timer_irq = (attr) ? (*(u32 *)attr) : 0;
+		attr = vmm_devtree_attrval(vcpu->node, "gentimer_virt_irq");
+		arm_gentimer_context(vcpu)->virt_timer_irq = (attr) ? (*(u32 *)attr) : 0;
+		generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
 	}
-#endif
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
@@ -729,11 +721,12 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			arm_regs(tvcpu)->gpr[ite] = regs->gpr[ite];
 		}
 		arm_regs(tvcpu)->cpsr = regs->cpsr;
-		if(tvcpu->is_normal) {
+		if (tvcpu->is_normal) {
+			if (arm_feature(tvcpu, ARM_FEATURE_GENTIMER)) {
+				generic_timer_vcpu_context_save(arm_gentimer_context(vcpu));
+			}
 			cpu_vcpu_banked_regs_save(tvcpu);
 			arm_priv(tvcpu)->hcr = read_hcr();
-			arm_priv(tvcpu)->hcptr = read_hcptr();
-			arm_priv(tvcpu)->hstr = read_hstr();
 		}
 	}
 	/* Switch CP15 context */
@@ -748,15 +741,12 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	regs->cpsr = arm_regs(vcpu)->cpsr;
 	if (vcpu->is_normal) {
 		cpu_vcpu_banked_regs_restore(vcpu);
-		if (read_hcr() != arm_priv(vcpu)->hcr) {
-			write_hcr(arm_priv(vcpu)->hcr);
+		if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
 		}
-		if (read_hcptr() != arm_priv(vcpu)->hcptr) {
-			write_hcptr(arm_priv(vcpu)->hcptr);
-		}
-		if (read_hstr() != arm_priv(vcpu)->hstr) {
-			write_hstr(arm_priv(vcpu)->hstr);
-		}
+		write_hcr(arm_priv(vcpu)->hcr);
+		write_hcptr(arm_priv(vcpu)->hcptr);
+		write_hstr(arm_priv(vcpu)->hstr);
 	}
 	/* Clear exclusive monitor */
 	clrex();
@@ -821,25 +811,5 @@ void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu)
 
 void arch_vcpu_stat_dump(struct vmm_vcpu *vcpu)
 {
-#ifdef CONFIG_ARM32VE_FUNCSTATS
-	int index;
-
-	if (!vcpu || !arm_priv(vcpu)) {
-		return;
-	}
-
-	vmm_printf("%-30s %-10s %s\n", "Function Name","Time/Call", "# Calls");
-
-	for (index=0; index < ARM_FUNCSTAT_MAX; index++) {
-		if (arm_priv(vcpu)->funcstat[index].exit_count) { 
-			vmm_printf("%-30s %-10u %u\n", 
-			arm_priv(vcpu)->funcstat[index].function_name, 
-			(u32)udiv64(arm_priv(vcpu)->funcstat[index].time, 
-			arm_priv(vcpu)->funcstat[index].exit_count), 
-			arm_priv(vcpu)->funcstat[index].exit_count); 
-		} 
-	} 
-#else
-	vmm_printf("Not selected in Xvisor config\n");
-#endif
+	vmm_printf("No VCPU stats available\n");
 }

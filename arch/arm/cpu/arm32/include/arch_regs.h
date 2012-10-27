@@ -81,68 +81,6 @@ enum arm_features {
 	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
 };
 
-/* Function statistics related enumeration */
-enum arm_funcstats {
-	ARM_FUNCSTAT_CPS,
-	ARM_FUNCSTAT_MRS,
-	ARM_FUNCSTAT_MSR_I,
-	ARM_FUNCSTAT_MSR_R,
-	ARM_FUNCSTAT_RFE,
-	ARM_FUNCSTAT_SRS,
-	ARM_FUNCSTAT_LDM_UE,
-	ARM_FUNCSTAT_STM_U,
-	ARM_FUNCSTAT_SUBS_REL,
-	ARM_FUNCSTAT_LDRH_I,
-	ARM_FUNCSTAT_LDRH_L,
-	ARM_FUNCSTAT_LDRH_R,
-	ARM_FUNCSTAT_LDRHT,
-	ARM_FUNCSTAT_STRH_I,
-	ARM_FUNCSTAT_STRH_R,
-	ARM_FUNCSTAT_STRHT,
-	ARM_FUNCSTAT_LDRSH_I,
-	ARM_FUNCSTAT_LDRSH_L,
-	ARM_FUNCSTAT_LDRSH_R,
-	ARM_FUNCSTAT_LDRSHT,
-	ARM_FUNCSTAT_LDRSB_I,
-	ARM_FUNCSTAT_LDRSB_L,
-	ARM_FUNCSTAT_LDRSB_R,
-	ARM_FUNCSTAT_LDRSBT,
-	ARM_FUNCSTAT_LDRD_I,
-	ARM_FUNCSTAT_LDRD_L,
-	ARM_FUNCSTAT_LDRD_R,
-	ARM_FUNCSTAT_STRD_I,
-	ARM_FUNCSTAT_STRD_R,
-	ARM_FUNCSTAT_STR_I,
-	ARM_FUNCSTAT_STR_R,
-	ARM_FUNCSTAT_STRT,
-	ARM_FUNCSTAT_STRB_I,
-	ARM_FUNCSTAT_STRB_R,
-	ARM_FUNCSTAT_STRBT,
-	ARM_FUNCSTAT_LDR_I,
-	ARM_FUNCSTAT_LDR_L,
-	ARM_FUNCSTAT_LDR_R,
-	ARM_FUNCSTAT_LDRT,
-	ARM_FUNCSTAT_LDRB_I,
-	ARM_FUNCSTAT_LDRB_L,
-	ARM_FUNCSTAT_LDRB_R,
-	ARM_FUNCSTAT_LDRBT,
-	ARM_FUNCSTAT_STREX,
-	ARM_FUNCSTAT_LDREX,
-	ARM_FUNCSTAT_STM,
-	ARM_FUNCSTAT_LDM,
-	ARM_FUNCSTAT_MOVW_I,
-	ARM_FUNCSTAT_STCX,
-	ARM_FUNCSTAT_LDCX_I,
-	ARM_FUNCSTAT_LDCX_L,
-	ARM_FUNCSTAT_MCRRX,
-	ARM_FUNCSTAT_MRRCX,
-	ARM_FUNCSTAT_CDPX,
-	ARM_FUNCSTAT_MCRX,
-	ARM_FUNCSTAT_MRCX,	
-	ARM_FUNCSTAT_WFI,	
-	ARM_FUNCSTAT_MAX
-};
-
 struct arch_regs {
 	u32 cpsr; /* CPSR */
 	u32 gpr[CPU_GPR_COUNT];	/* R0 - R12 */
@@ -161,7 +99,7 @@ struct arm_vtlb_entry {
 };
 
 struct arm_vtlb {
-	struct arm_vtlb_entry *table;
+	struct arm_vtlb_entry table[CPU_VCPU_VTLB_ENTRY_COUNT];
 	u32 victim[CPU_VCPU_VTLB_ZONE_COUNT];
 };
 
@@ -257,15 +195,6 @@ struct arm_priv {
 		u32 c15_i_max; /* Maximum D-cache dirty line index. */
 		u32 c15_i_min; /* Minimum D-cache dirty line index. */
 	} cp15;
-	/* Statistics Gathering */
-#ifdef CONFIG_ARM32_FUNCSTATS
-	struct {
-		char const *function_name;
-		u32 entry_count;
-		u32 exit_count;
-		u64 time;
-	} funcstat[ARM_FUNCSTAT_MAX];
-#endif
 
 } __attribute((packed));
 
@@ -287,24 +216,10 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1 << (feat)))
 #define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1 << (feat)))
 
-#ifdef CONFIG_ARM32_FUNCSTATS
-
-#include <vmm_timer.h>
-
-#define arm_funcstat_start(vcpu, funcid)	{ \
-	u64 _time_stamp = vmm_timer_timestamp(); \
-	arm_priv(vcpu)->funcstat[funcid].function_name = __FUNCTION__; \
-	arm_priv(vcpu)->funcstat[funcid].entry_count++
-
-#define arm_funcstat_end(vcpu, funcid) 	  \
-	arm_priv(vcpu)->funcstat[funcid].time += (vmm_timer_timestamp() - _time_stamp); \
-	arm_priv(vcpu)->funcstat[funcid].exit_count++; }
-
-#else
-
-#define arm_funcstat_start(vcpu, funcid)
-#define arm_funcstat_end(vcpu, funcid)
-
-#endif
+/**
+ *  Instruction emulation support macros
+ */
+#define arm_pc(regs)		((regs)->pc)
+#define arm_cpsr(regs)		((regs)->cpsr)
 
 #endif

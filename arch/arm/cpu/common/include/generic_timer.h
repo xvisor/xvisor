@@ -24,24 +24,57 @@
 #ifndef __GENERIC_TIMER_H__
 #define __GENERIC_TIMER_H__
 
+#include <vmm_devtree.h>
+
 enum {
-	GENERIC_TIMER_REG_CTRL,
 	GENERIC_TIMER_REG_FREQ,
-	GENERIC_TIMER_REG_TVAL,
+	GENERIC_TIMER_REG_HCTL,
+	GENERIC_TIMER_REG_KCTL,
+	GENERIC_TIMER_REG_HYP_CTRL,
+	GENERIC_TIMER_REG_HYP_TVAL,
+	GENERIC_TIMER_REG_HYP_CVAL,
+	GENERIC_TIMER_REG_PHYS_CTRL,
+	GENERIC_TIMER_REG_PHYS_TVAL,
+	GENERIC_TIMER_REG_PHYS_CVAL,
+	GENERIC_TIMER_REG_VIRT_CTRL,
+	GENERIC_TIMER_REG_VIRT_TVAL,
+	GENERIC_TIMER_REG_VIRT_CVAL,
+	GENERIC_TIMER_REG_VIRT_OFF,
 };
+
+#define GENERIC_TIMER_HCTL_KERN_PCNT_EN		(1 << 0)
+#define GENERIC_TIMER_HCTL_KERN_PTMR_EN		(1 << 1)
 
 #define GENERIC_TIMER_CTRL_ENABLE		(1 << 0)
 #define GENERIC_TIMER_CTRL_IT_MASK		(1 << 1)
 #define GENERIC_TIMER_CTRL_IT_STAT		(1 << 2)
 
-int generic_timer_clocksource_init(const char *name, 
-				   int rating, 
-				   u32 freq_hz,
-				   u32 shift);
+enum gen_timer_type {
+	GENERIC_HYPERVISOR_TIMER,
+	GENERIC_PHYSICAL_TIMER,
+	GENERIC_VIRTUAL_TIMER,
+};
 
-int generic_timer_clockchip_init(const char *name,
-			         u32 hirq,
-			         int rating,
-			         u32 freq_hz);
+
+int generic_timer_clocksource_init(struct vmm_devtree_node *node); 
+
+int generic_timer_clockchip_init(struct vmm_devtree_node *node);
+
+u64 generic_timer_wakeup_timeout(void);
+
+struct generic_timer_context {
+	u64 cntvoff;
+	u64 cntpcval;
+	u64 cntvcval;
+	u32 cntkctl;
+	u32 cntpctl;
+	u32 cntvctl;
+	u32 phys_timer_irq;
+	u32 virt_timer_irq;
+};
+
+void generic_timer_vcpu_context_init(struct generic_timer_context *context);
+void generic_timer_vcpu_context_save(struct generic_timer_context *context);
+void generic_timer_vcpu_context_restore(struct generic_timer_context *context);
 
 #endif /* __GENERIC_TIMER_H__ */

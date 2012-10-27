@@ -26,13 +26,13 @@
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
-#include <stringlib.h>
 #include <block/vmm_blockdev.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"Command blockdev"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		0
+#define MODULE_IPRIORITY		(VMM_BLOCKDEV_CLASS_IPRIORITY+1)
 #define	MODULE_INIT			cmd_blockdev_init
 #define	MODULE_EXIT			cmd_blockdev_exit
 
@@ -46,18 +46,26 @@ void cmd_blockdev_usage(struct vmm_chardev *cdev)
 void cmd_blockdev_list(struct vmm_chardev *cdev)
 {
 	int num, count;
-	char path[1024];
 	struct vmm_blockdev *bdev;
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
+	vmm_cprintf(cdev, " %-16s %-16s %-16s %-11s %-16s\n", 
+			  "Name", "Parent", "Start LBA", "Blk Sz", "Blk Cnt");
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
 	count = vmm_blockdev_count();
 	for (num = 0; num < count; num++) {
 		bdev = vmm_blockdev_get(num);
-		if (!bdev->dev) {
-			vmm_cprintf(cdev, "%s: ---\n", bdev->name);
-		} else {
-			vmm_devtree_getpath(path, bdev->dev->node);
-			vmm_cprintf(cdev, "%s: %s\n", bdev->name, path);
-		}
+		vmm_cprintf(cdev, " %-16s %-16s %-16ll %-11d %-16ll\n", 
+			    bdev->name, 
+			    (bdev->parent) ? bdev->parent->name : "---",
+			    bdev->start_lba, 
+			    bdev->block_size, 
+			    bdev->num_blocks);
 	}
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
+
 }
 
 int cmd_blockdev_exec(struct vmm_chardev *cdev, int argc, char **argv)

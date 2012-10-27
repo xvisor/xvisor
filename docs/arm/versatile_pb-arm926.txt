@@ -26,7 +26,7 @@ guest with Xvisor running on QEMU Versatile PB-ARM926 Host:
   # make -C tests/arm32/versatile/basic
 
   [6. Create qemu.img for running it on QEMU]
-  # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/tests/arm32/versatile/basic/arm_test.bin.patched@0x00800000
+  # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/tests/arm32/versatile/basic/arm_test.bin.patched@0x01000000
 
   [7. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M versatilepb -display none -serial stdio -kernel build/qemu.img

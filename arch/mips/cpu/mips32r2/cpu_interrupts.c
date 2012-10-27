@@ -22,6 +22,7 @@
  */
 
 #include <arch_cpu.h>
+#include <arch_cpu_irq.h>
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_scheduler.h>
@@ -31,11 +32,6 @@
 #include <cpu_interrupts.h>
 #include <cpu_timer.h>
 #include <cpu_mmu.h>
-#include <cpu_asm_macros.h>
-
-#ifdef CONFIG_I8259
-#include <pics/i8259.h>
-#endif
 
 extern virtual_addr_t isa_vbase;
 
@@ -63,45 +59,6 @@ int arch_cpu_irq_setup(void)
 	setup_interrupts();
 	
 	return VMM_OK;
-}
-
-void arch_cpu_irq_enable(void)
-{
-	enable_interrupts();
-#ifdef CONFIG_I8259
-        i8259_enable_int(-1); /* enable all interrupts. */
-#endif
-}
-
-void arch_cpu_irq_disable(void)
-{
-	disable_interrupts();
-#ifdef CONFIG_I8259
-        i8259_disable_int(-1); /* disable all interrupts */
-#endif
-}
-
-/* FIXME: */
-bool arch_cpu_irq_disabled(void)
-{
-	return FALSE;
-}
-
-irq_flags_t arch_cpu_irq_save(void)
-{
-	irq_flags_t flags;
-	__asm__ __volatile__("di %0\n\t"
-			     :"=r"(flags));
-	flags &= (0x0000FF00UL);
-        return flags;
-}
-
-void arch_cpu_irq_restore(irq_flags_t flags)
-{
-	irq_flags_t temp;
-	write_c0_status(read_c0_status() | flags);
-	__asm__ __volatile__("ei %0\n\t"
-			     :"=r"(temp));
 }
 
 s32 generic_int_handler(arch_regs_t *uregs)
@@ -134,9 +91,3 @@ s32 generic_int_handler(arch_regs_t *uregs)
         return 0;
 }
 
-void arch_cpu_wait_for_irq(void)
-{
-	/* FIXME: Use some hardware functionality to wait for interrupt */
-	/* OR */
-	/* FIXME: Use some soft delay */
-}

@@ -29,8 +29,8 @@
 #include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC			"Thread Test Command"
 #define MODULE_AUTHOR			"Sanjeev Pandita"

@@ -21,10 +21,10 @@
  * @brief implementation of priority round-robin scheduling algorithm
  */
 
-#include <list.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_schedalgo.h>
+#include <libs/list.h>
 
 struct vmm_schedalgo_rq_entry {
 	struct dlist head;

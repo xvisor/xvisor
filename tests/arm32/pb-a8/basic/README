@@ -30,7 +30,7 @@ Guest with Xvisor running on QEMU Realview PB-A8 Host:
   # make -C tests/arm32/pb-a8/basic
 
   [6. Create qemu.img for running it on QEMU]
-  # ./tools/scripts/memimg.py -a 0x70010000 -o build/qemu.img build/vmm.bin@0x70010000 build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x70800000
+  # ./tools/scripts/memimg.py -a 0x70010000 -o build/qemu.img build/vmm.bin@0x70010000 build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x71000000
 
   [7. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel build/qemu.img

@@ -1,6 +1,6 @@
 /* Acorn-like font definition, with PC graphics characters */
 
-#include <vtemu_font.h>
+#include <libs/vtemu_font.h>
 
 static const unsigned char acorndata_8x8[] = {
 /* 00 */  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* ^@ */

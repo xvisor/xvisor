@@ -32,8 +32,8 @@
  *      Adapted the file to xvisor and moved license from LGPL 2.1 to GPL 2
  */
 
-#include <libsort.h>
 #include <vmm_error.h>
+#include <libs/libsort.h>
 
 /** Description of current stretch */
 typedef struct {

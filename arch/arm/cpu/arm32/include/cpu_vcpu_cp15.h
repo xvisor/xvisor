@@ -26,6 +26,19 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
+/** Flush entire VTLB for a VCPU */
+int cpu_vcpu_cp15_vtlb_flush(struct vmm_vcpu *vcpu);
+
+/** Flush given virtual address from VTLB for a VCPU */
+int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu *vcpu, virtual_addr_t va);
+
+/** Flush non-global pages from VTLB for a VCPU */
+int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu);
+
+/** Flush pages whos domain permissions have changed from VTLB for a VCPU */
+int cpu_vcpu_cp15_vtlb_flush_domain(struct vmm_vcpu * vcpu, 
+				    u32 dacr_xor_diff);
+
 enum cpu_vcpu_cp15_access_types {
 	CP15_ACCESS_READ = 0,
 	CP15_ACCESS_WRITE = 1,
@@ -67,20 +80,6 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			 arch_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data);
-
-/** Read from memory using VCPU CP15 */
-int cpu_vcpu_cp15_mem_read(struct vmm_vcpu * vcpu, 
-			   arch_regs_t * regs,
-			   virtual_addr_t addr, 
-			   void *dst, u32 dst_len, 
-			   bool force_unpriv);
-
-/** Write to memory using VCPU CP15 */
-int cpu_vcpu_cp15_mem_write(struct vmm_vcpu * vcpu, 
-			    arch_regs_t * regs,
-			    virtual_addr_t addr, 
-			    void *src, u32 src_len,
-			    bool force_unpriv);
 
 /* Read from memory using VCPU CP15 */
 virtual_addr_t cpu_vcpu_cp15_vector_addr(struct vmm_vcpu * vcpu, 

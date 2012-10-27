@@ -28,18 +28,23 @@
  *
  * The original code is licensed under the GPL.
  */
-
-#include <vmm_modules.h>
+#include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/string.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#include <linux/mm.h>
 #include <linux/fb.h>
 #include <linux/init.h>
+#include <linux/ioport.h>
 #include <linux/list.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
+#include <linux/clk.h>
+#include <linux/hardirq.h>
+
+#include <asm/sizes.h>
 
 #define MODULE_DESC			"AMBA CLCD Driver"
 #define MODULE_AUTHOR			"Anup Patel"

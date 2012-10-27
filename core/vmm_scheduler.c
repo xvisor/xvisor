@@ -32,7 +32,7 @@
 #include <vmm_scheduler.h>
 #include <arch_cpu_irq.h>
 #include <arch_vcpu.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #define IDLE_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
 #define IDLE_VCPU_PRIORITY 		VMM_VCPU_MIN_PRIORITY
@@ -182,7 +182,7 @@ void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 void vmm_scheduler_irq_exit(arch_regs_t *regs)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
-	struct vmm_vcpu * vcpu = NULL;
+	struct vmm_vcpu *vcpu = NULL;
 
 	/* Determine current vcpu */
 	vcpu = schedp->current_vcpu;
@@ -199,7 +199,7 @@ void vmm_scheduler_irq_exit(arch_regs_t *regs)
 	}
 
 	/* VCPU irq processing */
-	vmm_vcpu_irq_process(regs);
+	vmm_vcpu_irq_process(vcpu, regs);
 
 	/* Indicate that we have exited IRQ */
 	schedp->irq_context = FALSE;
@@ -253,7 +253,7 @@ void vmm_scheduler_preempt_disable(void)
 	irq_flags_t flags;
 	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 	if (vcpu) {
-		flags = arch_cpu_irq_save();
+		arch_cpu_irq_save(flags);
 		vcpu->preempt_count++;
 		arch_cpu_irq_restore(flags);
 	}
@@ -264,7 +264,7 @@ void vmm_scheduler_preempt_enable(void)
 	irq_flags_t flags;
 	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 	if (vcpu && vcpu->preempt_count) {
-		flags = arch_cpu_irq_save();
+		arch_cpu_irq_save(flags);
 		vcpu->preempt_count--;
 		arch_cpu_irq_restore(flags);
 	}

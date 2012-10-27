@@ -27,7 +27,7 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <input/vmm_input.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"Command input"
 #define MODULE_AUTHOR			"Anup Patel"

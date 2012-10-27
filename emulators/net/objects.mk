@@ -22,5 +22,6 @@
 # */
 
 emulators-objs-$(CONFIG_EMU_NET_LAN9118)+= net/lan9118.o
+emulators-objs-$(CONFIG_EMU_NET_SMC91C111)+= net/smc91c111.o
 
 

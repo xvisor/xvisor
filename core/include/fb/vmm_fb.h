@@ -33,9 +33,9 @@
 #include <vmm_mutex.h>
 #include <vmm_host_io.h>
 #include <vmm_devdrv.h>
-#include <list.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/list.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define VMM_FB_CLASS_NAME			"fb"
 #define VMM_FB_CLASS_IPRIORITY			1
@@ -898,17 +898,21 @@ int vmm_fb_add_videomode(const struct vmm_fb_videomode *mode,
 			 struct dlist *head);
 void vmm_fb_delete_videomode(const struct vmm_fb_videomode *mode,
 			     struct dlist *head);
-const struct vmm_fb_videomode *vmm_fb_match_mode(const struct vmm_fb_var_screeninfo *var,
-						 struct dlist *head);
-const struct vmm_fb_videomode *vmm_fb_find_best_mode(const struct vmm_fb_var_screeninfo *var,
-						     struct dlist *head);
-const struct vmm_fb_videomode *vmm_fb_find_nearest_mode(const struct vmm_fb_videomode *mode,
-						        struct dlist *head);
+const struct vmm_fb_videomode *vmm_fb_match_mode(
+					const struct vmm_fb_var_screeninfo *var,
+					struct dlist *head);
+const struct vmm_fb_videomode *vmm_fb_find_best_mode(
+					const struct vmm_fb_var_screeninfo *var,
+					struct dlist *head);
+const struct vmm_fb_videomode *vmm_fb_find_nearest_mode(
+					const struct vmm_fb_videomode *mode,
+					struct dlist *head);
 void vmm_fb_destroy_modelist(struct dlist *head);
-void vmm_fb_videomode_to_modelist(const struct vmm_fb_videomode *modedb, int num,
-				  struct dlist *head);
-const struct vmm_fb_videomode *vmm_fb_find_best_display(const struct vmm_fb_monspecs *specs,
-							struct dlist *head);
+void vmm_fb_videomode_to_modelist(const struct vmm_fb_videomode *modedb, 
+				  int num, struct dlist *head);
+const struct vmm_fb_videomode *vmm_fb_find_best_display(
+					const struct vmm_fb_monspecs *specs,
+					struct dlist *head);
 /* 
  * fb/vmm_fbcmap.c 
  */

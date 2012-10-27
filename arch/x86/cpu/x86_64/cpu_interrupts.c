@@ -26,9 +26,9 @@
 #include <vmm_host_irq.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
+#include <libs/stringlib.h>
 #include <arch_cpu.h>
 #include <arch_sections.h>
-#include <stringlib.h>
 #include <cpu_timer.h>
 #include <cpu_mmu.h>
 #include <cpu_interrupts.h>
@@ -174,38 +174,6 @@ int arch_cpu_irq_setup(void)
 	setup_gate_handlers();
 
         return 0;
-}
-
-void arch_cpu_irq_enable(void)
-{
-	__asm__ __volatile__("sti\n\t");
-}
-
-void arch_cpu_irq_disable(void)
-{
-	__asm__ __volatile__("cli\n\t");
-}
-
-/* FIXME: */
-bool arch_cpu_irq_disabled(void)
-{
-	return FALSE;
-}
-
-irq_flags_t arch_cpu_irq_save(void)
-{
-        return 0;
-}
-
-void arch_cpu_irq_restore(irq_flags_t flags)
-{
-}
-
-void arch_cpu_wait_for_irq(void)
-{
-	/* FIXME: Use some hardware functionality to wait for interrupt */
-	/* OR */
-	/* FIXME: Use some soft delay */
 }
 
 /* All Handlers */

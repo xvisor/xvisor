@@ -3,4 +3,6 @@
 
 #include <asm/io.h>
 
+#define __devinit
+
 #endif /* _LINUX_IO_H_ */

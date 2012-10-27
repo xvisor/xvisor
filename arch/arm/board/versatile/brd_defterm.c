@@ -26,7 +26,7 @@
 #include <vmm_compiler.h>
 #include <vmm_host_aspace.h>
 #include <versatile_board.h>
-#include <serial/pl011.h>
+#include <drv/pl011.h>
 
 #define	VERSATILE_DEFAULT_UART_BASE			VERSATILE_UART0_BASE
 #define	VERSATILE_DEFAULT_UART_INCLK			24000000

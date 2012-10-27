@@ -24,7 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
-#include <elf.h>
+#include <libs/elf.h>
 
 int arch_elf_check_hdr(const struct elf32_hdr *x)
 {

@@ -40,8 +40,8 @@
 #include <vmm_manager.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC			"Realview Sysctl Emulator"
 #define MODULE_AUTHOR			"Anup Patel"

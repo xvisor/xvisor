@@ -61,7 +61,7 @@ bool vmm_rtc_valid_tm(struct vmm_rtc_time *tm);
 /**
  * Convert Gregorian date to seconds since 01-01-1970 00:00:00.
  */
-void vmm_rtc_tm_to_time(struct vmm_rtc_time *tm, unsigned long *time);
+int vmm_rtc_tm_to_time(struct vmm_rtc_time *tm, unsigned long *time);
 
 /**
  * Convert seconds since 01-01-1970 00:00:00 to Gregorian date.

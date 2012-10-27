@@ -21,6 +21,13 @@
 # @brief list of core objects to be build
 # */
 
-core-objs-$(CONFIG_INPUT)+= input/vmm_input.o
-core-objs-$(CONFIG_INPUT)+= input/vmm_input_mt.o
+core-objs-$(CONFIG_INPUT)+= input/vmm_input_core.o
 
+vmm_input_core-y += vmm_input.o
+vmm_input_core-y += vmm_input_mt.o
+
+%/vmm_input_core.o: $(foreach obj,$(vmm_input_core-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/vmm_input_core.dep: $(foreach dep,$(vmm_input_core-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)

@@ -31,9 +31,9 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_chardev.h>
-#include <stringlib.h>
-#include <mathlib.h>
-#include <serial/uart.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+#include <drv/uart.h>
 
 #define MODULE_DESC			"Generic UART Driver"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -43,6 +43,7 @@
 #define	MODULE_EXIT			uart_driver_exit
 
 struct uart_port {
+	struct vmm_chardev cd;
 	virtual_addr_t base;
 	u32 baudrate;
 	u32 input_clock;
@@ -108,7 +109,7 @@ void uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 }
 
 static u32 uart_read(struct vmm_chardev *cdev, 
-		     u8 *dest, u32 offset, u32 len, bool sleep)
+		     u8 *dest, u32 len, bool sleep)
 {
 	u32 i;
 	struct uart_port *port;
@@ -130,7 +131,7 @@ static u32 uart_read(struct vmm_chardev *cdev,
 }
 
 static u32 uart_write(struct vmm_chardev *cdev, 
-		      u8 *src, u32 offset, u32 len, bool sleep)
+		      u8 *src, u32 len, bool sleep)
 {
 	u32 i;
 	struct uart_port *port;
@@ -155,29 +156,20 @@ static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devi
 {
 	int rc;
 	const char *attr;
-	struct vmm_chardev *cd;
 	struct uart_port *port;
 	
-	cd = vmm_malloc(sizeof(struct vmm_chardev));
-	if(!cd) {
+	port = vmm_zalloc(sizeof(struct uart_port));
+	if(!port) {
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
-	memset(cd, 0, sizeof(struct vmm_chardev));
 
-	port = vmm_malloc(sizeof(struct uart_port));
-	if(!port) {
-		rc = VMM_EFAIL;
-		goto free_chardev;
-	}
-	memset(port, 0, sizeof(struct uart_port));
-
-	strcpy(cd->name, dev->node->name);
-	cd->dev = dev;
-	cd->ioctl = NULL;
-	cd->read = uart_read;
-	cd->write = uart_write;
-	cd->priv = port;
+	strcpy(port->cd.name, dev->node->name);
+	port->cd.dev = dev;
+	port->cd.ioctl = NULL;
+	port->cd.read = uart_read;
+	port->cd.write = uart_write;
+	port->cd.priv = port;
 
 	rc = vmm_devtree_regmap(dev->node, &port->base, 0);
 	if(rc) {
@@ -199,7 +191,7 @@ static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devi
 	attr = vmm_devtree_attrval(dev->node, "baudrate");
 	if(!attr) {
 		rc = VMM_EFAIL;
-		goto free_port;
+		goto free_reg;
 	}
 	port->baudrate = *((u32 *)attr);
 	port->input_clock = vmm_devdrv_clock_get_rate(dev);
@@ -208,34 +200,35 @@ static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devi
 	uart_lowlevel_init(port->base, port->reg_align, 
 			port->baudrate, port->input_clock);
 
-	rc = vmm_chardev_register(cd);
+	rc = vmm_chardev_register(&port->cd);
 	if(rc) {
-		goto free_port;
+		goto free_reg;
 	}
+
+	dev->priv = port;
 
 	return VMM_OK;
 
+free_reg:
+	vmm_devtree_regunmap(dev->node, port->base, 0);
 free_port:
 	vmm_free(port);
-free_chardev:
-	vmm_free(cd);
 free_nothing:
 	return rc;
 }
 
 static int uart_driver_remove(struct vmm_device *dev)
 {
-	int rc = VMM_OK;
-	struct vmm_chardev *cd =(struct vmm_chardev*)dev->priv;
+	struct uart_port *port = dev->priv;
 
-	if (cd) {
-		rc = vmm_chardev_unregister(cd);
-		vmm_free(cd->priv);
-		vmm_free(cd);
+	if (port) {
+		vmm_chardev_unregister(&port->cd);
+		vmm_devtree_regunmap(dev->node, port->base, 0);
+		vmm_free(port);
 		dev->priv = NULL;
 	}
 
-	return rc;
+	return VMM_OK;
 }
 
 static struct vmm_devid uart_devid_table[] = {

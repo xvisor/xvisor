@@ -21,6 +21,5 @@
 # @brief list of libfdt objects to be build
 # */
 
-libs-cppflags-$(CONFIG_LIBFDT)+= -I$(libs_dir)/libfdt
 libs-objs-$(CONFIG_LIBFDT)+= libfdt/libfdt.o
 

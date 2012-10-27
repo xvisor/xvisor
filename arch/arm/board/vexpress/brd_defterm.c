@@ -26,7 +26,7 @@
 #include <vmm_compiler.h>
 #include <vmm_devtree.h>
 #include <vmm_host_aspace.h>
-#include <serial/pl011.h>
+#include <drv/pl011.h>
 
 #define	V2M_DEFAULT_UART_BASE			V2M_UART0
 #define	V2M_DEFAULT_UART_INCLK			24000000

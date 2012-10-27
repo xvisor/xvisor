@@ -30,7 +30,7 @@
 #define __VMM_CPUMASK_H__
 
 #include <vmm_types.h>
-#include <bitmap.h>
+#include <libs/bitmap.h>
 
 struct vmm_cpumask { 
 	DEFINE_BITMAP(bits, CONFIG_CPU_COUNT); 

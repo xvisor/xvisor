@@ -32,8 +32,8 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <arch_cpu_irq.h>
-#include <stringlib.h>
-#include <scatterlist.h>
+#include <libs/stringlib.h>
+#include <libs/scatterlist.h>
 
 /**
  * sg_next - return the next scatterlist entry in a list
@@ -441,7 +441,7 @@ static size_t sg_copy_buffer(struct scatterlist *sgl, unsigned int nents,
 
 	sg_miter_start(&miter, sgl, nents, sg_flags);
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	while (sg_miter_next(&miter) && offset < buflen) {
 		unsigned int len;

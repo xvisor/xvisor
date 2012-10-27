@@ -28,10 +28,12 @@
 #include <vmm_host_irq.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
+#include <emulate_arm.h>
+#include <emulate_thumb.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
-#include <cpu_vcpu_emulate_arm.h>
-#include <cpu_vcpu_emulate_thumb.h>
+#include <cpu_vcpu_hypercall_arm.h>
+#include <cpu_vcpu_hypercall_thumb.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
@@ -39,7 +41,7 @@
 void do_undef_inst(arch_regs_t * uregs)
 {
 	int rc = VMM_OK;
-	struct vmm_vcpu * vcpu;
+	struct vmm_vcpu *vcpu;
 
 	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
@@ -56,9 +58,11 @@ void do_undef_inst(arch_regs_t * uregs)
 		vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 	} else {
 		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
-			rc = cpu_vcpu_emulate_thumb_inst(vcpu, uregs, FALSE);
+			rc = emulate_thumb_inst(vcpu, uregs, 
+						*((u32 *)uregs->pc));
 		} else {
-			rc = cpu_vcpu_emulate_arm_inst(vcpu, uregs, FALSE);
+			rc = emulate_arm_inst(vcpu, uregs, 
+						*((u32 *)uregs->pc));
 		}
 	}
 
@@ -89,9 +93,11 @@ void do_soft_irq(arch_regs_t * uregs)
 		vmm_vcpu_irq_assert(vcpu, CPU_SOFT_IRQ, 0x0);
 	} else {
 		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
-			rc = cpu_vcpu_emulate_thumb_inst(vcpu, uregs, TRUE);
+			rc = cpu_vcpu_hypercall_thumb(vcpu, uregs, 
+							*((u32 *)uregs->pc));
 		} else {
-			rc = cpu_vcpu_emulate_arm_inst(vcpu, uregs, TRUE);
+			rc = cpu_vcpu_hypercall_arm(vcpu, uregs, 
+							*((u32 *)uregs->pc));
 		}
 	}
 

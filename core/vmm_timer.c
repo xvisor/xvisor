@@ -31,7 +31,7 @@
 #include <vmm_clockchip.h>
 #include <vmm_timer.h>
 #include <arch_cpu_irq.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 /** Control structure for Timer Subsystem */
 struct vmm_timer_local_ctrl {
@@ -58,7 +58,7 @@ u64 vmm_timer_timestamp(void)
 	u64 ret;
 	irq_flags_t flags;
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 	ret = vmm_timecounter_read(&(this_cpu(tlc).tc));
 	arch_cpu_irq_restore(flags);
 
@@ -153,7 +153,7 @@ int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs)
 
 	tstamp = vmm_timer_timestamp();
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	if (ev->active) {
 		/*
@@ -207,7 +207,7 @@ int vmm_timer_event_expire(struct vmm_timer_event * ev)
 	}
 
 	/* prevent (timer) interrupt */
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	/* if the event is already engaged */
 	if (ev->active) {
@@ -239,16 +239,15 @@ int vmm_timer_event_stop(struct vmm_timer_event * ev)
 		return VMM_EFAIL;
 	}
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	ev->expiry_tstamp = 0;
 
 	if (ev->active) {
 		list_del(&ev->head);
 		ev->active = FALSE;
+		vmm_timer_schedule_next_event();
 	}
-
-	vmm_timer_schedule_next_event();
 
 	arch_cpu_irq_restore(flags);
 

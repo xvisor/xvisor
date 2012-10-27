@@ -26,7 +26,7 @@
 #include <vmm_modules.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"SP810 Serial Emulator"
 #define MODULE_AUTHOR			"Anup Patel"

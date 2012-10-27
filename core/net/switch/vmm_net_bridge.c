@@ -28,12 +28,12 @@
 #include <vmm_devdrv.h>
 #include <vmm_threads.h>
 #include <vmm_modules.h>
-#include <list.h>
-#include <stringlib.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
+#include <libs/list.h>
+#include <libs/stringlib.h>
 
 #undef DEBUG_NETBRIDGE
 
@@ -75,7 +75,7 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 	struct dlist *l;
 	bool broadcast, learn;
 	const u8 *srcmac, *dstmac;
-	struct vmm_netport *dst_port;
+	struct vmm_netport *dst_port, *port;
 	struct vmm_netswitch *nsw;
 	struct vmm_netbridge_mac_entry *mac_entry;
 	struct vmm_netbridge_ctrl *nbctrl;
@@ -94,7 +94,7 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 	dstmac = ether_dstmac(mtod(mbuf, u8 *));
 
 	/* Learn the (srcmac, src_port) mapping iff the sender is not immediate netport */
-	if(!compare_ether_addr(srcmac, src_port->macaddr)) {
+	if (!compare_ether_addr(srcmac, src_port->macaddr)) {
 		learn = FALSE;
 	}
 	DPRINTF("%s: learn: %d\n", __func__, learn);
@@ -103,35 +103,36 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 	 * Case 1: It is not a broadcast MAC address, and
 	 * Case 2: We do have the MAC->port mapping
 	 */
-	if(!is_broadcast_ether_addr(dstmac)) {
+	if (!is_broadcast_ether_addr(dstmac)) {
 		/* First check our immediate netports */
 		list_for_each(l, &nsw->port_list) {
-			   if(!compare_ether_addr(list_port(l)->macaddr, dstmac)) {
+			port = list_port(l);
+			if (!compare_ether_addr(port->macaddr, dstmac)) {
 				DPRINTF("%s: port->macaddr[%s]\n", __func__,
-					ethaddr_to_str(tname, list_port(l)->macaddr));
-				dst_port = list_port(l);
+					ethaddr_to_str(tname, port->macaddr));
+				dst_port = port;
 				broadcast = FALSE;
 				break;
-			   }
+			}
 		}
 	}
 
 	/* Iterate over mac_table for new srcmac mapping and to search for dst_port */
 	list_for_each(l, &nbctrl->mac_table) {
-		if(!learn && dst_port) {
+		if (!learn && dst_port) {
 			break;
 		}
 
 		mac_entry = list_mac_entry(l);
 
 		/* if possible update mac_table */
-		if(learn && !compare_ether_addr(mac_entry->macaddr, srcmac)) {
+		if (learn && !compare_ether_addr(mac_entry->macaddr, srcmac)) {
 			mac_entry->port = src_port;
 			mac_entry->timestamp = vmm_timer_timestamp();
 			learn = FALSE;
 
 			/* purge this entry if too old */
-		} else if((vmm_timer_timestamp() - mac_entry->timestamp) 
+		} else if ((vmm_timer_timestamp() - mac_entry->timestamp) 
 						> VMM_NETBRIDGE_MAC_EXPIRY) {
 			l = mac_entry->head.next;
 			list_del(&mac_entry->head);
@@ -140,7 +141,7 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 		}
 
 		/* check dstmac */
-		if(broadcast && !compare_ether_addr(mac_entry->macaddr, dstmac)) {
+		if (broadcast && !compare_ether_addr(mac_entry->macaddr, dstmac)) {
 			dst_port = mac_entry->port;
 			broadcast = FALSE;
 		}
@@ -148,7 +149,7 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 
 	if(learn) {
 		mac_entry = vmm_malloc(sizeof(struct vmm_netbridge_mac_entry));
-		if(mac_entry) {
+		if (mac_entry) {
 			mac_entry->port = src_port;
 			memcpy(mac_entry->macaddr, srcmac, 6);
 			mac_entry->timestamp = vmm_timer_timestamp();
@@ -158,23 +159,25 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 		}
 	}
 
-	if(broadcast) {
+	if (broadcast) {
 		DPRINTF("%s: broadcasting\n", __func__);
 		list_for_each(l, &nsw->port_list) {
-			   if(list_port(l) != src_port) {
-				if(list_port(l)->can_receive &&
-				   !list_port(l)->can_receive(list_port(l))) {
-				   continue;
+			port = list_port(l);
+			if (port != src_port) {
+				if (port->can_receive &&
+				    !port->can_receive(port)) {
+					continue;
 				}
 				MADDREFERENCE(mbuf);
 				MCLADDREFERENCE(mbuf);
-				list_port(l)->switch2port_xfer(list_port(l), mbuf);
-			   }
+				port->switch2port_xfer(port, mbuf);
+			}
 		}
 		m_freem(mbuf);
 	} else {
 		DPRINTF("%s: unicasting to \"%s\"\n", __func__, dst_port->name);
-		if(!dst_port->can_receive || dst_port->can_receive(dst_port)) {
+		if (!dst_port->can_receive || 
+		    dst_port->can_receive(dst_port)) {
 			dst_port->switch2port_xfer(dst_port, mbuf);
 		} else {
 			/* Free the mbuf if destination cannot do rx */
@@ -193,9 +196,7 @@ static int vmm_netbridge_probe(struct vmm_device *dev,
 	int rc = VMM_OK;
 
 	nsw = vmm_netswitch_alloc(dev->node->name,
-		       		  VMM_NETBRIDGE_RXQ_LEN,	
-				  VMM_THREAD_DEF_PRIORITY, 
-				  VMM_THREAD_DEF_TIME_SLICE);
+				  VMM_THREAD_DEF_PRIORITY);
 	if(!nsw) {
 		rc = VMM_EFAIL;
 		goto vmm_netbridge_probe_failed;

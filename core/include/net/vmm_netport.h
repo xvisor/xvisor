@@ -25,58 +25,86 @@
 #define __VMM_NETPORT_H_
 
 #include <vmm_types.h>
-#include <vmm_spinlocks.h>
 #include <vmm_devdrv.h>
-#include <net/vmm_netswitch.h>
+#include <vmm_spinlocks.h>
+#include <libs/list.h>
 
 #define VMM_NETPORT_CLASS_NAME		"netport"
 
 /* Port Flags (should be defined as bits) */
 #define VMM_NETPORT_LINK_UP		1	/* If this bit is set link is up */
 
-typedef int (*vmm_netport_can_rx_t) (struct vmm_netport *port); 
-typedef int (*vmm_netport_rx_handle_t) (struct vmm_netport *port, 
-					struct vmm_mbuf *mbuf);
-typedef void (*vmm_netport_link_change_t) (struct vmm_netport *port); 
+/* Default per-port queue size */
+#define VMM_NETPORT_DEF_QUEUE_SIZE	32
+
+/* Default per-port queue size */
+#define VMM_NETPORT_MAX_QUEUE_SIZE	256
+
+struct vmm_netswitch;
+struct vmm_netport;
+struct vmm_mbuf;
+
+struct vmm_netport_xfer {
+	struct dlist head;
+	struct vmm_netport *port;
+	struct vmm_mbuf *mbuf;
+};
 
 struct vmm_netport {
-	char *name;
 	struct dlist head;
+	char *name;
+	u32 queue_size;
 	int flags;
 	int mtu;
 	u8 macaddr[6];
 	struct vmm_netswitch *nsw;
 	struct vmm_device *dev;
-	void *priv;
+
+	/* Per-port pool of xfer instances 
+	 * Having all these blocks contiguous eases alloc
+	 * and free operations 
+	 */
+	u32 free_count;
+	struct dlist free_list;
+	vmm_spinlock_t free_list_lock;
+	struct vmm_netport_xfer *xfer_pool;
+
 	/* Link status changed */
-	vmm_netport_link_change_t link_changed;
+	void (*link_changed) (struct vmm_netport *); 
 	/* Callback to determine if the port can RX */
-	vmm_netport_can_rx_t  can_receive;
+	int (*can_receive) (struct vmm_netport *); 
 	/* Handle RX from switch to port */
-	vmm_netport_rx_handle_t switch2port_xfer;
+	int (*switch2port_xfer) (struct vmm_netport *, struct vmm_mbuf *);
+	/* Port private data */
+	void *priv;
 };
 
 #define list_port(node)		(container_of((node), struct vmm_netport, head))
 
-/** Allocate new network port */
-struct vmm_netport *vmm_netport_alloc(char *name);
+/** Allocate new netport xfer instance */
+struct vmm_netport_xfer *vmm_netport_alloc_xfer(struct vmm_netport *port);
 
-/** Register network port from network port framework */
-int vmm_netport_register(struct vmm_netport *netport);
+/** Free netport xfer instance */
+void vmm_netport_free_xfer(struct vmm_netport *port, 
+			   struct vmm_netport_xfer *xfer);
 
-/** Unregister network port from network port framework */
-int vmm_netport_unregister(struct vmm_netport *netport);
+/** Allocate new netport */
+struct vmm_netport *vmm_netport_alloc(char *name, u32 queue_size);
 
-/** Count number of network ports */
+/** Register netport to networking framework */
+int vmm_netport_register(struct vmm_netport *port);
+
+/** Unregister netport from networking framework */
+int vmm_netport_unregister(struct vmm_netport *port);
+
+/** Count number of netports */
 u32 vmm_netport_count(void);
 
-/** Find a network port in device driver framework */
+/** Find a netport in networking framework */
 struct vmm_netport *vmm_netport_find(const char *name);
 
-/** Get network port with given number */
+/** Get netport with given number */
 struct vmm_netport *vmm_netport_get(int num);
-
-#define vmm_port2switch_xfer 	vmm_netswitch_port2switch
 
 #define vmm_netport_mac(port)	((port)->macaddr)
 

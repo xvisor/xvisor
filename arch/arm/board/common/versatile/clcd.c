@@ -1,7 +1,7 @@
 
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 #include <versatile/clcd.h>

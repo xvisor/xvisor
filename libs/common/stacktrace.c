@@ -23,8 +23,8 @@
 
 #include <vmm_stdio.h>
 #include <vmm_compiler.h>
-#include <kallsyms.h>
-#include <stacktrace.h>
+#include <libs/kallsyms.h>
+#include <libs/stacktrace.h>
 
 /* Dummy implementation of arch_save_stacktrace to make 
  * stacktrace arch support optional.
