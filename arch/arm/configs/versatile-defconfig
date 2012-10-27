@@ -35,7 +35,6 @@ CONFIG_ARM32=y
 #
 CONFIG_ARM32_STACKTRACE=y
 # CONFIG_ARM32_HIGHVEC is not set
-# CONFIG_ARM32_FUNCSTATS is not set
 CONFIG_BOARD_VERSATILE=y
 # CONFIG_BOARD_PB_A8 is not set
 # CONFIG_BOARD_BEAGLE is not set
@@ -102,7 +101,7 @@ CONFIG_RTC=y
 # CONFIG_INPUT is not set
 # CONFIG_FB is not set
 # CONFIG_BLOCK is not set
-# CONFIG_NET is not set
+CONFIG_NET=y
 
 #
 # Command Options
@@ -123,6 +122,8 @@ CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
 CONFIG_CMD_RTCDEV=y
+CONFIG_CMD_NET=y
+
 # CONFIG_CMD_THREADTEST is not set
 
 #
@@ -160,6 +161,8 @@ CONFIG_RTC_PL031=y
 #
 # Network Drivers
 #
+CONFIG_NET_DRIVERS=y
+CONFIG_ETHER_SMSC_91x=y
 
 #
 # Device Emulators
@@ -182,7 +185,9 @@ CONFIG_EMU_PIC_PL190=y
 #
 # Network Interface Controller Emulators
 #
-# CONFIG_EMU_NET is not set
+CONFIG_EMU_NET=y
+# CONFIG_EMU_NET_LAN9118 is not set
+CONFIG_EMU_NET_SMC91C111=y
 
 #
 # Timer Emulators

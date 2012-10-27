@@ -29,7 +29,7 @@
 #include <arch_barrier.h>
 #include <arch_cpu_irq.h>
 #include <arch_sections.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 #include <cpu_defines.h>
 #include <cpu_cache.h>
 #include <cpu_inline_asm.h>
@@ -726,7 +726,7 @@ int cpu_mmu_unmap_reserved_page(struct cpu_page *pg)
 	 * of this page from other l1 tables.
 	 */
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	list_for_each(le, &mmuctrl.l1tbl_list) {
 		l1 = list_entry(le, struct cpu_l1tbl, head);
@@ -870,100 +870,6 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_current(void)
 	return cpu_mmu_l1tbl_find_tbl_pa(ttbr0);
 }
 
-u32 cpu_mmu_physical_read32(physical_addr_t pa)
-{
-	u32 ret = 0x0, ite, found;
-	u32 *l1_tte = NULL;
-	struct cpu_l1tbl *l1 = NULL;
-	virtual_addr_t va = 0x0;
-	irq_flags_t flags;
-
-	flags = arch_cpu_irq_save();
-
-	l1 = cpu_mmu_l1tbl_current();
-	if (l1) {
-		found = 0;
-		l1_tte = (u32 *) (l1->tbl_va);
-		for (ite = 0; ite < (TTBL_L1TBL_SIZE / 4); ite++) {
-			if ((l1_tte[ite] & TTBL_L2TBL_TTE_TYPE_MASK) ==
-			    TTBL_L2TBL_TTE_TYPE_FAULT) {
-				found = 1;
-				break;
-			}
-		}
-		if (found) {
-			l1_tte[ite] = TTBL_L1TBL_TTE_REQ_MASK;
-			l1_tte[ite] |= (pa & TTBL_L1TBL_TTE_BASE20_MASK);
-			l1_tte[ite] |= (TTBL_L1TBL_TTE_DOM_RESERVED <<
-					TTBL_L1TBL_TTE_DOM_SHIFT) &
-			    TTBL_L1TBL_TTE_DOM_MASK;
-			l1_tte[ite] |= (TTBL_AP_SRW_U <<
-					TTBL_L1TBL_TTE_AP_SHIFT) &
-			    TTBL_L1TBL_TTE_AP_MASK;
-			l1_tte[ite] |= TTBL_L1TBL_TTE_TYPE_SECTION;
-			cpu_mmu_sync_tte(&l1_tte[ite]);
-			va = (ite << TTBL_L1TBL_TTE_BASE20_SHIFT) +
-			    (pa & ~TTBL_L1TBL_TTE_BASE20_MASK);
-			va &= ~0x3;
-			ret = *(u32 *) (va);
-			l1_tte[ite] = 0x0;
-			cpu_mmu_sync_tte(&l1_tte[ite]);
-			invalid_tlb_line(va);
-		}
-	}
-
-	arch_cpu_irq_restore(flags);
-
-	return ret;
-}
-
-void cpu_mmu_physical_write32(physical_addr_t pa, u32 val)
-{
-	u32 ite, found;
-	u32 *l1_tte = NULL;
-	struct cpu_l1tbl *l1 = NULL;
-	virtual_addr_t va = 0x0;
-	irq_flags_t flags;
-
-	flags = arch_cpu_irq_save();
-
-	l1 = cpu_mmu_l1tbl_current();
-	if (l1) {
-		found = 0;
-		l1_tte = (u32 *) (l1->tbl_va);
-		for (ite = 0; ite < (TTBL_L1TBL_SIZE / 4); ite++) {
-			if ((l1_tte[ite] & TTBL_L2TBL_TTE_TYPE_MASK) ==
-			    TTBL_L2TBL_TTE_TYPE_FAULT) {
-				found = 1;
-				break;
-			}
-		}
-		if (found) {
-			l1_tte[ite] = TTBL_L1TBL_TTE_REQ_MASK;
-			l1_tte[ite] |= (pa & TTBL_L1TBL_TTE_BASE20_MASK);
-			l1_tte[ite] |= (TTBL_L1TBL_TTE_DOM_RESERVED <<
-					TTBL_L1TBL_TTE_DOM_SHIFT) &
-			    TTBL_L1TBL_TTE_DOM_MASK;
-			l1_tte[ite] |= (TTBL_AP_SRW_U <<
-					TTBL_L1TBL_TTE_AP_SHIFT) &
-			    TTBL_L1TBL_TTE_AP_MASK;
-			l1_tte[ite] |= TTBL_L1TBL_TTE_TYPE_SECTION;
-			cpu_mmu_sync_tte(&l1_tte[ite]);
-			va = (ite << TTBL_L1TBL_TTE_BASE20_SHIFT) +
-			    (pa & ~TTBL_L1TBL_TTE_BASE20_MASK);
-			va &= ~0x3;
-			*(u32 *) (va) = val;
-			l1_tte[ite] = 0x0;
-			cpu_mmu_sync_tte(&l1_tte[ite]);
-			invalid_tlb_line(va);
-		}
-	}
-
-	arch_cpu_irq_restore(flags);
-
-	return;
-}
-
 int cpu_mmu_chdacr(u32 new_dacr)
 {
 	u32 old_dacr;
@@ -1005,17 +911,118 @@ int cpu_mmu_chttbr(struct cpu_l1tbl *l1)
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_map(virtual_addr_t va,
-			virtual_size_t sz, physical_addr_t pa, u32 mem_flags)
+int arch_cpu_aspace_phys_read(virtual_addr_t tmp_va, 
+			      physical_addr_t src, 
+			      void *dst, u32 len)
+{
+	int rc;
+	struct cpu_page p;
+	struct cpu_l1tbl *l1 = NULL;
+
+	l1 = cpu_mmu_l1tbl_current();
+	if (!l1) {
+		return VMM_EFAIL;
+	}
+
+	p.pa = src & ~VMM_PAGE_MASK;
+	p.va = tmp_va;
+	p.sz = VMM_PAGE_SIZE;
+	p.imp = 0;
+	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+	p.ap = TTBL_AP_SRW_U;
+	p.xn = 1;
+	p.tex = 0;
+	p.c = 0;
+	p.b = 0;
+	p.ng = 0;
+	p.s = 0;
+
+	if ((rc = cpu_mmu_map_page(l1, &p))) {
+		return rc;
+	}
+
+	switch (len) {
+	case 1:
+		*((u8 *)dst) = *(u8 *)(tmp_va + (src & VMM_PAGE_MASK));
+	case 2:
+		*((u16 *)dst) = *(u16 *)(tmp_va + (src & VMM_PAGE_MASK));
+	case 4:
+		*((u32 *)dst) = *(u32 *)(tmp_va + (src & VMM_PAGE_MASK));
+		break;
+	default:
+		memcpy(dst, (void *)(tmp_va + (src & VMM_PAGE_MASK)), len);
+		break;
+	};
+
+	if ((rc = cpu_mmu_unmap_page(l1, &p))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va, 
+			       physical_addr_t dst, 
+			       void *src, u32 len)
+{
+	int rc;
+	struct cpu_page p;
+	struct cpu_l1tbl *l1 = NULL;
+
+	l1 = cpu_mmu_l1tbl_current();
+	if (!l1) {
+		return VMM_EFAIL;
+	}
+
+	p.pa = dst & ~VMM_PAGE_MASK;
+	p.va = tmp_va;
+	p.sz = VMM_PAGE_SIZE;
+	p.imp = 0;
+	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+	p.ap = TTBL_AP_SRW_U;
+	p.xn = 1;
+	p.tex = 0;
+	p.c = 0;
+	p.b = 0;
+	p.ng = 0;
+	p.s = 0;
+
+	if ((rc = cpu_mmu_map_page(l1, &p))) {
+		return rc;
+	}
+
+	switch (len) {
+	case 1:
+		*(u8 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u8 *)src);
+	case 2:
+		*(u16 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u16 *)src);
+	case 4:
+		*(u32 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u32 *)src);
+		break;
+	default:
+		memcpy((void *)(tmp_va + (dst & VMM_PAGE_MASK)), src, len);
+		break;
+	};
+
+	if ((rc = cpu_mmu_unmap_page(l1, &p))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int arch_cpu_aspace_map(virtual_addr_t page_va, 
+			physical_addr_t page_pa, 
+			u32 mem_flags)
 {
 	static const struct cpu_page zero_filled_cpu_page = { 0 };
 	/* Get a 0 filled page struct */
 	struct cpu_page p = zero_filled_cpu_page;
 
 	/* initialize the page struct */
-	p.pa = pa;
-	p.va = va;
-	p.sz = sz;
+	p.pa = page_pa;
+	p.va = page_va;
+	p.sz = VMM_PAGE_SIZE;
 	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 
 	/* For ARMV5 we cannot prevent writing to priviledge mode */
@@ -1031,21 +1038,21 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 	return cpu_mmu_map_reserved_page(&p);
 }
 
-int arch_cpu_aspace_unmap(virtual_addr_t va, virtual_size_t sz)
+int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 {
 	int rc;
 	struct cpu_page p;
 
-	if ((rc = cpu_mmu_get_reserved_page(va, &p))) {
+	if ((rc = cpu_mmu_get_reserved_page(page_va, &p))) {
 		return rc;
 	}
 
-	if (p.sz > sz) {
-		if ((rc = cpu_mmu_split_reserved_page(&p, sz))) {
+	if (p.sz > VMM_PAGE_SIZE) {
+		if ((rc = cpu_mmu_split_reserved_page(&p, VMM_PAGE_SIZE))) {
 			return rc;
 		}
 
-		if ((rc = cpu_mmu_get_reserved_page(va, &p))) {
+		if ((rc = cpu_mmu_get_reserved_page(page_va, &p))) {
 			return rc;
 		}
 	}

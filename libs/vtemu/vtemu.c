@@ -23,9 +23,18 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <stringlib.h>
-#include <mathlib.h>
-#include <vtemu.h>
+#include <vmm_modules.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+#include <libs/vtemu.h>
+
+#define MODULE_DESC			"VTEMU library"
+#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
+#define MODULE_IPRIORITY		(VMM_INPUT_IPRIORITY + \
+					 VMM_FB_CLASS_IPRIORITY + 1)
+#define	MODULE_INIT			NULL
+#define	MODULE_EXIT			NULL
 
 #define VTEMU_KEYFLAG_LEFTCTRL		0x00000001
 #define VTEMU_KEYFLAG_RIGHTCTRL		0x00000002
@@ -367,7 +376,7 @@ static int vtemu_key_event(struct vmm_input_handler *ihnd,
 	u32 key_flags;
 	struct vtemu *v = ihnd->priv;
 
-	if (value == 1) {
+	if (value) { /* value=1 (key-up) or value=2 (auto-repeat) */
 		/* Update input key flags */
 		key_flags = vtemu_key2flags(code);
 		if ((key_flags & VTEMU_KEYFLAG_LOCKS) &&
@@ -385,7 +394,7 @@ static int vtemu_key_event(struct vmm_input_handler *ihnd,
 
 		/* Add input key string to input buffer */
 		vtemu_add_input(v, str);
-	} else if (value == 0)  {
+	} else { /* value=0 (key-down) */
 		/* Update input key flags */
 		key_flags = vtemu_key2flags(code);
 		if (!(key_flags & VTEMU_KEYFLAG_LOCKS)) {
@@ -397,8 +406,7 @@ static int vtemu_key_event(struct vmm_input_handler *ihnd,
 }
 
 static u32 vtemu_read(struct vmm_chardev *cdev,
-			u8 *dest, u32 offset, u32 len,
-			bool sleep)
+			u8 *dest, u32 len, bool sleep)
 {
 	u32 i;
 	irq_flags_t flags;
@@ -927,8 +935,7 @@ unhandled:
 }
 
 static u32 vtemu_write (struct vmm_chardev *cdev,
-			 u8 *src, u32 offset, u32 len,
-			 bool sleep)
+			 u8 *src, u32 len, bool sleep)
 {
 	int rc;
 	u32 i;
@@ -1139,6 +1146,7 @@ free_vtemu:
 	vmm_free(v);
 	return NULL;
 }
+VMM_EXPORT_SYMBOL(vtemu_create);
 
 int vtemu_destroy(struct vtemu *v)
 {
@@ -1169,4 +1177,11 @@ int vtemu_destroy(struct vtemu *v)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vtemu_destroy);
 
+VMM_DECLARE_MODULE(MODULE_DESC, 
+			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

@@ -23,8 +23,8 @@
 #ifndef __VMM_DEVTREE_H_
 #define __VMM_DEVTREE_H_
 
-#include <list.h>
 #include <vmm_types.h>
+#include <libs/list.h>
 
 #define VMM_DEVTREE_PATH_SEPARATOR		'/'
 #define VMM_DEVTREE_PATH_SEPARATOR_STRING	"/"

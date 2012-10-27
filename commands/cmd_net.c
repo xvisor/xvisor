@@ -18,7 +18,7 @@
  *
  * @file cmd_net.c
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief command for heap status.
+ * @brief command for network managment.
  */
 
 #include <vmm_error.h>
@@ -31,8 +31,8 @@
 #include <net/vmm_netport.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_protocol.h>
-#include <net/vmm_netstack.h>
-#include <stringlib.h>
+#include <libs/netstack.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"Command net"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
@@ -124,19 +124,19 @@ int cmd_net_ipconfig(struct vmm_chardev *cdev, int argc, char **argv)
 	switch(argc) {
 	case 2:
 		vmm_cprintf(cdev, "Hypervisor Network-Stack Info:\n");
-		vmm_netstack_get_ipaddr(buf);
+		netstack_get_ipaddr(buf);
 		vmm_cprintf(cdev, "   IP address  : %s\n", ip4addr_to_str(str, buf));
-		vmm_netstack_get_ipmask(buf);
+		netstack_get_ipmask(buf);
 		vmm_cprintf(cdev, "   IP netmask  : %s\n", ip4addr_to_str(str, buf));
-		vmm_netstack_get_hwaddr(buf);
+		netstack_get_hwaddr(buf);
 		vmm_cprintf(cdev, "   HW address  : %s\n", ethaddr_to_str(str, buf));
-		vmm_cprintf(cdev, "   TCP/IP-stack: %s\n", vmm_netstack_get_name());
+		vmm_cprintf(cdev, "   TCP/IP-stack: %s\n", netstack_get_name());
 		break;
 	case 3:
 		str2ipaddr(buf, argv[2]);
 		if(ipv4_class_netmask(buf,mask) != -1) {
-			vmm_netstack_set_ipaddr(buf);
-			vmm_netstack_set_ipmask(mask);
+			netstack_set_ipaddr(buf);
+			netstack_set_ipmask(mask);
 		} else {
 			vmm_cprintf(cdev, "ERROR: Invalid IP address\n");
 			rc = VMM_EFAIL;
@@ -145,9 +145,9 @@ int cmd_net_ipconfig(struct vmm_chardev *cdev, int argc, char **argv)
 	case 4:
 		str2ipaddr(buf, argv[2]);
 		if(ipv4_class_netmask(buf,mask) != -1) {
-			vmm_netstack_set_ipaddr(buf);
+			netstack_set_ipaddr(buf);
 			str2ipaddr(buf, argv[3]);
-			vmm_netstack_set_ipmask(buf);
+			netstack_set_ipmask(buf);
 		} else {
 			vmm_cprintf(cdev, "ERROR: Invalid IP address\n");
 			rc = VMM_EFAIL;

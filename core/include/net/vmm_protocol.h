@@ -36,8 +36,7 @@
 #include <vmm_host_io.h>
 #include <vmm_timer.h>
 #include <vmm_stdio.h>
-#include <stringlib.h>
-
+#include <libs/stringlib.h>
 
 /**
  * is_zero_ether_addr - Determine if give Ethernet address is all zeros.

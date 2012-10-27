@@ -378,9 +378,9 @@ static int hpet_clocksource_init(void)
 	t1 = hpet_clocksource_read(NULL);
 	t2 = hpet_clocksource_read(NULL);
 
-	if (t1 != t2 && t2 > t1)
+	if (t1 != t2 && t2 > t1) {
 		vmm_printf("Yes.\n");
-	else {
+	} else {
 		vmm_panic("No.\n");
 	}
 

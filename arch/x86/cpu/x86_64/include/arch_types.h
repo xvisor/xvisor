@@ -29,8 +29,6 @@ typedef unsigned long virtual_addr_t; /* 64-bit virtual addresses */
 typedef unsigned long virtual_size_t;
 typedef unsigned long physical_addr_t;
 typedef unsigned long physical_size_t;
-typedef unsigned int clock_freq_t;
-typedef unsigned long long jiffies_t;
 
 typedef struct {
 	volatile long counter;
@@ -39,8 +37,6 @@ typedef struct {
 typedef struct {
 	volatile long lock;
 } spinlock_t;
-
-#define ARCH_HAS_DIVISON_OPERATION
 
 #define ARCH_BITS_PER_LONG		64
 

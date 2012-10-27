@@ -291,8 +291,8 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x40000000>;
-					host_physical_addr = <0x80800000>;
-					physical_size = <0x00800000>; /* 8 MB */
+					host_physical_addr = <0x81000000>;
+					physical_size = <0x01000000>; /* 16 MB */
 					device_type = "rom";
 				};
 

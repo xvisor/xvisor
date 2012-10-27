@@ -326,6 +326,7 @@ static void print_line(WINDOW * win, int row, int width)
 	waddnstr(win, line, MIN(strlen(line), width - 2));
 
 	getyx(win, y, x);
+	(void)x; (void)y;
 	/* Clear 'residue' of previous line */
 #if OLD_NCURSES
 	{

@@ -26,7 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_scheduler.h>
 #include <vmm_workqueue.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 struct vmm_workqueue_ctrl {
 	vmm_spinlock_t lock;

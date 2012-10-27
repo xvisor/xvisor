@@ -25,7 +25,7 @@
 
 #include <vmm_types.h>
 #include <vmm_compiler.h>
-#include <kallsyms.h>
+#include <libs/kallsyms.h>
 
 #define VMM_MODULE_SIGNATURE		0x564D4F44
 

@@ -26,7 +26,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"Command memory"
 #define MODULE_AUTHOR			"Anup Patel"

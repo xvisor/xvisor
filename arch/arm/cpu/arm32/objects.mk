@@ -48,13 +48,11 @@ cpu-objs-$(CONFIG_ARMV5)+= cpu_entry_v5.o
 cpu-objs-$(CONFIG_ARMV5)+= cpu_mmu_v5.o
 cpu-objs-$(CONFIG_ARMV5)+= cpu_cache_v5.o
 cpu-objs-$(CONFIG_ARMV5)+= cpu_atomic_v5.o
-cpu-objs-$(CONFIG_ARMV5)+= cpu_interrupts_v5.o
 
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_entry_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_mmu_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_cache_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_atomic_v7.o
-cpu-objs-$(CONFIG_ARMV7A)+= cpu_interrupts_v7.o
 
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_delay.o
@@ -68,7 +66,8 @@ cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_coproc.o
 cpu-objs-y+= cpu_vcpu_cp15.o
+cpu-objs-y+= cpu_vcpu_mem.o
 cpu-objs-y+= cpu_vcpu_irq.o
-cpu-objs-y+= cpu_vcpu_emulate_arm.o
-cpu-objs-y+= cpu_vcpu_emulate_thumb.o
+cpu-objs-y+= cpu_vcpu_hypercall_arm.o
+cpu-objs-y+= cpu_vcpu_hypercall_thumb.o
 

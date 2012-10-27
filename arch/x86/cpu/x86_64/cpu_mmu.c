@@ -27,7 +27,7 @@
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 #include <vmm_types.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 #include <cpu_mmu.h>
 
 extern u8 _code_end;
@@ -105,21 +105,21 @@ static void switch_to_pagetable(physical_addr_t pml4_base)
         barrier();
 }
 
-int arch_cpu_aspace_map(virtual_addr_t va,
-			virtual_size_t sz,
-			physical_addr_t pa,
+int arch_cpu_aspace_map(virtual_addr_t page_va,
+			physical_addr_t page_pa,
 			u32 mem_flags)
 {
 	u32 offset;
 	union page pg;
+	virtual_size_t sz = VMM_PAGE_SIZE;
 	int i;
 
 	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
 
 	for (i = 0; i < sz / PAGE_SIZE; i++) {
-		offset = VIRT_TO_PGTI(va) + (VIRT_TO_PGDI(va) * 512);
+		offset = VIRT_TO_PGTI(page_va) + (VIRT_TO_PGDI(page_va) * 512);
 		memset((void *)&pg, 0, sizeof(pg));
-		pg.bits.paddr = (pa >> PAGE_SHIFT);
+		pg.bits.paddr = (page_pa >> PAGE_SHIFT);
 		pg.bits.present = 1;
 		pg.bits.rw = 1;
 		pgti[offset] = pg._val;
@@ -129,7 +129,7 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 					     & PAGE_MASK) >> PAGE_SHIFT;
 		pg.bits.present = 1;
 		pg.bits.rw = 1;
-		offset = VIRT_TO_PGDI(va);
+		offset = VIRT_TO_PGDI(page_va);
 		pgdi[offset] = pg._val;
 
 		memset((void *)&pg, 0, sizeof(pg));
@@ -137,7 +137,7 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 					     & PAGE_MASK) >> PAGE_SHIFT;
 		pg.bits.present = 1;
 		pg.bits.rw = 1;
-		offset = VIRT_TO_PGDP(va);
+		offset = VIRT_TO_PGDP(page_va);
 		pgdp[offset] = pg._val;
 
 		memset((void *)&pg, 0, sizeof(pg));
@@ -145,37 +145,35 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 					     & PAGE_MASK) >> PAGE_SHIFT;
 		pg.bits.present = 1;
 		pg.bits.rw = 1;
-		offset = VIRT_TO_PML4(va);
+		offset = VIRT_TO_PML4(page_va);
 		pml4[offset] = pg._val;
 
-		va += PAGE_SIZE;
-		pa += PAGE_SIZE;
+		page_va += PAGE_SIZE;
+		page_pa += PAGE_SIZE;
 	}
 
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_unmap(virtual_addr_t va,
-			 virtual_size_t sz)
+int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 {
 	u32 offset;
 	union page *pg;
+	virtual_size_t sz = VMM_PAGE_SIZE;
 	int i;
-
-	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
 
 	for (i = 0; i < sz / PAGE_SIZE; i++) {
 		/*
 		 * FIXME: As all the PGTI is freed, mark PGD, PMD, and PML
 		 * as not present.
 		 */
-		offset = VIRT_TO_PGTI(va) + (VIRT_TO_PGDI(va) * 512);
+		offset = VIRT_TO_PGTI(page_va) + (VIRT_TO_PGDI(page_va) * 512);
 		pg = (union page *)&pgti[offset];
 		pg->_val = 0;
 
-		invalidate_vaddr_tlb(va);
+		invalidate_vaddr_tlb(page_va);
 
-		va += PAGE_SIZE;
+		page_va += PAGE_SIZE;
 	}
 
 	return VMM_OK;
@@ -233,7 +231,7 @@ int arch_cpu_aspace_init(physical_addr_t *core_resv_pa,
 
 	/* Create the page table entries for all the virtual addresses. */
 	for (; cva < eva;) {
-		if (arch_cpu_aspace_map(cva, VMM_PAGE_SIZE, pa, 0) != VMM_OK)
+		if (arch_cpu_aspace_map(cva, pa, 0) != VMM_OK)
 			return VMM_EFAIL;
 
 		cva += VMM_PAGE_SIZE;

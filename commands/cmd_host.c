@@ -32,8 +32,8 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <vmm_delay.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC			"Command host"
 #define MODULE_AUTHOR			"Anup Patel"

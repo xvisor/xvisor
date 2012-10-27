@@ -24,7 +24,7 @@
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
-#include <serial/uart.h>
+#include <drv/uart.h>
 
 static virtual_addr_t uart_base = 0;
 extern virtual_addr_t isa_vbase;

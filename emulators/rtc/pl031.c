@@ -38,8 +38,8 @@
 #include <vmm_wallclock.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC			"PL031 RTC Emulator"
 #define MODULE_AUTHOR			"Anup Patel"

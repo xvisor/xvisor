@@ -21,5 +21,5 @@
 # @brief list of driver objects
 # */
 
-drivers-objs-$(CONFIG_RTC_PL031)+= rtc/pl031.o
+drivers-objs-$(CONFIG_RTC_PL031)+= rtc/rtc-pl031.o
 

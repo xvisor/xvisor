@@ -26,10 +26,10 @@
 #include <vmm_version.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
-#include <net/vmm_netstack.h>
 #include <net/vmm_protocol.h>
-#include <stringlib.h>
-#include <mathlib.h>
+#include <libs/netstack.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC			"Command ping"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
@@ -47,7 +47,7 @@ void cmd_ping_usage(struct vmm_chardev *cdev)
 int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u16 sent, rcvd, count = 1, size = 56;
-	struct vmm_icmp_echo_reply reply;
+	struct icmp_echo_reply reply;
 	char ip_addr_str[30];
 	u32 rtt_usecs, rtt_msecs;
 	u64 min_rtt = -1, max_rtt = 0, avg_rtt = 0;
@@ -67,10 +67,10 @@ int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	vmm_cprintf(cdev, "PING (%s) %d(%d) bytes of data.\n", 
 			  argv[1], size, (size + IP4_HLEN + ICMP_HLEN));
 
-	vmm_netstack_prefetch_arp_mapping(ipaddr);
+	netstack_prefetch_arp_mapping(ipaddr);
 
 	for(sent=0, rcvd=0; sent<count; sent++) {
-		if(!vmm_netstack_send_icmp_echo(ipaddr, size, sent, &reply)) {
+		if(!netstack_send_icmp_echo(ipaddr, size, sent, &reply)) {
 			if(reply.rtt < min_rtt)
 				min_rtt = reply.rtt;
 			if(reply.rtt > max_rtt)

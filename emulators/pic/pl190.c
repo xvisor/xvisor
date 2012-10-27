@@ -42,7 +42,7 @@
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
 #include <vmm_stdio.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 #define MODULE_DESC			"ARM PL190 Emulator"
 #define MODULE_AUTHOR			"Jean-Christophe Dubois"

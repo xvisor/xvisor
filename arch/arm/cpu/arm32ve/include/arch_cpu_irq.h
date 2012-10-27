@@ -24,14 +24,59 @@
 #define _ARCH_CPU_IRQ_H__
 
 #include <vmm_types.h>
+#include <cpu_defines.h>
 
-/** CPU IRQ functions required by VMM core */
+/** Setup IRQ for CPU */
 int arch_cpu_irq_setup(void);
-void arch_cpu_irq_enable(void);
-void arch_cpu_irq_disable(void);
-bool arch_cpu_irq_disabled(void);
-irq_flags_t arch_cpu_irq_save(void);
-void arch_cpu_irq_restore(irq_flags_t flags);
-void arch_cpu_wait_for_irq(void);
+
+/** Enable IRQ
+ *  Prototype: void arch_cpu_irq_enable(void); 
+ */
+#define arch_cpu_irq_enable()	do { \
+				asm volatile ("cpsie i"); \
+				} while (0)
+
+/** Disable IRQ
+ *  Prototype: void arch_cpu_irq_disable(void); 
+ */
+#define arch_cpu_irq_disable()	do { \
+				asm volatile ("cpsid i"); \
+				} while (0)
+
+/** Check whether IRQs are disabled
+ *  Prototype: bool arch_cpu_irq_disabled(void); 
+ */
+#define arch_cpu_irq_disabled() ({ unsigned long tf; \
+				asm volatile (" mrs     %0, cpsr\n\t" \
+					      :"=r" (tf) \
+					      : \
+					      :"memory", "cc"); \
+				(tf & CPSR_IRQ_DISABLED) ? TRUE : FALSE; \
+				})
+
+/** Save IRQ flags and disable IRQ
+ *  Prototype: void arch_cpu_irq_save(irq_flags_t flags);
+ */
+#define arch_cpu_irq_save(flags)	do { \
+					asm volatile ( \
+					"mrs     %0, cpsr\n\t" \
+					"cpsid   i\n\t" \
+					:"=r" ((flags)) : : "memory", "cc"); \
+					} while (0)
+
+/** Restore IRQ flags
+ *  Prototype: void arch_cpu_irq_restore(irq_flags_t flags);
+ */
+#define arch_cpu_irq_restore(flags)	do { \
+					asm volatile (" msr     cpsr_c, %0" \
+					::"r" ((flags)):"memory", "cc"); \
+					} while (0)
+
+/** Wait for IRQ
+ *  Prototype: void arch_cpu_wait_for_irq(void);
+ */
+#define arch_cpu_wait_for_irq()		do { \
+					asm volatile (" wfi "); \
+					} while (0)
 
 #endif

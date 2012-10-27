@@ -1,0 +1,50 @@
+			Xvisor v0.2.0
+		(Last Commit: ------------)
+		(Release Date: 27-Oct-2012)
+
+This release marks completion of a major milestone that is Network support
+and Runtime loadable modules.
+
+In this release, we have many new features, drivers and emulators. We don't 
+have any new board supports and architecture specific changes are very less 
+for this release.
+
+New Features/Updates:
+ - Runtime loadable modules
+ - Soft-delay API support
+ - Improved block device support
+ - Input device support
+ - Frame buffer or video device support
+ - Networking support
+ - Linux compatiblity headers for porting drivers from Linux kernel
+ - Linux compatible serio device driver framework
+ - VTEMU library for emulating virtual terminal using a frame buffer and
+   keyboard input events
+ - UIP as optional network stack (EXPERIMENTAL)
+ - Light-weight virtual filesystem library (EXPERIMENTAL)
+
+New Drivers:
+ - RAM backed block device driver
+ - SMSC LAN9118 ethernet driver
+ - SMSC LAN91C111 ethernet driver
+ - ATx Keyboard driver
+ - AMBA KMI driver
+ - AMBA CLCD driver
+
+New Emulators:
+ - SMSC LAN9118 ethernet emulator
+ - SMSC LAN91C111 ethernet emulator
+
+ARM 32-bit Port:
+ - Improved Normal VCPU VTLB to Zone-based VTLB to improve performance
+ - Merged VExpress-A9 and VExpress-A15 support to a single VExpress board
+ - Enabled LAN91C111 driver for VersatilePB host
+ - Enabled LAN9118, AMBA KMI, and AMBA CLCD drivers for Realview-PB-A8 host
+ - Enabled LAN9118, AMBA KMI, and AMBA CLCD drivers for VExpress-A9 host
+ - Enabled LAN91C111, AMBA KMI, and AMBA CLCD drivers for VExpress-A15 host
+
+ARM 32-bit with VE Port:
+ - Emulate ARM & Thumb instructions for data aborts with invalid instruction
+   syndrome information
+ - Enabled LAN91C111, AMBA KMI, and AMBA CLCD drivers for VExpress-A15-VE host
+

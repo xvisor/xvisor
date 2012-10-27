@@ -1980,7 +1980,7 @@ static int smc911x_probe(struct net_device *dev)
 	dev->dma = lp->rxdma;
 #endif
 
-	retval = netdev_register(dev);
+	retval = register_netdev(dev);
 	if (retval == VMM_OK) {
 		/* now, print out the card info, in a short format.. */
 		printk("%s: %s (rev %d) IRQ %02X",

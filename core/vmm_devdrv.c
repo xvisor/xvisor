@@ -27,7 +27,7 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_mutex.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 struct probe_node {
 	struct dlist head;

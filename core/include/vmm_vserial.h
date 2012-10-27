@@ -23,9 +23,9 @@
 #ifndef _VMM_VSERIAL_H__
 #define _VMM_VSERIAL_H__
 
-#include <list.h>
 #include <vmm_types.h>
 #include <vmm_ringbuf.h>
+#include <libs/list.h>
 
 struct vmm_vserial_receiver;
 struct vmm_vserial;

@@ -21,6 +21,7 @@
  * @brief main source file for board specific code
  */
 
+#include <arch_barrier.h>
 #include <vmm_error.h>
 #include <vmm_smp.h>
 #include <vmm_spinlocks.h>
@@ -31,13 +32,12 @@
 #include <vmm_stdio.h>
 #include <vmm_chardev.h>
 #include <rtc/vmm_rtcdev.h>
-#include <arch_barrier.h>
+#include <libs/libfdt.h>
+#include <libs/vtemu.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 #include <versatile/clcd.h>
 #include <versatile/clock.h>
-#include <libfdt.h>
-#include <vtemu.h>
 #include <motherboard.h>
 #include <sp810.h>
 #include <sp804_timer.h>
@@ -350,7 +350,7 @@ skip_sp804_init:
 	}
 
 	/* Initialize generic timer as clock source */
-	rc = generic_timer_clocksource_init("gen-clksrc", 400, 100000000, 27);
+	rc = generic_timer_clocksource_init(node);
 	if (rc) {
 		return rc;
 	}
@@ -488,15 +488,8 @@ skip_twd_init:
 		goto skip_gen_init;
 	}
 
-	/* Get generic timer irq */
-	valp = vmm_devtree_attrval(node, "irq");
-	if (!valp) {
-		return VMM_EFAIL;
-	}
-	val = *valp; 
-
-	/* Initialize generic timer as clockchip */
-	rc = generic_timer_clockchip_init(node->name, val, 400, 100000000);
+	/* Initialize generic timer as clock source */
+	rc = generic_timer_clockchip_init(node);
 	if (rc) {
 		return rc;
 	}

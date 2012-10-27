@@ -21,5 +21,4 @@
 # @brief makefile for the sorting library
 # */
 
-libs-cppflags-$(CONFIG_LIBSORT)+= -I$(libs_dir)/libsort
 libs-objs-$(CONFIG_LIBSORT)+= libsort/smoothsort.o

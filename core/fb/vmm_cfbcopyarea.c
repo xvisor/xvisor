@@ -47,8 +47,9 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_modules.h>
 #include <fb/vmm_fb.h>
-#include <bitops.h>
+#include <libs/bitops.h>
 #include "fb_draw.h"
 
 #if BITS_PER_LONG == 32
@@ -443,4 +444,5 @@ void vmm_cfb_copyarea(struct vmm_fb_info *p, const struct vmm_fb_copyarea *area)
 		}
 	}
 }
+VMM_EXPORT_SYMBOL(vmm_cfb_copyarea);
 

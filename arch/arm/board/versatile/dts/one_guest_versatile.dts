@@ -51,14 +51,13 @@
 					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x10003000>;
-					physical_size = <0x10000>;
+					physical_size = <0x1000>;
 					device_type = "pic";
 					compatible = "versatilepb,pl190";
 					base_irq = <32>;
 					parent_irq = <31>;
 					child_pic = <1>;
 				};
-
 
 				aaci { /* No Audio Controller */
 					manifest_type = "virtual";
@@ -137,8 +136,11 @@
 					address_type = "memory";
 					guest_physical_addr = <0x10010000>;
 					physical_size = <0x10000>;
-					device_type = "misc";
-					compatible = "zero";
+					device_type = "nic";
+					compatible = "smsc,smc91c111";
+					irq = <25>;
+					switch = "netbridge0";
+
 				};
 
 				usb { /* No USB Interface */
@@ -335,8 +337,8 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x34000000>;
-					host_physical_addr = <0x00800000>;
-					physical_size = <0x00800000>; /* 8 MB */
+					host_physical_addr = <0x01000000>;
+					physical_size = <0x01000000>; /* 16 MB */
 					device_type = "rom";
 				};
 			};

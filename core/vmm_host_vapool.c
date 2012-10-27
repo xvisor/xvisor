@@ -25,9 +25,9 @@
 #include <vmm_spinlocks.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_vapool.h>
-#include <stringlib.h>
-#include <mathlib.h>
-#include <bitmap.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+#include <libs/bitmap.h>
 
 struct vmm_host_vapool_ctrl {
 	vmm_spinlock_t vapool_bmap_lock;

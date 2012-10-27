@@ -87,11 +87,11 @@
 #ifndef __VMM_MBUF_H_
 #define __VMM_MBUF_H_
 
-#include <list.h>
 #include <vmm_types.h>
 #include <vmm_macros.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
+#include <libs/list.h>
 
 struct vmm_mbuf;
 

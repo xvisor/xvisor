@@ -29,7 +29,7 @@
 #include <vmm_stdio.h>
 #include <vmm_chardev.h>
 #include <rtc/vmm_rtcdev.h>
-#include <libfdt.h>
+#include <libs/libfdt.h>
 #include <versatile_plat.h>
 #include <versatile_board.h>
 #include <sp804_timer.h>

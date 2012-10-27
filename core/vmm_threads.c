@@ -28,7 +28,7 @@
 #include <vmm_spinlocks.h>
 #include <vmm_scheduler.h>
 #include <vmm_threads.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 struct vmm_threads_ctrl {
         vmm_spinlock_t lock;

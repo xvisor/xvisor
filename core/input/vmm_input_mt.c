@@ -32,6 +32,7 @@
 #include <vmm_macros.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_modules.h>
 #include <input/vmm_input_mt.h>
 
 #define TRKID_SGN	((TRKID_MAX + 1) >> 1)
@@ -60,6 +61,7 @@ int vmm_input_mt_init_slots(struct vmm_input_dev *idev, unsigned int num_slots)
 
 	return 0;
 }
+VMM_EXPORT_SYMBOL(vmm_input_mt_init_slots);
 
 void vmm_input_mt_destroy_slots(struct vmm_input_dev *idev)
 {
@@ -69,6 +71,7 @@ void vmm_input_mt_destroy_slots(struct vmm_input_dev *idev)
 	idev->slot = 0;
 	idev->trkid = 0;
 }
+VMM_EXPORT_SYMBOL(vmm_input_mt_destroy_slots);
 
 void vmm_input_mt_report_slot_state(struct vmm_input_dev *idev,
 				    unsigned int tool_type, bool active)
@@ -89,6 +92,7 @@ void vmm_input_mt_report_slot_state(struct vmm_input_dev *idev,
 	vmm_input_event(idev, EV_ABS, ABS_MT_TRACKING_ID, id);
 	vmm_input_event(idev, EV_ABS, ABS_MT_TOOL_TYPE, tool_type);
 }
+VMM_EXPORT_SYMBOL(vmm_input_mt_report_slot_state);
 
 void vmm_input_mt_report_finger_count(struct vmm_input_dev *idev, int count)
 {
@@ -97,6 +101,7 @@ void vmm_input_mt_report_finger_count(struct vmm_input_dev *idev, int count)
 	vmm_input_event(idev, EV_KEY, BTN_TOOL_TRIPLETAP, count == 3);
 	vmm_input_event(idev, EV_KEY, BTN_TOOL_QUADTAP, count == 4);
 }
+VMM_EXPORT_SYMBOL(vmm_input_mt_report_finger_count);
 
 void vmm_input_mt_report_pointer_emulation(struct vmm_input_dev *idev, 
 					   bool use_count)
@@ -136,4 +141,5 @@ void vmm_input_mt_report_pointer_emulation(struct vmm_input_dev *idev,
 		vmm_input_event(idev, EV_ABS, ABS_PRESSURE, 0);
 	}
 }
+VMM_EXPORT_SYMBOL(vmm_input_mt_report_pointer_emulation);
 

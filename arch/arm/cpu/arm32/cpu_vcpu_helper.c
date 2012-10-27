@@ -26,12 +26,12 @@
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 #include <vmm_manager.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
-#include <stringlib.h>
-#include <mathlib.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 {
@@ -847,15 +847,6 @@ int arch_vcpu_init(struct vmm_vcpu * vcpu)
 		};
 	}
 
-#ifdef CONFIG_ARM32_FUNCSTATS
-	for (ite=0; ite < ARM_FUNCSTAT_MAX; ite++) {
-		arm_priv(vcpu)->funcstat[ite].function_name = NULL;
-		arm_priv(vcpu)->funcstat[ite].entry_count = 0;
-		arm_priv(vcpu)->funcstat[ite].exit_count = 0;
-		arm_priv(vcpu)->funcstat[ite].time = 0;
-	}
-#endif
-
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
@@ -981,25 +972,5 @@ void arch_vcpu_regs_dump(struct vmm_vcpu * vcpu)
 
 void arch_vcpu_stat_dump(struct vmm_vcpu * vcpu)
 {
-#ifdef CONFIG_ARM32_FUNCSTATS
-	int index;
-
-	if (!vcpu || !arm_priv(vcpu)) {
-		return;
-	}
-
-	vmm_printf("%-30s %-10s %s\n", "Function Name","Time/Call", "# Calls");
-
-	for (index=0; index < ARM_FUNCSTAT_MAX; index++) {
-		if (arm_priv(vcpu)->funcstat[index].exit_count) { 
-			vmm_printf("%-30s %-10u %u\n", 
-			arm_priv(vcpu)->funcstat[index].function_name, 
-			(u32)udiv64(arm_priv(vcpu)->funcstat[index].time, 
-			arm_priv(vcpu)->funcstat[index].exit_count), 
-			arm_priv(vcpu)->funcstat[index].exit_count); 
-		} 
-	} 
-#else
-	vmm_printf("Not selected in Xvisor config\n");
-#endif
+	vmm_printf("No VCPU stats available.\n");
 }

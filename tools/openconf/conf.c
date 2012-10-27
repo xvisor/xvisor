@@ -103,6 +103,7 @@ static int conf_askvalue(struct symbol *sym, const char *def)
 	case ask_all:
 		fflush(stdout);
 		ret = fgets(line, 128, stdin);
+		(void)ret;
 		return 1;
 	default:
 		break;
@@ -164,6 +165,7 @@ static int conf_sym(struct menu *menu)
 		if (sym->name)
 			printf("(%s) ", sym->name);
 		type = sym_get_type(sym);
+		(void)type;
 		putchar('[');
 		oldval = sym_get_tristate_value(sym);
 		switch (oldval) {
@@ -234,6 +236,7 @@ static int conf_choice(struct menu *menu)
 
 	sym = menu->sym;
 	type = sym_get_type(sym);
+	(void)type;
 	is_new = !sym_has_value(sym);
 	if (sym_is_changable(sym)) {
 		conf_sym(menu);
@@ -306,6 +309,7 @@ static int conf_choice(struct menu *menu)
 		case ask_all:
 			fflush(stdout);
 			ret = fgets(line, 128, stdin);
+			(void)ret;
 			strip(line);
 			if (line[0] == '?') {
 				printf("\n%s\n", get_help(menu));

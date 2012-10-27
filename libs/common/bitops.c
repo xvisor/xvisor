@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file bitops.h
+ * @file bitops.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Implementation of generic bit operations.
  *
@@ -27,7 +27,7 @@
  * The original code is licensed under the GPL.
  */
 
-#include <bitops.h>
+#include <libs/bitops.h>
 
 #ifdef CONFIG_SMP
 spinlock_t __atomic_hash[ATOMIC_HASH_SIZE];

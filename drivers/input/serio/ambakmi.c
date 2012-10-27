@@ -28,16 +28,19 @@
  *
  * The original code is licensed under the GPL.
  */
-
-#include <vmm_modules.h>
+#include <linux/module.h>
 #include <linux/init.h>
 #include <linux/serio.h>
 #include <linux/errno.h>
 #include <linux/interrupt.h>
+#include <linux/ioport.h>
 #include <linux/device.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
+#include <linux/err.h>
+#include <linux/amba/bus.h>
 #include <linux/amba/kmi.h>
+#include <linux/clk.h>
 
 #include <asm/io.h>
 #include <asm/irq.h>

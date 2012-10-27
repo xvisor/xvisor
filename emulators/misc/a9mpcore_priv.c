@@ -40,9 +40,9 @@
 #include <vmm_scheduler.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <stringlib.h>
-#include <timer/arm_mptimer_emulator.h>
-#include <pic/gic_emulator.h>
+#include <libs/stringlib.h>
+#include <emu/arm_mptimer_emulator.h>
+#include <emu/gic_emulator.h>
 
 #define MODULE_DESC			"A9MPCore Private Region Emulator"
 #define MODULE_AUTHOR			"Sukanto Ghosh"

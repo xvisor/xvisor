@@ -27,7 +27,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_devtree.h>
 #include <arch_board.h>
-#include <stringlib.h>
+#include <libs/stringlib.h>
 
 struct vmm_devtree_ctrl {
         struct vmm_devtree_node *root;

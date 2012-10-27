@@ -43,12 +43,23 @@
 		gen-timer { /* Generic Timer */
 	      		device_type = "timer";
 	      		compatible = "arm,cortex-a15-gen-timer";
-			irq = <26>;
+			rating = <400>;
+			freq = <100000000>;
+			shift = <27>;
+			irq = <26 30 27>;
 		};
 
 		motherboard {
 			#address-cells = <1>;
 			#size-cells = <1>;
+
+			eth0 {
+				device_type = "nic";
+				compatible = "smc91x";
+				reg = <0x1A000000 0x1000>;
+				irq = <47>;
+				switch = "netbridge0";
+			};
 
 			iofpga {
 				#address-cells = <1>;

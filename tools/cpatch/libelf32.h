@@ -12,7 +12,7 @@ typedef int32_t s32;
 typedef uint64_t u64;
 typedef int64_t s64;
 
-#include <elf.h>
+#include <libs/elf.h>
 
 typedef struct elf32_file {
 	int fd;

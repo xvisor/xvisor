@@ -98,7 +98,7 @@ void gic_enable_ppi(u32 irq)
 {
 	irq_flags_t flags;
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 	gic_unmask_irq(vmm_host_irq_get(irq));
 	arch_cpu_irq_restore(flags);
 }

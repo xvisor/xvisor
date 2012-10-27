@@ -26,13 +26,12 @@
 #include <vmm_main.h>
 #include <vmm_stdio.h>
 #include <stdarg.h>
-#include <stringlib.h>
-#include <mathlib.h>
-
-/* NOTE: assuming sizeof(void *) == sizeof(int) */
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define PAD_RIGHT	1
 #define PAD_ZERO	2
+#define PAD_ALTERNATE	4
 /* the following should be enough for 32 bit int */
 #define PRINT_BUF_LEN	64
 /* size of early buffer. 
@@ -76,7 +75,7 @@ int vmm_printchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 
 	if (stdio_init_done) {
 		if (cdev) {
-			rc = vmm_chardev_dowrite(cdev, (u8 *)ch, 0, num_ch, 
+			rc = vmm_chardev_dowrite(cdev, (u8 *)ch, num_ch, 
 						 block) ? VMM_OK : VMM_EFAIL;
 		} else {
 			for (i = 0; i < num_ch; i++) {
@@ -138,20 +137,26 @@ static void flush_early_buffer(void)
 	}
 }
 
-static void printc(char **str, struct vmm_chardev *cdev, char ch)
+static void printc(char **out, u32 *out_len, struct vmm_chardev *cdev, char ch)
 {
-	if (str) {
-		if (*str) {
-			**str = ch;
-			++(*str);
+	if (out) {
+		if (*out) {
+			if (out_len && (0 < *out_len)) {
+				**out = ch;
+				++(*out);
+				(*out_len)--;
+			} else {
+				**out = ch;
+				++(*out);
+			}
 		}
 	} else {
 		vmm_cputc(cdev, ch);
 	}
 }
 
-static int prints(char **out, struct vmm_chardev *cdev, 
-		  const char *string, int width, int pad)
+static int prints(char **out, u32 *out_len, struct vmm_chardev *cdev, 
+		  const char *string, int width, int flags)
 {
 	int pc = 0;
 	char padchar = ' ';
@@ -165,40 +170,34 @@ static int prints(char **out, struct vmm_chardev *cdev,
 			width = 0;
 		else
 			width -= len;
-		if (pad & PAD_ZERO)
+		if (flags & PAD_ZERO)
 			padchar = '0';
 	}
-	if (!(pad & PAD_RIGHT)) {
+	if (!(flags & PAD_RIGHT)) {
 		for (; width > 0; --width) {
-			printc(out, cdev, padchar);
+			printc(out, out_len, cdev, padchar);
 			++pc;
 		}
 	}
 	for (; *string; ++string) {
-		printc(out, cdev, *string);
+		printc(out, out_len, cdev, *string);
 		++pc;
 	}
 	for (; width > 0; --width) {
-		printc(out, cdev, padchar);
+		printc(out, out_len, cdev, padchar);
 		++pc;
 	}
 
 	return pc;
 }
 
-static int printi(char **out, struct vmm_chardev *cdev, 
-		  long long i, int b, int sg, int width, int pad, int letbase)
+static int printi(char **out, u32 *out_len, struct vmm_chardev *cdev, 
+		  long long i, int b, int sg, int width, int flags, int letbase)
 {
 	char print_buf[PRINT_BUF_LEN];
 	char *s;
 	int t, neg = 0, pc = 0;
 	unsigned long long u = i;
-
-	if (i == 0) {
-		print_buf[0] = '0';
-		print_buf[1] = '\0';
-		return prints(out, cdev, print_buf, width, pad);
-	}
 
 	if (sg && b == 10 && i < 0) {
 		neg = 1;
@@ -208,17 +207,30 @@ static int printi(char **out, struct vmm_chardev *cdev,
 	s = print_buf + PRINT_BUF_LEN - 1;
 	*s = '\0';
 
-	while (u) {
-		t = umod64(u, b);
-		if (t >= 10)
-			t += letbase - '0' - 10;
-		*--s = t + '0';
-		u = udiv64(u, b);
+	if (!u) {
+		*--s = '0';
+	} else {
+		while (u) {
+			t = umod64(u, b);
+			if (t >= 10)
+				t += letbase - '0' - 10;
+			*--s = t + '0';
+			u = udiv64(u, b);
+		}
+	}
+
+	if (flags & PAD_ALTERNATE) {
+		if ((b == 16) && (letbase == 'A')) {
+			*--s = 'X';
+		} else if ((b == 16) && (letbase == 'a')) {
+			*--s = 'x';
+		}
+		*--s = '0';
 	}
 
 	if (neg) {
-		if (width && (pad & PAD_ZERO)) {
-			printc(out, cdev, '-');
+		if (width && (flags & PAD_ZERO)) {
+			printc(out, out_len, cdev, '-');
 			++pc;
 			--width;
 		} else {
@@ -226,104 +238,157 @@ static int printi(char **out, struct vmm_chardev *cdev,
 		}
 	}
 
-	return pc + prints(out, cdev, s, width, pad);
+	return pc + prints(out, out_len, cdev, s, width, flags);
 }
 
-static int print(char **out, struct vmm_chardev *cdev, const char *format, va_list args)
+static int print(char **out, u32 *out_len, struct vmm_chardev *cdev, 
+		 const char *format, va_list args)
 {
-	int width, pad;
+	int width, flags, acnt = 0;
 	int pc = 0;
 	char scr[2];
-	long long tmp;
+	unsigned long long tmp;
 
 	for (; *format != 0; ++format) {
 		if (*format == '%') {
 			++format;
-			width = pad = 0;
+			width = flags = 0;
 			if (*format == '\0')
 				break;
 			if (*format == '%')
 				goto out;
+			/* Get flags */
 			if (*format == '-') {
 				++format;
-				pad = PAD_RIGHT;
+				flags = PAD_RIGHT;
+			}
+			if (*format == '#') {
+				++format;
+				flags |= PAD_ALTERNATE;
 			}
 			while (*format == '0') {
 				++format;
-				pad |= PAD_ZERO;
+				flags |= PAD_ZERO;
 			}
+			/* Get width */
 			for (; *format >= '0' && *format <= '9'; ++format) {
 				width *= 10;
 				width += *format - '0';
 			}
 			if (*format == 's') {
 				char *s = va_arg(args, char *);
-				pc += prints(out, cdev, s ? s : "(null)", width, pad);
+				acnt += sizeof(char *);
+				pc += prints(out, out_len, cdev, 
+					     s ? s : "(null)", width, flags);
 				continue;
 			}
 			if (*format == 'd') {
-				pc +=
-				    printi(out, cdev, va_arg(args, int), 
-					   10, 1, width, pad, '0');
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, int), 
+					10, 1, width, flags, '0');
+				acnt += sizeof(int);
 				continue;
 			}
 			if (*format == 'x') {
-				pc +=
-				    printi(out, cdev, va_arg(args, unsigned int), 
-					   16, 0, width, pad, 'a');
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, unsigned int), 
+					16, 0, width, flags, 'a');
+				acnt += sizeof(unsigned int);
 				continue;
 			}
 			if (*format == 'X') {
-				pc +=
-				    printi(out, cdev, va_arg(args, unsigned int), 
-					   16, 0, width, pad, 'A');
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, unsigned int), 
+					16, 0, width, flags, 'A');
+				acnt += sizeof(unsigned int);
 				continue;
 			}
 			if (*format == 'u') {
-				pc +=
-				    printi(out, cdev, va_arg(args, unsigned int), 
-					   10, 0, width, pad, 'a');
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, unsigned int), 
+					10, 0, width, flags, 'a');
+				acnt += sizeof(unsigned int);
+				continue;
+			}
+			if (*format == 'p') {
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, unsigned long),
+					16, 0, width, flags, 'a');
+				acnt += sizeof(unsigned long);
+				continue;
+			}
+			if (*format == 'P') {
+				pc += printi(out, out_len, cdev, 
+					va_arg(args, unsigned long),
+					16, 0, width, flags, 'A');
+				acnt += sizeof(unsigned long);
 				continue;
 			}
 			if (*format == 'l' && *(format + 1) == 'l') {
-				if (sizeof(long long) == 
+				while (acnt & (sizeof(unsigned long long)-1)) {
+					va_arg(args, int);
+					acnt += sizeof(int);
+				}
+				if (sizeof(unsigned long long) == 
 						sizeof(unsigned long)) {
 					tmp = va_arg(args, unsigned long long);
+					acnt += sizeof(unsigned long long);
 				} else {
 					((unsigned long *)&tmp)[0] = 
 						va_arg(args, unsigned long);
 					((unsigned long *)&tmp)[1] = 
 						va_arg(args, unsigned long);
+					acnt += 2*sizeof(unsigned long);
 				}
 				if (*(format + 2) == 'u') {
 					format += 2;
-					pc += printi(out, cdev, tmp,
-						10, 0, width, pad, 'a');
+					pc += printi(out, out_len, cdev, tmp,
+						10, 0, width, flags, 'a');
 				} else if (*(format + 2) == 'x') {
 					format += 2;
-					pc += printi(out, cdev, tmp,
-						16, 0, width, pad, 'a');
+					pc += printi(out, out_len, cdev, tmp,
+						16, 0, width, flags, 'a');
 				} else if (*(format + 2) == 'X') {
 					format += 2;
-					pc += printi(out, cdev, tmp,
-						16, 0, width, pad, 'A');
+					pc += printi(out, out_len, cdev, tmp,
+						16, 0, width, flags, 'A');
 				} else {
 					format += 1;
-					pc += printi(out, cdev, tmp,
-						10, 1, width, pad, '0');
+					pc += printi(out, out_len, cdev, tmp,
+						10, 1, width, flags, '0');
 				}
 				continue;
+			} else if (*format == 'l') {
+				if (*(format + 1) == 'x') {
+					format += 1;
+					pc += printi(out, out_len, cdev, 
+						va_arg(args, unsigned long),
+						16, 0, width, flags, 'a');
+					acnt += sizeof(unsigned long);
+				} else if (*(format + 1) == 'X') {
+					format += 1;
+					pc += printi(out, out_len, cdev, 
+						va_arg(args, unsigned long),
+						16, 0, width, flags, 'A');
+					acnt += sizeof(unsigned long);
+				} else {
+					pc += printi(out, out_len, cdev, 
+						va_arg(args, long),
+						10, 1, width, flags, '0');
+					acnt += sizeof(long);
+				}
 			}
 			if (*format == 'c') {
 				/* char are converted to int then pushed on the stack */
 				scr[0] = va_arg(args, int);
 				scr[1] = '\0';
-				pc += prints(out, cdev, scr, width, pad);
+				pc += prints(out, out_len, cdev, scr, width, flags);
+				acnt += sizeof(int);
 				continue;
 			}
 		} else {
 out:
-			printc(out, cdev, *format);
+			printc(out, out_len, cdev, *format);
 			++pc;
 		}
 	}
@@ -332,33 +397,22 @@ out:
 	return pc;
 }
 
-int vmm_printf(const char *format, ...)
-{
-	va_list args;
-	int retval;
-	va_start(args, format);
-	retval = print(NULL, stdio_ctrl.dev, format, args);
-	va_end(args);
-	return retval;
-}
-
 int vmm_sprintf(char *out, const char *format, ...)
 {
 	va_list args;
 	int retval;
 	va_start(args, format);
-	retval = print(&out, stdio_ctrl.dev, format, args);
+	retval = print(&out, NULL, stdio_ctrl.dev, format, args);
 	va_end(args);
 	return retval;
 }
 
-/* FIXME: */
 int vmm_snprintf(char *out, u32 out_sz, const char *format, ...)
 {
 	va_list args;
 	int retval;
 	va_start(args, format);
-	retval = print(&out, stdio_ctrl.dev, format, args);
+	retval = print(&out, &out_sz, stdio_ctrl.dev, format, args);
 	va_end(args);
 	return retval;
 }
@@ -368,7 +422,7 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 	va_list args;
 	int retval;
 	va_start(args, format);
-	retval = print(NULL, cdev, format, args);
+	retval = print(NULL, NULL, (cdev) ? cdev : stdio_ctrl.dev, format, args);
 	va_end(args);
 	return retval;
 }
@@ -377,7 +431,7 @@ void __noreturn vmm_panic(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	print(NULL, stdio_ctrl.dev, format, args);
+	print(NULL, NULL, stdio_ctrl.dev, format, args);
 	va_end(args);
 	dump_stacktrace();
 	vmm_hang();
@@ -393,7 +447,7 @@ int vmm_scanchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 
 	if (stdio_init_done) {
 		if (cdev) {
-			rc = (vmm_chardev_doread(cdev, (u8 *)ch, 0, num_ch,
+			rc = (vmm_chardev_doread(cdev, (u8 *)ch, num_ch,
 						 block) ? VMM_OK : VMM_EFAIL);
 		} else {
 			for (i = 0; i < num_ch; i++) {

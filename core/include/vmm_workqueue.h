@@ -24,10 +24,10 @@
 #ifndef __VMM_WORKQUEUE_H__
 #define __VMM_WORKQUEUE_H__
 
-#include <list.h>
 #include <vmm_spinlocks.h>
 #include <vmm_timer.h>
 #include <vmm_threads.h>
+#include <libs/list.h>
 
 enum {
 	VMM_WORK_STATE_CREATED=0x1,

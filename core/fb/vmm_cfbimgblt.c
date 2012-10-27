@@ -55,6 +55,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_modules.h>
 #include <fb/vmm_fb.h>
 
 #include "fb_draw.h"
@@ -328,4 +329,5 @@ void vmm_cfb_imageblit(struct vmm_fb_info *p, const struct vmm_fb_image *image)
 	} else
 		color_imageblit(image, p, dst1, start_index, pitch_index);
 }
+VMM_EXPORT_SYMBOL(vmm_cfb_imageblit);
 

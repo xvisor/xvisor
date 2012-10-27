@@ -217,14 +217,15 @@ static void cpu_create_pte(virtual_addr_t vaddr, physical_addr_t paddr,
 	pte->flags = flags;
 }
 
-int arch_cpu_aspace_map(virtual_addr_t va,
-			virtual_size_t sz,
-			physical_addr_t pa,
+int arch_cpu_aspace_map(virtual_addr_t page_va,
+			physical_addr_t page_pa,
 			u32 mem_flags)
 {
+	virtual_size_t sz = VMM_PAGE_SIZE;
+
 	switch (sz) {
 	case TLB_PAGE_SIZE_4K:
-		cpu_create_pte(va, pa, mem_flags);
+		cpu_create_pte(page_va, page_pa, mem_flags);
 		break;
 
 	case TLB_PAGE_SIZE_1K:
@@ -242,8 +243,7 @@ int arch_cpu_aspace_map(virtual_addr_t va,
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_unmap(virtual_addr_t va,
-			 virtual_size_t sz)
+int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 {
 	return VMM_OK;
 }
