@@ -74,9 +74,8 @@ struct vmm_vcpu_irqs {
 	vmm_spinlock_t lock;
 	u32 irq_count;
 	bool *assert;
-	bool *execute;
 	u32 *reason;
-	int assert_pending;
+	int execute_pending;
 	u64 assert_count;
 	u64 execute_count;
 	u64 deassert_count;
