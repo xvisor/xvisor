@@ -35,6 +35,12 @@
 #include <libs/mathlib.h>
 #include <drv/omap-uart.h>
 
+/* Enable OMAP_UART_USE_TXINTR to use TX interrupt.
+ * Generally the FIFOs are small so its better to poll on Tx 
+ * for smoother vmm_prints.
+ */
+#undef OMAP_UART_USE_TXINTR
+
 #define MODULE_DESC			"OMAP UART Driver"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
 #define MODULE_LICENSE			"GPL"
@@ -314,7 +320,7 @@ static vmm_irq_return_t omap_uart_irq_handler(u32 irq_no, arch_regs_t * regs, vo
 		/* Mask TX interrupts till TX FIFO is full */
 		port->ier &= ~UART_IER_THRI;
 		/* Signal work completion to sleeping thread */
-		vmm_completion_complete_all(&port->write_possible);
+		vmm_completion_complete(&port->write_possible);
 	}
 
 	omap_serial_out(port, UART_IER, port->ier);
@@ -338,6 +344,7 @@ static u8 omap_uart_getc_sleepable(struct omap_uart_port *port)
 	return (omap_serial_in(port, UART_RBR));
 }
 
+#if defined(OMAP_UART_USE_TXINTR)
 static void omap_uart_putc_sleepable(struct omap_uart_port *port, u8 ch)
 {
 	/* Wait until there is space in the FIFO */
@@ -353,6 +360,7 @@ static void omap_uart_putc_sleepable(struct omap_uart_port *port, u8 ch)
 	/* Write data to FIFO */
 	omap_serial_out(port, UART_THR, ch);
 }
+#endif
 
 static u32 omap_uart_read(struct vmm_chardev *cdev, 
 			  u8 *dest, u32 len, bool sleep)
@@ -394,6 +402,7 @@ static u32 omap_uart_write(struct vmm_chardev *cdev,
 
 	port = cdev->priv;
 
+#if defined(OMAP_UART_USE_TXINTR)
 	if (sleep) {
 		for (i = 0; i < len; i++) {
 			omap_uart_putc_sleepable(port, src[i]);
@@ -406,6 +415,14 @@ static u32 omap_uart_write(struct vmm_chardev *cdev,
 			omap_uart_lowlevel_putc(port->base, port->reg_align, src[i]);
 		}
 	}
+#else
+	for (i = 0; i < len; i++) {
+		if (!omap_uart_lowlevel_can_putc(port->base, port->reg_align)) {
+			break;
+		}
+		omap_uart_lowlevel_putc(port->base, port->reg_align, src[i]);
+	}
+#endif
 
 	return i;
 }
@@ -430,6 +447,7 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 	port->cd.priv = port;
 
 	INIT_COMPLETION(&port->read_possible);
+	INIT_COMPLETION(&port->write_possible);
 
 	rc = vmm_devtree_regmap(dev->node, &port->base, 0);
 	if(rc) {
