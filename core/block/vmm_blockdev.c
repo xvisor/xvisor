@@ -25,6 +25,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
+#include <vmm_scheduler.h>
 #include <vmm_devdrv.h>
 #include <vmm_completion.h>
 #include <block/vmm_blockdev.h>
@@ -192,6 +193,8 @@ u64 vmm_blockdev_rw(struct vmm_blockdev *bdev,
 	u64 tmp, first_lba, first_off, first_len;
 	u64 middle_lba, middle_len;
 	u64 last_lba, last_len;
+
+	BUG_ON(!vmm_scheduler_orphan_context());
 
 	if (!buf || !bdev || !len) {
 		return 0;
