@@ -16,28 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for vfs options
+# @brief list of fs objects to be build
 # */
 
-if CONFIG_BLOCK
+libs-objs-$(CONFIG_VFS_CPIOFS)+= vfs/cpiofs/cpiofs.o
 
-menu "Virtual FileSystem Options"
-
-config CONFIG_VFS
-	tristate "Enable Virtual FileSystem"
-	default n
-	help
-		Enable/Disable virtual filesystem.
-
-config CONFIG_VFS_CPIOFS
-	tristate "CPIO Filesystem Support"
-	default n
-	depends on CONFIG_VFS
-	help
-		Enable/Disable CPIO filesystem.
-
-endmenu
-
-endif
