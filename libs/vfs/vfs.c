@@ -55,6 +55,71 @@ struct vfs_ctrl {
 
 static struct vfs_ctrl vfsc;
 
+/** Compare two path strings and return matched length. */
+static int count_match(const char *path, char *mount_root)
+{
+	int len = 0;
+
+	while (*path && *mount_root) {
+		if ((*path++) != (*mount_root++))
+			break;
+		len++;
+	}
+
+	if (*mount_root != '\0') {
+		return 0;
+	}
+
+	if ((len == 1) && (*(path - 1) == '/')) {
+		return 1;
+	}
+
+	if ((*path == '\0') || (*path == '/')) {
+		return len;
+	}
+
+	return 0;
+}
+
+static int vfs_findroot(const char *path, struct mount **mp, char **root)
+{
+	struct dlist *l;
+	struct mount *m, *tmp;
+	int len, max_len = 0;
+
+	if (!path || !mp || !root) {
+		return VMM_EFAIL;
+	}
+
+	/* find mount point from nearest path */
+	m = NULL;
+
+	vmm_mutex_lock(&vfsc.mnt_list_lock);
+
+	list_for_each(l, &vfsc.mnt_list) {
+		tmp = list_entry(l, struct mount, m_link);
+		len = count_match(path, tmp->m_path);
+		if(len > max_len) {
+			max_len = len;
+			m = tmp;
+		}
+	}
+
+	vmm_mutex_unlock(&vfsc.mnt_list_lock);
+
+	if(m == NULL) {
+		return VMM_EFAIL;
+	}
+
+	*root = (char *)(path + max_len);
+	if(**root == '/') {
+		(*root)++;
+	}
+	*mp = m;
+
+	return VMM_OK;
+}
+
 static int vfs_fd_alloc(void)
 {
 	int i, ret = -1;
@@ -152,10 +217,6 @@ static struct vnode *vfs_vnode_vget(struct mount *m, const char *path)
 	}
 
 	len = strlen(path) + 1;
-	if (!(v->v_path = vmm_malloc(len))) {
-		vmm_free(v);
-		return NULL;
-	}
 
 	INIT_LIST_HEAD(&v->v_link);
 	INIT_MUTEX(&v->v_lock);
@@ -168,7 +229,6 @@ static struct vnode *vfs_vnode_vget(struct mount *m, const char *path)
 	err = m->m_fs->vget(m, v);
 	vmm_mutex_unlock(&m->m_lock);
 	if (err) {
-		vmm_free(v->v_path);
 		vmm_free(v);
 		return NULL;
 	}
@@ -236,7 +296,6 @@ static void vfs_vnode_vput(struct vnode *v)
 
 	arch_atomic_sub(&v->v_mount->m_refcnt, 1);
 
-	vmm_free(v->v_path);
 	vmm_free(v);
 }
 
@@ -262,7 +321,6 @@ static void vfs_vnode_unmount_flush(struct mount *m)
 
 			arch_atomic_sub(&v->v_mount->m_refcnt, 1);
 
-			vmm_free(v->v_path);
 			vmm_free(v);
 		}
 
@@ -365,7 +423,7 @@ static int vfs_vnode_acquire(const char *path, struct vnode **vp)
 	/* convert a full path name to its mount point and
 	 * the local node in the file system.
 	 */
-	if(vfs_findroot(path, &m, &p)) {
+	if (vfs_findroot(path, &m, &p)) {
 		return VMM_ENOTAVAIL;
 	}
 
@@ -388,7 +446,7 @@ static int vfs_vnode_acquire(const char *path, struct vnode **vp)
 	vfs_vnode_vref(dv);
 	node[0] = '\0';
 
-	while(*p != '\0') {
+	while (*p != '\0') {
 		/* get lower directory or file name. */
 		while(*p == '/') {
 			p++;
@@ -406,9 +464,9 @@ static int vfs_vnode_acquire(const char *path, struct vnode **vp)
 		strncat(node, "/", sizeof(node));
 		strncat(node, name, sizeof(node));
 		v = vfs_vnode_lookup(m, node);
-		if(v == NULL) {
+		if (v == NULL) {
 			v = vfs_vnode_vget(m, node);
-			if(v == NULL) {
+			if (v == NULL) {
 				vfs_vnode_vput(dv);
 				return VMM_ENOMEM;
 			}
@@ -472,71 +530,6 @@ static void vfs_vnode_release(struct vnode *v)
 	}
 }
 
-/** Compare two path strings and return matched length. */
-static int count_match(const char *path, char *mount_root)
-{
-	int len = 0;
-
-	while (*path && *mount_root) {
-		if ((*path++) != (*mount_root++))
-			break;
-		len++;
-	}
-
-	if (*mount_root != '\0') {
-		return 0;
-	}
-
-	if ((len == 1) && (*(path - 1) == '/')) {
-		return 1;
-	}
-
-	if ((*path == '\0') || (*path == '/')) {
-		return len;
-	}
-
-	return 0;
-}
-
-int vfs_findroot(const char *path, struct mount **mp, char **root)
-{
-	struct dlist *l;
-	struct mount *m, *tmp;
-	int len, max_len = 0;
-
-	if (!path || !mp || !root) {
-		return VMM_EFAIL;
-	}
-
-	/* find mount point from nearest path */
-	m = NULL;
-
-	vmm_mutex_lock(&vfsc.mnt_list_lock);
-
-	list_for_each(l, &vfsc.mnt_list) {
-		tmp = list_entry(l, struct mount, m_link);
-		len = count_match(path, tmp->m_path);
-		if(len > max_len) {
-			max_len = len;
-			m = tmp;
-		}
-	}
-
-	vmm_mutex_unlock(&vfsc.mnt_list_lock);
-
-	if(m == NULL) {
-		return VMM_EFAIL;
-	}
-
-	*root = (char *)(path + max_len);
-	if(**root == '/') {
-		(*root)++;
-	}
-	*mp = m;
-
-	return VMM_OK;
-}
-
 int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 {
 	int err;
@@ -548,7 +541,7 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
-	if (!dir || *dir == '\0') {
+	if (!dir || *dir == '\0' || !(flags & MOUNT_MASK)) {
 		return VMM_EINVALID;
 	}
 
@@ -654,6 +647,7 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vfs_mount);
 
 int vfs_unmount(const char *path)
 {
@@ -709,6 +703,7 @@ int vfs_unmount(const char *path)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vfs_unmount);
 
 struct mount *vfs_mount_get(int index)
 {
@@ -744,6 +739,7 @@ struct mount *vfs_mount_get(int index)
 
 	return ret;
 }
+VMM_EXPORT_SYMBOL(vfs_mount_get);
 
 u32 vfs_mount_count(void)
 {
@@ -762,6 +758,7 @@ u32 vfs_mount_count(void)
 
 	return retval;
 }
+VMM_EXPORT_SYMBOL(vfs_mount_count);
 
 static int vfs_lookup_dir(const char *path, struct vnode **vp, char **name)
 {
@@ -905,6 +902,7 @@ int vfs_open(const char *path, u32 flags, u32 mode)
 
 	return fd;
 }
+VMM_EXPORT_SYMBOL(vfs_open);
 
 int vfs_close(int fd)
 {
@@ -943,6 +941,7 @@ int vfs_close(int fd)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vfs_close);
 
 size_t vfs_read(int fd, void *buf, size_t len)
 {
@@ -968,6 +967,10 @@ size_t vfs_read(int fd, void *buf, size_t len)
 		vmm_mutex_unlock(&f->f_lock);
 		return 0;
 	}
+	if (v->v_type != VREG) {
+		vmm_mutex_unlock(&f->f_lock);
+		return 0;
+	}
 
 	if (!(f->f_flags & O_RDONLY)) {
 		vmm_mutex_unlock(&f->f_lock);
@@ -984,6 +987,7 @@ size_t vfs_read(int fd, void *buf, size_t len)
 
 	return ret;
 }
+VMM_EXPORT_SYMBOL(vfs_read);
 
 size_t vfs_write(int fd, void *buf, size_t len)
 {
@@ -1009,6 +1013,10 @@ size_t vfs_write(int fd, void *buf, size_t len)
 		vmm_mutex_unlock(&f->f_lock);
 		return 0;
 	}
+	if (v->v_type != VREG) {
+		vmm_mutex_unlock(&f->f_lock);
+		return 0;
+	}
 
 	if (!(f->f_flags & O_WRONLY)) {
 		vmm_mutex_unlock(&f->f_lock);
@@ -1025,6 +1033,7 @@ size_t vfs_write(int fd, void *buf, size_t len)
 
 	return ret;
 }
+VMM_EXPORT_SYMBOL(vfs_write);
 
 loff_t vfs_lseek(int fd, loff_t off, int whence)
 {
@@ -1098,6 +1107,7 @@ loff_t vfs_lseek(int fd, loff_t off, int whence)
 
 	return ret;
 }
+VMM_EXPORT_SYMBOL(vfs_lseek);
 
 int vfs_fsync(int fd)
 {
@@ -1133,6 +1143,7 @@ int vfs_fsync(int fd)
 
 	return err;
 }
+VMM_EXPORT_SYMBOL(vfs_fsync);
 
 int vfs_fstat(int fd, struct stat *st)
 {
@@ -1165,6 +1176,7 @@ int vfs_fstat(int fd, struct stat *st)
 
 	return err;
 }
+VMM_EXPORT_SYMBOL(vfs_fstat);
 
 int vfs_opendir(const char *name)
 {
@@ -1205,6 +1217,7 @@ int vfs_opendir(const char *name)
 
 	return fd;
 }
+VMM_EXPORT_SYMBOL(vfs_opendir);
 
 int vfs_closedir(int fd)
 {
@@ -1235,6 +1248,7 @@ int vfs_closedir(int fd)
 
 	return vfs_close(fd);
 }
+VMM_EXPORT_SYMBOL(vfs_closedir);
 
 int vfs_readdir(int fd, struct dirent *dir)
 {
@@ -1277,6 +1291,7 @@ int vfs_readdir(int fd, struct dirent *dir)
 
 	return err;
 }
+VMM_EXPORT_SYMBOL(vfs_readdir);
 
 int vfs_rewinddir(int fd)
 {
@@ -1309,6 +1324,7 @@ int vfs_rewinddir(int fd)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vfs_rewinddir);
 
 int vfs_mkdir(const char *path, u32 mode)
 {
@@ -1349,6 +1365,7 @@ int vfs_mkdir(const char *path, u32 mode)
 
 	return err;
 }
+VMM_EXPORT_SYMBOL(vfs_mkdir);
 
 static int vfs_check_dir_empty(const char *path)
 {
@@ -1429,6 +1446,7 @@ int vfs_rmdir(const char *path)
 
 	return err;
 }
+VMM_EXPORT_SYMBOL(vfs_rmdir);
 
 int vfs_rename(char *src, char *dest)
 {
@@ -1537,6 +1555,7 @@ int vfs_rename(char *src, char *dest)
 
 	return err;
 }
+VMM_EXPORT_SYMBOL(vfs_rename);
 
 int vfs_unlink(const char *path)
 {
@@ -1586,6 +1605,7 @@ int vfs_unlink(const char *path)
 
 	return err;
 }
+VMM_EXPORT_SYMBOL(vfs_unlink);
 
 int vfs_access(const char *path, u32 mode)
 {
@@ -1608,6 +1628,7 @@ int vfs_access(const char *path, u32 mode)
 
 	return err;
 }
+VMM_EXPORT_SYMBOL(vfs_access);
 
 int vfs_stat(const char *path, struct stat *st)
 {
@@ -1630,6 +1651,7 @@ int vfs_stat(const char *path, struct stat *st)
 
 	return err;
 }
+VMM_EXPORT_SYMBOL(vfs_stat);
 
 int vfs_filesystem_register(struct filesystem *fs)
 {
@@ -1668,6 +1690,7 @@ int vfs_filesystem_register(struct filesystem *fs)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vfs_filesystem_register);
 
 int vfs_filesystem_unregister(struct filesystem *fs)
 {
@@ -1709,6 +1732,7 @@ int vfs_filesystem_unregister(struct filesystem *fs)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vfs_filesystem_unregister);
 
 struct filesystem *vfs_filesystem_find(const char *name)
 {
@@ -1743,6 +1767,7 @@ struct filesystem *vfs_filesystem_find(const char *name)
 
 	return ret;
 }
+VMM_EXPORT_SYMBOL(vfs_filesystem_find);
 
 struct filesystem *vfs_filesystem_get(int index)
 {
@@ -1778,6 +1803,7 @@ struct filesystem *vfs_filesystem_get(int index)
 
 	return ret;
 }
+VMM_EXPORT_SYMBOL(vfs_filesystem_get);
 
 u32 vfs_filesystem_count(void)
 {
@@ -1796,6 +1822,7 @@ u32 vfs_filesystem_count(void)
 
 	return retval;
 }
+VMM_EXPORT_SYMBOL(vfs_filesystem_count);
 
 static int __init vfs_init(void)
 {

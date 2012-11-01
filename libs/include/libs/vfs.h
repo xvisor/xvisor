@@ -196,7 +196,7 @@ struct vnode {
 	struct dlist v_link;		/* link for hash list */
 	struct mount *v_mount;		/* mount point pointer */
 	atomic_t v_refcnt;		/* reference count */
-	char *v_path;			/* pointer to path in fs */
+	char v_path[VFS_MAX_PATH];	/* pointer to path in fs */
 	enum vnode_type v_type;		/* vnode type 
 					 * (set once by filesystem lookup) 
 					 */
@@ -226,7 +226,7 @@ struct filesystem {
 	const char *name;
 
 	/* Mount point operations */
-	int (*mount)(struct mount *, const char *, s32);
+	int (*mount)(struct mount *, const char *, u32);
 	int (*unmount)(struct mount *);
 	int (*sync)(struct mount *); /* Not Used */
 	int (*vget)(struct mount *, struct vnode *);
@@ -235,8 +235,8 @@ struct filesystem {
 	/* Vnode operations */
 	int (*open)(struct vnode *, struct file *);
 	int (*close)(struct vnode *, struct file *);
-	int (*read)(struct vnode *, struct file *, void *, size_t);
-	int (*write)(struct vnode *, struct file *, void *, size_t);
+	size_t (*read)(struct vnode *, struct file *, void *, size_t);
+	size_t (*write)(struct vnode *, struct file *, void *, size_t);
 	bool (*seek)(struct vnode *, struct file *, loff_t);
 	int (*fsync)(struct vnode *, struct file *);
 	int (*readdir)(struct vnode *, struct file *, struct dirent *);
@@ -251,11 +251,6 @@ struct filesystem {
 	int (*setattr)(struct vnode *, struct vattr *); /* Not Used */
 	int (*truncate)(struct vnode *, loff_t);
 };
-
-/** Get root directory and mount point for specified path. 
- *  Note: Must be called from Orphan (or Thread) context.
- */
-int vfs_findroot(const char *path, struct mount **mp, char **root);
 
 /** Create a mount point
  *  Note: Must be called from Orphan (or Thread) context.
