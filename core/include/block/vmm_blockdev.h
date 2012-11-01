@@ -81,6 +81,12 @@ struct vmm_blockdev {
 	struct vmm_request_queue *rq;
 };
 
+/** Size of block device in bytes */
+static inline u64 vmm_blockdev_total_size(struct vmm_blockdev *bdev)
+{
+	return (bdev) ? bdev->num_blocks * bdev->block_size : 0;
+}
+
 /** Generic block IO submit request */
 int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 				struct vmm_request *r);
