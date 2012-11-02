@@ -109,15 +109,11 @@ static bool get_next_token(const char *path, const char *perfix, char *result)
 
 static bool check_path(const char *path, const char *prefix, const char *name)
 {
-	char path1[VFS_MAX_PATH];
-	const char *p;
 	int l;
 
 	if (!path || !prefix || !name) {
 		return FALSE;
 	}
-
-	path1[0] = '\0';
 
 	if (path[0] == '/') {
 		path++;
@@ -127,30 +123,22 @@ static bool check_path(const char *path, const char *prefix, const char *name)
 		prefix++;
 	}
 
-	strncat(path1, prefix, sizeof(path1));
-
-	if (path1[strlen(path1) - 1] != '/') {
-		strncat(path1, "/", sizeof(path1));
-	}
-	strncat(path1, name, sizeof(path1));
-
-	l = strlen(path1);
-	if (memcmp(path, path1, l) != 0) {
+	l = strlen(prefix);
+	if (l && (strncmp(path, prefix, l) != 0)) {
 		return FALSE;
 	}
 
-	p = &path[l];
-	if (*p == '\0') {
-		return TRUE;
-	}
-	if (*p == '/') {
-		p++;
-	}
-	if (*p == '\0') {
-		return TRUE;
+	path += l;
+
+	if (path[0] == '/') {
+		path++;
 	}
 
-	return FALSE;
+	if (strcmp(path, name) != 0) {
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 /* 
@@ -275,7 +263,6 @@ static int cpiofs_fsync(struct vnode *v, struct file *f)
 	return VMM_OK;
 }
 
-/* FIXME: */
 static int cpiofs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 {
 	struct cpio_newc_header header;
@@ -286,73 +273,64 @@ static int cpiofs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 	char buf[9];
 	int i = 0;
 
-	if (f->f_offset == 0) {
-		d->d_type = DT_DIR;
-		strncpy(d->d_name, ".", sizeof(d->d_name));
-	} else if (f->f_offset == 1) {
-		d->d_type = DT_DIR;
-		strncpy(d->d_name, "..", sizeof(d->d_name));
-	} else {
-		while (1) {
-			rd = vmm_blockdev_read(dv->v_mount->m_dev, (u8 *)&header, 
-					off, sizeof(struct cpio_newc_header));
-			if (!rd) {
-				return VMM_EIO;
-			}
-
-			if (strncmp((const char *)&header.c_magic, "070701", 6) != 0) {
-				return VMM_ENOENT;
-			}
-
-			buf[8] = '\0';
-
-			memcpy(buf, &header.c_filesize, 8);
-			size = str2uint((const char *)buf, 16);
-
-			memcpy(buf, &header.c_namesize, 8);
-			name_size = str2uint((const char *)buf, 16);
-
-			memcpy(buf, &header.c_mode, 8);
-			mode = str2uint((const char *)buf, 16);
-
-			rd = vmm_blockdev_read(dv->v_mount->m_dev, (u8 *)path, 
-			off + sizeof(struct cpio_newc_header), name_size);
-			if (!rd) {
-				return VMM_EIO;
-			}
-
-			if ((size == 0) && (mode == 0) && (name_size == 11) && 
-			    (strncmp(path, "TRAILER!!!", 10) == 0)) {
-				return VMM_ENOENT;
-			}
-
-			off += sizeof(struct cpio_newc_header); 
-			off += (((name_size + 1) & ~3) + 2) + size;
-			off = (off + 3) & ~3;
-
-			if (!get_next_token(path, dv->v_path, name)) {
-				continue;
-			}
-
-			if (i++ == f->f_offset - 2) {
-				off = 0;
-				break;
-			}
+	while (1) {
+		rd = vmm_blockdev_read(dv->v_mount->m_dev, (u8 *)&header, 
+				off, sizeof(struct cpio_newc_header));
+		if (!rd) {
+			return VMM_EIO;
 		}
 
-		if (mode & 0040000) {
-			d->d_type = DT_DIR;
-		} else {
-			d->d_type = DT_REG;
+		if (strncmp((const char *)&header.c_magic, "070701", 6) != 0) {
+			return VMM_ENOENT;
 		}
 
-		strncpy(d->d_name, name, sizeof(name));
+		buf[8] = '\0';
+
+		memcpy(buf, &header.c_filesize, 8);
+		size = str2uint((const char *)buf, 16);
+
+		memcpy(buf, &header.c_namesize, 8);
+		name_size = str2uint((const char *)buf, 16);
+
+		memcpy(buf, &header.c_mode, 8);
+		mode = str2uint((const char *)buf, 16);
+
+		rd = vmm_blockdev_read(dv->v_mount->m_dev, (u8 *)path, 
+		off + sizeof(struct cpio_newc_header), name_size);
+		if (!rd) {
+			return VMM_EIO;
+		}
+
+		if ((size == 0) && (mode == 0) && (name_size == 11) && 
+		    (strncmp(path, "TRAILER!!!", 10) == 0)) {
+			return VMM_ENOENT;
+		}
+
+		off += sizeof(struct cpio_newc_header); 
+		off += (((name_size + 1) & ~3) + 2) + size;
+		off = (off + 3) & ~3;
+
+		if (!get_next_token(path, dv->v_path, name)) {
+			continue;
+		}
+
+		if (i++ == f->f_offset) {
+			off = 0;
+			break;
+		}
 	}
 
-	d->d_fileno = (u32)f->f_offset;
-	d->d_namlen = (u16)strlen(d->d_name);
+	if (mode & 0040000) {
+		d->d_type = DT_DIR;
+	} else {
+		d->d_type = DT_REG;
+	}
 
-	f->f_offset++;
+	strncpy(d->d_name, name, sizeof(name));
+
+	d->d_fileno = (u32)f->f_offset;
+	d->d_reclen = 1;
+	d->d_namlen = (u16)strlen(d->d_name);
 
 	return 0;
 }
