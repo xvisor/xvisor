@@ -107,12 +107,12 @@ static int vfs_findroot(const char *path, struct mount **mp, char **root)
 
 	vmm_mutex_unlock(&vfsc.mnt_list_lock);
 
-	if(m == NULL) {
+	if (m == NULL) {
 		return VMM_EFAIL;
 	}
 
 	*root = (char *)(path + max_len);
-	if(**root == '/') {
+	while (**root == '/') {
 		(*root)++;
 	}
 	*mp = m;
@@ -245,10 +245,10 @@ static struct vnode *vfs_vnode_vget(struct mount *m, const char *path)
 static struct vnode *vfs_vnode_lookup(struct mount *m, const char *path)
 {
 	u32 hash;
+	bool found = FALSE;
 	struct dlist *l;
-	struct vnode *v;
+	struct vnode *v = NULL;
 
-	v = NULL;
 	hash = vfs_vnode_hash(m, path);
 
 	vmm_mutex_lock(&vfsc.vnode_list_lock[hash]);
@@ -257,15 +257,18 @@ static struct vnode *vfs_vnode_lookup(struct mount *m, const char *path)
 		v = list_entry(l, struct vnode, v_link);
 		if ((v->v_mount == m) && 
 		    (!strncmp(v->v_path, path, VFS_MAX_PATH))) {
+			found = TRUE;
 			break;
 		}
 	}
 
 	vmm_mutex_unlock(&vfsc.vnode_list_lock[hash]);
 
-	if (v) {
-		arch_atomic_add(&v->v_refcnt, 1);
+	if (!found) {
+		return NULL;
 	}
+
+	arch_atomic_add(&v->v_refcnt, 1);
 
 	return v;
 }
@@ -411,14 +414,59 @@ static int vfs_vnode_access(struct vnode *v, u32 mode)
 	return 0;
 }
 
+static void vfs_vnode_release(struct vnode *v)
+{
+	char *p;
+	char path[VFS_MAX_PATH];
+	struct mount *m;
+
+	if (!v) {
+		return;
+	}
+
+	m = v->v_mount;
+
+	if (m->m_root == v) {
+		vfs_vnode_vput(v);
+		return;
+	}
+
+	strncpy(path, v->v_path, sizeof(path));
+
+	vfs_vnode_vput(v);
+
+	while (1) {
+		p = strrchr(path, '/');
+		*p = '\0';
+
+		if (path[0] == '\0') {
+			break;
+		}
+
+		v = vfs_vnode_lookup(m, path);
+		if (!v) {
+			continue;
+		}
+
+		/* vput for previous lookup */
+		vfs_vnode_vput(v);
+
+		/* vput for previous acquire */
+		vfs_vnode_vput(v);
+	}
+
+	/* vput for mount point root */
+	vfs_vnode_vput(m->m_root);
+}
+
 static int vfs_vnode_acquire(const char *path, struct vnode **vp)
 {
 	char *p;
 	char node[VFS_MAX_PATH];
-	char name[VFS_MAX_PATH];
+	char name[VFS_MAX_NAME];
 	struct mount *m;
 	struct vnode *dv, *v;
-	int err, i;
+	int err, i, j;
 
 	/* convert a full path name to its mount point and
 	 * the local node in the file system.
@@ -427,42 +475,34 @@ static int vfs_vnode_acquire(const char *path, struct vnode **vp)
 		return VMM_ENOTAVAIL;
 	}
 
-	strncpy(node, "/", sizeof(node));
-	strncat(node, p, sizeof(node));
-	if ((v = vfs_vnode_lookup(m, node))) {
-		/* vnode is already active */
-		*vp = v;
-		return VMM_OK;
-	}
-
 	/* find target vnode, started from root directory.
 	 * this is done to attach the fs specific data to
 	 * the target vnode.
 	 */
-	if ((dv = m->m_root) == NULL) {
+	if (!m->m_root) {
 		return VMM_ENOSYS;
 	}
-
+	dv = v = m->m_root;
 	vfs_vnode_vref(dv);
-	node[0] = '\0';
 
+	i = 0;
 	while (*p != '\0') {
-		/* get lower directory or file name. */
-		while(*p == '/') {
+		while (*p == '/') {
 			p++;
 		}
 
-		for(i = 0; i < VFS_MAX_PATH; i++) {
-			if(*p == '\0' || *p == '/') {
-				break;
-			}
-			name[i] = *p++;
+		node[i] = '/';
+		i++;
+		j = 0;
+		while (*p != '\0' && *p != '/') {
+			name[j] = node[i] = *p;
+			p++;
+			i++;
+			j++;
 		}
-		name[i] = '\0';
+		name[j] = node[i] = '\0';	
 
 		/* get a vnode for the target. */
-		strncat(node, "/", sizeof(node));
-		strncat(node, name, sizeof(node));
 		v = vfs_vnode_lookup(m, node);
 		if (v == NULL) {
 			v = vfs_vnode_vget(m, node);
@@ -477,57 +517,19 @@ static int vfs_vnode_acquire(const char *path, struct vnode **vp)
 			err = dv->v_mount->m_fs->lookup(dv, name, v);
 			vmm_mutex_unlock(&dv->v_lock);
 			vmm_mutex_unlock(&v->v_lock);
-			if(err || (*p == '/' && v->v_type != VDIR)) {
+			if (err || (*p == '/' && v->v_type != VDIR)) {
 				/* not found */
-				vfs_vnode_vput(v);
-				vfs_vnode_vput(dv);
+				vfs_vnode_release(v);
 				return err;
 			}
 		}
 
-		vfs_vnode_vput(dv);
 		dv = v;
-		while(*p != '\0' && *p != '/') {
-			p++;
-		}
 	}
 
 	*vp = v;
 
-	return 0;
-}
-
-static void vfs_vnode_release(struct vnode *v)
-{
-	char *p;
-	char path[VFS_MAX_PATH];
-	struct mount *m;
-	struct vnode *vt;
-
-	if (!v) {
-		return;
-	}
-
-	strncpy(path, v->v_path, sizeof(path));
-	m = v->v_mount;
-
-	vfs_vnode_vput(v);
-
-	while (path[0] != '\0') {
-		p = strrchr(path, '/');
-		*p = '\0';
-
-		vt = vfs_vnode_lookup(m, path);
-		if (!vt) {
-			continue;
-		}
-
-		/* vput for previous lookup */
-		vfs_vnode_vput(vt);
-
-		/* vput for previous acquire */
-		vfs_vnode_vput(vt);
-	}
+	return VMM_OK;
 }
 
 int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
