@@ -463,7 +463,6 @@ static int vfs_vnode_acquire(const char *path, struct vnode **vp)
 {
 	char *p;
 	char node[VFS_MAX_PATH];
-	char name[VFS_MAX_NAME];
 	struct mount *m;
 	struct vnode *dv, *v;
 	int err, i, j;
@@ -493,14 +492,13 @@ static int vfs_vnode_acquire(const char *path, struct vnode **vp)
 
 		node[i] = '/';
 		i++;
-		j = 0;
+		j = i;
 		while (*p != '\0' && *p != '/') {
-			name[j] = node[i] = *p;
+			node[i] = *p;
 			p++;
 			i++;
-			j++;
 		}
-		name[j] = node[i] = '\0';	
+		node[i] = '\0';	
 
 		/* get a vnode for the target. */
 		v = vfs_vnode_lookup(m, node);
@@ -514,7 +512,7 @@ static int vfs_vnode_acquire(const char *path, struct vnode **vp)
 			/* find a vnode in this directory. */
 			vmm_mutex_lock(&v->v_lock);
 			vmm_mutex_lock(&dv->v_lock);
-			err = dv->v_mount->m_fs->lookup(dv, name, v);
+			err = dv->v_mount->m_fs->lookup(dv, &node[j], v);
 			vmm_mutex_unlock(&dv->v_lock);
 			vmm_mutex_unlock(&v->v_lock);
 			if (err || (*p == '/' && v->v_type != VDIR)) {

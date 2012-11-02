@@ -61,29 +61,30 @@ struct cpio_newc_header {
  * Helper routines 
  */
 
-static bool get_next_token(const char *path, const char *perfix, char *result)
+static bool get_next_token(const char *path, const char *prefix, char *result)
 {
-	char full_path[VFS_MAX_PATH];
-	char *p, *q;
-	s32 l;
+	int l;
+	const char *p, *q;
 
-	if (!path || !perfix || !result) {
+	if (!path || !prefix || !result) {
 		return FALSE;
 	}
 
-	full_path[0] = '\0';
-
-	if (path[0] != '/') {
-		strcpy(full_path, (const char *)("/"));
+	if (*path == '/') {
+		path++;
 	}
-	strncat(full_path, path, sizeof(full_path));
 
-	l = strlen(perfix);
-	if (memcmp(full_path, perfix, l) != 0) {
+	if (*prefix == '/') {
+		prefix++;
+	}
+
+	l = strlen(prefix);
+	if (strncmp(path, prefix, l) != 0) {
 		return FALSE;
 	}
 
-	p = &full_path[l];
+	p = &path[l];
+
 	if (*p == '\0') {
 		return FALSE;
 	}
@@ -96,13 +97,16 @@ static bool get_next_token(const char *path, const char *perfix, char *result)
 
 	q = strchr(p, '/');
 	if (q) {
-		if (*(q+1) != '\0') {
+		if (*(q + 1) != '\0') {
 			return FALSE;
 		}
-		*q = 0;
+		l = q - p;
+	} else {
+		l = strlen(p);
 	}
 
-	strcpy(result, p);
+	memcpy(result, p, l);
+	result[l] = '\0';
 
 	return TRUE;
 }
@@ -335,7 +339,7 @@ static int cpiofs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 	return 0;
 }
 
-static int cpiofs_lookup(struct vnode *dv, char *name, struct vnode *v)
+static int cpiofs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 {
 	struct cpio_newc_header header;
 	char path[VFS_MAX_PATH];
@@ -422,32 +426,32 @@ static int cpiofs_lookup(struct vnode *dv, char *name, struct vnode *v)
 	return 0;
 }
 
-static int cpiofs_create(struct vnode *dv, char *filename, u32 mode)
+static int cpiofs_create(struct vnode *dv, const char *filename, u32 mode)
 {
 	/* Not allowed (read-only filesystem) */
 	return VMM_EFAIL;
 }
 
-static int cpiofs_remove(struct vnode *dv, struct vnode *v, char *name)
+static int cpiofs_remove(struct vnode *dv, struct vnode *v, const char *name)
 {
 	/* Not allowed (read-only filesystem) */
 	return VMM_EFAIL;
 }
 
-static int cpiofs_rename(struct vnode *dv1, struct vnode *v1, char *sname, 
-			struct vnode *dv2, struct vnode *v2, char *dname)
+static int cpiofs_rename(struct vnode *dv1, struct vnode *v1, const char *sname, 
+			struct vnode *dv2, struct vnode *v2, const char *dname)
 {
 	/* Not allowed (read-only filesystem) */
 	return VMM_EFAIL;
 }
 
-static int cpiofs_mkdir(struct vnode *dv, char *name, u32 mode)
+static int cpiofs_mkdir(struct vnode *dv, const char *name, u32 mode)
 {
 	/* Not allowed (read-only filesystem) */
 	return VMM_EFAIL;
 }
 
-static int cpiofs_rmdir(struct vnode *dv, struct vnode *v, char *name)
+static int cpiofs_rmdir(struct vnode *dv, struct vnode *v, const char *name)
 {
 	/* Not allowed (read-only filesystem) */
 	return VMM_EFAIL;

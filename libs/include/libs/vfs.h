@@ -240,13 +240,13 @@ struct filesystem {
 	bool (*seek)(struct vnode *, struct file *, loff_t);
 	int (*fsync)(struct vnode *, struct file *);
 	int (*readdir)(struct vnode *, struct file *, struct dirent *);
-	int (*lookup)(struct vnode *, char *, struct vnode *);
-	int (*create)(struct vnode *, char *, u32);
-	int (*remove)(struct vnode *, struct vnode *, char *);
-	int (*rename)(struct vnode *, struct vnode *, char *, 
-			struct vnode *, struct vnode *, char *);
-	int (*mkdir)(struct vnode *, char *, u32);
-	int (*rmdir)(struct vnode *, struct vnode *, char *);
+	int (*lookup)(struct vnode *, const char *, struct vnode *);
+	int (*create)(struct vnode *, const char *, u32);
+	int (*remove)(struct vnode *, struct vnode *, const char *);
+	int (*rename)(struct vnode *, struct vnode *, const char *, 
+			struct vnode *, struct vnode *, const char *);
+	int (*mkdir)(struct vnode *, const char *, u32);
+	int (*rmdir)(struct vnode *, struct vnode *, const char *);
 	int (*getattr)(struct vnode *, struct vattr *); /* Not Used */
 	int (*setattr)(struct vnode *, struct vattr *); /* Not Used */
 	int (*truncate)(struct vnode *, loff_t);
