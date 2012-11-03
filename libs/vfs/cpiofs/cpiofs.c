@@ -314,6 +314,10 @@ static int cpiofs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 		off += (((name_size + 1) & ~3) + 2) + size;
 		off = (off + 3) & ~3;
 
+		if (path[0] == '.') {
+			continue;
+		}
+
 		if (!get_next_token(path, dv->v_path, name)) {
 			continue;
 		}
@@ -324,8 +328,20 @@ static int cpiofs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 		}
 	}
 
-	if (mode & 0040000) {
+	if ((mode & 00170000) == 0140000) {
+		d->d_type = DT_SOCK;
+	} else if ((mode & 00170000) == 0120000) {
+		d->d_type = DT_LNK;
+	} else if ((mode & 00170000) == 0100000) {
+		d->d_type = DT_REG;
+	} else if ((mode & 00170000) == 0060000) {
+		d->d_type = DT_BLK;
+	} else if ((mode & 00170000) == 0040000) {
 		d->d_type = DT_DIR;
+	} else if ((mode & 00170000) == 0020000) {
+		d->d_type = DT_CHR;
+	} else if ((mode & 00170000) == 0010000) {
+		d->d_type = DT_FIFO;
 	} else {
 		d->d_type = DT_REG;
 	}
@@ -380,7 +396,7 @@ static int cpiofs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 			return VMM_ENOENT;
 		}
 
-		if (check_path(path, dv->v_path, name)) {
+		if ((path[0] != '.') && check_path(path, dv->v_path, name)) {
 			break;
 		}
 
@@ -391,17 +407,17 @@ static int cpiofs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 
 	if ((mode & 00170000) == 0140000) {
 		v->v_type = VSOCK;
-	} else if((mode & 00170000) == 0120000) {
+	} else if ((mode & 00170000) == 0120000) {
 		v->v_type = VLNK;
-	} else if((mode & 00170000) == 0100000) {
+	} else if ((mode & 00170000) == 0100000) {
 		v->v_type = VREG;
-	} else if((mode & 00170000) == 0060000) {
+	} else if ((mode & 00170000) == 0060000) {
 		v->v_type = VBLK;
-	} else if((mode & 00170000) == 0040000) {
+	} else if ((mode & 00170000) == 0040000) {
 		v->v_type = VDIR;
-	} else if((mode & 00170000) == 0020000) {
+	} else if ((mode & 00170000) == 0020000) {
 		v->v_type = VCHR;
-	} else if((mode & 00170000) == 0010000) {
+	} else if ((mode & 00170000) == 0010000) {
 		v->v_type = VFIFO;
 	} else {
 		v->v_type = VREG;
