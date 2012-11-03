@@ -342,6 +342,9 @@ static int vfs_vnode_stat(struct vnode *v, struct stat *st)
 	vmm_mutex_lock(&v->v_lock);
 	st->st_size = v->v_size;
 	mode = v->v_mode & (S_IRWXU|S_IRWXG|S_IRWXO);
+	st->st_ctime = v->v_ctime;
+	st->st_atime = v->v_atime;
+	st->st_mtime = v->v_mtime;
 	vmm_mutex_unlock(&v->v_lock);
 
 	switch (v->v_type) {
@@ -376,10 +379,6 @@ static int vfs_vnode_stat(struct vnode *v, struct stat *st)
 
 	st->st_uid = 0;
 	st->st_gid = 0;
-
-	st->st_ctime = 0;
-	st->st_atime = 0;
-	st->st_mtime = 0;
 
 	return 0;
 }

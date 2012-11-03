@@ -359,7 +359,7 @@ static int cpiofs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 {
 	struct cpio_newc_header header;
 	char path[VFS_MAX_PATH];
-	u32 size, name_size, mode;
+	u32 size, name_size, mode, mtime;
 	u64 off = 0, rd;
 	u8 buf[9];
 
@@ -384,6 +384,9 @@ static int cpiofs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 
 		memcpy(buf, &header.c_mode, 8);
 		mode = str2uint((const char *)buf, 16);
+
+		memcpy(buf, &header.c_mtime, 8);
+		mtime = str2uint((const char *)buf, 16);
 
 		rd = vmm_blockdev_read(dv->v_mount->m_dev, (u8 *)path, 
 			off + sizeof(struct cpio_newc_header), name_size);
@@ -435,6 +438,11 @@ static int cpiofs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 	v->v_mode |= (mode & 00001) ? S_IXOTH : 0;
 
 	v->v_size = size;
+
+	v->v_atime = mtime;
+	v->v_mtime = mtime;
+	v->v_ctime = mtime;
+
 	off += sizeof(struct cpio_newc_header);
 	off += (((name_size + 1) & ~3) + 2);
 	v->v_data = (void *)((u32)off);

@@ -102,15 +102,15 @@ struct filesystem;
 
 /** file status structure */
 struct stat {
-    u32	st_ino;				/* file serial number */
-    loff_t st_size;     		/* file size */
-    u32	st_mode;			/* file mode */
-    u32	st_dev;				/* id of device containing file */
-    u32	st_uid;				/* user ID of the file owner */
-    u32	st_gid;				/* group ID of the file's group */
-    u32	st_ctime;			/* file create time */
-    u32	st_atime;			/* last access time */
-    u32 st_mtime;			/* last data modification time */
+	u32	st_ino;			/* file serial number */
+	loff_t	st_size;     		/* file size */
+	u32	st_mode;		/* file mode */
+	u32	st_dev;			/* id of device containing file */
+	u32	st_uid;			/* user ID of the file owner */
+	u32	st_gid;			/* group ID of the file's group */
+	u64	st_ctime;		/* file create time */
+	u64	st_atime;		/* file access time */
+	u64	st_mtime;		/* file modify time */
 };
 
 /** file structure */
@@ -198,18 +198,29 @@ struct vnode {
 	atomic_t v_refcnt;		/* reference count */
 	char v_path[VFS_MAX_PATH];	/* pointer to path in fs */
 	enum vnode_type v_type;		/* vnode type 
-					 * (set once by filesystem lookup) 
+					 * (set once by filesystem lookup()) 
 					 */
 	enum vnode_flag v_flags;	/* vnode flag 
-					 * (set once by filesystem lookup) 
+					 * (set once by filesystem lookup()) 
 					 */
 
 	struct vmm_mutex v_lock;	/* lock to protect members below
 					 * v_lock and vnode operations
 					 */
+	u64 v_ctime;			/* Create timestamp 
+					 * (updated by filesystem create())
+					 */
+	u64 v_atime;			/* Access timestamp 
+					 * (last permission change time) 
+					 * (updated by filesystem setattr()) 
+					 */
+	u64 v_mtime;			/* Modify timestamp
+					 * (last write time)
+					 * (updated by filesystem write())
+					 */
 	u32 v_mode;			/* vnode permissions 
-					 * (set once by filesystem lookup) 
-					 * (updated by filesystem setattr) 
+					 * (set once by filesystem lookup()) 
+					 * (updated by filesystem setattr()) 
 					 */
 	loff_t v_size;			/* file size 
 					 * (updated by filesystem read/write) 
