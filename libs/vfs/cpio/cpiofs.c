@@ -501,7 +501,7 @@ static int cpiofs_truncate(struct vnode *v, loff_t off)
 
 /* cpiofs filesystem */
 static struct filesystem cpiofs = {
-	.name		= "cpiofs",
+	.name		= "cpio",
 
 	/* Mount point operations */
 	.mount		= cpiofs_mount,

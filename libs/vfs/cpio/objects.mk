@@ -21,5 +21,5 @@
 # @brief list of fs objects to be build
 # */
 
-libs-objs-$(CONFIG_VFS_CPIOFS)+= vfs/cpiofs/cpiofs.o
+libs-objs-$(CONFIG_VFS_CPIO)+= vfs/cpio/cpiofs.o
 
