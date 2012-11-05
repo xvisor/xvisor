@@ -123,7 +123,7 @@ struct file {
 
 /** dirent types */
 enum dirent_type {
-	DT_UNKNOWN,
+	DT_UNK,
 	DT_DIR,
 	DT_REG,
 	DT_BLK,
@@ -136,11 +136,12 @@ enum dirent_type {
 
 /** dirent structure */
 struct dirent {
-	u32 d_fileno;			/* file number of entry */
-	u16 d_reclen;			/* length of this record */
-	u16 d_namlen;			/* length of string in d_name */
-	enum dirent_type d_type; 	/* file type, see below */
-	char d_name[VFS_MAX_NAME];	/* name must be no longer than this */
+	loff_t d_off;			/* offset in actual directory */
+	u16 d_reclen;			/* length of directory entry */
+	enum dirent_type d_type; 	/* type of file; not supported
+					 * by all file system types 
+					 */
+	char d_name[VFS_MAX_NAME];	/* name must not be longer than this */
 };
 
 /** mount flags */
@@ -177,6 +178,7 @@ enum vnode_type {
 	VLNK,	    			/* symbolic link */
 	VSOCK,	    			/* socks */
 	VFIFO,	    			/* fifo */
+	VUNK,				/* unknown */
 };
 
 /** vnode flags */
@@ -197,10 +199,10 @@ struct vnode {
 	struct mount *v_mount;		/* mount point pointer */
 	atomic_t v_refcnt;		/* reference count */
 	char v_path[VFS_MAX_PATH];	/* pointer to path in fs */
-	enum vnode_type v_type;		/* vnode type 
-					 * (set once by filesystem lookup()) 
+	enum vnode_flag v_flags;	/* vnode flags 
+					 * (used by internally by vfs) 
 					 */
-	enum vnode_flag v_flags;	/* vnode flag 
+	enum vnode_type v_type;		/* vnode type 
 					 * (set once by filesystem lookup()) 
 					 */
 

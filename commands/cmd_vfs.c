@@ -204,22 +204,15 @@ static int cmd_vfs_ls(struct vmm_chardev *cdev, const char *path)
 			return rc;
 		}
 		strcpy(type, "----------");
-		switch (d.d_type) {
-		case DT_DIR:
+		if (st.st_mode & S_IFDIR) {
 			type[0]= 'd';
-			break;
-		case DT_CHR:
+		} else if (st.st_mode & S_IFCHR) {
 			type[0]= 'c';
-			break;
-		case DT_BLK:
+		} else if (st.st_mode & S_IFBLK) {
 			type[0]= 'b';
-			break;
-		case DT_LNK:
+		} else if (st.st_mode & S_IFLNK) {
 			type[0]= 'l';
-			break;
-		default:
-			break;
-		};
+		}
 		if (st.st_mode & S_IRUSR) {
 			type[1] = 'r';
 		}

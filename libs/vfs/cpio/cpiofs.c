@@ -55,7 +55,7 @@ struct cpio_newc_header {
 	u8 c_rdevminor[8];
 	u8 c_namesize[8];
 	u8 c_check[8];
-} __attribute__ ((packed));
+} __packed;
 
 /* 
  * Helper routines 
@@ -346,11 +346,11 @@ static int cpiofs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 		d->d_type = DT_REG;
 	}
 
-	strncpy(d->d_name, name, sizeof(name));
+	strncpy(d->d_name, name, VFS_MAX_NAME - 1);
+	d->d_name[VFS_MAX_NAME - 1] = '\0';
 
-	d->d_fileno = (u32)f->f_offset;
+	d->d_off = f->f_offset;
 	d->d_reclen = 1;
-	d->d_namlen = (u16)strlen(d->d_name);
 
 	return 0;
 }
@@ -408,6 +408,10 @@ static int cpiofs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 		off = (off + 3) & ~0x3;
 	}
 
+	v->v_atime = mtime;
+	v->v_mtime = mtime;
+	v->v_ctime = mtime;
+
 	if ((mode & 00170000) == 0140000) {
 		v->v_type = VSOCK;
 	} else if ((mode & 00170000) == 0120000) {
@@ -438,10 +442,6 @@ static int cpiofs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 	v->v_mode |= (mode & 00001) ? S_IXOTH : 0;
 
 	v->v_size = size;
-
-	v->v_atime = mtime;
-	v->v_mtime = mtime;
-	v->v_ctime = mtime;
 
 	off += sizeof(struct cpio_newc_header);
 	off += (((name_size + 1) & ~3) + 2);

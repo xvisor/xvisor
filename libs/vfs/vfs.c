@@ -598,7 +598,8 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 	}
 	v->v_type = VDIR;
 	v->v_flags = VROOT;
-	if (!S_ISDIR(v->v_mode) || (v->v_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) {
+	if (!S_ISDIR(v->v_mode) || 
+	    (v->v_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) {
 		v->v_mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
 	}
 	m->m_root = v;
@@ -616,7 +617,7 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 		return err;
 	}
 
-	if(m->m_flags & MOUNT_RDONLY) {
+	if (m->m_flags & MOUNT_RDONLY) {
 		m->m_root->v_mode &= ~(S_IWUSR|S_IWGRP|S_IWOTH);
 	}
 
