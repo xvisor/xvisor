@@ -99,7 +99,7 @@ static int vfs_findroot(const char *path, struct mount **mp, char **root)
 	list_for_each(l, &vfsc.mnt_list) {
 		tmp = list_entry(l, struct mount, m_link);
 		len = count_match(path, tmp->m_path);
-		if(len > max_len) {
+		if (len > max_len) {
 			max_len = len;
 			m = tmp;
 		}
@@ -136,34 +136,6 @@ static int vfs_fd_alloc(void)
 	vmm_mutex_unlock(&vfsc.fd_bmap_lock);
 
 	return ret;
-}
-
-/* FIXME: If a mount point is removed abruptly (probably due to
- * unplugging of a pluggable block device) then we need to
- * flush all file descriptors and vnodes under this mount point.
- *
- * Not sure whether:
- * vfs_fd_umount_flush() handles all possible scenarios !!!!
- */
-static void vfs_fd_unmount_flush(struct mount *m)
-{
-	int i;
-
-	vmm_mutex_lock(&vfsc.fd_bmap_lock);
-
-	for (i = 0; i < VFS_MAX_FD; i++) {
-		if (bitmap_isset(vfsc.fd_bmap, i) &&
-		    (vfsc.fd[i].f_vnode->v_mount == m)) {
-			vmm_mutex_lock(&vfsc.fd[i].f_lock);
-			vfsc.fd[i].f_flags = 0;
-			vfsc.fd[i].f_offset = 0;
-			vfsc.fd[i].f_vnode = NULL;
-			vmm_mutex_unlock(&vfsc.fd[i].f_lock);
-			bitmap_clear(vfsc.fd_bmap, i, 1);
-		}
-	}
-
-	vmm_mutex_unlock(&vfsc.fd_bmap_lock);
 }
 
 static void vfs_fd_free(int fd)
@@ -300,35 +272,6 @@ static void vfs_vnode_vput(struct vnode *v)
 	arch_atomic_sub(&v->v_mount->m_refcnt, 1);
 
 	vmm_free(v);
-}
-
-static void vfs_vnode_unmount_flush(struct mount *m)
-{
-	int i;
-	struct dlist *l;
-	struct vnode *v;
-
-	for(i = 0; i < VFS_VNODE_HASH_SIZE; i++) {
-		vmm_mutex_lock(&vfsc.vnode_list_lock[i]);
-
-		list_for_each(l, &vfsc.vnode_list[i]) {
-			v = list_entry(l, struct vnode, v_link);
-			if(v->v_mount != m) {
-				continue;
-			}
-
-			list_del(&v->v_link);
-
-			/* deallocate fs specific data from this vnode */
-			v->v_mount->m_fs->vput(v->v_mount, v);
-
-			arch_atomic_sub(&v->v_mount->m_refcnt, 1);
-
-			vmm_free(v);
-		}
-
-		vmm_mutex_unlock(&vfsc.vnode_list_lock[i]);
-	}
 }
 
 /** Get stat from vnode pointer. */
@@ -535,7 +478,7 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 	struct dlist *l;
 	struct vmm_blockdev *bdev;
 	struct filesystem *fs;
-	struct mount *m;
+	struct mount *m, *tm;
 	struct vnode *v, *v_covered;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
@@ -590,7 +533,7 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 
 	/* create a root vnode for this file system. */
 	if (!(v = vfs_vnode_vget(m, "/"))) {
-		if(m->m_covered) {
+		if (m->m_covered) {
 			vfs_vnode_release(m->m_covered);
 		}
 		vmm_free(m);
@@ -610,7 +553,7 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 	vmm_mutex_unlock(&m->m_lock);
 	if (err != 0) {
 		vfs_vnode_release(m->m_root);
-		if(m->m_covered) {
+		if (m->m_covered) {
 			vfs_vnode_release(m->m_covered);
 		}
 		vmm_free(m);
@@ -625,15 +568,15 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 	vmm_mutex_lock(&vfsc.mnt_list_lock);
 
 	list_for_each(l, &vfsc.mnt_list) {
-		m = list_entry(l, struct mount, m_link);
-		if (!strcmp(m->m_path, dir) ||
-		    ((dev != NULL) && (m->m_dev == bdev))) {
+		tm = list_entry(l, struct mount, m_link);
+		if (!strcmp(tm->m_path, dir) ||
+		    ((dev != NULL) && (tm->m_dev == bdev))) {
 			vmm_mutex_unlock(&vfsc.mnt_list_lock);
 			vmm_mutex_lock(&m->m_lock);
 			m->m_fs->unmount(m);
 			vmm_mutex_unlock(&m->m_lock);
 			vfs_vnode_release(m->m_root);
-			if(m->m_covered) {
+			if (m->m_covered) {
 				vfs_vnode_release(m->m_covered);
 			}
 			vmm_free(m);
@@ -648,6 +591,36 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(vfs_mount);
+
+#if 0
+/* FIXME: If a mount point is removed abruptly (probably due to
+ * unplugging of a pluggable block device) then we need to
+ * flush all file descriptors and vnodes under this mount point.
+ *
+ * Not sure whether:
+ * vfs_mount_flush() handles all possible scenarios !!!!
+ */
+static void vfs_mount_flush(struct mount *m)
+{
+	int i;
+
+	vmm_mutex_lock(&vfsc.fd_bmap_lock);
+
+	for (i = 0; i < VFS_MAX_FD; i++) {
+		if (bitmap_isset(vfsc.fd_bmap, i) &&
+		    (vfsc.fd[i].f_vnode->v_mount == m)) {
+			vmm_mutex_lock(&vfsc.fd[i].f_lock);
+			vfsc.fd[i].f_flags = 0;
+			vfsc.fd[i].f_offset = 0;
+			vfsc.fd[i].f_vnode = NULL;
+			vmm_mutex_unlock(&vfsc.fd[i].f_lock);
+			bitmap_clear(vfsc.fd_bmap, i, 1);
+		}
+	}
+
+	vmm_mutex_unlock(&vfsc.fd_bmap_lock);
+}
+#endif
 
 int vfs_unmount(const char *path)
 {
@@ -670,9 +643,17 @@ int vfs_unmount(const char *path)
 	}
 
 	/* root fs can not be unmounted. */
-	if (!found || !m->m_covered) {
+	if (!found) {
 		vmm_mutex_unlock(&vfsc.mnt_list_lock);
 		return VMM_EINVALID;
+	}
+
+	/* mount point reference count should be 1 
+	 * otherwise it is busy.
+	 */
+	if (arch_atomic_read(&m->m_refcnt) > 1) {
+		vmm_mutex_unlock(&vfsc.mnt_list_lock);
+		return VMM_EBUSY;
 	}
 
 	/* remove mount point and break */
@@ -680,28 +661,22 @@ int vfs_unmount(const char *path)
 
 	vmm_mutex_unlock(&vfsc.mnt_list_lock);
 
-	/* close file descriptors using any vnode 
-	 * belonging to this mount point;
-	 */
-	vfs_fd_unmount_flush(m);
-
-	/* release all vnodes */
-	vfs_vnode_unmount_flush(m);
-
 	/* call filesytem unmount */
 	vmm_mutex_lock(&m->m_lock);
 	err = m->m_fs->unmount(m);
 	vmm_mutex_unlock(&m->m_lock);
-	if(err != 0) {
-		return err;
-	}
+
+	/* releae mount point root */
+	vfs_vnode_release(m->m_root);
 
 	/* release covering filesystem vnode */
-	vfs_vnode_release(m->m_covered);
+	if (m->m_covered) {
+		vfs_vnode_release(m->m_covered);
+	}
 
 	vmm_free(m);
 
-	return VMM_OK;
+	return err;
 }
 VMM_EXPORT_SYMBOL(vfs_unmount);
 
@@ -1207,7 +1182,7 @@ int vfs_opendir(const char *name)
 		return VMM_EINVALID;
 	}
 
-	if(v->v_type != VDIR) {
+	if (v->v_type != VDIR) {
 		vmm_mutex_unlock(&f->f_lock);
 		vfs_close(fd);
 		return VMM_EINVALID;
@@ -1239,7 +1214,7 @@ int vfs_closedir(int fd)
 		return VMM_EINVALID;
 	}
 
-	if(v->v_type != VDIR) {
+	if (v->v_type != VDIR) {
 		vmm_mutex_unlock(&f->f_lock);
 		return VMM_EINVALID;
 	}
