@@ -47,16 +47,13 @@
 
 /* Magic value used to identify an ext2 filesystem.  */
 #define	EXT2_MAGIC			0xEF53
+
 /* Amount of indirect blocks in an inode.  */
-#define INDIRECT_BLOCKS			12
-/* Maximum lenght of a pathname.  */
-#define EXT2_PATH_MAX			4096
-/* Maximum nesting of symlinks, used to prevent a loop.  */
-#define	EXT2_MAX_SYMLINKCNT		8
+#define EXT2_DIRECT_BLOCKS		12
 
 /* Bits used as offset in sector */
-#define SECTOR_BITS			9
-#define SECTOR_SIZE			512
+#define EXT2_SECTOR_BITS		9
+#define EXT2_SECTOR_SIZE		512
 
 /* The ext2 superblock.  */
 struct ext2_sblock {
@@ -171,7 +168,7 @@ struct ext2_inode {
 	u32 osd1;
 	union {
 		struct datablocks {
-			u32 dir_blocks[INDIRECT_BLOCKS];
+			u32 dir_blocks[EXT2_DIRECT_BLOCKS];
 			u32 indir_block;
 			u32 double_indir_block;
 			u32 tripple_indir_block;
@@ -252,6 +249,8 @@ struct ext2_dirent {
 struct ext2fs_control {
 	struct ext2_sblock sblock;
 
+	struct vmm_blockdev *bdev;
+
 	u32 log2_block_size;
 	u32 block_size;
 	u32 dir_blklast;
@@ -303,20 +302,21 @@ struct ext2fs_node {
  * Helper routines 
  */
 
-static int ext2fs_devread(struct vmm_blockdev *bdev, u32 sector,
-			  int byte_offset, int byte_len, char *buf)
+static int ext2fs_devread(struct ext2fs_control *ctrl, 
+			  u32 blkno, u32 blkoff, 
+			  u32 buf_len, char *buf)
 {
 	u64 off, len;
 
-	off = (sector << 9) + byte_offset;
-	len = byte_len;
-	len = vmm_blockdev_read(bdev, (u8 *)buf, off, len);
+	off = (blkno << (ctrl->log2_block_size + EXT2_SECTOR_BITS));
+	off += blkoff;
+	len = buf_len;
+	len = vmm_blockdev_read(ctrl->bdev, (u8 *)buf, off, len);
 
-	return (len == byte_len) ? VMM_OK : VMM_EIO;
+	return (len == buf_len) ? VMM_OK : VMM_EIO;
 }
 
-static int ext2fs_read_inode(struct vmm_blockdev *bdev, 
-			     struct ext2fs_control *ctrl, 
+static int ext2fs_read_inode(struct ext2fs_control *ctrl, 
 			     u32 inode_no, struct ext2_inode *inode)
 {
 	int rc;
@@ -334,8 +334,8 @@ static int ext2fs_read_inode(struct vmm_blockdev *bdev,
 	blkoff = umod32(inode_no, ctrl->inodes_per_block) * ctrl->inode_size;
 
 	/* Read the inode.  */
-	rc = ext2fs_devread(bdev, blkno << ctrl->log2_block_size, 
-			blkoff, sizeof(struct ext2_inode), (char *)inode);
+	rc = ext2fs_devread(ctrl, blkno, blkoff,
+			    sizeof(struct ext2_inode), (char *)inode);
 	if (rc) {
 		return rc;
 	}
@@ -343,8 +343,7 @@ static int ext2fs_read_inode(struct vmm_blockdev *bdev,
 	return VMM_OK;
 }
 
-static int ext2fs_read_blkno(struct vmm_blockdev *bdev,
-			     struct ext2fs_control *ctrl,
+static int ext2fs_read_blkno(struct ext2fs_control *ctrl,
 			     struct ext2fs_node *node, 
 			     u32 blkpos, u32 *blkno) 
 {
@@ -356,8 +355,6 @@ static int ext2fs_read_blkno(struct vmm_blockdev *bdev,
 		*blkno = __le32(inode->b.blocks.dir_blocks[blkpos]);
 	} else if (blkpos < ctrl->indir_blklast) {
 		/* Indirect.  */
-		u32 indir_blkno = __le32(inode->b.blocks.indir_block) << 
-							ctrl->log2_block_size;
 		u32 indir_blkpos = blkpos - ctrl->dir_blklast;
 
 		if (!node->indir_block) {
@@ -365,61 +362,48 @@ static int ext2fs_read_blkno(struct vmm_blockdev *bdev,
 			if (!node->indir_block) {
 				return VMM_ENOMEM;
 			}
-			node->indir_blkno = 0xFFFFFFFF;
-		}
-		if (indir_blkno != node->indir_blkno) {
-			rc = ext2fs_devread(bdev, indir_blkno, 0, 
+			rc = ext2fs_devread(ctrl, node->indir_blkno, 0, 
 				ctrl->block_size, (char *)node->indir_block);
 			if (rc) {
 				return rc;
 			}
-			node->indir_blkno = indir_blkno;
 		}
 
 		*blkno = __le32(node->indir_block[indir_blkpos]);
 	} else if (blkpos < ctrl->dindir_blklast) {
 		/* Double indirect.  */
-		u32 dindir1_blkno = __le32(inode->b.blocks.double_indir_block) 
-							<< ctrl->log2_block_size;
-		u32 dindir1_blkpos = udiv32(blkpos - ctrl->indir_blklast, 
-							ctrl->block_size / 4);
-		u32 dindir2_blkno;
-		u32 dindir2_blkpos = umod32(blkpos - ctrl->indir_blklast, 
-							ctrl->block_size / 4);
+		u32 tmp = blkpos - ctrl->indir_blklast;
+		u32 dindir1_blkpos = udiv32(tmp, ctrl->block_size / 4);
+		u32 dindir2_blkpos = tmp - dindir1_blkpos * (ctrl->block_size / 4);
 
 		if (!node->dindir1_block) {
 			node->dindir1_block = vmm_malloc(ctrl->block_size);
 			if (!node->dindir1_block) {
 				return VMM_ENOMEM;
 			}
-			node->dindir1_blkno = 0xFFFFFFFF;
-		}
-		if (dindir1_blkno != node->dindir1_blkno) {
-			rc = ext2fs_devread(bdev, dindir1_blkno, 0,
+			rc = ext2fs_devread(ctrl, node->dindir1_blkno, 0,
 				ctrl->block_size, (char *)node->dindir1_block);
 			if (rc) {
 				return rc;
 			}
-			node->dindir1_blkno = dindir1_blkno;
 		}
 
-		dindir2_blkno = __le32(node->dindir1_block[dindir1_blkpos]) 
-						<< ctrl->log2_block_size;
+		tmp = __le32(node->dindir1_block[dindir1_blkpos]);
 
 		if (!node->dindir2_block) {
 			node->dindir2_block = vmm_malloc(ctrl->block_size);
 			if (!node->dindir2_block) {
 				return VMM_ENOMEM;
 			}
-			node->dindir2_blkno = 0xFFFFFFFF;
+			node->dindir2_blkno = 0;
 		}
-		if (dindir2_blkno != node->dindir2_blkno) {
-			rc = ext2fs_devread(bdev, dindir2_blkno, 0,  
+		if (tmp != node->dindir2_blkno) {
+			rc = ext2fs_devread(ctrl, tmp, 0,  
 				ctrl->block_size, (char *)node->dindir2_block);
 			if (rc) {
 				return rc;
 			}
-			node->dindir2_blkno = dindir2_blkno;
+			node->dindir2_blkno = tmp;
 		}
 
 		*blkno = __le32(node->dindir2_block[dindir2_blkpos]);
@@ -431,8 +415,7 @@ static int ext2fs_read_blkno(struct vmm_blockdev *bdev,
 	return VMM_OK;
 }
 
-static int ext2fs_read_file(struct vmm_blockdev *bdev,
-			    struct ext2fs_control *ctrl,
+static int ext2fs_read_file(struct ext2fs_control *ctrl,
 			    struct ext2fs_node *node, 
 			    u32 pos, u32 len, char *buf) 
 {
@@ -449,7 +432,7 @@ static int ext2fs_read_file(struct vmm_blockdev *bdev,
 	}
 
 	first_blkpos = udiv32(pos, ctrl->block_size);
-	first_blkoff = umod32(pos, ctrl->block_size);
+	first_blkoff = pos - (first_blkpos * ctrl->block_size);
 	first_blklen = ctrl->block_size - first_blkoff;
 	if (len < first_blklen) {
 		first_blklen = len;
@@ -460,11 +443,10 @@ static int ext2fs_read_file(struct vmm_blockdev *bdev,
 
 	i = first_blkpos;
 	while (len) {
-		rc = ext2fs_read_blkno(bdev, ctrl, node, i, &blkno);
+		rc = ext2fs_read_blkno(ctrl, node, i, &blkno);
 		if (rc) {
 			return rc;
 		}
-		blkno = blkno << ctrl->log2_block_size;
 
 		if (i == first_blkpos) {
 			/* First block.  */
@@ -493,9 +475,8 @@ static int ext2fs_read_file(struct vmm_blockdev *bdev,
 				}
 			}
 			if (node->cached_blkno != blkno) {
-				rc = ext2fs_devread(bdev, blkno, 0,
-						   ctrl->block_size, 
-						   (char *)node->cached_block);
+				rc = ext2fs_devread(ctrl, blkno, 0,
+				ctrl->block_size, (char *)node->cached_block);
 				if (rc) {
 					return rc;
 				}
@@ -516,8 +497,7 @@ static int ext2fs_read_file(struct vmm_blockdev *bdev,
 
 /* TODO: */
 #if 0
-static char *ext2fs_read_symlink(struct vmm_blockdev *bdev, 
-				 struct ext2fs_ctrl *ctrl,
+static char *ext2fs_read_symlink(struct ext2fs_ctrl *ctrl,
 				 struct ext2fs_node *node)
 {
 	int rc;
@@ -535,8 +515,8 @@ static char *ext2fs_read_symlink(struct vmm_blockdev *bdev,
 		strncpy(symlink, node->inode.b.symlink,
 			 __le32(node->inode.size));
 	} else {
-		rc = ext2fs_read_file(bdev, ctrl, node, 0,
-					__le32(node->inode.size), symlink);
+		rc = ext2fs_read_file(ctrl, node, 0,
+				__le32(node->inode.size), symlink);
 		if (rc) {
 			vmm_free(symlink);
 			return NULL;
@@ -556,6 +536,7 @@ static int ext2fs_mount(struct mount *m, const char *dev, u32 flags)
 {
 	int rc;
 	u16 rootmode;
+	u64 sb_read;
 	u32 blkno, blkoff, desc_per_blk, group;
 	struct ext2fs_control *ctrl;
 	struct ext2fs_node *root;
@@ -566,12 +547,15 @@ static int ext2fs_mount(struct mount *m, const char *dev, u32 flags)
 	}
 
 	/* Read the superblock.  */
-	rc = ext2fs_devread(m->m_dev, 1 * 2, 0, 
-			   sizeof(struct ext2_sblock),
-			   (char *)&ctrl->sblock);
-	if (rc) {
+	sb_read = vmm_blockdev_read(m->m_dev, (u8 *)&ctrl->sblock, 
+				    1024, sizeof(struct ext2_sblock));
+	if (sb_read != sizeof(struct ext2_sblock)) {
+		rc = VMM_EIO;
 		goto fail;
 	}
+
+	/* Save underlying block device pointer */
+	ctrl->bdev = m->m_dev;
 
 	/* Make sure this is an ext2 filesystem.  */
 	if (__le16(ctrl->sblock.magic) != EXT2_MAGIC) {
@@ -581,10 +565,10 @@ static int ext2fs_mount(struct mount *m, const char *dev, u32 flags)
 
 	/* Pre-compute frequently required values */
 	ctrl->log2_block_size = __le32((ctrl)->sblock.log2_block_size) + 1;
-	ctrl->block_size = 1 << (__le32((ctrl)->sblock.log2_block_size) + 10);
-	ctrl->dir_blklast = INDIRECT_BLOCKS;
-	ctrl->indir_blklast = INDIRECT_BLOCKS + (ctrl->block_size / 4);
-	ctrl->dindir_blklast = INDIRECT_BLOCKS + 
+	ctrl->block_size = 1 << (ctrl->log2_block_size + EXT2_SECTOR_BITS);
+	ctrl->dir_blklast = EXT2_DIRECT_BLOCKS;
+	ctrl->indir_blklast = EXT2_DIRECT_BLOCKS + (ctrl->block_size / 4);
+	ctrl->dindir_blklast = EXT2_DIRECT_BLOCKS + 
 			(ctrl->block_size / 4 * (ctrl->block_size / 4 + 1));
 	if (__le32(ctrl->sblock.revision_level) == 0) {
 		ctrl->inode_size = 128;
@@ -613,9 +597,8 @@ static int ext2fs_mount(struct mount *m, const char *dev, u32 flags)
 					1 + udiv32(group, desc_per_blk);
 		blkoff = umod32(group, desc_per_blk) * 
 					sizeof(struct ext2_block_group);
-		rc = ext2fs_devread(m->m_dev, 
-				    blkno << ctrl->log2_block_size, 
-				    blkoff, sizeof(struct ext2_block_group), 
+		rc = ext2fs_devread(ctrl, blkno, blkoff, 
+				    sizeof(struct ext2_block_group), 
 				    (char *)&ctrl->groups[group]);
 		if (rc) {
 			goto fail1;
@@ -627,7 +610,7 @@ static int ext2fs_mount(struct mount *m, const char *dev, u32 flags)
 	root->ctrl = ctrl;
 	root->inode_no = 2;
 
-	rc = ext2fs_read_inode(m->m_dev, ctrl, root->inode_no, &root->inode);
+	rc = ext2fs_read_inode(ctrl, root->inode_no, &root->inode);
 	if (rc) {
 		goto fail1;
 	}
@@ -786,8 +769,7 @@ static size_t ext2fs_read(struct vnode *v, struct file *f,
 		len = filesize - f->f_offset;
 	}
 
-	rc = ext2fs_read_file(v->v_mount->m_dev, ctrl, node, 
-				f->f_offset, len, buf);
+	rc = ext2fs_read_file(ctrl, node, f->f_offset, len, buf);
 	if (rc) {
 		return 0;
 	}
@@ -834,8 +816,8 @@ static int ext2fs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 	d->d_reclen = 0;
 
 	do {
-		rc = ext2fs_read_file(dv->v_mount->m_dev, dctrl, dnode,  
-			fileoff, sizeof(struct ext2_dirent), (char *)&dent);
+		rc = ext2fs_read_file(dctrl, dnode, fileoff, 
+				sizeof(struct ext2_dirent), (char *)&dent);
 		if (rc) {
 			return rc;
 		}
@@ -843,7 +825,7 @@ static int ext2fs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 		if (dent.namelen > (VFS_MAX_NAME - 1)) {
 			dent.namelen = (VFS_MAX_NAME - 1);
 		}
-		rc = ext2fs_read_file(dv->v_mount->m_dev, dctrl, dnode, 
+		rc = ext2fs_read_file(dctrl, dnode, 
 				fileoff + sizeof(struct ext2_dirent),
 				dent.namelen, d->d_name);
 		if (rc) {
@@ -909,8 +891,8 @@ static int ext2fs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 	fileoff = 0;
 	filefound = FALSE;
 	while (fileoff < filesize) {
-		rc = ext2fs_read_file(dv->v_mount->m_dev, dctrl, dnode,  
-			fileoff, sizeof(struct ext2_dirent), (char *)&dent);
+		rc = ext2fs_read_file(dctrl, dnode, fileoff, 
+				sizeof(struct ext2_dirent), (char *)&dent);
 		if (rc) {
 			return rc;
 		}
@@ -918,7 +900,7 @@ static int ext2fs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 		if (dent.namelen > (VFS_MAX_NAME - 1)) {
 			dent.namelen = (VFS_MAX_NAME - 1);
 		}
-		rc = ext2fs_read_file(dv->v_mount->m_dev, dctrl, dnode, 
+		rc = ext2fs_read_file(dctrl, dnode, 
 				fileoff + sizeof(struct ext2_dirent),
 				dent.namelen, filename);
 		if (rc) {
@@ -945,12 +927,23 @@ static int ext2fs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 
 	node->ctrl = dnode->ctrl;
 
-	rc = ext2fs_read_inode(dv->v_mount->m_dev, dctrl, 
-				__le32(dent.inode), &node->inode);
+	node->inode_no = __le32(dent.inode);
+	rc = ext2fs_read_inode(dctrl, node->inode_no, &node->inode);
 	if (rc) {
 		return rc;
 	}
-	node->inode_no = __le32(dent.inode);
+
+	node->cached_block = NULL;
+	node->cached_blkno = 0;
+
+	node->indir_block = NULL;
+	node->indir_blkno = __le32(node->inode.b.blocks.indir_block);
+
+	node->dindir1_block = NULL;
+	node->dindir1_blkno = __le32(node->inode.b.blocks.double_indir_block);
+
+	node->dindir2_block = NULL;
+	node->dindir2_blkno = 0;
 
 	filemode = __le16(node->inode.mode);
 
