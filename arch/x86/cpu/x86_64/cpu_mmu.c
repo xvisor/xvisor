@@ -190,7 +190,7 @@ int arch_cpu_aspace_init(physical_addr_t *core_resv_pa,
 	u32 pg_tab_sz = 0, tsize2map;
 	physical_addr_t pa;
 
-	tsize2map = (CONFIG_VAPOOL_SIZE << 20) + arch_code_size() + (*core_resv_sz);
+	tsize2map = (CONFIG_VAPOOL_SIZE_MB << 20) + arch_code_size() + (*core_resv_sz);
 
 	tsize2map = VMM_ROUNDUP2_PAGE_SIZE(tsize2map);
 
@@ -223,9 +223,8 @@ int arch_cpu_aspace_init(physical_addr_t *core_resv_pa,
 
 	cva = arch_code_vaddr_start();
 
-	eva = cva + ((CONFIG_VAPOOL_SIZE << 20)
-		     + (arch_code_size()
-			+ (*core_resv_sz) + (pg_tab_sz * PAGE_SIZE)));
+	eva = cva + ((CONFIG_VAPOOL_SIZE_MB << 20) + (arch_code_size() 
+		  + (*core_resv_sz) + (pg_tab_sz * PAGE_SIZE)));
 
 	pa = *core_resv_pa;
 

@@ -39,7 +39,7 @@
  * For example if VAPOOL is 8 MB then translation table pool will be 1 MB
  * or 1 MB / 4 KB = 256 translation tables
  */
-#define TTBL_POOL_MAX_SIZE 	(CONFIG_VAPOOL_SIZE << (20 - 3))
+#define TTBL_POOL_MAX_SIZE 	(CONFIG_VAPOOL_SIZE_MB << (20 - 3))
 
 #define TTBL_MAX_L1TBL_COUNT	(CONFIG_MAX_VCPU_COUNT)
 

@@ -263,7 +263,7 @@ int __init vmm_host_aspace_init(void)
 
 	/* Determine VAPOOL start, size, and hksize */
 	vapool_start = arch_code_vaddr_start();
-	vapool_size = (CONFIG_VAPOOL_SIZE << 20);
+	vapool_size = (CONFIG_VAPOOL_SIZE_MB << 20);
 	vapool_hksize = vmm_host_vapool_estimate_hksize(vapool_size);
 
 	/* Determine RAM start, size an hksize */

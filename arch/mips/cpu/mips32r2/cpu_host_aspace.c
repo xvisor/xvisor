@@ -88,7 +88,7 @@ static int cpu_boot_pagetable_init(physical_addr_t *pa,
 	virtual_addr_t cva, eva = 0;
 	u32 nr_ptabs = 0, pg_tab_sz = 0, tsize2map;
 
-	tsize2map = CONFIG_VAPOOL_SIZE << 20;
+	tsize2map = CONFIG_VAPOOL_SIZE_MB << 20;
 
 	pg_tab_sz = calculate_page_table_size(tsize2map, &nr_ptabs);
 
@@ -141,7 +141,8 @@ static int cpu_boot_pagetable_init(physical_addr_t *pa,
 	}
 
 	cva = arch_code_vaddr_start() + arch_code_size();
-	eva += cva + ((CONFIG_VAPOOL_SIZE << 20) - (arch_code_size() + (*sz) + pg_tab_sz));
+	eva += cva + ((CONFIG_VAPOOL_SIZE_MB << 20) - 
+				(arch_code_size() + (*sz) + pg_tab_sz));
 	*pa += arch_code_size();
 
 	/* Create the page table entries for all the virtual addresses. */
