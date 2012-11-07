@@ -256,6 +256,12 @@ static size_t cpiofs_write(struct vnode *v, struct file *f,
 	return 0;
 }
 
+static int cpiofs_truncate(struct vnode *v, loff_t off)
+{
+	/* Not allowed (read-only filesystem) */
+	return VMM_EFAIL;
+}
+
 static bool cpiofs_seek(struct vnode *v, struct file *f, loff_t off)
 {
 	return (off > (loff_t)(v->v_size)) ? FALSE : TRUE;
@@ -493,12 +499,6 @@ static int cpiofs_setattr(struct vnode *v, struct vattr *a)
 	return VMM_EFAIL;
 }
 
-static int cpiofs_truncate(struct vnode *v, loff_t off)
-{
-	/* Not allowed (read-only filesystem) */
-	return VMM_EFAIL;
-}
-
 /* cpiofs filesystem */
 static struct filesystem cpiofs = {
 	.name		= "cpio",
@@ -515,6 +515,7 @@ static struct filesystem cpiofs = {
 	.close		= cpiofs_close,
 	.read		= cpiofs_read,
 	.write		= cpiofs_write,
+	.truncate	= cpiofs_truncate,
 	.seek		= cpiofs_seek,
 	.fsync		= cpiofs_fsync,
 	.readdir	= cpiofs_readdir,
@@ -526,7 +527,6 @@ static struct filesystem cpiofs = {
 	.rmdir		= cpiofs_rmdir,
 	.getattr	= cpiofs_getattr,
 	.setattr	= cpiofs_setattr,
-	.truncate	= cpiofs_truncate
 };
 
 static int __init cpiofs_init(void)

@@ -250,6 +250,7 @@ struct filesystem {
 	int (*close)(struct vnode *, struct file *);
 	size_t (*read)(struct vnode *, struct file *, void *, size_t);
 	size_t (*write)(struct vnode *, struct file *, void *, size_t);
+	int (*truncate)(struct vnode *, loff_t);
 	bool (*seek)(struct vnode *, struct file *, loff_t);
 	int (*fsync)(struct vnode *, struct file *);
 	int (*readdir)(struct vnode *, struct file *, struct dirent *);
@@ -262,7 +263,6 @@ struct filesystem {
 	int (*rmdir)(struct vnode *, struct vnode *, const char *);
 	int (*getattr)(struct vnode *, struct vattr *); /* Not Used */
 	int (*setattr)(struct vnode *, struct vattr *); /* Not Used */
-	int (*truncate)(struct vnode *, loff_t);
 };
 
 /** Create a mount point

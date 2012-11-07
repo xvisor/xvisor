@@ -1348,7 +1348,7 @@ static int vfs_check_dir_empty(const char *path)
 	struct dirent dir;
 
 	if ((fd = vfs_opendir(path)) < 0) {
-		return VMM_EINVALID;
+		return fd;
 	}
 
 	count = 0;
@@ -1569,14 +1569,22 @@ int vfs_unlink(const char *path)
 		return err;
 	}
 
-	vmm_mutex_lock(&dv->v_lock);
 	vmm_mutex_lock(&v->v_lock);
+
+	err = v->v_mount->m_fs->truncate(v, 0);
+	if (err) {
+		goto done;
+	}
+
+	vmm_mutex_lock(&dv->v_lock);
 	err = dv->v_mount->m_fs->remove(dv, v, name);
-	vmm_mutex_unlock(&v->v_lock);
 	vmm_mutex_unlock(&dv->v_lock);
 
-	vfs_vnode_release(v);
+done:
+	vmm_mutex_unlock(&v->v_lock);
+
 	vfs_vnode_release(dv);
+	vfs_vnode_release(v);
 
 	return err;
 }
