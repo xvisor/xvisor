@@ -29,6 +29,7 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC			"Command heap"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -51,7 +52,7 @@ int cmd_heap_info(struct vmm_chardev *cdev)
 	char heap_alloc_name[32];
 	virtual_addr_t heap_va;
 	physical_addr_t heap_pa;
-	virtual_size_t heap_sz, heap_hksz;
+	u64 pre, heap_sz, heap_hksz, heap_usesz, heap_freesz;
 
 	if ((rc = vmm_heap_allocator_name(heap_alloc_name, 32))) {
 		vmm_cprintf(cdev, "Error: Failed to get "
@@ -62,33 +63,51 @@ int cmd_heap_info(struct vmm_chardev *cdev)
 	heap_va = vmm_heap_start_va();
 	heap_sz = vmm_heap_size();
 	heap_hksz = vmm_heap_hksize();
+	heap_freesz = vmm_heap_free_size();
+	heap_usesz = heap_sz - heap_hksz - heap_freesz;
 
 	if ((rc = vmm_host_page_va2pa(heap_va, &heap_pa))) {
 		vmm_cprintf(cdev, "Error: Failed to get heap base PA\n");
 		return rc;
 	}
 
-	vmm_cprintf(cdev, "Heap Allocator : %s\n", heap_alloc_name);
+	vmm_cprintf(cdev, "Allocator Name     : %s\n", heap_alloc_name);
 
+	vmm_cprintf(cdev, "Base Virtual Addr  : ");
 	if (sizeof(virtual_addr_t) == sizeof(u64)) {
-		vmm_cprintf(cdev, "Heap Base VA   : 0x%016llx\n", heap_va);
+		vmm_cprintf(cdev, "0x%016llx\n", heap_va);
 	} else {
-		vmm_cprintf(cdev, "Heap Base VA   : 0x%08x\n", heap_va);
+		vmm_cprintf(cdev, "0x%08x\n", heap_va);
 	}
 
+	vmm_cprintf(cdev, "Base Physical Addr : ");
 	if (sizeof(physical_addr_t) == sizeof(u64)) {
-		vmm_cprintf(cdev, "Heap Base PA   : 0x%016llx\n", heap_pa);
+		vmm_cprintf(cdev, "0x%016llx\n", heap_pa);
 	} else {
-		vmm_cprintf(cdev, "Heap Base PA   : 0x%08x\n", heap_pa);
+		vmm_cprintf(cdev, "0x%08x\n", heap_pa);
 	}
 
-	if (sizeof(virtual_size_t) == sizeof(u64)) {
-		vmm_cprintf(cdev, "Heap Size      : 0x%016llx\n", heap_sz);
-		vmm_cprintf(cdev, "Heap HK-Size   : 0x%016llx\n", heap_hksz);
-	} else {
-		vmm_cprintf(cdev, "Heap Size      : 0x%08x\n", heap_sz);
-		vmm_cprintf(cdev, "Heap HK-Size   : 0x%08x\n", heap_hksz);
-	}
+	pre = 1000; /* Division correct upto 3 decimal points */
+
+	vmm_cprintf(cdev, "House-Keeping Size : ");
+	heap_hksz = (heap_hksz * pre) >> 20;
+	vmm_cprintf(cdev, "%ll.%ll MB\n", 
+			udiv64(heap_hksz, pre), umod64(heap_hksz, pre));
+
+	vmm_cprintf(cdev, "Used Space Size    : ");
+	heap_usesz = (heap_usesz * pre) >> 20;
+	vmm_cprintf(cdev, "%ll.%ll MB\n", 
+			udiv64(heap_usesz, pre), umod64(heap_usesz, pre));
+
+	vmm_cprintf(cdev, "Free Space Size    : ");
+	heap_freesz = (heap_freesz * pre) >> 20;
+	vmm_cprintf(cdev, "%ll.%ll MB\n", 
+			udiv64(heap_freesz, pre), umod64(heap_freesz, pre));
+
+	vmm_cprintf(cdev, "Total Size         : ");
+	heap_sz = (heap_sz * pre) >> 20;
+	vmm_cprintf(cdev, "%ll.%ll MB\n", 
+			udiv64(heap_sz, pre), umod64(heap_sz, pre));
 
 	return VMM_OK;
 }
