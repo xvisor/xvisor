@@ -29,7 +29,7 @@ else
  build_dir=$(top_dir)/build
 endif
 
-obj_dir=$(build_dir)/tests/arm32/versatile/basic
+obj_dir=$(build_dir)/tests/arm32/versatilepb/basic
 common_dir=$(top_dir)/tests/arm32/common/basic
 
 board_arch       = v5

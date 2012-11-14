@@ -21,16 +21,16 @@ Guest with Xvisor running on QEMU Versatile PB Host:
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with Versatile PB default settings]
-  # make ARCH=arm versatile-defconfig
+  # make ARCH=arm versatilepb-defconfig
 
   [4. Build Xvisor]
   # make
 
   [5. Build Basic Test Code]
-  # make -C tests/arm32/versatile/basic
+  # make -C tests/arm32/versatilepb/basic
 
   [6. Create qemu.img for running it on QEMU]
-  ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/tests/arm32/versatile/basic/arm_test.bin.patched@0x01000000
+  ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/tests/arm32/versatilepb/basic/arm_test.bin.patched@0x01000000
 
   [7. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M versatilepb -display none -serial stdio -kernel build/qemu.img

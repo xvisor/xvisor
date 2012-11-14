@@ -22,17 +22,17 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with VersatilePB default settings]
-  # make ARCH=arm versatile-defconfig 
-  (Note: versatile-defconfig will select device tree configuration with only one preconfigured guest. For enabling two preconfigured guest use "make ARCH=arm menuconfig" after the above step to change the device tree configuration for two guests)
+  # make ARCH=arm versatilepb-defconfig 
+  (Note: versatilepb-defconfig will select device tree configuration with only one preconfigured guest. For enabling two preconfigured guest use "make ARCH=arm menuconfig" after the above step to change the device tree configuration for two guests)
 
   [4. Build Xvisor]
   # make
 
   [5. Build Basic Test Code]
-  # make -C tests/arm32/versatile/basic
+  # make -C tests/arm32/versatilepb/basic
 
   [6. Copy defconfig to Linux build directory]
-  # cp tests/arm32/versatile/linux/linux-<linux_version>_versatilepb_defconfig <linux_build_directory>/.config
+  # cp tests/arm32/versatilepb/linux/linux-<linux_version>_versatilepb_defconfig <linux_build_directory>/.config
 
   [7. GoTo Linux source directory]
   # cd <linux_source_directory>
@@ -63,8 +63,8 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # cd <linux_build_directory>
 
   [16. Create xvisor_linux_qemu.img for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x00010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x00010000 <xvisor_source_directory>/build/tests/arm32/versatile/basic/arm_test.bin.patched@0x01000000 <xvisor_source_directory>/tests/arm32/versatile/linux/cmdlist@0x010FF000 ./arch/arm/boot/zImage@0x01100000 <busybox_rootfs_directory>/rootfs.img@0x01400000
-  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/versatile/basic/arm_test.bin.patched@0x08000000 <xvisor_source_directory>/tests/arm32/versatile/linux/cmdlist@0x080FF000 ./arch/arm/boot/zImage@0x08100000 <busybox_rootfs_directory>/rootfs.img@0x08400000")
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x00010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x00010000 <xvisor_source_directory>/build/tests/arm32/versatilepb/basic/arm_test.bin.patched@0x01000000 <xvisor_source_directory>/tests/arm32/versatilepb/linux/cmdlist@0x010FF000 ./arch/arm/boot/zImage@0x01100000 <busybox_rootfs_directory>/rootfs.img@0x01400000
+  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/versatilepb/basic/arm_test.bin.patched@0x08000000 <xvisor_source_directory>/tests/arm32/versatilepb/linux/cmdlist@0x080FF000 ./arch/arm/boot/zImage@0x08100000 <busybox_rootfs_directory>/rootfs.img@0x08400000")
 
   [17. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M versatilepb -display none -serial stdio -kernel ./xvisor_linux_qemu.img
@@ -85,7 +85,7 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   OR
   [guest0/uart0] arm-test# autoexec
   (Note: "autoexec" is a short-cut command for executing commands from NOR flash)
-  (Note: The <xvisor_source_directory>/tests/arm32/versatile/linux/cmdlist file 
+  (Note: The <xvisor_source_directory>/tests/arm32/versatilepb/linux/cmdlist file 
    which we have added to guest NOR flash contains set of commands for booting 
    linux from NOR flash)
 
