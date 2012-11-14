@@ -43,9 +43,9 @@
  * Global board context
  */
 
-virtual_addr_t pba8_sys_base;
+virtual_addr_t realview_sys_base;
 #if defined(CONFIG_VTEMU)
-struct vtemu *pba8_vt;
+struct vtemu *realview_vt;
 #endif
 
 /*
@@ -131,13 +131,13 @@ int arch_board_devtree_populate(struct vmm_devtree_node ** root)
 
 int arch_board_reset(void)
 {
-	void *sys_lock = (void *)pba8_sys_base + REALVIEW_SYS_LOCK_OFFSET;
+	void *sys_lock = (void *)realview_sys_base + REALVIEW_SYS_LOCK_OFFSET;
 
 	vmm_writel(REALVIEW_SYS_LOCKVAL, sys_lock);
 	vmm_writel(0x0, 
-		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
+		   (void *)(realview_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
 	vmm_writel(REALVIEW_SYS_CTRL_RESET_PLLRESET, 
-		   (void *)(pba8_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
+		   (void *)(realview_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
 	vmm_writel(0, sys_lock);
 
 	return VMM_OK;
@@ -167,7 +167,7 @@ static const struct icst_params realview_oscvco_params = {
 
 static void realview_oscvco_set(struct versatile_clk *vclk, struct icst_vco vco)
 {
-	void *sys_lock = (void *)pba8_sys_base + REALVIEW_SYS_LOCK_OFFSET;
+	void *sys_lock = (void *)realview_sys_base + REALVIEW_SYS_LOCK_OFFSET;
 	u32 val;
 
 	val = vmm_readl(vclk->vcoreg) & ~0x7ffff;
@@ -226,7 +226,7 @@ static struct vmm_devclk *realview_getclk(struct vmm_devtree_node *node)
  */
 static void realview_clcd_disable(struct clcd_fb *fb)
 {
-	void *sys_clcd = (void *)pba8_sys_base + REALVIEW_SYS_CLCD_OFFSET;
+	void *sys_clcd = (void *)realview_sys_base + REALVIEW_SYS_CLCD_OFFSET;
 	u32 val;
 
 	val = vmm_readl(sys_clcd);
@@ -239,7 +239,7 @@ static void realview_clcd_disable(struct clcd_fb *fb)
  */
 static void realview_clcd_enable(struct clcd_fb *fb)
 {
-	void *sys_clcd = (void *)pba8_sys_base + REALVIEW_SYS_CLCD_OFFSET;
+	void *sys_clcd = (void *)realview_sys_base + REALVIEW_SYS_CLCD_OFFSET;
 	u32 val;
 
 	/*
@@ -258,7 +258,7 @@ static void realview_clcd_enable(struct clcd_fb *fb)
  */
 static int realview_clcd_setup(struct clcd_fb *fb)
 {
-	void *sys_clcd = (void *)pba8_sys_base + REALVIEW_SYS_CLCD_OFFSET;
+	void *sys_clcd = (void *)realview_sys_base + REALVIEW_SYS_CLCD_OFFSET;
 	const char *panel_name, *vga_panel_name;
 	unsigned long framesize;
 	u32 val;
@@ -316,8 +316,8 @@ int __init arch_board_early_init(void)
 	return 0;
 }
 
-static virtual_addr_t pba8_timer0_base;
-static virtual_addr_t pba8_timer1_base;
+static virtual_addr_t realview_timer0_base;
+static virtual_addr_t realview_timer1_base;
 
 int __init arch_clocksource_init(void)
 {
@@ -364,14 +364,14 @@ int __init arch_clocksource_init(void)
 	if (!node) {
 		goto skip_clocksource_init;
 	}
-	rc = vmm_devtree_regmap(node, &pba8_timer1_base, 0);
+	rc = vmm_devtree_regmap(node, &realview_timer1_base, 0);
 	if (rc) {
 		return rc;
 	}
-	pba8_timer1_base += 0x20;
+	realview_timer1_base += 0x20;
 
 	/* Initialize timer1 as clocksource */
-	rc = sp804_clocksource_init(pba8_timer1_base, 
+	rc = sp804_clocksource_init(realview_timer1_base, 
 				    node->name, 300, 1000000, 20);
 	if (rc) {
 		return rc;
@@ -426,7 +426,7 @@ int __init arch_clockchip_init(void)
 	if (!node) {
 		goto skip_clockchip_init;
 	}
-	rc = vmm_devtree_regmap(node, &pba8_timer0_base, 0);
+	rc = vmm_devtree_regmap(node, &realview_timer0_base, 0);
 	if (rc) {
 		return rc;
 	}
@@ -439,7 +439,7 @@ int __init arch_clockchip_init(void)
 	val = *valp; 
 
 	/* Initialize timer0 as clockchip */
-	rc = sp804_clockchip_init(pba8_timer0_base, val, 
+	rc = sp804_clockchip_init(realview_timer0_base, val, 
 				  node->name, 300, 1000000, 0);
 	if (rc) {
 		return rc;
@@ -473,13 +473,13 @@ int __init arch_board_final_init(void)
 	if (!node) {
 		return VMM_ENODEV;
 	}
-	rc = vmm_devtree_regmap(node, &pba8_sys_base, 0);
+	rc = vmm_devtree_regmap(node, &realview_sys_base, 0);
 	if (rc) {
 		return rc;
 	}
 
 	/* Setup Clocks (before probing) */
-	oscvco_clk.vcoreg = (void *)pba8_sys_base + REALVIEW_SYS_OSC4_OFFSET;
+	oscvco_clk.vcoreg = (void *)realview_sys_base + REALVIEW_SYS_OSC4_OFFSET;
 
 	/* Setup CLCD (before probing) */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
@@ -522,7 +522,7 @@ int __init arch_board_final_init(void)
 #if defined(CONFIG_VTEMU)
 	info = vmm_fb_find("clcd");
 	if (info) {
-		pba8_vt = vtemu_create("clcd-vtemu", info, NULL);
+		realview_vt = vtemu_create("clcd-vtemu", info, NULL);
 	}
 #endif
 

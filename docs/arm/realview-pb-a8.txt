@@ -5,7 +5,7 @@ emulated by QEMU 0.14.xx or higher.
 
 By default, Xvisor for Realview-PB-A8 supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
-refer <xvisor_source>/tests/arm32/pb-a8/basic/README.
+refer <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
 
 Please follow the steps below to build & run Basic Test on Realview PB-A8 guest
 with Xvisor running on QEMU Realview PB-A8 Host:
@@ -17,16 +17,16 @@ with Xvisor running on QEMU Realview PB-A8 Host:
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with Realview PB-A8 default settings]
-  # make ARCH=arm pb-a8-defconfig 
+  # make ARCH=arm realview-pb-a8-defconfig 
 
   [4. Build Xvisor]
   # make
 
   [5. Build Basic Test Code]
-  # make -C tests/arm32/pb-a8/basic
+  # make -C tests/arm32/realview-pb-a8/basic
 
   [6. Create qemu.img for running it on QEMU]
-  # ./tools/scripts/memimg.py -a 0x70010000 -o build/qemu.img build/vmm.bin@0x70010000 build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x71000000
+  # ./tools/scripts/memimg.py -a 0x70010000 -o build/qemu.img build/vmm.bin@0x70010000 build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched@0x71000000
 
   [7. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel build/qemu.img

@@ -18,7 +18,7 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of PB-A8 board objects.
+# @brief list of Realview board objects.
 # */
 
 board-objs-y+=brd_defterm.o

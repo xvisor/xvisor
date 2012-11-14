@@ -5,7 +5,7 @@ BeagleBoard-xM using SD booting feature of BeagleBoard-xM.
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
-refer <xvisor_source>/tests/arm32/pb-a8/basic/README.
+refer <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
 
 We need to add 2 images in boot partition of micor-SD card that is shipped with
 BeagleBoard-xM:
@@ -34,7 +34,7 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   # mkimage -A arm -O linux -T kernel -C none -a 0x88000000 -e 0x88000000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
   [6. Build ARM Basic Test for Realview PB-A8 Guest, this creates arm_test.bin.patched]
-  # make -C tests/arm32/pb-a8/basic
+  # make -C tests/arm32/realview-pb-a8/basic
   
   [7. Unplug micro-SD card from BeagleBoard-xM and plug it on your development machine]
 
@@ -44,13 +44,13 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   # cp uvmm.bin <path_to_mounted_boot_partition_of_micor_sd_card>
 
   [10. Copy arm_test.bin.patched to boot partition of micor-SD card]
-  # cp build/tests/arm32/pb-a8/basic/arm_test.bin.patched <path_to_mounted_boot_partition_of_micor_sd_card>/arm.bin
+  # cp build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched <path_to_mounted_boot_partition_of_micor_sd_card>/arm.bin
 
   (Note: If you want additional images like cmdlist, patched zImage, 
    rootfs.img etc. then you should copy these images to boot partition
    of micro-SD card after above step.)
   (Note: For more info on images required for linux on Realview-PB-A8 guest 
-   refer to <xvisor_source>/tests/arm32/pb-a8/linux/README.)
+   refer to <xvisor_source>/tests/arm32/realview-pb-a8/linux/README.)
 
   [11. Unmount boot partition (or partition 0) of micro-SD card from your development machine]
 
@@ -122,7 +122,7 @@ BeagleBoard emulated by QEMU Linaro 2.02 or higher.
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
-refer <xvisor_source>/tests/arm32/pb-a8/basic/README.
+refer <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
 
 We need to have 4 images to create the nand-flash image:
  a) X-loader for OMAP3 (2nd stage bootloader for OMAP3)

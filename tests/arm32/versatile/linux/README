@@ -96,7 +96,7 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
-  (Note: the above steps assumes Xvisor running on Realview-PB-A8 host emulated
+  (Note: the above steps assumes Xvisor running on VersatilePB host emulated
    by QEMU 0.14.xx or higher. For other types of ARM host some of the above 
    steps will need to be adapted for that specfic ARM host. For more info on 
    your desired ARM host refer docs/arm/)

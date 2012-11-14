@@ -29,7 +29,7 @@ else
  build_dir=$(top_dir)/build
 endif
 
-obj_dir=$(build_dir)/tests/arm32/pb-a8/basic
+obj_dir=$(build_dir)/tests/arm32/realview-pb-a8/basic
 common_dir=$(top_dir)/tests/arm32/common/basic
 
 board_arch       = v7
