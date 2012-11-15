@@ -173,7 +173,7 @@ _start_mmu_defl1_set:
 	/*
 	 * Setup Translation Table Base Register 0
 	 */
-	mcr     p15, 0, r0, c2, c0, 0
+	mcr	p15, 0, r0, c2, c0, 0
 	/*
 	 * Setup Domain Control Register
 	 */
@@ -184,10 +184,10 @@ _start_mmu_defl1_set:
 	 */
 	ldr	r1, __sctrl_mmu_val
 	ldr	r2, __sctrl_mmu_clear
-	mrc     p15, 0, r3, c1, c0, 0
+	mrc	p15, 0, r3, c1, c0, 0
 	and	r3, r3, r2
 	orr	r3, r3, r1
-	mcr     p15, 0, r3, c1, c0, 0
+	mcr	p15, 0, r3, c1, c0, 0
 	/*
 	 * Jump to reset code
 	 */
@@ -360,60 +360,63 @@ _reset:
 	sub	lr, lr, #\lroffset
 .endm
 
+/* We save the arch_regs into the small mode-specific stack */
 /* If came from priviledged mode then push banked registers */
-.macro PUSH_REGS skip_lable
-	str     lr, [sp, #-4]!;		/* Push the return address */
+.macro PUSH_REGS skip_label
+	str	lr, [sp, #-4]!;	    /* Push the return address */
 	sub	sp, sp, #(4*2);		/* Adjust the stack pointer */
 	stm	sp, {r13-r14}^;		/* Push user mode registers */
 	stmdb	sp!, {r0-r12};		/* Push user mode registers */
-	mrs     r4, spsr_all;		/* Put SPSR on stack & NOP for prev. */
-	str     r4, [sp, #-4]!
+	mrs	r4, spsr_all;		/* Put SPSR on stack & NOP for prev. */
+	str	r4, [sp, #-4]!
+	mrs	r2, cpsr_all
 	and	r0, r4, #CPSR_MODE_MASK
 	cmp	r0, #CPSR_MODE_USER
-	beq	\skip_lable
+	beq	\skip_label
 	add	r1, sp, #(4*14)
-	mrs	r5, cpsr_all
 	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
 	msr	cpsr_cxsf, r4
 	stm	r1, {r13-r14}
-	msr	cpsr_cxsf, r5		/* Restore CPSR & NOP for prev. */
-\skip_lable:
+	msr	cpsr_cxsf, r2		/* Restore CPSR & NOP for prev. */
+\skip_label:
+/* Copy the pointer to arch_regs into r0 and switch to svc mode */
+	mov	r0, sp
+	cps	#CPSR_MODE_SUPERVISOR
+	
 .endm
 
 /* Call C function to handle exception */
 .macro CALL_EXCEPTION_CFUNC cfunc
-	mov	r0, sp
 	bl	\cfunc
 .endm
 
 /* If going back to priviledged mode then pull banked registers */
-.macro PULL_REGS skip_lable skip_lable1
-	ldr     r4, [sp, #0]
+.macro PULL_REGS skip_label skip_label1 mode=CPSR_MODE_SUPERVISOR
+	cps	#\mode
+	ldr	r4, [sp, #0]
 	and	r0, r4, #CPSR_MODE_MASK
 	cmp	r0, #CPSR_MODE_USER
-	beq	\skip_lable
-	mrs	r1, cpsr_all
-	and 	r1, r1, #CPSR_MODE_MASK
-	cmp	r0, r1
-	beq	\skip_lable1
+	beq	\skip_label
+	cmp	r0, #\mode
+	beq	\skip_label1
+	mrs	r2, cpsr_all
 	add	r1, sp, #(4*14)
-	mrs	r5, cpsr_all
 	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
 	msr	cpsr_cxsf, r4
 	ldm	r1, {r13-r14}
-	msr	cpsr_cxsf, r5		/* Restore CPSR & NOP for prev. inst */
-\skip_lable:
-	ldr     r0, [sp], #0x0004;	/* Get SPSR from stack */
-	msr     spsr_cxsf, r0;
+	msr	cpsr_cxsf, r2		/* Restore CPSR & NOP for prev. inst */
+\skip_label:
+	ldr	r0, [sp], #0x0004;	/* Get SPSR from stack */
+	msr	spsr_cxsf, r0;
 	ldmia   sp, {r0-r14}^;		/* Restore registers (user) */
-	add     sp, sp, #(4*15);	/* Adjust stack & NOP for prev. */
-	ldr     lr, [sp], #0x0004	/* Pull return address */
+	add	sp, sp, #(4*15);	/* Adjust stack & NOP for prev. */
+	ldr	lr, [sp], #0x0004	/* Pull return address */
 	movs	pc, lr
-\skip_lable1:
-	ldr     r0, [sp], #0x0004;	/* Get SPSR from stack */
-	msr     spsr_cxsf, r0;
+\skip_label1:
+	ldr	r0, [sp], #0x0004;	/* Get SPSR from stack */
+	msr	spsr_cxsf, r0;
 	ldm	sp, {r0-r15}^;		/* Restore all registers & CPSR */
-	mov     r0, r0;			/* NOP for prev. */
+	mov	r0, r0;			/* NOP for prev. */
 .endm
 
 	/* 
@@ -422,7 +425,7 @@ _reset:
 EXCEPTION_HANDLER _undef_inst, 4
 	PUSH_REGS _undef_inst_push
 	CALL_EXCEPTION_CFUNC do_undef_inst
-	PULL_REGS _undef_inst_pull _undef_inst_pull1
+	PULL_REGS _undef_inst_pull _undef_inst_pull1 CPSR_MODE_UNDEFINED
 
 	/* 
 	 * Software interrupt exception handler.
@@ -438,7 +441,7 @@ EXCEPTION_HANDLER _soft_irq, 4
 EXCEPTION_HANDLER _prefetch_abort, 4
 	PUSH_REGS _prefetch_abort_push
 	CALL_EXCEPTION_CFUNC do_prefetch_abort
-	PULL_REGS _prefetch_abort_pull _prefetch_abort_pull1
+	PULL_REGS _prefetch_abort_pull _prefetch_abort_pull1 CPSR_MODE_ABORT
 
 	/* 
 	 * Data abort exception handler.
@@ -446,7 +449,7 @@ EXCEPTION_HANDLER _prefetch_abort, 4
 EXCEPTION_HANDLER _data_abort, 8
 	PUSH_REGS _data_abort_push
 	CALL_EXCEPTION_CFUNC do_data_abort
-	PULL_REGS _data_abort_pull _data_abort_pull1
+	PULL_REGS _data_abort_pull _data_abort_pull1 CPSR_MODE_ABORT
 
 	/* 
 	 * Not used exception handler.
@@ -462,7 +465,7 @@ EXCEPTION_HANDLER _not_used, 4
 EXCEPTION_HANDLER _irq, 4
 	PUSH_REGS _irq_push
 	CALL_EXCEPTION_CFUNC do_irq
-	PULL_REGS _irq_pull _irq_pull1
+	PULL_REGS _irq_pull _irq_pull1 CPSR_MODE_IRQ
 
 	/* 
 	 * FIQ exception handler.
@@ -470,4 +473,4 @@ EXCEPTION_HANDLER _irq, 4
 EXCEPTION_HANDLER _fiq, 4
 	PUSH_REGS _fiq_push
 	CALL_EXCEPTION_CFUNC do_fiq
-	PULL_REGS _fiq_pull _fiq_pull1
+	PULL_REGS _fiq_pull _fiq_pull1 CPSR_MODE_FIQ

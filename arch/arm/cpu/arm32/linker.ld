@@ -102,18 +102,10 @@ SECTIONS
 		PROVIDE(_svc_stack_end = .);
         }
 
-	.mon_stack :
-	{
-		PROVIDE(_mon_stack_start = .);
-		. = . + CONFIG_IRQ_STACK_SIZE;
-		. = ALIGN(4);
-		PROVIDE(_mon_stack_end = .);
-	}
-
 	.abt_stack :
 	{
 		PROVIDE(_abt_stack_start = .);
-		. = . + CONFIG_IRQ_STACK_SIZE;
+		. = . + 0x100;
 		. = ALIGN(4);
 		PROVIDE(_abt_stack_end = .);
 	}
@@ -121,7 +113,7 @@ SECTIONS
 	.und_stack :
 	{
 		PROVIDE(_und_stack_start = .);
-		. = . + CONFIG_IRQ_STACK_SIZE;
+		. = . + 0x100;
 		. = ALIGN(4);
 		PROVIDE(_und_stack_end = .);
 	}
@@ -129,7 +121,7 @@ SECTIONS
 	.irq_stack :
 	{
 		PROVIDE(_irq_stack_start = .);
-		. = . + CONFIG_IRQ_STACK_SIZE;
+		. = . + 0x100;
 		. = ALIGN(4);
 		PROVIDE(_irq_stack_end = .);
 	}
@@ -137,7 +129,7 @@ SECTIONS
 	.fiq_stack :
 	{
 		PROVIDE(_fiq_stack_start = .);
-		. = . + CONFIG_IRQ_STACK_SIZE;
+		. = . + 0x100;
 		. = ALIGN(4);
 		PROVIDE(_fiq_stack_end = .);
 	}
