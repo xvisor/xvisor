@@ -24,20 +24,20 @@
 #define _ARCH_HOST_IRQ_H__
 
 #include <vmm_types.h>
-#include <omap3/intc.h>
+#include <omap/intc.h>
 
 #define ARCH_HOST_IRQ_COUNT			OMAP3_MPU_INTC_NRIRQ
 
 /* Get current active host irq */
 static inline u32 arch_host_irq_active(u32 cpu_irq_no)
 {
-	return omap3_intc_active_irq(cpu_irq_no);
+	return intc_active_irq(cpu_irq_no);
 }
 
 /* Initialize board specifig host irq hardware (i.e PIC) */
 static inline int arch_host_irq_init(void)
 {
-	return omap3_intc_init();
+	return intc_init();
 }
 
 #endif

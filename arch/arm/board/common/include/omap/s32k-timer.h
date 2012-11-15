@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Pranav Sawargaonkar.
+ * Copyright (c) 2011 Sukanto Ghosh.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,18 +16,25 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file uart.h
- * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief header file for OMAP3 UART configuration
+ * @file s32k-timer.h
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @brief OMAP3 32K sync timer APIs
  */
-#ifndef __OMAP3_UART_H__
-#define __OMAP3_UART_H__
+#ifndef __OMAP_S32K_TIMER_H__
+#define __OMAP_S32K_TIMER_H__
 
-#define OMAP3_COM_FREQ   	48000000L
+#include <vmm_types.h>
 
-/** OMAP3/OMAP343X UART Base Physical Address */
-#define OMAP3_UART_BASE 	0x49020000
-#define OMAP3_UART_BAUD 	115200
-#define OMAP3_UART_INCLK 	OMAP3_COM_FREQ
+/** OMAP3/OMAP343X S32K Base Physical Address */
+#define OMAP3_S32K_BASE 	0x48320000
 
-#endif
+#define OMAP3_S32K_FREQ_HZ	32768
+
+#define OMAP3_S32K_CR	 	0x10
+
+u32 s32k_get_counter(void);
+int s32k_init(void);
+int s32k_clocksource_init(void);
+
+#endif  /*  __OMAP_S32K_TIMER_H__ */
+

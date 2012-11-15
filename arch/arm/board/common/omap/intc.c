@@ -26,34 +26,34 @@
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <cpu_defines.h>
-#include <omap3/intc.h>
+#include <omap/intc.h>
 
-static virtual_addr_t omap3_intc_base;
+static virtual_addr_t intc_base;
 
 #define intc_write(reg, val)	vmm_writel((val), \
-				(void *)(omap3_intc_base + (reg)))
-#define intc_read(reg)		vmm_readl((void *)(omap3_intc_base + (reg)))
+				(void *)(intc_base + (reg)))
+#define intc_read(reg)		vmm_readl((void *)(intc_base + (reg)))
 
-u32 omap3_intc_active_irq(u32 cpu_irq)
+u32 intc_active_irq(u32 cpu_irq)
 {
 	u32 ret = 0xFFFFFFFF;
 	if (cpu_irq == CPU_EXTERNAL_IRQ) {	/* armv7a IRQ */
-		ret = intc_read(OMAP3_INTC_SIR_IRQ);
+		ret = intc_read(INTC_SIR_IRQ);
 		/* Spurious IRQ ? */
-		if(((u32) ret & OMAP3_INTC_SIR_IRQ_SPURIOUSFLAG_M)) {
+		if(((u32) ret & INTC_SIR_IRQ_SPURIOUSFLAG_M)) {
 			ret = -1;
 		}
-		ret = ((u32) ret & OMAP3_INTC_SIR_IRQ_ACTIVEIRQ_M);
+		ret = ((u32) ret & INTC_SIR_IRQ_ACTIVEIRQ_M);
 		if (OMAP3_MPU_INTC_NRIRQ <= ret) {
 			ret = -1;
 		}
 	} else if (cpu_irq == CPU_EXTERNAL_FIQ) {	/* armv7a FIQ */
-		ret = intc_read(OMAP3_INTC_SIR_FIQ);
+		ret = intc_read(INTC_SIR_FIQ);
 		/* Spurious FIQ ? */
-		if(((u32) ret & OMAP3_INTC_SIR_FIQ_SPURIOUSFLAG_M)) {
+		if(((u32) ret & INTC_SIR_FIQ_SPURIOUSFLAG_M)) {
 			ret = -1;
 		}
-		ret = ((u32) ret & OMAP3_INTC_SIR_FIQ_ACTIVEIRQ_M);
+		ret = ((u32) ret & INTC_SIR_FIQ_ACTIVEIRQ_M);
 		if (OMAP3_MPU_INTC_NRIRQ <= ret) {
 			ret = -1;
 		}
@@ -61,46 +61,46 @@ u32 omap3_intc_active_irq(u32 cpu_irq)
 	return ret;
 }
 
-void omap3_intc_mask(struct vmm_host_irq *irq)
+void intc_mask(struct vmm_host_irq *irq)
 {
-	intc_write(OMAP3_INTC_MIR((irq->num / OMAP3_INTC_BITS_PER_REG)),
-		   0x1 << (irq->num & (OMAP3_INTC_BITS_PER_REG - 1)));
+	intc_write(INTC_MIR((irq->num / INTC_BITS_PER_REG)),
+		   0x1 << (irq->num & (INTC_BITS_PER_REG - 1)));
 }
 
-void omap3_intc_unmask(struct vmm_host_irq *irq)
+void intc_unmask(struct vmm_host_irq *irq)
 {
-	intc_write(OMAP3_INTC_MIR_CLEAR((irq->num / OMAP3_INTC_BITS_PER_REG)),
-		   0x1 << (irq->num & (OMAP3_INTC_BITS_PER_REG - 1)));
+	intc_write(INTC_MIR_CLEAR((irq->num / INTC_BITS_PER_REG)),
+		   0x1 << (irq->num & (INTC_BITS_PER_REG - 1)));
 }
 
-void omap3_intc_eoi(struct vmm_host_irq *irq)
+void intc_eoi(struct vmm_host_irq *irq)
 {
-	intc_write(OMAP3_INTC_CONTROL, OMAP3_INTC_CONTROL_NEWIRQAGR_M);
+	intc_write(INTC_CONTROL, INTC_CONTROL_NEWIRQAGR_M);
 }
 
 static struct vmm_host_irq_chip intc_chip = {
 	.name			= "INTC",
-	.irq_mask		= omap3_intc_mask,
-	.irq_unmask		= omap3_intc_unmask,
-	.irq_eoi		= omap3_intc_eoi,
+	.irq_mask		= intc_mask,
+	.irq_unmask		= intc_unmask,
+	.irq_eoi		= intc_eoi,
 };
 
-int __init omap3_intc_init(void)
+int __init intc_init(void)
 {
 	u32 i, tmp;
 
-	omap3_intc_base = vmm_host_iomap(OMAP3_MPU_INTC_BASE, 0x1000);
+	intc_base = vmm_host_iomap(OMAP3_MPU_INTC_BASE, 0x1000);
 
-	tmp = intc_read(OMAP3_INTC_SYSCONFIG);
-	tmp |= OMAP3_INTC_SYSCONFIG_SOFTRST_M;	/* soft reset */
-	intc_write(OMAP3_INTC_SYSCONFIG, tmp);
+	tmp = intc_read(INTC_SYSCONFIG);
+	tmp |= INTC_SYSCONFIG_SOFTRST_M;	/* soft reset */
+	intc_write(INTC_SYSCONFIG, tmp);
 
 	/* Wait for reset to complete */
-	while (!(intc_read(OMAP3_INTC_SYSSTATUS) &
-		 OMAP3_INTC_SYSSTATUS_RESETDONE_M)) ;
+	while (!(intc_read(INTC_SYSSTATUS) &
+		 INTC_SYSSTATUS_RESETDONE_M)) ;
 
 	/* Enable autoidle */
-	intc_write(OMAP3_INTC_SYSCONFIG, OMAP3_INTC_SYSCONFIG_AUTOIDLE_M);
+	intc_write(INTC_SYSCONFIG, INTC_SYSCONFIG_AUTOIDLE_M);
 
 	/*
 	 * Setup the Host IRQ subsystem.

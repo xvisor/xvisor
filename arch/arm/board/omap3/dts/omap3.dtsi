@@ -10,7 +10,7 @@
 	};
 
 	host {
-		model = "beagle-omap3530";
+		model = "omap3530";
 		device_type = "host";
 		
 		cpus {

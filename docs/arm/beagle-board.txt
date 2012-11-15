@@ -24,8 +24,8 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Beagleboard host default settings]
-  # make ARCH=arm beagle-defconfig 
+  [3. Configure Xvisor with Beagleboard (or OMAP3) host default settings]
+  # make ARCH=arm omap3-beagle-defconfig 
 
   [4. Build Xvisor, this creates vmm.bin]
   # make
@@ -167,8 +167,8 @@ follows:
   [5. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [6. Configure Xvisor with Beagleboard host default settings]
-  # make ARCH=arm beagle-defconfig 
+  [6. Configure Xvisor with Beagleboard (or OMAP3) host default settings]
+  # make ARCH=arm omap3-beagle-defconfig 
 
   [7. Build Xvisor, this creates vmm.bin]
   # make

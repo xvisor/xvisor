@@ -25,7 +25,7 @@
 #include <vmm_compiler.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <omap3/prcm.h>
+#include <omap/prcm.h>
 
 virtual_addr_t omap3_cm_base = 0;
 virtual_addr_t omap3_prm_base = 0;

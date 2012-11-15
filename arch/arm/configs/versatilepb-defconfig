@@ -16,7 +16,6 @@ CONFIG_CPU_LE=y
 CONFIG_BOARD="versatile"
 CONFIG_CPU_ARM9=y
 # CONFIG_CPU_CORTEX_A8 is not set
-# CONFIG_CPU_OMAP3 is not set
 # CONFIG_CPU_CORTEX_A9 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
 # CONFIG_CPU_CORTEX_A15_VE is not set
@@ -37,7 +36,7 @@ CONFIG_ARM32_STACKTRACE=y
 # CONFIG_ARM32_HIGHVEC is not set
 CONFIG_BOARD_VERSATILE=y
 # CONFIG_BOARD_REALVIEW is not set
-# CONFIG_BOARD_BEAGLE is not set
+# CONFIG_BOARD_OMAP3 is not set
 # CONFIG_BOARD_VEXPRESS is not set
 
 #
@@ -53,7 +52,7 @@ CONFIG_ARM_TIMER_SP804=y
 # CONFIG_ICST is not set
 # CONFIG_VERSATILE_CLOCK is not set
 # CONFIG_VERSATILE_CLCD is not set
-# CONFIG_OMAP3 is not set
+# CONFIG_OMAP is not set
 
 #
 # Hypervisor Options

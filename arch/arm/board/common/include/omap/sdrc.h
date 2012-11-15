@@ -18,11 +18,11 @@
  *
  * @file sdrc.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief source code for OMAP3 SDRC controller
+ * @brief source code for OMAP SDRC controller
  */
 
-#ifndef __OMAP3_SDRC_H_
-#define __OMAP3_SDRC_H_
+#ifndef __OMAP_SDRC_H_
+#define __OMAP_SDRC_H_
 
 #include <vmm_types.h>
 
@@ -131,7 +131,7 @@
  * @rfr_ctrl: Value to program to SDRC_RFR_CTRL for this rate
  * @mr: Value to program to SDRC_MR for this rate
  */
-struct omap3_sdrc_params {
+struct sdrc_params {
 	unsigned long rate;
 	u32 actim_ctrla;
 	u32 actim_ctrlb;
@@ -139,8 +139,8 @@ struct omap3_sdrc_params {
 	u32 mr;
 };
 
-/** Initialize OMAP3 SDRC controller */
-int omap3_sdrc_init(struct omap3_sdrc_params *sdrc_cs0,
-		    struct omap3_sdrc_params *sdrc_cs1);
+/** Initialize OMAP SDRC controller */
+int sdrc_init(struct sdrc_params *sdrc_cs0,
+		    struct sdrc_params *sdrc_cs1);
 
-#endif /* __OMAP3_SDRC_H_ */
+#endif /* __OMAP_SDRC_H_ */

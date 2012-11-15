@@ -28,12 +28,11 @@
 #include <vmm_chardev.h>
 #include <arch_timer.h>
 #include <libs/libfdt.h>
-#include <omap3/prcm.h>
-#include <omap3/sdrc.h>
-#include <omap3/intc.h>
-#include <omap3/gpt.h>
-#include <omap3/s32k-timer.h>
-#include <omap3/prcm.h>
+#include <omap/sdrc.h>
+#include <omap/intc.h>
+#include <omap/gpt.h>
+#include <omap/s32k-timer.h>
+#include <omap/prcm.h>
 
 /*
  * Device Tree support
@@ -134,7 +133,7 @@ int arch_board_shutdown(void)
 
 /* Micron MT46H32M32LF-6 */
 /* XXX Using ARE = 0x1 (no autorefresh burst) -- can this be changed? */
-static struct omap3_sdrc_params mt46h32m32lf6_sdrc_params[] = {
+static struct sdrc_params mt46h32m32lf6_sdrc_params[] = {
 	[0] = {
 		.rate	     = 166000000,
 		.actim_ctrla = 0x9a9db4c6,
@@ -198,8 +197,8 @@ int __init arch_board_early_init(void)
 	}
 
 	/* Initialize SDRAM Controller (SDRC) */
-	if ((rc = omap3_sdrc_init(mt46h32m32lf6_sdrc_params, 
-				  mt46h32m32lf6_sdrc_params))) {
+	if ((rc = sdrc_init(mt46h32m32lf6_sdrc_params, 
+			    mt46h32m32lf6_sdrc_params))) {
 		return rc;
 	}
 
@@ -212,7 +211,7 @@ int __init arch_board_early_init(void)
 #define BEAGLE_CLK_SRC_GPT	1 
 #endif
 
-struct omap3_gpt_cfg beagle_gpt_cfg[] = {
+struct gpt_cfg beagle_gpt_cfg[] = {
 	{
 		.name =		"gpt1",
 		.base_pa =	OMAP3_GPT1_BASE,
@@ -238,21 +237,21 @@ struct omap3_gpt_cfg beagle_gpt_cfg[] = {
 int __init arch_clocksource_init(void)
 {
 #ifdef CONFIG_OMAP3_CLKSRC_S32KT
-	return omap3_s32k_clocksource_init();
+	return s32k_clocksource_init();
 #else
-	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct omap3_gpt_cfg), 
+	gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct gpt_cfg), 
 			beagle_gpt_cfg);
-	return omap3_gpt_clocksource_init(BEAGLE_CLK_SRC_GPT, 
+	return gpt_clocksource_init(BEAGLE_CLK_SRC_GPT, 
 					  OMAP3_GLOBAL_REG_PRM);
 #endif
 }
 
 int __init arch_clockchip_init(void)
 {
-	omap3_gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct omap3_gpt_cfg), 
+	gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct gpt_cfg), 
 			beagle_gpt_cfg);
 
-	return omap3_gpt_clockchip_init(BEAGLE_CLK_EVENT_GPT, 
+	return gpt_clockchip_init(BEAGLE_CLK_EVENT_GPT, 
 					OMAP3_GLOBAL_REG_PRM);
 }
 

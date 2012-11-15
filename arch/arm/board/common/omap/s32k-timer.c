@@ -21,25 +21,23 @@
  * @brief source code for OMAP3 32K sync timer
  */
 
-#include <omap3/intc.h>
-#include <omap3/gpt.h>
-#include <omap3/prcm.h>
-#include <omap3/s32k-timer.h>
 #include <vmm_error.h>
 #include <vmm_main.h>
 #include <vmm_clocksource.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
+#include <omap/prcm.h>
+#include <omap/s32k-timer.h>
 
 static virtual_addr_t omap35x_32k_synct_base = 0;
 
-u32 omap3_s32k_get_counter(void)
+u32 s32k_get_counter(void)
 {
 	return vmm_readl((void *)(omap35x_32k_synct_base + OMAP3_S32K_CR));
 }
 
-int omap3_s32k_init(void)
+int s32k_init(void)
 {
 	if(!omap35x_32k_synct_base) {
 		omap35x_32k_synct_base = 
@@ -51,7 +49,7 @@ int omap3_s32k_init(void)
 	return VMM_OK;
 }
 
-static u64 omap3_s32k_clocksource_read(struct vmm_clocksource *cs)
+static u64 s32k_clocksource_read(struct vmm_clocksource *cs)
 {
 	return vmm_readl((void *)(omap35x_32k_synct_base + OMAP3_S32K_CR));
 }
@@ -61,15 +59,15 @@ static struct vmm_clocksource s32k_clksrc = {
 	.rating = 200,
 	.shift = 15,
 	.mask = 0xFFFFFFFF,
-	.read = &omap3_s32k_clocksource_read
+	.read = &s32k_clocksource_read
 };
 
-int __init omap3_s32k_clocksource_init(void)
+int __init s32k_clocksource_init(void)
 {
 	int rc;
 
 	/* Initialize omap3 s32k timer HW */
-	if ((rc = omap3_s32k_init())) {
+	if ((rc = s32k_init())) {
 		return rc;
 	}
 

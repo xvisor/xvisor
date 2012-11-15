@@ -18,12 +18,12 @@
 #
 # @file objects.mk
 # @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
-# @brief list of OMAP3 beagle board objects.
+# @brief list of OMAP platform objects.
 # */
 
-board-objs-y+=brd_defterm.o
-board-objs-y+=brd_main.o
-board-objs-$(CONFIG_OMAP3_ONE_GUEST_PBA8_DTS)+=dts/one_guest_pb-a8.o
-board-objs-$(CONFIG_OMAP3_ONE_GUEST_VEX_A9_DTS)+=dts/one_guest_vexpress-a9.o
-board-objs-$(CONFIG_OMAP3_TWO_GUEST_PBA8_DTS)+=dts/two_guest_pb-a8.o
+board-common-objs-$(CONFIG_OMAP)+= omap/prcm.o
+board-common-objs-$(CONFIG_OMAP)+= omap/intc.o
+board-common-objs-$(CONFIG_OMAP)+= omap/gpt.o
+board-common-objs-$(CONFIG_OMAP)+= omap/s32k-timer.o
+board-common-objs-$(CONFIG_OMAP)+= omap/sdrc.o
 

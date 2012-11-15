@@ -1,7 +1,7 @@
 
 /dts-v1/;
 
-/include/ "beagle.dtsi"
+/include/ "omap3.dtsi"
 
 / {
 	guests {
