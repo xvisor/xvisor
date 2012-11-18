@@ -24,6 +24,7 @@
 #define _ARCH_HOST_IRQ_H__
 
 #include <vmm_types.h>
+#include <omap3_plat.h>
 #include <omap/intc.h>
 
 #define ARCH_HOST_IRQ_COUNT			OMAP3_MPU_INTC_NRIRQ
@@ -37,7 +38,7 @@ static inline u32 arch_host_irq_active(u32 cpu_irq_no)
 /* Initialize board specifig host irq hardware (i.e PIC) */
 static inline int arch_host_irq_init(void)
 {
-	return intc_init();
+	return intc_init(OMAP3_MPU_INTC_BASE, OMAP3_MPU_INTC_NRIRQ);
 }
 
 #endif

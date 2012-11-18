@@ -26,13 +26,7 @@
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <drv/omap-uart.h>
-
-#define OMAP3_COM_FREQ   	48000000L
-
-/** OMAP3/OMAP343X UART Base Physical Address */
-#define OMAP3_UART_BASE 	0x49020000
-#define OMAP3_UART_BAUD 	115200
-#define OMAP3_UART_INCLK 	OMAP3_COM_FREQ
+#include <omap3_plat.h>
 
 static virtual_addr_t omap3_uart_base;
 

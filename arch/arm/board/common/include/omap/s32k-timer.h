@@ -18,23 +18,20 @@
  *
  * @file s32k-timer.h
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief OMAP3 32K sync timer APIs
+ * @brief OMAP 32K sync timer APIs
  */
 #ifndef __OMAP_S32K_TIMER_H__
 #define __OMAP_S32K_TIMER_H__
 
 #include <vmm_types.h>
 
-/** OMAP3/OMAP343X S32K Base Physical Address */
-#define OMAP3_S32K_BASE 	0x48320000
+#define S32K_FREQ_HZ	32768
 
-#define OMAP3_S32K_FREQ_HZ	32768
-
-#define OMAP3_S32K_CR	 	0x10
+#define S32K_CR	 	0x10
 
 u32 s32k_get_counter(void);
-int s32k_init(void);
-int s32k_clocksource_init(void);
+int s32k_init(physical_addr_t base);
+int s32k_clocksource_init(physical_addr_t base);
 
 #endif  /*  __OMAP_S32K_TIMER_H__ */
 

@@ -27,20 +27,12 @@
 
 #include <vmm_types.h>
 #include <vmm_host_irq.h>
+#include <omap/s32k-timer.h>
 
-/** OMAP3/OMAP343X GPT Base Physical Addresses */
-#define OMAP3_GPT1_BASE 			0x48318000
-#define OMAP3_GPT2_BASE 			0x49032000
-#define OMAP3_GPT3_BASE 			0x49034000
-#define OMAP3_GPT4_BASE 			0x49036000
-#define OMAP3_GPT5_BASE 			0x49038000
-#define OMAP3_GPT6_BASE 			0x4903A000
-#define OMAP3_GPT7_BASE 			0x4903C000
-#define OMAP3_GPT8_BASE 			0x4903E000
-#define OMAP3_GPT9_BASE 			0x49040000
-#define OMAP3_GPT10_BASE 			0x48086000
-#define OMAP3_GPT11_BASE 			0x48088000
-#define OMAP3_GPT12_BASE 			0x48304000
+/* NOTE: GPT APIs use s32k timer APIs for calibration
+ * hence make sure s32k is initialized before calling
+ * any GPT APIs
+ */
 
 #define GPT_TIDR				0x000
 #define GPT_TIDR_TID_REV_S			0

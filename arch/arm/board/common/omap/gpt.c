@@ -21,7 +21,7 @@
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @author Anup Patel (anup@brainfault.org)
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief source code for OMAP3 general purpose timers
+ * @brief source code for OMAP general purpose timers
  *
  * Parts of this source code has been taken from u-boot
  */
@@ -34,7 +34,6 @@
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
 #include <vmm_host_aspace.h>
-#include <omap/s32k-timer.h>
 #include <omap/prcm.h>
 #include <omap/gpt.h>
 
@@ -51,7 +50,7 @@ static u32 gpt_read(u32 gpt_num, u32 reg)
 	return vmm_readl((void *)(gpt_config[gpt_num].base_va + reg));
 }
 
-void gpt_oneshot(u32 gpt_num)
+static void gpt_oneshot(u32 gpt_num)
 {
 	u32 regval;
 	/* Disable AR (auto-reload) */
@@ -62,7 +61,7 @@ void gpt_oneshot(u32 gpt_num)
 	gpt_write(gpt_num, GPT_TIER, GPT_TIER_OVF_IT_ENA_M);
 }
 
-void gpt_continuous(u32 gpt_num)
+static void gpt_continuous(u32 gpt_num)
 {
 	u32 regval;
 	/* Enable AR (auto-reload) */
@@ -80,7 +79,7 @@ void gpt_continuous(u32 gpt_num)
 	gpt_write(gpt_num, GPT_TCLR, regval);
 }
 
-u32 gpt_get_clk_speed(u32 gpt_num)
+static u32 gpt_get_clk_speed(u32 gpt_num)
 {
 	u32 omap3_osc_clk_hz = 0, val, regval;
 	u32 start, cstart, cend, cdiff;
@@ -90,9 +89,6 @@ u32 gpt_get_clk_speed(u32 gpt_num)
 
 	/* Enable GPT */
 	gpt_write(gpt_num, GPT_TCLR, GPT_TCLR_ST_M);
-
-	/* enable 32kHz source, determine sys_clk via gauging */
-	s32k_init();
 
 	/* start time in 20 cycles */
 	start = 20 + s32k_get_counter();
@@ -132,7 +128,7 @@ u32 gpt_get_clk_speed(u32 gpt_num)
 	return(val);
 }
 
-void gpt_clock_enable(u32 gpt_num)
+static void gpt_clock_enable(u32 gpt_num)
 {
 	/* select clock source (1=sys_clk; 0=32K) for GPT */
 	if(gpt_config[gpt_num].src_sys_clk) {
@@ -142,7 +138,7 @@ void gpt_clock_enable(u32 gpt_num)
 	} else {
 		omap3_cm_clrbits(gpt_config[gpt_num].cm_domain, 
 			OMAP3_CM_CLKSEL, gpt_config[gpt_num].clksel_mask);
-		gpt_config[gpt_num].clk_hz = OMAP3_S32K_FREQ_HZ;
+		gpt_config[gpt_num].clk_hz = S32K_FREQ_HZ;
 	}
 
 	/* Enable I Clock for GPT */
@@ -154,8 +150,7 @@ void gpt_clock_enable(u32 gpt_num)
 			OMAP3_CM_FCLKEN, gpt_config[gpt_num].fclken_mask);
 }
 
-int gpt_instance_init(u32 gpt_num, u32 prm_domain, 
-		vmm_host_irq_handler_t irq_handler)
+static int gpt_instance_init(u32 gpt_num, u32 prm_domain)
 {
 	u32 val;
 
@@ -193,7 +188,7 @@ int __init gpt_clocksource_init(u32 gpt_num, physical_addr_t prm_pa)
 	int rc;
 	struct gpt_clocksource *cs;
 
-	if ((rc = gpt_instance_init(gpt_num, prm_pa, NULL))) {
+	if ((rc = gpt_instance_init(gpt_num, prm_pa))) {
 		return rc;
 	}
 
@@ -217,22 +212,18 @@ int __init gpt_clocksource_init(u32 gpt_num, physical_addr_t prm_pa)
 	return vmm_clocksource_register(&cs->clksrc);
 }
 
-struct gpt_clockchip 
-{
+struct gpt_clockchip {
 	u32 gpt_num;
 	struct vmm_clockchip clkchip;
 };
 
 static vmm_irq_return_t gpt_clockevent_irq_handler(u32 irq_no, 
-							 arch_regs_t * regs, 
-							 void *dev)
+						arch_regs_t * regs, void *dev)
 {
 	u32 regval;
 	struct gpt_clockchip *tcc = dev;
 
-	gpt_write(tcc->gpt_num, 
-			GPT_TISR, 
-			GPT_TISR_OVF_IT_FLAG_M);
+	gpt_write(tcc->gpt_num, GPT_TISR, GPT_TISR_OVF_IT_FLAG_M);
 
 	/* Stop Timer (TCLR[ST] = 0) */
 	regval = gpt_read(tcc->gpt_num, GPT_TCLR);
@@ -306,7 +297,7 @@ int __init gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa)
 	int rc;
 	struct gpt_clockchip *cc;
 
-	if ((rc = gpt_instance_init(gpt_num, prm_pa, NULL))) {
+	if ((rc = gpt_instance_init(gpt_num, prm_pa))) {
 		return rc;
 	}
 
@@ -348,15 +339,18 @@ int __init gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa)
 int __init gpt_global_init(u32 gpt_count, struct gpt_cfg *cfg)
 {
 	int i;
+
 	if(!gpt_config) {
 		gpt_config = cfg;
 		for(i=0; i<gpt_count; i++) {
 			gpt_config[i].base_va = 
 			vmm_host_iomap(gpt_config[i].base_pa, 0x1000);
-			if(!gpt_config[i].base_va)
+			if(!gpt_config[i].base_va) {
 				return VMM_EFAIL;
+			}
 		}
 	}
+
 	return VMM_OK;
 }
 

@@ -18,7 +18,7 @@
  *
  * @file intc.c
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief OMAP3 interrupt controller APIs
+ * @brief OMAP interrupt controller APIs
  */
 
 #include <vmm_error.h>
@@ -29,6 +29,7 @@
 #include <omap/intc.h>
 
 static virtual_addr_t intc_base;
+static u32 intc_nrirq;
 
 #define intc_write(reg, val)	vmm_writel((val), \
 				(void *)(intc_base + (reg)))
@@ -44,7 +45,7 @@ u32 intc_active_irq(u32 cpu_irq)
 			ret = -1;
 		}
 		ret = ((u32) ret & INTC_SIR_IRQ_ACTIVEIRQ_M);
-		if (OMAP3_MPU_INTC_NRIRQ <= ret) {
+		if (intc_nrirq <= ret) {
 			ret = -1;
 		}
 	} else if (cpu_irq == CPU_EXTERNAL_FIQ) {	/* armv7a FIQ */
@@ -54,26 +55,26 @@ u32 intc_active_irq(u32 cpu_irq)
 			ret = -1;
 		}
 		ret = ((u32) ret & INTC_SIR_FIQ_ACTIVEIRQ_M);
-		if (OMAP3_MPU_INTC_NRIRQ <= ret) {
+		if (intc_nrirq <= ret) {
 			ret = -1;
 		}
 	}
 	return ret;
 }
 
-void intc_mask(struct vmm_host_irq *irq)
+static void intc_mask(struct vmm_host_irq *irq)
 {
 	intc_write(INTC_MIR((irq->num / INTC_BITS_PER_REG)),
 		   0x1 << (irq->num & (INTC_BITS_PER_REG - 1)));
 }
 
-void intc_unmask(struct vmm_host_irq *irq)
+static void intc_unmask(struct vmm_host_irq *irq)
 {
 	intc_write(INTC_MIR_CLEAR((irq->num / INTC_BITS_PER_REG)),
 		   0x1 << (irq->num & (INTC_BITS_PER_REG - 1)));
 }
 
-void intc_eoi(struct vmm_host_irq *irq)
+static void intc_eoi(struct vmm_host_irq *irq)
 {
 	intc_write(INTC_CONTROL, INTC_CONTROL_NEWIRQAGR_M);
 }
@@ -85,11 +86,12 @@ static struct vmm_host_irq_chip intc_chip = {
 	.irq_eoi		= intc_eoi,
 };
 
-int __init intc_init(void)
+int __init intc_init(physical_addr_t base, u32 nrirq)
 {
 	u32 i, tmp;
 
-	intc_base = vmm_host_iomap(OMAP3_MPU_INTC_BASE, 0x1000);
+	intc_base = vmm_host_iomap(base, 0x1000);
+	intc_nrirq = nrirq;
 
 	tmp = intc_read(INTC_SYSCONFIG);
 	tmp |= INTC_SYSCONFIG_SOFTRST_M;	/* soft reset */
@@ -105,7 +107,7 @@ int __init intc_init(void)
 	/*
 	 * Setup the Host IRQ subsystem.
 	 */
-	for (i = 0; i < OMAP3_MPU_INTC_NRIRQ; i++) {
+	for (i = 0; i < intc_nrirq; i++) {
 		vmm_host_irq_set_chip(i, &intc_chip);
 	}
 

@@ -18,7 +18,7 @@
  *
  * @file sdrc.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief source code for OMAP3 SDRC controller
+ * @brief source code for OMAP SDRC controller
  */
 
 #include <vmm_error.h>
@@ -58,8 +58,10 @@ static inline u32 sms_read_reg(u16 reg)
 	return vmm_readl((void *)SMS_REGADDR(reg));
 }
 
-int __init sdrc_init(struct sdrc_params *sdrc_cs0,
-			   struct sdrc_params *sdrc_cs1)
+int __init sdrc_init(physical_addr_t sdrc_base_pa,
+		     physical_addr_t sms_base_pa,
+		     struct sdrc_params *sdrc_cs0,
+		     struct sdrc_params *sdrc_cs1)
 {
 	u32 l;
 
@@ -68,15 +70,13 @@ int __init sdrc_init(struct sdrc_params *sdrc_cs0,
          */
 
 	if(!sdrc_base) {
-		sdrc_base = vmm_host_iomap(OMAP3_SDRC_BASE, 
-						 OMAP3_SDRC_SIZE);
+		sdrc_base = vmm_host_iomap(sdrc_base_pa, SDRC_REG_SIZE);
 		if(!sdrc_base) {
 			return VMM_EFAIL;
 		}
 	}
 	if(!sms_base) {
-		sms_base = vmm_host_iomap(OMAP3_SMS_BASE, 
-						OMAP3_SMS_SIZE);
+		sms_base = vmm_host_iomap(sms_base_pa, SMS_REG_SIZE);
 		if(!sms_base) {
 			return VMM_EFAIL;
 		}

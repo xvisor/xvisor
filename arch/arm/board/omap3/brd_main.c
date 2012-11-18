@@ -27,6 +27,7 @@
 #include <vmm_stdio.h>
 #include <vmm_chardev.h>
 #include <arch_timer.h>
+#include <omap3_plat.h>
 #include <libs/libfdt.h>
 #include <omap/sdrc.h>
 #include <omap/intc.h>
@@ -197,7 +198,9 @@ int __init arch_board_early_init(void)
 	}
 
 	/* Initialize SDRAM Controller (SDRC) */
-	if ((rc = sdrc_init(mt46h32m32lf6_sdrc_params, 
+	if ((rc = sdrc_init(OMAP3_SDRC_BASE,
+			    OMAP3_SMS_BASE,
+			    mt46h32m32lf6_sdrc_params, 
 			    mt46h32m32lf6_sdrc_params))) {
 		return rc;
 	}
@@ -205,13 +208,13 @@ int __init arch_board_early_init(void)
 	return 0;
 }
 
-#define BEAGLE_CLK_EVENT_GPT	0 
+#define OMAP3_CLK_EVENT_GPT	0 
 
 #ifndef CONFIG_OMAP3_CLKSRC_S32KT
-#define BEAGLE_CLK_SRC_GPT	1 
+#define OMAP3_CLK_SRC_GPT	1 
 #endif
 
-struct gpt_cfg beagle_gpt_cfg[] = {
+struct gpt_cfg omap3_gpt_cfg[] = {
 	{
 		.name =		"gpt1",
 		.base_pa =	OMAP3_GPT1_BASE,
@@ -237,21 +240,42 @@ struct gpt_cfg beagle_gpt_cfg[] = {
 int __init arch_clocksource_init(void)
 {
 #ifdef CONFIG_OMAP3_CLKSRC_S32KT
-	return s32k_clocksource_init();
+	return s32k_clocksource_init(OMAP3_S32K_BASE);
 #else
-	gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct gpt_cfg), 
-			beagle_gpt_cfg);
-	return gpt_clocksource_init(BEAGLE_CLK_SRC_GPT, 
+	int rc;
+
+	/* Ensure s32k timer is initialized since,
+	 * GPT APIs depend on s32k APIs
+	 */
+	rc = s32k_init(OMAP3_S32K_BASE);
+	if (rc) {
+		return rc;
+	}
+
+	gpt_global_init(sizeof(omap3_gpt_cfg)/sizeof(struct gpt_cfg), 
+			omap3_gpt_cfg);
+
+	return gpt_clocksource_init(OMAP3_CLK_SRC_GPT, 
 					  OMAP3_GLOBAL_REG_PRM);
 #endif
 }
 
 int __init arch_clockchip_init(void)
 {
-	gpt_global_init(sizeof(beagle_gpt_cfg)/sizeof(struct gpt_cfg), 
-			beagle_gpt_cfg);
+	int rc;
 
-	return gpt_clockchip_init(BEAGLE_CLK_EVENT_GPT, 
+	/* Ensure s32k timer is initialized since,
+	 * GPT APIs depend on s32k APIs
+	 */
+	rc = s32k_init(OMAP3_S32K_BASE);
+	if (rc) {
+		return rc;
+	}
+
+	gpt_global_init(sizeof(omap3_gpt_cfg)/sizeof(struct gpt_cfg), 
+			omap3_gpt_cfg);
+
+	return gpt_clockchip_init(OMAP3_CLK_EVENT_GPT, 
 					OMAP3_GLOBAL_REG_PRM);
 }
 

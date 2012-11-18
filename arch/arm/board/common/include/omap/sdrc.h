@@ -26,13 +26,8 @@
 
 #include <vmm_types.h>
 
-/** OMAP3/OMAP343X SDRC Base Physical Address */
-#define OMAP3_SDRC_BASE		0x6D000000
-#define OMAP3_SDRC_SIZE		0x1000
-
-/** OMAP3/OMAP343X SMS Base Physical Address */
-#define OMAP3_SMS_BASE		0x6C000000
-#define OMAP3_SMS_SIZE		0x1000
+/** SDRC register space size */
+#define SDRC_REG_SIZE		0x1000
 
 /** SDRC register offsets */
 #define SDRC_SYSCONFIG		0x010
@@ -113,6 +108,9 @@
  */
 #define SDRC_MPURATE_LOOPS		96
 
+/** SMS register space size */
+#define SMS_REG_SIZE		0x1000
+
 /** SMS register offsets */
 #define SMS_SYSCONFIG			0x010
 #define SMS_ROT_CONTROL(context)	(0x180 + 0x10 * context)
@@ -140,7 +138,9 @@ struct sdrc_params {
 };
 
 /** Initialize OMAP SDRC controller */
-int sdrc_init(struct sdrc_params *sdrc_cs0,
-		    struct sdrc_params *sdrc_cs1);
+int sdrc_init(physical_addr_t sdrc_base_pa,
+		physical_addr_t sms_base_pa,
+		struct sdrc_params *sdrc_cs0,
+		struct sdrc_params *sdrc_cs1);
 
 #endif /* __OMAP_SDRC_H_ */
