@@ -34,186 +34,84 @@
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
 #include <vmm_host_aspace.h>
-#include <omap/prcm.h>
 #include <omap/gpt.h>
 
-static struct gpt_cfg *gpt_config = NULL;
-static int omap3_sys_clk_div = 0;
-
-static void gpt_write(u32 gpt_num, u32 reg, u32 val)
+static void gpt_write(virtual_addr_t base, u32 reg, u32 val)
 {
-	vmm_writel(val, (void *)(gpt_config[gpt_num].base_va + reg));
+	vmm_writel(val, (void *)(base + reg));
 }
 
-static u32 gpt_read(u32 gpt_num, u32 reg)
+static u32 gpt_read(virtual_addr_t base, u32 reg)
 {
-	return vmm_readl((void *)(gpt_config[gpt_num].base_va + reg));
+	return vmm_readl((void *)(base + reg));
 }
 
-static void gpt_oneshot(u32 gpt_num)
+static void gpt_oneshot(virtual_addr_t base)
 {
 	u32 regval;
 	/* Disable AR (auto-reload) */
-	regval = gpt_read(gpt_num, GPT_TCLR);
+	regval = gpt_read(base, GPT_TCLR);
 	regval &= ~GPT_TCLR_AR_M;
-	gpt_write(gpt_num, GPT_TCLR, regval);
+	gpt_write(base, GPT_TCLR, regval);
 	/* Enable Overflow Interrupt TIER[OVF_IT_ENA] */
-	gpt_write(gpt_num, GPT_TIER, GPT_TIER_OVF_IT_ENA_M);
+	gpt_write(base, GPT_TIER, GPT_TIER_OVF_IT_ENA_M);
 }
 
-static void gpt_continuous(u32 gpt_num)
+static void gpt_continuous(virtual_addr_t base)
 {
 	u32 regval;
 	/* Enable AR (auto-reload) */
-	regval = gpt_read(gpt_num, GPT_TCLR);
+	regval = gpt_read(base, GPT_TCLR);
 	regval |= GPT_TCLR_AR_M;
-	gpt_write(gpt_num, GPT_TCLR, regval);
+	gpt_write(base, GPT_TCLR, regval);
 	/* Disable interrupts TIER[OVF_IT_ENA] */
-	gpt_write(gpt_num, GPT_TIER, 0);
+	gpt_write(base, GPT_TIER, 0);
 	/* Auto reload value set to 0 */
-	gpt_write(gpt_num, GPT_TLDR, 0);
-	gpt_write(gpt_num, GPT_TCRR, 0);
+	gpt_write(base, GPT_TLDR, 0);
+	gpt_write(base, GPT_TCRR, 0);
 	/* Start Timer (TCLR[ST] = 1) */
-	regval = gpt_read(gpt_num, GPT_TCLR);
+	regval = gpt_read(base, GPT_TCLR);
 	regval |= GPT_TCLR_ST_M;
-	gpt_write(gpt_num, GPT_TCLR, regval);
+	gpt_write(base, GPT_TCLR, regval);
 }
 
-static u32 gpt_get_clk_speed(u32 gpt_num)
-{
-	u32 omap3_osc_clk_hz = 0, val, regval;
-	u32 start, cstart, cend, cdiff;
-
-	/* Start counting at 0 */
-	gpt_write(gpt_num, GPT_TLDR, 0);
-
-	/* Enable GPT */
-	gpt_write(gpt_num, GPT_TCLR, GPT_TCLR_ST_M);
-
-	/* start time in 20 cycles */
-	start = 20 + s32k_get_counter();
-
-	/* dead loop till start time */
-	while (s32k_get_counter() < start);
-
-	/* get start sys_clk count */
-	cstart = gpt_read(gpt_num, GPT_TCRR);
-
-	/* wait for 40 cycles */
-	while (s32k_get_counter() < (start + 20)) ;
-	cend = gpt_read(gpt_num, GPT_TCRR);	/* get end sys_clk count */
-	cdiff = cend - cstart;			/* get elapsed ticks */
-	cdiff *= omap3_sys_clk_div;
-
-	/* Stop Timer (TCLR[ST] = 0) */
-	regval = gpt_read(gpt_num, GPT_TCLR);
-	regval &= ~GPT_TCLR_ST_M;
-	gpt_write(gpt_num, GPT_TCLR, regval);
-
-	/* based on number of ticks assign speed */
-	if (cdiff > 19000)
-		omap3_osc_clk_hz = OMAP3_SYSCLK_S38_4M;
-	else if (cdiff > 15200)
-		omap3_osc_clk_hz = OMAP3_SYSCLK_S26M;
-	else if (cdiff > 13000)
-		omap3_osc_clk_hz = OMAP3_SYSCLK_S24M;
-	else if (cdiff > 9000)
-		omap3_osc_clk_hz = OMAP3_SYSCLK_S19_2M;
-	else if (cdiff > 7600)
-		omap3_osc_clk_hz = OMAP3_SYSCLK_S13M;
-	else
-		omap3_osc_clk_hz = OMAP3_SYSCLK_S12M;
-
-	val = omap3_osc_clk_hz >> (omap3_sys_clk_div -1);
-	return(val);
-}
-
-static void gpt_clock_enable(u32 gpt_num)
-{
-	/* select clock source (1=sys_clk; 0=32K) for GPT */
-	if(gpt_config[gpt_num].src_sys_clk) {
-		omap3_cm_setbits(gpt_config[gpt_num].cm_domain, 
-			OMAP3_CM_CLKSEL, gpt_config[gpt_num].clksel_mask);
-		gpt_config[gpt_num].clk_hz = gpt_get_clk_speed(gpt_num);
-	} else {
-		omap3_cm_clrbits(gpt_config[gpt_num].cm_domain, 
-			OMAP3_CM_CLKSEL, gpt_config[gpt_num].clksel_mask);
-		gpt_config[gpt_num].clk_hz = S32K_FREQ_HZ;
-	}
-
-	/* Enable I Clock for GPT */
-	omap3_cm_setbits(gpt_config[gpt_num].cm_domain, 
-			OMAP3_CM_ICLKEN, gpt_config[gpt_num].iclken_mask);
-
-	/* Enable F Clock for GPT */
-	omap3_cm_setbits(gpt_config[gpt_num].cm_domain, 
-			OMAP3_CM_FCLKEN, gpt_config[gpt_num].fclken_mask);
-}
-
-static int gpt_instance_init(u32 gpt_num, u32 prm_domain)
-{
-	u32 val;
-
-	/* Determine system clock divider */
-	val = omap3_prm_read(prm_domain, OMAP3_PRM_CLKSRC_CTRL);
-	omap3_sys_clk_div = (val & OMAP3_PRM_CLKSRC_CTRL_SYSCLKDIV_M) 
-		>> OMAP3_PRM_CLKSRC_CTRL_SYSCLKDIV_S;
-	
-	/* Enable clock */
-	gpt_clock_enable(gpt_num);
-
-#if defined(CONFIG_VERBOSE_MODE)
-	vmm_printf("GPT%d (base: 0x%08X) running @ %d Hz\n", gpt_num+1, 
-			gpt_config[gpt_num].base_va, 
-			gpt_config[gpt_num].clk_hz);
-#endif
-
-	return VMM_OK;
-}
-
-struct gpt_clocksource 
-{
-	u32 gpt_num;
+struct gpt_clocksource {
+	virtual_addr_t gpt_va;
 	struct vmm_clocksource clksrc;
 };
 
 static u64 gpt_clocksource_read(struct vmm_clocksource *cs)
 {
-	struct gpt_clocksource * omap3_cs = cs->priv;
-	return gpt_read(omap3_cs->gpt_num, GPT_TCRR);
+	struct gpt_clocksource *gpt_cs = cs->priv;
+	return gpt_read(gpt_cs->gpt_va, GPT_TCRR);
 }
 
-int __init gpt_clocksource_init(u32 gpt_num, physical_addr_t prm_pa)
+int __init gpt_clocksource_init(const char *name, 
+				physical_addr_t gpt_pa, u32 gpt_hz)
 {
-	int rc;
 	struct gpt_clocksource *cs;
-
-	if ((rc = gpt_instance_init(gpt_num, prm_pa))) {
-		return rc;
-	}
-
-	gpt_continuous(gpt_num);
 
 	cs = vmm_zalloc(sizeof(struct gpt_clocksource));
 	if (!cs) {
 		return VMM_EFAIL;
 	}
 
-	cs->gpt_num = gpt_num;
-	cs->clksrc.name = gpt_config[gpt_num].name;
+	cs->gpt_va = vmm_host_iomap(gpt_pa, 0x1000);
+	cs->clksrc.name = name;
 	cs->clksrc.rating = 200;
 	cs->clksrc.read = &gpt_clocksource_read;
 	cs->clksrc.mask = 0xFFFFFFFF;
-	cs->clksrc.mult = 
-	vmm_clocksource_khz2mult((gpt_config[gpt_num].clk_hz)/1000, 24);
+	cs->clksrc.mult = vmm_clocksource_khz2mult(gpt_hz/1000, 24);
 	cs->clksrc.shift = 24;
 	cs->clksrc.priv = cs;
+
+	gpt_continuous(cs->gpt_va);
 
 	return vmm_clocksource_register(&cs->clksrc);
 }
 
 struct gpt_clockchip {
-	u32 gpt_num;
+	virtual_addr_t gpt_va;
 	struct vmm_clockchip clkchip;
 };
 
@@ -223,12 +121,12 @@ static vmm_irq_return_t gpt_clockevent_irq_handler(u32 irq_no,
 	u32 regval;
 	struct gpt_clockchip *tcc = dev;
 
-	gpt_write(tcc->gpt_num, GPT_TISR, GPT_TISR_OVF_IT_FLAG_M);
+	gpt_write(tcc->gpt_va, GPT_TISR, GPT_TISR_OVF_IT_FLAG_M);
 
 	/* Stop Timer (TCLR[ST] = 0) */
-	regval = gpt_read(tcc->gpt_num, GPT_TCLR);
+	regval = gpt_read(tcc->gpt_va, GPT_TCLR);
 	regval &= ~GPT_TCLR_ST_M;
-	gpt_write(tcc->gpt_num, GPT_TCLR, regval);
+	gpt_write(tcc->gpt_va, GPT_TCLR, regval);
 
 	tcc->clkchip.event_handler(&tcc->clkchip, regs);
 
@@ -243,13 +141,13 @@ static void gpt_clockchip_set_mode(enum vmm_clockchip_mode mode,
 
 	switch (mode) {
 	case VMM_CLOCKCHIP_MODE_ONESHOT:
-		gpt_oneshot(tcc->gpt_num);
+		gpt_oneshot(tcc->gpt_va);
 		break;
 	case VMM_CLOCKCHIP_MODE_SHUTDOWN:
 		/* Stop Timer (TCLR[ST] = 0) */
-		regval = gpt_read(tcc->gpt_num, GPT_TCLR);
+		regval = gpt_read(tcc->gpt_va, GPT_TCLR);
 		regval &= ~GPT_TCLR_ST_M;
-		gpt_write(tcc->gpt_num, GPT_TCLR, regval);
+		gpt_write(tcc->gpt_va, GPT_TCLR, regval);
 		break;
 	case VMM_CLOCKCHIP_MODE_PERIODIC:
 	case VMM_CLOCKCHIP_MODE_UNUSED:
@@ -264,11 +162,11 @@ static int gpt_clockchip_set_next_event(unsigned long next,
 	u32 regval;
 	struct gpt_clockchip *tcc = cc->priv;
 
-	gpt_write(tcc->gpt_num, GPT_TCRR, 0xFFFFFFFF - next);
+	gpt_write(tcc->gpt_va, GPT_TCRR, 0xFFFFFFFF - next);
 	/* Start Timer (TCLR[ST] = 1) */
-	regval = gpt_read(tcc->gpt_num, GPT_TCLR);
+	regval = gpt_read(tcc->gpt_va, GPT_TCLR);
 	regval |= GPT_TCLR_ST_M;
-	gpt_write(tcc->gpt_num, GPT_TCLR, regval);
+	gpt_write(tcc->gpt_va, GPT_TCLR, regval);
 
 	return VMM_OK;
 }
@@ -278,44 +176,38 @@ static int gpt_clockchip_expire(struct vmm_clockchip *cc)
 	u32 regval;
 	struct gpt_clockchip *tcc = cc->priv;
 
-	gpt_write(tcc->gpt_num, GPT_TCRR, 0xFFFFFFFF - 1);
+	gpt_write(tcc->gpt_va, GPT_TCRR, 0xFFFFFFFF - 1);
 	/* Start Timer (TCLR[ST] = 1) */
-	regval = gpt_read(tcc->gpt_num, GPT_TCLR);
+	regval = gpt_read(tcc->gpt_va, GPT_TCLR);
 	regval |= GPT_TCLR_ST_M;
-	gpt_write(tcc->gpt_num, GPT_TCLR, regval);
+	gpt_write(tcc->gpt_va, GPT_TCLR, regval);
 
 	/* No need to worry about irq-handler as irqs are disabled 
 	 * before polling for overflow */
-	while(!(gpt_read(tcc->gpt_num, GPT_TISR) & 
+	while(!(gpt_read(tcc->gpt_va, GPT_TISR) & 
 				GPT_TISR_OVF_IT_FLAG_M));
 
 	return VMM_OK;
 }
 
-int __init gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa)
+int __init gpt_clockchip_init(const char *name,
+			physical_addr_t gpt_pa, u32 gpt_hz, u32 gpt_irq)
 {
 	int rc;
 	struct gpt_clockchip *cc;
-
-	if ((rc = gpt_instance_init(gpt_num, prm_pa))) {
-		return rc;
-	}
-
-	gpt_write(gpt_num, GPT_TCLR, 0);
 
 	cc = vmm_zalloc(sizeof(struct gpt_clockchip));
 	if (!cc) {
 		return VMM_EFAIL;
 	}
 
-	cc->gpt_num = gpt_num;
-	cc->clkchip.name = gpt_config[gpt_num].name;
-	cc->clkchip.hirq = gpt_config[gpt_num].irq_no;
+	cc->gpt_va = vmm_host_iomap(gpt_pa, 0x1000);
+	cc->clkchip.name = name;
+	cc->clkchip.hirq = gpt_irq;
 	cc->clkchip.rating = 200;
 	cc->clkchip.cpumask = cpu_all_mask;
 	cc->clkchip.features = VMM_CLOCKCHIP_FEAT_ONESHOT;
-	cc->clkchip.mult = 
-		vmm_clockchip_hz2mult(gpt_config[gpt_num].clk_hz, 32);
+	cc->clkchip.mult = vmm_clockchip_hz2mult(gpt_hz, 32);
 	cc->clkchip.shift = 32;
 	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &cc->clkchip);
 	cc->clkchip.max_delta_ns = 
@@ -325,32 +217,15 @@ int __init gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa)
 	cc->clkchip.expire = &gpt_clockchip_expire;
 	cc->clkchip.priv = cc;
 
+	gpt_write(cc->gpt_va, GPT_TCLR, 0);
+
 	/* Register interrupt handler */
-	rc = vmm_host_irq_register(gpt_config[gpt_num].irq_no,
-				   gpt_config[gpt_num].name,
+	rc = vmm_host_irq_register(gpt_irq, name,
 				   &gpt_clockevent_irq_handler, cc);
 	if (rc) {
 		return rc;
 	}
 
 	return vmm_clockchip_register(&cc->clkchip);
-}
-
-int __init gpt_global_init(u32 gpt_count, struct gpt_cfg *cfg)
-{
-	int i;
-
-	if(!gpt_config) {
-		gpt_config = cfg;
-		for(i=0; i<gpt_count; i++) {
-			gpt_config[i].base_va = 
-			vmm_host_iomap(gpt_config[i].base_pa, 0x1000);
-			if(!gpt_config[i].base_va) {
-				return VMM_EFAIL;
-			}
-		}
-	}
-
-	return VMM_OK;
 }
 

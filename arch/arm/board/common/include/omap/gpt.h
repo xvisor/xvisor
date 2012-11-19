@@ -176,21 +176,9 @@
 #define GPT_TOWR_OVF_WRAPPING_VALUE_S		0
 #define GPT_TOWR_OVF_WRAPPING_VALUE_M		0x00FFFFFF
 
-struct gpt_cfg {
-	const char *name;
-	physical_addr_t base_pa;
-	virtual_addr_t base_va;
-	u32 cm_domain;
-	u32 clksel_mask;
-	u32 iclken_mask;
-	u32 fclken_mask;
-	bool src_sys_clk;
-	u32 clk_hz;
-	u32 irq_no;
-};
-
-int gpt_clocksource_init(u32 gpt_num, physical_addr_t prm_pa);
-int gpt_clockchip_init(u32 gpt_num, physical_addr_t prm_pa);
-int gpt_global_init(u32 gpt_count, struct gpt_cfg *cfg);
+int gpt_clocksource_init(const char *name, 
+			 physical_addr_t gpt_pa, u32 gpt_hz);
+int gpt_clockchip_init(const char *name,
+			physical_addr_t gpt_pa, u32 gpt_hz, u32 gpt_irq);
 
 #endif

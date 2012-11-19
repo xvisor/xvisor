@@ -22,36 +22,14 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_main.h>
 #include <vmm_clocksource.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <vmm_host_irq.h>
-#include <omap/prcm.h>
 #include <omap/s32k-timer.h>
-
-static virtual_addr_t s32k_synct_base = 0;
-
-u32 s32k_get_counter(void)
-{
-	return vmm_readl((void *)(s32k_synct_base + S32K_CR));
-}
-
-int s32k_init(physical_addr_t base)
-{
-	if(!s32k_synct_base) {
-		s32k_synct_base = 
-			vmm_host_iomap(base, 0x1000);
-		/* Enable I-clock for S32K */
-		omap3_cm_setbits(OMAP3_WKUP_CM, OMAP3_CM_ICLKEN_WKUP,
-				OMAP3_CM_ICLKEN_WKUP_EN_32KSYNC_M);
-	}
-	return VMM_OK;
-}
 
 static u64 s32k_clocksource_read(struct vmm_clocksource *cs)
 {
-	return vmm_readl((void *)(s32k_synct_base + S32K_CR));
+	return vmm_readl((void *)(cs->priv + S32K_CR));
 }
 
 static struct vmm_clocksource s32k_clksrc = {
@@ -65,14 +43,18 @@ static struct vmm_clocksource s32k_clksrc = {
 int __init s32k_clocksource_init(physical_addr_t base)
 {
 	int rc;
+	virtual_addr_t synct_base;
 
-	/* Initialize omap3 s32k timer HW */
-	if ((rc = s32k_init(base))) {
-		return rc;
-	}
+	/* Map registers */
+	synct_base = vmm_host_iomap(base, 0x1000);
+
+	/* Save pointer to registers in clocksource private */
+	s32k_clksrc.priv = (void *)synct_base;
+
+	/* Compute mult for clocksource */
+	s32k_clksrc.mult = vmm_clocksource_hz2mult(S32K_FREQ_HZ, 15);
 
 	/* Register clocksource */
-	s32k_clksrc.mult = vmm_clocksource_hz2mult(S32K_FREQ_HZ, 15);
 	if ((rc = vmm_clocksource_register(&s32k_clksrc))) {
 		return rc;
 	}

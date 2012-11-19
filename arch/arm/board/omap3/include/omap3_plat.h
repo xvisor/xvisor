@@ -31,6 +31,19 @@
 /** OMAP3/OMAP343X SMS Base Physical Address */
 #define OMAP3_SMS_BASE				0x6C000000
 
+/* ===== PRM & CM ===== */
+
+/** OMAP3/OMAP343X PRCM Base Physical Address */
+#define OMAP3_PRCM_BASE			0x48004000
+
+/** OMAP3/OMAP343X CM Base Physical Address */
+#define OMAP3_CM_BASE			0x48004000
+#define OMAP3_CM_SIZE			0x2000
+
+/** OMAP3/OMAP343X PRM Base Physical Address */
+#define OMAP3_PRM_BASE			0x48306000
+#define OMAP3_PRM_SIZE			0x2000
+
 /* ===== INTC ===== */
 
 /** OMAP3/OMAP343X INTC Base Physical Address */

@@ -29,8 +29,6 @@
 
 #define S32K_CR	 	0x10
 
-u32 s32k_get_counter(void);
-int s32k_init(physical_addr_t base);
 int s32k_clocksource_init(physical_addr_t base);
 
 #endif  /*  __OMAP_S32K_TIMER_H__ */
