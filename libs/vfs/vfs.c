@@ -1070,7 +1070,7 @@ loff_t vfs_lseek(int fd, loff_t off, int whence)
 		return ret;
 	}
 
-	if (v->v_mount->m_fs->seek(v, f, off)) {
+	if (off <= (loff_t)(v->v_size)) {
 		f->f_offset = off;
 	}
 

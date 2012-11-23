@@ -262,11 +262,6 @@ static int cpiofs_truncate(struct vnode *v, loff_t off)
 	return VMM_EFAIL;
 }
 
-static bool cpiofs_seek(struct vnode *v, struct file *f, loff_t off)
-{
-	return (off > (loff_t)(v->v_size)) ? FALSE : TRUE;
-}
-
 static int cpiofs_fsync(struct vnode *v, struct file *f)
 {
 	/* Not required (read-only filesystem) */
@@ -516,7 +511,6 @@ static struct filesystem cpiofs = {
 	.read		= cpiofs_read,
 	.write		= cpiofs_write,
 	.truncate	= cpiofs_truncate,
-	.seek		= cpiofs_seek,
 	.fsync		= cpiofs_fsync,
 	.readdir	= cpiofs_readdir,
 	.lookup		= cpiofs_lookup,

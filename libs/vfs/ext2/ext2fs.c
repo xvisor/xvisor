@@ -1475,11 +1475,6 @@ static int ext2fs_truncate(struct vnode *v, loff_t off)
 	return VMM_OK;
 }
 
-static bool ext2fs_seek(struct vnode *v, struct file *f, loff_t off)
-{
-	return (off > (loff_t)(v->v_size)) ? FALSE : TRUE;
-}
-
 static int ext2fs_fsync(struct vnode *v, struct file *f)
 {
 	struct ext2fs_node *node = v->v_data;
@@ -1733,7 +1728,6 @@ static struct filesystem ext2fs = {
 	.read		= ext2fs_read,
 	.write		= ext2fs_write,
 	.truncate	= ext2fs_truncate,
-	.seek		= ext2fs_seek,
 	.fsync		= ext2fs_fsync,
 	.readdir	= ext2fs_readdir,
 	.lookup		= ext2fs_lookup,

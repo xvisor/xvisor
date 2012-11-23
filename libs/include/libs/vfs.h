@@ -251,7 +251,6 @@ struct filesystem {
 	size_t (*read)(struct vnode *, struct file *, void *, size_t);
 	size_t (*write)(struct vnode *, struct file *, void *, size_t);
 	int (*truncate)(struct vnode *, loff_t);
-	bool (*seek)(struct vnode *, struct file *, loff_t);
 	int (*fsync)(struct vnode *, struct file *);
 	int (*readdir)(struct vnode *, struct file *, struct dirent *);
 	int (*lookup)(struct vnode *, const char *, struct vnode *);
