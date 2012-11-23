@@ -113,14 +113,6 @@ struct stat {
 	u64	st_mtime;		/* file modify time */
 };
 
-/** file structure */
-struct file {
-	struct vmm_mutex f_lock;	/* file lock */
-	u32 f_flags;			/* open flag */
-	loff_t f_offset;		/* current position in file */
-	struct vnode *f_vnode;		/* vnode */
-};
-
 /** dirent types */
 enum dirent_type {
 	DT_UNK,
@@ -241,18 +233,16 @@ struct filesystem {
 	/* Mount point operations */
 	int (*mount)(struct mount *, const char *, u32);
 	int (*unmount)(struct mount *);
-	int (*sync)(struct mount *); /* Not Used */
+	int (*msync)(struct mount *); /* Not Used */
 	int (*vget)(struct mount *, struct vnode *);
 	int (*vput)(struct mount *, struct vnode *);
 
 	/* Vnode operations */
-	int (*open)(struct vnode *, struct file *);
-	int (*close)(struct vnode *, struct file *);
-	size_t (*read)(struct vnode *, struct file *, void *, size_t);
-	size_t (*write)(struct vnode *, struct file *, void *, size_t);
+	size_t (*read)(struct vnode *, loff_t, void *, size_t);
+	size_t (*write)(struct vnode *, loff_t, void *, size_t);
 	int (*truncate)(struct vnode *, loff_t);
-	int (*fsync)(struct vnode *, struct file *);
-	int (*readdir)(struct vnode *, struct file *, struct dirent *);
+	int (*sync)(struct vnode *);
+	int (*readdir)(struct vnode *, loff_t, struct dirent *);
 	int (*lookup)(struct vnode *, const char *, struct vnode *);
 	int (*create)(struct vnode *, const char *, u32);
 	int (*remove)(struct vnode *, struct vnode *, const char *);

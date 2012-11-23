@@ -1355,7 +1355,7 @@ static int ext2fs_unmount(struct mount *m)
 	return rc;
 }
 
-static int ext2fs_sync(struct mount *m)
+static int ext2fs_msync(struct mount *m)
 {
 	struct ext2fs_control *ctrl = m->m_data;
 
@@ -1402,48 +1402,28 @@ static int ext2fs_vput(struct mount *m, struct vnode *v)
  * Vnode operations 
  */
 
-static int ext2fs_open(struct vnode *v, struct file *f)
-{
-	/* For now nothing to do here. */
-	/* In future, can be used to prefect file data blocks */
-	return VMM_OK;
-}
-
-static int ext2fs_close(struct vnode *v, struct file *f)
-{
-	struct ext2fs_node *node = v->v_data;
-
-	if (!node) {
-		return VMM_EFAIL;
-	}
-
-	return ext2fs_node_sync(node);
-}
-
-static size_t ext2fs_read(struct vnode *v, struct file *f, 
-				void *buf, size_t len)
+static size_t ext2fs_read(struct vnode *v, loff_t off, void *buf, size_t len)
 {
 	struct ext2fs_node *node = v->v_data;
 	u64 filesize = ext2fs_node_get_size(node);
 
-	if (filesize <= f->f_offset) {
+	if (filesize <= off) {
 		return 0;
 	}
 
-	if (filesize < (len + f->f_offset)) {
-		len = filesize - f->f_offset;
+	if (filesize < (len + off)) {
+		len = filesize - off;
 	}
 
-	return ext2fs_node_read(node, f->f_offset, len, buf);
+	return ext2fs_node_read(node, off, len, buf);
 }
 
-static size_t ext2fs_write(struct vnode *v, struct file *f, 
-				void *buf, size_t len)
+static size_t ext2fs_write(struct vnode *v, loff_t off, void *buf, size_t len)
 {
 	u32 wlen;
 	struct ext2fs_node *node = v->v_data;
 
-	wlen = ext2fs_node_write(node, f->f_offset, len, buf);
+	wlen = ext2fs_node_write(node, off, len, buf);
 
 	/* Size and mtime might have changed */
 	v->v_size = ext2fs_node_get_size(node);
@@ -1475,7 +1455,7 @@ static int ext2fs_truncate(struct vnode *v, loff_t off)
 	return VMM_OK;
 }
 
-static int ext2fs_fsync(struct vnode *v, struct file *f)
+static int ext2fs_sync(struct vnode *v)
 {
 	struct ext2fs_node *node = v->v_data;
 
@@ -1486,19 +1466,19 @@ static int ext2fs_fsync(struct vnode *v, struct file *f)
 	return ext2fs_node_sync(node);
 }
 
-static int ext2fs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
+static int ext2fs_readdir(struct vnode *dv, loff_t off, struct dirent *d)
 {
 	u32 readlen;
 	struct ext2_dirent dent;
 	struct ext2fs_node *dnode = dv->v_data;
 	u64 filesize = ext2fs_node_get_size(dnode);
-	u64 fileoff = f->f_offset;
+	u64 fileoff = off;
 
-	if (filesize <= f->f_offset) {
+	if (filesize <= fileoff) {
 		return VMM_ENOENT;
 	}
 
-	if (filesize < (sizeof(struct ext2_dirent) + f->f_offset)) {
+	if (filesize < (sizeof(struct ext2_dirent) + fileoff)) {
 		return VMM_ENOENT;
 	}
 
@@ -1533,7 +1513,7 @@ static int ext2fs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 		}
 	} while (1);
 
-	d->d_off = f->f_offset;
+	d->d_off = off;
 
 	switch (dent.filetype) {
 	case EXT2_FT_REG_FILE:
@@ -1718,17 +1698,15 @@ static struct filesystem ext2fs = {
 	/* Mount point operations */
 	.mount		= ext2fs_mount,
 	.unmount	= ext2fs_unmount,
-	.sync		= ext2fs_sync,
+	.msync		= ext2fs_msync,
 	.vget		= ext2fs_vget,
 	.vput		= ext2fs_vput,
 
 	/* Vnode operations */
-	.open		= ext2fs_open,
-	.close		= ext2fs_close,
 	.read		= ext2fs_read,
 	.write		= ext2fs_write,
 	.truncate	= ext2fs_truncate,
-	.fsync		= ext2fs_fsync,
+	.sync		= ext2fs_sync,
 	.readdir	= ext2fs_readdir,
 	.lookup		= ext2fs_lookup,
 	.create		= ext2fs_create,

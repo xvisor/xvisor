@@ -38,6 +38,14 @@
 #define	MODULE_INIT			vfs_init
 #define	MODULE_EXIT			vfs_exit
 
+/** file descriptor structure */
+struct file {
+	struct vmm_mutex f_lock;	/* file lock */
+	u32 f_flags;			/* open flag */
+	loff_t f_offset;		/* current position in file */
+	struct vnode *f_vnode;		/* vnode */
+};
+
 /* size of vnode hash table, must power 2 */
 #define VFS_VNODE_HASH_SIZE		(32)
 
@@ -862,17 +870,6 @@ int vfs_open(const char *path, u32 flags, u32 mode)
 	f->f_flags = flags;
 	f->f_offset = 0;
 
-	/* request to file system */
-	vmm_mutex_lock(&v->v_lock);
-	err = v->v_mount->m_fs->open(v, f);
-	vmm_mutex_unlock(&v->v_lock);
-	if (err) {
-		vmm_mutex_unlock(&f->f_lock);
-		vfs_fd_free(fd);
-		vfs_vnode_release(v);
-		return err;
-	}
-
 	vmm_mutex_unlock(&f->f_lock);
 
 	return fd;
@@ -901,7 +898,7 @@ int vfs_close(int fd)
 	}
 
 	vmm_mutex_lock(&v->v_lock);
-	err = v->v_mount->m_fs->close(v, f);
+	err = v->v_mount->m_fs->sync(v);
 	vmm_mutex_unlock(&v->v_lock);
 	if (err) {
 		vmm_mutex_unlock(&f->f_lock);
@@ -953,7 +950,7 @@ size_t vfs_read(int fd, void *buf, size_t len)
 	}
 
 	vmm_mutex_lock(&v->v_lock);
-	ret = v->v_mount->m_fs->read(v, f, buf, len);
+	ret = v->v_mount->m_fs->read(v, f->f_offset, buf, len);
 	vmm_mutex_unlock(&v->v_lock);
 
 	f->f_offset += ret;
@@ -999,7 +996,7 @@ size_t vfs_write(int fd, void *buf, size_t len)
 	}
 
 	vmm_mutex_lock(&v->v_lock);
-	ret = v->v_mount->m_fs->write(v, f, buf, len);
+	ret = v->v_mount->m_fs->write(v, f->f_offset, buf, len);
 	vmm_mutex_unlock(&v->v_lock);
 
 	f->f_offset += ret;
@@ -1111,7 +1108,7 @@ int vfs_fsync(int fd)
 	}
 
 	vmm_mutex_lock(&v->v_lock);
-	err = v->v_mount->m_fs->fsync(v, f);
+	err = v->v_mount->m_fs->sync(v);
 	vmm_mutex_unlock(&v->v_lock);
 
 	vmm_mutex_unlock(&f->f_lock);
@@ -1256,7 +1253,7 @@ int vfs_readdir(int fd, struct dirent *dir)
 	}
 
 	vmm_mutex_lock(&v->v_lock);
-	err = v->v_mount->m_fs->readdir(v, f, dir);
+	err = v->v_mount->m_fs->readdir(v, f->f_offset, dir);
 	vmm_mutex_unlock(&v->v_lock);
 	if (!err) {
 		f->f_offset += dir->d_reclen;

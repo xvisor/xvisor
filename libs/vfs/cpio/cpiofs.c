@@ -187,7 +187,7 @@ static int cpiofs_unmount(struct mount *m)
 	return VMM_OK;
 }
 
-static int cpiofs_sync(struct mount *m)
+static int cpiofs_msync(struct mount *m)
 {
 	/* Not required (read-only filesystem) */
 	return VMM_OK;
@@ -209,48 +209,31 @@ static int cpiofs_vput(struct mount *m, struct vnode *v)
  * Vnode operations 
  */
 
-static int cpiofs_open(struct vnode *v, struct file *f)
+static size_t cpiofs_read(struct vnode *v, loff_t off, void *buf, size_t len)
 {
-	/* Not required */
-	return VMM_OK;
-}
-
-static int cpiofs_close(struct vnode *v, struct file *f)
-{
-	/* Not required */
-	return VMM_OK;
-}
-
-static size_t cpiofs_read(struct vnode *v, struct file *f, 
-				void *buf, size_t len)
-{
-	u64 off;
+	u64 toff;
 	size_t sz = 0;
 
 	if (v->v_type != VREG) {
 		return 0;
 	}
 
-	if (f->f_offset >= v->v_size) {
+	if (off >= v->v_size) {
 		return 0;
 	}
 
 	sz = len;
-	if ((v->v_size - f->f_offset) < sz) {
-		sz = v->v_size - f->f_offset;
+	if ((v->v_size - off) < sz) {
+		sz = v->v_size - off;
 	}
 
-	off = (u64)((u32)(v->v_data));
-	sz = vmm_blockdev_read(v->v_mount->m_dev, 
-				(u8 *)buf, (off + f->f_offset), sz);
-
-	f->f_offset += sz;
+	toff = (u64)((u32)(v->v_data));
+	sz = vmm_blockdev_read(v->v_mount->m_dev, (u8 *)buf, (toff + off), sz);
 
 	return sz;
 }
 
-static size_t cpiofs_write(struct vnode *v, struct file *f, 
-				void *buf, size_t len)
+static size_t cpiofs_write(struct vnode *v, loff_t off, void *buf, size_t len)
 {
 	/* Not required (read-only filesystem) */
 	return 0;
@@ -262,25 +245,25 @@ static int cpiofs_truncate(struct vnode *v, loff_t off)
 	return VMM_EFAIL;
 }
 
-static int cpiofs_fsync(struct vnode *v, struct file *f)
+static int cpiofs_sync(struct vnode *v)
 {
 	/* Not required (read-only filesystem) */
 	return VMM_OK;
 }
 
-static int cpiofs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
+static int cpiofs_readdir(struct vnode *dv, loff_t off, struct dirent *d)
 {
 	struct cpio_newc_header header;
 	char path[VFS_MAX_PATH];
 	char name[VFS_MAX_NAME];
 	u32 size, name_size, mode;
-	u64 off = 0, rd;
+	u64 toff = 0, rd;
 	char buf[9];
 	int i = 0;
 
 	while (1) {
 		rd = vmm_blockdev_read(dv->v_mount->m_dev, (u8 *)&header, 
-				off, sizeof(struct cpio_newc_header));
+				toff, sizeof(struct cpio_newc_header));
 		if (!rd) {
 			return VMM_EIO;
 		}
@@ -301,7 +284,7 @@ static int cpiofs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 		mode = str2uint((const char *)buf, 16);
 
 		rd = vmm_blockdev_read(dv->v_mount->m_dev, (u8 *)path, 
-		off + sizeof(struct cpio_newc_header), name_size);
+		toff + sizeof(struct cpio_newc_header), name_size);
 		if (!rd) {
 			return VMM_EIO;
 		}
@@ -311,9 +294,9 @@ static int cpiofs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 			return VMM_ENOENT;
 		}
 
-		off += sizeof(struct cpio_newc_header); 
-		off += (((name_size + 1) & ~3) + 2) + size;
-		off = (off + 3) & ~3;
+		toff += sizeof(struct cpio_newc_header); 
+		toff += (((name_size + 1) & ~3) + 2) + size;
+		toff = (toff + 3) & ~3;
 
 		if (path[0] == '.') {
 			continue;
@@ -323,8 +306,8 @@ static int cpiofs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 			continue;
 		}
 
-		if (i++ == f->f_offset) {
-			off = 0;
+		if (i++ == off) {
+			toff = 0;
 			break;
 		}
 	}
@@ -350,7 +333,7 @@ static int cpiofs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 	strncpy(d->d_name, name, VFS_MAX_NAME - 1);
 	d->d_name[VFS_MAX_NAME - 1] = '\0';
 
-	d->d_off = f->f_offset;
+	d->d_off = off;
 	d->d_reclen = 1;
 
 	return 0;
@@ -501,17 +484,15 @@ static struct filesystem cpiofs = {
 	/* Mount point operations */
 	.mount		= cpiofs_mount,
 	.unmount	= cpiofs_unmount,
-	.sync		= cpiofs_sync,
+	.msync		= cpiofs_msync,
 	.vget		= cpiofs_vget,
 	.vput		= cpiofs_vput,
 
 	/* Vnode operations */
-	.open		= cpiofs_open,
-	.close		= cpiofs_close,
 	.read		= cpiofs_read,
 	.write		= cpiofs_write,
 	.truncate	= cpiofs_truncate,
-	.fsync		= cpiofs_fsync,
+	.sync		= cpiofs_sync,
 	.readdir	= cpiofs_readdir,
 	.lookup		= cpiofs_lookup,
 	.create		= cpiofs_create,
