@@ -93,7 +93,6 @@
 #define	X_OK			(0x01)
 
 struct stat;
-struct file;
 struct dirent;
 struct mount;
 struct vnode;
