@@ -30,6 +30,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
+#include <vmm_wallclock.h>
 #include <vmm_modules.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
@@ -54,6 +55,9 @@
 /* Bits used as offset in sector */
 #define EXT2_SECTOR_BITS		9
 #define EXT2_SECTOR_SIZE		512
+
+/* Maximum file size (2 TB) */
+#define EXT2_MAX_FILE_SIZE		0x20000000000ULL
 
 /* The ext2 superblock.  */
 struct ext2_sblock {
@@ -253,42 +257,68 @@ struct ext2fs_node {
 	/* Underlying Inode */
 	struct ext2_inode inode;
 	u32 inode_no;
+	bool inode_dirty;
 
 	/* Cached data block
 	 * Allocated on demand. Must be freed in vput()
 	 */
 	u32 cached_blkno;
 	u8 *cached_block;
+	bool cached_dirty;
 
 	/* Indirect block
 	 * Allocated on demand. Must be freed in vpuf()
 	 */
 	u32 *indir_block;
 	u32 indir_blkno;
+	bool indir_dirty;
 
 	/* Double-Indirect level1 block
 	 * Allocated on demand. Must be freed in vput()
 	 */
 	u32 *dindir1_block;
 	u32 dindir1_blkno;
+	bool dindir1_dirty;
 
 	/* Double-Indirect level2 block
 	 * Allocated on demand. Must be freed in vput()
 	 */
 	u32 *dindir2_block;
 	u32 dindir2_blkno;
+	bool dindir2_dirty;
 };
 
 /* Information for accessing block groups. */
 struct ext2fs_group {
 	struct ext2_block_group grp;
+
+	u8 *block_bitmap;
+	u8 *inode_bitmap;
+
+	bool grp_dirty;
 };
 
 /* Information about a "mounted" ext2 filesystem. */
 struct ext2fs_control {
+	struct vmm_blockdev *bdev;
+
+	/* lock to protect:
+	 * sblock.free_blocks, 
+	 * sblock.free_inodes,
+	 * sblock.mtime,
+	 * sblock.utime,
+	 * sblock_dirty,
+	 * all groups,
+	 * all group block bitmaps,
+	 * all group inode bitmap
+	 */
+	struct vmm_mutex sblock_lock;
 	struct ext2_sblock sblock;
 
-	struct vmm_blockdev *bdev;
+	/* flag to show whether sblock,
+	 * groups, or bitmaps are updated.
+	 */
+	bool sblock_dirty;
 
 	u32 log2_block_size;
 	u32 block_size;
@@ -321,6 +351,20 @@ static int ext2fs_devread(struct ext2fs_control *ctrl,
 	return (len == buf_len) ? VMM_OK : VMM_EIO;
 }
 
+static int ext2fs_devwrite(struct ext2fs_control *ctrl, 
+			   u32 blkno, u32 blkoff, 
+			   u32 buf_len, char *buf)
+{
+	u64 off, len;
+
+	off = (blkno << (ctrl->log2_block_size + EXT2_SECTOR_BITS));
+	off += blkoff;
+	len = buf_len;
+	len = vmm_blockdev_write(ctrl->bdev, (u8 *)buf, off, len);
+
+	return (len == buf_len) ? VMM_OK : VMM_EIO;
+}
+
 static int ext2fs_control_read_inode(struct ext2fs_control *ctrl, 
 			     u32 inode_no, struct ext2_inode *inode)
 {
@@ -348,9 +392,89 @@ static int ext2fs_control_read_inode(struct ext2fs_control *ctrl,
 	return VMM_OK;
 }
 
+static int ext2fs_control_write_inode(struct ext2fs_control *ctrl, 
+			     u32 inode_no, struct ext2_inode *inode)
+{
+	int rc;
+	struct ext2_block_group *blkgrp;
+	struct ext2_sblock *sblock = &ctrl->sblock;
+	u32 blkno, blkoff, group;
+
+	inode_no--;
+	group = udiv32(inode_no, __le32(sblock->inodes_per_group));
+	blkgrp = &ctrl->groups[group].grp;
+
+	blkno = umod32(inode_no, __le32(sblock->inodes_per_group));
+	blkno = udiv32(blkno, ctrl->inodes_per_block);
+	blkno += __le32(blkgrp->inode_table_id);
+	blkoff = umod32(inode_no, ctrl->inodes_per_block) * ctrl->inode_size;
+
+	/* Read the inode.  */
+	rc = ext2fs_devwrite(ctrl, blkno, blkoff,
+			    sizeof(struct ext2_inode), (char *)inode);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
 /* FIXME: */
+static int ext2fs_control_alloc_block(struct ext2fs_control *ctrl,
+				u32 inode_no, u32 *blkno) 
+{
+	return VMM_EFAIL;
+}
+
+/* FIXME: */
+static int ext2fs_control_free_block(struct ext2fs_control *ctrl, u32 blkno) 
+{
+	return VMM_EFAIL;
+}
+
+/* FIXME: */
+static int ext2fs_control_alloc_inode(struct ext2fs_control *ctrl,
+				u32 parent_inode_no, u32 *inode_no) 
+{
+	return VMM_EFAIL;
+}
+
+/* FIXME: */
+static int ext2fs_control_free_inode(struct ext2fs_control *ctrl, u32 inode_no)
+{
+	return VMM_EFAIL;
+}
+
 static int ext2fs_control_sync(struct ext2fs_control *ctrl)
 {
+	u32 g;
+
+	vmm_mutex_lock(&ctrl->sblock_lock);
+
+	if (ctrl->sblock_dirty) {
+		/* FIXME: Write superblock to block device */
+
+		/* Clear sblock_dirty flag */
+		ctrl->sblock_dirty = FALSE;
+	}
+
+	for (g = 0; g < ctrl->group_count; g++) {
+		if (!ctrl->groups[g].grp_dirty) {
+			continue;
+		}
+
+		/* FIXME: Write group descriptor to block device */
+
+		/* FIXME: Write block bitmap to block device */
+
+		/* FIXME: Write inode bitmap to block device */
+
+		/* Clear grp_dirty flag */
+		ctrl->groups[g].grp_dirty = FALSE;
+	}
+
+	vmm_mutex_unlock(&ctrl->sblock_lock);
+
 	return VMM_OK;
 }
 
@@ -361,6 +485,12 @@ static int ext2fs_control_init(struct ext2fs_control *ctrl,
 	u64 sb_read;
 	u32 blkno, blkoff, desc_per_blk, group;
 
+	/* Save underlying block device pointer */
+	ctrl->bdev = bdev;
+
+	/* Init superblock lock */
+	INIT_MUTEX(&ctrl->sblock_lock);
+
 	/* Read the superblock.  */
 	sb_read = vmm_blockdev_read(bdev, (u8 *)&ctrl->sblock, 
 				    1024, sizeof(struct ext2_sblock));
@@ -369,8 +499,8 @@ static int ext2fs_control_init(struct ext2fs_control *ctrl,
 		goto fail;
 	}
 
-	/* Save underlying block device pointer */
-	ctrl->bdev = bdev;
+	/* Clear the sblock_dirty flag */
+	ctrl->sblock_dirty = FALSE;
 
 	/* Make sure this is an ext2 filesystem.  */
 	if (__le16(ctrl->sblock.magic) != EXT2_MAGIC) {
@@ -412,12 +542,21 @@ static int ext2fs_control_init(struct ext2fs_control *ctrl,
 					1 + udiv32(group, desc_per_blk);
 		blkoff = umod32(group, desc_per_blk) * 
 					sizeof(struct ext2_block_group);
+
+		/* Load descriptor */
 		rc = ext2fs_devread(ctrl, blkno, blkoff, 
 				    sizeof(struct ext2_block_group), 
 				    (char *)&ctrl->groups[group].grp);
 		if (rc) {
 			goto fail1;
 		}
+
+		/* FIXME: Load group block bitmap */
+
+		/* FIXME: Load group inode bitmap */
+
+		/* Clear grp_dirty flag */
+		ctrl->groups[group].grp_dirty = FALSE;
 	}
 
 	return VMM_OK;
@@ -435,35 +574,183 @@ static int ext2fs_control_exit(struct ext2fs_control *ctrl)
 	return VMM_OK;
 }
 
+static u64 ext2fs_node_get_size(struct ext2fs_node *node)
+{
+	u64 ret = __le32(node->inode.size);
+
+	if (__le32(node->ctrl->sblock.revision_level) != 0) {
+		ret |= ((u64)__le32(node->inode.dir_acl)) << 32;
+	}
+
+	return ret;
+}
+
+static void ext2fs_node_set_size(struct ext2fs_node *node, u64 size)
+{
+	node->inode.size = __le32((u32)(size & 0xFFFFFFFFULL));
+	if (__le32(node->ctrl->sblock.revision_level) != 0) {
+		node->inode.dir_acl = __le32((u32)(size >> 32));
+	}
+}
+
+static void ext2fs_node_update_mtime(struct ext2fs_node *node)
+{
+	struct vmm_timeval tv;
+
+	vmm_wallclock_get_local_time(&tv);
+	node->inode.mtime = __le32((u32)tv.tv_sec);
+}
+
 static int ext2fs_node_read_blk(struct ext2fs_node *node,
 				u32 blkno, u32 blkoff, 
 				u32 blklen, char *buf)
 {
 	int rc;
+	struct ext2fs_control *ctrl = node->ctrl;
+
+	if (blklen > ctrl->block_size) {
+		return VMM_EINVALID;
+	}
 
 	/* If the block number is 0 then 
 	 * this block is not stored on disk
 	 * but is zero filled instead.  
 	 */
-	if (blkno) {
+	if (!blkno) {
+		memset(buf, 0, blklen);
+		return VMM_OK;
+	}
+
+	if (!node->cached_block) {
+		node->cached_block = vmm_zalloc(ctrl->block_size);
 		if (!node->cached_block) {
-			node->cached_block = 
-					vmm_zalloc(node->ctrl->block_size);
-			if (!node->cached_block) {
-				return VMM_ENOMEM;
-			}
+			return VMM_ENOMEM;
 		}
-		if (node->cached_blkno != blkno) {
-			rc = ext2fs_devread(node->ctrl, blkno, 0,
-			node->ctrl->block_size, (char *)node->cached_block);
+	}
+	if (node->cached_blkno != blkno) {
+		if (node->cached_dirty) {
+			rc = ext2fs_devwrite(ctrl, node->cached_blkno,
+					   0, ctrl->block_size, 
+					   (char *)node->cached_block);
+			if (rc) {
+				return rc;
+			}
+			node->cached_dirty = FALSE;
+		}
+		rc = ext2fs_devread(ctrl, blkno,
+				    0, ctrl->block_size, 
+				    (char *)node->cached_block);
+		if (rc) {
+			return rc;
+		}
+		node->cached_blkno = blkno;
+	}
+
+	memcpy(buf, &node->cached_block[blkoff], blklen);			
+
+	return VMM_OK;
+}
+
+static int ext2fs_node_write_blk(struct ext2fs_node *node,
+				u32 blkno, u32 blkoff, 
+				u32 blklen, char *buf)
+{
+	int rc;
+	struct ext2fs_control *ctrl = node->ctrl;
+
+	if (blklen > ctrl->block_size) {
+		return VMM_EINVALID;
+	}
+
+	/* We skip writes to block number 0
+	 * since its expected to be zero filled.
+	 */
+	if (!blkno) {
+		return VMM_OK;
+	}
+
+	if (!node->cached_block) {
+		node->cached_block = vmm_zalloc(ctrl->block_size);
+		if (!node->cached_block) {
+			return VMM_ENOMEM;
+		}
+	}
+	if (node->cached_blkno != blkno) {
+		if (node->cached_dirty) {
+			rc = ext2fs_devwrite(ctrl, node->cached_blkno,
+					   0, ctrl->block_size, 
+					   (char *)node->cached_block);
+			if (rc) {
+				return rc;
+			}
+			node->cached_dirty = FALSE;
+		}
+		if (blkoff != 0 ||
+		    blklen != ctrl->block_size) {
+			rc = ext2fs_devread(ctrl, blkno,
+					    0, ctrl->block_size, 
+					    (char *)node->cached_block);
 			if (rc) {
 				return rc;
 			}
 			node->cached_blkno = blkno;
 		}
-		memcpy(buf, &node->cached_block[blkoff], blklen);			
-	} else {
-		memset(buf, 0, blklen);
+	}
+
+	memcpy(&node->cached_block[blkoff], buf, blklen);
+	node->cached_dirty = TRUE;
+
+	return VMM_OK;
+}
+
+static int ext2fs_node_sync(struct ext2fs_node *node)
+{
+	int rc;
+	struct ext2fs_control *ctrl = node->ctrl;
+
+	if (node->inode_dirty) {
+		rc = ext2fs_control_write_inode(ctrl, 
+					node->inode_no, &node->inode);
+		if (rc) {
+			return rc;
+		}
+		node->inode_dirty = FALSE;
+	}
+
+	if (node->cached_block && node->cached_dirty) {
+		rc = ext2fs_devwrite(ctrl, node->cached_blkno, 0, 
+				ctrl->block_size, (char *)node->cached_block);
+		if (rc) {
+			return rc;
+		}
+		node->cached_dirty = FALSE;
+	}
+
+	if (node->indir_block && node->indir_dirty) {
+		rc = ext2fs_devwrite(ctrl, node->indir_blkno, 0, 
+				ctrl->block_size, (char *)node->indir_block);
+		if (rc) {
+			return rc;
+		}
+		node->indir_dirty = FALSE;
+	}
+
+	if (node->dindir1_block && node->dindir1_dirty) {
+		rc = ext2fs_devwrite(ctrl, node->dindir1_blkno, 0, 
+				ctrl->block_size, (char *)node->dindir1_block);
+		if (rc) {
+			return rc;
+		}
+		node->dindir1_dirty = FALSE;
+	}
+
+	if (node->dindir2_block && node->dindir2_dirty) {
+		rc = ext2fs_devwrite(ctrl, node->dindir2_blkno, 0, 
+				ctrl->block_size, (char *)node->dindir2_block);
+		if (rc) {
+			return rc;
+		}
+		node->dindir2_dirty = FALSE;
 	}
 
 	return VMM_OK;
@@ -473,6 +760,7 @@ static int ext2fs_node_read_blkno(struct ext2fs_node *node,
 				  u32 blkpos, u32 *blkno) 
 {
 	int rc;
+	u32 dindir2_blkno;
 	struct ext2_inode *inode = &node->inode;
 	struct ext2fs_control *ctrl = node->ctrl;
 
@@ -498,9 +786,9 @@ static int ext2fs_node_read_blkno(struct ext2fs_node *node,
 		*blkno = __le32(node->indir_block[indir_blkpos]);
 	} else if (blkpos < ctrl->dindir_blklast) {
 		/* Double indirect.  */
-		u32 tmp = blkpos - ctrl->indir_blklast;
-		u32 dindir1_blkpos = udiv32(tmp, ctrl->block_size / 4);
-		u32 dindir2_blkpos = tmp - dindir1_blkpos * (ctrl->block_size / 4);
+		u32 t = blkpos - ctrl->indir_blklast;
+		u32 dindir1_blkpos = udiv32(t, ctrl->block_size / 4);
+		u32 dindir2_blkpos = t - dindir1_blkpos * (ctrl->block_size / 4);
 
 		if (!node->dindir1_block) {
 			node->dindir1_block = vmm_malloc(ctrl->block_size);
@@ -514,7 +802,7 @@ static int ext2fs_node_read_blkno(struct ext2fs_node *node,
 			}
 		}
 
-		tmp = __le32(node->dindir1_block[dindir1_blkpos]);
+		dindir2_blkno = __le32(node->dindir1_block[dindir1_blkpos]);
 
 		if (!node->dindir2_block) {
 			node->dindir2_block = vmm_malloc(ctrl->block_size);
@@ -523,13 +811,22 @@ static int ext2fs_node_read_blkno(struct ext2fs_node *node,
 			}
 			node->dindir2_blkno = 0;
 		}
-		if (tmp != node->dindir2_blkno) {
-			rc = ext2fs_devread(ctrl, tmp, 0,  
+		if (dindir2_blkno != node->dindir2_blkno) {
+			if (node->dindir2_dirty) {
+				rc = ext2fs_devwrite(ctrl, node->dindir2_blkno,
+						  0, ctrl->block_size, 
+						  (char *)node->dindir2_block);
+				if (rc) {
+					return rc;
+				}
+				node->dindir2_dirty = FALSE;
+			}
+			rc = ext2fs_devread(ctrl, dindir2_blkno, 0,  
 				ctrl->block_size, (char *)node->dindir2_block);
 			if (rc) {
 				return rc;
 			}
-			node->dindir2_blkno = tmp;
+			node->dindir2_blkno = dindir2_blkno;
 		}
 
 		*blkno = __le32(node->dindir2_block[dindir2_blkpos]);
@@ -541,37 +838,141 @@ static int ext2fs_node_read_blkno(struct ext2fs_node *node,
 	return VMM_OK;
 }
 
-static int ext2fs_node_read(struct ext2fs_node *node, 
-			    u32 pos, u32 len, char *buf) 
+static int ext2fs_node_write_blkno(struct ext2fs_node *node, 
+				   u32 blkpos, u32 blkno) 
 {
 	int rc;
-	u32 filesize = __le32(node->inode.size);
-	u32 i, blkno, blkoff, blklen;
+	u32 dindir2_blkno;
+	struct ext2_inode *inode = &node->inode;
+	struct ext2fs_control *ctrl = node->ctrl;
+
+	if (blkpos < ctrl->dir_blklast) {
+		/* Direct blocks.  */
+		inode->b.blocks.dir_blocks[blkpos] = __le32(blkno);
+		node->inode_dirty = TRUE;
+	} else if (blkpos < ctrl->indir_blklast) {
+		/* Indirect.  */
+		u32 indir_blkpos = blkpos - ctrl->dir_blklast;
+
+		if (!node->indir_block) {
+			node->indir_block = vmm_malloc(ctrl->block_size);
+			if (!node->indir_block) {
+				return VMM_ENOMEM;
+			}
+			rc = ext2fs_devread(ctrl, node->indir_blkno, 0, 
+				ctrl->block_size, (char *)node->indir_block);
+			if (rc) {
+				return rc;
+			}
+		}
+
+		node->indir_block[indir_blkpos] = __le32(blkno);
+		node->indir_dirty = TRUE;
+	} else if (blkpos < ctrl->dindir_blklast) {
+		/* Double indirect.  */
+		u32 t = blkpos - ctrl->indir_blklast;
+		u32 dindir1_blkpos = udiv32(t, ctrl->block_size / 4);
+		u32 dindir2_blkpos = t - dindir1_blkpos * (ctrl->block_size / 4);
+
+		if (!node->dindir1_block) {
+			node->dindir1_block = vmm_malloc(ctrl->block_size);
+			if (!node->dindir1_block) {
+				return VMM_ENOMEM;
+			}
+			rc = ext2fs_devread(ctrl, node->dindir1_blkno, 0,
+				ctrl->block_size, (char *)node->dindir1_block);
+			if (rc) {
+				return rc;
+			}
+		}
+
+		dindir2_blkno = __le32(node->dindir1_block[dindir1_blkpos]);
+
+		if (!node->dindir2_block) {
+			node->dindir2_block = vmm_malloc(ctrl->block_size);
+			if (!node->dindir2_block) {
+				return VMM_ENOMEM;
+			}
+			node->dindir2_blkno = 0;
+		}
+		if (dindir2_blkno != node->dindir2_blkno) {
+			if (node->dindir2_dirty) {
+				rc = ext2fs_devwrite(ctrl, node->dindir2_blkno,
+						  0, ctrl->block_size, 
+						  (char *)node->dindir2_block);
+				if (rc) {
+					return rc;
+				}
+				node->dindir2_dirty = FALSE;
+			}
+			if (!dindir2_blkno) {
+				rc = ext2fs_control_alloc_block(ctrl, 
+					node->inode_no, &dindir2_blkno);
+				if (rc) {
+					return rc;
+				}
+				node->dindir1_block[dindir1_blkpos] = 
+							__le32(dindir2_blkno);
+				node->dindir1_dirty = TRUE;
+				memset(node->dindir2_block, 0, ctrl->block_size);
+				/* FIXME: Should we update inode.blockcnt ??? */
+			} else {
+				rc = ext2fs_devread(ctrl, dindir2_blkno, 
+						0, ctrl->block_size, 
+						(char *)node->dindir2_block);
+				if (rc) {
+					return rc;
+				}
+			}
+			node->dindir2_blkno = dindir2_blkno;
+		}
+
+		node->dindir2_block[dindir2_blkpos] = __le32(blkno);
+		node->dindir2_dirty = TRUE;
+	} else {
+		/* Tripple indirect.  */
+		return VMM_EFAIL;
+	}
+
+	return VMM_OK;
+}
+
+/* Note: Node position has to be 64-bit */
+static u32 ext2fs_node_read(struct ext2fs_node *node, 
+			    u64 pos, u32 len, char *buf) 
+{
+	int rc;
+	u64 filesize = ext2fs_node_get_size(node);
+	u32 i, rlen, blkno, blkoff, blklen;
 	u32 last_blkpos, last_blklen;
 	u32 first_blkpos, first_blkoff, first_blklen;
 	struct ext2fs_control *ctrl = node->ctrl;
 
-	/* Sanity checks */
-	if ((pos > filesize) ||
-	    ((pos + len) > filesize)) {
-		return VMM_EINVALID;
+	if (filesize <= pos) {
+		return 0;
+	}
+	if (filesize < (len + pos)) {
+		len = filesize - pos;
 	}
 
-	first_blkpos = udiv32(pos, ctrl->block_size);
+	/* Note: div result < 32-bit */
+	first_blkpos = udiv64(pos, ctrl->block_size); 
 	first_blkoff = pos - (first_blkpos * ctrl->block_size);
 	first_blklen = ctrl->block_size - first_blkoff;
 	if (len < first_blklen) {
 		first_blklen = len;
 	}
 
-	last_blkpos = udiv32((len + pos), ctrl->block_size);
+	/* Note: div result < 32-bit */
+	last_blkpos = udiv64((len + pos), ctrl->block_size); 
 	last_blklen = (len + pos) - (last_blkpos * ctrl->block_size);
 
+	rlen = len;
 	i = first_blkpos;
-	while (len) {
+	while (rlen) {
 		rc = ext2fs_node_read_blkno(node, i, &blkno);
 		if (rc) {
-			return rc;
+			goto done;
 		}
 
 		if (i == first_blkpos) {
@@ -591,15 +992,16 @@ static int ext2fs_node_read(struct ext2fs_node *node,
 		/* Read cached block */
 		rc = ext2fs_node_read_blk(node, blkno, blkoff, blklen, buf);
 		if (rc) {
-			return rc;
+			goto done;
 		}
 
 		buf += blklen;
-		len -= blklen;
+		rlen -= blklen;
 		i++;
 	}
 
-	return VMM_OK;
+done:
+	return len - rlen;
 }
 
 /* TODO: */
@@ -607,9 +1009,10 @@ static int ext2fs_node_read(struct ext2fs_node *node,
 static char *ext2fs_node_read_symlink(struct ext2fs_node *node)
 {
 	int rc;
+	u32 rlen
 	char *symlink;
 
-	symlink = vmm_malloc(__le32(node->inode.size) + 1);
+	symlink = vmm_malloc(ext2fs_node_get_size(node) + 1);
 	if (!symlink) {
 		return NULL;
 	}
@@ -617,26 +1020,154 @@ static char *ext2fs_node_read_symlink(struct ext2fs_node *node)
 	/* If the filesize of the symlink is bigger than
 	   60 the symlink is stored in a separate block,
 	   otherwise it is stored in the inode.  */
-	if (__le32(node->inode.size) <= 60) {
+	if (ext2fs_node_get_size(node) <= 60) {
 		strncpy(symlink, node->inode.b.symlink,
-			 __le32(node->inode.size));
+			ext2fs_node_get_size(node));
 	} else {
-		rc = ext2fs_node_read(node, 0,
-				__le32(node->inode.size), symlink);
-		if (rc) {
+		rlen = ext2fs_node_read(node, 0,
+				ext2fs_node_get_size(node), symlink);
+		if (rlen != ext2fs_node_get_size(node)) {
 			vmm_free(symlink);
 			return NULL;
 		}
 	}
-	symlink[__le32(node->inode.size)] = '\0';
+	symlink[ext2fs_node_get_size(node)] = '\0';
 
 	return (symlink);
 }
 #endif
 
-/* FIXME: */
-static int ext2fs_node_sync(struct ext2fs_node *node)
+static u32 ext2fs_node_write(struct ext2fs_node *node, 
+			     u64 pos, u32 len, char *buf) 
 {
+	int rc;
+	bool update_nodesize = FALSE;
+	u32 wlen, blkpos, blkno, blkoff, blklen;
+	u64 wpos, filesize = ext2fs_node_get_size(node);
+	struct ext2fs_control *ctrl = node->ctrl;
+
+	wlen = len;
+	wpos = pos;
+	update_nodesize = FALSE;
+
+	while (wlen) {
+		/* Note: div result < 32-bit */
+		blkpos = udiv64(wpos, ctrl->block_size);
+		blkoff = wpos - (blkpos * ctrl->block_size);
+		blklen = ctrl->block_size - blkoff;
+		blklen = (wlen < blklen) ? wlen : blklen;
+
+		if (wpos < filesize) {
+			rc = ext2fs_node_read_blkno(node, blkpos, &blkno);
+			if (rc) {
+				goto done;
+			}
+
+			rc = ext2fs_node_write_blk(node, blkno, 
+						blkoff, blklen, buf);
+			if (rc) {
+				goto done;
+			}
+		} else {
+			rc = ext2fs_control_alloc_block(ctrl, 
+						node->inode_no, &blkno);
+			if (rc) {
+				goto done;
+			}
+
+			rc = ext2fs_node_write_blkno(node, blkpos, blkno);
+			if (rc) {
+				return rc;
+			}
+			
+			rc = ext2fs_node_write_blk(node, blkno, 
+						blkoff, blklen, buf);
+			if (rc) {
+				ext2fs_control_free_block(ctrl, blkno);
+				ext2fs_node_write_blkno(node, blkpos, 0);
+				goto done;
+			}
+
+			update_nodesize = TRUE;
+		}
+
+		wpos += blklen;
+		buf += blklen;
+		wlen -= blklen;
+		if (update_nodesize) {
+			filesize += blklen;
+		}
+	}
+
+done:
+	if (update_nodesize) {
+		/* Update node size */
+		ext2fs_node_set_size(node, filesize);
+	}
+	if (len - wlen) {
+		/* Update node modify time */
+		ext2fs_node_update_mtime(node);
+	}
+
+	return len - wlen;
+}
+
+static int ext2fs_node_truncate(struct ext2fs_node *node, u64 pos) 
+{
+	int rc;
+	u32 blkpos, blkno;
+	u32 last_blkpos;
+	u32 first_blkpos, first_blkoff;
+	u64 filesize = ext2fs_node_get_size(node);
+	struct ext2fs_control *ctrl = node->ctrl;
+
+	if (filesize <= pos) {
+		return VMM_OK;
+	}
+
+	/* Note: div result < 32-bit */
+	first_blkpos = udiv64(pos, ctrl->block_size); 
+	first_blkoff = pos - (first_blkpos * ctrl->block_size);
+
+	/* Note: div result < 32-bit */
+	last_blkpos = udiv64(filesize, ctrl->block_size);
+
+	/* If first block to truncate will have some data left
+	 * then do not free first block
+	 */
+	if (first_blkoff) {
+		blkpos = first_blkpos + 1;
+	} else {
+		blkpos = first_blkpos;
+	}
+
+	/* Free node blocks */
+	while (blkpos < last_blkpos) {
+		rc = ext2fs_node_read_blkno(node, blkpos, &blkno);
+		if (rc) {
+			return rc;
+		}
+
+		rc = ext2fs_control_free_block(ctrl, blkno);
+		if (rc) {
+			return rc;
+		}
+
+		rc = ext2fs_node_write_blkno(node, blkpos, 0);
+		if (rc) {
+			return rc;
+		}
+
+		blkpos++;
+	}
+
+	if (pos != filesize) {
+		/* Update node mtime */
+		ext2fs_node_update_mtime(node);
+		/* Update node size */
+		ext2fs_node_set_size(node, pos);
+	}
+
 	return VMM_OK;
 }
 
@@ -652,35 +1183,47 @@ static int ext2fs_node_load(struct ext2fs_control *ctrl,
 	if (rc) {
 		return rc;
 	}
+	node->inode_dirty = FALSE;
 
 	node->cached_block = NULL;
 	node->cached_blkno = 0;
+	node->cached_dirty = FALSE;
 
 	node->indir_block = NULL;
 	node->indir_blkno = __le32(node->inode.b.blocks.indir_block);
+	node->indir_dirty = FALSE;
 
 	node->dindir1_block = NULL;
 	node->dindir1_blkno = __le32(node->inode.b.blocks.double_indir_block);
+	node->dindir1_dirty = FALSE;
 
 	node->dindir2_block = NULL;
 	node->dindir2_blkno = 0;
+	node->dindir2_dirty = FALSE;
 
 	return VMM_OK;
 }
 
 static int ext2fs_node_init(struct ext2fs_node *node)
 {
+	node->inode_no = 0;
+	node->inode_dirty = FALSE;
+
 	node->cached_block = NULL;
 	node->cached_blkno = 0;
+	node->cached_dirty = FALSE;
 
 	node->indir_block = NULL;
 	node->indir_blkno = 0;
+	node->indir_dirty = FALSE;
 
 	node->dindir1_block = NULL;
 	node->dindir1_blkno = 0;
+	node->dindir1_dirty = FALSE;
 
 	node->dindir2_block = NULL;
 	node->dindir2_blkno = 0;
+	node->dindir2_dirty = FALSE;
 
 	return VMM_OK;
 }
@@ -782,7 +1325,7 @@ static int ext2fs_mount(struct mount *m, const char *dev, u32 flags)
 	m->m_root->v_atime = __le32(root->inode.atime);
 	m->m_root->v_mtime = __le32(root->inode.mtime);
 
-	m->m_root->v_size = __le32(root->inode.size);
+	m->m_root->v_size = ext2fs_node_get_size(root);
 
 	/* Save control as mount point data */
 	m->m_data = ctrl;
@@ -880,9 +1423,8 @@ static int ext2fs_close(struct vnode *v, struct file *f)
 static size_t ext2fs_read(struct vnode *v, struct file *f, 
 				void *buf, size_t len)
 {
-	int rc;
 	struct ext2fs_node *node = v->v_data;
-	u32 filesize = __le32(node->inode.size);
+	u64 filesize = ext2fs_node_get_size(node);
 
 	if (filesize <= f->f_offset) {
 		return 0;
@@ -892,19 +1434,45 @@ static size_t ext2fs_read(struct vnode *v, struct file *f,
 		len = filesize - f->f_offset;
 	}
 
-	rc = ext2fs_node_read(node, f->f_offset, len, buf);
-	if (rc) {
-		return 0;
-	}
-
-	return len;
+	return ext2fs_node_read(node, f->f_offset, len, buf);
 }
 
-/* FIXME: */
 static size_t ext2fs_write(struct vnode *v, struct file *f, 
 				void *buf, size_t len)
 {
-	return 0;
+	u32 wlen;
+	struct ext2fs_node *node = v->v_data;
+
+	wlen = ext2fs_node_write(node, f->f_offset, len, buf);
+
+	/* Size and mtime might have changed */
+	v->v_size = ext2fs_node_get_size(node);
+	v->v_mtime = __le32(node->inode.mtime);
+
+	return wlen;
+}
+
+static int ext2fs_truncate(struct vnode *v, loff_t off)
+{
+	int rc;
+	struct ext2fs_node *node = v->v_data;
+	u64 fileoff = off;
+	u64 filesize = ext2fs_node_get_size(node);
+
+	if (filesize <= fileoff) {
+		return VMM_EFAIL;
+	}
+
+	rc = ext2fs_node_truncate(node, fileoff);
+	if (rc) {
+		return rc;
+	}
+
+	/* Size and mtime might have changed */
+	v->v_size = ext2fs_node_get_size(node);
+	v->v_mtime = __le32(node->inode.mtime);
+
+	return VMM_OK;
 }
 
 static bool ext2fs_seek(struct vnode *v, struct file *f, loff_t off)
@@ -925,11 +1493,11 @@ static int ext2fs_fsync(struct vnode *v, struct file *f)
 
 static int ext2fs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 {
-	int rc;
+	u32 readlen;
 	struct ext2_dirent dent;
 	struct ext2fs_node *dnode = dv->v_data;
-	u32 filesize = __le32(dnode->inode.size);
-	u32 fileoff = f->f_offset;
+	u64 filesize = ext2fs_node_get_size(dnode);
+	u64 fileoff = f->f_offset;
 
 	if (filesize <= f->f_offset) {
 		return VMM_ENOENT;
@@ -942,20 +1510,20 @@ static int ext2fs_readdir(struct vnode *dv, struct file *f, struct dirent *d)
 	d->d_reclen = 0;
 
 	do {
-		rc = ext2fs_node_read(dnode, fileoff, 
+		readlen = ext2fs_node_read(dnode, fileoff, 
 				sizeof(struct ext2_dirent), (char *)&dent);
-		if (rc) {
-			return rc;
+		if (readlen != sizeof(struct ext2_dirent)) {
+			return VMM_EIO;
 		}
 
 		if (dent.namelen > (VFS_MAX_NAME - 1)) {
 			dent.namelen = (VFS_MAX_NAME - 1);
 		}
-		rc = ext2fs_node_read(dnode, 
+		readlen = ext2fs_node_read(dnode, 
 				fileoff + sizeof(struct ext2_dirent),
 				dent.namelen, d->d_name);
-		if (rc) {
-			return rc;
+		if (readlen != dent.namelen) {
+			return VMM_EIO;
 		}
 		d->d_name[dent.namelen] = '\0';
 
@@ -1007,29 +1575,30 @@ static int ext2fs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 	int rc;
 	u16  filemode;
 	bool filefound;
+	u32 readlen;
 	char filename[VFS_MAX_NAME];
 	struct ext2_dirent dent;
 	struct ext2fs_node *node = v->v_data;
 	struct ext2fs_node *dnode = dv->v_data;
-	u32 fileoff, filesize = __le32(dnode->inode.size);
+	u64 fileoff, filesize = ext2fs_node_get_size(dnode);
 
 	fileoff = 0;
 	filefound = FALSE;
 	while (fileoff < filesize) {
-		rc = ext2fs_node_read(dnode, fileoff, 
+		readlen = ext2fs_node_read(dnode, fileoff, 
 				sizeof(struct ext2_dirent), (char *)&dent);
-		if (rc) {
-			return rc;
+		if (readlen != sizeof(struct ext2_dirent)) {
+			return VMM_EIO;
 		}
 
 		if (dent.namelen > (VFS_MAX_NAME - 1)) {
 			dent.namelen = (VFS_MAX_NAME - 1);
 		}
-		rc = ext2fs_node_read(dnode, 
+		readlen = ext2fs_node_read(dnode, 
 				fileoff + sizeof(struct ext2_dirent),
 				dent.namelen, filename);
-		if (rc) {
-			return rc;
+		if (readlen != dent.namelen) {
+			return VMM_EIO;
 		}
 		filename[dent.namelen] = '\0';
 
@@ -1099,7 +1668,7 @@ static int ext2fs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 	v->v_atime = __le32(node->inode.atime);
 	v->v_mtime = __le32(node->inode.mtime);
 
-	v->v_size = __le32(node->inode.size);
+	v->v_size = ext2fs_node_get_size(node);
 
 	return VMM_OK;
 }
@@ -1143,12 +1712,6 @@ static int ext2fs_getattr(struct vnode *v, struct vattr *a)
 
 /* FIXME: */
 static int ext2fs_setattr(struct vnode *v, struct vattr *a)
-{
-	return VMM_EFAIL;
-}
-
-/* FIXME: */
-static int ext2fs_truncate(struct vnode *v, loff_t off)
 {
 	return VMM_EFAIL;
 }
