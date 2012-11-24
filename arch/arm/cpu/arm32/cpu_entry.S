@@ -29,7 +29,7 @@
 
 	/*
 	 * Xvisor could be loaded any where in memory by boot loaders.
-	 * The _start ensures that Xvisor exectues from intended base
+	 * The _start ensures that Xvisor executes from intended base
 	 * address provided at compile time.
 	 */
 	.section .entry, "ax", %progbits
@@ -41,12 +41,22 @@ _start:
 	 * r6 -> execution start
 	 * r7 -> execution end
 	 * r2 -> code size
+	 * r10 -> core# in case of SMP
 	 */
 	add	r4, pc, #-0x8
 	ldr	r6, __exec_start
 	ldr	r7, __exec_end
 	sub	r2, r7, r6
 	add	r5, r4, r2
+
+#ifdef CONFIG_SMP
+	/* Secondary CPUs directly start mmu setup from here */
+	mrc     p15, 0, r10, c0, c0, 5
+	ands	r10, r10, #0xFF
+	cmp	r10, #0
+	bne	_start_mmu_setup
+#endif
+
 	ldr	r0, __load_start
 	sub	r0, r0, r6
 	add	r0, r0, r4
@@ -129,28 +139,30 @@ _start_mmu_init:
 	/*
 	 * Clear default Level1 Table
 	 */
-	ldr	r0, __defl1_mem
+	ldr	r0, __tmpl1_mem
 	sub	r0, r0, r6
 	add	r0, r0, r4
+	ldr	r1, __tmpl1_mem_addr
+	sub	r1, r1, r6
+	add	r1, r1, r4
+	str	r0, [r1]
 	/* r0 -> default Level1 Table base address */
 	mov	r1, #1
 	lsl	r1, #14		 /* r1 -> 16K */
 	mov	r2, #0
+	mov	r3, r0
 
-_start_mmu_defl1_clear:
-	str	r2, [r0]
-	add	r0, r0, #4
+_start_mmu_tmpl1_clear:
+	str	r2, [r3]
+	add	r3, r3, #4
 	sub	r1, r1, #4
 	cmp	r1, #0
-	bgt	_start_mmu_defl1_clear
+	bgt	_start_mmu_tmpl1_clear
 
 	/*
 	 * Create entries in default Level1 Table
 	 * for execution & load addresses
 	 */
-	ldr	r0, __defl1_mem
-	sub	r0, r0, r6
-	add	r0, r0, r4	/* r0 -> default L1 Table Base Addr */
 	ldr	r3, __mmu_section_attr
 	/* r1 -> load entry start address */
 	mov	r1, r4		/* r4 -> load start address */
@@ -167,9 +179,9 @@ _start_mmu_defl1_clear:
 	sub	r2, r7, r6
 	lsr	r2, #18		/* r2 >> 20, r2 << 2 */
 	add	r2, r1, r2
-	/* r5 -> tempory value */
+	/* r5 -> temporary value */
 	mov	r5, #0
-_start_mmu_defl1_set:
+_start_mmu_tmpl1_set:
 	orr	r5, r3, r4
 	str	r5, [r1]
 	lsr	r4, #20
@@ -178,7 +190,10 @@ _start_mmu_defl1_set:
 	add	r1, r1, #4
 	cmp	r1, r2
 	/* until we have covered the entire code */
-	blt	_start_mmu_defl1_set
+	blt	_start_mmu_tmpl1_set
+
+_start_mmu_setup:
+	ldr	r0, __tmpl1_mem
 
 	/*
 	 * Setup Translation Table Base Register 0
@@ -239,8 +254,10 @@ __copy_start:
 	.word _copy
 __copy_end:
 	.word _copy_end
-__defl1_mem:
-	.word defl1_mem
+__tmpl1_mem_addr:
+	.word __tmpl1_mem
+__tmpl1_mem:
+	.word tmpl1_mem
 #if (__ARM_ARCH_VERSION__ < 6)
 	.globl _ifar
 _ifar:
@@ -384,18 +401,43 @@ _reset:
 	/* Set Supervisor Mode Stack */
 	CMODE	r8, CPSR_MODE_SUPERVISOR
 	ldr	sp, __svc_stack_end
+#ifdef CONFIG_SMP
+	mov	r9, #CONFIG_IRQ_STACK_SIZE
+	mul	r9, r9, r10
+	sub	sp, sp, r9
+#endif
 	/* Set Undefined Mode Stack */
 	CMODE	r8, CPSR_MODE_UNDEFINED
 	ldr	sp, __und_stack_end
+#ifdef CONFIG_SMP
+	mov	r9, #0x100
+	mul	r9, r9, r10
+	sub	sp, sp, r9
+#endif
 	/* Set Abort Mode Stack */
 	CMODE	r8, CPSR_MODE_ABORT
 	ldr	sp, __abt_stack_end
+#ifdef CONFIG_SMP
+	mov	r9, #0x100
+	mul	r9, r9, r10
+	sub	sp, sp, r9
+#endif
 	/* Set IRQ Mode Stack */
 	CMODE	r8, CPSR_MODE_IRQ
 	ldr	sp, __irq_stack_end
+#ifdef CONFIG_SMP
+	mov	r9, #0x100
+	mul	r9, r9, r10
+	sub	sp, sp, r9
+#endif
 	/* Set FIQ Mode Stack */
 	CMODE	r8, CPSR_MODE_FIQ
 	ldr	sp, __fiq_stack_end
+#ifdef CONFIG_SMP
+	mov	r9, #0x100
+	mul	r9, r9, r10
+	sub	sp, sp, r9
+#endif
 	/* Set to Supervisor Mode */
 	CMODE	r8, CPSR_MODE_SUPERVISOR
 	/* Call CPU init function */
