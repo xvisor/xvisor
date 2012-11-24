@@ -295,23 +295,23 @@ int __init vmm_host_aspace_init(void)
 
 	/* We cannot estimate the physical address, virtual address, and size 
 	 * of arch reserved space so we set all of them to zero and expect that
-	 * arch_cpu_aspace_init() will update them if arch code is going to use
+	 * arch_primary_cpu_aspace_init() will update them if arch code is going to use
 	 * the arch reserved space
 	 */
 	arch_resv_pa = 0x0;
 	arch_resv_va = 0x0;
 	arch_resv_sz = 0x0;
 
-	/* Call arch_cpu_aspace_init() with estimated parameters for core 
-	 * reserved space and arch reserved space. The arch_cpu_aspace_init()
+	/* Call arch_primary_cpu_aspace_init() with estimated parameters for core 
+	 * reserved space and arch reserved space. The arch_primary_cpu_aspace_init()
 	 * can change these parameter as per needed.
 	 */
-	if ((rc = arch_cpu_aspace_init(&core_resv_pa, 
-					&core_resv_va, 
-					&core_resv_sz,
-					&arch_resv_pa,
-					&arch_resv_va,
-					&arch_resv_sz))) {
+	if ((rc = arch_primary_cpu_aspace_init(&core_resv_pa, 
+						&core_resv_va, 
+						&core_resv_sz,
+						&arch_resv_pa,
+						&arch_resv_va,
+						&arch_resv_sz))) {
 		return rc;
 	}
 	if (core_resv_sz < hk_total_size) {

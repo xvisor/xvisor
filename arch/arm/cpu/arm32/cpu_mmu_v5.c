@@ -1072,12 +1072,12 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	return rc;
 }
 
-int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
-				virtual_addr_t * core_resv_va,
-				virtual_size_t * core_resv_sz,
-				physical_addr_t * arch_resv_pa,
-				virtual_addr_t * arch_resv_va,
-				virtual_size_t * arch_resv_sz)
+int __init arch_primary_cpu_aspace_init(physical_addr_t * core_resv_pa,
+					virtual_addr_t * core_resv_va,
+					virtual_size_t * core_resv_sz,
+					physical_addr_t * arch_resv_pa,
+					virtual_addr_t * arch_resv_va,
+					virtual_size_t * arch_resv_sz)
 {
 	int rc = VMM_OK;
 	u32 i, val;

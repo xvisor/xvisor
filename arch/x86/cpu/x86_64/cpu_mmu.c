@@ -179,12 +179,12 @@ int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_init(physical_addr_t *core_resv_pa,
-			 virtual_addr_t *core_resv_va,
-			 virtual_size_t *core_resv_sz,
-			 physical_addr_t *arch_resv_pa,
-			 virtual_addr_t *arch_resv_va,
-			 virtual_size_t *arch_resv_sz)
+int arch_primary_cpu_aspace_init(physical_addr_t *core_resv_pa,
+				 virtual_addr_t *core_resv_va,
+				 virtual_size_t *core_resv_sz,
+				 physical_addr_t *arch_resv_pa,
+				 virtual_addr_t *arch_resv_va,
+				 virtual_size_t *arch_resv_sz)
 {
 	virtual_addr_t cva, eva = 0;
 	u32 pg_tab_sz = 0, tsize2map;
