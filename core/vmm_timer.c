@@ -328,8 +328,8 @@ int __init vmm_timer_init(void)
 		 * such that time stamps visible on all CPUs is same;
 		 */
 		if ((rc = vmm_timecounter_init(&tlcp->tc, 
-			per_cpu(tlc, cpu).tc.cs, 
-			vmm_timecounter_read(&per_cpu(tlc, cpu).tc)))) {
+			per_cpu(tlc, 0).tc.cs, 
+			vmm_timecounter_read(&per_cpu(tlc, 0).tc)))) {
 			return rc;
 		}
 	}
