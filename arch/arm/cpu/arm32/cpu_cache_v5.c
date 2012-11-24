@@ -21,6 +21,7 @@
  * @brief Implementation of cache operations for ARMv5 family
  */
 #include <cpu_cache.h>
+#include <arch_cache.h>
 
 void invalidate_icache(void)
 {
@@ -103,6 +104,16 @@ void clean_dcache_mva(virtual_addr_t mva)
 		     : : "r"(mva) : );
 }
 
+void clean_dcache_mva_range(virtual_addr_t start, virtual_addr_t end)
+{
+	virtual_addr_t addr = start;
+	while(addr < end) {
+		asm volatile(" mcr     p15, 0, %0, c7, c10, 1\n\t"
+			     : : "r"(addr) : );
+		addr += ARCH_CACHE_LINE_SIZE;
+	}
+}
+
 void clean_dcache_line(u32 line)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c10, 2\n\t"
@@ -141,6 +152,16 @@ void clean_invalidate_dcache_mva(virtual_addr_t mva)
 {
 	asm volatile(" mcr     p15, 0, %0, c7, c14, 1\n\t"
 		     : : "r"(mva) : );
+}
+
+void clean_invalidate_dcache_mva_range(virtual_addr_t start, virtual_addr_t end)
+{
+	virtual_addr_t addr = start;
+	while(addr < end) {
+		asm volatile(" mcr     p15, 0, %0, c7, c14, 1\n\t"
+			     : : "r"(addr) : );
+		addr += ARCH_CACHE_LINE_SIZE;
+	}
 }
 
 void clean_invalidate_dcache_line(u32 line)

@@ -21,6 +21,18 @@
  * @brief Low-level implementation of cache functions 
  */
 
+/*
+ * dcache_line_size - get the minimum D-cache line size from the CTR register
+ * on ARMv7.
+ */
+	.macro	dcache_line_size, reg, tmp
+	mrc	p15, 0, \tmp, c0, c0, 1		@ read ctr
+	lsr	\tmp, \tmp, #16
+	and	\tmp, \tmp, #0xf		@ cache line size encoding
+	mov	\reg, #4			@ bytes per word
+	mov	\reg, \reg, lsl \tmp		@ actual cache line size
+	.endm
+
 /* 
  * Generic mechanism for operations on the entire data or unified cache to the Point
  * of Coherence. This code is taken from 'Example code for cache maintenance operations'
@@ -114,10 +126,41 @@ clean_dcache_mva:
 	dsb
 	bx	lr
 
+	/* clean by mva range */
+	.globl clean_dcache_mva_range
+clean_dcache_mva_range:
+	dcache_line_size r2, r3
+	sub	r3, r2, #1
+	bic	r0, r0, r3
+1:
+	mcr     p15, 0, r0, c7, c10, 1
+	add	r0, r0, r2
+	cmp	r0, r1
+	blo	1b
+	dsb
+	bx	lr
+
 	/* clean and invalidate by mva */
 	.globl clean_invalidate_dcache_mva
 clean_invalidate_dcache_mva:
 	mcr     p15, 0, r0, c7, c14, 1
+	dsb
+	bx	lr
+
+	/* clean and invalidate a memory region
+	 *  r0 - start address of region
+	 *  r1 - end address of region
+	 */
+	.globl clean_invalidate_dcache_mva_range
+clean_invalidate_dcache_mva_range:
+	dcache_line_size r2, r3
+	sub	r3, r2, #1
+	bic	r0, r0, r3
+1:
+	mcr	p15, 0, r0, c7, c14, 1		/* clean & invalidate D / U line */
+	add	r0, r0, r2
+	cmp	r0, r1
+	blo	1b
 	dsb
 	bx	lr
 
