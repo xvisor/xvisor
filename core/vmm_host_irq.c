@@ -312,7 +312,20 @@ int vmm_host_irq_unregister(u32 hirq_num, void *dev)
 int __init vmm_host_irq_init(void)
 {
 	int ret;
-	u32 ite, cpu;
+	u32 ite, cpu = vmm_smp_processor_id();
+
+	/* For secondary CPUs, only setup & enable CPU irqs. */
+	if (cpu) {
+		/* Setup interrupts in secondary CPU */
+		if ((ret = arch_cpu_irq_secondary_setup())) {
+			return ret;
+		}
+
+		/* Enable interrupts in secondary CPU */
+		arch_cpu_irq_enable();
+
+		return VMM_OK;
+	}
 
 	/* Clear the memory of control structure */
 	memset(&hirqctrl, 0, sizeof(hirqctrl));
@@ -344,12 +357,12 @@ int __init vmm_host_irq_init(void)
 		return ret;
 	}
 
-	/** Setup interrupts in CPU */
-	if ((ret = arch_cpu_irq_setup())) {
+	/* Setup interrupts in primary CPU */
+	if ((ret = arch_cpu_irq_primary_setup())) {
 		return ret;
 	}
 
-	/** Enable interrupts in CPU */
+	/* Enable interrupts in primary CPU */
 	arch_cpu_irq_enable();
 
 	return VMM_OK;

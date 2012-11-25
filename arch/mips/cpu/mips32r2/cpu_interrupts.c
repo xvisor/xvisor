@@ -54,10 +54,16 @@ void setup_interrupts()
 #endif
 }
 
-int arch_cpu_irq_setup(void)
+int arch_cpu_irq_primary_setup(void)
 {
 	setup_interrupts();
 	
+	return VMM_OK;
+}
+
+/* FIXME: */
+int arch_cpu_irq_secondary_setup(void)
+{
 	return VMM_OK;
 }
 

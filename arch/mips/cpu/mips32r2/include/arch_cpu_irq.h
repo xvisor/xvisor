@@ -30,8 +30,11 @@
 #include <pics/i8259.h>
 #endif
 
-/** Setup IRQ for CPU */
-int arch_cpu_irq_setup(void);
+/** Setup IRQ for primary CPU */
+int arch_cpu_irq_primary_setup(void);
+
+/** Setup IRQ for secondary CPU */
+int arch_cpu_irq_secondary_setup(void);
 
 /** Enable IRQ
  *  Prototype: void arch_cpu_irq_enable(void); 

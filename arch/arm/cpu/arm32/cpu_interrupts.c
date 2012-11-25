@@ -361,7 +361,7 @@ void do_fiq(arch_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-int __init arch_cpu_irq_setup(void)
+int __init arch_cpu_irq_primary_setup(void)
 {
 	static const struct cpu_page zero_filled_cpu_page = { 0 };
 
@@ -420,3 +420,18 @@ int __init arch_cpu_irq_setup(void)
 
 	return VMM_OK;
 }
+
+int __init arch_cpu_irq_secondary_setup(void)
+{
+#if defined(CONFIG_ARM32_HIGHVEC)
+	/* Enable high vectors in SCTLR */
+	write_sctlr(read_sctlr() | SCTLR_V_MASK);
+#else
+#if defined(CONFIG_ARMV7A_SECUREX)
+	write_vbar(CPU_IRQ_LOWVEC_BASE);
+#endif
+#endif
+
+	return VMM_OK;
+}
+
