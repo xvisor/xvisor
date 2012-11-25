@@ -25,15 +25,16 @@
 
 #include <vmm_types.h>
 
-/** Initialize address space */
-int arch_primary_cpu_aspace_init(physical_addr_t *core_resv_pa, 
+/** Initialize address space on primary cpu */
+int arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa, 
 				 virtual_addr_t *core_resv_va,
 				 virtual_size_t *core_resv_sz,
 				 physical_addr_t *arch_resv_pa,
 				 virtual_addr_t *arch_resv_va,
 				 virtual_size_t *arch_resv_sz);
 
-void arch_secondary_cpu_aspace_init(void);
+/** Initialize address space on secondary cpu */
+int arch_cpu_aspace_secondary_init(void);
 
 /** Map given page virtual address to page physical address */
 int arch_cpu_aspace_map(virtual_addr_t page_va, 

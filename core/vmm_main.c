@@ -48,7 +48,6 @@
 #include <vmm_modules.h>
 #include <arch_cpu.h>
 #include <arch_board.h>
-#include <arch_cpu_aspace.h>
 
 void __noreturn vmm_hang(void)
 {
@@ -353,7 +352,11 @@ void vmm_init_secondary(void)
 	int ret;
 	u32 cpu = vmm_smp_processor_id();
 
-	arch_secondary_cpu_aspace_init();
+	/* Initialize host virtual address space */
+	ret = vmm_host_aspace_init();
+	if (ret) {
+		vmm_hang();
+	}
 
 	/* Mark this CPU present */
 	vmm_set_cpu_present(cpu, TRUE);

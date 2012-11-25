@@ -253,13 +253,18 @@ u32 vmm_host_free_initmem(void)
 
 int __init vmm_host_aspace_init(void)
 {
-	int rc, cpu;
+	int rc, cpu = vmm_smp_processor_id();
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
 	physical_size_t ram_size;
 	virtual_addr_t vapool_start, core_resv_va = 0x0, arch_resv_va = 0x0;
 	virtual_size_t vapool_size, vapool_hksize, ram_hksize;
 	virtual_size_t hk_total_size = 0x0;
 	virtual_size_t core_resv_sz = 0x0, arch_resv_sz = 0x0;
+
+	/* For secondary CPU just call arch code and return */
+	if (cpu) {
+		return arch_cpu_aspace_secondary_init();
+	}
 
 	/* Determine VAPOOL start, size, and hksize */
 	vapool_start = arch_code_vaddr_start();
@@ -306,7 +311,7 @@ int __init vmm_host_aspace_init(void)
 	 * reserved space and arch reserved space. The arch_primary_cpu_aspace_init()
 	 * can change these parameter as per needed.
 	 */
-	if ((rc = arch_primary_cpu_aspace_init(&core_resv_pa, 
+	if ((rc = arch_cpu_aspace_primary_init(&core_resv_pa, 
 						&core_resv_va, 
 						&core_resv_sz,
 						&arch_resv_pa,

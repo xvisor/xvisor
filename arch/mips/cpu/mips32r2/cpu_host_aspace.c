@@ -164,7 +164,7 @@ static int cpu_boot_pagetable_init(physical_addr_t *pa,
 	return VMM_OK;
 }
 
-int arch_primary_cpu_aspace_init(physical_addr_t * core_resv_pa, 
+int arch_cpu_aspace_primary_init(physical_addr_t * core_resv_pa, 
 				 virtual_addr_t * core_resv_va,
 				 virtual_size_t * core_resv_sz,
 				 physical_addr_t * arch_resv_pa,
@@ -184,6 +184,12 @@ int arch_primary_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	c0_sr &= ~(0x01 << 22);
 	write_c0_status(c0_sr);
 
+	return VMM_OK;
+}
+
+int __init arch_cpu_aspace_secondary_init(void)
+{
+	/* FIXME: For now nothing to do here. */
 	return VMM_OK;
 }
 

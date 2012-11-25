@@ -179,7 +179,7 @@ int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 	return VMM_OK;
 }
 
-int arch_primary_cpu_aspace_init(physical_addr_t *core_resv_pa,
+int arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 				 virtual_addr_t *core_resv_va,
 				 virtual_size_t *core_resv_sz,
 				 physical_addr_t *arch_resv_pa,
@@ -250,6 +250,12 @@ int arch_primary_cpu_aspace_init(physical_addr_t *core_resv_pa,
         /* Switch over to new page table. */
         switch_to_pagetable(VIRT_TO_PHYS(&pml4[0]));
 
+	return VMM_OK;
+}
+
+int __init arch_cpu_aspace_secondary_init(void)
+{
+	/* FIXME: For now nothing to do here. */
 	return VMM_OK;
 }
 
