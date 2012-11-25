@@ -23,6 +23,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
@@ -361,14 +362,14 @@ void do_fiq(arch_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-int __init arch_cpu_irq_primary_setup(void)
+int __init arch_cpu_irq_setup(void)
 {
 	static const struct cpu_page zero_filled_cpu_page = { 0 };
 
 	int rc;
 	extern u32 _start_vect[];
 	u32 *vectors, *vectors_data;
-	u32 vec;
+	u32 vec, cpu = vmm_smp_processor_id();
 	struct cpu_page vec_page;
 
 #if defined(CONFIG_ARM32_HIGHVEC)
@@ -382,6 +383,11 @@ int __init arch_cpu_irq_primary_setup(void)
 	vectors = (u32 *) CPU_IRQ_LOWVEC_BASE;
 #endif
 	vectors_data = vectors + CPU_IRQ_NR;
+
+	/* For secondary CPUs nothing else to be done. */
+	if (cpu) {
+		return VMM_OK;
+	}
 
 	/* If vectors are at correct location then do nothing */
 	if ((u32) _start_vect == (u32) vectors) {
@@ -417,20 +423,6 @@ int __init arch_cpu_irq_primary_setup(void)
 		vectors[vec] = _start_vect[vec];
 		vectors_data[vec] = _start_vect[vec + CPU_IRQ_NR];
 	}
-
-	return VMM_OK;
-}
-
-int __init arch_cpu_irq_secondary_setup(void)
-{
-#if defined(CONFIG_ARM32_HIGHVEC)
-	/* Enable high vectors in SCTLR */
-	write_sctlr(read_sctlr() | SCTLR_V_MASK);
-#else
-#if defined(CONFIG_ARMV7A_SECUREX)
-	write_vbar(CPU_IRQ_LOWVEC_BASE);
-#endif
-#endif
 
 	return VMM_OK;
 }

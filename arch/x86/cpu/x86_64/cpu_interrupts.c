@@ -166,19 +166,13 @@ static void setup_gate_handlers(void)
 	set_interrupt_gate(14, VIRT_TO_PHYS(_irq14));/* page fault */
 }
 
-int arch_cpu_irq_primary_setup(void)
+int arch_cpu_irq_setup(void)
 {
 	setup_tss64(&vmm_tss);
 	install_tss_64_descriptor(&vmm_tss);
 	install_idt();
 	setup_gate_handlers();
 
-        return 0;
-}
-
-/* FIXME: */
-int arch_cpu_irq_secondary_setup(void)
-{
         return 0;
 }
 

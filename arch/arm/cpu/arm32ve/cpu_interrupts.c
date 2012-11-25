@@ -203,17 +203,7 @@ void do_fiq(arch_regs_t * regs)
 	vmm_scheduler_irq_exit(regs);
 }
 
-int __init arch_cpu_irq_primary_setup(void)
-{
-	extern u32 _start_vect[];
-
-	/* Update HVBAR to point to hypervisor vector table */
-	write_hvbar((virtual_addr_t)&_start_vect);
-
-	return VMM_OK;
-}
-
-int __init arch_cpu_irq_secondary_setup(void)
+int __init arch_cpu_irq_setup(void)
 {
 	extern u32 _start_vect[];
 

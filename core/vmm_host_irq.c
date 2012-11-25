@@ -314,42 +314,31 @@ int __init vmm_host_irq_init(void)
 	int ret;
 	u32 ite, cpu = vmm_smp_processor_id();
 
-	/* For secondary CPUs, only setup & enable CPU irqs. */
-	if (cpu) {
-		/* Setup interrupts in secondary CPU */
-		if ((ret = arch_cpu_irq_secondary_setup())) {
-			return ret;
-		}
+	if (!cpu) {
+		/* Clear the memory of control structure */
+		memset(&hirqctrl, 0, sizeof(hirqctrl));
 
-		/* Enable interrupts in secondary CPU */
-		arch_cpu_irq_enable();
+		/* Initialize spin lock */
+		INIT_SPIN_LOCK(&hirqctrl.lock);
 
-		return VMM_OK;
-	}
-
-	/* Clear the memory of control structure */
-	memset(&hirqctrl, 0, sizeof(hirqctrl));
-
-	/* Initialize spin lock */
-	INIT_SPIN_LOCK(&hirqctrl.lock);
-
-	/* Allocate memory for irq array */
-	hirqctrl.irq = vmm_malloc(sizeof(struct vmm_host_irq) * 
+		/* Allocate memory for irq array */
+		hirqctrl.irq = vmm_malloc(sizeof(struct vmm_host_irq) * 
 				  ARCH_HOST_IRQ_COUNT);
 
-	/* Reset the handler array */
-	for (ite = 0; ite < ARCH_HOST_IRQ_COUNT; ite++) {
-		hirqctrl.irq[ite].num = ite;
-		hirqctrl.irq[ite].name = NULL;
-		hirqctrl.irq[ite].state = (VMM_IRQ_TYPE_NONE | 
-					   VMM_IRQ_STATE_DISABLED | 
-					   VMM_IRQ_STATE_MASKED);
-		for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
-			hirqctrl.irq[ite].count[cpu] = 0;
+		/* Reset the handler array */
+		for (ite = 0; ite < ARCH_HOST_IRQ_COUNT; ite++) {
+			hirqctrl.irq[ite].num = ite;
+			hirqctrl.irq[ite].name = NULL;
+			hirqctrl.irq[ite].state = (VMM_IRQ_TYPE_NONE | 
+						   VMM_IRQ_STATE_DISABLED | 
+						   VMM_IRQ_STATE_MASKED);
+			for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
+				hirqctrl.irq[ite].count[cpu] = 0;
+			}
+			hirqctrl.irq[ite].chip = NULL;
+			hirqctrl.irq[ite].chip_data = NULL;
+			INIT_LIST_HEAD(&hirqctrl.irq[ite].hndl_list);
 		}
-		hirqctrl.irq[ite].chip = NULL;
-		hirqctrl.irq[ite].chip_data = NULL;
-		INIT_LIST_HEAD(&hirqctrl.irq[ite].hndl_list);
 	}
 
 	/* Initialize board specific PIC */
@@ -357,12 +346,12 @@ int __init vmm_host_irq_init(void)
 		return ret;
 	}
 
-	/* Setup interrupts in primary CPU */
-	if ((ret = arch_cpu_irq_primary_setup())) {
+	/* Setup interrupts in CPU */
+	if ((ret = arch_cpu_irq_setup())) {
 		return ret;
 	}
 
-	/* Enable interrupts in primary CPU */
+	/* Enable interrupts in CPU */
 	arch_cpu_irq_enable();
 
 	return VMM_OK;
