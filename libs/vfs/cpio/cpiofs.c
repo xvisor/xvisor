@@ -465,13 +465,7 @@ static int cpiofs_rmdir(struct vnode *dv, struct vnode *v, const char *name)
 	return VMM_EFAIL;
 }
 
-static int cpiofs_getattr(struct vnode *v, struct vattr *a)
-{
-	/* Not allowed (read-only filesystem) */
-	return VMM_EFAIL;
-}
-
-static int cpiofs_setattr(struct vnode *v, struct vattr *a)
+static int cpiofs_chmod(struct vnode *v, u32 mode)
 {
 	/* Not allowed (read-only filesystem) */
 	return VMM_EFAIL;
@@ -500,8 +494,7 @@ static struct filesystem cpiofs = {
 	.rename		= cpiofs_rename,
 	.mkdir		= cpiofs_mkdir,
 	.rmdir		= cpiofs_rmdir,
-	.getattr	= cpiofs_getattr,
-	.setattr	= cpiofs_setattr,
+	.chmod		= cpiofs_chmod,
 };
 
 static int __init cpiofs_init(void)

@@ -1939,13 +1939,7 @@ static int ext2fs_rmdir(struct vnode *dv, struct vnode *v, const char *name)
 }
 
 /* FIXME: */
-static int ext2fs_getattr(struct vnode *v, struct vattr *a)
-{
-	return VMM_EFAIL;
-}
-
-/* FIXME: */
-static int ext2fs_setattr(struct vnode *v, struct vattr *a)
+static int ext2fs_chmod(struct vnode *v, u32 mode)
 {
 	return VMM_EFAIL;
 }
@@ -1973,8 +1967,7 @@ static struct filesystem ext2fs = {
 	.rename		= ext2fs_rename,
 	.mkdir		= ext2fs_mkdir,
 	.rmdir		= ext2fs_rmdir,
-	.getattr	= ext2fs_getattr,
-	.setattr	= ext2fs_setattr,
+	.chmod		= ext2fs_chmod,
 };
 
 static int __init ext2fs_init(void)

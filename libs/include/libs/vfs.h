@@ -178,12 +178,6 @@ enum vnode_flag {
 	VROOT,	   			/* root of its filesystem */
 };
 
-/** vnode attribute structure */
-struct vattr {
-	enum vnode_type	va_type;	/* vnode type */
-	u32 va_mode;			/* file access mode */
-};
-
 /** vnode structure */
 struct vnode {
 	struct dlist v_link;		/* link for hash list */
@@ -249,8 +243,7 @@ struct filesystem {
 			struct vnode *, const char *);
 	int (*mkdir)(struct vnode *, const char *, u32);
 	int (*rmdir)(struct vnode *, struct vnode *, const char *);
-	int (*getattr)(struct vnode *, struct vattr *); /* Not Used */
-	int (*setattr)(struct vnode *, struct vattr *); /* Not Used */
+	int (*chmod)(struct vnode *, u32); /* Not Used */
 };
 
 /** Create a mount point
