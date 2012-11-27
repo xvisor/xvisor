@@ -1424,106 +1424,76 @@ int vfs_rename(char *src, char *dest)
 {
 	int err, len;
 	char *sname, *dname;
-	struct vnode *v1, *v2 = NULL, *dv1, *dv2;
+	struct vnode *v1, *v2, *sv, *dv;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
+	/* if source and dest are the same, do nothing */
+	if (!strncmp(src, dest, VFS_MAX_PATH)) {
+		return VMM_EINVALID;
+	}
+
+	/* check if dest is a directory of source */
+	len = strlen(dest);
+	if ((strlen(src) < len) && !strncmp(src, dest, len)) {
+		return VMM_EINVALID;
+	}
+
+	/* get source v1 */
 	if ((err = vfs_vnode_acquire(src, &v1))) {
 		return err;
 	}
+
+	/* check source permission */
 	if ((err = vfs_vnode_access(v1, W_OK))) {
-		goto err1;
+		vfs_vnode_release(v1);
+		return err;
 	}
 
-	/* if source and dest are the same, do nothing */
-	if (!strncmp(src, dest, VFS_MAX_PATH)) {
-		goto err1;
-	}
-
-	/* check if target is directory of source */
-	len = strlen(dest);
-	if (!strncmp(src, dest, len)) {
-		err = VMM_EINVALID;
-		goto err1;
-	}
-
-	/* is the source busy ? */
+	/* check if source is busy ? */
 	if (arch_atomic_read(&v1->v_refcnt) >= 2) {
-		err = VMM_EBUSY;
-		goto err1;
+		vfs_vnode_release(v1);
+		return VMM_EBUSY;
 	}
 
-	/* check type of source & target */
+	/* release source node */
+	vfs_vnode_release(v1);
+
+	/* get sv and sname */
+	if ((err = vfs_lookup_dir(src, &sv, &sname))) {
+		return err;
+	}
+
+	/* check if dest exists */
 	err = vfs_vnode_acquire(dest, &v2);
 	if (!err) {
-		/* target exists */
-		if (v1->v_type == VDIR && v2->v_type != VDIR) {
-			err = VMM_EINVALID;
-			goto err2;
-		} else if (v1->v_type != VDIR && v2->v_type == VDIR) {
-			err = VMM_EINVALID;
-			goto err2;
-		}
-		if (v2->v_type == VDIR && vfs_check_dir_empty(dest)) {
-			err = VMM_EINVALID;
-			goto err2;
-		}
-		if (arch_atomic_read(&v2->v_refcnt) >= 2) {
-			err = VMM_EBUSY;
-			goto err2;
-		}
-	}
-
-	dname = (char *)strrchr(dest, '/');
-	if (!dname) {
-		err = VMM_EINVALID;
-		goto err2;
-	}
-	if (dname == dest) {
-		dest = "/";
-	}
-
-	*dname = 0;
-	dname++;
-
-	if ((err = vfs_lookup_dir(src, &dv1, &sname))) {
-		goto err2;
-	}
-
-	if ((err = vfs_vnode_acquire(dest, &dv2)) != 0) {
-		goto err3;
-	}
-
-	/* the source and dest must be same file system */
-	if (dv1->v_mount != dv2->v_mount) {
-		err = VMM_EIO;
-		goto err4;
-	}
-
-	vmm_mutex_lock(&v1->v_lock);
-	if (v2) {
-		vmm_mutex_lock(&v2->v_lock);
-	}
-	vmm_mutex_lock(&dv1->v_lock);
-	vmm_mutex_lock(&dv2->v_lock);
-	err = dv1->v_mount->m_fs->rename(dv1, v1, sname, dv2, v2, dname);
-	vmm_mutex_unlock(&dv2->v_lock);
-	vmm_mutex_unlock(&dv1->v_lock);
-	if (v2) {
-		vmm_mutex_unlock(&v2->v_lock);
-	}
-	vmm_mutex_unlock(&v1->v_lock);
-
- err4:
-	vfs_vnode_release(dv2);
- err3:
-	vfs_vnode_release(dv1);
- err2:
-	if (v2) {
 		vfs_vnode_release(v2);
+		err = VMM_EALREADY;
+		goto err1;
 	}
- err1:
-	vfs_vnode_release(v1);
+
+	/* get dv and dname */
+	if ((err = vfs_lookup_dir(dest, &dv, &dname))) {
+		goto err1;
+	}
+
+	/* the source and dest must be on same file system */
+	if (sv->v_mount != dv->v_mount) {
+		err = VMM_EIO;
+		goto err2;
+	}
+
+	/* call filesystem */
+	vmm_mutex_lock(&sv->v_lock);
+	vmm_mutex_lock(&dv->v_lock);
+	err = sv->v_mount->m_fs->rename(sv, sname, dv, dname);
+	vmm_mutex_unlock(&dv->v_lock);
+	vmm_mutex_unlock(&sv->v_lock);
+
+err2:
+	vfs_vnode_release(dv);
+err1:
+	vfs_vnode_release(sv);
 
 	return err;
 }

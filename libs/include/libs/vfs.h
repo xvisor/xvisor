@@ -245,8 +245,8 @@ struct filesystem {
 	int (*lookup)(struct vnode *, const char *, struct vnode *);
 	int (*create)(struct vnode *, const char *, u32);
 	int (*remove)(struct vnode *, struct vnode *, const char *);
-	int (*rename)(struct vnode *, struct vnode *, const char *, 
-			struct vnode *, struct vnode *, const char *);
+	int (*rename)(struct vnode *, const char *, 
+			struct vnode *, const char *);
 	int (*mkdir)(struct vnode *, const char *, u32);
 	int (*rmdir)(struct vnode *, struct vnode *, const char *);
 	int (*getattr)(struct vnode *, struct vattr *); /* Not Used */

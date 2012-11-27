@@ -1661,8 +1661,8 @@ static int ext2fs_remove(struct vnode *dv, struct vnode *v, const char *name)
 }
 
 /* FIXME: */
-static int ext2fs_rename(struct vnode *dv1, struct vnode *v1, const char *sname, 
-			struct vnode *dv2, struct vnode *v2, const char *dname)
+static int ext2fs_rename(struct vnode *sv, const char *sname, 
+			struct vnode *dv, const char *dname)
 {
 	return VMM_EFAIL;
 }
