@@ -1938,10 +1938,53 @@ static int ext2fs_rmdir(struct vnode *dv, struct vnode *v, const char *name)
 	return VMM_OK;
 }
 
-/* FIXME: */
 static int ext2fs_chmod(struct vnode *v, u32 mode)
 {
-	return VMM_EFAIL;
+	u16 filemode;
+	struct ext2fs_node *node = v->v_data;
+
+	filemode = 0;
+	switch (v->v_type) {
+	case VSOCK:
+		filemode = EXT2_S_IFSOCK;
+		break;
+	case VLNK:
+		filemode = EXT2_S_IFLNK;
+		break;
+	case VREG:
+		filemode = EXT2_S_IFREG;
+		break;
+	case VBLK:
+		filemode = EXT2_S_IFBLK;
+		break;
+	case VDIR:
+		filemode = EXT2_S_IFDIR;
+		break;
+	case VCHR:
+		filemode = EXT2_S_IFCHR;
+		break;
+	case VFIFO:
+		filemode = EXT2_S_IFIFO;
+		break;
+	default:
+		filemode = 0;
+		break;
+	};
+
+	filemode |= (mode & S_IRUSR) ? EXT2_S_IRUSR : 0;
+	filemode |= (mode & S_IWUSR) ? EXT2_S_IWUSR : 0;
+	filemode |= (mode & S_IXUSR) ? EXT2_S_IXUSR : 0;
+	filemode |= (mode & S_IRGRP) ? EXT2_S_IRGRP : 0;
+	filemode |= (mode & S_IWGRP) ? EXT2_S_IWGRP : 0;
+	filemode |= (mode & S_IXGRP) ? EXT2_S_IXGRP : 0;
+	filemode |= (mode & S_IROTH) ? EXT2_S_IROTH : 0;
+	filemode |= (mode & S_IWOTH) ? EXT2_S_IWOTH : 0;
+	filemode |= (mode & S_IXOTH) ? EXT2_S_IXOTH : 0;
+
+	node->inode.mode = __le16(filemode);
+	node->inode_dirty = TRUE;
+	
+	return VMM_OK;
 }
 
 /* ext2fs filesystem */

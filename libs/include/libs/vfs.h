@@ -243,7 +243,7 @@ struct filesystem {
 			struct vnode *, const char *);
 	int (*mkdir)(struct vnode *, const char *, u32);
 	int (*rmdir)(struct vnode *, struct vnode *, const char *);
-	int (*chmod)(struct vnode *, u32); /* Not Used */
+	int (*chmod)(struct vnode *, u32);
 };
 
 /** Create a mount point
@@ -296,6 +296,11 @@ loff_t vfs_lseek(int fd, loff_t off, int whence);
  */
 int vfs_fsync(int fd);
 
+/** Change mode of file 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
+int vfs_fchmod(int fd, u32 mode);
+
 /** Get file status based on file descriptor 
  *  Note: Must be called from Orphan (or Thread) context.
  */
@@ -345,6 +350,11 @@ int vfs_unlink(const char *path);
  *  Note: Must be called from Orphan (or Thread) context.
  */
 int vfs_access(const char *path, u32 mode);
+
+/** Change mode of specified path 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
+int vfs_chmod(const char *path, u32 mode);
 
 /** Get file/directory status based on path 
  *  Note: Must be called from Orphan (or Thread) context.

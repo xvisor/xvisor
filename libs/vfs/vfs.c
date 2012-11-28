@@ -1117,6 +1117,39 @@ int vfs_fsync(int fd)
 }
 VMM_EXPORT_SYMBOL(vfs_fsync);
 
+int vfs_fchmod(int fd, u32 mode)
+{
+	int err;
+	struct vnode *v;
+	struct file *f;
+
+	BUG_ON(!vmm_scheduler_orphan_context());
+
+	f = vfs_fd_to_file(fd);
+	if (!f) {
+		return VMM_EINVALID;
+	}
+
+	vmm_mutex_lock(&f->f_lock);
+
+	v = f->f_vnode;
+	if (!v) {
+		vmm_mutex_unlock(&f->f_lock);
+		return VMM_EINVALID;
+	}
+
+	mode &= (S_IRWXU|S_IRWXG|S_IRWXO);
+
+	vmm_mutex_lock(&v->v_lock);
+	err = v->v_mount->m_fs->chmod(v, mode);
+	vmm_mutex_unlock(&v->v_lock);
+
+	vmm_mutex_unlock(&f->f_lock);
+
+	return err;
+}
+VMM_EXPORT_SYMBOL(vfs_fchmod);
+
 int vfs_fstat(int fd, struct stat *st)
 {
 	int err;
@@ -1579,6 +1612,41 @@ int vfs_access(const char *path, u32 mode)
 	return err;
 }
 VMM_EXPORT_SYMBOL(vfs_access);
+
+int vfs_chmod(const char *path, u32 mode)
+{
+	int err;
+	struct vnode *v;
+
+	BUG_ON(!vmm_scheduler_orphan_context());
+
+	if (!path) {
+		return VMM_EINVALID;
+	}
+
+	if ((err = vfs_vnode_acquire(path, &v))) {
+		return err;
+	}
+
+	mode &= (S_IRWXU|S_IRWXG|S_IRWXO);
+
+	vmm_mutex_lock(&v->v_lock);
+
+	err = v->v_mount->m_fs->chmod(v, mode);
+	if (err) {
+		goto done;
+	}
+
+	err = v->v_mount->m_fs->sync(v);
+
+done:
+	vmm_mutex_unlock(&v->v_lock);
+
+	vfs_vnode_release(v);
+
+	return err;
+}
+VMM_EXPORT_SYMBOL(vfs_chmod);
 
 int vfs_stat(const char *path, struct stat *st)
 {
