@@ -225,10 +225,10 @@ struct filesystem {
 
 	/* Mount point operations */
 	int (*mount)(struct mount *, const char *, u32);
-	int (*unmount)(struct mount *);
-	int (*msync)(struct mount *); /* Not Used */
-	int (*vget)(struct mount *, struct vnode *);
-	int (*vput)(struct mount *, struct vnode *);
+	int (*unmount)(struct mount *); /* No IO. Only free mount point private data. */
+	int (*msync)(struct mount *);
+	int (*vget)(struct mount *, struct vnode *); /* No IO. Only alloc vnode private data. */
+	int (*vput)(struct mount *, struct vnode *); /* No IO. Only free vnode private data. */
 
 	/* Vnode operations */
 	size_t (*read)(struct vnode *, loff_t, void *, size_t);

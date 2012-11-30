@@ -669,9 +669,10 @@ int vfs_unmount(const char *path)
 
 	vmm_mutex_unlock(&vfsc.mnt_list_lock);
 
-	/* call filesytem unmount */
+	/* call filesytem msync & filesystem unmount */
 	vmm_mutex_lock(&m->m_lock);
-	err = m->m_fs->unmount(m);
+	err = m->m_fs->msync(m);
+	m->m_fs->unmount(m);
 	vmm_mutex_unlock(&m->m_lock);
 
 	/* releae mount point root */
