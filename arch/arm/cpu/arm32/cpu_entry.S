@@ -451,77 +451,107 @@ _reset:
 .macro EXCEPTION_HANDLER irqname, lroffset
 	.align 5
 \irqname:
-	sub	lr, lr, #\lroffset
+	sub	lr, lr, #\lroffset;
 .endm
 
-/* We save the arch_regs into the small mode-specific stack */
-/* If came from priviledged mode then push banked registers */
-.macro PUSH_REGS skip_label
-	str	lr, [sp, #-4]!;		/* Push the return address */
-	sub	sp, sp, #(4*2);		/* Adjust the stack pointer */
-	stm	sp, {r13-r14}^;		/* Push user mode registers */
-	stmdb	sp!, {r0-r12};		/* Push user mode registers */
-	mrs	r4, spsr_all;		/* Put SPSR on stack & NOP for prev. */
-	str	r4, [sp, #-4]!
-	mrs	r2, cpsr_all
-	and	r0, r4, #CPSR_MODE_MASK
-	cmp	r0, #CPSR_MODE_USER
-	beq	\skip_label
-	add	r1, sp, #(4*14)
-	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
-	msr	cpsr_cxsf, r4
-	stm	r1, {r13-r14}
-	msr	cpsr_cxsf, r2		/* Restore CPSR & NOP for prev. */
+/* Save arch registers into small mode-specific stack */
+.macro PUSH_REGS skip_label mode=CPSR_MODE_SUPERVISOR
+	/* Save return address (i.e. return PC) */
+	str	lr, [sp, #-4]!;
+	/* Adjust stack pointer to make room for r13, r14 */		
+	sub	sp, sp, #(4*2);
+	/* Save usr mode r13, r14 */
+	stm	sp, {r13-r14}^;
+	/* Save r0, r1, ..., r12 and decrement stack pointer */
+	stmdb	sp!, {r0-r12};
+	/* Save return machine state and decrement stack pointer */
+	mrs	r4, spsr_all;
+	str	r4, [sp, #-4]!;
+	/* If we came from privildeged (or non-usr) mode then
+	 * overwrite r13, r14 with mode specific banked values
+	 * else skip this step
+	 */
+	mrs	r2, cpsr_all;
+	and	r0, r4, #CPSR_MODE_MASK;
+	cmp	r0, #CPSR_MODE_USER;
+	beq	\skip_label;
+	add	r1, sp, #(4*14);
+	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED);
+	msr	cpsr_cxsf, r4;
+	stm	r1, {r13-r14};
+	msr	cpsr_cxsf, r2;
+	/* Save restore value for SVC stack (or Exception stack) */
 \skip_label:
-/* Copy the pointer to arch_regs into r0 and switch to svc mode */
-	mov	r0, sp
-	CMODE	r2, CPSR_MODE_SUPERVISOR
+	sub	sp, sp, #4;
+	mov	r0, sp;
+	.if \mode == CPSR_MODE_SUPERVISOR
+	add	r1, sp, #(4*18);
+	str	r1, [r0];
+	.else
+	CMODE	r2, CPSR_MODE_SUPERVISOR;
+	str	sp, [r0];
+	.endif
 .endm
 
 /* Call C function to handle exception */
 .macro CALL_EXCEPTION_CFUNC cfunc
-	bl	\cfunc
+	bl	\cfunc;
 .endm
 
-/* If going back to priviledged mode then pull banked registers */
+/* Restore registers from arch registers */
 .macro PULL_REGS skip_label skip_label1 mode=CPSR_MODE_SUPERVISOR
-	mrs	r2, cpsr_all
-	CMODE	r2, \mode
-
-
-	ldr	r4, [sp, #0]
-	and	r0, r4, #CPSR_MODE_MASK
-	cmp	r0, #CPSR_MODE_USER
-	beq	\skip_label
-	cmp	r0, #\mode
-	beq	\skip_label1
-#if (__ARM_ARCH_VERSION__ >= 6)
-	mrs	r2, cpsr_all
-#endif
-	add	r1, sp, #(4*14)
-	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED)
-	msr	cpsr_cxsf, r4
-	ldm	r1, {r13-r14}
-	msr	cpsr_cxsf, r2		/* Restore CPSR & NOP for prev. inst */
+	/* Get arch regs and current cpsr.
+	 * Also adjust stack pointer of \mode
+	 * r0 -> pointer to arch regs
+	 * r1 -> current cpsr
+	 */
+	mrs	r1, cpsr_all;
+	CMODE	r1, \mode;
+	mov	r0, sp;
+	add	sp, sp, #(4*18);
+	CMODE	r1, CPSR_MODE_SUPERVISOR;
+	/* Restore exception stack */ 
+	ldr	sp, [r0, #0];
+	/* Get target cpsr 
+	 * r2 -> target cpsr
+	 */
+	ldr	r2, [r0, #4];
+	/* Adjust pointer to arch regs */
+	add	r0, r0, #(2*4);
+	/* If-else ladder for different target modes  */
+	and	r3, r2, #CPSR_MODE_MASK;
+	cmp	r3, #CPSR_MODE_USER;
+	beq	\skip_label;
+	cmp	r3, #CPSR_MODE_SUPERVISOR;
+	beq	\skip_label1;
+	/* Going back to irq/und/abt mode */
+	orr	r4, r2, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED);
+	msr	cpsr_cxsf, r4;
+	ldr	sp, [r0, #(4*13)];
+	ldr	lr, [r0, #(4*14)];
+	msr	cpsr_cxsf, r1;
+	msr	spsr_cxsf, r2;
+	ldr	lr, [r0, #(4*15)];
+	ldmia   r0, {r0-r12};
+	movs	pc, lr;
+	/* Going back to usr mode */
 \skip_label:
-	ldr	r0, [sp], #0x0004;	/* Get SPSR from stack */
-	msr	spsr_cxsf, r0;
-	ldmia   sp, {r0-r14}^;		/* Restore registers (user) */
-	add	sp, sp, #(4*15);	/* Adjust stack & NOP for prev. */
-	ldr	lr, [sp], #0x0004	/* Pull return address */
+	msr	spsr_cxsf, r2;
+	ldr	lr, [r0, #(4*15)];
+	ldmia   r0, {r0-r14}^;
 	movs	pc, lr
+	/* Going back to svc mode */
 \skip_label1:
-	ldr	r0, [sp], #0x0004;	/* Get SPSR from stack */
-	msr	spsr_cxsf, r0;
-	ldm	sp, {r0-r15}^;		/* Restore all registers & CPSR */
-	mov	r0, r0;			/* NOP for prev. */
+	msr	spsr_cxsf, r2;
+	ldm	r0, {r0-r15}^;
+	mov	r0, r0;
 .endm
 
 	/*
 	 * Undefined instruction exception handler.
 	 */
 EXCEPTION_HANDLER _undef_inst, 4
-	PUSH_REGS _undef_inst_push
+	PUSH_REGS _undef_inst_push CPSR_MODE_UNDEFINED
 	CALL_EXCEPTION_CFUNC do_undef_inst
 	PULL_REGS _undef_inst_pull _undef_inst_pull1 CPSR_MODE_UNDEFINED
 
@@ -537,10 +567,10 @@ EXCEPTION_HANDLER _soft_irq, 4
 	 * Prefetch abort exception handler.
 	 */
 EXCEPTION_HANDLER _prefetch_abort, 4
-	PUSH_REGS _prefetch_abort_push
+	PUSH_REGS _prefetch_abort_push CPSR_MODE_ABORT
 #if (__ARM_ARCH_VERSION__ < 6)
 	ldr r1, _ifar;
-	ldr lr, [r0, #(4 * 16)]
+	ldr lr, [r0, #(4 * 17)]
 	str lr, [r1];
 #endif
 	CALL_EXCEPTION_CFUNC do_prefetch_abort
@@ -550,10 +580,10 @@ EXCEPTION_HANDLER _prefetch_abort, 4
 	 * Data abort exception handler.
 	 */
 EXCEPTION_HANDLER _data_abort, 8
-	PUSH_REGS _data_abort_push
+	PUSH_REGS _data_abort_push CPSR_MODE_ABORT
 #if (__ARM_ARCH_VERSION__ < 6)
 	ldr r1, _abort_inst;
-	ldr lr, [r0, #(4 * 16)]
+	ldr lr, [r0, #(4 * 17)]
 	str lr, [r1];
 #endif
 	CALL_EXCEPTION_CFUNC do_data_abort
@@ -571,7 +601,7 @@ EXCEPTION_HANDLER _not_used, 4
 	 * IRQ exception handler.
 	 */
 EXCEPTION_HANDLER _irq, 4
-	PUSH_REGS _irq_push
+	PUSH_REGS _irq_push CPSR_MODE_IRQ
 	CALL_EXCEPTION_CFUNC do_irq
 	PULL_REGS _irq_pull _irq_pull1 CPSR_MODE_IRQ
 
@@ -579,6 +609,6 @@ EXCEPTION_HANDLER _irq, 4
 	 * FIQ exception handler.
 	 */
 EXCEPTION_HANDLER _fiq, 4
-	PUSH_REGS _fiq_push
+	PUSH_REGS _fiq_push CPSR_MODE_FIQ
 	CALL_EXCEPTION_CFUNC do_fiq
 	PULL_REGS _fiq_pull _fiq_pull1 CPSR_MODE_FIQ
