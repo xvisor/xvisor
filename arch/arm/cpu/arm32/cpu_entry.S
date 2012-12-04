@@ -455,7 +455,7 @@ _reset:
 .endm
 
 /* Save arch registers into small mode-specific stack */
-.macro PUSH_REGS skip_label mode=CPSR_MODE_SUPERVISOR
+.macro PUSH_REGS mode=CPSR_MODE_SUPERVISOR
 	/* Save return address (i.e. return PC) */
 	str	lr, [sp, #-4]!;
 	/* Adjust stack pointer to make room for r13, r14 */		
@@ -474,23 +474,31 @@ _reset:
 	mrs	r2, cpsr_all;
 	and	r0, r4, #CPSR_MODE_MASK;
 	cmp	r0, #CPSR_MODE_USER;
-	beq	\skip_label;
+	beq	100f;
 	add	r1, sp, #(4*14);
 	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED);
 	msr	cpsr_cxsf, r4;
 	stm	r1, {r13-r14};
 	msr	cpsr_cxsf, r2;
 	/* Save restore value for SVC stack (or Exception stack) */
-\skip_label:
+100:
 	sub	sp, sp, #4;
 	mov	r0, sp;
 	.if \mode == CPSR_MODE_SUPERVISOR
 	add	r1, sp, #(4*18);
 	str	r1, [r0];
 	.else
-	CMODE	r2, CPSR_MODE_SUPERVISOR;
+#if (__ARM_ARCH_VERSION__ < 6)
+	and	r2, r2, #~(CPSR_MODE_MASK);
+	orr	r2, r2, #CPSR_MODE_SUPERVISOR;
+	msr	cpsr_c, r2;
+#else
+	cps	#CPSR_MODE_SUPERVISOR;
+#endif
 	str	sp, [r0];
 	.endif
+	/* Save arch registers pointer on SVC stack (or Exception stack) */
+	str	r0, [sp, #-4]!;
 .endm
 
 /* Call C function to handle exception */
@@ -499,51 +507,55 @@ _reset:
 .endm
 
 /* Restore registers from arch registers */
-.macro PULL_REGS skip_label skip_label1 mode=CPSR_MODE_SUPERVISOR
-	/* Get arch regs and current cpsr.
+.macro PULL_REGS mode=CPSR_MODE_SUPERVISOR
+	/* Get arch register pointer.
 	 * Also adjust stack pointer of \mode
-	 * r0 -> pointer to arch regs
-	 * r1 -> current cpsr
+	 * r12 -> pointer to arch regs
 	 */
-	mrs	r1, cpsr_all;
-	CMODE	r1, \mode;
-	mov	r0, sp;
-	add	sp, sp, #(4*18);
-	CMODE	r1, CPSR_MODE_SUPERVISOR;
+	ldr	r12, [sp], #4;
 	/* Restore exception stack */ 
-	ldr	sp, [r0, #0];
-	/* Get target cpsr 
-	 * r2 -> target cpsr
-	 */
-	ldr	r2, [r0, #4];
-	/* Adjust pointer to arch regs */
-	add	r0, r0, #(2*4);
+	ldr	sp, [r12], #4;
+	.if \mode != CPSR_MODE_SUPERVISOR
+	/* Switch back to original exception mode */
+#if (__ARM_ARCH_VERSION__ < 6)
+	mrs	r1, cpsr_all;
+	and	r1, r1, #~(CPSR_MODE_MASK);
+	orr	r1, r1, #\mode;
+	msr	cpsr_c, r1;
+#else
+	cps	#\mode;
+#endif
+	/* Adjust stack pointer of exception mode */
+	add	sp, sp, #(4*18);
+	.endif
+	/* Restore target CPSR */
+	ldr	r1, [r12], #4;
+	msr	spsr_cxsf, r1;
+	/* Restore r0, r1, ..., r11 */
+	ldmia	r12!, {r0-r11};
 	/* If-else ladder for different target modes  */
-	and	r3, r2, #CPSR_MODE_MASK;
-	cmp	r3, #CPSR_MODE_USER;
-	beq	\skip_label;
-	cmp	r3, #CPSR_MODE_SUPERVISOR;
-	beq	\skip_label1;
-	/* Going back to irq/und/abt mode */
-	orr	r4, r2, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED);
-	msr	cpsr_cxsf, r4;
-	ldr	sp, [r0, #(4*13)];
-	ldr	lr, [r0, #(4*14)];
-	msr	cpsr_cxsf, r1;
-	msr	spsr_cxsf, r2;
-	ldr	lr, [r0, #(4*15)];
-	ldmia   r0, {r0-r12};
-	movs	pc, lr;
+	mrs	lr, spsr_all;
+	and	lr, lr, #CPSR_MODE_MASK;
+	cmp	lr, #CPSR_MODE_USER;
+	beq	200f;
+	cmp	lr, #\mode;
+	beq	201f;
+	/* Going back to exception mode different from current mode */
+	mrs	lr, spsr_all
+	orr	lr, lr, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED);
+	msr	cpsr_all, lr;
+	ldr	lr, [r12, #(-4*13)]
+	msr	spsr_cxsf, lr;
+	ldm	r12, {r12-r15}^;
+	mov	r0, r0;
 	/* Going back to usr mode */
-\skip_label:
-	msr	spsr_cxsf, r2;
-	ldr	lr, [r0, #(4*15)];
-	ldmia   r0, {r0-r14}^;
+200:
+	ldr	lr, [r12, #12];
+	ldmia	r12, {r12-r14}^;
 	movs	pc, lr
-	/* Going back to svc mode */
-\skip_label1:
-	msr	spsr_cxsf, r2;
-	ldm	r0, {r0-r15}^;
+	/* Going back to exception mode same as current mode */
+201:
+	ldm	r12, {r12-r15}^;
 	mov	r0, r0;
 .endm
 
@@ -551,64 +563,65 @@ _reset:
 	 * Undefined instruction exception handler.
 	 */
 EXCEPTION_HANDLER _undef_inst, 4
-	PUSH_REGS _undef_inst_push CPSR_MODE_UNDEFINED
+	PUSH_REGS CPSR_MODE_UNDEFINED
 	CALL_EXCEPTION_CFUNC do_undef_inst
-	PULL_REGS _undef_inst_pull _undef_inst_pull1 CPSR_MODE_UNDEFINED
+	PULL_REGS CPSR_MODE_UNDEFINED
 
 	/*
 	 * Software interrupt exception handler.
 	 */
 EXCEPTION_HANDLER _soft_irq, 4
-	PUSH_REGS _soft_irq_push
+	PUSH_REGS 
 	CALL_EXCEPTION_CFUNC do_soft_irq
-	PULL_REGS _soft_irq_pull _soft_irq_pull1
+	PULL_REGS 
 
 	/*
 	 * Prefetch abort exception handler.
 	 */
 EXCEPTION_HANDLER _prefetch_abort, 4
-	PUSH_REGS _prefetch_abort_push CPSR_MODE_ABORT
+	PUSH_REGS CPSR_MODE_ABORT
 #if (__ARM_ARCH_VERSION__ < 6)
 	ldr r1, _ifar;
 	ldr lr, [r0, #(4 * 17)]
 	str lr, [r1];
 #endif
 	CALL_EXCEPTION_CFUNC do_prefetch_abort
-	PULL_REGS _prefetch_abort_pull _prefetch_abort_pull1 CPSR_MODE_ABORT
+	PULL_REGS CPSR_MODE_ABORT
 
 	/*
 	 * Data abort exception handler.
 	 */
 EXCEPTION_HANDLER _data_abort, 8
-	PUSH_REGS _data_abort_push CPSR_MODE_ABORT
+	PUSH_REGS CPSR_MODE_ABORT
 #if (__ARM_ARCH_VERSION__ < 6)
 	ldr r1, _abort_inst;
 	ldr lr, [r0, #(4 * 17)]
 	str lr, [r1];
 #endif
 	CALL_EXCEPTION_CFUNC do_data_abort
-	PULL_REGS _data_abort_pull _data_abort_pull1 CPSR_MODE_ABORT
+	PULL_REGS CPSR_MODE_ABORT
 
 	/*
 	 * Not used exception handler.
 	 */
 EXCEPTION_HANDLER _not_used, 4
-	PUSH_REGS _not_used_push
+	PUSH_REGS 
 	CALL_EXCEPTION_CFUNC do_not_used
-	PULL_REGS _not_used_pull _not_used_pull1
+	PULL_REGS 
 
 	/*
 	 * IRQ exception handler.
 	 */
 EXCEPTION_HANDLER _irq, 4
-	PUSH_REGS _irq_push CPSR_MODE_IRQ
+	PUSH_REGS CPSR_MODE_IRQ
 	CALL_EXCEPTION_CFUNC do_irq
-	PULL_REGS _irq_pull _irq_pull1 CPSR_MODE_IRQ
+	PULL_REGS CPSR_MODE_IRQ
 
 	/*
 	 * FIQ exception handler.
 	 */
 EXCEPTION_HANDLER _fiq, 4
-	PUSH_REGS _fiq_push CPSR_MODE_FIQ
+	PUSH_REGS CPSR_MODE_FIQ
 	CALL_EXCEPTION_CFUNC do_fiq
-	PULL_REGS _fiq_pull _fiq_pull1 CPSR_MODE_FIQ
+	PULL_REGS CPSR_MODE_FIQ
+
