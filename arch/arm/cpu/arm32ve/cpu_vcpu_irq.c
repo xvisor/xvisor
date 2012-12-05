@@ -29,12 +29,12 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
 
-u32 arch_vcpu_irq_count(struct vmm_vcpu * vcpu)
+u32 arch_vcpu_irq_count(struct vmm_vcpu *vcpu)
 {
 	return CPU_IRQ_NR;
 }
 
-u32 arch_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no)
+u32 arch_vcpu_irq_priority(struct vmm_vcpu *vcpu, u32 irq_no)
 {
 	u32 ret = 3;
 
@@ -69,9 +69,9 @@ u32 arch_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no)
 	return ret;
 }
 
-int arch_vcpu_irq_assert(struct vmm_vcpu * vcpu, u32 irq_no, u32 reason)
+int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 {
-	struct vmm_vcpu * cvcpu = vmm_scheduler_current_vcpu();
+	struct vmm_vcpu *cvcpu = vmm_scheduler_current_vcpu();
 	u32 hcr = arm_priv(vcpu)->hcr;
 
 	switch(irq_no) {
@@ -101,8 +101,8 @@ int arch_vcpu_irq_assert(struct vmm_vcpu * vcpu, u32 irq_no, u32 reason)
 }
 
 
-int arch_vcpu_irq_execute(struct vmm_vcpu * vcpu,
-			 arch_regs_t * regs, 
+int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
+			 arch_regs_t *regs, 
 			 u32 irq_no, u32 reason)
 {
 	write_hcr(arm_priv(vcpu)->hcr);
@@ -110,10 +110,10 @@ int arch_vcpu_irq_execute(struct vmm_vcpu * vcpu,
 	return VMM_OK;
 }
 
-int arch_vcpu_irq_deassert(struct vmm_vcpu * vcpu, u32 irq_no, u32 reason)
+int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 {
-	struct vmm_vcpu * cvcpu = vmm_scheduler_current_vcpu();
-	u32 hcr = read_hcr();
+	struct vmm_vcpu *cvcpu = vmm_scheduler_current_vcpu();
+	u32 hcr = arm_priv(vcpu)->hcr;
 
 	switch(irq_no) {
 	case CPU_EXTERNAL_IRQ:

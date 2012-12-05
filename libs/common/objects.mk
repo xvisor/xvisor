@@ -21,6 +21,7 @@
 # @brief list of common objects to be build
 # */
 
+libs-objs-y+= common/bcd.o
 libs-objs-y+= common/bitops.o
 libs-objs-y+= common/bitmap.o
 libs-objs-y+= common/scatterlist.o

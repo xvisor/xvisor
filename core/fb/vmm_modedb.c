@@ -34,6 +34,7 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
+#include <vmm_modules.h>
 #include <fb/vmm_fb.h>
 #include <libs/stringlib.h>
 
@@ -778,6 +779,7 @@ done:
     DPRINTK("No valid mode found\n");
     return 0;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_find_mode);
 
 /**
  * Convert vmm_fb_var_screeninfo to vmm_fb_videomode
@@ -822,6 +824,7 @@ void vmm_fb_var_to_videomode(struct vmm_fb_videomode *mode,
 	hfreq = udiv32(pixclock, htotal);
 	mode->refresh = udiv32(hfreq, vtotal);
 }
+VMM_EXPORT_SYMBOL(vmm_fb_var_to_videomode);
 
 /**
  * Convert vmm_fb_videomode to vmm_fb_var_screeninfo
@@ -847,6 +850,7 @@ void vmm_fb_videomode_to_var(struct vmm_fb_var_screeninfo *var,
 	var->sync = mode->sync;
 	var->vmode = mode->vmode & FB_VMODE_MASK;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_videomode_to_var);
 
 /**
  * Compare 2 videomodes
@@ -871,6 +875,7 @@ int vmm_fb_mode_is_equal(const struct vmm_fb_videomode *mode1,
 		mode1->sync         == mode2->sync &&
 		mode1->vmode        == mode2->vmode);
 }
+VMM_EXPORT_SYMBOL(vmm_fb_mode_is_equal);
 
 /**
  * Find best matching videomode
@@ -917,6 +922,7 @@ const struct vmm_fb_videomode *vmm_fb_find_best_mode(
 	}
 	return best;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_find_best_mode);
 
 /**
  * Find closest videomode
@@ -928,8 +934,9 @@ const struct vmm_fb_videomode *vmm_fb_find_best_mode(
  * If more than 1 videomode is found, will return the videomode with
  * the closest refresh rate.
  */
-const struct vmm_fb_videomode *vmm_fb_find_nearest_mode(const struct vmm_fb_videomode *mode,
-					        struct dlist *head)
+const struct vmm_fb_videomode *vmm_fb_find_nearest_mode(
+					const struct vmm_fb_videomode *mode,
+					struct dlist *head)
 {
 	struct list_head *pos;
 	struct vmm_fb_modelist *modelist;
@@ -959,6 +966,7 @@ const struct vmm_fb_videomode *vmm_fb_find_nearest_mode(const struct vmm_fb_vide
 
 	return best;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_find_nearest_mode);
 
 /**
  * Find a videomode which exactly matches the timings in var
@@ -968,8 +976,9 @@ const struct vmm_fb_videomode *vmm_fb_find_nearest_mode(const struct vmm_fb_vide
  * RETURNS:
  * struct vmm_fb_videomode, NULL if none found
  */
-const struct vmm_fb_videomode *vmm_fb_match_mode(const struct vmm_fb_var_screeninfo *var,
-						 struct dlist *head)
+const struct vmm_fb_videomode *vmm_fb_match_mode(
+					const struct vmm_fb_var_screeninfo *var,
+					struct dlist *head)
 {
 	struct dlist *pos;
 	struct vmm_fb_modelist *modelist;
@@ -984,6 +993,7 @@ const struct vmm_fb_videomode *vmm_fb_match_mode(const struct vmm_fb_var_screeni
 	}
 	return NULL;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_match_mode);
 
 /**
  * Adds videomode entry to modelist
@@ -1018,6 +1028,7 @@ int vmm_fb_add_videomode(const struct vmm_fb_videomode *mode, struct dlist *head
 	}
 	return 0;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_add_videomode);
 
 /**
  * Removed videomode entry from modelist
@@ -1043,6 +1054,7 @@ void vmm_fb_delete_videomode(const struct vmm_fb_videomode *mode,
 		}
 	}
 }
+VMM_EXPORT_SYMBOL(vmm_fb_delete_videomode);
 
 /**
  * Destroy modelist
@@ -1057,6 +1069,7 @@ void vmm_fb_destroy_modelist(struct dlist *head)
 		vmm_free(pos);
 	}
 }
+VMM_EXPORT_SYMBOL(vmm_fb_destroy_modelist);
 
 /**
  * Convert mode array to mode list
@@ -1064,8 +1077,8 @@ void vmm_fb_destroy_modelist(struct dlist *head)
  * @num: number of entries in array
  * @head: struct list_head of modelist
  */
-void vmm_fb_videomode_to_modelist(const struct vmm_fb_videomode *modedb, int num,
-			      struct dlist *head)
+void vmm_fb_videomode_to_modelist(const struct vmm_fb_videomode *modedb, 
+				  int num, struct dlist *head)
 {
 	int i;
 
@@ -1076,9 +1089,11 @@ void vmm_fb_videomode_to_modelist(const struct vmm_fb_videomode *modedb, int num
 			return;
 	}
 }
+VMM_EXPORT_SYMBOL(vmm_fb_videomode_to_modelist);
 
-const struct vmm_fb_videomode *fb_find_best_display(const struct vmm_fb_monspecs *specs,
-					        struct dlist *head)
+const struct vmm_fb_videomode *vmm_fb_find_best_display(
+					const struct vmm_fb_monspecs *specs,
+					struct dlist *head)
 {
 	struct dlist *pos;
 	struct vmm_fb_modelist *modelist;
@@ -1135,4 +1150,5 @@ const struct vmm_fb_videomode *fb_find_best_display(const struct vmm_fb_monspecs
 finished:
 	return best;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_find_best_display);
 

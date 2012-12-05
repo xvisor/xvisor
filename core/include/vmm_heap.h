@@ -47,6 +47,9 @@ virtual_size_t vmm_heap_size(void);
 /** Size of heap house-keeping */
 virtual_size_t vmm_heap_hksize(void);
 
+/** Size of heap free space */
+virtual_size_t vmm_heap_free_size(void);
+
 /** Print heap state */
 int vmm_heap_print_state(struct vmm_chardev *cdev);
 

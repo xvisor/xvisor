@@ -32,7 +32,7 @@
 #include <vmm_chardev.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
-#include <serial/pl011.h>
+#include <drv/pl011.h>
 
 /* Enable UART_PL011_USE_TXINTR to use TX interrupt.
  * Generally the FIFOs are small so its better to poll on Tx 
@@ -137,6 +137,7 @@ void pl011_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 }
 
 struct pl011_port {
+	struct vmm_chardev cd;
 	struct vmm_completion read_possible;
 	struct vmm_completion write_possible;
 	virtual_addr_t base;
@@ -198,7 +199,7 @@ static u8 pl011_getc_sleepable(struct pl011_port *port)
 }
 
 static u32 pl011_read(struct vmm_chardev *cdev,
-		      u8 * dest, u32 offset, u32 len, bool sleep)
+		      u8 * dest, u32 len, bool sleep)
 {
 	u32 i;
 	struct pl011_port *port;
@@ -245,7 +246,7 @@ static void pl011_putc_sleepable(struct pl011_port *port, u8 ch)
 #endif
 
 static u32 pl011_write(struct vmm_chardev *cdev,
-		       u8 * src, u32 offset, u32 len, bool sleep)
+		       u8 * src, u32 len, bool sleep)
 {
 	u32 i;
 	struct pl011_port *port;
@@ -286,29 +287,20 @@ static int pl011_driver_probe(struct vmm_device *dev,
 {
 	int rc;
 	const char *attr;
-	struct vmm_chardev *cd;
 	struct pl011_port *port;
 
-	cd = vmm_malloc(sizeof(struct vmm_chardev));
-	if (!cd) {
-		rc = VMM_EFAIL;
+	port = vmm_zalloc(sizeof(struct pl011_port));
+	if (!port) {
+		rc = VMM_ENOMEM;
 		goto free_nothing;
 	}
-	memset(cd, 0, sizeof(struct vmm_chardev));
 
-	port = vmm_malloc(sizeof(struct pl011_port));
-	if (!port) {
-		rc = VMM_EFAIL;
-		goto free_chardev;
-	}
-	memset(port, 0, sizeof(struct pl011_port));
-
-	strcpy(cd->name, dev->node->name);
-	cd->dev = dev;
-	cd->ioctl = NULL;
-	cd->read = pl011_read;
-	cd->write = pl011_write;
-	cd->priv = port;
+	strcpy(port->cd.name, dev->node->name);
+	port->cd.dev = dev;
+	port->cd.ioctl = NULL;
+	port->cd.read = pl011_read;
+	port->cd.write = pl011_write;
+	port->cd.priv = port;
 
 	INIT_COMPLETION(&port->read_possible);
 	INIT_COMPLETION(&port->write_possible);
@@ -321,7 +313,7 @@ static int pl011_driver_probe(struct vmm_device *dev,
 	attr = vmm_devtree_attrval(dev->node, "baudrate");
 	if (!attr) {
 		rc = VMM_EFAIL;
-		goto free_port;
+		goto free_reg;
 	}
 	port->baudrate = *((u32 *) attr);
 	port->input_clock = vmm_devdrv_clock_get_rate(dev);
@@ -329,45 +321,49 @@ static int pl011_driver_probe(struct vmm_device *dev,
 	attr = vmm_devtree_attrval(dev->node, "irq");
 	if (!attr) {
 		rc = VMM_EFAIL;
-		goto free_port;
+		goto free_reg;
 	}
 	port->irq = *((u32 *) attr);
 	if ((rc = vmm_host_irq_register(port->irq, dev->node->name, 
 					pl011_irq_handler, port))) {
-		goto free_port;
+		goto free_reg;
 	}
 
 	/* Call low-level init function */
 	pl011_lowlevel_init(port->base, port->baudrate, port->input_clock);
 
-	rc = vmm_chardev_register(cd);
+	rc = vmm_chardev_register(&port->cd);
 	if (rc) {
-		goto free_port;
+		goto free_irq;
 	}
+
+	dev->priv = port;
 
 	return VMM_OK;
 
- free_port:
+free_irq:
+	vmm_host_irq_unregister(port->irq, port);
+free_reg:
+	vmm_devtree_regunmap(dev->node, port->base, 0);
+free_port:
 	vmm_free(port);
- free_chardev:
-	vmm_free(cd);
- free_nothing:
+free_nothing:
 	return rc;
 }
 
 static int pl011_driver_remove(struct vmm_device *dev)
 {
-	int rc = VMM_OK;
-	struct vmm_chardev *cd = (struct vmm_chardev *)dev->priv;
+	struct pl011_port *port = dev->priv;
 
-	if (cd) {
-		rc = vmm_chardev_unregister(cd);
-		vmm_free(cd->priv);
-		vmm_free(cd);
+	if (port) {
+		vmm_chardev_unregister(&port->cd);
+		vmm_host_irq_unregister(port->irq, port);
+		vmm_devtree_regunmap(dev->node, port->base, 0);
+		vmm_free(port);
 		dev->priv = NULL;
 	}
 
-	return rc;
+	return VMM_OK;
 }
 
 static struct vmm_devid pl011_devid_table[] = {

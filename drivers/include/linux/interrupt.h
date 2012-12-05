@@ -24,7 +24,7 @@ static inline void free_irq(unsigned int irq, void *dev)
 }
 
 #define local_irq_save(flags) \
-		flags = arch_cpu_irq_save()
+		arch_cpu_irq_save(flags)
 #define local_irq_restore(flags) \
 		arch_cpu_irq_restore(flags)
 

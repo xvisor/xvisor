@@ -62,9 +62,11 @@ _start:
 
 _secondary_loop:
 	/* Enable the GIC CPU interface for this core */
-	ldr	r0, _gic_cpu_enable_addr
+	ldr	r0, _gic_cpu_addr
 	mov	r1, #1
 	str	r1, [r0]
+	mov	r1, #0xFF
+	str	r1, [r0, #4]
 	ldr	r0, _sys_flags_addr
 1:	
 	/* Wait for interrupt before checking SYS_FLAGS */
@@ -76,7 +78,7 @@ _secondary_loop:
 	/* Jump to the address stored the the SYS_FLAGS register */
 	bx	r1
 
-_gic_cpu_enable_addr:
+_gic_cpu_addr:
 	.word	0x1e000100
 _sys_flags_addr:
 	.word 	0x10000030

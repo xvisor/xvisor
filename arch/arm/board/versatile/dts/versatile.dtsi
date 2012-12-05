@@ -22,7 +22,7 @@
 
 		memory {
 			physical_addr = <0x00000000>;
-			physical_size = <0x08000000>; /* 128 MB */
+			physical_size = <0x10000000>; /* 256 MB */
 		};
 
 		nbridge {

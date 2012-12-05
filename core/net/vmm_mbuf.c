@@ -88,6 +88,7 @@
 #include <vmm_types.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
+#include <vmm_modules.h>
 #include <net/vmm_mbuf.h>
 #include <libs/list.h>
 #include <libs/stringlib.h>
@@ -126,6 +127,7 @@ void m_copydata(struct vmm_mbuf *m, int off, int len, void *vp)
 		m = m->m_next;
 	}
 }
+VMM_EXPORT_SYMBOL(m_copydata);
 
 /*
  * Space allocation routines.
@@ -153,6 +155,7 @@ struct vmm_mbuf *m_get(int nowait, int flags)
 
 	return m;
 }
+VMM_EXPORT_SYMBOL(m_get);
 
 /*
  * m_ext_free: release a reference to the mbuf external storage.
@@ -173,6 +176,7 @@ void m_ext_free(struct vmm_mbuf *m)
 		vmm_free(m);
 	}
 }
+VMM_EXPORT_SYMBOL(m_ext_free);
 
 struct vmm_mbuf *m_free(struct vmm_mbuf *m)
 {
@@ -181,6 +185,7 @@ struct vmm_mbuf *m_free(struct vmm_mbuf *m)
 	MFREE(m, n);
 	return (n);
 }
+VMM_EXPORT_SYMBOL(m_free);
 
 void m_freem(struct vmm_mbuf *m)
 {
@@ -193,5 +198,5 @@ void m_freem(struct vmm_mbuf *m)
 		m = n;
 	} while (m);
 }
-
+VMM_EXPORT_SYMBOL(m_freem);
 

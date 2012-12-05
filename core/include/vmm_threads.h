@@ -50,32 +50,31 @@ struct vmm_thread {
 					 * function on execution */
 	int tretval;			/* thread return value */
 	u64 tnsecs;			/* thread time slice in nanoseconds */
-	u8 tstack[CONFIG_THREAD_STACK_SIZE]; /* thread stack */
 };
 
 /** Start a thread */
-int vmm_threads_start(struct vmm_thread * tinfo);
+int vmm_threads_start(struct vmm_thread *tinfo);
 
 /** Stop a thread */
-int vmm_threads_stop(struct vmm_thread * tinfo);
+int vmm_threads_stop(struct vmm_thread *tinfo);
 
 /** Put a thread to sleep */
-int vmm_threads_sleep(struct vmm_thread * tinfo);
+int vmm_threads_sleep(struct vmm_thread *tinfo);
 
 /** Wakeup a thread */
-int vmm_threads_wakeup(struct vmm_thread * tinfo);
+int vmm_threads_wakeup(struct vmm_thread *tinfo);
 
 /** Retrive thread id */
-u32 vmm_threads_get_id(struct vmm_thread * tinfo);
+u32 vmm_threads_get_id(struct vmm_thread *tinfo);
 
 /** Retrive thread priority */
-u8 vmm_threads_get_priority(struct vmm_thread * tinfo);
+u8 vmm_threads_get_priority(struct vmm_thread *tinfo);
 
 /** Retrive thread name */
-int vmm_threads_get_name(char * dst, struct vmm_thread * tinfo);
+int vmm_threads_get_name(char *dst, struct vmm_thread *tinfo);
 
 /** Retrive thread state */
-int vmm_threads_get_state(struct vmm_thread * tinfo);
+int vmm_threads_get_state(struct vmm_thread *tinfo);
 
 /** Retrive thread instance from thread id */
 struct vmm_thread *vmm_threads_id2thread(u32 tid);
@@ -94,7 +93,7 @@ struct vmm_thread *vmm_threads_create(const char *thread_name,
 				      u64 thread_nsecs);
 
 /** Destroy a thread */
-int vmm_threads_destroy(struct vmm_thread * tinfo);
+int vmm_threads_destroy(struct vmm_thread *tinfo);
 
 /** Intialize hypervisor threads */
 int vmm_threads_init(void);

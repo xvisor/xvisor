@@ -179,18 +179,18 @@ int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_init(physical_addr_t *core_resv_pa,
-			 virtual_addr_t *core_resv_va,
-			 virtual_size_t *core_resv_sz,
-			 physical_addr_t *arch_resv_pa,
-			 virtual_addr_t *arch_resv_va,
-			 virtual_size_t *arch_resv_sz)
+int arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
+				 virtual_addr_t *core_resv_va,
+				 virtual_size_t *core_resv_sz,
+				 physical_addr_t *arch_resv_pa,
+				 virtual_addr_t *arch_resv_va,
+				 virtual_size_t *arch_resv_sz)
 {
 	virtual_addr_t cva, eva = 0;
 	u32 pg_tab_sz = 0, tsize2map;
 	physical_addr_t pa;
 
-	tsize2map = (CONFIG_VAPOOL_SIZE << 20) + arch_code_size() + (*core_resv_sz);
+	tsize2map = (CONFIG_VAPOOL_SIZE_MB << 20) + arch_code_size() + (*core_resv_sz);
 
 	tsize2map = VMM_ROUNDUP2_PAGE_SIZE(tsize2map);
 
@@ -223,9 +223,8 @@ int arch_cpu_aspace_init(physical_addr_t *core_resv_pa,
 
 	cva = arch_code_vaddr_start();
 
-	eva = cva + ((CONFIG_VAPOOL_SIZE << 20)
-		     + (arch_code_size()
-			+ (*core_resv_sz) + (pg_tab_sz * PAGE_SIZE)));
+	eva = cva + ((CONFIG_VAPOOL_SIZE_MB << 20) + (arch_code_size() 
+		  + (*core_resv_sz) + (pg_tab_sz * PAGE_SIZE)));
 
 	pa = *core_resv_pa;
 
@@ -251,6 +250,12 @@ int arch_cpu_aspace_init(physical_addr_t *core_resv_pa,
         /* Switch over to new page table. */
         switch_to_pagetable(VIRT_TO_PHYS(&pml4[0]));
 
+	return VMM_OK;
+}
+
+int __init arch_cpu_aspace_secondary_init(void)
+{
+	/* FIXME: For now nothing to do here. */
 	return VMM_OK;
 }
 

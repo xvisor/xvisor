@@ -43,7 +43,10 @@
 		gen-timer { /* Generic Timer */
 	      		device_type = "timer";
 	      		compatible = "arm,cortex-a15-gen-timer";
-			irq = <26>;
+			rating = <400>;
+			freq = <100000000>;
+			shift = <27>;
+			irq = <26 30 27>;
 		};
 
 		motherboard {

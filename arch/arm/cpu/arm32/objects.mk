@@ -26,8 +26,8 @@
 # Note that GCC does not numerically define an architecture version
 # macro, but instead defines a whole series of macros which makes
 # testing for a specific architecture or later rather impossible.
-arch-$(CONFIG_ARMV7A) += -mno-thumb-interwork -march=armv7-a
-arch-$(CONFIG_ARMV5) += -mno-thumb-interwork -march=armv5te
+arch-$(CONFIG_ARMV7A) += -D__ARM_ARCH_VERSION__=7 -mno-thumb-interwork -march=armv7-a
+arch-$(CONFIG_ARMV5) += -D__ARM_ARCH_VERSION__=5 -mno-thumb-interwork -march=armv5te
 
 # This selects how we optimise for the processor.
 tune-$(CONFIG_CPU_CORTEX_A8)  += -mcpu=cortex-a8
@@ -44,17 +44,15 @@ endif
 cpu-asflags += -marm $(arch-y) $(tune-y)
 cpu-ldflags += -msoft-float
 
-cpu-objs-$(CONFIG_ARMV5)+= cpu_entry_v5.o
+cpu-objs-y += cpu_entry.o
+
 cpu-objs-$(CONFIG_ARMV5)+= cpu_mmu_v5.o
 cpu-objs-$(CONFIG_ARMV5)+= cpu_cache_v5.o
 cpu-objs-$(CONFIG_ARMV5)+= cpu_atomic_v5.o
-cpu-objs-$(CONFIG_ARMV5)+= cpu_interrupts_v5.o
 
-cpu-objs-$(CONFIG_ARMV7A)+= cpu_entry_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_mmu_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_cache_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_atomic_v7.o
-cpu-objs-$(CONFIG_ARMV7A)+= cpu_interrupts_v7.o
 
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_delay.o

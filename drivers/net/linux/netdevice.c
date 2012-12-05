@@ -49,7 +49,7 @@ static int netdev_register_port(struct net_device *ndev)
         struct vmm_netswitch *nsw;
 	struct vmm_device *vmm_dev = ndev->vmm_dev;
 
-        port = vmm_netport_alloc(ndev->name);
+        port = vmm_netport_alloc(ndev->name, VMM_NETPORT_DEF_QUEUE_SIZE);
 
         if (!port) {
                 vmm_printf("Failed to allocate netport for %s\n", ndev->name);

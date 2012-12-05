@@ -1993,7 +1993,6 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	int rc = VMM_OK;
-	u32 vtlb_count;
 #if defined(CONFIG_ARMV7A)
 	u32 i, cache_type, last_level;
 #endif
@@ -2002,14 +2001,6 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		memset(&arm_priv(vcpu)->cp15, 0,
 			   sizeof(arm_priv(vcpu)->cp15));
 		arm_priv(vcpu)->cp15.l1 = cpu_mmu_l1tbl_alloc();
-		vtlb_count = CPU_VCPU_VTLB_ENTRY_COUNT;
-		arm_priv(vcpu)->cp15.vtlb.table = vmm_malloc(vtlb_count *
-							     sizeof(struct
-								    arm_vtlb_entry));
-		memset(arm_priv(vcpu)->cp15.vtlb.table, 0,
-			   vtlb_count * sizeof(struct arm_vtlb_entry));
-		memset(&arm_priv(vcpu)->cp15.vtlb.victim, 0,
-			   sizeof(arm_priv(vcpu)->cp15.vtlb.victim));
 	} else {
 		if ((rc = cpu_vcpu_cp15_vtlb_flush(vcpu))) {
 			return rc;
@@ -2152,8 +2143,6 @@ int cpu_vcpu_cp15_deinit(struct vmm_vcpu *vcpu)
 	if ((rc = cpu_mmu_l1tbl_free(arm_priv(vcpu)->cp15.l1))) {
 		return rc;
 	}
-
-	vmm_free(arm_priv(vcpu)->cp15.vtlb.table);
 
 	memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
 

@@ -49,6 +49,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_modules.h>
 #include <fb/vmm_fb.h>
 #include <libs/stringlib.h>
 
@@ -687,6 +688,7 @@ void vmm_fb_destroy_modedb(struct vmm_fb_videomode *modedb)
 {
 	vmm_free(modedb);
 }
+VMM_EXPORT_SYMBOL(vmm_fb_destroy_modedb);
 
 static int fb_get_monitor_limits(unsigned char *edid, struct vmm_fb_monspecs *specs)
 {
@@ -887,7 +889,7 @@ static void get_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
 	}
 }
 
-int fb_parse_edid(unsigned char *edid, struct vmm_fb_var_screeninfo *var)
+int vmm_fb_parse_edid(unsigned char *edid, struct vmm_fb_var_screeninfo *var)
 {
 	int i;
 	unsigned char *block;
@@ -929,6 +931,7 @@ int fb_parse_edid(unsigned char *edid, struct vmm_fb_var_screeninfo *var)
 	}
 	return 1;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_parse_edid);
 
 void vmm_fb_edid_to_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
 {
@@ -993,6 +996,7 @@ void vmm_fb_edid_to_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
 
 	DPRINTK("========================================\n");
 }
+VMM_EXPORT_SYMBOL(vmm_fb_edid_to_monspecs);
 
 /**
  * Add monitor video modes from E-EDID data
@@ -1077,6 +1081,7 @@ void vmm_fb_edid_add_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs
 	specs->modedb = m;
 	specs->modedb_len = specs->modedb_len + num + svd_n;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_edid_add_monspecs);
 
 /*
  * VESA Generalized Timing Formula (GTF)
@@ -1385,26 +1390,36 @@ int vmm_fb_get_mode(int flags, u32 val, struct vmm_fb_var_screeninfo *var, struc
 	vmm_free(timings);
 	return err;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_get_mode);
 #else
 int vmm_fb_parse_edid(unsigned char *edid, struct vmm_fb_var_screeninfo *var)
 {
 	return 1;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_parse_edid);
+
 void vmm_fb_edid_to_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
 {
 	specs = NULL;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_edid_to_monspecs);
+
 void vmm_fb_edid_add_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
 {
 }
+VMM_EXPORT_SYMBOL(vmm_fb_edid_add_monspecs);
+
 void vmm_fb_destroy_modedb(struct vmm_fb_videomode *modedb)
 {
 }
+VMM_EXPORT_SYMBOL(vmm_fb_destroy_modedb);
+
 int vmm_fb_get_mode(int flags, u32 val, struct vmm_fb_var_screeninfo *var,
 		struct vmm_fb_info *info)
 {
 	return VMM_EINVALID;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_get_mode);
 #endif /* CONFIG_FB_MODE_HELPERS */
 
 /*
@@ -1469,4 +1484,5 @@ int vmm_fb_validate_mode(const struct vmm_fb_var_screeninfo *var, struct vmm_fb_
 		pixclock < dclkmin || pixclock > dclkmax) ?
 		VMM_EINVALID : 0;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_validate_mode);
 

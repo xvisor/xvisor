@@ -27,6 +27,7 @@
 #include <vmm_spinlocks.h>
 #include <cpu_defines.h>
 #include <cpu_mmu.h>
+#include <generic_timer.h>
 
 /* CPUID related macors & defines */
 #define ARM_CPUID_ARM1026     0x4106a262
@@ -79,6 +80,7 @@ enum arm_features {
 	ARM_FEATURE_V5,
 	ARM_FEATURE_STRONGARM,
 	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
+	ARM_FEATURE_GENTIMER,	/* ARM generic timer extension */
 };
 
 struct arch_regs {
@@ -110,8 +112,6 @@ struct arm_priv {
 	u32 sp_fiq;
 	u32 lr_fiq;
 	u32 spsr_fiq;
-	/* Hypervisor mode stack */
-	void * hyp_stack;
 	/* Hypervisor Configuration */
 	u32 hcr;
 	/* Hypervisor Coprocessor Trap Register */
@@ -161,6 +161,8 @@ struct arm_priv {
 		u32 c15_i_max; /* Maximum D-cache dirty line index. */
 		u32 c15_i_min; /* Minimum D-cache dirty line index. */
 	} cp15;
+	/* Generic timer context */
+	struct generic_timer_context gentimer_context;
 } __attribute((packed));
 
 typedef struct arm_priv arm_priv_t;
@@ -187,5 +189,10 @@ typedef struct arm_guest_priv arm_guest_priv_t;
  */
 #define arm_pc(regs)		((regs)->pc)
 #define arm_cpsr(regs)		((regs)->cpsr)
+
+/**
+ *  Generic timers support macro
+ */
+#define arm_gentimer_context(vcpu)	(&(arm_priv(vcpu)->gentimer_context))
 
 #endif

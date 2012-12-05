@@ -50,8 +50,8 @@
 #define MODULE_AUTHOR		"Sukanto Ghosh"
 #define MODULE_LICENSE		"GPL"
 #define MODULE_IPRIORITY	0
-#define	MODULE_INIT		mptimer_emulator_init
-#define	MODULE_EXIT		mptimer_emulator_exit
+#define	MODULE_INIT		NULL
+#define	MODULE_EXIT		NULL
 
 #define MAX_CPUS		4
 
@@ -270,6 +270,7 @@ int mptimer_reg_read(struct mptimer_state *s, u32 offset, u32 *dst)
 	vmm_spin_unlock(&timer->lock);
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(mptimer_reg_read);
 
 int mptimer_reg_write(struct mptimer_state *s, u32 offset, u32 src_mask, 
 		      u32 src)
@@ -359,6 +360,7 @@ int mptimer_reg_write(struct mptimer_state *s, u32 offset, u32 src_mask,
 	vmm_spin_unlock(&timer->lock);
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(mptimer_reg_write);
 
 int mptimer_state_reset(struct mptimer_state *mpt)
 {
@@ -384,6 +386,7 @@ int mptimer_state_reset(struct mptimer_state *mpt)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(mptimer_state_reset);
 
 int mptimer_state_free(struct mptimer_state *s)
 {
@@ -397,6 +400,7 @@ int mptimer_state_free(struct mptimer_state *s)
 	}
 	return rc;
 }
+VMM_EXPORT_SYMBOL(mptimer_state_free);
 
 struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 					  struct vmm_emudev *edev, 
@@ -446,4 +450,11 @@ mptimer_timerblock_alloc_failed:
 mptimer_state_alloc_done:
 	return s;
 }
+VMM_EXPORT_SYMBOL(mptimer_state_alloc);
 
+VMM_DECLARE_MODULE(MODULE_DESC, 
+			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

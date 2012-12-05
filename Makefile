@@ -23,8 +23,8 @@
 
 # Current Version
 MAJOR = 0
-MINOR = 1
-RELEASE = 3
+MINOR = 2
+RELEASE = 0
 
 # Find out source & build directories
 src_dir=$(CURDIR)
@@ -287,6 +287,9 @@ all-m+=$(commands-m:.o=.xo)
 all-m+=$(daemons-m:.o=.xo)
 all-m+=$(drivers-m:.o=.xo)
 all-m+=$(emulators-m:.o=.xo)
+
+# Preserve all intermediate files
+.SECONDARY:
 
 # Default rule "make"
 .PHONY: all

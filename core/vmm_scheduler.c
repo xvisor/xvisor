@@ -43,7 +43,6 @@ struct vmm_scheduler_ctrl {
 	void * rq;
 	struct vmm_vcpu *current_vcpu;
 	struct vmm_vcpu *idle_vcpu;
-	u8 idle_vcpu_stack[IDLE_VCPU_STACK_SZ];
 	bool irq_context;
 	bool yield_on_irq_exit;
 	struct vmm_timer_event ev;
@@ -182,7 +181,7 @@ void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 void vmm_scheduler_irq_exit(arch_regs_t *regs)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
-	struct vmm_vcpu * vcpu = NULL;
+	struct vmm_vcpu *vcpu = NULL;
 
 	/* Determine current vcpu */
 	vcpu = schedp->current_vcpu;
@@ -199,7 +198,7 @@ void vmm_scheduler_irq_exit(arch_regs_t *regs)
 	}
 
 	/* VCPU irq processing */
-	vmm_vcpu_irq_process(regs);
+	vmm_vcpu_irq_process(vcpu, regs);
 
 	/* Indicate that we have exited IRQ */
 	schedp->irq_context = FALSE;
@@ -253,7 +252,7 @@ void vmm_scheduler_preempt_disable(void)
 	irq_flags_t flags;
 	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 	if (vcpu) {
-		flags = arch_cpu_irq_save();
+		arch_cpu_irq_save(flags);
 		vcpu->preempt_count++;
 		arch_cpu_irq_restore(flags);
 	}
@@ -264,7 +263,7 @@ void vmm_scheduler_preempt_enable(void)
 	irq_flags_t flags;
 	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
 	if (vcpu && vcpu->preempt_count) {
-		flags = arch_cpu_irq_save();
+		arch_cpu_irq_save(flags);
 		vcpu->preempt_count--;
 		arch_cpu_irq_restore(flags);
 	}
@@ -339,9 +338,10 @@ int __init vmm_scheduler_init(void)
 	/* Create idle orphan vcpu with default time slice. (Per Host CPU) */
 	vmm_sprintf(vcpu_name, "idle/%d", cpu);
 	schedp->idle_vcpu = vmm_manager_vcpu_orphan_create(vcpu_name,
-	(virtual_addr_t)&idle_orphan,
-	(virtual_addr_t)&schedp->idle_vcpu_stack[IDLE_VCPU_STACK_SZ - 4],
-	IDLE_VCPU_PRIORITY, IDLE_VCPU_TIMESLICE);
+						(virtual_addr_t)&idle_orphan,
+						IDLE_VCPU_STACK_SZ,
+						IDLE_VCPU_PRIORITY, 
+						IDLE_VCPU_TIMESLICE);
 	if (!schedp->idle_vcpu) {
 		return VMM_EFAIL;
 	}

@@ -29,7 +29,7 @@
 #include <vmm_devdrv.h>
 #include <libs/mathlib.h>
 #include <libs/stringlib.h>
-#include <block/rbd.h>
+#include <drv/rbd.h>
 
 #define MODULE_DESC			"RAM Backed Block Driver"
 #define MODULE_AUTHOR			"Anup Patel"

@@ -75,7 +75,7 @@ int vmm_printchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 
 	if (stdio_init_done) {
 		if (cdev) {
-			rc = vmm_chardev_dowrite(cdev, (u8 *)ch, 0, num_ch, 
+			rc = vmm_chardev_dowrite(cdev, (u8 *)ch, num_ch, 
 						 block) ? VMM_OK : VMM_EFAIL;
 		} else {
 			for (i = 0; i < num_ch; i++) {
@@ -447,7 +447,7 @@ int vmm_scanchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 
 	if (stdio_init_done) {
 		if (cdev) {
-			rc = (vmm_chardev_doread(cdev, (u8 *)ch, 0, num_ch,
+			rc = (vmm_chardev_doread(cdev, (u8 *)ch, num_ch,
 						 block) ? VMM_OK : VMM_EFAIL);
 		} else {
 			for (i = 0; i < num_ch; i++) {

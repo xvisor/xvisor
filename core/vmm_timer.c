@@ -58,7 +58,7 @@ u64 vmm_timer_timestamp(void)
 	u64 ret;
 	irq_flags_t flags;
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 	ret = vmm_timecounter_read(&(this_cpu(tlc).tc));
 	arch_cpu_irq_restore(flags);
 
@@ -153,7 +153,7 @@ int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs)
 
 	tstamp = vmm_timer_timestamp();
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	if (ev->active) {
 		/*
@@ -207,7 +207,7 @@ int vmm_timer_event_expire(struct vmm_timer_event * ev)
 	}
 
 	/* prevent (timer) interrupt */
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	/* if the event is already engaged */
 	if (ev->active) {
@@ -239,16 +239,15 @@ int vmm_timer_event_stop(struct vmm_timer_event * ev)
 		return VMM_EFAIL;
 	}
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	ev->expiry_tstamp = 0;
 
 	if (ev->active) {
 		list_del(&ev->head);
 		ev->active = FALSE;
+		vmm_timer_schedule_next_event();
 	}
-
-	vmm_timer_schedule_next_event();
 
 	arch_cpu_irq_restore(flags);
 
@@ -329,8 +328,8 @@ int __init vmm_timer_init(void)
 		 * such that time stamps visible on all CPUs is same;
 		 */
 		if ((rc = vmm_timecounter_init(&tlcp->tc, 
-			per_cpu(tlc, cpu).tc.cs, 
-			vmm_timecounter_read(&per_cpu(tlc, cpu).tc)))) {
+			per_cpu(tlc, 0).tc.cs, 
+			vmm_timecounter_read(&per_cpu(tlc, 0).tc)))) {
 			return rc;
 		}
 	}

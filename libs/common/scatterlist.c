@@ -441,7 +441,7 @@ static size_t sg_copy_buffer(struct scatterlist *sgl, unsigned int nents,
 
 	sg_miter_start(&miter, sgl, nents, sg_flags);
 
-	flags = arch_cpu_irq_save();
+	arch_cpu_irq_save(flags);
 
 	while (sg_miter_next(&miter) && offset < buflen) {
 		unsigned int len;

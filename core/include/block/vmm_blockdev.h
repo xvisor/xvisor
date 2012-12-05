@@ -81,6 +81,12 @@ struct vmm_blockdev {
 	struct vmm_request_queue *rq;
 };
 
+/** Size of block device in bytes */
+static inline u64 vmm_blockdev_total_size(struct vmm_blockdev *bdev)
+{
+	return (bdev) ? bdev->num_blocks * bdev->block_size : 0;
+}
+
 /** Generic block IO submit request */
 int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 				struct vmm_request *r);
@@ -93,6 +99,22 @@ int vmm_blockdev_fail_request(struct vmm_request *r);
 
 /** Generic block IO abort request */
 int vmm_blockdev_abort_request(struct vmm_request *r);
+
+/** Generic block IO read/write
+ *  Note: This is a blocking API hence must be 
+ *  called from Orphan (or Thread) Context
+ */
+u64 vmm_blockdev_rw(struct vmm_blockdev *bdev, 
+			enum vmm_request_type type,
+			u8 *buf, u64 off, u64 len);
+
+/** Generic block IO read */
+#define vmm_blockdev_read(bdev, dst, off, len) \
+	vmm_blockdev_rw((bdev), VMM_REQUEST_READ, (dst), (off), (len))
+
+/** Generic block IO write */
+#define vmm_blockdev_write(bdev, src, off, len) \
+	vmm_blockdev_rw((bdev), VMM_REQUEST_WRITE, (src), (off), (len))
 
 /** Allocate block device */
 struct vmm_blockdev *vmm_blockdev_alloc(void);

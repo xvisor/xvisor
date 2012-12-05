@@ -6,7 +6,7 @@ emulated by QEMU Linaro 2.02 or higher.
 
 By default, Xvisor for Vexpress-A15 supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
-refer <xvisor_source>/tests/arm32/pb-a8/basic/README.
+refer <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
 
 Please follow the steps below to build & run Basic Test on Realview PB-A8 guest
 with Xvisor running on QEMU Vexpress-A15 Host:
@@ -24,10 +24,10 @@ with Xvisor running on QEMU Vexpress-A15 Host:
   # make
 
   [5. Build Basic Test Code]
-  # make -C tests/arm32/pb-a8/basic
+  # make -C tests/arm32/realview-pb-a8/basic
 
   [6. Create qemu.img for running it on QEMU]
-  # ./tools/scripts/memimg.py -a 0x80010000 -o build/qemu.img build/vmm.bin@0x80010000 build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x80800000
+  # ./tools/scripts/memimg.py -a 0x80010000 -o build/qemu.img build/vmm.bin@0x80010000 build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched@0x81000000
 
   [7. Launch QEMU Linaro 2.02 or higher]
   # qemu-system-arm -M vexpress-a15 -display none -serial stdio -kernel build/qemu.img
@@ -61,7 +61,7 @@ emulated by ARM Fast Models 7.0 or higher.
 
 By default, Xvisor for Vexpress-A15 supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
-refer <xvisor_source>/tests/arm32/pb-a8/basic/README.
+refer <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
 
 Please follow the steps below to build & run Basic Test on Realview PB-A8 guest
 with Xvisor running on ARM Fast Models Vexpress-A15 Host:
@@ -79,10 +79,10 @@ with Xvisor running on ARM Fast Models Vexpress-A15 Host:
   # make
 
   [5. Build Basic Test Code]
-  # make -C tests/arm32/pb-a8/basic
+  # make -C tests/arm32/realview-pb-a8/basic
 
   [6. Create fast_model_boot.axf for running it on ARM Fast Models]
-  # ./tools/scripts/memimg.py -a 0x80010000 -o build/fast_model_boot.img build/vmm.bin@0x80010000 build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x80800000
+  # ./tools/scripts/memimg.py -a 0x80010000 -o build/fast_model_boot.img build/vmm.bin@0x80010000 build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched@0x80800000
   # cd build/; ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSMP -DVEXPRESS_A15 ../docs/arm/fast_model_boot.S -o fast_model_boot.axf; cd ..
 
   [7. Launch ARM fast models 7.0 or higher]

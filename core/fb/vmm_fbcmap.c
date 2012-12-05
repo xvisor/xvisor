@@ -34,6 +34,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_modules.h>
 #include <fb/vmm_fb.h>
 #include <libs/stringlib.h>
 
@@ -146,6 +147,7 @@ fail:
 	vmm_fb_dealloc_cmap(cmap);
 	return ret;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_alloc_cmap);
 
 /**
  *      Deallocate a colormap
@@ -170,6 +172,7 @@ void vmm_fb_dealloc_cmap(struct vmm_fb_cmap *cmap)
 	cmap->red = cmap->green = cmap->blue = cmap->transp = NULL;
 	cmap->len = 0;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_dealloc_cmap);
 
 /**
  *	Copy a colormap
@@ -202,6 +205,7 @@ int vmm_fb_copy_cmap(const struct vmm_fb_cmap *from, struct vmm_fb_cmap *to)
 		memcpy(to->transp+tooff, from->transp+fromoff, size);
 	return 0;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_copy_cmap);
 
 /**
  *	Set the colormap
@@ -249,6 +253,7 @@ int vmm_fb_set_cmap(struct vmm_fb_cmap *cmap, struct vmm_fb_info *info)
 
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_set_cmap);
 
 /**
  *	Get default colormap
@@ -271,7 +276,7 @@ const struct vmm_fb_cmap *vmm_fb_default_cmap(int len)
 	return &default_8_colors;
     return &default_16_colors;
 }
-
+VMM_EXPORT_SYMBOL(vmm_fb_default_cmap);
 
 /**
  *	Invert all defaults colormaps
@@ -302,4 +307,5 @@ void vmm_fb_invert_cmaps(void)
 	blue16[i] = ~blue16[i];
     }
 }
+VMM_EXPORT_SYMBOL(vmm_fb_invert_cmaps);
 

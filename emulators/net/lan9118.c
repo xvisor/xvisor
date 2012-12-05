@@ -20,9 +20,6 @@
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief SMSC LAN 9118 Ethernet Interface Emulator.
  *
- * @details This source file implements the emulator for SMSC LAN 
- * 9118 Ethernet Interface
- *
  * The source has been largely adapted from QEMU hw/lan9118.c 
  *
  * SMSC LAN9118 Ethernet interface emulation
@@ -605,7 +602,10 @@ static u32 lan9118_receive(struct lan9118_state *s, struct vmm_mbuf *mbuf)
 	DPRINTF("Got packet len:%d fifo:%d filter:%s\n",
 			(int)size, fifo_len, filter ? "pass" : "fail");
 	val = 0;
-	crc = bswap32(crc32(~0, buf, size));
+	/* As a Emulator, we don't need to insert CRC
+	 * crc = bswap32(crc32(~0, buf, size));
+	 */
+	crc = 0; /* CRC computation skipped !!! */
 	for (src_pos = 0; src_pos < size; src_pos++) {
 		val = (val >> 8) | ((u32)buf[src_pos] << 24);
 		n++;
@@ -1440,7 +1440,7 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 		    guest->node->name,
 		    VMM_DEVTREE_PATH_SEPARATOR_STRING,
 		    edev->node->name);
-	s->port = vmm_netport_alloc(tname);
+	s->port = vmm_netport_alloc(tname, VMM_NETPORT_DEF_QUEUE_SIZE);
 	if(!s->port) {
 		vmm_printf("LAN9118_state->netport alloc failed\n");
 		rc = VMM_EFAIL;

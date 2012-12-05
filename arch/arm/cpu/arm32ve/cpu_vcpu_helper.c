@@ -32,6 +32,7 @@
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
+#include <generic_timer.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
@@ -467,6 +468,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	/* For both Orphan & Normal VCPUs */
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
 	arm_regs(vcpu)->pc = vcpu->start_pc;
+	arm_regs(vcpu)->sp = vcpu->stack_va + vcpu->stack_sz - 4;
 	if (vcpu->is_normal) {
 		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
 		arm_regs(vcpu)->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
@@ -477,7 +479,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
 		arm_regs(vcpu)->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
 		arm_regs(vcpu)->cpsr |= CPSR_MODE_HYPERVISOR;
-		arm_regs(vcpu)->sp = vcpu->start_sp;
 	}
 	/* Initialize Supervisor Mode Registers */
 	/* For only Normal VCPUs */
@@ -496,11 +497,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	if (!vcpu->reset_count) {
 		vcpu->arch_priv = vmm_zalloc(sizeof(arm_priv_t));
 		if (!vcpu->arch_priv) {
-			return VMM_EFAIL;
-		}
-		arm_priv(vcpu)->hyp_stack = vmm_malloc(CONFIG_IRQ_STACK_SIZE);
-		if (!arm_priv(vcpu)->hyp_stack) {
-			vmm_free(vcpu->arch_priv);
 			return VMM_EFAIL;
 		}
 	} else {
@@ -524,8 +520,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_priv(vcpu)->lr_fiq = 0x0;
 		arm_priv(vcpu)->spsr_fiq = 0x0;
 	}
-	arm_regs(vcpu)->sp = (u32)arm_priv(vcpu)->hyp_stack + 
-				     CONFIG_IRQ_STACK_SIZE - 4;
 	if (!vcpu->reset_count) {
 		/* Initialize Hypervisor Configuration */
 		arm_priv(vcpu)->hcr = (HCR_TAC_MASK |
@@ -587,6 +581,14 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 					 HCR_VI_MASK | 
 					 HCR_VF_MASK);
 	}
+	if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+		/* Generic timer physical & virtual irq for the vcpu */
+		attr = vmm_devtree_attrval(vcpu->node, "gentimer_phys_irq");
+		arm_gentimer_context(vcpu)->phys_timer_irq = (attr) ? (*(u32 *)attr) : 0;
+		attr = vmm_devtree_attrval(vcpu->node, "gentimer_virt_irq");
+		arm_gentimer_context(vcpu)->virt_timer_irq = (attr) ? (*(u32 *)attr) : 0;
+		generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
+	}
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
@@ -606,9 +608,6 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	if ((rc = cpu_vcpu_cp15_deinit(vcpu))) {
 		return rc;
 	}
-
-	/* Free hypervisor mode stack */
-	vmm_free(arm_priv(vcpu)->hyp_stack);
 
 	/* Free super regs */
 	vmm_free(vcpu->arch_priv);
@@ -712,11 +711,12 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			arm_regs(tvcpu)->gpr[ite] = regs->gpr[ite];
 		}
 		arm_regs(tvcpu)->cpsr = regs->cpsr;
-		if(tvcpu->is_normal) {
+		if (tvcpu->is_normal) {
+			if (arm_feature(tvcpu, ARM_FEATURE_GENTIMER)) {
+				generic_timer_vcpu_context_save(arm_gentimer_context(vcpu));
+			}
 			cpu_vcpu_banked_regs_save(tvcpu);
 			arm_priv(tvcpu)->hcr = read_hcr();
-			arm_priv(tvcpu)->hcptr = read_hcptr();
-			arm_priv(tvcpu)->hstr = read_hstr();
 		}
 	}
 	/* Switch CP15 context */
@@ -731,15 +731,12 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	regs->cpsr = arm_regs(vcpu)->cpsr;
 	if (vcpu->is_normal) {
 		cpu_vcpu_banked_regs_restore(vcpu);
-		if (read_hcr() != arm_priv(vcpu)->hcr) {
-			write_hcr(arm_priv(vcpu)->hcr);
+		if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
 		}
-		if (read_hcptr() != arm_priv(vcpu)->hcptr) {
-			write_hcptr(arm_priv(vcpu)->hcptr);
-		}
-		if (read_hstr() != arm_priv(vcpu)->hstr) {
-			write_hstr(arm_priv(vcpu)->hstr);
-		}
+		write_hcr(arm_priv(vcpu)->hcr);
+		write_hcptr(arm_priv(vcpu)->hcptr);
+		write_hstr(arm_priv(vcpu)->hstr);
 	}
 	/* Clear exclusive monitor */
 	clrex();

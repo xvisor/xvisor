@@ -31,6 +31,7 @@
 #include <net/vmm_protocol.h>
 #include <net/vmm_net.h>
 #include <net/vmm_netport.h>
+#include <net/vmm_netswitch.h>
 #include <linux/interrupt.h>
 #include <linux/skbuff.h>
 

@@ -530,6 +530,29 @@ virtual_size_t vmm_heap_hksize(void)
 	return (virtual_size_t) (bheap.heap_size - bheap.mem_size);
 }
 
+virtual_size_t vmm_heap_free_size(void)
+{
+	int idx = 0, bfree;
+	irq_flags_t flags;
+	virtual_size_t ret;
+	struct dlist *pos;
+
+	vmm_spin_lock_irqsave(&bheap.lock, flags);
+
+	ret = 0;
+	for (idx = 0; idx < BINS_MAX_ORDER; idx++) {
+		bfree = 0;
+		list_for_each(pos, &bheap.free_area[idx].head) {
+			bfree++;
+		}
+		ret += bfree * (MIN_BLOCK_SIZE << idx);
+	}
+
+	vmm_spin_unlock_irqrestore(&bheap.lock, flags);
+
+	return ret;
+}
+
 int vmm_heap_print_state(struct vmm_chardev *cdev)
 {
 	int idx = 0;
@@ -593,7 +616,7 @@ int __init vmm_heap_init(void)
 	u32 heap_size, heap_page_count, heap_mem_flags;
 	void *heap_start;
 
-	heap_size = CONFIG_HEAP_SIZE * 1024;
+	heap_size = CONFIG_HEAP_SIZE_MB * 1024 * 1024;
 	heap_page_count = VMM_SIZE_TO_PAGE(heap_size);
 	heap_mem_flags =
 	    (VMM_MEMORY_READABLE | VMM_MEMORY_WRITEABLE | VMM_MEMORY_CACHEABLE |

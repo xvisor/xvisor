@@ -153,7 +153,7 @@ u32 vmm_host_physical_read(physical_addr_t hpa, void *dst, u32 len)
 		page_read = (page_read < (len - bytes_read)) ? 
 			     page_read : (len - bytes_read);
 
-		flags = arch_cpu_irq_save();
+		arch_cpu_irq_save(flags);
 
 #if !defined(ARCH_HAS_PHYSICAL_READ)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
@@ -202,7 +202,7 @@ u32 vmm_host_physical_write(physical_addr_t hpa, void *src, u32 len)
 		page_write = (page_write < (len - bytes_written)) ? 
 			      page_write : (len - bytes_written);
 
-		flags = arch_cpu_irq_save();
+		arch_cpu_irq_save(flags);
 
 #if !defined(ARCH_HAS_PHYSICAL_WRITE)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
@@ -253,7 +253,7 @@ u32 vmm_host_free_initmem(void)
 
 int __init vmm_host_aspace_init(void)
 {
-	int rc, cpu;
+	int rc, cpu = vmm_smp_processor_id();
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
 	physical_size_t ram_size;
 	virtual_addr_t vapool_start, core_resv_va = 0x0, arch_resv_va = 0x0;
@@ -261,9 +261,14 @@ int __init vmm_host_aspace_init(void)
 	virtual_size_t hk_total_size = 0x0;
 	virtual_size_t core_resv_sz = 0x0, arch_resv_sz = 0x0;
 
+	/* For secondary CPU just call arch code and return */
+	if (cpu) {
+		return arch_cpu_aspace_secondary_init();
+	}
+
 	/* Determine VAPOOL start, size, and hksize */
 	vapool_start = arch_code_vaddr_start();
-	vapool_size = (CONFIG_VAPOOL_SIZE << 20);
+	vapool_size = (CONFIG_VAPOOL_SIZE_MB << 20);
 	vapool_hksize = vmm_host_vapool_estimate_hksize(vapool_size);
 
 	/* Determine RAM start, size an hksize */
@@ -295,23 +300,23 @@ int __init vmm_host_aspace_init(void)
 
 	/* We cannot estimate the physical address, virtual address, and size 
 	 * of arch reserved space so we set all of them to zero and expect that
-	 * arch_cpu_aspace_init() will update them if arch code is going to use
+	 * arch_primary_cpu_aspace_init() will update them if arch code is going to use
 	 * the arch reserved space
 	 */
 	arch_resv_pa = 0x0;
 	arch_resv_va = 0x0;
 	arch_resv_sz = 0x0;
 
-	/* Call arch_cpu_aspace_init() with estimated parameters for core 
-	 * reserved space and arch reserved space. The arch_cpu_aspace_init()
+	/* Call arch_primary_cpu_aspace_init() with estimated parameters for core 
+	 * reserved space and arch reserved space. The arch_primary_cpu_aspace_init()
 	 * can change these parameter as per needed.
 	 */
-	if ((rc = arch_cpu_aspace_init(&core_resv_pa, 
-					&core_resv_va, 
-					&core_resv_sz,
-					&arch_resv_pa,
-					&arch_resv_va,
-					&arch_resv_sz))) {
+	if ((rc = arch_cpu_aspace_primary_init(&core_resv_pa, 
+						&core_resv_va, 
+						&core_resv_sz,
+						&arch_resv_pa,
+						&arch_resv_va,
+						&arch_resv_sz))) {
 		return rc;
 	}
 	if (core_resv_sz < hk_total_size) {
