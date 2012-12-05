@@ -30,5 +30,3 @@
 #include <cpu_timer.h>
 #include <cpu_asm_macros.h>
 #include <hpet.h>
-
-
