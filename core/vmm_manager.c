@@ -22,8 +22,8 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_compiler.h>
-#include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
@@ -230,11 +230,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->arch_priv = NULL;
 
 	/* Alloc stack pages */
-	vcpu->stack_va = vmm_host_alloc_pages(VMM_SIZE_TO_PAGE(stack_sz),
-						VMM_MEMORY_READABLE | 
-						VMM_MEMORY_WRITEABLE | 
-						VMM_MEMORY_CACHEABLE |
-						VMM_MEMORY_BUFFERABLE);
+	vcpu->stack_va = (virtual_addr_t)vmm_malloc(stack_sz);
 	if (!vcpu->stack_va) {
 		mngr.vcpu_avail_array[vnum] = TRUE;
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
@@ -323,10 +319,8 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 	}
 
 	/* Free stack pages */
-	if ((rc = vmm_host_free_pages(vcpu->stack_va, 
-				VMM_SIZE_TO_PAGE(vcpu->stack_sz)))) {
-		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
-		return rc;
+	if (vcpu->stack_va) {
+		vmm_free((void *)vcpu->stack_va);
 	}
 
 	/* Mark VCPU as available */
@@ -634,12 +628,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		}
 
 		/* Alloc stack pages */
-		vcpu->stack_va = vmm_host_alloc_pages(
-					VMM_SIZE_TO_PAGE(CONFIG_IRQ_STACK_SIZE),
-					VMM_MEMORY_READABLE | 
-					VMM_MEMORY_WRITEABLE | 
-					VMM_MEMORY_CACHEABLE |
-					VMM_MEMORY_BUFFERABLE);
+		vcpu->stack_va = 
+			(virtual_addr_t)vmm_malloc(CONFIG_IRQ_STACK_SIZE);
 		if (!vcpu->stack_va) {
 			continue;
 		}
@@ -777,10 +767,8 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 		}
 
 		/* Free stack pages */
-		if ((rc = vmm_host_free_pages(vcpu->stack_va, 
-					VMM_SIZE_TO_PAGE(vcpu->stack_sz)))) {
-			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
-			return rc;
+		if (vcpu->stack_va) {
+			vmm_free((void *)vcpu->stack_va);
 		}
 
 		/* Mark VCPU as available */
