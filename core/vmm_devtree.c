@@ -252,8 +252,8 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 	return VMM_EFAIL;
 }
 
-void * vmm_devtree_attrval(struct vmm_devtree_node *node, 
-			   const char *attrib)
+void *vmm_devtree_attrval(struct vmm_devtree_node *node, 
+			  const char *attrib)
 {
 	struct vmm_devtree_attr *attr;
 	struct dlist *l;
@@ -338,8 +338,8 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 	return VMM_OK;
 }
 
-struct vmm_devtree_attr * vmm_devtree_getattr(struct vmm_devtree_node *node,
-					      const char *name)
+struct vmm_devtree_attr *vmm_devtree_getattr(struct vmm_devtree_node *node,
+					     const char *name)
 {
 	struct dlist *l;
 	struct vmm_devtree_attr *attr;

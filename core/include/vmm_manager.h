@@ -158,7 +158,7 @@ u32 vmm_manager_vcpu_count(void);
 /** Retrieve vcpu with given ID. 
  *  Returns NULL if there is no vcpu associated with given ID.
  */
-struct vmm_vcpu * vmm_manager_vcpu(u32 vcpu_id);
+struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id);
 
 /** Reset a vcpu */
 int vmm_manager_vcpu_reset(struct vmm_vcpu *vcpu);

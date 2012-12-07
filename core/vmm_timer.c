@@ -104,7 +104,7 @@ static void vmm_timer_schedule_next_event(void)
  * when manipulating it.
  */
 static void timer_clockchip_event_handler(struct vmm_clockchip *cc,
-					  arch_regs_t * regs)
+					  arch_regs_t *regs)
 {
 	struct vmm_timer_event *e;
 	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
@@ -138,7 +138,7 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc,
 	vmm_timer_schedule_next_event();
 }
 
-int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs)
+int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
 {
 	bool added;
 	irq_flags_t flags;
@@ -188,7 +188,7 @@ int vmm_timer_event_start(struct vmm_timer_event * ev, u64 duration_nsecs)
 	return VMM_OK;
 }
 
-int vmm_timer_event_restart(struct vmm_timer_event * ev)
+int vmm_timer_event_restart(struct vmm_timer_event *ev)
 {
 	if (!ev) {
 		return VMM_EFAIL;
@@ -197,7 +197,7 @@ int vmm_timer_event_restart(struct vmm_timer_event * ev)
 	return vmm_timer_event_start(ev, ev->duration_nsecs);
 }
 
-int vmm_timer_event_expire(struct vmm_timer_event * ev)
+int vmm_timer_event_expire(struct vmm_timer_event *ev)
 {
 	irq_flags_t flags;
 	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
@@ -231,7 +231,7 @@ int vmm_timer_event_expire(struct vmm_timer_event * ev)
 	return VMM_OK;
 }
 
-int vmm_timer_event_stop(struct vmm_timer_event * ev)
+int vmm_timer_event_stop(struct vmm_timer_event *ev)
 {
 	irq_flags_t flags;
 
@@ -283,7 +283,7 @@ int __init vmm_timer_init(void)
 {
 	int rc;
 	u32 cpu = vmm_smp_processor_id();
-	struct vmm_clocksource * cs;
+	struct vmm_clocksource *cs;
 	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
 
 	/* Clear timer control structure */

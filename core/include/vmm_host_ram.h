@@ -27,7 +27,7 @@
 #include <vmm_types.h>
 
 /** Allocate physical space from RAM */
-int vmm_host_ram_alloc(physical_addr_t * pa, 
+int vmm_host_ram_alloc(physical_addr_t *pa, 
 		       physical_size_t sz, 
 		       bool aligned);
 

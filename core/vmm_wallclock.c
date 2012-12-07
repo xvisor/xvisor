@@ -147,7 +147,7 @@ static const unsigned short __mon_yday[2][13] = {
 #define SECS_PER_DAY	(SECS_PER_HOUR * 24)
 
 void vmm_wallclock_mkinfo(s64 totalsecs, int offset, 
-			  struct vmm_timeinfo * result)
+			  struct vmm_timeinfo *result)
 {
 	long days, rem, y;
 	const unsigned short *ip;
@@ -244,7 +244,7 @@ s64 vmm_wallclock_mktime(const unsigned int year0,
 	return (s64)ret;
 }
 
-int vmm_wallclock_set_local_time(struct vmm_timeval * tv)
+int vmm_wallclock_set_local_time(struct vmm_timeval *tv)
 {
 	irq_flags_t flags;
 
@@ -263,7 +263,7 @@ int vmm_wallclock_set_local_time(struct vmm_timeval * tv)
 	return VMM_OK;
 }
 
-int vmm_wallclock_get_local_time(struct vmm_timeval * tv)
+int vmm_wallclock_get_local_time(struct vmm_timeval *tv)
 {
 	irq_flags_t flags;
 	u64 tdiff, tdiv, tmod;
@@ -292,7 +292,7 @@ int vmm_wallclock_get_local_time(struct vmm_timeval * tv)
 	return VMM_OK;
 }
 
-int vmm_wallclock_set_timezone(struct vmm_timezone * tz)
+int vmm_wallclock_set_timezone(struct vmm_timezone *tz)
 {
 	int minuteswest;
 	irq_flags_t flags;
@@ -313,7 +313,7 @@ int vmm_wallclock_set_timezone(struct vmm_timezone * tz)
 	return VMM_OK;
 }
 
-int vmm_wallclock_get_timezone(struct vmm_timezone * tz)
+int vmm_wallclock_get_timezone(struct vmm_timezone *tz)
 {
 	irq_flags_t flags;
 
@@ -331,8 +331,8 @@ int vmm_wallclock_get_timezone(struct vmm_timezone * tz)
 	return VMM_OK;
 }
 
-int vmm_wallclock_set_timeofday(struct vmm_timeval * tv, 
-				struct vmm_timezone * tz)
+int vmm_wallclock_set_timeofday(struct vmm_timeval *tv, 
+				struct vmm_timezone *tz)
 {
 	int rc;
 
@@ -351,8 +351,8 @@ int vmm_wallclock_set_timeofday(struct vmm_timeval * tv,
 	return VMM_OK;
 }
 
-int vmm_wallclock_get_timeofday(struct vmm_timeval * tv, 
-				struct vmm_timezone * tz)
+int vmm_wallclock_get_timeofday(struct vmm_timeval *tv, 
+				struct vmm_timezone *tz)
 {
 	int rc;
 

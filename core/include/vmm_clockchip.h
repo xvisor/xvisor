@@ -44,14 +44,6 @@ enum vmm_clockchip_mode {
 
 struct vmm_clockchip;
 
-typedef void (*vmm_clockchip_event_handler_t) (struct vmm_clockchip * cc,
-						arch_regs_t * regs);
-typedef void (*vmm_clockchip_set_mode_t) (enum vmm_clockchip_mode mode, 
-					  struct vmm_clockchip * cc);
-typedef int (*vmm_clockchip_set_next_event_t) (unsigned long evt, 
-						struct vmm_clockchip * cc);
-typedef int (*vmm_clockchip_expire_t) (struct vmm_clockchip * cc);
-
 /**
  * Hardware abstraction a clock chip device
  *
@@ -83,11 +75,10 @@ struct vmm_clockchip {
 	u32 shift;
 	u64 max_delta_ns;
 	u64 min_delta_ns;
-	vmm_clockchip_set_mode_t set_mode;
-	vmm_clockchip_set_next_event_t set_next_event;
-	vmm_clockchip_expire_t expire;
-	vmm_clockchip_event_handler_t event_handler;
-
+	void (*event_handler) (struct vmm_clockchip *cc, arch_regs_t *regs);
+	void (*set_mode) (enum vmm_clockchip_mode mode, struct vmm_clockchip *cc);
+	int (*set_next_event) (unsigned long evt, struct vmm_clockchip *cc);
+	int (*expire) (struct vmm_clockchip *cc);
 	enum vmm_clockchip_mode mode;
 	u64 next_event;
 	void *priv;
@@ -118,7 +109,7 @@ static inline u64 vmm_clockchip_delta2ns(u32 delta, struct vmm_clockchip *cc)
 
 /** Set event handler for clockchip */
 void vmm_clockchip_set_event_handler(struct vmm_clockchip *cc, 
-				  vmm_clockchip_event_handler_t event_handler);
+		void (*event_handler) (struct vmm_clockchip *, arch_regs_t *));
 
 /** Program clockchip for next event after delta nanoseconds */
 int vmm_clockchip_program_event(struct vmm_clockchip *cc,

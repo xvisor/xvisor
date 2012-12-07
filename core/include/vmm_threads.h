@@ -40,12 +40,10 @@ enum vmm_thread_states {
 	VMM_THREAD_STATE_STOPPED=3
 };
 
-typedef int (*vmm_thread_func_t) (void *udata);
-
 struct vmm_thread {
 	struct dlist head;		/* thread list head */
-	struct vmm_vcpu * tvcpu;	/* vcpu on which thread runs */
-	vmm_thread_func_t tfn;		/* thread functions */
+	struct vmm_vcpu *tvcpu;	/* vcpu on which thread runs */
+	int (*tfn) (void *udata);	/* thread functions */
 	void *tdata;			/* data passed to thread 
 					 * function on execution */
 	int tretval;			/* thread return value */
@@ -87,7 +85,7 @@ u32 vmm_threads_count(void);
 
 /** Create a new thread */
 struct vmm_thread *vmm_threads_create(const char *thread_name, 
-				      vmm_thread_func_t thread_fn,
+				      int (*thread_fn) (void *udata),
 				      void *thread_data,
 				      u8 thread_priority,
 				      u64 thread_nsecs);

@@ -158,8 +158,8 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 			u32 len);
 
 /** Get an attribute from a device tree node */
-struct vmm_devtree_attr * vmm_devtree_getattr(struct vmm_devtree_node *node,
-					      const char *name);
+struct vmm_devtree_attr *vmm_devtree_getattr(struct vmm_devtree_node *node,
+					     const char *name);
 
 /** Delete an attribute from a device tree node */
 int vmm_devtree_delattr(struct vmm_devtree_node *node, const char *name);

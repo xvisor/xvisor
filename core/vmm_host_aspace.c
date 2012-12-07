@@ -118,7 +118,7 @@ int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count)
 	return vmm_host_ram_free(pa, page_count * VMM_PAGE_SIZE);
 }
 
-int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t * page_pa)
+int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t *page_pa)
 {
 	int rc = VMM_OK;
 	physical_addr_t pa = 0x0;

@@ -78,7 +78,7 @@ u32 vmm_host_irq_count(void)
 	return ARCH_HOST_IRQ_COUNT;
 }
 
-struct vmm_host_irq * vmm_host_irq_get(u32 hirq_num)
+struct vmm_host_irq *vmm_host_irq_get(u32 hirq_num)
 {
 	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
 		return &hirqctrl.irq[hirq_num];
@@ -160,7 +160,7 @@ int vmm_host_irq_mark_per_cpu(u32 hirq_num)
 
 int vmm_host_irq_unmark_per_cpu(u32 hirq_num)
 {
-	struct vmm_host_irq * irq;
+	struct vmm_host_irq *irq;
 	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		irq->state &= ~VMM_IRQ_STATE_PER_CPU;
@@ -282,7 +282,7 @@ int vmm_host_irq_unregister(u32 hirq_num, void *dev)
 	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_host_irq *irq;
-	struct vmm_host_irq_hndl * hirq;
+	struct vmm_host_irq_hndl *hirq;
 	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
 		vmm_spin_lock_irqsave(&hirqctrl.lock, flags);
 		irq = &hirqctrl.irq[hirq_num];

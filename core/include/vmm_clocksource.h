@@ -29,12 +29,6 @@
 
 struct vmm_clocksource;
 
-typedef u64 (*vmm_clocksource_read_t) (struct vmm_clocksource * cs);
-typedef int (*vmm_clocksource_enable_t) (struct vmm_clocksource * cs);
-typedef void (*vmm_clocksource_disable_t) (struct vmm_clocksource * cs);
-typedef void (*vmm_clocksource_suspend_t) (struct vmm_clocksource * cs);
-typedef void (*vmm_clocksource_resume_t) (struct vmm_clocksource * cs);
-
 /**
  * Hardware abstraction a timer subsystem clocksource 
  * Provides mostly state-free accessors to the underlying hardware.
@@ -69,16 +63,16 @@ typedef void (*vmm_clocksource_resume_t) (struct vmm_clocksource * cs);
  */
 struct vmm_clocksource {
 	struct dlist head;
-	const char * name;
+	const char *name;
 	int rating;
 	u64 mask;
 	u32 mult;
 	u32 shift;
-	vmm_clocksource_read_t read;
-	vmm_clocksource_enable_t enable;
-	vmm_clocksource_disable_t disable;
-	vmm_clocksource_suspend_t suspend;
-	vmm_clocksource_resume_t resume;
+	u64 (*read) (struct vmm_clocksource *cs);
+	int (*enable) (struct vmm_clocksource *cs);
+	void (*disable) (struct vmm_clocksource *cs);
+	void (*clocksource) (struct vmm_clocksource *cs);
+	void (*resume) (struct vmm_clocksource *cs);
 	void *priv;
 };
 

@@ -38,7 +38,7 @@ struct vmm_threads_ctrl {
 
 static struct vmm_threads_ctrl thctrl;
 
-int vmm_threads_start(struct vmm_thread * tinfo)
+int vmm_threads_start(struct vmm_thread *tinfo)
 {
 	int rc;
 
@@ -53,7 +53,7 @@ int vmm_threads_start(struct vmm_thread * tinfo)
 	return VMM_OK;
 }
 
-int vmm_threads_stop(struct vmm_thread * tinfo)
+int vmm_threads_stop(struct vmm_thread *tinfo)
 {
 	int rc;
 
@@ -68,7 +68,7 @@ int vmm_threads_stop(struct vmm_thread * tinfo)
 	return VMM_OK;
 }
 
-int vmm_threads_sleep(struct vmm_thread * tinfo)
+int vmm_threads_sleep(struct vmm_thread *tinfo)
 {
 	int rc;
 
@@ -83,7 +83,7 @@ int vmm_threads_sleep(struct vmm_thread * tinfo)
 	return VMM_OK;
 }
 
-int vmm_threads_wakeup(struct vmm_thread * tinfo)
+int vmm_threads_wakeup(struct vmm_thread *tinfo)
 {
 	int rc;
 
@@ -98,7 +98,7 @@ int vmm_threads_wakeup(struct vmm_thread * tinfo)
 	return VMM_OK;
 }
 
-u32 vmm_threads_get_id(struct vmm_thread * tinfo)
+u32 vmm_threads_get_id(struct vmm_thread *tinfo)
 {
 	if (!tinfo) {
 		return 0;
@@ -107,7 +107,7 @@ u32 vmm_threads_get_id(struct vmm_thread * tinfo)
 	return tinfo->tvcpu->id;
 }
 
-u8 vmm_threads_get_priority(struct vmm_thread * tinfo)
+u8 vmm_threads_get_priority(struct vmm_thread *tinfo)
 {
 	if (!tinfo) {
 		return 0;
@@ -116,7 +116,7 @@ u8 vmm_threads_get_priority(struct vmm_thread * tinfo)
 	return tinfo->tvcpu->priority;
 }
 
-int vmm_threads_get_name(char * dst, struct vmm_thread * tinfo)
+int vmm_threads_get_name(char *dst, struct vmm_thread *tinfo)
 {
 	if (!tinfo || !dst) {
 		return VMM_EFAIL;
@@ -127,7 +127,7 @@ int vmm_threads_get_name(char * dst, struct vmm_thread * tinfo)
 	return VMM_OK;
 }
 
-int vmm_threads_get_state(struct vmm_thread * tinfo)
+int vmm_threads_get_state(struct vmm_thread *tinfo)
 {
 	int rc = -1;
 
@@ -225,8 +225,8 @@ u32 vmm_threads_count(void)
 
 static void vmm_threads_entry(void)
 {
-	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
-	struct vmm_thread * tinfo = NULL;
+	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
+	struct vmm_thread *tinfo = NULL;
 
 	/* Sanity check */
 	if (!vcpu) {
@@ -253,13 +253,13 @@ static void vmm_threads_entry(void)
 }
 
 struct vmm_thread *vmm_threads_create(const char *thread_name, 
-				      vmm_thread_func_t thread_fn,
+				      int (*thread_fn) (void *udata),
 				      void *thread_data,
 				      u8 thread_priority,
 				      u64 thread_nsecs)
 {
 	irq_flags_t flags;
-	struct vmm_thread * tinfo;
+	struct vmm_thread *tinfo;
 
 	/* Create thread structure instance */
 	tinfo = vmm_malloc(sizeof(struct vmm_thread));
@@ -292,7 +292,7 @@ struct vmm_thread *vmm_threads_create(const char *thread_name,
 	return tinfo;
 }
 
-int vmm_threads_destroy(struct vmm_thread * tinfo)
+int vmm_threads_destroy(struct vmm_thread *tinfo)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;

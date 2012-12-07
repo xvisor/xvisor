@@ -41,7 +41,7 @@ struct vmm_host_vapool_ctrl {
 
 static struct vmm_host_vapool_ctrl vpctrl;
 
-int vmm_host_vapool_alloc(virtual_addr_t * va, virtual_size_t sz, bool aligned)
+int vmm_host_vapool_alloc(virtual_addr_t *va, virtual_size_t sz, bool aligned)
 {
 	u32 i, found, binc, bcnt, bpos, bfree;
 	irq_flags_t flags;

@@ -66,7 +66,7 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 {
 	u32 ite;
 	bool found;
-	struct vmm_devemu_vcpu_context * ev;
+	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_emudev *edev;
 	struct vmm_region *reg;
 
@@ -115,7 +115,7 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 {
 	u32 ite;
 	bool found;
-	struct vmm_devemu_vcpu_context * ev;
+	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_emudev *edev;
 	struct vmm_region *reg;
 
@@ -186,7 +186,7 @@ static vmm_irq_return_t vmm_devemu_handle_h2g_irq(u32 irq_no,
 						  arch_regs_t *regs, 
 						  void *dev)
 {
-	struct vmm_devemu_h2g_irq * irq = dev;
+	struct vmm_devemu_h2g_irq *irq = dev;
 
 	if (irq) {
 		vmm_host_irq_disable(irq->host_irq);
@@ -601,10 +601,10 @@ const struct vmm_emuid *devemu_match_node(const struct vmm_emuid *matches,
 int vmm_devemu_reset_context(struct vmm_guest *guest)
 {
 	u32 ite;
-	struct dlist * l;
+	struct dlist *l;
 	struct vmm_devemu_guest_context *eg;
 	struct vmm_devemu_vcpu_context *ev;
-	struct vmm_vcpu * vcpu;
+	struct vmm_vcpu *vcpu;
 
 	if (!guest) {
 		return VMM_EFAIL;
