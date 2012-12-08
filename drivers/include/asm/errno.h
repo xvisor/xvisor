@@ -4,7 +4,7 @@
 #include <vmm_error.h>
 
 #define EFAIL			-(VMM_EFAIL)
-#define EUNKNOWN		-(VMM_EUNKOWN)
+#define EUNKNOWN		-(VMM_EUNKNOWN)
 #define EINVAL			-(VMM_EINVALID)
 #define ENOTAVAIL		-(VMM_ENOTAVAIL)
 #define EALREADY		-(VMM_EALREADY)

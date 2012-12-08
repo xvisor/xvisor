@@ -26,7 +26,7 @@
 
 #define VMM_OK			0
 #define VMM_EFAIL		-1
-#define VMM_EUNKOWN		-2
+#define VMM_EUNKNOWN		-2
 #define VMM_ENOTAVAIL		-3
 #define VMM_EALREADY		-4
 #define VMM_EINVALID		-5
