@@ -2137,7 +2137,7 @@ static int ext2fs_create(struct vnode *dv, const char *name, u32 mode)
 	rc = ext2fs_node_find_dirent(dnode, name, &dent);
 	if (rc != VMM_ENOENT) {
 		if (!rc) {
-			return VMM_EALREADY;
+			return VMM_EEXIST;
 		} else {
 			return rc;
 		}
@@ -2224,7 +2224,7 @@ static int ext2fs_rename(struct vnode *sv, const char *sname,
 	rc = ext2fs_node_find_dirent(dnode, dname, &dent);
 	if (rc != VMM_ENOENT) {
 		if (!rc) {
-			return VMM_EALREADY;
+			return VMM_EEXIST;
 		} else {
 			return rc;
 		}
@@ -2262,7 +2262,7 @@ static int ext2fs_mkdir(struct vnode *dv, const char *name, u32 mode)
 	rc = ext2fs_node_find_dirent(dnode, name, &dent);
 	if (rc != VMM_ENOENT) {
 		if (!rc) {
-			return VMM_EALREADY;
+			return VMM_EEXIST;
 		} else {
 			return rc;
 		}

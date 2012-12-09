@@ -1502,7 +1502,7 @@ int vfs_rename(const char *src, const char *dest)
 	err = vfs_vnode_acquire(dest, &v2);
 	if (!err) {
 		vfs_vnode_release(v2);
-		err = VMM_EALREADY;
+		err = VMM_EEXIST;
 		goto err1;
 	}
 
