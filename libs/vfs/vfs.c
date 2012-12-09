@@ -1454,7 +1454,7 @@ int vfs_rmdir(const char *path)
 }
 VMM_EXPORT_SYMBOL(vfs_rmdir);
 
-int vfs_rename(char *src, char *dest)
+int vfs_rename(const char *src, const char *dest)
 {
 	int err, len;
 	char *sname, *dname;

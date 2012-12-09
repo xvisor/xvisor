@@ -339,7 +339,7 @@ int vfs_rmdir(const char *path);
 /** Rename file/directory 
  *  Note: Must be called from Orphan (or Thread) context.
  */
-int vfs_rename(char *src, char *dst);
+int vfs_rename(const char *src, const char *dst);
 
 /** Unlink/remove file 
  *  Note: Must be called from Orphan (or Thread) context.
