@@ -557,7 +557,7 @@ int devemu_device_is_compatible(struct vmm_devtree_node *node, const char *compa
 	if (cp == NULL)
 		return 0;
 	while (cplen > 0) {
-		if (strncmp(cp, compat, strlen(compat)) == 0)
+		if (strcmp(cp, compat) == 0)
 			return 1;
 		l = strlen(cp) + 1;
 		cp += l;
