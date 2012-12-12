@@ -47,6 +47,10 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs mount <bdev_name> <path_to_mount>\n");
 	vmm_cprintf(cdev, "   vfs umount <path_to_unmount>\n");
 	vmm_cprintf(cdev, "   vfs ls <path_to_dir>\n");
+	vmm_cprintf(cdev, "   vfs mv <old_path> <new_path>\n");
+	vmm_cprintf(cdev, "   vfs rm <path_to_file>\n");
+	vmm_cprintf(cdev, "   vfs mkdir <path_to_dir>\n");
+	vmm_cprintf(cdev, "   vfs rmdir <path_to_dir>\n");	
 	vmm_cprintf(cdev, "   vfs load <phys_addr> <path_to_file> "
 			  "[<file_offset>] [<byte_count>]\n");
 }
@@ -299,6 +303,79 @@ static int cmd_vfs_ls(struct vmm_chardev *cdev, const char *path)
 	return VMM_OK;
 }
 
+static int cmd_vfs_mv(struct vmm_chardev *cdev, 
+			const char *old_path, const char *new_path)
+{
+	int rc;
+	struct stat st;
+
+	rc = vfs_stat(old_path, &st);
+	if (rc) {
+		vmm_cprintf(cdev, "Path %s does not exist.\n", old_path);
+		return rc;
+	}
+
+	rc = vfs_rename(old_path, new_path);
+	if (rc) {
+		vmm_cprintf(cdev, "Failed to rename.\n");
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+static int cmd_vfs_rm(struct vmm_chardev *cdev, const char *path)
+{
+	int rc;
+	struct stat st;
+
+	rc = vfs_stat(path, &st);
+	if (rc) {
+		vmm_cprintf(cdev, "Path %s does not exist.\n", path);
+		return rc;
+	}
+
+	if (!(st.st_mode & S_IFREG)) {
+		vmm_cprintf(cdev, "Path %s should be regular file.\n", path);
+		return VMM_EINVALID;
+	}
+
+	return vfs_unlink(path);
+}
+
+static int cmd_vfs_mkdir(struct vmm_chardev *cdev, const char *path)
+{
+	int rc;
+	struct stat st;
+
+	rc = vfs_stat(path, &st);
+	if (!rc) {
+		vmm_cprintf(cdev, "Path %s already exist.\n", path);
+		return VMM_EEXIST;
+	}
+
+	return vfs_mkdir(path, S_IRWXU|S_IRWXG|S_IRWXO);
+}
+
+static int cmd_vfs_rmdir(struct vmm_chardev *cdev, const char *path)
+{
+	int rc;
+	struct stat st;
+
+	rc = vfs_stat(path, &st);
+	if (rc) {
+		vmm_cprintf(cdev, "Path %s does not exist.\n", path);
+		return rc;
+	}
+
+	if (!(st.st_mode & S_IFDIR)) {
+		vmm_cprintf(cdev, "Path %s should be directory.\n", path);
+		return VMM_EINVALID;
+	}
+
+	return vfs_rmdir(path);
+}
+
 #define VFS_LOAD_BUF_SZ		256
 
 static int cmd_vfs_load(struct vmm_chardev *cdev, physical_addr_t pa, 
@@ -380,6 +457,14 @@ int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vfs_umount(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "ls") == 0) && (argc == 3)) {
 		return cmd_vfs_ls(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "mv") == 0) && (argc == 4)) {
+		return cmd_vfs_mv(cdev, argv[2], argv[3]);
+	} else if ((strcmp(argv[1], "rm") == 0) && (argc == 3)) {
+		return cmd_vfs_rm(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "mkdir") == 0) && (argc == 3)) {
+		return cmd_vfs_mkdir(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "rmdir") == 0) && (argc == 3)) {
+		return cmd_vfs_rmdir(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "load") == 0) && (argc > 3)) {
 		pa = (physical_addr_t)str2ulonglong(argv[2], 10);
 		off = (argc > 4) ? str2uint(argv[4], 10) : 0;
