@@ -30,6 +30,7 @@ enum gic_type {
 	GIC_TYPE_11MPCORE,
 	GIC_TYPE_REALVIEW,
 	GIC_TYPE_VEXPRESS,
+	GIC_TYPE_VEXPRESS_V2,
 };
 
 /* GIC register write */
