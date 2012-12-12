@@ -446,7 +446,7 @@ static int cpiofs_remove(struct vnode *dv, struct vnode *v, const char *name)
 	return VMM_EFAIL;
 }
 
-static int cpiofs_rename(struct vnode *sv, const char *sname, 
+static int cpiofs_rename(struct vnode *sv, const char *sname, struct vnode *v,
 			 struct vnode *dv, const char *dname)
 {
 	/* Not allowed (read-only filesystem) */

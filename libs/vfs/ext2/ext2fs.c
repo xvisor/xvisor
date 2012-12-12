@@ -1403,8 +1403,7 @@ done:
 static int ext2fs_node_truncate(struct ext2fs_node *node, u64 pos) 
 {
 	int rc;
-	u32 blkpos, blkno;
-	u32 last_blkpos;
+	u32 blkpos, blkno, blkcnt;
 	u32 first_blkpos, first_blkoff;
 	u64 filesize = ext2fs_node_get_size(node);
 	struct ext2fs_control *ctrl = node->ctrl;
@@ -1418,7 +1417,10 @@ static int ext2fs_node_truncate(struct ext2fs_node *node, u64 pos)
 	first_blkoff = pos - (first_blkpos * ctrl->block_size);
 
 	/* Note: div result < 32-bit */
-	last_blkpos = udiv64(filesize, ctrl->block_size);
+	blkcnt = udiv64(filesize, ctrl->block_size);
+	if (filesize > ((u64)blkcnt * (u64)ctrl->block_size)) {
+		blkcnt++;
+	}
 
 	/* If first block to truncate will have some data left
 	 * then do not free first block
@@ -1430,7 +1432,7 @@ static int ext2fs_node_truncate(struct ext2fs_node *node, u64 pos)
 	}
 
 	/* Free node blocks */
-	while (blkpos < last_blkpos) {
+	while (blkpos < blkcnt) {
 		rc = ext2fs_node_read_blkno(node, blkpos, &blkno);
 		if (rc) {
 			return rc;
@@ -1448,6 +1450,8 @@ static int ext2fs_node_truncate(struct ext2fs_node *node, u64 pos)
 
 		blkpos++;
 	}
+
+	/* FIXME: Free indirect & double indirect blocks */
 
 	if (pos != filesize) {
 		/* Update node mtime */
@@ -1617,7 +1621,8 @@ static int ext2fs_node_add_dirent(struct ext2fs_node *dnode,
 			return VMM_EIO;
 		}
 
-		if (direntlen < (__le16(dent.direntlen) - dent.namelen)) {
+		if (direntlen < (__le16(dent.direntlen) - 
+				dent.namelen - sizeof(struct ext2_dirent))) {
 			found = TRUE;
 			break;
 		}
@@ -1654,7 +1659,8 @@ static int ext2fs_node_add_dirent(struct ext2fs_node *dnode,
 		/* Split existing directory entry to make space for 
 		 * new directory entry
 		 */
-		direntlen = (__le16(dent.direntlen) - dent.namelen);
+		direntlen = (__le16(dent.direntlen) - 
+				dent.namelen - sizeof(struct ext2_dirent));
 		dent.direntlen = __le16(__le16(dent.direntlen) - direntlen);
 
 		wlen = ext2fs_node_write(dnode, off, 
@@ -1685,9 +1691,13 @@ static int ext2fs_node_add_dirent(struct ext2fs_node *dnode,
 
 	wlen = ext2fs_node_write(dnode, off, 
 			 strlen(filename), (char *)filename);
-	if (wlen != sizeof(struct ext2_dirent)) {
+	if (wlen != strlen(filename)) {
 		return VMM_EIO;
 	}
+
+	/* Increment nlinks field of inode */
+	dnode->inode.nlinks = __le16(__le16(dnode->inode.nlinks) + 1);
+	dnode->inode_dirty = TRUE;
 
 	return VMM_OK;
 }
@@ -1758,6 +1768,10 @@ static int ext2fs_node_del_dirent(struct ext2fs_node *dnode,
 	if (wlen != sizeof(struct ext2_dirent)) {
 		return VMM_EIO;
 	}
+
+	/* Decrement nlinks field of inode */
+	dnode->inode.nlinks = __le16(__le16(dnode->inode.nlinks) - 1);
+	dnode->inode_dirty = TRUE;
 
 	return VMM_OK;
 }
@@ -2213,7 +2227,7 @@ static int ext2fs_remove(struct vnode *dv, struct vnode *v, const char *name)
 	return VMM_OK;
 }
 
-static int ext2fs_rename(struct vnode *sv, const char *sname, 
+static int ext2fs_rename(struct vnode *sv, const char *sname, struct vnode *v,
 			 struct vnode *dv, const char *dname)
 {
 	int rc;
@@ -2244,6 +2258,10 @@ static int ext2fs_rename(struct vnode *sv, const char *sname,
 	if (rc) {
 		return rc;
 	}
+
+	/* FIXME: node being renamed might be a directory, so
+	 * we may need to update ".." entry in directory
+	 */
 
 	return VMM_OK;
 }
