@@ -138,6 +138,10 @@ struct vmm_vcpu {
 
 	struct vmm_vcpu_irqs irqs;
 
+#ifdef CONFIG_SMP
+	u8 hcpu; /**< Host cpu on where this is running or last ran */
+#endif
+
 	u8 priority; /**< Scheduling Parameter */
 	u32 preempt_count; /**< Scheduling Parameter */
 	u64 time_slice; /**< Scheduling Parameter (nano seconds) */

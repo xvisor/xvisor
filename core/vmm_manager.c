@@ -28,6 +28,7 @@
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 #include <vmm_manager.h>
+#include <vmm_smp.h>
 #include <arch_vcpu.h>
 #include <arch_guest.h>
 #include <libs/stringlib.h>
@@ -244,6 +245,11 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 		return NULL;
 	}
+
+#ifdef CONFIG_SMP
+	/* Set hcpu to current CPU */
+	vcpu->hcpu = vmm_smp_processor_id();
+#endif
 
 	/* Notify scheduler about new VCPU */
 	vcpu->sched_priv = NULL;
@@ -646,6 +652,11 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		if (vmm_vcpu_irq_init(vcpu)) {
 			continue;
 		}
+
+#ifdef CONFIG_SMP
+		/* Set hcpu to current CPU */
+		vcpu->hcpu = vmm_smp_processor_id();
+#endif
 
 		/* Notify scheduler about new VCPU */
 		vcpu->sched_priv = NULL;
