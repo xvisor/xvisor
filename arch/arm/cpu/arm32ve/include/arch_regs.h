@@ -112,8 +112,6 @@ struct arm_priv {
 	u32 sp_fiq;
 	u32 lr_fiq;
 	u32 spsr_fiq;
-	/* Hypervisor mode stack */
-	void * hyp_stack;
 	/* Hypervisor Configuration */
 	u32 hcr;
 	/* Hypervisor Coprocessor Trap Register */

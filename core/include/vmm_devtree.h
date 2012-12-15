@@ -55,7 +55,6 @@
 #define VMM_DEVTREE_GUESTINFO_NODE_NAME		"guests"
 #define VMM_DEVTREE_VCPUS_NODE_NAME		"vcpus"
 #define VMM_DEVTREE_START_PC_ATTR_NAME		"start_pc"
-#define VMM_DEVTREE_START_SP_ATTR_NAME		"start_sp"
 #define VMM_DEVTREE_PRIORITY_ATTR_NAME		"priority"
 #define VMM_DEVTREE_TIME_SLICE_ATTR_NAME	"time_slice"
 #define VMM_DEVTREE_ADDRSPACE_NODE_NAME		"aspace"
@@ -159,8 +158,8 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 			u32 len);
 
 /** Get an attribute from a device tree node */
-struct vmm_devtree_attr * vmm_devtree_getattr(struct vmm_devtree_node *node,
-					      const char *name);
+struct vmm_devtree_attr *vmm_devtree_getattr(struct vmm_devtree_node *node,
+					     const char *name);
 
 /** Delete an attribute from a device tree node */
 int vmm_devtree_delattr(struct vmm_devtree_node *node, const char *name);

@@ -20,6 +20,11 @@
 				device_type = "cpu";
 				model = "Cortex-A9";
 			};
+
+			cpu1 {
+				device_type = "cpu";
+				model = "Cortex-A9";
+			};
 		};
 
 		memory {
@@ -30,6 +35,12 @@
 			 */
 			physical_addr = <0x60000000>;
 			physical_size = <0x10000000>; /* 256 MB */
+		};
+
+		scu { /* Snoop Control Unit */
+	      		device_type = "scu";
+	      		compatible = "arm, a9mpcore-priv";
+	      		reg = <0x1E000000 0x1000>;
 		};
 
 		gic { /* Generic Interrupt Controller */

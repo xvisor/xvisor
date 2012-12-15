@@ -88,7 +88,7 @@ static int cpu_boot_pagetable_init(physical_addr_t *pa,
 	virtual_addr_t cva, eva = 0;
 	u32 nr_ptabs = 0, pg_tab_sz = 0, tsize2map;
 
-	tsize2map = CONFIG_VAPOOL_SIZE << 20;
+	tsize2map = CONFIG_VAPOOL_SIZE_MB << 20;
 
 	pg_tab_sz = calculate_page_table_size(tsize2map, &nr_ptabs);
 
@@ -141,7 +141,8 @@ static int cpu_boot_pagetable_init(physical_addr_t *pa,
 	}
 
 	cva = arch_code_vaddr_start() + arch_code_size();
-	eva += cva + ((CONFIG_VAPOOL_SIZE << 20) - (arch_code_size() + (*sz) + pg_tab_sz));
+	eva += cva + ((CONFIG_VAPOOL_SIZE_MB << 20) - 
+				(arch_code_size() + (*sz) + pg_tab_sz));
 	*pa += arch_code_size();
 
 	/* Create the page table entries for all the virtual addresses. */
@@ -163,12 +164,12 @@ static int cpu_boot_pagetable_init(physical_addr_t *pa,
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_init(physical_addr_t * core_resv_pa, 
-			 virtual_addr_t * core_resv_va,
-			 virtual_size_t * core_resv_sz,
-			 physical_addr_t * arch_resv_pa,
-			 virtual_addr_t * arch_resv_va,
-			 virtual_size_t * arch_resv_sz)
+int arch_cpu_aspace_primary_init(physical_addr_t * core_resv_pa, 
+				 virtual_addr_t * core_resv_va,
+				 virtual_size_t * core_resv_sz,
+				 physical_addr_t * arch_resv_pa,
+				 virtual_addr_t * arch_resv_va,
+				 virtual_size_t * arch_resv_sz)
 {
 	u32 c0_sr;
 
@@ -183,6 +184,12 @@ int arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	c0_sr &= ~(0x01 << 22);
 	write_c0_status(c0_sr);
 
+	return VMM_OK;
+}
+
+int __init arch_cpu_aspace_secondary_init(void)
+{
+	/* FIXME: For now nothing to do here. */
 	return VMM_OK;
 }
 

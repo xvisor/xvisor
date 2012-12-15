@@ -34,7 +34,7 @@
 
 /** Emulate 'cps' hypercall */
 static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
-		       arch_regs_t * regs, struct vmm_vcpu * vcpu)
+		       arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	register u32 cpsr, mask, imod, mode;
 	imod = ARM_INST_BITS(inst,
@@ -80,7 +80,7 @@ static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'mrs' hypercall */
 static int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
-		       arch_regs_t * regs, struct vmm_vcpu * vcpu)
+				arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	register u32 Rd, psr;
 	Rd = ARM_INST_BITS(inst,
@@ -103,7 +103,7 @@ static int arm_hypercall_mrs(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'msr_i' hypercall */
 static int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
+				 arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	register u32 mask, imm12, psr, tmask;
 	mask = ARM_INST_BITS(inst,
@@ -134,7 +134,7 @@ static int arm_hypercall_msr_i(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'msr_r' hypercall */
 static int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
+				 arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	register u32 mask, Rn, psr, tmask;
 	mask = ARM_INST_BITS(inst,
@@ -170,7 +170,7 @@ static int arm_hypercall_msr_r(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'rfe' hypercall */
 static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
+				 arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	u32 data;
 	register int rc;
@@ -232,7 +232,7 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'wfi' hypercall */
 static int arm_hypercall_wfi(u32 id, u32 subid, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
+			 	arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	/* Wait for irq on this vcpu */
 	vmm_vcpu_irq_wait(vcpu);
@@ -242,7 +242,7 @@ static int arm_hypercall_wfi(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'srs' hypercall */
 static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
+			 	arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	u32 data;
 	register int rc;
@@ -284,7 +284,7 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 
 /** Emulate 'ldm_ue' hypercall */
 static int arm_hypercall_ldm_ue(u32 id, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
+			 arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	u32 pos, data, ndata[16];
 	register int rc;
@@ -441,7 +441,7 @@ static int arm_hypercall_ldm_ue(u32 id, u32 inst,
 
 /** Emulate 'stm_u' hypercall */
 static int arm_hypercall_stm_u(u32 id, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
+			 arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	u32 pos, ndata[16];
 	register int rc;
@@ -511,7 +511,7 @@ static int arm_hypercall_stm_u(u32 id, u32 inst,
 
 /** Emulate 'subs_rel' hypercall */
 static int arm_hypercall_subs_rel(u32 id, u32 inst,
-			 arch_regs_t * regs, struct vmm_vcpu * vcpu)
+			 arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	u32 shift_t;
 	register u32 opcode, Rn, imm12, imm5, type, Rm;
@@ -636,13 +636,14 @@ static int arm_hypercall_subs_rel(u32 id, u32 inst,
 	return VMM_OK;
 }
 
-static int arm_hypercall_subid(u32 id, u32 subid, u32 inst, arch_regs_t *regs, struct vmm_vcpu *vcpu)
+static int arm_hypercall_subid(u32 id, u32 subid, u32 inst, 
+				arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	return VMM_EFAIL;
 }
 
-static int (* const cps_and_co_funcs[]) (u32 id, u32 subid, 
-			u32 inst, arch_regs_t *regs, struct vmm_vcpu *vcpu) = 
+static int (* const cps_and_co_funcs[]) (u32 id, u32 subid, u32 inst, 
+				arch_regs_t *regs, struct vmm_vcpu *vcpu) = 
 {
 	arm_hypercall_cps,	/* ARM_HYPERCALL_CPS_SUBID */
 	arm_hypercall_mrs,	/* ARM_HYPERCALL_MRS_SUBID */
@@ -654,7 +655,8 @@ static int (* const cps_and_co_funcs[]) (u32 id, u32 subid,
 	arm_hypercall_subid	/* not used yet */
 };
 
-static int arm_hypercall_cps_and_co(u32 id, u32 inst, arch_regs_t * regs, struct vmm_vcpu * vcpu)
+static int arm_hypercall_cps_and_co(u32 id, u32 inst, 
+				arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	u32 subid = ARM_INST_DECODE(inst,
 			ARM_INST_HYPERCALL_SUBID_MASK,
@@ -663,13 +665,14 @@ static int arm_hypercall_cps_and_co(u32 id, u32 inst, arch_regs_t * regs, struct
 	return cps_and_co_funcs[subid] (id, subid, inst, regs, vcpu);
 }
 
-static int arm_hypercall_id(u32 id, u32 inst, arch_regs_t *regs, struct vmm_vcpu *vcpu)
+static int arm_hypercall_id(u32 id, u32 inst, 
+				arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
 	return VMM_EFAIL;
 }
 
 static int (* const hcall_funcs[]) (u32 id, u32 inst, 
-			arch_regs_t *regs, struct vmm_vcpu *vcpu) = 
+				arch_regs_t *regs, struct vmm_vcpu *vcpu) = 
 {
 	arm_hypercall_cps_and_co,	/* ARM_HYPERCALL_CPS_ID */
 	arm_hypercall_ldm_ue,		/* ARM_HYPERCALL_LDM_UE_ID0 */

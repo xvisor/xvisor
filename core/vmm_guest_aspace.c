@@ -75,13 +75,13 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 	return reg;
 }
 
-u32 vmm_guest_physical_read(struct vmm_guest * guest, 
+u32 vmm_guest_physical_read(struct vmm_guest *guest, 
 			    physical_addr_t gphys_addr, 
-			    void * dst, u32 len)
+			    void *dst, u32 len)
 {
 	u32 bytes_read = 0, to_read;
 	physical_addr_t hphys_addr;
-	struct vmm_region * reg = NULL;
+	struct vmm_region *reg = NULL;
 
 	if (!guest || !dst || !len) {
 		return 0;
@@ -115,13 +115,13 @@ u32 vmm_guest_physical_read(struct vmm_guest * guest,
 	return bytes_read;
 }
 
-u32 vmm_guest_physical_write(struct vmm_guest * guest, 
+u32 vmm_guest_physical_write(struct vmm_guest *guest, 
 			     physical_addr_t gphys_addr, 
-			     void * src, u32 len)
+			     void *src, u32 len)
 {
 	u32 bytes_written = 0, to_write;
 	physical_addr_t hphys_addr;
-	struct vmm_region * reg = NULL;
+	struct vmm_region *reg = NULL;
 
 	if (!guest || !src || !len) {
 		return 0;
@@ -155,15 +155,15 @@ u32 vmm_guest_physical_write(struct vmm_guest * guest,
 	return bytes_written;
 }
 
-int vmm_guest_physical_map(struct vmm_guest * guest,
+int vmm_guest_physical_map(struct vmm_guest *guest,
 			   physical_addr_t gphys_addr,
 			   physical_size_t gphys_size,
-			   physical_addr_t * hphys_addr,
-			   physical_size_t * hphys_size,
-			   u32 * reg_flags)
+			   physical_addr_t *hphys_addr,
+			   physical_size_t *hphys_size,
+			   u32 *reg_flags)
 {
 	/* FIXME: Need to implement dynamic RAM allocation for RAM region */
-	struct vmm_region * reg = NULL;
+	struct vmm_region *reg = NULL;
 
 	if (!guest || !hphys_addr) {
 		return VMM_EFAIL;

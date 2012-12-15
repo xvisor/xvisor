@@ -294,8 +294,11 @@ static void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)
 
 	/*
 	 * Setup the Host IRQ subsystem.
+	 * Note: We handle all interrupts including SGIs and PPIs via C code.
+	 * The Linux kernel handles pheripheral interrupts via C code and 
+	 * SGI/PPI via assembly code.
 	 */
-	for (i = irq_start; i < irq_limit; i++) {
+	for (i = 0; i < irq_limit; i++) {
 		vmm_host_irq_set_chip(i, &gic_chip);
 		vmm_host_irq_set_chip_data(i, gic);
 	}

@@ -42,7 +42,7 @@ struct vmm_host_ram_ctrl {
 
 static struct vmm_host_ram_ctrl rctrl;
 
-int vmm_host_ram_alloc(physical_addr_t * pa, physical_size_t sz, bool aligned)
+int vmm_host_ram_alloc(physical_addr_t *pa, physical_size_t sz, bool aligned)
 {
 	u32 i, found, binc, bcnt, bpos, bfree;
 	irq_flags_t flags;

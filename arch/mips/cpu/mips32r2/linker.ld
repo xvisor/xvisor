@@ -84,7 +84,7 @@ SECTIONS
 	{
 		. = ALIGN(4096);
 		PROVIDE(_heap_start = .);
-		. = . + (CONFIG_HEAP_SIZE * 1024);
+		. = . + (CONFIG_HEAP_SIZE_MB * 1024 * 1024);
 		. = ALIGN(4);
 		PROVIDE(_eheap = .);
 	}

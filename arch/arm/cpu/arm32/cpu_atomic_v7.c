@@ -54,7 +54,7 @@ void __lock arch_atomic_add(atomic_t * atom, long value)
 				 */
 "	teq     %1, #0\n"	/* Compare tmp (%1) result with 0 */
 "	bne     1b"	/* If fails go back to 1 and retry else return */
-	:"=&r"(result), "=&r"(tmp), "=&r"(atom->counter)
+	:"=&r"(result), "=&r"(tmp), "+Qo"(atom->counter)
 	:"r"(&atom->counter), "Ir"(value)
 	:"cc");
 }
@@ -73,7 +73,7 @@ void __lock arch_atomic_sub(atomic_t * atom, long value)
 				 */
 "	teq     %1, #0\n"	/* Compare tmp (%1) result with 0 */
 "	bne     1b"	/* If fails go back to 1 and retry else return */
-	:"=&r"(result), "=&r"(tmp), "=&r"(atom->counter)
+	:"=&r"(result), "=&r"(tmp), "+Qo"(atom->counter)
 	:"r"(&atom->counter), "Ir"(value)
 	:"cc");
 }
@@ -92,7 +92,7 @@ bool __lock arch_atomic_testnset(atomic_t * atom, long test, long value)
 				 */
 "	teq     %0, #0\n"	/* Compare tmp (%0) result with 0 */
 "	bne     1b"		/* If fails go back to 1 and retry */
-	:"=&r"(tmp), "=&r"(previous), "=&r"(atom->counter)
+	:"=&r"(tmp), "=&r"(previous), "+Qo"(atom->counter)
 	:"r"(&atom->counter), "Ir"(test), "r"(value)
 	:"cc");
 
@@ -113,7 +113,7 @@ long __lock arch_atomic_add_return(atomic_t * atom, long value)
 				 */
 "	teq     %1, #0\n"	/* Compare tmp (%1) result with 0 */
 "	bne     1b"	/* If fails go back to 1 and retry else return */
-	:"=&r"(result), "=&r"(tmp), "=&r"(atom->counter)
+	:"=&r"(result), "=&r"(tmp), "+Qo"(atom->counter)
 	:"r"(&atom->counter), "Ir"(value)
 	:"cc");
 
@@ -134,7 +134,7 @@ long __lock arch_atomic_sub_return(atomic_t * atom, long value)
 				 */
 "	teq     %1, #0\n"	/* Compare tmp (%1) result with 0 */
 "	bne     1b"	/* If fails go back to 1 and retry else return */
-	:"=&r"(result), "=&r"(tmp), "=&r"(atom->counter)
+	:"=&r"(result), "=&r"(tmp), "+Qo"(atom->counter)
 	:"r"(&atom->counter), "Ir"(value)
 	:"cc");
 

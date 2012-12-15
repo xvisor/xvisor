@@ -27,8 +27,10 @@
 struct gic_state;
 
 enum gic_type {
+	GIC_TYPE_11MPCORE,
 	GIC_TYPE_REALVIEW,
 	GIC_TYPE_VEXPRESS,
+	GIC_TYPE_VEXPRESS_V2,
 };
 
 /* GIC register write */
@@ -42,7 +44,7 @@ int gic_reg_read(struct gic_state *s, physical_addr_t offset, u32 *dst);
 int gic_state_reset(struct gic_state *s);
 
 /** Allocate and initializes the GIC state */
-struct gic_state* gic_state_alloc(struct vmm_guest *guest,
+struct gic_state *gic_state_alloc(struct vmm_guest *guest,
 			   enum gic_type type,
 			   u32 num_cpu,
 			   bool is_child_pic,

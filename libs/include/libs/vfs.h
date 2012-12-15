@@ -93,7 +93,6 @@
 #define	X_OK			(0x01)
 
 struct stat;
-struct file;
 struct dirent;
 struct mount;
 struct vnode;
@@ -102,28 +101,20 @@ struct filesystem;
 
 /** file status structure */
 struct stat {
-    u32	st_ino;				/* file serial number */
-    loff_t st_size;     		/* file size */
-    u32	st_mode;			/* file mode */
-    u32	st_dev;				/* id of device containing file */
-    u32	st_uid;				/* user ID of the file owner */
-    u32	st_gid;				/* group ID of the file's group */
-    u32	st_ctime;			/* file create time */
-    u32	st_atime;			/* last access time */
-    u32 st_mtime;			/* last data modification time */
-};
-
-/** file structure */
-struct file {
-	struct vmm_mutex f_lock;	/* file lock */
-	u32 f_flags;			/* open flag */
-	loff_t f_offset;		/* current position in file */
-	struct vnode *f_vnode;		/* vnode */
+	u32	st_ino;			/* file serial number */
+	loff_t	st_size;     		/* file size */
+	u32	st_mode;		/* file mode */
+	u32	st_dev;			/* id of device containing file */
+	u32	st_uid;			/* user ID of the file owner */
+	u32	st_gid;			/* group ID of the file's group */
+	u64	st_ctime;		/* file create time */
+	u64	st_atime;		/* file access time */
+	u64	st_mtime;		/* file modify time */
 };
 
 /** dirent types */
 enum dirent_type {
-	DT_UNKNOWN,
+	DT_UNK,
 	DT_DIR,
 	DT_REG,
 	DT_BLK,
@@ -136,11 +127,12 @@ enum dirent_type {
 
 /** dirent structure */
 struct dirent {
-	u32 d_fileno;			/* file number of entry */
-	u16 d_reclen;			/* length of this record */
-	u16 d_namlen;			/* length of string in d_name */
-	enum dirent_type d_type; 	/* file type, see below */
-	char d_name[VFS_MAX_NAME];	/* name must be no longer than this */
+	loff_t d_off;			/* offset in actual directory */
+	u16 d_reclen;			/* length of directory entry */
+	enum dirent_type d_type; 	/* type of file; not supported
+					 * by all file system types 
+					 */
+	char d_name[VFS_MAX_NAME];	/* name must not be longer than this */
 };
 
 /** mount flags */
@@ -177,6 +169,7 @@ enum vnode_type {
 	VLNK,	    			/* symbolic link */
 	VSOCK,	    			/* socks */
 	VFIFO,	    			/* fifo */
+	VUNK,				/* unknown */
 };
 
 /** vnode flags */
@@ -185,31 +178,36 @@ enum vnode_flag {
 	VROOT,	   			/* root of its filesystem */
 };
 
-/** vnode attribute structure */
-struct vattr {
-	enum vnode_type	va_type;	/* vnode type */
-	u32 va_mode;			/* file access mode */
-};
-
 /** vnode structure */
 struct vnode {
 	struct dlist v_link;		/* link for hash list */
 	struct mount *v_mount;		/* mount point pointer */
 	atomic_t v_refcnt;		/* reference count */
-	char *v_path;			/* pointer to path in fs */
-	enum vnode_type v_type;		/* vnode type 
-					 * (set once by filesystem lookup) 
+	char v_path[VFS_MAX_PATH];	/* pointer to path in fs */
+	enum vnode_flag v_flags;	/* vnode flags 
+					 * (used by internally by vfs) 
 					 */
-	enum vnode_flag v_flags;	/* vnode flag 
-					 * (set once by filesystem lookup) 
+	enum vnode_type v_type;		/* vnode type 
+					 * (set once by filesystem lookup()) 
 					 */
 
 	struct vmm_mutex v_lock;	/* lock to protect members below
 					 * v_lock and vnode operations
 					 */
+	u64 v_ctime;			/* Create timestamp 
+					 * (updated by filesystem create())
+					 */
+	u64 v_atime;			/* Access timestamp 
+					 * (last permission change time) 
+					 * (updated by filesystem setattr()) 
+					 */
+	u64 v_mtime;			/* Modify timestamp
+					 * (last write time)
+					 * (updated by filesystem write())
+					 */
 	u32 v_mode;			/* vnode permissions 
-					 * (set once by filesystem lookup) 
-					 * (updated by filesystem setattr) 
+					 * (set once by filesystem lookup()) 
+					 * (updated by filesystem setattr()) 
 					 */
 	loff_t v_size;			/* file size 
 					 * (updated by filesystem read/write) 
@@ -226,36 +224,27 @@ struct filesystem {
 	const char *name;
 
 	/* Mount point operations */
-	int (*mount)(struct mount *, const char *, s32);
-	int (*unmount)(struct mount *);
-	int (*sync)(struct mount *); /* Not Used */
-	int (*vget)(struct mount *, struct vnode *);
-	int (*vput)(struct mount *, struct vnode *);
+	int (*mount)(struct mount *, const char *, u32);
+	int (*unmount)(struct mount *); /* No IO. Only free mount point private data. */
+	int (*msync)(struct mount *);
+	int (*vget)(struct mount *, struct vnode *); /* No IO. Only alloc vnode private data. */
+	int (*vput)(struct mount *, struct vnode *); /* No IO. Only free vnode private data. */
 
 	/* Vnode operations */
-	int (*open)(struct vnode *, struct file *);
-	int (*close)(struct vnode *, struct file *);
-	int (*read)(struct vnode *, struct file *, void *, size_t);
-	int (*write)(struct vnode *, struct file *, void *, size_t);
-	bool (*seek)(struct vnode *, struct file *, loff_t);
-	int (*fsync)(struct vnode *, struct file *);
-	int (*readdir)(struct vnode *, struct file *, struct dirent *);
-	int (*lookup)(struct vnode *, char *, struct vnode *);
-	int (*create)(struct vnode *, char *, u32);
-	int (*remove)(struct vnode *, struct vnode *, char *);
-	int (*rename)(struct vnode *, struct vnode *, char *, 
-			struct vnode *, struct vnode *, char *);
-	int (*mkdir)(struct vnode *, char *, u32);
-	int (*rmdir)(struct vnode *, struct vnode *, char *);
-	int (*getattr)(struct vnode *, struct vattr *); /* Not Used */
-	int (*setattr)(struct vnode *, struct vattr *); /* Not Used */
+	size_t (*read)(struct vnode *, loff_t, void *, size_t);
+	size_t (*write)(struct vnode *, loff_t, void *, size_t);
 	int (*truncate)(struct vnode *, loff_t);
+	int (*sync)(struct vnode *);
+	int (*readdir)(struct vnode *, loff_t, struct dirent *);
+	int (*lookup)(struct vnode *, const char *, struct vnode *);
+	int (*create)(struct vnode *, const char *, u32);
+	int (*remove)(struct vnode *, struct vnode *, const char *);
+	int (*rename)(struct vnode *, const char *, struct vnode *, 
+			struct vnode *, const char *);
+	int (*mkdir)(struct vnode *, const char *, u32);
+	int (*rmdir)(struct vnode *, struct vnode *, const char *);
+	int (*chmod)(struct vnode *, u32);
 };
-
-/** Get root directory and mount point for specified path. 
- *  Note: Must be called from Orphan (or Thread) context.
- */
-int vfs_findroot(const char *path, struct mount **mp, char **root);
 
 /** Create a mount point
  *  Note: Must be called from Orphan (or Thread) context.
@@ -307,6 +296,11 @@ loff_t vfs_lseek(int fd, loff_t off, int whence);
  */
 int vfs_fsync(int fd);
 
+/** Change mode of file 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
+int vfs_fchmod(int fd, u32 mode);
+
 /** Get file status based on file descriptor 
  *  Note: Must be called from Orphan (or Thread) context.
  */
@@ -345,7 +339,7 @@ int vfs_rmdir(const char *path);
 /** Rename file/directory 
  *  Note: Must be called from Orphan (or Thread) context.
  */
-int vfs_rename(char *src, char *dst);
+int vfs_rename(const char *src, const char *dst);
 
 /** Unlink/remove file 
  *  Note: Must be called from Orphan (or Thread) context.
@@ -356,6 +350,11 @@ int vfs_unlink(const char *path);
  *  Note: Must be called from Orphan (or Thread) context.
  */
 int vfs_access(const char *path, u32 mode);
+
+/** Change mode of specified path 
+ *  Note: Must be called from Orphan (or Thread) context.
+ */
+int vfs_chmod(const char *path, u32 mode);
 
 /** Get file/directory status based on path 
  *  Note: Must be called from Orphan (or Thread) context.

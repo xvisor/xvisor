@@ -121,8 +121,8 @@ static int pl031_reg_read(struct pl031_state * s, u32 offset, u32 *dst)
 
 	vmm_spin_lock(&s->lock);
 
-	if (offset >= 0xfe0  &&  offset < 0x1000) {
-		*dst = *((u32 *)&pl031_id[(offset - 0xfe0) >> 2]);
+	if (offset >= 0xFE0  &&  offset < 0x1000) {
+		*dst = (u32)pl031_id[(offset - 0xFE0) >> 2];
 	} else {
 		switch (offset) {
 		case RTC_DR:

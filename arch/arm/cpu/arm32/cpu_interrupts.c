@@ -23,6 +23,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
@@ -368,7 +369,7 @@ int __init arch_cpu_irq_setup(void)
 	int rc;
 	extern u32 _start_vect[];
 	u32 *vectors, *vectors_data;
-	u32 vec;
+	u32 vec, cpu = vmm_smp_processor_id();
 	struct cpu_page vec_page;
 
 #if defined(CONFIG_ARM32_HIGHVEC)
@@ -382,6 +383,11 @@ int __init arch_cpu_irq_setup(void)
 	vectors = (u32 *) CPU_IRQ_LOWVEC_BASE;
 #endif
 	vectors_data = vectors + CPU_IRQ_NR;
+
+	/* For secondary CPUs nothing else to be done. */
+	if (cpu) {
+		return VMM_OK;
+	}
 
 	/* If vectors are at correct location then do nothing */
 	if ((u32) _start_vect == (u32) vectors) {
@@ -420,3 +426,4 @@ int __init arch_cpu_irq_setup(void)
 
 	return VMM_OK;
 }
+

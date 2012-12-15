@@ -118,7 +118,7 @@ int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count)
 	return vmm_host_ram_free(pa, page_count * VMM_PAGE_SIZE);
 }
 
-int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t * page_pa)
+int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t *page_pa)
 {
 	int rc = VMM_OK;
 	physical_addr_t pa = 0x0;
@@ -253,7 +253,7 @@ u32 vmm_host_free_initmem(void)
 
 int __init vmm_host_aspace_init(void)
 {
-	int rc, cpu;
+	int rc, cpu = vmm_smp_processor_id();
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
 	physical_size_t ram_size;
 	virtual_addr_t vapool_start, core_resv_va = 0x0, arch_resv_va = 0x0;
@@ -261,9 +261,14 @@ int __init vmm_host_aspace_init(void)
 	virtual_size_t hk_total_size = 0x0;
 	virtual_size_t core_resv_sz = 0x0, arch_resv_sz = 0x0;
 
+	/* For secondary CPU just call arch code and return */
+	if (cpu) {
+		return arch_cpu_aspace_secondary_init();
+	}
+
 	/* Determine VAPOOL start, size, and hksize */
 	vapool_start = arch_code_vaddr_start();
-	vapool_size = (CONFIG_VAPOOL_SIZE << 20);
+	vapool_size = (CONFIG_VAPOOL_SIZE_MB << 20);
 	vapool_hksize = vmm_host_vapool_estimate_hksize(vapool_size);
 
 	/* Determine RAM start, size an hksize */
@@ -295,23 +300,23 @@ int __init vmm_host_aspace_init(void)
 
 	/* We cannot estimate the physical address, virtual address, and size 
 	 * of arch reserved space so we set all of them to zero and expect that
-	 * arch_cpu_aspace_init() will update them if arch code is going to use
+	 * arch_primary_cpu_aspace_init() will update them if arch code is going to use
 	 * the arch reserved space
 	 */
 	arch_resv_pa = 0x0;
 	arch_resv_va = 0x0;
 	arch_resv_sz = 0x0;
 
-	/* Call arch_cpu_aspace_init() with estimated parameters for core 
-	 * reserved space and arch reserved space. The arch_cpu_aspace_init()
+	/* Call arch_primary_cpu_aspace_init() with estimated parameters for core 
+	 * reserved space and arch reserved space. The arch_primary_cpu_aspace_init()
 	 * can change these parameter as per needed.
 	 */
-	if ((rc = arch_cpu_aspace_init(&core_resv_pa, 
-					&core_resv_va, 
-					&core_resv_sz,
-					&arch_resv_pa,
-					&arch_resv_va,
-					&arch_resv_sz))) {
+	if ((rc = arch_cpu_aspace_primary_init(&core_resv_pa, 
+						&core_resv_va, 
+						&core_resv_sz,
+						&arch_resv_pa,
+						&arch_resv_va,
+						&arch_resv_sz))) {
 		return rc;
 	}
 	if (core_resv_sz < hk_total_size) {

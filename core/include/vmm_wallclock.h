@@ -111,7 +111,7 @@ struct vmm_timeval vmm_ns_to_timeval(const s64 nsec);
  *  @result	pointer to struct vmm_timeinfo variable for broken-down time
  */
 void vmm_wallclock_mkinfo(s64 totalsecs, int offset, 
-			  struct vmm_timeinfo * result);
+			  struct vmm_timeinfo *result);
 
 /** Converts Gregorian date to seconds since 1970-01-01 00:00:00.
  *  Assumes input in normal date format, i.e. 1980-12-31 23:59:59
@@ -125,24 +125,24 @@ s64 vmm_wallclock_mktime(const unsigned int year0,
 			 const unsigned int sec);
 
 /** Set local time */
-int vmm_wallclock_set_local_time(struct vmm_timeval * tv);
+int vmm_wallclock_set_local_time(struct vmm_timeval *tv);
 
 /** Get local time */
-int vmm_wallclock_get_local_time(struct vmm_timeval * tv);
+int vmm_wallclock_get_local_time(struct vmm_timeval *tv);
 
 /** Set current timezone */
-int vmm_wallclock_set_timezone(struct vmm_timezone * tz);
+int vmm_wallclock_set_timezone(struct vmm_timezone *tz);
 
 /** Get current timezone */
-int vmm_wallclock_get_timezone(struct vmm_timezone * tz);
+int vmm_wallclock_get_timezone(struct vmm_timezone *tz);
 
 /** Set current time and timezone */
-int vmm_wallclock_set_timeofday(struct vmm_timeval * tv, 
-				struct vmm_timezone * tz);
+int vmm_wallclock_set_timeofday(struct vmm_timeval *tv, 
+				struct vmm_timezone *tz);
 
 /** Get current time and timezone */
-int vmm_wallclock_get_timeofday(struct vmm_timeval * tv, 
-				struct vmm_timezone * tz);
+int vmm_wallclock_get_timeofday(struct vmm_timeval *tv, 
+				struct vmm_timezone *tz);
 
 /** Initialize wall-clock subsystem */
 int vmm_wallclock_init(void);

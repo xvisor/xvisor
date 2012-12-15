@@ -32,12 +32,12 @@ struct vmm_workqueue_ctrl {
 	vmm_spinlock_t lock;
 	struct dlist wq_list;
 	u32 wq_count;
-	struct vmm_workqueue * syswq;
+	struct vmm_workqueue *syswq;
 };
 
 static struct vmm_workqueue_ctrl wqctrl;
 
-bool vmm_workqueue_work_isnew(struct vmm_work * work)
+bool vmm_workqueue_work_isnew(struct vmm_work *work)
 {
 	bool ret = FALSE;
 	irq_flags_t flags;
@@ -55,7 +55,7 @@ bool vmm_workqueue_work_isnew(struct vmm_work * work)
 	return ret;
 }
 
-bool vmm_workqueue_work_inprogress(struct vmm_work * work)
+bool vmm_workqueue_work_inprogress(struct vmm_work *work)
 {
 	bool ret = FALSE;
 	irq_flags_t flags;
@@ -73,7 +73,7 @@ bool vmm_workqueue_work_inprogress(struct vmm_work * work)
 	return ret;
 }
 
-bool vmm_workqueue_work_completed(struct vmm_work * work)
+bool vmm_workqueue_work_completed(struct vmm_work *work)
 {
 	bool ret = FALSE;
 	irq_flags_t flags;
@@ -91,7 +91,7 @@ bool vmm_workqueue_work_completed(struct vmm_work * work)
 	return ret;
 }
 
-int vmm_workqueue_stop_work(struct vmm_work * work)
+int vmm_workqueue_stop_work(struct vmm_work *work)
 {
 	irq_flags_t flags, flags1;
 
@@ -137,7 +137,7 @@ int vmm_workqueue_stop_delayed_work(struct vmm_delayed_work *work)
 	return vmm_workqueue_stop_work(&work->work);
 }
 
-struct vmm_thread *vmm_workqueue_get_thread(struct vmm_workqueue * wq)
+struct vmm_thread *vmm_workqueue_get_thread(struct vmm_workqueue *wq)
 {
 	return (wq) ? wq->thread : NULL;
 }
@@ -181,7 +181,7 @@ u32 vmm_workqueue_count(void)
 	return wqctrl.wq_count;
 }
 
-int vmm_workqueue_flush(struct vmm_workqueue * wq)
+int vmm_workqueue_flush(struct vmm_workqueue *wq)
 {
 	int rc;
 
@@ -201,8 +201,8 @@ int vmm_workqueue_flush(struct vmm_workqueue * wq)
 	return VMM_OK;
 }
 
-int vmm_workqueue_schedule_work(struct vmm_workqueue * wq, 
-				struct vmm_work * work)
+int vmm_workqueue_schedule_work(struct vmm_workqueue *wq, 
+				struct vmm_work *work)
 {
 	irq_flags_t flags, flags1;
 
@@ -265,9 +265,9 @@ static int workqueue_main(void *data)
 {
 	bool do_work;
 	irq_flags_t flags;
-	struct dlist * l;
-	struct vmm_workqueue * wq = data;
-	struct vmm_work * work = NULL;
+	struct dlist *l;
+	struct vmm_workqueue *wq = data;
+	struct vmm_work *work = NULL;
 
 	if (!wq) {
 		return VMM_EFAIL;
@@ -307,9 +307,9 @@ static int workqueue_main(void *data)
 	return VMM_OK;
 }
 
-struct vmm_workqueue * vmm_workqueue_create(const char *name, u8 priority)
+struct vmm_workqueue *vmm_workqueue_create(const char *name, u8 priority)
 {
-	struct vmm_workqueue * wq;
+	struct vmm_workqueue *wq;
 	irq_flags_t flags;
 
 	if (!name) {
@@ -348,7 +348,7 @@ struct vmm_workqueue * vmm_workqueue_create(const char *name, u8 priority)
 	return wq;
 }
 
-int vmm_workqueue_destroy(struct vmm_workqueue * wq)
+int vmm_workqueue_destroy(struct vmm_workqueue *wq)
 {
 	int rc;
 	irq_flags_t flags;

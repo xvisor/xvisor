@@ -38,8 +38,8 @@
 #define	MODULE_INIT			vmm_rtcdev_init
 #define	MODULE_EXIT			vmm_rtcdev_exit
 
-int vmm_rtcdev_get_time(struct vmm_rtcdev * rdev,
-			struct vmm_rtc_time * tm)
+int vmm_rtcdev_get_time(struct vmm_rtcdev *rdev,
+			struct vmm_rtc_time *tm)
 {
 	if (rdev && tm && rdev->get_time) {
 		return rdev->get_time(rdev, tm);
@@ -49,8 +49,8 @@ int vmm_rtcdev_get_time(struct vmm_rtcdev * rdev,
 }
 VMM_EXPORT_SYMBOL(vmm_rtcdev_get_time);
 
-int vmm_rtcdev_set_time(struct vmm_rtcdev * rdev,
-			struct vmm_rtc_time * tm)
+int vmm_rtcdev_set_time(struct vmm_rtcdev *rdev,
+			struct vmm_rtc_time *tm)
 {
 	if (rdev && rdev->set_time) {
 		return rdev->set_time(rdev, tm);
@@ -60,7 +60,7 @@ int vmm_rtcdev_set_time(struct vmm_rtcdev * rdev,
 }
 VMM_EXPORT_SYMBOL(vmm_rtcdev_set_time);
 
-int vmm_rtcdev_sync_wallclock(struct vmm_rtcdev * rdev)
+int vmm_rtcdev_sync_wallclock(struct vmm_rtcdev *rdev)
 {
 	int rc;
 	struct vmm_timezone tz, utc_tz;
@@ -102,7 +102,7 @@ int vmm_rtcdev_sync_wallclock(struct vmm_rtcdev * rdev)
 }
 VMM_EXPORT_SYMBOL(vmm_rtcdev_sync_wallclock);
 
-int vmm_rtcdev_sync_device(struct vmm_rtcdev * rdev)
+int vmm_rtcdev_sync_device(struct vmm_rtcdev *rdev)
 {
 	int rc;
 	struct vmm_timezone tz;
@@ -128,7 +128,7 @@ int vmm_rtcdev_sync_device(struct vmm_rtcdev * rdev)
 }
 VMM_EXPORT_SYMBOL(vmm_rtcdev_sync_device);
 
-int vmm_rtcdev_register(struct vmm_rtcdev * rdev)
+int vmm_rtcdev_register(struct vmm_rtcdev *rdev)
 {
 	int rc;
 	struct vmm_classdev *cd;
@@ -156,7 +156,7 @@ int vmm_rtcdev_register(struct vmm_rtcdev * rdev)
 }
 VMM_EXPORT_SYMBOL(vmm_rtcdev_register);
 
-int vmm_rtcdev_unregister(struct vmm_rtcdev * rdev)
+int vmm_rtcdev_unregister(struct vmm_rtcdev *rdev)
 {
 	int rc;
 	struct vmm_classdev *cd;

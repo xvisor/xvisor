@@ -113,8 +113,6 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
 	} else if (!strcmp(name, VMM_DEVTREE_START_PC_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
-	} else if (!strcmp(name, VMM_DEVTREE_START_SP_ATTR_NAME)) {
-		ret = VMM_DEVTREE_ATTRTYPE_VIRTSIZE;
 	} else if (!strcmp(name, VMM_DEVTREE_PRIORITY_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!strcmp(name, VMM_DEVTREE_TIME_SLICE_ATTR_NAME)) {
@@ -254,8 +252,8 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 	return VMM_EFAIL;
 }
 
-void * vmm_devtree_attrval(struct vmm_devtree_node *node, 
-			   const char *attrib)
+void *vmm_devtree_attrval(struct vmm_devtree_node *node, 
+			  const char *attrib)
 {
 	struct vmm_devtree_attr *attr;
 	struct dlist *l;
@@ -340,8 +338,8 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 	return VMM_OK;
 }
 
-struct vmm_devtree_attr * vmm_devtree_getattr(struct vmm_devtree_node *node,
-					      const char *name)
+struct vmm_devtree_attr *vmm_devtree_getattr(struct vmm_devtree_node *node,
+					     const char *name)
 {
 	struct dlist *l;
 	struct vmm_devtree_attr *attr;

@@ -40,42 +40,39 @@ enum vmm_thread_states {
 	VMM_THREAD_STATE_STOPPED=3
 };
 
-typedef int (*vmm_thread_func_t) (void *udata);
-
 struct vmm_thread {
 	struct dlist head;		/* thread list head */
-	struct vmm_vcpu * tvcpu;	/* vcpu on which thread runs */
-	vmm_thread_func_t tfn;		/* thread functions */
+	struct vmm_vcpu *tvcpu;	/* vcpu on which thread runs */
+	int (*tfn) (void *udata);	/* thread functions */
 	void *tdata;			/* data passed to thread 
 					 * function on execution */
 	int tretval;			/* thread return value */
 	u64 tnsecs;			/* thread time slice in nanoseconds */
-	u8 tstack[CONFIG_THREAD_STACK_SIZE]; /* thread stack */
 };
 
 /** Start a thread */
-int vmm_threads_start(struct vmm_thread * tinfo);
+int vmm_threads_start(struct vmm_thread *tinfo);
 
 /** Stop a thread */
-int vmm_threads_stop(struct vmm_thread * tinfo);
+int vmm_threads_stop(struct vmm_thread *tinfo);
 
 /** Put a thread to sleep */
-int vmm_threads_sleep(struct vmm_thread * tinfo);
+int vmm_threads_sleep(struct vmm_thread *tinfo);
 
 /** Wakeup a thread */
-int vmm_threads_wakeup(struct vmm_thread * tinfo);
+int vmm_threads_wakeup(struct vmm_thread *tinfo);
 
 /** Retrive thread id */
-u32 vmm_threads_get_id(struct vmm_thread * tinfo);
+u32 vmm_threads_get_id(struct vmm_thread *tinfo);
 
 /** Retrive thread priority */
-u8 vmm_threads_get_priority(struct vmm_thread * tinfo);
+u8 vmm_threads_get_priority(struct vmm_thread *tinfo);
 
 /** Retrive thread name */
-int vmm_threads_get_name(char * dst, struct vmm_thread * tinfo);
+int vmm_threads_get_name(char *dst, struct vmm_thread *tinfo);
 
 /** Retrive thread state */
-int vmm_threads_get_state(struct vmm_thread * tinfo);
+int vmm_threads_get_state(struct vmm_thread *tinfo);
 
 /** Retrive thread instance from thread id */
 struct vmm_thread *vmm_threads_id2thread(u32 tid);
@@ -88,13 +85,13 @@ u32 vmm_threads_count(void);
 
 /** Create a new thread */
 struct vmm_thread *vmm_threads_create(const char *thread_name, 
-				      vmm_thread_func_t thread_fn,
+				      int (*thread_fn) (void *udata),
 				      void *thread_data,
 				      u8 thread_priority,
 				      u64 thread_nsecs);
 
 /** Destroy a thread */
-int vmm_threads_destroy(struct vmm_thread * tinfo);
+int vmm_threads_destroy(struct vmm_thread *tinfo);
 
 /** Intialize hypervisor threads */
 int vmm_threads_init(void);

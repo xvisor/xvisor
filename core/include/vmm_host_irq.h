@@ -39,8 +39,7 @@
  * @VMM_IRQ_TYPE_LEVEL_MASK		- Mask to filter out the level bits
  * @VMM_IRQ_TYPE_SENSE_MASK		- Mask for all the above bits
  */
-enum vmm_irq_trigger_types
-{
+enum vmm_irq_trigger_types {
 	VMM_IRQ_TYPE_NONE		= 0x00000000,
 	VMM_IRQ_TYPE_EDGE_RISING	= 0x00000001,
 	VMM_IRQ_TYPE_EDGE_FALLING	= 0x00000002,
@@ -127,8 +126,8 @@ struct vmm_host_irq {
 	const char *name;
 	u32 state;
 	u32 count[CONFIG_CPU_COUNT];
-	void * chip_data;
-	struct vmm_host_irq_chip * chip;
+	void *chip_data;
+	struct vmm_host_irq_chip *chip;
 	struct dlist hndl_list;
 };
 
@@ -224,14 +223,14 @@ static inline u32 vmm_host_irq_get_count(struct vmm_host_irq *irq, u32 cpu)
 }
 
 /** Get host irq chip instance from host irq instance */
-static inline struct vmm_host_irq_chip * vmm_host_irq_get_chip(
+static inline struct vmm_host_irq_chip *vmm_host_irq_get_chip(
 						struct vmm_host_irq *irq)
 {
 	return (irq) ? irq->chip : NULL;
 }
 
 /** Get host irq chip data from host irq instance */
-static inline void * vmm_host_irq_get_chip_data(struct vmm_host_irq *irq)
+static inline void *vmm_host_irq_get_chip_data(struct vmm_host_irq *irq)
 {
 	return (irq) ? irq->chip_data : NULL;
 }
