@@ -491,6 +491,7 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
+	/* sanity check */
 	if (!dir || *dir == '\0' || !(flags & MOUNT_MASK)) {
 		return VMM_EINVALID;
 	}
@@ -500,13 +501,19 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 		return VMM_EINVALID;
 	}
 
-	/* NULL can be specified as a dev. */
+	/* NULL cannot be specified as a dev. */
 	if (dev != NULL) {
 		if (!(bdev = vmm_blockdev_find(dev))) {
 			return VMM_EINVALID;
 		}
 	} else {
-		bdev = NULL;
+		return VMM_EINVALID;
+	}
+
+	/* For read-only devices mount as read-only */
+	if (bdev->flags & VMM_BLOCKDEV_RDONLY) {
+		flags &= ~MOUNT_RW;
+		flags |= MOUNT_RDONLY;
 	}
 
 	/* create vfs mount entry. */
@@ -549,10 +556,7 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 	}
 	v->v_type = VDIR;
 	v->v_flags = VROOT;
-	if (!S_ISDIR(v->v_mode) || 
-	    (v->v_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) {
-		v->v_mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
-	}
+	v->v_mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
 	m->m_root = v;
 
 	/* call a file system specific routine. */
