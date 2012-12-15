@@ -26,7 +26,7 @@
 
 #define VMM_OK			0
 #define VMM_EFAIL		-1
-#define VMM_EUNKOWN		-2
+#define VMM_EUNKNOWN		-2
 #define VMM_ENOTAVAIL		-3
 #define VMM_EALREADY		-4
 #define VMM_EINVALID		-5
@@ -34,15 +34,16 @@
 #define VMM_ENOMEM		-7
 #define VMM_ENODEV		-8
 #define VMM_EBUSY		-9
-#define VMM_ETIMEDOUT		-10
-#define VMM_EACCESS		-11
-#define VMM_ENOEXEC		-12
-#define VMM_ENOENT		-13
-#define VMM_ENOSYS		-14
-#define VMM_EIO			-15
-#define VMM_ETIME		-16
-#define VMM_ERANGE		-17
-#define VMM_EILSEQ		-18
-#define VMM_EOPNOTSUPP		-19
+#define VMM_EEXIST		-10
+#define VMM_ETIMEDOUT		-11
+#define VMM_EACCESS		-12
+#define VMM_ENOEXEC		-13
+#define VMM_ENOENT		-14
+#define VMM_ENOSYS		-15
+#define VMM_EIO			-16
+#define VMM_ETIME		-17
+#define VMM_ERANGE		-18
+#define VMM_EILSEQ		-19
+#define VMM_EOPNOTSUPP		-20
 
 #endif

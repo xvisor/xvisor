@@ -17,8 +17,8 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arm_entry_v7.S
- * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @author Anup Patel (anup@brainfault.org)
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief Entry point code for ARM test code
  */
 
@@ -34,37 +34,102 @@
 _start:
 	add	r0, pc, #-0x8
 	cpsid	if
-	ldr	r2, __code_start
-	ldr	r3, __code_end
-	sub	r4, r3, r2
-	add	r1, r0, r4
-	/*
-	 * r0 -> load start
-	 * r1 -> load end
-	 * r2 -> execution start
-	 * r3 -> execution end
-	 * r4 -> code size
-	 * We need to ensure that when we jump to reset code, we are executing
-	 * from intended execution address. If necessary do relocation from
-	 * load memory to execution memory.
-	 */
+
 	/* Core-1 should spin and core-0 should go ahead */
 	mrc	p15, 0, r5, c0, c0, 5
 	ands	r5, r5, #0x3
 	bne	_secondary_loop
 
-	cmp	r0, r2
-	beq	_start_done
+	ldr	r1, __code_start
+	sub	r6, r0, r1		/* r1 -> Load Start - Exec Start */
+	/*
+	 * r6 -> offset between binary execution and load addresses
+	 * We need to ensure that when we jump to reset code, we are executing
+	 * from intended execution address. If necessary do relocation from
+	 * load memory to execution memory.
+	 */
+	ldr	r1, __reloc_region_start	/* r1 -> execution address of reloc_region_start */
+	ldr	r2, __reloc_region_end
+	sub	r2, r2, r1		/* r2 -> reloc_region size */
+	add	r0, r1, r6		/* r0 -> load address of reloc_region start */
+	bl	_reloc_region
+
+	/*
+	 * Manually zero out the zero region (bss + heap)
+	 */
+	ldr	r1, __zero_region_start
+	ldr	r2, __zero_region_end
+	mov	r7, #0x0
+	mov	r8, #0x0
+	mov	r9, #0x0
+	mov	r10, #0x0
+_zeroing_loop:
 	cmp	r1, r2
-	blt	_start_relocate
-	cmp	r3, r0
-	blt	_start_relocate
+	bge	_zeroing_done
+	stmia	r1!, {r7 - r10}
+	b	_zeroing_loop
+_zeroing_done:
+
+_jump_to_exec:
+	ldr	pc, __reset
+
+__code_start:
+	.word _code_start
+__reloc_region_start:
+	.word _reloc_region_start
+__reloc_region_end:
+	.word _reloc_region_end
+__zero_region_start:
+	.word _zero_region_start
+__zero_region_end:
+	.word _zero_region_end
+__heap_start:
+	.word _heap_start
+__heap_end:
+	.word _heap_end
+
+	/* 
+	 * Copies data from source to destination taking care of even
+	 * overlapping regions
+	 * Arguments:
+	 *  r0 -> source address
+	 *  r1 -> destination address
+	 *  r2 -> byte count
+	 * Unmodified gprs: r4, r5, r6, r11, r12
+	 */
+_reloc_region:
+	mov	r3, #0
+	cmp	r0, r1
+	beq	_reloc_done
+	blt	_rev_copy
+_fwd_loop:
+	cmp	r3, r2
+	bge	_reloc_done
+	ldmia	r0!, {r7 - r10}
+	stmia	r1!, {r7 - r10}
+	add	r3, r3, #16
+	b	_fwd_loop
+_rev_copy:
+	add	r0, r0, r2
+	add	r1, r1, r2
+_rev_loop:
+	cmp	r3, r2
+	bge	_reloc_done
+	ldmdb	r0!, {r7 - r10}
+	stmdb	r1!, {r7 - r10}
+	add	r3, r3, #16
+	b	_rev_loop
+_reloc_done:
+	bx	lr
+
 
 _secondary_loop:
 	/* Enable the GIC CPU interface for this core */
-	ldr	r0, _gic_cpu_enable_addr
+	ldr	r0, _gic_cpu_addr
 	mov	r1, #1
 	str	r1, [r0]
+	mov	r1, #0xFF
+	str	r1, [r0, #4]
 	ldr	r0, _sys_flags_addr
 1:	
 	/* Wait for interrupt before checking SYS_FLAGS */
@@ -76,28 +141,10 @@ _secondary_loop:
 	/* Jump to the address stored the the SYS_FLAGS register */
 	bx	r1
 
-_gic_cpu_enable_addr:
+_gic_cpu_addr:
 	.word	0x1e000100
 _sys_flags_addr:
 	.word 	0x10000030
-
-_start_hang:
-	b	.
-_start_relocate:
-	mov	r5, #0
-_start_loop:
-	cmp	r5, r4
-	bge	_start_done
-	ldmia	r0!, {r7 - r10}
-	stmia	r2!, {r7 - r10}
-	add	r5, r5, #16
-	b	_start_loop
-_start_done:
-	ldr	pc, __reset
-__code_start:
-	.word _code_start
-__code_end:
-	.word _code_end
 
 	.section .expvect, "ax", %progbits
 	.globl _start_vect

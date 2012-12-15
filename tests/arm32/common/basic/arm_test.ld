@@ -30,34 +30,41 @@ SECTIONS
 	. = TEXT_START;
 
 	PROVIDE(_code_start = .);
+	PROVIDE(_reloc_region_start = .);
 
 	.text :
  	{
 		*(.expvect)
 		*(.text)
-		. = ALIGN(4);
+		. = ALIGN(16);
 		_etext = .;
 	}
 
 	.data :
 	{
 		*(.data)
-		. = ALIGN(4);
+		. = ALIGN(16);
 		_edata = .;
-	}
-
-	.bss :
-	{
-		*(.bss)
-		. = ALIGN(4);
-		_ebss = .;
 	}
 
 	.rodata :
 	{
 		*(.rodata .rodata.*)
-		. = ALIGN(4);
+		. = ALIGN(16);
 		_erodata = .;
+	}
+
+	PROVIDE(_reloc_region_end = .);
+
+	PROVIDE(_zero_region_start = .);
+
+	.bss :
+	{
+		PROVIDE(_bss_start = .);
+		*(.bss)
+		. = ALIGN(16);
+		_ebss = .;
+		PROVIDE(_bss_end = .);
 	}
 
 	.heap :
@@ -68,6 +75,8 @@ SECTIONS
 		. = ALIGN(4);
 		PROVIDE(_heap_end = .);
 	}
+
+	PROVIDE(_zero_region_end = .);
 
  	.svc_stack :
         {

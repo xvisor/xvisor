@@ -38,7 +38,7 @@ struct vmm_cmdmgr_ctrl {
 
 static struct vmm_cmdmgr_ctrl cmctrl;
 
-int vmm_cmdmgr_register_cmd(struct vmm_cmd * cmd)
+int vmm_cmdmgr_register_cmd(struct vmm_cmd *cmd)
 {
 	bool found;
 	struct dlist *l;
@@ -69,7 +69,7 @@ int vmm_cmdmgr_register_cmd(struct vmm_cmd * cmd)
 	return VMM_OK;
 }
 
-int vmm_cmdmgr_unregister_cmd(struct vmm_cmd * cmd)
+int vmm_cmdmgr_unregister_cmd(struct vmm_cmd *cmd)
 {
 	bool found;
 	struct dlist *l;
@@ -98,7 +98,7 @@ int vmm_cmdmgr_unregister_cmd(struct vmm_cmd * cmd)
 	return VMM_OK;
 }
 
-struct vmm_cmd * vmm_cmdmgr_cmd_find(const char *cmd_name)
+struct vmm_cmd *vmm_cmdmgr_cmd_find(const char *cmd_name)
 {
 	bool found;
 	struct dlist *l;
@@ -130,7 +130,7 @@ struct vmm_cmd *vmm_cmdmgr_cmd(int index)
 {
 	bool found;
 	struct dlist *l;
-	struct vmm_cmd * c;
+	struct vmm_cmd *c;
 
 	if (index < 0) {
 		return NULL;
@@ -172,7 +172,7 @@ u32 vmm_cmdmgr_cmd_count(void)
 int vmm_cmdmgr_execute_cmd(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int ret;
-	struct vmm_cmd * cmd = NULL;
+	struct vmm_cmd *cmd = NULL;
 
 	/* Find & execute the commad */
 	if ((cmd = vmm_cmdmgr_cmd_find(argv[0]))) {
@@ -245,7 +245,7 @@ static void cmd_help_usage(struct vmm_chardev *cdev)
 static int cmd_help_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u32 i, cmd_count;
-	struct vmm_cmd * cmd;
+	struct vmm_cmd *cmd;
 	
 	if (argc == 1) {
 		cmd_count = vmm_cmdmgr_cmd_count();

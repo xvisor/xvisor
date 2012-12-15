@@ -45,8 +45,8 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 	/* Lock VCPU irqs */
 	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
 
-	/* Proceed only if we have pending asserts */
-	if (vcpu->irqs.assert_pending < 1) {
+	/* Proceed only if we have pending execute */
+	if (vcpu->irqs.execute_pending < 1) {
 		vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
 		return;
 	}
@@ -73,8 +73,7 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 	if (irq_no != -1) {
 		if (arch_vcpu_irq_execute(vcpu, regs, irq_no, irq_reas) == VMM_OK) {
 			vcpu->irqs.assert[irq_no] = FALSE;
-			vcpu->irqs.execute[irq_no] = TRUE;
-			vcpu->irqs.assert_pending--;
+			vcpu->irqs.execute_pending--;
 			vcpu->irqs.execute_count++;
 		}
 	}
@@ -128,7 +127,7 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 		if (arch_vcpu_irq_assert(vcpu, irq_no, reason) == VMM_OK) {
 			vcpu->irqs.reason[irq_no] = reason;
 			vcpu->irqs.assert[irq_no] = TRUE;
-			vcpu->irqs.assert_pending++;
+			vcpu->irqs.execute_pending++;
 			vcpu->irqs.assert_count++;
 		}
 	}
@@ -159,17 +158,22 @@ void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no)
 	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
 
 	/* Deassert the irq */
-	if (vcpu->irqs.execute[irq_no]) {
-		reason = vcpu->irqs.reason[irq_no];
-		if (arch_vcpu_irq_deassert(vcpu, irq_no, reason) == VMM_OK) {
-			vcpu->irqs.deassert_count++;
-		}
+	reason = vcpu->irqs.reason[irq_no];
+	if (arch_vcpu_irq_deassert(vcpu, irq_no, reason) == VMM_OK) {
+		vcpu->irqs.deassert_count++;
 	}
 
-	/* Ensure irq is not asserted and not executing */
-	vcpu->irqs.reason[irq_no] = 0x0;
+	/* Adjust assert pending count */
+	if (vcpu->irqs.assert[irq_no] &&
+	    (vcpu->irqs.execute_pending > 0)) {
+		vcpu->irqs.execute_pending--;
+	}
+
+	/* Ensure irq is not asserted */
 	vcpu->irqs.assert[irq_no] = FALSE;
-	vcpu->irqs.execute[irq_no] = FALSE;
+
+	/* Ensure irq reason is zeroed */
+	vcpu->irqs.reason[irq_no] = 0x0;
 
 	/* Unlock VCPU irqs */
 	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
@@ -235,9 +239,8 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 		/* Initialize irq lock */
 		INIT_SPIN_LOCK(&vcpu->irqs.lock);
 
-		/* Allocate memory for arrays */
+		/* Allocate memory for flags */
 		vcpu->irqs.assert = vmm_malloc(sizeof(bool) * irq_count);
-		vcpu->irqs.execute = vmm_malloc(sizeof(bool) * irq_count);
 		vcpu->irqs.reason = vmm_malloc(sizeof(u32) * irq_count);
 
 		/* Create wfi_timeout event */
@@ -255,8 +258,8 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	/* Save irq count */
 	vcpu->irqs.irq_count = irq_count;
 
-	/* Set assert pending to zero */
-	vcpu->irqs.assert_pending = 0;
+	/* Set execute pending to zero */
+	vcpu->irqs.execute_pending = 0;
 
 	/* Set default assert & deassert counts */
 	vcpu->irqs.assert_count = 0;
@@ -267,7 +270,6 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	for (ite = 0; ite < irq_count; ite++) {
 		vcpu->irqs.reason[ite] = 0;
 		vcpu->irqs.assert[ite] = FALSE;
-		vcpu->irqs.execute[ite] = FALSE;
 	}
 
 	/* Setup wait for irq context */
@@ -301,8 +303,12 @@ int vmm_vcpu_irq_deinit(struct vmm_vcpu *vcpu)
 	/* Stop wfi_timeout event */
 	vmm_timer_event_stop(vcpu->irqs.wfi_priv);
 
-	/* Destroy wfi_timeout event */
+	/* Free wfi_timeout event */
 	vmm_free(vcpu->irqs.wfi_priv);
+
+	/* Free flags */
+	vmm_free(vcpu->irqs.assert);
+	vmm_free(vcpu->irqs.reason);
 
 	/* Unlock VCPU irqs */
 	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);

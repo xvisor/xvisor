@@ -39,7 +39,7 @@
  * For example if VAPOOL is 8 MB then translation table pool will be 1 MB
  * or 1 MB / 4 KB = 256 translation tables
  */
-#define TTBL_POOL_MAX_SIZE 	(CONFIG_VAPOOL_SIZE << (20 - 3))
+#define TTBL_POOL_MAX_SIZE 	(CONFIG_VAPOOL_SIZE_MB << (20 - 3))
 
 #define TTBL_MAX_L1TBL_COUNT	(CONFIG_MAX_VCPU_COUNT)
 
@@ -47,17 +47,18 @@
 				  (TTBL_MAX_L1TBL_COUNT * TTBL_L1TBL_SIZE))) / \
 				 TTBL_L2TBL_SIZE)
 
+u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) tmpl1_mem[TTBL_L1TBL_SIZE];
 u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) defl1_mem[TTBL_L1TBL_SIZE];
 
 struct cpu_mmu_ctrl {
 	struct cpu_l1tbl defl1;
 	virtual_addr_t l1_base_va;
 	physical_addr_t l1_base_pa;
-	struct cpu_l1tbl * l1_array;
+	struct cpu_l1tbl *l1_array;
 	u32 l1_alloc_count;
 	virtual_addr_t l2_base_va;
 	physical_addr_t l2_base_pa;
-	struct cpu_l2tbl * l2_array;
+	struct cpu_l2tbl *l2_array;
 	u32 l2_alloc_count;
 	struct dlist l1tbl_list;
 	struct dlist free_l1tbl_list;
@@ -74,7 +75,7 @@ static inline void cpu_mmu_sync_tte(u32 *tte)
 }
 
 /** Find L2 page table at given physical address from L1 page table */
-struct cpu_l2tbl *cpu_mmu_l2tbl_find_tbl_pa(physical_addr_t tbl_pa)
+static struct cpu_l2tbl *cpu_mmu_l2tbl_find_tbl_pa(physical_addr_t tbl_pa)
 {
 	u32 tmp = (tbl_pa - mmuctrl.l2_base_pa) >> TTBL_L2TBL_SIZE_SHIFT;
 
@@ -100,9 +101,12 @@ int cpu_mmu_l2tbl_detach(struct cpu_l2tbl * l2)
 	u32 *l1_tte;
 	u32 l1_tte_type;
 
+	/* Sanity check */
 	if (!l2) {
 		return VMM_EFAIL;
 	}
+
+	/* if it is not attached already, nothing to do */
 	if (!cpu_mmu_l2tbl_is_attached(l2)) {
 		return VMM_OK;
 	}
@@ -120,8 +124,10 @@ int cpu_mmu_l2tbl_detach(struct cpu_l2tbl * l2)
 	l2->l1->l2tbl_cnt--;
 	l2->l1 = NULL;
 	l2->tte_cnt = 0;
+
 	memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
 
+	/* remove the L2 page table from the list it is attached */
 	list_del(&l2->head);
 
 	return VMM_OK;
@@ -134,10 +140,12 @@ int cpu_mmu_l2tbl_attach(struct cpu_l1tbl * l1, struct cpu_l2tbl * l2, u32 new_i
 	u32 *l1_tte, l1_tte_new;
 	u32 l1_tte_type;
 
+	/* Sanity check */
 	if (!l2 || !l1) {
 		return VMM_EFAIL;
 	}
 
+	/* If the L2 page is already attached */
 	if (cpu_mmu_l2tbl_is_attached(l2)) {
 		return VMM_EFAIL;
 	}
@@ -773,16 +781,16 @@ error:
 	return rc;
 }
 
-int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page * pg)
+int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page *pg)
 {
 	return cpu_mmu_get_page(&mmuctrl.defl1, va, pg);
 }
 
-int cpu_mmu_unmap_reserved_page(struct cpu_page * pg)
+int cpu_mmu_unmap_reserved_page(struct cpu_page *pg)
 {
 	int rc;
-	struct dlist * le;
-	struct cpu_l1tbl * l1;
+	struct dlist *le;
+	struct cpu_l1tbl *l1;
 	irq_flags_t flags;
 
 	if (!pg) {
@@ -794,7 +802,7 @@ int cpu_mmu_unmap_reserved_page(struct cpu_page * pg)
 	}
 
 	/* Note: It might be possible that the reserved page
-	 * was mapped on-demand into l1 tables other than 
+	 * was mapped on-demand into l1 tables other than
 	 * default l1 table so, we should try to remove mappings
 	 * of this page from other l1 tables.
 	 */
@@ -811,7 +819,7 @@ int cpu_mmu_unmap_reserved_page(struct cpu_page * pg)
 	return VMM_OK;
 }
 
-int cpu_mmu_map_reserved_page(struct cpu_page * pg)
+int cpu_mmu_map_reserved_page(struct cpu_page *pg)
 {
 	int rc;
 
@@ -824,8 +832,8 @@ int cpu_mmu_map_reserved_page(struct cpu_page * pg)
 	}
 
 	/* Note: Ideally resereved page mapping should be created
-	 * in each and every l1 table that exist, but that would 
-	 * be uneccesary and redundant. To avoid this we only 
+	 * in each and every l1 table that exist, but that would
+	 * be uneccesary and redundant. To avoid this we only
 	 * create mapping in default l1 table and let other VCPUs
 	 * fault on this page and load the page on-demand from
 	 * data abort and prefetch abort handlers.
@@ -844,7 +852,7 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 	if (list_empty(&mmuctrl.free_l1tbl_list)) {
 		return NULL;
 	}
-	nl1 = list_entry(list_first(&mmuctrl.free_l1tbl_list), 
+	nl1 = list_entry(list_first(&mmuctrl.free_l1tbl_list),
 			 struct cpu_l1tbl, head);
 	list_del(&nl1->head);
 	mmuctrl.l1_alloc_count++;
@@ -1241,12 +1249,12 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	return VMM_OK;
 }
 
-int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa, 
-				virtual_addr_t * core_resv_va,
-				virtual_size_t * core_resv_sz,
-				physical_addr_t * arch_resv_pa,
-				virtual_addr_t * arch_resv_va,
-				virtual_size_t * arch_resv_sz)
+int __init arch_cpu_aspace_primary_init(physical_addr_t * core_resv_pa, 
+					virtual_addr_t * core_resv_va,
+					virtual_size_t * core_resv_sz,
+					physical_addr_t * arch_resv_pa,
+					virtual_addr_t * arch_resv_va,
+					virtual_size_t * arch_resv_sz)
 {
 	int rc = VMM_EFAIL;
 	u32 i, val;
@@ -1262,6 +1270,13 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	INIT_LIST_HEAD(&mmuctrl.l1tbl_list);
 	INIT_LIST_HEAD(&mmuctrl.free_l1tbl_list);
 	INIT_LIST_HEAD(&mmuctrl.free_l2tbl_list);
+
+	/* Copy the temporary L1 table */
+	memcpy(defl1_mem, tmpl1_mem, TTBL_L1TBL_SIZE);
+	clean_invalidate_dcache_mva_range((virtual_addr_t)defl1_mem, 
+			(virtual_addr_t)defl1_mem + TTBL_L1TBL_SIZE);
+	write_ttbr0(arch_code_paddr_start() + ((virtual_addr_t)&defl1_mem 
+				- arch_code_vaddr_start()));
 
 	/* Handcraft default translation table */
 	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
@@ -1418,3 +1433,11 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 mmu_init_error:
 	return rc;
 }
+
+int __init arch_cpu_aspace_secondary_init(void)
+{
+	write_ttbr0(mmuctrl.defl1.tbl_pa);
+
+	return VMM_OK;
+}
+

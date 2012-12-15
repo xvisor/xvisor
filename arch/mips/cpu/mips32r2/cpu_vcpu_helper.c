@@ -134,7 +134,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
         if (!vcpu->is_normal) {
 		/* For orphan vcpu */
                 mips_uregs(vcpu)->cp0_epc = vcpu->start_pc;
-                mips_uregs(vcpu)->regs[SP_IDX] = vcpu->start_sp;
+                mips_uregs(vcpu)->regs[SP_IDX] = 
+					vcpu->stack_va + vcpu->stack_sz - 4;
 		mips_uregs(vcpu)->regs[S8_IDX] = mips_uregs(vcpu)->regs[SP_IDX];
 		mips_uregs(vcpu)->cp0_status = read_c0_status();
 		mips_uregs(vcpu)->cp0_entryhi = read_c0_entryhi();

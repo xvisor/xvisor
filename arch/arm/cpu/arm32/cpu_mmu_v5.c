@@ -39,7 +39,7 @@
  * For example if VAPOOL is 8 MB then translation table pool will be 1 MB
  * or 1 MB / 4 KB = 256 translation tables
  */
-#define TTBL_POOL_MAX_SIZE 	(CONFIG_VAPOOL_SIZE << (20 - 3))
+#define TTBL_POOL_MAX_SIZE 	(CONFIG_VAPOOL_SIZE_MB << (20 - 3))
 
 #define TTBL_MAX_L1TBL_COUNT	(CONFIG_MAX_VCPU_COUNT)
 
@@ -47,7 +47,8 @@
 				  (TTBL_MAX_L1TBL_COUNT * TTBL_L1TBL_SIZE))) / \
 				 TTBL_L2TBL_SIZE)
 
-u8 __attribute__ ((aligned(TTBL_L1TBL_SIZE))) defl1_mem[TTBL_L1TBL_SIZE];
+u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) tmpl1_mem[TTBL_L1TBL_SIZE];
+u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) defl1_mem[TTBL_L1TBL_SIZE];
 
 struct cpu_mmu_ctrl {
 	struct cpu_l1tbl defl1;
@@ -66,9 +67,9 @@ struct cpu_mmu_ctrl {
 
 static struct cpu_mmu_ctrl mmuctrl;
 
-static inline void cpu_mmu_sync_tte(u32 * tte)
+static inline void cpu_mmu_sync_tte(u32 *tte)
 {
-	clean_dcache_mva((virtual_addr_t) tte);
+	clean_dcache_mva((virtual_addr_t)tte);
 	isb();
 	dsb();
 }
@@ -82,7 +83,6 @@ static struct cpu_l2tbl *cpu_mmu_l2tbl_find_tbl_pa(physical_addr_t tbl_pa)
 		return &mmuctrl.l2_array[tmp];
 	}
 
-	/* Not found */
 	return NULL;
 }
 
@@ -124,7 +124,7 @@ static int cpu_mmu_l2tbl_detach(struct cpu_l2tbl *l2)
 
 	memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
 
-	/* remove the L2 page table from this list it is attached */
+	/* remove the L2 page table from the list it is attached */
 	list_del(&l2->head);
 
 	return VMM_OK;
@@ -696,7 +696,7 @@ static int cpu_mmu_split_reserved_page(struct cpu_page *pg,
 	}
 
 	rc = VMM_OK;
- error:
+error:
 	return rc;
 }
 
@@ -1072,12 +1072,12 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	return rc;
 }
 
-int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
-				virtual_addr_t * core_resv_va,
-				virtual_size_t * core_resv_sz,
-				physical_addr_t * arch_resv_pa,
-				virtual_addr_t * arch_resv_va,
-				virtual_size_t * arch_resv_sz)
+int __init arch_cpu_aspace_primary_init(physical_addr_t * core_resv_pa,
+					virtual_addr_t * core_resv_va,
+					virtual_size_t * core_resv_sz,
+					physical_addr_t * arch_resv_pa,
+					virtual_addr_t * arch_resv_va,
+					virtual_size_t * arch_resv_sz)
 {
 	int rc = VMM_OK;
 	u32 i, val;
@@ -1097,6 +1097,12 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 	INIT_LIST_HEAD(&mmuctrl.l1tbl_list);
 	INIT_LIST_HEAD(&mmuctrl.free_l1tbl_list);
 	INIT_LIST_HEAD(&mmuctrl.free_l2tbl_list);
+
+	/* Copy the temporary L1 table */
+	memcpy(defl1_mem, tmpl1_mem, TTBL_L1TBL_SIZE);
+	clean_dcache_mva_range((virtual_addr_t)defl1_mem, 
+				(virtual_addr_t)defl1_mem + TTBL_L1TBL_SIZE);
+	write_ttbr0(pa + (virtual_addr_t) defl1_mem - va);
 
 	/* Handcraft default translation table */
 	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
@@ -1264,3 +1270,11 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
  mmu_init_error:
 	return rc;
 }
+
+int __init arch_cpu_aspace_secondary_init(void)
+{
+	write_ttbr0(mmuctrl.defl1.tbl_pa);
+
+	return VMM_OK;
+}
+

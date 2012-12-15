@@ -449,11 +449,11 @@ int arch_guest_deinit(struct vmm_guest *guest)
 {
 	int rc;
 
-	if ((rc = cpu_mmu_ttbl_free(arm_guest_priv(guest)->ttbl))) {
-		return rc;
-	}
-
 	if (guest->arch_priv) {
+		if ((rc = cpu_mmu_ttbl_free(arm_guest_priv(guest)->ttbl))) {
+			return rc;
+		}
+
 		vmm_free(guest->arch_priv);
 	}
 
@@ -468,6 +468,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	/* For both Orphan & Normal VCPUs */
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
 	arm_regs(vcpu)->pc = vcpu->start_pc;
+	arm_regs(vcpu)->sp = vcpu->stack_va + vcpu->stack_sz - 4;
 	if (vcpu->is_normal) {
 		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
 		arm_regs(vcpu)->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
@@ -478,7 +479,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
 		arm_regs(vcpu)->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
 		arm_regs(vcpu)->cpsr |= CPSR_MODE_HYPERVISOR;
-		arm_regs(vcpu)->sp = vcpu->start_sp;
 	}
 	/* Initialize Supervisor Mode Registers */
 	/* For only Normal VCPUs */
@@ -497,11 +497,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	if (!vcpu->reset_count) {
 		vcpu->arch_priv = vmm_zalloc(sizeof(arm_priv_t));
 		if (!vcpu->arch_priv) {
-			return VMM_EFAIL;
-		}
-		arm_priv(vcpu)->hyp_stack = vmm_malloc(CONFIG_IRQ_STACK_SIZE);
-		if (!arm_priv(vcpu)->hyp_stack) {
-			vmm_free(vcpu->arch_priv);
 			return VMM_EFAIL;
 		}
 	} else {
@@ -525,8 +520,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_priv(vcpu)->lr_fiq = 0x0;
 		arm_priv(vcpu)->spsr_fiq = 0x0;
 	}
-	arm_regs(vcpu)->sp = (u32)arm_priv(vcpu)->hyp_stack + 
-				     CONFIG_IRQ_STACK_SIZE - 4;
 	if (!vcpu->reset_count) {
 		/* Initialize Hypervisor Configuration */
 		arm_priv(vcpu)->hcr = (HCR_TAC_MASK |
@@ -615,9 +608,6 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	if ((rc = cpu_vcpu_cp15_deinit(vcpu))) {
 		return rc;
 	}
-
-	/* Free hypervisor mode stack */
-	vmm_free(arm_priv(vcpu)->hyp_stack);
 
 	/* Free super regs */
 	vmm_free(vcpu->arch_priv);

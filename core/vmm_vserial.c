@@ -33,7 +33,7 @@ struct vmm_vserial_ctrl {
 
 static struct vmm_vserial_ctrl vsctrl;
 
-u32 vmm_vserial_send(struct vmm_vserial * vser, u8 *src, u32 len)
+u32 vmm_vserial_send(struct vmm_vserial *vser, u8 *src, u32 len)
 {
 	u32 i;
 
@@ -54,11 +54,11 @@ u32 vmm_vserial_send(struct vmm_vserial * vser, u8 *src, u32 len)
 	return i;
 }
 
-u32 vmm_vserial_receive(struct vmm_vserial * vser, u8 *dst, u32 len)
+u32 vmm_vserial_receive(struct vmm_vserial *vser, u8 *dst, u32 len)
 {
 	u32 i;
-	struct dlist * l;
-	struct vmm_vserial_receiver * receiver;
+	struct dlist *l;
+	struct vmm_vserial_receiver *receiver;
 
 	if (!vser || !dst) {
 		return 0;
@@ -83,14 +83,14 @@ u32 vmm_vserial_receive(struct vmm_vserial * vser, u8 *dst, u32 len)
 	return i;
 }
 
-int vmm_vserial_register_receiver(struct vmm_vserial * vser, 
-				  vmm_vserial_recv_t recv, 
-				  void * priv)
+int vmm_vserial_register_receiver(struct vmm_vserial *vser, 
+				  void (*recv) (struct vmm_vserial *, void *, u8),
+				  void *priv)
 {
 	u8 chval;
 	bool found;
 	struct dlist *l;
-	struct vmm_vserial_receiver * receiver;
+	struct vmm_vserial_receiver *receiver;
 
 	if (!vser || !recv) {
 		return VMM_EFAIL;
@@ -135,13 +135,13 @@ int vmm_vserial_register_receiver(struct vmm_vserial * vser,
 	return VMM_OK;
 }
 
-int vmm_vserial_unregister_receiver(struct vmm_vserial * vser, 
-				    vmm_vserial_recv_t recv, 
-				    void * priv)
+int vmm_vserial_unregister_receiver(struct vmm_vserial *vser, 
+				    void (*recv) (struct vmm_vserial *, void *, u8),
+				    void *priv)
 {
 	bool found;
 	struct dlist *l;
-	struct vmm_vserial_receiver * receiver;
+	struct vmm_vserial_receiver *receiver;
 
 	if (!vser || !recv) {
 		return VMM_EFAIL;
@@ -168,11 +168,11 @@ int vmm_vserial_unregister_receiver(struct vmm_vserial * vser,
 	return VMM_OK;
 }
 
-struct vmm_vserial * vmm_vserial_alloc(const char * name,
-					vmm_vserial_can_send_t can_send,
-					vmm_vserial_send_t send,
+struct vmm_vserial *vmm_vserial_alloc(const char *name,
+					bool (*can_send) (struct vmm_vserial *),
+					int (*send) (struct vmm_vserial *, u8),
 					u32 receive_buf_size,
-					void * priv)
+					void *priv)
 {
 	bool found;
 	struct dlist *l;
@@ -219,7 +219,7 @@ struct vmm_vserial * vmm_vserial_alloc(const char * name,
 	return vser;
 }
 
-int vmm_vserial_free(struct vmm_vserial * vser)
+int vmm_vserial_free(struct vmm_vserial *vser)
 {
 	bool found;
 	struct dlist *l;
@@ -255,7 +255,7 @@ int vmm_vserial_free(struct vmm_vserial * vser)
 	return VMM_OK;
 }
 
-struct vmm_vserial * vmm_vserial_find(const char *name)
+struct vmm_vserial *vmm_vserial_find(const char *name)
 {
 	bool found;
 	struct dlist *l;
@@ -282,7 +282,7 @@ struct vmm_vserial * vmm_vserial_find(const char *name)
 	return vs;
 }
 
-struct vmm_vserial * vmm_vserial_get(int index)
+struct vmm_vserial *vmm_vserial_get(int index)
 {
 	bool found;
 	struct dlist *l;

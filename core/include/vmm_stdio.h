@@ -116,7 +116,7 @@ char *vmm_gets(char *s, int maxwidth, char endchar);
 struct vmm_chardev *vmm_stdio_device(void);
 
 /** Change default character device used by stdio */
-int vmm_stdio_change_device(struct vmm_chardev * cdev);
+int vmm_stdio_change_device(struct vmm_chardev *cdev);
 
 /** Initialize standerd IO library */
 int vmm_stdio_init(void);

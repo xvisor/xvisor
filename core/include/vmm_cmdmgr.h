@@ -27,28 +27,25 @@
 #include <vmm_chardev.h>
 #include <libs/list.h>
 
-typedef void (*vmm_cmd_usage_t) (struct vmm_chardev *);
-typedef int (*vmm_cmd_exec_t) (struct vmm_chardev *, int, char **);
-
 struct vmm_cmd {
 	struct dlist head;
 	char name[32];
 	char desc[72];
-	vmm_cmd_usage_t usage;
-	vmm_cmd_exec_t exec;
+	void (*usage) (struct vmm_chardev *);
+	int (*exec) (struct vmm_chardev *, int, char **);
 };
 
 /** Register command */
-int vmm_cmdmgr_register_cmd(struct vmm_cmd * cmd);
+int vmm_cmdmgr_register_cmd(struct vmm_cmd *cmd);
 
 /** Unregister command */
-int vmm_cmdmgr_unregister_cmd(struct vmm_cmd * cmd);
+int vmm_cmdmgr_unregister_cmd(struct vmm_cmd *cmd);
 
 /** Find a registered command */
-struct vmm_cmd * vmm_cmdmgr_cmd_find(const char * cmd_name);
+struct vmm_cmd *vmm_cmdmgr_cmd_find(const char *cmd_name);
 
 /** Get a registered command */
-struct vmm_cmd * vmm_cmdmgr_cmd(int index);
+struct vmm_cmd *vmm_cmdmgr_cmd(int index);
 
 /** Count of registered commands */
 u32 vmm_cmdmgr_cmd_count(void);

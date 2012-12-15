@@ -615,7 +615,7 @@ struct vmm_chardev *vmm_stdio_device(void)
 	return stdio_ctrl.dev;
 }
 
-int vmm_stdio_change_device(struct vmm_chardev * cdev)
+int vmm_stdio_change_device(struct vmm_chardev *cdev)
 {
 	if (!cdev) {
 		return VMM_EFAIL;

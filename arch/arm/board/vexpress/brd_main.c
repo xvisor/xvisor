@@ -54,6 +54,30 @@ static vmm_spinlock_t v2m_cfg_lock;
 struct vtemu *v2m_vt;
 #endif
 
+void v2m_flags_set(u32 addr)
+{
+	struct vmm_devtree_node *node;
+	int rc;
+	if (v2m_sys_base == 0) {
+		/* Map control registers */
+		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+					   VMM_DEVTREE_HOSTINFO_NODE_NAME
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysreg");
+		if (!node) {
+			return;
+		}
+		rc = vmm_devtree_regmap(node, &v2m_sys_base, 0);
+		if (rc) {
+			return;
+		}
+	}
+	vmm_writel(~0x0, (void *)(v2m_sys_base + V2M_SYS_FLAGSCLR));
+	vmm_writel(addr, (void *)(v2m_sys_base + V2M_SYS_FLAGSSET));
+	arch_mb();
+}
+
 int v2m_cfg_write(u32 devfn, u32 data)
 {
 	u32 val;
@@ -514,18 +538,20 @@ int __init arch_board_final_init(void)
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
-	/* Map control registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysreg");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	rc = vmm_devtree_regmap(node, &v2m_sys_base, 0);
-	if (rc) {
-		return rc;
+	if(v2m_sys_base == 0) {
+		/* Map control registers */
+		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+					   VMM_DEVTREE_HOSTINFO_NODE_NAME
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "motherboard"
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "iofpga"
+					   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysreg");
+		if (!node) {
+			return VMM_ENODEV;
+		}
+		rc = vmm_devtree_regmap(node, &v2m_sys_base, 0);
+		if (rc) {
+			return rc;
+		}
 	}
 	INIT_SPIN_LOCK(&v2m_cfg_lock);
 

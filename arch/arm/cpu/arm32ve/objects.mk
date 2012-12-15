@@ -26,7 +26,7 @@
 # Note that GCC does not numerically define an architecture version
 # macro, but instead defines a whole series of macros which makes
 # testing for a specific architecture or later rather impossible.
-arch-$(CONFIG_ARMV7A_VE) += -mno-thumb-interwork -march=armv7-a
+arch-$(CONFIG_ARMV7A_VE) += -mno-thumb-interwork
 
 # This selects how we optimise for the processor.
 tune-$(CONFIG_CPU_CORTEX_A15_VE) += -mcpu=cortex-a15

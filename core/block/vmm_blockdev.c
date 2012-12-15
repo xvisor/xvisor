@@ -25,9 +25,12 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
+#include <vmm_scheduler.h>
 #include <vmm_devdrv.h>
+#include <vmm_completion.h>
 #include <block/vmm_blockdev.h>
 #include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC			"Block Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -44,6 +47,11 @@ int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 
 	if (!bdev || !r || !bdev->rq) {
 		return VMM_EFAIL;
+	}
+
+	if ((r->type == VMM_REQUEST_WRITE) &&
+	   !(bdev->flags & VMM_BLOCKDEV_RW)) {
+		return VMM_EINVALID;
 	}
 
 	if (bdev->num_blocks < r->bcnt) {
@@ -122,6 +130,187 @@ int vmm_blockdev_abort_request(struct vmm_request *r)
 	return vmm_blockdev_fail_request(r);
 }
 
+struct blockdev_rw {
+	bool failed;
+	struct vmm_request req;
+	struct vmm_completion done;
+};
+
+static void blockdev_rw_completed(struct vmm_request *req)
+{
+	struct blockdev_rw *rw = req->priv;
+
+	if (!rw) {
+		return;
+	}
+
+	rw->failed = FALSE;
+	vmm_completion_complete(&rw->done);
+}
+
+static void blockdev_rw_failed(struct vmm_request *req)
+{
+	struct blockdev_rw *rw = req->priv;
+
+	if (!rw) {
+		return;
+	}
+
+	rw->failed = TRUE;
+	vmm_completion_complete(&rw->done);
+}
+
+static int blockdev_rw_blocks(struct vmm_blockdev *bdev,
+				enum vmm_request_type type,
+				u8 *buf, u64 lba, u64 bcnt)
+{
+	int rc;
+	struct blockdev_rw rw;
+
+	rw.failed = FALSE;
+	rw.req.type = type;
+	rw.req.lba = bdev->start_lba + lba;
+	rw.req.bcnt = bcnt;
+	rw.req.data = buf;
+	rw.req.priv = &rw;
+	rw.req.completed = blockdev_rw_completed;
+	rw.req.failed = blockdev_rw_failed;
+	INIT_COMPLETION(&rw.done);
+
+	if ((rc = vmm_blockdev_submit_request(bdev, &rw.req))) {
+		return rc;
+	}
+
+	vmm_completion_wait(&rw.done);
+
+	if (rw.failed) {
+		return VMM_EFAIL;
+	}
+
+	return VMM_OK;
+}
+
+u64 vmm_blockdev_rw(struct vmm_blockdev *bdev, 
+			enum vmm_request_type type,
+			u8 *buf, u64 off, u64 len)
+{
+	u8 *tbuf;
+	u64 tmp, first_lba, first_off, first_len;
+	u64 middle_lba, middle_len;
+	u64 last_lba, last_len;
+
+	BUG_ON(!vmm_scheduler_orphan_context());
+
+	if (!buf || !bdev || !len) {
+		return 0;
+	}
+
+	if ((type != VMM_REQUEST_READ) &&
+	    (type != VMM_REQUEST_WRITE)) {
+		return 0;
+	}
+
+	if ((type == VMM_REQUEST_WRITE) &&
+	   !(bdev->flags & VMM_BLOCKDEV_RW)) {
+		return 0;
+	}
+
+	tmp = bdev->num_blocks * bdev->block_size;
+	if ((off >= tmp) || ((off + len) > tmp)) {
+		return 0;
+	}
+
+	first_lba = udiv64(off, bdev->block_size);
+	first_off = off - first_lba * bdev->block_size;
+	if (first_off) {
+		first_len = bdev->block_size - first_off;
+		first_len = (first_len < len) ? first_len : len;
+	} else {
+		if (len < bdev->block_size) {
+			first_len = len;
+		} else {
+			first_len = 0;
+		}
+	}
+
+	off += first_len;
+	len -= first_len;
+
+	middle_lba = udiv64(off, bdev->block_size);
+	middle_len = udiv64(len, bdev->block_size) * bdev->block_size;
+
+	off += middle_len;
+	len -= middle_len;
+
+	last_lba = udiv64(off, bdev->block_size);
+	last_len = len;
+
+	if (first_len || last_len) {
+		tbuf = vmm_malloc(bdev->block_size);
+		if (!tbuf) {
+			return 0;
+		}
+	}
+
+	tmp = 0;
+
+	if (first_len) {
+		if (blockdev_rw_blocks(bdev, VMM_REQUEST_READ,
+					tbuf, first_lba, 1)) {
+			goto done;
+		}
+
+		if (type == VMM_REQUEST_WRITE) {
+			memcpy(&tbuf[first_off], buf, first_len);
+			if (blockdev_rw_blocks(bdev, VMM_REQUEST_WRITE,
+					tbuf, first_lba, 1)) {
+				goto done;
+			}
+		} else {
+			memcpy(buf, &tbuf[first_off], first_len);
+		}
+
+		buf += first_len;
+		tmp += first_len;
+	}
+
+	if (middle_len) {
+		if (blockdev_rw_blocks(bdev, type,
+		buf, middle_lba, udiv64(middle_len, bdev->block_size))) {
+			goto done;
+		}
+
+		buf += middle_len;
+		tmp += middle_len;
+	}
+
+	if (last_len) {
+		if (blockdev_rw_blocks(bdev, VMM_REQUEST_READ,
+					tbuf, last_lba, 1)) {
+			goto done;
+		}
+
+		if (type == VMM_REQUEST_WRITE) {
+			memcpy(&tbuf[0], buf, last_len);
+			if (blockdev_rw_blocks(bdev, VMM_REQUEST_WRITE,
+					tbuf, last_lba, 1)) {
+				goto done;
+			}
+		} else {
+			memcpy(buf, &tbuf[0], last_len);
+		}
+
+		tmp += last_len;
+	}
+
+done:
+	if (first_len || last_len) {
+		vmm_free(tbuf);
+	}
+
+	return tmp;
+}
+
 static struct vmm_blockdev *__blockdev_alloc(bool alloc_rq)
 {
 	struct vmm_blockdev *bdev;
@@ -178,6 +367,11 @@ int vmm_blockdev_register(struct vmm_blockdev *bdev)
 		return VMM_EFAIL;
 	}
 
+	if (!(bdev->flags & VMM_BLOCKDEV_RDONLY) &&
+	    !(bdev->flags & VMM_BLOCKDEV_RW)) {
+		return VMM_EINVALID;
+	}
+
 	cd = vmm_malloc(sizeof(struct vmm_classdev));
 	if (!cd) {
 		return VMM_EFAIL;
@@ -229,6 +423,7 @@ int vmm_blockdev_add_child(struct vmm_blockdev *bdev,
 	bdev->child_count++;
 	list_add_tail(&child_bdev->head, &bdev->child_list);
 	vmm_spin_unlock_irqrestore(&bdev->child_lock, flags);
+	child_bdev->flags = bdev->flags;
 	child_bdev->start_lba = start_lba;
 	child_bdev->num_blocks = num_blocks;
 	child_bdev->block_size = bdev->block_size;

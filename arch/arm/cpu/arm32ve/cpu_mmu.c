@@ -38,7 +38,7 @@
  * For example if VAPOOL is 8 MB then translation table pool will be 1 MB
  * or 1 MB / 4 KB = 256 translation tables
  */
-#define TTBL_MAX_TABLE_COUNT 	(CONFIG_VAPOOL_SIZE << \
+#define TTBL_MAX_TABLE_COUNT 	(CONFIG_VAPOOL_SIZE_MB << \
 					(20 - 3 - TTBL_TABLE_SIZE_SHIFT))
 #define TTBL_MAX_TABLE_SIZE	(TTBL_MAX_TABLE_COUNT * TTBL_TABLE_SIZE)
 #define TTBL_INITIAL_TABLE_SIZE (TTBL_INITIAL_TABLE_COUNT * TTBL_TABLE_SIZE)
@@ -672,12 +672,12 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	return VMM_OK;
 }
 
-int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa, 
-				virtual_addr_t * core_resv_va,
-				virtual_size_t * core_resv_sz,
-				physical_addr_t * arch_resv_pa,
-				virtual_addr_t * arch_resv_va,
-				virtual_size_t * arch_resv_sz)
+int __init arch_cpu_aspace_primary_init(physical_addr_t * core_resv_pa, 
+					virtual_addr_t * core_resv_va,
+					virtual_size_t * core_resv_sz,
+					physical_addr_t * arch_resv_pa,
+					virtual_addr_t * arch_resv_va,
+					virtual_size_t * arch_resv_sz)
 {
 	int i, t, rc = VMM_EFAIL;
 	virtual_addr_t va, resv_va = *core_resv_va;
@@ -872,3 +872,10 @@ int __init arch_cpu_aspace_init(physical_addr_t * core_resv_pa,
 mmu_init_error:
 	return rc;
 }
+
+int __init arch_cpu_aspace_secondary_init(void)
+{
+	/* FIXME: For now nothing to do here. */
+	return VMM_OK;
+}
+

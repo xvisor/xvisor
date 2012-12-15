@@ -33,7 +33,7 @@
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
 
-void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs)
+void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	if (!vcpu || !regs) {
 		return;
@@ -46,8 +46,8 @@ void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 	}
 }
 
-u32 cpu_vcpu_cpsr_retrieve(struct vmm_vcpu * vcpu,
-			  arch_regs_t * regs)
+u32 cpu_vcpu_cpsr_retrieve(struct vmm_vcpu *vcpu,
+			  arch_regs_t *regs)
 {
 	if (!vcpu || !regs) {
 		return 0;
@@ -60,7 +60,7 @@ u32 cpu_vcpu_cpsr_retrieve(struct vmm_vcpu * vcpu,
 	}
 }
 
-void cpu_vcpu_banked_regs_save(struct vmm_vcpu * vcpu, arch_regs_t * src)
+void cpu_vcpu_banked_regs_save(struct vmm_vcpu *vcpu, arch_regs_t *src)
 {
 	if (!vcpu || !vcpu->is_normal || !src) {
 		return;
@@ -143,7 +143,7 @@ void cpu_vcpu_banked_regs_save(struct vmm_vcpu * vcpu, arch_regs_t * src)
 	};
 }
 
-void cpu_vcpu_banked_regs_restore(struct vmm_vcpu * vcpu, arch_regs_t * dst)
+void cpu_vcpu_banked_regs_restore(struct vmm_vcpu *vcpu, arch_regs_t *dst)
 {
 	if (!vcpu || !vcpu->is_normal || !dst) {
 		return;
@@ -226,8 +226,8 @@ void cpu_vcpu_banked_regs_restore(struct vmm_vcpu * vcpu, arch_regs_t * dst)
 	};
 }
 
-void cpu_vcpu_cpsr_update(struct vmm_vcpu * vcpu, 
-			  arch_regs_t * regs,
+void cpu_vcpu_cpsr_update(struct vmm_vcpu *vcpu, 
+			  arch_regs_t *regs,
 			  u32 new_cpsr,
 			  u32 new_cpsr_mask)
 {
@@ -263,7 +263,7 @@ void cpu_vcpu_cpsr_update(struct vmm_vcpu * vcpu,
 	return;
 }
 
-u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu * vcpu)
+u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu *vcpu)
 {
 	/* Find out correct SPSR */
 	switch (arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) {
@@ -291,7 +291,7 @@ u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu * vcpu)
 	return 0;
 }
 
-int cpu_vcpu_spsr_update(struct vmm_vcpu * vcpu, 
+int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu, 
 			 u32 new_spsr,
 			 u32 new_spsr_mask)
 {
@@ -336,8 +336,8 @@ int cpu_vcpu_spsr_update(struct vmm_vcpu * vcpu,
 	return VMM_OK;
 }
 
-u32 cpu_vcpu_reg_read(struct vmm_vcpu * vcpu, 
-		      arch_regs_t * regs, 
+u32 cpu_vcpu_reg_read(struct vmm_vcpu *vcpu, 
+		      arch_regs_t *regs, 
 		      u32 reg_num) 
 {
 	switch (reg_num) {
@@ -371,8 +371,8 @@ u32 cpu_vcpu_reg_read(struct vmm_vcpu * vcpu,
 	return 0x0;
 }
 
-void cpu_vcpu_reg_write(struct vmm_vcpu * vcpu, 
-			arch_regs_t * regs, 
+void cpu_vcpu_reg_write(struct vmm_vcpu *vcpu, 
+			arch_regs_t *regs, 
 			u32 reg_num, 
 			u32 reg_val) 
 {
@@ -466,8 +466,8 @@ void cpu_vcpu_reg_write(struct vmm_vcpu * vcpu,
 	};
 }
 
-u32 cpu_vcpu_regmode_read(struct vmm_vcpu * vcpu, 
-			  arch_regs_t * regs, 
+u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu, 
+			  arch_regs_t *regs, 
 			  u32 mode,
 			  u32 reg_num)
 {
@@ -568,8 +568,8 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu * vcpu,
 	return 0x0;
 }
 
-void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu, 
-			    arch_regs_t * regs, 
+void cpu_vcpu_regmode_write(struct vmm_vcpu *vcpu, 
+			    arch_regs_t *regs, 
 			    u32 mode,
 			    u32 reg_num,
 			    u32 reg_val)
@@ -670,7 +670,7 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu,
 	}
 }
 
-int arch_guest_init(struct vmm_guest * guest)
+int arch_guest_init(struct vmm_guest *guest)
 {
 	int rc;
 	u32 ovect_flags;
@@ -715,39 +715,42 @@ int arch_guest_init(struct vmm_guest * guest)
 	return VMM_OK;
 }
 
-int arch_guest_deinit(struct vmm_guest * guest)
+int arch_guest_deinit(struct vmm_guest *guest)
 {
 	int rc;
-	if (!arm_guest_priv(guest)->ovect) {
-		rc = vmm_host_free_pages((virtual_addr_t)arm_guest_priv(guest)->ovect, 1);
-		if (rc) {
-			return rc;
-		}
-	}
 	if (guest->arch_priv) {
+		if (!arm_guest_priv(guest)->ovect) {
+			rc = vmm_host_free_pages(
+			     (virtual_addr_t)arm_guest_priv(guest)->ovect, 1);
+			if (rc) {
+				return rc;
+			}
+		}
 		vmm_free(guest->arch_priv);
 	}
 	return VMM_OK;
 }
 
-int arch_vcpu_init(struct vmm_vcpu * vcpu)
+int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
 	u32 ite, cpuid;
-	const char * attr;
+	const char *attr;
 
 	/* Initialize User Mode Registers */
 	/* For both Orphan & Normal VCPUs */
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
 	arm_regs(vcpu)->pc = vcpu->start_pc;
+	arm_regs(vcpu)->sp_excp = vcpu->stack_va + vcpu->stack_sz - 4;
 	if (vcpu->is_normal) {
 		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
 		arm_regs(vcpu)->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
 		arm_regs(vcpu)->cpsr |= CPSR_MODE_USER;
+		arm_regs(vcpu)->sp = 0;
 	} else {
 		arm_regs(vcpu)->cpsr  = CPSR_ZERO_MASK;
 		arm_regs(vcpu)->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
 		arm_regs(vcpu)->cpsr |= CPSR_MODE_SUPERVISOR;
-		arm_regs(vcpu)->sp = vcpu->start_sp;
+		arm_regs(vcpu)->sp = arm_regs(vcpu)->sp_excp;
 	}
 	/* Initialize Supervisor Mode Registers */
 	/* For only Normal VCPUs */
@@ -887,6 +890,7 @@ void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
 			arm_regs(tvcpu)->gpr[ite] = regs->gpr[ite];
 		}
 		arm_regs(tvcpu)->cpsr = regs->cpsr;
+		arm_regs(tvcpu)->sp_excp = regs->sp_excp;
 		if(tvcpu->is_normal) {
 			cpu_vcpu_banked_regs_save(tvcpu, regs);
 		}
@@ -901,6 +905,7 @@ void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
 		regs->gpr[ite] = arm_regs(vcpu)->gpr[ite];
 	}
 	regs->cpsr = arm_regs(vcpu)->cpsr;
+	regs->sp_excp = arm_regs(vcpu)->sp_excp;
 	if (vcpu->is_normal) {
 		cpu_vcpu_banked_regs_restore(vcpu, regs);
 	}

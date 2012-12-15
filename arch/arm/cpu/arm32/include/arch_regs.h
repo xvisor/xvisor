@@ -82,6 +82,7 @@ enum arm_features {
 };
 
 struct arch_regs {
+	u32 sp_excp; /* Stack Pointer for Exceptions */
 	u32 cpsr; /* CPSR */
 	u32 gpr[CPU_GPR_COUNT];	/* R0 - R12 */
 	u32 sp;	/* Stack Pointer */

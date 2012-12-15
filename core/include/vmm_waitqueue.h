@@ -60,40 +60,40 @@ struct vmm_waitqueue {
  *  vmm_spin_lock_irq() API
  *  Note: This function can only be called from Orphan Context
  */
-int __vmm_waitqueue_sleep(struct vmm_waitqueue * wq, u64 * timeout_nsecs);
+int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs);
 
 /** Lowlevel waitqueue wakeup first VCPU.
  *  Note: This function should only be called with wq->lock held using
  *  any vmm_spin_lock_xxx() API
  *  Note: This function can be called from any context
  */
-int __vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq);
+int __vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq);
 
 /** Lowlevel waitqueue wakeup all VCPUs.
  *  Note: This function should only be called with wq->lock held using
  *  any vmm_spin_lock_xxx() API
  *  Note: This function can be called from any context
  */
-int __vmm_waitqueue_wakeall(struct vmm_waitqueue * wq);
+int __vmm_waitqueue_wakeall(struct vmm_waitqueue *wq);
 
 /** Waiting VCPU count */
-u32 vmm_waitqueue_count(struct vmm_waitqueue * wq);
+u32 vmm_waitqueue_count(struct vmm_waitqueue *wq);
 
 /** Put current VCPU to sleep on given waitqueue */
-int vmm_waitqueue_sleep(struct vmm_waitqueue * wq);
+int vmm_waitqueue_sleep(struct vmm_waitqueue *wq);
 
 /** Put current VCPU to sleep on given waitqueue at most for timeout usecs */
-int vmm_waitqueue_sleep_timeout(struct vmm_waitqueue * wq,
-				u64 * timeout_usecs);
+int vmm_waitqueue_sleep_timeout(struct vmm_waitqueue *wq,
+				u64 *timeout_usecs);
 
 /** Wakeup VCPU from its waitqueue */
-int vmm_waitqueue_wake(struct vmm_vcpu * vcpu);
+int vmm_waitqueue_wake(struct vmm_vcpu *vcpu);
 
 /** Wakeup first VCPU in a given waitqueue */
-int vmm_waitqueue_wakefirst(struct vmm_waitqueue * wq);
+int vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq);
 
 /** Wakeup all VCPUs in a given waitqueue */
-int vmm_waitqueue_wakeall(struct vmm_waitqueue * wq);
+int vmm_waitqueue_wakeall(struct vmm_waitqueue *wq);
 
 /**
  * Sleep until a condition gets true

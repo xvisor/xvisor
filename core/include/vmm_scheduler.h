@@ -27,10 +27,10 @@
 #include <vmm_manager.h>
 
 /** Enter IRQ Context (Must be called from somewhere) */
-void vmm_scheduler_irq_enter(arch_regs_t * regs, bool vcpu_context);
+void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context);
 
 /** Exit IRQ Context (Must be called from somewhere) */
-void vmm_scheduler_irq_exit(arch_regs_t * regs);
+void vmm_scheduler_irq_exit(arch_regs_t *regs);
 
 /** Check whether we are in IRQ context */
 bool vmm_scheduler_irq_context(void);
@@ -44,13 +44,13 @@ bool vmm_scheduler_normal_context(void);
 /** Notify Change in vcpu state 
  *  (Must be called before actually changing the state) 
  */
-int vmm_scheduler_notify_state_change(struct vmm_vcpu * vcpu, u32 new_state);
+int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state);
 
 /** Retrive current vcpu number */
-struct vmm_vcpu * vmm_scheduler_current_vcpu(void);
+struct vmm_vcpu *vmm_scheduler_current_vcpu(void);
 
 /** Retrive current guest number */
-struct vmm_guest * vmm_scheduler_current_guest(void);
+struct vmm_guest *vmm_scheduler_current_guest(void);
 
 /** Disable pre-emption */
 void vmm_scheduler_preempt_disable(void);
