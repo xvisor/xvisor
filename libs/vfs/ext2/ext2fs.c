@@ -196,9 +196,9 @@ struct ext2_inode {
 #define EXT2_S_IFCHR			0x2000	/* character device */
 #define EXT2_S_IFIFO			0x1000	/* fifo */
 	/* -- process execution user/group override -- */
-#define EXT2_S_ISUID			0x0800	/* Set process User ID */
-#define EXT2_S_ISGID			0x0400	/* Set process Group ID */
-#define EXT2_S_ISVTX			0x0200	/* sticky bit */
+#define EXT2_S_IUID			0x0800	/* Set process User ID */
+#define EXT2_S_IGID			0x0400	/* Set process Group ID */
+#define EXT2_S_IVTX			0x0200	/* sticky bit */
 	/* -- access rights -- */
 #define EXT2_S_IRUSR			0x0100	/* user read */
 #define EXT2_S_IWUSR			0x0080	/* user write */
@@ -1811,34 +1811,42 @@ static int ext2fs_mount(struct mount *m, const char *dev, u32 flags)
 
 	rootmode = __le16(root->inode.mode);
 
+	m->m_root->v_mode = 0;
+
 	switch (rootmode & EXT2_S_IFMASK) {
 	case EXT2_S_IFSOCK:
 		m->m_root->v_type = VSOCK;
+		m->m_root->v_mode |= S_IFSOCK;
 		break;
 	case EXT2_S_IFLNK:
 		m->m_root->v_type = VLNK;
+		m->m_root->v_mode |= S_IFLNK;
 		break;
 	case EXT2_S_IFREG:
 		m->m_root->v_type = VREG;
+		m->m_root->v_mode |= S_IFREG;
 		break;
 	case EXT2_S_IFBLK:
 		m->m_root->v_type = VBLK;
+		m->m_root->v_mode |= S_IFBLK;
 		break;
 	case EXT2_S_IFDIR:
 		m->m_root->v_type = VDIR;
+		m->m_root->v_mode |= S_IFDIR;
 		break;
 	case EXT2_S_IFCHR:
 		m->m_root->v_type = VCHR;
+		m->m_root->v_mode |= S_IFCHR;
 		break;
 	case EXT2_S_IFIFO:
 		m->m_root->v_type = VFIFO;
+		m->m_root->v_mode |= S_IFIFO;
 		break;
 	default:
 		m->m_root->v_type = VUNK;
 		break;
 	};
 
-	m->m_root->v_mode = 0;
 	m->m_root->v_mode |= (rootmode & EXT2_S_IRUSR) ? S_IRUSR : 0;
 	m->m_root->v_mode |= (rootmode & EXT2_S_IWUSR) ? S_IWUSR : 0;
 	m->m_root->v_mode |= (rootmode & EXT2_S_IXUSR) ? S_IXUSR : 0;
@@ -2092,34 +2100,42 @@ static int ext2fs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 
 	filemode = __le16(node->inode.mode);
 
+	v->v_mode = 0;
+
 	switch (filemode & EXT2_S_IFMASK) {
 	case EXT2_S_IFSOCK:
 		v->v_type = VSOCK;
+		v->v_mode |= S_IFSOCK;
 		break;
 	case EXT2_S_IFLNK:
 		v->v_type = VLNK;
+		v->v_mode |= S_IFLNK;
 		break;
 	case EXT2_S_IFREG:
 		v->v_type = VREG;
+		v->v_mode |= S_IFREG;
 		break;
 	case EXT2_S_IFBLK:
 		v->v_type = VBLK;
+		v->v_mode |= S_IFBLK;
 		break;
 	case EXT2_S_IFDIR:
 		v->v_type = VDIR;
+		v->v_mode |= S_IFDIR;
 		break;
 	case EXT2_S_IFCHR:
 		v->v_type = VCHR;
+		v->v_mode |= S_IFCHR;
 		break;
 	case EXT2_S_IFIFO:
 		v->v_type = VFIFO;
+		v->v_mode |= S_IFIFO;
 		break;
 	default:
 		v->v_type = VUNK;
 		break;
 	};
 
-	v->v_mode = 0;
 	v->v_mode |= (filemode & EXT2_S_IRUSR) ? S_IRUSR : 0;
 	v->v_mode |= (filemode & EXT2_S_IWUSR) ? S_IWUSR : 0;
 	v->v_mode |= (filemode & EXT2_S_IXUSR) ? S_IXUSR : 0;

@@ -396,25 +396,33 @@ static int cpiofs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 	v->v_mtime = mtime;
 	v->v_ctime = mtime;
 
+	v->v_mode = 0;
+
 	if ((mode & 00170000) == 0140000) {
 		v->v_type = VSOCK;
+		v->v_mode |= S_IFSOCK;
 	} else if ((mode & 00170000) == 0120000) {
 		v->v_type = VLNK;
+		v->v_mode |= S_IFLNK;
 	} else if ((mode & 00170000) == 0100000) {
 		v->v_type = VREG;
+		v->v_mode |= S_IFREG;
 	} else if ((mode & 00170000) == 0060000) {
 		v->v_type = VBLK;
+		v->v_mode |= S_IFBLK;
 	} else if ((mode & 00170000) == 0040000) {
 		v->v_type = VDIR;
+		v->v_mode |= S_IFDIR;
 	} else if ((mode & 00170000) == 0020000) {
 		v->v_type = VCHR;
+		v->v_mode |= S_IFCHR;
 	} else if ((mode & 00170000) == 0010000) {
 		v->v_type = VFIFO;
+		v->v_mode |= S_IFIFO;
 	} else {
 		v->v_type = VREG;
 	}
 
-	v->v_mode = 0;
 	v->v_mode |= (mode & 00400) ? S_IRUSR : 0;
 	v->v_mode |= (mode & 00200) ? S_IWUSR : 0;
 	v->v_mode |= (mode & 00100) ? S_IXUSR : 0;
