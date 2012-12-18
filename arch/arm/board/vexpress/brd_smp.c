@@ -59,7 +59,7 @@ int __init arch_smp_prepare_cpus(void)
 	}
 
 	/* Enable snooping in A9-MPCORE SCU */
-	vmm_writel(1, (void *)(ca9_scu_base + 0x4));
+	vmm_writel(1, (void *)ca9_scu_base);
 
 	rc = vmm_devtree_regunmap(node, ca9_scu_base, 0);
 #endif
