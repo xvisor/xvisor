@@ -56,7 +56,8 @@ bool vmm_iscontrol(char c)
 
 bool vmm_isprintable(char c)
 {
-	if (((31 < c) && (c < 127)) || 
+	if (((31 < c) && (c < 127)) ||
+	   (c == '\f') ||
 	   (c == '\r') ||
 	   (c == '\n') ||
 	   (c == '\t')) {
