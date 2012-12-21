@@ -83,14 +83,14 @@ enum vmm_irq_return {
 
 typedef enum vmm_irq_return vmm_irq_return_t;
 
-typedef vmm_irq_return_t (*vmm_host_irq_handler_t) (u32 irq_no, 
-						    arch_regs_t * regs,
-						    void *dev);
+typedef vmm_irq_return_t (*vmm_host_irq_function_t) (u32 irq_no, 
+						     arch_regs_t *regs,
+						     void *dev);
 
-/** Host IRQ Handler Abstraction */
-struct vmm_host_irq_hndl {
+/** Host IRQ Action Abstraction */
+struct vmm_host_irq_action {
 	struct dlist head;
-	vmm_host_irq_handler_t hndl;
+	vmm_host_irq_function_t func;
 	void *dev;
 };
 
@@ -112,6 +112,7 @@ struct vmm_host_irq_chip {
 	void (*irq_disable)(struct vmm_host_irq *irq);
 	void (*irq_ack)(struct vmm_host_irq *irq);
 	void (*irq_mask)(struct vmm_host_irq *irq);
+	void (*irq_mask_and_ack)(struct vmm_host_irq *irq);
 	void (*irq_unmask)(struct vmm_host_irq *irq);
 	void (*irq_eoi)(struct vmm_host_irq *irq);
 	int  (*irq_set_affinity)(struct vmm_host_irq *irq, 
@@ -128,14 +129,15 @@ struct vmm_host_irq {
 	u32 count[CONFIG_CPU_COUNT];
 	void *chip_data;
 	struct vmm_host_irq_chip *chip;
-	struct dlist hndl_list;
+	void (*handler)(u32, struct vmm_host_irq *, arch_regs_t *);
+	struct dlist action_list;
 };
 
 /** Explicity report a host irq 
  * (Note: To be called from architecture specific code)
  * (Note: This will be typically called by nested/secondary PICs) 
  */
-int vmm_host_generic_irq_exec(u32 cpu_irq_no, arch_regs_t *regs);
+int vmm_host_generic_irq_exec(u32 hirq_no, arch_regs_t *regs);
 
 /** Report external irq as seen from CPU 
  * (Note: To be called from architecture specific code) 
@@ -153,6 +155,21 @@ int vmm_host_irq_set_chip(u32 hirq_num, struct vmm_host_irq_chip *chip);
 
 /* Set host irq chip data for given host irq number */
 int vmm_host_irq_set_chip_data(u32 hirq_num, void *chip_data);
+
+/* Set host irq handler for given host irq number 
+ * NOTE: For second argument, mention one of the 
+ * vmm_handle_xxxxx functions from below
+ */
+int vmm_host_irq_set_handler(u32 hirq_num, 
+		void (*handler)(u32, struct vmm_host_irq *, arch_regs_t *));
+
+/* Fast EOI irq handler */
+void vmm_handle_fast_eoi(u32 hirq_num, 
+			 struct vmm_host_irq *irq, arch_regs_t *regs);
+
+/* Level irq handler */
+void vmm_handle_level_irq(u32 hirq_num, 
+			  struct vmm_host_irq *irq, arch_regs_t *regs);
 
 /** Get host irq number from host irq instance */
 static inline u32 vmm_host_irq_get_num(struct vmm_host_irq *irq)
@@ -261,13 +278,13 @@ int vmm_host_irq_unmask(u32 hirq_num);
 /** Mask a host irq */
 int vmm_host_irq_mask(u32 hirq_num);
 
-/** Register handler for given irq */
+/** Register function callback for given irq */
 int vmm_host_irq_register(u32 hirq_num, 
 			  const char *name,
-			  vmm_host_irq_handler_t handler,
+			  vmm_host_irq_function_t func,
 			  void *dev);
 
-/** Unregister handler for given irq */
+/** Unregister function callback for given irq */
 int vmm_host_irq_unregister(u32 hirq_num, 
 			    void *dev);
 

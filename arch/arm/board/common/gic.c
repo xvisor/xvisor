@@ -301,6 +301,7 @@ static void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)
 	for (i = 0; i < irq_limit; i++) {
 		vmm_host_irq_set_chip(i, &gic_chip);
 		vmm_host_irq_set_chip_data(i, gic);
+		vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
 	}
 
 	/* Enable IRQ distribution */
