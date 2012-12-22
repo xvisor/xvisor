@@ -730,6 +730,8 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 	vmm_mutex_unlock(&dectrl.emu_lock);
 
 	if (!found) {
+		vmm_printf("%s: No compatible emulator found for %s/%s\n", 
+		__func__, guest->node->name, reg->node->name);
 		return VMM_ENOTAVAIL;
 	}
 

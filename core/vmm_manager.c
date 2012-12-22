@@ -28,6 +28,7 @@
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 #include <vmm_manager.h>
+#include <vmm_stdio.h>
 #include <vmm_smp.h>
 #include <arch_vcpu.h>
 #include <arch_guest.h>
@@ -534,6 +535,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		if ((guest->node == gnode) ||
 		    (strcmp(guest->node->name, gnode->name) == 0)) {
 			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+			vmm_printf("%s: Duplicate guest \"%s\" detected\n", 
+					__func__, gnode->name);
 			return NULL;
 		}
 	}
@@ -552,6 +555,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		mngr.guest_avail_array[gnum] = FALSE;
 	} else {
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+		vmm_printf("%s: No available guest instance found\n", __func__);
 		return NULL;
 	}
 
@@ -566,6 +570,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 	vsnode = vmm_devtree_getchild(gnode, VMM_DEVTREE_VCPUS_NODE_NAME);
 	if (!vsnode) {
+		vmm_printf("%s: %s/vcpus node not found\n", __func__, gnode->name);
 		goto guest_create_error;
 	}
 	list_for_each(l1, &vsnode->child_list) {
