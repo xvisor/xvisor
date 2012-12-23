@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -34,7 +34,7 @@
 #define PAD_ALTERNATE	4
 /* the following should be enough for 32 bit int */
 #define PRINT_BUF_LEN	64
-/* size of early buffer. 
+/* size of early buffer.
  * This should be enough to hold 80x25 characters
  */
 #define EARLY_BUF_SZ	2048
@@ -76,7 +76,7 @@ int vmm_printchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 
 	if (stdio_init_done) {
 		if (cdev) {
-			rc = vmm_chardev_dowrite(cdev, (u8 *)ch, num_ch, 
+			rc = vmm_chardev_dowrite(cdev, (u8 *)ch, num_ch,
 						 block) ? VMM_OK : VMM_EFAIL;
 		} else {
 			for (i = 0; i < num_ch; i++) {
@@ -156,7 +156,7 @@ static void printc(char **out, u32 *out_len, struct vmm_chardev *cdev, char ch)
 	}
 }
 
-static int prints(char **out, u32 *out_len, struct vmm_chardev *cdev, 
+static int prints(char **out, u32 *out_len, struct vmm_chardev *cdev,
 		  const char *string, int width, int flags)
 {
 	int pc = 0;
@@ -192,7 +192,7 @@ static int prints(char **out, u32 *out_len, struct vmm_chardev *cdev,
 	return pc;
 }
 
-static int printi(char **out, u32 *out_len, struct vmm_chardev *cdev, 
+static int printi(char **out, u32 *out_len, struct vmm_chardev *cdev,
 		  long long i, int b, int sg, int width, int flags, int letbase)
 {
 	char print_buf[PRINT_BUF_LEN];
@@ -242,7 +242,7 @@ static int printi(char **out, u32 *out_len, struct vmm_chardev *cdev,
 	return pc + prints(out, out_len, cdev, s, width, flags);
 }
 
-static int print(char **out, u32 *out_len, struct vmm_chardev *cdev, 
+static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 		 const char *format, va_list args)
 {
 	int width, flags, acnt = 0;
@@ -279,47 +279,47 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 			if (*format == 's') {
 				char *s = va_arg(args, char *);
 				acnt += sizeof(char *);
-				pc += prints(out, out_len, cdev, 
+				pc += prints(out, out_len, cdev,
 					     s ? s : "(null)", width, flags);
 				continue;
 			}
 			if (*format == 'd') {
-				pc += printi(out, out_len, cdev, 
-					va_arg(args, int), 
+				pc += printi(out, out_len, cdev,
+					va_arg(args, int),
 					10, 1, width, flags, '0');
 				acnt += sizeof(int);
 				continue;
 			}
 			if (*format == 'x') {
-				pc += printi(out, out_len, cdev, 
-					va_arg(args, unsigned int), 
+				pc += printi(out, out_len, cdev,
+					va_arg(args, unsigned int),
 					16, 0, width, flags, 'a');
 				acnt += sizeof(unsigned int);
 				continue;
 			}
 			if (*format == 'X') {
-				pc += printi(out, out_len, cdev, 
-					va_arg(args, unsigned int), 
+				pc += printi(out, out_len, cdev,
+					va_arg(args, unsigned int),
 					16, 0, width, flags, 'A');
 				acnt += sizeof(unsigned int);
 				continue;
 			}
 			if (*format == 'u') {
-				pc += printi(out, out_len, cdev, 
-					va_arg(args, unsigned int), 
+				pc += printi(out, out_len, cdev,
+					va_arg(args, unsigned int),
 					10, 0, width, flags, 'a');
 				acnt += sizeof(unsigned int);
 				continue;
 			}
 			if (*format == 'p') {
-				pc += printi(out, out_len, cdev, 
+				pc += printi(out, out_len, cdev,
 					va_arg(args, unsigned long),
 					16, 0, width, flags, 'a');
 				acnt += sizeof(unsigned long);
 				continue;
 			}
 			if (*format == 'P') {
-				pc += printi(out, out_len, cdev, 
+				pc += printi(out, out_len, cdev,
 					va_arg(args, unsigned long),
 					16, 0, width, flags, 'A');
 				acnt += sizeof(unsigned long);
@@ -330,14 +330,14 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 					va_arg(args, int);
 					acnt += sizeof(int);
 				}
-				if (sizeof(unsigned long long) == 
+				if (sizeof(unsigned long long) ==
 						sizeof(unsigned long)) {
 					tmp = va_arg(args, unsigned long long);
 					acnt += sizeof(unsigned long long);
 				} else {
-					((unsigned long *)&tmp)[0] = 
+					((unsigned long *)&tmp)[0] =
 						va_arg(args, unsigned long);
-					((unsigned long *)&tmp)[1] = 
+					((unsigned long *)&tmp)[1] =
 						va_arg(args, unsigned long);
 					acnt += 2*sizeof(unsigned long);
 				}
@@ -362,18 +362,18 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 			} else if (*format == 'l') {
 				if (*(format + 1) == 'x') {
 					format += 1;
-					pc += printi(out, out_len, cdev, 
+					pc += printi(out, out_len, cdev,
 						va_arg(args, unsigned long),
 						16, 0, width, flags, 'a');
 					acnt += sizeof(unsigned long);
 				} else if (*(format + 1) == 'X') {
 					format += 1;
-					pc += printi(out, out_len, cdev, 
+					pc += printi(out, out_len, cdev,
 						va_arg(args, unsigned long),
 						16, 0, width, flags, 'A');
 					acnt += sizeof(unsigned long);
 				} else {
-					pc += printi(out, out_len, cdev, 
+					pc += printi(out, out_len, cdev,
 						va_arg(args, long),
 						10, 1, width, flags, '0');
 					acnt += sizeof(long);
@@ -465,7 +465,7 @@ int vmm_scanchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 	return rc;
 }
 
-char vmm_cgetc(struct vmm_chardev *cdev) 
+char vmm_cgetc(struct vmm_chardev *cdev)
 {
 	char ch = 0;
 	vmm_scanchars(cdev, &ch, 1, TRUE);
@@ -483,16 +483,21 @@ char vmm_getc(void)
 	return vmm_cgetc(stdio_ctrl.dev);
 }
 
-char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, char endchar)
+char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, 
+		char endchar, struct vmm_history *history)
 {
 	char ch, ch1;
 	bool add_ch, del_ch, to_left, to_right, to_start, to_end;
 	u32 ite, pos = 0, count = 0;
+	int prev, hist_cur;
 	if (!s) {
 		return NULL;
 	}
-	memset(s, 0, maxwidth);
-	while (count < maxwidth) {
+	if (history) {
+		hist_cur = history->tail;
+	}
+	maxwidth = (maxwidth < history->width) ? maxwidth : history->width;
+	while (1) {
 		to_left = FALSE;
 		to_right = FALSE;
 		to_start = FALSE;
@@ -502,7 +507,7 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, char endchar)
 		if ((ch = vmm_cgetc(cdev)) == endchar) {
 			break;
 		}
-		/* Note: we have to process all the required 
+		/* Note: we have to process all the required
 		 * ANSI escape seqences for special keyboard keys */
 		if (vmm_isprintable(ch)) {
 			add_ch = TRUE;
@@ -510,12 +515,47 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, char endchar)
 			vmm_scanchars(cdev, &ch, 1, TRUE);
 			vmm_scanchars(cdev, &ch1, 1, TRUE);
 			if (ch == '[') {
-				if (ch1 == 'A') { /* Up Key */
-					/* Ignore it. */ 
-					/* We will take care of it later. */
-				} else if (ch1 == 'B') { /* Down Key */
-					/* Ignore it. */
-					/* We will take care of it later. */
+				if (history && (ch1 == 'A')) { /* Up Key */
+					prev = (hist_cur == 0) ? (history->length-1) : (hist_cur-1);
+					if (history->table[prev][0]) {
+						s[count] = '\0';
+						strncpy(history->table[hist_cur], s, maxwidth);
+						/* First erase the current line */
+						if (pos > 0) {
+							vmm_cprintf(cdev, "\e[%dD", pos);
+							for (ite = 0; ite <= count; ite++)
+								vmm_cputc(cdev, ' ');
+							vmm_cprintf(cdev, "\e[%dD", count+1);
+						}
+						/* Write the prev line */
+						pos = 0;
+						count = 0;
+						for (; history->table[prev][pos] != '\0'; pos++, count++) {
+							vmm_cputc(cdev, history->table[prev][pos]);
+							s[pos] = history->table[prev][pos];
+						}
+						hist_cur = prev;
+					}
+				} else if (history && (ch1 == 'B')) { /* Down Key */
+					if (hist_cur != history->tail) {
+						s[count] = '\0';
+						strncpy(history->table[hist_cur], s, maxwidth);
+						hist_cur = (hist_cur == (history->length - 1)) ? 0 : (hist_cur + 1);
+						/* First erase the current line */
+						if (pos > 0) {
+							vmm_cprintf(cdev, "\e[%dD", pos);
+							for (ite = 0; ite <= count; ite++)
+								vmm_cputc(cdev, ' ');
+							vmm_cprintf(cdev, "\e[%dD", count+1);
+						}
+						/* Write the next line */
+						pos = 0;
+						count = 0;
+						for (; history->table[hist_cur][pos] != '\0'; pos++, count++) {
+							vmm_cputc(cdev, history->table[hist_cur][pos]);
+							s[pos] = history->table[hist_cur][pos];
+						}
+					}
 				} else if (ch1 == 'C') { /* Right Key */
 					to_right = TRUE;
 				} else if (ch1 == 'D') { /* Left Key */
@@ -540,7 +580,7 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, char endchar)
 					to_end = TRUE;
 				}
 			}
-		} else if (ch == 127){ /* Delete character */
+		} else if ((ch == 127) || (ch == '\b')) { /* Delete character */
 			if (pos > 0) {
 				del_ch = TRUE;
 			}
@@ -570,18 +610,24 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, char endchar)
 			pos = count;
 		}
 		if (add_ch) {
-			for (ite = 0; ite < (count - pos); ite++) {
-				s[count - ite] = s[(count - 1) - ite];
+			/* Add the character till maxwidth is not reached */
+			if (count < maxwidth) {
+				for (ite = 0; ite < (count - pos); ite++) {
+					s[count - ite] = s[(count - 1) - ite];
+				}
+				for (ite = pos; ite < count; ite++) {
+					vmm_cputc(cdev, s[ite + 1]);
+				}
+				for (ite = pos; ite < count; ite++) {
+					vmm_cputs(cdev, "\e[D");
+				}
+				s[pos] = ch;
+				count++;
+				pos++;
+			} else {
+				/* Erase the printed character otherwise */
+				vmm_cprintf(cdev, "\e[D \e[D");
 			}
-			for (ite = pos; ite < count; ite++) {
-				vmm_cputc(cdev, s[ite + 1]);
-			}
-			for (ite = pos; ite < count; ite++) {
-				vmm_cputs(cdev, "\e[D");
-			}
-			s[pos] = ch;
-			count++;
-			pos++;
 		}
 		if (del_ch) {
 			if (pos > 0) {
@@ -603,12 +649,22 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, char endchar)
 		}
 	}
 	s[count] = '\0';
+	if (history) {
+		strncpy(history->table[hist_cur], s, maxwidth);
+		if ((hist_cur == history->tail) && (count > 0)) {
+			history->tail = (history->tail == (history->length - 1))
+							? 0 : (history->tail + 1);
+		} else {
+			history->table[history->tail][0] = '\0';
+		}
+	}
 	return s;
 }
 
-char *vmm_gets(char *s, int maxwidth, char endchar)
+char *vmm_gets(char *s, int maxwidth, char endchar, 
+		struct vmm_history *history)
 {
-	return vmm_cgets(stdio_ctrl.dev, s, maxwidth, endchar);
+	return vmm_cgets(stdio_ctrl.dev, s, maxwidth, endchar, history);
 }
 
 struct vmm_chardev *vmm_stdio_device(void)
@@ -655,3 +711,4 @@ int __init vmm_stdio_init(void)
 
 	return VMM_OK;
 }
+

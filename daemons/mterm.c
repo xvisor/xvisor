@@ -38,16 +38,15 @@
 #define	MODULE_INIT			daemon_mterm_init
 #define	MODULE_EXIT			daemon_mterm_exit
 
-#define MTERM_CMD_STRING_SIZE		256
-
 static struct mterm_ctrl {
 	struct vmm_thread *thread;
+	struct vmm_history history;
 } mtctrl;
 
 static int mterm_main(void *udata)
 {
 	size_t cmds_len;
-	char cmds[MTERM_CMD_STRING_SIZE];
+	char cmds[CONFIG_MTERM_CMD_WIDTH];
 
 	/* Print Banner */
 	vmm_printf("%s", VMM_BANNER_STRING);
@@ -59,7 +58,11 @@ static int mterm_main(void *udata)
 		memset(cmds, 0, sizeof(cmds));
 
 		/* Get command string */
-		vmm_gets(cmds, MTERM_CMD_STRING_SIZE, '\n');
+#ifdef CONFIG_MTERM_HISTORY
+		vmm_gets(cmds, CONFIG_MTERM_CMD_WIDTH, '\n', &mtctrl.history);
+#else
+		vmm_gets(cmds, CONFIG_MTERM_CMD_WIDTH, '\n', NULL);
+#endif
 		cmds_len = strlen(cmds);
 		if (cmds_len > 0) {
 			if (cmds[cmds_len - 1] == '\r')
@@ -82,6 +85,10 @@ static int __init daemon_mterm_init(void)
 
 	/* Reset the control structure */
 	memset(&mtctrl, 0, sizeof(mtctrl));
+
+#ifdef CONFIG_MTERM_HISTORY
+	INIT_HISTORY(&mtctrl.history, CONFIG_MTERM_HISTORY_SIZE, CONFIG_MTERM_CMD_WIDTH);
+#endif
 
 	/* Retrive mterm time slice */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
