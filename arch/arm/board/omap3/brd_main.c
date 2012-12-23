@@ -377,7 +377,7 @@ int __init arch_clocksource_init(void)
 #endif
 }
 
-int __init arch_clockchip_init(void)
+int __cpuinit arch_clockchip_init(void)
 {
 	u32 gpt_num = OMAP3_CLK_EVENT_GPT;
 

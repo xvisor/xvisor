@@ -252,7 +252,7 @@ u32 vmm_clockchip_count(void)
 	return retval;
 }
 
-int __init vmm_clockchip_init(void)
+int __cpuinit vmm_clockchip_init(void)
 {
 	int rc;
 	u32 cpu = vmm_smp_processor_id();

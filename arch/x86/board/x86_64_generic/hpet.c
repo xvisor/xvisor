@@ -148,7 +148,7 @@ static int hpet_initialize_timer(u8 timer_id, u8 dest_int, u32 flags)
 	return VMM_OK;
 }
 
-static int __init hpet_init(void)
+static int __cpuinit hpet_init(void)
 {
 	u64 cap_reg;
 
@@ -253,7 +253,7 @@ static int hpet_clockchip_expire(struct vmm_clockchip *cc)
 	return 0;
 }
 
-static int __init hpet_clockchip_init(u8 timer_id, const char *chip_name,
+static int __cpuinit hpet_clockchip_init(u8 timer_id, const char *chip_name,
 				      u32 irqno, u32 target_cpu)
 {
 	int rc, pinno;
@@ -324,7 +324,7 @@ static int __init hpet_clockchip_init(u8 timer_id, const char *chip_name,
 	return vmm_clockchip_register(&cc->clkchip);
 }
 
-int arch_clockchip_init(void)
+int __cpuinit arch_clockchip_init(void)
 {
 	BUG_ON(hpet_init() != VMM_OK);
 
@@ -363,7 +363,7 @@ static struct vmm_clocksource hpet_cs =
 	.enable = &hpet_clocksource_enable,
 };
 
-static int hpet_clocksource_init(void)
+static int __init hpet_clocksource_init(void)
 {
 	u64 t1, t2;
 
@@ -391,7 +391,7 @@ static int hpet_clocksource_init(void)
 	return vmm_clocksource_register(&hpet_cs);
 }
 
-int arch_clocksource_init(void)
+int __init arch_clocksource_init(void)
 {
 	return hpet_clocksource_init();
 }

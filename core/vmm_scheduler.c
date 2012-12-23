@@ -307,7 +307,7 @@ static void idle_orphan(void)
 	}
 }
 
-int __init vmm_scheduler_init(void)
+int __cpuinit vmm_scheduler_init(void)
 {
 	int rc;
 	char vcpu_name[32];

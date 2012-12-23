@@ -150,12 +150,12 @@ static int sp804_clockchip_expire(struct vmm_clockchip *cc)
 	return 0;
 }
 
-int __init sp804_clockchip_init(virtual_addr_t base, 
-				u32 hirq,
-				const char *name, 
-				int rating, 
-				u32 freq_hz,
-				u32 target_cpu)
+int __cpuinit sp804_clockchip_init(virtual_addr_t base, 
+				   u32 hirq,
+				   const char *name, 
+				   int rating, 
+				   u32 freq_hz,
+				   u32 target_cpu)
 {
 	int rc;
 	struct sp804_clockchip *cc;

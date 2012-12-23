@@ -350,7 +350,7 @@ int vmm_host_irq_unregister(u32 hirq_num, void *dev)
 	return VMM_EFAIL;
 }
 
-int __init vmm_host_irq_init(void)
+int __cpuinit vmm_host_irq_init(void)
 {
 	int ret;
 	u32 ite, cpu = vmm_smp_processor_id();

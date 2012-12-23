@@ -279,7 +279,7 @@ void vmm_timer_stop(void)
 	tlcp->started = FALSE;
 }
 
-int __init vmm_timer_init(void)
+int __cpuinit vmm_timer_init(void)
 {
 	int rc;
 	u32 cpu = vmm_smp_processor_id();

@@ -188,7 +188,7 @@ int __init arch_clocksource_init(void)
 	return VMM_OK;
 }
 
-int __init arch_clockchip_init(void)
+int __cpuinit arch_clockchip_init(void)
 {
 	int rc;
 	u32 val;

@@ -251,7 +251,7 @@ u32 vmm_host_free_initmem(void)
 	return (init_size >> VMM_PAGE_SHIFT) * VMM_PAGE_SIZE / 1024;
 }
 
-int __init vmm_host_aspace_init(void)
+int __cpuinit vmm_host_aspace_init(void)
 {
 	int rc, cpu = vmm_smp_processor_id();
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;

@@ -190,7 +190,7 @@ static int gpt_clockchip_expire(struct vmm_clockchip *cc)
 	return VMM_OK;
 }
 
-int __init gpt_clockchip_init(const char *name,
+int __cpuinit gpt_clockchip_init(const char *name,
 			physical_addr_t gpt_pa, u32 gpt_hz, u32 gpt_irq)
 {
 	int rc;

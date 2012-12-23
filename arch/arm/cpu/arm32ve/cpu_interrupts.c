@@ -203,7 +203,7 @@ void do_fiq(arch_regs_t * regs)
 	vmm_scheduler_irq_exit(regs);
 }
 
-int __init arch_cpu_irq_setup(void)
+int __cpuinit arch_cpu_irq_setup(void)
 {
 	extern u32 _start_vect[];
 

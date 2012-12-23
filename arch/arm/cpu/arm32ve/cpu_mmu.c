@@ -873,7 +873,7 @@ mmu_init_error:
 	return rc;
 }
 
-int __init arch_cpu_aspace_secondary_init(void)
+int __cpuinit arch_cpu_aspace_secondary_init(void)
 {
 	/* FIXME: For now nothing to do here. */
 	return VMM_OK;

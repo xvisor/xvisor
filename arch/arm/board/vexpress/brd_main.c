@@ -390,7 +390,7 @@ static virtual_addr_t v2m_sys_24mhz;
 static virtual_addr_t v2m_twd_base;
 #endif
 
-int __init arch_clockchip_init(void)
+int __cpuinit arch_clockchip_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
