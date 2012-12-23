@@ -196,6 +196,7 @@ int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds)
 	int argc, cmd_ret;
 	char *argv[VMM_CMD_ARG_MAXCOUNT];
 	char *c = cmds;
+	bool eos = 0;
 	argc = 0;
 	while (*c) {
 		while (*c == VMM_CMD_ARG_DELIM_CHAR ||
@@ -214,6 +215,8 @@ int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds)
 		       *c != VMM_CMD_DELIM_CHAR && *c != '\0') {
 			c++;
 		}
+		if (*c == '\0')
+			eos = 1;
 		if ((*c == VMM_CMD_DELIM_CHAR || *c == '\0') && argc > 0) {
 			*c = '\0';
 			c++;
@@ -221,6 +224,8 @@ int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds)
 			if (cmd_ret)
 				return cmd_ret;
 			argc = 0;
+			if (eos)
+				break;
 		} else {
 			*c = '\0';
 			c++;
