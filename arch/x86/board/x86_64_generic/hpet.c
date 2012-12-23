@@ -356,7 +356,7 @@ static struct vmm_clocksource hpet_cs =
 {
 	.name = "hpet_clksrc",
 	.rating = 300,
-	.mask = 0xFFFFFFFF,
+	.mask = VMM_CLOCKSOURCE_MASK(32),
 	.shift = 20,
 	.read = &hpet_clocksource_read,
 	.disable = &hpet_clocksource_disable,

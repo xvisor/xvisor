@@ -132,7 +132,7 @@ static struct vmm_clocksource mips_cs =
 {
 	.name = "mips_clksrc",
 	.rating = 300,
-	.mask = 0xFFFFFFFF,
+	.mask = VMM_CLOCKSOURCE_MASK(32),
 	.shift = 20,
 	.read = &mips_clocksource_read
 };

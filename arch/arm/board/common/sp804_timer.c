@@ -62,7 +62,7 @@ int __init sp804_clocksource_init(virtual_addr_t base,
 	cs->clksrc.name = name;
 	cs->clksrc.rating = rating;
 	cs->clksrc.read = &sp804_clocksource_read;
-	cs->clksrc.mask = 0xFFFFFFFF;
+	cs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
 	cs->clksrc.mult = vmm_clocksource_hz2mult(freq_hz, shift);
 	cs->clksrc.shift = shift;
 	cs->clksrc.priv = cs;
