@@ -6,45 +6,24 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
-#
+# 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#
+# 
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file    openconf.cfg
-# @author  Anup Patel (anup@brainfault.org)
-# @brief   Board commons config file for ARM
-#*/
+# @file objects.mk
+# @author Anup Patel (anup@brainfault.org)
+# @brief list of Sun4i SOC objects.
+# */
 
-config CONFIG_ARM_VIC
-        bool
-        default n
+board-objs-y+=brd_main.o
+board-objs-y+=brd_defterm.o
+board-objs-$(CONFIG_SUN4I_ONE_GUEST_PBA8_DTS)+=dts/one_guest_pb-a8.o
+board-objs-$(CONFIG_SUN4I_ONE_GUEST_VEX_A9_DTS)+=dts/one_guest_vexpress-a9.o
+board-objs-$(CONFIG_SUN4I_TWO_GUEST_PBA8_DTS)+=dts/two_guest_pb-a8.o
 
-config CONFIG_ARM_GIC
-	bool
-	default n
-
-config CONFIG_ARM_TIMER_SP804
-	bool
-	default n
-
-config CONFIG_ARM_TWD
-	bool
-	default n
-
-config CONFIG_ICST
-	bool
-	default n
-
-config CONFIG_ARM_SCU
-	bool
-	default n
-
-source "arch/arm/board/common/versatile/openconf.cfg"
-source "arch/arm/board/common/omap/openconf.cfg"
-source "arch/arm/board/common/sunxi/openconf.cfg"
