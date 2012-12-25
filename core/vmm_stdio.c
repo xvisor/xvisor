@@ -650,8 +650,13 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth,
 	}
 	s[count] = '\0';
 	if (history) {
-		strncpy(history->table[hist_cur], s, maxwidth);
-		if ((hist_cur == history->tail) && (count > 0)) {
+		bool duplicate = FALSE;
+		prev = (history->tail == 0) ? (history->length-1) : (history->tail-1);
+		if (history->table[prev][0])
+			duplicate = !(strcmp(s, history->table[prev]));
+		if (!duplicate)
+			strncpy(history->table[history->tail], s, maxwidth);
+		if (!duplicate && (count > 0)) {
 			history->tail = (history->tail == (history->length - 1))
 							? 0 : (history->tail + 1);
 		} else {
