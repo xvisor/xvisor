@@ -72,6 +72,9 @@
 #define VMM_DEVTREE_PHYS_SIZE_ATTR_NAME		"physical_size"
 #define VMM_DEVTREE_SWITCH_ATTR_NAME		"switch"
 
+#define VMM_DEVTREE_ALIASES_NODE_NAME		"aliases"
+#define VMM_DEVTREE_CONSOLE_ATTR_NAME		"console"
+
 enum vmm_devtree_attrypes {
 	VMM_DEVTREE_ATTRTYPE_UNKNOWN = 0,
 	VMM_DEVTREE_ATTRTYPE_STRING = 1,
