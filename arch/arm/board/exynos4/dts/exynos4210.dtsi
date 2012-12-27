@@ -67,7 +67,7 @@
 				irq = <44 45>;
 			};
 
-			uart0: uart@13800000 {
+			SERIAL0: uart@13800000 {
 				device_type = "serial";
 				compatible = "samsung,exynos4210-uart";
 				reg = <0x13800000 0x100>;
@@ -76,7 +76,7 @@
 				irq = <52>;
 			};
 
-			uart1: uart@13810000 {
+			SERIAL1: uart@13810000 {
 				device_type = "serial";
 				compatible = "samsung,exynos4210-uart";
 				reg = <0x13810000 0x100>;
@@ -85,7 +85,7 @@
 				irq = <53>;
 			};
 
-			uart2: uart@13820000 {
+			SERIAL2: uart@13820000 {
 				device_type = "serial";
 				compatible = "samsung,exynos4210-uart";
 				reg = <0x13820000 0x100>;
@@ -94,7 +94,7 @@
 				irq = <54>;
 			};
 
-			uart3: uart@0x13830000 {
+			SERIAL3: uart@0x13830000 {
 				device_type = "serial";
 				compatible = "samsung,exynos4210-uart";
 				reg = <0x13830000 0x100>;

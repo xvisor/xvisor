@@ -49,6 +49,9 @@
 #include <arch_cpu.h>
 #include <arch_board.h>
 
+/* Optional includes */
+#include <rtc/vmm_rtcdev.h>
+
 void __noreturn vmm_hang(void)
 {
 	while (1) ;
@@ -57,9 +60,14 @@ void __noreturn vmm_hang(void)
 static void system_init_work(struct vmm_work *work)
 {
 	int ret;
+	const char *str;
 	u32 c, freed;
 	struct dlist *l;
-	struct vmm_devtree_node *gnode, *gsnode;
+	struct vmm_chardev *cdev;
+#if defined(CONFIG_RTC)
+	struct vmm_rtcdev *rdev;
+#endif
+	struct vmm_devtree_node *node, *node1;
 	struct vmm_guest *guest = NULL;
 
 	/* Initialize command manager */
@@ -124,29 +132,6 @@ static void system_init_work(struct vmm_work *work)
 		vmm_hang();
 	}
 
-	/* Free init memory (Must be third last step) */
-	vmm_printf("Freeing init memory: ");
-	freed = vmm_host_free_initmem();
-	vmm_printf("%dK\n", freed);
-
-	/* Populate guest instances (Must be second last step) */
-	gsnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
-	if (likely(!!gsnode)) {
-		vmm_printf("Creating Pre-Configured Guests\n");
-		list_for_each(l, &gsnode->child_list) {
-			gnode = list_entry(l, struct vmm_devtree_node, head);
-#if defined(CONFIG_VERBOSE_MODE)
-			vmm_printf("Creating %s\n", gnode->name);
-#endif
-			guest = vmm_manager_guest_create(gnode);
-			if (!guest) {
-				vmm_printf("%s: failed to create %s\n",
-					   __func__, gnode->name);
-			}
-		}
-	}
-
 	/* Print status of host CPUs */
 	for_each_possible_cpu(c) {
 		if (vmm_cpu_online(c)) {
@@ -158,6 +143,66 @@ static void system_init_work(struct vmm_work *work)
 		}
 	}
 	vmm_printf("Brought Up %d CPUs\n", vmm_num_online_cpus());
+
+	/* Free init memory */
+	vmm_printf("Freeing init memory: ");
+	freed = vmm_host_free_initmem();
+	vmm_printf("%dK\n", freed);
+
+	/* Process attributes in choosen node */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_CHOOSEN_NODE_NAME);
+	if (node) {
+		/* Find character device based on console attribute */
+		str = vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
+		if (!(cdev = vmm_chardev_find(str))) {
+			if ((node1 = vmm_devtree_getnode(str))) {
+				cdev = vmm_chardev_find(node1->name);
+			}
+		}
+		/* Set choosen console device as stdio device */
+		if (cdev) {
+			vmm_printf("Change stdio device to %s\n", cdev->name);
+			vmm_stdio_change_device(cdev);
+		}
+
+#if defined(CONFIG_RTC)
+		/* Find rtc device based on rtcdev attribute */
+		str = vmm_devtree_attrval(node, VMM_DEVTREE_RTCDEV_ATTR_NAME);
+		if (!(rdev = vmm_rtcdev_find(str))) {
+			if ((node1 = vmm_devtree_getnode(str))) {
+				rdev = vmm_rtcdev_find(node1->name);
+			}
+		}
+		/* Syncup wallclock time with choosen rtc device */
+		if (rdev) {
+			ret = vmm_rtcdev_sync_wallclock(rdev);
+			vmm_printf("Syncup wallclock using %s", rdev->name);
+			if (ret) {
+				vmm_printf("(error %d)", ret);
+			}
+			vmm_printf("\n");
+		}
+#endif
+	}
+
+	/* Populate guest instances (Must be last step) */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	if (likely(!!node)) {
+		vmm_printf("Creating Pre-Configured Guests\n");
+		list_for_each(l, &node->child_list) {
+			node1 = list_entry(l, struct vmm_devtree_node, head);
+#if defined(CONFIG_VERBOSE_MODE)
+			vmm_printf("Creating %s\n", node1->name);
+#endif
+			guest = vmm_manager_guest_create(node1);
+			if (!guest) {
+				vmm_printf("%s: failed to create %s\n",
+					   __func__, node1->name);
+			}
+		}
+	}
 }
 
 void vmm_init(void)

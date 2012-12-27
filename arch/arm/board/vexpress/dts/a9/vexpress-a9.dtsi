@@ -102,7 +102,7 @@
 					irq = <45>;
 				};
 
-				uart0 {
+				SERIAL0: uart0 {
 			      		device_type = "serial";
 			      		compatible = "pl011";
 			      		reg = <0x10009000 0x1000>;
@@ -125,7 +125,7 @@
 					irq = <35>;
 				};
 
-				rtc0 {
+				RTC0: rtc0 {
 			      		device_type = "rtc";
 			      		compatible = "pl031";
 			      		reg = <0x10017000 0x1000>;

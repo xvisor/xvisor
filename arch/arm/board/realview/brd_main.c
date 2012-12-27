@@ -26,9 +26,6 @@
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <vmm_stdio.h>
-#include <vmm_chardev.h>
-#include <rtc/vmm_rtcdev.h>
 #include <libs/stringlib.h>
 #include <libs/libfdt.h>
 #include <libs/vtemu.h>
@@ -453,10 +450,6 @@ int __init arch_board_final_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
-	struct vmm_chardev *cdev;
-#if defined(CONFIG_RTC)
-	struct vmm_rtcdev *rdev;
-#endif
 #if defined(CONFIG_VTEMU)
 	struct vmm_fb_info *info;
 #endif
@@ -502,21 +495,6 @@ int __init arch_board_final_init(void)
 	if (rc) {
 		return rc;
 	}
-
-	/* Find uart0 character device and 
-	 * set it as vmm_stdio character device */
-	if ((cdev = vmm_chardev_find("uart0"))) {
-		vmm_stdio_change_device(cdev);
-	}
-
-	/* Syncup wall-clock time from rtc0 */
-#if defined(CONFIG_RTC)
-	if ((rdev = vmm_rtcdev_find("rtc0"))) {
-		if ((rc = vmm_rtcdev_sync_wallclock(rdev))) {
-			return rc;
-		}
-	}
-#endif
 
 	/* Create VTEMU instace if available*/
 #if defined(CONFIG_VTEMU)

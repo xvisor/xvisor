@@ -4,6 +4,10 @@
 /include/ "omap3.dtsi"
 
 / {
+	choosen {
+		console = &SERIAL0;
+	};
+
 	guests {
 		guest0 {
 			model = "realview-pb-a8";

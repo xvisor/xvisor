@@ -4,6 +4,10 @@
 /include/ "sun4i.dtsi"
 
 / {
+	choosen {
+		console = &SERIAL0;
+	};
+
 	guests {
 		guest0 {
 			model = "vexpress-a9";

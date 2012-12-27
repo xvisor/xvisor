@@ -63,16 +63,13 @@ int __init arch_defterm_init(void)
 
 	/* find the device used as console */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_ALIASES_NODE_NAME);
+				   VMM_DEVTREE_CHOOSEN_NODE_NAME);
 	if (!node) {
 		return VMM_ENODEV;
 	}
 
-	console_device =
-	    vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
-
+	console_device = 
+		vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
 	if (!console_device) {
 		return VMM_ENODEV;
 	}

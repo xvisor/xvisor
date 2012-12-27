@@ -46,7 +46,7 @@
 				irq = <23>; /* Timer1 irq */
 			};
 
-			uart0 { /* 8250 Serial Port */
+			SERIAL0: uart0 { /* 8250 Serial Port */
 				device_type = "serial";
 				compatible = "ns8250";
 				reg = <0x01C28000 0x1000>;
@@ -57,7 +57,7 @@
 				irq = <1>;
 			};
 
-			uart1 { /* 8250 Serial Port */
+			SERIAL1: uart1 { /* 8250 Serial Port */
 				device_type = "serial";
 				compatible = "ns8250";
 				reg = <0x01C28400 0x1000>;

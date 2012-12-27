@@ -41,6 +41,12 @@
 #define VMM_DEVTREE_REG_ATTR_NAME		"reg"
 #define VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME	"virtual-reg"
 
+#define VMM_DEVTREE_CHOOSEN_NODE_NAME		"choosen"
+#define VMM_DEVTREE_CONSOLE_ATTR_NAME		"console"
+#define VMM_DEVTREE_RTCDEV_ATTR_NAME		"rtcdev"
+
+#define VMM_DEVTREE_ALIASES_NODE_NAME		"aliases"
+
 #define VMM_DEVTREE_VMMINFO_NODE_NAME		"vmm"
 #define VMM_DEVTREE_VMMNET_NODE_NAME		"net"
 #define VMM_DEVTREE_NETSTACK_NODE_NAME		"hoststack"
@@ -71,9 +77,6 @@
 #define VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME	"alias_physical_addr"
 #define VMM_DEVTREE_PHYS_SIZE_ATTR_NAME		"physical_size"
 #define VMM_DEVTREE_SWITCH_ATTR_NAME		"switch"
-
-#define VMM_DEVTREE_ALIASES_NODE_NAME		"aliases"
-#define VMM_DEVTREE_CONSOLE_ATTR_NAME		"console"
 
 enum vmm_devtree_attrypes {
 	VMM_DEVTREE_ATTRTYPE_UNKNOWN = 0,

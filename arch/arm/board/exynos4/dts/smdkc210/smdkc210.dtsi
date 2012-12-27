@@ -2,6 +2,10 @@
 /include/ "../exynos4210.dtsi"
 
 / {
+	choosen {
+		console = &SERIAL0;
+	};
+
 	vmm {
 		net {
 			netbridge0 {
@@ -17,10 +21,6 @@
 
 		model = "smdkc210";
                 device_type = "host";
-
-		aliases {
-			console = &uart0;
-		};
 
 		memory {
 			/* NOTE: By default QEMU will only proivde 128 MB

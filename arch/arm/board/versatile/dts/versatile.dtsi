@@ -30,7 +30,7 @@
 				#address-cells = <1>;
 				#size-cells = <1>;
 
-				uart0 {
+				SERIAL0: uart0 {
 			      		device_type = "serial";
 			      		compatible = "pl011";
 			      		reg = <0x101F1000 0x1000>;
@@ -38,7 +38,7 @@
 					irq = <12>;
 				};
 
-				rtc0 {
+				RTC0: rtc0 {
 					device_type = "rtc";
 					compatible = "pl031";
 					reg = <0x101E8000 0x1000>;

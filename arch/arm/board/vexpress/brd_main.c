@@ -21,7 +21,6 @@
  * @brief main source file for board specific code
  */
 
-#include <arch_barrier.h>
 #include <vmm_error.h>
 #include <vmm_smp.h>
 #include <vmm_spinlocks.h>
@@ -29,9 +28,6 @@
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <vmm_stdio.h>
-#include <vmm_chardev.h>
-#include <rtc/vmm_rtcdev.h>
 #include <libs/libfdt.h>
 #include <libs/vtemu.h>
 #include <linux/amba/bus.h>
@@ -578,21 +574,6 @@ int __init arch_board_final_init(void)
 	if (rc) {
 		return rc;
 	}
-
-	/* Find uart0 character device and 
-	 * set it as vmm_stdio character device */
-	if ((cdev = vmm_chardev_find("uart0"))) {
-		vmm_stdio_change_device(cdev);
-	}
-
-	/* Syncup wall-clock time from rtc0 */
-#if defined(CONFIG_RTC)
-	if ((rdev = vmm_rtcdev_find("rtc0"))) {
-		if ((rc = vmm_rtcdev_sync_wallclock(rdev))) {
-			return rc;
-		}
-	}
-#endif
 
 	/* Create VTEMU instace if available*/
 #if defined(CONFIG_VTEMU)
