@@ -43,29 +43,10 @@
 
 /* Config clock frequency   */
 #define AW_HPET_CLK_SRC     AW_TMR_CLK_SRC_24MHOSC
+#define AW_HPET_CLOCK_SOURCE_HZ         (24000000)
+
 #define AW_HPET_CLK_EVT     AW_TMR_CLK_SRC_24MHOSC
-
-/* AW HPET clock source frequency */
-#ifndef AW_HPET_CLK_SRC
-    #error "AW_HPET_CLK_SRC is not define!!"
-#endif
-#if(AW_HPET_CLK_SRC == AW_TMR_CLK_SRC_24MHOSC)
-    #define AW_HPET_CLOCK_SOURCE_HZ         (24000000)
-#else
-    #error "AW_HPET_CLK_SRC config is invalid!!"
-#endif
-
-/* AW HPET clock eventy frequency */
-#ifndef AW_HPET_CLK_EVT
-    #error "AW_HPET_CLK_EVT is not define!!"
-#endif
-#if(AW_HPET_CLK_EVT == AW_TMR_CLK_SRC_32KLOSC)
-    #define AW_HPET_CLOCK_EVENT_HZ          (32768)
-#elif(AW_HPET_CLK_EVT == AW_TMR_CLK_SRC_24MHOSC)
-    #define AW_HPET_CLOCK_EVENT_HZ          (24000000)
-#else
-    #error "AW_HPET_CLK_EVT config is invalid!!"
-#endif
+#define AW_HPET_CLOCK_EVENT_HZ          (24000000)
 
 /* AW timer registers offsets */
 #define AW_TMR_REG_IRQ_EN			(0x0000)
@@ -90,8 +71,8 @@
 #define WDT_MODE_RESET				(1 << 1)
 
 #define CNT64_CTL_LATCH				(1 << 1)
-#define CNT64_CTL_SRC_32KLOSC			(0 << 2)
-#define CNT64_CTL_SRC_24MHOSC			(1 << 2)
+#define CNT64_CTL_SRC_24MHOSC			(0 << 2)
+#define CNT64_CTL_SRC_PLL6			(1 << 2)
 #define CNT64_CTL_CLEAR				(1 << 0)
 
 #define CPU_CFG_L2_CACHE_INV			(1 << 0)
@@ -115,7 +96,8 @@ static u64 aw_clksrc_read(struct vmm_clocksource *cs)
 
 	/* Latch 64-bit counter */
 	tmp = readl(acs->base + AW_TMR_REG_CNT64_CTL);
-	writel(tmp | CNT64_CTL_LATCH, acs->base + AW_TMR_REG_CNT64_CTL);
+	tmp |= CNT64_CTL_LATCH;
+	writel(tmp, acs->base + AW_TMR_REG_CNT64_CTL);
 	while (readl(acs->base + AW_TMR_REG_CNT64_CTL) & CNT64_CTL_LATCH) ;
 
 	/* Read 64-bit counter */
@@ -152,11 +134,8 @@ int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
 
 	/* Config clock source for 64bits counter */
 	tmp = readl(acs->base + AW_TMR_REG_CNT64_CTL);
-#if(AW_HPET_CLK_SRC == AW_TMR_CLK_SRC_24MHOSC)
-	writel(tmp | CNT64_CTL_SRC_24MHOSC, acs->base + AW_TMR_REG_CNT64_CTL);
-#else
-	writel(tmp | CNT64_CTL_SRC_32KLOSC, acs->base + AW_TMR_REG_CNT64_CTL);
-#endif
+	tmp &= ~CNT64_CTL_SRC_PLL6;
+	writel(tmp, acs->base + AW_TMR_REG_CNT64_CTL);
 	/* __delay(50); */
 
 	/* Clear 64bits counter */
@@ -169,7 +148,7 @@ int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
 	acs->clksrc.rating = 300;
 	acs->clksrc.read = aw_clksrc_read;
 	acs->clksrc.mask = VMM_CLOCKSOURCE_MASK(64);
-	acs->clksrc.shift = 10;
+	acs->clksrc.shift = 24;
 	acs->clksrc.mult = vmm_clocksource_hz2mult(AW_HPET_CLOCK_SOURCE_HZ, 
 						   acs->clksrc.shift);
 	acs->clksrc.priv = acs;
@@ -207,68 +186,79 @@ static vmm_irq_return_t aw_clockchip_irq_handler(u32 irq_no,
 static void aw_clockchip_set_mode(enum vmm_clockchip_mode mode,
 				  struct vmm_clockchip *cc)
 {
-	u32 tmp;
+	u32 ctrl;
 	struct aw_clockchip *acc = cc->priv;
 
 	/* Read timer control register */
-	tmp = readl(acc->base + AW_TMR_REG_CTL(acc->off));
+	ctrl = readl(acc->base + AW_TMR_REG_CTL(acc->off));
+
+	/* Disable timer and clear pending first */
+	ctrl &= ~TMRx_CTL_ENABLE;
+	writel(ctrl, acc->base + AW_TMR_REG_CTL(acc->off));
 
 	/* Determine updates to timer control register */
 	switch (mode) {
 	case VMM_CLOCKCHIP_MODE_PERIODIC:
-		tmp &= ~TMRx_CTL_ONESHOT;
-		tmp |= TMRx_CTL_ENABLE;
+		ctrl &= ~TMRx_CTL_ONESHOT;
+		ctrl |= TMRx_CTL_ENABLE;
 		/* FIXME: */
 		writel(0, acc->base + AW_TMR_REG_INTV(acc->off));
 		break;
 	case VMM_CLOCKCHIP_MODE_ONESHOT:
-		tmp |= TMRx_CTL_ONESHOT;
+		ctrl |= TMRx_CTL_ONESHOT;
 		break;
 	case VMM_CLOCKCHIP_MODE_UNUSED:
 	case VMM_CLOCKCHIP_MODE_SHUTDOWN:
-		tmp &= ~TMRx_CTL_ENABLE;
 		break;
 	default:
 		break;
 	}
 
 	/* Update timer control register */
-	writel(tmp, acc->base + AW_TMR_REG_CTL(acc->off));
+	writel(ctrl, acc->base + AW_TMR_REG_CTL(acc->off));
 }
 
 static int aw_clockchip_set_next_event(unsigned long next, 
 					struct vmm_clockchip *cc)
 {
-	u32 tmp;
+	u32 ctrl;
 	struct aw_clockchip *acc = cc->priv;
 
 	/* Read timer control register */
-	tmp = readl(acc->base + AW_TMR_REG_CTL(acc->off));
+	ctrl = readl(acc->base + AW_TMR_REG_CTL(acc->off));
+
+	/* Disable timer and clear pending first */
+	ctrl &= ~TMRx_CTL_ENABLE;
+	writel(ctrl, acc->base + AW_TMR_REG_CTL(acc->off));
 
 	/* Set interval register */
 	writel(next, acc->base + AW_TMR_REG_INTV(acc->off));
 
 	/* Start timer */
-	tmp |= (TMRx_CTL_ENABLE | TMRx_CTL_AUTORELOAD);
-	writel(tmp, acc->base + AW_TMR_REG_CTL(acc->off));
+	ctrl |= (TMRx_CTL_ENABLE | TMRx_CTL_AUTORELOAD);
+	writel(ctrl, acc->base + AW_TMR_REG_CTL(acc->off));
 
 	return VMM_OK;
 }
 
 static int aw_clockchip_expire(struct vmm_clockchip *cc)
 {
-	u32 i, tmp;
+	u32 i, ctrl;
 	struct aw_clockchip *acc = cc->priv;
 
 	/* Read timer control register */
-	tmp = readl(acc->base + AW_TMR_REG_CTL(acc->off));
+	ctrl = readl(acc->base + AW_TMR_REG_CTL(acc->off));
 
-	/* Set minimum value in interval register */
+	/* Disable timer and clear pending first */
+	ctrl &= ~TMRx_CTL_ENABLE;
+	writel(ctrl, acc->base + AW_TMR_REG_CTL(acc->off));
+
+	/* Set interval register */
 	writel(1, acc->base + AW_TMR_REG_INTV(acc->off));
 
 	/* Start timer */
-	tmp |= (TMRx_CTL_ENABLE | TMRx_CTL_AUTORELOAD);
-	writel(tmp, acc->base + AW_TMR_REG_CTL(acc->off));
+	ctrl |= (TMRx_CTL_ENABLE | TMRx_CTL_AUTORELOAD);
+	writel(ctrl, acc->base + AW_TMR_REG_CTL(acc->off));
 
 	/* Wait for timer to expire */
 	while (!(readl(acc->base + AW_TMR_REG_IRQ_STAT) & (1 << acc->num))) {
@@ -323,13 +313,9 @@ int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 
 	/* Configure timer control register */
 	tmp = readl(acc->base + AW_TMR_REG_CTL(acc->off));
-#if(AW_HPET_CLK_EVT == TMR_CLK_SRC_24MHOSC)
 	tmp |= TMRx_CTL_SRC_24MHOSC;
-	writel(tmp | , acc->base + AW_TMR_REG_CTL(acc->off));
-#else
-	tmp |= TMRx_CTL_SRC_32KLOSC;
-#endif
 	tmp |= TMRx_CTL_AUTORELOAD;
+	tmp &= ~(0x7 << 4);
 	writel(tmp, acc->base + AW_TMR_REG_CTL(acc->off));
 
 	/* Enable timer irq */
@@ -346,9 +332,8 @@ int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
 	acc->clkchip.mult = vmm_clockchip_hz2mult(AW_HPET_CLOCK_EVENT_HZ, 32);
 	acc->clkchip.shift = 32;
-	acc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &acc->clkchip);
-	acc->clkchip.max_delta_ns = 
-			vmm_clockchip_delta2ns(0xFFFFFFFF, &acc->clkchip);
+	acc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(1, &acc->clkchip) + 100000;
+	acc->clkchip.max_delta_ns = vmm_clockchip_delta2ns((0x80000000), &acc->clkchip);
 	acc->clkchip.set_mode = &aw_clockchip_set_mode;
 	acc->clkchip.set_next_event = &aw_clockchip_set_next_event;
 	acc->clkchip.expire = &aw_clockchip_expire;
