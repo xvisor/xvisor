@@ -191,7 +191,6 @@ int __init arch_board_final_init(void)
 		return rc;
 	}
 
-#if 0	/* FIXME: TBD */
 	/* Do Probing using device driver framework */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
@@ -205,7 +204,6 @@ int __init arch_board_final_init(void)
 	if (rc) {
 		return rc;
 	}
-#endif
 
 	return VMM_OK;
 
