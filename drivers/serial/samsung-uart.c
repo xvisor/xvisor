@@ -131,8 +131,11 @@ void samsung_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 }
 
 struct samsung_port {
+	struct vmm_chardev cd;
 	struct vmm_completion read_possible;
+#if defined(UART_SAMSUNG_USE_TXINTR)
 	struct vmm_completion write_possible;
+#endif
 	virtual_addr_t base;
 	u32 baudrate;
 	u32 input_clock;
@@ -147,7 +150,7 @@ static vmm_irq_return_t samsung_irq_handler(u32 irq_no, arch_regs_t * regs, void
 	struct samsung_port *port = (struct samsung_port *)dev;
 
 	/* Get masked interrupt status */
-	data = vmm_in_le16((void *)(port->base + S3C64XX_UINTM));
+	data = vmm_in_le16((void *)(port->base + S3C64XX_UINTP));
 
 	/* handle RX FIFO not empty */
 	if (data & S3C64XX_UINTM_RXD_MSK) {
@@ -158,6 +161,7 @@ static vmm_irq_return_t samsung_irq_handler(u32 irq_no, arch_regs_t * regs, void
 		vmm_completion_complete(&port->read_possible);
 	}
 
+#if defined(UART_SAMSUNG_USE_TXINTR)
 	/* handle TX FIFO not full */
 	if (data & S3C64XX_UINTM_TXD_MSK) {
 		/* Mask TX interrupts till TX FIFO is full */
@@ -166,6 +170,7 @@ static vmm_irq_return_t samsung_irq_handler(u32 irq_no, arch_regs_t * regs, void
 		/* Signal work completion to sleeping thread */
 		vmm_completion_complete(&port->write_possible);
 	}
+#endif
 
 	/* Clear all interrupts */
 	vmm_out_le16((void *)(port->base + S3C64XX_UINTP), data);
@@ -277,42 +282,43 @@ static int samsung_driver_probe(struct vmm_device *dev,
 {
 	int rc = VMM_EFAIL;
 	const char *attr = NULL;
-	struct vmm_chardev *cd = NULL;
 	struct samsung_port *port = NULL;
 
-	cd = vmm_malloc(sizeof(struct vmm_chardev));
-	if (!cd) {
+	port = vmm_zalloc(sizeof(struct samsung_port));
+	if (!port) {
 		rc = VMM_EFAIL;
 		goto free_nothing;
 	}
-	memset(cd, 0, sizeof(struct vmm_chardev));
 
-	port = vmm_malloc(sizeof(struct samsung_port));
-	if (!port) {
-		rc = VMM_EFAIL;
-		goto free_chardev;
-	}
-	memset(port, 0, sizeof(struct samsung_port));
-
-	strcpy(cd->name, dev->node->name);
-	cd->dev = dev;
-	cd->ioctl = NULL;
-	cd->read = samsung_read;
-	cd->write = samsung_write;
-	cd->priv = port;
+	strcpy(port->cd.name, dev->node->name);
+	port->cd.dev = dev;
+	port->cd.ioctl = NULL;
+	port->cd.read = samsung_read;
+	port->cd.write = samsung_write;
+	port->cd.priv = port;
 
 	INIT_COMPLETION(&port->read_possible);
+#if defined(UART_SAMSUNG_USE_TXINTR)
 	INIT_COMPLETION(&port->write_possible);
+#endif
 
 	rc = vmm_devtree_regmap(dev->node, &port->base, 0);
 	if (rc) {
 		goto free_port;
 	}
 
+#if defined(UART_SAMSUNG_USE_TXINTR)
+	port->mask = 0xfffa;
+#else
+	port->mask = 0xfffe;
+#endif
+
+	vmm_out_le16((void *)(port->base + S3C64XX_UINTM), port->mask);
+
 	attr = vmm_devtree_attrval(dev->node, "baudrate");
 	if (!attr) {
 		rc = VMM_EFAIL;
-		goto free_port;
+		goto free_reg;
 	}
 	port->baudrate = *((u32 *) attr);
 
@@ -321,29 +327,34 @@ static int samsung_driver_probe(struct vmm_device *dev,
 	attr = vmm_devtree_attrval(dev->node, "irq");
 	if (!attr) {
 		rc = VMM_EFAIL;
-		goto free_port;
+		goto free_reg;
 	}
 	port->irq = *((u32 *) attr);
 
 	if ((rc =
 	     vmm_host_irq_register(port->irq, dev->node->name,
 				   samsung_irq_handler, port))) {
-		goto free_port;
+		goto free_reg;
 	}
 
 	/* Call low-level init function */
 	samsung_lowlevel_init(port->base, port->baudrate, port->input_clock);
 
-	rc = vmm_chardev_register(cd);
+	rc = vmm_chardev_register(&port->cd);
 	if (rc) {
-		goto free_port;
+		goto free_irq;
 	}
 
+	dev->priv = port;
+
 	return VMM_OK;
+
+ free_irq:
+	vmm_host_irq_unregister(port->irq, port);
+ free_reg:
+	vmm_devtree_regunmap(dev->node, port->base, 0);
  free_port:
 	vmm_free(port);
- free_chardev:
-	vmm_free(cd);
  free_nothing:
 	return rc;
 }
@@ -351,12 +362,11 @@ static int samsung_driver_probe(struct vmm_device *dev,
 static int samsung_driver_remove(struct vmm_device *dev)
 {
 	int rc = VMM_OK;
-	struct vmm_chardev *cd = (struct vmm_chardev *)dev->priv;
+	struct samsung_port *port = dev->priv;
 
-	if (cd) {
-		rc = vmm_chardev_unregister(cd);
-		vmm_free(cd->priv);
-		vmm_free(cd);
+	if (port) {
+		rc = vmm_chardev_unregister(&port->cd);
+		vmm_free(port);
 		dev->priv = NULL;
 	}
 
@@ -368,13 +378,17 @@ static struct vmm_devid samsung_devid_table[] = {
 	 .type = "serial",
 	 .compatible = "samsung"},
 	{
+	 .type = "serial",
+	 .compatible = "exynos4210-uart"},
+	{
+	 .type = "serial",
+	 .compatible = "samsung,exynos4210-uart"},
+	{
 	 /* end of list */
 	 },
 };
 
-static struct
-
-vmm_driver samsung_driver = {
+static struct vmm_driver samsung_driver = {
 	.name = "samsung_serial",
 	.match_table = samsung_devid_table,
 	.probe = samsung_driver_probe,

@@ -21,16 +21,15 @@
  * @brief main source file for board specific code
  */
 
-#include <arch_barrier.h>
 #include <vmm_error.h>
 #include <vmm_smp.h>
+#include <vmm_delay.h>
+#include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <vmm_stdio.h>
-#include <vmm_chardev.h>
 #include <libs/libfdt.h>
 #include <exynos/mct_timer.h>
 
@@ -121,7 +120,28 @@ int arch_board_devtree_populate(struct vmm_devtree_node **root)
 
 int arch_board_reset(void)
 {
-	vmm_writel(0x1, (void *)(EXYNOS4_PA_PMU + 0x400));
+#if 0
+	int tmp = 0;
+
+	vmm_host_physical_write(EXYNOS4_PA_WATCHDOG + 0x00, &tmp, sizeof(tmp));
+
+	tmp = 0x80;
+
+	vmm_host_physical_write(EXYNOS4_PA_WATCHDOG + 0x04, &tmp, sizeof(tmp));
+	vmm_host_physical_write(EXYNOS4_PA_WATCHDOG + 0x08, &tmp, sizeof(tmp));
+
+	tmp = 0x2025;
+
+	vmm_host_physical_write(EXYNOS4_PA_WATCHDOG + 0x00, &tmp, sizeof(tmp));
+#else
+	void *ptr = (void *)vmm_host_iomap(0x10020000, 0x1000);
+
+	vmm_writel(0x1, ptr + 0x400);
+#endif
+
+	vmm_mdelay(500);
+
+	vmm_printf("%s: failed\n", __func__);
 
 	return VMM_OK;
 }
@@ -279,14 +299,8 @@ int __cpuinit arch_clockchip_init(void)
 
 int __init arch_board_final_init(void)
 {
-#if 0
 	int rc;
-#endif
 	struct vmm_devtree_node *node;
-	struct vmm_chardev *cdev;
-#if defined(CONFIG_RTC)
-	struct vmm_rtcdev *rdev;
-#endif
 #if defined(CONFIG_VTEMU)
 	struct vmm_fb_info *info;
 #endif
@@ -303,27 +317,12 @@ int __init arch_board_final_init(void)
 	if (!node) {
 		return VMM_ENOTAVAIL;
 	}
-#if 0
-	rc = vmm_devdrv_probe(node, exynos_getclk, NULL);
+
+	//rc = vmm_devdrv_probe(node, exynos_getclk, NULL);
+	rc = vmm_devdrv_probe(node, NULL, NULL);
 	if (rc) {
 		return rc;
 	}
-#endif
-
-	/* Find uart0 character device and 
-	 * set it as vmm_stdio character device */
-	if ((cdev = vmm_chardev_find("uart0"))) {
-		vmm_stdio_change_device(cdev);
-	}
-
-	/* Syncup wall-clock time from rtc0 */
-#if defined(CONFIG_RTC)
-	if ((rdev = vmm_rtcdev_find("rtc0"))) {
-		if ((rc = vmm_rtcdev_sync_wallclock(rdev))) {
-			return rc;
-		}
-	}
-#endif
 
 	return VMM_OK;
 }

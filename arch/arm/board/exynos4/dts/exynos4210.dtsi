@@ -31,13 +31,13 @@
 
 		scu { /* Snoop Control Unit */
 			device_type = "scu";
-			compatible = "arm, a9mpcore-priv";
+			compatible = "arm,a9mpcore-priv";
 			reg = <0x10500000 0x1000>;
 		};
 
 		pmu { /* Performance Monitorig Unit */
 			device_type = "pmu";
-			compatible = "arm, a9mpcore-priv";
+			compatible = "arm,a9mpcore-priv";
 			reg = <0x10020000 0x10000>;
 		};
 
@@ -59,7 +59,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
-			rtc0 {
+			RTC0: rtc0 {
 				device_type = "rtc";
 				compatible = "samsung,s3c6410-rtc";
 				reg = <0x10070000 0x100>;
@@ -73,7 +73,7 @@
 				reg = <0x13800000 0x100>;
 				clock-rate = <24000000>;
 				baudrate = <115200>;
-				irq = <52>;
+				irq = <84>;
 			};
 
 			SERIAL1: uart@13810000 {
@@ -82,7 +82,7 @@
 				reg = <0x13810000 0x100>;
 				clock-rate = <24000000>;
 				baudrate = <115200>;
-				irq = <53>;
+				irq = <85>;
 			};
 
 			SERIAL2: uart@13820000 {
@@ -91,16 +91,16 @@
 				reg = <0x13820000 0x100>;
 				clock-rate = <24000000>;
 				baudrate = <115200>;
-				irq = <54>;
+				irq = <86>;
 			};
 
-			SERIAL3: uart@0x13830000 {
+			SERIAL3: uart@13830000 {
 				device_type = "serial";
 				compatible = "samsung,exynos4210-uart";
 				reg = <0x13830000 0x100>;
 				clock-rate = <24000000>;
 				baudrate = <115200>;
-				irq = <55>;
+				irq = <87>;
 			};
 
 			timer0 {

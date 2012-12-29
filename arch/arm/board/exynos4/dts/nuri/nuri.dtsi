@@ -4,6 +4,7 @@
 / {
 	choosen {
 		console = &SERIAL0;
+		rtcdev = &RTC0;
 	};
 
 	vmm {
