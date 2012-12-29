@@ -10,9 +10,9 @@ If a field spans multiple lines then simply add field prefix to every line.
 
 ----------
 
-M:	BeagleBoard or BeagleBoard-xM
+M:	OMAP3
 A:	ARM 32-bit (ARMv7a)
-C:	OMAP3 (Cortex-A8)
+C:	Cortex-A8
 V:	Texax Instruments (http://www.ti.com/)
 E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
 G:	Realview PB-A8 and VExpress-A9 guests supported
@@ -20,7 +20,16 @@ S:	Able to boot multiple Realview PB-A8 linux guest on BeagleBoard-xM
 	Hardware and BeagleBoard emulated by Linaro QEMU 
 S:	Able to boot VExpress-A9 linux guest on BeagleBoard-xM Hardware and
 	BeagleBoard emulated by Linaro QEMU 
-D:	docs/arm/beagle-board.txt
+D:	docs/arm/omap3-beagle.txt
+
+M:	QEMU MIPS Emulation
+A:	MIPS 32-bit
+C:	mips32r2
+V:	MIPS Technologies (http://www.mips.com/)
+E:	QEMU 0.14.xx or higher (http://wiki.qemu.org/)
+G:	Work-In-Progress. No guest support available yet
+S:	Able to get Xvisor managment terminal on MIPS emulated by QEMU
+D:	---
 
 M:	Realview PB-A8
 A:	ARM 32-bit (ARMv7a)
@@ -33,14 +42,15 @@ S:	Able to boot multiple Realview PB-A8 linux guest on Realview-PB-A8
 S:	Able to boot VExpress-A9 linux guest on Realview-PB-A8 emulated by QEMU
 D:	docs/arm/realview-pb-a8.txt
 
-M:	QEMU MIPS Emulation
-A:	MIPS 32-bit
-C:	mips32r2
-V:	MIPS Technologies (http://www.mips.com/)
-E:	QEMU 0.14.xx or higher (http://wiki.qemu.org/)
-G:	Work-In-Progress. No guest support available yet
-S:	Able to get Xvisor managment terminal on MIPS emulated by QEMU
-D:	---
+M:	Sun4i (or Allwinner A10) 
+A:	ARM 32-bit (ARMv7a)
+C:	Cortex-A8
+V:	Rhombus Tech (http://rhombus-tech.net/)
+E:	---
+G:	Realview PB-A8 and VExpress-A9 guests supported
+S:	Able to boot multiple Realview PB-A8 linux guest on Hackberry board
+S:	Able to boot VExpress-A9 linux guest on Hackberry board
+D:	docs/arm/sun4i-hackberry.txt
 
 M:	Versatile PB
 A:	ARM 32-bit (ARMv5)
