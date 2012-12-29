@@ -95,7 +95,7 @@
 
 				SERIAL0: uart0 {
 			      		device_type = "serial";
-			      		compatible = "pl011";
+			      		compatible = "arm,pl011";
 			      		reg = <0x1C090000 0x1000>;
 					clock-rate = <24000000>;
 			      		baudrate = <115200>;
@@ -118,7 +118,7 @@
 
 				RTC0: rtc0 {
 			      		device_type = "rtc";
-			      		compatible = "pl031";
+			      		compatible = "arm,pl031";
 			      		reg = <0x1C170000 0x1000>;
 					clock-rate = <1>;
 					irq = <36>;

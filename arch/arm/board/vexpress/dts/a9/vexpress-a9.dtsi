@@ -39,7 +39,7 @@
 
 		scu { /* Snoop Control Unit */
 	      		device_type = "scu";
-	      		compatible = "arm, a9mpcore-priv";
+	      		compatible = "arm,a9mpcore-priv";
 	      		reg = <0x1E000000 0x1000>;
 		};
 
@@ -104,7 +104,7 @@
 
 				SERIAL0: uart0 {
 			      		device_type = "serial";
-			      		compatible = "pl011";
+			      		compatible = "arm,pl011";
 			      		reg = <0x10009000 0x1000>;
 					clock-rate = <24000000>;
 			      		baudrate = <115200>;
@@ -127,7 +127,7 @@
 
 				RTC0: rtc0 {
 			      		device_type = "rtc";
-			      		compatible = "pl031";
+			      		compatible = "arm,pl031";
 			      		reg = <0x10017000 0x1000>;
 					clock-rate = <1>;
 					irq = <36>;
