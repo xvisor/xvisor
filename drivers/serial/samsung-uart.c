@@ -307,11 +307,13 @@ static int samsung_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 
+	port->mask = S3C64XX_UINTM_RXD_MSK;
+
 #if defined(UART_SAMSUNG_USE_TXINTR)
-	port->mask = 0xfffa;
-#else
-	port->mask = 0xfffe;
+	port->mask |= S3C64XX_UINTM_TXD_MSK;
 #endif
+
+	port->mask = ~port->mask;
 
 	vmm_out_le16((void *)(port->base + S3C64XX_UINTM), port->mask);
 
