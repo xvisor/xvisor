@@ -523,10 +523,6 @@ int __init arch_board_final_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
-	struct vmm_chardev * cdev;
-#if defined(CONFIG_RTC)
-	struct vmm_rtcdev * rdev;
-#endif
 #if defined(CONFIG_VTEMU)
 	struct vmm_fb_info *info;
 #endif
