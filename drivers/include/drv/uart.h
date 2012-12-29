@@ -18,6 +18,7 @@
  *
  * @file uart.h
  * @author Anup Patel (anup@brainfault.org)
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief Header file for UART serial port driver.
  */
 
@@ -40,18 +41,28 @@
 #define UART_SCR_OFFSET		7 /* I/O: Scratch Register */
 #define UART_MDR1_OFFSET	8 /* I/O:  Mode Register */
 
-#define UART_LSR_THRE		0x20	/* Transmit-hold-register empty */
-#define UART_LSR_DR		0x01	/* Receiver data ready */
+#define UART_LSR_FIFOE		0x80    /* Fifo error */
+#define UART_LSR_TEMT		0x40    /* Transmitter empty */
+#define UART_LSR_THRE		0x20    /* Transmit-hold-register empty */
+#define UART_LSR_BI		0x10    /* Break interrupt indicator */
+#define UART_LSR_FE		0x08    /* Frame error indicator */
+#define UART_LSR_PE		0x04    /* Parity error indicator */
+#define UART_LSR_OE		0x02    /* Overrun error indicator */
+#define UART_LSR_DR		0x01    /* Receiver data ready */
+#define UART_LSR_BRK_ERROR_BITS	0x1E    /* BI, FE, PE, OE bits */
 
+#define UART_IIR_MSI		0x00	/* Modem status interrupt */
 #define UART_IIR_NOINT		0x01	/* No interrupt */
 #define UART_IIR_TYPE		0x1e	/* IT_TYPE field */
 #define UART_IIR_THRI		0x02	/* THR Interrupt */
 #define UART_IIR_RDI		0x04	/* RHR Interrupt */
 #define UART_IIR_RLSI		0x06	/* Receiver Line Status Intr */
+#define UART_IIR_RTO		0x0c	/* Receiver timeout interrupt */
 
-#define UART_IER_RHR		0x01	/* RHR interrupt */
-#define UART_IER_THR		0x02	/* THR interrupt */
-#define UART_IER_RLSI		0x04	/* RLSI interrupt */
+#define UART_IER_MSI		0x08    /* Enable Modem status interrupt */
+#define UART_IER_RLSI		0x04    /* Enable receiver line status interrupt */
+#define UART_IER_THRI		0x02    /* Enable Transmitter holding register int. */
+#define UART_IER_RDI		0x01    /* Enable receiver data interrupt */
 
 #define REG_UART_RBR(base,align)	((base)+UART_RBR_OFFSET*(align))
 #define REG_UART_THR(base,align)	((base)+UART_THR_OFFSET*(align))
