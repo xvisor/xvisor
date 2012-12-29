@@ -148,7 +148,7 @@ int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
 	acs->clksrc.rating = 300;
 	acs->clksrc.read = aw_clksrc_read;
 	acs->clksrc.mask = VMM_CLOCKSOURCE_MASK(64);
-	acs->clksrc.shift = 24;
+	acs->clksrc.shift = 10;
 	acs->clksrc.mult = vmm_clocksource_hz2mult(AW_HPET_CLOCK_SOURCE_HZ, 
 						   acs->clksrc.shift);
 	acs->clksrc.priv = acs;
