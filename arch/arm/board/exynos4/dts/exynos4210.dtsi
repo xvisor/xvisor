@@ -103,6 +103,15 @@
 				irq = <87>;
 			};
 
+			SERIAL4: uart@13840000 {
+				device_type = "serial";
+				compatible = "samsung,exynos4210-uart";
+				reg = <0x13840000 0x100>;
+				clock-rate = <24000000>;
+				baudrate = <115200>;
+				irq = <88>;
+			};
+
 			timer0 {
 				device_type = "timer";
 				compatible = "samsung,exynos4210-PWMtimer";
