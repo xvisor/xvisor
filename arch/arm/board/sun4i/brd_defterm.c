@@ -51,7 +51,7 @@ int arch_defterm_getc(u8 *ch)
 	return VMM_OK;
 }
 
-int arch_defterm_init(void)
+int __init arch_defterm_init(void)
 {
 	int rc;
 	u32 *val;
