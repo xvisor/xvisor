@@ -67,6 +67,9 @@ static void system_init_work(struct vmm_work *work)
 #if defined(CONFIG_RTC)
 	struct vmm_rtcdev *rdev;
 #endif
+#if defined(CONFIG_SMP)
+	int count = 1000;
+#endif
 	struct vmm_devtree_node *node, *node1;
 	struct vmm_guest *guest = NULL;
 
@@ -131,6 +134,26 @@ static void system_init_work(struct vmm_work *work)
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
 	}
+
+#if defined(CONFIG_SMP)
+	/* Here we will poll for all possible CPU to get online */
+	/* There is a timeout of 1 second */
+	while(count--) {
+		int all_cpu_online = 1;
+
+		for_each_possible_cpu(c) {
+			if (!vmm_cpu_online(c)) {
+				all_cpu_online = 0;
+			}
+		}
+
+		if (all_cpu_online) {
+			break;
+		}
+
+		vmm_mdelay(1);
+	}
+#endif
 
 	/* Print status of host CPUs */
 	for_each_possible_cpu(c) {
