@@ -163,4 +163,21 @@ struct acpi_madt_lapic * acpi_get_lapic_next(void);
  */
 u64 acpi_get_hpet_base_next(void);
 
+/*
+ * Return the number of HPET chips present on board.
+ */
+u32 acpi_get_nr_hpet_chips(void);
+
+u32 hpet_nr_timers_in_block(u32 block);
+
+/*
+ * Get number of timer blocks on given HPET chip.
+ */
+u32 acpi_get_nr_hpet_blocks(u32 chip);
+
+/*
+ * Get the physical base of the HPET timer block.
+ */
+u64 acpi_get_hpet_block_base(u32 idx);
+
 #endif /* __ACPI_H__ */

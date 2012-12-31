@@ -381,6 +381,12 @@ u32 acpi_get_nr_hpet_chips(void)
 	return 1;
 }
 
+u32 hpet_nr_timers_in_block(u32 block)
+{
+	/* FIXME: Number of timers. */
+	return 32;
+}
+
 u32 acpi_get_nr_hpet_blocks(u32 chip)
 {
 	/*

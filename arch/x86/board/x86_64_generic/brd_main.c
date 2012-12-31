@@ -26,7 +26,9 @@
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devdrv.h>
+#include <vmm_stdio.h>
 #include <libs/libfdt.h>
+#include <hpet.h>
 
 extern u32 dt_blob_start;
 
