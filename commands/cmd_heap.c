@@ -66,7 +66,7 @@ int cmd_heap_info(struct vmm_chardev *cdev)
 	heap_freesz = vmm_heap_free_size();
 	heap_usesz = heap_sz - heap_hksz - heap_freesz;
 
-	if ((rc = vmm_host_page_va2pa(heap_va, &heap_pa))) {
+	if ((rc = vmm_host_va2pa(heap_va, &heap_pa))) {
 		vmm_cprintf(cdev, "Error: Failed to get heap base PA\n");
 		return rc;
 	}

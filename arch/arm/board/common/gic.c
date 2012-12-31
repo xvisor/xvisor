@@ -301,13 +301,14 @@ static void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)
 	for (i = 0; i < irq_limit; i++) {
 		vmm_host_irq_set_chip(i, &gic_chip);
 		vmm_host_irq_set_chip_data(i, gic);
+		vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
 	}
 
 	/* Enable IRQ distribution */
 	gic_write(1, base + GIC_DIST_CTRL);
 }
 
-static void __init gic_cpu_init(struct gic_chip_data *gic)
+static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
 {
 	int i;
 
@@ -360,7 +361,7 @@ int __init gic_init_bases(u32 gic_nr, u32 irq_start,
 	return VMM_OK;
 }
 
-void __init gic_secondary_init(u32 gic_nr)
+void __cpuinit gic_secondary_init(u32 gic_nr)
 {
 	BUG_ON(gic_nr >= GIC_MAX_NR);
 

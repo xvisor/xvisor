@@ -63,6 +63,10 @@ struct vmm_request_queue {
 	void *priv;
 };
 
+/* Block device flags */
+#define VMM_BLOCKDEV_RDONLY			0x00000001
+#define VMM_BLOCKDEV_RW				0x00000002
+
 struct vmm_blockdev {
 	struct dlist head;
 	struct vmm_blockdev *parent;
@@ -73,7 +77,8 @@ struct vmm_blockdev {
 
 	char name[VMM_BLOCKDEV_MAX_NAME_SIZE];
 	struct vmm_device *dev;
-	
+
+	u32 flags;
 	u64 start_lba;
 	u64 num_blocks;
 	u32 block_size;
@@ -122,7 +127,9 @@ struct vmm_blockdev *vmm_blockdev_alloc(void);
 /** Free block device */
 void vmm_blockdev_free(struct vmm_blockdev *bdev);
 
-/** Register block device to device driver framework */
+/** Register block device to device driver framework 
+ *  Note: Block device must have RDONLY or RW flag set. 
+ */
 int vmm_blockdev_register(struct vmm_blockdev *bdev);
 
 /** Add child block device and register it. */

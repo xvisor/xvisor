@@ -27,6 +27,7 @@
 #include <vmm_devemu.h>
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
+#include <vmm_stdio.h>
 #include <libs/stringlib.h>
 
 struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
@@ -75,13 +76,13 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 	return reg;
 }
 
-u32 vmm_guest_physical_read(struct vmm_guest * guest, 
+u32 vmm_guest_physical_read(struct vmm_guest *guest, 
 			    physical_addr_t gphys_addr, 
-			    void * dst, u32 len)
+			    void *dst, u32 len)
 {
 	u32 bytes_read = 0, to_read;
 	physical_addr_t hphys_addr;
-	struct vmm_region * reg = NULL;
+	struct vmm_region *reg = NULL;
 
 	if (!guest || !dst || !len) {
 		return 0;
@@ -115,13 +116,13 @@ u32 vmm_guest_physical_read(struct vmm_guest * guest,
 	return bytes_read;
 }
 
-u32 vmm_guest_physical_write(struct vmm_guest * guest, 
+u32 vmm_guest_physical_write(struct vmm_guest *guest, 
 			     physical_addr_t gphys_addr, 
-			     void * src, u32 len)
+			     void *src, u32 len)
 {
 	u32 bytes_written = 0, to_write;
 	physical_addr_t hphys_addr;
-	struct vmm_region * reg = NULL;
+	struct vmm_region *reg = NULL;
 
 	if (!guest || !src || !len) {
 		return 0;
@@ -155,15 +156,15 @@ u32 vmm_guest_physical_write(struct vmm_guest * guest,
 	return bytes_written;
 }
 
-int vmm_guest_physical_map(struct vmm_guest * guest,
+int vmm_guest_physical_map(struct vmm_guest *guest,
 			   physical_addr_t gphys_addr,
 			   physical_size_t gphys_size,
-			   physical_addr_t * hphys_addr,
-			   physical_size_t * hphys_size,
-			   u32 * reg_flags)
+			   physical_addr_t *hphys_addr,
+			   physical_size_t *hphys_size,
+			   u32 *reg_flags)
 {
 	/* FIXME: Need to implement dynamic RAM allocation for RAM region */
-	struct vmm_region * reg = NULL;
+	struct vmm_region *reg = NULL;
 
 	if (!guest || !hphys_addr) {
 		return VMM_EFAIL;
@@ -336,6 +337,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	guest->aspace.node = vmm_devtree_getchild(gnode, 
 					VMM_DEVTREE_ADDRSPACE_NODE_NAME);
 	if (!guest->aspace.node) {
+		vmm_printf("%s: %s/aspace node not found\n", __func__, gnode->name);
 		return VMM_EFAIL;
 	}
 
@@ -432,6 +434,8 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 
 		if (is_region_overlapping(guest, reg)) {
 			vmm_free(reg);
+			vmm_printf("%s: Region for %s/%s overlapping with a previous node\n", 
+					__func__, gnode->name, rnode->name);
 			return VMM_EINVALID;
 		}
 
@@ -440,6 +444,8 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 			rc = vmm_host_ram_reserve(reg->hphys_addr, 
 						  reg->phys_size);
 			if (rc) {
+				vmm_printf("%s: Failed to reserve physical region for %s/%s\n", 
+						__func__, gnode->name, rnode->name);
 				vmm_free(reg);
 				return rc;
 			}
@@ -448,7 +454,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 		list_add_tail(&reg->head, &guest->aspace.reg_list);
 	}
 
-	/* Probe device emulation for virutal regions */
+	/* Probe device emulation for virtual regions */
 	list_for_each(l, &guest->aspace.reg_list) {
 		reg = list_entry(l, struct vmm_region, head);
 		if (reg->flags & VMM_REGION_VIRTUAL) {

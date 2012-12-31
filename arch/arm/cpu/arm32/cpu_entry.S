@@ -457,49 +457,70 @@ _reset:
 
 /* Save arch registers into small mode-specific stack */
 .macro PUSH_REGS mode=CPSR_MODE_SUPERVISOR
-	/* Save return address (i.e. return PC) */
-	str	lr, [sp, #-4]!;
-	/* Adjust stack pointer to make room for r13, r14 */		
-	sub	sp, sp, #(4*2);
-	/* Save usr mode r13, r14 */
-	stm	sp, {r13-r14}^;
-	/* Save r0, r1, ..., r12 and decrement stack pointer */
-	stmdb	sp!, {r0-r12};
-	/* Save return machine state and decrement stack pointer */
-	mrs	r4, spsr_all;
-	str	r4, [sp, #-4]!;
+	/* Save return address and return machine state */
+	.if \mode != CPSR_MODE_SUPERVISOR
+		/* Temporary save return address, machine state, R0 and R1 */
+		str	lr, [sp, #-4];
+		mrs	lr, spsr_all;
+		str	lr, [sp, #-8];
+		str	r1, [sp, #-12];
+		str	r0, [sp, #-16];
+		/* Point R0 to temporary location */
+		mov	r0, sp
+#if (__ARM_ARCH_VERSION__ < 6)
+		mrs	lr, cpsr_all;
+		and	lr, lr, #~(CPSR_MODE_MASK);
+		orr	lr, lr, #CPSR_MODE_SUPERVISOR;
+		msr	cpsr_c, lr;
+#else
+		cps	#CPSR_MODE_SUPERVISOR;
+#endif
+		/* Save return address (i.e. return PC) */
+		ldr	r1, [r0, #-4];
+		str	r1, [sp, #-4]!;
+		/* Save return machine state and decrement stack pointer */
+		ldr	r1, [r0, #-8];
+		str	r1, [sp, #-(4*16)];
+		/* Restore R0, R1 register */
+		ldr	r1, [r0, #-12];
+		ldr	r0, [r0, #-16];
+	.else
+		/* Save return address (i.e. return PC) */
+		str	lr, [sp, #-4]!;
+		/* Save return machine state and decrement stack pointer */
+		mrs	lr, spsr_all;
+		str	lr, [sp, #-(4*16)];
+	.endif
+
+	/* Save r0, r1, ..., r14 and decrement stack pointer */
+	stmdb	sp, {r0-r14}^;
+	sub	sp, sp, #(4*16);
+
 	/* If we came from privildeged (or non-usr) mode then
 	 * overwrite r13, r14 with mode specific banked values
 	 * else skip this step
 	 */
-	mrs	r2, cpsr_all;
+	ldr	r4, [sp];
 	and	r0, r4, #CPSR_MODE_MASK;
 	cmp	r0, #CPSR_MODE_USER;
 	beq	100f;
-	add	r1, sp, #(4*14);
-	orr	r4, r4, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED);
-	msr	cpsr_cxsf, r4;
-	stm	r1, {r13-r14};
-	msr	cpsr_cxsf, r2;
-	/* Save restore value for SVC stack (or Exception stack) */
-100:
-	sub	sp, sp, #4;
+	cmp	r0, #CPSR_MODE_SUPERVISOR;
+	beq	101f;
+
+	/* We handle all exceptions, irqs, and fiqs in SVC mode so,
+	 * should never reach here. Just sit in infinite loop !!!!! 
+	 */
+	b	.;
+
+	/* Came from svc mode */
+101:	add	r1, sp, #(4*17);
+	str	r1, [sp, #(4*14)];
+	str	lr, [sp, #(4*15)];
+
+	/* Came from usr mode */
+100:	add	r1, sp, #(4*17);
+	str	r1, [sp, #-4]!;
 	mov	r0, sp;
-	.if \mode == CPSR_MODE_SUPERVISOR
-	add	r1, sp, #(4*18);
-	str	r1, [r0];
-	.else
-#if (__ARM_ARCH_VERSION__ < 6)
-	and	r2, r2, #~(CPSR_MODE_MASK);
-	orr	r2, r2, #CPSR_MODE_SUPERVISOR;
-	msr	cpsr_c, r2;
-#else
-	cps	#CPSR_MODE_SUPERVISOR;
-#endif
-	str	sp, [r0];
-	.endif
-	/* Save arch registers pointer on SVC stack (or Exception stack) */
-	str	r0, [sp, #-4]!;
 .endm
 
 /* Call C function to handle exception */
@@ -510,53 +531,36 @@ _reset:
 /* Restore registers from arch registers */
 .macro PULL_REGS mode=CPSR_MODE_SUPERVISOR
 	/* Get arch register pointer.
-	 * Also adjust stack pointer of \mode
 	 * r12 -> pointer to arch regs
 	 */
-	ldr	r12, [sp], #4;
+	mov	r12, sp;
+
 	/* Restore exception stack */ 
 	ldr	sp, [r12], #4;
-	.if \mode != CPSR_MODE_SUPERVISOR
-	/* Switch back to original exception mode */
-#if (__ARM_ARCH_VERSION__ < 6)
-	mrs	r1, cpsr_all;
-	and	r1, r1, #~(CPSR_MODE_MASK);
-	orr	r1, r1, #\mode;
-	msr	cpsr_c, r1;
-#else
-	cps	#\mode;
-#endif
-	/* Adjust stack pointer of exception mode */
-	add	sp, sp, #(4*18);
-	.endif
+
 	/* Restore target CPSR */
 	ldr	r1, [r12], #4;
 	msr	spsr_cxsf, r1;
-	/* Restore r0, r1, ..., r11 */
-	ldmia	r12!, {r0-r11};
+
 	/* If-else ladder for different target modes  */
-	mrs	lr, spsr_all;
-	and	lr, lr, #CPSR_MODE_MASK;
-	cmp	lr, #CPSR_MODE_USER;
+	and	r0, r1, #CPSR_MODE_MASK;
+	cmp	r0, #CPSR_MODE_USER;
 	beq	200f;
-	cmp	lr, #\mode;
+	cmp	r0, #CPSR_MODE_SUPERVISOR;
 	beq	201f;
-	/* Going back to exception mode different from current mode */
-	mrs	lr, spsr_all
-	orr	lr, lr, #(CPSR_IRQ_DISABLED | CPSR_FIQ_DISABLED);
-	msr	cpsr_all, lr;
-	ldr	lr, [r12, #(-4*13)]
-	msr	spsr_cxsf, lr;
-	ldm	r12, {r12-r15}^;
-	mov	r0, r0;
+
+	/* We handle all exceptions, irqs, and fiqs in SVC mode so,
+	 * should never reach here. Just sit in infinite loop !!!!! 
+	 */
+	b	.;
+
 	/* Going back to usr mode */
-200:
-	ldr	lr, [r12, #12];
-	ldmia	r12, {r12-r14}^;
+200:	ldr	lr, [r12, #(4*15)];
+	ldmia	r12, {r0-r14}^;
 	movs	pc, lr
-	/* Going back to exception mode same as current mode */
-201:
-	ldm	r12, {r12-r15}^;
+
+	/* Going back to svc mode */
+201:	ldm	r12, {r0-r15}^;
 	mov	r0, r0;
 .endm
 

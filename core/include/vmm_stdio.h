@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -27,6 +27,7 @@
 #include <vmm_compiler.h>
 #include <vmm_spinlocks.h>
 #include <vmm_chardev.h>
+#include <vmm_heap.h>
 #include <libs/stacktrace.h>
 
 #define BUG_ON(x)							\
@@ -60,6 +61,26 @@
 		(x);							\
 	})
 
+/** Representation of input history for use with (c)gets */
+struct vmm_history {
+	int length;	/* Number of entries in the history table */
+	int width;	/* Width of each entry */
+	char **table;	/* Circular History Table */
+	int tail;	/* Last entry */
+};
+
+/** Initialize vmm_history pointer h having l length and w width */
+#define INIT_HISTORY(h,l,w)						\
+	{	int iter = 0;						\
+		(h)->length = (l);					\
+		(h)->width = (w);					\
+		(h)->table = vmm_malloc((l) * sizeof(char *));		\
+		for (iter = 0; iter < (l) ; iter++) {			\
+			(h)->table[iter] = vmm_malloc((w) * sizeof(char));\
+			(h)->table[iter][0] = '\0';			\
+		}							\
+		(h)->tail = 0;						\
+	}								
 
 /** Check if a character is a control character */
 bool vmm_iscontrol(char c);
@@ -106,17 +127,21 @@ char vmm_cgetc(struct vmm_chardev *cdev) ;
 /** Get character from default device */
 char vmm_getc(void);
 
-/** Get string from character device */
-char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, char endchar);
+/** Get string from character device
+ *  If history is NULL does not support UP/DN keys */
+char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, 
+		char endchar, struct vmm_history *history);
 
-/** Get string from default device */
-char *vmm_gets(char *s, int maxwidth, char endchar);
+/** Get string from default device
+ *  If history is NULL does not support UP/DN keys */
+char *vmm_gets(char *s, int maxwidth, char endchar, 
+		struct vmm_history *history);
 
 /** Get default character device used by stdio */
 struct vmm_chardev *vmm_stdio_device(void);
 
 /** Change default character device used by stdio */
-int vmm_stdio_change_device(struct vmm_chardev * cdev);
+int vmm_stdio_change_device(struct vmm_chardev *cdev);
 
 /** Initialize standerd IO library */
 int vmm_stdio_init(void);

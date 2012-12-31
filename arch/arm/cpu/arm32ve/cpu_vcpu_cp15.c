@@ -45,21 +45,38 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 	irq_flags_t f;
 	u32 reg_flags = 0x0;
 	struct cpu_page pg;
-	physical_size_t availsz;
+	physical_addr_t inaddr, outaddr;
+	physical_size_t size, availsz;
 
 	memset(&pg, 0, sizeof(pg));
 
-	pg.ia = fipa & TTBL_L3_MAP_MASK;
-	pg.sz = TTBL_L3_BLOCK_SIZE;
+	inaddr = fipa & TTBL_L3_MAP_MASK;
+	size = TTBL_L3_BLOCK_SIZE;
 
-	rc = vmm_guest_physical_map(vcpu->guest, pg.ia, pg.sz, 
-				    &pg.oa, &availsz, &reg_flags);
+	rc = vmm_guest_physical_map(vcpu->guest, inaddr, size, 
+				    &outaddr, &availsz, &reg_flags);
 	if (rc) {
 		return rc;
 	}
 
 	if (availsz < TTBL_L3_BLOCK_SIZE) {
 		return VMM_EFAIL;
+	}
+
+	pg.ia = inaddr;
+	pg.sz = size;
+	pg.oa = outaddr;
+
+	if (reg_flags & VMM_REGION_ISRAM) {
+		inaddr = fipa & TTBL_L2_MAP_MASK;
+		size = TTBL_L2_BLOCK_SIZE;
+		rc = vmm_guest_physical_map(vcpu->guest, inaddr, size, 
+				    &outaddr, &availsz, &reg_flags);
+		if (!rc && (availsz >= TTBL_L2_BLOCK_SIZE)) {
+			pg.ia = inaddr;
+			pg.sz = size;
+			pg.oa = outaddr;
+		}
 	}
 
 	if (reg_flags & VMM_REGION_VIRTUAL) {

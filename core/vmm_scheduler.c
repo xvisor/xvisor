@@ -40,7 +40,7 @@
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
-	void * rq;
+	void *rq;
 	struct vmm_vcpu *current_vcpu;
 	struct vmm_vcpu *idle_vcpu;
 	bool irq_context;
@@ -97,7 +97,7 @@ static void vmm_scheduler_next(struct vmm_timer_event *ev, arch_regs_t *regs)
 
 static void vmm_scheduler_timer_event(struct vmm_timer_event *ev)
 {
-	struct vmm_vcpu * vcpu = this_cpu(sched).current_vcpu;
+	struct vmm_vcpu *vcpu = this_cpu(sched).current_vcpu;
 	if (vcpu) {
 		if (!vcpu->preempt_count) {
 			vmm_scheduler_next(ev, ev->regs);
@@ -143,7 +143,11 @@ int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			if (!rc && schedp->current_vcpu) {
 				if (vmm_schedalgo_rq_prempt_needed(schedp->rq, 
 							schedp->current_vcpu)) {
-					vmm_timer_event_expire(&schedp->ev);
+					if (schedp->current_vcpu->is_normal) {
+						schedp->yield_on_irq_exit = TRUE;
+					} else {
+						vmm_timer_event_expire(&schedp->ev);
+					}
 				}
 			}
 		}
@@ -152,7 +156,9 @@ int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 	case VMM_VCPU_STATE_HALTED:
 		/* Expire timer event if current VCPU is paused or halted */
 		if(schedp->current_vcpu == vcpu) {
-			if (!vcpu->is_normal) {
+			if (vcpu->is_normal) {
+				schedp->yield_on_irq_exit = TRUE;
+			} else {
 				vmm_timer_event_expire(&schedp->ev);
 			}
 		} else {
@@ -209,7 +215,7 @@ bool vmm_scheduler_irq_context(void)
 	return this_cpu(sched).irq_context;
 }
 
-struct vmm_vcpu * vmm_scheduler_current_vcpu(void)
+struct vmm_vcpu *vmm_scheduler_current_vcpu(void)
 {
 	return this_cpu(sched).current_vcpu;
 }
@@ -236,7 +242,7 @@ bool vmm_scheduler_normal_context(void)
 	return FALSE;
 }
 
-struct vmm_guest * vmm_scheduler_current_guest(void)
+struct vmm_guest *vmm_scheduler_current_guest(void)
 {
 	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
 
@@ -250,7 +256,7 @@ struct vmm_guest * vmm_scheduler_current_guest(void)
 void vmm_scheduler_preempt_disable(void)
 {
 	irq_flags_t flags;
-	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
+	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
 	if (vcpu) {
 		arch_cpu_irq_save(flags);
 		vcpu->preempt_count++;
@@ -261,7 +267,7 @@ void vmm_scheduler_preempt_disable(void)
 void vmm_scheduler_preempt_enable(void)
 {
 	irq_flags_t flags;
-	struct vmm_vcpu * vcpu = vmm_scheduler_current_vcpu();
+	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
 	if (vcpu && vcpu->preempt_count) {
 		arch_cpu_irq_save(flags);
 		vcpu->preempt_count--;
@@ -272,7 +278,7 @@ void vmm_scheduler_preempt_enable(void)
 void vmm_scheduler_yield(void)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
-	struct vmm_vcpu * vcpu = NULL; 
+	struct vmm_vcpu *vcpu = NULL; 
 
 	if (vmm_scheduler_irq_context()) {
 		vmm_panic("%s: Cannot yield in IRQ context\n", __func__);
@@ -307,7 +313,7 @@ static void idle_orphan(void)
 	}
 }
 
-int __init vmm_scheduler_init(void)
+int __cpuinit vmm_scheduler_init(void)
 {
 	int rc;
 	char vcpu_name[32];

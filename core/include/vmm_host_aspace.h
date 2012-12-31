@@ -120,8 +120,8 @@ virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags);
 /** Free pages back to host memory */
 int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count);
 
-/** Convert virtual address of a page to its physical address */
-int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t *page_pa);
+/** Convert virtual address to its physical address */
+int vmm_host_va2pa(virtual_addr_t va, physical_addr_t *pa);
 
 /** Read from host physical memory */
 u32 vmm_host_physical_read(physical_addr_t hpa, void *dst, u32 len);

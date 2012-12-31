@@ -109,6 +109,7 @@ int __init intc_init(physical_addr_t base, u32 nrirq)
 	 */
 	for (i = 0; i < intc_nrirq; i++) {
 		vmm_host_irq_set_chip(i, &intc_chip);
+		vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
 	}
 
 	return VMM_OK;

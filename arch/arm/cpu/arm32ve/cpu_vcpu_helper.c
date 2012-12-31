@@ -449,11 +449,11 @@ int arch_guest_deinit(struct vmm_guest *guest)
 {
 	int rc;
 
-	if ((rc = cpu_mmu_ttbl_free(arm_guest_priv(guest)->ttbl))) {
-		return rc;
-	}
-
 	if (guest->arch_priv) {
+		if ((rc = cpu_mmu_ttbl_free(arm_guest_priv(guest)->ttbl))) {
+			return rc;
+		}
+
 		vmm_free(guest->arch_priv);
 	}
 

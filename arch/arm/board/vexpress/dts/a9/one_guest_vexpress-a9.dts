@@ -4,6 +4,11 @@
 /include/ "vexpress-a9.dtsi"
 
 / {
+	choosen {
+		console = &SERIAL0;
+		rtcdev = &RTC0;
+	};
+
 	guests {
 		guest0 {
 			model = "vexpress-a9";

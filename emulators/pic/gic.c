@@ -977,6 +977,22 @@ static u32 gic_configs[][14] = {
 		/* dist_offset */ 0x1000,
 		/* dist_length */ 0x1000,
 	},
+	{ 
+		/* num_irq */ 128,
+		/* num_base_irq */ 0,
+		/* id0 */ 0x90, 
+		/* id1 */ 0x13, 
+		/* id2 */ 0x04, 
+		/* id3 */ 0x00, 
+		/* id4 */ 0x0d, 
+		/* id5 */ 0xf0, 
+		/* id6 */ 0x05, 
+		/* id7 */ 0xb1,
+		/* cpu_offset */ 0x2000,
+		/* cpu_length */ 0x1000,
+		/* dist_offset */ 0x1000,
+		/* dist_length */ 0x1000,
+	},
 };
 
 struct gic_state *gic_state_alloc(struct vmm_guest *guest,
@@ -1118,6 +1134,10 @@ static struct vmm_emuid gic_emuid_table[] = {
 	{ .type = "pic", 
 	  .compatible = "vexpress,gic", 
 	  .data = (void *)GIC_TYPE_VEXPRESS,
+	},
+	{ .type = "pic", 
+	  .compatible = "vexpress,gicv2", 
+	  .data = (void *)GIC_TYPE_VEXPRESS_V2,
 	},
 	{ /* end of list */ },
 };

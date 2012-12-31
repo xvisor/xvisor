@@ -28,16 +28,16 @@
 
 struct vmm_schedalgo_rq_entry {
 	struct dlist head;
-	struct vmm_vcpu * vcpu;	
+	struct vmm_vcpu *vcpu;	
 };
 
 struct vmm_schedalgo_rq {
 	struct dlist list;
 };
 
-int vmm_schedalgo_vcpu_setup(struct vmm_vcpu * vcpu)
+int vmm_schedalgo_vcpu_setup(struct vmm_vcpu *vcpu)
 {
-	struct vmm_schedalgo_rq_entry * rq_entry;
+	struct vmm_schedalgo_rq_entry *rq_entry;
 
 	if (!vcpu) {
 		return VMM_EFAIL;
@@ -55,7 +55,7 @@ int vmm_schedalgo_vcpu_setup(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-int vmm_schedalgo_vcpu_cleanup(struct vmm_vcpu * vcpu)
+int vmm_schedalgo_vcpu_cleanup(struct vmm_vcpu *vcpu)
 {
 	if (!vcpu) {
 		return VMM_EFAIL;
@@ -89,10 +89,10 @@ int vmm_schedalgo_rq_length(void *rq, u8 priority)
 
 }
 
-int vmm_schedalgo_rq_enqueue(void * rq, struct vmm_vcpu * vcpu)
+int vmm_schedalgo_rq_enqueue(void *rq, struct vmm_vcpu *vcpu)
 {
-	struct vmm_schedalgo_rq_entry * rq_entry;
-	struct vmm_schedalgo_rq * rqi;
+	struct vmm_schedalgo_rq_entry *rq_entry;
+	struct vmm_schedalgo_rq *rqi;
 
 	if (!rq || !vcpu) {
 		return VMM_EFAIL;
@@ -110,11 +110,11 @@ int vmm_schedalgo_rq_enqueue(void * rq, struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-struct vmm_vcpu * vmm_schedalgo_rq_dequeue(void * rq)
+struct vmm_vcpu *vmm_schedalgo_rq_dequeue(void *rq)
 {
 	struct dlist *l;
-	struct vmm_schedalgo_rq_entry * rq_entry;
-	struct vmm_schedalgo_rq * rqi;
+	struct vmm_schedalgo_rq_entry *rq_entry;
+	struct vmm_schedalgo_rq *rqi;
 	
 	if (!rq) {
 		return NULL;
@@ -132,9 +132,9 @@ struct vmm_vcpu * vmm_schedalgo_rq_dequeue(void * rq)
 	return rq_entry->vcpu;
 }
 
-int vmm_schedalgo_rq_detach(void * rq, struct vmm_vcpu * vcpu)
+int vmm_schedalgo_rq_detach(void *rq, struct vmm_vcpu *vcpu)
 {
-	struct vmm_schedalgo_rq_entry * rq_entry;
+	struct vmm_schedalgo_rq_entry *rq_entry;
 
 	if (!vcpu) {
 		return VMM_EFAIL;
@@ -151,14 +151,14 @@ int vmm_schedalgo_rq_detach(void * rq, struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-bool vmm_schedalgo_rq_prempt_needed(void * rq, struct vmm_vcpu * current)
+bool vmm_schedalgo_rq_prempt_needed(void *rq, struct vmm_vcpu *current)
 {
 	return FALSE;
 }
 
-void * vmm_schedalgo_rq_create(void)
+void *vmm_schedalgo_rq_create(void)
 {
-	struct vmm_schedalgo_rq * rq = 
+	struct vmm_schedalgo_rq *rq = 
 			vmm_malloc(sizeof(struct vmm_schedalgo_rq));
 
 	if (rq) {
@@ -168,7 +168,7 @@ void * vmm_schedalgo_rq_create(void)
 	return rq;
 }
 
-int vmm_schedalgo_rq_destroy(void * rq)
+int vmm_schedalgo_rq_destroy(void *rq)
 {
 	if (rq) {
 		vmm_free(rq);

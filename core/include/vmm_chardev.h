@@ -34,11 +34,11 @@
 struct vmm_chardev {
 	char name[VMM_CHARDEV_NAME_SIZE];
 	struct vmm_device *dev;
-	int (*ioctl) (struct vmm_chardev * cdev,
+	int (*ioctl) (struct vmm_chardev *cdev,
 			int cmd, void *buf, u32 len);
-	u32 (*read) (struct vmm_chardev * cdev,
+	u32 (*read) (struct vmm_chardev *cdev,
 			u8 *dest, u32 len, bool sleep);
-	u32 (*write) (struct vmm_chardev * cdev,
+	u32 (*write) (struct vmm_chardev *cdev,
 			u8 *src, u32 len, bool sleep);
 	void *priv;
 };

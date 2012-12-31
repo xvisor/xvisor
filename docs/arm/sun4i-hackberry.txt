@@ -1,0 +1,117 @@
+	Xvisor on Hackberry (or Sun4i) using SD Booting 
+
+This section of readme explains how to build & run Xvisor on actual Hackberry
+board using SD booting feature of Sun4i SOC.
+
+By default, Xvisor for Sun4i supports Realview-PB-A8 guest so we will show how 
+to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test refer 
+<xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
+
+As first step of SD booting on Sun4i SOC, we need to re-partition and programme 
+a SD card (> 4GB card) with Uboot. For detailed info on preparing SD card for 
+booting refer: http://rhombus-tech.net/allwinner_a10/a10_mmc_boot
+
+Once we have SD card prepared for SD booting, we add 2 images to the boot 
+partition of SD card:
+ 1) U-Boot compatible Xvisor binary (uvmm.bin).
+ 2) Patched guest binary 
+    (Patched Realview-pb-a8 Basic Test image, arm_test.bin.patched)
+
+Following are steps to create these images and then boot Xvisor on Hackberry:
+
+  [1. Build environment]
+  # CROSS_COMPILE=arm-none-linux-gnueabi-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Configure Xvisor with Sun4i host default settings]
+  # make ARCH=arm sun4i-defconfig 
+
+  [4. Build Xvisor, this creates vmm.bin]
+  # make
+
+  [5. Make U-Boot compatible uvmm.bin for use with bootm command]
+  # mkimage -A arm -O linux -T kernel -C none -a 0x40008000 -e 0x40008000 -n Xvisor -d build/vmm.bin build/uvmm.bin
+
+  [6. Build ARM Basic Test for Realview PB-A8 Guest, this creates arm_test.bin.patched]
+  # make -C tests/arm32/realview-pb-a8/basic
+  
+  [7. Unplug bootable SD card from Hackbery and plug it on your development machine]
+
+  [8. Mount boot partition (or partition 0) of SD card on your development machine]
+
+  [9. Copy uvmm.bin to boot partition of SD card]
+  # cp uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
+
+  [10. Copy arm_test.bin.patched to boot partition of SD card]
+  # cp build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched <path_to_mounted_boot_partition_of_sd_card>/arm.bin
+
+  (Note: If you want additional images like cmdlist, patched zImage, 
+   rootfs.img etc. then you should copy these images to boot partition
+   of SD card after above step.)
+  (Note: For more info on images required for linux on Realview-PB-A8 guest 
+   refer to <xvisor_source>/tests/arm32/realview-pb-a8/linux/README.)
+
+  [11. Unmount boot partition (or partition 0) of SD card from your development machine]
+
+  [12. Unplug SD card from your development machine and plug it back on Hackberry]
+
+  [13. Connect to serial port of Hackberry using Putty or Minicom]
+
+  [14. Power-up or Reset Hackberry and press any key when U-Boot shows auto-boot count down]
+
+  [15. Enabled MMC interface from U-Boot command line interface]
+  sun4i# mmc dev 0:0
+
+  [16. Copy Xvisor from SD card to SDRAM]
+  sun4i# fatload mmc 0 0x40200000 uvmm.bin
+
+  [17. Copy Guest image from SD card to SDRAM]
+  sun4i# fatload mmc 0 0x41000000 arm.bin
+
+  (Note: If you want to load additional images like cmdlist, patched zImage, 
+   rootfs.img, etc. from SD card then load these images at address 
+   0x41000000 or higher using fatload command of U-Boot after above step.)
+  (Note: The default DTS used by Xvisor for Sun4i has one pre-configured
+   Realview-PB-A8 guest. The NOR flash of the guest is 16 MB in size and is 
+   mapped to 0x41000000 host physical address. The guest boots from start of 
+   NOR flash so we put Basic Test arm.bin at start of NOR flash and rest of 
+   the guest images like cmdlist, patched zImage, rootfs.img, etc. after it.)
+  (Note: For e.g. if we want to load cmdlist, patched zImage and rootfs image
+   into guest NOR flash then use:
+   sun4i# fatload mmc 0 0x410FF000 cmdlist
+   sun4i# fatload mmc 0 0x41100000 zImage
+   sun4i# fatload mmc 0 0x41400000 rootfs.img )
+
+  [18. Jump into Xvisor after disabling MMU, interrupts, etc]
+  sun4i# bootm 0x40200000
+
+  [19. Kick Guest for starting Basic Test]
+  XVisor# guest kick 0
+
+  [20. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [21. Say 'hi' to ARM Basic Test]
+  [guest0/uart0] arm-test# hi
+
+  (Note: If you had linux images loaded in guest NOR flash then instead of 
+   above step you can start booting linux,
+   arm-test# copy 0x70400000 0x40100000 0x300000
+   arm-test# copy 0x71000000 0x40400000 0x600000
+   arm-test# start_linux 0x70400000 0x71000000 0x600000 
+   OR
+   arm-test# autoexec)
+
+  [22. Say 'hello' to ARM Basic Test]
+  [guest0/uart0] arm-test# hello
+
+  [23. Check various commands of ARM Basic Test]
+  [guest0/uart0] arm-test# help
+
+  [24. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] arm-test# 
+
+  (Note: replace all <> brackets based on your workspace)
+

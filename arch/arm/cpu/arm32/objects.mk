@@ -29,11 +29,8 @@
 arch-$(CONFIG_ARMV7A) += -D__ARM_ARCH_VERSION__=7 -mno-thumb-interwork -march=armv7-a
 arch-$(CONFIG_ARMV5) += -D__ARM_ARCH_VERSION__=5 -mno-thumb-interwork -march=armv5te
 
-# This selects how we optimise for the processor.
-tune-$(CONFIG_CPU_CORTEX_A8)  += -mcpu=cortex-a8
-tune-$(CONFIG_CPU_OMAP3)      += -mcpu=cortex-a8
-tune-$(CONFIG_CPU_CORTEX_A9)  += -mcpu=cortex-a9
-tune-$(CONFIG_CPU_CORTEX_A15) += -mcpu=cortex-a15
+# Target processor specific tunning options
+tune-y	= 
 
 # Need -Uarm for gcc < 3.x
 cpu-cppflags+=-DCPU_TEXT_START=0xFF000000

@@ -18,6 +18,7 @@
  *
  * @file uart.c
  * @author Anup Patel (anup@brainfault.org)
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief source file for UART serial port driver.
  */
 
@@ -42,12 +43,17 @@
 #define	MODULE_INIT			uart_driver_init
 #define	MODULE_EXIT			uart_driver_exit
 
+#undef UART_POLLING
+
 struct uart_port {
+	struct vmm_completion read_possible;
 	struct vmm_chardev cd;
 	virtual_addr_t base;
 	u32 baudrate;
 	u32 input_clock;
 	u32 reg_align;
+	u32 irq;
+	u32 ier;
 };
 
 bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align)
@@ -94,7 +100,7 @@ void uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 	vmm_out_8((u8 *)REG_UART_DLM(base,reg_align), (bdiv >> 8) & 0xFF); 
 	/* clear DLAB; set 8 bits, no parity */
 	vmm_out_8((u8 *)REG_UART_LCR(base,reg_align), 0x03);
-	/* disable FIFO */
+	/* enable FIFO */
 	vmm_out_8((u8 *)REG_UART_FCR(base,reg_align), 0x01);
 	/* no modem control DTR RTS */
 	vmm_out_8((u8 *)REG_UART_MCR(base,reg_align), 0x00);
@@ -105,8 +111,65 @@ void uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 	/* set scratchpad */
 	vmm_out_8((u8 *)REG_UART_SCR(base,reg_align), 0x00);
 	/* set interrupt enable reg */
-	vmm_out_8((u8 *)REG_UART_IER(base,reg_align), 0x0F);
+	vmm_out_8((u8 *)REG_UART_IER(base,reg_align), 0x00);
 }
+
+#ifndef UART_POLLING
+static vmm_irq_return_t uart_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
+{
+	u16 iir, lsr;
+	struct uart_port *port = (struct uart_port *)dev;
+
+        iir = vmm_in_8((u8 *)REG_UART_IIR(port->base, port->reg_align));
+        if (iir & UART_IIR_NOINT)
+                return VMM_IRQ_NONE;
+
+        lsr = vmm_in_8((u8 *)REG_UART_LSR(port->base, port->reg_align));
+
+	/* Handle RX FIFO not empty */
+         if (iir & (UART_IIR_RLSI | UART_IIR_RTO | UART_IIR_RDI)) { 
+		if (lsr & UART_LSR_DR) {
+			/* Mask RX interrupts till RX FIFO is empty */
+			port->ier &= ~(UART_IER_RDI | UART_IER_RLSI);
+			/* Signal work completion to sleeping thread */
+			vmm_completion_complete(&port->read_possible);
+		} else if (lsr & (UART_LSR_OE | UART_LSR_PE | UART_LSR_BI | UART_LSR_FE) ) {
+			while(1);
+		}
+        }
+
+#if 0
+	/* Handle TX FIFO not full */
+	if ((lsr & UART_LSR_THRE) && (iir & UART_IIR_THRI)) {
+		/* Mask TX interrupts till TX FIFO is full */
+		port->ier &= ~UART_IER_THRI;
+		/* Signal work completion to sleeping thread */
+		vmm_completion_complete_all(&port->write_possible);
+	}
+#endif
+
+	vmm_out_8((u8 *)REG_UART_IER(port->base, port->reg_align), port->ier);
+
+	return VMM_IRQ_HANDLED;
+}
+
+static u8 uart_getc_sleepable(struct uart_port *port)
+{
+	/* Wait until there is data in the FIFO */
+	if (!uart_lowlevel_can_getc(port->base, port->reg_align)) {
+		/* Enable the RX interrupt */
+		port->ier |= (UART_IER_RDI | UART_IER_RLSI);
+		vmm_out_8((u8 *)REG_UART_IER(port->base, port->reg_align), 
+				port->ier);
+
+		/* Wait for completion */
+		vmm_completion_wait(&port->read_possible);
+	}
+
+	/* Read data to destination */
+	return (vmm_in_8((u8 *)REG_UART_RBR(port->base, port->reg_align)));
+}
+#endif
 
 static u32 uart_read(struct vmm_chardev *cdev, 
 		     u8 *dest, u32 len, bool sleep)
@@ -120,12 +183,22 @@ static u32 uart_read(struct vmm_chardev *cdev,
 
 	port = cdev->priv;
 
-	for(i = 0; i < len; i++) {
-		if (!uart_lowlevel_can_getc(port->base, port->reg_align)) {
-			break;
+#ifndef UART_POLLING
+	if (sleep) {
+		for(i = 0; i < len; i++) {
+			dest[i] = uart_getc_sleepable(port);
 		}
-		dest[i] = uart_lowlevel_getc(port->base, port->reg_align);
+	} else {
+#endif
+		for(i = 0; i < len; i++) {
+			if (!uart_lowlevel_can_getc(port->base, port->reg_align)) {
+				break;
+			}
+			dest[i] = uart_lowlevel_getc(port->base, port->reg_align);
+		}
+#ifndef UART_POLLING
 	}
+#endif
 
 	return i;
 }
@@ -171,6 +244,8 @@ static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devi
 	port->cd.write = uart_write;
 	port->cd.priv = port;
 
+	INIT_COMPLETION(&port->read_possible);
+
 	rc = vmm_devtree_regmap(dev->node, &port->base, 0);
 	if(rc) {
 		goto free_port;
@@ -196,9 +271,25 @@ static int uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devi
 	port->baudrate = *((u32 *)attr);
 	port->input_clock = vmm_devdrv_clock_get_rate(dev);
 
-	/* Call low-level init function */
+	/* Call low-level init function 
+	 * Note: low-level init will make sure that
+	 * interrupts are disabled in IER register.
+	 */
 	uart_lowlevel_init(port->base, port->reg_align, 
 			port->baudrate, port->input_clock);
+
+#ifndef UART_POLLING
+	attr = vmm_devtree_attrval(dev->node, "irq");
+	if (!attr) {
+		rc = VMM_EFAIL;
+		goto free_port;
+	}
+	port->irq = *((u32 *) attr);
+	if ((rc = vmm_host_irq_register(port->irq, dev->node->name,
+					uart_irq_handler, port))) {
+		goto free_port;
+	}
+#endif
 
 	rc = vmm_chardev_register(&port->cd);
 	if(rc) {

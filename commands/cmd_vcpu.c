@@ -64,8 +64,12 @@ static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 	struct vmm_vcpu *vcpu;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-6s %-7s %-10s %-17s %-35s\n", 
-		   "ID ", "Prio", "State", "Name", "Device Path");
+	vmm_cprintf(cdev, " %-6s", "ID ");
+#ifdef CONFIG_SMP
+	vmm_cprintf(cdev, " %-6s", "CPU ");
+#endif
+	vmm_cprintf(cdev, " %-7s %-10s %-17s %-35s\n", 
+		    "Prio", "State", "Name", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	count = vmm_manager_max_vcpu_count();
@@ -96,15 +100,16 @@ static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 			strcpy(state, "Invalid");
 			break;
 		}
+		vmm_cprintf(cdev, " %-6d", id);
+#ifdef CONFIG_SMP
+		vmm_cprintf(cdev, " %-6d", vcpu->hcpu);
+#endif
+		vmm_cprintf(cdev, " %-7d %-10s %-17s", vcpu->priority, state, vcpu->name);
 		if (vcpu->node) {
 			vmm_devtree_getpath(path, vcpu->node);
-			vmm_cprintf(cdev, " %-6d %-7d %-10s %-17s %-35s\n", 
-					  id, vcpu->priority, 
-					  state, vcpu->name, path);
+			vmm_cprintf(cdev, " %-35s\n", path); 
 		} else {
-			vmm_cprintf(cdev, " %-6d %-7d %-10s %-17s %-35s\n", 
-					  id, vcpu->priority, 
-					  state, vcpu->name, "(NA)");
+			vmm_cprintf(cdev, " %-35s\n", "(NA)"); 
 		}
 	}
 	vmm_cprintf(cdev, "----------------------------------------"

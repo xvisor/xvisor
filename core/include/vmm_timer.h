@@ -30,15 +30,13 @@
 
 struct vmm_timer_event;
 
-typedef void (*vmm_timer_event_handler_t) (struct vmm_timer_event *);
-
 struct vmm_timer_event {
 	struct dlist head;
 	arch_regs_t *regs;
 	bool active;
 	u64 expiry_tstamp;
 	u64 duration_nsecs;
-	vmm_timer_event_handler_t handler;
+	void (*handler) (struct vmm_timer_event *);
 	void *priv;
 };
 

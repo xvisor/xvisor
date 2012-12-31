@@ -115,7 +115,7 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 	return rc;
 }
 
-int vmm_waitqueue_sleep(struct vmm_waitqueue * wq) 
+int vmm_waitqueue_sleep(struct vmm_waitqueue *wq) 
 {
 	int rc;
 
@@ -155,7 +155,7 @@ int vmm_waitqueue_wake(struct vmm_vcpu *vcpu)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
-	struct vmm_waitqueue * wq;
+	struct vmm_waitqueue *wq;
 
 	/* Sanity checks */
 	if (!vcpu || !vcpu->wq_priv) {

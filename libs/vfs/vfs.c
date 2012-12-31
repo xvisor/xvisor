@@ -491,6 +491,7 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
+	/* sanity check */
 	if (!dir || *dir == '\0' || !(flags & MOUNT_MASK)) {
 		return VMM_EINVALID;
 	}
@@ -500,13 +501,19 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 		return VMM_EINVALID;
 	}
 
-	/* NULL can be specified as a dev. */
+	/* NULL cannot be specified as a dev. */
 	if (dev != NULL) {
 		if (!(bdev = vmm_blockdev_find(dev))) {
 			return VMM_EINVALID;
 		}
 	} else {
-		bdev = NULL;
+		return VMM_EINVALID;
+	}
+
+	/* For read-only devices mount as read-only */
+	if (bdev->flags & VMM_BLOCKDEV_RDONLY) {
+		flags &= ~MOUNT_RW;
+		flags |= MOUNT_RDONLY;
 	}
 
 	/* create vfs mount entry. */
@@ -549,10 +556,7 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 	}
 	v->v_type = VDIR;
 	v->v_flags = VROOT;
-	if (!S_ISDIR(v->v_mode) || 
-	    (v->v_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) {
-		v->v_mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
-	}
+	v->v_mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
 	m->m_root = v;
 
 	/* call a file system specific routine. */
@@ -1364,7 +1368,15 @@ int vfs_mkdir(const char *path, u32 mode)
 	mode |= S_IFDIR;
 
 	vmm_mutex_lock(&dv->v_lock);
+
 	err = dv->v_mount->m_fs->mkdir(dv, name, mode);
+	if (err) {
+		goto fail;
+	}
+
+	err = dv->v_mount->m_fs->sync(dv);
+
+fail:
 	vmm_mutex_unlock(&dv->v_lock);
 
 	vfs_vnode_release(dv);
@@ -1388,7 +1400,8 @@ static int vfs_check_dir_empty(const char *path)
 		if (err) {
 			break;
 		}
-		if (!strcmp(dir.d_name, ".") || !strcmp(dir.d_name, "..")) {
+		if ((strcmp(dir.d_name, ".") != 0) && 
+		    (strcmp(dir.d_name, "..") != 0)) {
 			count++;
 		}
 		if (count) {
@@ -1443,7 +1456,20 @@ int vfs_rmdir(const char *path)
 
 	vmm_mutex_lock(&dv->v_lock);
 	vmm_mutex_lock(&v->v_lock);
+
 	err = dv->v_mount->m_fs->rmdir(dv, v, name);
+	if (err) {
+		goto fail;
+	}
+
+	err = v->v_mount->m_fs->sync(v);
+	if (err) {
+		goto fail;
+	}
+
+	err = dv->v_mount->m_fs->sync(dv);
+
+fail:	
 	vmm_mutex_unlock(&v->v_lock);
 	vmm_mutex_unlock(&dv->v_lock);
 
@@ -1454,7 +1480,7 @@ int vfs_rmdir(const char *path)
 }
 VMM_EXPORT_SYMBOL(vfs_rmdir);
 
-int vfs_rename(char *src, char *dest)
+int vfs_rename(const char *src, const char *dest)
 {
 	int err, len;
 	char *sname, *dname;
@@ -1467,9 +1493,16 @@ int vfs_rename(char *src, char *dest)
 		return VMM_EINVALID;
 	}
 
-	/* check if dest is a directory of source */
-	len = strlen(dest);
-	if ((strlen(src) < len) && !strncmp(src, dest, len)) {
+	/* if source is root directory then, do nothing */
+	if (!strcmp(src, "/")) {
+		return VMM_EINVALID;
+	}
+
+	/* if dest is a directory of source then, do nothing */
+	len = strlen(src);
+	if ((len < strlen(dest)) && 
+	    !strncmp(src, dest, len) &&
+	    (dest[len] == '/')) {
 		return VMM_EINVALID;
 	}
 
@@ -1480,54 +1513,76 @@ int vfs_rename(char *src, char *dest)
 
 	/* check source permission */
 	if ((err = vfs_vnode_access(v1, W_OK))) {
-		vfs_vnode_release(v1);
-		return err;
+		goto fail1;
 	}
 
 	/* check if source is busy ? */
 	if (arch_atomic_read(&v1->v_refcnt) >= 2) {
-		vfs_vnode_release(v1);
-		return VMM_EBUSY;
+		err = VMM_EBUSY;
+		goto fail1;
 	}
-
-	/* release source node */
-	vfs_vnode_release(v1);
 
 	/* get sv and sname */
 	if ((err = vfs_lookup_dir(src, &sv, &sname))) {
-		return err;
+		goto fail1;
 	}
 
 	/* check if dest exists */
 	err = vfs_vnode_acquire(dest, &v2);
 	if (!err) {
 		vfs_vnode_release(v2);
-		err = VMM_EALREADY;
-		goto err1;
+		err = VMM_EEXIST;
+		goto fail2;
 	}
 
 	/* get dv and dname */
 	if ((err = vfs_lookup_dir(dest, &dv, &dname))) {
-		goto err1;
+		goto fail2;
 	}
 
-	/* the source and dest must be on same file system */
+	/* the sv and dv must be on same file system */
 	if (sv->v_mount != dv->v_mount) {
 		err = VMM_EIO;
-		goto err2;
+		goto fail3;
 	}
 
-	/* call filesystem */
+	vmm_mutex_lock(&v1->v_lock);
+
 	vmm_mutex_lock(&sv->v_lock);
-	vmm_mutex_lock(&dv->v_lock);
-	err = sv->v_mount->m_fs->rename(sv, sname, dv, dname);
-	vmm_mutex_unlock(&dv->v_lock);
+
+	if (dv != sv) {
+		vmm_mutex_lock(&dv->v_lock);
+	}
+
+	err = sv->v_mount->m_fs->rename(sv, sname, v1, dv, dname);
+	if (err) {
+		goto fail4;
+	}
+
+	err = sv->v_mount->m_fs->sync(sv);
+	if (err) {
+		goto fail4;
+	}
+
+	if (dv != sv) {
+		err = dv->v_mount->m_fs->sync(dv);
+	}
+
+fail4:
+	if (dv != sv) {
+		vmm_mutex_unlock(&dv->v_lock);
+	}
+
 	vmm_mutex_unlock(&sv->v_lock);
 
-err2:
+	vmm_mutex_unlock(&v1->v_lock);
+
+fail3:
 	vfs_vnode_release(dv);
-err1:
+fail2:
 	vfs_vnode_release(sv);
+fail1:
+	vfs_vnode_release(v1);
 
 	return err;
 }
@@ -1574,14 +1629,27 @@ int vfs_unlink(const char *path)
 
 	err = v->v_mount->m_fs->truncate(v, 0);
 	if (err) {
-		goto done;
+		goto fail1;
+	}
+
+	err = v->v_mount->m_fs->sync(v);
+	if (err) {
+		goto fail1;
 	}
 
 	vmm_mutex_lock(&dv->v_lock);
+
 	err = dv->v_mount->m_fs->remove(dv, v, name);
+	if (err) {
+		goto fail2;
+	}
+
+	err = dv->v_mount->m_fs->sync(dv);
+
+fail2:
 	vmm_mutex_unlock(&dv->v_lock);
 
-done:
+fail1:
 	vmm_mutex_unlock(&v->v_lock);
 
 	vfs_vnode_release(dv);
@@ -1635,12 +1703,12 @@ int vfs_chmod(const char *path, u32 mode)
 
 	err = v->v_mount->m_fs->chmod(v, mode);
 	if (err) {
-		goto done;
+		goto fail;
 	}
 
 	err = v->v_mount->m_fs->sync(v);
 
-done:
+fail:
 	vmm_mutex_unlock(&v->v_lock);
 
 	vfs_vnode_release(v);

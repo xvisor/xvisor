@@ -1,13 +1,13 @@
-		Xvisor on BeagleBoard-xM using SD Booting 
+	Xvisor on BeagleBoard-xM (or OMAP3) using SD Booting 
 
 This section of readme explains how to build & run Xvisor on real hardware 
-BeagleBoard-xM using SD booting feature of BeagleBoard-xM.
+BeagleBoard-xM using SD booting feature of OMAP3 SOC.
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
 refer <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
 
-We need to add 2 images in boot partition of micor-SD card that is shipped with
+We need to add 2 images in boot partition of micro-SD card that is shipped with
 BeagleBoard-xM:
  1) U-Boot compatible Xvisor binary (uvmm.bin). Newer u-boot enables MMU and 
     interrupts. These are disabled before booting linux when bootm command is 
@@ -40,11 +40,11 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
 
   [8. Mount boot partition (or partition 0) of micro-SD card on your development machine]
 
-  [9. Copy uvmm.bin to boot partition of micor-SD card]
-  # cp uvmm.bin <path_to_mounted_boot_partition_of_micor_sd_card>
+  [9. Copy uvmm.bin to boot partition of micro-SD card]
+  # cp uvmm.bin <path_to_mounted_boot_partition_of_micro_sd_card>
 
-  [10. Copy arm_test.bin.patched to boot partition of micor-SD card]
-  # cp build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched <path_to_mounted_boot_partition_of_micor_sd_card>/arm.bin
+  [10. Copy arm_test.bin.patched to boot partition of micro-SD card]
+  # cp build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched <path_to_mounted_boot_partition_of_micro_sd_card>/arm.bin
 
   (Note: If you want additional images like cmdlist, patched zImage, 
    rootfs.img etc. then you should copy these images to boot partition
@@ -63,10 +63,10 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   [15. Enabled MMC interface from U-Boot command line interface]
   OMAP3 beagleboard.org # mmc dev 0:0
 
-  [16. Copy Xvisor from micor-SD card to SDRAM]
+  [16. Copy Xvisor from micro-SD card to SDRAM]
   OMAP3 beagleboard.org # fatload mmc 0 0x80200000 uvmm.bin
 
-  [17. Copy Guest image from micor-SD card to SDRAM]
+  [17. Copy Guest image from micro-SD card to SDRAM]
   OMAP3 beagleboard.org # fatload mmc 0 0x89000000 arm.bin
 
   (Note: If you want to load additional images like cmdlist, patched zImage, 
@@ -75,10 +75,10 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   (Note: The default DTS used by Xvisor for BeagleBoard has one pre-configured
    Realview-PB-A8 guest. The NOR flash of the guest is 16 MB in size and is 
    mapped to 0x89000000 host physical address. The guest boots from start of 
-   NOR flash so we put Basic Test at start of NOR flash and rest of the guest
-   images like cmdlist, patched zImage, rootfs.img, etc. Basic Test image arm.bin)
+   NOR flash so we put Basic Test arm.bin at start of NOR flash and rest of 
+   the guest images like cmdlist, patched zImage, rootfs.img, etc. after it.)
   (Note: For e.g. if we want to load cmdlist, patched zImage and rootfs image
-   into guest NOR flash then use,
+   into guest NOR flash then use:
    OMAP3 beagleboard.org # fatload mmc 0 0x890FF000 cmdlist
    OMAP3 beagleboard.org # fatload mmc 0 0x89100000 zImage
    OMAP3 beagleboard.org # fatload mmc 0 0x89400000 rootfs.img )
@@ -115,7 +115,7 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   (Note: replace all <> brackets based on your workspace)
 
 
-		Xvisor on Linaro QEMU BeagleBoard using NAND Booting 
+	Xvisor on Linaro QEMU BeagleBoard (or OMAP3) using NAND Booting 
 
 This section of readme explains how to build & run Xvisor from nand-flash on 
 BeagleBoard emulated by QEMU Linaro 2.02 or higher. 

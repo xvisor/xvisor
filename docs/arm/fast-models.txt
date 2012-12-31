@@ -73,10 +73,10 @@ steps provided in previous section:
   # CROSS_COMPILE=arm-none-linux-gnueabi-
 
   [2. Compile boot-wrapper with secured IRQs]
-  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSMP -DVEXPRESS_A15 fast_model_boot.S -o fast_model_boot.axf
+  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -e start_boot -Wl,-Ttext=0x80000000 -DSMP -DVEXPRESS_A15 fast_model_boot.S -o fast_model_boot.axf
   OR
   [2. Compile boot-wrapper with non-secured IRQs]
-  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSMP -DVEXPRESS_A15 -DGIC_DIST_NONSECURED fast_model_boot.S -o fast_model_boot.axf
+  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -e start_boot -Wl,-Ttext=0x80000000 -DSMP -DVEXPRESS_A15 -DGIC_DIST_NONSECURED fast_model_boot.S -o fast_model_boot.axf
 
   [3. Run fast models]
   # model_shell <your_fastmodel_dir>/FastModelsPortfolio_xxxx/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-3.4/cadi_system_Linux-Debug-GCC-3.4.so fast_model_boot.axf

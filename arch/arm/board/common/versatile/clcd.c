@@ -167,7 +167,7 @@ int versatile_clcd_setup(struct clcd_fb *fb, unsigned long framesize)
 		return VMM_ENOMEM;
 	}
 
-	rc = vmm_host_page_va2pa((virtual_addr_t)fb->fb.screen_base, &smem_pa);
+	rc = vmm_host_va2pa((virtual_addr_t)fb->fb.screen_base, &smem_pa);
 	if (rc) {
 		return rc;
 	}

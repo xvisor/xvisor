@@ -135,7 +135,7 @@ int vmm_workqueue_stop_delayed_work(struct vmm_delayed_work *work);
 int vmm_workqueue_flush(struct vmm_workqueue *wq);
 
 /** Retrive workqueue instance from workqueue index */
-struct vmm_thread *vmm_workqueue_get_thread(struct vmm_workqueue * wq);
+struct vmm_thread *vmm_workqueue_get_thread(struct vmm_workqueue *wq);
 
 /** Retrive workqueue instance from workqueue index */
 struct vmm_workqueue *vmm_workqueue_index2workqueue(int index);
@@ -144,10 +144,10 @@ struct vmm_workqueue *vmm_workqueue_index2workqueue(int index);
 u32 vmm_workqueue_count(void);
 
 /** Destroy workqueue */
-int vmm_workqueue_destroy(struct vmm_workqueue * wq);
+int vmm_workqueue_destroy(struct vmm_workqueue *wq);
 
 /** Create workqueue with given name and thread priority */
-struct vmm_workqueue * vmm_workqueue_create(const char *name, u8 priority);
+struct vmm_workqueue *vmm_workqueue_create(const char *name, u8 priority);
 
 /** Initialize workqueue framework */
 int vmm_workqueue_init(void);

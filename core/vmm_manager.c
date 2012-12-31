@@ -22,12 +22,14 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_compiler.h>
-#include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 #include <vmm_manager.h>
+#include <vmm_stdio.h>
+#include <vmm_smp.h>
 #include <arch_vcpu.h>
 #include <arch_guest.h>
 #include <libs/stringlib.h>
@@ -230,11 +232,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->arch_priv = NULL;
 
 	/* Alloc stack pages */
-	vcpu->stack_va = vmm_host_alloc_pages(VMM_SIZE_TO_PAGE(stack_sz),
-						VMM_MEMORY_READABLE | 
-						VMM_MEMORY_WRITEABLE | 
-						VMM_MEMORY_CACHEABLE |
-						VMM_MEMORY_BUFFERABLE);
+	vcpu->stack_va = (virtual_addr_t)vmm_malloc(stack_sz);
 	if (!vcpu->stack_va) {
 		mngr.vcpu_avail_array[vnum] = TRUE;
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
@@ -248,6 +246,11 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 		return NULL;
 	}
+
+#ifdef CONFIG_SMP
+	/* Set hcpu to current CPU */
+	vcpu->hcpu = vmm_smp_processor_id();
+#endif
 
 	/* Notify scheduler about new VCPU */
 	vcpu->sched_priv = NULL;
@@ -323,10 +326,8 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 	}
 
 	/* Free stack pages */
-	if ((rc = vmm_host_free_pages(vcpu->stack_va, 
-				VMM_SIZE_TO_PAGE(vcpu->stack_sz)))) {
-		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
-		return rc;
+	if (vcpu->stack_va) {
+		vmm_free((void *)vcpu->stack_va);
 	}
 
 	/* Mark VCPU as available */
@@ -534,6 +535,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		if ((guest->node == gnode) ||
 		    (strcmp(guest->node->name, gnode->name) == 0)) {
 			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+			vmm_printf("%s: Duplicate guest \"%s\" detected\n", 
+					__func__, gnode->name);
 			return NULL;
 		}
 	}
@@ -552,6 +555,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		mngr.guest_avail_array[gnum] = FALSE;
 	} else {
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+		vmm_printf("%s: No available guest instance found\n", __func__);
 		return NULL;
 	}
 
@@ -566,6 +570,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 	vsnode = vmm_devtree_getchild(gnode, VMM_DEVTREE_VCPUS_NODE_NAME);
 	if (!vsnode) {
+		vmm_printf("%s: %s/vcpus node not found\n", __func__, gnode->name);
 		goto guest_create_error;
 	}
 	list_for_each(l1, &vsnode->child_list) {
@@ -634,12 +639,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		}
 
 		/* Alloc stack pages */
-		vcpu->stack_va = vmm_host_alloc_pages(
-					VMM_SIZE_TO_PAGE(CONFIG_IRQ_STACK_SIZE),
-					VMM_MEMORY_READABLE | 
-					VMM_MEMORY_WRITEABLE | 
-					VMM_MEMORY_CACHEABLE |
-					VMM_MEMORY_BUFFERABLE);
+		vcpu->stack_va = 
+			(virtual_addr_t)vmm_malloc(CONFIG_IRQ_STACK_SIZE);
 		if (!vcpu->stack_va) {
 			continue;
 		}
@@ -656,6 +657,11 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		if (vmm_vcpu_irq_init(vcpu)) {
 			continue;
 		}
+
+#ifdef CONFIG_SMP
+		/* Set hcpu to current CPU */
+		vcpu->hcpu = vmm_smp_processor_id();
+#endif
 
 		/* Notify scheduler about new VCPU */
 		vcpu->sched_priv = NULL;
@@ -777,10 +783,8 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 		}
 
 		/* Free stack pages */
-		if ((rc = vmm_host_free_pages(vcpu->stack_va, 
-					VMM_SIZE_TO_PAGE(vcpu->stack_sz)))) {
-			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
-			return rc;
+		if (vcpu->stack_va) {
+			vmm_free((void *)vcpu->stack_va);
 		}
 
 		/* Mark VCPU as available */

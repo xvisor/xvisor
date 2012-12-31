@@ -42,7 +42,7 @@ int arch_defterm_putc(u8 ch)
 	return VMM_OK;
 }
 
-int arch_defterm_init(void)
+int __init arch_defterm_init(void)
 {
         init_console();
 	return VMM_OK;

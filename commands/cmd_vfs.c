@@ -38,6 +38,8 @@
 #define	MODULE_INIT			cmd_vfs_init
 #define	MODULE_EXIT			cmd_vfs_exit
 
+#define VFS_LOAD_BUF_SZ			256
+
 static void cmd_vfs_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
@@ -47,6 +49,11 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs mount <bdev_name> <path_to_mount>\n");
 	vmm_cprintf(cdev, "   vfs umount <path_to_unmount>\n");
 	vmm_cprintf(cdev, "   vfs ls <path_to_dir>\n");
+	vmm_cprintf(cdev, "   vfs cat <path_to_file>\n");
+	vmm_cprintf(cdev, "   vfs mv <old_path> <new_path>\n");
+	vmm_cprintf(cdev, "   vfs rm <path_to_file>\n");
+	vmm_cprintf(cdev, "   vfs mkdir <path_to_dir>\n");
+	vmm_cprintf(cdev, "   vfs rmdir <path_to_dir>\n");	
 	vmm_cprintf(cdev, "   vfs load <phys_addr> <path_to_file> "
 			  "[<file_offset>] [<byte_count>]\n");
 }
@@ -299,7 +306,142 @@ static int cmd_vfs_ls(struct vmm_chardev *cdev, const char *path)
 	return VMM_OK;
 }
 
-#define VFS_LOAD_BUF_SZ		256
+static int cmd_vfs_cat(struct vmm_chardev *cdev, const char *path)
+{
+	int fd, rc;
+	u32 i, off, len;
+	bool found_non_printable;
+	size_t buf_rd;
+	char buf[VFS_LOAD_BUF_SZ];
+	struct stat st;
+
+	fd = vfs_open(path, O_RDONLY, 0);
+	if (fd < 0) {
+		vmm_cprintf(cdev, "Failed to open %s\n", path);
+		return fd;
+	}
+
+	rc = vfs_fstat(fd, &st);
+	if (rc) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Failed to stat %s\n", path);
+		return rc;
+	}
+
+	if (!(st.st_mode & S_IFREG)) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Cannot read %s\n", path);
+		return VMM_EINVALID;
+	}
+
+	off = 0;
+	len = st.st_size;
+	while (len) {
+		buf_rd = (len < VFS_LOAD_BUF_SZ) ? len : VFS_LOAD_BUF_SZ;
+		buf_rd = vfs_read(fd, buf, buf_rd);
+		if (buf_rd < 1) {
+			break;
+		}
+
+		found_non_printable = FALSE;
+		for (i = 0; i < buf_rd; i++) {
+			if (!vmm_isprintable(buf[i])) {
+				found_non_printable = TRUE;
+				break;
+			}
+			vmm_cputc(cdev, buf[i]);
+		}
+		if (found_non_printable) {
+			vmm_cprintf(cdev, "\nFound non-printable char %d "
+					  "at offset %d\n", buf[i], (off + i));
+			break;
+		}
+
+		off += buf_rd;
+		len -= buf_rd;
+	}
+
+	rc = vfs_close(fd);
+	if (rc) {
+		vmm_cprintf(cdev, "Failed to close %s\n", path);
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+static int cmd_vfs_mv(struct vmm_chardev *cdev, 
+			const char *old_path, const char *new_path)
+{
+	int rc;
+	struct stat st;
+
+	rc = vfs_stat(old_path, &st);
+	if (rc) {
+		vmm_cprintf(cdev, "Path %s does not exist.\n", old_path);
+		return rc;
+	}
+
+	rc = vfs_rename(old_path, new_path);
+	if (rc) {
+		vmm_cprintf(cdev, "Failed to rename.\n");
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+static int cmd_vfs_rm(struct vmm_chardev *cdev, const char *path)
+{
+	int rc;
+	struct stat st;
+
+	rc = vfs_stat(path, &st);
+	if (rc) {
+		vmm_cprintf(cdev, "Path %s does not exist.\n", path);
+		return rc;
+	}
+
+	if (!(st.st_mode & S_IFREG)) {
+		vmm_cprintf(cdev, "Path %s should be regular file.\n", path);
+		return VMM_EINVALID;
+	}
+
+	return vfs_unlink(path);
+}
+
+static int cmd_vfs_mkdir(struct vmm_chardev *cdev, const char *path)
+{
+	int rc;
+	struct stat st;
+
+	rc = vfs_stat(path, &st);
+	if (!rc) {
+		vmm_cprintf(cdev, "Path %s already exist.\n", path);
+		return VMM_EEXIST;
+	}
+
+	return vfs_mkdir(path, S_IRWXU|S_IRWXG|S_IRWXO);
+}
+
+static int cmd_vfs_rmdir(struct vmm_chardev *cdev, const char *path)
+{
+	int rc;
+	struct stat st;
+
+	rc = vfs_stat(path, &st);
+	if (rc) {
+		vmm_cprintf(cdev, "Path %s does not exist.\n", path);
+		return rc;
+	}
+
+	if (!(st.st_mode & S_IFDIR)) {
+		vmm_cprintf(cdev, "Path %s should be directory.\n", path);
+		return VMM_EINVALID;
+	}
+
+	return vfs_rmdir(path);
+}
 
 static int cmd_vfs_load(struct vmm_chardev *cdev, physical_addr_t pa, 
 			const char *path, u32 off, u32 len)
@@ -380,6 +522,16 @@ int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vfs_umount(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "ls") == 0) && (argc == 3)) {
 		return cmd_vfs_ls(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "cat") == 0) && (argc == 3)) {
+		return cmd_vfs_cat(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "mv") == 0) && (argc == 4)) {
+		return cmd_vfs_mv(cdev, argv[2], argv[3]);
+	} else if ((strcmp(argv[1], "rm") == 0) && (argc == 3)) {
+		return cmd_vfs_rm(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "mkdir") == 0) && (argc == 3)) {
+		return cmd_vfs_mkdir(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "rmdir") == 0) && (argc == 3)) {
+		return cmd_vfs_rmdir(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "load") == 0) && (argc > 3)) {
 		pa = (physical_addr_t)str2ulonglong(argv[2], 10);
 		off = (argc > 4) ? str2uint(argv[4], 10) : 0;

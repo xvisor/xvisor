@@ -89,7 +89,7 @@ int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
 	cs->name = "gen-timer";
 	cs->rating = *rating;
 	cs->read = &generic_counter_read;
-	cs->mask = 0x00FFFFFFFFFFFFFF;
+	cs->mask = VMM_CLOCKSOURCE_MASK(56);
 	cs->mult = vmm_clocksource_hz2mult(generic_timer_hz, *shift);
 	cs->shift = *shift;
 	cs->priv = NULL;

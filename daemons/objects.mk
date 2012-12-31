@@ -21,5 +21,5 @@
 # @brief list of daemons objects to be build
 # */
 
-daemons-objs-y+= mterm.o
+daemons-objs-$(CONFIG_MTERM)+= mterm.o
 

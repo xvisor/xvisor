@@ -118,19 +118,17 @@ int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count)
 	return vmm_host_ram_free(pa, page_count * VMM_PAGE_SIZE);
 }
 
-int vmm_host_page_va2pa(virtual_addr_t page_va, physical_addr_t * page_pa)
+int vmm_host_va2pa(virtual_addr_t va, physical_addr_t *pa)
 {
 	int rc = VMM_OK;
-	physical_addr_t pa = 0x0;
+	physical_addr_t _pa = 0x0;
 
-	page_va &= ~VMM_PAGE_MASK;
-
-	if ((rc = arch_cpu_aspace_va2pa(page_va, &pa))) {
+	if ((rc = arch_cpu_aspace_va2pa(va & ~VMM_PAGE_MASK, &_pa))) {
 		return rc;
 	}
 
-	if (page_pa) {
-		*page_pa = pa;
+	if (pa) {
+		*pa = _pa | (va & VMM_PAGE_MASK);
 	}
 
 	return VMM_OK;
@@ -251,7 +249,7 @@ u32 vmm_host_free_initmem(void)
 	return (init_size >> VMM_PAGE_SHIFT) * VMM_PAGE_SIZE / 1024;
 }
 
-int __init vmm_host_aspace_init(void)
+int __cpuinit vmm_host_aspace_init(void)
 {
 	int rc, cpu = vmm_smp_processor_id();
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;

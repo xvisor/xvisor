@@ -27,7 +27,7 @@
 #include <vmm_types.h>
 
 /** Allocate virtual space from virtual address pool */
-int vmm_host_vapool_alloc(virtual_addr_t * va, 
+int vmm_host_vapool_alloc(virtual_addr_t *va, 
 			  virtual_size_t sz, 
 			  bool aligned);
 

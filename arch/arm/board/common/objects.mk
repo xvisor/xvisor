@@ -26,3 +26,4 @@ board-common-objs-$(CONFIG_ARM_TIMER_SP804)+=sp804_timer.o
 board-common-objs-$(CONFIG_ARM_TWD)+=smp_twd.o
 board-common-objs-$(CONFIG_ARM_VIC)+=vic.o
 board-common-objs-$(CONFIG_ICST)+=icst.o
+board-common-objs-$(CONFIG_ARM_SCU)+=smp_scu.o

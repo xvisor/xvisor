@@ -99,7 +99,7 @@ s32 handle_internal_timer_interrupt(arch_regs_t *uregs)
 	return 0;
 }
 
-int arch_clockchip_init(void)
+int __cpuinit arch_clockchip_init(void)
 {
 	struct vmm_clockchip *cc = &this_cpu(mcc);
 
@@ -132,12 +132,12 @@ static struct vmm_clocksource mips_cs =
 {
 	.name = "mips_clksrc",
 	.rating = 300,
-	.mask = 0xFFFFFFFF,
+	.mask = VMM_CLOCKSOURCE_MASK(32),
 	.shift = 20,
 	.read = &mips_clocksource_read
 };
 
-int arch_clocksource_init(void)
+int __init arch_clocksource_init(void)
 {
 	int rc;
 

@@ -37,7 +37,7 @@ struct vmm_clockchip_ctrl {
 static struct vmm_clockchip_ctrl ccctrl;
 
 void vmm_clockchip_set_event_handler(struct vmm_clockchip *cc, 
-				  vmm_clockchip_event_handler_t event_handler)
+		void (*event_handler) (struct vmm_clockchip *, arch_regs_t *))
 {
 	if (cc && event_handler) {
 		cc->event_handler = event_handler;
@@ -252,7 +252,7 @@ u32 vmm_clockchip_count(void)
 	return retval;
 }
 
-int __init vmm_clockchip_init(void)
+int __cpuinit vmm_clockchip_init(void)
 {
 	int rc;
 	u32 cpu = vmm_smp_processor_id();

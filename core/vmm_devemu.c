@@ -66,7 +66,7 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 {
 	u32 ite;
 	bool found;
-	struct vmm_devemu_vcpu_context * ev;
+	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_emudev *edev;
 	struct vmm_region *reg;
 
@@ -115,7 +115,7 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 {
 	u32 ite;
 	bool found;
-	struct vmm_devemu_vcpu_context * ev;
+	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_emudev *edev;
 	struct vmm_region *reg;
 
@@ -186,7 +186,7 @@ static vmm_irq_return_t vmm_devemu_handle_h2g_irq(u32 irq_no,
 						  arch_regs_t *regs, 
 						  void *dev)
 {
-	struct vmm_devemu_h2g_irq * irq = dev;
+	struct vmm_devemu_h2g_irq *irq = dev;
 
 	if (irq) {
 		vmm_host_irq_disable(irq->host_irq);
@@ -557,7 +557,7 @@ int devemu_device_is_compatible(struct vmm_devtree_node *node, const char *compa
 	if (cp == NULL)
 		return 0;
 	while (cplen > 0) {
-		if (strncmp(cp, compat, strlen(compat)) == 0)
+		if (strcmp(cp, compat) == 0)
 			return 1;
 		l = strlen(cp) + 1;
 		cp += l;
@@ -601,10 +601,10 @@ const struct vmm_emuid *devemu_match_node(const struct vmm_emuid *matches,
 int vmm_devemu_reset_context(struct vmm_guest *guest)
 {
 	u32 ite;
-	struct dlist * l;
+	struct dlist *l;
 	struct vmm_devemu_guest_context *eg;
 	struct vmm_devemu_vcpu_context *ev;
-	struct vmm_vcpu * vcpu;
+	struct vmm_vcpu *vcpu;
 
 	if (!guest) {
 		return VMM_EFAIL;
@@ -730,6 +730,8 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 	vmm_mutex_unlock(&dectrl.emu_lock);
 
 	if (!found) {
+		vmm_printf("%s: No compatible emulator found for %s/%s\n", 
+		__func__, guest->node->name, reg->node->name);
 		return VMM_ENOTAVAIL;
 	}
 

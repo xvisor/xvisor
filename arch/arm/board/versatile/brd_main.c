@@ -26,9 +26,6 @@
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <vmm_stdio.h>
-#include <vmm_chardev.h>
-#include <rtc/vmm_rtcdev.h>
 #include <libs/libfdt.h>
 #include <versatile_plat.h>
 #include <versatile_board.h>
@@ -188,7 +185,7 @@ int __init arch_clocksource_init(void)
 	return VMM_OK;
 }
 
-int __init arch_clockchip_init(void)
+int __cpuinit arch_clockchip_init(void)
 {
 	int rc;
 	u32 val;
@@ -228,10 +225,6 @@ int __init arch_clockchip_init(void)
 int __init arch_board_final_init(void)
 {
 	struct vmm_devtree_node *node;
-	struct vmm_chardev *cdev;
-#if defined(CONFIG_RTC)
-	struct vmm_rtcdev * rdev;
-#endif
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
@@ -256,20 +249,5 @@ int __init arch_board_final_init(void)
 		return VMM_EFAIL;
 	}
 
-	/* Find uart0 character device and 
-	 * set it as vmm_stdio character device */
-	if ((cdev = vmm_chardev_find("uart0"))) {
-		vmm_stdio_change_device(cdev);
-	}
-
-	/* Syncup wall-clock time from rtc0 */
-#if defined(CONFIG_RTC)
-	if ((rdev = vmm_rtcdev_find("rtc0"))) {
-		int rc;
-		if ((rc = vmm_rtcdev_sync_wallclock(rdev))) {
-			return rc;
-		}
-	}
-#endif
 	return VMM_OK;
 }
