@@ -26,7 +26,9 @@
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devdrv.h>
+#include <vmm_stdio.h>
 #include <libs/libfdt.h>
+#include <hpet.h>
 
 extern u32 dt_blob_start;
 
@@ -103,6 +105,11 @@ int arch_board_devtree_populate(struct vmm_devtree_node **root)
 
 int __init arch_board_early_init(void)
 {
+	int rv;
+
+	rv = hpet_init();
+	BUG_ON(rv != VMM_OK);
+
         return VMM_OK;
 }
 

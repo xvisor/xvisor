@@ -25,6 +25,9 @@
 #define __CPU_APIC_H__
 
 #include <vmm_types.h>
+#include <vmm_host_irq.h>
+#include <arch_regs.h>
+#include <libs/list.h>
 
 extern virtual_addr_t lapic_eoi_addr;
 
@@ -130,6 +133,9 @@ extern virtual_addr_t lapic_eoi_addr;
 #define APIC_CURR_COUNT			(0x390)
 #define APIC_DIVIDE_CONF		(0x3E0)
 
+
+#define NR_IOAPIC_PINS			24
+
 #define IOAPIC_ID			0x0
 #define IOAPIC_VERSION			0x1
 #define IOAPIC_ARB			0x2
@@ -224,7 +230,34 @@ union ioapic_irt_entry {
 	} bits;
 };
 
+#define EXT_DEV_NAME_LEN	256
+
+/**
+ * @brief Software abstraction of a device like HPET connected to
+ * IOAPIC.
+ */
+struct ioapic_ext_irq_device {
+	char ext_dev_name[EXT_DEV_NAME_LEN];
+	void (*irq_enable)(void *data);
+	void (*irq_disable)(void *data);
+	void (*irq_ack)(void *data);
+	void (*irq_mask)(void *data);
+	void (*irq_unmask)(void *data);
+	void (*irq_eoi)(void *data);
+	int  (*irq_set_type)(void *data, u32 flow_type);
+	vmm_irq_return_t  (*irq_handler)(u32 irq_no, arch_regs_t * regs,
+					 void *data);
+	void *data;
+	struct dlist head;
+};
+
 int apic_init(void);
+
+/** Route an IOAPIC pin to specific IRQ vector */
 int ioapic_route_pin_to_irq(u32 pin, u32 irqno);
+
+/** Attach an extern device to given IRQ line. */
+int ioapic_set_ext_irq_device(u32 irqno, struct ioapic_ext_irq_device *device,
+			      void *data);
 
 #endif /* __CPU_APIC_H__ */
