@@ -28,6 +28,7 @@
 #include <vmm_completion.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
+#include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
 #include <libs/list.h>
 #include <libs/stringlib.h>

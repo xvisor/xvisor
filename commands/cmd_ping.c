@@ -47,7 +47,7 @@ void cmd_ping_usage(struct vmm_chardev *cdev)
 int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u16 sent, rcvd, count = 1, size = 56;
-	struct icmp_echo_reply reply;
+	struct netstack_echo_reply reply;
 	char ip_addr_str[30];
 	u32 rtt_usecs, rtt_msecs;
 	u64 min_rtt = -1, max_rtt = 0, avg_rtt = 0;
@@ -70,7 +70,7 @@ int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	netstack_prefetch_arp_mapping(ipaddr);
 
 	for(sent=0, rcvd=0; sent<count; sent++) {
-		if(!netstack_send_icmp_echo(ipaddr, size, sent, &reply)) {
+		if(!netstack_send_echo(ipaddr, size, sent, &reply)) {
 			if(reply.rtt < min_rtt)
 				min_rtt = reply.rtt;
 			if(reply.rtt > max_rtt)

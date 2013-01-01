@@ -93,16 +93,16 @@ int netstack_get_hwaddr(u8 *addr)
 }
 VMM_EXPORT_SYMBOL(netstack_get_hwaddr);
 
-static struct icmp_echo_reply *uip_ping_reply;
+static struct netstack_echo_reply *uip_ping_reply;
 
 /** 
  * Callback to notify reception of a ICMP_ECHO_REPLY
  */
-void uip_ping_callback(struct icmp_echo_reply *reply)
+void uip_ping_callback(struct netstack_echo_reply *reply)
 {
 	if(uip_ping_reply) {
 		memcpy(uip_ping_reply, reply, 
-				sizeof(struct icmp_echo_reply));
+				sizeof(struct netstack_echo_reply));
 		vmm_completion_complete(&uip_ping_done);
 	}
 }
@@ -115,8 +115,8 @@ void uip_ping_callback(struct icmp_echo_reply *reply)
  * A global completion variable is used to notify the reception 
  * of the actual ECHO_REPLY
  */
-int netstack_send_icmp_echo(u8 *ripaddr, u16 size, u16 seqno, 
-			    struct icmp_echo_reply *reply)
+int netstack_send_echo(u8 *ripaddr, u16 size, u16 seqno, 
+			struct netstack_echo_reply *reply)
 {
 	struct vmm_mbuf *mbuf;
 	struct uip_icmp_echo_request *echo_req;
@@ -162,7 +162,7 @@ int netstack_send_icmp_echo(u8 *ripaddr, u16 size, u16 seqno,
 		return VMM_EFAIL;
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(netstack_send_icmp_echo);
+VMM_EXPORT_SYMBOL(netstack_send_echo);
 
 /**
  *  Prefetching of ARP mapping is done by sending ourself a broadcast ARP 

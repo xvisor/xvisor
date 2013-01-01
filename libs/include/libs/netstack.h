@@ -30,7 +30,7 @@
 /**
  * Structure containing the ICMP_ECHO_REPLY parameters
  */
-struct icmp_echo_reply {
+struct netstack_echo_reply {
 	u8 ripaddr[4];
 	u8 ttl;
 	u16 len;
@@ -81,8 +81,8 @@ int netstack_get_hwaddr(u8 *hwaddr);
  *    - VMM_OK - if the echo reply was received.
  *    - VMM_EFAIL - if timedout or no network-stack present
  */
-int netstack_send_icmp_echo(u8 *ipaddr, u16 size, u16 seqno, 
-			    struct icmp_echo_reply *reply);
+int netstack_send_echo(u8 *ipaddr, u16 size, u16 seqno, 
+			struct netstack_echo_reply *reply);
 
 /** 
  *  This is meant for network-stacks which do not support reliable 
