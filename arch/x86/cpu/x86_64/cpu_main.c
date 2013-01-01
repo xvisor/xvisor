@@ -72,8 +72,6 @@ int __init arch_cpu_final_init(void)
 
 void __init cpu_init(struct multiboot_info *binfo)
 {
-	while(1);
-
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
 

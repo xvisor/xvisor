@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_compiler.h>
 #include <vmm_host_aspace.h>
+#include <vmm_compiler.h>
 
 extern void cls();
 extern void putch(unsigned char c);
