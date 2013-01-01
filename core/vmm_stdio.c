@@ -428,13 +428,12 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 	return retval;
 }
 
-void __noreturn vmm_panic(const char *format, ...)
+void __noreturn __vmm_panic(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
 	print(NULL, NULL, stdio_ctrl.dev, format, args);
 	va_end(args);
-	dump_stacktrace();
 	vmm_hang();
 }
 

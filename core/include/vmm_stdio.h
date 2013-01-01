@@ -33,8 +33,10 @@
 #define BUG_ON(x)							\
 	do {								\
 		if (x) {						\
-			vmm_panic("Bug in %s() at %s:%d\n",		\
+			vmm_printf("Bug in %s() at %s:%d\n",		\
 				   __func__, __FILE__, __LINE__);	\
+			dump_stacktrace();				\
+			__vmm_panic("Please reset the system ...\n");	\
 		}							\
 	} while(0)
 
@@ -115,8 +117,17 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
 /** Print formatted string to default device */
 #define vmm_printf(...)	vmm_cprintf(NULL, __VA_ARGS__);
 
-/** Panic & Print formatted message */
-void __noreturn vmm_panic(const char *format, ...);
+/** Panic & Print formatted message 
+ * Note: This function is less verbose so perfer vmm_panic().
+ */
+void __noreturn __vmm_panic(const char *format, ...);
+
+#define vmm_panic(msg...)						\
+	do {								\
+		vmm_printf(msg);					\
+		dump_stacktrace();					\
+		__vmm_panic("Please reset the system ...\n");		\
+	} while(0)
 
 /** Low-level scan characters function */
 int vmm_scanchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block);
