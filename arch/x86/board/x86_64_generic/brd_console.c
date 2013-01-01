@@ -23,6 +23,7 @@
 
 #include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <vmm_host_aspace.h>
 
 extern void cls();
