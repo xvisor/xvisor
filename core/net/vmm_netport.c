@@ -110,6 +110,20 @@ struct vmm_netport *vmm_netport_alloc(char *name, u32 queue_size)
 }
 VMM_EXPORT_SYMBOL(vmm_netport_alloc);
 
+int vmm_netport_free(struct vmm_netport *port)
+{
+	if (!port) {
+		return VMM_EFAIL;
+	}
+
+	vmm_free(port->xfer_pool);
+	vmm_free(port->name);
+	vmm_free(port);
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(vmm_netport_free);
+
 int vmm_netport_register(struct vmm_netport *port)
 {
 	struct vmm_classdev *cd;
