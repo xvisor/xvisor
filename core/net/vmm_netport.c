@@ -26,6 +26,7 @@
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
+#include <net/vmm_protocol.h>
 #include <net/vmm_netport.h>
 #include <libs/stringlib.h>
 
@@ -131,6 +132,11 @@ int vmm_netport_register(struct vmm_netport *port)
 
 	if (port == NULL)
 		return VMM_EFAIL;
+
+	/* If port has invalid mac, assign a random one */
+	if (!is_valid_ether_addr(port->macaddr)) {
+		random_ether_addr(port->macaddr);
+	}
 
 	cd = vmm_malloc(sizeof(struct vmm_classdev));
 	if (!cd) {

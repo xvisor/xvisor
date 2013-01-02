@@ -250,11 +250,6 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 		return VMM_EFAIL;
 	}
 
-	/* If port has invalid mac, assign a random one */
-	if (!is_valid_ether_addr(port->macaddr)) {
-		random_ether_addr(port->macaddr);
-	}
-
 	port->nsw = nsw;
 
 	vmm_mutex_lock(&nsw->lock);
