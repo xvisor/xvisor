@@ -199,7 +199,6 @@ int uip_netport_init(void)
 	struct uip_port_state *s = &uip_port_state;
 	struct uip_fw_netif *netif;
 	uip_ipaddr_t ipaddr;
-	char tname[64];
 
 	uip_buf = vmm_malloc(UIP_BUFSIZE + 2);
 	if(!uip_buf) {
@@ -215,10 +214,8 @@ int uip_netport_init(void)
 	if(!nsw) {
 		vmm_panic("No netswitch found\n");
 	}
-	/* Create a port-name */
-	vmm_sprintf(tname, "%s-uip", nsw->name); 
 	/* Allocate a netport for this netswitch */
-	s->port = vmm_netport_alloc(tname, VMM_NETPORT_DEF_QUEUE_SIZE);
+	s->port = vmm_netport_alloc("uip-netport", VMM_NETPORT_DEF_QUEUE_SIZE);
 	if(!s->port) {
 		vmm_printf("UIP->netport alloc failed\n");
 		return VMM_EFAIL;
