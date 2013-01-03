@@ -42,7 +42,7 @@ struct vmm_spinlock {
 
 #define INIT_SPIN_LOCK(_lptr)		ARCH_SPIN_LOCK_INIT(&((_lptr)->__tlock))
 #define __SPINLOCK_INITIALIZER(_lock) 	\
-		{ .__tlock = ARCH_SPIN_LOCK_INITIALIZER((_lock).__tlock), }
+		{ .__tlock = ARCH_SPIN_LOCK_INITIALIZER, }
 
 #else 
 
