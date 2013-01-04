@@ -21,6 +21,7 @@
 # @brief list of lwip objects to be build
 # */
 
+libs-cflags-y+= -Wno-char-subscripts
 libs-cppflags-y+= -I$(libs_dir)/netstack/lwip/lwip-1.4.1/src/include
 libs-cppflags-y+= -I$(libs_dir)/netstack/lwip/lwip-1.4.1/src/include/ipv4
 libs-cppflags-y+= -I$(libs_dir)/netstack/lwip/port/include
