@@ -47,7 +47,7 @@
 #include "lwip/stats.h"
 #include "lwip/icmp.h"
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 #if IP_REASSEMBLY
 /**

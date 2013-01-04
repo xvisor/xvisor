@@ -53,7 +53,7 @@
 #include "lwip/debug.h"
 #include "lwip/stats.h"
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 #ifndef TCP_LOCAL_PORT_RANGE_START
 /* From http://www.iana.org/assignments/port-numbers:

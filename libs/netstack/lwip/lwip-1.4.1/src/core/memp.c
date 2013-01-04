@@ -59,7 +59,7 @@
 #include "lwip/dns.h"
 #include "netif/ppp_oe.h"
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 #if !MEMP_MEM_MALLOC /* don't build if not configured for use in lwipopts.h */
 

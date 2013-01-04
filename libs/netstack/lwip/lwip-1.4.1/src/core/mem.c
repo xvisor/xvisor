@@ -63,7 +63,7 @@
 #include "lwip/stats.h"
 #include "lwip/err.h"
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 #if MEM_USE_POOLS
 /* lwIP head implemented with different sized pools */

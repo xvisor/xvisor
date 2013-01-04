@@ -52,7 +52,7 @@
 #include "lwip/udp.h"
 #include "lwip/tcp.h"
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 /**
  * Create a new netconn (of a specific type) that has a callback function.

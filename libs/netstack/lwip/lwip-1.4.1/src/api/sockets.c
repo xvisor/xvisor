@@ -56,7 +56,7 @@
 #include "lwip/inet_chksum.h"
 #endif
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 #define NUM_SOCKETS MEMP_NUM_NETCONN
 

@@ -52,7 +52,7 @@
 #include "lwip/igmp.h"
 #include "lwip/dns.h"
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 #define SET_NONBLOCKING_CONNECT(conn, val)  do { if(val) { \
   (conn)->flags |= NETCONN_FLAG_IN_NONBLOCKING_CONNECT; \

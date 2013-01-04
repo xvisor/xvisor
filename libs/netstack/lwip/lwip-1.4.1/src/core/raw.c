@@ -50,7 +50,7 @@
 #include "lwip/stats.h"
 #include "arch/perf.h"
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 /** The list of RAW PCBs */
 static struct raw_pcb *raw_pcbs;

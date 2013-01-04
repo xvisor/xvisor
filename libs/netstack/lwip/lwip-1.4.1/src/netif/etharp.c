@@ -60,7 +60,7 @@
 #include "netif/ppp_oe.h"
 #endif /* PPPOE_SUPPORT */
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 const struct eth_addr ethbroadcast = {{0xff,0xff,0xff,0xff,0xff,0xff}};
 const struct eth_addr ethzero = {{0,0,0,0,0,0}};

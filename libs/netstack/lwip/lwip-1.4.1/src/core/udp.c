@@ -62,7 +62,7 @@
 #include "arch/perf.h"
 #include "lwip/dhcp.h"
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 #ifndef UDP_LOCAL_PORT_RANGE_START
 /* From http://www.iana.org/assignments/port-numbers:

@@ -56,7 +56,7 @@
 #include "lwip/stats.h"
 #include "arch/perf.h"
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 /** Set this to 0 in the rare case of wanting to call an extra function to
  * generate the IP checksum (in contrast to calculating it on-the-fly). */

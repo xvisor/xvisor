@@ -50,7 +50,7 @@
 #include "lwip/stats.h"
 #include "lwip/snmp.h"
 
-#include <string.h>
+#include <libs/stringlib.h>
 
 /** Small optimization: set to 0 if incoming PBUF_POOL pbuf always can be
  * used to modify and send a response packet (and to 1 if this is not the case,
