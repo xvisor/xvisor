@@ -39,32 +39,62 @@ struct netstack_echo_reply {
 };
 
 /** 
- * Returns the name of the netstack
+ * Possible socket types
+ */
+enum netstack_socket_type {
+	NETSTACK_SOCKET_UNK=0,
+	NETSTACK_SOCKET_TCP=1,
+	NETSTACK_SOCKET_UDP=2,
+};
+
+/** 
+ * Generic socket wrapper
+ */
+struct netstack_socket {
+	u8 ipaddr[4];
+	u16 port;
+	enum netstack_socket_type type;
+	void *priv;
+};
+
+/** 
+ * Generic socket buffer wrapper 
+ * Note: sometimes incoming data in fragment to chain of buffer and
+ * underly network stack will receive a chain of buffer
+ */
+struct netstack_socket_buf {
+	void *data;
+	u16 len;
+	void *priv;
+};
+
+/** 
+ * Get the name of network stack.
  */
 char *netstack_get_name(void);
 
 /**
- * Set IP-address of the host
+ * Set IP-address of the host.
  */
 int netstack_set_ipaddr(u8 *ipaddr);
 
 /**
- * Get IP-address of the host
+ * Get IP-address of the host.
  */
 int netstack_get_ipaddr(u8 *ipaddr);
 
 /**
- * Set IP-netmask of the host
+ * Set IP-netmask of the host.
  */
 int netstack_set_ipmask(u8 *ipmask);
 
 /**
- * Get IP-netmask of the host
+ * Get IP-netmask of the host.
  */
 int netstack_get_ipmask(u8 *ipmask);
 
 /**
- * Get HW-address of the host
+ * Get HW-address of the host.
  */
 int netstack_get_hwaddr(u8 *hwaddr);
 
@@ -78,15 +108,15 @@ int netstack_get_hwaddr(u8 *hwaddr);
  *  @reply - on success, this stores the parameters of echo_reply
  *
  *  returns 
- *    - VMM_OK - if the echo reply was received.
- *    - VMM_EFAIL - if timedout or no network-stack present
+ *    VMM_OK - success
+ *    VMM_Exxxx - failure
  */
 int netstack_send_echo(u8 *ipaddr, u16 size, u16 seqno, 
 			struct netstack_echo_reply *reply);
 
 /** 
  *  This is meant for network-stacks which do not support reliable 
- *  arp output processing
+ *  arp output processing.
  *
  *  e.g. In case of uIP, if there is no ARP mapping for the destination 
  *  ipaddr of an outgoing packet, an ARP request is sent out but the
@@ -97,6 +127,142 @@ int netstack_send_echo(u8 *ipaddr, u16 size, u16 seqno,
  *  @ipaddr - IP address whose ARP mapping is to be prefetched/refreshed
  */
 void netstack_prefetch_arp_mapping(u8 *ipaddr);
+
+/**
+ *  Allocate or create a new socket.
+ *
+ *  @type - type of socket
+ *
+ *  returns pointer to newly created socket
+ */
+struct netstack_socket *netstack_socket_alloc(enum netstack_socket_type type);
+
+/**
+ *  Free or destroy a socket.
+ * 
+ *  @sk - pointer to socket
+ */
+void netstack_socket_free(struct netstack_socket *sk);
+
+/**
+ *  Bind a socket with a port number.
+ *
+ *  @sk - pointer to socket
+ *  @ipaddr - Allowable IP addresses. NULL means any IP address
+ *  @port - port number on which we will listen
+ *
+ *  returns 
+ *    VMM_OK - success
+ *    VMM_Exxxx - failure
+ */
+int netstack_socket_bind(struct netstack_socket *sk, u8 *ipaddr, u16 port);
+
+/**
+ *  Connect socket to a remote host.
+ *
+ *  @sk - pointer to socket
+ *  @ipaddr - IP address of remote host
+ *  @port - port number of remote host
+ *
+ *  returns 
+ *    VMM_OK - success
+ *    VMM_Exxxx - failure
+ */
+int netstack_socket_connect(struct netstack_socket *sk, u8 *ipaddr, u16 port);
+
+/**
+ *  Disconnect a socket from remote host. 
+ *
+ *  @sk - pointer to socket
+ *
+ *  returns 
+ *    VMM_OK - success
+ *    VMM_Exxxx - failure
+ */
+int netstack_socket_disconnect(struct netstack_socket *sk);
+
+/**
+ *  Listen or wait for incoming connection to a socket.
+ *
+ *  @sk - pointer to socket
+ *
+ *  returns 
+ *    VMM_OK - success
+ *    VMM_Exxxx - failure
+ */
+int netstack_socket_listen(struct netstack_socket *sk);
+
+/**
+ *  Accept a new incoming connection from a listening socket.
+ *
+ *  @sk - pointer to socket
+ *  @new_sk - pointer to socket for new connection. 
+ *
+ *  returns 
+ *    VMM_OK - success
+ *    VMM_Exxxx - failure
+ */
+int netstack_socket_accept(struct netstack_socket *sk, 
+			   struct netstack_socket **new_sk);
+
+/**
+ *  Close a listening socket.
+ *
+ *  @sk - pointer to socket
+ *
+ *  returns 
+ *    VMM_OK - success
+ *    VMM_Exxxx - failure
+ */
+int netstack_socket_close(struct netstack_socket *sk);
+
+/**
+ *  Recieve data from a socket to socket buffer.
+ *
+ *  @sk - pointer to socket
+ *  @buf - pointer to socket buffer
+ *
+ *  returns 
+ *    VMM_OK - success
+ *    VMM_Exxxx - failure
+ */
+int netstack_socket_recv(struct netstack_socket *sk, 
+			   struct netstack_socket_buf *buf);
+
+/**
+ *  Traverse chain of socket buffer.
+ *
+ *  @buf - pointer to socket buffer
+ *
+ *  returns 
+ *    VMM_OK - success
+ *    VMM_Exxxx - failure (this is no futher buffers)
+ */
+int netstack_socket_nextbuf(struct netstack_socket_buf *buf);
+
+/**
+ *  Free the socket buffer.
+ *
+ *  @buf - pointer to socket buffer
+ *
+ *  returns 
+ *    VMM_OK - success
+ *    VMM_Exxxx - failure (this is no futher buffers)
+ */
+void netstack_socket_freebuf(struct netstack_socket_buf *buf);
+
+/**
+ *  Write data to a socket
+ *
+ *  @sk - pointer to socket
+ *  @data - pointer to data
+ *  @len  - length of data
+ *
+ *  returns 
+ *    VMM_OK - success
+ *    VMM_Exxxx - failure
+ */
+int netstack_socket_write(struct netstack_socket *sk, void *data, u16 len);
 
 #endif  /* __VMM_NETSTACK_H_ */
 
