@@ -22,4 +22,5 @@
 # */
 
 daemons-objs-$(CONFIG_MTERM)+= mterm.o
+daemons-objs-$(CONFIG_TELNETD)+= telnetd.o
 
