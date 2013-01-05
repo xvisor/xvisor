@@ -100,7 +100,7 @@ int vmm_vserial_register_receiver(struct vmm_vserial *vser,
 	found = FALSE;
 	list_for_each(l, &vser->receiver_list) {
 		receiver = list_entry(l, struct vmm_vserial_receiver, head);
-		if ((receiver->recv == recv) && (receiver->priv == priv)) {
+		if (receiver->recv == recv) {
 			found = TRUE;
 			break;
 		}
