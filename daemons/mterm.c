@@ -40,7 +40,9 @@
 
 static struct mterm_ctrl {
 	struct vmm_thread *thread;
+#ifdef CONFIG_MTERM_HISTORY
 	struct vmm_history history;
+#endif
 } mtctrl;
 
 static int mterm_main(void *udata)
@@ -63,6 +65,8 @@ static int mterm_main(void *udata)
 #else
 		vmm_gets(cmds, CONFIG_MTERM_CMD_WIDTH, '\n', NULL);
 #endif
+
+		/* Process command string */
 		cmds_len = strlen(cmds);
 		if (cmds_len > 0) {
 			if (cmds[cmds_len - 1] == '\r')
@@ -87,7 +91,8 @@ static int __init daemon_mterm_init(void)
 	memset(&mtctrl, 0, sizeof(mtctrl));
 
 #ifdef CONFIG_MTERM_HISTORY
-	INIT_HISTORY(&mtctrl.history, CONFIG_MTERM_HISTORY_SIZE, CONFIG_MTERM_CMD_WIDTH);
+	INIT_HISTORY(&mtctrl.history, 
+			CONFIG_MTERM_HISTORY_SIZE, CONFIG_MTERM_CMD_WIDTH);
 #endif
 
 	/* Retrive mterm time slice */
