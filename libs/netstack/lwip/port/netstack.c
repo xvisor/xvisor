@@ -139,6 +139,24 @@ int netstack_get_ipmask(u8 *addr)
 }
 VMM_EXPORT_SYMBOL(netstack_get_ipmask);
 
+int netstack_set_gatewayip(u8 *addr)
+{
+	IP4_ADDR(&lns.gw, addr[0],addr[1],addr[2],addr[3]);
+	netif_set_gw(&lns.nif, &lns.gw);
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(netstack_set_gatewayip);
+
+int netstack_get_gatewayip(u8 *addr)
+{
+	addr[0] = ip4_addr1(&lns.gw);
+	addr[1] = ip4_addr2(&lns.gw);
+	addr[2] = ip4_addr3(&lns.gw);
+	addr[3] = ip4_addr4(&lns.gw);
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(netstack_get_gatewayip);
+
 int netstack_get_hwaddr(u8 *addr)
 {
 	memcpy(addr, &lns.port->macaddr, 6);

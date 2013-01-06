@@ -94,6 +94,16 @@ int netstack_set_ipmask(u8 *ipmask);
 int netstack_get_ipmask(u8 *ipmask);
 
 /**
+ * Set Gateway IP-address of the host.
+ */
+int netstack_set_gatewayip(u8 *ipaddr);
+
+/**
+ * Get Gateway IP-address of the host.
+ */
+int netstack_get_gatewayip(u8 *ipaddr);
+
+/**
  * Get HW-address of the host.
  */
 int netstack_get_hwaddr(u8 *hwaddr);
