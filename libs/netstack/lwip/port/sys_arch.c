@@ -114,7 +114,7 @@ void sys_sem_set_invalid(sys_sem_t *sem)
 	}
 }
 
-#define SYS_MBOX_SIZE			16
+#define SYS_MBOX_SIZE			128
 
 struct sys_mbox {
 	struct vmm_spinlock lock;
