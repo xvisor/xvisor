@@ -28,7 +28,7 @@
 #include <vmm_threads.h>
 #include <vmm_chardev.h>
 #include <vmm_spinlocks.h>
-#include <vmm_completion.h>
+#include <vmm_workqueue.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <libs/stringlib.h>
@@ -41,62 +41,118 @@
 #define	MODULE_INIT			daemon_telnetd_init
 #define	MODULE_EXIT			daemon_telnetd_exit
 
-#define TELNETD_TX_QUEUE_SIZE		1024
-#define TELNETD_RX_QUEUE_SIZE		1024
+#undef TELNETD_DEBUG
+#define TELNETD_USE_BH
+
+#if defined(TELNETD_DEBUG)
+#define TELNETD_DPRINTF(msg...)		vmm_printf(msg)
+#else
+#define TELNETD_DPRINTF(msg...)
+#endif
+
+#define TELNETD_TX_BUFFER_SIZE		1024
+#define TELNETD_RX_BUFFER_SIZE		(CONFIG_TELNETD_CMD_WIDTH)
 
 static struct telnetd_ctrl {
 	u32 port;
 	struct netstack_socket *sk;
+
 	struct netstack_socket *active_sk;
+
+	vmm_spinlock_t lock;
 	bool disconnected;
-	vmm_spinlock_t tx_buf_lock;
 	u32 tx_buf_head;
 	u32 tx_buf_tail;
 	u32 tx_buf_count;
 	u8 *tx_buf;
-	struct vmm_completion tx_pending;
-	u32 rx_buf_pos;
+	u32 rx_buf_head;
+	u32 rx_buf_tail;
 	u32 rx_buf_count;
 	u8 *rx_buf;
+
 	struct vmm_chardev cdev;
-	struct vmm_thread *rx_thread;
-	struct vmm_thread *tx_thread;
+	struct vmm_thread *main_thread;
+
+#if defined(TELNETD_USE_BH)
+	struct vmm_work tx_flush;
+	struct vmm_workqueue *bh_wq;
+#endif
+
 #ifdef CONFIG_TELNETD_HISTORY
 	struct vmm_history history;
 #endif
 } tdctrl;
 
-static u32 telnetd_chardev_write(struct vmm_chardev *cdev,
-				 u8 *src, u32 len, bool sleep)
+static bool telnetd_check_disconnected(void)
 {
-	int rc;
+	bool ret;
+	irq_flags_t flags;
+
+	/* Lock connection state */
+	vmm_spin_lock_irqsave(&tdctrl.lock, flags);
+
+	ret = tdctrl.disconnected;
+
+	/* Unlock connection state */
+	vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
+
+	return ret;
+}
+
+static void telnetd_set_disconnected(void)
+{
+	irq_flags_t flags;
+
+	/* Lock connection state */
+	vmm_spin_lock_irqsave(&tdctrl.lock, flags);
+
+	tdctrl.disconnected = TRUE;
+
+	/* Unlock connection state */
+	vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
+}
+
+static void telnetd_clear_disconnected(void)
+{
+	irq_flags_t flags;
+
+	/* Lock connection state */
+	vmm_spin_lock_irqsave(&tdctrl.lock, flags);
+
+	tdctrl.disconnected = FALSE;
+	
+	/* Clear Tx buffer */
+	tdctrl.tx_buf_head = tdctrl.tx_buf_tail = tdctrl.tx_buf_count = 0;
+
+	/* Clear Rx buffer */
+	tdctrl.rx_buf_head = tdctrl.rx_buf_tail = tdctrl.rx_buf_count = 0;
+
+	/* Unlock connection state */
+	vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
+}
+
+static void telnetd_fill_tx_buffer(u8 *src, u32 len)
+{
 	u32 tx_count;
 	irq_flags_t flags;
 
+	/* Lock connection state */
+	vmm_spin_lock_irqsave(&tdctrl.lock, flags);
+
 	/* If disconnected then just return */
 	if (tdctrl.disconnected) {
-		return len;
+		vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
+		return;
 	}
 
-	/* If in we can sleep then directly Tx else use Tx thread */
-	if (sleep) {
-		rc = netstack_socket_write(tdctrl.active_sk, src, len);
-		if (rc) {
-			tdctrl.disconnected = TRUE;
-		}
-		return len;
-	}
-
-	/* Lock Tx queue */
-	vmm_spin_lock_irqsave(&tdctrl.tx_buf_lock, flags);
-
+	/* Enqueue to Tx buffer*/
 	tx_count = 0;
 	while ((tx_count < len) &&
-	       (tdctrl.tx_buf_count < TELNETD_TX_QUEUE_SIZE)) {
+	       (tdctrl.tx_buf_count < TELNETD_TX_BUFFER_SIZE)) {
 		tdctrl.tx_buf[tdctrl.tx_buf_tail] = src[tx_count];
 
 		tdctrl.tx_buf_tail++;
-		if (tdctrl.tx_buf_tail >= TELNETD_TX_QUEUE_SIZE) {
+		if (tdctrl.tx_buf_tail >= TELNETD_TX_BUFFER_SIZE) {
 			tdctrl.tx_buf_tail = 0;
 		}
 		tdctrl.tx_buf_count++;
@@ -104,123 +160,202 @@ static u32 telnetd_chardev_write(struct vmm_chardev *cdev,
 		tx_count++;
 	}
 
-	/* Unlock Tx queue */
-	vmm_spin_unlock_irqrestore(&tdctrl.tx_buf_lock, flags);
-
-	/* Signal for Tx Pending */
-	vmm_completion_complete(&tdctrl.tx_pending);
-
-	return tx_count;
+	/* Unlock connection state */
+	vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
 }
 
-static int telnetd_tx(void *data)
+#define TELNETD_MAX_FLUSH_SIZE			32
+
+static void telnetd_flush_tx_buffer(void)
 {
 	int rc;
 	u32 tx_count;
 	irq_flags_t flags;
-	u8 tx_buf[TELNETD_TX_QUEUE_SIZE];
+	u8 tx_buf[TELNETD_MAX_FLUSH_SIZE];
 
 	while (1) {
-		/* Wait for Tx Pending */
-		vmm_completion_wait(&tdctrl.tx_pending);
+		/* Lock connection state */
+		vmm_spin_lock_irqsave(&tdctrl.lock, flags);
 
-		/* Make sure we have active connection */
-		if (!tdctrl.active_sk) {
-			continue;
+		/* If disconnected then return */
+		if (tdctrl.disconnected) {
+			vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
+			return;
 		}
-
-		/* Lock Tx buffer */
-		vmm_spin_lock_irqsave(&tdctrl.tx_buf_lock, flags);
 
 		/* Get data from Tx buffer */
 		tx_count = 0;
-		while (tdctrl.tx_buf_count) {
+		while (tdctrl.tx_buf_count &&
+		       (tx_count < TELNETD_MAX_FLUSH_SIZE)) {
 			tx_buf[tx_count] = tdctrl.tx_buf[tdctrl.tx_buf_head];
-
 			tdctrl.tx_buf_head++;
-			if (tdctrl.tx_buf_head >= TELNETD_TX_QUEUE_SIZE) {
+			if (tdctrl.tx_buf_head >= TELNETD_TX_BUFFER_SIZE) {
 				tdctrl.tx_buf_head = 0;
 			}
 			tdctrl.tx_buf_count--;
-
 			tx_count++;
 		}
 
-		/* Unlock Tx buffer */
-		vmm_spin_unlock_irqrestore(&tdctrl.tx_buf_lock, flags);
+		/* Unlock connection state */
+		vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
 
 		/* Transmit the pending Tx data */
 		if (tx_count) {
 			rc = netstack_socket_write(tdctrl.active_sk, 
 						   &tx_buf[0], tx_count);
 			if (rc) {
-				tdctrl.disconnected = TRUE;
+				telnetd_set_disconnected();
+				TELNETD_DPRINTF("%s: Socket write failed\n", __func__);
+				return;
 			}
+		} else {
+			return;
+		}
+	}
+}
+
+static void telnetd_fill_rx_buffer(void)
+{
+	int rc;
+	u32 rx_count;
+	irq_flags_t flags;
+	struct netstack_socket_buf buf;
+
+	/* Lock connection state */
+	vmm_spin_lock_irqsave(&tdctrl.lock, flags);
+
+	/* If disconnected then return */
+	if (tdctrl.disconnected) {
+		vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
+		return;
+	}
+
+	if (tdctrl.rx_buf_count) {
+		vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
+		return;
+	}
+
+	/* Unlock connection state */
+	vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
+
+	/* Recieve netstack socket buffer */
+	rc = netstack_socket_recv(tdctrl.active_sk, &buf);
+	if (rc) {
+		telnetd_set_disconnected();
+		TELNETD_DPRINTF("%s: Socket read failed\n", __func__);
+	}
+
+	/* Lock connection state */
+	vmm_spin_lock_irqsave(&tdctrl.lock, flags);
+
+	/* Fill Rx buffer*/
+	do {
+		rx_count = 0;
+		while ((rx_count < buf.len) &&
+		       (tdctrl.rx_buf_count < TELNETD_RX_BUFFER_SIZE)) {
+			tdctrl.rx_buf[tdctrl.rx_buf_tail] = ((u8 *)buf.data)[rx_count];
+
+			tdctrl.rx_buf_tail++;
+			if (tdctrl.rx_buf_tail >= TELNETD_RX_BUFFER_SIZE) {
+				tdctrl.tx_buf_tail = 0;
+			}
+			tdctrl.rx_buf_count++;
+
+			rx_count++;
+		}
+	} while (!(rc = netstack_socket_nextbuf(&buf)));
+
+	/* Unlock connection state */
+	vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
+
+	/* Free netstack socket buffer */
+	netstack_socket_freebuf(&buf);
+}
+
+static u32 telnetd_dequeue_rx_buffer(u8 *dest, u32 len)
+{
+	u32 i, rx_count;
+	irq_flags_t flags;
+
+	/* Lock connection state */
+	vmm_spin_lock_irqsave(&tdctrl.lock, flags);
+
+	/* If disconnected then return */
+	if (tdctrl.disconnected) {
+		vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
+		dest[0] = '\n';
+		return 1;
+	}
+
+	/* Dequeue from Rx buffer */
+	rx_count = tdctrl.rx_buf_count;
+	if (rx_count) {
+		if (len < rx_count) {
+			rx_count = len;
+		}
+		for (i = 0; i < rx_count; i++) {
+			dest[i] = tdctrl.rx_buf[tdctrl.rx_buf_head];
+
+			tdctrl.rx_buf_head++;
+			if (tdctrl.rx_buf_head >= TELNETD_RX_BUFFER_SIZE) {
+				tdctrl.tx_buf_head = 0;
+			}
+			tdctrl.rx_buf_count--;
 		}
 	}
 
-	return VMM_OK;
+	/* Unlock connection state */
+	vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
+
+	return rx_count;
+}
+
+#if defined(TELNETD_USE_BH)
+static void telnetd_tx_flush_work(struct vmm_work *work)
+{
+	/* Flush the Tx buffer */
+	telnetd_flush_tx_buffer();
+}
+#endif
+
+static u32 telnetd_chardev_write(struct vmm_chardev *cdev,
+				 u8 *src, u32 len, bool sleep)
+{
+	/* We have bug if write() called in non-sleepable context */
+	BUG_ON(!sleep);
+
+	/* Fill the Tx buffer */
+	telnetd_fill_tx_buffer(src, len);
+
+#if defined(TELNETD_USE_BH)
+	/* Schedule bottom-half to flush the Tx buffer */
+	vmm_workqueue_schedule_work(tdctrl.bh_wq, &tdctrl.tx_flush);
+#else
+	/* Flush the Tx buffer */
+	telnetd_flush_tx_buffer();
+#endif
+
+	return len;
 }
 
 static u32 telnetd_chardev_read(struct vmm_chardev *cdev,
 				u8 *dest, u32 len, bool sleep)
 {
-	int rc;
-	u32 rx_count;
-	struct netstack_socket_buf buf;
-
-	/* We have bug if read called in non-sleepable context */
+	/* We have bug if read() called in non-sleepable context */
 	BUG_ON(!sleep);
 
-	/* If disconnected then just return */
-	if (tdctrl.disconnected || !tdctrl.active_sk) {
-		return len;
-	}
+	/* Fill Rx buffer */
+	telnetd_fill_rx_buffer();
 
-	/* If we don't have any data in Rx buffer then read from socket */
-	if (!(tdctrl.rx_buf_count - tdctrl.rx_buf_pos)) {
-		tdctrl.rx_buf_pos = tdctrl.rx_buf_count = 0;
-
-		rc = netstack_socket_recv(tdctrl.active_sk, &buf);
-		if (rc) {
-			tdctrl.disconnected = TRUE;
-			dest[0] = '\n';
-			return len;
-		}
-
-		do {
-			rx_count = TELNETD_RX_QUEUE_SIZE - tdctrl.rx_buf_count;
-			if (buf.len < rx_count) {
-				rx_count = buf.len;
-			} else {
-				rx_count = 0;
-			}
-			if (rx_count) {
-				memcpy(&tdctrl.rx_buf[tdctrl.rx_buf_count], 
-					buf.data, rx_count);
-				tdctrl.rx_buf_count += rx_count;
-			}
-		} while (!(rc = netstack_socket_nextbuf(&buf)));
-
-		netstack_socket_freebuf(&buf);
-	}
-
-	/* Read from Rx buffer */
-	rx_count = len;
-	if ((tdctrl.rx_buf_count - tdctrl.rx_buf_pos) < rx_count) {
-		rx_count = (tdctrl.rx_buf_count - tdctrl.rx_buf_pos);
-	}
-	memcpy(dest, &tdctrl.rx_buf[tdctrl.rx_buf_pos], rx_count);
-	tdctrl.rx_buf_pos += rx_count;
-
-	return rx_count;
+	/* Dequeue from Rx buffer */
+	return telnetd_dequeue_rx_buffer(dest, len);
 }
 
-static int telnetd_rx(void *data)
+static int telnetd_main(void *data)
 {
-	int rc;
+	int i, rc;
 	size_t cmds_len;
-	char cmds[CONFIG_MTERM_CMD_WIDTH];
+	char cmds[CONFIG_TELNETD_CMD_WIDTH];
 
 	/* Create a new socket. */
 	tdctrl.sk = netstack_socket_alloc(NETSTACK_SOCKET_TCP);
@@ -241,17 +376,16 @@ static int telnetd_rx(void *data)
 	}
 
 	while (1) {
- 		/* Grab new connect request. */
+		TELNETD_DPRINTF("%s: Grab new conn.\n", __func__);
+
+		/* Grab new connect request. */
 		rc = netstack_socket_accept(tdctrl.sk, &tdctrl.active_sk);
 		if (rc) {
 			goto fail1;
 		}
 
 		/* Clear disconnected flag */
-		tdctrl.disconnected = FALSE;
-
-		/* Clear Rx buffer */
-		tdctrl.rx_buf_pos = tdctrl.rx_buf_count = 0;
+		telnetd_clear_disconnected();
 
 		/* Telnetd Banner */
 		vmm_cprintf(&tdctrl.cdev, 
@@ -260,17 +394,17 @@ static int telnetd_rx(void *data)
 		/* Print Banner */
 		vmm_cprintf(&tdctrl.cdev, "%s", VMM_BANNER_STRING);
 
-		while (!tdctrl.disconnected) {
+		while (!telnetd_check_disconnected()) {
 			/* Show prompt */
 			vmm_cprintf(&tdctrl.cdev, "XVisor# ");
-			memset(cmds, 0, sizeof(cmds));
 
 			/* Check disconnected */
-			if (tdctrl.disconnected) {
+			if (telnetd_check_disconnected()) {
 				break;
 			}
 
 			/* Get command string */
+			memset(cmds, 0, sizeof(cmds));
 #ifdef CONFIG_TELNETD_HISTORY
 			vmm_cgets(&tdctrl.cdev, cmds, CONFIG_TELNETD_CMD_WIDTH,
 				 '\n', &tdctrl.history);
@@ -280,53 +414,56 @@ static int telnetd_rx(void *data)
 #endif
 
 			/* Check disconnected */
-			if (tdctrl.disconnected) {
+			if (telnetd_check_disconnected()) {
 				break;
 			}
 
-			/* Process command string */
+			/* Length of command string */
 			cmds_len = strlen(cmds);
+
+			/* Process command string */
 			if (cmds_len > 0) {
 				if (cmds[cmds_len - 1] == '\r')
 					cmds[cmds_len - 1] = '\0';
+
+				/* Sanity check on allowable commands 
+				 * Note: This is required because some commands
+				 * like "vserial bind" can causes the dummy 
+				 * character device write function to be
+				 * called in normal context which is not a
+				 * sleepable context.
+				 */
+				for (i = 0; i < cmds_len; i++) {
+					if (strncmp(&cmds[i], "vserial", 6) == 0) {
+						break;
+					}
+				}
+				if (i < cmds_len) {
+					vmm_cprintf(&tdctrl.cdev, 
+					"telnetd: vserial command"
+					" not allowed\n");
+					continue;
+				}
 
 				/* Execute command string */
 				vmm_cmdmgr_execute_cmdstr(&tdctrl.cdev, cmds);
 			}
 
 			/* Check disconnected */
-			if (tdctrl.disconnected) {
-				break;
-			}
-
-		}
-
-#if 0
-		while (!(rc = netstack_socket_recv(new_sk, &buf))) {
-			do {
-				if (strncmp((char *)buf.data, "hi", 2) == 0) {
-					strcpy(tmp, "telnetd: hello\n");
-					rc = netstack_socket_write(new_sk, &tmp, strlen(tmp));
-				} else {
-					rc = VMM_OK;
-				}
-				if (rc) {
-					break;
-				}
-			} while (!(rc = netstack_socket_nextbuf(&buf)));
-
-			netstack_socket_freebuf(&buf);
-
-			strcpy(tmp, "you: ");
-			rc = netstack_socket_write(new_sk, &tmp, strlen(tmp));
-			if (rc) {
+			if (telnetd_check_disconnected()) {
 				break;
 			}
 		}
+
+		TELNETD_DPRINTF("%s: Close conn.\n", __func__);
+
+		/* Close current connection */
+#if defined(TELNETD_USE_BH)
+		vmm_workqueue_stop_work(&tdctrl.tx_flush);
 #endif
-
 		netstack_socket_close(tdctrl.active_sk);
 		netstack_socket_free(tdctrl.active_sk);
+		tdctrl.active_sk = NULL;
 	}
 
 	rc = VMM_OK;
@@ -385,19 +522,18 @@ static int __init daemon_telnetd_init(void)
 	/* Sanitize telnetd control information */
 	tdctrl.sk = NULL;
 	tdctrl.active_sk = NULL;
+	INIT_SPIN_LOCK(&tdctrl.lock);
 	tdctrl.disconnected = TRUE;
-	INIT_SPIN_LOCK(&tdctrl.tx_buf_lock);
 	tdctrl.tx_buf_head = tdctrl.tx_buf_tail = tdctrl.tx_buf_count = 0;
-	tdctrl.rx_buf_pos = tdctrl.rx_buf_count = 0;
+	tdctrl.rx_buf_head = tdctrl.rx_buf_tail = tdctrl.rx_buf_count = 0;
 	tdctrl.tx_buf = tdctrl.rx_buf = NULL;
-	INIT_COMPLETION(&tdctrl.tx_pending);
 
 	/* Allocate Tx & Rx buffers */
-	tdctrl.tx_buf = vmm_zalloc(TELNETD_TX_QUEUE_SIZE);
+	tdctrl.tx_buf = vmm_zalloc(TELNETD_TX_BUFFER_SIZE);
 	if (!tdctrl.tx_buf) {
 		return VMM_ENOMEM;
 	}
-	tdctrl.rx_buf = vmm_zalloc(TELNETD_RX_QUEUE_SIZE);
+	tdctrl.rx_buf = vmm_zalloc(TELNETD_RX_BUFFER_SIZE);
 	if (!tdctrl.rx_buf) {
 		vmm_free(tdctrl.tx_buf);
 		return VMM_ENOMEM;
@@ -416,44 +552,43 @@ static int __init daemon_telnetd_init(void)
 	 * stdio device.
 	 */
 
-	/* Create telnetd Rx (or main) thread */
-	tdctrl.rx_thread = vmm_threads_create("telnetd_rx", 
-						&telnetd_rx, 
+	/* Create telnetd main thread */
+	tdctrl.main_thread = vmm_threads_create("telnetd_main", 
+						&telnetd_main, 
 						NULL, 
 						telnetd_priority,
 						telnetd_time_slice);
-	if (!tdctrl.rx_thread) {
-		vmm_panic("telnetd: Rx thread creation failed.\n");
+	if (!tdctrl.main_thread) {
+		vmm_panic("telnetd: main thread creation failed.\n");
 	}
 
-	/* Create telnetd Tx thread */
-	tdctrl.tx_thread = vmm_threads_create("telnetd_tx", 
-						&telnetd_tx, 
-						NULL, 
-						telnetd_priority,
-						telnetd_time_slice);
-	if (!tdctrl.tx_thread) {
-		vmm_panic("telnetd: Tx thread creation failed.\n");
+#if defined(TELNETD_USE_BH)
+	/* Prepare Tx flush work */
+	INIT_WORK(&tdctrl.tx_flush, telnetd_tx_flush_work);
+
+	/* Create telnetd bottom-half workqueue */
+	tdctrl.bh_wq = vmm_workqueue_create("telnetd_bh", telnetd_priority);
+	if (!tdctrl.bh_wq) {
+		vmm_panic("telnetd: bottom-half workqueue creation failed.\n");
 	}
+#endif
 
-	/* Start telnetd Rx thread */
-	vmm_threads_start(tdctrl.rx_thread);
-
-	/* Start telnetd Tx thread */
-	vmm_threads_start(tdctrl.tx_thread);
+	/* Start telnetd main thread */
+	vmm_threads_start(tdctrl.main_thread);
 
 	return VMM_OK;
 }
 
 static void __exit daemon_telnetd_exit(void)
 {
-	/* Stop and destroy telnetd Tx thread */
-	vmm_threads_stop(tdctrl.tx_thread);
-	vmm_threads_destroy(tdctrl.tx_thread);
+#if defined(TELNETD_USE_BH)
+	/* Destroy telnetd bottom-half workqueue */
+	vmm_workqueue_destroy(tdctrl.bh_wq);
+#endif
 
-	/* Stop and destroy telnetd Rx thread */
-	vmm_threads_stop(tdctrl.rx_thread);
-	vmm_threads_destroy(tdctrl.rx_thread);
+	/* Stop and destroy telnetd main thread */
+	vmm_threads_stop(tdctrl.main_thread);
+	vmm_threads_destroy(tdctrl.main_thread);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC, 
