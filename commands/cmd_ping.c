@@ -48,7 +48,7 @@ int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u16 sent, rcvd, count = 1, size = 56;
 	struct netstack_echo_reply reply;
-	char ip_addr_str[30];
+	char ip_addr_str[20];
 	u32 rtt_usecs, rtt_msecs;
 	u64 min_rtt = -1, max_rtt = 0, avg_rtt = 0;
 	u8 ipaddr[4];
@@ -70,10 +70,10 @@ int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	netstack_prefetch_arp_mapping(ipaddr);
 
 	for(sent=0, rcvd=0; sent<count; sent++) {
-		if(!netstack_send_echo(ipaddr, size, sent, &reply)) {
-			if(reply.rtt < min_rtt)
+		if (!netstack_send_echo(ipaddr, size, sent, &reply)) {
+			if (reply.rtt < min_rtt)
 				min_rtt = reply.rtt;
-			if(reply.rtt > max_rtt)
+			if (reply.rtt > max_rtt)
 				max_rtt = reply.rtt;
 			avg_rtt += reply.rtt;
 			rtt_msecs = udiv64(reply.rtt, 1000);
@@ -86,10 +86,12 @@ int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			rcvd++;
 		}
 	}
-	if(rcvd) {
-		avg_rtt = udiv64(avg_rtt, rcvd);
+	if (min_rtt == -1) {
+		min_rtt = 0;
 	}
-	else {
+	if (rcvd) {
+		avg_rtt = udiv64(avg_rtt, rcvd);
+	} else {
 		avg_rtt = 0;
 	}
 	vmm_cprintf(cdev, "\n----- %s ping statistics -----\n", argv[1]);
