@@ -23,3 +23,4 @@
 
 drivers-objs-$(CONFIG_NET_DRIVERS)+= net/linux/mii.o
 drivers-objs-$(CONFIG_NET_DRIVERS)+= net/linux/netdevice.o
+drivers-objs-$(CONFIG_NET_DRIVERS)+= net/linux/ethtool.o

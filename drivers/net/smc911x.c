@@ -46,6 +46,8 @@
 #define	MODULE_INIT			smc911x_driver_init
 #define	MODULE_EXIT			smc911x_driver_exit
 
+static const char version[] =
+		"smc911x.c: v1.0 04-16-2005 by Dustin McIntire <dustin@sensoria.com>\n";
 
 /* Debugging options */
 #if 0
@@ -1466,8 +1468,6 @@ static int smc911x_close(struct net_device *dev)
 	return 0;
 }
 
-#if 0
-
 /*
  * Ethtool support
  */
@@ -1543,7 +1543,9 @@ smc911x_ethtool_getdrvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
 {
 	strncpy(info->driver, CARDNAME, sizeof(info->driver));
 	strncpy(info->version, version, sizeof(info->version));
+#if 0
 	strncpy(info->bus_info, dev_name(dev->dev.parent), sizeof(info->bus_info));
+#endif
 }
 
 static int smc911x_ethtool_nwayreset(struct net_device *dev)
@@ -1724,6 +1726,8 @@ static const struct ethtool_ops smc911x_ethtool_ops = {
 	.get_eeprom = smc911x_ethtool_geteeprom,
 	.set_eeprom = smc911x_ethtool_seteeprom,
 };
+
+#if 0
 
 /*
  * smc911x_findirq
@@ -1938,8 +1942,9 @@ static int smc911x_probe(struct net_device *dev)
 	dev->netdev_ops = &smc911x_netdev_ops;
 #if 0
 	dev->watchdog_timeo = msecs_to_jiffies(watchdog);
+#endif
 	dev->ethtool_ops = &smc911x_ethtool_ops;
-
+#if 0
 	INIT_WORK(&lp->phy_configure, smc911x_phy_configure);
 #endif
 	lp->mii.phy_id_mask = 0x1f;

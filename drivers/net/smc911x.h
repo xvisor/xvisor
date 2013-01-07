@@ -31,10 +31,13 @@
 #ifndef __SMC911X_H___
 #define __SMC911X_H___
 
+#include <asm/errno.h>
 #include <linux/mii.h>
 #include <linux/spinlock.h>
 #include <linux/skbuff.h>
+#include <linux/if_ether.h>
 #include <linux/netdevice.h>
+#include <linux/ethtool.h>
 #include <linux/io.h>
 #include <linux/workqueue.h>
 #include <linux/interrupt.h>

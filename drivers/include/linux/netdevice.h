@@ -34,6 +34,7 @@
 #include <net/vmm_netswitch.h>
 #include <linux/interrupt.h>
 #include <linux/skbuff.h>
+#include <linux/ethtool.h>
 
 #define MAX_NETDEV_NAME_LEN			32
 #define MAX_NDEV_HW_ADDRESS			32
@@ -115,6 +116,7 @@ struct net_device {
 	char name[MAX_NETDEV_NAME_LEN];
 	struct vmm_device *dev;
 	const struct net_device_ops *netdev_ops;
+	const struct ethtool_ops *ethtool_ops;
 	unsigned int state;
 	unsigned int link_state;
 	void *priv;		/* Driver specific private data */

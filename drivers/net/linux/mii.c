@@ -32,6 +32,7 @@
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <linux/mii.h>
+#include <linux/ethtool.h>
 
 /**
  * mii_check_gmii_support - check if the MII supports Gb interfaces
@@ -193,4 +194,15 @@ unsigned int mii_check_media (struct mii_if_info *mii,
 
 	return 0; /* duplex did not change */
 }
+
+int mii_ethtool_gset(struct mii_if_info *mii, struct ethtool_cmd *ecmd)
+{
+	return 0;
+}
+
+int mii_ethtool_sset(struct mii_if_info *mii, struct ethtool_cmd *ecmd)
+{
+	return 0;
+}
+
 
