@@ -60,24 +60,18 @@
 #define IFNAME0 'e'
 #define IFNAME1 'n'
 
-#define MAX_FRAME_LEN   1518
+#define MAX_FRAME_LEN			1518
 
 #undef PING_USE_SOCKETS
 
 /** ping receive timeout - in milliseconds */
-#ifndef PING_RCV_TIMEO
-#define PING_RCV_TIMEO 1000
-#endif
+#define PING_RCV_TIMEO			5000
 
-/** ping delay - in milliseconds */
-#ifndef PING_DELAY
-#define PING_DELAY     1000
-#endif
+/** ping delay - in nanoseconds */
+#define PING_DELAY_NS			5000000000ULL
 
 /** ping identifier - must fit on a u16_t */
-#ifndef PING_ID
-#define PING_ID        0xAFAF
-#endif
+#define PING_ID				0xAFAF
 
 struct lwip_netstack {
 	struct netif nif;
@@ -87,8 +81,8 @@ struct lwip_netstack {
 	struct vmm_mutex ping_lock;
 	ip_addr_t ping_addr;
 	u16 ping_seq_num;
-	u64 ping_tstamp;
-	bool ping_timedout;
+	u64 ping_send_tstamp;
+	u64 ping_recv_tstamp;
 	struct raw_pcb *ping_pcb;
 	struct netstack_echo_reply *ping_reply;
 	struct vmm_completion ping_done;
@@ -277,6 +271,8 @@ static u8_t ping_recv(void *arg, struct raw_pcb *pcb,
 		if ((lns.ping_reply != NULL) &&
 		    (iecho->id == PING_ID) && 
 		    (iecho->seqno == htons(lns.ping_seq_num))) {
+			lns.ping_recv_tstamp = vmm_timer_timestamp();
+
 			lns.ping_reply->ripaddr[0] = ip4_addr1(&lns.ping_addr);
 			lns.ping_reply->ripaddr[1] = ip4_addr2(&lns.ping_addr);
 			lns.ping_reply->ripaddr[2] = ip4_addr3(&lns.ping_addr);
@@ -284,30 +280,19 @@ static u8_t ping_recv(void *arg, struct raw_pcb *pcb,
 			lns.ping_reply->ttl = IPH_TTL(iphdr);
 			lns.ping_reply->len = p->tot_len - (IPH_HL(iphdr) * 4);
 			lns.ping_reply->seqno = lns.ping_seq_num;
-			lns.ping_reply->rtt = 
-				udiv64(vmm_timer_timestamp() - lns.ping_tstamp, 1000);
 
-			lns.ping_timedout = FALSE;
-			lns.ping_reply = NULL;
 			vmm_completion_complete(&lns.ping_done);
+
+			/* Free the pbuf */
+			pbuf_free(p);
+
+			/* Eat the packet. lwIP should not process it. */
+			return 1;
 		}
 	}
 
-	/* Don't eat the packet to let lwIP process it. */
+	/* Don't eat the packet. Let lwIP process it. */
 	return 0;
-}
-
-static void ping_timeout(void *arg)
-{
-	struct raw_pcb *pcb = (struct raw_pcb*)arg;
-  
-	LWIP_ASSERT("ping_timeout: no pcb given!", pcb != NULL);
-
-	if (lns.ping_reply != NULL) {
-		lns.ping_timedout = TRUE;
-		lns.ping_reply = NULL;
-		vmm_completion_complete(&lns.ping_done);
-	}
 }
 
 static void ping_raw_init(void)
@@ -315,14 +300,13 @@ static void ping_raw_init(void)
 	INIT_MUTEX(&lns.ping_lock);
 
 	lns.ping_seq_num = 0;
-	lns.ping_tstamp = 0;
-	lns.ping_timedout = FALSE;
+	lns.ping_send_tstamp = 0;
+	lns.ping_recv_tstamp = 0;
 
 	lns.ping_pcb = raw_new(IP_PROTO_ICMP);
 	LWIP_ASSERT("ping_pcb != NULL", lns.ping_pcb != NULL);
 	raw_recv(lns.ping_pcb, ping_recv, NULL);
 	raw_bind(lns.ping_pcb, IP_ADDR_ANY);
-	sys_timeout(PING_DELAY, ping_timeout, lns.ping_pcb);
 
 	lns.ping_reply = NULL;
 
@@ -333,6 +317,7 @@ int netstack_send_echo(u8 *ripaddr, u16 size, u16 seqno,
 			struct netstack_echo_reply *reply)
 {
 	int i, rc;
+	u64 timeout = PING_DELAY_NS;
 	struct pbuf *p;
 	struct icmp_echo_hdr *iecho;
 	size_t len = sizeof(struct icmp_echo_hdr) + size;
@@ -371,25 +356,25 @@ int netstack_send_echo(u8 *ripaddr, u16 size, u16 seqno,
 
 	/* Save ping info */
 	lns.ping_seq_num = seqno;
-	lns.ping_tstamp = vmm_timer_timestamp();
-	lns.ping_timedout = FALSE;
 	lns.ping_reply = reply;
+	lns.ping_recv_tstamp = 0;
+	lns.ping_send_tstamp = vmm_timer_timestamp();
+	lns.ping_recv_tstamp = lns.ping_send_tstamp + PING_DELAY_NS;
 
 	/* Send ping packet */
 	raw_sendto(lns.ping_pcb, p, &lns.ping_addr);
 
-	/* Waif for ping to complete */
-	vmm_completion_wait(&lns.ping_done);
+	/* Wait for ping to complete with timeout */
+	timeout = lns.ping_recv_tstamp - lns.ping_send_tstamp;
+	rc = vmm_completion_wait_timeout(&lns.ping_done, &timeout);
+	timeout = lns.ping_recv_tstamp - lns.ping_send_tstamp;
+	lns.ping_reply->rtt = udiv64(timeout, 1000);
 
 	/* Free ping pbuf */
 	pbuf_free(p);
 
-	/* Check ping timeout flag */
-	if (lns.ping_timedout) {
-		rc = VMM_ETIMEDOUT;
-	} else {
-		rc = VMM_OK;
-	}
+	/* Clear ping reply pointer */
+	lns.ping_reply = NULL;
 
 	/* Unloack ping context */
 	vmm_mutex_unlock(&lns.ping_lock);
@@ -755,7 +740,7 @@ static err_t lwip_netstack_output(struct netif *netif, struct pbuf *p)
 	/* Add payload from pbuf to mbuf */
 	q = p;
 	while (q != NULL) {
-		tbuf = vmm_zalloc(q->len);
+		tbuf = vmm_malloc(q->len);
 		if (!tbuf) {
 			return ERR_MEM;
 		}
