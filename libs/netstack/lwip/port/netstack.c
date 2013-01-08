@@ -722,38 +722,50 @@ static int lwip_switch2port_xfer(struct vmm_netport *port,
 	return VMM_OK;
 }
 
+void lwip_netstack_mbuf_free(struct vmm_mbuf *m, void *p, u32 len, void *arg)
+{
+	struct pbuf *pb = (struct pbuf *)arg;
+	pbuf_free(pb);
+}
+
 static err_t lwip_netstack_output(struct netif *netif, struct pbuf *p)
 {
-	void *tbuf;
-	struct vmm_mbuf *mbuf;
+	struct vmm_mbuf *mbuf, *mbuf_head, *mbuf_cur;
 	struct pbuf *q;
 	struct lwip_netstack *lns = netif->state;
+
+	if (!p || !p->payload || !p->len) {
+		return ERR_OK;
+	}
 
 	if (p->tot_len > MAX_FRAME_LEN) {
 		/* Frame too long, drop it */
 		return ERR_MEM;
 	}
 
-	/* Create a mbuf */
-	MGETHDR(mbuf, 0, 0);
+	/* Increase reference to the pbuf as we reuse the same buffers */
+	pbuf_ref(p);
 
-	/* Add payload from pbuf to mbuf */
-	q = p;
+	/* Create the first mbuf in the chain */
+	MGETHDR(mbuf_head, 0, 0);
+	MEXTADD(mbuf_head, p->payload, p->len, lwip_netstack_mbuf_free, p);
+	mbuf_cur = mbuf_head;
+
+	/* Create next mbufs in chain from the pbuf chain */
+	q = p->next;
 	while (q != NULL) {
-		tbuf = vmm_malloc(q->len);
-		if (!tbuf) {
-			return ERR_MEM;
-		}
-		memcpy(tbuf, q->payload, q->len);
-		MEXTADD(mbuf, tbuf, q->len, NULL, NULL);
+		MGET(mbuf, 0, M_EXT_DONTFREE);
+		MEXTADD(mbuf, q->payload, q->len, NULL, NULL);
+		mbuf_cur->m_next = mbuf;
+		mbuf_cur = mbuf;
 		q = q->next;
 	}
 
 	/* Setup mbuf len */
-	mbuf->m_len = mbuf->m_pktlen = p->tot_len;
+	mbuf_head->m_len = mbuf_head->m_pktlen = p->tot_len;
 
 	/* Send mbuf to the netswitch */
-	vmm_port2switch_xfer(lns->port, mbuf);
+	vmm_port2switch_xfer(lns->port, mbuf_head);
 
 	/* Return success */
 	return ERR_OK;
