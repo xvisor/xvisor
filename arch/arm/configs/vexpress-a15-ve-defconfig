@@ -143,7 +143,6 @@ CONFIG_CMD_NET=y
 #
 CONFIG_LIBFDT=y
 # CONFIG_NET_STACK is not set
-# CONFIG_LIBSORT is not set
 
 #
 # Virtual Terminal Emulator Options

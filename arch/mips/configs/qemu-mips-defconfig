@@ -90,7 +90,6 @@ CONFIG_CMD_MODULE=y
 # Library Options
 #
 CONFIG_LIBFDT=y
-# CONFIG_LIBSORT is not set
 
 #
 # Device Drivers
