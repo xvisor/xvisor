@@ -243,6 +243,7 @@ static void telnetd_fill_rx_buffer(void)
 	if (rc) {
 		telnetd_set_disconnected();
 		TELNETD_DPRINTF("%s: Socket read failed\n", __func__);
+		return;
 	}
 
 	/* Lock connection state */
