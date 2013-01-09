@@ -24,6 +24,7 @@
 core-objs-$(CONFIG_FB)+= fb/vmm_fb.o
 
 vmm_fb-y += vmm_fbmem.o
+vmm_fb-y += vmm_fbnotify.o
 vmm_fb-y += vmm_fbcmap.o
 vmm_fb-y += vmm_fbmon.o
 vmm_fb-y += vmm_fbcvt.o
