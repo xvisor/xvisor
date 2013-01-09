@@ -155,7 +155,7 @@ static inline u32 vmm_clockchip_hz2mult(u32 hz, u32 shift)
 }
 
 /** Convert tick delta to nanoseconds */
-static inline u64 vmm_clockchip_delta2ns(u32 delta, struct vmm_clockchip *cc)
+static inline u64 vmm_clockchip_delta2ns(u64 delta, struct vmm_clockchip *cc)
 {
 	u64 tmp = (u64)delta << cc->shift;
 	return udiv64(tmp, cc->mult);

@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.1.3
-# Fri Aug 10 16:51:42 2012
+# Version: 0.2.0
+# Thu Jan  3 21:50:01 2013
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -38,9 +38,9 @@ CONFIG_X86_64_GENERIC=y
 # General Configuration
 #
 MODULES=y
-# CONFIG_VERBOSE_MODE is not set
-CONFIG_BANNER_NONE=y
-# CONFIG_BANNER_BANNER4 is not set
+CONFIG_VERBOSE_MODE=y
+# CONFIG_BANNER_NONE is not set
+CONFIG_BANNER_BANNER4=y
 # CONFIG_BANNER_COLOSSAL is not set
 # CONFIG_BANNER_O8 is not set
 # CONFIG_BANNER_ROMAN is not set
@@ -97,6 +97,14 @@ CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
 # CONFIG_CMD_THREADTEST is not set
+
+#
+# Daemon Options
+#
+CONFIG_MTERM=y
+CONFIG_MTERM_CMD_WIDTH=256
+CONFIG_MTERM_HISTORY=y
+CONFIG_MTERM_HISTORY_SIZE=10
 
 #
 # Library Options

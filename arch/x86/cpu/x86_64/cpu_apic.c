@@ -275,6 +275,7 @@ int ioapic_route_pin_to_irq(u32 pin, u32 irqno)
 
 	vmm_host_irq_set_chip(irqno, &hirq->irq_chip);
 	vmm_host_irq_set_chip_data(irqno, hirq);
+	vmm_host_irq_set_handler(irqno, vmm_handle_level_irq);
 	rc = vmm_host_irq_register(irqno, "generic irq handler",
 				   generic_apic_irq_handler,
 				   (void *)hirq);

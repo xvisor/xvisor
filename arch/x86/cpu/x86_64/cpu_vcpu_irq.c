@@ -27,7 +27,7 @@
 
 u32 arch_vcpu_irq_count(struct vmm_vcpu * vcpu)
 {
-	return 7;
+	return 256;
 }
 
 u32 arch_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no)

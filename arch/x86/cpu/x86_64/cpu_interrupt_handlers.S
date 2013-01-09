@@ -109,7 +109,11 @@ IRQ_HANDLER(_irq13) /* GPF */
 	callq	do_gpf
 END_IRQ_HANDLER
 
+.extern do_page_fault
 IRQ_HANDLER(_irq14) /* page fault */
+	movq  120(%rsp), %rdi /* error code as first argument */
+	movq  %rsp, %rsi /* trap frame */
+	callq do_page_fault
 END_IRQ_HANDLER
 
 IRQ_HANDLER(_irq16) /* coproc error */

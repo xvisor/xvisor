@@ -36,7 +36,7 @@
 #include <hpet.h>
 
 #undef __DEBUG
-#define __DEBUG
+//#define __DEBUG
 
 #if defined(__DEBUG)
 #define debug_print(fmt, args...) vmm_printf(fmt, ##args);
@@ -89,9 +89,14 @@ static void hpet_disable_main_counter(struct hpet_timer *timer)
 	hpet_write(timer->parent->vbase, HPET_GEN_CONF_BASE, _v);
 }
 
-static u64 hpet_main_counter_val(struct hpet_timer *timer)
+static u64 hpet_read_main_counter(struct hpet_timer *timer)
 {
 	return hpet_read(timer->parent->vbase, HPET_GEN_MAIN_CNTR_BASE);
+}
+
+static void hpet_write_main_counter(struct hpet_timer *timer, u64 val)
+{
+	hpet_write(timer->parent->vbase, HPET_GEN_MAIN_CNTR_BASE, val);
 }
 
 static void hpet_arm_timer(void *data)
@@ -309,23 +314,29 @@ static int hpet_clockchip_set_next_event(unsigned long next,
 {
 	struct hpet_timer *timer = container_of(cc, struct hpet_timer, clkchip);
 	BUG_ON(timer == NULL);
-	u64 cnt;
-	u32 res;
+	u64 res;
 
-	vmm_printf("%s: next: %l\n", __func__, next);
-	cnt = hpet_main_counter_val(timer);
-	cnt += next;
-	hpet_write(timer->parent->vbase, HPET_TIMER_N_COMP_BASE(0), cnt);
-
-	res = (cnt - hpet_main_counter_val(timer));
-	if (res < 128)
-		BUG_ON(0);
+	res = hpet_read_main_counter(timer);
+	res += next;
+	hpet_write(timer->parent->vbase, HPET_TIMER_N_COMP_BASE(0), res);
+	next = hpet_read_main_counter(timer);
+	BUG_ON(next > res);
 
 	return 0;
 }
 
 static int hpet_clockchip_expire(struct vmm_clockchip *cc)
 {
+	struct hpet_timer *timer = container_of(cc, struct hpet_timer, clkchip);
+	BUG_ON(timer == NULL);
+	u64 res;
+
+	hpet_disable_main_counter(timer);
+	res = hpet_read_main_counter(timer);
+	res += 1000;
+	hpet_write(timer->parent->vbase, HPET_TIMER_N_COMP_BASE(0), res);
+	hpet_enable_main_counter(timer);
+
 	return 0;
 }
 
@@ -383,11 +394,12 @@ int __cpuinit hpet_clockchip_init(struct hpet_timer *timer, const char *chip_nam
 #endif
 	debug_print("%s: Hpet Freq: %l Period: %l\n", __func__, timer->hpet_freq, timer->hpet_period);
 	timer->clkchip.features = VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
-	vmm_clocks_calc_mult_shift(&timer->clkchip.mult, &timer->clkchip.shift, timer->hpet_freq, NSEC_PER_SEC, 3);
-	timer->clkchip.min_delta_ns = timer->hpet_period/1000000;
+	vmm_clocks_calc_mult_shift(&timer->clkchip.mult, &timer->clkchip.shift, timer->hpet_freq, NSEC_PER_SEC, 0);
+	timer->clkchip.min_delta_ns = timer->hpet_freq/1000000;
 	debug_print("%s: Min Delts NS: %d\n", __func__, timer->clkchip.min_delta_ns);
-	debug_print("%s: mult: %x shift: %l\n", __func__, timer->clkchip.mult, timer->clkchip.shift);
-	timer->clkchip.max_delta_ns = vmm_clockchip_delta2ns(0x7FFFFFFFUL, &timer->clkchip);
+	debug_print("%s: mult: %l shift: %l\n", __func__, timer->clkchip.mult, timer->clkchip.shift);
+	timer->clkchip.max_delta_ns = vmm_clockchip_delta2ns(0x7FFFFFFFFFFFFFFFULL, &timer->clkchip);
+	debug_print("%s: Max delta ns: %l\n", __func__, timer->clkchip.max_delta_ns);
 	timer->clkchip.set_mode = &hpet_clockchip_set_mode;
 	timer->clkchip.set_next_event = &hpet_clockchip_set_next_event;
 	timer->clkchip.expire = &hpet_clockchip_expire;
@@ -424,7 +436,7 @@ static u64 hpet_clocksource_read(struct vmm_clocksource *cs)
 	BUG_ON(timer == NULL);
 
 	debug_print("%s\n", __func__);
-	return hpet_main_counter_val(timer);
+	return hpet_read_main_counter(timer);
 }
 
 static int hpet_clocksource_enable(struct vmm_clocksource *cs)
@@ -453,7 +465,7 @@ static int __init hpet_clocksource_init(struct hpet_timer *timer)
 	timer->clksrc.name = "hpet_clksrc";
 	timer->clksrc.rating = 300;
 	timer->clksrc.mask = 0xFFFFFFFFULL;
-	vmm_clocks_calc_mult_shift(&timer->clksrc.mult, &timer->clksrc.shift, NSEC_PER_SEC, timer->hpet_freq, 3);
+	vmm_clocks_calc_mult_shift(&timer->clksrc.mult, &timer->clksrc.shift, NSEC_PER_SEC, timer->hpet_freq, 0);
 	debug_print("%s: Mult 0x%x shift: 0x%x\n", __func__, timer->clksrc.mult, timer->clksrc.shift);
 	timer->clksrc.read = &hpet_clocksource_read;
 	timer->clksrc.disable = &hpet_clocksource_disable;
@@ -471,6 +483,8 @@ static int __init hpet_clocksource_init(struct hpet_timer *timer)
 	t2 = hpet_clocksource_read(&timer->clksrc);
 
 	hpet_disable_main_counter(timer);
+
+	hpet_write_main_counter(timer, 0);
 
 	if (t1 != t2 && t2 > t1) {
 		vmm_printf("Yes.\n");

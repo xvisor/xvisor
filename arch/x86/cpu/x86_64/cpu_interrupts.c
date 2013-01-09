@@ -194,6 +194,17 @@ int __cpuinit arch_cpu_irq_setup(void)
 }
 
 /* All Handlers */
+int do_page_fault(int error, arch_regs_t *regs)
+{
+	u64 bad_vaddr;
+
+	__asm__ __volatile__("movq %%cr2, %0\n\t"
+			     :"=r"(bad_vaddr));
+
+	vmm_printf("Handled access to address %x Error: %x\n", bad_vaddr, error);
+	while(1);
+}
+
 int do_breakpoint(int intno, arch_regs_t *regs)
 {
 	return 0;
@@ -209,8 +220,17 @@ int do_gpf(int intno, arch_regs_t *regs)
 
 int do_generic_int_handler(int intno, arch_regs_t *regs)
 {
-	vmm_printf("%s: int: %d, regs: 0x%lx%lx\n",
-		   __func__, intno, ((u64)regs >> 32), ((u64) regs & 0xFFFFFFFFUL));
+#ifdef __DEBUG
+	struct x86_64_interrupt_frame *frame =
+		(struct x86_64_interrupt_frame *)((u64)regs
+						  + sizeof(struct x86_64_interrupt_frame));
+#endif
+
+	debug_print("%s: int: %d, regs: 0x%lx%lx\n",
+		    __func__, intno, ((u64)regs >> 32), ((u64) regs & 0xFFFFFFFFUL));
+	debug_print("rip: %lx esp: %lx cs: %lx ss: %lx\n",
+		    (unsigned long)frame->rip, (unsigned long)frame->rsp,
+		    (unsigned long)frame->cs, (unsigned long)frame->ss);
 	vmm_scheduler_irq_enter(regs, FALSE);
 	vmm_host_irq_exec(intno, regs);
 	vmm_scheduler_irq_exit(regs);
