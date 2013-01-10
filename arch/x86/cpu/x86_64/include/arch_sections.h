@@ -35,11 +35,11 @@ extern u8 _modtbl_start;
 extern u8 _modtbl_end;
 static inline virtual_addr_t arch_modtbl_vaddr(void)
 {
-	return (virtual_addr_t)(&_modtbl_start);
+	return (virtual_addr_t) &_modtbl_start;
 }
 static inline virtual_size_t arch_modtbl_size(void)
 {
-	return (virtual_size_t)(&_modtbl_end - &_modtbl_start);
+	return (virtual_size_t) (&_modtbl_end - &_modtbl_start);
 }
 
 /** PerCPU section */
