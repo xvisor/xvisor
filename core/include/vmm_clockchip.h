@@ -113,8 +113,8 @@ static inline void vmm_clocks_calc_mult_shift(u32 *mult, u32 *shift,
         u64 tmp;
         u32 sft, sftacc= 32;
 
-        /*                                                                                                                                                  
-         * Calculate the shift factor which is limiting the conversion
+        /* 
+	 * Calculate the shift factor which is limiting the conversion
          * range:
          */
         tmp = ((u64)maxsec * from) >> 32;
