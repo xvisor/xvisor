@@ -26,28 +26,25 @@
 #include <vmm_compiler.h>
 #include <vmm_devtree.h>
 #include <vmm_host_aspace.h>
-#include <drv/uart.h>
+#include <drv/8250-uart.h>
 
-static virtual_addr_t sun4i_uart_base;
-static u32 sun4i_uart_inclk;
-static u32 sun4i_uart_baud;
-static u32 sun4i_uart_align;
+static struct uart_8250_port sun4i_uart_port;
 
 int arch_defterm_putc(u8 ch)
 {
-	if (!uart_lowlevel_can_putc(sun4i_uart_base, sun4i_uart_align)) {
+	if (!uart_8250_lowlevel_can_putc(&sun4i_uart_port)) {
 		return VMM_EFAIL;
 	}
-	uart_lowlevel_putc(sun4i_uart_base, sun4i_uart_align, ch);
+	uart_8250_lowlevel_putc(&sun4i_uart_port, ch);
 	return VMM_OK;
 }
 
 int arch_defterm_getc(u8 *ch)
 {
-	if (!uart_lowlevel_can_getc(sun4i_uart_base, sun4i_uart_align)) {
+	if (!uart_8250_lowlevel_can_getc(&sun4i_uart_port)) {
 		return VMM_EFAIL;
 	}
-	*ch = uart_lowlevel_getc(sun4i_uart_base, sun4i_uart_align);
+	*ch = uart_8250_lowlevel_getc(&sun4i_uart_port);
 	return VMM_OK;
 }
 
@@ -64,23 +61,20 @@ int __init arch_defterm_init(void)
 	if (!node) {
 		return VMM_ENODEV;
 	}
-	rc = vmm_devtree_regmap(node, &sun4i_uart_base, 0);
+	rc = vmm_devtree_regmap(node, &sun4i_uart_port.base, 0);
 	if (rc) {
 		return rc;
 	}
 
 	val = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	sun4i_uart_inclk = (val) ? *val : 24000000;
+	sun4i_uart_port.input_clock = (val) ? *val : 24000000;
 
 	val = vmm_devtree_attrval(node, "baudrate");
-	sun4i_uart_baud = (val) ? *val : 115200;
+	sun4i_uart_port.baudrate = (val) ? *val : 115200;
 
 	val = vmm_devtree_attrval(node, "reg_align");
-	sun4i_uart_align = (val) ? *val : 4;
+	sun4i_uart_port.reg_align = (val) ? *val : 4;
 
-	uart_lowlevel_init(sun4i_uart_base,
-			    sun4i_uart_align,
-			    sun4i_uart_baud, 
-			    sun4i_uart_inclk);
+	uart_8250_lowlevel_init(&sun4i_uart_port);
 	return VMM_OK;
 }

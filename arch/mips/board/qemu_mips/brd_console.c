@@ -24,37 +24,40 @@
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
-#include <drv/uart.h>
+#include <drv/8250-uart.h>
 
-static virtual_addr_t uart_base = 0;
+static struct uart_8250_port uart_port;
 extern virtual_addr_t isa_vbase;
 
 int arch_defterm_getc(u8 *ch)
 {
-	if (uart_base) {
-		if (!uart_lowlevel_can_getc(uart_base, 1)) {
+	if (uart_8250_base) {
+		if (!uart_8250_lowlevel_can_getc(&uart_port);
 			return VMM_EFAIL;
 		}
-		*ch = uart_lowlevel_getc(uart_base, 1);	
+		*ch = uart_8250_lowlevel_getc(&uart_port);
 	}
 	return VMM_OK;
 }
 
 int arch_defterm_putc(u8 ch)
 {
-	if (uart_base) {
-		if (!uart_lowlevel_can_putc(uart_base, 1)) {
+	if (uart_8250_base) {
+		if (!uart_8250_lowlevel_can_putc(&uart_port);
 			return VMM_EFAIL;
 		}
-		uart_lowlevel_putc(uart_base, 1, ch);
+		uart_8250_lowlevel_putc(&uart_port, ch);
 	}
 	return VMM_OK;
 }
 
 int arch_defterm_init(void)
 {
-	uart_base = isa_vbase + 0x3F8;
-	uart_lowlevel_init(uart_base, 1, 115200, 1843200);
+	uart_port.base = isa_vbase + 0x3F8;
+	uart_port.reg_align = 1;
+	uart_port.baudrate = 115200;
+	uart_port.input_clock = 1843200;
+	uart_8250_lowlevel_init(&uart_port);
 
 	return VMM_OK;
 }

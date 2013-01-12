@@ -26,6 +26,8 @@
 #define __UART_H_
 
 #include <vmm_types.h>
+#include <vmm_completion.h>
+#include <vmm_chardev.h>
 
 #define UART_RBR_OFFSET		0 /* In:  Recieve Buffer Register */
 #define UART_THR_OFFSET		0 /* Out: Transmitter Holding Register */
@@ -58,31 +60,32 @@
 #define UART_IIR_RDI		0x04	/* RHR Interrupt */
 #define UART_IIR_RLSI		0x06	/* Receiver Line Status Intr */
 #define UART_IIR_RTO		0x0c	/* Receiver timeout interrupt */
+#define UART_IIR_BUSY		0x07	/* Designware BUSY interrupt for LCR writes */
 
 #define UART_IER_MSI		0x08    /* Enable Modem status interrupt */
 #define UART_IER_RLSI		0x04    /* Enable receiver line status interrupt */
 #define UART_IER_THRI		0x02    /* Enable Transmitter holding register int. */
 #define UART_IER_RDI		0x01    /* Enable receiver data interrupt */
 
-#define REG_UART_RBR(base,align)	((base)+UART_RBR_OFFSET*(align))
-#define REG_UART_THR(base,align)	((base)+UART_THR_OFFSET*(align))
-#define REG_UART_DLL(base,align)	((base)+UART_DLL_OFFSET*(align))
-#define REG_UART_IER(base,align)	((base)+UART_IER_OFFSET*(align))
-#define REG_UART_DLM(base,align)	((base)+UART_DLM_OFFSET*(align))
-#define REG_UART_IIR(base,align)	((base)+UART_IIR_OFFSET*(align))
-#define REG_UART_FCR(base,align)	((base)+UART_FCR_OFFSET*(align))
-#define REG_UART_LCR(base,align)	((base)+UART_LCR_OFFSET*(align))
-#define REG_UART_MCR(base,align)	((base)+UART_MCR_OFFSET*(align))
-#define REG_UART_LSR(base,align)	((base)+UART_LSR_OFFSET*(align))
-#define REG_UART_MSR(base,align)	((base)+UART_MSR_OFFSET*(align))
-#define REG_UART_SCR(base,align)	((base)+UART_SCR_OFFSET*(align))
-#define REG_UART_MDR1(base,align)	((base)+UART_MDR1_OFFSET*(align))
+struct uart_8250_port {
+	struct vmm_completion read_possible;
+	struct vmm_chardev cd;
+	virtual_addr_t base;
+	u32 baudrate;
+	u32 input_clock;
+	u32 reg_align;
+	u32 irq;
+	u32 ier;
+	u32 lcr_last;
+	char *rxbuf;
+	u32 rxhead, rxtail;
+	vmm_spinlock_t rxlock;
+};
 
-bool uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align);
-u8 uart_lowlevel_getc(virtual_addr_t base, u32 reg_align);
-bool uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align);
-void uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, u8 ch);
-void uart_lowlevel_init(virtual_addr_t base, u32 reg_align, 
-			u32 baudrate, u32 input_clock);
+bool uart_8250_lowlevel_can_getc(struct uart_8250_port *port);
+u8 uart_8250_lowlevel_getc(struct uart_8250_port *port);
+bool uart_8250_lowlevel_can_putc(struct uart_8250_port *port);
+void uart_8250_lowlevel_putc(struct uart_8250_port *port, u8 ch);
+void uart_8250_lowlevel_init(struct uart_8250_port *port); 
 
 #endif /* __UART_H_ */
