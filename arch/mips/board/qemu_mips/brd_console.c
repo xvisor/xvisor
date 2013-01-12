@@ -31,7 +31,7 @@ extern virtual_addr_t isa_vbase;
 
 int arch_defterm_getc(u8 *ch)
 {
-	if (uart_8250_base) {
+	if (uart_port.base) {
 		if (!uart_8250_lowlevel_can_getc(&uart_port);
 			return VMM_EFAIL;
 		}
@@ -42,7 +42,7 @@ int arch_defterm_getc(u8 *ch)
 
 int arch_defterm_putc(u8 ch)
 {
-	if (uart_8250_base) {
+	if (uart_port.base) {
 		if (!uart_8250_lowlevel_can_putc(&uart_port);
 			return VMM_EFAIL;
 		}
