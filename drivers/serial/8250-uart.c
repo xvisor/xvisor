@@ -59,6 +59,17 @@ static void uart_8250_out8(struct uart_8250_port *port, u32 offset, u8 val)
 	}
 }
 
+static void uart_8250_clear_fifoe(struct uart_8250_port *port)
+{
+	/* If there was a RX FIFO error (because of framing, parity, 
+	 * break error) keep removing entries from RX FIFO until
+	 * LSR does not show this bit set
+	 */
+        while(uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_FIFOE) {
+		uart_8250_in8(port, UART_RBR_OFFSET);
+	};
+}
+
 bool uart_8250_lowlevel_can_getc(struct uart_8250_port *port)
 {
 	if (uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_DR) {
@@ -69,9 +80,10 @@ bool uart_8250_lowlevel_can_getc(struct uart_8250_port *port)
 
 u8 uart_8250_lowlevel_getc(struct uart_8250_port *port)
 {
-	while (!uart_8250_lowlevel_can_getc(port));
-
-	return (uart_8250_in8(port, UART_RBR_OFFSET));
+	if (uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_DR) {
+		return (uart_8250_in8(port, UART_RBR_OFFSET));
+	}
+	return 0;
 }
 
 bool uart_8250_lowlevel_can_putc(struct uart_8250_port *port)
@@ -84,9 +96,9 @@ bool uart_8250_lowlevel_can_putc(struct uart_8250_port *port)
 
 void uart_8250_lowlevel_putc(struct uart_8250_port *port, u8 ch)
 {
-	while (!uart_8250_lowlevel_can_putc(port));
-
-	uart_8250_out8(port, UART_THR_OFFSET, ch);
+	if (uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_THRE) {
+		uart_8250_out8(port, UART_THR_OFFSET, ch);
+	}
 }
 
 void uart_8250_lowlevel_init(struct uart_8250_port *port) 
@@ -118,7 +130,8 @@ void uart_8250_lowlevel_init(struct uart_8250_port *port)
 }
 
 #ifndef UART_POLLING
-static vmm_irq_return_t uart_8250_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
+static vmm_irq_return_t uart_8250_irq_handler(u32 irq_no, 
+						arch_regs_t *regs, void *dev)
 {
 	u16 iir, lsr;
 	struct uart_8250_port *port = (struct uart_8250_port *)dev;
@@ -127,45 +140,46 @@ static vmm_irq_return_t uart_8250_irq_handler(u32 irq_no, arch_regs_t * regs, vo
         lsr = uart_8250_in8(port, UART_LSR_OFFSET);
 
 	switch (iir & 0xf) {
-        	case UART_IIR_NOINT:
-	                return VMM_IRQ_NONE;
+        case UART_IIR_NOINT:
+		return VMM_IRQ_NONE;
 
-		case UART_IIR_RLSI:
-		case UART_IIR_RTO:
-		case UART_IIR_RDI: 
-			if (lsr & UART_LSR_FIFOE) {
-				/* If there was a RX FIFO error (because of framing, parity, 
-				 * break error) keep removing entries from RX FIFO until
-				 * LSR does not show this bit set
-				 */
-        			while(uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_FIFOE) {
-					uart_8250_in8(port, UART_RBR_OFFSET);
-				};
-			} else if (lsr & (UART_LSR_DR | UART_LSR_OE)) {
-				vmm_spin_lock(&port->rxlock);
-				do {
-					u8 ch = uart_8250_in8(port, UART_RBR_OFFSET);
-					if (((port->rxtail + 1) % UART_RXBUF_SIZE) != port->rxhead) {
-						port->rxbuf[port->rxtail] = ch;
-						port->rxtail = ((port->rxtail + 1) % UART_RXBUF_SIZE);
-					} else {
-						break;
-					}
-				} while (uart_8250_in8(port, UART_LSR_OFFSET) & (UART_LSR_DR | UART_LSR_OE));
-				vmm_spin_unlock(&port->rxlock);
-				/* Signal work completion to sleeping thread */
-				vmm_completion_complete(&port->read_possible);
-			} else {
-				while (1);
-			}			
-			break;
+	case UART_IIR_RLSI:
+	case UART_IIR_RTO:
+	case UART_IIR_RDI: 
+		if (lsr & UART_LSR_FIFOE) {
+			uart_8250_clear_fifoe(port);
+		} else if (lsr & (UART_LSR_DR | UART_LSR_OE)) {
+			vmm_spin_lock(&port->rxlock);
+			do {
+				u8 ch = uart_8250_in8(port, UART_RBR_OFFSET);
+				if (((port->rxtail + 1) % UART_RXBUF_SIZE) 
+							!= port->rxhead) {
+					port->rxbuf[port->rxtail] = ch;
+					port->rxtail = 
+					((port->rxtail + 1) % UART_RXBUF_SIZE);
+				} else {
+					break;
+				}
+			} while (uart_8250_in8(port, UART_LSR_OFFSET) & 
+						(UART_LSR_DR | UART_LSR_OE));
+			vmm_spin_unlock(&port->rxlock);
+			/* Signal work completion to sleeping thread */
+			vmm_completion_complete(&port->read_possible);
+		} else {
+			while (1);
+		}			
+		break;
 
-		case UART_IIR_BUSY:
-			/* This is unallocated IIR value as per generic UART but is used by
-			 * Designware UARTs, we do not expect other UART IPs to hit this case */ 
-			uart_8250_in8(port, 0x1f);
-			uart_8250_out8(port, UART_LCR_OFFSET, port->lcr_last);
-			break;
+	case UART_IIR_BUSY:
+		/* This is unallocated IIR value as per generic UART but is 
+		 * used by Designware UARTs, we do not expect other UART IPs 
+		 * to hit this case 
+		 */ 
+		uart_8250_in8(port, 0x1f);
+		uart_8250_out8(port, UART_LCR_OFFSET, port->lcr_last);
+		break;
+	default:
+		break;
 	};
 
 	return VMM_IRQ_HANDLED;
@@ -228,7 +242,8 @@ static u32 uart_8250_read(struct vmm_chardev *cdev,
 			vmm_spin_lock_irqsave(&port->rxlock, flags);
 			for(; (i < len) && (port->rxhead != port->rxtail); i++) {
 				dest[i] = port->rxbuf[port->rxhead];
-				port->rxhead = ((port->rxhead + 1) % UART_RXBUF_SIZE);
+				port->rxhead = 
+					((port->rxhead + 1) % UART_RXBUF_SIZE);
 			}
 			vmm_spin_unlock_irqrestore(&port->rxlock, flags);
 		}
