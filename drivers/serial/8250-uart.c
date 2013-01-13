@@ -59,13 +59,13 @@ static void uart_8250_out8(struct uart_8250_port *port, u32 offset, u8 val)
 	}
 }
 
-static void uart_8250_clear_fifoe(struct uart_8250_port *port)
+static void uart_8250_clear_errors(struct uart_8250_port *port)
 {
 	/* If there was a RX FIFO error (because of framing, parity, 
 	 * break error) keep removing entries from RX FIFO until
 	 * LSR does not show this bit set
 	 */
-        while(uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_FIFOE) {
+        while(uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_BRK_ERROR_BITS) {
 		uart_8250_in8(port, UART_RBR_OFFSET);
 	};
 }
@@ -146,9 +146,10 @@ static vmm_irq_return_t uart_8250_irq_handler(u32 irq_no,
 	case UART_IIR_RLSI:
 	case UART_IIR_RTO:
 	case UART_IIR_RDI: 
-		if (lsr & UART_LSR_FIFOE) {
-			uart_8250_clear_fifoe(port);
-		} else if (lsr & (UART_LSR_DR | UART_LSR_OE)) {
+		if (lsr & UART_LSR_BRK_ERROR_BITS) {
+			uart_8250_clear_errors(port);
+		}
+		if (lsr & UART_LSR_DR) {
 			vmm_spin_lock(&port->rxlock);
 			do {
 				u8 ch = uart_8250_in8(port, UART_RBR_OFFSET);
