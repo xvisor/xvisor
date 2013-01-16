@@ -34,9 +34,9 @@ Guest with Xvisor running on QEMU Realview PB-A8 Host:
   # make
 
   [8. Patch Atomthreads objects to replace sensitive non-priviledged instructions]
-  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f build/arm_entry.o .expvect | <xvisor_source_directory>/build/tools/cpatch/cpatch32 build/arm_entry.o 0
-  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f build/arm_irq.o .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 build/arm_irq.o 0
-  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f build/atomport-asm.o .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 build/atomport-asm.o 0
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f build/arm_entry.o | <xvisor_source_directory>/build/tools/cpatch/cpatch32 build/arm_entry.o 0
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f build/arm_irq.o | <xvisor_source_directory>/build/tools/cpatch/cpatch32 build/arm_irq.o 0
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f build/atomport-asm.o | <xvisor_source_directory>/build/tools/cpatch/cpatch32 build/atomport-asm.o 0
 
   [9. Rebuild Atomthreads to reflect changed object files]
   # make

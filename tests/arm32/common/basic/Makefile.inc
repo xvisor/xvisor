@@ -93,7 +93,7 @@ CPATCH32=$(build_dir)/tools/cpatch/cpatch32
 ELF2CPATCH=$(top_dir)/arch/arm/cpu/arm32/elf2cpatch.py
 
 cmd_patch_elf = CROSS_COMPILE=$(ARM_CROSS_COMPILE) \
-		$(ELF2CPATCH) -f $@ .text | $(CPATCH32) $@ 0
+		$(ELF2CPATCH) -f $@ | $(CPATCH32) $@ 0
 
 ARM_TEST_TARGETS = $(obj_dir)/arm_test.bin
 ifdef CONFIG_ARM32

@@ -47,13 +47,13 @@ RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   # make O=<linux_build_directory> ARCH=arm zImage
 
   [11. Patch Linux kernel to replace sensitive non-priviledged instructions]
-  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux .text.head .init .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
 
   [12. Build Linux in build directory to reflect changes in kernel image]
   # make O=<linux_build_directory> ARCH=arm zImage
 
   [13. Patch Linux compressed kernel to replace sensitive non-priviledged instructions]
-  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/arch/arm/boot/compressed/vmlinux .text.head .init .text | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/arch/arm/boot/compressed/vmlinux 0
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/arch/arm/boot/compressed/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/arch/arm/boot/compressed/vmlinux 0
 
   [14. Create final compressed kernel image]
   # ${CROSS_COMPILE}objcopy -O binary <linux_build_directory>/arch/arm/boot/compressed/vmlinux <linux_build_directory>/arch/arm/boot/zImage

@@ -34,7 +34,7 @@ import os
 import sys
 from optparse import OptionParser
 
-usage = "Usage: %prog [options] <section1> [<section2> <section3> ...]"
+usage = "Usage: %prog [options]"
 parser = OptionParser(usage=usage)
 parser.add_option("-f", "--file", dest="filename",
                   help="Input ARM ELF32 file", metavar="FILE")
@@ -42,17 +42,50 @@ parser.add_option("-q", "--quiet",
                   action="store_false", dest="verbose", default=True,
                   help="Don't print status messages to stdout")
 
-(options, secs) = parser.parse_args()
+(options, add_args) = parser.parse_args()
 
 if not options.filename:
 	print "Error: No input ARM ELF32 file"
 	sys.exit()
 
-if len(secs)==0:
-	print "Error: No sections to scan"
-	sys.exit()
-
+seccmd = os.environ.get("CROSS_COMPILE") + "objdump -h " + options.filename
 dumpcmd = os.environ.get("CROSS_COMPILE") + "objdump -d " + options.filename
+
+# Populate sections to patch
+secs = []
+secs_name = ""
+secs_parse_start = 0
+secs_parse_pos = 0
+p = os.popen(seccmd, "r")
+while 1:
+	l = p.readline()
+	if not l: break
+	l = l.strip(" ");
+	l = l.replace("\n","");
+	l = l.replace("\t"," ");
+	while l.count("  ")>0:
+		l = l.replace("  "," ")
+	w = l.split(" ");
+	if w[0]=="Sections:":
+		l = p.readline()
+		if not l: break
+		secs_parse_start = 1
+		continue
+	if secs_parse_start==1:
+		secs_name = w[1]
+		l = p.readline()
+		if not l: break
+		l = l.strip(" ");
+		l = l.replace("\n","");
+		l = l.replace("\t"," ");
+		w = l.split(" ");
+		if ('CODE' in w) and (secs_name.find(".notes") == -1) and (secs_name.find(".info") == -1):
+			secs.append(secs_name)
+		secs_parse_pos = secs_parse_pos + 1
+
+if len(secs)==0:
+       print "Error: Did not find code sections to scan"
+       sys.exit()
 
 # Initialize data structures
 lines = [];
@@ -83,11 +116,9 @@ while 1:
 		w[3] = w[3].replace(":", "")
 		sec = ""
 		sec_valid = 0
-		for i, s in enumerate(secs):
-			if w[3]==s:
-				sec = s
-				sec_valid = 1
-				break
+		if w[3] in secs:
+			sec = w[3]
+			sec_valid = 1
 	elif sec_valid==1:
 		if len(w)>2:
 			addr = base | int(w[0].replace(":",""), 16)
@@ -112,60 +143,6 @@ while 1:
 			vlnums.append(False)
 			vsymdec.append(True)
 			lnum += 1
-
-# Heuritic based line filtering to avoid overwriting constants 
-#for lnum, l in enumerate(lines):
-#	if not(vlnums[lnum]):
-#		continue
-#	w = l.split(" ")
-#	if len(w)>4:
-#		op = w[2]
-#		a1 = w[3].replace(",", "")
-#		c0 = w[len(w)-3]
-#		c1 = w[len(w)-2]
-#		c2 = w[len(w)-1]
-#		if op=="ldr" and c0==";" and c2.startswith("<") and c2.endswith(">"):
-#			sym = c2
-#			sym = sym.replace("<", "")
-#			sym = sym.replace(">", "")
-#			syms = sym.split("+")
-#			if not(sym2base.has_key(syms[0])):
-#				continue
-#			addr = sym2base[syms[0]]
-#			if len(syms)>1:
-#				if syms[1].startswith("0x"):
-#					addr += int(syms[1], 16)
-#				else:
-#					addr += int(syms[1], 16)
-#			if not(addr2lnum.has_key(addr)):
-#				continue
-#			ln = addr2lnum[addr]
-#			while ln < len(vlnums):
-#				if vlnums[ln]:
-#					vlnums[ln] = False
-#					ln += 1
-#				else:
-#					break
-#			if a1!="pc":
-#				if w[1].startswith("0x"):
-#					addr = int(w[1], 16)
-#				else:
-#					addr = int(w[1], 16)
-#				if not(addr2lnum.has_key(addr)):
-#					continue
-#				ln = addr2lnum[addr];
-#				while ln < len(vlnums):
-#					if vlnums[ln]:
-#						vlnums[ln] = False
-#						ln += 1
-#					else:
-#						break
-
-#for ln, l in enumerate(lines):
-#	if vsymdec[ln]:
-#		print ""
-#	if vlnums[ln] or vsymdec[ln]:
-#		print l
 
 # CPS
 #	Syntax:
