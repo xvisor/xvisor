@@ -92,7 +92,9 @@ u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder)
 
 	if (dividend <= divisor) {
 		remaind = divisor - dividend;
-		*remainder = (remaind) ? dividend : 0;
+		if (remainder) {
+			*remainder = (remaind) ? dividend : 0;
+		}
 		return (remaind) ? 0 : 1;
 	}
 
@@ -124,7 +126,9 @@ u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder)
 		num_bits--;
 	}
 
-	*remainder = remaind;
+	if (remainder) {
+		*remainder = remaind;
+	}
 
 	return quotient;
 }
@@ -166,7 +170,9 @@ u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder)
 
 	if (dividend <= divisor) {
 		remaind = divisor - dividend;
-		*remainder = (remaind) ? dividend : 0;
+		if (remainder) {
+			*remainder = (remaind) ? dividend : 0;
+		}
 		return (remaind) ? 0 : 1;
 	}
 
@@ -194,7 +200,9 @@ u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder)
 		num_bits--;
 	}
 
-	*remainder = remaind;
+	if (remainder) {
+		*remainder = remaind;
+	}
 
 	return quotient;
 }
