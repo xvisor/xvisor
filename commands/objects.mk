@@ -45,5 +45,4 @@ commands-objs-$(CONFIG_CMD_NET)+= cmd_net.o
 commands-objs-$(CONFIG_CMD_IPCONFIG)+= cmd_ipconfig.o
 commands-objs-$(CONFIG_CMD_PING)+= cmd_ping.o
 commands-objs-$(CONFIG_CMD_VFS)+= cmd_vfs.o
-commands-objs-$(CONFIG_CMD_THREADTEST)+= cmd_threadtest.o
 

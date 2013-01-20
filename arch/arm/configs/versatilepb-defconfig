@@ -123,8 +123,6 @@ CONFIG_CMD_MODULE=y
 CONFIG_CMD_RTCDEV=y
 CONFIG_CMD_NET=y
 
-# CONFIG_CMD_THREADTEST is not set
-
 #
 # Library Options
 #
