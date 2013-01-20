@@ -27,10 +27,6 @@
 #include <vmm_timer.h>
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
-#include <net/vmm_mbuf.h>
-#include <net/vmm_net.h>
-#include <net/vmm_netport.h>
-#include <net/vmm_netswitch.h>
 #include <libs/netstack.h>
 
 #include "lwip/opt.h"
@@ -53,7 +49,7 @@
 #define MODULE_DESC			"lwIP Network Stack"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VMM_NET_CLASS_IPRIORITY + 1)
+#define MODULE_IPRIORITY		NETSTACK_IPRIORITY
 #define	MODULE_INIT			lwip_netstack_init
 #define	MODULE_EXIT			lwip_netstack_exit
 

@@ -26,6 +26,12 @@
 
 #include <vmm_types.h>
 #include <vmm_error.h>
+#include <net/vmm_mbuf.h>
+#include <net/vmm_net.h>
+#include <net/vmm_netport.h>
+#include <net/vmm_netswitch.h>
+
+#define NETSTACK_IPRIORITY		(VMM_NET_CLASS_IPRIORITY + 1)
 
 /**
  * Structure containing the ICMP_ECHO_REPLY parameters
