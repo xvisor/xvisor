@@ -27,9 +27,10 @@
 #include <vmm_host_io.h>
 #include <vmm_compiler.h>
 #include <libs/libfdt.h>
-#include <motherboard.h>
 #include <smp_scu.h>
 #include <gic.h>
+
+#include <exynos/mach/map.h>
 
 int __init arch_smp_prepare_cpus(void)
 {

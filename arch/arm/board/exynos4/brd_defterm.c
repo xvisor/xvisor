@@ -26,8 +26,9 @@
 #include <vmm_compiler.h>
 #include <vmm_host_aspace.h>
 #include <drv/samsung-uart.h>
-#include <motherboard.h>
 #include <vmm_devtree.h>
+
+#include <exynos/mach/map.h>
 
 #define	EXYNOS4_DEFAULT_UART_INCLK		24000000
 #define	EXYNOS4_DEFAULT_UART_BAUD		115200
