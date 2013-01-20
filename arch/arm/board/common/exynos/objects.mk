@@ -22,3 +22,4 @@
 # */
 
 board-common-objs-$(CONFIG_SAMSUNG_MCT)+=exynos/mct.o
+board-common-objs-$(CONFIG_BOARD_EXYNOS4)+=exynos/cpu.o

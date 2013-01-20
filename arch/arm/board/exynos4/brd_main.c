@@ -31,6 +31,9 @@
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <libs/libfdt.h>
+
+#include <exynos/plat/cpu.h>
+
 #include <exynos/mct_timer.h>
 
 /*
@@ -203,6 +206,9 @@ static struct vmm_devclk *exynos_getclk(struct vmm_devtree_node *node)
 
 int __init arch_board_early_init(void)
 {
+	/* Initalize some code that will help determine the SOC type */
+	exynos_init_cpu(EXYNOS_PA_CHIPID);
+
 	/*
 	 * TODO:
 	 * Host virtual memory, device tree, heap is up.
