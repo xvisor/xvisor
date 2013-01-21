@@ -10,6 +10,20 @@ If a field spans multiple lines then simply add field prefix to every line.
 
 ----------
 
+M:	Exynos 4210 smdkc210 evaluation board
+A:	ARM 32-bit (ARMv7a)
+C:	Cortex-A9
+V:	Samsung (http://www.samsung.com)
+E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
+G:	Realview PB-A8 and VExpress-A9 guests supported
+S:	Only supports Contex-A9 Uniprocessor. The Cortex-A9 Multiprocessor
+	(or SMP) suppport is Work-In-Progress.
+S:	Able to boot multiple Realview PB-A8 linux guest on smdkc210
+	emulated by Linaro QEMU.
+S:	Able to boot VExpress-A9 linux guest on smdkc210 emulated by
+	Linaro QEMU
+D:	docs/arm/exynos4-smdkc210.txt
+
 M:	OMAP3
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A8
