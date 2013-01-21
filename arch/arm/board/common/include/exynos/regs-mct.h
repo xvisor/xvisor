@@ -72,4 +72,6 @@
 #define MCT_L_TCON_INT_START		(1 << 1)
 #define MCT_L_TCON_TIMER_START		(1 << 0)
 
+#define MCT_L_ICNTB_MANUAL_UPDATE	(1 << 31)
+
 #endif				/* __ASM_ARCH_REGS_MCT_H */

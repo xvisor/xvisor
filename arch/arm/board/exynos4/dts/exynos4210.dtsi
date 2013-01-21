@@ -52,6 +52,7 @@
 			device_type = "timer";
 			compatible = "samsung,exynos4210-mct";
 			reg = <0x10050000 0x1000>;
+			clock-rate = <24000000>;
 			irq = <89 74 80>;
 		};
 

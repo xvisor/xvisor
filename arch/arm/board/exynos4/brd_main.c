@@ -126,10 +126,6 @@ int arch_board_devtree_populate(struct vmm_devtree_node **root)
 
 int arch_board_reset(void)
 {
-	/*
-	 * FIXME: For now it seems Qemu doesn't support either reset.
-	 * We need to test it on real hardware.
-	 */
 #if 0
 	void *wdt_ptr = (void *)vmm_host_iomap(EXYNOS4_PA_WATCHDOG, 0x100);
 
@@ -208,50 +204,6 @@ int arch_board_shutdown(void)
 	return VMM_EFAIL;
 }
 
-#if 0
-/*
- * Clocking support
- */
-
-static long ct_round(struct exynos_clk *clk, unsigned long rate)
-{
-	return rate;
-}
-
-static int ct_set(struct exynos_clk *clk, unsigned long rate)
-{
-	return v2m_cfg_write(SYS_CFG_OSC | SYS_CFG_SITE_DB1 | 1, rate);
-}
-
-static const struct exynos_clk_ops osc1_clk_ops = {
-	.round = ct_round,
-	.set = ct_set,
-};
-
-static struct exynos_clk osc1_clk = {
-	.ops = &osc1_clk_ops,
-	.rate = 24000000,
-};
-
-static struct vmm_devclk clcd_clk = {
-	.enable = exynos_clk_enable,
-	.disable = exynos_clk_disable,
-	.get_rate = exynos_clk_get_rate,
-	.round_rate = exynos_clk_round_rate,
-	.set_rate = exynos_clk_set_rate,
-	.priv = &osc1_clk,
-};
-
-static struct vmm_devclk *exynos_getclk(struct vmm_devtree_node *node)
-{
-	if (strcmp(node->name, "clcd") == 0) {
-		return &clcd_clk;
-	}
-
-	return NULL;
-}
-#endif
-
 /*
  * Initialization functions
  */
@@ -271,11 +223,13 @@ int __init arch_board_early_init(void)
 }
 
 static virtual_addr_t mct_timer_base;
+static u32 mct_clk_rate = 24000000;
 
 int __init arch_clocksource_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
+	u32 *mct_clk_rate_p;
 
 	/* Map timer0 registers */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
@@ -286,6 +240,11 @@ int __init arch_clocksource_init(void)
 		goto skip_mct_timer_init;
 	}
 
+	mct_clk_rate_p = vmm_devtree_attrval(node, "clock-rate");
+	if (mct_clk_rate_p) {
+		mct_clk_rate = *mct_clk_rate_p;
+	}
+
 	if (!mct_timer_base) {
 		rc = vmm_devtree_regmap(node, &mct_timer_base, 0);
 		if (rc) {
@@ -294,8 +253,8 @@ int __init arch_clocksource_init(void)
 	}
 
 	/* Initialize mct as clocksource */
-	rc = exynos4_clocksource_init(mct_timer_base, node->name, 300, 1000000,
-				      20);
+	rc = exynos4_clocksource_init(mct_timer_base, node->name, 300,
+				      mct_clk_rate, 20);
 	if (rc) {
 		return rc;
 	}
@@ -309,6 +268,7 @@ int __cpuinit arch_clockchip_init(void)
 	int rc;
 	struct vmm_devtree_node *node;
 	u32 val, *valp, cpu = vmm_smp_processor_id();
+	u32 *mct_clk_rate_p;
 
 	if (!cpu) {
 		/* Map timer0 registers */
@@ -327,6 +287,11 @@ int __cpuinit arch_clockchip_init(void)
 			}
 		}
 
+		mct_clk_rate_p = vmm_devtree_attrval(node, "clock-rate");
+		if (mct_clk_rate_p) {
+			mct_clk_rate = *mct_clk_rate_p;
+		}
+
 		/* Get MCT irq */
 		valp = vmm_devtree_attrval(node, "irq");
 		if (!valp) {
@@ -337,7 +302,7 @@ int __cpuinit arch_clockchip_init(void)
 
 		/* Initialize MCT as clockchip */
 		rc = exynos4_clockchip_init(mct_timer_base, val, node->name,
-					    300, 1000000, 0);
+					    300, mct_clk_rate, 0);
 		if (rc) {
 			return rc;
 		}
@@ -348,7 +313,7 @@ int __cpuinit arch_clockchip_init(void)
 #if CONFIG_SAMSUNG_MCT_LOCAL_TIMERS
 	if (mct_timer_base) {
 		exynos4_local_timer_init(mct_timer_base, 0, "mct_tick", 450,
-					 1000000);
+					 mct_clk_rate);
 	}
 #endif
 
@@ -359,9 +324,6 @@ int __init arch_board_final_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
-#if defined(CONFIG_VTEMU)
-	struct vmm_fb_info *info;
-#endif
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
