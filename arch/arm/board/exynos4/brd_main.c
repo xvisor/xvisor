@@ -36,6 +36,9 @@
 
 #include <exynos/mct_timer.h>
 
+#include <exynos/regs-watchdog.h>
+#include <exynos/regs-clock.h>
+
 /*
  * Global board context
  */
@@ -123,37 +126,86 @@ int arch_board_devtree_populate(struct vmm_devtree_node **root)
 
 int arch_board_reset(void)
 {
+	/*
+	 * FIXME: For now it seems Qemu doesn't support either reset.
+	 * We need to test it on real hardware.
+	 */
 #if 0
-	int tmp = 0;
+	void *wdt_ptr = (void *)vmm_host_iomap(EXYNOS4_PA_WATCHDOG, 0x100);
 
-	vmm_host_physical_write(EXYNOS4_PA_WATCHDOG + 0x00, &tmp, sizeof(tmp));
+	if (wdt_ptr) {
+		u32 perir_reg;
+		void *cmu_ptr =
+		    (void *)vmm_host_iomap(EXYNOS4_PA_CMU +
+					   EXYNOS4_CLKGATE_IP_PERIR,
+					   sizeof(perir_reg));
 
-	tmp = 0x80;
+		if (cmu_ptr) {
+			vmm_printf("%s: CMU reg is at 0x%08x + 0x%08x\n",
+				   __func__, EXYNOS4_PA_CMU,
+				   EXYNOS4_CLKGATE_IP_PERIR);
 
-	vmm_host_physical_write(EXYNOS4_PA_WATCHDOG + 0x04, &tmp, sizeof(tmp));
-	vmm_host_physical_write(EXYNOS4_PA_WATCHDOG + 0x08, &tmp, sizeof(tmp));
+			vmm_writel(0, wdt_ptr + S3C2410_WTCON);
 
-	tmp = 0x2025;
+			/* enable the WDT clock if it is not already enabled */
+			perir_reg = vmm_readl(cmu_ptr);
 
-	vmm_host_physical_write(EXYNOS4_PA_WATCHDOG + 0x00, &tmp, sizeof(tmp));
+			vmm_printf("%s: CMU PERIR reg is 0x%08x\n", __func__,
+				   perir_reg);
+			if (!(perir_reg & (1 << 14))) {
+				perir_reg |= (1 << 14);
+				vmm_printf
+				    ("%s: enabling WDT in PERIR: writing 0x%08x\n",
+				     __func__, perir_reg);
+				vmm_writel(perir_reg, cmu_ptr);
+			}
+
+			vmm_writel(0x80, wdt_ptr + S3C2410_WTDAT);
+			vmm_writel(0x80, wdt_ptr + S3C2410_WTCNT);
+
+			vmm_writel(0x2025, wdt_ptr + S3C2410_WTCON);
+
+			vmm_host_iounmap((virtual_addr_t) cmu_ptr,
+					 sizeof(perir_reg));
+		}
+
+		vmm_host_iounmap((virtual_addr_t) wdt_ptr, 0x100);
+	}
 #else
-	void *ptr = (void *)vmm_host_iomap(0x10020000, 0x1000);
+	void *pmu_ptr = (void *)vmm_host_iomap(EXYNOS4_PA_PMU + EXYNOS_SWRESET,
+					       sizeof(u32));
+	if (pmu_ptr) {
+		/* Trigger a Software reset */
+		vmm_writel(0x1, pmu_ptr);
 
-	vmm_writel(0x1, ptr + 0x400);
+		vmm_host_iounmap((virtual_addr_t) pmu_ptr, sizeof(u32));
+	}
 #endif
 
 	vmm_mdelay(500);
 
 	vmm_printf("%s: failed\n", __func__);
 
-	return VMM_OK;
+	return VMM_EFAIL;
 }
 
 int arch_board_shutdown(void)
 {
-	vmm_writel(0x1, (void *)(EXYNOS4_PA_PMU + 0x400));
+	/* FIXME: For now we do a soft reset */
+	void *pmu_ptr = (void *)vmm_host_iomap(EXYNOS4_PA_PMU + EXYNOS_SWRESET,
+					       sizeof(u32));
+	if (pmu_ptr) {
+		/* Trigger a Software reset */
+		vmm_writel(0x1, pmu_ptr);
 
-	return VMM_OK;
+		vmm_host_iounmap((virtual_addr_t) pmu_ptr, sizeof(u32));
+	}
+
+	vmm_mdelay(500);
+
+	vmm_printf("%s: failed\n", __func__);
+
+	return VMM_EFAIL;
 }
 
 #if 0
@@ -323,7 +375,6 @@ int __init arch_board_final_init(void)
 	if (!node) {
 		return VMM_ENOTAVAIL;
 	}
-
 	//rc = vmm_devdrv_probe(node, exynos_getclk, NULL);
 	rc = vmm_devdrv_probe(node, NULL, NULL);
 	if (rc) {
