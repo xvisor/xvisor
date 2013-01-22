@@ -25,6 +25,9 @@
 
 #include <arm_config.h>
 
+#define GIC_CPU_BASE	REALVIEW_PBA8_GIC_CPU_BASE	
+#define GIC_DIST_BASE	REALVIEW_PBA8_GIC_DIST_BASE
+
 #if !defined(GIC_NR_IRQS) || (GIC_NR_IRQS < NR_IRQS_PBA8)
 #undef GIC_NR_IRQS
 #define GIC_NR_IRQS			NR_IRQS_PBA8

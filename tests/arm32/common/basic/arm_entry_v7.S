@@ -23,6 +23,8 @@
  */
 
 #include <arm_asm_macro.h>
+#include <gic_config.h>
+#include <arm_plat.h>
 
 	/* 
 	 * ARM Basic test could be loaded any where in memory by boot loaders.
@@ -142,9 +144,9 @@ _secondary_loop:
 	bx	r1
 
 _gic_cpu_addr:
-	.word	0x1e000100
+	.word	GIC_CPU_BASE
 _sys_flags_addr:
-	.word 	0x10000030
+	.word 	V2M_SYS_FLAGS
 
 	.section .expvect, "ax", %progbits
 	.globl _start_vect
