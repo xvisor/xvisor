@@ -637,4 +637,8 @@
 				: "memory", "cc")
 
 #endif
+
+#define cpu_supports_securex()	({ u32 pfr1; asm volatile("mrc p15, 0, %0, c0, c1, 1": "=r"(pfr1)); \
+					(pfr1 & ID_PFR1_SECUREX_MASK); })
+
 #endif

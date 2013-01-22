@@ -61,8 +61,13 @@ int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
 	if (generic_timer_hz == 0) {
 		freq = vmm_devtree_attrval(node, "freq");
 		if (freq == NULL) {
+			/* Use preconfigured counter frequency in absence of dts node */
 			generic_timer_hz = generic_timer_reg_read(GENERIC_TIMER_REG_FREQ);
 		} else {
+			if (generic_timer_freq_writeable()) {
+				/* Program the counter frequency as per the dts node */
+				generic_timer_reg_write(GENERIC_TIMER_REG_FREQ, *freq);
+			}
 			generic_timer_hz = *freq;
 		}
 	}
@@ -271,8 +276,13 @@ int generic_timer_clockchip_init(struct vmm_devtree_node *node)
 	if (generic_timer_hz == 0) {
 		freq = vmm_devtree_attrval(node, "freq");
 		if (freq == NULL) {
+			/* Use preconfigured counter frequency in absence of dts node */
 			generic_timer_hz = generic_timer_reg_read(GENERIC_TIMER_REG_FREQ);
 		} else {
+			if (generic_timer_freq_writeable()) {
+				/* Program the counter frequency as per the dts node */
+				generic_timer_reg_write(GENERIC_TIMER_REG_FREQ, *freq);
+			}
 			generic_timer_hz = *freq;
 		}
 	}
