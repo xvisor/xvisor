@@ -54,7 +54,8 @@ u32 vmm_cmdmgr_cmd_count(void);
 int vmm_cmdmgr_execute_cmd(struct vmm_chardev *cdev, int argc, char **argv);
 
 /** Execute command string */
-int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds);
+int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds, 
+	bool (*filter)(struct vmm_chardev *cdev, int argc, char **argv));
 
 /** Initialize command manager */
 int vmm_cmdmgr_init(void);
