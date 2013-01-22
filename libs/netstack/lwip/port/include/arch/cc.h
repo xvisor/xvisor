@@ -79,4 +79,6 @@ typedef virtual_addr_t mem_ptr_t;
 /** Use lwIP provided error codes */
 #define LWIP_PROVIDE_ERRNO
 
+#define LWIP_ERR_T			int
+
 #endif /* __LWIP_CC_H_ */
