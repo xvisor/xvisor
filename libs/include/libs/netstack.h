@@ -237,13 +237,15 @@ int netstack_socket_close(struct netstack_socket *sk);
  *
  *  @sk - pointer to socket
  *  @buf - pointer to socket buffer
+ *  @timeout - timeout in milliseconds (<=0 means wait forever)
  *
  *  returns 
  *    VMM_OK - success
  *    VMM_Exxxx - failure
  */
 int netstack_socket_recv(struct netstack_socket *sk, 
-			   struct netstack_socket_buf *buf);
+			 struct netstack_socket_buf *buf,
+			 int timeout);
 
 /**
  *  Traverse chain of socket buffer.
@@ -252,6 +254,7 @@ int netstack_socket_recv(struct netstack_socket *sk,
  *
  *  returns 
  *    VMM_OK - success
+ *    VMM_ETIMEDOUT - upon receive timeout
  *    VMM_Exxxx - failure (this is no futher buffers)
  */
 int netstack_socket_nextbuf(struct netstack_socket_buf *buf);

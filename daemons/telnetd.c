@@ -236,7 +236,7 @@ static void telnetd_fill_rx_buffer(void)
 	vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
 
 	/* Recieve netstack socket buffer */
-	rc = netstack_socket_recv(tdctrl.active_sk, &buf);
+	rc = netstack_socket_recv(tdctrl.active_sk, &buf, -1);
 	if (rc) {
 		telnetd_set_disconnected();
 		TELNETD_DPRINTF("%s: Socket read failed\n", __func__);

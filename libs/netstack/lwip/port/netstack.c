@@ -585,17 +585,31 @@ int netstack_socket_close(struct netstack_socket *sk)
 VMM_EXPORT_SYMBOL(netstack_socket_close);
 
 int netstack_socket_recv(struct netstack_socket *sk, 
-			   struct netstack_socket_buf *buf)
+			 struct netstack_socket_buf *buf,
+			 int timeout)
 {
 	err_t err;
 	struct netbuf *nb;
+	struct netconn *conn;
 
 	if (!sk || !sk->priv || !buf) {
 		return VMM_EINVALID;
 	}
+	conn = sk->priv;
 
-	err = netconn_recv(sk->priv, &nb);
-	if (err != ERR_OK) {
+	if (0 < timeout) {
+		netconn_set_recvtimeout(conn, timeout);
+	} else {
+		netconn_set_recvtimeout(conn, 0);
+	}
+
+	buf->data = NULL;
+	buf->len = 0;
+
+	err = netconn_recv(conn, &nb);
+	if (err == ERR_TIMEOUT) {
+		return VMM_ETIMEDOUT;
+	} else if (err != ERR_OK) {
 		return VMM_EFAIL;
 	}
 
