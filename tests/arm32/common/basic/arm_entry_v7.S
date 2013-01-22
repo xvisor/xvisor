@@ -37,10 +37,12 @@ _start:
 	add	r0, pc, #-0x8
 	cpsid	if
 
+#ifdef BOARD_SMP
 	/* Core-1 should spin and core-0 should go ahead */
 	mrc	p15, 0, r5, c0, c0, 5
 	ands	r5, r5, #0x3
 	bne	_secondary_loop
+#endif
 
 	ldr	r1, __code_start
 	sub	r6, r0, r1		/* r1 -> Load Start - Exec Start */
@@ -125,6 +127,7 @@ _reloc_done:
 	bx	lr
 
 
+#ifdef BOARD_SMP
 _secondary_loop:
 	/* Enable the GIC CPU interface for this core */
 	ldr	r0, _gic_cpu_addr
@@ -147,6 +150,7 @@ _gic_cpu_addr:
 	.word	GIC_CPU_BASE
 _sys_flags_addr:
 	.word 	V2M_SYS_FLAGS
+#endif
 
 	.section .expvect, "ax", %progbits
 	.globl _start_vect

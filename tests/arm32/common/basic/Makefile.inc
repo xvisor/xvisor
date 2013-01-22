@@ -71,6 +71,9 @@ ARM_TEST_OBJS+=$(obj_dir)/arm_main.o \
 		$(obj_dir)/dhry_port.o
 
 ARM_TEST_CPPFLAGS=-DARM_TEST_BOOT
+ifneq ($(board_num_cpus), 1)
+ARM_TEST_CPPFLAGS+=-DBOARD_SMP -DBOARD_NUM_CPUS=$(board_num_cpus)
+endif
 ARM_TEST_CFLAGS=$(ARM_TEST_CPPFLAGS)
 ARM_TEST_ASFLAGS=$(ARM_TEST_CPPFLAGS)
 ARM_TEST_LINK_SCRIPT=$(obj_dir)/arm_test.lnk
