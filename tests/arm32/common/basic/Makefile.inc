@@ -70,12 +70,25 @@ ARM_TEST_OBJS+=$(obj_dir)/arm_main.o \
 		$(obj_dir)/dhry_2.o \
 		$(obj_dir)/dhry_port.o
 
-ARM_TEST_CPPFLAGS=-DARM_TEST_BOOT
+ifeq ($(board_fdt_support),y)
+ARM_TEST_OBJS+=$(obj_dir)/libfdt/fdt.o \
+		$(obj_dir)/libfdt/fdt_ro.o \
+		$(obj_dir)/libfdt/fdt_rw.o \
+		$(obj_dir)/libfdt/fdt_strerror.o \
+		$(obj_dir)/libfdt/fdt_support.o \
+		$(obj_dir)/libfdt/fdt_sw.o \
+		$(obj_dir)/libfdt/fdt_wip.o
+endif
+
+ARM_TEST_CPPFLAGS=-DARM_TEST_BOOT -DBOARD_NUM_CPUS=$(board_num_cpus)
 ifneq ($(board_num_cpus), 1)
-ARM_TEST_CPPFLAGS+=-DBOARD_SMP -DBOARD_NUM_CPUS=$(board_num_cpus)
+ARM_TEST_CPPFLAGS+=-DBOARD_SMP
 endif
 ifeq ($(board_secure_extn),y)
 ARM_TEST_CPPFLAGS+=-DARM_SECURE_EXTN_IMPLEMENTED
+endif
+ifeq ($(board_fdt_support),y)
+ARM_TEST_CPPFLAGS+=-DBOARD_FDT_SUPPORT
 endif
 ARM_TEST_CFLAGS=$(ARM_TEST_CPPFLAGS)
 ARM_TEST_ASFLAGS=$(ARM_TEST_CPPFLAGS)
@@ -94,6 +107,14 @@ ARM_COMMON_DEPS=$(common_dir)/arm_asm_macro.h \
                 $(common_dir)/arm_mmu.h \
                 $(common_dir)/arm_stdio.h \
                 $(common_dir)/arm_string.h
+
+ifeq ($(board_fdt_support),y)
+ARM_COMMON_DEPS+=$(common_dir)/libfdt/fdt.h \
+                $(common_dir)/libfdt/fdt_support.h \
+                $(common_dir)/libfdt/libfdt.h \
+                $(common_dir)/libfdt/libfdt_env.h \
+                $(common_dir)/libfdt/libfdt_internal.h
+endif
 
 CPATCH32=$(build_dir)/tools/cpatch/cpatch32
 ELF2CPATCH=$(top_dir)/arch/arm/cpu/arm32/elf2cpatch.py

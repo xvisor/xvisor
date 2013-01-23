@@ -29,6 +29,8 @@
 #include <arm_string.h>
 #include <arm_stdio.h>
 #include <arm_board.h>
+#include <libfdt/libfdt.h>
+#include <libfdt/fdt_support.h>
 #include <dhry.h>
 
 static int memory_size = 0x0;
@@ -89,12 +91,21 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("            <src>   = source address in hex\n");
 	arm_puts("            <count> = byte count in hex\n");
 	arm_puts("\n");
-	arm_puts("start_linux - Start linux kernel\n");
+	arm_puts("start_linux - Start linux kernel (atags mechanism)\n");
 	arm_puts("            Usage: start_linux <kernel_addr> <initrd_addr> <initrd_size>\n");
 	arm_puts("            <kernel_addr>  = kernel load address\n");
 	arm_puts("            <initrd_addr>  = initrd load address\n");
 	arm_puts("            <initrd_size>  = initrd size\n");
 	arm_puts("\n");
+#ifdef BOARD_FDT_SUPPORT
+	arm_puts("start_linux_fdt - Start linux kernel (device-tree mechanism)\n");
+	arm_puts("            Usage: start_linux_fdt <kernel_addr> <initrd_addr> <initrd_size> <fdt_addr>\n");
+	arm_puts("            <kernel_addr>  = kernel load address\n");
+	arm_puts("            <initrd_addr>  = initrd load address\n");
+	arm_puts("            <initrd_size>  = initrd size\n");
+	arm_puts("            <fdt_size>     = fdt blob size\n");
+	arm_puts("\n");
+#endif
 	arm_puts("linux_cmdline - Show/Update linux command line\n");
 	arm_puts("            Usage: linux_cmdline <new_linux_cmdline> \n");
 	arm_puts("            <new_linux_cmdline>  = linux command line\n");
@@ -362,7 +373,7 @@ void arm_cmd_copy(int argc, char **argv)
 static char  cmdline[1024];
 static char *default_cmdline = "root=/dev/ram rw ramdisk_size=0x1000000 earlyprintk console=ttyAMA0" ;
 
-typedef void (* linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args);
+typedef void (* linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args, u32 zero2);
 
 void arm_cmd_start_linux(int argc, char **argv)
 {
@@ -431,13 +442,58 @@ void arm_cmd_start_linux(int argc, char **argv)
 	 * r1 -> board machine type
 	 * r2 -> kernel args address 
 	 */
-	((linux_entry_t)kernel_addr)(0x0, arm_board_linux_machine_type(), (u32)kernel_args);
+	((linux_entry_t)kernel_addr)(0x0, arm_board_linux_machine_type(), (u32)kernel_args, 0);
 
 	/* We should never reach here */
 	while (1);
 
 	return;
 }
+
+#ifdef BOARD_FDT_SUPPORT
+void arm_cmd_start_linux_fdt(int argc, char **argv)
+{
+	u32 kernel_addr, fdt_addr;
+	u32 initrd_addr, initrd_size;
+	char cfg_str[32];
+
+	if (argc != 5) {
+		arm_puts ("start_linux: must provide <kernel_addr>, <initrd_addr>, <initrd_size> and <fdt_addr>\n");
+		return;
+	}
+
+	/* Parse the arguments from command line */
+	kernel_addr = arm_hexstr2uint(argv[1]);
+	fdt_addr = arm_hexstr2uint(argv[4]);
+	initrd_addr = arm_hexstr2uint(argv[2]);
+	initrd_size = arm_hexstr2uint(argv[3]);
+
+	arm_sprintf(cfg_str, " mem=%dM maxcpus=%d", (arm_board_ram_size() >> 20), BOARD_NUM_CPUS);
+	arm_strcat(cmdline, cfg_str);
+	/* Fillup/fixup the fdt blob with following:
+	 * 		- initrd start, end
+	 * 		- kernel cmd line
+	 * 		- number of cpus   */
+	fdt_chosen((void *)fdt_addr, 1, cmdline);
+	fdt_initrd((void *)fdt_addr, initrd_addr, initrd_addr + initrd_size, 1);
+
+	/* Disable interrupts and timer */
+	arm_timer_disable();
+	arm_irq_disable();
+	arm_mmu_cleanup();
+
+	/* Jump to Linux Kernel
+	 * r0 -> dtb address
+	 */
+	arm_puts("Jumping into linux ...\n");
+	((linux_entry_t)kernel_addr)(0, -1, fdt_addr, 0);
+
+	/* We should never reach here */
+	while (1);
+
+	return;
+}
+#endif
 
 void arm_cmd_linux_cmdline(int argc, char **argv)
 {
@@ -623,6 +679,10 @@ void arm_exec(char *line)
 			arm_cmd_copy(argc, argv);
 		} else if (arm_strcmp(argv[0], "start_linux") == 0) {
 			arm_cmd_start_linux(argc, argv);
+#ifdef BOARD_FDT_SUPPORT
+		} else if (arm_strcmp(argv[0], "start_linux_fdt") == 0) {
+			arm_cmd_start_linux_fdt(argc, argv);
+#endif
 		} else if (arm_strcmp(argv[0], "linux_cmdline") == 0) {
 			arm_cmd_linux_cmdline(argc, argv);
 		} else if (arm_strcmp(argv[0], "linux_memory_size") == 0) {
