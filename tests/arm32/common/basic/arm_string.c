@@ -24,6 +24,130 @@
 #include <arm_string.h>
 #include <arm_math.h>
 
+void *arm_memcpy(void *dest, const void *src, unsigned int count)
+{
+	u8 *dst8 = (u8 *) dest;
+	u8 *src8 = (u8 *) src;
+
+	if (count & 1) {
+		dst8[0] = src8[0];
+		dst8 += 1;
+		src8 += 1;
+	}
+
+	count /= 2;
+	while (count--) {
+		dst8[0] = src8[0];
+		dst8[1] = src8[1];
+
+		dst8 += 2;
+		src8 += 2;
+	}
+
+	return dest;
+}
+
+void *arm_memmove(void *dest, const void *src, unsigned int count)
+{
+	u8 *dst8 = (u8 *) dest;
+	const u8 *src8 = (u8 *) src;
+
+	if(dest == src)
+		return dest;
+
+	if (src8 > dst8) {
+		if (count & 1) {
+			dst8[0] = src8[0];
+			dst8 += 1;
+			src8 += 1;
+		}
+
+		count /= 2;
+		while (count--) {
+			dst8[0] = src8[0];
+			dst8[1] = src8[1];
+
+			dst8 += 2;
+			src8 += 2;
+		}
+	} else {
+		dst8 += count;
+		src8 += count;
+
+		if (count & 1) {
+			dst8 -= 1;
+			src8 -= 1;
+			dst8[0] = src8[0];
+		}
+
+		count /= 2;
+		while (count--) {
+			dst8 -= 2;
+			src8 -= 2;
+
+			dst8[0] = src8[0];
+			dst8[1] = src8[1];
+		}
+	}
+
+	return dest;
+}
+
+void *arm_memset(void *dest, int c, unsigned int count)
+{
+	u8 *dst8 = (u8 *) dest;
+	u8 ch = (u8) c;
+
+	if (count & 1) {
+		dst8[0] = ch;
+		dst8 += 1;
+	}
+
+	count /= 2;
+	while (count--) {
+		dst8[0] = ch;
+		dst8[1] = ch;
+		dst8 += 2;
+	}
+
+	return dest;
+}
+
+int arm_memcmp(const void *s1, const void *s2, unsigned int count)
+{
+	u8 *p1 = (u8 *) s1;
+	u8 *p2 = (u8 *) s2;
+	if (count != 0) {
+		do {
+			if (*p1++ != *p2++)
+				return (*--p1 - *--p2);
+		} while (--count != 0);
+	}
+	return (0);
+}
+
+char *arm_memchr(const char *p, int ch, int count)
+{
+	int i;
+	for(i=0; i<count; i++) {
+		if ((*p)==ch) {
+			return((char *)p);
+		}
+		p++;
+	} 
+	return((char *)NULL);
+}
+
+char *arm_strchr(const char *p, int ch)
+{
+	do {
+		if ((*p)==ch) {
+			return((char *)p);
+		}
+	} while((*p++)!='\0'); 
+	return((char *)NULL);
+}
+
 size_t arm_strlen(const char *s)
 {
 	size_t ret = 0;

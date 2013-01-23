@@ -61,4 +61,28 @@ struct pt_regs {
 	u32 pc;
 } __attribute ((packed)) ;
 
+#define _swab32(x) ((u32)(				\
+	(((u32)(x) & (u32)0x000000ffU) << 24) |	\
+	(((u32)(x) & (u32)0x0000ff00U) <<  8) |	\
+	(((u32)(x) & (u32)0x00ff0000U) >>  8) |	\
+	(((u32)(x) & (u32)0xff000000U) >> 24)))
+
+#define _swab64(x) ((u64)(				\
+	(((u64)(x) & (u64)0x00000000000000ffULL) << 56) |	\
+	(((u64)(x) & (u64)0x000000000000ff00ULL) << 40) |	\
+	(((u64)(x) & (u64)0x0000000000ff0000ULL) << 24) |	\
+	(((u64)(x) & (u64)0x00000000ff000000ULL) <<  8) |	\
+	(((u64)(x) & (u64)0x000000ff00000000ULL) >>  8) |	\
+	(((u64)(x) & (u64)0x0000ff0000000000ULL) >> 24) |	\
+	(((u64)(x) & (u64)0x00ff000000000000ULL) >> 40) |	\
+	(((u64)(x) & (u64)0xff00000000000000ULL) >> 56)))
+
+#define cpu_to_be32(x)		_swab32(x)
+#define cpu_to_be64(x)		_swab64(x)
+#define be32_to_cpu(x)		_swab32(x)
+#define be64_to_cpu(x)		_swab64(x)
+#define be32_to_cpup(x)		_swab32(*(x))
+
+#define max(a,b)	((a) < (b) ? (b) : (a))
+
 #endif /* __ARM_TYPES_H__ */
