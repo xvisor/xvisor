@@ -248,6 +248,21 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			goto bad_reg;
 		};
 		break;
+	case 15:		/* Implementation specific.  */
+		switch (opc1) {
+		case 4:		/* CBAR: Configuration Base Address Register */
+			switch (arm_cpuid(vcpu)) {
+			case ARM_CPUID_CORTEXA9:
+				*data = 0x1e000000;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		default:
+			goto bad_reg;
+		};
+		break;
 	default:
 		goto bad_reg;
 	}

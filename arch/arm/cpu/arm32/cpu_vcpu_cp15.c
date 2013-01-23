@@ -1325,7 +1325,19 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 	case 14:		/* Reserved.  */
 		goto bad_reg;
 	case 15:		/* Implementation specific.  */
-		*data = 0;
+		switch (opc1) {
+		case 4:		/* CBAR: Configuration Base Address Register */
+			switch (arm_cpuid(vcpu)) {
+			case ARM_CPUID_CORTEXA9:
+				*data = 0x1e000000;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		default:
+			goto bad_reg;
+		};
 		break;
 	}
 	return TRUE;
