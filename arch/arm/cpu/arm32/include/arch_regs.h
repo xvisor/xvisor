@@ -79,6 +79,7 @@ enum arm_features {
 	ARM_FEATURE_V5,
 	ARM_FEATURE_STRONGARM,
 	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
+	ARM_FEATURE_TRUSTZONE,
 };
 
 struct arch_regs {
@@ -186,6 +187,7 @@ struct arm_priv {
 		u32 c9_pmxevtyper; /* perf monitor event type */
 		u32 c9_pmuserenr; /* perf monitor user enable */
 		u32 c9_pminten; /* perf monitor interrupt enables */
+		u32 c12_vbar; /* non-secure vector base addr */
 		u32 c10_prrr;
 		u32 c10_nmrr;
 		u32 c13_fcse; /* FCSE PID. */

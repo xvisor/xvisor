@@ -60,7 +60,7 @@
 /* Feature related enumeration */
 enum arm_features {
 	ARM_FEATURE_VFP,
-	ARM_FEATURE_AUXCR,  /* ARM1026 Auxiliary control register.  */
+	ARM_FEATURE_AUXCR,  /* Auxiliary control register.  */
 	ARM_FEATURE_XSCALE, /* Intel XScale extensions.  */
 	ARM_FEATURE_IWMMXT, /* Intel iwMMXt extension.  */
 	ARM_FEATURE_V6,
@@ -80,6 +80,7 @@ enum arm_features {
 	ARM_FEATURE_V5,
 	ARM_FEATURE_STRONGARM,
 	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
+	ARM_FEATURE_TRUSTZONE,
 	ARM_FEATURE_GENTIMER,	/* ARM generic timer extension */
 };
 
