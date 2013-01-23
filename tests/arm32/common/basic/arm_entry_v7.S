@@ -153,6 +153,7 @@ _sys_flags_addr:
 #endif
 
 	.section .expvect, "ax", %progbits
+	.align 5		/* Required for VBAR */
 	.globl _start_vect
 _start_vect:	
 	ldr	pc, __reset
