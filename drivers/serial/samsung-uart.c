@@ -96,7 +96,6 @@ void samsung_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	unsigned int divider;
 	unsigned int temp;
 	unsigned int remainder;
-	unsigned int fraction;
 
 	/* First, disable everything */
 	vmm_out_le16((void *)(base + S3C2410_UCON), 0);
@@ -104,20 +103,17 @@ void samsung_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	/*
 	 * Set baud rate
 	 *
-	 * IBRD = UART_CLK / (16 * BAUD_RATE)
-	 * FBRD = RND((64 * MOD(UART_CLK,(16 * BAUD_RATE))) 
-	 *        / (16 * BAUD_RATE))
+	 * UBRDIV  = (UART_CLK / (16 * BAUD_RATE)) - 1
+	 * DIVSLOT = MOD(UART_CLK / BAUD_RATE, 16)
 	 */
-	temp = 16 * baudrate;
-	divider = udiv32(input_clock, temp);
-	remainder = umod32(input_clock, temp);
-	temp = udiv32((8 * remainder), baudrate);
-	fraction = (temp >> 1) + (temp & 1);
+	temp = udiv32(input_clock, baudrate);
+	divider =  udiv32(temp, 16) - 1;
+	remainder = umod32(temp, 16);
 
 	vmm_out_le16((void *)(base + S3C2410_UBRDIV), (u16)
 		     divider);
 	vmm_out_8((void *)(base + S3C2443_DIVSLOT), (u8)
-		  fraction);
+		  remainder);
 
 	/* Set the UART to be 8 bits, 1 stop bit, no parity */
 	vmm_out_le32((void *)(base + S3C2410_ULCON),
