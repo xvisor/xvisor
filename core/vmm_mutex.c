@@ -84,6 +84,7 @@ static int mutex_lock_common(struct vmm_mutex *mut, u64 *timeout)
 	int rc = VMM_OK;
 
 	BUG_ON(!mut);
+	BUG_ON(!vmm_scheduler_orphan_context());
 
 	vmm_spin_lock_irq(&mut->wq.lock);
 

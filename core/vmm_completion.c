@@ -48,6 +48,7 @@ static int completion_wait_common(struct vmm_completion *cmpl, u64 *timeout)
 	int rc = VMM_OK;
 
 	BUG_ON(!cmpl);
+	BUG_ON(!vmm_scheduler_orphan_context());
 
 	vmm_spin_lock_irq(&cmpl->wq.lock);
 
