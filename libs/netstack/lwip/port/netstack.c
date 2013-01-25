@@ -420,17 +420,6 @@ struct netstack_socket *netstack_socket_alloc(enum netstack_socket_type type)
 }
 VMM_EXPORT_SYMBOL(netstack_socket_alloc);
 
-void netstack_socket_free(struct netstack_socket *sk)
-{
-	if (!sk || !sk->priv) {
-		return;
-	}
-
-	netconn_delete(sk->priv);
-	vmm_free(sk);	
-}
-VMM_EXPORT_SYMBOL(netstack_socket_free);
-
 int netstack_socket_connect(struct netstack_socket *sk, u8 *ipaddr, u16 port)
 {
 	err_t err;
@@ -583,6 +572,17 @@ int netstack_socket_close(struct netstack_socket *sk)
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(netstack_socket_close);
+
+void netstack_socket_free(struct netstack_socket *sk)
+{
+	if (!sk || !sk->priv) {
+		return;
+	}
+
+	netconn_delete(sk->priv);
+	vmm_free(sk);	
+}
+VMM_EXPORT_SYMBOL(netstack_socket_free);
 
 int netstack_socket_recv(struct netstack_socket *sk, 
 			 struct netstack_socket_buf *buf,
