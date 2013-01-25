@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Anup Patel.
+# Copyright (c) 2013 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,31 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file vstelnet.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for library options
+# @brief list of vstelnet objects to be build
 # */
 
-menu "Library Options"
-
-config CONFIG_LIBFDT
-	bool "Flattened device tree library"
-	default n
-	help
-		Enable/Disable FDT library.
-
-source libs/netstack/openconf.cfg
-
-config CONFIG_VSTELNET
-	tristate "Vserial telnet library"
-	depends on CONFIG_NET_STACK
-	default n
-	help
-		Enable/Disable vstelnet library.
-
-source libs/vtemu/openconf.cfg
-
-source libs/vfs/openconf.cfg
-
-endmenu
+libs-objs-$(CONFIG_VSTELNET)+= vstelnet/vstelnet.o
 
