@@ -27,6 +27,7 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
+#include <vmm_waitqueue.h>
 #include <vmm_manager.h>
 #include <vmm_stdio.h>
 #include <vmm_smp.h>
@@ -290,9 +291,12 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 	if (!vcpu) {
 		return VMM_EFAIL;
 	}
-	if (vcpu->is_normal || vcpu->wq_priv) {
+	if (vcpu->is_normal) {
 		return VMM_EFAIL;
 	}
+
+	/* Force VCPU out of waitqueue */
+	vmm_waitqueue_forced_remove(vcpu);
 
 	/* Reset the VCPU */
 	if ((rc = vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_RESET))) {
