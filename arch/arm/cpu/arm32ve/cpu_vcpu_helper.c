@@ -715,7 +715,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		arm_regs(tvcpu)->cpsr = regs->cpsr;
 		if (tvcpu->is_normal) {
 			if (arm_feature(tvcpu, ARM_FEATURE_GENTIMER)) {
-				generic_timer_vcpu_context_save(arm_gentimer_context(vcpu));
+				generic_timer_vcpu_context_save(arm_gentimer_context(tvcpu));
 			}
 			cpu_vcpu_banked_regs_save(tvcpu);
 			arm_priv(tvcpu)->hcr = read_hcr();
