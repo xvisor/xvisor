@@ -192,6 +192,9 @@ static int l2x0_cc_emulator_write(struct vmm_emudev *edev,
 	case 0x10C:
 		s->data_ctrl = regval;
 		break;
+	case 0x900:
+	case 0x904:
+		break;
 	case 0xC00:
 		s->filter_start = regval;
 		break;
