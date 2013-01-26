@@ -213,6 +213,14 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 					*data &= ~(1 << 6);
 				}
 				break;
+			case ARM_CPUID_CORTEXA15:
+				*data = 0;
+				if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
+					*data |= (1 << 6);
+				} else {
+					*data &= ~(1 << 6);
+				}
+				break;
 			default:
 				goto bad_reg;
 			}
@@ -254,6 +262,9 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			switch (arm_cpuid(vcpu)) {
 			case ARM_CPUID_CORTEXA9:
 				*data = 0x1e000000;
+				break;
+			case ARM_CPUID_CORTEXA15:
+				*data = 0x2c000000;
 				break;
 			default:
 				goto bad_reg;
@@ -466,6 +477,12 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 	}
 }
 
+static u32 cortexa15_cp15_c0_c1[8] =
+{ 0x1131, 0x11011, 0x02010555, 0, 0x10201105, 0x20000000, 0x01240000, 0x02102211 };
+
+static u32 cortexa15_cp15_c0_c2[8] =
+{ 0x02101110, 0x13112111, 0x21232041, 0x11112131, 0x10011142, 0, 0, 0 };
+
 static u32 cortexa9_cp15_c0_c1[8] =
 { 0x1031, 0x11, 0x000, 0, 0x00100103, 0x20000000, 0x01230000, 0x00002111 };
 
@@ -500,6 +517,13 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa9_cp15_c0_c1, 
 							8 * sizeof(u32));
 		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa9_cp15_c0_c2, 
+							8 * sizeof(u32));
+		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
+		break;
+	case ARM_CPUID_CORTEXA15:
+		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa15_cp15_c0_c1, 
+							8 * sizeof(u32));
+		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa15_cp15_c0_c2, 
 							8 * sizeof(u32));
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;
