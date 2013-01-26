@@ -87,6 +87,9 @@ if len(secs)==0:
        print "Error: Did not find code sections to scan"
        sys.exit()
 
+print secs
+sys.exit()
+
 # Initialize data structures
 lines = [];
 lsyms = [];

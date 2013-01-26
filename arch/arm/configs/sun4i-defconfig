@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.0
-# Sun Dec 23 16:58:39 2012
+# Sat Jan 26 16:27:26 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -18,7 +18,6 @@ CONFIG_BOARD="sun4i"
 CONFIG_CPU_CORTEX_A8=y
 # CONFIG_CPU_CORTEX_A9 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
-# CONFIG_CPU_CORTEX_A15_VE is not set
 # CONFIG_ARMV5 is not set
 CONFIG_ARMV7A=y
 # CONFIG_ARMV7A_VE is not set
@@ -36,6 +35,7 @@ CONFIG_ARMV7A_SECUREX=y
 # CONFIG_BOARD_OMAP3 is not set
 CONFIG_BOARD_SUN4I=y
 # CONFIG_BOARD_VEXPRESS is not set
+# CONFIG_BOARD_EXYNOS4 is not set
 
 #
 # Sun4i SOC Options
@@ -52,6 +52,8 @@ CONFIG_SUN4I_ONE_GUEST_PBA8_DTS=y
 # CONFIG_VERSATILE_CLOCK is not set
 # CONFIG_VERSATILE_CLCD is not set
 # CONFIG_OMAP is not set
+# CONFIG_SAMSUNG_MCT is not set
+# CONFIG_SAMSUNG_MCT_LOCAL_TIMERS is not set
 CONFIG_SUNXI=y
 
 #
@@ -139,6 +141,7 @@ CONFIG_LIBFDT=y
 # Network Stack Options
 #
 # CONFIG_NET_STACK is not set
+CONFIG_NET_STACK_LWIP=y
 
 #
 # Device Drivers
@@ -151,6 +154,7 @@ CONFIG_SERIAL=y
 CONFIG_SERIAL_8250_UART=y
 # CONFIG_SERIAL_OMAP_UART is not set
 # CONFIG_SERIAL_PL01X is not set
+# CONFIG_SERIAL_SAMSUNG is not set
 
 #
 # RTC Drivers

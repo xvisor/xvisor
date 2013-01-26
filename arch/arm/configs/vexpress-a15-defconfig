@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.1.3
-# Mon Sep 10 17:00:11 2012
+# Version: 0.2.0
+# Sat Jan 26 16:23:55 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -10,7 +10,7 @@ CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
 CONFIG_CPU_COUNT=1
-CONFIG_CPU="arm32"
+CONFIG_CPU="arm32ve"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
 CONFIG_BOARD="vexpress"
@@ -18,28 +18,23 @@ CONFIG_BOARD="vexpress"
 # CONFIG_CPU_CORTEX_A8 is not set
 # CONFIG_CPU_CORTEX_A9 is not set
 CONFIG_CPU_CORTEX_A15=y
-# CONFIG_CPU_CORTEX_A15_VE is not set
 # CONFIG_ARMV5 is not set
-CONFIG_ARMV7A=y
-# CONFIG_ARMV7A_VE is not set
-CONFIG_ARM32=y
-# CONFIG_ARM32VE is not set
+# CONFIG_ARMV7A is not set
+CONFIG_ARMV7A_VE=y
+# CONFIG_ARM32 is not set
+CONFIG_ARM32VE=y
 
 #
-# ARM Common Options
+# ARM Options
 #
-# CONFIG_ARM_GENERIC_TIMER is not set
-
-#
-# ARM 32-Bit Options
-#
-CONFIG_ARM32_STACKTRACE=y
-# CONFIG_ARM32_HIGHVEC is not set
-# CONFIG_ARMV7A_SECUREX is not set
+CONFIG_ARM_GENERIC_TIMER=y
+CONFIG_ARM32VE_STACKTRACE=y
 # CONFIG_BOARD_VERSATILE is not set
-# CONFIG_BOARD_PB_A8 is not set
+# CONFIG_BOARD_REALVIEW is not set
 # CONFIG_BOARD_OMAP3 is not set
+# CONFIG_BOARD_SUN4I is not set
 CONFIG_BOARD_VEXPRESS=y
+# CONFIG_BOARD_EXYNOS4 is not set
 
 #
 # VExpress Options
@@ -54,9 +49,13 @@ CONFIG_ARM_GIC=y
 CONFIG_ARM_TIMER_SP804=y
 # CONFIG_ARM_TWD is not set
 CONFIG_ICST=y
+# CONFIG_ARM_SCU is not set
 CONFIG_VERSATILE_CLOCK=y
 CONFIG_VERSATILE_CLCD=y
 # CONFIG_OMAP is not set
+# CONFIG_SAMSUNG_MCT is not set
+# CONFIG_SAMSUNG_MCT_LOCAL_TIMERS is not set
+# CONFIG_SUNXI is not set
 
 #
 # Hypervisor Options
@@ -140,10 +139,27 @@ CONFIG_CMD_FB=y
 CONFIG_CMD_NET=y
 
 #
+# Daemon Options
+#
+CONFIG_MTERM=y
+CONFIG_MTERM_CMD_WIDTH=256
+CONFIG_MTERM_HISTORY=y
+CONFIG_MTERM_HISTORY_SIZE=10
+
+#
 # Library Options
 #
 CONFIG_LIBFDT=y
+
+#
+# Network Stack Options
+#
 # CONFIG_NET_STACK is not set
+CONFIG_NET_STACK_LWIP=y
+
+#
+# Virtual Terminal Emulator Options
+#
 CONFIG_VTEMU=y
 CONFIG_VTEMU_FONT_8x8=y
 CONFIG_VTEMU_FONT_8x16=y
@@ -167,6 +183,7 @@ CONFIG_SERIAL=y
 # CONFIG_SERIAL_8250_UART is not set
 # CONFIG_SERIAL_OMAP_UART is not set
 CONFIG_SERIAL_PL01X=y
+# CONFIG_SERIAL_SAMSUNG is not set
 
 #
 # RTC Drivers
@@ -201,7 +218,8 @@ CONFIG_FB_ARMCLCD=y
 #
 CONFIG_NET_DRIVERS=y
 # CONFIG_ETHER_NE2K is not set
-CONFIG_ETHER_SMSC_911x=y
+# CONFIG_ETHER_SMSC_911x is not set
+CONFIG_ETHER_SMSC_91x=y
 
 #
 # Device Emulators
@@ -226,6 +244,7 @@ CONFIG_EMU_PIC_GIC=y
 #
 CONFIG_EMU_NET=y
 CONFIG_EMU_NET_LAN9118=y
+# CONFIG_EMU_NET_SMC91C111 is not set
 
 #
 # Timer Emulators
@@ -267,5 +286,5 @@ CONFIG_EMU_MISC_A9MP_PRIV=y
 # Tool Options
 #
 CONFIG_DTC=y
-CONFIG_CPATCH=y
+# CONFIG_CPATCH is not set
 # CONFIG_BBFLASH is not set
