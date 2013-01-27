@@ -26,8 +26,9 @@
  * which is licensed under GPL.
  */
 
-#include <vmm_heap.h>
 #include <vmm_error.h>
+#include <vmm_heap.h>
+#include <vmm_stdio.h>
 #include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
@@ -1326,9 +1327,21 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 		goto bad_reg;
 	case 15:		/* Implementation specific.  */
 		switch (opc1) {
-		case 4:		/* CBAR: Configuration Base Address Register */
+		case 0:
 			switch (arm_cpuid(vcpu)) {
 			case ARM_CPUID_CORTEXA9:
+				/* PCR: Power control register */
+				/* Read always zero. */
+				*data = 0x0;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 4:
+			switch (arm_cpuid(vcpu)) {
+			case ARM_CPUID_CORTEXA9:
+				/* CBAR: Configuration Base Address Register */
 				*data = 0x1e000000;
 				break;
 			default:
@@ -1341,7 +1354,9 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 		break;
 	}
 	return TRUE;
- bad_reg:
+bad_reg:
+	vmm_printf("%s: vcpu=%d opc1=%x opc2=%x CRn=%x CRm=%x (invalid)\n", 
+				__func__, vcpu->id, opc1, opc2, CRn, CRm);
 	return FALSE;
 }
 
@@ -1942,10 +1957,26 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 	case 14:		/* Reserved.  */
 		goto bad_reg;
 	case 15:		/* Implementation specific.  */
+		switch (opc1) {
+		case 0:
+			switch (arm_cpuid(vcpu)) {
+			case ARM_CPUID_CORTEXA9:
+				/* Power Control Register */
+				/* Ignore writes. */;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		default:
+			goto bad_reg;
+		};
 		break;
 	}
 	return TRUE;
- bad_reg:
+bad_reg:
+	vmm_printf("%s: vcpu=%d opc1=%x opc2=%x CRn=%x CRm=%x (invalid)\n", 
+				__func__, vcpu->id, opc1, opc2, CRn, CRm);
 	return FALSE;
 }
 
