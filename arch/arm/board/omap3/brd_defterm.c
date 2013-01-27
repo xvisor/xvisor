@@ -21,8 +21,9 @@
  * @brief default serial terminal source
  */
 
-#include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_types.h>
+#include <vmm_compiler.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <drv/omap-uart.h>
