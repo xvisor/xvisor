@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.0
-# Sat Jan 26 16:26:23 2013
+# Sat Jan 26 15:38:11 2013
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -100,7 +100,7 @@ CONFIG_THREAD_STACK_SIZE=8192
 #
 # Device Support
 #
-# CONFIG_RTC is not set
+CONFIG_RTC=y
 # CONFIG_INPUT is not set
 # CONFIG_FB is not set
 # CONFIG_BLOCK is not set
@@ -124,6 +124,7 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+CONFIG_CMD_RTCDEV=y
 CONFIG_CMD_NET=y
 
 #
@@ -161,6 +162,8 @@ CONFIG_SERIAL_SAMSUNG=y
 #
 # RTC Drivers
 #
+# CONFIG_RTC_PL031 is not set
+CONFIG_RTC_S3C=y
 
 #
 # Input Device Support
