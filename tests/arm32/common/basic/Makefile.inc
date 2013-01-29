@@ -80,8 +80,8 @@ ARM_TEST_OBJS+=$(obj_dir)/libfdt/fdt.o \
 		$(obj_dir)/libfdt/fdt_wip.o
 endif
 
-ARM_TEST_CPPFLAGS=-DARM_TEST_BOOT -DBOARD_NUM_CPUS=$(board_num_cpus)
-ifneq ($(board_num_cpus), 1)
+ARM_TEST_CPPFLAGS=-DARM_TEST_BOOT
+ifeq ($(board_smp), y)
 ARM_TEST_CPPFLAGS+=-DBOARD_SMP
 endif
 ifeq ($(board_secure_extn),y)

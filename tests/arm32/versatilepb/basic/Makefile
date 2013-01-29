@@ -38,7 +38,6 @@ board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/arm_timer.o \
                    $(obj_dir)/pic/pl190.o \
                    $(obj_dir)/serial/pl01x.o
-board_num_cpus	 = 1
 
 # Include common makefile for basic test
 include $(common_dir)/Makefile.inc

@@ -468,7 +468,7 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	initrd_addr = arm_hexstr2uint(argv[2]);
 	initrd_size = arm_hexstr2uint(argv[3]);
 
-	arm_sprintf(cfg_str, " mem=%dM maxcpus=%d", (arm_board_ram_size() >> 20), BOARD_NUM_CPUS);
+	arm_sprintf(cfg_str, " mem=%dM", (arm_board_ram_size() >> 20));
 	arm_strcat(cmdline, cfg_str);
 	/* Fillup/fixup the fdt blob with following:
 	 * 		- initrd start, end

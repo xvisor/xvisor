@@ -39,7 +39,7 @@ board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/pic/gic.o \
                    $(obj_dir)/serial/pl01x.o
 board_secure_extn = y
-board_num_cpus	  = 4
+board_smp	  = y
 
 # Include common makefile for basic test
 include $(common_dir)/Makefile.inc
