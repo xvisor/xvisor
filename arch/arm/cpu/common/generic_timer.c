@@ -50,7 +50,7 @@ static u32 generic_timer_hz = 0;
 
 static u64 generic_counter_read(struct vmm_clocksource *cs)
 {
-	return generic_timer_counter_read();
+	return generic_timer_pcounter_read();
 }
 
 int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
@@ -393,7 +393,7 @@ void generic_timer_vcpu_context_init(struct generic_timer_context *context)
 	context->cntpcval = 0;
 	context->cntvcval = 0;
 	context->cntkctl = 0;
-	context->cntvoff = 0;
+	context->cntvoff = generic_timer_pcounter_read();
 }
 
 void generic_timer_vcpu_context_save(struct generic_timer_context *context)
@@ -409,13 +409,6 @@ void generic_timer_vcpu_context_save(struct generic_timer_context *context)
 
 void generic_timer_vcpu_context_restore(struct generic_timer_context *context)
 {
-	/* We initialize virtual-offset here to be more accurate as there can be
-	 * varying delays between context_init and the time the vcpu gets scheduled
-	 * for the first time
-	 */
-	if (context->cntvoff == 0) {
-		context->cntvoff = generic_timer_counter_read();
-	}
 	generic_timer_reg_write64(GENERIC_TIMER_REG_VIRT_OFF, context->cntvoff);
 	generic_timer_reg_write(GENERIC_TIMER_REG_KCTL, context->cntkctl);
 	generic_timer_reg_write64(GENERIC_TIMER_REG_PHYS_CVAL, context->cntpcval);
