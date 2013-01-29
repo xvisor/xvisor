@@ -186,9 +186,6 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 	switch (CRn) {
 	case 1: /* System configuration.  */
 		switch (opc2) {
-		case 0: /* Control register.  */
-			*data = arm_priv(vcpu)->cp15.c1_sctlr;
-			break;
 		case 1: /* Auxiliary control register.  */
 			if (!arm_feature(vcpu, ARM_FEATURE_AUXCR))
 				goto bad_reg;
@@ -225,9 +222,6 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			default:
 				goto bad_reg;
 			}
-			break;
-		case 2: /* Coprocessor access register.  */
-			*data = arm_priv(vcpu)->cp15.c1_cpacr;
 			break;
 		default:
 			goto bad_reg;
@@ -307,16 +301,8 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 	switch (CRn) {
 	case 1: /* System configuration.  */
 		switch (opc2) {
-		case 0:
-			arm_priv(vcpu)->cp15.c1_sctlr = data;
-			write_sctlr(data & ~(SCTLR_A_MASK));
-			break;
 		case 1: /* Auxiliary control register.  */
 			/* Not implemented.  */
-			break;
-		case 2:
-			arm_priv(vcpu)->cp15.c1_cpacr = data;
-			write_cpacr(data);
 			break;
 		default:
 			goto bad_reg;
@@ -490,7 +476,7 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 			write_vmpidr(vcpu->subid);
 		}
 		write_csselr(arm_priv(vcpu)->cp15.c0_cssel);
-		write_sctlr(arm_priv(vcpu)->cp15.c1_sctlr & ~(SCTLR_A_MASK));
+		write_sctlr(arm_priv(vcpu)->cp15.c1_sctlr);
 		write_cpacr(arm_priv(vcpu)->cp15.c1_cpacr);
 		write_ttbr0(arm_priv(vcpu)->cp15.c2_ttbr0);
 		write_ttbr1(arm_priv(vcpu)->cp15.c2_ttbr1);
