@@ -83,6 +83,7 @@ struct sp804_timer {
 
 struct sp804_state {
 	struct sp804_timer t[2];
+	u8 id[8];
 };
 
 static bool sp804_timer_interrupt_is_raised(struct sp804_timer *t)
@@ -460,7 +461,12 @@ static int sp804_emulator_read(struct vmm_emudev * edev,
 	u32 regval = 0x0;
 	struct sp804_state *s = edev->priv;
 
-	rc = sp804_timer_read(&s->t[(offset<0x20)?0:1], offset & 0x1C, &regval);
+	if (offset >= 0xfe0 && offset < 0x1000) {
+		regval = s->id[(offset - 0xfe0) >> 2];
+	} else {
+		rc = sp804_timer_read(&s->t[(offset<0x20)?0:1], offset & 0x1C, 
+				      &regval);
+	}
 
 	if (!rc) {
 		regval = (regval >> ((offset & 0x3) * 8));
@@ -543,6 +549,17 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 	}
 	memset(s, 0x0, sizeof(struct sp804_state));
 
+	if (eid->data) {
+		s->id[0] = ((u8 *)eid->data)[0];
+		s->id[1] = ((u8 *)eid->data)[1];
+		s->id[2] = ((u8 *)eid->data)[2];
+		s->id[3] = ((u8 *)eid->data)[3];
+		s->id[4] = ((u8 *)eid->data)[4];
+		s->id[5] = ((u8 *)eid->data)[5];
+		s->id[6] = ((u8 *)eid->data)[6];
+		s->id[7] = ((u8 *)eid->data)[7];
+	}
+
 	attr = vmm_devtree_attrval(edev->node, "irq");
 	if (attr) {
 		irq = *((u32 *) attr);
@@ -598,10 +615,18 @@ static int sp804_emulator_remove(struct vmm_emudev * edev)
 	return VMM_OK;
 }
 
+static const u8 sp804_ids[] = {
+	/* Timer ID */
+	0x04, 0x18, 0x14, 0,
+	/* PrimeCell ID */
+	0xd, 0xf0, 0x05, 0xb1
+};
+
 static struct vmm_emuid sp804_emuid_table[] = {
 	{.type = "timer",
 	 .compatible = "primecell,sp804",
-	 },
+	 .data = &sp804_ids
+	},
 	{ /* end of list */ },
 };
 
