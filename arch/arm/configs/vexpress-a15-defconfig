@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.0
-# Sat Jan 26 16:23:55 2013
+# Mon Jan 28 22:25:46 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -41,8 +41,9 @@ CONFIG_BOARD_VEXPRESS=y
 #
 # CONFIG_VEXPRESS_A9_ONE_GUEST_PBA8_DTS is not set
 # CONFIG_VEXPRESS_A9_ONE_GUEST_VEX_A9_DTS is not set
-CONFIG_VEXPRESS_A15_ONE_GUEST_PBA8_DTS=y
+# CONFIG_VEXPRESS_A15_ONE_GUEST_PBA8_DTS is not set
 # CONFIG_VEXPRESS_A15_ONE_GUEST_VEX_A9_DTS is not set
+CONFIG_VEXPRESS_A15_ONE_GUEST_VEX_A15_DTS=y
 # CONFIG_VEXPRESS_A15_TWO_GUEST_PBA8_DTS is not set
 # CONFIG_ARM_VIC is not set
 CONFIG_ARM_GIC=y
@@ -189,6 +190,7 @@ CONFIG_SERIAL_PL01X=y
 # RTC Drivers
 #
 CONFIG_RTC_PL031=y
+# CONFIG_RTC_S3C is not set
 
 #
 # Input Device Support
@@ -237,14 +239,14 @@ CONFIG_EMU_SYS_SP810=y
 #
 CONFIG_EMU_PIC=y
 CONFIG_EMU_PIC_GIC=y
-# CONFIG_EMU_PIC_PL190 is not set
+CONFIG_EMU_PIC_PL190=y
 
 #
 # Network Interface Controller Emulators
 #
 CONFIG_EMU_NET=y
 CONFIG_EMU_NET_LAN9118=y
-# CONFIG_EMU_NET_SMC91C111 is not set
+CONFIG_EMU_NET_SMC91C111=y
 
 #
 # Timer Emulators
