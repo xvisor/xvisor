@@ -18,7 +18,7 @@ Vexpress-A15 Host:
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with Vexpress-A15 default settings]
-  # make ARCH=arm vexpress-a15-ve-defconfig 
+  # make ARCH=arm vexpress-a15-defconfig 
 
   [4. Build Xvisor]
   # make

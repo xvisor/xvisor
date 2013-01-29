@@ -89,32 +89,19 @@ S:	Able to boot multiple Realview PB-A8 linux guest on VExpress-A9
 S:	Able to boot VExpress-A9 linux guest on VExpress-A9 emulated by QEMU
 D:	docs/arm/vexpress-a9.txt
 
-M:	Versatile Express Cortex A15x4 (Without Virtualization Extensions)
-A:	ARM 32-bit (ARMv7a)
-C:	Cortex-A15
-V:	ARM Ltd. (http://www.arm.com/)
-E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
-G:	Realview PB-A8 and VExpress-A9 guests supported
-S:	Only supports Contex-A15 Uniprocessor. The Cortex-A15 Multiprocessor 
-	(or SMP) suppport is Work-In-Progress.
-S:	Able to boot multiple Realview PB-A8 linux guest on Vexpress-A15
-	emulated by Linaro QEMU.
-S:	Able to boot VExpress-A9 linux guest on VExpress-A15 emulated by QEMU
-D:	docs/arm/vexpress-a15.txt
-
 M:	Versatile Express Cortex A15x4 (With Virtualization Extensions)
 A:	ARM 32-bit (ARMv7a-ve)
 C:	Cortex-A15
 V:	ARM Ltd. (http://www.arm.com/)
 E:	ARM Fast Models 7.0 or higher (https://www.arm.com/)
-G:	Realview PB-A8 and VExpress-A9 guests supported
+G:	Realview PB-A8, VExpress-A9 and VExpress-A15 guests supported
 S:	Only supports Contex-A15 Uniprocessor. The Cortex-A15 Multiprocessor 
 	(or SMP) suppport is Work-In-Progress.
 S:	Able to boot multiple Realview PB-A8 linux guest on VExpress-A15
 	emulated by ARM fast models.
 S:	Able to boot VExpress-A9 linux guest on VExpress-A15 emulated by 
 	ARM fast models.
-D:	docs/arm/vexpress-a15-ve.txt
+D:	docs/arm/vexpress-a15.txt
 
 M:	x86_64 Generic
 A:	x86 64-bit
