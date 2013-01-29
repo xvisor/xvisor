@@ -26,7 +26,7 @@ RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
 
   [4. Enable VExpress-A9 Guest from menuconfig]
   # make menuconfig
-  SELECT '1x vexpress-a9 guest' DTS from 'VExpress-A9 Options'
+  SELECT '1x vexpress-a9 guest' DTS from 'VExpress Options'
 
   [5. Build Xvisor]
   # make
