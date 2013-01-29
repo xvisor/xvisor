@@ -46,37 +46,31 @@ RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
   [10. Build Linux in build directory]
   # make O=<linux_build_directory> ARCH=arm zImage
 
-  [11. Copy the dts files into linux build directory]
-  # cd <xvisor_source_directory>/tests/arm32/vexpress-a15/linux
-  # cp vexpress-rs1-motherboard.dtsi <linux_build_directory>/
-  # cp vexpress_a15x2_guest.dts <linux_build_directory>/vexpress_a15_guest.dts
-  (Alternatively if you want a uniprocessor guest copy the vexpress_a15x1_guest.dts)
-
-  [12. Build dtb in build directory]  
-  # cd <linux_build_directory>
-  # ./scripts/dtc/dtc -I dts -O dtb -p 0x800 -o vexpress_a15_guest.dtb vexpress_a15_guest.dts 
-
-  [13. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  [11. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
   (Note: Please refer tests/arm32/common/busybox-1.19.2/README for creating rootfs.img using BusyBox 1.19.2)
 
-  [14. GoTo Linux build directory]
+  [12. GoTo Linux build directory]
   # cd <linux_build_directory>
 
-  [15. Create fast_model_boot.axf for running it on ARM Fast Models]
+  [13. Build dtb in build directory]  
+  # ./scripts/dtc/dtc -I dts -O dtb -p 0x800 -o vexpress_a15_guest.dtb <xvisor_source_directory>/tests/arm32/vexpress-a15/linux/vexpress_a15x2_guest.dts
+  (Alternatively if you want a uniprocessor guest copy the vexpress_a15x1_guest.dts)
+
+  [14. Create fast_model_boot.axf for running it on ARM Fast Models]
   # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x80010000 -o <xvisor_source_directory>/build/fast_model_boot.img <xvisor_source_directory>/build/vmm.bin@0x80010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a15/basic/arm_test.bin@0x81000000 <xvisor_source_directory>/tests/arm32/vexpress-a15/linux/cmdlist@0x810FF000 ./arch/arm/boot/zImage@0x81100000 ./vexpress_a15_guest.dtb@0x81400000 <busybox_rootfs_directory>/rootfs.img@0x81500000
   # cd <xvisor_source_directory>/build/; ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSMP -DVEXPRESS_A15 -DGIC_DIST_NONSECURED ../docs/arm/fast_model_boot.S -o fast_model_boot.axf; cd ..
 
-  [16. Launch ARM fast models 7.0 or higher]
+  [15. Launch ARM fast models 7.0 or higher]
   # model_shell <your_fastmodel_dir>/FastModelsPortfolio_xxxx/examples/RTSM_VE/Build_Cortex-A15x2/Linux-Debug-GCC-3.4/cadi_system_Linux-Debug-GCC-3.4.so build/fast_model_boot.axf
 
-  [17. Kick Guest for starting Basic Test]
+  [16. Kick Guest for starting Basic Test]
   XVisor# guest kick -1
 
-  [18. Bind to virtual UART]
+  [17. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [19. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [18. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] arm-test# copy 0x80400000 0x00100000 0x300000
   (Note: This command will copy zImage to RAM)
   [guest0/uart0] arm-test# copy 0x80F00000 0x00400000 0x003000
@@ -89,10 +83,10 @@ RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
   [guest0/uart0] arm-test# autoexec
   (Note: "autoexec" is a short-cut command)
 
-  [20. Wait for Linux prompt to come-up and then try out some commands]
+  [19. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [21. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [20. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
