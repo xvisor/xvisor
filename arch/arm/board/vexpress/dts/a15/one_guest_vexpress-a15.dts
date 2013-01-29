@@ -121,7 +121,7 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x00000000>;
-					host_physical_addr = <0x80800000>;
+					host_physical_addr = <0x81000000>;
 					physical_size = <0x01000000>; /* 8 MB */
 					device_type = "rom";
 				};
@@ -238,7 +238,7 @@
 				wdt { /* No Watch-Dog controller */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x2B060000>;
+					guest_physical_addr = <0x1C0f0000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
