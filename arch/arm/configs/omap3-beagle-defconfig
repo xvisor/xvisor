@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.0
-# Sat Jan 26 16:26:56 2013
+# Tue Jan 29 12:16:05 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y

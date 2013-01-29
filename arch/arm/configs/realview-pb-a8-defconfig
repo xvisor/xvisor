@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.0
-# Sat Jan 26 16:27:52 2013
+# Tue Jan 29 12:14:18 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -190,6 +190,7 @@ CONFIG_SERIAL_PL01X=y
 # RTC Drivers
 #
 CONFIG_RTC_PL031=y
+# CONFIG_RTC_S3C is not set
 
 #
 # Input Device Support
