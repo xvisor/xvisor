@@ -139,6 +139,8 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 			}
 			ttbl[index] |= TTBL_STAGE1_LOWER_AF_MASK;
 			ttbl[index] |= (TTBL_AP_SRW_U << TTBL_STAGE1_LOWER_AP_SHIFT);
+			ttbl[index] |= (0x1 << TTBL_STAGE1_LOWER_NS_SHIFT) &
+							TTBL_STAGE1_LOWER_NS_MASK;
 			ttbl[index] |= (AINDEX_NORMAL_WB << TTBL_STAGE1_LOWER_AINDEX_SHIFT) & 
 							TTBL_STAGE1_LOWER_AINDEX_MASK;
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);

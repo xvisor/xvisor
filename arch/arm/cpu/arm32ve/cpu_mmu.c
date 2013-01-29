@@ -629,6 +629,7 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 		p.ap = TTBL_AP_SR_U;
 	}
 	p.xn = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
+	p.ns = 1;
 
 	if ((mem_flags & VMM_MEMORY_CACHEABLE) && 
 	    (mem_flags & VMM_MEMORY_BUFFERABLE)) {
@@ -850,6 +851,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t * core_resv_pa,
 		hyppg.sz = TTBL_L3_BLOCK_SIZE;
 		hyppg.af = 1;
 		hyppg.ap = TTBL_AP_SRW_U;
+		hyppg.ns = 1;
 		hyppg.aindex = AINDEX_NORMAL_WB;
 		if ((rc = cpu_mmu_map_hypervisor_page(&hyppg))) {
 			goto mmu_init_error;
