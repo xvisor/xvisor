@@ -376,16 +376,11 @@ _reset:
 
 /* Push registers on stack */
 .macro PUSH_REGS
-	str	lr, [sp, #-4]
-	str	sp, [sp, #-8]
-	sub	sp, sp, #(4*15)
-	stm	sp, {r0-r12}
-	mov	r0, r0
-	sub	sp, sp, #(4*2)
+	push	{sp, lr}
+	push	{r0-r12}
 	mrs	r0, spsr_hyp
-	str	r0, [sp, #0]
-	mrs	r0, elr_hyp
-	str	r0, [sp, #4]
+	mrs	r1, elr_hyp
+	push	{r0, r1}
 .endm
 
 /* Call C function to handle exception */
@@ -396,12 +391,10 @@ _reset:
 
 /* Pull registers from stack */
 .macro PULL_REGS
-	ldr	r0, [sp], #4
+	pop	{r0, r1}
 	msr	spsr_hyp, r0
-	ldr	r0, [sp], #4
-	msr	elr_hyp, r0
+	msr	elr_hyp, r1
 	ldm	sp, {r0-r14}
-	mov	r0, r0
 	eret
 .endm
 
