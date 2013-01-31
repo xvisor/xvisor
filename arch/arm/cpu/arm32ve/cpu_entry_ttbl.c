@@ -153,6 +153,10 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	/* Setup Hypervisor Translation Control Register */
 	i = read_htcr();
 	i &= ~HTCR_T0SZ_MASK; /* Ensure T0SZ = 0 */
+	i &= ~HTCR_ORGN0_MASK; /* Clear ORGN0 */
+	i |= (0x3 << HTCR_ORGN0_SHIFT) & HTCR_ORGN0_MASK;
+	i &= ~HTCR_IRGN0_MASK; /* Clear IRGN0 */
+	i |= (0x3 << HTCR_IRGN0_SHIFT) & HTCR_IRGN0_MASK;
 	write_htcr(i);
 
 	/* Setup Hypervisor Translation Table Base Register */
@@ -164,5 +168,9 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	/* Setup Hypervisor Virtual Translation Control Register */
 	i = read_vtcr();
 	i |= (0x1 << VTCR_SL0_SHIFT) & VTCR_SL0_MASK;
+	i &= ~VTCR_ORGN0_MASK; /* Clear ORGN0 */
+	i |= (0x3 << VTCR_ORGN0_SHIFT) & VTCR_ORGN0_MASK;
+	i &= ~VTCR_IRGN0_MASK; /* Clear IRGN0 */
+	i |= (0x3 << VTCR_IRGN0_SHIFT) & VTCR_IRGN0_MASK;
 	write_vtcr(i);
 }
