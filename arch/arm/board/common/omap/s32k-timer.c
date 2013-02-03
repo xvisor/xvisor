@@ -36,7 +36,7 @@ static struct vmm_clocksource s32k_clksrc = {
 	.name = "s32k_clksrc",
 	.rating = 200,
 	.shift = 15,
-	.mask = 0xFFFFFFFF,
+	.mask = VMM_CLOCKSOURCE_MASK(32),
 	.read = &s32k_clocksource_read
 };
 

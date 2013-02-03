@@ -24,14 +24,27 @@
 #include <vmm_error.h>
 #include <vmm_compiler.h>
 #include <vmm_heap.h>
+#include <vmm_mutex.h>
 #include <vmm_vserial.h>
 #include <libs/stringlib.h>
 
 struct vmm_vserial_ctrl {
+	struct vmm_mutex vser_list_lock;
         struct dlist vser_list;
+	struct vmm_blocking_notifier_chain notifier_chain;
 };
 
 static struct vmm_vserial_ctrl vsctrl;
+
+int vmm_vserial_register_client(struct vmm_notifier_block *nb)
+{
+	return vmm_blocking_notifier_register(&vsctrl.notifier_chain, nb);
+}
+
+int vmm_vserial_unregister_client(struct vmm_notifier_block *nb)
+{
+	return vmm_blocking_notifier_unregister(&vsctrl.notifier_chain, nb);
+}
 
 u32 vmm_vserial_send(struct vmm_vserial *vser, u8 *src, u32 len)
 {
@@ -57,6 +70,7 @@ u32 vmm_vserial_send(struct vmm_vserial *vser, u8 *src, u32 len)
 u32 vmm_vserial_receive(struct vmm_vserial *vser, u8 *dst, u32 len)
 {
 	u32 i;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_vserial_receiver *receiver;
 
@@ -64,7 +78,11 @@ u32 vmm_vserial_receive(struct vmm_vserial *vser, u8 *dst, u32 len)
 		return 0;
 	}
 
+	vmm_spin_lock_irqsave(&vser->receiver_list_lock, flags);
+
 	if (list_empty(&vser->receiver_list)) {
+		vmm_spin_unlock_irqrestore(&vser->receiver_list_lock, flags);
+
 		for (i = 0; i < len ; i++) {
 			vmm_ringbuf_enqueue(vser->receive_buf, &dst[i], TRUE);
 		}
@@ -80,15 +98,17 @@ u32 vmm_vserial_receive(struct vmm_vserial *vser, u8 *dst, u32 len)
 		}
 	}
 
+	vmm_spin_unlock_irqrestore(&vser->receiver_list_lock, flags);
+
 	return i;
 }
 
 int vmm_vserial_register_receiver(struct vmm_vserial *vser, 
-				  void (*recv) (struct vmm_vserial *, void *, u8),
-				  void *priv)
+		void (*recv) (struct vmm_vserial *, void *, u8), void *priv)
 {
 	u8 chval;
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_vserial_receiver *receiver;
 
@@ -98,20 +118,25 @@ int vmm_vserial_register_receiver(struct vmm_vserial *vser,
 
 	receiver = NULL;
 	found = FALSE;
+
+	vmm_spin_lock_irqsave(&vser->receiver_list_lock, flags);
+
 	list_for_each(l, &vser->receiver_list) {
 		receiver = list_entry(l, struct vmm_vserial_receiver, head);
-		if ((receiver->recv == recv) && (receiver->priv == priv)) {
+		if (receiver->recv == recv) {
 			found = TRUE;
 			break;
 		}
 	}
 
 	if (found) {
+		vmm_spin_unlock_irqrestore(&vser->receiver_list_lock, flags);
 		return VMM_EINVALID;
 	}
 
 	receiver = vmm_malloc(sizeof(struct vmm_vserial_receiver));
 	if (!receiver) {
+		vmm_spin_unlock_irqrestore(&vser->receiver_list_lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -120,6 +145,8 @@ int vmm_vserial_register_receiver(struct vmm_vserial *vser,
 	receiver->priv = priv;
 
 	list_add_tail(&receiver->head, &vser->receiver_list);
+
+	vmm_spin_unlock_irqrestore(&vser->receiver_list_lock, flags);
 
 	while (!vmm_ringbuf_isempty(vser->receive_buf)) {
 		if (!vmm_ringbuf_dequeue(vser->receive_buf, &chval)) {
@@ -136,10 +163,10 @@ int vmm_vserial_register_receiver(struct vmm_vserial *vser,
 }
 
 int vmm_vserial_unregister_receiver(struct vmm_vserial *vser, 
-				    void (*recv) (struct vmm_vserial *, void *, u8),
-				    void *priv)
+		void (*recv) (struct vmm_vserial *, void *, u8), void *priv)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_vserial_receiver *receiver;
 
@@ -149,6 +176,9 @@ int vmm_vserial_unregister_receiver(struct vmm_vserial *vser,
 
 	receiver = NULL;
 	found = FALSE;
+
+	vmm_spin_lock_irqsave(&vser->receiver_list_lock, flags);
+
 	list_for_each(l, &vser->receiver_list) {
 		receiver = list_entry(l, struct vmm_vserial_receiver, head);
 		if ((receiver->recv == recv) && (receiver->priv == priv)) {
@@ -158,25 +188,28 @@ int vmm_vserial_unregister_receiver(struct vmm_vserial *vser,
 	}
 
 	if (!found) {
+		vmm_spin_unlock_irqrestore(&vser->receiver_list_lock, flags);
 		return VMM_EINVALID;
 	}
 
 	list_del(&receiver->head);
+
+	vmm_spin_unlock_irqrestore(&vser->receiver_list_lock, flags);
 
 	vmm_free(receiver);
 
 	return VMM_OK;
 }
 
-struct vmm_vserial *vmm_vserial_alloc(const char *name,
-					bool (*can_send) (struct vmm_vserial *),
-					int (*send) (struct vmm_vserial *, u8),
-					u32 receive_buf_size,
-					void *priv)
+struct vmm_vserial *vmm_vserial_create(const char *name,
+				       bool (*can_send) (struct vmm_vserial *),
+				       int (*send) (struct vmm_vserial *, u8),
+				       u32 receive_buf_size, void *priv)
 {
 	bool found;
 	struct dlist *l;
 	struct vmm_vserial *vser;
+	struct vmm_vserial_event event;
 
 	if (!name) {
 		return NULL;
@@ -184,6 +217,9 @@ struct vmm_vserial *vmm_vserial_alloc(const char *name,
 
 	vser = NULL;
 	found = FALSE;
+
+	vmm_mutex_lock(&vsctrl.vser_list_lock);
+
 	list_for_each(l, &vsctrl.vser_list) {
 		vser = list_entry(l, struct vmm_vserial, head);
 		if (strcmp(name, vser->name) == 0) {
@@ -193,17 +229,20 @@ struct vmm_vserial *vmm_vserial_alloc(const char *name,
 	}
 
 	if (found) {
+		vmm_mutex_unlock(&vsctrl.vser_list_lock);
 		return NULL;
 	}
 
 	vser = vmm_malloc(sizeof(struct vmm_vserial));
 	if (!vser) {
+		vmm_mutex_unlock(&vsctrl.vser_list_lock);
 		return NULL;
 	}
 
 	vser->receive_buf = vmm_ringbuf_alloc(1, receive_buf_size);
 	if (!(vser->receive_buf)) {
 		vmm_free(vser);
+		vmm_mutex_unlock(&vsctrl.vser_list_lock);
 		return NULL;
 	}
 
@@ -211,30 +250,52 @@ struct vmm_vserial *vmm_vserial_alloc(const char *name,
 	strcpy(vser->name, name);
 	vser->can_send = can_send;
 	vser->send = send;
+	INIT_SPIN_LOCK(&vser->receiver_list_lock);
 	INIT_LIST_HEAD(&vser->receiver_list);
 	vser->priv = priv;
 
 	list_add_tail(&vser->head, &vsctrl.vser_list);
 
+	vmm_mutex_unlock(&vsctrl.vser_list_lock);
+
+	/* Broadcast create event */
+	event.vser = vser;
+	event.data = NULL;
+	vmm_blocking_notifier_call(&vsctrl.notifier_chain, 
+				   VMM_VSERIAL_EVENT_CREATE, 
+				   &event);
+
 	return vser;
 }
 
-int vmm_vserial_free(struct vmm_vserial *vser)
+int vmm_vserial_destroy(struct vmm_vserial *vser)
 {
 	bool found;
 	struct dlist *l;
 	struct vmm_vserial *vs;
+	struct vmm_vserial_event event;
 
 	if (!vser) {
 		return VMM_EFAIL;
 	}
 
+	/* Broadcast destroy event */
+	event.vser = vser;
+	event.data = NULL;
+	vmm_blocking_notifier_call(&vsctrl.notifier_chain, 
+				   VMM_VSERIAL_EVENT_DESTROY, 
+				   &event);
+
+	vmm_mutex_lock(&vsctrl.vser_list_lock);
+
 	if (list_empty(&vsctrl.vser_list)) {
+		vmm_mutex_unlock(&vsctrl.vser_list_lock);
 		return VMM_EFAIL;
 	}
 
 	vs = NULL;
 	found = FALSE;
+
 	list_for_each(l, &vsctrl.vser_list) {
 		vs = list_entry(l, struct vmm_vserial, head);
 		if (strcmp(vs->name, vser->name) == 0) {
@@ -244,6 +305,7 @@ int vmm_vserial_free(struct vmm_vserial *vser)
 	}
 
 	if (!found) {
+		vmm_mutex_unlock(&vsctrl.vser_list_lock);
 		return VMM_ENOTAVAIL;
 	}
 
@@ -251,6 +313,8 @@ int vmm_vserial_free(struct vmm_vserial *vser)
 
 	vmm_ringbuf_free(vs->receive_buf);
 	vmm_free(vs);
+
+	vmm_mutex_unlock(&vsctrl.vser_list_lock);
 
 	return VMM_OK;
 }
@@ -267,6 +331,9 @@ struct vmm_vserial *vmm_vserial_find(const char *name)
 
 	found = FALSE;
 	vs = NULL;
+
+	vmm_mutex_lock(&vsctrl.vser_list_lock);
+
 	list_for_each(l, &vsctrl.vser_list) {
 		vs = list_entry(l, struct vmm_vserial, head);
 		if (strcmp(vs->name, name) == 0) {
@@ -274,6 +341,8 @@ struct vmm_vserial *vmm_vserial_find(const char *name)
 			break;
 		}
 	}
+
+	vmm_mutex_unlock(&vsctrl.vser_list_lock);
 
 	if (!found) {
 		return NULL;
@@ -295,6 +364,8 @@ struct vmm_vserial *vmm_vserial_get(int index)
 	retval = NULL;
 	found = FALSE;
 
+	vmm_mutex_lock(&vsctrl.vser_list_lock);
+
 	list_for_each(l, &vsctrl.vser_list) {
 		retval = list_entry(l, struct vmm_vserial, head);
 		if (!index) {
@@ -303,6 +374,8 @@ struct vmm_vserial *vmm_vserial_get(int index)
 		}
 		index--;
 	}
+
+	vmm_mutex_unlock(&vsctrl.vser_list_lock);
 
 	if (!found) {
 		return NULL;
@@ -316,9 +389,13 @@ u32 vmm_vserial_count(void)
 	u32 retval = 0;
 	struct dlist *l;
 
+	vmm_mutex_lock(&vsctrl.vser_list_lock);
+
 	list_for_each(l, &vsctrl.vser_list) {
 		retval++;
 	}
+
+	vmm_mutex_unlock(&vsctrl.vser_list_lock);
 
 	return retval;
 }
@@ -327,7 +404,9 @@ int __init vmm_vserial_init(void)
 {
 	memset(&vsctrl, 0, sizeof(vsctrl));
 
+	INIT_MUTEX(&vsctrl.vser_list_lock);
 	INIT_LIST_HEAD(&vsctrl.vser_list);
+	BLOCKING_INIT_NOTIFIER_CHAIN(&vsctrl.notifier_chain);
 
 	return VMM_OK;
 }

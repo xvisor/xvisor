@@ -18,6 +18,7 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
+# @author Jean-Christophe Dubois (jcd@tribudubois.net)
 # @brief list of common objects to be build
 # */
 
@@ -28,4 +29,6 @@ libs-objs-y+= common/scatterlist.o
 libs-objs-y+= common/stringlib.o
 libs-objs-y+= common/mathlib.o
 libs-objs-y+= common/stacktrace.o
+libs-objs-y+= common/smoothsort.o
+libs-objs-y+= common/list_sort.o
 

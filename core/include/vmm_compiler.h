@@ -44,6 +44,14 @@
 #define __initconst		__attribute__((section(".init.data")))
 #define __exit
 
+#if defined(CONFIG_SMP)
+#define __cpuinit		__attribute__((section(".cpuinit.text")))
+#define __cpuexit
+#else
+#define __cpuinit		__init
+#define __cpuexit		__exit
+#endif
+
 /* Help in branch prediction */
 #define likely(x) __builtin_expect((x), 1)
 #define unlikely(x) __builtin_expect((x), 0)

@@ -31,5 +31,8 @@ char arm_getc(void);
 void arm_stdio_init(void);
 void arm_puts(const char * str);
 void arm_gets(char *s, int maxwidth, char endchar);
+int arm_sprintf(char *out, const char *format, ...);
+int arm_snprintf(char *out, u32 out_sz, const char *format, ...);
+int arm_printf(const char *format, ...);
 
 #endif /* __ARM_STDIO_H_ */

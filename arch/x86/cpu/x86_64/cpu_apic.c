@@ -35,6 +35,15 @@
 #include <cpu_interrupts.h>
 #include <cpu_apic.h>
 #include <acpi.h>
+#include <cpu_apic.h>
+
+#undef DEBUG_IOAPIC
+
+#ifdef DEBUG_IOAPIC
+#define debug_print(fmt, args...) vmm_printf("ioapic: " fmt, ##args);
+#else
+#define debug_print(fmnt, args...) { }
+#endif
 
 /* FIXME we should spread the irqs across as many priority levels as possible
  * due to buggy hw */
@@ -60,6 +69,7 @@ struct irq {
         struct cpu_ioapic *ioapic;
 	struct cpu_lapic *lapic;
 	struct vmm_host_irq_chip irq_chip;
+	struct dlist ext_dev_list;
 };
 
 static struct irq host_sys_irq[NR_IRQ_VECTORS];
@@ -141,6 +151,22 @@ static void apic_irq_eoi(struct vmm_host_irq *irq)
 	lapic_write(LAPIC_EOI(hirq->lapic->vbase), 0);
 }
 
+#if 0
+static u64 ioapic_read_irt_entry(virtual_addr_t ioapic_addr, int pin)
+{
+	u8 hia = IOAPIC_REDIR_TABLE + pin * 2;
+	u8 loa = hia++;
+	u64 val;
+
+	u32 hi = ioapic_read(ioapic_addr, hia);
+	u32 lo = ioapic_read(ioapic_addr, loa);
+
+	val = (u64)(((u64)hi) << 32 | (lo & 0xFFFFFFFFUL));
+
+	return val;
+}
+#endif
+
 static int ioapic_write_irt_entry(virtual_addr_t ioapic_addr, int pin, u64 entry)
 {
 	u8 hia = IOAPIC_REDIR_TABLE + pin * 2;
@@ -154,10 +180,62 @@ static int ioapic_write_irt_entry(virtual_addr_t ioapic_addr, int pin, u64 entry
 	return VMM_OK;
 }
 
+#ifdef DEBUG_IOAPIC
+static void ioapic_dump_redirect_table(virtual_addr_t ioapic_addr)
+{
+	int pin;
+	u64 val;
+
+	vmm_printf("Dumping IOAPIC redirection table:\n");
+	vmm_printf("    PIN                VALUE\n");
+	vmm_printf("============================\n");
+	for (pin = 0; pin < NR_IOAPIC_PINS; pin++) {
+		val = ioapic_read_irt_entry(ioapic_addr, pin);
+		vmm_printf("PIN: %d HI: %x LO: %x\n",
+			   pin, (val >> 32), (val & 0xFFFFFFFFUL));
+	}
+}
+#endif
+
+static vmm_irq_return_t generic_apic_irq_handler(u32 irq_no, arch_regs_t * regs,
+						 void *dev)
+{
+	struct irq *hirq = (struct irq *)dev;
+	struct dlist *list;
+	struct ioapic_ext_irq_device *ext_device;
+
+	list_for_each(list, &hirq->ext_dev_list) {
+		ext_device = list_entry(list, struct ioapic_ext_irq_device, head);
+		if (likely(ext_device && ext_device->irq_handler)) {
+			if (ext_device->irq_handler(irq_no, regs, ext_device->data) == VMM_IRQ_HANDLED) {
+				lapic_write(LAPIC_EOI(hirq->lapic->vbase), 0);
+				return VMM_IRQ_HANDLED;
+			}
+		}
+	}
+
+	return VMM_IRQ_NONE;
+}
+
+static 	void apic_irq_ack(struct vmm_host_irq *irq)
+{
+	struct irq *hirq = irq->chip_data;
+	struct dlist *list;
+	struct ioapic_ext_irq_device *ext_device;
+
+	list_for_each(list, &hirq->ext_dev_list) {
+		ext_device = list_entry(list, struct ioapic_ext_irq_device, head);
+		if (likely(ext_device && ext_device->irq_ack)) {
+			ext_device->irq_ack(ext_device->data);
+		}
+	}
+}
+
 int ioapic_route_pin_to_irq(u32 pin, u32 irqno)
 {
 	union ioapic_irt_entry entry;
 	struct irq *hirq;
+	int rc;
 
 	if (irqno >= NR_IRQ_VECTORS)
 		return VMM_EFAIL;
@@ -165,6 +243,16 @@ int ioapic_route_pin_to_irq(u32 pin, u32 irqno)
 	memset(&entry, 0, sizeof(entry));
 
 	hirq = &host_sys_irq[irqno];
+
+	/* FIXME: To share IRQs this should be conditional. Or
+	 * there should be a seperate call to irq init.
+	 */
+	INIT_LIST_HEAD(&hirq->ext_dev_list);
+
+	/*
+	 * TODO: may this function should only set the IOAPIC entry if
+	 * not already done.
+	 */
 	hirq->ioapic_pin = pin;
 	hirq->vector = irqno;
 	/* FIXME: For multiple IOAPIC presence, this has to go. */
@@ -173,16 +261,26 @@ int ioapic_route_pin_to_irq(u32 pin, u32 irqno)
 	hirq->irq_chip.irq_mask = &ioapic_irq_mask;
 	hirq->irq_chip.irq_unmask = &ioapic_irq_unmask;
 	hirq->irq_chip.irq_eoi = &apic_irq_eoi;
+	hirq->irq_chip.irq_ack = &apic_irq_ack;
 
 	entry.bits.intvec = irqno;
+	entry.bits.delmod = 0;
+        entry.bits.destmod = 0;
+	entry.bits.trigger = 0;
+	entry.bits.mask = 0;
+	entry.bits.dest = 0;
 
 	if (ioapic_write_irt_entry(io_apic[0].vaddr, pin, entry.val) != VMM_OK)
 		return VMM_EFAIL;
 
 	vmm_host_irq_set_chip(irqno, &hirq->irq_chip);
 	vmm_host_irq_set_chip_data(irqno, hirq);
+	vmm_host_irq_set_handler(irqno, vmm_handle_level_irq);
+	rc = vmm_host_irq_register(irqno, "generic irq handler",
+				   generic_apic_irq_handler,
+				   (void *)hirq);
 
-	return VMM_OK;
+	return rc;
 }
 
 static int acpi_get_ioapics(struct cpu_ioapic *ioa, unsigned *nioa, unsigned max)
@@ -231,8 +329,24 @@ void ioapic_enable(void)
 
 static int setup_ioapic(void)
 {
+	int i, nr;
+	union ioapic_irt_entry entry;
+
 	/* FIXME: Get away with this lousy behaviour */
 	BUG_ON(!detect_ioapics());
+
+	for (nr = 0; nr < nioapics; nr++) {
+		debug_print("Disabling all pins on IOAPIC-%d\n", nr);
+		entry.val = 0;
+		for (i = 0; i < 24; i++) {
+			ioapic_write_irt_entry(io_apic[0].vaddr, i, entry.val);
+			ioapic_disable_pin(io_apic[nr].vaddr, i);
+		}
+	}
+
+#ifdef DEBUG_IOPIC
+	ioapic_dump_redirect_table(io_apic[0].vaddr);
+#endif
 
 	ioapic_enable();
 
@@ -287,6 +401,8 @@ int lapic_enable(unsigned cpu)
 
 	(void)lapic_read(LAPIC_SIVR(lapic.vbase));
 
+	lapic_write(LAPIC_EOI(lapic.vbase), 0);
+
 	return 1;
 }
 
@@ -326,3 +442,21 @@ int apic_init(void)
 
 	return VMM_OK;
 }
+
+int ioapic_set_ext_irq_device(u32 irqno, struct ioapic_ext_irq_device *device,
+			      void *data)
+{
+	struct irq *hirq;
+
+	if (irqno >= NR_IRQ_VECTORS)
+		return VMM_EFAIL;
+
+	hirq = &host_sys_irq[irqno];
+
+	INIT_LIST_HEAD(&device->head);
+	list_add_tail(&hirq->ext_dev_list, &device->head);
+	device->data = data;
+
+	return VMM_OK;
+}
+

@@ -89,6 +89,9 @@ int vmm_waitqueue_sleep_timeout(struct vmm_waitqueue *wq,
 /** Wakeup VCPU from its waitqueue */
 int vmm_waitqueue_wake(struct vmm_vcpu *vcpu);
 
+/** Force VCPU out of waitqueue */
+int vmm_waitqueue_forced_remove(struct vmm_vcpu *vcpu);
+
 /** Wakeup first VCPU in a given waitqueue */
 int vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq);
 

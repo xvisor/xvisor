@@ -31,7 +31,6 @@
 #include <net/vmm_netport.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_protocol.h>
-#include <libs/netstack.h>
 #include <libs/stringlib.h>
 
 #define MODULE_DESC			"Command net"
@@ -45,9 +44,6 @@ void cmd_net_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   net help\n");
-#if defined(CONFIG_NET_STACK)
-	vmm_cprintf(cdev, "   net ipconfig [<ipaddr>] [<netmask>]\n");
-#endif
 	vmm_cprintf(cdev, "   net ports\n");
 	vmm_cprintf(cdev, "   net switches\n");
 }
@@ -110,64 +106,11 @@ int cmd_net_switch_list(struct vmm_chardev *cdev, int argc, char **argv)
 	return VMM_OK;
 }
 
-#if defined(CONFIG_NET_STACK)
-int cmd_net_ipconfig(struct vmm_chardev *cdev, int argc, char **argv)
-{
-	u8 buf[4];
-	u8 mask[4];
-	int rc = VMM_OK;
-	char str[30];
-	if((argc < 2) || (argc > 4)) {
-		cmd_net_usage(cdev);
-		return VMM_EFAIL;
-	}
-	switch(argc) {
-	case 2:
-		vmm_cprintf(cdev, "Hypervisor Network-Stack Info:\n");
-		netstack_get_ipaddr(buf);
-		vmm_cprintf(cdev, "   IP address  : %s\n", ip4addr_to_str(str, buf));
-		netstack_get_ipmask(buf);
-		vmm_cprintf(cdev, "   IP netmask  : %s\n", ip4addr_to_str(str, buf));
-		netstack_get_hwaddr(buf);
-		vmm_cprintf(cdev, "   HW address  : %s\n", ethaddr_to_str(str, buf));
-		vmm_cprintf(cdev, "   TCP/IP-stack: %s\n", netstack_get_name());
-		break;
-	case 3:
-		str2ipaddr(buf, argv[2]);
-		if(ipv4_class_netmask(buf,mask) != -1) {
-			netstack_set_ipaddr(buf);
-			netstack_set_ipmask(mask);
-		} else {
-			vmm_cprintf(cdev, "ERROR: Invalid IP address\n");
-			rc = VMM_EFAIL;
-		}
-		break;
-	case 4:
-		str2ipaddr(buf, argv[2]);
-		if(ipv4_class_netmask(buf,mask) != -1) {
-			netstack_set_ipaddr(buf);
-			str2ipaddr(buf, argv[3]);
-			netstack_set_ipmask(buf);
-		} else {
-			vmm_cprintf(cdev, "ERROR: Invalid IP address\n");
-			rc = VMM_EFAIL;
-		}
-		break;
-	};
-
-	return rc;
-}
-#endif
-
 int cmd_net_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (strcmp(argv[1], "help") == 0) {
 		cmd_net_usage(cdev);
 		return VMM_OK;
-#if defined(CONFIG_NET_STACK)
-	} else if (strcmp(argv[1], "ipconfig") == 0) {
-		return cmd_net_ipconfig(cdev, argc, argv);
-#endif
 	} else if (strcmp(argv[1], "ports") == 0) {
 		return cmd_net_port_list(cdev, argc, argv);
 	} else if (strcmp(argv[1], "switches") == 0) {
@@ -200,5 +143,4 @@ VMM_DECLARE_MODULE(MODULE_DESC,
 			MODULE_IPRIORITY, 
 			MODULE_INIT, 
 			MODULE_EXIT);
-
 

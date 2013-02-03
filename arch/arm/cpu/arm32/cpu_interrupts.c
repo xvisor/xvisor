@@ -362,7 +362,7 @@ void do_fiq(arch_regs_t * uregs)
 	vmm_scheduler_irq_exit(uregs);
 }
 
-int __init arch_cpu_irq_setup(void)
+int __cpuinit arch_cpu_irq_setup(void)
 {
 	static const struct cpu_page zero_filled_cpu_page = { 0 };
 

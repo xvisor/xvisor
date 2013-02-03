@@ -26,6 +26,12 @@
 
 #include <arm_types.h>
 
+void *arm_memcpy(void *dest, const void *src, unsigned int count);
+void *arm_memmove(void *dest, const void *src, unsigned int count);
+void *arm_memset(void *dest, int c, unsigned int count);
+int arm_memcmp(const void *s1, const void *s2, unsigned int count);
+char *arm_memchr(const char *p, int ch, int count);
+char *arm_strchr(const char *p, int ch);
 char *arm_strcpy(char *dest, const char *src);
 char *arm_strcat(char *dest, const char *src);
 int arm_strcmp(const char *a, const char *b);

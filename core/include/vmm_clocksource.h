@@ -76,6 +76,10 @@ struct vmm_clocksource {
 	void *priv;
 };
 
+/* simplify initialization of mask field */
+#define VMM_CLOCKSOURCE_MASK(bits)	\
+			(u64)((bits) < 64 ? ((1ULL<<(bits))-1) : -1)
+
 /**
  * Layer above a %struct vmm_clocksource which counts nanoseconds
  * Contains the state needed by vmm_timecounter_read() to detect 

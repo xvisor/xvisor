@@ -23,7 +23,9 @@
 
 #include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <vmm_host_aspace.h>
+#include <vmm_compiler.h>
 
 extern void cls();
 extern void putch(unsigned char c);
@@ -42,7 +44,7 @@ int arch_defterm_putc(u8 ch)
 	return VMM_OK;
 }
 
-int arch_defterm_init(void)
+int __init arch_defterm_init(void)
 {
         init_console();
 	return VMM_OK;

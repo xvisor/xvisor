@@ -24,18 +24,25 @@
 #define _VMM_VSERIAL_H__
 
 #include <vmm_types.h>
+#include <vmm_spinlocks.h>
 #include <vmm_ringbuf.h>
+#include <vmm_notifier.h>
 #include <libs/list.h>
 
 struct vmm_vserial_receiver;
 struct vmm_vserial;
 
+/** Representation of a virtual serial port recevier 
+ *  Note: receive callback can be called in any context hence
+ *  hence we cannot sleep in receive callback.
+ */
 struct vmm_vserial_receiver {
 	struct dlist head;
 	void (*recv) (struct vmm_vserial *vser, void *priv, u8 data);
 	void *priv;
 };
 
+/** Representation of a virtual serial port */
 struct vmm_vserial {
 	struct dlist head;
 	char name[64];
@@ -43,10 +50,28 @@ struct vmm_vserial {
 	bool (*can_send) (struct vmm_vserial *vser);
 	int (*send) (struct vmm_vserial *vser, u8 data);
 
+	vmm_spinlock_t receiver_list_lock;
 	struct dlist receiver_list;
 	struct vmm_ringbuf *receive_buf;
 	void *priv;
 };
+
+/* Notifier event when virtual serial port is created */
+#define VMM_VSERIAL_EVENT_CREATE		0x01
+/* Notifier event when virtual serial port is destroyed */
+#define VMM_VSERIAL_EVENT_DESTROY		0x02
+
+/** Representation of virtual serial port notifier event */
+struct vmm_vserial_event {
+	struct vmm_vserial *vser;
+	void *data;
+};
+
+/** Register a notifier client to receive virtual serial port events */
+int vmm_vserial_register_client(struct vmm_notifier_block *nb);
+
+/** Unregister a notifier client to not receive virtual serial port events */
+int vmm_vserial_unregister_client(struct vmm_notifier_block *nb);
 
 /** Send bytes to virtual serial port */
 u32 vmm_vserial_send(struct vmm_vserial *vser, u8 *src, u32 len);
@@ -56,23 +81,20 @@ u32 vmm_vserial_receive(struct vmm_vserial *vser, u8 *dst, u32 len);
 
 /** Register receiver to a virtual serial port */
 int vmm_vserial_register_receiver(struct vmm_vserial *vser, 
-				  void (*recv) (struct vmm_vserial *, void *, u8),
-				  void *priv);
+		void (*recv) (struct vmm_vserial *, void *, u8), void *priv);
 
 /** Unregister a virtual serial port */
 int vmm_vserial_unregister_receiver(struct vmm_vserial *vser,
-				    void (*recv) (struct vmm_vserial *, void *, u8),
-				    void *priv);
+		void (*recv) (struct vmm_vserial *, void *, u8), void *priv);
 
-/** Alloc a virtual serial port */
-struct vmm_vserial *vmm_vserial_alloc(const char *name,
-					bool (*can_send) (struct vmm_vserial *),
-					int (*send) (struct vmm_vserial *, u8),
-					u32 receive_buf_size,
-					void *priv);
+/** Create a virtual serial port */
+struct vmm_vserial *vmm_vserial_create(const char *name,
+				       bool (*can_send) (struct vmm_vserial *),
+				       int (*send) (struct vmm_vserial *, u8),
+				       u32 receive_buf_size, void *priv);
 
-/** Free a virtual serial port */
-int vmm_vserial_free(struct vmm_vserial *vser);
+/** Destroy a virtual serial port */
+int vmm_vserial_destroy(struct vmm_vserial *vser);
 
 /** Find a virtual serial port with given name */
 struct vmm_vserial *vmm_vserial_find(const char *name);

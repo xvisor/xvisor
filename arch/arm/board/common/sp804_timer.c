@@ -62,7 +62,7 @@ int __init sp804_clocksource_init(virtual_addr_t base,
 	cs->clksrc.name = name;
 	cs->clksrc.rating = rating;
 	cs->clksrc.read = &sp804_clocksource_read;
-	cs->clksrc.mask = 0xFFFFFFFF;
+	cs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
 	cs->clksrc.mult = vmm_clocksource_hz2mult(freq_hz, shift);
 	cs->clksrc.shift = shift;
 	cs->clksrc.priv = cs;
@@ -150,12 +150,12 @@ static int sp804_clockchip_expire(struct vmm_clockchip *cc)
 	return 0;
 }
 
-int __init sp804_clockchip_init(virtual_addr_t base, 
-				u32 hirq,
-				const char *name, 
-				int rating, 
-				u32 freq_hz,
-				u32 target_cpu)
+int __cpuinit sp804_clockchip_init(virtual_addr_t base, 
+				   u32 hirq,
+				   const char *name, 
+				   int rating, 
+				   u32 freq_hz,
+				   u32 target_cpu)
 {
 	int rc;
 	struct sp804_clockchip *cc;

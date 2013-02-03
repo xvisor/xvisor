@@ -141,7 +141,7 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 			return VMM_EFAIL;
 		}
 		ev->wr_gstart[ev->wr_victim] = reg->gphys_addr;
-		ev->wr_gend[ev->wr_victim] = gphys_addr + reg->phys_size;
+		ev->wr_gend[ev->wr_victim] = reg->gphys_addr + reg->phys_size;
 		ev->wr_reg[ev->wr_victim] = reg;
 		if (ev->wr_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
 			ev->wr_victim = 0;
@@ -730,6 +730,8 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 	vmm_mutex_unlock(&dectrl.emu_lock);
 
 	if (!found) {
+		vmm_printf("%s: No compatible emulator found for %s/%s\n", 
+		__func__, guest->node->name, reg->node->name);
 		return VMM_ENOTAVAIL;
 	}
 

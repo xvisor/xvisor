@@ -829,6 +829,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA9:
 			arm_set_feature(vcpu, ARM_FEATURE_V4T);
@@ -844,6 +845,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
 			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		default:
 			break;

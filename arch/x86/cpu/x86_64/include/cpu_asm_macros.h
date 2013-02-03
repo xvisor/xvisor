@@ -56,7 +56,7 @@
 	popq %r12;			\
 	popq %r13;			\
 	popq %r14;			\
-	popq %r15;
+	popq %r15;			\
 
 #define FUNCTION(__symbol)		\
 	.globl __symbol;		\
@@ -70,5 +70,16 @@ __symbol:
 #define END_IRQ_HANDLER			\
 	RESTORE_ALL			\
 	iretq
+
+#define num_to_string(s)	to_string(s)
+#define to_string(s)		#s
+
+#define BUILD_IRQ(__n, __who)			\
+	.align 1024;				\
+	IRQ_HANDLER(__IRQ_##__n)		\
+	movq $__n, %rdi;			\
+	movq %rsp, %rsi;			\
+	callq __who;				\
+	END_IRQ_HANDLER
 
 #endif /* _CPU_ASM_MACROS_H__ */

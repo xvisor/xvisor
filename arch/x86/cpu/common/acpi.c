@@ -375,17 +375,32 @@ struct acpi_madt_lapic * acpi_get_lapic_next(void)
 	return ret;
 }
 
-u64 acpi_get_hpet_base_next(void)
+u32 acpi_get_nr_hpet_chips(void)
 {
-	static unsigned int idx = 0;
-	u64 base;
+	/* TODO: Change ACPI parsing code to find more HPET */
+	return 1;
+}
 
+u32 hpet_nr_timers_in_block(u32 block)
+{
+	/* FIXME: Number of timers. */
+	return 32;
+}
+
+u32 acpi_get_nr_hpet_blocks(u32 chip)
+{
+	/*
+	 * TODO: When above is fixed, return the blocks from
+	 * the selected chip.
+	 */
+	return nr_hpet_blks;
+}
+
+u64 acpi_get_hpet_block_base(u32 idx)
+{
 	if (idx >= nr_hpet_blks) {
 		return 0;
 	}
 
-	base = acpi_ctxt->hpet->tmr_blks[idx].base;
-	idx++;
-
-	return base;
+	return acpi_ctxt->hpet->tmr_blks[idx].base;
 }

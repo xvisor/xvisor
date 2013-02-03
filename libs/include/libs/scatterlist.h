@@ -235,7 +235,7 @@ static inline void sg_mark_end(struct scatterlist *sg)
 static inline physical_addr_t sg_phys(struct scatterlist *sg)
 {
 	physical_addr_t pa;
-	if (vmm_host_page_va2pa(sg_page(sg), &pa)) {
+	if (vmm_host_va2pa(sg_page(sg), &pa)) {
 		BUG();
 	}
 	return pa + sg->offset;

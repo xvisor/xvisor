@@ -26,6 +26,7 @@
 #include <vmm_types.h>
 #include <vmm_compiler.h>
 #include <libs/kallsyms.h>
+#include <libs/list.h>
 
 #define VMM_MODULE_SIGNATURE		0x564D4F44
 
@@ -70,6 +71,7 @@ struct vmm_module {
 	u32 ipriority;
 	vmm_module_init_t init;
 	vmm_module_exit_t exit;
+	struct dlist head;
 };
 
 enum vmm_symbol_types {
@@ -88,21 +90,42 @@ struct vmm_symbol {
 
 #ifdef __VMM_MODULES__
 
-#define VMM_DECLARE_MODULE(desc,author,license,ipriority,init,exit) \
-static __unused __modtbl struct vmm_module __moddecl__ = \
-{ VMM_MODULE_SIGNATURE, VMM_MODNAME, desc, author, license, ipriority, init, exit }
+#define VMM_DECLARE_MODULE(_desc,_author,_license,_ipriority,_init,_exit) \
+static __unused __modtbl struct vmm_module __moddecl__ = {\
+	.signature = VMM_MODULE_SIGNATURE, \
+	.name = VMM_MODNAME, \
+	.desc = _desc, \
+	.author = _author, \
+	.license = _license, \
+	.ipriority = _ipriority, \
+	.init = _init, \
+	.exit = _exit, \
+	.head = LIST_HEAD_INIT(__moddecl__.head), \
+}
 
-#define __VMM_EXPORT_SYMBOL(sym,type) \
-static __unused __symtbl struct vmm_symbol __##sym = \
-{ #sym, (virtual_addr_t)&sym, (type) }
+#define __VMM_EXPORT_SYMBOL(sym,_type) \
+static __unused __symtbl struct vmm_symbol __##sym = { \
+	.name = #sym, \
+	.addr = (virtual_addr_t)&sym, \
+	.type = (_type), \
+}
 
 #else
 
-#define VMM_DECLARE_MODULE(desc,author,license,ipriority,init,exit) \
-static __unused __modtbl struct vmm_module __moddecl__ = \
-{ VMM_MODULE_SIGNATURE, VMM_MODNAME, desc, author, "GPL", ipriority, init, exit }
+#define VMM_DECLARE_MODULE(_desc,_author,_license,_ipriority,_init,_exit) \
+static __unused __modtbl struct vmm_module __moddecl__ = {\
+	.signature = VMM_MODULE_SIGNATURE, \
+	.name = VMM_MODNAME, \
+	.desc = _desc, \
+	.author = _author, \
+	.license = "GPL", \
+	.ipriority = _ipriority, \
+	.init = _init, \
+	.exit = _exit, \
+	.head = LIST_HEAD_INIT(__moddecl__.head), \
+}
 
-#define __VMM_EXPORT_SYMBOL(sym,type)
+#define __VMM_EXPORT_SYMBOL(sym,_type)
 
 #endif
 

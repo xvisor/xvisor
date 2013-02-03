@@ -155,6 +155,7 @@ struct vmm_mbuf {
 #define	M_EXT_PAGES	0x02000000	/* ext_pgs is valid */
 #define	M_EXT_ROMAP	0x04000000	/* ext mapping is r-o at MMU */
 #define	M_EXT_RW	0x08000000	/* ext storage is writable */
+#define	M_EXT_DONTFREE	0x10000000	/* extfree not required */
 
 /* flags copied when copying m_pkthdr */
 #define	M_COPYFLAGS	(M_PKTHDR)
@@ -173,8 +174,6 @@ struct vmm_mbuf {
  *
  *	MGET(struct vmm_mbuf *m, int how, int type)
  * allocates an mbuf and initializes it to contain no data
- *
- * Currently, if 'how' is not M_WAIT, these macros will fail.
  */
 #define	MGET(m, how, flags)	m = m_get((how), (flags))
 #define	MGETHDR(m, how, flags)	m = m_get((how), (flags | M_PKTHDR))

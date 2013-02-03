@@ -31,6 +31,7 @@
 
 #include <vmm_types.h>
 #include <vmm_mutex.h>
+#include <vmm_notifier.h>
 #include <vmm_host_io.h>
 #include <vmm_devdrv.h>
 #include <libs/list.h>
@@ -454,6 +455,55 @@ struct vmm_fb_blit_caps {
 struct vmm_fb_info;
 
 /*
+ * Register/unregister for framebuffer events
+ */
+
+/*	The resolution of the passed in fb_info about to change */ 
+#define FB_EVENT_MODE_CHANGE		0x01
+/*	The display on this fb_info is beeing suspended, no access to the
+ *	framebuffer is allowed any more after that call returns
+ */
+#define FB_EVENT_SUSPEND		0x02
+/*	The display on this fb_info was resumed, you can restore the display
+ *	if you own it
+ */
+#define FB_EVENT_RESUME			0x03
+/*      An entry from the modelist was removed */
+#define FB_EVENT_MODE_DELETE            0x04
+/*      A driver registered itself */
+#define FB_EVENT_FB_REGISTERED          0x05
+/*      A driver unregistered itself */
+#define FB_EVENT_FB_UNREGISTERED        0x06
+/*      CONSOLE-SPECIFIC: get console to framebuffer mapping */
+#define FB_EVENT_GET_CONSOLE_MAP        0x07
+/*      CONSOLE-SPECIFIC: set console to framebuffer mapping */
+#define FB_EVENT_SET_CONSOLE_MAP        0x08
+/*      A hardware display blank change occurred */
+#define FB_EVENT_BLANK                  0x09
+/*      Private modelist is to be replaced */
+#define FB_EVENT_NEW_MODELIST           0x0A
+/*	The resolution of the passed in fb_info about to change and
+        all vc's should be changed         */
+#define FB_EVENT_MODE_CHANGE_ALL	0x0B
+/*	A software display blank change occurred */
+#define FB_EVENT_CONBLANK               0x0C
+/*      Get drawing requirements        */
+#define FB_EVENT_GET_REQ                0x0D
+/*      Unbind from the console if possible */
+#define FB_EVENT_FB_UNBIND              0x0E
+/*      CONSOLE-SPECIFIC: remap all consoles to new fb - for vga switcheroo */
+#define FB_EVENT_REMAP_ALL_CONSOLE      0x0F
+/*	Someone opened the frame buffer */
+#define FB_EVENT_OPENED			0x10
+/*	Someone released the frame buffer */
+#define FB_EVENT_RELEASED		0x11
+
+struct vmm_fb_event {
+	struct vmm_fb_info *info;
+	void *data;
+};
+
+/*
  * Pixmap structure definition
  *
  * The purpose of this structure is to translate data
@@ -849,6 +899,14 @@ static inline bool vmm_fb_be_math(struct vmm_fb_info *info)
 						      (val) << (bits))
 #define FB_SHIFT_LOW(p, val, bits)   (vmm_fb_be_math(p) ? (val) << (bits) : \
 						      (val) >> (bits))
+
+/* 
+ * fb/vmm_fb_notify.c 
+ */
+
+int vmm_fb_register_client(struct vmm_notifier_block *nb);
+int vmm_fb_unregister_client(struct vmm_notifier_block *nb);
+int vmm_fb_notifier_call_chain(unsigned long val, void *v);
 
 /* 
  * fb/vmm_fbmon.c 

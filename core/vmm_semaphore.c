@@ -81,6 +81,7 @@ static int semaphore_down_common(struct vmm_semaphore *sem, u64 *timeout)
 	int rc = VMM_OK;
 
 	BUG_ON(!sem);
+	BUG_ON(!vmm_scheduler_orphan_context());
 
 	vmm_spin_lock_irq(&sem->wq.lock);
 

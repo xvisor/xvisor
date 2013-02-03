@@ -91,6 +91,9 @@ void vmm_netport_free_xfer(struct vmm_netport *port,
 /** Allocate new netport */
 struct vmm_netport *vmm_netport_alloc(char *name, u32 queue_size);
 
+/** Free netport */
+int vmm_netport_free(struct vmm_netport *port);
+
 /** Register netport to networking framework */
 int vmm_netport_register(struct vmm_netport *port);
 

@@ -22,8 +22,9 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_compiler.h>
 #include <vmm_heap.h>
+#include <vmm_delay.h>
+#include <vmm_compiler.h>
 #include <vmm_scheduler.h>
 #include <vmm_workqueue.h>
 #include <libs/stringlib.h>
@@ -99,10 +100,16 @@ int vmm_workqueue_stop_work(struct vmm_work *work)
 		return VMM_EFAIL;
 	}
 
+stop_retry:
 	vmm_spin_lock_irqsave(&work->lock, flags);
 
-	if (work->flags & 
-		(VMM_WORK_STATE_INPROGRESS | VMM_WORK_STATE_STOPPED)) {
+	if (work->flags & VMM_WORK_STATE_INPROGRESS) {
+		vmm_spin_unlock_irqrestore(&work->lock, flags);
+		vmm_udelay(VMM_THREAD_DEF_TIME_SLICE / 1000);
+		goto stop_retry;
+	}
+
+	if (work->flags & VMM_WORK_STATE_STOPPED) {
 		vmm_spin_unlock_irqrestore(&work->lock, flags);
 		return VMM_OK;
 	}

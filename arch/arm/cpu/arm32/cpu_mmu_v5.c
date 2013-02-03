@@ -1271,7 +1271,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t * core_resv_pa,
 	return rc;
 }
 
-int __init arch_cpu_aspace_secondary_init(void)
+int __cpuinit arch_cpu_aspace_secondary_init(void)
 {
 	write_ttbr0(mmuctrl.defl1.tbl_pa);
 

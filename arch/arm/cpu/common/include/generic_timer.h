@@ -55,7 +55,6 @@ enum gen_timer_type {
 	GENERIC_VIRTUAL_TIMER,
 };
 
-
 int generic_timer_clocksource_init(struct vmm_devtree_node *node); 
 
 int generic_timer_clockchip_init(struct vmm_devtree_node *node);

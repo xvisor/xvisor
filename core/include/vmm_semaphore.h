@@ -35,21 +35,21 @@ struct vmm_semaphore {
 };
 
 /** Initialize semaphore lock */
-#define INIT_SEMAPHORE(sem, value)	do { \
-					(sem)->limit = (value); \
-					(sem)->value = (value); \
+#define INIT_SEMAPHORE(sem, lim, val)	do { \
+					(sem)->limit = (lim); \
+					(sem)->value = (val); \
 					INIT_WAITQUEUE(&(sem)->wq, (sem)); \
 					} while (0);
 
-#define __SEMAPHORE_INITIALIZER(sem, val) \
+#define __SEMAPHORE_INITIALIZER(sem, lim, val) \
 		{ \
-			.limit = (val), \
+			.limit = (lim), \
 			.value = (val), \
 			.wq = __WAITQUEUE_INITIALIZER((sem).wq, &(sem)), \
 		}
 
-#define DEFINE_SEMAPHORE(sem, value) \
-	struct vmm_semaphore sem = __SEMAPHORE_INITIALIZER(sem)
+#define DEFINE_SEMAPHORE(sem, lim, val) \
+	struct vmm_semaphore sem = __SEMAPHORE_INITIALIZER(sem, lim, val)
 
 /** Check if semaphore is available */
 bool vmm_semaphore_avail(struct vmm_semaphore *sem);

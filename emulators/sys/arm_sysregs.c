@@ -37,6 +37,7 @@
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_timer.h>
+#include <vmm_workqueue.h>
 #include <vmm_manager.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
@@ -77,6 +78,8 @@ struct arm_sysregs {
 	u64 ref_24mhz;
 	u32 mux_in_irq[2];
 	u32 mux_out_irq;
+	struct vmm_work reboot;
+	struct vmm_work shutdown;
 
 	u32 sys_id;
 	u32 leds;
@@ -107,7 +110,7 @@ static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
 	int rc = VMM_OK;
 	u32 regval = 0x0;
 	u64 tdiff;
-	struct arm_sysregs * s = edev->priv;
+	struct arm_sysregs *s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -267,14 +270,28 @@ static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
 	return rc;
 }
 
+static void arm_sysregs_shutdown(struct vmm_work *w)
+{
+	struct arm_sysregs *s = container_of(w, struct arm_sysregs, shutdown);
+
+	vmm_manager_guest_reset(s->guest);
+}
+
+static void arm_sysregs_reboot(struct vmm_work *w)
+{
+	struct arm_sysregs *s = container_of(w, struct arm_sysregs, reboot);
+
+	vmm_manager_guest_reset(s->guest);
+	vmm_manager_guest_kick(s->guest);
+}
+
 static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 				      physical_addr_t offset, 
 				      void *src, u32 src_len)
 {
 	int rc = VMM_OK, i;
-	bool do_reset = FALSE, do_shutdown = FALSE;
 	u32 regmask = 0x0, regval = 0x0;
-	struct arm_sysregs * s = edev->priv;
+	struct arm_sysregs *s = edev->priv;
 
 	switch (src_len) {
 	case 1:
@@ -350,7 +367,8 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 				s->resetlevel &= regmask;
 				s->resetlevel |= regval;
 				if (s->resetlevel & 0x100) {
-					do_reset = TRUE;
+					vmm_workqueue_schedule_work(NULL, 
+								&s->reboot);
 				}
 			}
 			break;
@@ -360,7 +378,8 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 				s->resetlevel &= regmask;
 				s->resetlevel |= regval;
 				if (s->resetlevel & 0x04) {
-					do_reset = TRUE;
+					vmm_workqueue_schedule_work(NULL, 
+								&s->reboot);
 				}
 			}
 			break;
@@ -443,10 +462,10 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 		s->sys_cfgstat = 1;            /* complete */
 		switch (s->sys_cfgctrl) {
 		case 0xc0800000: /* SYS_CFG_SHUTDOWN to motherboard */
-			do_shutdown = TRUE;
+			vmm_workqueue_schedule_work(NULL, &s->shutdown);
 			break;
 		case 0xc0900000: /* SYS_CFG_REBOOT to motherboard */
-			do_reset = TRUE;
+			vmm_workqueue_schedule_work(NULL, &s->reboot);
 			break;
 		default:
 			s->sys_cfgstat |= 2;        /* error */
@@ -466,13 +485,6 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 	}
 
 	vmm_spin_unlock(&s->lock);
-
-	if (do_reset) {
-		vmm_manager_guest_reset(s->guest);
-		vmm_manager_guest_kick(s->guest);
-	} else if (do_shutdown) {
-		vmm_manager_guest_reset(s->guest);
-	}
 
 	return rc;
 }
@@ -596,6 +608,9 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EFAIL;
 		goto arm_sysregs_emulator_probe_unregpic_fail;
 	}
+
+	INIT_WORK(&s->shutdown, arm_sysregs_shutdown);
+	INIT_WORK(&s->reboot, arm_sysregs_reboot);
 
 	edev->priv = s;
 

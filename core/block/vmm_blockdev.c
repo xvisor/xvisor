@@ -39,6 +39,20 @@
 #define	MODULE_INIT			vmm_blockdev_init
 #define	MODULE_EXIT			vmm_blockdev_exit
 
+static BLOCKING_NOTIFIER_CHAIN(bdev_notifier_chain);
+
+int vmm_blockdev_register_client(struct vmm_notifier_block *nb)
+{
+	return vmm_blocking_notifier_register(&bdev_notifier_chain, nb);
+}
+VMM_EXPORT_SYMBOL(vmm_blockdev_register_client);
+
+int vmm_blockdev_unregister_client(struct vmm_notifier_block *nb)
+{
+	return vmm_blocking_notifier_unregister(&bdev_notifier_chain, nb);
+}
+VMM_EXPORT_SYMBOL(vmm_blockdev_unregister_client);
+
 int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 				struct vmm_request *r)
 {
@@ -80,6 +94,7 @@ int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_submit_request);
 
 int vmm_blockdev_complete_request(struct vmm_request *r)
 {
@@ -94,6 +109,7 @@ int vmm_blockdev_complete_request(struct vmm_request *r)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_complete_request);
 
 int vmm_blockdev_fail_request(struct vmm_request *r)
 {
@@ -108,6 +124,7 @@ int vmm_blockdev_fail_request(struct vmm_request *r)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_fail_request);
 
 int vmm_blockdev_abort_request(struct vmm_request *r)
 {
@@ -129,6 +146,7 @@ int vmm_blockdev_abort_request(struct vmm_request *r)
 
 	return vmm_blockdev_fail_request(r);
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_abort_request);
 
 struct blockdev_rw {
 	bool failed;
@@ -310,6 +328,7 @@ done:
 
 	return tmp;
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_rw);
 
 static struct vmm_blockdev *__blockdev_alloc(bool alloc_rq)
 {
@@ -321,7 +340,7 @@ static struct vmm_blockdev *__blockdev_alloc(bool alloc_rq)
 	}
 
 	INIT_LIST_HEAD(&bdev->head);
-	INIT_SPIN_LOCK(&bdev->child_lock);
+	INIT_MUTEX(&bdev->child_lock);
 	bdev->child_count = 0;
 	INIT_LIST_HEAD(&bdev->child_list);
 
@@ -344,6 +363,7 @@ struct vmm_blockdev *vmm_blockdev_alloc(void)
 {
 	return __blockdev_alloc(TRUE);
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_alloc);
 
 static void __blockdev_free(struct vmm_blockdev *bdev, bool free_rq)
 {
@@ -357,11 +377,13 @@ void vmm_blockdev_free(struct vmm_blockdev *bdev)
 {
 	__blockdev_free(bdev, TRUE);
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_free);
 
 int vmm_blockdev_register(struct vmm_blockdev *bdev)
 {
 	int rc;
 	struct vmm_classdev *cd;
+	struct vmm_blockdev_event event;
 
 	if (!bdev) {
 		return VMM_EFAIL;
@@ -390,14 +412,21 @@ int vmm_blockdev_register(struct vmm_blockdev *bdev)
 		return rc;
 	}
 
+	/* Broadcast register event */
+	event.bdev = bdev;
+	event.data = NULL;
+	vmm_blocking_notifier_call(&bdev_notifier_chain, 
+				   VMM_BLOCKDEV_EVENT_REGISTER, 
+				   &event);
+
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_register);
 
 int vmm_blockdev_add_child(struct vmm_blockdev *bdev, 
 			   u64 start_lba, u64 num_blocks)
 {
 	int rc;
-	irq_flags_t flags;
 	struct vmm_blockdev *child_bdev;
 
 	if (!bdev) {
@@ -417,12 +446,12 @@ int vmm_blockdev_add_child(struct vmm_blockdev *bdev,
 
 	child_bdev = __blockdev_alloc(FALSE);
 	child_bdev->parent = bdev;
-	vmm_spin_lock_irqsave(&bdev->child_lock, flags);
+	vmm_mutex_lock(&bdev->child_lock);
 	vmm_snprintf(child_bdev->name, VMM_BLOCKDEV_MAX_NAME_SIZE,
 			"%sp%d", bdev->name, bdev->child_count);
 	bdev->child_count++;
 	list_add_tail(&child_bdev->head, &bdev->child_list);
-	vmm_spin_unlock_irqrestore(&bdev->child_lock, flags);
+	vmm_mutex_unlock(&bdev->child_lock);
 	child_bdev->flags = bdev->flags;
 	child_bdev->start_lba = start_lba;
 	child_bdev->num_blocks = num_blocks;
@@ -431,21 +460,22 @@ int vmm_blockdev_add_child(struct vmm_blockdev *bdev,
 
 	rc = vmm_blockdev_register(child_bdev);
 	if (rc) {
-		vmm_spin_lock_irqsave(&bdev->child_lock, flags);
+		vmm_mutex_lock(&bdev->child_lock);
 		list_del(&child_bdev->head);
-		vmm_spin_unlock_irqrestore(&bdev->child_lock, flags);
+		vmm_mutex_unlock(&bdev->child_lock);
 		__blockdev_free(child_bdev, FALSE);
 	}
 
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_add_child);
 
 int vmm_blockdev_unregister(struct vmm_blockdev *bdev)
 {
 	int rc;
-	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_blockdev *child_bdev;
+	struct vmm_blockdev_event event;
 	struct vmm_classdev *cd;
 
 	if (!bdev) {
@@ -453,17 +483,24 @@ int vmm_blockdev_unregister(struct vmm_blockdev *bdev)
 	}
 
 	/* Unreg & free child block devices */
-	vmm_spin_lock_irqsave(&bdev->child_lock, flags);
+	vmm_mutex_lock(&bdev->child_lock);
 	while (!list_empty(&bdev->child_list)) {
 		l = list_pop(&bdev->child_list);
 		child_bdev = list_entry(l, struct vmm_blockdev, head);
 		if ((rc = vmm_blockdev_unregister(child_bdev))) {
-			vmm_spin_unlock_irqrestore(&bdev->child_lock, flags);
+			vmm_mutex_unlock(&bdev->child_lock);
 			return rc;
 		}
 		__blockdev_free(child_bdev, FALSE);
 	}
-	vmm_spin_unlock_irqrestore(&bdev->child_lock, flags);
+	vmm_mutex_unlock(&bdev->child_lock);
+
+	/* Broadcast unregister event */
+	event.bdev = bdev;
+	event.data = NULL;
+	vmm_blocking_notifier_call(&bdev_notifier_chain, 
+				   VMM_BLOCKDEV_EVENT_UNREGISTER, 
+				   &event);
 
 	cd = vmm_devdrv_find_classdev(VMM_BLOCKDEV_CLASS_NAME, bdev->name);
 	if (!cd) {
@@ -477,6 +514,7 @@ int vmm_blockdev_unregister(struct vmm_blockdev *bdev)
 
 	return rc;
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_unregister);
 
 struct vmm_blockdev *vmm_blockdev_find(const char *name)
 {
@@ -489,6 +527,7 @@ struct vmm_blockdev *vmm_blockdev_find(const char *name)
 
 	return cd->priv;
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_find);
 
 struct vmm_blockdev *vmm_blockdev_get(int num)
 {
@@ -502,11 +541,13 @@ struct vmm_blockdev *vmm_blockdev_get(int num)
 
 	return cd->priv;
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_get);
 
 u32 vmm_blockdev_count(void)
 {
 	return vmm_devdrv_classdev_count(VMM_BLOCKDEV_CLASS_NAME);
 }
+VMM_EXPORT_SYMBOL(vmm_blockdev_count);
 
 static int __init vmm_blockdev_init(void)
 {

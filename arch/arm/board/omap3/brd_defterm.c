@@ -21,8 +21,9 @@
  * @brief default serial terminal source
  */
 
-#include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_types.h>
+#include <vmm_compiler.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <drv/omap-uart.h>
@@ -48,7 +49,7 @@ int arch_defterm_getc(u8 *ch)
 	return VMM_OK;
 }
 
-int arch_defterm_init(void)
+int __init arch_defterm_init(void)
 {
 	omap3_uart_base = vmm_host_iomap(OMAP3_UART_BASE, 0x1000);
 	omap_uart_lowlevel_init(omap3_uart_base, 4, OMAP3_UART_BAUD, 

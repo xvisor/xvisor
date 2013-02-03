@@ -132,8 +132,15 @@ __uart_base_next:
 	orr	r1, #0x0001			/* cr */
 	str	r1, [r0, #0x30]
 
+	/* Setup generic timer cntfrq */
+	ldr	r1, _gentimer_freq
+	mcr     p15, 0, r1, c14, c0, 0
+
 	/* Jump to input binary */
 	b	input_bin
+
+_gentimer_freq:
+	.word	100000000
 
 
 	/* Input binary containing OS images */

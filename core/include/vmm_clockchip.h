@@ -84,6 +84,60 @@ struct vmm_clockchip {
 	void *priv;
 };
 
+/**
+ * clocks_calc_mult_shift - calculate mult/shift factors for scaled math of clocks
+ * @mult:       pointer to mult variable
+ * @shift:      pointer to shift variable
+ * @from:       frequency to convert from
+ * @to:         frequency to convert to
+ * @maxsec:     guaranteed runtime conversion range in seconds
+ *
+ * The function evaluates the shift/mult pair for the scaled math
+ * operations of clocksources and clockevents.
+ *
+ * @to and @from are frequency values in HZ. For clock sources @to is
+ * NSEC_PER_SEC == 1GHz and @from is the counter frequency. For clock
+ * event @to is the counter frequency and @from is NSEC_PER_SEC.
+ *
+ * The @maxsec conversion range argument controls the time frame in
+ * seconds which must be covered by the runtime conversion with the
+ * calculated mult and shift factors. This guarantees that no 64bit
+ * overflow happens when the input value of the conversion is
+ * multiplied with the calculated mult factor. Larger ranges may
+ * reduce the conversion accuracy by chosing smaller mult and shift
+ * factors.
+ */
+static inline void vmm_clocks_calc_mult_shift(u32 *mult, u32 *shift,
+					      u32 from, u32 to, u32 maxsec)
+{
+        u64 tmp;
+        u32 sft, sftacc= 32;
+
+        /* 
+	 * Calculate the shift factor which is limiting the conversion
+         * range:
+         */
+        tmp = ((u64)maxsec * from) >> 32;
+        while (tmp) {
+                tmp >>=1;
+                sftacc--;
+        }
+
+        /*
+         * Find the conversion shift/mult pair which has the best
+         * accuracy and fits the maxsec conversion range:
+         */
+        for (sft = 32; sft > 0; sft--) {
+                tmp = (u64) to << sft;
+                tmp += from / 2;
+                tmp = udiv64(tmp, from);
+                if ((tmp >> sftacc) == 0)
+                        break;
+        }
+        *mult = tmp;
+        *shift = sft;
+}
+
 /** Convert kHz clockchip to clockchip mult */
 static inline u32 vmm_clockchip_khz2mult(u32 khz, u32 shift)
 {
@@ -101,7 +155,7 @@ static inline u32 vmm_clockchip_hz2mult(u32 hz, u32 shift)
 }
 
 /** Convert tick delta to nanoseconds */
-static inline u64 vmm_clockchip_delta2ns(u32 delta, struct vmm_clockchip *cc)
+static inline u64 vmm_clockchip_delta2ns(u64 delta, struct vmm_clockchip *cc)
 {
 	u64 tmp = (u64)delta << cc->shift;
 	return udiv64(tmp, cc->mult);

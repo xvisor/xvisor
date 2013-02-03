@@ -85,10 +85,11 @@ void do_fiq(struct pt_regs *uregs)
 void arm_irq_setup(void)
 {
 	extern u32 _start_vect[];
+	int vec;
+#if	!defined(ARM_SECURE_EXTN_IMPLEMENTED)
 	u32 *vectors = (u32 *)NULL;
 	u32 *vectors_data = vectors + CPU_IRQ_NR;
-	int vec;
- 
+
 	/*
 	 * Loop through the vectors we're taking over, and copy the
 	 * vector's insn and data word.
@@ -99,7 +100,7 @@ void arm_irq_setup(void)
 	}
 
 	/*
-	 * Check if verctors are set properly
+	 * Check if vectors are set properly
 	 */
 	for (vec = 0; vec < CPU_IRQ_NR; vec++) {
 		if ((vectors[vec] != _start_vect[vec]) ||
@@ -108,6 +109,11 @@ void arm_irq_setup(void)
 			while(1);
 		}
 	}
+#else
+	/* Security extensions implemented */
+	/* Write VBAR */
+	asm volatile("mcr p15, 0, %0, c12, c0, 0"::"r"(_start_vect):"memory", "cc"); 
+#endif
 
 	/*
 	 * Reset irq handlers

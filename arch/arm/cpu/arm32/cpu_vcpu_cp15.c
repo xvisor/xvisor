@@ -26,8 +26,9 @@
  * which is licensed under GPL.
  */
 
-#include <vmm_heap.h>
 #include <vmm_error.h>
+#include <vmm_heap.h>
+#include <vmm_stdio.h>
 #include <vmm_scheduler.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
@@ -1273,7 +1274,18 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 		};
 		break;
 	case 11:		/* TCM DMA control.  */
-	case 12:		/* Reserved.  */
+		goto bad_reg;
+	case 12:
+		if (arm_feature(vcpu, ARM_FEATURE_TRUSTZONE)) {
+			switch (opc2) {
+			case 0:		/* VBAR */
+				*data = arm_priv(vcpu)->cp15.c12_vbar;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		}
 		goto bad_reg;
 	case 13:		/* Process ID.  */
 		switch (opc2) {
@@ -1314,11 +1326,37 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 	case 14:		/* Reserved.  */
 		goto bad_reg;
 	case 15:		/* Implementation specific.  */
-		*data = 0;
+		switch (opc1) {
+		case 0:
+			switch (arm_cpuid(vcpu)) {
+			case ARM_CPUID_CORTEXA9:
+				/* PCR: Power control register */
+				/* Read always zero. */
+				*data = 0x0;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 4:
+			switch (arm_cpuid(vcpu)) {
+			case ARM_CPUID_CORTEXA9:
+				/* CBAR: Configuration Base Address Register */
+				*data = 0x1e000000;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		default:
+			goto bad_reg;
+		};
 		break;
 	}
 	return TRUE;
- bad_reg:
+bad_reg:
+	vmm_printf("%s: vcpu=%d opc1=%x opc2=%x CRn=%x CRm=%x (invalid)\n", 
+				__func__, vcpu->id, opc1, opc2, CRn, CRm);
 	return FALSE;
 }
 
@@ -1854,7 +1892,17 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			break;
 		};
 		break;
-	case 12:		/* Reserved.  */
+	case 12:
+		if (arm_feature(vcpu, ARM_FEATURE_TRUSTZONE)) {
+			switch (opc2) {
+			case 0:		/* VBAR */
+				arm_priv(vcpu)->cp15.c12_vbar = (data & ~0x1f);
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		}
 		goto bad_reg;
 	case 13:		/* Process ID.  */
 		switch (opc2) {
@@ -1909,10 +1957,26 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 	case 14:		/* Reserved.  */
 		goto bad_reg;
 	case 15:		/* Implementation specific.  */
+		switch (opc1) {
+		case 0:
+			switch (arm_cpuid(vcpu)) {
+			case ARM_CPUID_CORTEXA9:
+				/* Power Control Register */
+				/* Ignore writes. */;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		default:
+			goto bad_reg;
+		};
 		break;
 	}
 	return TRUE;
- bad_reg:
+bad_reg:
+	vmm_printf("%s: vcpu=%d opc1=%x opc2=%x CRn=%x CRm=%x (invalid)\n", 
+				__func__, vcpu->id, opc1, opc2, CRn, CRm);
 	return FALSE;
 }
 
@@ -1923,6 +1987,8 @@ virtual_addr_t cpu_vcpu_cp15_vector_addr(struct vmm_vcpu * vcpu, u32 irq_no)
 
 	if (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_V_MASK) {
 		vaddr = CPU_IRQ_HIGHVEC_BASE;
+	} else if (arm_feature(vcpu, ARM_FEATURE_TRUSTZONE)) {
+		vaddr = arm_priv(vcpu)->cp15.c12_vbar;
 	} else {
 		vaddr = CPU_IRQ_LOWVEC_BASE;
 	}

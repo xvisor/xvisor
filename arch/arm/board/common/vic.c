@@ -103,9 +103,9 @@ static void vic_ack_irq(struct vmm_host_irq *irq)
 
 static struct vmm_host_irq_chip vic_chip = {
 	.name = "VIC",
+	.irq_ack = vic_ack_irq,
 	.irq_mask = vic_mask_irq,
 	.irq_unmask =vic_unmask_irq,
-	.irq_eoi = vic_ack_irq,
 };
 
 static void vic_disable(void *base)
@@ -150,6 +150,7 @@ void __init vic_cpu_init(struct vic_chip_data *v_data)
 	for (i = v_data->irq_offset; i < v_data->irq_offset + 32; i++) {
 		vmm_host_irq_set_chip(i, &vic_chip);
 		vmm_host_irq_set_chip_data(i, v_data);
+		vmm_host_irq_set_handler(i, vmm_handle_level_irq);
 	}
 
 	/* Disable all interrupts initially. */

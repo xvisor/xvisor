@@ -46,7 +46,7 @@ typedef struct {
 #define ARCH_SPIN_LOCK_INIT(_lptr)				\
 	(_lptr)->__cpu_lock.counter = __ARCH_SPIN_UNLOCKED
 
-#define ARCH_SPIN_LOCK_INITIALIZER(_lock)	\
+#define ARCH_SPIN_LOCK_INITIALIZER				\
 	{ .__cpu_lock = { .counter = __ARCH_SPIN_UNLOCKED, }, }
 
 

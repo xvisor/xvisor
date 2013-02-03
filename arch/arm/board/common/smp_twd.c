@@ -155,10 +155,10 @@ static void twd_caliberate_freq(virtual_addr_t base,
 	}
 }
 
-int __init twd_clockchip_init(virtual_addr_t base, 
-			      virtual_addr_t ref_counter_addr,
-			      u32 ref_counter_freq,
-			      u32 ppi_hirq)
+int __cpuinit twd_clockchip_init(virtual_addr_t base, 
+				virtual_addr_t ref_counter_addr,
+				u32 ref_counter_freq,
+				u32 ppi_hirq)
 {
 	int rc;
 	u32 cpu = vmm_smp_processor_id();

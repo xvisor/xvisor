@@ -40,4 +40,21 @@ int libsort_smoothsort(void *base, size_t r, size_t N,
 		       int (*less) (void *m, size_t a, size_t b),
 		       void (*swap) (void *m, size_t a, size_t b));
 
+/**
+ * list_sort - sort a list
+ * @priv: private data, opaque to list_sort(), passed to @cmp
+ * @head: the list to sort
+ * @cmp: the elements comparison function
+ *
+ * This function implements "merge sort", which has O(nlog(n))
+ * complexity.
+ *
+ * The comparison function @cmp must return a negative value if @a
+ * should sort before @b, and a positive value if @a should sort after
+ * @b. If @a and @b are equivalent, and their original relative
+ * ordering is to be preserved, @cmp must return 0.
+ */
+void list_mergesort(void *priv, struct dlist *head,
+		    int (*cmp)(void *priv, struct dlist *a,
+			       struct dlist *b));
 #endif

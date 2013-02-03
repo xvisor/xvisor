@@ -34,6 +34,7 @@
 #include <libs/bitmap.h>
 #include <libs/elf.h>
 #include <libs/kallsyms.h>
+#include <libs/libsort.h>
 
 #ifndef ARCH_SHF_SMALL
 #define ARCH_SHF_SMALL 0
@@ -741,13 +742,58 @@ u32 vmm_modules_count(void)
 	return ret;
 }
 
+struct modules_list {
+	int nr_modules;
+	struct dlist mod_list;
+};
+
+static struct modules_list * __init aggregate_modules(u32 mod_start, u32 sz)
+{
+	virtual_addr_t ca;
+	u32 *cp, mod_end = mod_start + sz;
+	struct vmm_module *modinfo = NULL;
+	struct modules_list *cong_mod_list =
+		(struct modules_list *)vmm_malloc(sizeof(struct modules_list));
+
+	INIT_LIST_HEAD(&cong_mod_list->mod_list);
+	/*
+	 * Search for modules signatures from mod start to
+	 * end of modules area picking up modules information
+	 * base, creating a linked list.
+	 */
+	for (ca = mod_start; ca < mod_end;) {
+		cp = (u32 *)ca;
+		if (*cp == VMM_MODULE_SIGNATURE) {
+			modinfo = (struct vmm_module *)ca;
+			list_add(&modinfo->head, &cong_mod_list->mod_list);
+			cong_mod_list->nr_modules++;
+			ca += sizeof(struct vmm_module);
+		} else {
+			/* next word to check for signature. */
+			ca += sizeof(u32);
+		}
+	}
+
+	return cong_mod_list;
+}
+
+static int __init cmp_list_element(void *p, struct dlist *a, struct dlist *b)
+{
+	struct vmm_module *moda, *modb;
+
+	moda = list_entry(a, struct vmm_module, head);
+	modb = list_entry(b, struct vmm_module, head);
+
+	return moda->ipriority - modb->ipriority;
+}
+
 int __init vmm_modules_init(void)
 {
 	int ret;
-	u32 i, j, table_size, mod_count;
 	struct module_wrap *mwrap;
-	struct vmm_module *table;
-	struct vmm_module tmp;
+	struct vmm_module *mod_entry;
+	struct modules_list *ag_mod_list;
+	struct dlist *tnode;
 
 	/* Reset the control structure */
 	memset(&modctrl, 0, sizeof(modctrl));
@@ -755,48 +801,29 @@ int __init vmm_modules_init(void)
 	INIT_LIST_HEAD(&modctrl.mod_list);
 	modctrl.mod_count = 0;
 
-	/* Initialize the control structure */
-	table = (struct vmm_module *) arch_modtbl_vaddr();
-	table_size = arch_modtbl_size() / sizeof(struct vmm_module);
-
-	/* Find and count valid built-in modules */
-	mod_count = 0;
-	for (i = 0; i < table_size; i++) {
-		/* Check validity of module table entry */
-		if (table[i].signature == VMM_MODULE_SIGNATURE) {
-			/* Increment count in control structure */
-			mod_count++;
-		} else {
-			break;
-		}
-	}
+	ag_mod_list = aggregate_modules(arch_modtbl_vaddr(), 
+					arch_modtbl_size());
 
 	/* If no built-in modules found then return */
-	if (!mod_count) {
+	if (!ag_mod_list->nr_modules) {
 		return VMM_OK;
 	}
 
-	/* Sort built-in modules based on ipriority (Selection Sort) */
-	for (i = 0; i < (mod_count - 1); i++) {
-		for (j = (i + 1); j < mod_count; j++) {
-			if (table[j].ipriority < table[i].ipriority) {
-				memcpy(&tmp, &table[i], sizeof(tmp));
-				memcpy(&table[i], &table[j], sizeof(tmp));
-				memcpy(&table[j], &tmp, sizeof(tmp));
-			}
-		}
-	}
+	list_mergesort(NULL, &ag_mod_list->mod_list, cmp_list_element);
 
 	/* Initialize built-in modules in sorted order */
-	for (i = 0; i < mod_count; i++) {
+	list_for_each(tnode, &ag_mod_list->mod_list) {
+		mod_entry = list_entry(tnode, struct vmm_module, head);
+		if (unlikely(!mod_entry))
+			break;
 		mwrap = vmm_malloc(sizeof(struct module_wrap));
-		if (!mwrap) {
+		if (unlikely(!mwrap)) {
 			break;
 		}
 
 		memset(mwrap, 0, sizeof(struct module_wrap));
 		INIT_LIST_HEAD(&mwrap->head);
-		memcpy(&mwrap->mod, &table[i], sizeof(struct vmm_module));
+		memcpy(&mwrap->mod, mod_entry, sizeof(struct vmm_module));
 		mwrap->built_in = TRUE;
 
 		/* Initialize module if required */
