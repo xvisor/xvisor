@@ -27,11 +27,18 @@
 #include <vmm_types.h>
 #include <cpu_inline_asm.h>
 
-#define generic_timer_counter_read()	read_cntpct()
+#define generic_timer_pcounter_read()	read_cntpct()
+#define generic_timer_vcounter_read()	read_cntvct()
+
+/* If security extension is not implemented hypervisor can write to cntfrq */
+#define generic_timer_freq_writeable()	(!cpu_supports_securex())
 
 static inline void generic_timer_reg_write(int reg, u32 val)
 {
 	switch (reg) {
+	case GENERIC_TIMER_REG_FREQ:
+		write_cntfrq(val);
+		break;
 	case GENERIC_TIMER_REG_HCTL:
 		write_cnthctl(val);
 		break;

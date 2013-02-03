@@ -27,7 +27,9 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
+#include <vmm_waitqueue.h>
 #include <vmm_manager.h>
+#include <vmm_stdio.h>
 #include <vmm_smp.h>
 #include <arch_vcpu.h>
 #include <arch_guest.h>
@@ -289,9 +291,12 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 	if (!vcpu) {
 		return VMM_EFAIL;
 	}
-	if (vcpu->is_normal || vcpu->wq_priv) {
+	if (vcpu->is_normal) {
 		return VMM_EFAIL;
 	}
+
+	/* Force VCPU out of waitqueue */
+	vmm_waitqueue_forced_remove(vcpu);
 
 	/* Reset the VCPU */
 	if ((rc = vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_RESET))) {
@@ -534,6 +539,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		if ((guest->node == gnode) ||
 		    (strcmp(guest->node->name, gnode->name) == 0)) {
 			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+			vmm_printf("%s: Duplicate guest \"%s\" detected\n", 
+					__func__, gnode->name);
 			return NULL;
 		}
 	}
@@ -552,6 +559,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		mngr.guest_avail_array[gnum] = FALSE;
 	} else {
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+		vmm_printf("%s: No available guest instance found\n", __func__);
 		return NULL;
 	}
 
@@ -566,6 +574,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 	vsnode = vmm_devtree_getchild(gnode, VMM_DEVTREE_VCPUS_NODE_NAME);
 	if (!vsnode) {
+		vmm_printf("%s: %s/vcpus node not found\n", __func__, gnode->name);
 		goto guest_create_error;
 	}
 	list_for_each(l1, &vsnode->child_list) {

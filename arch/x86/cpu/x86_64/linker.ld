@@ -57,7 +57,7 @@ SECTIONS
 	{
 		PROVIDE(_modtbl_start = .);
 		*(.modtbl)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_modtbl_end = .);
 	}
 
@@ -65,7 +65,7 @@ SECTIONS
 	{
 		PROVIDE(_percpu_start = .);
 		*(.percpu)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_percpu_end = .);
 	}
 

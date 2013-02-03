@@ -26,6 +26,14 @@
 #include <vmm_types.h>
 #include <cpu_mmu.h>
 
+struct x86_64_interrupt_frame {
+	u64 rip;
+	u64 cs;
+	u64 rflags;
+	u64 rsp;
+	u64 ss;
+};
+
 /*
  * Stack State at the entry of exception.
  *

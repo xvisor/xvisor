@@ -130,7 +130,6 @@ static void devdrv_probe(struct vmm_devtree_node *node,
 		if (match) {
 			dinst = vmm_malloc(sizeof(struct vmm_device));
 			INIT_LIST_HEAD(&dinst->head);
-			INIT_SPIN_LOCK(&dinst->lock);
 			dinst->clk = (getclk) ? getclk(node) : NULL;
 			dinst->node = node;
 			dinst->class = NULL;
@@ -471,6 +470,8 @@ int vmm_devdrv_register_class(struct vmm_class *cls)
 	}
 
 	INIT_LIST_HEAD(&cls->head);
+	INIT_SPIN_LOCK(&cls->lock);
+	INIT_LIST_HEAD(&cls->classdev_list);
 
 	list_add_tail(&cls->head, &ddctrl.class_list);
 
@@ -600,6 +601,7 @@ u32 vmm_devdrv_class_count(void)
 int vmm_devdrv_register_classdev(const char *cname, struct vmm_classdev *cdev)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_class *c;
 	struct vmm_classdev *cd;
@@ -612,6 +614,9 @@ int vmm_devdrv_register_classdev(const char *cname, struct vmm_classdev *cdev)
 
 	cd = NULL;
 	found = FALSE;
+
+	vmm_spin_lock_irqsave(&c->lock, flags);
+
 	list_for_each(l, &c->classdev_list) {
 		cd = list_entry(l, struct vmm_classdev, head);
 		if (strcmp(cd->name, cdev->name) == 0) {
@@ -621,17 +626,19 @@ int vmm_devdrv_register_classdev(const char *cname, struct vmm_classdev *cdev)
 	}
 
 	if (found) {
+		vmm_spin_unlock_irqrestore(&c->lock, flags);
 		return VMM_EINVALID;
 	}
 
 	if (cdev->dev) {
-		vmm_spin_lock(&cdev->dev->lock);
 		cdev->dev->class = c;
 		cdev->dev->classdev = cdev;
-		vmm_spin_unlock(&cdev->dev->lock);
 	}
 	INIT_LIST_HEAD(&cdev->head);
+
 	list_add_tail(&cdev->head, &c->classdev_list);
+
+	vmm_spin_unlock_irqrestore(&c->lock, flags);
 
 	return VMM_OK;
 }
@@ -639,6 +646,7 @@ int vmm_devdrv_register_classdev(const char *cname, struct vmm_classdev *cdev)
 int vmm_devdrv_unregister_classdev(const char *cname, struct vmm_classdev *cdev)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_class *c;
 	struct vmm_classdev *cd;
@@ -648,7 +656,11 @@ int vmm_devdrv_unregister_classdev(const char *cname, struct vmm_classdev *cdev)
 	if (c == NULL || cdev == NULL) {
 		return VMM_EFAIL;
 	}
+
+	vmm_spin_lock_irqsave(&c->lock, flags);
+
 	if (list_empty(&c->classdev_list)) {
+		vmm_spin_unlock_irqrestore(&c->lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -663,16 +675,18 @@ int vmm_devdrv_unregister_classdev(const char *cname, struct vmm_classdev *cdev)
 	}
 
 	if (!found) {
+		vmm_spin_unlock_irqrestore(&c->lock, flags);
 		return VMM_ENOTAVAIL;
 	}
 
 	if (cd->dev) {
-		vmm_spin_lock(&cd->dev->lock);
 		cd->dev->class = NULL;
 		cd->dev->classdev = NULL;
-		vmm_spin_unlock(&cd->dev->lock);
 	}
+
 	list_del(&cd->head);
+
+	vmm_spin_unlock_irqrestore(&c->lock, flags);
 
 	return VMM_OK;
 }
@@ -681,6 +695,7 @@ struct vmm_classdev *vmm_devdrv_find_classdev(const char *cname,
 					 const char *cdev_name)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_class *c;
 	struct vmm_classdev *cd;
@@ -694,6 +709,8 @@ struct vmm_classdev *vmm_devdrv_find_classdev(const char *cname,
 	found = FALSE;
 	cd = NULL;
 
+	vmm_spin_lock_irqsave(&c->lock, flags);
+
 	list_for_each(l, &c->classdev_list) {
 		cd = list_entry(l, struct vmm_classdev, head);
 		if (strcmp(cd->name, cdev_name) == 0) {
@@ -701,6 +718,8 @@ struct vmm_classdev *vmm_devdrv_find_classdev(const char *cname,
 			break;
 		}
 	}
+
+	vmm_spin_unlock_irqrestore(&c->lock, flags);
 
 	if (!found) {
 		return NULL;
@@ -712,6 +731,7 @@ struct vmm_classdev *vmm_devdrv_find_classdev(const char *cname,
 struct vmm_classdev *vmm_devdrv_classdev(const char *cname, int index)
 {
 	bool found;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_class *c;
 	struct vmm_classdev *retval;
@@ -725,6 +745,8 @@ struct vmm_classdev *vmm_devdrv_classdev(const char *cname, int index)
 	retval = NULL;
 	found = FALSE;
 
+	vmm_spin_lock_irqsave(&c->lock, flags);
+
 	list_for_each(l, &c->classdev_list) {
 		retval = list_entry(l, struct vmm_classdev, head);
 		if (!index) {
@@ -733,6 +755,8 @@ struct vmm_classdev *vmm_devdrv_classdev(const char *cname, int index)
 		}
 		index--;
 	}
+
+	vmm_spin_unlock_irqrestore(&c->lock, flags);
 
 	if (!found) {
 		return NULL;
@@ -744,6 +768,7 @@ struct vmm_classdev *vmm_devdrv_classdev(const char *cname, int index)
 u32 vmm_devdrv_classdev_count(const char *cname)
 {
 	u32 retval;
+	irq_flags_t flags;
 	struct dlist *l;
 	struct vmm_class *c;
 
@@ -755,9 +780,13 @@ u32 vmm_devdrv_classdev_count(const char *cname)
 
 	retval = 0;
 
+	vmm_spin_lock_irqsave(&c->lock, flags);
+
 	list_for_each(l, &c->classdev_list) {
 		retval++;
 	}
+
+	vmm_spin_unlock_irqrestore(&c->lock, flags);
 
 	return retval;
 }

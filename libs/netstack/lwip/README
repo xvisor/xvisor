@@ -1,0 +1,31 @@
+This directory contains the source of lwIP network stack and supporting 
+source files for using lwIP under Xvisor as an optional network stack.
+
+lwIP (lightweight IP) is a widely used open source TCP/IP stack designed 
+for embedded systems. lwIP was originally developed by Adam Dunkels at 
+the Swedish Institute of Computer Science and is now developed and maintained
+by a world wide network of developers led by Kieran Mansley.
+
+lwIP is licenced under a BSD-style license: http://lwip.wikia.com/wiki/License
+
+For more info on lwIP visit following links:
+http://savannah.nongnu.org/projects/lwip/
+http://en.wikipedia.org/wiki/LwIP
+http://lwip.wikia.com/wiki/LwIP_Wiki
+http://lwip.wikia.com/wiki/Projects_that_use_lwIP
+
+Currently, we use v1.4.1 of lwIP TCP/IP stack and we can easliy upgrade 
+lwIP version due to its portable source code.
+
+The detailed contents of this directory are as follows:
+lwip-1.4.1/ - Unmodified source of lwIP v1.4.1 with fixes 
+              to solve compile errors
+port/       - Support source files for porting lwIP and netstack APIs
+objects.mk  - Xvisor makefile to compile lwIP
+README      - This file
+
+Anytime you want to upgrade lwIP version <xxx>, you should do following:
+* Replace directory lwip-1.4.1/ with new lwip-<xxx> directory
+* Updated objects.mk to compile relevant source files of lwip-<xxx>
+* Update this README for future references
+

@@ -1,9 +1,6 @@
 
-		High-Priority Features (For version 0.2.1)
+		High-Priority Features (For version 0.2.2)
 
- * Add remote command line interface for managment
- * Add light-weight virtual file system with at least 
-   Ext2, FAT32, and ISO9660 support.
  * Add VirtIO support
 
 

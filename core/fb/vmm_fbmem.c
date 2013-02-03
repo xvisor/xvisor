@@ -94,12 +94,16 @@ static int vmm_fb_check_caps(struct vmm_fb_info *info,
 			     struct vmm_fb_var_screeninfo *var,
 			     u32 activate)
 {
+	struct vmm_fb_event event;
 	struct vmm_fb_blit_caps caps, fbcaps;
 	int err = 0;
 
 	memset(&caps, 0, sizeof(caps));
 	memset(&fbcaps, 0, sizeof(fbcaps));
 	caps.flags = (activate & FB_ACTIVATE_ALL) ? 1 : 0;
+	event.info = info;
+	event.data = &caps;
+	vmm_fb_notifier_call_chain(FB_EVENT_GET_REQ, &event);
 	info->fbops->fb_get_caps(info, &fbcaps, var);
 
 	if (((fbcaps.x ^ caps.x) & caps.x) ||
@@ -112,6 +116,7 @@ static int vmm_fb_check_caps(struct vmm_fb_info *info,
 
 int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
 {
+	int flags = info->flags;
 	int ret = 0;
 
 	if (var->activate & FB_ACTIVATE_INV_MODE) {
@@ -121,6 +126,14 @@ int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
 		vmm_fb_var_to_videomode(&mode2, &info->var);
 		/* make sure we don't delete the videomode of current var */
 		ret = vmm_fb_mode_is_equal(&mode1, &mode2);
+
+		if (!ret) {
+			struct vmm_fb_event event;
+
+			event.info = info;
+			event.data = &mode1;
+			ret = vmm_fb_notifier_call_chain(FB_EVENT_MODE_DELETE, &event);
+		}
 
 		if (!ret)
 		    vmm_fb_delete_videomode(&mode1, &info->modelist);
@@ -175,6 +188,18 @@ int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
 			if (info->modelist.prev && info->modelist.next &&
 			    !list_empty(&info->modelist))
 				ret = vmm_fb_add_videomode(&mode, &info->modelist);
+
+			if (!ret && (flags & FBINFO_MISC_USEREVENT)) {
+				struct vmm_fb_event event;
+				int evnt = (activate & FB_ACTIVATE_ALL) ?
+					FB_EVENT_MODE_CHANGE_ALL :
+					FB_EVENT_MODE_CHANGE;
+
+				info->flags &= ~FBINFO_MISC_USEREVENT;
+				event.info = info;
+				event.data = &mode;
+				vmm_fb_notifier_call_chain(evnt, &event);
+			}
 		}
 	}
 
@@ -230,7 +255,15 @@ int vmm_fb_blank(struct vmm_fb_info *info, int blank)
 	if (info->fbops->fb_blank)
  		ret = info->fbops->fb_blank(blank, info);
 
- 	return ret;
+ 	if (!ret) {
+		struct vmm_fb_event event;
+
+		event.info = info;
+		event.data = &blank;
+		vmm_fb_notifier_call_chain(FB_EVENT_BLANK, &event);
+	}
+
+	return ret;
 }
 VMM_EXPORT_SYMBOL(vmm_fb_blank);
 
@@ -290,10 +323,16 @@ VMM_EXPORT_SYMBOL(vmm_fb_get_color_depth);
 int vmm_fb_open(struct vmm_fb_info *info)
 {
 	int res = 0;
+	struct vmm_fb_event event;
 
 	if (!info) {
 		return VMM_EFAIL;
 	}
+
+	vmm_mutex_lock(&info->lock);
+	event.info = info;
+	vmm_fb_notifier_call_chain(FB_EVENT_OPENED, &event);
+	vmm_mutex_unlock(&info->lock);
 
 	get_fb_info(info);
 
@@ -316,6 +355,8 @@ VMM_EXPORT_SYMBOL(vmm_fb_open);
 
 int vmm_fb_release(struct vmm_fb_info *info)
 {
+	struct vmm_fb_event event;
+
 	if (!info) {
 		return VMM_EFAIL;
 	}
@@ -331,6 +372,11 @@ int vmm_fb_release(struct vmm_fb_info *info)
 
 	put_fb_info(info);
 
+	vmm_mutex_lock(&info->lock);
+	event.info = info;
+	vmm_fb_notifier_call_chain(FB_EVENT_RELEASED, &event);
+	vmm_mutex_unlock(&info->lock);
+
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(vmm_fb_release);
@@ -338,6 +384,7 @@ VMM_EXPORT_SYMBOL(vmm_fb_release);
 int vmm_fb_register(struct vmm_fb_info *info)
 {
 	int rc;
+	struct vmm_fb_event event;
 	struct vmm_fb_videomode mode;
 	struct vmm_classdev *cd;
 
@@ -396,6 +443,11 @@ int vmm_fb_register(struct vmm_fb_info *info)
 		goto free_classdev;
 	}
 
+	vmm_mutex_lock(&info->lock);
+	event.info = info;
+	vmm_fb_notifier_call_chain(FB_EVENT_FB_REGISTERED, &event);
+	vmm_mutex_unlock(&info->lock);
+
 	return VMM_OK;
 
 free_classdev:
@@ -413,6 +465,7 @@ VMM_EXPORT_SYMBOL(vmm_fb_register);
 int vmm_fb_unregister(struct vmm_fb_info *info)
 {
 	int rc;
+	struct vmm_fb_event event;
 	struct vmm_classdev *cd;
 
 	if (info == NULL) {
@@ -437,6 +490,9 @@ int vmm_fb_unregister(struct vmm_fb_info *info)
 		vmm_free(info->pixmap.addr);
 	}
 	vmm_fb_destroy_modelist(&info->modelist);
+
+	event.info = info;
+	vmm_fb_notifier_call_chain(FB_EVENT_FB_UNREGISTERED, &event);
 
 	return rc;
 }

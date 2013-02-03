@@ -412,11 +412,10 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 	strcpy(name, guest->node->name);
 	strcat(name, "/");
 	strcat(name, edev->node->name);
-	s->vser = vmm_vserial_alloc(name, 
-				    &pl011_vserial_can_send, 
-				    &pl011_vserial_send, 
-				    s->fifo_sz,
-				    s);
+	s->vser = vmm_vserial_create(name, 
+				     &pl011_vserial_can_send, 
+				     &pl011_vserial_send, 
+				     s->fifo_sz, s);
 	if (!(s->vser)) {
 		goto pl011_emulator_probe_freerbuf_fail;
 	}
@@ -438,7 +437,7 @@ static int pl011_emulator_remove(struct vmm_emudev *edev)
 	struct pl011_state * s = edev->priv;
 
 	if (s) {
-		vmm_vserial_free(s->vser);
+		vmm_vserial_destroy(s->vser);
 		vmm_ringbuf_free(s->rd_fifo);
 		vmm_free(s);
 		edev->priv = NULL;

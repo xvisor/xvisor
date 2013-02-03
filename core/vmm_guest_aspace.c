@@ -27,6 +27,7 @@
 #include <vmm_devemu.h>
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
+#include <vmm_stdio.h>
 #include <libs/stringlib.h>
 
 struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
@@ -336,6 +337,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	guest->aspace.node = vmm_devtree_getchild(gnode, 
 					VMM_DEVTREE_ADDRSPACE_NODE_NAME);
 	if (!guest->aspace.node) {
+		vmm_printf("%s: %s/aspace node not found\n", __func__, gnode->name);
 		return VMM_EFAIL;
 	}
 
@@ -432,6 +434,8 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 
 		if (is_region_overlapping(guest, reg)) {
 			vmm_free(reg);
+			vmm_printf("%s: Region for %s/%s overlapping with a previous node\n", 
+					__func__, gnode->name, rnode->name);
 			return VMM_EINVALID;
 		}
 
@@ -440,6 +444,8 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 			rc = vmm_host_ram_reserve(reg->hphys_addr, 
 						  reg->phys_size);
 			if (rc) {
+				vmm_printf("%s: Failed to reserve physical region for %s/%s\n", 
+						__func__, gnode->name, rnode->name);
 				vmm_free(reg);
 				return rc;
 			}
@@ -448,7 +454,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 		list_add_tail(&reg->head, &guest->aspace.reg_list);
 	}
 
-	/* Probe device emulation for virutal regions */
+	/* Probe device emulation for virtual regions */
 	list_for_each(l, &guest->aspace.reg_list) {
 		reg = list_entry(l, struct vmm_region, head);
 		if (reg->flags & VMM_REGION_VIRTUAL) {

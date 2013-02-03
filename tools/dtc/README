@@ -1,0 +1,15 @@
+This directory contains the source tree of the "Device tree Compiler" used
+for Xvisor development.
+
+This is a copy of the "Device tree compiler" directory of the linux 3.x
+source tree.
+
+In the linux source tree the "Device tree compiler" directory is at 
+scripts/dtc.
+
+Anytime you want to upgrade the Xvisor DTC compiler you should replace
+all files in this directory with the latest from the linux source tree.
+
+You should preserve only 2 files:
+* The Makefile
+* This README

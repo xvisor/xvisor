@@ -30,17 +30,17 @@
 				#address-cells = <1>;
 				#size-cells = <1>;
 
-				uart0 {
+				SERIAL0: uart0 {
 			      		device_type = "serial";
-			      		compatible = "pl011";
+			      		compatible = "arm,pl011";
 			      		reg = <0x101F1000 0x1000>;
 			      		baudrate = <115200>;
 					irq = <12>;
 				};
 
-				rtc0 {
+				RTC0: rtc0 {
 					device_type = "rtc";
-					compatible = "pl031";
+					compatible = "arm,pl031";
 					reg = <0x101E8000 0x1000>;
 					clock-rate = <1>;
 					irq = <10>;
@@ -53,8 +53,6 @@
 					irq = <25>;
 					switch = "netbridge0";
 				};
-
-
 			};
 		};
 	};

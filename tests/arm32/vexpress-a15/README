@@ -1,0 +1,12 @@
+			Versatile Express A15 Guest
+
+This guest has Cortex-A15 (MPCore ARMv7) CPU and various peripherals expected 
+on a Versatile Platform Base Board.
+
+We have following guest OSes tested for this guest:
+
+  1. basic - Basic test and/or bootloader used by xvisor developers
+  2. linux - Linux Kernel 
+
+Please follow the README under specific guest OS directory for detailed steps 
+to configure, compile and run.

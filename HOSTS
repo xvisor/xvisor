@@ -10,9 +10,23 @@ If a field spans multiple lines then simply add field prefix to every line.
 
 ----------
 
-M:	BeagleBoard or BeagleBoard-xM
+M:	Exynos 4210 smdkc210 evaluation board
 A:	ARM 32-bit (ARMv7a)
-C:	OMAP3 (Cortex-A8)
+C:	Cortex-A9
+V:	Samsung (http://www.samsung.com)
+E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
+G:	Realview PB-A8 and VExpress-A9 guests supported
+S:	Only supports Contex-A9 Uniprocessor. The Cortex-A9 Multiprocessor
+	(or SMP) suppport is Work-In-Progress.
+S:	Able to boot multiple Realview PB-A8 linux guest on smdkc210
+	emulated by Linaro QEMU.
+S:	Able to boot VExpress-A9 linux guest on smdkc210 emulated by
+	Linaro QEMU
+D:	docs/arm/exynos4-smdkc210.txt
+
+M:	OMAP3
+A:	ARM 32-bit (ARMv7a)
+C:	Cortex-A8
 V:	Texax Instruments (http://www.ti.com/)
 E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
 G:	Realview PB-A8 and VExpress-A9 guests supported
@@ -20,7 +34,16 @@ S:	Able to boot multiple Realview PB-A8 linux guest on BeagleBoard-xM
 	Hardware and BeagleBoard emulated by Linaro QEMU 
 S:	Able to boot VExpress-A9 linux guest on BeagleBoard-xM Hardware and
 	BeagleBoard emulated by Linaro QEMU 
-D:	docs/arm/beagle-board.txt
+D:	docs/arm/omap3-beagle.txt
+
+M:	QEMU MIPS Emulation
+A:	MIPS 32-bit
+C:	mips32r2
+V:	MIPS Technologies (http://www.mips.com/)
+E:	QEMU 0.14.xx or higher (http://wiki.qemu.org/)
+G:	Work-In-Progress. No guest support available yet
+S:	Able to get Xvisor managment terminal on MIPS emulated by QEMU
+D:	---
 
 M:	Realview PB-A8
 A:	ARM 32-bit (ARMv7a)
@@ -33,14 +56,15 @@ S:	Able to boot multiple Realview PB-A8 linux guest on Realview-PB-A8
 S:	Able to boot VExpress-A9 linux guest on Realview-PB-A8 emulated by QEMU
 D:	docs/arm/realview-pb-a8.txt
 
-M:	QEMU MIPS Emulation
-A:	MIPS 32-bit
-C:	mips32r2
-V:	MIPS Technologies (http://www.mips.com/)
-E:	QEMU 0.14.xx or higher (http://wiki.qemu.org/)
-G:	Work-In-Progress. No guest support available yet
-S:	Able to get Xvisor managment terminal on MIPS emulated by QEMU
-D:	---
+M:	Sun4i (or Allwinner A10) 
+A:	ARM 32-bit (ARMv7a)
+C:	Cortex-A8
+V:	Rhombus Tech (http://rhombus-tech.net/)
+E:	---
+G:	Realview PB-A8 and VExpress-A9 guests supported
+S:	Able to boot multiple Realview PB-A8 linux guest on Hackberry board
+S:	Able to boot VExpress-A9 linux guest on Hackberry board
+D:	docs/arm/sun4i-hackberry.txt
 
 M:	Versatile PB
 A:	ARM 32-bit (ARMv5)
@@ -65,32 +89,19 @@ S:	Able to boot multiple Realview PB-A8 linux guest on VExpress-A9
 S:	Able to boot VExpress-A9 linux guest on VExpress-A9 emulated by QEMU
 D:	docs/arm/vexpress-a9.txt
 
-M:	Versatile Express Cortex A15x4 (Without Virtualization Extensions)
-A:	ARM 32-bit (ARMv7a)
-C:	Cortex-A15
-V:	ARM Ltd. (http://www.arm.com/)
-E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
-G:	Realview PB-A8 and VExpress-A9 guests supported
-S:	Only supports Contex-A15 Uniprocessor. The Cortex-A15 Multiprocessor 
-	(or SMP) suppport is Work-In-Progress.
-S:	Able to boot multiple Realview PB-A8 linux guest on Vexpress-A15
-	emulated by Linaro QEMU.
-S:	Able to boot VExpress-A9 linux guest on VExpress-A15 emulated by QEMU
-D:	docs/arm/vexpress-a15.txt
-
 M:	Versatile Express Cortex A15x4 (With Virtualization Extensions)
 A:	ARM 32-bit (ARMv7a-ve)
 C:	Cortex-A15
 V:	ARM Ltd. (http://www.arm.com/)
 E:	ARM Fast Models 7.0 or higher (https://www.arm.com/)
-G:	Realview PB-A8 and VExpress-A9 guests supported
+G:	Realview PB-A8, VExpress-A9 and VExpress-A15 guests supported
 S:	Only supports Contex-A15 Uniprocessor. The Cortex-A15 Multiprocessor 
 	(or SMP) suppport is Work-In-Progress.
 S:	Able to boot multiple Realview PB-A8 linux guest on VExpress-A15
 	emulated by ARM fast models.
 S:	Able to boot VExpress-A9 linux guest on VExpress-A15 emulated by 
 	ARM fast models.
-D:	docs/arm/vexpress-a15-ve.txt
+D:	docs/arm/vexpress-a15.txt
 
 M:	x86_64 Generic
 A:	x86 64-bit

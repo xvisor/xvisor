@@ -25,6 +25,9 @@
 
 #include <arm_config.h>
 
+#define GIC_CPU_BASE	A9_MPCORE_GIC_CPU	
+#define GIC_DIST_BASE	A9_MPCORE_GIC_DIST
+
 #if !defined(GIC_NR_IRQS) || (GIC_NR_IRQS < NR_IRQS_CA9X4)
 #undef GIC_NR_IRQS
 #define GIC_NR_IRQS		NR_IRQS_CA9X4

@@ -22,8 +22,9 @@
  * @details This source file implements CP15 coprocessor for each VCPU.
  */
 
-#include <vmm_heap.h>
 #include <vmm_error.h>
+#include <vmm_heap.h>
+#include <vmm_stdio.h>
 #include <vmm_scheduler.h>
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
@@ -45,21 +46,38 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 	irq_flags_t f;
 	u32 reg_flags = 0x0;
 	struct cpu_page pg;
-	physical_size_t availsz;
+	physical_addr_t inaddr, outaddr;
+	physical_size_t size, availsz;
 
 	memset(&pg, 0, sizeof(pg));
 
-	pg.ia = fipa & TTBL_L3_MAP_MASK;
-	pg.sz = TTBL_L3_BLOCK_SIZE;
+	inaddr = fipa & TTBL_L3_MAP_MASK;
+	size = TTBL_L3_BLOCK_SIZE;
 
-	rc = vmm_guest_physical_map(vcpu->guest, pg.ia, pg.sz, 
-				    &pg.oa, &availsz, &reg_flags);
+	rc = vmm_guest_physical_map(vcpu->guest, inaddr, size, 
+				    &outaddr, &availsz, &reg_flags);
 	if (rc) {
 		return rc;
 	}
 
 	if (availsz < TTBL_L3_BLOCK_SIZE) {
 		return VMM_EFAIL;
+	}
+
+	pg.ia = inaddr;
+	pg.sz = size;
+	pg.oa = outaddr;
+
+	if (reg_flags & VMM_REGION_ISRAM) {
+		inaddr = fipa & TTBL_L2_MAP_MASK;
+		size = TTBL_L2_BLOCK_SIZE;
+		rc = vmm_guest_physical_map(vcpu->guest, inaddr, size, 
+				    &outaddr, &availsz, &reg_flags);
+		if (!rc && (availsz >= TTBL_L2_BLOCK_SIZE)) {
+			pg.ia = inaddr;
+			pg.sz = size;
+			pg.oa = outaddr;
+		}
 	}
 
 	if (reg_flags & VMM_REGION_VIRTUAL) {
@@ -168,9 +186,6 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 	switch (CRn) {
 	case 1: /* System configuration.  */
 		switch (opc2) {
-		case 0: /* Control register.  */
-			*data = arm_priv(vcpu)->cp15.c1_sctlr;
-			break;
 		case 1: /* Auxiliary control register.  */
 			if (!arm_feature(vcpu, ARM_FEATURE_AUXCR))
 				goto bad_reg;
@@ -196,12 +211,17 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 					*data &= ~(1 << 6);
 				}
 				break;
+			case ARM_CPUID_CORTEXA15:
+				*data = 0;
+				if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
+					*data |= (1 << 6);
+				} else {
+					*data &= ~(1 << 6);
+				}
+				break;
 			default:
 				goto bad_reg;
 			}
-			break;
-		case 2: /* Coprocessor access register.  */
-			*data = arm_priv(vcpu)->cp15.c1_cpacr;
 			break;
 		default:
 			goto bad_reg;
@@ -231,11 +251,45 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			goto bad_reg;
 		};
 		break;
+	case 15:		/* Implementation specific.  */
+		switch (opc1) {
+		case 0:
+			switch (arm_cpuid(vcpu)) {
+			case ARM_CPUID_CORTEXA9:
+			case ARM_CPUID_CORTEXA15:
+				/* PCR: Power control register */
+				/* Read always zero. */
+				*data = 0x0;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 4:
+			switch (arm_cpuid(vcpu)) {
+			case ARM_CPUID_CORTEXA9:
+				/* CBAR: Configuration Base Address Register */
+				*data = 0x1e000000;
+				break;
+			case ARM_CPUID_CORTEXA15:
+				/* CBAR: Configuration Base Address Register */
+				*data = 0x2c000000;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		default:
+			goto bad_reg;
+		};
+		break;
 	default:
 		goto bad_reg;
 	}
 	return TRUE;
 bad_reg:
+	vmm_printf("%s: vcpu=%d opc1=%x opc2=%x CRn=%x CRm=%x (invalid)\n", 
+				__func__, vcpu->id, opc1, opc2, CRn, CRm);
 	return FALSE;
 }
 
@@ -247,16 +301,8 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 	switch (CRn) {
 	case 1: /* System configuration.  */
 		switch (opc2) {
-		case 0:
-			arm_priv(vcpu)->cp15.c1_sctlr = data;
-			write_sctlr(data & ~(SCTLR_A_MASK));
-			break;
 		case 1: /* Auxiliary control register.  */
 			/* Not implemented.  */
-			break;
-		case 2:
-			arm_priv(vcpu)->cp15.c1_cpacr = data;
-			write_cpacr(data);
 			break;
 		default:
 			goto bad_reg;
@@ -368,11 +414,30 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			goto bad_reg;
 		}
 		break;
+	case 15:		/* Implementation specific.  */
+		switch (opc1) {
+		case 0:
+			switch (arm_cpuid(vcpu)) {
+			case ARM_CPUID_CORTEXA9:
+			case ARM_CPUID_CORTEXA15:
+				/* Power Control Register */
+				/* Ignore writes. */;
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		default:
+			goto bad_reg;
+		};
+		break;
 	default:
 		goto bad_reg;
 	}
 	return TRUE;
 bad_reg:
+	vmm_printf("%s: vcpu=%d opc1=%x opc2=%x CRn=%x CRm=%x (invalid)\n", 
+				__func__, vcpu->id, opc1, opc2, CRn, CRm);
 	return FALSE;
 }
 
@@ -411,7 +476,7 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 			write_vmpidr(vcpu->subid);
 		}
 		write_csselr(arm_priv(vcpu)->cp15.c0_cssel);
-		write_sctlr(arm_priv(vcpu)->cp15.c1_sctlr & ~(SCTLR_A_MASK));
+		write_sctlr(arm_priv(vcpu)->cp15.c1_sctlr);
 		write_cpacr(arm_priv(vcpu)->cp15.c1_cpacr);
 		write_ttbr0(arm_priv(vcpu)->cp15.c2_ttbr0);
 		write_ttbr1(arm_priv(vcpu)->cp15.c2_ttbr1);
@@ -433,6 +498,12 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		write_tpidrprw(arm_priv(vcpu)->cp15.c13_tls3);
 	}
 }
+
+static u32 cortexa15_cp15_c0_c1[8] =
+{ 0x1131, 0x11011, 0x02010555, 0, 0x10201105, 0x20000000, 0x01240000, 0x02102211 };
+
+static u32 cortexa15_cp15_c0_c2[8] =
+{ 0x02101110, 0x13112111, 0x21232041, 0x11112131, 0x10011142, 0, 0, 0 };
 
 static u32 cortexa9_cp15_c0_c1[8] =
 { 0x1031, 0x11, 0x000, 0, 0x00100103, 0x20000000, 0x01230000, 0x00002111 };
@@ -468,6 +539,13 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa9_cp15_c0_c1, 
 							8 * sizeof(u32));
 		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa9_cp15_c0_c2, 
+							8 * sizeof(u32));
+		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
+		break;
+	case ARM_CPUID_CORTEXA15:
+		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa15_cp15_c0_c1, 
+							8 * sizeof(u32));
+		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa15_cp15_c0_c2, 
 							8 * sizeof(u32));
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;

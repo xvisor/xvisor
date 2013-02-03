@@ -36,7 +36,7 @@
 
 #define IDLE_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
 #define IDLE_VCPU_PRIORITY 		VMM_VCPU_MIN_PRIORITY
-#define IDLE_VCPU_TIMESLICE 		(VMM_VCPU_DEF_TIME_SLICE * 100)
+#define IDLE_VCPU_TIMESLICE 		(1000000000)
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
@@ -143,7 +143,11 @@ int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			if (!rc && schedp->current_vcpu) {
 				if (vmm_schedalgo_rq_prempt_needed(schedp->rq, 
 							schedp->current_vcpu)) {
-					vmm_timer_event_expire(&schedp->ev);
+					if (schedp->current_vcpu->is_normal) {
+						schedp->yield_on_irq_exit = TRUE;
+					} else {
+						vmm_timer_event_expire(&schedp->ev);
+					}
 				}
 			}
 		}
@@ -152,7 +156,9 @@ int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 	case VMM_VCPU_STATE_HALTED:
 		/* Expire timer event if current VCPU is paused or halted */
 		if(schedp->current_vcpu == vcpu) {
-			if (!vcpu->is_normal) {
+			if (vcpu->is_normal) {
+				schedp->yield_on_irq_exit = TRUE;
+			} else {
 				vmm_timer_event_expire(&schedp->ev);
 			}
 		} else {
@@ -307,7 +313,7 @@ static void idle_orphan(void)
 	}
 }
 
-int __init vmm_scheduler_init(void)
+int __cpuinit vmm_scheduler_init(void)
 {
 	int rc;
 	char vcpu_name[32];

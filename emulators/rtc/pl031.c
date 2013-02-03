@@ -275,16 +275,27 @@ static int pl031_emulator_write(struct vmm_emudev *edev,
 static int pl031_emulator_reset(struct vmm_emudev *edev)
 {
 	struct pl031_state * s = edev->priv;
+	struct vmm_timeval tv;
+	struct vmm_timezone tz;
+	int rc = VMM_OK;
 
 	vmm_spin_lock(&s->lock);
+
+	if ((rc = vmm_wallclock_get_timeofday(&tv, &tz))) {
+		goto pl031_emulator_reset_done;
+	}
+        s->tick_offset = (u32)(tv.tv_sec - (tz.tz_minuteswest * 60));
+	s->tick_tstamp = vmm_timer_timestamp();
 
 	vmm_timer_event_stop(&s->event);
 	s->im = 0;
 	pl031_update(s);
 
+pl031_emulator_reset_done:
+
 	vmm_spin_unlock(&s->lock);
 
-	return VMM_OK;
+	return rc;
 }
 
 static int pl031_emulator_probe(struct vmm_guest *guest,
@@ -293,8 +304,6 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	const char *attr;
-	struct vmm_timeval tv;
-	struct vmm_timezone tz;
 	struct pl031_state * s;
 
 	s = vmm_malloc(sizeof(struct pl031_state));
@@ -316,12 +325,6 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 	}
 
 	INIT_TIMER_EVENT(&s->event, &pl031_timer_event, s);
-
-	if ((rc = vmm_wallclock_get_timeofday(&tv, &tz))) {
-		goto pl031_emulator_probe_freestate_fail;
-	}
-        s->tick_offset = (u32)(tv.tv_sec - (tz.tz_minuteswest * 60));
-	s->tick_tstamp = vmm_timer_timestamp();
 
 	edev->priv = s;
 

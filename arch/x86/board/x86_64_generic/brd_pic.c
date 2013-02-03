@@ -34,7 +34,7 @@ u32 arch_host_irq_active(u32 cpu_irq_no)
 	return cpu_irq_no;
 }
 
-int __init arch_host_irq_init(void)
+int __cpuinit arch_host_irq_init(void)
 {
 #if CONFIG_LOCAL_APIC
 	apic_init();

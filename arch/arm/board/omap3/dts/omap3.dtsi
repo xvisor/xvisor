@@ -30,7 +30,7 @@
 				#address-cells = <1>;
 				#size-cells = <1>;
 
-				uart0 {
+				SERIAL0: uart0 {
 					device_type = "serial";
 					compatible = "st16654";
 					reg = <0x49020000 0x1000>;

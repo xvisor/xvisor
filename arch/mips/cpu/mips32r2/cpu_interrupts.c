@@ -54,7 +54,7 @@ void setup_interrupts()
 #endif
 }
 
-int arch_cpu_irq_setup(void)
+int __cpuinit arch_cpu_irq_setup(void)
 {
 	setup_interrupts();
 	

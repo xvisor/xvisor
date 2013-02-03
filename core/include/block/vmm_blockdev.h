@@ -27,16 +27,20 @@
 #include <vmm_types.h>
 #include <vmm_devdrv.h>
 #include <vmm_spinlocks.h>
+#include <vmm_mutex.h>
+#include <vmm_notifier.h>
 
 #define VMM_BLOCKDEV_CLASS_NAME				"block"
 #define VMM_BLOCKDEV_CLASS_IPRIORITY			1
 #define VMM_BLOCKDEV_MAX_NAME_SIZE			32
 
+/** Types of block IO request */
 enum vmm_request_type {
 	VMM_REQUEST_READ=0,
 	VMM_REQUEST_WRITE=1
 };
 
+/** Representation of a block IO request */
 struct vmm_request {
 	struct vmm_blockdev *bdev; /* No need to set this field. 
 				    * submit_request() will set this field.
@@ -52,6 +56,7 @@ struct vmm_request {
 	void *priv;
 };
 
+/** Representation of a block IO request queue */
 struct vmm_request_queue {
 	vmm_spinlock_t lock;
 
@@ -67,11 +72,12 @@ struct vmm_request_queue {
 #define VMM_BLOCKDEV_RDONLY			0x00000001
 #define VMM_BLOCKDEV_RW				0x00000002
 
+/** Representation of a block device */
 struct vmm_blockdev {
 	struct dlist head;
 	struct vmm_blockdev *parent;
 	
-	vmm_spinlock_t child_lock;
+	struct vmm_mutex child_lock;
 	u32 child_count;
 	struct dlist child_list;
 
@@ -85,6 +91,23 @@ struct vmm_blockdev {
 
 	struct vmm_request_queue *rq;
 };
+
+/* Notifier event when block device is registered */
+#define VMM_BLOCKDEV_EVENT_REGISTER		0x01
+/* Notifier event when block device is unregistered */
+#define VMM_BLOCKDEV_EVENT_UNREGISTER		0x02
+
+/** Representation of block device notifier event */
+struct vmm_blockdev_event {
+	struct vmm_blockdev *bdev;
+	void *data;
+};
+
+/** Register a notifier client to receive block device events */
+int vmm_blockdev_register_client(struct vmm_notifier_block *nb);
+
+/** Unregister a notifier client to not receive block device events */
+int vmm_blockdev_unregister_client(struct vmm_notifier_block *nb);
 
 /** Size of block device in bytes */
 static inline u64 vmm_blockdev_total_size(struct vmm_blockdev *bdev)

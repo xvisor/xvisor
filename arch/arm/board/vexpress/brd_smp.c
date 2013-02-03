@@ -28,15 +28,17 @@
 #include <vmm_compiler.h>
 #include <libs/libfdt.h>
 #include <motherboard.h>
+#include <smp_scu.h>
 #include <gic.h>
 
 int __init arch_smp_prepare_cpus(void)
 {
-#ifdef CONFIG_CPU_CORTEX_A9
+	int rc = VMM_OK;
+#ifdef CONFIG_ARM_SCU
 	struct vmm_devtree_node *node;
 	virtual_addr_t ca9_scu_base;
-	u32 scu_cfg;
-	int i, rc;
+	u32 ncores;
+	int i;
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
@@ -49,21 +51,24 @@ int __init arch_smp_prepare_cpus(void)
 		return rc;
 	}
 
+	ncores = scu_get_core_count((void *)ca9_scu_base);
+
 	/* Find out the number of SMP-enabled cpu cores */
-	scu_cfg = vmm_readl((void *)ca9_scu_base + 0x4);
-	for(i = 0; i < CONFIG_CPU_COUNT; i++) {
-		if ((i > (scu_cfg & 0x3)) || !((scu_cfg >> (4 + i)) & 1)) {
+	for (i = 0; i < CONFIG_CPU_COUNT; i++) {
+		if ((i >= ncores)
+		    || !scu_cpu_core_is_smp((void *)ca9_scu_base, i)) {
 			/* Update the cpu_possible bitmap */
 			vmm_set_cpu_possible(i, 0);
 		}
 	}
 
-	/* Enable snooping in A9-MPCORE SCU */
-	vmm_writel(1, (void *)(ca9_scu_base + 0x4));
+	/* Enable snooping through SCU */
+	scu_enable((void *)ca9_scu_base);
 
 	rc = vmm_devtree_regunmap(node, ca9_scu_base, 0);
 #endif
-	return VMM_OK;
+
+	return rc;
 }
 
 extern unsigned long _load_start;
@@ -72,14 +77,17 @@ int __init arch_smp_start_cpu(u32 cpu)
 {
 #ifdef CONFIG_CPU_CORTEX_A9
 	const struct vmm_cpumask *mask = get_cpu_mask(cpu);
-	if(cpu == 0)
+
+	if (cpu == 0) {
 		return VMM_OK;
-//	vmm_printf("%s: 0x%x\n", __func__, _load_start);
+	}
+
 	/* Write the entry address for the secondary cpus */
-	v2m_flags_set((u32)_load_start);
-	/* Wakeup target cpu from wfe/wfi by sending an IPI */ 
+	v2m_flags_set((u32) _load_start);
+
+	/* Wakeup target cpu from wfe/wfi by sending an IPI */
 	gic_raise_softirq(mask, 0);
 #endif
+
 	return VMM_OK;
 }
-

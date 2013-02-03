@@ -33,6 +33,15 @@
 #include <cpu_mmu.h>
 #include <cpu_interrupts.h>
 
+#undef __DEBUG
+//#define __DEBUG
+
+#ifdef __DEBUG
+#define debug_print(fmt, args...) vmm_printf("cpu_interrupt[%d]: " fmt, __LINE__, ##args)
+#else
+#define debug_print(fmt, args...) { }
+#endif
+
 static struct gate_descriptor int_desc_table[256] __attribute__((aligned(8)));
 static struct idt64_ptr iptr;
 static struct tss_64 vmm_tss __attribute__((aligned(8)));
@@ -105,6 +114,7 @@ static void setup_tss64(struct tss_64 *init_tss)
 	u64 stack_start = (u64)&_ist_stacks_start;
 
 	for (i = 0; i < (2 * NR_IST_STACKS); i += 2) {
+		debug_print("stack[%d]: %lx%lx\n", i, stack_start >> 32, stack_start & 0xFFFFFFFFUL);
 		tss_stacks[i] = (u32)(stack_start & 0xFFFFFFFFUL);
 		tss_stacks[i+1] = (u32)((stack_start >> 32) & 0xFFFFFFFFUL);
 		stack_start -= PAGE_SIZE;
@@ -139,10 +149,17 @@ static void install_tss_64_descriptor(struct tss_64 *init_tss)
 static void setup_gate_handlers(void)
 {
 	u32 i;
+	u64 user_irq_base = VIRT_TO_PHYS(__IRQ_32);
 
 	/* Install default handler for all interrupts, then cherry pick */
-	for (i = 0; i < 256; i++)
-		set_interrupt_gate(i, VIRT_TO_PHYS(_generic_handler));
+	for (i = 0; i < 256; i++) {
+		if (i >= 32) {
+			debug_print("Int %d => 0x%lx%lx\n", i, (user_irq_base >> 32), (user_irq_base & 0xFFFFFFFFUL));
+			set_interrupt_gate(i, user_irq_base);
+			user_irq_base += 1024;
+		} else
+			set_interrupt_gate(i, VIRT_TO_PHYS(_generic_handler));
+	}
 
 	set_trap_gate(0, VIRT_TO_PHYS(_irq0));	/* divide error */
 	set_trap_gate(1, VIRT_TO_PHYS(_irq1));	/* debug */
@@ -166,7 +183,7 @@ static void setup_gate_handlers(void)
 	set_interrupt_gate(14, VIRT_TO_PHYS(_irq14));/* page fault */
 }
 
-int arch_cpu_irq_setup(void)
+int __cpuinit arch_cpu_irq_setup(void)
 {
 	setup_tss64(&vmm_tss);
 	install_tss_64_descriptor(&vmm_tss);
@@ -177,6 +194,17 @@ int arch_cpu_irq_setup(void)
 }
 
 /* All Handlers */
+int do_page_fault(int error, arch_regs_t *regs)
+{
+	u64 bad_vaddr;
+
+	__asm__ __volatile__("movq %%cr2, %0\n\t"
+			     :"=r"(bad_vaddr));
+
+	vmm_printf("Handled access to address %x Error: %x\n", bad_vaddr, error);
+	while(1);
+}
+
 int do_breakpoint(int intno, arch_regs_t *regs)
 {
 	return 0;
@@ -192,8 +220,17 @@ int do_gpf(int intno, arch_regs_t *regs)
 
 int do_generic_int_handler(int intno, arch_regs_t *regs)
 {
-	vmm_printf("Generic int no %d\n", intno);
+#ifdef __DEBUG
+	struct x86_64_interrupt_frame *frame =
+		(struct x86_64_interrupt_frame *)((u64)regs
+						  + sizeof(struct x86_64_interrupt_frame));
+#endif
 
+	debug_print("%s: int: %d, regs: 0x%lx%lx\n",
+		    __func__, intno, ((u64)regs >> 32), ((u64) regs & 0xFFFFFFFFUL));
+	debug_print("rip: %lx esp: %lx cs: %lx ss: %lx\n",
+		    (unsigned long)frame->rip, (unsigned long)frame->rsp,
+		    (unsigned long)frame->cs, (unsigned long)frame->ss);
 	vmm_scheduler_irq_enter(regs, FALSE);
 	vmm_host_irq_exec(intno, regs);
 	vmm_scheduler_irq_exit(regs);

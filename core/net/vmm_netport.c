@@ -26,6 +26,7 @@
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
+#include <net/vmm_protocol.h>
 #include <net/vmm_netport.h>
 #include <libs/stringlib.h>
 
@@ -110,6 +111,20 @@ struct vmm_netport *vmm_netport_alloc(char *name, u32 queue_size)
 }
 VMM_EXPORT_SYMBOL(vmm_netport_alloc);
 
+int vmm_netport_free(struct vmm_netport *port)
+{
+	if (!port) {
+		return VMM_EFAIL;
+	}
+
+	vmm_free(port->xfer_pool);
+	vmm_free(port->name);
+	vmm_free(port);
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(vmm_netport_free);
+
 int vmm_netport_register(struct vmm_netport *port)
 {
 	struct vmm_classdev *cd;
@@ -117,6 +132,11 @@ int vmm_netport_register(struct vmm_netport *port)
 
 	if (port == NULL)
 		return VMM_EFAIL;
+
+	/* If port has invalid mac, assign a random one */
+	if (!is_valid_ether_addr(port->macaddr)) {
+		random_ether_addr(port->macaddr);
+	}
 
 	cd = vmm_malloc(sizeof(struct vmm_classdev));
 	if (!cd) {

@@ -59,6 +59,7 @@ struct vfs_ctrl {
 	struct vmm_mutex fd_bmap_lock;
 	unsigned long *fd_bmap;
 	struct file fd[VFS_MAX_FD];
+	struct vmm_notifier_block bdev_client;
 };
 
 static struct vfs_ctrl vfsc;
@@ -480,6 +481,151 @@ static int vfs_vnode_acquire(const char *path, struct vnode **vp)
 	return VMM_OK;
 }
 
+/* If a mount point is removed abruptly (probably due to
+ * unplugging of a pluggable block device) then we need to
+ * flush all file descriptors and vnodes under this mount point.
+ *
+ * Note: This is a recursive function and must be called with
+ * mount point list locked
+ */
+static void vfs_force_unmount(struct mount *m)
+{
+	int i;
+	bool found;
+	struct dlist *l;
+	struct vnode *v;
+	struct mount *tm;
+
+	/* First flush mount points having 
+	 * covered node under this mount point
+	 */
+	while (1) {
+		/* Find temp mount point */
+		found = FALSE;
+		list_for_each(l, &vfsc.mnt_list) {
+			tm = list_entry(l, struct mount, m_link);
+			if (tm->m_covered &&
+			    tm->m_covered->v_mount == m) {
+				found = TRUE;
+				break;
+			}
+		}
+		if (!found) {
+			break;
+		}
+
+		/* Flush temp mount point */
+		vfs_force_unmount(tm);
+	}
+
+	/* Remove mount point from mount point list */
+	list_del(&m->m_link);
+
+	/* Flush all file descriptors using vnode from this mount point */
+	vmm_mutex_lock(&vfsc.fd_bmap_lock);
+	for (i = 0; i < VFS_MAX_FD; i++) {
+		if (bitmap_isset(vfsc.fd_bmap, i) &&
+		    (vfsc.fd[i].f_vnode->v_mount == m)) {
+			vmm_mutex_lock(&vfsc.fd[i].f_lock);
+			vfsc.fd[i].f_flags = 0;
+			vfsc.fd[i].f_offset = 0;
+			vfsc.fd[i].f_vnode = NULL;
+			vmm_mutex_unlock(&vfsc.fd[i].f_lock);
+			bitmap_clear(vfsc.fd_bmap, i, 1);
+		}
+	}
+	vmm_mutex_unlock(&vfsc.fd_bmap_lock);
+
+	/* Flush all vnodes from this mount point */
+	for (i = 0; i < VFS_VNODE_HASH_SIZE; i++) {
+		vmm_mutex_lock(&vfsc.vnode_list_lock[i]);
+
+		while (1) {
+			found = FALSE;
+			list_for_each(l, &vfsc.vnode_list[i]) {
+				v = list_entry(l, struct vnode, v_link);
+				if (v->v_mount == m) {
+					found = TRUE;
+					break;
+				}
+			}
+			if (!found) {
+				break;
+			}
+
+			/* Remove vnode from hash list */
+			list_del(&v->v_link);
+
+			/* Deallocate fs specific data from this vnode */
+			vmm_mutex_lock(&v->v_mount->m_lock);
+			v->v_mount->m_fs->vput(v->v_mount, v);
+			vmm_mutex_unlock(&v->v_mount->m_lock);
+
+			/* Free vnode */
+			vmm_free(v);
+		}
+
+		vmm_mutex_unlock(&vfsc.vnode_list_lock[i]);
+	}
+
+	/* Call filesytem unmount */
+	vmm_mutex_lock(&m->m_lock);
+	m->m_fs->unmount(m);
+	vmm_mutex_unlock(&m->m_lock);
+
+	/* Release covering filesystem vnode */
+	if (m->m_covered) {
+		vfs_vnode_release(m->m_covered);
+	}
+
+	/* Free mount point */
+	vmm_free(m);
+}
+
+static int vfs_blockdev_notification(struct vmm_notifier_block *nb,
+				     unsigned long evt, void *data)
+{
+	bool found;
+	struct dlist *l;
+	struct mount *m;
+	struct vmm_blockdev_event *e = data;
+
+	if (evt != VMM_BLOCKDEV_EVENT_UNREGISTER) {
+		/* We are only interested in unregister events so,
+		 * don't care about this event.
+		 */
+		return NOTIFY_DONE;
+	}
+
+	/* Lock mount point list */
+	vmm_mutex_lock(&vfsc.mnt_list_lock);
+
+	/* Find mount point using block device */
+	found = FALSE;
+	list_for_each(l, &vfsc.mnt_list) {
+		m = list_entry(l, struct mount, m_link);
+		if (m->m_dev == e->bdev) {
+			found = TRUE;
+			break;
+		}
+	}
+	if (!found) {
+		/* Did not find suitable mount point so,
+		 * don't care about this event.
+		 */
+		vmm_mutex_unlock(&vfsc.mnt_list_lock);
+		return NOTIFY_DONE;
+	}
+
+	/* Force unmount */
+	vfs_force_unmount(m);
+
+	/* Unlock mount point list */
+	vmm_mutex_unlock(&vfsc.mnt_list_lock);
+
+	return NOTIFY_OK;
+}
+
 int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 {
 	int err;
@@ -603,36 +749,6 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(vfs_mount);
-
-#if 0
-/* FIXME: If a mount point is removed abruptly (probably due to
- * unplugging of a pluggable block device) then we need to
- * flush all file descriptors and vnodes under this mount point.
- *
- * Not sure whether:
- * vfs_mount_flush() handles all possible scenarios !!!!
- */
-static void vfs_mount_flush(struct mount *m)
-{
-	int i;
-
-	vmm_mutex_lock(&vfsc.fd_bmap_lock);
-
-	for (i = 0; i < VFS_MAX_FD; i++) {
-		if (bitmap_isset(vfsc.fd_bmap, i) &&
-		    (vfsc.fd[i].f_vnode->v_mount == m)) {
-			vmm_mutex_lock(&vfsc.fd[i].f_lock);
-			vfsc.fd[i].f_flags = 0;
-			vfsc.fd[i].f_offset = 0;
-			vfsc.fd[i].f_vnode = NULL;
-			vmm_mutex_unlock(&vfsc.fd[i].f_lock);
-			bitmap_clear(vfsc.fd_bmap, i, 1);
-		}
-	}
-
-	vmm_mutex_unlock(&vfsc.fd_bmap_lock);
-}
-#endif
 
 int vfs_unmount(const char *path)
 {
@@ -1939,12 +2055,17 @@ static int __init vfs_init(void)
 		INIT_MUTEX(&vfsc.fd[i].f_lock);
 	}
 
+	vfsc.bdev_client.notifier_call = &vfs_blockdev_notification;
+	vfsc.bdev_client.priority = 0;
+	vmm_blockdev_register_client(&vfsc.bdev_client);
+
 	return VMM_OK;
 }
 
 static void __exit vfs_exit(void)
 {
-	/* For now nothing to be done for exit. */
+	vmm_blockdev_unregister_client(&vfsc.bdev_client);
+	vmm_free(vfsc.fd_bmap);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,

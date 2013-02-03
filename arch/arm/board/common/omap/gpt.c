@@ -100,7 +100,7 @@ int __init gpt_clocksource_init(const char *name,
 	cs->clksrc.name = name;
 	cs->clksrc.rating = 200;
 	cs->clksrc.read = &gpt_clocksource_read;
-	cs->clksrc.mask = 0xFFFFFFFF;
+	cs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
 	cs->clksrc.mult = vmm_clocksource_khz2mult(gpt_hz/1000, 24);
 	cs->clksrc.shift = 24;
 	cs->clksrc.priv = cs;
@@ -190,7 +190,7 @@ static int gpt_clockchip_expire(struct vmm_clockchip *cc)
 	return VMM_OK;
 }
 
-int __init gpt_clockchip_init(const char *name,
+int __cpuinit gpt_clockchip_init(const char *name,
 			physical_addr_t gpt_pa, u32 gpt_hz, u32 gpt_irq)
 {
 	int rc;

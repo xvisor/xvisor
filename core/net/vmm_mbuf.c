@@ -164,7 +164,7 @@ VMM_EXPORT_SYMBOL(m_get);
 
 void m_ext_free(struct vmm_mbuf *m)
 {
-	if (!(--(m->m_extref))) {
+	if (!(--(m->m_extref)) && !(m->m_flags & M_EXT_DONTFREE)) {
 		/* dropping the last reference */
 		if (m->m_extfree) {
 			(*m->m_extfree)(m, m->m_extbuf, m->m_extlen, m->m_extarg);

@@ -491,6 +491,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		cpuid = ARM_CPUID_CORTEXA8;
 	} else if (strcmp(attr, "ARMv7a,cortex-a9") == 0) {
 		cpuid = ARM_CPUID_CORTEXA9;
+	} else if (strcmp(attr, "ARMv7a,cortex-a15") == 0) {
+		cpuid = ARM_CPUID_CORTEXA15;
 	} else {
 		return VMM_EFAIL;
 	}
@@ -539,8 +541,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		/* Initialize Hypervisor System Trap Register */
 		arm_priv(vcpu)->hstr = (HSTR_TJDBX_MASK |
 					HSTR_TTEE_MASK |
-					HSTR_T9_MASK |
-					HSTR_T1_MASK);
+					HSTR_T9_MASK);
 		/* Initialize VCPU features */
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
@@ -556,6 +557,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA9:
 			arm_set_feature(vcpu, ARM_FEATURE_V4T);
@@ -571,6 +573,26 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
 			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
+			break;
+		case ARM_CPUID_CORTEXA15:
+			arm_set_feature(vcpu, ARM_FEATURE_V4T);
+			arm_set_feature(vcpu, ARM_FEATURE_V5);
+			arm_set_feature(vcpu, ARM_FEATURE_V6);
+			arm_set_feature(vcpu, ARM_FEATURE_V6K);
+			arm_set_feature(vcpu, ARM_FEATURE_V7);
+			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_DIV);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP4);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
+			arm_set_feature(vcpu, ARM_FEATURE_NEON);
+			arm_set_feature(vcpu, ARM_FEATURE_LPAE);
+			arm_set_feature(vcpu, ARM_FEATURE_GENTIMER);
+			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		default:
 			break;
@@ -713,7 +735,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		arm_regs(tvcpu)->cpsr = regs->cpsr;
 		if (tvcpu->is_normal) {
 			if (arm_feature(tvcpu, ARM_FEATURE_GENTIMER)) {
-				generic_timer_vcpu_context_save(arm_gentimer_context(vcpu));
+				generic_timer_vcpu_context_save(arm_gentimer_context(tvcpu));
 			}
 			cpu_vcpu_banked_regs_save(tvcpu);
 			arm_priv(tvcpu)->hcr = read_hcr();
