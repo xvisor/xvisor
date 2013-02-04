@@ -32,5 +32,15 @@
 			physical_addr = <0x40000000>;
 			physical_size = <0x10000000>; /* 256 MB */
 		};
+
+		sfrregion {
+			eth0 {
+				device_type = "nic";
+				compatible = "smc911x";
+				reg = <0x05000000 0x1000>;
+				irq = <53>;
+				switch = "netbridge0";
+			};
+		};
 	};
 };

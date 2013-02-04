@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.0
-# Tue Jan 29 12:15:15 2013
+# Thu Jan 31 22:49:13 2013
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -177,7 +177,10 @@ CONFIG_RTC_S3C=y
 #
 # Network Drivers
 #
-# CONFIG_NET_DRIVERS is not set
+CONFIG_NET_DRIVERS=y
+# CONFIG_ETHER_NE2K is not set
+CONFIG_ETHER_SMSC_911x=y
+# CONFIG_ETHER_SMSC_91x is not set
 
 #
 # Device Emulators
