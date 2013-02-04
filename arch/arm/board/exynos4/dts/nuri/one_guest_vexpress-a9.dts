@@ -1,6 +1,6 @@
 
 /dts-v1/;
 
-/include/ "smdkc210.dtsi"
+/include/ "nuri.dtsi"
 
 /include/ "../guest/one_guest_vexpress-a9.dtsi"
