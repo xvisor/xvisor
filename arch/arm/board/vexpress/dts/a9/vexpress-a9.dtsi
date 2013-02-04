@@ -66,6 +66,7 @@
 				device_type = "nic";
 				compatible = "smc911x";
 				reg = <0x4E000000 0x1000>;
+				smsc,irq-active-high;
 				irq = <47>;
 				switch = "netbridge0";
 			};

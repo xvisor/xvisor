@@ -50,14 +50,12 @@ static const char version[] =
 		"smc911x.c: v1.0 04-16-2005 by Dustin McIntire <dustin@sensoria.com>\n";
 
 /* Debugging options */
-#if 0
 #define	ENABLE_SMC_DEBUG_RX		0
 #define	ENABLE_SMC_DEBUG_TX		0
 #define	ENABLE_SMC_DEBUG_DMA		0
 #define	ENABLE_SMC_DEBUG_PKTS		0
 #define	ENABLE_SMC_DEBUG_MISC		0
 #define	ENABLE_SMC_DEBUG_FUNC		0
-#endif
 
 #define	SMC_DEBUG_RX		((ENABLE_SMC_DEBUG_RX	? 1 : 0) << 0)
 #define	SMC_DEBUG_TX		((ENABLE_SMC_DEBUG_TX	? 1 : 0) << 1)
@@ -2078,9 +2076,16 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 	ndev->irq = *((u32 *) attr);
 	DBG(SMC_DEBUG_MISC, "%s IRQ  0x%02X\n", ndev->name, ndev->irq);
 
+	if(vmm_devtree_getattr(dev->node, "smsc,irq-active-high")) {
+		lp->cfg.irq_polarity = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH;
+		DBG(SMC_DEBUG_MISC, "%s IRQ polarity is high\n", ndev->name);
+	} else {
+		lp->cfg.irq_polarity = SMSC911X_IRQ_POLARITY_ACTIVE_LOW;
+		DBG(SMC_DEBUG_MISC, "%s IRQ polarity is low\n", ndev->name);
+	}
+
 #ifdef SMC_DYNAMIC_BUS_CONFIG
         lp->cfg.flags = SMC911X_USE_32BIT;
-	lp->cfg.irq_polarity = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH;
 #endif
 
 	rc = smc911x_probe(ndev);
