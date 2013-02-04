@@ -27,7 +27,7 @@
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_modules.h>
-#include <vmm_ringbuf.h>
+#include <libs/fifo.h>
 #include <libs/stringlib.h>
 
 #include <drv/ne2k.h>
@@ -406,7 +406,7 @@ static void dp83902a_recv(struct nic_priv_data *dp, int len)
 		while (0 < mlen) {
 			/* Saved byte from previous loop? */
 			if (saved) {
-				vmm_ringbuf_enqueue(dp->rx_rb, &saved_char, TRUE);
+				fifo_enqueue(dp->rx_rb, &saved_char, TRUE);
 				mlen--;
 				saved = false;
 				continue;
@@ -415,7 +415,7 @@ static void dp83902a_recv(struct nic_priv_data *dp, int len)
 			{
 				u8 tmp;
 				DP_IN_DATA(dp->data, tmp);
-				vmm_ringbuf_enqueue(dp->rx_rb, &tmp, TRUE);
+				fifo_enqueue(dp->rx_rb, &tmp, TRUE);
 				mlen--;
 			}
 		}
@@ -590,7 +590,7 @@ int ne2k_init(struct nic_priv_data *nic_data)
 	}
 
 	if (!nic_data->rx_rb) {
-		nic_data->rx_rb = vmm_ringbuf_alloc(1, 2000);
+		nic_data->rx_rb = fifo_alloc(1, 2000);
 		if (!nic_data->rx_rb) {
 			vmm_printf("Cannot allocate receive buffer\n");
 			return VMM_EFAIL;
@@ -757,7 +757,7 @@ static int ne2k_driver_remove(struct vmm_driver *dev)
 	if (ndev) {
 		priv_data = (struct nic_priv_data *)ndev->priv;
 		if (priv_data) {
-			vmm_ringbuf_free(priv_data->rx_rb);
+			fifo_free(priv_data->rx_rb);
 			vmm_free(priv_data);
 		}
 		vmm_free(ndev);

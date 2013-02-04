@@ -31,4 +31,5 @@ libs-objs-y+= common/mathlib.o
 libs-objs-y+= common/stacktrace.o
 libs-objs-y+= common/smoothsort.o
 libs-objs-y+= common/list_sort.o
+libs-objs-y+= common/fifo.o
 

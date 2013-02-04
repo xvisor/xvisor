@@ -25,9 +25,9 @@
 
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
-#include <vmm_ringbuf.h>
 #include <vmm_notifier.h>
 #include <libs/list.h>
+#include <libs/fifo.h>
 
 struct vmm_vserial_receiver;
 struct vmm_vserial;
@@ -52,7 +52,7 @@ struct vmm_vserial {
 
 	vmm_spinlock_t receiver_list_lock;
 	struct dlist receiver_list;
-	struct vmm_ringbuf *receive_buf;
+	struct fifo *receive_fifo;
 	void *priv;
 };
 
@@ -91,7 +91,7 @@ int vmm_vserial_unregister_receiver(struct vmm_vserial *vser,
 struct vmm_vserial *vmm_vserial_create(const char *name,
 				       bool (*can_send) (struct vmm_vserial *),
 				       int (*send) (struct vmm_vserial *, u8),
-				       u32 receive_buf_size, void *priv);
+				       u32 receive_fifo_size, void *priv);
 
 /** Destroy a virtual serial port */
 int vmm_vserial_destroy(struct vmm_vserial *vser);

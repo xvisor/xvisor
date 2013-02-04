@@ -35,10 +35,10 @@
 #include <vmm_heap.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
-#include <vmm_ringbuf.h>
 #include <vmm_vserial.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <libs/fifo.h>
 #include <libs/stringlib.h>
 
 #define MODULE_DESC			"PL011 Serial Emulator"
@@ -74,7 +74,7 @@ struct pl011_state {
 	u32 fbrd;
 	u32 ifl;
 	int rd_trig;
-	struct vmm_ringbuf *rd_fifo;
+	struct fifo *rd_fifo;
 };
 
 static void pl011_set_irq(struct pl011_state * s)
@@ -111,9 +111,9 @@ static int pl011_reg_read(struct pl011_state * s, u32 offset, u32 *dst)
 	switch (offset >> 2) {
 	case 0: /* UARTDR */
 		s->flags &= ~PL011_FLAG_RXFF;
-		vmm_ringbuf_dequeue(s->rd_fifo, &val);
+		fifo_dequeue(s->rd_fifo, &val);
 		*dst = val;
-		read_count = vmm_ringbuf_avail(s->rd_fifo);
+		read_count = fifo_avail(s->rd_fifo);
 		if (read_count == 0) {
 			s->flags |= PL011_FLAG_RXFE;
 		}
@@ -245,14 +245,14 @@ static bool pl011_vserial_can_send(struct vmm_vserial *vser)
 #if 0
 	u32 rd_count;
 
-	rd_count = vmm_ringbuf_avail(s->rd_fifo);
+	rd_count = fifo_avail(s->rd_fifo);
 	if (s->lcr & 0x10) {
 		return (rd_count < s->fifo_sz);
 	} else {
 		return (rd_count < 1);
 	}
 #endif
-	return !vmm_ringbuf_isfull(s->rd_fifo);
+	return !fifo_isfull(s->rd_fifo);
 }
 
 static int pl011_vserial_send(struct vmm_vserial *vser, u8 data)
@@ -260,8 +260,8 @@ static int pl011_vserial_send(struct vmm_vserial *vser, u8 data)
 	struct pl011_state * s = vser->priv;
 	u32 rd_count;
 
-	vmm_ringbuf_enqueue(s->rd_fifo, &data, TRUE);
-	rd_count = vmm_ringbuf_avail(s->rd_fifo);
+	fifo_enqueue(s->rd_fifo, &data, TRUE);
+	rd_count = fifo_avail(s->rd_fifo);
 	vmm_spin_lock(&s->lock);
 	s->flags &= ~PL011_FLAG_RXFE;
 	if (s->cr & 0x10 || rd_count == s->fifo_sz) {
@@ -403,7 +403,7 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 		goto pl011_emulator_probe_freestate_fail;
 	}
 
-	s->rd_fifo = vmm_ringbuf_alloc(1, s->fifo_sz);
+	s->rd_fifo = fifo_alloc(1, s->fifo_sz);
 	if (!s->rd_fifo) {
 		rc = VMM_EFAIL;
 		goto pl011_emulator_probe_freestate_fail;
@@ -425,7 +425,7 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 	goto pl011_emulator_probe_done;
 
 pl011_emulator_probe_freerbuf_fail:
-	vmm_ringbuf_free(s->rd_fifo);
+	fifo_free(s->rd_fifo);
 pl011_emulator_probe_freestate_fail:
 	vmm_free(s);
 pl011_emulator_probe_done:
@@ -438,7 +438,7 @@ static int pl011_emulator_remove(struct vmm_emudev *edev)
 
 	if (s) {
 		vmm_vserial_destroy(s->vser);
-		vmm_ringbuf_free(s->rd_fifo);
+		fifo_free(s->rd_fifo);
 		vmm_free(s);
 		edev->priv = NULL;
 	}
