@@ -19,16 +19,6 @@
 			};
 		};
 
-		memory {
-			/* NOTE: By default QEMU will only proivde 128 MB 
-			 * unless specified by "-m" option. If you have
-			 * X MB then we will be able to access only first
-			 * X MB starting at physical_addr.
-			 */
-			physical_addr = <0x40000000>;
-			physical_size = <0x10000000>; /* 256 MB */
-		};
-
 		scu { /* Snoop Control Unit */
 			device_type = "scu";
 			compatible = "arm,a9mpcore-priv";
