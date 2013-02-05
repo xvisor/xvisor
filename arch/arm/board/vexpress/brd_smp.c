@@ -27,67 +27,99 @@
 #include <vmm_host_io.h>
 #include <vmm_compiler.h>
 #include <libs/libfdt.h>
+#include <libs/stringlib.h>
 #include <motherboard.h>
 #include <smp_scu.h>
 #include <gic.h>
 
-int __init arch_smp_prepare_cpus(void)
+static virtual_addr_t scu_base;
+
+int __init arch_smp_init_cpus(void)
 {
-	int rc = VMM_OK;
-#ifdef CONFIG_ARM_SCU
-	struct vmm_devtree_node *node;
-	virtual_addr_t ca9_scu_base;
 	u32 ncores;
-	int i;
+	int i, rc = VMM_OK;
+	const char *aval;
+	struct dlist *l;
+	struct vmm_devtree_node *node, *cnode;
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME
 				   VMM_DEVTREE_PATH_SEPARATOR_STRING "scu");
-	if (!node) {
-		return VMM_EFAIL;
-	}
-	rc = vmm_devtree_regmap(node, &ca9_scu_base, 0);
-	if (rc) {
-		return rc;
+	if (node) {
+		/* Map SCU registers */
+		rc = vmm_devtree_regmap(node, &scu_base, 0);
+		if (rc) {
+			return rc;
+		}
+	} else {
+		/* No SCU present */
+		scu_base = 0x0;
 	}
 
-	ncores = scu_get_core_count((void *)ca9_scu_base);
+	if (scu_base) {
+		/* Get core count from SCU */
+		ncores = scu_get_core_count((void *)scu_base);
 
-	/* Find out the number of SMP-enabled cpu cores */
-	for (i = 0; i < CONFIG_CPU_COUNT; i++) {
-		if ((i >= ncores)
-		    || !scu_cpu_core_is_smp((void *)ca9_scu_base, i)) {
-			/* Update the cpu_possible bitmap */
-			vmm_set_cpu_possible(i, 0);
+		/* Update the cpu_possible bitmap based on SCU */
+		for (i = 0; i < CONFIG_CPU_COUNT; i++) {
+			if ((i < ncores) &&
+			    scu_cpu_core_is_smp((void *)scu_base, i)) {
+				vmm_set_cpu_possible(i, TRUE);
+			}
+		}
+	} else {
+		/* Rely on "cpus" node when no SCU present */
+		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_HOSTINFO_NODE_NAME
+				VMM_DEVTREE_PATH_SEPARATOR_STRING "cpus");
+		if (!node) {
+			return VMM_EFAIL;
+		}
+
+		i = 0;
+		list_for_each(l, &node->child_list) {
+			cnode = list_entry(l, struct vmm_devtree_node, head);
+			aval = vmm_devtree_attrval(cnode, 
+					VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
+			if (aval && 
+			    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_CPU)) {
+				vmm_set_cpu_possible(i, TRUE);
+				i++;
+			}
 		}
 	}
 
-	/* Enable snooping through SCU */
-	scu_enable((void *)ca9_scu_base);
-
-	rc = vmm_devtree_regunmap(node, ca9_scu_base, 0);
-#endif
-
-	return rc;
+	return VMM_OK;
 }
 
 extern unsigned long _load_start;
 
-int __init arch_smp_start_cpu(u32 cpu)
+int __init arch_smp_prepare_cpus(unsigned int max_cpus)
 {
-#ifdef CONFIG_CPU_CORTEX_A9
-	const struct vmm_cpumask *mask = get_cpu_mask(cpu);
+	int i;
 
-	if (cpu == 0) {
-		return VMM_OK;
+	/* Update the cpu_present bitmap */
+	for (i = 0; i < max_cpus; i++) {
+		vmm_set_cpu_present(i, TRUE);
+	}
+
+	if (scu_base) {
+		/* Enable snooping through SCU */
+		scu_enable((void *)scu_base);
 	}
 
 	/* Write the entry address for the secondary cpus */
 	v2m_flags_set((u32) _load_start);
 
+	return VMM_OK;
+}
+
+int __init arch_smp_start_cpu(u32 cpu)
+{
+	const struct vmm_cpumask *mask = get_cpu_mask(cpu);
+
 	/* Wakeup target cpu from wfe/wfi by sending an IPI */
 	gic_raise_softirq(mask, 0);
-#endif
 
 	return VMM_OK;
 }

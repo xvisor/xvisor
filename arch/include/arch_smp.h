@@ -28,10 +28,19 @@
 /** Retrive current processor id */
 u32 arch_smp_id(void);
 
-/** Prepare secondary CPUs */
-int arch_smp_prepare_cpus(void);
+/** Initalize secondary CPUs 
+ *  Note: This function is supposed to inform about possible CPUs using
+ *  vmm_set_cpu_possible() API
+ */
+int arch_smp_init_cpus(void);
 
-/** Start secondary CPU */
+/** Prepare possible secondary CPUs 
+ *  Note: This function is supposed to inform about present CPUs using
+ *  vmm_set_cpu_present() API
+ */
+int arch_smp_prepare_cpus(unsigned int max_cpus);
+
+/** Start a present secondary CPU */
 int arch_smp_start_cpu(u32 cpu);
 
 #endif

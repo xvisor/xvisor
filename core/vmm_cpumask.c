@@ -59,8 +59,7 @@ const unsigned long cpu_bit_bitmap[BITS_PER_LONG+1][BITS_TO_LONGS(CONFIG_CPU_COU
 
 const DEFINE_BITMAP(cpu_all_bits, CONFIG_CPU_COUNT) = VMM_CPU_BITS_ALL;
 
-static DEFINE_BITMAP(cpu_possible_bits, CONFIG_CPU_COUNT) __read_mostly 
-							= VMM_CPU_BITS_ALL;
+static DEFINE_BITMAP(cpu_possible_bits, CONFIG_CPU_COUNT) __read_mostly;
 const struct vmm_cpumask *const cpu_possible_mask = to_cpumask(cpu_possible_bits);
 
 static DEFINE_BITMAP(cpu_online_bits, CONFIG_CPU_COUNT) __read_mostly;

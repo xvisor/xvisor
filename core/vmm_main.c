@@ -136,12 +136,12 @@ static void system_init_work(struct vmm_work *work)
 	}
 
 #if defined(CONFIG_SMP)
-	/* Here we will poll for all possible CPU to get online */
+	/* Here we will poll for all present CPUs to get online */
 	/* There is a timeout of 1 second */
 	while(count--) {
 		int all_cpu_online = 1;
 
-		for_each_possible_cpu(c) {
+		for_each_present_cpu(c) {
 			if (!vmm_cpu_online(c)) {
 				all_cpu_online = 0;
 			}
@@ -155,12 +155,10 @@ static void system_init_work(struct vmm_work *work)
 	}
 #endif
 
-	/* Print status of host CPUs */
-	for_each_possible_cpu(c) {
+	/* Print status of present host CPUs */
+	for_each_present_cpu(c) {
 		if (vmm_cpu_online(c)) {
 			vmm_printf("CPU%d: Online\n", c);
-		} else if (vmm_cpu_present(c)) {
-			vmm_printf("CPU%d: Present\n", c);
 		} else {
 			vmm_printf("CPU%d: Possible\n", c);
 		}
@@ -237,7 +235,8 @@ void vmm_init(void)
 	u32 cpu = vmm_smp_processor_id();
 	struct vmm_work sysinit;
 
-	/* Mark this CPU present */
+	/* Mark this CPU possible & present */
+	vmm_set_cpu_possible(cpu, TRUE);
 	vmm_set_cpu_present(cpu, TRUE);
 
 	/* Print version string */
@@ -354,14 +353,24 @@ void vmm_init(void)
 #if defined(CONFIG_SMP)
 	/* Initialize secondary CPUs */
 	vmm_printf("Initialize Secondary CPUs\n");
-	ret = arch_smp_prepare_cpus();
+	ret = arch_smp_init_cpus();
 	if (ret) {
 		vmm_printf("Error %d\n", ret);
 		vmm_hang();
 	}
 
-	/* Start each possible secondary CPUs */
-	for_each_possible_cpu(c) {
+	/* Prepare secondary CPUs */
+	ret = arch_smp_prepare_cpus(vmm_num_possible_cpus());
+	if (ret) {
+		vmm_printf("Error %d\n", ret);
+		vmm_hang();
+	}
+
+	/* Start each present secondary CPUs */
+	for_each_present_cpu(c) {
+		if (c == cpu) {
+			continue;
+		}
 		ret = arch_smp_start_cpu(c);
 		if (ret) {
 			vmm_printf("Failed to start CPU%d\n", ret);
@@ -418,10 +427,6 @@ void vmm_init(void)
 void vmm_init_secondary(void)
 {
 	int ret;
-	u32 cpu = vmm_smp_processor_id();
-
-	/* Mark this CPU present */
-	vmm_set_cpu_present(cpu, TRUE);
 
 	/* Initialize host virtual address space */
 	ret = vmm_host_aspace_init();
