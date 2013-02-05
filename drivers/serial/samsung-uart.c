@@ -55,12 +55,9 @@ bool samsung_lowlevel_can_getc(virtual_addr_t base)
 u8 samsung_lowlevel_getc(virtual_addr_t base)
 {
 	u8 data;
-	u32 ufstat;
 
 	/* Wait until there is data in the FIFO */
 	while (!samsung_lowlevel_can_getc(base)) ;
-
-	ufstat = vmm_in_le32((void *)(base + S3C2410_UFSTAT));
 
 	data = vmm_in_8((void *)(base + S3C2410_URXH));
 
