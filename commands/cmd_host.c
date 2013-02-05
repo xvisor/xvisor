@@ -67,13 +67,15 @@ void cmd_host_info(struct vmm_chardev *cdev)
 		attr = vmm_devtree_attrval(node, VMM_DEVTREE_MODEL_ATTR_NAME);
 	}
 	if (attr) {
-		vmm_cprintf(cdev, "Board Name : %s\n", attr);
+		vmm_cprintf(cdev, "Board Name          : %s\n", attr);
 	} else {
-		vmm_cprintf(cdev, "Board Name : %s\n", CONFIG_BOARD);
+		vmm_cprintf(cdev, "Board Name          : %s\n", CONFIG_BOARD);
 	}
-	vmm_cprintf(cdev, "CPU Name   : %s\n", CONFIG_CPU);
-	vmm_cprintf(cdev, "CPU Count  : %d\n", CONFIG_CPU_COUNT);
-	vmm_cprintf(cdev, "CPU Speed  : %d.%d MHz (Estimated)\n", 
+	vmm_cprintf(cdev, "CPU Name            : %s\n", CONFIG_CPU);
+	vmm_cprintf(cdev, "CPU Online Count    : %d\n", vmm_num_online_cpus());
+	vmm_cprintf(cdev, "CPU Present Count   : %d\n", vmm_num_present_cpus());
+	vmm_cprintf(cdev, "CPU Possible Count  : %d\n", vmm_num_possible_cpus());
+	vmm_cprintf(cdev, "CPU Speed           : %d.%d MHz (Estimated)\n", 
 					udiv32(khz, 1000), umod32(khz, 1000));
 }
 
