@@ -26,6 +26,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_percpu.h>
 #include <arch_sections.h>
+#include <libs/stringlib.h>
 
 #ifdef CONFIG_SMP
 
@@ -57,6 +58,7 @@ int __init vmm_percpu_init(void)
 			return VMM_ENOMEM;
 		}
 		__percpu_offset[cpu] = __percpu_vaddr[cpu] - base;
+		memset((void *)__percpu_vaddr[cpu], 0, VMM_PAGE_SIZE * pgcount);
 	}
 
 	return VMM_OK;
