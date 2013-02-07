@@ -87,7 +87,7 @@ static struct cpu_l2tbl *cpu_mmu_l2tbl_find_tbl_pa(physical_addr_t tbl_pa)
 }
 
 /** Check whether a L2 page table is attached or not */
-int cpu_mmu_l2tbl_is_attached(struct cpu_l2tbl * l2)
+int cpu_mmu_l2tbl_is_attached(struct cpu_l2tbl *l2)
 {
 	if (!l2) {
 		return 0;
@@ -96,7 +96,7 @@ int cpu_mmu_l2tbl_is_attached(struct cpu_l2tbl * l2)
 }
 
 /** Detach a L2 page table */
-int cpu_mmu_l2tbl_detach(struct cpu_l2tbl * l2)
+int cpu_mmu_l2tbl_detach(struct cpu_l2tbl *l2)
 {
 	u32 *l1_tte;
 	u32 l1_tte_type;
@@ -134,7 +134,7 @@ int cpu_mmu_l2tbl_detach(struct cpu_l2tbl * l2)
 }
 
 /** Attach a L2 page table to a particular L1 page table */
-int cpu_mmu_l2tbl_attach(struct cpu_l1tbl * l1, struct cpu_l2tbl * l2, u32 new_imp,
+int cpu_mmu_l2tbl_attach(struct cpu_l1tbl *l1, struct cpu_l2tbl *l2, u32 new_imp,
 			 u32 new_domain, virtual_addr_t new_map_va, bool force)
 {
 	u32 *l1_tte, l1_tte_new;
@@ -208,7 +208,7 @@ struct cpu_l2tbl *cpu_mmu_l2tbl_alloc(void)
 }
 
 /** Free a L2 page table */
-int cpu_mmu_l2tbl_free(struct cpu_l2tbl * l2)
+int cpu_mmu_l2tbl_free(struct cpu_l2tbl *l2)
 {
 	int rc;
 
@@ -267,7 +267,7 @@ u32 cpu_mmu_best_page_size(virtual_addr_t va, physical_addr_t pa, u32 availsz)
 	return TTBL_L2TBL_SMALL_PAGE_SIZE;
 }
 
-int cpu_mmu_get_page(struct cpu_l1tbl * l1, virtual_addr_t va, struct cpu_page * pg)
+int cpu_mmu_get_page(struct cpu_l1tbl *l1, virtual_addr_t va, struct cpu_page *pg)
 {
 	int ret = VMM_EFAIL;
 	u32 *l1_tte, *l2_tte;
@@ -388,7 +388,7 @@ int cpu_mmu_get_page(struct cpu_l1tbl * l1, virtual_addr_t va, struct cpu_page *
 	return ret;
 }
 
-int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
+int cpu_mmu_unmap_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 {
 	int ret = VMM_EFAIL;
 	u32 ite, *l1_tte, *l2_tte;
@@ -517,7 +517,7 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
 	return ret;
 }
 
-int cpu_mmu_map_page(struct cpu_l1tbl * l1, struct cpu_page * pg)
+int cpu_mmu_map_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 {
 	int rc = VMM_OK;
 	u32 *l1_tte, *l2_tte;
@@ -907,7 +907,7 @@ l1tbl_alloc_fail:
 	return NULL;
 }
 
-int cpu_mmu_l1tbl_free(struct cpu_l1tbl * l1)
+int cpu_mmu_l1tbl_free(struct cpu_l1tbl *l1)
 {
 	struct dlist *le;
 	struct cpu_l2tbl *l2;
@@ -965,7 +965,7 @@ int cpu_mmu_chdacr(u32 new_dacr)
 	return VMM_OK;
 }
 
-int cpu_mmu_chttbr(struct cpu_l1tbl * l1)
+int cpu_mmu_chttbr(struct cpu_l1tbl *l1)
 {
 	struct cpu_l1tbl * curr_l1;
 
@@ -1235,7 +1235,7 @@ int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 	return cpu_mmu_unmap_reserved_page(&p);
 }
 
-int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
+int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t *pa)
 {
 	int rc = VMM_OK;
 	struct cpu_page p;
@@ -1249,12 +1249,12 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t * pa)
 	return VMM_OK;
 }
 
-int __init arch_cpu_aspace_primary_init(physical_addr_t * core_resv_pa, 
-					virtual_addr_t * core_resv_va,
-					virtual_size_t * core_resv_sz,
-					physical_addr_t * arch_resv_pa,
-					virtual_addr_t * arch_resv_va,
-					virtual_size_t * arch_resv_sz)
+int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa, 
+					virtual_addr_t *core_resv_va,
+					virtual_size_t *core_resv_sz,
+					physical_addr_t *arch_resv_pa,
+					virtual_addr_t *arch_resv_va,
+					virtual_size_t *arch_resv_sz)
 {
 	int rc = VMM_EFAIL;
 	u32 i, val;
@@ -1271,14 +1271,18 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t * core_resv_pa,
 	INIT_LIST_HEAD(&mmuctrl.free_l1tbl_list);
 	INIT_LIST_HEAD(&mmuctrl.free_l2tbl_list);
 
-	/* Copy the temporary L1 table */
+	/* Copy default (or master) ttbl from temporary ttbl */
 	memcpy(defl1_mem, tmpl1_mem, TTBL_L1TBL_SIZE);
 	clean_invalidate_dcache_mva_range((virtual_addr_t)defl1_mem, 
 			(virtual_addr_t)defl1_mem + TTBL_L1TBL_SIZE);
+
+	/* Switch over to default (or master) ttbl
+	 * Note: Low-level code will set temporary ttbl during boot-up
+	 */
 	write_ttbr0(arch_code_paddr_start() + ((virtual_addr_t)&defl1_mem 
 				- arch_code_vaddr_start()));
 
-	/* Handcraft default translation table */
+	/* Handcraft default (or master) ttbl */
 	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
 	mmuctrl.defl1.num = TTBL_MAX_L1TBL_COUNT;
 	mmuctrl.defl1.tbl_va = (virtual_addr_t)&defl1_mem;
@@ -1334,7 +1338,6 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t * core_resv_pa,
 	*core_resv_pa = resv_pa;
 	*core_resv_va = resv_va;
 	*core_resv_sz = resv_sz;
-
 
 	/* Allocate arch reserved space and update the *arch_resv_pa, 
 	 * *arch_resv_va, and *arch_resv_sz parameters to inform host
@@ -1436,7 +1439,13 @@ mmu_init_error:
 
 int __cpuinit arch_cpu_aspace_secondary_init(void)
 {
+	/* Switch over to default (or master) ttbl
+	 * Note: Low-level code will set temporary ttbl during boot-up
+	 */
 	write_ttbr0(mmuctrl.defl1.tbl_pa);
+
+	/* Remove all TLB enteries to start using default (or master) ttbl */
+	invalid_tlb();
 
 	return VMM_OK;
 }
