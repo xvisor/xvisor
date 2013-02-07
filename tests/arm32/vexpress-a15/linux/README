@@ -58,11 +58,11 @@ RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
   (Alternatively if you want a uniprocessor guest copy the vexpress_a15x1_guest.dts)
 
   [14. Create fast_model_boot.axf for running it on ARM Fast Models]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x80010000 -o <xvisor_source_directory>/build/fast_model_boot.img <xvisor_source_directory>/build/vmm.bin@0x80010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a15/basic/arm_test.bin@0x81000000 <xvisor_source_directory>/tests/arm32/vexpress-a15/linux/cmdlist@0x810FF000 ./arch/arm/boot/zImage@0x81100000 ./vexpress_a15_guest.dtb@0x81400000 <busybox_rootfs_directory>/rootfs.img@0x81500000
-  # cd <xvisor_source_directory>/build/; ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSMP -DVEXPRESS_A15 -DGIC_DIST_NONSECURED ../docs/arm/fast_model_boot.S -o fast_model_boot.axf; cd ..
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x80010000 -o fast_model_boot.img <xvisor_source_directory>/build/vmm.bin@0x80010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a15/basic/arm_test.bin@0x81000000 <xvisor_source_directory>/tests/arm32/vexpress-a15/linux/cmdlist@0x810FF000 ./arch/arm/boot/zImage@0x81100000 ./vexpress_a15_guest.dtb@0x81400000 <busybox_rootfs_directory>/rootfs.img@0x81500000
+  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DVEXPRESS_A15 <xvisor_source_directory>/docs/arm/fast_model_boot.S -o fast_model_boot.axf
 
   [15. Launch ARM fast models 7.0 or higher]
-  # model_shell <your_fastmodel_dir>/FastModelsPortfolio_xxxx/examples/RTSM_VE/Build_Cortex-A15x2/Linux-Debug-GCC-3.4/cadi_system_Linux-Debug-GCC-3.4.so build/fast_model_boot.axf
+  # model_shell <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<xxxx>/cadi_system_Linux-Debug-GCC-<xxxx>.so -C motherboard.smsc_91c111.enabled=1 -C motherboard.hostbridge.userNetworking=1 fast_model_boot.axf
 
   [16. Kick Guest for starting Basic Test]
   XVisor# guest kick -1
