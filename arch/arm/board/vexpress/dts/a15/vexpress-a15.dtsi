@@ -20,6 +20,21 @@
 				device_type = "cpu";
 				model = "Cortex-A15";
 			};
+
+			cpu1 {
+				device_type = "cpu";
+				model = "Cortex-A15";
+			};
+
+			cpu2 {
+				device_type = "cpu";
+				model = "Cortex-A15";
+			};
+
+			cpu3 {
+				device_type = "cpu";
+				model = "Cortex-A15";
+			};
 		};
 
 		memory {
