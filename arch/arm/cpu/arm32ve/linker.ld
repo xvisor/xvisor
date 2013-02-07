@@ -97,7 +97,7 @@ SECTIONS
 	.hvc_stack :
 	{
 		PROVIDE(_hvc_stack_start = .);
-		. = . + CONFIG_IRQ_STACK_SIZE;
+		. = . + (CONFIG_IRQ_STACK_SIZE * CONFIG_CPU_COUNT);
 		. = ALIGN(4);
 		PROVIDE(_hvc_stack_end = .);
 	}

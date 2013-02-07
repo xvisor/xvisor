@@ -21,8 +21,9 @@
  * @brief intialization functions for CPU
  */
 
-#include <vmm_main.h>
 #include <vmm_error.h>
+#include <vmm_smp.h>
+#include <vmm_main.h>
 #include <arch_cpu.h>
 #include <cpu_mmu.h>
 
@@ -66,8 +67,18 @@ int __init arch_cpu_final_init(void)
 
 void __init cpu_init(void)
 {
+#if defined(CONFIG_SMP)
+	u32 cpu = vmm_smp_processor_id();
+
+	if (!cpu) { /* Primary CPU */
+		vmm_init();
+	} else { /* Secondary CPUs */
+		vmm_init_secondary();
+	}
+#else
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
+#endif
 
 	/* We will never come back here. */
 	while (1);
