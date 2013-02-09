@@ -42,12 +42,11 @@ cpu-asflags += -marm $(arch-y) $(tune-y)
 cpu-ldflags += -msoft-float
 
 cpu-objs-y += cpu_entry.o
+cpu-objs-y += cpu_mmu.o
 
-cpu-objs-$(CONFIG_ARMV5)+= cpu_mmu_v5.o
 cpu-objs-$(CONFIG_ARMV5)+= cpu_cache_v5.o
 cpu-objs-$(CONFIG_ARMV5)+= cpu_atomic_v5.o
 
-cpu-objs-$(CONFIG_ARMV7A)+= cpu_mmu_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_cache_v7.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_atomic_v7.o
 

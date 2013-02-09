@@ -16,16 +16,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_mmu_v7.c
+ * @file cpu_mmu.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Implementation of memory managment unit for ARMv7a family
+ * @author Jean-Christophe Dubois (jcd@tribudubois.net)
+ * @brief Implementation of memory managment unit for ARM processors
  */
 
 #include <vmm_error.h>
-#include <vmm_host_aspace.h>
-#include <vmm_main.h>
-#include <vmm_stdio.h>
 #include <vmm_types.h>
+#include <vmm_stdio.h>
+#include <vmm_spinlocks.h>
+#include <vmm_host_aspace.h>
 #include <arch_barrier.h>
 #include <arch_cpu_irq.h>
 #include <arch_sections.h>
@@ -51,17 +52,20 @@ u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) tmpl1_mem[TTBL_L1TBL_SIZE];
 u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) defl1_mem[TTBL_L1TBL_SIZE];
 
 struct cpu_mmu_ctrl {
+	vmm_spinlock_t defl1_lock;
 	struct cpu_l1tbl defl1;
 	virtual_addr_t l1_base_va;
 	physical_addr_t l1_base_pa;
 	struct cpu_l1tbl *l1_array;
-	u32 l1_alloc_count;
 	virtual_addr_t l2_base_va;
 	physical_addr_t l2_base_pa;
 	struct cpu_l2tbl *l2_array;
-	u32 l2_alloc_count;
+	vmm_spinlock_t l1_alloc_lock;
+	u32 l1_alloc_count;
 	struct dlist l1tbl_list;
 	struct dlist free_l1tbl_list;
+	vmm_spinlock_t l2_alloc_lock;
+	u32 l2_alloc_count;
 	struct dlist free_l2tbl_list;
 };
 
@@ -158,19 +162,32 @@ int cpu_mmu_l2tbl_attach(struct cpu_l1tbl *l1, struct cpu_l2tbl *l2, u32 new_imp
 	}
 
 	l2->l1 = l1;
+#if defined(CONFIG_ARMV5)
+	l2->imp = 0;
+#else
 	l2->imp =
 	    new_imp & (TTBL_L1TBL_TTE_IMP_MASK >> TTBL_L1TBL_TTE_IMP_SHIFT);
+#endif
 	l2->domain =
 	    new_domain & (TTBL_L1TBL_TTE_DOM_MASK >> TTBL_L1TBL_TTE_DOM_SHIFT);
 	l2->map_va = new_map_va & TTBL_L1TBL_TTE_OFFSET_MASK;
 
+#if defined(CONFIG_ARMV5)
+	l1_tte_new = TTBL_L1TBL_TTE_REQ_MASK;
+	l1_tte_new |= (l2->domain) << TTBL_L1TBL_TTE_DOM_SHIFT;
+	l1_tte_new |= (l2->tbl_pa & TTBL_L1TBL_TTE_BASE10_MASK);
+	l1_tte_new |= TTBL_L1TBL_TTE_TYPE_COARSE_L2TBL;
+#else
 	l1_tte_new = 0x0;
 	l1_tte_new |= (l2->imp) << TTBL_L1TBL_TTE_IMP_SHIFT;
 	l1_tte_new |= (l2->domain) << TTBL_L1TBL_TTE_DOM_SHIFT;
 	l1_tte_new |= (l2->tbl_pa & TTBL_L1TBL_TTE_BASE10_MASK);
 	l1_tte_new |= TTBL_L1TBL_TTE_TYPE_L2TBL;
+#endif
+
 	*l1_tte = l1_tte_new;
 	cpu_mmu_sync_tte(l1_tte);
+
 	if (l1_tte_type == TTBL_L1TBL_TTE_TYPE_FAULT) {
 		l1->tte_cnt++;
 	}
@@ -184,15 +201,18 @@ int cpu_mmu_l2tbl_attach(struct cpu_l1tbl *l1, struct cpu_l2tbl *l2, u32 new_imp
 /** Allocate a L2 page table of given type */
 struct cpu_l2tbl *cpu_mmu_l2tbl_alloc(void)
 {
+	irq_flags_t flags;
 	struct cpu_l2tbl *l2;
 
+	vmm_spin_lock_irqsave(&mmuctrl.l2_alloc_lock, flags);
 	if (list_empty(&mmuctrl.free_l2tbl_list)) {
 		return NULL;
 	}
-
 	l2 = list_entry(list_first(&mmuctrl.free_l2tbl_list), 
 			struct cpu_l2tbl, head);
 	list_del(&l2->head);
+	mmuctrl.l2_alloc_count++;
+	vmm_spin_unlock_irqrestore(&mmuctrl.l2_alloc_lock, flags);
 
 	INIT_LIST_HEAD(&l2->head);
 	l2->l1 = NULL;
@@ -202,8 +222,6 @@ struct cpu_l2tbl *cpu_mmu_l2tbl_alloc(void)
 	l2->tte_cnt = 0;
 	memset((void *)l2->tbl_va, 0, TTBL_L2TBL_SIZE);
 
-	mmuctrl.l2_alloc_count++;
-
 	return l2;
 }
 
@@ -211,6 +229,7 @@ struct cpu_l2tbl *cpu_mmu_l2tbl_alloc(void)
 int cpu_mmu_l2tbl_free(struct cpu_l2tbl *l2)
 {
 	int rc;
+	irq_flags_t flags;
 
 	if (!l2) {
 		return VMM_EFAIL;
@@ -225,9 +244,11 @@ int cpu_mmu_l2tbl_free(struct cpu_l2tbl *l2)
 
 	INIT_LIST_HEAD(&l2->head);
 	l2->l1 = NULL;
-	list_add_tail(&l2->head, &mmuctrl.free_l2tbl_list);
 
+	vmm_spin_lock_irqsave(&mmuctrl.l2_alloc_lock, flags);
+	list_add_tail(&l2->head, &mmuctrl.free_l2tbl_list);
 	mmuctrl.l2_alloc_count--;
+	vmm_spin_unlock_irqrestore(&mmuctrl.l2_alloc_lock, flags);
 
 	return VMM_OK;
 }
@@ -271,7 +292,10 @@ int cpu_mmu_get_page(struct cpu_l1tbl *l1, virtual_addr_t va, struct cpu_page *p
 {
 	int ret = VMM_EFAIL;
 	u32 *l1_tte, *l2_tte;
-	u32 l1_tte_type, l1_sec_type;
+	u32 l1_tte_type;
+#if !defined(CONFIG_ARMV5)
+	u32 l1_sec_type;
+#endif
 	physical_addr_t l2base;
 	struct cpu_l2tbl *l2;
 	struct cpu_page r;
@@ -288,10 +312,62 @@ int cpu_mmu_get_page(struct cpu_l1tbl *l1, virtual_addr_t va, struct cpu_page *p
 			  ((va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
 
+#if defined(CONFIG_ARMV5)
 	switch (l1_tte_type) {
-	case TTBL_L1TBL_TTE_TYPE_FAULT:
-		memset(pg, 0, sizeof(struct cpu_page));
+	case TTBL_L1TBL_TTE_TYPE_SECTION:
+		pg->va = va & TTBL_L1TBL_TTE_OFFSET_MASK;
+		pg->ap = (*l1_tte & TTBL_L1TBL_TTE_AP_MASK) >>
+		    TTBL_L1TBL_TTE_AP_SHIFT;
+		pg->c = (*l1_tte & TTBL_L1TBL_TTE_C_MASK) >>
+		    TTBL_L1TBL_TTE_C_SHIFT;
+		pg->b = (*l1_tte & TTBL_L1TBL_TTE_B_MASK) >>
+		    TTBL_L1TBL_TTE_B_SHIFT;
+		pg->pa = *l1_tte & TTBL_L1TBL_TTE_BASE20_MASK;
+		pg->sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
+		pg->dom = (*l1_tte & TTBL_L1TBL_TTE_DOM_MASK) >>
+		    TTBL_L1TBL_TTE_DOM_SHIFT;
+		ret = VMM_OK;
 		break;
+	case TTBL_L1TBL_TTE_TYPE_COARSE_L2TBL:
+		l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
+		l2_tte = (u32 *) ((va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
+				  TTBL_L2TBL_TTE_OFFSET_SHIFT);
+		if (!(l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base))) {
+			break;
+		}
+		l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
+		pg->va = va & TTBL_L2TBL_TTE_BASE12_MASK;
+		pg->dom = (*l1_tte & TTBL_L1TBL_TTE_DOM_MASK) >>
+		    TTBL_L1TBL_TTE_DOM_SHIFT;
+		pg->ap = (*l2_tte & TTBL_L2TBL_TTE_V5_AP0_MASK) >>
+		    TTBL_L2TBL_TTE_V5_AP0_SHIFT;
+		pg->c = (*l2_tte & TTBL_L2TBL_TTE_C_MASK) >>
+		    TTBL_L2TBL_TTE_C_SHIFT;
+		pg->b = (*l2_tte & TTBL_L2TBL_TTE_B_MASK) >>
+		    TTBL_L2TBL_TTE_B_SHIFT;
+		switch (*l2_tte & TTBL_L2TBL_TTE_TYPE_MASK) {
+		case TTBL_L2TBL_TTE_TYPE_LARGE:
+			pg->pa = *l2_tte & TTBL_L2TBL_TTE_BASE16_MASK;
+			pg->sz = TTBL_L2TBL_LARGE_PAGE_SIZE;
+			ret = VMM_OK;
+			break;
+		case TTBL_L2TBL_TTE_TYPE_SMALL:
+			pg->pa = *l2_tte & TTBL_L2TBL_TTE_BASE12_MASK;
+			pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+			ret = VMM_OK;
+			break;
+		default:
+			ret = VMM_ENOTAVAIL;
+			break;
+		}
+		break;
+	default:
+		memset(pg, 0, sizeof(struct cpu_page));
+		ret = VMM_ENOTAVAIL;
+		break;
+	}
+#else
+	switch (l1_tte_type) {
 	case TTBL_L1TBL_TTE_TYPE_SECTION:
 		pg->va = va & TTBL_L1TBL_TTE_OFFSET_MASK;
 		pg->ns = (*l1_tte & TTBL_L1TBL_TTE_NS2_MASK) >> 
@@ -384,6 +460,7 @@ int cpu_mmu_get_page(struct cpu_l1tbl *l1, virtual_addr_t va, struct cpu_page *p
 		ret = VMM_ENOTAVAIL;
 		break;
 	};
+#endif
 
 	return ret;
 }
@@ -392,7 +469,10 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 {
 	int ret = VMM_EFAIL;
 	u32 ite, *l1_tte, *l2_tte;
-	u32 l1_tte_type, l1_sec_type, found = 0;
+	u32 l1_tte_type;
+#if !defined(CONFIG_ARMV5)
+	u32 l1_sec_type, found = 0;
+#endif
 	physical_addr_t l2base, pgpa, chkpa;
 	virtual_size_t chksz;
 	struct cpu_l2tbl *l2 = NULL;
@@ -405,6 +485,69 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 			  ((pg->va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
 
+#if defined(CONFIG_ARMV5)
+	switch (l1_tte_type) {
+	case TTBL_L1TBL_TTE_TYPE_FAULT:
+		break;
+	case TTBL_L1TBL_TTE_TYPE_SECTION:
+		pgpa = pg->pa & TTBL_L1TBL_TTE_BASE20_MASK;
+		chkpa = *l1_tte & TTBL_L1TBL_TTE_BASE20_MASK;
+		chksz = TTBL_L1TBL_SECTION_PAGE_SIZE;
+		if ((pgpa == chkpa) && (pg->sz == chksz)) {
+			*l1_tte = 0x0;
+			cpu_mmu_sync_tte(l1_tte);
+			l1->tte_cnt--;
+			ret = VMM_OK;
+		}
+		break;
+	case TTBL_L1TBL_TTE_TYPE_COARSE_L2TBL:
+		l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
+		if (!(l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base))) {
+			break;
+		}
+		l2_tte = (u32 *) ((pg->va & ~TTBL_L1TBL_TTE_OFFSET_MASK)
+				  >> TTBL_L2TBL_TTE_OFFSET_SHIFT);
+		l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
+		switch (*l2_tte & TTBL_L2TBL_TTE_TYPE_MASK) {
+		case TTBL_L2TBL_TTE_TYPE_LARGE:
+			l2_tte = l2_tte - ((u32) l2_tte % 64) / 4;
+			pgpa = pg->pa & TTBL_L2TBL_TTE_BASE16_MASK;
+			chkpa = *l2_tte & TTBL_L2TBL_TTE_BASE16_MASK;
+			chksz = TTBL_L2TBL_LARGE_PAGE_SIZE;
+			if ((pgpa == chkpa) && (pg->sz == chksz)) {
+				for (ite = 0; ite < 16; ite++) {
+					l2_tte[ite] = 0x0;
+					cpu_mmu_sync_tte(&l2_tte[ite]);
+					l2->tte_cnt--;
+				}
+				if (!l2->tte_cnt) {
+					cpu_mmu_l2tbl_free(l2);
+				}
+				ret = VMM_OK;
+			}
+			break;
+		case TTBL_L2TBL_TTE_TYPE_SMALL:
+			pgpa = pg->pa & TTBL_L2TBL_TTE_BASE12_MASK;
+			chkpa = *l2_tte & TTBL_L2TBL_TTE_BASE12_MASK;
+			chksz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+			if ((pgpa == chkpa) && (pg->sz == chksz)) {
+				*l2_tte = 0x0;
+				cpu_mmu_sync_tte(l2_tte);
+				l2->tte_cnt--;
+				if (!l2->tte_cnt) {
+					cpu_mmu_l2tbl_free(l2);
+				}
+				ret = VMM_OK;
+			}
+			break;
+		default:
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+#else
 	found = 0;
 	switch (l1_tte_type) {
 	case TTBL_L1TBL_TTE_TYPE_FAULT:
@@ -502,6 +645,7 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 	default:
 		break;
 	}
+#endif
 
 	if (!ret) {
 		/* If given L1 page table is current then 
@@ -533,12 +677,23 @@ int cpu_mmu_map_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 		goto mmu_map_return;
 	}
 
+	/* Get the l1 TBL location */
 	l1_tte = (u32 *) (l1->tbl_va +
 			  ((pg->va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 
+	/* Get l1 TLB value */
 	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
+
+	/* If the l1 TBL is already set */
 	if (l1_tte_type != TTBL_L1TBL_TTE_TYPE_FAULT) {
+		/* we need to check that the requested area is not already
+		 * mapped
+		 */
+#if defined(CONFIG_ARMV5)
+		if (l1_tte_type == TTBL_L1TBL_TTE_TYPE_COARSE_L2TBL) {
+#else
 		if (l1_tte_type == TTBL_L1TBL_TTE_TYPE_L2TBL) {
+#endif
 			minpgsz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		} else {
 			minpgsz = TTBL_L1TBL_SECTION_PAGE_SIZE;
@@ -549,25 +704,27 @@ int cpu_mmu_map_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 		pgva = pgva & ~(minpgsz - 1);
 		pgsz = pg->sz;
 		while (pgsz) {
-			if (cpu_mmu_get_page(l1, pgva, &upg)) {
-				pgva += minpgsz;
-				pgsz = (pgsz < minpgsz) ? 0 : (pgsz - minpgsz);
-			} else {
+			if (!cpu_mmu_get_page(l1, pgva, &upg)) {
 				rc = VMM_EFAIL;
 				goto mmu_map_return;
 			}
+			pgva += minpgsz;
+			pgsz = (pgsz < minpgsz) ? 0 : (pgsz - minpgsz);
 		}
 	}
 
 	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
 	if (l1_tte_type == TTBL_L1TBL_TTE_TYPE_FAULT) {
+		/* The L1 is not already set */
 		switch (pg->sz) {
 		case TTBL_L2TBL_LARGE_PAGE_SIZE:	/* 64K Large Page */
 		case TTBL_L2TBL_SMALL_PAGE_SIZE:	/* 4K Small Page */
+			/* If small page requested, then alloc a level 2 TBL */
 			if (!(l2 = cpu_mmu_l2tbl_alloc())) {
 				rc = VMM_EFAIL;
 				goto mmu_map_return;
 			}
+			/* And attach it to the L1 TBL */
 			rc = cpu_mmu_l2tbl_attach(l1, l2, pg->imp, pg->dom,
 						  pg->va, FALSE);
 			if (rc) {
@@ -579,6 +736,75 @@ int cpu_mmu_map_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 		};
 	}
 
+	/* Now set up the mapping based on requested page size */
+#if defined(CONFIG_ARMV5)
+	switch (pg->sz) {
+	case TTBL_L1TBL_SECTION_PAGE_SIZE:	/* 1M Section Page */
+		*l1_tte = TTBL_L1TBL_TTE_REQ_MASK;
+		*l1_tte |= (pg->pa & TTBL_L1TBL_TTE_BASE20_MASK);
+		*l1_tte |=
+		    (pg->dom << TTBL_L1TBL_TTE_DOM_SHIFT) &
+		    TTBL_L1TBL_TTE_DOM_MASK;
+		*l1_tte |=
+		    (pg->ap << TTBL_L1TBL_TTE_AP_SHIFT) &
+		    TTBL_L1TBL_TTE_AP_MASK;
+		*l1_tte |=
+		    (pg->c << TTBL_L1TBL_TTE_C_SHIFT) & TTBL_L1TBL_TTE_C_MASK;
+		*l1_tte |=
+		    (pg->b << TTBL_L1TBL_TTE_B_SHIFT) & TTBL_L1TBL_TTE_B_MASK;
+		*l1_tte |= TTBL_L1TBL_TTE_TYPE_SECTION;
+		cpu_mmu_sync_tte(l1_tte);
+		l1->tte_cnt++;
+		break;
+	case TTBL_L2TBL_LARGE_PAGE_SIZE:	/* 64K Large Page */
+	case TTBL_L2TBL_SMALL_PAGE_SIZE:	/* 4K Small Page */
+		l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
+		if (!(l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base))) {
+			rc = VMM_EFAIL;
+			goto mmu_map_return;
+		}
+		l2_tte =
+		    (u32 *) ((pg->va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
+			     TTBL_L2TBL_TTE_OFFSET_SHIFT);
+		l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
+		if (pg->sz == TTBL_L2TBL_LARGE_PAGE_SIZE) {
+			l2_tte -= ((u32) l2_tte % 64) >> 2;
+			*l2_tte = (pg->pa & TTBL_L2TBL_TTE_BASE16_MASK);
+			*l2_tte |= TTBL_L2TBL_TTE_TYPE_LARGE;
+		} else {
+			*l2_tte = (pg->pa & TTBL_L2TBL_TTE_BASE12_MASK);
+			*l2_tte |= TTBL_L2TBL_TTE_TYPE_SMALL;
+		}
+		*l2_tte |=
+		    (pg->ap << TTBL_L2TBL_TTE_V5_AP0_SHIFT) &
+		    TTBL_L2TBL_TTE_V5_AP0_MASK;
+		*l2_tte |=
+		    (pg->ap << TTBL_L2TBL_TTE_V5_AP1_SHIFT) &
+		    TTBL_L2TBL_TTE_V5_AP1_MASK;
+		*l2_tte |=
+		    (pg->ap << TTBL_L2TBL_TTE_V5_AP2_SHIFT) &
+		    TTBL_L2TBL_TTE_V5_AP2_MASK;
+		*l2_tte |=
+		    (pg->ap << TTBL_L2TBL_TTE_V5_AP3_SHIFT) &
+		    TTBL_L2TBL_TTE_V5_AP3_MASK;
+		*l2_tte |=
+		    (pg->c << TTBL_L2TBL_TTE_C_SHIFT) & TTBL_L2TBL_TTE_C_MASK;
+		*l2_tte |=
+		    (pg->b << TTBL_L2TBL_TTE_B_SHIFT) & TTBL_L2TBL_TTE_B_MASK;
+		cpu_mmu_sync_tte(l2_tte);
+		l2->tte_cnt++;
+		if (pg->sz == TTBL_L2TBL_LARGE_PAGE_SIZE) {
+			for (ite = 1; ite < 16; ite++) {
+				l2_tte[ite] = l2_tte[0];
+				cpu_mmu_sync_tte(&l2_tte[ite]);
+				l2->tte_cnt++;
+			}
+		}
+		break;
+	default:
+		break;
+	};
+#else
 	switch (pg->sz) {
 	case TTBL_L1TBL_SUPSECTION_PAGE_SIZE:	/* 16M Super Section Page */
 	case TTBL_L1TBL_SECTION_PAGE_SIZE:	/* 1M Section Page */
@@ -681,6 +907,7 @@ int cpu_mmu_map_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 	default:
 		break;
 	};
+#endif
 
 mmu_map_return:
 	return rc;
@@ -702,6 +929,84 @@ static int cpu_mmu_split_reserved_page(struct cpu_page *pg, virtual_size_t rsize
 
 	l1 = &mmuctrl.defl1;
 
+#if defined(CONFIG_ARMV5)
+	/* XXX Currently, this function handles only
+	 *     Section -> Pages splitting case.
+	 */
+	/* TODO Add other cases:
+	 *        Section      -> Large Pages
+	 *        Large Page   -> Pages
+	 */
+	switch (pg->sz) {
+	case TTBL_L1TBL_SECTION_PAGE_SIZE:
+		switch (rsize) {
+		case TTBL_L2TBL_SMALL_PAGE_SIZE:
+			count = TTBL_L1TBL_SECTION_PAGE_SIZE /
+			    TTBL_L2TBL_SMALL_PAGE_SIZE;
+
+			if (!(l2 = cpu_mmu_l2tbl_alloc())) {
+				rc = VMM_EFAIL;
+				goto error;
+			}
+
+			va = pg->va;
+			pa = pg->pa;
+
+			for (i = 0; i < count; i++) {
+				l2_tte = (u32 *)
+				    ((va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
+				     TTBL_L2TBL_TTE_OFFSET_SHIFT);
+				l2_tte =
+				    (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
+
+				*l2_tte = pa & TTBL_L2TBL_TTE_BASE12_MASK;
+				*l2_tte |= TTBL_L2TBL_TTE_TYPE_SMALL;
+				*l2_tte |=
+				    (pg->ap << TTBL_L2TBL_TTE_V5_AP0_SHIFT) &
+				    TTBL_L2TBL_TTE_V5_AP0_MASK;
+				*l2_tte |=
+				    (pg->ap << TTBL_L2TBL_TTE_V5_AP1_SHIFT) &
+				    TTBL_L2TBL_TTE_V5_AP1_MASK;
+				*l2_tte |=
+				    (pg->ap << TTBL_L2TBL_TTE_V5_AP2_SHIFT) &
+				    TTBL_L2TBL_TTE_V5_AP2_MASK;
+				*l2_tte |=
+				    (pg->ap << TTBL_L2TBL_TTE_V5_AP3_SHIFT) &
+				    TTBL_L2TBL_TTE_V5_AP3_MASK;
+				*l2_tte |=
+				    (pg->c << TTBL_L2TBL_TTE_C_SHIFT) &
+				    TTBL_L2TBL_TTE_C_MASK;
+				*l2_tte |=
+				    (pg->b << TTBL_L2TBL_TTE_B_SHIFT) &
+				    TTBL_L2TBL_TTE_B_MASK;
+
+				cpu_mmu_sync_tte(l2_tte);
+
+				l2->tte_cnt++;
+
+				va += TTBL_L2TBL_SMALL_PAGE_SIZE;
+				pa += TTBL_L2TBL_SMALL_PAGE_SIZE;
+			}
+
+			cpu_mmu_l2tbl_attach(l1, l2, 0, pg->dom, pg->va, TRUE);
+
+			invalid_tlb();
+
+			break;
+		default:
+			vmm_printf("%s: Unimplemented (target size 0x%x)\n",
+			       __func__, rsize);
+			BUG();
+			break;
+		}
+		break;
+	default:
+		vmm_printf("%s: Unimplemented (source size 0x%x)\n", __func__,
+		       pg->sz);
+		BUG();
+		break;
+	}
+#else
 	/* XXX Currently, this function handles only
 	 *     Section -> Pages splitting case.
 	 */
@@ -775,6 +1080,7 @@ static int cpu_mmu_split_reserved_page(struct cpu_page *pg, virtual_size_t rsize
 		BUG();
 		break;
 	}
+#endif
 
 	rc = VMM_OK;
 error:
@@ -783,23 +1089,33 @@ error:
 
 int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page *pg)
 {
-	return cpu_mmu_get_page(&mmuctrl.defl1, va, pg);
+	int rc;
+	irq_flags_t flags;
+
+	vmm_spin_lock_irqsave(&mmuctrl.defl1_lock, flags);
+	rc = cpu_mmu_get_page(&mmuctrl.defl1, va, pg);
+	vmm_spin_unlock_irqrestore(&mmuctrl.defl1_lock, flags);
+
+	return rc;
 }
 
 int cpu_mmu_unmap_reserved_page(struct cpu_page *pg)
 {
 	int rc;
-	struct dlist *le;
-	struct cpu_l1tbl *l1;
 	irq_flags_t flags;
+	struct dlist *l;
+	struct cpu_l1tbl *l1;
 
 	if (!pg) {
 		return VMM_EFAIL;
 	}
 
+	vmm_spin_lock_irqsave(&mmuctrl.defl1_lock, flags);
 	if ((rc = cpu_mmu_unmap_page(&mmuctrl.defl1, pg))) {
+		vmm_spin_unlock_irqrestore(&mmuctrl.defl1_lock, flags);
 		return rc;
 	}
+	vmm_spin_unlock_irqrestore(&mmuctrl.defl1_lock, flags);
 
 	/* Note: It might be possible that the reserved page
 	 * was mapped on-demand into l1 tables other than
@@ -807,14 +1123,14 @@ int cpu_mmu_unmap_reserved_page(struct cpu_page *pg)
 	 * of this page from other l1 tables.
 	 */
 
-	arch_cpu_irq_save(flags);
+	vmm_spin_lock_irqsave(&mmuctrl.l1_alloc_lock, flags);
 
-	list_for_each(le, &mmuctrl.l1tbl_list) {
-		l1 = list_entry(le, struct cpu_l1tbl, head);
+	list_for_each(l, &mmuctrl.l1tbl_list) {
+		l1 = list_entry(l, struct cpu_l1tbl, head);
 		cpu_mmu_unmap_page(l1, pg);
 	}
 
-	arch_cpu_irq_restore(flags);
+	vmm_spin_unlock_irqrestore(&mmuctrl.l1_alloc_lock, flags);
 
 	return VMM_OK;
 }
@@ -822,14 +1138,18 @@ int cpu_mmu_unmap_reserved_page(struct cpu_page *pg)
 int cpu_mmu_map_reserved_page(struct cpu_page *pg)
 {
 	int rc;
+	irq_flags_t flags;
 
 	if (!pg) {
 		return VMM_EFAIL;
 	}
 
+	vmm_spin_lock_irqsave(&mmuctrl.defl1_lock, flags);
 	if ((rc = cpu_mmu_map_page(&mmuctrl.defl1, pg))) {
+		vmm_spin_unlock_irqrestore(&mmuctrl.defl1_lock, flags);
 		return rc;
 	}
+	vmm_spin_unlock_irqrestore(&mmuctrl.defl1_lock, flags);
 
 	/* Note: Ideally resereved page mapping should be created
 	 * in each and every l1 table that exist, but that would
@@ -845,21 +1165,27 @@ int cpu_mmu_map_reserved_page(struct cpu_page *pg)
 struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 {
 	u32 i, *nl1_tte;
+	irq_flags_t flags;
 	struct cpu_l1tbl *nl1 = NULL;
 	struct dlist *le;
 	struct cpu_l2tbl *l2, *nl2;
 
+	vmm_spin_lock_irqsave(&mmuctrl.l1_alloc_lock, flags);
 	if (list_empty(&mmuctrl.free_l1tbl_list)) {
+		vmm_spin_unlock_irqrestore(&mmuctrl.l1_alloc_lock, flags);
 		return NULL;
 	}
 	nl1 = list_entry(list_first(&mmuctrl.free_l1tbl_list),
 			 struct cpu_l1tbl, head);
 	list_del(&nl1->head);
 	mmuctrl.l1_alloc_count++;
+	vmm_spin_unlock_irqrestore(&mmuctrl.l1_alloc_lock, flags);
 
 	INIT_LIST_HEAD(&nl1->l2tbl_list);
 	nl1->tte_cnt = 0;
 	nl1->l2tbl_cnt = 0;
+
+	vmm_spin_lock_irqsave(&mmuctrl.defl1_lock, flags);
 
 	for (i = 0; i < (TTBL_L1TBL_SIZE / 4); i++) {
 		((u32 *)nl1->tbl_va)[i] = ((u32 *)mmuctrl.defl1.tbl_va)[i];
@@ -876,6 +1202,7 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 		nl1->tte_cnt--;
 		nl2 = cpu_mmu_l2tbl_alloc();
 		if (!nl2) {
+			vmm_spin_unlock_irqrestore(&mmuctrl.defl1_lock, flags);
 			goto l1tbl_alloc_fail;
 		}
 		for (i = 0; i < (TTBL_L2TBL_SIZE / 4); i++) {
@@ -885,12 +1212,17 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 		nl2->tte_cnt = l2->tte_cnt;
 		if (cpu_mmu_l2tbl_attach
 		    (nl1, nl2, l2->imp, l2->domain, l2->map_va, FALSE)) {
+			vmm_spin_unlock_irqrestore(&mmuctrl.defl1_lock, flags);
 			goto l1tbl_alloc_fail;
 		}
 	}
 	nl1->l2tbl_cnt = mmuctrl.defl1.l2tbl_cnt;
 
+	vmm_spin_unlock_irqrestore(&mmuctrl.defl1_lock, flags);
+
+	vmm_spin_lock_irqsave(&mmuctrl.l1_alloc_lock, flags);
 	list_add(&nl1->head, &mmuctrl.l1tbl_list);
+	vmm_spin_unlock_irqrestore(&mmuctrl.l1_alloc_lock, flags);
 
 	return nl1;
 
@@ -901,7 +1233,11 @@ l1tbl_alloc_fail:
 			nl2 = list_entry(le, struct cpu_l2tbl, head);
 			cpu_mmu_l2tbl_free(nl2);
 		}
+
+		vmm_spin_lock_irqsave(&mmuctrl.l1_alloc_lock, flags);
+		list_add_tail(&nl1->head, &mmuctrl.free_l1tbl_list);
 		mmuctrl.l1_alloc_count--;
+		vmm_spin_unlock_irqrestore(&mmuctrl.l1_alloc_lock, flags);
 	}
 
 	return NULL;
@@ -909,6 +1245,7 @@ l1tbl_alloc_fail:
 
 int cpu_mmu_l1tbl_free(struct cpu_l1tbl *l1)
 {
+	irq_flags_t flags;
 	struct dlist *le;
 	struct cpu_l2tbl *l2;
 
@@ -925,10 +1262,11 @@ int cpu_mmu_l1tbl_free(struct cpu_l1tbl *l1)
 		cpu_mmu_l2tbl_free(l2);
 	}
 
+	vmm_spin_lock_irqsave(&mmuctrl.l1_alloc_lock, flags);
 	list_del(&l1->head);
 	list_add_tail(&l1->head, &mmuctrl.free_l1tbl_list);
-
 	mmuctrl.l1_alloc_count--;
+	vmm_spin_unlock_irqrestore(&mmuctrl.l1_alloc_lock, flags);
 
 	return VMM_OK;
 }
@@ -999,6 +1337,110 @@ int cpu_mmu_chttbr(struct cpu_l1tbl *l1)
 
 	return VMM_OK;
 }
+
+#if defined(CONFIG_ARMV5)
+
+int arch_cpu_aspace_phys_read(virtual_addr_t tmp_va, 
+			      physical_addr_t src, 
+			      void *dst, u32 len)
+{
+	int rc;
+	struct cpu_page p;
+	struct cpu_l1tbl *l1 = NULL;
+
+	l1 = cpu_mmu_l1tbl_current();
+	if (!l1) {
+		return VMM_EFAIL;
+	}
+
+	p.pa = src & ~VMM_PAGE_MASK;
+	p.va = tmp_va;
+	p.sz = VMM_PAGE_SIZE;
+	p.imp = 0;
+	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+	p.ap = TTBL_AP_SRW_U;
+	p.xn = 1;
+	p.tex = 0;
+	p.c = 0;
+	p.b = 0;
+	p.ng = 0;
+	p.s = 0;
+
+	if ((rc = cpu_mmu_map_page(l1, &p))) {
+		return rc;
+	}
+
+	switch (len) {
+	case 1:
+		*((u8 *)dst) = *(u8 *)(tmp_va + (src & VMM_PAGE_MASK));
+	case 2:
+		*((u16 *)dst) = *(u16 *)(tmp_va + (src & VMM_PAGE_MASK));
+	case 4:
+		*((u32 *)dst) = *(u32 *)(tmp_va + (src & VMM_PAGE_MASK));
+		break;
+	default:
+		memcpy(dst, (void *)(tmp_va + (src & VMM_PAGE_MASK)), len);
+		break;
+	};
+
+	if ((rc = cpu_mmu_unmap_page(l1, &p))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va, 
+			       physical_addr_t dst, 
+			       void *src, u32 len)
+{
+	int rc;
+	struct cpu_page p;
+	struct cpu_l1tbl *l1 = NULL;
+
+	l1 = cpu_mmu_l1tbl_current();
+	if (!l1) {
+		return VMM_EFAIL;
+	}
+
+	p.pa = dst & ~VMM_PAGE_MASK;
+	p.va = tmp_va;
+	p.sz = VMM_PAGE_SIZE;
+	p.imp = 0;
+	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+	p.ap = TTBL_AP_SRW_U;
+	p.xn = 1;
+	p.tex = 0;
+	p.c = 0;
+	p.b = 0;
+	p.ng = 0;
+	p.s = 0;
+
+	if ((rc = cpu_mmu_map_page(l1, &p))) {
+		return rc;
+	}
+
+	switch (len) {
+	case 1:
+		*(u8 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u8 *)src);
+	case 2:
+		*(u16 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u16 *)src);
+	case 4:
+		*(u32 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u32 *)src);
+		break;
+	default:
+		memcpy((void *)(tmp_va + (dst & VMM_PAGE_MASK)), src, len);
+		break;
+	};
+
+	if ((rc = cpu_mmu_unmap_page(l1, &p))) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+#else
 
 #define PHYS_RW_L1_TTE	(((TTBL_L1TBL_TTE_DOM_RESERVED <<		\
 			   TTBL_L1TBL_TTE_DOM_SHIFT) &			\
@@ -1184,12 +1626,30 @@ int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va,
 	return VMM_OK;
 }
 
+#endif
+
 int arch_cpu_aspace_map(virtual_addr_t page_va, 
 			physical_addr_t page_pa,
 			u32 mem_flags)
 {
 	struct cpu_page p;
 	memset(&p, 0, sizeof(p));
+
+	/* Initialize the page struct */
+#if defined(CONFIG_ARMV5)
+	p.pa = page_pa;
+	p.va = page_va;
+	p.sz = VMM_PAGE_SIZE;
+	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+	/* For ARMV5 we cannot prevent writing to priviledge mode */
+	if (mem_flags & (VMM_MEMORY_READABLE | VMM_MEMORY_WRITEABLE)) {
+		p.ap = TTBL_AP_SRW_U;
+	} else {
+		p.ap = TTBL_AP_S_U;
+	}
+	p.c = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;
+	p.b = (mem_flags & VMM_MEMORY_BUFFERABLE) ? 1 : 0;
+#else
 	p.pa = page_pa;
 	p.va = page_va;
 	p.sz = VMM_PAGE_SIZE;
@@ -1208,6 +1668,8 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	p.b = (mem_flags & VMM_MEMORY_BUFFERABLE) ? 1 : 0;;
 	p.ng = 0;
 	p.s = 0;
+#endif
+
 	return cpu_mmu_map_reserved_page(&p);
 }
 
@@ -1237,16 +1699,14 @@ int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 
 int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t *pa)
 {
-	int rc = VMM_OK;
+	int rc;
 	struct cpu_page p;
 
-	if ((rc = cpu_mmu_get_reserved_page(va, &p))) {
-		return rc;
+	if ((rc = cpu_mmu_get_reserved_page(va, &p)) == VMM_OK) {
+		*pa = p.pa + (va & (p.sz - 1));
 	}
 
-	*pa = p.pa + (va & (p.sz - 1));
-
-	return VMM_OK;
+	return rc;
 }
 
 int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa, 
@@ -1267,8 +1727,11 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	memset(&mmuctrl, 0, sizeof(mmuctrl));
 
 	/* Initialize list heads */
+	INIT_SPIN_LOCK(&mmuctrl.defl1_lock);
+	INIT_SPIN_LOCK(&mmuctrl.l1_alloc_lock);
 	INIT_LIST_HEAD(&mmuctrl.l1tbl_list);
 	INIT_LIST_HEAD(&mmuctrl.free_l1tbl_list);
+	INIT_SPIN_LOCK(&mmuctrl.l2_alloc_lock);
 	INIT_LIST_HEAD(&mmuctrl.free_l2tbl_list);
 
 	/* Copy default (or master) ttbl from temporary ttbl */
@@ -1379,6 +1842,15 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	sz = resv_sz;
 	while (sz) {
 		memset(&respg, 0, sizeof(respg));
+#if defined(CONFIG_ARMV5)
+		respg.pa = pa;
+		respg.va = va;
+		respg.sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
+		respg.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+		respg.ap = TTBL_AP_SRW_U;
+		respg.c = 1;
+		respg.b = 1;
+#else
 		respg.pa = pa;
 		respg.va = va;
 		respg.sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
@@ -1391,6 +1863,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		respg.b = 1;
 		respg.s = 0;
 		respg.ng = 0;
+#endif
 		if ((rc = cpu_mmu_map_reserved_page(&respg))) {
 			goto mmu_init_error;
 		}

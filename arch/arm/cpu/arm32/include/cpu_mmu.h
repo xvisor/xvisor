@@ -75,30 +75,30 @@ struct cpu_l1tbl {
 u32 cpu_mmu_best_page_size(virtual_addr_t va, physical_addr_t pa, u32 availsz);
 
 /** Get page from a given virtual address */
-int cpu_mmu_get_page(struct cpu_l1tbl * l1, 
+int cpu_mmu_get_page(struct cpu_l1tbl *l1, 
 		     virtual_addr_t va, 
-		     struct cpu_page * pg);
+		     struct cpu_page *pg);
 
 /** Unmap a page from given L1 table */
-int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg);
+int cpu_mmu_unmap_page(struct cpu_l1tbl *l1, struct cpu_page *pg);
 
 /** Map a page under a given L1 table */
-int cpu_mmu_map_page(struct cpu_l1tbl * l1, struct cpu_page * pg);
+int cpu_mmu_map_page(struct cpu_l1tbl *l1, struct cpu_page *pg);
 
 /** Get reserved page from a given virtual address */
-int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page * pg);
+int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page *pg);
 
 /** Unmap a reserved page */
-int cpu_mmu_unmap_reserved_page(struct cpu_page * pg);
+int cpu_mmu_unmap_reserved_page(struct cpu_page *pg);
 
 /** Map a reserved page */
-int cpu_mmu_map_reserved_page(struct cpu_page * pg);
+int cpu_mmu_map_reserved_page(struct cpu_page *pg);
 
 /** Allocate a L1 table */
 struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void);
 
 /** Free a L1 table */
-int cpu_mmu_l1tbl_free(struct cpu_l1tbl * l1);
+int cpu_mmu_l1tbl_free(struct cpu_l1tbl *l1);
 
 /** Current L1 table */
 struct cpu_l1tbl *cpu_mmu_l1tbl_default(void);
@@ -110,6 +110,6 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_current(void);
 int cpu_mmu_chdacr(u32 new_dacr);
 
 /** Change translation table base register */
-int cpu_mmu_chttbr(struct cpu_l1tbl * l1);
+int cpu_mmu_chttbr(struct cpu_l1tbl *l1);
 
 #endif /** _CPU_MMU_H */
