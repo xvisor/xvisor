@@ -208,7 +208,7 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 		.queue_num_max  = 256,
 	};
 
-	attr = vmm_devtree_attrval(edev->node, "type");
+	attr = vmm_devtree_attrval(edev->node, "virtio_type");
 	if (attr) {
 		s->dev.id.type = *((u32 *)attr);
 	} else {
