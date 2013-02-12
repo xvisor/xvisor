@@ -3,9 +3,28 @@
 This guest has Cortex-A8 (Single Core ARMv7a) CPU and various peripherals
 expected on a Realview Platform Base Board.
 
-We have following guest OSes tested for this guest:
+We also have memory mapped VirtIO devices located at unused IO regions 
+of the guest for providing VirtIO based paravirtualization.
 
-  1. basic       - Basic test and/or bootloader used by xvisor developers
+There are many reserved IO regions as per Realview PB-A8 User Guide. From 
+these reserved IO regions, we will use the following IO regions for VirtIO:
+0x20000000–0x3FFFFFFF (512M) (Reserved)
+
+The VirtIO devices also require a IRQ line per device for functioning. The
+Realview PB-A8 guest has following unused or reserved IRQ lines:
+GIC: 34-35
+GIC: 41
+GIC: 57
+GIC: 59
+GIC: 62-63
+GIC: 75-78
+
+
+			Realview PB-A8 Guest OSes
+
+We have tested following guest OSes for this guest:
+
+  1. basic       - Basic test/bootloader
   2. atomthreads - Atomthreads RTOS
   3. linux       - Linux Kernel 
 
