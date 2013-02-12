@@ -26,6 +26,7 @@
 #include <arm_board.h>
 #include <arm_plat.h>
 #include <arm_config.h>
+#include <arm_string.h>
 #include <pic/gic.h>
 #include <serial/pl01x.h>
 
@@ -67,6 +68,11 @@ u32 arm_board_ram_size(void)
 u32 arm_board_linux_machine_type(void)
 {
 	return 0x769;
+}
+
+void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
+{
+	arm_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
 }
 
 u32 arm_board_flash_addr(void)
