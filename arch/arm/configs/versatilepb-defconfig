@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.0
-# Tue Jan 29 12:17:41 2013
+# Version: 0.2.1
+# Tue Feb 12 14:12:58 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -184,6 +184,12 @@ CONFIG_ETHER_SMSC_91x=y
 #
 
 #
+# VirtIO Support
+#
+CONFIG_EMU_VIRTIO=y
+CONFIG_EMU_VIRTIO_MMIO=y
+
+#
 # System Emulators
 #
 CONFIG_EMU_SYS=y
@@ -203,6 +209,7 @@ CONFIG_EMU_PIC_PL190=y
 CONFIG_EMU_NET=y
 # CONFIG_EMU_NET_LAN9118 is not set
 CONFIG_EMU_NET_SMC91C111=y
+CONFIG_EMU_NET_VIRTIO=y
 
 #
 # Timer Emulators
