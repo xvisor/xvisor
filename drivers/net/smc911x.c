@@ -879,7 +879,6 @@ static void smc911x_phy_configure(struct work_struct *work)
 	int phyaddr = lp->mii.phy_id;
 	int my_phy_caps; /* My PHY capabilities */
 	int my_ad_caps; /* My Advertised capabilities */
-	int status;
 	unsigned long flags;
 
 	DBG(SMC_DEBUG_FUNC, "%s: --> %s()\n", dev->name, __func__);
@@ -949,7 +948,7 @@ static void smc911x_phy_configure(struct work_struct *work)
 	 * the link does not come up.
 	 */
 	udelay(10);
-	SMC_GET_PHY_MII_ADV(lp, phyaddr, status);
+	SMC_GET_PHY_MII_ADV(lp, phyaddr, my_ad_caps);
 
 	DBG(SMC_DEBUG_MISC, "%s: phy caps=0x%04x\n", dev->name, my_phy_caps);
 	DBG(SMC_DEBUG_MISC, "%s: phy advertised caps=0x%04x\n", dev->name, my_ad_caps);
@@ -982,11 +981,13 @@ static void smc911x_phy_interrupt(struct net_device *dev)
 
 	smc911x_phy_check_media(dev, 0);
 	/* read to clear status bits */
-	SMC_GET_PHY_INT_SRC(lp, phyaddr,status);
+	SMC_GET_PHY_INT_SRC(lp, phyaddr, status);
 	DBG(SMC_DEBUG_MISC, "%s: PHY interrupt status 0x%04x\n",
 		dev->name, status & 0xffff);
 	DBG(SMC_DEBUG_MISC, "%s: AFC_CFG 0x%08x\n",
 		dev->name, SMC_GET_AFC_CFG(lp));
+
+	(void)status;
 }
 
 /*--- END PHY CONTROL AND CONFIGURATION-------------------------------------*/
