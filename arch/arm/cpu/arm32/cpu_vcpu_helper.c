@@ -769,8 +769,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		return VMM_EFAIL;
 	}
 	if (!vcpu->reset_count) {
-		vcpu->arch_priv = vmm_malloc(sizeof(arm_priv_t));
-		memset(arm_priv(vcpu), 0, sizeof(arm_priv_t));
+		vcpu->arch_priv = vmm_zalloc(sizeof(arm_priv_t));
 		arm_priv(vcpu)->cpsr = CPSR_ASYNC_ABORT_DISABLED | 
 				   CPSR_IRQ_DISABLED |
 				   CPSR_FIQ_DISABLED | 
