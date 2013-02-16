@@ -80,23 +80,10 @@ struct vmm_netport *vmm_netport_alloc(char *name, u32 queue_size)
 		return NULL;
 	}
 
-	port->name = vmm_malloc(strlen(name)+1);
-	if (!port->name) {
-		vmm_printf("%s Failed to allocate for net port\n", __func__);
-		return NULL;
-	}
-
 	INIT_LIST_HEAD(&port->head);
-	strcpy(port->name, name);
+	strncpy(port->name, name, VMM_NETPORT_MAX_NAME_SIZE);
 	port->queue_size = (queue_size < VMM_NETPORT_MAX_QUEUE_SIZE) ?
 				queue_size : VMM_NETPORT_MAX_QUEUE_SIZE;
-
-	port->xfer_pool = vmm_malloc(sizeof(struct vmm_netport_xfer) * 
-					port->queue_size);
-	if (!port->xfer_pool) {
-		vmm_printf("%s Failed to allocate for netport xfer pool\n", __func__);
-		return NULL;
-	}
 
 	port->free_count = port->queue_size;
 	INIT_SPIN_LOCK(&port->free_list_lock);
@@ -117,8 +104,6 @@ int vmm_netport_free(struct vmm_netport *port)
 		return VMM_EFAIL;
 	}
 
-	vmm_free(port->xfer_pool);
-	vmm_free(port->name);
 	vmm_free(port);
 
 	return VMM_OK;
@@ -151,15 +136,13 @@ int vmm_netport_register(struct vmm_netport *port)
 
 	rc = vmm_devdrv_register_classdev(VMM_NETPORT_CLASS_NAME, cd);
 	if (rc != VMM_OK) {
-		vmm_printf("%s: Failed to register %s %s "
-			   "with err 0x%x\n", __func__, 
-			   VMM_NETPORT_CLASS_NAME,
-			   port->name, rc);
+		vmm_printf("%s: Failed to register %s %s (error %d)\n",
+			   __func__, VMM_NETPORT_CLASS_NAME, port->name, rc);
 		goto fail_port_reg;
 	}
 
 #ifdef CONFIG_VERBOSE_MODE
-	vmm_printf("Successfully registered VMM netport: %s\n", port->name);
+	vmm_printf("%s: Registered netport %s\n", __func__, port->name);
 #endif
 
 	return rc;

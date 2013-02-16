@@ -37,6 +37,9 @@
 /* Default per-port queue size */
 #define VMM_NETPORT_DEF_QUEUE_SIZE	32
 
+/* Default per-port name size */
+#define VMM_NETPORT_MAX_NAME_SIZE	64
+
 /* Default per-port queue size */
 #define VMM_NETPORT_MAX_QUEUE_SIZE	256
 
@@ -52,7 +55,7 @@ struct vmm_netport_xfer {
 
 struct vmm_netport {
 	struct dlist head;
-	char *name;
+	char name[VMM_NETPORT_MAX_NAME_SIZE];
 	u32 queue_size;
 	int flags;
 	int mtu;
@@ -67,7 +70,7 @@ struct vmm_netport {
 	u32 free_count;
 	struct dlist free_list;
 	vmm_spinlock_t free_list_lock;
-	struct vmm_netport_xfer *xfer_pool;
+	struct vmm_netport_xfer xfer_pool[VMM_NETPORT_MAX_QUEUE_SIZE];
 
 	/* Link status changed */
 	void (*link_changed) (struct vmm_netport *); 
