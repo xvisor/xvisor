@@ -49,56 +49,82 @@ static LIST_HEAD(virtio_emu_list);
  * virtio_device & virtio_emulator operations
  */
 
-static void virtio_reset_device(struct virtio_device *dev)
+static int __virtio_reset_emulator(struct virtio_device *dev)
 {
-	if (dev->emu) {
-		dev->emu->reset(dev);
+	if (dev && dev->emu && dev->emu->reset) {
+		return dev->emu->reset(dev);
 	}
+
+	return VMM_OK;
 }
 
-static int virtio_connect_emulator(struct virtio_device *dev,
-				struct virtio_emulator *emu)
+static int __virtio_connect_emulator(struct virtio_device *dev,
+				     struct virtio_emulator *emu)
 {
-	return emu->connect(dev, emu);
+	if (dev && emu && emu->connect) {
+		return emu->connect(dev, emu);
+	}
+
+	return VMM_OK;
 }
 
-static void virtio_disconnect_emulator(struct virtio_device *dev)
+static void __virtio_disconnect_emulator(struct virtio_device *dev)
 {
-	if (dev->emu) {
+	if (dev && dev->emu && dev->emu->disconnect) {
 		dev->emu->disconnect(dev);
 	}
+}
+
+static int __virtio_config_read_emulator(struct virtio_device *dev,
+					 u32 offset, void *dst, u32 dst_len)
+{
+	if (dev && dev->emu && dev->emu->read_config) {
+		return dev->emu->read_config(dev, offset, dst, dst_len);
+	}
+
+	return VMM_OK;
+}
+
+static int __virtio_config_write_emulator(struct virtio_device *dev,
+					  u32 offset, void *src, u32 src_len)
+{
+	if (dev && dev->emu && dev->emu->write_config) {
+		return dev->emu->write_config(dev, offset, src, src_len);
+	}
+
+	return VMM_OK;
 }
 
 /*
  * virtio helper routines
  */
 
-static int virtio_match_device(const struct virtio_device_id *ids,
-				struct virtio_device *dev)
+static bool __virtio_match_device(const struct virtio_device_id *ids,
+				  struct virtio_device *dev)
 {
 	while (ids->type) {
 		if (ids->type == dev->id.type)
-			return 1;
+			return TRUE;
 		ids++;
 	}
-	return 0;
+	return FALSE;
 }
 
-static int virtio_bind_emulator(struct virtio_device *dev,
-				struct virtio_emulator *emu)
+static int __virtio_bind_emulator(struct virtio_device *dev,
+				  struct virtio_emulator *emu)
 {
-	if (virtio_match_device(emu->id_table, dev)) {
+	int rc;
+	if (__virtio_match_device(emu->id_table, dev)) {
 		dev->emu = emu;
-		if (virtio_connect_emulator(dev, emu)) {
+		if ((rc = __virtio_connect_emulator(dev, emu))) {
 			dev->emu = NULL;
-			return VMM_ENODEV;
+			return rc;
 		}
 	}
 	return 0;
 }
 
-/* Note: Must be called with virtio_mutex held */
-static void virtio_find_emulator(struct virtio_device *dev)
+static void __virtio_find_emulator(struct virtio_device *dev)
 {
 	struct dlist *l;
 	struct virtio_emulator *emu;
@@ -109,14 +135,13 @@ static void virtio_find_emulator(struct virtio_device *dev)
 
 	list_for_each(l, &virtio_emu_list) {
 		emu = list_entry(l, struct virtio_emulator, node);
-		if (!virtio_bind_emulator(dev, emu)) {
+		if (!__virtio_bind_emulator(dev, emu)) {
 			break;
 		}
 	}
 }
 
-/* Note: Must be called with virtio_mutex held */
-static void virtio_attach_emulator(struct virtio_emulator *emu)
+static void __virtio_attach_emulator(struct virtio_emulator *emu)
 {
 	struct dlist *l;
 	struct virtio_device *dev;
@@ -128,7 +153,7 @@ static void virtio_attach_emulator(struct virtio_emulator *emu)
 	list_for_each(l, &virtio_dev_list) {
 		dev = list_entry(l, struct virtio_device, node);
 		if (!dev->emu) {
-			virtio_bind_emulator(dev, emu);
+			__virtio_bind_emulator(dev, emu);
 		}
 	}
 }
@@ -137,44 +162,26 @@ static void virtio_attach_emulator(struct virtio_emulator *emu)
  * virtio global APIs
  */
 
-/* FIXME: */
 int virtio_config_read(struct virtio_device *dev,
 			u32 offset, void *dst, u32 dst_len)
 {
-	if (dev->emu) {
-	                dev->emu->read_config(dev, offset, dst, dst_len);
-	}
-
-	return VMM_OK;
+	return __virtio_config_read_emulator(dev, offset, dst, dst_len);
 }
 VMM_EXPORT_SYMBOL(virtio_config_read);
 
-/* FIXME: */
 int virtio_config_write(struct virtio_device *dev,
 			u32 offset, void *src, u32 src_len)
 {
-	if (dev->emu) {
-	                dev->emu->write_config(dev, offset, src, src_len);
-	}
-
-	return VMM_OK;
+	return __virtio_config_write_emulator(dev, offset, src, src_len);
 }
 VMM_EXPORT_SYMBOL(virtio_config_write);
 
-/* FIXME: */
 int virtio_reset(struct virtio_device *dev)
 {
-	if (!dev) {
-		return VMM_EFAIL;
-	}
-
-	virtio_reset_device(dev);
-
-	return VMM_OK;
+	return __virtio_reset_emulator(dev);
 }
 VMM_EXPORT_SYMBOL(virtio_reset);
 
-/* FIXME: */
 int virtio_register_device(struct virtio_device *dev)
 {
 	if (!dev || !dev->tra) {
@@ -188,7 +195,7 @@ int virtio_register_device(struct virtio_device *dev)
 	vmm_mutex_lock(&virtio_mutex);
 
 	list_add_tail(&dev->node, &virtio_dev_list);
-	virtio_find_emulator(dev);
+	__virtio_find_emulator(dev);
 
 	vmm_mutex_unlock(&virtio_mutex);
 
@@ -196,7 +203,6 @@ int virtio_register_device(struct virtio_device *dev)
 }
 VMM_EXPORT_SYMBOL(virtio_register_device);
 
-/* FIXME: */
 void virtio_unregister_device(struct virtio_device *dev)
 {
 	if (!dev) {
@@ -205,14 +211,13 @@ void virtio_unregister_device(struct virtio_device *dev)
 
 	vmm_mutex_lock(&virtio_mutex);
 
-	virtio_disconnect_emulator(dev);
+	__virtio_disconnect_emulator(dev);
 	list_del(&dev->node);
 
 	vmm_mutex_unlock(&virtio_mutex);
 }
 VMM_EXPORT_SYMBOL(virtio_unregister_device);
 
-/* FIXME: */
 int virtio_register_emulator(struct virtio_emulator *emu)
 {
 	bool found;
@@ -244,7 +249,7 @@ int virtio_register_emulator(struct virtio_emulator *emu)
 	INIT_LIST_HEAD(&emu->node);
 	list_add_tail(&emu->node, &virtio_emu_list);
 
-	virtio_attach_emulator(emu);
+	__virtio_attach_emulator(emu);
 
 	vmm_mutex_unlock(&virtio_mutex);
 
@@ -252,7 +257,6 @@ int virtio_register_emulator(struct virtio_emulator *emu)
 }
 VMM_EXPORT_SYMBOL(virtio_register_emulator);
 
-/* FIXME: */
 void virtio_unregister_emulator(struct virtio_emulator *emu)
 {
 	struct virtio_device *dev;
@@ -263,8 +267,8 @@ void virtio_unregister_emulator(struct virtio_emulator *emu)
 
 	list_for_each_entry(dev, &virtio_dev_list, node) {
 		if (dev->emu == emu) {
-			virtio_disconnect_emulator(dev);
-			virtio_find_emulator(dev);
+			__virtio_disconnect_emulator(dev);
+			__virtio_find_emulator(dev);
 		}
 	}
 

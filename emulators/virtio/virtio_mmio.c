@@ -39,21 +39,20 @@
 
 static int virtio_mmio_notify(struct virtio_device *dev, u32 vq)
 {
-	struct virtio_mmio_dev *s = dev->tra_data;
+	struct virtio_mmio_dev *m = dev->tra_data;
 
-	s->config.interrupt_state |= VIRTIO_MMIO_INT_VRING;
+	m->config.interrupt_state |= VIRTIO_MMIO_INT_VRING;
 
-	vmm_devemu_emulate_irq(s->guest, s->irq, 1);
+	vmm_devemu_emulate_irq(m->guest, m->irq, 1);
 
 	return VMM_OK;
 }
 
-int virtio_mmio_config_read(struct virtio_mmio_dev *dev,
+int virtio_mmio_config_read(struct virtio_mmio_dev *m,
 			    u32 offset, void *dst,
 			    u32 dst_len)
 {
 	int rc = VMM_OK;
-	int val = 0;
 
 	switch (offset) {
 	case VIRTIO_MMIO_MAGIC_VALUE:
@@ -62,22 +61,18 @@ int virtio_mmio_config_read(struct virtio_mmio_dev *dev,
 	case VIRTIO_MMIO_VENDOR_ID:
 	case VIRTIO_MMIO_STATUS:
 	case VIRTIO_MMIO_INTERRUPT_STATUS:
-		val = (*(u32 *)(((void *)&dev->config) + offset));
-		*(u32 *) dst = val;
+		*(u32 *)dst = (*(u32 *)(((void *)&m->config) + offset));
 		break;
 	case VIRTIO_MMIO_HOST_FEATURES:
-		val = dev->dev.emu->get_host_features(&dev->dev);
-		*(u32 *) dst = val;
+		*(u32 *)dst = m->dev.emu->get_host_features(&m->dev);
 		break;
 	case VIRTIO_MMIO_QUEUE_PFN:
-		val = dev->dev.emu->get_pfn_vq(&dev->dev,
-						dev->config.queue_sel);
-		*(u32 *) dst = val;
+		*(u32 *)dst = m->dev.emu->get_pfn_vq(&m->dev,
+					     m->config.queue_sel);
 		break;
 	case VIRTIO_MMIO_QUEUE_NUM_MAX:
-		val = dev->dev.emu->get_size_vq(&dev->dev,
-						dev->config.queue_sel);
-		*(u32 *) dst = val;
+		*(u32 *)dst = m->dev.emu->get_size_vq(&m->dev,
+					      m->config.queue_sel);
 		break;
 	default:
 		break;
@@ -90,59 +85,61 @@ static int virtio_mmio_read(struct vmm_emudev *edev,
 			    physical_addr_t offset,
 			    void *dst, u32 dst_len)
 {
-	struct virtio_mmio_dev *s = edev->priv;
+	struct virtio_mmio_dev *m = edev->priv;
 
 	/* Device specific config write */
 	if (offset >= VIRTIO_MMIO_CONFIG) {
 		offset -= VIRTIO_MMIO_CONFIG;
-		return virtio_config_read(&s->dev, (u32) offset, dst, dst_len);
+		return virtio_config_read(&m->dev, (u32)offset, dst, dst_len);
 	}
 
-	return virtio_mmio_config_read(s, (u32)offset, dst, dst_len);
+	return virtio_mmio_config_read(m, (u32)offset, dst, dst_len);
 }
 
-static int virtio_mmio_config_write(struct virtio_mmio_dev *dev,
-                             physical_addr_t offset,
-                             void *src, u32 src_len)
+static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
+				    physical_addr_t offset,
+				    void *src, u32 src_len)
 {
 	int rc = VMM_OK;
-	u32 val = vmm_cpu_to_le32(*(u32 *) (src));
+	u32 val = vmm_cpu_to_le32(*(u32 *)(src));
 
 	switch (offset) {
 	case VIRTIO_MMIO_HOST_FEATURES_SEL:
 	case VIRTIO_MMIO_GUEST_FEATURES_SEL:
 	case VIRTIO_MMIO_QUEUE_SEL:
 	case VIRTIO_MMIO_STATUS:
-		*(u32 *) (((void *)&dev->config) + offset) = val;
+		*(u32 *)(((void *)&m->config) + offset) = val;
 		break;
 	case VIRTIO_MMIO_GUEST_FEATURES:
-		if (dev->config.guest_features_sel == 0)  {
-			dev->dev.emu->set_guest_features(&dev->dev, val);
+		if (m->config.guest_features_sel == 0)  {
+			m->dev.emu->set_guest_features(&m->dev, val);
 		}
 		break;
 	case VIRTIO_MMIO_GUEST_PAGE_SIZE:
-		dev->config.guest_page_size = val;
+		m->config.guest_page_size = val;
 		break;
 	case VIRTIO_MMIO_QUEUE_NUM:
-		dev->config.queue_num = val;
-		dev->dev.emu->set_size_vq(&dev->dev, dev->config.queue_sel,
-						dev->config.queue_num);
+		m->config.queue_num = val;
+		m->dev.emu->set_size_vq(&m->dev, 
+					m->config.queue_sel,
+					m->config.queue_num);
 		break;
 	case VIRTIO_MMIO_QUEUE_ALIGN:
-		dev->config.queue_align = val;
+		m->config.queue_align = val;
 		break;
 	case VIRTIO_MMIO_QUEUE_PFN:
-		dev->dev.emu->init_vq(&dev->dev, dev->config.queue_sel,
-					dev->config.guest_page_size,
-					dev->config.queue_align,
-					val);
+		m->dev.emu->init_vq(&m->dev, 
+				    m->config.queue_sel,
+				    m->config.guest_page_size,
+				    m->config.queue_align,
+				    val);
 		break;
 	case VIRTIO_MMIO_QUEUE_NOTIFY:
-		dev->dev.emu->notify_vq(&dev->dev, val);
+		m->dev.emu->notify_vq(&m->dev, val);
 		break;
 	case VIRTIO_MMIO_INTERRUPT_ACK:
-		dev->config.interrupt_state &= ~val;
-		vmm_devemu_emulate_irq(dev->guest, dev->irq, 0);
+		m->config.interrupt_state &= ~val;
+		vmm_devemu_emulate_irq(m->guest, m->irq, 0);
 		break;
 	default:
 		break;
@@ -155,22 +152,25 @@ static int virtio_mmio_write(struct vmm_emudev *edev,
 			     physical_addr_t offset,
 			     void *src, u32 src_len)
 {
-	struct virtio_mmio_dev *s = edev->priv;
+	struct virtio_mmio_dev *m = edev->priv;
 
 	/* Device specific config write */
 	if (offset >= VIRTIO_MMIO_CONFIG) {
 		offset -= VIRTIO_MMIO_CONFIG;
-		return virtio_config_write(&s->dev, (u32)offset, src, src_len);
+		return virtio_config_write(&m->dev, (u32)offset, src, src_len);
 	}
 
-	return virtio_mmio_config_write(s, (u32) offset, src, src_len);
+	return virtio_mmio_config_write(m, (u32)offset, src, src_len);
 }
 
 static int virtio_mmio_reset(struct vmm_emudev *edev)
 {
-	struct virtio_mmio_dev *s = edev->priv;
+	struct virtio_mmio_dev *m = edev->priv;
 
-	return virtio_reset(&s->dev);
+	m->config.interrupt_state = 0x0;
+	vmm_devemu_emulate_irq(m->guest, m->irq, 0);
+
+	return virtio_reset(&m->dev);
 }
 
 static struct virtio_transport mmio_tra = {
@@ -184,69 +184,69 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	const char *attr;
-	struct virtio_mmio_dev *s;
+	struct virtio_mmio_dev *m;
 
-	s = vmm_zalloc(sizeof(struct virtio_mmio_dev));
-	if (!s) {
+	m = vmm_zalloc(sizeof(struct virtio_mmio_dev));
+	if (!m) {
 		rc = VMM_EFAIL;
 		goto virtio_mmio_probe_done;
 	}
 
-	s->guest = guest;
+	m->guest = guest;
 
-	vmm_snprintf(s->dev.name, VIRTIO_DEVICE_MAX_NAME_LEN, 
+	vmm_snprintf(m->dev.name, VIRTIO_DEVICE_MAX_NAME_LEN, 
 		     "%s/%s", guest->node->name, edev->node->name); 
-	s->dev.edev = edev;
-	s->dev.tra = &mmio_tra;
-	s->dev.tra_data = s;
-	s->dev.guest = guest;
+	m->dev.edev = edev;
+	m->dev.tra = &mmio_tra;
+	m->dev.tra_data = m;
+	m->dev.guest = guest;
 
-	s->config = (struct virtio_mmio_config) {
-		.magic          = {'v', 'i', 'r', 't'},
-		.version        = 1,
-		.vendor_id      = 0x52535658, /* XVSR */
-		.queue_num_max  = 256,
+	m->config = (struct virtio_mmio_config) {
+		     .magic          = {'v', 'i', 'r', 't'},
+		     .version        = 1,
+		     .vendor_id      = 0x52535658, /* XVSR */
+		     .queue_num_max  = 256,
 	};
 
 	attr = vmm_devtree_attrval(edev->node, "virtio_type");
 	if (attr) {
-		s->dev.id.type = *((u32 *)attr);
+		m->config.device_id = *((u32 *)attr);
 	} else {
 		rc = VMM_EFAIL;
 		goto virtio_mmio_probe_freestate_fail;
 	}
 
-	s->config.device_id = s->dev.id.type;
+	m->dev.id.type = m->config.device_id;
 
 	attr = vmm_devtree_attrval(edev->node, "irq");
 	if (attr) {
-		s->irq = *((u32 *)attr);
+		m->irq = *((u32 *)attr);
 	} else {
 		rc = VMM_EFAIL;
 		goto virtio_mmio_probe_freestate_fail;
 	}
 
-	if ((rc = virtio_register_device(&s->dev))) {
+	if ((rc = virtio_register_device(&m->dev))) {
 		goto virtio_mmio_probe_freestate_fail;
 	}
 
-	edev->priv = s;
+	edev->priv = m;
 
 	goto virtio_mmio_probe_done;
 
 virtio_mmio_probe_freestate_fail:
-	vmm_free(s);
+	vmm_free(m);
 virtio_mmio_probe_done:
 	return rc;
 }
 
 static int virtio_mmio_remove(struct vmm_emudev *edev)
 {
-	struct virtio_mmio_dev *s = edev->priv;
+	struct virtio_mmio_dev *m = edev->priv;
 
-	if (s) {
-		virtio_unregister_device((struct virtio_device *)&s->dev);
-		vmm_free(s);
+	if (m) {
+		virtio_unregister_device((struct virtio_device *)&m->dev);
+		vmm_free(m);
 		edev->priv = NULL;
 	}
 

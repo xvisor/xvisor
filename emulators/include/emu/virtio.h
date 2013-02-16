@@ -76,16 +76,7 @@ struct virtio_emulator {
 	const char *name;
 	const struct virtio_device_id *id_table;
 
-	void (*reset)(struct virtio_device *dev);
-	int  (*connect)(struct virtio_device *dev, struct virtio_emulator *emu);
-	void (*disconnect)(struct virtio_device *dev);
-	void (*read_config)(struct virtio_device *dev, u32 offset, void *dst,
-				u32 dst_len);
-	int (*write_config)(struct virtio_device *dev,u32 offset, void *src,
-				u32 src_len);
-
-	/* Virtio operations */
-
+	/* VirtIO operations */
 	u32 (*get_host_features) (struct virtio_device *dev);
 	void (*set_guest_features) (struct virtio_device *dev, u32 features);
 	int (*init_vq) (struct virtio_device *dev, u32 vq, u32 page_size,
@@ -94,6 +85,15 @@ struct virtio_emulator {
 	int (*get_size_vq) (struct virtio_device *dev, u32 vq);
 	int (*set_size_vq) (struct virtio_device *dev, u32 vq, int size);
 	int (*notify_vq) (struct virtio_device *dev , u32 vq);
+
+	/* Emulator operations */
+	int (*read_config)(struct virtio_device *dev, u32 offset, void *dst,
+				u32 dst_len);
+	int (*write_config)(struct virtio_device *dev,u32 offset, void *src,
+				u32 src_len);
+	int (*reset)(struct virtio_device *dev);
+	int  (*connect)(struct virtio_device *dev, struct virtio_emulator *emu);
+	void (*disconnect)(struct virtio_device *dev);
 
 	struct dlist node;
 };
