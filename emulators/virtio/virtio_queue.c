@@ -23,6 +23,8 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_host_io.h>
+#include <vmm_host_aspace.h>
+#include <vmm_guest_aspace.h>
 #include <vmm_modules.h>
 #include <libs/mathlib.h>
 #include <libs/stringlib.h>
@@ -30,9 +32,100 @@
 
 #include <emu/virtio.h>
 
+void *virtio_queue_base(struct virtio_queue *vq)
+{
+	return vq->addr;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_base);
+
+struct vmm_guest *virtio_queue_guest(struct virtio_queue *vq)
+{
+	return vq->guest;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_guest);
+
+u32 virtio_queue_desc_count(struct virtio_queue *vq)
+{
+	return vq->desc_count;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_desc_count);
+
+u32 virtio_queue_align(struct virtio_queue *vq)
+{
+	return vq->align;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_align);
+
+physical_addr_t virtio_queue_guest_pfn(struct virtio_queue *vq)
+{
+	return vq->guest_pfn;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_guest_pfn);
+
+physical_size_t virtio_queue_guest_page_size(struct virtio_queue *vq)
+{
+	return vq->guest_page_size;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_guest_page_size);
+
+physical_addr_t virtio_queue_guest_addr(struct virtio_queue *vq)
+{
+	return vq->guest_addr;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_guest_addr);
+
+physical_addr_t virtio_queue_host_addr(struct virtio_queue *vq)
+{
+	return vq->host_addr;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_host_addr);
+
+physical_size_t virtio_queue_total_size(struct virtio_queue *vq)
+{
+	return vq->total_size;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_total_size);
+
+u16 virtio_queue_pop(struct virtio_queue *vq)
+{
+	if (!vq->addr) {
+		return 0;
+	}
+
+	return vq->vring.avail->ring[
+			umod32(vq->last_avail_idx++, vq->vring.num)];
+}
+VMM_EXPORT_SYMBOL(virtio_queue_pop);
+
+struct vring_desc *virtio_queue_get_desc(struct virtio_queue *vq, u16 indx)
+{
+	if (!vq->addr) {
+		return NULL;
+	}
+
+	return &vq->vring.desc[indx];
+}
+VMM_EXPORT_SYMBOL(virtio_queue_get_desc);
+
+bool virtio_queue_available(struct virtio_queue *vq)
+{
+	if (!vq->addr || !vq->vring.avail) {
+		return FALSE;
+	}
+
+	vring_avail_event(&vq->vring) = vq->last_avail_idx;
+
+	return vq->vring.avail->idx !=  vq->last_avail_idx;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_available);
+
 bool virtio_queue_should_signal(struct virtio_queue *vq)
 {
 	u16 old_idx, new_idx, event_idx;
+
+	if (!vq->addr) {
+		return FALSE;
+	}
 
 	old_idx         = vq->last_used_signalled;
 	new_idx         = vq->vring.used->idx;
@@ -40,21 +133,24 @@ bool virtio_queue_should_signal(struct virtio_queue *vq)
 
 	if (vring_need_event(event_idx, new_idx, old_idx)) {
 		vq->last_used_signalled = new_idx;
-		return true;
+		return TRUE;
 	}
 
-	return false;
+	return FALSE;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_should_signal);
 
-struct vring_used_elem *virtio_queue_set_used_elem(
-                                        struct virtio_queue *queue,
-                                        u32 head, u32 len)
+struct vring_used_elem *virtio_queue_set_used_elem(struct virtio_queue *vq,
+						   u32 head, u32 len)
 {
 	struct vring_used_elem *used_elem;
 
-	used_elem       = &queue->vring.used->ring[
-				umod32(queue->vring.used->idx, queue->vring.num)];
+	if (!vq->addr) {
+		return NULL;
+	}
+
+	used_elem       = &vq->vring.used->ring[
+				umod32(vq->vring.used->idx, vq->vring.num)];
 	used_elem->id   = head;
 	used_elem->len  = len;
 
@@ -64,7 +160,7 @@ struct vring_used_elem *virtio_queue_set_used_elem(
 	 * to pass the used element to the guest.
 	 */
 	arch_wmb();
-	queue->vring.used->idx++;
+	vq->vring.used->idx++;
 
 	/*
 	 * Use wmb to assure used idx has been increased before we signal the guest.
@@ -77,64 +173,90 @@ struct vring_used_elem *virtio_queue_set_used_elem(
 }
 VMM_EXPORT_SYMBOL(virtio_queue_set_used_elem);
 
-int virtio_queue_map_vq_space(struct vmm_guest *guest,
-			      struct virtio_queue *vq,
-			      physical_addr_t gphys_addr,
-			      physical_size_t gphys_size)
+int virtio_queue_cleanup(struct virtio_queue *vq)
 {
-	physical_addr_t hphys_addr;
-	physical_size_t avail_size;
-	u32             reg_flags;
-	int rc = 0;
+	int rc = VMM_OK;
 
-	if (vq->guest_vq_mapper) {
-		//unmap previously mapped pages
+	if (!vq->addr) {
+		goto done;
 	}
 
+	rc = vmm_host_iounmap((virtual_addr_t)vq->addr, 
+			      (virtual_size_t)vq->total_size);
+
+done:
+	vq->last_avail_idx = 0;
+	vq->last_used_signalled = 0;
+
+	vq->addr = NULL;
+	vq->guest = NULL;
+
+	vq->desc_count = 0;
+	vq->align = 0;
+	vq->guest_pfn = 0;
+	vq->guest_page_size = 0;
+
+	vq->guest_addr = 0;
+	vq->host_addr = 0;
+	vq->total_size = 0;
+
+	return rc;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_cleanup);
+
+int virtio_queue_setup(struct virtio_queue *vq,
+			struct vmm_guest *guest,
+			physical_addr_t guest_pfn,
+			physical_size_t guest_page_size,
+			u32 desc_count, u32 align)
+{
+	int rc = 0;
+	u32 reg_flags;
+	physical_addr_t gphys_addr, hphys_addr;
+	physical_size_t gphys_size, avail_size;
+
+	if ((rc = virtio_queue_cleanup(vq))) {
+		return rc;
+	}
+
+	gphys_addr = guest_pfn * guest_page_size;
+	gphys_size = vring_size(desc_count, align);
+
 	if ((rc = vmm_guest_physical_map(guest, gphys_addr, gphys_size,
-					&hphys_addr, &avail_size,
-					&reg_flags))) {
-		vmm_printf("Failed  vmm_guest_physical_map\n");
+					 &hphys_addr, &avail_size,
+					 &reg_flags))) {
+		vmm_printf("Failed vmm_guest_physical_map\n");
 		return VMM_EFAIL;
 	}
 
 	if (!(reg_flags & VMM_REGION_ISRAM)) {
-		//Unmap
-		return VMM_EFAIL;
+		return VMM_EINVALID;
 	}
 
 	if (avail_size < gphys_size) {
-		//unmap
-		return VMM_EFAIL;
+		return VMM_EINVALID;
 	}
 
-	vq->guest_vq_mapper = (void *) vmm_host_memmap(hphys_addr, gphys_size,
-			VMM_MEMORY_WRITEABLE | VMM_MEMORY_READABLE);
-
-
-	if (!vq->guest_vq_mapper) {
-		// unmap
-		return VMM_EFAIL;
+	vq->addr = (void *)vmm_host_iomap(hphys_addr, gphys_size);
+	if (!vq->addr) {
+		return VMM_ENOMEM;
 	}
 
-	vq->host_pfn = hphys_addr;
-	vq->host_pfn_size = gphys_size;
+	vring_init(&vq->vring, desc_count, vq->addr, align);
+
+	vq->guest = guest;
+	vq->desc_count = desc_count;
+	vq->align = align;
+	vq->guest_pfn = guest_pfn;
+	vq->guest_page_size = guest_page_size;
+
+	vq->guest_addr = gphys_addr;
+	vq->host_addr = hphys_addr;
+	vq->total_size = gphys_size;
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(virtio_queue_map_vq_space);
-
-int virtio_queue_unmap_vq_space(struct vmm_guest *guest,
-                                struct virtio_queue *vq)
-{
-	// TBD::
-	vq->host_pfn  = 0;
-	vq->host_pfn_size = 0;
-
-	return VMM_OK;
-}
-VMM_EXPORT_SYMBOL(virtio_queue_unmap_vq_space);
-
+VMM_EXPORT_SYMBOL(virtio_queue_setup);
 
 /*
  * Each buffer in the virtqueues is actually a chain of descriptors.  This
@@ -145,8 +267,9 @@ static unsigned next_desc(struct vring_desc *desc, u32 i, u32 max)
 {
 	u32 next;
 
-	if (!(desc[i].flags & VRING_DESC_F_NEXT))
+	if (!(desc[i].flags & VRING_DESC_F_NEXT)) {
 		return max;
+	}
 
 	next = desc[i].next;
 
@@ -161,6 +284,12 @@ u16 virtio_queue_get_iovec(struct virtio_queue *vq,
 	struct vring_desc *desc;
 	u16 idx, head, max;
 	int i = 0;
+
+	if (!vq->addr) {
+		*ret_iov_cnt = 0;
+		*ret_total_len = 0;
+		return 0;
+	}
 
 	idx = head = virtio_queue_pop(vq);
 
@@ -182,10 +311,11 @@ u16 virtio_queue_get_iovec(struct virtio_queue *vq,
 
 		*ret_total_len += desc[idx].len;
 
-		if (desc[idx].flags & VRING_DESC_F_WRITE)
-			iov[i].flags = 1;  // Write
-		else
-			iov[i].flags = 0; // Read
+		if (desc[idx].flags & VRING_DESC_F_WRITE) {
+			iov[i].flags = 1;  /* Write */
+		} else {
+			iov[i].flags = 0; /* Read */
+		}
 
 		i++;
 
@@ -256,7 +386,8 @@ void virtio_iovec_fill_zeros(struct virtio_device *dev,
 
 	while (i < iov_cnt) {
 		len = (iov[i].len < 16) ? iov[i].len : 16;
-		len = vmm_guest_physical_write(dev->guest, iov[i].addr + pos, zeros, len);
+		len = vmm_guest_physical_write(dev->guest, 
+						iov[i].addr + pos, zeros, len);
 		if (!len) {
 			break;
 		}
@@ -269,5 +400,4 @@ void virtio_iovec_fill_zeros(struct virtio_device *dev,
 	}
 }
 VMM_EXPORT_SYMBOL(virtio_iovec_fill_zeros);
-
 
