@@ -908,7 +908,8 @@ fail:
 
 static void __exit lwip_netstack_exit(void)
 {
-	/* FIXME: */
+	vmm_netport_unregister(lns.port);
+	vmm_netport_free(lns.port);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC, 
