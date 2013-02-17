@@ -687,13 +687,12 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 		match = devemu_match_node(matches, reg->node);
 		if (match) {
 			found = TRUE;
-			einst = vmm_malloc(sizeof(struct vmm_emudev));
+			einst = vmm_zalloc(sizeof(struct vmm_emudev));
 			if (einst == NULL) {
 				/* FIXME: There is more cleanup to do */
 				vmm_mutex_unlock(&dectrl.emu_lock);
 				return VMM_EFAIL;
 			}
-			memset(einst, 0, sizeof(struct vmm_emudev));
 			INIT_SPIN_LOCK(&einst->lock);
 			einst->node = reg->node;
 			einst->probe = emu->probe;
@@ -784,12 +783,11 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 		goto devemu_init_context_done;
 	}
 
-	eg = vmm_malloc(sizeof(struct vmm_devemu_guest_context));
+	eg = vmm_zalloc(sizeof(struct vmm_devemu_guest_context));
 	if (!eg) {
 		rc = VMM_EFAIL;
 		goto devemu_init_context_done;
 	}
-	memset(eg, 0, sizeof(struct vmm_devemu_guest_context));
 	INIT_LIST_HEAD(&eg->emupic_list);
 	guest->aspace.devemu_priv = eg;
 
@@ -805,14 +803,12 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 			goto devemu_init_context_free;
 		}
 
-		eg->h2g_irq = vmm_malloc(sizeof(struct vmm_devemu_h2g_irq) * 
+		eg->h2g_irq = vmm_zalloc(sizeof(struct vmm_devemu_h2g_irq) * 
 							(eg->h2g_irq_count));
 		if (!eg->h2g_irq) {
 			rc = VMM_EFAIL;
 			goto devemu_init_context_free;
 		}
-		memset(eg->h2g_irq, 0, sizeof(struct vmm_devemu_h2g_irq) *
-							(eg->h2g_irq_count));
 
 		for (ite = 0; ite < eg->h2g_irq_count; ite++) {
 			eg->h2g_irq[ite].guest = guest;
@@ -831,8 +827,7 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 	list_for_each(l, &guest->vcpu_list) {
 		vcpu = list_entry(l, struct vmm_vcpu, head);
 		if (!vcpu->devemu_priv) {
-			ev = vmm_malloc(sizeof(struct vmm_devemu_vcpu_context));
-			memset(ev, 0, sizeof(struct vmm_devemu_vcpu_context));
+			ev = vmm_zalloc(sizeof(struct vmm_devemu_vcpu_context));
 			ev->rd_victim = 0;
 			ev->wr_victim = 0;
 			for (ite = 0; 
@@ -874,7 +869,7 @@ int vmm_devemu_deinit_context(struct vmm_guest *guest)
 
 	list_for_each(l, &guest->vcpu_list) {
 		vcpu = list_entry(l, struct vmm_vcpu, head);
-		if (!vcpu->devemu_priv) {
+		if (vcpu->devemu_priv) {
 			vmm_free(vcpu->devemu_priv);
 			vcpu->devemu_priv = NULL;
 		}
