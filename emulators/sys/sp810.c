@@ -155,14 +155,13 @@ static int sp810_emulator_probe(struct vmm_guest *guest,
 				const struct vmm_emuid *eid)
 {
 	int rc = VMM_OK;
-	struct sp810_state * s;
+	struct sp810_state *s;
 
-	s = vmm_malloc(sizeof(struct sp810_state));
+	s = vmm_zalloc(sizeof(struct sp810_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto sp810_emulator_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct sp810_state));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
@@ -175,7 +174,7 @@ sp810_emulator_probe_done:
 
 static int sp810_emulator_remove(struct vmm_emudev *edev)
 {
-	struct sp810_state * s = edev->priv;
+	struct sp810_state *s = edev->priv;
 
 	if (s) {
 		vmm_free(s);

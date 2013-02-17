@@ -234,12 +234,11 @@ static int l2x0_cc_emulator_probe(struct vmm_guest *guest,
 	int rc = VMM_OK;
 	struct l2x0_state *s;
 
-	s = vmm_malloc(sizeof(struct l2x0_state));
+	s = vmm_zalloc(sizeof(struct l2x0_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto l2x0_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct l2x0_state));
 
 	INIT_SPIN_LOCK(&s->lock);
 	s->id = (enum l2x0_id)(eid->data);
@@ -254,7 +253,7 @@ static int l2x0_cc_emulator_remove(struct vmm_emudev *edev)
 {
 	struct l2x0_state *s = edev->priv;
 
-	if(s) {
+	if (s) {
 		vmm_free(s);
 	}
 

@@ -448,12 +448,12 @@ static int lan9118_state_reset(struct lan9118_state *s)
 	s->txp->state = TX_IDLE;
 	s->txp->cmd_a = 0xffffffffu;
 	s->txp->cmd_b = 0xffffffffu;
-	if(txp_mbuf(s)) {
-		/* Reset previously allocated mbuf */
-	} else {
-		MGETHDR(txp_mbuf(s), 0, 0);
-		MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, M_WAIT);
+	if (txp_mbuf(s)) {
+		m_freem(txp_mbuf(s));
+		txp_mbuf(s) = NULL;
 	}
+	MGETHDR(txp_mbuf(s), 0, 0);
+	MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, M_WAIT);
 	s->txp->fifo_used = 0;
 	s->tx_fifo_size = 4608;
 	s->tx_status_fifo_used = 0;
@@ -748,7 +748,7 @@ static void do_tx_packet(struct lan9118_state *s)
 		DPRINTF(" - phy-loopback\n");
 		lan9118_receive(s, txp_mbuf(s));
 	} else {
-		if(s->port->nsw) {
+		if (s->port->nsw) {
 			DPRINTF(" - switch\n");
 			/* we know the data is contiguous in this mbuf,
 			 * so we update mbuf->m_pktlen */
@@ -1409,55 +1409,58 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 				  struct vmm_emudev *edev,
 				  const struct vmm_emuid *eid)
 {
-	struct lan9118_state *s = NULL;
 	int i, rc = VMM_OK;
 	char tname[64];
 	void *attr;
 	struct vmm_netswitch *nsw;
+	struct lan9118_state *s = NULL;
 
-	s = vmm_malloc(sizeof(struct lan9118_state));
-	if(!s) {
-		vmm_printf("LAN9118 state alloc failed\n");
-		rc = VMM_EFAIL;
+	s = vmm_zalloc(sizeof(struct lan9118_state));
+	if (!s) {
+		vmm_printf("%s: state alloc failed\n", __func__);
+		rc = VMM_ENOMEM;
 		goto lan9118_emulator_probe_done;
 	}
-	memset(s, 0, sizeof(struct lan9118_state));
 
 	attr = vmm_devtree_attrval(edev->node, "irq");
 	if (attr) {
 		s->irq = *((u32 *)attr);
 	} else {
-		vmm_printf("LAN9118: no irq node found\n");
+		vmm_printf("%s: no irq attribute found\n", __func__);
 		rc = VMM_EFAIL;
-		goto lan9118_emulator_probe_failed;
+		goto lan9118_emulator_probe_freestate_failed;
 	}
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 	edev->priv = s;
 
-	vmm_sprintf(tname, "%s%s%s",
-		    guest->node->name,
-		    VMM_DEVTREE_PATH_SEPARATOR_STRING,
-		    edev->node->name);
+	vmm_sprintf(tname, "%s/%s", guest->node->name, edev->node->name);
 	s->port = vmm_netport_alloc(tname, VMM_NETPORT_DEF_QUEUE_SIZE);
-	if(!s->port) {
-		vmm_printf("LAN9118_state->netport alloc failed\n");
-		rc = VMM_EFAIL;
-		goto lan9118_emulator_probe_failed;
+	if (!s->port) {
+		vmm_printf("%s: netport alloc failed\n", __func__);
+		rc = VMM_ENOMEM;
+		goto lan9118_emulator_probe_freestate_failed;
 	}
+
 	s->port->mtu = LAN9118_MTU;
 	s->port->link_changed = lan9118_set_link;
 	s->port->can_receive = lan9118_can_receive;
 	s->port->switch2port_xfer = lan9118_switch2port_xfer;
 	s->port->priv = s;
-	vmm_netport_register(s->port);
+
+	rc = vmm_netport_register(s->port);
+	if (rc) {
+		vmm_printf("%s: netport register failed\n", __func__);
+		goto lan9118_emulator_probe_freeport_failed;
+	}
 
 	attr = vmm_devtree_attrval(edev->node, "switch");
 	if (attr) {
 		nsw = vmm_netswitch_find((char *)attr);
-		if(!nsw) {
-			vmm_panic("LAN9118: Cannot find netswitch \"%s\"\n", (char *)attr);
+		if (!nsw) {
+			vmm_panic("%s: Cannot find netswitch \"%s\"\n", 
+				   __func__, (char *)attr);
 		}
 		vmm_netswitch_port_add(nsw, s->port);
 	}
@@ -1472,10 +1475,14 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 
 	INIT_TIMER_EVENT(&s->event, &gpt_event, s);
 
+	MGETHDR(txp_mbuf(s), 0, 0);
+	MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, M_WAIT);
+
 	goto lan9118_emulator_probe_done;
 
-lan9118_emulator_probe_failed:
-	vmm_printf("LAN9118-probe failed\n");
+lan9118_emulator_probe_freeport_failed:
+	vmm_netport_free(s->port);
+lan9118_emulator_probe_freestate_failed:
 	vmm_free(s);
 lan9118_emulator_probe_done:
 	return rc;
@@ -1484,16 +1491,18 @@ lan9118_emulator_probe_done:
 static int lan9118_emulator_remove(struct vmm_emudev *edev)
 {
 	struct lan9118_state *s = edev->priv;
-	int rc = VMM_OK;
 
-	if(s) {
-		m_freem(txp_mbuf(s));
-		vmm_free(s);
-	}
-	vmm_netswitch_port_remove(s->port);
 	vmm_netport_unregister(s->port);
+	vmm_netport_free(s->port);
+	if (txp_mbuf(s)) {
+		m_freem(txp_mbuf(s));
+		txp_mbuf(s) = NULL;
+	}
+	vmm_free(s);
+
 	edev->priv = NULL;
-	return rc;
+
+	return VMM_OK;
 }
 
 static struct vmm_emuid lan9118_emuid_table[] = {

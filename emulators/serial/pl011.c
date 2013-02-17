@@ -77,7 +77,7 @@ struct pl011_state {
 	struct fifo *rd_fifo;
 };
 
-static void pl011_set_irq(struct pl011_state * s)
+static void pl011_set_irq(struct pl011_state *s)
 {
 	if (s->int_level & s->int_enabled) {
 		vmm_devemu_emulate_irq(s->guest, s->irq, 1);
@@ -100,7 +100,7 @@ static void pl011_set_read_trigger(struct pl011_state *s)
         s->rd_trig = 1;
 }
 
-static int pl011_reg_read(struct pl011_state * s, u32 offset, u32 *dst)
+static int pl011_reg_read(struct pl011_state *s, u32 offset, u32 *dst)
 {
 	int rc = VMM_OK;
 	u8 val = 0x0;
@@ -172,7 +172,7 @@ static int pl011_reg_read(struct pl011_state * s, u32 offset, u32 *dst)
 	return rc;
 }
 
-static int pl011_reg_write(struct pl011_state * s, u32 offset, 
+static int pl011_reg_write(struct pl011_state *s, u32 offset, 
 			   u32 src_mask, u32 src)
 {
 	int rc = VMM_OK;
@@ -257,7 +257,7 @@ static bool pl011_vserial_can_send(struct vmm_vserial *vser)
 
 static int pl011_vserial_send(struct vmm_vserial *vser, u8 data)
 {
-	struct pl011_state * s = vser->priv;
+	struct pl011_state *s = vser->priv;
 	u32 rd_count;
 
 	fifo_enqueue(s->rd_fifo, &data, TRUE);
@@ -282,7 +282,7 @@ static int pl011_emulator_read(struct vmm_emudev *edev,
 {
 	int rc = VMM_OK;
 	u32 regval = 0x0;
-	struct pl011_state * s = edev->priv;
+	struct pl011_state *s = edev->priv;
 
 	rc = pl011_reg_read(s, offset & ~0x3, &regval);
 
@@ -313,7 +313,7 @@ static int pl011_emulator_write(struct vmm_emudev *edev,
 {
 	int i;
 	u32 regmask = 0x0, regval = 0x0;
-	struct pl011_state * s = edev->priv;
+	struct pl011_state *s = edev->priv;
 
 	switch (src_len) {
 	case 1:
@@ -343,7 +343,7 @@ static int pl011_emulator_write(struct vmm_emudev *edev,
 
 static int pl011_emulator_reset(struct vmm_emudev *edev)
 {
-	struct pl011_state * s = edev->priv;
+	struct pl011_state *s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -364,14 +364,13 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 	int rc = VMM_OK;
 	char name[64];
 	const char *attr;
-	struct pl011_state * s;
+	struct pl011_state *s;
 
-	s = vmm_malloc(sizeof(struct pl011_state));
+	s = vmm_zalloc(sizeof(struct pl011_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto pl011_emulator_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct pl011_state));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
@@ -434,7 +433,7 @@ pl011_emulator_probe_done:
 
 static int pl011_emulator_remove(struct vmm_emudev *edev)
 {
-	struct pl011_state * s = edev->priv;
+	struct pl011_state *s = edev->priv;
 
 	if (s) {
 		vmm_vserial_destroy(s->vser);

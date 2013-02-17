@@ -115,7 +115,7 @@ static void pl031_set_alarm(struct pl031_state *s)
 	}
 }
 
-static int pl031_reg_read(struct pl031_state * s, u32 offset, u32 *dst)
+static int pl031_reg_read(struct pl031_state *s, u32 offset, u32 *dst)
 {
 	int rc = VMM_OK;
 
@@ -159,7 +159,7 @@ static int pl031_reg_read(struct pl031_state * s, u32 offset, u32 *dst)
 	return rc;
 }
 
-static int pl031_reg_write(struct pl031_state * s, u32 offset, 
+static int pl031_reg_write(struct pl031_state *s, u32 offset, 
 			   u32 src_mask, u32 src)
 {
 	int rc = VMM_OK;
@@ -213,7 +213,7 @@ static int pl031_emulator_read(struct vmm_emudev *edev,
 {
 	int rc = VMM_OK;
 	u32 regval = 0x0;
-	struct pl031_state * s = edev->priv;
+	struct pl031_state *s = edev->priv;
 
 	rc = pl031_reg_read(s, offset & ~0x3, &regval);
 
@@ -244,7 +244,7 @@ static int pl031_emulator_write(struct vmm_emudev *edev,
 {
 	int i;
 	u32 regmask = 0x0, regval = 0x0;
-	struct pl031_state * s = edev->priv;
+	struct pl031_state *s = edev->priv;
 
 	switch (src_len) {
 	case 1:
@@ -274,7 +274,7 @@ static int pl031_emulator_write(struct vmm_emudev *edev,
 
 static int pl031_emulator_reset(struct vmm_emudev *edev)
 {
-	struct pl031_state * s = edev->priv;
+	struct pl031_state *s = edev->priv;
 	struct vmm_timeval tv;
 	struct vmm_timezone tz;
 	int rc = VMM_OK;
@@ -304,14 +304,13 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	const char *attr;
-	struct pl031_state * s;
+	struct pl031_state *s;
 
-	s = vmm_malloc(sizeof(struct pl031_state));
+	s = vmm_zalloc(sizeof(struct pl031_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto pl031_emulator_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct pl031_state));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
@@ -338,7 +337,7 @@ pl031_emulator_probe_done:
 
 static int pl031_emulator_remove(struct vmm_emudev *edev)
 {
-	struct pl031_state * s = edev->priv;
+	struct pl031_state *s = edev->priv;
 
 	if (s) {
 		vmm_free(s);

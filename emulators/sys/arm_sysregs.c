@@ -491,7 +491,7 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 
 static int arm_sysregs_emulator_reset(struct vmm_emudev *edev)
 {
-	struct arm_sysregs * s = edev->priv;
+	struct arm_sysregs *s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -561,12 +561,11 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 	const char * attr;
 	struct arm_sysregs *s;
 
-	s = vmm_malloc(sizeof(struct arm_sysregs));
+	s = vmm_zalloc(sizeof(struct arm_sysregs));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto arm_sysregs_emulator_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct arm_sysregs));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
@@ -578,11 +577,10 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 		s->proc_id = ((u32 *)eid->data)[1];
 	}
 
-	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
+	s->pic = vmm_zalloc(sizeof(struct vmm_emupic));
 	if (!s->pic) {
 		goto arm_sysregs_emulator_probe_freestate_fail;
 	}
-	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
 
 	strcpy(s->pic->name, edev->node->name);
 	s->pic->type = VMM_EMUPIC_GPIO;

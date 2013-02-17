@@ -111,7 +111,7 @@ static int pl061_emulator_read(struct vmm_emudev *edev,
 {
 	int rc = VMM_OK;
 	u32 regval = 0x0;
-	struct pl061_state * s = edev->priv;
+	struct pl061_state *s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -214,7 +214,7 @@ static int pl061_emulator_write(struct vmm_emudev *edev,
 	u8 mask;
 	int rc = VMM_OK, i;
 	u32 regmask = 0x0, regval = 0x0;
-	struct pl061_state * s = edev->priv;
+	struct pl061_state *s = edev->priv;
 
 	switch (src_len) {
 	case 1:
@@ -334,7 +334,7 @@ static int pl061_emulator_write(struct vmm_emudev *edev,
 
 static int pl061_emulator_reset(struct vmm_emudev *edev)
 {
-	struct pl061_state * s = edev->priv;
+	struct pl061_state *s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -352,7 +352,7 @@ static int pl061_irq_handle(struct vmm_emupic *epic,
 {
 	u8 mask;
 	int i, line;
-	struct pl061_state * s = epic->priv;
+	struct pl061_state *s = epic->priv;
 
 	line = -1;
 	for (i = 0; i < 8; i++) {
@@ -390,20 +390,18 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	const char *attr;
-	struct pl061_state * s;
+	struct pl061_state *s;
 
-	s = vmm_malloc(sizeof(struct pl061_state));
+	s = vmm_zalloc(sizeof(struct pl061_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto pl061_emulator_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct pl061_state));
 
-	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
+	s->pic = vmm_zalloc(sizeof(struct vmm_emupic));
 	if (!s->pic) {
 		goto pl061_emulator_probe_freestate_failed;
 	}
-	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
 
 	strcpy(s->pic->name, edev->node->name);
 	s->pic->type = VMM_EMUPIC_GPIO;
@@ -501,7 +499,7 @@ pl061_emulator_probe_done:
 static int pl061_emulator_remove(struct vmm_emudev *edev)
 {
 	int rc;
-	struct pl061_state * s = edev->priv;
+	struct pl061_state *s = edev->priv;
 
 	if (s) {
 		if (s->pic) {

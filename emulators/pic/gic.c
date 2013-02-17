@@ -1023,17 +1023,15 @@ struct gic_state *gic_state_alloc(struct vmm_guest *guest,
 	int i;
 	struct gic_state *s = NULL;
 
-	s = vmm_malloc(sizeof(struct gic_state));
+	s = vmm_zalloc(sizeof(struct gic_state));
 	if (!s) {
 		goto gic_emulator_init_done;
 	}
-	memset(s, 0x0, sizeof(struct gic_state));
 
-	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
+	s->pic = vmm_zalloc(sizeof(struct vmm_emupic));
 	if (!s->pic) {
 		goto gic_emulator_init_freestate_failed;
 	}
-	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
 
 	strcpy(s->pic->name, "gic-pic");
 	s->pic->type = VMM_EMUPIC_IRQCHIP;
@@ -1083,7 +1081,7 @@ VMM_EXPORT_SYMBOL(gic_state_alloc);
 int gic_state_free(struct gic_state *s)
 {
 	int rc;
-	if(s) {
+	if (s) {
 		if (s->pic) {
 			rc = vmm_devemu_unregister_pic(s->guest, s->pic);
 			if (rc) {

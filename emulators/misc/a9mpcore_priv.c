@@ -296,7 +296,7 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 
 	attr = vmm_devtree_attrval(edev->node, "num_cpu");
 	s->num_cpu = *(u32 *)attr;
-	if(!s->num_cpu) {
+	if (!s->num_cpu) {
 		goto a9mp_probe_failed;
 	}
 
@@ -317,13 +317,13 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 	timer_irq = (u32 *)attr;
 
 	/* Allocate and init MPT state */
-	if(!(s->mpt = mptimer_state_alloc(guest, edev, s->num_cpu, 1000000,
+	if (!(s->mpt = mptimer_state_alloc(guest, edev, s->num_cpu, 1000000,
 				 	  timer_irq))) {
 		goto a9mp_probe_failed;
 	}
 
 	/* Allocate and init GIC state */
-	if(!(s->gic = gic_state_alloc(guest, GIC_TYPE_VEXPRESS, s->num_cpu, 
+	if (!(s->gic = gic_state_alloc(guest, GIC_TYPE_VEXPRESS, s->num_cpu, 
 				 FALSE, parent_irq))) {
 		goto a9mp_gic_alloc_failed;
 	}
@@ -351,9 +351,12 @@ static int a9mpcore_emulator_remove(struct vmm_emudev *edev)
 {
 	struct a9mp_priv_state *s = edev->priv;
 
-	if(s) {
+	if (s) {
 		/* Remove GIC state */
 		gic_state_free(s->gic);
+
+		/* Remove MPtimer state */
+		mptimer_state_free(s->mpt);
 
 		vmm_free(s);
 	}
