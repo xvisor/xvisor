@@ -48,11 +48,15 @@ struct vmm_netswitch {
 	/* List of ports */
 	struct dlist port_list;
 	/* Handle RX packets from port to switch */
-	int (*port2switch_xfer) (struct vmm_netport *, struct vmm_mbuf *);
+	int (*port2switch_xfer) (struct vmm_netswitch *, 
+				 struct vmm_netport *, 
+				 struct vmm_mbuf *);
 	/* Handle enabling of a port */
-	int (*port_add) (struct vmm_netswitch *, struct vmm_netport *);
+	int (*port_add) (struct vmm_netswitch *, 
+			 struct vmm_netport *);
 	/* Handle disabling of a port */
-	int (*port_remove) (struct vmm_netport *);
+	int (*port_remove) (struct vmm_netswitch *,
+			    struct vmm_netport *);
 	/* Switch private data */
 	void *priv;
 

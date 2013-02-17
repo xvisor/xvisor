@@ -124,7 +124,7 @@ static int vmm_netswitch_rx_handler(void *param)
 
 		/* Call the rx function of net switch */
 		vmm_mutex_lock(&nsw->lock);
-		nsw->port2switch_xfer(xfer->port, xfer->mbuf);
+		nsw->port2switch_xfer(nsw, xfer->port, xfer->mbuf);
 		vmm_mutex_unlock(&nsw->lock);
 
 		/* Free netport xfer request */
@@ -258,7 +258,7 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 	list_add_tail(&port->head, &nsw->port_list);
 
 	/* Call the netswitch's port_add callback */
-	if(nsw->port_add) {
+	if (nsw->port_add) {
 		rc = nsw->port_add(nsw, port);
 	}
 
@@ -288,7 +288,7 @@ static void __netswitch_port_remove(struct vmm_netswitch *nsw,
 {
 	/* Call the netswitch's port_remove handler */
 	if (nsw->port_remove) {
-		nsw->port_remove(port);
+		nsw->port_remove(nsw, port);
 	}
 
 	/* Remove the port from port_list */
@@ -300,9 +300,14 @@ int vmm_netswitch_port_remove(struct vmm_netport *port)
 {
 	struct vmm_netswitch *nsw;
 
-	if (!port || !(port->nsw)) {
+	if (!port) {
 		return VMM_EFAIL;
 	}
+
+	if (!port->nsw) {
+		return VMM_OK;
+	}
+
 	nsw = port->nsw;
 
 #ifdef CONFIG_VERBOSE_MODE

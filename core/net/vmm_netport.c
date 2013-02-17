@@ -27,6 +27,7 @@
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
 #include <net/vmm_protocol.h>
+#include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
 #include <libs/stringlib.h>
 
@@ -161,16 +162,24 @@ int vmm_netport_unregister(struct vmm_netport *port)
 	int rc;
 	struct vmm_classdev *cd;
 
-	if (port == NULL)
+	if (!port) {
 		return VMM_EFAIL;
+	}
+
+	rc = vmm_netswitch_port_remove(port);
+	if (rc) {
+		return rc;
+	}
 
 	cd = vmm_devdrv_find_classdev(VMM_NETPORT_CLASS_NAME, port->name);
-	if (!cd)
+	if (!cd) {
 		return VMM_EFAIL;
+	}
 
 	rc = vmm_devdrv_unregister_classdev(VMM_NETPORT_CLASS_NAME, cd);
-	if (!rc)
+	if (!rc) {
 		vmm_free(cd);
+	}
 
 	return rc;
 }
