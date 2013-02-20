@@ -19,7 +19,7 @@
 					address_type = "memory";
 					guest_physical_addr = <0x00000000>;
 					alias_physical_addr = <0x70000000>;
-					physical_size = <0x06000000>; /* 96 MB */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
 					device_type = "ram";
 				};
 
@@ -27,8 +27,8 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x70000000>;
-					host_physical_addr = <0x42000000>;
-					physical_size = <0x06000000>; /* 96 MB */
+					host_physical_addr = <0x00000000>;
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
 					device_type = "ram";
 				};
 
@@ -95,8 +95,8 @@
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
- 				};
- 
+				};
+
 				uart0 {
 					manifest_type = "virtual";
 					address_type = "memory";
@@ -271,8 +271,8 @@
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
- 				};
- 
+				};
+
 				gic0 {
 					manifest_type = "virtual";
 					address_type = "memory";
@@ -291,7 +291,7 @@
 					virtio_type = <1>;
 					guest_physical_addr = <0x20100000>;
 					physical_size = <0x1000>;
-					switch = "netbridge0";
+					switch = ""; /* To be set by DTS including this file */
 					irq = <34>;
 				};
 
@@ -299,19 +299,19 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x40000000>;
-					host_physical_addr = <0x41000000>;
-					physical_size = <0x01000000>; /* 16 MB */
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
 					device_type = "rom";
 				};
 
-				lan9118 { /* Ethernet Controller */
+				lan9118 {
 					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x4E000000>;
 					physical_size = <0x10000>;
 					device_type = "nic";
 					compatible = "smsc,lan9118";
-					switch = "netbridge0";
+					switch = ""; /* To be set by DTS including this file */
 					irq = <60>;
 				};
 			};

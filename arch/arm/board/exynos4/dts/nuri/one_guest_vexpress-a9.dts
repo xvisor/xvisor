@@ -3,4 +3,30 @@
 
 /include/ "nuri.dtsi"
 
-/include/ "../guest/one_guest_vexpress-a9.dtsi"
+/include/ "../../../common/guests/one_guest_vexpress-a9x2.dtsi"
+
+/ {
+	guests {
+		guest0 {
+			aspace {
+				mem0 {
+					physical_size = <0x04000000>; /* 64 MB */
+				};
+
+				mem1 {
+					host_physical_addr = <0x42000000>;
+					physical_size = <0x06000000>; /* 96 MB */
+				};
+
+				nor_flash0 {
+					host_physical_addr = <0x41000000>;
+					physical_size = <0x01000000>; /* 16 MB */
+				};
+
+				lan9118 {
+					switch = "netbridge0";
+				};
+			};
+		};
+	};
+};
