@@ -80,16 +80,14 @@ struct sp804_clockchip {
 	struct vmm_clockchip clkchip;
 };
 
-static vmm_irq_return_t sp804_clockchip_irq_handler(u32 irq_no, 
-						    arch_regs_t * regs, 
-						    void *dev)
+static vmm_irq_return_t sp804_clockchip_irq_handler(u32 irq_no, void *dev)
 {
 	struct sp804_clockchip *tcc = dev;
 
 	/* clear the interrupt */
 	vmm_writel(1, (void *)(tcc->base + TIMER_INTCLR));
 
-	tcc->clkchip.event_handler(&tcc->clkchip, regs);
+	tcc->clkchip.event_handler(&tcc->clkchip);
 
 	return VMM_IRQ_HANDLED;
 }

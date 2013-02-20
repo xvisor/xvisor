@@ -136,8 +136,7 @@ struct samsung_port {
 	u16 mask;
 };
 
-static vmm_irq_return_t samsung_irq_handler(u32 irq_no, arch_regs_t * regs, void
-					    *dev)
+static vmm_irq_return_t samsung_irq_handler(u32 irq_no, void *dev)
 {
 	u16 data;
 	struct samsung_port *port = (struct samsung_port *)dev;

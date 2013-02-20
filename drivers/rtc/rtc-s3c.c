@@ -161,7 +161,7 @@ static void s3c_rtc_alarm_clk_enable(bool enable)
 
 /* IRQ Handlers */
 
-static irqreturn_t s3c_rtc_alarmirq(u32 irq, arch_regs_t * regs, void *id)
+static irqreturn_t s3c_rtc_alarmirq(u32 irq, void *id)
 {
 	//struct rtc_device *rdev = id;
 
@@ -178,7 +178,7 @@ static irqreturn_t s3c_rtc_alarmirq(u32 irq, arch_regs_t * regs, void *id)
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t s3c_rtc_tickirq(u32 irq, arch_regs_t * regs, void *id)
+static irqreturn_t s3c_rtc_tickirq(u32 irq, void *id)
 {
 	//struct rtc_device *rdev = id;
 

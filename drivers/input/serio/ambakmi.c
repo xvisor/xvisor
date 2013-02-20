@@ -63,7 +63,7 @@ struct amba_kmi_port {
 	unsigned int		open;
 };
 
-static irqreturn_t amba_kmi_int(u32 irq_no, arch_regs_t *regs, void *dev)
+static irqreturn_t amba_kmi_int(u32 irq_no, void *dev)
 {
 	struct amba_kmi_port *kmi = dev;
 	unsigned int status = readb(KMIIR);

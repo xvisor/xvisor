@@ -25,7 +25,6 @@
 
 #include <vmm_types.h>
 #include <vmm_cpumask.h>
-#include <arch_regs.h>
 #include <libs/mathlib.h>
 #include <libs/list.h>
 
@@ -75,7 +74,7 @@ struct vmm_clockchip {
 	u32 shift;
 	u64 max_delta_ns;
 	u64 min_delta_ns;
-	void (*event_handler) (struct vmm_clockchip *cc, arch_regs_t *regs);
+	void (*event_handler) (struct vmm_clockchip *cc);
 	void (*set_mode) (enum vmm_clockchip_mode mode, struct vmm_clockchip *cc);
 	int (*set_next_event) (unsigned long evt, struct vmm_clockchip *cc);
 	int (*expire) (struct vmm_clockchip *cc);
@@ -163,7 +162,7 @@ static inline u64 vmm_clockchip_delta2ns(u64 delta, struct vmm_clockchip *cc)
 
 /** Set event handler for clockchip */
 void vmm_clockchip_set_event_handler(struct vmm_clockchip *cc, 
-		void (*event_handler) (struct vmm_clockchip *, arch_regs_t *));
+		void (*event_handler) (struct vmm_clockchip *));
 
 /** Program clockchip for next event after delta nanoseconds */
 int vmm_clockchip_program_event(struct vmm_clockchip *cc,

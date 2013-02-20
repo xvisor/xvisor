@@ -292,7 +292,7 @@ static int omap_uart_startup_configure(struct omap_uart_port *port)
 	return VMM_OK;
 }
 
-static vmm_irq_return_t omap_uart_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
+static vmm_irq_return_t omap_uart_irq_handler(u32 irq_no, void *dev)
 {
 	u16 iir, lsr;
 	struct omap_uart_port *port = (struct omap_uart_port *)dev;

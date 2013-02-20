@@ -232,7 +232,7 @@ int do_generic_int_handler(int intno, arch_regs_t *regs)
 		    (unsigned long)frame->rip, (unsigned long)frame->rsp,
 		    (unsigned long)frame->cs, (unsigned long)frame->ss);
 	vmm_scheduler_irq_enter(regs, FALSE);
-	vmm_host_irq_exec(intno, regs);
+	vmm_host_irq_exec(intno);
 	vmm_scheduler_irq_exit(regs);
 
 	return 0;

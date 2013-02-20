@@ -103,8 +103,7 @@ static void vmm_timer_schedule_next_event(void)
  * This is call from interrupt context. So we don't need to protect the list
  * when manipulating it.
  */
-static void timer_clockchip_event_handler(struct vmm_clockchip *cc,
-					  arch_regs_t *regs)
+static void timer_clockchip_event_handler(struct vmm_clockchip *cc)
 {
 	struct vmm_timer_event *e;
 	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
@@ -123,9 +122,7 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc,
 			list_del(&e->head);
 			e->expiry_tstamp = 0;
 			e->active = FALSE;
-			e->regs = regs;
 			e->handler(e);
-			e->regs = NULL;
 		} else {
 			/* no more expired events */
 			break;

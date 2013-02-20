@@ -996,9 +996,7 @@ static void smc911x_phy_interrupt(struct net_device *dev)
  * This is the main routine of the driver, to handle the device when
  * it needs some attention.
  */
-static vmm_irq_return_t smc911x_interrupt(u32 irq_no,
-					  arch_regs_t * regs,
-					  void *dev_id)
+static vmm_irq_return_t smc911x_interrupt(u32 irq_no, void *dev_id)
 
 {
 	struct net_device *dev = dev_id;

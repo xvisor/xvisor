@@ -26,7 +26,6 @@
 
 #include <vmm_types.h>
 #include <vmm_host_irq.h>
-#include <arch_regs.h>
 #include <libs/list.h>
 
 extern virtual_addr_t lapic_eoi_addr;
@@ -245,8 +244,7 @@ struct ioapic_ext_irq_device {
 	void (*irq_unmask)(void *data);
 	void (*irq_eoi)(void *data);
 	int  (*irq_set_type)(void *data, u32 flow_type);
-	vmm_irq_return_t  (*irq_handler)(u32 irq_no, arch_regs_t * regs,
-					 void *data);
+	vmm_irq_return_t  (*irq_handler)(u32 irq_no, void *data);
 	void *data;
 	struct dlist head;
 };

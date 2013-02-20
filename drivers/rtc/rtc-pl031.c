@@ -240,7 +240,7 @@ static int pl031_stv2_set_alarm(struct rtc_device *rd, struct rtc_wkalrm *alarm)
 	return ret;
 }
 
-static irqreturn_t pl031_irq_handler(u32 irq_no, arch_regs_t *regs, void *dev)
+static irqreturn_t pl031_irq_handler(u32 irq_no, void *dev)
 {
 	struct pl031_local *ldata = (struct pl031_local *)dev;
 	unsigned long rtcmis;

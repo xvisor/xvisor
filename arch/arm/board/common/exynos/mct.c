@@ -261,14 +261,14 @@ static void exynos4_comp_set_mode(enum vmm_clockchip_mode mode,
 	}
 }
 
-static vmm_irq_return_t exynos4_mct_comp_isr(u32 irq_no, arch_regs_t * regs,
+static vmm_irq_return_t exynos4_mct_comp_isr(u32 irq_no,
 					     void *dev)
 {
 	struct vmm_clockchip *evt = dev;
 
 	exynos4_mct_write(0x1, EXYNOS4_MCT_G_INT_CSTAT);
 
-	evt->event_handler(evt, regs);
+	evt->event_handler(evt);
 
 	return VMM_IRQ_HANDLED;
 }
@@ -449,14 +449,14 @@ static int exynos4_mct_tick_clear(struct mct_clock_event_clockchip *mevt)
 	}
 }
 
-static vmm_irq_return_t exynos4_mct_tick_isr(u32 irq_no, arch_regs_t * regs,
+static vmm_irq_return_t exynos4_mct_tick_isr(u32 irq_no, 
 					     void *dev_id)
 {
 	struct mct_clock_event_clockchip *mevt = dev_id;
 
 	exynos4_mct_tick_clear(mevt);
 
-	mevt->clkchip.event_handler(&mevt->clkchip, regs);
+	mevt->clkchip.event_handler(&mevt->clkchip);
 
 	return VMM_IRQ_HANDLED;
 }

@@ -115,8 +115,7 @@ struct gpt_clockchip {
 	struct vmm_clockchip clkchip;
 };
 
-static vmm_irq_return_t gpt_clockevent_irq_handler(u32 irq_no, 
-						arch_regs_t * regs, void *dev)
+static vmm_irq_return_t gpt_clockevent_irq_handler(u32 irq_no, void *dev)
 {
 	u32 regval;
 	struct gpt_clockchip *tcc = dev;
@@ -128,7 +127,7 @@ static vmm_irq_return_t gpt_clockevent_irq_handler(u32 irq_no,
 	regval &= ~GPT_TCLR_ST_M;
 	gpt_write(tcc->gpt_va, GPT_TCLR, regval);
 
-	tcc->clkchip.event_handler(&tcc->clkchip, regs);
+	tcc->clkchip.event_handler(&tcc->clkchip);
 
 	return VMM_IRQ_HANDLED;
 }

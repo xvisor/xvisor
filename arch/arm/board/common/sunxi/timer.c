@@ -170,15 +170,14 @@ struct aw_clockchip {
 	struct vmm_clockchip clkchip;
 };
 
-static vmm_irq_return_t aw_clockchip_irq_handler(u32 irq_no, 
-						 arch_regs_t *regs, void *dev)
+static vmm_irq_return_t aw_clockchip_irq_handler(u32 irq_no, void *dev)
 {
 	struct aw_clockchip *acc = dev;
 
 	/* Clear pending irq */
 	writel((1 << acc->num), acc->base + AW_TMR_REG_IRQ_STAT);
 
-	acc->clkchip.event_handler(&acc->clkchip, regs);
+	acc->clkchip.event_handler(&acc->clkchip);
 
 	return VMM_IRQ_HANDLED;
 }

@@ -43,9 +43,7 @@ struct twd_clockchip {
 static DEFINE_PER_CPU(struct twd_clockchip, twd_cc);
 static u32 twd_freq_hz;
 
-static vmm_irq_return_t twd_clockchip_irq_handler(u32 irq_no, 
-						  arch_regs_t * regs, 
-						  void *dev)
+static vmm_irq_return_t twd_clockchip_irq_handler(u32 irq_no, void *dev)
 {
 	struct twd_clockchip *tcc = &this_cpu(twd_cc);
 
@@ -53,7 +51,7 @@ static vmm_irq_return_t twd_clockchip_irq_handler(u32 irq_no,
 		vmm_writel(1, (void *)(tcc->base + TWD_TIMER_INTSTAT));
 	}
 
-	tcc->clkchip.event_handler(&tcc->clkchip, regs);
+	tcc->clkchip.event_handler(&tcc->clkchip);
 
 	return VMM_IRQ_HANDLED;
 }
