@@ -71,6 +71,7 @@ struct virtio_net_dev {
 static u32 virtio_net_get_host_features(struct virtio_device *dev)
 {
 	return 1UL << VIRTIO_NET_F_MAC
+#if 0
 		| 1UL << VIRTIO_NET_F_CSUM
 		| 1UL << VIRTIO_NET_F_HOST_UFO
 		| 1UL << VIRTIO_NET_F_HOST_TSO4
@@ -78,6 +79,7 @@ static u32 virtio_net_get_host_features(struct virtio_device *dev)
 		| 1UL << VIRTIO_NET_F_GUEST_UFO
 		| 1UL << VIRTIO_NET_F_GUEST_TSO4
 		| 1UL << VIRTIO_NET_F_GUEST_TSO6
+#endif
 		| 1UL << VIRTIO_RING_F_EVENT_IDX
 #if 0
 		| 1UL << VIRTIO_RING_F_INDIRECT_DESC
