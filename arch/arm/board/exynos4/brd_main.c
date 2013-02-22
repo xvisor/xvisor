@@ -254,7 +254,7 @@ int __init arch_clocksource_init(void)
 
 	/* Initialize mct as clocksource */
 	rc = exynos4_clocksource_init(mct_timer_base, node->name, 300,
-				      mct_clk_rate, 20);
+				      mct_clk_rate);
 	if (rc) {
 		return rc;
 	}

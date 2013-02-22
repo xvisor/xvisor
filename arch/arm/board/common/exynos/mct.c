@@ -50,16 +50,8 @@
 #include <exynos/mct_timer.h>
 
 #define HZ		(1000 / CONFIG_TSLICE_MS)
-#define TICK_BASE_CNT	1
 
 static void *exynos4_sys_timer;
-
-static inline void
-vmm_clockchip_calc_mult_shift(struct vmm_clockchip *cc, u32 freq, u32 minsec)
-{
-	return vmm_clocks_calc_mult_shift(&cc->mult, &cc->shift, NSEC_PER_SEC,
-					  freq, minsec);
-}
 
 static inline u32 exynos4_mct_read(u32 offset)
 {
@@ -157,7 +149,7 @@ static struct vmm_clocksource mct_frc;
 
 int __init exynos4_clocksource_init(virtual_addr_t base,
 				    const char *name,
-				    int rating, u32 freq_hz, u32 shift)
+				    int rating, u32 freq_hz)
 {
 	u32 reg;
 
@@ -168,8 +160,9 @@ int __init exynos4_clocksource_init(virtual_addr_t base,
 	mct_frc.rating = rating;
 	mct_frc.read = exynos4_frc_read;
 	mct_frc.mask = VMM_CLOCKSOURCE_MASK(64);
-	mct_frc.shift = shift;
-	mct_frc.mult = vmm_clocksource_hz2mult(freq_hz, mct_frc.shift);
+	vmm_clocks_calc_mult_shift(&mct_frc.mult, 
+				   &mct_frc.shift, 
+				   freq_hz, NSEC_PER_SEC, 5);
 	mct_frc.priv = NULL;
 
 	/* Start the clocksource timer */
@@ -227,13 +220,13 @@ static int exynos4_comp_set_next_event(unsigned long cycles,
 
 static int exynos4_comp_expire(struct vmm_clockchip *evt)
 {
-	// Stop the ongoing timer
+	/* Stop the ongoing timer */
 	exynos4_mct_comp0_stop();
 
-	// Start a new one for the next cycle
+	/* Start a new one for the next cycle */
 	exynos4_mct_comp0_start(evt->mode, 1);
 
-	// Now we need to wait for the interrupt to happen before returning
+	/* Now we need to wait for the interrupt to happen before returning */
 	while (!(exynos4_mct_read(EXYNOS4_MCT_G_INT_CSTAT) & 0x01)) ;
 
 	return VMM_OK;
@@ -291,7 +284,9 @@ int __init exynos4_clockchip_init(virtual_addr_t base, u32 hirq,
 #endif
 	mct_comp_device.features =
 	    VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
-	vmm_clockchip_calc_mult_shift(&mct_comp_device, freq_hz, 5);
+	vmm_clocks_calc_mult_shift(&mct_comp_device.mult, 
+				   &mct_comp_device.shift, 
+				   NSEC_PER_SEC, freq_hz, 5);
 	mct_comp_device.min_delta_ns =
 	    vmm_clockchip_delta2ns(0xF, &mct_comp_device);
 	mct_comp_device.max_delta_ns =
@@ -329,6 +324,10 @@ enum {
 	MCT_INT_PPI,
 	MCT_INT_UNKNOWN
 };
+
+#define MCT_L_BASE_CNT	1
+#define MCT_L_MAX_COUNT	0x7FFFFFFF
+#define MCT_L_MIN_COUNT	0xF
 
 static u32 mct_int_type = MCT_INT_UNKNOWN;
 
@@ -371,8 +370,9 @@ static void exynos4_mct_tick_start(u32 cycles,
 	exynos4_mct_write(0x1, mevt->timer_base + MCT_L_INT_ENB_OFFSET);
 
 	tmp = exynos4_mct_read(mevt->timer_base + MCT_L_TCON_OFFSET);
-	tmp |= MCT_L_TCON_INT_START | MCT_L_TCON_TIMER_START |
-	    MCT_L_TCON_INTERVAL_MODE;
+	tmp |= MCT_L_TCON_INT_START | 
+		MCT_L_TCON_TIMER_START |
+		MCT_L_TCON_INTERVAL_MODE;
 	exynos4_mct_write(tmp, mevt->timer_base + MCT_L_TCON_OFFSET);
 }
 
@@ -390,13 +390,10 @@ static int exynos4_tick_expire(struct vmm_clockchip *evt)
 {
 	struct mct_clock_event_clockchip *mevt = evt->priv;
 
-	// Stop the ongoing timer
-	exynos4_mct_tick_stop(mevt);
+	/* Start a new one for the next cycle */
+	exynos4_mct_tick_start(0x1, mevt);
 
-	// Start a new one for the next cycle
-	exynos4_mct_tick_start(1, mevt);
-
-	// Now we need to wait for the interrupt to happen before returning
+	/* Now we need to wait for the interrupt to happen before returning */
 	while (!
 	       (exynos4_mct_read(mevt->timer_base + MCT_L_INT_CSTAT_OFFSET) &
 		0x01)) ;
@@ -441,7 +438,7 @@ static int exynos4_mct_tick_clear(struct mct_clock_event_clockchip *mevt)
 
 	/* Clear the MCT tick interrupt */
 	if (exynos4_mct_read(mevt->timer_base + MCT_L_INT_CSTAT_OFFSET) & 1) {
-		exynos4_mct_write(0x1,
+		exynos4_mct_write(0x1, 
 				  mevt->timer_base + MCT_L_INT_CSTAT_OFFSET);
 		return 1;
 	} else {
@@ -487,12 +484,16 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 	evt->features =
 	    VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
 	evt->rating = 450;
-	vmm_clockchip_calc_mult_shift(evt, freq_hz / (TICK_BASE_CNT + 1), 5);
-	evt->max_delta_ns = vmm_clockchip_delta2ns(0x7fffffff, evt);
-	evt->min_delta_ns = vmm_clockchip_delta2ns(0xf, evt);
+	vmm_clocks_calc_mult_shift(&evt->mult, 
+				   &evt->shift, 
+				   NSEC_PER_SEC, 
+				   freq_hz / (MCT_L_BASE_CNT + 1), 10);
+	evt->max_delta_ns = vmm_clockchip_delta2ns(MCT_L_MAX_COUNT, evt);
+	evt->min_delta_ns = vmm_clockchip_delta2ns(MCT_L_MIN_COUNT, evt);
 	evt->priv = mevt;
 
-	exynos4_mct_write(TICK_BASE_CNT, mevt->timer_base + MCT_L_TCNTB_OFFSET);
+	exynos4_mct_write(MCT_L_BASE_CNT, 
+			  mevt->timer_base + MCT_L_TCNTB_OFFSET);
 
 	if (mct_int_type == MCT_INT_SPI) {
 		if (cpu == 0) {
