@@ -25,8 +25,6 @@
 #include <vmm_heap.h>
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
-#include <vmm_host_io.h>
-#include <arch_barrier.h>
 
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
@@ -129,41 +127,37 @@ static int virtio_net_tx_thread(struct virtio_device *dev,
 				int queue)
 {
 	u16 head = 0;
-	u32 ret_iov_cnt = 0, pkt_len = 0, ret_total_len = 0;
-	struct virtio_queue *vq;
+	u32 iov_cnt = 0, pkt_len = 0, total_len = 0;
+	struct virtio_queue *vq = &ndev->vqs[VIRTIO_NET_TX_QUEUE];
 	struct virtio_iovec *iov = ndev->tx_iov;
 	struct vmm_mbuf *mb;
-
-	vq = &ndev->vqs[VIRTIO_NET_TX_QUEUE];
 
 	if (!virtio_queue_available(vq)) {
 		return 0;
 	}
 
 	while (virtio_queue_available(vq)) {
-		head = virtio_queue_get_iovec(vq, iov, VIRTIO_NET_QUEUE_SIZE,
-						&ret_iov_cnt, &ret_total_len);
+		head = virtio_queue_get_iovec(vq, iov, 
+						VIRTIO_NET_QUEUE_SIZE,
+						&iov_cnt, &total_len);
 
 		/* iov[0] is offload info */
-		pkt_len = ret_total_len - iov[0].len;
+		pkt_len = total_len - iov[0].len;
 
 		if (pkt_len <= VIRTIO_NET_MTU) {
 			MGETHDR(mb, 0, 0);
 			MEXTMALLOC(mb, pkt_len, M_WAIT);
-			virtio_iovec_to_buf_read(dev, &iov[1], ret_iov_cnt - 1,
+			virtio_iovec_to_buf_read(dev, &iov[1], iov_cnt - 1,
 						M_BUFADDR(mb), pkt_len);
 			mb->m_len = mb->m_pktlen = pkt_len;
 			vmm_port2switch_xfer(ndev->port, mb);
 		}
 
-		virtio_queue_set_used_elem(vq, head, ret_total_len);
+		virtio_queue_set_used_elem(vq, head, total_len);
+	}
 
-		/* We should interrupt guest right now, 
-		 * otherwise latency is huge. 
-		 */
-		if (virtio_queue_should_signal(&ndev->vqs[VIRTIO_NET_TX_QUEUE]))
-			dev->tra->notify(dev, VIRTIO_NET_TX_QUEUE);
-
+	if (virtio_queue_should_signal(vq)) {
+		dev->tra->notify(dev, VIRTIO_NET_TX_QUEUE);
 	}
 
 	return 0;
@@ -200,34 +194,30 @@ static int virtio_net_can_receive(struct vmm_netport *p)
 static int virtio_net_switch2port_xfer(struct vmm_netport *p,
 				       struct vmm_mbuf *mb)
 {
-	u16 head;
-	u32 ret_iov_cnt, ret_total_len, pkt_len;
-	struct virtio_queue *vq;
+	u16 head = 0;
+	u32 iov_cnt = 0, total_len = 0, pkt_len = 0;
 	struct virtio_net_dev *ndev = p->priv;
+	struct virtio_queue *vq = &ndev->vqs[VIRTIO_NET_RX_QUEUE];
 	struct virtio_iovec *iov = ndev->rx_iov;
 	struct virtio_device *dev = ndev->vdev;
 
-	head = 0;
-	ret_iov_cnt = 0;
-	ret_total_len = 0;
-	vq = &ndev->vqs[VIRTIO_NET_RX_QUEUE];
 	pkt_len = min(VIRTIO_NET_MTU, mb->m_pktlen);
 
 	if (virtio_queue_available(vq)) {
-		head = virtio_queue_get_iovec(vq, iov, VIRTIO_NET_QUEUE_SIZE,
-						&ret_iov_cnt, &ret_total_len);
+		head = virtio_queue_get_iovec(vq, iov, 
+						VIRTIO_NET_QUEUE_SIZE,
+						&iov_cnt, &total_len);
 	}
 
-	if (ret_iov_cnt > 1) {
+	if (iov_cnt > 1) {
 		virtio_iovec_fill_zeros(dev, &iov[0], 1);
 		virtio_buf_to_iovec_write(dev, &iov[1], 1,
 						M_BUFADDR(mb), pkt_len);
 		virtio_queue_set_used_elem(vq, head, iov[0].len + pkt_len);
 
-		/* We should interrupt guest right now, otherwise latency is huge. */
-		if (virtio_queue_should_signal(&ndev->vqs[VIRTIO_NET_RX_QUEUE]))
+		if (virtio_queue_should_signal(vq)) {
 			dev->tra->notify(dev, VIRTIO_NET_RX_QUEUE);
-
+		}
 	}
 
 	m_freem(mb);
