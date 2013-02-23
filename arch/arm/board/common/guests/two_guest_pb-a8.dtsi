@@ -295,6 +295,17 @@
 					irq = <34>;
 				};
 
+				virtio-con0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					device_type = "virtio";
+					compatible = "virtio,mmio";
+					virtio_type = <3>;
+					guest_physical_addr = <0x20300000>;
+					physical_size = <0x1000>;
+					irq = <41>;
+				};
+
 				nor_flash {
 					manifest_type = "real";
 					address_type = "memory";
@@ -609,6 +620,17 @@
 					physical_size = <0x1000>;
 					switch = ""; /* To be set by DTS including this file */
 					irq = <34>;
+				};
+
+				virtio-con0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					device_type = "virtio";
+					compatible = "virtio,mmio";
+					virtio_type = <3>;
+					guest_physical_addr = <0x20300000>;
+					physical_size = <0x1000>;
+					irq = <41>;
 				};
 
 				nor_flash {
