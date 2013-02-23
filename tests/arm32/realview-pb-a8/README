@@ -21,6 +21,7 @@ GIC: 75-78
 
 The memory map and irq of VirtIO devices on Realivew PB-A8 guest is as follows:
 0x20100000–0x20100FFF (4K) (IRQ=34) (VirtIO Network Device)
+0x20300000–0x20300FFF (4K) (IRQ=41) (VirtIO Console Device)
 
 
 			Realview PB-A8 Guest OSes
