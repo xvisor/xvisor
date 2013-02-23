@@ -113,15 +113,14 @@ static bool __virtio_match_device(const struct virtio_device_id *ids,
 static int __virtio_bind_emulator(struct virtio_device *dev,
 				  struct virtio_emulator *emu)
 {
-	int rc;
+	int rc = VMM_EINVALID;
 	if (__virtio_match_device(emu->id_table, dev)) {
 		dev->emu = emu;
 		if ((rc = __virtio_connect_emulator(dev, emu))) {
 			dev->emu = NULL;
-			return rc;
 		}
 	}
-	return 0;
+	return rc;
 }
 
 static void __virtio_find_emulator(struct virtio_device *dev)
