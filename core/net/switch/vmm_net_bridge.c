@@ -157,24 +157,12 @@ static int vmm_netbridge_rx_handler(struct vmm_netswitch *nsw,
 		list_for_each(l, &nsw->port_list) {
 			port = list_port(l);
 			if (port != src) {
-				if (port->can_receive &&
-				    !port->can_receive(port)) {
-					continue;
-				}
-				MADDREFERENCE(mbuf);
-				MCLADDREFERENCE(mbuf);
-				port->switch2port_xfer(port, mbuf);
+				vmm_switch2port_xfer(nsw, port, mbuf);
 			}
 		}
-		m_freem(mbuf);
 	} else {
 		DPRINTF("%s: unicasting to \"%s\"\n", __func__, dst->name);
-		if (!dst->can_receive || dst->can_receive(dst)) {
-			dst->switch2port_xfer(dst, mbuf);
-		} else {
-			/* Free the mbuf if destination cannot do rx */
-			m_freem(mbuf);
-		}
+		vmm_switch2port_xfer(nsw, dst, mbuf);
 	}
 
 	return VMM_OK;

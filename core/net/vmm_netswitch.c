@@ -127,6 +127,9 @@ static int vmm_netswitch_rx_handler(void *param)
 		nsw->port2switch_xfer(nsw, xfer->port, xfer->mbuf);
 		vmm_mutex_unlock(&nsw->lock);
 
+		/* Free mbuf in xfer request */
+		m_freem(xfer->mbuf);
+
 		/* Free netport xfer request */
 		vmm_netport_free_xfer(xfer->port, xfer);
 	}
@@ -172,6 +175,28 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_port2switch);
+
+int vmm_netswitch_switch2port(struct vmm_netswitch *nsw,
+			      struct vmm_netport *dst, 
+			      struct vmm_mbuf *mbuf)
+{
+	if (!nsw || !dst || !mbuf) {
+		return VMM_EFAIL;
+	}
+
+	MADDREFERENCE(mbuf);
+	MCLADDREFERENCE(mbuf);
+
+	if (dst->can_receive &&
+	    !dst->can_receive(dst)) {
+		m_freem(mbuf);
+	} else {
+		dst->switch2port_xfer(dst, mbuf);
+	}
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(vmm_netswitch_switch2port);
 
 struct vmm_netswitch *vmm_netswitch_alloc(char *name, u32 thread_prio)
 {

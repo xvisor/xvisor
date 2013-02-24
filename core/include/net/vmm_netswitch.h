@@ -70,11 +70,18 @@ struct vmm_netswitch {
 	vmm_spinlock_t rx_list_lock;
 };
 
-/** Handler for receiving packets by the switch */
+/** Transfer packets from port to switch */
 int vmm_netswitch_port2switch(struct vmm_netport *src, 
 			      struct vmm_mbuf *mbuf);
 
 #define vmm_port2switch_xfer 	vmm_netswitch_port2switch
+
+/** Transfer packets from switch to port */
+int vmm_netswitch_switch2port(struct vmm_netswitch *nsw,
+			      struct vmm_netport *dst, 
+			      struct vmm_mbuf *mbuf);
+
+#define vmm_switch2port_xfer 	vmm_netswitch_switch2port
 
 /** Allocate new network switch 
  *  @name name of the network switch
