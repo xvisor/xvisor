@@ -288,5 +288,11 @@ void m_copydata(struct vmm_mbuf *, int, int, void *);
 void m_freem(struct vmm_mbuf *);
 void m_ext_free(struct vmm_mbuf *);
 
+/*
+ * mbuf pool initializaton and exit.
+ */
+int vmm_mbufpool_init(void);
+void vmm_mbufpool_exit(void);
+
 #endif /* __VMM_MBUF_H_ */
 

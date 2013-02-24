@@ -84,6 +84,7 @@
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  */
 
+#include <vmm_error.h>
 #include <vmm_macros.h>
 #include <vmm_types.h>
 #include <vmm_stdio.h>
@@ -92,6 +93,36 @@
 #include <net/vmm_mbuf.h>
 #include <libs/list.h>
 #include <libs/stringlib.h>
+#include <libs/mempool.h>
+
+/*
+ * Mbuffer pool.
+ */
+struct vmm_mbufpool_ctrl {
+	struct mempool *pool;
+};
+
+static struct vmm_mbufpool_ctrl mbpctrl;
+
+int vmm_mbufpool_init(void)
+{
+	memset(&mbpctrl, 0, sizeof(mbpctrl));
+
+	mbpctrl.pool = mempool_create(sizeof(struct vmm_mbuf), 
+					CONFIG_NET_MBUF_POOL_SIZE);
+	if (!mbpctrl.pool) {
+		return VMM_ENOMEM;
+	}
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(vmm_mbufpool_init);
+
+void vmm_mbufpool_exit(void)
+{
+	mempool_destroy(mbpctrl.pool);
+}
+VMM_EXPORT_SYMBOL(vmm_mbufpool_exit);
 
 /*
  * Mbuffer utility routines.
@@ -140,9 +171,10 @@ struct vmm_mbuf *m_get(int nowait, int flags)
 	
 	/* TODO: implement non-blocking variant */
 
-	m = vmm_malloc(sizeof(struct vmm_mbuf));
-	if (m == NULL)
+	m = mempool_malloc(mbpctrl.pool);
+	if (!m) {
 		return NULL;
+	}
 
 	INIT_LIST_HEAD(&m->m_list);
 	m->m_next = NULL;
@@ -173,7 +205,7 @@ void m_ext_free(struct vmm_mbuf *m)
 		}
 	}
 	if (!(--(m->m_ref))) {
-		vmm_free(m);
+		mempool_free(mbpctrl.pool, m);
 	}
 }
 VMM_EXPORT_SYMBOL(m_ext_free);

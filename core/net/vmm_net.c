@@ -41,6 +41,12 @@ static int __init vmm_net_init(void)
 	int rc = VMM_OK;
 	struct vmm_devtree_node *node;
 
+	rc = vmm_mbufpool_init();
+	if (rc) {
+		vmm_printf("Failed to init mbuf pool\n");
+		goto vmm_mbufpool_init_failed;
+	}
+
 	rc = vmm_netswitch_init();
 	if (rc) {
 		vmm_printf("Failed to init vmm net switch layer\n");
@@ -81,6 +87,8 @@ vmm_netport_init_failed:
 vmm_netbridge_init_failed:
 	vmm_netswitch_exit();
 vmm_netswitch_init_failed:
+	vmm_mbufpool_exit();
+vmm_mbufpool_init_failed:
 vmm_net_init_done:
 	return rc;
 }
@@ -90,6 +98,7 @@ static void __exit vmm_net_exit(void)
 	vmm_netport_exit();
 	vmm_netbridge_exit();
 	vmm_netswitch_exit();
+	vmm_mbufpool_exit();
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC, 
