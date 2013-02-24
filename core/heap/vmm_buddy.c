@@ -611,18 +611,14 @@ int vmm_heap_print_state(struct vmm_chardev *cdev)
 
 int __init vmm_heap_init(void)
 {
-	u32 heap_size, heap_page_count, heap_mem_flags;
+	u32 heap_size, heap_page_count;
 	void *heap_start;
 
 	heap_size = CONFIG_HEAP_SIZE_MB * 1024 * 1024;
 	heap_page_count = VMM_SIZE_TO_PAGE(heap_size);
-	heap_mem_flags =
-	    (VMM_MEMORY_READABLE | VMM_MEMORY_WRITEABLE | VMM_MEMORY_CACHEABLE |
-	     VMM_MEMORY_BUFFERABLE);
 
-	heap_start =
-	    (void *)vmm_host_alloc_pages(heap_page_count, heap_mem_flags);
-
+	heap_start = (void *)vmm_host_alloc_pages(heap_page_count, 
+						  VMM_MEMORY_FLAGS_NORMAL);
 	if (!heap_start) {
 		return VMM_EFAIL;
 	}

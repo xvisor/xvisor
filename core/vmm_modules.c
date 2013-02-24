@@ -440,11 +440,7 @@ static int move_module(struct module_wrap *mwrap,
 
 	mwrap->pg_count = VMM_SIZE_TO_PAGE(mwrap->core_size);
 	mwrap->pg_start = vmm_host_alloc_pages(mwrap->pg_count, 
-						VMM_MEMORY_READABLE |
-						VMM_MEMORY_WRITEABLE |
-						VMM_MEMORY_EXECUTABLE |
-						VMM_MEMORY_CACHEABLE |
-						VMM_MEMORY_BUFFERABLE);
+						VMM_MEMORY_FLAGS_NORMAL);
 
 	memset((void *)mwrap->pg_start, 0, mwrap->core_size);
 
