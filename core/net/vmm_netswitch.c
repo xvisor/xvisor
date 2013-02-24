@@ -184,13 +184,11 @@ int vmm_netswitch_switch2port(struct vmm_netswitch *nsw,
 		return VMM_EFAIL;
 	}
 
-	MADDREFERENCE(mbuf);
-	MCLADDREFERENCE(mbuf);
+	if (!dst->can_receive ||
+	    dst->can_receive(dst)) {
+		MADDREFERENCE(mbuf);
+		MCLADDREFERENCE(mbuf);
 
-	if (dst->can_receive &&
-	    !dst->can_receive(dst)) {
-		m_freem(mbuf);
-	} else {
 		dst->switch2port_xfer(dst, mbuf);
 	}
 
