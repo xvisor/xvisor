@@ -181,8 +181,8 @@ int virtio_queue_cleanup(struct virtio_queue *vq)
 		goto done;
 	}
 
-	rc = vmm_host_iounmap((virtual_addr_t)vq->addr, 
-			      (virtual_size_t)vq->total_size);
+	rc = vmm_host_memunmap((virtual_addr_t)vq->addr, 
+			       (virtual_size_t)vq->total_size);
 
 done:
 	vq->last_avail_idx = 0;
@@ -237,7 +237,8 @@ int virtio_queue_setup(struct virtio_queue *vq,
 		return VMM_EINVALID;
 	}
 
-	vq->addr = (void *)vmm_host_iomap(hphys_addr, gphys_size);
+	vq->addr = (void *)vmm_host_memmap(hphys_addr, gphys_size, 
+					   VMM_MEMORY_FLAGS_NORMAL);
 	if (!vq->addr) {
 		return VMM_ENOMEM;
 	}
