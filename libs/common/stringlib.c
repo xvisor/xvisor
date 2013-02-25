@@ -291,6 +291,7 @@ int str2ipaddr(unsigned char *ipaddr, const char *str)
 	return 1;
 }
 
+#if !defined(ARCH_HAS_MEMCPY)
 void *memcpy(void *dest, const void *src, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
@@ -313,6 +314,7 @@ void *memcpy(void *dest, const void *src, size_t count)
 
 	return dest;
 }
+#endif
 
 void *memcpy_toio(void *dest, const void *src, size_t count)
 {
@@ -403,6 +405,7 @@ void *memmove(void *dest, const void *src, size_t count)
 	return dest;
 }
 
+#if !defined(ARCH_HAS_MEMSET)
 void *memset(void *dest, int c, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
@@ -422,6 +425,7 @@ void *memset(void *dest, int c, size_t count)
 
 	return dest;
 }
+#endif
 
 void *memset_io(void *dest, int c, size_t count)
 {
