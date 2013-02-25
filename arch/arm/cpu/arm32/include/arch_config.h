@@ -27,4 +27,7 @@
 #define ARCH_HAS_PHYSICAL_READ
 #define ARCH_HAS_PHYSICAL_WRITE
 
+#define ARCH_HAS_MEMCPY
+#define ARCH_HAS_MEMSET
+
 #endif /* _ARCH_CONFIG_H__ */

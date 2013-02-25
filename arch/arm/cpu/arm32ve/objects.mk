@@ -47,6 +47,7 @@ cpu-objs-y+= cpu_cache.o
 
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_delay.o
+cpu-objs-y+= cpu_string.o
 cpu-objs-y+= cpu_elf.o
 cpu-objs-$(CONFIG_ARM32VE_STACKTRACE)+= cpu_stacktrace.o
 cpu-objs-$(CONFIG_SMP)+= cpu_smp.o

@@ -52,6 +52,7 @@ cpu-objs-$(CONFIG_ARMV7A)+= cpu_atomic_v7.o
 
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_delay.o
+cpu-objs-y+= cpu_string.o
 cpu-objs-y+= cpu_elf.o
 cpu-objs-$(CONFIG_ARM32_STACKTRACE)+= cpu_stacktrace.o
 ifdef CONFIG_ARMV7A
