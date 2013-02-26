@@ -294,29 +294,17 @@ _enter_hvc:
 	mov	r12, lr
 	b	_enter_hvc_start
 	.balign	256
-_enter_hvc_tmon_table:
+_enter_hvc_exec_table:
 	b	.
 	b	.
 	b	_enter_hvc_tmon
 	b	.
 	b	.
-	b	.
-	b	.
-	b	.
-__enter_hvc_tmon_table:
-	.word _enter_hvc_tmon_table
-	.balign	256
-_enter_hvc_thyp_table:
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
 	b	_enter_hvc_thyp
 	b	.
 	b	.
-__enter_hvc_thyp_table:
-	.word _enter_hvc_thyp_table
+__enter_hvc_exec_table:
+	.word _enter_hvc_exec_table
 _enter_hvc_tmon:
 	/* Get secure configuration register */
 	mrc	p15, 0, r0, c1, c1, 0	
@@ -327,7 +315,7 @@ _enter_hvc_tmon:
 	orr	r0, r0, r1
 	mcr	p15, 0, r0, c1, c1, 0
 	/* Get temp hypervisor vector base address */
-	ldr	r0, __enter_hvc_thyp_table
+	ldr	r0, __enter_hvc_exec_table
 	sub	r0, r0, r6
 	add	r0, r0, r4
 	mcr	p15, 4, r0, c12, c0, 0
@@ -340,7 +328,7 @@ _enter_hvc_thyp:
 	eret
 _enter_hvc_start:
 	/* Get temp monitor vector base address */
-	ldr	r0, __enter_hvc_tmon_table
+	ldr	r0, __enter_hvc_exec_table
 	sub	r0, r0, r6
 	add	r0, r0, r4
 	/* Set temp monitor vector base address */
