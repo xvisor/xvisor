@@ -122,19 +122,14 @@ static int virtio_net_set_size_vq(struct virtio_device *dev, u32 vq, int size)
 	return size;
 }
 
-static int virtio_net_tx_thread(struct virtio_device *dev,
-				struct virtio_net_dev *ndev,
-				int queue)
+static void virtio_net_do_tx(struct virtio_net_dev *ndev)
 {
 	u16 head = 0;
 	u32 iov_cnt = 0, pkt_len = 0, total_len = 0;
+	struct virtio_device *dev = ndev->vdev;
 	struct virtio_queue *vq = &ndev->vqs[VIRTIO_NET_TX_QUEUE];
 	struct virtio_iovec *iov = ndev->tx_iov;
 	struct vmm_mbuf *mb;
-
-	if (!virtio_queue_available(vq)) {
-		return 0;
-	}
 
 	while (virtio_queue_available(vq)) {
 		head = virtio_queue_get_iovec(vq, iov, 
@@ -147,8 +142,9 @@ static int virtio_net_tx_thread(struct virtio_device *dev,
 		if (pkt_len <= VIRTIO_NET_MTU) {
 			MGETHDR(mb, 0, 0);
 			MEXTMALLOC(mb, pkt_len, M_WAIT);
-			virtio_iovec_to_buf_read(dev, &iov[1], iov_cnt - 1,
-						M_BUFADDR(mb), pkt_len);
+			virtio_iovec_to_buf_read(dev, 
+						 &iov[1], iov_cnt - 1,
+						 M_BUFADDR(mb), pkt_len);
 			mb->m_len = mb->m_pktlen = pkt_len;
 			vmm_port2switch_xfer(ndev->port, mb);
 		}
@@ -159,8 +155,6 @@ static int virtio_net_tx_thread(struct virtio_device *dev,
 	if (virtio_queue_should_signal(vq)) {
 		dev->tra->notify(dev, VIRTIO_NET_TX_QUEUE);
 	}
-
-	return 0;
 }
 
 static int virtio_net_notify_vq(struct virtio_device *dev, u32 vq)
@@ -169,7 +163,7 @@ static int virtio_net_notify_vq(struct virtio_device *dev, u32 vq)
 
 	switch (vq) {
 	case VIRTIO_NET_TX_QUEUE:
-		virtio_net_tx_thread(dev, ndev, vq);
+		virtio_net_do_tx(ndev);
 		break;
 	case VIRTIO_NET_RX_QUEUE:
 		break;
