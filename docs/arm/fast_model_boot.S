@@ -45,16 +45,9 @@ __gentimer_freq_next:
 	ldr	r1, __gentimer_freq
 	mcr     p15, 0, r1, c14, c0, 0
 
-	/* Jump to GIC Distributor Interace Init for Secondary cores */
-	mrc	p15, 0, r4, c0, c0, 5		/* MPIDR (ARMv7 only) */
-	and	r4, r4, #15			/* CPU number */
-	cmp	r4, #0
-	bne	gic_dist_init
-
 	/* GIC Distributor Interface Init */
 	mrc	p15, 0, r4, c0, c0, 5		/* MPIDR (ARMv7 only) */
 	and	r4, r4, #0xF			/* CPU number */
-gic_dist_init:
 	ldr	r0, __dist_gic_base		/* Dist GIC base */
 	b 	__dist_gic_base_next
 __dist_gic_base:
@@ -152,29 +145,17 @@ enter_hvc_mode:
 	mov	r12, lr
 	b	enter_hvc_mode_start
 	.balign	256
-hvc_tmon_table:
+hvc_texec_table:
 	b	.
 	b	.
 	b	hvc_tmon_call
 	b	.
 	b	.
-	b	.
-	b	.
-	b	.
-__hvc_tmon_table:
-	.word hvc_tmon_table
-	.balign	256
-hvc_thyp_table:
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
 	b	hvc_thyp_call
 	b	.
 	b	.
-__hvc_thyp_table:
-	.word hvc_thyp_table
+__hvc_texec_table:
+	.word hvc_texec_table
 hvc_tmon_call:
 	/* Get secure configuration register */
 	mrc	p15, 0, r0, c1, c1, 0	
@@ -185,7 +166,7 @@ hvc_tmon_call:
 	orr	r0, r0, r1
 	mcr	p15, 0, r0, c1, c1, 0
 	/* Get temp hypervisor vector base address */
-	ldr	r0, __hvc_thyp_table
+	ldr	r0, __hvc_texec_table
 	mcr	p15, 4, r0, c12, c0, 0
 	movs	pc, lr
 hvc_thyp_call:
@@ -196,7 +177,7 @@ hvc_thyp_call:
 	eret
 enter_hvc_mode_start:
 	/* Get temp monitor vector base address */
-	ldr	r0, __hvc_tmon_table
+	ldr	r0, __hvc_texec_table
 	/* Set temp monitor vector base address */
 	mcr	p15, 0, r0, c12, c0, 1
 	/* Call temp monitor mode code (returns in non-secure SVC mode) */
