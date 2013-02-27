@@ -24,7 +24,6 @@
 #define __VIRTIO_H__
 
 #include <vmm_types.h>
-#include <vmm_mutex.h>
 #include <libs/list.h>
 
 #include <emu/virtio_queue.h>

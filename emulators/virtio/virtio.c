@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_mutex.h>
 #include <vmm_modules.h>
 #include <libs/stringlib.h>
 #include <emu/virtio.h>
