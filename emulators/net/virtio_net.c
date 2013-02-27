@@ -36,7 +36,6 @@
 #include <emu/virtio.h>
 #include <emu/virtio_net.h>
 
-
 #define MODULE_DESC			"VirtIO Net Emulator"
 #define MODULE_AUTHOR			"Pranav Sawargaonkar"
 #define MODULE_LICENSE			"GPL"
@@ -44,13 +43,14 @@
 #define MODULE_INIT			virtio_net_init
 #define MODULE_EXIT			virtio_net_exit
 
-
 #define VIRTIO_NET_QUEUE_SIZE		256
 #define VIRTIO_NET_NUM_QUEUES		2
 #define VIRTIO_NET_RX_QUEUE		0
 #define VIRTIO_NET_TX_QUEUE		1
 
 #define VIRTIO_NET_MTU			1514
+
+#define VIRTIO_NET_TX_LAZY_BUDGET	(VIRTIO_NET_QUEUE_SIZE / 4)
 
 struct virtio_net_dev {
 	struct virtio_device *vdev;
@@ -122,16 +122,17 @@ static int virtio_net_set_size_vq(struct virtio_device *dev, u32 vq, int size)
 	return size;
 }
 
-static void virtio_net_do_tx(struct virtio_net_dev *ndev)
+static void virtio_net_tx_lazy(struct vmm_netport *port, void *arg, int budget)
 {
 	u16 head = 0;
 	u32 iov_cnt = 0, pkt_len = 0, total_len = 0;
+	struct virtio_net_dev *ndev = arg;
 	struct virtio_device *dev = ndev->vdev;
 	struct virtio_queue *vq = &ndev->vqs[VIRTIO_NET_TX_QUEUE];
 	struct virtio_iovec *iov = ndev->tx_iov;
 	struct vmm_mbuf *mb;
 
-	while (virtio_queue_available(vq)) {
+	while ((budget > 0) && virtio_queue_available(vq)) {
 		head = virtio_queue_get_iovec(vq, iov, 
 						VIRTIO_NET_QUEUE_SIZE,
 						&iov_cnt, &total_len);
@@ -150,6 +151,8 @@ static void virtio_net_do_tx(struct virtio_net_dev *ndev)
 		}
 
 		virtio_queue_set_used_elem(vq, head, total_len);
+
+		budget--;
 	}
 
 	if (virtio_queue_should_signal(vq)) {
@@ -163,7 +166,8 @@ static int virtio_net_notify_vq(struct virtio_device *dev, u32 vq)
 
 	switch (vq) {
 	case VIRTIO_NET_TX_QUEUE:
-		virtio_net_do_tx(ndev);
+		vmm_port2switch_xfer_lazy(ndev->port, virtio_net_tx_lazy, 
+					  ndev, VIRTIO_NET_TX_LAZY_BUDGET);
 		break;
 	case VIRTIO_NET_RX_QUEUE:
 		break;
