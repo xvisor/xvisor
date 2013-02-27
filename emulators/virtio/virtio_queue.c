@@ -20,8 +20,10 @@
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @brief VirtIO Queue Implementation.
  */
+
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_stdio.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
@@ -295,6 +297,7 @@ u16 virtio_queue_get_iovec(struct virtio_queue *vq,
 	idx = head = virtio_queue_pop(vq);
 
 	*ret_iov_cnt = 0;
+	*ret_total_len = 0;
 	max = vq->vring.num;
 	desc = vq->vring.desc;
 
