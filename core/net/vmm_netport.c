@@ -49,7 +49,7 @@ struct vmm_netport_xfer *vmm_netport_alloc_xfer(struct vmm_netport *port)
 	port->free_count--;
 	vmm_spin_unlock_irqrestore(&port->free_list_lock, flags);
 
-	return list_entry(l, struct vmm_netport_xfer, head);;
+	return list_entry(l, struct vmm_netport_xfer, head);
 }
 VMM_EXPORT_SYMBOL(vmm_netport_alloc_xfer);
 

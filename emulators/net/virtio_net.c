@@ -146,7 +146,7 @@ static void virtio_net_do_tx(struct virtio_net_dev *ndev)
 						 &iov[1], iov_cnt - 1,
 						 M_BUFADDR(mb), pkt_len);
 			mb->m_len = mb->m_pktlen = pkt_len;
-			vmm_port2switch_xfer(ndev->port, mb);
+			vmm_port2switch_xfer_mbuf(ndev->port, mb);
 		}
 
 		virtio_queue_set_used_elem(vq, head, total_len);

@@ -157,12 +157,12 @@ static int vmm_netbridge_rx_handler(struct vmm_netswitch *nsw,
 		list_for_each(l, &nsw->port_list) {
 			port = list_port(l);
 			if (port != src) {
-				vmm_switch2port_xfer(nsw, port, mbuf);
+				vmm_switch2port_xfer_mbuf(nsw, port, mbuf);
 			}
 		}
 	} else {
 		DPRINTF("%s: unicasting to \"%s\"\n", __func__, dst->name);
-		vmm_switch2port_xfer(nsw, dst, mbuf);
+		vmm_switch2port_xfer_mbuf(nsw, dst, mbuf);
 	}
 
 	return VMM_OK;

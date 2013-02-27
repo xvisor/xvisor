@@ -295,7 +295,7 @@ static void smc91c111_do_tx(smc91c111_state *s)
 		buf = mtod(mbuf, u8 *);
 		memcpy(buf, p, len);
 
-		vmm_port2switch_xfer(s->port, mbuf);
+		vmm_port2switch_xfer_mbuf(s->port, mbuf);
 
 
 	}

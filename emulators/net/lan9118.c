@@ -753,7 +753,7 @@ static void do_tx_packet(struct lan9118_state *s)
 			/* we know the data is contiguous in this mbuf,
 			 * so we update mbuf->m_pktlen */
 			txp_mbuf(s)->m_pktlen = txp_mbuf(s)->m_len;
-			vmm_port2switch_xfer(s->port, txp_mbuf(s));
+			vmm_port2switch_xfer_mbuf(s->port, txp_mbuf(s));
 			MGETHDR(txp_mbuf(s), 0, 0);
 			MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, M_WAIT);
 		}

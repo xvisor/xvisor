@@ -120,15 +120,30 @@ static int vmm_netswitch_rx_handler(void *param)
 		/* Extract info from xfer request */
 		xfer = list_entry(l, struct vmm_netport_xfer, head);
 
-		DUMP_NETSWITCH_PKT(xfer->mbuf);
+		switch (xfer->type) {
+		case VMM_NETPORT_XFER_LAZY:
+			/* Call lazy xfer function */
+			xfer->lazy_xfer(xfer->port, 
+					xfer->lazy_arg, 
+					xfer->lazy_budget);
 
-		/* Call the rx function of net switch */
-		vmm_mutex_lock(&nsw->lock);
-		nsw->port2switch_xfer(nsw, xfer->port, xfer->mbuf);
-		vmm_mutex_unlock(&nsw->lock);
+			break;
+		case VMM_NETPORT_XFER_MBUF:
+			/* Dump packet */
+			DUMP_NETSWITCH_PKT(xfer->mbuf);
 
-		/* Free mbuf in xfer request */
-		m_freem(xfer->mbuf);
+			/* Call the rx function of net switch */
+			vmm_mutex_lock(&nsw->lock);
+			nsw->port2switch_xfer(nsw, xfer->port, xfer->mbuf);
+			vmm_mutex_unlock(&nsw->lock);
+
+			/* Free mbuf in xfer request */
+			m_freem(xfer->mbuf);
+
+			break;
+		default:
+			break;
+		};
 
 		/* Free netport xfer request */
 		vmm_netport_free_xfer(xfer->port, xfer);
@@ -137,7 +152,7 @@ static int vmm_netswitch_rx_handler(void *param)
 	return VMM_OK;
 }
 
-int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
+int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 {
 	irq_flags_t flags;
 	struct vmm_netport_xfer *xfer;
@@ -156,11 +171,12 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	xfer = vmm_netport_alloc_xfer(src);
 	if (!xfer) {
 		m_freem(mbuf);
-		return VMM_EFAIL;
+		return VMM_ENOMEM;
 	}
 
 	/* Fill-up xfer request */
 	xfer->port = src;
+	xfer->type = VMM_NETPORT_XFER_MBUF;
 	xfer->mbuf = mbuf;
 
 	/* Add xfer request to rx_list */
@@ -174,9 +190,48 @@ int vmm_netswitch_port2switch(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_netswitch_port2switch);
+VMM_EXPORT_SYMBOL(vmm_port2switch_xfer_mbuf);
 
-int vmm_netswitch_switch2port(struct vmm_netswitch *nsw,
+int vmm_port2switch_xfer_lazy(struct vmm_netport *src, 
+			 void (*lazy_xfer)(struct vmm_netport *, void *, int),
+			 void *lazy_arg, int lazy_budget)
+{
+	irq_flags_t flags;
+	struct vmm_netport_xfer *xfer;
+	struct vmm_netswitch *nsw;
+
+	if (!lazy_xfer || !src || !src->nsw) {
+		return VMM_EFAIL;
+	}
+	nsw = src->nsw;
+
+	/* Alloc netport xfer request */
+	xfer = vmm_netport_alloc_xfer(src);
+	if (!xfer) {
+		return VMM_ENOMEM;
+	}
+
+	/* Fill-up xfer request */
+	xfer->port = src;
+	xfer->type = VMM_NETPORT_XFER_LAZY;
+	xfer->lazy_arg = lazy_arg;
+	xfer->lazy_budget = lazy_budget;
+	xfer->lazy_xfer = lazy_xfer;
+
+	/* Add xfer request to rx_list */
+	vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
+	list_add_tail(&xfer->head, &nsw->rx_list);
+	nsw->rx_count++;
+	vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
+
+	/* Signal completion to net switch bottom-half thread */
+	vmm_completion_complete(&nsw->rx_not_empty);
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(vmm_port2switch_xfer_lazy);
+
+int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,
 			      struct vmm_netport *dst, 
 			      struct vmm_mbuf *mbuf)
 {
@@ -194,7 +249,7 @@ int vmm_netswitch_switch2port(struct vmm_netswitch *nsw,
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_netswitch_switch2port);
+VMM_EXPORT_SYMBOL(vmm_switch2port_xfer_mbuf);
 
 struct vmm_netswitch *vmm_netswitch_alloc(char *name, u32 thread_prio)
 {

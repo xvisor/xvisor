@@ -47,10 +47,20 @@ struct vmm_netswitch;
 struct vmm_netport;
 struct vmm_mbuf;
 
+enum vmm_netport_xfer_type {
+	VMM_NETPORT_XFER_UNKNOWN,
+	VMM_NETPORT_XFER_MBUF,
+	VMM_NETPORT_XFER_LAZY
+};
+
 struct vmm_netport_xfer {
 	struct dlist head;
 	struct vmm_netport *port;
+	enum vmm_netport_xfer_type type;
 	struct vmm_mbuf *mbuf;
+	int lazy_budget;
+	void *lazy_arg;
+	void (*lazy_xfer)(struct vmm_netport *, void *, int);
 };
 
 struct vmm_netport {

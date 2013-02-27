@@ -208,7 +208,7 @@ static inline int netif_rx(struct sk_buff *mb, struct net_device *dev)
 		return VMM_EINVALID;
 	}
 
-	vmm_port2switch_xfer(port, mb);
+	vmm_port2switch_xfer_mbuf(port, mb);
 
 	return VMM_OK;
 }

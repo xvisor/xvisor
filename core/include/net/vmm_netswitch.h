@@ -71,17 +71,18 @@ struct vmm_netswitch {
 };
 
 /** Transfer packets from port to switch */
-int vmm_netswitch_port2switch(struct vmm_netport *src, 
+int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, 
 			      struct vmm_mbuf *mbuf);
 
-#define vmm_port2switch_xfer 	vmm_netswitch_port2switch
+/** Lazy transfer from port to switch */
+int vmm_port2switch_xfer_lazy(struct vmm_netport *src, 
+			 void (*lazy_xfer)(struct vmm_netport *, void *, int),
+			 void *lazy_arg, int lazy_budget);
 
 /** Transfer packets from switch to port */
-int vmm_netswitch_switch2port(struct vmm_netswitch *nsw,
+int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,
 			      struct vmm_netport *dst, 
 			      struct vmm_mbuf *mbuf);
-
-#define vmm_switch2port_xfer 	vmm_netswitch_switch2port
 
 /** Allocate new network switch 
  *  @name name of the network switch
