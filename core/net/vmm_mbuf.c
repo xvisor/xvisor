@@ -101,21 +101,66 @@
  * Mbuffer pool.
  */
 
-#define MBUFPOOL_EXT_SLAB_MIN_SIZE	256
-#define MBUFPOOL_EXT_SLAB_COUNT		4
+#define EPOOL_SLAB_COUNT		3
 
 struct vmm_mbufpool_ctrl {
 	struct mempool *mpool;
-	struct mempool *epool[MBUFPOOL_EXT_SLAB_COUNT];
+	struct mempool *epool_slabs[EPOOL_SLAB_COUNT];
 };
 
 static struct vmm_mbufpool_ctrl mbpctrl;
 
-int vmm_mbufpool_init(void)
+static u32 epool_slab_buf_size(u32 slab)
 {
-	u32 slab, slab_size, pool_size;
-	u32 epool_buf_size[MBUFPOOL_EXT_SLAB_COUNT];
-	u32 epool_buf_count[MBUFPOOL_EXT_SLAB_COUNT];
+	switch (slab) {
+	case 0:
+		return 512;
+	case 1:
+		return 1024;
+	case 2:
+		return 1536;
+	default:
+		break;
+	};
+
+	return 0;
+}
+
+static u32 epool_slab_buf_count(u32 pool_sz, u32 slab)
+{
+	u32 slab_size, buf_size, weight, total_weight;
+
+	switch (slab) {
+	case 0:
+		weight = 1;
+		break;
+	case 1:
+		weight = 1;
+		break;
+	case 2:
+		weight = 2;
+		break;
+	default:
+		return 0;
+	};
+	total_weight = 4;
+
+	buf_size = epool_slab_buf_size(slab);
+	if (!buf_size) {
+		return 0;
+	}
+
+	slab_size = udiv32(pool_sz, total_weight) * weight;
+	if (!slab_size) {
+		return 0;
+	}
+
+	return udiv32(slab_size, buf_size);
+}
+
+int __init vmm_mbufpool_init(void)
+{
+	u32 slab, buf_size, buf_count, epool_sz;
 
 	memset(&mbpctrl, 0, sizeof(mbpctrl));
 
@@ -126,32 +171,23 @@ int vmm_mbufpool_init(void)
 		return VMM_ENOMEM;
 	}
 
-	/* Compute ext slab sizes and counts */
-	pool_size = (CONFIG_NET_MBUF_EXT_POOL_KB * 1024) / 
-						MBUFPOOL_EXT_SLAB_COUNT;
-	slab_size = MBUFPOOL_EXT_SLAB_MIN_SIZE;
-	for (slab = 0; slab < MBUFPOOL_EXT_SLAB_COUNT; slab++) {
-		epool_buf_size[slab] = slab_size;
-		epool_buf_count[slab] = udiv32(pool_size, slab_size);
-		slab_size = slab_size * 2;
-	}
-
 	/* Create ext slab pools */
-	for (slab = 0; slab < MBUFPOOL_EXT_SLAB_COUNT; slab++) {
-		if (epool_buf_count[slab]) {
-			mbpctrl.epool[slab] = 
-				mempool_create(epool_buf_size[slab], 
-						epool_buf_count[slab]);
+	epool_sz = (CONFIG_NET_MBUF_EXT_POOL_KB * 1024);
+	for (slab = 0; slab < EPOOL_SLAB_COUNT; slab++) {
+		buf_size = epool_slab_buf_size(slab);
+		buf_count = epool_slab_buf_count(epool_sz, slab);
+		if (buf_count && buf_size) {
+			mbpctrl.epool_slabs[slab] = 
+					mempool_create(buf_size, buf_count);
 		} else {
-			mbpctrl.epool[slab] = NULL;
+			mbpctrl.epool_slabs[slab] = NULL;
 		}
 	}
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_mbufpool_init);
 
-void vmm_mbufpool_exit(void)
+void __exit vmm_mbufpool_exit(void)
 {
 	u32 slab;
 
@@ -161,13 +197,12 @@ void vmm_mbufpool_exit(void)
 	}
 
 	/* Destroy ext slab pools */
-	for (slab = 0; slab < MBUFPOOL_EXT_SLAB_COUNT; slab++) {
-		if (mbpctrl.epool[slab]) {
-			mempool_destroy(mbpctrl.epool[slab]);
+	for (slab = 0; slab < EPOOL_SLAB_COUNT; slab++) {
+		if (mbpctrl.epool_slabs[slab]) {
+			mempool_destroy(mbpctrl.epool_slabs[slab]);
 		}
 	}
 }
-VMM_EXPORT_SYMBOL(vmm_mbufpool_exit);
 
 /*
  * Mbuffer utility routines.
@@ -245,17 +280,15 @@ static void ext_pool_free(struct vmm_mbuf *m, void *ptr, u32 size, void *arg)
 void *m_ext_get(struct vmm_mbuf *m, u32 size, int how)
 {
 	void *buf;
-	u32 slab, slab_size;
+	u32 slab;
 	struct mempool *mp;
 
 	mp = NULL;
-	slab_size = MBUFPOOL_EXT_SLAB_MIN_SIZE;
-	for (slab = 0; slab < MBUFPOOL_EXT_SLAB_COUNT; slab++) {
-		if (size <= slab_size) {
-			mp = mbpctrl.epool[slab];
+	for (slab = 0; slab < EPOOL_SLAB_COUNT; slab++) {
+		if (size <= epool_slab_buf_size(slab)) {
+			mp = mbpctrl.epool_slabs[slab];
 			break;
 		}
-		slab_size = slab_size * 2;
 	}
 
 	if (mp && (buf = mempool_malloc(mp))) {
