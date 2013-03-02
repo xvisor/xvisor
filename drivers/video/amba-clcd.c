@@ -107,7 +107,7 @@ static void clcdfb_disable(struct clcd_fb *fb)
 	 */
 	if (fb->clk_enabled) {
 		fb->clk_enabled = false;
-		vmm_devdrv_clock_disable(fb->dev);
+		clk_disable(fb->clk);
 	}
 }
 
@@ -118,7 +118,7 @@ static void clcdfb_enable(struct clcd_fb *fb, u32 cntl)
 	 */
 	if (!fb->clk_enabled) {
 		fb->clk_enabled = true;
-		vmm_devdrv_clock_enable(fb->dev);
+		clk_enable(fb->clk);
 	}
 
 	/*
@@ -323,8 +323,7 @@ static int clcdfb_set_par(struct fb_info *info)
 
 	clcdfb_set_start(fb);
 
-	vmm_devdrv_clock_set_rate(fb->dev, 
-				  udiv32(1000000000, regs.pixclock) * 1000);
+	clk_set_rate(fb->clk, udiv32(1000000000, regs.pixclock) * 1000);
 
 	fb->clcd_cntl = regs.cntl;
 
@@ -451,22 +450,27 @@ static int clcdfb_register(struct clcd_fb *fb)
 #endif
 	}
 
-	ret = vmm_devdrv_clock_enable(fb->dev);
-	if (ret) {
+	fb->clk = clk_get(fb->dev, NULL);
+	if (!fb->clk) {
+		ret = PTR_ERR(fb->clk);
 		goto out;
 	}
+
+	ret = clk_prepare(fb->clk);
+	if (ret)
+		goto free_clk;
 
 	fb->fb.dev		= fb->dev;
 
 	ret = vmm_devtree_regaddr(fb->dev->node, &mmio_pa, 0);
 	if (ret) {
-		goto out;
+		goto clk_unprep;
 	}
 	fb->fb.fix.mmio_start	= mmio_pa;
 
 	ret = vmm_devtree_regsize(fb->dev->node, &mmio_sz, 0);
 	if (ret) {
-		goto out;
+		goto clk_unprep;
 	}
 	fb->fb.fix.mmio_len	= mmio_sz;
 
@@ -474,7 +478,7 @@ static int clcdfb_register(struct clcd_fb *fb)
 	if (ret) {
 		printk(KERN_ERR "CLCD: unable to map registers\n");
 		ret = -ENOMEM;
-		goto free_clk;
+		goto clk_unprep;
 	}
 
 	fb->fb.fbops		= &clcdfb_ops;
@@ -548,8 +552,10 @@ static int clcdfb_register(struct clcd_fb *fb)
 	fb_dealloc_cmap(&fb->fb.cmap);
  unmap:
 	vmm_devtree_regunmap(fb->dev->node, (virtual_addr_t)fb->regs, 0);
+ clk_unprep:
+	clk_unprepare(fb->clk);
  free_clk:
-	vmm_devdrv_clock_disable(fb->dev);
+	clk_put(fb->clk);
  out:
 	return ret;
 }
@@ -604,7 +610,8 @@ static int clcdfb_remove(struct vmm_device *dev)
 	if (fb->fb.cmap.len)
 		fb_dealloc_cmap(&fb->fb.cmap);
 	vmm_devtree_regunmap(fb->dev->node, (virtual_addr_t)fb->regs, 0);
-	vmm_devdrv_clock_disable(fb->dev);
+	clk_unprepare(fb->clk);
+	clk_put(fb->clk);
 
 	fb->board->remove(fb);
 

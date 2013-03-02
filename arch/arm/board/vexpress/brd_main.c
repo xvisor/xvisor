@@ -221,42 +221,57 @@ int arch_board_shutdown(void)
  * Clocking support
  */
 
-static long ct_round(struct versatile_clk *clk, unsigned long rate)
+static long ct_round(struct arch_clk *clk, unsigned long rate)
 {
 	return rate;
 }
 
-static int ct_set(struct versatile_clk *clk, unsigned long rate)
+static int ct_set(struct arch_clk *clk, unsigned long rate)
 {
 	return v2m_cfg_write(SYS_CFG_OSC | SYS_CFG_SITE_DB1 | 1, rate);
 }
 
-static const struct versatile_clk_ops osc1_clk_ops = {
+static const struct arch_clk_ops osc1_clk_ops = {
 	.round	= ct_round,
 	.set	= ct_set,
 };
 
-static struct versatile_clk osc1_clk = {
+static struct arch_clk osc1_clk = {
 	.ops	= &osc1_clk_ops,
 	.rate	= 24000000,
 };
 
-static struct vmm_devclk clcd_clk = {
-	.enable = versatile_clk_enable,
-	.disable = versatile_clk_disable,
-	.get_rate = versatile_clk_get_rate,
-	.round_rate = versatile_clk_round_rate,
-	.set_rate = versatile_clk_set_rate,
-	.priv = &osc1_clk,
+static struct arch_clk clk24mhz = {
+	.rate	= 24000000,
 };
 
-static struct vmm_devclk *vexpress_getclk(struct vmm_devtree_node *node)
+int arch_clk_prepare(struct arch_clk *clk)
 {
-	if (strcmp(node->name, "clcd") == 0) {
-		return &clcd_clk;
+	/* Ignore it. */
+	return 0;
+}
+
+void arch_clk_unprepare(struct arch_clk *clk)
+{
+	/* Ignore it. */
+}
+
+struct arch_clk *arch_clk_get(struct vmm_device *dev, const char *id)
+{
+	if (strcmp(dev->node->name, "clcd") == 0) {
+		return &osc1_clk;
+	}
+
+	if (strcmp(id, "KMIREFCLK") == 0) {
+		return &clk24mhz;
 	}
 
 	return NULL;
+}
+
+void arch_clk_put(struct arch_clk *clk)
+{
+	/* Ignore it. */
 }
 
 /*
@@ -566,7 +581,7 @@ int __init arch_board_final_init(void)
 		return VMM_ENOTAVAIL;
 	}
 
-	rc = vmm_devdrv_probe(node, vexpress_getclk, NULL);
+	rc = vmm_devdrv_probe(node, NULL, NULL);
 	if (rc) {
 		return rc;
 	}

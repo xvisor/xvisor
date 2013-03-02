@@ -56,7 +56,7 @@
 
 struct amba_kmi_port {
 	struct serio 		*io;
-	struct vmm_device	*dev;
+	struct clk		*clk;
 	void			*base;
 	unsigned int		irq;
 	unsigned int		divisor;
@@ -98,15 +98,15 @@ static int amba_kmi_open(struct serio *io)
 	unsigned int divisor;
 	int ret;
 
-	ret = vmm_devdrv_clock_enable(kmi->dev);
+	ret = clk_enable(kmi->clk);
 	if (ret)
 		goto out;
 
-	divisor = vmm_devdrv_clock_get_rate(kmi->dev) / 8000000 - 1;
+	divisor = clk_get_rate(kmi->clk) / 8000000 - 1;
 	writeb(divisor, KMICLKDIV);
 	writeb(KMICR_EN, KMICR);
 
-	ret = request_irq(kmi->irq, amba_kmi_int, 0, kmi->dev->node->name, kmi);
+	ret = request_irq(kmi->irq, amba_kmi_int, 0, io->name, kmi);
 	if (ret) {
 		printk(KERN_ERR "kmi: failed to claim IRQ%d\n", kmi->irq);
 		writeb(0, KMICR);
@@ -118,7 +118,7 @@ static int amba_kmi_open(struct serio *io)
 	return 0;
 
  clk_disable:
-	vmm_devdrv_clock_disable(kmi->dev);
+	clk_disable(kmi->clk);
  out:
 	return ret;
 }
@@ -130,7 +130,7 @@ static void amba_kmi_close(struct serio *io)
 	writeb(0, KMICR);
 
 	free_irq(kmi->irq, kmi);
-	vmm_devdrv_clock_disable(kmi->dev);
+	clk_disable(kmi->clk);
 }
 
 static int amba_kmi_driver_probe(struct vmm_device *dev,
@@ -158,11 +158,16 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 	io->dev		= dev;
 
 	kmi->io		= io;
-	kmi->dev	= dev;
 	ret = vmm_devtree_regmap(dev->node, (virtual_addr_t *)&kmi->base, 0);
 	if (ret) {
 		ret = -ENOMEM;
 		goto out;
+	}
+
+	kmi->clk = clk_get(dev, "KMIREFCLK");
+	if (IS_ERR(kmi->clk)) {
+		ret = -EFAIL;
+		goto unmap;
 	}
 
 	attr = vmm_devtree_attrval(dev->node, "irq");

@@ -35,6 +35,7 @@
 			      		compatible = "arm,pl011";
 			      		reg = <0x101F1000 0x1000>;
 			      		baudrate = <115200>;
+					clock-rate = <24000000>;
 					irq = <12>;
 				};
 

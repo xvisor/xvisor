@@ -162,46 +162,61 @@ static const struct icst_params realview_oscvco_params = {
 	.idx2s		= icst307_idx2s,
 };
 
-static void realview_oscvco_set(struct versatile_clk *vclk, struct icst_vco vco)
+static void realview_oscvco_set(struct arch_clk *clk, struct icst_vco vco)
 {
 	void *sys_lock = (void *)realview_sys_base + REALVIEW_SYS_LOCK_OFFSET;
 	u32 val;
 
-	val = vmm_readl(vclk->vcoreg) & ~0x7ffff;
+	val = vmm_readl(clk->vcoreg) & ~0x7ffff;
 	val |= vco.v | (vco.r << 9) | (vco.s << 16);
 
 	vmm_writel(REALVIEW_SYS_LOCKVAL, sys_lock);
-	vmm_writel(val, vclk->vcoreg);
+	vmm_writel(val, clk->vcoreg);
 	vmm_writel(0, sys_lock);
 }
 
-static const struct versatile_clk_ops oscvco_clk_ops = {
+static const struct arch_clk_ops oscvco_clk_ops = {
 	.round	= icst_clk_round,
 	.set	= icst_clk_set,
 	.setvco	= realview_oscvco_set,
 };
 
-static struct versatile_clk oscvco_clk = {
+static struct arch_clk oscvco_clk = {
 	.ops	= &oscvco_clk_ops,
 	.params	= &realview_oscvco_params,
 };
 
-static struct vmm_devclk clcd_clk = {
-	.enable = versatile_clk_enable,
-	.disable = versatile_clk_disable,
-	.get_rate = versatile_clk_get_rate,
-	.round_rate = versatile_clk_round_rate,
-	.set_rate = versatile_clk_set_rate,
-	.priv = &oscvco_clk,
+static struct arch_clk clk24mhz = {
+	.rate	= 24000000,
 };
 
-static struct vmm_devclk *realview_getclk(struct vmm_devtree_node *node)
+int arch_clk_prepare(struct arch_clk *clk)
 {
-	if (strcmp(node->name, "clcd") == 0) {
-		return &clcd_clk;
+	/* Ignore it. */
+	return 0;
+}
+
+void arch_clk_unprepare(struct arch_clk *clk)
+{
+	/* Ignore it. */
+}
+
+struct arch_clk *arch_clk_get(struct vmm_device *dev, const char *id)
+{
+	if (strcmp(dev->node->name, "clcd") == 0) {
+		return &oscvco_clk;
+	}
+
+	if (strcmp(id, "KMIREFCLK") == 0) {
+		return &clk24mhz;
 	}
 
 	return NULL;
+}
+
+void arch_clk_put(struct arch_clk *clk)
+{
+	/* Ignore it. */
 }
 
 /*
@@ -491,7 +506,7 @@ int __init arch_board_final_init(void)
 		return VMM_ENOTAVAIL;
 	}
 
-	rc = vmm_devdrv_probe(node, realview_getclk, NULL);
+	rc = vmm_devdrv_probe(node, NULL, NULL);
 	if (rc) {
 		return rc;
 	}

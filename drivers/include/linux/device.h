@@ -10,6 +10,8 @@
 #include <linux/printk.h>
 #include <linux/module.h>
 
+#define device	vmm_device
+
 /* FIXME: This file is just a place holder in most cases. */
 
 #endif /* _LINUX_DEVICE_H */

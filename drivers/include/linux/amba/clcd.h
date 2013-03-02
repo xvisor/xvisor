@@ -10,6 +10,8 @@
  * for more details.
  */
 #include <linux/errno.h>
+#include <linux/device.h>
+#include <linux/clk.h>
 #include <linux/fb.h>
 
 /*
@@ -169,7 +171,8 @@ struct clcd_board {
 /* this data structure describes each frame buffer device we find */
 struct clcd_fb {
 	struct fb_info		fb;
-	struct vmm_device	*dev;
+	struct device		*dev;
+	struct clk		*clk;
 	struct clcd_panel	*panel;
 	struct clcd_board	*board;
 	void			*board_data;
