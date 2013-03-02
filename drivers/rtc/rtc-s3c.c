@@ -85,6 +85,7 @@ static DEFINE_SPINLOCK(s3c_rtc_pie_lock);
  * This is a temporary solution until we have a clock management
  * API
  */
+#undef clk_enable
 static void clk_enable(struct clk *clk)
 {
 	u32 perir_reg = vmm_readl((void *)clk);
@@ -100,6 +101,7 @@ static void clk_enable(struct clk *clk)
  * This is a temporary solution until we have a clock management
  * API
  */
+#undef clk_disable
 static void clk_disable(struct clk *clk)
 {
 	u32 perir_reg = vmm_readl((void *)clk);
@@ -115,6 +117,7 @@ static void clk_disable(struct clk *clk)
  * This is a temporary solution until we have a clock management
  * API
  */
+#undef clk_put
 static void clk_put(struct clk *clk)
 {
 	vmm_host_iounmap((virtual_addr_t) clk, sizeof(u32));
@@ -124,6 +127,7 @@ static void clk_put(struct clk *clk)
  * This is a temporary solution until we have a clock management
  * API
  */
+#undef clk_get
 static struct clk *clk_get(struct vmm_device *dev, const char *name)
 {
 	void *cmu_ptr = (void *)vmm_host_iomap(EXYNOS4_PA_CMU +
