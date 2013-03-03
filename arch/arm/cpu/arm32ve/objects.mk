@@ -32,7 +32,7 @@ arch-$(CONFIG_ARMV7A_VE) += -mno-thumb-interwork
 tune-$(CONFIG_CPU_CORTEX_A15) += -mcpu=cortex-a15
 
 # Need -Uarm for gcc < 3.x
-cpu-cppflags+=-DTEXT_START=0xFF000000
+cpu-cppflags+=-DTEXT_START=0x00000000
 cpu-cflags += -msoft-float -marm -Uarm $(arch-y) $(tune-y)
 ifeq ($(CONFIG_ARM32VE_STACKTRACE), y)
 cpu-cflags += -fno-omit-frame-pointer -mapcs -mno-sched-prolog
