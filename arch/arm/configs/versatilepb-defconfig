@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.1
-# Sat Feb 23 09:56:15 2013
+# Sun Mar  3 17:20:12 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -13,6 +13,7 @@ CONFIG_CPU_COUNT=1
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
+CONFIG_VAPOOL_SIZE_MB=12
 CONFIG_BOARD="versatile"
 CONFIG_CPU_ARM9=y
 # CONFIG_CPU_CORTEX_A8 is not set
@@ -72,13 +73,12 @@ CONFIG_BANNER_NONE=y
 CONFIG_MAX_VCPU_COUNT=16
 CONFIG_MAX_GUEST_COUNT=4
 CONFIG_VGPA2REG_CACHE_SIZE=8
-CONFIG_VAPOOL_SIZE_MB=8
 # CONFIG_PROFILE is not set
 
 #
 # Heap Configuration
 #
-CONFIG_HEAP_SIZE_MB=2
+CONFIG_HEAP_SIZE_MB=4
 CONFIG_HEAP_BUDDY=y
 
 #
@@ -102,6 +102,8 @@ CONFIG_RTC=y
 # CONFIG_FB is not set
 # CONFIG_BLOCK is not set
 CONFIG_NET=y
+CONFIG_NET_MBUF_POOL_SIZE=2048
+CONFIG_NET_MBUF_EXT_POOL_KB=128
 
 #
 # Command Options
