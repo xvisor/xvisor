@@ -101,7 +101,7 @@
  * Mbuffer pool.
  */
 
-#define EPOOL_SLAB_COUNT		3
+#define EPOOL_SLAB_COUNT		4
 
 struct vmm_mbufpool_ctrl {
 	struct mempool *mpool;
@@ -119,6 +119,8 @@ static u32 epool_slab_buf_size(u32 slab)
 		return 1024;
 	case 2:
 		return 1536;
+	case 3:
+		return 2048;
 	default:
 		break;
 	};
@@ -138,12 +140,15 @@ static u32 epool_slab_buf_count(u32 pool_sz, u32 slab)
 		weight = 1;
 		break;
 	case 2:
+		weight = 4;
+		break;
+	case 3:
 		weight = 2;
 		break;
 	default:
 		return 0;
 	};
-	total_weight = 4;
+	total_weight = 8;
 
 	buf_size = epool_slab_buf_size(slab);
 	if (!buf_size) {
@@ -172,7 +177,7 @@ int __init vmm_mbufpool_init(void)
 	}
 
 	/* Create ext slab pools */
-	epool_sz = (CONFIG_NET_MBUF_EXT_POOL_KB * 1024);
+	epool_sz = (CONFIG_NET_MBUF_EXT_POOL_SIZE_KB * 1024);
 	for (slab = 0; slab < EPOOL_SLAB_COUNT; slab++) {
 		buf_size = epool_slab_buf_size(slab);
 		buf_count = epool_slab_buf_count(epool_sz, slab);
