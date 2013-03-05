@@ -1,0 +1,62 @@
+
+/dts-v1/;
+
+/include/ "odroidx.dtsi"
+
+/include/ "../../../common/guests/two_guest_pb-a8.dtsi"
+
+/ {
+	guests {
+		guest0 {
+			aspace {
+				mem0 {
+					physical_size = <0x06000000>; /* 96 MB */
+				};
+
+				mem1 {
+					host_physical_addr = <0x42000000>;
+					physical_size = <0x06000000>; /* 96 MB */
+				};
+
+				virtio-net0 {
+					switch = "netbridge0";
+				};
+
+				nor_flash {
+					host_physical_addr = <0x41000000>;
+					physical_size = <0x01000000>; /* 16 MB */
+				};
+
+				lan9118 {
+					switch = "netbridge0";
+				};
+			};
+		};
+
+		guest1 {
+			aspace {
+				mem0 {
+					physical_size = <0x06000000>; /* 96 MB */
+				};
+
+				mem1 {
+					host_physical_addr = <0x49000000>;
+					physical_size = <0x06000000>; /* 96 MB */
+				};
+
+				virtio-net0 {
+					switch = "netbridge0";
+				};
+
+				nor_flash {
+					host_physical_addr = <0x48000000>;
+					physical_size = <0x01000000>; /* 16 MB */
+				};
+
+				lan9118 {
+					switch = "netbridge0";
+				};
+			};
+		};
+	};
+};
