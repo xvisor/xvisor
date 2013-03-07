@@ -279,13 +279,12 @@ static unsigned next_desc(struct vring_desc *desc, u32 i, u32 max)
 	return next;
 }
 
-u16 virtio_queue_get_iovec(struct virtio_queue *vq,
-                           struct virtio_iovec *iov,
-                           u32 iov_cnt, u32 *ret_iov_cnt,
-                           u32 *ret_total_len)
+u16 virtio_queue_get_head_iovec(struct virtio_queue *vq,
+				u16 head, struct virtio_iovec *iov,
+				u32 *ret_iov_cnt, u32 *ret_total_len)
 {
 	struct vring_desc *desc;
-	u16 idx, head, max;
+	u16 idx, max;
 	int i = 0;
 
 	if (!vq->addr) {
@@ -294,7 +293,7 @@ u16 virtio_queue_get_iovec(struct virtio_queue *vq,
 		return 0;
 	}
 
-	idx = head = virtio_queue_pop(vq);
+	idx = head;
 
 	*ret_iov_cnt = 0;
 	*ret_total_len = 0;
@@ -328,6 +327,17 @@ u16 virtio_queue_get_iovec(struct virtio_queue *vq,
 	*ret_iov_cnt = i;
 
 	return head;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_get_head_iovec);
+
+u16 virtio_queue_get_iovec(struct virtio_queue *vq,
+			   struct virtio_iovec *iov,
+			   u32 *ret_iov_cnt, u32 *ret_total_len)
+{
+	u16 head = virtio_queue_pop(vq);
+
+	return virtio_queue_get_head_iovec(vq, head, iov, 
+					   ret_iov_cnt, ret_total_len);
 }
 VMM_EXPORT_SYMBOL(virtio_queue_get_iovec);
 

@@ -133,9 +133,7 @@ static void virtio_net_tx_lazy(struct vmm_netport *port, void *arg, int budget)
 	struct vmm_mbuf *mb;
 
 	while ((budget > 0) && virtio_queue_available(vq)) {
-		head = virtio_queue_get_iovec(vq, iov, 
-						VIRTIO_NET_QUEUE_SIZE,
-						&iov_cnt, &total_len);
+		head = virtio_queue_get_iovec(vq, iov, &iov_cnt, &total_len);
 
 		/* iov[0] is offload info */
 		pkt_len = total_len - iov[0].len;
@@ -202,9 +200,7 @@ static int virtio_net_switch2port_xfer(struct vmm_netport *p,
 	pkt_len = min(VIRTIO_NET_MTU, mb->m_pktlen);
 
 	if (virtio_queue_available(vq)) {
-		head = virtio_queue_get_iovec(vq, iov, 
-						VIRTIO_NET_QUEUE_SIZE,
-						&iov_cnt, &total_len);
+		head = virtio_queue_get_iovec(vq, iov, &iov_cnt, &total_len);
 	}
 
 	if (iov_cnt > 1) {

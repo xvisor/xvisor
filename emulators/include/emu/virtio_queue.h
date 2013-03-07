@@ -140,13 +140,19 @@ int virtio_queue_setup(struct virtio_queue *vq,
 			physical_size_t guest_page_size,
 			u32 desc_count, u32 align);
 
-/** Get guest IO vectors based on available descriptors 
+/** Get guest IO vectors based on given head
+ *  Note: works only after queue setup is done
+ */
+u16 virtio_queue_get_head_iovec(struct virtio_queue *vq,
+				u16 head, struct virtio_iovec *iov,
+				u32 *ret_iov_cnt, u32 *ret_total_len);
+
+/** Get guest IO vectors based on current head
  *  Note: works only after queue setup is done
  */
 u16 virtio_queue_get_iovec(struct virtio_queue *vq,
 			   struct virtio_iovec *iov,
-			   u32 iov_cnt, u32 *ret_iov_cnt,
-			   u32 *ret_total_len);
+			   u32 *ret_iov_cnt, u32 *ret_total_len);
 
 /** Read contents from guest IO vectors to a buffer */
 u32 virtio_iovec_to_buf_read(struct virtio_device *dev,

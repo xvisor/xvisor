@@ -113,9 +113,7 @@ static int virtio_console_do_tx(struct virtio_device *dev,
 	}
 
 	while (virtio_queue_available(vq)) {
-		head = virtio_queue_get_iovec(vq, iov, 
-						VIRTIO_CONSOLE_QUEUE_SIZE,
-						&iov_cnt, &total_len);
+		head = virtio_queue_get_iovec(vq, iov, &iov_cnt, &total_len);
 
 		for (i = 0; i < iov_cnt; i++) {
 			memcpy(&tiov, &iov[i], sizeof(tiov));
@@ -176,9 +174,7 @@ static int virtio_console_vserial_send(struct vmm_vserial *vser, u8 data)
 	struct virtio_device *dev = cdev->vdev;
 
 	if (virtio_queue_available(vq)) {
-		head = virtio_queue_get_iovec(vq, iov, 
-						VIRTIO_CONSOLE_QUEUE_SIZE,
-						&iov_cnt, &total_len);
+		head = virtio_queue_get_iovec(vq, iov, &iov_cnt, &total_len);
 	}
 
 	if (iov_cnt) {
