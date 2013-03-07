@@ -32,7 +32,7 @@
 
 #define VMM_BLOCKDEV_CLASS_NAME				"block"
 #define VMM_BLOCKDEV_CLASS_IPRIORITY			1
-#define VMM_BLOCKDEV_MAX_NAME_SIZE			32
+#define VMM_BLOCKDEV_MAX_NAME_SIZE			64
 
 /** Types of block IO request */
 enum vmm_request_type {
@@ -64,6 +64,7 @@ struct vmm_request_queue {
 			    struct vmm_request *r);
 	int (*abort_request)(struct vmm_request_queue *rq, 
 			    struct vmm_request *r);
+	int (*flush_cache)(struct vmm_request_queue *rq);	/* Optional */
 
 	void *priv;
 };
@@ -119,10 +120,17 @@ static inline u64 vmm_blockdev_total_size(struct vmm_blockdev *bdev)
 int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 				struct vmm_request *r);
 
-/** Generic block IO complete reuest */
+/** Generic block IO flush cached data 
+ *  Note: block device request queue might cache blocks for 
+ *  better performance. This API is a hint to request queue
+ *  that dirty cached blocks need to written back.
+ */
+int vmm_blockdev_flush_cache(struct vmm_blockdev *bdev);
+
+/** Generic block IO complete request */
 int vmm_blockdev_complete_request(struct vmm_request *r);
 
-/** Generic block IO fail reuest */
+/** Generic block IO fail request */
 int vmm_blockdev_fail_request(struct vmm_request *r);
 
 /** Generic block IO abort request */

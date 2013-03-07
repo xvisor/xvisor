@@ -96,6 +96,28 @@ int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_submit_request);
 
+int vmm_blockdev_flush_cache(struct vmm_blockdev *bdev)
+{
+	int rc;
+	irq_flags_t flags;
+
+	if (!bdev || !bdev->rq) {
+		return VMM_EFAIL;
+	}
+
+	if (bdev->rq->flush_cache) {
+		vmm_spin_lock_irqsave(&bdev->rq->lock, flags);
+		rc = bdev->rq->flush_cache(bdev->rq);
+		vmm_spin_unlock_irqrestore(&bdev->rq->lock, flags);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(vmm_blockdev_flush_cache);
+
 int vmm_blockdev_complete_request(struct vmm_request *r)
 {
 	if (!r) {
