@@ -31,7 +31,7 @@
 /** VirtIO module intialization priority */
 #define VIRTIO_IPRIORITY				1
 
-#define VIRTIO_DEVICE_MAX_NAME_LEN			32
+#define VIRTIO_DEVICE_MAX_NAME_LEN			64
 
 enum virtio_id {
 	VIRTIO_ID_NET = 1,

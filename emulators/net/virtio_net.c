@@ -63,7 +63,7 @@ struct virtio_net_dev {
 
 	int mode;
 	struct vmm_netport *port;
-	char name[64];
+	char name[VIRTIO_DEVICE_MAX_NAME_LEN];
 };
 
 static u32 virtio_net_get_host_features(struct virtio_device *dev)

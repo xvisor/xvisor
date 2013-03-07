@@ -54,7 +54,7 @@ struct virtio_console_dev {
 	struct virtio_console_config config;
 	u32 features;
 
-	char name[64];
+	char name[VIRTIO_DEVICE_MAX_NAME_LEN];
 	struct vmm_vserial *vser;
 };
 
