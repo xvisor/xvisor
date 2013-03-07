@@ -18,7 +18,12 @@
  *
  * @file virtio_console.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief VirtIO Console Device Interface. Derived from linux
+ * @brief VirtIO Console Device Interface.
+ *
+ * This header has been derived from linux kernel source:
+ * <linux_source>/include/uapi/linux/virtio_console.h
+ *
+ * The original header is BSD licensed. 
  */
 
 /*
@@ -52,14 +57,9 @@
  * Copyright (C) Red Hat, Inc., 2009, 2010, 2011
  * Copyright (C) Amit Shah <amit.shah@redhat.com>, 2009, 2010, 2011
  */
-#ifndef _UAPI_LINUX_VIRTIO_CONSOLE_H
-#define _UAPI_LINUX_VIRTIO_CONSOLE_H
-#if 0
-#include <linux/types.h>
-#include <linux/virtio_ids.h>
-#include <linux/virtio_config.h>
-#include <linux/if_ether.h>
-#endif
+
+#ifndef __VIRTIO_CONSOLE_H_
+#define __VIRTIO_CONSOLE_H_
 
 #include <vmm_types.h>
 
@@ -98,5 +98,4 @@ struct virtio_console_control {
 #define VIRTIO_CONSOLE_PORT_OPEN	6
 #define VIRTIO_CONSOLE_PORT_NAME	7
 
-
-#endif /* _UAPI_LINUX_VIRTIO_CONSOLE_H */
+#endif /* __VIRTIO_CONSOLE_H_ */

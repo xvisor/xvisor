@@ -18,11 +18,14 @@
  *
  * @file virtio_net.h
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief VirtIO Net Framework Interface. Derived from linux
+ * @brief VirtIO Net Framework Interface.
+ *
+ * This header has been derived from linux kernel source:
+ * <linux_source>/include/uapi/linux/virtio_net.h
+ *
+ * The original header is BSD licensed. 
  */
 
-#ifndef _LINUX_VIRTIO_NET_H
-#define _LINUX_VIRTIO_NET_H
 /* This header is BSD licensed so anyone can use the definitions to implement
  * compatible drivers/servers.
  *
@@ -47,16 +50,13 @@
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE. */
-#if 0
-#include <linux/types.h>
-#include <linux/virtio_ids.h>
-#include <linux/virtio_config.h>
-#include <linux/if_ether.h>
-#endif
+ * SUCH DAMAGE. 
+ */
+
+#ifndef __VIRTIO_NET_H_
+#define __VIRTIO_NET_H_
 
 #include <vmm_types.h>
-#include <vmm_mutex.h>
 
 #define ETH_ALEN 6
 
@@ -184,4 +184,4 @@ struct virtio_net_ctrl_mac {
 #define VIRTIO_NET_CTRL_VLAN_ADD		0
 #define VIRTIO_NET_CTRL_VLAN_DEL		1
 
-#endif /* _LINUX_VIRTIO_NET_H */
+#endif /* __VIRTIO_NET_H_ */
