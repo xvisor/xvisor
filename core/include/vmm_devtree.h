@@ -77,6 +77,7 @@
 #define VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME	"alias_physical_addr"
 #define VMM_DEVTREE_PHYS_SIZE_ATTR_NAME		"physical_size"
 #define VMM_DEVTREE_SWITCH_ATTR_NAME		"switch"
+#define VMM_DEVTREE_BLKDEV_ATTR_NAME		"blkdev"
 
 enum vmm_devtree_attrypes {
 	VMM_DEVTREE_ATTRTYPE_UNKNOWN = 0,
