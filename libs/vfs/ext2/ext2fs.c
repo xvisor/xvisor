@@ -716,6 +716,12 @@ static int ext2fs_control_sync(struct ext2fs_control *ctrl)
 		vmm_mutex_unlock(&ctrl->groups[g].grp_lock);
 	}
 
+	/* Flush cached data in device request queue */
+	rc = vmm_blockdev_flush_cache(ctrl->bdev);
+	if (rc) {
+		return rc;
+	}
+
 	return VMM_OK;
 }
 
