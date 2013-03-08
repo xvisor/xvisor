@@ -71,25 +71,58 @@ static void virtio_console_set_guest_features(struct virtio_device *dev,
 }
 
 static int virtio_console_init_vq(struct virtio_device *dev,
-			      u32 vqnum, u32 page_size, u32 align,
-			      u32 pfn)
+				  u32 vq, u32 page_size, u32 align, u32 pfn)
 {
+	int rc;
 	struct virtio_console_dev *cdev = dev->emu_data;
 
-	return virtio_queue_setup(&cdev->vqs[vqnum], dev->guest, 
+	switch (vq) {
+	case VIRTIO_CONSOLE_RX_QUEUE:
+	case VIRTIO_CONSOLE_TX_QUEUE:
+		rc = virtio_queue_setup(&cdev->vqs[vq], dev->guest, 
 			pfn, page_size, VIRTIO_CONSOLE_QUEUE_SIZE, align);
+		break;
+	default:
+		rc = VMM_EINVALID;
+		break;
+	};
+
+	return rc;
 }
 
 static int virtio_console_get_pfn_vq(struct virtio_device *dev, u32 vq)
 {
+	int rc;
 	struct virtio_console_dev *cdev = dev->emu_data;
 
-	return virtio_queue_guest_pfn(&cdev->vqs[vq]);
+	switch (vq) {
+	case VIRTIO_CONSOLE_RX_QUEUE:
+	case VIRTIO_CONSOLE_TX_QUEUE:
+		rc = virtio_queue_guest_pfn(&cdev->vqs[vq]);
+		break;
+	default:
+		rc = VMM_EINVALID;
+		break;
+	};
+
+	return rc;
 }
 
 static int virtio_console_get_size_vq(struct virtio_device *dev, u32 vq)
 {
-	return VIRTIO_CONSOLE_QUEUE_SIZE;
+	int rc;
+
+	switch (vq) {
+	case VIRTIO_CONSOLE_RX_QUEUE:
+	case VIRTIO_CONSOLE_TX_QUEUE:
+		rc = VIRTIO_CONSOLE_QUEUE_SIZE;
+		break;
+	default:
+		rc = 0;
+		break;
+	};
+
+	return rc;
 }
 
 static int virtio_console_set_size_vq(struct virtio_device *dev, u32 vq, int size)
@@ -107,10 +140,6 @@ static int virtio_console_do_tx(struct virtio_device *dev,
 	struct virtio_queue *vq = &cdev->vqs[VIRTIO_CONSOLE_TX_QUEUE];
 	struct virtio_iovec *iov = cdev->tx_iov;
 	struct virtio_iovec tiov;
-
-	if (!virtio_queue_available(vq)) {
-		return 0;
-	}
 
 	while (virtio_queue_available(vq)) {
 		head = virtio_queue_get_iovec(vq, iov, &iov_cnt, &total_len);
@@ -144,8 +173,7 @@ static int virtio_console_notify_vq(struct virtio_device *dev, u32 vq)
 	case VIRTIO_CONSOLE_RX_QUEUE:
 		break;
 	default:
-		vmm_printf("Unknown queue index %u", vq);
-		rc = VMM_EFAIL;
+		rc = VMM_EINVALID;
 		break;
 	}
 
@@ -193,11 +221,11 @@ static int virtio_console_vserial_send(struct vmm_vserial *vser, u8 data)
 static int virtio_console_read_config(struct virtio_device *dev, 
 				      u32 offset, void *dst, u32 dst_len)
 {
-	int i = 0;
 	struct virtio_console_dev *cdev = dev->emu_data;
 	u8 *src = (u8 *)&cdev->config;
+	u32 i, src_len = sizeof(cdev->config);
 
-	for (i = 0; i < dst_len; i++) {
+	for (i = 0; (i < dst_len) && ((offset + i) < src_len); i++) {
 		*((u8 *)dst + i) = src[offset + i];
 	}
 

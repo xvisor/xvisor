@@ -94,26 +94,58 @@ static void virtio_net_set_guest_features(struct virtio_device *dev,
 }
 
 static int virtio_net_init_vq(struct virtio_device *dev,
-			      u32 vqnum, u32 page_size, u32 align,
-			      u32 pfn)
+			      u32 vq, u32 page_size, u32 align, u32 pfn)
 {
+	int rc;
 	struct virtio_net_dev *ndev = dev->emu_data;
 
-	return virtio_queue_setup(&ndev->vqs[vqnum], dev->guest, 
+	switch (vq) {
+	case VIRTIO_NET_TX_QUEUE:
+	case VIRTIO_NET_RX_QUEUE:
+		rc = virtio_queue_setup(&ndev->vqs[vq], dev->guest, 
 				pfn, page_size, VIRTIO_NET_QUEUE_SIZE, align);
+		break;
+	default:
+		rc = VMM_EINVALID;
+		break;
+	}
+
+	return rc;
 }
 
 static int virtio_net_get_pfn_vq(struct virtio_device *dev, u32 vq)
 {
+	int rc;
 	struct virtio_net_dev *ndev = dev->emu_data;
 
-	return virtio_queue_guest_pfn(&ndev->vqs[vq]);
+	switch (vq) {
+	case VIRTIO_NET_TX_QUEUE:
+	case VIRTIO_NET_RX_QUEUE:
+		rc = virtio_queue_guest_pfn(&ndev->vqs[vq]);
+		break;
+	default:
+		rc = VMM_EINVALID;
+		break;
+	}
+
+	return rc;
 }
 
 static int virtio_net_get_size_vq(struct virtio_device *dev, u32 vq)
 {
-	/* FIXME: dynamic */
-	return VIRTIO_NET_QUEUE_SIZE;
+	int rc;
+
+	switch (vq) {
+	case VIRTIO_NET_TX_QUEUE:
+	case VIRTIO_NET_RX_QUEUE:
+		rc = VIRTIO_NET_QUEUE_SIZE;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+
+	return rc;
 }
 
 static int virtio_net_set_size_vq(struct virtio_device *dev, u32 vq, int size)
@@ -160,6 +192,7 @@ static void virtio_net_tx_lazy(struct vmm_netport *port, void *arg, int budget)
 
 static int virtio_net_notify_vq(struct virtio_device *dev, u32 vq)
 {
+	int rc = VMM_OK;
 	struct virtio_net_dev *ndev = dev->emu_data;
 
 	switch (vq) {
@@ -170,11 +203,11 @@ static int virtio_net_notify_vq(struct virtio_device *dev, u32 vq)
 	case VIRTIO_NET_RX_QUEUE:
 		break;
 	default:
-		vmm_printf("Unknown queue index %u", vq);
+		rc = VMM_EINVALID;
 		break;
 	}
 
-	return VMM_OK;
+	return rc;
 }
 
 static void virtio_net_set_link(struct vmm_netport *p)
@@ -222,12 +255,12 @@ static int virtio_net_switch2port_xfer(struct vmm_netport *p,
 static int virtio_net_read_config(struct virtio_device *dev, 
 				  u32 offset, void *dst, u32 dst_len)
 {
-	int i = 0;
 	struct virtio_net_dev *ndev = dev->emu_data;
 	u8 *src = (u8 *)&ndev->config;
+	u32 i, src_len = sizeof(ndev->config);
 
-	for (i = 0; i < dst_len; i++) {
-		*((u8 *)dst + i) = src[offset + i];
+	for (i = 0; (i < dst_len) && ((offset + i) < src_len); i++) {
+		((u8 *)dst)[i] = src[offset + i];
 	}
 
 	return VMM_OK;
@@ -236,12 +269,12 @@ static int virtio_net_read_config(struct virtio_device *dev,
 static int virtio_net_write_config(struct virtio_device *dev,
 				   u32 offset, void *src, u32 src_len)
 {
-	int i = 0;
 	struct virtio_net_dev *ndev = dev->emu_data;
 	u8 *dst = (u8 *)&ndev->config;
+	u32 i, dst_len = sizeof(ndev->config);
 
-	for (i = 0; i < src_len; i++) {
-		dst[i] = *((u8 *) src + i);
+	for (i = 0; (i < src_len) && ((offset + i) < dst_len); i++) {
+		dst[offset + i] = ((u8 *)src)[i];
 	}
 
 	return VMM_OK;
