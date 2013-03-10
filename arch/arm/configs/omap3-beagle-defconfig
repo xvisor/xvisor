@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.1
-# Sun Mar  3 18:24:02 2013
+# Sat Mar  9 20:39:46 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -103,7 +103,7 @@ CONFIG_THREAD_STACK_SIZE=8192
 # CONFIG_RTC is not set
 # CONFIG_INPUT is not set
 # CONFIG_FB is not set
-# CONFIG_BLOCK is not set
+CONFIG_BLOCK=y
 CONFIG_NET=y
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
@@ -126,6 +126,7 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_NET=y
 
 #
@@ -148,6 +149,11 @@ CONFIG_LIBFDT=y
 CONFIG_NET_STACK_LWIP=y
 
 #
+# Virtual FileSystem Options
+#
+# CONFIG_VFS is not set
+
+#
 # Device Drivers
 #
 
@@ -163,6 +169,11 @@ CONFIG_SERIAL_OMAP_UART=y
 #
 # RTC Drivers
 #
+
+#
+# Block Drivers
+#
+# CONFIG_BLOCK_RBD is not set
 
 #
 # Input Device Support
@@ -209,6 +220,12 @@ CONFIG_EMU_NET=y
 CONFIG_EMU_NET_LAN9118=y
 # CONFIG_EMU_NET_SMC91C111 is not set
 CONFIG_EMU_NET_VIRTIO=y
+
+#
+# Block Device Emulators
+#
+CONFIG_EMU_BLOCK=y
+CONFIG_EMU_BLOCK_VIRTIO=y
 
 #
 # Console Emulators
