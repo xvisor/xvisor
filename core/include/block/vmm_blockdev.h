@@ -36,8 +36,9 @@
 
 /** Types of block IO request */
 enum vmm_request_type {
-	VMM_REQUEST_READ=0,
-	VMM_REQUEST_WRITE=1
+	VMM_REQUEST_UNKNOWN=0,
+	VMM_REQUEST_READ=1,
+	VMM_REQUEST_WRITE=2
 };
 
 /** Representation of a block IO request */
@@ -58,13 +59,30 @@ struct vmm_request {
 
 /** Representation of a block IO request queue */
 struct vmm_request_queue {
+	/* Lock to protect the request queue operations */
 	vmm_spinlock_t lock;
 
+	/* Note: make_request must ensure that it calls
+	 *
+	 * vmm_blockdev_complete_request()
+	 * OR
+	 * vmm_blockdev_fail_request()
+	 *
+	 * for every request that it gets
+	 */
 	int (*make_request)(struct vmm_request_queue *rq, 
 			    struct vmm_request *r);
+
+	/* Note: abort_request will be called for successfully
+	 * submited request only
+	 */
 	int (*abort_request)(struct vmm_request_queue *rq, 
 			    struct vmm_request *r);
-	int (*flush_cache)(struct vmm_request_queue *rq);	/* Optional */
+
+	/* Note: This is an option callback only required
+	 * if request queue does block caching 
+	 */
+	int (*flush_cache)(struct vmm_request_queue *rq);
 
 	void *priv;
 };
@@ -116,9 +134,18 @@ static inline u64 vmm_blockdev_total_size(struct vmm_blockdev *bdev)
 	return (bdev) ? bdev->num_blocks * bdev->block_size : 0;
 }
 
+/** Generic block IO complete request */
+int vmm_blockdev_complete_request(struct vmm_request *r);
+
+/** Generic block IO fail request */
+int vmm_blockdev_fail_request(struct vmm_request *r);
+
 /** Generic block IO submit request */
 int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 				struct vmm_request *r);
+
+/** Generic block IO abort request */
+int vmm_blockdev_abort_request(struct vmm_request *r);
 
 /** Generic block IO flush cached data 
  *  Note: block device request queue might cache blocks for 
@@ -126,15 +153,6 @@ int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
  *  that dirty cached blocks need to written back.
  */
 int vmm_blockdev_flush_cache(struct vmm_blockdev *bdev);
-
-/** Generic block IO complete request */
-int vmm_blockdev_complete_request(struct vmm_request *r);
-
-/** Generic block IO fail request */
-int vmm_blockdev_fail_request(struct vmm_request *r);
-
-/** Generic block IO abort request */
-int vmm_blockdev_abort_request(struct vmm_request *r);
 
 /** Generic block IO read/write
  *  Note: This is a blocking API hence must be 
