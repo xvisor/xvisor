@@ -75,6 +75,8 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 	arm_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
 	/* VirtIO Network Device */
 	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20100000:34");
+	/* VirtIO Block Device */
+	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20200000:35");
 	/* VirtIO Console Device */
 	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20300000:41");
 }
