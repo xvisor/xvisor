@@ -64,7 +64,7 @@ from the same shell, otherwise you have to set toolchain prefix again (step 1):
   # cd <linux_build_directory>
 
   [16. Create binary]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x40010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x40010000 <xvisor_source_directory>/build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched@0x41000000 <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist@0x410FF000 ./arch/arm/boot/zImage@0x41100000 <busybox_rootfs_directory>/rootfs.img@0x41400000
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x40010000 -o <xvisor_source_directory>/build/uvmm.bin <xvisor_source_directory>/build/vmm.bin@0x40010000 <xvisor_source_directory>/build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched@0x41000000 <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist@0x410FF000 ./arch/arm/boot/zImage@0x41100000 <busybox_rootfs_directory>/rootfs.img@0x41400000
 
   [17. Make U-Boot compatible uImage, for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x40010000 -e 0x40010000 -n "Xvisor" -d  <xvisor_source_directory>build/uvmm.bin uImage
@@ -85,10 +85,12 @@ from the same shell, otherwise you have to set toolchain prefix again (step 1):
   [23. Power-up or Reset the ODroid-X and press any key to interrupt normal boot on U-Boot]
 
   [24. Copy Xvisor from SD card to SDRAM]
-  ODROIDX# fatload mmc 0:2 0x40007000 uImage
+  ODROIDX# fatload mmc 0:2 0x50000000 uImage
 
   [25. Jump into Xvisor after disabling MMU, interrupts, etc]
-  ODROIDX# bootm 0x40007000
+  ODROIDX# bootm start 0x50000000
+  ODROIDX# loados
+  ODROIDX# bootm go 0x50000000
 
   [26. Kick Guest for starting Basic Test]
   XVisor# guest kick 0
