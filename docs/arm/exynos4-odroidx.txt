@@ -60,46 +60,51 @@ from the same shell, otherwise you have to set toolchain prefix again (step 1):
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
   (Note: Please refer tests/arm32/common/busybox-1.19.2/README for creating rootfs.img using BusyBox 1.19.2)
 
-  [15. GoTo Linux build directory]
-  # cd <linux_build_directory>
+  [15. GoTo XVisor build directory]
+  # cd <xvisor_source_directory>/build
 
-  [16. Create binary]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x40010000 -o <xvisor_source_directory>/build/uvmm.bin <xvisor_source_directory>/build/vmm.bin@0x40010000 <xvisor_source_directory>/build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched@0x41000000 <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist@0x410FF000 ./arch/arm/boot/zImage@0x41100000 <busybox_rootfs_directory>/rootfs.img@0x41400000
+  [16. Make U-Boot compatible uImage, for use with bootm command]
+  # mkimage -A arm -O linux -T kernel -C none -a 0x40010000 -e 0x40010000 -n "Xvisor" -d vmm.bin uImage
+ 
+  [17. Unplug bootable SD card from the ODroid-X and plug it into your development machine]
 
-  [17. Make U-Boot compatible uImage, for use with bootm command]
-  # mkimage -A arm -O linux -T kernel -C none -a 0x40010000 -e 0x40010000 -n "Xvisor" -d  <xvisor_source_directory>build/uvmm.bin uImage
-  
-  [18. Unplug bootable SD card from the ODroid-X and plug it into your development machine]
-
-  [19. Mount the VFAT partition of the SD card on your development machine]
+  [18. Mount the VFAT partition of the SD card on your development machine]
   # sudo mount /dev/mmcblk0p2 /media/usb
 
-  [20. Copy uImage to the mounted partition of the SD card]
+  [19. Copy uImage (and other components) to the mounted partition of the SD card]
   # cp uImage /media/usb
+  # cp <linux_build_directory>/arch/arm/boot/zImage /media/usb
+  # cp tests/arm32/realview-pb-a8/linux/cmdlist /media/usb
+  # cp tests/arm32/realview-pb-a8/basic/arm_test.bin.patched /media/usb
+  # cp <busybox_rootfs_directory>/rootfs.img /media/usb
 
-  [21. Unmount the partiton from your development machine]
+  [20. Unmount the partiton from your development machine]
   # sudo umount /media/usb
 
-  [22. Connect a usb cable to the serial port of the ODroid-X and start your favorite terminal emulator]
+  [21. Connect a usb cable to the serial port of the ODroid-X and start your favorite terminal emulator]
 
-  [23. Power-up or Reset the ODroid-X and press any key to interrupt normal boot on U-Boot]
+  [22. Power-up or Reset the ODroid-X and press any key to interrupt normal boot on U-Boot]
 
-  [24. Copy Xvisor from SD card to SDRAM]
+  [23. Copy Xvisor from SD card to SDRAM]
   ODROIDX# fatload mmc 0:2 0x50000000 uImage
+  ODROIDX# fatload mmc 0:2 0x41000000 arm_test.bin.patched
+  ODROIDX# fatload mmc 0:2 0x410FF000 cmdlist
+  ODROIDX# fatload mmc 0:2 0x41100000 zImage
+  ODROIDX# fatload mmc 0:2 0x41400000 rootfs.img
 
-  [25. Jump into Xvisor after disabling MMU, interrupts, etc]
+  [24. Jump into Xvisor after disabling MMU, interrupts, etc]
   ODROIDX# bootm start 0x50000000
   ODROIDX# loados
   ODROIDX# bootm go 0x50000000
 
-  [26. Kick Guest for starting Basic Test]
+  [25. Kick Guest for starting Basic Test]
   XVisor# guest kick 0
 
-  [27. Bind to virtual UART]
+  [26. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [28. Start Linux]
+  [27. Start Linux]
   [guest0/uart0] arm-test# autoexec
 
-  [24. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [28. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] arm-test# 
