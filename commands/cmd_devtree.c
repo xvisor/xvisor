@@ -61,17 +61,28 @@ void cmd_devtree_usage(struct vmm_chardev *cdev)
 }
 
 void cmd_devtree_print_attribute(struct vmm_chardev *cdev, 
-				 struct vmm_devtree_attr * attr, 
+				 struct vmm_devtree_attr *attr, 
 				 int indent)
 {
 	int i;
+	char *str;
 
 	for (i = 0; i < indent; i++)
 		vmm_cprintf(cdev, "\t");
 
 	if (attr->type == VMM_DEVTREE_ATTRTYPE_STRING) {
-		vmm_cprintf(cdev, "\t%s = \"%s\";\n", 
-					attr->name, (char *)attr->value);
+		i = 0;
+		str = attr->value;
+		vmm_cprintf(cdev, "\t%s = ", attr->name);
+		while (i < attr->len) {
+			if (i) {
+				vmm_cprintf(cdev, ",");
+			}
+			vmm_cprintf(cdev, "\"%s\"", str);
+			i += strlen(str) + 1;
+			str += strlen(str) + 1;
+		}
+		vmm_cprintf(cdev, ";\n");
 	} else if (attr->type == VMM_DEVTREE_ATTRTYPE_UINT64) {
 		vmm_cprintf(cdev, "\t%s = <", attr->name);
 		for (i = 0; i < attr->len; i += sizeof(u64)) {
@@ -156,14 +167,14 @@ void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 }
 
 void cmd_devtree_print_node(struct vmm_chardev *cdev, 
-			    struct vmm_devtree_node * node, 
+			    struct vmm_devtree_node *node, 
 			    bool showattr,
 			    int indent)
 {
 	int i;
 	bool braceopen;
 	struct dlist *l;
-	struct vmm_devtree_attr * attr;
+	struct vmm_devtree_attr *attr;
 	struct vmm_devtree_node *child;
 
 	for (i = 0; i < indent; i++)
@@ -229,11 +240,11 @@ int cmd_devtree_attr_show(struct vmm_chardev *cdev, char *path)
 }
 
 int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
-			 char * type, int valc, char **valv)
+			 char *type, int valc, char **valv)
 {
 	int i, rc = VMM_OK;
 	u32 val_type = VMM_DEVTREE_ATTRTYPE_UNKNOWN, val_len = 0;
-	void * val = NULL;
+	void *val = NULL;
 	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
 
 	if (!node) {
@@ -250,13 +261,14 @@ int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
 			val_len += strlen(valv[i]);
 			val_len += 1;
 		}
-		val = vmm_malloc(val_len);
-		strcpy(val, valv[0]);
+		val = vmm_zalloc(val_len);
+		strcat(val, valv[0]);
 		for (i = 1; i < valc; i++) {
 			strcat(val, " ");
 			strcat(val, valv[i]);
 		}
-		val_len = strlen((char *)val);
+		((char *)val)[val_len] = '\0';
+		val_len = strlen(val) + 1;
 		val_type = VMM_DEVTREE_ATTRTYPE_STRING;
 	} else if (!strcmp(type, "uint32")) {
 		val_len = valc * sizeof(u32);
