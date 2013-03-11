@@ -44,6 +44,7 @@
 #define VMM_DEVTREE_CHOOSEN_NODE_NAME		"choosen"
 #define VMM_DEVTREE_CONSOLE_ATTR_NAME		"console"
 #define VMM_DEVTREE_RTCDEV_ATTR_NAME		"rtcdev"
+#define VMM_DEVTREE_BOOTCMD_ATTR_NAME		"bootcmd"
 
 #define VMM_DEVTREE_ALIASES_NODE_NAME		"aliases"
 

@@ -59,7 +59,9 @@ void __noreturn vmm_hang(void)
 
 static void system_init_work(struct vmm_work *work)
 {
+#define BOOTCMD_WIDTH		256
 	int ret;
+	char bcmd[BOOTCMD_WIDTH];
 	const char *str;
 	u32 c, freed;
 	struct dlist *l;
@@ -205,6 +207,25 @@ static void system_init_work(struct vmm_work *work)
 			vmm_printf("\n");
 		}
 #endif
+
+		/* Execute boot commands */
+		str = vmm_devtree_attrval(node, VMM_DEVTREE_BOOTCMD_ATTR_NAME);
+		if (str) {
+			c = vmm_devtree_attrlen(node, VMM_DEVTREE_BOOTCMD_ATTR_NAME);
+			while (c) {
+#if defined(CONFIG_VERBOSE_MODE)
+				/* Print boot command */
+				vmm_printf("bootcmd: %s\n", str);
+#endif
+				/* Execute boot command */
+				strncpy(bcmd, str, BOOTCMD_WIDTH);
+				cdev = vmm_stdio_device();
+				vmm_cmdmgr_execute_cmdstr(cdev, bcmd, NULL);
+				/* Next boot command */
+				c -= strlen(str) + 1;
+				str += strlen(str) + 1;
+			}
+		}
 	}
 
 	/* Populate guest instances (Must be last step) */
