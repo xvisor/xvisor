@@ -76,5 +76,5 @@ void __init cpu_init(struct multiboot_info *binfo)
 	vmm_init();
 
 	/* We should never come back here. */
-	while (1);
+	vmm_hang();
 }

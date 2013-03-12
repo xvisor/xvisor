@@ -82,5 +82,5 @@ void __init cpu_init(void)
 	vmm_init();
 
 	/* We should never come back here. */
-	while (1);
+	vmm_hang();
 }
