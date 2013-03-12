@@ -79,62 +79,56 @@ static void system_init_work(struct vmm_work *work)
 	vmm_printf("Initialize Command Manager\n");
 	ret = vmm_cmdmgr_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize device driver framework */
 	vmm_printf("Initialize Device Driver Framework\n");
 	ret = vmm_devdrv_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize device emulation framework */
 	vmm_printf("Initialize Device Emulation Framework\n");
 	ret = vmm_devemu_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize character device framework */
 	vmm_printf("Initialize Character Device Framework\n");
 	ret = vmm_chardev_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize character device framework */
 	vmm_printf("Initialize Virtual Serial Port Framework\n");
 	ret = vmm_vserial_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize modules */
+	vmm_printf("Initialize modules\n");
 	ret = vmm_modules_init();
 	if (ret) {
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize cpu final */
 	vmm_printf("Initialize CPU Final\n");
 	ret = arch_cpu_final_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Intialize board final */
 	vmm_printf("Initialize Board Final\n");
 	ret = arch_board_final_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 #if defined(CONFIG_SMP)
@@ -320,55 +314,49 @@ void vmm_init(void)
 	vmm_printf("Initialize Standard I/O Subsystem\n");
 	ret = vmm_stdio_init();
 	if (ret) {
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize clocksource manager */
 	vmm_printf("Initialize Clocksource Manager\n");
 	ret = vmm_clocksource_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize clockchip manager */
 	vmm_printf("Initialize Clockchip Manager\n");
 	ret = vmm_clockchip_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize hypervisor timer */
 	vmm_printf("Initialize Hypervisor Timer\n");
 	ret = vmm_timer_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize soft delay subsystem */
 	vmm_printf("Initialize Soft Delay Subsystem\n");
 	ret = vmm_delay_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize hypervisor manager */
 	vmm_printf("Initialize Hypervisor Manager\n");
 	ret = vmm_manager_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize hypervisor scheduler */
 	vmm_printf("Initialize Hypervisor Scheduler\n");
 	ret = vmm_scheduler_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 #if defined(CONFIG_SMP)
@@ -376,15 +364,13 @@ void vmm_init(void)
 	vmm_printf("Initialize Secondary CPUs\n");
 	ret = arch_smp_init_cpus();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Prepare secondary CPUs */
 	ret = arch_smp_prepare_cpus(vmm_num_possible_cpus());
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Start each present secondary CPUs */
@@ -403,8 +389,7 @@ void vmm_init(void)
 	vmm_printf("Initialize Hypervisor Threads\n");
 	ret = vmm_threads_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 #ifdef CONFIG_PROFILE
@@ -412,8 +397,7 @@ void vmm_init(void)
 	vmm_printf("Initialize Hypervisor Profiler\n");
 	ret = vmm_profiler_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 #endif
 
@@ -421,16 +405,14 @@ void vmm_init(void)
 	vmm_printf("Initialize Workqueue Framework\n");
 	ret = vmm_workqueue_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize wallclock */
 	vmm_printf("Initialize Wallclock Subsystem\n");
 	ret = vmm_wallclock_init();
 	if (ret) {
-		vmm_printf("Error %d\n", ret);
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Schedule system initialization work */

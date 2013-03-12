@@ -30,6 +30,7 @@
 #include <vmm_timer.h>
 #include <vmm_schedalgo.h>
 #include <vmm_scheduler.h>
+#include <vmm_stdio.h>
 #include <arch_regs.h>
 #include <arch_cpu_irq.h>
 #include <arch_vcpu.h>
@@ -85,7 +86,7 @@ static void vmm_scheduler_next(struct vmm_timer_event *ev, arch_regs_t *regs)
 			arch_vcpu_switch(NULL, next, regs);
 		} else {
 			/* This should never happen !!! */
-			while (1);
+			vmm_panic("Error: no vcpu to swith to.\n");
 		}
 	}
 
