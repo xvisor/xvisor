@@ -1,48 +1,42 @@
 
 / {
-	guests {
-		guest0 {
-			model = "vexpress-a9";
+	templates {
+		vexpress-a15x2 {
+			model = "vexpress-a15";
 			device_type = "guest";
 
 			vcpus {
 				vcpu0 {
 					device_type = "vcpu";
-					compatible = "ARMv7a,cortex-a9";
-					start_pc = <0x40000000>;
+					compatible = "ARMv7a,cortex-a15";
+					start_pc = <0x00000000>;
+					gentimer_virt_irq = <27>;
+					gentimer_phys_irq = <30>;
 				};
 
 				vcpu1 {
 					device_type = "vcpu";
-					compatible = "ARMv7a,cortex-a9";
-					start_pc = <0x40000000>;
+					compatible = "ARMv7a,cortex-a15";
+					start_pc = <0x00000000>;
+					gentimer_virt_irq = <27>;
+					gentimer_phys_irq = <30>;
 				};
 			};
 			
 			aspace {
-				/* Assume the REMAP region is mapped to DDR */
 				mem0 {
-					manifest_type = "alias";
-					address_type = "memory";
-					guest_physical_addr = <0x00000000>;
-					alias_physical_addr = <0x60000000>;
-					physical_size = <0x00000000>; /* To be set by DTS including this file */
-					device_type = "ram";
-				};
-
-				mem1 {
 					manifest_type = "real";
 					address_type = "memory";
-					guest_physical_addr = <0x60000000>;
+					guest_physical_addr = <0x80000000>;
 					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
 					physical_size = <0x00000000>; /* To be set by DTS including this file */
 					device_type = "ram";
 				};
 
-				sysctl {
+				sysregs {
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10000000>;
+					guest_physical_addr = <0x1C010000>;
 					physical_size = <0x1000>;
 					device_type = "sys";
 					compatible = "vexpress,a9";
@@ -50,19 +44,103 @@
 					mux_out_irq = <2002>;
 				};
 
-				sysctrl0 {
+				sysctrl {
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10001000>;
+					guest_physical_addr = <0x1C020000>;
 					physical_size = <0x1000>;
 					device_type = "sys";
 					compatible = "primecell,sp810";
+				};
+		
+				mem-ctrl0 { /* No Memory controller */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x2B0A0000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				gic {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x2C000000>;
+					physical_size = <0x3000>;
+					device_type = "pic";
+					compatible = "vexpress,gicv2";
+					parent_irq = <6 6>;
+				};
+
+				scc { /* No SCC */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x7FFF0000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				mem-ctrl1 { /* No Memory controller */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x7FFD0000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				dma { /* No DMA */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x7FFB0000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				dmc_phy { /* No DMC PHY */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x7FEF0000>;
+					physical_size = <0x1000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				nor_flash0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x00000000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "rom";
+				};
+
+				psram { /* No PSRAM */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x14000000>;
+					physical_size = <0x00200000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
+				eth {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x1A000000>;
+					physical_size = <0x10000>;
+					device_type = "nic";
+					compatible = "smsc,smc91c111";
+					irq = <47>;
+					switch = ""; /* To be set by DTS including this file */
 				};
 
 				pcie_i2c { /* No I2C */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10002000>;
+					guest_physical_addr = <0x1C030000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
@@ -71,7 +149,7 @@
 				aaci { /* No Audio Controller */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10004000>;
+					guest_physical_addr = <0x1C040000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
@@ -80,7 +158,7 @@
 				mmc0 { /* No Multimedia Card Interface */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10005000>;
+					guest_physical_addr = <0x1C050000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
@@ -89,7 +167,7 @@
 				kmi0 { /* No Keyboard/Mouse Interface */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10006000>;
+					guest_physical_addr = <0x1C060000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
@@ -98,7 +176,7 @@
 				kmi1 { /* No Keyboard/Mouse Interface */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10007000>;
+					guest_physical_addr = <0x1C070000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
@@ -107,7 +185,7 @@
 				uart0 {
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10009000>;
+					guest_physical_addr = <0x1C090000>;
 					physical_size = <0x1000>;
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
@@ -118,7 +196,7 @@
 				uart1 {
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x1000A000>;
+					guest_physical_addr = <0x1C0A0000>;
 					physical_size = <0x1000>;
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
@@ -129,7 +207,7 @@
 				uart2 {
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x1000B000>;
+					guest_physical_addr = <0x1C0B0000>;
 					physical_size = <0x1000>;
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
@@ -140,7 +218,7 @@
 				uart3 {
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x1000C000>;
+					guest_physical_addr = <0x1C0C0000>;
 					physical_size = <0x1000>;
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
@@ -151,7 +229,7 @@
 				wdt { /* No Watch-Dog controller */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x1000f000>;
+					guest_physical_addr = <0x1C0f0000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
@@ -160,7 +238,7 @@
 				timer0_1_legacy {
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10011000>;
+					guest_physical_addr = <0x1C110000>;
 					physical_size = <0x1000>;
 					device_type = "timer";
 					compatible = "primecell,sp804";
@@ -170,17 +248,7 @@
 				timer2_3_legacy {
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10012000>;
-					physical_size = <0x1000>;
-					device_type = "timer";
-					compatible = "primecell,sp804";
-					irq = <35>;
-				};
-
-				timer_daughter {
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x100E4000>;
+					guest_physical_addr = <0x1C120000>;
 					physical_size = <0x1000>;
 					device_type = "timer";
 					compatible = "primecell,sp804";
@@ -190,7 +258,7 @@
 				ddc_i2c { /* No I2C */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10016000>;
+					guest_physical_addr = <0x1C160000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
@@ -199,7 +267,7 @@
 				rtc0 {
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10017000>;
+					guest_physical_addr = <0x1C170000>;
 					physical_size = <0x1000>;
 					device_type = "rtc";
 					compatible = "primecell,pl031";
@@ -209,7 +277,7 @@
 				cf { /* No PATA Controller */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x1001a000>;
+					guest_physical_addr = <0x1C1A0000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
@@ -218,16 +286,7 @@
 				clcd { /* No Color LCD */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x10020000>;
-					physical_size = <0x1000>;
-					device_type = "misc";
-					compatible = "zero";
-				};
-
-				dmc { /* No DMC */
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x100E0000>;
+					guest_physical_addr = <0x1C1F0000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
@@ -251,60 +310,10 @@
 					compatible = "zero";
 				};
 
-				priv0 {
+				isp1761 { /* No USB Controller */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x1E000000>;
-					physical_size = <0x2000>;
-					device_type = "misc";
-					num_cpu = <2>;
-					compatible = "a9mpcore,private";
-					timer_irq = <29 30>;
-					parent_irq = <6 6>;
-				};
-
-				l2x0 {
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x1E00A000>;
-					physical_size = <0x1000>;
-					device_type = "cache";
-					compatible = "corelink,l2c-310";
-				};
-
-				nor_flash0 {
-					manifest_type = "real";
-					address_type = "memory";
-					guest_physical_addr = <0x40000000>;
-					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
-					physical_size = <0x00000000>; /* To be set by DTS including this file */
-					device_type = "rom";
-				};
-
-				nor_flash1 { /* No Second NOR flash */
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x44000000>;
-					physical_size = <0x1000000>; /* 16 MB */
-					device_type = "misc";
-					compatible = "zero";
-				};
-
-				lan9118 { /* Ethernet Controller */
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x4E000000>;
-					physical_size = <0x10000>;
-					device_type = "nic";
-					compatible = "smsc,lan9118";
-					switch = ""; /* To be set by DTS including this file */
-					irq = <47>;
-				};
-
-				isp1760 { /* No USB Controller */
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x4F000000>;
+					guest_physical_addr = <0x1B000000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";

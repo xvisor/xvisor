@@ -57,4 +57,12 @@
 			};
 		};
 	};
+
+	/* Empty guests node */
+	guests {
+	};
 };
+
+/* Add guest templates */
+/include/ "../../common/guests/versatilepb.dtsi"
+

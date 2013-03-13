@@ -1,7 +1,7 @@
 
 / {
-	guests {
-		guest0 {
+	templates {
+		realview-pb-a8 {
 			model = "realview-pb-a8";
 			device_type = "guest";
 

@@ -3,64 +3,49 @@
 
 /include/ "sun4i.dtsi"
 
-/include/ "../../common/guests/two_guest_pb-a8.dtsi"
-
 / {
 	choosen {
 		console = &SERIAL0;
-	};
+		bootcmd = /* Copy guest0 device tree from templates */
+			  "devtree node copy /guests guest0 /templates/realview-pb-a8",
 
-	guests {
-		guest0 {
-			aspace {
-				mem0 {
-					physical_size = <0x06000000>; /* 96 MB */
-				};
+			  /* Update guest0 memory regions */
+			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
+			  "devtree attr set /guests/guest0/aspace/mem1 host_physical_addr physaddr 0x42000000",
+			  "devtree attr set /guests/guest0/aspace/mem1 physical_size physsize 0x06000000",
 
-				mem1 {
-					host_physical_addr = <0x42000000>;
-					physical_size = <0x06000000>; /* 96 MB */
-				};
+			  /* Connect guest0/virtio-net0 netport to netbridge0 */
+			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string netbridge0",
 
-				virtio-net0 {
-					switch = "netbridge0";
-				};
+			  /* Update guest0 flash region */
+			  "devtree attr set /guests/guest0/aspace/nor_flash host_physical_addr physaddr 0x41000000",
+			  "devtree attr set /guests/guest0/aspace/nor_flash physical_size physsize 0x01000000",
 
-				nor_flash {
-					host_physical_addr = <0x41000000>;
-					physical_size = <0x01000000>; /* 16 MB */
-				};
+			  /* Connect guest0/lan9118 netport to netbridge0 */
+			  "devtree attr set /guests/guest0/aspace/lan9118 switch string netbridge0",
 
-				lan9118 {
-					switch = "netbridge0";
-				};
-			};
-		};
+			  /* Create guest0 */
+			  "guest create guest0",
 
-		guest1 {
-			aspace {
-				mem0 {
-					physical_size = <0x06000000>; /* 96 MB */
-				};
+			  /* Copy guest1 device tree from templates */
+			  "devtree node copy /guests guest1 /templates/realview-pb-a8",
 
-				mem1 {
-					host_physical_addr = <0x49000000>;
-					physical_size = <0x06000000>; /* 96 MB */
-				};
+			  /* Update guest1 memory regions */
+			  "devtree attr set /guests/guest1/aspace/mem0 physical_size physsize 0x06000000",
+			  "devtree attr set /guests/guest1/aspace/mem1 host_physical_addr physaddr 0x49000000",
+			  "devtree attr set /guests/guest1/aspace/mem1 physical_size physsize 0x06000000",
 
-				virtio-net0 {
-					switch = "netbridge0";
-				};
+			  /* Connect guest1/virtio-net0 netport to netbridge0 */
+			  "devtree attr set /guests/guest1/aspace/virtio-net0 switch string netbridge0",
 
-				nor_flash {
-					host_physical_addr = <0x48000000>;
-					physical_size = <0x01000000>; /* 16 MB */
-				};
+			  /* Update guest1 flash region */
+			  "devtree attr set /guests/guest1/aspace/nor_flash host_physical_addr physaddr 0x48000000",
+			  "devtree attr set /guests/guest1/aspace/nor_flash physical_size physsize 0x01000000",
 
-				lan9118 {
-					switch = "netbridge0";
-				};
-			};
-		};
+			  /* Connect guest1/lan9118 netport to netbridge0 */
+			  "devtree attr set /guests/guest1/aspace/lan9118 switch string netbridge0",
+
+			  /* Create guest1 */
+			  "guest create guest1";
 	};
 };

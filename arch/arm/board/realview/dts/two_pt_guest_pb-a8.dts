@@ -3,97 +3,68 @@
 
 /include/ "pb-a8.dtsi"
 
-/include/ "../../common/guests/two_guest_pb-a8.dtsi"
-
 / {
 	choosen {
 		console = &SERIAL0;
 		rtcdev = &RTC0;
-	};
+		bootcmd = /* Copy guest0 device tree from templates */
+			  "devtree node copy /guests guest0 /templates/realview-pb-a8",
 
-	guests {
-		guest0 {
-			aspace {
-				/* Pass through device access requires 
-				 * host IRQ to guest IRQ routing
-				 */
-				h2g_irq_map = </* Host => Guest */
-						  /* uart0 */
-						   45      44 
-					      >;
+			  /* Pass through device access requires host IRQ to guest IRQ routing */
+			  "devtree attr set /guests/guest0/aspace h2g_irq_map uint32 45 44",
 
-				mem0 {
-					physical_size = <0x06000000>; /* 96 MB */
-				};
+			  /* Update guest0 memory regions */
+			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
+			  "devtree attr set /guests/guest0/aspace/mem1 host_physical_addr physaddr 0x72000000",
+			  "devtree attr set /guests/guest0/aspace/mem1 physical_size physsize 0x06000000",
 
-				mem1 {
-					host_physical_addr = <0x72000000>;
-					physical_size = <0x06000000>; /* 96 MB */
-				};
+			  /* Make guest0/uart0 pass through device */
+			  "devtree attr set /guests/guest0/aspace/uart0 manifest_type string real",
+			  "devtree attr set /guests/guest0/aspace/uart0 address_type string memory",
+			  "devtree attr set /guests/guest0/aspace/uart0 host_physical_addr physaddr 0x1000A000",
+			  "devtree attr set /guests/guest0/aspace/uart0 device_type string serial",
 
-				/* Pass Through Device PL011 */
-				uart0 {
-					manifest_type = "real";
-					address_type = "memory";
-					host_physical_addr = <0x1000A000>;
-					device_type = "serial";
-				};
+			  /* Connect guest0/virtio-net0 netport to netbridge0 */
+			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string netbridge0",
 
-				virtio-net0 {
-					switch = "netbridge0";
-				};
+			  /* Update guest0 flash region */
+			  "devtree attr set /guests/guest0/aspace/nor_flash host_physical_addr physaddr 0x71000000",
+			  "devtree attr set /guests/guest0/aspace/nor_flash physical_size physsize 0x01000000",
 
-				nor_flash {
-					host_physical_addr = <0x71000000>;
-					physical_size = <0x01000000>; /* 16 MB */
-				};
+			  /* Connect guest0/lan9118 netport to netbridge0 */
+			  "devtree attr set /guests/guest0/aspace/lan9118 switch string netbridge0",
 
-				lan9118 {
-					switch = "netbridge0";
-				};
-			};
-		};
+			  /* Create guest0 */
+			  "guest create guest0",
 
-		guest1 {
-			aspace {
-				/* Pass through device access requires 
-				 * host IRQ to guest IRQ routing
-				 */
-				h2g_irq_map = </* Host => Guest */
-						  /* uart0 */
-						   46      44 
-					      >;
+			  /* Copy guest1 device tree from templates */
+			  "devtree node copy /guests guest1 /templates/realview-pb-a8",
 
-				mem0 {
-					physical_size = <0x06000000>; /* 96 MB */
-				};
+			  /* Pass through device access requires host IRQ to guest IRQ routing */
+			  "devtree attr set /guests/guest1/aspace h2g_irq_map uint32 46 44",
 
-				mem1 {
-					host_physical_addr = <0x79000000>;
-					physical_size = <0x06000000>; /* 96 MB */
-				};
+			  /* Update guest1 memory regions */
+			  "devtree attr set /guests/guest1/aspace/mem0 physical_size physsize 0x06000000",
+			  "devtree attr set /guests/guest1/aspace/mem1 host_physical_addr physaddr 0x79000000",
+			  "devtree attr set /guests/guest1/aspace/mem1 physical_size physsize 0x06000000",
 
-				/* Pass Through Device PL011 */
-				uart0 {
-					manifest_type = "real";
-					address_type = "memory";
-					host_physical_addr = <0x1000B000>;
-					device_type = "serial";
-				};
+			  /* Make guest1/uart0 pass through device */
+			  "devtree attr set /guests/guest1/aspace/uart0 manifest_type string real",
+			  "devtree attr set /guests/guest1/aspace/uart0 address_type string memory",
+			  "devtree attr set /guests/guest1/aspace/uart0 host_physical_addr physaddr 0x1000B000",
+			  "devtree attr set /guests/guest1/aspace/uart0 device_type string serial",
 
-				virtio-net0 {
-					switch = "netbridge0";
-				};
+			  /* Connect guest1/virtio-net0 netport to netbridge0 */
+			  "devtree attr set /guests/guest1/aspace/virtio-net0 switch string netbridge0",
 
-				nor_flash {
-					host_physical_addr = <0x78000000>;
-					physical_size = <0x01000000>; /* 16 MB */
-				};
+			  /* Update guest1 flash region */
+			  "devtree attr set /guests/guest1/aspace/nor_flash host_physical_addr physaddr 0x78000000",
+			  "devtree attr set /guests/guest1/aspace/nor_flash physical_size physsize 0x01000000",
 
-				lan9118 {
-					switch = "netbridge0";
-				};
-			};
-		};
+			  /* Connect guest1/lan9118 netport to netbridge0 */
+			  "devtree attr set /guests/guest1/aspace/lan9118 switch string netbridge0",
+
+			  /* Create guest1 */
+			  "guest create guest1";
 	};
 };

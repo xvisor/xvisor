@@ -1,7 +1,7 @@
 
 / {
-	guests {
-		guest0 {
+	templates {
+		versatilepb {
 			model = "versatilepb";
 			device_type = "guest";
 
