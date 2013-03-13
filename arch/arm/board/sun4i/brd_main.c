@@ -200,7 +200,7 @@ int __init arch_board_final_init(void)
 		return VMM_ENOTAVAIL;
 	}
 
-	rc = vmm_devdrv_probe(node, NULL, NULL);
+	rc = vmm_devdrv_probe(node);
 	if (rc) {
 		return rc;
 	}

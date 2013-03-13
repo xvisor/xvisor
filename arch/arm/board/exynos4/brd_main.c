@@ -337,8 +337,8 @@ int __init arch_board_final_init(void)
 	if (!node) {
 		return VMM_ENOTAVAIL;
 	}
-	//rc = vmm_devdrv_probe(node, exynos_getclk, NULL);
-	rc = vmm_devdrv_probe(node, NULL, NULL);
+
+	rc = vmm_devdrv_probe(node);
 	if (rc) {
 		return rc;
 	}

@@ -32,8 +32,6 @@
 struct probe_node {
 	struct dlist head;
 	struct vmm_devtree_node *node;
-	struct vmm_devclk *(*getclk) (struct vmm_devtree_node *);
-	void (*putclk) (struct vmm_devclk *);
 };
 
 struct vmm_devdrv_ctrl {
@@ -103,9 +101,8 @@ static const struct vmm_devid *devdrv_match_node(
 }
 
 /* Must be called with 'ddctrl.device_lock' held */
-static void devdrv_probe(struct vmm_devtree_node *node, 
-		struct vmm_driver *drv,
-		struct vmm_devclk *(*getclk) (struct vmm_devtree_node *))
+static void devdrv_probe(struct vmm_devtree_node *node,
+			 struct vmm_driver *drv)
 {
 	int rc;
 	bool found;
@@ -130,7 +127,6 @@ static void devdrv_probe(struct vmm_devtree_node *node,
 		if (match) {
 			dinst = vmm_malloc(sizeof(struct vmm_device));
 			INIT_LIST_HEAD(&dinst->head);
-			dinst->clk = (getclk) ? getclk(node) : NULL;
 			dinst->node = node;
 			dinst->class = NULL;
 			dinst->classdev = NULL;
@@ -152,14 +148,13 @@ static void devdrv_probe(struct vmm_devtree_node *node,
 
 	list_for_each(l, &node->child_list) {
 		child = list_entry(l, struct vmm_devtree_node, head);
-		devdrv_probe(child, drv, getclk);
+		devdrv_probe(child, drv);
 	}
 }
 
 /* Must be called with 'ddctrl.device_lock' held */
-static void devdrv_remove(struct vmm_devtree_node *node,
-			  struct vmm_driver *drv,
-			  void (*putclk) (struct vmm_devclk *))
+static void devdrv_remove(struct vmm_devtree_node *node, 
+			  struct vmm_driver *drv)
 {
 	int rc;
 	bool found;
@@ -169,7 +164,7 @@ static void devdrv_remove(struct vmm_devtree_node *node,
 
 	list_for_each(l, &node->child_list) {
 		child = list_entry(l, struct vmm_devtree_node, head);
-		devdrv_remove(child, drv, putclk);
+		devdrv_remove(child, drv);
 	}
 
 	found = FALSE;
@@ -193,17 +188,12 @@ static void devdrv_remove(struct vmm_devtree_node *node,
 			vmm_printf("%s: %s remove error %d\n", 
 				   __func__, node->name, rc);
 		}
-		if (dinst->clk && putclk) {
-			putclk(dinst->clk);
-		}
 		vmm_free(dinst);
 		list_del(&dinst->head);
 	}
 }
 
-int vmm_devdrv_probe(struct vmm_devtree_node *node, 
-		     struct vmm_devclk *(*getclk) (struct vmm_devtree_node *),
-		     void (*putclk) (struct vmm_devclk *))
+int vmm_devdrv_probe(struct vmm_devtree_node *node)
 {
 	bool found;
 	struct dlist *l;
@@ -234,8 +224,6 @@ int vmm_devdrv_probe(struct vmm_devtree_node *node,
 
 		INIT_LIST_HEAD(&pnode->head);
 		pnode->node = node;
-		pnode->getclk = getclk;
-		pnode->putclk = putclk;
 
 		list_add_tail(&pnode->head, &ddctrl.pnode_list);
 	}
@@ -247,7 +235,7 @@ int vmm_devdrv_probe(struct vmm_devtree_node *node,
 
 	list_for_each(l, &ddctrl.driver_list) {
 		drv = list_entry(l, struct vmm_driver, head);
-		devdrv_probe(node, drv, pnode->getclk);
+		devdrv_probe(node, drv);
 	}
 
 	vmm_mutex_unlock(&ddctrl.driver_lock);
@@ -292,151 +280,13 @@ int vmm_devdrv_remove(struct vmm_devtree_node *node)
 
 	list_for_each(l, &ddctrl.driver_list) {
 		drv = list_entry(l, struct vmm_driver, head);
-		devdrv_remove(node, drv, pnode->putclk);
+		devdrv_remove(node, drv);
 	}
 
 	vmm_mutex_unlock(&ddctrl.driver_lock);
 	vmm_mutex_unlock(&ddctrl.device_lock);
 
 	vmm_free(pnode);
-
-	return VMM_OK;
-}
-
-bool vmm_devdrv_clock_isenabled(struct vmm_device *dev)
-{
-	const char *clkattr;
-
-	if (!dev) {
-		return FALSE;
-	}
-
-	clkattr = vmm_devtree_attrval(dev->node,
-				      VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	if (clkattr) {
-		return TRUE;
-	}
-
-	if (dev->clk && dev->clk->isenabled) {
-		return dev->clk->isenabled(dev->clk);
-	}
-
-	return FALSE;
-}
-
-int vmm_devdrv_clock_enable(struct vmm_device *dev)
-{
-	const char *clkattr;
-
-	if (!dev) {
-		return VMM_EFAIL;
-	}
-
-	clkattr = vmm_devtree_attrval(dev->node,
-				      VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	if (clkattr) {
-		return VMM_OK;
-	}
-
-	if (dev->clk && dev->clk->enable) {
-		return dev->clk->enable(dev->clk);
-	}
-
-	return VMM_EFAIL;
-}
-
-int vmm_devdrv_clock_disable(struct vmm_device *dev)
-{
-	const char *clkattr;
-
-	if (!dev) {
-		return VMM_EFAIL;
-	}
-
-	clkattr = vmm_devtree_attrval(dev->node,
-				      VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	if (clkattr) {
-		return VMM_OK;
-	}
-
-	if (dev->clk && dev->clk->disable) {
-		dev->clk->disable(dev->clk);
-		return VMM_OK;
-	}
-
-	return VMM_EFAIL;
-}
-
-long vmm_devdrv_clock_round_rate(struct vmm_device *dev, 
-					  unsigned long rate)
-{
-	const char *clkattr;
-
-	if (!dev) {
-		return 0;
-	}
-
-	clkattr = vmm_devtree_attrval(dev->node,
-				      VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	if (clkattr) {
-		return *((u32 *)clkattr);
-	}
-
-	if (dev->clk && dev->clk->round_rate) {
-		return dev->clk->round_rate(dev->clk, rate);
-	}
-
-	return rate;
-}
-
-unsigned long vmm_devdrv_clock_get_rate(struct vmm_device *dev)
-{
-	const char *clkattr;
-
-	if (!dev) {
-		return 0;
-	}
-
-	clkattr = vmm_devtree_attrval(dev->node,
-				      VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	if (clkattr) {
-		return *((u32 *)clkattr);
-	}
-
-	if (dev->clk && dev->clk->get_rate) {
-		if (!vmm_devdrv_clock_isenabled(dev)) {
-			if (vmm_devdrv_clock_enable(dev)) {
-				return 0;
-			}
-		}
-		return dev->clk->get_rate(dev->clk);
-	}
-
-	return 0;
-}
-
-int vmm_devdrv_clock_set_rate(struct vmm_device *dev, unsigned long rate)
-{
-	const char *clkattr;
-
-	if (!dev) {
-		return 0;
-	}
-
-	clkattr = vmm_devtree_attrval(dev->node,
-				      VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	if (clkattr) {
-		return VMM_OK;
-	}
-
-	if (dev->clk && dev->clk->set_rate) {
-		if (!vmm_devdrv_clock_isenabled(dev)) {
-			if (vmm_devdrv_clock_enable(dev)) {
-				return 0;
-			}
-		}
-		return dev->clk->set_rate(dev->clk, rate);
-	}
 
 	return VMM_OK;
 }
@@ -831,7 +681,7 @@ int vmm_devdrv_register_driver(struct vmm_driver *drv)
 
 	list_for_each(l, &ddctrl.pnode_list) {
 		pnode = list_entry(l, struct probe_node, head);
-		devdrv_probe(pnode->node, drv, pnode->getclk);
+		devdrv_probe(pnode->node, drv);
 	}
 
 	vmm_mutex_unlock(&ddctrl.pnode_lock);
@@ -878,7 +728,7 @@ int vmm_devdrv_unregister_driver(struct vmm_driver *drv)
 
 	list_for_each(l, &ddctrl.pnode_list) {
 		pnode = list_entry(l, struct probe_node, head);
-		devdrv_remove(pnode->node, drv, pnode->putclk);
+		devdrv_remove(pnode->node, drv);
 	}
 
 	vmm_mutex_unlock(&ddctrl.pnode_lock);

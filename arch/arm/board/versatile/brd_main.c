@@ -245,7 +245,7 @@ int __init arch_board_final_init(void)
 		return VMM_ENOTAVAIL;
 	}
 
-	if (vmm_devdrv_probe(node, NULL, NULL)) {
+	if (vmm_devdrv_probe(node)) {
 		return VMM_EFAIL;
 	}
 

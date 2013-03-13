@@ -30,7 +30,6 @@
 #include <libs/list.h>
 
 struct vmm_devid;
-struct vmm_devclk;
 struct vmm_device;
 
 struct vmm_class;
@@ -45,20 +44,8 @@ struct vmm_devid {
 	void *data;
 };
 
-struct vmm_devclk {
-	struct vmm_devclk *parent;
-	bool (*isenabled) (struct vmm_devclk *);
-	int (*enable) (struct vmm_devclk *);
-	void (*disable) (struct vmm_devclk *);
-	long (*round_rate) (struct vmm_devclk *, unsigned long);
-	unsigned long (*get_rate) (struct vmm_devclk *);
-	int (*set_rate) (struct vmm_devclk *, unsigned long);
-	void *priv;
-};
-
 struct vmm_device {
 	struct dlist head;
-	struct vmm_devclk *clk;
 	struct vmm_devtree_node *node;
 	struct vmm_class *class;
 	struct vmm_classdev *classdev;
@@ -91,35 +78,10 @@ struct vmm_driver {
 };
 
 /** Probe device instances under a given device tree node */
-int vmm_devdrv_probe(struct vmm_devtree_node *node, 
-		     struct vmm_devclk *(*getclk) (struct vmm_devtree_node *),
-		     void (*putclk) (struct vmm_devclk *));
+int vmm_devdrv_probe(struct vmm_devtree_node *node);
 
 /** Remove device instances under a given device tree node */
 int vmm_devdrv_remove(struct vmm_devtree_node *node);
-
-/** Check if clock is enabled for given device */
-bool vmm_devdrv_clock_isenabled(struct vmm_device *dev);
-
-/** Enable clock for given device */
-int vmm_devdrv_clock_enable(struct vmm_device *dev);
-
-/** Disable clock for given device */
-int vmm_devdrv_clock_disable(struct vmm_device *dev);
-
-/** Round clock rate for given device */
-long vmm_devdrv_clock_round_rate(struct vmm_device *dev,
-				 unsigned long rate);
-
-/** Get clock rate for given device 
- *  NOTE: If clock is not enabled then this will enable clock first.
- */
-unsigned long vmm_devdrv_clock_get_rate(struct vmm_device *dev);
-
-/** Set clock rate for given device 
- *  NOTE: If clock is not enabled then this will enable clock first.
- */
-int vmm_devdrv_clock_set_rate(struct vmm_device *dev, unsigned long rate);
 
 /** Register class */
 int vmm_devdrv_register_class(struct vmm_class *cls);
