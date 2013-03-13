@@ -64,7 +64,6 @@ static void system_init_work(struct vmm_work *work)
 	char bcmd[BOOTCMD_WIDTH];
 	const char *str;
 	u32 c, freed;
-	struct dlist *l;
 	struct vmm_chardev *cdev;
 #if defined(CONFIG_RTC)
 	struct vmm_rtcdev *rdev;
@@ -73,7 +72,6 @@ static void system_init_work(struct vmm_work *work)
 	int count = 1000;
 #endif
 	struct vmm_devtree_node *node, *node1;
-	struct vmm_guest *guest = NULL;
 
 	/* Initialize command manager */
 	vmm_printf("Initialize Command Manager\n");
@@ -218,24 +216,6 @@ static void system_init_work(struct vmm_work *work)
 				/* Next boot command */
 				c -= strlen(str) + 1;
 				str += strlen(str) + 1;
-			}
-		}
-	}
-
-	/* Populate guest instances (Must be last step) */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				     VMM_DEVTREE_GUESTINFO_NODE_NAME);
-	if (likely(!!node)) {
-		vmm_printf("Creating Pre-Configured Guests\n");
-		list_for_each(l, &node->child_list) {
-			node1 = list_entry(l, struct vmm_devtree_node, head);
-#if defined(CONFIG_VERBOSE_MODE)
-			vmm_printf("Creating %s\n", node1->name);
-#endif
-			guest = vmm_manager_guest_create(node1);
-			if (!guest) {
-				vmm_printf("%s: failed to create %s\n",
-					   __func__, node1->name);
 			}
 		}
 	}
