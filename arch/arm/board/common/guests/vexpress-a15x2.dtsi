@@ -318,6 +318,41 @@
 					device_type = "misc";
 					compatible = "zero";
 				};
+
+				virtio-net0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					device_type = "virtio";
+					compatible = "virtio,mmio";
+					virtio_type = <1>;
+					guest_physical_addr = <0x40100000>;
+					physical_size = <0x1000>;
+					switch = ""; /* To be set by DTS including this file */
+					irq = <50>;
+				};
+
+				virtio-blk0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					device_type = "virtio";
+					compatible = "virtio,mmio";
+					virtio_type = <2>;
+					guest_physical_addr = <0x40200000>;
+					physical_size = <0x1000>;
+					blkdev = ""; /* To be set by DTS including this file */
+					irq = <51>;
+				};
+
+				virtio-con0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					device_type = "virtio";
+					compatible = "virtio,mmio";
+					virtio_type = <3>;
+					guest_physical_addr = <0x40300000>;
+					physical_size = <0x1000>;
+					irq = <52>;
+				};
 			};
 		};
 	};
