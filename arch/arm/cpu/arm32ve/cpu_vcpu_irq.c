@@ -71,8 +71,16 @@ u32 arch_vcpu_irq_priority(struct vmm_vcpu *vcpu, u32 irq_no)
 
 int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 {
-	struct vmm_vcpu *cvcpu = vmm_scheduler_current_vcpu();
-	u32 hcr = arm_priv(vcpu)->hcr;
+	u32 hcr;
+
+	/* Skip IRQ & FIQ if VGIC available */
+	if (arm_vgic_avail(vcpu) &&
+	    ((irq_no == CPU_EXTERNAL_IRQ) || 
+	     (irq_no == CPU_EXTERNAL_FIQ))) {
+		return VMM_OK;
+	}
+
+	hcr = arm_priv(vcpu)->hcr;
 
 	switch(irq_no) {
 	case CPU_DATA_ABORT_IRQ:
@@ -93,7 +101,7 @@ int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 	};
 
 	arm_priv(vcpu)->hcr = hcr;
-	if (cvcpu == vcpu) {
+	if (vmm_scheduler_current_vcpu() == vcpu) {
 		write_hcr(hcr);
 	}
 
@@ -102,9 +110,16 @@ int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 
 
 int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
-			 arch_regs_t *regs, 
-			 u32 irq_no, u32 reason)
+			  arch_regs_t *regs, 
+			  u32 irq_no, u32 reason)
 {
+	/* Skip IRQ & FIQ if VGIC available */
+	if (arm_vgic_avail(vcpu) &&
+	    ((irq_no == CPU_EXTERNAL_IRQ) || 
+	     (irq_no == CPU_EXTERNAL_FIQ))) {
+		return VMM_OK;
+	}
+
 	write_hcr(arm_priv(vcpu)->hcr);
 
 	return VMM_OK;
@@ -112,8 +127,16 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 
 int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 {
-	struct vmm_vcpu *cvcpu = vmm_scheduler_current_vcpu();
-	u32 hcr = arm_priv(vcpu)->hcr;
+	u32 hcr;
+
+	/* Skip IRQ & FIQ if VGIC available */
+	if (arm_vgic_avail(vcpu) &&
+	    ((irq_no == CPU_EXTERNAL_IRQ) || 
+	     (irq_no == CPU_EXTERNAL_FIQ))) {
+		return VMM_OK;
+	}
+
+	hcr = arm_priv(vcpu)->hcr;
 
 	switch(irq_no) {
 	case CPU_EXTERNAL_IRQ:
@@ -128,7 +151,7 @@ int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 	};
 
 	arm_priv(vcpu)->hcr = hcr;
-	if (cvcpu == vcpu) {
+	if (vmm_scheduler_current_vcpu() == vcpu) {
 		write_hcr(hcr);
 	}
 

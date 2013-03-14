@@ -603,13 +603,17 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 					 HCR_VI_MASK | 
 					 HCR_VF_MASK);
 	}
+	/* Intialize Generic timer */
 	if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
-		/* Generic timer physical & virtual irq for the vcpu */
 		attr = vmm_devtree_attrval(vcpu->node, "gentimer_phys_irq");
 		arm_gentimer_context(vcpu)->phys_timer_irq = (attr) ? (*(u32 *)attr) : 0;
 		attr = vmm_devtree_attrval(vcpu->node, "gentimer_virt_irq");
 		arm_gentimer_context(vcpu)->virt_timer_irq = (attr) ? (*(u32 *)attr) : 0;
 		generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
+	}
+	if (!vcpu->reset_count) {
+		/* Cleanup VGIC context first time */
+		arm_vgic_cleanup(vcpu);
 	}
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
@@ -724,8 +728,9 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		      arch_regs_t *regs)
 {
 	u32 ite;
-	/* Save user registers & banked registers */
+	
 	if (tvcpu) {
+		/* Save general purpose registers */
 		arm_regs(tvcpu)->pc = regs->pc;
 		arm_regs(tvcpu)->lr = regs->lr;
 		arm_regs(tvcpu)->sp = regs->sp;
@@ -734,16 +739,23 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		}
 		arm_regs(tvcpu)->cpsr = regs->cpsr;
 		if (tvcpu->is_normal) {
+			/* Save VGIC registers */
+			arm_vgic_save(tvcpu);
+			/* Save generic timer */
 			if (arm_feature(tvcpu, ARM_FEATURE_GENTIMER)) {
 				generic_timer_vcpu_context_save(arm_gentimer_context(tvcpu));
 			}
+			/* Save general purpose banked registers */
 			cpu_vcpu_banked_regs_save(tvcpu);
+			/* Save hypervisor config */
 			arm_priv(tvcpu)->hcr = read_hcr();
 		}
 	}
+
 	/* Switch CP15 context */
 	cpu_vcpu_cp15_switch_context(tvcpu, vcpu);
-	/* Restore user registers & banked registers */
+
+	/* Restore general purpose registers */
 	regs->pc = arm_regs(vcpu)->pc;
 	regs->lr = arm_regs(vcpu)->lr;
 	regs->sp = arm_regs(vcpu)->sp;
@@ -752,14 +764,20 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	}
 	regs->cpsr = arm_regs(vcpu)->cpsr;
 	if (vcpu->is_normal) {
-		cpu_vcpu_banked_regs_restore(vcpu);
-		if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
-			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
-		}
+		/* Restore hypervisor config */
 		write_hcr(arm_priv(vcpu)->hcr);
 		write_hcptr(arm_priv(vcpu)->hcptr);
 		write_hstr(arm_priv(vcpu)->hstr);
+		/* Restore general purpose banked registers */
+		cpu_vcpu_banked_regs_restore(vcpu);
+		/* Restore generic timer */
+		if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
+		}
+		/* Restore VGIC registers */
+		arm_vgic_restore(vcpu);
 	}
+
 	/* Clear exclusive monitor */
 	clrex();
 }

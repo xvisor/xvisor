@@ -167,6 +167,11 @@ struct arm_priv {
 	} cp15;
 	/* Generic timer context */
 	struct generic_timer_context gentimer_context;
+	/* VGIC context */
+	bool vgic_avail;
+	void (*vgic_save)(void *vcpu_ptr);
+	void (*vgic_restore)(void *vcpu_ptr);
+	void *vgic_priv;
 } __attribute((packed));
 
 typedef struct arm_priv arm_priv_t;
@@ -195,8 +200,33 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_cpsr(regs)		((regs)->cpsr)
 
 /**
- *  Generic timers support macro
+ *  Generic timers support macros
  */
 #define arm_gentimer_context(vcpu)	(&(arm_priv(vcpu)->gentimer_context))
+
+/**
+ *  VGIC support macros
+ */
+#define arm_vgic_setup(vcpu, __save_func, __restore_func, __priv) \
+				do { \
+					arm_priv(vcpu)->vgic_avail = TRUE; \
+					arm_priv(vcpu)->vgic_save = __save_func; \
+					arm_priv(vcpu)->vgic_restore = __restore_func; \
+					arm_priv(vcpu)->vgic_priv = __priv; \
+				} while (0)
+#define arm_vgic_cleanup(vcpu)	do { \
+					arm_priv(vcpu)->vgic_avail = FALSE; \
+					arm_priv(vcpu)->vgic_save = NULL; \
+					arm_priv(vcpu)->vgic_restore = NULL; \
+					arm_priv(vcpu)->vgic_priv = NULL; \
+				} while (0)
+#define arm_vgic_avail(vcpu)	(arm_priv(vcpu)->vgic_avail)
+#define arm_vgic_save(vcpu)	if (arm_vgic_avail(vcpu)) { \
+					arm_priv(vcpu)->vgic_save(vcpu); \
+				}
+#define arm_vgic_restore(vcpu)	if (arm_vgic_avail(vcpu)) { \
+					arm_priv(vcpu)->vgic_restore(vcpu); \
+				}
+#define arm_vgic_priv(vcpu)	(&(arm_priv(vcpu)->vgic_priv))
 
 #endif
