@@ -16,6 +16,11 @@ VExpress A9 guest has following unused or reserved IRQ lines:
 GIC: 82
 GIC: 85-91
 
+The memory map and irq of VirtIO devices on VExpress-A9 guest is as follows:
+0x20100000–0x20100FFF (4K) (IRQ=82) (VirtIO Network Device)
+0x20200000–0x20200FFF (4K) (IRQ=85) (VirtIO Block Device)
+0x20300000–0x20300FFF (4K) (IRQ=86) (VirtIO Console Device)
+
 
 			VExpress A9 Guest OSes
 
