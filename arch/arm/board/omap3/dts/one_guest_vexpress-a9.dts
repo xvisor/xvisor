@@ -14,6 +14,9 @@
 			  "devtree attr set /guests/guest0/aspace/mem1 host_physical_addr physaddr 0x8a000000",
 			  "devtree attr set /guests/guest0/aspace/mem1 physical_size physsize 0x06000000",
 
+			  /* Connect guest0/virtio-net0 netport to netbridge0 */
+			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string netbridge0",
+
 			  /* Update guest0 flash region */
 			  "devtree attr set /guests/guest0/aspace/nor_flash0 host_physical_addr physaddr 0x89000000",
 			  "devtree attr set /guests/guest0/aspace/nor_flash0 physical_size physsize 0x01000000",
