@@ -20,7 +20,7 @@ GIC: 116
 GIC: 125-127
 GIC: 131-159
 
-The memory map and irq of VirtIO devices on Realivew PB-A8 guest is as follows:
+The memory map and irq of VirtIO devices on VExpress A15 guest is as follows:
 0x40100000–0x40100FFF (4K) (IRQ=50) (VirtIO Network Device)
 0x40200000–0x40200FFF (4K) (IRQ=51) (VirtIO Block Device)
 0x40300000–0x40300FFF (4K) (IRQ=52) (VirtIO Console Device)
