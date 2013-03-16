@@ -102,11 +102,12 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 	}
 
 	edev = (struct vmm_emudev *)reg->devemu_priv;
-	if (!edev || !edev->read) {
+	if (!edev || !edev->emu->read) {
 		return VMM_EFAIL;
 	}
 
-	return edev->read(edev, gphys_addr - reg->gphys_addr, dst, dst_len);
+	return edev->emu->read(edev, gphys_addr - reg->gphys_addr, 
+				dst, dst_len);
 }
 
 int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu, 
@@ -151,11 +152,12 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 	}
 
 	edev = (struct vmm_emudev *)reg->devemu_priv;
-	if (!edev || !edev->write) {
+	if (!edev || !edev->emu->write) {
 		return VMM_EFAIL;
 	}
 
-	return edev->write(edev, gphys_addr - reg->gphys_addr, src, src_len);
+	return edev->emu->write(edev, gphys_addr - reg->gphys_addr, 
+				src, src_len);
 }
 
 int __vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq_num, int cpu, int irq_level)
@@ -600,11 +602,11 @@ int vmm_devemu_reset_region(struct vmm_guest *guest, struct vmm_region *reg)
 	}
 
 	edev = (struct vmm_emudev *)reg->devemu_priv;
-	if (!edev || !edev->reset) {
+	if (!edev || !edev->emu->reset) {
 		return VMM_EFAIL;
 	}
 
-	return edev->reset(edev);
+	return edev->emu->reset(edev);
 }
 
 int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
@@ -640,18 +642,14 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 			}
 			INIT_SPIN_LOCK(&einst->lock);
 			einst->node = reg->node;
-			einst->probe = emu->probe;
-			einst->read = emu->read;
-			einst->write = emu->write;
-			einst->reset = emu->reset;
-			einst->remove = emu->remove;
+			einst->emu = emu;
 			einst->priv = NULL;
 			reg->devemu_priv = einst;
 #if defined(CONFIG_VERBOSE_MODE)
 			vmm_printf("Probe edevice %s/%s\n",
 				   guest->node->name, reg->node->name);
 #endif
-			if ((rc = einst->probe(guest, einst, match))) {
+			if ((rc = emu->probe(guest, einst, match))) {
 				vmm_printf("%s: %s/%s probe error %d\n", 
 				__func__, guest->node->name, reg->node->name, rc);
 				vmm_free(einst);
@@ -659,7 +657,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 				vmm_mutex_unlock(&dectrl.emu_lock);
 				return rc;
 			}
-			if ((rc = einst->reset(einst))) {
+			if ((rc = emu->reset(einst))) {
 				vmm_printf("%s: %s/%s reset error %d\n", 
 				__func__, guest->node->name, reg->node->name, rc);
 				vmm_free(einst);
@@ -698,7 +696,7 @@ int vmm_devemu_remove_region(struct vmm_guest *guest, struct vmm_region *reg)
 	if (reg->devemu_priv) {
 		einst = reg->devemu_priv;
 
-		if ((rc = einst->remove(einst))) {
+		if ((rc = einst->emu->remove(einst))) {
 			return rc;
 		}
 

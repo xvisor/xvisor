@@ -31,6 +31,30 @@ struct vmm_emudev;
 struct vmm_emupic;
 struct vmm_emulator;
 
+struct vmm_emulator {
+	struct dlist head;
+	char name[32];
+	const struct vmm_devtree_nodeid *match_table;
+	int (*probe) (struct vmm_guest *guest,
+		      struct vmm_emudev *edev,
+		      const struct vmm_devtree_nodeid *nodeid);
+	int (*read) (struct vmm_emudev *edev,
+		     physical_addr_t offset, 
+		     void *dst, u32 dst_len);
+	int (*write) (struct vmm_emudev *edev,
+		      physical_addr_t offset, 
+		      void *src, u32 src_len);
+	int (*reset) (struct vmm_emudev *edev);
+	int (*remove) (struct vmm_emudev *edev);
+};
+
+struct vmm_emudev {
+	vmm_spinlock_t lock;
+	struct vmm_devtree_node *node;
+	struct vmm_emulator *emu;
+	void *priv;
+};
+
 enum vmm_emupic_type {
 	VMM_EMUPIC_IRQCHIP = 0,
 	VMM_EMUPIC_GPIO = 1,
@@ -44,55 +68,13 @@ enum vmm_emupic_return {
 	VMM_EMUPIC_GPIO_UNHANDLED = 3
 };
 
-typedef int (*vmm_emupic_handle_t) (struct vmm_emupic *epic,
-				    u32 irq_num,
-				    int cpu,
-				    int irq_level);
-
-typedef int (*vmm_emulator_probe_t) (struct vmm_guest *guest,
-				     struct vmm_emudev *edev,
-				     const struct vmm_devtree_nodeid *nodeid);
-
-typedef int (*vmm_emulator_read_t) (struct vmm_emudev *edev,
-				    physical_addr_t offset, 
-				    void *dst, u32 dst_len);
-
-typedef int (*vmm_emulator_reset_t) (struct vmm_emudev *edev);
-
-typedef int (*vmm_emulator_write_t) (struct vmm_emudev *edev,
-				     physical_addr_t offset, 
-				     void *src, u32 src_len);
-
-typedef int (*vmm_emulator_remove_t) (struct vmm_emudev *edev);
-
-struct vmm_emudev {
-	vmm_spinlock_t lock;
-	struct vmm_devtree_node *node;
-	vmm_emulator_probe_t probe;
-	vmm_emulator_read_t read;
-	vmm_emulator_write_t write;
-	vmm_emulator_reset_t reset;
-	vmm_emulator_remove_t remove;
-	void *priv;
-};
-
 struct vmm_emupic {
 	struct dlist head;
 	char name[32];
 	u32 type;
-	vmm_emupic_handle_t handle;
+	int (*handle) (struct vmm_emupic *epic,
+			u32 irq_num, int cpu, int irq_level);
 	void *priv;
-};
-
-struct vmm_emulator {
-	struct dlist head;
-	char name[32];
-	const struct vmm_devtree_nodeid *match_table;
-	vmm_emulator_probe_t probe;
-	vmm_emulator_read_t read;
-	vmm_emulator_write_t write;
-	vmm_emulator_reset_t reset;
-	vmm_emulator_remove_t remove;
 };
 
 /** Emulate read for given VCPU */
