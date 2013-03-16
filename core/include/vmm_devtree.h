@@ -189,12 +189,29 @@ int vmm_devtree_delattr(struct vmm_devtree_node *node, const char *name);
 /** Create a path string for a given node */
 int vmm_devtree_getpath(char *out, struct vmm_devtree_node *node);
 
-/** Get node corresponding to a path string */
-struct vmm_devtree_node *vmm_devtree_getnode(const char *path);
-
 /** Get child node below a given node */
 struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 					      const char *path);
+
+/** Get node corresponding to a path string 
+ *  Note: If path == NULL then root node will be returned
+ */
+struct vmm_devtree_node *vmm_devtree_getnode(const char *path);
+
+/** Find node matching nodeid table starting from given node 
+ *  Note: If node == NULL then node == root
+ */
+struct vmm_devtree_node *vmm_devtree_find_matching(
+				struct vmm_devtree_node *node,
+				const struct vmm_devtree_nodeid *matches);
+
+/** Find compatible node starting from given node 
+ *  Note: If node == NULL then node == root 
+ */
+struct vmm_devtree_node *vmm_devtree_find_compatible(
+				struct vmm_devtree_node *node,
+				const char *device_type,
+				const char *compatible);
 
 /** Add new node to device tree */
 struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
@@ -207,9 +224,6 @@ int vmm_devtree_copynode(struct vmm_devtree_node *parent,
 
 /** Delete a node from device tree */
 int vmm_devtree_delnode(struct vmm_devtree_node *node);
-
-/** Get the root node */
-struct vmm_devtree_node *vmm_devtree_rootnode(void);
 
 /** Initialize device tree */
 int vmm_devtree_init(void);

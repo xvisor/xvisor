@@ -292,6 +292,7 @@ const struct vmm_devtree_nodeid *vmm_devtree_match_node(
 	}
 
 	type = vmm_devtree_attrval(node, VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
+
 	while (matches->name[0] || matches->type[0] || matches->compatible[0]) {
 		int match = 1;
 		if (matches->name[0])
@@ -511,8 +512,11 @@ struct vmm_devtree_node *vmm_devtree_getnode(const char *path)
 {
 	struct vmm_devtree_node *node = dtree_ctrl.root;
 
-	if (!path || !node)
+	if (!node)
 		return NULL;
+
+	if (!path)
+		return node;
 
 	if (strncmp(node->name, path, strlen(node->name)) != 0)
 		return NULL;
@@ -529,6 +533,58 @@ struct vmm_devtree_node *vmm_devtree_getnode(const char *path)
 	return vmm_devtree_getchild(node, path);
 }
 
+struct vmm_devtree_node *vmm_devtree_find_matching(
+				struct vmm_devtree_node *node,
+				const struct vmm_devtree_nodeid *matches)
+{
+	struct dlist *lentry;
+	struct vmm_devtree_node *child, *ret;
+
+	if (!matches) {
+		return NULL;
+	}
+
+	if (!node) {
+		node = dtree_ctrl.root;
+	}
+
+	if (vmm_devtree_match_node(matches, node)) {
+		return node;
+	}
+
+	list_for_each(lentry, &node->child_list) {
+		child = list_entry(lentry, struct vmm_devtree_node, head);
+		ret = vmm_devtree_find_matching(child, matches);
+		if (ret) {
+			return ret;
+		}
+	}
+
+	return NULL;
+}
+
+struct vmm_devtree_node *vmm_devtree_find_compatible(
+				struct vmm_devtree_node *node,
+				const char *device_type,
+				const char *compatible)
+{
+	struct vmm_devtree_nodeid id[2];
+
+	if (!compatible) {
+		return NULL;
+	}
+
+	memset(id, 0, sizeof(id));
+
+	if (device_type) {
+		strncpy(id[0].type, device_type, sizeof(id[0].type));
+	}
+
+	strncpy(id[0].compatible, compatible, sizeof(id[0].compatible));
+
+	return vmm_devtree_find_matching(node, id);
+}
+
 /* NOTE: vmm_devtree_addnode() allows parent == NULL to enable creation of
  * root node using vmm_devtree_addnode().
  */
@@ -542,6 +598,7 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	if (!name) {
 		return NULL;
 	}
+
 	if (parent) {
 		list_for_each(l, &parent->child_list) {
 			node = list_entry(l, struct vmm_devtree_node, head);
@@ -561,6 +618,7 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	node->system_data = NULL;
 	node->priv = NULL;
 	node->parent = parent;
+
 	if (parent) {
 		list_add_tail(&node->head, &parent->child_list);
 	}
@@ -658,11 +716,6 @@ int vmm_devtree_delnode(struct vmm_devtree_node *node)
 	vmm_free(node);
 
 	return VMM_OK;
-}
-
-struct vmm_devtree_node *vmm_devtree_rootnode(void)
-{
-	return dtree_ctrl.root;
 }
 
 int __init vmm_devtree_init(void)
