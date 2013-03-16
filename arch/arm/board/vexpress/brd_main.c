@@ -376,16 +376,8 @@ int __init arch_clocksource_init(void)
 skip_sp804_init:
 
 #if defined(CONFIG_ARM_GENERIC_TIMER)
-	/* Find generic timer node */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "gen-timer");
-	if (!node) {
-		goto skip_gen_init;
-	}
-
 	/* Initialize generic timer as clock source */
-	rc = generic_timer_clocksource_init(node);
+	rc = generic_timer_clocksource_init();
 	if (rc) {
 		return rc;
 	}
@@ -515,16 +507,8 @@ skip_twd_init:
 #endif
 
 #if defined(CONFIG_ARM_GENERIC_TIMER)
-	/* Find generic timer node */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "gen-timer");
-	if (!node) {
-		goto skip_gen_init;
-	}
-
 	/* Initialize generic timer as clock source */
-	rc = generic_timer_clockchip_init(node);
+	rc = generic_timer_clockchip_init();
 	if (rc) {
 		return rc;
 	}

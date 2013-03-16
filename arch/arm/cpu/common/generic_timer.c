@@ -19,24 +19,17 @@
  * @file generic_timer.c
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief API implementation for ARM architecture generic timers
- *
- * The source has been partially adapted from drivers/clocksource/arm_generic.c
- * of git://git.kernel.org/pub/scm/linux/kernel/git/cmarinas/linux-aarch64.git
- * Copyright (C) 2012 ARM Ltd.
- * Author: Marc Zyngier <marc.zyngier@arm.com>
- *
  */
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_timer.h>
 #include <vmm_stdio.h>
+#include <vmm_devtree.h>
 #include <vmm_host_irq.h>
 #include <vmm_clockchip.h>
 #include <vmm_clocksource.h>
 #include <vmm_host_aspace.h>
 #include <vmm_scheduler.h>
-#include <vmm_manager.h>
 #include <vmm_smp.h>
 #include <vmm_devemu.h>
 #include <cpu_inline_asm.h>
@@ -48,15 +41,32 @@
 
 static u32 generic_timer_hz = 0;
 
+static const struct vmm_devtree_nodeid generic_timer_match[] = {
+	{ .compatible	= "arm,armv7-timer",	},
+	{ .compatible	= "arm,armv8-timer",	},
+	{},
+};
+
 static u64 generic_counter_read(struct vmm_clocksource *cs)
 {
 	return generic_timer_pcounter_read();
 }
 
-int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
+int __init generic_timer_clocksource_init(void)
 {
 	struct vmm_clocksource *cs;
 	u32 *freq, *shift, *rating;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	node = vmm_devtree_find_matching(node, generic_timer_match);
+	if (!node) {
+		return VMM_ENODEV;
+	}
 
 	if (generic_timer_hz == 0) {
 		freq = vmm_devtree_attrval(node, "freq");
@@ -98,6 +108,7 @@ int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
 	cs->mult = vmm_clocksource_hz2mult(generic_timer_hz, *shift);
 	cs->shift = *shift;
 	cs->priv = NULL;
+
 	return vmm_clocksource_register(cs);
 }
 
@@ -262,10 +273,21 @@ u64 generic_timer_wakeup_timeout(void)
 	return nsecs;
 }
 
-int generic_timer_clockchip_init(struct vmm_devtree_node *node)
+int __cpuinit generic_timer_clockchip_init(void)
 {
 	u32 *freq, *irq, *rating, num_irqs, val, rc;
 	struct vmm_clockchip *cc;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	node = vmm_devtree_find_matching(node, generic_timer_match);
+	if (!node) {
+		return VMM_ENODEV;
+	}
 
 	if (generic_timer_hz == 0) {
 		freq = vmm_devtree_attrval(node, "freq");

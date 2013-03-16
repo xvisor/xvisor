@@ -57,7 +57,7 @@
 
 		gen-timer { /* Generic Timer */
 	      		device_type = "timer";
-	      		compatible = "arm,cortex-a15-gen-timer";
+	      		compatible = "arm,armv7-timer";
 			rating = <400>;
 			freq = <100000000>;
 			shift = <27>;
