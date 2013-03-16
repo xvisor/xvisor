@@ -359,7 +359,7 @@ static int pl011_emulator_reset(struct vmm_emudev *edev)
 
 static int pl011_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
-				const struct vmm_emuid *eid)
+				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	char name[64];
@@ -466,7 +466,7 @@ static u32 pl011_configs[] = {
 	/* id7 */ 0xb1,
 };
 
-static struct vmm_emuid pl011_emuid_table[] = {
+static struct vmm_devtree_nodeid pl011_emuid_table[] = {
 	{ .type = "serial", 
 	  .compatible = "primecell,arm,pl011", 
 	  .data = &pl011_configs[0],

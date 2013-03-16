@@ -436,7 +436,7 @@ static int pl190_emulator_reset(struct vmm_emudev *edev)
 
 static int pl190_emulator_probe(struct vmm_guest *guest,
 					 struct vmm_emudev *edev,
-					 const struct vmm_emuid *eid)
+					 const struct vmm_devtree_nodeid *eid)
 {
 	static int pic_number = 0;
 	int rc = VMM_OK;
@@ -568,7 +568,7 @@ static u32 pl190_emulator_configs[] = {
 	/* reserved */ 0,
 };
 
-static struct vmm_emuid pl190_emulator_emuid_table[] = {
+static struct vmm_devtree_nodeid pl190_emulator_emuid_table[] = {
 	{.type = "pic",
 	 .compatible = "versatilepb,pl190",
 	 .data = pl190_emulator_configs,

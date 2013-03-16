@@ -1099,7 +1099,7 @@ VMM_EXPORT_SYMBOL(gic_state_free);
 
 static int gic_emulator_probe(struct vmm_guest *guest,
 			      struct vmm_emudev *edev,
-			      const struct vmm_emuid *eid)
+			      const struct vmm_devtree_nodeid *eid)
 {
 	u32 attrlen;
 	const char *attr;
@@ -1146,7 +1146,7 @@ static int gic_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static struct vmm_emuid gic_emuid_table[] = {
+static struct vmm_devtree_nodeid gic_emuid_table[] = {
 	{ .type = "pic", 
 	  .compatible = "realview,gic", 
 	  .data = (void *)GIC_TYPE_REALVIEW,

@@ -280,7 +280,7 @@ static int a9mpcore_emulator_reset(struct vmm_emudev *edev)
 
 static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 				   struct vmm_emudev *edev,
-				   const struct vmm_emuid *eid)
+				   const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	struct a9mp_priv_state *s;
@@ -364,7 +364,7 @@ static int a9mpcore_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static struct vmm_emuid a9mpcore_emuid_table[] = {
+static struct vmm_devtree_nodeid a9mpcore_emuid_table[] = {
 	{ .type = "misc", 
 	  .compatible = "a9mpcore,private", 
 	  .data = NULL,

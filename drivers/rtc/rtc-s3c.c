@@ -488,7 +488,7 @@ static int s3c_rtc_driver_remove(struct vmm_device *dev)
 }
 
 static int s3c_rtc_driver_probe(struct vmm_device *pdev,
-				const struct vmm_devid *devid)
+				const struct vmm_devtree_nodeid *devid)
 {
 	struct rtc_time rtc_tm;
 	const char *attr;
@@ -617,7 +617,7 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 	return ret;
 }
 
-static struct vmm_devid s3c_devid_table[] = {
+static struct vmm_devtree_nodeid s3c_devid_table[] = {
 	{
 	 .type = "rtc",
 	 .compatible = "samsung,s3c2410-rtc",

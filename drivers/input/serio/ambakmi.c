@@ -134,7 +134,7 @@ static void amba_kmi_close(struct serio *io)
 }
 
 static int amba_kmi_driver_probe(struct vmm_device *dev,
-			      const struct vmm_devid *devid)
+			      const struct vmm_devtree_nodeid *devid)
 {
 	const char *attr;
 	struct amba_kmi_port *kmi;
@@ -204,7 +204,7 @@ static int amba_kmi_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid amba_kmi_devid_table[] = {
+static struct vmm_devtree_nodeid amba_kmi_devid_table[] = {
 	{.type = "serio",.compatible = "pl050"},
 	{.type = "serio",.compatible = "ambakmi"},
 	{ /* end of list */ },

@@ -427,7 +427,8 @@ static u32 omap_uart_write(struct vmm_chardev *cdev,
 	return i;
 }
 
-static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devid)
+static int omap_uart_driver_probe(struct vmm_device *dev,
+				  const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 	const char *attr;
@@ -527,7 +528,7 @@ static int omap_uart_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid omap_uart_devid_table[] = {
+static struct vmm_devtree_nodeid omap_uart_devid_table[] = {
 	{ .type = "serial", .compatible = "st16654"},
 	{ /* end of list */ },
 };

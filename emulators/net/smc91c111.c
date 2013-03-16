@@ -885,8 +885,8 @@ static int smc91c111_switch2port_xfer(struct vmm_netport *port,
 }
 
 static int smc91c111_emulator_probe(struct vmm_guest *guest,
-		struct vmm_emudev *edev,
-		const struct vmm_emuid *eid)
+				    struct vmm_emudev *edev,
+				    const struct vmm_devtree_nodeid *eid)
 {
 	smc91c111_state *s = NULL;
 	int rc = VMM_OK;
@@ -968,7 +968,7 @@ static int smc91c111_emulator_remove(struct vmm_emudev *edev)
 	return rc;
 }
 
-static struct vmm_emuid smc91c111_emuid_table[] = {
+static struct vmm_devtree_nodeid smc91c111_emuid_table[] = {
 	{
 		.type = "nic",
 		.compatible = "smsc,smc91c111",

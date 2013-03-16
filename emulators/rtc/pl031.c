@@ -300,7 +300,7 @@ pl031_emulator_reset_done:
 
 static int pl031_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
-				const struct vmm_emuid *eid)
+				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	const char *attr;
@@ -347,7 +347,7 @@ static int pl031_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static struct vmm_emuid pl031_emuid_table[] = {
+static struct vmm_devtree_nodeid pl031_emuid_table[] = {
 	{ .type = "rtc", 
 	  .compatible = "primecell,pl031", 
 	  .data = NULL,

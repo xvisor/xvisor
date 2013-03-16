@@ -2457,7 +2457,7 @@ module_exit(smc_cleanup);
  *	anything else, error
  */
 static int __devinit smc_drv_probe(struct vmm_device *pdev,
-                                const struct vmm_devid *devid)
+                                const struct vmm_devtree_nodeid *devid)
 {
 	struct smc91x_platdata *pd = pdev->node->system_data;
 	struct smc_local *lp;
@@ -2624,7 +2624,7 @@ static int smc_drv_remove(struct vmm_device *dev)
 }
 
 
-static struct vmm_devid smc_devid_table[] = {
+static struct vmm_devtree_nodeid smc_devid_table[] = {
 	{ .type = "nic", .compatible = "smc91x"},
 	{ /* end of list */ },
 };

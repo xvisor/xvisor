@@ -1407,7 +1407,7 @@ static int lan9118_emulator_write(struct vmm_emudev *edev,
 
 static int lan9118_emulator_probe(struct vmm_guest *guest,
 				  struct vmm_emudev *edev,
-				  const struct vmm_emuid *eid)
+				  const struct vmm_devtree_nodeid *eid)
 {
 	int i, rc = VMM_OK;
 	char tname[64];
@@ -1505,7 +1505,7 @@ static int lan9118_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static struct vmm_emuid lan9118_emuid_table[] = {
+static struct vmm_devtree_nodeid lan9118_emuid_table[] = {
 	{ 
 		.type = "nic", 
 		.compatible = "smsc,lan9118", 

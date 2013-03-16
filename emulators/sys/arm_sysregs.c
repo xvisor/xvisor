@@ -555,7 +555,7 @@ static int arm_sysregs_irq_handle(struct vmm_emupic *epic,
 
 static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 				   struct vmm_emudev *edev,
-				   const struct vmm_emuid *eid)
+				   const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	const char * attr;
@@ -662,7 +662,7 @@ static u32 vexpress_sysids[] = {
 	/* proc_id */ VEXPRESS_PROCID_CA9, 
 };
 
-static struct vmm_emuid arm_sysregs_emuid_table[] = {
+static struct vmm_devtree_nodeid arm_sysregs_emuid_table[] = {
 	{ .type = "sys", 
 	  .compatible = "versatilepb,arm926", 
 	  .data = &versatile_sysids[0] 

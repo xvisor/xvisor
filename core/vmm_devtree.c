@@ -260,6 +260,56 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 	return VMM_EFAIL;
 }
 
+static int devtree_node_is_compatible(struct vmm_devtree_node *node,
+					const char *compat)
+{
+	const char *cp;
+	int cplen, l;
+
+	cp = vmm_devtree_attrval(node, VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
+	cplen = vmm_devtree_attrlen(node, VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
+	if (cp == NULL)
+		return 0;
+	while (cplen > 0) {
+		if (strcmp(cp, compat) == 0)
+			return 1;
+		l = strlen(cp) + 1;
+		cp += l;
+		cplen -= l;
+	}
+
+	return 0;
+}
+
+const struct vmm_devtree_nodeid *vmm_devtree_match_node(
+					const struct vmm_devtree_nodeid *matches,
+					struct vmm_devtree_node *node)
+{
+	const char *type;
+
+	if (!matches || !node) {
+		return NULL;
+	}
+
+	type = vmm_devtree_attrval(node, VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
+	while (matches->name[0] || matches->type[0] || matches->compatible[0]) {
+		int match = 1;
+		if (matches->name[0])
+			match &= node->name && 
+				 !strcmp(matches->name, node->name);
+		if (matches->type[0])
+			match &= type && !strcmp(matches->type, type);
+		if (matches->compatible[0])
+			match &= devtree_node_is_compatible(node,
+							matches->compatible);
+		if (match)
+			return matches;
+		matches++;
+	}
+
+	return NULL;
+}
+
 void *vmm_devtree_attrval(struct vmm_devtree_node *node, 
 			  const char *attrib)
 {

@@ -270,7 +270,7 @@ static u32 samsung_write(struct
 }
 
 static int samsung_driver_probe(struct vmm_device *dev,
-				const struct vmm_devid *devid)
+				const struct vmm_devtree_nodeid *devid)
 {
 	int rc = VMM_EFAIL;
 	const char *attr = NULL;
@@ -372,7 +372,7 @@ static int samsung_driver_remove(struct vmm_device *dev)
 	return rc;
 }
 
-static struct vmm_devid samsung_devid_table[] = {
+static struct vmm_devtree_nodeid samsung_devid_table[] = {
 	{
 	 .type = "serial",
 	 .compatible = "samsung"},
@@ -404,6 +404,9 @@ static void __exit samsung_driver_exit(void)
 	vmm_devdrv_unregister_driver(&samsung_driver);
 }
 
-VMM_DECLARE_MODULE
-    (MODULE_DESC,
-     MODULE_AUTHOR, MODULE_LICENSE, MODULE_IPRIORITY, MODULE_INIT, MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

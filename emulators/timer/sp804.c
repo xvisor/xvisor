@@ -532,9 +532,9 @@ static int sp804_emulator_reset(struct vmm_emudev *edev)
 	return rc;
 }
 
-static int sp804_emulator_probe(struct vmm_guest * guest,
-				struct vmm_emudev * edev, 
-				const struct vmm_emuid * eid)
+static int sp804_emulator_probe(struct vmm_guest *guest,
+				struct vmm_emudev *edev, 
+				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	u32 irq;
@@ -621,7 +621,7 @@ static const u8 sp804_ids[] = {
 	0xd, 0xf0, 0x05, 0xb1
 };
 
-static struct vmm_emuid sp804_emuid_table[] = {
+static struct vmm_devtree_nodeid sp804_emuid_table[] = {
 	{.type = "timer",
 	 .compatible = "primecell,sp804",
 	 .data = &sp804_ids

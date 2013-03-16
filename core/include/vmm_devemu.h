@@ -29,7 +29,6 @@
 
 struct vmm_emudev;
 struct vmm_emupic;
-struct vmm_emuid;
 struct vmm_emulator;
 
 enum vmm_emupic_type {
@@ -52,7 +51,7 @@ typedef int (*vmm_emupic_handle_t) (struct vmm_emupic *epic,
 
 typedef int (*vmm_emulator_probe_t) (struct vmm_guest *guest,
 				     struct vmm_emudev *edev,
-				     const struct vmm_emuid *eid);
+				     const struct vmm_devtree_nodeid *nodeid);
 
 typedef int (*vmm_emulator_read_t) (struct vmm_emudev *edev,
 				    physical_addr_t offset, 
@@ -85,17 +84,10 @@ struct vmm_emupic {
 	void *priv;
 };
 
-struct vmm_emuid {
-	char name[32];
-	char type[32];
-	char compatible[128];
-	void *data;
-};
-
 struct vmm_emulator {
 	struct dlist head;
 	char name[32];
-	const struct vmm_emuid *match_table;
+	const struct vmm_devtree_nodeid *match_table;
 	vmm_emulator_probe_t probe;
 	vmm_emulator_read_t read;
 	vmm_emulator_write_t write;

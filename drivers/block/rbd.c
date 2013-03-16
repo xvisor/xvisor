@@ -146,7 +146,7 @@ void rbd_destroy(struct rbd *d)
 }
 
 static int rbd_driver_probe(struct vmm_device *dev,
-			    const struct vmm_devid *devid)
+			    const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 	physical_addr_t pa;
@@ -177,7 +177,7 @@ static int rbd_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid rbd_devid_table[] = {
+static struct vmm_devtree_nodeid rbd_devid_table[] = {
 	{.type = "block",.compatible = "rbd"},
 	{ /* end of list */ },
 };

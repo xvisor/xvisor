@@ -72,7 +72,7 @@ static int zero_emulator_reset(struct vmm_emudev *edev)
 
 static int zero_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
-				const struct vmm_emuid *eid)
+				const struct vmm_devtree_nodeid *eid)
 {
 	edev->priv = NULL;
 
@@ -84,7 +84,7 @@ static int zero_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static struct vmm_emuid zero_emuid_table[] = {
+static struct vmm_devtree_nodeid zero_emuid_table[] = {
 	{ .type = "misc", 
 	  .compatible = "zero", 
 	},

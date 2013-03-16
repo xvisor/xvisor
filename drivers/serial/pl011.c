@@ -281,7 +281,7 @@ static u32 pl011_write(struct vmm_chardev *cdev,
 }
 
 static int pl011_driver_probe(struct vmm_device *dev,
-			      const struct vmm_devid *devid)
+			      const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 	const char *attr;
@@ -370,7 +370,7 @@ static int pl011_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid pl011_devid_table[] = {
+static struct vmm_devtree_nodeid pl011_devid_table[] = {
 	{.type = "serial",.compatible = "arm,pl011"},
 	{ /* end of list */ },
 };

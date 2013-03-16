@@ -229,7 +229,7 @@ static int l2x0_cc_emulator_reset(struct vmm_emudev *edev)
 
 static int l2x0_cc_emulator_probe(struct vmm_guest *guest,
 				  struct vmm_emudev *edev,
-				  const struct vmm_emuid *eid)
+				  const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	struct l2x0_state *s;
@@ -260,7 +260,7 @@ static int l2x0_cc_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static struct vmm_emuid l2x0_cc_emuid_table[] = {
+static struct vmm_devtree_nodeid l2x0_cc_emuid_table[] = {
 	{ 
 	   .type = "cache", 
 	   .compatible = "corelink,l2c-210", 

@@ -152,7 +152,7 @@ static int sp810_emulator_reset(struct vmm_emudev *edev)
 
 static int sp810_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
-				const struct vmm_emuid *eid)
+				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	struct sp810_state *s;
@@ -184,7 +184,7 @@ static int sp810_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static struct vmm_emuid sp810_emuid_table[] = {
+static struct vmm_devtree_nodeid sp810_emuid_table[] = {
 	{ .type = "sys", 
 	  .compatible = "primecell,sp810", 
 	},

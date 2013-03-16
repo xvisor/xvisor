@@ -545,57 +545,6 @@ u32 vmm_devemu_emulator_count(void)
 	return retval;
 }
 
-int devemu_device_is_compatible(struct vmm_devtree_node *node, const char *compat)
-{
-	const char *cp;
-	int cplen, l;
-
-	cp = vmm_devtree_attrval(node, VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
-	cplen = vmm_devtree_attrlen(node, VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
-	if (cp == NULL)
-		return 0;
-	while (cplen > 0) {
-		if (strcmp(cp, compat) == 0)
-			return 1;
-		l = strlen(cp) + 1;
-		cp += l;
-		cplen -= l;
-	}
-
-	return 0;
-}
-
-const struct vmm_emuid *devemu_match_node(const struct vmm_emuid *matches,
-					  struct vmm_devtree_node *node)
-{
-	const char *node_type;
-
-	if (!matches || !node) {
-		return NULL;
-	}
-
-	node_type = vmm_devtree_attrval(node,
-					VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
-	while (matches->name[0] || matches->type[0] || matches->compatible[0]) {
-		int match = 1;
-		if (matches->name[0])
-			match &= node->name
-			    && !strcmp(matches->name, node->name);
-		if (matches->type[0])
-			match &= node_type
-			    && !strcmp(matches->type, node_type);
-		if (matches->compatible[0])
-			match &= devemu_device_is_compatible(node,
-							     matches->
-							     compatible);
-		if (match)
-			return matches;
-		matches++;
-	}
-
-	return NULL;
-}
-
 int vmm_devemu_reset_context(struct vmm_guest *guest)
 {
 	u32 ite;
@@ -665,8 +614,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 	struct dlist *l1;
 	struct vmm_emudev *einst;
 	struct vmm_emulator *emu;
-	const struct vmm_emuid *matches;
-	const struct vmm_emuid *match;
+	const struct vmm_devtree_nodeid *match;
 
 	if (!guest || !reg) {
 		return VMM_EFAIL;
@@ -681,8 +629,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 	found = FALSE;
 	list_for_each(l1, &dectrl.emu_list) {
 		emu = list_entry(l1, struct vmm_emulator, head);
-		matches = emu->match_table;
-		match = devemu_match_node(matches, reg->node);
+		match = vmm_devtree_match_node(emu->match_table, reg->node);
 		if (match) {
 			found = TRUE;
 			einst = vmm_zalloc(sizeof(struct vmm_emudev));

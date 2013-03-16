@@ -181,7 +181,7 @@ static struct virtio_transport mmio_tra = {
 
 static int virtio_mmio_probe(struct vmm_guest *guest,
 			     struct vmm_emudev *edev,
-			     const struct vmm_emuid *eid)
+			     const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	const char *attr;
@@ -254,7 +254,7 @@ static int virtio_mmio_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static struct vmm_emuid virtio_mmio_emuid_table[] = {
+static struct vmm_devtree_nodeid virtio_mmio_emuid_table[] = {
 	{ .type = "virtio", 
 	  .compatible = "virtio,mmio", 
 	},

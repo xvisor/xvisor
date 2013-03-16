@@ -2032,7 +2032,7 @@ err_out:
 }
 
 static int smc911x_driver_probe(struct vmm_device *dev,
-				const struct vmm_devid *devid)
+				const struct vmm_devtree_nodeid *devid)
 {
 	int rc = VMM_OK;
 	struct net_device *ndev;
@@ -2114,8 +2114,7 @@ static int smc911x_driver_remove(struct vmm_device *dev)
 	return rc;
 }
 
-
-static struct vmm_devid smc911x_devid_table[] = {
+static struct vmm_devtree_nodeid smc911x_devid_table[] = {
 	{ .type = "nic", .compatible = "smc911x"},
 	{ /* end of list */ },
 };

@@ -285,7 +285,8 @@ static u32 uart_8250_write(struct vmm_chardev *cdev,
 	return i;
 }
 
-static int uart_8250_driver_probe(struct vmm_device *dev,const struct vmm_devid *devid)
+static int uart_8250_driver_probe(struct vmm_device *dev, 
+				  const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 	const char *attr;
@@ -399,7 +400,7 @@ static int uart_8250_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid uart_8250_devid_table[] = {
+static struct vmm_devtree_nodeid uart_8250_devid_table[] = {
 	{ .type = "serial", .compatible = "ns8250"},
 	{ .type = "serial", .compatible = "ns16450"},
 	{ .type = "serial", .compatible = "ns16550a"},

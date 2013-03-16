@@ -99,6 +99,13 @@ struct vmm_devtree_attr {
 	u32 len;
 };
 
+struct vmm_devtree_nodeid {
+	char name[32];
+	char type[32];
+	char compatible[128];
+	void *data;
+};
+
 struct vmm_devtree_node {
 	struct dlist head;
 	char *name;
@@ -150,9 +157,16 @@ int vmm_devtree_regaddr(struct vmm_devtree_node *node,
 int vmm_devtree_regunmap(struct vmm_devtree_node *node, 
 			 virtual_addr_t addr, int regset);
 
+/** Match a node with nodeid table
+ *  Returns NULL if node does not match otherwise nodeid table entry
+ */
+const struct vmm_devtree_nodeid *vmm_devtree_match_node(
+				const struct vmm_devtree_nodeid *matches,
+				struct vmm_devtree_node *node);
+
 /** Get attribute value */
-void * vmm_devtree_attrval(struct vmm_devtree_node *node, 
-			   const char *attrib);
+void *vmm_devtree_attrval(struct vmm_devtree_node *node, 
+			  const char *attrib);
 
 /** Get length of attribute value */
 u32 vmm_devtree_attrlen(struct vmm_devtree_node *node, 

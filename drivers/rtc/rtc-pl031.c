@@ -321,7 +321,7 @@ static int pl031_set_alarm(struct rtc_device *rd, struct rtc_wkalrm *alarm)
 }
 
 static int pl031_driver_probe(struct vmm_device *dev,
-			      const struct vmm_devid *devid)
+			      const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 	u32 periphid;
@@ -419,7 +419,7 @@ static int pl031_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid pl031_devid_table[] = {
+static struct vmm_devtree_nodeid pl031_devid_table[] = {
 	{.type = "rtc",.compatible = "arm,pl031"},
 	{ /* end of list */ },
 };

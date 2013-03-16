@@ -560,7 +560,8 @@ static int clcdfb_register(struct clcd_fb *fb)
 	return ret;
 }
 
-static int clcdfb_probe(struct vmm_device *dev, const struct vmm_devid *id)
+static int clcdfb_probe(struct vmm_device *dev, 
+			const struct vmm_devtree_nodeid *id)
 {
 	struct clcd_board *board = dev->node->system_data;
 	struct clcd_fb *fb;
@@ -620,7 +621,7 @@ static int clcdfb_remove(struct vmm_device *dev)
 	return 0;
 }
 
-static struct vmm_devid clcdfb_devid_table[] = {
+static struct vmm_devtree_nodeid clcdfb_devid_table[] = {
 	{.type = "fb",.compatible = "pl110"},
 	{.type = "fb",.compatible = "pl111"},
 	{.type = "fb",.compatible = "ambaclcd"},

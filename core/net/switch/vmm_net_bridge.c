@@ -207,7 +207,7 @@ static int vmm_netbridge_port_remove(struct vmm_netswitch *nsw,
 }
 
 static int vmm_netbridge_probe(struct vmm_device *dev,
-			       const struct vmm_devid *devid)
+			       const struct vmm_devtree_nodeid *nid)
 {
 	struct vmm_netswitch *nsw = NULL;
 	struct vmm_netbridge_ctrl *nbctrl;
@@ -270,14 +270,14 @@ static int vmm_netbridge_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid def_netswitch_devid_table[] = {
+static struct vmm_devtree_nodeid def_netswitch_nid_table[] = {
 	{.type = "netswitch",.compatible = "bridge"},
 	{ /* end of list */ },
 };
 
 static struct vmm_driver net_bridge = {
 	.name = "netbridge",
-	.match_table = def_netswitch_devid_table,
+	.match_table = def_netswitch_nid_table,
 	.probe = vmm_netbridge_probe,
 	.remove = vmm_netbridge_remove,
 };

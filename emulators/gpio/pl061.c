@@ -386,7 +386,7 @@ static int pl061_irq_handle(struct vmm_emupic *epic,
 
 static int pl061_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
-				const struct vmm_emuid *eid)
+				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	const char *attr;
@@ -519,7 +519,7 @@ static int pl061_emulator_remove(struct vmm_emudev *edev)
 static u8 pl061_id[12] =
   { 0x00, 0x00, 0x00, 0x00, 0x61, 0x10, 0x04, 0x00, 0x0d, 0xf0, 0x05, 0xb1 };
 
-static struct vmm_emuid pl061_emuid_table[] = {
+static struct vmm_devtree_nodeid pl061_emuid_table[] = {
 	{ .type = "gpio", 
 	  .compatible = "primecell,pl061", 
 	  .data = (void *)&pl061_id,

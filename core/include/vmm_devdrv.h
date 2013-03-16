@@ -29,20 +29,12 @@
 #include <vmm_spinlocks.h>
 #include <libs/list.h>
 
-struct vmm_devid;
 struct vmm_device;
 
 struct vmm_class;
 struct vmm_classdev;
 
 struct vmm_driver;
-
-struct vmm_devid {
-	char name[32];
-	char type[32];
-	char compatible[128];
-	void *data;
-};
 
 struct vmm_device {
 	struct dlist head;
@@ -70,8 +62,8 @@ struct vmm_class {
 struct vmm_driver {
 	struct dlist head;
 	char name[32];
-	const struct vmm_devid *match_table;
-	int (*probe) (struct vmm_device *, const struct vmm_devid *);
+	const struct vmm_devtree_nodeid *match_table;
+	int (*probe) (struct vmm_device *, const struct vmm_devtree_nodeid *);
 	int (*suspend) (struct vmm_device *, u32);
 	int (*resume) (struct vmm_device *);
 	int (*remove) (struct vmm_device *);

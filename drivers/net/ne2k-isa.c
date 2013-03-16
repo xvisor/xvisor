@@ -689,7 +689,8 @@ static int ne2k_write(struct vmm_netdev *ndev,
 	return len;
 }
 
-static int ne2k_driver_probe(struct vmm_driver *dev, const struct vmm_devid *devid)
+static int ne2k_driver_probe(struct vmm_driver *dev, 
+			     const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 	struct vmm_netdev *ndev;
@@ -767,7 +768,7 @@ static int ne2k_driver_remove(struct vmm_driver *dev)
 	return 0;
 }
 
-static struct vmm_devid ne2k_devid_table[] = {
+static struct vmm_devtree_nodeid ne2k_devid_table[] = {
 	{ .type = "nic", .compatible = "ne2000"},
 	{ /* end of list */ },
 };
