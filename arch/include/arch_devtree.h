@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Anup Patel.
+ * Copyright (c) 2013 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,23 +16,26 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arch_board.h
+ * @file arch_devtree.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief generic interface for arch specific Board functions
+ * @brief generic interface for arch specific device tree functions
  */
-#ifndef _ARCH_BOARD_H__
-#define _ARCH_BOARD_H__
+#ifndef _ARCH_DEVTREE_H__
+#define _ARCH_DEVTREE_H__
 
-/** Reset board */
-int arch_board_reset(void);
+#include <vmm_devtree.h>
 
-/** Power-off or shutdown board */
-int arch_board_shutdown(void);
+/** Get RAM start physical address 
+ *  Note: This function will be called before populating device tree
+ */
+int arch_devtree_ram_start(physical_addr_t *addr);
 
-/** Board early init */
-int arch_board_early_init(void);
+/** Get RAM physical size 
+ *  Note: This function will be called before populating device tree
+ */
+int arch_devtree_ram_size(physical_size_t *size);
 
-/** Board final init */
-int arch_board_final_init(void);
+/** Populate device tree */
+int arch_devtree_populate(struct vmm_devtree_node **root);
 
 #endif

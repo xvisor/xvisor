@@ -31,7 +31,7 @@
 extern u32 dt_blob_start;
 virtual_addr_t isa_vbase;
 
-int arch_board_ram_start(physical_addr_t *addr)
+int arch_devtree_ram_start(physical_addr_t *addr)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
@@ -60,7 +60,7 @@ int arch_board_ram_start(physical_addr_t *addr)
 	return VMM_OK;
 }
 
-int arch_board_ram_size(physical_size_t *size)
+int arch_devtree_ram_size(physical_size_t *size)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
@@ -89,7 +89,7 @@ int arch_board_ram_size(physical_size_t *size)
 	return VMM_OK;
 }
 
-int arch_board_devtree_populate(struct vmm_devtree_node **root)
+int arch_devtree_populate(struct vmm_devtree_node **root)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;

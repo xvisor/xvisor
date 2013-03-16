@@ -31,7 +31,7 @@
 #include <arch_config.h>
 #include <arch_sections.h>
 #include <arch_cpu_aspace.h>
-#include <arch_board.h>
+#include <arch_devtree.h>
 #include <libs/stringlib.h>
 
 static virtual_addr_t host_phys_rw_va[CONFIG_CPU_COUNT];
@@ -264,16 +264,18 @@ int __cpuinit vmm_host_aspace_init(void)
 		return arch_cpu_aspace_secondary_init();
 	}
 
-	/* Determine VAPOOL start, size, and hksize */
+	/* Determine VAPOOL start and size */
 	vapool_start = arch_code_vaddr_start();
 	vapool_size = (CONFIG_VAPOOL_SIZE_MB << 20);
+
+	/* Determine VAPOOL house-keeping size based on VAPOOL size */
 	vapool_hksize = vmm_host_vapool_estimate_hksize(vapool_size);
 
-	/* Determine RAM start, size an hksize */
-	if ((rc = arch_board_ram_start(&ram_start))) {
+	/* Determine RAM start and size */
+	if ((rc = arch_devtree_ram_start(&ram_start))) {
 		return rc;
 	}
-	if ((rc = arch_board_ram_size(&ram_size))) {
+	if ((rc = arch_devtree_ram_size(&ram_size))) {
 		return rc;
 	}
 	if (ram_start & VMM_PAGE_MASK) {
@@ -285,6 +287,8 @@ int __cpuinit vmm_host_aspace_init(void)
 	if (ram_size & VMM_PAGE_MASK) {
 		ram_size -= ram_size & VMM_PAGE_MASK;
 	}
+
+	/* Determine RAM house-keeping size based on RAM size */
 	ram_hksize = vmm_host_ram_estimate_hksize(ram_size);
 
 	/* Calculate physical address, virtual address, and size of 

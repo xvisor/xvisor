@@ -28,7 +28,8 @@
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <libs/libfdt.h>
+#include <arch_board.h>
+#include <arch_timer.h>
 #include <libs/vtemu.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
@@ -118,83 +119,6 @@ int v2m_cfg_read(u32 devfn, u32 *data)
 	vmm_spin_unlock_irqrestore(&v2m_cfg_lock, flags);
 
 	return !!(val & SYS_CFG_ERR);
-}
-
-/*
- * Device Tree support
- */
-
-extern u32 dt_blob_start;
-
-int arch_board_ram_start(physical_addr_t *addr)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-	
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	fdt_node = libfdt_find_node(&fdt, 
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME, addr);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-int arch_board_ram_size(physical_size_t *size)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-	
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	fdt_node = libfdt_find_node(&fdt, 
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME, size);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-int arch_board_devtree_populate(struct vmm_devtree_node ** root)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	return libfdt_parse_devtree(&fdt, root);
 }
 
 /*

@@ -26,7 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devtree.h>
-#include <arch_board.h>
+#include <arch_devtree.h>
 #include <libs/stringlib.h>
 
 struct vmm_devtree_ctrl {
@@ -724,5 +724,5 @@ int __init vmm_devtree_init(void)
 	memset(&dtree_ctrl, 0, sizeof(dtree_ctrl));
 
 	/* Populate Board Specific Device Tree */
-	return arch_board_devtree_populate(&dtree_ctrl.root);
+	return arch_devtree_populate(&dtree_ctrl.root);
 }

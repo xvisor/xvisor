@@ -26,88 +26,13 @@
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <libs/libfdt.h>
+#include <arch_board.h>
+#include <arch_timer.h>
 #include <versatile_plat.h>
 #include <versatile_board.h>
 #include <sp804_timer.h>
 
-/*
- * Device Tree support
- */
-
-extern u32 dt_blob_start;
 static virtual_addr_t versatile_sys_base;
-
-int arch_board_ram_start(physical_addr_t *addr)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-
-	*addr = 0xffffffff;
-
-	if (libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt)) {
-		return VMM_EFAIL;
-	}
-
-	fdt_node = libfdt_find_node(&fdt,
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME, addr);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-int arch_board_ram_size(physical_size_t *size)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-
-	*size = 0;
-
-	if (libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt)) {
-		return VMM_EFAIL;
-	}
-
-	fdt_node = libfdt_find_node(&fdt,
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME, size);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-int arch_board_devtree_populate(struct vmm_devtree_node **root)
-{
-	struct fdt_fileinfo fdt;
-
-	if (libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt)) {
-		return VMM_EFAIL;
-	}
-
-	return libfdt_parse_devtree(&fdt, root);
-}
 
 /*
  * Reset & Shutdown
