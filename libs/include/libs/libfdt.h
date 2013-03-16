@@ -25,6 +25,7 @@
 #define __LIBFDT_H_
 
 #include <vmm_types.h>
+#include <vmm_devtree.h>
 
 #define FDT_MAGIC	0xd00dfeed	/* 4: version, 4: total size */
 #define FDT_TAGSIZE	sizeof(u32)
