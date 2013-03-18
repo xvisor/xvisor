@@ -61,6 +61,7 @@
 		motherboard {
 			#address-cells = <1>;
 			#size-cells = <1>;
+			compatible = "simple-bus";
 
 			eth0 {
 				device_type = "nic";
@@ -136,7 +137,7 @@
 
 				clcd {
 			      		device_type = "fb";
-			      		compatible = "ambaclcd";
+			      		compatible = "arm,pl111";
 			      		reg = <0x10020000 0x1000>;
 				};
 			};

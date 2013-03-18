@@ -622,9 +622,8 @@ static int clcdfb_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid clcdfb_devid_table[] = {
-	{.type = "fb",.compatible = "pl110"},
-	{.type = "fb",.compatible = "pl111"},
-	{.type = "fb",.compatible = "ambaclcd"},
+	{.type = "fb",.compatible = "arm,pl110"},
+	{.type = "fb",.compatible = "arm,pl111"},
 	{ /* end of list */ },
 };
 
