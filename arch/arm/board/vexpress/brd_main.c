@@ -305,7 +305,6 @@ skip_sp804_init:
 	if (rc) {
 		return rc;
 	}
-skip_gen_init:
 #endif
 
 	return VMM_OK;
@@ -314,7 +313,6 @@ skip_gen_init:
 static virtual_addr_t v2m_timer1_base;
 #if defined(CONFIG_ARM_TWD)
 static virtual_addr_t v2m_sys_24mhz;
-static virtual_addr_t v2m_twd_base;
 #endif
 
 int __cpuinit arch_clockchip_init(void)
@@ -399,31 +397,8 @@ skip_sp804_init:
 		v2m_sys_24mhz += V2M_SYS_24MHZ;
 	}
 
-	/* Find local timer node */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "twd-timer");
-	if (!node) {
-		goto skip_twd_init;
-	}
-
-	/* Get twd-timer irq */
-	valp = vmm_devtree_attrval(node, "irq");
-	if (!valp) {
-		return VMM_EFAIL;
-	}
-	val = *valp; 
-
-	/* Map SMP twd local timer registers */
-	if (!v2m_twd_base) {
-		rc = vmm_devtree_regmap(node, &v2m_twd_base, 0);
-		if (rc) {
-			return rc;
-		}
-	}
-
 	/* Initialize SMP twd local timer as clockchip */
-	rc = twd_clockchip_init(v2m_twd_base, v2m_sys_24mhz, 24000000, val);
+	rc = twd_clockchip_init(v2m_sys_24mhz, 24000000);
 	if (rc) {
 		return rc;
 	}
@@ -436,7 +411,6 @@ skip_twd_init:
 	if (rc) {
 		return rc;
 	}
-skip_gen_init:
 #endif
 
 	return VMM_OK;

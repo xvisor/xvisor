@@ -25,6 +25,7 @@
 #include <vmm_smp.h>
 #include <vmm_percpu.h>
 #include <vmm_stdio.h>
+#include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_clocksource.h>
@@ -36,19 +37,21 @@
 
 struct twd_clockchip {
 	char name[32];
-	virtual_addr_t base;
 	struct vmm_clockchip clkchip;
 };
 
 static DEFINE_PER_CPU(struct twd_clockchip, twd_cc);
 static u32 twd_freq_hz;
 
+static virtual_addr_t twd_base;
+static u32 twd_ppi_irq;
+
 static vmm_irq_return_t twd_clockchip_irq_handler(u32 irq_no, void *dev)
 {
 	struct twd_clockchip *tcc = &this_cpu(twd_cc);
 
-	if (vmm_readl((void *)(tcc->base + TWD_TIMER_INTSTAT))) {
-		vmm_writel(1, (void *)(tcc->base + TWD_TIMER_INTSTAT));
+	if (vmm_readl((void *)(twd_base + TWD_TIMER_INTSTAT))) {
+		vmm_writel(1, (void *)(twd_base + TWD_TIMER_INTSTAT));
 	}
 
 	tcc->clkchip.event_handler(&tcc->clkchip);
@@ -60,7 +63,6 @@ static void twd_clockchip_set_mode(enum vmm_clockchip_mode mode,
 				   struct vmm_clockchip *cc)
 {
 	u32 ctrl;
-	struct twd_clockchip *tcc = cc->priv;
 
 	switch (mode) {
 	case VMM_CLOCKCHIP_MODE_PERIODIC:
@@ -68,7 +70,7 @@ static void twd_clockchip_set_mode(enum vmm_clockchip_mode mode,
 		ctrl = TWD_TIMER_CONTROL_ENABLE | TWD_TIMER_CONTROL_IT_ENABLE
 			| TWD_TIMER_CONTROL_PERIODIC;
 		vmm_writel(twd_freq_hz / 100, /* Assuming HZ = 100 */
-			   (void *)(tcc->base + TWD_TIMER_LOAD));
+			   (void *)(twd_base + TWD_TIMER_LOAD));
 		break;
 	case VMM_CLOCKCHIP_MODE_ONESHOT:
 		/* period set, and timer enabled in 'next_event' hook */
@@ -81,35 +83,33 @@ static void twd_clockchip_set_mode(enum vmm_clockchip_mode mode,
 		break;
 	}
 
-	vmm_writel(ctrl, (void *)(tcc->base + TWD_TIMER_CONTROL));
+	vmm_writel(ctrl, (void *)(twd_base + TWD_TIMER_CONTROL));
 }
 
 static int twd_clockchip_set_next_event(unsigned long next,
 					  struct vmm_clockchip *cc)
 {
-	struct twd_clockchip *tcc = cc->priv;
-	u32 ctrl = vmm_readl((void *)(tcc->base + TWD_TIMER_CONTROL));
+	u32 ctrl = vmm_readl((void *)(twd_base + TWD_TIMER_CONTROL));
 
 	ctrl |= TWD_TIMER_CONTROL_ENABLE;
 
-	vmm_writel(next, (void *)(tcc->base + TWD_TIMER_COUNTER));
-	vmm_writel(ctrl, (void *)(tcc->base + TWD_TIMER_CONTROL));
+	vmm_writel(next, (void *)(twd_base + TWD_TIMER_COUNTER));
+	vmm_writel(ctrl, (void *)(twd_base + TWD_TIMER_CONTROL));
 
 	return 0;
 }
 
 static int twd_clockchip_expire(struct vmm_clockchip *cc)
 {
-	struct twd_clockchip *tcc = cc->priv;
-	u32 i, ctrl = vmm_readl((void *)(tcc->base + TWD_TIMER_CONTROL));
+	u32 i, ctrl = vmm_readl((void *)(twd_base + TWD_TIMER_CONTROL));
 
 	ctrl &= ~TWD_TIMER_CONTROL_ENABLE;
-	vmm_writel(ctrl, (void *)(tcc->base + TWD_TIMER_CONTROL));
-	vmm_writel(1, (void *)(tcc->base + TWD_TIMER_COUNTER));
+	vmm_writel(ctrl, (void *)(twd_base + TWD_TIMER_CONTROL));
+	vmm_writel(1, (void *)(twd_base + TWD_TIMER_COUNTER));
 	ctrl |= TWD_TIMER_CONTROL_ENABLE;
-	vmm_writel(ctrl, (void *)(tcc->base + TWD_TIMER_CONTROL));
+	vmm_writel(ctrl, (void *)(twd_base + TWD_TIMER_CONTROL));
 
-	while (!vmm_readl((void *)(tcc->base + TWD_TIMER_INTSTAT))) {
+	while (!vmm_readl((void *)(twd_base + TWD_TIMER_INTSTAT))) {
 		for (i = 0; i < 100; i++);
 	}
 
@@ -153,24 +153,55 @@ static void twd_caliberate_freq(virtual_addr_t base,
 	}
 }
 
-int __cpuinit twd_clockchip_init(virtual_addr_t base, 
-				virtual_addr_t ref_counter_addr,
-				u32 ref_counter_freq,
-				u32 ppi_hirq)
+const static struct vmm_devtree_nodeid twd_match[] = {
+	{ .compatible = "arm,cortex-a9-twd-timer",	},
+	{ .compatible = "arm,cortex-a5-twd-timer",	},
+	{ .compatible = "arm,arm11mp-twd-timer",	},
+	{ },
+};
+
+int __cpuinit twd_clockchip_init(virtual_addr_t ref_counter_addr,
+				 u32 ref_counter_freq)
 {
 	int rc;
+	u32 *valp;
 	u32 cpu = vmm_smp_processor_id();
+	struct vmm_devtree_node *node;
 	struct twd_clockchip *cc = &this_cpu(twd_cc);
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	node = vmm_devtree_find_matching(node, twd_match);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	if (!twd_base) {
+		rc = vmm_devtree_regmap(node, &twd_base, 0);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	if (!twd_ppi_irq) {
+		valp = vmm_devtree_attrval(node, "irq");
+		if (!valp) {
+			return VMM_EFAIL;
+		}
+		twd_ppi_irq = *valp;
+	}
+
+	twd_caliberate_freq(twd_base, ref_counter_addr, ref_counter_freq);
 
 	memset(cc, 0, sizeof(struct twd_clockchip));
 
-	twd_caliberate_freq(base, ref_counter_addr, ref_counter_freq);
-
 	vmm_sprintf(cc->name, "twd/%d", cpu);
 
-	cc->base = base;
 	cc->clkchip.name = cc->name;
-	cc->clkchip.hirq = ppi_hirq;
+	cc->clkchip.hirq = twd_ppi_irq;
 	cc->clkchip.rating = 350;
 	cc->clkchip.cpumask = vmm_cpumask_of(cpu);
 	cc->clkchip.features = 
@@ -187,14 +218,14 @@ int __cpuinit twd_clockchip_init(virtual_addr_t base,
 
 	if (!cpu) {
 		/* Register interrupt handler */
-		if ((rc = vmm_host_irq_register(ppi_hirq, "twd",
+		if ((rc = vmm_host_irq_register(twd_ppi_irq, "twd",
 						&twd_clockchip_irq_handler, 
 						cc))) {
 			return rc;
 		}
 
 		/* Mark interrupt as per-cpu */
-		if ((rc = vmm_host_irq_mark_per_cpu(ppi_hirq))) {
+		if ((rc = vmm_host_irq_mark_per_cpu(twd_ppi_irq))) {
 			return rc;
 		}
 	}
@@ -202,7 +233,7 @@ int __cpuinit twd_clockchip_init(virtual_addr_t base,
 	/* Explicitly enable local timer PPI in GIC 
 	 * Note: Local timer requires PPI support hence requires GIC
 	 */
-	gic_enable_ppi(ppi_hirq);
+	gic_enable_ppi(twd_ppi_irq);
 
 	return vmm_clockchip_register(&cc->clkchip);
 }
