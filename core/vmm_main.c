@@ -101,15 +101,15 @@ static void system_init_work(struct vmm_work *work)
 		vmm_panic("Error %d\n", ret);
 	}
 
-	/* Initialize character device framework */
+	/* Initialize virtual serial port framework */
 	vmm_printf("Initialize Virtual Serial Port Framework\n");
 	ret = vmm_vserial_init();
 	if (ret) {
 		vmm_panic("Error %d\n", ret);
 	}
 
-	/* Initialize modules */
-	vmm_printf("Initialize modules\n");
+	/* Initialize hypervisor modules */
+	vmm_printf("Initialize Hypervisor Modules\n");
 	ret = vmm_modules_init();
 	if (ret) {
 		vmm_panic("Error %d\n", ret);
@@ -255,20 +255,6 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
-	/* Initialize CPU early */
-	vmm_printf("Initialize CPU Early\n");
-	ret = arch_cpu_early_init();
-	if (ret) {
-		vmm_hang();
-	}
-
-	/* Initialize Board early */
-	vmm_printf("Initialize Board Early\n");
-	ret = arch_board_early_init();
-	if (ret) {
-		vmm_hang();
-	}
-
 	/* Initialize per-cpu area */
 	vmm_printf("Initialize PerCPU Areas\n");
 	ret = vmm_percpu_init();
@@ -284,14 +270,28 @@ void vmm_init(void)
 	}
 
 	/* Initialize host interrupts */
-	vmm_printf("Initialize Host Interrupt Subsystem\n");
+	vmm_printf("Initialize Host IRQ\n");
 	ret = vmm_host_irq_init();
 	if (ret) {
 		vmm_hang();
 	}
 
+	/* Initialize CPU early */
+	vmm_printf("Initialize CPU Early\n");
+	ret = arch_cpu_early_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize Board early */
+	vmm_printf("Initialize Board Early\n");
+	ret = arch_board_early_init();
+	if (ret) {
+		vmm_hang();
+	}
+
 	/* Initialize standerd input/output */
-	vmm_printf("Initialize Standard I/O Subsystem\n");
+	vmm_printf("Initialize Standard I/O\n");
 	ret = vmm_stdio_init();
 	if (ret) {
 		vmm_panic("Error %d\n", ret);
@@ -318,8 +318,8 @@ void vmm_init(void)
 		vmm_panic("Error %d\n", ret);
 	}
 
-	/* Initialize soft delay subsystem */
-	vmm_printf("Initialize Soft Delay Subsystem\n");
+	/* Initialize soft delay */
+	vmm_printf("Initialize Soft Delay\n");
 	ret = vmm_delay_init();
 	if (ret) {
 		vmm_panic("Error %d\n", ret);

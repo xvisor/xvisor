@@ -24,9 +24,11 @@
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_main.h>
+#include <libs/libfdt.h>
 #include <multiboot.h>
 #include <arch_regs.h>
 #include <arch_cpu.h>
+#include <arch_devtree.h>
 #include <acpi.h>
 
 struct multiboot_info boot_info;
@@ -46,13 +48,70 @@ void early_print_string(u8 *str)
         }
 }
 
-int __init arch_cpu_early_init(void)
+extern u32 dt_blob_start;
+
+int arch_devtree_ram_start(physical_addr_t *addr)
 {
-	/*
-	 * Host virtual memory, device tree, heap is up.
-	 * Do necessary early stuff like iomapping devices
-	 * memory or boot time memory reservation here.
-	 */
+	int rc = VMM_OK;
+	struct fdt_fileinfo fdt;
+	struct fdt_node_header * fdt_node = NULL;
+
+	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
+	if (rc) {
+		return rc;
+	}
+
+	fdt_node = libfdt_find_node(&fdt,
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
+				    VMM_DEVTREE_HOSTINFO_NODE_NAME
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
+				    VMM_DEVTREE_MEMORY_NODE_NAME);
+	if (!fdt_node) {
+		return VMM_EFAIL;
+	}
+
+	rc = libfdt_get_property(&fdt, fdt_node,
+				 VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME, addr);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int arch_devtree_ram_size(physical_size_t *size)
+{
+	int rc = VMM_OK;
+	struct fdt_fileinfo fdt;
+	struct fdt_node_header *fdt_node;
+
+	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
+	if (rc) {
+		return rc;
+	}
+
+	fdt_node = libfdt_find_node(&fdt,
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
+				    VMM_DEVTREE_HOSTINFO_NODE_NAME
+				    VMM_DEVTREE_PATH_SEPARATOR_STRING
+				    VMM_DEVTREE_MEMORY_NODE_NAME);
+	if (!fdt_node) {
+		return VMM_EFAIL;
+	}
+
+	rc = libfdt_get_property(&fdt, fdt_node,
+				 VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME, size);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int arch_devtree_populate(struct vmm_devtree_node **root)
+{
+	int rc = VMM_OK;
+	struct fdt_fileinfo fdt;
 
 #if CONFIG_ACPI
 	/*
@@ -61,6 +120,33 @@ int __init arch_cpu_early_init(void)
 	 */
 	acpi_init();
 #endif
+
+	/* Parse skeletal FDT */
+	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
+	if (rc) {
+		return rc;
+	}
+
+	/* Populate skeletal FDT */
+	rc = libfdt_parse_devtree(&fdt, root);
+	if (rc) {
+		return rc;
+	}
+
+	/* FIXME: Populate device tree from ACPI table */	
+
+	return VMM_OK;
+}
+
+
+
+int __init arch_cpu_early_init(void)
+{
+	/*
+	 * Host virtual memory, device tree, heap is up.
+	 * Do necessary early stuff like iomapping devices
+	 * memory or boot time memory reservation here.
+	 */
 
 	return 0;
 }
