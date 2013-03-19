@@ -305,7 +305,7 @@ int __init arch_board_early_init(void)
 		return rc;
 	}
 
-	/* Get timer01 irq */
+	/* Get sp804 irq */
 	valp = vmm_devtree_attrval(node, "irq");
 	if (!valp) {
 		return VMM_EFAIL;
@@ -321,14 +321,14 @@ int __init arch_board_early_init(void)
 		node->system_data = &clcd_system_data;
 	}
 
-	return 0;
+	return VMM_OK;
 }
 
 int __init arch_clocksource_init(void)
 {
 	int rc;
 
-	/* Initialize timer0 as clocksource */
+	/* Initialize sp804 timer0 as clocksource */
 	rc = sp804_clocksource_init(realview_sp804_base, 
 				    "sp804_timer0", 300, 1000000, 20);
 	if (rc) {
@@ -343,7 +343,7 @@ int __cpuinit arch_clockchip_init(void)
 {
 	int rc;
 
-	/* Initialize timer1 as clockchip */
+	/* Initialize sp804 timer1 as clockchip */
 	rc = sp804_clockchip_init(realview_sp804_base + 0x20, 
 				  realview_sp804_irq, 
 				  "sp804_timer1", 300, 1000000, 0);
