@@ -98,7 +98,7 @@ static void devdrv_probe(struct vmm_devtree_node *node,
 }
 
 /* Must be called with 'ddctrl.device_lock' held */
-static void devdrv_remove(struct vmm_devtree_node *node, 
+static void devdrv_remove(struct vmm_devtree_node *node,
 			  struct vmm_driver *drv)
 {
 	int rc;
