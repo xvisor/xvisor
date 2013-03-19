@@ -29,13 +29,6 @@
 #include <vmm_spinlocks.h>
 #include <libs/list.h>
 
-struct vmm_device;
-
-struct vmm_class;
-struct vmm_classdev;
-
-struct vmm_driver;
-
 struct vmm_device {
 	struct dlist head;
 	struct vmm_devtree_node *node;
