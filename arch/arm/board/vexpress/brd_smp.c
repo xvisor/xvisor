@@ -40,11 +40,17 @@ int __init arch_smp_init_cpus(void)
 	int i, rc = VMM_OK;
 	const char *aval;
 	struct dlist *l;
-	struct vmm_devtree_node *node, *cnode;
+	struct vmm_devtree_node *hnode, *node, *cnode;
 
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "scu");
+	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
+	if (hnode) {
+		node = vmm_devtree_find_compatible(hnode, NULL, 
+						   "arm,cortex-a9-scu");
+	} else {
+		node = NULL;
+	}
+	
 	if (node) {
 		/* Map SCU registers */
 		rc = vmm_devtree_regmap(node, &scu_base, 0);
