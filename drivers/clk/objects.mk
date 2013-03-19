@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Anup Patel.
+# Copyright (c) 2013 Jean-Christophe Dubois.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,17 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
-# @author Anup Patel (anup@brainfault.org)
-# @brief config file for driver options
+# @file objects.mk
+# @author Jean-Christophe Dubois (jcd@tribudubois.net)
+# @brief list of driver objects
 # */
 
-menu "Device Drivers"
-     source "drivers/serial/openconf.cfg"
-     source "drivers/rtc/openconf.cfg"
-     source "drivers/block/openconf.cfg"
-     source "drivers/input/openconf.cfg"
-     source "drivers/video/openconf.cfg"
-     source "drivers/net/openconf.cfg"
-     source "drivers/clk/openconf.cfg"
-endmenu
+drivers-objs-y += clk/clkdev.o
+
