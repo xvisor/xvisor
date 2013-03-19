@@ -13,30 +13,30 @@
 
 #include <arch_clk.h>
 
-#define clk 			arch_clk
+struct clk;
 
-#define clk_prepare		arch_clk_prepare
+#define clk_prepare(x)		arch_clk_prepare((struct arch_clk *)x)
 
-#define clk_unprepare		arch_clk_unprepare
+#define clk_unprepare(x)	arch_clk_unprepare((struct arch_clk *)x)
 
-#define clk_get			arch_clk_get
+#define clk_get(dev, id)	((struct clk *)arch_clk_get((struct vmm_device *)dev, id))
 
-#define clk_enable		arch_clk_enable
+#define clk_enable(x)		arch_clk_enable((struct arch_clk *)x)
 
-#define clk_disable		arch_clk_disable
+#define clk_disable(x)		arch_clk_disable((struct arch_clk *)x)
 
-#define clk_get_rate		arch_clk_get_rate
+#define clk_get_rate(x)		arch_clk_get_rate((struct arch_clk *)x)
 
-#define clk_put			arch_clk_put
+#define clk_put(x)		arch_clk_put((struct arch_clk *)x)
 
-#define clk_round_rate		arch_clk_round_rate
+#define clk_round_rate(x, rate)	arch_clk_round_rate((struct arch_clk *)x, rate)
 
-#define clk_set_rate		arch_clk_set_rate
+#define clk_set_rate(x, rate)	arch_clk_set_rate((struct arch_clk *)x, rate)
 
-#define clk_set_parent		arch_clk_set_parent
+#define clk_set_parent(x, y)	arch_clk_set_parent((struct arch_clk *)x, (struct arch_clk *)y)
 
-#define clk_get_parent		arch_clk_get_parent
+#define clk_get_parent(x)	((struct clk *)arch_clk_get_parent((struct arch_clk *)x))
 
-#define clk_get_sys		arch_clk_get_sys
+#define clk_get_sys(x, id)	((struct clk *)arch_clk_get_sys((struct arch_clk *)x, id))
 
 #endif
