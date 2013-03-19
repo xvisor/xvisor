@@ -39,7 +39,7 @@
 
 		scu { /* Snoop Control Unit */
 	      		device_type = "scu";
-	      		compatible = "arm,a9mpcore-priv";
+	      		compatible = "arm,cortex-a9-scu";
 	      		reg = <0x1E000000 0x1000>;
 		};
 
