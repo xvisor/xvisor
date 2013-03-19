@@ -49,7 +49,7 @@
 
 		gic { /* Generic Interrupt Controller */
 	      		device_type = "pic";
-	      		compatible = "arm,cortex-a15-gic";
+	      		compatible = "arm,cortex-a15-gic", "arm,cortex-a9-gic";
 	      		reg = <0x2C001000 0x1000
 			       0x2C002000 0x1000>;
 			irq_start = <26>;
