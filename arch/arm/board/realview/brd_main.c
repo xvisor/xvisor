@@ -41,7 +41,11 @@
  * Global board context
  */
 
-virtual_addr_t realview_sys_base;
+static virtual_addr_t realview_sys_base;
+static virtual_addr_t realview_sctl_base;
+static virtual_addr_t realview_sp804_base;
+static u32 realview_sp804_irq;
+
 #if defined(CONFIG_VTEMU)
 struct vtemu *realview_vt;
 #endif
@@ -243,165 +247,25 @@ struct clcd_board clcd_system_data = {
 
 int __init arch_board_early_init(void)
 {
-	/*
-	 * TODO:
-	 * Host virtual memory, device tree, heap is up.
-	 * Do necessary early stuff like iomapping devices
-	 * memory or boot time memory reservation here.
-	 */
-	return 0;
-}
-
-static virtual_addr_t realview_timer0_base;
-static virtual_addr_t realview_timer1_base;
-
-int __init arch_clocksource_init(void)
-{
-	int rc;
-	u32 val;
-	struct vmm_devtree_node *node;
-	virtual_addr_t sctl_base;
-
-	/* Map control registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysctl0");
-	if (!node) {
-		goto skip_clocksource_init;
-	}
-	rc = vmm_devtree_regmap(node, &sctl_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* 
-	 * set clock frequency: 
-	 *      REALVIEW_REFCLK is 32KHz
-	 *      REALVIEW_TIMCLK is 1MHz
-	 */
-	val = vmm_readl((void *)sctl_base) | 
-			(REALVIEW_TIMCLK << REALVIEW_TIMER2_EnSel);
-	vmm_writel(val, (void *)sctl_base);
-
-	/* Unmap control register */
-	rc = vmm_devtree_regunmap(node, sctl_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Map timer1 registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "timer01");
-	if (!node) {
-		goto skip_clocksource_init;
-	}
-	rc = vmm_devtree_regmap(node, &realview_timer1_base, 0);
-	if (rc) {
-		return rc;
-	}
-	realview_timer1_base += 0x20;
-
-	/* Initialize timer1 as clocksource */
-	rc = sp804_clocksource_init(realview_timer1_base, 
-				    node->name, 300, 1000000, 20);
-	if (rc) {
-		return rc;
-	}
-
-skip_clocksource_init:
-	return VMM_OK;
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
 	int rc;
 	u32 val, *valp;
-	struct vmm_devtree_node *node;
-	virtual_addr_t sctl_base;
+	struct vmm_devtree_node *hnode, *node;
 
-	/* Map control registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysctl0");
-	if (!node) {
-		goto skip_clockchip_init;
-	}
-	rc = vmm_devtree_regmap(node, &sctl_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* 
-	 * set clock frequency: 
-	 *      REALVIEW_REFCLK is 32KHz
-	 *      REALVIEW_TIMCLK is 1MHz
+	/* Host aspace, Heap, Device tree, and Host IRQ available.
+	 *
+	 * Do necessary early stuff like:
+	 * iomapping devices, 
+	 * SOC clocking init, 
+	 * Setting-up system data in device tree nodes,
+	 * ....
 	 */
-	val = vmm_readl((void *)sctl_base) | 
-			(REALVIEW_TIMCLK << REALVIEW_TIMER1_EnSel);
-	vmm_writel(val, (void *)sctl_base);
 
-	/* Unmap control registers */
-	rc = vmm_devtree_regunmap(node, sctl_base, 0);
-	if (rc) {
-		return rc;
-	}
+	/* Get host node */
+	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
 
-	/* Map timer0 registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "timer01");
-	if (!node) {
-		goto skip_clockchip_init;
-	}
-	rc = vmm_devtree_regmap(node, &realview_timer0_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Get timer0 irq */
-	valp = vmm_devtree_attrval(node, "irq");
-	if (!valp) {
-		return VMM_EFAIL;
-	}
-	val = *valp; 
-
-	/* Initialize timer0 as clockchip */
-	rc = sp804_clockchip_init(realview_timer0_base, val, 
-				  node->name, 300, 1000000, 0);
-	if (rc) {
-		return rc;
-	}
-
-skip_clockchip_init:
-	return VMM_OK;
-}
-
-int __init arch_board_final_init(void)
-{
-	int rc;
-	struct vmm_devtree_node *node;
-#if defined(CONFIG_VTEMU)
-	struct vmm_fb_info *info;
-#endif
-
-	/* All VMM API's are available here */
-	/* We can register a Board specific resource here */
-
-	/* Map system registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysreg");
+	/* Map sysreg */
+	node = vmm_devtree_find_compatible(hnode, NULL, "arm,realview-sysreg");
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -410,26 +274,109 @@ int __init arch_board_final_init(void)
 		return rc;
 	}
 
+	/* Map sysctl */
+	node = vmm_devtree_find_compatible(hnode, NULL, "arm,sp810");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	rc = vmm_devtree_regmap(node, &realview_sctl_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	/* Select reference clock for sp804 timers: 
+	 *      REFCLK is 32KHz
+	 *      TIMCLK is 1MHz
+	 */
+	val = vmm_readl((void *)realview_sctl_base) | 
+			(REALVIEW_TIMCLK << REALVIEW_TIMER1_EnSel) |
+			(REALVIEW_TIMCLK << REALVIEW_TIMER2_EnSel) |
+			(REALVIEW_TIMCLK << REALVIEW_TIMER3_EnSel) |
+			(REALVIEW_TIMCLK << REALVIEW_TIMER4_EnSel);
+	vmm_writel(val, (void *)realview_sctl_base);
+
+	/* Map sp804 registers */
+	node = vmm_devtree_find_compatible(hnode, NULL, "arm,sp804");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	rc = vmm_devtree_regmap(node, &realview_sp804_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	/* Get timer01 irq */
+	valp = vmm_devtree_attrval(node, "irq");
+	if (!valp) {
+		return VMM_EFAIL;
+	}
+	realview_sp804_irq = *valp;
+
 	/* Setup Clocks (before probing) */
 	oscvco_clk.vcoreg = (void *)realview_sys_base + REALVIEW_SYS_OSC4_OFFSET;
 
 	/* Setup CLCD (before probing) */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "clcd");
+	node = vmm_devtree_find_compatible(hnode, NULL, "arm,pl111");
 	if (node) {
 		node->system_data = &clcd_system_data;
 	}
 
-	/* Do Probing using device driver framework */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge");
-	if (!node) {
-		return VMM_ENOTAVAIL;
+	return 0;
+}
+
+int __init arch_clocksource_init(void)
+{
+	int rc;
+
+	/* Initialize timer0 as clocksource */
+	rc = sp804_clocksource_init(realview_sp804_base, 
+				    "sp804_timer0", 300, 1000000, 20);
+	if (rc) {
+		vmm_printf("%s: sp804 clocksource init failed (error %d)\n", 
+			   __func__, rc);
 	}
 
+	return VMM_OK;
+}
+
+int __cpuinit arch_clockchip_init(void)
+{
+	int rc;
+
+	/* Initialize timer1 as clockchip */
+	rc = sp804_clockchip_init(realview_sp804_base + 0x20, 
+				  realview_sp804_irq, 
+				  "sp804_timer1", 300, 1000000, 0);
+	if (rc) {
+		vmm_printf("%s: sp804 clockchip init failed (error %d)\n", 
+			   __func__, rc);
+	}
+
+	return VMM_OK;
+}
+
+int __init arch_board_final_init(void)
+{
+	int rc;
+	struct vmm_devtree_node *hnode, *node;
+#if defined(CONFIG_VTEMU)
+	struct vmm_fb_info *info;
+#endif
+
+	/* All VMM API's are available here */
+	/* We can register a Board specific resource here */
+
+	/* Get host node */
+	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
+
+	/* Find simple-bus node */
+	node = vmm_devtree_find_compatible(hnode, NULL, "simple-bus");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	/* Do probing using device driver framework */
 	rc = vmm_devdrv_probe(node);
 	if (rc) {
 		return rc;
@@ -437,9 +384,13 @@ int __init arch_board_final_init(void)
 
 	/* Create VTEMU instace if available*/
 #if defined(CONFIG_VTEMU)
-	info = vmm_fb_find("clcd");
+	node = vmm_devtree_find_compatible(hnode, NULL, "arm,pl111");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	info = vmm_fb_find(node->name);
 	if (info) {
-		realview_vt = vtemu_create("clcd-vtemu", info, NULL);
+		realview_vt = vtemu_create(node->name, info, NULL);
 	}
 #endif
 

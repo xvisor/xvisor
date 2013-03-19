@@ -54,16 +54,25 @@ int __init arch_defterm_init(void)
 {
 	int rc;
 	u32 *val;
+	const char *attr;
 	struct vmm_devtree_node *node;
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "uart0");
+				   VMM_DEVTREE_CHOOSEN_NODE_NAME);
 	if (!node) {
 		return VMM_ENODEV;
 	}
+
+	attr = vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
+	if (!attr) {
+		return VMM_ENODEV;
+	}
+   
+	node = vmm_devtree_getnode(attr);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
 	rc = vmm_devtree_regmap(node, &pba8_defterm_base, 0);
 	if (rc) {
 		return rc;
