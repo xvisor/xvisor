@@ -21,5 +21,5 @@
 # @brief list of driver objects
 # */
 
-drivers-objs-y += clk/clkdev.o
+drivers-objs-$(CONFIG_CLKDEV_LOOKUP) += clk/clkdev.o
 
