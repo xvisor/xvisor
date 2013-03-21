@@ -113,7 +113,7 @@ static void vmm_scheduler_timer_event(struct vmm_timer_event *ev)
 	}
 }
 
-int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state)
+int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
 	int rc = VMM_OK;
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
@@ -172,6 +172,10 @@ int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			}
 		}
 		break;
+	}
+
+	if (rc == VMM_OK) {
+		vcpu->state = new_state;
 	}
 
 	return rc;
