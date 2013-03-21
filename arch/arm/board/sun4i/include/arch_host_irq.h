@@ -38,17 +38,7 @@ static inline u32 arch_host_irq_active(u32 cpu_irq_no)
 /* Initialize board specifig host irq hardware (i.e PIC) */
 static inline int arch_host_irq_init(void)
 {
-	struct vmm_devtree_node *node;
-
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "soc"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "intc");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-
-	return aw_intc_devtree_init(node);
+	return aw_intc_devtree_init();
 }
 
 #endif

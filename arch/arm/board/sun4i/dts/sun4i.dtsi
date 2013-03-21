@@ -31,6 +31,7 @@
 		soc {
 			#address-cells = <1>;
 			#size-cells = <1>;
+			compatible = "simple-bus";
 
 			intc { /* Sun4i Vector Interrupt Controller */
 		      		device_type = "pic";
