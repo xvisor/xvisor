@@ -24,15 +24,16 @@
 #define _ARCH_HOST_IRQ_H__
 
 #include <vmm_types.h>
+#include <vmm_devtree.h>
 #include <vmm_host_aspace.h>
+#include <vmm_host_io.h>
 #include <vic_config.h>
 #include <vic.h>
-#include <vmm_host_io.h>
 
 #define ARCH_HOST_IRQ_COUNT		NR_IRQS_VERSATILE
 
 /* This mask is used to route interrupts 21 to 31 on VIC */
-#define PIC_MASK	0xFFD00000
+#define PIC_MASK			0xFFD00000
 
 /* Get current active host irq */
 static inline u32 arch_host_irq_active(u32 cpu_irq_no)
@@ -43,14 +44,42 @@ static inline u32 arch_host_irq_active(u32 cpu_irq_no)
 /* Initialize board specifig host irq hardware (i.e PIC) */
 static inline int arch_host_irq_init(void)
 {
-	virtual_addr_t cpu_base;
+	int rc;
+	virtual_addr_t vic_base;
 	virtual_addr_t sic_base;
-	int ret;
+	struct vmm_devtree_node *hnode, *vnode, *snode;
 
-	cpu_base = vmm_host_iomap(VERSATILE_VIC_BASE, 0x1000);
-	sic_base = vmm_host_iomap(VERSATILE_SIC_BASE, 0x1000);
+	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
+	if (!hnode) {
+		return VMM_ENODEV;
+	}
 
-	ret = vic_init(0, 0, cpu_base);
+	vnode = vmm_devtree_find_compatible(hnode, NULL, "arm,versatile-vic");
+	if (!vnode) {
+		return VMM_ENODEV;
+	}
+
+	rc = vmm_devtree_regmap(vnode, &vic_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	snode = vmm_devtree_find_compatible(hnode, NULL, "arm,versatile-sic");
+	if (!snode) {
+		return VMM_ENODEV;
+	}
+
+	rc = vmm_devtree_regmap(snode, &sic_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	rc = vic_init(0, 0, vic_base);
+	if (rc) {
+		return rc;
+	}
+
 	vmm_writel(~0, (volatile void *)sic_base + SIC_IRQ_ENABLE_CLEAR);
 
 	/*
@@ -60,9 +89,9 @@ static inline int arch_host_irq_init(void)
 	 * the corresponding number on primary controller. This is controlled
 	 * by setting PIC_ENABLEx.
 	 */
-	vmm_writel(PIC_MASK, (volatile void *) sic_base + SIC_INT_PIC_ENABLE);
+	vmm_writel(PIC_MASK, (volatile void *)sic_base + SIC_INT_PIC_ENABLE);
 
-	return ret;
+	return VMM_OK;
 }
 
 #endif

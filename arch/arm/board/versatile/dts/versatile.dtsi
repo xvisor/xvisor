@@ -25,10 +25,62 @@
 			physical_size = <0x10000000>; /* 256 MB */
 		};
 
-		nbridge {
-			sbridge {
+		motherboard {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "simple-bus";
+
+			eth0 {
+				device_type = "nic";
+				compatible = "smc91x";
+				reg = <0x10010000 0x1000>;
+				irq = <25>;
+				switch = "netbridge0";
+			};
+
+			amba {
 				#address-cells = <1>;
 				#size-cells = <1>;
+				compatible = "arm,amba-bus";
+
+				sysreg { /* System Registers */
+			      		device_type = "sys";
+			      		compatible = "arm,versatile-sysreg";
+			      		reg = <0x10000000 0x1000>;
+				};
+
+				sic { /* Secondary Interrupt Controller */
+					device_type = "pic";
+					compatible = "arm,versatile-sic";
+					reg = <0x10003000 0x1000>;
+					irq = <31>; /* Cascaded to vic */
+				};
+
+				vic { /* Vectored Interrupt Controller */
+					device_type = "pic";
+					compatible = "arm,versatile-vic";
+					reg = <0x10140000 0x1000>;
+				};
+
+				sysctl { /* System Controller */
+			      		device_type = "sys";
+			      		compatible = "arm,versatile-sctl";
+			      		reg = <0x101E0000 0x1000>;
+				};
+
+				timer01 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x101E2000 0x1000>;
+					irq = <4>;
+				};
+
+				timer23 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x101E3000 0x1000>;
+					irq = <5>;
+				};
 
 				SERIAL0: uart0 {
 			      		device_type = "serial";
@@ -45,14 +97,6 @@
 					reg = <0x101E8000 0x1000>;
 					clock-rate = <1>;
 					irq = <10>;
-				};
-
-				eth0 {
-					device_type = "nic";
-					compatible = "smc91x";
-					reg = <0x10010000 0x1000>;
-					irq = <25>;
-					switch = "netbridge0";
 				};
 			};
 		};
