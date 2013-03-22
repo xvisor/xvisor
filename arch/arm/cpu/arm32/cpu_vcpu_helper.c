@@ -719,7 +719,7 @@ int arch_guest_deinit(struct vmm_guest *guest)
 {
 	int rc;
 	if (guest->arch_priv) {
-		if (!arm_guest_priv(guest)->ovect) {
+		if (arm_guest_priv(guest)->ovect) {
 			rc = vmm_host_free_pages(
 			     (virtual_addr_t)arm_guest_priv(guest)->ovect, 1);
 			if (rc) {
