@@ -83,6 +83,8 @@ struct vmm_clockchip {
 	void *priv;
 };
 
+#define VMM_NSEC_PER_SEC	1000000000UL
+
 /**
  * clocks_calc_mult_shift - calculate mult/shift factors for scaled math of clocks
  * @mult:       pointer to mult variable
@@ -95,8 +97,8 @@ struct vmm_clockchip {
  * operations of clocksources and clockevents.
  *
  * @to and @from are frequency values in HZ. For clock sources @to is
- * NSEC_PER_SEC == 1GHz and @from is the counter frequency. For clock
- * event @to is the counter frequency and @from is NSEC_PER_SEC.
+ * VMM_NSEC_PER_SEC == 1GHz and @from is the counter frequency. For clock
+ * event @to is the counter frequency and @from is VMM_NSEC_PER_SEC.
  *
  * The @maxsec conversion range argument controls the time frame in
  * seconds which must be covered by the runtime conversion with the
