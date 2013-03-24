@@ -87,81 +87,63 @@ memcpy_done:
 	.word	0
 	.globl memset
 memset:
-	b	0f
-	
-1:	subs	r2, r2, #4		@ 1 do we have enough
-	blt	5f			@ 1 bytes to align with?
-	cmp	r3, #2			@ 1
-	strltb	r1, [r0], #1		@ 1
-	strleb	r1, [r0], #1		@ 1
-	strb	r1, [r0], #1		@ 1
-	add	r2, r2, r3		@ 1 (r2 = r2 - (4 - r3))
-/*
- * The pointer is now aligned and the length is adjusted.  Try doing the
- * memset again.
- */
-0:	ands	r3, r0, #3		@ 1 unaligned?
-	bne	1b			@ 1
-/*
- * we know that the pointer in r0 is aligned to a word boundary.
- */
-	orr	r1, r1, r1, lsl #8
-	orr	r1, r1, r1, lsl #16
+	push	{r0, r3, r4, r5, r6, r7, lr}
+
 	mov	r3, r1
-	cmp	r2, #16
-	blt	4f
+	lsl	r3, #8
+	orr	r3, r3, r1
+	lsl	r3, #8
+	orr	r3, r3, r1
+	lsl	r3, #8
+	orr	r3, r3, r1
+	mov	r4, r3
+	mov	r5, r3
+	mov	r6, r3
 
-/*
- * This version aligns the destination pointer in order to write
- * whole cache lines at once.
- */
+	ands	r7, r0, #15
+	beq	memset_aligned16
 
-	stmfd	sp!, {r4-r7, lr}
-	mov	r4, r1
-	mov	r5, r1
-	mov	r6, r1
-	mov	r7, r1
-	mov	ip, r1
-	mov	lr, r1
+	ands	r7, r0, #7
+	beq	memset_aligned8
 
-	cmp	r2, #96
-	tstgt	r0, #31
-	ble	3f
+	ands	r7, r0, #3
+	beq	memset_aligned4
 
-	and	ip, r0, #31
-	rsb	ip, ip, #32
-	sub	r2, r2, ip
-	movs	ip, ip, lsl #(32 - 4)
-	stmcsia	r0!, {r4, r5, r6, r7}
-	stmmiia	r0!, {r4, r5}
-	tst	ip, #(1 << 30)
-	mov	ip, r1
-	strne	r1, [r0], #4
+	b	memset_unaligned
 
-3:	subs	r2, r2, #64
-	stmgeia	r0!, {r1, r3-r7, ip, lr}
-	stmgeia	r0!, {r1, r3-r7, ip, lr}
-	bgt	3b
-	ldmeqfd	sp!, {r4-r7, pc}
+memset_aligned16:
+3:	cmp	r2, #16
+	blt	memset_aligned8
 
-	tst	r2, #32
-	stmneia	r0!, {r1, r3-r7, ip, lr}
-	tst	r2, #16
-	stmneia	r0!, {r4-r7}
-	ldmfd	sp!, {r4-r7, lr}
+	stmia	r0!, {r3, r4, r5, r6}
+	sub	r2, r2, #16
+	b	3b
 
-4:	tst	r2, #8
-	stmneia	r0!, {r1, r3}
-	tst	r2, #4
-	strne	r1, [r0], #4
-/*
- * When we get here, we've got less than 4 bytes to zero.  We
- * may have an unaligned pointer as well.
- */
-5:	tst	r2, #2
-	strneb	r1, [r0], #1
-	strneb	r1, [r0], #1
-	tst	r2, #1
-	strneb	r1, [r0], #1
+memset_aligned8:
+2:	cmp	r2, #8
+	blt	memset_aligned4
+
+	stmia	r0!, {r3, r4}
+	sub	r2, r2, #8
+	b	2b
+
+memset_aligned4:
+1:	cmp	r2, #4
+	blt	memset_unaligned
+
+	str	r3, [r0], #4
+	sub	r2, r2, #4
+	b	1b
+
+memset_unaligned:
+0:	cmp	r2, #0
+	beq	memset_done
+
+	strb	r1, [r0], #1
+	sub	r2, r2, #1
+	b	0b
+
+memset_done:
+	pop	{r0, r3, r4, r5, r6, r7, lr}
 	mov	pc, lr
 
