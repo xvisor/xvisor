@@ -242,7 +242,11 @@ __dacr_mmu_val:
 __sctrl_mmu_clear:
 	.word ~(SCTLR_A_MASK | SCTLR_TRE_MASK)
 __sctrl_mmu_val:
+#if defined(CONFIG_ARMV6)
+	.word (SCTLR_V6_MASK | SCTLR_M_MASK | SCTLR_C_MASK | SCTLR_I_MASK)
+#else
 	.word (SCTLR_M_MASK | SCTLR_C_MASK | SCTLR_I_MASK)
+#endif
 __exec_start:
 	.word _code_start
 __exec_end:

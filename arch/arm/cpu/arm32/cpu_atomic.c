@@ -25,7 +25,84 @@
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_compiler.h>
+#include <arch_cpu_irq.h>
 #include <arch_barrier.h>
+
+#if defined(CONFIG_ARMV5)
+
+long __lock arch_atomic_read(atomic_t * atom)
+{
+	long ret = atom->counter;
+	arch_rmb();
+	return ret;
+}
+
+void __lock arch_atomic_write(atomic_t * atom, long value)
+{
+	atom->counter = value;
+	arch_wmb();
+}
+
+void __lock arch_atomic_add(atomic_t * atom, long value)
+{
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	atom->counter += value;
+	arch_cpu_irq_restore(flags);
+}
+
+void __lock arch_atomic_sub(atomic_t * atom, long value)
+{
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	atom->counter -= value;
+	arch_cpu_irq_restore(flags);
+}
+
+bool __lock arch_atomic_testnset(atomic_t * atom, long test, long value)
+{
+	bool ret = FALSE;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+        if (atom->counter == test) {
+		ret = TRUE;
+                atom->counter = value;
+	}
+	arch_cpu_irq_restore(flags);
+
+        return ret;
+}
+
+long __lock arch_atomic_add_return(atomic_t * atom, long value)
+{
+	long temp;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	atom->counter += value;
+	temp = atom->counter;
+	arch_cpu_irq_restore(flags);
+
+	return temp;
+}
+
+long __lock arch_atomic_sub_return(atomic_t * atom, long value)
+{
+	long temp;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	atom->counter -= value;
+	temp = atom->counter;
+	arch_cpu_irq_restore(flags);
+
+	return temp;
+}
+
+#else
 
 long __lock arch_atomic_read(atomic_t * atom)
 {
@@ -140,3 +217,5 @@ long __lock arch_atomic_sub_return(atomic_t * atom, long value)
 
 	return result;
 }
+
+#endif

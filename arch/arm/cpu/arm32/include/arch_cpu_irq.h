@@ -126,6 +126,15 @@ int arch_cpu_irq_setup(void);
 					"msr     cpsr_c, %3              @ Restore FIQ state" \
 					:"=r" (_tr0), "=r" (_tr1), "=r" (_tr2), "=r" (_tr3), "=r" (_tip)::"memory", "cc" ); \
 					} while (0)
+#elif defined(CONFIG_ARMV6)
+#define arch_cpu_wait_for_irq()		do { \
+					unsigned long _tr0; \
+					asm volatile ( \
+					"mov	%0, #0\n" \
+					"mcr	p15, 0, %0, c7, c10, 4		@ DWB - WFI may enter a low-power mode\n" \
+					"mcr	p15, 0, %0, c7, c0, 4		@ wait for interrupt\n" \
+					:"=r" (_tr0)::"memory", "cc" ); \
+					} while (0)
 #else
 #define arch_cpu_wait_for_irq()		do { \
 					asm volatile (" wfi "); \

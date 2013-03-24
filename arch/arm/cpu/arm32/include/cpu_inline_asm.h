@@ -83,6 +83,16 @@ static inline u16 rev16(u16 v)
 /* FIXME: */
 #define clrex()
 
+#elif defined(CONFIG_ARMV6)
+
+#define ldrex(addr, data)	asm volatile("ldrex	%0, [%1]\n\t" \
+				: "=r"(data) : "r"(addr))
+
+#define strex(addr, data, res)	asm volatile("strex	%0, %1, [%2]\n\t" \
+				: "=r"(res) : "r"(data), "r"(addr))
+
+#define clrex()	
+
 #else
 
 #define ldrex(addr, data)	asm volatile("ldrex	%0, [%1]\n\t" \
