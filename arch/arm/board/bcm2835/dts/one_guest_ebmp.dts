@@ -1,0 +1,11 @@
+
+/dts-v1/;
+
+/include/ "bcm2835.dtsi"
+
+/ {
+	choosen {
+		console = &SERIAL0;
+		bootcmd = /* FIXME: */ "";
+	};
+};
