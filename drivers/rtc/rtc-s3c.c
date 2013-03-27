@@ -490,26 +490,28 @@ static int s3c_rtc_driver_remove(struct vmm_device *dev)
 static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 				const struct vmm_devtree_nodeid *devid)
 {
+	u32 alarmno, tickno;
 	struct rtc_time rtc_tm;
-	const char *attr;
-	int ret;
-	int tmp;
-	int rc;
+	int ret, tmp, rc;
 
 	/* find the IRQs */
 
-	attr = vmm_devtree_attrval(pdev->node, "irq");
-	if (!attr) {
+	rc = vmm_devtree_irq_get(pdev->node, &alarmno, 0);
+	if (rc) {
 		rc = VMM_EFAIL;
 		return rc;
 	}
-
-	s3c_rtc_alarmno = ((u32 *) attr)[0];
-	s3c_rtc_tickno = ((u32 *) attr)[1];
+	s3c_rtc_alarmno = alarmno;
+	rc = vmm_devtree_irq_get(pdev->node, &tickno, 1);
+	if (rc) {
+		rc = VMM_EFAIL;
+		return rc;
+	}
+	s3c_rtc_tickno = tickno;
 
 	/* get the memory region */
 
-	rc = vmm_devtree_regmap(pdev->node, (virtual_addr_t *) & s3c_rtc_base,
+	rc = vmm_devtree_regmap(pdev->node, (virtual_addr_t *)&s3c_rtc_base,
 				0);
 	if (rc) {
 		dev_err(pdev, "failed ioremap()\n");

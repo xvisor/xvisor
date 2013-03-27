@@ -48,11 +48,11 @@
 				device_type = "serial";
 				compatible = "st16654";
 				reg = <0x49020000 0x1000>;
-				clock-rate = <48000000>;
+				clock-frequency = <48000000>;
 				baudrate = <115200>;
 				reg_offset = <0x0>;
 				reg_align = <0x4>;
-				irq = <74>;
+				interrupts = <74>;
 			};
 		};
 	};

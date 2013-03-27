@@ -77,8 +77,10 @@ int __init arch_defterm_init(void)
 		return rc;
 	}
 
-	val = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	versatile_defterm_inclk = (val) ? *val : 24000000;
+	rc = vmm_devtree_clock_frequency(node, &versatile_defterm_inclk);
+	if (rc) {
+		return rc;
+	}
 
 	val = vmm_devtree_attrval(node, "baudrate");
 	versatile_defterm_baud = (val) ? *val : 115200;

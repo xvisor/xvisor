@@ -58,10 +58,8 @@
 		gen-timer { /* Generic Timer */
 	      		device_type = "timer";
 	      		compatible = "arm,armv7-timer";
-			rating = <400>;
-			freq = <100000000>;
-			shift = <27>;
-			irq = <26 30 27>;
+			clock-frequency = <100000000>;
+			interrupts = <26 30 27>;
 		};
 
 		motherboard {
@@ -73,7 +71,7 @@
 				device_type = "nic";
 				compatible = "smc91x";
 				reg = <0x1A000000 0x1000>;
-				irq = <47>;
+				interrupts = <47>;
 				switch = "netbridge0";
 			};
 
@@ -97,47 +95,44 @@
 			      		device_type = "serio";
 			      		compatible = "ambakmi";
 			      		reg = <0x1C060000 0x1000>;
-					clock-rate = <24000000>;
-					irq = <44>;
+					interrupts = <44>;
 				};
 
 				kmi1 { /* Mouse */
 			      		device_type = "serio";
 			      		compatible = "ambakmi";
 			      		reg = <0x1C070000 0x1000>;
-					clock-rate = <24000000>;
-					irq = <45>;
+					interrupts = <45>;
 				};
 
 				SERIAL0: uart0 {
 			      		device_type = "serial";
 			      		compatible = "arm,pl011";
 			      		reg = <0x1C090000 0x1000>;
-					clock-rate = <24000000>;
+					clock-frequency = <24000000>;
 			      		baudrate = <115200>;
-					irq = <37>;
+					interrupts = <37>;
 				};
 
 				timer01 {
 			      		device_type = "timer";
 			      		compatible = "arm,sp804";
 			      		reg = <0x1C110000 0x1000>;
-					irq = <34>;
+					interrupts = <34>;
 				};
 
 				timer23 {
 			      		device_type = "timer";
 			      		compatible = "arm,sp804";
 			      		reg = <0x1C120000 0x1000>;
-					irq = <35>;
+					interrupts = <35>;
 				};
 
 				RTC0: rtc0 {
 			      		device_type = "rtc";
 			      		compatible = "arm,pl031";
 			      		reg = <0x1C170000 0x1000>;
-					clock-rate = <1>;
-					irq = <36>;
+					interrupts = <36>;
 				};
 
 				clcd {

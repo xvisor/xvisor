@@ -58,7 +58,7 @@ static u64 bcm2835_clksrc_read(struct vmm_clocksource *cs)
 int __init bcm2835_clocksource_init(void)
 {
 	int rc;
-	u32 clock, *val;
+	u32 clock;
 	struct vmm_devtree_node *node;
 	struct bcm2835_clocksource *bcs;
 
@@ -75,11 +75,10 @@ int __init bcm2835_clocksource_init(void)
 	}
 
 	/* Read clock frequency */
-	val = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	if (!val) {
-		return VMM_ENOTAVAIL;
+	rc = vmm_devtree_clock_frequency(node, &clock);
+	if (rc) {
+		return rc;
 	}
-	clock = *val;
 
 	bcs = vmm_zalloc(sizeof(struct bcm2835_clocksource));
 	if (!bcs) {
@@ -206,11 +205,10 @@ int __cpuinit bcm2835_clockchip_init(void)
 	}
 
 	/* Read clock frequency */
-	val = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	if (!val) {
-		return VMM_ENOTAVAIL;
+	rc = vmm_devtree_clock_frequency(node, &clock);
+	if (rc) {
+		return rc;
 	}
-	clock = *val;
 
 	/* Read timer_num attribute */
 	val = vmm_devtree_attrval(node, "timer_num");
@@ -220,11 +218,10 @@ int __cpuinit bcm2835_clockchip_init(void)
 	timer_num = *val;
 
 	/* Read irq attribute */
-	val = vmm_devtree_attrval(node, "irq");
-	if (!val) {
-		return VMM_ENOTAVAIL;
+	rc = vmm_devtree_irq_get(node, &hirq, 0);
+	if (rc) {
+		return rc;
 	}
-	hirq = *val;
 
 	bcc = vmm_zalloc(sizeof(struct bcm2835_clockchip));
 	if (!bcc) {

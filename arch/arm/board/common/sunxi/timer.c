@@ -316,12 +316,11 @@ int __cpuinit aw_timer_clockchip_init(void)
 	acc->off = 0x10 + 0x10 * acc->num;
 
 	/* Read irq attribute */
-	attrval = vmm_devtree_attrval(node, "irq");
-	if (!attrval) {
+	rc = vmm_devtree_irq_get(node, &hirq, 0);
+	if (rc) {
 		vmm_free(acc);
-		return VMM_ENOTAVAIL;
+		return rc;
 	}
-	hirq = *((u32 *)attrval);
 
 	/* Map timer registers */
 	rc = vmm_devtree_regmap(node, &acc->base, 0);

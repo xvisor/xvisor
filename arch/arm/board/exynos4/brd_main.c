@@ -153,7 +153,6 @@ int __init arch_clocksource_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
-	u32 *mct_clk_rate_p;
 
 	/* Map timer0 registers */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
@@ -164,9 +163,9 @@ int __init arch_clocksource_init(void)
 		goto skip_mct_timer_init;
 	}
 
-	mct_clk_rate_p = vmm_devtree_attrval(node, "clock-rate");
-	if (mct_clk_rate_p) {
-		mct_clk_rate = *mct_clk_rate_p;
+	rc = vmm_devtree_clock_frequency(node, &mct_clk_rate);
+	if (rc) {
+		goto skip_mct_timer_init;
 	}
 
 	if (!mct_timer_base) {
@@ -191,8 +190,7 @@ int __cpuinit arch_clockchip_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
-	u32 val, *valp, cpu = vmm_smp_processor_id();
-	u32 *mct_clk_rate_p;
+	u32 val, cpu = vmm_smp_processor_id();
 
 	if (!cpu) {
 		/* Map timer0 registers */
@@ -211,18 +209,16 @@ int __cpuinit arch_clockchip_init(void)
 			}
 		}
 
-		mct_clk_rate_p = vmm_devtree_attrval(node, "clock-rate");
-		if (mct_clk_rate_p) {
-			mct_clk_rate = *mct_clk_rate_p;
+		rc = vmm_devtree_clock_frequency(node, &mct_clk_rate);
+		if (rc) {
+			return rc;
 		}
 
 		/* Get MCT irq */
-		valp = vmm_devtree_attrval(node, "irq");
-		if (!valp) {
-			return VMM_EFAIL;
+		rc = vmm_devtree_irq_get(node, &val, 0);
+		if (rc) {
+			return rc;
 		}
-
-		val = *valp;
 
 		/* Initialize MCT as clockchip */
 		rc = exynos4_clockchip_init(mct_timer_base, val, node->name,

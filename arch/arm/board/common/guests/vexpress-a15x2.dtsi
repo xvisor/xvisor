@@ -133,7 +133,7 @@
 					physical_size = <0x10000>;
 					device_type = "nic";
 					compatible = "smsc,smc91c111";
-					irq = <47>;
+					interrupts = <47>;
 					switch = ""; /* To be set by DTS including this file */
 				};
 
@@ -190,7 +190,7 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <1024>;
-					irq = <37>;
+					interrupts = <37>;
 				};
 
 				uart1 {
@@ -201,7 +201,7 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <1024>;
-					irq = <38>;
+					interrupts = <38>;
 				};
 
 				uart2 {
@@ -212,7 +212,7 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <1024>;
-					irq = <39>;
+					interrupts = <39>;
 				};
 
 				uart3 {
@@ -223,7 +223,7 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <1024>;
-					irq = <40>;
+					interrupts = <40>;
 				};
 
 				wdt { /* No Watch-Dog controller */
@@ -242,7 +242,7 @@
 					physical_size = <0x1000>;
 					device_type = "timer";
 					compatible = "primecell,sp804";
-					irq = <34>;
+					interrupts = <34>;
 				};
 
 				timer2_3_legacy {
@@ -252,7 +252,7 @@
 					physical_size = <0x1000>;
 					device_type = "timer";
 					compatible = "primecell,sp804";
-					irq = <35>;
+					interrupts = <35>;
 				};
 
 				ddc_i2c { /* No I2C */
@@ -271,7 +271,7 @@
 					physical_size = <0x1000>;
 					device_type = "rtc";
 					compatible = "primecell,pl031";
-					irq = <36>;
+					interrupts = <36>;
 				};
 
 				cf { /* No PATA Controller */
@@ -328,7 +328,7 @@
 					guest_physical_addr = <0x40100000>;
 					physical_size = <0x1000>;
 					switch = ""; /* To be set by DTS including this file */
-					irq = <50>;
+					interrupts = <50>;
 				};
 
 				virtio-blk0 {
@@ -340,7 +340,7 @@
 					guest_physical_addr = <0x40200000>;
 					physical_size = <0x1000>;
 					blkdev = ""; /* To be set by DTS including this file */
-					irq = <51>;
+					interrupts = <51>;
 				};
 
 				virtio-con0 {
@@ -351,7 +351,7 @@
 					virtio_type = <3>;
 					guest_physical_addr = <0x40300000>;
 					physical_size = <0x1000>;
-					irq = <52>;
+					interrupts = <52>;
 				};
 			};
 		};

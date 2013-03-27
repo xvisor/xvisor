@@ -219,11 +219,8 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 
 	m->dev.id.type = m->config.device_id;
 
-	attr = vmm_devtree_attrval(edev->node, "irq");
-	if (attr) {
-		m->irq = *((u32 *)attr);
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_irq_get(edev->node, &m->irq, 0);
+	if (rc) {
 		goto virtio_mmio_probe_freestate_fail;
 	}
 

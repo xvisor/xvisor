@@ -136,7 +136,6 @@ static void amba_kmi_close(struct serio *io)
 static int amba_kmi_driver_probe(struct vmm_device *dev,
 			      const struct vmm_devtree_nodeid *devid)
 {
-	const char *attr;
 	struct amba_kmi_port *kmi;
 	struct serio *io;
 	int ret;
@@ -170,12 +169,11 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 		goto unmap;
 	}
 
-	attr = vmm_devtree_attrval(dev->node, "irq");
-	if (!attr) {
+	ret = vmm_devtree_irq_get(dev->node, &kmi->irq, 0);
+	if (ret) {
 		ret = -EFAIL;
 		goto unmap;
 	}
-	kmi->irq = *((u32 *) attr);
 
 	dev->priv = kmi;
 

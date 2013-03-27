@@ -1422,12 +1422,9 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 		goto lan9118_emulator_probe_done;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "irq");
-	if (attr) {
-		s->irq = *((u32 *)attr);
-	} else {
-		vmm_printf("%s: no irq attribute found\n", __func__);
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+	if (rc) {
+		vmm_printf("%s: no interrupts found\n", __func__);
 		goto lan9118_emulator_probe_freestate_failed;
 	}
 

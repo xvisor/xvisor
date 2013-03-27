@@ -903,12 +903,9 @@ static int smc91c111_emulator_probe(struct vmm_guest *guest,
 	}
 	memset(s, 0, sizeof(smc91c111_state));
 
-	attr = vmm_devtree_attrval(edev->node, "irq");
-	if (attr) {
-		s->irq = *((u32 *)attr);
-	} else {
-		vmm_printf("smc91c111: no irq node found\n");
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+	if (rc) {
+		vmm_printf("smc91c111: no interrupts found\n");
 		goto smc91c111_emulator_probe_failed;
 	}
 

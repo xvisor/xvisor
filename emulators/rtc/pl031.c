@@ -303,7 +303,6 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
-	const char *attr;
 	struct pl031_state *s;
 
 	s = vmm_zalloc(sizeof(struct pl031_state));
@@ -315,11 +314,8 @@ static int pl031_emulator_probe(struct vmm_guest *guest,
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
-	attr = vmm_devtree_attrval(edev->node, "irq");
-	if (attr) {
-		s->irq = *((u32 *)attr);
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+	if (rc) {
 		goto pl031_emulator_probe_freestate_fail;
 	}
 

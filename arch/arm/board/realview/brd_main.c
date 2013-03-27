@@ -248,7 +248,7 @@ struct clcd_board clcd_system_data = {
 int __init arch_board_early_init(void)
 {
 	int rc;
-	u32 val, *valp;
+	u32 val;
 	struct vmm_devtree_node *hnode, *node;
 
 	/* Host aspace, Heap, Device tree, and Host IRQ available.
@@ -306,11 +306,10 @@ int __init arch_board_early_init(void)
 	}
 
 	/* Get sp804 irq */
-	valp = vmm_devtree_attrval(node, "irq");
-	if (!valp) {
-		return VMM_EFAIL;
+	rc = vmm_devtree_irq_get(node, &realview_sp804_irq, 0);
+	if (rc) {
+		return rc;
 	}
-	realview_sp804_irq = *valp;
 
 	/* Setup Clocks (before probing) */
 	oscvco_clk.vcoreg = (void *)realview_sys_base + REALVIEW_SYS_OSC4_OFFSET;

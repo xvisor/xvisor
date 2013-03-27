@@ -52,8 +52,8 @@
 			device_type = "timer";
 			compatible = "samsung,exynos4210-mct";
 			reg = <0x10050000 0x1000>;
-			clock-rate = <24000000>;
-			irq = <89 74 80>;
+			clock-frequency = <24000000>;
+			interrupts = <89 74 80>;
 		};
 
 		sfrregion {
@@ -64,8 +64,7 @@
 				device_type = "rtc";
 				compatible = "samsung,s3c6410-rtc";
 				reg = <0x10070000 0x100>;
-				clock-rate = <1>;
-				irq = <76 77>;
+				interrupts = <76 77>;
 			};
 
 			SERIAL0: exynos4210-uart.0 {
@@ -73,7 +72,7 @@
 				compatible = "samsung,exynos4210-uart";
 				reg = <0x13800000 0x100>;
 				baudrate = <115200>;
-				irq = <84>;
+				interrupts = <84>;
 			};
 
 			SERIAL1: exynos4210-uart.1 {
@@ -81,7 +80,7 @@
 				compatible = "samsung,exynos4210-uart";
 				reg = <0x13810000 0x100>;
 				baudrate = <115200>;
-				irq = <85>;
+				interrupts = <85>;
 			};
 
 			SERIAL2: exynos4210-uart.2 {
@@ -89,7 +88,7 @@
 				compatible = "samsung,exynos4210-uart";
 				reg = <0x13820000 0x100>;
 				baudrate = <115200>;
-				irq = <86>;
+				interrupts = <86>;
 			};
 
 			SERIAL3: exynos4210-uart.3 {
@@ -97,7 +96,7 @@
 				compatible = "samsung,exynos4210-uart";
 				reg = <0x13830000 0x100>;
 				baudrate = <115200>;
-				irq = <87>;
+				interrupts = <87>;
 			};
 
 			SERIAL4: exynos4210-uart.4 {
@@ -105,14 +104,14 @@
 				compatible = "samsung,exynos4210-uart";
 				reg = <0x13840000 0x100>;
 				baudrate = <115200>;
-				irq = <88>;
+				interrupts = <88>;
 			};
 
 			timer0 {
 				device_type = "timer";
 				compatible = "samsung,exynos4210-PWMtimer";
 				reg = <0x139d0000 0x1000>;
-				irq = <69 70 71 72 73>;
+				interrupts = <69 70 71 72 73>;
 			};
 		};
 	};

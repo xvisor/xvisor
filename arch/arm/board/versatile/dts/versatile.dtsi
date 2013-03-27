@@ -34,7 +34,7 @@
 				device_type = "nic";
 				compatible = "smc91x";
 				reg = <0x10010000 0x1000>;
-				irq = <25>;
+				interrupts = <25>;
 				switch = "netbridge0";
 			};
 
@@ -53,7 +53,7 @@
 					device_type = "pic";
 					compatible = "arm,versatile-sic";
 					reg = <0x10003000 0x1000>;
-					irq = <31>; /* Cascaded to vic */
+					interrupts = <31>; /* Cascaded to vic */
 				};
 
 				vic { /* Vectored Interrupt Controller */
@@ -72,14 +72,14 @@
 			      		device_type = "timer";
 			      		compatible = "arm,sp804";
 			      		reg = <0x101E2000 0x1000>;
-					irq = <4>;
+					interrupts = <4>;
 				};
 
 				timer23 {
 			      		device_type = "timer";
 			      		compatible = "arm,sp804";
 			      		reg = <0x101E3000 0x1000>;
-					irq = <5>;
+					interrupts = <5>;
 				};
 
 				SERIAL0: uart0 {
@@ -87,16 +87,16 @@
 			      		compatible = "arm,pl011";
 			      		reg = <0x101F1000 0x1000>;
 			      		baudrate = <115200>;
-					clock-rate = <24000000>;
-					irq = <12>;
+					clock-frequency = <24000000>;
+					interrupts = <12>;
 				};
 
 				RTC0: rtc0 {
 					device_type = "rtc";
 					compatible = "arm,pl031";
 					reg = <0x101E8000 0x1000>;
-					clock-rate = <1>;
-					irq = <10>;
+					clock-frequency = <1>;
+					interrupts = <10>;
 				};
 			};
 		};

@@ -129,7 +129,7 @@ struct net_device {
 	unsigned char dev_addr[MAX_NDEV_HW_ADDRESS];
 	unsigned int hw_addr_len;
 	unsigned int mtu;
-	int irq;
+	u32 irq;
 	physical_addr_t base_addr;
 	unsigned char	dma;	/* DMA channel		*/
 	struct net_device_stats stats;

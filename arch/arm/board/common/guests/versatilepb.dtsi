@@ -134,7 +134,7 @@
 					physical_size = <0x10000>;
 					device_type = "nic";
 					compatible = "smsc,smc91c111";
-					irq = <25>;
+					interrupts = <25>;
 					switch = ""; /* To be set by DTS including this file */
 				};
 
@@ -218,7 +218,7 @@
 					physical_size = <0x1000>;
 					device_type = "timer";
 					compatible = "primecell,sp804";
-					irq = <4>;
+					interrupts = <4>;
 				};
 
 				timer2_3 {
@@ -228,7 +228,7 @@
 					physical_size = <0x1000>;
 					device_type = "timer";
 					compatible = "primecell,sp804";
-					irq = <5>;
+					interrupts = <5>;
 				};
 
 				gpio0 { /* No GPIO 0 Interface */
@@ -274,7 +274,7 @@
 					physical_size = <0x1000>;
 					device_type = "rtc";
 					compatible = "primecell,pl031";
-					irq = <10>;
+					interrupts = <10>;
 				};
 
 				sci0 { /* No Smart Card 0 Interface */
@@ -294,7 +294,7 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <1024>;
-					irq = <12>;
+					interrupts = <12>;
 				};
 
 				uart1 {
@@ -305,7 +305,7 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <1024>;
-					irq = <13>;
+					interrupts = <13>;
 				};
 
 				uart2 {
@@ -316,7 +316,7 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <1024>;
-					irq = <14>;
+					interrupts = <14>;
 				};
 
 				ssp0 { /* No Synchronous Serial Port Interface */

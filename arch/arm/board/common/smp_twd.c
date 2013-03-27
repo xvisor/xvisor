@@ -164,7 +164,6 @@ int __cpuinit twd_clockchip_init(virtual_addr_t ref_counter_addr,
 				 u32 ref_counter_freq)
 {
 	int rc;
-	u32 *valp;
 	u32 cpu = vmm_smp_processor_id();
 	struct vmm_devtree_node *node;
 	struct twd_clockchip *cc = &this_cpu(twd_cc);
@@ -187,11 +186,10 @@ int __cpuinit twd_clockchip_init(virtual_addr_t ref_counter_addr,
 	}
 
 	if (!twd_ppi_irq) {
-		valp = vmm_devtree_attrval(node, "irq");
-		if (!valp) {
-			return VMM_EFAIL;
+		rc = vmm_devtree_irq_get(node, &twd_ppi_irq, 0);
+		if (rc) {
+			return rc;
 		}
-		twd_ppi_irq = *valp;
 	}
 
 	twd_caliberate_freq(twd_base, ref_counter_addr, ref_counter_freq);

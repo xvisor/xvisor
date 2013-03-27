@@ -386,11 +386,8 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 		s->id[7] = ((u32 *)eid->data)[7];
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "irq");
-	if (attr) {
-		s->irq = *((u32 *)attr);
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+	if (rc) {
 		goto pl011_emulator_probe_freestate_fail;
 	}
 

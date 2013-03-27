@@ -63,7 +63,7 @@ int arch_board_shutdown(void)
 int __init arch_board_early_init(void)
 {
 	int rc;
-	u32 val, *valp;
+	u32 val;
 	struct vmm_devtree_node *hnode, *node;
 
 	/* Host aspace, Heap, Device tree, and Host IRQ available.
@@ -121,11 +121,10 @@ int __init arch_board_early_init(void)
 	}
 
 	/* Get sp804 irq */
-	valp = vmm_devtree_attrval(node, "irq");
-	if (!valp) {
-		return VMM_EFAIL;
+	rc = vmm_devtree_irq_get(node, &versatile_sp804_irq, 0);
+	if (rc) {
+		return rc;
 	}
-	versatile_sp804_irq = *valp;
 
 	return 0;
 }

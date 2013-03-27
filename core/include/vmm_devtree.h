@@ -37,7 +37,7 @@
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_RAM		"ram"
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_ROM		"rom"
 #define VMM_DEVTREE_COMPATIBLE_ATTR_NAME	"compatible"
-#define VMM_DEVTREE_CLOCK_RATE_ATTR_NAME	"clock-rate"
+#define VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME	"clock-frequency"
 #define VMM_DEVTREE_REG_ATTR_NAME		"reg"
 #define VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME	"virtual-reg"
 
@@ -58,6 +58,7 @@
 #define VMM_DEVTREE_MEMORY_NODE_NAME		"memory"
 #define VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME	"physical_addr"
 #define VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME	"physical_size"
+#define VMM_DEVTREE_INTERRUPTS_ATTR_NAME	"interrupts"
 
 #define VMM_DEVTREE_GUESTINFO_NODE_NAME		"guests"
 #define VMM_DEVTREE_VCPUS_NODE_NAME		"vcpus"
@@ -128,6 +129,25 @@ u32 vmm_devtree_literal_size(u32 attrtype);
 
 /** Estimate type of attribute from its name */
 u32 vmm_devtree_estimate_attrtype(const char *name);
+
+/** Get device clock-frequency
+ *  Note: This is based on 'clock-frequency' attribute of device tree node
+ *  Note: This API if for hard-coding clcok frequency in device tree node 
+ *  and it does not use arch_clk_xxxx() APIs
+ */
+int vmm_devtree_clock_frequency(struct vmm_devtree_node *node, 
+				u32 *clock_freq);
+
+/** Get device irq number
+ *  Note: This is based on 'irq' attribute of device tree node
+ */
+int vmm_devtree_irq_get(struct vmm_devtree_node *node, 
+		        u32 *irq, int index);
+
+/** Get count of device irqs
+ *  Note: This is based on 'irq' attribute of device tree node
+ */
+u32 vmm_devtree_irq_count(struct vmm_devtree_node *node);
 
 /** Map device registers to virtual address
  *  Note: This is based on 'reg' and 'virtual-reg' attributes 

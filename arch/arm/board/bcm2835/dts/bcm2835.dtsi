@@ -37,9 +37,9 @@
 		      		device_type = "timer";
 				compatible = "brcm,bcm2835-system-timer";
 				reg = <0x7e003000 0x1000>;
-				clock-rate = <1000000>;
+				clock-frequency = <1000000>;
 				timer_num = <0>;
-				irq = <32>;
+				interrupts = <32>;
 			};
 
 			intc {
@@ -52,9 +52,9 @@
 		      		device_type = "serial";
 		      		compatible = "brcm,bcm2835-pl011", "arm,pl011";
 		      		reg = <0x7e201000 0x1000>;
-				clock-rate = <3000000>;
+				clock-frequency = <3000000>;
 		      		baudrate = <115200>;
-				irq = <89>;
+				interrupts = <89>;
 			};
 		};
 	};

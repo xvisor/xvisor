@@ -76,8 +76,10 @@ int __init arch_defterm_init(void)
 		return rc;
 	}
 
-	val = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	sun4i_uart_port.input_clock = (val) ? *val : 24000000;
+	rc = vmm_devtree_clock_frequency(node, &sun4i_uart_port.input_clock);
+	if (rc) {
+		return rc;
+	}
 
 	val = vmm_devtree_attrval(node, "baudrate");
 	sun4i_uart_port.baudrate = (val) ? *val : 115200;

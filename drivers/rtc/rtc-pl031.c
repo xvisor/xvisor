@@ -325,7 +325,6 @@ static int pl031_driver_probe(struct vmm_device *dev,
 {
 	int rc;
 	u32 periphid;
-	const char *attr;
 	virtual_addr_t reg_base;
 	struct pl031_local *ldata;
 
@@ -344,12 +343,11 @@ static int pl031_driver_probe(struct vmm_device *dev,
 	ldata->hw_designer = amba_manf(dev);
 	ldata->hw_revision = amba_rev(dev);
 
-	attr = vmm_devtree_attrval(dev->node, "irq");
-	if (!attr) {
+	rc = vmm_devtree_irq_get(dev->node, &ldata->irq, 0);
+	if (rc) {
 		rc = VMM_EFAIL;
 		goto free_reg;
 	}
-	ldata->irq = *((u32 *) attr);
 	if ((rc = vmm_host_irq_register(ldata->irq, dev->node->name,
 					pl031_irq_handler, ldata))) {
 		goto free_reg;

@@ -2038,7 +2038,6 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 	struct net_device *ndev;
 	virtual_addr_t addr;
 	struct smc911x_local *lp;
-	const char *attr;
 
 	ndev = alloc_etherdev(sizeof(struct smc911x_local));
 	if (!ndev) {
@@ -2066,13 +2065,12 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 									addr);
 	lp->base = (void *) addr;
 
-	attr = vmm_devtree_attrval(dev->node, "irq");
-	if (!attr) {
+	rc = vmm_devtree_irq_get(dev->node, &ndev->irq, 0);
+	if (rc) {
 		rc = VMM_EFAIL;
 		goto free_ioreamp_mem;
 	}
 
-	ndev->irq = *((u32 *) attr);
 	DBG(SMC_DEBUG_MISC, "%s IRQ  0x%02X\n", ndev->name, ndev->irq);
 
 	if(vmm_devtree_getattr(dev->node, "smsc,irq-active-high")) {

@@ -426,11 +426,8 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 		s->id[11] = ((u8 *)eid->data)[11];
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "irq");
-	if (attr) {
-		s->irq = *((u32 *)attr);
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+	if (rc) {
 		goto pl061_emulator_probe_unregpic_failed;
 	}
 

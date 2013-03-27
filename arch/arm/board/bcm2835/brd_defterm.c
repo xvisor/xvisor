@@ -78,8 +78,10 @@ int __init arch_defterm_init(void)
 		return rc;
 	}
 
-	val = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	bcm_defterm_inclk = (val) ? *val : 3000000;
+	rc = vmm_devtree_clock_frequency(node, &bcm_defterm_inclk);
+	if (rc) {
+		return rc;
+	}
 
 	val = vmm_devtree_attrval(node, "baudrate");
 	bcm_defterm_baud = (val) ? *val : 115200;

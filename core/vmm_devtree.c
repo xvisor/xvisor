@@ -99,7 +99,7 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
 	} else if (!strcmp(name, VMM_DEVTREE_COMPATIBLE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
-	} else if (!strcmp(name, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!strcmp(name, VMM_DEVTREE_REG_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
@@ -111,6 +111,8 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
 	} else if (!strcmp(name, VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
+	} else if (!strcmp(name, VMM_DEVTREE_INTERRUPTS_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!strcmp(name, VMM_DEVTREE_START_PC_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
 	} else if (!strcmp(name, VMM_DEVTREE_PRIORITY_ATTR_NAME)) {
@@ -144,6 +146,57 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 	}
 
 	return ret;
+}
+
+int vmm_devtree_clock_frequency(struct vmm_devtree_node *node, u32 *clock_freq)
+{
+	const char *aval;
+
+	if (!node || !clock_freq) {
+		return VMM_EFAIL;
+	}
+
+	aval = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME);
+	if (!aval) {
+		return VMM_ENOTAVAIL;
+	}
+
+	*clock_freq = *((u32 *)aval);
+
+	return VMM_OK;
+}
+
+int vmm_devtree_irq_get(struct vmm_devtree_node *node, 
+		        u32 *irq, int index)
+{
+	const char *aval;
+
+	if (!node || !irq || index < 0) {
+		return VMM_EFAIL;
+	}
+
+	aval = vmm_devtree_attrval(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
+	if (!aval) {
+		return VMM_ENOTAVAIL;
+	}
+
+	aval += index * sizeof(u32);
+	*irq  = *((u32 *)aval);
+
+	return VMM_OK;
+}
+
+u32 vmm_devtree_irq_count(struct vmm_devtree_node *node)
+{
+	u32 alen;
+
+	if (!node) {
+		return 0;
+	}
+
+	alen = vmm_devtree_attrlen(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
+
+	return alen / sizeof(u32);
 }
 
 int vmm_devtree_regmap(struct vmm_devtree_node *node, 

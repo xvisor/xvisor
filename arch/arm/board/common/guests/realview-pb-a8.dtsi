@@ -105,7 +105,7 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <1024>;
-					irq = <44>;
+					interrupts = <44>;
 				};
 
 				uart1 {
@@ -116,7 +116,7 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <1024>;
-					irq = <45>;
+					interrupts = <45>;
 				};
 
 				uart2 {
@@ -127,7 +127,7 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <1024>;
-					irq = <46>;
+					interrupts = <46>;
 				};
 
 				uart3 {
@@ -138,7 +138,7 @@
 					device_type = "serial";
 					compatible = "primecell,arm,pl011";
 					fifo_size = <1024>;
-					irq = <47>;
+					interrupts = <47>;
 				};
 
 				ssp0 { /* No Synchronous Serial Port */
@@ -175,7 +175,7 @@
 					physical_size = <0x1000>;
 					device_type = "timer";
 					compatible = "primecell,sp804";
-					irq = <36>;
+					interrupts = <36>;
 				};
 
 				timer2_3 {
@@ -185,7 +185,7 @@
 					physical_size = <0x1000>;
 					device_type = "timer";
 					compatible = "primecell,sp804";
-					irq = <37>;
+					interrupts = <37>;
 				};
 
 				gpio0 {
@@ -198,7 +198,7 @@
 					gpio_in_invert = <0 0 0 0 0 0 0 0>;
 					gpio_in_irq = <4000 4001 4002 4003 4004 4005 4006 4007>;
 					gpio_out_irq = <4008 4009 4010 4011 4012 4013 4014 4015>;
-					irq = <38>;
+					interrupts = <38>;
 				};
 
 				gpio1 {
@@ -211,7 +211,7 @@
 					gpio_in_invert = <0 0 0 0 0 0 0 0>;
 					gpio_in_irq = <3000 3001 3002 3003 3004 3005 3006 3007>;
 					gpio_out_irq = <3008 3009 3010 3011 3012 3013 3014 3015>;
-					irq = <39>;
+					interrupts = <39>;
 				};
 
 				gpio2 {
@@ -224,7 +224,7 @@
 					gpio_in_invert = <1 0 0 0 0 0 0 0>;
 					gpio_in_irq = <2001 2000 2002 2003 2004 2005 2006 2007>;
 					gpio_out_irq = <2008 2009 2010 2011 2012 2013 2014 2015>;
-					irq = <40>;
+					interrupts = <40>;
 				};
 
 				rtc0 {
@@ -234,7 +234,7 @@
 					physical_size = <0x1000>;
 					device_type = "rtc";
 					compatible = "primecell,pl031";
-					irq = <42>;
+					interrupts = <42>;
 				};
 
 				sysctrl1 { /* No SP810 sysctrl */
@@ -292,7 +292,7 @@
 					guest_physical_addr = <0x20100000>;
 					physical_size = <0x1000>;
 					switch = ""; /* To be set by DTS including this file */
-					irq = <34>;
+					interrupts = <34>;
 				};
 
 				virtio-blk0 {
@@ -304,7 +304,7 @@
 					guest_physical_addr = <0x20200000>;
 					physical_size = <0x1000>;
 					blkdev = ""; /* To be set by DTS including this file */
-					irq = <35>;
+					interrupts = <35>;
 				};
 
 				virtio-con0 {
@@ -315,7 +315,7 @@
 					virtio_type = <3>;
 					guest_physical_addr = <0x20300000>;
 					physical_size = <0x1000>;
-					irq = <41>;
+					interrupts = <41>;
 				};
 
 				nor_flash {
@@ -335,7 +335,7 @@
 					device_type = "nic";
 					compatible = "smsc,lan9118";
 					switch = ""; /* To be set by DTS including this file */
-					irq = <60>;
+					interrupts = <60>;
 				};
 			};
 		};
