@@ -135,7 +135,7 @@ int __init arch_clocksource_init(void)
 
 	/* Initialize sp804 timer0 as clocksource */
 	rc = sp804_clocksource_init(versatile_sp804_base, 
-				    "sp804_timer0", 300, 1000000, 20);
+				    "sp804_timer0", 1000000);
 	if (rc) {
 		vmm_printf("%s: sp804 clocksource init failed (error %d)\n", 
 			   __func__, rc);
@@ -150,8 +150,8 @@ int __cpuinit arch_clockchip_init(void)
 
 	/* Initialize sp804 timer1 as clockchip */
 	rc = sp804_clockchip_init(versatile_sp804_base + 0x20, 
-				  versatile_sp804_irq, 
-				  "sp804_timer1", 300, 1000000, 0);
+				  "sp804_timer1", versatile_sp804_irq, 
+				  1000000, 0);
 	if (rc) {
 		vmm_printf("%s: sp804 clockchip init failed (error %d)\n", 
 			   __func__, rc);

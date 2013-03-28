@@ -204,8 +204,8 @@ int __cpuinit twd_clockchip_init(virtual_addr_t ref_counter_addr,
 	cc->clkchip.cpumask = vmm_cpumask_of(cpu);
 	cc->clkchip.features = 
 		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
-	cc->clkchip.shift = 20;
-	cc->clkchip.mult = vmm_clockchip_hz2mult(twd_freq_hz, cc->clkchip.shift);
+	vmm_clocks_calc_mult_shift(&cc->clkchip.mult, &cc->clkchip.shift, 
+				   VMM_NSEC_PER_SEC, twd_freq_hz, 10);
 	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &cc->clkchip);
 	cc->clkchip.max_delta_ns = 
 			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);
