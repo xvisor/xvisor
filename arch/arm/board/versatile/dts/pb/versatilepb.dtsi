@@ -108,5 +108,5 @@
 };
 
 /* Add guest templates */
-/include/ "../../common/guests/versatilepb.dtsi"
+/include/ "../../../common/guests/versatilepb.dtsi"
 
