@@ -1,0 +1,12 @@
+
+/dts-v1/;
+
+/include/ "eb-mpcore.dtsi"
+
+/ {
+	choosen {
+		console = &SERIAL0;
+		rtcdev = &RTC0;
+		bootcmd = ""; /* FIXME: */
+	};
+};
