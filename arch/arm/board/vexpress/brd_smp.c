@@ -25,6 +25,7 @@
 #include <vmm_types.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
+#include <vmm_host_aspace.h>
 #include <vmm_compiler.h>
 #include <libs/libfdt.h>
 #include <libs/stringlib.h>
@@ -98,11 +99,19 @@ int __init arch_smp_init_cpus(void)
 	return VMM_OK;
 }
 
-extern unsigned long _load_start;
+extern u8 _start_secondary;
 
 int __init arch_smp_prepare_cpus(unsigned int max_cpus)
 {
-	int i;
+	int i, rc;
+	physical_addr_t _start_secondary_pa;
+
+	/* Get physical address secondary startup code */
+	rc = vmm_host_va2pa((virtual_addr_t)&_start_secondary, 
+			    &_start_secondary_pa);
+	if (rc) {
+		return rc;
+	}
 
 	/* Update the cpu_present bitmap */
 	for (i = 0; i < max_cpus; i++) {
@@ -115,7 +124,7 @@ int __init arch_smp_prepare_cpus(unsigned int max_cpus)
 	}
 
 	/* Write the entry address for the secondary cpus */
-	v2m_flags_set((u32) _load_start);
+	v2m_flags_set((u32)_start_secondary_pa);
 
 	return VMM_OK;
 }

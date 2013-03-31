@@ -24,15 +24,18 @@
 #include <cpu_defines.h>
 
 	/* 
-	 * Xvisor could be loaded any where in memory by boot loaders.
+	 * _start: Primary CPU startup code
+	 * _start_secondary: Secondary CPU startup code
+	 *
+	 * Note: Xvisor could be loaded any where in memory by boot loaders.
 	 * The _start ensures that Xvisor exectues from intended
 	 * base address provided at compile time.
 	 */
 	.section .entry, "ax", %progbits
 	.globl _start
+	.globl _start_secondary
 _start:
-	/*
-	 * r4 -> load start
+	/* r4 -> load start
 	 * r5 -> load end
 	 * r6 -> execution start
 	 * r7 -> execution end
@@ -44,14 +47,6 @@ _start:
 	sub	r2, r7, r6
 	add	r5, r4, r2
 
-#ifdef CONFIG_SMP
-	/* Secondary CPUs directly start mmu init from here */
-	mrc     p15, 0, r0, c0, c0, 5
-	ands	r0, r0, #0xFF
-	cmp	r0, #0
-	bne	_start_mmu_init
-#endif
-
 	ldr	r0, __load_start
 	sub	r0, r0, r6
 	add	r0, r0, r4
@@ -60,31 +55,23 @@ _start:
 	sub	r0, r0, r6
 	add	r0, r0, r4
 	str	r5, [r0]
-	/*
-	 * Hang if execution start is not 4 KB aligned
-	 */
+	/* Hang if execution start is not 4 KB aligned */
 	mov	r0, r6
 	bfc	r0, #0, #12
 	cmp	r0, r6
 	blt	_start_hang
-	/*
-	 * Hang if execution end is not 4 KB aligned
-	 */
+	/* Hang if execution end is not 4 KB aligned */
 	mov	r0, r7
 	bfc	r0, #0, #12
 	cmp	r0, r7
 	blt	_start_hang
-	/*
-	 * Relocate code if load start is not 4 KB aligned
-	 */
+	/* Relocate code if load start is not 4 KB aligned */
 	mov	r0, r4
 	bfc	r0, #0, #12
 	cmp	r0, r4
 	beq	_start_mmu_init
 _start_relocate:
-	/*
-	 * Relocate copy function at end after load end address
-	 */
+	/* Relocate copy function at end after load end address */
 	ldr	r0, __copy_start
 	ldr	r1, __copy_end
 	sub	r2, r1, r0
@@ -92,9 +79,7 @@ _start_relocate:
 	add	r0, r0, r4
 	mov	r1, r5
 	bl	_copy
-	/*
-	 * Use newly relocated copy function to relocate entire code
-	 */
+	/* Use newly relocated copy function to relocate entire code */
 	mov	r0, r4
 	mov	r1, r5
 	sub	r2, r5, r4
@@ -106,8 +91,7 @@ _start_nextpc1:
 	sub	lr, lr, r4
 	add	lr, lr, r1
 	bx	r5
-	/*
-	 * Update load start and load end
+	/* Update load start and load end
 	 * r4 -> new load start
 	 * r5 -> new load end
 	 */
@@ -124,23 +108,14 @@ _start_nextpc1:
 	sub	r0, r0, r6
 	add	r0, r0, r4
 	str	r5, [r0]
+
 _start_mmu_init:
-	/*
-	 * Enter hypervisor mode (if not in hypervisor mode)
-	 */
+	/* Enter hypervisor mode (if not in hypervisor mode) */
 	mrs	r0, cpsr_all
 	and	r0, r0, #(CPSR_MODE_MASK)
 	cmp	r0, #(CPSR_MODE_HYPERVISOR)
 	blne	_enter_hvc
-	/*
-	 * Setup initial TTBL using C code and a temporary stack
-	 */
-#if defined(CONFIG_SMP)
-	mrc     p15, 0, r0, c0, c0, 5
-	ands	r0, r0, #0xFF
-	cmp	r0, #0
-	bne	_skip_setup_initial_ttbl
-#endif
+	/* Setup initial TTBL using C code and a temporary stack */
 	ldr	sp, __hvc_stack_end
 	sub	sp, sp, r6
 	add	sp, sp, r4
@@ -149,57 +124,54 @@ _start_mmu_init:
 	mov	r2, r6
 	mov	r3, r7
 	bl	_setup_initial_ttbl
-#if defined(CONFIG_SMP)
-_skip_setup_initial_ttbl:
-#endif
+	ldr	r0, __httbr_set
+	sub	r0, r0, r6
+	add	r0, r0, r4
+	str	r0, __httbr_set
+
 	/*
-	 * Setup Hypervisor MAIR0 & MAIR1
+	 * Secondary CPU startup code 
+	 *
+	 * Note: From this point primary CPU startup is same as secondary CPU
 	 */
+_start_secondary:
+	/* Setup Hypervisor MAIR0 & MAIR1 */
 	ldr	r0, __hmair0_set
 	mcr     p15, 4, r0, c10, c2, 0
 	ldr	r0, __hmair1_set
 	mcr     p15, 4, r0, c10, c2, 1
-	/*
-	 * Setup Hypervisor Translation Control Register
-	 */
+	/* Setup Hypervisor Translation Control Register */
 	ldr	r1, __htcr_set
 	ldr	r2, __htcr_clear
 	mrc     p15, 4, r3, c2, c0, 2
 	and	r3, r3, r2
 	orr	r3, r3, r1
 	mcr     p15, 4, r3, c2, c0, 2
-	/*
-	 * Setup Hypervisor Translation Base Register
-	 */
+	/* Setup Hypervisor Translation Base Register */
 	ldr	r0, __httbr_set
-	sub	r0, r0, r6
-	add	r0, r0, r4
 	mov	r1, #0x0
 	mcrr     p15, 4, r0, r1, c2
-	/*
-	 * Setup Hypervisor Stage2 Translation Control Register
-	 */
+	/* Setup Hypervisor Stage2 Translation Control Register */
 	ldr	r1, __vtcr_set
 	ldr	r2, __vtcr_clear
 	mrc     p15, 4, r3, c2, c1, 2
 	and	r3, r3, r2
 	orr	r3, r3, r1
 	mcr     p15, 4, r3, c2, c1, 2
-	/*
-	 * Setup Hypervisor System Control Register
-	 */
+	/* Setup Hypervisor System Control Register */
 	ldr	r1, __hsctlr_set
 	ldr	r2, __hsctlr_clear
 	mrc     p15, 4, r3, c1, c0, 0
 	and	r3, r3, r2
 	orr	r3, r3, r1
 	mcr     p15, 4, r3, c1, c0, 0
-	/*
-	 * Jump to reset code
-	 */
+	/* Jump to reset code */
 	ldr	pc, __reset
+
 _start_hang:
 	b	.
+
+
 __hmair0_set:
 	.word (HMAIR0_INITVAL)
 __hmair1_set:
