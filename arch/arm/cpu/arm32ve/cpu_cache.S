@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_cache_v7.S
+ * @file cpu_cache.S
  * @author Ankit Jindal (thatsjindal@gmail.com)
  * @author Anup Patel (anup@brainfault.org)
  * @brief Low-level implementation of cache ARMv7 functions 

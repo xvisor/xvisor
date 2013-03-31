@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Ankit Jindal.
+ * Copyright (c) 2013 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,20 +18,21 @@
  *
  * @file cpu_cache_v6.S
  * @author Ankit Jindal (thatsjindal@gmail.com)
- * @brief Low-level implementation of cache functions 
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief Low-level implementation of cache ARMv6 functions 
  */
 
 /*
  * dcache_line_size - get the minimum D-cache line size from the CTR register
- * on ARMv7.
+ * on ARMv6.
  */
-	.macro	dcache_line_size, reg, tmp
+.macro	dcache_line_size, reg, tmp
 	mrc	p15, 0, \tmp, c0, c0, 1		@ read ctr
 	lsr	\tmp, \tmp, #16
 	and	\tmp, \tmp, #0xf		@ cache line size encoding
 	mov	\reg, #4			@ bytes per word
 	mov	\reg, \reg, lsl \tmp		@ actual cache line size
-	.endm
+.endm
 
 /* 
  * Generic mechanism for operations on the entire data or unified cache to the Point
@@ -56,7 +57,7 @@
 	cmp 	r1, #2			;\
 	blt 	4f 			/* no cache or only instruction cache at this level */; \
 	mcr 	p15, 2, r10, c0, c0, 0 	/* write the Cache Size selection register */; \
-	/* FIXME: isb */		/* isb to sync the change to the CacheSizeID reg */; \
+	mcr	p15, 0, r2, c7, c5, 4	/* isb to sync the change to the CacheSizeID reg */; \
 	mrc 	p15, 1, r1, c0, c0, 0 	/* reads current Cache Size ID register */; \
 	and 	r2, r1, #7 		/* extract the line length field */; \
 	add 	r2, r2, #4 		/* add 4 for the line length offset (log2 16 bytes) */; \
@@ -91,21 +92,29 @@
 	.globl invalidate_dcache
 invalidate_dcache:
 	ARM_ENTIRE_DCACHE_OP(c6) 	/* invalidate all */
-	/* FIXME: dsb */
+	push	{r0}
+	mcr	p15, 0, r0, c7, c5, 4
+	pop	{r0}
 	bx	lr
 
 	/* clean the entire data cache */	
- 	.globl clean_dcache
+	.globl clean_dcache
 clean_dcache:
 	ARM_ENTIRE_DCACHE_OP(c10) 	/* clean all */
-	/* FIXME: dsb */
+	push	{r0}
+	mcr	p15, 0, r0, c7, c10, 4
+	mcr	p15, 0, r0, c7, c5, 4
+	pop	{r0}
 	bx	lr
 
 	/* clean & invalidate the entire data cache */	
- 	.globl clean_invalidate_dcache
+	.globl clean_invalidate_dcache
 clean_invalidate_dcache:
 	ARM_ENTIRE_DCACHE_OP(c14) 	/* clean and invalidate all */
-	/* FIXME: dsb */
+	push	{r0}
+	mcr	p15, 0, r0, c7, c10, 4
+	mcr	p15, 0, r0, c7, c5, 4
+	pop	{r0}
 	bx	lr
 
 	/* 
@@ -116,19 +125,24 @@ clean_invalidate_dcache:
 	.globl invalidate_dcache_mva
 invalidate_dcache_mva:
 	mcr     p15, 0, r0, c7, c6, 1
-	/* FIXME: dsb */
+	mcr	p15, 0, r0, c7, c5, 4
 	bx	lr
 	
 	/* clean by mva */
 	.globl clean_dcache_mva
 clean_dcache_mva:
 	mcr     p15, 0, r0, c7, c10, 1
-	/* FIXME: dsb */
+	mcr	p15, 0, r0, c7, c10, 4
+	mcr	p15, 0, r0, c7, c5, 4
 	bx	lr
 
-	/* clean by mva range */
+	/* clean by memory region by mva range 
+	 *  r0 - start address of region
+	 *  r1 - end address of region
+	 */
 	.globl clean_dcache_mva_range
 clean_dcache_mva_range:
+	push	{r0, r1, r2, r3}
 	dcache_line_size r2, r3
 	sub	r3, r2, #1
 	bic	r0, r0, r3
@@ -137,22 +151,26 @@ clean_dcache_mva_range:
 	add	r0, r0, r2
 	cmp	r0, r1
 	blo	1b
-	/* FIXME: dsb */
+	mcr	p15, 0, r0, c7, c10, 4
+	mcr	p15, 0, r0, c7, c5, 4
+	pop	{r0, r1, r2, r3}
 	bx	lr
 
 	/* clean and invalidate by mva */
 	.globl clean_invalidate_dcache_mva
 clean_invalidate_dcache_mva:
 	mcr     p15, 0, r0, c7, c14, 1
-	/* FIXME: dsb */
+	mcr	p15, 0, r0, c7, c10, 4
+	mcr	p15, 0, r0, c7, c5, 4
 	bx	lr
 
-	/* clean and invalidate a memory region
+	/* clean and invalidate a memory region by mva
 	 *  r0 - start address of region
 	 *  r1 - end address of region
 	 */
 	.globl clean_invalidate_dcache_mva_range
 clean_invalidate_dcache_mva_range:
+	push	{r0, r1, r2, r3}
 	dcache_line_size r2, r3
 	sub	r3, r2, #1
 	bic	r0, r0, r3
@@ -161,7 +179,9 @@ clean_invalidate_dcache_mva_range:
 	add	r0, r0, r2
 	cmp	r0, r1
 	blo	1b
-	/* FIXME: dsb */
+	mcr	p15, 0, r0, c7, c10, 4
+	mcr	p15, 0, r0, c7, c5, 4
+	pop	{r0, r1, r2, r3}	
 	bx	lr
 
 	/* 
@@ -172,21 +192,23 @@ clean_invalidate_dcache_mva_range:
 	.globl invalidate_dcache_line
 invalidate_dcache_line:
 	mcr     p15, 0, r0, c7, c6, 2
-	/* FIXME: dsb */
+	mcr	p15, 0, r0, c7, c5, 4
 	bx	lr
-	
+
 	/* clean line by set/way */
 	.globl clean_dcache_line
 clean_dcache_line:
 	mcr     p15, 0, r0, c7, c10, 2
-	/* FIXME: dsb */
+	mcr	p15, 0, r0, c7, c10, 4
+	mcr	p15, 0, r0, c7, c5, 4
 	bx	lr
 
 	/* clean and invalidate line by set/way */
 	.globl clean_invalidate_dcache_line
 clean_invalidate_dcache_line:
 	mcr     p15, 0, r0, c7, c14, 2
-	/* FIXME: dsb */
+	mcr	p15, 0, r0, c7, c10, 4
+	mcr	p15, 0, r0, c7, c5, 4
 	bx	lr
 
 	/* 
@@ -196,30 +218,27 @@ clean_invalidate_dcache_line:
 	/* invalidate the entire i-cache */
 	.globl invalidate_icache
 invalidate_icache:
-        stmfd   sp!, {r0}		/* save registers */;\
-
+        push	{r0}
 	mov	r0, #0
-	mcr     p15, 0, r0, c7, c5, 0 	/* invalidate all */
-
-	ldmia   sp!, {r0}		/* restore registers */;
+	mcr	p15, 0, r0, c7, c5, 0 	/* invalidate all */
+	mcr	p15, 0, r0, c7, c5, 4
+	pop	{r0}
 	bx	lr
 
 	/* invalidate i-cache by mva */
 	.globl invalidate_icache_mva
 invalidate_icache_mva:
 	mcr     p15, 0, r0, c7, c5, 0 	/* invalidate all */
+	mcr	p15, 0, r0, c7, c5, 4
 	bx	lr
 
 	/* invalidate the i-cache line by set/way */ 
 	/* no such instruction so invalidate everything */
 	.globl invalidate_icache_line
 invalidate_icache_line:
-        stmfd   sp!, {r0}		/* save registers */;\
-
-	mov	r0, #0
-	mcr     p15, 0, r0, c7, c5, 0 	/* invalidate all */
-
-	ldmia   sp!, {r0}		/* restore registers */;
+	push	{lr}
+	bl	invalidate_icache
+	pop	{lr}
 	bx	lr
 
 	/* 
@@ -229,33 +248,27 @@ invalidate_icache_line:
 	/* invalidate the entire i-cache and d-cache */
 	.globl invalidate_idcache
 invalidate_idcache:
-        stmfd   sp!, {lr}		/* save registers */;\
-	
+        push	{lr}	
 	bl	invalidate_icache
 	bl	invalidate_dcache
-
-	ldmia   sp!, {lr}		/* restore registers */;
+	pop	{lr}
 	bx	lr
 
 	/* clean the entire i-cache and d-cache */
 	.globl clean_idcache
 clean_idcache:
-        stmfd   sp!, {lr}		/* save registers */;\
-	
+	push	{lr}	
 	bl	clean_dcache
-
-	ldmia   sp!, {lr}		/* restore registers */;
+	pop	{lr}
 	bx	lr
 
 	/* clean and invalidate the entire i-cache and d-cache */
 	.globl clean_invalidate_idcache
 clean_invalidate_idcache:
-        stmfd   sp!, {lr}		/* save registers */;\
-	
+	push	{lr}
 	bl	invalidate_icache
 	bl	clean_invalidate_dcache
-
-	ldmia   sp!, {lr}		/* restore registers */;
+	pop	{lr}
 	bx	lr
 
 	/* 
@@ -265,33 +278,27 @@ clean_invalidate_idcache:
 	/* invalidate both i-cache and d-cache by mva */
 	.globl invalidate_idcache_mva
 invalidate_idcache_mva:
-        stmfd   sp!, {lr}		/* save registers */;\
-	
+	push	{lr}
 	bl	invalidate_icache_mva
 	bl	invalidate_dcache_mva
-
-	ldmia   sp!, {lr}		/* restore registers */;
+	pop	{lr}
 	bx	lr
 
 	/* clean both i-cache and d-cache by mva */
 	.globl clean_idcache_mva
 clean_idcache_mva:
-        stmfd   sp!, {lr}		/* save registers */;\
-	
+	push	{lr}
 	bl	clean_dcache_mva
-
-	ldmia   sp!, {lr}		/* restore registers */;
+	pop	{lr}
 	bx	lr
 
 	/* clean and invalidate both i-cache and d-cache by mva */
 	.globl clean_invalidate_idcache_mva
 clean_invalidate_idcache_mva:
-        stmfd   sp!, {lr}		/* save registers */;\
-	
+	push	{lr}
 	bl	invalidate_icache_mva
 	bl	clean_invalidate_dcache_mva
-
-	ldmia   sp!, {lr}		/* restore registers */;
+	pop	{lr}
 	bx	lr
 
 	/* 
@@ -301,33 +308,27 @@ clean_invalidate_idcache_mva:
 	/* invalidate both i-cache and d-cache line by set/way */
 	.globl invalidate_idcache_line
 invalidate_idcache_line:
-        stmfd   sp!, {lr}		/* save registers */;\
-	
+	push	{lr}
 	bl	invalidate_icache_line
 	bl	invalidate_dcache_line
-
-	ldmia   sp!, {lr}		/* restore registers */;
+	pop	{lr}
 	bx	lr
 
 	/* clean both i-cache and d-cache line by set/way */
 	.globl clean_idcache_line
 clean_idcache_line:
-        stmfd   sp!, {lr}		/* save registers */;\
-	
+	push	{lr}
 	bl	clean_dcache_line
-
-	ldmia   sp!, {lr}		/* restore registers */;
+	pop	{lr}
 	bx	lr
 
 	/* clean and invalidate both i-cache and d-cache line by set/way */
 	.globl clean_invalidate_idcache_line
 clean_invalidate_idcache_line:
-        stmfd   sp!, {lr}		/* save registers */;\
-	
+	push	{lr}
 	bl	invalidate_icache
 	bl	clean_invalidate_dcache_line
-
-	ldmia   sp!, {lr}		/* restore registers */;
+	pop	{lr}
 	bx	lr
 
 	/* 
@@ -337,19 +338,17 @@ clean_invalidate_idcache_line:
 	/* invalidate entire branch predictor */
 	.globl invalidate_bpredictor
 invalidate_bpredictor:
-        stmfd   sp!, {r0}		/* save registers */;\
-
+	push	{r0}
 	mov	r0, #0
 	mcr     p15, 0, r0, c7, c5, 6 	/* invalidate all */
-
-	ldmia   sp!, {r0}		/* restore registers */;
+	mcr	p15, 0, r0, c7, c5, 4
+	pop	{r0}
 	bx	lr
 
 	/* invalidate branch predictor by mva */
 	.globl invalidate_bpredictor_mva
 invalidate_bpredictor_mva:
 	mcr     p15, 0, r0, c7, c5, 7 	/* invalidate all */
-
+	mcr	p15, 0, r0, c7, c5, 4
 	bx	lr
-
 
