@@ -22,10 +22,12 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
+#include <arch_barrier.h>
 #include <arch_board.h>
 #include <arch_timer.h>
 #include <libs/stringlib.h>
@@ -36,12 +38,14 @@
 #include <versatile/clock.h>
 #include <realview_plat.h>
 #include <sp804_timer.h>
+#include <smp_twd.h>
 
 /*
  * Global board context
  */
 
 static virtual_addr_t realview_sys_base;
+static virtual_addr_t realview_sys_24mhz;
 static virtual_addr_t realview_sctl_base;
 static virtual_addr_t realview_sp804_base;
 static u32 realview_sp804_irq;
@@ -49,6 +53,16 @@ static u32 realview_sp804_irq;
 #if defined(CONFIG_VTEMU)
 struct vtemu *realview_vt;
 #endif
+
+void realview_flags_set(u32 addr)
+{
+	vmm_writel(~0x0, (void *)(realview_sys_base + 
+				  REALVIEW_SYS_FLAGSCLR_OFFSET));
+	vmm_writel(addr, (void *)(realview_sys_base + 
+				  REALVIEW_SYS_FLAGSSET_OFFSET));
+
+	arch_mb();
+}
 
 /*
  * Reset & Shutdown
@@ -231,7 +245,7 @@ static int realview_clcd_setup(struct clcd_fb *fb)
 }
 
 struct clcd_board clcd_system_data = {
-	.name		= "PB-A8",
+	.name		= "Realview",
 	.caps		= CLCD_CAP_ALL,
 	.check		= clcdfb_check,
 	.decode		= clcdfb_decode,
@@ -273,6 +287,9 @@ int __init arch_board_early_init(void)
 	if (rc) {
 		return rc;
 	}
+
+	/* Get address of 24mhz counter */
+	realview_sys_24mhz = realview_sys_base + REALVIEW_SYS_24MHz_OFFSET;
 
 	/* Map sysctl */
 	node = vmm_devtree_find_compatible(hnode, NULL, "arm,sp810");
@@ -341,15 +358,27 @@ int __init arch_clocksource_init(void)
 int __cpuinit arch_clockchip_init(void)
 {
 	int rc;
+	u32 cpu = vmm_smp_processor_id();
 
-	/* Initialize sp804 timer1 as clockchip */
-	rc = sp804_clockchip_init(realview_sp804_base + 0x20, 
-				  "sp804_timer1", realview_sp804_irq, 
-				  1000000, 0);
+	if (!cpu) {
+		/* Initialize sp804 timer1 as clockchip */
+		rc = sp804_clockchip_init(realview_sp804_base + 0x20, 
+					  "sp804_timer1", realview_sp804_irq, 
+					  1000000, 0);
+		if (rc) {
+			vmm_printf("%s: sp804 clockchip init failed "
+				   "(error %d)\n", __func__, rc);
+		}
+	}
+
+#if defined(CONFIG_ARM_TWD)
+	/* Initialize SMP twd local timer as clockchip */
+	rc = twd_clockchip_init(realview_sys_24mhz, 24000000);
 	if (rc) {
-		vmm_printf("%s: sp804 clockchip init failed (error %d)\n", 
+		vmm_printf("%s: local timer init failed (error %d)\n", 
 			   __func__, rc);
 	}
+#endif
 
 	return VMM_OK;
 }

@@ -279,4 +279,9 @@
 #define REALVIEW_CSR_BASE             0x10000000
 #define REALVIEW_CSR_SIZE             0x10000000
 
+/*
+ * Platform helper routines
+ */
+void realview_flags_set(u32 addr);
+
 #endif

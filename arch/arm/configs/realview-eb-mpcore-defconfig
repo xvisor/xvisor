@@ -2,14 +2,14 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.1
-# Fri Mar 29 11:19:27 2013
+# Sun Mar 31 09:04:49 2013
 #
-# CONFIG_SMP is not set
+CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
-CONFIG_CPU_COUNT=1
+CONFIG_CPU_COUNT=4
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
@@ -49,9 +49,9 @@ CONFIG_REALVIEW_EBMP_ONE_GUEST_EBMP_DTS=y
 # CONFIG_ARM_VIC is not set
 CONFIG_ARM_GIC=y
 CONFIG_ARM_TIMER_SP804=y
-# CONFIG_ARM_TWD is not set
+CONFIG_ARM_TWD=y
 CONFIG_ICST=y
-# CONFIG_ARM_SCU is not set
+CONFIG_ARM_SCU=y
 CONFIG_VERSATILE_CLOCK=y
 CONFIG_VERSATILE_CLCD=y
 # CONFIG_OMAP is not set

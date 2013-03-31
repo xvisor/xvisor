@@ -54,12 +54,25 @@
 				#address-cells = <1>;
 				#size-cells = <1>;
 
+				scu { /* Snoop Control Unit */
+			      		device_type = "scu";
+			      		compatible = "arm,arm11mp-scu";
+			      		reg = <0x10100000 0x100>;
+				};
+
 				gic { /* Generic Interrupt Controller */
 			      		device_type = "pic";
 			      		compatible = "arm,realview-gic";
 			      		reg = <0x10101000 0x1000
 					       0x10100100 0x100>;
 					irq_start = <29>;
+				};
+
+				twd-timer { /* Local Timer */
+			      		device_type = "timer";
+			      		compatible = "arm,arm11mp-twd-timer";
+			      		reg = <0x10100600 0x1000>;
+					interrupts = <29>;
 				};
 
 				sysreg { /* System Registers */
