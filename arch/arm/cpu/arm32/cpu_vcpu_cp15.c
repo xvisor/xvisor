@@ -298,10 +298,10 @@ static physical_addr_t get_level1_table_pa(struct vmm_vcpu *vcpu,
 					   virtual_addr_t va)
 {
 	if (va & arm_priv(vcpu)->cp15.c2_mask) {
-		return arm_priv(vcpu)->cp15.c2_base1 & 0xffffc000;
+		return arm_priv(vcpu)->cp15.c2_ttbr1 & 0xffffc000;
 	}
 
-	return arm_priv(vcpu)->cp15.c2_base0 & arm_priv(vcpu)->cp15.c2_base_mask;
+	return arm_priv(vcpu)->cp15.c2_ttbr0 & arm_priv(vcpu)->cp15.c2_base_mask;
 }
 
 static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va, 
@@ -958,15 +958,12 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 					 * this it was implemented only in the 11MPCore.
 					 * For all other pre-v7 cores it does not exist.
 					 */
-					if (arm_feature(vcpu, ARM_FEATURE_V7) ||
-					    arm_cpuid(vcpu) ==
-					    ARM_CPUID_ARM11MPCORE) {
+					if (arm_feature(vcpu, ARM_FEATURE_MPIDR)) {
 						int mpidr = vcpu->subid;
 						/* We don't support setting cluster ID ([8..11])
 						 * so these bits always RAZ.
 						 */
-						if (arm_feature
-						    (vcpu, ARM_FEATURE_V7MP)) {
+						if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
 							mpidr |= (1 << 31);
 							/* Cores which are uniprocessor (non-coherent)
 							 * but still implement the MP extensions set
@@ -1133,13 +1130,13 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
 	case 2:		/* MMU Page table control / MPU cache control.  */
 		switch (opc2) {
 		case 0:
-			*data = arm_priv(vcpu)->cp15.c2_base0;
+			*data = arm_priv(vcpu)->cp15.c2_ttbr0;
 			break;
 		case 1:
-			*data = arm_priv(vcpu)->cp15.c2_base1;
+			*data = arm_priv(vcpu)->cp15.c2_ttbr1;
 			break;
 		case 2:
-			*data = arm_priv(vcpu)->cp15.c2_control;
+			*data = arm_priv(vcpu)->cp15.c2_ttbcr;
 			break;
 		default:
 			goto bad_reg;
@@ -1383,6 +1380,9 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 				arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_ROBITS_MASK;
 				arm_priv(vcpu)->cp15.c1_sctlr |= (data & ~SCTLR_ROBITS_MASK);
+			} else if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+				arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_V6_ROBITS_MASK;
+				arm_priv(vcpu)->cp15.c1_sctlr |= (data & ~SCTLR_V6_ROBITS_MASK);
 			} else {
 				arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_V5_ROBITS_MASK;
 				arm_priv(vcpu)->cp15.c1_sctlr |= (data & ~SCTLR_V5_ROBITS_MASK);
@@ -1402,6 +1402,8 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			}
 			break;
 		case 1:	/* Auxiliary control register.  */
+			if (!arm_feature(vcpu, ARM_FEATURE_AUXCR))
+				goto bad_reg;
 			/* Not implemented.  */
 			break;
 		case 2:
@@ -1416,14 +1418,14 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 	case 2:		/* MMU Page table control / MPU cache control.  */
 		switch (opc2) {
 		case 0:
-			arm_priv(vcpu)->cp15.c2_base0 = data;
+			arm_priv(vcpu)->cp15.c2_ttbr0 = data;
 			break;
 		case 1:
-			arm_priv(vcpu)->cp15.c2_base1 = data;
+			arm_priv(vcpu)->cp15.c2_ttbr1 = data;
 			break;
 		case 2:
 			data &= 7;
-			arm_priv(vcpu)->cp15.c2_control = data;
+			arm_priv(vcpu)->cp15.c2_ttbcr = data;
 			arm_priv(vcpu)->cp15.c2_mask =
 			    ~(((u32) 0xffffffffu) >> data);
 			arm_priv(vcpu)->cp15.c2_base_mask =
@@ -2094,9 +2096,9 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		   sizeof(struct cpu_page));
 
 	arm_priv(vcpu)->cp15.c0_cpuid = cpuid;
-	arm_priv(vcpu)->cp15.c2_control = 0x0;
-	arm_priv(vcpu)->cp15.c2_base0 = 0x0;
-	arm_priv(vcpu)->cp15.c2_base1 = 0x0;
+	arm_priv(vcpu)->cp15.c2_ttbcr = 0x0;
+	arm_priv(vcpu)->cp15.c2_ttbr0 = 0x0;
+	arm_priv(vcpu)->cp15.c2_ttbr1 = 0x0;
 	arm_priv(vcpu)->cp15.c2_mask = 0x0;
 	arm_priv(vcpu)->cp15.c2_base_mask = 0xFFFFC000;
 	arm_priv(vcpu)->cp15.c9_pmcr = (cpuid & 0xFF000000);
@@ -2107,6 +2109,21 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	case ARM_CPUID_ARM926:
 		arm_priv(vcpu)->cp15.c0_cachetype = 0x1dd20d2;
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00090078;
+		break;
+	case ARM_CPUID_ARM11MPCORE:
+		arm_priv(vcpu)->cp15.c0_cachetype = 0x1d192992; /* 32K icache 32K dcache */
+		arm_priv(vcpu)->cp15.c0_pfr0 = 0x111;
+		arm_priv(vcpu)->cp15.c0_pfr1 = 0x1;
+		arm_priv(vcpu)->cp15.c0_dfr0 = 0;
+		arm_priv(vcpu)->cp15.c0_afr0 = 0x2;
+		arm_priv(vcpu)->cp15.c0_mmfr0 = 0x01100103;
+		arm_priv(vcpu)->cp15.c0_mmfr1 = 0x10020302;
+		arm_priv(vcpu)->cp15.c0_mmfr2 = 0x01222000;
+		arm_priv(vcpu)->cp15.c0_isar0 = 0x00100011;
+		arm_priv(vcpu)->cp15.c0_isar1 = 0x12002111;
+		arm_priv(vcpu)->cp15.c0_isar2 = 0x11221011;
+		arm_priv(vcpu)->cp15.c0_isar3 = 0x01102131;
+		arm_priv(vcpu)->cp15.c0_isar4 = 0x141;
 		break;
 	case ARM_CPUID_CORTEXA8:
 		arm_priv(vcpu)->cp15.c0_cachetype = 0x82048004;

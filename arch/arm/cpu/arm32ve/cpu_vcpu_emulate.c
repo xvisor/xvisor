@@ -157,7 +157,7 @@ int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu,
 	}
 
 	/* Estimate wakeup timeout if possible */
-	if(arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+	if(arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 		timeout_nsecs = generic_timer_wakeup_timeout();
 	}
 

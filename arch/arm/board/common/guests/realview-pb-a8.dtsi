@@ -8,7 +8,7 @@
 			vcpus {
 				vcpu0 {
 					device_type = "vcpu";
-					compatible = "ARMv7a,cortex-a8";
+					compatible = "armv7a,cortex-a8";
 					start_pc = <0x40000000>;
 				};
 			};

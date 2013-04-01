@@ -8,7 +8,7 @@
 			vcpus {
 				vcpu0 {
 					device_type = "vcpu";
-					compatible = "ARMv5te,ARM926ej";
+					compatible = "armv5te,arm926ej";
 					start_pc = <0x34000000>;
 				};
 			};

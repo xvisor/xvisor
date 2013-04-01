@@ -8,7 +8,7 @@
 			vcpus {
 				vcpu0 {
 					device_type = "vcpu";
-					compatible = "ARMv7a,cortex-a15";
+					compatible = "armv7a,cortex-a15";
 					start_pc = <0x00000000>;
 					gentimer_virt_irq = <27>;
 					gentimer_phys_irq = <30>;
@@ -16,7 +16,7 @@
 
 				vcpu1 {
 					device_type = "vcpu";
-					compatible = "ARMv7a,cortex-a15";
+					compatible = "armv7a,cortex-a15";
 					start_pc = <0x00000000>;
 					gentimer_virt_irq = <27>;
 					gentimer_phys_irq = <30>;

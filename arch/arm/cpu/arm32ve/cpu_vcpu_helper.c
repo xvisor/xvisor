@@ -487,11 +487,11 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
-	if (strcmp(attr, "ARMv7a,cortex-a8") == 0) {
+	if (strcmp(attr, "armv7a,cortex-a8") == 0) {
 		cpuid = ARM_CPUID_CORTEXA8;
-	} else if (strcmp(attr, "ARMv7a,cortex-a9") == 0) {
+	} else if (strcmp(attr, "armv7a,cortex-a9") == 0) {
 		cpuid = ARM_CPUID_CORTEXA9;
-	} else if (strcmp(attr, "ARMv7a,cortex-a15") == 0) {
+	} else if (strcmp(attr, "armv7a,cortex-a15") == 0) {
 		cpuid = ARM_CPUID_CORTEXA15;
 	} else {
 		return VMM_EFAIL;
@@ -546,28 +546,15 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
 		case ARM_CPUID_CORTEXA8:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
-			arm_set_feature(vcpu, ARM_FEATURE_V6);
-			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
 			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA9:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
-			arm_set_feature(vcpu, ARM_FEATURE_V6);
-			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
@@ -576,27 +563,61 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA15:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
-			arm_set_feature(vcpu, ARM_FEATURE_V6);
-			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
-			arm_set_feature(vcpu, ARM_FEATURE_DIV);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP4);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_ARM_DIV);
+			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			arm_set_feature(vcpu, ARM_FEATURE_GENERIC_TIMER);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
 			arm_set_feature(vcpu, ARM_FEATURE_LPAE);
-			arm_set_feature(vcpu, ARM_FEATURE_GENTIMER);
 			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		default:
 			break;
 		};
+
+		/* Some features automatically imply others: */
+		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VAPA);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
+			arm_set_feature(vcpu, ARM_FEATURE_MPIDR);
+			if (!arm_feature(vcpu, ARM_FEATURE_M)) {
+				arm_set_feature(vcpu, ARM_FEATURE_V6K);
+			} else {
+				arm_set_feature(vcpu, ARM_FEATURE_V6);
+			}
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V6K)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V6);
+			arm_set_feature(vcpu, ARM_FEATURE_MVFR);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V5);
+			if (!arm_feature(vcpu, ARM_FEATURE_M)) {
+				arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
+			}
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V5)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V4T);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_M)) {
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB_DIV);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_ARM_DIV)) {
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB_DIV);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_VFP4)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_VFP3)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_LPAE)) {
+			arm_set_feature(vcpu, ARM_FEATURE_PXN);
+		}
 	} else {
 		/* Clear virtual exception bits in HCR */
 		arm_priv(vcpu)->hcr &= ~(HCR_VA_MASK | 
@@ -604,7 +625,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 					 HCR_VF_MASK);
 	}
 	/* Intialize Generic timer */
-	if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 		attr = vmm_devtree_attrval(vcpu->node, "gentimer_phys_irq");
 		arm_gentimer_context(vcpu)->phys_timer_irq = (attr) ? (*(u32 *)attr) : 0;
 		attr = vmm_devtree_attrval(vcpu->node, "gentimer_virt_irq");
@@ -742,7 +763,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			/* Save VGIC registers */
 			arm_vgic_save(tvcpu);
 			/* Save generic timer */
-			if (arm_feature(tvcpu, ARM_FEATURE_GENTIMER)) {
+			if (arm_feature(tvcpu, ARM_FEATURE_GENERIC_TIMER)) {
 				generic_timer_vcpu_context_save(arm_gentimer_context(tvcpu));
 			}
 			/* Save general purpose banked registers */
@@ -771,7 +792,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		/* Restore general purpose banked registers */
 		cpu_vcpu_banked_regs_restore(vcpu);
 		/* Restore generic timer */
-		if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
 		}
 		/* Restore VGIC registers */

@@ -70,7 +70,7 @@ enum arm_features {
 	ARM_FEATURE_VFP3,
 	ARM_FEATURE_VFP_FP16,
 	ARM_FEATURE_NEON,
-	ARM_FEATURE_DIV,
+	ARM_FEATURE_THUMB_DIV, /* divide supported in Thumb encoding */
 	ARM_FEATURE_M, /* Microcontroller profile.  */
 	ARM_FEATURE_OMAPCP, /* OMAP specific CP15 ops handling.  */
 	ARM_FEATURE_THUMB2EE,
@@ -79,7 +79,18 @@ enum arm_features {
 	ARM_FEATURE_V5,
 	ARM_FEATURE_STRONGARM,
 	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
-	ARM_FEATURE_TRUSTZONE,
+	ARM_FEATURE_ARM_DIV, /* divide supported in ARM encoding */
+	ARM_FEATURE_VFP4, /* VFPv4 (implies that NEON is v2) */
+	ARM_FEATURE_GENERIC_TIMER,
+	ARM_FEATURE_MVFR, /* Media and VFP Feature Registers 0 and 1 */
+	ARM_FEATURE_DUMMY_C15_REGS, /* RAZ/WI all of cp15 crn=15 */
+	ARM_FEATURE_CACHE_TEST_CLEAN, /* 926/1026 style test-and-clean ops */
+	ARM_FEATURE_CACHE_DIRTY_REG, /* 1136/1176 cache dirty status register */
+	ARM_FEATURE_CACHE_BLOCK_OPS, /* v6 optional cache block operations */
+	ARM_FEATURE_MPIDR, /* has cp15 MPIDR */
+	ARM_FEATURE_PXN, /* has Privileged Execute Never bit */
+	ARM_FEATURE_LPAE, /* has Large Physical Address Extension */
+	ARM_FEATURE_TRUSTZONE, 
 };
 
 struct arch_regs {
@@ -132,7 +143,7 @@ struct arm_priv {
 	u32 lr_fiq;
 	u32 spsr_fiq;
 	/* Internal CPU feature flags. */
-	u32 features;
+	u64 features;
 	/* System control coprocessor (cp15) */
 	struct {
 		/* Shadow L1 */
@@ -168,9 +179,9 @@ struct arm_priv {
 		u32 c0_cssel; /* Cache size selection. */
 		u32 c1_sctlr; /* System control register. */
 		u32 c1_coproc; /* Coprocessor access register.  */
-		u32 c2_base0; /* MMU translation table base 0. */
-		u32 c2_base1; /* MMU translation table base 1. */
-		u32 c2_control; /* MMU translation table base control. */
+		u32 c2_ttbr0; /* MMU translation table base 0. */
+		u32 c2_ttbr1; /* MMU translation table base 1. */
+		u32 c2_ttbcr; /* MMU translation table base control. */
 		u32 c2_mask; /* MMU translation table base selection mask. */
 		u32 c2_base_mask; /* MMU translation table base 0 mask. */
 		u32 c3; /* MMU domain access control register */
@@ -216,8 +227,8 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
 
 #define arm_cpuid(vcpu) (arm_priv(vcpu)->cp15.c0_cpuid)
-#define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1 << (feat)))
-#define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1 << (feat)))
+#define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1ULL << (feat)))
+#define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1ULL << (feat)))
 
 /**
  *  Instruction emulation support macros

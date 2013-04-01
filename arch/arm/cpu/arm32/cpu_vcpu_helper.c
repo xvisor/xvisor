@@ -759,12 +759,14 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
-	if (strcmp(attr, "ARMv7a,cortex-a8") == 0) {
-		cpuid = ARM_CPUID_CORTEXA8;
-	} else if (strcmp(attr, "ARMv7a,cortex-a9") == 0) {
-		cpuid = ARM_CPUID_CORTEXA9;
-	} else if (strcmp(attr, "ARMv5te,ARM926ej") == 0) {
+	if (strcmp(attr, "armv5te,arm926ej") == 0) {
 		cpuid = ARM_CPUID_ARM926;
+	} else if (strcmp(attr, "armv6,arm11mp") == 0) {
+		cpuid = ARM_CPUID_ARM11MPCORE;
+	} else if (strcmp(attr, "armv7a,cortex-a8") == 0) {
+		cpuid = ARM_CPUID_CORTEXA8;
+	} else if (strcmp(attr, "armv7a,cortex-a9") == 0) {
+		cpuid = ARM_CPUID_CORTEXA9;
 	} else {
 		return VMM_EFAIL;
 	}
@@ -812,33 +814,28 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
 		case ARM_CPUID_ARM926:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
 			arm_set_feature(vcpu, ARM_FEATURE_V5);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
+			arm_set_feature(vcpu, ARM_FEATURE_CACHE_TEST_CLEAN);
 			break;
-		case ARM_CPUID_CORTEXA8:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
+		case ARM_CPUID_ARM11MPCORE:
 			arm_set_feature(vcpu, ARM_FEATURE_V6);
 			arm_set_feature(vcpu, ARM_FEATURE_V6K);
-			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+			arm_set_feature(vcpu, ARM_FEATURE_VAPA);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
+			break;
+		case ARM_CPUID_CORTEXA8:
+			arm_set_feature(vcpu, ARM_FEATURE_V7);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
 			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA9:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
-			arm_set_feature(vcpu, ARM_FEATURE_V6);
-			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
@@ -849,6 +846,46 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		default:
 			break;
 		};
+
+		/* Some features automatically imply others: */
+		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VAPA);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
+			arm_set_feature(vcpu, ARM_FEATURE_MPIDR);
+			if (!arm_feature(vcpu, ARM_FEATURE_M)) {
+				arm_set_feature(vcpu, ARM_FEATURE_V6K);
+			} else {
+				arm_set_feature(vcpu, ARM_FEATURE_V6);
+			}
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V6K)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V6);
+			arm_set_feature(vcpu, ARM_FEATURE_MVFR);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V5);
+			if (!arm_feature(vcpu, ARM_FEATURE_M)) {
+				arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
+			}
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V5)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V4T);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_M)) {
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB_DIV);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_ARM_DIV)) {
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB_DIV);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_VFP4)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_VFP3)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_LPAE)) {
+			arm_set_feature(vcpu, ARM_FEATURE_PXN);
+		}
 	}
 
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
