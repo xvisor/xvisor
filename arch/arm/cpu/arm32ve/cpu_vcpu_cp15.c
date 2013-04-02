@@ -519,6 +519,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	arm_priv(vcpu)->cp15.c9_pmcr = (cpuid & 0xFF000000);
 	arm_priv(vcpu)->cp15.c10_prrr = 0x0;
 	arm_priv(vcpu)->cp15.c10_nmrr = 0x0;
+	arm_priv(vcpu)->cp15.c12_vbar = 0x0;
 	switch (cpuid) {
 	case ARM_CPUID_CORTEXA8:
 		arm_priv(vcpu)->cp15.c0_cachetype = 0x82048004;
