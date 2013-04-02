@@ -145,7 +145,7 @@ void arm_irq_register(u32 irq, arm_irq_handler_t hndl)
 	}
 }
 
-#ifdef ARM_ARCH_v5
+#if defined(ARM_ARCH_v5)
 
 void arm_irq_enable(void)
 {
@@ -192,23 +192,44 @@ void arm_irq_wfi()
 			:"=r" (reg_r0), "=r" (reg_r1), "=r" (reg_r2), "=r" (reg_r3), "=r" (reg_ip)::"memory", "cc" );
 }
 
-#endif
-
-#ifdef ARM_ARCH_v7
+#elif defined(ARM_ARCH_v6)
 
 void arm_irq_enable(void)
 {
-	__asm( "cpsie if" );
+	asm volatile ( "cpsie if" );
 }
 
 void arm_irq_disable(void)
 {
-	__asm( "cpsid if" );
+	asm volatile ( "cpsid if" );
 }
 
 void arm_irq_wfi(void)
 {
-	__asm ("wfi\n");
+	unsigned long _tr0; 
+
+	asm volatile (
+		"mov	%0, #0\n" 
+		"mcr	p15, 0, %0, c7, c10, 4	@ DWB - WFI may enter a low-power mode\n"
+		"mcr	p15, 0, %0, c7, c0, 4	@ wait for interrupt\n"
+		:"=r" (_tr0)::"memory", "cc" );
+}
+
+#else
+
+void arm_irq_enable(void)
+{
+	asm volatile ( "cpsie if" );
+}
+
+void arm_irq_disable(void)
+{
+	asm volatile ( "cpsid if" );
+}
+
+void arm_irq_wfi(void)
+{
+	asm volatile ("wfi\n");
 }
 
 #endif

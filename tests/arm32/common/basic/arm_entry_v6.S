@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Anup Patel.
+ * Copyright (c) 2013 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_entry_v7.S
+ * @file arm_entry_v6.S
  * @author Anup Patel (anup@brainfault.org)
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief Entry point code for ARM test code
@@ -135,10 +135,10 @@ _secondary_loop:
 	str	r1, [r0]
 	mov	r1, #0xFF
 	str	r1, [r0, #4]
-	ldr	r0, _sys_flags_addr
+	ldr	r0, _spin_addr
 1:	
 	/* Wait for interrupt before checking SPIN_ADDR */
-	wfi	
+	mcr	p15, 0, r2, c7, c0, 4	
 	ldr	r1, [r0]
 	teq	r1, #0
 	/* Repeat if SPIN_ADDR == 0 */
@@ -148,7 +148,7 @@ _secondary_loop:
 
 _gic_cpu_addr:
 	.word	GIC_CPU_BASE
-_sys_flags_addr:
+_spin_addr:
 	.word 	ARM_PLAT_SPIN_ADDR
 #endif
 

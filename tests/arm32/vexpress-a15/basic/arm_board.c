@@ -25,7 +25,6 @@
 #include <arm_io.h>
 #include <arm_board.h>
 #include <arm_plat.h>
-#include <arm_config.h>
 #include <arm_string.h>
 #include <pic/gic.h>
 #include <serial/pl01x.h>

@@ -25,7 +25,6 @@
 #include <arm_io.h>
 #include <arm_board.h>
 #include <arm_plat.h>
-#include <arm_config.h>
 #include <arm_string.h>
 #include <pic/gic.h>
 #include <serial/pl01x.h>
@@ -83,7 +82,7 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 
 u32 arm_board_flash_addr(void)
 {
-	return (u32)(REALVIEW_PBA8_FLASH0_BASE);
+	return (u32)(REALVIEW_FLASH0_BASE);
 }
 
 u32 arm_board_iosection_count(void)
@@ -100,13 +99,13 @@ physical_addr_t arm_board_iosection_addr(int num)
 		ret = REALVIEW_SYS_BASE;
 		break;
 	case 1:
-		ret = REALVIEW_PBA8_GIC_CPU_BASE;
+		ret = REALVIEW_GIC_CPU_BASE;
 		break;
 	case 2:
 	case 3:
 	case 4:
 	case 5:
-		ret = REALVIEW_PBA8_FLASH0_BASE + (num - 2) * 0x100000;
+		ret = REALVIEW_FLASH0_BASE + (num - 2) * 0x100000;
 		break;
 	default:
 		while (1);
@@ -128,12 +127,11 @@ int arm_board_pic_init(void)
 	/*
 	 * Initialize Generic Interrupt Controller
 	 */
-	rc = gic_dist_init(0, REALVIEW_PBA8_GIC_DIST_BASE, 
-							IRQ_PBA8_GIC_START);
+	rc = gic_dist_init(0, REALVIEW_GIC_DIST_BASE, IRQ_PBA8_GIC_START);
 	if (rc) {
 		return rc;
 	}
-	rc = gic_cpu_init(0, REALVIEW_PBA8_GIC_CPU_BASE);
+	rc = gic_cpu_init(0, REALVIEW_GIC_CPU_BASE);
 	if (rc) {
 		return rc;
 	}
