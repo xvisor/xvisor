@@ -1615,12 +1615,12 @@ void arm_mmu_setup(void)
 		return;
 	}
 
-	/* Reset memory for L1 */
+	/* Reset memory for L2 */
 	for (sec = 0; sec < (TTBL_L2TBL_SIZE / 4); sec++) {
 		l2[sec] = 0x0;
 	}
 
-	/* Reset memory for L2 */
+	/* Reset memory for L1 */
 	for (sec = 0; sec < (TTBL_L1TBL_SIZE / 4); sec++) {
 		l1[sec] = 0x0;
 	}
@@ -1658,7 +1658,8 @@ void arm_mmu_setup(void)
 
 	/* Create section entries for IO */
 	for (s = 0; s < arm_board_iosection_count(); s++) {
-		sec = arm_board_iosection_addr(s);
+		sec = arm_board_iosection_addr(s) & 
+				~(TTBL_L1TBL_SECTION_PAGE_SIZE - 1);
 		l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
 	}
 
