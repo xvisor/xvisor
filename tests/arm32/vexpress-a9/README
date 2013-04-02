@@ -1,4 +1,4 @@
-			VExpress A9 Guest
+			VExpress-A9 Guest
 
 This guest has Cortex-A9 (MPCore ARMv7) CPU and various peripherals expected 
 on a Versatile Platform Base Board.
@@ -12,7 +12,7 @@ for VirtIO:
 0x20000000–0x3FFFFFFF (512M) (Reserved)
 
 The VirtIO devices also require a IRQ line per device for functioning. The
-VExpress A9 guest has following unused or reserved IRQ lines:
+VExpress-A9 guest has following unused or reserved IRQ lines:
 GIC: 82
 GIC: 85-91
 
@@ -22,7 +22,7 @@ The memory map and irq of VirtIO devices on VExpress-A9 guest is as follows:
 0x20300000–0x20300FFF (4K) (IRQ=86) (VirtIO Console Device)
 
 
-			VExpress A9 Guest OSes
+			VExpress-A9 Guest OSes
 
 We have tested following guest OSes for this guest:
 

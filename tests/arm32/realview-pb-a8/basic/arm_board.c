@@ -52,7 +52,7 @@ void arm_board_init(void)
 
 char *arm_board_name(void)
 {
-	return "ARM Realview PB-A8";
+	return "ARM Realview-PB-A8";
 }
 
 u32 arm_board_ram_start(void)
