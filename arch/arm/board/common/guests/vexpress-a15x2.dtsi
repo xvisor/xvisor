@@ -39,7 +39,7 @@
 					guest_physical_addr = <0x1C010000>;
 					physical_size = <0x1000>;
 					device_type = "sys";
-					compatible = "vexpress,a9";
+					compatible = "vexpress,a15";
 					mux_in_irq = <2000 2001>;
 					mux_out_irq = <2002>;
 				};

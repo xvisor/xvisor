@@ -54,9 +54,13 @@
 #define LOCK_VAL			0x0000a05f
 
 #define REALVIEW_SYSID_PBA8		0x01780500
-#define REALVIEW_PROCID_PBA8		0x00000000
-#define VEXPRESS_SYSID_CA9		0x01900000
+#define REALVIEW_PROCID_PBA8		0x0e000000
+#define REALVIEW_SYSID_EB11MP		0xc1400400
+#define REALVIEW_PROCID_EB11MP		0x06000000
+#define VEXPRESS_SYSID_CA9		0x1190f500
 #define VEXPRESS_PROCID_CA9		0x0c000191
+#define VEXPRESS_SYSID_CA15		0x1190f500
+#define VEXPRESS_PROCID_CA15		0x14000237
 #define VERSATILEPB_SYSID_ARM926	0x41008004
 #define VERSATILEPB_PROCID_ARM926	0x00000000
 
@@ -644,36 +648,56 @@ static int arm_sysregs_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static u32 versatile_sysids[] = {
-	/* === VERSATILE PB === */
+static u32 versatilepb_sysids[] = {
+	/* === VersatilePB === */
 	/* sys_id */ VERSATILEPB_SYSID_ARM926, 
 	/* proc_id */ VERSATILEPB_PROCID_ARM926, 
 };
 
-static u32 realview_sysids[] = {
-	/* === PBA8 === */
+static u32 realview_ebmpcore_sysids[] = {
+	/* === Realview-EB-MPCore === */
 	/* sys_id */ REALVIEW_SYSID_PBA8, 
 	/* proc_id */ REALVIEW_PROCID_PBA8, 
 };
 
-static u32 vexpress_sysids[] = {
-	/* === PBA8 === */
+static u32 realview_pba8_sysids[] = {
+	/* === Realview-PB-aA8 === */
+	/* sys_id */ REALVIEW_SYSID_PBA8, 
+	/* proc_id */ REALVIEW_PROCID_PBA8, 
+};
+
+static u32 vexpress_a9_sysids[] = {
+	/* === VExpress-A9 === */
 	/* sys_id */ VEXPRESS_SYSID_CA9, 
 	/* proc_id */ VEXPRESS_PROCID_CA9, 
+};
+
+static u32 vexpress_a15_sysids[] = {
+	/* === VExpress-A15 === */
+	/* sys_id */ VEXPRESS_SYSID_CA15, 
+	/* proc_id */ VEXPRESS_PROCID_CA15, 
 };
 
 static struct vmm_devtree_nodeid arm_sysregs_emuid_table[] = {
 	{ .type = "sys", 
 	  .compatible = "versatilepb,arm926", 
-	  .data = &versatile_sysids[0] 
+	  .data = &versatilepb_sysids[0] 
+	},
+	{ .type = "sys", 
+	  .compatible = "realview,eb-mpcore", 
+	  .data = &realview_ebmpcore_sysids[0] 
 	},
 	{ .type = "sys", 
 	  .compatible = "realview,pb-a8", 
-	  .data = &realview_sysids[0] 
+	  .data = &realview_pba8_sysids[0] 
 	},
 	{ .type = "sys", 
 	  .compatible = "vexpress,a9", 
-	  .data = &vexpress_sysids[0] 
+	  .data = &vexpress_a9_sysids[0] 
+	},
+	{ .type = "sys", 
+	  .compatible = "vexpress,a15", 
+	  .data = &vexpress_a15_sysids[0] 
 	},
 	{ /* end of list */ },
 };
