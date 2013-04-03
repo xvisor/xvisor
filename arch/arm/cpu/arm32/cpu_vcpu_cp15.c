@@ -652,7 +652,7 @@ int cpu_vcpu_cp15_assert_fault(struct vmm_vcpu *vcpu,
 	if (xn) {
 		fsr = (fs & DFSR_FS_MASK);
 		fsr |= ((dom << DFSR_DOM_SHIFT) & DFSR_DOM_MASK);
-		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+		if (arm_feature(vcpu, ARM_FEATURE_V6)) {
 			fsr |= ((fs >> 4) << DFSR_FS4_SHIFT);
 			fsr |= ((wnr << DFSR_WNR_SHIFT) & DFSR_WNR_MASK);
 		}
@@ -661,7 +661,7 @@ int cpu_vcpu_cp15_assert_fault(struct vmm_vcpu *vcpu,
 		vmm_vcpu_irq_assert(vcpu, CPU_DATA_ABORT_IRQ, 0x0);
 	} else {
 		fsr = fs & IFSR_FS_MASK;
-		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+		if (arm_feature(vcpu, ARM_FEATURE_V6)) {
 			fsr |= ((fs >> 4) << IFSR_FS4_SHIFT);
 			arm_priv(vcpu)->cp15.c6_ifar = far;
 		}
@@ -1380,6 +1380,9 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
 			if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 				arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_ROBITS_MASK;
 				arm_priv(vcpu)->cp15.c1_sctlr |= (data & ~SCTLR_ROBITS_MASK);
+			} else if (arm_feature(vcpu, ARM_FEATURE_V6K)) {
+				arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_V6K_ROBITS_MASK;
+				arm_priv(vcpu)->cp15.c1_sctlr |= (data & ~SCTLR_V6K_ROBITS_MASK);
 			} else if (arm_feature(vcpu, ARM_FEATURE_V6)) {
 				arm_priv(vcpu)->cp15.c1_sctlr &= SCTLR_V6_ROBITS_MASK;
 				arm_priv(vcpu)->cp15.c1_sctlr |= (data & ~SCTLR_V6_ROBITS_MASK);
