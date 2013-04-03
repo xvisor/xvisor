@@ -917,7 +917,7 @@ int gic_state_reset(struct gic_state *s)
 	}
 
 	for (i = 0; i < GIC_NUM_CPU(s); i++) {
-		if (s->type == GIC_TYPE_11MPCORE) {
+		if (s->type == GIC_TYPE_ARM11MPCORE) {
 			s->priority_mask[i] = 0xf0;
 		} else {
 			s->priority_mask[i] = 0x0;
@@ -959,7 +959,7 @@ static u32 gic_configs[][14] = {
 		/* id5 */ 0xf0, 
 		/* id6 */ 0x05, 
 		/* id7 */ 0xb1,
-		/* cpu_offset */ 0x0,
+		/* cpu_offset */ 0x100,
 		/* cpu_length */ 0x100,
 		/* dist_offset */ 0x1000,
 		/* dist_length */ 0x1000,
@@ -1147,6 +1147,10 @@ static int gic_emulator_remove(struct vmm_emudev *edev)
 }
 
 static struct vmm_devtree_nodeid gic_emuid_table[] = {
+	{ .type = "pic", 
+	  .compatible = "arm11mpcore,gic", 
+	  .data = (void *)GIC_TYPE_ARM11MPCORE,
+	},
 	{ .type = "pic", 
 	  .compatible = "realview,gic", 
 	  .data = (void *)GIC_TYPE_REALVIEW,
