@@ -12,17 +12,15 @@ these reserved IO regions, we will use the following IO regions for VirtIO:
 
 The VirtIO devices also require a IRQ line per device for functioning. The
 Realview-EB-MPCore guest has following unused or reserved IRQ lines:
-GIC: 41
-GIC: 57
-GIC: 59
-GIC: 62-63
-GIC: 75-79
-GIC: 90-95
+GIC: 48
+GIC: 68
+GIC: 69
+GIC: 73
 
 The memory map and irq of VirtIO devices on Realivew-EB-MPCore guest is as follows:
-0x20100000–0x20100FFF (4K) (IRQ=41) (VirtIO Network Device)
-0x20200000–0x20200FFF (4K) (IRQ=57) (VirtIO Block Device)
-0x20300000–0x20300FFF (4K) (IRQ=59) (VirtIO Console Device)
+0x20100000–0x20100FFF (4K) (IRQ=48) (VirtIO Network Device)
+0x20200000–0x20200FFF (4K) (IRQ=68) (VirtIO Block Device)
+0x20300000–0x20300FFF (4K) (IRQ=69) (VirtIO Console Device)
 
 
 			Realview-EB-MPCore Guest OSes

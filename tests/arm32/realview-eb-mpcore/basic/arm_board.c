@@ -68,11 +68,11 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	arm_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
 	/* VirtIO Network Device */
-	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20100000:41");
+	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20100000:48");
 	/* VirtIO Block Device */
-	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20200000:57");
+	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20200000:68");
 	/* VirtIO Console Device */
-	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20300000:59");
+	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20300000:69");
 }
 
 u32 arm_board_flash_addr(void)
