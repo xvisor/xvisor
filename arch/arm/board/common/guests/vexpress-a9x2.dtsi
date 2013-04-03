@@ -257,8 +257,7 @@
 					guest_physical_addr = <0x1E000000>;
 					physical_size = <0x2000>;
 					device_type = "misc";
-					num_cpu = <2>;
-					compatible = "a9mpcore,private";
+					compatible = "arm,a9mpcore";
 					timer_irq = <29 30>;
 					parent_irq = <6 6>;
 				};

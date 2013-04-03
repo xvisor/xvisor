@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file a9mpcore_priv.c
+ * @file a9mpcore.c
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief Cortex-A9 MPCore Private Memory Emulator.
  * @details This source file implements the private memory region present
@@ -294,12 +294,6 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 		goto a9mp_probe_done;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "num_cpu");
-	s->num_cpu = *(u32 *)attr;
-	if (!s->num_cpu) {
-		goto a9mp_probe_failed;
-	}
-
 	attr = vmm_devtree_attrval(edev->node, "parent_irq");
 	attrlen = vmm_devtree_attrlen(edev->node, "parent_irq");
 	s->num_cpu = (attrlen / sizeof(u32));
@@ -366,14 +360,14 @@ static int a9mpcore_emulator_remove(struct vmm_emudev *edev)
 
 static struct vmm_devtree_nodeid a9mpcore_emuid_table[] = {
 	{ .type = "misc", 
-	  .compatible = "a9mpcore,private", 
+	  .compatible = "arm,a9mpcore", 
 	  .data = NULL,
 	},
 	{ /* end of list */ },
 };
 
 static struct vmm_emulator a9mpcore_emulator = {
-	.name = "a9mpcore-private",
+	.name = "a9mpcore",
 	.match_table = a9mpcore_emuid_table,
 	.probe = a9mpcore_emulator_probe,
 	.read = a9mpcore_emulator_read,
