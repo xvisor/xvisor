@@ -45,10 +45,10 @@ int gic_state_reset(struct gic_state *s);
 
 /** Allocate and initializes the GIC state */
 struct gic_state *gic_state_alloc(struct vmm_guest *guest,
-			   enum gic_type type,
-			   u32 num_cpu,
-			   bool is_child_pic,
-	       		   u32 parent_irq[]);
+				  enum gic_type type,
+				  u32 num_cpu,
+				  bool is_child_pic,
+	       			  u32 parent_irq);
 
 /** Destructor for the GIC state */
 int gic_state_free(struct gic_state *s);

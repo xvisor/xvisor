@@ -1014,11 +1014,11 @@ static u32 gic_configs[][14] = {
 	},
 };
 
-struct gic_state *gic_state_alloc(struct vmm_guest *guest,
-			   enum gic_type type,
-			   u32 num_cpu,
-			   bool is_child_pic,
-	       		   u32 parent_irq[])
+struct gic_state *gic_state_alloc(struct vmm_guest *guest, 
+				  enum gic_type type,
+				  u32 num_cpu, 
+				  bool is_child_pic,
+				  u32 parent_irq)
 {
 	int i;
 	struct gic_state *s = NULL;
@@ -1061,7 +1061,7 @@ struct gic_state *gic_state_alloc(struct vmm_guest *guest,
 	s->is_child_pic = is_child_pic;
 
 	for (i = 0; i < s->num_cpu; i++) {
-		s->parent_irq[i] = parent_irq[i];
+		s->parent_irq[i] = parent_irq;
 	}
 
 	s->guest = guest;
@@ -1101,13 +1101,11 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 			      struct vmm_emudev *edev,
 			      const struct vmm_devtree_nodeid *eid)
 {
-	u32 attrlen;
 	const char *attr;
 	struct gic_state *s;
 	bool is_child_pic;
 	enum gic_type type;
-	u32 *parent_irq;
-	u32 num_cpu;
+	u32 parent_irq;
 
 	attr = vmm_devtree_attrval(edev->node, "child_pic");
 	if (attr) {
@@ -1120,16 +1118,12 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 	if (!attr) {
 		return VMM_EFAIL;
 	}
-	attrlen = vmm_devtree_attrlen(edev->node, "parent_irq");
-	num_cpu = (attrlen / sizeof(u32));
-	if (guest->vcpu_count < num_cpu) {
-		num_cpu = guest->vcpu_count;
-	}
-	parent_irq = (u32 *)attr;
+	parent_irq = *((u32 *)attr);
 	
 	type = (enum gic_type)(eid->data);
 
-	s = gic_state_alloc(guest, type, num_cpu, is_child_pic, parent_irq);
+	s = gic_state_alloc(guest, type, guest->vcpu_count, 
+			    is_child_pic, parent_irq);
 
 	edev->priv = s;
 

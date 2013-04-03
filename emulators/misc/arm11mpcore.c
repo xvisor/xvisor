@@ -250,9 +250,8 @@ static int arm11mpcore_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	struct arm11mpcore_priv_state *s;
-	u32 attrlen;
 	const char *attr;
-	u32 *parent_irq, *timer_irq;
+	u32 parent_irq, timer_irq, wdt_irq;
 
 	s = vmm_zalloc(sizeof(struct arm11mpcore_priv_state));
 	if (!s) {
@@ -260,25 +259,24 @@ static int arm11mpcore_emulator_probe(struct vmm_guest *guest,
 		goto arm11mp_probe_done;
 	}
 
+	s->num_cpu = guest->vcpu_count;
+
 	attr = vmm_devtree_attrval(edev->node, "parent_irq");
-	attrlen = vmm_devtree_attrlen(edev->node, "parent_irq");
-	s->num_cpu = (attrlen / sizeof(u32));
-	if (!attr || ((s->num_cpu * sizeof(u32)) != attrlen)) {
+	if (!attr) {
 		goto arm11mp_probe_failed;
 	}
-	parent_irq = (u32 *)attr;
+	parent_irq = *((u32 *)attr);
 
 	attr = vmm_devtree_attrval(edev->node, "timer_irq");
-	attrlen = vmm_devtree_attrlen(edev->node, "timer_irq");
-	s->num_cpu = (attrlen / sizeof(u32));
-	if (!attr || ((2 * sizeof(u32)) != attrlen)) {
+	if (!attr) {
 		goto arm11mp_probe_failed;
 	}
-	timer_irq = (u32 *)attr;
+	timer_irq = ((u32 *)attr)[0];
+	wdt_irq = ((u32 *)attr)[1];
 
 	/* Allocate and init MPT state */
 	if (!(s->mpt = mptimer_state_alloc(guest, edev, s->num_cpu, 1000000,
-				 	  timer_irq))) {
+				 	  timer_irq, wdt_irq))) {
 		goto arm11mp_probe_failed;
 	}
 

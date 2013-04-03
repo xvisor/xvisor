@@ -404,7 +404,7 @@ struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 					  struct vmm_emudev *edev, 
 					  u32 num_cpu,
 					  u32 periphclk,
-					  u32 irq[])
+					  u32 timer_irq, u32 wdt_irq)
 {
 	struct mptimer_state *s = NULL;
 	int i;
@@ -425,9 +425,9 @@ struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 	}
 
 	/* Init the timer blocks */
-	for(i=0; i<(NUM_TIMERS_PER_CPU * num_cpu); i++) {
+	for(i=0; i < (NUM_TIMERS_PER_CPU * num_cpu); i++) {
 		s->timers[i].mptimer = s;
-		s->timers[i].irq = irq[i & 0x1];
+		s->timers[i].irq = (i & 0x1) ? wdt_irq : timer_irq;
 		s->timers[i].cpu = (i >> 1);
 		s->timers[i].is_wdt = (i & 0x1);
 		INIT_SPIN_LOCK(&(s->timers[i].lock));

@@ -259,7 +259,7 @@
 					device_type = "misc";
 					compatible = "arm,a9mpcore";
 					timer_irq = <29 30>;
-					parent_irq = <6 6>;
+					parent_irq = <6>;
 				};
 
 				l2x0 {

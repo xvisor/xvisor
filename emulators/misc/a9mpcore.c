@@ -284,9 +284,8 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	struct a9mp_priv_state *s;
-	u32 attrlen;
 	const char *attr;
-	u32 *parent_irq, *timer_irq;
+	u32 parent_irq, timer_irq, wdt_irq;
 
 	s = vmm_zalloc(sizeof(struct a9mp_priv_state));
 	if (!s) {
@@ -294,31 +293,30 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 		goto a9mp_probe_done;
 	}
 
+	s->num_cpu = guest->vcpu_count;
+
 	attr = vmm_devtree_attrval(edev->node, "parent_irq");
-	attrlen = vmm_devtree_attrlen(edev->node, "parent_irq");
-	s->num_cpu = (attrlen / sizeof(u32));
-	if (!attr || ((s->num_cpu * sizeof(u32)) != attrlen)) {
+	if (!attr) {
 		goto a9mp_probe_failed;
 	}
-	parent_irq = (u32 *)attr;
+	parent_irq = *((u32 *)attr);
 
 	attr = vmm_devtree_attrval(edev->node, "timer_irq");
-	attrlen = vmm_devtree_attrlen(edev->node, "timer_irq");
-	s->num_cpu = (attrlen / sizeof(u32));
-	if (!attr || ((2 * sizeof(u32)) != attrlen)) {
+	if (!attr) {
 		goto a9mp_probe_failed;
 	}
-	timer_irq = (u32 *)attr;
+	timer_irq = ((u32 *)attr)[0];
+	wdt_irq = ((u32 *)attr)[1];
 
 	/* Allocate and init MPT state */
 	if (!(s->mpt = mptimer_state_alloc(guest, edev, s->num_cpu, 1000000,
-				 	  timer_irq))) {
+				 	  timer_irq, wdt_irq))) {
 		goto a9mp_probe_failed;
 	}
 
 	/* Allocate and init GIC state */
-	if (!(s->gic = gic_state_alloc(guest, GIC_TYPE_VEXPRESS, s->num_cpu, 
-				 FALSE, parent_irq))) {
+	if (!(s->gic = gic_state_alloc(guest, GIC_TYPE_VEXPRESS, 
+				s->num_cpu, FALSE, parent_irq))) {
 		goto a9mp_gic_alloc_failed;
 	}
 

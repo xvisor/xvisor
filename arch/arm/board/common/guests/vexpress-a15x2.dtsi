@@ -69,7 +69,7 @@
 					physical_size = <0x3000>;
 					device_type = "pic";
 					compatible = "vexpress,gicv2";
-					parent_irq = <6 6>;
+					parent_irq = <6>;
 				};
 
 				scc { /* No SCC */
