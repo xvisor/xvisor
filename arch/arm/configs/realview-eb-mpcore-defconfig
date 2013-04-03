@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.1
-# Wed Apr  3 13:56:54 2013
+# Wed Apr  3 21:58:54 2013
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -319,6 +319,7 @@ CONFIG_EMU_GPIO_PL061=y
 # Miscellaneous Emulators
 #
 CONFIG_EMU_MISC_ZERO=y
+CONFIG_EMU_MISC_ARM11MPCORE=y
 # CONFIG_EMU_MISC_A9MPCORE is not set
 
 #
