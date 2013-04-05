@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.1
-# Sat Mar 23 10:03:50 2013
+# Fri Apr  5 16:57:15 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -46,6 +46,7 @@ CONFIG_BOARD_BCM2835=y
 # BCM2835 Options
 #
 CONFIG_BCM2835_ONE_GUEST_EBMP_DTS=y
+# CONFIG_BCM2835_TWO_GUEST_EBMP_DTS is not set
 # CONFIG_ARM_VIC is not set
 # CONFIG_ARM_GIC is not set
 # CONFIG_ARM_TIMER_SP804 is not set
@@ -201,62 +202,79 @@ CONFIG_SERIAL_PL01X=y
 #
 # VirtIO Support
 #
-# CONFIG_EMU_VIRTIO is not set
+CONFIG_EMU_VIRTIO=y
+CONFIG_EMU_VIRTIO_MMIO=y
 
 #
 # System Emulators
 #
-# CONFIG_EMU_SYS is not set
+CONFIG_EMU_SYS=y
+CONFIG_EMU_SYS_ARM_SYSREGS=y
+CONFIG_EMU_SYS_SP810=y
 
 #
 # PIC Emulators
 #
-# CONFIG_EMU_PIC is not set
+CONFIG_EMU_PIC=y
+CONFIG_EMU_PIC_GIC=y
+# CONFIG_EMU_PIC_PL190 is not set
 
 #
 # Network Interface Controller Emulators
 #
-# CONFIG_EMU_NET is not set
+CONFIG_EMU_NET=y
+# CONFIG_EMU_NET_LAN9118 is not set
+CONFIG_EMU_NET_SMC91C111=y
+CONFIG_EMU_NET_VIRTIO=y
 
 #
 # Block Device Emulators
 #
-# CONFIG_EMU_BLOCK is not set
+CONFIG_EMU_BLOCK=y
+CONFIG_EMU_BLOCK_VIRTIO=y
 
 #
 # Console Emulators
 #
-# CONFIG_EMU_CONSOLE is not set
+CONFIG_EMU_CONSOLE=y
+CONFIG_EMU_CONSOLE_VIRTIO=y
 
 #
 # Timer Emulators
 #
-# CONFIG_EMU_TIMER is not set
+CONFIG_EMU_TIMER=y
+CONFIG_EMU_TIMER_SP804=y
+CONFIG_EMU_TIMER_ARM_MPTIMER=y
 
 #
 # Serial Port Emulators
 #
-# CONFIG_EMU_SERIAL is not set
+CONFIG_EMU_SERIAL=y
+CONFIG_EMU_SERIAL_PL011=y
 
 #
 # Real-Time Clock Emulators
 #
-# CONFIG_EMU_RTC is not set
+CONFIG_EMU_RTC=y
+CONFIG_EMU_RTC_PL031=y
 
 #
 # Cache Controller Emulators
 #
-# CONFIG_EMU_CACHE_L2X0 is not set
+CONFIG_EMU_CACHE_L2X0=y
 
 #
 # GPIO Emulators
 #
-# CONFIG_EMU_GPIO is not set
+CONFIG_EMU_GPIO=y
+CONFIG_EMU_GPIO_PL061=y
 
 #
 # Miscellaneous Emulators
 #
-# CONFIG_EMU_MISC_ZERO is not set
+CONFIG_EMU_MISC_ZERO=y
+CONFIG_EMU_MISC_ARM11MPCORE=y
+# CONFIG_EMU_MISC_A9MPCORE is not set
 
 #
 # Tool Options

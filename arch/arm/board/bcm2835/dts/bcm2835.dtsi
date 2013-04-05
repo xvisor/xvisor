@@ -64,5 +64,6 @@
 	};
 };
 
-/* FIXME: Add guest templates */
+/* Add guest templates */
+/include/ "../../common/guests/realview-eb-mpcore.dtsi"
 
