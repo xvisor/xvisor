@@ -201,7 +201,8 @@ static int gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 	struct gic_state *s = (struct gic_state *)epic->priv;
 
 	/* Ensure irq is in range (base_irq, base_irq + num_irq) */
-	if ((s->num_base_irq + s->num_irq) <= irq) {
+	if ((irq < s->num_base_irq) ||  
+	    ((s->num_base_irq + s->num_irq) <= irq)) {
 		return VMM_EMUPIC_IRQ_UNHANDLED;
 	}
 
@@ -1014,10 +1015,13 @@ static u32 gic_configs[][14] = {
 	},
 };
 
-struct gic_state *gic_state_alloc(struct vmm_guest *guest, 
+struct gic_state *gic_state_alloc(const char *name,
+				  struct vmm_guest *guest, 
 				  enum gic_type type,
 				  u32 num_cpu, 
 				  bool is_child_pic,
+				  u32 base_irq,
+				  u32 num_irq,
 				  u32 parent_irq)
 {
 	int i;
@@ -1033,7 +1037,7 @@ struct gic_state *gic_state_alloc(struct vmm_guest *guest,
 		goto gic_emulator_init_freestate_failed;
 	}
 
-	strcpy(s->pic->name, "gic-pic");
+	strcpy(s->pic->name, name);
 	s->pic->type = VMM_EMUPIC_IRQCHIP;
 	s->pic->handle = &gic_irq_handle;
 	s->pic->priv = s;
@@ -1042,8 +1046,8 @@ struct gic_state *gic_state_alloc(struct vmm_guest *guest,
 	}
 
 	s->num_cpu = num_cpu;
-	s->num_irq = gic_configs[type][0];
-	s->num_base_irq = gic_configs[type][1];
+	s->num_irq = num_irq;
+	s->num_base_irq = base_irq;
 	s->type = type;
 	s->id[0] = gic_configs[type][2];
 	s->id[1] = gic_configs[type][3];
@@ -1105,7 +1109,7 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 	struct gic_state *s;
 	bool is_child_pic;
 	enum gic_type type;
-	u32 parent_irq;
+	u32 parent_irq, base_irq, num_irq;
 
 	attr = vmm_devtree_attrval(edev->node, "child_pic");
 	if (attr) {
@@ -1122,8 +1126,23 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 	
 	type = (enum gic_type)(eid->data);
 
-	s = gic_state_alloc(guest, type, guest->vcpu_count, 
-			    is_child_pic, parent_irq);
+	attr = vmm_devtree_attrval(edev->node, "base_irq");
+	if (!attr) {
+		base_irq = gic_configs[type][1];
+	} else {
+		base_irq = *((u32 *)attr);
+	}
+	
+	attr = vmm_devtree_attrval(edev->node, "num_irq");
+	if (!attr) {
+		num_irq = gic_configs[type][0];
+	} else {
+		num_irq = *((u32 *)attr);
+	}
+	
+	s = gic_state_alloc(edev->node->name, guest, type, 
+			    guest->vcpu_count, is_child_pic,
+			    base_irq, num_irq, parent_irq);
 
 	edev->priv = s;
 

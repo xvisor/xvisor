@@ -44,10 +44,13 @@ int gic_reg_read(struct gic_state *s, physical_addr_t offset, u32 *dst);
 int gic_state_reset(struct gic_state *s);
 
 /** Allocate and initializes the GIC state */
-struct gic_state *gic_state_alloc(struct vmm_guest *guest,
+struct gic_state *gic_state_alloc(const char *name,
+				  struct vmm_guest *guest,
 				  enum gic_type type,
 				  u32 num_cpu,
 				  bool is_child_pic,
+				  u32 base_irq,
+				  u32 num_irq,
 	       			  u32 parent_irq);
 
 /** Destructor for the GIC state */

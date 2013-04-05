@@ -154,7 +154,7 @@ static int arm11mpcore_emulator_read(struct vmm_emudev *edev,
 	if (offset < 0x100) {
 		/* Read SCU block */
 		rc = arm11mpcore_scu_read(s, offset & 0xFC, &regval);
-	} else if (offset >= 0x600 && offset < 0x700) {
+	} else if (0x600 <= offset && offset < 0x700) {
 		/* Read Private & Watchdog Timer blocks */
 		rc = mptimer_reg_read(s->mpt, offset & 0xFC, &regval);
 	} else {
@@ -217,7 +217,7 @@ static int arm11mpcore_emulator_write(struct vmm_emudev *edev,
 	if (offset < 0x100) {
 		/* Write SCU */
 		rc = arm11mpcore_scu_write(s, offset & 0xFC, regmask, regval);
-	} else if (offset >= 0x600 && offset < 0x700) {
+	} else if (0x600 <= offset && offset < 0x700) {
 		/* Write Private & Watchdog Timer blocks */
 		rc = mptimer_reg_write(s->mpt, offset & 0xFC, regmask, regval);
 	} else {
@@ -281,8 +281,9 @@ static int arm11mpcore_emulator_probe(struct vmm_guest *guest,
 	}
 
 	/* Allocate and init GIC state */
-	if (!(s->gic = gic_state_alloc(guest, GIC_TYPE_ARM11MPCORE, 
-					s->num_cpu, FALSE, parent_irq))) {
+	if (!(s->gic = gic_state_alloc(edev->node->name, guest, 
+				       GIC_TYPE_ARM11MPCORE, s->num_cpu,
+				       FALSE, 0, 96, parent_irq))) {
 		goto arm11mp_gic_alloc_failed;
 	}
 

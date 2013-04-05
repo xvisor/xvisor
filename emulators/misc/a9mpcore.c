@@ -315,8 +315,9 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 	}
 
 	/* Allocate and init GIC state */
-	if (!(s->gic = gic_state_alloc(guest, GIC_TYPE_VEXPRESS, 
-				s->num_cpu, FALSE, parent_irq))) {
+	if (!(s->gic = gic_state_alloc(edev->node->name, guest, 
+					GIC_TYPE_VEXPRESS, s->num_cpu, 
+					FALSE, 0, 96, parent_irq))) {
 		goto a9mp_gic_alloc_failed;
 	}
 
