@@ -791,7 +791,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	if (arm_feature(vcpu, ARM_FEATURE_V7) &&
+	if (arm_feature(vcpu, ARM_FEATURE_V6K) &&
 	    (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_TRE_MASK)) {
 		tre_index = ((pg.tex & 0x1) << 2) |
 			    ((pg.c & 0x1) << 1) |
@@ -2128,6 +2128,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		arm_priv(vcpu)->cp15.c0_isar2 = 0x11221011;
 		arm_priv(vcpu)->cp15.c0_isar3 = 0x01102131;
 		arm_priv(vcpu)->cp15.c0_isar4 = 0x141;
+		arm_priv(vcpu)->cp15.c1_sctlr = 0x00050070;
 		break;
 	case ARM_CPUID_CORTEXA8:
 		arm_priv(vcpu)->cp15.c0_cachetype = 0x82048004;
