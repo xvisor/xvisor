@@ -246,6 +246,9 @@ static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
 			regval = s->sys_cfgstat;
 		}
 		break;
+	case 0xd8: /* PLDCTL1 */
+		regval = 0;
+		break;
 	default:
 		rc = VMM_EFAIL;
 		break;
@@ -387,8 +390,17 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 				}
 			}
 			break;
-		case BOARD_ID_VEXPRESS:
 		case BOARD_ID_EB:
+			if (s->lockval == LOCK_VAL) {
+				s->resetlevel &= regmask;
+				s->resetlevel |= regval;
+				if (s->resetlevel & 0x08) {
+					vmm_workqueue_schedule_work(NULL, 
+								&s->reboot);
+				}
+			}
+			break;
+		case BOARD_ID_VEXPRESS:
 		default:
 			/* reserved: RAZ/WI */
 			break;
@@ -482,6 +494,8 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 		}
 		s->sys_cfgstat &= regmask;
 		s->sys_cfgstat |= regval & 3;
+		break;
+	case 0xd8: /* PLDCTL1 */
 		break;
 	default:
 		rc = VMM_EFAIL;
@@ -656,8 +670,8 @@ static u32 versatilepb_sysids[] = {
 
 static u32 realview_ebmpcore_sysids[] = {
 	/* === Realview-EB-MPCore === */
-	/* sys_id */ REALVIEW_SYSID_PBA8, 
-	/* proc_id */ REALVIEW_PROCID_PBA8, 
+	/* sys_id */ REALVIEW_SYSID_EB11MP, 
+	/* proc_id */ REALVIEW_PROCID_EB11MP, 
 };
 
 static u32 realview_pba8_sysids[] = {
