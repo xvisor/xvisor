@@ -33,7 +33,7 @@ void arm_board_reset(void)
 {
         arm_writel(0x0,
                    (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
-        arm_writel(REALVIEW_SYS_CTRL_RESET_PLLRESET,
+        arm_writel(0x08,
                    (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
 }
 

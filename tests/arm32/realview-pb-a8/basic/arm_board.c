@@ -31,15 +31,10 @@
 
 void arm_board_reset(void)
 {
-#if 0 /* QEMU checks bit 8 which is wrong */
-        arm_writel(0x100,
-                   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
-#else
         arm_writel(0x0,
                    (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
-        arm_writel(REALVIEW_SYS_CTRL_RESET_PLLRESET,
+        arm_writel(0x04,
                    (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
-#endif
 }
 
 void arm_board_init(void)
