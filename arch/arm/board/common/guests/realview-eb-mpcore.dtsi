@@ -255,10 +255,19 @@
 					compatible = "zero";
 				};
 
+				legacy_gic { /* No EB GIC Controller */
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10040000>;
+					physical_size = <0x2000>;
+					device_type = "misc";
+					compatible = "zero";
+				};
+
 				smc { /* No SMC */
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x100E1000>;
+					guest_physical_addr = <0x10080000>;
 					physical_size = <0x1000>;
 					device_type = "misc";
 					compatible = "zero";
@@ -273,6 +282,15 @@
 					compatible = "arm,arm11mpcore";
 					timer_irq = <29 30>;
 					parent_irq = <6>;
+				};
+
+				l2x0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10102000>;
+					physical_size = <0x1000>;
+					device_type = "cache";
+					compatible = "corelink,l2c-310";
 				};
 
 				virtio-net0 {
