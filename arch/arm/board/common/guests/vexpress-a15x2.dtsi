@@ -24,6 +24,8 @@
 			};
 			
 			aspace {
+				guest_irq_count = <2048>;
+
 				mem0 {
 					manifest_type = "real";
 					address_type = "memory";
@@ -40,8 +42,8 @@
 					physical_size = <0x1000>;
 					device_type = "sys";
 					compatible = "vexpress,a15";
-					mux_in_irq = <2000 2001>;
-					mux_out_irq = <2002>;
+					mux_in_irq = <1200 1201>;
+					mux_out_irq = <1202>;
 				};
 
 				sysctrl {

@@ -11,7 +11,7 @@
 			  "devtree node copy /guests guest0 /templates/realview-pb-a8",
 
 			  /* Pass through device access requires host IRQ to guest IRQ routing */
-			  "devtree attr set /guests/guest0/aspace h2g_irq_map uint32 45 44",
+			  "devtree attr set /guests/guest0/aspace host2guest_irq_map uint32 45 44",
 
 			  /* Update guest0 memory regions */
 			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
