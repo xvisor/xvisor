@@ -70,13 +70,30 @@ void realview_flags_set(u32 addr)
 
 int arch_board_reset(void)
 {
+	u32 board_id;
+	void *sys_id = (void *)realview_sys_base + REALVIEW_SYS_ID_OFFSET;
 	void *sys_lock = (void *)realview_sys_base + REALVIEW_SYS_LOCK_OFFSET;
+	void *sys_resetctl = (void *)realview_sys_base + 
+						REALVIEW_SYS_RESETCTL_OFFSET;
+
+	board_id = (vmm_readl(sys_id) & REALVIEW_SYS_ID_BOARD_MASK) >> 
+						REALVIEW_SYS_ID_BOARD_SHIFT;
 
 	vmm_writel(REALVIEW_SYS_LOCKVAL, sys_lock);
-	vmm_writel(0x0, 
-		   (void *)(realview_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
-	vmm_writel(REALVIEW_SYS_CTRL_RESET_PLLRESET, 
-		   (void *)(realview_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
+
+	switch (board_id) {
+	case REALVIEW_SYS_ID_EB:
+		vmm_writel(0x0, sys_resetctl);
+		vmm_writel(0x08, sys_resetctl);
+		break;
+	case REALVIEW_SYS_ID_PBA8:
+		vmm_writel(0x0, sys_resetctl);
+		vmm_writel(0x04, sys_resetctl);
+		break;
+	default:
+		break;
+	};
+
 	vmm_writel(0, sys_lock);
 
 	return VMM_OK;
