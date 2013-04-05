@@ -888,25 +888,23 @@ static int smc91c111_emulator_probe(struct vmm_guest *guest,
 				    struct vmm_emudev *edev,
 				    const struct vmm_devtree_nodeid *eid)
 {
-	smc91c111_state *s = NULL;
-	int rc = VMM_OK;
+	int rc = VMM_OK, i = 0;
 	char tname[64];
 	void *attr;
 	struct vmm_netswitch *nsw;
-	int i = 0;
+	smc91c111_state *s = NULL;
 
-	s = vmm_malloc(sizeof(smc91c111_state));
-	if(!s) {
-		vmm_printf("smc91c111 state alloc failed\n");
-		rc = VMM_EFAIL;
-		goto smc91c111_emulator_probe_done;
+	s = vmm_zalloc(sizeof(smc91c111_state));
+	if (!s) {
+		vmm_printf("%s: state alloc failed\n", __func__);
+		rc = VMM_ENOMEM;
+		goto smc91c111_probe_done;
 	}
-	memset(s, 0, sizeof(smc91c111_state));
 
 	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
 	if (rc) {
-		vmm_printf("smc91c111: no interrupts found\n");
-		goto smc91c111_emulator_probe_failed;
+		vmm_printf("%s: no interrupts found\n", __func__);
+		goto smc91c111_probe_failed;
 	}
 
 	s->guest = guest;
@@ -918,10 +916,10 @@ static int smc91c111_emulator_probe(struct vmm_guest *guest,
 			VMM_DEVTREE_PATH_SEPARATOR_STRING,
 			edev->node->name);
 	s->port = vmm_netport_alloc(tname, VMM_NETPORT_DEF_QUEUE_SIZE);
-	if(!s->port) {
-		vmm_printf("smc91c111state->netport alloc failed\n");
+	if (!s->port) {
+		vmm_printf("%s: netport alloc failed\n", __func__);
 		rc = VMM_EFAIL;
-		goto smc91c111_emulator_probe_failed;
+		goto smc91c111_probe_failed;
 	}
 
 	s->port->mtu = SMC91C111_MTU;
@@ -929,7 +927,11 @@ static int smc91c111_emulator_probe(struct vmm_guest *guest,
 	s->port->can_receive = smc91c111_can_receive;
 	s->port->switch2port_xfer = smc91c111_switch2port_xfer;
 	s->port->priv = s;
-	vmm_netport_register(s->port);
+
+	rc = vmm_netport_register(s->port);
+	if (rc) {
+		goto smc91c111_probe_netport_failed;
+	}
 
 	attr = vmm_devtree_attrval(edev->node, "switch");
 	if (attr) {
@@ -944,24 +946,26 @@ static int smc91c111_emulator_probe(struct vmm_guest *guest,
 		s->mac[i] = vmm_netport_mac(s->port)[i];
 	}
 
-	goto smc91c111_emulator_probe_done;
+	goto smc91c111_probe_done;
 
-smc91c111_emulator_probe_failed:
-	vmm_printf("smc91c111-probe failed\n");
+smc91c111_probe_netport_failed:
+	vmm_netport_free(s->port);
+smc91c111_probe_failed:
 	vmm_free(s);
-smc91c111_emulator_probe_done:
-
+smc91c111_probe_done:
 	return rc;
 }
 
 static int smc91c111_emulator_remove(struct vmm_emudev *edev)
 {
-	smc91c111_state *s = edev->priv;
 	int rc = VMM_OK;
+	smc91c111_state *s = edev->priv;
 
-	vmm_netswitch_port_remove(s->port);
 	vmm_netport_unregister(s->port);
+	vmm_netport_free(s->port);
+	vmm_free(s);
 	edev->priv = NULL;
+
 	return rc;
 }
 
