@@ -76,7 +76,6 @@
 
 struct arm_sysregs {
 	struct vmm_guest *guest;
-	struct vmm_emupic *pic;
 	vmm_spinlock_t lock;
 	u64 ref_100hz;
 	u64 ref_24mhz;
@@ -535,12 +534,11 @@ static int arm_sysregs_emulator_reset(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-/* Process IRQ asserted in device emulation framework */
-static int arm_sysregs_irq_handle(struct vmm_emupic *epic, 
-				  u32 irq, int cpu, int level)
+/* Process IRQ asserted via device emulation framework */
+static void arm_sysregs_irq_handle(u32 irq, int cpu, int level, void *opaque)
 {
 	int bit;
-	struct arm_sysregs * s = epic->priv;
+	struct arm_sysregs *s = opaque;
 
 	if (s->mux_in_irq[0] == irq) {
 		/* For PB926 and EB write-protect is bit 2 of SYS_MCI;
@@ -564,11 +562,7 @@ static int arm_sysregs_irq_handle(struct vmm_emupic *epic,
 			s->sys_mci |= 1;
 		}
 		vmm_spin_unlock(&s->lock);
-	} else {
-		return VMM_EMUPIC_GPIO_UNHANDLED;
 	}
-
-	return VMM_EMUPIC_GPIO_HANDLED;
 }
 
 static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
@@ -595,26 +589,13 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 		s->proc_id = ((u32 *)eid->data)[1];
 	}
 
-	s->pic = vmm_zalloc(sizeof(struct vmm_emupic));
-	if (!s->pic) {
-		goto arm_sysregs_emulator_probe_freestate_fail;
-	}
-
-	strcpy(s->pic->name, edev->node->name);
-	s->pic->type = VMM_EMUPIC_GPIO;
-	s->pic->handle = &arm_sysregs_irq_handle;
-	s->pic->priv = s;
-	if ((rc = vmm_devemu_register_pic(guest, s->pic))) {
-		goto arm_sysregs_emulator_probe_freepic_fail;
-	}
-
 	attr = vmm_devtree_attrval(edev->node, "mux_in_irq");
 	if (attr) {
 		s->mux_in_irq[0] = ((u32 *)attr)[0];
 		s->mux_in_irq[1] = ((u32 *)attr)[1];
 	} else {
 		rc = VMM_EFAIL;
-		goto arm_sysregs_emulator_probe_unregpic_fail;
+		goto arm_sysregs_emulator_probe_freestate_fail;
 	}
 
 	attr = vmm_devtree_attrval(edev->node, "mux_out_irq");
@@ -622,20 +603,23 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 		s->mux_out_irq = ((u32 *)attr)[0];
 	} else {
 		rc = VMM_EFAIL;
-		goto arm_sysregs_emulator_probe_unregpic_fail;
+		goto arm_sysregs_emulator_probe_freestate_fail;
 	}
 
 	INIT_WORK(&s->shutdown, arm_sysregs_shutdown);
 	INIT_WORK(&s->reboot, arm_sysregs_reboot);
 
+	vmm_devemu_register_irq_handler(guest, s->mux_in_irq[0],
+					edev->node->name, 
+					arm_sysregs_irq_handle, s);
+	vmm_devemu_register_irq_handler(guest, s->mux_in_irq[1], 
+					edev->node->name,
+					arm_sysregs_irq_handle, s);
+
 	edev->priv = s;
 
 	goto arm_sysregs_emulator_probe_done;
 
-arm_sysregs_emulator_probe_unregpic_fail:
-	vmm_devemu_unregister_pic(s->guest, s->pic);
-arm_sysregs_emulator_probe_freepic_fail:
-	vmm_free(s->pic);
 arm_sysregs_emulator_probe_freestate_fail:
 	vmm_free(s);
 arm_sysregs_emulator_probe_done:
@@ -644,17 +628,13 @@ arm_sysregs_emulator_probe_done:
 
 static int arm_sysregs_emulator_remove(struct vmm_emudev *edev)
 {
-	int rc;
 	struct arm_sysregs *s = edev->priv;
 
 	if (s) {
-		if (s->pic) {
-			rc = vmm_devemu_unregister_pic(s->guest, s->pic);
-			if (rc) {
-				return rc;
-			}
-			vmm_free(s->pic);
-		}
+		vmm_devemu_unregister_irq_handler(s->guest, s->mux_in_irq[0], 
+						  arm_sysregs_irq_handle, s);
+		vmm_devemu_unregister_irq_handler(s->guest, s->mux_in_irq[1], 
+						  arm_sysregs_irq_handle, s);
 		vmm_free(s);
 		edev->priv = NULL;
 	}

@@ -65,7 +65,6 @@
 
 struct a9mp_priv_state {
 	struct vmm_guest *guest;
-	struct vmm_emupic *pic;
 	vmm_spinlock_t lock;
 
 	/* Configuration */

@@ -59,13 +59,12 @@
 
 struct pl190_emulator_state {
 	struct vmm_guest *guest;
-	struct vmm_emupic *pic;
 	vmm_spinlock_t lock;
 
 	/* Configuration */
 	u8 id[8];
 	u32 num_irq;
-	u32 num_base_irq;
+	u32 base_irq;
 	bool is_child_pic;
 	u32 parent_irq;
 
@@ -85,45 +84,41 @@ struct pl190_emulator_state {
 	int fiq;
 };
 
-static inline u32 pl190_emulator_irq_status(struct pl190_emulator_state *s)
+static inline u32 pl190_irq_status(struct pl190_emulator_state *s)
 {
 	return (s->level | s->soft_level) & s->irq_enable & ~s->fiq_select;
 }
 
 /* Update interrupts.  */
-static void pl190_emulator_update(struct pl190_emulator_state *s)
+static void pl190_update(struct pl190_emulator_state *s)
 {
-	u32 irqset, fiqset, status;
+	u32 status;
 	struct vmm_vcpu *vcpu = vmm_manager_guest_vcpu(s->guest, 0);
 
 	if (!vcpu) {
 		return;
 	}
 
-	status = pl190_emulator_irq_status(s);
+	status = pl190_irq_status(s);
 
 	if (s->is_child_pic) {
 		vmm_devemu_emulate_irq(s->guest, s->parent_irq, status);
 	} else {
-
-		irqset = ((status & s->prio_mask[s->priority]) != 0);
-		if (irqset) {
-			vmm_vcpu_irq_assert(vcpu, CPU_EXTERNAL_IRQ, 0x0);
+		if (status & s->prio_mask[s->priority]) {
+			vmm_vcpu_irq_assert(vcpu, s->parent_irq, 0x0);
 		} else {
-			vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_IRQ);
+			vmm_vcpu_irq_deassert(vcpu, s->parent_irq);
 		}
 
-		fiqset = (((s->level | s->soft_level) & s->fiq_select) != 0);
-		if (fiqset) {
-			vmm_vcpu_irq_assert(vcpu, CPU_EXTERNAL_FIQ, 0x0);
+		if ((s->level | s->soft_level) & s->fiq_select) {
+			vmm_vcpu_irq_assert(vcpu, s->parent_irq + 1, 0x0);
 		} else {
-			vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_FIQ);
+			vmm_vcpu_irq_deassert(vcpu, s->parent_irq + 1);
 		}
 	}
 }
 
-static void pl190_emulator_set_irq(struct pl190_emulator_state *s, int irq,
-				   int level)
+static void pl190_set_irq(struct pl190_emulator_state *s, int irq, int level)
 {
 	if (level) {
 		s->level |= 1u << irq;
@@ -131,38 +126,29 @@ static void pl190_emulator_set_irq(struct pl190_emulator_state *s, int irq,
 		s->level &= ~(1u << irq);
 	}
 
-	pl190_emulator_update(s);
+	pl190_update(s);
 }
 
-/* Process IRQ asserted in device emulation framework */
-static int pl190_emulator_irq_handle(struct vmm_emupic *epic, 
-				     u32 irq, int cpu, int level)
+/* Process IRQ asserted via device emulation framework */
+static void pl190_irq_handle(u32 irq, int cpu, int level, void *opaque)
 {
 	irq_flags_t flags;
-	struct pl190_emulator_state *s =
-	    (struct pl190_emulator_state *)epic->priv;
+	struct pl190_emulator_state *s = opaque;
 
-	/* Ensure irq is in range (base_irq, base_irq + num_irq) */
-	if ((irq < s->num_base_irq) || ((s->num_base_irq + s->num_irq) <= irq)) {
-		return VMM_EMUPIC_IRQ_UNHANDLED;
-	}
-
-	irq -= s->num_base_irq;
+	irq -= s->base_irq;
 
 	if (level == (s->level & (1u << irq))) {
-		return VMM_EMUPIC_IRQ_HANDLED;
+		return;
 	}
 
 	vmm_spin_lock_irqsave(&s->lock, flags);
 
-	pl190_emulator_set_irq(s, irq, level);
+	pl190_set_irq(s, irq, level);
 
 	vmm_spin_unlock_irqrestore(&s->lock, flags);
-
-	return VMM_EMUPIC_IRQ_HANDLED;
 }
 
-static void pl190_emulator_update_vectors(struct pl190_emulator_state *s)
+static void pl190_update_vectors(struct pl190_emulator_state *s)
 {
 	u32 mask;
 	int i;
@@ -180,7 +166,7 @@ static void pl190_emulator_update_vectors(struct pl190_emulator_state *s)
 
 	s->prio_mask[16] = mask;
 
-	pl190_emulator_update(s);
+	pl190_update(s);
 }
 
 static int pl190_emulator_read(struct pl190_emulator_state *s, u32 offset,
@@ -209,7 +195,7 @@ static int pl190_emulator_read(struct pl190_emulator_state *s, u32 offset,
 
 	switch (offset >> 2) {
 	case 0:		/* IRQSTATUS */
-		*dst = pl190_emulator_irq_status(s);
+		*dst = pl190_irq_status(s);
 		break;
 	case 1:		/* FIQSATUS */
 		*dst = (s->level | s->soft_level) & s->fiq_select;
@@ -244,7 +230,7 @@ static int pl190_emulator_read(struct pl190_emulator_state *s, u32 offset,
 			if (i < s->priority) {
 				s->prev_prio[i] = s->priority;
 				s->priority = i;
-				pl190_emulator_update(s);
+				pl190_update(s);
 			}
 			*dst = s->vect_addr[s->priority];
 		}
@@ -271,13 +257,13 @@ static int pl190_emulator_write(struct pl190_emulator_state *s, u32 offset,
 
 	if (offset >= 0x100 && offset < 0x140) {
 		s->vect_addr[(offset - 0x100) >> 2] = src;
-		pl190_emulator_update_vectors(s);
+		pl190_update_vectors(s);
 		return VMM_OK;
 	}
 
 	if (offset >= 0x200 && offset < 0x240) {
 		s->vect_control[(offset - 0x200) >> 2] = src;
-		pl190_emulator_update_vectors(s);
+		pl190_update_vectors(s);
 		return VMM_OK;
 	}
 
@@ -326,7 +312,7 @@ static int pl190_emulator_write(struct pl190_emulator_state *s, u32 offset,
 		break;
 	}
 
-	pl190_emulator_update(s);
+	pl190_update(s);
 
 	return VMM_OK;
 }
@@ -429,7 +415,7 @@ static int pl190_emulator_reset(struct vmm_emudev *edev)
 	s->vect_addr[16] = 0;
 	s->prio_mask[17] = 0xffffffff;
 	s->priority = PL190_NUM_PRIO;
-	pl190_emulator_update_vectors(s);
+	pl190_update_vectors(s);
 
 	return VMM_OK;
 }
@@ -438,59 +424,23 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 					 struct vmm_emudev *edev,
 					 const struct vmm_devtree_nodeid *eid)
 {
-	static int pic_number = 0;
 	int rc = VMM_OK;
-	struct pl190_emulator_state *s;
+	u32 i;
 	const char *attr;
-	u32 attrlen;
+	struct pl190_emulator_state *s;
 
-	s = vmm_malloc(sizeof(struct pl190_emulator_state));
+	s = vmm_zalloc(sizeof(struct pl190_emulator_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto pl190_emulator_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct pl190_emulator_state));
 
-	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
-	if (!s->pic) {
-		rc = VMM_EFAIL;
-		goto pl190_emulator_probe_freestate_fail;
-	}
-	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
-
-	vmm_sprintf(s->pic->name, "pl190-pic%d", pic_number);
-	pic_number++;
-
-	s->pic->type = VMM_EMUPIC_IRQCHIP;
-	s->pic->handle = pl190_emulator_irq_handle;
-	s->pic->priv = s;
-
-	if ((rc = vmm_devemu_register_pic(guest, s->pic))) {
-		rc = VMM_EFAIL;
-		vmm_printf("failed to register pic\n");
-		goto pl190_emulator_probe_freepic_fail;
-	}
-
-	if (eid->data) {
-		s->num_irq = ((u32 *) eid->data)[0];
-		s->num_base_irq = ((u32 *) eid->data)[1];
-		s->id[0] = ((u32 *) eid->data)[2];
-		s->id[1] = ((u32 *) eid->data)[3];
-		s->id[2] = ((u32 *) eid->data)[4];
-		s->id[3] = ((u32 *) eid->data)[5];
-		s->id[4] = ((u32 *) eid->data)[6];
-		s->id[5] = ((u32 *) eid->data)[7];
-		s->id[6] = ((u32 *) eid->data)[8];
-		s->id[7] = ((u32 *) eid->data)[9];
-	}
-
-	attr = vmm_devtree_attrval(edev->node, "base_irq");
-	attrlen = vmm_devtree_attrlen(edev->node, "base_irq");
-	if (attr && (attrlen == sizeof(u32))) {
-		s->num_base_irq = *(u32 *) attr;
+	attr = vmm_devtree_attrval(edev->node, "parent_irq");
+	if (attr) {
+		s->parent_irq = *(u32 *)attr;
 	} else {
 		rc = VMM_EFAIL;
-		goto pl190_emulator_probe_unregpic_fail;
+		goto pl190_emulator_probe_freestate_fail;
 	}
 
 	attr = vmm_devtree_attrval(edev->node, "child_pic");
@@ -500,28 +450,42 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 		s->is_child_pic = FALSE;
 	}
 
-	if (s->is_child_pic) {
-		attr = vmm_devtree_attrval(edev->node, "parent_irq");
-		attrlen = vmm_devtree_attrlen(edev->node, "parent_irq");
-		if (attr && (attrlen == sizeof(u32))) {
-			s->parent_irq = *(u32 *) attr;
-		} else {
-			rc = VMM_EFAIL;
-			goto pl190_emulator_probe_unregpic_fail;
-		}
+	attr = vmm_devtree_attrval(edev->node, "base_irq");
+	if (attr) {
+		s->base_irq = *(u32 *)attr;
+	} else {
+		s->base_irq = ((u32 *)eid->data)[1];
 	}
 
-	edev->priv = s;
+	attr = vmm_devtree_attrval(edev->node, "num_irq");
+	if (attr) {
+		s->num_irq = *(u32 *)attr;
+	} else {
+		s->num_irq = ((u32 *)eid->data)[0];
+	}
+		
+	s->id[0] = ((u32 *) eid->data)[2];
+	s->id[1] = ((u32 *) eid->data)[3];
+	s->id[2] = ((u32 *) eid->data)[4];
+	s->id[3] = ((u32 *) eid->data)[5];
+	s->id[4] = ((u32 *) eid->data)[6];
+	s->id[5] = ((u32 *) eid->data)[7];
+	s->id[6] = ((u32 *) eid->data)[8];
+	s->id[7] = ((u32 *) eid->data)[9];
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
+	edev->priv = s;
+
+	for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
+		vmm_devemu_register_irq_handler(guest, i, 
+						edev->node->name, 
+						pl190_irq_handle, s);
+	}
+
 	goto pl190_emulator_probe_done;
 
- pl190_emulator_probe_unregpic_fail:
-	vmm_devemu_unregister_pic(s->guest, s->pic);
- pl190_emulator_probe_freepic_fail:
-	vmm_free(s->pic);
  pl190_emulator_probe_freestate_fail:
 	vmm_free(s);
 
@@ -531,16 +495,13 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 
 static int pl190_emulator_remove(struct vmm_emudev *edev)
 {
-	int rc;
+	u32 i;
 	struct pl190_emulator_state *s = edev->priv;
 
 	if (s) {
-		if (s->pic) {
-			rc = vmm_devemu_unregister_pic(s->guest, s->pic);
-			if (rc) {
-				return rc;
-			}
-			vmm_free(s->pic);
+		for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
+			vmm_devemu_unregister_irq_handler(s->guest, i,
+							  pl190_irq_handle, s);
 		}
 		vmm_free(s);
 		edev->priv = NULL;
@@ -552,7 +513,7 @@ static int pl190_emulator_remove(struct vmm_emudev *edev)
 static u32 pl190_emulator_configs[] = {
 	/* === realview === */
 	/* num_irq */ 32,
-	/* num_base_irq */ 0,
+	/* base_irq */ 0,
 	/* id0 */ 0x90,
 	/* id1 */ 0x11,
 	/* id2 */ 0x04,

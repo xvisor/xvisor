@@ -65,7 +65,6 @@ struct gic_irq_state {
 
 struct gic_state {
 	struct vmm_guest *guest;
-	struct vmm_emupic *pic;
 	vmm_spinlock_t lock;
 
 	/* Configuration */
@@ -73,7 +72,7 @@ struct gic_state {
 	u8 id[8];
 	u32 num_cpu;
 	u32 num_irq;
-	u32 num_base_irq;
+	u32 base_irq;
 	bool is_child_pic;
 	u32 parent_irq[GIC_MAX_NCPU];
 
@@ -193,20 +192,16 @@ static void gic_update(struct gic_state *s)
 	vmm_spin_unlock_irqrestore(&s->lock, flags);
 }
 
-/* Process IRQ asserted in device emulation framework */
-static int gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
+/* Process IRQ asserted via device emulation framework */
+static void gic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 {
 	irq_flags_t flags;
 	int cm, target;
-	struct gic_state *s = (struct gic_state *)epic->priv;
+	struct gic_state *s = opaque;
 
-	/* Ensure irq is in range (base_irq, base_irq + num_irq) */
-	if ((irq < s->num_base_irq) ||  
-	    ((s->num_base_irq + s->num_irq) <= irq)) {
-		return VMM_EMUPIC_IRQ_UNHANDLED;
-	}
+	irq -= s->base_irq;
 
-	if (irq < (s->num_base_irq + 32)) {
+	if (irq < 32) {
 		/* In case of PPIs and SGIs */
 		cm = target = (1 << cpu);
 	} else {
@@ -219,7 +214,7 @@ static int gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 
 	if (level == GIC_TEST_LEVEL(s, irq, cm)) {
 		vmm_spin_unlock_irqrestore(&s->lock, flags);
-		return VMM_EMUPIC_IRQ_HANDLED;
+		return;
 	}
 
 	if (level) {
@@ -234,8 +229,6 @@ static int gic_irq_handle(struct vmm_emupic *epic, u32 irq, int cpu, int level)
 	__gic_update(s);
 
 	vmm_spin_unlock_irqrestore(&s->lock, flags);
-
-	return VMM_EMUPIC_IRQ_HANDLED;
 }
 
 static void __gic_set_running_irq(struct gic_state *s, int cpu, int irq)
@@ -322,7 +315,7 @@ static void gic_complete_irq(struct gic_state * s, int cpu, int irq)
 	vmm_spin_unlock_irqrestore(&s->lock, flags);
 
 	/* Signal completion of host-to-guest mapped irq */
-	vmm_devemu_complete_h2g_irq(s->guest, irq);
+	vmm_devemu_complete_host2guest_irq(s->guest, irq);
 }
 
 static int __gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
@@ -951,7 +944,7 @@ static int gic_emulator_reset(struct vmm_emudev *edev)
 static u32 gic_configs[][14] = {
 	{ 
 		/* num_irq */ 96,
-		/* num_base_irq */ 0,
+		/* base_irq */ 0,
 		/* id0 */ 0x90, 
 		/* id1 */ 0x13, 
 		/* id2 */ 0x04, 
@@ -967,7 +960,7 @@ static u32 gic_configs[][14] = {
 	},
 	{ 
 		/* num_irq */ 96,
-		/* num_base_irq */ 0,
+		/* base_irq */ 0,
 		/* id0 */ 0x90, 
 		/* id1 */ 0x13, 
 		/* id2 */ 0x04, 
@@ -983,7 +976,7 @@ static u32 gic_configs[][14] = {
 	},
 	{ 
 		/* num_irq */ 96,
-		/* num_base_irq */ 0,
+		/* base_irq */ 0,
 		/* id0 */ 0x90, 
 		/* id1 */ 0x13, 
 		/* id2 */ 0x04, 
@@ -999,7 +992,7 @@ static u32 gic_configs[][14] = {
 	},
 	{ 
 		/* num_irq */ 128,
-		/* num_base_irq */ 0,
+		/* base_irq */ 0,
 		/* id0 */ 0x90, 
 		/* id1 */ 0x13, 
 		/* id2 */ 0x04, 
@@ -1024,30 +1017,17 @@ struct gic_state *gic_state_alloc(const char *name,
 				  u32 num_irq,
 				  u32 parent_irq)
 {
-	int i;
+	u32 i;
 	struct gic_state *s = NULL;
 
 	s = vmm_zalloc(sizeof(struct gic_state));
 	if (!s) {
-		goto gic_emulator_init_done;
-	}
-
-	s->pic = vmm_zalloc(sizeof(struct vmm_emupic));
-	if (!s->pic) {
-		goto gic_emulator_init_freestate_failed;
-	}
-
-	strcpy(s->pic->name, name);
-	s->pic->type = VMM_EMUPIC_IRQCHIP;
-	s->pic->handle = &gic_irq_handle;
-	s->pic->priv = s;
-	if (vmm_devemu_register_pic(guest, s->pic)) {
-		goto gic_emulator_init_freepic_failed;
+		return NULL;
 	}
 
 	s->num_cpu = num_cpu;
 	s->num_irq = num_irq;
-	s->num_base_irq = base_irq;
+	s->base_irq = base_irq;
 	s->type = type;
 	s->id[0] = gic_configs[type][2];
 	s->id[1] = gic_configs[type][3];
@@ -1071,27 +1051,23 @@ struct gic_state *gic_state_alloc(const char *name,
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
-	goto gic_emulator_init_done;
+	for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
+		vmm_devemu_register_irq_handler(guest, i, 
+						name, gic_irq_handle, s);
+	}
 
-gic_emulator_init_freepic_failed:
-	vmm_free(s->pic);
-gic_emulator_init_freestate_failed:
-	vmm_free(s);
-gic_emulator_init_done:
 	return s;
 }
 VMM_EXPORT_SYMBOL(gic_state_alloc);
 
 int gic_state_free(struct gic_state *s)
 {
-	int rc;
+	u32 i;
+
 	if (s) {
-		if (s->pic) {
-			rc = vmm_devemu_unregister_pic(s->guest, s->pic);
-			if (rc) {
-				return rc;
-			}
-			vmm_free(s->pic);
+		for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
+			vmm_devemu_unregister_irq_handler(s->guest, i,
+							  gic_irq_handle, s);
 		}
 		vmm_free(s);
 		return VMM_OK;

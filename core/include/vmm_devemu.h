@@ -28,7 +28,6 @@
 #include <vmm_manager.h>
 
 struct vmm_emudev;
-struct vmm_emupic;
 struct vmm_emulator;
 
 struct vmm_emulator {
@@ -55,28 +54,6 @@ struct vmm_emudev {
 	void *priv;
 };
 
-enum vmm_emupic_type {
-	VMM_EMUPIC_IRQCHIP = 0,
-	VMM_EMUPIC_GPIO = 1,
-	VMM_EMUPIC_UNKNOWN = 3
-};
-
-enum vmm_emupic_return {
-	VMM_EMUPIC_IRQ_HANDLED = 0,
-	VMM_EMUPIC_IRQ_UNHANDLED = 1,
-	VMM_EMUPIC_GPIO_HANDLED = 2,
-	VMM_EMUPIC_GPIO_UNHANDLED = 3
-};
-
-struct vmm_emupic {
-	struct dlist head;
-	char name[32];
-	u32 type;
-	int (*handle) (struct vmm_emupic *epic,
-			u32 irq_num, int cpu, int irq_level);
-	void *priv;
-};
-
 /** Emulate read for given VCPU */
 int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu, 
 			    physical_addr_t gphys_addr,
@@ -88,8 +65,8 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 			     void *src, u32 src_len);
 
 /** Internal function to emulate irq (should not be called directly) */
-extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq_num, 
-				    int cpu, int irq_level);
+extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest, 
+				    u32 irq, int cpu, int level);
 
 /** Emulate shared irq for guest */
 #define vmm_devemu_emulate_irq(guest, irq, level)	\
@@ -103,25 +80,21 @@ extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq_num,
  *  (Note: For proper functioning of host-to-guest mapped irq, the PIC 
  *  emulators must call this function upon completion/end-of interrupt)
  */
-int vmm_devemu_complete_h2g_irq(struct vmm_guest *guest, u32 irq_num);
+int vmm_devemu_complete_host2guest_irq(struct vmm_guest *guest, u32 irq);
 
-/** Register emulated pic */
-int vmm_devemu_register_pic(struct vmm_guest *guest, 
-			    struct vmm_emupic *emu);
+/** Register guest irq handler */
+int vmm_devemu_register_irq_handler(struct vmm_guest *guest, u32 irq,
+				    const char *name, 
+				    void (*handle) (u32 irq, int cpu, int level, void *opaque),
+				    void *opaque);
 
-/** Unregister emulated pic */
-int vmm_devemu_unregister_pic(struct vmm_guest *guest, 
-			      struct vmm_emupic *emu);
+/** Unregister guest irq handler */
+int vmm_devemu_unregister_irq_handler(struct vmm_guest *guest, u32 irq,
+				      void (*handle) (u32 irq, int cpu, int level, void *opaque),
+				      void *opaque);
 
-/** Find a registered emulated pic */
-struct vmm_emupic *vmm_devemu_find_pic(struct vmm_guest *guest, 
-					const char *name);
-
-/** Get a registered emulated pic */
-struct vmm_emupic *vmm_devemu_pic(struct vmm_guest *guest, int index);
-
-/** Count available emulated pic */
-u32 vmm_devemu_pic_count(struct vmm_guest *guest);
+/** Count available irqs of a guest */
+u32 vmm_devemu_count_irqs(struct vmm_guest *guest);
 
 /** Register emulator */
 int vmm_devemu_register_emulator(struct vmm_emulator *emu);

@@ -192,7 +192,7 @@
 					physical_size = <0x10000>;
 					device_type = "pic";
 					compatible = "versatilepb,pl190";
-					base_irq = <0>;
+					parent_irq = <6>;
 				};
 
 				sysctrl0 {
