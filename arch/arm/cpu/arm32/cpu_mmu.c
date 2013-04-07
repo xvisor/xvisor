@@ -32,6 +32,7 @@
 #include <arch_sections.h>
 #include <libs/stringlib.h>
 #include <cpu_defines.h>
+#include <cpu_proc.h>
 #include <cpu_cache.h>
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
@@ -1317,23 +1318,8 @@ int cpu_mmu_chttbr(struct cpu_l1tbl *l1)
 		return VMM_OK;
 	}
 
-	/* Set ASID to default L1 table */
-	write_contextidr((((u32)mmuctrl.defl1.num) & 0xFF));
-
-	/* Instruction barrier */
-	isb();
-
-	/* Update TTBR0 to point to new L1 table */
-	write_ttbr0(l1->tbl_pa);
-
-	/* Instruction barrier */
-	isb();
-
-	/* Set ASID to new L1 table */
-	write_contextidr((((u32)l1->num) & 0xFF));
-
-	/* Instruction barrier */
-	isb();
+	/* Call low-level MMU switch */
+	proc_mmu_switch(l1->tbl_pa, (l1->num & 0xFF));
 
 	return VMM_OK;
 }
@@ -1739,18 +1725,22 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	clean_invalidate_dcache_mva_range((virtual_addr_t)defl1_mem, 
 			(virtual_addr_t)defl1_mem + TTBL_L1TBL_SIZE);
 
-	/* Switch over to default (or master) ttbl
-	 * Note: Low-level code will set temporary ttbl during boot-up
-	 */
-	write_ttbr0(arch_code_paddr_start() + ((virtual_addr_t)&defl1_mem 
-				- arch_code_vaddr_start()));
-
 	/* Handcraft default (or master) ttbl */
 	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
 	mmuctrl.defl1.num = TTBL_MAX_L1TBL_COUNT;
 	mmuctrl.defl1.tbl_va = (virtual_addr_t)&defl1_mem;
 	mmuctrl.defl1.tbl_pa = arch_code_paddr_start() + 
 			       ((virtual_addr_t)&defl1_mem - arch_code_vaddr_start());
+
+	/* Switch over to default (or master) ttbl
+	 * Note: Low-level code will set temporary ttbl during boot-up
+	 */
+	proc_mmu_switch(mmuctrl.defl1.tbl_pa, (mmuctrl.defl1.num & 0xFF));
+
+	/* Remove all TLB enteries to start using default (or master) ttbl */
+	invalid_tlb();
+
+	/* If possible remove boot-time identity mappings */
 	if (arch_code_paddr_start() != arch_code_vaddr_start()) {
 		val = arch_code_paddr_start() >> TTBL_L1TBL_TTE_OFFSET_SHIFT;
 		val = val << 2;
@@ -1759,6 +1749,8 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		dsb();
 		isb();
 	}
+
+	/* Sync count default (or master) ttbl enteries */
 	mmuctrl.defl1.tte_cnt = 0;
 	for (i = 0; i < TTBL_L1TBL_SIZE; i += 4) {
 		val = *((u32 *)(mmuctrl.defl1.tbl_va + i));
@@ -1768,7 +1760,6 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		}
 	}
 	mmuctrl.defl1.l2tbl_cnt = 0;
-	write_contextidr((((u32)mmuctrl.defl1.num) & 0xFF));
 
 	/* Check & setup core reserved space and update the 
 	 * core_resv_pa, core_resv_va, and core_resv_sz parameters
@@ -1915,7 +1906,7 @@ int __cpuinit arch_cpu_aspace_secondary_init(void)
 	/* Switch over to default (or master) ttbl
 	 * Note: Low-level code will set temporary ttbl during boot-up
 	 */
-	write_ttbr0(mmuctrl.defl1.tbl_pa);
+	proc_mmu_switch(mmuctrl.defl1.tbl_pa, (mmuctrl.defl1.num & 0xFF));
 
 	/* Remove all TLB enteries to start using default (or master) ttbl */
 	invalid_tlb();

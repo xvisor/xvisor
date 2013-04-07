@@ -28,7 +28,7 @@
 # testing for a specific architecture or later rather impossible.
 arch-$(CONFIG_ARMV7A) += -D__ARM_ARCH_VERSION__=7 -mno-thumb-interwork -march=armv7-a
 ifdef CONFIG_ARMV6K
-arch-$(CONFIG_ARMV6K) += -D__ARM_ARCH_VERSION__=6 -mno-thumb-interwork -march=armv6k
+arch-$(CONFIG_ARMV6) += -D__ARM_ARCH_VERSION__=6 -mno-thumb-interwork -march=armv6k
 else
 arch-$(CONFIG_ARMV6) += -D__ARM_ARCH_VERSION__=6 -mno-thumb-interwork -march=armv6
 endif
@@ -50,10 +50,12 @@ cpu-objs-y += cpu_entry.o
 cpu-objs-y += cpu_mmu.o
 cpu-objs-y += cpu_atomic.o
 
+cpu-objs-$(CONFIG_CPU_ARM9)+= cpu_proc_arm926.o
+cpu-objs-$(CONFIG_ARMV6)+= cpu_proc_v6.o
+cpu-objs-$(CONFIG_ARMV7A)+= cpu_proc_v7.o
+
 cpu-objs-$(CONFIG_ARMV5)+= cpu_cache_v5.o
-
 cpu-objs-$(CONFIG_ARMV6)+= cpu_cache_v6.o
-
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_cache_v7.o
 
 cpu-objs-y+= cpu_init.o

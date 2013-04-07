@@ -50,7 +50,7 @@ struct cpu_page {
 /* Generic L2-table representation */
 struct cpu_l2tbl {
 	struct dlist head;
-	int num;
+	u32 num;
 	struct cpu_l1tbl *l1;
 	u32 imp;
 	u32 domain;
@@ -63,7 +63,7 @@ struct cpu_l2tbl {
 /* Generic L1-table representation */
 struct cpu_l1tbl {
 	struct dlist head;
-	int num;
+	u32 num;
 	physical_addr_t tbl_pa;
 	virtual_addr_t tbl_va;
 	u32 tte_cnt;

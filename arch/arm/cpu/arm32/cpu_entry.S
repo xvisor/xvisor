@@ -187,12 +187,8 @@ _start_secondary:
 	mcr	p15, 0, r1, c3, c0, 0
 
 	/* Setup System Control Register */
-	ldr	r1, __sctrl_mmu_val
-	ldr	r2, __sctrl_mmu_clear
-	mrc	p15, 0, r3, c1, c0, 0
-	and	r3, r3, r2
-	orr	r3, r3, r1
-	mcr	p15, 0, r3, c1, c0, 0
+	bl	proc_setup
+	mcr	p15, 0, r0, c1, c0, 0
 
 	/* Jump to reset code */
 	ldr	pc, __reset
@@ -216,14 +212,6 @@ __mmu_section_attr:
 	.word SECTION_ATTR
 __dacr_mmu_val:
 	.word (TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_RESERVED))
-__sctrl_mmu_clear:
-	.word ~(SCTLR_A_MASK | SCTLR_TRE_MASK)
-__sctrl_mmu_val:
-#if defined(CONFIG_ARMV6)
-	.word (SCTLR_V6_MASK | SCTLR_M_MASK | SCTLR_C_MASK | SCTLR_I_MASK)
-#else
-	.word (SCTLR_M_MASK | SCTLR_C_MASK | SCTLR_I_MASK)
-#endif
 __exec_start:
 	.word _code_start
 __exec_end:
