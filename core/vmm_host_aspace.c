@@ -34,7 +34,7 @@
 #include <arch_devtree.h>
 #include <libs/stringlib.h>
 
-static virtual_addr_t host_phys_rw_va[CONFIG_CPU_COUNT];
+static virtual_addr_t host_mem_rw_va[CONFIG_CPU_COUNT];
 
 virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
 			       virtual_size_t sz, 
@@ -134,12 +134,12 @@ int vmm_host_va2pa(virtual_addr_t va, physical_addr_t *pa)
 	return VMM_OK;
 }
 
-u32 vmm_host_physical_read(physical_addr_t hpa, void *dst, u32 len)
+u32 vmm_host_memory_read(physical_addr_t hpa, void *dst, u32 len)
 {
 	int rc;
 	irq_flags_t flags;
 	u32 bytes_read = 0, page_offset, page_read;
-	virtual_addr_t tmp_va = host_phys_rw_va[vmm_smp_processor_id()];
+	virtual_addr_t tmp_va = host_mem_rw_va[vmm_smp_processor_id()];
 
 	/* Read one page at time with irqs disabled since, we use
 	 * one virtual address per-host CPU to do read/write.
@@ -153,9 +153,9 @@ u32 vmm_host_physical_read(physical_addr_t hpa, void *dst, u32 len)
 
 		arch_cpu_irq_save(flags);
 
-#if !defined(ARCH_HAS_PHYSICAL_READ)
+#if !defined(ARCH_HAS_MEMORY_READ)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
-					 VMM_MEMORY_READABLE);
+					 VMM_MEMORY_FLAGS_NORMAL);
 		if (rc) {
 			break;
 		}
@@ -167,7 +167,7 @@ u32 vmm_host_physical_read(physical_addr_t hpa, void *dst, u32 len)
 			break;
 		}
 #else
-		rc = arch_cpu_aspace_phys_read(tmp_va, hpa, dst, len);
+		rc = arch_cpu_aspace_memory_read(tmp_va, hpa, dst, len);
 		if (rc) {
 			break;
 		}
@@ -183,12 +183,12 @@ u32 vmm_host_physical_read(physical_addr_t hpa, void *dst, u32 len)
 	return bytes_read;
 }
 
-u32 vmm_host_physical_write(physical_addr_t hpa, void *src, u32 len)
+u32 vmm_host_memory_write(physical_addr_t hpa, void *src, u32 len)
 {
 	int rc;
 	irq_flags_t flags;
 	u32 bytes_written = 0, page_offset, page_write;
-	virtual_addr_t tmp_va = host_phys_rw_va[vmm_smp_processor_id()];
+	virtual_addr_t tmp_va = host_mem_rw_va[vmm_smp_processor_id()];
 
 	/* Write one page at time with irqs disabled since, we use
 	 * one virtual address per-host CPU to do read/write.
@@ -202,9 +202,9 @@ u32 vmm_host_physical_write(physical_addr_t hpa, void *src, u32 len)
 
 		arch_cpu_irq_save(flags);
 
-#if !defined(ARCH_HAS_PHYSICAL_WRITE)
+#if !defined(ARCH_HAS_MEMORY_WRITE)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
-					 VMM_MEMORY_WRITEABLE);
+					 VMM_MEMORY_FLAGS_NORMAL);
 		if (rc) {
 			break;
 		}
@@ -216,7 +216,7 @@ u32 vmm_host_physical_write(physical_addr_t hpa, void *src, u32 len)
 			break;
 		}
 #else
-		rc = arch_cpu_aspace_phys_write(tmp_va, hpa, src, page_write);
+		rc = arch_cpu_aspace_memory_write(tmp_va, hpa, src, page_write);
 		if (rc) {
 			break;
 		}
@@ -375,7 +375,7 @@ int __cpuinit vmm_host_aspace_init(void)
 
 	/* Setup temporary virtual address for physical read/write */
 	for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
-		rc = vmm_host_vapool_alloc(&host_phys_rw_va[cpu], 
+		rc = vmm_host_vapool_alloc(&host_mem_rw_va[cpu], 
 					   VMM_PAGE_SIZE, FALSE);
 		if (rc) {
 			return rc;

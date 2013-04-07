@@ -151,7 +151,8 @@ int cpu_vcpu_cp15_data_abort(struct vmm_vcpu *vcpu,
 			inst_pa |= (regs->pc & 0x00000FFF);
 
 			/* Read the faulting instruction */
-			read_count = vmm_host_physical_read(inst_pa, &inst, sizeof(inst));
+			read_count = 
+			    vmm_host_memory_read(inst_pa, &inst, sizeof(inst));
 			if (read_count != sizeof(inst)) {
 				return VMM_EFAIL;
 			}

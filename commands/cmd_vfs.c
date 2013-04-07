@@ -485,7 +485,7 @@ static int cmd_vfs_load(struct vmm_chardev *cdev, physical_addr_t pa,
 		if (buf_rd < 1) {
 			break;
 		}
-		vmm_host_physical_write(pa, buf, buf_rd);
+		vmm_host_memory_write(pa, buf, buf_rd);
 		len -= buf_rd;
 		rd_count += buf_rd;
 	}

@@ -1326,9 +1326,9 @@ int cpu_mmu_chttbr(struct cpu_l1tbl *l1)
 
 #if defined(CONFIG_ARMV5)
 
-int arch_cpu_aspace_phys_read(virtual_addr_t tmp_va, 
-			      physical_addr_t src, 
-			      void *dst, u32 len)
+int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va, 
+			   	physical_addr_t src, 
+				void *dst, u32 len)
 {
 	int rc;
 	struct cpu_page p;
@@ -1347,8 +1347,8 @@ int arch_cpu_aspace_phys_read(virtual_addr_t tmp_va,
 	p.ap = TTBL_AP_SRW_U;
 	p.xn = 1;
 	p.tex = 0;
-	p.c = 0;
-	p.b = 0;
+	p.c = 1;
+	p.b = 1;
 	p.ng = 0;
 	p.s = 0;
 
@@ -1376,9 +1376,9 @@ int arch_cpu_aspace_phys_read(virtual_addr_t tmp_va,
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va, 
-			       physical_addr_t dst, 
-			       void *src, u32 len)
+int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va, 
+				 physical_addr_t dst, 
+				 void *src, u32 len)
 {
 	int rc;
 	struct cpu_page p;
@@ -1397,8 +1397,8 @@ int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va,
 	p.ap = TTBL_AP_SRW_U;
 	p.xn = 1;
 	p.tex = 0;
-	p.c = 0;
-	p.b = 0;
+	p.c = 1;
+	p.b = 1;
 	p.ng = 0;
 	p.s = 0;
 
@@ -1448,9 +1448,9 @@ int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va,
 			  TTBL_L1TBL_TTE_IMP_MASK)		|	\
 			 ((0x0 << TTBL_L1TBL_TTE_XN_SHIFT) &		\
 			  TTBL_L1TBL_TTE_XN_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_C_SHIFT) &		\
+			 ((0x1 << TTBL_L1TBL_TTE_C_SHIFT) &		\
 			  TTBL_L1TBL_TTE_C_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_B_SHIFT) &		\
+			 ((0x1 << TTBL_L1TBL_TTE_B_SHIFT) &		\
 			  TTBL_L1TBL_TTE_B_MASK)		|	\
 			 (TTBL_L1TBL_TTE_TYPE_SECTION))
 
@@ -1465,14 +1465,14 @@ int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va,
 			    TTBL_L2TBL_TTE_AP2_MASK)		|	\
 			 ((TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP_SHIFT) &	\
 			    TTBL_L2TBL_TTE_AP_MASK)		|	\
-			 ((0x0 << TTBL_L2TBL_TTE_C_SHIFT) &		\
+			 ((0x1 << TTBL_L2TBL_TTE_C_SHIFT) &		\
 			    TTBL_L2TBL_TTE_C_MASK)		|	\
-			 ((0x0 << TTBL_L2TBL_TTE_B_SHIFT) &		\
+			 ((0x1 << TTBL_L2TBL_TTE_B_SHIFT) &		\
 			    TTBL_L2TBL_TTE_B_MASK))
 
-int arch_cpu_aspace_phys_read(virtual_addr_t tmp_va, 
-			      physical_addr_t src, 
-			      void *dst, u32 len)
+int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va, 
+				physical_addr_t src, 
+				void *dst, u32 len)
 {
 	u32 *l1_tte = NULL, *l2_tte = NULL;
 	u32 l1_tte_type;
@@ -1541,9 +1541,9 @@ int arch_cpu_aspace_phys_read(virtual_addr_t tmp_va,
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_phys_write(virtual_addr_t tmp_va, 
-			       physical_addr_t dst, 
-			       void *src, u32 len)
+int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va, 
+				 physical_addr_t dst, 
+				 void *src, u32 len)
 {
 	u32 *l1_tte = NULL, *l2_tte = NULL;
 	u32 l1_tte_type;

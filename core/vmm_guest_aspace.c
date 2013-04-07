@@ -103,7 +103,7 @@ u32 vmm_guest_physical_read(struct vmm_guest *guest,
 		to_read = ((len - bytes_read) < to_read) ? 
 			  (len - bytes_read) : to_read;
 
-		to_read = vmm_host_physical_read(hphys_addr, dst, to_read);
+		to_read = vmm_host_memory_read(hphys_addr, dst, to_read);
 		if (!to_read) {
 			break;
 		}
@@ -143,7 +143,7 @@ u32 vmm_guest_physical_write(struct vmm_guest *guest,
 		to_write = ((len - bytes_written) < to_write) ? 
 			   (len - bytes_written) : to_write;
 
-		to_write = vmm_host_physical_write(hphys_addr, src, to_write);
+		to_write = vmm_host_memory_write(hphys_addr, src, to_write);
 		if (!to_write) {
 			break;
 		}
