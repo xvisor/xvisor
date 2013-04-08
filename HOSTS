@@ -10,27 +10,50 @@ If a field spans multiple lines then simply add field prefix to every line.
 
 ----------
 
-M:	Exynos 4210 smdkc210 evaluation board
+M:	BCM2835 SOC (Raspberry-Pi development board)
+A:	ARM 32-bit (ARMv6)
+C:	ARM11
+V:	Broadcom Corporation (http://www.broadcom.com/)
+E:	Raspberry-Pi QEMU (https://github.com/Torlus/qemu)
+G:	Only Realview-EB-MPCore guest supported
+S:	Able to boot multiple Realview-EB-MPCore linux guest on 
+	Realview-EB-MPCore emulated by QEMU 
+D:	docs/arm/bcm2835-raspi.txt
+
+M:	Exynos4210 SOC (SMDKC210 and NURI evaluation boards)
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A9
 V:	Samsung (http://www.samsung.com)
-E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
-G:	Realview PB-A8 and VExpress-A9 guests supported
+E:	QEMU (http://wiki.qemu.org/)
+G:	Realview-PB-A8 and VExpress-A9 guests supported
 S:	Only supports Contex-A9 Uniprocessor. The Cortex-A9 Multiprocessor
 	(or SMP) suppport is Work-In-Progress.
-S:	Able to boot multiple Realview PB-A8 linux guest on smdkc210
+S:	Able to boot multiple Realview-PB-A8 linux guest on smdkc210
 	emulated by Linaro QEMU.
 S:	Able to boot VExpress-A9 linux guest on smdkc210 emulated by
 	Linaro QEMU
 D:	docs/arm/exynos4-smdkc210.txt
+D:	docs/arm/exynos4-nuri.txt
 
-M:	OMAP3
+M:	Exynos4412 SOC (ODroid-X development board)
+A:	ARM 32-bit (ARMv7a)
+C:	Cortex-A9
+V:	Samsung (http://www.samsung.com)
+E:	---
+G:	Realview-PB-A8 and VExpress-A9 guests supported
+S:	Only supports Contex-A9 Uniprocessor. The Cortex-A9 Multiprocessor
+	(or SMP) suppport is Work-In-Progress.
+S:	Able to boot multiple Realview-PB-A8 linux guest on ODroid-X board
+S:	Able to boot VExpress-A9 linux guest on ODroid-X board
+D:	docs/arm/exynos4-odroidx.txt
+
+M:	OMAP3 SOC (BeagleBoard-xM development board)
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A8
 V:	Texax Instruments (http://www.ti.com/)
-E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
-G:	Realview PB-A8 and VExpress-A9 guests supported
-S:	Able to boot multiple Realview PB-A8 linux guest on BeagleBoard-xM 
+E:	QEMU Linaro (https://launchpad.net/qemu-linaro)
+G:	Realview-PB-A8 and VExpress-A9 guests supported
+S:	Able to boot multiple Realview-PB-A8 linux guest on BeagleBoard-xM 
 	Hardware and BeagleBoard emulated by Linaro QEMU 
 S:	Able to boot VExpress-A9 linux guest on BeagleBoard-xM Hardware and
 	BeagleBoard emulated by Linaro QEMU 
@@ -40,64 +63,74 @@ M:	QEMU MIPS Emulation
 A:	MIPS 32-bit
 C:	mips32r2
 V:	MIPS Technologies (http://www.mips.com/)
-E:	QEMU 0.14.xx or higher (http://wiki.qemu.org/)
+E:	QEMU (http://wiki.qemu.org/)
 G:	Work-In-Progress. No guest support available yet
 S:	Able to get Xvisor managment terminal on MIPS emulated by QEMU
 D:	---
 
-M:	Realview PB-A8
+M:	Realview-EB-MPCore
+A:	ARM 32-bit (ARMv6k)
+C:	ARM11MPCore
+V:	ARM Ltd. (http://www.arm.com/)
+E:	QEMU (http://wiki.qemu.org/)
+G:	Only Realview-EB-MPCore guest supported
+S:	Able to boot multiple Realview-EB-MPCore linux guest on 
+	Realview-EB-MPCore emulated by QEMU 
+D:	docs/arm/realview-eb-mpcore.txt
+
+M:	Realview-PB-A8
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A8
 V:	ARM Ltd. (http://www.arm.com/)
-E:	QEMU 0.14.xx or higher (http://wiki.qemu.org/)
-G:	Realview PB-A8 and VExpress-A9 guests supported
-S:	Able to boot multiple Realview PB-A8 linux guest on Realview-PB-A8
+E:	QEMU (http://wiki.qemu.org/)
+G:	Realview-PB-A8 and VExpress-A9 guests supported
+S:	Able to boot multiple Realview-PB-A8 linux guest on Realview-PB-A8
 	emulated by QEMU 
 S:	Able to boot VExpress-A9 linux guest on Realview-PB-A8 emulated by QEMU
 D:	docs/arm/realview-pb-a8.txt
 
-M:	Sun4i (or Allwinner A10) 
+M:	Sun4i SOC (or Allwinner A10) (Hackberry development board)
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A8
 V:	Rhombus Tech (http://rhombus-tech.net/)
 E:	---
-G:	Realview PB-A8 and VExpress-A9 guests supported
-S:	Able to boot multiple Realview PB-A8 linux guest on Hackberry board
+G:	Realview-PB-A8 and VExpress-A9 guests supported
+S:	Able to boot multiple Realview-PB-A8 linux guest on Hackberry board
 S:	Able to boot VExpress-A9 linux guest on Hackberry board
 D:	docs/arm/sun4i-hackberry.txt
 
-M:	Versatile PB
+M:	VersatilePB
 A:	ARM 32-bit (ARMv5)
-C:	ARM9
+C:	ARM926
 V:	ARM Ltd. (http://www.arm.com/)
-E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
-G:	Only Versatile PB guest supported
-S:	Able to boot multiple Versatile PB linux guests on Versatile PB
+E:	QEMU (http://wiki.qemu.org/)
+G:	Only VersatilePB guest supported
+S:	Able to boot multiple VersatilePB linux guests on VersatilePB
 	emulated by QEMU 
-D:	docs/arm/versatile_pb-arm926.txt
+D:	docs/arm/versatilepb.txt
 
-M:	Versatile Express Cortex A9x4
+M:	VExpress-A9
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A9
 V:	ARM Ltd. (http://www.arm.com/)
-E:	QEMU Linaro 2.02 or higher (https://launchpad.net/qemu-linaro)
-G:	Realview PB-A8 and VExpress-A9 guests supported
+E:	QEMU (http://wiki.qemu.org/)
+G:	Realview-PB-A8 and VExpress-A9 guests supported
 S:	Only supports Contex-A9 Uniprocessor. The Cortex-A9 Multiprocessor 
 	(or SMP) suppport is Work-In-Progress.
-S:	Able to boot multiple Realview PB-A8 linux guest on VExpress-A9
+S:	Able to boot multiple Realview-PB-A8 linux guest on VExpress-A9
 	emulated by Linaro QEMU.
 S:	Able to boot VExpress-A9 linux guest on VExpress-A9 emulated by QEMU
 D:	docs/arm/vexpress-a9.txt
 
-M:	Versatile Express Cortex A15x4 (With Virtualization Extensions)
-A:	ARM 32-bit (ARMv7a-ve)
+M:	VExpress-A15
+A:	ARM 32-bit with virtualization extension (ARMv7a-ve)
 C:	Cortex-A15
 V:	ARM Ltd. (http://www.arm.com/)
 E:	ARM Fast Models 7.0 or higher (https://www.arm.com/)
-G:	Realview PB-A8, VExpress-A9 and VExpress-A15 guests supported
+G:	Realview-PB-A8, VExpress-A9 and VExpress-A15 guests supported
 S:	Only supports Contex-A15 Uniprocessor. The Cortex-A15 Multiprocessor 
 	(or SMP) suppport is Work-In-Progress.
-S:	Able to boot multiple Realview PB-A8 linux guest on VExpress-A15
+S:	Able to boot multiple Realview-PB-A8 linux guest on VExpress-A15
 	emulated by ARM fast models.
 S:	Able to boot VExpress-A9 linux guest on VExpress-A15 emulated by 
 	ARM fast models.
@@ -107,7 +140,7 @@ M:	x86_64 Generic
 A:	x86 64-bit
 C:	x86_64
 V:	Intel (http://www.intel.com)
-E:	QEMU 0.15.xx or higher (http://wiki.qemu.org/)
+E:	QEMU (http://wiki.qemu.org/)
 G:	Work-In-Progress.
 S:	Work-In-Progress.
 D:	docs/x86/x86_64_generic.txt

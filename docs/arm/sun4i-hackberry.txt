@@ -34,7 +34,7 @@ Following are steps to create these images and then boot Xvisor on Hackberry:
   [5. Make U-Boot compatible uvmm.bin for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x40008000 -e 0x40008000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
-  [6. Build ARM Basic Test for Realview PB-A8 Guest, this creates arm_test.bin.patched]
+  [6. Build ARM Basic Test for Realview-PB-A8 Guest, this creates arm_test.bin.patched]
   # make -C tests/arm32/realview-pb-a8/basic
   
   [7. Unplug bootable SD card from Hackbery and plug it on your development machine]

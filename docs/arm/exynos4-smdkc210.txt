@@ -1,14 +1,14 @@
-		Xvisor on Linaro QEMU smdkc210 Host
+		Xvisor on Linaro QEMU SMDKC210 Host
 
-This section of readme explains how to build & run Xvisor for smdkc210 
-emulated by QEMU Linaro 2.02 or higher. 
+This section of readme explains how to build & run Xvisor for SMDKC210 
+emulated by QEMU. 
 
-By default, Xvisor for smdkc210 supports Realview-PB-A8 guest so we will
+By default, Xvisor for SMDKC210 supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
 refer <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
 
-Please follow the steps below to build & run Basic Test on Realview PB-A8 guest
-with Xvisor running on QEMU smdkc210 Host:
+Please follow the steps below to build & run Basic Test on Realview-PB-A8 guest
+with Xvisor running on QEMU SMDKC210 Host:
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=arm-none-linux-gnueabi-
@@ -16,7 +16,7 @@ with Xvisor running on QEMU smdkc210 Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with smdkc210 default settings]
+  [3. Configure Xvisor with SMDKC210 default settings]
   # make ARCH=arm exynos4210-smdkc210-defconfig
 
   [4. Build Xvisor]
@@ -28,7 +28,7 @@ with Xvisor running on QEMU smdkc210 Host:
   [6. Create qemu.img for running it on QEMU]
   # ./tools/scripts/memimg.py -a 0x40010000 -o build/qemu.img build/vmm.bin@0x40010000 build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched@0x41000000
 
-  [7. Launch QEMU Linaro 2.02 or higher]
+  [7. Launch QEMU]
   # qemu-system-arm -M smdkc210 -display none -serial stdio -kernel build/qemu.img
 
   [8. Kick Guest for starting Basic Test]

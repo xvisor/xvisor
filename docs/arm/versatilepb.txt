@@ -1,14 +1,13 @@
-		Xvisor on QEMU Versatile PB ARM926 Host
+		Xvisor on QEMU VersatilePB Host
 
-This readme explains how to build & run Xvisor for Versatile-PB-ARM926 emulated 
-by QEMU 0.14.xx or higher. 
+This readme explains how to build & run Xvisor for VersatilePB on QEMU.
 
-By default, Xvisor for Versatile-PB-ARM926 supports Versatile-PB-ARM926 guest so 
-we will show how to run Basic Test on Versatile-PB-ARM926 guest. For more info 
+By default, Xvisor for VersatilePB supports VersatilePB guest so 
+we will show how to run Basic Test on VersatilePB guest. For more info 
 on Basic Test refer <xvisor_source>/tests/arm32/versatilepb/basic/README.
 
-Please follow the steps below to build & run Basic Test on Versatile PB-ARM926
-guest with Xvisor running on QEMU Versatile PB-ARM926 Host:
+Please follow the steps below to build & run Basic Test on VersatilePB
+guest with Xvisor running on QEMU VersatilePB Host:
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=arm-none-linux-gnueabi-
@@ -16,7 +15,7 @@ guest with Xvisor running on QEMU Versatile PB-ARM926 Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Versatile PB-ARM926 default settings]
+  [3. Configure Xvisor with VersatilePB default settings]
   # make ARCH=arm versatilepb-defconfig 
 
   [4. Build Xvisor]
@@ -28,7 +27,7 @@ guest with Xvisor running on QEMU Versatile PB-ARM926 Host:
   [6. Create qemu.img for running it on QEMU]
   # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/tests/arm32/versatilepb/basic/arm_test.bin.patched@0x01000000
 
-  [7. Launch QEMU 0.14.xx or higher]
+  [7. Launch QEMU]
   # qemu-system-arm -M versatilepb -display none -serial stdio -kernel build/qemu.img
 
   [8. Kick Guest for starting Basic Test]

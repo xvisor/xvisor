@@ -1,14 +1,14 @@
-		Xvisor on QEMU Realview-PB-A8 Host
+		Xvisor on Linaro QEMU NURI Host
 
-This section of readme explains how to build & run Xvisor for Realview-PB-A8 
+This section of readme explains how to build & run Xvisor for NURI 
 emulated by QEMU. 
 
-By default, Xvisor for Realview-PB-A8 supports Realview-PB-A8 guest so we will
+By default, Xvisor for NURI supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
 refer <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
 
 Please follow the steps below to build & run Basic Test on Realview-PB-A8 guest
-with Xvisor running on QEMU Realview-PB-A8 Host:
+with Xvisor running on QEMU NURI Host:
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=arm-none-linux-gnueabi-
@@ -16,8 +16,8 @@ with Xvisor running on QEMU Realview-PB-A8 Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Realview-PB-A8 default settings]
-  # make ARCH=arm realview-pb-a8-defconfig 
+  [3. Configure Xvisor with NURI default settings]
+  # make ARCH=arm exynos4210-nuri-defconfig
 
   [4. Build Xvisor]
   # make
@@ -26,10 +26,10 @@ with Xvisor running on QEMU Realview-PB-A8 Host:
   # make -C tests/arm32/realview-pb-a8/basic
 
   [6. Create qemu.img for running it on QEMU]
-  # ./tools/scripts/memimg.py -a 0x70010000 -o build/qemu.img build/vmm.bin@0x70010000 build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched@0x71000000
+  # ./tools/scripts/memimg.py -a 0x40010000 -o build/qemu.img build/vmm.bin@0x40010000 build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched@0x41000000
 
   [7. Launch QEMU]
-  # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel build/qemu.img
+  # qemu-system-arm -M nuri -display none -serial stdio -kernel build/qemu.img
 
   [8. Kick Guest for starting Basic Test]
   XVisor# guest kick -1

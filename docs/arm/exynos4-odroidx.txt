@@ -1,4 +1,4 @@
-    Xvisor on ODroid-X using SD Booting
+	Xvisor on ODroid-X using SD Booting
 
 This section of the readme explains how to build & run Xvisor on an actual
 ODroid-X development board, using the SD card for booting.
