@@ -68,9 +68,6 @@ static void system_init_work(struct vmm_work *work)
 #if defined(CONFIG_RTC)
 	struct vmm_rtcdev *rdev;
 #endif
-#if defined(CONFIG_SMP)
-	int count = 1000;
-#endif
 	struct vmm_devtree_node *node, *node1;
 
 	/* Initialize command manager */
@@ -108,6 +105,31 @@ static void system_init_work(struct vmm_work *work)
 		vmm_panic("Error %d\n", ret);
 	}
 
+#if defined(CONFIG_SMP)
+	/* Poll for all present CPUs to become online */
+	/* Note: There is a timeout of 1 second */
+	/* Note: The modules might use SMP IPIs or might have per-cpu context 
+	 * so, we do this before vmm_modules_init() in-order to make sure that 
+	 * correct number of online CPUs are visible to all modules.
+	 */
+	ret = 1000;
+	while(ret--) {
+		int all_cpu_online = 1;
+
+		for_each_present_cpu(c) {
+			if (!vmm_cpu_online(c)) {
+				all_cpu_online = 0;
+			}
+		}
+
+		if (all_cpu_online) {
+			break;
+		}
+
+		vmm_mdelay(1);
+	}
+#endif
+
 	/* Initialize hypervisor modules */
 	vmm_printf("Initialize Hypervisor Modules\n");
 	ret = vmm_modules_init();
@@ -128,26 +150,6 @@ static void system_init_work(struct vmm_work *work)
 	if (ret) {
 		vmm_panic("Error %d\n", ret);
 	}
-
-#if defined(CONFIG_SMP)
-	/* Here we will poll for all present CPUs to get online */
-	/* There is a timeout of 1 second */
-	while(count--) {
-		int all_cpu_online = 1;
-
-		for_each_present_cpu(c) {
-			if (!vmm_cpu_online(c)) {
-				all_cpu_online = 0;
-			}
-		}
-
-		if (all_cpu_online) {
-			break;
-		}
-
-		vmm_mdelay(1);
-	}
-#endif
 
 	/* Print status of present host CPUs */
 	for_each_present_cpu(c) {
