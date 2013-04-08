@@ -76,9 +76,9 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 	return reg;
 }
 
-u32 vmm_guest_physical_read(struct vmm_guest *guest, 
-			    physical_addr_t gphys_addr, 
-			    void *dst, u32 len)
+u32 vmm_guest_memory_read(struct vmm_guest *guest, 
+			  physical_addr_t gphys_addr, 
+			  void *dst, u32 len)
 {
 	u32 bytes_read = 0, to_read;
 	physical_addr_t hphys_addr;
@@ -116,9 +116,9 @@ u32 vmm_guest_physical_read(struct vmm_guest *guest,
 	return bytes_read;
 }
 
-u32 vmm_guest_physical_write(struct vmm_guest *guest, 
-			     physical_addr_t gphys_addr, 
-			     void *src, u32 len)
+u32 vmm_guest_memory_write(struct vmm_guest *guest, 
+			   physical_addr_t gphys_addr, 
+			   void *src, u32 len)
 {
 	u32 bytes_written = 0, to_write;
 	physical_addr_t hphys_addr;

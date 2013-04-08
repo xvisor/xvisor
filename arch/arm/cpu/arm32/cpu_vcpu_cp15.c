@@ -305,7 +305,8 @@ static physical_addr_t get_level1_table_pa(struct vmm_vcpu *vcpu,
 }
 
 static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va, 
-		int access_type, int is_user, struct cpu_page *pg, u32 * fs)
+			int access_type, int is_user, 
+			struct cpu_page *pg, u32 *fs)
 {
 	physical_addr_t table;
 	int type, domain;
@@ -318,8 +319,8 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	table = get_level1_table_pa(vcpu, va);
 
 	table |= (va >> 18) & 0x3ffc;
-	if (!vmm_guest_physical_read(vcpu->guest, 
-				     table, &desc, sizeof(desc))) {
+	if (!vmm_guest_memory_read(vcpu->guest, table, 
+				   &desc, sizeof(desc))) {
 		return VMM_EFAIL;
 	}
 	type = (desc & 3);
@@ -365,8 +366,8 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		/* Lookup l2 entry.  */
 		table = (desc & 0xfffffc00);
 		table |= ((va >> 10) & 0x3fc);
-		if (!vmm_guest_physical_read(vcpu->guest, 
-					     table, &desc, sizeof(desc))) {
+		if (!vmm_guest_memory_read(vcpu->guest, table, 
+					   &desc, sizeof(desc))) {
 			return VMM_EFAIL;
 		}
 		switch (desc & 3) {
@@ -426,7 +427,8 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 }
 
 static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va, 
-		int access_type, int is_user, struct cpu_page *pg, u32 * fs)
+			int access_type, int is_user, 
+			struct cpu_page *pg, u32 *fs)
 {
 	physical_addr_t table;
 	int type, domain;
@@ -442,8 +444,8 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	table |= (va >> 18) & 0x3ffc;
 
 	/* get it */
-	if (!vmm_guest_physical_read(vcpu->guest, 
-				     table, &desc, sizeof(desc))) {
+	if (!vmm_guest_memory_read(vcpu->guest, table, 
+				   &desc, sizeof(desc))) {
 		goto do_fault;
 	}
 
@@ -489,8 +491,8 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		table |= ((va >> 10) & 0x3fc);
 
 		/* get it */
-		if (!vmm_guest_physical_read(vcpu->guest, 
-				     table, &desc, sizeof(desc))) {
+		if (!vmm_guest_memory_read(vcpu->guest, table,
+					   &desc, sizeof(desc))) {
 			goto do_fault;
 		}
 
@@ -530,8 +532,8 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		table = (desc & 0xfffff000);
 		table |= ((va >> 8) & 0xffc);
 
-		if (!vmm_guest_physical_read(vcpu->guest, 
-				     table, &desc, sizeof(desc))) {
+		if (!vmm_guest_memory_read(vcpu->guest, table,
+					   &desc, sizeof(desc))) {
 			goto do_fault;
 		}
 
@@ -579,7 +581,8 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		 * give full access using access permissions.
 		 */
 		pg->ap = TTBL_AP_SRW_URW;
-	} else if (check_ap(vcpu, pg->ap, access_type, is_user) == CP15_ACCESS_DENIED) {
+	} else if (check_ap(vcpu, pg->ap, access_type, is_user) == 
+							CP15_ACCESS_DENIED) {
 		/* Access permission fault.  */
 		goto do_fault;
 	}
