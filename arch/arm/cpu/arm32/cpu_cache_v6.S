@@ -17,124 +17,97 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file cpu_cache_v6.S
- * @author Ankit Jindal (thatsjindal@gmail.com)
  * @author Anup Patel (anup@brainfault.org)
  * @brief Low-level implementation of cache ARMv6 functions 
  */
 
-/*
- * dcache_line_size - get the minimum D-cache line size from the CTR register
- * on ARMv6.
- */
-.macro	dcache_line_size, reg, tmp
-	mrc	p15, 0, \tmp, c0, c0, 1		@ read ctr
-	lsr	\tmp, \tmp, #16
-	and	\tmp, \tmp, #0xf		@ cache line size encoding
-	mov	\reg, #4			@ bytes per word
-	mov	\reg, \reg, lsl \tmp		@ actual cache line size
+#define HARVARD_CACHE
+#define CACHE_LINE_SIZE		32
+#define D_CACHE_LINE_SIZE	32
+#define BTB_FLUSH_SIZE		8
+
+.macro	ISB treg
+	mcr	p15, 0, \treg, c7, c5, 4
 .endm
 
-/* 
- * Generic mechanism for operations on the entire data or unified cache to the Point
- * of Coherence. This code is taken from 'Example code for cache maintenance operations'
- * provided in "ARM Architecture Reference Manual ARMv7-A and ARMv7-R edition 
- * (ARM DDI 0406)". 
- * Registers r0 - r9 are used.
- */
-#define ARM_ENTIRE_DCACHE_OP(crm) 	\
-					\
-        stmfd   sp!, {r0-r9}		/* save registers */;\
-					\
-	mrc 	p15, 1, r0, c0, c0, 1  	/* Read CLIDR */;\
-	ands	r3, r0, #0x7000000 	;\
-	mov 	r3, r3, LSR #23 	/* Cache level value (naturally aligned) */; \
-	beq 	5f 			;\
-	mov 	r10, #0 		;\
-1: 					;\
-	add 	r2, r10, r10, LSR #1 	/* Work out 3xcachelevel */; \
-	mov 	r1, r0, LSR r2 		/* bottom 3 bits are the Cache type for this level */; \
-	and 	r1, r1, #7		/* get those 3 bits alone */; \
-	cmp 	r1, #2			;\
-	blt 	4f 			/* no cache or only instruction cache at this level */; \
-	mcr 	p15, 2, r10, c0, c0, 0 	/* write the Cache Size selection register */; \
-	mcr	p15, 0, r2, c7, c5, 4	/* isb to sync the change to the CacheSizeID reg */; \
-	mrc 	p15, 1, r1, c0, c0, 0 	/* reads current Cache Size ID register */; \
-	and 	r2, r1, #7 		/* extract the line length field */; \
-	add 	r2, r2, #4 		/* add 4 for the line length offset (log2 16 bytes) */; \
-	ldr 	r4, =0x3FF		;\
-	ands	r4, r4, r1, LSR #3 	/* r4 is the max number on the way size (right aligned) */; \
-	clz 	r5, r4 			/* r5 is the bit position of the way size increment */; \
-	ldr 	r7, =0x00007FFF		;\
-	ands	r7, r7, r1, LSR #13 	/* r7 is the max number of the index size (right aligned) */; \
-2: 					;\
-	mov 	r9, r4 			/* r9 working copy of the max way size (right aligned) */; \
-3:					;\
-	orr 	r11, r10, r9, LSL r5 	/* factor in the way number and cache number into r11 */; \
-	orr 	r11, r11, r7, LSL r2 	/* factor in the index number */; \
-	mcr 	p15, 0, r11, c7, crm, 2 /* clean by set/way */; \
-	subs	r9, r9, #1 		/* decrement the way number */; \
-	bge 	3b			;\
-	subs 	r7, r7, #1 		/* decrement the index */; \
-	bge 	2b			;\
-4:					;\
-	add 	r10, r10, #2 		/* increment the cache number */; \
-	cmp 	r3, r10			;\
-	bgt 	1b			;\
-					\
-5:					;\
-	ldmia   sp!, {r0-r9}		/* restore registers */;
+.macro	DSB treg
+	mcr	p15, 0, \treg, c7, c10, 4
+.endm
 
 	/* 
-	 * Operations on entire data Cache to POC 
+	 * Operations on entire d-cache
 	 */
 
 	/* invalidate the entire d-cache */
 	.globl invalidate_dcache
 invalidate_dcache:
-	ARM_ENTIRE_DCACHE_OP(c6) 	/* invalidate all */
 	push	{r0}
-	mcr	p15, 0, r0, c7, c5, 4
+	mov	r0, #0
+#ifdef HARVARD_CACHE
+	mcr	p15, 0, r0, c7, c6, 0		@ d-cache invalidate
+#else
+	mcr	p15, 0, r0, c7, c7, 0		@ cache unified invalidate
+#endif
+	ISB	r0
 	pop	{r0}
 	bx	lr
 
-	/* clean the entire data cache */	
+	/* clean the entire d-cache */	
 	.globl clean_dcache
 clean_dcache:
-	ARM_ENTIRE_DCACHE_OP(c10) 	/* clean all */
 	push	{r0}
-	mcr	p15, 0, r0, c7, c10, 4
-	mcr	p15, 0, r0, c7, c5, 4
+	mov	r0, #0
+#ifdef HARVARD_CACHE
+	mcr	p15, 0, r0, c7, c10, 0		@ d-cache clean
+#else
+	mcr	p15, 0, r0, c7, c11, 0		@ cache unified clean
+#endif
+	DSB	r0
+	ISB	r0
 	pop	{r0}
-	bx	lr
+	mov	pc, lr
 
-	/* clean & invalidate the entire data cache */	
+	/* clean & invalidate the entire d-cache */	
 	.globl clean_invalidate_dcache
 clean_invalidate_dcache:
-	ARM_ENTIRE_DCACHE_OP(c14) 	/* clean and invalidate all */
 	push	{r0}
-	mcr	p15, 0, r0, c7, c10, 4
-	mcr	p15, 0, r0, c7, c5, 4
+	mov	r0, #0
+#ifdef HARVARD_CACHE
+	mcr	p15, 0, r0, c7, c14, 0		@ d-cache clean+invalidate
+#else
+	mcr	p15, 0, r0, c7, c15, 0		@ unified cache clean+invalidate
+#endif
+	DSB	r0
+	ISB	r0
 	pop	{r0}
-	bx	lr
+	mov	pc, lr
 
 	/* 
-	 * Operations on data cache by MVA 
+	 * Operations on d-cache by MVA 
 	 */
 
 	/* invalidate by MVA */
 	.globl invalidate_dcache_mva
 invalidate_dcache_mva:
-	mcr     p15, 0, r0, c7, c6, 1
-	mcr	p15, 0, r0, c7, c5, 4
-	bx	lr
+#ifdef HARVARD_CACHE
+	mcr     p15, 0, r0, c7, c6, 1		@ d-cache invalidate by MVA
+#else
+	mcr     p15, 0, r0, c7, c7, 1		@ cache unified invalidate by MVA
+#endif
+	ISB	r0
+	mov	pc, lr
 	
 	/* clean by mva */
 	.globl clean_dcache_mva
 clean_dcache_mva:
-	mcr     p15, 0, r0, c7, c10, 1
-	mcr	p15, 0, r0, c7, c10, 4
-	mcr	p15, 0, r0, c7, c5, 4
-	bx	lr
+#ifdef HARVARD_CACHE
+	mcr     p15, 0, r0, c7, c10, 1		@ d-cache clean by MVA
+#else
+	mcr     p15, 0, r0, c7, c11, 1		@ cache unified clean by MVA
+#endif
+	DSB	r0
+	ISB	r0
+	mov	pc, lr
 
 	/* clean by memory region by mva range 
 	 *  r0 - start address of region
@@ -142,27 +115,40 @@ clean_dcache_mva:
 	 */
 	.globl clean_dcache_mva_range
 clean_dcache_mva_range:
-	push	{r0, r1, r2, r3}
-	dcache_line_size r2, r3
-	sub	r3, r2, #1
-	bic	r0, r0, r3
+	push	{r0, r1, r2}
+#ifdef HARVARD_CACHE
+	mov	r2, #D_CACHE_LINE_SIZE
+	bic	r0, r0, #D_CACHE_LINE_SIZE - 1
 1:
-	mcr     p15, 0, r0, c7, c10, 1
+	mcr     p15, 0, r0, c7, c10, 1		@ d-cache clean by MVA
 	add	r0, r0, r2
 	cmp	r0, r1
 	blo	1b
-	mcr	p15, 0, r0, c7, c10, 4
-	mcr	p15, 0, r0, c7, c5, 4
-	pop	{r0, r1, r2, r3}
+#else
+	mov	r2, #CACHE_LINE_SIZE
+	bic	r0, r0, #CACHE_LINE_SIZE - 1
+1:
+	mcr     p15, 0, r0, c7, c11, 1		@ cache unified clean by MVA
+	add	r0, r0, r2
+	cmp	r0, r1
+	blo	1b
+#endif
+	DSB	r0
+	ISB	r0
+	pop	{r0, r1, r2}
 	bx	lr
 
 	/* clean and invalidate by mva */
 	.globl clean_invalidate_dcache_mva
 clean_invalidate_dcache_mva:
-	mcr     p15, 0, r0, c7, c14, 1
-	mcr	p15, 0, r0, c7, c10, 4
-	mcr	p15, 0, r0, c7, c5, 4
-	bx	lr
+#ifdef HARVARD_CACHE
+	mcr     p15, 0, r0, c7, c14, 1		@ d-cache clean+invalidate by MVA
+#else
+	mcr     p15, 0, r0, c7, c15, 1		@ cache unified clean+invalidate by MVA
+#endif
+	DSB	r0
+	ISB	r0
+	mov	pc, lr
 
 	/* clean and invalidate a memory region by mva
 	 *  r0 - start address of region
@@ -170,18 +156,27 @@ clean_invalidate_dcache_mva:
 	 */
 	.globl clean_invalidate_dcache_mva_range
 clean_invalidate_dcache_mva_range:
-	push	{r0, r1, r2, r3}
-	dcache_line_size r2, r3
-	sub	r3, r2, #1
-	bic	r0, r0, r3
+	push	{r0, r1, r2}
+#ifdef HARVARD_CACHE
+	mov	r2, #D_CACHE_LINE_SIZE
+	bic	r0, r0, #D_CACHE_LINE_SIZE - 1
 1:
-	mcr	p15, 0, r0, c7, c14, 1		/* clean & invalidate D / U line */
+	mcr     p15, 0, r0, c7, c14, 1		@ d-cache clean+invalidate by MVA
 	add	r0, r0, r2
 	cmp	r0, r1
 	blo	1b
-	mcr	p15, 0, r0, c7, c10, 4
-	mcr	p15, 0, r0, c7, c5, 4
-	pop	{r0, r1, r2, r3}	
+#else
+	mov	r2, #CACHE_LINE_SIZE
+	bic	r0, r0, #CACHE_LINE_SIZE - 1
+1:
+	mcr     p15, 0, r0, c7, c15, 1		@ cache unified clean+invalidate by MVA
+	add	r0, r0, r2
+	cmp	r0, r1
+	blo	1b
+#endif
+	DSB	r0
+	ISB	r0
+	pop	{r0, r1, r2}	
 	bx	lr
 
 	/* 
@@ -191,58 +186,90 @@ clean_invalidate_dcache_mva_range:
 	/* invalidate line by set/way */
 	.globl invalidate_dcache_line
 invalidate_dcache_line:
-	mcr     p15, 0, r0, c7, c6, 2
-	mcr	p15, 0, r0, c7, c5, 4
-	bx	lr
+#ifdef HARVARD_CACHE
+	mcr     p15, 0, r0, c7, c6, 2		@ d-cache invalidate by set/way
+#else
+	mcr     p15, 0, r0, c7, c7, 2		@ cache unified invalidate by set/way
+#endif
+	ISB	r0
+	mov	pc, lr
 
 	/* clean line by set/way */
 	.globl clean_dcache_line
 clean_dcache_line:
-	mcr     p15, 0, r0, c7, c10, 2
-	mcr	p15, 0, r0, c7, c10, 4
-	mcr	p15, 0, r0, c7, c5, 4
-	bx	lr
+#ifdef HARVARD_CACHE
+	mcr     p15, 0, r0, c7, c10, 2		@ d-cache clean by set/way
+#else
+	mcr     p15, 0, r0, c7, c11, 2		@ cache unified clean by set/way
+#endif
+	DSB	r0
+	ISB	r0
+	mov	pc, lr
 
 	/* clean and invalidate line by set/way */
 	.globl clean_invalidate_dcache_line
 clean_invalidate_dcache_line:
-	mcr     p15, 0, r0, c7, c14, 2
-	mcr	p15, 0, r0, c7, c10, 4
-	mcr	p15, 0, r0, c7, c5, 4
-	bx	lr
+#ifdef HARVARD_CACHE
+	mcr     p15, 0, r0, c7, c14, 1		@ d-cache clean+invalidate by set/way
+#else
+	mcr     p15, 0, r0, c7, c15, 2		@ cache unified clean+invalidate by set/way
+#endif
+	DSB	r0
+	ISB	r0
+	mov	pc, lr
 
 	/* 
 	 * Operation on entire Instruction cache 
 	 */
 
-	/* invalidate the entire i-cache */
+	/* invalidate the entire i-cache 
+	 *
+	 * ARM1136 erratum 411920 - Invalidate Instruction Cache operation 
+	 * can fail. This erratum is present in 1136, 1156 and 1176. 
+	 * It does not affect the MPCore.
+	 *
+	 * Registers:
+	 * r0 - set to 0
+	 * r1 - corrupted
+	 */
 	.globl invalidate_icache
 invalidate_icache:
-        push	{r0}
+	push	{r0, r1}
 	mov	r0, #0
-	mcr	p15, 0, r0, c7, c5, 0 	/* invalidate all */
-	mcr	p15, 0, r0, c7, c5, 4
-	pop	{r0}
-	bx	lr
+#ifdef CONFIG_ARM_ERRATA_411920
+	mrs	r1, cpsr
+	cpsid	ifa				@ disable interrupts
+	mcr	p15, 0, r0, c7, c5, 0		@ invalidate entire i-cache
+	mcr	p15, 0, r0, c7, c5, 0		@ invalidate entire i-cache
+	mcr	p15, 0, r0, c7, c5, 0		@ invalidate entire i-cache
+	mcr	p15, 0, r0, c7, c5, 0		@ invalidate entire i-cache
+	msr	cpsr_cx, r1			@ restore interrupts
+	.rept	11				@ ARM Ltd recommends at least
+	nop					@ 11 NOPs
+	.endr
+#else
+	mcr	p15, 0, r0, c7, c5, 0		@ invalidate i-cache
+#endif
+	ISB	r0
+	pop	{r0, r1}
+	mov	pc, lr
 
 	/* invalidate i-cache by mva */
 	.globl invalidate_icache_mva
 invalidate_icache_mva:
-	mcr     p15, 0, r0, c7, c5, 0 	/* invalidate all */
-	mcr	p15, 0, r0, c7, c5, 4
-	bx	lr
+	mcr     p15, 0, r0, c7, c5, 0		@ i-cache invalidate by MVA
+	ISB	r0
+	mov	pc, lr
 
 	/* invalidate the i-cache line by set/way */ 
-	/* no such instruction so invalidate everything */
 	.globl invalidate_icache_line
 invalidate_icache_line:
-	push	{lr}
-	bl	invalidate_icache
-	pop	{lr}
-	bx	lr
+	mcr     p15, 0, r0, c7, c5, 2		@ i-cache invalidate by set/way
+	ISB	r0
+	mov	pc, lr
 
 	/* 
-	 * Operations on entire instruction an data cache 
+	 * Operations on entire instruction and data cache 
 	 */
 
 	/* invalidate the entire i-cache and d-cache */
@@ -266,10 +293,10 @@ clean_idcache:
 	.globl clean_invalidate_idcache
 clean_invalidate_idcache:
 	push	{lr}
-	bl	invalidate_icache
 	bl	clean_invalidate_dcache
+	bl	invalidate_icache
 	pop	{lr}
-	bx	lr
+	mov	pc, lr
 
 	/* 
 	 * operation on both i-cache and d-cache by mva
@@ -340,15 +367,15 @@ clean_invalidate_idcache_line:
 invalidate_bpredictor:
 	push	{r0}
 	mov	r0, #0
-	mcr     p15, 0, r0, c7, c5, 6 	/* invalidate all */
-	mcr	p15, 0, r0, c7, c5, 4
+	mcr     p15, 0, r0, c7, c5, 6 	/* invalidate branch predictor all */
+	ISB	r0
 	pop	{r0}
 	bx	lr
 
 	/* invalidate branch predictor by mva */
 	.globl invalidate_bpredictor_mva
 invalidate_bpredictor_mva:
-	mcr     p15, 0, r0, c7, c5, 7 	/* invalidate all */
-	mcr	p15, 0, r0, c7, c5, 4
+	mcr     p15, 0, r0, c7, c5, 7 	/* invalidate branch predictor by MVA */
+	ISB	r0
 	bx	lr
 
