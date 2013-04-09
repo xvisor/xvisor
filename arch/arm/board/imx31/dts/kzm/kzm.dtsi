@@ -1,0 +1,59 @@
+
+/include/ "../imx31.dtsi"
+
+/ {
+	choosen {
+		console = &SERIAL1;
+	};
+
+	vmm {
+		net {
+			netbridge0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	host {
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		model = "kzm";
+                device_type = "host";
+
+		memory {
+			/* NOTE: By default QEMU will only proivde 128 MB
+			 * unless specified by "-m" option. If you have
+			 * X MB then we will be able to access only first
+			 * X MB starting at physical_addr.
+			 */
+			physical_addr = <0x80000000>;
+			physical_size = <0x08000000>; /* 128 MB */
+		};
+
+		soc {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "simple-bus";
+
+			eth0 {
+				device_type = "nic";
+				compatible = "smc911x";
+				reg = <0xb6000000 0x1000>;
+				interrupts = <52>;
+				switch = "netbridge0";
+				smsc,irq-active-high;
+			};
+		};
+	};
+
+	/* Empty guests node */
+	guests {
+	};
+};
+
+/* Add guest templates */
+/include/ "../../../common/guests/realview-pb-a8.dtsi"
+/include/ "../../../common/guests/vexpress-a9x2.dtsi"
+

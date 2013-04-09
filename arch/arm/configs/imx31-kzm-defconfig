@@ -1,0 +1,276 @@
+#
+# Automatically generated make config: don't edit
+# Project: Xvisor (eXtensible Versatile hypervISOR)
+# Version: 0.2.1
+# Mon Apr  8 22:57:41 2013
+#
+# CONFIG_SMP is not set
+CONFIG_ARCH_ARM=y
+# CONFIG_ARCH_MIPS is not set
+# CONFIG_ARCH_x86 is not set
+CONFIG_ARCH="arm"
+CONFIG_CPU_COUNT=1
+CONFIG_CPU="arm32"
+CONFIG_CPU_LE=y
+# CONFIG_CPU_BE is not set
+CONFIG_VAPOOL_SIZE_MB=12
+CONFIG_BOARD="imx31"
+# CONFIG_CPU_ARM9 is not set
+CONFIG_CPU_ARM11=y
+# CONFIG_CPU_ARM11MP is not set
+# CONFIG_CPU_CORTEX_A8 is not set
+# CONFIG_CPU_CORTEX_A9 is not set
+# CONFIG_CPU_CORTEX_A15 is not set
+# CONFIG_ARMV5 is not set
+CONFIG_ARMV6=y
+# CONFIG_ARMV6K is not set
+# CONFIG_ARMV7A is not set
+# CONFIG_ARMV7A_VE is not set
+CONFIG_ARM32=y
+# CONFIG_ARM32VE is not set
+
+#
+# ARM Options
+#
+CONFIG_ARM32_STACKTRACE=y
+# CONFIG_ARM32_HIGHVEC is not set
+# CONFIG_BOARD_VERSATILE is not set
+# CONFIG_BOARD_BCM2835 is not set
+CONFIG_BOARD_IMX31=y
+# CONFIG_BOARD_REALVIEW is not set
+# CONFIG_BOARD_OMAP3 is not set
+# CONFIG_BOARD_SUN4I is not set
+# CONFIG_BOARD_VEXPRESS is not set
+# CONFIG_BOARD_EXYNOS4 is not set
+CONFIG_BOARD_KZM=y
+
+#
+# kzm Options
+#
+CONFIG_KZM_ONE_GUEST_PBA8_DTS=y
+# CONFIG_ARM_VIC is not set
+# CONFIG_ARM_GIC is not set
+# CONFIG_ARM_TIMER_SP804 is not set
+# CONFIG_ARM_TWD is not set
+# CONFIG_ICST is not set
+# CONFIG_ARM_SCU is not set
+# CONFIG_VERSATILE_CLOCK is not set
+# CONFIG_VERSATILE_CLCD is not set
+# CONFIG_OMAP is not set
+# CONFIG_SAMSUNG_MCT is not set
+# CONFIG_SAMSUNG_MCT_LOCAL_TIMERS is not set
+# CONFIG_SUNXI is not set
+CONFIG_FREESCALE_AVIC=y
+CONFIG_FREESCALE_EPIT=y
+
+#
+# Hypervisor Options
+#
+
+#
+# General Configuration
+#
+# MODULES is not set
+# CONFIG_VERBOSE_MODE is not set
+CONFIG_BANNER_NONE=y
+# CONFIG_BANNER_BANNER4 is not set
+# CONFIG_BANNER_COLOSSAL is not set
+# CONFIG_BANNER_O8 is not set
+# CONFIG_BANNER_ROMAN is not set
+CONFIG_MAX_VCPU_COUNT=16
+CONFIG_MAX_GUEST_COUNT=4
+CONFIG_VGPA2REG_CACHE_SIZE=8
+# CONFIG_PROFILE is not set
+
+#
+# Heap Configuration
+#
+CONFIG_HEAP_SIZE_MB=4
+CONFIG_HEAP_BUDDY=y
+
+#
+# Scheduler Configuration
+#
+# CONFIG_SCHEDALGO_RR is not set
+CONFIG_SCHEDALGO_PRR=y
+# CONFIG_TSLICE_1MS is not set
+CONFIG_TSLICE_10MS=y
+# CONFIG_TSLICE_100MS is not set
+CONFIG_TSLICE_MS=10
+CONFIG_WFI_TIMEOUT_SECS=10
+CONFIG_IRQ_STACK_SIZE=4096
+CONFIG_THREAD_STACK_SIZE=8192
+
+#
+# Device Support
+#
+# CONFIG_RTC is not set
+# CONFIG_INPUT is not set
+# CONFIG_FB is not set
+# CONFIG_BLOCK is not set
+CONFIG_NET=y
+CONFIG_NET_MBUF_POOL_SIZE=2048
+CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
+
+#
+# Command Options
+#
+CONFIG_CMD_VERSION=y
+CONFIG_CMD_RESET=y
+CONFIG_CMD_SHUTDOWN=y
+CONFIG_CMD_HOST=y
+CONFIG_CMD_DEVTREE=y
+CONFIG_CMD_VCPU=y
+CONFIG_CMD_GUEST=y
+CONFIG_CMD_MEMORY=y
+CONFIG_CMD_THREAD=y
+CONFIG_CMD_CHARDEV=y
+CONFIG_CMD_VSERIAL=y
+CONFIG_CMD_STDIO=y
+CONFIG_CMD_HEAP=y
+CONFIG_CMD_WALLCLOCK=y
+CONFIG_CMD_MODULE=y
+CONFIG_CMD_NET=y
+
+#
+# Daemon Options
+#
+CONFIG_MTERM=y
+CONFIG_MTERM_CMD_WIDTH=256
+CONFIG_MTERM_HISTORY=y
+CONFIG_MTERM_HISTORY_SIZE=10
+
+#
+# Library Options
+#
+CONFIG_LIBFDT=y
+
+#
+# Network Stack Options
+#
+# CONFIG_NET_STACK is not set
+CONFIG_NET_STACK_LWIP=y
+
+#
+# Device Drivers
+#
+
+#
+# Serial Port Drivers
+#
+CONFIG_SERIAL=y
+# CONFIG_SERIAL_8250_UART is not set
+# CONFIG_SERIAL_OMAP_UART is not set
+# CONFIG_SERIAL_PL01X is not set
+# CONFIG_SERIAL_SAMSUNG is not set
+CONFIG_SERIAL_IMX=y
+
+#
+# RTC Drivers
+#
+
+#
+# Input Device Support
+#
+
+#
+# Hardware I/O ports
+#
+# CONFIG_SERIO is not set
+
+#
+# Network Drivers
+#
+CONFIG_NET_DRIVERS=y
+# CONFIG_ETHER_NE2K is not set
+CONFIG_ETHER_SMSC_911x=y
+# CONFIG_ETHER_SMSC_91x is not set
+
+#
+# Clock Drivers
+#
+# CONFIG_CLKDEV_LOOKUP is not set
+
+#
+# Device Emulators
+#
+
+#
+# VirtIO Support
+#
+CONFIG_EMU_VIRTIO=y
+CONFIG_EMU_VIRTIO_MMIO=y
+
+#
+# System Emulators
+#
+CONFIG_EMU_SYS=y
+CONFIG_EMU_SYS_ARM_SYSREGS=y
+# CONFIG_EMU_SYS_SP810 is not set
+
+#
+# PIC Emulators
+#
+CONFIG_EMU_PIC=y
+CONFIG_EMU_PIC_GIC=y
+# CONFIG_EMU_PIC_PL190 is not set
+
+#
+# Network Interface Controller Emulators
+#
+CONFIG_EMU_NET=y
+CONFIG_EMU_NET_LAN9118=y
+# CONFIG_EMU_NET_SMC91C111 is not set
+# CONFIG_EMU_NET_VIRTIO is not set
+
+#
+# Block Device Emulators
+#
+# CONFIG_EMU_BLOCK is not set
+
+#
+# Console Emulators
+#
+# CONFIG_EMU_CONSOLE is not set
+
+#
+# Timer Emulators
+#
+CONFIG_EMU_TIMER=y
+CONFIG_EMU_TIMER_SP804=y
+# CONFIG_EMU_TIMER_ARM_MPTIMER is not set
+
+#
+# Serial Port Emulators
+#
+CONFIG_EMU_SERIAL=y
+CONFIG_EMU_SERIAL_PL011=y
+
+#
+# Real-Time Clock Emulators
+#
+CONFIG_EMU_RTC=y
+CONFIG_EMU_RTC_PL031=y
+
+#
+# Cache Controller Emulators
+#
+# CONFIG_EMU_CACHE_L2X0 is not set
+
+#
+# GPIO Emulators
+#
+CONFIG_EMU_GPIO=y
+CONFIG_EMU_GPIO_PL061=y
+
+#
+# Miscellaneous Emulators
+#
+CONFIG_EMU_MISC_ZERO=y
+
+#
+# Tool Options
+#
+CONFIG_DTC=y
+CONFIG_CPATCH=y
+# CONFIG_BBFLASH is not set
