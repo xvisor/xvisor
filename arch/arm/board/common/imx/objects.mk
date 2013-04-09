@@ -22,3 +22,5 @@
 # */
 
 board-common-objs-$(CONFIG_FREESCALE_AVIC)+=imx/avic.o
+board-common-objs-$(CONFIG_FREESCALE_EPIT)+=imx/epit.o
+
