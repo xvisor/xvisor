@@ -207,6 +207,7 @@ struct cpu_l2tbl *cpu_mmu_l2tbl_alloc(void)
 
 	vmm_spin_lock_irqsave(&mmuctrl.l2_alloc_lock, flags);
 	if (list_empty(&mmuctrl.free_l2tbl_list)) {
+		vmm_spin_unlock_irqrestore(&mmuctrl.l2_alloc_lock, flags);
 		return NULL;
 	}
 	l2 = list_entry(list_first(&mmuctrl.free_l2tbl_list), 
