@@ -2225,6 +2225,15 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	}
 #endif
 
+	/* Nuke i-cache on every vcpu reset.
+	 * This will clear i-cache, b-predictor cache, and execution pipeline.
+	 * This is done to make sure that the host cpu pickup fresh 
+	 * guest code from host RAM after every vcpu reset.
+	 */
+	/* FIXME: On SMP, this has to be done on all host CPUs */
+	invalidate_icache();
+	isb();
+
 	return rc;
 }
 
