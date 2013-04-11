@@ -42,6 +42,11 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 		return;
 	}
 
+	/* If vcpu is not in interruptible state then dont do anything */
+	if (!(vcpu->state & VMM_VCPU_STATE_INTERRUPTIBLE)) {
+		return;
+	}
+
 	/* Lock VCPU irqs */
 	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
 
@@ -111,6 +116,11 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 
 	/* For non-normal vcpu dont do anything */
 	if (!vcpu || !vcpu->is_normal) {
+		return;
+	}
+
+	/* If vcpu is not in interruptible state then dont do anything */
+	if (!(vcpu->state & VMM_VCPU_STATE_INTERRUPTIBLE)) {
 		return;
 	}
 
