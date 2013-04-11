@@ -64,6 +64,7 @@ struct cpu_l2tbl {
 struct cpu_l1tbl {
 	struct dlist head;
 	u32 num;
+	u32 contextid;
 	physical_addr_t tbl_pa;
 	virtual_addr_t tbl_va;
 	u32 tte_cnt;
@@ -107,9 +108,15 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_default(void);
 struct cpu_l1tbl *cpu_mmu_l1tbl_current(void);
 
 /** Change domain access control register */
-int cpu_mmu_chdacr(u32 new_dacr);
+int cpu_mmu_change_dacr(u32 new_dacr);
 
 /** Change translation table base register */
-int cpu_mmu_chttbr(struct cpu_l1tbl *l1);
+int cpu_mmu_change_ttbr(struct cpu_l1tbl *l1);
+
+/** Sync translation table changes */
+int cpu_mmu_sync_ttbr(struct cpu_l1tbl *l1);
+
+/** Sync translation table changes */
+int cpu_mmu_sync_ttbr_va(struct cpu_l1tbl *l1, virtual_addr_t va);
 
 #endif /** _CPU_MMU_H */

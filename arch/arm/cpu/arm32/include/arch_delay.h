@@ -33,7 +33,7 @@ void arch_delay_loop(u32 count);
  */
 static inline u32 arch_delay_loop_cycles(u32 count)
 {
-	return count * 3;
+	return count * 2;
 }
 
 #endif

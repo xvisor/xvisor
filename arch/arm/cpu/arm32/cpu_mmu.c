@@ -62,6 +62,7 @@ struct cpu_mmu_ctrl {
 	physical_addr_t l2_base_pa;
 	struct cpu_l2tbl *l2_array;
 	vmm_spinlock_t l1_alloc_lock;
+	u32 l1_next_contextid;
 	u32 l1_alloc_count;
 	struct dlist l1tbl_list;
 	struct dlist free_l1tbl_list;
@@ -654,7 +655,7 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 		 * invalidate tlb line 
 		 */
 		if(read_ttbr0() == l1->tbl_pa) {
-			invalid_tlb_line(pg->va);
+			invalid_tlb_mva(pg->va);
 			dsb();
 			isb();
 		}
@@ -1181,6 +1182,8 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 			 struct cpu_l1tbl, head);
 	list_del(&nl1->head);
 	mmuctrl.l1_alloc_count++;
+	nl1->contextid = mmuctrl.l1_next_contextid;
+	mmuctrl.l1_next_contextid++;
 	vmm_spin_unlock_irqrestore(&mmuctrl.l1_alloc_lock, flags);
 
 	INIT_LIST_HEAD(&nl1->l2tbl_list);
@@ -1287,7 +1290,7 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_current(void)
 	return cpu_mmu_l1tbl_find_tbl_pa(ttbr0);
 }
 
-int cpu_mmu_chdacr(u32 new_dacr)
+int cpu_mmu_change_dacr(u32 new_dacr)
 {
 	u32 old_dacr;
 
@@ -1305,7 +1308,7 @@ int cpu_mmu_chdacr(u32 new_dacr)
 	return VMM_OK;
 }
 
-int cpu_mmu_chttbr(struct cpu_l1tbl *l1)
+int cpu_mmu_change_ttbr(struct cpu_l1tbl *l1)
 {
 	struct cpu_l1tbl * curr_l1;
 
@@ -1320,7 +1323,35 @@ int cpu_mmu_chttbr(struct cpu_l1tbl *l1)
 	}
 
 	/* Call low-level MMU switch */
-	proc_mmu_switch(l1->tbl_pa, (l1->num & 0xFF));
+	proc_mmu_switch(l1->tbl_pa, l1->contextid & 0xFF);
+
+	return VMM_OK;
+}
+
+int cpu_mmu_sync_ttbr(struct cpu_l1tbl *l1)
+{
+	if (!l1) {
+		return VMM_EFAIL;
+	}
+
+#if defined(CONFIG_ARMV5)
+	invalid_tlb();
+#else
+	invalid_tlb_asid(l1->contextid & 0xFF);
+#endif	
+	isb();
+
+	return VMM_OK;
+}
+
+int cpu_mmu_sync_ttbr_va(struct cpu_l1tbl *l1, virtual_addr_t va)
+{
+	if (!l1) {
+		return VMM_EFAIL;
+	}
+
+	invalid_tlb_mva(va);
+	isb();
 
 	return VMM_OK;
 }
@@ -1535,7 +1566,7 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 		*l1_tte = 0x0;
 		cpu_mmu_sync_tte(l1_tte);
 	}
-	invalid_tlb_line(tmp_va);
+	invalid_tlb_mva(tmp_va);
 	dsb();
 	isb();
 
@@ -1606,7 +1637,7 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 		*l1_tte = 0x0;
 		cpu_mmu_sync_tte(l1_tte);
 	}
-	invalid_tlb_line(tmp_va);
+	invalid_tlb_mva(tmp_va);
 	dsb();
 	isb();
 
@@ -1729,6 +1760,8 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	/* Handcraft default (or master) ttbl */
 	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
 	mmuctrl.defl1.num = TTBL_MAX_L1TBL_COUNT;
+	mmuctrl.defl1.contextid = mmuctrl.l1_next_contextid;
+	mmuctrl.l1_next_contextid++;
 	mmuctrl.defl1.tbl_va = (virtual_addr_t)&defl1_mem;
 	mmuctrl.defl1.tbl_pa = arch_code_paddr_start() + 
 			       ((virtual_addr_t)&defl1_mem - arch_code_vaddr_start());
@@ -1736,7 +1769,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	/* Switch over to default (or master) ttbl
 	 * Note: Low-level code will set temporary ttbl during boot-up
 	 */
-	proc_mmu_switch(mmuctrl.defl1.tbl_pa, (mmuctrl.defl1.num & 0xFF));
+	proc_mmu_switch(mmuctrl.defl1.tbl_pa, mmuctrl.defl1.contextid & 0xFF);
 
 	/* Remove all TLB enteries to start using default (or master) ttbl */
 	invalid_tlb();
@@ -1907,7 +1940,7 @@ int __cpuinit arch_cpu_aspace_secondary_init(void)
 	/* Switch over to default (or master) ttbl
 	 * Note: Low-level code will set temporary ttbl during boot-up
 	 */
-	proc_mmu_switch(mmuctrl.defl1.tbl_pa, (mmuctrl.defl1.num & 0xFF));
+	proc_mmu_switch(mmuctrl.defl1.tbl_pa, mmuctrl.defl1.contextid & 0xFF);
 
 	/* Remove all TLB enteries to start using default (or master) ttbl */
 	invalid_tlb();

@@ -321,19 +321,11 @@ extern unsigned int *_ifar;
 				:: "r" ((val)) : "memory", "cc")
 #endif
 
-#define invalid_tlb()		({ u32 rval=0; asm volatile(\
-				" mcr     p15, 0, %0, c8, c7, 0\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define invalid_tlb_line(va)	asm volatile(\
-				" mcr     p15, 0, %0, c8, c7, 1\n\t" \
-				:: "r" ((va)) : "memory", "cc")
-
 #define invalid_i_tlb()		({ u32 rval=0; asm volatile(\
 				" mcr     p15, 0, %0, c8, c5, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define invalid_i_tlb_line(va)	asm volatile(\
+#define invalid_i_tlb_mva(va)	asm volatile(\
 				" mcr     p15, 0, %0, c8, c5, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
 
@@ -341,9 +333,25 @@ extern unsigned int *_ifar;
 				" mcr     p15, 0, %0, c8, c6, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define invalid_d_tlb_line(va)	asm volatile(\
+#define invalid_d_tlb_mva(va)	asm volatile(\
 				" mcr     p15, 0, %0, c8, c6, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
+
+#define invalid_tlb()		({ u32 rval=0; asm volatile(\
+				" mcr     p15, 0, %0, c8, c7, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define invalid_tlb_mva(va)	asm volatile(\
+				" mcr     p15, 0, %0, c8, c7, 1\n\t" \
+				:: "r" ((va)) : "memory", "cc")
+
+#if !defined(CONFIG_ARMV5)
+
+#define invalid_tlb_asid(asid)	asm volatile(\
+				" mcr     p15, 0, %0, c8, c7, 2\n\t" \
+				:: "r" ((asid)) : "memory", "cc")
+
+#endif
 
 #define read_contextidr()	({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c13, c0, 1\n\t" \

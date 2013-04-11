@@ -133,7 +133,7 @@ int cpu_vcpu_cp15_vtlb_flush(struct vmm_vcpu *vcpu)
 		arm_priv(vcpu)->cp15.vtlb.victim[zone] = 0;
 	}
 
-	return VMM_OK;
+	return cpu_mmu_sync_ttbr(arm_priv(vcpu)->cp15.l1);
 }
 
 
@@ -160,10 +160,10 @@ int cpu_vcpu_cp15_vtlb_flush_va(struct vmm_vcpu *vcpu, virtual_addr_t va)
 		}
 	}
 
-	return VMM_OK;
+	return cpu_mmu_sync_ttbr_va(arm_priv(vcpu)->cp15.l1, va);
 }
 
-int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
+int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu *vcpu)
 {
 	int rc;
 	u32 vtlb, vtlb_last;
@@ -188,7 +188,7 @@ int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu * vcpu)
 		vtlb++;
 	}
 
-	return VMM_OK;
+	return cpu_mmu_sync_ttbr(arm_priv(vcpu)->cp15.l1);
 }
 
 int cpu_vcpu_cp15_vtlb_flush_domain(struct vmm_vcpu * vcpu, 
@@ -214,7 +214,7 @@ int cpu_vcpu_cp15_vtlb_flush_domain(struct vmm_vcpu * vcpu,
 		}
 	}
 
-	return VMM_OK;
+	return cpu_mmu_sync_ttbr(arm_priv(vcpu)->cp15.l1);
 }
 
 
@@ -633,6 +633,7 @@ u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
 		pg->sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		pg->ap = TTBL_AP_SRW_URW;
 		pg->c = 1;
+		pg->b = 0;
 	}
 
 	/* Ensure pages for normal vcpu have aligned va & pa */
@@ -2033,7 +2034,7 @@ void cpu_vcpu_cp15_sync_cpsr(struct vmm_vcpu *vcpu)
 	}
 
 	if (cvcpu->id == vcpu->id) {
-		cpu_mmu_chdacr(arm_priv(vcpu)->cp15.dacr);
+		cpu_mmu_change_dacr(arm_priv(vcpu)->cp15.dacr);
 	}
 }
 
@@ -2045,18 +2046,18 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 		arm_priv(tvcpu)->cp15.c13_tls3 = read_tpidrprw();
 	}
 	if (vcpu->is_normal) {
-		cpu_mmu_chdacr(arm_priv(vcpu)->cp15.dacr);
-		cpu_mmu_chttbr(arm_priv(vcpu)->cp15.l1);
+		cpu_mmu_change_dacr(arm_priv(vcpu)->cp15.dacr);
+		cpu_mmu_change_ttbr(arm_priv(vcpu)->cp15.l1);
 		write_tpidrurw(arm_priv(vcpu)->cp15.c13_tls1);
 		write_tpidruro(arm_priv(vcpu)->cp15.c13_tls2);
 		write_tpidrprw(arm_priv(vcpu)->cp15.c13_tls3);
 	} else {
 		if (tvcpu) {
 			if (tvcpu->is_normal) {
-				cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
+				cpu_mmu_change_ttbr(cpu_mmu_l1tbl_default());
 			}
 		} else {
-			cpu_mmu_chttbr(cpu_mmu_l1tbl_default());
+			cpu_mmu_change_ttbr(cpu_mmu_l1tbl_default());
 		}
 	}
 	/* Ensure pending memory operations are complete */
@@ -2230,6 +2231,10 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 int cpu_vcpu_cp15_deinit(struct vmm_vcpu *vcpu)
 {
 	int rc;
+
+	if ((rc = cpu_mmu_sync_ttbr(arm_priv(vcpu)->cp15.l1))) {
+		return rc;
+	}
 
 	if ((rc = cpu_mmu_l1tbl_free(arm_priv(vcpu)->cp15.l1))) {
 		return rc;
