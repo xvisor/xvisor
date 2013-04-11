@@ -72,12 +72,12 @@ void vmm_delay_recaliberate(void)
 
 	tstamp = vmm_timer_timestamp();
 
-	arch_delay_loop(1000000);
+	arch_delay_loop(10000000);
 
 	nsecs = vmm_timer_timestamp() - tstamp;
 
-	loops_per_usec = udiv64(1000ULL * 1000000ULL, nsecs);
-	loops_per_msec = udiv64(1000000ULL * 1000000ULL, nsecs);
+	loops_per_usec = udiv64(1000ULL * 10000000ULL, nsecs);
+	loops_per_msec = udiv64(1000000ULL * 10000000ULL, nsecs);
 
 	arch_cpu_irq_restore(flags);
 }
