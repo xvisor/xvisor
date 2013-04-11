@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_clockchip.h>
 #include <vmm_clocksource.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
@@ -52,7 +53,8 @@ int __init s32k_clocksource_init(physical_addr_t base)
 	s32k_clksrc.priv = (void *)synct_base;
 
 	/* Compute mult for clocksource */
-	s32k_clksrc.mult = vmm_clocksource_hz2mult(S32K_FREQ_HZ, 15);
+	vmm_clocks_calc_mult_shift(&s32k_clksrc.mult, &s32k_clksrc.shift, 
+				   S32K_FREQ_HZ, VMM_NSEC_PER_SEC, 10);
 
 	/* Register clocksource */
 	if ((rc = vmm_clocksource_register(&s32k_clksrc))) {
