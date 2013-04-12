@@ -2051,6 +2051,10 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, struct vmm_vcpu *vcpu)
 		write_tpidrurw(arm_priv(vcpu)->cp15.c13_tls1);
 		write_tpidruro(arm_priv(vcpu)->cp15.c13_tls2);
 		write_tpidrprw(arm_priv(vcpu)->cp15.c13_tls3);
+		if (arm_priv(vcpu)->cp15.inv_icache) {
+			arm_priv(vcpu)->cp15.inv_icache = FALSE;
+			invalidate_icache();
+		}
 	} else {
 		if (tvcpu) {
 			if (tvcpu->is_normal) {
@@ -2225,14 +2229,13 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	}
 #endif
 
-	/* Nuke i-cache on every vcpu reset.
-	 * This will clear i-cache, b-predictor cache, and execution pipeline.
+	/* Set i-cache invalidate flag for this vcpu.
+	 * This will clear i-cache, b-predictor cache, and execution pipeline
+	 * on next context switch for this vcpu.
 	 * This is done to make sure that the host cpu pickup fresh 
 	 * guest code from host RAM after every vcpu reset.
 	 */
-	/* FIXME: On SMP, this has to be done on all host CPUs */
-	invalidate_icache();
-	isb();
+	arm_priv(vcpu)->cp15.inv_icache = TRUE;
 
 	return rc;
 }

@@ -157,6 +157,8 @@ struct arm_priv {
 		/* Virtual IO */
 		bool virtio_active;
 		struct cpu_page virtio_page;
+		/* Invalidate i-cache */
+		bool inv_icache;
 		/* Coprocessor Registers */
 		u32 c0_cpuid;
 		u32 c0_cachetype;
