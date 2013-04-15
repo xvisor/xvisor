@@ -44,13 +44,14 @@
 #include <vmm_heap.h>
 #include <vmm_error.h>
 #include <vmm_delay.h>
-#include <exynos/mct_timer.h>
-#include <exynos/irqs.h>
 
-#define TICK_BASE_CNT	1
+#include <exynos/irqs.h>
+#include <exynos/plat/cpu.h>
+#include <exynos/mct_timer.h>
+
+#define HZ		(1000 / CONFIG_TSLICE_MS)
 
 static void *exynos4_sys_timer;
-static unsigned long clk_rate;
 
 static inline u32 exynos4_mct_read(u32 offset)
 {
@@ -148,7 +149,7 @@ static struct vmm_clocksource mct_frc;
 
 int __init exynos4_clocksource_init(virtual_addr_t base,
 				    const char *name,
-				    int rating, u32 freq_hz, u32 shift)
+				    int rating, u32 freq_hz)
 {
 	u32 reg;
 
@@ -159,14 +160,14 @@ int __init exynos4_clocksource_init(virtual_addr_t base,
 	mct_frc.rating = rating;
 	mct_frc.read = exynos4_frc_read;
 	mct_frc.mask = VMM_CLOCKSOURCE_MASK(64);
-	mct_frc.mult = vmm_clocksource_hz2mult(freq_hz, shift);
-	mct_frc.shift = shift;
+	vmm_clocks_calc_mult_shift(&mct_frc.mult, 
+				   &mct_frc.shift, 
+				   freq_hz, NSEC_PER_SEC, 5);
 	mct_frc.priv = NULL;
 
 	/* Start the clocksource timer */
 	exynos4_mct_write(0, EXYNOS4_MCT_G_CNT_L);
 	exynos4_mct_write(0, EXYNOS4_MCT_G_CNT_U);
-
 	reg = exynos4_mct_read(EXYNOS4_MCT_G_TCON);
 	reg |= MCT_G_TCON_START;
 	exynos4_mct_write(reg, EXYNOS4_MCT_G_TCON);
@@ -186,8 +187,7 @@ static void exynos4_mct_comp0_stop(void)
 	exynos4_mct_write(0, EXYNOS4_MCT_G_INT_ENB);
 }
 
-static void exynos4_mct_comp0_start(enum vmm_clockchip_mode mode,
-				    unsigned long cycles)
+static void exynos4_mct_comp0_start(enum vmm_clockchip_mode mode, u32 cycles)
 {
 	u32 tcon;
 	u64 comp_cycle;
@@ -215,41 +215,35 @@ static int exynos4_comp_set_next_event(unsigned long cycles,
 {
 	exynos4_mct_comp0_start(evt->mode, cycles);
 
-	return 0;
+	return VMM_OK;
 }
 
 static int exynos4_comp_expire(struct vmm_clockchip *evt)
 {
-	// Stop the ongoing timer
+	/* Stop the ongoing timer */
 	exynos4_mct_comp0_stop();
 
-	// Start a new one for the next cycle
+	/* Start a new one for the next cycle */
 	exynos4_mct_comp0_start(evt->mode, 1);
 
-	// Now we need to wait for the interrupt to happen before returning
+	/* Now we need to wait for the interrupt to happen before returning */
 	while (!(exynos4_mct_read(EXYNOS4_MCT_G_INT_CSTAT) & 0x01)) ;
 
-	return 0;
+	return VMM_OK;
 }
 
 static void exynos4_comp_set_mode(enum vmm_clockchip_mode mode,
 				  struct vmm_clockchip *evt)
 {
-	unsigned long cycles_per_jiffy;
+	u32 cycles;
 
 	exynos4_mct_comp0_stop();
 
 	switch (mode) {
 	case VMM_CLOCKCHIP_MODE_PERIODIC:
 		/* We need to start the timer for one tick */
-		cycles_per_jiffy =
-#if 0				// FIXME
-		    (((unsigned long long)NSEC_PER_SEC / HZ *
-		      evt->mult) >> evt->shift);
-#else
-		    120000;
-#endif
-		exynos4_mct_comp0_start(mode, cycles_per_jiffy);
+		cycles = (((u64) NSEC_PER_SEC / HZ * evt->mult) >> evt->shift);
+		exynos4_mct_comp0_start(mode, cycles);
 		break;
 
 	case VMM_CLOCKCHIP_MODE_ONESHOT:
@@ -260,14 +254,14 @@ static void exynos4_comp_set_mode(enum vmm_clockchip_mode mode,
 	}
 }
 
-static vmm_irq_return_t exynos4_mct_comp_isr(u32 irq_no, arch_regs_t * regs,
+static vmm_irq_return_t exynos4_mct_comp_isr(u32 irq_no,
 					     void *dev)
 {
 	struct vmm_clockchip *evt = dev;
 
 	exynos4_mct_write(0x1, EXYNOS4_MCT_G_INT_CSTAT);
 
-	evt->event_handler(evt, regs);
+	evt->event_handler(evt);
 
 	return VMM_IRQ_HANDLED;
 }
@@ -290,8 +284,9 @@ int __init exynos4_clockchip_init(virtual_addr_t base, u32 hirq,
 #endif
 	mct_comp_device.features =
 	    VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
-	mct_comp_device.mult = vmm_clockchip_hz2mult(freq_hz, 32);
-	mct_comp_device.shift = 32;
+	vmm_clocks_calc_mult_shift(&mct_comp_device.mult, 
+				   &mct_comp_device.shift, 
+				   NSEC_PER_SEC, freq_hz, 5);
 	mct_comp_device.min_delta_ns =
 	    vmm_clockchip_delta2ns(0xF, &mct_comp_device);
 	mct_comp_device.max_delta_ns =
@@ -326,14 +321,21 @@ int __init exynos4_clockchip_init(virtual_addr_t base, u32 hirq,
 
 enum {
 	MCT_INT_SPI = 0,
-	MCT_INT_PPI
+	MCT_INT_PPI,
+	MCT_INT_UNKNOWN
 };
 
-static u32 mct_int_type = MCT_INT_SPI;
+#define MCT_L_BASE_CNT	1
+#define MCT_L_MAX_COUNT	0x7FFFFFFF
+#define MCT_L_MIN_COUNT	0xF
+
+static u32 mct_int_type = MCT_INT_UNKNOWN;
+
+void exynos4_timer_init(void);
 
 struct mct_clock_event_clockchip {
 	char name[32];
-	virtual_addr_t base;
+	u32 timer_base;
 	struct vmm_clockchip clkchip;
 };
 
@@ -342,35 +344,36 @@ static DEFINE_PER_CPU(struct mct_clock_event_clockchip, percpu_mct_tick);
 /* Clock event handling */
 static void exynos4_mct_tick_stop(struct mct_clock_event_clockchip *mevt)
 {
-	unsigned long tmp;
-	unsigned long mask = MCT_L_TCON_INT_START | MCT_L_TCON_TIMER_START;
+	u32 tmp;
+	u32 mask = MCT_L_TCON_INT_START | MCT_L_TCON_TIMER_START;
 
-	tmp = exynos4_mct_read(mevt->base + MCT_L_TCON_OFFSET);
+	tmp = exynos4_mct_read(mevt->timer_base + MCT_L_TCON_OFFSET);
 	if (tmp & mask) {
 		tmp &= ~mask;
-		exynos4_mct_write(tmp, mevt->base + MCT_L_TCON_OFFSET);
+		exynos4_mct_write(tmp, mevt->timer_base + MCT_L_TCON_OFFSET);
 	}
 }
 
-static void exynos4_mct_tick_start(unsigned long cycles,
+static void exynos4_mct_tick_start(u32 cycles,
 				   struct mct_clock_event_clockchip *mevt)
 {
-	unsigned long tmp;
+	u32 tmp;
 
 	exynos4_mct_tick_stop(mevt);
 
-	tmp = (1 << 31) | cycles;	/* MCT_L_UPDATE_ICNTB */
+	tmp = MCT_L_ICNTB_MANUAL_UPDATE | cycles;
 
 	/* update interrupt count buffer */
-	exynos4_mct_write(tmp, mevt->base + MCT_L_ICNTB_OFFSET);
+	exynos4_mct_write(tmp, mevt->timer_base + MCT_L_ICNTB_OFFSET);
 
 	/* enable MCT tick interrupt */
-	exynos4_mct_write(0x1, mevt->base + MCT_L_INT_ENB_OFFSET);
+	exynos4_mct_write(0x1, mevt->timer_base + MCT_L_INT_ENB_OFFSET);
 
-	tmp = exynos4_mct_read(mevt->base + MCT_L_TCON_OFFSET);
-	tmp |= MCT_L_TCON_INT_START | MCT_L_TCON_TIMER_START |
-	    MCT_L_TCON_INTERVAL_MODE;
-	exynos4_mct_write(tmp, mevt->base + MCT_L_TCON_OFFSET);
+	tmp = exynos4_mct_read(mevt->timer_base + MCT_L_TCON_OFFSET);
+	tmp |= MCT_L_TCON_INT_START | 
+		MCT_L_TCON_TIMER_START |
+		MCT_L_TCON_INTERVAL_MODE;
+	exynos4_mct_write(tmp, mevt->timer_base + MCT_L_TCON_OFFSET);
 }
 
 static int exynos4_tick_set_next_event(unsigned long cycles,
@@ -380,44 +383,36 @@ static int exynos4_tick_set_next_event(unsigned long cycles,
 
 	exynos4_mct_tick_start(cycles, mevt);
 
-	return 0;
+	return VMM_OK;
 }
 
 static int exynos4_tick_expire(struct vmm_clockchip *evt)
 {
 	struct mct_clock_event_clockchip *mevt = evt->priv;
 
-	// Stop the ongoing timer
-	exynos4_mct_tick_stop(mevt);
+	/* Start a new one for the next cycle */
+	exynos4_mct_tick_start(0x1, mevt);
 
-	// Start a new one for the next cycle
-	exynos4_mct_tick_start(1, mevt);
-
-	// Now we need to wait for the interrupt to happen before returning
+	/* Now we need to wait for the interrupt to happen before returning */
 	while (!
-	       (exynos4_mct_read(mevt->base + MCT_L_INT_CSTAT_OFFSET) & 0x01)) ;
+	       (exynos4_mct_read(mevt->timer_base + MCT_L_INT_CSTAT_OFFSET) &
+		0x01)) ;
 
-	return 0;
+	return VMM_OK;
 }
 
 static inline void exynos4_tick_set_mode(enum vmm_clockchip_mode mode,
 					 struct vmm_clockchip *evt)
 {
 	struct mct_clock_event_clockchip *mevt = &this_cpu(percpu_mct_tick);
-	unsigned long cycles_per_jiffy;
+	u32 cycles;
 
 	exynos4_mct_tick_stop(mevt);
 
 	switch (mode) {
 	case VMM_CLOCKCHIP_MODE_PERIODIC:
-		cycles_per_jiffy =
-#if 0				// FIXME
-		    (((unsigned long long)NSEC_PER_SEC / HZ *
-		      evt->mult) >> evt->shift);
-#else
-		    1200000;
-#endif
-		exynos4_mct_tick_start(cycles_per_jiffy, mevt);
+		cycles = (((u64) NSEC_PER_SEC / HZ * evt->mult) >> evt->shift);
+		exynos4_mct_tick_start(cycles, mevt);
 		break;
 
 	case VMM_CLOCKCHIP_MODE_ONESHOT:
@@ -434,34 +429,36 @@ static int exynos4_mct_tick_clear(struct mct_clock_event_clockchip *mevt)
 
 	/*
 	 * This is for supporting oneshot mode.
-	 * Mct would generate interrupt periodically
+	 * MCT would generate interrupt periodically
 	 * without explicit stopping.
 	 */
-	if (evt->mode != VMM_CLOCKCHIP_MODE_PERIODIC)
+	if (evt->mode != VMM_CLOCKCHIP_MODE_PERIODIC) {
 		exynos4_mct_tick_stop(mevt);
+	}
 
 	/* Clear the MCT tick interrupt */
-	if (exynos4_mct_read(mevt->base + MCT_L_INT_CSTAT_OFFSET) & 1) {
-		exynos4_mct_write(0x1, mevt->base + MCT_L_INT_CSTAT_OFFSET);
+	if (exynos4_mct_read(mevt->timer_base + MCT_L_INT_CSTAT_OFFSET) & 1) {
+		exynos4_mct_write(0x1, 
+				  mevt->timer_base + MCT_L_INT_CSTAT_OFFSET);
 		return 1;
 	} else {
 		return 0;
 	}
 }
 
-static vmm_irq_return_t exynos4_mct_tick_isr(u32 irq_no, arch_regs_t * regs,
+static vmm_irq_return_t exynos4_mct_tick_isr(u32 irq_no, 
 					     void *dev_id)
 {
 	struct mct_clock_event_clockchip *mevt = dev_id;
 
 	exynos4_mct_tick_clear(mevt);
 
-	mevt->clkchip.event_handler(&mevt->clkchip, regs);
+	mevt->clkchip.event_handler(&mevt->clkchip);
 
 	return VMM_IRQ_HANDLED;
 }
 
-int __cpuinit exynos4_local_timer_init(virtual_addr_t base, u32 hirq,
+int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 				       const char *name, int rating,
 				       u32 freq_hz)
 {
@@ -469,10 +466,14 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t base, u32 hirq,
 	struct vmm_clockchip *evt;
 	u32 cpu = vmm_smp_processor_id();
 
+	if (mct_int_type == MCT_INT_UNKNOWN) {
+		exynos4_timer_init();
+	}
+
 	mevt = &this_cpu(percpu_mct_tick);
 	evt = &(mevt->clkchip);
 
-	mevt->base = EXYNOS4_MCT_L_BASE(cpu);
+	mevt->timer_base = EXYNOS4_MCT_L_BASE(cpu);
 	vmm_sprintf(mevt->name, "mct_tick%d", cpu);
 
 	evt->name = mevt->name;
@@ -483,17 +484,16 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t base, u32 hirq,
 	evt->features =
 	    VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
 	evt->rating = 450;
-#if 1
-	evt->mult = vmm_clockchip_hz2mult(freq_hz, 32);
-	evt->shift = 32;
-#else
-	clockevents_calc_mult_shift(evt, clk_rate / (TICK_BASE_CNT + 1), 5);
-#endif
-	evt->max_delta_ns = vmm_clockchip_delta2ns(0x7fffffff, evt);
-	evt->min_delta_ns = vmm_clockchip_delta2ns(0xf, evt);
+	vmm_clocks_calc_mult_shift(&evt->mult, 
+				   &evt->shift, 
+				   NSEC_PER_SEC, 
+				   freq_hz / (MCT_L_BASE_CNT + 1), 10);
+	evt->max_delta_ns = vmm_clockchip_delta2ns(MCT_L_MAX_COUNT, evt);
+	evt->min_delta_ns = vmm_clockchip_delta2ns(MCT_L_MIN_COUNT, evt);
 	evt->priv = mevt;
 
-	exynos4_mct_write(TICK_BASE_CNT, mevt->base + MCT_L_TCNTB_OFFSET);
+	exynos4_mct_write(MCT_L_BASE_CNT, 
+			  mevt->timer_base + MCT_L_TCNTB_OFFSET);
 
 	if (mct_int_type == MCT_INT_SPI) {
 		if (cpu == 0) {
@@ -520,55 +520,13 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t base, u32 hirq,
 	return vmm_clockchip_register(evt);
 }
 
-static void exynos4_local_timer_stop(struct vmm_clockchip *evt)
+void __init exynos4_timer_init(void)
 {
-	u32 cpu = vmm_smp_processor_id();
-	struct mct_clock_event_clockchip *mevt;
-
-	mevt = &this_cpu(percpu_mct_tick);
-
-	evt->set_mode(VMM_CLOCKCHIP_MODE_UNUSED, evt);
-
-	if (mct_int_type == MCT_INT_SPI) {
-		if (cpu == 0) {
-			vmm_host_irq_unregister(EXYNOS4_IRQ_MCT_L0, mevt);
-		} else {
-			vmm_host_irq_unregister(EXYNOS4_IRQ_MCT_L1, mevt);
-		}
+	if ((soc_is_exynos4210()) || (soc_is_exynos5250())) {
+		mct_int_type = MCT_INT_SPI;
 	} else {
-		vmm_host_irq_unregister(EXYNOS_IRQ_MCT_LOCALTIMER, mevt);
-		//disable_percpu_irq(EXYNOS_IRQ_MCT_LOCALTIMER);
+		mct_int_type = MCT_INT_PPI;
 	}
 }
 
-#if 0
-static struct local_timer_ops exynos4_mct_tick_ops __cpuinitdata = {
-	.setup = exynos4_local_timer_setup,
-	.stop = exynos4_local_timer_stop,
-};
-#endif
 #endif				/* CONFIG_SAMSUNG_MCT_LOCAL_TIMERS */
-
-#if 0
-static void __init exynos4_timer_resources(void)
-{
-	struct clk *mct_clk;
-	mct_clk = clk_get(NULL, "xtal");
-
-	clk_rate = clk_get_rate(mct_clk);
-
-#ifdef CONFIG_SAMSUNG_MCT_LOCAL_TIMERS
-	if (mct_int_type == MCT_INT_PPI) {
-		int err;
-
-		err = request_percpu_irq(EXYNOS_IRQ_MCT_LOCALTIMER,
-					 exynos4_mct_tick_isr, "MCT",
-					 &percpu_mct_tick);
-		WARN(err, "MCT: can't request IRQ %d (%d)\n",
-		     EXYNOS_IRQ_MCT_LOCALTIMER, err);
-	}
-
-	local_timer_register(&exynos4_mct_tick_ops);
-#endif				/* CONFIG_SAMSUNG_MCT_LOCAL_TIMERS */
-}
-#endif

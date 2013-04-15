@@ -292,7 +292,7 @@ static int omap_uart_startup_configure(struct omap_uart_port *port)
 	return VMM_OK;
 }
 
-static vmm_irq_return_t omap_uart_irq_handler(u32 irq_no, arch_regs_t * regs, void *dev)
+static vmm_irq_return_t omap_uart_irq_handler(u32 irq_no, void *dev)
 {
 	u16 iir, lsr;
 	struct omap_uart_port *port = (struct omap_uart_port *)dev;
@@ -427,7 +427,8 @@ static u32 omap_uart_write(struct vmm_chardev *cdev,
 	return i;
 }
 
-static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid *devid)
+static int omap_uart_driver_probe(struct vmm_device *dev,
+				  const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 	const char *attr;
@@ -472,16 +473,20 @@ static int omap_uart_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 		goto free_reg;
 	}
 	port->baudrate = *((u32 *)attr);
-	port->input_clock = vmm_devdrv_clock_get_rate(dev);
 
-	omap_uart_startup_configure(port);
-
-	attr = vmm_devtree_attrval(dev->node, "irq");
-	if (!attr) {
+	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
+	if (rc) {
 		rc = VMM_EFAIL;
 		goto free_reg;
 	}
-	port->irq = *((u32 *) attr);
+
+	omap_uart_startup_configure(port);
+
+	rc = vmm_devtree_irq_get(dev->node, &port->irq, 0);
+	if (rc) {
+		rc = VMM_EFAIL;
+		goto free_reg;
+	}
 	if ((rc = vmm_host_irq_register(port->irq, dev->node->name,
 					omap_uart_irq_handler, port))) {
 		goto free_reg;
@@ -521,7 +526,7 @@ static int omap_uart_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid omap_uart_devid_table[] = {
+static struct vmm_devtree_nodeid omap_uart_devid_table[] = {
 	{ .type = "serial", .compatible = "st16654"},
 	{ /* end of list */ },
 };

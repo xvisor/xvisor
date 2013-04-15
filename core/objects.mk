@@ -22,7 +22,6 @@
 # */
 
 core-objs-y+= vmm_main.o
-core-objs-y+= vmm_ringbuf.o
 core-objs-y+= vmm_stdio.o
 core-objs-y+= vmm_cpumask.o
 core-objs-y+= vmm_devtree.o

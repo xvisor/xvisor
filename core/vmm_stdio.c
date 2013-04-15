@@ -372,6 +372,12 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 						va_arg(args, unsigned long),
 						16, 0, width, flags, 'A');
 					acnt += sizeof(unsigned long);
+				} else if (*(format + 1) == 'u') {
+					format += 1;
+					pc += printi(out, out_len, cdev,
+						va_arg(args, unsigned long),
+						10, 0, width, flags, 'a');
+					acnt += sizeof(unsigned long);
 				} else {
 					pc += printi(out, out_len, cdev,
 						va_arg(args, long),

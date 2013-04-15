@@ -42,9 +42,7 @@
 #define TWD_TIMER_CONTROL_PERIODIC	(1 << 1)
 #define TWD_TIMER_CONTROL_IT_ENABLE	(1 << 2)
 
-int twd_clockchip_init(virtual_addr_t base, 
-		       virtual_addr_t ref_counter_addr,
-		       u32 ref_counter_freq,
-		       u32 ppi_hirq);
+int twd_clockchip_init(virtual_addr_t ref_counter_addr,
+		       u32 ref_counter_freq);
 
 #endif /* __SMP_TWD_H__ */

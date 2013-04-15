@@ -13,6 +13,7 @@
 /dev/hda b 660 0 0 3 1 1 1 16
 /dev/hdb b 660 0 0 3 64 0 0 -
 /dev/hdb b 660 0 0 3 65 1 1 16
+/dev/hvc c 620 0 0 229 0 0 1 4
 /dev/sda b 660 0 0 8 0 0 0 -
 /dev/sda b 660 0 0 8 1 1 1 16
 /dev/sdb b 660 0 0 8 16 0 0 -
@@ -59,6 +60,10 @@
 /dev/ttype c 620 0 0 3 14 0 0 -
 /dev/ttypf c 620 0 0 3 15 0 0 -
 /dev/ttyS c 660 0 0 4 64 0 1 8
+/dev/vda b 660 0 0 254 0 0 0 -
+/dev/vda b 660 0 0 254 1 1 1 16
+/dev/vdb b 660 0 0 254 16 0 0 -
+/dev/vdb b 660 0 0 254 17 1 1 16
 /dev/watchdog c 666 0 0 10 130 0 0 -
 /dev/zero c 666 0 0 1 5 0 0 -
 /dev/random c 644 0 0 1 8 0 0 -

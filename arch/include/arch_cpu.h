@@ -23,10 +23,10 @@
 #ifndef _ARCH_CPU_H__
 #define _ARCH_CPU_H__
 
-#include <vmm_types.h>
-
-/** CPU functions required by VMM core */
+/** CPU early init */
 int arch_cpu_early_init(void);
+
+/** CPU final init */
 int arch_cpu_final_init(void);
 
 #endif

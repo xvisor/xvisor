@@ -59,13 +59,13 @@ static void uart_8250_out8(struct uart_8250_port *port, u32 offset, u8 val)
 	}
 }
 
-static void uart_8250_clear_fifoe(struct uart_8250_port *port)
+static void uart_8250_clear_errors(struct uart_8250_port *port)
 {
 	/* If there was a RX FIFO error (because of framing, parity, 
 	 * break error) keep removing entries from RX FIFO until
 	 * LSR does not show this bit set
 	 */
-        while(uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_FIFOE) {
+        while(uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_BRK_ERROR_BITS) {
 		uart_8250_in8(port, UART_RBR_OFFSET);
 	};
 }
@@ -130,8 +130,7 @@ void uart_8250_lowlevel_init(struct uart_8250_port *port)
 }
 
 #ifndef UART_POLLING
-static vmm_irq_return_t uart_8250_irq_handler(u32 irq_no, 
-						arch_regs_t *regs, void *dev)
+static vmm_irq_return_t uart_8250_irq_handler(u32 irq_no, void *dev)
 {
 	u16 iir, lsr;
 	struct uart_8250_port *port = (struct uart_8250_port *)dev;
@@ -146,9 +145,10 @@ static vmm_irq_return_t uart_8250_irq_handler(u32 irq_no,
 	case UART_IIR_RLSI:
 	case UART_IIR_RTO:
 	case UART_IIR_RDI: 
-		if (lsr & UART_LSR_FIFOE) {
-			uart_8250_clear_fifoe(port);
-		} else if (lsr & (UART_LSR_DR | UART_LSR_OE)) {
+		if (lsr & UART_LSR_BRK_ERROR_BITS) {
+			uart_8250_clear_errors(port);
+		}
+		if (lsr & UART_LSR_DR) {
 			vmm_spin_lock(&port->rxlock);
 			do {
 				u8 ch = uart_8250_in8(port, UART_RBR_OFFSET);
@@ -285,7 +285,8 @@ static u32 uart_8250_write(struct vmm_chardev *cdev,
 	return i;
 }
 
-static int uart_8250_driver_probe(struct vmm_device *dev,const struct vmm_devid *devid)
+static int uart_8250_driver_probe(struct vmm_device *dev, 
+				  const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 	const char *attr;
@@ -329,7 +330,12 @@ static int uart_8250_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 		goto free_reg;
 	}
 	port->baudrate = *((u32 *)attr);
-	port->input_clock = vmm_devdrv_clock_get_rate(dev);
+
+	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
+	if (rc) {
+		rc = VMM_EFAIL;
+		goto free_reg;
+	}
 
 	/* Call low-level init function 
 	 * Note: low-level init will make sure that
@@ -346,12 +352,11 @@ static int uart_8250_driver_probe(struct vmm_device *dev,const struct vmm_devid 
 	port->rxhead = port->rxtail = 0;
 	INIT_SPIN_LOCK(&port->rxlock);
 
-	attr = vmm_devtree_attrval(dev->node, "irq");
-	if (!attr) {
+	rc = vmm_devtree_irq_get(dev->node, &port->irq, 0);
+	if (rc) {
 		rc = VMM_EFAIL;
 		goto free_all;
 	}
-	port->irq = *((u32 *) attr);
 	if ((rc = vmm_host_irq_register(port->irq, dev->node->name,
 					uart_8250_irq_handler, port))) {
 		goto free_all;
@@ -393,7 +398,7 @@ static int uart_8250_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid uart_8250_devid_table[] = {
+static struct vmm_devtree_nodeid uart_8250_devid_table[] = {
 	{ .type = "serial", .compatible = "ns8250"},
 	{ .type = "serial", .compatible = "ns16450"},
 	{ .type = "serial", .compatible = "ns16550a"},

@@ -1202,9 +1202,7 @@ static void smc_eph_interrupt(struct net_device *dev)
  * This is the main routine of the driver, to handle the device when
  * it needs some attention.
  */
-static vmm_irq_return_t smc_interrupt(u32 irq_no,
-			arch_regs_t * regs,
-			void *dev_id)
+static vmm_irq_return_t smc_interrupt(u32 irq_no, void *dev_id)
 {
 	struct net_device *dev = dev_id;
 	struct smc_local *lp = netdev_priv(dev);
@@ -2459,7 +2457,7 @@ module_exit(smc_cleanup);
  *	anything else, error
  */
 static int __devinit smc_drv_probe(struct vmm_device *pdev,
-                                const struct vmm_devid *devid)
+                                const struct vmm_devtree_nodeid *devid)
 {
 	struct smc91x_platdata *pd = pdev->node->system_data;
 	struct smc_local *lp;
@@ -2468,7 +2466,6 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
 	unsigned int __iomem *addr;
 	unsigned long irq_flags = SMC_IRQ_FLAGS;
 	int ret;
-	const char *attr;
 	virtual_addr_t	reg_addr;
 
 	ndev = alloc_etherdev(sizeof(struct smc_local));
@@ -2525,13 +2522,11 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
 	}
 #endif
 
-	attr = vmm_devtree_attrval(pdev->node, "irq");
-	if (!attr) {
+	ret = vmm_devtree_irq_get(pdev->node, &ndev->irq, 0);
+	if (ret) {
 		ret = -ENODEV;
 		goto out_release_io;
 	}
-
-	ndev->irq = *(u32 *) attr;
 #if 0
 	if (irq_flags == -1 || ires->flags & IRQF_TRIGGER_MASK)
 		irq_flags = ires->flags & IRQF_TRIGGER_MASK;
@@ -2626,7 +2621,7 @@ static int smc_drv_remove(struct vmm_device *dev)
 }
 
 
-static struct vmm_devid smc_devid_table[] = {
+static struct vmm_devtree_nodeid smc_devid_table[] = {
 	{ .type = "nic", .compatible = "smc91x"},
 	{ /* end of list */ },
 };

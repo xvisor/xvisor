@@ -39,7 +39,7 @@
 
 		scu { /* Snoop Control Unit */
 	      		device_type = "scu";
-	      		compatible = "arm,a9mpcore-priv";
+	      		compatible = "arm,cortex-a9-scu";
 	      		reg = <0x1E000000 0x1000>;
 		};
 
@@ -55,18 +55,20 @@
 	      		device_type = "timer";
 	      		compatible = "arm,cortex-a9-twd-timer";
 	      		reg = <0x1E000600 0x1000>;
-			irq = <29>;
+			interrupts = <29>;
 		};
 
 		motherboard {
 			#address-cells = <1>;
 			#size-cells = <1>;
+			compatible = "simple-bus";
 
 			eth0 {
 				device_type = "nic";
 				compatible = "smc911x";
 				reg = <0x4E000000 0x1000>;
-				irq = <47>;
+				smsc,irq-active-high;
+				interrupts = <47>;
 				switch = "netbridge0";
 			};
 
@@ -90,55 +92,61 @@
 			      		device_type = "serio";
 			      		compatible = "ambakmi";
 			      		reg = <0x10006000 0x1000>;
-					clock-rate = <24000000>;
-					irq = <44>;
+					interrupts = <44>;
 				};
 
 				kmi1 { /* Mouse */
 			      		device_type = "serio";
 			      		compatible = "ambakmi";
 			      		reg = <0x10007000 0x1000>;
-					clock-rate = <24000000>;
-					irq = <45>;
+					interrupts = <45>;
 				};
 
 				SERIAL0: uart0 {
 			      		device_type = "serial";
 			      		compatible = "arm,pl011";
 			      		reg = <0x10009000 0x1000>;
-					clock-rate = <24000000>;
+					clock-frequency = <24000000>;
 			      		baudrate = <115200>;
-					irq = <37>;
+					interrupts = <37>;
 				};
 
 				timer01 {
 			      		device_type = "timer";
 			      		compatible = "arm,sp804";
 			      		reg = <0x10011000 0x1000>;
-					irq = <34>;
+					interrupts = <34>;
 				};
 
 				timer23 {
 			      		device_type = "timer";
 			      		compatible = "arm,sp804";
 			      		reg = <0x10012000 0x1000>;
-					irq = <35>;
+					interrupts = <35>;
 				};
 
 				RTC0: rtc0 {
 			      		device_type = "rtc";
 			      		compatible = "arm,pl031";
 			      		reg = <0x10017000 0x1000>;
-					clock-rate = <1>;
-					irq = <36>;
+					interrupts = <36>;
 				};
 
 				clcd {
 			      		device_type = "fb";
-			      		compatible = "ambaclcd";
+			      		compatible = "arm,pl111";
 			      		reg = <0x10020000 0x1000>;
 				};
 			};
 		};
 	};
+
+	/* Empty guests node */
+	guests {
+	};
 };
+
+/* Add guest templates */
+/include/ "../../../common/guests/realview-pb-a8.dtsi"
+/include/ "../../../common/guests/vexpress-a9x2.dtsi"
+

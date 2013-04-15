@@ -413,6 +413,7 @@ static int fatfs_control_next_cluster(struct fatfs_control *ctrl,
 
 static int fatfs_control_sync(struct fatfs_control *ctrl)
 {
+	int rc;
 	u32 ind;
 
 	for (ind = 0; ind < FAT_TABLE_CACHE_SIZE; ind++) {
@@ -425,6 +426,12 @@ static int fatfs_control_sync(struct fatfs_control *ctrl)
 		}
 
 		vmm_mutex_unlock(&ctrl->table_sector_lock[ind]);
+	}
+
+	/* Flush cached data in device request queue */
+	rc = vmm_blockdev_flush_cache(ctrl->bdev);
+	if (rc) {
+		return rc;
 	}
 
 	return VMM_OK;

@@ -175,8 +175,8 @@ void do_hyp_trap(arch_regs_t * regs)
 	};
 
 	if (rc) {
-		vmm_printf("%s: ec=0x%x, il=0x%x, iss=0x%x, error=%d\n", 
-			   __func__, ec, il, iss, rc);
+		vmm_printf("\n%s: ec=0x%x, il=0x%x, iss=0x%x, fipa=0x%x, error=%d\n", 
+			   __func__, ec, il, iss, fipa, rc);
 		if (vcpu->state != VMM_VCPU_STATE_HALTED) {
 			cpu_vcpu_halt(vcpu, regs);
 		}
@@ -189,7 +189,7 @@ void do_irq(arch_regs_t * regs)
 {
 	vmm_scheduler_irq_enter(regs, FALSE);
 
-	vmm_host_irq_exec(CPU_EXTERNAL_IRQ, regs);
+	vmm_host_irq_exec(CPU_EXTERNAL_IRQ);
 
 	vmm_scheduler_irq_exit(regs);
 }
@@ -198,7 +198,7 @@ void do_fiq(arch_regs_t * regs)
 {
 	vmm_scheduler_irq_enter(regs, FALSE);
 
-	vmm_host_irq_exec(CPU_EXTERNAL_FIQ, regs);
+	vmm_host_irq_exec(CPU_EXTERNAL_FIQ);
 
 	vmm_scheduler_irq_exit(regs);
 }

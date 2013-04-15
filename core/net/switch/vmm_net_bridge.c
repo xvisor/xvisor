@@ -69,32 +69,25 @@ struct vmm_netbridge_ctrl
  *  Thread body responsible for sending the RX buffer packets
  *  to the destination port(s)
  */
-static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
+static int vmm_netbridge_rx_handler(struct vmm_netswitch *nsw,
+				    struct vmm_netport *src,
 				    struct vmm_mbuf *mbuf)
 {
 	struct dlist *l;
-	bool broadcast, learn;
+	bool broadcast = TRUE, learn = TRUE;
 	const u8 *srcmac, *dstmac;
-	struct vmm_netport *dst_port, *port;
-	struct vmm_netswitch *nsw;
+	struct vmm_netport *dst = NULL, *port;
 	struct vmm_netbridge_mac_entry *mac_entry;
-	struct vmm_netbridge_ctrl *nbctrl;
+	struct vmm_netbridge_ctrl *nbctrl = nsw->priv;
 #ifdef DEBUG_NETBRIDGE
 	char tname[30];
 #endif
 
-	dst_port = NULL;
-	broadcast = TRUE;
-	learn = TRUE;
-
-	nsw = src_port->nsw;
-	nbctrl = nsw->priv;
-
 	srcmac = ether_srcmac(mtod(mbuf, u8 *));
 	dstmac = ether_dstmac(mtod(mbuf, u8 *));
 
-	/* Learn the (srcmac, src_port) mapping iff the sender is not immediate netport */
-	if (!compare_ether_addr(srcmac, src_port->macaddr)) {
+	/* Learn the (srcmac, src) mapping if the sender is not immediate netport */
+	if (!compare_ether_addr(srcmac, src->macaddr)) {
 		learn = FALSE;
 	}
 	DPRINTF("%s: learn: %d\n", __func__, learn);
@@ -110,16 +103,16 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 			if (!compare_ether_addr(port->macaddr, dstmac)) {
 				DPRINTF("%s: port->macaddr[%s]\n", __func__,
 					ethaddr_to_str(tname, port->macaddr));
-				dst_port = port;
+				dst = port;
 				broadcast = FALSE;
 				break;
 			}
 		}
 	}
 
-	/* Iterate over mac_table for new srcmac mapping and to search for dst_port */
+	/* Iterate over mac_table for new srcmac mapping and to search for dst */
 	list_for_each(l, &nbctrl->mac_table) {
-		if (!learn && dst_port) {
+		if (!learn && dst) {
 			break;
 		}
 
@@ -127,7 +120,7 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 
 		/* if possible update mac_table */
 		if (learn && !compare_ether_addr(mac_entry->macaddr, srcmac)) {
-			mac_entry->port = src_port;
+			mac_entry->port = src;
 			mac_entry->timestamp = vmm_timer_timestamp();
 			learn = FALSE;
 
@@ -142,15 +135,15 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 
 		/* check dstmac */
 		if (broadcast && !compare_ether_addr(mac_entry->macaddr, dstmac)) {
-			dst_port = mac_entry->port;
+			dst = mac_entry->port;
 			broadcast = FALSE;
 		}
 	}
 
-	if(learn) {
+	if (learn) {
 		mac_entry = vmm_malloc(sizeof(struct vmm_netbridge_mac_entry));
 		if (mac_entry) {
-			mac_entry->port = src_port;
+			mac_entry->port = src;
 			memcpy(mac_entry->macaddr, srcmac, 6);
 			mac_entry->timestamp = vmm_timer_timestamp();
 			list_add_tail(&mac_entry->head, &nbctrl->mac_table);
@@ -163,25 +156,50 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 		DPRINTF("%s: broadcasting\n", __func__);
 		list_for_each(l, &nsw->port_list) {
 			port = list_port(l);
-			if (port != src_port) {
-				if (port->can_receive &&
-				    !port->can_receive(port)) {
-					continue;
-				}
-				MADDREFERENCE(mbuf);
-				MCLADDREFERENCE(mbuf);
-				port->switch2port_xfer(port, mbuf);
+			if (port != src) {
+				vmm_switch2port_xfer_mbuf(nsw, port, mbuf);
 			}
 		}
-		m_freem(mbuf);
 	} else {
-		DPRINTF("%s: unicasting to \"%s\"\n", __func__, dst_port->name);
-		if (!dst_port->can_receive || 
-		    dst_port->can_receive(dst_port)) {
-			dst_port->switch2port_xfer(dst_port, mbuf);
+		DPRINTF("%s: unicasting to \"%s\"\n", __func__, dst->name);
+		vmm_switch2port_xfer_mbuf(nsw, dst, mbuf);
+	}
+
+	return VMM_OK;
+}
+
+static int vmm_netbridge_port_add(struct vmm_netswitch *nsw, 
+				  struct vmm_netport *port)
+{
+	/* For now nothing to do here. */
+	return VMM_OK;
+}
+
+static int vmm_netbridge_port_remove(struct vmm_netswitch *nsw, 
+				     struct vmm_netport *port)
+{
+	bool found;
+	struct dlist *l;
+	struct vmm_netbridge_mac_entry *mac_entry;
+	struct vmm_netbridge_ctrl *nbctrl = nsw->priv;
+
+	/* Remove mactable enteries for this port */
+	while (1) {
+		found = FALSE;
+		mac_entry = NULL;
+		list_for_each(l, &nbctrl->mac_table) {
+			mac_entry = list_mac_entry(l);
+			if (mac_entry->port == port) {
+				found = TRUE;
+				break;
+			}
+		}
+
+		if (found) {
+			list_del(&mac_entry->head);
+			vmm_free(mac_entry);
 		} else {
-			/* Free the mbuf if destination cannot do rx */
-			m_freem(mbuf);
+			break;
 		}
 	}
 
@@ -189,7 +207,7 @@ static int vmm_netbridge_rx_handler(struct vmm_netport *src_port,
 }
 
 static int vmm_netbridge_probe(struct vmm_device *dev,
-			       const struct vmm_devid *devid)
+			       const struct vmm_devtree_nodeid *nid)
 {
 	struct vmm_netswitch *nsw = NULL;
 	struct vmm_netbridge_ctrl *nbctrl;
@@ -202,6 +220,8 @@ static int vmm_netbridge_probe(struct vmm_device *dev,
 		goto vmm_netbridge_probe_failed;
 	}
 	nsw->port2switch_xfer = vmm_netbridge_rx_handler;
+	nsw->port_add = vmm_netbridge_port_add;
+	nsw->port_remove = vmm_netbridge_port_remove;
 
 	dev->priv = nsw;
 
@@ -250,14 +270,14 @@ static int vmm_netbridge_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid def_netswitch_devid_table[] = {
+static struct vmm_devtree_nodeid def_netswitch_nid_table[] = {
 	{.type = "netswitch",.compatible = "bridge"},
 	{ /* end of list */ },
 };
 
 static struct vmm_driver net_bridge = {
 	.name = "netbridge",
-	.match_table = def_netswitch_devid_table,
+	.match_table = def_netswitch_nid_table,
 	.probe = vmm_netbridge_probe,
 	.remove = vmm_netbridge_remove,
 };

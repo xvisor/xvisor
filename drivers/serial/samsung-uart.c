@@ -55,12 +55,9 @@ bool samsung_lowlevel_can_getc(virtual_addr_t base)
 u8 samsung_lowlevel_getc(virtual_addr_t base)
 {
 	u8 data;
-	u32 ufstat;
 
 	/* Wait until there is data in the FIFO */
 	while (!samsung_lowlevel_can_getc(base)) ;
-
-	ufstat = vmm_in_le32((void *)(base + S3C2410_UFSTAT));
 
 	data = vmm_in_8((void *)(base + S3C2410_URXH));
 
@@ -96,7 +93,6 @@ void samsung_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	unsigned int divider;
 	unsigned int temp;
 	unsigned int remainder;
-	unsigned int fraction;
 
 	/* First, disable everything */
 	vmm_out_le16((void *)(base + S3C2410_UCON), 0);
@@ -104,20 +100,17 @@ void samsung_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	/*
 	 * Set baud rate
 	 *
-	 * IBRD = UART_CLK / (16 * BAUD_RATE)
-	 * FBRD = RND((64 * MOD(UART_CLK,(16 * BAUD_RATE))) 
-	 *        / (16 * BAUD_RATE))
+	 * UBRDIV  = (UART_CLK / (16 * BAUD_RATE)) - 1
+	 * DIVSLOT = MOD(UART_CLK / BAUD_RATE, 16)
 	 */
-	temp = 16 * baudrate;
-	divider = udiv32(input_clock, temp);
-	remainder = umod32(input_clock, temp);
-	temp = udiv32((8 * remainder), baudrate);
-	fraction = (temp >> 1) + (temp & 1);
+	temp = udiv32(input_clock, baudrate);
+	divider =  udiv32(temp, 16) - 1;
+	remainder = umod32(temp, 16);
 
 	vmm_out_le16((void *)(base + S3C2410_UBRDIV), (u16)
 		     divider);
 	vmm_out_8((void *)(base + S3C2443_DIVSLOT), (u8)
-		  fraction);
+		  remainder);
 
 	/* Set the UART to be 8 bits, 1 stop bit, no parity */
 	vmm_out_le32((void *)(base + S3C2410_ULCON),
@@ -143,8 +136,7 @@ struct samsung_port {
 	u16 mask;
 };
 
-static vmm_irq_return_t samsung_irq_handler(u32 irq_no, arch_regs_t * regs, void
-					    *dev)
+static vmm_irq_return_t samsung_irq_handler(u32 irq_no, void *dev)
 {
 	u16 data;
 	struct samsung_port *port = (struct samsung_port *)dev;
@@ -278,7 +270,7 @@ static u32 samsung_write(struct
 }
 
 static int samsung_driver_probe(struct vmm_device *dev,
-				const struct vmm_devid *devid)
+				const struct vmm_devtree_nodeid *devid)
 {
 	int rc = VMM_EFAIL;
 	const char *attr = NULL;
@@ -324,14 +316,17 @@ static int samsung_driver_probe(struct vmm_device *dev,
 	}
 	port->baudrate = *((u32 *) attr);
 
-	port->input_clock = vmm_devdrv_clock_get_rate(dev);
-
-	attr = vmm_devtree_attrval(dev->node, "irq");
+	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
 	if (!attr) {
 		rc = VMM_EFAIL;
 		goto free_reg;
 	}
-	port->irq = *((u32 *) attr);
+
+	rc = vmm_devtree_irq_get(dev->node, &port->irq, 0);
+	if (rc) {
+		rc = VMM_EFAIL;
+		goto free_reg;
+	}
 
 	if ((rc =
 	     vmm_host_irq_register(port->irq, dev->node->name,
@@ -375,7 +370,7 @@ static int samsung_driver_remove(struct vmm_device *dev)
 	return rc;
 }
 
-static struct vmm_devid samsung_devid_table[] = {
+static struct vmm_devtree_nodeid samsung_devid_table[] = {
 	{
 	 .type = "serial",
 	 .compatible = "samsung"},
@@ -407,6 +402,9 @@ static void __exit samsung_driver_exit(void)
 	vmm_devdrv_unregister_driver(&samsung_driver);
 }
 
-VMM_DECLARE_MODULE
-    (MODULE_DESC,
-     MODULE_AUTHOR, MODULE_LICENSE, MODULE_IPRIORITY, MODULE_INIT, MODULE_EXIT);
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

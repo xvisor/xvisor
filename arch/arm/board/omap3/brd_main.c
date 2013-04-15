@@ -26,91 +26,14 @@
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
+#include <arch_board.h>
 #include <arch_timer.h>
 #include <omap3_plat.h>
 #include <omap3_prcm.h>
-#include <libs/libfdt.h>
 #include <omap/sdrc.h>
 #include <omap/intc.h>
 #include <omap/gpt.h>
 #include <omap/s32k-timer.h>
-
-/*
- * Device Tree support
- */
-
-extern u32 dt_blob_start;
-
-int arch_board_ram_start(physical_addr_t * addr)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-	
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	fdt_node = libfdt_find_node(&fdt, 
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME, addr);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-int arch_board_ram_size(physical_size_t *size)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-	
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	fdt_node = libfdt_find_node(&fdt, 
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME, size);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-int arch_board_devtree_populate(struct vmm_devtree_node ** root)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	return libfdt_parse_devtree(&fdt, root);
-}
 
 /*
  * Reset & Shutdown
@@ -390,25 +313,26 @@ int __cpuinit arch_clockchip_init(void)
 int __init arch_board_final_init(void)
 {
 	int rc;
-	struct vmm_devtree_node *node;
+	struct vmm_devtree_node *hnode, *node;
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
-	/* Do Probing using device driver framework */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "l3");
+	/* Get host node */
+	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
 
+	/* Find simple-bus node */
+	node = vmm_devtree_find_compatible(hnode, NULL, "simple-bus");
 	if (!node) {
-		return VMM_ENOTAVAIL;
+		return VMM_ENODEV;
 	}
 
-	rc = vmm_devdrv_probe(node, NULL, NULL);
+	/* Do probing using device driver framework */
+	rc = vmm_devdrv_probe(node);
 	if (rc) {
 		return rc;
 	}
 
 	return VMM_OK;
-
 }

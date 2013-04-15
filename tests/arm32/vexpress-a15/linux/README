@@ -1,0 +1,93 @@
+		Linux on Xvisor VExpress-A15 SMP Guest
+
+Linux is a computer operating system which is based on free and open source 
+software. the underlying source code can be used, freely modified, and 
+redistributed, both commercially and non-commercially, by anyone under 
+licenses such as the GNU General Public License. For more information on 
+Linux read the wiki page http://en.wikipedia.org/wiki/Linux
+
+Linux already contains a support for VExpress-A15 Board. We can use 
+this kernel unmodified to run it as a xvisor guest. We also provide 
+VExpress-A15 defconfig for various linux kernel versions for ease in 
+building kernel. To obtain Linux kernel sources visit the following 
+url: http://www.kernel.org
+
+Please follow the steps below to build & run Linux kernel with Busybox 
+RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
+
+  [1. Build environment for Xvisor]
+  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Configure Xvisor with Vexpress-A15 default settings]
+  # make ARCH=arm vexpress-a15-defconfig 
+
+  [4. Enable VExpress-A15 guest from menuconfig]
+  # make menuconfig
+  SELECT '1x vexpress-a15 guest' DTS from 'VExpress Options'
+
+  [5. Build Xvisor]
+  # make
+
+  [6. Build Basic Test Code]
+  # make -C tests/arm32/vexpress-a15/basic
+
+  [7. Copy defconfig to Linux build directory]
+  # cp tests/arm32/vexpress-a15/linux/linux-<linux_version>_vexpress_a15_defconfig <linux_build_directory>/.config
+
+  [8. GoTo Linux source directory]
+  # cd <linux_source_directory>
+
+  [9. Configure Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm oldconfig
+
+  [10. Build Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm zImage
+
+  [11. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
+  (Note: Please refer tests/arm32/common/busybox-1.19.2/README for creating rootfs.img using BusyBox 1.19.2)
+
+  [12. GoTo Linux build directory]
+  # cd <linux_build_directory>
+
+  [13. Build dtb in build directory]  
+  # ./scripts/dtc/dtc -I dts -O dtb -p 0x800 -o vexpress_a15_guest.dtb <xvisor_source_directory>/tests/arm32/vexpress-a15/linux/vexpress_a15x2_guest.dts
+  (Alternatively if you want a uniprocessor guest copy the vexpress_a15x1_guest.dts)
+
+  [14. Create fast_model_boot.axf for running it on ARM Fast Models]
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x80010000 -o fast_model_boot.img <xvisor_source_directory>/build/vmm.bin@0x80010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a15/basic/arm_test.bin@0x81000000 <xvisor_source_directory>/tests/arm32/vexpress-a15/linux/cmdlist@0x810FF000 ./arch/arm/boot/zImage@0x81100000 ./vexpress_a15_guest.dtb@0x81400000 <busybox_rootfs_directory>/rootfs.img@0x81500000
+  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DVEXPRESS_A15 <xvisor_source_directory>/docs/arm/fast_model_boot.S -o fast_model_boot.axf
+
+  [15. Launch ARM fast models 7.0 or higher]
+  # model_shell <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<xxxx>/cadi_system_Linux-Debug-GCC-<xxxx>.so -C motherboard.smsc_91c111.enabled=1 -C motherboard.hostbridge.userNetworking=1 fast_model_boot.axf
+
+  [16. Kick Guest for starting Basic Test]
+  XVisor# guest kick -1
+
+  [17. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [18. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/uart0] arm-test# copy 0x80400000 0x00100000 0x300000
+  (Note: This command will copy zImage to RAM)
+  [guest0/uart0] arm-test# copy 0x80F00000 0x00400000 0x003000
+  (Note: This command will copy dtb to RAM)
+  [guest0/uart0] arm-test# copy 0x81000000 0x00500000 0x500000
+  (Note: This command will copy rootfs.img to RAM)
+  [guest0/uart0] arm-test# start_linux_fdt 0x80400000 0x81000000 0x500000 0x80F00000
+  (Note: This command will start linux booting)
+  OR
+  [guest0/uart0] arm-test# autoexec
+  (Note: "autoexec" is a short-cut command)
+
+  [19. Wait for Linux prompt to come-up and then try out some commands]
+  [guest0/uart0] / # ls
+
+  [20. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] / #
+
+  (Note: replace all <> brackets based on your workspace)
+

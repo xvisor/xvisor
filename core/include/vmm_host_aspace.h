@@ -66,6 +66,15 @@ enum vmm_host_memory_flags {
 	VMM_MEMORY_BUFFERABLE=0x00000010
 };
 
+#define VMM_MEMORY_FLAGS_NORMAL	(VMM_MEMORY_READABLE | \
+				 VMM_MEMORY_WRITEABLE | \
+				 VMM_MEMORY_EXECUTABLE | \
+				 VMM_MEMORY_CACHEABLE | \
+				 VMM_MEMORY_BUFFERABLE)
+
+#define VMM_MEMORY_FLAGS_IO	(VMM_MEMORY_READABLE | \
+				 VMM_MEMORY_WRITEABLE)
+
 /** Allocate physical space from RAM */
 int vmm_host_ram_alloc(physical_addr_t *pa, 
 		       physical_size_t sz, 
@@ -102,9 +111,7 @@ int vmm_host_memunmap(virtual_addr_t va,
 static inline virtual_addr_t vmm_host_iomap(physical_addr_t pa, 
 					    virtual_size_t sz)
 {
-	return vmm_host_memmap(pa, sz, 
-			       (VMM_MEMORY_READABLE | 
-				VMM_MEMORY_WRITEABLE));
+	return vmm_host_memmap(pa, sz, VMM_MEMORY_FLAGS_IO);
 }
 
 /** Unmap IO virtual memory */
@@ -123,11 +130,15 @@ int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count);
 /** Convert virtual address to its physical address */
 int vmm_host_va2pa(virtual_addr_t va, physical_addr_t *pa);
 
-/** Read from host physical memory */
-u32 vmm_host_physical_read(physical_addr_t hpa, void *dst, u32 len);
+/** Read from host memory
+ *  Note: We assume non-IO (or non-device) physical address
+ */
+u32 vmm_host_memory_read(physical_addr_t hpa, void *dst, u32 len);
 
-/** Write to host physical memory */
-u32 vmm_host_physical_write(physical_addr_t hpa, void *src, u32 len);
+/** Write to host memory
+ *  Note: We assume non-IO (or non-device) physical address
+ */
+u32 vmm_host_memory_write(physical_addr_t hpa, void *src, u32 len);
 
 /** Free memory used by initialization functions */
 u32 vmm_host_free_initmem(void);

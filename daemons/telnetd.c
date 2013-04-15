@@ -236,7 +236,7 @@ static void telnetd_fill_rx_buffer(void)
 	vmm_spin_unlock_irqrestore(&tdctrl.lock, flags);
 
 	/* Recieve netstack socket buffer */
-	rc = netstack_socket_recv(tdctrl.active_sk, &buf);
+	rc = netstack_socket_recv(tdctrl.active_sk, &buf, -1);
 	if (rc) {
 		telnetd_set_disconnected();
 		TELNETD_DPRINTF("%s: Socket read failed\n", __func__);
@@ -348,9 +348,19 @@ static u32 telnetd_chardev_read(struct vmm_chardev *cdev,
 	return telnetd_dequeue_rx_buffer(dest, len);
 }
 
+static bool telnetd_cmd_filter(struct vmm_chardev *cdev, int argc, char **argv)
+{
+	if ((argc > 1) && !strcmp(argv[0], "vserial") &&
+	    (!strcmp(argv[1], "bind") || !strcmp(argv[1], "dump"))) {
+		/* Filter out "vserial bind" and "vserial dump" commands */
+		return TRUE;
+	}
+	return FALSE;
+}
+
 static int telnetd_main(void *data)
 {
-	int i, rc;
+	int rc;
 	size_t cmds_len;
 	char cmds[CONFIG_TELNETD_CMD_WIDTH];
 
@@ -425,37 +435,15 @@ static int telnetd_main(void *data)
 				break;
 			}
 
-			/* Length of command string */
-			cmds_len = strlen(cmds);
-
 			/* Process command string */
+			cmds_len = strlen(cmds);
 			if (cmds_len > 0) {
 				if (cmds[cmds_len - 1] == '\r')
 					cmds[cmds_len - 1] = '\0';
 
-				/* Sanity check on allowable commands 
-				 * Note: This is required because some commands
-				 * like "vserial bind" can causes the dummy 
-				 * character device write function to be
-				 * called in normal context which is not a
-				 * sleepable context.
-				 */
-				for (i = 0; i < cmds_len; i++) {
-					if (strncmp(&cmds[i], "vserial", 6) == 0) {
-						break;
-					}
-				}
-				if (i < cmds_len) {
-					vmm_cprintf(&tdctrl.cdev, 
-					"telnetd: vserial command"
-					" not allowed\n");
-					telnetd_flush_tx_buffer();
-					continue;
-				}
-
-				/* Execute command string */
 				tdctrl.cdev_incmdexec = TRUE;
-				vmm_cmdmgr_execute_cmdstr(&tdctrl.cdev, cmds);
+				vmm_cmdmgr_execute_cmdstr(&tdctrl.cdev, cmds, 
+							  telnetd_cmd_filter);
 				tdctrl.cdev_incmdexec = FALSE;
 			}
 

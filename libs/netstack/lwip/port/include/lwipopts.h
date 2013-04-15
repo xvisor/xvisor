@@ -50,6 +50,16 @@
 */
 
 /**
+ * MEM_LIBC_MALLOC==1: Use malloc/free/realloc provided by your C-library
+ * instead of the lwip internal allocator. Can save code size if you
+ * already use it.
+ */
+#define MEM_LIBC_MALLOC                 1
+#define free				vmm_free
+#define malloc				vmm_malloc
+#define calloc				vmm_zalloc
+
+/**
  * MEM_ALIGNMENT: should be set to the alignment of the CPU
  *    4 byte alignment -> #define MEM_ALIGNMENT 4
  *    2 byte alignment -> #define MEM_ALIGNMENT 2

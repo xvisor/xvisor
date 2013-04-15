@@ -83,6 +83,7 @@ struct sp804_timer {
 
 struct sp804_state {
 	struct sp804_timer t[2];
+	u8 id[8];
 };
 
 static bool sp804_timer_interrupt_is_raised(struct sp804_timer *t)
@@ -433,7 +434,7 @@ static int sp804_timer_reset(struct sp804_timer *t)
 }
 
 static int sp804_timer_init(struct sp804_timer *t,
-			    struct vmm_guest * guest, 
+			    struct vmm_guest *guest, 
 			    u32 freq, u32 irq, bool maintain_irq_rate)
 {
 	INIT_TIMER_EVENT(&t->event, &sp804_timer_event, t);
@@ -453,14 +454,19 @@ static int sp804_timer_exit(struct sp804_timer *t)
 	return VMM_OK;
 }
 
-static int sp804_emulator_read(struct vmm_emudev * edev,
+static int sp804_emulator_read(struct vmm_emudev *edev,
 			       physical_addr_t offset, void *dst, u32 dst_len)
 {
 	int rc = VMM_OK;
 	u32 regval = 0x0;
 	struct sp804_state *s = edev->priv;
 
-	rc = sp804_timer_read(&s->t[(offset<0x20)?0:1], offset & 0x1C, &regval);
+	if (offset >= 0xfe0 && offset < 0x1000) {
+		regval = s->id[(offset - 0xfe0) >> 2];
+	} else {
+		rc = sp804_timer_read(&s->t[(offset<0x20)?0:1], offset & 0x1C, 
+				      &regval);
+	}
 
 	if (!rc) {
 		regval = (regval >> ((offset & 0x3) * 8));
@@ -483,7 +489,7 @@ static int sp804_emulator_read(struct vmm_emudev * edev,
 	return rc;
 }
 
-static int sp804_emulator_write(struct vmm_emudev * edev,
+static int sp804_emulator_write(struct vmm_emudev *edev,
 				physical_addr_t offset, void *src, u32 src_len)
 {
 	int i;
@@ -516,7 +522,7 @@ static int sp804_emulator_write(struct vmm_emudev * edev,
 	return sp804_timer_write(&s->t[(offset<0x20)?0:1], offset & 0x1C, regmask, regval);
 }
 
-static int sp804_emulator_reset(struct vmm_emudev * edev)
+static int sp804_emulator_reset(struct vmm_emudev *edev)
 {
 	int rc;
 	struct sp804_state *s = edev->priv;
@@ -526,9 +532,9 @@ static int sp804_emulator_reset(struct vmm_emudev * edev)
 	return rc;
 }
 
-static int sp804_emulator_probe(struct vmm_guest * guest,
-				struct vmm_emudev * edev, 
-				const struct vmm_emuid * eid)
+static int sp804_emulator_probe(struct vmm_guest *guest,
+				struct vmm_emudev *edev, 
+				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	u32 irq;
@@ -536,18 +542,25 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 	const char *attr;
 	struct sp804_state *s;
 
-	s = vmm_malloc(sizeof(struct sp804_state));
+	s = vmm_zalloc(sizeof(struct sp804_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto sp804_emulator_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct sp804_state));
 
-	attr = vmm_devtree_attrval(edev->node, "irq");
-	if (attr) {
-		irq = *((u32 *) attr);
-	} else {
-		rc = VMM_EFAIL;
+	if (eid->data) {
+		s->id[0] = ((u8 *)eid->data)[0];
+		s->id[1] = ((u8 *)eid->data)[1];
+		s->id[2] = ((u8 *)eid->data)[2];
+		s->id[3] = ((u8 *)eid->data)[3];
+		s->id[4] = ((u8 *)eid->data)[4];
+		s->id[5] = ((u8 *)eid->data)[5];
+		s->id[6] = ((u8 *)eid->data)[6];
+		s->id[7] = ((u8 *)eid->data)[7];
+	}
+
+	rc = vmm_devtree_irq_get(edev->node, &irq, 0);
+	if (rc) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
 
@@ -598,10 +611,18 @@ static int sp804_emulator_remove(struct vmm_emudev * edev)
 	return VMM_OK;
 }
 
-static struct vmm_emuid sp804_emuid_table[] = {
+static const u8 sp804_ids[] = {
+	/* Timer ID */
+	0x04, 0x18, 0x14, 0,
+	/* PrimeCell ID */
+	0xd, 0xf0, 0x05, 0xb1
+};
+
+static struct vmm_devtree_nodeid sp804_emuid_table[] = {
 	{.type = "timer",
 	 .compatible = "primecell,sp804",
-	 },
+	 .data = &sp804_ids
+	},
 	{ /* end of list */ },
 };
 

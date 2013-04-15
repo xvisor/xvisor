@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.0
-# Thu Jan  3 21:50:01 2013
+# Version: 0.2.1
+# Sun Mar  3 17:16:03 2013
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -13,6 +13,7 @@ CONFIG_CPU_COUNT=1
 CONFIG_CPU="x86_64"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
+CONFIG_VAPOOL_SIZE_MB=8
 CONFIG_BOARD="x86_64_generic"
 CONFIG_CPU_X86_64=y
 CONFIG_64BIT=y
@@ -47,13 +48,12 @@ CONFIG_BANNER_BANNER4=y
 CONFIG_MAX_VCPU_COUNT=16
 CONFIG_MAX_GUEST_COUNT=4
 CONFIG_VGPA2REG_CACHE_SIZE=8
-CONFIG_VAPOOL_SIZE_MB=8
 # CONFIG_PROFILE is not set
 
 #
 # Heap Configuration
 #
-CONFIG_HEAP_SIZE_MB=2
+CONFIG_HEAP_SIZE_MB=4
 CONFIG_HEAP_BUDDY=y
 
 #
@@ -77,6 +77,8 @@ CONFIG_THREAD_STACK_SIZE=8192
 # CONFIG_FB is not set
 # CONFIG_BLOCK is not set
 # CONFIG_NET is not set
+CONFIG_NET_MBUF_POOL_SIZE=2048
+CONFIG_NET_MBUF_EXT_POOL_KB=128
 
 #
 # Command Options
@@ -96,7 +98,6 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
-# CONFIG_CMD_THREADTEST is not set
 
 #
 # Daemon Options
@@ -142,6 +143,11 @@ CONFIG_LIBFDT=y
 #
 
 #
+# VirtIO Support
+#
+# CONFIG_EMU_VIRTIO is not set
+
+#
 # System Emulators
 #
 # CONFIG_EMU_SYS is not set
@@ -155,6 +161,11 @@ CONFIG_LIBFDT=y
 # Network Interface Controller Emulators
 #
 # CONFIG_EMU_NET is not set
+
+#
+# Console Emulators
+#
+# CONFIG_EMU_CONSOLE is not set
 
 #
 # Timer Emulators

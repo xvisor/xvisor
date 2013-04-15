@@ -44,7 +44,7 @@ bool vmm_scheduler_normal_context(void);
 /** Notify Change in vcpu state 
  *  (Must be called before actually changing the state) 
  */
-int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state);
+int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state);
 
 /** Retrive current vcpu number */
 struct vmm_vcpu *vmm_scheduler_current_vcpu(void);

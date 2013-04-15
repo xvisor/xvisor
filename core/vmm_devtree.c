@@ -26,7 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devtree.h>
-#include <arch_board.h>
+#include <arch_devtree.h>
 #include <libs/stringlib.h>
 
 struct vmm_devtree_ctrl {
@@ -99,7 +99,7 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
 	} else if (!strcmp(name, VMM_DEVTREE_COMPATIBLE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
-	} else if (!strcmp(name, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME)) {
+	} else if (!strcmp(name, VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!strcmp(name, VMM_DEVTREE_REG_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
@@ -111,6 +111,8 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
 	} else if (!strcmp(name, VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
+	} else if (!strcmp(name, VMM_DEVTREE_INTERRUPTS_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!strcmp(name, VMM_DEVTREE_START_PC_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
 	} else if (!strcmp(name, VMM_DEVTREE_PRIORITY_ATTR_NAME)) {
@@ -137,9 +139,64 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
 	} else if (!strcmp(name, VMM_DEVTREE_RTCDEV_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
+	} else if (!strcmp(name, VMM_DEVTREE_BOOTCMD_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_STRING;
+	} else if (!strcmp(name, VMM_DEVTREE_BLKDEV_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_STRING;
 	}
 
 	return ret;
+}
+
+int vmm_devtree_clock_frequency(struct vmm_devtree_node *node, u32 *clock_freq)
+{
+	const char *aval;
+
+	if (!node || !clock_freq) {
+		return VMM_EFAIL;
+	}
+
+	aval = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME);
+	if (!aval) {
+		return VMM_ENOTAVAIL;
+	}
+
+	*clock_freq = *((u32 *)aval);
+
+	return VMM_OK;
+}
+
+int vmm_devtree_irq_get(struct vmm_devtree_node *node, 
+		        u32 *irq, int index)
+{
+	const char *aval;
+
+	if (!node || !irq || index < 0) {
+		return VMM_EFAIL;
+	}
+
+	aval = vmm_devtree_attrval(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
+	if (!aval) {
+		return VMM_ENOTAVAIL;
+	}
+
+	aval += index * sizeof(u32);
+	*irq  = *((u32 *)aval);
+
+	return VMM_OK;
+}
+
+u32 vmm_devtree_irq_count(struct vmm_devtree_node *node)
+{
+	u32 alen;
+
+	if (!node) {
+		return 0;
+	}
+
+	alen = vmm_devtree_attrlen(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
+
+	return alen / sizeof(u32);
 }
 
 int vmm_devtree_regmap(struct vmm_devtree_node *node, 
@@ -254,6 +311,57 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 	}
 
 	return VMM_EFAIL;
+}
+
+static int devtree_node_is_compatible(struct vmm_devtree_node *node,
+					const char *compat)
+{
+	const char *cp;
+	int cplen, l;
+
+	cp = vmm_devtree_attrval(node, VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
+	cplen = vmm_devtree_attrlen(node, VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
+	if (cp == NULL)
+		return 0;
+	while (cplen > 0) {
+		if (strcmp(cp, compat) == 0)
+			return 1;
+		l = strlen(cp) + 1;
+		cp += l;
+		cplen -= l;
+	}
+
+	return 0;
+}
+
+const struct vmm_devtree_nodeid *vmm_devtree_match_node(
+					const struct vmm_devtree_nodeid *matches,
+					struct vmm_devtree_node *node)
+{
+	const char *type;
+
+	if (!matches || !node) {
+		return NULL;
+	}
+
+	type = vmm_devtree_attrval(node, VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
+
+	while (matches->name[0] || matches->type[0] || matches->compatible[0]) {
+		int match = 1;
+		if (matches->name[0])
+			match &= node->name && 
+				 !strcmp(matches->name, node->name);
+		if (matches->type[0])
+			match &= type && !strcmp(matches->type, type);
+		if (matches->compatible[0])
+			match &= devtree_node_is_compatible(node,
+							matches->compatible);
+		if (match)
+			return matches;
+		matches++;
+	}
+
+	return NULL;
 }
 
 void *vmm_devtree_attrval(struct vmm_devtree_node *node, 
@@ -457,8 +565,11 @@ struct vmm_devtree_node *vmm_devtree_getnode(const char *path)
 {
 	struct vmm_devtree_node *node = dtree_ctrl.root;
 
-	if (!path || !node)
+	if (!node)
 		return NULL;
+
+	if (!path)
+		return node;
 
 	if (strncmp(node->name, path, strlen(node->name)) != 0)
 		return NULL;
@@ -475,6 +586,58 @@ struct vmm_devtree_node *vmm_devtree_getnode(const char *path)
 	return vmm_devtree_getchild(node, path);
 }
 
+struct vmm_devtree_node *vmm_devtree_find_matching(
+				struct vmm_devtree_node *node,
+				const struct vmm_devtree_nodeid *matches)
+{
+	struct dlist *lentry;
+	struct vmm_devtree_node *child, *ret;
+
+	if (!matches) {
+		return NULL;
+	}
+
+	if (!node) {
+		node = dtree_ctrl.root;
+	}
+
+	if (vmm_devtree_match_node(matches, node)) {
+		return node;
+	}
+
+	list_for_each(lentry, &node->child_list) {
+		child = list_entry(lentry, struct vmm_devtree_node, head);
+		ret = vmm_devtree_find_matching(child, matches);
+		if (ret) {
+			return ret;
+		}
+	}
+
+	return NULL;
+}
+
+struct vmm_devtree_node *vmm_devtree_find_compatible(
+				struct vmm_devtree_node *node,
+				const char *device_type,
+				const char *compatible)
+{
+	struct vmm_devtree_nodeid id[2];
+
+	if (!compatible) {
+		return NULL;
+	}
+
+	memset(id, 0, sizeof(id));
+
+	if (device_type) {
+		strncpy(id[0].type, device_type, sizeof(id[0].type));
+	}
+
+	strncpy(id[0].compatible, compatible, sizeof(id[0].compatible));
+
+	return vmm_devtree_find_matching(node, id);
+}
+
 /* NOTE: vmm_devtree_addnode() allows parent == NULL to enable creation of
  * root node using vmm_devtree_addnode().
  */
@@ -488,6 +651,7 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	if (!name) {
 		return NULL;
 	}
+
 	if (parent) {
 		list_for_each(l, &parent->child_list) {
 			node = list_entry(l, struct vmm_devtree_node, head);
@@ -507,6 +671,7 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	node->system_data = NULL;
 	node->priv = NULL;
 	node->parent = parent;
+
 	if (parent) {
 		list_add_tail(&node->head, &parent->child_list);
 	}
@@ -606,16 +771,11 @@ int vmm_devtree_delnode(struct vmm_devtree_node *node)
 	return VMM_OK;
 }
 
-struct vmm_devtree_node *vmm_devtree_rootnode(void)
-{
-	return dtree_ctrl.root;
-}
-
 int __init vmm_devtree_init(void)
 {
 	/* Reset the control structure */
 	memset(&dtree_ctrl, 0, sizeof(dtree_ctrl));
 
 	/* Populate Board Specific Device Tree */
-	return arch_board_devtree_populate(&dtree_ctrl.root);
+	return arch_devtree_populate(&dtree_ctrl.root);
 }

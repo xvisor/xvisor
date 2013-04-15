@@ -1,11 +1,28 @@
-			Versatile PB Guest
+			VersatilePB Guest
 
 This guest has ARM9 (Single Core ARMv5) CPU and various peripherals
-expected on a Versatile Platform Base Board.
+expected on a VersatileAB (i.e. Application Base) Board.
 
-We have following guest OSes tested for this guest:
+We also have memory mapped VirtIO devices located at unused IO regions 
+of the guest for providing VirtIO based paravirtualization.
 
-  1. basic - Basic test and/or bootloader used by xvisor developers
+There are many reserved IO regions as per VersatilePB and VersatileAB
+User Guides. From these reserved IO regions, we will use the following 
+IO regions for VirtIO:
+0x14000000–0x1FFFFFFF (192M) (Reserved for Logic Tile Expansion)
+
+The VirtIO devices also require a IRQ line per device for functioning. The
+VersatilePB guest has following unused or reserved IRQ lines:
+VIC: 20
+SIC: 42-52 (nested) 
+SIC: 63 (nested)
+
+
+			VersatilePB Guest OSes
+
+We have tested following guest OSes for this guest:
+
+  1. basic - Basic test/bootloader
   2. linux - Linux Kernel
 
 Please follow the README under specific guest OS directory for detailed

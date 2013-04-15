@@ -50,14 +50,12 @@ static const char version[] =
 		"smc911x.c: v1.0 04-16-2005 by Dustin McIntire <dustin@sensoria.com>\n";
 
 /* Debugging options */
-#if 0
 #define	ENABLE_SMC_DEBUG_RX		0
 #define	ENABLE_SMC_DEBUG_TX		0
 #define	ENABLE_SMC_DEBUG_DMA		0
 #define	ENABLE_SMC_DEBUG_PKTS		0
 #define	ENABLE_SMC_DEBUG_MISC		0
 #define	ENABLE_SMC_DEBUG_FUNC		0
-#endif
 
 #define	SMC_DEBUG_RX		((ENABLE_SMC_DEBUG_RX	? 1 : 0) << 0)
 #define	SMC_DEBUG_TX		((ENABLE_SMC_DEBUG_TX	? 1 : 0) << 1)
@@ -881,7 +879,6 @@ static void smc911x_phy_configure(struct work_struct *work)
 	int phyaddr = lp->mii.phy_id;
 	int my_phy_caps; /* My PHY capabilities */
 	int my_ad_caps; /* My Advertised capabilities */
-	int status;
 	unsigned long flags;
 
 	DBG(SMC_DEBUG_FUNC, "%s: --> %s()\n", dev->name, __func__);
@@ -951,7 +948,7 @@ static void smc911x_phy_configure(struct work_struct *work)
 	 * the link does not come up.
 	 */
 	udelay(10);
-	SMC_GET_PHY_MII_ADV(lp, phyaddr, status);
+	SMC_GET_PHY_MII_ADV(lp, phyaddr, my_ad_caps);
 
 	DBG(SMC_DEBUG_MISC, "%s: phy caps=0x%04x\n", dev->name, my_phy_caps);
 	DBG(SMC_DEBUG_MISC, "%s: phy advertised caps=0x%04x\n", dev->name, my_ad_caps);
@@ -984,11 +981,13 @@ static void smc911x_phy_interrupt(struct net_device *dev)
 
 	smc911x_phy_check_media(dev, 0);
 	/* read to clear status bits */
-	SMC_GET_PHY_INT_SRC(lp, phyaddr,status);
+	SMC_GET_PHY_INT_SRC(lp, phyaddr, status);
 	DBG(SMC_DEBUG_MISC, "%s: PHY interrupt status 0x%04x\n",
 		dev->name, status & 0xffff);
 	DBG(SMC_DEBUG_MISC, "%s: AFC_CFG 0x%08x\n",
 		dev->name, SMC_GET_AFC_CFG(lp));
+
+	(void)status;
 }
 
 /*--- END PHY CONTROL AND CONFIGURATION-------------------------------------*/
@@ -997,9 +996,7 @@ static void smc911x_phy_interrupt(struct net_device *dev)
  * This is the main routine of the driver, to handle the device when
  * it needs some attention.
  */
-static vmm_irq_return_t smc911x_interrupt(u32 irq_no,
-					  arch_regs_t * regs,
-					  void *dev_id)
+static vmm_irq_return_t smc911x_interrupt(u32 irq_no, void *dev_id)
 
 {
 	struct net_device *dev = dev_id;
@@ -2035,13 +2032,12 @@ err_out:
 }
 
 static int smc911x_driver_probe(struct vmm_device *dev,
-				const struct vmm_devid *devid)
+				const struct vmm_devtree_nodeid *devid)
 {
 	int rc = VMM_OK;
 	struct net_device *ndev;
 	virtual_addr_t addr;
 	struct smc911x_local *lp;
-	const char *attr;
 
 	ndev = alloc_etherdev(sizeof(struct smc911x_local));
 	if (!ndev) {
@@ -2069,18 +2065,24 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 									addr);
 	lp->base = (void *) addr;
 
-	attr = vmm_devtree_attrval(dev->node, "irq");
-	if (!attr) {
+	rc = vmm_devtree_irq_get(dev->node, &ndev->irq, 0);
+	if (rc) {
 		rc = VMM_EFAIL;
 		goto free_ioreamp_mem;
 	}
 
-	ndev->irq = *((u32 *) attr);
 	DBG(SMC_DEBUG_MISC, "%s IRQ  0x%02X\n", ndev->name, ndev->irq);
+
+	if(vmm_devtree_getattr(dev->node, "smsc,irq-active-high")) {
+		lp->cfg.irq_polarity = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH;
+		DBG(SMC_DEBUG_MISC, "%s IRQ polarity is high\n", ndev->name);
+	} else {
+		lp->cfg.irq_polarity = SMSC911X_IRQ_POLARITY_ACTIVE_LOW;
+		DBG(SMC_DEBUG_MISC, "%s IRQ polarity is low\n", ndev->name);
+	}
 
 #ifdef SMC_DYNAMIC_BUS_CONFIG
         lp->cfg.flags = SMC911X_USE_32BIT;
-	lp->cfg.irq_polarity = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH;
 #endif
 
 	rc = smc911x_probe(ndev);
@@ -2110,8 +2112,7 @@ static int smc911x_driver_remove(struct vmm_device *dev)
 	return rc;
 }
 
-
-static struct vmm_devid smc911x_devid_table[] = {
+static struct vmm_devtree_nodeid smc911x_devid_table[] = {
 	{ .type = "nic", .compatible = "smc911x"},
 	{ /* end of list */ },
 };

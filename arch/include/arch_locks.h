@@ -26,8 +26,9 @@
 #include <vmm_types.h>
 
 /** Spinlock functions required by VMM core */
-bool arch_spin_lock_check(spinlock_t * lock);
-void arch_spin_lock(spinlock_t * lock);
-void arch_spin_unlock(spinlock_t * lock);
+bool arch_spin_lock_check(spinlock_t *lock);
+void arch_spin_lock(spinlock_t *lock);
+int  arch_spin_trylock(spinlock_t *lock);
+void arch_spin_unlock(spinlock_t *lock);
 
 #endif

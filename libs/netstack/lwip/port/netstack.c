@@ -27,10 +27,6 @@
 #include <vmm_timer.h>
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
-#include <net/vmm_mbuf.h>
-#include <net/vmm_net.h>
-#include <net/vmm_netport.h>
-#include <net/vmm_netswitch.h>
 #include <libs/netstack.h>
 
 #include "lwip/opt.h"
@@ -53,7 +49,7 @@
 #define MODULE_DESC			"lwIP Network Stack"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VMM_NET_CLASS_IPRIORITY + 1)
+#define MODULE_IPRIORITY		NETSTACK_IPRIORITY
 #define	MODULE_INIT			lwip_netstack_init
 #define	MODULE_EXIT			lwip_netstack_exit
 
@@ -424,17 +420,6 @@ struct netstack_socket *netstack_socket_alloc(enum netstack_socket_type type)
 }
 VMM_EXPORT_SYMBOL(netstack_socket_alloc);
 
-void netstack_socket_free(struct netstack_socket *sk)
-{
-	if (!sk || !sk->priv) {
-		return;
-	}
-
-	netconn_delete(sk->priv);
-	vmm_free(sk);	
-}
-VMM_EXPORT_SYMBOL(netstack_socket_free);
-
 int netstack_socket_connect(struct netstack_socket *sk, u8 *ipaddr, u16 port)
 {
 	err_t err;
@@ -588,18 +573,43 @@ int netstack_socket_close(struct netstack_socket *sk)
 }
 VMM_EXPORT_SYMBOL(netstack_socket_close);
 
+void netstack_socket_free(struct netstack_socket *sk)
+{
+	if (!sk || !sk->priv) {
+		return;
+	}
+
+	netconn_delete(sk->priv);
+	vmm_free(sk);	
+}
+VMM_EXPORT_SYMBOL(netstack_socket_free);
+
 int netstack_socket_recv(struct netstack_socket *sk, 
-			   struct netstack_socket_buf *buf)
+			 struct netstack_socket_buf *buf,
+			 int timeout)
 {
 	err_t err;
 	struct netbuf *nb;
+	struct netconn *conn;
 
 	if (!sk || !sk->priv || !buf) {
 		return VMM_EINVALID;
 	}
+	conn = sk->priv;
 
-	err = netconn_recv(sk->priv, &nb);
-	if (err != ERR_OK) {
+	if (0 < timeout) {
+		netconn_set_recvtimeout(conn, timeout);
+	} else {
+		netconn_set_recvtimeout(conn, 0);
+	}
+
+	buf->data = NULL;
+	buf->len = 0;
+
+	err = netconn_recv(conn, &nb);
+	if (err == ERR_TIMEOUT) {
+		return VMM_ETIMEDOUT;
+	} else if (err != ERR_OK) {
 		return VMM_EFAIL;
 	}
 
@@ -765,7 +775,7 @@ static err_t lwip_netstack_output(struct netif *netif, struct pbuf *p)
 	mbuf_head->m_len = mbuf_head->m_pktlen = p->tot_len;
 
 	/* Send mbuf to the netswitch */
-	vmm_port2switch_xfer(lns->port, mbuf_head);
+	vmm_port2switch_xfer_mbuf(lns->port, mbuf_head);
 
 	/* Return success */
 	return ERR_OK;
@@ -898,7 +908,8 @@ fail:
 
 static void __exit lwip_netstack_exit(void)
 {
-	/* FIXME: */
+	vmm_netport_unregister(lns.port);
+	vmm_netport_free(lns.port);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC, 

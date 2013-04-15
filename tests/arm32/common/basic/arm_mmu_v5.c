@@ -1297,7 +1297,8 @@ void arm_mmu_setup(void)
 
 	/* Create section entries for IO */
 	for (s = 0; s < arm_board_iosection_count(); s++) {
-		sec = arm_board_iosection_addr(s);
+		sec = arm_board_iosection_addr(s) & 
+				~(TTBL_L1TBL_SECTION_PAGE_SIZE - 1);
 		l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
 	}
 

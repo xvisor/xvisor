@@ -37,6 +37,7 @@
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_timer.h>
+#include <vmm_workqueue.h>
 #include <vmm_manager.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
@@ -53,9 +54,13 @@
 #define LOCK_VAL			0x0000a05f
 
 #define REALVIEW_SYSID_PBA8		0x01780500
-#define REALVIEW_PROCID_PBA8		0x00000000
-#define VEXPRESS_SYSID_CA9		0x01900000
+#define REALVIEW_PROCID_PBA8		0x0e000000
+#define REALVIEW_SYSID_EB11MP		0xc1400400
+#define REALVIEW_PROCID_EB11MP		0x06000000
+#define VEXPRESS_SYSID_CA9		0x1190f500
 #define VEXPRESS_PROCID_CA9		0x0c000191
+#define VEXPRESS_SYSID_CA15		0x1190f500
+#define VEXPRESS_PROCID_CA15		0x14000237
 #define VERSATILEPB_SYSID_ARM926	0x41008004
 #define VERSATILEPB_PROCID_ARM926	0x00000000
 
@@ -71,12 +76,13 @@
 
 struct arm_sysregs {
 	struct vmm_guest *guest;
-	struct vmm_emupic *pic;
 	vmm_spinlock_t lock;
 	u64 ref_100hz;
 	u64 ref_24mhz;
 	u32 mux_in_irq[2];
 	u32 mux_out_irq;
+	struct vmm_work reboot;
+	struct vmm_work shutdown;
 
 	u32 sys_id;
 	u32 leds;
@@ -107,7 +113,7 @@ static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
 	int rc = VMM_OK;
 	u32 regval = 0x0;
 	u64 tdiff;
-	struct arm_sysregs * s = edev->priv;
+	struct arm_sysregs *s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -239,6 +245,9 @@ static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
 			regval = s->sys_cfgstat;
 		}
 		break;
+	case 0xd8: /* PLDCTL1 */
+		regval = 0;
+		break;
 	default:
 		rc = VMM_EFAIL;
 		break;
@@ -267,14 +276,28 @@ static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
 	return rc;
 }
 
+static void arm_sysregs_shutdown(struct vmm_work *w)
+{
+	struct arm_sysregs *s = container_of(w, struct arm_sysregs, shutdown);
+
+	vmm_manager_guest_reset(s->guest);
+}
+
+static void arm_sysregs_reboot(struct vmm_work *w)
+{
+	struct arm_sysregs *s = container_of(w, struct arm_sysregs, reboot);
+
+	vmm_manager_guest_reset(s->guest);
+	vmm_manager_guest_kick(s->guest);
+}
+
 static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 				      physical_addr_t offset, 
 				      void *src, u32 src_len)
 {
 	int rc = VMM_OK, i;
-	bool do_reset = FALSE, do_shutdown = FALSE;
 	u32 regmask = 0x0, regval = 0x0;
-	struct arm_sysregs * s = edev->priv;
+	struct arm_sysregs *s = edev->priv;
 
 	switch (src_len) {
 	case 1:
@@ -350,7 +373,8 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 				s->resetlevel &= regmask;
 				s->resetlevel |= regval;
 				if (s->resetlevel & 0x100) {
-					do_reset = TRUE;
+					vmm_workqueue_schedule_work(NULL, 
+								&s->reboot);
 				}
 			}
 			break;
@@ -360,12 +384,22 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 				s->resetlevel &= regmask;
 				s->resetlevel |= regval;
 				if (s->resetlevel & 0x04) {
-					do_reset = TRUE;
+					vmm_workqueue_schedule_work(NULL, 
+								&s->reboot);
+				}
+			}
+			break;
+		case BOARD_ID_EB:
+			if (s->lockval == LOCK_VAL) {
+				s->resetlevel &= regmask;
+				s->resetlevel |= regval;
+				if (s->resetlevel & 0x08) {
+					vmm_workqueue_schedule_work(NULL, 
+								&s->reboot);
 				}
 			}
 			break;
 		case BOARD_ID_VEXPRESS:
-		case BOARD_ID_EB:
 		default:
 			/* reserved: RAZ/WI */
 			break;
@@ -443,10 +477,10 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 		s->sys_cfgstat = 1;            /* complete */
 		switch (s->sys_cfgctrl) {
 		case 0xc0800000: /* SYS_CFG_SHUTDOWN to motherboard */
-			do_shutdown = TRUE;
+			vmm_workqueue_schedule_work(NULL, &s->shutdown);
 			break;
 		case 0xc0900000: /* SYS_CFG_REBOOT to motherboard */
-			do_reset = TRUE;
+			vmm_workqueue_schedule_work(NULL, &s->reboot);
 			break;
 		default:
 			s->sys_cfgstat |= 2;        /* error */
@@ -460,6 +494,8 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 		s->sys_cfgstat &= regmask;
 		s->sys_cfgstat |= regval & 3;
 		break;
+	case 0xd8: /* PLDCTL1 */
+		break;
 	default:
 		rc = VMM_EFAIL;
 		break;
@@ -467,19 +503,12 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 
 	vmm_spin_unlock(&s->lock);
 
-	if (do_reset) {
-		vmm_manager_guest_reset(s->guest);
-		vmm_manager_guest_kick(s->guest);
-	} else if (do_shutdown) {
-		vmm_manager_guest_reset(s->guest);
-	}
-
 	return rc;
 }
 
 static int arm_sysregs_emulator_reset(struct vmm_emudev *edev)
 {
-	struct arm_sysregs * s = edev->priv;
+	struct arm_sysregs *s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -505,12 +534,11 @@ static int arm_sysregs_emulator_reset(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-/* Process IRQ asserted in device emulation framework */
-static int arm_sysregs_irq_handle(struct vmm_emupic *epic, 
-				  u32 irq, int cpu, int level)
+/* Process IRQ asserted via device emulation framework */
+static void arm_sysregs_irq_handle(u32 irq, int cpu, int level, void *opaque)
 {
 	int bit;
-	struct arm_sysregs * s = epic->priv;
+	struct arm_sysregs *s = opaque;
 
 	if (s->mux_in_irq[0] == irq) {
 		/* For PB926 and EB write-protect is bit 2 of SYS_MCI;
@@ -534,27 +562,22 @@ static int arm_sysregs_irq_handle(struct vmm_emupic *epic,
 			s->sys_mci |= 1;
 		}
 		vmm_spin_unlock(&s->lock);
-	} else {
-		return VMM_EMUPIC_GPIO_UNHANDLED;
 	}
-
-	return VMM_EMUPIC_GPIO_HANDLED;
 }
 
 static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 				   struct vmm_emudev *edev,
-				   const struct vmm_emuid *eid)
+				   const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	const char * attr;
 	struct arm_sysregs *s;
 
-	s = vmm_malloc(sizeof(struct arm_sysregs));
+	s = vmm_zalloc(sizeof(struct arm_sysregs));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto arm_sysregs_emulator_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct arm_sysregs));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
@@ -566,27 +589,13 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 		s->proc_id = ((u32 *)eid->data)[1];
 	}
 
-	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
-	if (!s->pic) {
-		goto arm_sysregs_emulator_probe_freestate_fail;
-	}
-	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
-
-	strcpy(s->pic->name, edev->node->name);
-	s->pic->type = VMM_EMUPIC_GPIO;
-	s->pic->handle = &arm_sysregs_irq_handle;
-	s->pic->priv = s;
-	if ((rc = vmm_devemu_register_pic(guest, s->pic))) {
-		goto arm_sysregs_emulator_probe_freepic_fail;
-	}
-
 	attr = vmm_devtree_attrval(edev->node, "mux_in_irq");
 	if (attr) {
 		s->mux_in_irq[0] = ((u32 *)attr)[0];
 		s->mux_in_irq[1] = ((u32 *)attr)[1];
 	} else {
 		rc = VMM_EFAIL;
-		goto arm_sysregs_emulator_probe_unregpic_fail;
+		goto arm_sysregs_emulator_probe_freestate_fail;
 	}
 
 	attr = vmm_devtree_attrval(edev->node, "mux_out_irq");
@@ -594,17 +603,23 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 		s->mux_out_irq = ((u32 *)attr)[0];
 	} else {
 		rc = VMM_EFAIL;
-		goto arm_sysregs_emulator_probe_unregpic_fail;
+		goto arm_sysregs_emulator_probe_freestate_fail;
 	}
+
+	INIT_WORK(&s->shutdown, arm_sysregs_shutdown);
+	INIT_WORK(&s->reboot, arm_sysregs_reboot);
+
+	vmm_devemu_register_irq_handler(guest, s->mux_in_irq[0],
+					edev->node->name, 
+					arm_sysregs_irq_handle, s);
+	vmm_devemu_register_irq_handler(guest, s->mux_in_irq[1], 
+					edev->node->name,
+					arm_sysregs_irq_handle, s);
 
 	edev->priv = s;
 
 	goto arm_sysregs_emulator_probe_done;
 
-arm_sysregs_emulator_probe_unregpic_fail:
-	vmm_devemu_unregister_pic(s->guest, s->pic);
-arm_sysregs_emulator_probe_freepic_fail:
-	vmm_free(s->pic);
 arm_sysregs_emulator_probe_freestate_fail:
 	vmm_free(s);
 arm_sysregs_emulator_probe_done:
@@ -613,17 +628,13 @@ arm_sysregs_emulator_probe_done:
 
 static int arm_sysregs_emulator_remove(struct vmm_emudev *edev)
 {
-	int rc;
 	struct arm_sysregs *s = edev->priv;
 
 	if (s) {
-		if (s->pic) {
-			rc = vmm_devemu_unregister_pic(s->guest, s->pic);
-			if (rc) {
-				return rc;
-			}
-			vmm_free(s->pic);
-		}
+		vmm_devemu_unregister_irq_handler(s->guest, s->mux_in_irq[0], 
+						  arm_sysregs_irq_handle, s);
+		vmm_devemu_unregister_irq_handler(s->guest, s->mux_in_irq[1], 
+						  arm_sysregs_irq_handle, s);
 		vmm_free(s);
 		edev->priv = NULL;
 	}
@@ -631,36 +642,56 @@ static int arm_sysregs_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static u32 versatile_sysids[] = {
-	/* === VERSATILE PB === */
+static u32 versatilepb_sysids[] = {
+	/* === VersatilePB === */
 	/* sys_id */ VERSATILEPB_SYSID_ARM926, 
 	/* proc_id */ VERSATILEPB_PROCID_ARM926, 
 };
 
-static u32 realview_sysids[] = {
-	/* === PBA8 === */
+static u32 realview_ebmpcore_sysids[] = {
+	/* === Realview-EB-MPCore === */
+	/* sys_id */ REALVIEW_SYSID_EB11MP, 
+	/* proc_id */ REALVIEW_PROCID_EB11MP, 
+};
+
+static u32 realview_pba8_sysids[] = {
+	/* === Realview-PB-aA8 === */
 	/* sys_id */ REALVIEW_SYSID_PBA8, 
 	/* proc_id */ REALVIEW_PROCID_PBA8, 
 };
 
-static u32 vexpress_sysids[] = {
-	/* === PBA8 === */
+static u32 vexpress_a9_sysids[] = {
+	/* === VExpress-A9 === */
 	/* sys_id */ VEXPRESS_SYSID_CA9, 
 	/* proc_id */ VEXPRESS_PROCID_CA9, 
 };
 
-static struct vmm_emuid arm_sysregs_emuid_table[] = {
+static u32 vexpress_a15_sysids[] = {
+	/* === VExpress-A15 === */
+	/* sys_id */ VEXPRESS_SYSID_CA15, 
+	/* proc_id */ VEXPRESS_PROCID_CA15, 
+};
+
+static struct vmm_devtree_nodeid arm_sysregs_emuid_table[] = {
 	{ .type = "sys", 
 	  .compatible = "versatilepb,arm926", 
-	  .data = &versatile_sysids[0] 
+	  .data = &versatilepb_sysids[0] 
+	},
+	{ .type = "sys", 
+	  .compatible = "realview,eb-mpcore", 
+	  .data = &realview_ebmpcore_sysids[0] 
 	},
 	{ .type = "sys", 
 	  .compatible = "realview,pb-a8", 
-	  .data = &realview_sysids[0] 
+	  .data = &realview_pba8_sysids[0] 
 	},
 	{ .type = "sys", 
 	  .compatible = "vexpress,a9", 
-	  .data = &vexpress_sysids[0] 
+	  .data = &vexpress_a9_sysids[0] 
+	},
+	{ .type = "sys", 
+	  .compatible = "vexpress,a15", 
+	  .data = &vexpress_a15_sysids[0] 
 	},
 	{ /* end of list */ },
 };

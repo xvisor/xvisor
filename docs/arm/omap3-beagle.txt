@@ -33,7 +33,7 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   [5. Make U-Boot compatible uvmm.bin for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x88000000 -e 0x88000000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
-  [6. Build ARM Basic Test for Realview PB-A8 Guest, this creates arm_test.bin.patched]
+  [6. Build ARM Basic Test for Realview-PB-A8 Guest, this creates arm_test.bin.patched]
   # make -C tests/arm32/realview-pb-a8/basic
   
   [7. Unplug micro-SD card from BeagleBoard-xM and plug it on your development machine]
@@ -118,7 +118,7 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
 	Xvisor on Linaro QEMU BeagleBoard (or OMAP3) using NAND Booting 
 
 This section of readme explains how to build & run Xvisor from nand-flash on 
-BeagleBoard emulated by QEMU Linaro 2.02 or higher. 
+BeagleBoard emulated by QEMU Linaro. 
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
 show how to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test
@@ -176,7 +176,7 @@ follows:
   [8. Add uboot header to vmm.bin for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x88000000 -e 0x88000000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
-  [9. Build ARM Basic Test for Realview PB-A8 Guest, this creates arm_test.bin.patched]
+  [9. Build ARM Basic Test for Realview-PB-A8 Guest, this creates arm_test.bin.patched]
   # make -C tests/arm32/pb-a8/basic
 
   [10. Copy the X-loader and U-Boot binaries (from step 2 or 3-4) into Xvisor build-directory]
@@ -199,7 +199,7 @@ follows:
   [12. Build the beagleboard nand-flash image from the flat binary created]
   # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc 
 
-  [13. Launch QEMU Linaro 2.02 or higher ]
+  [13. Launch QEMU Linaro]
   # qemu-system-arm -M beagle -drive file=build/beagle-nand.bin,if=mtd -display none -serial stdio -s
 
   [14. Copy Xvisor from nand-flash to SDRAM]

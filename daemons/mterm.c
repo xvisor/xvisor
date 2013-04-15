@@ -49,6 +49,7 @@ static int mterm_main(void *udata)
 {
 	size_t cmds_len;
 	char cmds[CONFIG_MTERM_CMD_WIDTH];
+	struct vmm_chardev *cdev;
 
 	/* Print Banner */
 	vmm_printf("%s", VMM_BANNER_STRING);
@@ -73,7 +74,8 @@ static int mterm_main(void *udata)
 				cmds[cmds_len - 1] = '\0';
 
 			/* Execute command string */
-			vmm_cmdmgr_execute_cmdstr(vmm_stdio_device(), cmds);
+			cdev = vmm_stdio_device();
+			vmm_cmdmgr_execute_cmdstr(cdev, cmds, NULL);
 		}
 	}
 

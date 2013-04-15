@@ -25,7 +25,6 @@
 
 #include <vmm_types.h>
 #include <vmm_cpumask.h>
-#include <arch_regs.h>
 #include <libs/list.h>
 
 /**
@@ -83,9 +82,7 @@ enum vmm_irq_return {
 
 typedef enum vmm_irq_return vmm_irq_return_t;
 
-typedef vmm_irq_return_t (*vmm_host_irq_function_t) (u32 irq_no, 
-						     arch_regs_t *regs,
-						     void *dev);
+typedef vmm_irq_return_t (*vmm_host_irq_function_t) (u32 irq_no, void *dev);
 
 /** Host IRQ Action Abstraction */
 struct vmm_host_irq_action {
@@ -129,7 +126,7 @@ struct vmm_host_irq {
 	u32 count[CONFIG_CPU_COUNT];
 	void *chip_data;
 	struct vmm_host_irq_chip *chip;
-	void (*handler)(u32, struct vmm_host_irq *, arch_regs_t *);
+	void (*handler)(u32, struct vmm_host_irq *);
 	struct dlist action_list;
 };
 
@@ -137,12 +134,12 @@ struct vmm_host_irq {
  * (Note: To be called from architecture specific code)
  * (Note: This will be typically called by nested/secondary PICs) 
  */
-int vmm_host_generic_irq_exec(u32 hirq_no, arch_regs_t *regs);
+int vmm_host_generic_irq_exec(u32 hirq_no);
 
 /** Report external irq as seen from CPU 
  * (Note: To be called from architecture specific code) 
  */
-int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t *regs);
+int vmm_host_irq_exec(u32 cpu_irq_no);
 
 /** Get host irq count */
 u32 vmm_host_irq_count(void);
@@ -161,15 +158,13 @@ int vmm_host_irq_set_chip_data(u32 hirq_num, void *chip_data);
  * vmm_handle_xxxxx functions from below
  */
 int vmm_host_irq_set_handler(u32 hirq_num, 
-		void (*handler)(u32, struct vmm_host_irq *, arch_regs_t *));
+		void (*handler)(u32, struct vmm_host_irq *));
 
 /* Fast EOI irq handler */
-void vmm_handle_fast_eoi(u32 hirq_num, 
-			 struct vmm_host_irq *irq, arch_regs_t *regs);
+void vmm_handle_fast_eoi(u32 hirq_num, struct vmm_host_irq *irq);
 
 /* Level irq handler */
-void vmm_handle_level_irq(u32 hirq_num, 
-			  struct vmm_host_irq *irq, arch_regs_t *regs);
+void vmm_handle_level_irq(u32 hirq_num, struct vmm_host_irq *irq);
 
 /** Get host irq number from host irq instance */
 static inline u32 vmm_host_irq_get_num(struct vmm_host_irq *irq)

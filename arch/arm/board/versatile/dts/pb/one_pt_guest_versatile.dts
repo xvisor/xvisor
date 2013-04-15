@@ -1,0 +1,36 @@
+
+/dts-v1/;
+
+/include/ "versatilepb.dtsi"
+
+/ {
+	choosen {
+		console = &SERIAL0;
+		rtcdev = &RTC0;
+		bootcmd = /* Copy guest0 device tree from templates */
+			  "devtree node copy /guests guest0 /templates/versatilepb",
+
+			  /* Pass through device access requires host IRQ to guest IRQ routing */
+			  "devtree attr set /guests/guest0/aspace host2guest_irq_map uint32 13 12",
+
+			  /* Update guest0 memory regions */
+			  "devtree attr set /guests/guest0/aspace/mem0 host_physical_addr physaddr 0x02000000",
+			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
+
+			  /* Connect guest0/eth netport to netbridge0 */
+			  "devtree attr set /guests/guest0/aspace/eth switch string netbridge0",
+
+			  /* Make guest0/uart0 pass through device */
+			  "devtree attr set /guests/guest0/aspace/uart0 manifest_type string real",
+			  "devtree attr set /guests/guest0/aspace/uart0 address_type string memory",
+			  "devtree attr set /guests/guest0/aspace/uart0 host_physical_addr physaddr 0x101F2000",
+			  "devtree attr set /guests/guest0/aspace/uart0 device_type string serial",
+
+			  /* Update guest0 flash region */
+			  "devtree attr set /guests/guest0/aspace/nor_flash host_physical_addr physaddr 0x01000000",
+			  "devtree attr set /guests/guest0/aspace/nor_flash physical_size physsize 0x01000000",
+
+			  /* Create guest0 */
+			  "guest create guest0";
+	};
+};

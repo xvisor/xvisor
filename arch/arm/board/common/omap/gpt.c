@@ -101,8 +101,8 @@ int __init gpt_clocksource_init(const char *name,
 	cs->clksrc.rating = 200;
 	cs->clksrc.read = &gpt_clocksource_read;
 	cs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
-	cs->clksrc.mult = vmm_clocksource_khz2mult(gpt_hz/1000, 24);
-	cs->clksrc.shift = 24;
+	vmm_clocks_calc_mult_shift(&cs->clksrc.mult, &cs->clksrc.shift, 
+				   gpt_hz, VMM_NSEC_PER_SEC, 10);
 	cs->clksrc.priv = cs;
 
 	gpt_continuous(cs->gpt_va);
@@ -115,8 +115,7 @@ struct gpt_clockchip {
 	struct vmm_clockchip clkchip;
 };
 
-static vmm_irq_return_t gpt_clockevent_irq_handler(u32 irq_no, 
-						arch_regs_t * regs, void *dev)
+static vmm_irq_return_t gpt_clockevent_irq_handler(u32 irq_no, void *dev)
 {
 	u32 regval;
 	struct gpt_clockchip *tcc = dev;
@@ -128,7 +127,7 @@ static vmm_irq_return_t gpt_clockevent_irq_handler(u32 irq_no,
 	regval &= ~GPT_TCLR_ST_M;
 	gpt_write(tcc->gpt_va, GPT_TCLR, regval);
 
-	tcc->clkchip.event_handler(&tcc->clkchip, regs);
+	tcc->clkchip.event_handler(&tcc->clkchip);
 
 	return VMM_IRQ_HANDLED;
 }
@@ -207,8 +206,8 @@ int __cpuinit gpt_clockchip_init(const char *name,
 	cc->clkchip.rating = 200;
 	cc->clkchip.cpumask = cpu_all_mask;
 	cc->clkchip.features = VMM_CLOCKCHIP_FEAT_ONESHOT;
-	cc->clkchip.mult = vmm_clockchip_hz2mult(gpt_hz, 32);
-	cc->clkchip.shift = 32;
+	vmm_clocks_calc_mult_shift(&cc->clkchip.mult, &cc->clkchip.shift,
+				   VMM_NSEC_PER_SEC, gpt_hz, 10);
 	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &cc->clkchip);
 	cc->clkchip.max_delta_ns = 
 			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);

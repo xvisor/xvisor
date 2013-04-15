@@ -53,49 +53,6 @@ int vmm_blockdev_unregister_client(struct vmm_notifier_block *nb)
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_unregister_client);
 
-int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
-				struct vmm_request *r)
-{
-	int rc;
-	irq_flags_t flags;
-
-	if (!bdev || !r || !bdev->rq) {
-		return VMM_EFAIL;
-	}
-
-	if ((r->type == VMM_REQUEST_WRITE) &&
-	   !(bdev->flags & VMM_BLOCKDEV_RW)) {
-		return VMM_EINVALID;
-	}
-
-	if (bdev->num_blocks < r->bcnt) {
-		return VMM_ERANGE;
-	}
-	if ((r->lba < bdev->start_lba) ||
-	    ((bdev->start_lba + bdev->num_blocks) <= r->lba)) {
-		return VMM_ERANGE;
-	}
-	if ((bdev->start_lba + bdev->num_blocks) < (r->lba + r->bcnt)) {
-		return VMM_ERANGE;
-	}
-
-	if (bdev->rq->make_request) {
-		r->bdev = bdev;
-		vmm_spin_lock_irqsave(&r->bdev->rq->lock, flags);
-		rc = r->bdev->rq->make_request(r->bdev->rq, r);
-		vmm_spin_unlock_irqrestore(&r->bdev->rq->lock, flags);
-		if (rc) {
-			r->bdev = NULL;
-			return rc;
-		}
-	} else {
-		return VMM_EFAIL;
-	}
-
-	return VMM_OK;
-}
-VMM_EXPORT_SYMBOL(vmm_blockdev_submit_request);
-
 int vmm_blockdev_complete_request(struct vmm_request *r)
 {
 	if (!r) {
@@ -126,6 +83,59 @@ int vmm_blockdev_fail_request(struct vmm_request *r)
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_fail_request);
 
+int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
+				struct vmm_request *r)
+{
+	int rc;
+	irq_flags_t flags;
+
+	if (!bdev || !r || !bdev->rq) {
+		rc = VMM_EFAIL;
+		goto failed;
+	}
+
+	if ((r->type == VMM_REQUEST_WRITE) &&
+	   !(bdev->flags & VMM_BLOCKDEV_RW)) {
+		rc = VMM_EINVALID;
+		goto failed;
+	}
+
+	if (bdev->num_blocks < r->bcnt) {
+		rc = VMM_ERANGE;
+		goto failed;
+	}
+	if ((r->lba < bdev->start_lba) ||
+	    ((bdev->start_lba + bdev->num_blocks) <= r->lba)) {
+		rc = VMM_ERANGE;
+		goto failed;
+	}
+	if ((bdev->start_lba + bdev->num_blocks) < (r->lba + r->bcnt)) {
+		rc = VMM_ERANGE;
+		goto failed;
+	}
+
+	if (bdev->rq->make_request) {
+		r->bdev = bdev;
+		vmm_spin_lock_irqsave(&r->bdev->rq->lock, flags);
+		rc = r->bdev->rq->make_request(r->bdev->rq, r);
+		vmm_spin_unlock_irqrestore(&r->bdev->rq->lock, flags);
+		if (rc) {
+			r->bdev = NULL;
+			return rc;
+		}
+	} else {
+		rc = VMM_EFAIL;
+		goto failed;
+	}
+
+	return VMM_OK;
+
+failed:
+	vmm_blockdev_fail_request(r);
+	return rc;
+}
+VMM_EXPORT_SYMBOL(vmm_blockdev_submit_request);
+
 int vmm_blockdev_abort_request(struct vmm_request *r)
 {
 	int rc;
@@ -147,6 +157,28 @@ int vmm_blockdev_abort_request(struct vmm_request *r)
 	return vmm_blockdev_fail_request(r);
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_abort_request);
+
+int vmm_blockdev_flush_cache(struct vmm_blockdev *bdev)
+{
+	int rc;
+	irq_flags_t flags;
+
+	if (!bdev || !bdev->rq) {
+		return VMM_EFAIL;
+	}
+
+	if (bdev->rq->flush_cache) {
+		vmm_spin_lock_irqsave(&bdev->rq->lock, flags);
+		rc = bdev->rq->flush_cache(bdev->rq);
+		vmm_spin_unlock_irqrestore(&bdev->rq->lock, flags);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(vmm_blockdev_flush_cache);
 
 struct blockdev_rw {
 	bool failed;

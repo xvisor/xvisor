@@ -24,6 +24,7 @@
 #ifndef _ARCH_CONFIG_H__
 #define _ARCH_CONFIG_H__
 
-/* For now no optional features implemented. */
+#define ARCH_HAS_MEMCPY
+#define ARCH_HAS_MEMSET
 
 #endif /* _ARCH_CONFIG_H__ */

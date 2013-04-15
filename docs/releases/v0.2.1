@@ -1,0 +1,40 @@
+			Xvisor v0.2.1
+	(Last Commit: 805d6650e6d7be3c0d3f07686cc26fb58d155228)
+		(Release Date: 03-Feb-2013)
+
+In this release, we have new features, drivers and board supports.
+
+New Features/Updates:
+ - Notifier chain support
+ - Light-weight virtual filesystem library
+ - CPIO read-only filesystem support 
+ - Ext2 filesystem support 
+ - FAT filesystem support (EXPERIMENTAL)
+ - lwIP as optional network stack
+ - Removed UIP as optional network stack
+ - Telnet daemon for managment terminal over network
+ - Vstelnet library for telnet access to virtual serial ports
+
+New Drivers:
+ - Samsung Exynos UART driver
+ - Samsung Exynos RTC driver
+
+ARM 32-bit Port:
+ - Added support for Sun4i SOC
+ - Added support for Exynos4 SOC
+ - Improved low-level exception handling for SMP support
+ - Added emulation for implemenation specific CP15 registers
+ - Added support for VExpress-A15 guest on hosts having hardware
+   virtualization support
+
+ARM 32-bit with VE Port:
+ - Added support for generic timers
+ - Create 2MB Stage2 mapping for RAM regions whenever possible 
+ - Added emulation for implemenation specific CP15 registers
+
+x86_64 Port:
+ - Stable HPET support
+ - Initial context switching for Orphan VCPUs (or Threads)
+ - Able to get to Xvisor prompt on QEMU and Real HW but still
+   lacks keyboard support so can't interact
+

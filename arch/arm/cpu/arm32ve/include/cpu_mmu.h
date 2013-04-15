@@ -24,6 +24,7 @@
 #define _CPU_MMU_H__
 
 #include <vmm_types.h>
+#include <vmm_spinlocks.h>
 #include <libs/list.h>
 
 /** LPAE page/block */
@@ -50,11 +51,14 @@ struct cpu_page {
 /** LPAE translation table */
 struct cpu_ttbl {
 	struct dlist head;
-	struct cpu_ttbl * parent;
+	struct cpu_ttbl *parent;
 	int stage;
 	int level;
 	physical_addr_t map_ia;
 	physical_addr_t tbl_pa;
+	vmm_spinlock_t tbl_lock; /*< Lock to protect table contents, 
+				      tte_cnt, child_cnt, and child_list 
+				  */
 	virtual_addr_t tbl_va;
 	u32 tte_cnt;
 	u32 child_cnt;
@@ -67,38 +71,35 @@ u32 cpu_mmu_best_page_size(physical_addr_t ia,
 			   u32 availsz);
 
 /** Get page from a given virtual address */
-int cpu_mmu_get_page(struct cpu_ttbl * ttbl, 
+int cpu_mmu_get_page(struct cpu_ttbl *ttbl, 
 		     physical_addr_t ia, 
-		     struct cpu_page * pg);
+		     struct cpu_page *pg);
 
 /** Unmap a page from given translation table */
-int cpu_mmu_unmap_page(struct cpu_ttbl * ttbl, struct cpu_page * pg);
+int cpu_mmu_unmap_page(struct cpu_ttbl *ttbl, struct cpu_page *pg);
 
 /** Map a page under a given translation table */
-int cpu_mmu_map_page(struct cpu_ttbl * ttbl, struct cpu_page * pg);
+int cpu_mmu_map_page(struct cpu_ttbl *ttbl, struct cpu_page *pg);
 
 /** Get page from a given virtual address */
-int cpu_mmu_get_hypervisor_page(virtual_addr_t va, struct cpu_page * pg);
+int cpu_mmu_get_hypervisor_page(virtual_addr_t va, struct cpu_page *pg);
 
 /** Unmap a page from hypervisor translation table */
-int cpu_mmu_unmap_hypervisor_page(struct cpu_page * pg);
+int cpu_mmu_unmap_hypervisor_page(struct cpu_page *pg);
 
 /** Map a page in hypervisor translation table */
-int cpu_mmu_map_hypervisor_page(struct cpu_page * pg);
+int cpu_mmu_map_hypervisor_page(struct cpu_page *pg);
 
 /** Allocate a new translation table */
 struct cpu_ttbl *cpu_mmu_ttbl_alloc(int stage);
 
 /** Free existing translation table */
-int cpu_mmu_ttbl_free(struct cpu_ttbl * ttbl);
+int cpu_mmu_ttbl_free(struct cpu_ttbl *ttbl);
 
 /** Get child under a parent translation table */
 struct cpu_ttbl *cpu_mmu_ttbl_get_child(struct cpu_ttbl *parent,
 					physical_addr_t map_ia,
 					bool create);
-
-/** Get hypervisor translation table */
-struct cpu_ttbl * cpu_mmu_hypervisor_ttbl(void);
 
 /** Get current stage2 translation table */
 struct cpu_ttbl *cpu_mmu_stage2_curttbl(void);
@@ -107,6 +108,6 @@ struct cpu_ttbl *cpu_mmu_stage2_curttbl(void);
 u8 cpu_mmu_stage2_curvmid(void);
 
 /** Change translation table for stage2 */
-int cpu_mmu_stage2_chttbl(u8 vmid, struct cpu_ttbl * ttbl);
+int cpu_mmu_stage2_chttbl(u8 vmid, struct cpu_ttbl *ttbl);
 
 #endif /* _CPU_MMU_H */

@@ -27,16 +27,19 @@
 
 #include <cpu_defines.h>
 
-	/*
-	 * Xvisor could be loaded any where in memory by boot loaders.
-	 * The _start ensures that Xvisor executes from intended base
-	 * address provided at compile time.
+	/* 
+	 * _start: Primary CPU startup code
+	 * _start_secondary: Secondary CPU startup code
+	 *
+	 * Note: Xvisor could be loaded any where in memory by boot loaders.
+	 * The _start ensures that Xvisor executes from intended base address 
+	 * provided at compile time.
 	 */
 	.section .entry, "ax", %progbits
 	.globl _start
+	.globl _start_secondary
 _start:
-	/*
-	 * r4 -> load start
+	/* r4 -> load start
 	 * r5 -> load end
 	 * r6 -> execution start
 	 * r7 -> execution end
@@ -49,14 +52,6 @@ _start:
 	sub	r2, r7, r6
 	add	r5, r4, r2
 
-#ifdef CONFIG_SMP
-	/* Secondary CPUs directly start mmu setup from here */
-	mrc     p15, 0, r10, c0, c0, 5
-	ands	r10, r10, #0xFF
-	cmp	r10, #0
-	bne	_start_mmu_setup
-#endif
-
 	ldr	r0, __load_start
 	sub	r0, r0, r6
 	add	r0, r0, r4
@@ -65,37 +60,27 @@ _start:
 	sub	r0, r0, r6
 	add	r0, r0, r4
 	str	r5, [r0]
-	/*
-	 * Hang if execution start is not 1 MB aligned
-	 */
+	/* Hang if execution start is not 1 MB aligned */
 	mov	r0, r6
 	mov	r0, r0, lsr #20
 	mov	r0, r0, lsl #20
 	cmp	r0, r6
 	blt	_start_hang
-	/*
-	 * Hang if execution end is not 1 MB aligned
-	 */
+	/* Hang if execution end is not 1 MB aligned */
 	mov	r0, r7
 	mov	r0, r0, lsr #20
 	mov	r0, r0, lsl #20
 	cmp	r0, r7
 	blt	_start_hang
-	/*
-	 * Relocate code if load start is not 1MB aligned
-	 */
+	/* Relocate code if load start is not 1MB aligned */
 	mov	r0, r4
 	mov	r0, r0, lsr #20
 	mov	r0, r0, lsl #20
 	cmp	r0, r4
-	/*
-	 * Skip relocation if already aligned
-	 */
+	/* Skip relocation if already aligned */
 	beq	_start_mmu_init
 
-	/*
-	 * Relocate copy function at end after load end address
-	 */
+	/* Relocate copy function at end after load end address */
 	ldr	r0, __copy_start
 	ldr	r1, __copy_end
 	sub	r2, r1, r0	 /* r2 -> __copy size */
@@ -104,8 +89,8 @@ _start:
 	mov	r1, r5		 /* r1 -> load end */
 	bl	_copy		 /* copy the _copy function after the code */
 
-	/*
-	 * Use newly relocated copy function to relocate entire code to 1MB boundary
+	/* Use newly relocated copy function to relocate entire code
+	 * to 1MB boundary 
 	 */
 	mov	r0, r4		 /* r0 -> load start */
 	mov	r1, r4
@@ -118,9 +103,7 @@ _start_nextpc1:
 	sub	lr, lr, r4	 /* relocated address on return from _copy */
 	add	lr, lr, r1
 	bx	r5		 /* call _copy */
-	/*
-	 * Update load start and load end
-	 */
+	/* Update load start and load end */
 	mov	r0, r4
 	mov	r0, r0, lsr #20
 	mov	r0, r0, lsl #20  /* r0 -> load_start aligned to 1MB boundary */
@@ -135,10 +118,8 @@ _start_nextpc1:
 	sub	r0, r0, r6
 	add	r0, r0, r4
 	str	r5, [r0]
+
 _start_mmu_init:
-	/*
-	 * Clear default Level1 Table
-	 */
 	ldr	r0, __tmpl1_mem
 	sub	r0, r0, r6
 	add	r0, r0, r4
@@ -152,6 +133,7 @@ _start_mmu_init:
 	mov	r2, #0
 	mov	r3, r0
 
+	/* Clear default Level1 Table */
 _start_mmu_tmpl1_clear:
 	str	r2, [r3]
 	add	r3, r3, #4
@@ -159,8 +141,7 @@ _start_mmu_tmpl1_clear:
 	cmp	r1, #0
 	bgt	_start_mmu_tmpl1_clear
 
-	/*
-	 * Create entries in default Level1 Table
+	/* Create entries in default Level1 Table
 	 * for execution & load addresses
 	 */
 	ldr	r3, __mmu_section_attr
@@ -189,37 +170,29 @@ _start_mmu_tmpl1_set:
 	lsl	r4, #20
 	add	r1, r1, #4
 	cmp	r1, r2
-	/* until we have covered the entire code */
 	blt	_start_mmu_tmpl1_set
 
-_start_mmu_setup:
-	ldr	r0, __tmpl1_mem
-
 	/*
-	 * Setup Translation Table Base Register 0
+	 * Secondary CPU startup code 
+	 *
+	 * Note: From this point primary CPU startup is same as secondary CPU
 	 */
+_start_secondary:
+	/* Setup Translation Table Base Register 0 */
+	ldr	r0, __tmpl1_mem
 	mcr	p15, 0, r0, c2, c0, 0
 
-	/*
-	 * Setup Domain Control Register
-	 */
+	/* Setup Domain Control Register */
 	ldr	r1, __dacr_mmu_val
 	mcr	p15, 0, r1, c3, c0, 0
 
-	/*
-	 * Setup System Control Register
-	 */
-	ldr	r1, __sctrl_mmu_val
-	ldr	r2, __sctrl_mmu_clear
-	mrc	p15, 0, r3, c1, c0, 0
-	and	r3, r3, r2
-	orr	r3, r3, r1
-	mcr	p15, 0, r3, c1, c0, 0
+	/* Setup System Control Register */
+	bl	proc_setup
+	mcr	p15, 0, r0, c1, c0, 0
 
-	/*
-	 * Jump to reset code
-	 */
+	/* Jump to reset code */
 	ldr	pc, __reset
+
 _start_hang:
 	b	.
 
@@ -239,10 +212,6 @@ __mmu_section_attr:
 	.word SECTION_ATTR
 __dacr_mmu_val:
 	.word (TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_RESERVED))
-__sctrl_mmu_clear:
-	.word ~(SCTLR_A_MASK | SCTLR_TRE_MASK)
-__sctrl_mmu_val:
-	.word (SCTLR_M_MASK | SCTLR_C_MASK | SCTLR_I_MASK)
 __exec_start:
 	.word _code_start
 __exec_end:
@@ -403,6 +372,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_SUPERVISOR
 	ldr	sp, __svc_stack_end
 #ifdef CONFIG_SMP
+	mrc	p15, 0, r10, c0, c0, 5
+	ands	r10, r10, #0xFF
 	mov	r9, #CONFIG_IRQ_STACK_SIZE
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -411,6 +382,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_UNDEFINED
 	ldr	sp, __und_stack_end
 #ifdef CONFIG_SMP
+	mrc	p15, 0, r10, c0, c0, 5
+	ands	r10, r10, #0xFF
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -419,6 +392,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_ABORT
 	ldr	sp, __abt_stack_end
 #ifdef CONFIG_SMP
+	mrc	p15, 0, r10, c0, c0, 5
+	ands	r10, r10, #0xFF
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -427,6 +402,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_IRQ
 	ldr	sp, __irq_stack_end
 #ifdef CONFIG_SMP
+	mrc	p15, 0, r10, c0, c0, 5
+	ands	r10, r10, #0xFF
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -435,6 +412,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_FIQ
 	ldr	sp, __fiq_stack_end
 #ifdef CONFIG_SMP
+	mrc	p15, 0, r10, c0, c0, 5
+	ands	r10, r10, #0xFF
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9

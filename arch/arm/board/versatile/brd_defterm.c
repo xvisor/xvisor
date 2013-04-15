@@ -23,16 +23,13 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
-#include <vmm_compiler.h>
-#include <vmm_host_aspace.h>
+#include <vmm_devtree.h>
 #include <versatile_board.h>
 #include <drv/pl011.h>
 
-#define	VERSATILE_DEFAULT_UART_BASE			VERSATILE_UART0_BASE
-#define	VERSATILE_DEFAULT_UART_INCLK			24000000
-#define	VERSATILE_DEFAULT_UART_BAUD			115200
-
 static virtual_addr_t versatile_defterm_base;
+static u32 versatile_defterm_inclk;
+static u32 versatile_defterm_baud;
 
 int arch_defterm_putc(u8 ch)
 {
@@ -54,8 +51,42 @@ int arch_defterm_getc(u8 * ch)
 
 int __init arch_defterm_init(void)
 {
-	versatile_defterm_base = vmm_host_iomap(VERSATILE_DEFAULT_UART_BASE, 0x1000);
+	int rc;
+	u32 *val;
+	const char *attr;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_CHOOSEN_NODE_NAME);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	attr = vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
+	if (!attr) {
+		return VMM_ENODEV;
+	}
+   
+	node = vmm_devtree_getnode(attr);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	rc = vmm_devtree_regmap(node, &versatile_defterm_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	rc = vmm_devtree_clock_frequency(node, &versatile_defterm_inclk);
+	if (rc) {
+		return rc;
+	}
+
+	val = vmm_devtree_attrval(node, "baudrate");
+	versatile_defterm_baud = (val) ? *val : 115200;
+
 	pl011_lowlevel_init(versatile_defterm_base,
-			    VERSATILE_DEFAULT_UART_BAUD, VERSATILE_DEFAULT_UART_INCLK);
+			    versatile_defterm_baud, 
+			    versatile_defterm_inclk);
 	return VMM_OK;
 }

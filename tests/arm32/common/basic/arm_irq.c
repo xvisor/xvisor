@@ -85,10 +85,11 @@ void do_fiq(struct pt_regs *uregs)
 void arm_irq_setup(void)
 {
 	extern u32 _start_vect[];
+	int vec;
+#if	!defined(ARM_SECURE_EXTN_IMPLEMENTED)
 	u32 *vectors = (u32 *)NULL;
 	u32 *vectors_data = vectors + CPU_IRQ_NR;
-	int vec;
- 
+
 	/*
 	 * Loop through the vectors we're taking over, and copy the
 	 * vector's insn and data word.
@@ -99,7 +100,7 @@ void arm_irq_setup(void)
 	}
 
 	/*
-	 * Check if verctors are set properly
+	 * Check if vectors are set properly
 	 */
 	for (vec = 0; vec < CPU_IRQ_NR; vec++) {
 		if ((vectors[vec] != _start_vect[vec]) ||
@@ -108,6 +109,11 @@ void arm_irq_setup(void)
 			while(1);
 		}
 	}
+#else
+	/* Security extensions implemented */
+	/* Write VBAR */
+	asm volatile("mcr p15, 0, %0, c12, c0, 0"::"r"(_start_vect):"memory", "cc"); 
+#endif
 
 	/*
 	 * Reset irq handlers
@@ -139,7 +145,7 @@ void arm_irq_register(u32 irq, arm_irq_handler_t hndl)
 	}
 }
 
-#ifdef ARM_ARCH_v5
+#if defined(ARM_ARCH_v5)
 
 void arm_irq_enable(void)
 {
@@ -186,23 +192,44 @@ void arm_irq_wfi()
 			:"=r" (reg_r0), "=r" (reg_r1), "=r" (reg_r2), "=r" (reg_r3), "=r" (reg_ip)::"memory", "cc" );
 }
 
-#endif
-
-#ifdef ARM_ARCH_v7
+#elif defined(ARM_ARCH_v6)
 
 void arm_irq_enable(void)
 {
-	__asm( "cpsie if" );
+	asm volatile ( "cpsie if" );
 }
 
 void arm_irq_disable(void)
 {
-	__asm( "cpsid if" );
+	asm volatile ( "cpsid if" );
 }
 
 void arm_irq_wfi(void)
 {
-	__asm ("wfi\n");
+	unsigned long _tr0; 
+
+	asm volatile (
+		"mov	%0, #0\n" 
+		"mcr	p15, 0, %0, c7, c10, 4	@ DWB - WFI may enter a low-power mode\n"
+		"mcr	p15, 0, %0, c7, c0, 4	@ wait for interrupt\n"
+		:"=r" (_tr0)::"memory", "cc" );
+}
+
+#else
+
+void arm_irq_enable(void)
+{
+	asm volatile ( "cpsie if" );
+}
+
+void arm_irq_disable(void)
+{
+	asm volatile ( "cpsid if" );
+}
+
+void arm_irq_wfi(void)
+{
+	asm volatile ("wfi\n");
 }
 
 #endif

@@ -366,8 +366,7 @@ int mptimer_state_reset(struct mptimer_state *mpt)
 {
 	int i;
 
-	for(i=0; i<(2 * mpt->num_cpu); i++)
-	{
+	for (i=0; i < (2 * mpt->num_cpu); i++) {
 		struct timer_block *timer = &(mpt->timers[i]);
 
 		vmm_spin_lock(&timer->lock);
@@ -395,7 +394,6 @@ int mptimer_state_free(struct mptimer_state *s)
 		if (s->timers) {
 			vmm_free(s->timers);
 		}
-
 		vmm_free(s);
 	}
 	return rc;
@@ -406,33 +404,30 @@ struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 					  struct vmm_emudev *edev, 
 					  u32 num_cpu,
 					  u32 periphclk,
-					  u32 irq[])
+					  u32 timer_irq, u32 wdt_irq)
 {
 	struct mptimer_state *s = NULL;
 	int i;
 
-	s = vmm_malloc(sizeof(struct mptimer_state));
+	s = vmm_zalloc(sizeof(struct mptimer_state));
 	if (!s) {
 		goto mptimer_state_alloc_done;
 	}
-	memset(s, 0x0, sizeof(struct mptimer_state));
 
 	s->guest = guest;
 	s->num_cpu = num_cpu;
 	s->ref_freq = periphclk; 
 
-	s->timers = vmm_malloc(NUM_TIMERS_PER_CPU * s->num_cpu * 
+	s->timers = vmm_zalloc(NUM_TIMERS_PER_CPU * s->num_cpu * 
 			       sizeof(struct timer_block));
 	if (!s->timers) {
 		goto mptimer_timerblock_alloc_failed;
 	}
-	memset(s->timers, 0x0, NUM_TIMERS_PER_CPU * s->num_cpu * 
-		   sizeof(struct timer_block));
 
 	/* Init the timer blocks */
-	for(i=0; i<(NUM_TIMERS_PER_CPU * num_cpu); i++) {
+	for(i=0; i < (NUM_TIMERS_PER_CPU * num_cpu); i++) {
 		s->timers[i].mptimer = s;
-		s->timers[i].irq = irq[i & 0x1];
+		s->timers[i].irq = (i & 0x1) ? wdt_irq : timer_irq;
 		s->timers[i].cpu = (i >> 1);
 		s->timers[i].is_wdt = (i & 0x1);
 		INIT_SPIN_LOCK(&(s->timers[i].lock));

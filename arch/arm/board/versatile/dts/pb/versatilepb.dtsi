@@ -1,0 +1,112 @@
+
+/ {
+	vmm {
+		net {
+			netbridge0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	host {
+		model = "versatilepb";
+		device_type = "host";
+		
+		cpus {
+			cpu0 {
+				device_type = "cpu";
+				model = "ARM926ej";
+			};
+		};
+
+		memory {
+			physical_addr = <0x00000000>;
+			physical_size = <0x10000000>; /* 256 MB */
+		};
+
+		motherboard {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "simple-bus";
+
+			eth0 {
+				device_type = "nic";
+				compatible = "smc91x";
+				reg = <0x10010000 0x1000>;
+				interrupts = <25>;
+				switch = "netbridge0";
+			};
+
+			amba {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				compatible = "arm,amba-bus";
+
+				sysreg { /* System Registers */
+			      		device_type = "sys";
+			      		compatible = "arm,versatile-sysreg";
+			      		reg = <0x10000000 0x1000>;
+				};
+
+				sic { /* Secondary Interrupt Controller */
+					device_type = "pic";
+					compatible = "arm,versatile-sic";
+					reg = <0x10003000 0x1000>;
+					interrupts = <31>; /* Cascaded to vic */
+				};
+
+				vic { /* Vectored Interrupt Controller */
+					device_type = "pic";
+					compatible = "arm,versatile-vic";
+					reg = <0x10140000 0x1000>;
+				};
+
+				sysctl { /* System Controller */
+			      		device_type = "sys";
+			      		compatible = "arm,versatile-sctl";
+			      		reg = <0x101E0000 0x1000>;
+				};
+
+				timer01 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x101E2000 0x1000>;
+					interrupts = <4>;
+				};
+
+				timer23 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x101E3000 0x1000>;
+					interrupts = <5>;
+				};
+
+				SERIAL0: uart0 {
+			      		device_type = "serial";
+			      		compatible = "arm,pl011";
+			      		reg = <0x101F1000 0x1000>;
+			      		baudrate = <115200>;
+					clock-frequency = <24000000>;
+					interrupts = <12>;
+				};
+
+				RTC0: rtc0 {
+					device_type = "rtc";
+					compatible = "arm,pl031";
+					reg = <0x101E8000 0x1000>;
+					clock-frequency = <1>;
+					interrupts = <10>;
+				};
+			};
+		};
+	};
+
+	/* Empty guests node */
+	guests {
+	};
+};
+
+/* Add guest templates */
+/include/ "../../../common/guests/versatilepb.dtsi"
+

@@ -33,5 +33,23 @@
 			physical_size = <0x10000000>; /* 256 MB */
 		};
 
+		sfrregion {
+			eth0 {
+				device_type = "nic";
+				compatible = "smc911x";
+				reg = <0x05000000 0x1000>;
+				interrupts = <53>;
+				switch = "netbridge0";
+			};
+		};
+	};
+
+	/* Empty guests node */
+	guests {
 	};
 };
+
+/* Add guest templates */
+/include/ "../../../common/guests/realview-pb-a8.dtsi"
+/include/ "../../../common/guests/vexpress-a9x2.dtsi"
+

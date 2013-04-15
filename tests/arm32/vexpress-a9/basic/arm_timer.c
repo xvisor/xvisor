@@ -26,7 +26,6 @@
 #include <arm_io.h>
 #include <arm_irq.h>
 #include <arm_math.h>
-#include <arm_config.h>
 #include <arm_plat.h>
 #include <arm_timer.h>
 

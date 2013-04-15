@@ -44,8 +44,13 @@ static inline int arch_host_irq_init(void)
 
 	if (!cpu) {
 		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-					   VMM_DEVTREE_HOSTINFO_NODE_NAME
-					   VMM_DEVTREE_PATH_SEPARATOR_STRING "gic");
+					   VMM_DEVTREE_HOSTINFO_NODE_NAME);
+		if (!node) {
+			return VMM_ENODEV;
+		}
+
+		node = vmm_devtree_find_compatible(node, NULL, 
+						   "arm,cortex-a9-gic");
 		if (!node) {
 			return VMM_ENODEV;
 		}

@@ -24,6 +24,53 @@
 #define _ARM_PLAT_H__
 
 /*
+ * Peripheral addresses
+ */
+#define REALVIEW_UART0_BASE		0x10009000	/* UART 0 */
+#define REALVIEW_UART1_BASE		0x1000A000	/* UART 1 */
+#define REALVIEW_UART2_BASE		0x1000B000	/* UART 2 */
+#define REALVIEW_UART3_BASE		0x1000C000	/* UART 3 */
+#define REALVIEW_SSP_BASE		0x1000D000	/* Synchronous Serial Port */
+#define REALVIEW_WATCHDOG0_BASE		0x1000F000	/* Watchdog 0 */
+#define REALVIEW_WATCHDOG_BASE		0x10010000	/* watchdog interface */
+#define REALVIEW_TIMER0_1_BASE		0x10011000	/* Timer 0 and 1 */
+#define REALVIEW_TIMER2_3_BASE		0x10012000	/* Timer 2 and 3 */
+#define REALVIEW_GPIO0_BASE		0x10013000	/* GPIO port 0 */
+#define REALVIEW_RTC_BASE		0x10017000	/* Real Time Clock */
+#define REALVIEW_TIMER4_5_BASE		0x10018000	/* Timer 4/5 */
+#define REALVIEW_TIMER6_7_BASE		0x10019000	/* Timer 6/7 */
+#define REALVIEW_SCTL_BASE		0x1001A000	/* System Controller */
+#define REALVIEW_CLCD_BASE		0x10020000	/* CLCD */
+#define REALVIEW_ONB_SRAM_BASE		0x10060000	/* On-board SRAM */
+#define REALVIEW_DMC_BASE		0x100E0000	/* DMC configuration */
+#define REALVIEW_SMC_BASE		0x100E1000	/* SMC configuration */
+#define REALVIEW_CAN_BASE		0x100E2000	/* CAN bus */
+#define REALVIEW_GIC_CPU_BASE		0x1E000000	/* Generic interrupt controller CPU interface */
+#define REALVIEW_FLASH0_BASE		0x40000000
+#define REALVIEW_FLASH0_SIZE		SZ_64M
+#define REALVIEW_FLASH1_BASE		0x44000000
+#define REALVIEW_FLASH1_SIZE		SZ_64M
+#define REALVIEW_ETH_BASE		0x4E000000	/* Ethernet */
+#define REALVIEW_USB_BASE		0x4F000000	/* USB */
+#define REALVIEW_GIC_DIST_BASE		0x1E001000	/* Generic interrupt controller distributor */
+#define REALVIEW_LT_BASE		0xC0000000	/* Logic Tile expansion */
+#define REALVIEW_SDRAM6_BASE		0x70000000	/* SDRAM bank 6 256MB */
+#define REALVIEW_SDRAM7_BASE		0x80000000	/* SDRAM bank 7 256MB */
+
+#define REALVIEW_SYS_PLD_CTRL1		0x74
+
+/*
+ * PCI regions
+ */
+#define REALVIEW_PCI_BASE		0x90040000	/* PCI-X Unit base */
+#define REALVIEW_PCI_IO_BASE		0x90050000	/* IO Region on AHB */
+#define REALVIEW_PCI_MEM_BASE		0xA0000000	/* MEM Region on AHB */
+
+#define REALVIEW_PCI_BASE_SIZE		0x10000	/* 16 Kb */
+#define REALVIEW_PCI_IO_SIZE		0x1000	/* 4 Kb */
+#define REALVIEW_PCI_MEM_SIZE		0x20000000	/* 512 MB */
+
+/*
  * Memory definitions
  */
 #define REALVIEW_BOOT_ROM_LO          0x30000000	/* DoC Base (64Mb)... */
@@ -43,6 +90,61 @@
  *  Logic expansion modules
  * 
  */
+#define IRQ_PBA8_GIC_START			32
+
+/*
+ * PB-A8 on-board gic irq sources
+ */
+#define IRQ_PBA8_WATCHDOG	(IRQ_PBA8_GIC_START + 0)	/* Watchdog timer */
+#define IRQ_PBA8_SOFT		(IRQ_PBA8_GIC_START + 1)	/* Software interrupt */
+#define IRQ_PBA8_COMMRx		(IRQ_PBA8_GIC_START + 2)	/* Debug Comm Rx interrupt */
+#define IRQ_PBA8_COMMTx		(IRQ_PBA8_GIC_START + 3)	/* Debug Comm Tx interrupt */
+#define IRQ_PBA8_TIMER0_1	(IRQ_PBA8_GIC_START + 4)	/* Timer 0/1 (default timer) */
+#define IRQ_PBA8_TIMER2_3	(IRQ_PBA8_GIC_START + 5)	/* Timer 2/3 */
+#define IRQ_PBA8_GPIO0		(IRQ_PBA8_GIC_START + 6)	/* GPIO 0 */
+#define IRQ_PBA8_GPIO1		(IRQ_PBA8_GIC_START + 7)	/* GPIO 1 */
+#define IRQ_PBA8_GPIO2		(IRQ_PBA8_GIC_START + 8)	/* GPIO 2 */
+								/* 9 reserved */
+#define IRQ_PBA8_RTC		(IRQ_PBA8_GIC_START + 10)	/* Real Time Clock */
+#define IRQ_PBA8_SSP		(IRQ_PBA8_GIC_START + 11)	/* Synchronous Serial Port */
+#define IRQ_PBA8_UART0		(IRQ_PBA8_GIC_START + 12)	/* UART 0 on development chip */
+#define IRQ_PBA8_UART1		(IRQ_PBA8_GIC_START + 13)	/* UART 1 on development chip */
+#define IRQ_PBA8_UART2		(IRQ_PBA8_GIC_START + 14)	/* UART 2 on development chip */
+#define IRQ_PBA8_UART3		(IRQ_PBA8_GIC_START + 15)	/* UART 3 on development chip */
+#define IRQ_PBA8_SCI		(IRQ_PBA8_GIC_START + 16)	/* Smart Card Interface */
+#define IRQ_PBA8_MMCI0A		(IRQ_PBA8_GIC_START + 17)	/* Multimedia Card 0A */
+#define IRQ_PBA8_MMCI0B		(IRQ_PBA8_GIC_START + 18)	/* Multimedia Card 0B */
+#define IRQ_PBA8_AACI		(IRQ_PBA8_GIC_START + 19)	/* Audio Codec */
+#define IRQ_PBA8_KMI0		(IRQ_PBA8_GIC_START + 20)	/* Keyboard/Mouse port 0 */
+#define IRQ_PBA8_KMI1		(IRQ_PBA8_GIC_START + 21)	/* Keyboard/Mouse port 1 */
+#define IRQ_PBA8_CHARLCD	(IRQ_PBA8_GIC_START + 22)	/* Character LCD */
+#define IRQ_PBA8_CLCD		(IRQ_PBA8_GIC_START + 23)	/* CLCD controller */
+#define IRQ_PBA8_DMAC		(IRQ_PBA8_GIC_START + 24)	/* DMA controller */
+#define IRQ_PBA8_PWRFAIL	(IRQ_PBA8_GIC_START + 25)	/* Power failure */
+#define IRQ_PBA8_PISMO		(IRQ_PBA8_GIC_START + 26)	/* PISMO interface */
+#define IRQ_PBA8_DoC		(IRQ_PBA8_GIC_START + 27)	/* Disk on Chip memory controller */
+#define IRQ_PBA8_ETH		(IRQ_PBA8_GIC_START + 28)	/* Ethernet controller */
+#define IRQ_PBA8_USB		(IRQ_PBA8_GIC_START + 29)	/* USB controller */
+#define IRQ_PBA8_TSPEN		(IRQ_PBA8_GIC_START + 30)	/* Touchscreen pen */
+#define IRQ_PBA8_TSKPAD		(IRQ_PBA8_GIC_START + 31)	/* Touchscreen keypad */
+
+#define IRQ_PBA8_PMU		(IRQ_PBA8_GIC_START + 47)	/* Cortex-A8 PMU */
+
+/* ... */
+#define IRQ_PBA8_PCI0		(IRQ_PBA8_GIC_START + 50)
+#define IRQ_PBA8_PCI1		(IRQ_PBA8_GIC_START + 51)
+#define IRQ_PBA8_PCI2		(IRQ_PBA8_GIC_START + 52)
+#define IRQ_PBA8_PCI3		(IRQ_PBA8_GIC_START + 53)
+
+#define IRQ_PBA8_SMC		-1
+#define IRQ_PBA8_SCTL		-1
+
+#define NR_GIC_PBA8		1
+
+/*
+ * Only define NR_IRQS if less than NR_IRQS_PBA8
+ */
+#define NR_IRQS_PBA8		(IRQ_PBA8_GIC_START + 64)
 
 /* ------------------------------------------------------------------------
  *  RealView Registers
@@ -120,16 +222,6 @@
 #define REALVIEW_SYS_TEST_OSC3               (REALVIEW_SYS_BASE + REALVIEW_SYS_TEST_OSC3_OFFSET)
 #define REALVIEW_SYS_TEST_OSC4               (REALVIEW_SYS_BASE + REALVIEW_SYS_TEST_OSC4_OFFSET)
 
-/* 
- * Values for REALVIEW_SYS_RESET_CTRL
- */
-#define REALVIEW_SYS_CTRL_RESET_CONFIGCLR    0x01
-#define REALVIEW_SYS_CTRL_RESET_CONFIGINIT   0x02
-#define REALVIEW_SYS_CTRL_RESET_DLLRESET     0x03
-#define REALVIEW_SYS_CTRL_RESET_PLLRESET     0x04
-#define REALVIEW_SYS_CTRL_RESET_POR          0x05
-#define REALVIEW_SYS_CTRL_RESET_DoC          0x06
-
 #define REALVIEW_SYS_CTRL_LED         (1 << 0)
 
 /* ------------------------------------------------------------------------
@@ -171,55 +263,6 @@
 						/* write 1 to acknowledge and clear               */
 #define REALVIEW_INTREG_RI1          0x02	/* Ring indicator UART1 is asserted,              */
 #define REALVIEW_INTREG_CARDINSERT   0x03	/* Signal insertion of MMC card                   */
-
-/*
- * RealView common peripheral addresses
- */
-#define REALVIEW_SCTL_BASE            0x10001000	/* System controller */
-#define REALVIEW_I2C_BASE             0x10002000	/* I2C control */
-#define REALVIEW_AACI_BASE            0x10004000	/* Audio */
-#define REALVIEW_MMCI0_BASE           0x10005000	/* MMC interface */
-#define REALVIEW_KMI0_BASE            0x10006000	/* KMI interface */
-#define REALVIEW_KMI1_BASE            0x10007000	/* KMI 2nd interface */
-#define REALVIEW_CHAR_LCD_BASE        0x10008000	/* Character LCD */
-#define REALVIEW_SCI_BASE             0x1000E000	/* Smart card controller */
-#define REALVIEW_GPIO1_BASE           0x10014000	/* GPIO port 1 */
-#define REALVIEW_GPIO2_BASE           0x10015000	/* GPIO port 2 */
-#define REALVIEW_DMC_BASE             0x10018000	/* DMC configuration */
-#define REALVIEW_DMAC_BASE            0x10030000	/* DMA controller */
-
-/* PCI space */
-#define REALVIEW_PCI_BASE             0x41000000	/* PCI Interface */
-#define REALVIEW_PCI_CFG_BASE	      0x42000000
-#define REALVIEW_PCI_MEM_BASE0        0x44000000
-#define REALVIEW_PCI_MEM_BASE1        0x50000000
-#define REALVIEW_PCI_MEM_BASE2        0x60000000
-/* Sizes of above maps */
-#define REALVIEW_PCI_BASE_SIZE	       0x01000000
-#define REALVIEW_PCI_CFG_BASE_SIZE    0x02000000
-#define REALVIEW_PCI_MEM_BASE0_SIZE   0x0c000000	/* 32Mb */
-#define REALVIEW_PCI_MEM_BASE1_SIZE   0x10000000	/* 256Mb */
-#define REALVIEW_PCI_MEM_BASE2_SIZE   0x10000000	/* 256Mb */
-
-#define REALVIEW_SDRAM67_BASE         0x70000000	/* SDRAM banks 6 and 7 */
-#define REALVIEW_LT_BASE              0x80000000	/* Logic Tile expansion */
-
-/*
- * CompactFlash
- */
-#define REALVIEW_CF_BASE		0x18000000	/* CompactFlash */
-#define REALVIEW_CF_MEM_BASE		0x18003000	/* SMC for CompactFlash */
-
-/*
- * Disk on Chip
- */
-#define REALVIEW_DOC_BASE             0x2C000000
-#define REALVIEW_DOC_SIZE             (16 << 20)
-#define REALVIEW_DOC_PAGE_SIZE        512
-#define REALVIEW_DOC_TOTAL_PAGES     (DOC_SIZE / PAGE_SIZE)
-
-#define ERASE_UNIT_PAGES    32
-#define START_PAGE          0x80
 
 /* 
  *  LED settings, bits [7:0]

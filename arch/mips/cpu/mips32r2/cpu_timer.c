@@ -95,7 +95,7 @@ static DEFINE_PER_CPU(struct vmm_clockchip, mcc);
 
 s32 handle_internal_timer_interrupt(arch_regs_t *uregs)
 {
-	mips_cc.event_handler(&mips_cc, uregs);
+	mips_cc.event_handler(&mips_cc);
 	return 0;
 }
 

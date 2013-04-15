@@ -270,14 +270,12 @@ int __init hpet_init(void)
 	return VMM_OK;
 }
 
-static vmm_irq_return_t hpet_clockchip_irq_handler(u32 irq_no,
-						   arch_regs_t * regs,
-						   void *dev)
+static vmm_irq_return_t hpet_clockchip_irq_handler(u32 irq_no, void *dev)
 {
 	struct hpet_timer *timer = (struct hpet_timer *)dev;
 
 	/* call the event handler */
-	timer->clkchip.event_handler(&timer->clkchip, regs);
+	timer->clkchip.event_handler(&timer->clkchip);
 
 	return VMM_IRQ_HANDLED;
 }

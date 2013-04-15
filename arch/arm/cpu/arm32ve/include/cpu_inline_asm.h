@@ -636,5 +636,14 @@
 				:: "r" ((val) & 0xFFFFFFFF), "r" ((val) >> 32) \
 				: "memory", "cc")
 
+#define read_cntvct()		({ u32 v1, v2; asm volatile(\
+				" mrrc     p15, 1, %0, %1, c14\n\t" \
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
+
 #endif
+
+#define cpu_supports_securex()	({ u32 pfr1; asm volatile("mrc p15, 0, %0, c0, c1, 1": "=r"(pfr1)); \
+					(pfr1 & ID_PFR1_SECUREX_MASK); })
+
 #endif

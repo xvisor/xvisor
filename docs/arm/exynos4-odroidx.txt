@@ -1,0 +1,110 @@
+	Xvisor on ODroid-X using SD Booting
+
+This section of the readme explains how to build & run Xvisor on an actual
+ODroid-X development board, using the SD card for booting.
+
+By default, Xvisor for Exynos4 supports Realview-PB-A8 guests, so we will show
+how to run Linux on a Realview-PB-A8 guest. 
+
+For booting from SD card we first need to install the first and second level
+bootloader as well as u-boot to the SD card. For a detailed instruction on how
+to do that, refer to http://com.odroid.com/sigong/blog/blog_list.php?bid=130
+
+Once we have the SD card prepared for SD booting, we add the uImages to the VFAT
+partition (partition 2).
+
+The following section describes the steps on how to create this uImage and boot
+it on the ODroid-X. Keep in mind that all following commands have to be executed
+from the same shell, otherwise you have to set toolchain prefix again (step 1):
+
+  [1. Set cross toolchain prefix (can be different)]
+  # export CROSS_COMPILE=arm-none-linux-gnueabi-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Configure Xvisor with ODroid-X host default settings]
+  # make ARCH=arm exynos4412-odroidx-defconfig 
+
+  [4. Build Xvisor]
+  # make
+
+  [5. Build Basic Test Code]
+  # make -C tests/arm32/realview-pb-a8/basic
+
+  [6. Copy defconfig to Linux build directory]
+  # cp tests/arm32/realview-pb-a8/linux/linux-<linux_version>_realview_pba8_defconfig <linux_build_directory>/.config
+
+  [7. GoTo Linux source directory]
+  # cd <linux_source_directory>
+
+  [8. Configure Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm oldconfig
+
+  [9. Build Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm zImage
+
+  [10. Patch Linux kernel to replace sensitive non-priviledged instructions]
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
+
+  [11. Build Linux in build directory to reflect changes in kernel image]
+  # make O=<linux_build_directory> ARCH=arm zImage
+
+  [12. Patch Linux compressed kernel to replace sensitive non-priviledged instructions]
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/arch/arm/boot/compressed/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/arch/arm/boot/compressed/vmlinux 0
+
+  [13. Create final compressed kernel image]
+  # $(CROSS_COMPILE)objcopy -O binary <linux_build_directory>/arch/arm/boot/compressed/vmlinux <linux_build_directory>/arch/arm/boot/zImage
+
+  [14. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
+  (Note: Please refer tests/arm32/common/busybox-1.19.2/README for creating rootfs.img using BusyBox 1.19.2)
+
+  [15. GoTo XVisor build directory]
+  # cd <xvisor_source_directory>/build
+
+  [16. Make U-Boot compatible uImage, for use with bootm command]
+  # mkimage -A arm -O linux -T kernel -C none -a 0x40010000 -e 0x40010000 -n "Xvisor" -d vmm.bin uImage
+ 
+  [17. Unplug bootable SD card from the ODroid-X and plug it into your development machine]
+
+  [18. Mount the VFAT partition of the SD card on your development machine]
+  # sudo mount /dev/mmcblk0p2 /media/usb
+
+  [19. Copy uImage (and other components) to the mounted partition of the SD card]
+  # cp uImage /media/usb
+  # cp <linux_build_directory>/arch/arm/boot/zImage /media/usb
+  # cp tests/arm32/realview-pb-a8/linux/cmdlist /media/usb
+  # cp tests/arm32/realview-pb-a8/basic/arm_test.bin.patched /media/usb
+  # cp <busybox_rootfs_directory>/rootfs.img /media/usb
+
+  [20. Unmount the partiton from your development machine]
+  # sudo umount /media/usb
+
+  [21. Connect a usb cable to the serial port of the ODroid-X and start your favorite terminal emulator]
+
+  [22. Power-up or Reset the ODroid-X and press any key to interrupt normal boot on U-Boot]
+
+  [23. Copy Xvisor from SD card to SDRAM]
+  ODROIDX# fatload mmc 0:2 0x50000000 uImage
+  ODROIDX# fatload mmc 0:2 0x41000000 arm_test.bin.patched
+  ODROIDX# fatload mmc 0:2 0x410FF000 cmdlist
+  ODROIDX# fatload mmc 0:2 0x41100000 zImage
+  ODROIDX# fatload mmc 0:2 0x41400000 rootfs.img
+
+  [24. Jump into Xvisor after disabling MMU, interrupts, etc]
+  ODROIDX# bootm start 0x50000000
+  ODROIDX# loados
+  ODROIDX# bootm go 0x50000000
+
+  [25. Kick Guest for starting Basic Test]
+  XVisor# guest kick 0
+
+  [26. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [27. Start Linux]
+  [guest0/uart0] arm-test# autoexec
+
+  [28. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] arm-test# 

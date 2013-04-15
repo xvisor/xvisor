@@ -1,0 +1,118 @@
+
+/ {
+	host {
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		model = "exynos4412";
+		device_type = "host";
+
+		cpus {
+			cpu0 {
+				device_type = "cpu";
+				model = "Cortex-A9";
+			};
+
+			cpu1 {
+				device_type = "cpu";
+				model = "Cortex-A9";
+			};
+
+			cpu2 {
+				device_type = "cpu";
+				model = "Cortex-A9";
+			};
+
+			cpu3 {
+				device_type = "cpu";
+				model = "Cortex-A9";
+			};
+		};
+
+		scu { /* Snoop Control Unit */
+			device_type = "scu";
+			compatible = "arm,a9mpcore-priv";
+			reg = <0x10500000 0x1000>;
+		};
+
+		pmu { /* Performance Monitorig Unit */
+			device_type = "pmu";
+			compatible = "arm,a9mpcore-priv";
+			reg = <0x10020000 0x10000>;
+		};
+
+		gic {
+			device_type = "pic";
+			compatible = "arm,cortex-a9-gic";
+			reg = <0x10490000 0x1000 0x10480000 0x100>;
+			irq_start = <16>;
+		};
+
+		mct {
+			device_type = "timer";
+			compatible = "samsung,exynos4210-mct";
+			reg = <0x10050000 0x1000>;
+			clock-frequency = <24000000>;
+			interrupts = <89 74 80>;
+		};
+
+		sfrregion {
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			RTC0: s3c-rtc {
+				device_type = "rtc";
+				compatible = "samsung,s3c6410-rtc";
+				reg = <0x10070000 0x100>;
+				interrupts = <76 77>;
+			};
+
+			SERIAL0: exynos4210-uart.0 {
+				device_type = "serial";
+				compatible = "samsung,exynos4210-uart";
+				reg = <0x13800000 0x100>;
+				baudrate = <115200>;
+				interrupts = <84>;
+			};
+
+			SERIAL1: exynos4210-uart.1 {
+				device_type = "serial";
+				compatible = "samsung,exynos4210-uart";
+				reg = <0x13810000 0x100>;
+				baudrate = <115200>;
+				interrupts = <85>;
+			};
+
+			SERIAL2: exynos4210-uart.2 {
+				device_type = "serial";
+				compatible = "samsung,exynos4210-uart";
+				reg = <0x13820000 0x100>;
+				baudrate = <115200>;
+				interrupts = <86>;
+			};
+
+			SERIAL3: exynos4210-uart.3 {
+				device_type = "serial";
+				compatible = "samsung,exynos4210-uart";
+				reg = <0x13830000 0x100>;
+				baudrate = <115200>;
+				interrupts = <87>;
+			};
+
+			SERIAL4: exynos4210-uart.4 {
+				device_type = "serial";
+				compatible = "samsung,exynos4210-uart";
+				reg = <0x13840000 0x100>;
+				baudrate = <115200>;
+				interrupts = <88>;
+			};
+
+			timer0 {
+				device_type = "timer";
+				compatible = "samsung,exynos4210-PWMtimer";
+				reg = <0x139d0000 0x1000>;
+				interrupts = <69 70 71 72 73>;
+			};
+		};
+	};
+};

@@ -178,22 +178,23 @@ int vmm_cmdmgr_execute_cmd(struct vmm_chardev *cdev, int argc, char **argv)
 	if ((cmd = vmm_cmdmgr_cmd_find(argv[0]))) {
 		/* Found a matching command so execute it. */
 		if ((ret = cmd->exec(cdev, argc, argv))) {
-			vmm_cprintf(cdev, "Error: Command Failed "
-					  "(Code %d)\n", ret);
+			vmm_cprintf(cdev, "Error: command %s failed "
+					  "(code %d)\n", argv[0], ret);
 			return ret;
 		}
 	} else {
 		/* Did not find command. */
-		vmm_cprintf(cdev, "Error: Unknown Command %s\n", argv[0]);
+		vmm_cprintf(cdev, "Error: unknown command %s\n", argv[0]);
 		return VMM_ENOTAVAIL;
 	}
 
 	return VMM_OK;
 }
 
-int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds)
+int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds, 
+	bool (*filter)(struct vmm_chardev *cdev, int argc, char **argv))
 {
-	int argc, cmd_ret;
+	int argc, ret;
 	char *argv[VMM_CMD_ARG_MAXCOUNT];
 	char *c = cmds;
 	bool eos = 0;
@@ -220,9 +221,14 @@ int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds)
 		if ((*c == VMM_CMD_DELIM_CHAR || *c == '\0') && argc > 0) {
 			*c = '\0';
 			c++;
-			cmd_ret = vmm_cmdmgr_execute_cmd(cdev, argc, argv);
-			if (cmd_ret)
-				return cmd_ret;
+			if (filter && filter(cdev, argc, argv)) {
+				vmm_cprintf(cdev, "Error: command %s "
+						  "filtered\n", argv[0]);
+			} else {
+				ret = vmm_cmdmgr_execute_cmd(cdev, argc, argv);
+			}
+			if (ret)
+				return ret;
 			argc = 0;
 			if (eos)
 				break;
@@ -232,9 +238,9 @@ int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds)
 		}
 	}
 	if (argc > 0) {
-		cmd_ret = vmm_cmdmgr_execute_cmd(cdev, argc, argv);
-		if (cmd_ret) {
-			return cmd_ret;
+		ret = vmm_cmdmgr_execute_cmd(cdev, argc, argv);
+		if (ret) {
+			return ret;
 		}
 	}
 	return VMM_OK;

@@ -115,7 +115,7 @@ static void pl031_set_alarm(struct pl031_state *s)
 	}
 }
 
-static int pl031_reg_read(struct pl031_state * s, u32 offset, u32 *dst)
+static int pl031_reg_read(struct pl031_state *s, u32 offset, u32 *dst)
 {
 	int rc = VMM_OK;
 
@@ -159,7 +159,7 @@ static int pl031_reg_read(struct pl031_state * s, u32 offset, u32 *dst)
 	return rc;
 }
 
-static int pl031_reg_write(struct pl031_state * s, u32 offset, 
+static int pl031_reg_write(struct pl031_state *s, u32 offset, 
 			   u32 src_mask, u32 src)
 {
 	int rc = VMM_OK;
@@ -213,7 +213,7 @@ static int pl031_emulator_read(struct vmm_emudev *edev,
 {
 	int rc = VMM_OK;
 	u32 regval = 0x0;
-	struct pl031_state * s = edev->priv;
+	struct pl031_state *s = edev->priv;
 
 	rc = pl031_reg_read(s, offset & ~0x3, &regval);
 
@@ -244,7 +244,7 @@ static int pl031_emulator_write(struct vmm_emudev *edev,
 {
 	int i;
 	u32 regmask = 0x0, regval = 0x0;
-	struct pl031_state * s = edev->priv;
+	struct pl031_state *s = edev->priv;
 
 	switch (src_len) {
 	case 1:
@@ -274,54 +274,52 @@ static int pl031_emulator_write(struct vmm_emudev *edev,
 
 static int pl031_emulator_reset(struct vmm_emudev *edev)
 {
-	struct pl031_state * s = edev->priv;
+	struct pl031_state *s = edev->priv;
+	struct vmm_timeval tv;
+	struct vmm_timezone tz;
+	int rc = VMM_OK;
 
 	vmm_spin_lock(&s->lock);
+
+	if ((rc = vmm_wallclock_get_timeofday(&tv, &tz))) {
+		goto pl031_emulator_reset_done;
+	}
+        s->tick_offset = (u32)(tv.tv_sec - (tz.tz_minuteswest * 60));
+	s->tick_tstamp = vmm_timer_timestamp();
 
 	vmm_timer_event_stop(&s->event);
 	s->im = 0;
 	pl031_update(s);
 
+pl031_emulator_reset_done:
+
 	vmm_spin_unlock(&s->lock);
 
-	return VMM_OK;
+	return rc;
 }
 
 static int pl031_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
-				const struct vmm_emuid *eid)
+				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
-	const char *attr;
-	struct vmm_timeval tv;
-	struct vmm_timezone tz;
-	struct pl031_state * s;
+	struct pl031_state *s;
 
-	s = vmm_malloc(sizeof(struct pl031_state));
+	s = vmm_zalloc(sizeof(struct pl031_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto pl031_emulator_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct pl031_state));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
-	attr = vmm_devtree_attrval(edev->node, "irq");
-	if (attr) {
-		s->irq = *((u32 *)attr);
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+	if (rc) {
 		goto pl031_emulator_probe_freestate_fail;
 	}
 
 	INIT_TIMER_EVENT(&s->event, &pl031_timer_event, s);
-
-	if ((rc = vmm_wallclock_get_timeofday(&tv, &tz))) {
-		goto pl031_emulator_probe_freestate_fail;
-	}
-        s->tick_offset = (u32)(tv.tv_sec - (tz.tz_minuteswest * 60));
-	s->tick_tstamp = vmm_timer_timestamp();
 
 	edev->priv = s;
 
@@ -335,7 +333,7 @@ pl031_emulator_probe_done:
 
 static int pl031_emulator_remove(struct vmm_emudev *edev)
 {
-	struct pl031_state * s = edev->priv;
+	struct pl031_state *s = edev->priv;
 
 	if (s) {
 		vmm_free(s);
@@ -345,7 +343,7 @@ static int pl031_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static struct vmm_emuid pl031_emuid_table[] = {
+static struct vmm_devtree_nodeid pl031_emuid_table[] = {
 	{ .type = "rtc", 
 	  .compatible = "primecell,pl031", 
 	  .data = NULL,

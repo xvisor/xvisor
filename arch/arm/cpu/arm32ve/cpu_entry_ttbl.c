@@ -23,7 +23,6 @@
 
 #include <vmm_types.h>
 #include <cpu_defines.h>
-#include <cpu_inline_asm.h>
 
 extern u8 def_ttbl[];
 extern int def_ttbl_tree[];
@@ -45,13 +44,6 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	u32 ttbl_count;
 	u64 *ttbl, *nttbl;
 	virtual_addr_t ttbl_base, page_addr;
-	physical_addr_t pa;
-
-	/* Initialize HMAIR0 and HMAIR1 for using caching 
-	 * attributes via attrindex of each page
-	 */
-	write_hmair0(HMAIR0_INITVAL);
-	write_hmair1(HMAIR0_INITVAL);
 
 	ttbl = NULL;
 	ttbl_base = to_load_pa((virtual_addr_t)&def_ttbl);
@@ -139,6 +131,8 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 			}
 			ttbl[index] |= TTBL_STAGE1_LOWER_AF_MASK;
 			ttbl[index] |= (TTBL_AP_SRW_U << TTBL_STAGE1_LOWER_AP_SHIFT);
+			ttbl[index] |= (0x1 << TTBL_STAGE1_LOWER_NS_SHIFT) &
+							TTBL_STAGE1_LOWER_NS_MASK;
 			ttbl[index] |= (AINDEX_NORMAL_WB << TTBL_STAGE1_LOWER_AINDEX_SHIFT) & 
 							TTBL_STAGE1_LOWER_AINDEX_MASK;
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
@@ -147,20 +141,4 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 		/* Point to next page */
 		page_addr += TTBL_L3_BLOCK_SIZE;
 	}
-
-	/* Setup Hypervisor Translation Control Register */
-	i = read_htcr();
-	i &= ~HTCR_T0SZ_MASK; /* Ensure T0SZ = 0 */
-	write_htcr(i);
-
-	/* Setup Hypervisor Translation Table Base Register */
-	/* Note: if MMU is disabled then va = pa */
-	pa = to_load_pa((virtual_addr_t)&def_ttbl);;
-	pa &= HTTBR_BADDR_MASK;
-	write_httbr(pa);
-
-	/* Setup Hypervisor Virtual Translation Control Register */
-	i = read_vtcr();
-	i |= (0x1 << VTCR_SL0_SHIFT) & VTCR_SL0_MASK;
-	write_vtcr(i);
 }

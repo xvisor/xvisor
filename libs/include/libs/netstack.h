@@ -26,6 +26,12 @@
 
 #include <vmm_types.h>
 #include <vmm_error.h>
+#include <net/vmm_mbuf.h>
+#include <net/vmm_net.h>
+#include <net/vmm_netport.h>
+#include <net/vmm_netswitch.h>
+
+#define NETSTACK_IPRIORITY		(VMM_NET_CLASS_IPRIORITY + 1)
 
 /**
  * Structure containing the ICMP_ECHO_REPLY parameters
@@ -148,13 +154,6 @@ void netstack_prefetch_arp_mapping(u8 *ipaddr);
 struct netstack_socket *netstack_socket_alloc(enum netstack_socket_type type);
 
 /**
- *  Free or destroy a socket.
- * 
- *  @sk - pointer to socket
- */
-void netstack_socket_free(struct netstack_socket *sk);
-
-/**
  *  Bind a socket with a port number.
  *
  *  @sk - pointer to socket
@@ -181,7 +180,7 @@ int netstack_socket_bind(struct netstack_socket *sk, u8 *ipaddr, u16 port);
 int netstack_socket_connect(struct netstack_socket *sk, u8 *ipaddr, u16 port);
 
 /**
- *  Disconnect a socket from remote host. 
+ *  Disconnect a socket from remote host
  *
  *  @sk - pointer to socket
  *
@@ -217,6 +216,8 @@ int netstack_socket_accept(struct netstack_socket *sk,
 
 /**
  *  Close a listening socket.
+ *  OR
+ *  Close an accepted socket.
  *
  *  @sk - pointer to socket
  *
@@ -227,17 +228,28 @@ int netstack_socket_accept(struct netstack_socket *sk,
 int netstack_socket_close(struct netstack_socket *sk);
 
 /**
+ *  Free alloced socket
+ *  OR
+ *  Free accepted socket.
+ * 
+ *  @sk - pointer to socket
+ */
+void netstack_socket_free(struct netstack_socket *sk);
+
+/**
  *  Recieve data from a socket to socket buffer.
  *
  *  @sk - pointer to socket
  *  @buf - pointer to socket buffer
+ *  @timeout - timeout in milliseconds (<=0 means wait forever)
  *
  *  returns 
  *    VMM_OK - success
  *    VMM_Exxxx - failure
  */
 int netstack_socket_recv(struct netstack_socket *sk, 
-			   struct netstack_socket_buf *buf);
+			 struct netstack_socket_buf *buf,
+			 int timeout);
 
 /**
  *  Traverse chain of socket buffer.
@@ -246,6 +258,7 @@ int netstack_socket_recv(struct netstack_socket *sk,
  *
  *  returns 
  *    VMM_OK - success
+ *    VMM_ETIMEDOUT - upon receive timeout
  *    VMM_Exxxx - failure (this is no futher buffers)
  */
 int netstack_socket_nextbuf(struct netstack_socket_buf *buf);

@@ -29,10 +29,10 @@
 arch-$(CONFIG_ARMV7A_VE) += -mno-thumb-interwork
 
 # This selects how we optimise for the processor.
-tune-$(CONFIG_CPU_CORTEX_A15_VE) += -mcpu=cortex-a15
+tune-$(CONFIG_CPU_CORTEX_A15) += -mcpu=cortex-a15
 
 # Need -Uarm for gcc < 3.x
-cpu-cppflags+=-DTEXT_START=0xFF000000
+cpu-cppflags+=-DTEXT_START=0x00000000
 cpu-cflags += -msoft-float -marm -Uarm $(arch-y) $(tune-y)
 ifeq ($(CONFIG_ARM32VE_STACKTRACE), y)
 cpu-cflags += -fno-omit-frame-pointer -mapcs -mno-sched-prolog
@@ -47,6 +47,7 @@ cpu-objs-y+= cpu_cache.o
 
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_delay.o
+cpu-objs-y+= cpu_string.o
 cpu-objs-y+= cpu_elf.o
 cpu-objs-$(CONFIG_ARM32VE_STACKTRACE)+= cpu_stacktrace.o
 cpu-objs-$(CONFIG_SMP)+= cpu_smp.o

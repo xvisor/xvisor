@@ -197,8 +197,7 @@ static void ioapic_dump_redirect_table(virtual_addr_t ioapic_addr)
 }
 #endif
 
-static vmm_irq_return_t generic_apic_irq_handler(u32 irq_no, arch_regs_t * regs,
-						 void *dev)
+static vmm_irq_return_t generic_apic_irq_handler(u32 irq_no, void *dev)
 {
 	struct irq *hirq = (struct irq *)dev;
 	struct dlist *list;
@@ -207,7 +206,7 @@ static vmm_irq_return_t generic_apic_irq_handler(u32 irq_no, arch_regs_t * regs,
 	list_for_each(list, &hirq->ext_dev_list) {
 		ext_device = list_entry(list, struct ioapic_ext_irq_device, head);
 		if (likely(ext_device && ext_device->irq_handler)) {
-			if (ext_device->irq_handler(irq_no, regs, ext_device->data) == VMM_IRQ_HANDLED) {
+			if (ext_device->irq_handler(irq_no, ext_device->data) == VMM_IRQ_HANDLED) {
 				lapic_write(LAPIC_EOI(hirq->lapic->vbase), 0);
 				return VMM_IRQ_HANDLED;
 			}

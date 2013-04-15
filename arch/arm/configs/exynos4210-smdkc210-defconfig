@@ -1,24 +1,24 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.0
-# Wed Dec 26 09:50:49 2012
+# Version: 0.2.1
+# Sat Mar  9 20:53:22 2013
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_MIPS is not set
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
-CONFIG_CPU_COUNT=2
+CONFIG_CPU_COUNT=4
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
+CONFIG_VAPOOL_SIZE_MB=12
 CONFIG_BOARD="exynos4"
-# CONFIG_CPU_ARM9 is not set
+# CONFIG_CPU_ARM926T is not set
 # CONFIG_CPU_CORTEX_A8 is not set
 CONFIG_CPU_CORTEX_A9=y
 # CONFIG_CPU_CORTEX_A15 is not set
-# CONFIG_CPU_CORTEX_A15_VE is not set
 # CONFIG_ARMV5 is not set
 CONFIG_ARMV7A=y
 # CONFIG_ARMV7A_VE is not set
@@ -38,12 +38,15 @@ CONFIG_ARM32_STACKTRACE=y
 # CONFIG_BOARD_VEXPRESS is not set
 CONFIG_BOARD_EXYNOS4=y
 CONFIG_BOARD_SMDKC210=y
+# CONFIG_BOARD_NURI is not set
+# CONFIG_BOARD_ODROIDX is not set
 
 #
 # smdkc210 Options
 #
 CONFIG_SMDKC210_ONE_GUEST_PBA8_DTS=y
 # CONFIG_SMDKC210_TWO_GUEST_PBA8_DTS is not set
+# CONFIG_SMDKC210_ONE_GUEST_VEXPRESSA9_DTS is not set
 # CONFIG_ARM_VIC is not set
 CONFIG_ARM_GIC=y
 # CONFIG_ARM_TIMER_SP804 is not set
@@ -74,13 +77,12 @@ CONFIG_BANNER_NONE=y
 CONFIG_MAX_VCPU_COUNT=16
 CONFIG_MAX_GUEST_COUNT=4
 CONFIG_VGPA2REG_CACHE_SIZE=8
-CONFIG_VAPOOL_SIZE_MB=8
 # CONFIG_PROFILE is not set
 
 #
 # Heap Configuration
 #
-CONFIG_HEAP_SIZE_MB=2
+CONFIG_HEAP_SIZE_MB=4
 CONFIG_HEAP_BUDDY=y
 
 #
@@ -99,11 +101,13 @@ CONFIG_THREAD_STACK_SIZE=8192
 #
 # Device Support
 #
-# CONFIG_RTC is not set
+CONFIG_RTC=y
 # CONFIG_INPUT is not set
 # CONFIG_FB is not set
-# CONFIG_BLOCK is not set
+CONFIG_BLOCK=y
 CONFIG_NET=y
+CONFIG_NET_MBUF_POOL_SIZE=2048
+CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
 
 #
 # Command Options
@@ -123,8 +127,9 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+CONFIG_CMD_RTCDEV=y
+CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_NET=y
-# CONFIG_CMD_THREADTEST is not set
 
 #
 # Daemon Options
@@ -143,6 +148,12 @@ CONFIG_LIBFDT=y
 # Network Stack Options
 #
 # CONFIG_NET_STACK is not set
+CONFIG_NET_STACK_LWIP=y
+
+#
+# Virtual FileSystem Options
+#
+# CONFIG_VFS is not set
 
 #
 # Device Drivers
@@ -160,6 +171,13 @@ CONFIG_SERIAL_SAMSUNG=y
 #
 # RTC Drivers
 #
+# CONFIG_RTC_PL031 is not set
+CONFIG_RTC_S3C=y
+
+#
+# Block Drivers
+#
+# CONFIG_BLOCK_RBD is not set
 
 #
 # Input Device Support
@@ -173,11 +191,20 @@ CONFIG_SERIAL_SAMSUNG=y
 #
 # Network Drivers
 #
-# CONFIG_NET_DRIVERS is not set
+CONFIG_NET_DRIVERS=y
+# CONFIG_ETHER_NE2K is not set
+CONFIG_ETHER_SMSC_911x=y
+# CONFIG_ETHER_SMSC_91x is not set
 
 #
 # Device Emulators
 #
+
+#
+# VirtIO Support
+#
+CONFIG_EMU_VIRTIO=y
+CONFIG_EMU_VIRTIO_MMIO=y
 
 #
 # System Emulators
@@ -199,6 +226,19 @@ CONFIG_EMU_PIC_GIC=y
 CONFIG_EMU_NET=y
 CONFIG_EMU_NET_LAN9118=y
 # CONFIG_EMU_NET_SMC91C111 is not set
+CONFIG_EMU_NET_VIRTIO=y
+
+#
+# Block Device Emulators
+#
+CONFIG_EMU_BLOCK=y
+CONFIG_EMU_BLOCK_VIRTIO=y
+
+#
+# Console Emulators
+#
+CONFIG_EMU_CONSOLE=y
+CONFIG_EMU_CONSOLE_VIRTIO=y
 
 #
 # Timer Emulators

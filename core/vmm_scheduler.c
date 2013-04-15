@@ -30,13 +30,15 @@
 #include <vmm_timer.h>
 #include <vmm_schedalgo.h>
 #include <vmm_scheduler.h>
+#include <vmm_stdio.h>
+#include <arch_regs.h>
 #include <arch_cpu_irq.h>
 #include <arch_vcpu.h>
 #include <libs/stringlib.h>
 
 #define IDLE_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
 #define IDLE_VCPU_PRIORITY 		VMM_VCPU_MIN_PRIORITY
-#define IDLE_VCPU_TIMESLICE 		(VMM_VCPU_DEF_TIME_SLICE * 100)
+#define IDLE_VCPU_TIMESLICE 		(1000000000)
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
@@ -44,6 +46,7 @@ struct vmm_scheduler_ctrl {
 	struct vmm_vcpu *current_vcpu;
 	struct vmm_vcpu *idle_vcpu;
 	bool irq_context;
+	arch_regs_t *irq_regs;
 	bool yield_on_irq_exit;
 	struct vmm_timer_event ev;
 };
@@ -83,7 +86,7 @@ static void vmm_scheduler_next(struct vmm_timer_event *ev, arch_regs_t *regs)
 			arch_vcpu_switch(NULL, next, regs);
 		} else {
 			/* This should never happen !!! */
-			while (1);
+			vmm_panic("Error: no vcpu to swith to.\n");
 		}
 	}
 
@@ -97,19 +100,20 @@ static void vmm_scheduler_next(struct vmm_timer_event *ev, arch_regs_t *regs)
 
 static void vmm_scheduler_timer_event(struct vmm_timer_event *ev)
 {
-	struct vmm_vcpu *vcpu = this_cpu(sched).current_vcpu;
+	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+	struct vmm_vcpu *vcpu = schedp->current_vcpu;
 	if (vcpu) {
 		if (!vcpu->preempt_count) {
-			vmm_scheduler_next(ev, ev->regs);
+			vmm_scheduler_next(ev, schedp->irq_regs);
 		} else {
 			vmm_timer_event_restart(ev);
 		}
 	} else {
-		vmm_scheduler_next(ev, ev->regs);
+		vmm_scheduler_next(ev, schedp->irq_regs);
 	}
 }
 
-int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state)
+int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
 	int rc = VMM_OK;
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
@@ -170,6 +174,10 @@ int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		break;
 	}
 
+	if (rc == VMM_OK) {
+		vcpu->state = new_state;
+	}
+
 	return rc;
 }
 
@@ -179,6 +187,9 @@ void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 
 	/* Indicate that we have entered in IRQ */
 	schedp->irq_context = (vcpu_context) ? FALSE : TRUE;
+
+	/* Save pointer to IRQ registers */
+	schedp->irq_regs = regs;
 
 	/* Ensure that yield on exit is disabled */
 	schedp->yield_on_irq_exit = FALSE;
@@ -199,7 +210,7 @@ void vmm_scheduler_irq_exit(arch_regs_t *regs)
 	 * current vcpu is not RUNNING */
 	if ((vcpu->state != VMM_VCPU_STATE_RUNNING) ||
 	    schedp->yield_on_irq_exit) {
-		vmm_scheduler_next(&schedp->ev, regs);
+		vmm_scheduler_next(&schedp->ev, schedp->irq_regs);
 		schedp->yield_on_irq_exit = FALSE;
 	}
 
@@ -208,6 +219,9 @@ void vmm_scheduler_irq_exit(arch_regs_t *regs)
 
 	/* Indicate that we have exited IRQ */
 	schedp->irq_context = FALSE;
+
+	/* Clear pointer to IRQ registers */
+	schedp->irq_regs = NULL;
 }
 
 bool vmm_scheduler_irq_context(void)
@@ -334,6 +348,7 @@ int __cpuinit vmm_scheduler_init(void)
 
 	/* Initialize IRQ state (Per Host CPU) */
 	schedp->irq_context = FALSE;
+	schedp->irq_regs = NULL;
 
 	/* Initialize yield on exit (Per Host CPU) */
 	schedp->yield_on_irq_exit = FALSE;

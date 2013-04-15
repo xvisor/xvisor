@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>

@@ -192,6 +192,9 @@ static int l2x0_cc_emulator_write(struct vmm_emudev *edev,
 	case 0x10C:
 		s->data_ctrl = regval;
 		break;
+	case 0x900:
+	case 0x904:
+		break;
 	case 0xC00:
 		s->filter_start = regval;
 		break;
@@ -226,17 +229,16 @@ static int l2x0_cc_emulator_reset(struct vmm_emudev *edev)
 
 static int l2x0_cc_emulator_probe(struct vmm_guest *guest,
 				  struct vmm_emudev *edev,
-				  const struct vmm_emuid *eid)
+				  const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	struct l2x0_state *s;
 
-	s = vmm_malloc(sizeof(struct l2x0_state));
+	s = vmm_zalloc(sizeof(struct l2x0_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto l2x0_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct l2x0_state));
 
 	INIT_SPIN_LOCK(&s->lock);
 	s->id = (enum l2x0_id)(eid->data);
@@ -251,14 +253,14 @@ static int l2x0_cc_emulator_remove(struct vmm_emudev *edev)
 {
 	struct l2x0_state *s = edev->priv;
 
-	if(s) {
+	if (s) {
 		vmm_free(s);
 	}
 
 	return VMM_OK;
 }
 
-static struct vmm_emuid l2x0_cc_emuid_table[] = {
+static struct vmm_devtree_nodeid l2x0_cc_emuid_table[] = {
 	{ 
 	   .type = "cache", 
 	   .compatible = "corelink,l2c-210", 

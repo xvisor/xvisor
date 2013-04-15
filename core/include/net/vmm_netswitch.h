@@ -48,11 +48,15 @@ struct vmm_netswitch {
 	/* List of ports */
 	struct dlist port_list;
 	/* Handle RX packets from port to switch */
-	int (*port2switch_xfer) (struct vmm_netport *, struct vmm_mbuf *);
+	int (*port2switch_xfer) (struct vmm_netswitch *, 
+				 struct vmm_netport *, 
+				 struct vmm_mbuf *);
 	/* Handle enabling of a port */
-	int (*port_add) (struct vmm_netswitch *, struct vmm_netport *);
+	int (*port_add) (struct vmm_netswitch *, 
+			 struct vmm_netport *);
 	/* Handle disabling of a port */
-	int (*port_remove) (struct vmm_netport *);
+	int (*port_remove) (struct vmm_netswitch *,
+			    struct vmm_netport *);
 	/* Switch private data */
 	void *priv;
 
@@ -66,11 +70,19 @@ struct vmm_netswitch {
 	vmm_spinlock_t rx_list_lock;
 };
 
-/** Handler for receiving packets by the switch */
-int vmm_netswitch_port2switch(struct vmm_netport *src, 
+/** Transfer packets from port to switch */
+int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, 
 			      struct vmm_mbuf *mbuf);
 
-#define vmm_port2switch_xfer 	vmm_netswitch_port2switch
+/** Lazy transfer from port to switch */
+int vmm_port2switch_xfer_lazy(struct vmm_netport *src, 
+			 void (*lazy_xfer)(struct vmm_netport *, void *, int),
+			 void *lazy_arg, int lazy_budget);
+
+/** Transfer packets from switch to port */
+int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,
+			      struct vmm_netport *dst, 
+			      struct vmm_mbuf *mbuf);
 
 /** Allocate new network switch 
  *  @name name of the network switch

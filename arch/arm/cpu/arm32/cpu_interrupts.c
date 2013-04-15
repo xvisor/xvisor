@@ -348,7 +348,7 @@ void do_irq(arch_regs_t * uregs)
 {
 	vmm_scheduler_irq_enter(uregs, FALSE);
 
-	vmm_host_irq_exec(CPU_EXTERNAL_IRQ, uregs);
+	vmm_host_irq_exec(CPU_EXTERNAL_IRQ);
 
 	vmm_scheduler_irq_exit(uregs);
 }
@@ -357,7 +357,7 @@ void do_fiq(arch_regs_t * uregs)
 {
 	vmm_scheduler_irq_enter(uregs, FALSE);
 
-	vmm_host_irq_exec(CPU_EXTERNAL_FIQ, uregs);
+	vmm_host_irq_exec(CPU_EXTERNAL_FIQ);
 
 	vmm_scheduler_irq_exit(uregs);
 }

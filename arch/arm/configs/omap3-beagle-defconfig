@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.1.3
-# Mon Sep 10 16:59:06 2012
+# Version: 0.2.1
+# Sat Mar  9 20:39:46 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -13,12 +13,12 @@ CONFIG_CPU_COUNT=1
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
+CONFIG_VAPOOL_SIZE_MB=12
 CONFIG_BOARD="omap3"
-# CONFIG_CPU_ARM9 is not set
+# CONFIG_CPU_ARM926T is not set
 CONFIG_CPU_CORTEX_A8=y
 # CONFIG_CPU_CORTEX_A9 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
-# CONFIG_CPU_CORTEX_A15_VE is not set
 # CONFIG_ARMV5 is not set
 CONFIG_ARMV7A=y
 # CONFIG_ARMV7A_VE is not set
@@ -26,19 +26,17 @@ CONFIG_ARM32=y
 # CONFIG_ARM32VE is not set
 
 #
-# ARM Common Options
-#
-
-#
-# ARM 32-Bit Options
+# ARM Options
 #
 CONFIG_ARM32_STACKTRACE=y
 # CONFIG_ARM32_HIGHVEC is not set
 CONFIG_ARMV7A_SECUREX=y
 # CONFIG_BOARD_VERSATILE is not set
-# CONFIG_BOARD_PB_A8 is not set
+# CONFIG_BOARD_REALVIEW is not set
 CONFIG_BOARD_OMAP3=y
+# CONFIG_BOARD_SUN4I is not set
 # CONFIG_BOARD_VEXPRESS is not set
+# CONFIG_BOARD_EXYNOS4 is not set
 
 #
 # OMAP3 SOC Options
@@ -53,9 +51,13 @@ CONFIG_OMAP3_ONE_GUEST_PBA8_DTS=y
 # CONFIG_ARM_TIMER_SP804 is not set
 # CONFIG_ARM_TWD is not set
 # CONFIG_ICST is not set
+# CONFIG_ARM_SCU is not set
 # CONFIG_VERSATILE_CLOCK is not set
 # CONFIG_VERSATILE_CLCD is not set
 CONFIG_OMAP=y
+# CONFIG_SAMSUNG_MCT is not set
+# CONFIG_SAMSUNG_MCT_LOCAL_TIMERS is not set
+# CONFIG_SUNXI is not set
 
 #
 # Hypervisor Options
@@ -74,13 +76,12 @@ CONFIG_BANNER_NONE=y
 CONFIG_MAX_VCPU_COUNT=16
 CONFIG_MAX_GUEST_COUNT=4
 CONFIG_VGPA2REG_CACHE_SIZE=8
-CONFIG_VAPOOL_SIZE_MB=8
 # CONFIG_PROFILE is not set
 
 #
 # Heap Configuration
 #
-CONFIG_HEAP_SIZE_MB=2
+CONFIG_HEAP_SIZE_MB=4
 CONFIG_HEAP_BUDDY=y
 
 #
@@ -102,8 +103,10 @@ CONFIG_THREAD_STACK_SIZE=8192
 # CONFIG_RTC is not set
 # CONFIG_INPUT is not set
 # CONFIG_FB is not set
-# CONFIG_BLOCK is not set
+CONFIG_BLOCK=y
 CONFIG_NET=y
+CONFIG_NET_MBUF_POOL_SIZE=2048
+CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
 
 #
 # Command Options
@@ -123,14 +126,32 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_NET=y
-# CONFIG_CMD_THREADTEST is not set
+
+#
+# Daemon Options
+#
+CONFIG_MTERM=y
+CONFIG_MTERM_CMD_WIDTH=256
+CONFIG_MTERM_HISTORY=y
+CONFIG_MTERM_HISTORY_SIZE=10
 
 #
 # Library Options
 #
 CONFIG_LIBFDT=y
+
+#
+# Network Stack Options
+#
 # CONFIG_NET_STACK is not set
+CONFIG_NET_STACK_LWIP=y
+
+#
+# Virtual FileSystem Options
+#
+# CONFIG_VFS is not set
 
 #
 # Device Drivers
@@ -143,10 +164,16 @@ CONFIG_SERIAL=y
 # CONFIG_SERIAL_8250_UART is not set
 CONFIG_SERIAL_OMAP_UART=y
 # CONFIG_SERIAL_PL01X is not set
+# CONFIG_SERIAL_SAMSUNG is not set
 
 #
 # RTC Drivers
 #
+
+#
+# Block Drivers
+#
+# CONFIG_BLOCK_RBD is not set
 
 #
 # Input Device Support
@@ -167,6 +194,12 @@ CONFIG_SERIAL_OMAP_UART=y
 #
 
 #
+# VirtIO Support
+#
+CONFIG_EMU_VIRTIO=y
+CONFIG_EMU_VIRTIO_MMIO=y
+
+#
 # System Emulators
 #
 CONFIG_EMU_SYS=y
@@ -185,6 +218,20 @@ CONFIG_EMU_PIC_GIC=y
 #
 CONFIG_EMU_NET=y
 CONFIG_EMU_NET_LAN9118=y
+# CONFIG_EMU_NET_SMC91C111 is not set
+CONFIG_EMU_NET_VIRTIO=y
+
+#
+# Block Device Emulators
+#
+CONFIG_EMU_BLOCK=y
+CONFIG_EMU_BLOCK_VIRTIO=y
+
+#
+# Console Emulators
+#
+CONFIG_EMU_CONSOLE=y
+CONFIG_EMU_CONSOLE_VIRTIO=y
 
 #
 # Timer Emulators
@@ -220,7 +267,7 @@ CONFIG_EMU_GPIO_PL061=y
 # Miscellaneous Emulators
 #
 CONFIG_EMU_MISC_ZERO=y
-CONFIG_EMU_MISC_A9MP_PRIV=y
+CONFIG_EMU_MISC_A9MPCORE=y
 
 #
 # Tool Options

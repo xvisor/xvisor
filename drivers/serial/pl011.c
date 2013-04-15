@@ -147,9 +147,7 @@ struct pl011_port {
 	u16 mask;
 };
 
-static vmm_irq_return_t pl011_irq_handler(u32 irq_no, 
-					  arch_regs_t * regs, 
-					  void *dev)
+static vmm_irq_return_t pl011_irq_handler(u32 irq_no, void *dev)
 {
 	u16 data;
 	struct pl011_port *port = (struct pl011_port *)dev;
@@ -283,7 +281,7 @@ static u32 pl011_write(struct vmm_chardev *cdev,
 }
 
 static int pl011_driver_probe(struct vmm_device *dev,
-			      const struct vmm_devid *devid)
+			      const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 	const char *attr;
@@ -316,14 +314,18 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		goto free_reg;
 	}
 	port->baudrate = *((u32 *) attr);
-	port->input_clock = vmm_devdrv_clock_get_rate(dev);
 
-	attr = vmm_devtree_attrval(dev->node, "irq");
-	if (!attr) {
+	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
+	if (rc) {
 		rc = VMM_EFAIL;
 		goto free_reg;
 	}
-	port->irq = *((u32 *) attr);
+
+	rc = vmm_devtree_irq_get(dev->node, &port->irq, 0);
+	if (rc) {
+		rc = VMM_EFAIL;
+		goto free_reg;
+	}
 	if ((rc = vmm_host_irq_register(port->irq, dev->node->name, 
 					pl011_irq_handler, port))) {
 		goto free_reg;
@@ -366,7 +368,7 @@ static int pl011_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid pl011_devid_table[] = {
+static struct vmm_devtree_nodeid pl011_devid_table[] = {
 	{.type = "serial",.compatible = "arm,pl011"},
 	{ /* end of list */ },
 };

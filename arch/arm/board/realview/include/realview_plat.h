@@ -120,15 +120,13 @@
 #define REALVIEW_SYS_TEST_OSC3               (REALVIEW_SYS_BASE + REALVIEW_SYS_TEST_OSC3_OFFSET)
 #define REALVIEW_SYS_TEST_OSC4               (REALVIEW_SYS_BASE + REALVIEW_SYS_TEST_OSC4_OFFSET)
 
-/* 
- * Values for REALVIEW_SYS_RESET_CTRL
+/*
+ * System identification (REALVIEW_SYS_ID)
  */
-#define REALVIEW_SYS_CTRL_RESET_CONFIGCLR    0x01
-#define REALVIEW_SYS_CTRL_RESET_CONFIGINIT   0x02
-#define REALVIEW_SYS_CTRL_RESET_DLLRESET     0x03
-#define REALVIEW_SYS_CTRL_RESET_PLLRESET     0x04
-#define REALVIEW_SYS_CTRL_RESET_POR          0x05
-#define REALVIEW_SYS_CTRL_RESET_DoC          0x06
+#define REALVIEW_SYS_ID_BOARD_MASK	0x0FFF0000
+#define REALVIEW_SYS_ID_BOARD_SHIFT	16
+#define REALVIEW_SYS_ID_EB		0x0140
+#define REALVIEW_SYS_ID_PBA8		0x0178
 
 #define REALVIEW_SYS_CTRL_LED         (1 << 0)
 
@@ -278,5 +276,10 @@
 
 #define REALVIEW_CSR_BASE             0x10000000
 #define REALVIEW_CSR_SIZE             0x10000000
+
+/*
+ * Platform helper routines
+ */
+void realview_flags_set(u32 addr);
 
 #endif
