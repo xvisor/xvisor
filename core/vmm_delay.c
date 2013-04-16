@@ -22,14 +22,15 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_timer.h>
 #include <vmm_delay.h>
 #include <arch_delay.h>
 #include <arch_cpu.h>
 #include <libs/mathlib.h>
 
-static u32 loops_per_msec;
-static u32 loops_per_usec;
+static u32 loops_per_msec[CONFIG_CPU_COUNT];
+static u32 loops_per_usec[CONFIG_CPU_COUNT];
 
 void vmm_udelay(u32 usecs)
 {
@@ -37,7 +38,7 @@ void vmm_udelay(u32 usecs)
 
 	arch_cpu_irq_save(flags);
 
-	arch_delay_loop(usecs * loops_per_usec);
+	arch_delay_loop(usecs * loops_per_usec[vmm_smp_processor_id()]);
 
 	arch_cpu_irq_restore(flags);
 }
@@ -48,44 +49,51 @@ void vmm_mdelay(u32 msecs)
 
 	arch_cpu_irq_save(flags);
 
-	arch_delay_loop(msecs * loops_per_msec);
+	arch_delay_loop(msecs * loops_per_msec[vmm_smp_processor_id()]);
 
 	arch_cpu_irq_restore(flags);
 }
 
-u32 vmm_delay_estimate_cpu_mhz(void)
+u32 vmm_delay_estimate_cpu_mhz(u32 cpu)
 {
-	return arch_delay_loop_cycles(loops_per_usec);
+	return arch_delay_loop_cycles(loops_per_usec[cpu]);
 }
 
-u32 vmm_delay_estimate_cpu_khz(void)
+u32 vmm_delay_estimate_cpu_khz(u32 cpu)
 {
-	return arch_delay_loop_cycles(loops_per_msec);
+	return arch_delay_loop_cycles(loops_per_msec[cpu]);
 }
 
 void vmm_delay_recaliberate(void)
 {
 	u64 nsecs, tstamp;
 	irq_flags_t flags;
+	u32 cpu = vmm_smp_processor_id();
 
 	arch_cpu_irq_save(flags);
 
 	tstamp = vmm_timer_timestamp();
 
-	arch_delay_loop(10000000);
+	arch_delay_loop(1000000);
 
 	nsecs = vmm_timer_timestamp() - tstamp;
 
-	loops_per_usec = udiv64(1000ULL * 10000000ULL, nsecs);
-	loops_per_msec = udiv64(1000000ULL * 10000000ULL, nsecs);
+	loops_per_usec[cpu] = udiv64(1000ULL * 1000000ULL, nsecs);
+	loops_per_msec[cpu] = udiv64(1000000ULL * 1000000ULL, nsecs);
 
 	arch_cpu_irq_restore(flags);
 }
 
 int vmm_delay_init(void)
 {
-	loops_per_msec = 0;
-	loops_per_usec = 0;
+	u32 i, cpu = vmm_smp_processor_id();
+
+	if (!cpu) {
+		for (i = 0; i < CONFIG_CPU_COUNT; i++) {
+			loops_per_msec[i] = 0;
+			loops_per_usec[i] = 0;
+		}
+	}
 
 	vmm_delay_recaliberate();
 

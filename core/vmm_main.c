@@ -437,6 +437,12 @@ void vmm_init_secondary(void)
 		vmm_hang();
 	}
 
+	/* Initialize soft delay */
+	ret = vmm_delay_init();
+	if (ret) {
+		vmm_hang();
+	}
+
 	/* Initialize hypervisor scheduler */
 	ret = vmm_scheduler_init();
 	if (ret) {
