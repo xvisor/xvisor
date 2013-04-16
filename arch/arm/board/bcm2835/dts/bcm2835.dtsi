@@ -36,22 +36,26 @@
 			timer {
 		      		device_type = "timer";
 				compatible = "brcm,bcm2835-system-timer";
-				reg = <0x7e003000 0x1000>;
+				reg = <0x20003000 0x1000>;
 				clock-frequency = <1000000>;
-				timer_num = <0>;
-				interrupts = <32>;
+				interrupts = <32 33 34 35>;
 			};
 
 			intc {
 		      		device_type = "pic";
 				compatible = "brcm,bcm2835-armctrl-ic";
-				reg = <0x7e00b200 0x200>;
+				reg = <0x2000b200 0x200>;
+			};
+
+			watchdog {
+				compatible = "brcm,bcm2835-pm-wdt";
+				reg = <0x20100000 0x28>;
 			};
 
 			SERIAL0: uart0 {
 		      		device_type = "serial";
 		      		compatible = "brcm,bcm2835-pl011", "arm,pl011";
-		      		reg = <0x7e201000 0x1000>;
+		      		reg = <0x20201000 0x1000>;
 				clock-frequency = <3000000>;
 		      		baudrate = <115200>;
 				interrupts = <89>;

@@ -27,6 +27,7 @@
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_devtree.h>
+#include <libs/bitops.h>
 #include <arch_host_irq.h>
 
 #include <bcm2835_intc.h>
@@ -57,6 +58,11 @@ static int reg_enable[] __initconst = { 0x18, 0x10, 0x14 };
 static int reg_disable[] __initconst = { 0x24, 0x1c, 0x20 };
 static int bank_irqs[] __initconst = { 8, 32, 32 };
 
+static const int shortcuts[] = {
+	7, 9, 10, 18, 19,		/* Bank 1 */
+	21, 22, 23, 24, 25, 30		/* Bank 2 */
+};
+
 struct armctrl_ic {
 	virtual_addr_t base_va;
 	void *base;
@@ -86,29 +92,30 @@ static struct vmm_host_irq_chip bcm2835_intc_chip = {
 
 u32 bcm2835_intc_active_irq(void)
 {
-	register u32 i, b, s;
+	register u32 stat, irq;
 
-	for (b = 0; b < NR_BANKS; b++) {
-		if ((s = vmm_readl(intc.pending[b]))) {
-			i = 0;
-			while (!(s & 0xF)) {
-				i += 4;
-				s >>= 4;
-			}
-			while (!(s & 0x1)) {
-				i += 1;
-				s >>= 1;
-			}
-			if (i < intc.irqs[b]) {
-				return MAKE_HWIRQ(b, i);
-			}
+	if ((stat = vmm_readl(intc.pending[0]))) {
+		if (stat & BANK0_HWIRQ_MASK) {
+			stat = stat & BANK0_HWIRQ_MASK;
+			irq = MAKE_HWIRQ(0, ffs(stat) - 1);
+		} else if (stat & SHORTCUT1_MASK) {
+			stat = (stat & SHORTCUT1_MASK) >> SHORTCUT_SHIFT;
+			irq = MAKE_HWIRQ(1, shortcuts[ffs(stat) - 1]);
+		} else if (stat & SHORTCUT2_MASK) {
+			stat = (stat & SHORTCUT2_MASK) >> SHORTCUT_SHIFT;
+			irq = MAKE_HWIRQ(2, shortcuts[ffs(stat) - 1]);
+		} else if (stat & BANK1_HWIRQ) {
+			stat = vmm_readl(intc.pending[1]);
+			irq = MAKE_HWIRQ(1, ffs(stat) - 1);
+		} else if (stat & BANK2_HWIRQ) {
+			stat = vmm_readl(intc.pending[2]);
+			irq = MAKE_HWIRQ(2, ffs(stat) - 1);
+		} else {
+			BUG();
 		}
 	}
 
-	/* Did not find any pending irq 
-	 * so return invalid irq number 
-	 */
-	return ARCH_HOST_IRQ_COUNT;
+	return irq;
 }
 
 int __init bcm2835_intc_init(void)

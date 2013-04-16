@@ -24,11 +24,10 @@
 #include <vmm_error.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
-#include <vmm_host_io.h>
-#include <vmm_host_aspace.h>
 #include <arch_board.h>
 #include <arch_timer.h>
 
+#include <bcm2835_pm.h>
 #include <bcm2835_timer.h>
 
 /*
@@ -37,14 +36,16 @@
 
 int arch_board_reset(void)
 {
-	/* FIXME: Don't know how to reset !!!!! */
-	return VMM_EFAIL;
+	bcm2835_pm_reset();
+
+	return VMM_OK;
 }
 
 int arch_board_shutdown(void)
 {
-	/* FIXME: Don't know how to poweroff !!!!! */
-	return VMM_EFAIL;
+	bcm2835_pm_poweroff();
+
+	return VMM_OK;
 }
 
 /*
@@ -53,12 +54,20 @@ int arch_board_shutdown(void)
 
 int __init arch_board_early_init(void)
 {
+	int rc;
+
 	/* Host virtual memory, device tree, heap is up.
 	 * Do necessary early stuff like iomapping devices
 	 * memory or boot time memory reservation here.
 	 */
 
-	return 0;
+	/* Initialize PM and Watchdog interface */
+	rc = bcm2835_pm_init();
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
 int __init arch_clocksource_init(void)
