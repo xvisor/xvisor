@@ -1,4 +1,128 @@
-		Xvisor on QEMU Raspberry-Pi Host
+	Xvisor on Raspberry-Pi (or BCM2835 SOC) using SD Booting 
+
+This section of readme explains how to build & run Xvisor on actual 
+Raspberry Pi board using SD booting feature of Raspberry Pi (or BCM2835 SOC).
+
+By default, Xvisor for BCM2835 supports Realview-EB-MPCore guest so we will 
+show how to run Basic Test on Realview-EB-MPCore guest. For more info on 
+Basic Test refer <xvisor_source>/tests/arm32/realview-eb-mpcore/basic/README.
+
+As first step of SD booting on BCM2835 SOC, we need to prepare a SD card (> 4GB) 
+with Uboot. To do this,
+ 1) Setup SD card with debian weezy image and make sure that you get
+    Raspberry Pi linux console on serial port
+    (For detailed steps, http://elinux.org/RPi_Easy_SD_Card_Setup)
+ 2) Now compile and install u-boot on SD card for Raspberry Pi so that you get
+    u-boot prompt whenever you power-on Raspberry Pi
+    (For detailed steps, http://elinux.org/RPi_U-Boot)
+
+Once we have SD card prepared for SD booting with u-boot, we add 2 images to 
+the boot partition of SD card:
+ 1) Xvisor binary (vmm.bin)
+ 2) Patched guest binary 
+    (Patched Realview-eb-mpcore Basic Test image, arm_test.bin.patched)
+
+Following are steps to create these images and boot Xvisor on Raspberry Pi:
+
+  [1. Build environment]
+  # CROSS_COMPILE=arm-none-linux-gnueabi-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Configure Xvisor with Raspberry Pi (or BCM2835 SOC) default settings]
+  # make ARCH=arm bcm2835-raspi-defconfig 
+
+  [4. Build Xvisor, this creates vmm.bin]
+  # make
+
+  [5. Build ARM Basic Test for Realview-EB-MPCore Guest, this creates arm_test.bin.patched]
+  # make -C tests/arm32/realview-eb-mpcore/basic
+  
+  [6. Unplug bootable SD card from Raspberry Pi and plug it on your development machine]
+
+  [7. Mount boot partition (or partition 0) of SD card on your development machine]
+
+  [8. Copy uvmm.bin to boot partition of SD card]
+  # cp uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
+
+  [9. Copy arm_test.bin.patched to boot partition of SD card]
+  # cp build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched <path_to_mounted_boot_partition_of_sd_card>/arm.bin
+
+  (Note: If you want additional images like cmdlist, patched zImage, 
+   rootfs.img etc. then you should copy these images to boot partition
+   of SD card after above step.)
+  (Note: For more info on images required for linux on Realview-EB-MPCore guest 
+   refer to <xvisor_source>/tests/arm32/realview-eb-mpcore/linux/README.)
+
+  [10. Unmount boot partition (or partition 0) of SD card from your development machine]
+
+  [11. Unplug SD card from your development machine and plug it back on Raspberry Pi]
+
+  [12. Connect to serial port of Raspberry Pi using Putty or Minicom]
+
+  [13. Power-up or Reset Raspberry Pi and press any key when U-Boot shows auto-boot count down]
+
+  [14. Enable MMC interface from U-Boot command line]
+  U-Boot> mmc dev 0:0
+
+  [15. Copy Xvisor from SD card to SDRAM]
+  U-Boot> fatload mmc 0 0x00200000 vmm.bin
+
+  [16. Copy Guest image from SD card to SDRAM]
+  U-Boot> fatload mmc 0 0x01000000 arm.bin
+
+  (Note: If you want to load additional images like cmdlist, patched zImage, 
+   rootfs.img, etc. from SD card then load these images at address 
+   0x01000000 or higher using fatload command of U-Boot after above step.)
+  (Note: The default DTS used by Xvisor for BCM2835 has one pre-configured
+   Realview-EB-MPCore guest. The NOR flash of the guest is 16 MB in size and is
+   mapped to 0x01000000 host physical address. The guest boots from start of 
+   NOR flash so we put Basic Test arm.bin at start of NOR flash and rest of 
+   the guest images like cmdlist, patched zImage, rootfs.img, etc. after it.)
+  (Note: For e.g. if we want to load cmdlist, patched zImage and rootfs image
+   into guest NOR flash then use:
+   U-Boot> fatload mmc 0 0x010FF000 cmdlist
+   U-Boot> fatload mmc 0 0x01100000 zImage
+   U-Boot> fatload mmc 0 0x01400000 rootfs.img )
+
+  [17. Jump into Xvisor after disabling MMU, interrupts, etc]
+  U-Boot> go 0x00200000
+
+  (Note: Raspberry Pi (or BCM2835 SOC) U-Boot runs with mmu disabled so we 
+   don't need to use bootm for booting Xvisor. In future, we might use bootm 
+   to boot Xvisor from U-Boot)
+
+  [18. Kick Guest for starting Basic Test]
+  XVisor# guest kick 0
+
+  [19. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [20. Say 'hi' to ARM Basic Test]
+  [guest0/uart0] arm-test# hi
+
+  (Note: If you had linux images loaded in guest NOR flash then instead of 
+   above step you can start booting linux,
+   arm-test# copy 0x00400000 0x40100000 0x300000
+   arm-test# copy 0x01000000 0x40400000 0x600000
+   arm-test# start_linux 0x00400000 0x01000000 0x600000 
+   OR
+   arm-test# autoexec)
+
+  [21. Say 'hello' to ARM Basic Test]
+  [guest0/uart0] arm-test# hello
+
+  [22. Check various commands of ARM Basic Test]
+  [guest0/uart0] arm-test# help
+
+  [23. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] arm-test# 
+
+  (Note: replace all <> brackets based on your workspace)
+
+
+	Xvisor on QEMU Raspberry-Pi (or BCM2835 SOC) Host
 
 This section of readme explains how to build & run Xvisor on 
 Raspberry-Pi QEMU (https://github.com/Torlus/qemu.git). 
@@ -16,7 +140,7 @@ guest with Xvisor running on QEMU Raspberry-Pi Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Realview-EB-MPCore default settings]
+  [3. Configure Xvisor with Raspberry Pi (or BCM2835 SOC) default settings]
   # make ARCH=arm bcm2835-raspi-defconfig 
 
   [4. Build Xvisor]
