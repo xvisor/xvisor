@@ -14,19 +14,19 @@ WHAT IS XVISOR?
   a monolithic, light-weight, portable, and flexible virtualization solution.
 
   It provides a high performance and low memory foot print virtualization 
-  solution for ARMv5, ARMv7a, x86_64, and other CPU architectures.
+  solution for ARMv5, ARMv6, ARMv7a, x86_64, and other CPU architectures.
 
   Xvisor primarily supports Full virtualization hence, supports a wide 
   range of unmodified Guest operating systems. Paravirtualization is optional 
   for Xvisor and will be supported in an architecture independent manner 
-  (such as pluggable PCI devices) to ensure no-change in Guest OS for using 
+  (such as VirtIO PCI/MMIO devices) to ensure no-change in Guest OS for using 
   paravirtualization.
 
   It has most features expected from a modern hypervisor, such as:
-  Device Tree based configuration, Tickless and high resolution timekeeping, 
+  Device tree based configuration, Tickless and high resolution timekeeping, 
   Threading framework, Host device driver framework, IO device emulation 
   framework, Runtime loadable modules, Pass through hardware access, Dynamic 
-  guest creation/destruction, Managment terminal, network virtualization,
+  guest creation/destruction, Managment terminal, Network virtualization,
   and many more.
 
   It is distributed under the GNU General Public License - see the
