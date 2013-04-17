@@ -37,7 +37,7 @@ Following are steps to create these images and then boot Xvisor on Hackberry:
   [6. Build ARM Basic Test for Realview-PB-A8 Guest, this creates arm_test.bin.patched]
   # make -C tests/arm32/realview-pb-a8/basic
   
-  [7. Unplug bootable SD card from Hackbery and plug it on your development machine]
+  [7. Unplug bootable SD card from Hackberry and plug it on your development machine]
 
   [8. Mount boot partition (or partition 0) of SD card on your development machine]
 
@@ -61,7 +61,7 @@ Following are steps to create these images and then boot Xvisor on Hackberry:
 
   [14. Power-up or Reset Hackberry and press any key when U-Boot shows auto-boot count down]
 
-  [15. Enabled MMC interface from U-Boot command line interface]
+  [15. Enable MMC interface from U-Boot command line]
   sun4i# mmc dev 0:0
 
   [16. Copy Xvisor from SD card to SDRAM]
