@@ -1,10 +1,5 @@
 
-		High-Priority Features (For version 0.2.2)
-
- * Add VirtIO support
-
-
-		Medium-Priority Features (For version 0.3.0)
+		High-Priority Features (For version 0.2.x)
 
  * Add support for SMP systems
  * Add block device virtualization
