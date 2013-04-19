@@ -4,6 +4,7 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 
+#include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/io.h>
 #include <linux/cache.h>
