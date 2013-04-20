@@ -40,7 +40,30 @@ void cmd_blockdev_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   blockdev help\n");
+	vmm_cprintf(cdev, "   blockdev info <name>\n");
 	vmm_cprintf(cdev, "   blockdev list\n");
+}
+
+int cmd_blockdev_info(struct vmm_chardev *cdev, const char *name)
+{
+	struct vmm_blockdev *bdev = vmm_blockdev_find(name);
+
+	if (!bdev) {
+		vmm_cprintf(cdev, "Error: cannot find blockdev %s\n", name);
+		return VMM_EINVALID;
+	}
+
+	vmm_cprintf(cdev, "Name       : %s\n", bdev->name);
+	vmm_cprintf(cdev, "Parent     : %s\n", 
+				(bdev->parent) ? bdev->parent->name : "---");
+	vmm_cprintf(cdev, "Description: %s\n", bdev->desc);
+	vmm_cprintf(cdev, "Access     : %s\n", 
+		(bdev->flags & VMM_BLOCKDEV_RW) ? "Read-Write" : "Read-Only");
+	vmm_cprintf(cdev, "Start LBA  : %ll\n", bdev->start_lba);
+	vmm_cprintf(cdev, "Block Size : %d\n", bdev->block_size);
+	vmm_cprintf(cdev, "Block Count: %ll\n", bdev->num_blocks);
+
+	return VMM_OK;
 }
 
 void cmd_blockdev_list(struct vmm_chardev *cdev)
@@ -78,12 +101,13 @@ int cmd_blockdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			cmd_blockdev_list(cdev);
 			return VMM_OK;
 		}
+	} else if (argc == 3) {
+		if (strcmp(argv[1], "info") == 0) {
+			return cmd_blockdev_info(cdev, argv[2]);
+		}
 	}
-	if (argc < 3) {
-		cmd_blockdev_usage(cdev);
-		return VMM_EFAIL;
-	}
-	return VMM_OK;
+	cmd_blockdev_usage(cdev);
+	return VMM_EFAIL;
 }
 
 static struct vmm_cmd cmd_blockdev = {

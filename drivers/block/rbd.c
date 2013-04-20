@@ -97,6 +97,8 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 
 	/* Setup block device instance */
 	strncpy(d->bdev->name, name, VMM_BLOCKDEV_MAX_NAME_SIZE);
+	strncpy(d->bdev->desc, "RAM backed block device", 
+		VMM_BLOCKDEV_MAX_DESC_SIZE);
 	d->bdev->dev = dev;
 	d->bdev->flags = VMM_BLOCKDEV_RW;
 	d->bdev->start_lba = 0;

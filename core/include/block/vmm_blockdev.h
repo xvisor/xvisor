@@ -33,6 +33,7 @@
 #define VMM_BLOCKDEV_CLASS_NAME				"block"
 #define VMM_BLOCKDEV_CLASS_IPRIORITY			1
 #define VMM_BLOCKDEV_MAX_NAME_SIZE			64
+#define VMM_BLOCKDEV_MAX_DESC_SIZE			128
 
 /** Types of block IO request */
 enum vmm_request_type {
@@ -79,7 +80,7 @@ struct vmm_request_queue {
 	int (*abort_request)(struct vmm_request_queue *rq, 
 			    struct vmm_request *r);
 
-	/* Note: This is an option callback only required
+	/* Note: This is an optional callback only required
 	 * if request queue does block caching 
 	 */
 	int (*flush_cache)(struct vmm_request_queue *rq);
@@ -101,6 +102,7 @@ struct vmm_blockdev {
 	struct dlist child_list;
 
 	char name[VMM_BLOCKDEV_MAX_NAME_SIZE];
+	char desc[VMM_BLOCKDEV_MAX_DESC_SIZE];
 	struct vmm_device *dev;
 
 	u32 flags;
