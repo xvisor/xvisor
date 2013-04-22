@@ -64,6 +64,9 @@ void clean_dcache(void);
 /** Clean data cache line by MVA */
 void clean_dcache_mva(virtual_addr_t mva);
 
+/** Clean data cache line by MVA range */
+void clean_dcache_mva_range(virtual_addr_t start, virtual_addr_t end);
+
 /** Clean data cache line by set/way */
 void clean_dcache_line(u32 line);
 
@@ -81,6 +84,9 @@ void clean_invalidate_dcache(void);
 
 /** Clean and invalidate data cache line by MVA */
 void clean_invalidate_dcache_mva(virtual_addr_t mva);
+
+/** Clean and invalidate data cache lines by MVA range */
+void clean_invalidate_dcache_mva_range(virtual_addr_t start, virtual_addr_t end);
 
 /** Clean and invalidate data cache line by set/way */
 void clean_invalidate_dcache_line(u32 line);
