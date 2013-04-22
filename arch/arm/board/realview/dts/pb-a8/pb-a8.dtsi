@@ -74,6 +74,13 @@
 			      		reg = <0x10001000 0x1000>;
 				};
 
+				mmci0 { /* Multimedia Card Interface */
+			      		device_type = "mmc";
+			      		compatible = "arm,pl180";
+			      		reg = <0x10005000 0x1000>;
+					interrupts = <49 50>;
+				};
+
 				kmi0 { /* Keyboard */
 			      		device_type = "serio";
 			      		compatible = "ambakmi";

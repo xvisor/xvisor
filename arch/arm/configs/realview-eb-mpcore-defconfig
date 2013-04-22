@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.1
-# Wed Apr  3 21:58:54 2013
+# Mon Apr 22 11:19:06 2013
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -34,8 +34,10 @@ CONFIG_ARM32=y
 #
 CONFIG_ARM32_STACKTRACE=y
 # CONFIG_ARM32_HIGHVEC is not set
+# CONFIG_ARM_ERRATA_411920 is not set
 # CONFIG_BOARD_VERSATILE is not set
 # CONFIG_BOARD_BCM2835 is not set
+# CONFIG_BOARD_IMX31 is not set
 CONFIG_BOARD_REALVIEW=y
 # CONFIG_BOARD_OMAP3 is not set
 # CONFIG_BOARD_SUN4I is not set
@@ -46,6 +48,7 @@ CONFIG_BOARD_REALVIEW=y
 # Realview Options
 #
 CONFIG_REALVIEW_EBMP_ONE_GUEST_EBMP_DTS=y
+# CONFIG_REALVIEW_EBMP_TWO_GUEST_EBMP_DTS is not set
 # CONFIG_ARM_VIC is not set
 CONFIG_ARM_GIC=y
 CONFIG_ARM_TIMER_SP804=y
@@ -58,6 +61,8 @@ CONFIG_VERSATILE_CLCD=y
 # CONFIG_SAMSUNG_MCT is not set
 # CONFIG_SAMSUNG_MCT_LOCAL_TIMERS is not set
 # CONFIG_SUNXI is not set
+# CONFIG_FREESCALE_AVIC is not set
+# CONFIG_FREESCALE_EPIT is not set
 
 #
 # Hypervisor Options
@@ -141,6 +146,7 @@ CONFIG_CMD_INPUT=y
 CONFIG_CMD_FB=y
 CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_NET=y
+CONFIG_CMD_VFS=y
 
 #
 # Daemon Options
@@ -179,7 +185,10 @@ CONFIG_VTEMU_FONT_MINI_8x8=y
 #
 # Virtual FileSystem Options
 #
-# CONFIG_VFS is not set
+CONFIG_VFS=y
+# CONFIG_VFS_CPIO is not set
+CONFIG_VFS_EXT2=y
+CONFIG_VFS_FAT=y
 
 #
 # Device Drivers
@@ -193,6 +202,7 @@ CONFIG_SERIAL=y
 # CONFIG_SERIAL_OMAP_UART is not set
 CONFIG_SERIAL_PL01X=y
 # CONFIG_SERIAL_SAMSUNG is not set
+# CONFIG_SERIAL_IMX is not set
 
 #
 # RTC Drivers
@@ -204,6 +214,16 @@ CONFIG_RTC_PL031=y
 # Block Drivers
 #
 # CONFIG_BLOCK_RBD is not set
+
+#
+# MMC/SD/SDIO drivers
+#
+CONFIG_MMC=y
+
+#
+# MMC/SD/SDIO Host Controller Drivers
+#
+CONFIG_MMC_ARMMMCI=y
 
 #
 # Input Device Support
