@@ -1585,7 +1585,13 @@ int mmc_add_host(struct mmc_host *host)
 
 	vmm_mutex_unlock(&mmc_host_list_mutex);
 
-	return do_mmc_detect_card(host);
+	/* Make an attempt to detect mmc card 
+	 * Note: If it fails then it means there is not card connected so
+	 * we ignore failures.
+	 */
+	do_mmc_detect_card(host);
+
+	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(mmc_add_host);
 
