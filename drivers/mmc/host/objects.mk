@@ -18,6 +18,7 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of MMC/SD host controller drivers objects
+# @brief list of MMC/SD/SDIO host controller drivers objects
 # */
 
+drivers-objs-$(CONFIG_MMC_ARMMMCI) += mmc/host/mmci.o
