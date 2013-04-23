@@ -53,8 +53,8 @@
 #endif
 
 /* Help in branch prediction */
-#define likely(x) __builtin_expect((x), 1)
-#define unlikely(x) __builtin_expect((x), 0)
+#define likely(x)		__builtin_expect(!!(x), 1)
+#define unlikely(x)		__builtin_expect(!!(x), 0)
 
 #if __GNUC__ >= 4
 #define __compiler_offsetof(type, member) __builtin_offsetof(type, member)
