@@ -60,6 +60,14 @@
 		      		baudrate = <115200>;
 				interrupts = <89>;
 			};
+
+			sdhci {
+		      		device_type = "mmc";
+				compatible = "brcm,bcm2835-sdhci";
+				reg = <0x20300000 0x1000>;
+				clock-frequency = <100000000>;
+				interrupts = <94>;
+			};
 		};
 	};
 
