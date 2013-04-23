@@ -222,6 +222,7 @@ static int __mmc_send_cmd(struct mmc_host *host,
 			vmm_printf("\t\tERROR MMC rsp not supported\n");
 			break;
 	}
+	vmm_printf("CMD_RET:%d\n", ret);
 #else
 	ret = host->ops.send_cmd(host, cmd, data);
 #endif

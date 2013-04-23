@@ -251,15 +251,14 @@ struct mmc_ios {
 struct mmc_host;
 
 struct mmc_host_ops {
-	u32 has_init;
-	int (*send_cmd)(struct mmc_host *host,
+	int (*send_cmd)(struct mmc_host *mmc,
 			struct mmc_cmd *cmd, 
 			struct mmc_data *data);
-	void (*set_ios)(struct mmc_host *host, 
+	void (*set_ios)(struct mmc_host *mmc, 
 			struct mmc_ios *ios);
-	int (*init_card)(struct mmc_host *host);
-	int (*getcd)(struct mmc_host *host);
-	int (*getwp)(struct mmc_host *host);
+	int (*init_card)(struct mmc_host *mmc);
+	int (*getcd)(struct mmc_host *mmc);
+	int (*getwp)(struct mmc_host *mmc);
 };
 
 struct mmc_card {
@@ -312,7 +311,9 @@ struct mmc_host {
 	unsigned long priv[0];
 };
 
-#define mmc_host_is_spi(host)	((host)->host_caps & MMC_MODE_SPI)
+#define mmc_host_is_spi(mmc)	((mmc)->host_caps & MMC_MODE_SPI)
+
+#define mmc_hostname(mmc)	((mmc)->dev->node->name)
 
 /** Start card detect sequence 
  *  Note: This function can be called from any context.
