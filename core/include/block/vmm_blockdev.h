@@ -32,8 +32,6 @@
 
 #define VMM_BLOCKDEV_CLASS_NAME				"block"
 #define VMM_BLOCKDEV_CLASS_IPRIORITY			1
-#define VMM_BLOCKDEV_MAX_NAME_SIZE			64
-#define VMM_BLOCKDEV_MAX_DESC_SIZE			128
 
 /** Types of block IO request */
 enum vmm_request_type {
@@ -88,11 +86,15 @@ struct vmm_request_queue {
 	void *priv;
 };
 
-/* Block device flags */
-#define VMM_BLOCKDEV_RDONLY			0x00000001
-#define VMM_BLOCKDEV_RW				0x00000002
+/* Block device defines */
+#define VMM_BLOCKDEV_MAX_NAME_SIZE			64
+#define VMM_BLOCKDEV_MAX_DESC_SIZE			128
 
-/** Representation of a block device */
+/* Block device flags */
+#define VMM_BLOCKDEV_RDONLY				0x00000001
+#define VMM_BLOCKDEV_RW					0x00000002
+
+/** Block device */
 struct vmm_blockdev {
 	struct dlist head;
 	struct vmm_blockdev *parent;
@@ -111,6 +113,14 @@ struct vmm_blockdev {
 	u32 block_size;
 
 	struct vmm_request_queue *rq;
+
+	/* NOTE: partition managment software can use part_sign and
+	 * part_priv for its own use.
+	 * NOTE: part_sign will be unique to partition style
+	 * NOTE: part_sign=0x0 is reserved and means unknown partition style
+	 */
+	u32 part_sign; /* To be used for partition managment */
+	void *part_priv; /* To be used for partition managment */
 };
 
 /* Notifier event when block device is registered */
