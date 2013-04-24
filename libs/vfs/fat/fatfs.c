@@ -455,9 +455,16 @@ static int fatfs_control_init(struct fatfs_control *ctrl,
 		return VMM_EIO;
 	}
 
-	/* Frequently required info */
+	/* Get bytes_per_sector and sector_per_cluster */
 	ctrl->bytes_per_sector = __le16(bsec->bytes_per_sector);
 	ctrl->sectors_per_cluster = bsec->sectors_per_cluster;
+
+	/* Sanity check bytes_per_sector and sector_per_cluster */
+	if (!ctrl->bytes_per_sector || !ctrl->sectors_per_cluster) {
+		return VMM_ENOSYS;
+	}
+
+	/* Frequently required info */
 	ctrl->number_of_fat = bsec->number_of_fat;
 	ctrl->bytes_per_cluster = 
 			ctrl->sectors_per_cluster * ctrl->bytes_per_sector;
