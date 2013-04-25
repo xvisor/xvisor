@@ -56,6 +56,12 @@
 #define EXT2_SECTOR_BITS		9
 #define EXT2_SECTOR_SIZE		512
 
+/* Macro-instructions used to manage several block sizes  */
+#define EXT2_MIN_BLOCK_LOG_SIZE		10 /* 1024 */
+#define EXT2_MAX_BLOCK_LOG_SIZE		16 /* 65536 */
+#define EXT2_MIN_BLOCK_SIZE		(1 << EXT2_MIN_BLOCK_LOG_SIZE)
+#define EXT2_MAX_BLOCK_SIZE		(1 << EXT2_MAX_BLOCK_LOG_SIZE)
+
 /* Maximum file size (2 TB) */
 #define EXT2_MAX_FILE_SIZE		0x20000000000ULL
 
@@ -96,6 +102,21 @@ struct ext2_sblock {
 	char volume_name[16];
 	char last_mounted_on[64];
 	u32 compression_info;
+	u8 prealloc_blocks;
+	u8 prealloc_dir_blocks;
+	u16 reserved_gdt_blocks;
+	u8 journal_uuid[16];
+	u32 journal_inum;
+	u32 journal_dev;
+	u32 last_orphan;
+	u32 hash_seed[4];
+	u8 def_hash_version;
+	u8 jnl_backup_type;
+	u16 reserved_word_pad;
+	u32 default_mount_opts;
+	u32 first_meta_bg;
+	u32 mkfs_time;
+	u32 jnl_blocks[17];
 }__packed;
 
 /* FS States */
@@ -147,13 +168,16 @@ struct ext2_sblock {
 
 /* The ext2 blockgroup.  */
 struct ext2_block_group {
-	u32 block_bmap_id;
-	u32 inode_bmap_id;
-	u32 inode_table_id;
-	u16 free_blocks;
-	u16 free_inodes;
-	u16 used_dir_cnt;
-	u32 reserved[3];
+	u32 block_bmap_id;	/* Blocks bitmap block */
+	u32 inode_bmap_id;	/* Inodes bitmap block */
+	u32 inode_table_id;	/* Inodes table block */
+	u16 free_blocks;	/* Free blocks count */
+	u16 free_inodes;	/* Free inodes count */
+	u16 used_dir_cnt;	/* Directories count */
+	u16 bg_flags;
+	u32 bg_reserved[2];
+	u16 bg_itable_unused;	/* Unused inodes count */
+	u16 bg_checksum;	/* crc16(s_uuid+grouo_num+group_desc)*/
 }__packed;
 
 /* The ext2 inode.  */
@@ -329,6 +353,7 @@ struct ext2fs_control {
 	u32 inodes_per_block;
 
 	u32 group_count;
+	u32 group_table_blkno;
 	struct ext2fs_group *groups;
 };
 
@@ -677,8 +702,7 @@ static int ext2fs_control_sync(struct ext2fs_control *ctrl)
 		}
 
 		/* Write group descriptor to block device */
-		blkno = __le32(ctrl->sblock.first_data_block) + 
-					1 + udiv32(g, desc_per_blk);
+		blkno = ctrl->group_table_blkno + udiv32(g, desc_per_blk);
 		blkoff = umod32(g, desc_per_blk) * 
 					sizeof(struct ext2_block_group);
 		rc = ext2fs_devwrite(ctrl, blkno, blkoff, 
@@ -755,6 +779,13 @@ static int ext2fs_control_init(struct ext2fs_control *ctrl,
 		goto fail;
 	}
 
+	/* Directory indexing not supported */
+	if (__le32(ctrl->sblock.feature_compatibility) & 
+					EXT2_FEAT_COMPAT_DIR_INDEX) {
+		rc = VMM_ENOSYS;
+		goto fail;
+	}
+
 	/* Pre-compute frequently required values */
 	ctrl->log2_block_size = __le32((ctrl)->sblock.log2_block_size) + 1;
 	ctrl->block_size = 1 << (ctrl->log2_block_size + EXT2_SECTOR_BITS);
@@ -776,6 +807,7 @@ static int ext2fs_control_init(struct ext2fs_control *ctrl,
 			__le32(ctrl->sblock.blocks_per_group))) {
 		ctrl->group_count++;
 	}
+	ctrl->group_table_blkno = __le32(ctrl->sblock.first_data_block) + 1;
 	ctrl->groups = vmm_zalloc(ctrl->group_count * 
 						sizeof(struct ext2fs_group));
 	if (!ctrl->groups) {
@@ -789,8 +821,7 @@ static int ext2fs_control_init(struct ext2fs_control *ctrl,
 		INIT_MUTEX(&ctrl->groups[g].grp_lock);
 
 		/* Load descriptor */
-		blkno = __le32(ctrl->sblock.first_data_block) + 
-					1 + udiv32(g, desc_per_blk);
+		blkno = ctrl->group_table_blkno + udiv32(g, desc_per_blk);
 		blkoff = umod32(g, desc_per_blk) * 
 					sizeof(struct ext2_block_group);
 		rc = ext2fs_devread(ctrl, blkno, blkoff, 
