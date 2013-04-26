@@ -114,13 +114,14 @@ struct vmm_blockdev {
 
 	struct vmm_request_queue *rq;
 
-	/* NOTE: partition managment software can use part_sign and
-	 * part_priv for its own use.
-	 * NOTE: part_sign will be unique to partition style
-	 * NOTE: part_sign=0x0 is reserved and means unknown partition style
+	/* NOTE: partition managment uses part_manager_sign and
+	 * part_manager_priv for its own use.
+	 * NOTE: part_manager_sign will be unique to partition style
+	 * NOTE: part_manager_sign=0x0 is reserved and means unknown 
+	 * partition style
 	 */
-	u32 part_sign; /* To be used for partition managment */
-	void *part_priv; /* To be used for partition managment */
+	u32 part_manager_sign; /* To be used for partition managment */
+	void *part_manager_priv; /* To be used for partition managment */
 };
 
 /* Notifier event when block device is registered */
