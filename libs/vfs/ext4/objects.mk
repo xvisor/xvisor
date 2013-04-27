@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2012 Anup Patel.
+# Copyright (c) 2013 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,8 +18,17 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of fs objects to be build
+# @brief list of Ext4 objects to be build
 # */
 
-libs-objs-$(CONFIG_VFS_EXT2)+= vfs/ext2/ext2fs.o
+libs-objs-$(CONFIG_VFS_EXT4)+= vfs/ext4/ext4fs.o
 
+ext4fs-y += ext4_control.o
+ext4fs-y += ext4_node.o
+ext4fs-y += ext4_main.o
+
+%/ext4fs.o: $(foreach obj,$(ext4fs-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/ext4fs.dep: $(foreach dep,$(ext4fs-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)
