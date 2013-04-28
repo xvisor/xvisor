@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2012 Anup Patel.
+# Copyright (c) 2013 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,8 +18,18 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of fs objects to be build
+# @brief list of FAT objects to be build
 # */
 
 libs-objs-$(CONFIG_VFS_FAT)+= vfs/fat/fatfs.o
+
+fatfs-y += fat_control.o
+fatfs-y += fat_node.o
+fatfs-y += fat_main.o
+
+%/fatfs.o: $(foreach obj,$(fatfs-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/fatfs.dep: $(foreach dep,$(fatfs-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)
 
