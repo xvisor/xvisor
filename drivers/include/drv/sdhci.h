@@ -233,14 +233,15 @@
 /*
  * quirks
  */
-#define SDHCI_QUIRK_32BIT_DMA_ADDR	(1 << 0)
-#define SDHCI_QUIRK_REG32_RW		(1 << 1)
-#define SDHCI_QUIRK_BROKEN_R1B		(1 << 2)
-#define SDHCI_QUIRK_NO_HISPD_BIT	(1 << 3)
-#define SDHCI_QUIRK_BROKEN_VOLTAGE	(1 << 4)
-#define SDHCI_QUIRK_NO_CD		(1 << 5)
-#define SDHCI_QUIRK_WAIT_SEND_CMD	(1 << 6)
-#define SDHCI_QUIRK_NO_SIMULT_VDD_AND_POWER (1 << 7)
+#define SDHCI_QUIRK_32BIT_DMA_ADDR		(1 << 0)
+#define SDHCI_QUIRK_REG32_RW			(1 << 1)
+#define SDHCI_QUIRK_BROKEN_R1B			(1 << 2)
+#define SDHCI_QUIRK_NO_HISPD_BIT		(1 << 3)
+#define SDHCI_QUIRK_BROKEN_VOLTAGE		(1 << 4)
+#define SDHCI_QUIRK_BROKEN_CARD_DETECTION	(1 << 5)
+#define SDHCI_QUIRK_WAIT_SEND_CMD		(1 << 6)
+#define SDHCI_QUIRK_NO_SIMULT_VDD_AND_POWER	(1 << 7)
+#define SDHCI_QUIRK_NO_CARD_NO_RESET		(1 << 8)
 
 /* to make gcc happy */
 struct sdhci_host;

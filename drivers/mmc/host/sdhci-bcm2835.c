@@ -183,8 +183,9 @@ static int bcm2835_sdhci_driver_probe(struct vmm_device *dev,
 	host->hw_name = dev->node->name;
 	host->irq = (bcm_host->irq) ? bcm_host->irq : -1;
 	host->ioaddr = (void *)bcm_host->base;
-	host->quirks = SDHCI_QUIRK_BROKEN_VOLTAGE | \
-			SDHCI_QUIRK_BROKEN_R1B | \
+	host->quirks = SDHCI_QUIRK_BROKEN_VOLTAGE |
+			SDHCI_QUIRK_BROKEN_CARD_DETECTION |
+			SDHCI_QUIRK_BROKEN_R1B |
 			SDHCI_QUIRK_WAIT_SEND_CMD;
 	host->voltages = MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
 	host->max_clk = bcm_host->clock_freq;

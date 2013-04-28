@@ -39,9 +39,70 @@
 #include <libs/mathlib.h>
 #include <drv/sdhci.h>
 
+static void sdhci_clear_set_irqs(struct sdhci_host *host, u32 clear, u32 set)
+{
+	u32 ier;
+
+	ier = sdhci_readl(host, SDHCI_INT_ENABLE);
+	ier &= ~clear;
+	ier |= set;
+	sdhci_writel(host, ier, SDHCI_INT_ENABLE);
+
+	ier = sdhci_readl(host, SDHCI_SIGNAL_ENABLE);
+	ier &= ~clear;
+	ier |= set;
+	sdhci_writel(host, ier, SDHCI_SIGNAL_ENABLE);
+}
+
+static void sdhci_unmask_irqs(struct sdhci_host *host, u32 irqs)
+{
+	sdhci_clear_set_irqs(host, 0, irqs);
+}
+
+static void sdhci_mask_irqs(struct sdhci_host *host, u32 irqs)
+{
+	sdhci_clear_set_irqs(host, irqs, 0);
+}
+
+static void sdhci_set_card_detection(struct sdhci_host *host, bool enable)
+{
+	u32 present, irqs;
+
+	if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) {
+		return;
+	}
+
+	present = sdhci_readl(host, SDHCI_PRESENT_STATE) & SDHCI_CARD_PRESENT;
+	irqs = present ? SDHCI_INT_CARD_REMOVE : SDHCI_INT_CARD_INSERT;
+
+	if (enable) {
+		sdhci_unmask_irqs(host, irqs);
+	} else {
+		sdhci_mask_irqs(host, irqs);
+	}
+}
+
+static void sdhci_enable_card_detection(struct sdhci_host *host)
+{
+	sdhci_set_card_detection(host, TRUE);
+}
+
+#if 0
+static void sdhci_disable_card_detection(struct sdhci_host *host)
+{
+	sdhci_set_card_detection(host, FALSE);
+}
+#endif
+
 static void sdhci_reset(struct sdhci_host *host, u8 mask)
 {
 	u32 timeout;
+
+	if (host->quirks & SDHCI_QUIRK_NO_CARD_NO_RESET) {
+		if (!(sdhci_readl(host, SDHCI_PRESENT_STATE) &
+			SDHCI_CARD_PRESENT))
+			return;
+	}
 
 	/* Wait max 100 ms */
 	timeout = 100;
@@ -55,6 +116,22 @@ static void sdhci_reset(struct sdhci_host *host, u8 mask)
 		timeout--;
 		vmm_udelay(1000);
 	}
+}
+
+static void sdhci_init(struct sdhci_host *host, int soft)
+{
+	if (soft) {
+		sdhci_reset(host, SDHCI_RESET_CMD|SDHCI_RESET_DATA);
+	} else {
+		sdhci_reset(host, SDHCI_RESET_ALL);
+	}
+
+	/* Enable only interrupts served by the SD controller */
+	sdhci_writel(host, SDHCI_INT_DATA_MASK | SDHCI_INT_CMD_MASK,
+		     SDHCI_INT_ENABLE);
+
+	/* Mask all sdhci interrupt sources */
+	sdhci_writel(host, 0x0, SDHCI_SIGNAL_ENABLE);
 }
 
 static void sdhci_cmd_done(struct sdhci_host *host, struct mmc_cmd *cmd)
@@ -151,10 +228,24 @@ int sdhci_send_command(struct mmc_host *mmc,
 			struct mmc_cmd *cmd, 
 			struct mmc_data *data)
 {
-	struct sdhci_host *host = mmc_priv(mmc);
+	bool present;
 	u32 mask, flags, mode;
 	int ret = 0, trans_bytes = 0, is_aligned = 1;
 	u32 timeout, retry = 10000, stat = 0, start_addr = 0;
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	/* If polling, assume that the card is always present. */
+	if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) {
+		present = TRUE;
+	} else {
+		present = sdhci_readl(host, SDHCI_PRESENT_STATE) &
+				SDHCI_CARD_PRESENT;
+	}
+
+	/* If card not present then return error */
+	if (!present) {
+		return VMM_EIO;
+	}
 
 	/* Wait max 10 ms */
 	timeout = 10;
@@ -447,7 +538,7 @@ static int sdhci_init_card(struct mmc_host *mmc)
 
 	sdhci_set_power(host, fls(mmc->voltages) - 1);
 
-	if (host->quirks & SDHCI_QUIRK_NO_CD) {
+	if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) {
 		u32 status;
 
 		sdhci_writel(host, SDHCI_CTRL_CD_TEST_INS | SDHCI_CTRL_CD_TEST,
@@ -461,20 +552,95 @@ static int sdhci_init_card(struct mmc_host *mmc)
 		}
 	}
 
-	/* Enable only interrupts served by the SD controller */
-	sdhci_writel(host, SDHCI_INT_DATA_MASK | SDHCI_INT_CMD_MASK
-		     , SDHCI_INT_ENABLE);
-	/* Mask all sdhci interrupt sources */
-	sdhci_writel(host, 0x0, SDHCI_SIGNAL_ENABLE);
-
 	return VMM_OK;
+}
+
+static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask)
+{
+	/* Not used right now. */
+}
+
+static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
+{
+	/* Not used right now. */
 }
 
 static vmm_irq_return_t sdhci_irq_handler(u32 irq_no, void *dev)
 {
-	/* FIXME: For now, we don't use interrupt */
+	u32 intmask, unexpected = 0;
+	vmm_irq_return_t result;
+	struct sdhci_host *host = dev;
 
-	return VMM_IRQ_HANDLED;
+	intmask = sdhci_readl(host, SDHCI_INT_STATUS);
+
+	if (!intmask || intmask == 0xffffffff) {
+		result = VMM_IRQ_NONE;
+		goto out;
+	}
+
+	if (intmask & (SDHCI_INT_CARD_INSERT | SDHCI_INT_CARD_REMOVE)) {
+		u32 present = sdhci_readl(host, SDHCI_PRESENT_STATE) &
+			      SDHCI_CARD_PRESENT;
+
+		/*
+		 * There is a observation on i.mx esdhc.  INSERT bit will be
+		 * immediately set again when it gets cleared, if a card is
+		 * inserted.  We have to mask the irq to prevent interrupt
+		 * storm which will freeze the system.  And the REMOVE gets
+		 * the same situation.
+		 *
+		 * More testing are needed here to ensure it works for other
+		 * platforms though.
+		 */
+		sdhci_mask_irqs(host, present ? SDHCI_INT_CARD_INSERT :
+						SDHCI_INT_CARD_REMOVE);
+		sdhci_unmask_irqs(host, present ? SDHCI_INT_CARD_REMOVE :
+						  SDHCI_INT_CARD_INSERT);
+
+		if (present) {
+			mmc_detect_card(host->mmc);
+		} else {
+			mmc_unplug_card(host->mmc);
+		}
+
+		sdhci_writel(host, intmask & (SDHCI_INT_CARD_INSERT |
+			     SDHCI_INT_CARD_REMOVE), SDHCI_INT_STATUS);
+		intmask &= ~(SDHCI_INT_CARD_INSERT | SDHCI_INT_CARD_REMOVE);
+	}
+
+	if (intmask & SDHCI_INT_CMD_MASK) {
+		sdhci_writel(host, intmask & SDHCI_INT_CMD_MASK,
+			SDHCI_INT_STATUS);
+		sdhci_cmd_irq(host, intmask & SDHCI_INT_CMD_MASK);
+	}
+
+	if (intmask & SDHCI_INT_DATA_MASK) {
+		sdhci_writel(host, intmask & SDHCI_INT_DATA_MASK,
+			SDHCI_INT_STATUS);
+		sdhci_data_irq(host, intmask & SDHCI_INT_DATA_MASK);
+	}
+
+	intmask &= ~(SDHCI_INT_CMD_MASK | SDHCI_INT_DATA_MASK);
+
+	intmask &= ~SDHCI_INT_ERROR;
+
+	if (intmask & SDHCI_INT_BUS_POWER) {
+		vmm_printf("%s: Card is consuming too much power!\n",
+			   mmc_hostname(host->mmc));
+		sdhci_writel(host, SDHCI_INT_BUS_POWER, SDHCI_INT_STATUS);
+	}
+
+	intmask &= ~SDHCI_INT_BUS_POWER;
+
+	if (intmask) {
+		unexpected |= intmask;
+		sdhci_writel(host, intmask, SDHCI_INT_STATUS);
+	}
+
+	result = VMM_IRQ_HANDLED;
+
+out:
+	return result;
 }
 
 int sdhci_card_detect(struct sdhci_host *host)
@@ -570,7 +736,7 @@ int sdhci_add_host(struct sdhci_host *host)
 		mmc->host_caps |= host->caps;
 	}
 
-	sdhci_reset(host, SDHCI_RESET_ALL);
+	sdhci_init(host, 0);
 
 	if (host->quirks & SDHCI_QUIRK_32BIT_DMA_ADDR) {
 		/* Note: host aligned buffer must be 8-byte aligned */
@@ -592,10 +758,12 @@ int sdhci_add_host(struct sdhci_host *host)
 	if (host->irq > 0) {
 		if ((rc = vmm_host_irq_register(host->irq, mmc_hostname(mmc), 
 						sdhci_irq_handler, 
-						mmc))) {
+						host))) {
 			goto free_host_buffer;
 		}
 
+	} else {
+		host->quirks |= SDHCI_QUIRK_BROKEN_CARD_DETECTION;
 	}
 
 	rc = mmc_add_host(mmc);
@@ -618,9 +786,11 @@ int sdhci_add_host(struct sdhci_host *host)
 		break;
 	};
 
-	vmm_printf("%s: SDHCI controller %s using %s\n",
-		   mmc_hostname(mmc), ver, 
+	vmm_printf("%s: SDHCI controller %s [%s mode]\n",
+		   mmc_hostname(mmc), ver,
 		   (host->sdhci_caps & SDHCI_CAN_DO_SDMA) ? "DMA" : "PIO");
+
+	sdhci_enable_card_detection(host);
 
 	return VMM_OK;
 
