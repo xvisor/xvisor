@@ -325,16 +325,6 @@ static int mmci_request(struct mmc_host *mmc,
 	}
 }
 
-/* MMC uses open drain drivers in the enumeration phase */
-static int mmci_reset(struct mmc_host *mmc)
-{
-	struct mmci_host *host = mmc_priv(mmc);
-
-	vmm_writel(host->pwr_init, &host->base->power);
-
-	return VMM_OK;
-}
-
 static void mmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 {
 	struct mmci_host *host = mmc_priv(mmc);
@@ -396,6 +386,16 @@ static void mmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	vmm_udelay(CLK_CHANGE_DELAY);
 }
 
+int mmci_init_card(struct mmc_host *mmc, struct mmc_card *card)
+{
+	struct mmci_host *host = mmc_priv(mmc);
+
+	/* MMCI uses open drain drivers in the enumeration phase */
+	vmm_writel(host->pwr_init, &host->base->power);
+
+	return VMM_OK;
+}
+
 static vmm_irq_return_t mmci_cmd_irq_handler(u32 irq_no, void *dev)
 {
 	/* FIXME: For now, we don't use interrupt */
@@ -416,6 +416,7 @@ static int mmci_driver_probe(struct vmm_device *dev,
 	int rc;
 	u32 sdi;
 	virtual_addr_t base;
+	physical_addr_t basepa;
 	struct mmc_host *mmc;
 	struct mmci_host *host;
 
@@ -472,7 +473,7 @@ static int mmci_driver_probe(struct vmm_device *dev,
 	vmm_writel(sdi, &host->base->mask0);
 
 	/* Setup mmc host configuration */
-	mmc->host_caps = host->caps;
+	mmc->caps = host->caps;
 	mmc->voltages = host->voltages;
 	mmc->f_min = host->clock_min;
 	mmc->f_max = host->clock_max;
@@ -481,7 +482,7 @@ static int mmci_driver_probe(struct vmm_device *dev,
 	/* Setup mmc host operations */
 	mmc->ops.send_cmd = mmci_request;
 	mmc->ops.set_ios = mmci_set_ios;
-	mmc->ops.init_card = mmci_reset;
+	mmc->ops.init_card = mmci_init_card;
 	mmc->ops.getcd = NULL;
 	mmc->ops.getwp = NULL;
 
@@ -492,9 +493,10 @@ static int mmci_driver_probe(struct vmm_device *dev,
 
 	dev->priv = mmc;
 
+	vmm_devtree_regaddr(dev->node, &basepa, 0);
 	vmm_printf("%s: PL%03x manf %x rev%u at 0x%08llx irq %d,%d (pio)\n",
 		   dev->node->name, amba_part(dev), amba_manf(dev),
-		   amba_rev(dev), (unsigned long long)base,
+		   amba_rev(dev), (unsigned long long)basepa,
 		   host->irq0, host->irq1);
 
 	return VMM_OK;
@@ -553,7 +555,7 @@ static u32 mmci_v2[]= {
 	SDI_PWR_OPD | SDI_PWR_PWRCTRL_ON, /* pwr_init */
 	SDI_CLKCR_CLKDIV_INIT_V2 | SDI_CLKCR_CLKEN | SDI_CLKCR_HWFC_EN, /* clkdiv_init */
 	VOLTAGE_WINDOW_MMC, /* voltages */
-	MMC_MODE_8BIT | MMC_MODE_HS | MMC_MODE_HS_52MHz, /* caps */
+	MMC_CAP_MODE_8BIT | MMC_CAP_MODE_HS | MMC_CAP_MODE_HS_52MHz, /* caps */
 	ARM_MCLK, /* clock_in */
 	ARM_MCLK / (2 + SDI_CLKCR_CLKDIV_INIT_V2), /* clock_min */
 	ARM_MCLK / 2, /* clock_max */

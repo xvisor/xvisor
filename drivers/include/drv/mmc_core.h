@@ -44,38 +44,6 @@
 
 #define MMC_CORE_IPRIORITY		(VMM_BLOCKDEV_CLASS_IPRIORITY + 1)
 
-#define SD_VERSION_SD			0x20000
-#define SD_VERSION_3			(SD_VERSION_SD | 0x300)
-#define SD_VERSION_2			(SD_VERSION_SD | 0x200)
-#define SD_VERSION_1_0			(SD_VERSION_SD | 0x100)
-#define SD_VERSION_1_10			(SD_VERSION_SD | 0x10a)
-#define MMC_VERSION_MMC			0x10000
-#define MMC_VERSION_UNKNOWN		(MMC_VERSION_MMC)
-#define MMC_VERSION_1_2			(MMC_VERSION_MMC | 0x102)
-#define MMC_VERSION_1_4			(MMC_VERSION_MMC | 0x104)
-#define MMC_VERSION_2_2			(MMC_VERSION_MMC | 0x202)
-#define MMC_VERSION_3			(MMC_VERSION_MMC | 0x300)
-#define MMC_VERSION_4			(MMC_VERSION_MMC | 0x400)
-#define MMC_VERSION_4_1			(MMC_VERSION_MMC | 0x401)
-#define MMC_VERSION_4_2			(MMC_VERSION_MMC | 0x402)
-#define MMC_VERSION_4_3			(MMC_VERSION_MMC | 0x403)
-#define MMC_VERSION_4_41		(MMC_VERSION_MMC | 0x429)
-#define MMC_VERSION_4_5			(MMC_VERSION_MMC | 0x405)
-
-#define MMC_MODE_HS			0x001
-#define MMC_MODE_HS_52MHz		0x010
-#define MMC_MODE_4BIT			0x100
-#define MMC_MODE_8BIT			0x200
-#define MMC_MODE_SPI			0x400
-#define MMC_MODE_HC			0x800
-
-#define MMC_MODE_MASK_WIDTH_BITS 	(MMC_MODE_4BIT | MMC_MODE_8BIT)
-#define MMC_MODE_WIDTH_BITS_SHIFT 	8
-
-#define SD_DATA_4BIT			0x00040000
-
-#define IS_SD(card) 			((card)->version & SD_VERSION_SD)
-
 #define MMC_DATA_READ			1
 #define MMC_DATA_WRITE			2
 
@@ -133,24 +101,6 @@
 #define MMC_STATUS_ERROR		(1 << 19)
 
 #define MMC_STATE_PRG			(7 << 9)
-
-#define MMC_VDD_165_195			0x00000080	/* VDD voltage 1.65 - 1.95 */
-#define MMC_VDD_20_21			0x00000100	/* VDD voltage 2.0 ~ 2.1 */
-#define MMC_VDD_21_22			0x00000200	/* VDD voltage 2.1 ~ 2.2 */
-#define MMC_VDD_22_23			0x00000400	/* VDD voltage 2.2 ~ 2.3 */
-#define MMC_VDD_23_24			0x00000800	/* VDD voltage 2.3 ~ 2.4 */
-#define MMC_VDD_24_25			0x00001000	/* VDD voltage 2.4 ~ 2.5 */
-#define MMC_VDD_25_26			0x00002000	/* VDD voltage 2.5 ~ 2.6 */
-#define MMC_VDD_26_27			0x00004000	/* VDD voltage 2.6 ~ 2.7 */
-#define MMC_VDD_27_28			0x00008000	/* VDD voltage 2.7 ~ 2.8 */
-#define MMC_VDD_28_29			0x00010000	/* VDD voltage 2.8 ~ 2.9 */
-#define MMC_VDD_29_30			0x00020000	/* VDD voltage 2.9 ~ 3.0 */
-#define MMC_VDD_30_31			0x00040000	/* VDD voltage 3.0 ~ 3.1 */
-#define MMC_VDD_31_32			0x00080000	/* VDD voltage 3.1 ~ 3.2 */
-#define MMC_VDD_32_33			0x00100000	/* VDD voltage 3.2 ~ 3.3 */
-#define MMC_VDD_33_34			0x00200000	/* VDD voltage 3.3 ~ 3.4 */
-#define MMC_VDD_34_35			0x00400000	/* VDD voltage 3.4 ~ 3.5 */
-#define MMC_VDD_35_36			0x00800000	/* VDD voltage 3.5 ~ 3.6 */
 
 #define MMC_SWITCH_MODE_CMD_SET		0x00 /* Change the command set */
 #define MMC_SWITCH_MODE_SET_BITS	0x01 /* Set bits in EXT_CSD byte
@@ -248,31 +198,43 @@ struct mmc_ios {
 	u32 clock;
 };
 
-struct mmc_host;
-
-struct mmc_host_ops {
-	int (*send_cmd)(struct mmc_host *mmc,
-			struct mmc_cmd *cmd, 
-			struct mmc_data *data);
-	void (*set_ios)(struct mmc_host *mmc, 
-			struct mmc_ios *ios);
-	int (*init_card)(struct mmc_host *mmc);
-	int (*getcd)(struct mmc_host *mmc);
-	int (*getwp)(struct mmc_host *mmc);
-};
-
 struct mmc_card {
 	u32 version;
+
+#define SD_VERSION_SD			0x20000
+#define SD_VERSION_3			(SD_VERSION_SD | 0x300)
+#define SD_VERSION_2			(SD_VERSION_SD | 0x200)
+#define SD_VERSION_1_0			(SD_VERSION_SD | 0x100)
+#define SD_VERSION_1_10			(SD_VERSION_SD | 0x10a)
+#define MMC_VERSION_MMC			0x10000
+#define MMC_VERSION_UNKNOWN		(MMC_VERSION_MMC)
+#define MMC_VERSION_1_2			(MMC_VERSION_MMC | 0x102)
+#define MMC_VERSION_1_4			(MMC_VERSION_MMC | 0x104)
+#define MMC_VERSION_2_2			(MMC_VERSION_MMC | 0x202)
+#define MMC_VERSION_3			(MMC_VERSION_MMC | 0x300)
+#define MMC_VERSION_4			(MMC_VERSION_MMC | 0x400)
+#define MMC_VERSION_4_1			(MMC_VERSION_MMC | 0x401)
+#define MMC_VERSION_4_2			(MMC_VERSION_MMC | 0x402)
+#define MMC_VERSION_4_3			(MMC_VERSION_MMC | 0x403)
+#define MMC_VERSION_4_41		(MMC_VERSION_MMC | 0x429)
+#define MMC_VERSION_4_5			(MMC_VERSION_MMC | 0x405)
+
+#define IS_SD(card) 			((card)->version & SD_VERSION_SD)
+
+	u32 caps;
+
 	u32 ocr;
 
 	u32 scr[2];
+
+#define SD_DATA_4BIT			0x00040000
+
 	u32 csd[4];
 	u32 cid[4];
 	u16 rca;
 
 	u32 tran_speed;
 	int high_capacity;
-	u32 card_caps;
 	char part_config;
 	char part_num;
 	u32 read_bl_len;
@@ -283,16 +245,57 @@ struct mmc_card {
 	struct vmm_blockdev *bdev;
 };
 
+struct mmc_host;
+
+struct mmc_host_ops {
+	int (*send_cmd)(struct mmc_host *mmc,
+			struct mmc_cmd *cmd, 
+			struct mmc_data *data);
+	void (*set_ios)(struct mmc_host *mmc, 
+			struct mmc_ios *ios);
+	int (*init_card)(struct mmc_host *mmc, struct mmc_card *card);
+	int (*getcd)(struct mmc_host *mmc);
+	int (*getwp)(struct mmc_host *mmc);
+};
+
 struct mmc_host {
 	struct dlist link;
 	struct vmm_device *dev;
-
 	u32 host_num;
+
+	u32 voltages;
+
+#define MMC_VDD_165_195			0x00000080	/* VDD voltage 1.65 - 1.95 */
+#define MMC_VDD_20_21			0x00000100	/* VDD voltage 2.0 ~ 2.1 */
+#define MMC_VDD_21_22			0x00000200	/* VDD voltage 2.1 ~ 2.2 */
+#define MMC_VDD_22_23			0x00000400	/* VDD voltage 2.2 ~ 2.3 */
+#define MMC_VDD_23_24			0x00000800	/* VDD voltage 2.3 ~ 2.4 */
+#define MMC_VDD_24_25			0x00001000	/* VDD voltage 2.4 ~ 2.5 */
+#define MMC_VDD_25_26			0x00002000	/* VDD voltage 2.5 ~ 2.6 */
+#define MMC_VDD_26_27			0x00004000	/* VDD voltage 2.6 ~ 2.7 */
+#define MMC_VDD_27_28			0x00008000	/* VDD voltage 2.7 ~ 2.8 */
+#define MMC_VDD_28_29			0x00010000	/* VDD voltage 2.8 ~ 2.9 */
+#define MMC_VDD_29_30			0x00020000	/* VDD voltage 2.9 ~ 3.0 */
+#define MMC_VDD_30_31			0x00040000	/* VDD voltage 3.0 ~ 3.1 */
+#define MMC_VDD_31_32			0x00080000	/* VDD voltage 3.1 ~ 3.2 */
+#define MMC_VDD_32_33			0x00100000	/* VDD voltage 3.2 ~ 3.3 */
+#define MMC_VDD_33_34			0x00200000	/* VDD voltage 3.3 ~ 3.4 */
+#define MMC_VDD_34_35			0x00400000	/* VDD voltage 3.4 ~ 3.5 */
+#define MMC_VDD_35_36			0x00800000	/* VDD voltage 3.5 ~ 3.6 */
+
+	u32 caps;
+
+#define MMC_CAP_MODE_HS			0x00000001
+#define MMC_CAP_MODE_HS_52MHz		0x00000010
+#define MMC_CAP_MODE_4BIT		0x00000100
+#define MMC_CAP_MODE_8BIT		0x00000200
+#define MMC_CAP_MODE_SPI		0x00000400
+#define MMC_CAP_MODE_HC			0x00000800
+#define MMC_CAP_NEEDS_POLL		0x00001000
+
 	u32 f_min;
 	u32 f_max;
 	u32 b_max;
-	u32 voltages;
-	u32 host_caps;
 
 	struct dlist io_list;
 	vmm_spinlock_t io_list_lock;
@@ -311,7 +314,7 @@ struct mmc_host {
 	unsigned long priv[0];
 };
 
-#define mmc_host_is_spi(mmc)	((mmc)->host_caps & MMC_MODE_SPI)
+#define mmc_host_is_spi(mmc)	((mmc)->caps & MMC_CAP_MODE_SPI)
 
 #define mmc_hostname(mmc)	((mmc)->dev->node->name)
 

@@ -18,7 +18,7 @@
  *
  * @file sdhci.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Secure Digital Host Controller Interface driver
+ * @brief Secure Digital Host Controller Interface driver framework
  *
  * The source has been largely adapted from u-boot:
  * drivers/mmc/sdhci.c
@@ -33,11 +33,20 @@
 #include <vmm_cache.h>
 #include <vmm_delay.h>
 #include <vmm_heap.h>
+#include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
+#include <vmm_modules.h>
 #include <libs/bitops.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <drv/sdhci.h>
+
+#define MODULE_DESC			"SDHCI Driver"
+#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
+#define MODULE_IPRIORITY		(SDHCI_IPRIORITY)
+#define	MODULE_INIT			sdhci_module_init
+#define	MODULE_EXIT			sdhci_module_exit
 
 static void sdhci_clear_set_irqs(struct sdhci_host *host, u32 clear, u32 set)
 {
@@ -532,7 +541,7 @@ static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	sdhci_writeb(host, ctrl, SDHCI_HOST_CONTROL);
 }
 
-static int sdhci_init_card(struct mmc_host *mmc)
+static int sdhci_init_card(struct mmc_host *mmc, struct mmc_card *card)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
 
@@ -647,6 +656,7 @@ int sdhci_card_detect(struct sdhci_host *host)
 {
 	return mmc_detect_card(host->mmc);
 }
+VMM_EXPORT_SYMBOL(sdhci_card_detect);
 
 struct sdhci_host *sdhci_alloc_host(struct vmm_device *dev, int extra)
 {
@@ -664,11 +674,13 @@ struct sdhci_host *sdhci_alloc_host(struct vmm_device *dev, int extra)
 
 	return host;
 }
+VMM_EXPORT_SYMBOL(sdhci_alloc_host);
 
 int sdhci_add_host(struct sdhci_host *host)
 {
 	int rc;
 	const char *ver;
+	physical_addr_t iopaddr;
 	struct mmc_host *mmc = host->mmc;
 
 	if (host->quirks & SDHCI_QUIRK_REG32_RW) {
@@ -728,12 +740,19 @@ int sdhci_add_host(struct sdhci_host *host)
 		mmc->voltages |= host->voltages;
 	}
 
-	mmc->host_caps = MMC_MODE_HS | MMC_MODE_HS_52MHz | MMC_MODE_4BIT;
+	mmc->caps = MMC_CAP_MODE_HS | 
+			MMC_CAP_MODE_HS_52MHz | 
+			MMC_CAP_MODE_4BIT;
 	if (host->sdhci_caps & SDHCI_CAN_DO_8BIT) {
-		mmc->host_caps |= MMC_MODE_8BIT;
+		mmc->caps |= MMC_CAP_MODE_8BIT;
 	}
+
+	if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) {
+		mmc->caps |= MMC_CAP_NEEDS_POLL;
+	}
+
 	if (host->caps) {
-		mmc->host_caps |= host->caps;
+		mmc->caps |= host->caps;
 	}
 
 	sdhci_init(host, 0);
@@ -786,8 +805,10 @@ int sdhci_add_host(struct sdhci_host *host)
 		break;
 	};
 
-	vmm_printf("%s: SDHCI controller %s [%s mode]\n",
-		   mmc_hostname(mmc), ver,
+	vmm_host_va2pa((virtual_addr_t)host->ioaddr, &iopaddr);
+	vmm_printf("%s: SDHCI controller %s at 0x%llx irq %d [%s]\n",
+		   mmc_hostname(mmc), ver, 
+		   (unsigned long long)iopaddr, host->irq,
 		   (host->sdhci_caps & SDHCI_CAN_DO_SDMA) ? "DMA" : "PIO");
 
 	sdhci_enable_card_detection(host);
@@ -806,6 +827,7 @@ free_host_buffer:
 free_nothing:
 	return rc;
 }
+VMM_EXPORT_SYMBOL(sdhci_add_host);
 
 void sdhci_remove_host(struct sdhci_host *host, int dead)
 {
@@ -822,9 +844,28 @@ void sdhci_remove_host(struct sdhci_host *host, int dead)
 		host->aligned_buffer = NULL;
 	}
 }
+VMM_EXPORT_SYMBOL(sdhci_remove_host);
 
 void sdhci_free_host(struct sdhci_host *host)
 {
 	mmc_free_host(host->mmc);
 }
+VMM_EXPORT_SYMBOL(sdhci_free_host);
 
+static int __init sdhci_module_init(void)
+{
+	/* Nothing to do here. */
+	return VMM_OK;
+}
+
+static void __exit sdhci_module_exit(void)
+{
+	/* Nothing to do here. */
+}
+
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

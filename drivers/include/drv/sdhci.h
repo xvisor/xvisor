@@ -37,6 +37,8 @@
 
 #include <drv/mmc_core.h>
 
+#define SDHCI_IPRIORITY			(MMC_CORE_IPRIORITY + 1)
+
 /*
  * Controller registers
  */

@@ -143,10 +143,10 @@ static void __mmc_set_bus_width(struct mmc_host *host, u32 width)
 	__mmc_set_ios(host);
 }
 
-static int __mmc_init_card(struct mmc_host *host)
+static int __mmc_init_card(struct mmc_host *host, struct mmc_card *card)
 {
 	if (host->ops.init_card) {
-		return host->ops.init_card(host);
+		return host->ops.init_card(host, card);
 	}
 
 	return VMM_OK;
@@ -254,7 +254,7 @@ static int __mmc_send_status(struct mmc_host *host,
 	struct mmc_cmd cmd;
 	int err, retries = 5;
 #ifdef CONFIG_MMC_TRACE
-	int status;
+	u32 status;
 #endif
 
 	cmd.cmdidx = MMC_CMD_SEND_STATUS;
@@ -447,7 +447,7 @@ static int __mmc_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 				(cmd.response[0] & OCR_VOLTAGE_MASK)) |
 				(cmd.response[0] & OCR_ACCESS_MODE));
 
-		if (host->host_caps & MMC_MODE_HC) {
+		if (host->caps & MMC_CAP_MODE_HC) {
 			cmd.cmdarg |= OCR_HCS;
 		}
 
@@ -512,7 +512,7 @@ static int __sd_change_freq(struct mmc_host *host, struct mmc_card *card)
 	struct mmc_data data;
 	int timeout;
 
-	card->card_caps = 0;
+	card->caps = 0;
 
 	if (mmc_host_is_spi(host)) {
 		return VMM_OK;
@@ -570,7 +570,7 @@ retry_scr:
 	};
 
 	if (card->scr[0] & SD_DATA_4BIT) {
-		card->card_caps |= MMC_MODE_4BIT;
+		card->caps |= MMC_CAP_MODE_4BIT;
 	}
 
 	/* Version 1.0 doesn't support switching */
@@ -603,8 +603,8 @@ retry_scr:
 	 * This can avoid furthur problem when the card runs in different
 	 * mode between the host.
 	 */
-	if (!((host->host_caps & MMC_MODE_HS_52MHz) &&
-		(host->host_caps & MMC_MODE_HS))) {
+	if (!((host->caps & MMC_CAP_MODE_HS_52MHz) &&
+		(host->caps & MMC_CAP_MODE_HS))) {
 		return VMM_OK;
 	}
 
@@ -614,7 +614,7 @@ retry_scr:
 	}
 
 	if ((vmm_be32_to_cpu(switch_status[4]) & 0x0f000000) == 0x01000000) {
-		card->card_caps |= MMC_MODE_HS;
+		card->caps |= MMC_CAP_MODE_HS;
 	}
 
 	return VMM_OK;
@@ -650,7 +650,7 @@ static int __mmc_change_freq(struct mmc_host *host, struct mmc_card *card)
 	char cardtype;
 	int err;
 
-	card->card_caps = 0;
+	card->caps = 0;
 
 	if (mmc_host_is_spi(host)) {
 		return VMM_OK;
@@ -687,9 +687,9 @@ static int __mmc_change_freq(struct mmc_host *host, struct mmc_card *card)
 
 	/* High Speed is set, there are two types: 52MHz and 26MHz */
 	if (cardtype & MMC_HS_52MHZ) {
-		card->card_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS;
+		card->caps |= MMC_CAP_MODE_HS_52MHz | MMC_CAP_MODE_HS;
 	} else {
-		card->card_caps |= MMC_MODE_HS;
+		card->caps |= MMC_CAP_MODE_HS;
 	}
 
 	return VMM_OK;
@@ -745,31 +745,28 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 		cmd.cmdidx = SD_CMD_SEND_RELATIVE_ADDR;
 		cmd.cmdarg = card->rca << 16;
 		cmd.resp_type = MMC_RSP_R6;
-
 		err = __mmc_send_cmd(host, &cmd, NULL);
 		if (err) {
 			return err;
 		}
-
 		if (IS_SD(card)) {
 			card->rca = (cmd.response[0] >> 16) & 0xffff;
 		}
 	}
 
-	/* Get the Card-Specific Data */
+	/* Get the card-specific data */
 	cmd.cmdidx = MMC_CMD_SEND_CSD;
 	cmd.resp_type = MMC_RSP_R2;
 	cmd.cmdarg = card->rca << 16;
-
 	err = __mmc_send_cmd(host, &cmd, NULL);
-
-	/* Waiting for the ready status */
-	__mmc_send_status(host, card, timeout);
-
+	if (!err) {
+		err = __mmc_send_status(host, card, timeout);
+	}
 	if (err) {
 		return err;
 	}
 
+	/* Save card-specific data */
 	card->csd[0] = cmd.response[0];
 	card->csd[1] = cmd.response[1];
 	card->csd[2] = cmd.response[2];
@@ -800,19 +797,16 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 		}
 	}
 
-	/* divide frequency by 10, since the mults are 10x bigger */
+	/* Determine card parameters */
 	freq = fbase[(cmd.response[0] & 0x7)];
 	mult = multipliers[((cmd.response[0] >> 3) & 0xf)];
-
 	card->tran_speed = freq * mult;
-
 	card->read_bl_len = 1 << ((cmd.response[1] >> 16) & 0xf);
-
-	if (IS_SD(card))
+	if (IS_SD(card)) {
 		card->write_bl_len = card->read_bl_len;
-	else
+	} else {
 		card->write_bl_len = 1 << ((cmd.response[3] >> 22) & 0xf);
-
+	}
 	if (card->high_capacity) {
 		csize = (card->csd[1] & 0x3f) << 16
 			| (card->csd[2] & 0xffff0000) >> 16;
@@ -822,15 +816,14 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 			| (card->csd[2] & 0xc0000000) >> 30;
 		cmult = (card->csd[2] & 0x00038000) >> 15;
 	}
-
 	card->capacity = (csize + 1) << (cmult + 2);
 	card->capacity *= card->read_bl_len;
-
-	if (card->read_bl_len > 512)
+	if (card->read_bl_len > 512) {
 		card->read_bl_len = 512;
-
-	if (card->write_bl_len > 512)
+	}
+	if (card->write_bl_len > 512) {
 		card->write_bl_len = 512;
+	}
 
 	/* Select the card, and put it into Transfer Mode */
 	if (!mmc_host_is_spi(host)) { /* cmd not supported in spi */
@@ -919,10 +912,10 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 	}
 
 	/* Restrict card's capabilities by what the host can do */
-	card->card_caps &= host->host_caps;
+	card->caps &= host->caps;
 
 	if (IS_SD(card)) {
-		if (card->card_caps & MMC_MODE_4BIT) {
+		if (card->caps & MMC_CAP_MODE_4BIT) {
 			cmd.cmdidx = MMC_CMD_APP_CMD;
 			cmd.resp_type = MMC_RSP_R1;
 			cmd.cmdarg = card->rca << 16;
@@ -942,7 +935,7 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 			__mmc_set_bus_width(host, 4);
 		}
 
-		if (card->card_caps & MMC_MODE_HS) {
+		if (card->caps & MMC_CAP_MODE_HS) {
 			card->tran_speed = 50000000;
 		} else {
 			card->tran_speed = 25000000;
@@ -959,8 +952,8 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 
 		/* An array to map CSD bus widths to host cap bits */
 		static unsigned ext_to_hostcaps[] = {
-			[EXT_CSD_BUS_WIDTH_4] = MMC_MODE_4BIT,
-			[EXT_CSD_BUS_WIDTH_8] = MMC_MODE_8BIT,
+			[EXT_CSD_BUS_WIDTH_4] = MMC_CAP_MODE_4BIT,
+			[EXT_CSD_BUS_WIDTH_8] = MMC_CAP_MODE_8BIT,
 		};
 
 		/* An array to map chosen bus width to an integer */
@@ -976,7 +969,7 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 			 * this bus width, if it's more than 1
 			 */
 			if (extw != EXT_CSD_BUS_WIDTH_1 &&
-			    !(host->host_caps & ext_to_hostcaps[extw])) {
+			    !(host->caps & ext_to_hostcaps[extw])) {
 				continue;
 			}
 
@@ -1000,13 +993,13 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 				 && memcmp(&ext_csd[EXT_CSD_SEC_CNT], \
 					&test_csd[EXT_CSD_SEC_CNT], 4) == 0) {
 
-				card->card_caps |= ext_to_hostcaps[extw];
+				card->caps |= ext_to_hostcaps[extw];
 				break;
 			}
 		}
 
-		if (card->card_caps & MMC_MODE_HS) {
-			if (card->card_caps & MMC_MODE_HS_52MHz) {
+		if (card->caps & MMC_CAP_MODE_HS) {
+			if (card->caps & MMC_CAP_MODE_HS_52MHz) {
 				card->tran_speed = 52000000;
 			} else {
 				card->tran_speed = 26000000;
@@ -1017,6 +1010,165 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 	__mmc_set_clock(host, card->tran_speed);
 
 	return VMM_OK;
+}
+
+static int __mmc_unplug_card(struct mmc_host *host)
+{
+	int rc = VMM_OK;
+
+	if (!host) {
+		return VMM_EFAIL;
+	}
+
+	if (!host->card) {
+		rc = VMM_OK;
+		goto unplug_done;
+	}
+
+	/* FIXME: Need to wait for pending IO on mmc card */
+
+	vmm_blockdev_unregister(host->card->bdev);
+	vmm_blockdev_free(host->card->bdev);
+
+	vmm_free(host->card);
+	host->card = NULL;
+
+unplug_done:
+	return rc;
+}
+
+static int mmc_make_request(struct vmm_request_queue *rq, 
+			    struct vmm_request *r);
+static int mmc_abort_request(struct vmm_request_queue *rq, 
+			     struct vmm_request *r);
+
+static int __mmc_detect_card(struct mmc_host *host)
+{
+	int rc = VMM_OK;
+	struct mmc_card *card;
+	struct vmm_blockdev *bdev;
+
+	if (!host) {
+		return VMM_EFAIL;
+	}
+
+	/* If mmc card instance available then do nothing */
+	if (host->card) {
+		rc = VMM_OK;
+		goto detect_done;
+	}
+
+	/* Allocate new mmc card instance */
+	host->card = vmm_zalloc(sizeof(struct mmc_card));
+	if (!host->card) {
+		rc = VMM_ENOMEM;
+		goto detect_done;
+	}
+	card = host->card;
+	card->version = MMC_VERSION_UNKNOWN;
+
+	/* Attempt to detect mmc card */
+	if (!__mmc_getcd(host)) {
+		rc = VMM_ENOTAVAIL;
+		goto detect_freecard_fail;
+	}
+
+	/* Do mmc host specific mmc card init */
+	rc = __mmc_init_card(host, host->card);
+	if (rc) {
+		goto detect_freecard_fail;
+	}
+
+	/* Set minimum bus_width and minimum clock */
+	__mmc_set_bus_width(host, 1);
+	__mmc_set_clock(host, 1);
+
+	/* Reset mmc card */
+	rc = __mmc_go_idle(host);
+	if (rc) {
+		goto detect_freecard_fail;
+	}
+
+	/* The internal partition reset to user partition(0) at every CMD0 */
+	host->card->part_num = 0;
+
+	/* Test for SD version 2 */
+	rc = __mmc_send_if_cond(host, host->card);
+	if (rc) {
+		goto detect_freecard_fail;
+	}
+
+	/* Now try to get the SD card's operating condition */
+	rc = __sd_send_op_cond(host, host->card);
+
+	/* If the command timed out, we check for an MMC card */
+	if (rc == VMM_ETIMEDOUT) {
+		rc = __mmc_send_op_cond(host, host->card);
+		if (rc) {
+			vmm_printf("%s: No response to voltage select!\n", 
+				   __func__);
+			goto detect_freecard_fail;
+		}
+	} else if (rc) {
+		goto detect_freecard_fail;
+	}
+
+	/* Startup mmc card */
+	rc = __mmc_startup(host, host->card);
+	if (rc) {
+		goto detect_freecard_fail;
+	}
+
+	/* Allocate new block device instance */
+	card->bdev = vmm_blockdev_alloc();
+	if (!card->bdev) {
+		rc = VMM_ENOMEM;
+		goto detect_freecard_fail;
+	}
+	bdev = card->bdev;
+
+	/* Setup block device instance */
+	vmm_snprintf(bdev->name, VMM_BLOCKDEV_MAX_NAME_SIZE,
+		     "mmc%d", host->host_num);
+	vmm_snprintf(bdev->desc, VMM_BLOCKDEV_MAX_DESC_SIZE,
+		     "Manufacturer=%06x Serial=%04x%04x "
+		     "Product=%c%c%c%c%c%c Rev=%d.%d", 
+		     (card->cid[0] >> 24), (card->cid[2] & 0xffff),
+		     ((card->cid[3] >> 16) & 0xffff), (card->cid[0] & 0xff),
+		     (card->cid[1] >> 24), ((card->cid[1] >> 16) & 0xff),
+		     ((card->cid[1] >> 8) & 0xff), (card->cid[1] & 0xff),
+		     ((card->cid[2] >> 24) & 0xff), ((card->cid[2] >> 20) & 0xf),
+		     ((card->cid[2] >> 16) & 0xf));
+	bdev->dev = host->dev;
+	bdev->flags = VMM_BLOCKDEV_RW;
+	if (card->read_bl_len < card->write_bl_len) {
+		bdev->block_size = card->write_bl_len;
+	} else {
+		bdev->block_size = card->read_bl_len;
+	}
+	bdev->start_lba = 0;
+	bdev->num_blocks = udiv64(card->capacity, bdev->block_size);
+
+	/* Setup request queue for block device instance */
+	bdev->rq->make_request = mmc_make_request;
+	bdev->rq->abort_request = mmc_abort_request;
+	bdev->rq->priv = host;
+
+	rc = vmm_blockdev_register(card->bdev);
+	if (rc) {
+		goto detect_freebdev_fail;
+	}
+
+	rc = VMM_OK;
+	goto detect_done;
+
+detect_freebdev_fail:
+	vmm_blockdev_free(host->card->bdev);
+detect_freecard_fail:
+	vmm_free(host->card);
+	host->card = NULL;
+detect_done:
+	return rc;
 }
 
 static u32 __mmc_write_blocks(struct mmc_host *host, struct mmc_card *card,
@@ -1158,9 +1310,9 @@ static u32 __mmc_bread(struct mmc_host *host, struct mmc_card *card,
 	return blkcnt;
 }
 
-static int do_mmc_blockdev_request(struct mmc_host *host,
-				   struct vmm_request_queue *rq, 
-				   struct vmm_request *r)
+static int __mmc_blockdev_request(struct mmc_host *host,
+				  struct vmm_request_queue *rq, 
+				  struct vmm_request *r)
 {
 	int rc;
 	u32 cnt;
@@ -1173,8 +1325,6 @@ static int do_mmc_blockdev_request(struct mmc_host *host,
 		vmm_blockdev_fail_request(r);
 		return VMM_EFAIL;
 	}
-
-	vmm_mutex_lock(&host->lock);
 
 	switch (r->type) {
 	case VMM_REQUEST_READ:
@@ -1203,173 +1353,6 @@ static int do_mmc_blockdev_request(struct mmc_host *host,
 		break;
 	};
 
-	vmm_mutex_unlock(&host->lock);
-
-	return rc;
-}
-
-static int mmc_make_request(struct vmm_request_queue *rq, 
-			    struct vmm_request *r);
-static int mmc_abort_request(struct vmm_request_queue *rq, 
-			     struct vmm_request *r);
-
-static int do_mmc_detect_card(struct mmc_host *host)
-{
-	int rc = VMM_OK;
-	struct mmc_card *card;
-	struct vmm_blockdev *bdev;
-
-	if (!host) {
-		return VMM_EFAIL;
-	}
-
-	vmm_mutex_lock(&host->lock);
-
-	/* If mmc card instance available then do nothing */
-	if (host->card) {
-		rc = VMM_OK;
-		goto detect_done;
-	}
-
-	/* Allocate new mmc card instance */
-	host->card = vmm_zalloc(sizeof(struct mmc_card));
-	if (!host->card) {
-		rc = VMM_ENOMEM;
-		goto detect_done;
-	}
-	card = host->card;
-	card->version = MMC_VERSION_UNKNOWN;
-
-	/* Attempt to detect mmc card */
-	if (!__mmc_getcd(host)) {
-		rc = VMM_ENOTAVAIL;
-		goto detect_freecard_fail;
-	}
-
-	/* Do mmc host specific mmc card init */
-	rc = __mmc_init_card(host);
-	if (rc) {
-		goto detect_freecard_fail;
-	}
-
-	/* Set minimum bus_width and minimum clock */
-	__mmc_set_bus_width(host, 1);
-	__mmc_set_clock(host, 1);
-
-	/* Reset mmc card */
-	rc = __mmc_go_idle(host);
-	if (rc) {
-		goto detect_freecard_fail;
-	}
-
-	/* The internal partition reset to user partition(0) at every CMD0 */
-	host->card->part_num = 0;
-
-	/* Test for SD version 2 */
-	rc = __mmc_send_if_cond(host, host->card);
-	if (rc) {
-		goto detect_freecard_fail;
-	}
-
-	/* Now try to get the SD card's operating condition */
-	rc = __sd_send_op_cond(host, host->card);
-
-	/* If the command timed out, we check for an MMC card */
-	if (rc == VMM_ETIMEDOUT) {
-		rc = __mmc_send_op_cond(host, host->card);
-		if (rc) {
-			vmm_printf("%s: No response to voltage select!\n", 
-				   __func__);
-			goto detect_freecard_fail;
-		}
-	} else if (rc) {
-		goto detect_freecard_fail;
-	}
-
-	/* Startup mmc card */
-	rc = __mmc_startup(host, host->card);
-	if (rc) {
-		goto detect_freecard_fail;
-	}
-
-	/* Allocate new block device instance */
-	card->bdev = vmm_blockdev_alloc();
-	if (!card->bdev) {
-		rc = VMM_ENOMEM;
-		goto detect_freecard_fail;
-	}
-	bdev = card->bdev;
-
-	/* Setup block device instance */
-	vmm_snprintf(bdev->name, VMM_BLOCKDEV_MAX_NAME_SIZE,
-		     "mmc%d", host->host_num);
-	vmm_snprintf(bdev->desc, VMM_BLOCKDEV_MAX_DESC_SIZE,
-		     "Manufacturer=%06x Serial=%04x%04x "
-		     "Product=%c%c%c%c%c%c Rev=%d.%d", 
-		     (card->cid[0] >> 24), (card->cid[2] & 0xffff),
-		     ((card->cid[3] >> 16) & 0xffff), (card->cid[0] & 0xff),
-		     (card->cid[1] >> 24), ((card->cid[1] >> 16) & 0xff),
-		     ((card->cid[1] >> 8) & 0xff), (card->cid[1] & 0xff),
-		     ((card->cid[2] >> 24) & 0xff), ((card->cid[2] >> 20) & 0xf),
-		     ((card->cid[2] >> 16) & 0xf));
-	bdev->dev = host->dev;
-	bdev->flags = VMM_BLOCKDEV_RW;
-	if (card->read_bl_len < card->write_bl_len) {
-		bdev->block_size = card->write_bl_len;
-	} else {
-		bdev->block_size = card->read_bl_len;
-	}
-	bdev->start_lba = 0;
-	bdev->num_blocks = udiv64(card->capacity, bdev->block_size);
-
-	/* Setup request queue for block device instance */
-	bdev->rq->make_request = mmc_make_request;
-	bdev->rq->abort_request = mmc_abort_request;
-	bdev->rq->priv = host;
-
-	rc = vmm_blockdev_register(card->bdev);
-	if (rc) {
-		goto detect_freebdev_fail;
-	}
-
-	rc = VMM_OK;
-	goto detect_done;
-
-detect_freebdev_fail:
-	vmm_blockdev_free(host->card->bdev);
-detect_freecard_fail:
-	vmm_free(host->card);
-	host->card = NULL;
-detect_done:
-	vmm_mutex_unlock(&host->lock);
-	return rc;
-}
-
-static int do_mmc_unplug_card(struct mmc_host *host)
-{
-	int rc = VMM_OK;
-
-	if (!host) {
-		return VMM_EFAIL;
-	}
-
-	vmm_mutex_lock(&host->lock);
-
-	if (!host->card) {
-		rc = VMM_OK;
-		goto unplug_done;
-	}
-
-	/* FIXME: Need to wait for pending IO on mmc card */
-
-	vmm_blockdev_unregister(host->card->bdev);
-	vmm_blockdev_free(host->card->bdev);
-
-	vmm_free(host->card);
-	host->card = NULL;
-
-unplug_done:
-	vmm_mutex_unlock(&host->lock);
 	return rc;
 }
 
@@ -1393,19 +1376,23 @@ static int mmc_host_thread(void *tdata)
 
 		io = list_entry(l, struct mmc_host_io, head);
 
+		vmm_mutex_lock(&host->lock);
+
 		switch (io->type) {
 		case MMC_HOST_IO_DETECT_CARD:
-			do_mmc_detect_card(host);
+			__mmc_detect_card(host);
 			break;
 		case MMC_HOST_IO_UNPLUG_CARD:
-			do_mmc_unplug_card(host);
+			__mmc_unplug_card(host);
 			break;
 		case MMC_HOST_IO_BLOCKDEV_REQUEST:
-			do_mmc_blockdev_request(host, io->rq, io->r);
+			__mmc_blockdev_request(host, io->rq, io->r);
 			break;
 		default:
 			break;
 		};
+
+		vmm_mutex_unlock(&host->lock);
 
 		vmm_free(io);
 	}
@@ -1590,7 +1577,9 @@ int mmc_add_host(struct mmc_host *host)
 	 * Note: If it fails then it means there is not card connected so
 	 * we ignore failures.
 	 */
-	do_mmc_detect_card(host);
+	vmm_mutex_lock(&host->lock);
+	__mmc_detect_card(host);
+	vmm_mutex_unlock(&host->lock);
 
 	return VMM_OK;
 }
@@ -1602,7 +1591,9 @@ void mmc_remove_host(struct mmc_host *host)
 		return;
 	}
 
-	do_mmc_unplug_card(host);
+	vmm_mutex_lock(&host->lock);
+	__mmc_unplug_card(host);
+	vmm_mutex_unlock(&host->lock);
 
 	vmm_mutex_lock(&mmc_host_list_mutex);
 

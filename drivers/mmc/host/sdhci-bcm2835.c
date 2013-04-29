@@ -42,7 +42,7 @@
 #define MODULE_DESC			"BCM2835 SDHCI Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		0
+#define MODULE_IPRIORITY		(SDHCI_IPRIORITY + 1)
 #define	MODULE_INIT			bcm2835_sdhci_driver_init
 #define	MODULE_EXIT			bcm2835_sdhci_driver_exit
 
