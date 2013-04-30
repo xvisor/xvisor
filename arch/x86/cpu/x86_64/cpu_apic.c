@@ -77,9 +77,9 @@ static struct irq host_sys_irq[NR_IRQ_VECTORS];
 /* Disable 8259 - write 0xFF in OCW1 master and slave. */
 void i8259_disable(void)
 {
-	outb(INT2_CTLMASK, 0xFF);
-	outb(INT_CTLMASK, 0xFF);
-	inb(INT_CTLMASK);
+	ioport_outb(0xFF, INT2_CTLMASK);
+	ioport_outb(0xFF, INT_CTLMASK);
+	ioport_inb(INT_CTLMASK);
 }
 
 static u32 is_lapic_present(void)
@@ -322,8 +322,8 @@ void ioapic_enable(void)
 	i8259_disable();
 
 	/* Select IMCR and disconnect 8259s. */
-	outb(0x22, 0x70);
-	outb(0x23, 0x01);
+	ioport_outb(0x70, 0x22);
+	ioport_outb(0x01, 0x23);
 }
 
 static int setup_ioapic(void)
@@ -452,6 +452,7 @@ int ioapic_set_ext_irq_device(u32 irqno, struct ioapic_ext_irq_device *device,
 
 	hirq = &host_sys_irq[irqno];
 
+	/* FIXME: Serialize this with locks */
 	INIT_LIST_HEAD(&device->head);
 	list_add_tail(&hirq->ext_dev_list, &device->head);
 	device->data = data;

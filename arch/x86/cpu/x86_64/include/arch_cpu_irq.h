@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2012 Anup Patel.
+ * Copyright (c) 2013 Himanshu Chauhan.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,14 +17,41 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arch_cpu_irq.h
  * @author Anup Patel (anup@brainfault.org)
+ * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief interface for controlling CPU IRQs
  */
 #ifndef _ARCH_CPU_IRQ_H__
 #define _ARCH_CPU_IRQ_H__
 
 #include <vmm_types.h>
+#include <processor_flags.h>
+
+static inline unsigned long __arch_save_flags(void)
+{
+    unsigned long flags;
+    __asm__ __volatile("pushf; pop %0"
+                       : "=rm"(flags)
+                       : /* no inputs */
+                       : "memory");
+
+    return flags;
+}
+
+static inline void __arch_restore_flags(unsigned long flags)
+{
+    __asm__ __volatile__("push %0; popf"
+                         : /* no output */
+                         : "g" (flags)
+                         : "memory", "cc");
+}
+
+#ifndef __ASSEMBLY__
+static inline int arch_irqs_disabled_flags(unsigned long flags)
+{
+    return (!(flags & X86_EFLAGS_IF));
+}
+#endif
 
 /** Setup IRQ for CPU */
 int arch_cpu_irq_setup(void);
@@ -31,35 +59,39 @@ int arch_cpu_irq_setup(void);
 /** Enable IRQ
  *  Prototype: void arch_cpu_irq_enable(void); 
  */
-#define arch_cpu_irq_enable()	do { \
-				__asm__ __volatile__("sti\n\t"); \
-				} while (0)
+#define arch_cpu_irq_enable()	do {                    \
+        __asm__ __volatile__("sti\n\t":::"memory");     \
+    } while (0)
 
 /** Disable IRQ
  *  Prototype: void arch_cpu_irq_disable(void); 
  */
-#define arch_cpu_irq_disable()	do { \
-				__asm__ __volatile__("cli\n\t"); \
-				} while (0)
+#define arch_cpu_irq_disable()	do {                \
+        __asm__ __volatile__("cli\n\t":::"memory"); \
+    } while (0)
 
 /** FIXME: Check whether IRQs are disabled
  *  Prototype: bool arch_cpu_irq_disabled(void); 
  */
-#define arch_cpu_irq_disabled()	FALSE
+#define arch_cpu_irq_disabled()	({                              \
+            unsigned long flags = __arch_save_flags();          \
+            unsigned int df = arch_irqs_disabled_flags(flags);  \
+            df;                                                 \
+        })
 
 /** FIXME: Save IRQ flags and disable IRQ
  *  Prototype: void arch_cpu_irq_save(irq_flags_t flags);
  */
 #define arch_cpu_irq_save(flags)	do { \
-					(flags) = 0; \
-					} while (0)
+        (flags) = __arch_save_flags();   \
+    } while (0)
 
 /** FIXME: Restore IRQ flags
  *  Prototype: void arch_cpu_irq_restore(irq_flags_t flags);
  */
 #define arch_cpu_irq_restore(flags)	do { \
-					(void)(flags); \
-					} while (0)
+        __arch_restore_flags(flags);     \
+    } while (0)
 
 /** FIXME: Wait for IRQ
  *  Prototype: void arch_cpu_wait_for_irq(void);

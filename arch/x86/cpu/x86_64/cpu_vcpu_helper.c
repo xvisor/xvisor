@@ -61,6 +61,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		frame->rsp = stack_start;
 		frame->cs = VMM_CODE_SEG_SEL;
 		frame->ss = VMM_DATA_SEG_SEL;
+		frame->rflags = (X86_EFLAGS_IF | X86_EFLAGS_PF | X86_EFLAGS_CF);
 	} else {
 		vmm_panic("Non orphan VCPU intialization not supported yet.\n");
 	}
