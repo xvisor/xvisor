@@ -38,6 +38,7 @@
 #define REG_COUNTER_HI	0x08
 #define REG_COMPARE(n)	(0x0c + (n) * 4)
 #define MAX_TIMER	3
+#define DEFAULT_TIMER	3
 
 #define MIN_REG_COMPARE	0xFF
 #define MAX_REG_COMPARE	0xFFFFFFFF
@@ -119,7 +120,6 @@ struct bcm2835_clockchip {
 	void *control;
 	void *compare;
 	u32 match_mask;
-	u32 timer_num;
 	virtual_addr_t base;
 	struct vmm_clockchip clkchip;
 };
@@ -188,7 +188,7 @@ static int bcm2835_clockchip_expire(struct vmm_clockchip *cc)
 int __cpuinit bcm2835_clockchip_init(void)
 {
 	int rc;
-	u32 clock, hirq, timer_num, *val;
+	u32 clock, hirq;
 	struct vmm_devtree_node *node;
 	struct bcm2835_clockchip *bcc;
 
@@ -210,15 +210,8 @@ int __cpuinit bcm2835_clockchip_init(void)
 		return rc;
 	}
 
-	/* Read timer_num attribute */
-	val = vmm_devtree_attrval(node, "timer_num");
-	if (!val) {
-		return VMM_ENOTAVAIL;
-	}
-	timer_num = *val;
-
 	/* Read irq attribute */
-	rc = vmm_devtree_irq_get(node, &hirq, 0);
+	rc = vmm_devtree_irq_get(node, &hirq, DEFAULT_TIMER);
 	if (rc) {
 		return rc;
 	}
@@ -236,9 +229,8 @@ int __cpuinit bcm2835_clockchip_init(void)
 	}
 	bcc->system_clock = (void *)(bcc->base + REG_COUNTER_LO);
 	bcc->control = (void *)(bcc->base + REG_CONTROL);
-	bcc->compare = (void *)(bcc->base + REG_COMPARE(timer_num));
-	bcc->match_mask = 1 << timer_num;
-	bcc->timer_num = timer_num;
+	bcc->compare = (void *)(bcc->base + REG_COMPARE(DEFAULT_TIMER));
+	bcc->match_mask = 1 << DEFAULT_TIMER;
 
 	/* Setup clockchip */
 	bcc->clkchip.name = "bcm2835-clkchip";

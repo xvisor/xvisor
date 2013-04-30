@@ -32,7 +32,6 @@
 
 #define VMM_BLOCKDEV_CLASS_NAME				"block"
 #define VMM_BLOCKDEV_CLASS_IPRIORITY			1
-#define VMM_BLOCKDEV_MAX_NAME_SIZE			64
 
 /** Types of block IO request */
 enum vmm_request_type {
@@ -79,7 +78,7 @@ struct vmm_request_queue {
 	int (*abort_request)(struct vmm_request_queue *rq, 
 			    struct vmm_request *r);
 
-	/* Note: This is an option callback only required
+	/* Note: This is an optional callback only required
 	 * if request queue does block caching 
 	 */
 	int (*flush_cache)(struct vmm_request_queue *rq);
@@ -87,11 +86,15 @@ struct vmm_request_queue {
 	void *priv;
 };
 
-/* Block device flags */
-#define VMM_BLOCKDEV_RDONLY			0x00000001
-#define VMM_BLOCKDEV_RW				0x00000002
+/* Block device defines */
+#define VMM_BLOCKDEV_MAX_NAME_SIZE			64
+#define VMM_BLOCKDEV_MAX_DESC_SIZE			128
 
-/** Representation of a block device */
+/* Block device flags */
+#define VMM_BLOCKDEV_RDONLY				0x00000001
+#define VMM_BLOCKDEV_RW					0x00000002
+
+/** Block device */
 struct vmm_blockdev {
 	struct dlist head;
 	struct vmm_blockdev *parent;
@@ -101,6 +104,7 @@ struct vmm_blockdev {
 	struct dlist child_list;
 
 	char name[VMM_BLOCKDEV_MAX_NAME_SIZE];
+	char desc[VMM_BLOCKDEV_MAX_DESC_SIZE];
 	struct vmm_device *dev;
 
 	u32 flags;
@@ -109,6 +113,15 @@ struct vmm_blockdev {
 	u32 block_size;
 
 	struct vmm_request_queue *rq;
+
+	/* NOTE: partition managment uses part_manager_sign and
+	 * part_manager_priv for its own use.
+	 * NOTE: part_manager_sign will be unique to partition style
+	 * NOTE: part_manager_sign=0x0 is reserved and means unknown 
+	 * partition style
+	 */
+	u32 part_manager_sign; /* To be used for partition managment */
+	void *part_manager_priv; /* To be used for partition managment */
 };
 
 /* Notifier event when block device is registered */

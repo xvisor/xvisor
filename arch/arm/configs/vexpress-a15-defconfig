@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.1
-# Sat Mar  9 20:45:19 2013
+# Mon Apr 22 14:45:55 2013
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -16,10 +16,14 @@ CONFIG_CPU_LE=y
 CONFIG_VAPOOL_SIZE_MB=16
 CONFIG_BOARD="vexpress"
 # CONFIG_CPU_ARM926T is not set
+# CONFIG_CPU_ARM11 is not set
+# CONFIG_CPU_ARM11MP is not set
 # CONFIG_CPU_CORTEX_A8 is not set
 # CONFIG_CPU_CORTEX_A9 is not set
 CONFIG_CPU_CORTEX_A15=y
 # CONFIG_ARMV5 is not set
+# CONFIG_ARMV6 is not set
+# CONFIG_ARMV6K is not set
 # CONFIG_ARMV7A is not set
 CONFIG_ARMV7A_VE=y
 # CONFIG_ARM32 is not set
@@ -31,6 +35,8 @@ CONFIG_ARM32VE=y
 CONFIG_ARM_GENERIC_TIMER=y
 CONFIG_ARM32VE_STACKTRACE=y
 # CONFIG_BOARD_VERSATILE is not set
+# CONFIG_BOARD_BCM2835 is not set
+# CONFIG_BOARD_IMX31 is not set
 # CONFIG_BOARD_REALVIEW is not set
 # CONFIG_BOARD_OMAP3 is not set
 # CONFIG_BOARD_SUN4I is not set
@@ -58,6 +64,8 @@ CONFIG_VERSATILE_CLCD=y
 # CONFIG_SAMSUNG_MCT is not set
 # CONFIG_SAMSUNG_MCT_LOCAL_TIMERS is not set
 # CONFIG_SUNXI is not set
+# CONFIG_FREESCALE_AVIC is not set
+# CONFIG_FREESCALE_EPIT is not set
 
 #
 # Hypervisor Options
@@ -141,6 +149,7 @@ CONFIG_CMD_INPUT=y
 CONFIG_CMD_FB=y
 CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_NET=y
+CONFIG_CMD_VFS=y
 
 #
 # Daemon Options
@@ -179,7 +188,10 @@ CONFIG_VTEMU_FONT_MINI_8x8=y
 #
 # Virtual FileSystem Options
 #
-# CONFIG_VFS is not set
+CONFIG_VFS=y
+# CONFIG_VFS_CPIO is not set
+CONFIG_VFS_EXT4=y
+CONFIG_VFS_FAT=y
 
 #
 # Device Drivers
@@ -193,6 +205,7 @@ CONFIG_SERIAL=y
 # CONFIG_SERIAL_OMAP_UART is not set
 CONFIG_SERIAL_PL01X=y
 # CONFIG_SERIAL_SAMSUNG is not set
+# CONFIG_SERIAL_IMX is not set
 
 #
 # RTC Drivers
@@ -204,6 +217,16 @@ CONFIG_RTC_PL031=y
 # Block Drivers
 #
 # CONFIG_BLOCK_RBD is not set
+
+#
+# MMC/SD/SDIO drivers
+#
+CONFIG_MMC=y
+
+#
+# MMC/SD/SDIO Host Controller Drivers
+#
+CONFIG_MMC_ARMMMCI=y
 
 #
 # Input Device Support
@@ -235,6 +258,11 @@ CONFIG_NET_DRIVERS=y
 # CONFIG_ETHER_NE2K is not set
 # CONFIG_ETHER_SMSC_911x is not set
 CONFIG_ETHER_SMSC_91x=y
+
+#
+# Clock Drivers
+#
+# CONFIG_CLKDEV_LOOKUP is not set
 
 #
 # Device Emulators
@@ -314,6 +342,7 @@ CONFIG_EMU_GPIO_PL061=y
 # Miscellaneous Emulators
 #
 CONFIG_EMU_MISC_ZERO=y
+# CONFIG_EMU_MISC_ARM11MPCORE is not set
 CONFIG_EMU_MISC_A9MPCORE=y
 
 #

@@ -17,7 +17,7 @@ V:	Broadcom Corporation (http://www.broadcom.com/)
 E:	Raspberry-Pi QEMU (https://github.com/Torlus/qemu)
 G:	Only Realview-EB-MPCore guest supported
 S:	Able to boot multiple Realview-EB-MPCore linux guest on 
-	Realview-EB-MPCore emulated by QEMU 
+	Raspberry Pi hardware and Raspberry Pi emulated by QEMU 
 D:	docs/arm/bcm2835-raspi.txt
 
 M:	Exynos4210 SOC (SMDKC210 and NURI evaluation boards)

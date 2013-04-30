@@ -21,5 +21,6 @@
 #define EILSEQ			-(VMM_EILSEQ)
 #define EOPNOTSUPP		-(VMM_EOPNOTSUPP)
 #define EFAULT			-(VMM_EUNKNOWN)
+#define ENOSYS			-(VMM_ENOSYS)
 
 #endif /* defined(_ASM_ERRNO_H) */

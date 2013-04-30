@@ -23,7 +23,33 @@
 #ifndef _ARCH_CACHE_H__
 #define _ARCH_CACHE_H__
 
-#define ARCH_CACHE_LINE_SIZE		16
-#define ARCH_CACHE_LINE_SHIFT		4
+#include <cpu_cache.h>
+
+#define ARCH_CACHE_LINE_SIZE		32
+#define ARCH_CACHE_LINE_SHIFT		5
+
+/* Prototype: 
+ * void arch_flush_cache_all(void) 
+ */
+#define ARCH_HAS_FLUSH_CACHE_ALL
+#define arch_flush_cache_all()			do { \
+						clean_invalidate_dcache(); \
+						} while (0)
+
+/* Prototype: 
+ * void arch_flush_cache_range(virtual_addr_t start, virtual_addr_t end) 
+ */
+#define ARCH_HAS_FLUSH_CACHE_RANGE
+#define arch_flush_cache_range(start, end)	do { \
+						clean_invalidate_dcache_mva_range((start),(end)); \
+						} while (0)
+
+/* Prototype: 
+ * void arch_flush_dcache_range(virtual_addr_t start, virtual_addr_t end) 
+ */
+#define ARCH_HAS_FLUSH_DCACHE_RANGE
+#define arch_flush_dcache_range(start, end)	do { \
+						clean_invalidate_dcache_mva_range((start),(end)); \
+						} while (0)
 
 #endif /* _ARCH_CACHE_H__ */

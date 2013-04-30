@@ -481,6 +481,7 @@ int vmm_blockdev_add_child(struct vmm_blockdev *bdev,
 	vmm_mutex_lock(&bdev->child_lock);
 	vmm_snprintf(child_bdev->name, VMM_BLOCKDEV_MAX_NAME_SIZE,
 			"%sp%d", bdev->name, bdev->child_count);
+	strncpy(child_bdev->desc, bdev->desc, VMM_BLOCKDEV_MAX_DESC_SIZE);
 	bdev->child_count++;
 	list_add_tail(&child_bdev->head, &bdev->child_list);
 	vmm_mutex_unlock(&bdev->child_lock);

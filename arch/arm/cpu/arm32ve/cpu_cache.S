@@ -49,14 +49,14 @@
 	ands	r3, r0, #0x7000000 	;\
 	mov 	r3, r3, LSR #23 	/* Cache level value (naturally aligned) */; \
 	beq 	5f 			;\
-	mov 	r10, #0 		;\
+	mov 	r8, #0 		;\
 1: 					;\
-	add 	r2, r10, r10, LSR #1 	/* Work out 3xcachelevel */; \
+	add 	r2, r8, r8, LSR #1 	/* Work out 3xcachelevel */; \
 	mov 	r1, r0, LSR r2 		/* bottom 3 bits are the Cache type for this level */; \
 	and 	r1, r1, #7		/* get those 3 bits alone */; \
 	cmp 	r1, #2			;\
 	blt 	4f 			/* no cache or only instruction cache at this level */; \
-	mcr 	p15, 2, r10, c0, c0, 0 	/* write the Cache Size selection register */; \
+	mcr 	p15, 2, r8, c0, c0, 0 	/* write the Cache Size selection register */; \
 	isb 				/* isb to sync the change to the CacheSizeID reg */; \
 	mrc 	p15, 1, r1, c0, c0, 0 	/* reads current Cache Size ID register */; \
 	and 	r2, r1, #7 		/* extract the line length field */; \
@@ -64,21 +64,21 @@
 	ldr 	r4, =0x3FF		;\
 	ands	r4, r4, r1, LSR #3 	/* r4 is the max number on the way size (right aligned) */; \
 	clz 	r5, r4 			/* r5 is the bit position of the way size increment */; \
-	ldr 	r7, =0x00007FFF		;\
-	ands	r7, r7, r1, LSR #13 	/* r7 is the max number of the index size (right aligned) */; \
+	ldr 	r6, =0x00007FFF		;\
+	ands	r6, r6, r1, LSR #13 	/* r6 is the max number of the index size (right aligned) */; \
 2: 					;\
-	mov 	r9, r4 			/* r9 working copy of the max way size (right aligned) */; \
+	mov 	r7, r4 			/* r7 working copy of the max way size (right aligned) */; \
 3:					;\
-	orr 	r11, r10, r9, LSL r5 	/* factor in the way number and cache number into r11 */; \
-	orr 	r11, r11, r7, LSL r2 	/* factor in the index number */; \
-	mcr 	p15, 0, r11, c7, crm, 2 /* clean by set/way */; \
-	subs	r9, r9, #1 		/* decrement the way number */; \
+	orr 	r9, r8, r7, LSL r5 	/* factor in the way number and cache number into r9 */; \
+	orr 	r9, r9, r6, LSL r2 	/* factor in the index number */; \
+	mcr 	p15, 0, r9, c7, crm, 2 /* clean by set/way */; \
+	subs	r7, r7, #1 		/* decrement the way number */; \
 	bge 	3b			;\
-	subs 	r7, r7, #1 		/* decrement the index */; \
+	subs 	r6, r6, #1 		/* decrement the index */; \
 	bge 	2b			;\
 4:					;\
-	add 	r10, r10, #2 		/* increment the cache number */; \
-	cmp 	r3, r10			;\
+	add 	r8, r8, #2 		/* increment the cache number */; \
+	cmp 	r3, r8			;\
 	bgt 	1b			;\
 					\
 5:					;\

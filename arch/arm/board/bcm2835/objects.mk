@@ -23,6 +23,7 @@
 
 board-objs-y+=brd_main.o
 board-objs-y+=brd_defterm.o
+board-objs-y+=bcm2835_pm.o
 board-objs-y+=bcm2835_intc.o
 board-objs-y+=bcm2835_timer.o
 board-objs-$(CONFIG_BCM2835_ONE_GUEST_EBMP_DTS)+=dts/one_guest_ebmp.o
