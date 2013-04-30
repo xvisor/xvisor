@@ -25,6 +25,7 @@
 
 #include <vmm_types.h>
 #include <common_io.h>
+#include <ioport.h>
 
 static inline u16 bswap16(u16 data)
 {
