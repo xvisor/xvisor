@@ -42,28 +42,28 @@ int __init arch_board_early_init(void)
 
 int __init arch_board_final_init(void)
 {
-#if 0
 	int rc;
-	struct vmm_devtree_node *node;
+	struct vmm_devtree_node *hnode, *node;
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
-	/* Do Probing using device driver framework */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-					VMM_DEVTREE_HOSTINFO_NODE_NAME
-					VMM_DEVTREE_PATH_SEPARATOR_STRING
-					"plb");
+	/* Get host node */
+	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
 
-	if(!node) {
-		return VMM_ENOTAVAIL;
+	/* Find simple-bus node */
+	node = vmm_devtree_find_compatible(hnode, NULL, "hid-devices");
+	if (!node) {
+		return VMM_ENODEV;
 	}
 
+	/* Do probing using device driver framework */
 	rc = vmm_devdrv_probe(node);
-	if(rc) {
+	if (rc) {
 		return rc;
 	}
-#endif
+
 	return VMM_OK;
 }
 
