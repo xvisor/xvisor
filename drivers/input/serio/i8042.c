@@ -110,6 +110,8 @@ MODULE_PARM_DESC(debug, "Turn i8042 debugging mode on and off");
 static bool i8042_bypass_aux_irq_test;
 #endif
 
+#include "i8042.h"
+
 /*
  * i8042_lock protects serialization between i8042_command and
  * the interrupt handler.
