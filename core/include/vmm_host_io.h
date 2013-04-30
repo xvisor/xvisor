@@ -114,34 +114,35 @@ static inline void vmm_writel(u32 data, volatile void *addr)
 	arch_out_le32(addr, data);
 }
 
+/** I/O read/write legacy functions (Assumed to be Little Endian) */
 static inline u8 vmm_inb(unsigned long addr)
 {
-	return vmm_readb((volatile void *) addr);
+	return arch_ioreadb((volatile void *) addr);
 }
 
 static inline u16 vmm_inw(unsigned long addr)
 {
-	return vmm_readw((volatile void *) addr);
+	return arch_ioreadw((volatile void *)addr);
 }
 
 static inline u32 vmm_inl(unsigned long addr)
 {
-	return vmm_readl((volatile void *) addr);
+	return arch_ioreadl((volatile void *) addr);
 }
 
 static inline void vmm_outb(u8 b, unsigned long addr)
 {
-	vmm_writeb(b, (volatile void *) addr);
+	arch_iowriteb((volatile void *) addr, b);
 }
 
-static inline void vmm_outw(u16 b, unsigned long addr)
+static inline void vmm_outw(u16 w, unsigned long addr)
 {
-	vmm_writew(b, (volatile void *) addr);
+	arch_iowritew((volatile void *) addr, w);
 }
 
-static inline void vmm_outl(u32 b, unsigned long addr)
+static inline void vmm_outl(u32 l, unsigned long addr)
 {
-	vmm_writel(b, (volatile void *) addr);
+	arch_iowritel((volatile void *) addr, l);
 }
 
 #define vmm_inb_p(addr)		vmm_inb(addr)
