@@ -33,5 +33,16 @@
 			physical_addr = <0x00100000>;
 			physical_size = <0x10000000>; /* 256M */
 		};
+
+        hid {
+            #address-cells = <1>;
+            #size-cells = <1>;
+            compatible = "hid-devices";
+
+            keyboard {
+                device_type = "serio";
+                compatible = "i8042";
+            };
+        };
 	};
 };

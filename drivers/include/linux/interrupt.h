@@ -10,6 +10,8 @@ typedef vmm_irq_return_t irqreturn_t;
 
 #define IRQF_TRIGGER_RISING VMM_IRQ_TYPE_EDGE_RISING
 
+#define IRQ_RETVAL(x)   ((x) != VMM_IRQ_NONE)
+
 static inline int request_irq(unsigned int irq, 
 			      vmm_host_irq_function_t func, 
 			      unsigned long flags,

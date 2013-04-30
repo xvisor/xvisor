@@ -56,12 +56,12 @@ struct x86_64_interrupt_frame {
  *      |               |
  */
 struct arch_regs {
-        /*
-         * x86_64_todo: With VT enabled, CPU saves the
-         * context of the guest. There is a section
-         * of particular format that needs to be defined
-         * here for CPU to save context on a vm_exit.
-         */
+	/*
+	 * x86_64_todo: With VT enabled, CPU saves the
+	 * context of the guest. There is a section
+	 * of particular format that needs to be defined
+	 * here for CPU to save context on a vm_exit.
+	 */
 	u64 rax;
 	u64 rbx;
 	u64 rcx;
