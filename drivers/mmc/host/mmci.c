@@ -483,8 +483,8 @@ static int mmci_driver_probe(struct vmm_device *dev,
 	mmc->ops.send_cmd = mmci_request;
 	mmc->ops.set_ios = mmci_set_ios;
 	mmc->ops.init_card = mmci_init_card;
-	mmc->ops.getcd = NULL;
-	mmc->ops.getwp = NULL;
+	mmc->ops.get_cd = NULL;
+	mmc->ops.get_wp = NULL;
 
 	rc = mmc_add_host(mmc);
 	if (rc) {
