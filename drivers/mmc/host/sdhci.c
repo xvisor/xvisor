@@ -39,7 +39,7 @@
 #include <libs/bitops.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
-#include <drv/sdhci.h>
+#include <drv/mmc/sdhci.h>
 
 #define MODULE_DESC			"SDHCI Driver"
 #define MODULE_AUTHOR			"Anup Patel"

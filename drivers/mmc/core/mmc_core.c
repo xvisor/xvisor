@@ -39,7 +39,7 @@
 #include <vmm_modules.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
-#include <drv/mmc_core.h>
+#include <drv/mmc/mmc_core.h>
 
 #define MODULE_DESC			"MMC/SD/SDIO Framework"
 #define MODULE_AUTHOR			"Anup Patel"

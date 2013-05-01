@@ -35,7 +35,7 @@
 #include <vmm_types.h>
 #include <vmm_host_io.h>
 
-#include <drv/mmc_core.h>
+#include <drv/mmc/mmc_core.h>
 
 #define SDHCI_IPRIORITY			(MMC_CORE_IPRIORITY + 1)
 

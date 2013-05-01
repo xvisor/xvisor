@@ -44,7 +44,7 @@
 #include <libs/bitops.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
-#include <drv/mmc_core.h>
+#include <drv/mmc/mmc_core.h>
 
 #include <linux/amba/bus.h>
 
