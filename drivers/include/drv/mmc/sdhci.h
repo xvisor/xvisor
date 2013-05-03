@@ -35,7 +35,7 @@
 #include <vmm_types.h>
 #include <vmm_host_io.h>
 
-#include <drv/mmc_core.h>
+#include <drv/mmc/mmc_core.h>
 
 #define SDHCI_IPRIORITY			(MMC_CORE_IPRIORITY + 1)
 
@@ -376,8 +376,6 @@ static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 	return vmm_readb(host->ioaddr + reg);
 }
 #endif
-
-int sdhci_card_detect(struct sdhci_host *host);
 
 struct sdhci_host *sdhci_alloc_host(struct vmm_device *dev, int extra);
 

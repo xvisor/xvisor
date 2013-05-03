@@ -58,7 +58,7 @@ from the same shell, otherwise you have to set toolchain prefix again (step 1):
 
   [14. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
-  (Note: Please refer tests/arm32/common/busybox-1.19.2/README for creating rootfs.img using BusyBox 1.19.2)
+  (Note: Please refer tests/arm32/common/busybox/README for creating rootfs.img using BusyBox)
 
   [15. GoTo XVisor build directory]
   # cd <xvisor_source_directory>/build

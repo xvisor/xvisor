@@ -254,8 +254,8 @@ struct mmc_host_ops {
 	void (*set_ios)(struct mmc_host *mmc, 
 			struct mmc_ios *ios);
 	int (*init_card)(struct mmc_host *mmc, struct mmc_card *card);
-	int (*getcd)(struct mmc_host *mmc);
-	int (*getwp)(struct mmc_host *mmc);
+	int (*get_cd)(struct mmc_host *mmc);
+	int (*get_wp)(struct mmc_host *mmc);
 };
 
 struct mmc_host {
@@ -318,15 +318,10 @@ struct mmc_host {
 
 #define mmc_hostname(mmc)	((mmc)->dev->node->name)
 
-/** Start card detect sequence 
+/** Detect card status change
  *  Note: This function can be called from any context.
  */
-int mmc_detect_card(struct mmc_host *host);
-
-/** Start card unplug sequence 
- *  Note: This function can be called from any context.
- */
-int mmc_unplug_card(struct mmc_host *host);
+int mmc_detect_card_change(struct mmc_host *host, unsigned long msecs);
 
 /** Allocate new mmc host instance 
  *  Note: This function can be called from any context.

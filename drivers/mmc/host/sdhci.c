@@ -39,7 +39,7 @@
 #include <libs/bitops.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
-#include <drv/sdhci.h>
+#include <drv/mmc/sdhci.h>
 
 #define MODULE_DESC			"SDHCI Driver"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -606,15 +606,11 @@ static vmm_irq_return_t sdhci_irq_handler(u32 irq_no, void *dev)
 		sdhci_unmask_irqs(host, present ? SDHCI_INT_CARD_REMOVE :
 						  SDHCI_INT_CARD_INSERT);
 
-		if (present) {
-			mmc_detect_card(host->mmc);
-		} else {
-			mmc_unplug_card(host->mmc);
-		}
-
 		sdhci_writel(host, intmask & (SDHCI_INT_CARD_INSERT |
 			     SDHCI_INT_CARD_REMOVE), SDHCI_INT_STATUS);
 		intmask &= ~(SDHCI_INT_CARD_INSERT | SDHCI_INT_CARD_REMOVE);
+
+		mmc_detect_card_change(host->mmc, 200);
 	}
 
 	if (intmask & SDHCI_INT_CMD_MASK) {
@@ -651,12 +647,6 @@ static vmm_irq_return_t sdhci_irq_handler(u32 irq_no, void *dev)
 out:
 	return result;
 }
-
-int sdhci_card_detect(struct sdhci_host *host)
-{
-	return mmc_detect_card(host->mmc);
-}
-VMM_EXPORT_SYMBOL(sdhci_card_detect);
 
 struct sdhci_host *sdhci_alloc_host(struct vmm_device *dev, int extra)
 {
@@ -695,8 +685,8 @@ int sdhci_add_host(struct sdhci_host *host)
 	mmc->ops.send_cmd = sdhci_send_command;
 	mmc->ops.set_ios = sdhci_set_ios;
 	mmc->ops.init_card = sdhci_init_card;
-	mmc->ops.getcd = NULL;
-	mmc->ops.getwp = NULL;
+	mmc->ops.get_cd = NULL;
+	mmc->ops.get_wp = NULL;
 
 	if (host->max_clk) {
 		mmc->f_max = host->max_clk;
@@ -741,8 +731,8 @@ int sdhci_add_host(struct sdhci_host *host)
 	}
 
 	mmc->caps = MMC_CAP_MODE_HS | 
-			MMC_CAP_MODE_HS_52MHz | 
-			MMC_CAP_MODE_4BIT;
+		    MMC_CAP_MODE_HS_52MHz | 
+		    MMC_CAP_MODE_4BIT;
 	if (host->sdhci_caps & SDHCI_CAN_DO_8BIT) {
 		mmc->caps |= MMC_CAP_MODE_8BIT;
 	}

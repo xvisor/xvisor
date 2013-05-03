@@ -37,7 +37,7 @@
 #include <vmm_devdrv.h>
 #include <vmm_modules.h>
 #include <libs/mathlib.h>
-#include <drv/sdhci.h>
+#include <drv/mmc/sdhci.h>
 
 #define MODULE_DESC			"BCM2835 SDHCI Driver"
 #define MODULE_AUTHOR			"Anup Patel"
