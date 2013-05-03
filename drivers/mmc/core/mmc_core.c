@@ -34,11 +34,12 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_delay.h>
+#include <vmm_timer.h>
 #include <vmm_host_io.h>
 #include <vmm_modules.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
-#include <drv/mmc_core.h>
+#include <drv/mmc/mmc_core.h>
 
 #define MODULE_DESC			"MMC/SD/SDIO Framework"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -70,9 +71,8 @@ static u32 mmc_host_count;
  * IO types for mmc hosts.
  */
 enum mmc_host_io_type {
-	MMC_HOST_IO_DETECT_CARD=1,
-	MMC_HOST_IO_UNPLUG_CARD=2,
-	MMC_HOST_IO_BLOCKDEV_REQUEST=3
+	MMC_HOST_IO_DETECT_CARD_CHANGE=1,
+	MMC_HOST_IO_BLOCKDEV_REQUEST=2
 };
 
 /*
@@ -83,6 +83,7 @@ struct mmc_host_io {
 	enum mmc_host_io_type type;
 	struct vmm_request *r;
 	struct vmm_request_queue *rq;
+	u64 card_change_tstamp;
 };
 
 /* frequency bases */
@@ -154,8 +155,8 @@ static int __mmc_init_card(struct mmc_host *host, struct mmc_card *card)
 
 static int __mmc_getcd(struct mmc_host *host)
 {
-	if (host->ops.getcd) {
-		return host->ops.getcd(host);
+	if (host->ops.get_cd) {
+		return host->ops.get_cd(host);
 	}
 
 	return 1;
@@ -1012,7 +1013,7 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 	return VMM_OK;
 }
 
-static int __mmc_unplug_card(struct mmc_host *host)
+static int __mmc_detect_card_removed(struct mmc_host *host)
 {
 	int rc = VMM_OK;
 
@@ -1042,7 +1043,7 @@ static int mmc_make_request(struct vmm_request_queue *rq,
 static int mmc_abort_request(struct vmm_request_queue *rq, 
 			     struct vmm_request *r);
 
-static int __mmc_detect_card(struct mmc_host *host)
+static int __mmc_detect_card_inserted(struct mmc_host *host)
 {
 	int rc = VMM_OK;
 	struct mmc_card *card;
@@ -1169,6 +1170,25 @@ detect_freecard_fail:
 	host->card = NULL;
 detect_done:
 	return rc;
+}
+
+static void __mmc_detect_card_change(struct mmc_host *host)
+{
+	int timeout = 1000;
+
+	if (!host) {
+		return;
+	}
+
+	if (host->card) {
+		if (__mmc_send_status(host, host->card, timeout)) {
+			__mmc_detect_card_removed(host);
+		}
+	} else {
+		if (__mmc_getcd(host)) {
+			__mmc_detect_card_inserted(host);
+		}
+	}
 }
 
 static u32 __mmc_write_blocks(struct mmc_host *host, struct mmc_card *card,
@@ -1358,13 +1378,22 @@ static int __mmc_blockdev_request(struct mmc_host *host,
 
 static int mmc_host_thread(void *tdata)
 {
+	u64 tout;
 	irq_flags_t flags;
 	struct dlist *l;
 	struct mmc_host_io *io;
 	struct mmc_host *host = tdata;
 
 	while (1) {
-		vmm_completion_wait(&host->io_avail);
+		if (host->caps & MMC_CAP_NEEDS_POLL) {
+			tout = 1000000000; /* 1 seconds timeout */
+			vmm_completion_wait_timeout(&host->io_avail, &tout);
+			if (!tout) {
+				__mmc_detect_card_change(host);
+			}
+		} else {
+			vmm_completion_wait(&host->io_avail);
+		}
 
 		vmm_spin_lock_irqsave(&host->io_list_lock, flags);
 		if (list_empty(&host->io_list)) {
@@ -1379,11 +1408,16 @@ static int mmc_host_thread(void *tdata)
 		vmm_mutex_lock(&host->lock);
 
 		switch (io->type) {
-		case MMC_HOST_IO_DETECT_CARD:
-			__mmc_detect_card(host);
-			break;
-		case MMC_HOST_IO_UNPLUG_CARD:
-			__mmc_unplug_card(host);
+		case MMC_HOST_IO_DETECT_CARD_CHANGE:
+			tout = vmm_timer_timestamp();
+			if (tout < io->card_change_tstamp) {
+				tout = io->card_change_tstamp - tout;
+				tout = udiv64(tout, 1000);
+				if (tout) {
+					vmm_udelay(tout);
+				}
+			}
+			__mmc_detect_card_change(host);
 			break;
 		case MMC_HOST_IO_BLOCKDEV_REQUEST:
 			__mmc_blockdev_request(host, io->rq, io->r);
@@ -1463,7 +1497,7 @@ static int mmc_abort_request(struct vmm_request_queue *rq,
 	return VMM_OK;
 }
 
-int mmc_unplug_card(struct mmc_host *host)
+int mmc_detect_card_change(struct mmc_host *host, unsigned long msecs)
 {
 	irq_flags_t flags;
 	struct mmc_host_io *io;
@@ -1478,7 +1512,9 @@ int mmc_unplug_card(struct mmc_host *host)
 	}
 
 	INIT_LIST_HEAD(&io->head);
-	io->type = MMC_HOST_IO_UNPLUG_CARD;
+	io->type = MMC_HOST_IO_DETECT_CARD_CHANGE;
+	io->card_change_tstamp = vmm_timer_timestamp() + 
+					((u64)msecs * 1000000ULL);
 
 	vmm_spin_lock_irqsave(&host->io_list_lock, flags);
 	list_add_tail(&io->head, &host->io_list);
@@ -1488,34 +1524,7 @@ int mmc_unplug_card(struct mmc_host *host)
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(mmc_unplug_card);
-
-int mmc_detect_card(struct mmc_host *host)
-{
-	irq_flags_t flags;
-	struct mmc_host_io *io;
-
-	if (!host) {
-		return VMM_EFAIL;
-	}
-
-	io = vmm_zalloc(sizeof(struct mmc_host_io));
-	if (!io) {
-		return VMM_ENOMEM;
-	}
-
-	INIT_LIST_HEAD(&io->head);
-	io->type = MMC_HOST_IO_DETECT_CARD;
-
-	vmm_spin_lock_irqsave(&host->io_list_lock, flags);
-	list_add_tail(&io->head, &host->io_list);
-	vmm_spin_unlock_irqrestore(&host->io_list_lock, flags);
-
-	vmm_completion_complete(&host->io_avail);
-
-	return VMM_OK;
-}
-VMM_EXPORT_SYMBOL(mmc_detect_card);
+VMM_EXPORT_SYMBOL(mmc_detect_card_change);
 
 struct mmc_host *mmc_alloc_host(int extra, struct vmm_device *dev)
 {
@@ -1565,8 +1574,6 @@ int mmc_add_host(struct mmc_host *host)
 		return VMM_EFAIL;
 	}
 
-	vmm_threads_start(host->io_thread);
-
 	host->host_num = mmc_host_count;
 	mmc_host_count++;
 	list_add_tail(&host->link, &mmc_host_list);
@@ -1578,8 +1585,10 @@ int mmc_add_host(struct mmc_host *host)
 	 * we ignore failures.
 	 */
 	vmm_mutex_lock(&host->lock);
-	__mmc_detect_card(host);
+	__mmc_detect_card_inserted(host);
 	vmm_mutex_unlock(&host->lock);
+
+	vmm_threads_start(host->io_thread);
 
 	return VMM_OK;
 }
@@ -1592,7 +1601,7 @@ void mmc_remove_host(struct mmc_host *host)
 	}
 
 	vmm_mutex_lock(&host->lock);
-	__mmc_unplug_card(host);
+	__mmc_detect_card_removed(host);
 	vmm_mutex_unlock(&host->lock);
 
 	vmm_mutex_lock(&mmc_host_list_mutex);

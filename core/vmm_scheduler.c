@@ -184,6 +184,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+	struct vmm_vcpu *vcpu = NULL;
 
 	/* Indicate that we have entered in IRQ */
 	schedp->irq_context = (vcpu_context) ? FALSE : TRUE;
@@ -193,6 +194,20 @@ void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 
 	/* Ensure that yield on exit is disabled */
 	schedp->yield_on_irq_exit = FALSE;
+
+	/* If we had paused an Orphan VCPU and expired its timeslice
+	 * then context switch because context of paused Orphan VCPU
+	 * is not saved yet. 
+	 * This has to be done before vmm_scheduler_irq_exit() because
+	 * someone other entity can resume back the paused Orphan VCPU
+	 * in which case the context of Orphan VCPU will not be saved.
+	 */
+	vcpu = schedp->current_vcpu;
+	if (vcpu && !vcpu->is_normal && 
+	    vcpu->state != VMM_VCPU_STATE_RUNNING) {
+		vmm_scheduler_next(&schedp->ev, schedp->irq_regs);
+	}
+
 }
 
 void vmm_scheduler_irq_exit(arch_regs_t *regs)
@@ -206,8 +221,9 @@ void vmm_scheduler_irq_exit(arch_regs_t *regs)
 		return;
 	}
 
-	/* Schedule next vcpu if state of 
-	 * current vcpu is not RUNNING */
+	/* If current vcpu is not RUNNING or yield on exit is set
+	 * then context switch
+	 */
 	if ((vcpu->state != VMM_VCPU_STATE_RUNNING) ||
 	    schedp->yield_on_irq_exit) {
 		vmm_scheduler_next(&schedp->ev, schedp->irq_regs);
