@@ -82,16 +82,17 @@ int arch_cpu_irq_setup(void);
 /** FIXME: Save IRQ flags and disable IRQ
  *  Prototype: void arch_cpu_irq_save(irq_flags_t flags);
  */
-#define arch_cpu_irq_save(flags)	do { \
-        (flags) = __arch_save_flags();   \
-    } while (0)
+#define arch_cpu_irq_save(flags)	do {	\
+		(flags) = __arch_save_flags();	\
+		arch_cpu_irq_disable();	\
+	} while (0)
 
 /** FIXME: Restore IRQ flags
  *  Prototype: void arch_cpu_irq_restore(irq_flags_t flags);
  */
-#define arch_cpu_irq_restore(flags)	do { \
-        __arch_restore_flags(flags);     \
-    } while (0)
+#define arch_cpu_irq_restore(flags)	do {	\
+		__arch_restore_flags(flags);	\
+	} while (0)
 
 /** FIXME: Wait for IRQ
  *  Prototype: void arch_cpu_wait_for_irq(void);

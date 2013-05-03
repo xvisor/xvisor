@@ -392,7 +392,7 @@ int __cpuinit hpet_clockchip_init(struct hpet_timer *timer, const char *chip_nam
 #endif
 	debug_print("%s: Hpet Freq: %l Period: %l\n", __func__, timer->hpet_freq, timer->hpet_period);
 	timer->clkchip.features = VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
-	vmm_clocks_calc_mult_shift(&timer->clkchip.mult, &timer->clkchip.shift, timer->hpet_freq, NSEC_PER_SEC, 0);
+	vmm_clocks_calc_mult_shift(&timer->clkchip.mult, &timer->clkchip.shift, NSEC_PER_SEC, timer->hpet_freq, 5);
 	timer->clkchip.min_delta_ns = timer->hpet_freq/1000000;
 	debug_print("%s: Min Delts NS: %d\n", __func__, timer->clkchip.min_delta_ns);
 	debug_print("%s: mult: %l shift: %l\n", __func__, timer->clkchip.mult, timer->clkchip.shift);
@@ -463,7 +463,7 @@ static int __init hpet_clocksource_init(struct hpet_timer *timer)
 	timer->clksrc.name = "hpet_clksrc";
 	timer->clksrc.rating = 300;
 	timer->clksrc.mask = 0xFFFFFFFFULL;
-	vmm_clocks_calc_mult_shift(&timer->clksrc.mult, &timer->clksrc.shift, NSEC_PER_SEC, timer->hpet_freq, 0);
+	vmm_clocks_calc_mult_shift(&timer->clksrc.mult, &timer->clksrc.shift, timer->hpet_freq, NSEC_PER_SEC, 5);
 	debug_print("%s: Mult 0x%x shift: 0x%x\n", __func__, timer->clksrc.mult, timer->clksrc.shift);
 	timer->clksrc.read = &hpet_clocksource_read;
 	timer->clksrc.disable = &hpet_clocksource_disable;
