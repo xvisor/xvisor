@@ -50,6 +50,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	u64 stack_start;
 
 	if (!vcpu->is_normal) {
+		vmm_printf("init %s vcpu\n", vcpu->name);
 		vcpu->arch_priv = (void *)vmm_malloc(sizeof(struct x86_64_interrupt_frame));
 		BUG_ON(!vcpu->arch_priv);
 
@@ -74,6 +75,28 @@ int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
+static void dump_vcpu_regs(arch_regs_t *regs)
+{
+	struct x86_64_interrupt_frame *ret_frame =
+		(struct x86_64_interrupt_frame *)((u64)regs + sizeof(arch_regs_t));
+	vmm_printf("rax: %lx ", regs->rax);
+	vmm_printf("rbx: %lx ",regs->rbx);
+	vmm_printf("rcx: %lx ", regs->rcx);
+	vmm_printf("rdx: %lx \n",regs->rdx);
+	vmm_printf("rdi: %lx ", regs->rdi);
+	vmm_printf("rsi: %lx ",regs->rsi);
+	vmm_printf("rbp: %lx ", regs->rbp);
+	vmm_printf("r8 : %lx\n",regs->r8);
+	vmm_printf("r9 : %lx ", regs->r9);
+	vmm_printf("r10: %lx ",regs->r10);
+	vmm_printf("r11: %lx ", regs->r11);
+	vmm_printf("r12: %lx\n",regs->r12);
+	vmm_printf("r13: %lx ", regs->r13);
+	vmm_printf("r14: %lx ", regs->r14);
+	vmm_printf("r15: %lx ",regs->r15);
+	vmm_printf("rip: %lx rsp: %lx rflags: %lx\n", ret_frame->rip, ret_frame->rsp, ret_frame->rflags);
+}
+
 void arch_vcpu_switch(struct vmm_vcpu *tvcpu, 
 		      struct vmm_vcpu *vcpu,
 		      arch_regs_t *regs)
@@ -83,10 +106,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		memcpy(regs, &vcpu->regs, sizeof(arch_regs_t));
 		struct x86_64_interrupt_frame *ret_frame =
 			(struct x86_64_interrupt_frame *)((u64)regs + sizeof(arch_regs_t));
-		ret_frame->rip = vcpu->start_pc;
-		ret_frame->rsp = vcpu->stack_va;
-		ret_frame->cs = VMM_CODE_SEG_SEL;
-		ret_frame->ss = VMM_DATA_SEG_SEL;
+		memcpy(ret_frame, vcpu->arch_priv, sizeof(struct x86_64_interrupt_frame));
 	} else {
 		memcpy(&tvcpu->regs, regs, sizeof(arch_regs_t));
 		struct x86_64_interrupt_frame *ret_frame =
@@ -100,7 +120,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 
 void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu) 
 {
-	BUG_ON(1);
+	dump_vcpu_regs(&vcpu->regs);
 }
 
 void arch_vcpu_stat_dump(struct vmm_vcpu *vcpu) 
