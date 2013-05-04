@@ -72,63 +72,13 @@ struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id)
 
 static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
-	int rc = VMM_EFAIL;
-	irq_flags_t flags;
-
-	if(!vcpu) {
-		return rc;
-	}
-
-	vmm_spin_lock_irqsave(&vcpu->lock, flags);
-	switch(new_state) {
-	case VMM_VCPU_STATE_RESET:
-		if ((vcpu->state != VMM_VCPU_STATE_RESET) &&
-		    (vcpu->state != VMM_VCPU_STATE_UNKNOWN)) {
-			rc = vmm_scheduler_state_change(vcpu, new_state);
-			if (rc) {
-				break;
-			}
-			vcpu->reset_count++;
-			if ((rc = arch_vcpu_init(vcpu))) {
-				break;
-			}
-			if ((rc = vmm_vcpu_irq_init(vcpu))) {
-				break;
-			}
-		}
-		break;
-	case VMM_VCPU_STATE_READY:
-		if ((vcpu->state == VMM_VCPU_STATE_RESET) ||
-		    (vcpu->state == VMM_VCPU_STATE_PAUSED)) {
-			rc = vmm_scheduler_state_change(vcpu, new_state);
-			if (rc) {
-				break;
-			}
-		}
-		break;
-	case VMM_VCPU_STATE_PAUSED:
-		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
-		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
-			rc = vmm_scheduler_state_change(vcpu, new_state);
-			if (rc) {
-				break;
-			}
-		}
-		break;
-	case VMM_VCPU_STATE_HALTED:
-		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
-		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
-			rc = vmm_scheduler_state_change(vcpu, new_state);
-			if (rc) {
-				break;
-			}
-		}
-		break;
-	}
-	vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
-
-	return rc;
- }
+	/* For UP, we can call scheduler state change API directly.
+	 *
+	 * For SMP, we have to determine appropriate host CPU and call 
+	 * scheduler state change API on that host CPU
+	 */
+	return vmm_scheduler_state_change(vcpu, new_state);
+}
 
 int vmm_manager_vcpu_reset(struct vmm_vcpu *vcpu)
 {
@@ -255,7 +205,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 
 	/* Notify scheduler about new VCPU */
 	vcpu->sched_priv = NULL;
-	if (vmm_scheduler_state_change(vcpu, 
+	if (vmm_manager_vcpu_state_change(vcpu, 
 					VMM_VCPU_STATE_RESET)) {
 		vcpu = NULL;
 		goto release_lock;
@@ -314,7 +264,7 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 	list_del(&vcpu->head);
 
 	/* Notify scheduler about VCPU state change */
-	if ((rc = vmm_scheduler_state_change(vcpu, 
+	if ((rc = vmm_manager_vcpu_state_change(vcpu, 
 					VMM_VCPU_STATE_UNKNOWN))) {
 		goto release_lock;
 	}
@@ -662,7 +612,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 		/* Notify scheduler about new VCPU */
 		vcpu->sched_priv = NULL;
-		if (vmm_scheduler_state_change(vcpu, 
+		if (vmm_manager_vcpu_state_change(vcpu, 
 						VMM_VCPU_STATE_RESET)) {
 			mngr.vcpu_avail_array[vnum] = TRUE;
 			break;
@@ -756,7 +706,7 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 		mngr.vcpu_count--;
 
 		/* Notify scheduler about VCPU state change */
-		if ((rc = vmm_scheduler_state_change(vcpu, 
+		if ((rc = vmm_manager_vcpu_state_change(vcpu, 
 					VMM_VCPU_STATE_UNKNOWN))) {
 			goto release_lock;
 		}

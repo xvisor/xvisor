@@ -116,11 +116,17 @@ static void vmm_scheduler_timer_event(struct vmm_timer_event *ev)
 int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
 	int rc = VMM_OK;
+	bool orphan_preempt = FALSE;
+	irq_flags_t flags;
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
-	if(!vcpu) {
+	if (!vcpu) {
 		return VMM_EFAIL;
 	}
+
+	arch_cpu_irq_save(flags);
+
+	vmm_spin_lock(&vcpu->lock);
 
 	switch(new_state) {
 	case VMM_VCPU_STATE_UNKNOWN:
@@ -131,21 +137,33 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		if (vcpu->state == VMM_VCPU_STATE_UNKNOWN) {
 			/* New VCPU */
 			rc = vmm_schedalgo_vcpu_setup(vcpu);
-		} else {
+		} else if (vcpu->state != VMM_VCPU_STATE_RESET) {
 			/* Existing VCPU */
 			/* Make sure VCPU is not in a ready queue */
 			if((schedp->current_vcpu != vcpu) &&
 			   (vcpu->state == VMM_VCPU_STATE_READY)) {
 				rc = vmm_schedalgo_rq_detach(schedp->rq, vcpu);
 			}
+			vcpu->reset_count++;
+			if ((rc = arch_vcpu_init(vcpu))) {
+				break;
+			}
+			if ((rc = vmm_vcpu_irq_init(vcpu))) {
+				break;
+			}
+		} else {
+			rc = VMM_EFAIL;
 		}
 		break;
 	case VMM_VCPU_STATE_READY:
-		/* Enqueue VCPU to ready queue */
-		if (schedp->current_vcpu != vcpu) {
-			rc = vmm_schedalgo_rq_enqueue(schedp->rq, vcpu);
-			if (!rc && schedp->current_vcpu) {
-				if (vmm_schedalgo_rq_prempt_needed(schedp->rq, 
+		if ((vcpu->state == VMM_VCPU_STATE_RESET) ||
+		    (vcpu->state == VMM_VCPU_STATE_PAUSED)) {
+			/* Enqueue VCPU to ready queue */
+			if (schedp->current_vcpu != vcpu) {
+				rc = vmm_schedalgo_rq_enqueue(schedp->rq, vcpu);
+				if (!rc && 
+				    schedp->current_vcpu && 
+				    vmm_schedalgo_rq_prempt_needed(schedp->rq, 
 							schedp->current_vcpu)) {
 					if (schedp->current_vcpu->is_normal) {
 						schedp->yield_on_irq_exit = TRUE;
@@ -154,22 +172,29 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 					}
 				}
 			}
+		} else {
+			rc = VMM_EFAIL;
 		}
 		break;
 	case VMM_VCPU_STATE_PAUSED:
 	case VMM_VCPU_STATE_HALTED:
-		/* Expire timer event if current VCPU is paused or halted */
-		if(schedp->current_vcpu == vcpu) {
-			if (vcpu->is_normal) {
-				schedp->yield_on_irq_exit = TRUE;
+		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
+		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
+			/* Expire timer event if current VCPU is paused or halted */
+			if(schedp->current_vcpu == vcpu) {
+				if (vcpu->is_normal) {
+					schedp->yield_on_irq_exit = TRUE;
+				} else {
+					orphan_preempt = TRUE;
+				}
 			} else {
-				vmm_timer_event_expire(&schedp->ev);
+				/* Make sure VCPU is not in a ready queue */
+				if (vcpu->state == VMM_VCPU_STATE_READY) {
+					rc = vmm_schedalgo_rq_detach(schedp->rq, vcpu);
+				}
 			}
 		} else {
-			/* Make sure VCPU is not in a ready queue */
-			if (vcpu->state == VMM_VCPU_STATE_READY) {
-				rc = vmm_schedalgo_rq_detach(schedp->rq, vcpu);
-			}
+			rc = VMM_EFAIL;
 		}
 		break;
 	}
@@ -177,6 +202,14 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 	if (rc == VMM_OK) {
 		vcpu->state = new_state;
 	}
+
+	vmm_spin_unlock(&vcpu->lock);
+
+	if (orphan_preempt) {
+		vmm_timer_event_expire(&schedp->ev);
+	}
+
+	arch_cpu_irq_restore(flags);
 
 	return rc;
 }
