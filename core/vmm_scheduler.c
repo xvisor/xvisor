@@ -168,7 +168,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 					if (schedp->current_vcpu->is_normal) {
 						schedp->yield_on_irq_exit = TRUE;
 					} else {
-						vmm_timer_event_expire(&schedp->ev);
+						orphan_preempt = TRUE;
 					}
 				}
 			}
