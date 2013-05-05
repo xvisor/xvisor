@@ -349,65 +349,80 @@ struct vmm_vcpu *vmm_scheduler_current_vcpu(void)
 
 bool vmm_scheduler_orphan_context(void)
 {
+	bool ret = FALSE;
+	irq_flags_t flags;
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
+	arch_cpu_irq_save(flags);
+
 	if (schedp->current_vcpu && !schedp->irq_context) {
-		return (schedp->current_vcpu->is_normal) ? FALSE : TRUE;
+		ret = (schedp->current_vcpu->is_normal) ? FALSE : TRUE;
 	}
 
-	return FALSE;
+	arch_cpu_irq_restore(flags);
+
+	return ret;
 }
 
 bool vmm_scheduler_normal_context(void)
 {
+	bool ret = FALSE;
+	irq_flags_t flags;
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
+	arch_cpu_irq_save(flags);
+
 	if (schedp->current_vcpu && !schedp->irq_context) {
-		return (schedp->current_vcpu->is_normal) ? TRUE : FALSE;
+		ret = (schedp->current_vcpu->is_normal) ? TRUE : FALSE;
 	}
 
-	return FALSE;
+	arch_cpu_irq_restore(flags);
+
+	return ret;
 }
 
 struct vmm_guest *vmm_scheduler_current_guest(void)
 {
-	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
+	struct vmm_vcpu *vcpu = this_cpu(sched).current_vcpu;
 
-	if (vcpu) {
-		return vcpu->guest;
-	}
-
-	return NULL;
+	return (vcpu) ? vcpu->guest : NULL;
 }
 
 void vmm_scheduler_yield(void)
 {
+	irq_flags_t flags;
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
-	struct vmm_vcpu *vcpu = NULL; 
 
-	if (vmm_scheduler_irq_context()) {
+	arch_cpu_irq_save(flags);
+
+	if (schedp->irq_context) {
 		vmm_panic("%s: Cannot yield in IRQ context\n", __func__);
 	}
 
-	if (vmm_scheduler_orphan_context()) {
-#if defined(ARCH_HAS_VCPU_PREEMPT_ORPHAN)
-		arch_vcpu_preempt_orphan();
-#else
-		/* For Orphan VCPU
-		 * Forcefully expire timeslice 
-		 */
-		vmm_timer_event_expire(&schedp->ev);
-#endif
-	} else if (vmm_scheduler_normal_context()) {
+	if (!schedp->current_vcpu) {
+		vmm_panic("%s: NULL VCPU pointer\n", __func__);
+	}
+
+	if (schedp->current_vcpu->is_normal) {
 		/* For Normal VCPU
 		 * Just enable yield on exit and rest will be taken care
 		 * by vmm_scheduler_irq_exit()
 		 */
-		vcpu = vmm_scheduler_current_vcpu();
-		if (vcpu->state == VMM_VCPU_STATE_RUNNING) {
+		if (schedp->current_vcpu->state == VMM_VCPU_STATE_RUNNING) {
 			schedp->yield_on_irq_exit = TRUE;
 		}
+	} else {
+		/* For Orphan VCPU
+		 * Forcefully expire yield 
+		 */
+#if defined(ARCH_HAS_VCPU_PREEMPT_ORPHAN)
+		arch_vcpu_preempt_orphan();
+#else
+		vmm_timer_event_expire(&schedp->ev);
+#endif
 	}
+
+	arch_cpu_irq_restore(flags);
 }
 
 static void idle_orphan(void)
