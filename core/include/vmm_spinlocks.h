@@ -120,8 +120,8 @@ extern void vmm_scheduler_preempt_enable(void);
 					} while (0)
 #else
 #define vmm_spin_unlock(lock)		do { \
-					vmm_scheduler_preempt_enable(); \
 					(void)(lock); \
+					vmm_scheduler_preempt_enable(); \
 					} while (0)
 #endif
 
@@ -131,11 +131,13 @@ extern void vmm_scheduler_preempt_enable(void);
 #if defined(CONFIG_SMP)
 #define vmm_spin_lock_irq(lock) 	do { \
 					arch_cpu_irq_disable(); \
+					vmm_scheduler_preempt_disable(); \
 					arch_spin_lock(&(lock)->__tlock); \
 					} while (0)
 #else
 #define vmm_spin_lock_irq(lock) 	do { \
 					arch_cpu_irq_disable(); \
+					vmm_scheduler_preempt_disable(); \
 					(void)(lock); \
 					} while (0)
 #endif
@@ -146,12 +148,14 @@ extern void vmm_scheduler_preempt_enable(void);
 #if defined(CONFIG_SMP)
 #define vmm_spin_unlock_irq(lock)	do { \
 					arch_spin_unlock(&(lock)->__tlock); \
+					vmm_scheduler_preempt_enable(); \
 					arch_cpu_irq_enable(); \
 					} while (0)
 #else
 #define vmm_spin_unlock_irq(lock) 	do { \
-					arch_cpu_irq_enable(); \
 					(void)(lock); \
+					vmm_scheduler_preempt_enable(); \
+					arch_cpu_irq_enable(); \
 					} while (0)
 #endif
 
@@ -162,12 +166,14 @@ extern void vmm_scheduler_preempt_enable(void);
 #define vmm_spin_lock_irqsave(lock, flags) \
 					do { \
 					arch_cpu_irq_save((flags)); \
+					vmm_scheduler_preempt_disable(); \
 					arch_spin_lock(&(lock)->__tlock); \
 					} while (0)
 #else
 #define vmm_spin_lock_irqsave(lock, flags) \
 					do { \
 					arch_cpu_irq_save((flags)); \
+					vmm_scheduler_preempt_disable(); \
 					(void)(lock); \
 					} while (0)
 #endif
@@ -180,13 +186,15 @@ extern void vmm_scheduler_preempt_enable(void);
 #define vmm_spin_unlock_irqrestore(lock, flags)	\
 					do { \
 					arch_spin_unlock(&(lock)->__tlock); \
+					vmm_scheduler_preempt_enable(); \
 					arch_cpu_irq_restore(flags); \
 					} while (0)
 #else
 #define vmm_spin_unlock_irqrestore(lock, flags) \
 					do { \
-					arch_cpu_irq_restore(flags); \
 					(void)(lock); \
+					vmm_scheduler_preempt_enable(); \
+					arch_cpu_irq_restore(flags); \
 					} while (0)
 #endif
 
