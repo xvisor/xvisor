@@ -27,4 +27,6 @@
 #define ARCH_HAS_MEMCPY
 #define ARCH_HAS_MEMSET
 
+#define ARCH_HAS_VCPU_PREEMPT_ORPHAN
+
 #endif /* _ARCH_CONFIG_H__ */

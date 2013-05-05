@@ -30,41 +30,46 @@
 #include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_helper.h>
 
-void do_undef_inst(arch_regs_t * regs)
+void do_undef_inst(arch_regs_t *regs)
 {
 	vmm_printf("%s: unexpected exception\n", __func__);
 	cpu_vcpu_dump_user_reg(regs);
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
-void do_soft_irq(arch_regs_t * regs)
+void do_soft_irq(arch_regs_t *regs)
+{
+	if ((regs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_HYPERVISOR) {
+		vmm_scheduler_preempt_orphan(regs);
+		return;
+	} else {
+		vmm_printf("%s: unexpected exception\n", __func__);
+		cpu_vcpu_dump_user_reg(regs);
+		vmm_panic("%s: please reboot ...\n", __func__);
+	}
+}
+
+void do_prefetch_abort(arch_regs_t *regs)
 {
 	vmm_printf("%s: unexpected exception\n", __func__);
 	cpu_vcpu_dump_user_reg(regs);
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
-void do_prefetch_abort(arch_regs_t * regs)
+void do_data_abort(arch_regs_t *regs)
 {
 	vmm_printf("%s: unexpected exception\n", __func__);
 	cpu_vcpu_dump_user_reg(regs);
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
-void do_data_abort(arch_regs_t * regs)
-{
-	vmm_printf("%s: unexpected exception\n", __func__);
-	cpu_vcpu_dump_user_reg(regs);
-	vmm_panic("%s: please reboot ...\n", __func__);
-}
-
-void do_hyp_trap(arch_regs_t * regs)
+void do_hyp_trap(arch_regs_t *regs)
 {
 	int rc = VMM_OK;
 	u32 hsr, ec, il, iss;
 	virtual_addr_t far;
 	physical_addr_t fipa;
-	struct vmm_vcpu * vcpu;
+	struct vmm_vcpu *vcpu;
 
 	hsr = read_hsr();
 	ec = (hsr & HSR_EC_MASK) >> HSR_EC_SHIFT;
@@ -175,8 +180,9 @@ void do_hyp_trap(arch_regs_t * regs)
 	};
 
 	if (rc) {
-		vmm_printf("\n%s: ec=0x%x, il=0x%x, iss=0x%x, fipa=0x%x, error=%d\n", 
-			   __func__, ec, il, iss, fipa, rc);
+		vmm_printf("\n%s: ec=0x%x, il=0x%x, iss=0x%x,"
+			   " fipa=0x%x, error=%d\n", __func__,
+			   ec, il, iss, fipa, rc);
 		if (vcpu->state != VMM_VCPU_STATE_HALTED) {
 			cpu_vcpu_halt(vcpu, regs);
 		}
@@ -185,7 +191,7 @@ void do_hyp_trap(arch_regs_t * regs)
 	vmm_scheduler_irq_exit(regs);
 }
 
-void do_irq(arch_regs_t * regs)
+void do_irq(arch_regs_t *regs)
 {
 	vmm_scheduler_irq_enter(regs, FALSE);
 
@@ -194,7 +200,7 @@ void do_irq(arch_regs_t * regs)
 	vmm_scheduler_irq_exit(regs);
 }
 
-void do_fiq(arch_regs_t * regs)
+void do_fiq(arch_regs_t *regs)
 {
 	vmm_scheduler_irq_enter(regs, FALSE);
 
