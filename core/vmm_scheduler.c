@@ -31,6 +31,7 @@
 #include <vmm_schedalgo.h>
 #include <vmm_scheduler.h>
 #include <vmm_stdio.h>
+#include <arch_config.h>
 #include <arch_regs.h>
 #include <arch_cpu_irq.h>
 #include <arch_vcpu.h>
@@ -53,9 +54,10 @@ struct vmm_scheduler_ctrl {
 
 static DEFINE_PER_CPU(struct vmm_scheduler_ctrl, sched);
 
-static void vmm_scheduler_next(struct vmm_timer_event *ev, arch_regs_t *regs)
+static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
+			       struct vmm_timer_event *ev, 
+			       arch_regs_t *regs)
 {
-	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 	struct vmm_vcpu *current = schedp->current_vcpu;
 	struct vmm_vcpu *next = NULL; 
 
@@ -86,7 +88,7 @@ static void vmm_scheduler_next(struct vmm_timer_event *ev, arch_regs_t *regs)
 			arch_vcpu_switch(NULL, next, regs);
 		} else {
 			/* This should never happen !!! */
-			vmm_panic("Error: no vcpu to swith to.\n");
+			vmm_panic("%s: no vcpu to switch to.\n", __func__);
 		}
 	}
 
@@ -98,25 +100,83 @@ static void vmm_scheduler_next(struct vmm_timer_event *ev, arch_regs_t *regs)
 	}
 }
 
+static void vmm_scheduler_switch(struct vmm_scheduler_ctrl *schedp,
+				 arch_regs_t *regs)
+{
+	struct vmm_vcpu *vcpu = schedp->current_vcpu;
+
+	if (!regs) {
+		/* This should never happen !!! */
+		vmm_panic("%s: null pointer to regs.\n", __func__);
+	}
+
+	if (vcpu) {
+		if (!vcpu->preempt_count) {
+			vmm_scheduler_next(schedp, &schedp->ev, regs);
+		} else {
+			vmm_timer_event_restart(&schedp->ev);
+		}
+	} else {
+		vmm_scheduler_next(schedp, &schedp->ev, regs);
+	}
+}
+
 static void vmm_scheduler_timer_event(struct vmm_timer_event *ev)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
-	struct vmm_vcpu *vcpu = schedp->current_vcpu;
-	if (vcpu) {
-		if (!vcpu->preempt_count) {
-			vmm_scheduler_next(ev, schedp->irq_regs);
-		} else {
-			vmm_timer_event_restart(ev);
-		}
-	} else {
-		vmm_scheduler_next(ev, schedp->irq_regs);
+
+	if (schedp->irq_regs) {
+		vmm_scheduler_switch(schedp, schedp->irq_regs);
 	}
+}
+
+void vmm_scheduler_preempt_disable(void)
+{
+	irq_flags_t flags;
+	struct vmm_vcpu *vcpu;
+	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+
+	arch_cpu_irq_save(flags);
+
+	if (!schedp->irq_context) {
+		vcpu = schedp->current_vcpu;
+		if (vcpu) {
+			vcpu->preempt_count++;
+		}
+	}
+
+	arch_cpu_irq_restore(flags);
+}
+
+void vmm_scheduler_preempt_enable(void)
+{
+	irq_flags_t flags;
+	struct vmm_vcpu *vcpu;
+	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+
+	arch_cpu_irq_save(flags);
+
+	if (!schedp->irq_context) {
+		vcpu = schedp->current_vcpu;
+		if (vcpu && vcpu->preempt_count) {
+			vcpu->preempt_count--;
+		}
+	}
+
+	arch_cpu_irq_restore(flags);
+}
+
+void vmm_scheduler_preempt_orphan(arch_regs_t *regs)
+{
+	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+
+	vmm_scheduler_switch(schedp, regs);
 }
 
 int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
 	int rc = VMM_OK;
-	bool orphan_preempt = FALSE;
+	bool preempt = FALSE;
 	irq_flags_t flags;
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
@@ -159,18 +219,11 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		if ((vcpu->state == VMM_VCPU_STATE_RESET) ||
 		    (vcpu->state == VMM_VCPU_STATE_PAUSED)) {
 			/* Enqueue VCPU to ready queue */
-			if (schedp->current_vcpu != vcpu) {
-				rc = vmm_schedalgo_rq_enqueue(schedp->rq, vcpu);
-				if (!rc && 
-				    schedp->current_vcpu && 
+			rc = vmm_schedalgo_rq_enqueue(schedp->rq, vcpu);
+			if (!rc && (schedp->current_vcpu != vcpu)) {
+				preempt = 
 				    vmm_schedalgo_rq_prempt_needed(schedp->rq, 
-							schedp->current_vcpu)) {
-					if (schedp->current_vcpu->is_normal) {
-						schedp->yield_on_irq_exit = TRUE;
-					} else {
-						orphan_preempt = TRUE;
-					}
-				}
+							schedp->current_vcpu);
 			}
 		} else {
 			rc = VMM_EFAIL;
@@ -180,18 +233,14 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 	case VMM_VCPU_STATE_HALTED:
 		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
 		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
-			/* Expire timer event if current VCPU is paused or halted */
-			if(schedp->current_vcpu == vcpu) {
-				if (vcpu->is_normal) {
-					schedp->yield_on_irq_exit = TRUE;
-				} else {
-					orphan_preempt = TRUE;
-				}
-			} else {
+			/* Expire timer event if current VCPU 
+			 * is paused or halted 
+			 */
+			if (schedp->current_vcpu == vcpu) {
+				preempt = TRUE;
+			} else if (vcpu->state == VMM_VCPU_STATE_READY) {
 				/* Make sure VCPU is not in a ready queue */
-				if (vcpu->state == VMM_VCPU_STATE_READY) {
-					rc = vmm_schedalgo_rq_detach(schedp->rq, vcpu);
-				}
+				rc = vmm_schedalgo_rq_detach(schedp->rq, vcpu);
 			}
 		} else {
 			rc = VMM_EFAIL;
@@ -205,8 +254,20 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 
 	vmm_spin_unlock(&vcpu->lock);
 
-	if (orphan_preempt) {
-		vmm_timer_event_expire(&schedp->ev);
+	if (preempt && schedp->current_vcpu) {
+		if (schedp->current_vcpu->is_normal) {
+			schedp->yield_on_irq_exit = TRUE;
+		} else {
+#if defined(ARCH_HAS_VCPU_PREEMPT_ORPHAN)
+			if (schedp->irq_context) {
+				vmm_scheduler_preempt_orphan(schedp->irq_regs);
+			} else {
+				arch_vcpu_preempt_orphan();
+			}
+#else
+			vmm_timer_event_expire(&schedp->ev);
+#endif
+		}
 	}
 
 	arch_cpu_irq_restore(flags);
@@ -217,7 +278,9 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+#if !defined(ARCH_HAS_VCPU_PREEMPT_ORPHAN)
 	struct vmm_vcpu *vcpu = NULL;
+#endif
 
 	/* Indicate that we have entered in IRQ */
 	schedp->irq_context = (vcpu_context) ? FALSE : TRUE;
@@ -228,6 +291,7 @@ void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 	/* Ensure that yield on exit is disabled */
 	schedp->yield_on_irq_exit = FALSE;
 
+#if !defined(ARCH_HAS_VCPU_PREEMPT_ORPHAN)
 	/* If we had paused an Orphan VCPU and expired its timeslice
 	 * then context switch because context of paused Orphan VCPU
 	 * is not saved yet. 
@@ -238,9 +302,9 @@ void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 	vcpu = schedp->current_vcpu;
 	if (vcpu && !vcpu->is_normal && 
 	    vcpu->state != VMM_VCPU_STATE_RUNNING) {
-		vmm_scheduler_next(&schedp->ev, schedp->irq_regs);
+		vmm_scheduler_next(schedp, &schedp->ev, schedp->irq_regs);
 	}
-
+#endif
 }
 
 void vmm_scheduler_irq_exit(arch_regs_t *regs)
@@ -259,7 +323,7 @@ void vmm_scheduler_irq_exit(arch_regs_t *regs)
 	 */
 	if ((vcpu->state != VMM_VCPU_STATE_RUNNING) ||
 	    schedp->yield_on_irq_exit) {
-		vmm_scheduler_next(&schedp->ev, schedp->irq_regs);
+		vmm_scheduler_next(schedp, &schedp->ev, schedp->irq_regs);
 		schedp->yield_on_irq_exit = FALSE;
 	}
 
@@ -316,28 +380,6 @@ struct vmm_guest *vmm_scheduler_current_guest(void)
 	return NULL;
 }
 
-void vmm_scheduler_preempt_disable(void)
-{
-	irq_flags_t flags;
-	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
-	if (vcpu) {
-		arch_cpu_irq_save(flags);
-		vcpu->preempt_count++;
-		arch_cpu_irq_restore(flags);
-	}
-}
-
-void vmm_scheduler_preempt_enable(void)
-{
-	irq_flags_t flags;
-	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
-	if (vcpu && vcpu->preempt_count) {
-		arch_cpu_irq_save(flags);
-		vcpu->preempt_count--;
-		arch_cpu_irq_restore(flags);
-	}
-}
-
 void vmm_scheduler_yield(void)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
@@ -348,10 +390,14 @@ void vmm_scheduler_yield(void)
 	}
 
 	if (vmm_scheduler_orphan_context()) {
+#if defined(ARCH_HAS_VCPU_PREEMPT_ORPHAN)
+		arch_vcpu_preempt_orphan();
+#else
 		/* For Orphan VCPU
 		 * Forcefully expire timeslice 
 		 */
 		vmm_timer_event_expire(&schedp->ev);
+#endif
 	} else if (vmm_scheduler_normal_context()) {
 		/* For Normal VCPU
 		 * Just enable yield on exit and rest will be taken care
