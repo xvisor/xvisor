@@ -120,6 +120,11 @@ static int vmm_netswitch_rx_handler(void *param)
 		/* Extract info from xfer request */
 		xfer = list_entry(l, struct vmm_netport_xfer, head);
 
+		/* Print debug info */
+		DPRINTF("%s: nsw=%s xfer_type=%d\n", __func__, 
+			nsw->name, xfer->type);
+
+		/* Process xfer request */
 		switch (xfer->type) {
 		case VMM_NETPORT_XFER_LAZY:
 			/* Call lazy xfer function */
@@ -167,9 +172,13 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	}
 	nsw = src->nsw;
 
+	/* Print debug info */
+	DPRINTF("%s: nsw=%s src=%s\n", __func__, nsw->name, src->name);
+
 	/* Alloc netport xfer request */
 	xfer = vmm_netport_alloc_xfer(src);
 	if (!xfer) {
+		DPRINTF("%s: xfer alloc failed.\n", __func__);
 		m_freem(mbuf);
 		return VMM_ENOMEM;
 	}
@@ -205,9 +214,13 @@ int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
 	}
 	nsw = src->nsw;
 
+	/* Print debug info */
+	DPRINTF("%s: nsw=%s src=%s\n", __func__, nsw->name, src->name);
+
 	/* Alloc netport xfer request */
 	xfer = vmm_netport_alloc_xfer(src);
 	if (!xfer) {
+		DPRINTF("%s: xfer alloc failed.\n", __func__);
 		return VMM_ENOMEM;
 	}
 
@@ -239,6 +252,9 @@ int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,
 		return VMM_EFAIL;
 	}
 
+	/* Print debug info */
+	DPRINTF("%s: nsw=%s dst=%s\n", __func__, nsw->name, dst->name);
+
 	if (!dst->can_receive ||
 	    dst->can_receive(dst)) {
 		MADDREFERENCE(mbuf);
@@ -255,14 +271,12 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name, u32 thread_prio)
 {
 	struct vmm_netswitch *nsw;
 
-	nsw = vmm_malloc(sizeof(struct vmm_netswitch));
-
+	nsw = vmm_zalloc(sizeof(struct vmm_netswitch));
 	if (!nsw) {
 		vmm_printf("%s Failed to allocate net switch\n", __func__);
 		goto vmm_netswitch_alloc_failed;
 	}
 
-	memset(nsw, 0, sizeof(struct vmm_netswitch));
 	nsw->name = vmm_malloc(strlen(name)+1);
 	if (!nsw->name) {
 		vmm_printf("%s Failed to allocate for net switch\n", __func__);
