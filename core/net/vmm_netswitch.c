@@ -94,18 +94,29 @@ do{									\
 #define DUMP_NETSWITCH_PKT(mbuf)
 #endif
 
-static int vmm_netswitch_rx_handler(void *param)
+static int vmm_netswitch_thread(void *param)
 {
+	u64 timeout;
 	struct dlist *l;
 	irq_flags_t flags;
+	struct vmm_netport *xfer_port;
+	enum vmm_netport_xfer_type xfer_type;
+	struct vmm_mbuf *xfer_mbuf;
+	int xfer_lazy_budget;
+	void *xfer_lazy_arg;
+	void (*xfer_lazy_xfer)(struct vmm_netport *, void *, int);
 	struct vmm_netport_xfer *xfer;
 	struct vmm_netswitch *nsw;
 
 	nsw = param;
 
 	while (1) {
-		/* Try to wait for xfer request */
-		vmm_completion_wait(&nsw->rx_not_empty);
+		/* Try to wait for xfer request with timeout 
+		 * NOTE: The timeout here is to ensure that netswitch thread
+		 * does not sleep endlessly.
+		 */
+		timeout = 20000000000ULL;
+		vmm_completion_wait_timeout(&nsw->rx_not_empty, &timeout);
 
 		/* Try to get xfer request from rx_list */
 		vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
@@ -119,39 +130,45 @@ static int vmm_netswitch_rx_handler(void *param)
 
 		/* Extract info from xfer request */
 		xfer = list_entry(l, struct vmm_netport_xfer, head);
+		xfer_port = xfer->port;
+		xfer_type = xfer->type;
+		xfer_mbuf = xfer->mbuf;
+		xfer_lazy_budget = xfer->lazy_budget;
+		xfer_lazy_arg = xfer->lazy_arg;
+		xfer_lazy_xfer = xfer->lazy_xfer;
+
+		/* Free netport xfer request */
+		vmm_netport_free_xfer(xfer->port, xfer);
 
 		/* Print debug info */
 		DPRINTF("%s: nsw=%s xfer_type=%d\n", __func__, 
-			nsw->name, xfer->type);
+			nsw->name, xfer_type);
 
 		/* Process xfer request */
-		switch (xfer->type) {
+		switch (xfer_type) {
 		case VMM_NETPORT_XFER_LAZY:
 			/* Call lazy xfer function */
-			xfer->lazy_xfer(xfer->port, 
-					xfer->lazy_arg, 
-					xfer->lazy_budget);
+			xfer_lazy_xfer(xfer_port, 
+					xfer_lazy_arg, 
+					xfer_lazy_budget);
 
 			break;
 		case VMM_NETPORT_XFER_MBUF:
 			/* Dump packet */
-			DUMP_NETSWITCH_PKT(xfer->mbuf);
+			DUMP_NETSWITCH_PKT(xfer_mbuf);
 
 			/* Call the rx function of net switch */
 			vmm_mutex_lock(&nsw->lock);
-			nsw->port2switch_xfer(nsw, xfer->port, xfer->mbuf);
+			nsw->port2switch_xfer(nsw, xfer_port, xfer_mbuf);
 			vmm_mutex_unlock(&nsw->lock);
 
 			/* Free mbuf in xfer request */
-			m_freem(xfer->mbuf);
+			m_freem(xfer_mbuf);
 
 			break;
 		default:
 			break;
 		};
-
-		/* Free netport xfer request */
-		vmm_netport_free_xfer(xfer->port, xfer);
 	}
 
 	return VMM_OK;
@@ -167,6 +184,7 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 		return VMM_EFAIL;
 	}
 	if (!src || !src->nsw) {
+		vmm_printf("%s: invalid source port.\n", __func__);
 		m_freem(mbuf);
 		return VMM_EFAIL;
 	}
@@ -178,7 +196,8 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	/* Alloc netport xfer request */
 	xfer = vmm_netport_alloc_xfer(src);
 	if (!xfer) {
-		DPRINTF("%s: xfer alloc failed.\n", __func__);
+		vmm_printf("%s: nsw=%s src=%s xfer alloc failed.\n", 
+			   __func__, nsw->name, src->name);
 		m_freem(mbuf);
 		return VMM_ENOMEM;
 	}
@@ -210,6 +229,8 @@ int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
 	struct vmm_netswitch *nsw;
 
 	if (!lazy_xfer || !src || !src->nsw) {
+		vmm_printf("%s: invalid source port or xfer callback.\n", 
+			   __func__);
 		return VMM_EFAIL;
 	}
 	nsw = src->nsw;
@@ -220,7 +241,8 @@ int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
 	/* Alloc netport xfer request */
 	xfer = vmm_netport_alloc_xfer(src);
 	if (!xfer) {
-		DPRINTF("%s: xfer alloc failed.\n", __func__);
+		vmm_printf("%s: nsw=%s src=%s xfer alloc failed.\n", 
+			   __func__, nsw->name, src->name);
 		return VMM_ENOMEM;
 	}
 
@@ -287,7 +309,7 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name, u32 thread_prio)
 	INIT_MUTEX(&nsw->lock);
 	INIT_LIST_HEAD(&nsw->port_list);
 
-	nsw->thread = vmm_threads_create(nsw->name, vmm_netswitch_rx_handler,
+	nsw->thread = vmm_threads_create(nsw->name, vmm_netswitch_thread,
 					 nsw, thread_prio, 
 					 VMM_THREAD_DEF_TIME_SLICE);
 	if (!nsw->thread) {
