@@ -34,14 +34,14 @@
 /* Port Flags (should be defined as bits) */
 #define VMM_NETPORT_LINK_UP		1	/* If this bit is set link is up */
 
-/* Default per-port queue size */
-#define VMM_NETPORT_DEF_QUEUE_SIZE	32
-
 /* Default per-port name size */
 #define VMM_NETPORT_MAX_NAME_SIZE	64
 
 /* Default per-port queue size */
 #define VMM_NETPORT_MAX_QUEUE_SIZE	256
+
+/* Default per-port queue size */
+#define VMM_NETPORT_DEF_QUEUE_SIZE	(VMM_NETPORT_MAX_QUEUE_SIZE / 4)
 
 struct vmm_netswitch;
 struct vmm_netport;
