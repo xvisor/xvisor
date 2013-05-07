@@ -152,35 +152,34 @@ static void setup_gate_handlers(void)
 	u64 user_irq_base = VIRT_TO_PHYS(__IRQ_32);
 
 	/* Install default handler for all interrupts, then cherry pick */
-	for (i = 0; i < 256; i++) {
-		if (i >= 32) {
-			debug_print("Int %d => 0x%lx%lx\n", i, (user_irq_base >> 32), (user_irq_base & 0xFFFFFFFFUL));
+	for (i = 0; i < NR_IRQ_VECTORS; i++) {
+		if (i >= USER_DEFINED_IRQ_BASE) {
 			set_interrupt_gate(i, user_irq_base);
-			user_irq_base += 1024;
+			user_irq_base += IRQ_VECTOR_ALIGN_SZ; /* 128 instructions */
 		} else
 			set_interrupt_gate(i, VIRT_TO_PHYS(_generic_handler));
 	}
 
-	set_trap_gate(0, VIRT_TO_PHYS(_irq0));	/* divide error */
-	set_trap_gate(1, VIRT_TO_PHYS(_irq1));	/* debug */
-	set_trap_gate(3, VIRT_TO_PHYS(_irq3));	/* Breakpoint */
-	set_trap_gate(4, VIRT_TO_PHYS(_irq4));	/* Overflow */
-	set_trap_gate(5, VIRT_TO_PHYS(_irq5));	/* Bounds error */
-	set_trap_gate(6, VIRT_TO_PHYS(_irq6));	/* Invalid Opcode */
-	set_trap_gate(7, VIRT_TO_PHYS(_irq7));	/* Dev not avail */
-	set_trap_gate(8, VIRT_TO_PHYS(_irq8));	/* double fault */
-	set_trap_gate(9, VIRT_TO_PHYS(_irq9));	/* coproc seg ovrn */
-	set_trap_gate(10, VIRT_TO_PHYS(_irq10));/* invalid tss */
-	set_trap_gate(11, VIRT_TO_PHYS(_irq11));/* seg not present */
-	set_trap_gate(12, VIRT_TO_PHYS(_irq12));/* stack segment */
-	set_trap_gate(13, VIRT_TO_PHYS(_irq13));/* GPF */
-	set_trap_gate(16, VIRT_TO_PHYS(_irq16));/* coproc error */
-	set_trap_gate(17, VIRT_TO_PHYS(_irq17));/* alignment check */
-	set_trap_gate(18, VIRT_TO_PHYS(_irq18));/* machine check */
-	set_trap_gate(19, VIRT_TO_PHYS(_irq19));/* simd coproc error */
+	set_trap_gate(0, VIRT_TO_PHYS(_exception_div_error));	        /* divide error */
+	set_trap_gate(1, VIRT_TO_PHYS(_exception_debug));	        /* debug */
+	set_trap_gate(3, VIRT_TO_PHYS(_exception_bp));                  /* Breakpoint */
+	set_trap_gate(4, VIRT_TO_PHYS(_exception_ovf));                 /* Overflow */
+	set_trap_gate(5, VIRT_TO_PHYS(_exception_bounds));	        /* Bounds error */
+	set_trap_gate(6, VIRT_TO_PHYS(_exception_inval_opc));	        /* Invalid Opcode */
+	set_trap_gate(7, VIRT_TO_PHYS(_exception_no_dev));	        /* Dev not avail */
+	set_trap_gate(8, VIRT_TO_PHYS(_exception_double_fault));        /* double fault */
+	set_trap_gate(9, VIRT_TO_PHYS(_exception_coproc_overrun));      /* coproc seg ovrn */
+	set_trap_gate(10, VIRT_TO_PHYS(_exception_inval_tss));          /* invalid tss */
+	set_trap_gate(11, VIRT_TO_PHYS(_exception_missing_seg));        /* seg not present */
+	set_trap_gate(12, VIRT_TO_PHYS(_exception_missing_stack));      /* stack segment */
+	set_trap_gate(13, VIRT_TO_PHYS(_exception_gpf));                /* GPF */
+	set_trap_gate(16, VIRT_TO_PHYS(_exception_coproc_err));         /* coproc error */
+	set_trap_gate(17, VIRT_TO_PHYS(_exception_align_check));        /* alignment check */
+	set_trap_gate(18, VIRT_TO_PHYS(_exception_machine_check));      /* machine check */
+	set_trap_gate(19, VIRT_TO_PHYS(_exception_simd_err));           /* simd coproc error */
 
-	set_interrupt_gate(2, VIRT_TO_PHYS(_irq2));/* NMI */
-	set_interrupt_gate(14, VIRT_TO_PHYS(_irq14));/* page fault */
+	set_interrupt_gate(2, VIRT_TO_PHYS(_exception_nmi));            /* NMI */
+	set_interrupt_gate(14, VIRT_TO_PHYS(_exception_page_fault));    /* page fault */
 }
 
 int __cpuinit arch_cpu_irq_setup(void)
@@ -193,44 +192,47 @@ int __cpuinit arch_cpu_irq_setup(void)
         return 0;
 }
 
+extern void dump_vcpu_regs(arch_regs_t *regs);
+
 /* All Handlers */
 int do_page_fault(int error, arch_regs_t *regs)
 {
 	u64 bad_vaddr;
+	struct vmm_vcpu *cvcpu = NULL;
 
 	__asm__ __volatile__("movq %%cr2, %0\n\t"
 			     :"=r"(bad_vaddr));
 
-	vmm_printf("Handled access to address %x Error: %x\n", bad_vaddr, error);
-	while(1);
+	cvcpu = vmm_scheduler_current_vcpu();
+
+	if (cvcpu) {
+		vmm_printf("Unhandled access from VMM vcpu %s @ address %lx\n",
+			cvcpu->name, bad_vaddr);
+	} else {
+		vmm_printf("(Page Fault): Unhandled VMM access to address %lx\n", bad_vaddr);
+	}
+
+	dump_vcpu_regs(regs);
+
+	while(1); /* Should never reach here. */
 }
 
 int do_breakpoint(int intno, arch_regs_t *regs)
 {
-	return 0;
+	dump_vcpu_regs(regs);
+	vmm_panic("Unhandled breakpoint in VMM code.\n");
+	while(1);
 }
 
 int do_gpf(int intno, arch_regs_t *regs)
 {
-	vmm_printf("!!!! GENERAL PROTECTION FAULT !!!!\n");
-	while(1);
+	vmm_panic("(General Proctection Fault)\n");
 
-	return 0;
+	while(1); /* Should never reach here. */
 }
 
 int do_generic_int_handler(int intno, arch_regs_t *regs)
 {
-#ifdef __DEBUG
-	struct x86_64_interrupt_frame *frame =
-		(struct x86_64_interrupt_frame *)((u64)regs
-						  + sizeof(struct x86_64_interrupt_frame));
-#endif
-
-	debug_print("%s: int: %d, regs: 0x%lx%lx\n",
-		    __func__, intno, ((u64)regs >> 32), ((u64) regs & 0xFFFFFFFFUL));
-	debug_print("rip: %lx esp: %lx cs: %lx ss: %lx\n",
-		    (unsigned long)frame->rip, (unsigned long)frame->rsp,
-		    (unsigned long)frame->cs, (unsigned long)frame->ss);
 	vmm_scheduler_irq_enter(regs, FALSE);
 	vmm_host_irq_exec(intno);
 	vmm_scheduler_irq_exit(regs);

@@ -46,23 +46,17 @@ int arch_guest_deinit(struct vmm_guest * guest)
 
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
-	struct x86_64_interrupt_frame *frame;
 	u64 stack_start;
 
 	if (!vcpu->is_normal) {
-		vmm_printf("init %s vcpu\n", vcpu->name);
-		vcpu->arch_priv = (void *)vmm_malloc(sizeof(struct x86_64_interrupt_frame));
-		BUG_ON(!vcpu->arch_priv);
-
-		memset(vcpu->arch_priv, 0, sizeof(struct x86_64_interrupt_frame));
 		/* For orphan vcpu */
 		stack_start = vcpu->stack_va + vcpu->stack_sz - sizeof(u64);
-		frame = (struct x86_64_interrupt_frame *)vcpu->arch_priv;
-		frame->rip = vcpu->start_pc;
-		frame->rsp = stack_start;
-		frame->cs = VMM_CODE_SEG_SEL;
-		frame->ss = VMM_DATA_SEG_SEL;
-		frame->rflags = (X86_EFLAGS_IF | X86_EFLAGS_PF | X86_EFLAGS_CF);
+		vcpu->regs.rip = vcpu->start_pc;
+		vcpu->regs.rip = vcpu->start_pc;
+		vcpu->regs.rsp = stack_start;
+		vcpu->regs.cs = VMM_CODE_SEG_SEL;
+		vcpu->regs.ss = VMM_DATA_SEG_SEL;
+		vcpu->regs.rflags = (X86_EFLAGS_IF | X86_EFLAGS_PF | X86_EFLAGS_CF);
 	} else {
 		vmm_panic("Non orphan VCPU intialization not supported yet.\n");
 	}
@@ -75,26 +69,14 @@ int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-static void dump_vcpu_regs(arch_regs_t *regs)
+void dump_vcpu_regs(arch_regs_t *regs)
 {
-	struct x86_64_interrupt_frame *ret_frame =
-		(struct x86_64_interrupt_frame *)((u64)regs + sizeof(arch_regs_t));
-	vmm_printf("rax: %lx ", regs->rax);
-	vmm_printf("rbx: %lx ",regs->rbx);
-	vmm_printf("rcx: %lx ", regs->rcx);
-	vmm_printf("rdx: %lx \n",regs->rdx);
-	vmm_printf("rdi: %lx ", regs->rdi);
-	vmm_printf("rsi: %lx ",regs->rsi);
-	vmm_printf("rbp: %lx ", regs->rbp);
-	vmm_printf("r8 : %lx\n",regs->r8);
-	vmm_printf("r9 : %lx ", regs->r9);
-	vmm_printf("r10: %lx ",regs->r10);
-	vmm_printf("r11: %lx ", regs->r11);
-	vmm_printf("r12: %lx\n",regs->r12);
-	vmm_printf("r13: %lx ", regs->r13);
-	vmm_printf("r14: %lx ", regs->r14);
-	vmm_printf("r15: %lx ",regs->r15);
-	vmm_printf("rip: %lx rsp: %lx rflags: %lx\n", ret_frame->rip, ret_frame->rsp, ret_frame->rflags);
+	vmm_printf("rax: %lx rbx: %lx rcx: %lx rdx: %lx\n", regs->rax, regs->rbx, regs->rcx, regs->rdx);
+	vmm_printf("rdi: %lx rsi: %lx rbp: %lx r8 : %lx\n", regs->rdi, regs->rsi, regs->rbp, regs->r8);
+	vmm_printf("r9 : %lx r10: %lx r11: %lx r12: %lx\n", regs->r9, regs->r10, regs->r11, regs->r12);
+	vmm_printf("r13: %lx r14: %lx r15: %lx\n", regs->r13, regs->r14, regs->r15);
+	vmm_printf("rip: %lx rsp: %lx rflags: %lx hwec: %lx\n", regs->rip, regs->rsp, regs->rflags, regs->hw_err_code);
+	vmm_printf("ss: %lx cs: %lx\n",regs->ss, regs->cs);
 }
 
 void arch_vcpu_switch(struct vmm_vcpu *tvcpu, 
@@ -104,17 +86,9 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	if (!tvcpu) {
 		/* first time rescheduling */
 		memcpy(regs, &vcpu->regs, sizeof(arch_regs_t));
-		struct x86_64_interrupt_frame *ret_frame =
-			(struct x86_64_interrupt_frame *)((u64)regs + sizeof(arch_regs_t));
-		memcpy(ret_frame, vcpu->arch_priv, sizeof(struct x86_64_interrupt_frame));
 	} else {
 		memcpy(&tvcpu->regs, regs, sizeof(arch_regs_t));
-		struct x86_64_interrupt_frame *ret_frame =
-			(struct x86_64_interrupt_frame *)((u64)regs + sizeof(arch_regs_t));
-		memcpy(tvcpu->arch_priv, ret_frame, sizeof(struct x86_64_interrupt_frame));
-
 		memcpy(regs, &vcpu->regs, sizeof(arch_regs_t));
-		memcpy(ret_frame, vcpu->arch_priv, sizeof(struct x86_64_interrupt_frame));
 	}
 }
 
