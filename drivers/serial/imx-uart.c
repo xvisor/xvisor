@@ -70,6 +70,8 @@
 #define MODULE_INIT                     imx_driver_init
 #define MODULE_EXIT                     imx_driver_exit
 
+//#define UART_IMX_USE_TXINTR
+
 /* Register definitions */
 #define URXD0 0x0		/* Receiver Register */
 #define URTX0 0x40		/* Transmitter Register */
@@ -522,6 +524,7 @@ static int imx_driver_remove(struct vmm_device *dev)
 
 	if (port) {
 		rc = vmm_chardev_unregister(&port->cd);
+		vmm_devtree_regunmap(dev->node, port->base, 0);
 		vmm_free(port);
 		dev->priv = NULL;
 	}
