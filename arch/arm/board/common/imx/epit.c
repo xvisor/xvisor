@@ -271,7 +271,7 @@ static int epit_expire(struct vmm_clockchip *evt)
 	struct epit_clockchip *ecc = evt->priv;
 
 	/* Set the timer for next cycle */
-	epit_set_next_event(1, evt);
+	epit_set_next_event(MIN_REG_COMPARE, evt);
 
 	/* wait for event to happen */
 	while (vmm_readl((void *)(ecc->base + EPITSR)) != 0x01) ;
