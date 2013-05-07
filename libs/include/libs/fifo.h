@@ -19,7 +19,7 @@
  * @file fifo.h
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @author Anup Patel (anup@brainfault.org)
- * @brief header file for generic fifo.
+ * @brief header file for generic first-in-first-out queue.
  */
 
 #ifndef __FIFO_H__

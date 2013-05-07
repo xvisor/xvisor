@@ -18,7 +18,8 @@
  *
  * @file fifo.c
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
- * @brief source file for generic ring buffer.
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief source file for generic first-in-first-out queue.
  */
 
 #include <vmm_error.h>
