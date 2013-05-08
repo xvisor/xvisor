@@ -87,10 +87,12 @@ module_param_named(notimeout, i8042_notimeout, bool, 0);
 MODULE_PARM_DESC(notimeout, "Ignore timeouts signalled by i8042");
 #endif
 
-#ifdef CONFIG_X86
+#ifdef CONFIG_ARCH_x86
 static bool i8042_dritek;
+#if 0
 module_param_named(dritek, i8042_dritek, bool, 0);
 MODULE_PARM_DESC(dritek, "Force enable the Dritek keyboard extension");
+#endif
 #endif
 
 #ifdef CONFIG_PNP
@@ -487,16 +489,23 @@ static irqreturn_t i8042_interrupt(u32 irq, void *dev)
 		goto out;
 	}
 
-	data = i8042_read_data();
+	/*
+	 * FIXME: For now since only x86 is using this read the controller
+	 * multiple times until data is left. Need to fix this since the
+	 * code assumes that for each byte an interrupt occurs. x86 is not
+	 * getting that for now.
+	 */
+	do {
+		data = i8042_read_data();
 
-	if (i8042_mux_present && (str & I8042_STR_AUXDATA)) {
-		static unsigned long last_transmit;
-		static unsigned char last_str;
+		if (i8042_mux_present && (str & I8042_STR_AUXDATA)) {
+			static unsigned long last_transmit;
+			static unsigned char last_str;
 
-		dfl = 0;
-		if (str & I8042_STR_MUXERR) {
-			vmm_printf("MUX error, status is %02x, data is %02x\n",
-                       str, data);
+			dfl = 0;
+			if (str & I8042_STR_MUXERR) {
+				vmm_printf("MUX error, status is %02x, data is %02x\n",
+					str, data);
 /*
  * When MUXERR condition is signalled the data register can only contain
  * 0xfd, 0xfe or 0xff if implementation follows the spec. Unfortunately
@@ -510,7 +519,7 @@ static irqreturn_t i8042_interrupt(u32 irq, void *dev)
  * was transmitted (if transmission happened not too long ago).
  */
 
-			switch (data) {
+				switch (data) {
 				default:
 					if (time_before(jiffies, last_transmit + HZ/10)) {
 						str = last_str;
@@ -521,35 +530,36 @@ static irqreturn_t i8042_interrupt(u32 irq, void *dev)
 				case 0xfd:
 				case 0xfe: dfl = SERIO_TIMEOUT; data = 0xfe; break;
 				case 0xff: dfl = SERIO_PARITY;  data = 0xfe; break;
+				}
 			}
+
+			port_no = I8042_MUX_PORT_NO + ((str >> 6) & 3);
+			last_str = str;
+			last_transmit = jiffies;
+		} else {
+
+			dfl = ((str & I8042_STR_PARITY) ? SERIO_PARITY : 0) |
+				((str & I8042_STR_TIMEOUT && !i8042_notimeout) ? SERIO_TIMEOUT : 0);
+
+			port_no = (str & I8042_STR_AUXDATA) ?
+				I8042_AUX_PORT_NO : I8042_KBD_PORT_NO;
 		}
 
-		port_no = I8042_MUX_PORT_NO + ((str >> 6) & 3);
-		last_str = str;
-		last_transmit = jiffies;
-	} else {
+		port = &i8042_ports[port_no];
+		serio = port->exists ? port->serio : NULL;
 
-		dfl = ((str & I8042_STR_PARITY) ? SERIO_PARITY : 0) |
-		      ((str & I8042_STR_TIMEOUT && !i8042_notimeout) ? SERIO_TIMEOUT : 0);
+		dbg("%02x <- i8042 (interrupt, %d, %d%s%s)\n",
+			data, port_no, irq,
+			dfl & SERIO_PARITY ? ", bad parity" : "",
+			dfl & SERIO_TIMEOUT ? ", timeout" : "");
 
-		port_no = (str & I8042_STR_AUXDATA) ?
-				I8042_AUX_PORT_NO : I8042_KBD_PORT_NO;
-	}
+		filtered = i8042_filter(data, str, serio);
 
-	port = &i8042_ports[port_no];
-	serio = port->exists ? port->serio : NULL;
+		spin_unlock_irqrestore(&i8042_lock, flags);
 
-	dbg("%02x <- i8042 (interrupt, %d, %d%s%s)\n",
-		data, port_no, irq,
-		dfl & SERIO_PARITY ? ", bad parity" : "",
-		dfl & SERIO_TIMEOUT ? ", timeout" : "");
-
-	filtered = i8042_filter(data, str, serio);
-
-	spin_unlock_irqrestore(&i8042_lock, flags);
-
-	if (likely(port->exists && !filtered))
-		serio_interrupt(serio, data, dfl);
+		if (likely(port->exists && !filtered))
+			serio_interrupt(serio, data, dfl);
+	} while((str = i8042_read_status()) & I8042_STR_OBF);
 
  out:
 	return IRQ_RETVAL(ret);
@@ -1093,7 +1103,7 @@ static long i8042_panic_blink(int state)
 
 #undef DELAY
 
-#ifdef CONFIG_X86
+#ifdef CONFIG_ARCH_x86
 static void i8042_dritek_enable(void)
 {
 	unsigned char param = 0x90;
@@ -1145,7 +1155,7 @@ static int i8042_controller_resume(bool force_reset)
 	}
 
 
-#ifdef CONFIG_X86
+#ifdef CONFIG_ARCH_x86
 	if (i8042_dritek)
 		i8042_dritek_enable();
 #endif
@@ -1450,7 +1460,7 @@ static int i8042_driver_probe(struct vmm_device *dev, const struct vmm_devtree_n
 	if (error)
 		return error;
 
-#ifdef CONFIG_X86
+#ifdef CONFIG_ARCH_x86
 	if (i8042_dritek)
 		i8042_dritek_enable();
 #endif

@@ -266,19 +266,6 @@ static void epit_set_mode(enum vmm_clockchip_mode mode,
 	}
 }
 
-static int epit_expire(struct vmm_clockchip *evt)
-{
-	struct epit_clockchip *ecc = evt->priv;
-
-	/* Set the timer for next cycle */
-	epit_set_next_event(1, evt);
-
-	/* wait for event to happen */
-	while (vmm_readl((void *)(ecc->base + EPITSR)) != 0x01) ;
-
-	return VMM_OK;
-}
-
 /*
  * IRQ handler for the timer
  */
@@ -359,7 +346,6 @@ int __cpuinit epit_clockchip_init(void)
 							   &ecc->clkchip);
 	ecc->clkchip.set_mode = &epit_set_mode;
 	ecc->clkchip.set_next_event = &epit_set_next_event;
-	ecc->clkchip.expire = &epit_expire;
 	ecc->clkchip.priv = ecc;
 
 	/*

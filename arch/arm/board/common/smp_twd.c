@@ -99,23 +99,6 @@ static int twd_clockchip_set_next_event(unsigned long next,
 	return 0;
 }
 
-static int twd_clockchip_expire(struct vmm_clockchip *cc)
-{
-	u32 i, ctrl = vmm_readl((void *)(twd_base + TWD_TIMER_CONTROL));
-
-	ctrl &= ~TWD_TIMER_CONTROL_ENABLE;
-	vmm_writel(ctrl, (void *)(twd_base + TWD_TIMER_CONTROL));
-	vmm_writel(1, (void *)(twd_base + TWD_TIMER_COUNTER));
-	ctrl |= TWD_TIMER_CONTROL_ENABLE;
-	vmm_writel(ctrl, (void *)(twd_base + TWD_TIMER_CONTROL));
-
-	while (!vmm_readl((void *)(twd_base + TWD_TIMER_INTSTAT))) {
-		for (i = 0; i < 100; i++);
-	}
-
-	return 0;
-}
-
 static void twd_caliberate_freq(virtual_addr_t base, 
 				virtual_addr_t ref_counter_addr,
 				u32 ref_counter_freq)
@@ -211,7 +194,6 @@ int __cpuinit twd_clockchip_init(virtual_addr_t ref_counter_addr,
 			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);
 	cc->clkchip.set_mode = &twd_clockchip_set_mode;
 	cc->clkchip.set_next_event = &twd_clockchip_set_next_event;
-	cc->clkchip.expire = &twd_clockchip_expire;
 	cc->clkchip.priv = cc;
 
 	if (!cpu) {

@@ -803,6 +803,14 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	clrex();
 }
 
+void arch_vcpu_preempt_orphan(void)
+{
+	/* Trigger HVC call from hypervisor mode. This will cause
+	 * do_soft_irq() function to call vmm_scheduler_preempt_orphan()
+	 */
+	asm volatile ("hvc #0\t\n");
+}
+
 void cpu_vcpu_dump_user_reg(arch_regs_t *regs)
 {
 	u32 ite;

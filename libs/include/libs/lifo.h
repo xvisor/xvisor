@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Himanshu Chauhan.
+ * Copyright (c) 2013 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,57 +16,55 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file fifo.h
- * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @file lifo.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief header file for generic first-in-first-out queue.
+ * @brief header file for generic last-in-first-out queue.
  */
 
-#ifndef __FIFO_H__
-#define __FIFO_H__
+#ifndef __LIFO_H__
+#define __LIFO_H__
 
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 
-/** FIFO representation */
-struct fifo {
+/** LIFO representation */
+struct lifo {
 	void *elements;
 	u32 element_size;
 	u32 element_count;
 	vmm_spinlock_t lock;
-	u32 read_pos;
-	u32 write_pos;
+	u32 head_pos;
 	u32 avail_count;
 };
 
-/** Alloc a new FIFO */
-struct fifo *fifo_alloc(u32 element_size, u32 element_count);
+/** Alloc a new LIFO */
+struct lifo *lifo_alloc(u32 element_size, u32 element_count);
 
-/** Free a FIFO */
-int fifo_free(struct fifo *f);
+/** Free a LIFO */
+int lifo_free(struct lifo *l);
 
-/** Check if FIFO is empty */
-bool fifo_isempty(struct fifo *f);
+/** Check if LIFO is empty */
+bool lifo_isempty(struct lifo *l);
 
-/** Check if FIFO is full */
-bool fifo_isfull(struct fifo *f);
+/** Check if LIFO is full */
+bool lifo_isfull(struct lifo *l);
 
-/** Enqueue an element to FIFO
+/** Enqueue an element to LIFO
  *  @returns TRUE on success and FALSE on failure
  */
-bool fifo_enqueue(struct fifo *f, void *src, bool overwrite);
+bool lifo_enqueue(struct lifo *l, void *src, bool overwrite);
 
-/** Dequeue an element from FIFO
+/** Dequeue an element from LIFO
  *  @returns TRUE on success and FALSE on failure
  */
-bool fifo_dequeue(struct fifo *f, void *dst);
+bool lifo_dequeue(struct lifo *l, void *dst);
 
 /** Get element from given logical index
  *  @returns TRUE on success and FALSE on failure
  */
-bool fifo_getelement(struct fifo *f, u32 index, void *dst);
+bool lifo_getelement(struct lifo *l, u32 index, void *dst);
 
 /** Get count of available elements */
-u32 fifo_avail(struct fifo *f);
+u32 lifo_avail(struct lifo *l);
 
-#endif /* __FIFO_H__ */
+#endif /* __LIFO_H__ */

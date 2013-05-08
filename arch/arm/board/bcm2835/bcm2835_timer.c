@@ -167,24 +167,6 @@ static int bcm2835_clockchip_set_next_event(unsigned long next,
 	return VMM_OK;
 }
 
-static int bcm2835_clockchip_expire(struct vmm_clockchip *cc)
-{
-	u32 i;
-	struct bcm2835_clockchip *bcc = cc->priv;
-
-	/* Configure compare register for shortest duration */
-	i = vmm_readl(bcc->system_clock) + MIN_REG_COMPARE;
-	vmm_writel(i, bcc->compare);
-
-	/* Wait for timer to expire */
-	while (!(vmm_readl(bcc->control) & bcc->match_mask)) {
-		/* Relax CPU with ramdom delay */
-		for (i = 0; i < 100; i++) ;
-	}
-	
-	return VMM_OK;
-}
-
 int __cpuinit bcm2835_clockchip_init(void)
 {
 	int rc;
@@ -247,7 +229,6 @@ int __cpuinit bcm2835_clockchip_init(void)
 							   &bcc->clkchip);
 	bcc->clkchip.set_mode = &bcm2835_clockchip_set_mode;
 	bcc->clkchip.set_next_event = &bcm2835_clockchip_set_next_event;
-	bcc->clkchip.expire = &bcm2835_clockchip_expire;
 	bcc->clkchip.priv = bcc;
 
 	/* Make sure compare register is set to zero */

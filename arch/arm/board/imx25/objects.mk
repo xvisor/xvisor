@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2012 Anup Patel.
+# Copyright (c) 2013 Jean-Christophe Dubois.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,21 +17,11 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Anup Patel (anup@brainfault.org)
 # @author Jean-Christophe Dubois (jcd@tribudubois.net)
-# @brief list of common objects to be build
+# @brief list of i.MX25 board objects.
 # */
 
-libs-objs-y+= common/bcd.o
-libs-objs-y+= common/bitops.o
-libs-objs-y+= common/bitmap.o
-libs-objs-y+= common/scatterlist.o
-libs-objs-y+= common/stringlib.o
-libs-objs-y+= common/mathlib.o
-libs-objs-y+= common/stacktrace.o
-libs-objs-y+= common/smoothsort.o
-libs-objs-y+= common/list_sort.o
-libs-objs-y+= common/fifo.o
-libs-objs-y+= common/lifo.o
-libs-objs-y+= common/mempool.o
-
+board-objs-y+=brd_defterm.o
+board-objs-y+=brd_main.o
+board-objs-$(CONFIG_3DSTACK_ONE_GUEST_VERSATILE_DTS)+=dts/3dstack/one_guest_versatile.o
+board-objs-$(CONFIG_3DSTACK_TWO_GUEST_VERSATILE_DTS)+=dts/3dstackkzm/two_guest_versatile.o

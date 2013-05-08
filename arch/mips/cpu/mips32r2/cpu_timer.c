@@ -74,11 +74,6 @@ static int mips_clockchip_set_next_event(unsigned long next,
 	return 0;
 }
 
-static int mips_clockchip_expire(struct vmm_clockchip *cc)
-{
-	return 0;
-}
-
 static struct vmm_clockchip mips_cc = 
 {
 	.name = "mips_clkchip",
@@ -88,7 +83,6 @@ static struct vmm_clockchip mips_cc =
 	.shift = 32,
 	.set_mode = &mips_clockchip_set_mode,
 	.set_next_event = &mips_clockchip_set_next_event,
-	.expire = &mips_clockchip_expire,
 };
 
 static DEFINE_PER_CPU(struct vmm_clockchip, mcc);

@@ -891,7 +891,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
-int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
+int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 {
 	int rc;
 
@@ -914,9 +914,9 @@ int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
-		      struct vmm_vcpu * vcpu, 
-                      arch_regs_t * regs)
+void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
+		      struct vmm_vcpu *vcpu, 
+                      arch_regs_t *regs)
 {
 	u32 ite;
 	/* Save user registers & banked registers */
@@ -951,7 +951,15 @@ void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
 	clrex();
 }
 
-void cpu_vcpu_dump_user_reg(struct vmm_vcpu * vcpu, arch_regs_t * regs)
+void arch_vcpu_preempt_orphan(void)
+{
+	/* Trigger SVC call from supervisor mode. This will cause
+	 * do_soft_irq() function to call vmm_scheduler_preempt_orphan()
+	 */
+	asm volatile ("svc #0\t\n");
+}
+
+void cpu_vcpu_dump_user_reg(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	u32 ite;
 	vmm_printf("  Core Registers\n");
@@ -968,15 +976,18 @@ void cpu_vcpu_dump_user_reg(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 	vmm_printf("\n");
 }
 
-void arch_vcpu_regs_dump(struct vmm_vcpu * vcpu)
+void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu)
 {
 	u32 ite;
+
 	/* For both Normal & Orphan VCPUs */
 	cpu_vcpu_dump_user_reg(vcpu, arm_regs(vcpu));
+
 	/* For only Normal VCPUs */
 	if (!vcpu->is_normal) {
 		return;
 	}
+
 	vmm_printf("  User Mode Registers (Banked)\n");
 	vmm_printf("    SP=0x%08x       LR=0x%08x\n",
 		   arm_priv(vcpu)->sp_usr, arm_priv(vcpu)->lr_usr);
