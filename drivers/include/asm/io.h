@@ -30,21 +30,7 @@
 #define cpup_to_be64(p)		vmm_cpu_to_be64(*((u64 *)(p)))
 #define be64_to_cpup(p)		vmm_be64_to_cpu(*((u64 *)(p)))
 
-/** I/O read/write legacy functions (Assumed to be Little Endian) */
-#define ioreadb				vmm_ioreadb
-#define iowriteb			vmm_iowriteb
-#define ioreadw				vmm_ioreadw
-#define iowritew			vmm_iowritew
-#define ioreadl				vmm_ioreadl
-#define iowritel			vmm_iowritel
-
-/** Memory read/write legacy functions (Assumed to be Little Endian) */
-#define readb				vmm_readb
-#define writeb				vmm_writeb
-#define readw				vmm_readw
-#define writew				vmm_writew
-#define readl				vmm_readl
-#define writel				vmm_writel
+/** I/O access functions (Assumed to be Little Endian) */
 #define inb				vmm_inb
 #define inw				vmm_inw
 #define inl				vmm_inl
@@ -66,6 +52,21 @@
 #define outsw				vmm_outsw
 #define outsl				vmm_outsl
 
+/** Memory read/write legacy functions (Assumed to be Little Endian) */
+#define readb				vmm_readb
+#define writeb				vmm_writeb
+#define readw				vmm_readw
+#define writew				vmm_writew
+#define readl				vmm_readl
+#define writel				vmm_writel
+
+#define	readsl				vmm_readsl
+#define	readsw				vmm_readsw
+#define readsb				vmm_readsb
+#define	writesl				vmm_writesl
+#define	writesw				vmm_writesw
+#define writesb				vmm_writesb
+
 /** Memory read/write functions */
 #define in_8				vmm_in_8
 #define out_8				vmm_out_8
@@ -81,11 +82,6 @@
 #define out_le64			vmm_out_le64
 #define in_be64				vmm_in_be64
 #define out_be64			vmm_out_be64
-
-#define	readsl				vmm_insl
-#define	readsw				vmm_insw
-#define	writesl				vmm_outsl
-#define	writesw				vmm_outsw
 
 #define	__iomem
 

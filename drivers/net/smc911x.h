@@ -196,12 +196,12 @@ static inline void SMC_insl(struct smc911x_local *lp, int reg,
 	void __iomem *ioaddr = lp->base + reg;
 
 	if (lp->cfg.flags & SMC911X_USE_32BIT) {
-		readsl((unsigned long)ioaddr, addr, count);
+		readsl(ioaddr, addr, count);
 		return;
 	}
 
 	if (lp->cfg.flags & SMC911X_USE_16BIT) {
-		readsw((unsigned long)ioaddr, addr, count * 2);
+		readsw(ioaddr, addr, count * 2);
 		return;
 	}
 
@@ -214,12 +214,12 @@ static inline void SMC_outsl(struct smc911x_local *lp, int reg,
 	void __iomem *ioaddr = lp->base + reg;
 
 	if (lp->cfg.flags & SMC911X_USE_32BIT) {
-		writesl((unsigned long)ioaddr, addr, count);
+		writesl(ioaddr, addr, count);
 		return;
 	}
 
 	if (lp->cfg.flags & SMC911X_USE_16BIT) {
-		writesw((unsigned long)ioaddr, addr, count * 2);
+		writesw(ioaddr, addr, count * 2);
 		return;
 	}
 
