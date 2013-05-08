@@ -323,21 +323,6 @@ static int hpet_clockchip_set_next_event(unsigned long next,
 	return 0;
 }
 
-static int hpet_clockchip_expire(struct vmm_clockchip *cc)
-{
-	struct hpet_timer *timer = container_of(cc, struct hpet_timer, clkchip);
-	BUG_ON(timer == NULL);
-	u64 res;
-
-	hpet_disable_main_counter(timer);
-	res = hpet_read_main_counter(timer);
-	res += 1000;
-	hpet_write(timer->parent->vbase, HPET_TIMER_N_COMP_BASE(0), res);
-	hpet_enable_main_counter(timer);
-
-	return 0;
-}
-
 int __cpuinit hpet_clockchip_init(struct hpet_timer *timer, const char *chip_name,
 				  u32 irqno, u32 target_cpu)
 {
@@ -400,7 +385,6 @@ int __cpuinit hpet_clockchip_init(struct hpet_timer *timer, const char *chip_nam
 	debug_print("%s: Max delta ns: %l\n", __func__, timer->clkchip.max_delta_ns);
 	timer->clkchip.set_mode = &hpet_clockchip_set_mode;
 	timer->clkchip.set_next_event = &hpet_clockchip_set_next_event;
-	timer->clkchip.expire = &hpet_clockchip_expire;
 	timer->clkchip.priv = (void *)timer;
 
 #ifdef CONFIG_SMP

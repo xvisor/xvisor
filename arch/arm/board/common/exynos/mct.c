@@ -218,20 +218,6 @@ static int exynos4_comp_set_next_event(unsigned long cycles,
 	return VMM_OK;
 }
 
-static int exynos4_comp_expire(struct vmm_clockchip *evt)
-{
-	/* Stop the ongoing timer */
-	exynos4_mct_comp0_stop();
-
-	/* Start a new one for the next cycle */
-	exynos4_mct_comp0_start(evt->mode, 1);
-
-	/* Now we need to wait for the interrupt to happen before returning */
-	while (!(exynos4_mct_read(EXYNOS4_MCT_G_INT_CSTAT) & 0x01)) ;
-
-	return VMM_OK;
-}
-
 static void exynos4_comp_set_mode(enum vmm_clockchip_mode mode,
 				  struct vmm_clockchip *evt)
 {
@@ -293,7 +279,6 @@ int __init exynos4_clockchip_init(virtual_addr_t base, u32 hirq,
 	    vmm_clockchip_delta2ns(0xFFFFFFFF, &mct_comp_device);
 	mct_comp_device.set_mode = exynos4_comp_set_mode;
 	mct_comp_device.set_next_event = exynos4_comp_set_next_event;
-	mct_comp_device.expire = exynos4_comp_expire;
 	mct_comp_device.priv = NULL;
 
 	/* Register interrupt handler */
@@ -386,21 +371,6 @@ static int exynos4_tick_set_next_event(unsigned long cycles,
 	return VMM_OK;
 }
 
-static int exynos4_tick_expire(struct vmm_clockchip *evt)
-{
-	struct mct_clock_event_clockchip *mevt = evt->priv;
-
-	/* Start a new one for the next cycle */
-	exynos4_mct_tick_start(0x1, mevt);
-
-	/* Now we need to wait for the interrupt to happen before returning */
-	while (!
-	       (exynos4_mct_read(mevt->timer_base + MCT_L_INT_CSTAT_OFFSET) &
-		0x01)) ;
-
-	return VMM_OK;
-}
-
 static inline void exynos4_tick_set_mode(enum vmm_clockchip_mode mode,
 					 struct vmm_clockchip *evt)
 {
@@ -479,7 +449,6 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 	evt->name = mevt->name;
 	evt->cpumask = vmm_cpumask_of(cpu);
 	evt->set_next_event = exynos4_tick_set_next_event;
-	evt->expire = exynos4_tick_expire;
 	evt->set_mode = exynos4_tick_set_mode;
 	evt->features =
 	    VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;

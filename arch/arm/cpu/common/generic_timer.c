@@ -156,26 +156,6 @@ static int generic_timer_set_next_event(unsigned long evt,
 	return 0;
 }
 
-static int generic_timer_expire(struct vmm_clockchip *cc)
-{
-	unsigned long ctrl;
-	int i;
-
-	ctrl = generic_timer_reg_read(GENERIC_TIMER_REG_HYP_CTRL);
-	ctrl |= GENERIC_TIMER_CTRL_ENABLE;
-	ctrl &= ~GENERIC_TIMER_CTRL_IT_MASK;
-
-	generic_timer_reg_write(GENERIC_TIMER_REG_HYP_TVAL, 1);
-	generic_timer_reg_write(GENERIC_TIMER_REG_HYP_CTRL, ctrl);
-
-	while(!(generic_timer_reg_read(GENERIC_TIMER_REG_HYP_CTRL) &
-				       GENERIC_TIMER_CTRL_IT_STAT)) {
-		for(i = 0; i<1000; i++);
-	}
-
-	return 0;
-}
-
 static vmm_irq_return_t generic_phys_timer_virq_handler(u32 irq, void *dev)
 {
 	struct vmm_vcpu * vcpu;
@@ -343,7 +323,6 @@ int __cpuinit generic_timer_clockchip_init(void)
 	cc->max_delta_ns = vmm_clockchip_delta2ns(0x7FFFFFFF, cc);
 	cc->set_mode = &generic_timer_set_mode;
 	cc->set_next_event = &generic_timer_set_next_event;
-	cc->expire = &generic_timer_expire;
 	cc->priv = NULL;
 
 	rc = vmm_clockchip_register(cc);

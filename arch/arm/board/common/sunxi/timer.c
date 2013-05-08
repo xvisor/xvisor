@@ -253,34 +253,6 @@ static int aw_clockchip_set_next_event(unsigned long next,
 	return VMM_OK;
 }
 
-static int aw_clockchip_expire(struct vmm_clockchip *cc)
-{
-	u32 i, ctrl;
-	struct aw_clockchip *acc = cc->priv;
-
-	/* Read timer control register */
-	ctrl = readl(acc->base + AW_TMR_REG_CTL(acc->off));
-
-	/* Disable timer and clear pending first */
-	ctrl &= ~TMRx_CTL_ENABLE;
-	writel(ctrl, acc->base + AW_TMR_REG_CTL(acc->off));
-
-	/* Set interval register */
-	writel(1, acc->base + AW_TMR_REG_INTV(acc->off));
-
-	/* Start timer */
-	ctrl |= (TMRx_CTL_ENABLE | TMRx_CTL_AUTORELOAD);
-	writel(ctrl, acc->base + AW_TMR_REG_CTL(acc->off));
-
-	/* Wait for timer to expire */
-	while (!(readl(acc->base + AW_TMR_REG_IRQ_STAT) & (1 << acc->num))) {
-		/* Relax CPU with ramdom delay */
-		for (i = 0; i < 100; i++) ;
-	}
-	
-	return VMM_OK;
-}
-
 int __cpuinit aw_timer_clockchip_init(void)
 {
 	int rc;
@@ -360,7 +332,6 @@ int __cpuinit aw_timer_clockchip_init(void)
 	acc->clkchip.max_delta_ns = vmm_clockchip_delta2ns((0x80000000), &acc->clkchip);
 	acc->clkchip.set_mode = &aw_clockchip_set_mode;
 	acc->clkchip.set_next_event = &aw_clockchip_set_next_event;
-	acc->clkchip.expire = &aw_clockchip_expire;
 	acc->clkchip.priv = acc;
 
 	/* Register interrupt handler */

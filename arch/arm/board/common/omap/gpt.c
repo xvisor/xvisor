@@ -170,25 +170,6 @@ static int gpt_clockchip_set_next_event(unsigned long next,
 	return VMM_OK;
 }
 
-static int gpt_clockchip_expire(struct vmm_clockchip *cc)
-{
-	u32 regval;
-	struct gpt_clockchip *tcc = cc->priv;
-
-	gpt_write(tcc->gpt_va, GPT_TCRR, 0xFFFFFFFF - 1);
-	/* Start Timer (TCLR[ST] = 1) */
-	regval = gpt_read(tcc->gpt_va, GPT_TCLR);
-	regval |= GPT_TCLR_ST_M;
-	gpt_write(tcc->gpt_va, GPT_TCLR, regval);
-
-	/* No need to worry about irq-handler as irqs are disabled 
-	 * before polling for overflow */
-	while(!(gpt_read(tcc->gpt_va, GPT_TISR) & 
-				GPT_TISR_OVF_IT_FLAG_M));
-
-	return VMM_OK;
-}
-
 int __cpuinit gpt_clockchip_init(const char *name,
 			physical_addr_t gpt_pa, u32 gpt_hz, u32 gpt_irq)
 {
@@ -213,7 +194,6 @@ int __cpuinit gpt_clockchip_init(const char *name,
 			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);
 	cc->clkchip.set_mode = &gpt_clockchip_set_mode;
 	cc->clkchip.set_next_event = &gpt_clockchip_set_next_event;
-	cc->clkchip.expire = &gpt_clockchip_expire;
 	cc->clkchip.priv = cc;
 
 	gpt_write(cc->gpt_va, GPT_TCLR, 0);

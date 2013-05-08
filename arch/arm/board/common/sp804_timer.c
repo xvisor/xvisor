@@ -128,24 +128,6 @@ static int sp804_clockchip_set_next_event(unsigned long next,
 	return 0;
 }
 
-static int sp804_clockchip_expire(struct vmm_clockchip *cc)
-{
-	u32 i;
-	struct sp804_clockchip *tcc = cc->priv;
-	unsigned long ctrl = vmm_readl((void *)(tcc->base + TIMER_CTRL));
-
-	ctrl &= ~TIMER_CTRL_ENABLE;
-	vmm_writel(ctrl, (void *)(tcc->base + TIMER_CTRL));
-	vmm_writel(1, (void *)(tcc->base + TIMER_LOAD));
-	vmm_writel(ctrl | TIMER_CTRL_ENABLE, (void *)(tcc->base + TIMER_CTRL));
-
-	while (!vmm_readl((void *)(tcc->base + TIMER_MIS))) {
-		for (i = 0; i < 100; i++);
-	}
-
-	return 0;
-}
-
 int __cpuinit sp804_clockchip_init(virtual_addr_t base, 
 				   const char *name, 
 				   u32 hirq,
@@ -178,7 +160,6 @@ int __cpuinit sp804_clockchip_init(virtual_addr_t base,
 			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);
 	cc->clkchip.set_mode = &sp804_clockchip_set_mode;
 	cc->clkchip.set_next_event = &sp804_clockchip_set_next_event;
-	cc->clkchip.expire = &sp804_clockchip_expire;
 	cc->clkchip.priv = cc;
 
 	/* Register interrupt handler */
