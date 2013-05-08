@@ -393,7 +393,7 @@ int __cpuinit hpet_clockchip_init(struct hpet_timer *timer, const char *chip_nam
 	debug_print("%s: Hpet Freq: %l Period: %l\n", __func__, timer->hpet_freq, timer->hpet_period);
 	timer->clkchip.features = VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
 	vmm_clocks_calc_mult_shift(&timer->clkchip.mult, &timer->clkchip.shift, NSEC_PER_SEC, timer->hpet_freq, 5);
-	timer->clkchip.min_delta_ns = timer->hpet_freq/1000000;
+	timer->clkchip.min_delta_ns = 100000;
 	debug_print("%s: Min Delts NS: %d\n", __func__, timer->clkchip.min_delta_ns);
 	debug_print("%s: mult: %l shift: %l\n", __func__, timer->clkchip.mult, timer->clkchip.shift);
 	timer->clkchip.max_delta_ns = vmm_clockchip_delta2ns(0x7FFFFFFFFFFFFFFFULL, &timer->clkchip);
