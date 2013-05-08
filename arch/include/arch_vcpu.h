@@ -43,14 +43,11 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		      arch_regs_t *regs);
 
 /** Forcefully preempt current Orphan VCPU (or current Thread) 
- *  NOTE: This arch function is optional.
  *  NOTE: This functions is always called with irqs saved
  *  on the stack of current Orphan VCPU.
  *  NOTE: The core code expects that this function will save
  *  context and call vmm_scheduler_preempt_orphan() with a
  *  pointer to saved arch_regs_t.
- *  NOTE: If arch implments this function then arch_config.h
- *  will define ARCH_HAS_VCPU_PREEMPT_ORPHAN feature.
  */
 void arch_vcpu_preempt_orphan(void);
 

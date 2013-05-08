@@ -170,9 +170,6 @@ void vmm_clockchip_set_event_handler(struct vmm_clockchip *cc,
 int vmm_clockchip_program_event(struct vmm_clockchip *cc,
 				u64 now_ns, u64 expires_ns);
 
-/** Force clockchip to expire and cause next event immediatly */
-int vmm_clockchip_force_expiry(struct vmm_clockchip *cc, u64 now_ns);
-
 /** Change mode of clockchip */
 void vmm_clockchip_set_mode(struct vmm_clockchip *cc, 
 			    enum vmm_clockchip_mode mode);

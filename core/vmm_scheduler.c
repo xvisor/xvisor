@@ -31,7 +31,6 @@
 #include <vmm_schedalgo.h>
 #include <vmm_scheduler.h>
 #include <vmm_stdio.h>
-#include <arch_config.h>
 #include <arch_regs.h>
 #include <arch_cpu_irq.h>
 #include <arch_vcpu.h>
@@ -258,15 +257,11 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		if (schedp->current_vcpu->is_normal) {
 			schedp->yield_on_irq_exit = TRUE;
 		} else {
-#if defined(ARCH_HAS_VCPU_PREEMPT_ORPHAN)
 			if (schedp->irq_context) {
 				vmm_scheduler_preempt_orphan(schedp->irq_regs);
 			} else {
 				arch_vcpu_preempt_orphan();
 			}
-#else
-			vmm_timer_event_expire(&schedp->ev);
-#endif
 		}
 	}
 
@@ -278,9 +273,6 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
-#if !defined(ARCH_HAS_VCPU_PREEMPT_ORPHAN)
-	struct vmm_vcpu *vcpu = NULL;
-#endif
 
 	/* Indicate that we have entered in IRQ */
 	schedp->irq_context = (vcpu_context) ? FALSE : TRUE;
@@ -290,21 +282,6 @@ void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 
 	/* Ensure that yield on exit is disabled */
 	schedp->yield_on_irq_exit = FALSE;
-
-#if !defined(ARCH_HAS_VCPU_PREEMPT_ORPHAN)
-	/* If we had paused an Orphan VCPU and expired its timeslice
-	 * then context switch because context of paused Orphan VCPU
-	 * is not saved yet. 
-	 * This has to be done before vmm_scheduler_irq_exit() because
-	 * someone other entity can resume back the paused Orphan VCPU
-	 * in which case the context of Orphan VCPU will not be saved.
-	 */
-	vcpu = schedp->current_vcpu;
-	if (vcpu && !vcpu->is_normal && 
-	    vcpu->state != VMM_VCPU_STATE_RUNNING) {
-		vmm_scheduler_next(schedp, &schedp->ev, schedp->irq_regs);
-	}
-#endif
 }
 
 void vmm_scheduler_irq_exit(arch_regs_t *regs)
@@ -415,11 +392,7 @@ void vmm_scheduler_yield(void)
 		/* For Orphan VCPU
 		 * Forcefully expire yield 
 		 */
-#if defined(ARCH_HAS_VCPU_PREEMPT_ORPHAN)
 		arch_vcpu_preempt_orphan();
-#else
-		vmm_timer_event_expire(&schedp->ev);
-#endif
 	}
 
 	arch_cpu_irq_restore(flags);

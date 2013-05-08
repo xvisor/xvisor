@@ -65,9 +65,6 @@ int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs);
 /** Restart a timer event */
 int vmm_timer_event_restart(struct vmm_timer_event *ev);
 
-/** Expire a timer event */
-int vmm_timer_event_expire(struct vmm_timer_event *ev);
-
 /** Stop a timer event */
 int vmm_timer_event_stop(struct vmm_timer_event *ev);
 

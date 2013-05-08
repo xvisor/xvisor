@@ -95,7 +95,7 @@ static void vmm_timer_schedule_next_event(void)
 				    tstamp, e->expiry_tstamp);
 	} else {
 		tlcp->next_event = tstamp;
-		vmm_clockchip_force_expiry(tlcp->cc, tstamp);
+		vmm_clockchip_program_event(tlcp->cc, tstamp, tstamp);
 	}
 }
 
@@ -192,40 +192,6 @@ int vmm_timer_event_restart(struct vmm_timer_event *ev)
 	}
 
 	return vmm_timer_event_start(ev, ev->duration_nsecs);
-}
-
-int vmm_timer_event_expire(struct vmm_timer_event *ev)
-{
-	irq_flags_t flags;
-	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
-
-	if (!ev) {
-		return VMM_EFAIL;
-	}
-
-	/* prevent (timer) interrupt */
-	arch_cpu_irq_save(flags);
-
-	/* if the event is already engaged */
-	if (ev->active) {
-		/* We remove it from the list */
-		list_del(&ev->head);
-	}
-
-	/* set the expiry_tstamp to before now */
-	ev->expiry_tstamp = 0;
-	ev->active = TRUE;
-
-	/* add the event on list head as it is going to expire now */
-	list_add(&ev->head, &tlcp->event_list);
-
-	/* Force a clockchip interrupt */
-	vmm_clockchip_force_expiry(tlcp->cc, vmm_timer_timestamp());
-
-	/* allow (timer) interrupts */
-	arch_cpu_irq_restore(flags);
-
-	return VMM_OK;
 }
 
 int vmm_timer_event_stop(struct vmm_timer_event *ev)

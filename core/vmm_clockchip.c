@@ -71,16 +71,6 @@ int vmm_clockchip_program_event(struct vmm_clockchip *cc,
 	return cc->set_next_event((unsigned long) clc, cc);
 }
 
-int vmm_clockchip_force_expiry(struct vmm_clockchip *cc, u64 now_ns)
-{
-	if (cc->mode != VMM_CLOCKCHIP_MODE_ONESHOT)
-		return 0;
-
-	cc->next_event = now_ns;
-
-	return cc->expire(cc);
-}
-
 void vmm_clockchip_set_mode(struct vmm_clockchip *cc, 
 			    enum vmm_clockchip_mode mode)
 {

@@ -26,6 +26,4 @@
 
 #define ARCH_HAS_DIVISON_OPERATION
 
-#define ARCH_HAS_VCPU_PREEMPT_ORPHAN
-
 #endif /* _ARCH_CONFIG_H__ */
