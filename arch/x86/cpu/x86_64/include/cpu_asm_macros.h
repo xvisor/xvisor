@@ -23,7 +23,14 @@
 #ifndef _CPU_ASM_MACROS_H__
 #define _CPU_ASM_MACROS_H__
 
+#define IRQ_VECTOR_ALIGN_SZ	1024
+#define DUMMY_HW_ECODE1		0xdeadbeef
+#define DUMMY_HW_ECODE2		0xd00dface
+
+#ifdef __ASSEMBLY__
+
 #define SAVE_ALL			\
+	pushq %rbp;			\
 	pushq %r15;			\
 	pushq %r14;			\
 	pushq %r13;			\
@@ -39,6 +46,10 @@
 	pushq %rcx;			\
 	pushq %rbx;			\
 	pushq %rax;
+
+#define SAVE_ALL_IRQ			\
+	pushq %rbp;			\
+	SAVE_ALL
 
 
 #define RESTORE_ALL			\
@@ -57,29 +68,44 @@
 	popq %r13;			\
 	popq %r14;			\
 	popq %r15;			\
+	popq %rbp;
+
+#define RESTORE_ALL_IRQ			\
+	RESTORE_ALL			\
+	popq %rbp;
 
 #define FUNCTION(__symbol)		\
 	.globl __symbol;		\
 	.type __symbol, @function;	\
 __symbol:
 
-#define IRQ_HANDLER(_symbol)		\
+#define EXCEPTION_HANDLER(_symbol)	\
 	FUNCTION(_symbol)		\
 	SAVE_ALL			\
 
-#define END_IRQ_HANDLER			\
+#define END_EXCEPTION_HANDLER		\
 	RESTORE_ALL			\
+	iretq
+
+#define IRQ_HANDLER(_symbol)			\
+	FUNCTION(_symbol)			\
+	SAVE_ALL_IRQ				\
+
+#define END_IRQ_HANDLER				\
+	RESTORE_ALL_IRQ				\
 	iretq
 
 #define num_to_string(s)	to_string(s)
 #define to_string(s)		#s
 
 #define BUILD_IRQ(__n, __who)			\
-	.align 1024;				\
+	.align IRQ_VECTOR_ALIGN_SZ;		\
 	IRQ_HANDLER(__IRQ_##__n)		\
 	movq $__n, %rdi;			\
 	movq %rsp, %rsi;			\
 	callq __who;				\
 	END_IRQ_HANDLER
+
+#endif /* __ASSEMBLY__ */
 
 #endif /* _CPU_ASM_MACROS_H__ */
