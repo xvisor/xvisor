@@ -52,35 +52,95 @@
 
 #define vmm_be64_to_cpu(data)	arch_be64_to_cpu(data)
 
-/** I/O read/write legacy functions (Assumed to be Little Endian) */
-static inline u8 vmm_ioreadb(volatile void *addr)
+/** I/O space access functions (Assumed to be Little Endian) */
+static inline u8 vmm_inb(unsigned long port)
 {
-	return arch_ioreadb(addr);
+	return arch_inb(port);
 }
 
-static inline void vmm_iowriteb(volatile void *addr, u8 data)
+static inline u16 vmm_inw(unsigned long port)
 {
-	arch_iowriteb(addr, data);
+	return arch_inw(port);
 }
 
-static inline u16 vmm_ioreadw(volatile void *addr)
+static inline u32 vmm_inl(unsigned long port)
 {
-	return arch_ioreadw(addr);
+	return arch_inl(port);
 }
 
-static inline void vmm_iowritew(volatile void *addr, u16 data)
+static inline void vmm_outb(u8 value, unsigned long port)
 {
-	arch_iowritew(addr, data);
+	arch_outb(value, port);
 }
 
-static inline u32 vmm_ioreadl(volatile void *addr)
+static inline void vmm_outw(u16 value, unsigned long port)
 {
-	return arch_ioreadw(addr);
+	arch_outw(value, port);
 }
 
-static inline void vmm_iowritel(volatile void *addr, u32 data)
+static inline void vmm_outl(u32 value, unsigned long port)
 {
-	arch_iowritew(addr, data);
+	arch_outl(value, port);
+}
+
+static inline u8 vmm_inb_p(unsigned long port)
+{
+	return arch_inb_p(port);
+}
+
+static inline u16 vmm_inw_p(unsigned long port)
+{
+	return arch_inw_p(port);
+}
+
+static inline u32 vmm_inl_p(unsigned long port)
+{
+	return arch_inl_p(port);
+}
+
+static inline void vmm_outb_p(u8 value, unsigned long port)
+{
+	arch_outb_p(value, port);
+}
+
+static inline void vmm_outw_p(u16 value, unsigned long port)
+{
+	arch_outw_p(value, port);
+}
+
+static inline void vmm_outl_p(u32 value, unsigned long port)
+{
+	arch_outl_p(value, port);
+}
+
+static inline void vmm_insb(unsigned long port, void *buffer, int count)
+{
+	arch_insb(port, buffer, count);
+}
+
+static inline void vmm_insw(unsigned long port, void *buffer, int count)
+{
+	arch_insw(port, buffer, count);
+}
+
+static inline void vmm_insl(unsigned long port, void *buffer, int count)
+{
+	arch_insl(port, buffer, count);
+}
+
+static inline void vmm_outsb(unsigned long port, const void *buffer, int count)
+{
+	arch_outsb(port, buffer, count);
+}
+
+static inline void vmm_outsw(unsigned long port, const void *buffer, int count)
+{
+	arch_outsw(port, buffer, count);
+}
+
+static inline void vmm_outsl(unsigned long port, const void *buffer, int count)
+{
+	arch_outsl(port, buffer, count);
 }
 
 /** Memory read/write legacy functions (Assumed to be Little Endian) */
@@ -114,104 +174,66 @@ static inline void vmm_writel(u32 data, volatile void *addr)
 	arch_out_le32(addr, data);
 }
 
-/** I/O read/write legacy functions (Assumed to be Little Endian) */
-static inline u8 vmm_inb(unsigned long addr)
+static inline void vmm_readsb(volatile void *addr, void *buffer, int len)
 {
-	return arch_ioreadb((volatile void *) addr);
-}
-
-static inline u16 vmm_inw(unsigned long addr)
-{
-	return arch_ioreadw((volatile void *)addr);
-}
-
-static inline u32 vmm_inl(unsigned long addr)
-{
-	return arch_ioreadl((volatile void *) addr);
-}
-
-static inline void vmm_outb(u8 b, unsigned long addr)
-{
-	arch_iowriteb((volatile void *) addr, b);
-}
-
-static inline void vmm_outw(u16 w, unsigned long addr)
-{
-	arch_iowritew((volatile void *) addr, w);
-}
-
-static inline void vmm_outl(u32 l, unsigned long addr)
-{
-	arch_iowritel((volatile void *) addr, l);
-}
-
-#define vmm_inb_p(addr)		vmm_inb(addr)
-#define vmm_inw_p(addr)		vmm_inw(addr)
-#define vmm_inl_p(addr)		vmm_inl(addr)
-#define vmm_outb_p(x, addr)	vmm_outb((x), (addr))
-#define vmm_outw_p(x, addr)	vmm_outw((x), (addr))
-#define vmm_outl_p(x, addr)	vmm_outl((x), (addr))
-
-static inline void vmm_insb(unsigned long addr, void *buffer, int count)
-{
-	if (count) {
+	if (len) {
 		u8 *buf = buffer;
 		do {
-			u8 x = vmm_inb(addr);
+			u8 x = vmm_readb(addr);
 			*buf++ = x;
-		} while (--count);
+		} while (--len);
 	}
 }
 
-static inline void vmm_insw(unsigned long addr, void *buffer, int count)
+static inline void vmm_readsw(volatile void *addr, void *buffer, int len)
 {
-	if (count) {
+	if (len) {
 		u16 *buf = buffer;
 		do {
-			u16 x = vmm_inw(addr);
+			u16 x = vmm_readw(addr);
 			*buf++ = x;
-		} while (--count);
+		} while (--len);
 	}
 }
 
-static inline void vmm_insl(unsigned long addr, void *buffer, int count)
+static inline void vmm_readsl(volatile void *addr, void *buffer, int len)
 {
-	if (count) {
+	if (len) {
 		u32 *buf = buffer;
 		do {
-			u32 x = vmm_inl(addr);
+			u32 x = vmm_readl(addr);
 			*buf++ = x;
-		} while (--count);
+		} while (--len);
 	}
 }
 
-static inline void vmm_outsb(unsigned long addr, const void *buffer, int count)
+static inline void vmm_writesb(volatile void *addr, const void *buffer, int len)
 {
-	if (count) {
+	if (len) {
 		const u8 *buf = buffer;
 		do {
-			vmm_outb(*buf++, addr);
-		} while (--count);
+			vmm_writeb(*buf++, addr);
+		} while (--len);
 	}
 }
 
-static inline void vmm_outsw(unsigned long addr, const void *buffer, int count)
+static inline void vmm_writesw(volatile void *addr, const void *buffer, int len)
 {
-	if (count) {
+	if (len) {
 		const u16 *buf = buffer;
 		do {
-			vmm_outw(*buf++, addr);
-		} while (--count);
+			vmm_writew(*buf++, addr);
+		} while (--len);
 	}
 }
 
-static inline void vmm_outsl(unsigned long addr, const void *buffer, int count)
+static inline void vmm_writesl(volatile void *addr, const void *buffer, int len)
 {
-	if (count) {
+	if (len) {
 		const u32 *buf = buffer;
 		do {
-			vmm_outl(*buf++, addr);
-		} while (--count);
+			vmm_writel(*buf++, addr);
+		} while (--len);
 	}
 }
 

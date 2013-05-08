@@ -33,6 +33,11 @@
 
 struct multiboot_info boot_info;
 
+void native_io_delay(void)
+{
+	/* FIXME: For now, no delay in accessing IO ports */
+}
+
 void cpu_regs_dump(arch_regs_t *tregs)
 {
 }
@@ -137,8 +142,6 @@ int arch_devtree_populate(struct vmm_devtree_node **root)
 
 	return VMM_OK;
 }
-
-
 
 int __init arch_cpu_early_init(void)
 {
