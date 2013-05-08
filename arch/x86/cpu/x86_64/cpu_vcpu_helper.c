@@ -92,6 +92,15 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	}
 }
 
+void arch_vcpu_preempt_orphan(void)
+{
+	/* Trigger system call from hypervisor. This will
+	 * cause do_generic_int_handler() function to call 
+	 * vmm_scheduler_preempt_orphan()
+	 */
+	asm volatile ("int $0x80\t\n");
+}
+
 void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu) 
 {
 	dump_vcpu_regs(&vcpu->regs);

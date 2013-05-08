@@ -233,9 +233,13 @@ int do_gpf(int intno, arch_regs_t *regs)
 
 int do_generic_int_handler(int intno, arch_regs_t *regs)
 {
-	vmm_scheduler_irq_enter(regs, FALSE);
-	vmm_host_irq_exec(intno);
-	vmm_scheduler_irq_exit(regs);
+	if (intno == 0x80) {
+		vmm_scheduler_preempt_orphan(regs);
+	} else {
+		vmm_scheduler_irq_enter(regs, FALSE);
+		vmm_host_irq_exec(intno);
+		vmm_scheduler_irq_exit(regs);
+	}
 
 	return 0;
 }
