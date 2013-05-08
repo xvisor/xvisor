@@ -196,7 +196,7 @@
 struct imx_port {
 	struct vmm_chardev cd;
 	struct vmm_completion read_possible;
-#if defined(UART_SAMSUNG_USE_TXINTR)
+#if defined(UART_IMX_USE_TXINTR)
 	struct vmm_completion write_possible;
 #endif
 	virtual_addr_t base;
