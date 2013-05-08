@@ -27,9 +27,10 @@
 			 * unless specified by "-m" option. If you have
 			 * X MB then we will be able to access only first
 			 * X MB starting at physical_addr.
+                         * Note: the 3Dstack board only has 64 MB DDR.
 			 */
 			physical_addr = <0x80000000>;
-			physical_size = <0x08000000>; /* 128 MB */
+			physical_size = <0x04000000>; /* 64 MB */
 		};
 
 		soc {
