@@ -1,7 +1,9 @@
 #ifndef _LINUX_INIT_H_
 #define _LINUX_INIT_H_
 
+#include <vmm_compiler.h>
 #include <arch_barrier.h>
+
 #include <linux/types.h>
 #include <linux/errno.h>
 #include <linux/printk.h>

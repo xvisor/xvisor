@@ -2,6 +2,7 @@
 #define _LINUX_KERNEL_H
 
 #include <linux/err.h>
+#include <linux/bitops.h>
 
 #define ARRAY_SIZE	array_size
 
