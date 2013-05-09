@@ -25,6 +25,7 @@
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_devemu.h>
+#include <vmm_host_ram.h>
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_stdio.h>

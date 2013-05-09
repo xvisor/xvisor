@@ -75,29 +75,6 @@ enum vmm_host_memory_flags {
 #define VMM_MEMORY_FLAGS_IO	(VMM_MEMORY_READABLE | \
 				 VMM_MEMORY_WRITEABLE)
 
-/** Allocate physical space from RAM */
-int vmm_host_ram_alloc(physical_addr_t *pa, 
-		       physical_size_t sz, 
-		       bool aligned);
-
-/** Reserve a portion of RAM forcefully */
-int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz);
-
-/** Free physical space to RAM */
-int vmm_host_ram_free(physical_addr_t pa, physical_size_t sz);
-
-/** Base address of RAM */
-physical_addr_t vmm_host_ram_base(void);
-
-/** Check if a RAM physical address is free */
-bool vmm_host_ram_frame_isfree(physical_addr_t pa);
-
-/** Free frame count of RAM */
-u32 vmm_host_ram_free_frame_count(void);
-
-/** Total frame count of RAM */
-u32 vmm_host_ram_total_frame_count(void);
-
 /** Map physical memory to a virtual memory */
 virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
 			       virtual_size_t sz, 
