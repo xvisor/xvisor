@@ -1012,19 +1012,19 @@ struct vtemu *vtemu_create(const char *name,
 	/* Find video mode */
 	v->mode = vmm_fb_find_best_mode(&v->info->var, &v->info->modelist);
 	if (!v->mode) {
-		goto release_fb;
+		goto close_fb;
 	}
 
 	/* Set video mode */
 	if (v->info->fbops->fb_set_par(v->info)) {
-		goto release_fb;
+		goto close_fb;
 	}
 
 	/* Find color map */
 	if (v->info->fix.visual == FB_VISUAL_TRUECOLOR ||
 	    v->info->fix.visual == FB_VISUAL_DIRECTCOLOR) {
 		if (vmm_fb_alloc_cmap(&v->cmap, 8, 0)) {
-			goto release_fb;
+			goto close_fb;
 		}
 		v->cmap.red[VTEMU_COLOR_BLACK] = 0x0000;
 		v->cmap.green[VTEMU_COLOR_BLACK] = 0x0000;
@@ -1136,8 +1136,8 @@ free_cells:
 	vmm_free(v->cell);
 dealloc_cmap:
 	vmm_fb_dealloc_cmap(&v->cmap);
-release_fb:
-	vmm_fb_release(v->info);
+close_fb:
+	vmm_fb_close(v->info);
 discon_ihndl:
 	vmm_input_disconnect_handler(&v->hndl);
 unreg_ihndl:
@@ -1159,7 +1159,7 @@ int vtemu_destroy(struct vtemu *v)
 	vmm_free(v->cursor_bkp);
 	vmm_free(v->cell);
 	vmm_fb_dealloc_cmap(&v->cmap);
-	rc  = vmm_fb_release(v->info);
+	rc = vmm_fb_close(v->info);
 	rc1 = vmm_chardev_unregister(&v->cdev);
 	rc2 = vmm_input_disconnect_handler(&v->hndl);
 	rc3 = vmm_input_unregister_handler(&v->hndl);
