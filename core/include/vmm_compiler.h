@@ -42,6 +42,7 @@
 #define __percpu		__attribute__((section(".percpu")))
 #define __init			__attribute__((section(".init.text")))
 #define __initconst		__attribute__((section(".init.data")))
+#define __initdata		__attribute__((section(".init.data")))
 #define __exit
 
 #if defined(CONFIG_SMP)
