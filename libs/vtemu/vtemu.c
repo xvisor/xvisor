@@ -36,21 +36,7 @@
 #define	MODULE_INIT			NULL
 #define	MODULE_EXIT			NULL
 
-#define VTEMU_KEYFLAG_LEFTCTRL		0x00000001
-#define VTEMU_KEYFLAG_RIGHTCTRL		0x00000002
-#define VTEMU_KEYFLAG_LEFTALT		0x00000004
-#define VTEMU_KEYFLAG_RIGHTALT		0x00000008
-#define VTEMU_KEYFLAG_LEFTSHIFT		0x00000010
-#define VTEMU_KEYFLAG_RIGHTSHIFT	0x00000020
-#define VTEMU_KEYFLAG_CAPSLOCK		0x00000040
-#define VTEMU_KEYFLAG_NUMLOCK		0x00000080
-#define VTEMU_KEYFLAG_SCROLLLOCK	0x00000100
-
-#define VTEMU_KEYFLAG_LOCKS		(VTEMU_KEYFLAG_CAPSLOCK | \
-					 VTEMU_KEYFLAG_NUMLOCK | \
-					 VTEMU_KEYFLAG_SCROLLLOCK)
-
-static u32 vtemu_key2flags(unsigned int code)
+u32 vtemu_key2flags(unsigned int code)
 {
 	u32 ret = 0;
 
@@ -86,9 +72,10 @@ static u32 vtemu_key2flags(unsigned int code)
 
 	return ret;
 }
+VMM_EXPORT_SYMBOL(vtemu_key2flags);
 
 /* FIXME: */
-static int vtemu_key2str(unsigned int code, u32 flags, char *out)
+int vtemu_key2str(unsigned int code, u32 flags, char *out)
 {
 	bool uc = FALSE;
 
@@ -332,6 +319,7 @@ static int vtemu_key2str(unsigned int code, u32 flags, char *out)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vtemu_key2str);
 
 static int vtemu_add_input(struct vtemu *v, char *str)
 {
