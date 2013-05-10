@@ -27,8 +27,19 @@
 #include <vmm_host_aspace.h>
 #include <vmm_devdrv.h>
 #include <vmm_stdio.h>
-#include <hpet.h>
 #include <arch_board.h>
+
+#include <hpet.h>
+
+int arch_board_reset(void)
+{
+	return VMM_EFAIL;
+}
+
+int arch_board_shutdown(void)
+{
+	return VMM_EFAIL;
+}
 
 int __init arch_board_early_init(void)
 {
@@ -52,8 +63,8 @@ int __init arch_board_final_init(void)
 	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
 
-	/* Find simple-bus node */
-	node = vmm_devtree_find_compatible(hnode, NULL, "hid-devices");
+	/* Find simple bus node */
+	node = vmm_devtree_find_compatible(hnode, NULL, "simple-bus");
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -67,12 +78,3 @@ int __init arch_board_final_init(void)
 	return VMM_OK;
 }
 
-int arch_board_reset(void)
-{
-	return VMM_EFAIL;
-}
-
-int arch_board_shutdown(void)
-{
-	return VMM_EFAIL;
-}
