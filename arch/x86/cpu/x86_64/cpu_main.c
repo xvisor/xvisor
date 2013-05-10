@@ -31,16 +31,9 @@
 #include <arch_devtree.h>
 #include <acpi.h>
 
+#include <linux/screen_info.h>
+
 struct multiboot_info boot_info;
-
-void native_io_delay(void)
-{
-	/* FIXME: For now, no delay in accessing IO ports */
-}
-
-void cpu_regs_dump(arch_regs_t *tregs)
-{
-}
 
 extern void cls();
 extern void init_console(void);
