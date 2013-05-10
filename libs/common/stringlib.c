@@ -255,6 +255,11 @@ unsigned long long str2ulonglong(const char *s, unsigned int base)
 	return val;
 }
 
+unsigned long str2ulong(const char *s, unsigned int base)
+{
+	return str2ulonglong(s, base);
+}
+
 unsigned int str2uint(const char *s, unsigned int base)
 {
 	return str2ulonglong(s, base);
@@ -289,6 +294,34 @@ int str2ipaddr(unsigned char *ipaddr, const char *str)
 		} while(c != '.' && c != 0);
 	}
 	return 1;
+}
+
+char *strpbrk(const char *cs, const char *ct)
+{
+	const char *sc1, *sc2;
+
+	for (sc1 = cs; *sc1 != '\0'; ++sc1) {
+		for (sc2 = ct; *sc2 != '\0'; ++sc2) {
+			if (*sc1 == *sc2)
+				return (char *)sc1;
+		}
+	}
+	return NULL;
+}
+
+char *strsep(char **s, const char *ct)
+{
+	char *sbegin = *s;
+	char *end;
+
+	if (sbegin == NULL)
+		return NULL;
+
+	end = strpbrk(sbegin, ct);
+	if (end)
+		*end++ = '\0';
+	*s = end;
+	return sbegin;
 }
 
 #if !defined(ARCH_HAS_MEMCPY)

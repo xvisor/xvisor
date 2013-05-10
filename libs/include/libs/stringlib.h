@@ -66,9 +66,15 @@ long long str2longlong(const char *s, unsigned int base);
 
 unsigned int str2uint(const char *s, unsigned int base);
 
+unsigned long str2ulong(const char *s, unsigned int base);
+
 unsigned long long str2ulonglong(const char *s, unsigned int base);
 
 int str2ipaddr(unsigned char *ipaddr, const char *str);
+
+char *strpbrk(const char *cs, const char *ct);
+
+char *strsep(char **s, const char *ct);
 
 void *memcpy(void *dest, const void *src, size_t count);
 
