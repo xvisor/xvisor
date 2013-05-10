@@ -11,7 +11,7 @@
 #include <vmm_host_ram.h>
 #include <vmm_host_aspace.h>
 
-#define request_region(start,n,name)		1
+#define request_region(start,n,name)		({ int ret = 1; ret; })
 
 #define request_mem_region(start,n,name)	\
 				(vmm_host_ram_reserve((start), (n)) ? 0 : 1)
