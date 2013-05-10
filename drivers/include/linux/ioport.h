@@ -9,6 +9,7 @@
 #define _LINUX_IOPORT_H
 
 #include <vmm_host_ram.h>
+#include <vmm_host_aspace.h>
 
 #define request_region(start,n,name)		1
 
