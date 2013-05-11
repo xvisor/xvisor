@@ -36,6 +36,7 @@ cpu-objs-y+= cpu_atomic.o
 #cpu-objs-y+= cpu_locks.o
 #endif
 cpu-objs-y+= cpu_main.o
+cpu-objs-y+= cpu_hacks.o
 cpu-objs-y+= cpu_elf.o
 cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_irq.o

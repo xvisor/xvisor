@@ -9,7 +9,7 @@
 
 	host {
 		#address-cells = <2>;
-		#size-cells = <1>;
+		#size-cells = <2>;
 		model = "x86_64_generic";
 		device_type = "host";
 
@@ -20,7 +20,7 @@
 
 			cpu0 {
 				device_type = "cpu";
-				model = "Intel Atom Family";
+				model = "Intel x86_64 Family";
 			};
 		};
 
@@ -34,15 +34,15 @@
 			physical_size = <0x10000000>; /* 256M */
 		};
 
-        hid {
-            #address-cells = <1>;
-            #size-cells = <1>;
-            compatible = "hid-devices";
+		motherboard {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "simple-bus";
 
-            keyboard {
-                device_type = "serio";
-                compatible = "i8042";
-            };
-        };
+			ps2 {
+				device_type = "serio";
+				compatible = "i8042";
+			};
+		};
 	};
 };

@@ -27,8 +27,24 @@
 #include <vmm_host_aspace.h>
 #include <vmm_devdrv.h>
 #include <vmm_stdio.h>
-#include <hpet.h>
+#include <libs/vtemu.h>
 #include <arch_board.h>
+
+#include <hpet.h>
+
+#if defined(CONFIG_VTEMU)
+struct vtemu *x86_vt;
+#endif
+
+int arch_board_reset(void)
+{
+	return VMM_EFAIL;
+}
+
+int arch_board_shutdown(void)
+{
+	return VMM_EFAIL;
+}
 
 int __init arch_board_early_init(void)
 {
@@ -44,6 +60,9 @@ int __init arch_board_final_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *hnode, *node;
+#if defined(CONFIG_VTEMU)
+	struct vmm_fb_info *info;
+#endif
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
@@ -52,8 +71,8 @@ int __init arch_board_final_init(void)
 	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
 
-	/* Find simple-bus node */
-	node = vmm_devtree_find_compatible(hnode, NULL, "hid-devices");
+	/* Find simple bus node */
+	node = vmm_devtree_find_compatible(hnode, NULL, "simple-bus");
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -64,15 +83,19 @@ int __init arch_board_final_init(void)
 		return rc;
 	}
 
+	/* Create VTEMU instace from first available frame buffer 
+	 * and make it our stdio device.
+	 */
+#if defined(CONFIG_VTEMU)
+	info = vmm_fb_get(0);
+	if (info) {
+		x86_vt = vtemu_create(info->dev->node->name, info, NULL);
+		if (x86_vt) {
+			vmm_stdio_change_device(&x86_vt->cdev);
+		}
+	}
+#endif
+
 	return VMM_OK;
 }
 
-int arch_board_reset(void)
-{
-	return VMM_EFAIL;
-}
-
-int arch_board_shutdown(void)
-{
-	return VMM_EFAIL;
-}

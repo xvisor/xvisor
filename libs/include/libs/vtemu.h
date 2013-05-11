@@ -62,6 +62,20 @@ struct vtemu_cell
 	u32 fc, bc;
 };
 
+#define VTEMU_KEYFLAG_LEFTCTRL		0x00000001
+#define VTEMU_KEYFLAG_RIGHTCTRL		0x00000002
+#define VTEMU_KEYFLAG_LEFTALT		0x00000004
+#define VTEMU_KEYFLAG_RIGHTALT		0x00000008
+#define VTEMU_KEYFLAG_LEFTSHIFT		0x00000010
+#define VTEMU_KEYFLAG_RIGHTSHIFT	0x00000020
+#define VTEMU_KEYFLAG_CAPSLOCK		0x00000040
+#define VTEMU_KEYFLAG_NUMLOCK		0x00000080
+#define VTEMU_KEYFLAG_SCROLLLOCK	0x00000100
+
+#define VTEMU_KEYFLAG_LOCKS		(VTEMU_KEYFLAG_CAPSLOCK | \
+					 VTEMU_KEYFLAG_NUMLOCK | \
+					 VTEMU_KEYFLAG_SCROLLLOCK)
+
 struct vtemu {
 	/* pseudo character device */
 	struct vmm_chardev cdev;
@@ -134,6 +148,12 @@ static inline struct vmm_chardev *vtemu_chardev(struct vtemu *v)
 {
 	return (v) ? &v->cdev : NULL;
 }
+
+/* Get VTEMU flags from input key code */
+u32 vtemu_key2flags(unsigned int code);
+
+/* Get input characters based on input key code and VTEMU flags */
+int vtemu_key2str(unsigned int code, u32 flags, char *out);
 
 /* Create vtemu instance */
 struct vtemu *vtemu_create(const char *name, 

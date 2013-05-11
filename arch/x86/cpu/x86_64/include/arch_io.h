@@ -25,7 +25,6 @@
 
 #include <vmm_types.h>
 #include <common_io.h>
-#include <ioport.h>
 
 static inline u16 bswap16(u16 data)
 {
@@ -77,36 +76,19 @@ static inline u64 bswap64(u64 data)
 
 #define arch_be64_to_cpu(v)	bswap64(v)
 
-static inline u8 arch_ioreadb(volatile void *addr)
-{
-	return (u8)(*((u8 *)addr));
-}
+/*
+ * IO port access primitives
+ * -------------------------
+ */
 
-static inline void arch_iowriteb(volatile void *addr, u8 data)
-{
-	*((u8 *)addr) = data;
-}
+BUILDIO(b, b, char)
+BUILDIO(w, w, short)
+BUILDIO(l, , int)
 
-static inline u16 arch_ioreadw(volatile void *addr)
-{
-	return (u16)(*((u16 *)addr));
-}
-
-static inline void arch_iowritew(volatile void *addr, u16 data)
-{
-	*((u16 *)addr) = data;
-}
-
-static inline u32 arch_ioreadl(volatile void *addr)
-{
-	return (u32)(*((u32 *)addr));
-}
-
-static inline void arch_iowritel(volatile void *addr, u32 data)
-{
-	*((u32 *)addr) = data;
-}
-
+/*
+ * Memory access primitives
+ * ------------------------
+ */
 static inline u8 arch_in_8(volatile u8 *addr)
 {
 	return *addr;

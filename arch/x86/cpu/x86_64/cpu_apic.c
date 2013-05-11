@@ -29,7 +29,6 @@
 #include <vmm_host_irq.h>
 #include <libs/stringlib.h>
 #include <arch_cpu.h>
-#include <arch_io.h>
 #include <cpu_mmu.h>
 #include <cpu_private.h>
 #include <cpu_interrupts.h>
@@ -77,9 +76,9 @@ static struct irq host_sys_irq[NR_IRQ_VECTORS];
 /* Disable 8259 - write 0xFF in OCW1 master and slave. */
 void i8259_disable(void)
 {
-	ioport_outb(0xFF, INT2_CTLMASK);
-	ioport_outb(0xFF, INT_CTLMASK);
-	ioport_inb(INT_CTLMASK);
+	vmm_outb(0xFF, INT2_CTLMASK);
+	vmm_outb(0xFF, INT_CTLMASK);
+	vmm_inb(INT_CTLMASK);
 }
 
 static u32 is_lapic_present(void)
@@ -322,8 +321,8 @@ void ioapic_enable(void)
 	i8259_disable();
 
 	/* Select IMCR and disconnect 8259s. */
-	ioport_outb(0x70, 0x22);
-	ioport_outb(0x01, 0x23);
+	vmm_outb(0x70, 0x22);
+	vmm_outb(0x01, 0x23);
 }
 
 static int setup_ioapic(void)

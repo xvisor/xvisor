@@ -48,22 +48,22 @@ extern int of_i8042_aux_irq;
 
 static inline int i8042_read_data(void)
 {
-	return ioport_inb(I8042_DATA_REG);
+	return inb(I8042_DATA_REG);
 }
 
 static inline int i8042_read_status(void)
 {
-	return ioport_inb(I8042_STATUS_REG);
+	return inb(I8042_STATUS_REG);
 }
 
 static inline void i8042_write_data(int val)
 {
-	ioport_outb(val, I8042_DATA_REG);
+	outb(val, I8042_DATA_REG);
 }
 
 static inline void i8042_write_command(int val)
 {
-	ioport_outb(val, I8042_COMMAND_REG);
+	outb(val, I8042_COMMAND_REG);
 }
 
 static inline int i8042_platform_init(void)

@@ -31,11 +31,9 @@
 #include <arch_devtree.h>
 #include <acpi.h>
 
-struct multiboot_info boot_info;
+#include <linux/screen_info.h>
 
-void cpu_regs_dump(arch_regs_t *tregs)
-{
-}
+struct multiboot_info boot_info;
 
 extern void cls();
 extern void init_console(void);
@@ -137,8 +135,6 @@ int arch_devtree_populate(struct vmm_devtree_node **root)
 
 	return VMM_OK;
 }
-
-
 
 int __init arch_cpu_early_init(void)
 {

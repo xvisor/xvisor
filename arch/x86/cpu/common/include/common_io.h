@@ -26,13 +26,26 @@
 
 #include <vmm_types.h>
 
+extern void native_io_delay(void);
+
+static inline void slow_down_io(void)
+{
+	native_io_delay();
+#ifdef REALLY_SLOW_IO
+	native_io_delay();
+	native_io_delay();
+	native_io_delay();
+#endif
+}
+
 #define BUILDIO(bwl, bw, type)						\
-static inline void out##bwl(unsigned type value, int port)		\
+static inline void arch_out##bwl(unsigned type value, int port)		\
 {									\
 	asm volatile("out" #bwl " %" #bw "0, %w1"			\
-		     ::"a"(value), "Nd"(port));				\
+		     : : "a"(value), "Nd"(port));			\
 }									\
-static inline unsigned type in##bwl(int port)				\
+									\
+static inline unsigned type arch_in##bwl(int port)			\
 {									\
 	unsigned type value;						\
 	asm volatile("in" #bwl " %w1, %" #bw "0"			\
@@ -40,20 +53,29 @@ static inline unsigned type in##bwl(int port)				\
 	return value;							\
 }									\
 									\
-static inline void outs##bwl(int port, const void *addr, unsigned long count) \
+static inline void arch_out##bwl##_p(unsigned type value, int port)	\
+{									\
+	arch_out##bwl(value, port);					\
+	slow_down_io();							\
+}									\
+									\
+static inline unsigned type arch_in##bwl##_p(int port)			\
+{									\
+	unsigned type value = arch_in##bwl(port);			\
+	slow_down_io();							\
+	return value;							\
+}									\
+									\
+static inline void arch_outs##bwl(int port, const void *addr, unsigned long count) \
 {									\
 	asm volatile("rep; outs" #bwl					\
 		     : "+S"(addr), "+c"(count) : "d"(port));		\
 }									\
 									\
-static inline void ins##bwl(int port, void *addr, unsigned long count) \
+static inline void arch_ins##bwl(int port, void *addr, unsigned long count)	\
 {									\
 	asm volatile("rep; ins" #bwl					\
 		     : "+D"(addr), "+c"(count) : "d"(port));		\
 }
-
-BUILDIO(b, b, char)
-BUILDIO(w, w, short)
-BUILDIO(l, , int)
 
 #endif /* __COMMON_IO_H */

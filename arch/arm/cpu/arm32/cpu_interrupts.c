@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
+#include <vmm_host_ram.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 #include <vmm_vcpu_irq.h>

@@ -495,8 +495,10 @@ struct vmm_fb_info;
 #define FB_EVENT_REMAP_ALL_CONSOLE      0x0F
 /*	Someone opened the frame buffer */
 #define FB_EVENT_OPENED			0x10
+/*	Someone closed the frame buffer */
+#define FB_EVENT_CLOSED			0x11
 /*	Someone released the frame buffer */
-#define FB_EVENT_RELEASED		0x11
+#define FB_EVENT_RELEASED		0x12
 
 struct vmm_fb_event {
 	struct vmm_fb_info *info;
@@ -770,7 +772,29 @@ struct vmm_fb_info {
 	void *fbcon_par;                	/* fbcon use-only private area */
 	/* From here on everything is device dependent */
 	void *par;
+	/* we need the PCI or similar aperture base/size not
+	   smem_start/size as smem_start may just be an object
+	   allocated inside the aperture so may not actually overlap */
+	struct vmm_apertures_struct {
+		unsigned int count;
+		struct vmm_aperture {
+			physical_addr_t base;
+			physical_size_t size;
+		} ranges[0];
+	} *apertures;
 };
+
+static inline struct vmm_apertures_struct *vmm_alloc_apertures(
+							unsigned int max_num) {
+	struct vmm_apertures_struct *a = 
+			vmm_zalloc(sizeof(struct vmm_apertures_struct)
+			+ max_num * sizeof(struct vmm_aperture));
+	if (!a) {
+		return NULL;
+	}
+	a->count = max_num;
+	return a;
+}
 
 /*
  *  `Generic' versions of the frame buffer device operations
@@ -792,15 +816,25 @@ void vmm_sys_imageblit(struct vmm_fb_info *info, const struct vmm_fb_image *imag
 /* 
  * fb/vmm_fbmem.c 
  */
-/* Open frame buffer. (Xvisor specific)
- * Note: Must be called before accessing frame buffer
+/** Open frame buffer. (Xvisor specific)
+ *  Note: Must be called before accessing frame buffer
  */
 int vmm_fb_open(struct vmm_fb_info *info);
 
-/* Release frame buffer. (Xvisor specific)
- * Note: Must be called after accessing frame buffer
+/** Close frame buffer. (Xvisor specific)
+ *  Note: Must be called after accessing frame buffer
  */
-int vmm_fb_release(struct vmm_fb_info *info);
+int vmm_fb_close(struct vmm_fb_info *info);
+
+/** Creates a new frame buffer info structure*/
+struct vmm_fb_info *vmm_fb_alloc(size_t size, struct vmm_device *dev);
+
+/** Free frame buffer info structure */
+void vmm_fb_release(struct vmm_fb_info *info);
+
+/** Remove frame buffers conflicting with given apertures */
+void vmm_fb_remove_conflicting_framebuffers(struct vmm_apertures_struct *a,
+					    const char *name, bool primary);
 
 /** Register frame buffer to device driver framework */
 int vmm_fb_register(struct vmm_fb_info *info);
