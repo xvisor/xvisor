@@ -95,8 +95,9 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 	}
 
 	if (!found) {
-		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, FALSE);
-		if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
+		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
+				VMM_REGION_VIRTUAL | VMM_REGION_MEMORY, FALSE);
+		if (!reg) {
 			return VMM_EFAIL;
 		}
 		ev->rd_gstart[ev->rd_victim] = reg->gphys_addr;
@@ -145,8 +146,9 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 	}
 
 	if (!found) {
-		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, FALSE);
-		if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
+		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
+				VMM_REGION_VIRTUAL | VMM_REGION_MEMORY, FALSE);
+		if (!reg) {
 			return VMM_EFAIL;
 		}
 		ev->wr_gstart[ev->wr_victim] = reg->gphys_addr;

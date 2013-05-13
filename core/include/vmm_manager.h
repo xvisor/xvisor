@@ -43,6 +43,10 @@ enum vmm_region_flags {
 	VMM_REGION_ISDEVICE=0x00000400,
 };
 
+#define VMM_REGION_MANIFEST_MASK	(VMM_REGION_REAL | \
+					 VMM_REGION_VIRTUAL | \
+					 VMM_REGION_ALIAS)
+
 struct vmm_region;
 struct vmm_guest_aspace;
 struct vmm_vcpu_irqs;
