@@ -32,6 +32,7 @@
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
+#include <arm_features.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {

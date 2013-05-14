@@ -37,6 +37,7 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_cp15.h>
+#include <arm_features.h>
 
 static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu, 
 				    arch_regs_t *regs,
