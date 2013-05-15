@@ -107,6 +107,13 @@ struct hpet_timer {
 	struct hpet_block *parent;	/* parent block of this timer */
 };
 
+int __init hpet_clocksource_init(timer_id_t timer_id,
+				 const char *chip_name);
+
+int hpet_clockchip_init(timer_id_t timer_id, 
+			const char *chip_name,
+			u32 irqno, u32 target_cpu);
+
 int hpet_init(void);
 
 #endif /* __HPET_H */
