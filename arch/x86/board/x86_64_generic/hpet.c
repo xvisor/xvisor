@@ -107,6 +107,7 @@ static void hpet_arm_timer(void *data)
 	debug_print("%s: timer %d armed\n", __func__, timer->timer_id);
 }
 
+#if 0
 static void hpet_disarm_timer(void *data)
 {
 	struct hpet_timer *timer = (struct hpet_timer *)data;
@@ -115,6 +116,7 @@ static void hpet_disarm_timer(void *data)
 	hpet_write(timer->parent->vbase, HPET_TIMER_N_CONF_BASE(timer->timer_id), _v);
 	debug_print("%s: timer %d disarmed\n", __func__, timer->timer_id);
 }
+#endif
 
 static int hpet_initialize_timer(struct hpet_timer *timer, u8 dest_int, u32 flags)
 {
@@ -273,6 +275,9 @@ static vmm_irq_return_t hpet_clockchip_irq_handler(u32 irq_no, void *dev)
 {
 	struct hpet_timer *timer = (struct hpet_timer *)dev;
 
+	if (unlikely(!timer->clkchip.event_handler))
+		return VMM_IRQ_NONE;
+
 	/* call the event handler */
 	timer->clkchip.event_handler(&timer->clkchip);
 
@@ -282,6 +287,9 @@ static vmm_irq_return_t hpet_clockchip_irq_handler(u32 irq_no, void *dev)
 static void hpet_clockchip_set_mode(enum vmm_clockchip_mode mode,
 				    struct vmm_clockchip *cc)
 {
+
+	BUG_ON(cc == NULL);
+
 	switch (mode) {
 	case VMM_CLOCKCHIP_MODE_PERIODIC:
 		/* Not supported currently */
@@ -313,6 +321,11 @@ static int hpet_clockchip_set_next_event(unsigned long next,
 	BUG_ON(timer == NULL);
 	u64 res;
 
+	if (unlikely(!timer->armed)) {
+		timer->armed = 1;
+		hpet_arm_timer((void *)timer);
+	}
+
 	res = hpet_read_main_counter(timer);
 	res += next;
 	hpet_write(timer->parent->vbase, HPET_TIMER_N_COMP_BASE(0), res);
@@ -324,7 +337,7 @@ static int hpet_clockchip_set_next_event(unsigned long next,
 
 int __cpuinit hpet_clockchip_init(timer_id_t timer_id, 
 				  const char *chip_name,
-				  u32 irqno, u32 target_cpu)
+				  u32 target_cpu)
 {
 	int rc;
 	u32 int_dest;
@@ -336,6 +349,7 @@ int __cpuinit hpet_clockchip_init(timer_id_t timer_id,
 
 	/* first disable the free running counter */
 	hpet_disable_main_counter(timer);
+	hpet_write_main_counter(timer, 0);
 
 	if (hpet_in_legacy_mode(timer)) {
 		/* legacy mode hpet overrides PIT interrupt at pin 2 of IOAPIC */
@@ -356,24 +370,8 @@ int __cpuinit hpet_clockchip_init(timer_id_t timer_id,
 	rc = hpet_initialize_timer(timer, int_dest, HPET_TIMER_INT_EDGE);
 	BUG_ON(rc != VMM_OK);
 
-	/* route the IOAPIC pin to CPU IRQ/Exception vector */
-	ioapic_route_pin_to_irq(int_dest, irqno);
-
-	vmm_printf("HPET timer %d routed to IOAPIC pin number %d linked on IRQ %d.\n",
-		   timer->timer_id, int_dest, irqno);
-
-	struct ioapic_ext_irq_device *device = vmm_malloc(sizeof(struct ioapic_ext_irq_device));
-	BUG_ON(device == NULL);
-
-	device->irq_enable = hpet_arm_timer;
-	device->irq_disable = hpet_disarm_timer;
-	device->irq_handler = hpet_clockchip_irq_handler;
-	strcpy(device->ext_dev_name, "system_timer");
-	rc = ioapic_set_ext_irq_device(irqno, device, (void *)timer);
-	BUG_ON(rc != VMM_OK);
-
 	timer->clkchip.name = chip_name;
-	timer->clkchip.hirq = irqno;
+	timer->clkchip.hirq = int_dest;
 	timer->clkchip.rating = 250;
 #ifdef CONFIG_SMP
 	timer->clkcip.cpumask = vmm_cpumask_of(target_cpu);
@@ -401,8 +399,14 @@ int __cpuinit hpet_clockchip_init(timer_id_t timer_id,
 	}
 #endif
 
-	hpet_arm_timer((void *)timer);
-	return vmm_clockchip_register(&timer->clkchip);
+	vmm_clockchip_register(&timer->clkchip);
+	timer->armed = 0;
+	rc = vmm_host_irq_register(int_dest, chip_name,
+				hpet_clockchip_irq_handler,
+				timer);
+	BUG_ON(rc != VMM_OK);
+
+	return VMM_OK;
 }
 
 /*****************************************

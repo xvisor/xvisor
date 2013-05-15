@@ -15,7 +15,6 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
-#include <linux/ioport.h>
 #include <linux/init.h>
 #include <linux/serio.h>
 #include <linux/err.h>
@@ -31,7 +30,6 @@
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT				i8042_init
 #define	MODULE_EXIT				i8042_exit
-#define I8042_INT_VECTOR		33
 
 static bool i8042_nokbd;
 #if 0
@@ -484,7 +482,7 @@ static irqreturn_t i8042_interrupt(u32 irq, void *dev)
 	if (unlikely(~str & I8042_STR_OBF)) {
 		spin_unlock_irqrestore(&i8042_lock, flags);
 		if (irq)
-			vmm_printf("Interrupt %d, without any data\n", irq);
+			dbg("Interrupt %d, without any data\n", irq);
 		ret = 0;
 		goto out;
 	}
@@ -1256,7 +1254,7 @@ static int __init i8042_create_kbd_port(void)
 	strncpy(serio->phys, I8042_KBD_PHYS_DESC, sizeof(serio->phys));
 
 	port->serio = serio;
-	port->irq = I8042_INT_VECTOR;
+	port->irq = 1;
 
 	return 0;
 }
@@ -1408,27 +1406,14 @@ static int __init i8042_setup_kbd(void)
 {
 	int error;
 
-	/* route the IOAPIC pin to CPU IRQ/Exception vector */
-	ioapic_route_pin_to_irq(I8042_KBD_IRQ, I8042_INT_VECTOR);
-
-	struct ioapic_ext_irq_device *device = vmm_malloc(sizeof(struct ioapic_ext_irq_device));
-	BUG_ON(device == NULL);
-
-	device->irq_enable = NULL;
-	device->irq_disable = NULL;
-	device->irq_handler = i8042_interrupt;
-	strcpy(device->ext_dev_name, "system_keyboard");
-	error = ioapic_set_ext_irq_device(I8042_INT_VECTOR, device, i8042_platform_device);
-	BUG_ON(error != VMM_OK);
-
 	error = i8042_create_kbd_port();
 	if (error)
 		return error;
 
-	//error = request_irq(I8042_KBD_IRQ, i8042_interrupt, 0,
-    //                    "i8042", i8042_platform_device);
-	//if (error)
-	//	goto err_free_port;
+	error = request_irq(I8042_KBD_IRQ, i8042_interrupt, 0,
+                        "i8042", i8042_platform_device);
+	if (error)
+		goto err_free_port;
 
 	error = i8042_enable_kbd_port();
 	if (error)
@@ -1439,7 +1424,7 @@ static int __init i8042_setup_kbd(void)
 
  err_free_irq:
 	free_irq(I8042_KBD_IRQ, i8042_platform_device);
-    // err_free_port:
+ err_free_port:
 	i8042_free_kbd_port();
 	return error;
 }

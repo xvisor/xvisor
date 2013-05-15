@@ -97,6 +97,7 @@ int arch_cpu_irq_setup(void);
 /** FIXME: Wait for IRQ
  *  Prototype: void arch_cpu_wait_for_irq(void);
  */
-#define arch_cpu_wait_for_irq()
+#define arch_cpu_wait_for_irq()			\
+	asm volatile("hlt\n");
 
 #endif

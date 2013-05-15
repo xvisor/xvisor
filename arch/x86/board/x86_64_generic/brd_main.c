@@ -65,8 +65,7 @@ int __init arch_clocksource_init(void)
 int __cpuinit arch_clockchip_init(void)
 {
 	return hpet_clockchip_init(DEFAULT_HPET_SYS_TIMER, 
-				   "hpet_clkchip", 
-				   DEFAULT_SYS_TIMER_IRQ_NUM, 0);
+				"hpet_clkchip", 0);
 }
 
 int __init arch_board_final_init(void)
