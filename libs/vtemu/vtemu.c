@@ -324,28 +324,13 @@ VMM_EXPORT_SYMBOL(vtemu_key2str);
 static int vtemu_add_input(struct vtemu *v, char *str)
 {
 	int i;
-	irq_flags_t flags;
 
-	/* Save input key string */
+	/* Add ascii characters to input fifo */
 	i = 0;
-	vmm_spin_lock_irqsave(&v->in_lock, flags);
 	while(str[i] != '\0') {
-		if (v->in_count == VTEMU_INBUF_SIZE) {
-			v->in_head++;
-			if (v->in_head == VTEMU_INBUF_SIZE) {
-				v->in_head = 0;
-			}
-			v->in_count--;
-		}
-		v->in_buf[v->in_tail] = str[i];
-		v->in_tail++;
-		if (v->in_tail == VTEMU_INBUF_SIZE) {
-			v->in_tail = 0;
-		}
-		v->in_count++;
+		fifo_enqueue(v->in_fifo, &str[i], TRUE);
 		i++;
 	}
-	vmm_spin_unlock_irqrestore(&v->in_lock, flags);
 
 	/* Signal completion if we added characters to input buffer */
 	if (str[0] != '\0') {
@@ -397,33 +382,23 @@ static u32 vtemu_read(struct vmm_chardev *cdev,
 			u8 *dest, u32 len, bool sleep)
 {
 	u32 i;
-	irq_flags_t flags;
 	struct vtemu *v = cdev->priv;
 
 	if (!v) {
 		return 0;
 	}
 
-	vmm_spin_lock_irqsave(&v->in_lock, flags);
 	for (i = 0; i < len; i++) {
-		if (!v->in_count) {
+		if (fifo_isempty(v->in_fifo)) {
 			if (sleep) {
-				vmm_spin_unlock_irqrestore(&v->in_lock, flags);
 				REINIT_COMPLETION(&v->in_done);
 				vmm_completion_wait(&v->in_done);
-				vmm_spin_lock_irqsave(&v->in_lock, flags);
 			} else {
 				break;
 			}
 		}
-		dest[i] = v->in_buf[v->in_head];
-		v->in_head++;
-		if (v->in_head == VTEMU_INBUF_SIZE) {
-			v->in_head = 0;
-		}
-		v->in_count--;
+		fifo_dequeue(v->in_fifo, &dest[i]);
 	}
-	vmm_spin_unlock_irqrestore(&v->in_lock, flags);
 
 	return i;
 }
@@ -1108,11 +1083,11 @@ struct vtemu *vtemu_create(const char *name,
 	v->esc_attrib[0] = 0;
 
 	/* Setup input data */
-	v->in_head = 0;
-	v->in_tail = 0;
-	v->in_count = 0;
 	v->in_key_flags = 0;
-	INIT_SPIN_LOCK(&v->in_lock);
+	v->in_fifo = fifo_alloc(sizeof(u8), VTEMU_INBUF_SIZE);
+	if (!v->in_fifo) {
+		goto free_cursor_bkp;
+	}
 	INIT_COMPLETION(&v->in_done);
 
 	/* Draw cursor */
@@ -1120,6 +1095,8 @@ struct vtemu *vtemu_create(const char *name,
 
 	return v;
 
+free_cursor_bkp:
+	vmm_free(v->cursor_bkp);
 free_cells:
 	vmm_free(v->cell);
 dealloc_cmap:
@@ -1144,6 +1121,7 @@ int vtemu_destroy(struct vtemu *v)
 		return VMM_EFAIL;
 	}
 
+	fifo_free(v->in_fifo);
 	vmm_free(v->cursor_bkp);
 	vmm_free(v->cell);
 	vmm_fb_dealloc_cmap(&v->cmap);

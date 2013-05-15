@@ -54,15 +54,25 @@ struct vmm_emudev {
 	void *priv;
 };
 
-/** Emulate read for given VCPU */
+/** Emulate memory read to virtual device for given VCPU */
 int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu, 
 			    physical_addr_t gphys_addr,
 			    void *dst, u32 dst_len);
 
-/** Emulate write for given VCPU */
+/** Emulate memory write to virtual device for given VCPU */
 int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu, 
 			     physical_addr_t gphys_addr,
 			     void *src, u32 src_len);
+
+/** Emulate IO read to virtual device for given VCPU */
+int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu, 
+			      physical_addr_t gphys_addr,
+			      void *dst, u32 dst_len);
+
+/** Emulate IO write to virtual device for given VCPU */
+int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu, 
+			       physical_addr_t gphys_addr,
+			       void *src, u32 src_len);
 
 /** Internal function to emulate irq (should not be called directly) */
 extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest, 

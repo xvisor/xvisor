@@ -35,17 +35,6 @@
 
 struct multiboot_info boot_info;
 
-extern void cls();
-extern void init_console(void);
-extern void putch(u8 ch);
-void early_print_string(u8 *str)
-{
-        while (*str) {
-                putch(*str);
-                str++;
-        }
-}
-
 extern u32 dt_blob_start;
 
 int arch_devtree_ram_start(physical_addr_t *addr)

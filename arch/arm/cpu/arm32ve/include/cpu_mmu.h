@@ -39,13 +39,13 @@ struct cpu_page {
 	/* lower */
 	u32 ng:1;
 	u32 af:1;
-	u32 sh:1;
+	u32 sh:2;
 	u32 ap:2;
 	u32 ns:1;
 	u32 aindex:3;
 	u32 memattr:4;
 	/* padding */
-	u32 pad:16;
+	u32 pad:15;
 };
 
 /** LPAE translation table */

@@ -56,6 +56,19 @@ int __init arch_board_early_init(void)
         return VMM_OK;
 }
 
+int __init arch_clocksource_init(void)
+{
+	return hpet_clocksource_init(DEFAULT_HPET_SYS_TIMER,
+				     "hpet_clksrc");
+}
+
+int __cpuinit arch_clockchip_init(void)
+{
+	return hpet_clockchip_init(DEFAULT_HPET_SYS_TIMER, 
+				   "hpet_clkchip", 
+				   DEFAULT_SYS_TIMER_IRQ_NUM, 0);
+}
+
 int __init arch_board_final_init(void)
 {
 	int rc;

@@ -31,14 +31,22 @@
 #include <libs/stringlib.h>
 
 struct vmm_devemu_vcpu_context {
-	u32 rd_victim;
-	physical_addr_t rd_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
-	physical_size_t rd_gend[CONFIG_VGPA2REG_CACHE_SIZE];
-	struct vmm_region *rd_reg[CONFIG_VGPA2REG_CACHE_SIZE];
-	u32 wr_victim;
-	physical_addr_t wr_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
-	physical_size_t wr_gend[CONFIG_VGPA2REG_CACHE_SIZE];
-	struct vmm_region *wr_reg[CONFIG_VGPA2REG_CACHE_SIZE];
+	u32 rd_mem_victim;
+	physical_addr_t rd_mem_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
+	physical_size_t rd_mem_gend[CONFIG_VGPA2REG_CACHE_SIZE];
+	struct vmm_region *rd_mem_reg[CONFIG_VGPA2REG_CACHE_SIZE];
+	u32 wr_mem_victim;
+	physical_addr_t wr_mem_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
+	physical_size_t wr_mem_gend[CONFIG_VGPA2REG_CACHE_SIZE];
+	struct vmm_region *wr_mem_reg[CONFIG_VGPA2REG_CACHE_SIZE];
+	u32 rd_io_victim;
+	physical_addr_t rd_io_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
+	physical_size_t rd_io_gend[CONFIG_VGPA2REG_CACHE_SIZE];
+	struct vmm_region *rd_io_reg[CONFIG_VGPA2REG_CACHE_SIZE];
+	u32 wr_io_victim;
+	physical_addr_t wr_io_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
+	physical_size_t wr_io_gend[CONFIG_VGPA2REG_CACHE_SIZE];
+	struct vmm_region *wr_io_reg[CONFIG_VGPA2REG_CACHE_SIZE];
 };
 
 struct vmm_devemu_guest_irq {
@@ -85,27 +93,29 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 	ev = vcpu->devemu_priv;
 	found = FALSE;
 	for (ite = 0; ite < CONFIG_VGPA2REG_CACHE_SIZE; ite++) {
-		if (ev->rd_reg[ite] && 
-		    (ev->rd_gstart[ite] <= gphys_addr) &&
-		    (gphys_addr < ev->rd_gend[ite])) {
-			reg = ev->rd_reg[ite];
+		if (ev->rd_mem_reg[ite] && 
+		    (ev->rd_mem_gstart[ite] <= gphys_addr) &&
+		    (gphys_addr < ev->rd_mem_gend[ite])) {
+			reg = ev->rd_mem_reg[ite];
 			found = TRUE;
 			break;
 		}
 	}
 
 	if (!found) {
-		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, FALSE);
-		if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
+		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
+				VMM_REGION_VIRTUAL | VMM_REGION_MEMORY, FALSE);
+		if (!reg) {
 			return VMM_EFAIL;
 		}
-		ev->rd_gstart[ev->rd_victim] = reg->gphys_addr;
-		ev->rd_gend[ev->rd_victim] = reg->gphys_addr + reg->phys_size;
-		ev->rd_reg[ev->rd_victim] = reg;
-		if (ev->rd_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
-			ev->rd_victim = 0;
+		ev->rd_mem_gstart[ev->rd_mem_victim] = reg->gphys_addr;
+		ev->rd_mem_gend[ev->rd_mem_victim] = 
+					reg->gphys_addr + reg->phys_size;
+		ev->rd_mem_reg[ev->rd_mem_victim] = reg;
+		if (ev->rd_mem_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
+			ev->rd_mem_victim = 0;
 		} else {
-			ev->rd_victim++;
+			ev->rd_mem_victim++;
 		}
 	}
 
@@ -135,27 +145,133 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 	ev = vcpu->devemu_priv;
 	found = FALSE;
 	for (ite = 0; ite < CONFIG_VGPA2REG_CACHE_SIZE; ite++) {
-		if (ev->wr_reg[ite] && 
-		    (ev->wr_gstart[ite] <= gphys_addr) &&
-		    (gphys_addr < ev->wr_gend[ite])) {
-			reg = ev->wr_reg[ite];
+		if (ev->wr_mem_reg[ite] && 
+		    (ev->wr_mem_gstart[ite] <= gphys_addr) &&
+		    (gphys_addr < ev->wr_mem_gend[ite])) {
+			reg = ev->wr_mem_reg[ite];
 			found = TRUE;
 			break;
 		}
 	}
 
 	if (!found) {
-		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, FALSE);
-		if (!reg || !(reg->flags & VMM_REGION_VIRTUAL)) {
+		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
+				VMM_REGION_VIRTUAL | VMM_REGION_MEMORY, FALSE);
+		if (!reg) {
 			return VMM_EFAIL;
 		}
-		ev->wr_gstart[ev->wr_victim] = reg->gphys_addr;
-		ev->wr_gend[ev->wr_victim] = reg->gphys_addr + reg->phys_size;
-		ev->wr_reg[ev->wr_victim] = reg;
-		if (ev->wr_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
-			ev->wr_victim = 0;
+		ev->wr_mem_gstart[ev->wr_mem_victim] = reg->gphys_addr;
+		ev->wr_mem_gend[ev->wr_mem_victim] = 
+					reg->gphys_addr + reg->phys_size;
+		ev->wr_mem_reg[ev->wr_mem_victim] = reg;
+		if (ev->wr_mem_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
+			ev->wr_mem_victim = 0;
 		} else {
-			ev->wr_victim++;
+			ev->wr_mem_victim++;
+		}
+	}
+
+	edev = (struct vmm_emudev *)reg->devemu_priv;
+	if (!edev || !edev->emu->write) {
+		return VMM_EFAIL;
+	}
+
+	return edev->emu->write(edev, gphys_addr - reg->gphys_addr, 
+				src, src_len);
+}
+
+int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu, 
+			      physical_addr_t gphys_addr,
+			      void *dst, u32 dst_len)
+{
+	u32 ite;
+	bool found;
+	struct vmm_devemu_vcpu_context *ev;
+	struct vmm_emudev *edev;
+	struct vmm_region *reg;
+
+	if (!vcpu || !(vcpu->guest)) {
+		return VMM_EFAIL;
+	}
+
+	ev = vcpu->devemu_priv;
+	found = FALSE;
+	for (ite = 0; ite < CONFIG_VGPA2REG_CACHE_SIZE; ite++) {
+		if (ev->rd_io_reg[ite] && 
+		    (ev->rd_io_gstart[ite] <= gphys_addr) &&
+		    (gphys_addr < ev->rd_io_gend[ite])) {
+			reg = ev->rd_io_reg[ite];
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
+		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
+				VMM_REGION_VIRTUAL | VMM_REGION_IO, FALSE);
+		if (!reg) {
+			return VMM_EFAIL;
+		}
+		ev->rd_io_gstart[ev->rd_io_victim] = reg->gphys_addr;
+		ev->rd_io_gend[ev->rd_io_victim] = 
+					reg->gphys_addr + reg->phys_size;
+		ev->rd_io_reg[ev->rd_io_victim] = reg;
+		if (ev->rd_io_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
+			ev->rd_io_victim = 0;
+		} else {
+			ev->rd_io_victim++;
+		}
+	}
+
+	edev = (struct vmm_emudev *)reg->devemu_priv;
+	if (!edev || !edev->emu->read) {
+		return VMM_EFAIL;
+	}
+
+	return edev->emu->read(edev, gphys_addr - reg->gphys_addr, 
+				dst, dst_len);
+}
+
+int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu, 
+			       physical_addr_t gphys_addr,
+			       void *src, u32 src_len)
+{
+	u32 ite;
+	bool found;
+	struct vmm_devemu_vcpu_context *ev;
+	struct vmm_emudev *edev;
+	struct vmm_region *reg;
+
+	if (!vcpu || !(vcpu->guest)) {
+		return VMM_EFAIL;
+	}
+
+	ev = vcpu->devemu_priv;
+	found = FALSE;
+	for (ite = 0; ite < CONFIG_VGPA2REG_CACHE_SIZE; ite++) {
+		if (ev->wr_io_reg[ite] && 
+		    (ev->wr_io_gstart[ite] <= gphys_addr) &&
+		    (gphys_addr < ev->wr_io_gend[ite])) {
+			reg = ev->wr_io_reg[ite];
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
+		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
+				VMM_REGION_VIRTUAL | VMM_REGION_IO, FALSE);
+		if (!reg) {
+			return VMM_EFAIL;
+		}
+		ev->wr_io_gstart[ev->wr_io_victim] = reg->gphys_addr;
+		ev->wr_io_gend[ev->wr_io_victim] = 
+					reg->gphys_addr + reg->phys_size;
+		ev->wr_io_reg[ev->wr_io_victim] = reg;
+		if (ev->wr_io_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
+			ev->wr_io_victim = 0;
+		} else {
+			ev->wr_io_victim++;
 		}
 	}
 
@@ -513,17 +629,25 @@ int vmm_devemu_reset_context(struct vmm_guest *guest)
 		vcpu = list_entry(l, struct vmm_vcpu, head);
 		if (vcpu->devemu_priv) {
 			ev = vcpu->devemu_priv;
-			ev->rd_victim = 0;
-			ev->wr_victim = 0;
+			ev->rd_mem_victim = 0;
+			ev->wr_mem_victim = 0;
+			ev->rd_io_victim = 0;
+			ev->wr_io_victim = 0;
 			for (ite = 0; 
 			     ite < CONFIG_VGPA2REG_CACHE_SIZE; 
 			     ite++) {
-				ev->rd_gstart[ite] = 0;
-				ev->rd_gend[ite] = 0;
-				ev->rd_reg[ite] = NULL;
-				ev->wr_gstart[ite] = 0;
-				ev->wr_gend[ite] = 0;
-				ev->wr_reg[ite] = NULL;
+				ev->rd_mem_gstart[ite] = 0;
+				ev->rd_mem_gend[ite] = 0;
+				ev->rd_mem_reg[ite] = NULL;
+				ev->wr_mem_gstart[ite] = 0;
+				ev->wr_mem_gend[ite] = 0;
+				ev->wr_mem_reg[ite] = NULL;
+				ev->rd_io_gstart[ite] = 0;
+				ev->rd_io_gend[ite] = 0;
+				ev->rd_io_reg[ite] = NULL;
+				ev->wr_io_gstart[ite] = 0;
+				ev->wr_io_gend[ite] = 0;
+				ev->wr_io_reg[ite] = NULL;
 			}
 		}
 	}
@@ -731,17 +855,25 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 		vcpu = list_entry(l, struct vmm_vcpu, head);
 		if (!vcpu->devemu_priv) {
 			ev = vmm_zalloc(sizeof(struct vmm_devemu_vcpu_context));
-			ev->rd_victim = 0;
-			ev->wr_victim = 0;
+			ev->rd_mem_victim = 0;
+			ev->wr_mem_victim = 0;
+			ev->rd_io_victim = 0;
+			ev->wr_io_victim = 0;
 			for (ite = 0; 
 			     ite < CONFIG_VGPA2REG_CACHE_SIZE; 
 			     ite++) {
-				ev->rd_gstart[ite] = 0;
-				ev->rd_gend[ite] = 0;
-				ev->rd_reg[ite] = NULL;
-				ev->wr_gstart[ite] = 0;
-				ev->wr_gend[ite] = 0;
-				ev->wr_reg[ite] = NULL;
+				ev->rd_mem_gstart[ite] = 0;
+				ev->rd_mem_gend[ite] = 0;
+				ev->rd_mem_reg[ite] = NULL;
+				ev->wr_mem_gstart[ite] = 0;
+				ev->wr_mem_gend[ite] = 0;
+				ev->wr_mem_reg[ite] = NULL;
+				ev->rd_io_gstart[ite] = 0;
+				ev->rd_io_gend[ite] = 0;
+				ev->rd_io_reg[ite] = NULL;
+				ev->wr_io_gstart[ite] = 0;
+				ev->wr_io_gend[ite] = 0;
+				ev->wr_io_reg[ite] = NULL;
 			}
 			vcpu->devemu_priv = ev;
 		}

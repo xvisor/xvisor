@@ -41,6 +41,7 @@
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_cp15.h>
+#include <arm_features.h>
 
 /* Update Virtual TLB */
 static int cpu_vcpu_cp15_vtlb_update(struct vmm_vcpu *vcpu, 

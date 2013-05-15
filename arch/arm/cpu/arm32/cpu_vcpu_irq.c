@@ -27,6 +27,7 @@
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
+#include <arm_features.h>
 
 u32 arch_vcpu_irq_count(struct vmm_vcpu * vcpu)
 {

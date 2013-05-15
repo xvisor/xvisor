@@ -33,9 +33,10 @@
 
 struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 					 physical_addr_t gphys_addr,
-					 bool resolve_alias)
+					 u32 reg_flags, bool resolve_alias)
 {
 	bool found = FALSE;
+	u32 cmp_flags;
 	struct dlist *l;
 	struct vmm_region *reg = NULL;
 
@@ -43,12 +44,17 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 		return NULL;
 	}
 
+	/* Determine flags we need to compare */
+	cmp_flags = reg_flags & ~VMM_REGION_MANIFEST_MASK;
+
+	/* Try to find region ignoring required manifest flags */
 	reg = NULL;
 	found = FALSE;
 	list_for_each(l, &guest->aspace.reg_list) {
 		reg = list_entry(l, struct vmm_region, head);
-		if (reg->gphys_addr <= gphys_addr &&
-		    gphys_addr < (reg->gphys_addr + reg->phys_size)) {
+		if (((reg->flags & cmp_flags) == cmp_flags) &&
+		    (reg->gphys_addr <= gphys_addr) &&
+		    (gphys_addr < (reg->gphys_addr + reg->phys_size))) {
 			found = TRUE;
 			break;
 		}
@@ -57,14 +63,21 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 		return NULL;
 	}
 
-	while (resolve_alias && (reg->flags & VMM_REGION_ALIAS)) {
-		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+	/* Check if we can skip resolve alias */
+	if (!resolve_alias) {
+		goto done;
+	}
+
+	/* Resolve aliased regions */
+	while (reg->flags & VMM_REGION_ALIAS) {
 		reg = NULL;
 		found = FALSE;
+		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
 		list_for_each(l, &guest->aspace.reg_list) {
 			reg = list_entry(l, struct vmm_region, head);
-			if (reg->gphys_addr <= gphys_addr &&
-			    gphys_addr < (reg->gphys_addr + reg->phys_size)) {
+			if (((reg->flags & cmp_flags) == cmp_flags) &&
+			    (reg->gphys_addr <= gphys_addr) &&
+			    (gphys_addr < (reg->gphys_addr + reg->phys_size))) {
 				found = TRUE;
 				break;
 			}
@@ -72,6 +85,12 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 		if (!found) {
 			return NULL;
 		}
+	}
+
+done:
+	cmp_flags = reg_flags & VMM_REGION_MANIFEST_MASK;
+	if ((reg->flags & cmp_flags) != cmp_flags) {
+		return NULL;
 	}
 
 	return reg;
@@ -90,12 +109,9 @@ u32 vmm_guest_memory_read(struct vmm_guest *guest,
 	}
 
 	while (bytes_read < len) {
-		reg = vmm_guest_find_region(guest, gphys_addr, TRUE);
+		reg = vmm_guest_find_region(guest, gphys_addr, 
+				VMM_REGION_REAL | VMM_REGION_MEMORY, TRUE);
 		if (!reg) {
-			break;
-		}
-
-		if (reg->flags & (VMM_REGION_VIRTUAL | VMM_REGION_IO)) {
 			break;
 		}
 
@@ -130,12 +146,9 @@ u32 vmm_guest_memory_write(struct vmm_guest *guest,
 	}
 
 	while (bytes_written < len) {
-		reg = vmm_guest_find_region(guest, gphys_addr, TRUE);
+		reg = vmm_guest_find_region(guest, gphys_addr, 
+				VMM_REGION_REAL | VMM_REGION_MEMORY, TRUE);
 		if (!reg) {
-			break;
-		}
-
-		if (reg->flags & (VMM_REGION_VIRTUAL | VMM_REGION_IO)) {
 			break;
 		}
 
@@ -171,13 +184,15 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 		return VMM_EFAIL;
 	}
 
-	reg = vmm_guest_find_region(guest, gphys_addr, FALSE);
+	reg = vmm_guest_find_region(guest, gphys_addr, 
+				    VMM_REGION_MEMORY, FALSE);
 	if (!reg) {
 		return VMM_EFAIL;
 	}
 	while (reg->flags & VMM_REGION_ALIAS) {
 		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
-		reg = vmm_guest_find_region(guest, gphys_addr, FALSE);
+		reg = vmm_guest_find_region(guest, gphys_addr, 
+					    VMM_REGION_MEMORY, FALSE);
 		if (!reg) {
 			return VMM_EFAIL;
 		}
@@ -304,6 +319,14 @@ static bool is_region_overlapping(struct vmm_guest *guest,
 
 	list_for_each(l, &guest->aspace.reg_list) {
 		treg = list_entry(l, struct vmm_region, head);
+		if ((treg->flags & VMM_REGION_MEMORY) && 
+		    !(reg->flags & VMM_REGION_MEMORY)) {
+			continue;
+		}
+		if ((treg->flags & VMM_REGION_IO) && 
+		    !(reg->flags & VMM_REGION_IO)) {
+			continue;
+		}
 		treg_start = treg->gphys_addr;
 		treg_end = treg->gphys_addr + treg->phys_size;
 		if ((treg_start <= reg_start) && (reg_start < treg_end)) {
@@ -435,8 +458,9 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 
 		if (is_region_overlapping(guest, reg)) {
 			vmm_free(reg);
-			vmm_printf("%s: Region for %s/%s overlapping with a previous node\n", 
-					__func__, gnode->name, rnode->name);
+			vmm_printf("%s: Region for %s/%s overlapping with "
+				   "a previous node\n", __func__, 
+				   gnode->name, rnode->name);
 			return VMM_EINVALID;
 		}
 
@@ -445,8 +469,9 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 			rc = vmm_host_ram_reserve(reg->hphys_addr, 
 						  reg->phys_size);
 			if (rc) {
-				vmm_printf("%s: Failed to reserve physical region for %s/%s\n", 
-						__func__, gnode->name, rnode->name);
+				vmm_printf("%s: Failed to reserve "
+					   "physical region for %s/%s\n", 
+					   __func__, gnode->name, rnode->name);
 				vmm_free(reg);
 				return rc;
 			}

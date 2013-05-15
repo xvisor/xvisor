@@ -31,6 +31,7 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_emulate.h>
+#include <arm_features.h>
 
 /**
  * A conditional instruction can trap, even though its condition was
