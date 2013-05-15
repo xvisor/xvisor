@@ -236,6 +236,9 @@ int do_generic_int_handler(int intno, arch_regs_t *regs)
 	if (intno == 0x80) {
 		vmm_scheduler_preempt_orphan(regs);
 	} else {
+		/* Get interrupt number from Vector number */
+		intno -= USER_DEFINED_IRQ_BASE;
+
 		vmm_scheduler_irq_enter(regs, FALSE);
 		vmm_host_irq_exec(intno);
 		vmm_scheduler_irq_exit(regs);

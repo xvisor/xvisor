@@ -24,6 +24,8 @@
 #ifndef __CPU_APIC_H__
 #define __CPU_APIC_H__
 
+#include <arch_host_irq.h>
+
 #include <vmm_types.h>
 #include <vmm_host_irq.h>
 #include <libs/list.h>
@@ -201,6 +203,7 @@ struct cpu_ioapic {
 	u32 version;
 	unsigned int pins;
 	unsigned int gsi_base;
+	struct vmm_host_irq_chip irq_chip[ARCH_HOST_IRQ_COUNT];
 };
 
 struct cpu_lapic {
