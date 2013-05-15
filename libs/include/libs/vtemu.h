@@ -30,6 +30,7 @@
 #include <vmm_chardev.h>
 #include <input/vmm_input.h>
 #include <fb/vmm_fb.h>
+#include <libs/fifo.h>
 #include <libs/vtemu_font.h>
 
 #define VTEMU_NAME_SIZE		VMM_CHARDEV_NAME_SIZE
@@ -130,12 +131,8 @@ struct vtemu {
 	bool esc_cmd_active;
 
 	/* input data */
-	u8 in_buf[VTEMU_INBUF_SIZE];
-	u32 in_head;
-	u32 in_tail;
-	u32 in_count;
+	struct fifo *in_fifo;
 	u32 in_key_flags;
-	vmm_spinlock_t in_lock;
 	struct vmm_completion in_done;
 };
 
