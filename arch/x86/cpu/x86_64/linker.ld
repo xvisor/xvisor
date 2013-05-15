@@ -69,14 +69,6 @@ SECTIONS
 		PROVIDE(_percpu_end = .);
 	}
 
-	.heap :
-	{
-		. = ALIGN(4096);
-		PROVIDE(_heap_start = .);
-		. = . + (CONFIG_HEAP_SIZE_MB * 1024 * 1024);
-		PROVIDE(_eheap = .);
-	}
-
         .stack :
         {
                 . = ALIGN(4096);
