@@ -36,7 +36,7 @@ typedef struct {
 
 typedef struct {
 	volatile long lock;
-} spinlock_t;
+} arch_spinlock_t;
 
 #define ARCH_BITS_PER_LONG		64
 
