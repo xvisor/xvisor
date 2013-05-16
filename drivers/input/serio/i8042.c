@@ -1385,7 +1385,7 @@ static int __init i8042_setup_aux(void)
 	}
 
 	error = request_irq(I8042_AUX_IRQ, i8042_interrupt, 0,
-                        "i8042", i8042_platform_device);
+                        "i8042_aux", i8042_platform_device);
 	if (error)
 		goto err_free_ports;
 
@@ -1411,7 +1411,7 @@ static int __init i8042_setup_kbd(void)
 		return error;
 
 	error = request_irq(I8042_KBD_IRQ, i8042_interrupt, 0,
-                        "i8042", i8042_platform_device);
+                        "i8042_kbd", i8042_platform_device);
 	if (error)
 		goto err_free_port;
 
