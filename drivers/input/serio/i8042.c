@@ -11,86 +11,79 @@
  * the Free Software Foundation.
  */
 
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+
 #include <linux/types.h>
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
+#include <linux/ioport.h>
 #include <linux/init.h>
 #include <linux/serio.h>
 #include <linux/err.h>
+#include <linux/rcupdate.h>
+#include <linux/platform_device.h>
 #include <linux/i8042.h>
 #include <linux/slab.h>
 
 #include <asm/io.h>
-#include <cpu_apic.h>
 
-#define MODULE_DESC				"i8042 keyboard and mouse controller driver"
+#define MODULE_DESC			"i8042 keyboard and mouse controller driver"
 #define MODULE_AUTHOR			"Vojtech Pavlik <vojtech@suse.cz>"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		0
-#define	MODULE_INIT				i8042_init
-#define	MODULE_EXIT				i8042_exit
+#define MODULE_IPRIORITY		(SERIO_IPRIORITY + 1)
+#define	MODULE_INIT			i8042_init
+#define	MODULE_EXIT			i8042_exit
+
+/* FIXME: The panic_blink function pointer is provided by linux kernel
+ * in <linux_source>/kernel/panic.c
+ *
+ * This function pointer in only set by i8042 driver in linux
+ * kernel hence, we provide it here.
+ */
+long (*panic_blink)(int state);
+EXPORT_SYMBOL(panic_blink);
 
 static bool i8042_nokbd;
-#if 0
 module_param_named(nokbd, i8042_nokbd, bool, 0);
 MODULE_PARM_DESC(nokbd, "Do not probe or use KBD port.");
-#endif
 
 static bool i8042_noaux;
-#if 0
 module_param_named(noaux, i8042_noaux, bool, 0);
 MODULE_PARM_DESC(noaux, "Do not probe or use AUX (mouse) port.");
-#endif
 
 static bool i8042_nomux;
-#if 0
 module_param_named(nomux, i8042_nomux, bool, 0);
 MODULE_PARM_DESC(nomux, "Do not check whether an active multiplexing controller is present.");
-#endif
 
 static bool i8042_unlock;
-#if 0
 module_param_named(unlock, i8042_unlock, bool, 0);
 MODULE_PARM_DESC(unlock, "Ignore keyboard lock.");
-#endif
 
 static bool i8042_reset;
-#if 0
 module_param_named(reset, i8042_reset, bool, 0);
 MODULE_PARM_DESC(reset, "Reset controller during init and cleanup.");
-#endif
 
 static bool i8042_direct;
-#if 0
 module_param_named(direct, i8042_direct, bool, 0);
 MODULE_PARM_DESC(direct, "Put keyboard port into non-translated mode.");
-#endif
 
 static bool i8042_dumbkbd;
-#if 0
 module_param_named(dumbkbd, i8042_dumbkbd, bool, 0);
 MODULE_PARM_DESC(dumbkbd, "Pretend that controller can only read data from keyboard");
-#endif
 
 static bool i8042_noloop;
-#if 0
 module_param_named(noloop, i8042_noloop, bool, 0);
 MODULE_PARM_DESC(noloop, "Disable the AUX Loopback command while probing for the AUX port");
-#endif
 
 static bool i8042_notimeout;
-#if 0
 module_param_named(notimeout, i8042_notimeout, bool, 0);
 MODULE_PARM_DESC(notimeout, "Ignore timeouts signalled by i8042");
-#endif
 
 #ifdef CONFIG_ARCH_x86
 static bool i8042_dritek;
-#if 0
 module_param_named(dritek, i8042_dritek, bool, 0);
 MODULE_PARM_DESC(dritek, "Force enable the Dritek keyboard extension");
-#endif
 #endif
 
 #ifdef CONFIG_PNP
@@ -99,16 +92,15 @@ module_param_named(nopnp, i8042_nopnp, bool, 0);
 MODULE_PARM_DESC(nopnp, "Do not use PNP to detect controller settings");
 #endif
 
-//#define DEBUG
+#define DEBUG
 #ifdef DEBUG
 static bool i8042_debug;
 module_param_named(debug, i8042_debug, bool, 0600);
 MODULE_PARM_DESC(debug, "Turn i8042 debugging mode on and off");
 #endif
 
-#if 0
-static bool i8042_bypass_aux_irq_test;
-#endif
+/* FIXME: We cannot do i8042_check_aux() hence bypass it. */
+static bool i8042_bypass_aux_irq_test = TRUE;
 
 #include "i8042.h"
 
@@ -148,9 +140,9 @@ static bool i8042_mux_present;
 static bool i8042_kbd_irq_registered;
 static bool i8042_aux_irq_registered;
 static unsigned char i8042_suppress_kbd_ack;
-static struct vmm_driver *i8042_platform_device;
+static struct vmm_device *i8042_platform_device;
 
-static irqreturn_t i8042_interrupt(u32 irq_no, void *dev);
+static irqreturn_t i8042_interrupt(int irq, void *dev_id);
 static bool (*i8042_platform_filter)(unsigned char data, unsigned char str,
 				     struct serio *serio);
 
@@ -175,7 +167,7 @@ int i8042_install_filter(bool (*filter)(unsigned char data, unsigned char str,
 	spin_lock_irqsave(&i8042_lock, flags);
 
 	if (i8042_platform_filter) {
-		ret = -VMM_EBUSY;
+		ret = -EBUSY;
 		goto out;
 	}
 
@@ -244,15 +236,17 @@ static int i8042_wait_write(void)
 static int i8042_flush(void)
 {
 	unsigned long flags;
-	unsigned char str;
+	unsigned char data, str;
 	int i = 0;
 
 	spin_lock_irqsave(&i8042_lock, flags);
 
 	while (((str = i8042_read_status()) & I8042_STR_OBF) && (i < I8042_BUFFER_SIZE)) {
 		udelay(50);
-		i8042_read_data();
+		data = i8042_read_data();
 		i++;
+		dbg("%02x <- i8042 (flush, %s)\n",
+		    data, str & I8042_STR_AUXDATA ? "aux" : "kbd");
 	}
 
 	spin_unlock_irqrestore(&i8042_lock, flags);
@@ -422,7 +416,6 @@ static void i8042_stop(struct serio *serio)
 
 	port->exists = false;
 
-#if 0
 	/*
 	 * We synchronize with both AUX and KBD IRQs because there is
 	 * a (very unlikely) chance that AUX IRQ is raised for KBD port
@@ -430,7 +423,6 @@ static void i8042_stop(struct serio *serio)
 	 */
 	synchronize_irq(I8042_AUX_IRQ);
 	synchronize_irq(I8042_KBD_IRQ);
-#endif
 	port->serio = NULL;
 }
 
@@ -465,7 +457,7 @@ static bool i8042_filter(unsigned char data, unsigned char str,
  * to the upper layers.
  */
 
-static irqreturn_t i8042_interrupt(u32 irq, void *dev)
+static irqreturn_t i8042_interrupt(int irq, void *dev_id)
 {
 	struct i8042_port *port;
 	struct serio *serio;
@@ -487,23 +479,16 @@ static irqreturn_t i8042_interrupt(u32 irq, void *dev)
 		goto out;
 	}
 
-	/*
-	 * FIXME: For now since only x86 is using this read the controller
-	 * multiple times until data is left. Need to fix this since the
-	 * code assumes that for each byte an interrupt occurs. x86 is not
-	 * getting that for now.
-	 */
-	do {
-		data = i8042_read_data();
+	data = i8042_read_data();
 
-		if (i8042_mux_present && (str & I8042_STR_AUXDATA)) {
-			static unsigned long last_transmit;
-			static unsigned char last_str;
+	if (i8042_mux_present && (str & I8042_STR_AUXDATA)) {
+		static unsigned long last_transmit;
+		static unsigned char last_str;
 
-			dfl = 0;
-			if (str & I8042_STR_MUXERR) {
-				vmm_printf("MUX error, status is %02x, data is %02x\n",
-					str, data);
+		dfl = 0;
+		if (str & I8042_STR_MUXERR) {
+			dbg("MUX error, status is %02x, data is %02x\n",
+			    str, data);
 /*
  * When MUXERR condition is signalled the data register can only contain
  * 0xfd, 0xfe or 0xff if implementation follows the spec. Unfortunately
@@ -517,7 +502,7 @@ static irqreturn_t i8042_interrupt(u32 irq, void *dev)
  * was transmitted (if transmission happened not too long ago).
  */
 
-				switch (data) {
+			switch (data) {
 				default:
 					if (time_before(jiffies, last_transmit + HZ/10)) {
 						str = last_str;
@@ -528,36 +513,35 @@ static irqreturn_t i8042_interrupt(u32 irq, void *dev)
 				case 0xfd:
 				case 0xfe: dfl = SERIO_TIMEOUT; data = 0xfe; break;
 				case 0xff: dfl = SERIO_PARITY;  data = 0xfe; break;
-				}
 			}
-
-			port_no = I8042_MUX_PORT_NO + ((str >> 6) & 3);
-			last_str = str;
-			last_transmit = jiffies;
-		} else {
-
-			dfl = ((str & I8042_STR_PARITY) ? SERIO_PARITY : 0) |
-				((str & I8042_STR_TIMEOUT && !i8042_notimeout) ? SERIO_TIMEOUT : 0);
-
-			port_no = (str & I8042_STR_AUXDATA) ?
-				I8042_AUX_PORT_NO : I8042_KBD_PORT_NO;
 		}
 
-		port = &i8042_ports[port_no];
-		serio = port->exists ? port->serio : NULL;
+		port_no = I8042_MUX_PORT_NO + ((str >> 6) & 3);
+		last_str = str;
+		last_transmit = jiffies;
+	} else {
 
-		dbg("%02x <- i8042 (interrupt, %d, %d%s%s)\n",
-			data, port_no, irq,
-			dfl & SERIO_PARITY ? ", bad parity" : "",
-			dfl & SERIO_TIMEOUT ? ", timeout" : "");
+		dfl = ((str & I8042_STR_PARITY) ? SERIO_PARITY : 0) |
+		      ((str & I8042_STR_TIMEOUT && !i8042_notimeout) ? SERIO_TIMEOUT : 0);
 
-		filtered = i8042_filter(data, str, serio);
+		port_no = (str & I8042_STR_AUXDATA) ?
+				I8042_AUX_PORT_NO : I8042_KBD_PORT_NO;
+	}
 
-		spin_unlock_irqrestore(&i8042_lock, flags);
+	port = &i8042_ports[port_no];
+	serio = port->exists ? port->serio : NULL;
 
-		if (likely(port->exists && !filtered))
-			serio_interrupt(serio, data, dfl);
-	} while((str = i8042_read_status()) & I8042_STR_OBF);
+	dbg("%02x <- i8042 (interrupt, %d, %d%s%s)\n",
+	    data, port_no, irq,
+	    dfl & SERIO_PARITY ? ", bad parity" : "",
+	    dfl & SERIO_TIMEOUT ? ", timeout" : "");
+
+	filtered = i8042_filter(data, str, serio);
+
+	spin_unlock_irqrestore(&i8042_lock, flags);
+
+	if (likely(port->exists && !filtered))
+		serio_interrupt(serio, data, dfl);
 
  out:
 	return IRQ_RETVAL(ret);
@@ -575,7 +559,7 @@ static int i8042_enable_kbd_port(void)
 	if (i8042_command(&i8042_ctr, I8042_CMD_CTL_WCTR)) {
 		i8042_ctr &= ~I8042_CTR_KBDINT;
 		i8042_ctr |= I8042_CTR_KBDDIS;
-		vmm_printf("Failed to enable KBD port\n");
+		pr_err("Failed to enable KBD port\n");
 		return -EIO;
 	}
 
@@ -695,7 +679,6 @@ static int __init i8042_check_mux(void)
 	return 0;
 }
 
-#if 0
 /*
  * The following is used to test AUX IRQ delivery.
  */
@@ -723,9 +706,7 @@ static irqreturn_t __init i8042_aux_test_irq(int irq, void *dev_id)
 
 	return IRQ_RETVAL(ret);
 }
-#endif
 
-#if 0
 /*
  * i8042_toggle_aux - enables or disables AUX port on i8042 via command and
  * verifies success by readinng CTR. Used when testing for presence of AUX
@@ -753,9 +734,7 @@ static int __init i8042_toggle_aux(bool on)
 
 	return -1;
 }
-#endif
 
-#if 0
 /*
  * i8042_check_aux() applies as much paranoia as it can at detecting
  * the presence of an AUX interface.
@@ -881,12 +860,11 @@ static int __init i8042_check_aux(void)
 
 	return retval;
 }
-#endif
 
 static int i8042_controller_check(void)
 {
 	if (i8042_flush() == I8042_BUFFER_SIZE) {
-		vmm_printf("No controller found\n");
+		pr_err("No controller found\n");
 		return -ENODEV;
 	}
 
@@ -1076,7 +1054,6 @@ static void i8042_controller_reset(bool force_reset)
 
 #define DELAY do { mdelay(1); if (++delay > 10) return delay; } while(0)
 
-#if 0
 static long i8042_panic_blink(int state)
 {
 	long delay = 0;
@@ -1097,7 +1074,6 @@ static long i8042_panic_blink(int state)
 	DELAY;
 	return delay;
 }
-#endif
 
 #undef DELAY
 
@@ -1250,11 +1226,12 @@ static int __init i8042_create_kbd_port(void)
 	serio->stop		= i8042_stop;
 	serio->close		= i8042_port_close;
 	serio->port_data	= port;
-	strncpy(serio->name, "i8042 KBD port", sizeof(serio->name));
-	strncpy(serio->phys, I8042_KBD_PHYS_DESC, sizeof(serio->phys));
+	/* FIXME: serio->dev.parent	= &i8042_platform_device->dev; */
+	strlcpy(serio->name, "i8042 KBD port", sizeof(serio->name));
+	strlcpy(serio->phys, I8042_KBD_PHYS_DESC, sizeof(serio->phys));
 
 	port->serio = serio;
-	port->irq = 1;
+	port->irq = I8042_KBD_IRQ;
 
 	return 0;
 }
@@ -1274,13 +1251,14 @@ static int __init i8042_create_aux_port(int idx)
 	serio->start		= i8042_start;
 	serio->stop		= i8042_stop;
 	serio->port_data	= port;
+	/* FIXME: serio->dev.parent	= &i8042_platform_device->dev; */
 	if (idx < 0) {
-		strncpy(serio->name, "i8042 AUX port", sizeof(serio->name));
-		strncpy(serio->phys, I8042_AUX_PHYS_DESC, sizeof(serio->phys));
+		strlcpy(serio->name, "i8042 AUX port", sizeof(serio->name));
+		strlcpy(serio->phys, I8042_AUX_PHYS_DESC, sizeof(serio->phys));
 		serio->close = i8042_port_close;
 	} else {
-		vmm_snprintf(serio->name, sizeof(serio->name), "i8042 AUX%d port", idx);
-		vmm_snprintf(serio->phys, sizeof(serio->phys), I8042_MUX_PHYS_DESC, idx + 1);
+		snprintf(serio->name, sizeof(serio->name), "i8042 AUX%d port", idx);
+		snprintf(serio->phys, sizeof(serio->phys), I8042_MUX_PHYS_DESC, idx + 1);
 	}
 
 	port->serio = serio;
@@ -1365,10 +1343,8 @@ static int __init i8042_setup_aux(void)
 	int error;
 	int i;
 
-#if 0
 	if (i8042_check_aux())
 		return -ENODEV;
-#endif
 
 	if (i8042_nomux || i8042_check_mux()) {
 		error = i8042_create_aux_port(-1);
@@ -1384,8 +1360,8 @@ static int __init i8042_setup_aux(void)
 		aux_enable = i8042_enable_mux_ports;
 	}
 
-	error = request_irq(I8042_AUX_IRQ, i8042_interrupt, 0,
-                        "i8042_aux", i8042_platform_device);
+	error = request_irq(I8042_AUX_IRQ, i8042_interrupt, IRQF_SHARED,
+			    "i8042", i8042_platform_device);
 	if (error)
 		goto err_free_ports;
 
@@ -1410,8 +1386,8 @@ static int __init i8042_setup_kbd(void)
 	if (error)
 		return error;
 
-	error = request_irq(I8042_KBD_IRQ, i8042_interrupt, 0,
-                        "i8042_kbd", i8042_platform_device);
+	error = request_irq(I8042_KBD_IRQ, i8042_interrupt, IRQF_SHARED,
+			    "i8042", i8042_platform_device);
 	if (error)
 		goto err_free_port;
 
@@ -1429,11 +1405,12 @@ static int __init i8042_setup_kbd(void)
 	return error;
 }
 
-static int i8042_driver_probe(struct vmm_device *dev, const struct vmm_devtree_nodeid *devid)
+static int i8042_driver_probe(struct vmm_device *dev, 
+			      const struct vmm_devtree_nodeid *devid)
 {
 	int error;
 
-	i8042_platform_device = dev->drv;
+	i8042_platform_device = dev;
 
 	if (i8042_reset) {
 		error = i8042_controller_selftest();
@@ -1452,7 +1429,7 @@ static int i8042_driver_probe(struct vmm_device *dev, const struct vmm_devtree_n
 
 	if (!i8042_noaux) {
 		error = i8042_setup_aux();
-		if (error && error != -VMM_ENODEV && error != -VMM_EBUSY)
+		if (error && error != -ENODEV && error != -EBUSY)
 			goto out_fail;
 	}
 
@@ -1513,7 +1490,9 @@ static int __init i8042_init(void)
 	if (err)
 		goto err_platform_exit;
 
-    return vmm_devdrv_register_driver(&i8042_driver);
+	panic_blink = i8042_panic_blink;
+
+	return vmm_devdrv_register_driver(&i8042_driver);
 
  err_platform_exit:
 	i8042_platform_exit();
@@ -1522,16 +1501,10 @@ static int __init i8042_init(void)
 
 static void __exit i8042_exit(void)
 {
-#if 0
-	platform_device_unregister(i8042_platform_device);
-	platform_driver_unregister(&i8042_driver);
-#endif
-    vmm_devdrv_unregister_driver(&i8042_driver);
+	vmm_devdrv_unregister_driver(&i8042_driver);
 	i8042_platform_exit();
 
-#if 0
 	panic_blink = NULL;
-#endif
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,
