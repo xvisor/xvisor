@@ -102,7 +102,7 @@ int __init generic_timer_clocksource_init(void)
 	return vmm_clocksource_register(cs);
 }
 
-static vmm_irq_return_t generic_timer_irq_handler(u32 irq, void *dev)
+static vmm_irq_return_t generic_timer_irq_handler(int irq, void *dev)
 {
 	struct vmm_clockchip *cc = dev;
 	unsigned long ctrl;
@@ -156,7 +156,7 @@ static int generic_timer_set_next_event(unsigned long evt,
 	return 0;
 }
 
-static vmm_irq_return_t generic_phys_timer_virq_handler(u32 irq, void *dev)
+static vmm_irq_return_t generic_phys_timer_virq_handler(int irq, void *dev)
 {
 	struct vmm_vcpu * vcpu;
 	u32 ctl;
@@ -182,7 +182,7 @@ static vmm_irq_return_t generic_phys_timer_virq_handler(u32 irq, void *dev)
 	return VMM_IRQ_HANDLED;
 }
 
-static vmm_irq_return_t generic_virt_timer_virq_handler(u32 irq, void *dev)
+static vmm_irq_return_t generic_virt_timer_virq_handler(int irq, void *dev)
 {
 	struct vmm_vcpu * vcpu;
 	u32 ctl;

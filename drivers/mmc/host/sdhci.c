@@ -574,7 +574,7 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 	/* Not used right now. */
 }
 
-static vmm_irq_return_t sdhci_irq_handler(u32 irq_no, void *dev)
+static vmm_irq_return_t sdhci_irq_handler(int irq_no, void *dev)
 {
 	u32 intmask, unexpected = 0;
 	vmm_irq_return_t result;

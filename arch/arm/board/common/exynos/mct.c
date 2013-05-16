@@ -240,8 +240,7 @@ static void exynos4_comp_set_mode(enum vmm_clockchip_mode mode,
 	}
 }
 
-static vmm_irq_return_t exynos4_mct_comp_isr(u32 irq_no,
-					     void *dev)
+static vmm_irq_return_t exynos4_mct_comp_isr(int irq_no, void *dev)
 {
 	struct vmm_clockchip *evt = dev;
 
@@ -416,8 +415,7 @@ static int exynos4_mct_tick_clear(struct mct_clock_event_clockchip *mevt)
 	}
 }
 
-static vmm_irq_return_t exynos4_mct_tick_isr(u32 irq_no, 
-					     void *dev_id)
+static vmm_irq_return_t exynos4_mct_tick_isr(int irq_no, void *dev_id)
 {
 	struct mct_clock_event_clockchip *mevt = dev_id;
 

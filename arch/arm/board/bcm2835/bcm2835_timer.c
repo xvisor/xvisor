@@ -124,7 +124,7 @@ struct bcm2835_clockchip {
 	struct vmm_clockchip clkchip;
 };
 
-static vmm_irq_return_t bcm2835_clockchip_irq_handler(u32 irq_no, void *dev)
+static vmm_irq_return_t bcm2835_clockchip_irq_handler(int irq_no, void *dev)
 {
 	struct bcm2835_clockchip *bcc = dev;
 

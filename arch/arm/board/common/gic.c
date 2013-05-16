@@ -187,7 +187,7 @@ static int gic_set_affinity(struct vmm_host_irq *irq,
 }
 #endif
 
-static vmm_irq_return_t gic_handle_cascade_irq(u32 irq, void *dev)
+static vmm_irq_return_t gic_handle_cascade_irq(int irq, void *dev)
 {
 	struct gic_chip_data *gic = dev;
 	u32 cascade_irq, gic_irq;

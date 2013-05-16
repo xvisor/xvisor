@@ -269,7 +269,7 @@ static void epit_set_mode(enum vmm_clockchip_mode mode,
 /*
  * IRQ handler for the timer
  */
-static vmm_irq_return_t epit_timer_interrupt(u32 irq, void *dev)
+static vmm_irq_return_t epit_timer_interrupt(int irq, void *dev)
 {
 	struct epit_clockchip *ecc = dev;
 

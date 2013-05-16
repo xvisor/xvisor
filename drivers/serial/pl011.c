@@ -147,7 +147,7 @@ struct pl011_port {
 	u16 mask;
 };
 
-static vmm_irq_return_t pl011_irq_handler(u32 irq_no, void *dev)
+static vmm_irq_return_t pl011_irq_handler(int irq_no, void *dev)
 {
 	u16 data;
 	struct pl011_port *port = (struct pl011_port *)dev;
