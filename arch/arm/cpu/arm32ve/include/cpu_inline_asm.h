@@ -150,30 +150,6 @@
 				" mcr     p15, 0, %0, c6, c0, 2\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
-#define invalid_tlb()		({ u32 rval=0; asm volatile(\
-				" mcr     p15, 0, %0, c8, c7, 0\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define invalid_tlb_line(va)	asm volatile(\
-				" mcr     p15, 0, %0, c8, c7, 1\n\t" \
-				:: "r" ((va)) : "memory", "cc")
-
-#define invalid_i_tlb()		({ u32 rval=0; asm volatile(\
-				" mcr     p15, 0, %0, c8, c5, 0\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define invalid_i_tlb_line(va)	asm volatile(\
-				" mcr     p15, 0, %0, c8, c5, 1\n\t" \
-				:: "r" ((va)) : "memory", "cc")
-
-#define invalid_d_tlb()		({ u32 rval=0; asm volatile(\
-				" mcr     p15, 0, %0, c8, c6, 0\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define invalid_d_tlb_line(va)	asm volatile(\
-				" mcr     p15, 0, %0, c8, c6, 1\n\t" \
-				:: "r" ((va)) : "memory", "cc")
-
 #define va2pa_c_pr(va)		asm volatile(\
 				" mcr     p15, 0, %0, c7, c8, 0\n\t" \
 				:: "r" ((va)) : "memory", "cc")
@@ -288,29 +264,53 @@
 				" mcr     p15, 0, %0, c13, c0, 4\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
-/* Virtualization Extension TLB maintainence */
+/* TLB maintainence */
 
-#define invalid_nhtlb()		({ u32 rval=0; asm volatile(\
+#define inv_utlb_all()		({ u32 rval=0; asm volatile(\
+				" mcr     p15, 0, %0, c8, c7, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define inv_utlb_line(va)	asm volatile(\
+				" mcr     p15, 0, %0, c8, c7, 1\n\t" \
+				:: "r" ((va)) : "memory", "cc")
+
+#define inv_itlb_all()		({ u32 rval=0; asm volatile(\
+				" mcr     p15, 0, %0, c8, c5, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define inv_itlb_line(va)	asm volatile(\
+				" mcr     p15, 0, %0, c8, c5, 1\n\t" \
+				:: "r" ((va)) : "memory", "cc")
+
+#define inv_dtlb_all()		({ u32 rval=0; asm volatile(\
+				" mcr     p15, 0, %0, c8, c6, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define inv_dtlb_line(va)	asm volatile(\
+				" mcr     p15, 0, %0, c8, c6, 1\n\t" \
+				:: "r" ((va)) : "memory", "cc")
+
+#define inv_tlb_guest_all()	({ u32 rval=0; asm volatile(\
 				" mcr     p15, 4, %0, c8, c7, 4\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define invalid_nhtlb_is()	({ u32 rval=0; asm volatile(\
+#define inv_tlb_guest_allis()	({ u32 rval=0; asm volatile(\
 				" mcr     p15, 4, %0, c8, c3, 4\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define invalid_htlb()		({ u32 rval=0; asm volatile(\
+#define inv_tlb_hyp_all()	({ u32 rval=0; asm volatile(\
 				" mcr     p15, 4, %0, c8, c7, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define invalid_htlb_is()	({ u32 rval=0; asm volatile(\
+#define inv_tlb_hyp_allis()	({ u32 rval=0; asm volatile(\
 				" mcr     p15, 4, %0, c8, c3, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define invalid_htlb_mva(va)	asm volatile(\
+#define inv_tlb_hyp_mva(va)	asm volatile(\
 				" mcr     p15, 4, %0, c8, c7, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
 
-#define invalid_htlb_mva_is(va)	asm volatile(\
+#define inv_tlb_hyp_mvais(va)	asm volatile(\
 				" mcr     p15, 4, %0, c8, c3, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
 

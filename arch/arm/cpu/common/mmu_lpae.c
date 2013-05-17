@@ -16,8 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_mmu.c
+ * @file mmu_lpae.c
  * @author Anup Patel (anup@brainfault.org)
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief Implementation of MMU for LPAE enabled ARM processor
  */
 
@@ -28,10 +29,8 @@
 #include <arch_sections.h>
 #include <arch_barrier.h>
 #include <libs/stringlib.h>
-#include <cpu_defines.h>
-#include <cpu_cache.h>
-#include <cpu_inline_asm.h>
-#include <cpu_mmu.h>
+#include <cpu_mmu_lpae.h>
+#include <mmu_lpae.h>
 
 /* Note: we use 1/8th or 12.5% of VAPOOL memory as translation table pool. 
  * For example if VAPOOL is 8 MB then translation table pool will be 1 MB
@@ -42,7 +41,7 @@
 #define TTBL_MAX_TABLE_SIZE	(TTBL_MAX_TABLE_COUNT * TTBL_TABLE_SIZE)
 #define TTBL_INITIAL_TABLE_SIZE (TTBL_INITIAL_TABLE_COUNT * TTBL_TABLE_SIZE)
 
-struct cpu_mmu_ctrl {
+struct mmu_lpae_ctrl {
 	struct cpu_ttbl *hyp_ttbl;
 	virtual_addr_t ttbl_base_va;
 	physical_addr_t ttbl_base_pa;
@@ -55,19 +54,12 @@ struct cpu_mmu_ctrl {
 	struct dlist free_ttbl_list;
 };
 
-static struct cpu_mmu_ctrl mmuctrl;
+static struct mmu_lpae_ctrl mmuctrl;
 
 u8 __attribute__ ((aligned(TTBL_TABLE_SIZE))) def_ttbl[TTBL_INITIAL_TABLE_SIZE];
 int def_ttbl_tree[TTBL_INITIAL_TABLE_COUNT];
 
-static inline void cpu_mmu_sync_tte(u64 *tte)
-{
-	clean_dcache_mva((virtual_addr_t)tte);
-	isb();
-	dsb();
-}
-
-static struct cpu_ttbl *cpu_mmu_ttbl_find(physical_addr_t tbl_pa)
+static struct cpu_ttbl *mmu_lpae_ttbl_find(physical_addr_t tbl_pa)
 {
 	int index;
 
@@ -94,16 +86,12 @@ static struct cpu_ttbl *cpu_mmu_ttbl_find(physical_addr_t tbl_pa)
 	return NULL;
 }
 
-static bool cpu_mmu_ttbl_isattached(struct cpu_ttbl *child)
+static inline bool mmu_lpae_ttbl_isattached(struct cpu_ttbl *child)
 {
-	if (!child) {
-		return FALSE;
-	}
-
-	return (child->parent) ? TRUE : FALSE;
+	return ((child != NULL) && (child->parent != NULL));
 }
 
-static bool cpu_mmu_valid_block_size(physical_size_t sz)
+static inline bool mmu_lpae_valid_block_size(physical_size_t sz)
 {
 	if ((sz == TTBL_L3_BLOCK_SIZE) || 
 	    (sz == TTBL_L2_BLOCK_SIZE) ||
@@ -113,7 +101,7 @@ static bool cpu_mmu_valid_block_size(physical_size_t sz)
 	return FALSE;
 }
 
-static physical_size_t cpu_mmu_level_block_size(int level)
+static inline physical_size_t mmu_lpae_level_block_size(int level)
 {
 	if (level == TTBL_LEVEL1) {
 		return TTBL_L1_BLOCK_SIZE;
@@ -123,7 +111,7 @@ static physical_size_t cpu_mmu_level_block_size(int level)
 	return TTBL_L3_BLOCK_SIZE;
 }
 
-static physical_addr_t cpu_mmu_level_map_mask(int level)
+static inline physical_addr_t mmu_lpae_level_map_mask(int level)
 {
 	if (level == TTBL_LEVEL1) {
 		return TTBL_L1_MAP_MASK;
@@ -133,7 +121,7 @@ static physical_addr_t cpu_mmu_level_map_mask(int level)
 	return TTBL_L3_MAP_MASK;
 }
 
-static int cpu_mmu_level_index(physical_addr_t ia, int level)
+static inline int mmu_lpae_level_index(physical_addr_t ia, int level)
 {
 	if (level == TTBL_LEVEL1) {
 		return (ia & TTBL_L1_INDEX_MASK) >> TTBL_L1_INDEX_SHIFT;
@@ -143,7 +131,7 @@ static int cpu_mmu_level_index(physical_addr_t ia, int level)
 	return (ia & TTBL_L3_INDEX_MASK) >> TTBL_L3_INDEX_SHIFT;
 }
 
-static int cpu_mmu_level_index_shift(int level)
+static inline int mmu_lpae_level_index_shift(int level)
 {
 	if (level == TTBL_LEVEL1) {
 		return TTBL_L1_INDEX_SHIFT;
@@ -153,7 +141,7 @@ static int cpu_mmu_level_index_shift(int level)
 	return TTBL_L3_INDEX_SHIFT;
 }
 
-static int cpu_mmu_ttbl_attach(struct cpu_ttbl *parent,
+static int mmu_lpae_ttbl_attach(struct cpu_ttbl *parent,
 				physical_addr_t map_ia, 
 				struct cpu_ttbl *child)
 {
@@ -164,7 +152,7 @@ static int cpu_mmu_ttbl_attach(struct cpu_ttbl *parent,
 	if (!parent || !child) {
 		return VMM_EFAIL;
 	}
-	if (cpu_mmu_ttbl_isattached(child)) {
+	if (mmu_lpae_ttbl_isattached(child)) {
 		return VMM_EFAIL;
 	}
 	if ((parent->level == TTBL_LAST_LEVEL) || 
@@ -172,7 +160,7 @@ static int cpu_mmu_ttbl_attach(struct cpu_ttbl *parent,
 		return VMM_EFAIL;
 	}
 
-	index = cpu_mmu_level_index(map_ia, parent->level);
+	index = mmu_lpae_level_index(map_ia, parent->level);
 	tte = (u64 *)parent->tbl_va;
 
 	vmm_spin_lock_irqsave(&parent->tbl_lock, flags);
@@ -189,7 +177,7 @@ static int cpu_mmu_ttbl_attach(struct cpu_ttbl *parent,
 
 	child->parent = parent;
 	child->level = parent->level + 1;
-	child->map_ia = map_ia & cpu_mmu_level_map_mask(parent->level);
+	child->map_ia = map_ia & mmu_lpae_level_map_mask(parent->level);
 	parent->tte_cnt++;
 	parent->child_cnt++;
 	list_add(&child->head, &parent->child_list);
@@ -199,19 +187,19 @@ static int cpu_mmu_ttbl_attach(struct cpu_ttbl *parent,
 	return VMM_OK;
 }
 
-static int cpu_mmu_ttbl_deattach(struct cpu_ttbl *child)
+static int mmu_lpae_ttbl_deattach(struct cpu_ttbl *child)
 {
 	int index;
 	u64 *tte;
 	irq_flags_t flags;
 	struct cpu_ttbl *parent;
 
-	if (!child || !cpu_mmu_ttbl_isattached(child)) {
+	if (!child || !mmu_lpae_ttbl_isattached(child)) {
 		return VMM_EFAIL;
 	}
 
 	parent = child->parent;
-	index = cpu_mmu_level_index(child->map_ia, parent->level);
+	index = mmu_lpae_level_index(child->map_ia, parent->level);
 	tte = (u64 *)parent->tbl_va;
 
 	vmm_spin_lock_irqsave(&parent->tbl_lock, flags);
@@ -234,7 +222,7 @@ static int cpu_mmu_ttbl_deattach(struct cpu_ttbl *child)
 	return VMM_OK;
 }
 
-struct cpu_ttbl *cpu_mmu_ttbl_alloc(int stage)
+struct cpu_ttbl *mmu_lpae_ttbl_alloc(int stage)
 {
 	irq_flags_t flags;
 	struct dlist *l;
@@ -265,7 +253,7 @@ struct cpu_ttbl *cpu_mmu_ttbl_alloc(int stage)
 	return ttbl;
 }
 
-int cpu_mmu_ttbl_free(struct cpu_ttbl *ttbl)
+int mmu_lpae_ttbl_free(struct cpu_ttbl *ttbl)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
@@ -276,8 +264,8 @@ int cpu_mmu_ttbl_free(struct cpu_ttbl *ttbl)
 		return VMM_EFAIL;
 	}
 
-	if (cpu_mmu_ttbl_isattached(ttbl)) {
-		if ((rc = cpu_mmu_ttbl_deattach(ttbl))) {
+	if (mmu_lpae_ttbl_isattached(ttbl)) {
+		if ((rc = mmu_lpae_ttbl_deattach(ttbl))) {
 			return rc;
 		}
 	}
@@ -285,10 +273,10 @@ int cpu_mmu_ttbl_free(struct cpu_ttbl *ttbl)
 	while (!list_empty(&ttbl->child_list)) {
 		l = list_first(&ttbl->child_list);
 		child = list_entry(l, struct cpu_ttbl, head);
-		if ((rc = cpu_mmu_ttbl_deattach(child))) {
+		if ((rc = mmu_lpae_ttbl_deattach(child))) {
 			return rc;
 		}
-		if ((rc = cpu_mmu_ttbl_free(child))) {
+		if ((rc = mmu_lpae_ttbl_free(child))) {
 			return rc;
 		}
 	}
@@ -309,7 +297,7 @@ int cpu_mmu_ttbl_free(struct cpu_ttbl *ttbl)
 	return VMM_OK;
 }
 
-struct cpu_ttbl *cpu_mmu_ttbl_get_child(struct cpu_ttbl *parent,
+struct cpu_ttbl *mmu_lpae_ttbl_get_child(struct cpu_ttbl *parent,
 					physical_addr_t map_ia,
 					bool create)
 {
@@ -323,7 +311,7 @@ struct cpu_ttbl *cpu_mmu_ttbl_get_child(struct cpu_ttbl *parent,
 		return NULL;
 	}
 
-	index = cpu_mmu_level_index(map_ia, parent->level);
+	index = mmu_lpae_level_index(map_ia, parent->level);
 	tte = (u64 *)parent->tbl_va;
 
 	vmm_spin_lock_irqsave(&parent->tbl_lock, flags);
@@ -333,7 +321,7 @@ struct cpu_ttbl *cpu_mmu_ttbl_get_child(struct cpu_ttbl *parent,
 	if (tte_val & TTBL_VALID_MASK) {
 		if (tte_val & TTBL_TABLE_MASK) {
 			tbl_pa = tte_val &  TTBL_OUTADDR_MASK;
-			child = cpu_mmu_ttbl_find(tbl_pa);
+			child = mmu_lpae_ttbl_find(tbl_pa);
 			if (child->parent == parent) {
 				return child;
 			}
@@ -345,19 +333,19 @@ struct cpu_ttbl *cpu_mmu_ttbl_get_child(struct cpu_ttbl *parent,
 		return NULL;
 	}
 
-	child = cpu_mmu_ttbl_alloc(parent->stage);
+	child = mmu_lpae_ttbl_alloc(parent->stage);
 	if (!child) {
 		return NULL;
 	}
 
-	if ((rc = cpu_mmu_ttbl_attach(parent, map_ia, child))) {
-		cpu_mmu_ttbl_free(child);
+	if ((rc = mmu_lpae_ttbl_attach(parent, map_ia, child))) {
+		mmu_lpae_ttbl_free(child);
 	}
 
 	return child;
 }
 
-u32 cpu_mmu_best_page_size(physical_addr_t ia, 
+u32 mmu_lpae_best_page_size(physical_addr_t ia, 
 			   physical_addr_t oa, 
 			   u32 availsz)
 {
@@ -376,7 +364,7 @@ u32 cpu_mmu_best_page_size(physical_addr_t ia,
 	return TTBL_L3_BLOCK_SIZE;
 }
 
-int cpu_mmu_get_page(struct cpu_ttbl * ttbl, 
+int mmu_lpae_get_page(struct cpu_ttbl * ttbl, 
 		     physical_addr_t ia, 
 		     struct cpu_page * pg)
 {
@@ -389,7 +377,7 @@ int cpu_mmu_get_page(struct cpu_ttbl * ttbl,
 		return VMM_EFAIL;
 	}
 
-	index = cpu_mmu_level_index(ia, ttbl->level);
+	index = mmu_lpae_level_index(ia, ttbl->level);
 	tte = (u64 *)ttbl->tbl_va;
 
 	vmm_spin_lock_irqsave(&ttbl->tbl_lock, flags);
@@ -407,18 +395,18 @@ int cpu_mmu_get_page(struct cpu_ttbl * ttbl,
 	if ((ttbl->level < TTBL_LAST_LEVEL) && 
 	    (tte[index] & TTBL_TABLE_MASK)) {
 		vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
-		child = cpu_mmu_ttbl_get_child(ttbl, ia, FALSE);
+		child = mmu_lpae_ttbl_get_child(ttbl, ia, FALSE);
 		if (!child) {
 			return VMM_EFAIL;
 		}
-		return cpu_mmu_get_page(child, ia, pg);
+		return mmu_lpae_get_page(child, ia, pg);
 	}
 
 	memset(pg, 0, sizeof(struct cpu_page));
 
-	pg->ia = ia & cpu_mmu_level_map_mask(ttbl->level);
+	pg->ia = ia & mmu_lpae_level_map_mask(ttbl->level);
 	pg->oa = tte[index] & TTBL_OUTADDR_MASK;
-	pg->sz = cpu_mmu_level_block_size(ttbl->level);
+	pg->sz = mmu_lpae_level_block_size(ttbl->level);
 
 	if (ttbl->stage == TTBL_STAGE2) {
 		pg->xn = (tte[index] & TTBL_STAGE2_UPPER_XN_MASK) >> 
@@ -459,7 +447,7 @@ int cpu_mmu_get_page(struct cpu_ttbl * ttbl,
 	return VMM_OK;
 }
 
-int cpu_mmu_unmap_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
+int mmu_lpae_unmap_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
 {
 	int index, rc;
 	bool free_ttbl;
@@ -471,30 +459,30 @@ int cpu_mmu_unmap_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
 	if (!ttbl || !pg) {
 		return VMM_EFAIL;
 	}
-	if (!cpu_mmu_valid_block_size(pg->sz)) {
+	if (!mmu_lpae_valid_block_size(pg->sz)) {
 		return VMM_EFAIL;
 	}
 
-	blksz = cpu_mmu_level_block_size(ttbl->level);
+	blksz = mmu_lpae_level_block_size(ttbl->level);
 
 	if (pg->sz > blksz ) {
 		return VMM_EFAIL;
 	}
 
 	if (pg->sz < blksz) {
-		child = cpu_mmu_ttbl_get_child(ttbl, pg->ia, FALSE);
+		child = mmu_lpae_ttbl_get_child(ttbl, pg->ia, FALSE);
 		if (!child) {
 			return VMM_EFAIL;
 		}
-		rc = cpu_mmu_unmap_page(child, pg);
+		rc = mmu_lpae_unmap_page(child, pg);
 		if ((ttbl->tte_cnt == 0) && 
 		    (ttbl->level > TTBL_FIRST_LEVEL)) {
-			cpu_mmu_ttbl_free(ttbl);
+			mmu_lpae_ttbl_free(ttbl);
 		}
 		return rc;
 	}
 
-	index = cpu_mmu_level_index(pg->ia, ttbl->level);
+	index = mmu_lpae_level_index(pg->ia, ttbl->level);
 	tte = (u64 *)ttbl->tbl_va;
 
 	vmm_spin_lock_irqsave(&ttbl->tbl_lock, flags);
@@ -513,9 +501,9 @@ int cpu_mmu_unmap_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
 	cpu_mmu_sync_tte(&tte[index]);
 
 	if (ttbl->stage == TTBL_STAGE2) {
-		invalid_nhtlb();
+		cpu_invalid_all_guest_tlbs();
 	} else {
-		invalid_htlb_mva(((virtual_addr_t)pg->ia));
+		cpu_invalid_va_hypervisor_tlb(((virtual_addr_t)pg->ia));
 	}
 
 	ttbl->tte_cnt--;
@@ -527,13 +515,13 @@ int cpu_mmu_unmap_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
 	vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
 
 	if (free_ttbl) {
-		cpu_mmu_ttbl_free(ttbl);
+		mmu_lpae_ttbl_free(ttbl);
 	}
 
 	return VMM_OK;
 }
 
-int cpu_mmu_map_page(struct cpu_ttbl * ttbl, struct cpu_page *pg)
+int mmu_lpae_map_page(struct cpu_ttbl * ttbl, struct cpu_page *pg)
 {
 	int index;
 	u64 *tte;
@@ -544,25 +532,25 @@ int cpu_mmu_map_page(struct cpu_ttbl * ttbl, struct cpu_page *pg)
 	if (!ttbl || !pg) {
 		return VMM_EFAIL;
 	}
-	if (!cpu_mmu_valid_block_size(pg->sz)) {
+	if (!mmu_lpae_valid_block_size(pg->sz)) {
 		return VMM_EINVALID;
 	}
 
-	blksz = cpu_mmu_level_block_size(ttbl->level);
+	blksz = mmu_lpae_level_block_size(ttbl->level);
 
 	if (pg->sz > blksz ) {
 		return VMM_EFAIL;
 	}
 
 	if (pg->sz < blksz) {
-		child = cpu_mmu_ttbl_get_child(ttbl, pg->ia, TRUE);
+		child = mmu_lpae_ttbl_get_child(ttbl, pg->ia, TRUE);
 		if (!child) {
 			return VMM_EFAIL;
 		}
-		return cpu_mmu_map_page(child, pg);
+		return mmu_lpae_map_page(child, pg);
 	}
 
-	index = cpu_mmu_level_index(pg->ia, ttbl->level);
+	index = mmu_lpae_level_index(pg->ia, ttbl->level);
 	tte = (u64 *)ttbl->tbl_va;
 
 	vmm_spin_lock_irqsave(&ttbl->tbl_lock, flags);
@@ -611,7 +599,7 @@ int cpu_mmu_map_page(struct cpu_ttbl * ttbl, struct cpu_page *pg)
 	}
 
 	tte[index] |= pg->oa & 
-		(cpu_mmu_level_map_mask(ttbl->level) & TTBL_OUTADDR_MASK);
+		(mmu_lpae_level_map_mask(ttbl->level) & TTBL_OUTADDR_MASK);
 
 	if (ttbl->level == TTBL_LAST_LEVEL) {
 		tte[index] |= TTBL_TABLE_MASK;
@@ -627,32 +615,32 @@ int cpu_mmu_map_page(struct cpu_ttbl * ttbl, struct cpu_page *pg)
 	return VMM_OK;
 }
 
-int cpu_mmu_get_hypervisor_page(virtual_addr_t va, struct cpu_page *pg)
+int mmu_lpae_get_hypervisor_page(virtual_addr_t va, struct cpu_page *pg)
 {
-	return cpu_mmu_get_page(mmuctrl.hyp_ttbl, va, pg);
+	return mmu_lpae_get_page(mmuctrl.hyp_ttbl, va, pg);
 }
 
-int cpu_mmu_unmap_hypervisor_page(struct cpu_page *pg)
+int mmu_lpae_unmap_hypervisor_page(struct cpu_page *pg)
 {
-	return cpu_mmu_unmap_page(mmuctrl.hyp_ttbl, pg);
+	return mmu_lpae_unmap_page(mmuctrl.hyp_ttbl, pg);
 }
 
-int cpu_mmu_map_hypervisor_page(struct cpu_page *pg)
+int mmu_lpae_map_hypervisor_page(struct cpu_page *pg)
 {
-	return cpu_mmu_map_page(mmuctrl.hyp_ttbl, pg);
+	return mmu_lpae_map_page(mmuctrl.hyp_ttbl, pg);
 }
 
-struct cpu_ttbl *cpu_mmu_stage2_curttbl(void)
+struct cpu_ttbl *mmu_lpae_stage2_curttbl(void)
 {
-	return cpu_mmu_ttbl_find(read_vttbr() & VTTBR_BADDR_MASK);
+	return mmu_lpae_ttbl_find(read_vttbr() & VTTBR_BADDR_MASK);
 }
 
-u8 cpu_mmu_stage2_curvmid(void)
+u8 mmu_lpae_stage2_curvmid(void)
 {
 	return (read_vttbr() & VTTBR_VMID_MASK) >> VTTBR_VMID_SHIFT;
 }
 
-int cpu_mmu_stage2_chttbl(u8 vmid, struct cpu_ttbl *ttbl)
+int mmu_lpae_stage2_chttbl(u8 vmid, struct cpu_ttbl *ttbl)
 {
 	u64 vttbr = 0x0;
 
@@ -684,6 +672,7 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	}
 	p.xn = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
 	p.ns = 1;
+	p.sh = TTBL_SH_INNER_SHAREABLE; 
 
 	if ((mem_flags & VMM_MEMORY_CACHEABLE) && 
 	    (mem_flags & VMM_MEMORY_BUFFERABLE)) {
@@ -696,7 +685,7 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 		p.aindex = AINDEX_SO;
 	}
 
-	return cpu_mmu_map_hypervisor_page(&p);
+	return mmu_lpae_map_hypervisor_page(&p);
 }
 
 int arch_cpu_aspace_unmap(virtual_addr_t page_va)
@@ -704,12 +693,12 @@ int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 	int rc;
 	struct cpu_page p;
 
-	rc = cpu_mmu_get_hypervisor_page(page_va, &p);
+	rc = mmu_lpae_get_hypervisor_page(page_va, &p);
 	if (rc) {
 		return rc;
 	}
 
-	return cpu_mmu_unmap_hypervisor_page(&p);
+	return mmu_lpae_unmap_hypervisor_page(&p);
 }
 
 int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t *pa)
@@ -717,7 +706,7 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t *pa)
 	int rc = VMM_OK;
 	struct cpu_page p;
 
-	if ((rc = cpu_mmu_get_hypervisor_page(va, &p))) {
+	if ((rc = mmu_lpae_get_hypervisor_page(va, &p))) {
 		return rc;
 	}
 
@@ -855,7 +844,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 			    == ttbl->tbl_pa) {
 				ttbl->map_ia = parent->map_ia;
 				ttbl->map_ia += ((u64)t) << 
-				cpu_mmu_level_index_shift(parent->level);
+				mmu_lpae_level_index_shift(parent->level);
 				break;
 			}
 		}
@@ -888,8 +877,8 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		sz = arch_code_size();
 		while (sz) {
 			memset(&hyppg, 0, sizeof(hyppg));
-			if (!(rc = cpu_mmu_get_hypervisor_page(va, &hyppg))) {
-				rc = cpu_mmu_unmap_hypervisor_page(&hyppg);
+			if (!(rc = mmu_lpae_get_hypervisor_page(va, &hyppg))) {
+				rc = mmu_lpae_unmap_hypervisor_page(&hyppg);
 			}
 			if (rc) {
 				goto mmu_init_error;
@@ -897,7 +886,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 			sz -= TTBL_L3_BLOCK_SIZE;
 			va += TTBL_L3_BLOCK_SIZE;
 		}
-		invalid_tlb();
+		cpu_invalid_all_tlbs();
 	}
 #endif
 
@@ -915,10 +904,11 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		hyppg.ia = va;
 		hyppg.sz = TTBL_L3_BLOCK_SIZE;
 		hyppg.af = 1;
+		hyppg.sh = TTBL_SH_INNER_SHAREABLE;
 		hyppg.ap = TTBL_AP_SRW_U;
 		hyppg.ns = 1;
 		hyppg.aindex = AINDEX_NORMAL_WB;
-		if ((rc = cpu_mmu_map_hypervisor_page(&hyppg))) {
+		if ((rc = mmu_lpae_map_hypervisor_page(&hyppg))) {
 			goto mmu_init_error;
 		}
 		sz -= TTBL_L3_BLOCK_SIZE;
@@ -945,4 +935,5 @@ int __cpuinit arch_cpu_aspace_secondary_init(void)
 	/* Nothing to do here. */
 	return VMM_OK;
 }
+
 

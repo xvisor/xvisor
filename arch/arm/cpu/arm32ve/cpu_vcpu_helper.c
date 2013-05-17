@@ -34,6 +34,7 @@
 #include <cpu_vcpu_helper.h>
 #include <generic_timer.h>
 #include <arm_features.h>
+#include <mmu_lpae.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
@@ -441,7 +442,7 @@ int arch_guest_init(struct vmm_guest *guest)
 			return VMM_EFAIL;
 		}
 		INIT_SPIN_LOCK(&arm_guest_priv(guest)->ttbl_lock);
-		arm_guest_priv(guest)->ttbl = cpu_mmu_ttbl_alloc(TTBL_STAGE2);
+		arm_guest_priv(guest)->ttbl = mmu_lpae_ttbl_alloc(TTBL_STAGE2);
 	}
 	return VMM_OK;
 }
@@ -451,7 +452,7 @@ int arch_guest_deinit(struct vmm_guest *guest)
 	int rc;
 
 	if (guest->arch_priv) {
-		if ((rc = cpu_mmu_ttbl_free(arm_guest_priv(guest)->ttbl))) {
+		if ((rc = mmu_lpae_ttbl_free(arm_guest_priv(guest)->ttbl))) {
 			return rc;
 		}
 

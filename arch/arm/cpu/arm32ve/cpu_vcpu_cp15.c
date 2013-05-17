@@ -32,12 +32,12 @@
 #include <libs/stringlib.h>
 #include <emulate_arm.h>
 #include <emulate_thumb.h>
-#include <cpu_mmu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_cp15.h>
 #include <arm_features.h>
+#include <mmu_lpae.h>
 
 static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu, 
 				    arch_regs_t *regs,
@@ -103,7 +103,7 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 	}
 
 	vmm_spin_lock_irqsave(&arm_guest_priv(vcpu->guest)->ttbl_lock, f);
-	rc = cpu_mmu_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
+	rc = mmu_lpae_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
 	vmm_spin_unlock_irqrestore(&arm_guest_priv(vcpu->guest)->ttbl_lock, f);
 
 	return rc;
@@ -469,7 +469,7 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		arm_priv(tvcpu)->cp15.c13_tls3 = read_tpidrprw();
 	}
 	if (vcpu->is_normal) {
-		cpu_mmu_stage2_chttbl(vcpu->guest->id, 
+		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
 				      arm_guest_priv(vcpu->guest)->ttbl);
 		write_vpidr(arm_priv(vcpu)->cp15.c0_cpuid);
 		if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {

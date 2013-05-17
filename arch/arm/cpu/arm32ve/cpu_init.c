@@ -25,7 +25,6 @@
 #include <vmm_smp.h>
 #include <vmm_main.h>
 #include <arch_cpu.h>
-#include <cpu_mmu.h>
 
 extern u8 _code_start;
 extern u8 _code_end;
