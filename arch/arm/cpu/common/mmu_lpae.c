@@ -632,23 +632,17 @@ int mmu_lpae_map_hypervisor_page(struct cpu_page *pg)
 
 struct cpu_ttbl *mmu_lpae_stage2_curttbl(void)
 {
-	return mmu_lpae_ttbl_find(read_vttbr() & VTTBR_BADDR_MASK);
+	return mmu_lpae_ttbl_find(cpu_stage2_ttbl_pa());
 }
 
 u8 mmu_lpae_stage2_curvmid(void)
 {
-	return (read_vttbr() & VTTBR_VMID_MASK) >> VTTBR_VMID_SHIFT;
+	return cpu_stage2_vmid();
 }
 
 int mmu_lpae_stage2_chttbl(u8 vmid, struct cpu_ttbl *ttbl)
 {
-	u64 vttbr = 0x0;
-
-	vttbr |= ((u64)vmid << VTTBR_VMID_SHIFT) & VTTBR_VMID_MASK;
-	vttbr |= ttbl->tbl_pa  & VTTBR_BADDR_MASK;
-
-	write_vttbr(vttbr);
-
+	cpu_stage2_update(ttbl->tbl_pa, vmid);
 	return VMM_OK;
 }
 
