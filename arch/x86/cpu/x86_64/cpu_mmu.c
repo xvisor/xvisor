@@ -111,46 +111,37 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 {
 	u32 offset;
 	union page pg;
-	virtual_size_t sz = VMM_PAGE_SIZE;
-	int i;
 
-	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
+	offset = VIRT_TO_PGTI(page_va) + (VIRT_TO_PGDI(page_va) * 512);
+	memset((void *)&pg, 0, sizeof(pg));
+	pg.bits.paddr = (page_pa >> PAGE_SHIFT);
+	pg.bits.present = 1;
+	pg.bits.rw = 1;
+	pgti[offset] = pg._val;
 
-	for (i = 0; i < sz / PAGE_SIZE; i++) {
-		offset = VIRT_TO_PGTI(page_va) + (VIRT_TO_PGDI(page_va) * 512);
-		memset((void *)&pg, 0, sizeof(pg));
-		pg.bits.paddr = (page_pa >> PAGE_SHIFT);
-		pg.bits.present = 1;
-		pg.bits.rw = 1;
-		pgti[offset] = pg._val;
+	memset((void *)&pg, 0, sizeof(pg));
+	pg.bits.paddr = VIRT_TO_PHYS((u64)(&pgti[offset])
+				     & PAGE_MASK) >> PAGE_SHIFT;
+	pg.bits.present = 1;
+	pg.bits.rw = 1;
+	offset = VIRT_TO_PGDI(page_va);
+	pgdi[offset] = pg._val;
 
-		memset((void *)&pg, 0, sizeof(pg));
-		pg.bits.paddr = VIRT_TO_PHYS((u64)(&pgti[offset])
-					     & PAGE_MASK) >> PAGE_SHIFT;
-		pg.bits.present = 1;
-		pg.bits.rw = 1;
-		offset = VIRT_TO_PGDI(page_va);
-		pgdi[offset] = pg._val;
+	memset((void *)&pg, 0, sizeof(pg));
+	pg.bits.paddr = VIRT_TO_PHYS((u64)(&pgdi[offset])
+				     & PAGE_MASK) >> PAGE_SHIFT;
+	pg.bits.present = 1;
+	pg.bits.rw = 1;
+	offset = VIRT_TO_PGDP(page_va);
+	pgdp[offset] = pg._val;
 
-		memset((void *)&pg, 0, sizeof(pg));
-		pg.bits.paddr = VIRT_TO_PHYS((u64)(&pgdi[offset])
-					     & PAGE_MASK) >> PAGE_SHIFT;
-		pg.bits.present = 1;
-		pg.bits.rw = 1;
-		offset = VIRT_TO_PGDP(page_va);
-		pgdp[offset] = pg._val;
-
-		memset((void *)&pg, 0, sizeof(pg));
-		pg.bits.paddr = VIRT_TO_PHYS((u64)(&pgdp[offset])
-					     & PAGE_MASK) >> PAGE_SHIFT;
-		pg.bits.present = 1;
-		pg.bits.rw = 1;
-		offset = VIRT_TO_PML4(page_va);
-		pml4[offset] = pg._val;
-
-		page_va += PAGE_SIZE;
-		page_pa += PAGE_SIZE;
-	}
+	memset((void *)&pg, 0, sizeof(pg));
+	pg.bits.paddr = VIRT_TO_PHYS((u64)(&pgdp[offset])
+				     & PAGE_MASK) >> PAGE_SHIFT;
+	pg.bits.present = 1;
+	pg.bits.rw = 1;
+	offset = VIRT_TO_PML4(page_va);
+	pml4[offset] = pg._val;
 
 	return VMM_OK;
 }
@@ -159,22 +150,16 @@ int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 {
 	u32 offset;
 	union page *pg;
-	virtual_size_t sz = VMM_PAGE_SIZE;
-	int i;
 
-	for (i = 0; i < sz / PAGE_SIZE; i++) {
-		/*
-		 * FIXME: As all the PGTI is freed, mark PGD, PMD, and PML
-		 * as not present.
-		 */
-		offset = VIRT_TO_PGTI(page_va) + (VIRT_TO_PGDI(page_va) * 512);
-		pg = (union page *)&pgti[offset];
-		pg->_val = 0;
+	/*
+	 * FIXME: As all the PGTI is freed, mark PGD, PMD, and PML
+	 * as not present.
+	 */
+	offset = VIRT_TO_PGTI(page_va) + (VIRT_TO_PGDI(page_va) * 512);
+	pg = (union page *)&pgti[offset];
+	pg->_val = 0;
 
-		invalidate_vaddr_tlb(page_va);
-
-		page_va += PAGE_SIZE;
-	}
+	invalidate_vaddr_tlb(page_va);
 
 	return VMM_OK;
 }
@@ -190,8 +175,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	u32 pg_tab_sz = 0, tsize2map;
 	physical_addr_t pa;
 
-	tsize2map = (CONFIG_VAPOOL_SIZE_MB << 20) + arch_code_size() + (*core_resv_sz);
-
+	tsize2map = (CONFIG_VAPOOL_SIZE_MB << 20);
 	tsize2map = VMM_ROUNDUP2_PAGE_SIZE(tsize2map);
 
 	/*
@@ -211,24 +195,29 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	pg_tab_sz++;
 
 	/*
+	 * We keep pagetables at the end of code so move the core
+	 * reserved space after the page tables.
+	 */
+	*arch_resv_sz = (pg_tab_sz * PAGE_SIZE);
+	*arch_resv_va = arch_code_vaddr_start() + arch_code_size();
+	*arch_resv_pa = arch_code_paddr_start() + arch_code_size(); 
+	*core_resv_va = *arch_resv_va + *arch_resv_sz;
+	*core_resv_pa = *arch_resv_pa + *arch_resv_sz;
+
+	/*
 	 * Boot page tables are only till end of VMM. New
 	 * page table start at the end of code. Before accessing
 	 * them we need to map them.
 	 */
-	create_cpu_boot_pgtable_entry((virtual_addr_t)&_code_end,
-				      (physical_addr_t)&_code_end,
-				      (pg_tab_sz * VMM_PAGE_SIZE), 0);
+	create_cpu_boot_pgtable_entry(*arch_resv_va, 
+				      *arch_resv_pa, *arch_resv_sz, 0);
 
 	pgti = (u64 *)(arch_code_vaddr_start() + arch_code_size());
 
-	cva = arch_code_vaddr_start();
-
-	eva = cva + ((CONFIG_VAPOOL_SIZE_MB << 20) + (arch_code_size() 
-		  + (*core_resv_sz) + (pg_tab_sz * PAGE_SIZE)));
-
-	pa = *core_resv_pa;
-
 	/* Create the page table entries for all the virtual addresses. */
+	pa = arch_code_paddr_start();
+	cva = arch_code_vaddr_start();
+	eva = cva + arch_code_size() + (pg_tab_sz * PAGE_SIZE) + *core_resv_sz;
 	for (; cva < eva;) {
 		if (arch_cpu_aspace_map(cva, pa, 0) != VMM_OK)
 			return VMM_EFAIL;
@@ -237,18 +226,16 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		pa += VMM_PAGE_SIZE;
 	}
 
-	/*
-	 * We keep pagetables at the end of code so move the core
-	 * reserved space after the page tables.
-	 */
-	*arch_resv_sz = (pg_tab_sz * PAGE_SIZE);
-	*arch_resv_va = *core_resv_va;
-	*arch_resv_pa = *core_resv_pa + arch_code_size(); 
-	*core_resv_va += (pg_tab_sz * PAGE_SIZE);
-	*core_resv_pa += (pg_tab_sz * PAGE_SIZE) + arch_code_size();
-
         /* Switch over to new page table. */
         switch_to_pagetable(VIRT_TO_PHYS(&pml4[0]));
+
+	/* Nuke entier all possible tlb enteries */
+	cva = arch_code_vaddr_start();
+	eva = cva + (CONFIG_VAPOOL_SIZE_MB << 20);
+	for (; cva < eva;) {
+		invalidate_vaddr_tlb(cva);
+		cva += VMM_PAGE_SIZE;
+	}
 
 	return VMM_OK;
 }
