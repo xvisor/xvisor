@@ -89,15 +89,16 @@ S:	Able to boot multiple Realview-PB-A8 linux guest on Realview-PB-A8
 S:	Able to boot VExpress-A9 linux guest on Realview-PB-A8 emulated by QEMU
 D:	docs/arm/realview-pb-a8.txt
 
-M:	Sun4i SOC (or Allwinner A10) (Hackberry development board)
+M:	Sun4i SOC (or Allwinner A10) (Hackberry or pcduino board)
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A8
-V:	Rhombus Tech (http://rhombus-tech.net/)
+V:	Allwinner Technology Co. (http://www.allwinner.com/product/A10.php)
 E:	---
 G:	Realview-PB-A8 and VExpress-A9 guests supported
 S:	Able to boot multiple Realview-PB-A8 linux guest on Hackberry board
 S:	Able to boot VExpress-A9 linux guest on Hackberry board
 D:	docs/arm/sun4i-hackberry.txt
+D:	docs/arm/sun4i-pcduino.txt
 
 M:	VersatilePB
 A:	ARM 32-bit (ARMv5)
