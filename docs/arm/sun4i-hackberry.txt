@@ -1,7 +1,8 @@
-	Xvisor on Hackberry (or Sun4i) using SD Booting 
+	Xvisor on Allwinner A10 board (or Sun4i) using SD Booting 
 
-This section of readme explains how to build & run Xvisor on actual Hackberry
-board using SD booting feature of Sun4i SOC.
+This section of readme explains how to build & run Xvisor on actual Allwinner
+A10 boards (Hackberry or pcduino for example) using SD booting feature of
+Sun4i SOC.
 
 By default, Xvisor for Sun4i supports Realview-PB-A8 guest so we will show how 
 to run Basic Test on Realview-PB-A8 guest. For more info on Basic Test refer 
@@ -17,7 +18,8 @@ partition of SD card:
  2) Patched guest binary 
     (Patched Realview-pb-a8 Basic Test image, arm_test.bin.patched)
 
-Following are steps to create these images and then boot Xvisor on Hackberry:
+Following are steps to create these images and then boot Xvisor on Allwinner
+A10:
 
   [1. Build environment]
   # CROSS_COMPILE=arm-none-linux-gnueabi-
@@ -37,7 +39,7 @@ Following are steps to create these images and then boot Xvisor on Hackberry:
   [6. Build ARM Basic Test for Realview-PB-A8 Guest, this creates arm_test.bin.patched]
   # make -C tests/arm32/realview-pb-a8/basic
   
-  [7. Unplug bootable SD card from Hackberry and plug it on your development machine]
+  [7. Unplug bootable SD card from the A10 board and plug it on your development machine]
 
   [8. Mount boot partition (or partition 0) of SD card on your development machine]
 
@@ -55,11 +57,11 @@ Following are steps to create these images and then boot Xvisor on Hackberry:
 
   [11. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [12. Unplug SD card from your development machine and plug it back on Hackberry]
+  [12. Unplug SD card from your development machine and plug it back on A10 board]
 
-  [13. Connect to serial port of Hackberry using Putty or Minicom]
+  [13. Connect to serial port of A10 board using Putty or Minicom]
 
-  [14. Power-up or Reset Hackberry and press any key when U-Boot shows auto-boot count down]
+  [14. Power-up or Reset A10 board and press any key when U-Boot shows auto-boot count down]
 
   [15. Enable MMC interface from U-Boot command line]
   sun4i# mmc dev 0:0
