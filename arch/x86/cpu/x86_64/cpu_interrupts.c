@@ -24,13 +24,12 @@
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_host_irq.h>
+#include <vmm_host_aspace.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
 #include <libs/stringlib.h>
 #include <arch_cpu.h>
 #include <arch_sections.h>
-#include <cpu_timer.h>
-#include <cpu_mmu.h>
 #include <cpu_interrupts.h>
 
 #undef __DEBUG
@@ -46,6 +45,12 @@ static struct gate_descriptor int_desc_table[256] __attribute__((aligned(8)));
 static struct idt64_ptr iptr;
 static struct tss_64 vmm_tss __attribute__((aligned(8)));
 extern struct tss64_desc __xvisor_tss_64_desc;
+
+#define VIRT_TO_PHYS(ptr)	({ \
+				physical_addr_t pa = 0x0; \
+				vmm_host_va2pa((virtual_addr_t)ptr, &pa); \
+				pa; \
+				})
 
 static int install_idt(void)
 {
