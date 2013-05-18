@@ -54,11 +54,11 @@
 
 #include <linux/clk.h>
 
-#define EPITCR		0x00
-#define EPITSR		0x04
-#define EPITLR		0x08
-#define EPITCMPR	0x0c
-#define EPITCNR		0x10
+#define EPITCR				(0x00)
+#define EPITSR				(0x04)
+#define EPITLR				(0x08)
+#define EPITCMPR			(0x0c)
+#define EPITCNR				(0x10)
 
 #define EPITCR_EN			(1 << 0)
 #define EPITCR_ENMOD			(1 << 1)
@@ -82,8 +82,8 @@
 
 #define EPITSR_OCIF			(1 << 0)
 
-#define MIN_REG_COMPARE 0x800
-#define MAX_REG_COMPARE 0xfffffffe
+#define MIN_REG_COMPARE			(0x800)
+#define MAX_REG_COMPARE			(0xfffffffe)
 
 struct epit_clocksource {
 	u32 cnt_high;
@@ -101,10 +101,13 @@ static u64 epit_clksrc_read(struct vmm_clocksource *cs)
 	 * Get the current count. As the timer is decrementing we 
 	 * invert the result.
 	 */
-	temp = 0xffffffff - vmm_readl((void *)(ecs->base + EPITCNR));
+	temp = ~vmm_readl((void *)(ecs->base + EPITCNR));
 
 	/*
 	 * if the timer wrapped around we increase the high 32 bits part
+	 * Note: the clock source is read fairly often and therefore it
+	 *       should not be possible for the 32 bits counter to wrap
+	 *       arround several time between 2 reads.
 	 */
 	if (temp < ecs->cnt_low) {
 		ecs->cnt_high++;
@@ -112,44 +115,50 @@ static u64 epit_clksrc_read(struct vmm_clocksource *cs)
 
 	ecs->cnt_low = temp;
 
+	/*
+	 * We can combine the two 32 bits couters to make a 64 bits
+	 * counter.
+	 */
 	return (((u64) ecs->cnt_high) << 32) | ecs->cnt_low;
 }
 
 int __init epit_clocksource_init(void)
 {
-	int rc;
+	int rc = VMM_ENODEV;
 	u32 clock;
 	struct vmm_devtree_node *node;
 	struct epit_clocksource *ecs;
 
+	/* find the host node */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
 	if (!node) {
-		return VMM_ENODEV;
+		goto fail;
 	}
 
-	/* find a compatible node */
+	/* find a epit compatible node */
 	node = vmm_devtree_find_compatible(node, NULL, "freescale,epit-timer");
 	if (!node) {
-		return VMM_ENODEV;
+		goto fail;
 	}
 
-	/* Read clock frequency */
+	/* Read clock frequency from node */
 	rc = vmm_devtree_clock_frequency(node, &clock);
 	if (rc) {
-		return rc;
+		goto fail;
 	}
 
+	/* allocate our struct */
 	ecs = vmm_zalloc(sizeof(struct epit_clocksource));
 	if (!ecs) {
-		return VMM_ENOMEM;
+		rc = VMM_ENOMEM;
+		goto fail;
 	}
 
 	/* Map timer registers */
 	rc = vmm_devtree_regmap(node, &ecs->base, 0);
 	if (rc) {
-		vmm_free(ecs);
-		return rc;
+		goto regmap_fail;
 	}
 
 	/* Setup clocksource */
@@ -165,11 +174,16 @@ int __init epit_clocksource_init(void)
 	/* Register clocksource */
 	rc = vmm_clocksource_register(&ecs->clksrc);
 	if (rc) {
-		vmm_devtree_regunmap(node, ecs->base, 0);
-		vmm_free(ecs);
-		return rc;
+		goto register_fail;
 	}
 
+	return VMM_OK;
+
+ register_fail:
+	vmm_devtree_regunmap(node, ecs->base, 0);
+ regmap_fail:
+	vmm_free(ecs);
+ fail:
 	return rc;
 }
 
@@ -228,11 +242,24 @@ static void epit_set_mode(enum vmm_clockchip_mode mode,
 	 */
 	arch_cpu_irq_save(flags);
 
-	/* Disable interrupt in GPT module */
+	/* Disable interrupt */
 	epit_irq_disable(ecc);
 
 	if (mode != ecc->clockevent_mode) {
-		/* Set event time into far-far future */
+		/*
+		 * Set event time into far-far future.
+		 * The further we can go is to let the timer wrap arround
+		 * once.
+		 */
+
+		/* read the actual counter */
+		unsigned long tcmp = vmm_readl((void *)(ecc->base + EPITCNR));
+
+		/*
+		 * add 1 (as the counter is decrementing) and write the
+		 * value.
+		 */
+		vmm_writel(tcmp + 1, (void *)(ecc->base + EPITCMPR));
 
 		/* Clear pending interrupt */
 		epit_irq_acknowledge(ecc);
@@ -282,52 +309,57 @@ static vmm_irq_return_t epit_timer_interrupt(int irq, void *dev)
 
 int __cpuinit epit_clockchip_init(void)
 {
-	int rc;
+	int rc = VMM_ENODEV;
 	u32 clock, hirq, timer_num, *val;
 	struct vmm_devtree_node *node;
 	struct epit_clockchip *ecc;
 
+	/* find the host node */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
 	if (!node) {
-		return VMM_ENODEV;
+		goto fail;
 	}
 
+	/* find the first epit compatible node */
 	node = vmm_devtree_find_compatible(node, NULL, "freescale,epit-timer");
 	if (!node) {
-		return VMM_ENODEV;
+		goto fail;
 	}
 
 	/* Read clock frequency */
 	rc = vmm_devtree_clock_frequency(node, &clock);
 	if (rc) {
-		return rc;
+		goto fail;
 	}
 
 	/* Read timer_num attribute */
 	val = vmm_devtree_attrval(node, "timer_num");
 	if (!val) {
-		return VMM_ENOTAVAIL;
+		rc = VMM_ENOTAVAIL;
+		goto fail;
 	}
 	timer_num = *val;
 
 	/* Read irq attribute */
 	rc = vmm_devtree_irq_get(node, &hirq, 0);
 	if (rc) {
-		return rc;
+		goto fail;
 	}
 
+	/* allocate our struct */
 	ecc = vmm_zalloc(sizeof(struct epit_clockchip));
 	if (!ecc) {
-		return VMM_ENOMEM;
+		rc = VMM_ENOMEM;
+		goto fail;
 	}
 
 	/* Map timer registers */
 	rc = vmm_devtree_regmap(node, &ecc->base, 0);
 	if (rc) {
-		vmm_free(ecc);
-		return rc;
+		goto regmap_fail;
 	}
+
 	ecc->match_mask = 1 << timer_num;
 	ecc->timer_num = timer_num;
 
@@ -344,15 +376,22 @@ int __cpuinit epit_clockchip_init(void)
 							   &ecc->clkchip);
 	ecc->clkchip.max_delta_ns = vmm_clockchip_delta2ns(MAX_REG_COMPARE,
 							   &ecc->clkchip);
-	ecc->clkchip.set_mode = &epit_set_mode;
-	ecc->clkchip.set_next_event = &epit_set_next_event;
+	ecc->clkchip.set_mode = epit_set_mode;
+	ecc->clkchip.set_next_event = epit_set_next_event;
 	ecc->clkchip.priv = ecc;
 
 	/*
 	 * Initialise to a known state (all timers off, and timing reset)
 	 */
 	vmm_writel(0x0, (void *)(ecc->base + EPITCR));
+	/*
+	 * Initialize the load register to the max value to decrement.
+	 */
 	vmm_writel(0xffffffff, (void *)(ecc->base + EPITLR));
+	/*
+	 * enable the timer, set it to the high reference clock,
+	 * allow the timer to work in WAIT mode.
+	 */
 	vmm_writel(EPITCR_EN | EPITCR_CLKSRC_REF_HIGH | EPITCR_WAITEN,
 		   (void *)(ecc->base + EPITCR));
 
@@ -360,19 +399,23 @@ int __cpuinit epit_clockchip_init(void)
 	rc = vmm_host_irq_register(hirq, ecc->clkchip.name,
 				   &epit_timer_interrupt, ecc);
 	if (rc) {
-		vmm_devtree_regunmap(node, ecc->base, 0);
-		vmm_free(ecc);
-		return rc;
+		goto irq_fail;
 	}
 
 	/* Register clockchip */
 	rc = vmm_clockchip_register(&ecc->clkchip);
 	if (rc) {
-		vmm_host_irq_unregister(hirq, ecc);
-		vmm_devtree_regunmap(node, ecc->base, 0);
-		vmm_free(ecc);
-		return rc;
+		goto register_fail;
 	}
 
+	return VMM_OK;
+
+ register_fail:
+	vmm_host_irq_unregister(hirq, ecc);
+ irq_fail:
+	vmm_devtree_regunmap(node, ecc->base, 0);
+ regmap_fail:
+	vmm_free(ecc);
+ fail:
 	return rc;
 }
