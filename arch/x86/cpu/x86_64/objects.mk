@@ -23,7 +23,7 @@
 # */
 
 cpu-cflags +=-finline-functions -O0 -mcmodel=large
-cpu-cppflags +=-DCPU_TEXT_LMA=0x100000
+cpu-cppflags +=-DCPU_TEXT_LMA=0x200000
 
 cpu-objs-y+= start.o
 

@@ -94,19 +94,11 @@ create_page_table_entry:
         movl    %eax, -12(%ebp) /* NR_PAGES to MAP */
 
 __fill_IMP_table:
-        movl    -4(%ebp), %eax
-        shrl    $PGDI_SHIFT, %eax
-        andl    $(~PGTREE_MASK), %eax /* Page directory index */
-        movl    %eax, -16(%ebp)
-
-        /* Populate the page table */
+        /* Populate pgti */
         movl    -4(%ebp), %ebx
         shrl    $PGTI_SHIFT, %ebx
-        andl    $(~PGTREE_MASK), %ebx /* ebx now has page table index. */
-        movl    $512, %eax
-        movl    -16(%ebp), %edx
-        mull    %edx /* 512 * pgdi */
-        addl    %ebx, %eax /* pgti + (512 * pdgi) */
+        andl    $(~PGTREE_MASK), %ebx /* ebx now has pgti index. */
+	movl	%ebx, %eax
         movl    -8(%ebp), %ecx
         andl    $PAGE_MASK, %ecx
         or      $0x3, %ecx /* page table entry present and its r/w */
@@ -114,8 +106,10 @@ __fill_IMP_table:
         xor     %ecx, %ecx
         movl    %ecx, __pgti+4(,%eax,8)
 
-        /* populate the page directory index */
-        movl    -16(%ebp), %ebx /* get saved pgdi */
+        /* Populate pgdi */
+        movl    -4(%ebp), %ebx
+        shrl    $PGDI_SHIFT, %ebx
+        andl    $(~PGTREE_MASK), %ebx /* ebx now has pgdi index. */
         movl    $__pgti, %ecx
         movl    $8, %edx
         mull    %edx
@@ -125,10 +119,10 @@ __fill_IMP_table:
         movl    %eax, __pgdi(,%ebx,8)
         xorl    %eax, %eax
 
-        /* populate the page directory pointer */
+        /* populate pgdp */
         movl    -4(%ebp), %eax
         shrl    $PGDP_SHIFT, %eax
-        andl    $(~PGTREE_MASK), %eax /* eax now has page directory pointer index. */
+        andl    $(~PGTREE_MASK), %eax /* eax now has pgdp index. */
         movl    $__pgdi, %ecx
         andl    $PAGE_MASK, %ecx
         or      $0x3, %ecx
@@ -168,17 +162,6 @@ __do_IMP:
         leave
         ret
 
-        .type __map_vga_base, @function
-__map_vga_base:
-        pushl   %ebp
-        movl    %esp, %ebp
-        pushl   $16 /* vga buffer is 16K */
-        pushl   $0xb8000 /* vga base */
-        pushl   $0xb8000 /* identical map */
-        call    create_page_table_entry
-        leave
-        ret
-
 #if 0
         .type __test_pagetables, @function
 __test_pagetables:
@@ -207,9 +190,6 @@ bootstrap32:
          * before jumping to 64-code.
          */
         call    __do_IMP
-
-        /* Identical map for vga base */
-        call    __map_vga_base
 
         /* Enable PAE */
         movl    %cr4, %eax
@@ -284,7 +264,7 @@ __pgdi:
 	.type	__pgti, @object
 	.size	__pgti, 32768
 __pgti:
-	.zero	131072
+	.zero	32768
 
 .align 4
 _mboot_info:

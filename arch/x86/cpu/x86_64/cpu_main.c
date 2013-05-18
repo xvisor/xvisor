@@ -141,6 +141,24 @@ int __init arch_cpu_final_init(void)
         return 0;
 }
 
+virtual_addr_t arch_code_vaddr_start(void)
+{
+	return ((virtual_addr_t) CPU_TEXT_LMA);
+}
+
+physical_addr_t arch_code_paddr_start(void)
+{
+	return ((physical_addr_t) CPU_TEXT_LMA);
+}
+
+extern u8 _code_end;
+extern u8 _code_start;
+
+virtual_size_t arch_code_size(void)
+{
+	return (virtual_size_t)(&_code_end - &_code_start);
+}
+
 void __init cpu_init(struct multiboot_info *binfo)
 {
 	/* Initialize VMM (APIs only available after this) */
