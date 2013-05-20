@@ -7,8 +7,8 @@ By default, Xvisor for BCM2835 supports Realview-EB-MPCore guest so we will
 show how to run Basic Test on Realview-EB-MPCore guest. For more info on 
 Basic Test refer <xvisor_source>/tests/arm32/realview-eb-mpcore/basic/README.
 
-As first step of SD booting on BCM2835 SOC, we need to prepare a SD card (> 4GB) 
-with Uboot. To do this,
+As first step of SD booting on BCM2835 SOC, we prepare a SD card (> 4GB) with
+Uboot. To do this,
  1) Setup SD card with debian weezy image and make sure that you get
     Raspberry Pi linux console on serial port
     (For detailed steps, http://elinux.org/RPi_Easy_SD_Card_Setup)
@@ -36,17 +36,20 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   [4. Build Xvisor, this creates vmm.bin]
   # make
 
-  [5. Build ARM Basic Test for Realview-EB-MPCore Guest, this creates arm_test.bin.patched]
+  [5. Make U-Boot compatible uvmm.bin for use with bootm command]
+  # mkimage -A arm -O linux -T kernel -C none -a 0x00008000 -e 0x00008000 -n Xvisor -d build/vmm.bin build/uvmm.bin
+
+  [6. Build ARM Basic Test for Realview-EB-MPCore Guest, this creates arm_test.bin.patched]
   # make -C tests/arm32/realview-eb-mpcore/basic
   
-  [6. Unplug bootable SD card from Raspberry Pi and plug it on your development machine]
+  [7. Unplug bootable SD card from Raspberry Pi and plug it on your development machine]
 
-  [7. Mount boot partition (or partition 0) of SD card on your development machine]
+  [8. Mount boot partition (or partition 0) of SD card on your development machine]
 
-  [8. Copy uvmm.bin to boot partition of SD card]
+  [9. Copy uvmm.bin to boot partition of SD card]
   # cp uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
 
-  [9. Copy arm_test.bin.patched to boot partition of SD card]
+  [10. Copy arm_test.bin.patched to boot partition of SD card]
   # cp build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched <path_to_mounted_boot_partition_of_sd_card>/arm.bin
 
   (Note: If you want additional images like cmdlist, patched zImage, 
@@ -55,21 +58,21 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   (Note: For more info on images required for linux on Realview-EB-MPCore guest 
    refer to <xvisor_source>/tests/arm32/realview-eb-mpcore/linux/README.)
 
-  [10. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [11. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [11. Unplug SD card from your development machine and plug it back on Raspberry Pi]
+  [12. Unplug SD card from your development machine and plug it back on Raspberry Pi]
 
-  [12. Connect to serial port of Raspberry Pi using Putty or Minicom]
+  [13. Connect to serial port of Raspberry Pi using Putty or Minicom]
 
-  [13. Power-up or Reset Raspberry Pi and press any key when U-Boot shows auto-boot count down]
+  [14. Power-up or Reset Raspberry Pi and press any key when U-Boot shows auto-boot count down]
 
-  [14. Enable MMC interface from U-Boot command line]
+  [15. Enable MMC interface from U-Boot command line]
   U-Boot> mmc dev 0:0
 
-  [15. Copy Xvisor from SD card to SDRAM]
+  [16. Copy Xvisor from SD card to SDRAM]
   U-Boot> fatload mmc 0 0x00200000 vmm.bin
 
-  [16. Copy Guest image from SD card to SDRAM]
+  [17. Copy Guest image from SD card to SDRAM]
   U-Boot> fatload mmc 0 0x01000000 arm.bin
 
   (Note: If you want to load additional images like cmdlist, patched zImage, 
@@ -86,8 +89,8 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
    U-Boot> fatload mmc 0 0x01100000 zImage
    U-Boot> fatload mmc 0 0x01400000 rootfs.img )
 
-  [17. Jump into Xvisor after disabling MMU, interrupts, etc]
-  U-Boot> go 0x00200000
+  [18. Jump into Xvisor after disabling MMU, interrupts, etc]
+  U-Boot> bootm 0x00200000
 
   (Note: Raspberry Pi (or BCM2835 SOC) U-Boot runs with mmu disabled so we 
    don't need to use bootm for booting Xvisor. In future, we might use bootm 
