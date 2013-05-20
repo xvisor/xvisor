@@ -47,6 +47,13 @@ _start:
 	sub	r2, r7, r6
 	add	r5, r4, r2
 
+	/* Ensure that we are in hypervisor mode */
+	mrs	r0, cpsr_all
+	and	r0, r0, #(CPSR_MODE_MASK)
+	cmp	r0, #(CPSR_MODE_HYPERVISOR)
+	blne	_start_hang
+
+	/* Save load start and load end addresses */
 	ldr	r0, __load_start
 	sub	r0, r0, r6
 	add	r0, r0, r4
@@ -110,11 +117,6 @@ _start_nextpc1:
 	str	r5, [r0]
 
 _start_mmu_init:
-	/* Enter hypervisor mode (if not in hypervisor mode) */
-	mrs	r0, cpsr_all
-	and	r0, r0, #(CPSR_MODE_MASK)
-	cmp	r0, #(CPSR_MODE_HYPERVISOR)
-	blne	_enter_hvc
 	/* Setup initial TTBL using C code and a temporary stack */
 	ldr	sp, __hvc_stack_end
 	sub	sp, sp, r6
@@ -135,6 +137,11 @@ _start_mmu_init:
 	 * Note: From this point primary CPU startup is same as secondary CPU
 	 */
 _start_secondary:
+	/* Ensure that we are in hypervisor mode */
+	mrs	r0, cpsr_all
+	and	r0, r0, #(CPSR_MODE_MASK)
+	cmp	r0, #(CPSR_MODE_HYPERVISOR)
+	blne	_start_hang
 	/* Setup Hypervisor MAIR0 & MAIR1 */
 	ldr	r0, __hmair0_set
 	mcr     p15, 4, r0, c10, c2, 0
@@ -249,68 +256,6 @@ _copy_done:
 	mov	r0, r2
 	bx	lr
 _copy_end:
-
-	/* 
-	 * Function to enter hypervisor mode.
-	 * Arguments:
-	 *  r4 -> load start
-	 *  r5 -> load end
-	 *  r6 -> execution start
-	 *  r7 -> execution end
-	 * Note: This function should be called before enabling MMU
-	 */
-	.section .entry, "ax", %progbits
-	.globl _enter_hvc
-_enter_hvc:
-	/* Save lr and jump to hvc_start */
-	mov	r12, lr
-	b	_enter_hvc_start
-	.balign	256
-_enter_hvc_exec_table:
-	b	.
-	b	.
-	b	_enter_hvc_tmon
-	b	.
-	b	.
-	b	_enter_hvc_thyp
-	b	.
-	b	.
-__enter_hvc_exec_table:
-	.word _enter_hvc_exec_table
-_enter_hvc_tmon:
-	/* Get secure configuration register */
-	mrc	p15, 0, r0, c1, c1, 0	
-	bic	r0, r0, #0x07f
-	mov	r1, #0x10
-	lsl	r1, r1, #4
-	orr	r1, r1, #0x1
-	orr	r0, r0, r1
-	mcr	p15, 0, r0, c1, c1, 0
-	/* Get temp hypervisor vector base address */
-	ldr	r0, __enter_hvc_exec_table
-	sub	r0, r0, r6
-	add	r0, r0, r4
-	mcr	p15, 4, r0, c12, c0, 0
-	movs	pc, lr
-_enter_hvc_thyp:
-	/* Yeppie! in hypervisor mode */
-	mrs	r0, cpsr_all
-	msr	spsr_hyp, r0
-	msr	elr_hyp, r12
-	eret
-_enter_hvc_start:
-	/* Get temp monitor vector base address */
-	ldr	r0, __enter_hvc_exec_table
-	sub	r0, r0, r6
-	add	r0, r0, r4
-	/* Set temp monitor vector base address */
-	mcr	p15, 0, r0, c12, c0, 1
-	/* Call temp monitor mode code */
-	smc	#0
-	/* Call temp hypervisor mode code */
-	hvc	#0
-	/* Hang! Not supposed to reach here */
-	b	.
 
 	/* 
 	 * Exception vector start.
