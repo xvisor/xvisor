@@ -396,14 +396,14 @@ int mmci_init_card(struct mmc_host *mmc, struct mmc_card *card)
 	return VMM_OK;
 }
 
-static vmm_irq_return_t mmci_cmd_irq_handler(u32 irq_no, void *dev)
+static vmm_irq_return_t mmci_cmd_irq_handler(int irq_no, void *dev)
 {
 	/* FIXME: For now, we don't use interrupt */
 
 	return VMM_IRQ_HANDLED;
 }
 
-static vmm_irq_return_t mmci_pio_irq_handler(u32 irq_no, void *dev)
+static vmm_irq_return_t mmci_pio_irq_handler(int irq_no, void *dev)
 {
 	/* FIXME: For now, we don't use interrupt */
 

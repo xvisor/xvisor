@@ -46,7 +46,7 @@ static u32 twd_freq_hz;
 static virtual_addr_t twd_base;
 static u32 twd_ppi_irq;
 
-static vmm_irq_return_t twd_clockchip_irq_handler(u32 irq_no, void *dev)
+static vmm_irq_return_t twd_clockchip_irq_handler(int irq_no, void *dev)
 {
 	struct twd_clockchip *tcc = &this_cpu(twd_cc);
 

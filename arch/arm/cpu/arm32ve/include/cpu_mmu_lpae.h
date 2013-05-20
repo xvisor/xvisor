@@ -1,0 +1,56 @@
+/**
+ * Copyright (c) 2012 Anup Patel.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file cpu_mmu_lpae.h
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief MMU interface of LPAE enabled ARM processor
+ */
+#ifndef _CPU_MMU_LPAE_H__
+#define _CPU_MMU_LPAE_H__
+
+#include <cpu_cache.h>
+#include <cpu_inline_asm.h>
+#include <arch_barrier.h>
+
+#define TTBL_FIRST_LEVEL		1
+#define TTBL_LAST_LEVEL			3
+
+#define cpu_invalid_all_guest_tlbs()		inv_tlb_guest_allis()
+#define cpu_invalid_va_hypervisor_tlb(va)	inv_tlb_hyp_mvais((va))
+#define cpu_invalid_all_tlbs()			inv_utlb_all()
+
+#define cpu_stage2_ttbl_pa()				\
+		(read_vttbr() & VTTBR_BADDR_MASK)
+#define cpu_stage2_vmid()				\
+		((read_vttbr() & VTTBR_VMID_MASK) >> VTTBR_VMID_SHIFT)
+#define cpu_stage2_update(ttbl_pa, vmid)		\
+	do {						\
+		u64 vttbr = 0x0;			\
+		vttbr |= ((u64)(vmid) << VTTBR_VMID_SHIFT) & VTTBR_VMID_MASK; \
+		vttbr |= (ttbl_pa)  & VTTBR_BADDR_MASK;	\
+		write_vttbr(vttbr);			\
+	} while(0);
+
+static inline void cpu_mmu_sync_tte(u64 *tte)
+{
+	clean_dcache_mva((virtual_addr_t)tte);
+	isb();
+	dsb();
+}
+
+#endif /* _CPU_MMU_LPAE_H */

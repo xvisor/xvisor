@@ -32,6 +32,25 @@ SECTIONS
 
         .mboot : { *(.mboot) }
 
+	.bootstrap :
+	{
+                . = ALIGN(4096);
+	       	PROVIDE(_code_bootstrap_start = .);
+                *(.bootstrap.text)
+
+                /*
+                 * We have initial page tables in .bootstrap.bss
+                 * So beginning should be page aligned.
+                 */
+                . = ALIGN(4096);
+                KEEP(*(.bootstrap.bss))
+                . = ALIGN(4);
+                . += 4096;
+                PROVIDE(_bootstrap_stack_start = .);
+                . = ALIGN(4096);
+                PROVIDE(_code_bootstrap_end = .);
+	}
+
         . = ALIGN(4);
 	.text :
  	{
@@ -55,17 +74,19 @@ SECTIONS
 
 	.modtbl :
 	{
+                . = ALIGN(4096);
 		PROVIDE(_modtbl_start = .);
 		*(.modtbl)
-		. = ALIGN(8);
+                . = ALIGN(4096);
 		PROVIDE(_modtbl_end = .);
 	}
 
 	.percpu :
 	{
+                . = ALIGN(4096);
 		PROVIDE(_percpu_start = .);
 		*(.percpu)
-		. = ALIGN(8);
+                . = ALIGN(4096);
 		PROVIDE(_percpu_end = .);
 	}
 
@@ -83,27 +104,11 @@ SECTIONS
 
 	.init :
 	{
+		. = ALIGN(4096);
 		PROVIDE(_init_start = .);
 		*(.init.*)
-		. = ALIGN(4096);
-
-        	PROVIDE(_code_bootstrap_start = .);
-                *(.bootstrap.text)
-
-                /*
-                 * We have initial page tables in .bootstrap.bss
-                 * So beginning should be page aligned.
-                 */
                 . = ALIGN(4096);
-                KEEP(*(.bootstrap.bss))
-                . = ALIGN(4);
-                . += 4096;
-                PROVIDE(_bootstrap_stack_start = .);
-
-                . = ALIGN(8192);
-
-                PROVIDE(_code_bootstrap_end = .);
-		PROVIDE(_init_end = .);
+ 		PROVIDE(_init_end = .);
 	}
 
 	PROVIDE(_code_end = .);

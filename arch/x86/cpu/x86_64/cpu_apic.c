@@ -225,6 +225,7 @@ static int acpi_get_ioapics(struct cpu_ioapic *ioa, unsigned *nioa, unsigned max
 		if (acpi_ioa == NULL)
 			break;
 
+		vmm_snprintf((char *)&ioa[n].name, APIC_NAME_LEN, "IOAPIC-%d", n);
 		ioa[n].id = acpi_ioa->id;
 		ioa[n].vaddr = vmm_host_iomap(acpi_ioa->address, PAGE_SIZE);
 		ioa[n].paddr = (physical_addr_t) acpi_ioa->address;
@@ -265,6 +266,7 @@ static int setup_ioapic_irq_route(struct cpu_ioapic *ioapic, u32 irq, u32 vector
 	ioapic_route_irq_to_vector(ioapic, irq, vector);
 
 	/* Host IRQ setup. */
+	ioapic->irq_chip[irq].name = &ioapic->name[0];
 	ioapic->irq_chip[irq].irq_mask = &ioapic_irq_mask;
 	ioapic->irq_chip[irq].irq_unmask = &ioapic_irq_unmask;
 	ioapic->irq_chip[irq].irq_eoi = &lapic_irq_eoi;

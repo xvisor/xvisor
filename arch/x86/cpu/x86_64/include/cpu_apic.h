@@ -32,6 +32,7 @@
 
 extern virtual_addr_t lapic_eoi_addr;
 
+#define APIC_NAME_LEN			256
 #define APIC_ENABLE			0x100
 #define APIC_FOCUS_DISABLED		(1 << 9)
 #define APIC_SIV			0xFF
@@ -197,6 +198,7 @@ extern virtual_addr_t lapic_eoi_addr;
 	} while(0)
 
 struct cpu_ioapic {
+	char name[APIC_NAME_LEN];
 	u32 id;
 	physical_addr_t paddr;
 	virtual_addr_t vaddr;

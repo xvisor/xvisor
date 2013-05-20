@@ -41,8 +41,6 @@ cpu-asflags += -marm $(arch-y) $(tune-y)
 cpu-ldflags += -msoft-float
 
 cpu-objs-y+= cpu_entry.o
-cpu-objs-y+= cpu_entry_ttbl.o
-cpu-objs-y+= cpu_mmu.o
 cpu-objs-y+= cpu_cache.o
 
 cpu-objs-y+= cpu_init.o

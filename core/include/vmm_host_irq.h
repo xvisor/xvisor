@@ -82,7 +82,7 @@ enum vmm_irq_return {
 
 typedef enum vmm_irq_return vmm_irq_return_t;
 
-typedef vmm_irq_return_t (*vmm_host_irq_function_t) (u32 irq_no, void *dev);
+typedef vmm_irq_return_t (*vmm_host_irq_function_t) (int irq_no, void *dev);
 
 /** Host IRQ Action Abstraction */
 struct vmm_host_irq_action {

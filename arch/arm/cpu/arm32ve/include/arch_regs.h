@@ -26,7 +26,6 @@
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 #include <cpu_defines.h>
-#include <cpu_mmu.h>
 #include <generic_timer.h>
 
 struct arch_regs {

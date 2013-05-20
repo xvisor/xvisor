@@ -130,7 +130,7 @@ void uart_8250_lowlevel_init(struct uart_8250_port *port)
 }
 
 #ifndef UART_POLLING
-static vmm_irq_return_t uart_8250_irq_handler(u32 irq_no, void *dev)
+static vmm_irq_return_t uart_8250_irq_handler(int irq_no, void *dev)
 {
 	u16 iir, lsr;
 	struct uart_8250_port *port = (struct uart_8250_port *)dev;

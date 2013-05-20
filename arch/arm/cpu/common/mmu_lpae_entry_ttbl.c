@@ -16,13 +16,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_entry_ttbl.c
+ * @file mmu_lpae_entry_ttbl.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Initial translation table setup at reset time
  */
 
 #include <vmm_types.h>
 #include <cpu_defines.h>
+#include <cpu_mmu_lpae.h>
+#include <mmu_lpae.h>
 
 extern u8 def_ttbl[];
 extern int def_ttbl_tree[];
@@ -80,7 +82,7 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 		index = (page_addr & TTBL_L1_INDEX_MASK) >> TTBL_L1_INDEX_SHIFT;
 		if (ttbl[index] & TTBL_VALID_MASK) {
 			/* Find level2 table */
-			ttbl = (u64 *)(u32)(ttbl[index] & TTBL_OUTADDR_MASK);
+			ttbl = (u64 *)(unsigned long)(ttbl[index] & TTBL_OUTADDR_MASK);
 		} else {
 			/* Allocate new level2 table */
 			if (ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
@@ -89,7 +91,7 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
 				nttbl[i] = 0x0ULL;
 			}
-			ttbl_tree[ttbl_count] = ((u32)ttbl - ttbl_base) >> 
+			ttbl_tree[ttbl_count] = ((virtual_addr_t)ttbl - ttbl_base) >> 
 							TTBL_TABLE_SIZE_SHIFT;
 			ttbl_count++;
 			ttbl[index] |= (((virtual_addr_t)nttbl) & TTBL_OUTADDR_MASK);
@@ -102,7 +104,7 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 		index = (page_addr & TTBL_L2_INDEX_MASK) >> TTBL_L2_INDEX_SHIFT;
 		if (ttbl[index] & TTBL_VALID_MASK) {
 			/* Find level3 table */
-			ttbl = (u64 *)(u32)(ttbl[index] & TTBL_OUTADDR_MASK);
+			ttbl = (u64 *)(unsigned long)(ttbl[index] & TTBL_OUTADDR_MASK);
 		} else {
 			/* Allocate new level3 table */
 			if (ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
@@ -111,7 +113,7 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
 				nttbl[i] = 0x0ULL;
 			}
-			ttbl_tree[ttbl_count] = ((u32)ttbl - ttbl_base) >> 
+			ttbl_tree[ttbl_count] = ((virtual_addr_t)ttbl - ttbl_base) >> 
 							TTBL_TABLE_SIZE_SHIFT;
 			ttbl_count++;
 			ttbl[index] |= (((virtual_addr_t)nttbl) & TTBL_OUTADDR_MASK);
@@ -131,10 +133,11 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 			}
 			ttbl[index] |= TTBL_STAGE1_LOWER_AF_MASK;
 			ttbl[index] |= (TTBL_AP_SRW_U << TTBL_STAGE1_LOWER_AP_SHIFT);
-			ttbl[index] |= (0x1 << TTBL_STAGE1_LOWER_NS_SHIFT) &
-							TTBL_STAGE1_LOWER_NS_MASK;
-			ttbl[index] |= (AINDEX_NORMAL_WB << TTBL_STAGE1_LOWER_AINDEX_SHIFT) & 
-							TTBL_STAGE1_LOWER_AINDEX_MASK;
+			ttbl[index] |= (AINDEX_NORMAL_WB << TTBL_STAGE1_LOWER_AINDEX_SHIFT)
+					& TTBL_STAGE1_LOWER_AINDEX_MASK;
+			ttbl[index] |= TTBL_STAGE1_LOWER_NS_MASK;
+			ttbl[index] |= (TTBL_SH_INNER_SHAREABLE 
+					<< TTBL_STAGE1_LOWER_SH_SHIFT);
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
 		}
 

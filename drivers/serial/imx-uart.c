@@ -309,7 +309,7 @@ static void imx_rtsint(struct imx_port *port)
 {
 }
 
-static vmm_irq_return_t imx_irq_handler(u32 irq, void *dev_id)
+static vmm_irq_return_t imx_irq_handler(int irq, void *dev_id)
 {
 	struct imx_port *port = dev_id;
 	unsigned int sts;

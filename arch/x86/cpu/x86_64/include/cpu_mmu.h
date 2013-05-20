@@ -48,30 +48,29 @@
 
 #define PML4_SHIFT		39
 #define PML4_MASK		(PGTREE_MASK << PML4_SHIFT)
+#define PML4_MAP_MASK		(~((1ULL << PML4_SHIFT) - 1))
 
 #define PGDP_SHIFT		30
 #define PGDP_MASK		(PGTREE_MASK << PGDP_SHIFT)
+#define PGDP_MAP_MASK		(~((1ULL << PGDP_SHIFT) - 1))
 
 #define PGDI_SHIFT		21
 #define PGDI_MASK		(PGTREE_MASK << PGDI_SHIFT)
+#define PGDI_MAP_MASK		(~((1ULL << PGDI_SHIFT) - 1))
 
 #define PGTI_SHIFT		12
 #define PGTI_MASK		(PGTREE_MASK << PGTI_SHIFT)
+#define PGTI_MAP_MASK		(~((1ULL << PGTI_SHIFT) - 1))
 
 #define PAGE_SHIFT		12
 #define PAGE_SIZE		(0x01 << PAGE_SHIFT)
 #define PAGE_MASK		~(PAGE_SIZE - 1)
 
 #if !defined (__ASSEMBLY__)
-#define VIRT_TO_PML4(__virt)	(((u64)__virt & ~(PML4_MASK)) >> PML4_SHIFT)
-#define VIRT_TO_PGDP(__virt)	(((u64)__virt & ~(PGDP_MASK)) >> PGDP_SHIFT)
-#define VIRT_TO_PGDI(__virt)	(((u64)__virt & ~(PGDI_MASK)) >> PGDI_SHIFT)
-#define VIRT_TO_PGTI(__virt)	(((u64)__virt & ~(PGTI_MASK)) >> PGTI_SHIFT)
-#define VIRT_TO_PGOFF(__virt)	(((u64)__virt & ~(PAGE_MASK)) >> PAGE_SHIFT)
 
-/* by plan we have identity mappings */
-#define VIRT_TO_PHYS(__virt)	(physical_addr_t)(__virt)
-#define PHYS_TO_VIRT(__phys)	(virtual_addr_t)(__phys)
+#include <vmm_types.h>
+#include <vmm_spinlocks.h>
+#include <libs/list.h>
 
 union page {
 	u64 _val;
@@ -92,13 +91,21 @@ union page {
 	} bits;
 };
 
-#define __bootstrap_text __attribute__((section(".bootstrap.text")))
-
-static inline void invalidate_vaddr_tlb(virtual_addr_t vaddr)
-{
-	__asm__ __volatile__("invlpg 0(%0)\n\t"
-			     ::"r"(&vaddr));
-}
+struct page_table {
+	struct dlist head;
+	struct page_table *parent;
+	int level;
+	int stage;
+	physical_addr_t map_ia;
+	physical_addr_t tbl_pa;
+	vmm_spinlock_t tbl_lock; /*< Lock to protect table contents, 
+				      entry_cnt, child_cnt, and child_list 
+				  */
+	virtual_addr_t tbl_va;
+	u32 pte_cnt;
+	u32 child_cnt;
+	struct dlist child_list;
+};
 
 #endif
 
