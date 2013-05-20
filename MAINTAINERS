@@ -107,13 +107,6 @@ F:	core/mm/*
 F:	core/include/mm/*
 F:	core/include/vmm_heap.h
 
-MIPS
-P:	Himanshu Chauhan
-M:	hschauhan@nulltrace.org
-S:	Maintained
-L:	xvisor-devel@googlegroups.com
-F:	arch/mips/*
-
 INTEL64(x86-64)
 P:	Himanshu Chauhan
 M:	hschauhan@nulltrace.org

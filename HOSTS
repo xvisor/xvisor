@@ -59,15 +59,6 @@ S:	Able to boot VExpress-A9 linux guest on BeagleBoard-xM Hardware and
 	BeagleBoard emulated by Linaro QEMU 
 D:	docs/arm/omap3-beagle.txt
 
-M:	QEMU MIPS Emulation
-A:	MIPS 32-bit
-C:	mips32r2
-V:	MIPS Technologies (http://www.mips.com/)
-E:	QEMU (http://wiki.qemu.org/)
-G:	Work-In-Progress. No guest support available yet
-S:	Able to get Xvisor managment terminal on MIPS emulated by QEMU
-D:	---
-
 M:	Realview-EB-MPCore
 A:	ARM 32-bit (ARMv6k)
 C:	ARM11MPCore

@@ -21,6 +21,5 @@
 # @brief list of driver objects
 # */
 
-drivers-objs-$(CONFIG_ETHER_NE2K)+= net/ne2k-isa.o
 drivers-objs-$(CONFIG_ETHER_SMSC_911x)+= net/smc911x.o
 drivers-objs-$(CONFIG_ETHER_SMSC_91x)+= net/smc91x.o
