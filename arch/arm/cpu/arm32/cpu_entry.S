@@ -43,15 +43,33 @@ _start:
 	 * r5 -> load end
 	 * r6 -> execution start
 	 * r7 -> execution end
-	 * r2 -> code size
 	 * r10 -> core# in case of SMP
 	 */
 	add	r4, pc, #-0x8
 	ldr	r6, __exec_start
 	ldr	r7, __exec_end
-	sub	r2, r7, r6
-	add	r5, r4, r2
+	sub	r3, r7, r6
+	add	r5, r4, r3
 
+	/* Save boot reg0 (i.e. r0) */
+	ldr	r3, __boot_reg0
+	sub	r3, r3, r6
+	add	r3, r3, r4
+	str	r0, [r3]
+
+	/* Save boot reg1 (i.e. r1) */
+	ldr	r3, __boot_reg1
+	sub	r3, r3, r6
+	add	r3, r3, r4
+	str	r1, [r3]
+
+	/* Save boot reg2 (i.e. r2) */
+	ldr	r3, __boot_reg2
+	sub	r3, r3, r6
+	add	r3, r3, r4
+	str	r2, [r3]
+
+	/* Save load start and load end */
 	ldr	r0, __load_start
 	sub	r0, r0, r6
 	add	r0, r0, r4
@@ -60,6 +78,7 @@ _start:
 	sub	r0, r0, r6
 	add	r0, r0, r4
 	str	r5, [r0]
+
 	/* Hang if execution start is not 1 MB aligned */
 	mov	r0, r6
 	mov	r0, r0, lsr #20
@@ -212,6 +231,12 @@ __mmu_section_attr:
 	.word SECTION_ATTR
 __dacr_mmu_val:
 	.word (TTBL_DOM_CLIENT << (2 * TTBL_L1TBL_TTE_DOM_RESERVED))
+__boot_reg0:
+	.word _boot_reg0
+__boot_reg1:
+	.word _boot_reg1
+__boot_reg2:
+	.word _boot_reg2
 __exec_start:
 	.word _code_start
 __exec_end:
@@ -260,6 +285,27 @@ _abort_inst:
 	cps	#\mode
 .endm
 #endif
+
+	/*
+	 * Boot register 0 passed by bootloader
+	 */
+	.globl _boot_reg0
+_boot_reg0:
+	.word 0x0
+
+	/*
+	 * Boot register 1 passed by bootloader
+	 */
+	.globl _boot_reg1
+_boot_reg1:
+	.word 0x0
+
+	/*
+	 * Boot register 2 passed by bootloader
+	 */
+	.globl _boot_reg2
+_boot_reg2:
+	.word 0x0
 
 	/*
 	 * Load start address storage
