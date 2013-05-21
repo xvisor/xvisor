@@ -58,14 +58,6 @@ SECTIONS
 		PROVIDE(_rodata_end = .);
 	}
 
-	.modtbl :
-	{
-		PROVIDE(_modtbl_start = .);
-		*(.modtbl)
-		. = ALIGN(4);
-		PROVIDE(_modtbl_end = .);
-	}
-
 	.percpu :
 	{
 		PROVIDE(_percpu_start = .);
@@ -81,6 +73,12 @@ SECTIONS
 		PROVIDE(_init_start = .);
 
 		*(.init.*)
+		. = ALIGN(4);
+
+		PROVIDE(_modtbl_start = .);
+		*(.modtbl)
+		. = ALIGN(4);
+		PROVIDE(_modtbl_end = .);
 
 		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
 		*(.devtree)
