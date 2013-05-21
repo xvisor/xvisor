@@ -100,14 +100,6 @@ int arch_devtree_populate(struct vmm_devtree_node **root)
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
 
-#if CONFIG_ACPI
-	/*
-	 * Initialize the ACPI table to help initialize
-	 * other devices.
-	 */
-	acpi_init();
-#endif
-
 	/* Parse skeletal FDT */
 	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
 	if (rc) {
@@ -121,6 +113,13 @@ int arch_devtree_populate(struct vmm_devtree_node **root)
 	}
 
 	/* FIXME: Populate device tree from ACPI table */	
+#if CONFIG_ACPI
+	/*
+	 * Initialize the ACPI table to help initialize
+	 * other devices.
+	 */
+	acpi_init();
+#endif
 
 	return VMM_OK;
 }

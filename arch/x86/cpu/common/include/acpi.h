@@ -25,6 +25,22 @@
 #define __ACPI_H__
 
 #include <vmm_types.h>
+#include <vmm_devtree.h>
+
+#define VMM_DEVTREE_MOTHERBOARD_NODE_NAME	"motherboard"
+#define VMM_DEVTREE_LAPIC_NODE_PARENT_NAME	"apic"
+#define VMM_DEVTREE_LAPIC_PCPU_NODE_FMT		"lapic@%d"
+#define VMM_DEVTREE_LAPIC_CPU_ID_ATTR_NAME	"acpi_cpu_id"
+#define VMM_DEVTREE_LAPIC_LAPIC_ID_ATTR_NAME	"lapic_id"
+#define VMM_DEVTREE_IOAPIC_NODE_FMT		"ioapic@%d"
+#define VMM_DEVTREE_IOAPIC_PADDR_ATTR_NAME	"phys_addr"
+#define VMM_DEVTREE_IOAPIC_GINT_BASE_ATTR_NAME	"gint_base"
+#define VMM_DEVTREE_NR_IOAPIC_ATTR_NAME		"nr_ioapic"
+#define VMM_DEVTREE_NR_LAPIC_ATTR_NAME		"nr_lapic"
+#define VMM_DEVTREE_NR_HPET_ATTR_NAME		"nr_hpet"
+#define VMM_DEVTREE_HPET_NODE_FMT		"hpet@%d"
+#define VMM_DEVTREE_HPET_PADDR_ATTR_NAME	"phys_addr"
+#define VMM_DEVTREE_HPET_ID_ATTR_NAME		"id"
 
 struct acpi_search_area {
 	char *area_name;
@@ -41,6 +57,7 @@ extern struct acpi_search_area acpi_areas[];
 #define RSDP_SIGNATURE		"RSD PTR "
 #define RSDT_SIGNATURE		"RSDT"
 #define HPET_SIGNATURE		"HPET"
+#define APIC_SIGNATURE		"APIC"
 
 #define NR_HPET_TIMER_BLOCKS	8
 
@@ -135,7 +152,7 @@ struct acpi_timer_blocks {
 	u8 rbw;
 	u8 rbo;
 	u8 resvd;
-	u32 base;
+	u64 base;
 	u8 id;
 	u16 min_clk_tick;
 	u8 pg_prot;
@@ -147,37 +164,5 @@ struct acpi_hpet {
 } __packed;
 
 int acpi_init(void);
-
-/*
- * Returns a pointer to the io acpi structure in the MADT table in ACPI. The
- * pointer is valid only until paging is turned off. No memory is allocated in
- * this function thus no memory needs to be freed.
- */
-struct acpi_madt_ioapic * acpi_get_ioapic_next(void);
-
-/* same as above for local APICs */
-struct acpi_madt_lapic * acpi_get_lapic_next(void);
-
-/* Get base address of HPET blocks one after other.
- * Returns 0 when all HPETs have been iterated.
- */
-u64 acpi_get_hpet_base_next(void);
-
-/*
- * Return the number of HPET chips present on board.
- */
-u32 acpi_get_nr_hpet_chips(void);
-
-u32 hpet_nr_timers_in_block(u32 block);
-
-/*
- * Get number of timer blocks on given HPET chip.
- */
-u32 acpi_get_nr_hpet_blocks(u32 chip);
-
-/*
- * Get the physical base of the HPET timer block.
- */
-u64 acpi_get_hpet_block_base(u32 idx);
 
 #endif /* __ACPI_H__ */
