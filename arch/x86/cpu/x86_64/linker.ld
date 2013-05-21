@@ -72,6 +72,13 @@ SECTIONS
 		*(.rodata .rodata.*)
 	}
 
+	.devtree :
+	{
+                . = ALIGN(4096);
+		*(.devtree)
+                . = ALIGN(4096);
+	}
+
 	.modtbl :
 	{
                 . = ALIGN(4096);

@@ -79,8 +79,13 @@ SECTIONS
 	.init : 
 	{
 		PROVIDE(_init_start = .);
+
 		*(.init.*)
-		. = ALIGN(4);
+
+		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
+		*(.devtree)
+		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
+
 		PROVIDE(_init_end = .);
 	}
 

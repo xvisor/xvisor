@@ -35,6 +35,7 @@ $(build_dir)/%.S: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
 	$(V)$(build_dir)/tools/dtc/dtc -I dts -O asm $< -o $@
+	$(V)sed -i '1 i .section ".devtree"' $@
 
 ifdef CONFIG_CPATCH
 
