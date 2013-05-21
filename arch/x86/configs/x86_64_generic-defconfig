@@ -122,7 +122,6 @@ CONFIG_MTERM_HISTORY_SIZE=10
 #
 # Library Options
 #
-CONFIG_LIBFDT=y
 
 #
 # Virtual Terminal Emulator Options
@@ -252,6 +251,5 @@ CONFIG_FB_VESA=y
 #
 # Tool Options
 #
-CONFIG_DTC=y
 # CONFIG_CPATCH is not set
 # CONFIG_BBFLASH is not set
