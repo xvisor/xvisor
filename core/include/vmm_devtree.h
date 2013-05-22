@@ -41,7 +41,7 @@
 #define VMM_DEVTREE_REG_ATTR_NAME		"reg"
 #define VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME	"virtual-reg"
 
-#define VMM_DEVTREE_CHOOSEN_NODE_NAME		"choosen"
+#define VMM_DEVTREE_CHOSEN_NODE_NAME		"chosen"
 #define VMM_DEVTREE_CONSOLE_ATTR_NAME		"console"
 #define VMM_DEVTREE_RTCDEV_ATTR_NAME		"rtcdev"
 #define VMM_DEVTREE_BOOTCMD_ATTR_NAME		"bootcmd"
@@ -52,12 +52,12 @@
 #define VMM_DEVTREE_VMMNET_NODE_NAME		"net"
 #define VMM_DEVTREE_NETSTACK_NODE_NAME		"hoststack"
 
-#define VMM_DEVTREE_HOSTINFO_NODE_NAME		"host"
-#define VMM_DEVTREE_CPUS_NODE_NAME		"cpus"
-#define VMM_DEVTREE_CPU_FREQ_MHZ_ATTR_NAME	"cpu_freq_mhz"
 #define VMM_DEVTREE_MEMORY_NODE_NAME		"memory"
 #define VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME	"physical_addr"
 #define VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME	"physical_size"
+
+#define VMM_DEVTREE_CPUS_NODE_NAME		"cpus"
+#define VMM_DEVTREE_CPU_FREQ_MHZ_ATTR_NAME	"cpu_freq_mhz"
 #define VMM_DEVTREE_INTERRUPTS_ATTR_NAME	"interrupts"
 
 #define VMM_DEVTREE_GUESTINFO_NODE_NAME		"guests"

@@ -151,12 +151,7 @@ int __cpuinit twd_clockchip_init(virtual_addr_t ref_counter_addr,
 	struct vmm_devtree_node *node;
 	struct twd_clockchip *cc = &this_cpu(twd_cc);
 
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	node = vmm_devtree_find_matching(node, twd_match);
+	node = vmm_devtree_find_matching(NULL, twd_match);
 	if (!node) {
 		return VMM_ENODEV;
 	}

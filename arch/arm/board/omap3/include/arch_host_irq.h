@@ -43,13 +43,7 @@ static inline int arch_host_irq_init(void)
 	physical_addr_t intc_pa;
 	struct vmm_devtree_node *node;
 
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!node) {
-		return VMM_ENODEV;
-	}
-
-	node = vmm_devtree_find_compatible(node, NULL, "ti,omap2-intc");
+	node = vmm_devtree_find_compatible(NULL, NULL, "ti,omap2-intc");
 	if (!node) {
 		return VMM_ENODEV;
 	}

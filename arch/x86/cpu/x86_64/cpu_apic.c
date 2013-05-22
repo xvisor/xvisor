@@ -233,8 +233,6 @@ int detect_ioapics(unsigned int *nr_ioapics)
 	unsigned int n = 0;
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				VMM_DEVTREE_HOSTINFO_NODE_NAME
-				VMM_DEVTREE_PATH_SEPARATOR_STRING
 				VMM_DEVTREE_MOTHERBOARD_NODE_NAME
 				VMM_DEVTREE_PATH_SEPARATOR_STRING
 				"APIC");
@@ -248,8 +246,6 @@ int detect_ioapics(unsigned int *nr_ioapics)
 
 	while (n < *aval) {
 		vmm_sprintf(apic_nm, VMM_DEVTREE_PATH_SEPARATOR_STRING
-			VMM_DEVTREE_HOSTINFO_NODE_NAME
-			VMM_DEVTREE_PATH_SEPARATOR_STRING
 			VMM_DEVTREE_MOTHERBOARD_NODE_NAME
 			VMM_DEVTREE_PATH_SEPARATOR_STRING
 			"APIC"

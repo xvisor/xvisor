@@ -58,12 +58,7 @@ int __init generic_timer_clocksource_init(void)
 	struct vmm_clocksource *cs;
 	struct vmm_devtree_node *node;
 
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	node = vmm_devtree_find_matching(node, generic_timer_match);
+	node = vmm_devtree_find_matching(NULL, generic_timer_match);
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -250,12 +245,7 @@ int __cpuinit generic_timer_clockchip_init(void)
 	struct vmm_clockchip *cc;
 	struct vmm_devtree_node *node;
 
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	node = vmm_devtree_find_matching(node, generic_timer_match);
+	node = vmm_devtree_find_matching(NULL, generic_timer_match);
 	if (!node) {
 		return VMM_ENODEV;
 	}

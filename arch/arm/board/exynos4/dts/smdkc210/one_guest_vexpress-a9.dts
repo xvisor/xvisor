@@ -4,7 +4,7 @@
 /include/ "smdkc210.dtsi"
 
 / {
-	choosen {
+	chosen {
 		bootcmd = /* Copy guest0 device tree from templates */
 			  "devtree node copy /guests guest0 /templates/vexpress-a9x2",
 

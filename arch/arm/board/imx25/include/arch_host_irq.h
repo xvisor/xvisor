@@ -43,15 +43,9 @@ static inline int arch_host_irq_init(void)
 {
 	int rc;
 	virtual_addr_t avic_base;
-	struct vmm_devtree_node *hnode, *vnode;
+	struct vmm_devtree_node *vnode;
 
-	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!hnode) {
-		return VMM_ENODEV;
-	}
-
-	vnode = vmm_devtree_find_compatible(hnode, NULL, "freescale,avic");
+	vnode = vmm_devtree_find_compatible(NULL, NULL, "freescale,avic");
 	if (!vnode) {
 		return VMM_ENODEV;
 	}

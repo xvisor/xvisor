@@ -1,149 +1,144 @@
 
 / {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	model = "vexpress-a9";
+
+	chosen { };
+	aliases { };
+
+	cpus {
+		cpu0 {
+			device_type = "cpu";
+			model = "Cortex-A9";
+		};
+
+		cpu1 {
+			device_type = "cpu";
+			model = "Cortex-A9";
+		};
+	};
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x60000000 0x10000000>; /* 256 MB */
+	};
+
+	scu { /* Snoop Control Unit */
+      		device_type = "scu";
+      		compatible = "arm,cortex-a9-scu";
+      		reg = <0x1E000000 0x1000>;
+	};
+
+	gic { /* Generic Interrupt Controller */
+      		device_type = "pic";
+      		compatible = "arm,cortex-a9-gic";
+      		reg = <0x1E001000 0x1000
+		       0x1E000100 0x1000>;
+		irq_start = <29>;
+	};
+
+	twd-timer { /* Local Timer */
+      		device_type = "timer";
+      		compatible = "arm,cortex-a9-twd-timer";
+      		reg = <0x1E000600 0x1000>;
+		interrupts = <29>;
+	};
+
+	motherboard {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+
+		eth0 {
+			device_type = "nic";
+			compatible = "smc911x";
+			reg = <0x4E000000 0x1000>;
+			smsc,irq-active-high;
+			interrupts = <47>;
+			switch = "netbridge0";
+		};
+
+		iofpga {
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			sysreg { /* System Registers */
+		      		device_type = "sys";
+		      		compatible = "arm,vexpress-sysreg";
+		      		reg = <0x10000000 0x1000>;
+			};
+
+			sysctl { /* System Controller */
+		      		device_type = "sys";
+		      		compatible = "arm,sp810";
+		      		reg = <0x10001000 0x1000>;
+			};
+
+			mmci0 { /* Multimedia Card Interface */
+		      		device_type = "mmc";
+		      		compatible = "arm,pl180";
+		      		reg = <0x10005000 0x1000>;
+				interrupts = <41 42>;
+			};
+
+			kmi0 { /* Keyboard */
+		      		device_type = "serio";
+		      		compatible = "ambakmi";
+		      		reg = <0x10006000 0x1000>;
+				interrupts = <44>;
+			};
+
+			kmi1 { /* Mouse */
+		      		device_type = "serio";
+		      		compatible = "ambakmi";
+		      		reg = <0x10007000 0x1000>;
+				interrupts = <45>;
+			};
+
+			SERIAL0: uart0 {
+		      		device_type = "serial";
+		      		compatible = "arm,pl011";
+		      		reg = <0x10009000 0x1000>;
+				clock-frequency = <24000000>;
+		      		baudrate = <115200>;
+				interrupts = <37>;
+			};
+
+			timer01 {
+		      		device_type = "timer";
+		      		compatible = "arm,sp804";
+		      		reg = <0x10011000 0x1000>;
+				interrupts = <34>;
+			};
+
+			timer23 {
+		      		device_type = "timer";
+		      		compatible = "arm,sp804";
+		      		reg = <0x10012000 0x1000>;
+				interrupts = <35>;
+			};
+
+			RTC0: rtc0 {
+		      		device_type = "rtc";
+		      		compatible = "arm,pl031";
+		      		reg = <0x10017000 0x1000>;
+				interrupts = <36>;
+			};
+
+			clcd {
+		      		device_type = "fb";
+		      		compatible = "arm,pl111";
+		      		reg = <0x10020000 0x1000>;
+			};
+		};
+	};
+
 	vmm {
 		net {
 			netbridge0 {
 				device_type = "netswitch";
 				compatible = "bridge";
-			};
-		};
-	};
-
-	host {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		model = "vexpress-a9";
-		device_type = "host";
-		
-		cpus {
-			cpu0 {
-				device_type = "cpu";
-				model = "Cortex-A9";
-			};
-
-			cpu1 {
-				device_type = "cpu";
-				model = "Cortex-A9";
-			};
-		};
-
-		memory {
-			/* NOTE: By default QEMU will only proivde 128 MB 
-			 * unless specified by "-m" option. If you have
-			 * X MB then we will be able to access only first
-			 * X MB starting at physical_addr.
-			 */
-			physical_addr = <0x60000000>;
-			physical_size = <0x10000000>; /* 256 MB */
-		};
-
-		scu { /* Snoop Control Unit */
-	      		device_type = "scu";
-	      		compatible = "arm,cortex-a9-scu";
-	      		reg = <0x1E000000 0x1000>;
-		};
-
-		gic { /* Generic Interrupt Controller */
-	      		device_type = "pic";
-	      		compatible = "arm,cortex-a9-gic";
-	      		reg = <0x1E001000 0x1000
-			       0x1E000100 0x1000>;
-			irq_start = <29>;
-		};
-
-		twd-timer { /* Local Timer */
-	      		device_type = "timer";
-	      		compatible = "arm,cortex-a9-twd-timer";
-	      		reg = <0x1E000600 0x1000>;
-			interrupts = <29>;
-		};
-
-		motherboard {
-			#address-cells = <1>;
-			#size-cells = <1>;
-			compatible = "simple-bus";
-
-			eth0 {
-				device_type = "nic";
-				compatible = "smc911x";
-				reg = <0x4E000000 0x1000>;
-				smsc,irq-active-high;
-				interrupts = <47>;
-				switch = "netbridge0";
-			};
-
-			iofpga {
-				#address-cells = <1>;
-				#size-cells = <1>;
-
-				sysreg { /* System Registers */
-			      		device_type = "sys";
-			      		compatible = "arm,vexpress-sysreg";
-			      		reg = <0x10000000 0x1000>;
-				};
-
-				sysctl { /* System Controller */
-			      		device_type = "sys";
-			      		compatible = "arm,sp810";
-			      		reg = <0x10001000 0x1000>;
-				};
-
-				mmci0 { /* Multimedia Card Interface */
-			      		device_type = "mmc";
-			      		compatible = "arm,pl180";
-			      		reg = <0x10005000 0x1000>;
-					interrupts = <41 42>;
-				};
-
-				kmi0 { /* Keyboard */
-			      		device_type = "serio";
-			      		compatible = "ambakmi";
-			      		reg = <0x10006000 0x1000>;
-					interrupts = <44>;
-				};
-
-				kmi1 { /* Mouse */
-			      		device_type = "serio";
-			      		compatible = "ambakmi";
-			      		reg = <0x10007000 0x1000>;
-					interrupts = <45>;
-				};
-
-				SERIAL0: uart0 {
-			      		device_type = "serial";
-			      		compatible = "arm,pl011";
-			      		reg = <0x10009000 0x1000>;
-					clock-frequency = <24000000>;
-			      		baudrate = <115200>;
-					interrupts = <37>;
-				};
-
-				timer01 {
-			      		device_type = "timer";
-			      		compatible = "arm,sp804";
-			      		reg = <0x10011000 0x1000>;
-					interrupts = <34>;
-				};
-
-				timer23 {
-			      		device_type = "timer";
-			      		compatible = "arm,sp804";
-			      		reg = <0x10012000 0x1000>;
-					interrupts = <35>;
-				};
-
-				RTC0: rtc0 {
-			      		device_type = "rtc";
-			      		compatible = "arm,pl031";
-			      		reg = <0x10017000 0x1000>;
-					interrupts = <36>;
-				};
-
-				clcd {
-			      		device_type = "fb";
-			      		compatible = "arm,pl111";
-			      		reg = <0x10020000 0x1000>;
-				};
 			};
 		};
 	};

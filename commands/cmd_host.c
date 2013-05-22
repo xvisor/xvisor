@@ -61,8 +61,7 @@ void cmd_host_info(struct vmm_chardev *cdev)
 	u32 c, khz;
 
 	attr = NULL;
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING);
 	if (node) {
 		attr = vmm_devtree_attrval(node, VMM_DEVTREE_MODEL_ATTR_NAME);
 	}

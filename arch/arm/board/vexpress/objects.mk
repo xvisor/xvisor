@@ -31,3 +31,9 @@ board-objs-$(CONFIG_VEXPRESS_A15_ONE_GUEST_VEX_A9_DTS)+=dts/a15/one_guest_vexpre
 board-objs-$(CONFIG_VEXPRESS_A15_ONE_GUEST_VEX_A15_DTS)+=dts/a15/one_guest_vexpress-a15.o
 board-objs-$(CONFIG_VEXPRESS_A15_TWO_GUEST_PBA8_DTS)+=dts/a15/two_guest_pb-a8.o
 
+board-dtbs-$(CONFIG_CPU_CORTEX_A9)+=dts/a9/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A9)+=dts/a9/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A15)+=dts/a15/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A15)+=dts/a15/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A15)+=dts/a15/one_guest_vexpress-a15.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A15)+=dts/a15/two_guest_pb-a8.dtb

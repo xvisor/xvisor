@@ -63,7 +63,7 @@ int __init arch_defterm_init(void)
 	u32 imx_defterm_baud;
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_CHOOSEN_NODE_NAME);
+				   VMM_DEVTREE_CHOSEN_NODE_NAME);
 	if (!node) {
 		return VMM_ENODEV;
 	}

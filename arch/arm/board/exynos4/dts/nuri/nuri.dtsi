@@ -2,9 +2,16 @@
 /include/ "../exynos4210.dtsi"
 
 / {
-	choosen {
+	model = "nuri";
+
+	chosen {
 		console = &SERIAL0;
 		rtcdev = &RTC0;
+	};
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x40000000 0x10000000>; /* 256 MB */
 	};
 
 	vmm {
@@ -14,25 +21,6 @@
 				compatible = "bridge";
 			};
 		};
-	};
-
-	host {
-		#address-cells = <1>;
-		#size-cells = <1>;
-
-		model = "nuri";
-                device_type = "host";
-
-		memory {
-			/* NOTE: By default QEMU will only proivde 128 MB
-			 * unless specified by "-m" option. If you have
-			 * X MB then we will be able to access only first
-			 * X MB starting at physical_addr.
-			 */
-			physical_addr = <0x40000000>;
-			physical_size = <0x10000000>; /* 256 MB */
-		};
-
 	};
 
 	/* Empty guests node */
