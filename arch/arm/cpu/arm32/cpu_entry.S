@@ -85,12 +85,26 @@ _start:
 	mov	r0, r0, lsl #20
 	cmp	r0, r6
 	blt	_start_hang
+
 	/* Hang if execution end is not 1 MB aligned */
 	mov	r0, r7
 	mov	r0, r0, lsr #20
 	mov	r0, r0, lsl #20
 	cmp	r0, r7
 	blt	_start_hang
+
+	/* Zero-out bss section */
+	mov	r0, #0
+	ldr	r1, __bss_start
+	sub	r1, r1, r6
+	add	r1, r1, r4
+	ldr	r2, __bss_end
+	sub	r2, r2, r6
+	add	r2, r2, r4
+_bss_zero:
+	str	r0, [r1], #4
+	cmp	r1, r2
+	blt	_bss_zero
 
 	/* Determine if a valid external dtb is provided */
 	/* First check for 4B alignment */
@@ -295,6 +309,10 @@ __load_start:
 	.word _load_start
 __load_end:
 	.word _load_end
+__bss_start:
+	.word _bss_start
+__bss_end:
+	.word _bss_end
 __copy_start:
 	.word _copy
 __copy_end:
