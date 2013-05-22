@@ -263,6 +263,8 @@ int cmd_wallclock_set_time(struct vmm_chardev *cdev,
 		ti.tm_mon = 11;
 	} else {
 		ti.tm_mon = str2int(targv[2], 10);
+		/* Directly entered month will have range 1-12. */
+		ti.tm_mon--;
 	}
 	ti.tm_year = str2int(targv[3], 10) - 1900;
 
