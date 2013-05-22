@@ -158,7 +158,7 @@ virtual_size_t arch_code_size(void)
 	return (virtual_size_t)(&_code_end - &_code_start);
 }
 
-void __init cpu_init(struct multiboot_info *binfo)
+void __init cpu_init(struct multiboot_info *binfo, char *cmdline)
 {
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();

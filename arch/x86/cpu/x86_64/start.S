@@ -44,8 +44,17 @@ _start_32:
         cli /* no interrupts please. */
 	leal	_bootstrap_stack_start, %esp	/* setup the stack (bss segment) */
 
-        xor     %eax, %eax
-        movl    %ebx, _mboot_info(, %eax, 8)
+	movl    %ebx, %esi
+	leal    _mboot_info, %edi
+	movl    $0x400, %ecx /* 4k worth data */
+_mboot_copy_loop:
+	movl    (%esi), %eax
+	movl    %eax, (%edi)
+	addl    $4, %esi
+	addl    $4, %edi
+	subl    $1, %ecx
+	cmp     $0, %ecx
+	jne     _mboot_copy_loop
 
         /* O.K. We have CPUID. Check if we can enter
          * long mode. */
@@ -267,8 +276,16 @@ __pgti:
 	.zero	32768
 
 .align 4
+	.type   _mboot_info, @object
+        .size   _mboot_info, 4096
 _mboot_info:
-        .quad 0
+	.zero 4096
+
+.align 4
+	.type   _cmd_line, @object
+	.size   _cmd_line, 1024
+_cmd_line:
+	.zero   1024
 
 .align 4
 _gdt64:
@@ -301,7 +318,7 @@ _gdt64:
 .section .bootstrap.text
 __64_bit_entry_trampoline:
         movabsq $_stack_start, %rsp
-        movq    (_mboot_info), %rdi
+        movq    $_mboot_info, %rdi
 
         /*
          * Hell yes. We are done bootstrapping!
