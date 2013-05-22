@@ -9,6 +9,7 @@
  *
  */
 #include <cpu_mmu.h>
+#include <multiboot.h>
 
 .section .mboot,"aw",@progbits
 /*
@@ -17,12 +18,6 @@
  */
 .align 4
 mboot:
-	.equ MULTIBOOT_PAGE_ALIGN, 1<< 0
-	.equ MULTIBOOT_MEMORY_INFO, 1 << 1
-	.equ MULTIBOOT_AOUT_KLUDGE, 1 << 16
-	.equ MULTIBOOT_HEADER_MAGIC, 0x1BADB002
-	.equ MULTIBOOT_HEADER_FLAGS, MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO | MULTIBOOT_AOUT_KLUDGE
-	.equ MULTIBOOT_CHECKSUM, -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
 	.extern _code_start, _code_end    /* These externs are coming from the linker script */
 
 	.int MULTIBOOT_HEADER_MAGIC
@@ -44,8 +39,29 @@ _start_32:
         cli /* no interrupts please. */
 	leal	_bootstrap_stack_start, %esp	/* setup the stack (bss segment) */
 
-        xor     %eax, %eax
-        movl    %ebx, _mboot_info(, %eax, 8)
+	movl    %ebx, %esi
+	leal    _mboot_info, %edi
+	movl    $MAX_BOOTINFO_WORDS, %ecx /* 4k worth data */
+_mboot_copy_loop:
+	movl    (%esi), %eax
+	movl    %eax, (%edi)
+	addl    $4, %esi
+	addl    $4, %edi
+	subl    $1, %ecx
+	cmp     $0, %ecx
+	jne     _mboot_copy_loop
+
+	movl    16(%ebx), %esi /* command line */
+	leal    _cmd_line, %edi
+	movl    $MAX_CMD_LINE_WORDS, %ecx
+_cmdline_copy_loop:
+	movl    (%esi), %eax
+	movl    %eax, (%edi)
+	addl    $4, %esi
+	addl    $4, %edi
+	subl    $1, %ecx
+	cmp     $0, %ecx
+	jne     _cmdline_copy_loop
 
         /* O.K. We have CPUID. Check if we can enter
          * long mode. */
@@ -267,8 +283,16 @@ __pgti:
 	.zero	32768
 
 .align 4
+	.type   _mboot_info, @object
+        .size   _mboot_info, MAX_BOOTINFO_SIZE
 _mboot_info:
-        .quad 0
+	.zero MAX_BOOTINFO_SIZE
+
+.align 4
+	.type   _cmd_line, @object
+	.size   _cmd_line, MAX_CMD_LINE
+_cmd_line:
+	.zero   MAX_CMD_LINE
 
 .align 4
 _gdt64:
@@ -297,11 +321,19 @@ _gdt64:
         .word .-_gdt64 -1
         .long _gdt64
 
+	/*
+	 * The calling convention of the System V AMD64 ABI
+	 * is followed on Solaris, GNU/Linux, FreeBSD, and
+	 * other non-Microsoft operating systems. The first
+	 * six integer or pointer arguments are passed in
+	 * registers RDI, RSI, RDX, RCX, R8, and R9.
+	 */
 .code64
 .section .bootstrap.text
 __64_bit_entry_trampoline:
         movabsq $_stack_start, %rsp
-        movq    (_mboot_info), %rdi
+        movq    $_mboot_info, %rdi
+        movq    $_cmd_line, %rsi
 
         /*
          * Hell yes. We are done bootstrapping!

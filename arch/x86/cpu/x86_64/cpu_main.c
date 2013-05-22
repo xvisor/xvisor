@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_main.h>
 #include <libs/libfdt.h>
+#include <libs/stringlib.h>
 #include <multiboot.h>
 #include <arch_regs.h>
 #include <arch_cpu.h>
@@ -34,6 +35,7 @@
 #include <linux/screen_info.h>
 
 struct multiboot_info boot_info;
+u8 boot_cmd_line[MAX_CMD_LINE];
 
 extern u32 dt_blob_start;
 
@@ -69,31 +71,7 @@ int arch_devtree_ram_start(physical_addr_t *addr)
 
 int arch_devtree_ram_size(physical_size_t *size)
 {
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-	physical_size_t data[2];
-	
-	rc = libfdt_parse_fileinfo((virtual_addr_t)&dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	fdt_node = libfdt_find_node(&fdt, 
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_REG_ATTR_NAME, data);
-	if (rc) {
-		return rc;
-	}
-
-	*size = data[1];
-
+	*size = boot_info.mem_upper * 1024;
 	return VMM_OK;
 }
 
@@ -160,8 +138,13 @@ virtual_size_t arch_code_size(void)
 	return (virtual_size_t)(&_code_end - &_code_start);
 }
 
-void __init cpu_init(struct multiboot_info *binfo)
+void __init cpu_init(struct multiboot_info *binfo, char *cmdline)
 {
+	memcpy(&boot_info, binfo, sizeof(struct multiboot_info));
+	memcpy(boot_cmd_line, cmdline, sizeof(boot_cmd_line));
+
+	BUG_ON(!(binfo->flags & MULTIBOOT_INFO_MEMORY));
+
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
 

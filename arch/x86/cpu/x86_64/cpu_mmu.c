@@ -70,20 +70,9 @@ extern u64 __pgti[];
 /* mmu inline asm routines */
 static inline void invalidate_vaddr_tlb(virtual_addr_t vaddr)
 {
-	__asm__ __volatile__("invlpg 0(%0)\n\t"
-			     ::"r"(&vaddr));
+	__asm__ __volatile__("invlpg (%0)\n\t"
+			::"r"(vaddr):"memory");
 }
-
-#if 0
-static void switch_to_pagetable(physical_addr_t pml4_base)
-{
-        __asm__ __volatile__ ("movq %0, %%cr3\n\t"
-			      "jmp 1f\n\t" /* sync EIP */
-			      "1:\n\t"
-                              ::"r"(pml4_base));
-        barrier();
-}
-#endif
 
 static struct page_table *mmu_pgtbl_find(physical_addr_t tbl_pa)
 {
@@ -425,8 +414,6 @@ int mmu_unmap_page(struct page_table *pgtbl, physical_addr_t ia)
 	}
 
 	pgt->_val = 0x0;
-
-	/* FIXME: flush cache */
 
 	invalidate_vaddr_tlb(ia);
 
