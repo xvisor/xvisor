@@ -64,7 +64,7 @@ int __init arch_board_early_init(void)
 {
 	int rc;
 	u32 val;
-	struct vmm_devtree_node *hnode, *node;
+	struct vmm_devtree_node *node;
 
 	/* Host aspace, Heap, Device tree, and Host IRQ available.
 	 *
@@ -75,12 +75,8 @@ int __init arch_board_early_init(void)
 	 * ....
 	 */
 
-	/* Get host node */
-	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
-
 	/* Map sysreg */
-	node = vmm_devtree_find_compatible(hnode, NULL, "arm,versatile-sysreg");
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,versatile-sysreg");
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -90,7 +86,7 @@ int __init arch_board_early_init(void)
 	}
 
 	/* Map sysctl */
-	node = vmm_devtree_find_compatible(hnode, NULL, "arm,versatile-sctl");
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,versatile-sctl");
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -111,7 +107,7 @@ int __init arch_board_early_init(void)
 	vmm_writel(val, (void *)versatile_sctl_base);
 
 	/* Map sp804 registers */
-	node = vmm_devtree_find_compatible(hnode, NULL, "arm,sp804");
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp804");
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -163,17 +159,13 @@ int __cpuinit arch_clockchip_init(void)
 int __init arch_board_final_init(void)
 {
 	int rc;
-	struct vmm_devtree_node *hnode, *node;
+	struct vmm_devtree_node *node;
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
-	/* Get host node */
-	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
-
 	/* Find simple-bus node */
-	node = vmm_devtree_find_compatible(hnode, NULL, "simple-bus");
+	node = vmm_devtree_find_compatible(NULL, NULL, "simple-bus");
 	if (!node) {
 		return VMM_ENODEV;
 	}

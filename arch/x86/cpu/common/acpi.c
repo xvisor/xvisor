@@ -254,8 +254,6 @@ static int __init acpi_populate_lapic_devtree(struct acpi_madt_hdr *madt_hdr,
 static int __init process_acpi_sdt_table(char *tab_sign, u32 *tab_data)
 {
 	struct vmm_devtree_node *node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-							VMM_DEVTREE_HOSTINFO_NODE_NAME
-							VMM_DEVTREE_PATH_SEPARATOR_STRING
 							VMM_DEVTREE_MOTHERBOARD_NODE_NAME);
 	/* FIXME: First find if tab_size already exists. */
 	struct vmm_devtree_node *cnode = vmm_devtree_addnode(node, tab_sign);

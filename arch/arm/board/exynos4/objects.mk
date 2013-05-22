@@ -32,3 +32,12 @@ board-objs-$(CONFIG_NURI_TWO_GUEST_PBA8_DTS)+=dts/nuri/two_guest_pb-a8.o
 board-objs-$(CONFIG_ODROIDX_ONE_GUEST_PBA8_DTS)+=dts/odroidx/one_guest_pb-a8.o
 board-objs-$(CONFIG_ODROIDX_TWO_GUEST_PBA8_DTS)+=dts/odroidx/two_guest_pb-a8.o
 board-objs-$(CONFIG_ODROIDX_ONE_GUEST_VEXPRESSA9_DTS)+=dts/odroidx/one_guest_vexpress-a9.o
+
+board-dtbs-$(CONFIG_BOARD_SMDKC210)+=dts/smdkc210/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_BOARD_SMDKC210)+=dts/smdkc210/two_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_BOARD_SMDKC210)+=dts/smdkc210/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_BOARD_NURI)+=dts/nuri/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_BOARD_NURI)+=dts/nuri/two_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_BOARD_ODROIDX)+=dts/odroidx/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_BOARD_ODROIDX)+=dts/odroidx/two_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_BOARD_ODROIDX)+=dts/odroidx/one_guest_vexpress-a9.dtb

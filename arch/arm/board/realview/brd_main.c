@@ -280,7 +280,7 @@ int __init arch_board_early_init(void)
 {
 	int rc;
 	u32 val;
-	struct vmm_devtree_node *hnode, *node;
+	struct vmm_devtree_node *node;
 
 	/* Host aspace, Heap, Device tree, and Host IRQ available.
 	 *
@@ -291,12 +291,8 @@ int __init arch_board_early_init(void)
 	 * ....
 	 */
 
-	/* Get host node */
-	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
-
 	/* Map sysreg */
-	node = vmm_devtree_find_compatible(hnode, NULL, "arm,realview-sysreg");
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,realview-sysreg");
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -309,7 +305,7 @@ int __init arch_board_early_init(void)
 	realview_sys_24mhz = realview_sys_base + REALVIEW_SYS_24MHz_OFFSET;
 
 	/* Map sysctl */
-	node = vmm_devtree_find_compatible(hnode, NULL, "arm,sp810");
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp810");
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -330,7 +326,7 @@ int __init arch_board_early_init(void)
 	vmm_writel(val, (void *)realview_sctl_base);
 
 	/* Map sp804 registers */
-	node = vmm_devtree_find_compatible(hnode, NULL, "arm,sp804");
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp804");
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -349,7 +345,7 @@ int __init arch_board_early_init(void)
 	oscvco_clk.vcoreg = (void *)realview_sys_base + REALVIEW_SYS_OSC4_OFFSET;
 
 	/* Setup CLCD (before probing) */
-	node = vmm_devtree_find_compatible(hnode, NULL, "arm,pl111");
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");
 	if (node) {
 		node->system_data = &clcd_system_data;
 	}
@@ -403,7 +399,7 @@ int __cpuinit arch_clockchip_init(void)
 int __init arch_board_final_init(void)
 {
 	int rc;
-	struct vmm_devtree_node *hnode, *node;
+	struct vmm_devtree_node *node;
 #if defined(CONFIG_VTEMU)
 	struct vmm_fb_info *info;
 #endif
@@ -411,12 +407,8 @@ int __init arch_board_final_init(void)
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
-	/* Get host node */
-	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
-
 	/* Find simple-bus node */
-	node = vmm_devtree_find_compatible(hnode, NULL, "simple-bus");
+	node = vmm_devtree_find_compatible(NULL, NULL, "simple-bus");
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -429,7 +421,7 @@ int __init arch_board_final_init(void)
 
 	/* Create VTEMU instace if available*/
 #if defined(CONFIG_VTEMU)
-	node = vmm_devtree_find_compatible(hnode, NULL, "arm,pl111");
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");
 	if (!node) {
 		return VMM_ENODEV;
 	}

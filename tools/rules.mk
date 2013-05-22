@@ -31,6 +31,11 @@ $(build_dir)/%.dep: $(src_dir)/%.dts
 	$(if $(V), @echo " (dtc-dep)   $(subst $(build_dir)/,,$@)")
 	$(V)echo "$(@:.dep=.S): $<" > $@
 
+$(build_dir)/%.dtb: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
+	$(V)$(build_dir)/tools/dtc/dtc -p 0x100 -I dts -O dtb $< -o $@
+
 $(build_dir)/%.S: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")

@@ -97,13 +97,7 @@ int __init bcm2835_pm_init(void)
 	int rc;
 	struct vmm_devtree_node *node;
 
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!node) {
-		return VMM_ENODEV;
-	}
-
-	node = vmm_devtree_find_compatible(node, NULL, 
+	node = vmm_devtree_find_compatible(NULL, NULL, 
 					   "brcm,bcm2835-pm-wdt");
 	if (!node) {
 		return VMM_ENODEV;

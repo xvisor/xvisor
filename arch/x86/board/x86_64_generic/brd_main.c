@@ -71,7 +71,7 @@ int __cpuinit arch_clockchip_init(void)
 int __init arch_board_final_init(void)
 {
 	int rc;
-	struct vmm_devtree_node *hnode, *node;
+	struct vmm_devtree_node *node;
 #if defined(CONFIG_VTEMU)
 	struct vmm_fb_info *info;
 #endif
@@ -79,12 +79,8 @@ int __init arch_board_final_init(void)
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
-	/* Get host node */
-	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME);
-
 	/* Find simple bus node */
-	node = vmm_devtree_find_compatible(hnode, NULL, "simple-bus");
+	node = vmm_devtree_find_compatible(NULL, NULL, "simple-bus");
 	if (!node) {
 		return VMM_ENODEV;
 	}

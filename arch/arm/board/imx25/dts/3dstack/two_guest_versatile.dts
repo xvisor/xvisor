@@ -4,7 +4,7 @@
 /include/ "3dstack.dtsi"
 
 / {
-	choosen {
+	chosen {
 		bootcmd = /* Copy guest0 device tree from templates */
 			  "devtree node copy /guests guest0 /templates/realview-eb-mpcore",
 

@@ -28,3 +28,6 @@ board-objs-$(CONFIG_OMAP3_ONE_GUEST_PBA8_DTS)+=dts/one_guest_pb-a8.o
 board-objs-$(CONFIG_OMAP3_ONE_GUEST_VEX_A9_DTS)+=dts/one_guest_vexpress-a9.o
 board-objs-$(CONFIG_OMAP3_TWO_GUEST_PBA8_DTS)+=dts/two_guest_pb-a8.o
 
+board-dtbs-y+=dts/one_guest_pb-a8.dtb
+board-dtbs-y+=dts/one_guest_vexpress-a9.dtb
+board-dtbs-y+=dts/two_guest_pb-a8.dtb

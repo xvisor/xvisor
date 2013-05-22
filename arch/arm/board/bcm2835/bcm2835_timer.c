@@ -63,13 +63,7 @@ int __init bcm2835_clocksource_init(void)
 	struct vmm_devtree_node *node;
 	struct bcm2835_clocksource *bcs;
 
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!node) {
-		return VMM_ENODEV;
-	}
-
-	node = vmm_devtree_find_compatible(node, NULL, 
+	node = vmm_devtree_find_compatible(NULL, NULL, 
 					   "brcm,bcm2835-system-timer");
 	if (!node) {
 		return VMM_ENODEV;
@@ -174,13 +168,7 @@ int __cpuinit bcm2835_clockchip_init(void)
 	struct vmm_devtree_node *node;
 	struct bcm2835_clockchip *bcc;
 
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!node) {
-		return VMM_ENODEV;
-	}
-
-	node = vmm_devtree_find_compatible(node, NULL, 
+	node = vmm_devtree_find_compatible(NULL, NULL, 
 					   "brcm,bcm2835-system-timer");
 	if (!node) {
 		return VMM_ENODEV;

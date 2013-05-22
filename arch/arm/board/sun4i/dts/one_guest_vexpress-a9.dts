@@ -4,7 +4,7 @@
 /include/ "sun4i.dtsi"
 
 / {
-	choosen {
+	chosen {
 		console = &SERIAL0;
 		bootcmd = /* Copy guest0 device tree from templates */
 			  "devtree node copy /guests guest0 /templates/vexpress-a9x2",
