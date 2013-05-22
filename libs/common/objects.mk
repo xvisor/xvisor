@@ -34,4 +34,5 @@ libs-objs-y+= common/list_sort.o
 libs-objs-y+= common/fifo.o
 libs-objs-y+= common/lifo.o
 libs-objs-y+= common/mempool.o
+libs-objs-y+= common/libfdt.o
 

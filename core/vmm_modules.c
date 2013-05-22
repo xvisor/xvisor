@@ -812,12 +812,12 @@ int __init vmm_modules_init(void)
 		mod_entry = list_entry(tnode, struct vmm_module, head);
 		if (unlikely(!mod_entry))
 			break;
-		mwrap = vmm_malloc(sizeof(struct module_wrap));
+
+		mwrap = vmm_zalloc(sizeof(struct module_wrap));
 		if (unlikely(!mwrap)) {
 			break;
 		}
 
-		memset(mwrap, 0, sizeof(struct module_wrap));
 		INIT_LIST_HEAD(&mwrap->head);
 		memcpy(&mwrap->mod, mod_entry, sizeof(struct vmm_module));
 		mwrap->built_in = TRUE;

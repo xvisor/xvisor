@@ -147,7 +147,6 @@ CONFIG_MTERM_HISTORY_SIZE=10
 #
 # Library Options
 #
-CONFIG_LIBFDT=y
 
 #
 # Network Stack Options
@@ -269,6 +268,5 @@ CONFIG_EMU_MISC_ZERO=y
 #
 # Tool Options
 #
-CONFIG_DTC=y
 CONFIG_CPATCH=y
 # CONFIG_BBFLASH is not set
