@@ -79,6 +79,7 @@ _start:
 	sub	r0, r0, r6
 	add	r0, r0, r4
 	str	r5, [r0]
+
 	/* Hang if execution start is not 4 KB aligned */
 	mov	r0, r6
 	bfc	r0, #0, #12
@@ -89,6 +90,48 @@ _start:
 	bfc	r0, #0, #12
 	cmp	r0, r7
 	blt	_start_hang
+
+	/* Determine if a valid external dtb is provided */
+	/* First check for 4B alignment */
+	tst	r2, #0x3
+	bne	align_4k_boundary
+
+	/* Now check for FDT_MAGIC */
+	ldr	r0, [r2]
+	ldr	r1, __fdt_magic
+	cmp	r0, r1
+	bne	align_4k_boundary
+
+	/* Now get the dtb total-size */
+	ldrb	r0, [r2, #4]
+	ldrb	r1, [r2, #5]
+	add	r0, r1, r0, lsl #8
+	ldrb	r1, [r2, #6]
+	add	r0, r1, r0, lsl #8
+	ldrb	r1, [r2, #7]
+	add	r0, r1, r0, lsl #8
+
+	/* Compare with max supported dtb size */
+	ldr	r1, __max_dtb_size
+	cmp	r0, r1
+	bgt	align_4k_boundary
+
+	/* Overwrite the built-in fdt with the one passed */
+	ldr	r1, __builtin_dtb
+	sub	r1, r1, r6
+	add	r1, r1, r4
+
+	/* r0 = dtb total size */
+	/* r1 = builtin_dtb load-address */
+	/* r2 = passed dtb address */
+
+dtb_save_loop:
+	ldr	r3, [r2], #4
+	str	r3, [r1], #4
+	subs	r0, r0, #4
+	bgt	dtb_save_loop
+
+align_4k_boundary:
 	/* Relocate code if load start is not 4 KB aligned */
 	mov	r0, r4
 	bfc	r0, #0, #12
@@ -195,7 +238,14 @@ _start_secondary:
 _start_hang:
 	b	.
 
+#define FDT_MAGIC	0xedfe0dd0	/* 0xd00dfeed in big-endian */
 
+__fdt_magic:
+	.word FDT_MAGIC
+__builtin_dtb:
+	.word dt_blob_start
+__max_dtb_size:
+	.word CONFIG_ARM_MAX_DTB_SIZE
 __hmair0_set:
 	.word (HMAIR0_INITVAL)
 __hmair1_set:
