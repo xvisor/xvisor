@@ -24,4 +24,7 @@
 board-objs-y+=brd_defterm.o
 board-objs-y+=brd_main.o
 board-objs-$(CONFIG_3DSTACK_ONE_GUEST_VERSATILE_DTS)+=dts/3dstack/one_guest_versatile.o
-board-objs-$(CONFIG_3DSTACK_TWO_GUEST_VERSATILE_DTS)+=dts/3dstackkzm/two_guest_versatile.o
+board-objs-$(CONFIG_3DSTACK_TWO_GUEST_VERSATILE_DTS)+=dts/3dstack/two_guest_versatile.o
+
+board-dtbs-y+=dts/3dstack/one_guest_versatile.dtb
+board-dtbs-y+=dts/3dstack/two_guest_versatile.dtb

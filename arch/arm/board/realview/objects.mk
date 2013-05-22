@@ -32,3 +32,10 @@ board-objs-$(CONFIG_REALVIEW_PBA8_ONE_GUEST_VEX_A9_DTS)+=dts/pb-a8/one_guest_vex
 board-objs-$(CONFIG_REALVIEW_PBA8_TWO_GUEST_PBA8_DTS)+=dts/pb-a8/two_guest_pb-a8.o
 board-objs-$(CONFIG_REALVIEW_PBA8_TWO_PT_GUEST_PBA8_DTS)+=dts/pb-a8/two_pt_guest_pb-a8.o
 
+board-dtbs-$(CONFIG_CPU_ARM11MP)+=dts/eb-mpcore/one_guest_ebmp.dtb
+board-dtbs-$(CONFIG_CPU_ARM11MP)+=dts/eb-mpcore/two_guest_ebmp.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A8)+=dts/pb-a8/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A8)+=dts/pb-a8/one_pt_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A8)+=dts/pb-a8/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A8)+=dts/pb-a8/two_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A8)+=dts/pb-a8/two_pt_guest_pb-a8.dtb
