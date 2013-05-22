@@ -132,7 +132,7 @@ We need to have 4 images to create the nand-flash image:
     used, so a simple go command will not work. We add the U-Boot header to 
     make it appear as a linux image.
  d) Patched guest binary 
-    (Patched Realview pb-a8 Basic Test image, arm_test.bin.patched)
+    (Patched Realview-pb-a8 Basic Test image, arm_test.bin.patched)
 
 The steps to create these images and boot Xvisor on Beagleboard QEMU are as 
 follows:
@@ -177,24 +177,24 @@ follows:
   # mkimage -A arm -O linux -T kernel -C none -a 0x88000000 -e 0x88000000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
   [9. Build ARM Basic Test for Realview-PB-A8 Guest, this creates arm_test.bin.patched]
-  # make -C tests/arm32/pb-a8/basic
+  # make -C tests/arm32/realview-pb-a8/basic
 
   [10. Copy the X-loader and U-Boot binaries (from step 2 or 3-4) into Xvisor build-directory]
   # cp <path-to-x-loader-binary>/x-load.bin.ift <path-to-u-boot-binary>/u-boot.bin build/
 
   [11. Create a flat binary with all our binaries appended]
-  # ./tools/scripts/memimg.py -a 0 -o build/beagle.img build/x-load.bin.ift@0x0 build/u-boot.bin@0x80000 build/uvmm.bin@0x280000 build/tests/arm32/pb-a8/basic/arm_test.bin.patched@0x380000
+  # ./tools/scripts/memimg.py -a 0 -o build/beagle.img build/x-load.bin.ift@0x0 build/u-boot.bin@0x80000 build/uvmm.bin@0x280000 build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched@0x380000
 
   (Note: If you want additional images like cmdlist, patched zImage, 
    rootfs image, etc. then you should above step to include them in 
    build/beagle.img. For instance cmdlist, patched zImage, and rootfs.img
    can be appended to build/beagle.img using following additional arguments
-   <xvisor_source>/tests/arm32/pb-a8/linux/cmdlist@0x47F000
+   <xvisor_source>/tests/arm32/realview-pb-a8/linux/cmdlist@0x47F000
    <linux_build_dir>/arch/arm/boot/zImage@0x480000
    <linux_build_dir>/rootfs.img@0x780000 
    arguments appended to above step.)
   (Note: For more info on images required for linux on Realview-PB-A8 guest 
-   refer to <xvisor_source>/tests/arm32/pb-a8/linux/README.)
+   refer to <xvisor_source>/tests/arm32/realview-pb-a8/linux/README.)
 
   [12. Build the beagleboard nand-flash image from the flat binary created]
   # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc 
