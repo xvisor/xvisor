@@ -290,7 +290,7 @@ static struct fdt_node_header *libfdt_find_node_recursive(char **data,
 							  const char *node_path)
 {
 	u32 i, valid, len = 0x0;
-	struct fdt_node_header *ret;
+	struct fdt_node_header *ret = NULL;
 
 	while ((*node_path == ' ') || 
 	       (*node_path == '\t') ||
@@ -334,40 +334,82 @@ static struct fdt_node_header *libfdt_find_node_recursive(char **data,
 			*data -= sizeof(fdt_cell_t);
 			return (struct fdt_node_header *)(*data);
 		}
-	}
-	*data += len + 1;
-	while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
-		(*data)++;
-	}
 
-	while (LIBFDT_DATA32(*data) != FDT_END_NODE) {
-		switch (LIBFDT_DATA32(*data)) {
-		case FDT_PROP:
-			*data += sizeof(fdt_cell_t);
-			len = LIBFDT_DATA32(*data);
-			*data += sizeof(fdt_cell_t);
-			*data += sizeof(fdt_cell_t);
-			*data += len;
-			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
-				(*data)++;
-			}
-			break;
-		case FDT_NOP:
-			*data += sizeof(fdt_cell_t);
-			break;
-		case FDT_BEGIN_NODE:
-			ret = libfdt_find_node_recursive(data, str, node_path);
-			if (ret) {
-				return ret;
-			}
-			break;
-		default:
-			return NULL;
-			break;
-		};
-	}
+		*data += len + 1;
+		while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
+			(*data)++;
+		}
 
-	*data += sizeof(fdt_cell_t);
+		while (LIBFDT_DATA32(*data) != FDT_END_NODE) {
+			switch (LIBFDT_DATA32(*data)) {
+			case FDT_PROP:
+				*data += sizeof(fdt_cell_t);
+				len = LIBFDT_DATA32(*data);
+				*data += sizeof(fdt_cell_t);
+				*data += sizeof(fdt_cell_t);
+				*data += len;
+				while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
+					(*data)++;
+				}
+				break;
+			case FDT_NOP:
+				*data += sizeof(fdt_cell_t);
+				break;
+			case FDT_BEGIN_NODE:
+				ret = libfdt_find_node_recursive(data, str, node_path);
+				if (ret) {
+					return ret;
+				}
+				break;
+			default:
+				return NULL;
+				break;
+			};
+		}
+
+		*data += sizeof(fdt_cell_t);
+	} else {
+		/* Skip the entire node by looking for matching FDT_END_NODE */
+		*data += len + 1;
+		while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
+			(*data)++;
+		}
+
+		valid = 1;
+		while (valid) {
+			switch (LIBFDT_DATA32(*data)) {
+			case FDT_PROP:
+				*data += sizeof(fdt_cell_t);
+				len = LIBFDT_DATA32(*data);
+				*data += sizeof(fdt_cell_t);
+				*data += sizeof(fdt_cell_t);
+				*data += len;
+				while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
+					(*data)++;
+				}
+				break;
+			case FDT_NOP:
+				*data += sizeof(fdt_cell_t);
+				break;
+			case FDT_BEGIN_NODE:
+				*data += sizeof(fdt_cell_t);
+				len = strlen(*data);
+				*data += len + 1;
+				while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
+					(*data)++;
+				}
+				valid++;
+				break;
+			case FDT_END_NODE:
+				*data += sizeof(fdt_cell_t);
+				valid--;
+				break;
+			default:
+				return NULL;
+				break;
+			};
+		}
+	}
 
 	return NULL;
 }
