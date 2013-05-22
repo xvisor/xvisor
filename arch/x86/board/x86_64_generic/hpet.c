@@ -206,11 +206,25 @@ static struct hpet_timer *get_timer_from_id(timer_id_t timer_id)
 
 int __init hpet_init(void)
 {
-	u32 nr_hpet_chips = acpi_get_nr_hpet_chips();
+	u32 nr_hpet_chips = 0, *aval;
 	struct hpet_chip *chip;
 	struct hpet_block *block;
 	struct hpet_timer *timer;
 	int i, j, k;
+	struct vmm_devtree_node *node;
+	char hpet_nm[512];
+	physical_addr_t *base;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_HOSTINFO_NODE_NAME
+				VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_MOTHERBOARD_NODE_NAME
+				VMM_DEVTREE_PATH_SEPARATOR_STRING
+				"HPET");
+
+	BUG_ON(node == NULL);
+	aval = vmm_devtree_attrval(node, VMM_DEVTREE_NR_HPET_ATTR_NAME);
+	nr_hpet_chips = *aval;
 
 	/* Need at least one HPET as system timer */
 	BUG_ON(nr_hpet_chips == 0);
@@ -221,7 +235,8 @@ int __init hpet_init(void)
 	for (i = 0; i < nr_hpet_chips; i++) {
 		chip = (struct hpet_chip *)vmm_malloc(sizeof(struct hpet_chip));
 		chip->chip_id = i;
-		chip->nr_blocks = acpi_get_nr_hpet_blocks(i);
+		/* Fold blocks on chip. 1 chip == 1 block. */
+		chip->nr_blocks = 1;
 		INIT_LIST_HEAD(&chip->block_list);
 		list_add(&chip->head, &hpet_devices.chip_list);
 
@@ -229,13 +244,23 @@ int __init hpet_init(void)
 			block = (struct hpet_block *)vmm_malloc(sizeof(struct hpet_block));
 			BUG_ON(block == NULL);
 
-			/*
-			 * Find the number of timers in this block and initialize
-			 * each one of them.
-			 */
-			block->nr_timers = hpet_nr_timers_in_block(j);
+			/* FIXME: read from devtree */
+			block->nr_timers = 32;
 
-			block->pbase = acpi_get_hpet_block_base(j);
+			vmm_sprintf(hpet_nm, VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_HOSTINFO_NODE_NAME
+				VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_MOTHERBOARD_NODE_NAME
+				VMM_DEVTREE_PATH_SEPARATOR_STRING
+				"HPET"
+				VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_HPET_NODE_FMT, j);
+
+			node = vmm_devtree_getnode(hpet_nm);
+			BUG_ON(node == NULL);
+
+			base = vmm_devtree_attrval(node, VMM_DEVTREE_HPET_PADDR_ATTR_NAME);
+			block->pbase = *base;
 			BUG_ON(block->pbase == 0);
 
 			/* Make the block and its timer accessible to us. */
