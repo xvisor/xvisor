@@ -315,7 +315,7 @@ static int __init process_acpi_sdt_table(char *tab_sign, u32 *tab_data)
 
 int __init acpi_init(void)
 {
-	int i, nr_sys_hdr;
+	int i, nr_sys_hdr, ret = VMM_EFAIL;
 	struct acpi_rsdp *root_desc = NULL;
 	struct acpi_rsdt rsdt, *prsdt;
 
@@ -366,21 +366,22 @@ int __init acpi_init(void)
 
 		if (process_acpi_sdt_table((char *)sign, (u32 *)hdr) != VMM_OK) {
 			vmm_host_iounmap((virtual_addr_t)hdr, PAGE_SIZE);
-			return VMM_EFAIL;
+			goto sdt_fail;
 		}
 
 		vmm_host_iounmap((virtual_addr_t)hdr, PAGE_SIZE);
 	}
 
-	vmm_host_iounmap((virtual_addr_t)root_desc, PAGE_SIZE);
-
-	return VMM_OK;
+	ret = VMM_OK;
 
  sdt_fail:
+	vmm_host_iounmap((virtual_addr_t)prsdt, PAGE_SIZE);
+
  rsdt_fail:
+
 	vmm_host_iounmap((virtual_addr_t)root_desc, PAGE_SIZE);
  rdesc_fail:
 
-	return VMM_EFAIL;
+	return ret;
 }
 
