@@ -209,43 +209,6 @@ static int ioapic_route_irq_to_vector(struct cpu_ioapic *ioapic, u32 irq, u32 ve
 	return VMM_OK;
 }
 
-/*
- * FIXME:
- * THIS IS BIGGEST FIXME. Need to parse the ACPI table early
- * and add corresponding nodes to in-memory DTB on-the-fly.
- * After that this function will be deprecated.
- */
-static int acpi_get_ioapics(struct cpu_ioapic *ioa, unsigned *nioa, unsigned max)
-{
-	unsigned int n = 0;
-	struct acpi_madt_ioapic * acpi_ioa;
-
-	while (n < max) {
-		acpi_ioa = acpi_get_ioapic_next();
-		if (acpi_ioa == NULL)
-			break;
-
-		vmm_snprintf((char *)&ioa[n].name, APIC_NAME_LEN, "IOAPIC-%d", n);
-		ioa[n].id = acpi_ioa->id;
-		ioa[n].vaddr = vmm_host_iomap(acpi_ioa->address, PAGE_SIZE);
-		ioa[n].paddr = (physical_addr_t) acpi_ioa->address;
-		ioa[n].gsi_base = acpi_ioa->global_int_base;
-		ioa[n].pins = ((ioapic_read(ioa[n].vaddr,
-				IOAPIC_VERSION) & 0xff0000) >> 16)+1;
-		n++;
-	}
-
-	*nioa = n;
-	return n;
-}
-
-int detect_ioapics(void)
-{
-	int ret;
-	ret = acpi_get_ioapics(io_apic, &nioapics, NR_IOAPIC);
-	return ret;
-}
-
 void ioapic_set_id(u32 addr, unsigned int id)
 {
 	ioapic_write(addr, IOAPIC_ID, id << 24);
@@ -258,6 +221,58 @@ void ioapic_enable(void)
 	/* Select IMCR and disconnect 8259s. */
 	vmm_outb(0x70, 0x22);
 	vmm_outb(0x01, 0x23);
+}
+
+int detect_ioapics(unsigned int *nr_ioapics)
+{
+	int ret = VMM_OK;
+	u32 *aval;
+	struct vmm_devtree_node *node;
+	char apic_nm[512];
+	physical_addr_t *base;
+	unsigned int n = 0;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_HOSTINFO_NODE_NAME
+				VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_MOTHERBOARD_NODE_NAME
+				VMM_DEVTREE_PATH_SEPARATOR_STRING
+				"APIC");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	aval = vmm_devtree_attrval(node, VMM_DEVTREE_NR_IOAPIC_ATTR_NAME);
+
+	if (nr_ioapics) *nr_ioapics = *aval;
+
+	while (n < *aval) {
+		vmm_sprintf(apic_nm, VMM_DEVTREE_PATH_SEPARATOR_STRING
+			VMM_DEVTREE_HOSTINFO_NODE_NAME
+			VMM_DEVTREE_PATH_SEPARATOR_STRING
+			VMM_DEVTREE_MOTHERBOARD_NODE_NAME
+			VMM_DEVTREE_PATH_SEPARATOR_STRING
+			"APIC"
+			VMM_DEVTREE_PATH_SEPARATOR_STRING
+			VMM_DEVTREE_IOAPIC_NODE_FMT,
+			n);
+
+		node = vmm_devtree_getnode(apic_nm);
+		BUG_ON(node == NULL);
+
+		base = vmm_devtree_attrval(node, VMM_DEVTREE_IOAPIC_PADDR_ATTR_NAME);
+
+		vmm_snprintf((char *)&io_apic[n].name, APIC_NAME_LEN, "IOAPIC-%d", n);
+		io_apic[n].id = n;
+		io_apic[n].vaddr = vmm_host_iomap(*base, PAGE_SIZE);
+		io_apic[n].paddr = *base;
+		io_apic[n].pins = ((ioapic_read(io_apic[n].vaddr,
+				IOAPIC_VERSION) & 0xff0000) >> 16)+1;
+		ioapic_set_id(io_apic[n].vaddr, n);
+		n++;
+	}
+
+	return ret;
 }
 
 static int setup_ioapic_irq_route(struct cpu_ioapic *ioapic, u32 irq, u32 vector)
@@ -287,8 +302,9 @@ static int setup_ioapic(void)
 {
 	int i, nr;
 
-	/* FIXME: Get away with this lousy behaviour */
-	BUG_ON(!detect_ioapics());
+	/* Read from device tree about presence of IOAPICs
+	 * Can't live without? IOAPIC? Shame!! */
+	BUG_ON(detect_ioapics(&nioapics));
 
 	for (nr = 0; nr < nioapics; nr++)
 		for (i = 0; i < NR_IOAPIC_IRQ; i++)
