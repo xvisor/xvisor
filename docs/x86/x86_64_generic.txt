@@ -45,3 +45,9 @@ B. Steps to build a bootable image of Xvisor
    7. Boot the image
           qemu-system-x86_64 -boot d -cdrom bootable.iso
 
+
+NOTE:
+Qemu supports emulation of AMD's SVM. To run on emulated SVM, the
+following command should be used.
+
+qemu-system-x86_64 -cpu qemu64,+svm,vendor=AuthenticAMD -m 1024M -s -boot d -cdrom bootable.iso
