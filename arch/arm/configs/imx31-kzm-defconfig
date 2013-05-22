@@ -2,25 +2,19 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.1
-# Mon Apr  8 22:57:41 2013
+# Wed May 22 16:46:07 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
-# CONFIG_ARCH_MIPS is not set
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
-CONFIG_CPU_COUNT=1
-CONFIG_CPU="arm32"
-CONFIG_CPU_LE=y
-# CONFIG_CPU_BE is not set
-CONFIG_VAPOOL_SIZE_MB=12
-CONFIG_BOARD="imx31"
-# CONFIG_CPU_ARM9 is not set
+# CONFIG_CPU_ARM926T is not set
 CONFIG_CPU_ARM11=y
 # CONFIG_CPU_ARM11MP is not set
 # CONFIG_CPU_CORTEX_A8 is not set
 # CONFIG_CPU_CORTEX_A9 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
+CONFIG_CPU_COUNT=1
 # CONFIG_ARMV5 is not set
 CONFIG_ARMV6=y
 # CONFIG_ARMV6K is not set
@@ -32,9 +26,18 @@ CONFIG_ARM32=y
 #
 # ARM Options
 #
+CONFIG_VAPOOL_SIZE_MB=12
+# CONFIG_ARM_MMU_LPAE is not set
+CONFIG_ARM_MAX_DTB_SIZE=0x8000
+CONFIG_CPU="arm32"
+CONFIG_CPU_LE=y
+# CONFIG_CPU_BE is not set
 CONFIG_ARM32_STACKTRACE=y
 # CONFIG_ARM32_HIGHVEC is not set
+# CONFIG_ARM_ERRATA_364296 is not set
+# CONFIG_ARM_ERRATA_411920 is not set
 # CONFIG_BOARD_VERSATILE is not set
+# CONFIG_BOARD_IMX25 is not set
 # CONFIG_BOARD_BCM2835 is not set
 CONFIG_BOARD_IMX31=y
 # CONFIG_BOARD_REALVIEW is not set
@@ -42,12 +45,13 @@ CONFIG_BOARD_IMX31=y
 # CONFIG_BOARD_SUN4I is not set
 # CONFIG_BOARD_VEXPRESS is not set
 # CONFIG_BOARD_EXYNOS4 is not set
+CONFIG_BOARD="imx31"
 CONFIG_BOARD_KZM=y
 
 #
 # kzm Options
 #
-CONFIG_KZM_ONE_GUEST_PBA8_DTS=y
+CONFIG_KZM_ONE_GUEST_EBMP_DTS=y
 # CONFIG_ARM_VIC is not set
 # CONFIG_ARM_GIC is not set
 # CONFIG_ARM_TIMER_SP804 is not set
@@ -107,7 +111,9 @@ CONFIG_THREAD_STACK_SIZE=8192
 # CONFIG_RTC is not set
 # CONFIG_INPUT is not set
 # CONFIG_FB is not set
-# CONFIG_BLOCK is not set
+CONFIG_BLOCK=y
+CONFIG_BLOCKPART=y
+CONFIG_BLOCKPART_DOS=y
 CONFIG_NET=y
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
@@ -130,6 +136,7 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_NET=y
 
 #
@@ -151,6 +158,11 @@ CONFIG_MTERM_HISTORY_SIZE=10
 CONFIG_NET_STACK_LWIP=y
 
 #
+# Virtual FileSystem Options
+#
+# CONFIG_VFS is not set
+
+#
 # Device Drivers
 #
 
@@ -169,6 +181,16 @@ CONFIG_SERIAL_IMX=y
 #
 
 #
+# Block Drivers
+#
+# CONFIG_BLOCK_RBD is not set
+
+#
+# MMC/SD/SDIO drivers
+#
+# CONFIG_MMC is not set
+
+#
 # Input Device Support
 #
 
@@ -181,7 +203,6 @@ CONFIG_SERIAL_IMX=y
 # Network Drivers
 #
 CONFIG_NET_DRIVERS=y
-# CONFIG_ETHER_NE2K is not set
 CONFIG_ETHER_SMSC_911x=y
 # CONFIG_ETHER_SMSC_91x is not set
 
@@ -218,26 +239,28 @@ CONFIG_EMU_PIC_GIC=y
 # Network Interface Controller Emulators
 #
 CONFIG_EMU_NET=y
-CONFIG_EMU_NET_LAN9118=y
-# CONFIG_EMU_NET_SMC91C111 is not set
-# CONFIG_EMU_NET_VIRTIO is not set
+# CONFIG_EMU_NET_LAN9118 is not set
+CONFIG_EMU_NET_SMC91C111=y
+CONFIG_EMU_NET_VIRTIO=y
 
 #
 # Block Device Emulators
 #
-# CONFIG_EMU_BLOCK is not set
+CONFIG_EMU_BLOCK=y
+CONFIG_EMU_BLOCK_VIRTIO=y
 
 #
 # Console Emulators
 #
-# CONFIG_EMU_CONSOLE is not set
+CONFIG_EMU_CONSOLE=y
+CONFIG_EMU_CONSOLE_VIRTIO=y
 
 #
 # Timer Emulators
 #
 CONFIG_EMU_TIMER=y
 CONFIG_EMU_TIMER_SP804=y
-# CONFIG_EMU_TIMER_ARM_MPTIMER is not set
+CONFIG_EMU_TIMER_ARM_MPTIMER=y
 
 #
 # Serial Port Emulators
@@ -254,7 +277,7 @@ CONFIG_EMU_RTC_PL031=y
 #
 # Cache Controller Emulators
 #
-# CONFIG_EMU_CACHE_L2X0 is not set
+CONFIG_EMU_CACHE_L2X0=y
 
 #
 # GPIO Emulators
@@ -266,6 +289,8 @@ CONFIG_EMU_GPIO_PL061=y
 # Miscellaneous Emulators
 #
 CONFIG_EMU_MISC_ZERO=y
+CONFIG_EMU_MISC_ARM11MPCORE=y
+# CONFIG_EMU_MISC_A9MPCORE is not set
 
 #
 # Tool Options

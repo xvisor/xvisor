@@ -171,13 +171,7 @@ int __cpuinit aw_intc_devtree_init(void)
 	u32 i = 0;
 	struct vmm_devtree_node *node;
 
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!node) {
-		return VMM_ENODEV;
-	}
-
-	node = vmm_devtree_find_compatible(node, NULL, "allwinner,sunxi-ic");
+	node = vmm_devtree_find_compatible(NULL, NULL, "allwinner,sunxi-ic");
 	if (!node) {
 		return VMM_ENODEV;
 	}

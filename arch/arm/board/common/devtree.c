@@ -35,6 +35,7 @@ int arch_devtree_ram_start(physical_addr_t *addr)
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
 	struct fdt_node_header *fdt_node;
+	physical_addr_t data[2];
 	
 	rc = libfdt_parse_fileinfo((virtual_addr_t)&dt_blob_start, &fdt);
 	if (rc) {
@@ -43,18 +44,18 @@ int arch_devtree_ram_start(physical_addr_t *addr)
 
 	fdt_node = libfdt_find_node(&fdt, 
 				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_MEMORY_NODE_NAME);
 	if (!fdt_node) {
 		return VMM_EFAIL;
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME, addr);
+				 VMM_DEVTREE_REG_ATTR_NAME, data);
 	if (rc) {
 		return rc;
 	}
+
+	*addr = data[0];
 
 	return VMM_OK;
 }
@@ -64,6 +65,7 @@ int arch_devtree_ram_size(physical_size_t *size)
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
 	struct fdt_node_header *fdt_node;
+	physical_size_t data[2];
 	
 	rc = libfdt_parse_fileinfo((virtual_addr_t)&dt_blob_start, &fdt);
 	if (rc) {
@@ -72,18 +74,18 @@ int arch_devtree_ram_size(physical_size_t *size)
 
 	fdt_node = libfdt_find_node(&fdt, 
 				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_MEMORY_NODE_NAME);
 	if (!fdt_node) {
 		return VMM_EFAIL;
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME, size);
+				 VMM_DEVTREE_REG_ATTR_NAME, data);
 	if (rc) {
 		return rc;
 	}
+
+	*size = data[1];
 
 	return VMM_OK;
 }

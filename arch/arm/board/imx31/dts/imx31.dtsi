@@ -1,113 +1,97 @@
 
 / {
-	vmm {
-		net {
-			netbridge0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
+	#address-cells = <1>;
+	#size-cells = <1>;
+	model = "KZM";
+
+	chosen { };
+	aliases { };
+
+	cpus {
+		cpu@0 {
+			device_type = "cpu";
+			model = "ARM1136JF-S";
 		};
 	};
 
-	host {
+	memory {
+		device_type = "memory"; 
+		reg = <0x80000000 0x10000000>; /* 256 MB */
+	};
+
+	soc {
 		#address-cells = <1>;
 		#size-cells = <1>;
-		model = "KZM";
-		device_type = "host";
-		
-		cpus {
-			cpu@0 {
-				device_type = "cpu";
-				model = "ARM1136JF-S";
-			};
+		compatible = "simple-bus";
+
+		epit1 {
+	      		device_type = "timer";
+			compatible = "freescale,epit-timer";
+			reg = <0x53f94000 0x4000>;
+			clock-frequency = <38999040>;
+			timer_num = <0>;
+			interrupts = <28>;
 		};
 
-		memory {
-			physical_addr = <0x80000000>;
-			physical_size = <0x10000000>; /* 256 MB */
+		epit2 {
+	      		device_type = "timer";
+			compatible = "freescale,epit-timer";
+			reg = <0x53f98000 0x4000>;
+			clock-frequency = <38999040>;
+			timer_num = <1>;
+			interrupts = <27>;
 		};
 
-
-		soc {
-			#address-cells = <1>;
-			#size-cells = <1>;
-			compatible = "simple-bus";
-
-			epit1 {
-		      		device_type = "timer";
-				compatible = "freescale,epit-timer";
-				reg = <0x53f94000 0x4000>;
-				clock-frequency = <38999040>;
-				timer_num = <0>;
-				interrupts = <28>;
-			};
-
-			epit2 {
-		      		device_type = "timer";
-				compatible = "freescale,epit-timer";
-				reg = <0x53f98000 0x4000>;
-				clock-frequency = <38999040>;
-				timer_num = <1>;
-				interrupts = <27>;
-			};
-
-			gpt {
-		      		device_type = "timer";
-				compatible = "freescale,gpt-timer";
-				reg = <0x53f90000 0x4000>;
-				clock-frequency = <1000000>;
-				timer_num = <2>;
-				interrupts = <29>;
-			};
-
-			avic {
-		      		device_type = "pic";
-				compatible = "freescale,avic";
-				reg = <0x68000000 0x1000>;
-			};
-
-			SERIAL1: uart1 {
-		      		device_type = "serial";
-		      		compatible = "freescale,imx-uart";
-		      		reg = <0x43f90000 0x4000>;
-				clock-frequency = <3000000>;
-		      		baudrate = <115200>;
-				interrupts = <45>;
-			};
-
-			SERIAL2: uart2 {
-		      		device_type = "serial";
-		      		compatible = "freescale,imx-uart";
-		      		reg = <0x43f94000 0x4000>;
-				clock-frequency = <3000000>;
-		      		baudrate = <115200>;
-				interrupts = <32>;
-			};
-
-			SERIAL4: uart4 {
-		      		device_type = "serial";
-		      		compatible = "freescale,imx-uart";
-		      		reg = <0x43fb0000 0x4000>;
-				clock-frequency = <3000000>;
-		      		baudrate = <115200>;
-				interrupts = <46>;
-			};
-
-			SERIAL5: uart5 {
-		      		device_type = "serial";
-		      		compatible = "freescale,imx-uart";
-		      		reg = <0x43fb4000 0x4000>;
-				clock-frequency = <3000000>;
-		      		baudrate = <115200>;
-				interrupts = <47>;
-			};
+		gpt {
+	      		device_type = "timer";
+			compatible = "freescale,gpt-timer";
+			reg = <0x53f90000 0x4000>;
+			clock-frequency = <1000000>;
+			timer_num = <2>;
+			interrupts = <29>;
 		};
-	};
 
-	/* Empty guests node */
-	guests {
+		avic {
+	      		device_type = "pic";
+			compatible = "freescale,avic";
+			reg = <0x68000000 0x1000>;
+		};
+
+		SERIAL1: uart1 {
+	      		device_type = "serial";
+	      		compatible = "freescale,imx-uart";
+	      		reg = <0x43f90000 0x4000>;
+			clock-frequency = <3000000>;
+	      		baudrate = <115200>;
+			interrupts = <45>;
+		};
+
+		SERIAL2: uart2 {
+	      		device_type = "serial";
+	      		compatible = "freescale,imx-uart";
+	      		reg = <0x43f94000 0x4000>;
+			clock-frequency = <3000000>;
+	      		baudrate = <115200>;
+			interrupts = <32>;
+		};
+
+		SERIAL4: uart4 {
+	      		device_type = "serial";
+	      		compatible = "freescale,imx-uart";
+	      		reg = <0x43fb0000 0x4000>;
+			clock-frequency = <3000000>;
+	      		baudrate = <115200>;
+			interrupts = <46>;
+		};
+
+		SERIAL5: uart5 {
+	      		device_type = "serial";
+	      		compatible = "freescale,imx-uart";
+	      		reg = <0x43fb4000 0x4000>;
+			clock-frequency = <3000000>;
+	      		baudrate = <115200>;
+			interrupts = <47>;
+		};
 	};
 };
-
-/* FIXME: Add guest templates */
 

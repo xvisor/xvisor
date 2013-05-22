@@ -155,9 +155,7 @@ int __init arch_clocksource_init(void)
 	struct vmm_devtree_node *node;
 
 	/* Map timer0 registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "mct");
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "mct");
 	if (!node) {
 		rc = VMM_EFAIL;
 		goto skip_mct_timer_init;
@@ -195,8 +193,6 @@ int __cpuinit arch_clockchip_init(void)
 	if (!cpu) {
 		/* Map timer0 registers */
 		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-					   VMM_DEVTREE_HOSTINFO_NODE_NAME
-					   VMM_DEVTREE_PATH_SEPARATOR_STRING
 					   "mct");
 		if (!node) {
 			goto skip_mct_timer_init;
@@ -250,10 +246,7 @@ int __init arch_board_final_init(void)
 
 	/* Do Probing using device driver framework */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   "sfrregion");
-
 	if (!node) {
 		return VMM_ENOTAVAIL;
 	}

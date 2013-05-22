@@ -47,15 +47,9 @@ static inline int arch_host_irq_init(void)
 	int rc;
 	virtual_addr_t vic_base;
 	virtual_addr_t sic_base;
-	struct vmm_devtree_node *hnode, *vnode, *snode;
+	struct vmm_devtree_node *vnode, *snode;
 
-	hnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!hnode) {
-		return VMM_ENODEV;
-	}
-
-	vnode = vmm_devtree_find_compatible(hnode, NULL, "arm,versatile-vic");
+	vnode = vmm_devtree_find_compatible(NULL, NULL, "arm,versatile-vic");
 	if (!vnode) {
 		return VMM_ENODEV;
 	}
@@ -65,7 +59,7 @@ static inline int arch_host_irq_init(void)
 		return rc;
 	}
 
-	snode = vmm_devtree_find_compatible(hnode, NULL, "arm,versatile-sic");
+	snode = vmm_devtree_find_compatible(NULL, NULL, "arm,versatile-sic");
 	if (!snode) {
 		return VMM_ENODEV;
 	}

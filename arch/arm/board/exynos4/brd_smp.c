@@ -43,9 +43,7 @@ int __init arch_smp_init_cpus(void)
 	struct vmm_devtree_node *node;
 
 	/* Get the PMU node in the dev tree */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "pmu");
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "pmu");
 	if (!node) {
 		return VMM_EFAIL;
 	}
@@ -57,9 +55,7 @@ int __init arch_smp_init_cpus(void)
 	}
 
 	/* Get the SCU node in the dev tree */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "scu");
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "scu");
 	if (!node) {
 		return VMM_EFAIL;
 	}

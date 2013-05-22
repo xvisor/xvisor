@@ -4,7 +4,7 @@
 /include/ "versatilepb.dtsi"
 
 / {
-	choosen {
+	chosen {
 		console = &SERIAL0;
 		rtcdev = &RTC0;
 		bootcmd = /* Copy guest0 device tree from templates */

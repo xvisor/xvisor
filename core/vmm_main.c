@@ -166,9 +166,9 @@ static void system_init_work(struct vmm_work *work)
 	freed = vmm_host_free_initmem();
 	vmm_printf("%dK\n", freed);
 
-	/* Process attributes in choosen node */
+	/* Process attributes in chosen node */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_CHOOSEN_NODE_NAME);
+				   VMM_DEVTREE_CHOSEN_NODE_NAME);
 	if (node) {
 		/* Find character device based on console attribute */
 		str = vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
@@ -177,7 +177,7 @@ static void system_init_work(struct vmm_work *work)
 				cdev = vmm_chardev_find(node1->name);
 			}
 		}
-		/* Set choosen console device as stdio device */
+		/* Set chosen console device as stdio device */
 		if (cdev) {
 			vmm_printf("Change stdio device to %s\n", cdev->name);
 			vmm_stdio_change_device(cdev);
@@ -191,7 +191,7 @@ static void system_init_work(struct vmm_work *work)
 				rdev = vmm_rtcdev_find(node1->name);
 			}
 		}
-		/* Syncup wallclock time with choosen rtc device */
+		/* Syncup wallclock time with chosen rtc device */
 		if (rdev) {
 			ret = vmm_rtcdev_sync_wallclock(rdev);
 			vmm_printf("Syncup wallclock using %s", rdev->name);

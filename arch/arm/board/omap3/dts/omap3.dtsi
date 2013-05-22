@@ -1,58 +1,60 @@
 
 / {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	model = "OMAP3xxx";
+	compatible = "ti,omap3";
+		
+	chosen { };
+	aliases { };
+
+	cpus {
+		cpu@0 {
+			device_type = "cpu";
+			model = "Cortex-A8";
+		};
+	};
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x88000000 0x20000000>; /* 256 MB */
+	};
+
+	/*
+	 * XXX: Use a flat representation of the OMAP3 interconnect.
+	 * The real OMAP interconnect network is quite complex.
+	 * Since that will not bring real advantage to represent that in DT for
+	 * the moment, just use a fake OCP bus entry to represent the whole bus
+	 * hierarchy.
+	 */
+	ocp {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+
+		intc {
+			device_type = "pic";
+			compatible = "ti,omap2-intc";
+			reg = <0x48200000 0x1000>;
+		};
+
+		SERIAL0: uart0 {
+			device_type = "serial";
+			compatible = "st16654";
+			reg = <0x49020000 0x1000>;
+			clock-frequency = <48000000>;
+			baudrate = <115200>;
+			reg_offset = <0x0>;
+			reg_align = <0x4>;
+			interrupts = <74>;
+		};
+	};
+
 	vmm {
 		net {
 			netbridge0 {
 				device_type = "netswitch";
 				compatible = "bridge";
-			};
-		};
-	};
-
-	host {
-		model = "OMAP3xxx";
-		compatible = "ti,omap3";
-		device_type = "host";
-		
-		cpus {
-			cpu@0 {
-				device_type = "cpu";
-				model = "Cortex-A8";
-			};
-		};
-
-		memory {
-			physical_addr = <0x88000000>;
-			physical_size = <0x10000000>; /* 256 MB */
-		};
-
-		/*
-		 * XXX: Use a flat representation of the OMAP3 interconnect.
-		 * The real OMAP interconnect network is quite complex.
-		 * Since that will not bring real advantage to represent that in DT for
-		 * the moment, just use a fake OCP bus entry to represent the whole bus
-		 * hierarchy.
-		 */
-		ocp {
-			#address-cells = <1>;
-			#size-cells = <1>;
-			compatible = "simple-bus";
-
-			intc {
-				device_type = "pic";
-				compatible = "ti,omap2-intc";
-				reg = <0x48200000 0x1000>;
-			};
-
-			SERIAL0: uart0 {
-				device_type = "serial";
-				compatible = "st16654";
-				reg = <0x49020000 0x1000>;
-				clock-frequency = <48000000>;
-				baudrate = <115200>;
-				reg_offset = <0x0>;
-				reg_align = <0x4>;
-				interrupts = <74>;
 			};
 		};
 	};

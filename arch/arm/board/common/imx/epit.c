@@ -129,15 +129,8 @@ int __init epit_clocksource_init(void)
 	struct vmm_devtree_node *node;
 	struct epit_clocksource *ecs;
 
-	/* find the host node */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!node) {
-		goto fail;
-	}
-
 	/* find a epit compatible node */
-	node = vmm_devtree_find_compatible(node, NULL, "freescale,epit-timer");
+	node = vmm_devtree_find_compatible(NULL, NULL, "freescale,epit-timer");
 	if (!node) {
 		goto fail;
 	}
@@ -314,15 +307,8 @@ int __cpuinit epit_clockchip_init(void)
 	struct vmm_devtree_node *node;
 	struct epit_clockchip *ecc;
 
-	/* find the host node */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
-	if (!node) {
-		goto fail;
-	}
-
 	/* find the first epit compatible node */
-	node = vmm_devtree_find_compatible(node, NULL, "freescale,epit-timer");
+	node = vmm_devtree_find_compatible(NULL, NULL, "freescale,epit-timer");
 	if (!node) {
 		goto fail;
 	}
