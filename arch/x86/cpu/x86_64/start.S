@@ -10,6 +10,7 @@
  */
 #include <cpu_mmu.h>
 #include <multiboot.h>
+#include <arch_config.h>
 
 .section .mboot,"aw",@progbits
 /*
@@ -178,6 +179,17 @@ __do_IMP:
         leave
         ret
 
+	.type __map_vga_base, @function
+__map_vga_base:
+	pushl   %ebp
+	movl    %esp, %ebp
+	pushl   $4 /* vga buffer is 16K */
+	pushl   $0xb8000 /* vga base */
+	pushl   $0xb8000 /* identical map */
+	call    create_page_table_entry
+	leave
+	ret
+
 #if 0
         .type __test_pagetables, @function
 __test_pagetables:
@@ -206,6 +218,8 @@ bootstrap32:
          * before jumping to 64-code.
          */
         call    __do_IMP
+
+	call    __map_vga_base
 
         /* Enable PAE */
         movl    %cr4, %eax

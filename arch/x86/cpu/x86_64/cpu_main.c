@@ -24,6 +24,7 @@
 #include <vmm_stdio.h>
 #include <vmm_error.h>
 #include <vmm_main.h>
+#include <vmm_params.h>
 #include <libs/libfdt.h>
 #include <libs/stringlib.h>
 #include <multiboot.h>
@@ -41,6 +42,7 @@ extern u32 dt_blob_start;
 
 int arch_devtree_ram_start(physical_addr_t *addr)
 {
+#if 0
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
 	struct fdt_node_header *fdt_node;
@@ -65,7 +67,9 @@ int arch_devtree_ram_start(physical_addr_t *addr)
 	}
 
 	*addr = data[0];
-
+#else
+	*addr = 0x100000UL;
+#endif
 	return VMM_OK;
 }
 
@@ -144,6 +148,8 @@ void __init cpu_init(struct multiboot_info *binfo, char *cmdline)
 	memcpy(boot_cmd_line, cmdline, sizeof(boot_cmd_line));
 
 	BUG_ON(!(binfo->flags & MULTIBOOT_INFO_MEMORY));
+
+	parse_early_options((char *)boot_cmd_line);
 
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
