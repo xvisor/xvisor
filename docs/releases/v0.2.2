@@ -12,7 +12,7 @@ New Features:
  - Lookup based clock device (clkdev) framework
  - Light-weight MMC/SD/SDIO framework
  - Block device partitioning
- - Faster Orphan VCPU preemption in scheduler
+ - Faster Orphan VCPU preemption using arch_vcpu_preempt_orphan()
 
 New Drivers:
  - IMX serial port driver
@@ -29,9 +29,9 @@ New Emulators:
  - ARM11MPCore emulator
 
 MIPS 32-bit Port:
- - The MIPS port is orphaned since long time and currently broken.
+ - The MIPS port is orphaned since long time and currently broken
  - From this release, we remove MIPS port and hope that someone
-   will fix and add it back later.
+   will fix and add it back later
 
 ARM 32-bit Port:
  - Added support for ARMv6 CPUs
@@ -43,10 +43,12 @@ ARM 32-bit Port:
  - Added CPU specific quirks and errata implementations
  - Fixed cache operations for ARMv5, ARMv6 and ARMv7 CPUs
  - Implemented arch_vcpu_preempt_orphan() for Orphan VCPUs
+ - Added support for external DTB provided by bootloaders
 
 ARM 32-bit with VE Port:
  - Added stubs and macros for adding VGIC assisted GIC emulation
  - Implemented arch_vcpu_preempt_orphan() for Orphan VCPUs
+ - Added support for external DTB provided by bootloaders
 
 x86_64 Port:
  - Fixed context switching
