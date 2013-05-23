@@ -106,6 +106,12 @@ _bss_zero:
 	blt	_bss_zero
 
 	/* Determine if a valid external dtb is provided */
+	/* Get DTB address */
+	ldr     r3, __boot_reg2
+	sub     r3, r3, r6
+	add     r3, r3, r4
+	ldr     r2, [r3]
+
 	/* First check for 4B alignment */
 	tst	r2, #0x3
 	bne	align_4k_boundary
