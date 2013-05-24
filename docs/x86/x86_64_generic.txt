@@ -32,7 +32,7 @@ B. Steps to build a bootable image of Xvisor
              set default=0
 
              menuentry "Xvisor x86_64" {
-                  multiboot /boot/vmm.bin
+                  multiboot /boot/vmm.bin earlyprint=vga
                   boot
              }
          -------8<----CUT-END----8<---------------
