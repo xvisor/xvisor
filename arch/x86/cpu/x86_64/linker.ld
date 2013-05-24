@@ -114,6 +114,12 @@ SECTIONS
 		. = ALIGN(4096);
 		PROVIDE(_init_start = .);
 		*(.init.*)
+
+		. = ALIGN(8);
+		PROVIDE(__setup_start = .);
+		*(.setup.init);
+		PROVIDE(__setup_end = .);
+
                 . = ALIGN(4096);
  		PROVIDE(_init_end = .);
 	}
