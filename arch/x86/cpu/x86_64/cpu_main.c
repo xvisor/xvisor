@@ -149,7 +149,7 @@ void __init cpu_init(struct multiboot_info *binfo, char *cmdline)
 
 	BUG_ON(!(binfo->flags & MULTIBOOT_INFO_MEMORY));
 
-	parse_early_options((char *)boot_cmd_line);
+	vmm_parse_early_options((char *)boot_cmd_line);
 
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();

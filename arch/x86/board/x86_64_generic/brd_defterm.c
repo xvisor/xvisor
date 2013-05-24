@@ -332,5 +332,5 @@ static int __init setup_early_print(char *buf)
 	return 0;
 }
 
-early_param("earlyprint", setup_early_print);
+vmm_early_param("earlyprint", setup_early_print);
 #endif
