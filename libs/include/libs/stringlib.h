@@ -26,6 +26,8 @@
 #include <vmm_types.h>
 #include <arch_config.h>
 
+#define isspace(c) (c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v')
+
 /** Some of the string APIs (e.g. memset(), memcpy(), etc) can be 
  *  optionally implemented in arch code by specifying #define ARCH_HAS_XXXX 
  *  in arch_config.h where xxxx() would be the string API
@@ -93,5 +95,7 @@ void *memset_io(void *dest, int c, size_t count);
 int memcmp(const void *s1, const void *s2, size_t count);
 
 void *memchr(const void *s, int c, size_t n);
+
+char *skip_spaces(const char *str);
 
 #endif /* __STRINGLIB_H__ */

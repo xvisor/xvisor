@@ -80,6 +80,11 @@ SECTIONS
 		. = ALIGN(4);
 		PROVIDE(_modtbl_end = .);
 
+		. = ALIGN(4);
+		PROVIDE(__setup_start = .);
+		*(.setup.init);
+		PROVIDE(__setup_end = .);
+
 		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
 		*(.devtree)
 		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
