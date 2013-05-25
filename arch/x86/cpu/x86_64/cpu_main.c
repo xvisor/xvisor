@@ -32,9 +32,11 @@
 #include <arch_cpu.h>
 #include <arch_devtree.h>
 #include <acpi.h>
-
+#include <processor.h>
+#include <cpu_private.h>
 #include <linux/screen_info.h>
 
+struct cpuinfo_x86 cpu_info;
 struct multiboot_info boot_info;
 u8 boot_cmd_line[MAX_CMD_LINE];
 
@@ -144,6 +146,28 @@ virtual_size_t arch_code_size(void)
 
 void arch_cpu_print_info(struct vmm_chardev *cdev)
 {
+	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Name",
+		cpu_info.name_string);
+	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Model",
+		cpu_info.vendor_string);
+	vmm_cprintf(cdev, "%-25s: %u\n", "Family", cpu_info.family);
+	vmm_cprintf(cdev, "%-25s: %u\n", "Model", cpu_info.model);
+	vmm_cprintf(cdev, "%-25s: %u\n", "Stepping",
+		cpu_info.stepping);
+	vmm_cprintf(cdev, "%-25s: %u KB\n", "L1 I-Cache Size",
+		cpu_info.l1_icache_size);
+	vmm_cprintf(cdev, "%-25s: %u KB\n", "L1 D-Cache Size",
+		cpu_info.l1_dcache_size);
+	vmm_cprintf(cdev, "%-25s: %u bytes\n", "L1 I-Cache Line Size",
+		cpu_info.l1_icache_line_size);
+	vmm_cprintf(cdev, "%-25s: %u bytes\n", "L1 D-Cache Line Size",
+		cpu_info.l1_dcache_line_size);
+	vmm_cprintf(cdev, "%-25s: %u KB\n", "L2 Cache Size",
+		cpu_info.l2_cache_size);
+	vmm_cprintf(cdev, "%-25s: %u bytes\n", "L2 Cache Line Size",
+		cpu_info.l2_cache_line_size);
+	vmm_cprintf(cdev, "%-25s: %s\n", "Hardware Virtualization",
+		(cpu_info.hw_virt_available ? "Supported" : "Unsupported"));
 }
 
 void __init cpu_init(struct multiboot_info *binfo, char *cmdline)
@@ -154,6 +178,8 @@ void __init cpu_init(struct multiboot_info *binfo, char *cmdline)
 	BUG_ON(!(binfo->flags & MULTIBOOT_INFO_MEMORY));
 
 	vmm_parse_early_options((char *)boot_cmd_line);
+
+	indentify_cpu();
 
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
