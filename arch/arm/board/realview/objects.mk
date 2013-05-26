@@ -23,9 +23,19 @@
 
 board-objs-y+=brd_defterm.o
 board-objs-y+=brd_main.o
-board-objs-$(CONFIG_ONE_GUEST_PBA8_DTS)+=dts/one_guest_pb-a8.o
-board-objs-$(CONFIG_ONE_PT_GUEST_PBA8_DTS)+=dts/one_pt_guest_pb-a8.o
-board-objs-$(CONFIG_ONE_GUEST_VEX_A9_DTS)+=dts/one_guest_vexpress-a9.o
-board-objs-$(CONFIG_TWO_GUEST_PBA8_DTS)+=dts/two_guest_pb-a8.o
-board-objs-$(CONFIG_TWO_PT_GUEST_PBA8_DTS)+=dts/two_pt_guest_pb-a8.o
+board-objs-$(CONFIG_SMP)+=brd_smp.o
+board-objs-$(CONFIG_REALVIEW_EBMP_ONE_GUEST_EBMP_DTS)+=dts/eb-mpcore/one_guest_ebmp.o
+board-objs-$(CONFIG_REALVIEW_EBMP_TWO_GUEST_EBMP_DTS)+=dts/eb-mpcore/two_guest_ebmp.o
+board-objs-$(CONFIG_REALVIEW_PBA8_ONE_GUEST_PBA8_DTS)+=dts/pb-a8/one_guest_pb-a8.o
+board-objs-$(CONFIG_REALVIEW_PBA8_ONE_PT_GUEST_PBA8_DTS)+=dts/pb-a8/one_pt_guest_pb-a8.o
+board-objs-$(CONFIG_REALVIEW_PBA8_ONE_GUEST_VEX_A9_DTS)+=dts/pb-a8/one_guest_vexpress-a9.o
+board-objs-$(CONFIG_REALVIEW_PBA8_TWO_GUEST_PBA8_DTS)+=dts/pb-a8/two_guest_pb-a8.o
+board-objs-$(CONFIG_REALVIEW_PBA8_TWO_PT_GUEST_PBA8_DTS)+=dts/pb-a8/two_pt_guest_pb-a8.o
 
+board-dtbs-$(CONFIG_CPU_ARM11MP)+=dts/eb-mpcore/one_guest_ebmp.dtb
+board-dtbs-$(CONFIG_CPU_ARM11MP)+=dts/eb-mpcore/two_guest_ebmp.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A8)+=dts/pb-a8/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A8)+=dts/pb-a8/one_pt_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A8)+=dts/pb-a8/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A8)+=dts/pb-a8/two_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_CPU_CORTEX_A8)+=dts/pb-a8/two_pt_guest_pb-a8.dtb

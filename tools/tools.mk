@@ -21,8 +21,8 @@
 # @brief List of tools to build
 # */
 
-tools-$(CONFIG_DTC)=$(build_dir)/tools/dtc/dtc
+tools-y+=$(build_dir)/tools/dtc/dtc
+tools-y+=$(build_dir)/tools/kallsyms/kallsyms
 tools-$(CONFIG_CPATCH)+=$(build_dir)/tools/cpatch/cpatch32
 tools-$(CONFIG_BBFLASH)+=$(build_dir)/tools/bbflash/bb_nandflash_ecc
-tools-y+=$(build_dir)/tools/kallsyms/kallsyms
 

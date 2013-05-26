@@ -1,11 +1,36 @@
-			Versatile Express A15 Guest
+			VExpress-A15 Guest
 
 This guest has Cortex-A15 (MPCore ARMv7) CPU and various peripherals expected 
-on a Versatile Platform Base Board.
+on a VExpress-A15 Board.
 
-We have following guest OSes tested for this guest:
+We also have memory mapped VirtIO devices located at unused IO regions 
+of the guest for providing VirtIO based paravirtualization.
 
-  1. basic - Basic test and/or bootloader used by xvisor developers
+There are many reserved IO regions as per CoreTile Express A15x2 reference 
+manual. From these reserved IO regions, we will use the following IO regions 
+for VirtIO:
+0x40000000–0x7FEF0000 (1023M) (Reserved in External AXI master interface)
+
+The VirtIO devices also require a IRQ line per device for functioning. The
+VExpress-A15 guest has following unused or reserved IRQ lines:
+GIC: 50-63
+GIC: 72-95
+GIC: 96-99
+GIC: 116
+GIC: 125-127
+GIC: 131-159
+
+The memory map and irq of VirtIO devices on VExpress-A15 guest is as follows:
+0x40100000–0x40100FFF (4K) (IRQ=50) (VirtIO Network Device)
+0x40200000–0x40200FFF (4K) (IRQ=51) (VirtIO Block Device)
+0x40300000–0x40300FFF (4K) (IRQ=52) (VirtIO Console Device)
+
+
+			VExpress-A15 Guest OSes
+
+We have tested following guest OSes for this guest:
+
+  1. basic - Basic test/bootloader
   2. linux - Linux Kernel 
 
 Please follow the README under specific guest OS directory for detailed steps 

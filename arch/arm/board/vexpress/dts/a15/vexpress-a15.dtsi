@@ -1,5 +1,142 @@
 
 / {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	model = "vexpress-a15";
+
+	chosen { };
+	aliases { };
+
+	cpus {
+		cpu0 {
+			device_type = "cpu";
+			model = "Cortex-A15";
+		};
+
+		cpu1 {
+			device_type = "cpu";
+			model = "Cortex-A15";
+		};
+
+		cpu2 {
+			device_type = "cpu";
+			model = "Cortex-A15";
+		};
+
+		cpu3 {
+			device_type = "cpu";
+			model = "Cortex-A15";
+		};
+	};
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x0 0x80000000 0x0 0x10000000>; /* 256 MB */
+	};
+
+	gic { /* Generic Interrupt Controller */
+      		device_type = "pic";
+      		compatible = "arm,cortex-a15-gic", "arm,cortex-a9-gic";
+      		reg = <0x0 0x2C001000 0x0 0x1000
+		       0x0 0x2C002000 0x0 0x1000>;
+		irq_start = <26>;
+	};
+
+	gen-timer { /* Generic Timer */
+      		device_type = "timer";
+      		compatible = "arm,armv7-timer";
+		clock-frequency = <100000000>;
+		interrupts = <26 30 27>;
+	};
+
+	motherboard {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+
+		eth0 {
+			device_type = "nic";
+			compatible = "smc91x";
+			reg = <0x1A000000 0x1000>;
+			interrupts = <47>;
+			switch = "netbridge0";
+		};
+
+		iofpga {
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			sysreg { /* System Registers */
+		      		device_type = "sys";
+		      		compatible = "arm,vexpress-sysreg";
+		      		reg = <0x1C010000 0x1000>;
+			};
+
+			sysctl { /* System Controller */
+		      		device_type = "sys";
+		      		compatible = "arm,sp810";
+		      		reg = <0x1C020000 0x1000>;
+			};
+
+			mmci0 { /* Multimedia Card Interface */
+		      		device_type = "mmc";
+		      		compatible = "arm,pl180";
+		      		reg = <0x1C050000 0x1000>;
+				interrupts = <41 42>;
+			};
+
+			kmi0 { /* Keyboard */
+		      		device_type = "serio";
+		      		compatible = "ambakmi";
+		      		reg = <0x1C060000 0x1000>;
+				interrupts = <44>;
+			};
+
+			kmi1 { /* Mouse */
+		      		device_type = "serio";
+		      		compatible = "ambakmi";
+		      		reg = <0x1C070000 0x1000>;
+				interrupts = <45>;
+			};
+
+			SERIAL0: uart0 {
+		      		device_type = "serial";
+		      		compatible = "arm,pl011";
+		      		reg = <0x1C090000 0x1000>;
+				clock-frequency = <24000000>;
+		      		baudrate = <115200>;
+				interrupts = <37>;
+			};
+
+			timer01 {
+		      		device_type = "timer";
+		      		compatible = "arm,sp804";
+		      		reg = <0x1C110000 0x1000>;
+				interrupts = <34>;
+			};
+
+			timer23 {
+		      		device_type = "timer";
+		      		compatible = "arm,sp804";
+		      		reg = <0x1C120000 0x1000>;
+				interrupts = <35>;
+			};
+
+			RTC0: rtc0 {
+		      		device_type = "rtc";
+		      		compatible = "arm,pl031";
+		      		reg = <0x1C170000 0x1000>;
+				interrupts = <36>;
+			};
+
+			clcd {
+		      		device_type = "fb";
+		      		compatible = "arm,pl111";
+		      		reg = <0x1C1F0000 0x1000>;
+			};
+		};
+	};
+
 	vmm {
 		net {
 			netbridge0 {
@@ -9,127 +146,13 @@
 		};
 	};
 
-	host {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		model = "vexpress-a15";
-		device_type = "host";
-		
-		cpus {
-			cpu0 {
-				device_type = "cpu";
-				model = "Cortex-A15";
-			};
-		};
-
-		memory {
-			/* NOTE: By default QEMU will only proivde 128 MB 
-			 * unless specified by "-m" option. If you have
-			 * X MB then we will be able to access only first
-			 * X MB starting at physical_addr.
-			 */
-			physical_addr = <0x80000000>;
-			physical_size = <0x10000000>; /* 256 MB */
-		};
-
-		gic { /* Generic Interrupt Controller */
-	      		device_type = "pic";
-	      		compatible = "arm,cortex-a15-gic";
-	      		reg = <0x2C001000 0x1000
-			       0x2C002000 0x1000>;
-			irq_start = <26>;
-		};
-
-		gen-timer { /* Generic Timer */
-	      		device_type = "timer";
-	      		compatible = "arm,cortex-a15-gen-timer";
-			rating = <400>;
-			freq = <100000000>;
-			shift = <27>;
-			irq = <26 30 27>;
-		};
-
-		motherboard {
-			#address-cells = <1>;
-			#size-cells = <1>;
-
-			eth0 {
-				device_type = "nic";
-				compatible = "smc91x";
-				reg = <0x1A000000 0x1000>;
-				irq = <47>;
-				switch = "netbridge0";
-			};
-
-			iofpga {
-				#address-cells = <1>;
-				#size-cells = <1>;
-
-				sysreg { /* System Registers */
-			      		device_type = "sys";
-			      		compatible = "arm,vexpress-sysreg";
-			      		reg = <0x1C010000 0x1000>;
-				};
-
-				sysctl { /* System Controller */
-			      		device_type = "sys";
-			      		compatible = "arm,sp810";
-			      		reg = <0x1C020000 0x1000>;
-				};
-
-				kmi0 { /* Keyboard */
-			      		device_type = "serio";
-			      		compatible = "ambakmi";
-			      		reg = <0x1C060000 0x1000>;
-					clock-rate = <24000000>;
-					irq = <44>;
-				};
-
-				kmi1 { /* Mouse */
-			      		device_type = "serio";
-			      		compatible = "ambakmi";
-			      		reg = <0x1C070000 0x1000>;
-					clock-rate = <24000000>;
-					irq = <45>;
-				};
-
-				SERIAL0: uart0 {
-			      		device_type = "serial";
-			      		compatible = "arm,pl011";
-			      		reg = <0x1C090000 0x1000>;
-					clock-rate = <24000000>;
-			      		baudrate = <115200>;
-					irq = <37>;
-				};
-
-				timer01 {
-			      		device_type = "timer";
-			      		compatible = "arm,sp804";
-			      		reg = <0x1C110000 0x1000>;
-					irq = <34>;
-				};
-
-				timer23 {
-			      		device_type = "timer";
-			      		compatible = "arm,sp804";
-			      		reg = <0x1C120000 0x1000>;
-					irq = <35>;
-				};
-
-				RTC0: rtc0 {
-			      		device_type = "rtc";
-			      		compatible = "arm,pl031";
-			      		reg = <0x1C170000 0x1000>;
-					clock-rate = <1>;
-					irq = <36>;
-				};
-
-				clcd {
-			      		device_type = "fb";
-			      		compatible = "ambaclcd";
-			      		reg = <0x1C1F0000 0x1000>;
-				};
-			};
-		};
+	/* Empty guests node */
+	guests {
 	};
 };
+
+/* Add guest templates */
+/include/ "../../../common/guests/realview-pb-a8.dtsi"
+/include/ "../../../common/guests/vexpress-a9x2.dtsi"
+/include/ "../../../common/guests/vexpress-a15x2.dtsi"
+

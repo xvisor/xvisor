@@ -37,7 +37,7 @@ struct vmm_clockchip_ctrl {
 static struct vmm_clockchip_ctrl ccctrl;
 
 void vmm_clockchip_set_event_handler(struct vmm_clockchip *cc, 
-		void (*event_handler) (struct vmm_clockchip *, arch_regs_t *))
+		void (*event_handler) (struct vmm_clockchip *))
 {
 	if (cc && event_handler) {
 		cc->event_handler = event_handler;
@@ -69,16 +69,6 @@ int vmm_clockchip_program_event(struct vmm_clockchip *cc,
 	clc >>= cc->shift;
 
 	return cc->set_next_event((unsigned long) clc, cc);
-}
-
-int vmm_clockchip_force_expiry(struct vmm_clockchip *cc, u64 now_ns)
-{
-	if (cc->mode != VMM_CLOCKCHIP_MODE_ONESHOT)
-		return 0;
-
-	cc->next_event = now_ns;
-
-	return cc->expire(cc);
 }
 
 void vmm_clockchip_set_mode(struct vmm_clockchip *cc, 

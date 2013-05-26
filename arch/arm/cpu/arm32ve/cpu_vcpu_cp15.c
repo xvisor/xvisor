@@ -32,11 +32,12 @@
 #include <libs/stringlib.h>
 #include <emulate_arm.h>
 #include <emulate_thumb.h>
-#include <cpu_mmu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_cp15.h>
+#include <arm_features.h>
+#include <mmu_lpae.h>
 
 static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu, 
 				    arch_regs_t *regs,
@@ -102,7 +103,7 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 	}
 
 	vmm_spin_lock_irqsave(&arm_guest_priv(vcpu->guest)->ttbl_lock, f);
-	rc = cpu_mmu_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
+	rc = mmu_lpae_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
 	vmm_spin_unlock_irqrestore(&arm_guest_priv(vcpu->guest)->ttbl_lock, f);
 
 	return rc;
@@ -151,7 +152,8 @@ int cpu_vcpu_cp15_data_abort(struct vmm_vcpu *vcpu,
 			inst_pa |= (regs->pc & 0x00000FFF);
 
 			/* Read the faulting instruction */
-			read_count = vmm_host_physical_read(inst_pa, &inst, sizeof(inst));
+			read_count = 
+			    vmm_host_memory_read(inst_pa, &inst, sizeof(inst));
 			if (read_count != sizeof(inst)) {
 				return VMM_EFAIL;
 			}
@@ -467,7 +469,7 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		arm_priv(tvcpu)->cp15.c13_tls3 = read_tpidrprw();
 	}
 	if (vcpu->is_normal) {
-		cpu_mmu_stage2_chttbl(vcpu->guest->id, 
+		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
 				      arm_guest_priv(vcpu->guest)->ttbl);
 		write_vpidr(arm_priv(vcpu)->cp15.c0_cpuid);
 		if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
@@ -499,61 +501,100 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 	}
 }
 
-static u32 cortexa15_cp15_c0_c1[8] =
-{ 0x1131, 0x11011, 0x02010555, 0, 0x10201105, 0x20000000, 0x01240000, 0x02102211 };
-
-static u32 cortexa15_cp15_c0_c2[8] =
-{ 0x02101110, 0x13112111, 0x21232041, 0x11112131, 0x10011142, 0, 0, 0 };
-
-static u32 cortexa9_cp15_c0_c1[8] =
-{ 0x1031, 0x11, 0x000, 0, 0x00100103, 0x20000000, 0x01230000, 0x00002111 };
-
-static u32 cortexa9_cp15_c0_c2[8] =
-{ 0x00101111, 0x13112111, 0x21232041, 0x11112131, 0x00111142, 0, 0, 0 };
-
-static u32 cortexa8_cp15_c0_c1[8] =
-{ 0x1031, 0x11, 0x400, 0, 0x31100003, 0x20000000, 0x01202000, 0x11 };
-
-static u32 cortexa8_cp15_c0_c2[8] =
-{ 0x00101111, 0x12112111, 0x21232031, 0x11112131, 0x00111142, 0, 0, 0 };
-
 int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	u32 i, cache_type, last_level;
 
+	/* Clear all CP15 registers */
 	memset(&arm_priv(vcpu)->cp15, 0, sizeof(arm_priv(vcpu)->cp15));
 
+	/* Reset values of important CP15 registers 
+	 * Note: Almost all CP15 registers would be same as underlying host
+	 * because Guest VCPU will directly access these without trapping.
+	 * Due to this, quite a few CP15 registers initialized below are for
+	 * debugging purpose only.
+	 */
 	arm_priv(vcpu)->cp15.c0_cpuid = cpuid;
 	arm_priv(vcpu)->cp15.c2_ttbcr = 0x0;
+	arm_priv(vcpu)->cp15.c2_ttbr0 = 0x0;
+	arm_priv(vcpu)->cp15.c2_ttbr1 = 0x0;
 	arm_priv(vcpu)->cp15.c9_pmcr = (cpuid & 0xFF000000);
-	/* Reset values of important registers */
+	arm_priv(vcpu)->cp15.c10_prrr = 0x0;
+	arm_priv(vcpu)->cp15.c10_nmrr = 0x0;
+	arm_priv(vcpu)->cp15.c12_vbar = 0x0;
 	switch (cpuid) {
 	case ARM_CPUID_CORTEXA8:
-		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa8_cp15_c0_c1, 
-							8 * sizeof(u32));
-		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa8_cp15_c0_c2, 
-							8 * sizeof(u32));
+		arm_priv(vcpu)->cp15.c0_cachetype = 0x82048004;
+		arm_priv(vcpu)->cp15.c0_pfr0 = 0x1031;
+		arm_priv(vcpu)->cp15.c0_pfr1 = 0x11;
+		arm_priv(vcpu)->cp15.c0_dfr0 = 0x400;
+		arm_priv(vcpu)->cp15.c0_afr0 = 0x0;
+		arm_priv(vcpu)->cp15.c0_mmfr0 = 0x31100003;
+		arm_priv(vcpu)->cp15.c0_mmfr1 = 0x20000000;
+		arm_priv(vcpu)->cp15.c0_mmfr2 = 0x01202000;
+		arm_priv(vcpu)->cp15.c0_mmfr3 = 0x11;
+		arm_priv(vcpu)->cp15.c0_isar0 = 0x00101111;
+		arm_priv(vcpu)->cp15.c0_isar1 = 0x12112111;
+		arm_priv(vcpu)->cp15.c0_isar2 = 0x21232031;
+		arm_priv(vcpu)->cp15.c0_isar3 = 0x11112131;
+		arm_priv(vcpu)->cp15.c0_isar4 = 0x00111142;
+		arm_priv(vcpu)->cp15.c0_isar5 = 0x0;
+		arm_priv(vcpu)->cp15.c0_clid = (1 << 27) | (2 << 24) | 3;
+		arm_priv(vcpu)->cp15.c0_ccsid[0] = 0xe007e01a;	/* 16k L1 dcache. */
+		arm_priv(vcpu)->cp15.c0_ccsid[1] = 0x2007e01a;	/* 16k L1 icache. */
+		arm_priv(vcpu)->cp15.c0_ccsid[2] = 0xf0000000;	/* No L2 icache. */
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;
 	case ARM_CPUID_CORTEXA9:
-		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa9_cp15_c0_c1, 
-							8 * sizeof(u32));
-		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa9_cp15_c0_c2, 
-							8 * sizeof(u32));
+		arm_priv(vcpu)->cp15.c0_cachetype = 0x80038003;
+		arm_priv(vcpu)->cp15.c0_pfr0 = 0x1031;
+		arm_priv(vcpu)->cp15.c0_pfr1 = 0x11;
+		arm_priv(vcpu)->cp15.c0_dfr0 = 0x000;
+		arm_priv(vcpu)->cp15.c0_afr0 = 0x0;
+		arm_priv(vcpu)->cp15.c0_mmfr0 = 0x00100103;
+		arm_priv(vcpu)->cp15.c0_mmfr1 = 0x20000000;
+		arm_priv(vcpu)->cp15.c0_mmfr2 = 0x01230000;
+		arm_priv(vcpu)->cp15.c0_mmfr3 = 0x00002111;
+		arm_priv(vcpu)->cp15.c0_isar0 = 0x00101111;
+		arm_priv(vcpu)->cp15.c0_isar1 = 0x13112111;
+		arm_priv(vcpu)->cp15.c0_isar2 = 0x21232041;
+		arm_priv(vcpu)->cp15.c0_isar3 = 0x11112131;
+		arm_priv(vcpu)->cp15.c0_isar4 = 0x00111142;
+		arm_priv(vcpu)->cp15.c0_isar5 = 0x0;
+		arm_priv(vcpu)->cp15.c0_clid = (1 << 27) | (1 << 24) | 3;
+		arm_priv(vcpu)->cp15.c0_ccsid[0] = 0xe00fe015;	/* 16k L1 dcache. */
+		arm_priv(vcpu)->cp15.c0_ccsid[1] = 0x200fe015;	/* 16k L1 icache. */
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;
 	case ARM_CPUID_CORTEXA15:
-		memcpy(arm_priv(vcpu)->cp15.c0_c1, cortexa15_cp15_c0_c1, 
-							8 * sizeof(u32));
-		memcpy(arm_priv(vcpu)->cp15.c0_c2, cortexa15_cp15_c0_c2, 
-							8 * sizeof(u32));
+		arm_priv(vcpu)->cp15.c0_cachetype = 0x8444c004;
+		arm_priv(vcpu)->cp15.c0_pfr0 = 0x00001131;
+		arm_priv(vcpu)->cp15.c0_pfr1 = 0x00011011;
+		arm_priv(vcpu)->cp15.c0_dfr0 = 0x02010555;
+		arm_priv(vcpu)->cp15.c0_afr0 = 0x00000000;
+		arm_priv(vcpu)->cp15.c0_mmfr0 = 0x10201105;
+		arm_priv(vcpu)->cp15.c0_mmfr1 = 0x20000000;
+		arm_priv(vcpu)->cp15.c0_mmfr2 = 0x01240000;
+		arm_priv(vcpu)->cp15.c0_mmfr3 = 0x02102211;
+		arm_priv(vcpu)->cp15.c0_isar0 = 0x02101110;
+		arm_priv(vcpu)->cp15.c0_isar1 = 0x13112111;
+		arm_priv(vcpu)->cp15.c0_isar2 = 0x21232041;
+		arm_priv(vcpu)->cp15.c0_isar3 = 0x11112131;
+		arm_priv(vcpu)->cp15.c0_isar4 = 0x10011142;
+		arm_priv(vcpu)->cp15.c0_clid = 0x0a200023;
+		arm_priv(vcpu)->cp15.c0_ccsid[0] = 0x701fe00a; /* 32K L1 dcache */
+		arm_priv(vcpu)->cp15.c0_ccsid[1] = 0x201fe00a; /* 32K L1 icache */
+		arm_priv(vcpu)->cp15.c0_ccsid[2] = 0x711fe07a; /* 4096K L2 unified cache */
 		arm_priv(vcpu)->cp15.c1_sctlr = 0x00c50078;
 		break;
 	default:
 		break;
-	};
+	}
+
 	/* Cache config register such as CTR, CLIDR, and CCSIDRx
 	 * should be same as that of underlying host.
+	 * Note: This for debugging purpose only. The Guest VCPU will 
+	 * directly access host registers without trapping.
 	 */
 	arm_priv(vcpu)->cp15.c0_cachetype = read_ctr();
 	arm_priv(vcpu)->cp15.c0_clid = read_clidr();

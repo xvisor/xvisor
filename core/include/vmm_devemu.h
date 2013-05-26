@@ -28,94 +28,55 @@
 #include <vmm_manager.h>
 
 struct vmm_emudev;
-struct vmm_emupic;
-struct vmm_emuid;
 struct vmm_emulator;
-
-enum vmm_emupic_type {
-	VMM_EMUPIC_IRQCHIP = 0,
-	VMM_EMUPIC_GPIO = 1,
-	VMM_EMUPIC_UNKNOWN = 3
-};
-
-enum vmm_emupic_return {
-	VMM_EMUPIC_IRQ_HANDLED = 0,
-	VMM_EMUPIC_IRQ_UNHANDLED = 1,
-	VMM_EMUPIC_GPIO_HANDLED = 2,
-	VMM_EMUPIC_GPIO_UNHANDLED = 3
-};
-
-typedef int (*vmm_emupic_handle_t) (struct vmm_emupic *epic,
-				    u32 irq_num,
-				    int cpu,
-				    int irq_level);
-
-typedef int (*vmm_emulator_probe_t) (struct vmm_guest *guest,
-				     struct vmm_emudev *edev,
-				     const struct vmm_emuid *eid);
-
-typedef int (*vmm_emulator_read_t) (struct vmm_emudev *edev,
-				    physical_addr_t offset, 
-				    void *dst, u32 dst_len);
-
-typedef int (*vmm_emulator_reset_t) (struct vmm_emudev *edev);
-
-typedef int (*vmm_emulator_write_t) (struct vmm_emudev *edev,
-				     physical_addr_t offset, 
-				     void *src, u32 src_len);
-
-typedef int (*vmm_emulator_remove_t) (struct vmm_emudev *edev);
-
-struct vmm_emudev {
-	vmm_spinlock_t lock;
-	struct vmm_devtree_node *node;
-	vmm_emulator_probe_t probe;
-	vmm_emulator_read_t read;
-	vmm_emulator_write_t write;
-	vmm_emulator_reset_t reset;
-	vmm_emulator_remove_t remove;
-	void *priv;
-};
-
-struct vmm_emupic {
-	struct dlist head;
-	char name[32];
-	u32 type;
-	vmm_emupic_handle_t handle;
-	void *priv;
-};
-
-struct vmm_emuid {
-	char name[32];
-	char type[32];
-	char compatible[128];
-	void *data;
-};
 
 struct vmm_emulator {
 	struct dlist head;
 	char name[32];
-	const struct vmm_emuid *match_table;
-	vmm_emulator_probe_t probe;
-	vmm_emulator_read_t read;
-	vmm_emulator_write_t write;
-	vmm_emulator_reset_t reset;
-	vmm_emulator_remove_t remove;
+	const struct vmm_devtree_nodeid *match_table;
+	int (*probe) (struct vmm_guest *guest,
+		      struct vmm_emudev *edev,
+		      const struct vmm_devtree_nodeid *nodeid);
+	int (*read) (struct vmm_emudev *edev,
+		     physical_addr_t offset, 
+		     void *dst, u32 dst_len);
+	int (*write) (struct vmm_emudev *edev,
+		      physical_addr_t offset, 
+		      void *src, u32 src_len);
+	int (*reset) (struct vmm_emudev *edev);
+	int (*remove) (struct vmm_emudev *edev);
 };
 
-/** Emulate read for given VCPU */
+struct vmm_emudev {
+	vmm_spinlock_t lock;
+	struct vmm_devtree_node *node;
+	struct vmm_emulator *emu;
+	void *priv;
+};
+
+/** Emulate memory read to virtual device for given VCPU */
 int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu, 
 			    physical_addr_t gphys_addr,
 			    void *dst, u32 dst_len);
 
-/** Emulate write for given VCPU */
+/** Emulate memory write to virtual device for given VCPU */
 int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu, 
 			     physical_addr_t gphys_addr,
 			     void *src, u32 src_len);
 
+/** Emulate IO read to virtual device for given VCPU */
+int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu, 
+			      physical_addr_t gphys_addr,
+			      void *dst, u32 dst_len);
+
+/** Emulate IO write to virtual device for given VCPU */
+int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu, 
+			       physical_addr_t gphys_addr,
+			       void *src, u32 src_len);
+
 /** Internal function to emulate irq (should not be called directly) */
-extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq_num, 
-				    int cpu, int irq_level);
+extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest, 
+				    u32 irq, int cpu, int level);
 
 /** Emulate shared irq for guest */
 #define vmm_devemu_emulate_irq(guest, irq, level)	\
@@ -129,25 +90,21 @@ extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq_num,
  *  (Note: For proper functioning of host-to-guest mapped irq, the PIC 
  *  emulators must call this function upon completion/end-of interrupt)
  */
-int vmm_devemu_complete_h2g_irq(struct vmm_guest *guest, u32 irq_num);
+int vmm_devemu_complete_host2guest_irq(struct vmm_guest *guest, u32 irq);
 
-/** Register emulated pic */
-int vmm_devemu_register_pic(struct vmm_guest *guest, 
-			    struct vmm_emupic *emu);
+/** Register guest irq handler */
+int vmm_devemu_register_irq_handler(struct vmm_guest *guest, u32 irq,
+				    const char *name, 
+				    void (*handle) (u32 irq, int cpu, int level, void *opaque),
+				    void *opaque);
 
-/** Unregister emulated pic */
-int vmm_devemu_unregister_pic(struct vmm_guest *guest, 
-			      struct vmm_emupic *emu);
+/** Unregister guest irq handler */
+int vmm_devemu_unregister_irq_handler(struct vmm_guest *guest, u32 irq,
+				      void (*handle) (u32 irq, int cpu, int level, void *opaque),
+				      void *opaque);
 
-/** Find a registered emulated pic */
-struct vmm_emupic *vmm_devemu_find_pic(struct vmm_guest *guest, 
-					const char *name);
-
-/** Get a registered emulated pic */
-struct vmm_emupic *vmm_devemu_pic(struct vmm_guest *guest, int index);
-
-/** Count available emulated pic */
-u32 vmm_devemu_pic_count(struct vmm_guest *guest);
+/** Count available irqs of a guest */
+u32 vmm_devemu_count_irqs(struct vmm_guest *guest);
 
 /** Register emulator */
 int vmm_devemu_register_emulator(struct vmm_emulator *emu);

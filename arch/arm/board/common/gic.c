@@ -187,7 +187,7 @@ static int gic_set_affinity(struct vmm_host_irq *irq,
 }
 #endif
 
-static vmm_irq_return_t gic_handle_cascade_irq(u32 irq, arch_regs_t *regs, void *dev)
+static vmm_irq_return_t gic_handle_cascade_irq(int irq, void *dev)
 {
 	struct gic_chip_data *gic = dev;
 	u32 cascade_irq, gic_irq;
@@ -200,7 +200,7 @@ static vmm_irq_return_t gic_handle_cascade_irq(u32 irq, arch_regs_t *regs, void 
 
 	cascade_irq = gic_irq + gic->irq_offset;
 	if (likely((32 <= gic_irq) && (gic_irq <= 1020))) {
-		vmm_host_generic_irq_exec(cascade_irq, regs);
+		vmm_host_generic_irq_exec(cascade_irq);
 	}
 
 	return VMM_IRQ_HANDLED;

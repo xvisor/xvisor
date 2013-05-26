@@ -46,9 +46,7 @@ u64 sp804_clocksource_read(struct vmm_clocksource *cs)
 
 int __init sp804_clocksource_init(virtual_addr_t base, 
 				  const char *name, 
-				  int rating, 
-				  u32 freq_hz,
-				  u32 shift)
+				  u32 freq_hz)
 {
 	u32 ctrl;
 	struct sp804_clocksource *cs;
@@ -60,11 +58,11 @@ int __init sp804_clocksource_init(virtual_addr_t base,
 
 	cs->base = base;
 	cs->clksrc.name = name;
-	cs->clksrc.rating = rating;
+	cs->clksrc.rating = 300;
 	cs->clksrc.read = &sp804_clocksource_read;
 	cs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
-	cs->clksrc.mult = vmm_clocksource_hz2mult(freq_hz, shift);
-	cs->clksrc.shift = shift;
+	vmm_clocks_calc_mult_shift(&cs->clksrc.mult, &cs->clksrc.shift, 
+				   freq_hz, VMM_NSEC_PER_SEC, 10);
 	cs->clksrc.priv = cs;
 
 	vmm_writel(0x0, (void *)(base + TIMER_CTRL));
@@ -80,16 +78,14 @@ struct sp804_clockchip {
 	struct vmm_clockchip clkchip;
 };
 
-static vmm_irq_return_t sp804_clockchip_irq_handler(u32 irq_no, 
-						    arch_regs_t * regs, 
-						    void *dev)
+static vmm_irq_return_t sp804_clockchip_irq_handler(int irq_no, void *dev)
 {
 	struct sp804_clockchip *tcc = dev;
 
 	/* clear the interrupt */
 	vmm_writel(1, (void *)(tcc->base + TIMER_INTCLR));
 
-	tcc->clkchip.event_handler(&tcc->clkchip, regs);
+	tcc->clkchip.event_handler(&tcc->clkchip);
 
 	return VMM_IRQ_HANDLED;
 }
@@ -132,28 +128,9 @@ static int sp804_clockchip_set_next_event(unsigned long next,
 	return 0;
 }
 
-static int sp804_clockchip_expire(struct vmm_clockchip *cc)
-{
-	u32 i;
-	struct sp804_clockchip *tcc = cc->priv;
-	unsigned long ctrl = vmm_readl((void *)(tcc->base + TIMER_CTRL));
-
-	ctrl &= ~TIMER_CTRL_ENABLE;
-	vmm_writel(ctrl, (void *)(tcc->base + TIMER_CTRL));
-	vmm_writel(1, (void *)(tcc->base + TIMER_LOAD));
-	vmm_writel(ctrl | TIMER_CTRL_ENABLE, (void *)(tcc->base + TIMER_CTRL));
-
-	while (!vmm_readl((void *)(tcc->base + TIMER_MIS))) {
-		for (i = 0; i < 100; i++);
-	}
-
-	return 0;
-}
-
 int __cpuinit sp804_clockchip_init(virtual_addr_t base, 
-				   u32 hirq,
 				   const char *name, 
-				   int rating, 
+				   u32 hirq,
 				   u32 freq_hz,
 				   u32 target_cpu)
 {
@@ -168,7 +145,7 @@ int __cpuinit sp804_clockchip_init(virtual_addr_t base,
 	cc->base = base;
 	cc->clkchip.name = name;
 	cc->clkchip.hirq = hirq;
-	cc->clkchip.rating = rating;
+	cc->clkchip.rating = 300;
 #ifdef CONFIG_SMP
 	cc->clkchip.cpumask = vmm_cpumask_of(target_cpu);
 #else
@@ -176,14 +153,13 @@ int __cpuinit sp804_clockchip_init(virtual_addr_t base,
 #endif
 	cc->clkchip.features = 
 		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
-	cc->clkchip.mult = vmm_clockchip_hz2mult(freq_hz, 32);
-	cc->clkchip.shift = 32;
+	vmm_clocks_calc_mult_shift(&cc->clkchip.mult, &cc->clkchip.shift, 
+				   VMM_NSEC_PER_SEC, freq_hz, 10);
 	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &cc->clkchip);
 	cc->clkchip.max_delta_ns = 
 			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);
 	cc->clkchip.set_mode = &sp804_clockchip_set_mode;
 	cc->clkchip.set_next_event = &sp804_clockchip_set_next_event;
-	cc->clkchip.expire = &sp804_clockchip_expire;
 	cc->clkchip.priv = cc;
 
 	/* Register interrupt handler */

@@ -27,6 +27,6 @@
 u32 aw_intc_irq_active(u32 cpu_irq_no);
 
 /** Initialize Sunxi interrupt controller */
-int aw_intc_devtree_init(struct vmm_devtree_node *node);
+int aw_intc_devtree_init(void);
 
 #endif /* __SUNXI_INTC_H__ */

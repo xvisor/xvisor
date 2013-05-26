@@ -24,7 +24,7 @@
 # Current Version
 MAJOR = 0
 MINOR = 2
-RELEASE = 1
+RELEASE = 2
 
 # Find out source & build directories
 src_dir=$(CURDIR)
@@ -231,6 +231,7 @@ commands-y=$(foreach obj,$(commands-objs-y),$(build_dir)/commands/$(obj))
 daemons-y=$(foreach obj,$(daemons-objs-y),$(build_dir)/daemons/$(obj))
 drivers-y=$(foreach obj,$(drivers-objs-y),$(build_dir)/drivers/$(obj))
 emulators-y=$(foreach obj,$(emulators-objs-y),$(build_dir)/emulators/$(obj))
+dtbs-y=$(foreach dtb,$(board-dtbs-y),$(build_dir)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)/$(dtb))
 
 # Setup list of module objects
 core-m=$(foreach obj,$(core-objs-m),$(build_dir)/core/$(obj))
@@ -297,6 +298,8 @@ all: $(CONFIG_FILE) $(DEPENDENCY_FILE) $(tools-y) $(targets-y)
 
 .PHONY: modules
 modules: $(CONFIG_FILE) $(DEPENDENCY_FILE) $(all-m)
+
+dtbs: $(dtbs-y)
 
 # Generate and include built-in dependency rules
 -include $(DEPENDENCY_FILE)

@@ -27,12 +27,12 @@
 #include <vmm_compiler.h>
 #include <arch_barrier.h>
 
-bool __lock arch_spin_lock_check(spinlock_t * lock)
+bool __lock arch_spin_lock_check(arch_spinlock_t * lock)
 {
 	return (lock->lock) ? TRUE : FALSE;
 }
 
-void __lock arch_spin_lock(spinlock_t * lock)
+void __lock arch_spin_lock(arch_spinlock_t * lock)
 {
 	unsigned long tmp;
 
@@ -49,7 +49,28 @@ void __lock arch_spin_lock(spinlock_t * lock)
 	arch_smp_mb();
 }
 
-void __lock arch_spin_unlock(spinlock_t * lock)
+int __lock arch_spin_trylock(arch_spinlock_t *lock)
+{
+	unsigned long tmp;
+	u32 slock;
+
+	__asm__ __volatile__(
+"	ldrex	%0, [%2]\n"
+"	teq	%0, #0\n"
+"	strexeq	%1, %3, [%2]"
+	: "=&r" (slock), "=&r" (tmp)
+	: "r" (&lock->lock), "r" (1)
+	: "cc");
+
+	if (tmp == 0) {
+		arch_smp_mb();
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+void __lock arch_spin_unlock(arch_spinlock_t * lock)
 {
 	arch_smp_mb();
 

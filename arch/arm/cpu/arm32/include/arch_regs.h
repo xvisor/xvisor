@@ -28,60 +28,6 @@
 #include <cpu_defines.h>
 #include <cpu_mmu.h>
 
-/* CPUID related macors & defines */
-#define ARM_CPUID_ARM1026     0x4106a262
-#define ARM_CPUID_ARM926      0x41069265
-#define ARM_CPUID_ARM946      0x41059461
-#define ARM_CPUID_TI915T      0x54029152
-#define ARM_CPUID_TI925T      0x54029252
-#define ARM_CPUID_SA1100      0x4401A11B
-#define ARM_CPUID_SA1110      0x6901B119
-#define ARM_CPUID_PXA250      0x69052100
-#define ARM_CPUID_PXA255      0x69052d00
-#define ARM_CPUID_PXA260      0x69052903
-#define ARM_CPUID_PXA261      0x69052d05
-#define ARM_CPUID_PXA262      0x69052d06
-#define ARM_CPUID_PXA270      0x69054110
-#define ARM_CPUID_PXA270_A0   0x69054110
-#define ARM_CPUID_PXA270_A1   0x69054111
-#define ARM_CPUID_PXA270_B0   0x69054112
-#define ARM_CPUID_PXA270_B1   0x69054113
-#define ARM_CPUID_PXA270_C0   0x69054114
-#define ARM_CPUID_PXA270_C5   0x69054117
-#define ARM_CPUID_ARM1136     0x4117b363
-#define ARM_CPUID_ARM1136_R2  0x4107b362
-#define ARM_CPUID_ARM11MPCORE 0x410fb022
-#define ARM_CPUID_CORTEXA8    0x410fc080
-#define ARM_CPUID_CORTEXA9    0x410fc090
-#define ARM_CPUID_CORTEXM3    0x410fc231
-#define ARM_CPUID_ANY         0xffffffff
-
-/* Feature related enumeration */
-enum arm_features {
-	ARM_FEATURE_VFP,
-	ARM_FEATURE_AUXCR,  /* ARM1026 Auxiliary control register.  */
-	ARM_FEATURE_XSCALE, /* Intel XScale extensions.  */
-	ARM_FEATURE_IWMMXT, /* Intel iwMMXt extension.  */
-	ARM_FEATURE_V6,
-	ARM_FEATURE_V6K,
-	ARM_FEATURE_V7,
-	ARM_FEATURE_THUMB2,
-	ARM_FEATURE_MPU,    /* Only has Memory Protection Unit, not full MMU.  */
-	ARM_FEATURE_VFP3,
-	ARM_FEATURE_VFP_FP16,
-	ARM_FEATURE_NEON,
-	ARM_FEATURE_DIV,
-	ARM_FEATURE_M, /* Microcontroller profile.  */
-	ARM_FEATURE_OMAPCP, /* OMAP specific CP15 ops handling.  */
-	ARM_FEATURE_THUMB2EE,
-	ARM_FEATURE_V7MP,    /* v7 Multiprocessing Extensions */
-	ARM_FEATURE_V4T,
-	ARM_FEATURE_V5,
-	ARM_FEATURE_STRONGARM,
-	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
-	ARM_FEATURE_TRUSTZONE,
-};
-
 struct arch_regs {
 	u32 sp_excp; /* Stack Pointer for Exceptions */
 	u32 cpsr; /* CPSR */
@@ -132,7 +78,7 @@ struct arm_priv {
 	u32 lr_fiq;
 	u32 spsr_fiq;
 	/* Internal CPU feature flags. */
-	u32 features;
+	u64 features;
 	/* System control coprocessor (cp15) */
 	struct {
 		/* Shadow L1 */
@@ -146,6 +92,8 @@ struct arm_priv {
 		/* Virtual IO */
 		bool virtio_active;
 		struct cpu_page virtio_page;
+		/* Invalidate i-cache */
+		bool inv_icache;
 		/* Coprocessor Registers */
 		u32 c0_cpuid;
 		u32 c0_cachetype;
@@ -168,9 +116,9 @@ struct arm_priv {
 		u32 c0_cssel; /* Cache size selection. */
 		u32 c1_sctlr; /* System control register. */
 		u32 c1_coproc; /* Coprocessor access register.  */
-		u32 c2_base0; /* MMU translation table base 0. */
-		u32 c2_base1; /* MMU translation table base 1. */
-		u32 c2_control; /* MMU translation table base control. */
+		u32 c2_ttbr0; /* MMU translation table base 0. */
+		u32 c2_ttbr1; /* MMU translation table base 1. */
+		u32 c2_ttbcr; /* MMU translation table base control. */
 		u32 c2_mask; /* MMU translation table base selection mask. */
 		u32 c2_base_mask; /* MMU translation table base 0 mask. */
 		u32 c3; /* MMU domain access control register */
@@ -216,8 +164,8 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
 
 #define arm_cpuid(vcpu) (arm_priv(vcpu)->cp15.c0_cpuid)
-#define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1 << (feat)))
-#define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1 << (feat)))
+#define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1ULL << (feat)))
+#define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1ULL << (feat)))
 
 /**
  *  Instruction emulation support macros

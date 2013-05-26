@@ -56,14 +56,14 @@
 
 struct amba_kmi_port {
 	struct serio 		*io;
-	struct vmm_device	*dev;
+	struct clk		*clk;
 	void			*base;
 	unsigned int		irq;
 	unsigned int		divisor;
 	unsigned int		open;
 };
 
-static irqreturn_t amba_kmi_int(u32 irq_no, arch_regs_t *regs, void *dev)
+static irqreturn_t amba_kmi_int(int irq_no, void *dev)
 {
 	struct amba_kmi_port *kmi = dev;
 	unsigned int status = readb(KMIIR);
@@ -98,15 +98,15 @@ static int amba_kmi_open(struct serio *io)
 	unsigned int divisor;
 	int ret;
 
-	ret = vmm_devdrv_clock_enable(kmi->dev);
+	ret = clk_enable(kmi->clk);
 	if (ret)
 		goto out;
 
-	divisor = vmm_devdrv_clock_get_rate(kmi->dev) / 8000000 - 1;
+	divisor = clk_get_rate(kmi->clk) / 8000000 - 1;
 	writeb(divisor, KMICLKDIV);
 	writeb(KMICR_EN, KMICR);
 
-	ret = request_irq(kmi->irq, amba_kmi_int, 0, kmi->dev->node->name, kmi);
+	ret = request_irq(kmi->irq, amba_kmi_int, 0, io->name, kmi);
 	if (ret) {
 		printk(KERN_ERR "kmi: failed to claim IRQ%d\n", kmi->irq);
 		writeb(0, KMICR);
@@ -118,7 +118,7 @@ static int amba_kmi_open(struct serio *io)
 	return 0;
 
  clk_disable:
-	vmm_devdrv_clock_disable(kmi->dev);
+	clk_disable(kmi->clk);
  out:
 	return ret;
 }
@@ -130,13 +130,12 @@ static void amba_kmi_close(struct serio *io)
 	writeb(0, KMICR);
 
 	free_irq(kmi->irq, kmi);
-	vmm_devdrv_clock_disable(kmi->dev);
+	clk_disable(kmi->clk);
 }
 
 static int amba_kmi_driver_probe(struct vmm_device *dev,
-			      const struct vmm_devid *devid)
+			      const struct vmm_devtree_nodeid *devid)
 {
-	const char *attr;
 	struct amba_kmi_port *kmi;
 	struct serio *io;
 	int ret;
@@ -158,19 +157,23 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 	io->dev		= dev;
 
 	kmi->io		= io;
-	kmi->dev	= dev;
 	ret = vmm_devtree_regmap(dev->node, (virtual_addr_t *)&kmi->base, 0);
 	if (ret) {
 		ret = -ENOMEM;
 		goto out;
 	}
 
-	attr = vmm_devtree_attrval(dev->node, "irq");
-	if (!attr) {
+	kmi->clk = clk_get(dev, "KMIREFCLK");
+	if (IS_ERR(kmi->clk)) {
 		ret = -EFAIL;
 		goto unmap;
 	}
-	kmi->irq = *((u32 *) attr);
+
+	ret = vmm_devtree_irq_get(dev->node, &kmi->irq, 0);
+	if (ret) {
+		ret = -EFAIL;
+		goto unmap;
+	}
 
 	dev->priv = kmi;
 
@@ -199,7 +202,7 @@ static int amba_kmi_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid amba_kmi_devid_table[] = {
+static struct vmm_devtree_nodeid amba_kmi_devid_table[] = {
 	{.type = "serio",.compatible = "pl050"},
 	{.type = "serio",.compatible = "ambakmi"},
 	{ /* end of list */ },

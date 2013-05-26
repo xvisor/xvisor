@@ -4,6 +4,7 @@
 #include <vmm_error.h>
 
 #define EFAIL			-(VMM_EFAIL)
+#define EBUSY			-(VMM_EBUSY)
 #define EUNKNOWN		-(VMM_EUNKNOWN)
 #define EINVAL			-(VMM_EINVALID)
 #define ENOTAVAIL		-(VMM_ENOTAVAIL)
@@ -21,5 +22,7 @@
 #define EILSEQ			-(VMM_EILSEQ)
 #define EOPNOTSUPP		-(VMM_EOPNOTSUPP)
 #define EFAULT			-(VMM_EUNKNOWN)
+#define ENOSYS			-(VMM_ENOSYS)
+#define ENOSPC			-(VMM_ENOSPC)
 
 #endif /* defined(_ASM_ERRNO_H) */

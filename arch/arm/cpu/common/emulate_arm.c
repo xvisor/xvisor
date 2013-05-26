@@ -1544,10 +1544,6 @@ static int arm_instgrp_dataproc(u32 inst,
 				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 op, op1, Rn, op2;
-	u32 is_op1_0xx1x, is_op1_xx0x0, is_op1_xx0x1, is_op1_xx1x0;
-	u32 is_op1_xx1x1, is_op1_0xxxx;
-	u32 is_op1_1xxxx, is_op1_10000, is_op1_11001, is_op1_11000;
-	u32 is_op2_1001, is_op2_1011, is_op2_1101, is_op2_1111, is_op2_11x1;
 
 	op = ARM_INST_DECODE(inst,
 			     ARM_INST_DATAPROC_OP_MASK,
@@ -1555,129 +1551,274 @@ static int arm_instgrp_dataproc(u32 inst,
 	op1 = ARM_INST_DECODE(inst,
 			      ARM_INST_DATAPROC_OP1_MASK,
 			      ARM_INST_DATAPROC_OP1_SHIFT);
-	Rn = ARM_INST_DECODE(inst,
-			     ARM_INST_DATAPROC_RN_MASK,
-			     ARM_INST_DATAPROC_RN_SHIFT);
-	op2 = ARM_INST_DECODE(inst,
-			      ARM_INST_DATAPROC_OP2_MASK,
-			      ARM_INST_DATAPROC_OP2_SHIFT);
 
-	is_op1_0xxxx = !(op1 & 0x10);
-	is_op1_1xxxx = !is_op1_0xxxx;
-	is_op1_0xx1x = !(op1 & 0x10) && (op1 & 0x2);
-	is_op1_xx0x0 = !(op1 & 0x4) && !(op1 & 0x1);
-	is_op1_xx0x1 = !(op1 & 0x4) && (op1 & 0x1);
-	is_op1_xx1x0 = (op1 & 0x4) && !(op1 & 0x1);
-	is_op1_xx1x1 = (op1 & 0x4) && (op1 & 0x1);
-	is_op1_10000 = (op1 == 0x10);
-	is_op1_11000 = (op1 == 0x18);
-	is_op1_11001 = (op1 == 0x19);
-	is_op2_1001 = (op2 == 0x9);
-	is_op2_1011 = (op2 == 0xB);
-	is_op2_1101 = (op2 == 0xD);
-	is_op2_1111 = (op2 == 0xF);
-	is_op2_11x1 = is_op2_1101 || is_op2_1111;
-
-	if (!op && !is_op1_0xx1x && (is_op2_1011 || is_op2_11x1)){
-		/* Extra load/store instructions */
-		switch (op2) {
-		case 0xB:
-			if (is_op1_xx0x0) {
-				/* STRH (register) */
-				return arm_inst_strh_r(inst, regs, vcpu);
-			} else if (is_op1_xx0x1) {
-				/* LDRH (register) */
-				return arm_inst_ldrh_r(inst, regs, vcpu);
-			} else if (is_op1_xx1x0) {
-				/* STRH (immediate, ARM) */
-				return arm_inst_strh_i(inst, regs, vcpu);
-			} else if (is_op1_xx1x1) {
-				if (Rn == 0xF) {
-					/* LDRH (literal) */
-					return arm_inst_ldrh_l(inst, regs, vcpu);
-				} else {
-					/* LDRH (immediate, ARM) */
-					return arm_inst_ldrh_i(inst, regs, vcpu);
-				}
-			}
+	if (op) {
+		switch (op1) {
+		case 0B10000: /* 10000 */
+			/* MOVW (immediate) */
+			return arm_inst_movw_i(inst, regs, vcpu);
+		case 0B10100: /* 10100 */
+			/* FIXME: 
+			 * High halfword 16-bit immediate load, MOVT
+			 */
+			break; 
+		case 0B10010: /* 10x10 */
+		case 0B10110:
+			/* FIXME:
+			 * MSR (immediate), and hints
+			 */
 			break;
-		case 0xD:
-			if (is_op1_xx0x0) {
-				/* LDRD (register) */
-				return arm_inst_ldrd_r(inst, regs, vcpu);
-			} else if (is_op1_xx0x1) {
-				/* LDRSB (register) */
-				return arm_inst_ldrsb_r(inst, regs, vcpu);
-			} else if (is_op1_xx1x0) {
-				if (Rn == 0xF) {
-					/* LDRD (literal) */
-					return arm_inst_ldrd_l(inst, regs, vcpu);
-				} else {
-					/* LDRD (immediate) */
-					return arm_inst_ldrd_i(inst, regs, vcpu);
-				}
-			} else if (is_op1_xx1x1) {
-				if (Rn == 0xF) {
-					/* LDRSB (literal) */
-					return arm_inst_ldrsb_l(inst, regs, vcpu);
-				} else {
-					/* LDRSB (immediate) */
-					return arm_inst_ldrsb_i(inst, regs, vcpu);
-				}
-			}
-			break;
-		case 0xF:
-			if (is_op1_xx0x0) {
-				/* STRD (register) */
-				return arm_inst_strd_r(inst, regs, vcpu);
-			} else if (is_op1_xx0x1) {
-				/* LDRSH (register) */
-				return arm_inst_ldrsh_r(inst, regs, vcpu);
-			} else if (is_op1_xx1x0) {
-				/* STRD (immediate) */
-				return arm_inst_strd_i(inst, regs, vcpu);
-			} else if (is_op1_xx1x1) {
-				if (Rn == 0xF) {
-					/* LDRSH (literal) */
-					return arm_inst_ldrsh_l(inst, regs, vcpu);
-				} else {
-					/* LDRSH (immediate) */
-					return arm_inst_ldrsh_i(inst, regs, vcpu);
-				}
-			}
-			break;
-		default:
+		default: /* not 10xx0 */
+			/* FIXME:
+			 * Data-processing (immediate)
+			 */
 			break;
 		};
-	} else if (!op && is_op1_0xx1x && (is_op2_1011 || is_op2_11x1)) {
-		/* Extra load/store instructions (unpriviledged) */
-		if (is_op2_1011) {
-			if (is_op1_0xxxx) {
-				/* STRHT */
-				return arm_inst_strht(inst, regs, vcpu);
-			} else {
-				/* LDRHT */
-				return arm_inst_ldrht(inst, regs, vcpu);
-			}
-		} else if (is_op2_1101 && !is_op1_0xxxx) {
-			/* LDRSBT */
-			return arm_inst_ldrsbt(inst, regs, vcpu);
-		} else if (is_op2_1111 && !is_op1_0xxxx) {
-			/* LDRSHT */
-			return arm_inst_ldrsht(inst, regs, vcpu);
+	} else {
+		op2 = ARM_INST_DECODE(inst,
+			      ARM_INST_DATAPROC_OP2_MASK,
+			      ARM_INST_DATAPROC_OP2_SHIFT);
+		if (!(op1 & 0B10000) && (op1 & 0B00010)) {
+			/* Extra load/store instructions (unpriviledged) */
+			switch (op2) {
+			case 0B1011:
+				if (op1 & 0B00001) {
+					/* LDRHT */
+					return arm_inst_ldrht(inst, 
+								regs, vcpu);
+				} else {
+					/* STRHT */
+					return arm_inst_strht(inst, 
+								regs, vcpu);
+				}
+				break;
+			case 0B1101:
+				if (op1 & 0B00001) {
+					/* LDRSBT */
+					return arm_inst_ldrsbt(inst, 
+								regs, vcpu);
+				}
+				break;
+			case 0B1111:
+				if (op1 & 0B00001) {
+					/* LDRSHT */
+					return arm_inst_ldrsht(inst, 
+								regs, vcpu);
+				}
+				break;
+			default:
+				break;
+			};
+		} else {
+			/* Extra load/store instructions */
+			switch (op2) {
+			case 0B1011:
+				switch (op1) {
+				case 0B00000: /* xx0x0 */
+				case 0B00010:
+				case 0B01000:
+				case 0B01010:
+				case 0B10000:
+				case 0B10010:
+				case 0B11000:
+				case 0B11010:
+					/* STRH (register) */
+					return arm_inst_strh_r(inst, 
+								regs, vcpu);
+				case 0B00001: /* xx0x1 */
+				case 0B00011:
+				case 0B01001:
+				case 0B01011:
+				case 0B10001:
+				case 0B10011:
+				case 0B11001:
+				case 0B11011:
+					/* LDRH (register) */
+					return arm_inst_ldrh_r(inst, 
+								regs, vcpu);
+				case 0B00100: /* xx1x0 */
+				case 0B00110:
+				case 0B01100:
+				case 0B01110:
+				case 0B10100:
+				case 0B10110:
+				case 0B11100:
+				case 0B11110:
+					/* STRH (immediate, ARM) */
+					return arm_inst_strh_i(inst, 
+								regs, vcpu);
+				case 0B00101: /* xx1x1 */
+				case 0B00111:
+				case 0B01101:
+				case 0B01111:
+				case 0B10101:
+				case 0B10111:
+				case 0B11101:
+				case 0B11111:
+					Rn = ARM_INST_DECODE(inst,
+					     ARM_INST_DATAPROC_RN_MASK,
+					     ARM_INST_DATAPROC_RN_SHIFT);
+					if (Rn == 0xF) {
+						/* LDRH (literal) */
+						return arm_inst_ldrh_l(inst, 
+								regs, vcpu);
+					} else {
+						/* LDRH (immediate, ARM) */
+						return arm_inst_ldrh_i(inst, 
+								regs, vcpu);
+					}
+					break;
+				default:
+					break;
+				};
+				break;
+			case 0B1101:
+				switch (op1) {
+				case 0B00000: /* xx0x0 */
+				case 0B00010:
+				case 0B01000:
+				case 0B01010:
+				case 0B10000:
+				case 0B10010:
+				case 0B11000:
+				case 0B11010:
+					/* LDRD (register) */
+					return arm_inst_ldrd_r(inst, 
+								regs, vcpu);
+				case 0B00001: /* xx0x1 */
+				case 0B00011:
+				case 0B01001:
+				case 0B01011:
+				case 0B10001:
+				case 0B10011:
+				case 0B11001:
+				case 0B11011:
+					/* LDRSB (register) */
+					return arm_inst_ldrsb_r(inst, 
+								regs, vcpu);
+				case 0B00100: /* xx1x0 */
+				case 0B00110:
+				case 0B01100:
+				case 0B01110:
+				case 0B10100:
+				case 0B10110:
+				case 0B11100:
+				case 0B11110:
+					Rn = ARM_INST_DECODE(inst,
+					     ARM_INST_DATAPROC_RN_MASK,
+					     ARM_INST_DATAPROC_RN_SHIFT);
+					if (Rn == 0xF) {
+						/* LDRD (literal) */
+						return arm_inst_ldrd_l(inst, 
+								regs, vcpu);
+					} else {
+						/* LDRD (immediate) */
+						return arm_inst_ldrd_i(inst, 
+								regs, vcpu);
+					}
+					break;
+				case 0B00101: /* xx1x1 */
+				case 0B00111:
+				case 0B01101:
+				case 0B01111:
+				case 0B10101:
+				case 0B10111:
+				case 0B11101:
+				case 0B11111:
+					Rn = ARM_INST_DECODE(inst,
+					     ARM_INST_DATAPROC_RN_MASK,
+					     ARM_INST_DATAPROC_RN_SHIFT);
+					if (Rn == 0xF) {
+						/* LDRSB (literal) */
+						return arm_inst_ldrsb_l(inst, 
+								regs, vcpu);
+					} else {
+						/* LDRSB (immediate) */
+						return arm_inst_ldrsb_i(inst, 
+								regs, vcpu);
+					}
+					break;
+				default:
+					break;
+				};
+				break;
+			case 0B1111:
+				switch (op1) {
+				case 0B00000: /* xx0x0 */
+				case 0B00010:
+				case 0B01000:
+				case 0B01010:
+				case 0B10000:
+				case 0B10010:
+				case 0B11000:
+				case 0B11010:
+					/* STRD (register) */
+					return arm_inst_strd_r(inst, 
+								regs, vcpu);
+				case 0B00001: /* xx0x1 */
+				case 0B00011:
+				case 0B01001:
+				case 0B01011:
+				case 0B10001:
+				case 0B10011:
+				case 0B11001:
+				case 0B11011:
+					/* LDRSH (register) */
+					return arm_inst_ldrsh_r(inst, 
+								regs, vcpu);
+				case 0B00100: /* xx1x0 */
+				case 0B00110:
+				case 0B01100:
+				case 0B01110:
+				case 0B10100:
+				case 0B10110:
+				case 0B11100:
+				case 0B11110:
+					/* STRD (immediate) */
+					return arm_inst_strd_i(inst, 
+								regs, vcpu);
+				case 0B00101: /* xx1x1 */
+				case 0B00111:
+				case 0B01101:
+				case 0B01111:
+				case 0B10101:
+				case 0B10111:
+				case 0B11101:
+				case 0B11111:
+					Rn = ARM_INST_DECODE(inst,
+					     ARM_INST_DATAPROC_RN_MASK,
+					     ARM_INST_DATAPROC_RN_SHIFT);
+					if (Rn == 0xF) {
+						/* LDRSH (literal) */
+						return arm_inst_ldrsh_l(inst, 
+								regs, vcpu);
+					} else {
+						/* LDRSH (immediate) */
+						return arm_inst_ldrsh_i(inst, 
+								regs, vcpu);
+					}
+					break;
+				default:
+					break;
+				};
+				break;
+			default:
+				break;
+			};
 		}
-	} else if (!op && is_op1_1xxxx && is_op2_1001) {
-		/* Synchronization primitives */
-		if(is_op1_11000) {
-			/* STREX */
-			return arm_inst_strex(inst, regs, vcpu);
-		} else if (is_op1_11001) {
-			/* LDREX */
-			return arm_inst_ldrex(inst, regs, vcpu);
+		if ((op1 & 0B10000) && (op2==0B1001)) {
+			/* Synchronization primitives */
+			switch (op1) {
+			case 0B11000:
+				/* STREX */
+				return arm_inst_strex(inst, regs, vcpu);
+			case 0B11001:
+				/* LDREX */
+				return arm_inst_ldrex(inst, regs, vcpu);
+			default:
+				break;
+			};
 		}
-	} else if (op && is_op1_10000) {
-		/* MOVW (immediate) */
-		return arm_inst_movw_i(inst, regs, vcpu);
 	}
 
 	arm_unpredictable(regs, vcpu, inst, __func__);
@@ -2566,120 +2707,137 @@ static int arm_instgrp_ldrstr(u32 inst,
 				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
 	u32 op1, rn;
-	u32 is_xx0x0, is_0x010, is_xx0x1, is_0x011, is_xx1x0, is_0x110;
-	u32 is_xx1x1, is_0x111;
 
 	op1 = ARM_INST_DECODE(inst,
 			      ARM_INST_LDRSTR_OP1_MASK,
 			      ARM_INST_LDRSTR_OP1_SHIFT);
 
 	if (!(inst & ARM_INST_LDRSTR_A_MASK)) {
-		is_0x010 = !(op1 & 0x5) && !(op1 & 0x10) && (op1 & 0x2);
-		if (!is_0x010) {
-			is_xx0x0 = !(op1 & 0x5);
-			if (is_xx0x0) {
-				/* STR (immediate) */
-				return arm_inst_str_i(inst, regs, vcpu);
-			}
-		} else {
+		switch (op1) {
+		case 0B00000: /* xx0x0 not 0x010 */
+		case 0B01000:
+		case 0B10000:
+		case 0B10010:
+		case 0B11000:
+		case 0B11010:
+			/* STR (immediate) */
+			return arm_inst_str_i(inst, regs, vcpu);
+		case 0B00010: /* 0x010 */
+		case 0B01010:
 			/* STRT */
 			return arm_inst_strt(inst, regs, vcpu);
-		}
-		is_0x011 = !(op1 & 0x14) && (op1 & 0x3);
-		if (!is_0x011) {
-			is_xx0x1 = !(op1 & 0x4) && (op1 & 0x1);
-			if (is_xx0x1) {
-				rn = ARM_INST_DECODE(inst,
-			     			ARM_INST_LDRSTR_RN_MASK, 
-			     			ARM_INST_LDRSTR_RN_SHIFT);
-				if (rn == 0xF) {
-					/* LDR (literal) */
-					return arm_inst_ldr_l(inst, regs, vcpu);
-				} else {
-					/* LDR (immediate) */
-					return arm_inst_ldr_i(inst, regs, vcpu);
-				}
+		case 0B00001: /* xx0x1 not 0x011 */
+		case 0B01001:
+		case 0B10001:
+		case 0B10011:
+		case 0B11001:
+		case 0B11011:
+			rn = ARM_INST_DECODE(inst,
+		     			ARM_INST_LDRSTR_RN_MASK, 
+		     			ARM_INST_LDRSTR_RN_SHIFT);
+			if (rn == 0xF) {
+				/* LDR (literal) */
+				return arm_inst_ldr_l(inst, regs, vcpu);
+			} else {
+				/* LDR (immediate) */
+				return arm_inst_ldr_i(inst, regs, vcpu);
 			}
-		} else {
+			break;
+		case 0B00011: /* 0x011 */
+		case 0B01011:
 			/* LDRT */
 			return arm_inst_ldrt(inst, regs, vcpu);
-		}
-		is_0x110 = !(op1 & 0x11) && (op1 & 0x6);
-		if (!is_0x110) {
-			is_xx1x0 = (op1 & 0x4) && !(op1 & 0x1);
-			if (is_xx1x0) {
-				/* STRB (immediate) */
-				return arm_inst_strb_i(inst, regs, vcpu);
-			}
-		} else {
+		case 0B00100: /* xx1x0 not 0x110 */
+		case 0B01100:
+		case 0B10100:
+		case 0B10110:
+		case 0B11100:
+		case 0B11110:
+			/* STRB (immediate) */
+			return arm_inst_strb_i(inst, regs, vcpu);
+		case 0B00110: /* 0x110 */
+		case 0B01110:
 			/* STRBT */
 			return arm_inst_strbt(inst, regs, vcpu);
-		} 
-		is_0x111 = !(op1 & 0x10) && (op1 & 0x7);
-		if (!is_0x111) {
-			is_xx1x1 = (op1 & 0x5);
-			if (is_xx1x1) {
-				rn = ARM_INST_DECODE(inst,
-			 			ARM_INST_LDRSTR_RN_MASK, 
-			     			ARM_INST_LDRSTR_RN_SHIFT);
-				if (rn == 0xF) {
-					/* LDRB (literal) */
-					return arm_inst_ldrb_l(inst, regs, vcpu);
-				} else {
-					/* LDRB (immediate) */
-					return arm_inst_ldrb_i(inst, regs, vcpu);
-				}
+		case 0B00101: /* xx1x1 not 0x111 */
+		case 0B01101:
+		case 0B10101:
+		case 0B10111:
+		case 0B11101:
+		case 0B11111:
+			rn = ARM_INST_DECODE(inst,
+			 		ARM_INST_LDRSTR_RN_MASK, 
+			     		ARM_INST_LDRSTR_RN_SHIFT);
+			if (rn == 0xF) {
+				/* LDRB (literal) */
+				return arm_inst_ldrb_l(inst, regs, vcpu);
+			} else {
+				/* LDRB (immediate) */
+				return arm_inst_ldrb_i(inst, regs, vcpu);
 			}
-		} else {
+			break;
+		case 0B00111: /* 0x111 */
+		case 0B01111:
 			/* LDRBT */
 			return arm_inst_ldrbt(inst, regs, vcpu);
-		}
+		default:
+			break;
+		};
 	} else if (!(inst & ARM_INST_LDRSTR_B_MASK)) {
-		is_0x010 = !(op1 & 0x5) && !(op1 & 0x10) && (op1 & 0x2);
-		if (!is_0x010) {
-			is_xx0x0 = !(op1 & 0x5);
-			if (is_xx0x0) {
-				/* STR (register) */
-				return arm_inst_str_r(inst, regs, vcpu);
-			}
-		} else {
+		switch (op1) {
+		case 0B00000: /* xx0x0 not 0x010 */
+		case 0B01000:
+		case 0B10000:
+		case 0B10010:
+		case 0B11000:
+		case 0B11010:
+			/* STR (register) */
+			return arm_inst_str_r(inst, regs, vcpu);
+		case 0B00010: /* 0x010 */
+		case 0B01010:
 			/* STRT */
 			return arm_inst_strt(inst, regs, vcpu);
-		}
-		is_0x011 = !(op1 & 0x14) && (op1 & 0x3);
-		if (!is_0x011) {
-			is_xx0x1 = !(op1 & 0x4) && (op1 & 0x1);
-			if (is_xx0x1) {
-				/* LDR (register) */
-				return arm_inst_ldr_r(inst, regs, vcpu);
-			}
-		} else {
+		case 0B00001: /* xx0x1 not 0x011 */
+		case 0B01001:
+		case 0B10001:
+		case 0B10011:
+		case 0B11001:
+		case 0B11011:
+			/* LDR (register) */
+			return arm_inst_ldr_r(inst, regs, vcpu);
+		case 0B00011: /* 0x011 */
+		case 0B01011:
 			/* LDRT */
 			return arm_inst_ldrt(inst, regs, vcpu);
-		}
-		is_0x110 = !(op1 & 0x11) && (op1 & 0x6);
-		if (!is_0x110) {
-			is_xx1x0 = (op1 & 0x4) && !(op1 & 0x1);
-			if (is_xx1x0) {
-				/* STRB (register) */
-				return arm_inst_strb_r(inst, regs, vcpu);
-			}
-		} else {
+		case 0B00100: /* xx1x0 not 0x110 */
+		case 0B01100:
+		case 0B10100:
+		case 0B10110:
+		case 0B11100:
+		case 0B11110:
+			/* STRB (register) */
+			return arm_inst_strb_r(inst, regs, vcpu);
+		case 0B00110: /* 0x110 */
+		case 0B01110:
 			/* STRBT */
 			return arm_inst_strbt(inst, regs, vcpu);
-		} 
-		is_0x111 = !(op1 & 0x10) && (op1 & 0x7);
-		if (!is_0x111) {
-			is_xx1x1 = (op1 & 0x5);
-			if (is_xx1x1) {
-				/* LDRB (register) */
-				return arm_inst_ldrb_r(inst, regs, vcpu);
-			} 
-		} else {
+		case 0B00101: /* xx1x1 not 0x111 */
+		case 0B01101:
+		case 0B10101:
+		case 0B10111:
+		case 0B11101:
+		case 0B11111:
+			/* LDRB (register) */
+			return arm_inst_ldrb_r(inst, regs, vcpu);
+		case 0B00111: /* 0x111 */
+		case 0B01111:
 			/* LDRBT */
 			return arm_inst_ldrbt(inst, regs, vcpu);
-		}
+		default:
+			break;
+		};
 	}
+
 	arm_unpredictable(regs, vcpu, inst, __func__);
 	return VMM_EFAIL;
 }
@@ -3335,109 +3493,244 @@ static int arm_inst_svc(u32 inst,
 static int arm_instgrp_coproc(u32 inst, 
 				arch_regs_t * regs, struct vmm_vcpu * vcpu)
 {
-	u32 op1, rn, cpro, op;
-	u32 is_op1_0xxxxx, is_op1_0xxxx0, is_op1_0xxxx1, is_op1_00000x;
-	u32 is_op1_00010x, is_op1_000100, is_op1_000101, is_op1_10xxxx;
-	u32 is_op1_10xxx0, is_op1_10xxx1, is_op1_11xxxx, is_op1_000x0x;
-	u32 is_rn_1111, is_cpro_101x, is_op;
+	u32 op1, rn, cpro;
+
 	op1 = ARM_INST_DECODE(inst,
 			      ARM_INST_COPROC_OP1_MASK,
 			      ARM_INST_COPROC_OP1_SHIFT);
-	rn = ARM_INST_DECODE(inst,
-			     ARM_INST_COPROC_RN_MASK, ARM_INST_COPROC_RN_SHIFT);
 	cpro = ARM_INST_DECODE(inst,
 			       ARM_INST_COPROC_CPRO_MASK,
 			       ARM_INST_COPROC_CPRO_SHIFT);
-	op = ARM_INST_DECODE(inst,
-			     ARM_INST_COPROC_OP_MASK, ARM_INST_COPROC_OP_SHIFT);
-	is_op1_0xxxxx = !(op1 & 0x20);
-	is_op1_0xxxx0 = is_op1_0xxxxx && !(op1 & 0x1);
-	is_op1_0xxxx1 = is_op1_0xxxxx && (op1 & 0x1);
-	is_op1_00000x = !(op1 & 0x3E);
-	is_op1_00010x = !(op1 & 0x38) && !(op1 & 0x2) && (op1 & 0x4);
-	is_op1_000100 = is_op1_00010x && !(op1 & 0x1);
-	is_op1_000101 = is_op1_00010x && (op1 & 0x1);
-	is_op1_10xxxx = !(op1 & 0x10) && (op1 & 0x20);
-	is_op1_10xxx0 = is_op1_10xxxx && !(op1 & 0x1);
-	is_op1_10xxx1 = is_op1_10xxxx && (op1 & 0x1);
-	is_op1_11xxxx = (op1 & 0x30);
-	is_op1_000x0x = !(op1 & 0x2);
-	is_rn_1111 = (rn == 0xF);
-	is_cpro_101x = (cpro == 0xA) || (cpro == 0xB);
-	is_op = (op != 0x0);
-	if (is_op1_0xxxxx && !is_op1_000x0x && is_cpro_101x) {
-		/* Advanced SIMD, VFP Extension register 
-		 * load/store instructions 
-		 */
-		arm_unpredictable(regs, vcpu, inst, __func__);
-		return VMM_EFAIL;
-	} else if (is_op1_0xxxx0 && !is_op1_000x0x && !is_cpro_101x) {
-		/* Store Coprocessor 
-		 * STC, STC2 
-		 */
-		return arm_inst_stcx(inst, regs, vcpu);
-	} else if (is_op1_0xxxx1 &&
-		   !is_op1_000x0x && !is_cpro_101x && !is_rn_1111) {
-		/* Load Coprocessor 
-		 * LDC, LDC2 (immediate) 
-		 */
-		return arm_inst_ldcx_i(inst, regs, vcpu);
-	} else if (is_op1_00000x) {
-		/** Undefined Instruction Space */
-		arm_unpredictable(regs, vcpu, inst, __func__);
-		return VMM_EFAIL;
-	} else if (is_op1_0xxxx1 &&
-		   !is_op1_000x0x && !is_cpro_101x && is_rn_1111) {
-		/* Load Coprocessor 
-		 * LDC, LDC2 (literal) 
-		 */
-		return arm_inst_ldcx_l(inst, regs, vcpu);
-	} else if (is_op1_00010x && is_cpro_101x) {
-		/* Advanced SIMD, VFP 64-bit transfers between 
-		 * ARM core and extension registers 
-		 */
-		arm_unpredictable(regs, vcpu, inst, __func__);
-		return VMM_EFAIL;
-	} else if (is_op1_000100 && !is_cpro_101x) {
-		/* Move to Coprocessor from two ARM core registers
-		 * MCRR, MCRR2 
-		 */
-		return arm_inst_mcrrx(inst, regs, vcpu);
-	} else if (is_op1_000101 && !is_cpro_101x) {
-		/* Move to two ARM core registers from Coprocessor
-		 * MRRC, MRRC2 
-		 */
-		return arm_inst_mrrcx(inst, regs, vcpu);
-	} else if (is_op1_10xxxx && !is_op && is_cpro_101x) {
-		/* VFP data-processing instructions 
-		 */
-		arm_unpredictable(regs, vcpu, inst, __func__);
-		return VMM_EFAIL;
-	} else if (is_op1_10xxxx && !is_op && !is_cpro_101x) {
-		/* Coprocessor data operations 
-		 * CDP, CDP2 
-		 */
-		return arm_inst_cdpx(inst, regs, vcpu);
-	} else if (is_op1_10xxxx && is_op && is_cpro_101x) {
-		/* Advanced SIMD, VFP 8, 16, and 32-bit transfer 
-		 * between ARM core and extension registers 
-		 */
-		arm_unpredictable(regs, vcpu, inst, __func__);
-		return VMM_EFAIL;
-	} else if (is_op1_10xxx0 && is_op && !is_cpro_101x) {
-		/* Move to Coprocessor from ARM core register
-		 * MCR, MCR2 
-		 */
-		return arm_inst_mcrx(inst, regs, vcpu);
-	} else if (is_op1_10xxx1 && is_op && !is_cpro_101x) {
-		/* Move to ARM core register from Coprocessor
-		 * MRC, MRC2 
-		 */
-		return arm_inst_mrcx(inst, regs, vcpu);
-	} else if (is_op1_11xxxx) {
-		/* Supervisor Call SVC (previously SWI) */
-		return arm_inst_svc(inst, regs, vcpu);
-	}
+
+	switch (cpro) {
+	case 0B1010: /* SMID and Floating point instructions */
+	case 0B1011:
+		switch (op1) {
+		case 0B000000: /* 00000x */
+		case 0B000001:
+			/* Undefined instructions */
+			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
+			arm_pc(regs) += 4;
+			return VMM_OK;
+		case 0B000010: /* 0xxxxx not 000x0x*/
+		case 0B000011:
+		case 0B000110:
+		case 0B000111:
+		case 0B001000:
+		case 0B001001:
+		case 0B001010:
+		case 0B001011:
+		case 0B001100:
+		case 0B001101:
+		case 0B001110:
+		case 0B001111:
+		case 0B010000:
+		case 0B010001:
+		case 0B010010:
+		case 0B010011:
+		case 0B010100:
+		case 0B010101:
+		case 0B010110:
+		case 0B010111:
+		case 0B011000:
+		case 0B011001:
+		case 0B011010:
+		case 0B011011:
+		case 0B011100:
+		case 0B011101:
+		case 0B011110:
+		case 0B011111:
+			/* FIXME:
+			 * Advanced SIMD, VFP Extension register 
+			 * load/store instructions 
+			 */
+			break;
+		case 0B000100: /* 00010x */
+		case 0B000101:
+			/* FIXME:
+			 * Advanced SIMD, VFP 64-bit transfers between 
+			 * ARM core and extension registers 
+			 */
+			break;
+		case 0B100000: /* 10xxxx */
+		case 0B100001:
+		case 0B100010:
+		case 0B100011:
+		case 0B100100:
+		case 0B100101:
+		case 0B100110:
+		case 0B100111:
+		case 0B101000:
+		case 0B101001:
+		case 0B101010:
+		case 0B101011:
+		case 0B101100:
+		case 0B101101:
+		case 0B101110:
+		case 0B101111:
+			if (inst & ARM_INST_COPROC_OP_MASK) {
+				/* FIXME:
+				 * Advanced SIMD, VFP 8, 16, & 32-bit transfer
+				 * transfer between ARM core and extension 
+				 * registers 
+				 */
+			} else {
+				/* FIXME:
+				 * VFP data-processing instructions 
+				 */
+			}
+			break;
+		case 0B110000: /* 11xxxx */
+		case 0B110001:
+		case 0B110010:
+		case 0B110011:
+		case 0B110100:
+		case 0B110101:
+		case 0B110110:
+		case 0B110111:
+		case 0B111000:
+		case 0B111001:
+		case 0B111010:
+		case 0B111011:
+		case 0B111100:
+		case 0B111101:
+		case 0B111110:
+		case 0B111111:
+			/* Supervisor Call SVC (previously SWI) */
+			return arm_inst_svc(inst, regs, vcpu);
+		default:
+			break;
+		};
+		break;
+	default: /* Generic coprocessor instructions */
+		switch (op1) {
+		case 0B000000:  /* 00000x */
+		case 0B000001:
+			/* Undefined instructions */
+			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
+			arm_pc(regs) += 4;
+			return VMM_OK;
+		case 0B000010: /* 0xxxx0 not 000x00*/
+		case 0B000110:
+		case 0B001000:
+		case 0B001010:
+		case 0B001100:
+		case 0B001110:
+		case 0B010000:
+		case 0B010010:
+		case 0B010100:
+		case 0B010110:
+		case 0B011000:
+		case 0B011010:
+		case 0B011100:
+		case 0B011110:
+			/* Store Coprocessor 
+			 * STC, STC2 
+			 */
+			return arm_inst_stcx(inst, regs, vcpu);
+		case 0B000011: /* 0xxxx1 not 000x01 */
+		case 0B000111:
+		case 0B001001:
+		case 0B001011:
+		case 0B001101:
+		case 0B001111:
+		case 0B010001:
+		case 0B010011:
+		case 0B010101:
+		case 0B010111:
+		case 0B011001:
+		case 0B011011:
+		case 0B011101:
+		case 0B011111:
+			rn = ARM_INST_DECODE(inst,
+					ARM_INST_COPROC_RN_MASK, 
+					ARM_INST_COPROC_RN_SHIFT);
+			if (rn == 0xF) {
+				/* Load Coprocessor 
+				 * LDC, LDC2 (literal) 
+				 */
+				return arm_inst_ldcx_l(inst, regs, vcpu);
+			} else {
+				/* Load Coprocessor 
+				 * LDC, LDC2 (immediate) 
+				 */
+				return arm_inst_ldcx_i(inst, regs, vcpu);
+			}
+			break;
+		case 0B000100: /* 000100 */
+			/* Move to Coprocessor from two ARM core registers
+			 * MCRR, MCRR2 
+			 */
+			return arm_inst_mcrrx(inst, regs, vcpu);
+		case 0B000101: /* 000101 */
+			/* Move to two ARM core registers from Coprocessor
+			 * MRRC, MRRC2 
+			 */
+			return arm_inst_mrrcx(inst, regs, vcpu);
+		case 0B100000: /* 10xxx0 */
+		case 0B100010:
+		case 0B100100:
+		case 0B100110:
+		case 0B101000:
+		case 0B101010:
+		case 0B101100:
+		case 0B101110:
+			if (inst & ARM_INST_COPROC_OP_MASK) {
+				/* Move to Coprocessor from ARM core register
+				 * MCR, MCR2 
+				 */
+				return arm_inst_mcrx(inst, regs, vcpu);
+			} else {
+				/* Coprocessor data operations 
+				 * CDP, CDP2 
+				 */
+				return arm_inst_cdpx(inst, regs, vcpu);
+			}
+			break;
+		case 0B100001: /* 10xxx1 */
+		case 0B100011:
+		case 0B100101:
+		case 0B100111:
+		case 0B101001:
+		case 0B101011:
+		case 0B101101:
+		case 0B101111:
+			if (inst & ARM_INST_COPROC_OP_MASK) {
+				/* Move to ARM core register from Coprocessor
+				 * MRC, MRC2 
+				 */
+				return arm_inst_mrcx(inst, regs, vcpu);
+			} else {
+				/* Coprocessor data operations 
+				 * CDP, CDP2 
+				 */
+				return arm_inst_cdpx(inst, regs, vcpu);
+			}
+			break;
+		case 0B110000: /* 11xxxx */
+		case 0B110001:
+		case 0B110010:
+		case 0B110011:
+		case 0B110100:
+		case 0B110101:
+		case 0B110110:
+		case 0B110111:
+		case 0B111000:
+		case 0B111001:
+		case 0B111010:
+		case 0B111011:
+		case 0B111100:
+		case 0B111101:
+		case 0B111110:
+		case 0B111111:
+			/* Supervisor Call SVC (previously SWI) */
+			return arm_inst_svc(inst, regs, vcpu);
+		default:
+			break;
+		};
+		break;
+	};
+
 	arm_unpredictable(regs, vcpu, inst, __func__);
 	return VMM_EFAIL;
 }

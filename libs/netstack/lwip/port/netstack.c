@@ -775,7 +775,7 @@ static err_t lwip_netstack_output(struct netif *netif, struct pbuf *p)
 	mbuf_head->m_len = mbuf_head->m_pktlen = p->tot_len;
 
 	/* Send mbuf to the netswitch */
-	vmm_port2switch_xfer(lns->port, mbuf_head);
+	vmm_port2switch_xfer_mbuf(lns->port, mbuf_head);
 
 	/* Return success */
 	return ERR_OK;
@@ -908,7 +908,8 @@ fail:
 
 static void __exit lwip_netstack_exit(void)
 {
-	/* FIXME: */
+	vmm_netport_unregister(lns.port);
+	vmm_netport_free(lns.port);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC, 

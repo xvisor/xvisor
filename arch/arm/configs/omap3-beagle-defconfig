@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.0
-# Tue Jan 29 12:16:05 2013
+# Version: 0.2.1
+# Sat Mar  9 20:39:46 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -13,8 +13,9 @@ CONFIG_CPU_COUNT=1
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
+CONFIG_VAPOOL_SIZE_MB=12
 CONFIG_BOARD="omap3"
-# CONFIG_CPU_ARM9 is not set
+# CONFIG_CPU_ARM926T is not set
 CONFIG_CPU_CORTEX_A8=y
 # CONFIG_CPU_CORTEX_A9 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
@@ -75,13 +76,12 @@ CONFIG_BANNER_NONE=y
 CONFIG_MAX_VCPU_COUNT=16
 CONFIG_MAX_GUEST_COUNT=4
 CONFIG_VGPA2REG_CACHE_SIZE=8
-CONFIG_VAPOOL_SIZE_MB=8
 # CONFIG_PROFILE is not set
 
 #
 # Heap Configuration
 #
-CONFIG_HEAP_SIZE_MB=2
+CONFIG_HEAP_SIZE_MB=4
 CONFIG_HEAP_BUDDY=y
 
 #
@@ -103,8 +103,10 @@ CONFIG_THREAD_STACK_SIZE=8192
 # CONFIG_RTC is not set
 # CONFIG_INPUT is not set
 # CONFIG_FB is not set
-# CONFIG_BLOCK is not set
+CONFIG_BLOCK=y
 CONFIG_NET=y
+CONFIG_NET_MBUF_POOL_SIZE=2048
+CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
 
 #
 # Command Options
@@ -124,6 +126,7 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_NET=y
 
 #
@@ -137,13 +140,17 @@ CONFIG_MTERM_HISTORY_SIZE=10
 #
 # Library Options
 #
-CONFIG_LIBFDT=y
 
 #
 # Network Stack Options
 #
 # CONFIG_NET_STACK is not set
 CONFIG_NET_STACK_LWIP=y
+
+#
+# Virtual FileSystem Options
+#
+# CONFIG_VFS is not set
 
 #
 # Device Drivers
@@ -163,6 +170,11 @@ CONFIG_SERIAL_OMAP_UART=y
 #
 
 #
+# Block Drivers
+#
+# CONFIG_BLOCK_RBD is not set
+
+#
 # Input Device Support
 #
 
@@ -179,6 +191,12 @@ CONFIG_SERIAL_OMAP_UART=y
 #
 # Device Emulators
 #
+
+#
+# VirtIO Support
+#
+CONFIG_EMU_VIRTIO=y
+CONFIG_EMU_VIRTIO_MMIO=y
 
 #
 # System Emulators
@@ -200,6 +218,19 @@ CONFIG_EMU_PIC_GIC=y
 CONFIG_EMU_NET=y
 CONFIG_EMU_NET_LAN9118=y
 # CONFIG_EMU_NET_SMC91C111 is not set
+CONFIG_EMU_NET_VIRTIO=y
+
+#
+# Block Device Emulators
+#
+CONFIG_EMU_BLOCK=y
+CONFIG_EMU_BLOCK_VIRTIO=y
+
+#
+# Console Emulators
+#
+CONFIG_EMU_CONSOLE=y
+CONFIG_EMU_CONSOLE_VIRTIO=y
 
 #
 # Timer Emulators
@@ -235,11 +266,10 @@ CONFIG_EMU_GPIO_PL061=y
 # Miscellaneous Emulators
 #
 CONFIG_EMU_MISC_ZERO=y
-CONFIG_EMU_MISC_A9MP_PRIV=y
+CONFIG_EMU_MISC_A9MPCORE=y
 
 #
 # Tool Options
 #
-CONFIG_DTC=y
 CONFIG_CPATCH=y
 CONFIG_BBFLASH=y

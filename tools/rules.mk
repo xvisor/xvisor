@@ -21,8 +21,6 @@
 # @brief Rules to build & use tools
 # */
 
-ifdef CONFIG_DTC
-
 $(build_dir)/tools/dtc/dtc: $(CURDIR)/tools/dtc/Makefile
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
@@ -33,12 +31,16 @@ $(build_dir)/%.dep: $(src_dir)/%.dts
 	$(if $(V), @echo " (dtc-dep)   $(subst $(build_dir)/,,$@)")
 	$(V)echo "$(@:.dep=.S): $<" > $@
 
+$(build_dir)/%.dtb: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
+	$(V)$(build_dir)/tools/dtc/dtc -p 0x100 -I dts -O dtb $< -o $@
+
 $(build_dir)/%.S: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
 	$(V)$(build_dir)/tools/dtc/dtc -I dts -O asm $< -o $@
-
-endif
+	$(V)sed -i '1 i .section ".devtree"' $@
 
 ifdef CONFIG_CPATCH
 

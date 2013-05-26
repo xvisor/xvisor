@@ -33,6 +33,8 @@
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
 #include <generic_timer.h>
+#include <arm_features.h>
+#include <mmu_lpae.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
@@ -351,7 +353,7 @@ u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu *vcpu, u32 mode)
 	u32 hwreg;
 	if (vcpu != vmm_scheduler_current_vcpu()) {
 		/* This function should only be called for current VCPU */
-		while (1); /* Hang !!! */
+		vmm_panic("%d not called for current vcpu\n", __func__);
 	}
 	/* Find out correct SPSR */
 	switch (mode) {
@@ -396,7 +398,7 @@ int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu,
 	}
 	if (vcpu != vmm_scheduler_current_vcpu()) {
 		/* This function should only be called for current VCPU */
-		while (1); /* Hang !!! */
+		vmm_panic("%d not called for current vcpu\n", __func__);
 	}
 	/* Update appropriate SPSR */
 	switch (mode) {
@@ -440,7 +442,7 @@ int arch_guest_init(struct vmm_guest *guest)
 			return VMM_EFAIL;
 		}
 		INIT_SPIN_LOCK(&arm_guest_priv(guest)->ttbl_lock);
-		arm_guest_priv(guest)->ttbl = cpu_mmu_ttbl_alloc(TTBL_STAGE2);
+		arm_guest_priv(guest)->ttbl = mmu_lpae_ttbl_alloc(TTBL_STAGE2);
 	}
 	return VMM_OK;
 }
@@ -450,7 +452,7 @@ int arch_guest_deinit(struct vmm_guest *guest)
 	int rc;
 
 	if (guest->arch_priv) {
-		if ((rc = cpu_mmu_ttbl_free(arm_guest_priv(guest)->ttbl))) {
+		if ((rc = mmu_lpae_ttbl_free(arm_guest_priv(guest)->ttbl))) {
 			return rc;
 		}
 
@@ -487,11 +489,11 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
-	if (strcmp(attr, "ARMv7a,cortex-a8") == 0) {
+	if (strcmp(attr, "armv7a,cortex-a8") == 0) {
 		cpuid = ARM_CPUID_CORTEXA8;
-	} else if (strcmp(attr, "ARMv7a,cortex-a9") == 0) {
+	} else if (strcmp(attr, "armv7a,cortex-a9") == 0) {
 		cpuid = ARM_CPUID_CORTEXA9;
-	} else if (strcmp(attr, "ARMv7a,cortex-a15") == 0) {
+	} else if (strcmp(attr, "armv7a,cortex-a15") == 0) {
 		cpuid = ARM_CPUID_CORTEXA15;
 	} else {
 		return VMM_EFAIL;
@@ -546,28 +548,15 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
 		case ARM_CPUID_CORTEXA8:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
-			arm_set_feature(vcpu, ARM_FEATURE_V6);
-			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
 			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA9:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
-			arm_set_feature(vcpu, ARM_FEATURE_V6);
-			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
@@ -576,40 +565,78 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA15:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
-			arm_set_feature(vcpu, ARM_FEATURE_V6);
-			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
-			arm_set_feature(vcpu, ARM_FEATURE_DIV);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP4);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_ARM_DIV);
+			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			arm_set_feature(vcpu, ARM_FEATURE_GENERIC_TIMER);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
 			arm_set_feature(vcpu, ARM_FEATURE_LPAE);
-			arm_set_feature(vcpu, ARM_FEATURE_GENTIMER);
 			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		default:
 			break;
 		};
+
+		/* Some features automatically imply others: */
+		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VAPA);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
+			arm_set_feature(vcpu, ARM_FEATURE_MPIDR);
+			if (!arm_feature(vcpu, ARM_FEATURE_M)) {
+				arm_set_feature(vcpu, ARM_FEATURE_V6K);
+			} else {
+				arm_set_feature(vcpu, ARM_FEATURE_V6);
+			}
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V6K)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V6);
+			arm_set_feature(vcpu, ARM_FEATURE_MVFR);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V5);
+			if (!arm_feature(vcpu, ARM_FEATURE_M)) {
+				arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
+			}
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V5)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V4T);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_M)) {
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB_DIV);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_ARM_DIV)) {
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB_DIV);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_VFP4)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_VFP3)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_LPAE)) {
+			arm_set_feature(vcpu, ARM_FEATURE_PXN);
+		}
 	} else {
 		/* Clear virtual exception bits in HCR */
 		arm_priv(vcpu)->hcr &= ~(HCR_VA_MASK | 
 					 HCR_VI_MASK | 
 					 HCR_VF_MASK);
 	}
-	if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
-		/* Generic timer physical & virtual irq for the vcpu */
+	/* Intialize Generic timer */
+	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 		attr = vmm_devtree_attrval(vcpu->node, "gentimer_phys_irq");
 		arm_gentimer_context(vcpu)->phys_timer_irq = (attr) ? (*(u32 *)attr) : 0;
 		attr = vmm_devtree_attrval(vcpu->node, "gentimer_virt_irq");
 		arm_gentimer_context(vcpu)->virt_timer_irq = (attr) ? (*(u32 *)attr) : 0;
 		generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
+	}
+	if (!vcpu->reset_count) {
+		/* Cleanup VGIC context first time */
+		arm_vgic_cleanup(vcpu);
 	}
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
@@ -724,8 +751,9 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		      arch_regs_t *regs)
 {
 	u32 ite;
-	/* Save user registers & banked registers */
+	
 	if (tvcpu) {
+		/* Save general purpose registers */
 		arm_regs(tvcpu)->pc = regs->pc;
 		arm_regs(tvcpu)->lr = regs->lr;
 		arm_regs(tvcpu)->sp = regs->sp;
@@ -734,16 +762,23 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		}
 		arm_regs(tvcpu)->cpsr = regs->cpsr;
 		if (tvcpu->is_normal) {
-			if (arm_feature(tvcpu, ARM_FEATURE_GENTIMER)) {
+			/* Save VGIC registers */
+			arm_vgic_save(tvcpu);
+			/* Save generic timer */
+			if (arm_feature(tvcpu, ARM_FEATURE_GENERIC_TIMER)) {
 				generic_timer_vcpu_context_save(arm_gentimer_context(tvcpu));
 			}
+			/* Save general purpose banked registers */
 			cpu_vcpu_banked_regs_save(tvcpu);
+			/* Save hypervisor config */
 			arm_priv(tvcpu)->hcr = read_hcr();
 		}
 	}
+
 	/* Switch CP15 context */
 	cpu_vcpu_cp15_switch_context(tvcpu, vcpu);
-	/* Restore user registers & banked registers */
+
+	/* Restore general purpose registers */
 	regs->pc = arm_regs(vcpu)->pc;
 	regs->lr = arm_regs(vcpu)->lr;
 	regs->sp = arm_regs(vcpu)->sp;
@@ -752,16 +787,30 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	}
 	regs->cpsr = arm_regs(vcpu)->cpsr;
 	if (vcpu->is_normal) {
-		cpu_vcpu_banked_regs_restore(vcpu);
-		if (arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
-			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
-		}
+		/* Restore hypervisor config */
 		write_hcr(arm_priv(vcpu)->hcr);
 		write_hcptr(arm_priv(vcpu)->hcptr);
 		write_hstr(arm_priv(vcpu)->hstr);
+		/* Restore general purpose banked registers */
+		cpu_vcpu_banked_regs_restore(vcpu);
+		/* Restore generic timer */
+		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
+			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
+		}
+		/* Restore VGIC registers */
+		arm_vgic_restore(vcpu);
 	}
+
 	/* Clear exclusive monitor */
 	clrex();
+}
+
+void arch_vcpu_preempt_orphan(void)
+{
+	/* Trigger HVC call from hypervisor mode. This will cause
+	 * do_soft_irq() function to call vmm_scheduler_preempt_orphan()
+	 */
+	asm volatile ("hvc #0\t\n");
 }
 
 void cpu_vcpu_dump_user_reg(arch_regs_t *regs)

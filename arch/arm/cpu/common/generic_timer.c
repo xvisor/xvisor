@@ -19,24 +19,17 @@
  * @file generic_timer.c
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief API implementation for ARM architecture generic timers
- *
- * The source has been partially adapted from drivers/clocksource/arm_generic.c
- * of git://git.kernel.org/pub/scm/linux/kernel/git/cmarinas/linux-aarch64.git
- * Copyright (C) 2012 ARM Ltd.
- * Author: Marc Zyngier <marc.zyngier@arm.com>
- *
  */
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
-#include <vmm_timer.h>
 #include <vmm_stdio.h>
+#include <vmm_devtree.h>
 #include <vmm_host_irq.h>
 #include <vmm_clockchip.h>
 #include <vmm_clocksource.h>
 #include <vmm_host_aspace.h>
 #include <vmm_scheduler.h>
-#include <vmm_manager.h>
 #include <vmm_smp.h>
 #include <vmm_devemu.h>
 #include <cpu_inline_asm.h>
@@ -48,41 +41,43 @@
 
 static u32 generic_timer_hz = 0;
 
+static const struct vmm_devtree_nodeid generic_timer_match[] = {
+	{ .compatible	= "arm,armv7-timer",	},
+	{ .compatible	= "arm,armv8-timer",	},
+	{},
+};
+
 static u64 generic_counter_read(struct vmm_clocksource *cs)
 {
 	return generic_timer_pcounter_read();
 }
 
-int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
+int __init generic_timer_clocksource_init(void)
 {
+	int rc;
 	struct vmm_clocksource *cs;
-	u32 *freq, *shift, *rating;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_find_matching(NULL, generic_timer_match);
+	if (!node) {
+		return VMM_ENODEV;
+	}
 
 	if (generic_timer_hz == 0) {
-		freq = vmm_devtree_attrval(node, "freq");
-		if (freq == NULL) {
+		rc =  vmm_devtree_clock_frequency(node, &generic_timer_hz);
+		if (rc) {
 			/* Use preconfigured counter frequency in absence of dts node */
 			generic_timer_hz = generic_timer_reg_read(GENERIC_TIMER_REG_FREQ);
 		} else {
 			if (generic_timer_freq_writeable()) {
 				/* Program the counter frequency as per the dts node */
-				generic_timer_reg_write(GENERIC_TIMER_REG_FREQ, *freq);
+				generic_timer_reg_write(GENERIC_TIMER_REG_FREQ, 
+							generic_timer_hz);
 			}
-			generic_timer_hz = *freq;
 		}
 	}
 
 	if (generic_timer_hz == 0) {
-		return VMM_EFAIL;
-	}
-
-	shift = vmm_devtree_attrval(node, "shift");
-	if (!shift) {
-		return VMM_EFAIL;
-	}
-
-	rating = vmm_devtree_attrval(node, "rating");
-	if (!rating) {
 		return VMM_EFAIL;
 	}
 
@@ -92,18 +87,17 @@ int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
 	}
 
 	cs->name = "gen-timer";
-	cs->rating = *rating;
+	cs->rating = 400;
 	cs->read = &generic_counter_read;
 	cs->mask = VMM_CLOCKSOURCE_MASK(56);
-	cs->mult = vmm_clocksource_hz2mult(generic_timer_hz, *shift);
-	cs->shift = *shift;
+	vmm_clocks_calc_mult_shift(&cs->mult, &cs->shift, 
+				   generic_timer_hz, VMM_NSEC_PER_SEC, 10);
 	cs->priv = NULL;
+
 	return vmm_clocksource_register(cs);
 }
 
-static vmm_irq_return_t generic_timer_irq_handler(u32 irq,
-					       arch_regs_t *regs,
-					       void *dev)
+static vmm_irq_return_t generic_timer_irq_handler(int irq, void *dev)
 {
 	struct vmm_clockchip *cc = dev;
 	unsigned long ctrl;
@@ -113,7 +107,7 @@ static vmm_irq_return_t generic_timer_irq_handler(u32 irq,
 		ctrl |= GENERIC_TIMER_CTRL_IT_MASK;
 		ctrl &= ~GENERIC_TIMER_CTRL_ENABLE;
 		generic_timer_reg_write(GENERIC_TIMER_REG_HYP_CTRL, ctrl);
-		cc->event_handler(cc, regs);
+		cc->event_handler(cc);
 		return VMM_IRQ_HANDLED;
 	}
 
@@ -157,29 +151,7 @@ static int generic_timer_set_next_event(unsigned long evt,
 	return 0;
 }
 
-static int generic_timer_expire(struct vmm_clockchip *cc)
-{
-	unsigned long ctrl;
-	int i;
-
-	ctrl = generic_timer_reg_read(GENERIC_TIMER_REG_HYP_CTRL);
-	ctrl |= GENERIC_TIMER_CTRL_ENABLE;
-	ctrl &= ~GENERIC_TIMER_CTRL_IT_MASK;
-
-	generic_timer_reg_write(GENERIC_TIMER_REG_HYP_TVAL, 1);
-	generic_timer_reg_write(GENERIC_TIMER_REG_HYP_CTRL, ctrl);
-
-	while(!(generic_timer_reg_read(GENERIC_TIMER_REG_HYP_CTRL) &
-				       GENERIC_TIMER_CTRL_IT_STAT)) {
-		for(i = 0; i<1000; i++);
-	}
-
-	return 0;
-}
-
-static vmm_irq_return_t generic_phys_timer_virq_handler(u32 irq,
-						       arch_regs_t *regs,
-						       void *dev)
+static vmm_irq_return_t generic_phys_timer_virq_handler(int irq, void *dev)
 {
 	struct vmm_vcpu * vcpu;
 	u32 ctl;
@@ -205,9 +177,7 @@ static vmm_irq_return_t generic_phys_timer_virq_handler(u32 irq,
 	return VMM_IRQ_HANDLED;
 }
 
-static vmm_irq_return_t generic_virt_timer_virq_handler(u32 irq,
-						       arch_regs_t *regs,
-						       void *dev)
+static vmm_irq_return_t generic_virt_timer_virq_handler(int irq, void *dev)
 {
 	struct vmm_vcpu * vcpu;
 	u32 ctl;
@@ -268,22 +238,29 @@ u64 generic_timer_wakeup_timeout(void)
 	return nsecs;
 }
 
-int generic_timer_clockchip_init(struct vmm_devtree_node *node)
+int __cpuinit generic_timer_clockchip_init(void)
 {
-	u32 *freq, *irq, *rating, num_irqs, val, rc;
+	int rc;
+	u32 irq[3], num_irqs, val;
 	struct vmm_clockchip *cc;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_find_matching(NULL, generic_timer_match);
+	if (!node) {
+		return VMM_ENODEV;
+	}
 
 	if (generic_timer_hz == 0) {
-		freq = vmm_devtree_attrval(node, "freq");
-		if (freq == NULL) {
+		rc =  vmm_devtree_clock_frequency(node, &generic_timer_hz);
+		if (rc) {
 			/* Use preconfigured counter frequency in absence of dts node */
 			generic_timer_hz = generic_timer_reg_read(GENERIC_TIMER_REG_FREQ);
 		} else {
 			if (generic_timer_freq_writeable()) {
 				/* Program the counter frequency as per the dts node */
-				generic_timer_reg_write(GENERIC_TIMER_REG_FREQ, *freq);
+				generic_timer_reg_write(GENERIC_TIMER_REG_FREQ, 
+							generic_timer_hz);
 			}
-			generic_timer_hz = *freq;
 		}
 	}
 
@@ -291,8 +268,28 @@ int generic_timer_clockchip_init(struct vmm_devtree_node *node)
 		return VMM_EFAIL;
 	}
 
-	irq = vmm_devtree_attrval(node, "irq");
-	num_irqs = (vmm_devtree_attrlen(node, "irq") / sizeof(u32));
+	rc = vmm_devtree_irq_get(node, 
+				 &irq[GENERIC_HYPERVISOR_TIMER], 
+				 GENERIC_HYPERVISOR_TIMER);
+	if (rc) {
+		return rc;
+	}
+
+	rc = vmm_devtree_irq_get(node, 
+				 &irq[GENERIC_PHYSICAL_TIMER], 
+				 GENERIC_PHYSICAL_TIMER);
+	if (rc) {
+		return rc;
+	}
+
+	rc = vmm_devtree_irq_get(node, 
+				 &irq[GENERIC_VIRTUAL_TIMER], 
+				 GENERIC_VIRTUAL_TIMER);
+	if (rc) {
+		return rc;
+	}
+
+	num_irqs = vmm_devtree_irq_count(node);
 	if (irq == NULL) {
 		return VMM_EFAIL;
 	}
@@ -305,23 +302,17 @@ int generic_timer_clockchip_init(struct vmm_devtree_node *node)
 		return VMM_EFAIL;
 	}
 
-	rating = vmm_devtree_attrval(node, "rating");
-	if (!rating) {
-		return VMM_EFAIL;
-	}
-
 	cc->name = "gen-hyp-timer";
 	cc->hirq = irq[GENERIC_HYPERVISOR_TIMER];
-	cc->rating = *rating;
+	cc->rating = 400;
 	cc->cpumask = vmm_cpumask_of(vmm_smp_processor_id());
 	cc->features = VMM_CLOCKCHIP_FEAT_ONESHOT;
-	cc->mult = vmm_clockchip_hz2mult(generic_timer_hz, 32);
-	cc->shift = 32;
+	vmm_clocks_calc_mult_shift(&cc->mult, &cc->shift, 
+				   VMM_NSEC_PER_SEC, generic_timer_hz, 10);
 	cc->min_delta_ns = vmm_clockchip_delta2ns(0xF, cc);
 	cc->max_delta_ns = vmm_clockchip_delta2ns(0x7FFFFFFF, cc);
 	cc->set_mode = &generic_timer_set_mode;
 	cc->set_next_event = &generic_timer_set_next_event;
-	cc->expire = &generic_timer_expire;
 	cc->priv = NULL;
 
 	rc = vmm_clockchip_register(cc);

@@ -85,6 +85,7 @@ static DEFINE_SPINLOCK(s3c_rtc_pie_lock);
  * This is a temporary solution until we have a clock management
  * API
  */
+#undef clk_enable
 static void clk_enable(struct clk *clk)
 {
 	u32 perir_reg = vmm_readl((void *)clk);
@@ -100,6 +101,7 @@ static void clk_enable(struct clk *clk)
  * This is a temporary solution until we have a clock management
  * API
  */
+#undef clk_disable
 static void clk_disable(struct clk *clk)
 {
 	u32 perir_reg = vmm_readl((void *)clk);
@@ -115,6 +117,7 @@ static void clk_disable(struct clk *clk)
  * This is a temporary solution until we have a clock management
  * API
  */
+#undef clk_put
 static void clk_put(struct clk *clk)
 {
 	vmm_host_iounmap((virtual_addr_t) clk, sizeof(u32));
@@ -124,6 +127,7 @@ static void clk_put(struct clk *clk)
  * This is a temporary solution until we have a clock management
  * API
  */
+#undef clk_get
 static struct clk *clk_get(struct vmm_device *dev, const char *name)
 {
 	void *cmu_ptr = (void *)vmm_host_iomap(EXYNOS4_PA_CMU +
@@ -161,7 +165,7 @@ static void s3c_rtc_alarm_clk_enable(bool enable)
 
 /* IRQ Handlers */
 
-static irqreturn_t s3c_rtc_alarmirq(u32 irq, arch_regs_t * regs, void *id)
+static irqreturn_t s3c_rtc_alarmirq(int irq, void *id)
 {
 	//struct rtc_device *rdev = id;
 
@@ -178,7 +182,7 @@ static irqreturn_t s3c_rtc_alarmirq(u32 irq, arch_regs_t * regs, void *id)
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t s3c_rtc_tickirq(u32 irq, arch_regs_t * regs, void *id)
+static irqreturn_t s3c_rtc_tickirq(int irq, void *id)
 {
 	//struct rtc_device *rdev = id;
 
@@ -484,28 +488,30 @@ static int s3c_rtc_driver_remove(struct vmm_device *dev)
 }
 
 static int s3c_rtc_driver_probe(struct vmm_device *pdev,
-				const struct vmm_devid *devid)
+				const struct vmm_devtree_nodeid *devid)
 {
+	u32 alarmno, tickno;
 	struct rtc_time rtc_tm;
-	const char *attr;
-	int ret;
-	int tmp;
-	int rc;
+	int ret, tmp, rc;
 
 	/* find the IRQs */
 
-	attr = vmm_devtree_attrval(pdev->node, "irq");
-	if (!attr) {
+	rc = vmm_devtree_irq_get(pdev->node, &alarmno, 0);
+	if (rc) {
 		rc = VMM_EFAIL;
 		return rc;
 	}
-
-	s3c_rtc_alarmno = ((u32 *) attr)[0];
-	s3c_rtc_tickno = ((u32 *) attr)[1];
+	s3c_rtc_alarmno = alarmno;
+	rc = vmm_devtree_irq_get(pdev->node, &tickno, 1);
+	if (rc) {
+		rc = VMM_EFAIL;
+		return rc;
+	}
+	s3c_rtc_tickno = tickno;
 
 	/* get the memory region */
 
-	rc = vmm_devtree_regmap(pdev->node, (virtual_addr_t *) & s3c_rtc_base,
+	rc = vmm_devtree_regmap(pdev->node, (virtual_addr_t *)&s3c_rtc_base,
 				0);
 	if (rc) {
 		dev_err(pdev, "failed ioremap()\n");
@@ -613,7 +619,7 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 	return ret;
 }
 
-static struct vmm_devid s3c_devid_table[] = {
+static struct vmm_devtree_nodeid s3c_devid_table[] = {
 	{
 	 .type = "rtc",
 	 .compatible = "samsung,s3c2410-rtc",

@@ -136,27 +136,25 @@ static struct vmm_free_area *buddy_get_contiguous_block(unsigned int num_blocks,
 	/* First check if we have enough nodes, contiguous or non-contiguous. */
 	if (bheap.free_area[idx].count >= num_blocks) {
 		/* okay we have enough nodes. Now try allocation contiguous nodes */
+		count = 1;
+		l = list_first(&bheap.free_area[idx].head);
+		snode = list_entry(l, struct vmm_free_area, head);
+		pnode = snode;
 		list_for_each(l, &bheap.free_area[idx].head) {
 			cnode = list_entry(l, struct vmm_free_area, head);
-			if (snode == NULL) {
-				snode = cnode;
-				count = 0;
-			}
-			if (pnode) {
-				if ((pnode->map + MAX_BLOCK_SIZE) == cnode->map) {
-					pnode = cnode;
-					if (++count == num_blocks) {
-						goto cont_blocks_found;
-					}
-					continue;
-				}
-				snode = NULL;
+			if ((pnode->map + MAX_BLOCK_SIZE) == cnode->map) {
+				count++;
 			} else {
-				pnode = cnode;
+				count = 1;
+				snode = cnode;
+			}
+			pnode = cnode;
+			if (count == num_blocks) {
+				goto cont_blocks_found;
 			}
 		}
- cont_blocks_found:
-		if (snode) {
+cont_blocks_found:
+		if (snode && (count == num_blocks)) {
 			cnode = get_free_hk_node();
 			BUG_ON(!cnode);
 			memcpy(cnode, snode, sizeof(struct vmm_free_area));
@@ -613,18 +611,14 @@ int vmm_heap_print_state(struct vmm_chardev *cdev)
 
 int __init vmm_heap_init(void)
 {
-	u32 heap_size, heap_page_count, heap_mem_flags;
+	u32 heap_size, heap_page_count;
 	void *heap_start;
 
 	heap_size = CONFIG_HEAP_SIZE_MB * 1024 * 1024;
 	heap_page_count = VMM_SIZE_TO_PAGE(heap_size);
-	heap_mem_flags =
-	    (VMM_MEMORY_READABLE | VMM_MEMORY_WRITEABLE | VMM_MEMORY_CACHEABLE |
-	     VMM_MEMORY_BUFFERABLE);
 
-	heap_start =
-	    (void *)vmm_host_alloc_pages(heap_page_count, heap_mem_flags);
-
+	heap_start = (void *)vmm_host_alloc_pages(heap_page_count, 
+						  VMM_MEMORY_FLAGS_NORMAL);
 	if (!heap_start) {
 		return VMM_EFAIL;
 	}

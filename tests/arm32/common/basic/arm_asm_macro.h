@@ -27,7 +27,7 @@
 
 #ifdef __ASSEMBLY__
 
-#ifdef ARM_ARCH_v5
+#if defined(ARM_ARCH_v5)
 
 .macro SET_CURRENT_FLAGS flags, treg
 	mrs	\treg, cpsr_all
@@ -96,9 +96,7 @@
 	movs	pc, lr
 .endm
 
-#endif /* ARM_ARCH_v5 */
-
-#ifdef ARM_ARCH_v7
+#else
 
 .macro SET_CURRENT_FLAGS flags, treg
 	mrs	\treg, cpsr
@@ -164,7 +162,7 @@
 	movs	pc, lr
 .endm
 
-#endif /* ARM_ARCH_v7 */
+#endif
 
 #endif /* __ASSEMBLY__ */
 

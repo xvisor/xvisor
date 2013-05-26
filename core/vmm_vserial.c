@@ -84,7 +84,7 @@ u32 vmm_vserial_receive(struct vmm_vserial *vser, u8 *dst, u32 len)
 		vmm_spin_unlock_irqrestore(&vser->receiver_list_lock, flags);
 
 		for (i = 0; i < len ; i++) {
-			vmm_ringbuf_enqueue(vser->receive_buf, &dst[i], TRUE);
+			fifo_enqueue(vser->receive_fifo, &dst[i], TRUE);
 		}
 
 		return i;
@@ -148,8 +148,8 @@ int vmm_vserial_register_receiver(struct vmm_vserial *vser,
 
 	vmm_spin_unlock_irqrestore(&vser->receiver_list_lock, flags);
 
-	while (!vmm_ringbuf_isempty(vser->receive_buf)) {
-		if (!vmm_ringbuf_dequeue(vser->receive_buf, &chval)) {
+	while (!fifo_isempty(vser->receive_fifo)) {
+		if (!fifo_dequeue(vser->receive_fifo, &chval)) {
 			break;
 		}
 		list_for_each(l, &vser->receiver_list) {
@@ -204,7 +204,7 @@ int vmm_vserial_unregister_receiver(struct vmm_vserial *vser,
 struct vmm_vserial *vmm_vserial_create(const char *name,
 				       bool (*can_send) (struct vmm_vserial *),
 				       int (*send) (struct vmm_vserial *, u8),
-				       u32 receive_buf_size, void *priv)
+				       u32 receive_fifo_size, void *priv)
 {
 	bool found;
 	struct dlist *l;
@@ -239,8 +239,8 @@ struct vmm_vserial *vmm_vserial_create(const char *name,
 		return NULL;
 	}
 
-	vser->receive_buf = vmm_ringbuf_alloc(1, receive_buf_size);
-	if (!(vser->receive_buf)) {
+	vser->receive_fifo = fifo_alloc(1, receive_fifo_size);
+	if (!(vser->receive_fifo)) {
 		vmm_free(vser);
 		vmm_mutex_unlock(&vsctrl.vser_list_lock);
 		return NULL;
@@ -311,7 +311,7 @@ int vmm_vserial_destroy(struct vmm_vserial *vser)
 
 	list_del(&vs->head);
 
-	vmm_ringbuf_free(vs->receive_buf);
+	fifo_free(vs->receive_fifo);
 	vmm_free(vs);
 
 	vmm_mutex_unlock(&vsctrl.vser_list_lock);

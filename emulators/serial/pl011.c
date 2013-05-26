@@ -35,10 +35,10 @@
 #include <vmm_heap.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
-#include <vmm_ringbuf.h>
 #include <vmm_vserial.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <libs/fifo.h>
 #include <libs/stringlib.h>
 
 #define MODULE_DESC			"PL011 Serial Emulator"
@@ -74,10 +74,10 @@ struct pl011_state {
 	u32 fbrd;
 	u32 ifl;
 	int rd_trig;
-	struct vmm_ringbuf *rd_fifo;
+	struct fifo *rd_fifo;
 };
 
-static void pl011_set_irq(struct pl011_state * s)
+static void pl011_set_irq(struct pl011_state *s)
 {
 	if (s->int_level & s->int_enabled) {
 		vmm_devemu_emulate_irq(s->guest, s->irq, 1);
@@ -100,7 +100,7 @@ static void pl011_set_read_trigger(struct pl011_state *s)
         s->rd_trig = 1;
 }
 
-static int pl011_reg_read(struct pl011_state * s, u32 offset, u32 *dst)
+static int pl011_reg_read(struct pl011_state *s, u32 offset, u32 *dst)
 {
 	int rc = VMM_OK;
 	u8 val = 0x0;
@@ -111,9 +111,9 @@ static int pl011_reg_read(struct pl011_state * s, u32 offset, u32 *dst)
 	switch (offset >> 2) {
 	case 0: /* UARTDR */
 		s->flags &= ~PL011_FLAG_RXFF;
-		vmm_ringbuf_dequeue(s->rd_fifo, &val);
+		fifo_dequeue(s->rd_fifo, &val);
 		*dst = val;
-		read_count = vmm_ringbuf_avail(s->rd_fifo);
+		read_count = fifo_avail(s->rd_fifo);
 		if (read_count == 0) {
 			s->flags |= PL011_FLAG_RXFE;
 		}
@@ -172,7 +172,7 @@ static int pl011_reg_read(struct pl011_state * s, u32 offset, u32 *dst)
 	return rc;
 }
 
-static int pl011_reg_write(struct pl011_state * s, u32 offset, 
+static int pl011_reg_write(struct pl011_state *s, u32 offset, 
 			   u32 src_mask, u32 src)
 {
 	int rc = VMM_OK;
@@ -245,23 +245,23 @@ static bool pl011_vserial_can_send(struct vmm_vserial *vser)
 #if 0
 	u32 rd_count;
 
-	rd_count = vmm_ringbuf_avail(s->rd_fifo);
+	rd_count = fifo_avail(s->rd_fifo);
 	if (s->lcr & 0x10) {
 		return (rd_count < s->fifo_sz);
 	} else {
 		return (rd_count < 1);
 	}
 #endif
-	return !vmm_ringbuf_isfull(s->rd_fifo);
+	return !fifo_isfull(s->rd_fifo);
 }
 
 static int pl011_vserial_send(struct vmm_vserial *vser, u8 data)
 {
-	struct pl011_state * s = vser->priv;
+	struct pl011_state *s = vser->priv;
 	u32 rd_count;
 
-	vmm_ringbuf_enqueue(s->rd_fifo, &data, TRUE);
-	rd_count = vmm_ringbuf_avail(s->rd_fifo);
+	fifo_enqueue(s->rd_fifo, &data, TRUE);
+	rd_count = fifo_avail(s->rd_fifo);
 	vmm_spin_lock(&s->lock);
 	s->flags &= ~PL011_FLAG_RXFE;
 	if (s->cr & 0x10 || rd_count == s->fifo_sz) {
@@ -282,7 +282,7 @@ static int pl011_emulator_read(struct vmm_emudev *edev,
 {
 	int rc = VMM_OK;
 	u32 regval = 0x0;
-	struct pl011_state * s = edev->priv;
+	struct pl011_state *s = edev->priv;
 
 	rc = pl011_reg_read(s, offset & ~0x3, &regval);
 
@@ -313,7 +313,7 @@ static int pl011_emulator_write(struct vmm_emudev *edev,
 {
 	int i;
 	u32 regmask = 0x0, regval = 0x0;
-	struct pl011_state * s = edev->priv;
+	struct pl011_state *s = edev->priv;
 
 	switch (src_len) {
 	case 1:
@@ -343,7 +343,7 @@ static int pl011_emulator_write(struct vmm_emudev *edev,
 
 static int pl011_emulator_reset(struct vmm_emudev *edev)
 {
-	struct pl011_state * s = edev->priv;
+	struct pl011_state *s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -359,19 +359,18 @@ static int pl011_emulator_reset(struct vmm_emudev *edev)
 
 static int pl011_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
-				const struct vmm_emuid *eid)
+				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	char name[64];
 	const char *attr;
-	struct pl011_state * s;
+	struct pl011_state *s;
 
-	s = vmm_malloc(sizeof(struct pl011_state));
+	s = vmm_zalloc(sizeof(struct pl011_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto pl011_emulator_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct pl011_state));
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
@@ -387,11 +386,8 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 		s->id[7] = ((u32 *)eid->data)[7];
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "irq");
-	if (attr) {
-		s->irq = *((u32 *)attr);
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+	if (rc) {
 		goto pl011_emulator_probe_freestate_fail;
 	}
 
@@ -403,7 +399,7 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 		goto pl011_emulator_probe_freestate_fail;
 	}
 
-	s->rd_fifo = vmm_ringbuf_alloc(1, s->fifo_sz);
+	s->rd_fifo = fifo_alloc(1, s->fifo_sz);
 	if (!s->rd_fifo) {
 		rc = VMM_EFAIL;
 		goto pl011_emulator_probe_freestate_fail;
@@ -425,7 +421,7 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 	goto pl011_emulator_probe_done;
 
 pl011_emulator_probe_freerbuf_fail:
-	vmm_ringbuf_free(s->rd_fifo);
+	fifo_free(s->rd_fifo);
 pl011_emulator_probe_freestate_fail:
 	vmm_free(s);
 pl011_emulator_probe_done:
@@ -434,11 +430,11 @@ pl011_emulator_probe_done:
 
 static int pl011_emulator_remove(struct vmm_emudev *edev)
 {
-	struct pl011_state * s = edev->priv;
+	struct pl011_state *s = edev->priv;
 
 	if (s) {
 		vmm_vserial_destroy(s->vser);
-		vmm_ringbuf_free(s->rd_fifo);
+		fifo_free(s->rd_fifo);
 		vmm_free(s);
 		edev->priv = NULL;
 	}
@@ -467,7 +463,7 @@ static u32 pl011_configs[] = {
 	/* id7 */ 0xb1,
 };
 
-static struct vmm_emuid pl011_emuid_table[] = {
+static struct vmm_devtree_nodeid pl011_emuid_table[] = {
 	{ .type = "serial", 
 	  .compatible = "primecell,arm,pl011", 
 	  .data = &pl011_configs[0],

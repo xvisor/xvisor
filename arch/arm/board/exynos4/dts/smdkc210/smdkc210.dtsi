@@ -2,9 +2,26 @@
 /include/ "../exynos4210.dtsi"
 
 / {
-	choosen {
+	model = "smdkc210";
+
+	chosen {
 		console = &SERIAL0;
 		rtcdev = &RTC0;
+	};
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x40000000 0x10000000>; /* 256 MB */
+	};
+
+	sfrregion {
+		eth0 {
+			device_type = "nic";
+			compatible = "smc911x";
+			reg = <0x05000000 0x1000>;
+			interrupts = <53>;
+			switch = "netbridge0";
+		};
 	};
 
 	vmm {
@@ -16,21 +33,12 @@
 		};
 	};
 
-	host {
-		#address-cells = <1>;
-		#size-cells = <1>;
-
-		model = "smdkc210";
-                device_type = "host";
-
-		memory {
-			/* NOTE: By default QEMU will only proivde 128 MB
-			 * unless specified by "-m" option. If you have
-			 * X MB then we will be able to access only first
-			 * X MB starting at physical_addr.
-			 */
-			physical_addr = <0x40000000>;
-			physical_size = <0x10000000>; /* 256 MB */
-		};
+	/* Empty guests node */
+	guests {
 	};
 };
+
+/* Add guest templates */
+/include/ "../../../common/guests/realview-pb-a8.dtsi"
+/include/ "../../../common/guests/vexpress-a9x2.dtsi"
+

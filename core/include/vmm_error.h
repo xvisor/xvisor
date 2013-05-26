@@ -45,5 +45,6 @@
 #define VMM_ERANGE		-18
 #define VMM_EILSEQ		-19
 #define VMM_EOPNOTSUPP		-20
+#define VMM_ENOSPC		-21
 
 #endif

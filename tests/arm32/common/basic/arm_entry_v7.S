@@ -137,19 +137,19 @@ _secondary_loop:
 	str	r1, [r0, #4]
 	ldr	r0, _sys_flags_addr
 1:	
-	/* Wait for interrupt before checking SYS_FLAGS */
+	/* Wait for interrupt before checking SPIN_ADDR */
 	wfi	
 	ldr	r1, [r0]
 	teq	r1, #0
-	/* Repeat if SYS_FLAGS == 0 */
+	/* Repeat if SPIN_ADDR == 0 */
 	beq	1b
-	/* Jump to the address stored the the SYS_FLAGS register */
+	/* Jump to the address stored the the SPIN_ADDR register */
 	bx	r1
 
 _gic_cpu_addr:
 	.word	GIC_CPU_BASE
 _sys_flags_addr:
-	.word 	V2M_SYS_FLAGS
+	.word 	ARM_PLAT_SPIN_ADDR
 #endif
 
 	.section .expvect, "ax", %progbits

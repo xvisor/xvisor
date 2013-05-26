@@ -1,0 +1,43 @@
+
+/include/ "../imx31.dtsi"
+
+/ {
+	model = "kzm";
+
+	chosen {
+		console = &SERIAL1;
+	};
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x80000000 0x08000000>; /* 128 MB */
+	};
+
+	soc {
+		eth0 {
+			device_type = "nic";
+			compatible = "smc911x";
+			reg = <0xb6000000 0x1000>;
+			interrupts = <52>;
+			switch = "netbridge0";
+			smsc,irq-active-high;
+		};
+	};
+
+	vmm {
+		net {
+			netbridge0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	/* Empty guests node */
+	guests {
+	};
+};
+
+/* Add guest templates */
+/include/ "../../../common/guests/realview-eb-mpcore.dtsi"
+

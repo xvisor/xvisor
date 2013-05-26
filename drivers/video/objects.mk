@@ -22,4 +22,5 @@
 # */
 
 drivers-objs-$(CONFIG_FB_ARMCLCD)+= video/amba-clcd.o
+drivers-objs-$(CONFIG_FB_VESA)+= video/vesafb.o
 

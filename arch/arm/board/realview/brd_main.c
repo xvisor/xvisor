@@ -22,12 +22,15 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
+#include <arch_barrier.h>
+#include <arch_board.h>
+#include <arch_timer.h>
 #include <libs/stringlib.h>
-#include <libs/libfdt.h>
 #include <libs/vtemu.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
@@ -35,91 +38,30 @@
 #include <versatile/clock.h>
 #include <realview_plat.h>
 #include <sp804_timer.h>
+#include <smp_twd.h>
 
 /*
  * Global board context
  */
 
-virtual_addr_t realview_sys_base;
+static virtual_addr_t realview_sys_base;
+static virtual_addr_t realview_sys_24mhz;
+static virtual_addr_t realview_sctl_base;
+static virtual_addr_t realview_sp804_base;
+static u32 realview_sp804_irq;
+
 #if defined(CONFIG_VTEMU)
 struct vtemu *realview_vt;
 #endif
 
-/*
- * Device Tree support
- */
-
-extern u32 dt_blob_start;
-
-int arch_board_ram_start(physical_addr_t *addr)
+void realview_flags_set(u32 addr)
 {
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-	
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
+	vmm_writel(~0x0, (void *)(realview_sys_base + 
+				  REALVIEW_SYS_FLAGSCLR_OFFSET));
+	vmm_writel(addr, (void *)(realview_sys_base + 
+				  REALVIEW_SYS_FLAGSSET_OFFSET));
 
-	fdt_node = libfdt_find_node(&fdt, 
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME, addr);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-int arch_board_ram_size(physical_size_t *size)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-	
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	fdt_node = libfdt_find_node(&fdt, 
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME, size);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-int arch_board_devtree_populate(struct vmm_devtree_node ** root)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	return libfdt_parse_devtree(&fdt, root);
+	arch_mb();
 }
 
 /*
@@ -128,13 +70,30 @@ int arch_board_devtree_populate(struct vmm_devtree_node ** root)
 
 int arch_board_reset(void)
 {
+	u32 board_id;
+	void *sys_id = (void *)realview_sys_base + REALVIEW_SYS_ID_OFFSET;
 	void *sys_lock = (void *)realview_sys_base + REALVIEW_SYS_LOCK_OFFSET;
+	void *sys_resetctl = (void *)realview_sys_base + 
+						REALVIEW_SYS_RESETCTL_OFFSET;
+
+	board_id = (vmm_readl(sys_id) & REALVIEW_SYS_ID_BOARD_MASK) >> 
+						REALVIEW_SYS_ID_BOARD_SHIFT;
 
 	vmm_writel(REALVIEW_SYS_LOCKVAL, sys_lock);
-	vmm_writel(0x0, 
-		   (void *)(realview_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
-	vmm_writel(REALVIEW_SYS_CTRL_RESET_PLLRESET, 
-		   (void *)(realview_sys_base + REALVIEW_SYS_RESETCTL_OFFSET));
+
+	switch (board_id) {
+	case REALVIEW_SYS_ID_EB:
+		vmm_writel(0x0, sys_resetctl);
+		vmm_writel(0x08, sys_resetctl);
+		break;
+	case REALVIEW_SYS_ID_PBA8:
+		vmm_writel(0x0, sys_resetctl);
+		vmm_writel(0x04, sys_resetctl);
+		break;
+	default:
+		break;
+	};
+
 	vmm_writel(0, sys_lock);
 
 	return VMM_OK;
@@ -162,46 +121,61 @@ static const struct icst_params realview_oscvco_params = {
 	.idx2s		= icst307_idx2s,
 };
 
-static void realview_oscvco_set(struct versatile_clk *vclk, struct icst_vco vco)
+static void realview_oscvco_set(struct arch_clk *clk, struct icst_vco vco)
 {
 	void *sys_lock = (void *)realview_sys_base + REALVIEW_SYS_LOCK_OFFSET;
 	u32 val;
 
-	val = vmm_readl(vclk->vcoreg) & ~0x7ffff;
+	val = vmm_readl(clk->vcoreg) & ~0x7ffff;
 	val |= vco.v | (vco.r << 9) | (vco.s << 16);
 
 	vmm_writel(REALVIEW_SYS_LOCKVAL, sys_lock);
-	vmm_writel(val, vclk->vcoreg);
+	vmm_writel(val, clk->vcoreg);
 	vmm_writel(0, sys_lock);
 }
 
-static const struct versatile_clk_ops oscvco_clk_ops = {
+static const struct arch_clk_ops oscvco_clk_ops = {
 	.round	= icst_clk_round,
 	.set	= icst_clk_set,
 	.setvco	= realview_oscvco_set,
 };
 
-static struct versatile_clk oscvco_clk = {
+static struct arch_clk oscvco_clk = {
 	.ops	= &oscvco_clk_ops,
 	.params	= &realview_oscvco_params,
 };
 
-static struct vmm_devclk clcd_clk = {
-	.enable = versatile_clk_enable,
-	.disable = versatile_clk_disable,
-	.get_rate = versatile_clk_get_rate,
-	.round_rate = versatile_clk_round_rate,
-	.set_rate = versatile_clk_set_rate,
-	.priv = &oscvco_clk,
+static struct arch_clk clk24mhz = {
+	.rate	= 24000000,
 };
 
-static struct vmm_devclk *realview_getclk(struct vmm_devtree_node *node)
+int arch_clk_prepare(struct arch_clk *clk)
 {
-	if (strcmp(node->name, "clcd") == 0) {
-		return &clcd_clk;
+	/* Ignore it. */
+	return 0;
+}
+
+void arch_clk_unprepare(struct arch_clk *clk)
+{
+	/* Ignore it. */
+}
+
+struct arch_clk *arch_clk_get(struct vmm_device *dev, const char *id)
+{
+	if (strcmp(dev->node->name, "clcd") == 0) {
+		return &oscvco_clk;
+	}
+
+	if (strcmp(id, "KMIREFCLK") == 0) {
+		return &clk24mhz;
 	}
 
 	return NULL;
+}
+
+void arch_clk_put(struct arch_clk *clk)
+{
+	/* Ignore it. */
 }
 
 /*
@@ -288,7 +262,7 @@ static int realview_clcd_setup(struct clcd_fb *fb)
 }
 
 struct clcd_board clcd_system_data = {
-	.name		= "PB-A8",
+	.name		= "Realview",
 	.caps		= CLCD_CAP_ALL,
 	.check		= clcdfb_check,
 	.decode		= clcdfb_decode,
@@ -304,145 +278,121 @@ struct clcd_board clcd_system_data = {
 
 int __init arch_board_early_init(void)
 {
-	/*
-	 * TODO:
-	 * Host virtual memory, device tree, heap is up.
-	 * Do necessary early stuff like iomapping devices
-	 * memory or boot time memory reservation here.
-	 */
-	return 0;
-}
+	int rc;
+	u32 val;
+	struct vmm_devtree_node *node;
 
-static virtual_addr_t realview_timer0_base;
-static virtual_addr_t realview_timer1_base;
+	/* Host aspace, Heap, Device tree, and Host IRQ available.
+	 *
+	 * Do necessary early stuff like:
+	 * iomapping devices, 
+	 * SOC clocking init, 
+	 * Setting-up system data in device tree nodes,
+	 * ....
+	 */
+
+	/* Map sysreg */
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,realview-sysreg");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	rc = vmm_devtree_regmap(node, &realview_sys_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	/* Get address of 24mhz counter */
+	realview_sys_24mhz = realview_sys_base + REALVIEW_SYS_24MHz_OFFSET;
+
+	/* Map sysctl */
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp810");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	rc = vmm_devtree_regmap(node, &realview_sctl_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	/* Select reference clock for sp804 timers: 
+	 *      REFCLK is 32KHz
+	 *      TIMCLK is 1MHz
+	 */
+	val = vmm_readl((void *)realview_sctl_base) | 
+			(REALVIEW_TIMCLK << REALVIEW_TIMER1_EnSel) |
+			(REALVIEW_TIMCLK << REALVIEW_TIMER2_EnSel) |
+			(REALVIEW_TIMCLK << REALVIEW_TIMER3_EnSel) |
+			(REALVIEW_TIMCLK << REALVIEW_TIMER4_EnSel);
+	vmm_writel(val, (void *)realview_sctl_base);
+
+	/* Map sp804 registers */
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp804");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	rc = vmm_devtree_regmap(node, &realview_sp804_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	/* Get sp804 irq */
+	rc = vmm_devtree_irq_get(node, &realview_sp804_irq, 0);
+	if (rc) {
+		return rc;
+	}
+
+	/* Setup Clocks (before probing) */
+	oscvco_clk.vcoreg = (void *)realview_sys_base + REALVIEW_SYS_OSC4_OFFSET;
+
+	/* Setup CLCD (before probing) */
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");
+	if (node) {
+		node->system_data = &clcd_system_data;
+	}
+
+	return VMM_OK;
+}
 
 int __init arch_clocksource_init(void)
 {
 	int rc;
-	u32 val;
-	struct vmm_devtree_node *node;
-	virtual_addr_t sctl_base;
 
-	/* Map control registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysctl0");
-	if (!node) {
-		goto skip_clocksource_init;
-	}
-	rc = vmm_devtree_regmap(node, &sctl_base, 0);
+	/* Initialize sp804 timer0 as clocksource */
+	rc = sp804_clocksource_init(realview_sp804_base, 
+				    "sp804_timer0", 1000000);
 	if (rc) {
-		return rc;
+		vmm_printf("%s: sp804 clocksource init failed (error %d)\n", 
+			   __func__, rc);
 	}
 
-	/* 
-	 * set clock frequency: 
-	 *      REALVIEW_REFCLK is 32KHz
-	 *      REALVIEW_TIMCLK is 1MHz
-	 */
-	val = vmm_readl((void *)sctl_base) | 
-			(REALVIEW_TIMCLK << REALVIEW_TIMER2_EnSel);
-	vmm_writel(val, (void *)sctl_base);
-
-	/* Unmap control register */
-	rc = vmm_devtree_regunmap(node, sctl_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Map timer1 registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "timer01");
-	if (!node) {
-		goto skip_clocksource_init;
-	}
-	rc = vmm_devtree_regmap(node, &realview_timer1_base, 0);
-	if (rc) {
-		return rc;
-	}
-	realview_timer1_base += 0x20;
-
-	/* Initialize timer1 as clocksource */
-	rc = sp804_clocksource_init(realview_timer1_base, 
-				    node->name, 300, 1000000, 20);
-	if (rc) {
-		return rc;
-	}
-
-skip_clocksource_init:
 	return VMM_OK;
 }
 
 int __cpuinit arch_clockchip_init(void)
 {
 	int rc;
-	u32 val, *valp;
-	struct vmm_devtree_node *node;
-	virtual_addr_t sctl_base;
+	u32 cpu = vmm_smp_processor_id();
 
-	/* Map control registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysctl0");
-	if (!node) {
-		goto skip_clockchip_init;
+	if (!cpu) {
+		/* Initialize sp804 timer1 as clockchip */
+		rc = sp804_clockchip_init(realview_sp804_base + 0x20, 
+					  "sp804_timer1", realview_sp804_irq, 
+					  1000000, 0);
+		if (rc) {
+			vmm_printf("%s: sp804 clockchip init failed "
+				   "(error %d)\n", __func__, rc);
+		}
 	}
-	rc = vmm_devtree_regmap(node, &sctl_base, 0);
+
+#if defined(CONFIG_ARM_TWD)
+	/* Initialize SMP twd local timer as clockchip */
+	rc = twd_clockchip_init(realview_sys_24mhz, 24000000);
 	if (rc) {
-		return rc;
+		vmm_printf("%s: local timer init failed (error %d)\n", 
+			   __func__, rc);
 	}
+#endif
 
-	/* 
-	 * set clock frequency: 
-	 *      REALVIEW_REFCLK is 32KHz
-	 *      REALVIEW_TIMCLK is 1MHz
-	 */
-	val = vmm_readl((void *)sctl_base) | 
-			(REALVIEW_TIMCLK << REALVIEW_TIMER1_EnSel);
-	vmm_writel(val, (void *)sctl_base);
-
-	/* Unmap control registers */
-	rc = vmm_devtree_regunmap(node, sctl_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Map timer0 registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "timer01");
-	if (!node) {
-		goto skip_clockchip_init;
-	}
-	rc = vmm_devtree_regmap(node, &realview_timer0_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Get timer0 irq */
-	valp = vmm_devtree_attrval(node, "irq");
-	if (!valp) {
-		return VMM_EFAIL;
-	}
-	val = *valp; 
-
-	/* Initialize timer0 as clockchip */
-	rc = sp804_clockchip_init(realview_timer0_base, val, 
-				  node->name, 300, 1000000, 0);
-	if (rc) {
-		return rc;
-	}
-
-skip_clockchip_init:
 	return VMM_OK;
 }
 
@@ -457,50 +407,27 @@ int __init arch_board_final_init(void)
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
-	/* Map system registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "sysreg");
+	/* Find simple-bus node */
+	node = vmm_devtree_find_compatible(NULL, NULL, "simple-bus");
 	if (!node) {
 		return VMM_ENODEV;
 	}
-	rc = vmm_devtree_regmap(node, &realview_sys_base, 0);
-	if (rc) {
-		return rc;
-	}
 
-	/* Setup Clocks (before probing) */
-	oscvco_clk.vcoreg = (void *)realview_sys_base + REALVIEW_SYS_OSC4_OFFSET;
-
-	/* Setup CLCD (before probing) */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "clcd");
-	if (node) {
-		node->system_data = &clcd_system_data;
-	}
-
-	/* Do Probing using device driver framework */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "nbridge");
-	if (!node) {
-		return VMM_ENOTAVAIL;
-	}
-
-	rc = vmm_devdrv_probe(node, realview_getclk, NULL);
+	/* Do probing using device driver framework */
+	rc = vmm_devdrv_probe(node);
 	if (rc) {
 		return rc;
 	}
 
 	/* Create VTEMU instace if available*/
 #if defined(CONFIG_VTEMU)
-	info = vmm_fb_find("clcd");
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	info = vmm_fb_find(node->name);
 	if (info) {
-		realview_vt = vtemu_create("clcd-vtemu", info, NULL);
+		realview_vt = vtemu_create(node->name, info, NULL);
 	}
 #endif
 

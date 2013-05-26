@@ -39,6 +39,7 @@
 #include <arch_atomic.h>
 #include <fb/vmm_fb.h>
 #include <libs/stringlib.h>
+#include <libs/bitops.h>
 
 #define MODULE_DESC			"Frame Buffer Framework"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -88,6 +89,43 @@ static int vmm_fb_check_foreignness(struct vmm_fb_info *fi)
 	}
 
 	return VMM_OK;
+}
+
+static bool vmm_apertures_overlap(struct vmm_aperture *gen, 
+				  struct vmm_aperture *hw)
+{
+	/* is the generic aperture base the same as the HW one */
+	if (gen->base == hw->base)
+		return true;
+	/* is the generic aperture base inside the hw base->hw base+size */
+	if (gen->base > hw->base && gen->base < hw->base + hw->size)
+		return true;
+	return false;
+}
+
+static bool vmm_fb_do_apertures_overlap(struct vmm_apertures_struct *gena,
+					struct vmm_apertures_struct *hwa)
+{
+	int i, j;
+
+	if (!hwa || !gena)
+		return FALSE;
+
+	for (i = 0; i < hwa->count; ++i) {
+		struct vmm_aperture *h = &hwa->ranges[i];
+		for (j = 0; j < gena->count; ++j) {
+			struct vmm_aperture *g = &gena->ranges[j];
+			vmm_printf("checking generic (%llx %llx) vs hw (%llx %llx)\n",
+				(unsigned long long)g->base,
+				(unsigned long long)g->size,
+				(unsigned long long)h->base,
+				(unsigned long long)h->size);
+			if (vmm_apertures_overlap(g, h))
+				return TRUE;
+		}
+	}
+
+	return FALSE;
 }
 
 static int vmm_fb_check_caps(struct vmm_fb_info *info, 
@@ -353,7 +391,7 @@ int vmm_fb_open(struct vmm_fb_info *info)
 }
 VMM_EXPORT_SYMBOL(vmm_fb_open);
 
-int vmm_fb_release(struct vmm_fb_info *info)
+int vmm_fb_close(struct vmm_fb_info *info)
 {
 	struct vmm_fb_event event;
 
@@ -374,12 +412,95 @@ int vmm_fb_release(struct vmm_fb_info *info)
 
 	vmm_mutex_lock(&info->lock);
 	event.info = info;
-	vmm_fb_notifier_call_chain(FB_EVENT_RELEASED, &event);
+	vmm_fb_notifier_call_chain(FB_EVENT_CLOSED, &event);
 	vmm_mutex_unlock(&info->lock);
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_fb_close);
+
+struct vmm_fb_info *vmm_fb_alloc(size_t size, struct vmm_device *dev)
+{
+#define BYTES_PER_LONG (BITS_PER_LONG/8)
+#define PADDING (BYTES_PER_LONG - (sizeof(struct vmm_fb_info) % BYTES_PER_LONG))
+	int fb_info_size = sizeof(struct vmm_fb_info);
+	struct vmm_fb_info *info;
+	char *p;
+
+	if (size) {
+		fb_info_size += PADDING;
+	}
+
+	p = vmm_zalloc(fb_info_size + size);
+	if (!p) {
+		return NULL;
+	}
+
+	info = (struct vmm_fb_info *) p;
+
+	if (size) {
+		info->par = p + fb_info_size;
+	}
+
+	info->dev = dev;
+
+	return info;
+#undef PADDING
+#undef BYTES_PER_LONG
+}
+VMM_EXPORT_SYMBOL(vmm_fb_alloc);
+
+void vmm_fb_release(struct vmm_fb_info *info)
+{
+	if (!info)
+		return;
+	if (info->apertures) {
+		vmm_free(info->apertures);
+	}
+	vmm_free(info);
+}
 VMM_EXPORT_SYMBOL(vmm_fb_release);
+
+#define VGA_FB_PHYS 0xA0000
+void vmm_fb_remove_conflicting_framebuffers(struct vmm_apertures_struct *a,
+					    const char *name, bool primary)
+{
+	u32 i, count;
+	bool not_removed;
+	struct vmm_fb_info *info;
+
+	/* check all firmware fbs and kick off if the base addr overlaps */
+	while (1) {
+		not_removed = TRUE;
+		count = vmm_fb_count();
+
+		for (i = 0 ; i < count; i++) {
+			struct vmm_apertures_struct *gen_aper;
+
+			info = vmm_fb_get(i);
+
+			if (!(info->flags & FBINFO_MISC_FIRMWARE))
+				continue;
+
+			gen_aper = info->apertures;
+			if (vmm_fb_do_apertures_overlap(gen_aper, a) ||
+				(primary && gen_aper && gen_aper->count &&
+				 gen_aper->ranges[0].base == VGA_FB_PHYS)) {
+
+				vmm_printf("fb: conflicting fb hw usage "
+				       "%s vs %s - removing generic driver\n",
+				       name, info->fix.id);
+				vmm_fb_unregister(info);
+				not_removed = FALSE;
+			}
+		}
+
+		if (not_removed) {
+			break;
+		}
+	}
+}
+VMM_EXPORT_SYMBOL(vmm_fb_remove_conflicting_framebuffers);
 
 int vmm_fb_register(struct vmm_fb_info *info)
 {
@@ -398,6 +519,9 @@ int vmm_fb_register(struct vmm_fb_info *info)
 	if ((rc = vmm_fb_check_foreignness(info))) {
 		return rc;
 	}
+
+	vmm_fb_remove_conflicting_framebuffers(info->apertures, 
+					       info->fix.id, FALSE);
 
 	arch_atomic_write(&info->count, 1);
 	INIT_MUTEX(&info->lock);
@@ -503,7 +627,6 @@ struct vmm_fb_info *vmm_fb_find(const char *name)
 	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_find_classdev(VMM_FB_CLASS_NAME, name);
-
 	if (!cd) {
 		return NULL;
 	}
@@ -517,7 +640,6 @@ struct vmm_fb_info *vmm_fb_get(int num)
 	struct vmm_classdev *cd;
 
 	cd = vmm_devdrv_classdev(VMM_FB_CLASS_NAME, num);
-
 	if (!cd) {
 		return NULL;
 	}

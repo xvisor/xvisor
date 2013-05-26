@@ -2,10 +2,11 @@
 
 This directory contains directories:
 
-  1. common - Common code for all ARM platforms
-  2. realview-pb-a8 - The ARMV7A (Cortex A8) Realview-PB-A8 guest directory
-  3. vexpress-a9 - The ARMV7A (Cortex A9) VExpress-A9 guest directory
-  4. versatile - The ARMV5 (ARM9) versatile PB platform guest directory
+  1. common - Common code for all ARM guests
+  2. realview-eb-mpcore - Realview-EB-MPCore (ARMV6,ARM11MP) guest directory
+  3. realview-pb-a8 - Realview-PB-A8 (ARMV7A,Cortex-A8) guest directory
+  4. vexpress-a9 - VExpress-A9 (ARMV7A,Cortex-A9) guest directory
+  5. versatile - VersatilePB (ARMV5,ARM9) platform guest directory
 
-Please follow the README under specific platform directory for detailed
+Please follow the README under specific directory for detailed
 steps to configure, compile and run.

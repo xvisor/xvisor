@@ -50,7 +50,7 @@ struct cpu_page {
 /* Generic L2-table representation */
 struct cpu_l2tbl {
 	struct dlist head;
-	int num;
+	u32 num;
 	struct cpu_l1tbl *l1;
 	u32 imp;
 	u32 domain;
@@ -63,7 +63,8 @@ struct cpu_l2tbl {
 /* Generic L1-table representation */
 struct cpu_l1tbl {
 	struct dlist head;
-	int num;
+	u32 num;
+	u32 contextid;
 	physical_addr_t tbl_pa;
 	virtual_addr_t tbl_va;
 	u32 tte_cnt;
@@ -75,30 +76,30 @@ struct cpu_l1tbl {
 u32 cpu_mmu_best_page_size(virtual_addr_t va, physical_addr_t pa, u32 availsz);
 
 /** Get page from a given virtual address */
-int cpu_mmu_get_page(struct cpu_l1tbl * l1, 
+int cpu_mmu_get_page(struct cpu_l1tbl *l1, 
 		     virtual_addr_t va, 
-		     struct cpu_page * pg);
+		     struct cpu_page *pg);
 
 /** Unmap a page from given L1 table */
-int cpu_mmu_unmap_page(struct cpu_l1tbl * l1, struct cpu_page * pg);
+int cpu_mmu_unmap_page(struct cpu_l1tbl *l1, struct cpu_page *pg);
 
 /** Map a page under a given L1 table */
-int cpu_mmu_map_page(struct cpu_l1tbl * l1, struct cpu_page * pg);
+int cpu_mmu_map_page(struct cpu_l1tbl *l1, struct cpu_page *pg);
 
 /** Get reserved page from a given virtual address */
-int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page * pg);
+int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page *pg);
 
 /** Unmap a reserved page */
-int cpu_mmu_unmap_reserved_page(struct cpu_page * pg);
+int cpu_mmu_unmap_reserved_page(struct cpu_page *pg);
 
 /** Map a reserved page */
-int cpu_mmu_map_reserved_page(struct cpu_page * pg);
+int cpu_mmu_map_reserved_page(struct cpu_page *pg);
 
 /** Allocate a L1 table */
 struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void);
 
 /** Free a L1 table */
-int cpu_mmu_l1tbl_free(struct cpu_l1tbl * l1);
+int cpu_mmu_l1tbl_free(struct cpu_l1tbl *l1);
 
 /** Current L1 table */
 struct cpu_l1tbl *cpu_mmu_l1tbl_default(void);
@@ -107,9 +108,15 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_default(void);
 struct cpu_l1tbl *cpu_mmu_l1tbl_current(void);
 
 /** Change domain access control register */
-int cpu_mmu_chdacr(u32 new_dacr);
+int cpu_mmu_change_dacr(u32 new_dacr);
 
 /** Change translation table base register */
-int cpu_mmu_chttbr(struct cpu_l1tbl * l1);
+int cpu_mmu_change_ttbr(struct cpu_l1tbl *l1);
+
+/** Sync translation table changes */
+int cpu_mmu_sync_ttbr(struct cpu_l1tbl *l1);
+
+/** Sync translation table changes */
+int cpu_mmu_sync_ttbr_va(struct cpu_l1tbl *l1, virtual_addr_t va);
 
 #endif /** _CPU_MMU_H */

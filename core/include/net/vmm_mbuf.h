@@ -183,30 +183,15 @@ struct vmm_mbuf {
 /*
  * Macros for mbuf external storage.
  *
- * MCLGET allocates and adds an mbuf cluster to a normal mbuf;
- * the flag M_EXT is set upon success.
+ * MEXTADD adds pre-allocated external storage to
+ * a normal mbuf; the flag M_EXT is set upon success.
  *
  * MEXTMALLOC allocates external storage and adds it to
  * a normal mbuf; the flag M_EXT is set upon success.
  *
- * MEXTADD adds pre-allocated external storage to
- * a normal mbuf; the flag M_EXT is set upon success.
+ * MCLGET allocates and adds an mbuf cluster to a normal mbuf;
+ * the flag M_EXT is set upon success.
  */
-
-#define	MEXTMALLOC(m, size, how)					\
-do {									\
-	(m)->m_extbuf = (void *)vmm_malloc((size));			\
-	if ((m)->m_extbuf != NULL) {					\
-		MCLINITREFERENCE(m);					\
-		(m)->m_data = (m)->m_extbuf;				\
-		(m)->m_flags |= M_EXT_RW;				\
-		(m)->m_ext.ext_size = (size);				\
-		(m)->m_ext.ext_free = NULL;				\
-		(m)->m_ext.ext_arg = NULL;				\
-	}								\
-} while (/* CONSTCOND */ 0)
-
-#define MCLGET(m, how)		MEXTMALLOC(m, MCLBYTES, how)
 
 #define	MEXTADD(m, buf, size, free, arg)				\
 do {									\
@@ -217,6 +202,10 @@ do {									\
 	(m)->m_ext.ext_free = (free);					\
 	(m)->m_ext.ext_arg = (arg);					\
 } while (/* CONSTCOND */ 0)
+
+#define	MEXTMALLOC(m, size, how)	m_ext_get(m, size, how)
+
+#define MCLGET(m, how)			MEXTMALLOC(m, MCLBYTES, how)
 
 /*
  * Reset the data pointer on an mbuf.
@@ -284,9 +273,16 @@ do {									\
 
 struct vmm_mbuf *m_free(struct vmm_mbuf *);
 struct vmm_mbuf *m_get(int, int);
+void *m_ext_get(struct vmm_mbuf *, u32, int);
 void m_copydata(struct vmm_mbuf *, int, int, void *);
 void m_freem(struct vmm_mbuf *);
 void m_ext_free(struct vmm_mbuf *);
+
+/*
+ * mbuf pool initializaton and exit.
+ */
+int vmm_mbufpool_init(void);
+void vmm_mbufpool_exit(void);
 
 #endif /* __VMM_MBUF_H_ */
 

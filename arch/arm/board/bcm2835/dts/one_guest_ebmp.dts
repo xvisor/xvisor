@@ -1,0 +1,29 @@
+
+/dts-v1/;
+
+/include/ "bcm2835.dtsi"
+
+/ {
+	chosen {
+		console = &SERIAL0;
+		bootcmd = /* Copy guest0 device tree from templates */
+			  "devtree node copy /guests guest0 /templates/realview-eb-mpcore",
+
+			  /* Update guest0 memory regions */
+			  "devtree attr set /guests/guest0/aspace/mem0 host_physical_addr physaddr 0x02000000",
+			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
+
+			  /* Connect guest0/virtio-net0 netport to netbridge0 */
+			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string netbridge0",
+
+			  /* Update guest0 flash region */
+			  "devtree attr set /guests/guest0/aspace/nor_flash host_physical_addr physaddr 0x01000000",
+			  "devtree attr set /guests/guest0/aspace/nor_flash physical_size physsize 0x01000000",
+
+			  /* Connect guest0/eth netport to netbridge0 */
+			  "devtree attr set /guests/guest0/aspace/eth switch string netbridge0",
+
+			  /* Create guest0 */
+			  "guest create guest0";
+	};
+};

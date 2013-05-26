@@ -25,6 +25,7 @@
 #include <vmm_types.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
+#include <vmm_host_aspace.h>
 #include <vmm_compiler.h>
 #include <libs/libfdt.h>
 #include <smp_scu.h>
@@ -32,90 +33,91 @@
 
 #include <exynos/mach/map.h>
 
-int __init arch_smp_prepare_cpus(void)
-{
-	int rc = VMM_OK;
-	struct vmm_devtree_node *node;
-	virtual_addr_t ca9_scu_base;
-	u32 ncores;
-	int i;
+static virtual_addr_t scu_base;
+static virtual_addr_t pmu_base;
 
-	/* Get the SCU node in the dev tree */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "scu");
+int __init arch_smp_init_cpus(void)
+{
+	u32 ncores;
+	int i, rc = VMM_OK;
+	struct vmm_devtree_node *node;
+
+	/* Get the PMU node in the dev tree */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "pmu");
 	if (!node) {
 		return VMM_EFAIL;
 	}
 
-	/* map the SCU physical address to virtual address */
-	rc = vmm_devtree_regmap(node, &ca9_scu_base, 0);
+	/* Map the PMU physical address to virtual address */
+	rc = vmm_devtree_regmap(node, &pmu_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	/* Get the SCU node in the dev tree */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "scu");
+	if (!node) {
+		return VMM_EFAIL;
+	}
+
+	/* Map the SCU physical address to virtual address */
+	rc = vmm_devtree_regmap(node, &scu_base, 0);
 	if (rc) {
 		return rc;
 	}
 
 	/* How many ARM core do we have */
-	ncores = scu_get_core_count((void *)ca9_scu_base);
+	ncores = scu_get_core_count((void *)scu_base);
 
-	/* Find out the number of SMP-enabled cpu cores */
+	/* Update the cpu_possible bitmap based on SCU */
 	for (i = 0; i < CONFIG_CPU_COUNT; i++) {
-		/* build the possible CPU map */
-		if ((i >= ncores)
-		    || !scu_cpu_core_is_smp((void *)ca9_scu_base, i)) {
-			/* Update the cpu_possible bitmap */
-			vmm_set_cpu_possible(i, 0);
-		} else {
-			vmm_set_cpu_possible(i, 1);
+		if ((i < ncores) &&
+		    scu_cpu_core_is_smp((void *)scu_base, i)) {
+			vmm_set_cpu_possible(i, TRUE);
 		}
 	}
 
-	/* Enable snooping through SCU */
-	scu_enable((void *)ca9_scu_base);
-
-	/* unmap the SCU node */
-	rc = vmm_devtree_regunmap(node, ca9_scu_base, 0);
-
-	return rc;
+	return VMM_OK;
 }
 
-extern unsigned long _load_start;
+extern u8 _start_secondary;
 
-int __init arch_smp_start_cpu(u32 cpu)
+int __init arch_smp_prepare_cpus(unsigned int max_cpus)
 {
-	const struct vmm_cpumask *mask;
-	int rc;
-	struct vmm_devtree_node *node;
-	virtual_addr_t ca9_pmu_base;
+	int i, rc;
+	physical_addr_t _start_secondary_pa;
 
-	if (cpu == 0) {
-		/* Nothing to do for first CPU */
-		return VMM_OK;
-	}
-
-	/* Get the PMU node in the dev tree */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "pmu");
-	if (!node) {
-		return VMM_EFAIL;
-	}
-
-	/* map the PMU physical address to virtual address */
-	rc = vmm_devtree_regmap(node, &ca9_pmu_base, 0);
+	/* Get physical address secondary startup code */
+	rc = vmm_host_va2pa((virtual_addr_t)&_start_secondary, 
+			    &_start_secondary_pa);
 	if (rc) {
 		return rc;
 	}
 
-	mask = get_cpu_mask(cpu);
+	/* Update the cpu_present bitmap */
+	for (i = 0; i < max_cpus; i++) {
+		vmm_set_cpu_present(i, TRUE);
+	}
 
-	/* Write the entry address for the secondary cpus */
-	vmm_writel((u32)_load_start, (void *)ca9_pmu_base + 0x814);
+	if (scu_base) {
+		/* Enable snooping through SCU */
+		scu_enable((void *)scu_base);
+	}
 
-	/* unmap the PMU node */
-	rc = vmm_devtree_regunmap(node, ca9_pmu_base, 0);
+	if (pmu_base) {
+		/* Write the entry address for the secondary cpus */
+		vmm_writel((u32)_start_secondary_pa, (void *)pmu_base + 0x814);
+	}
+
+	return VMM_OK;
+}
+
+int __init arch_smp_start_cpu(u32 cpu)
+{
+	const struct vmm_cpumask *mask = get_cpu_mask(cpu);
 
 	/* Wakeup target cpu from wfe/wfi by sending an IPI */
 	gic_raise_softirq(mask, 0);
 
-	return rc;
+	return VMM_OK;
 }

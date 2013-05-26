@@ -23,19 +23,11 @@
 #ifndef _GIC_CONFIG_H__
 #define _GIC_CONFIG_H__
 
-#include <arm_config.h>
+#include <arm_plat.h>
 
 #define GIC_CPU_BASE	A9_MPCORE_GIC_CPU	
 #define GIC_DIST_BASE	A9_MPCORE_GIC_DIST
-
-#if !defined(GIC_NR_IRQS) || (GIC_NR_IRQS < NR_IRQS_CA9X4)
-#undef GIC_NR_IRQS
-#define GIC_NR_IRQS		NR_IRQS_CA9X4
-#endif
-
-#if !defined(GIC_MAX_NR) || (GIC_MAX_NR < NR_GIC_CA9X4)
-#undef GIC_MAX_NR
-#define GIC_MAX_NR		NR_GIC_CA9X4
-#endif
+#define GIC_NR_IRQS	NR_IRQS_CA9X4
+#define GIC_MAX_NR	NR_GIC_CA9X4
 
 #endif

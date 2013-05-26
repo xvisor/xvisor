@@ -28,6 +28,7 @@
 #include <vmm_spinlocks.h>
 #include <vmm_scheduler.h>
 #include <vmm_threads.h>
+#include <vmm_main.h>
 #include <libs/stringlib.h>
 
 struct vmm_threads_ctrl {
@@ -249,7 +250,7 @@ static void vmm_threads_entry(void)
 	 * Let us hope someone else will destroy it.
 	 * For now just hang. :( :( 
          */
-	while (1);
+	vmm_hang();
 }
 
 struct vmm_thread *vmm_threads_create(const char *thread_name, 

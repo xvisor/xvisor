@@ -122,10 +122,10 @@ do {									\
 do {									\
 	u64 _tout = *(timeout);						\
 	for (;;) {							\
-		_tout = *(timeout);					\
 		if (condition)						\
 			break;						\
 		vmm_waitqueue_sleep_timeout((wq), &_tout);		\
+		*(timeout) = _tout;					\
 		if (!_tout)						\
 			break;						\
 	}								\

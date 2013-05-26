@@ -26,14 +26,6 @@
 #include <vmm_types.h>
 #include <cpu_mmu.h>
 
-struct x86_64_interrupt_frame {
-	u64 rip;
-	u64 cs;
-	u64 rflags;
-	u64 rsp;
-	u64 ss;
-};
-
 /*
  * Stack State at the entry of exception.
  *
@@ -56,12 +48,12 @@ struct x86_64_interrupt_frame {
  *      |               |
  */
 struct arch_regs {
-        /*
-         * x86_64_todo: With VT enabled, CPU saves the
-         * context of the guest. There is a section
-         * of particular format that needs to be defined
-         * here for CPU to save context on a vm_exit.
-         */
+	/*
+	 * x86_64_todo: With VT enabled, CPU saves the
+	 * context of the guest. There is a section
+	 * of particular format that needs to be defined
+	 * here for CPU to save context on a vm_exit.
+	 */
 	u64 rax;
 	u64 rbx;
 	u64 rcx;
@@ -77,6 +69,13 @@ struct arch_regs {
 	u64 r13;
 	u64 r14;
 	u64 r15;
+	u64 frame;
+	u64 hw_err_code;
+	u64 rip;
+	u64 cs;
+	u64 rflags;
+	u64 rsp;
+	u64 ss;
 } __packed;
 
 typedef struct arch_regs arch_regs_t;

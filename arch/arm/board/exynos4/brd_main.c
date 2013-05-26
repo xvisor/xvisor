@@ -30,7 +30,8 @@
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <libs/libfdt.h>
+#include <arch_board.h>
+#include <arch_timer.h>
 
 #include <exynos/plat/cpu.h>
 
@@ -42,83 +43,6 @@
 /*
  * Global board context
  */
-
-/*
- * Device Tree support
- */
-
-extern u32 dt_blob_start;
-
-int arch_board_ram_start(physical_addr_t * addr)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	fdt_node = libfdt_find_node(&fdt,
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME, addr);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-int arch_board_ram_size(physical_size_t * size)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	fdt_node = libfdt_find_node(&fdt,
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME, size);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-int arch_board_devtree_populate(struct vmm_devtree_node **root)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	return libfdt_parse_devtree(&fdt, root);
-}
 
 /*
  * Reset & Shutdown
@@ -229,20 +153,17 @@ int __init arch_clocksource_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
-	u32 *mct_clk_rate_p;
 
 	/* Map timer0 registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "mct");
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "mct");
 	if (!node) {
 		rc = VMM_EFAIL;
 		goto skip_mct_timer_init;
 	}
 
-	mct_clk_rate_p = vmm_devtree_attrval(node, "clock-rate");
-	if (mct_clk_rate_p) {
-		mct_clk_rate = *mct_clk_rate_p;
+	rc = vmm_devtree_clock_frequency(node, &mct_clk_rate);
+	if (rc) {
+		goto skip_mct_timer_init;
 	}
 
 	if (!mct_timer_base) {
@@ -254,7 +175,7 @@ int __init arch_clocksource_init(void)
 
 	/* Initialize mct as clocksource */
 	rc = exynos4_clocksource_init(mct_timer_base, node->name, 300,
-				      mct_clk_rate, 20);
+				      mct_clk_rate);
 	if (rc) {
 		return rc;
 	}
@@ -267,14 +188,11 @@ int __cpuinit arch_clockchip_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
-	u32 val, *valp, cpu = vmm_smp_processor_id();
-	u32 *mct_clk_rate_p;
+	u32 val, cpu = vmm_smp_processor_id();
 
 	if (!cpu) {
 		/* Map timer0 registers */
 		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-					   VMM_DEVTREE_HOSTINFO_NODE_NAME
-					   VMM_DEVTREE_PATH_SEPARATOR_STRING
 					   "mct");
 		if (!node) {
 			goto skip_mct_timer_init;
@@ -287,18 +205,16 @@ int __cpuinit arch_clockchip_init(void)
 			}
 		}
 
-		mct_clk_rate_p = vmm_devtree_attrval(node, "clock-rate");
-		if (mct_clk_rate_p) {
-			mct_clk_rate = *mct_clk_rate_p;
+		rc = vmm_devtree_clock_frequency(node, &mct_clk_rate);
+		if (rc) {
+			return rc;
 		}
 
 		/* Get MCT irq */
-		valp = vmm_devtree_attrval(node, "irq");
-		if (!valp) {
-			return VMM_EFAIL;
+		rc = vmm_devtree_irq_get(node, &val, 0);
+		if (rc) {
+			return rc;
 		}
-
-		val = *valp;
 
 		/* Initialize MCT as clockchip */
 		rc = exynos4_clockchip_init(mct_timer_base, val, node->name,
@@ -330,15 +246,12 @@ int __init arch_board_final_init(void)
 
 	/* Do Probing using device driver framework */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   "sfrregion");
-
 	if (!node) {
 		return VMM_ENOTAVAIL;
 	}
-	//rc = vmm_devdrv_probe(node, exynos_getclk, NULL);
-	rc = vmm_devdrv_probe(node, NULL, NULL);
+
+	rc = vmm_devdrv_probe(node);
 	if (rc) {
 		return rc;
 	}

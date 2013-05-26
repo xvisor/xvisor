@@ -24,13 +24,15 @@
 #ifndef __CPU_APIC_H__
 #define __CPU_APIC_H__
 
+#include <arch_host_irq.h>
+
 #include <vmm_types.h>
 #include <vmm_host_irq.h>
-#include <arch_regs.h>
 #include <libs/list.h>
 
 extern virtual_addr_t lapic_eoi_addr;
 
+#define APIC_NAME_LEN			256
 #define APIC_ENABLE			0x100
 #define APIC_FOCUS_DISABLED		(1 << 9)
 #define APIC_SIV			0xFF
@@ -196,12 +198,14 @@ extern virtual_addr_t lapic_eoi_addr;
 	} while(0)
 
 struct cpu_ioapic {
+	char name[APIC_NAME_LEN];
 	u32 id;
 	physical_addr_t paddr;
 	virtual_addr_t vaddr;
 	u32 version;
 	unsigned int pins;
 	unsigned int gsi_base;
+	struct vmm_host_irq_chip irq_chip[ARCH_HOST_IRQ_COUNT];
 };
 
 struct cpu_lapic {
@@ -245,8 +249,7 @@ struct ioapic_ext_irq_device {
 	void (*irq_unmask)(void *data);
 	void (*irq_eoi)(void *data);
 	int  (*irq_set_type)(void *data, u32 flow_type);
-	vmm_irq_return_t  (*irq_handler)(u32 irq_no, arch_regs_t * regs,
-					 void *data);
+	vmm_irq_return_t  (*irq_handler)(u32 irq_no, void *data);
 	void *data;
 	struct dlist head;
 };

@@ -38,10 +38,10 @@ int mptimer_state_reset(struct mptimer_state *mpt);
 
 /** Allocate and initializes the MPTimer state */
 struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
-					  struct vmm_emudev * edev, 
+					  struct vmm_emudev *edev, 
 					  u32 num_cpu,
 					  u32 periphclk,
-					  u32 irq[]);
+					  u32 timer_irq, u32 wdt_irq);
 
 /** Destructor for the MPTimer state */
 int mptimer_state_free(struct mptimer_state *s);

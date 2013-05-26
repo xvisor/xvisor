@@ -165,10 +165,16 @@ u32 aw_intc_irq_active(u32 cpu_irq_no)
 	return ARCH_HOST_IRQ_COUNT;
 }
 
-int __cpuinit aw_intc_devtree_init(struct vmm_devtree_node *node)
+int __cpuinit aw_intc_devtree_init(void)
 {
 	int rc;
 	u32 i = 0;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_find_compatible(NULL, NULL, "allwinner,sunxi-ic");
+	if (!node) {
+		return VMM_ENODEV;
+	}
 
 	rc = vmm_devtree_regmap(node, &aw_vic_base, 0);
 	if (rc) {

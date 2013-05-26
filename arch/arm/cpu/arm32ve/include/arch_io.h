@@ -69,6 +69,8 @@
 
 #define arch_be64_to_cpu(v)	rev64(v)
 
+#define __io(p)			((void *)p)
+
 /*
  * IO port access primitives
  * -------------------------
@@ -79,17 +81,82 @@
  * operation to memory address. All IO port read/write operations are
  * assumed to be little-endian. 
  */
-#define arch_ioreadb(a)		({u8 v = __raw_read8(a); __iormb(); v; })
+#define arch_outb(v, p)		{__iowmb(); __raw_write8(__io(p), v); }
+#define arch_outw(v, p)		{__iowmb(); __raw_write16(__io(p), v); }
+#define arch_outl(v, p)		{__iowmb(); __raw_write32(__io(p), v); }
+#define arch_inb(p)		({u8 v = __raw_read8(__io(p)); __iormb(); v; })
+#define arch_inw(p)		({u16 v = __raw_read16(__io(p)); __iormb(); v; })
+#define arch_inl(p)		({u32 v = __raw_read32(__io(p)); __iormb(); v; })
 
-#define arch_iowriteb(a, v)	{__iowmb(); __raw_write8(a, v); }
+#define arch_outb_p(v, p)	arch_outb((v), (p))
+#define arch_outw_p(v, p)	arch_outw((v), (p))
+#define arch_outl_p(v, p)	arch_outl((v), (p))
+#define arch_inb_p(p)		arch_inb((p))
+#define arch_inw_p(p)		arch_inw((p))
+#define arch_inl_p(p)		arch_inl((p))
 
-#define arch_ioreadw(a)		({u16 v = __raw_read16(a); __iormb(); v; })
+static inline void arch_insb(unsigned long p, void *b, int c)
+{
+	if (c) {
+		u8 *buf = b;
+		do {
+			u8 x = arch_inb(p);
+			*buf++ = x;
+		} while (--c);
+	}
+}
 
-#define arch_iowritew(a, v)	{__iowmb(); __raw_write16(a, v); }
+static inline void arch_insw(unsigned long p, void *b, int c)
+{
+	if (c) {
+		u16 *buf = b;
+		do {
+			u16 x = arch_inw(p);
+			*buf++ = x;
+		} while (--c);
+	}
+}
 
-#define arch_ioreadl(a)		({u32 v = __raw_read32(a); __iormb(); v; })
+static inline void arch_insl(unsigned long p, void *b, int c)
+{
+	if (c) {
+		u32 *buf = b;
+		do {
+			u32 x = arch_inl(p);
+			*buf++ = x;
+		} while (--c);
+	}
+}
 
-#define arch_iowritel(a, v)	{__iowmb(); __raw_write32(a, v); }
+static inline void arch_outsb(unsigned long p, const void *b, int c)
+{
+	if (c) {
+		const u8 *buf = b;
+		do {
+			arch_outb(*buf++, p);
+		} while (--c);
+	}
+}
+
+static inline void arch_outsw(unsigned long p, const void *b, int c)
+{
+	if (c) {
+		const u16 *buf = b;
+		do {
+			arch_outw(*buf++, p);
+		} while (--c);
+	}
+}
+
+static inline void arch_outsl(unsigned long p, const void *b, int c)
+{
+	if (c) {
+		const u32 *buf = b;
+		do {
+			arch_outl(*buf++, p);
+		} while (--c);
+	}
+}
 
 /*
  * Memory access primitives

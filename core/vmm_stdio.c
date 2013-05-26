@@ -21,13 +21,14 @@
  * @brief source file for standerd input/output
  */
 
-#include <arch_defterm.h>
 #include <vmm_error.h>
 #include <vmm_main.h>
 #include <vmm_stdio.h>
 #include <stdarg.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
+#include <arch_config.h>
+#include <arch_defterm.h>
 
 #define PAD_RIGHT	1
 #define PAD_ZERO	2
@@ -46,8 +47,10 @@ struct vmm_stdio_ctrl {
 
 static struct vmm_stdio_ctrl stdio_ctrl;
 static bool stdio_init_done = FALSE;
+#if !defined(ARCH_HAS_DEFTERM_EARLY_PRINT)
 static u32 stdio_early_count = 0;
 static char stdio_early_buffer[EARLY_BUF_SZ];
+#endif
 
 bool vmm_iscontrol(char c)
 {
@@ -85,10 +88,14 @@ int vmm_printchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 		}
 	} else {
 		for (i = 0; i < num_ch; i++) {
+#if defined(ARCH_HAS_DEFTERM_EARLY_PRINT)
+			arch_defterm_early_putc(ch[i]);
+#else
 			if (stdio_early_count < EARLY_BUF_SZ) {
 				stdio_early_buffer[stdio_early_count] = ch[i];
 				stdio_early_count++;
 			}
+#endif
 		}
 		rc = VMM_OK;
 	}
@@ -127,6 +134,7 @@ void vmm_puts(char *str)
 
 static void flush_early_buffer(void)
 {
+#if !defined(ARCH_HAS_DEFTERM_EARLY_PRINT)
 	int i;
 
 	if (!stdio_init_done) {
@@ -136,6 +144,7 @@ static void flush_early_buffer(void)
 	for (i = 0; i < stdio_early_count; i++) {
 		vmm_putc(stdio_early_buffer[i]);
 	}
+#endif
 }
 
 static void printc(char **out, u32 *out_len, struct vmm_chardev *cdev, char ch)
@@ -371,6 +380,12 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 					pc += printi(out, out_len, cdev,
 						va_arg(args, unsigned long),
 						16, 0, width, flags, 'A');
+					acnt += sizeof(unsigned long);
+				} else if (*(format + 1) == 'u') {
+					format += 1;
+					pc += printi(out, out_len, cdev,
+						va_arg(args, unsigned long),
+						10, 0, width, flags, 'a');
 					acnt += sizeof(unsigned long);
 				} else {
 					pc += printi(out, out_len, cdev,

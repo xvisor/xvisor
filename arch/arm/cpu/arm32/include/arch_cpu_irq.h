@@ -26,6 +26,7 @@
 
 #include <vmm_types.h>
 #include <cpu_defines.h>
+#include <cpu_proc.h>
 
 /** Setup IRQ for CPU */
 int arch_cpu_irq_setup(void);
@@ -109,27 +110,11 @@ int arch_cpu_irq_setup(void);
 /** Wait for IRQ
  *  Prototype: void arch_cpu_wait_for_irq(void);
  */
-#if defined(CONFIG_ARMV5)
 #define arch_cpu_wait_for_irq()		do { \
-					unsigned long _tr0, _tr1, _tr2, _tr3, _tip; \
-					asm volatile ( \
-					"mov     %0, #0\n" \
-					"mrc     p15, 0, %1, c1, c0, 0   @ Read control register\n" \
-					"mcr     p15, 0, %0, c7, c10, 4  @ Drain write buffer\n" \
-					"bic     %2, %1, #1 << 12\n" \
-					"mrs     %3, cpsr                @ Disable FIQs while Icache\n" \
-					"orr     %4, %3, #0x00000040     @ is disabled\n" \
-					"msr     cpsr_c, %4\n" \
-					"mcr     p15, 0, %2, c1, c0, 0   @ Disable I cache\n" \
-					"mcr     p15, 0, %0, c7, c0, 4   @ Wait for interrupt\n" \
-					"mcr     p15, 0, %1, c1, c0, 0   @ Restore ICache enable\n" \
-					"msr     cpsr_c, %3              @ Restore FIQ state" \
-					:"=r" (_tr0), "=r" (_tr1), "=r" (_tr2), "=r" (_tr3), "=r" (_tip)::"memory", "cc" ); \
+					irq_flags_t _ifl; \
+					arch_cpu_irq_save(_ifl); \
+					proc_do_idle(); \
+					arch_cpu_irq_restore(_ifl); \
 					} while (0)
-#else
-#define arch_cpu_wait_for_irq()		do { \
-					asm volatile (" wfi "); \
-					} while (0)
-#endif
 
 #endif

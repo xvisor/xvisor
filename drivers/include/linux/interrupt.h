@@ -5,13 +5,16 @@
 
 typedef vmm_irq_return_t irqreturn_t;
 
-#define IRQ_NONE	VMM_IRQ_NONE
-#define IRQ_HANDLED	VMM_IRQ_HANDLED
+#define IRQ_NONE		VMM_IRQ_NONE
+#define IRQ_HANDLED		VMM_IRQ_HANDLED
 
-#define IRQF_TRIGGER_RISING VMM_IRQ_TYPE_EDGE_RISING
+#define IRQF_SHARED		0x0
+#define IRQF_TRIGGER_RISING	VMM_IRQ_TYPE_EDGE_RISING
+
+#define IRQ_RETVAL(x)		((x) != VMM_IRQ_NONE)
 
 static inline int request_irq(unsigned int irq, 
-			      vmm_host_irq_function_t func, 
+			      vmm_host_irq_function_t func,
 			      unsigned long flags,
 			      const char *name, void *dev)
 {
@@ -21,6 +24,11 @@ static inline int request_irq(unsigned int irq,
 static inline void free_irq(unsigned int irq, void *dev)
 {
 	vmm_host_irq_unregister(irq, dev);
+}
+
+static inline void synchronize_irq(unsigned int irq)
+{
+	/* For now do nothing. */
 }
 
 #define local_irq_save(flags) \

@@ -1203,22 +1203,22 @@ static const char * chip_ids[ 16 ] =  {
 			void __iomem *__ioaddr = ioaddr;		\
 			if (__len >= 2 && (unsigned long)__ptr & 2) {	\
 				__len -= 2;				\
-				SMC_outw((unsigned long) *(u16 *)__ptr, ioaddr,		\
+				SMC_outw(*(u16 *)__ptr, ioaddr,		\
 					DATA_REG(lp));		\
 				__ptr += 2;				\
 			}						\
 			if (SMC_CAN_USE_DATACS && lp->datacs)		\
 				__ioaddr = lp->datacs;			\
-			SMC_outsl((unsigned long) __ioaddr, DATA_REG(lp), __ptr, __len>>2); \
+			SMC_outsl(__ioaddr, DATA_REG(lp), __ptr, __len>>2); \
 			if (__len & 2) {				\
 				__ptr += (__len & ~3);			\
-				SMC_outw((unsigned long) *((u16 *)__ptr), ioaddr,	\
+				SMC_outw(*((u16 *)__ptr), ioaddr,	\
 					 DATA_REG(lp));		\
 			}						\
 		} else if (SMC_16BIT(lp))				\
-			SMC_outsw((unsigned long) ioaddr, DATA_REG(lp), p, (l) >> 1);	\
+			SMC_outsw(ioaddr, DATA_REG(lp), p, (l) >> 1);	\
 		else if (SMC_8BIT(lp))				\
-			SMC_outsb((unsigned long) ioaddr, DATA_REG(lp), p, l);	\
+			SMC_outsb(ioaddr, DATA_REG(lp), p, l);	\
 	} while (0)
 
 #define SMC_PULL_DATA(lp, p, l)					\
@@ -1249,11 +1249,11 @@ static const char * chip_ids[ 16 ] =  {
 			if (SMC_CAN_USE_DATACS && lp->datacs)		\
 				__ioaddr = lp->datacs;			\
 			__len += 2;					\
-			SMC_insl((unsigned long) __ioaddr, DATA_REG(lp), __ptr, __len>>2); \
+			SMC_insl(__ioaddr, DATA_REG(lp), __ptr, __len>>2); \
 		} else if (SMC_16BIT(lp))				\
-			SMC_insw((unsigned long) ioaddr, DATA_REG(lp), p, (l) >> 1);	\
+			SMC_insw(ioaddr, DATA_REG(lp), p, (l) >> 1);	\
 		else if (SMC_8BIT(lp))				\
-			SMC_insb((unsigned long) ioaddr, DATA_REG(lp), p, l);		\
+			SMC_insb(ioaddr, DATA_REG(lp), p, l);		\
 	} while (0)
 
 #endif  /* _SMC91X_H_ */

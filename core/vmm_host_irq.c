@@ -37,14 +37,13 @@ struct vmm_host_irqs_ctrl {
 
 static struct vmm_host_irqs_ctrl hirqctrl;
 
-void vmm_handle_fast_eoi(u32 hirq_no, 
-			 struct vmm_host_irq *irq, arch_regs_t *regs)
+void vmm_handle_fast_eoi(u32 hirq_no, struct vmm_host_irq *irq)
 {
 	struct dlist *l;
 	struct vmm_host_irq_action *act;
 	list_for_each(l, &irq->action_list) {
 		act = list_entry(l, struct vmm_host_irq_action, head);
-		if (act->func(hirq_no, regs, act->dev) == VMM_IRQ_HANDLED) {
+		if (act->func(hirq_no, act->dev) == VMM_IRQ_HANDLED) {
 			break;
 		}
 	}
@@ -53,8 +52,7 @@ void vmm_handle_fast_eoi(u32 hirq_no,
 	}
 }
 
-void vmm_handle_level_irq(u32 hirq_no, 
-			  struct vmm_host_irq *irq, arch_regs_t *regs)
+void vmm_handle_level_irq(u32 hirq_no, struct vmm_host_irq *irq)
 {
 	struct dlist *l;
 	struct vmm_host_irq_action *act;
@@ -70,7 +68,7 @@ void vmm_handle_level_irq(u32 hirq_no,
 	}
 	list_for_each(l, &irq->action_list) {
 		act = list_entry(l, struct vmm_host_irq_action, head);
-		if (act->func(hirq_no, regs, act->dev) == VMM_IRQ_HANDLED) {
+		if (act->func(hirq_no, act->dev) == VMM_IRQ_HANDLED) {
 			break;
 		}
 	}
@@ -79,7 +77,7 @@ void vmm_handle_level_irq(u32 hirq_no,
 	}
 }
 
-int vmm_host_generic_irq_exec(u32 hirq_no, arch_regs_t *regs)
+int vmm_host_generic_irq_exec(u32 hirq_no)
 {
 	struct vmm_host_irq *irq;
 	if (hirq_no < ARCH_HOST_IRQ_COUNT) {
@@ -89,7 +87,7 @@ int vmm_host_generic_irq_exec(u32 hirq_no, arch_regs_t *regs)
 			irq->state |= VMM_IRQ_STATE_INPROGRESS;
 		}
 		if (irq->handler) {
-			irq->handler(hirq_no, irq, regs);
+			irq->handler(hirq_no, irq);
 		}
 		if (!(irq->state & VMM_IRQ_STATE_PER_CPU)) {
 			irq->state &= ~VMM_IRQ_STATE_INPROGRESS;
@@ -99,9 +97,9 @@ int vmm_host_generic_irq_exec(u32 hirq_no, arch_regs_t *regs)
 	return VMM_ENOTAVAIL;
 }
 
-int vmm_host_irq_exec(u32 cpu_irq_no, arch_regs_t *regs)
+int vmm_host_irq_exec(u32 cpu_irq_no)
 {
-	return vmm_host_generic_irq_exec(arch_host_irq_active(cpu_irq_no), regs);
+	return vmm_host_generic_irq_exec(arch_host_irq_active(cpu_irq_no));
 }
 
 u32 vmm_host_irq_count(void)
@@ -136,7 +134,7 @@ int vmm_host_irq_set_chip_data(u32 hirq_num, void *chip_data)
 }
 
 int vmm_host_irq_set_handler(u32 hirq_num, 
-		void (*handler)(u32, struct vmm_host_irq *, arch_regs_t *))
+			     void (*handler)(u32, struct vmm_host_irq *))
 {
 	if (hirq_num < ARCH_HOST_IRQ_COUNT) {
 		hirqctrl.irq[hirq_num].handler = handler;

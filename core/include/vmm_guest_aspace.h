@@ -30,17 +30,17 @@
  */
 struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 					 physical_addr_t gphys_addr,
-					 bool resolve_alias);
+					 u32 reg_flags, bool resolve_alias);
 
-/** Read from guest memory address space */
-u32 vmm_guest_physical_read(struct vmm_guest *guest, 
-			    physical_addr_t gphys_addr, 
-			    void *dst, u32 len);
+/** Read from guest memory regions (i.e. RAM or ROM regions) */
+u32 vmm_guest_memory_read(struct vmm_guest *guest, 
+			  physical_addr_t gphys_addr, 
+			  void *dst, u32 len);
 
-/** Write to guest memory address space */
-u32 vmm_guest_physical_write(struct vmm_guest *guest, 
-			     physical_addr_t gphys_addr, 
-			     void *src, u32 len);
+/** Write to guest memory regions (i.e. RAM or ROM regions) */
+u32 vmm_guest_memory_write(struct vmm_guest *guest, 
+			   physical_addr_t gphys_addr, 
+			   void *src, u32 len);
 
 /** Map guest physical address to some host physical address */
 int vmm_guest_physical_map(struct vmm_guest *guest,

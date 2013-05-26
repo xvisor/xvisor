@@ -30,22 +30,26 @@
 
 #define __always_inline 	__attribute__((always_inline))
 #define __unused		__attribute__((unused))
+#define __used			__attribute__((used))
+#define __aligned(x)		__attribute__((aligned(x)))
 #define __noreturn		__attribute__((noreturn))
 #define __notrace		__attribute__((no_instrument_function))
 #define __packed		__attribute__((packed))
 #define __weak			__attribute__((weak))
 
-#define __read_mostly		__attribute__((section(".readmostly.data")))
-#define __lock			__attribute__((section(".spinlock.text")))
-#define __modtbl		__attribute__((section(".modtbl")))
-#define __symtbl		__attribute__((section(".symtbl")))
-#define __percpu		__attribute__((section(".percpu")))
-#define __init			__attribute__((section(".init.text")))
-#define __initconst		__attribute__((section(".init.data")))
+#define __section(S)		__attribute__((section(#S)))
+#define __read_mostly		__section(".readmostly.data")
+#define __lock			__section(".spinlock.text")
+#define __modtbl		__section(".modtbl")
+#define __symtbl		__section(".symtbl")
+#define __percpu		__section(".percpu")
+#define __init			__section(".init.text")
+#define __initconst		__section(".init.data")
+#define __initdata		__section(".init.data")
 #define __exit
 
 #if defined(CONFIG_SMP)
-#define __cpuinit		__attribute__((section(".cpuinit.text")))
+#define __cpuinit		__section(".cpuinit.text")
 #define __cpuexit
 #else
 #define __cpuinit		__init
@@ -53,8 +57,8 @@
 #endif
 
 /* Help in branch prediction */
-#define likely(x) __builtin_expect((x), 1)
-#define unlikely(x) __builtin_expect((x), 0)
+#define likely(x)		__builtin_expect(!!(x), 1)
+#define unlikely(x)		__builtin_expect(!!(x), 0)
 
 #if __GNUC__ >= 4
 #define __compiler_offsetof(type, member) __builtin_offsetof(type, member)

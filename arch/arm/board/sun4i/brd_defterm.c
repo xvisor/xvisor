@@ -52,22 +52,34 @@ int __init arch_defterm_init(void)
 {
 	int rc;
 	u32 *val;
+	const char *attr;
 	struct vmm_devtree_node *node;
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "soc"
-				   VMM_DEVTREE_PATH_SEPARATOR_STRING "uart0");
+				   VMM_DEVTREE_CHOSEN_NODE_NAME);
 	if (!node) {
 		return VMM_ENODEV;
 	}
+
+	attr = vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
+	if (!attr) {
+		return VMM_ENODEV;
+	}
+   
+	node = vmm_devtree_getnode(attr);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
 	rc = vmm_devtree_regmap(node, &sun4i_uart_port.base, 0);
 	if (rc) {
 		return rc;
 	}
 
-	val = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	sun4i_uart_port.input_clock = (val) ? *val : 24000000;
+	rc = vmm_devtree_clock_frequency(node, &sun4i_uart_port.input_clock);
+	if (rc) {
+		return rc;
+	}
 
 	val = vmm_devtree_attrval(node, "baudrate");
 	sun4i_uart_port.baudrate = (val) ? *val : 115200;
@@ -76,5 +88,6 @@ int __init arch_defterm_init(void)
 	sun4i_uart_port.reg_align = (val) ? *val : 4;
 
 	uart_8250_lowlevel_init(&sun4i_uart_port);
+
 	return VMM_OK;
 }
