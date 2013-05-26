@@ -26,6 +26,7 @@
 #include <vmm_compiler.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
+#include <vmm_params.h>
 #include <input/vmm_input.h>
 #include <libs/vtemu.h>
 #include <libs/fifo.h>
@@ -308,3 +309,28 @@ int __init arch_defterm_init(void)
 
 	return VMM_OK;
 }
+
+#ifdef ARCH_HAS_DEFTERM_EARLY_PRINT
+int init_early_vga_console(void)
+{
+        settextcolor(15 /* White foreground */, 0 /* Black background */);
+	textmemptr = (u16 *)(0xB8000UL);
+	cls();
+
+	return 0;
+}
+
+void arch_defterm_early_putc(u8 ch)
+{
+	putch(ch);
+}
+
+static int __init setup_early_print(char *buf)
+{
+	init_early_vga_console();
+
+	return 0;
+}
+
+vmm_early_param("earlyprint", setup_early_print);
+#endif

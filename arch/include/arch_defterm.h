@@ -25,9 +25,21 @@
 
 #include <vmm_types.h>
 
-/** Default Terminal related function required by VMM core */
+/** Get input character from default terminal */
 int arch_defterm_getc(u8 *ch);
+
+/** Early output character to default terminal 
+ *  NOTE: This function is optional.
+ *  NOTE: it is called before default terminal is initialized.
+ *  NOTE: If arch implments this function then arch_config.h
+ *  will define ARCH_HAS_DEFTERM_EARLY_PRINT feature.
+ */
+void arch_defterm_early_putc(u8 ch);
+
+/** Output character to default terminal */
 int arch_defterm_putc(u8 ch);
+
+/** Initialize default terminal */
 int arch_defterm_init(void);
 
 #endif

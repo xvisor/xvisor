@@ -133,6 +133,10 @@ secondary_loop:
 secondary_loop_skip:
 
 	/* Jump to input binary */
+	mov	r0, #0
+	mov	r1, #0
+	/* deliberately put a non-4B aligned value to r2 skip dtb checking */
+	mov	r2, #1
 	b	input_bin
 
 	/* 
