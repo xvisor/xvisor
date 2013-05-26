@@ -27,9 +27,11 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
+#include <vmm_percpu.h>
 #include <libs/stringlib.h>
 #include <arch_cpu.h>
 #include <arch_io.h>
+#include <arch_host_irq.h>
 #include <cpu_mmu.h>
 #include <cpu_private.h>
 #include <cpu_interrupts.h>
@@ -57,29 +59,20 @@
 
 #define IOAPIC_IOREGSEL			0x0
 #define IOAPIC_IOWIN			0x10
-#define MAX_NR_IOAPICS			8
+#define NR_IOAPIC			8
+#define NR_IOAPIC_IRQ			24
 
-struct cpu_lapic lapic; /* should be per-cpu for SMP */
-struct cpu_ioapic io_apic[MAX_NR_IOAPICS];
+/* FIXME: SMP */
+DEFINE_PER_CPU(struct cpu_lapic, lapic);
+struct cpu_ioapic io_apic[NR_IOAPIC];
 unsigned int nioapics;
-
-struct irq {
-        unsigned int ioapic_pin;
-        unsigned int vector;
-        struct cpu_ioapic *ioapic;
-	struct cpu_lapic *lapic;
-	struct vmm_host_irq_chip irq_chip;
-	struct dlist ext_dev_list;
-};
-
-static struct irq host_sys_irq[NR_IRQ_VECTORS];
 
 /* Disable 8259 - write 0xFF in OCW1 master and slave. */
 void i8259_disable(void)
 {
-	outb(INT2_CTLMASK, 0xFF);
-	outb(INT_CTLMASK, 0xFF);
-	inb(INT_CTLMASK);
+	vmm_outb(0xFF, INT2_CTLMASK);
+	vmm_outb(0xFF, INT_CTLMASK);
+	vmm_inb(INT_CTLMASK);
 }
 
 static u32 is_lapic_present(void)
@@ -132,26 +125,24 @@ static void ioapic_disable_pin(virtual_addr_t ioapic_addr, int pin)
 
 static void ioapic_irq_mask(struct vmm_host_irq *irq)
 {
-	struct irq *hirq = irq->chip_data;
+	struct cpu_ioapic *ioapic = irq->chip_data;
 
-	ioapic_disable_pin(hirq->ioapic->vaddr, hirq->ioapic_pin);
+	ioapic_disable_pin(ioapic->vaddr, irq->num);
 }
 
 static void ioapic_irq_unmask(struct vmm_host_irq *irq)
 {
-	struct irq *hirq = irq->chip_data;
+	struct cpu_ioapic *ioapic = irq->chip_data;
 
-	ioapic_enable_pin(hirq->ioapic->vaddr, hirq->ioapic_pin);
+	ioapic_enable_pin(ioapic->vaddr, irq->num);
 }
 
-static void apic_irq_eoi(struct vmm_host_irq *irq)
+static void lapic_irq_eoi(struct vmm_host_irq *irq)
 {
-	struct irq *hirq = irq->chip_data;
-
-	lapic_write(LAPIC_EOI(hirq->lapic->vbase), 0);
+	lapic_write(LAPIC_EOI(this_cpu(lapic).vbase), 0);
 }
 
-#if 0
+#ifdef DEBUG_IOAPIC
 static u64 ioapic_read_irt_entry(virtual_addr_t ioapic_addr, int pin)
 {
 	u8 hia = IOAPIC_REDIR_TABLE + pin * 2;
@@ -197,120 +188,25 @@ static void ioapic_dump_redirect_table(virtual_addr_t ioapic_addr)
 }
 #endif
 
-static vmm_irq_return_t generic_apic_irq_handler(u32 irq_no, arch_regs_t * regs,
-						 void *dev)
-{
-	struct irq *hirq = (struct irq *)dev;
-	struct dlist *list;
-	struct ioapic_ext_irq_device *ext_device;
-
-	list_for_each(list, &hirq->ext_dev_list) {
-		ext_device = list_entry(list, struct ioapic_ext_irq_device, head);
-		if (likely(ext_device && ext_device->irq_handler)) {
-			if (ext_device->irq_handler(irq_no, regs, ext_device->data) == VMM_IRQ_HANDLED) {
-				lapic_write(LAPIC_EOI(hirq->lapic->vbase), 0);
-				return VMM_IRQ_HANDLED;
-			}
-		}
-	}
-
-	return VMM_IRQ_NONE;
-}
-
-static 	void apic_irq_ack(struct vmm_host_irq *irq)
-{
-	struct irq *hirq = irq->chip_data;
-	struct dlist *list;
-	struct ioapic_ext_irq_device *ext_device;
-
-	list_for_each(list, &hirq->ext_dev_list) {
-		ext_device = list_entry(list, struct ioapic_ext_irq_device, head);
-		if (likely(ext_device && ext_device->irq_ack)) {
-			ext_device->irq_ack(ext_device->data);
-		}
-	}
-}
-
-int ioapic_route_pin_to_irq(u32 pin, u32 irqno)
+static int ioapic_route_irq_to_vector(struct cpu_ioapic *ioapic, u32 irq, u32 vector)
 {
 	union ioapic_irt_entry entry;
-	struct irq *hirq;
-	int rc;
 
-	if (irqno >= NR_IRQ_VECTORS)
-		return VMM_EFAIL;
-
-	memset(&entry, 0, sizeof(entry));
-
-	hirq = &host_sys_irq[irqno];
-
-	/* FIXME: To share IRQs this should be conditional. Or
-	 * there should be a seperate call to irq init.
-	 */
-	INIT_LIST_HEAD(&hirq->ext_dev_list);
-
-	/*
-	 * TODO: may this function should only set the IOAPIC entry if
-	 * not already done.
-	 */
-	hirq->ioapic_pin = pin;
-	hirq->vector = irqno;
-	/* FIXME: For multiple IOAPIC presence, this has to go. */
-	hirq->ioapic = &io_apic[0];
-	hirq->lapic = &lapic;
-	hirq->irq_chip.irq_mask = &ioapic_irq_mask;
-	hirq->irq_chip.irq_unmask = &ioapic_irq_unmask;
-	hirq->irq_chip.irq_eoi = &apic_irq_eoi;
-	hirq->irq_chip.irq_ack = &apic_irq_ack;
-
-	entry.bits.intvec = irqno;
+	entry.val = 0;
+	entry.bits.intvec = vector;
 	entry.bits.delmod = 0;
         entry.bits.destmod = 0;
 	entry.bits.trigger = 0;
-	entry.bits.mask = 0;
+	entry.bits.mask = 1;
 	entry.bits.dest = 0;
 
-	if (ioapic_write_irt_entry(io_apic[0].vaddr, pin, entry.val) != VMM_OK)
+	if (irq >= NR_IOAPIC_IRQ || vector >= ARCH_HOST_IRQ_COUNT)
 		return VMM_EFAIL;
 
-	vmm_host_irq_set_chip(irqno, &hirq->irq_chip);
-	vmm_host_irq_set_chip_data(irqno, hirq);
-	vmm_host_irq_set_handler(irqno, vmm_handle_level_irq);
-	rc = vmm_host_irq_register(irqno, "generic irq handler",
-				   generic_apic_irq_handler,
-				   (void *)hirq);
+	if (ioapic_write_irt_entry(ioapic->vaddr, irq, entry.val) != VMM_OK)
+		return VMM_EFAIL;
 
-	return rc;
-}
-
-static int acpi_get_ioapics(struct cpu_ioapic *ioa, unsigned *nioa, unsigned max)
-{
-	unsigned int n = 0;
-	struct acpi_madt_ioapic * acpi_ioa;
-
-	while (n < max) {
-		acpi_ioa = acpi_get_ioapic_next();
-		if (acpi_ioa == NULL)
-			break;
-
-		ioa[n].id = acpi_ioa->id;
-		ioa[n].vaddr = vmm_host_iomap(acpi_ioa->address, PAGE_SIZE);
-		ioa[n].paddr = (physical_addr_t) acpi_ioa->address;
-		ioa[n].gsi_base = acpi_ioa->global_int_base;
-		ioa[n].pins = ((ioapic_read(ioa[n].vaddr,
-				IOAPIC_VERSION) & 0xff0000) >> 16)+1;
-		n++;
-	}
-
-	*nioa = n;
-	return n;
-}
-
-int detect_ioapics(void)
-{
-	int ret;
-	ret = acpi_get_ioapics(io_apic, &nioapics, MAX_NR_IOAPICS);
-	return ret;
+	return VMM_OK;
 }
 
 void ioapic_set_id(u32 addr, unsigned int id)
@@ -323,26 +219,94 @@ void ioapic_enable(void)
 	i8259_disable();
 
 	/* Select IMCR and disconnect 8259s. */
-	outb(0x22, 0x70);
-	outb(0x23, 0x01);
+	vmm_outb(0x70, 0x22);
+	vmm_outb(0x01, 0x23);
 }
+
+int detect_ioapics(unsigned int *nr_ioapics)
+{
+	int ret = VMM_OK;
+	u32 *aval;
+	struct vmm_devtree_node *node;
+	char apic_nm[512];
+	physical_addr_t *base;
+	unsigned int n = 0;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_MOTHERBOARD_NODE_NAME
+				VMM_DEVTREE_PATH_SEPARATOR_STRING
+				"APIC");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	aval = vmm_devtree_attrval(node, VMM_DEVTREE_NR_IOAPIC_ATTR_NAME);
+
+	if (nr_ioapics) *nr_ioapics = *aval;
+
+	while (n < *aval) {
+		vmm_sprintf(apic_nm, VMM_DEVTREE_PATH_SEPARATOR_STRING
+			VMM_DEVTREE_MOTHERBOARD_NODE_NAME
+			VMM_DEVTREE_PATH_SEPARATOR_STRING
+			"APIC"
+			VMM_DEVTREE_PATH_SEPARATOR_STRING
+			VMM_DEVTREE_IOAPIC_NODE_FMT,
+			n);
+
+		node = vmm_devtree_getnode(apic_nm);
+		BUG_ON(node == NULL);
+
+		base = vmm_devtree_attrval(node, VMM_DEVTREE_IOAPIC_PADDR_ATTR_NAME);
+
+		vmm_snprintf((char *)&io_apic[n].name, APIC_NAME_LEN, "IOAPIC-%d", n);
+		io_apic[n].id = n;
+		io_apic[n].vaddr = vmm_host_iomap(*base, PAGE_SIZE);
+		io_apic[n].paddr = *base;
+		io_apic[n].pins = ((ioapic_read(io_apic[n].vaddr,
+				IOAPIC_VERSION) & 0xff0000) >> 16)+1;
+		ioapic_set_id(io_apic[n].vaddr, n);
+		n++;
+	}
+
+	return ret;
+}
+
+static int setup_ioapic_irq_route(struct cpu_ioapic *ioapic, u32 irq, u32 vector)
+{
+	/* route the IOAPIC pins to vectors on CPU */
+	ioapic_route_irq_to_vector(ioapic, irq, vector);
+
+	/* Host IRQ setup. */
+	ioapic->irq_chip[irq].name = &ioapic->name[0];
+	ioapic->irq_chip[irq].irq_mask = &ioapic_irq_mask;
+	ioapic->irq_chip[irq].irq_unmask = &ioapic_irq_unmask;
+	ioapic->irq_chip[irq].irq_eoi = &lapic_irq_eoi;
+
+	/* register this IOAPIC with host IRQ */
+	vmm_host_irq_set_chip(irq, &ioapic->irq_chip[irq]);
+	vmm_host_irq_set_chip_data(irq, ioapic);
+	vmm_host_irq_set_handler(irq, vmm_handle_fast_eoi);
+
+	return VMM_OK;
+}
+
+#define IOAPIC_IRQ_TO_VECTOR(_ioapic_id, _irq) ((USER_DEFINED_IRQ_BASE * \
+						(_ioapic_id + 1)) +      \
+						 _irq)
 
 static int setup_ioapic(void)
 {
 	int i, nr;
-	union ioapic_irt_entry entry;
 
-	/* FIXME: Get away with this lousy behaviour */
-	BUG_ON(!detect_ioapics());
+	/* Read from device tree about presence of IOAPICs
+	 * Can't live without? IOAPIC? Shame!! */
+	BUG_ON(detect_ioapics(&nioapics));
 
-	for (nr = 0; nr < nioapics; nr++) {
-		debug_print("Disabling all pins on IOAPIC-%d\n", nr);
-		entry.val = 0;
-		for (i = 0; i < 24; i++) {
-			ioapic_write_irt_entry(io_apic[0].vaddr, i, entry.val);
-			ioapic_disable_pin(io_apic[nr].vaddr, i);
-		}
-	}
+	for (nr = 0; nr < nioapics; nr++)
+		for (i = 0; i < NR_IOAPIC_IRQ; i++)
+			setup_ioapic_irq_route(&io_apic[nr],
+					i,
+					IOAPIC_IRQ_TO_VECTOR(nr, i));
 
 #ifdef DEBUG_IOPIC
 	ioapic_dump_redirect_table(io_apic[0].vaddr);
@@ -358,50 +322,50 @@ int lapic_enable(unsigned cpu)
 	u32 val, nlvt;
 
 	/* set the highest priority for ever */
-	lapic_write(LAPIC_TPR(lapic.vbase), 0x0);
+	lapic_write(LAPIC_TPR(this_cpu(lapic).vbase), 0x0);
 
 	/* clear error state register. */
 	//val = lapic_errstatus();
 
 	/* Enable Local APIC and set the spurious vector to 0xff. */
-	val = lapic_read(LAPIC_SIVR(lapic.vbase));
+	val = lapic_read(LAPIC_SIVR(this_cpu(lapic).vbase));
 	val |= APIC_ENABLE | APIC_SPURIOUS_INT_VECTOR;
 	val &= ~APIC_FOCUS_DISABLED;
-	lapic_write(LAPIC_SIVR(lapic.vbase), val);
-	(void) lapic_read(LAPIC_SIVR(lapic.vbase));
+	lapic_write(LAPIC_SIVR(this_cpu(lapic).vbase), val);
+	(void) lapic_read(LAPIC_SIVR(this_cpu(lapic).vbase));
 
 	/* Program Logical Destination Register. */
-	val = lapic_read(LAPIC_LDR(lapic.vbase)) & ~0xFF000000;
+	val = lapic_read(LAPIC_LDR(this_cpu(lapic).vbase)) & ~0xFF000000;
 	val |= (cpu & 0xFF) << 24;
-	lapic_write(LAPIC_LDR(lapic.vbase), val);
+	lapic_write(LAPIC_LDR(this_cpu(lapic).vbase), val);
 
 	/* Program Destination Format Register for Flat mode. */
-	val = lapic_read(LAPIC_DFR(lapic.vbase)) | 0xF0000000;
-	lapic_write (LAPIC_DFR(lapic.vbase), val);
+	val = lapic_read(LAPIC_DFR(this_cpu(lapic).vbase)) | 0xF0000000;
+	lapic_write (LAPIC_DFR(this_cpu(lapic).vbase), val);
 
-	val = lapic_read (LAPIC_LVTER(lapic.vbase)) & 0xFFFFFF00;
-	lapic_write (LAPIC_LVTER(lapic.vbase), val);
+	val = lapic_read (LAPIC_LVTER(this_cpu(lapic).vbase)) & 0xFFFFFF00;
+	lapic_write (LAPIC_LVTER(this_cpu(lapic).vbase), val);
 
-	nlvt = (lapic_read(LAPIC_VERSION(lapic.vbase))>>16) & 0xFF;
+	nlvt = (lapic_read(LAPIC_VERSION(this_cpu(lapic).vbase))>>16) & 0xFF;
 
 	if(nlvt >= 4) {
-		val = lapic_read(LAPIC_LVTTMR(lapic.vbase));
-		lapic_write(LAPIC_LVTTMR(lapic.vbase), val | APIC_ICR_INT_MASK);
+		val = lapic_read(LAPIC_LVTTMR(this_cpu(lapic).vbase));
+		lapic_write(LAPIC_LVTTMR(this_cpu(lapic).vbase), val | APIC_ICR_INT_MASK);
 	}
 
 	if(nlvt >= 5) {
-		val = lapic_read(LAPIC_LVTPCR(lapic.vbase));
-		lapic_write(LAPIC_LVTPCR(lapic.vbase), val | APIC_ICR_INT_MASK);
+		val = lapic_read(LAPIC_LVTPCR(this_cpu(lapic).vbase));
+		lapic_write(LAPIC_LVTPCR(this_cpu(lapic).vbase), val | APIC_ICR_INT_MASK);
 	}
 
 	/* setup TPR to allow all interrupts. */
-	val = lapic_read(LAPIC_TPR(lapic.vbase));
+	val = lapic_read(LAPIC_TPR(this_cpu(lapic).vbase));
 	/* accept all interrupts */
-	lapic_write(LAPIC_TPR(lapic.vbase), val & ~0xFF);
+	lapic_write(LAPIC_TPR(this_cpu(lapic).vbase), val & ~0xFF);
 
-	(void)lapic_read(LAPIC_SIVR(lapic.vbase));
+	(void)lapic_read(LAPIC_SIVR(this_cpu(lapic).vbase));
 
-	lapic_write(LAPIC_EOI(lapic.vbase), 0);
+	lapic_write(LAPIC_EOI(this_cpu(lapic).vbase), 0);
 
 	return 1;
 }
@@ -411,24 +375,24 @@ static int setup_lapic(int cpu)
 	/* Configuration says that  support APIC but its not present! */
 	BUG_ON(!is_lapic_present());
 
-	lapic.msr = cpu_read_msr(MSR_APIC);
+	this_cpu(lapic).msr = cpu_read_msr(MSR_APIC);
 
-	if (!APIC_ENABLED(lapic.msr)) {
-		lapic.msr |= (0x1UL << 11);
-		cpu_write_msr(MSR_APIC, lapic.msr);
+	if (!APIC_ENABLED(this_cpu(lapic).msr)) {
+		this_cpu(lapic).msr |= (0x1UL << 11);
+		cpu_write_msr(MSR_APIC, this_cpu(lapic).msr);
 	}
 
-	lapic.pbase = (APIC_BASE(lapic.msr) << 12);
+	this_cpu(lapic).pbase = (APIC_BASE(this_cpu(lapic).msr) << 12);
 
 	/* remap base */
-	lapic.vbase = vmm_host_iomap(lapic.pbase, PAGE_SIZE);
+	this_cpu(lapic).vbase = vmm_host_iomap(this_cpu(lapic).pbase, PAGE_SIZE);
 
-	BUG_ON(unlikely(lapic.vbase == 0));
+	BUG_ON(unlikely(this_cpu(lapic).vbase == 0));
 
-	lapic.version = lapic_read(LAPIC_VERSION(lapic.vbase));
+	this_cpu(lapic).version = lapic_read(LAPIC_VERSION(this_cpu(lapic).vbase));
 
-	lapic.integrated = IS_INTEGRATED_APIC(lapic.version);
-	lapic.nr_lvt = NR_LVT_ENTRIES(lapic.version);
+	this_cpu(lapic).integrated = IS_INTEGRATED_APIC(this_cpu(lapic).version);
+	this_cpu(lapic).nr_lvt = NR_LVT_ENTRIES(this_cpu(lapic).version);
 
 	lapic_enable(cpu);
 
@@ -442,21 +406,3 @@ int apic_init(void)
 
 	return VMM_OK;
 }
-
-int ioapic_set_ext_irq_device(u32 irqno, struct ioapic_ext_irq_device *device,
-			      void *data)
-{
-	struct irq *hirq;
-
-	if (irqno >= NR_IRQ_VECTORS)
-		return VMM_EFAIL;
-
-	hirq = &host_sys_irq[irqno];
-
-	INIT_LIST_HEAD(&device->head);
-	list_add_tail(&hirq->ext_dev_list, &device->head);
-	device->data = data;
-
-	return VMM_OK;
-}
-

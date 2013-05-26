@@ -35,10 +35,9 @@
 #include <cpu_apic.h>
 #include <hpet.h>
 
-#undef __DEBUG
-//#define __DEBUG
+#undef DEBUG
 
-#if defined(__DEBUG)
+#if defined(DEBUG)
 #define debug_print(fmt, args...) vmm_printf(fmt, ##args);
 #else
 #define debug_print(fmt, args...) { }
@@ -108,6 +107,7 @@ static void hpet_arm_timer(void *data)
 	debug_print("%s: timer %d armed\n", __func__, timer->timer_id);
 }
 
+#if 0
 static void hpet_disarm_timer(void *data)
 {
 	struct hpet_timer *timer = (struct hpet_timer *)data;
@@ -116,6 +116,7 @@ static void hpet_disarm_timer(void *data)
 	hpet_write(timer->parent->vbase, HPET_TIMER_N_CONF_BASE(timer->timer_id), _v);
 	debug_print("%s: timer %d disarmed\n", __func__, timer->timer_id);
 }
+#endif
 
 static int hpet_initialize_timer(struct hpet_timer *timer, u8 dest_int, u32 flags)
 {
@@ -205,11 +206,23 @@ static struct hpet_timer *get_timer_from_id(timer_id_t timer_id)
 
 int __init hpet_init(void)
 {
-	u32 nr_hpet_chips = acpi_get_nr_hpet_chips();
+	u32 nr_hpet_chips = 0, *aval;
 	struct hpet_chip *chip;
 	struct hpet_block *block;
 	struct hpet_timer *timer;
 	int i, j, k;
+	struct vmm_devtree_node *node;
+	char hpet_nm[512];
+	physical_addr_t *base;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_MOTHERBOARD_NODE_NAME
+				VMM_DEVTREE_PATH_SEPARATOR_STRING
+				"HPET");
+
+	BUG_ON(node == NULL);
+	aval = vmm_devtree_attrval(node, VMM_DEVTREE_NR_HPET_ATTR_NAME);
+	nr_hpet_chips = *aval;
 
 	/* Need at least one HPET as system timer */
 	BUG_ON(nr_hpet_chips == 0);
@@ -220,7 +233,8 @@ int __init hpet_init(void)
 	for (i = 0; i < nr_hpet_chips; i++) {
 		chip = (struct hpet_chip *)vmm_malloc(sizeof(struct hpet_chip));
 		chip->chip_id = i;
-		chip->nr_blocks = acpi_get_nr_hpet_blocks(i);
+		/* Fold blocks on chip. 1 chip == 1 block. */
+		chip->nr_blocks = 1;
 		INIT_LIST_HEAD(&chip->block_list);
 		list_add(&chip->head, &hpet_devices.chip_list);
 
@@ -228,13 +242,21 @@ int __init hpet_init(void)
 			block = (struct hpet_block *)vmm_malloc(sizeof(struct hpet_block));
 			BUG_ON(block == NULL);
 
-			/*
-			 * Find the number of timers in this block and initialize
-			 * each one of them.
-			 */
-			block->nr_timers = hpet_nr_timers_in_block(j);
+			/* FIXME: read from devtree */
+			block->nr_timers = 32;
 
-			block->pbase = acpi_get_hpet_block_base(j);
+			vmm_sprintf(hpet_nm, VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_MOTHERBOARD_NODE_NAME
+				VMM_DEVTREE_PATH_SEPARATOR_STRING
+				"HPET"
+				VMM_DEVTREE_PATH_SEPARATOR_STRING
+				VMM_DEVTREE_HPET_NODE_FMT, j);
+
+			node = vmm_devtree_getnode(hpet_nm);
+			BUG_ON(node == NULL);
+
+			base = vmm_devtree_attrval(node, VMM_DEVTREE_HPET_PADDR_ATTR_NAME);
+			block->pbase = *base;
 			BUG_ON(block->pbase == 0);
 
 			/* Make the block and its timer accessible to us. */
@@ -270,14 +292,15 @@ int __init hpet_init(void)
 	return VMM_OK;
 }
 
-static vmm_irq_return_t hpet_clockchip_irq_handler(u32 irq_no,
-						   arch_regs_t * regs,
-						   void *dev)
+static vmm_irq_return_t hpet_clockchip_irq_handler(int irq_no, void *dev)
 {
 	struct hpet_timer *timer = (struct hpet_timer *)dev;
 
+	if (unlikely(!timer->clkchip.event_handler))
+		return VMM_IRQ_NONE;
+
 	/* call the event handler */
-	timer->clkchip.event_handler(&timer->clkchip, regs);
+	timer->clkchip.event_handler(&timer->clkchip);
 
 	return VMM_IRQ_HANDLED;
 }
@@ -285,6 +308,9 @@ static vmm_irq_return_t hpet_clockchip_irq_handler(u32 irq_no,
 static void hpet_clockchip_set_mode(enum vmm_clockchip_mode mode,
 				    struct vmm_clockchip *cc)
 {
+
+	BUG_ON(cc == NULL);
+
 	switch (mode) {
 	case VMM_CLOCKCHIP_MODE_PERIODIC:
 		/* Not supported currently */
@@ -316,6 +342,11 @@ static int hpet_clockchip_set_next_event(unsigned long next,
 	BUG_ON(timer == NULL);
 	u64 res;
 
+	if (unlikely(!timer->armed)) {
+		timer->armed = 1;
+		hpet_arm_timer((void *)timer);
+	}
+
 	res = hpet_read_main_counter(timer);
 	res += next;
 	hpet_write(timer->parent->vbase, HPET_TIMER_N_COMP_BASE(0), res);
@@ -325,29 +356,21 @@ static int hpet_clockchip_set_next_event(unsigned long next,
 	return 0;
 }
 
-static int hpet_clockchip_expire(struct vmm_clockchip *cc)
-{
-	struct hpet_timer *timer = container_of(cc, struct hpet_timer, clkchip);
-	BUG_ON(timer == NULL);
-	u64 res;
-
-	hpet_disable_main_counter(timer);
-	res = hpet_read_main_counter(timer);
-	res += 1000;
-	hpet_write(timer->parent->vbase, HPET_TIMER_N_COMP_BASE(0), res);
-	hpet_enable_main_counter(timer);
-
-	return 0;
-}
-
-int __cpuinit hpet_clockchip_init(struct hpet_timer *timer, const char *chip_name,
-				  u32 irqno, u32 target_cpu)
+int __cpuinit hpet_clockchip_init(timer_id_t timer_id, 
+				  const char *chip_name,
+				  u32 target_cpu)
 {
 	int rc;
 	u32 int_dest;
+	struct hpet_timer *timer = get_timer_from_id(timer_id);
+
+	if (unlikely(timer == NULL)) {
+		return VMM_ENODEV;
+	}
 
 	/* first disable the free running counter */
 	hpet_disable_main_counter(timer);
+	hpet_write_main_counter(timer, 0);
 
 	if (hpet_in_legacy_mode(timer)) {
 		/* legacy mode hpet overrides PIT interrupt at pin 2 of IOAPIC */
@@ -368,24 +391,8 @@ int __cpuinit hpet_clockchip_init(struct hpet_timer *timer, const char *chip_nam
 	rc = hpet_initialize_timer(timer, int_dest, HPET_TIMER_INT_EDGE);
 	BUG_ON(rc != VMM_OK);
 
-	/* route the IOAPIC pin to CPU IRQ/Exception vector */
-	ioapic_route_pin_to_irq(int_dest, irqno);
-
-	vmm_printf("HPET timer %d routed to IOAPIC pin number %d linked on IRQ %d.\n",
-		   timer->timer_id, int_dest, irqno);
-
-	struct ioapic_ext_irq_device *device = vmm_malloc(sizeof(struct ioapic_ext_irq_device));
-	BUG_ON(device == NULL);
-
-	device->irq_enable = hpet_arm_timer;
-	device->irq_disable = hpet_disarm_timer;
-	device->irq_handler = hpet_clockchip_irq_handler;
-	strcpy(device->ext_dev_name, "system_timer");
-	rc = ioapic_set_ext_irq_device(irqno, device, (void *)timer);
-	BUG_ON(rc != VMM_OK);
-
 	timer->clkchip.name = chip_name;
-	timer->clkchip.hirq = irqno;
+	timer->clkchip.hirq = int_dest;
 	timer->clkchip.rating = 250;
 #ifdef CONFIG_SMP
 	timer->clkcip.cpumask = vmm_cpumask_of(target_cpu);
@@ -394,15 +401,14 @@ int __cpuinit hpet_clockchip_init(struct hpet_timer *timer, const char *chip_nam
 #endif
 	debug_print("%s: Hpet Freq: %l Period: %l\n", __func__, timer->hpet_freq, timer->hpet_period);
 	timer->clkchip.features = VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
-	vmm_clocks_calc_mult_shift(&timer->clkchip.mult, &timer->clkchip.shift, timer->hpet_freq, NSEC_PER_SEC, 0);
-	timer->clkchip.min_delta_ns = timer->hpet_freq/1000000;
+	vmm_clocks_calc_mult_shift(&timer->clkchip.mult, &timer->clkchip.shift, NSEC_PER_SEC, timer->hpet_freq, 5);
+	timer->clkchip.min_delta_ns = 100000;
 	debug_print("%s: Min Delts NS: %d\n", __func__, timer->clkchip.min_delta_ns);
 	debug_print("%s: mult: %l shift: %l\n", __func__, timer->clkchip.mult, timer->clkchip.shift);
 	timer->clkchip.max_delta_ns = vmm_clockchip_delta2ns(0x7FFFFFFFFFFFFFFFULL, &timer->clkchip);
 	debug_print("%s: Max delta ns: %l\n", __func__, timer->clkchip.max_delta_ns);
 	timer->clkchip.set_mode = &hpet_clockchip_set_mode;
 	timer->clkchip.set_next_event = &hpet_clockchip_set_next_event;
-	timer->clkchip.expire = &hpet_clockchip_expire;
 	timer->clkchip.priv = (void *)timer;
 
 #ifdef CONFIG_SMP
@@ -414,17 +420,14 @@ int __cpuinit hpet_clockchip_init(struct hpet_timer *timer, const char *chip_nam
 	}
 #endif
 
-	hpet_arm_timer((void *)timer);
-	return vmm_clockchip_register(&timer->clkchip);
-}
+	vmm_clockchip_register(&timer->clkchip);
+	timer->armed = 0;
+	rc = vmm_host_irq_register(int_dest, chip_name,
+				hpet_clockchip_irq_handler,
+				timer);
+	BUG_ON(rc != VMM_OK);
 
-int __cpuinit arch_clockchip_init(void)
-{
-	struct hpet_timer *timer = get_timer_from_id(DEFAULT_HPET_SYS_TIMER);
-
-	if (unlikely(timer == NULL)) return VMM_ENODEV;
-
-	return hpet_clockchip_init(timer, "system_timer", DEFAULT_SYS_TIMER_IRQ_NUM, 0);
+	return VMM_OK;
 }
 
 /*****************************************
@@ -456,16 +459,22 @@ static void hpet_clocksource_disable(struct vmm_clocksource *cs)
 	hpet_disable_main_counter(timer);
 }
 
-static int __init hpet_clocksource_init(struct hpet_timer *timer)
+int __init hpet_clocksource_init(timer_id_t timer_id,
+				 const char *chip_name)
 {
 	u64 t1, t2;
+	struct hpet_timer *timer = get_timer_from_id(DEFAULT_HPET_SYS_TIMER);
+
+	if (unlikely(timer == NULL)) {
+		return VMM_ENODEV;
+	}
 
 	debug_print("Initializing HPET main counter.\n");
 
-	timer->clksrc.name = "hpet_clksrc";
+	timer->clksrc.name = chip_name;
 	timer->clksrc.rating = 300;
 	timer->clksrc.mask = 0xFFFFFFFFULL;
-	vmm_clocks_calc_mult_shift(&timer->clksrc.mult, &timer->clksrc.shift, NSEC_PER_SEC, timer->hpet_freq, 0);
+	vmm_clocks_calc_mult_shift(&timer->clksrc.mult, &timer->clksrc.shift, timer->hpet_freq, NSEC_PER_SEC, 5);
 	debug_print("%s: Mult 0x%x shift: 0x%x\n", __func__, timer->clksrc.mult, timer->clksrc.shift);
 	timer->clksrc.read = &hpet_clocksource_read;
 	timer->clksrc.disable = &hpet_clocksource_disable;
@@ -493,14 +502,5 @@ static int __init hpet_clocksource_init(struct hpet_timer *timer)
 	}
 
 	return vmm_clocksource_register(&timer->clksrc);
-}
-
-int __init arch_clocksource_init(void)
-{
-	struct hpet_timer *timer = get_timer_from_id(DEFAULT_HPET_SYS_TIMER);
-
-	if (unlikely(timer == NULL)) return VMM_ENODEV;
-
-	return hpet_clocksource_init(timer);
 }
 

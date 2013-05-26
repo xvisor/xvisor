@@ -50,28 +50,12 @@ SECTIONS
 		PROVIDE(_data_end = .);
 	}
 
-	.bss :
-	{
-		PROVIDE(_bss_start = .);
-		*(.bss)
-		. = ALIGN(4);
-		PROVIDE(_bss_end = .);
-	}
-
 	.rodata :
 	{
 		PROVIDE(_rodata_start = .);
 		*(.rodata .rodata.*)
 		. = ALIGN(4);
 		PROVIDE(_rodata_end = .);
-	}
-
-	.modtbl :
-	{
-		PROVIDE(_modtbl_start = .);
-		*(.modtbl)
-		. = ALIGN(4);
-		PROVIDE(_modtbl_end = .);
 	}
 
 	.percpu :
@@ -87,9 +71,35 @@ SECTIONS
 	.init : 
 	{
 		PROVIDE(_init_start = .);
+
 		*(.init.*)
 		. = ALIGN(4);
+
+		PROVIDE(_modtbl_start = .);
+		*(.modtbl)
+		. = ALIGN(4);
+		PROVIDE(_modtbl_end = .);
+
+		. = ALIGN(4);
+		PROVIDE(__setup_start = .);
+		*(.setup.init);
+		PROVIDE(__setup_end = .);
+
+		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
+		*(.devtree)
+		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
+
 		PROVIDE(_init_end = .);
+	}
+
+	. = ALIGN(0x1000); /* bss is page aligned */
+
+	.bss :
+	{
+		PROVIDE(_bss_start = .);
+		*(.bss)
+		. = ALIGN(4);
+		PROVIDE(_bss_end = .);
 	}
 
 	. = ALIGN(0x1000); /* all stacks are page aligned */

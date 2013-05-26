@@ -730,7 +730,7 @@ convention:
 
 For example, "add work" is a command, and the add_work() function returns 0
 for success or VMM_EBUSY for failure.  In the same way, "Ring buffer is empty" 
-is a predicate, and the vmm_ringbuf_isempty() function returns 1 (TRUE) if 
+is a predicate, and the fifo_isempty() function returns 1 (TRUE) if 
 ring buffer is empty and 0 (FALSE) if it is not-empty.
 
 All public functions must respect this convention.  Private (static) functions

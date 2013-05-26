@@ -2,36 +2,38 @@
 /dts-v1/;
 
 / {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	model = "x86_64_generic";
+
+	chosen { };
+	aliases { };
+
+	cpus {
+		cpu0 {
+			device_type = "cpu";
+			model = "Intel x86_64 Family";
+		};
+	};
+
+	memory { 
+		device_type = "memory"; 
+		reg = <0x0 0x00100000 0x0 0x10000000>; /* 256 MB */
+	};
+
+	motherboard {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "simple-bus";
+
+		ps2 {
+			device_type = "serio";
+			compatible = "i8042";
+		};
+	};
+
 	vmm {
 		#address-cells = <1>;
 		#size-cells = <0>;
-	};
-
-	host {
-		#address-cells = <2>;
-		#size-cells = <1>;
-		model = "x86_64_generic";
-		device_type = "host";
-
-		cpus {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			cpu_freq_mhz = <1000>;
-
-			cpu0 {
-				device_type = "cpu";
-				model = "Intel Atom Family";
-			};
-		};
-
-		memory {
-			/* NOTE: By default QEMU will only proivde 128 MB
-			 * unless specified by "-m" option. If you have
-			 * X MB then we will be able to access only first
-			 * X MB starting at physical_addr.
-			 */
-			physical_addr = <0x00100000>;
-			physical_size = <0x10000000>; /* 256M */
-		};
 	};
 };

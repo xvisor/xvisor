@@ -47,7 +47,6 @@
 
 struct pl061_state {
 	struct vmm_guest *guest;
-	struct vmm_emupic *pic;
 	vmm_spinlock_t lock;
 
 	u8 id[12];
@@ -111,7 +110,7 @@ static int pl061_emulator_read(struct vmm_emudev *edev,
 {
 	int rc = VMM_OK;
 	u32 regval = 0x0;
-	struct pl061_state * s = edev->priv;
+	struct pl061_state *s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -214,7 +213,7 @@ static int pl061_emulator_write(struct vmm_emudev *edev,
 	u8 mask;
 	int rc = VMM_OK, i;
 	u32 regmask = 0x0, regval = 0x0;
-	struct pl061_state * s = edev->priv;
+	struct pl061_state *s = edev->priv;
 
 	switch (src_len) {
 	case 1:
@@ -334,7 +333,7 @@ static int pl061_emulator_write(struct vmm_emudev *edev,
 
 static int pl061_emulator_reset(struct vmm_emudev *edev)
 {
-	struct pl061_state * s = edev->priv;
+	struct pl061_state *s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
@@ -347,12 +346,11 @@ static int pl061_emulator_reset(struct vmm_emudev *edev)
 }
 
 /* Process IRQ asserted in device emulation framework */
-static int pl061_irq_handle(struct vmm_emupic *epic, 
-			    u32 irq, int cpu, int level)
+static void pl061_irq_handle(u32 irq, int cpu, int level, void *opaque)
 {
 	u8 mask;
 	int i, line;
-	struct pl061_state * s = epic->priv;
+	struct pl061_state *s = opaque;
 
 	line = -1;
 	for (i = 0; i < 8; i++) {
@@ -362,7 +360,7 @@ static int pl061_irq_handle(struct vmm_emupic *epic,
 		}
 	}
 	if (line == -1) {
-		return VMM_EMUPIC_GPIO_UNHANDLED;
+		return;
 	}
 
 	if (s->in_invert[line]) {
@@ -380,37 +378,20 @@ static int pl061_irq_handle(struct vmm_emupic *epic,
 	}
 
 	vmm_spin_unlock(&s->lock);
-
-	return VMM_EMUPIC_GPIO_HANDLED;
 }
 
 static int pl061_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
-				const struct vmm_emuid *eid)
+				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	const char *attr;
-	struct pl061_state * s;
+	struct pl061_state *s;
 
-	s = vmm_malloc(sizeof(struct pl061_state));
+	s = vmm_zalloc(sizeof(struct pl061_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto pl061_emulator_probe_done;
-	}
-	memset(s, 0x0, sizeof(struct pl061_state));
-
-	s->pic = vmm_malloc(sizeof(struct vmm_emupic));
-	if (!s->pic) {
-		goto pl061_emulator_probe_freestate_failed;
-	}
-	memset(s->pic, 0x0, sizeof(struct vmm_emupic));
-
-	strcpy(s->pic->name, edev->node->name);
-	s->pic->type = VMM_EMUPIC_GPIO;
-	s->pic->handle = &pl061_irq_handle;
-	s->pic->priv = s;
-	if ((rc = vmm_devemu_register_pic(guest, s->pic))) {
-		goto pl061_emulator_probe_freepic_failed;
 	}
 
 	if (eid->data) {
@@ -428,12 +409,9 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 		s->id[11] = ((u8 *)eid->data)[11];
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "irq");
-	if (attr) {
-		s->irq = *((u32 *)attr);
-	} else {
-		rc = VMM_EFAIL;
-		goto pl061_emulator_probe_unregpic_failed;
+	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+	if (rc) {
+		goto pl061_emulator_probe_freestate_failed;
 	}
 
 	attr = vmm_devtree_attrval(edev->node, "gpio_in_invert");
@@ -448,7 +426,7 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 		s->in_invert[7] = ((u32 *)attr)[7];
 	} else {
 		rc = VMM_EFAIL;
-		goto pl061_emulator_probe_unregpic_failed;
+		goto pl061_emulator_probe_freestate_failed;
 	}
 
 	attr = vmm_devtree_attrval(edev->node, "gpio_in_irq");
@@ -463,7 +441,7 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 		s->in_irq[7] = ((u32 *)attr)[7];
 	} else {
 		rc = VMM_EFAIL;
-		goto pl061_emulator_probe_unregpic_failed;
+		goto pl061_emulator_probe_freestate_failed;
 	}
 
 	attr = vmm_devtree_attrval(edev->node, "gpio_out_irq");
@@ -478,20 +456,41 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 		s->out_irq[7] = ((u32 *)attr)[7];
 	} else {
 		rc = VMM_EFAIL;
-		goto pl061_emulator_probe_unregpic_failed;
+		goto pl061_emulator_probe_freestate_failed;
 	}
 
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
+	vmm_devemu_register_irq_handler(guest, s->in_irq[0], 
+					edev->node->name,
+					pl061_irq_handle, s);
+	vmm_devemu_register_irq_handler(guest, s->in_irq[1], 
+					edev->node->name,
+					pl061_irq_handle, s);
+	vmm_devemu_register_irq_handler(guest, s->in_irq[2], 
+					edev->node->name,
+					pl061_irq_handle, s);
+	vmm_devemu_register_irq_handler(guest, s->in_irq[3], 
+					edev->node->name,
+					pl061_irq_handle, s);
+	vmm_devemu_register_irq_handler(guest, s->in_irq[4], 
+					edev->node->name,
+					pl061_irq_handle, s);
+	vmm_devemu_register_irq_handler(guest, s->in_irq[5], 
+					edev->node->name,
+					pl061_irq_handle, s);
+	vmm_devemu_register_irq_handler(guest, s->in_irq[6], 
+					edev->node->name,
+					pl061_irq_handle, s);
+	vmm_devemu_register_irq_handler(guest, s->in_irq[7], 
+					edev->node->name,
+					pl061_irq_handle, s);
+
 	edev->priv = s;
 
 	goto pl061_emulator_probe_done;
 
-pl061_emulator_probe_unregpic_failed:
-	vmm_devemu_unregister_pic(s->guest, s->pic);
-pl061_emulator_probe_freepic_failed:
-	vmm_free(s->pic);
 pl061_emulator_probe_freestate_failed:
 	vmm_free(s);
 pl061_emulator_probe_done:
@@ -500,17 +499,25 @@ pl061_emulator_probe_done:
 
 static int pl061_emulator_remove(struct vmm_emudev *edev)
 {
-	int rc;
-	struct pl061_state * s = edev->priv;
+	struct pl061_state *s = edev->priv;
 
 	if (s) {
-		if (s->pic) {
-			rc = vmm_devemu_unregister_pic(s->guest, s->pic);
-			if (rc) {
-				return rc;
-			}
-			vmm_free(s->pic);
-		}
+		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[0],
+						  pl061_irq_handle, s);
+		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[1], 
+						  pl061_irq_handle, s);
+		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[2], 
+						  pl061_irq_handle, s);
+		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[3], 
+						  pl061_irq_handle, s);
+		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[4], 
+						  pl061_irq_handle, s);
+		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[5], 
+						  pl061_irq_handle, s);
+		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[6], 
+						  pl061_irq_handle, s);
+		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[7], 
+						  pl061_irq_handle, s);
 		vmm_free(s);
 		edev->priv = NULL;
 	}
@@ -521,7 +528,7 @@ static int pl061_emulator_remove(struct vmm_emudev *edev)
 static u8 pl061_id[12] =
   { 0x00, 0x00, 0x00, 0x00, 0x61, 0x10, 0x04, 0x00, 0x0d, 0xf0, 0x05, 0xb1 };
 
-static struct vmm_emuid pl061_emuid_table[] = {
+static struct vmm_devtree_nodeid pl061_emuid_table[] = {
 	{ .type = "gpio", 
 	  .compatible = "primecell,pl061", 
 	  .data = (void *)&pl061_id,

@@ -38,52 +38,37 @@
 #define	MODULE_INIT			atkbd_init
 #define	MODULE_EXIT			atkbd_exit
 
-/* Parameter */
 static int atkbd_set = 2;
-#if 0
 module_param_named(set, atkbd_set, int, 0);
 MODULE_PARM_DESC(set, "Select keyboard code set (2 = default, 3 = PS/2 native)");
-#endif
 
-#if defined(__i386__) || defined(__x86_64__) || defined(__hppa__)
+#if defined(CONFIG_CPU_I386) || defined(CONFIG_CPU_X86_64) || defined(CONFIG_ARCH_PARISC)
 static bool atkbd_reset;
 #else
 static bool atkbd_reset = true;
 #endif
-#if 0
 module_param_named(reset, atkbd_reset, bool, 0);
 MODULE_PARM_DESC(reset, "Reset keyboard during initialization");
-#endif
 
 static bool atkbd_softrepeat;
-#if 0
 module_param_named(softrepeat, atkbd_softrepeat, bool, 0);
 MODULE_PARM_DESC(softrepeat, "Use software keyboard repeat");
-#endif
 
 static bool atkbd_softraw = true;
-#if 0
 module_param_named(softraw, atkbd_softraw, bool, 0);
 MODULE_PARM_DESC(softraw, "Use software generated rawmode");
-#endif
 
 static bool atkbd_scroll;
-#if 0
 module_param_named(scroll, atkbd_scroll, bool, 0);
 MODULE_PARM_DESC(scroll, "Enable scroll-wheel on MS Office and similar keyboards");
-#endif
 
 static bool atkbd_extra;
-#if 0
 module_param_named(extra, atkbd_extra, bool, 0);
 MODULE_PARM_DESC(extra, "Enable extra LEDs and keys on IBM RapidAcces, EzKey and similar keyboards");
-#endif
 
 static bool atkbd_terminal;
-#if 0
 module_param_named(terminal, atkbd_terminal, bool, 0);
 MODULE_PARM_DESC(terminal, "Enable break codes on an IBM Terminal keyboard connected via AT/PS2");
-#endif
 
 /*
  * Scancode to keycode tables. These are just the default setting, and
@@ -261,6 +246,62 @@ static void (*atkbd_platform_fixup)(struct atkbd *, const void *data);
 static void *atkbd_platform_fixup_data;
 static unsigned int (*atkbd_platform_scancode_fixup)(struct atkbd *, unsigned int);
 
+#if 0
+static ssize_t atkbd_attr_show_helper(struct device *dev, char *buf,
+				ssize_t (*handler)(struct atkbd *, char *));
+static ssize_t atkbd_attr_set_helper(struct device *dev, const char *buf, size_t count,
+				ssize_t (*handler)(struct atkbd *, const char *, size_t));
+#define ATKBD_DEFINE_ATTR(_name)						\
+static ssize_t atkbd_show_##_name(struct atkbd *, char *);			\
+static ssize_t atkbd_set_##_name(struct atkbd *, const char *, size_t);		\
+static ssize_t atkbd_do_show_##_name(struct device *d,				\
+				struct device_attribute *attr, char *b)		\
+{										\
+	return atkbd_attr_show_helper(d, b, atkbd_show_##_name);		\
+}										\
+static ssize_t atkbd_do_set_##_name(struct device *d,				\
+			struct device_attribute *attr, const char *b, size_t s)	\
+{										\
+	return atkbd_attr_set_helper(d, b, s, atkbd_set_##_name);		\
+}										\
+static struct device_attribute atkbd_attr_##_name =				\
+	__ATTR(_name, S_IWUSR | S_IRUGO, atkbd_do_show_##_name, atkbd_do_set_##_name);
+
+ATKBD_DEFINE_ATTR(extra);
+ATKBD_DEFINE_ATTR(force_release);
+ATKBD_DEFINE_ATTR(scroll);
+ATKBD_DEFINE_ATTR(set);
+ATKBD_DEFINE_ATTR(softrepeat);
+ATKBD_DEFINE_ATTR(softraw);
+
+#define ATKBD_DEFINE_RO_ATTR(_name)						\
+static ssize_t atkbd_show_##_name(struct atkbd *, char *);			\
+static ssize_t atkbd_do_show_##_name(struct device *d,				\
+				struct device_attribute *attr, char *b)		\
+{										\
+	return atkbd_attr_show_helper(d, b, atkbd_show_##_name);		\
+}										\
+static struct device_attribute atkbd_attr_##_name =				\
+	__ATTR(_name, S_IRUGO, atkbd_do_show_##_name, NULL);
+
+ATKBD_DEFINE_RO_ATTR(err_count);
+
+static struct attribute *atkbd_attributes[] = {
+	&atkbd_attr_extra.attr,
+	&atkbd_attr_force_release.attr,
+	&atkbd_attr_scroll.attr,
+	&atkbd_attr_set.attr,
+	&atkbd_attr_softrepeat.attr,
+	&atkbd_attr_softraw.attr,
+	&atkbd_attr_err_count.attr,
+	NULL
+};
+
+static struct attribute_group atkbd_attribute_group = {
+	.attrs	= atkbd_attributes,
+};
+#endif
+
 static const unsigned int xl_table[] = {
 	ATKBD_RET_BAT, ATKBD_RET_ERR, ATKBD_RET_ACK,
 	ATKBD_RET_NAK, ATKBD_RET_HANJA, ATKBD_RET_HANGEUL,
@@ -397,7 +438,7 @@ static irqreturn_t atkbd_interrupt(struct serio *serio, unsigned char data,
 		if (printk_ratelimit())
 			dev_warn(&serio->dev,
 				 "Spurious %s on %s. "
-				 "Some program might be trying access hardware directly.\n",
+				 "Some program might be trying to access hardware directly.\n",
 				 data == ATKBD_RET_ACK ? "ACK" : "NAK", serio->phys);
 		goto out;
 	case ATKBD_RET_ERR:
@@ -690,7 +731,7 @@ static int atkbd_probe(struct atkbd *atkbd)
 
 	if (atkbd->id == 0xaca1 && atkbd->translated) {
 		dev_err(&ps2dev->serio->dev,
-			"NCD terminal keyboards are only supported on non-translating controllers. "
+			"NCD terminal keyboards are only supported on non-translating controlelrs. "
 			"Use i8042.direct=1 to disable translation.\n");
 		return -1;
 	}
@@ -992,14 +1033,14 @@ static void atkbd_set_device_attrs(struct atkbd *atkbd)
 	int i;
 
 	if (atkbd->extra)
-		vmm_sprintf(atkbd->name, 
+		snprintf(atkbd->name, sizeof(atkbd->name),
 			 "AT Set 2 Extra keyboard");
 	else
-		vmm_sprintf(atkbd->name, 
+		snprintf(atkbd->name, sizeof(atkbd->name),
 			 "AT %s Set %d keyboard",
 			 atkbd->translated ? "Translated" : "Raw", atkbd->set);
 
-	vmm_sprintf(atkbd->phys, 
+	snprintf(atkbd->phys, sizeof(atkbd->phys),
 		 "%s/input0", atkbd->ps2dev.serio->phys);
 
 	input_dev->name = atkbd->name;
@@ -1126,10 +1167,11 @@ static int atkbd_connect(struct serio *serio, struct serio_driver *drv)
 
 	err = input_register_device(atkbd->dev);
 	if (err)
-		goto fail3;
+		goto fail4;
 
 	return 0;
 
+ fail4: 
  fail3:	serio_close(serio);
  fail2:	serio_set_drvdata(serio, NULL);
  fail1:	input_free_device(dev);
@@ -1210,6 +1252,8 @@ static struct serio_device_id atkbd_serio_ids[] = {
 	{ 0 }
 };
 
+MODULE_DEVICE_TABLE(serio, atkbd_serio_ids);
+
 static struct serio_driver atkbd_drv = {
 	.name		= "atkbd",
 	.description	= DRIVER_DESC,
@@ -1221,19 +1265,346 @@ static struct serio_driver atkbd_drv = {
 	.cleanup	= atkbd_cleanup,
 };
 
+#if 0
+static ssize_t atkbd_attr_show_helper(struct device *dev, char *buf,
+				ssize_t (*handler)(struct atkbd *, char *))
+{
+	struct serio *serio = to_serio_port(dev);
+	struct atkbd *atkbd = serio_get_drvdata(serio);
+
+	return handler(atkbd, buf);
+}
+
+static ssize_t atkbd_attr_set_helper(struct device *dev, const char *buf, size_t count,
+				ssize_t (*handler)(struct atkbd *, const char *, size_t))
+{
+	struct serio *serio = to_serio_port(dev);
+	struct atkbd *atkbd = serio_get_drvdata(serio);
+	int retval;
+
+	retval = mutex_lock_interruptible(&atkbd->mutex);
+	if (retval)
+		return retval;
+
+	atkbd_disable(atkbd);
+	retval = handler(atkbd, buf, count);
+	atkbd_enable(atkbd);
+
+	mutex_unlock(&atkbd->mutex);
+
+	return retval;
+}
+
+static ssize_t atkbd_show_extra(struct atkbd *atkbd, char *buf)
+{
+	return sprintf(buf, "%d\n", atkbd->extra ? 1 : 0);
+}
+
+static ssize_t atkbd_set_extra(struct atkbd *atkbd, const char *buf, size_t count)
+{
+	struct input_dev *old_dev, *new_dev;
+	unsigned int value;
+	int err;
+	bool old_extra;
+	unsigned char old_set;
+
+	if (!atkbd->write)
+		return -EIO;
+
+	err = kstrtouint(buf, 10, &value);
+	if (err)
+		return err;
+
+	if (value > 1)
+		return -EINVAL;
+
+	if (atkbd->extra != value) {
+		/*
+		 * Since device's properties will change we need to
+		 * unregister old device. But allocate and register
+		 * new one first to make sure we have it.
+		 */
+		old_dev = atkbd->dev;
+		old_extra = atkbd->extra;
+		old_set = atkbd->set;
+
+		new_dev = input_allocate_device();
+		if (!new_dev)
+			return -ENOMEM;
+
+		atkbd->dev = new_dev;
+		atkbd->set = atkbd_select_set(atkbd, atkbd->set, value);
+		atkbd_reset_state(atkbd);
+		atkbd_activate(atkbd);
+		atkbd_set_keycode_table(atkbd);
+		atkbd_set_device_attrs(atkbd);
+
+		err = input_register_device(atkbd->dev);
+		if (err) {
+			input_free_device(new_dev);
+
+			atkbd->dev = old_dev;
+			atkbd->set = atkbd_select_set(atkbd, old_set, old_extra);
+			atkbd_set_keycode_table(atkbd);
+			atkbd_set_device_attrs(atkbd);
+
+			return err;
+		}
+		input_unregister_device(old_dev);
+
+	}
+	return count;
+}
+
+static ssize_t atkbd_show_force_release(struct atkbd *atkbd, char *buf)
+{
+	size_t len = bitmap_scnlistprintf(buf, PAGE_SIZE - 2,
+			atkbd->force_release_mask, ATKBD_KEYMAP_SIZE);
+
+	buf[len++] = '\n';
+	buf[len] = '\0';
+
+	return len;
+}
+
+static ssize_t atkbd_set_force_release(struct atkbd *atkbd,
+					const char *buf, size_t count)
+{
+	/* 64 bytes on stack should be acceptable */
+	DECLARE_BITMAP(new_mask, ATKBD_KEYMAP_SIZE);
+	int err;
+
+	err = bitmap_parselist(buf, new_mask, ATKBD_KEYMAP_SIZE);
+	if (err)
+		return err;
+
+	memcpy(atkbd->force_release_mask, new_mask, sizeof(atkbd->force_release_mask));
+	return count;
+}
+
+
+static ssize_t atkbd_show_scroll(struct atkbd *atkbd, char *buf)
+{
+	return sprintf(buf, "%d\n", atkbd->scroll ? 1 : 0);
+}
+
+static ssize_t atkbd_set_scroll(struct atkbd *atkbd, const char *buf, size_t count)
+{
+	struct input_dev *old_dev, *new_dev;
+	unsigned int value;
+	int err;
+	bool old_scroll;
+
+	err = kstrtouint(buf, 10, &value);
+	if (err)
+		return err;
+
+	if (value > 1)
+		return -EINVAL;
+
+	if (atkbd->scroll != value) {
+		old_dev = atkbd->dev;
+		old_scroll = atkbd->scroll;
+
+		new_dev = input_allocate_device();
+		if (!new_dev)
+			return -ENOMEM;
+
+		atkbd->dev = new_dev;
+		atkbd->scroll = value;
+		atkbd_set_keycode_table(atkbd);
+		atkbd_set_device_attrs(atkbd);
+
+		err = input_register_device(atkbd->dev);
+		if (err) {
+			input_free_device(new_dev);
+
+			atkbd->scroll = old_scroll;
+			atkbd->dev = old_dev;
+			atkbd_set_keycode_table(atkbd);
+			atkbd_set_device_attrs(atkbd);
+
+			return err;
+		}
+		input_unregister_device(old_dev);
+	}
+	return count;
+}
+
+static ssize_t atkbd_show_set(struct atkbd *atkbd, char *buf)
+{
+	return sprintf(buf, "%d\n", atkbd->set);
+}
+
+static ssize_t atkbd_set_set(struct atkbd *atkbd, const char *buf, size_t count)
+{
+	struct input_dev *old_dev, *new_dev;
+	unsigned int value;
+	int err;
+	unsigned char old_set;
+	bool old_extra;
+
+	if (!atkbd->write)
+		return -EIO;
+
+	err = kstrtouint(buf, 10, &value);
+	if (err)
+		return err;
+
+	if (value != 2 && value != 3)
+		return -EINVAL;
+
+	if (atkbd->set != value) {
+		old_dev = atkbd->dev;
+		old_extra = atkbd->extra;
+		old_set = atkbd->set;
+
+		new_dev = input_allocate_device();
+		if (!new_dev)
+			return -ENOMEM;
+
+		atkbd->dev = new_dev;
+		atkbd->set = atkbd_select_set(atkbd, value, atkbd->extra);
+		atkbd_reset_state(atkbd);
+		atkbd_activate(atkbd);
+		atkbd_set_keycode_table(atkbd);
+		atkbd_set_device_attrs(atkbd);
+
+		err = input_register_device(atkbd->dev);
+		if (err) {
+			input_free_device(new_dev);
+
+			atkbd->dev = old_dev;
+			atkbd->set = atkbd_select_set(atkbd, old_set, old_extra);
+			atkbd_set_keycode_table(atkbd);
+			atkbd_set_device_attrs(atkbd);
+
+			return err;
+		}
+		input_unregister_device(old_dev);
+	}
+	return count;
+}
+
+static ssize_t atkbd_show_softrepeat(struct atkbd *atkbd, char *buf)
+{
+	return sprintf(buf, "%d\n", atkbd->softrepeat ? 1 : 0);
+}
+
+static ssize_t atkbd_set_softrepeat(struct atkbd *atkbd, const char *buf, size_t count)
+{
+	struct input_dev *old_dev, *new_dev;
+	unsigned int value;
+	int err;
+	bool old_softrepeat, old_softraw;
+
+	if (!atkbd->write)
+		return -EIO;
+
+	err = kstrtouint(buf, 10, &value);
+	if (err)
+		return err;
+
+	if (value > 1)
+		return -EINVAL;
+
+	if (atkbd->softrepeat != value) {
+		old_dev = atkbd->dev;
+		old_softrepeat = atkbd->softrepeat;
+		old_softraw = atkbd->softraw;
+
+		new_dev = input_allocate_device();
+		if (!new_dev)
+			return -ENOMEM;
+
+		atkbd->dev = new_dev;
+		atkbd->softrepeat = value;
+		if (atkbd->softrepeat)
+			atkbd->softraw = true;
+		atkbd_set_device_attrs(atkbd);
+
+		err = input_register_device(atkbd->dev);
+		if (err) {
+			input_free_device(new_dev);
+
+			atkbd->dev = old_dev;
+			atkbd->softrepeat = old_softrepeat;
+			atkbd->softraw = old_softraw;
+			atkbd_set_device_attrs(atkbd);
+
+			return err;
+		}
+		input_unregister_device(old_dev);
+	}
+	return count;
+}
+
+
+static ssize_t atkbd_show_softraw(struct atkbd *atkbd, char *buf)
+{
+	return sprintf(buf, "%d\n", atkbd->softraw ? 1 : 0);
+}
+
+static ssize_t atkbd_set_softraw(struct atkbd *atkbd, const char *buf, size_t count)
+{
+	struct input_dev *old_dev, *new_dev;
+	unsigned int value;
+	int err;
+	bool old_softraw;
+
+	err = kstrtouint(buf, 10, &value);
+	if (err)
+		return err;
+
+	if (value > 1)
+		return -EINVAL;
+
+	if (atkbd->softraw != value) {
+		old_dev = atkbd->dev;
+		old_softraw = atkbd->softraw;
+
+		new_dev = input_allocate_device();
+		if (!new_dev)
+			return -ENOMEM;
+
+		atkbd->dev = new_dev;
+		atkbd->softraw = value;
+		atkbd_set_device_attrs(atkbd);
+
+		err = input_register_device(atkbd->dev);
+		if (err) {
+			input_free_device(new_dev);
+
+			atkbd->dev = old_dev;
+			atkbd->softraw = old_softraw;
+			atkbd_set_device_attrs(atkbd);
+
+			return err;
+		}
+		input_unregister_device(old_dev);
+	}
+	return count;
+}
+
+static ssize_t atkbd_show_err_count(struct atkbd *atkbd, char *buf)
+{
+	return sprintf(buf, "%lu\n", atkbd->err_count);
+}
+#endif
+
 static int __init atkbd_setup_forced_release(const struct dmi_system_id *id)
 {
 	atkbd_platform_fixup = atkbd_apply_forced_release_keylist;
 	atkbd_platform_fixup_data = id->driver_data;
 
-	return 0;
+	return 1;
 }
 
 static int __init atkbd_setup_scancode_fixup(const struct dmi_system_id *id)
 {
 	atkbd_platform_scancode_fixup = id->driver_data;
 
-	return 0;
+	return 1;
 }
 
 static const struct dmi_system_id atkbd_dmi_quirk_table[] __initconst = {

@@ -1,11 +1,32 @@
-			Versatile Express A9 Guest
+			VExpress-A9 Guest
 
 This guest has Cortex-A9 (MPCore ARMv7) CPU and various peripherals expected 
 on a Versatile Platform Base Board.
 
-We have following guest OSes tested for this guest:
+We also have memory mapped VirtIO devices located at unused IO regions 
+of the guest for providing VirtIO based paravirtualization.
 
-  1. basic - Basic test and/or bootloader used by xvisor developers
+There are many reserved IO regions as per CoreTile Express A9x4 reference 
+manual. From these reserved IO regions, we will use the following IO regions 
+for VirtIO:
+0x20000000–0x3FFFFFFF (512M) (Reserved)
+
+The VirtIO devices also require a IRQ line per device for functioning. The
+VExpress-A9 guest has following unused or reserved IRQ lines:
+GIC: 82
+GIC: 85-91
+
+The memory map and irq of VirtIO devices on VExpress-A9 guest is as follows:
+0x20100000–0x20100FFF (4K) (IRQ=82) (VirtIO Network Device)
+0x20200000–0x20200FFF (4K) (IRQ=85) (VirtIO Block Device)
+0x20300000–0x20300FFF (4K) (IRQ=86) (VirtIO Console Device)
+
+
+			VExpress-A9 Guest OSes
+
+We have tested following guest OSes for this guest:
+
+  1. basic - Basic test/bootloader
   2. linux - Linux Kernel 
 
 Please follow the README under specific guest OS directory for detailed steps 

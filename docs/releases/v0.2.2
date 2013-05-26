@@ -1,0 +1,61 @@
+			Xvisor v0.2.2
+	(Last Commit: ---------------------------)
+		(Release Date: 26-May-2013)
+
+In this release, we have new features, drivers, emulators and 
+board supports.
+
+New Features:
+ - Generic LIFO & FIFO APIs under libs/common
+ - VirtIO based paravirtualization
+ - Lazy port-to-switch transfers in network switch
+ - Lookup based clock device (clkdev) framework
+ - Light-weight MMC/SD/SDIO framework
+ - Block device partitioning
+ - Faster Orphan VCPU preemption using arch_vcpu_preempt_orphan()
+ - Boot time or early parameters to hypervisor
+
+New Drivers:
+ - IMX serial port driver
+ - PL180 MMCI driver
+ - Generic SDHCI driver
+ - BCM2835 SDHCI driver
+ - I8042 keyboard and mouse controller driver
+
+New Emulators:
+ - VirtIO MMIO transport emulator
+ - VirtIO Network device emulator
+ - VirtIO Block device emulator
+ - VirtIO Console device emulator
+ - ARM11MPCore emulator
+
+MIPS 32-bit Port:
+ - The MIPS port is orphaned since long time and currently broken
+ - From this release, we remove MIPS port and hope that someone
+   will fix and add it back later
+
+ARM 32-bit Port:
+ - Added support for ARMv6 CPUs
+ - Added support for Realview-EB-MPCore
+ - Added support for Raspberry Pi (BCM2835 SOC)
+ - Added support for KZM (i.MX31 SOC)
+ - Added support for 3DS (i.MX25 SOC)
+ - Added Realview-EB-MPCore guest for ARMv6 host
+ - Added CPU specific quirks and errata implementations
+ - Fixed cache operations for ARMv5, ARMv6 and ARMv7 CPUs
+ - Implemented arch_vcpu_preempt_orphan() for Orphan VCPUs
+ - Added support for external DTB provided by bootloaders
+
+ARM 32-bit with VE Port:
+ - Added stubs and macros for adding VGIC assisted GIC emulation
+ - Implemented arch_vcpu_preempt_orphan() for Orphan VCPUs
+ - Added support for external DTB provided by bootloaders
+
+x86_64 Port:
+ - Fixed context switching
+ - Fixed HPET timer
+ - Fixed IOAPIC driver
+ - Populate device tree from ACPI tables
+ - Got Xvisor x86_64 prompt working on QEMU using AT-keyboard 
+   and text mode framebuffer
+

@@ -64,7 +64,7 @@ int __init arch_defterm_init(void)
 
 	/* find the device used as console */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_CHOOSEN_NODE_NAME);
+				   VMM_DEVTREE_CHOSEN_NODE_NAME);
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -87,10 +87,12 @@ int __init arch_defterm_init(void)
 		return rc;
 	}
 
-	/* retrieve clock rate */
-	val = vmm_devtree_attrval(node, VMM_DEVTREE_CLOCK_RATE_ATTR_NAME);
-	exynos4_defterm_inclk = (val) ? *val : EXYNOS4_DEFAULT_UART_INCLK;
-
+	/* retrieve clock frequency */
+	rc = vmm_devtree_clock_frequency(node, &exynos4_defterm_inclk);
+	if (rc) {
+		return rc;
+	}
+	
 	/* retrieve baud rate */
 	val = vmm_devtree_attrval(node, "baudrate");
 	exynos4_defterm_baud = (val) ? *val : EXYNOS4_DEFAULT_UART_BAUD;

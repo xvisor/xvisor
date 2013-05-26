@@ -25,21 +25,16 @@
 #include <arm_io.h>
 #include <arm_board.h>
 #include <arm_plat.h>
-#include <arm_config.h>
+#include <arm_string.h>
 #include <pic/gic.h>
 #include <serial/pl01x.h>
 
 void arm_board_reset(void)
 {
-#if 0 /* QEMU checks bit 8 which is wrong */
-        arm_writel(0x100,
-                   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
-#else
         arm_writel(0x0,
                    (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
-        arm_writel(REALVIEW_SYS_CTRL_RESET_PLLRESET,
+        arm_writel(0x04,
                    (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
-#endif
 }
 
 void arm_board_init(void)
@@ -51,7 +46,7 @@ void arm_board_init(void)
 
 char *arm_board_name(void)
 {
-	return "ARM Realview PB-A8";
+	return "ARM Realview-PB-A8";
 }
 
 u32 arm_board_ram_start(void)
@@ -69,9 +64,20 @@ u32 arm_board_linux_machine_type(void)
 	return 0x769;
 }
 
+void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
+{
+	arm_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
+	/* VirtIO Network Device */
+	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20100000:34");
+	/* VirtIO Block Device */
+	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20200000:35");
+	/* VirtIO Console Device */
+	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20300000:41");
+}
+
 u32 arm_board_flash_addr(void)
 {
-	return (u32)(REALVIEW_PBA8_FLASH0_BASE);
+	return (u32)(REALVIEW_FLASH0_BASE);
 }
 
 u32 arm_board_iosection_count(void)
@@ -88,13 +94,13 @@ physical_addr_t arm_board_iosection_addr(int num)
 		ret = REALVIEW_SYS_BASE;
 		break;
 	case 1:
-		ret = REALVIEW_PBA8_GIC_CPU_BASE;
+		ret = REALVIEW_GIC_CPU_BASE;
 		break;
 	case 2:
 	case 3:
 	case 4:
 	case 5:
-		ret = REALVIEW_PBA8_FLASH0_BASE + (num - 2) * 0x100000;
+		ret = REALVIEW_FLASH0_BASE + (num - 2) * 0x100000;
 		break;
 	default:
 		while (1);
@@ -116,12 +122,11 @@ int arm_board_pic_init(void)
 	/*
 	 * Initialize Generic Interrupt Controller
 	 */
-	rc = gic_dist_init(0, REALVIEW_PBA8_GIC_DIST_BASE, 
-							IRQ_PBA8_GIC_START);
+	rc = gic_dist_init(0, REALVIEW_GIC_DIST_BASE, IRQ_PBA8_GIC_START);
 	if (rc) {
 		return rc;
 	}
-	rc = gic_cpu_init(0, REALVIEW_PBA8_GIC_CPU_BASE);
+	rc = gic_cpu_init(0, REALVIEW_GIC_CPU_BASE);
 	if (rc) {
 		return rc;
 	}

@@ -24,7 +24,7 @@
 #ifndef __GENERIC_TIMER_H__
 #define __GENERIC_TIMER_H__
 
-#include <vmm_devtree.h>
+#include <vmm_types.h>
 
 enum {
 	GENERIC_TIMER_REG_FREQ,
@@ -55,9 +55,9 @@ enum gen_timer_type {
 	GENERIC_VIRTUAL_TIMER,
 };
 
-int generic_timer_clocksource_init(struct vmm_devtree_node *node); 
+int generic_timer_clocksource_init(void); 
 
-int generic_timer_clockchip_init(struct vmm_devtree_node *node);
+int generic_timer_clockchip_init(void);
 
 u64 generic_timer_wakeup_timeout(void);
 

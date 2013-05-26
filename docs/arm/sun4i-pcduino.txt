@@ -1,0 +1,6 @@
+
+The instructions for pcduino board (http://www.pcduino.com/) are 
+same as instructions for hackbery board.
+
+Please refer docs/arm/sun4i-hackberry.txt
+

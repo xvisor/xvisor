@@ -37,6 +37,11 @@ ARM_CPPFLAGS+=-DARM_ARCH_v5
 ARM_CFLAGS+=-march=armv5te $(ARM_CPPFLAGS)
 ARM_ASFLAGS+=-march=armv5te $(ARM_CPPFLAGS)
 endif
+ifeq ($(board_arch),v6)
+ARM_CPPFLAGS+=-DARM_ARCH_v6
+ARM_CFLAGS+=-march=armv6 $(ARM_CPPFLAGS)
+ARM_ASFLAGS+=-march=armv6 $(ARM_CPPFLAGS)
+endif
 ifeq ($(board_arch),v7)
 ARM_CPPFLAGS+=-DARM_ARCH_v7
 ARM_CFLAGS+=-march=armv7-a $(ARM_CPPFLAGS)
@@ -51,6 +56,11 @@ ARM_OBJCOPY=$(ARM_CROSS_COMPILE)objcopy
 ifeq ($(board_arch),v5)
 ARM_TEST_OBJS=$(obj_dir)/arm_entry_v5.o \
 		$(obj_dir)/arm_mmu_v5.o
+endif
+
+ifeq ($(board_arch),v6)
+ARM_TEST_OBJS=$(obj_dir)/arm_entry_v6.o \
+		$(obj_dir)/arm_mmu_v6.o
 endif
 
 ifeq ($(board_arch),v7)

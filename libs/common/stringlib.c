@@ -52,6 +52,18 @@ char *strncpy(char *dest, const char *src, size_t n)
 	return dest;
 }
 
+size_t strlcpy(char *dest, const char *src, size_t size)
+{
+	size_t ret = strlen(src);
+
+	if (size) {
+		size_t len = (ret >= size) ? size - 1 : ret;
+		memcpy(dest, src, len);
+		dest[len] = '\0';
+	}
+	return ret;
+}
+
 char *strcat(char *dest, const char *src)
 {
 	char *save = dest;
@@ -255,6 +267,11 @@ unsigned long long str2ulonglong(const char *s, unsigned int base)
 	return val;
 }
 
+unsigned long str2ulong(const char *s, unsigned int base)
+{
+	return str2ulonglong(s, base);
+}
+
 unsigned int str2uint(const char *s, unsigned int base)
 {
 	return str2ulonglong(s, base);
@@ -291,6 +308,35 @@ int str2ipaddr(unsigned char *ipaddr, const char *str)
 	return 1;
 }
 
+char *strpbrk(const char *cs, const char *ct)
+{
+	const char *sc1, *sc2;
+
+	for (sc1 = cs; *sc1 != '\0'; ++sc1) {
+		for (sc2 = ct; *sc2 != '\0'; ++sc2) {
+			if (*sc1 == *sc2)
+				return (char *)sc1;
+		}
+	}
+	return NULL;
+}
+
+char *strsep(char **s, const char *ct)
+{
+	char *sbegin = *s;
+	char *end;
+
+	if (sbegin == NULL)
+		return NULL;
+
+	end = strpbrk(sbegin, ct);
+	if (end)
+		*end++ = '\0';
+	*s = end;
+	return sbegin;
+}
+
+#if !defined(ARCH_HAS_MEMCPY)
 void *memcpy(void *dest, const void *src, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
@@ -313,6 +359,7 @@ void *memcpy(void *dest, const void *src, size_t count)
 
 	return dest;
 }
+#endif
 
 void *memcpy_toio(void *dest, const void *src, size_t count)
 {
@@ -403,6 +450,7 @@ void *memmove(void *dest, const void *src, size_t count)
 	return dest;
 }
 
+#if !defined(ARCH_HAS_MEMSET)
 void *memset(void *dest, int c, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
@@ -422,6 +470,7 @@ void *memset(void *dest, int c, size_t count)
 
 	return dest;
 }
+#endif
 
 void *memset_io(void *dest, int c, size_t count)
 {
@@ -469,3 +518,15 @@ void *memchr(const void *s, int c, size_t n)
 	return NULL;
 }
 
+/**
+ * skip_spaces - Removes leading whitespace from @str.
+ * @str: The string to be stripped.
+ *
+ * Returns a pointer to the first non-whitespace character in @str.
+ */
+char *skip_spaces(const char *str)
+{
+        while (isspace(*str))
+                ++str;
+	return (char *)str;
+}

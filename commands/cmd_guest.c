@@ -256,8 +256,8 @@ int cmd_guest_dumpmem(struct vmm_chardev *cdev, int id,
 				(u32)gphys_addr, (u32)(gphys_addr + len));
 		}
 		while (total_loaded < len) {
-			loaded = vmm_guest_physical_read(guest, gphys_addr,
-                                                        buf, BYTES_PER_LINE);
+			loaded = vmm_guest_memory_read(guest, gphys_addr,
+                                                       buf, BYTES_PER_LINE);
 			if (loaded != BYTES_PER_LINE)
 				break;
 

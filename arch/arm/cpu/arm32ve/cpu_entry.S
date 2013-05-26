@@ -24,25 +24,53 @@
 #include <cpu_defines.h>
 
 	/* 
-	 * Xvisor could be loaded any where in memory by boot loaders.
+	 * _start: Primary CPU startup code
+	 * _start_secondary: Secondary CPU startup code
+	 *
+	 * Note: Xvisor could be loaded any where in memory by boot loaders.
 	 * The _start ensures that Xvisor exectues from intended
 	 * base address provided at compile time.
 	 */
 	.section .entry, "ax", %progbits
 	.globl _start
+	.globl _start_secondary
 _start:
-	/*
-	 * r4 -> load start
+	/* r4 -> load start
 	 * r5 -> load end
 	 * r6 -> execution start
 	 * r7 -> execution end
-	 * r2 -> code size
 	 */
 	add	r4, pc, #-0x8
 	ldr	r6, __exec_start
 	ldr	r7, __exec_end
-	sub	r2, r7, r6
-	add	r5, r4, r2
+	sub	r3, r7, r6
+	add	r5, r4, r3
+
+	/* Save boot reg0 (i.e. r0) */
+	ldr	r3, __boot_reg0
+	sub	r3, r3, r6
+	add	r3, r3, r4
+	str	r0, [r3]
+
+	/* Save boot reg1 (i.e. r1) */
+	ldr	r3, __boot_reg1
+	sub	r3, r3, r6
+	add	r3, r3, r4
+	str	r1, [r3]
+
+	/* Save boot reg2 (i.e. r2) */
+	ldr	r3, __boot_reg2
+	sub	r3, r3, r6
+	add	r3, r3, r4
+	str	r2, [r3]
+
+	/* Ensure that we are in hypervisor mode */
+	mrs	r0, cpsr_all
+	and	r0, r0, #(CPSR_MODE_MASK)
+	cmp	r0, #(CPSR_MODE_HYPERVISOR)
+	blne	_start_hang
+
+	/* Save load start and load end addresses */
 	ldr	r0, __load_start
 	sub	r0, r0, r6
 	add	r0, r0, r4
@@ -51,31 +79,86 @@ _start:
 	sub	r0, r0, r6
 	add	r0, r0, r4
 	str	r5, [r0]
-	/*
-	 * Hang if execution start is not 4 KB aligned
-	 */
+
+	/* Hang if execution start is not 4 KB aligned */
 	mov	r0, r6
 	bfc	r0, #0, #12
 	cmp	r0, r6
 	blt	_start_hang
-	/*
-	 * Hang if execution end is not 4 KB aligned
-	 */
+
+	/* Hang if execution end is not 4 KB aligned */
 	mov	r0, r7
 	bfc	r0, #0, #12
 	cmp	r0, r7
 	blt	_start_hang
-	/*
-	 * Relocate code if load start is not 4 KB aligned
-	 */
+
+	/* Zero-out bss section */
+	mov	r0, #0
+	ldr	r1, __bss_start
+	sub	r1, r1, r6
+	add	r1, r1, r4
+	ldr	r2, __bss_end
+	sub	r2, r2, r6
+	add	r2, r2, r4
+_bss_zero:
+	str	r0, [r1], #4
+	cmp	r1, r2
+	blt	_bss_zero
+
+	/* Determine if a valid external dtb is provided */
+	/* Get DTB address */
+	ldr     r3, __boot_reg2
+	sub     r3, r3, r6
+	add     r3, r3, r4
+	ldr     r2, [r3]
+
+	/* First check for 4B alignment */
+	tst	r2, #0x3
+	bne	align_4k_boundary
+
+	/* Now check for FDT_MAGIC */
+	ldr	r0, [r2]
+	ldr	r1, __fdt_magic
+	cmp	r0, r1
+	bne	align_4k_boundary
+
+	/* Now get the dtb total-size */
+	ldrb	r0, [r2, #4]
+	ldrb	r1, [r2, #5]
+	add	r0, r1, r0, lsl #8
+	ldrb	r1, [r2, #6]
+	add	r0, r1, r0, lsl #8
+	ldrb	r1, [r2, #7]
+	add	r0, r1, r0, lsl #8
+
+	/* Compare with max supported dtb size */
+	ldr	r1, __max_dtb_size
+	cmp	r0, r1
+	bgt	align_4k_boundary
+
+	/* Overwrite the built-in fdt with the one passed */
+	ldr	r1, __builtin_dtb
+	sub	r1, r1, r6
+	add	r1, r1, r4
+
+	/* r0 = dtb total size */
+	/* r1 = builtin_dtb load-address */
+	/* r2 = passed dtb address */
+
+dtb_save_loop:
+	ldr	r3, [r2], #4
+	str	r3, [r1], #4
+	subs	r0, r0, #4
+	bgt	dtb_save_loop
+
+align_4k_boundary:
+	/* Relocate code if load start is not 4 KB aligned */
 	mov	r0, r4
 	bfc	r0, #0, #12
 	cmp	r0, r4
 	beq	_start_mmu_init
 _start_relocate:
-	/*
-	 * Relocate copy function at end after load end address
-	 */
+	/* Relocate copy function at end after load end address */
 	ldr	r0, __copy_start
 	ldr	r1, __copy_end
 	sub	r2, r1, r0
@@ -83,9 +166,7 @@ _start_relocate:
 	add	r0, r0, r4
 	mov	r1, r5
 	bl	_copy
-	/*
-	 * Use newly relocated copy function to relocate entire code
-	 */
+	/* Use newly relocated copy function to relocate entire code */
 	mov	r0, r4
 	mov	r1, r5
 	sub	r2, r5, r4
@@ -97,8 +178,7 @@ _start_nextpc1:
 	sub	lr, lr, r4
 	add	lr, lr, r1
 	bx	r5
-	/*
-	 * Update load start and load end
+	/* Update load start and load end
 	 * r4 -> new load start
 	 * r5 -> new load end
 	 */
@@ -115,14 +195,9 @@ _start_nextpc1:
 	sub	r0, r0, r6
 	add	r0, r0, r4
 	str	r5, [r0]
+
 _start_mmu_init:
-	/*
-	 * Enable hypervisor mode
-	 */
-	bl	_enable_hvc
-	/*
-	 * Setup initial TTBL using C code and a temporary stack
-	 */
+	/* Setup initial TTBL using C code and a temporary stack */
 	ldr	sp, __hvc_stack_end
 	sub	sp, sp, r6
 	add	sp, sp, r4
@@ -131,25 +206,90 @@ _start_mmu_init:
 	mov	r2, r6
 	mov	r3, r7
 	bl	_setup_initial_ttbl
+	ldr	r0, __httbr_set
+	sub	r0, r0, r6
+	add	r0, r0, r4
+	str	r0, __httbr_set
+
 	/*
-	 * Setup Hypervisor System Control Register
+	 * Secondary CPU startup code 
+	 *
+	 * Note: From this point primary CPU startup is same as secondary CPU
 	 */
-	ldr	r1, __hsctlr_mmu_val
-	ldr	r2, __hsctlr_mmu_clear
+_start_secondary:
+	/* Ensure that we are in hypervisor mode */
+	mrs	r0, cpsr_all
+	and	r0, r0, #(CPSR_MODE_MASK)
+	cmp	r0, #(CPSR_MODE_HYPERVISOR)
+	blne	_start_hang
+	/* Setup Hypervisor MAIR0 & MAIR1 */
+	ldr	r0, __hmair0_set
+	mcr     p15, 4, r0, c10, c2, 0
+	ldr	r0, __hmair1_set
+	mcr     p15, 4, r0, c10, c2, 1
+	/* Setup Hypervisor Translation Control Register */
+	ldr	r1, __htcr_set
+	ldr	r2, __htcr_clear
+	mrc     p15, 4, r3, c2, c0, 2
+	and	r3, r3, r2
+	orr	r3, r3, r1
+	mcr     p15, 4, r3, c2, c0, 2
+	/* Setup Hypervisor Translation Base Register */
+	ldr	r0, __httbr_set
+	mov	r1, #0x0
+	mcrr     p15, 4, r0, r1, c2
+	/* Setup Hypervisor Stage2 Translation Control Register */
+	ldr	r1, __vtcr_set
+	ldr	r2, __vtcr_clear
+	mrc     p15, 4, r3, c2, c1, 2
+	and	r3, r3, r2
+	orr	r3, r3, r1
+	mcr     p15, 4, r3, c2, c1, 2
+	/* Setup Hypervisor System Control Register */
+	ldr	r1, __hsctlr_set
+	ldr	r2, __hsctlr_clear
 	mrc     p15, 4, r3, c1, c0, 0
 	and	r3, r3, r2
 	orr	r3, r3, r1
 	mcr     p15, 4, r3, c1, c0, 0
-	/*
-	 * Jump to reset code
-	 */
+	/* Jump to reset code */
 	ldr	pc, __reset
+
 _start_hang:
 	b	.
-__hsctlr_mmu_clear:
+
+#define FDT_MAGIC	0xedfe0dd0	/* 0xd00dfeed in big-endian */
+
+__fdt_magic:
+	.word FDT_MAGIC
+__builtin_dtb:
+	.word dt_blob_start
+__max_dtb_size:
+	.word CONFIG_ARM_MAX_DTB_SIZE
+__hmair0_set:
+	.word (HMAIR0_INITVAL)
+__hmair1_set:
+	.word (HMAIR1_INITVAL)
+__htcr_clear:
+	.word ~(HTCR_T0SZ_MASK | HTCR_ORGN0_MASK | HTCR_IRGN0_MASK)
+__htcr_set:
+	.word ((0x3 << HTCR_ORGN0_SHIFT) | (0x3 << HTCR_IRGN0_SHIFT))
+__httbr_set:
+	.word def_ttbl
+__vtcr_clear:
+	.word ~(0x0)
+__vtcr_set:
+	.word ((0x1 << VTCR_SL0_SHIFT) | (0x3 << VTCR_ORGN0_SHIFT) | (0x3 << VTCR_IRGN0_SHIFT))
+__hsctlr_clear:
 	.word ~(HSCTLR_A_MASK)
-__hsctlr_mmu_val:
+__hsctlr_set:
 	.word (HSCTLR_M_MASK | HSCTLR_C_MASK | HSCTLR_I_MASK)
+__boot_reg0:
+	.word _boot_reg0
+__boot_reg1:
+	.word _boot_reg1
+__boot_reg2:
+	.word _boot_reg2
 __exec_start:
 	.word _code_start
 __exec_end:
@@ -158,10 +298,35 @@ __load_start:
 	.word _load_start
 __load_end:
 	.word _load_end
+__bss_start:
+	.word _bss_start
+__bss_end:
+	.word _bss_end
 __copy_start:
 	.word _copy
 __copy_end:
 	.word _copy_end
+
+	/*
+	 * Boot register 0 passed by bootloader
+	 */
+	.globl _boot_reg0
+_boot_reg0:
+	.word 0x0
+
+	/*
+	 * Boot register 1 passed by bootloader
+	 */
+	.globl _boot_reg1
+_boot_reg1:
+	.word 0x0
+
+	/*
+	 * Boot register 2 passed by bootloader
+	 */
+	.globl _boot_reg2
+_boot_reg2:
+	.word 0x0
 
 	/* 
 	 * Load start address storage
@@ -209,80 +374,6 @@ _copy_done:
 	mov	r0, r2
 	bx	lr
 _copy_end:
-
-	/* 
-	 * Enable hypervisor mode.
-	 * Arguments:
-	 *  r4 -> load start
-	 *  r5 -> load end
-	 *  r6 -> execution start
-	 *  r7 -> execution end
-	 * Note: This function should be called before enabling MMU
-	 */
-	.section .entry, "ax", %progbits
-	.globl _enable_hvc
-_enable_hvc:
-	/* Save lr and jump to hvc_start */
-	mov	r12, lr
-	b	_enable_hvc_start
-	.balign	256
-_enable_hvc_tmon_table:
-	b	.
-	b	.
-	b	_enable_hvc_tmon
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-__enable_hvc_tmon_table:
-	.word _enable_hvc_tmon_table
-	.balign	256
-_enable_hvc_thyp_table:
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	_enable_hvc_thyp
-	b	.
-	b	.
-__enable_hvc_thyp_table:
-	.word _enable_hvc_thyp_table
-_enable_hvc_tmon:
-	/* Get secure configuration register */
-	mrc	p15, 0, r0, c1, c1, 0	
-	bic	r0, r0, #0x07f
-	mov	r1, #0x10
-	lsl	r1, r1, #4
-	orr	r1, r1, #0x1
-	orr	r0, r0, r1
-	mcr	p15, 0, r0, c1, c1, 0
-	/* Get temp hypervisor vector base address */
-	ldr	r0, __enable_hvc_thyp_table
-	sub	r0, r0, r6
-	add	r0, r0, r4
-	mcr	p15, 4, r0, c12, c0, 0
-	movs	pc, lr
-_enable_hvc_thyp:
-	/* Yeppie! in hypervisor mode */
-	mrs	r0, cpsr_all
-	msr	spsr_hyp, r0
-	msr	elr_hyp, r12
-	eret
-_enable_hvc_start:
-	/* Get temp monitor vector base address */
-	ldr	r0, __enable_hvc_tmon_table
-	sub	r0, r0, r6
-	add	r0, r0, r4
-	/* Set temp monitor vector base address */
-	mcr	p15, 0, r0, c12, c0, 1
-	/* Call temp monitor mode code */
-	smc	#0
-	/* Call temp hypervisor mode code */
-	hvc	#0
-	/* Hang! Not supposed to reach here */
-	b	.
 
 	/* 
 	 * Exception vector start.
@@ -354,6 +445,13 @@ _reset:
 	msr	cpsr_cxsf, r0
 	/* Set Hypervisor Mode Stack */
 	ldr	sp, __hvc_stack_end
+#ifdef CONFIG_SMP
+	mrc     p15, 0, r0, c0, c0, 5
+	ands	r0, r0, #0xFF
+	mov	r1, #CONFIG_IRQ_STACK_SIZE
+	mul	r1, r1, r0
+	sub	sp, sp, r1
+#endif
 	/* Initial Hypervisor Configuration */
 	ldr	r1, __hcr_initial_set
 	ldr	r2, __hcr_initial_clear

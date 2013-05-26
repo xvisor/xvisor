@@ -25,6 +25,7 @@
 
 #include <vmm_types.h>
 #include <arch_regs.h>
+#include <cpu_asm_macros.h>
 
 /* 8259A interrupt controller ports. */
 #define INT_CTL         0x20	/* I/O port for interrupt controller */
@@ -39,6 +40,7 @@
 /* Hardware interrupt numbers. */
 #define NR_GATES		256
 #define NR_IRQ_VECTORS		NR_GATES
+#define USER_DEFINED_IRQ_BASE	32
 
 /* Interrupt Descriptor Table */
 /* Segment Selector and Offset (SSO) */
@@ -178,27 +180,26 @@ struct tss64_desc {
 } __packed;
 
 /* Interrupt handlers. */
-extern void _irq0(void);
-extern void _irq1(void);
-extern void _irq2(void);
-extern void _irq3(void);
-extern void _irq4(void);
-extern void _irq5(void);
-extern void _irq6(void);
-extern void _irq7(void);
-extern void _irq8(void);
-extern void _irq9(void);
-extern void _irq10(void);
-extern void _irq11(void);
-extern void _irq12(void);
-extern void _irq13(void);
-extern void _irq14(void);
-extern void _irq16(void);
-extern void _irq17(void);
-extern void _irq18(void);
-extern void _irq19(void);
-extern void _irq128(void);
-extern void _generic_handler(void);
+extern void _exception_div_error(void);
+extern void _exception_debug(void);
+extern void _exception_bp(void);
+extern void _exception_ovf(void);
+extern void _exception_bounds(void);
+extern void _exception_inval_opc(void);
+extern void _exception_no_dev(void);
+extern void _exception_double_fault(void);
+extern void _exception_coproc_overrun(void);
+extern void _exception_inval_tss(void);
+extern void _exception_missing_seg(void);
+extern void _exception_missing_stack(void);
+extern void _exception_gpf(void);
+extern void _exception_coproc_err(void);
+extern void _exception_align_check(void);
+extern void _exception_machine_check(void);
+extern void _exception_simd_err(void);
+extern void _exception_nmi(void);
+extern void _exception_page_fault(void);
 extern void __IRQ_32(void);
+extern void _generic_handler(void);
 
 #endif /* _CPU_INTERRYPTS_H__ */

@@ -240,7 +240,7 @@ static int pl031_stv2_set_alarm(struct rtc_device *rd, struct rtc_wkalrm *alarm)
 	return ret;
 }
 
-static irqreturn_t pl031_irq_handler(u32 irq_no, arch_regs_t *regs, void *dev)
+static irqreturn_t pl031_irq_handler(int irq_no, void *dev)
 {
 	struct pl031_local *ldata = (struct pl031_local *)dev;
 	unsigned long rtcmis;
@@ -321,11 +321,10 @@ static int pl031_set_alarm(struct rtc_device *rd, struct rtc_wkalrm *alarm)
 }
 
 static int pl031_driver_probe(struct vmm_device *dev,
-			      const struct vmm_devid *devid)
+			      const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 	u32 periphid;
-	const char *attr;
 	virtual_addr_t reg_base;
 	struct pl031_local *ldata;
 
@@ -344,12 +343,11 @@ static int pl031_driver_probe(struct vmm_device *dev,
 	ldata->hw_designer = amba_manf(dev);
 	ldata->hw_revision = amba_rev(dev);
 
-	attr = vmm_devtree_attrval(dev->node, "irq");
-	if (!attr) {
+	rc = vmm_devtree_irq_get(dev->node, &ldata->irq, 0);
+	if (rc) {
 		rc = VMM_EFAIL;
 		goto free_reg;
 	}
-	ldata->irq = *((u32 *) attr);
 	if ((rc = vmm_host_irq_register(ldata->irq, dev->node->name,
 					pl031_irq_handler, ldata))) {
 		goto free_reg;
@@ -419,7 +417,7 @@ static int pl031_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devid pl031_devid_table[] = {
+static struct vmm_devtree_nodeid pl031_devid_table[] = {
 	{.type = "rtc",.compatible = "arm,pl031"},
 	{ /* end of list */ },
 };

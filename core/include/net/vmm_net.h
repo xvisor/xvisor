@@ -27,6 +27,8 @@
 
 #define	VMM_NET_CLASS_IPRIORITY		1 
 
+extern int vmm_mbufpool_init(void);
+extern void vmm_mbufpool_exit(void);
 extern int vmm_netswitch_init(void);
 extern void vmm_netswitch_exit(void);
 extern int vmm_netbridge_init(void);

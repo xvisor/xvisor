@@ -24,7 +24,10 @@
 #ifndef _ARCH_CONFIG_H__
 #define _ARCH_CONFIG_H__
 
-#define ARCH_HAS_PHYSICAL_READ
-#define ARCH_HAS_PHYSICAL_WRITE
+#define ARCH_HAS_MEMORY_READ
+#define ARCH_HAS_MEMORY_WRITE
+
+#define ARCH_HAS_MEMCPY
+#define ARCH_HAS_MEMSET
 
 #endif /* _ARCH_CONFIG_H__ */

@@ -26,6 +26,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_percpu.h>
 #include <arch_sections.h>
+#include <libs/stringlib.h>
 
 #ifdef CONFIG_SMP
 
@@ -34,29 +35,26 @@ virtual_addr_t __percpu_offset[CONFIG_CPU_COUNT];
 
 int __init vmm_percpu_init(void)
 {
-	u32 cpu, pgcount, pgflags;
+	u32 cpu, pgcount;
 	virtual_addr_t base = arch_percpu_vaddr();
 	virtual_size_t size = arch_percpu_size();
 
 	size = VMM_ROUNDUP2_PAGE_SIZE(size);
 	pgcount = size / VMM_PAGE_SIZE;
-	pgflags = 0x0;
-	pgflags |= VMM_MEMORY_READABLE; 
-	pgflags |= VMM_MEMORY_WRITEABLE; 
-	pgflags |= VMM_MEMORY_CACHEABLE;
-	pgflags |= VMM_MEMORY_BUFFERABLE;
 
 	__percpu_vaddr[0] = base;
 	__percpu_offset[0] = 0;
-	for_each_possible_cpu(cpu) {
+	for(cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
 		if (cpu == 0) {
 			continue;
 		}
-		__percpu_vaddr[cpu] = vmm_host_alloc_pages(pgcount, pgflags);
+		__percpu_vaddr[cpu] = vmm_host_alloc_pages(pgcount, 
+						VMM_MEMORY_FLAGS_NORMAL);
 		if (!__percpu_vaddr[cpu]) {
 			return VMM_ENOMEM;
 		}
 		__percpu_offset[cpu] = __percpu_vaddr[cpu] - base;
+		memset((void *)__percpu_vaddr[cpu], 0, VMM_PAGE_SIZE * pgcount);
 	}
 
 	return VMM_OK;

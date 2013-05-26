@@ -27,7 +27,7 @@
 #include <exynos/regs-mct.h>
 
 int exynos4_clocksource_init(virtual_addr_t base, const char *name, int rating,
-			     u32 freq_hz, u32 shift);
+			     u32 freq_hz);
 
 int exynos4_clockchip_init(virtual_addr_t base, u32 hirq, const char *name,
 			   int rating, u32 freq_hz, u32 target_cpu);

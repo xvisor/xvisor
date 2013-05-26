@@ -25,3 +25,4 @@ drivers-objs-$(CONFIG_SERIAL_8250_UART)+= serial/8250-uart.o
 drivers-objs-$(CONFIG_SERIAL_OMAP_UART)+= serial/omap-uart.o
 drivers-objs-$(CONFIG_SERIAL_PL01X)+= serial/pl011.o
 drivers-objs-$(CONFIG_SERIAL_SAMSUNG)+= serial/samsung-uart.o
+drivers-objs-$(CONFIG_SERIAL_IMX)+= serial/imx-uart.o

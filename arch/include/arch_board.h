@@ -23,20 +23,16 @@
 #ifndef _ARCH_BOARD_H__
 #define _ARCH_BOARD_H__
 
-#include <vmm_types.h>
-#include <vmm_devtree.h>
-
-/** RAM related functions required by VMM core */
-int arch_board_ram_start(physical_addr_t * addr);
-int arch_board_ram_size(physical_size_t * size);
-
-/** Device tree related function required by VMM core */
-int arch_board_devtree_populate(struct vmm_devtree_node ** root);
-
-/** Board specific functions */
+/** Reset board */
 int arch_board_reset(void);
+
+/** Power-off or shutdown board */
 int arch_board_shutdown(void);
+
+/** Board early init */
 int arch_board_early_init(void);
+
+/** Board final init */
 int arch_board_final_init(void);
 
 #endif

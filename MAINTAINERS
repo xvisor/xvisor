@@ -89,13 +89,6 @@ L:	xvisor-devel@googlegroups.com
 F:	core/include/vmm_profiler.h
 F:	core/vmm_profiler.c
 
-LINK-LIST APIs
-P:	Himanshu Chauhan
-M:	hschauhan@nulltrace.org
-S:	Maintained
-L:	xvisor-devel@googlegroups.com
-F:	libs/common/list.h
-
 MANAGMENT TERMINAL DAEMON
 P:	Himanshu Chauhan
 M:	hschauhan@nulltrace.org
@@ -114,13 +107,6 @@ F:	core/mm/*
 F:	core/include/mm/*
 F:	core/include/vmm_heap.h
 
-MIPS
-P:	Himanshu Chauhan
-M:	hschauhan@nulltrace.org
-S:	Maintained
-L:	xvisor-devel@googlegroups.com
-F:	arch/mips/*
-
 INTEL64(x86-64)
 P:	Himanshu Chauhan
 M:	hschauhan@nulltrace.org
@@ -129,16 +115,6 @@ M:	thjagad@gmail.com
 S:	Maintained
 L:	xvisor-devel@googlegroups.com
 F:	arch/x86/*
-
-RING BUFFER APIs
-P:	Himanshu Chauhan
-M:	hschauhan@nulltrace.org
-P:	Anup Patel
-M:	anup@brainfault.org
-S:	Maintained
-L:	xvisor-devel@googlegroups.com
-F:	core/include/vmm_ringbuf.h
-F:	core/vmm_ringbuf.c
 
 THE REST
 P:	Anup Patel

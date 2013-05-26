@@ -31,6 +31,7 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_emulate.h>
+#include <arm_features.h>
 
 /**
  * A conditional instruction can trap, even though its condition was
@@ -157,7 +158,7 @@ int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu,
 	}
 
 	/* Estimate wakeup timeout if possible */
-	if(arm_feature(vcpu, ARM_FEATURE_GENTIMER)) {
+	if(arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 		timeout_nsecs = generic_timer_wakeup_timeout();
 	}
 

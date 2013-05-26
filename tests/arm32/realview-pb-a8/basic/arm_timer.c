@@ -24,7 +24,6 @@
 #include <arm_io.h>
 #include <arm_irq.h>
 #include <arm_math.h>
-#include <arm_config.h>
 #include <arm_plat.h>
 #include <arm_timer.h>
 
@@ -59,28 +58,28 @@ void arm_timer_enable(void)
 {
 	u32 ctrl;
 
-	ctrl = arm_readl((void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
+	ctrl = arm_readl((void *)(REALVIEW_TIMER0_1_BASE + TIMER_CTRL));
 	ctrl |= TIMER_CTRL_ENABLE;
-	arm_writel(ctrl, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
+	arm_writel(ctrl, (void *)(REALVIEW_TIMER0_1_BASE + TIMER_CTRL));
 }
 
 void arm_timer_disable(void)
 {
 	u32 ctrl;
 
-	ctrl = arm_readl((void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
+	ctrl = arm_readl((void *)(REALVIEW_TIMER0_1_BASE + TIMER_CTRL));
 	ctrl &= ~TIMER_CTRL_ENABLE;
-	arm_writel(ctrl, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
+	arm_writel(ctrl, (void *)(REALVIEW_TIMER0_1_BASE + TIMER_CTRL));
 }
 
 void arm_timer_change_period(u32 usec)
 {
-        arm_writel(usec, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_LOAD));
+        arm_writel(usec, (void *)(REALVIEW_TIMER0_1_BASE + TIMER_LOAD));
 }
 
 void arm_timer_clearirq(void)
 {
-	arm_writel(1, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_INTCLR));
+	arm_writel(1, (void *)(REALVIEW_TIMER0_1_BASE + TIMER_INTCLR));
 }
 
 u64 arm_timer_irqcount(void)
@@ -96,7 +95,7 @@ u64 arm_timer_irqdelay(void)
 u64 arm_timer_timestamp(void)
 {
 	u64 timer_counter_now, timer_counter_delta, offset;
-	timer_counter_now = ~arm_readl((void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_VALUE));
+	timer_counter_now = ~arm_readl((void *)(REALVIEW_TIMER2_3_BASE + 0x20 + TIMER_VALUE));
 	timer_counter_delta = (timer_counter_now - timer_counter_last) & timer_counter_mask;
 	timer_counter_last = timer_counter_now;
 	offset = (timer_counter_delta * timer_counter_mult) >> timer_counter_shift;
@@ -150,17 +149,17 @@ int arm_timer_init(u32 usecs, u32 ensel)
 	arm_irq_register(IRQ_PBA8_TIMER0_1, &arm_timer_irqhndl);
 
 	/* Setup Timer0 for generating irq */
-	val = arm_readl((void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
+	val = arm_readl((void *)(REALVIEW_TIMER0_1_BASE + TIMER_CTRL));
 	val &= ~TIMER_CTRL_ENABLE;
 	val |= (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE);
-	arm_writel(val, (void *)(REALVIEW_PBA8_TIMER0_1_BASE + TIMER_CTRL));
+	arm_writel(val, (void *)(REALVIEW_TIMER0_1_BASE + TIMER_CTRL));
 	arm_timer_change_period(usecs);
 
 	/* Setup Timer3 for free running counter */
-	arm_writel(0x0, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_CTRL));
-	arm_writel(0xFFFFFFFF, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_LOAD));
+	arm_writel(0x0, (void *)(REALVIEW_TIMER2_3_BASE + 0x20 + TIMER_CTRL));
+	arm_writel(0xFFFFFFFF, (void *)(REALVIEW_TIMER2_3_BASE + 0x20 + TIMER_LOAD));
 	val = (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_ENABLE);
-	arm_writel(val, (void *)(REALVIEW_PBA8_TIMER2_3_BASE + 0x20 + TIMER_CTRL));
+	arm_writel(val, (void *)(REALVIEW_TIMER2_3_BASE + 0x20 + TIMER_CTRL));
 
 	return 0;
 }

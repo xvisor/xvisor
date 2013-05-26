@@ -36,21 +36,7 @@
 #define	MODULE_INIT			NULL
 #define	MODULE_EXIT			NULL
 
-#define VTEMU_KEYFLAG_LEFTCTRL		0x00000001
-#define VTEMU_KEYFLAG_RIGHTCTRL		0x00000002
-#define VTEMU_KEYFLAG_LEFTALT		0x00000004
-#define VTEMU_KEYFLAG_RIGHTALT		0x00000008
-#define VTEMU_KEYFLAG_LEFTSHIFT		0x00000010
-#define VTEMU_KEYFLAG_RIGHTSHIFT	0x00000020
-#define VTEMU_KEYFLAG_CAPSLOCK		0x00000040
-#define VTEMU_KEYFLAG_NUMLOCK		0x00000080
-#define VTEMU_KEYFLAG_SCROLLLOCK	0x00000100
-
-#define VTEMU_KEYFLAG_LOCKS		(VTEMU_KEYFLAG_CAPSLOCK | \
-					 VTEMU_KEYFLAG_NUMLOCK | \
-					 VTEMU_KEYFLAG_SCROLLLOCK)
-
-static u32 vtemu_key2flags(unsigned int code)
+u32 vtemu_key2flags(unsigned int code)
 {
 	u32 ret = 0;
 
@@ -86,9 +72,10 @@ static u32 vtemu_key2flags(unsigned int code)
 
 	return ret;
 }
+VMM_EXPORT_SYMBOL(vtemu_key2flags);
 
 /* FIXME: */
-static int vtemu_key2str(unsigned int code, u32 flags, char *out)
+int vtemu_key2str(unsigned int code, u32 flags, char *out)
 {
 	bool uc = FALSE;
 
@@ -332,32 +319,18 @@ static int vtemu_key2str(unsigned int code, u32 flags, char *out)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vtemu_key2str);
 
 static int vtemu_add_input(struct vtemu *v, char *str)
 {
 	int i;
-	irq_flags_t flags;
 
-	/* Save input key string */
+	/* Add ascii characters to input fifo */
 	i = 0;
-	vmm_spin_lock_irqsave(&v->in_lock, flags);
 	while(str[i] != '\0') {
-		if (v->in_count == VTEMU_INBUF_SIZE) {
-			v->in_head++;
-			if (v->in_head == VTEMU_INBUF_SIZE) {
-				v->in_head = 0;
-			}
-			v->in_count--;
-		}
-		v->in_buf[v->in_tail] = str[i];
-		v->in_tail++;
-		if (v->in_tail == VTEMU_INBUF_SIZE) {
-			v->in_tail = 0;
-		}
-		v->in_count++;
+		fifo_enqueue(v->in_fifo, &str[i], TRUE);
 		i++;
 	}
-	vmm_spin_unlock_irqrestore(&v->in_lock, flags);
 
 	/* Signal completion if we added characters to input buffer */
 	if (str[0] != '\0') {
@@ -409,33 +382,23 @@ static u32 vtemu_read(struct vmm_chardev *cdev,
 			u8 *dest, u32 len, bool sleep)
 {
 	u32 i;
-	irq_flags_t flags;
 	struct vtemu *v = cdev->priv;
 
 	if (!v) {
 		return 0;
 	}
 
-	vmm_spin_lock_irqsave(&v->in_lock, flags);
 	for (i = 0; i < len; i++) {
-		if (!v->in_count) {
+		if (fifo_isempty(v->in_fifo)) {
 			if (sleep) {
-				vmm_spin_unlock_irqrestore(&v->in_lock, flags);
 				REINIT_COMPLETION(&v->in_done);
 				vmm_completion_wait(&v->in_done);
-				vmm_spin_lock_irqsave(&v->in_lock, flags);
 			} else {
 				break;
 			}
 		}
-		dest[i] = v->in_buf[v->in_head];
-		v->in_head++;
-		if (v->in_head == VTEMU_INBUF_SIZE) {
-			v->in_head = 0;
-		}
-		v->in_count--;
+		fifo_dequeue(v->in_fifo, &dest[i]);
 	}
-	vmm_spin_unlock_irqrestore(&v->in_lock, flags);
 
 	return i;
 }
@@ -1012,19 +975,19 @@ struct vtemu *vtemu_create(const char *name,
 	/* Find video mode */
 	v->mode = vmm_fb_find_best_mode(&v->info->var, &v->info->modelist);
 	if (!v->mode) {
-		goto release_fb;
+		goto close_fb;
 	}
 
 	/* Set video mode */
 	if (v->info->fbops->fb_set_par(v->info)) {
-		goto release_fb;
+		goto close_fb;
 	}
 
 	/* Find color map */
 	if (v->info->fix.visual == FB_VISUAL_TRUECOLOR ||
 	    v->info->fix.visual == FB_VISUAL_DIRECTCOLOR) {
 		if (vmm_fb_alloc_cmap(&v->cmap, 8, 0)) {
-			goto release_fb;
+			goto close_fb;
 		}
 		v->cmap.red[VTEMU_COLOR_BLACK] = 0x0000;
 		v->cmap.green[VTEMU_COLOR_BLACK] = 0x0000;
@@ -1120,11 +1083,11 @@ struct vtemu *vtemu_create(const char *name,
 	v->esc_attrib[0] = 0;
 
 	/* Setup input data */
-	v->in_head = 0;
-	v->in_tail = 0;
-	v->in_count = 0;
 	v->in_key_flags = 0;
-	INIT_SPIN_LOCK(&v->in_lock);
+	v->in_fifo = fifo_alloc(sizeof(u8), VTEMU_INBUF_SIZE);
+	if (!v->in_fifo) {
+		goto free_cursor_bkp;
+	}
 	INIT_COMPLETION(&v->in_done);
 
 	/* Draw cursor */
@@ -1132,12 +1095,14 @@ struct vtemu *vtemu_create(const char *name,
 
 	return v;
 
+free_cursor_bkp:
+	vmm_free(v->cursor_bkp);
 free_cells:
 	vmm_free(v->cell);
 dealloc_cmap:
 	vmm_fb_dealloc_cmap(&v->cmap);
-release_fb:
-	vmm_fb_release(v->info);
+close_fb:
+	vmm_fb_close(v->info);
 discon_ihndl:
 	vmm_input_disconnect_handler(&v->hndl);
 unreg_ihndl:
@@ -1156,10 +1121,11 @@ int vtemu_destroy(struct vtemu *v)
 		return VMM_EFAIL;
 	}
 
+	fifo_free(v->in_fifo);
 	vmm_free(v->cursor_bkp);
 	vmm_free(v->cell);
 	vmm_fb_dealloc_cmap(&v->cmap);
-	rc  = vmm_fb_release(v->info);
+	rc = vmm_fb_close(v->info);
 	rc1 = vmm_chardev_unregister(&v->cdev);
 	rc2 = vmm_input_disconnect_handler(&v->hndl);
 	rc3 = vmm_input_unregister_handler(&v->hndl);

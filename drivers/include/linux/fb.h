@@ -9,6 +9,8 @@
 #define fb_var_screeninfo		vmm_fb_var_screeninfo
 #define fb_videomode			vmm_fb_videomode
 #define fb_bitfield			vmm_fb_bitfield
+#define apertures_struct		vmm_apertures_struct
+#define aperture			vmm_aperture
 
 #define cfb_fillrect			vmm_cfb_fillrect
 #define cfb_copyarea			vmm_cfb_copyarea
@@ -18,6 +20,10 @@
 #define sys_copyarea			vmm_sys_copyarea
 #define sys_imageblit			vmm_sys_imageblit
 
+#define alloc_apertures			vmm_alloc_apertures
+#define	framebuffer_alloc		vmm_fb_alloc
+#define framebuffer_release		vmm_fb_release
+#define remove_conflicting_framebuffers	vmm_fb_remove_conflicting_framebuffers
 #define register_framebuffer		vmm_fb_register
 #define unregister_framebuffer		vmm_fb_unregister
 #define fb_set_var			vmm_fb_set_var

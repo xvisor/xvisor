@@ -110,11 +110,18 @@ static u64 aw_clksrc_read(struct vmm_clocksource *cs)
 	return (((u64)upper) << 32) | ((u64)lower);
 }
 
-int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
+int __init aw_timer_clocksource_init(void)
 {
 	int rc;
 	u32 tmp;
 	struct aw_clocksource *acs;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_find_compatible(NULL, NULL, 
+					   "allwinner,sunxi-timer");
+	if (!node) {
+		return VMM_ENODEV;
+	}
 
 	acs = vmm_zalloc(sizeof(struct aw_clocksource));
 	if (!acs) {
@@ -170,15 +177,14 @@ struct aw_clockchip {
 	struct vmm_clockchip clkchip;
 };
 
-static vmm_irq_return_t aw_clockchip_irq_handler(u32 irq_no, 
-						 arch_regs_t *regs, void *dev)
+static vmm_irq_return_t aw_clockchip_irq_handler(int irq_no, void *dev)
 {
 	struct aw_clockchip *acc = dev;
 
 	/* Clear pending irq */
 	writel((1 << acc->num), acc->base + AW_TMR_REG_IRQ_STAT);
 
-	acc->clkchip.event_handler(&acc->clkchip, regs);
+	acc->clkchip.event_handler(&acc->clkchip);
 
 	return VMM_IRQ_HANDLED;
 }
@@ -241,40 +247,19 @@ static int aw_clockchip_set_next_event(unsigned long next,
 	return VMM_OK;
 }
 
-static int aw_clockchip_expire(struct vmm_clockchip *cc)
-{
-	u32 i, ctrl;
-	struct aw_clockchip *acc = cc->priv;
-
-	/* Read timer control register */
-	ctrl = readl(acc->base + AW_TMR_REG_CTL(acc->off));
-
-	/* Disable timer and clear pending first */
-	ctrl &= ~TMRx_CTL_ENABLE;
-	writel(ctrl, acc->base + AW_TMR_REG_CTL(acc->off));
-
-	/* Set interval register */
-	writel(1, acc->base + AW_TMR_REG_INTV(acc->off));
-
-	/* Start timer */
-	ctrl |= (TMRx_CTL_ENABLE | TMRx_CTL_AUTORELOAD);
-	writel(ctrl, acc->base + AW_TMR_REG_CTL(acc->off));
-
-	/* Wait for timer to expire */
-	while (!(readl(acc->base + AW_TMR_REG_IRQ_STAT) & (1 << acc->num))) {
-		/* Relax CPU with ramdom delay */
-		for (i = 0; i < 100; i++) ;
-	}
-	
-	return VMM_OK;
-}
-
-int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
+int __cpuinit aw_timer_clockchip_init(void)
 {
 	int rc;
 	u32 hirq, tmp;
 	void *attrval;
 	struct aw_clockchip *acc;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_find_compatible(NULL, NULL, 
+					   "allwinner,sunxi-timer");
+	if (!node) {
+		return VMM_ENODEV;
+	}
 
 	acc = vmm_zalloc(sizeof(struct aw_clockchip));
 	if (!acc) {
@@ -291,12 +276,11 @@ int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 	acc->off = 0x10 + 0x10 * acc->num;
 
 	/* Read irq attribute */
-	attrval = vmm_devtree_attrval(node, "irq");
-	if (!attrval) {
+	rc = vmm_devtree_irq_get(node, &hirq, 0);
+	if (rc) {
 		vmm_free(acc);
-		return VMM_ENOTAVAIL;
+		return rc;
 	}
-	hirq = *((u32 *)attrval);
 
 	/* Map timer registers */
 	rc = vmm_devtree_regmap(node, &acc->base, 0);
@@ -336,7 +320,6 @@ int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 	acc->clkchip.max_delta_ns = vmm_clockchip_delta2ns((0x80000000), &acc->clkchip);
 	acc->clkchip.set_mode = &aw_clockchip_set_mode;
 	acc->clkchip.set_next_event = &aw_clockchip_set_next_event;
-	acc->clkchip.expire = &aw_clockchip_expire;
 	acc->clkchip.priv = acc;
 
 	/* Register interrupt handler */
@@ -402,9 +385,16 @@ int aw_timer_force_reset(void)
 	return VMM_OK;
 }
 
-int __init aw_timer_misc_init(struct vmm_devtree_node *node)
+int __init aw_timer_misc_init(void)
 {
 	int rc;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_find_compatible(NULL, NULL, 
+					   "allwinner,sunxi-timer");
+	if (!node) {
+		return VMM_ENODEV;
+	}
 
 	/* Map timer registers */
 	rc = vmm_devtree_regmap(node, &aw_base, 0);

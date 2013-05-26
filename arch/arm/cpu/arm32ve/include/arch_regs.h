@@ -26,66 +26,7 @@
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 #include <cpu_defines.h>
-#include <cpu_mmu.h>
 #include <generic_timer.h>
-
-/* CPUID related macors & defines */
-#define ARM_CPUID_ARM1026     0x4106a262
-#define ARM_CPUID_ARM926      0x41069265
-#define ARM_CPUID_ARM946      0x41059461
-#define ARM_CPUID_TI915T      0x54029152
-#define ARM_CPUID_TI925T      0x54029252
-#define ARM_CPUID_SA1100      0x4401A11B
-#define ARM_CPUID_SA1110      0x6901B119
-#define ARM_CPUID_PXA250      0x69052100
-#define ARM_CPUID_PXA255      0x69052d00
-#define ARM_CPUID_PXA260      0x69052903
-#define ARM_CPUID_PXA261      0x69052d05
-#define ARM_CPUID_PXA262      0x69052d06
-#define ARM_CPUID_PXA270      0x69054110
-#define ARM_CPUID_PXA270_A0   0x69054110
-#define ARM_CPUID_PXA270_A1   0x69054111
-#define ARM_CPUID_PXA270_B0   0x69054112
-#define ARM_CPUID_PXA270_B1   0x69054113
-#define ARM_CPUID_PXA270_C0   0x69054114
-#define ARM_CPUID_PXA270_C5   0x69054117
-#define ARM_CPUID_ARM1136     0x4117b363
-#define ARM_CPUID_ARM1136_R2  0x4107b362
-#define ARM_CPUID_ARM11MPCORE 0x410fb022
-#define ARM_CPUID_CORTEXA8    0x410fc080
-#define ARM_CPUID_CORTEXA9    0x410fc090
-#define ARM_CPUID_CORTEXA15   0x412fc0f1
-#define ARM_CPUID_CORTEXM3    0x410fc231
-#define ARM_CPUID_ANY         0xffffffff
-
-/* Feature related enumeration */
-enum arm_features {
-	ARM_FEATURE_VFP,
-	ARM_FEATURE_AUXCR,  /* Auxiliary control register.  */
-	ARM_FEATURE_XSCALE, /* Intel XScale extensions.  */
-	ARM_FEATURE_IWMMXT, /* Intel iwMMXt extension.  */
-	ARM_FEATURE_V6,
-	ARM_FEATURE_V6K,
-	ARM_FEATURE_V7,
-	ARM_FEATURE_THUMB2,
-	ARM_FEATURE_MPU,    /* Only has Memory Protection Unit, not full MMU.  */
-	ARM_FEATURE_VFP3,
-	ARM_FEATURE_VFP4,
-	ARM_FEATURE_VFP_FP16,
-	ARM_FEATURE_NEON,
-	ARM_FEATURE_DIV,
-	ARM_FEATURE_M, /* Microcontroller profile.  */
-	ARM_FEATURE_OMAPCP, /* OMAP specific CP15 ops handling.  */
-	ARM_FEATURE_THUMB2EE,
-	ARM_FEATURE_V7MP,    /* v7 Multiprocessing Extensions */
-	ARM_FEATURE_V4T,
-	ARM_FEATURE_V5,
-	ARM_FEATURE_STRONGARM,
-	ARM_FEATURE_VAPA, /* cp15 VA to PA lookups */
-	ARM_FEATURE_TRUSTZONE,
-	ARM_FEATURE_GENTIMER,	/* ARM generic timer extension */
-	ARM_FEATURE_LPAE,
-};
 
 struct arch_regs {
 	u32 cpsr; /* CPSR */
@@ -123,17 +64,29 @@ struct arm_priv {
 	/* Hypervisor System Trap Register */
 	u32 hstr;
 	/* Internal CPU feature flags. */
-	u32 features;
+	u64 features;
 	/* System control coprocessor (cp15) */
 	struct {
 		/* Coprocessor Registers */
 		u32 c0_cpuid;
 		u32 c0_cachetype;
+		u32 c0_pfr0;
+		u32 c0_pfr1;
+		u32 c0_dfr0;
+		u32 c0_afr0;
+		u32 c0_mmfr0;
+		u32 c0_mmfr1;
+		u32 c0_mmfr2;
+		u32 c0_mmfr3;
+		u32 c0_isar0;
+		u32 c0_isar1;
+		u32 c0_isar2;
+		u32 c0_isar3;
+		u32 c0_isar4;
+		u32 c0_isar5;
 		u32 c0_ccsid[16]; /* Cache size. */
 		u32 c0_clid; /* Cache level. */
 		u32 c0_cssel; /* Cache size selection. */
-		u32 c0_c1[8]; /* Feature registers. */
-		u32 c0_c2[8]; /* Instruction set registers. */
 		u32 c1_sctlr; /* System control register. */
 		u32 c1_cpacr; /* Coprocessor access register.  */
 		u32 c2_ttbr0; /* MMU translation table base 0. */
@@ -167,6 +120,11 @@ struct arm_priv {
 	} cp15;
 	/* Generic timer context */
 	struct generic_timer_context gentimer_context;
+	/* VGIC context */
+	bool vgic_avail;
+	void (*vgic_save)(void *vcpu_ptr);
+	void (*vgic_restore)(void *vcpu_ptr);
+	void *vgic_priv;
 } __attribute((packed));
 
 typedef struct arm_priv arm_priv_t;
@@ -185,8 +143,8 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
 
 #define arm_cpuid(vcpu) (arm_priv(vcpu)->cp15.c0_cpuid)
-#define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1 << (feat)))
-#define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1 << (feat)))
+#define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1ULL << (feat)))
+#define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1ULL << (feat)))
 
 /**
  *  Instruction emulation support macros
@@ -195,8 +153,33 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_cpsr(regs)		((regs)->cpsr)
 
 /**
- *  Generic timers support macro
+ *  Generic timers support macros
  */
 #define arm_gentimer_context(vcpu)	(&(arm_priv(vcpu)->gentimer_context))
+
+/**
+ *  VGIC support macros
+ */
+#define arm_vgic_setup(vcpu, __save_func, __restore_func, __priv) \
+				do { \
+					arm_priv(vcpu)->vgic_avail = TRUE; \
+					arm_priv(vcpu)->vgic_save = __save_func; \
+					arm_priv(vcpu)->vgic_restore = __restore_func; \
+					arm_priv(vcpu)->vgic_priv = __priv; \
+				} while (0)
+#define arm_vgic_cleanup(vcpu)	do { \
+					arm_priv(vcpu)->vgic_avail = FALSE; \
+					arm_priv(vcpu)->vgic_save = NULL; \
+					arm_priv(vcpu)->vgic_restore = NULL; \
+					arm_priv(vcpu)->vgic_priv = NULL; \
+				} while (0)
+#define arm_vgic_avail(vcpu)	(arm_priv(vcpu)->vgic_avail)
+#define arm_vgic_save(vcpu)	if (arm_vgic_avail(vcpu)) { \
+					arm_priv(vcpu)->vgic_save(vcpu); \
+				}
+#define arm_vgic_restore(vcpu)	if (arm_vgic_avail(vcpu)) { \
+					arm_priv(vcpu)->vgic_restore(vcpu); \
+				}
+#define arm_vgic_priv(vcpu)	(&(arm_priv(vcpu)->vgic_priv))
 
 #endif

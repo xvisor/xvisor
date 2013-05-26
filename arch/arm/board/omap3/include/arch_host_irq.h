@@ -24,6 +24,7 @@
 #define _ARCH_HOST_IRQ_H__
 
 #include <vmm_types.h>
+#include <vmm_devtree.h>
 #include <omap3_plat.h>
 #include <omap/intc.h>
 
@@ -38,7 +39,21 @@ static inline u32 arch_host_irq_active(u32 cpu_irq_no)
 /* Initialize board specifig host irq hardware (i.e PIC) */
 static inline int arch_host_irq_init(void)
 {
-	return intc_init(OMAP3_MPU_INTC_BASE, OMAP3_MPU_INTC_NRIRQ);
+	int rc;
+	physical_addr_t intc_pa;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_find_compatible(NULL, NULL, "ti,omap2-intc");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	rc = vmm_devtree_regaddr(node, &intc_pa, 0);
+	if (rc) {
+		return rc;
+	}
+
+	return intc_init(intc_pa, OMAP3_MPU_INTC_NRIRQ);
 }
 
 #endif

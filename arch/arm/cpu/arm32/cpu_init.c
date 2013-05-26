@@ -21,9 +21,11 @@
  * @brief intialization functions for CPU
  */
 
-#include <vmm_main.h>
 #include <vmm_error.h>
 #include <vmm_smp.h>
+#include <vmm_main.h>
+#include <vmm_params.h>
+#include <vmm_devtree.h>
 #include <cpu_mmu.h>
 
 extern u8 _code_start;
@@ -48,19 +50,34 @@ virtual_size_t arch_code_size(void)
 
 int __init arch_cpu_early_init(void)
 {
+	char *attr;
+	struct vmm_devtree_node *node;
+
 	/*
 	 * Host virtual memory, device tree, heap is up.
 	 * Do necessary early stuff like iomapping devices
 	 * memory or boot time memory reservation here.
 	 */
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_CHOSEN_NODE_NAME);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	attr = vmm_devtree_attrval(node, VMM_DEVTREE_BOOTARGS_ATTR_NAME);
+	if (attr) {
+		vmm_parse_early_options(attr);
+	}
+
 	return VMM_OK;
 }
 
 int __init arch_cpu_final_init(void)
 {
-	/** FIXME: Final initialzation code for CPU */
 	/* All VMM API's are available here */
 	/* We can register a CPU specific resources here */
+
 	return VMM_OK;
 }
 
@@ -80,5 +97,5 @@ void __init cpu_init(void)
 #endif
 
 	/* We will never come back here. */
-	while (1);
+	vmm_hang();
 }

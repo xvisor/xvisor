@@ -26,6 +26,21 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
+/** Disable pre-emption of current VCPU */
+void vmm_scheduler_preempt_disable(void);
+
+/** Enable pre-emption of current VCPU */
+void vmm_scheduler_preempt_enable(void);
+
+/** Preempt Orphan VCPU (Must be called from somewhere) */
+void vmm_scheduler_preempt_orphan(arch_regs_t *regs);
+
+/** Change the vcpu state 
+ *  (Do not call this function directly.)
+ *  (Always prefer vmm_manager_vcpu_xxx() APIs for vcpu state change.)
+ */
+int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state);
+
 /** Enter IRQ Context (Must be called from somewhere) */
 void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context);
 
@@ -41,22 +56,11 @@ bool vmm_scheduler_orphan_context(void);
 /** Check whether we are in Normal VCPU context */
 bool vmm_scheduler_normal_context(void);
 
-/** Notify Change in vcpu state 
- *  (Must be called before actually changing the state) 
- */
-int vmm_scheduler_notify_state_change(struct vmm_vcpu *vcpu, u32 new_state);
-
 /** Retrive current vcpu number */
 struct vmm_vcpu *vmm_scheduler_current_vcpu(void);
 
 /** Retrive current guest number */
 struct vmm_guest *vmm_scheduler_current_guest(void);
-
-/** Disable pre-emption */
-void vmm_scheduler_preempt_disable(void);
-
-/** Enable pre-emption */
-void vmm_scheduler_preempt_enable(void);
 
 /** Yield current vcpu (Should not be called in IRQ context) */
 void vmm_scheduler_yield(void);

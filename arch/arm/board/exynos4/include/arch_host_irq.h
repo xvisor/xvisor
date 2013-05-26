@@ -43,8 +43,6 @@ static inline int arch_host_irq_init(void)
 
 	if (!cpu) {
 		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-					   VMM_DEVTREE_HOSTINFO_NODE_NAME
-					   VMM_DEVTREE_PATH_SEPARATOR_STRING
 					   "gic");
 		if (!node) {
 			return VMM_ENODEV;

@@ -83,6 +83,16 @@ static inline u16 rev16(u16 v)
 /* FIXME: */
 #define clrex()
 
+#elif defined(CONFIG_ARMV6)
+
+#define ldrex(addr, data)	asm volatile("ldrex	%0, [%1]\n\t" \
+				: "=r"(data) : "r"(addr))
+
+#define strex(addr, data, res)	asm volatile("strex	%0, %1, [%2]\n\t" \
+				: "=r"(res) : "r"(data), "r"(addr))
+
+#define clrex()	
+
 #else
 
 #define ldrex(addr, data)	asm volatile("ldrex	%0, [%1]\n\t" \
@@ -311,19 +321,11 @@ extern unsigned int *_ifar;
 				:: "r" ((val)) : "memory", "cc")
 #endif
 
-#define invalid_tlb()		({ u32 rval=0; asm volatile(\
-				" mcr     p15, 0, %0, c8, c7, 0\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define invalid_tlb_line(va)	asm volatile(\
-				" mcr     p15, 0, %0, c8, c7, 1\n\t" \
-				:: "r" ((va)) : "memory", "cc")
-
 #define invalid_i_tlb()		({ u32 rval=0; asm volatile(\
 				" mcr     p15, 0, %0, c8, c5, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define invalid_i_tlb_line(va)	asm volatile(\
+#define invalid_i_tlb_mva(va)	asm volatile(\
 				" mcr     p15, 0, %0, c8, c5, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
 
@@ -331,9 +333,25 @@ extern unsigned int *_ifar;
 				" mcr     p15, 0, %0, c8, c6, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define invalid_d_tlb_line(va)	asm volatile(\
+#define invalid_d_tlb_mva(va)	asm volatile(\
 				" mcr     p15, 0, %0, c8, c6, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
+
+#define invalid_tlb()		({ u32 rval=0; asm volatile(\
+				" mcr     p15, 0, %0, c8, c7, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define invalid_tlb_mva(va)	asm volatile(\
+				" mcr     p15, 0, %0, c8, c7, 1\n\t" \
+				:: "r" ((va)) : "memory", "cc")
+
+#if !defined(CONFIG_ARMV5)
+
+#define invalid_tlb_asid(asid)	asm volatile(\
+				" mcr     p15, 0, %0, c8, c7, 2\n\t" \
+				:: "r" ((asid)) : "memory", "cc")
+
+#endif
 
 #define read_contextidr()	({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c13, c0, 1\n\t" \

@@ -60,82 +60,79 @@
  *      |     rax       |
  *      +---------------+
  */
-IRQ_HANDLER(_irq0) /* division error */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_div_error) /* division error */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq1) /* debug exception */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_debug) /* debug exception */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq2) /* NMI */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_nmi) /* NMI */
+END_EXCEPTION_HANDLER
 
 .extern do_breakpoint
-IRQ_HANDLER(_irq3) /* Breat point */
+EXCEPTION_HANDLER(_exception_bp) /* Breat point */
 	movq	$3, %rdi /* first arg as int num */
 	movq	%rsp, %rsi /* pt_regs */
 	callq	do_breakpoint
-END_IRQ_HANDLER
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq4) /* overflow */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_ovf) /* overflow */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq5) /* bounds */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_bounds) /* bounds */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq6) /* invalid opc. */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_inval_opc) /* invalid opc. */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq7) /* dev not avail */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_no_dev) /* dev not avail */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq8) /* double fault */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_double_fault) /* double fault */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq9) /* coproc seg overrn */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_coproc_overrun) /* coproc seg overrn */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq10) /* invalid tss */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_inval_tss) /* invalid tss */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq11) /* seg not present */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_missing_seg) /* seg not present */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq12) /* stack seg. */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_missing_stack) /* stack seg. */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq13) /* GPF */
+EXCEPTION_HANDLER(_exception_gpf) /* GPF */
 	movq	$13, %rdi /* first arg as int num */
 	movq	%rsp, %rsi /* pt_regs */
 	callq	do_gpf
-END_IRQ_HANDLER
+END_EXCEPTION_HANDLER
 
 .extern do_page_fault
-IRQ_HANDLER(_irq14) /* page fault */
+EXCEPTION_HANDLER(_exception_page_fault) /* page fault */
 	movq  120(%rsp), %rdi /* error code as first argument */
 	movq  %rsp, %rsi /* trap frame */
 	callq do_page_fault
-END_IRQ_HANDLER
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq16) /* coproc error */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_coproc_err) /* coproc error */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq17) /* alignment check */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_align_check) /* alignment check */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq18) /* machine check */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_machine_check) /* machine check */
+END_EXCEPTION_HANDLER
 
-IRQ_HANDLER(_irq19) /* SIMD coproc error */
-END_IRQ_HANDLER
-
-IRQ_HANDLER(_irq128) /* sys call */
-END_IRQ_HANDLER
+EXCEPTION_HANDLER(_exception_simd_err) /* SIMD coproc error */
+END_EXCEPTION_HANDLER
 
 .extern do_generic_int_handler
-IRQ_HANDLER(_generic_handler) /* other interrupts */
+EXCEPTION_HANDLER(_generic_handler) /* other interrupts */
 	movq	%rsp, %rdi
 	callq	do_generic_int_handler
-END_IRQ_HANDLER
+END_EXCEPTION_HANDLER
 
 BUILD_IRQ(32,do_generic_int_handler)
 BUILD_IRQ(33,do_generic_int_handler)

@@ -11,8 +11,8 @@ Hardware features tested by Basic Test:
   - PrimeCell Dual-Mode Timer (SP804)
   - Serial Port (PL011)  
 
-Please follow the steps below to build & run Basic Test on VExpress-a15
-Guest with Xvisor running on QEMU VExpress-a15 Host:
+Please follow the steps below to build & run Basic Test on VExpress-A15
+Guest with Xvisor running on QEMU VExpress-A15 Host:
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=arm-none-linux-gnueabi-
@@ -20,7 +20,7 @@ Guest with Xvisor running on QEMU VExpress-a15 Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with VExpress-a15 default settings]
+  [3. Configure Xvisor with VExpress-A15 default settings]
   # make ARCH=arm vexpress-a15-defconfig 
   # make menuconfig (select 'VExpress Options' -> '1x vexpress-a15 guest' under DTS configuration) 
 
@@ -56,7 +56,7 @@ Guest with Xvisor running on QEMU VExpress-a15 Host:
   [guest0/uart0] arm-test# 
 
   (Note: replace all <> brackets based on your workspace)
-  (Note: the above steps assumes Xvisor running on VExpress-a15 host emulated
+  (Note: the above steps assumes Xvisor running on VExpress-A15 host emulated
    by QEMU 0.14.xx or higher. For other types of ARM host some of the above 
    steps will need to be adapted for that specfic ARM host. For more info on 
    your desired ARM host refer docs/arm/)

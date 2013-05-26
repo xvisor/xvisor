@@ -129,7 +129,7 @@ struct net_device {
 	unsigned char dev_addr[MAX_NDEV_HW_ADDRESS];
 	unsigned int hw_addr_len;
 	unsigned int mtu;
-	int irq;
+	u32 irq;
 	physical_addr_t base_addr;
 	unsigned char	dma;	/* DMA channel		*/
 	struct net_device_stats stats;
@@ -208,7 +208,7 @@ static inline int netif_rx(struct sk_buff *mb, struct net_device *dev)
 		return VMM_EINVALID;
 	}
 
-	vmm_port2switch_xfer(port, mb);
+	vmm_port2switch_xfer_mbuf(port, mb);
 
 	return VMM_OK;
 }

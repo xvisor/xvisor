@@ -27,80 +27,23 @@
 #include <vmm_host_aspace.h>
 #include <vmm_devdrv.h>
 #include <vmm_stdio.h>
-#include <libs/libfdt.h>
+#include <libs/vtemu.h>
+#include <arch_board.h>
+
 #include <hpet.h>
 
-extern u32 dt_blob_start;
+#if defined(CONFIG_VTEMU)
+struct vtemu *x86_vt;
+#endif
 
-int arch_board_ram_start(physical_addr_t *addr)
+int arch_board_reset(void)
 {
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header * fdt_node = NULL;
-
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	fdt_node = libfdt_find_node(&fdt,
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME, addr);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
+	return VMM_EFAIL;
 }
 
-int arch_board_ram_size(physical_size_t *size)
+int arch_board_shutdown(void)
 {
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-	struct fdt_node_header *fdt_node;
-
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	fdt_node = libfdt_find_node(&fdt,
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_HOSTINFO_NODE_NAME
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node,
-				 VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME, size);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-int arch_board_devtree_populate(struct vmm_devtree_node **root)
-{
-	int rc = VMM_OK;
-	struct fdt_fileinfo fdt;
-
-	rc = libfdt_parse_fileinfo((virtual_addr_t) & dt_blob_start, &fdt);
-	if (rc) {
-		return rc;
-	}
-
-	return libfdt_parse_devtree(&fdt, root);
+	return VMM_EFAIL;
 }
 
 int __init arch_board_early_init(void)
@@ -113,39 +56,54 @@ int __init arch_board_early_init(void)
         return VMM_OK;
 }
 
+int __init arch_clocksource_init(void)
+{
+	return hpet_clocksource_init(DEFAULT_HPET_SYS_TIMER,
+				     "hpet_clksrc");
+}
+
+int __cpuinit arch_clockchip_init(void)
+{
+	return hpet_clockchip_init(DEFAULT_HPET_SYS_TIMER, 
+				"hpet_clkchip", 0);
+}
+
 int __init arch_board_final_init(void)
 {
-#if 0
 	int rc;
 	struct vmm_devtree_node *node;
+#if defined(CONFIG_VTEMU)
+	struct vmm_fb_info *info;
+#endif
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
-	/* Do Probing using device driver framework */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-					VMM_DEVTREE_HOSTINFO_NODE_NAME
-					VMM_DEVTREE_PATH_SEPARATOR_STRING
-					"plb");
-
-	if(!node) {
-		return VMM_ENOTAVAIL;
+	/* Find simple bus node */
+	node = vmm_devtree_find_compatible(NULL, NULL, "simple-bus");
+	if (!node) {
+		return VMM_ENODEV;
 	}
 
-	rc = vmm_devdrv_probe(node, NULL, NULL);
-	if(rc) {
+	/* Do probing using device driver framework */
+	rc = vmm_devdrv_probe(node);
+	if (rc) {
 		return rc;
 	}
+
+	/* Create VTEMU instace from first available frame buffer 
+	 * and make it our stdio device.
+	 */
+#if defined(CONFIG_VTEMU)
+	info = vmm_fb_get(0);
+	if (info) {
+		x86_vt = vtemu_create(info->dev->node->name, info, NULL);
+		if (x86_vt) {
+			vmm_stdio_change_device(&x86_vt->cdev);
+		}
+	}
 #endif
+
 	return VMM_OK;
 }
 
-int arch_board_reset(void)
-{
-	return VMM_EFAIL;
-}
-
-int arch_board_shutdown(void)
-{
-	return VMM_EFAIL;
-}

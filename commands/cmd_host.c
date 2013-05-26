@@ -58,23 +58,38 @@ void cmd_host_info(struct vmm_chardev *cdev)
 {
 	char *attr;
 	struct vmm_devtree_node *node;
-	u32 khz = vmm_delay_estimate_cpu_khz();
+	u32 c, khz;
 
 	attr = NULL;
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_HOSTINFO_NODE_NAME);
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING);
 	if (node) {
 		attr = vmm_devtree_attrval(node, VMM_DEVTREE_MODEL_ATTR_NAME);
 	}
 	if (attr) {
-		vmm_cprintf(cdev, "Board Name : %s\n", attr);
+		vmm_cprintf(cdev, "Board Name          : %s\n", attr);
 	} else {
-		vmm_cprintf(cdev, "Board Name : %s\n", CONFIG_BOARD);
+		vmm_cprintf(cdev, "Board Name          : %s\n", CONFIG_BOARD);
 	}
-	vmm_cprintf(cdev, "CPU Name   : %s\n", CONFIG_CPU);
-	vmm_cprintf(cdev, "CPU Count  : %d\n", CONFIG_CPU_COUNT);
-	vmm_cprintf(cdev, "CPU Speed  : %d.%d MHz (Estimated)\n", 
-					udiv32(khz, 1000), umod32(khz, 1000));
+	vmm_cprintf(cdev, "CPU Name            : %s\n", CONFIG_CPU);
+	vmm_cprintf(cdev, "CPU Online Count    : %d\n", vmm_num_online_cpus());
+	vmm_cprintf(cdev, "CPU Present Count   : %d\n", vmm_num_present_cpus());
+	vmm_cprintf(cdev, "CPU Possible Count  : %d\n", vmm_num_possible_cpus());
+	for_each_online_cpu(c) {
+		khz = vmm_delay_estimate_cpu_khz(c);
+		if (c < 10) {
+			vmm_cprintf(cdev, "CPU%01d Speed          : "
+				  "%d.%d MHz (Estimated)\n", 
+				  c, udiv32(khz, 1000), umod32(khz, 1000));
+		} else if (c < 100) {
+			vmm_cprintf(cdev, "CPU%02d Speed         : "
+				  "%d.%d MHz (Estimated)\n", 
+				  c, udiv32(khz, 1000), umod32(khz, 1000));
+		} else {
+			vmm_cprintf(cdev, "CPU%03d Speed        : "
+				  "%d.%d MHz (Estimated)\n", 
+				  c, udiv32(khz, 1000), umod32(khz, 1000));
+		}
+	}
 }
 
 void cmd_host_irq_stats(struct vmm_chardev *cdev)

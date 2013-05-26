@@ -42,8 +42,8 @@ Linux system:
   [12. SELECT Integrated Simulator & Cadilibrary from PROJECT -> PROJECT SETTINGS -> PARAMETER CATEGORY -> TARGETS]
 
   [13. COMPILE (this will start system canvas build process)]
-  (The output emulation model will be shared library named cadi_system_Linux-Debug-GCC-3.4.so located in 
-   <your_fastmodel_dir>/FastModelsPortfolio_xxxx/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-3.4)
+  (The output emulation model will be shared library named cadi_system_Linux-Debug-GCC-<xxxx>.so located in 
+   <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<xxxx>)
 
   (Note: replace all <> brackets based on your workspace)
   (Note: to build a different emulation model redo steps 10 to 13 and 
@@ -72,14 +72,11 @@ steps provided in previous section:
   # cd <your_test_dir>
   # CROSS_COMPILE=arm-none-linux-gnueabi-
 
-  [2. Compile boot-wrapper with secured IRQs]
-  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -e start_boot -Wl,-Ttext=0x80000000 -DSMP -DVEXPRESS_A15 fast_model_boot.S -o fast_model_boot.axf
-  OR
-  [2. Compile boot-wrapper with non-secured IRQs]
-  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -e start_boot -Wl,-Ttext=0x80000000 -DSMP -DVEXPRESS_A15 -DGIC_DIST_NONSECURED fast_model_boot.S -o fast_model_boot.axf
+  [2. Compile boot-wrapper]
+  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DVEXPRESS_A15 fast_model_boot.S -o fast_model_boot.axf
 
   [3. Run fast models]
-  # model_shell <your_fastmodel_dir>/FastModelsPortfolio_xxxx/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-3.4/cadi_system_Linux-Debug-GCC-3.4.so fast_model_boot.axf
+  # model_shell <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<xxxx>/cadi_system_Linux-Debug-GCC-<xxxx>.so fast_model_boot.axf
 
   (Note: replace all <> brackets based on your workspace)
 

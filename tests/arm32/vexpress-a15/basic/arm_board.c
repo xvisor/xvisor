@@ -25,7 +25,7 @@
 #include <arm_io.h>
 #include <arm_board.h>
 #include <arm_plat.h>
-#include <arm_config.h>
+#include <arm_string.h>
 #include <pic/gic.h>
 #include <serial/pl01x.h>
 
@@ -59,6 +59,17 @@ u32 arm_board_ram_size(void)
 u32 arm_board_linux_machine_type(void)
 {
 	return 0x8e0;
+}
+
+void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
+{
+	arm_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
+	/* VirtIO Network Device */
+	arm_strcat(cmdline, " virtio_mmio.device=4K@0x40100000:50");
+	/* VirtIO Block Device */
+	arm_strcat(cmdline, " virtio_mmio.device=4K@0x40200000:51");
+	/* VirtIO Console Device */
+	arm_strcat(cmdline, " virtio_mmio.device=4K@0x40300000:52");
 }
 
 u32 arm_board_flash_addr(void)

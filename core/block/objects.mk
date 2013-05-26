@@ -22,4 +22,6 @@
 # */
 
 core-objs-$(CONFIG_BLOCK)+= block/vmm_blockdev.o
+core-objs-$(CONFIG_BLOCKPART)+= block/vmm_blockpart.o
+core-objs-$(CONFIG_BLOCKPART_DOS)+= block/vmm_blockpart_dos.o
 

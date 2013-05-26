@@ -32,12 +32,12 @@
 
 #define VMM_BLOCKDEV_CLASS_NAME				"block"
 #define VMM_BLOCKDEV_CLASS_IPRIORITY			1
-#define VMM_BLOCKDEV_MAX_NAME_SIZE			32
 
 /** Types of block IO request */
 enum vmm_request_type {
-	VMM_REQUEST_READ=0,
-	VMM_REQUEST_WRITE=1
+	VMM_REQUEST_UNKNOWN=0,
+	VMM_REQUEST_READ=1,
+	VMM_REQUEST_WRITE=2
 };
 
 /** Representation of a block IO request */
@@ -58,21 +58,43 @@ struct vmm_request {
 
 /** Representation of a block IO request queue */
 struct vmm_request_queue {
+	/* Lock to protect the request queue operations */
 	vmm_spinlock_t lock;
 
+	/* Note: make_request must ensure that it calls
+	 *
+	 * vmm_blockdev_complete_request()
+	 * OR
+	 * vmm_blockdev_fail_request()
+	 *
+	 * for every request that it gets
+	 */
 	int (*make_request)(struct vmm_request_queue *rq, 
 			    struct vmm_request *r);
+
+	/* Note: abort_request will be called for successfully
+	 * submited request only
+	 */
 	int (*abort_request)(struct vmm_request_queue *rq, 
 			    struct vmm_request *r);
+
+	/* Note: This is an optional callback only required
+	 * if request queue does block caching 
+	 */
+	int (*flush_cache)(struct vmm_request_queue *rq);
 
 	void *priv;
 };
 
-/* Block device flags */
-#define VMM_BLOCKDEV_RDONLY			0x00000001
-#define VMM_BLOCKDEV_RW				0x00000002
+/* Block device defines */
+#define VMM_BLOCKDEV_MAX_NAME_SIZE			64
+#define VMM_BLOCKDEV_MAX_DESC_SIZE			128
 
-/** Representation of a block device */
+/* Block device flags */
+#define VMM_BLOCKDEV_RDONLY				0x00000001
+#define VMM_BLOCKDEV_RW					0x00000002
+
+/** Block device */
 struct vmm_blockdev {
 	struct dlist head;
 	struct vmm_blockdev *parent;
@@ -82,6 +104,7 @@ struct vmm_blockdev {
 	struct dlist child_list;
 
 	char name[VMM_BLOCKDEV_MAX_NAME_SIZE];
+	char desc[VMM_BLOCKDEV_MAX_DESC_SIZE];
 	struct vmm_device *dev;
 
 	u32 flags;
@@ -90,6 +113,15 @@ struct vmm_blockdev {
 	u32 block_size;
 
 	struct vmm_request_queue *rq;
+
+	/* NOTE: partition managment uses part_manager_sign and
+	 * part_manager_priv for its own use.
+	 * NOTE: part_manager_sign will be unique to partition style
+	 * NOTE: part_manager_sign=0x0 is reserved and means unknown 
+	 * partition style
+	 */
+	u32 part_manager_sign; /* To be used for partition managment */
+	void *part_manager_priv; /* To be used for partition managment */
 };
 
 /* Notifier event when block device is registered */
@@ -115,18 +147,25 @@ static inline u64 vmm_blockdev_total_size(struct vmm_blockdev *bdev)
 	return (bdev) ? bdev->num_blocks * bdev->block_size : 0;
 }
 
+/** Generic block IO complete request */
+int vmm_blockdev_complete_request(struct vmm_request *r);
+
+/** Generic block IO fail request */
+int vmm_blockdev_fail_request(struct vmm_request *r);
+
 /** Generic block IO submit request */
 int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 				struct vmm_request *r);
 
-/** Generic block IO complete reuest */
-int vmm_blockdev_complete_request(struct vmm_request *r);
-
-/** Generic block IO fail reuest */
-int vmm_blockdev_fail_request(struct vmm_request *r);
-
 /** Generic block IO abort request */
 int vmm_blockdev_abort_request(struct vmm_request *r);
+
+/** Generic block IO flush cached data 
+ *  Note: block device request queue might cache blocks for 
+ *  better performance. This API is a hint to request queue
+ *  that dirty cached blocks need to written back.
+ */
+int vmm_blockdev_flush_cache(struct vmm_blockdev *bdev);
 
 /** Generic block IO read/write
  *  Note: This is a blocking API hence must be 

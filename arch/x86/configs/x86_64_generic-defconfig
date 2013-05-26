@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.0
-# Tue Jan 29 20:19:55 2013
+# Version: 0.2.1
+# Fri May 10 13:51:06 2013
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -13,6 +13,7 @@ CONFIG_CPU_COUNT=1
 CONFIG_CPU="x86_64"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
+CONFIG_VAPOOL_SIZE_MB=16
 CONFIG_BOARD="x86_64_generic"
 CONFIG_CPU_X86_64=y
 CONFIG_64BIT=y
@@ -47,13 +48,12 @@ CONFIG_BANNER_BANNER4=y
 CONFIG_MAX_VCPU_COUNT=16
 CONFIG_MAX_GUEST_COUNT=4
 CONFIG_VGPA2REG_CACHE_SIZE=8
-CONFIG_VAPOOL_SIZE_MB=8
 # CONFIG_PROFILE is not set
 
 #
 # Heap Configuration
 #
-CONFIG_HEAP_SIZE_MB=2
+CONFIG_HEAP_SIZE_MB=4
 CONFIG_HEAP_BUDDY=y
 
 #
@@ -73,10 +73,22 @@ CONFIG_THREAD_STACK_SIZE=8192
 # Device Support
 #
 # CONFIG_RTC is not set
-# CONFIG_INPUT is not set
-# CONFIG_FB is not set
+CONFIG_INPUT=y
+CONFIG_FB=y
+CONFIG_FB_CFB_FILLRECT=y
+CONFIG_FB_CFB_COPYAREA=y
+CONFIG_FB_CFB_IMAGEBLIT=y
+# CONFIG_FB_CFB_REV_PIXELS_IN_BYTE is not set
+# CONFIG_FB_SYS_FILLRECT is not set
+# CONFIG_FB_SYS_COPYAREA is not set
+# CONFIG_FB_SYS_IMAGEBLIT is not set
+# CONFIG_FB_FOREIGN_ENDIAN is not set
+# CONFIG_FB_MODE_HELPERS is not set
+# CONFIG_FB_TILEBLITTING is not set
 # CONFIG_BLOCK is not set
 # CONFIG_NET is not set
+CONFIG_NET_MBUF_POOL_SIZE=2048
+CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
 
 #
 # Command Options
@@ -96,6 +108,8 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+CONFIG_CMD_INPUT=y
+CONFIG_CMD_FB=y
 
 #
 # Daemon Options
@@ -108,7 +122,21 @@ CONFIG_MTERM_HISTORY_SIZE=10
 #
 # Library Options
 #
-CONFIG_LIBFDT=y
+
+#
+# Virtual Terminal Emulator Options
+#
+CONFIG_VTEMU=y
+CONFIG_VTEMU_FONT_8x8=y
+CONFIG_VTEMU_FONT_8x16=y
+CONFIG_VTEMU_FONT_6x11=y
+CONFIG_VTEMU_FONT_7x14=y
+CONFIG_VTEMU_FONT_10x18=y
+CONFIG_VTEMU_FONT_SUN8x16=y
+CONFIG_VTEMU_FONT_SUN12x22=y
+CONFIG_VTEMU_FONT_ACORN_8x8=y
+CONFIG_VTEMU_FONT_PEARL_8x8=y
+CONFIG_VTEMU_FONT_MINI_8x8=y
 
 #
 # Device Drivers
@@ -128,17 +156,42 @@ CONFIG_LIBFDT=y
 #
 
 #
+# Input Device Drivers
+#
+CONFIG_INPUT_KEYBOARD=y
+CONFIG_KEYBOARD_ATKBD=y
+# CONFIG_KEYBOARD_ATKBD_HP_KEYCODES is not set
+
+#
 # Hardware I/O ports
 #
-# CONFIG_SERIO is not set
+CONFIG_SERIO=y
+# CONFIG_SERIO_AMBAKMI is not set
+CONFIG_SERIO_LIBPS2=y
+CONFIG_SERIO_I8042=y
+
+#
+# Graphics Drivers
+#
+CONFIG_FB_VESA=y
 
 #
 # Network Drivers
 #
 
 #
+# Clock Drivers
+#
+# CONFIG_CLKDEV_LOOKUP is not set
+
+#
 # Device Emulators
 #
+
+#
+# VirtIO Support
+#
+# CONFIG_EMU_VIRTIO is not set
 
 #
 # System Emulators
@@ -154,6 +207,16 @@ CONFIG_LIBFDT=y
 # Network Interface Controller Emulators
 #
 # CONFIG_EMU_NET is not set
+
+#
+# Block Device Emulators
+#
+# CONFIG_EMU_BLOCK is not set
+
+#
+# Console Emulators
+#
+# CONFIG_EMU_CONSOLE is not set
 
 #
 # Timer Emulators
@@ -188,6 +251,5 @@ CONFIG_LIBFDT=y
 #
 # Tool Options
 #
-CONFIG_DTC=y
 # CONFIG_CPATCH is not set
 # CONFIG_BBFLASH is not set

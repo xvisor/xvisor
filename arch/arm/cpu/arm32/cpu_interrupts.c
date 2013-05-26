@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
+#include <vmm_host_ram.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 #include <vmm_vcpu_irq.h>
@@ -39,16 +40,16 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>
 
-void do_undef_inst(arch_regs_t * uregs)
+void do_undef_inst(arch_regs_t *regs)
 {
 	int rc = VMM_OK;
 	struct vmm_vcpu *vcpu;
 
-	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+	if ((regs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
 
-	vmm_scheduler_irq_enter(uregs, TRUE);
+	vmm_scheduler_irq_enter(regs, TRUE);
 
 	vcpu = vmm_scheduler_current_vcpu();
 
@@ -58,12 +59,12 @@ void do_undef_inst(arch_regs_t * uregs)
 	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
 	} else {
-		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
-			rc = emulate_thumb_inst(vcpu, uregs, 
-						*((u32 *)uregs->pc));
+		if (regs->cpsr & CPSR_THUMB_ENABLED) {
+			rc = emulate_thumb_inst(vcpu, regs, 
+						*((u32 *)regs->pc));
 		} else {
-			rc = emulate_arm_inst(vcpu, uregs, 
-						*((u32 *)uregs->pc));
+			rc = emulate_arm_inst(vcpu, regs, 
+						*((u32 *)regs->pc));
 		}
 	}
 
@@ -71,19 +72,23 @@ void do_undef_inst(arch_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
-	vmm_scheduler_irq_exit(uregs);
+	vmm_scheduler_irq_exit(regs);
 }
 
-void do_soft_irq(arch_regs_t * uregs)
+void do_soft_irq(arch_regs_t *regs)
 {
 	int rc = VMM_OK;
 	struct vmm_vcpu * vcpu;
 
-	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+	if ((regs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_SUPERVISOR) {
+		regs->pc += 4;
+		vmm_scheduler_preempt_orphan(regs);
+		return;
+	} else if ((regs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		vmm_panic("%s: unexpected exception\n", __func__);
 	}
 
-	vmm_scheduler_irq_enter(uregs, TRUE);
+	vmm_scheduler_irq_enter(regs, TRUE);
 
 	vcpu = vmm_scheduler_current_vcpu();
 
@@ -93,12 +98,12 @@ void do_soft_irq(arch_regs_t * uregs)
 	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		vmm_vcpu_irq_assert(vcpu, CPU_SOFT_IRQ, 0x0);
 	} else {
-		if (uregs->cpsr & CPSR_THUMB_ENABLED) {
-			rc = cpu_vcpu_hypercall_thumb(vcpu, uregs, 
-							*((u32 *)uregs->pc));
+		if (regs->cpsr & CPSR_THUMB_ENABLED) {
+			rc = cpu_vcpu_hypercall_thumb(vcpu, regs, 
+							*((u32 *)regs->pc));
 		} else {
-			rc = cpu_vcpu_hypercall_arm(vcpu, uregs, 
-							*((u32 *)uregs->pc));
+			rc = cpu_vcpu_hypercall_arm(vcpu, regs, 
+							*((u32 *)regs->pc));
 		}
 	}
 
@@ -106,15 +111,15 @@ void do_soft_irq(arch_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 	}
 
-	vmm_scheduler_irq_exit(uregs);
+	vmm_scheduler_irq_exit(regs);
 }
 
-void do_prefetch_abort(arch_regs_t * uregs)
+void do_prefetch_abort(arch_regs_t *regs)
 {
 	int rc = VMM_EFAIL;
 	bool crash_dump = FALSE;
 	u32 ifsr, ifar, fs;
-	struct vmm_vcpu * vcpu;
+	struct vmm_vcpu *vcpu;
 
 	ifsr = read_ifsr();
 	ifar = read_ifar();
@@ -124,14 +129,14 @@ void do_prefetch_abort(arch_regs_t * uregs)
 	fs |= (ifsr & IFSR_FS4_MASK) >> (IFSR_FS4_SHIFT - 4);
 #endif
 
-	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+	if ((regs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		struct cpu_l1tbl * l1;
 		struct cpu_page pg;
 		if (fs != IFSR_FS_TRANS_FAULT_SECTION &&
 		    fs != IFSR_FS_TRANS_FAULT_PAGE) {
 			vmm_panic("%s: unexpected prefetch abort\n"
 				  "%s: pc = 0x%08x, ifsr = 0x%08x, ifar = 0x%08x\n", 
-				  __func__, __func__, uregs->pc, ifsr, ifar);
+				  __func__, __func__, regs->pc, ifsr, ifar);
 		}
 		rc = cpu_mmu_get_reserved_page((virtual_addr_t)ifar, &pg);
 		if (rc) {
@@ -156,14 +161,14 @@ void do_prefetch_abort(arch_regs_t * uregs)
 
 	vcpu = vmm_scheduler_current_vcpu();
 
-	if ((uregs->pc & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == 
+	if ((regs->pc & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == 
 	    arm_priv(vcpu)->cp15.ovect_base) {
-		uregs->pc = (virtual_addr_t)arm_guest_priv(vcpu->guest)->ovect 
-			    + (uregs->pc & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1));
+		regs->pc = (virtual_addr_t)arm_guest_priv(vcpu->guest)->ovect 
+			    + (regs->pc & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1));
 		return;
 	}
 
-	vmm_scheduler_irq_enter(uregs, TRUE);
+	vmm_scheduler_irq_enter(regs, TRUE);
 
 	switch(fs) {
 	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
@@ -174,25 +179,25 @@ void do_prefetch_abort(arch_regs_t * uregs)
 		break;
 	case IFSR_FS_TRANS_FAULT_SECTION:
 	case IFSR_FS_TRANS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, 
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
 						ifar, fs, 0, 0, 0, FALSE);
 		crash_dump = TRUE;
 		break;
 	case IFSR_FS_ACCESS_FAULT_SECTION:
 	case IFSR_FS_ACCESS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, 
+		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, 
 						ifar, fs, 0, 0, 0);
 		crash_dump = TRUE;
 		break;
 	case IFSR_FS_DOMAIN_FAULT_SECTION:
 	case IFSR_FS_DOMAIN_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, 
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, 
 						ifar, fs, 0, 0, 0);
 		crash_dump = TRUE;
 		break;
 	case IFSR_FS_PERM_FAULT_SECTION:
 	case IFSR_FS_PERM_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, 
 						ifar, fs, 0, 0, 0);
 		crash_dump = TRUE;
 		break;
@@ -211,19 +216,19 @@ void do_prefetch_abort(arch_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 		vmm_printf("%s: vcpu_id = %d, ifar = 0x%x, ifsr = 0x%x\n", 
 				__func__, vcpu->id, ifar, ifsr);
-		cpu_vcpu_dump_user_reg(vcpu, uregs);
+		cpu_vcpu_dump_user_reg(vcpu, regs);
 	}
 
-	vmm_scheduler_irq_exit(uregs);
+	vmm_scheduler_irq_exit(regs);
 }
 
-void do_data_abort(arch_regs_t * uregs)
+void do_data_abort(arch_regs_t *regs)
 {
 	int rc = VMM_EFAIL; 
 	bool crash_dump = FALSE;
 	u32 dfsr, dfar, fs, dom, wnr;
-	struct vmm_vcpu * vcpu;
-	struct cpu_l1tbl * l1;
+	struct vmm_vcpu *vcpu;
+	struct cpu_l1tbl *l1;
 	struct cpu_page pg;
 
 	dfsr = read_dfsr();
@@ -236,12 +241,12 @@ void do_data_abort(arch_regs_t * uregs)
 	wnr = (dfsr & DFSR_WNR_MASK) >> DFSR_WNR_SHIFT;
 	dom = (dfsr & DFSR_DOM_MASK) >> DFSR_DOM_SHIFT;
 
-	if ((uregs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
+	if ((regs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		if (fs != DFSR_FS_TRANS_FAULT_SECTION &&
 		    fs != DFSR_FS_TRANS_FAULT_PAGE) {
 			vmm_panic("%s: unexpected data abort\n"
 				  "%s: pc = 0x%08x, dfsr = 0x%08x, dfar = 0x%08x\n", 
-				  __func__, __func__, uregs->pc, dfsr, dfar);
+				  __func__, __func__, regs->pc, dfsr, dfar);
 		}
 		rc = cpu_mmu_get_reserved_page(dfar, &pg);
 		if (rc) {
@@ -251,7 +256,7 @@ void do_data_abort(arch_regs_t * uregs)
 			 */
 			if (vmm_scheduler_normal_context()) {
 				vcpu = vmm_scheduler_current_vcpu();
-				cpu_vcpu_cp15_trans_fault(vcpu, uregs, 
+				cpu_vcpu_cp15_trans_fault(vcpu, regs, 
 						dfar, fs, dom, wnr, 1, FALSE);
 				return;
 			}
@@ -276,7 +281,7 @@ void do_data_abort(arch_regs_t * uregs)
 
 	vcpu = vmm_scheduler_current_vcpu();
 
-	vmm_scheduler_irq_enter(uregs, TRUE);
+	vmm_scheduler_irq_enter(regs, TRUE);
 
 	switch(fs) {
 	case DFSR_FS_ALIGN_FAULT:
@@ -291,25 +296,25 @@ void do_data_abort(arch_regs_t * uregs)
 		break;
 	case DFSR_FS_TRANS_FAULT_SECTION:
 	case DFSR_FS_TRANS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, uregs, 
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, 
 						dfar, fs, dom, wnr, 1, FALSE);
 		crash_dump = TRUE;
 		break;
 	case DFSR_FS_ACCESS_FAULT_SECTION:
 	case DFSR_FS_ACCESS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, uregs, 
+		rc = cpu_vcpu_cp15_access_fault(vcpu, regs, 
 						dfar, fs, dom, wnr, 1);
 		crash_dump = TRUE;
 		break;
 	case DFSR_FS_DOMAIN_FAULT_SECTION:
 	case DFSR_FS_DOMAIN_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, uregs, 
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs, 
 						dfar, fs, dom, wnr, 1);
 		crash_dump = TRUE;
 		break;
 	case DFSR_FS_PERM_FAULT_SECTION:
 	case DFSR_FS_PERM_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, uregs, 
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs, 
 						dfar, fs, dom, wnr, 1);
 		if ((dfar & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) != 
 						arm_priv(vcpu)->cp15.ovect_base) {
@@ -333,33 +338,33 @@ void do_data_abort(arch_regs_t * uregs)
 		vmm_printf("%s: error %d\n", __func__, rc);
 		vmm_printf("%s: vcpu_id = %d, dfar = 0x%x, dfsr = 0x%x\n", 
 				__func__, vcpu->id, dfar, dfsr);
-		cpu_vcpu_dump_user_reg(vcpu, uregs);
+		cpu_vcpu_dump_user_reg(vcpu, regs);
 	}
 
-	vmm_scheduler_irq_exit(uregs);
+	vmm_scheduler_irq_exit(regs);
 }
 
-void do_not_used(arch_regs_t * uregs)
+void do_not_used(arch_regs_t *regs)
 {
 	vmm_panic("%s: unexpected exception\n", __func__);
 }
 
-void do_irq(arch_regs_t * uregs)
+void do_irq(arch_regs_t *regs)
 {
-	vmm_scheduler_irq_enter(uregs, FALSE);
+	vmm_scheduler_irq_enter(regs, FALSE);
 
-	vmm_host_irq_exec(CPU_EXTERNAL_IRQ, uregs);
+	vmm_host_irq_exec(CPU_EXTERNAL_IRQ);
 
-	vmm_scheduler_irq_exit(uregs);
+	vmm_scheduler_irq_exit(regs);
 }
 
-void do_fiq(arch_regs_t * uregs)
+void do_fiq(arch_regs_t *regs)
 {
-	vmm_scheduler_irq_enter(uregs, FALSE);
+	vmm_scheduler_irq_enter(regs, FALSE);
 
-	vmm_host_irq_exec(CPU_EXTERNAL_FIQ, uregs);
+	vmm_host_irq_exec(CPU_EXTERNAL_FIQ);
 
-	vmm_scheduler_irq_exit(uregs);
+	vmm_scheduler_irq_exit(regs);
 }
 
 int __cpuinit arch_cpu_irq_setup(void)

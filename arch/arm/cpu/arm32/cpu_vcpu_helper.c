@@ -32,6 +32,7 @@
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
+#include <arm_features.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
@@ -719,7 +720,7 @@ int arch_guest_deinit(struct vmm_guest *guest)
 {
 	int rc;
 	if (guest->arch_priv) {
-		if (!arm_guest_priv(guest)->ovect) {
+		if (arm_guest_priv(guest)->ovect) {
 			rc = vmm_host_free_pages(
 			     (virtual_addr_t)arm_guest_priv(guest)->ovect, 1);
 			if (rc) {
@@ -759,18 +760,19 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
-	if (strcmp(attr, "ARMv7a,cortex-a8") == 0) {
-		cpuid = ARM_CPUID_CORTEXA8;
-	} else if (strcmp(attr, "ARMv7a,cortex-a9") == 0) {
-		cpuid = ARM_CPUID_CORTEXA9;
-	} else if (strcmp(attr, "ARMv5te,ARM926ej") == 0) {
+	if (strcmp(attr, "armv5te,arm926ej") == 0) {
 		cpuid = ARM_CPUID_ARM926;
+	} else if (strcmp(attr, "armv6,arm11mp") == 0) {
+		cpuid = ARM_CPUID_ARM11MPCORE;
+	} else if (strcmp(attr, "armv7a,cortex-a8") == 0) {
+		cpuid = ARM_CPUID_CORTEXA8;
+	} else if (strcmp(attr, "armv7a,cortex-a9") == 0) {
+		cpuid = ARM_CPUID_CORTEXA9;
 	} else {
 		return VMM_EFAIL;
 	}
 	if (!vcpu->reset_count) {
-		vcpu->arch_priv = vmm_malloc(sizeof(arm_priv_t));
-		memset(arm_priv(vcpu), 0, sizeof(arm_priv_t));
+		vcpu->arch_priv = vmm_zalloc(sizeof(arm_priv_t));
 		arm_priv(vcpu)->cpsr = CPSR_ASYNC_ABORT_DISABLED | 
 				   CPSR_IRQ_DISABLED |
 				   CPSR_FIQ_DISABLED | 
@@ -813,33 +815,28 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
 		case ARM_CPUID_ARM926:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
 			arm_set_feature(vcpu, ARM_FEATURE_V5);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
+			arm_set_feature(vcpu, ARM_FEATURE_CACHE_TEST_CLEAN);
 			break;
-		case ARM_CPUID_CORTEXA8:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
+		case ARM_CPUID_ARM11MPCORE:
 			arm_set_feature(vcpu, ARM_FEATURE_V6);
 			arm_set_feature(vcpu, ARM_FEATURE_V6K);
-			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+			arm_set_feature(vcpu, ARM_FEATURE_VAPA);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
+			break;
+		case ARM_CPUID_CORTEXA8:
+			arm_set_feature(vcpu, ARM_FEATURE_V7);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
 			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA9:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
-			arm_set_feature(vcpu, ARM_FEATURE_V6);
-			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
@@ -850,12 +847,52 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		default:
 			break;
 		};
+
+		/* Some features automatically imply others: */
+		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VAPA);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
+			arm_set_feature(vcpu, ARM_FEATURE_MPIDR);
+			if (!arm_feature(vcpu, ARM_FEATURE_M)) {
+				arm_set_feature(vcpu, ARM_FEATURE_V6K);
+			} else {
+				arm_set_feature(vcpu, ARM_FEATURE_V6);
+			}
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V6K)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V6);
+			arm_set_feature(vcpu, ARM_FEATURE_MVFR);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V5);
+			if (!arm_feature(vcpu, ARM_FEATURE_M)) {
+				arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
+			}
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V5)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V4T);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_M)) {
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB_DIV);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_ARM_DIV)) {
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB_DIV);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_VFP4)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_VFP3)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_LPAE)) {
+			arm_set_feature(vcpu, ARM_FEATURE_PXN);
+		}
 	}
 
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
-int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
+int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 {
 	int rc;
 
@@ -878,9 +915,9 @@ int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
-		      struct vmm_vcpu * vcpu, 
-                      arch_regs_t * regs)
+void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
+		      struct vmm_vcpu *vcpu, 
+                      arch_regs_t *regs)
 {
 	u32 ite;
 	/* Save user registers & banked registers */
@@ -915,7 +952,15 @@ void arch_vcpu_switch(struct vmm_vcpu * tvcpu,
 	clrex();
 }
 
-void cpu_vcpu_dump_user_reg(struct vmm_vcpu * vcpu, arch_regs_t * regs)
+void arch_vcpu_preempt_orphan(void)
+{
+	/* Trigger SVC call from supervisor mode. This will cause
+	 * do_soft_irq() function to call vmm_scheduler_preempt_orphan()
+	 */
+	asm volatile ("svc #0\t\n");
+}
+
+void cpu_vcpu_dump_user_reg(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	u32 ite;
 	vmm_printf("  Core Registers\n");
@@ -932,15 +977,18 @@ void cpu_vcpu_dump_user_reg(struct vmm_vcpu * vcpu, arch_regs_t * regs)
 	vmm_printf("\n");
 }
 
-void arch_vcpu_regs_dump(struct vmm_vcpu * vcpu)
+void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu)
 {
 	u32 ite;
+
 	/* For both Normal & Orphan VCPUs */
 	cpu_vcpu_dump_user_reg(vcpu, arm_regs(vcpu));
+
 	/* For only Normal VCPUs */
 	if (!vcpu->is_normal) {
 		return;
 	}
+
 	vmm_printf("  User Mode Registers (Banked)\n");
 	vmm_printf("    SP=0x%08x       LR=0x%08x\n",
 		   arm_priv(vcpu)->sp_usr, arm_priv(vcpu)->lr_usr);

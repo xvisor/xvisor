@@ -1,0 +1,34 @@
+
+/include/ "../exynos4412.dtsi"
+
+/ {
+	model = "odroidx";
+
+	chosen {
+		console = &SERIAL1;
+		rtcdev = &RTC0;
+	};
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x40000000 0x40000000>; /* 1 GB */
+	};
+
+	vmm {
+		net {
+			netbridge0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	/* Empty guests node */
+	guests {
+	};
+};
+
+/* Add guest templates */
+/include/ "../../../common/guests/realview-pb-a8.dtsi"
+/include/ "../../../common/guests/vexpress-a9x2.dtsi"
+

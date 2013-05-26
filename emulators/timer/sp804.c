@@ -434,7 +434,7 @@ static int sp804_timer_reset(struct sp804_timer *t)
 }
 
 static int sp804_timer_init(struct sp804_timer *t,
-			    struct vmm_guest * guest, 
+			    struct vmm_guest *guest, 
 			    u32 freq, u32 irq, bool maintain_irq_rate)
 {
 	INIT_TIMER_EVENT(&t->event, &sp804_timer_event, t);
@@ -454,7 +454,7 @@ static int sp804_timer_exit(struct sp804_timer *t)
 	return VMM_OK;
 }
 
-static int sp804_emulator_read(struct vmm_emudev * edev,
+static int sp804_emulator_read(struct vmm_emudev *edev,
 			       physical_addr_t offset, void *dst, u32 dst_len)
 {
 	int rc = VMM_OK;
@@ -489,7 +489,7 @@ static int sp804_emulator_read(struct vmm_emudev * edev,
 	return rc;
 }
 
-static int sp804_emulator_write(struct vmm_emudev * edev,
+static int sp804_emulator_write(struct vmm_emudev *edev,
 				physical_addr_t offset, void *src, u32 src_len)
 {
 	int i;
@@ -522,7 +522,7 @@ static int sp804_emulator_write(struct vmm_emudev * edev,
 	return sp804_timer_write(&s->t[(offset<0x20)?0:1], offset & 0x1C, regmask, regval);
 }
 
-static int sp804_emulator_reset(struct vmm_emudev * edev)
+static int sp804_emulator_reset(struct vmm_emudev *edev)
 {
 	int rc;
 	struct sp804_state *s = edev->priv;
@@ -532,9 +532,9 @@ static int sp804_emulator_reset(struct vmm_emudev * edev)
 	return rc;
 }
 
-static int sp804_emulator_probe(struct vmm_guest * guest,
-				struct vmm_emudev * edev, 
-				const struct vmm_emuid * eid)
+static int sp804_emulator_probe(struct vmm_guest *guest,
+				struct vmm_emudev *edev, 
+				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
 	u32 irq;
@@ -542,12 +542,11 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 	const char *attr;
 	struct sp804_state *s;
 
-	s = vmm_malloc(sizeof(struct sp804_state));
+	s = vmm_zalloc(sizeof(struct sp804_state));
 	if (!s) {
 		rc = VMM_EFAIL;
 		goto sp804_emulator_probe_done;
 	}
-	memset(s, 0x0, sizeof(struct sp804_state));
 
 	if (eid->data) {
 		s->id[0] = ((u8 *)eid->data)[0];
@@ -560,11 +559,8 @@ static int sp804_emulator_probe(struct vmm_guest * guest,
 		s->id[7] = ((u8 *)eid->data)[7];
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "irq");
-	if (attr) {
-		irq = *((u32 *) attr);
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_irq_get(edev->node, &irq, 0);
+	if (rc) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
 
@@ -622,7 +618,7 @@ static const u8 sp804_ids[] = {
 	0xd, 0xf0, 0x05, 0xb1
 };
 
-static struct vmm_emuid sp804_emuid_table[] = {
+static struct vmm_devtree_nodeid sp804_emuid_table[] = {
 	{.type = "timer",
 	 .compatible = "primecell,sp804",
 	 .data = &sp804_ids

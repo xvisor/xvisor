@@ -371,13 +371,12 @@ void arm_cmd_copy(int argc, char **argv)
 }
 
 static char  cmdline[1024];
-static char *default_cmdline = "root=/dev/ram rw ramdisk_size=0x1000000 earlyprintk console=ttyAMA0" ;
 
 typedef void (* linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args, u32 zero2);
 
 void arm_cmd_start_linux(int argc, char **argv)
 {
-	char memsz[16];
+	char cfg_str[32];
 	u32 * kernel_args = (u32 *)(arm_board_ram_start() + 0x1000);
 	u32 cmdline_size, p;
 	u32 kernel_addr, initrd_addr, initrd_size;
@@ -414,11 +413,10 @@ void arm_cmd_start_linux(int argc, char **argv)
 	kernel_args[p++] = initrd_addr;
 	kernel_args[p++] = initrd_size;
 
-	/* if a cmdline is provided, we add it */
-	arm_strcat(cmdline, " mem=");
-	arm_int2str(memsz, memory_size >> 20);
-	arm_strcat(cmdline, memsz);
-	arm_strcat(cmdline, "M");
+	/* Pass memory size via kernel command line */
+	arm_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
+	arm_strcat(cmdline, cfg_str);
+
 	cmdline_size = arm_strlen(cmdline);
 	if (cmdline_size) {
 		/* ATAG_CMDLINE */
@@ -468,8 +466,10 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	initrd_addr = arm_hexstr2uint(argv[2]);
 	initrd_size = arm_hexstr2uint(argv[3]);
 
-	arm_sprintf(cfg_str, " mem=%dM", (arm_board_ram_size() >> 20));
+	/* Pass memory size via kernel command line */
+	arm_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
 	arm_strcat(cmdline, cfg_str);
+
 	/* Fillup/fixup the fdt blob with following:
 	 * 		- initrd start, end
 	 * 		- kernel cmd line
@@ -706,8 +706,8 @@ void arm_main(void)
 {
 	char line[ARM_MAX_CMD_STR_SIZE];
 
-	/* copy the default_cmdline in the active cmdline */
-	arm_strcpy(cmdline, default_cmdline);
+	/* Setup board specific linux default cmdline */
+	arm_board_linux_default_cmdline(cmdline, sizeof(cmdline));
 
 	arm_puts(arm_board_name());
 	arm_puts(" Basic Test\n\n");
