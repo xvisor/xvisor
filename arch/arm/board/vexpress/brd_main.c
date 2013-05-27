@@ -219,6 +219,15 @@ static struct clcd_board clcd_system_data = {
 };
 
 /*
+ * Print board information
+ */
+
+void arch_board_print_info(struct vmm_chardev *cdev)
+{
+	/* FIXME: To be implemented. */
+}
+
+/*
  * Initialization functions
  */
 

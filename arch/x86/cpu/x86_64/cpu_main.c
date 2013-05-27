@@ -142,6 +142,10 @@ virtual_size_t arch_code_size(void)
 	return (virtual_size_t)(&_code_end - &_code_start);
 }
 
+void arch_cpu_print_info(struct vmm_chardev *cdev)
+{
+}
+
 void __init cpu_init(struct multiboot_info *binfo, char *cmdline)
 {
 	memcpy(&boot_info, binfo, sizeof(struct multiboot_info));
