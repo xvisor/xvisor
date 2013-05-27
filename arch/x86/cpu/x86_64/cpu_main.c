@@ -137,6 +137,15 @@ physical_addr_t arch_code_paddr_start(void)
 }
 
 extern u8 _code_end;
+u8 __x86_vmm_address(virtual_addr_t addr)
+{
+	if (addr >= CPU_TEXT_LMA && addr <= (virtual_addr_t)&_code_end)
+		return 1;
+
+	return 0;
+}
+
+extern u8 _code_end;
 extern u8 _code_start;
 
 virtual_size_t arch_code_size(void)
