@@ -26,6 +26,7 @@
 #include <vmm_main.h>
 #include <vmm_params.h>
 #include <vmm_devtree.h>
+#include <arch_cpu.h>
 #include <cpu_mmu.h>
 
 extern u8 _code_start;
@@ -46,6 +47,11 @@ physical_addr_t arch_code_paddr_start(void)
 virtual_size_t arch_code_size(void)
 {
 	return (virtual_size_t) (&_code_end - &_code_start);
+}
+
+void arch_cpu_print_info(struct vmm_chardev *cdev)
+{
+	/* FIXME: To be implemented. */
 }
 
 int __init arch_cpu_early_init(void)

@@ -48,6 +48,11 @@ virtual_size_t arch_code_size(void)
 	return (virtual_size_t) (&_code_end - &_code_start);
 }
 
+void arch_cpu_print_info(struct vmm_chardev *cdev)
+{
+	/* FIXME: To be implemented. */
+}
+
 int __init arch_cpu_early_init(void)
 {
 	char *attr;

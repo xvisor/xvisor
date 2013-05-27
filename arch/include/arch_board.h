@@ -23,11 +23,16 @@
 #ifndef _ARCH_BOARD_H__
 #define _ARCH_BOARD_H__
 
+#include <vmm_chardev.h>
+
 /** Reset board */
 int arch_board_reset(void);
 
 /** Power-off or shutdown board */
 int arch_board_shutdown(void);
+
+/** Print board specific information */
+void arch_board_print_info(struct vmm_chardev *cdev);
 
 /** Board early init */
 int arch_board_early_init(void);
