@@ -24,6 +24,8 @@
 #ifndef __CPU_PRIVATE_H__
 #define __CPU_PRIVATE_H__
 
+#include <processor.h>
+
 /* Vendor-strings. */
 #define CPUID_VENDOR_AMD	"AuthenticAMD"
 #define CPUID_VENDOR_INTEL	"GenuineIntel"
@@ -98,6 +100,8 @@ enum cpuid_requests {
 	CPUID_INTELBRANDSTRING,
 	CPUID_INTELBRANDSTRINGMORE,
 	CPUID_INTELBRANDSTRINGEND,
+	CPUID_INTEL_L1_CACHE_TLB_IDENTIFIER,
+	CPUID_INTEL_L2_CACHE_TLB_IDENTIFIER,
 };
 
 /*
@@ -108,16 +112,8 @@ enum cpuid_requests {
 static inline void cpuid(int code, u32 *a, u32 *b, u32 *c, u32* d)
 {
 	asm volatile("cpuid\n\t"
-		     :"=a"(*a), "=d"(*d), "=b"(*b), "=c"(*c)
-		     :"0"(code));
-}
-
-/* Issue a complete request, storing general registers output as a string. */
-static inline int cpuid_string(int code, u32 where[4])
-{
-	cpuid(code, &where[3], &where[0], &where[1], &where[2]);
-
-	return where[3];
+		:"=a"(*a), "=d"(*d), "=b"(*b), "=c"(*c)
+		:"0"(code));
 }
 
 /* MSR ACCESS */
@@ -163,6 +159,95 @@ static inline void cpu_write_msr(u32 msr, u64 value)
 
 	asm volatile ("wrmsr\n\t"
 		      ::"a"(a),"d"(d),"c"(msr));
+}
+
+#define CPUID_BASE_FAMILY_SHIFT		8
+#define CPUID_BASE_FAMILY_BITS		4
+#define CPUID_BASE_FAMILY_MASK		((1<<CPUID_BASE_FAMILY_BITS)-1)
+#define CPUID_EXTD_FAMILY_SHIFT		20
+#define CPUID_EXTD_FAMILY_BITS		8
+#define CPUID_EXTD_FAMILY_MASK		((1<<CPUID_EXTD_FAMILY_BITS)-1)
+
+#define CPUID_BASE_MODEL_SHIFT		4
+#define CPUID_BASE_MODEL_BITS		4
+#define CPUID_BASE_MODEL_MASK		((1<<CPUID_BASE_MODEL_BITS)-1)
+#define CPUID_EXTD_MODEL_SHIFT		16
+#define CPUID_EXTD_MODEL_BITS		4
+#define CPUID_EXTD_MODEL_MASK		((1<<CPUID_EXTD_MODEL_BITS)-1)
+
+#define CPUID_STEPPING_SHIFT		0
+#define CPUID_STEPPING_BITS		4
+#define CPUID_STEPPING_MASK		((1<<CPUID_STEPPING_BITS)-1)
+
+#define CPUID_L1_CACHE_SIZE_SHIFT	24
+#define CPUID_L1_CACHE_SIZE_BITS	8
+#define CPUID_L1_CACHE_SIZE_MASK	((1<<CPUID_L1_CACHE_SIZE_BITS)-1)
+#define CPUID_L1_CACHE_LINE_SHIFT	0
+#define CPUID_L1_CACHE_LINE_BITS	8
+#define CPUID_L1_CACHE_LINE_MASK	((1<<CPUID_L1_CACHE_LINE_BITS)-1)
+
+#define CPUID_L2_CACHE_SIZE_SHIFT	16
+#define CPUID_L2_CACHE_SIZE_BITS	16
+#define CPUID_L2_CACHE_SIZE_MASK	((1<<CPUID_L2_CACHE_SIZE_BITS)-1)
+#define CPUID_L2_CACHE_LINE_SHIFT	0
+#define CPUID_L2_CACHE_LINE_BITS	8
+#define CPUID_L2_CACHE_LINE_MASK	((1<<CPUID_L2_CACHE_LINE_BITS)-1)
+
+#define CPUID_L3_CACHE_SIZE_SHIFT	18
+#define CPUID_L3_CACHE_SIZE_BITS	14
+#define CPUID_L3_CACHE_SIZE_MASK	((1<<CPUID_L3_CACHE_SIZE_BITS)-1)
+#define CPUID_L3_CACHE_LINE_SHIFT	0
+#define CPUID_L3_CACHE_LINE_BITS	8
+#define CPUID_L3_CACHE_LINE_MASK	((1<<CPUID_L3_CACHE_LINE_BITS)-1)
+
+static inline void indentify_cpu(void)
+{
+	extern struct cpuinfo_x86 cpu_info;
+	u32 a, b, c, d;
+
+	cpuid(CPUID_INTELFEATURES, &a, &b, &c, &d);
+	cpu_info.family = ((a >> CPUID_BASE_FAMILY_SHIFT) & CPUID_BASE_FAMILY_MASK);
+	cpu_info.family += ((a >> CPUID_EXTD_FAMILY_SHIFT) & CPUID_EXTD_FAMILY_MASK);
+
+	cpu_info.model = ((a >> CPUID_BASE_MODEL_SHIFT) & CPUID_BASE_MODEL_MASK);
+	cpu_info.model <<= 4;
+	cpu_info.model |= ((a >> CPUID_EXTD_MODEL_SHIFT) & CPUID_EXTD_MODEL_MASK);
+
+	cpu_info.stepping = ((a >> CPUID_STEPPING_SHIFT) & CPUID_STEPPING_MASK);
+
+	/* processor identification name */
+	cpuid(CPUID_INTELBRANDSTRING, (u32 *)&cpu_info.name_string[0],
+		(u32 *)&cpu_info.name_string[4],
+		(u32 *)&cpu_info.name_string[8],
+		(u32 *)&cpu_info.name_string[12]);
+
+	cpuid(CPUID_INTELBRANDSTRINGMORE, (u32 *)&cpu_info.name_string[16],
+		(u32 *)&cpu_info.name_string[20],
+		(u32 *)&cpu_info.name_string[24],
+		(u32 *)&cpu_info.name_string[28]);
+
+	cpuid(CPUID_INTELBRANDSTRINGEND, (u32 *)&cpu_info.name_string[32],
+		(u32 *)&cpu_info.name_string[36],
+		(u32 *)&cpu_info.name_string[40],
+		(u32 *)&cpu_info.name_string[44]);
+
+	cpuid(CPUID_GETVENDORSTRING, (u32 *)&cpu_info.vendor_string[12],
+		(u32 *)&cpu_info.vendor_string[0],
+		(u32 *)&cpu_info.vendor_string[8],
+		(u32 *)&cpu_info.vendor_string[4]);
+
+	cpuid(CPUID_INTEL_L1_CACHE_TLB_IDENTIFIER, &a, &b, &c, &d);
+	cpu_info.l1_dcache_size = ((c >> CPUID_L1_CACHE_SIZE_SHIFT) & CPUID_L1_CACHE_SIZE_MASK);
+	cpu_info.l1_dcache_line_size = ((c >> CPUID_L1_CACHE_LINE_SHIFT) & CPUID_L1_CACHE_LINE_MASK);
+	cpu_info.l1_icache_size = ((d >> CPUID_L1_CACHE_SIZE_SHIFT) & CPUID_L1_CACHE_SIZE_MASK);
+	cpu_info.l1_icache_line_size = ((d >> CPUID_L1_CACHE_LINE_SHIFT) & CPUID_L1_CACHE_LINE_MASK);
+
+	cpuid(CPUID_INTEL_L2_CACHE_TLB_IDENTIFIER, &a, &b, &c, &d);
+	cpu_info.l2_cache_size = ((c >> CPUID_L2_CACHE_SIZE_SHIFT) & CPUID_L2_CACHE_SIZE_MASK);
+	cpu_info.l2_cache_line_size = ((c >> CPUID_L2_CACHE_LINE_SHIFT) & CPUID_L2_CACHE_LINE_MASK);
+
+	cpuid(CPUID_INTELFEATURES, &a, &b, &c, &d);
+	cpu_info.hw_virt_available = ((c >> 2) & 1);
 }
 
 #endif /* __CPU_PRIVATE_H__ */

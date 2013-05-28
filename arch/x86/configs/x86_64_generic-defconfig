@@ -2,18 +2,17 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.1
-# Fri May 10 13:51:06 2013
+# Sat May 25 17:00:19 2013
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
-# CONFIG_ARCH_MIPS is not set
 CONFIG_ARCH_x86=y
 CONFIG_ARCH="x86"
 CONFIG_CPU_COUNT=1
+CONFIG_VAPOOL_SIZE_MB=16
 CONFIG_CPU="x86_64"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
-CONFIG_VAPOOL_SIZE_MB=16
 CONFIG_BOARD="x86_64_generic"
 CONFIG_CPU_X86_64=y
 CONFIG_64BIT=y
@@ -26,8 +25,19 @@ CONFIG_ACPI=y
 #
 # Processor Features
 #
+
+#
+# CPU Cache Configuration
+#
+
+#
+# L1 Cache
+#
+CONFIG_X86_L1_SHIFT=6
 CONFIG_LOCAL_APIC=y
 # CONFIG_8259A is not set
+CONFIG_VEXT_AMD_V=y
+# CONFIG_VEXT_INTEL_VT_X is not set
 CONFIG_BOARD_X86_64_GENERIC=y
 CONFIG_X86_64_GENERIC=y
 
