@@ -386,7 +386,7 @@ static void mmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	vmm_udelay(CLK_CHANGE_DELAY);
 }
 
-int mmci_init_card(struct mmc_host *mmc, struct mmc_card *card)
+static int mmci_init_card(struct mmc_host *mmc, struct mmc_card *card)
 {
 	struct mmci_host *host = mmc_priv(mmc);
 
