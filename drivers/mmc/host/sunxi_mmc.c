@@ -312,8 +312,9 @@ static void sunxi_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		ios->bus_width, ios->clock, host->mod_clk);
 
 	/* Change clock first */
-	clkdiv = udiv32((host->mod_clk + (ios->clock >> 1)), (ios->clock / 2));
 	if (ios->clock) {
+		clkdiv = udiv32((host->mod_clk + (ios->clock >> 1)), 
+				(ios->clock / 2));
 		if (sunxi_mmc_config_clock(host, clkdiv)) {
 			host->fatal_err = 1;
 			return;
