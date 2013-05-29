@@ -32,9 +32,7 @@
 #define __le32(x)			vmm_le32_to_cpu(x)
 #define __le16(x)			vmm_le16_to_cpu(x)
 
-#define FAT_TABLE_CACHE_SIZE		16
-#define FAT_TABLE_CACHE_MASK		0x0000000F
-#define FAT_TABLE_CACHE_INDEX(num)	((num) & FAT_TABLE_CACHE_MASK)
+#define FAT_TABLE_CACHE_SIZE		32
 
 /* Information about a "mounted" FAT filesystem. */
 struct fatfs_control {
@@ -67,9 +65,10 @@ struct fatfs_control {
 	enum fat_types type;
 
 	/* FAT table cache */
-	struct vmm_mutex table_sector_lock[FAT_TABLE_CACHE_SIZE];
+	struct vmm_mutex table_sector_lock;
 	bool table_sector_dirty[FAT_TABLE_CACHE_SIZE];
 	u32 table_sector_num[FAT_TABLE_CACHE_SIZE];
+	u32 table_sector_usage[FAT_TABLE_CACHE_SIZE];
 	u8 *table_sector_buf;
 };
 
