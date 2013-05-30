@@ -27,6 +27,8 @@
 
 #include "ext4_common.h"
 
+#define EXT4_NODE_LOOKUP_SIZE		4
+
 /* Information for accessing a ext4fs file/directory. */
 struct ext4fs_node {
 	/* Parent ext4fs control */
@@ -64,6 +66,11 @@ struct ext4fs_node {
 	u32 *dindir2_block;
 	u32 dindir2_blkno;
 	bool dindir2_dirty;
+
+	/* Child directory entry lookup table */
+	u32 lookup_victim;
+	char lookup_name[EXT4_NODE_LOOKUP_SIZE][VFS_MAX_NAME];
+	struct ext2_dirent lookup_dent[EXT4_NODE_LOOKUP_SIZE];
 };
 
 u64 ext4fs_node_get_size(struct ext4fs_node *node);
@@ -94,6 +101,9 @@ int ext4fs_node_load(struct ext4fs_control *ctrl,
 int ext4fs_node_init(struct ext4fs_node *node);
 
 int ext4fs_node_exit(struct ext4fs_node *node);
+
+int ext4fs_node_read_dirent(struct ext4fs_node *dnode, 
+			    loff_t off, struct dirent *d);
 
 int ext4fs_node_find_dirent(struct ext4fs_node *dnode, 
 			    const char *name, struct ext2_dirent *dent);

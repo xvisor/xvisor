@@ -656,6 +656,8 @@ int ext4fs_node_load(struct ext4fs_control *ctrl,
 
 int ext4fs_node_init(struct ext4fs_node *node)
 {
+	int idx;
+
 	node->inode_no = 0;
 	node->inode_dirty = FALSE;
 
@@ -674,6 +676,11 @@ int ext4fs_node_init(struct ext4fs_node *node)
 	node->dindir2_block = NULL;
 	node->dindir2_blkno = 0;
 	node->dindir2_dirty = FALSE;
+
+	node->lookup_victim = 0;
+	for (idx = 0; idx < EXT4_NODE_LOOKUP_SIZE; idx++) {
+		node->lookup_name[idx][0] = '\0';
+	}
 
 	return VMM_OK;
 }
@@ -699,6 +706,155 @@ int ext4fs_node_exit(struct ext4fs_node *node)
 	return VMM_OK;
 }
 
+static int ext4fs_node_find_lookup_dirent(struct ext4fs_node *dnode, 
+					  const char *name, 
+					  struct ext2_dirent *dent)
+{
+	int idx;
+
+	if (name[0] == '\0') {
+		return -1;
+	}
+
+	for (idx = 0; idx < EXT4_NODE_LOOKUP_SIZE; idx++) {
+		if (!strcmp(dnode->lookup_name[idx], name)) {
+			memcpy(dent, &dnode->lookup_dent[idx], sizeof(*dent));
+			return idx;
+		}
+	}
+
+	return -1;
+}
+
+static void ext4fs_node_add_lookup_dirent(struct ext4fs_node *dnode, 
+					  const char *name, 
+					  struct ext2_dirent *dent)
+{
+	int idx;
+	bool found = FALSE;
+
+	if (name[0] == '\0') {
+		return;
+	}
+
+	for (idx = 0; idx < EXT4_NODE_LOOKUP_SIZE; idx++) {
+		if (!strcmp(dnode->lookup_name[idx], name)) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
+		idx = dnode->lookup_victim;
+		dnode->lookup_victim++;
+		if (dnode->lookup_victim == EXT4_NODE_LOOKUP_SIZE) {
+			dnode->lookup_victim = 0;
+		}
+		strncpy(&dnode->lookup_name[idx][0], name, VFS_MAX_NAME);
+		memcpy(&dnode->lookup_dent[idx], dent, sizeof(*dent));
+	}
+}
+
+static void ext4fs_node_del_lookup_dirent(struct ext4fs_node *dnode, 
+					  const char *name)
+{
+	int idx;
+
+	if (name[0] == '\0') {
+		return;
+	}
+
+	for (idx = 0; idx < EXT4_NODE_LOOKUP_SIZE; idx++) {
+		if (!strcmp(dnode->lookup_name[idx], name)) {
+			dnode->lookup_name[idx][0] = '\0';
+			break;
+		}
+	}
+
+}
+
+int ext4fs_node_read_dirent(struct ext4fs_node *dnode, 
+			    loff_t off, struct dirent *d)
+{
+	u32 readlen;
+	struct ext2_dirent dent;
+	u64 filesize = ext4fs_node_get_size(dnode);
+	u64 fileoff = off;
+
+	if (filesize <= fileoff) {
+		return VMM_ENOENT;
+	}
+
+	if (filesize < (sizeof(struct ext2_dirent) + fileoff)) {
+		return VMM_ENOENT;
+	}
+
+	d->d_reclen = 0;
+
+	do {
+		readlen = ext4fs_node_read(dnode, fileoff, 
+				sizeof(struct ext2_dirent), (char *)&dent);
+		if (readlen != sizeof(struct ext2_dirent)) {
+			return VMM_EIO;
+		}
+
+		if (dent.namelen > (VFS_MAX_NAME - 1)) {
+			dent.namelen = (VFS_MAX_NAME - 1);
+		}
+		readlen = ext4fs_node_read(dnode, 
+				fileoff + sizeof(struct ext2_dirent),
+				dent.namelen, d->d_name);
+		if (readlen != dent.namelen) {
+			return VMM_EIO;
+		}
+		d->d_name[dent.namelen] = '\0';
+
+		d->d_reclen += __le16(dent.direntlen);
+		fileoff += __le16(dent.direntlen);
+
+		if ((strcmp(d->d_name, ".") == 0) ||
+		    (strcmp(d->d_name, "..") == 0)) {
+			continue;
+		} else {
+			break;
+		}
+	} while (1);
+
+	d->d_off = off;
+
+	switch (dent.filetype) {
+	case EXT2_FT_REG_FILE:
+		d->d_type = DT_REG;
+		break;
+	case EXT2_FT_DIR:
+		d->d_type = DT_DIR;
+		break;
+	case EXT2_FT_CHRDEV:
+		d->d_type = DT_CHR;
+		break;
+	case EXT2_FT_BLKDEV:
+		d->d_type = DT_BLK;
+		break;
+	case EXT2_FT_FIFO:
+		d->d_type = DT_FIFO;
+		break;
+	case EXT2_FT_SOCK:
+		d->d_type = DT_SOCK;
+		break;
+	case EXT2_FT_SYMLINK:
+		d->d_type = DT_LNK;
+		break;
+	default:
+		d->d_type = DT_UNK;
+		break;
+	};
+
+	/* Add dent to lookup table */
+	ext4fs_node_add_lookup_dirent(dnode, d->d_name, &dent);
+
+	return VMM_OK;
+}
+
 int ext4fs_node_find_dirent(struct ext4fs_node *dnode, 
 			    const char *name, struct ext2_dirent *dent)
 {
@@ -706,6 +862,11 @@ int ext4fs_node_find_dirent(struct ext4fs_node *dnode,
 	u32 rlen;
 	char filename[VFS_MAX_NAME];
 	u64 off, filesize = ext4fs_node_get_size(dnode);
+
+	/* Try to find in lookup table */
+	if (ext4fs_node_find_lookup_dirent(dnode, name, dent) > -1) {
+		return VMM_OK;
+	}
 
 	/* Find desired directoy entry such that we ignore
 	 * "." and ".." in search process
@@ -744,6 +905,9 @@ int ext4fs_node_find_dirent(struct ext4fs_node *dnode,
 	if (!found) {
 		return VMM_ENOENT;
 	}
+
+	/* Add dent to lookup table */
+	ext4fs_node_add_lookup_dirent(dnode, filename, dent);
 
 	return VMM_OK;
 }
@@ -870,6 +1034,9 @@ int ext4fs_node_del_dirent(struct ext4fs_node *dnode, const char *name)
 	if (!strcmp(name, ".") || !strcmp(name, "..")) {
 		return VMM_EINVALID;
 	}
+
+	/* Delete dent from lookup table */
+	ext4fs_node_del_lookup_dirent(dnode, name);
 
 	/* Initialize perivous entry and previous offset */
 	poff = 0;

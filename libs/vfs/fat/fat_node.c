@@ -77,16 +77,17 @@ u32 fatfs_node_read(struct fatfs_node *node, u64 pos, u32 len, char *buf)
 						ctrl->bytes_per_cluster : len;
 		}
 
-		/* Make sure node cluster cache is updated */
+		/* Make sure cached cluster is updated */
 		if (!node->cached_data) {
-			node->cached_data = vmm_malloc(ctrl->bytes_per_cluster);
+			node->cached_data = 
+					vmm_malloc(ctrl->bytes_per_cluster);
 			if (!node->cached_data) {
 				return 0;
 			}
 		}
 		if (node->cached_cluster != cl_num) {
 			if (node->cached_dirty) {
-				/* FIXME: Write back dirty node cluster */
+				/* FIXME: Write back dirty cached cluster */
 
 				node->cached_dirty = FALSE;
 			}
@@ -95,14 +96,15 @@ u32 fatfs_node_read(struct fatfs_node *node, u64 pos, u32 len, char *buf)
 
 			roff = (ctrl->first_data_sector * ctrl->bytes_per_sector) + 
 				((cl_num - 2) * ctrl->bytes_per_cluster);
-			rlen = vmm_blockdev_read(ctrl->bdev, node->cached_data, 
+			rlen = vmm_blockdev_read(ctrl->bdev, 
+						node->cached_data, 
 						roff, ctrl->bytes_per_cluster);
 			if (rlen != ctrl->bytes_per_cluster) {
 				return i;
 			}
 		}
 
-		/* Read from node cluster cache */
+		/* Read from cached cluster */
 		memcpy(buf, &node->cached_data[cl_off], cl_len);
 
 		/* Update iteration */
@@ -124,10 +126,14 @@ u64 fatfs_node_get_size(struct fatfs_node *node)
 
 int fatfs_node_sync(struct fatfs_node *node)
 {
-	if (node->cached_dirty) {
-		/* FIXME: Write back dirty node cluster */
+	int i;
 
-		node->cached_dirty = FALSE;
+	for (i = 0; i < FAT_NODE_CACHE_SIZE; i++) {
+		if (node->cached_dirty) {
+			/* FIXME: Write back dirty node cluster */
+
+			node->cached_dirty = FALSE;
+		}
 	}
 
 	return VMM_OK;
@@ -135,6 +141,8 @@ int fatfs_node_sync(struct fatfs_node *node)
 
 int fatfs_node_init(struct fatfs_node *node)
 {
+	int idx;
+
 	node->ctrl = NULL;
 	node->parent = NULL;
 	node->parent_dirent_off = 0;
@@ -146,6 +154,13 @@ int fatfs_node_init(struct fatfs_node *node)
 	node->cached_data = NULL;
 	node->cached_dirty = FALSE;
 
+	node->lookup_victim = 0;
+	for (idx = 0; idx < FAT_NODE_LOOKUP_SIZE; idx++) {
+		node->lookup_name[idx][0] = '\0';
+		node->lookup_off[idx] = 0;
+		node->lookup_len[idx] = 0;
+	}
+
 	return VMM_OK;
 }
 
@@ -153,8 +168,194 @@ int fatfs_node_exit(struct fatfs_node *node)
 {
 	if (node->cached_data) {
 		vmm_free(node->cached_data);
+		node->cached_cluster = 0;
 		node->cached_data = NULL;
+		node->cached_dirty = FALSE;
 	}
+
+	return VMM_OK;
+}
+
+static int fatfs_node_find_lookup_dirent(struct fatfs_node *dnode, 
+					 const char *name, 
+					 struct fat_dirent *dent,
+					 u32 *off, u32 *len)
+{
+	int idx;
+
+	if (name[0] == '\0') {
+		return -1;
+	}
+
+	for (idx = 0; idx < FAT_NODE_LOOKUP_SIZE; idx++) {
+		if (!strcmp(dnode->lookup_name[idx], name)) {
+			memcpy(dent, &dnode->lookup_dent[idx], sizeof(*dent));
+			*off = dnode->lookup_off[idx];
+			*len = dnode->lookup_len[idx];
+			return idx;
+		}
+	}
+
+	return -1;
+}
+
+static void fatfs_node_add_lookup_dirent(struct fatfs_node *dnode, 
+					 const char *name, 
+					 struct fat_dirent *dent, 
+					 u32 off, u32 len)
+{
+	int idx;
+	bool found = FALSE;
+
+	if (name[0] == '\0') {
+		return;
+	}
+
+	for (idx = 0; idx < FAT_NODE_LOOKUP_SIZE; idx++) {
+		if (!strcmp(dnode->lookup_name[idx], name)) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
+		idx = dnode->lookup_victim;
+		dnode->lookup_victim++;
+		if (dnode->lookup_victim == FAT_NODE_LOOKUP_SIZE) {
+			dnode->lookup_victim = 0;
+		}
+		strncpy(&dnode->lookup_name[idx][0], name, VFS_MAX_NAME);
+		memcpy(&dnode->lookup_dent[idx], dent, sizeof(*dent));
+		dnode->lookup_off[idx] = off;
+		dnode->lookup_len[idx] = len;
+	}
+}
+
+#if 0 /* TODO: To be used later. */
+static void fatfs_node_del_lookup_dirent(struct fatfs_node *dnode, 
+					  const char *name)
+{
+	int idx;
+
+	if (name[0] == '\0') {
+		return;
+	}
+
+	for (idx = 0; idx < FAT_NODE_LOOKUP_SIZE; idx++) {
+		if (!strcmp(dnode->lookup_name[idx], name)) {
+			dnode->lookup_name[idx][0] = '\0';
+			dnode->lookup_off[idx] = 0;
+			dnode->lookup_len[idx] = 0;
+			break;
+		}
+	}
+
+}
+#endif
+
+int fatfs_node_read_dirent(struct fatfs_node *dnode, 
+			    loff_t off, struct dirent *d)
+{
+	u32 i, rlen, len;
+	char lname[VFS_MAX_NAME];
+	struct fat_dirent dent;
+	struct fat_longname lfn;
+	u64 fileoff = off;
+
+	if (umod64(fileoff, sizeof(struct fat_dirent))) {
+		return VMM_EINVALID;
+	}
+
+	memset(lname, 0, sizeof(lname));
+	d->d_off = off;
+	d->d_reclen = 0;
+
+	do {
+		rlen = fatfs_node_read(dnode, fileoff, 
+				sizeof(struct fat_dirent), (char *)&dent);
+		if (rlen != sizeof(struct fat_dirent)) {
+			return VMM_EIO;
+		}
+
+		if (dent.dos_file_name[0] == 0x0) {
+			return VMM_ENOENT;
+		}
+
+		d->d_reclen += sizeof(struct fat_dirent);
+		fileoff += sizeof(struct fat_dirent);
+
+		if ((dent.dos_file_name[0] == 0xE5) ||
+		    (dent.dos_file_name[0] == 0x2E)) {
+			continue;
+		}
+
+		if (dent.file_attributes == FAT_LONGNAME_ATTRIBUTE) {
+			memcpy(&lfn, &dent, sizeof(struct fat_longname));
+			if (FAT_LONGNAME_LASTSEQ(lfn.seqno)) {
+				memset(lname, 0, sizeof(lname));
+				lfn.seqno = FAT_LONGNAME_SEQNO(lfn.seqno);
+			}
+			if ((lfn.seqno < FAT_LONGNAME_MINSEQ) ||
+			    (FAT_LONGNAME_MAXSEQ < lfn.seqno)) {
+				continue;
+			}
+			len = (lfn.seqno - 1) * 13;
+			lname[len + 0] = (char)__le16(lfn.name_utf16_1[0]);
+			lname[len + 1] = (char)__le16(lfn.name_utf16_1[1]);
+			lname[len + 2] = (char)__le16(lfn.name_utf16_1[2]);
+			lname[len + 3] = (char)__le16(lfn.name_utf16_1[3]);
+			lname[len + 4] = (char)__le16(lfn.name_utf16_1[4]);
+			lname[len + 5] = (char)__le16(lfn.name_utf16_2[0]);
+			lname[len + 6] = (char)__le16(lfn.name_utf16_2[1]);
+			lname[len + 7] = (char)__le16(lfn.name_utf16_2[2]);
+			lname[len + 8] = (char)__le16(lfn.name_utf16_2[3]);
+			lname[len + 9] = (char)__le16(lfn.name_utf16_2[4]);
+			lname[len + 10] = (char)__le16(lfn.name_utf16_2[5]);
+			lname[len + 11] = (char)__le16(lfn.name_utf16_3[0]);
+			lname[len + 12] = (char)__le16(lfn.name_utf16_3[1]);
+			continue;
+		}
+
+		if (dent.file_attributes & FAT_DIRENT_VOLLABLE) {
+			continue;
+		}
+
+		if (!strlen(lname)) {
+			i = 8;
+			while (i && (dent.dos_file_name[i-1] == ' ')) {
+				dent.dos_file_name[i-1] = '\0';
+				i--;
+			}
+			i = 3;
+			while (i && (dent.dos_extension[i-1] == ' ')) {
+				dent.dos_extension[i-1] = '\0';
+				i--;
+			}
+			memcpy(lname, dent.dos_file_name, 8);
+			if (dent.dos_extension[0] != '\0') {
+				len = strlen(lname);
+				lname[len] = '.';
+				lname[len + 1] = dent.dos_extension[0];
+				lname[len + 2] = dent.dos_extension[1];
+				lname[len + 3] = dent.dos_extension[2];
+				lname[len + 4] = '\0';
+			}
+		}
+
+		strncpy(d->d_name, lname, VFS_MAX_NAME);
+
+		break;
+	} while (1);
+
+	if (dent.file_attributes & FAT_DIRENT_SUBDIR) {
+		d->d_type = DT_DIR;
+	} else {
+		d->d_type = DT_REG;
+	}
+
+	/* Add dent to lookup table */
+	fatfs_node_add_lookup_dirent(dnode, d->d_name, 
+				     &dent, d->d_off, d->d_reclen);
 
 	return VMM_OK;
 }
@@ -168,6 +369,12 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 	struct fat_longname lfn;
 	char lname[VFS_MAX_NAME];
 	u64 off;
+
+	/* Try to find in lookup table */
+	if (fatfs_node_find_lookup_dirent(dnode, name, 
+					  dent, dent_off, dent_len) > -1) {
+		return VMM_OK;
+	}
 
 	lfn_off = 0;
 	lfn_len = 0;
@@ -259,6 +466,10 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 		lfn_len = 0;
 		memset(lname, 0, sizeof(lname));
 	}
+
+	/* Add dent to lookup table */
+	fatfs_node_add_lookup_dirent(dnode, lname, 
+				     dent, *dent_off, *dent_len);
 
 	return VMM_OK;
 }

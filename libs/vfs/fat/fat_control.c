@@ -40,7 +40,8 @@ u64 fatfs_control_read_fat(struct fatfs_control *ctrl,
 			   u8 *buf, u64 pos, u32 len)
 {
 	u64 fat_base, rlen;
-	u32 num, ind, i;
+	u32 i, num, ind, usage;
+	bool found;
 
 	if ((len != 2) && (len != 4)) {
 		return 0;
@@ -53,11 +54,27 @@ u64 fatfs_control_read_fat(struct fatfs_control *ctrl,
 	fat_base = ctrl->first_fat_sector * ctrl->bytes_per_sector;
 
 	num = udiv64(pos, ctrl->bytes_per_sector);
-	ind = FAT_TABLE_CACHE_INDEX(num);
 
-	vmm_mutex_lock(&ctrl->table_sector_lock[ind]);
+	vmm_mutex_lock(&ctrl->table_sector_lock);
 
-	if (ctrl->table_sector_num[ind] != num) {
+	found = FALSE;
+	for (ind = 0; ind < FAT_TABLE_CACHE_SIZE; ind++) {
+		if (ctrl->table_sector_num[ind] == num) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
+		ind = num % FAT_TABLE_CACHE_SIZE;
+		usage = ctrl->table_sector_usage[ind];
+		for (i = 0; i < FAT_TABLE_CACHE_SIZE; i++) {
+			if (ctrl->table_sector_usage[i] < usage) {
+				usage = ctrl->table_sector_usage[i];
+				ind = i;
+			}
+		}
+
 		if (ctrl->table_sector_dirty[ind]) {
 			/* FIXME: Write back dirty table sector */
 
@@ -69,17 +86,19 @@ u64 fatfs_control_read_fat(struct fatfs_control *ctrl,
 			fat_base + num * ctrl->bytes_per_sector, 
 			ctrl->bytes_per_sector);
 		if (rlen != ctrl->bytes_per_sector) {
-			vmm_mutex_unlock(&ctrl->table_sector_lock[ind]);
+			vmm_mutex_unlock(&ctrl->table_sector_lock);
 			return 0;
 		}
 		ctrl->table_sector_num[ind] = num;
+		ctrl->table_sector_usage[ind] = 0;
 	}
 
-	i = (ind * ctrl->bytes_per_sector) + 
+	ind = (ind * ctrl->bytes_per_sector) + 
 				(pos - (num * ctrl->bytes_per_sector));
-	memcpy(buf, &ctrl->table_sector_buf[i], len);
+	memcpy(buf, &ctrl->table_sector_buf[ind], len);
+	ctrl->table_sector_usage[ind]++;
 
-	vmm_mutex_unlock(&ctrl->table_sector_lock[ind]);
+	vmm_mutex_unlock(&ctrl->table_sector_lock);
 
 	return len;
 }
@@ -175,17 +194,18 @@ int fatfs_control_sync(struct fatfs_control *ctrl)
 	int rc;
 	u32 ind;
 
+	vmm_mutex_lock(&ctrl->table_sector_lock);
+
 	for (ind = 0; ind < FAT_TABLE_CACHE_SIZE; ind++) {
-		vmm_mutex_lock(&ctrl->table_sector_lock[ind]);
 
 		if (ctrl->table_sector_dirty[ind]) {
 			/* FIXME: Write back dirty table sector */
 
 			ctrl->table_sector_dirty[ind] = FALSE;
 		}
-
-		vmm_mutex_unlock(&ctrl->table_sector_lock[ind]);
 	}
+
+	vmm_mutex_unlock(&ctrl->table_sector_lock);
 
 	/* Flush cached data in device request queue */
 	rc = vmm_blockdev_flush_cache(ctrl->bdev);
@@ -298,10 +318,11 @@ int fatfs_control_init(struct fatfs_control *ctrl, struct vmm_blockdev *bdev)
 	}
 
 	/* Initialize table sector cache */
+	INIT_MUTEX(&ctrl->table_sector_lock);
 	for (i = 0; i < FAT_TABLE_CACHE_SIZE; i++) {
-		INIT_MUTEX(&ctrl->table_sector_lock[i]);
 		ctrl->table_sector_dirty[i] = FALSE;
 		ctrl->table_sector_num[i] = i;
+		ctrl->table_sector_usage[i] = 0;
 	}
 	ctrl->table_sector_buf = 
 		vmm_zalloc(FAT_TABLE_CACHE_SIZE * ctrl->bytes_per_sector);

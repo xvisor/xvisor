@@ -34,13 +34,13 @@ $(build_dir)/%.dep: $(src_dir)/%.dts
 $(build_dir)/%.dtb: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
-	$(V)$(build_dir)/tools/dtc/dtc -p 0x100 -I dts -O dtb $< -o $@
+	$(V)$(build_dir)/tools/dtc/dtc -p 0x100 -I dts -O dtb -o $@ $<
 
 $(build_dir)/%.S: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
-	$(V)$(build_dir)/tools/dtc/dtc -I dts -O asm $< -o $@
-	$(V)sed -i '1 i .section ".devtree"' $@
+	$(V)echo '.section ".devtree"' > $@
+	$(V)$(build_dir)/tools/dtc/dtc -I dts -O asm $< >> $@
 
 ifdef CONFIG_CPATCH
 
