@@ -174,12 +174,12 @@ static inline void vmm_writel(u32 data, volatile void *addr)
 	arch_out_le32(addr, data);
 }
 
-static inline u32 vmm_readq(volatile void *addr)
+static inline u64 vmm_readq(volatile void *addr)
 {
 	return arch_in_le64(addr);
 }
 
-static inline void vmm_writeq(u32 data, volatile void *addr)
+static inline void vmm_writeq(u64 data, volatile void *addr)
 {
 	arch_out_le64(addr, data);
 }
