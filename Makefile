@@ -134,7 +134,7 @@ asflags+=$(cppflags)
 ar=$(CROSS_COMPILE)ar
 arflags=rcs
 ld=$(CROSS_COMPILE)gcc
-ldflags=-g -Wall -nostdlib 
+ldflags=-g -Wall -nostdlib -Wl,--build-id=none
 ldflags+=$(board-ldflags) 
 ldflags+=$(cpu-ldflags) 
 ldflags+=$(libs-ldflags-y) 
