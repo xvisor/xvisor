@@ -129,7 +129,7 @@ void cmd_host_irq_stats(struct vmm_chardev *cdev)
 		}
 		chip = vmm_host_irq_get_chip(irq);
 		vmm_cprintf(cdev, " %-7d %-15s %-10s", 
-				  num, irq->name, chip->name, stats);
+				  num, irq->name, chip->name);
 		for_each_online_cpu(cpu) {
 			stats = vmm_host_irq_get_count(irq, cpu);
 			vmm_cprintf(cdev, " %-11d", stats);
