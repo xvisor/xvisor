@@ -212,7 +212,7 @@ static void system_init_work(struct vmm_work *work)
 				vmm_printf("bootcmd: %s\n", str);
 #endif
 				/* Execute boot command */
-				strncpy(bcmd, str, BOOTCMD_WIDTH);
+				strlcpy(bcmd, str, sizeof(bcmd));
 				cdev = vmm_stdio_device();
 				vmm_cmdmgr_execute_cmdstr(cdev, bcmd, NULL);
 				/* Next boot command */
