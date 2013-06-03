@@ -509,8 +509,9 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth,
 	}
 	if (history) {
 		hist_cur = history->tail;
+		maxwidth = (maxwidth < history->width) ? maxwidth : 
+							 history->width;
 	}
-	maxwidth = (maxwidth < history->width) ? maxwidth : history->width;
 	while (1) {
 		to_left = FALSE;
 		to_right = FALSE;
@@ -533,7 +534,7 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth,
 					prev = (hist_cur == 0) ? (history->length-1) : (hist_cur-1);
 					if (history->table[prev][0]) {
 						s[count] = '\0';
-						strncpy(history->table[hist_cur], s, maxwidth);
+						strlcpy(history->table[hist_cur], s, maxwidth);
 						/* First erase the current line */
 						if (pos > 0) {
 							vmm_cprintf(cdev, "\e[%dD", pos);
@@ -553,7 +554,7 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth,
 				} else if (history && (ch1 == 'B')) { /* Down Key */
 					if (hist_cur != history->tail) {
 						s[count] = '\0';
-						strncpy(history->table[hist_cur], s, maxwidth);
+						strlcpy(history->table[hist_cur], s, maxwidth);
 						hist_cur = (hist_cur == (history->length - 1)) ? 0 : (hist_cur + 1);
 						/* First erase the current line */
 						if (pos > 0) {
@@ -669,7 +670,7 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth,
 		if (history->table[prev][0])
 			duplicate = !(strcmp(s, history->table[prev]));
 		if (!duplicate)
-			strncpy(history->table[history->tail], s, maxwidth);
+			strlcpy(history->table[history->tail], s, maxwidth);
 		if (!duplicate && (count > 0)) {
 			history->tail = (history->tail == (history->length - 1))
 							? 0 : (history->tail + 1);
