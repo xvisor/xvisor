@@ -430,20 +430,36 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 
 	if (!found) {
 		attr = vmm_malloc(sizeof(struct vmm_devtree_attr));
+		if (!attr) {
+			return VMM_ENOMEM;
+		}
 		INIT_LIST_HEAD(&attr->head);
 		attr->len = len;
 		attr->type = type;
 		len = strlen(name) + 1;
 		attr->name = vmm_malloc(len);
-		strncpy(attr->name, name, len);
+		if (!attr->name) {
+			vmm_free(attr);
+			return VMM_ENOMEM;
+		}
+		strcpy(attr->name, name);
 		attr->value = vmm_malloc(attr->len);
+		if (!attr->value) {
+			vmm_free(attr->name);
+			vmm_free(attr);
+			return VMM_ENOMEM;
+		}
 		memcpy(attr->value, value, attr->len);
 		list_add_tail(&attr->head, &node->attr_list);
 	} else {
 		if (attr->len != len) {
+			void *ptr = vmm_malloc(len);
+			if (!ptr) {
+				return VMM_ENOMEM;
+			}
 			attr->len = len;
 			vmm_free(attr->value);
-			attr->value = vmm_malloc(attr->len);
+			attr->value = ptr;
 		}
 		attr->type = type;
 		memcpy(attr->value, value, attr->len);
@@ -516,7 +532,7 @@ int vmm_devtree_getpath(char *out, struct vmm_devtree_node *node)
 	if (!node)
 		return VMM_EFAIL;
 
-	strcpy(out, "");
+	out[0] = 0;
 
 	recursive_getpath(&out_ptr, node);
 
@@ -632,10 +648,16 @@ struct vmm_devtree_node *vmm_devtree_find_compatible(
 	memset(id, 0, sizeof(id));
 
 	if (device_type) {
-		strncpy(id[0].type, device_type, sizeof(id[0].type));
+		if (strlcpy(id[0].type, device_type, sizeof(id[0].type)) >=
+		    sizeof(id[0].type)) {
+			return NULL;
+		}
 	}
 
-	strncpy(id[0].compatible, compatible, sizeof(id[0].compatible));
+	if (strlcpy(id[0].compatible, compatible, sizeof(id[0].compatible)) >=
+	    sizeof(id[0].compatible)) {
+		return NULL;
+	}
 
 	return vmm_devtree_find_matching(node, id);
 }
@@ -664,12 +686,19 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	}
 
 	node = vmm_malloc(sizeof(struct vmm_devtree_node));
+	if (!node) {
+		return NULL;
+	}
 	INIT_LIST_HEAD(&node->head);
 	INIT_LIST_HEAD(&node->attr_list);
 	INIT_LIST_HEAD(&node->child_list);
 	len = strlen(name) + 1;
 	node->name = vmm_malloc(len);
-	strncpy(node->name, name, len);
+	if (!node->name) {
+		vmm_free(node);
+		return NULL;
+	}
+	strcpy(node->name, name);
 	node->system_data = NULL;
 	node->priv = NULL;
 	node->parent = parent;
