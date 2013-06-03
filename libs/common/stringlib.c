@@ -34,6 +34,15 @@ size_t strlen(const char *s)
 	return ret;
 }
 
+size_t strnlen(const char *s, size_t len)
+{
+	size_t ret = 0;
+	while (s[ret] && (ret != len)) {
+		ret++;
+	}
+	return ret;
+}
+
 char *strcpy(char *dest, const char *src)
 {
 	u32 i;
@@ -86,6 +95,22 @@ char *strncat(char *dest, const char *src, size_t n)
 	return (save);
 }
 
+size_t strlcat(char *dst, const char *src, size_t size)
+{
+	size_t dlen = 0;
+	size_t slen = strlen(src);
+	if (size) {
+		dlen = strnlen(dst, size);
+		if (dlen + slen < size) {
+			memcpy(dst+dlen, src, slen+1);
+		} else if (dlen < size) {
+			memcpy(dst+dlen, src, size - dlen - 1);
+			dst[size - 1] = 0;
+		}
+	}
+
+	return dlen+slen;
+}
 
 int strcmp(const char *a, const char *b)
 {
