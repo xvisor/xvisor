@@ -324,7 +324,7 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 			req->read_iov_cnt = 1;
 			req->read_iov[0].addr = bdev->iov[1].addr;
 			req->read_iov[0].len = bdev->iov[1].len;
-			strncpy(req->r.data, bdev->blk_name, req->len);
+			strlcpy(req->r.data, bdev->blk_name, req->len);
 			virtio_blk_req_done(req, VIRTIO_BLK_S_OK);
 			break;
 		default:
@@ -456,10 +456,14 @@ static int virtio_blk_connect(struct virtio_device *dev,
 
 	attr = vmm_devtree_attrval(dev->edev->node, "blkdev");
 	if (attr) {
-		strncpy(bdev->blk_name,attr, VMM_BLOCKDEV_MAX_NAME_SIZE);
+		if (strlcpy(bdev->blk_name,attr, sizeof(bdev->blk_name)) >=
+		    sizeof(bdev->blk_name)) {
+			vmm_free(bdev);
+			return VMM_EOVERFLOW;
+		}
 		bdev->blk = vmm_blockdev_find(bdev->blk_name);
 	} else {
-		strncpy(bdev->blk_name,"", VMM_BLOCKDEV_MAX_NAME_SIZE);
+		bdev->blk_name[0] = 0;
 		bdev->blk = NULL;
 	}
 
