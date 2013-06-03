@@ -138,18 +138,11 @@ static int parse_args(const char *doing,
 		int ret;
 
 		args = next_arg(args, &param, &val);
-		if (unknown)
+		if (unknown) {
 			ret = unknown(param, val, doing);
 
-		switch (ret) {
-		case -VMM_ENOENT:
-			return ret;
-		case -VMM_ENOSPC:
-			return ret;
-		case 0:
-			break;
-		default:
-			return ret;
+			if (ret)
+				return ret;
 		}
 	}
 
