@@ -60,8 +60,8 @@ Xvisor on fast models.
 
 The docs/arm/ directory in Xvisor source contains file fast_model_boot.S which
 is an adapted version of the boot-wrapper provided by ARM Ltd. This updated
-boot-wrapper (i.e. fast_model_boot.S) can be compiled for any TEXT_BASE and it 
-will include fast_model_boot.img binary from current directory at location 
+boot-wrapper (i.e. fast_model_boot.S) can be compiled for any TEXT_BASE and it
+will include provided binary image (as -DIMAGE=<binary-image>) at location
 TEXT_BASE+0x10000.
 
 As example, let us assume that we have a valid fast_model_boot.img in directory
@@ -73,7 +73,7 @@ steps provided in previous section:
   # CROSS_COMPILE=arm-none-linux-gnueabi-
 
   [2. Compile boot-wrapper]
-  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DVEXPRESS_A15 fast_model_boot.S -o fast_model_boot.axf
+  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=fast_model_boot.img -DVEXPRESS_A15 fast_model_boot.S -o fast_model_boot.axf
 
   [3. Run fast models]
   # model_shell <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<xxxx>/cadi_system_Linux-Debug-GCC-<xxxx>.so fast_model_boot.axf

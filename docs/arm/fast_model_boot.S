@@ -191,11 +191,15 @@ enter_hvc_mode_start:
 	/* Hang! Not supposed to reach here */
 	b	.
 
+
+#define	str(s)		#s
+#define	stringify(s)	str(s)
+
 	/* Input binary containing OS images */
 	.section .text, "ax", %progbits
 	.globl	input_bin
 	.balign 0x10000
 input_bin:
-	.incbin	"fast_model_boot.img"
+	.incbin	stringify(IMAGE)
 	.globl	input_bin_end
 input_bin_end:
