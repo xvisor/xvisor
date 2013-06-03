@@ -135,9 +135,18 @@ secondary_loop_skip:
 	/* Jump to input binary */
 	mov	r0, #0
 	mov	r1, #0
+#ifdef DTB
+	/* if dtb is provided, load the address where we placed it */
+	ldr	r2, __dtb_addr
+#else
 	/* deliberately put a non-4B aligned value to r2 skip dtb checking */
 	mov	r2, #1
+#endif
 	b	input_bin
+#ifdef DTB
+__dtb_addr:
+	.word	dtb
+#endif
 
 	/* 
 	 * Function to enable hypervisor mode.
@@ -197,6 +206,12 @@ enter_hvc_mode_start:
 
 	/* Input binary containing OS images */
 	.section .text, "ax", %progbits
+#ifdef DTB
+	.globl	dtb
+	.balign 0x1000
+dtb:
+	.incbin	stringify(DTB)
+#endif
 	.globl	input_bin
 	.balign 0x10000
 input_bin:
