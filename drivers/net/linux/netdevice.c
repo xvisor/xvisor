@@ -28,15 +28,19 @@ struct net_device *netdev_alloc(const char *name)
 {
 	struct net_device *ndev;
 
-	ndev = vmm_malloc(sizeof(struct net_device));
+	ndev = vmm_zalloc(sizeof(struct net_device));
 
 	if (!ndev) {
 		vmm_printf("%s Failed to allocate net device\n", __func__);
 		return NULL;
 	}
 
-	memset(ndev, 0, sizeof(struct net_device));
-	strcpy(ndev->name, name);
+	if (strlcpy(ndev->name, name, sizeof(ndev->name)) >=
+	    sizeof(ndev->name)) {
+		vmm_free(ndev);
+		return NULL;
+	}
+
 	ndev->state = NETDEV_UNINITIALIZED;
 
 	return ndev;
