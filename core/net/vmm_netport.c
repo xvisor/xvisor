@@ -82,7 +82,12 @@ struct vmm_netport *vmm_netport_alloc(char *name, u32 queue_size)
 	}
 
 	INIT_LIST_HEAD(&port->head);
-	strncpy(port->name, name, VMM_NETPORT_MAX_NAME_SIZE);
+	if (strlcpy(port->name, name, sizeof(port->name)) >=
+	    sizeof(port->name)) {
+		vmm_free(port);
+		return NULL;
+	};
+
 	port->queue_size = (queue_size < VMM_NETPORT_MAX_QUEUE_SIZE) ?
 				queue_size : VMM_NETPORT_MAX_QUEUE_SIZE;
 
@@ -131,7 +136,11 @@ int vmm_netport_register(struct vmm_netport *port)
 	}
 
 	INIT_LIST_HEAD(&cd->head);
-	strcpy(cd->name, port->name);
+	if (strlcpy(cd->name, port->name, sizeof(cd->name)) >=
+	    sizeof(cd->name)) {
+		rc = VMM_EOVERFLOW;
+		goto fail_port_reg;
+	}
 	cd->dev = port->dev;
 	cd->priv = port;
 
@@ -149,8 +158,6 @@ int vmm_netport_register(struct vmm_netport *port)
 	return rc;
 
 fail_port_reg:
-	cd->dev = NULL;
-	cd->priv = NULL;
 	vmm_free(cd);
 ret:
 	return rc;
@@ -229,18 +236,25 @@ int __init vmm_netport_init(void)
 		return VMM_EFAIL;
 
 	INIT_LIST_HEAD(&c->head);
-	strcpy(c->name, VMM_NETPORT_CLASS_NAME);
+	if (strlcpy(c->name, VMM_NETPORT_CLASS_NAME, sizeof(c->name)) >=
+	    sizeof(c->name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_class;
+	}
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);
 	if (rc) {
 		vmm_printf("Failed to register %s class\n",
 			VMM_NETPORT_CLASS_NAME);
-		vmm_free(c);
-		return rc;
+		goto free_class;
 	}
 
 	return VMM_OK;
+
+free_class:
+	vmm_free(c);
+	return rc;
 }
 
 int __exit vmm_netport_exit(void)
