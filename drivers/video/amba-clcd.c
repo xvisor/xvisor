@@ -485,7 +485,12 @@ static int clcdfb_register(struct clcd_fb *fb)
 	fb->fb.flags		= FBINFO_FLAG_DEFAULT;
 	fb->fb.pseudo_palette	= fb->cmap;
 
-	strncpy(fb->fb.fix.id, clcd_name, sizeof(fb->fb.fix.id));
+	if (strlcpy(fb->fb.fix.id, clcd_name, sizeof(fb->fb.fix.id)) >=
+	    sizeof(fb->fb.fix.id)) {
+		ret = -EOVERFLOW;
+		goto unmap;
+	}
+
 	fb->fb.fix.type		= FB_TYPE_PACKED_PIXELS;
 	fb->fb.fix.type_aux	= 0;
 	fb->fb.fix.xpanstep	= 0;
