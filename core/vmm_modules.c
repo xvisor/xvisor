@@ -88,7 +88,7 @@ struct module_wrap {
 struct vmm_modules_ctrl {
 	vmm_spinlock_t lock;
 	struct dlist mod_list;
-        u32 mod_count;
+	u32 mod_count;
 };
 
 static struct vmm_modules_ctrl modctrl;
@@ -107,7 +107,10 @@ int vmm_modules_find_symbol(const char *symname, struct vmm_symbol *sym)
 
 	sym->addr = kallsyms_lookup_name(symname);
 	if (sym->addr) {
-		strncpy(sym->name, symname, KSYM_NAME_LEN);
+		if (strlcpy(sym->name, symname, sizeof(sym->name)) >=
+		    sizeof(sym->name)) {
+			return VMM_EOVERFLOW;
+		}
 		sym->type = VMM_SYMBOL_GPL;
 		return VMM_OK;
 	}
@@ -437,10 +440,15 @@ static int move_module(struct module_wrap *mwrap,
 			struct load_info *info)
 {
 	u32 i;
+	virtual_addr_t addr =
+		vmm_host_alloc_pages(VMM_SIZE_TO_PAGE(mwrap->core_size),
+				     VMM_MEMORY_FLAGS_NORMAL);
+	if (!addr) {
+		return VMM_ENOMEM;
+	}
 
 	mwrap->pg_count = VMM_SIZE_TO_PAGE(mwrap->core_size);
-	mwrap->pg_start = vmm_host_alloc_pages(mwrap->pg_count, 
-						VMM_MEMORY_FLAGS_NORMAL);
+	mwrap->pg_start = addr;
 
 	memset((void *)mwrap->pg_start, 0, mwrap->core_size);
 
