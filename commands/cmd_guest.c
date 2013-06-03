@@ -117,7 +117,7 @@ int cmd_guest_destroy(struct vmm_chardev *cdev, int id)
 	char name[64];
 	struct vmm_guest *guest = vmm_manager_guest(id);
 	if (guest) {
-		strncpy(name, guest->node->name, 64);
+		strlcpy(name, guest->node->name, sizeof(name));
 		if ((ret = vmm_manager_guest_destroy(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to destroy\n", name);
 		} else {
