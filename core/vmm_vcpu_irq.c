@@ -250,13 +250,22 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 		INIT_SPIN_LOCK(&vcpu->irqs.lock);
 
 		/* Allocate memory for flags */
-		vcpu->irqs.assert = vmm_malloc(sizeof(bool) * irq_count);
-		vcpu->irqs.reason = vmm_malloc(sizeof(u32) * irq_count);
+		vcpu->irqs.assert = vmm_zalloc(sizeof(bool) * irq_count);
+		if (!vcpu->irqs.assert) {
+			return VMM_ENOMEM;
+		}
+		vcpu->irqs.reason = vmm_zalloc(sizeof(u32) * irq_count);
+		if (!vcpu->irqs.assert) {
+			vmm_free(vcpu->irqs.assert);
+			return VMM_ENOMEM;
+		}
 
 		/* Create wfi_timeout event */
-		ev = vmm_malloc(sizeof(struct vmm_timer_event));
+		ev = vmm_zalloc(sizeof(struct vmm_timer_event));
 		if (!ev) {
-			return VMM_EFAIL;
+			vmm_free(vcpu->irqs.assert);
+			vmm_free(vcpu->irqs.reason);
+			return VMM_ENOMEM;
 		}
 		vcpu->irqs.wfi_priv = ev;
 		INIT_TIMER_EVENT(ev, vcpu_irq_wfi_timeout, vcpu);
