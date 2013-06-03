@@ -247,7 +247,13 @@ struct vmm_vserial *vmm_vserial_create(const char *name,
 	}
 
 	INIT_LIST_HEAD(&vser->head);
-	strcpy(vser->name, name);
+	if (strlcpy(vser->name, name, sizeof(vser->name)) >=
+	    sizeof(vser->name)) {
+		fifo_free(vser->receive_fifo);
+		vmm_free(vser);
+		vmm_mutex_unlock(&vsctrl.vser_list_lock);
+		return NULL;
+	}
 	vser->can_send = can_send;
 	vser->send = send;
 	INIT_SPIN_LOCK(&vser->receiver_list_lock);
