@@ -1538,10 +1538,10 @@ smc911x_ethtool_setsettings(struct net_device *dev, struct ethtool_cmd *cmd)
 static void
 smc911x_ethtool_getdrvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
 {
-	strncpy(info->driver, CARDNAME, sizeof(info->driver));
-	strncpy(info->version, version, sizeof(info->version));
+	strlcpy(info->driver, CARDNAME, sizeof(info->driver));
+	strlcpy(info->version, version, sizeof(info->version));
 #if 0
-	strncpy(info->bus_info, dev_name(dev->dev.parent), sizeof(info->bus_info));
+	strlcpy(info->bus_info, dev_name(dev->dev.parent), sizeof(info->bus_info));
 #endif
 }
 
