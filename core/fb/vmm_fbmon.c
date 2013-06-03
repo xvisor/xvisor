@@ -1400,7 +1400,6 @@ VMM_EXPORT_SYMBOL(vmm_fb_parse_edid);
 
 void vmm_fb_edid_to_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
 {
-	specs = NULL;
 }
 VMM_EXPORT_SYMBOL(vmm_fb_edid_to_monspecs);
 
