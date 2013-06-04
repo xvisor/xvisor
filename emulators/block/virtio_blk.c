@@ -66,9 +66,7 @@ struct virtio_blk_dev {
 	struct virtio_blk_config 	config;
 	u32 				features;
 
-	char 				name[VIRTIO_DEVICE_MAX_NAME_LEN];
-
-	char				blk_name[VMM_BLOCKDEV_MAX_NAME_SIZE];
+	char				blk_name[VMM_FIELD_NAME_SIZE];
 	struct vmm_notifier_block	blk_client;
 	vmm_spinlock_t			blk_lock; /* Protect blk pointer */
 	struct vmm_blockdev 		*blk;
@@ -441,8 +439,6 @@ static int virtio_blk_connect(struct virtio_device *dev,
 		return VMM_ENOMEM;
 	}
 	bdev->vdev = dev;
-
-	vmm_snprintf(bdev->name, VIRTIO_DEVICE_MAX_NAME_LEN, "%s", dev->name);
 
 	bdev->blk_client.notifier_call = &virtio_blk_notification;
 	bdev->blk_client.priority = 0;

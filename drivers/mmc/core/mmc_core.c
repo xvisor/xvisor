@@ -1129,9 +1129,8 @@ static int __mmc_detect_card_inserted(struct mmc_host *host)
 	bdev = card->bdev;
 
 	/* Setup block device instance */
-	vmm_snprintf(bdev->name, VMM_BLOCKDEV_MAX_NAME_SIZE,
-		     "mmc%d", host->host_num);
-	vmm_snprintf(bdev->desc, VMM_BLOCKDEV_MAX_DESC_SIZE,
+	vmm_snprintf(bdev->name, sizeof(bdev->name), "mmc%d", host->host_num);
+	vmm_snprintf(bdev->desc, sizeof(bdev->desc),
 		     "Manufacturer=%06x Serial=%04x%04x "
 		     "Product=%c%c%c%c%c%c Rev=%d.%d", 
 		     (card->cid[0] >> 24), (card->cid[2] & 0xffff),

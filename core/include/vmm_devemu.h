@@ -23,6 +23,7 @@
 #ifndef _VMM_DEVEMU_H__
 #define _VMM_DEVEMU_H__
 
+#include <vmm_limits.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_manager.h>
@@ -32,7 +33,7 @@ struct vmm_emulator;
 
 struct vmm_emulator {
 	struct dlist head;
-	char name[32];
+	char name[VMM_FIELD_NAME_SIZE];
 	const struct vmm_devtree_nodeid *match_table;
 	int (*probe) (struct vmm_guest *guest,
 		      struct vmm_emudev *edev,

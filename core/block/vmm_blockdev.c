@@ -486,7 +486,7 @@ int vmm_blockdev_add_child(struct vmm_blockdev *bdev,
 	child_bdev = __blockdev_alloc(FALSE);
 	child_bdev->parent = bdev;
 	vmm_mutex_lock(&bdev->child_lock);
-	vmm_snprintf(child_bdev->name, VMM_BLOCKDEV_MAX_NAME_SIZE,
+	vmm_snprintf(child_bdev->name, sizeof(child_bdev->name),
 			"%sp%d", bdev->name, bdev->child_count);
 	if (strlcpy(child_bdev->desc, bdev->desc, sizeof(child_bdev->desc)) >=
 	    sizeof(child_bdev->desc)) {

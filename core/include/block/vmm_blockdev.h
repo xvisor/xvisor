@@ -24,6 +24,7 @@
 #ifndef __VMM_BLOCKDEV_H_
 #define __VMM_BLOCKDEV_H_
 
+#include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_devdrv.h>
 #include <vmm_spinlocks.h>
@@ -86,10 +87,6 @@ struct vmm_request_queue {
 	void *priv;
 };
 
-/* Block device defines */
-#define VMM_BLOCKDEV_MAX_NAME_SIZE			64
-#define VMM_BLOCKDEV_MAX_DESC_SIZE			128
-
 /* Block device flags */
 #define VMM_BLOCKDEV_RDONLY				0x00000001
 #define VMM_BLOCKDEV_RW					0x00000002
@@ -103,8 +100,8 @@ struct vmm_blockdev {
 	u32 child_count;
 	struct dlist child_list;
 
-	char name[VMM_BLOCKDEV_MAX_NAME_SIZE];
-	char desc[VMM_BLOCKDEV_MAX_DESC_SIZE];
+	char name[VMM_FIELD_NAME_SIZE];
+	char desc[VMM_FIELD_DESC_SIZE];
 	struct vmm_device *dev;
 
 	u32 flags;

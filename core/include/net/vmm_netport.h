@@ -24,6 +24,7 @@
 #ifndef __VMM_NETPORT_H_
 #define __VMM_NETPORT_H_
 
+#include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_devdrv.h>
 #include <vmm_spinlocks.h>
@@ -33,9 +34,6 @@
 
 /* Port Flags (should be defined as bits) */
 #define VMM_NETPORT_LINK_UP		1	/* If this bit is set link is up */
-
-/* Default per-port name size */
-#define VMM_NETPORT_MAX_NAME_SIZE	64
 
 /* Default per-port queue size */
 #define VMM_NETPORT_MAX_QUEUE_SIZE	256
@@ -65,7 +63,7 @@ struct vmm_netport_xfer {
 
 struct vmm_netport {
 	struct dlist head;
-	char name[VMM_NETPORT_MAX_NAME_SIZE];
+	char name[VMM_FIELD_NAME_SIZE];
 	u32 queue_size;
 	int flags;
 	int mtu;

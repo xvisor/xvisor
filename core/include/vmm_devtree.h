@@ -23,6 +23,7 @@
 #ifndef __VMM_DEVTREE_H_
 #define __VMM_DEVTREE_H_
 
+#include <vmm_limits.h>
 #include <vmm_types.h>
 #include <libs/list.h>
 
@@ -103,9 +104,9 @@ struct vmm_devtree_attr {
 };
 
 struct vmm_devtree_nodeid {
-	char name[32];
-	char type[32];
-	char compatible[128];
+	char name[VMM_FIELD_NAME_SIZE];
+	char type[VMM_FIELD_TYPE_SIZE];
+	char compatible[VMM_FIELD_COMPAT_SIZE];
 	void *data;
 };
 
