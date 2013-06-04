@@ -2050,7 +2050,11 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 
 	dev->priv = (void *) ndev;
 	ndev->vmm_dev = dev;
-	strcpy(ndev->name, dev->node->name);
+	if (strlcpy(ndev->name, dev->node->name, sizeof(ndev->name)) >=
+	    sizeof(ndev->name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_ndev;
+	}
 
 	lp = netdev_priv(ndev);
 	lp->netdev = ndev;

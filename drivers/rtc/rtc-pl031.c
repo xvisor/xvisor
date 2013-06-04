@@ -353,7 +353,11 @@ static int pl031_driver_probe(struct vmm_device *dev,
 		goto free_reg;
 	}
 
-	strcpy(ldata->rtc.name, dev->node->name);
+	if (strlcpy(ldata->rtc.name, dev->node->name, sizeof(ldata->rtc.name))
+	    >= sizeof(ldata->rtc.name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_irq;
+	}
 	ldata->rtc.dev = dev;
 	periphid = amba_periphid(dev);
 	if ((periphid & 0x000fffff) == 0x00041031) {
