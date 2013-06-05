@@ -80,10 +80,10 @@ int vtemu_key2str(unsigned int code, u32 flags, char *out)
 	bool uc = FALSE;
 
 	if (flags & (VTEMU_KEYFLAG_LEFTSHIFT | VTEMU_KEYFLAG_RIGHTSHIFT)) {
-		uc = (uc) ? FALSE : TRUE;
+		uc = TRUE;
 	}
 	if (flags & VTEMU_KEYFLAG_CAPSLOCK) {
-		uc = (uc) ? FALSE : TRUE;
+		uc = TRUE;
 	}
 
 	switch (code) {

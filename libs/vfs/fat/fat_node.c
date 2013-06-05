@@ -38,7 +38,7 @@ u32 fatfs_node_read(struct fatfs_node *node, u64 pos, u32 len, char *buf)
 	struct fatfs_control *ctrl = node->ctrl;
 
 	if (!node->parent && ctrl->type != FAT_TYPE_32) {
-		rlen = ctrl->bytes_per_sector * ctrl->fat_sectors;
+		rlen = (u64)ctrl->bytes_per_sector * ctrl->fat_sectors;
 		if (pos >= rlen) {
 			return 0;
 		}
@@ -47,7 +47,8 @@ u32 fatfs_node_read(struct fatfs_node *node, u64 pos, u32 len, char *buf)
 		} else {
 			rlen = len;
 		}
-		roff = ctrl->first_root_sector * ctrl->bytes_per_sector + pos;
+		roff = (u64)ctrl->first_root_sector * ctrl->bytes_per_sector
+		       + pos;
 		return vmm_blockdev_read(ctrl->bdev, (u8 *)buf, roff, rlen);
 	}
 
@@ -94,7 +95,8 @@ u32 fatfs_node_read(struct fatfs_node *node, u64 pos, u32 len, char *buf)
 
 			node->cached_cluster = cl_num;
 
-			roff = (ctrl->first_data_sector * ctrl->bytes_per_sector) + 
+			roff = ((u64)ctrl->first_data_sector
+			        * ctrl->bytes_per_sector) +
 				((cl_num - 2) * ctrl->bytes_per_cluster);
 			rlen = vmm_blockdev_read(ctrl->bdev, 
 						node->cached_data, 
@@ -220,11 +222,15 @@ static void fatfs_node_add_lookup_dirent(struct fatfs_node *dnode,
 
 	if (!found) {
 		idx = dnode->lookup_victim;
+		if (strlcpy(&dnode->lookup_name[idx][0], name,
+		    sizeof(dnode->lookup_name[idx])) >=
+		    sizeof(dnode->lookup_name[idx])) {
+			return;
+		}
 		dnode->lookup_victim++;
 		if (dnode->lookup_victim == FAT_NODE_LOOKUP_SIZE) {
 			dnode->lookup_victim = 0;
 		}
-		strncpy(&dnode->lookup_name[idx][0], name, VFS_MAX_NAME);
 		memcpy(&dnode->lookup_dent[idx], dent, sizeof(*dent));
 		dnode->lookup_off[idx] = off;
 		dnode->lookup_len[idx] = len;
@@ -342,7 +348,10 @@ int fatfs_node_read_dirent(struct fatfs_node *dnode,
 			}
 		}
 
-		strncpy(d->d_name, lname, VFS_MAX_NAME);
+		if (strlcpy(d->d_name, lname, sizeof(d->d_name)) >=
+		    sizeof(d->d_name)) {
+			return VMM_EOVERFLOW;
+		}
 
 		break;
 	} while (1);

@@ -114,37 +114,27 @@ size_t strlcat(char *dst, const char *src, size_t size)
 
 int strcmp(const char *a, const char *b)
 {
-	while (*a == *b) {
-		if (*a == '\0' || *b == '\0') {
-			return (unsigned char)*a - (unsigned char)*b;
-		}
+	while (*a == *b && *a != '\0') {
 		++a;
 		++b;
 	}
+
 	return (unsigned char)*a - (unsigned char)*b;
 }
 
 int strncmp(const char *a, const char *b, size_t n)
 {
-	if (n == 0)
+	if (n == 0) {
 		return 0;
-	while (*a == *b && n > 0) {
-		if (*a == '\0' || *b == '\0') {
-			if (n) {
-				return (unsigned char)*a - (unsigned char)*b;
-			} else {
-				return 0;
-			}
-		}
+	}
+
+	while (*a == *b  && *a != '\0' && n > 1) {
 		++a;
 		++b;
 		--n;
 	}
-	if (n) {
-		return (unsigned char)*a - (unsigned char)*b;
-	} else {
-		return 0;
-	}
+
+	return (unsigned char)*a - (unsigned char)*b;
 }
 
 char *strchr(const char *s, int c)

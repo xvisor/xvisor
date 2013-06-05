@@ -47,11 +47,11 @@ u64 fatfs_control_read_fat(struct fatfs_control *ctrl,
 		return 0;
 	}
 
-	if ((ctrl->sectors_per_fat * ctrl->bytes_per_sector) <= pos) {
+	if (((u64)ctrl->sectors_per_fat * ctrl->bytes_per_sector) <= pos) {
 		return 0;
 	}
 
-	fat_base = ctrl->first_fat_sector * ctrl->bytes_per_sector;
+	fat_base = (u64)ctrl->first_fat_sector * ctrl->bytes_per_sector;
 
 	num = udiv64(pos, ctrl->bytes_per_sector);
 

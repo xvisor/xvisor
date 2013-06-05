@@ -186,7 +186,7 @@ static u32 vfs_vnode_hash(struct mount *m, const char *path)
 
 static struct vnode *vfs_vnode_vget(struct mount *m, const char *path)
 {
-	int err, len;
+	int err;
 	u32 hash;
 	struct vnode *v;
 
@@ -197,13 +197,15 @@ static struct vnode *vfs_vnode_vget(struct mount *m, const char *path)
 		return NULL;
 	}
 
-	len = strlen(path) + 1;
-
 	INIT_LIST_HEAD(&v->v_link);
 	INIT_MUTEX(&v->v_lock);
 	v->v_mount = m;
 	arch_atomic_write(&v->v_refcnt, 1);
-	strncpy(v->v_path, path, len);
+	if (strlcpy(v->v_path, path, sizeof(v->v_path)) >=
+	    sizeof(v->v_path)) {
+		vmm_free(v);
+		return NULL;
+	}
 
 	/* request to allocate fs specific data for vnode. */
 	vmm_mutex_lock(&m->m_lock);
@@ -382,7 +384,9 @@ static void vfs_vnode_release(struct vnode *v)
 		return;
 	}
 
-	strncpy(path, v->v_path, sizeof(path));
+	if (strlcpy(path, v->v_path, sizeof(path)) >= sizeof(path)) {
+		return;
+	}
 
 	vfs_vnode_vput(v);
 
@@ -672,7 +676,10 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 	m->m_fs = fs;
 	m->m_flags = flags & MOUNT_MASK;
 	arch_atomic_write(&m->m_refcnt, 0);
-	strncpy(m->m_path, dir, sizeof(m->m_path));
+	if (strlcpy(m->m_path, dir, sizeof(m->m_path)) >= sizeof(m->m_path)) {
+		vmm_free(m);
+		return VMM_EOVERFLOW;
+	}
 	m->m_dev = bdev;
 
 	/* get vnode to be covered in the upper file system. */
@@ -872,7 +879,10 @@ static int vfs_lookup_dir(const char *path, struct vnode **vp, char **name)
 	struct vnode *v;
 
 	/* get the path for directory. */
-	strncpy(buf, path, sizeof(buf));
+	if (strlcpy(buf, path, sizeof(buf)) >= sizeof(buf)) {
+		return VMM_EOVERFLOW;
+	}
+
 	file = strrchr(buf, '/');
 
 	if (!buf[0]) {
