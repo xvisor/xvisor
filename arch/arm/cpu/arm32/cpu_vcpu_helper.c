@@ -235,7 +235,7 @@ void cpu_vcpu_cpsr_update(struct vmm_vcpu *vcpu,
 	bool mode_change;
 
 	/* Sanity check */
-	if (!vcpu && !vcpu->is_normal && !regs) {
+	if (!vcpu || !vcpu->is_normal || !regs) {
 		return;
 	}
 	new_cpsr &= new_cpsr_mask;
@@ -297,7 +297,7 @@ int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu,
 			 u32 new_spsr_mask)
 {
 	/* Sanity check */
-	if (!vcpu && !vcpu->is_normal) {
+	if (!vcpu || !vcpu->is_normal) {
 		return VMM_EFAIL;
 	}
 	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
@@ -760,6 +760,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
+	if (!attr) {
+		return VMM_EFAIL;
+	}
 	if (strcmp(attr, "armv5te,arm926ej") == 0) {
 		cpuid = ARM_CPUID_ARM926;
 	} else if (strcmp(attr, "armv6,arm11mp") == 0) {
