@@ -2094,8 +2094,9 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 	return rc;
 
 free_ioreamp_mem:
+	vmm_devtree_regunmap(dev->node, addr, 0);
 free_ndev:
-	vmm_free(lp);
+	if (ndev->priv) vmm_free(ndev->priv);
 	vmm_free(ndev);
 exit_probe:
 	return rc;

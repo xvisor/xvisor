@@ -439,11 +439,16 @@ static int imx_driver_probe(struct vmm_device *dev,
 
 	port = vmm_zalloc(sizeof(struct imx_port));
 	if (!port) {
-		rc = VMM_EFAIL;
+		rc = VMM_ENOMEM;
 		goto free_nothing;
 	}
 
-	strcpy(port->cd.name, dev->node->name);
+	if (strlcpy(port->cd.name, dev->node->name, sizeof(port->cd.name)) >=
+	    sizeof(port->cd.name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_port;
+	}
+
 	port->cd.dev = dev;
 	port->cd.ioctl = NULL;
 	port->cd.read = imx_read;
