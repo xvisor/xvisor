@@ -193,6 +193,14 @@ u32 fatfs_node_read(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
 		return vmm_blockdev_read(ctrl->bdev, (u8 *)buf, roff, rlen);
 	}
 
+	/* Allocate cached cluster memory if not already allocated */
+	if (!node->cached_data) {
+		node->cached_data = vmm_zalloc(ctrl->bytes_per_cluster);
+		if (!node->cached_data) {
+			return 0;
+		}
+	}
+
 	r = 0;
 	while (r < len) {
 		/* Get the next cluster */
@@ -220,9 +228,6 @@ u32 fatfs_node_read(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
 		}
 
 		/* Make sure cached cluster is updated */
-		if (!node->cached_data) {
-			return 0;
-		}
 		if (node->cached_clust != cl_num) {
 			if (fatfs_node_sync_cached_cluster(node)) {
 				return 0;
@@ -276,6 +281,14 @@ u32 fatfs_node_write(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
 
 	wstartcl = udiv32(pos, ctrl->bytes_per_cluster);
 	wendcl = udiv32(pos + len - 1, ctrl->bytes_per_cluster);
+
+	/* Allocate cached cluster memory if not already allocated */
+	if (!node->cached_data) {
+		node->cached_data = vmm_zalloc(ctrl->bytes_per_cluster);
+		if (!node->cached_data) {
+			return 0;
+		}
+	}
 
 	/* Sync and zero-out cached cluster buffer */
 	if (node->cached_clust) {
@@ -456,7 +469,7 @@ int fatfs_node_init(struct fatfs_control *ctrl, struct fatfs_node *node)
 	node->first_cluster = 0;
 
 	node->cached_clust = 0;
-	node->cached_data = vmm_zalloc(ctrl->bytes_per_cluster);
+	node->cached_data = NULL;
 	node->cached_dirty = FALSE;
 
 	node->lookup_victim = 0;
@@ -471,10 +484,12 @@ int fatfs_node_init(struct fatfs_control *ctrl, struct fatfs_node *node)
 
 int fatfs_node_exit(struct fatfs_node *node)
 {
-	vmm_free(node->cached_data);
-	node->cached_clust = 0;
-	node->cached_data = NULL;
-	node->cached_dirty = FALSE;
+	if (node->cached_data) {
+		vmm_free(node->cached_data);
+		node->cached_clust = 0;
+		node->cached_data = NULL;
+		node->cached_dirty = FALSE;
+	}
 
 	return VMM_OK;
 }
