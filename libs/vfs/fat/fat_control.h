@@ -64,24 +64,28 @@ struct fatfs_control {
 	/* FAT type (i.e. FAT12/FAT16/FAT32) */
 	enum fat_types type;
 
-	/* FAT table cache */
-	struct vmm_mutex table_sector_lock;
-	bool table_sector_dirty[FAT_TABLE_CACHE_SIZE];
-	u32 table_sector_num[FAT_TABLE_CACHE_SIZE];
-	u32 table_sector_usage[FAT_TABLE_CACHE_SIZE];
-	u8 *table_sector_buf;
+	/* FAT sector cache */
+	struct vmm_mutex fat_cache_lock;
+	u32 fat_cache_victim;
+	bool fat_cache_dirty[FAT_TABLE_CACHE_SIZE];
+	u32 fat_cache_num[FAT_TABLE_CACHE_SIZE];
+	u8 *fat_cache_buf;
 };
 
-u64 fatfs_pack_timestamp(u32 year, u32 mon, u32 day, 
+u32 fatfs_pack_timestamp(u32 year, u32 mon, u32 day, 
 			 u32 hour, u32 min, u32 sec);
 
-u64 fatfs_control_read_fat(struct fatfs_control *ctrl, 
-			   u8 *buf, u64 pos, u32 len);
+void fatfs_current_timestamp(u32 *year, u32 *mon, u32 *day, 
+			     u32 *hour, u32 *min, u32 *sec);
 
-bool fatfs_control_valid_cluster(struct fatfs_control *ctrl, u32 clust);
+int fatfs_control_nth_cluster(struct fatfs_control *ctrl, 
+			      u32 current, u32 pos, u32 *next);
 
-int fatfs_control_next_cluster(struct fatfs_control *ctrl, 
-			       u32 current, u32 *next);
+int fatfs_control_append_free_cluster(struct fatfs_control *ctrl, 
+				      u32 current, u32 *newclust);
+
+int fatfs_control_truncate_clusters(struct fatfs_control *ctrl, 
+				    u32 current);
 
 int fatfs_control_sync(struct fatfs_control *ctrl);
 

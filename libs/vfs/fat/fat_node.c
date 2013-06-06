@@ -29,155 +29,6 @@
 #include "fat_control.h"
 #include "fat_node.h"
 
-u32 fatfs_node_read(struct fatfs_node *node, u64 pos, u32 len, char *buf)
-{
-	int rc;
-	u32 i, j;
-	u32 cl_pos, cl_off, cl_num, cl_len;
-	u64 rlen, roff;
-	struct fatfs_control *ctrl = node->ctrl;
-
-	if (!node->parent && ctrl->type != FAT_TYPE_32) {
-		rlen = (u64)ctrl->bytes_per_sector * ctrl->fat_sectors;
-		if (pos >= rlen) {
-			return 0;
-		}
-		if ((pos + len) > rlen) {
-			rlen = rlen - pos;
-		} else {
-			rlen = len;
-		}
-		roff = (u64)ctrl->first_root_sector * ctrl->bytes_per_sector
-		       + pos;
-		return vmm_blockdev_read(ctrl->bdev, (u8 *)buf, roff, rlen);
-	}
-
-	i = 0;
-	while (i < len) {
-		/* Get the next cluster */
-		if (i == 0) {
-			cl_pos = udiv64(pos, ctrl->bytes_per_cluster); 
-			cl_off = pos - cl_pos * ctrl->bytes_per_cluster;
-			cl_num = node->first_cluster;
-			for (j = 0; j < cl_pos; j++) {
-				rc = fatfs_control_next_cluster(ctrl, cl_num, &cl_num);
-				if (rc) {
-					return 0;
-				}
-			}
-			cl_len = ctrl->bytes_per_cluster - cl_off;
-			cl_len = (cl_len < len) ? cl_len : len;
-		} else {
-			cl_pos++;
-			cl_off = 0;
-			rc = fatfs_control_next_cluster(ctrl, cl_num, &cl_num);
-			if (rc) {
-				return i;
-			}
-			cl_len = (ctrl->bytes_per_cluster < len) ? 
-						ctrl->bytes_per_cluster : len;
-		}
-
-		/* Make sure cached cluster is updated */
-		if (!node->cached_data) {
-			node->cached_data = 
-					vmm_malloc(ctrl->bytes_per_cluster);
-			if (!node->cached_data) {
-				return 0;
-			}
-		}
-		if (node->cached_cluster != cl_num) {
-			if (node->cached_dirty) {
-				/* FIXME: Write back dirty cached cluster */
-
-				node->cached_dirty = FALSE;
-			}
-
-			node->cached_cluster = cl_num;
-
-			roff = ((u64)ctrl->first_data_sector
-			        * ctrl->bytes_per_sector) +
-				((cl_num - 2) * ctrl->bytes_per_cluster);
-			rlen = vmm_blockdev_read(ctrl->bdev, 
-						node->cached_data, 
-						roff, ctrl->bytes_per_cluster);
-			if (rlen != ctrl->bytes_per_cluster) {
-				return i;
-			}
-		}
-
-		/* Read from cached cluster */
-		memcpy(buf, &node->cached_data[cl_off], cl_len);
-
-		/* Update iteration */
-		i += cl_len;
-		buf += cl_len;
-	}
-
-	return i;
-}
-
-u64 fatfs_node_get_size(struct fatfs_node *node)
-{
-	if (!node->parent) {
-		return 0;
-	}
-
-	return __le32(node->dirent.file_size);
-}
-
-int fatfs_node_sync(struct fatfs_node *node)
-{
-	int i;
-
-	for (i = 0; i < FAT_NODE_CACHE_SIZE; i++) {
-		if (node->cached_dirty) {
-			/* FIXME: Write back dirty node cluster */
-
-			node->cached_dirty = FALSE;
-		}
-	}
-
-	return VMM_OK;
-}
-
-int fatfs_node_init(struct fatfs_node *node)
-{
-	int idx;
-
-	node->ctrl = NULL;
-	node->parent = NULL;
-	node->parent_dirent_off = 0;
-	node->parent_dirent_len = 0;
-	memset(&node->dirent, 0, sizeof(struct fat_dirent));
-	node->first_cluster = 0;
-
-	node->cached_cluster = 0;
-	node->cached_data = NULL;
-	node->cached_dirty = FALSE;
-
-	node->lookup_victim = 0;
-	for (idx = 0; idx < FAT_NODE_LOOKUP_SIZE; idx++) {
-		node->lookup_name[idx][0] = '\0';
-		node->lookup_off[idx] = 0;
-		node->lookup_len[idx] = 0;
-	}
-
-	return VMM_OK;
-}
-
-int fatfs_node_exit(struct fatfs_node *node)
-{
-	if (node->cached_data) {
-		vmm_free(node->cached_data);
-		node->cached_cluster = 0;
-		node->cached_data = NULL;
-		node->cached_dirty = FALSE;
-	}
-
-	return VMM_OK;
-}
-
 static int fatfs_node_find_lookup_dirent(struct fatfs_node *dnode, 
 					 const char *name, 
 					 struct fat_dirent *dent,
@@ -222,14 +73,14 @@ static void fatfs_node_add_lookup_dirent(struct fatfs_node *dnode,
 
 	if (!found) {
 		idx = dnode->lookup_victim;
+		dnode->lookup_victim++;
+		if (dnode->lookup_victim == FAT_NODE_LOOKUP_SIZE) {
+			dnode->lookup_victim = 0;
+		}
 		if (strlcpy(&dnode->lookup_name[idx][0], name,
 		    sizeof(dnode->lookup_name[idx])) >=
 		    sizeof(dnode->lookup_name[idx])) {
 			return;
-		}
-		dnode->lookup_victim++;
-		if (dnode->lookup_victim == FAT_NODE_LOOKUP_SIZE) {
-			dnode->lookup_victim = 0;
 		}
 		memcpy(&dnode->lookup_dent[idx], dent, sizeof(*dent));
 		dnode->lookup_off[idx] = off;
@@ -259,6 +110,375 @@ static void fatfs_node_del_lookup_dirent(struct fatfs_node *dnode,
 }
 #endif
 
+static int fatfs_node_sync_cached_cluster(struct fatfs_node *node)
+{
+	u64 wlen, woff;
+	struct fatfs_control *ctrl = node->ctrl;
+
+	if (node->cached_dirty) {
+		woff = (ctrl->first_data_sector * ctrl->bytes_per_sector) + 
+			((node->cached_clust - 2) * ctrl->bytes_per_cluster);
+
+		wlen = vmm_blockdev_write(ctrl->bdev, 
+					node->cached_data, 
+					woff, ctrl->bytes_per_cluster);
+		if (wlen != ctrl->bytes_per_cluster) {
+			return VMM_EIO;
+		}
+
+		node->cached_dirty = FALSE;
+	}
+
+	return VMM_OK;
+}
+
+static int fatfs_node_sync_parent_dent(struct fatfs_node *node)
+{
+	u32 woff, wlen;
+
+	if (!node->parent || !node->parent_dent_dirty) {
+		return VMM_OK;
+	}
+
+	woff = node->parent_dent_off + 
+		node->parent_dent_len - 
+		sizeof(node->parent_dent);
+	if (woff < node->parent_dent_off) {
+		return VMM_EFAIL;
+	}
+
+	/* FIXME: Someone else may be accessing the parent node. 
+	 * This code does not protect the parent node.
+	 */
+
+	wlen = fatfs_node_write(node->parent, woff, 
+			sizeof(node->parent_dent), (u8 *)&node->parent_dent);
+	if (wlen != sizeof(node->parent_dent)) {
+		return VMM_EIO;
+	}
+
+	node->parent_dent_dirty = FALSE;
+
+	return VMM_OK;
+}
+
+u32 fatfs_node_get_size(struct fatfs_node *node)
+{
+	if (!node) {
+		return 0;
+	}
+
+	return __le32(node->parent_dent.file_size);
+}
+
+u32 fatfs_node_read(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
+{
+	int rc;
+	u64 rlen, roff;
+	u32 r, cl_pos, cl_off, cl_num, cl_len;
+	struct fatfs_control *ctrl = node->ctrl;
+
+	if (!node->parent && ctrl->type != FAT_TYPE_32) {
+		rlen = (u64)ctrl->bytes_per_sector * ctrl->root_sectors;
+		if (pos >= rlen) {
+			return 0;
+		}
+		if ((pos + len) > rlen) {
+			rlen = rlen - pos;
+		} else {
+			rlen = len;
+		}
+		roff = (u64)ctrl->first_root_sector * ctrl->bytes_per_sector;
+		roff += pos;
+		return vmm_blockdev_read(ctrl->bdev, (u8 *)buf, roff, rlen);
+	}
+
+	r = 0;
+	while (r < len) {
+		/* Get the next cluster */
+		if (r == 0) {
+			cl_pos = udiv32(pos, ctrl->bytes_per_cluster); 
+			cl_off = pos - cl_pos * ctrl->bytes_per_cluster;
+			rc = fatfs_control_nth_cluster(ctrl, 
+							node->first_cluster,
+							cl_pos, &cl_num);
+			if (rc) {
+				return 0;
+			}
+			cl_len = ctrl->bytes_per_cluster - cl_off;
+			cl_len = (cl_len < len) ? cl_len : len;
+		} else {
+			cl_pos++;
+			cl_off = 0;
+			rc = fatfs_control_nth_cluster(ctrl, 
+							cl_num, 1, &cl_num);
+			if (rc) {
+				return r;
+			}
+			cl_len = (ctrl->bytes_per_cluster < len) ? 
+						ctrl->bytes_per_cluster : len;
+		}
+
+		/* Make sure cached cluster is updated */
+		if (!node->cached_data) {
+			return 0;
+		}
+		if (node->cached_clust != cl_num) {
+			if (fatfs_node_sync_cached_cluster(node)) {
+				return 0;
+			}
+
+			node->cached_clust = cl_num;
+
+			roff = (u64)ctrl->first_data_sector * 
+						ctrl->bytes_per_sector;
+			roff += (u64)(cl_num - 2) * ctrl->bytes_per_cluster;
+			rlen = vmm_blockdev_read(ctrl->bdev, 
+						node->cached_data, 
+						roff, ctrl->bytes_per_cluster);
+			if (rlen != ctrl->bytes_per_cluster) {
+				return r;
+			}
+		}
+
+		/* Read from cached cluster */
+		memcpy(buf, &node->cached_data[cl_off], cl_len);
+
+		/* Update iteration */
+		r += cl_len;
+		buf += cl_len;
+	}
+
+	return r;
+}
+
+u32 fatfs_node_write(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
+{
+	int rc;
+	u64 woff, wlen;
+	u32 w, wstartcl, wendcl;
+	u32 cl_off, cl_num, cl_len;
+	u32 year, mon, day, hour, min, sec;
+	struct fatfs_control *ctrl = node->ctrl;
+
+	if (!node->parent && ctrl->type != FAT_TYPE_32) {
+		wlen = (u64)ctrl->bytes_per_sector * ctrl->root_sectors;
+		if (pos >= wlen) {
+			return 0;
+		}
+		if ((pos + len) > wlen) {
+			wlen = wlen - pos;
+		}
+		woff = (u64)ctrl->first_root_sector * ctrl->bytes_per_sector;
+		woff += pos;
+		return vmm_blockdev_write(ctrl->bdev, (u8 *)buf, woff, wlen);
+	}
+
+	wstartcl = udiv32(pos, ctrl->bytes_per_cluster);
+	wendcl = udiv32(pos + len - 1, ctrl->bytes_per_cluster);
+
+	/* Sync and zero-out cached cluster buffer */
+	if (node->cached_clust) {
+		if (fatfs_node_sync_cached_cluster(node)) {
+			return 0;
+		}
+		node->cached_clust = 0;
+		memset(node->cached_data, 0, ctrl->bytes_per_cluster);
+	}
+
+	/* Make room for new data by appending free clusters */
+	cl_num = node->first_cluster;
+	for (w = 0; w <= (wendcl - wstartcl); w++) {
+		if (w == 0) {
+			rc = fatfs_control_nth_cluster(ctrl, cl_num,
+							wstartcl, &cl_num);
+			if (!rc) {
+				continue;
+			}
+		} else {
+			rc = fatfs_control_nth_cluster(ctrl, cl_num, 1, &cl_num);
+			if (!rc) {
+				continue;
+			}
+		}
+
+		/* Add new cluster */
+		rc = fatfs_control_append_free_cluster(ctrl, cl_num, &cl_num);
+		if (rc) {
+			return 0;
+		}
+
+		/* Write zeros to new cluster */
+		woff = (u64)ctrl->first_data_sector * ctrl->bytes_per_sector;
+		woff += (u64)(cl_num - 2) * ctrl->bytes_per_cluster;
+		wlen = vmm_blockdev_write(ctrl->bdev, 
+					node->cached_data, 
+					woff, ctrl->bytes_per_cluster);
+		if (wlen != ctrl->bytes_per_cluster) {
+			return 0;
+		}
+	}
+
+	/* Write data to required location */
+	w = 0;
+	rc = fatfs_control_nth_cluster(ctrl, node->first_cluster, 
+					wstartcl, &cl_num);
+	if (rc) {
+		return 0;
+	}
+	while (w < len) {
+		/* Current cluster info */
+		cl_off = umod64(pos + w, ctrl->bytes_per_cluster);
+		cl_len = ctrl->bytes_per_cluster - cl_off;
+		cl_len = (len < cl_len) ? len : cl_len;
+
+		/* Write next cluster */
+		woff = (u64)ctrl->first_data_sector * ctrl->bytes_per_sector;
+		woff += (u64)(cl_num - 2) * ctrl->bytes_per_cluster;
+		woff += cl_off;
+		wlen = vmm_blockdev_write(ctrl->bdev, buf, woff, cl_len);
+		if (wlen != cl_len) {
+			break;
+		}
+
+		/* Update iteration */
+		w += cl_len;
+		buf += cl_len;
+
+		/* Go to next cluster */
+		rc = fatfs_control_nth_cluster(ctrl, cl_num, 1, &cl_num);
+		if (rc) {
+			break;
+		}
+	}
+
+	/* Update node size */
+	if (!(node->parent_dent.file_attributes & FAT_DIRENT_SUBDIR)) {
+		if (__le32(node->parent_dent.file_size) < (pos + len)) {
+			node->parent_dent.file_size = __le32(pos + len);
+		}
+	}
+
+	/* Update node modify time */
+	fatfs_current_timestamp(&year, &mon, &day, &hour, &min, &sec);
+	node->parent_dent.lmodify_date_year = year;
+	node->parent_dent.lmodify_date_month = mon;
+	node->parent_dent.lmodify_date_day = day;
+	node->parent_dent.lmodify_time_hours = min;
+	node->parent_dent.lmodify_time_minutes = min;
+	node->parent_dent.lmodify_time_seconds = sec;
+
+	/* Mark node directory entry as dirty */
+	node->parent_dent_dirty = TRUE;
+
+	return w;
+}
+
+int fatfs_node_truncate(struct fatfs_node *node, u32 pos)
+{
+	int rc;
+	u32 cl_pos, cl_off, cl_num;
+	u32 year, mon, day, hour, min, sec;
+	struct fatfs_control *ctrl = node->ctrl;
+
+	if (!node->parent && ctrl->type != FAT_TYPE_32) {
+		/* For FAT12 and FAT16 ignore root node truncation */
+		return VMM_OK;
+	}
+
+	/* Determine last cluster after truncation */
+	cl_pos = udiv32(pos, ctrl->bytes_per_cluster);
+	cl_off = pos - cl_pos * ctrl->bytes_per_cluster;
+	if (cl_off) {
+		cl_pos += 1;
+	}
+	rc = fatfs_control_nth_cluster(ctrl, node->first_cluster, 
+					cl_pos, &cl_num);
+	if (rc) {
+		return rc;
+	}
+
+	/* Remove all clusters after last cluster */
+	rc = fatfs_control_truncate_clusters(ctrl, cl_num);
+	if (rc) {
+		return rc;
+	}
+
+	/* Update node size */
+	if (!(node->parent_dent.file_attributes & FAT_DIRENT_SUBDIR)) {
+		if (pos < __le32(node->parent_dent.file_size)) {
+			node->parent_dent.file_size = __le32(pos);
+		}
+	}
+
+	/* Update node modify time */
+	fatfs_current_timestamp(&year, &mon, &day, &hour, &min, &sec);
+	node->parent_dent.lmodify_date_year = year;
+	node->parent_dent.lmodify_date_month = mon;
+	node->parent_dent.lmodify_date_day = day;
+	node->parent_dent.lmodify_time_hours = min;
+	node->parent_dent.lmodify_time_minutes = min;
+	node->parent_dent.lmodify_time_seconds = sec;
+
+	/* Mark node directory entry as dirty */
+	node->parent_dent_dirty = TRUE;
+
+	return VMM_OK;
+}
+
+int fatfs_node_sync(struct fatfs_node *node)
+{
+	int rc;
+
+	rc = fatfs_node_sync_cached_cluster(node);
+	if (rc) {
+		return rc;
+	}
+
+	rc = fatfs_node_sync_parent_dent(node);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int fatfs_node_init(struct fatfs_control *ctrl, struct fatfs_node *node)
+{
+	int idx;
+
+	node->ctrl = ctrl;
+	node->parent = NULL;
+	node->parent_dent_off = 0;
+	node->parent_dent_len = 0;
+	memset(&node->parent_dent, 0, sizeof(struct fat_dirent));
+	node->parent_dent_dirty = TRUE;
+	node->first_cluster = 0;
+
+	node->cached_clust = 0;
+	node->cached_data = vmm_zalloc(ctrl->bytes_per_cluster);
+	node->cached_dirty = FALSE;
+
+	node->lookup_victim = 0;
+	for (idx = 0; idx < FAT_NODE_LOOKUP_SIZE; idx++) {
+		node->lookup_name[idx][0] = '\0';
+		node->lookup_off[idx] = 0;
+		node->lookup_len[idx] = 0;
+	}
+
+	return VMM_OK;
+}
+
+int fatfs_node_exit(struct fatfs_node *node)
+{
+	vmm_free(node->cached_data);
+	node->cached_clust = 0;
+	node->cached_data = NULL;
+	node->cached_dirty = FALSE;
+
+	return VMM_OK;
+}
+
 int fatfs_node_read_dirent(struct fatfs_node *dnode, 
 			    loff_t off, struct dirent *d)
 {
@@ -266,9 +486,9 @@ int fatfs_node_read_dirent(struct fatfs_node *dnode,
 	char lname[VFS_MAX_NAME];
 	struct fat_dirent dent;
 	struct fat_longname lfn;
-	u64 fileoff = off;
+	u32 fileoff = (u32)off;
 
-	if (umod64(fileoff, sizeof(struct fat_dirent))) {
+	if (umod32(fileoff, sizeof(struct fat_dirent))) {
 		return VMM_EINVALID;
 	}
 
@@ -278,7 +498,7 @@ int fatfs_node_read_dirent(struct fatfs_node *dnode,
 
 	do {
 		rlen = fatfs_node_read(dnode, fileoff, 
-				sizeof(struct fat_dirent), (char *)&dent);
+				sizeof(struct fat_dirent), (u8 *)&dent);
 		if (rlen != sizeof(struct fat_dirent)) {
 			return VMM_EIO;
 		}
@@ -374,10 +594,9 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 			   struct fat_dirent *dent, 
 			   u32 *dent_off, u32 *dent_len)
 {
-	u32 i, rlen, len, lfn_off, lfn_len;
+	u32 i, off, rlen, len, lfn_off, lfn_len;
 	struct fat_longname lfn;
 	char lname[VFS_MAX_NAME];
-	u64 off;
 
 	/* Try to find in lookup table */
 	if (fatfs_node_find_lookup_dirent(dnode, name, 
@@ -392,7 +611,7 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 	off = 0;
 	while (1) {
 		rlen = fatfs_node_read(dnode, off, 
-				sizeof(struct fat_dirent), (char *)dent);
+				sizeof(struct fat_dirent), (u8 *)dent);
 		if (rlen != sizeof(struct fat_dirent)) {
 			return VMM_EIO;
 		}

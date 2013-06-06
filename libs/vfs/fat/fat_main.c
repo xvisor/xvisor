@@ -64,31 +64,39 @@ static int fatfs_mount(struct mount *m, const char *dev, u32 flags)
 		goto fail;
 	}
 
-	/* Setup root node */
+	/* Get the root fatfs node */
 	root = m->m_root->v_data;
-	rc = fatfs_node_init(root);
+	rc = fatfs_node_init(ctrl, root);
 	if (rc) {
 		goto fail;
 	}
-	root->ctrl = ctrl;
+
+	/* Handcraft the root fatfs node */
 	root->parent = NULL;
-	root->parent_dirent_off = 0;
-	root->parent_dirent_len = 0;
-	memset(&root->dirent, 0, sizeof(struct fat_dirent));
+	root->parent_dent_off = 0;
+	root->parent_dent_len = sizeof(struct fat_dirent);
+	memset(&root->parent_dent, 0, sizeof(struct fat_dirent));
+	root->parent_dent.file_attributes = FAT_DIRENT_SUBDIR;
 	if (ctrl->type == FAT_TYPE_32) {
 		root->first_cluster = ctrl->first_root_cluster;
+		root->parent_dent.first_cluster_hi = 
+				__le16((root->first_cluster >> 16) & 0xFFFF);
+		root->parent_dent.first_cluster_lo = 
+					__le16(root->first_cluster & 0xFFFF);
+		root->parent_dent.file_size = 0x0;
 	} else {
-		root->first_cluster = 0;
+		root->first_cluster = 0x0;
+		root->parent_dent.first_cluster_hi = 0x0;
+		root->parent_dent.file_size = 0x0;
 	}
+	root->parent_dent_dirty = FALSE;
 
+	/* Handcraft the root vfs node */
 	m->m_root->v_type = VDIR;
-
 	m->m_root->v_mode =  S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
-
 	m->m_root->v_ctime = 0;
 	m->m_root->v_atime = 0;
 	m->m_root->v_mtime = 0;
-
 	m->m_root->v_size = fatfs_node_get_size(root);
 
 	/* Save control as mount point data */
@@ -132,13 +140,14 @@ static int fatfs_vget(struct mount *m, struct vnode *v)
 {
 	int rc;
 	struct fatfs_node *node;
+	struct fatfs_control *ctrl = m->m_data;
 
 	node = vmm_zalloc(sizeof(struct fatfs_node));
 	if (!node) {
 		return VMM_ENOMEM;
 	}
 
-	rc = fatfs_node_init(node);
+	rc = fatfs_node_init(ctrl, node);
 
 	v->v_data = node;
 
@@ -168,29 +177,62 @@ static int fatfs_vput(struct mount *m, struct vnode *v)
 static size_t fatfs_read(struct vnode *v, loff_t off, void *buf, size_t len)
 {
 	struct fatfs_node *node = v->v_data;
-	u64 filesize = fatfs_node_get_size(node);
+	u32 filesize = fatfs_node_get_size(node);
 
-	if (filesize <= off) {
+	if (filesize <= (u32)off) {
 		return 0;
 	}
 
-	if (filesize < (len + off)) {
+	if (filesize < (u32)(len + off)) {
 		len = filesize - off;
 	}
 
-	return fatfs_node_read(node, off, len, buf);
+	return fatfs_node_read(node, (u32)off, len, buf);
 }
 
-/* FIXME: */
 static size_t fatfs_write(struct vnode *v, loff_t off, void *buf, size_t len)
 {
-	return 0;
+	u32 wlen;
+	struct fatfs_node *node = v->v_data;
+
+	wlen = fatfs_node_write(node, (u32)off, len, buf);
+
+	/* Size and mtime might have changed */
+	v->v_size = fatfs_node_get_size(node);
+	v->v_mtime = fatfs_pack_timestamp(node->parent_dent.lmodify_date_year,
+					  node->parent_dent.lmodify_date_month,
+					  node->parent_dent.lmodify_date_day,
+					  node->parent_dent.lmodify_time_hours,
+					  node->parent_dent.lmodify_time_minutes,
+					  node->parent_dent.lmodify_time_seconds);
+
+	return wlen;
 }
 
-/* FIXME: */
 static int fatfs_truncate(struct vnode *v, loff_t off)
 {
-	return VMM_EFAIL;
+	int rc;
+	struct fatfs_node *node = v->v_data;
+
+	if ((u32)off <= fatfs_node_get_size(node)) {
+		return VMM_EFAIL;
+	}
+
+	rc = fatfs_node_truncate(node, (u32)off);
+	if (rc) {
+		return rc;
+	}
+
+	/* Size and mtime might have changed */
+	v->v_size = fatfs_node_get_size(node);
+	v->v_mtime = fatfs_pack_timestamp(node->parent_dent.lmodify_date_year,
+					  node->parent_dent.lmodify_date_month,
+					  node->parent_dent.lmodify_date_day,
+					  node->parent_dent.lmodify_time_hours,
+					  node->parent_dent.lmodify_time_minutes,
+					  node->parent_dent.lmodify_time_seconds);
+
+	return VMM_OK;
 }
 
 static int fatfs_sync(struct vnode *v)
@@ -226,9 +268,9 @@ static int fatfs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 
 	node->ctrl = dnode->ctrl;
 	node->parent = dnode;
-	node->parent_dirent_off = dent_off;
-	node->parent_dirent_len = dent_len;
-	memcpy(&node->dirent, &dent, sizeof(struct fat_dirent));
+	node->parent_dent_off = dent_off;
+	node->parent_dent_len = dent_len;
+	memcpy(&node->parent_dent, &dent, sizeof(struct fat_dirent));
 	if (dnode->ctrl->type == FAT_TYPE_32) {
 		node->first_cluster = __le16(dent.first_cluster_hi);
 		node->first_cluster = node->first_cluster << 16;
