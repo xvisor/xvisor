@@ -259,6 +259,11 @@ static int setup_load_info(struct load_info *info)
 		}
 	}
 
+	/* If symbol table not found then return failure */
+	if (!info->strtab) {
+		return VMM_ENOTAVAIL;
+	}
+
 	return VMM_OK;
 }
 
