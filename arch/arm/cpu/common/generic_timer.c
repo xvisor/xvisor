@@ -290,7 +290,7 @@ int __cpuinit generic_timer_clockchip_init(void)
 	}
 
 	num_irqs = vmm_devtree_irq_count(node);
-	if (irq == NULL) {
+	if (!num_irqs) {
 		return VMM_EFAIL;
 	}
 

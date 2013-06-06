@@ -43,7 +43,7 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 {
 	int * ttbl_tree;
 	u32 i, index, map_exec;
-	u32 ttbl_count;
+	u32 ttbl_count = 0;
 	u64 *ttbl, *nttbl;
 	virtual_addr_t ttbl_base, page_addr;
 
@@ -54,12 +54,7 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	for (i = 0; i < TTBL_INITIAL_TABLE_COUNT; i++) {
 		ttbl_tree[i] = -1;
 	}
-	ttbl_count = 0;
 
-	/* Allocate level1 table */
-	if (ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
-		while(1); /* No initial table available */
-	}
 	for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
 		nttbl[i] = 0x0ULL;
 	}
