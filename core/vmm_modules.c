@@ -719,7 +719,7 @@ struct vmm_module *vmm_modules_getmodule(u32 index)
 
 	vmm_spin_lock_irqsave(&modctrl.lock, flags);
 
-	if (0 <= index && index < modctrl.mod_count) {
+	if (index < modctrl.mod_count) {
 		list_for_each(l, &modctrl.mod_list) {
 			ret = list_entry(l, struct module_wrap, head);
 			if (!index) {
