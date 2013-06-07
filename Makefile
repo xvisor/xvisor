@@ -413,13 +413,3 @@ oldconfig:
 	./tools/openconf/conf -D $(src_dir)/arch/$(ARCH)/configs/$@ $(OPENCONF_INPUT)
 	./tools/openconf/conf -s $(OPENCONF_INPUT)
 
-.PHONY: tags
-tags:
-	$(V)ctags -R --c++-kinds=+p --fields=+iaS --extra=+q .
-	$(V)echo "Generating tags ..."
-
-.PHONY: cscope
-cscope:
-	$(V)echo "Generating cscope database ..."
-	$(V)find ./ -name "*.[CHSchs]" > cscope.files
-	$(V)cscope -bqk
