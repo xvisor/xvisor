@@ -79,4 +79,11 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 			   struct fat_dirent *dent, 
 			   u32 *dent_off, u32 *dent_len);
 
+int fatfs_node_add_dirent(struct fatfs_node *dnode, 
+			   const char *name,
+			   struct fat_dirent *dent);
+
+int fatfs_node_del_dirent(struct fatfs_node *dnode, 
+			  u32 dent_off, u32 dent_len);
+
 #endif

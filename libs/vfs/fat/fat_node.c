@@ -115,10 +115,10 @@ static int fatfs_node_sync_cached_cluster(struct fatfs_node *node)
 	u64 wlen, woff;
 	struct fatfs_control *ctrl = node->ctrl;
 
-	if (node->cached_dirty) {
-		woff = ((u64)ctrl->first_data_sector *
-			ctrl->bytes_per_sector) + ((u64)(node->cached_clust
-			- 2) * ctrl->bytes_per_cluster);
+	if (node->cached_dirty && 
+	    fatfs_control_valid_cluster(ctrl, node->cached_clust)) {
+		woff = (u64)ctrl->first_data_sector * ctrl->bytes_per_sector;
+		woff += (u64)(node->cached_clust - 2) * ctrl->bytes_per_cluster;
 
 		wlen = vmm_blockdev_write(ctrl->bdev, 
 					node->cached_data, 
@@ -292,12 +292,21 @@ u32 fatfs_node_write(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
 	}
 
 	/* Sync and zero-out cached cluster buffer */
-	if (node->cached_clust) {
+	if (fatfs_control_valid_cluster(ctrl, node->cached_clust)) {
 		if (fatfs_node_sync_cached_cluster(node)) {
 			return 0;
 		}
 		node->cached_clust = 0;
 		memset(node->cached_data, 0, ctrl->bytes_per_cluster);
+	}
+
+	/* If first cluster is zero then allocate first cluster */
+	if (node->first_cluster == 0) {
+		rc = fatfs_control_alloc_first_cluster(ctrl, &cl_num);
+		if (rc) {
+			return 0;
+		}
+		node->first_cluster = cl_num;
 	}
 
 	/* Make room for new data by appending free clusters */
@@ -319,7 +328,7 @@ u32 fatfs_node_write(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
 		/* Add new cluster */
 		rc = fatfs_control_append_free_cluster(ctrl, cl_num, &cl_num);
 		if (rc) {
-			return 0;
+			break;
 		}
 
 		/* Write zeros to new cluster */
@@ -329,7 +338,7 @@ u32 fatfs_node_write(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
 					node->cached_data, 
 					woff, ctrl->bytes_per_cluster);
 		if (wlen != ctrl->bytes_per_cluster) {
-			return 0;
+			break;
 		}
 	}
 
@@ -338,7 +347,7 @@ u32 fatfs_node_write(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
 	rc = fatfs_control_nth_cluster(ctrl, node->first_cluster, 
 					wstartcl, &cl_num);
 	if (rc) {
-		return 0;
+		goto done;
 	}
 	while (w < len) {
 		/* Current cluster info */
@@ -366,10 +375,11 @@ u32 fatfs_node_write(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
 		}
 	}
 
+done:
 	/* Update node size */
 	if (!(node->parent_dent.file_attributes & FAT_DIRENT_SUBDIR)) {
-		if (__le32(node->parent_dent.file_size) < (pos + len)) {
-			node->parent_dent.file_size = __le32(pos + len);
+		if (__le32(node->parent_dent.file_size) < (pos + w)) {
+			node->parent_dent.file_size = __le32(pos + w);
 		}
 	}
 
@@ -416,6 +426,23 @@ int fatfs_node_truncate(struct fatfs_node *node, u32 pos)
 	rc = fatfs_control_truncate_clusters(ctrl, cl_num);
 	if (rc) {
 		return rc;
+	}
+
+	/* If we are removing first cluster then set it to zero
+	 * else set previous cluster as last cluster
+	 */
+	if (cl_pos == 0) {
+		node->first_cluster = 0;
+	} else {
+		rc = fatfs_control_nth_cluster(ctrl, node->first_cluster, 
+						cl_pos - 1, &cl_num);
+		if (rc) {
+			return rc;
+		}
+		rc = fatfs_control_set_last_cluster(ctrl, cl_num);
+		if (rc) {
+			return rc;
+		}
 	}
 
 	/* Update node size */
@@ -703,7 +730,12 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 		if (!strncmp(lname, name, VFS_MAX_NAME)) {
 			*dent_off = lfn_off;
 			*dent_len = sizeof(struct fat_dirent) + lfn_len;
-			break;
+
+			/* Add dent to lookup table */
+			fatfs_node_add_lookup_dirent(dnode, lname, 
+				     dent, *dent_off, *dent_len);
+
+			return VMM_OK;
 		}
 
 		lfn_off = off;
@@ -711,10 +743,21 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 		memset(lname, 0, sizeof(lname));
 	}
 
-	/* Add dent to lookup table */
-	fatfs_node_add_lookup_dirent(dnode, lname, 
-				     dent, *dent_off, *dent_len);
+	return VMM_ENOENT;
+}
 
-	return VMM_OK;
+int fatfs_node_add_dirent(struct fatfs_node *dnode, 
+			   const char *name,
+			   struct fat_dirent *dent)
+{
+	/* FIXME: */
+	return VMM_EFAIL;
+}
+
+int fatfs_node_del_dirent(struct fatfs_node *dnode, 
+			  u32 dent_off, u32 dent_len)
+{
+	/* FIXME: */
+	return VMM_EFAIL;
 }
 

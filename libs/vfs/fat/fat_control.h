@@ -78,14 +78,21 @@ u32 fatfs_pack_timestamp(u32 year, u32 mon, u32 day,
 void fatfs_current_timestamp(u32 *year, u32 *mon, u32 *day, 
 			     u32 *hour, u32 *min, u32 *sec);
 
+bool fatfs_control_valid_cluster(struct fatfs_control *ctrl, u32 clust);
+
 int fatfs_control_nth_cluster(struct fatfs_control *ctrl, 
-			      u32 current, u32 pos, u32 *next);
+			      u32 clust, u32 pos, u32 *next);
+
+int fatfs_control_set_last_cluster(struct fatfs_control *ctrl, u32 clust);
+
+int fatfs_control_alloc_first_cluster(struct fatfs_control *ctrl, 
+				      u32 *newclust);
 
 int fatfs_control_append_free_cluster(struct fatfs_control *ctrl, 
-				      u32 current, u32 *newclust);
+				      u32 clust, u32 *newclust);
 
 int fatfs_control_truncate_clusters(struct fatfs_control *ctrl, 
-				    u32 current);
+				    u32 clust);
 
 int fatfs_control_sync(struct fatfs_control *ctrl);
 

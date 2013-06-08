@@ -215,7 +215,7 @@ static int fatfs_truncate(struct vnode *v, loff_t off)
 	struct fatfs_node *node = v->v_data;
 
 	if ((u32)off <= fatfs_node_get_size(node)) {
-		return VMM_EFAIL;
+		return VMM_EINVALID;
 	}
 
 	rc = fatfs_node_truncate(node, (u32)off);
@@ -256,20 +256,20 @@ static int fatfs_readdir(struct vnode *dv, loff_t off, struct dirent *d)
 static int fatfs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 {
 	int rc;
-	u32 dent_off, dent_len;
+	u32 off, len;
 	struct fat_dirent dent;
 	struct fatfs_node *node = v->v_data;
 	struct fatfs_node *dnode = dv->v_data;
 
-	rc = fatfs_node_find_dirent(dnode, name, &dent, &dent_off, &dent_len);
+	rc = fatfs_node_find_dirent(dnode, name, &dent, &off, &len);
 	if (rc) {
 		return rc;
 	}
 
 	node->ctrl = dnode->ctrl;
 	node->parent = dnode;
-	node->parent_dent_off = dent_off;
-	node->parent_dent_len = dent_len;
+	node->parent_dent_off = off;
+	node->parent_dent_len = len;
 	memcpy(&node->parent_dent, &dent, sizeof(struct fat_dirent));
 	if (dnode->ctrl->type == FAT_TYPE_32) {
 		node->first_cluster = __le16(dent.first_cluster_hi);
@@ -322,17 +322,73 @@ static int fatfs_create(struct vnode *dv, const char *filename, u32 mode)
 	return VMM_EFAIL;
 }
 
-/* FIXME: */
 static int fatfs_remove(struct vnode *dv, struct vnode *v, const char *name)
 {
-	return VMM_EFAIL;
+	int rc;
+	u32 off, len, clust;
+	struct fat_dirent dent;
+	struct fatfs_node *dnode = dv->v_data;
+	struct fatfs_node *node = v->v_data;
+
+	rc = fatfs_node_find_dirent(dnode, name, &dent, &off, &len);
+	if (rc) {
+		return rc;
+	}
+
+	if (dnode->ctrl->type == FAT_TYPE_32) {
+		clust = __le16(dent.first_cluster_hi);
+		clust = clust << 16;
+	} else {
+		clust = 0;
+	}
+	clust |= __le16(dent.first_cluster_lo);
+
+	if (node->first_cluster != clust) {
+		return VMM_EINVALID;
+	}
+
+	rc = fatfs_node_del_dirent(dnode, off, len);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
-/* FIXME: */
 static int fatfs_rename(struct vnode *sv, const char *sname, struct vnode *v,
 			 struct vnode *dv, const char *dname)
 {
-	return VMM_EFAIL;
+	int rc;
+	u32 off, len;
+	struct fat_dirent dent;
+	struct fatfs_node *snode = sv->v_data;
+	struct fatfs_node *dnode = dv->v_data;
+
+	rc = fatfs_node_find_dirent(dnode, dname, &dent, &off, &len);
+	if (rc != VMM_ENOENT) {
+		if (!rc) {
+			return VMM_EEXIST;
+		} else {
+			return rc;
+		}
+	}
+
+	rc = fatfs_node_find_dirent(snode, sname, &dent, &off, &len);
+	if (rc) {
+		return rc;
+	}
+
+	rc = fatfs_node_del_dirent(snode, off, len);
+	if (rc) {
+		return rc;
+	}
+
+	rc = fatfs_node_add_dirent(dnode, dname, &dent);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
 /* FIXME: */
@@ -341,10 +397,42 @@ static int fatfs_mkdir(struct vnode *dv, const char *name, u32 mode)
 	return VMM_EFAIL;
 }
 
-/* FIXME: */
 static int fatfs_rmdir(struct vnode *dv, struct vnode *v, const char *name)
 {
-	return VMM_EFAIL;
+	int rc;
+	u32 off, len, clust;
+	struct fat_dirent dent;
+	struct fatfs_node *dnode = dv->v_data;
+	struct fatfs_node *node = v->v_data;
+
+	rc = fatfs_node_find_dirent(dnode, name, &dent, &off, &len);
+	if (rc) {
+		return rc;
+	}
+
+	if (dnode->ctrl->type == FAT_TYPE_32) {
+		clust = __le16(dent.first_cluster_hi);
+		clust = clust << 16;
+	} else {
+		clust = 0;
+	}
+	clust |= __le16(dent.first_cluster_lo);
+
+	if (node->first_cluster != clust) {
+		return VMM_EINVALID;
+	}
+
+	rc = fatfs_control_truncate_clusters(node->ctrl, clust);
+	if (rc) {
+		return rc;
+	}
+
+	rc = fatfs_node_del_dirent(dnode, off, len);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
 /* FIXME: */
