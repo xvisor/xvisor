@@ -89,13 +89,11 @@ static int cmd_vserial_recv_startesc(struct cmd_vserial_recvcntx *v)
 
 static int cmd_vserial_recv_flushesc(struct cmd_vserial_recvcntx *v)
 {
+	u32 index = v->esc_cmd_count < sizeof(v->esc_cmd) ?
+				v->esc_cmd_count : sizeof(v->esc_cmd) - 1;
+	v->esc_cmd[index] = '\0';
 	vmm_cputc(v->cdev, '\e');
-	if (v->esc_cmd_count < sizeof(v->esc_cmd)) {
-		v->esc_cmd[v->esc_cmd_count] = '\0';
-	} else {
-		v->esc_cmd[sizeof(v->esc_cmd) - 1] = '\0';
-	}
-	vmm_cputs(v->cdev, (char *)&v->esc_cmd);
+	vmm_cputs(v->cdev, (char *)v->esc_cmd);
 	v->esc_cmd_active = FALSE;
 	return VMM_OK;
 }
