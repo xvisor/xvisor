@@ -1,24 +1,79 @@
 #!/bin/sh
 #
 # In order to run this script you need to:
-# * have coverity installed on your system
-#   (see http://scan.coverity.com/download)
-# * have your PATH setup to use coverity
-# * have your CROSS_COMPILE setup correctly for 
-#   the architecture you are targeting
+# * have coverity installed on your system (see
+#   http://scan.coverity.com/download).
+# * have your PATH setup to use coverity.
+# * have your the ARM and x86 cross compilers in your
+#   PATH
 #
-# This script will build all targets belonging to the selected architecture.
-# The resulting tar file (for example xvisor-coverity.arm.20130606000000.tgz)
+# This script will build all targets for all processor families.
+# The resulting tar file (for example xvisor-coverity.all.20130606000000.tgz)
 # can be submited to the Coverity scan web site.
+#
 
-# Test if we got enough arguments
-if test $# -ne 1
-then
-	echo "Usage: $0 <arm|x86>" >&2
-	exit 1
-fi
+get_cross_compiler() {
+	FOUND=0
 
-#Test is coverity is installed
+	set +e
+
+	case $1 in
+	"arm")
+		# Try to find a reasonable CROSS_COMPILE for arm
+		for i in arm-unknown-linux-gnueabi- arm-none-linux-gnueabi- arm-linux-gnueabi-
+		do
+			${i}gcc -dumpmachine > /dev/null 2>&1
+			if test $? -eq 0
+			then
+				${i}ld -v > /dev/null 2>&1
+				if test $? -eq 0
+				then
+					FOUND=1
+					echo $i
+					break
+				fi
+			fi
+		done
+		;;
+	"x86")
+		# Try to find a reasonable CROSS_COMPILE for x86_64
+		for i in x86_64-linux-x86_64-linux- x86_64-linux-gnu-
+		do
+			${i}gcc -dumpmachine > /dev/null 2>&1
+			if test $? -eq 0
+			then
+				${i}ld -v > /dev/null 2>&1
+				if test $? -eq 0
+				then
+					FOUND=1
+					echo $i
+					break
+				fi
+			fi
+		done
+		# if not found we try the native gcc
+		if test $FOUND -eq 0
+		then
+			if test `gcc -dumpmachine` = "x86_64-linux-gnu"
+			then
+				FOUND=1
+				echo
+			fi
+		fi
+		;;
+	*)
+		;;
+	esac
+
+	if test $FOUND -eq 0
+	then
+		exit 1
+	fi
+
+	set -e
+}
+
+# Test is coverity is installed
 cov-build --ident > /dev/null
 if test $? -ne 0
 then
@@ -29,17 +84,22 @@ fi
 # Stop on any error
 set -e
 
-ARCH=$1
-
 # Do some cleanup
 rm -rf cov-int
+rm -rf build
 mkdir cov-int
 
-for i in `cd arch/$ARCH/configs; ls`
+# Build for all architecture
+for ARCH in x86 arm
 do
-	make clean
-	make ARCH=$ARCH $i
-	cov-build --dir cov-int make -j 4
+	CROSS_COMPILE=`get_cross_compiler $ARCH`
+	# Build for all supported targets
+	for DEFCONFIG in `cd arch/$ARCH/configs; ls`
+	do
+		make clean
+		make ARCH=$ARCH $DEFCONFIG
+		cov-build --dir cov-int make CROSS_COMPILE=$CROSS_COMPILE -j 4
+	done
 done
 
-tar cfz xvisor-coverity.$ARCH.`date --date now +%Y%m%d%H%M%S`.tgz cov-int
+tar cfz xvisor-coverity.all.`date --date now +%Y%m%d%H%M%S`.tgz cov-int
