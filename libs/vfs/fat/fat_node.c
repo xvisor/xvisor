@@ -116,8 +116,9 @@ static int fatfs_node_sync_cached_cluster(struct fatfs_node *node)
 	struct fatfs_control *ctrl = node->ctrl;
 
 	if (node->cached_dirty) {
-		woff = (ctrl->first_data_sector * ctrl->bytes_per_sector) + 
-			((node->cached_clust - 2) * ctrl->bytes_per_cluster);
+		woff = ((u64)ctrl->first_data_sector *
+			ctrl->bytes_per_sector) + ((u64)(node->cached_clust
+			- 2) * ctrl->bytes_per_cluster);
 
 		wlen = vmm_blockdev_write(ctrl->bdev, 
 					node->cached_data, 
