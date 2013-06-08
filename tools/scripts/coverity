@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# In order to run this script you need to:
+# * have coverity installed on your system
+#   (see http://scan.coverity.com/download)
+# * have your PATH setup to use coverity
+# * have your CROSS_COMPILE setup correctly for 
+#   the architecture you are targeting
+#
+# This script will build all targets belonging to the selected architecture.
+# The resulting tar file (for example xvisor-coverity.arm.20130606000000.tgz)
+# can be submited to the Coverity scan web site.
+
+# Test if we got enough arguments
+if test $# -ne 1
+then
+	echo "Usage: $0 <arm|x86>" >&2
+	exit 1
+fi
+
+#Test is coverity is installed
+cov-build --ident > /dev/null
+if test $? -ne 0
+then
+	echo "$0: cov-build (from coverity package) is not in the PATH" >&2
+	exit 1
+fi
+
+# Stop on any error
+set -e
+
+ARCH=$1
+
+# Do some cleanup
+rm -rf cov-int
+mkdir cov-int
+
+for i in `cd arch/$ARCH/configs; ls`
+do
+	make clean
+	make ARCH=$ARCH $i
+	cov-build --dir cov-int make -j 4
+done
+
+tar cfz xvisor-coverity.$ARCH.`date --date now +%Y%m%d%H%M%S`.tgz cov-int
