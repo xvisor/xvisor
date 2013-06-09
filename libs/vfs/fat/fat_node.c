@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_timer.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 
@@ -34,22 +35,24 @@ static int fatfs_node_find_lookup_dirent(struct fatfs_node *dnode,
 					 struct fat_dirent *dent,
 					 u32 *off, u32 *len)
 {
-	int idx;
+	int i, idx;
 
 	if (name[0] == '\0') {
 		return -1;
 	}
 
-	for (idx = 0; idx < FAT_NODE_LOOKUP_SIZE; idx++) {
-		if (!strcmp(dnode->lookup_name[idx], name)) {
-			memcpy(dent, &dnode->lookup_dent[idx], sizeof(*dent));
-			*off = dnode->lookup_off[idx];
-			*len = dnode->lookup_len[idx];
-			return idx;
+	idx = -1;
+	for (i = 0; i < FAT_NODE_LOOKUP_SIZE; i++) {
+		if (!strcmp(dnode->lookup_name[i], name)) {
+			memcpy(dent, &dnode->lookup_dent[i], sizeof(*dent));
+			*off = dnode->lookup_off[i];
+			*len = dnode->lookup_len[i];
+			idx = i;
+			break;
 		}
 	}
 
-	return -1;
+	return idx;
 }
 
 static void fatfs_node_add_lookup_dirent(struct fatfs_node *dnode, 
@@ -88,7 +91,6 @@ static void fatfs_node_add_lookup_dirent(struct fatfs_node *dnode,
 	}
 }
 
-#if 0 /* TODO: To be used later. */
 static void fatfs_node_del_lookup_dirent(struct fatfs_node *dnode, 
 					  const char *name)
 {
@@ -106,9 +108,7 @@ static void fatfs_node_del_lookup_dirent(struct fatfs_node *dnode,
 			break;
 		}
 	}
-
 }
-#endif
 
 static int fatfs_node_sync_cached_cluster(struct fatfs_node *node)
 {
@@ -493,7 +493,7 @@ int fatfs_node_init(struct fatfs_control *ctrl, struct fatfs_node *node)
 	node->parent_dent_off = 0;
 	node->parent_dent_len = 0;
 	memset(&node->parent_dent, 0, sizeof(struct fat_dirent));
-	node->parent_dent_dirty = TRUE;
+	node->parent_dent_dirty = FALSE;
 	node->first_cluster = 0;
 
 	node->cached_clust = 0;
@@ -522,10 +522,23 @@ int fatfs_node_exit(struct fatfs_node *node)
 	return VMM_OK;
 }
 
+static u8 fatfs_node_lfn_checksum(const u8 *name)
+{
+	int i;
+	u8 sum = 0;
+ 
+	for (i = 11; i; i--) {
+		sum = ((sum & 1) << 7) + (sum >> 1) + *name++;
+	}
+ 
+	return sum;
+}
+
 int fatfs_node_read_dirent(struct fatfs_node *dnode, 
 			    loff_t off, struct dirent *d)
 {
 	u32 i, rlen, len;
+	u8 lcsum, dcsum, check[11];
 	char lname[VFS_MAX_NAME];
 	struct fat_dirent dent;
 	struct fat_longname lfn;
@@ -539,7 +552,7 @@ int fatfs_node_read_dirent(struct fatfs_node *dnode,
 	d->d_off = off;
 	d->d_reclen = 0;
 
-	do {
+	while (1) {
 		rlen = fatfs_node_read(dnode, fileoff, 
 				sizeof(struct fat_dirent), (u8 *)&dent);
 		if (rlen != sizeof(struct fat_dirent)) {
@@ -563,6 +576,7 @@ int fatfs_node_read_dirent(struct fatfs_node *dnode,
 			if (FAT_LONGNAME_LASTSEQ(lfn.seqno)) {
 				memset(lname, 0, sizeof(lname));
 				lfn.seqno = FAT_LONGNAME_SEQNO(lfn.seqno);
+				lcsum = lfn.checksum;
 			}
 			if ((lfn.seqno < FAT_LONGNAME_MINSEQ) ||
 			    (FAT_LONGNAME_MAXSEQ < lfn.seqno)) {
@@ -589,6 +603,10 @@ int fatfs_node_read_dirent(struct fatfs_node *dnode,
 			continue;
 		}
 
+		memcpy(check, dent.dos_file_name, 8);
+		memcpy(&check[8], dent.dos_extension, 3);
+		dcsum = fatfs_node_lfn_checksum(check);
+
 		if (!strlen(lname)) {
 			i = 8;
 			while (i && (dent.dos_file_name[i-1] == ' ')) {
@@ -601,6 +619,7 @@ int fatfs_node_read_dirent(struct fatfs_node *dnode,
 				i--;
 			}
 			memcpy(lname, dent.dos_file_name, 8);
+			lname[8] = '\0';
 			if (dent.dos_extension[0] != '\0') {
 				len = strlen(lname);
 				lname[len] = '.';
@@ -609,6 +628,11 @@ int fatfs_node_read_dirent(struct fatfs_node *dnode,
 				lname[len + 3] = dent.dos_extension[2];
 				lname[len + 4] = '\0';
 			}
+			lcsum = dcsum;
+		}
+
+		if (lcsum != dcsum) {
+			continue;
 		}
 
 		if (strlcpy(d->d_name, lname, sizeof(d->d_name)) >=
@@ -617,7 +641,7 @@ int fatfs_node_read_dirent(struct fatfs_node *dnode,
 		}
 
 		break;
-	} while (1);
+	}
 
 	if (dent.file_attributes & FAT_DIRENT_SUBDIR) {
 		d->d_type = DT_DIR;
@@ -637,6 +661,7 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 			   struct fat_dirent *dent, 
 			   u32 *dent_off, u32 *dent_len)
 {
+	u8 lcsum, dcsum, check[11];
 	u32 i, off, rlen, len, lfn_off, lfn_len;
 	struct fat_longname lfn;
 	char lname[VFS_MAX_NAME];
@@ -676,6 +701,7 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 				lfn.seqno = FAT_LONGNAME_SEQNO(lfn.seqno);
 				lfn_off = off - sizeof(struct fat_dirent);
 				lfn_len = lfn.seqno * sizeof(struct fat_longname);
+				lcsum = lfn.checksum;
 				memset(lname, 0, sizeof(lname));
 			}
 			if ((lfn.seqno < FAT_LONGNAME_MINSEQ) ||
@@ -703,6 +729,10 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 			continue;
 		}
 
+		memcpy(check, dent->dos_file_name, 8);
+		memcpy(&check[8], dent->dos_extension, 3);
+		dcsum = fatfs_node_lfn_checksum(check);
+
 		if (!strlen(lname)) {
 			lfn_off = off - sizeof(struct fat_dirent);
 			lfn_len = 0;
@@ -717,17 +747,20 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 				i--;
 			}
 			memcpy(lname, dent->dos_file_name, 8);
+			lname[8] = '\0';
 			if (dent->dos_extension[0] != '\0') {
 				len = strlen(lname);
-				lname[len] = '.';
+				lname[len + 0] = '.';
 				lname[len + 1] = dent->dos_extension[0];
 				lname[len + 2] = dent->dos_extension[1];
 				lname[len + 3] = dent->dos_extension[2];
 				lname[len + 4] = '\0';
 			}
+			lcsum = dcsum;
 		}
 
-		if (!strncmp(lname, name, VFS_MAX_NAME)) {
+		if (!strncmp(lname, name, VFS_MAX_NAME) && 
+		    (lcsum == dcsum)) {
 			*dent_off = lfn_off;
 			*dent_len = sizeof(struct fat_dirent) + lfn_len;
 
@@ -748,16 +781,152 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 
 int fatfs_node_add_dirent(struct fatfs_node *dnode, 
 			   const char *name,
-			   struct fat_dirent *dent)
+			   struct fat_dirent *ndent)
 {
-	/* FIXME: */
-	return VMM_EFAIL;
+	bool found;
+	u8 dcsum, check[11];
+	u32 i, len, off, cnt, dent_cnt, dent_off;
+	struct fat_dirent dent;
+	struct fat_longname lfn;
+
+	/* Determine count of long filename enteries required */
+	len = strlen(name) + 1;
+	dent_cnt = udiv32(len, 13);
+	if ((dent_cnt * 13) < len) {
+		dent_cnt++;
+	}
+
+	/* Atleast one entry in existing FAT directory entry format */
+	dent_cnt += 1;
+
+	/* Determine offset for directory enteries */
+	cnt = 0;
+	found = FALSE;
+	dent_off = 0x0;
+	while (1) {
+		len = fatfs_node_read(dnode, dent_off, 
+				sizeof(struct fat_dirent), (u8 *)&dent);
+		if (len != sizeof(struct fat_dirent)) {
+			cnt = 0;
+			break;
+		}
+
+		if (dent.dos_file_name[0] == 0x0) {
+			cnt = 0;
+			found = TRUE;
+			break;
+		}
+
+		if ((dent.dos_file_name[0] == 0xE5) ||
+		    (dent.dos_file_name[0] == 0x2E)) {
+			cnt++;
+			if (cnt == dent_cnt) {
+				dent_off -= (cnt - 1) * sizeof(dent);
+				found = TRUE;
+				break;
+			}
+		} else {
+			cnt = 0;
+		}
+
+		dent_off += sizeof(dent);
+	}
+
+	if (found) {
+		return VMM_ENOENT;
+	}
+
+	/* Prepare final directory entry */
+	i = (u32)vmm_timer_timestamp(); /* Use timestamp for random bytes */
+	vmm_snprintf((char *)check, sizeof(check), "%08x", i);
+	memcpy(&dent, ndent, sizeof(dent));
+	dent.dos_file_name[0] = ' ';
+	dent.dos_file_name[1] = '\0';
+	dent.dos_file_name[2] = check[0]; /* Random byte */
+	dent.dos_file_name[3] = check[1]; /* Random byte */
+	dent.dos_file_name[4] = check[2]; /* Random byte */
+	dent.dos_file_name[5] = check[3]; /* Random byte */
+	dent.dos_file_name[6] = check[4]; /* Random byte */
+	dent.dos_file_name[7] = check[5]; /* Random byte */
+	dent.dos_extension[0] = '/';
+	dent.dos_extension[1] = check[6]; /* Random byte */
+	dent.dos_extension[2] = check[7]; /* Random byte */
+
+	/* Compute checksum of final directory entry */
+	memcpy(check, dent.dos_file_name, 8);
+	memcpy(&check[8], dent.dos_extension, 3);
+	dcsum = fatfs_node_lfn_checksum(check);
+
+	/* Write long filename enteries */
+	for (cnt = 0; 0 < (dent_cnt - 1); cnt++) {
+		memset(&lfn, 0xFF, sizeof(lfn));
+		lfn.seqno = FAT_LONGNAME_SEQNO((dent_cnt - 1) - cnt);
+		if (cnt == 0) {
+			lfn.seqno |= FAT_LONGNAME_LASTSEQ_MASK;
+		}
+		lfn.file_attributes = FAT_LONGNAME_ATTRIBUTE;
+		lfn.type = 0;
+		lfn.checksum = dcsum;
+		lfn.first_cluster = 0;
+		off = ((dent_cnt - 2) - cnt) * 13;
+		len = strlen(name) + 1;
+		for (i = 0; i < 13; i++) {
+			if ((off + i) == len) {
+				break;
+			}
+			if (i < 5) {
+				lfn.name_utf16_1[i] = 
+						__le16((u16)name[off + i]);
+			} else if (i < 11) {
+				lfn.name_utf16_2[i - 5] = 
+						__le16((u16)name[off + i]);
+			} else {
+				lfn.name_utf16_3[i - 11] = 
+						__le16((u16)name[off + i]);
+			}
+		}
+
+		off = dent_off + cnt * sizeof(lfn);
+		len = fatfs_node_write(dnode, off, sizeof(lfn), (u8 *)&lfn);
+		if (len != sizeof(lfn)) {
+			return VMM_EIO;
+		}
+	}
+
+	/* Write final directory entry */
+	off = dent_off + (dent_cnt - 1) * sizeof(dent);
+	len = fatfs_node_write(dnode, off, sizeof(dent), (u8 *)&dent);
+	if (len != sizeof(dent)) {
+		return VMM_EIO;
+	}
+
+	return VMM_OK;
 }
 
 int fatfs_node_del_dirent(struct fatfs_node *dnode, 
+			  const char *name,
 			  u32 dent_off, u32 dent_len)
 {
-	/* FIXME: */
-	return VMM_EFAIL;
+	u32 off, len;
+	struct fat_dirent dent;
+
+	fatfs_node_del_lookup_dirent(dnode, name);
+
+	memset(&dent, 0, sizeof(dent));
+	dent.dos_file_name[0] = 0xE5;
+
+	for (off = 0; off < dent_len; off += sizeof(dent)) {
+		if ((dent_len - off) < sizeof(dent)) {
+			break;
+		}
+
+		len = fatfs_node_write(dnode, dent_off + off, 
+				       sizeof(dent), (u8 *)&dent);
+		if (len != sizeof(dent)) {
+			return VMM_EIO;
+		}
+	};
+
+	return VMM_OK;
 }
 
