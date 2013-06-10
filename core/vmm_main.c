@@ -278,6 +278,15 @@ void vmm_init(void)
 		vmm_hang();
 	}
 
+#if defined(CONFIG_SMP)
+	/* Initialize inter-processor interrupts */
+	vmm_printf("Initialize SMP IPIs\n")
+	ret = vmm_smp_ipi_init();
+	if (ret) {
+		vmm_hang();
+	}
+#endif
+
 	/* Initialize CPU early */
 	vmm_printf("Initialize CPU Early\n");
 	ret = arch_cpu_early_init();
@@ -421,6 +430,12 @@ void vmm_init_secondary(void)
 
 	/* Initialize host interrupts */
 	ret = vmm_host_irq_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize inter-processor interrupts */
+	ret = vmm_smp_ipi_init();
 	if (ret) {
 		vmm_hang();
 	}
