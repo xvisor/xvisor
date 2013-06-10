@@ -144,6 +144,16 @@ static inline size_t vmm_cpumask_size(void)
 
 #endif
 
+#define VMM_CPU_MASK_NONE						\
+(vmm_cpumask_t) { {							\
+	[0 ... BITS_TO_LONGS(CONFIG_CPU_COUNT)-1] =  0UL		\
+} }
+
+#define VMM_CPU_MASK_CPU0						\
+(vmm_cpumask_t) { {							\
+	[0] =  1UL							\
+} }
+
 /*
  * The following particular system cpumasks and operations manage
  * possible, present, active and online cpus.
