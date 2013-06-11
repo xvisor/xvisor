@@ -56,17 +56,9 @@ struct vmm_devemu_guest_irq {
 	void *opaque;
 };
 
-struct vmm_devemu_host2guest_irq {
-	struct vmm_guest *guest;
-	u32 host_irq;
-	u32 guest_irq;
-};
-
 struct vmm_devemu_guest_context {
 	u32 g_irq_count;
 	struct dlist *g_irq;
-	u32 h2g_irq_count;
-	struct vmm_devemu_host2guest_irq *h2g_irq;
 };
 
 struct vmm_devemu_ctrl {
@@ -303,45 +295,6 @@ int __vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq, int cpu, int leve
 	list_for_each(l, &eg->g_irq[irq]) {
 		gi = list_entry(l, struct vmm_devemu_guest_irq, head);
 		gi->handle(irq, cpu, level, gi->opaque);
-	}
-
-	return VMM_OK;
-}
-
-static vmm_irq_return_t vmm_devemu_handle_h2g_irq(int hirq, void *dev)
-{
-	struct vmm_devemu_host2guest_irq *irq = dev;
-
-	if (irq) {
-		vmm_host_irq_disable(irq->host_irq);
-		vmm_devemu_emulate_irq(irq->guest, irq->guest_irq, 1);
-	}
-
-	return VMM_IRQ_HANDLED;
-}
-
-int vmm_devemu_complete_host2guest_irq(struct vmm_guest *guest, u32 irq)
-{
-	u32 i;
-	struct vmm_devemu_guest_context *eg;
-
-	if (!guest) {
-		return VMM_EFAIL;
-	}
-
-	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
-
-	/* Check if a host IRQ to guest IRQ ended */
-	if (eg->h2g_irq) {
-		for (i = 0; i < eg->h2g_irq_count; i++) {
-			if (irq == eg->h2g_irq[i].guest_irq) {
-				vmm_devemu_emulate_irq(eg->h2g_irq[i].guest, 
-						       eg->h2g_irq[i].guest_irq, 
-						       0);
-				vmm_host_irq_enable(eg->h2g_irq[i].host_irq);
-				break;
-			}
-		}
 	}
 
 	return VMM_OK;
@@ -619,12 +572,6 @@ int vmm_devemu_reset_context(struct vmm_guest *guest)
 
 	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
 
-	if (eg->h2g_irq) {
-		for (ite = 0; ite < eg->h2g_irq_count; ite++) {
-			vmm_host_irq_enable(eg->h2g_irq[ite].host_irq);
-		}
-	}
-
 	list_for_each(l, &guest->vcpu_list) {
 		vcpu = list_entry(l, struct vmm_vcpu, head);
 		if (vcpu->devemu_priv) {
@@ -817,44 +764,14 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 		goto devemu_init_context_free;
 	}
 
-	eg->h2g_irq = NULL;
-	eg->h2g_irq_count = 0;
-	attr = vmm_devtree_attrval(guest->aspace.node, 
-				   VMM_DEVTREE_H2GIRQMAP_ATTR_NAME);
-	if (attr) {
-		eg->h2g_irq_count = vmm_devtree_attrlen(guest->aspace.node, 
-					VMM_DEVTREE_H2GIRQMAP_ATTR_NAME) >> 3;
-		if (!(eg->h2g_irq_count)) {
-			rc = VMM_EFAIL;
-			goto devemu_init_context_free_g;
-		}
-
-		eg->h2g_irq = 
-			vmm_zalloc(sizeof(struct vmm_devemu_host2guest_irq) * 
-							(eg->h2g_irq_count));
-		if (!eg->h2g_irq) {
-			rc = VMM_EFAIL;
-			goto devemu_init_context_free_g;
-		}
-
-		for (ite = 0; ite < eg->h2g_irq_count; ite++) {
-			eg->h2g_irq[ite].guest = guest;
-			eg->h2g_irq[ite].host_irq = ((u32 *)attr)[2 * ite];
-			eg->h2g_irq[ite].guest_irq = ((u32 *)attr)[(2 * ite) + 1];
-			rc = vmm_host_irq_register(eg->h2g_irq[ite].host_irq,
-						   "devemu_h2g", 
-						   vmm_devemu_handle_h2g_irq, 
-						   &eg->h2g_irq[ite]);
-			if (rc) {
-				goto devemu_init_context_free_h2g;
-			}
-		}
-	}
-
 	list_for_each(l, &guest->vcpu_list) {
 		vcpu = list_entry(l, struct vmm_vcpu, head);
 		if (!vcpu->devemu_priv) {
 			ev = vmm_zalloc(sizeof(struct vmm_devemu_vcpu_context));
+			if (!ev) {
+				rc = VMM_ENOMEM;
+				goto devemu_init_context_free_g;
+			}
 			ev->rd_mem_victim = 0;
 			ev->wr_mem_victim = 0;
 			ev->rd_io_victim = 0;
@@ -883,10 +800,17 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 
 	goto devemu_init_context_done;
 
-devemu_init_context_free_h2g:
-	vmm_free(eg->h2g_irq);
 devemu_init_context_free_g:
+	list_for_each(l, &guest->vcpu_list) {
+		vcpu = list_entry(l, struct vmm_vcpu, head);
+		if (vcpu->devemu_priv) {
+			vmm_free(vcpu->devemu_priv);
+			vcpu->devemu_priv = NULL;
+		}
+	}
 	vmm_free(eg->g_irq);
+	eg->g_irq = NULL;
+	eg->g_irq_count = 0;
 devemu_init_context_free:
 	vmm_free(eg);
 devemu_init_context_done:
@@ -921,19 +845,6 @@ int vmm_devemu_deinit_context(struct vmm_guest *guest)
 		vmm_free(eg->g_irq);
 		eg->g_irq = NULL;
 		eg->g_irq_count = 0;
-	}
-
-	if (eg->h2g_irq) {
-		for (ite = 0; ite < eg->h2g_irq_count; ite++) {
-			rc = vmm_host_irq_unregister(eg->h2g_irq[ite].host_irq,
-						&eg->h2g_irq[ite]);
-			if (rc) {
-				break;
-			}
-		}
-		vmm_free(eg->h2g_irq);
-		eg->h2g_irq = NULL;
-		eg->h2g_irq_count = 0;
 	}
 
 	vmm_free(eg);

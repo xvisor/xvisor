@@ -311,9 +311,6 @@ static void gic_complete_irq(struct gic_state * s, int cpu, int irq)
 	}
 
 	vmm_spin_unlock_irqrestore(&s->lock, flags);
-
-	/* Signal completion of host-to-guest mapped irq */
-	vmm_devemu_complete_host2guest_irq(s->guest, irq);
 }
 
 static int __gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
