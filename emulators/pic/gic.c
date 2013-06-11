@@ -281,16 +281,14 @@ static void gic_complete_irq(struct gic_state * s, int cpu, int irq)
 
 	vmm_spin_lock_irqsave(&s->lock, flags);
 
-	if (irq != 1023) {
-		/* Mark level triggered interrupts as pending if 
-		 * they are still raised. */
-		if (!GIC_TEST_TRIGGER(s, irq) && 
-		    GIC_TEST_ENABLED(s, irq, cm) &&
-		    GIC_TEST_LEVEL(s, irq, cm) && 
-		    (GIC_TARGET(s, irq) & cm) != 0) {
-			GIC_SET_PENDING(s, irq, cm);
-			update = 1;
-		}
+	/* Mark level triggered interrupts as pending if 
+	 * they are still raised. */
+	if (!GIC_TEST_TRIGGER(s, irq) && 
+	    GIC_TEST_ENABLED(s, irq, cm) &&
+	    GIC_TEST_LEVEL(s, irq, cm) && 
+	    (GIC_TARGET(s, irq) & cm) != 0) {
+		GIC_SET_PENDING(s, irq, cm);
+		update = 1;
 	}
 	if (irq != s->running_irq[cpu]) {
 		/* Complete an IRQ that is not currently running.  */
