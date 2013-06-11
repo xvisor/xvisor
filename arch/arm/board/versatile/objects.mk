@@ -24,9 +24,7 @@
 board-objs-y+=brd_defterm.o
 board-objs-y+=brd_main.o
 board-objs-$(CONFIG_VERSATILEPB_ONE_GUEST_VPB_DTS)+=dts/pb/one_guest_versatile.o
-board-objs-$(CONFIG_VERSATILEPB_ONE_PT_GUEST_VPB_DTS)+=dts/pb/one_pt_guest_versatile.o
 board-objs-$(CONFIG_VERSATILEPB_TWO_GUEST_VPB_DTS)+=dts/pb/two_guest_versatile.o
 
 board-dtbs-y+=dts/pb/one_guest_versatile.dtb
-board-dtbs-y+=dts/pb/one_pt_guest_versatile.dtb
 board-dtbs-y+=dts/pb/two_guest_versatile.dtb
