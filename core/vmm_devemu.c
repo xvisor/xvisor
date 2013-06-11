@@ -562,15 +562,12 @@ int vmm_devemu_reset_context(struct vmm_guest *guest)
 {
 	u32 ite;
 	struct dlist *l;
-	struct vmm_devemu_guest_context *eg;
 	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_vcpu *vcpu;
 
 	if (!guest) {
 		return VMM_EFAIL;
 	}
-
-	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
 
 	list_for_each(l, &guest->vcpu_list) {
 		vcpu = list_entry(l, struct vmm_vcpu, head);
@@ -821,7 +818,6 @@ devemu_init_context_done:
 int vmm_devemu_deinit_context(struct vmm_guest *guest)
 {
 	int rc = VMM_OK;
-	u32 ite;
 	struct dlist *l;
 	struct vmm_vcpu *vcpu;
 	struct vmm_devemu_guest_context *eg;
