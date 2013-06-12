@@ -165,9 +165,7 @@ static int cmd_profile_count_iterator(void *data, const char *name,
 
 	ptr += index;
 
-	/* It would be nice to have the strncpy variant */
-	strcpy(ptr->function_name, name);
-	ptr->function_name[39] = 0;
+	strlcpy(ptr->function_name, name, sizeof(ptr->function_name));
 	ptr->count = count;
 	ptr->total_time = time;
 	if (count) {
