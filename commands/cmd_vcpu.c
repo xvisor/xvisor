@@ -256,7 +256,7 @@ static int cmd_vcpu_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	}
 
 	if (argc == 3) {
-		id = str2int(argv[2], 10);
+		id = atoi(argv[2]);
 	}
 	
 	while (command[index].name) {

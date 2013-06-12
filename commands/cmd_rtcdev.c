@@ -247,7 +247,7 @@ int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
 		s++;
 	}
 	rc = 0;
-	tm.tm_mday = str2int(targv[1], 10);
+	tm.tm_mday = atoi(targv[1]);
 	str2lower(targv[2]);
 	if (strcmp(targv[2], "jan") == 0) {
 		tm.tm_mon = 0;
@@ -274,9 +274,9 @@ int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
 	} else if (strcmp(targv[2], "dec") == 0) {
 		tm.tm_mon = 11;
 	} else {
-		tm.tm_mon = str2int(targv[2], 10);
+		tm.tm_mon = atoi(targv[2]);
 	}
-	tm.tm_year = str2int(targv[3], 10) - 1900;
+	tm.tm_year = atoi(targv[3]) - 1900;
 
 	if (!vmm_rtc_valid_tm(&tm)) {
 		vmm_cprintf(cdev, "Error: invalid date-time\n");

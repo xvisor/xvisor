@@ -617,7 +617,7 @@ int vmm_fb_find_mode(struct vmm_fb_var_screeninfo *var,
 		    namelen = i;
 		    if (!refresh_specified && !bpp_specified &&
 			!yres_specified) {
-			refresh = str2uint(&name[i+1], 10);
+			refresh = strtoul(&name[i+1], NULL, 0);
 			refresh_specified = 1;
 			if (cvt || rb)
 			    cvt = 0;
@@ -627,7 +627,7 @@ int vmm_fb_find_mode(struct vmm_fb_var_screeninfo *var,
 		case '-':
 		    namelen = i;
 		    if (!bpp_specified && !yres_specified) {
-			bpp = str2uint(&name[i+1], 10);
+			bpp = strtoul(&name[i+1], NULL, 0);
 			bpp_specified = 1;
 			if (cvt || rb)
 			    cvt = 0;
@@ -636,7 +636,7 @@ int vmm_fb_find_mode(struct vmm_fb_var_screeninfo *var,
 		    break;
 		case 'x':
 		    if (!yres_specified) {
-			yres = str2uint(&name[i+1], 10);
+			yres = strtoul(&name[i+1], NULL, 0);
 			yres_specified = 1;
 		    } else
 			goto done;
@@ -664,7 +664,7 @@ int vmm_fb_find_mode(struct vmm_fb_var_screeninfo *var,
 	    }
 	}
 	if (i < 0 && yres_specified) {
-	    xres = str2uint(name, 10);
+	    xres = strtoul(name, NULL, 0);
 	    res_specified = 1;
 	}
 done:

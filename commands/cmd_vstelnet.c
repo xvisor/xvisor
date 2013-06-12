@@ -117,10 +117,10 @@ static int cmd_vstelnet_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		}
 	}
 	if ((strcmp(argv[1], "create") == 0) && (argc == 4)) {
-		port = str2uint(argv[2], 10);
+		port = strtoul(argv[2], NULL, 0);
 		return cmd_vstelnet_create(cdev, port, argv[3]);
 	} else if ((strcmp(argv[1], "destroy") == 0) && (argc == 3)) {
-		port = str2uint(argv[2], 10);
+		port = strtoul(argv[2], NULL, 0);
 		return cmd_vstelnet_destroy(cdev, port);
 	}
 	cmd_vstelnet_usage(cdev);

@@ -249,7 +249,7 @@ int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 				return VMM_OK;
 			} else if (strcmp(argv[2], "bitmap") == 0) {
 				if (3 < argc) {
-					colcnt = str2int(argv[3], 10);
+					colcnt = atoi(argv[3]);
 				} else {
 					colcnt = 64;
 				}
@@ -262,7 +262,7 @@ int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 				return VMM_OK;
 			} else if (strcmp(argv[2], "bitmap") == 0) {
 				if (3 < argc) {
-					colcnt = str2int(argv[3], 10);
+					colcnt = atoi(argv[3]);
 				} else {
 					colcnt = 64;
 				}

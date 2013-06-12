@@ -422,7 +422,7 @@ int cmd_vserial_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vserial_bind(cdev, argv[2]);
 	} else if (strcmp(argv[1], "dump") == 0) {
 		if (4 <= argc) {
-			bcount = str2int(argv[3], 10);
+			bcount = atoi(argv[3]);
 		}
 		return cmd_vserial_dump(cdev, argv[2], bcount);
 	} else {
