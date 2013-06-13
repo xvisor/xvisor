@@ -399,7 +399,7 @@ static int __gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 				done = 0;
 				break;
 			}
-			if (GIC_BASE_IRQ(s) <= irq && irq < 32) {
+			if (irq < 32) {
 				*dst = 1 << cpu;
 			} else {
 				*dst = GIC_TARGET(s, irq);
@@ -575,7 +575,7 @@ static int __gic_dist_writeb(struct gic_state *s, int cpu, u32 offset, u8 src)
 				done = 0;
 				break;
 			}
-			if (irq < GIC_BASE_IRQ(s)) {
+			if (irq < 16) {
 				src = 0x0;
 			} else if (irq < 32) {
 				src = GIC_ALL_CPU_MASK(s);
