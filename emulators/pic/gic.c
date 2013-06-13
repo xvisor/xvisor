@@ -77,16 +77,16 @@ struct gic_state {
 	u32 parent_irq[GIC_MAX_NCPU];
 
 	/* Chip Info */
-	int enabled;
+	u32 enabled;
 
 	/* CPU Interface */
 	u32 cpu_offset;
 	u32 cpu_length;
-	int cpu_enabled[GIC_MAX_NCPU];
-	int priority_mask[GIC_MAX_NCPU];
-	int running_irq[GIC_MAX_NCPU];
-	int running_priority[GIC_MAX_NCPU];
-	int current_pending[GIC_MAX_NCPU];
+	u32 cpu_enabled[GIC_MAX_NCPU];
+	u32 priority_mask[GIC_MAX_NCPU];
+	u32 running_irq[GIC_MAX_NCPU];
+	u32 running_priority[GIC_MAX_NCPU];
+	u32 current_pending[GIC_MAX_NCPU];
 
 	/* Distribution Control */
 	u32 dist_offset;
@@ -101,6 +101,7 @@ struct gic_state {
 #define GIC_ALL_CPU_MASK(s) ((1 << (s)->num_cpu) - 1)
 #define GIC_NUM_CPU(s) ((s)->num_cpu)
 #define GIC_NUM_IRQ(s) ((s)->num_irq)
+#define GIC_BASE_IRQ(s) ((s)->base_irq)
 #define GIC_SET_ENABLED(s, irq, cm) (s)->irq_state[irq].enabled |= (cm)
 #define GIC_CLEAR_ENABLED(s, irq, cm) (s)->irq_state[irq].enabled &= ~(cm)
 #define GIC_TEST_ENABLED(s, irq, cm) ((s)->irq_state[irq].enabled & (cm))
@@ -199,7 +200,7 @@ static void gic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 	int cm, target;
 	struct gic_state *s = opaque;
 
-	irq -= s->base_irq;
+	irq -= GIC_BASE_IRQ(s);
 
 	if (irq < 32) {
 		/* In case of PPIs and SGIs */
@@ -398,7 +399,7 @@ static int __gic_dist_readb(struct gic_state * s, int cpu, u32 offset, u8 *dst)
 				done = 0;
 				break;
 			}
-			if (29 <= irq && irq < 32) {
+			if (GIC_BASE_IRQ(s) <= irq && irq < 32) {
 				*dst = 1 << cpu;
 			} else {
 				*dst = GIC_TARGET(s, irq);
@@ -574,7 +575,7 @@ static int __gic_dist_writeb(struct gic_state *s, int cpu, u32 offset, u8 src)
 				done = 0;
 				break;
 			}
-			if (irq < 29) {
+			if (irq < GIC_BASE_IRQ(s)) {
 				src = 0x0;
 			} else if (irq < 32) {
 				src = GIC_ALL_CPU_MASK(s);
