@@ -392,6 +392,9 @@ static void vfs_vnode_release(struct vnode *v)
 
 	while (1) {
 		p = strrchr(path, '/');
+		if (!p) {
+			break;
+		}
 		*p = '\0';
 
 		if (path[0] == '\0') {
@@ -884,6 +887,9 @@ static int vfs_lookup_dir(const char *path, struct vnode **vp, char **name)
 	}
 
 	file = strrchr(buf, '/');
+	if (!file) {
+		return VMM_EINVALID;
+	}
 
 	if (!buf[0]) {
 		return VMM_EINVALID;
