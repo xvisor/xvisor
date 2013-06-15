@@ -146,7 +146,7 @@ void dump_trace(struct arch_regs *regs, unsigned long *stack,
 		}
 		if (execution_stack_end) {
 			unsigned long *irq_stack;
-			irq_stack = (unsigned long *)(execution_stack_end +
+			irq_stack = (unsigned long *)((u64)execution_stack_end +
 						(0x2000UL - 64) / sizeof(*irq_stack));
 
 			if (in_irq_stack(stack, irq_stack, execution_stack_end)) {
