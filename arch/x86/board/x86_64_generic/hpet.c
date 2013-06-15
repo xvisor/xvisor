@@ -177,8 +177,6 @@ static struct hpet_timer *get_timer_from_id(timer_id_t timer_id)
 	list_for_each(clist, &hpet_devices.chip_list) {
 		chip = list_entry(clist, struct hpet_chip, head);
 
-		if (!chip) goto _err;
-
 		if (chip->chip_id != chip_no) continue;
 
 		list_for_each(blist, &chip->block_list) {
