@@ -250,6 +250,8 @@ int __init hpet_init(void)
 			BUG_ON(node == NULL);
 
 			base = vmm_devtree_attrval(node, VMM_DEVTREE_HPET_PADDR_ATTR_NAME);
+			BUG_ON(base == NULL);
+
 			block->pbase = *base;
 			BUG_ON(block->pbase == 0);
 
