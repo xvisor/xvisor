@@ -911,7 +911,13 @@ static int vfs_lookup_dir(const char *path, struct vnode **vp, char **name)
 	*vp = v;
 
 	/* get the file name */
-	*name = strrchr(path, '/') + 1;
+	*name = strrchr(path, '/');
+
+	if (*name == NULL) {
+		return VMM_EFAIL;
+	}
+
+	*name += 1;
 
 	return 0;
 }
