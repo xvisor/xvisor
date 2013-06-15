@@ -216,6 +216,8 @@ int __init hpet_init(void)
 
 	BUG_ON(node == NULL);
 	aval = vmm_devtree_attrval(node, VMM_DEVTREE_NR_HPET_ATTR_NAME);
+	BUG_ON(aval == NULL);
+
 	nr_hpet_chips = *aval;
 
 	/* Need at least one HPET as system timer */
