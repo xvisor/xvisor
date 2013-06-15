@@ -187,8 +187,6 @@ static struct hpet_timer *get_timer_from_id(timer_id_t timer_id)
 			list_for_each(tlist, &block->timer_list) {
 				timer = list_entry(tlist, struct hpet_timer, head);
 
-				if (timer == NULL) goto _err;
-
 				if (timer->timer_id != timer_no) continue;
 
 				return timer;
