@@ -194,7 +194,6 @@ static struct hpet_timer *get_timer_from_id(timer_id_t timer_id)
 		}		
 	}
 
- _err:
 	return NULL;
 }
 
