@@ -25,6 +25,20 @@
 			  /* Connect guest0/lan9118 netport to netbridge0 */
 			  "devtree attr set /guests/guest0/aspace/lan9118 switch string netbridge0",
 
+			  /* Replace guest0 GIC emulator with vGIC emulator */
+			  "devtree node copy /guests/guest0/aspace gic0_cpu /guests/guest0/aspace/gic0",
+			  "devtree attr set /guests/guest0/aspace/gic0_cpu manifest_type string real",
+			  "devtree attr set /guests/guest0/aspace/gic0_cpu guest_physical_addr physaddr 0x1E000000",
+			  "devtree attr set /guests/guest0/aspace/gic0_cpu host_physical_addr physaddr 0x2C006000",
+			  "devtree attr set /guests/guest0/aspace/gic0_cpu physical_size physsize 0x1000",
+			  "devtree attr del /guests/guest0/aspace/gic0_cpu compatible",
+			  "devtree attr del /guests/guest0/aspace/gic0_cpu parent_irq",
+			  "devtree node copy /guests/guest0/aspace gic0_dist /guests/guest0/aspace/gic0",
+			  "devtree attr set /guests/guest0/aspace/gic0_dist guest_physical_addr physaddr 0x1E001000",
+			  "devtree attr set /guests/guest0/aspace/gic0_dist physical_size physsize 0x1000",
+			  "devtree attr set /guests/guest0/aspace/gic0_dist compatible string arm,vgic",
+			  "devtree node del /guests/guest0/aspace/gic0",
+
 			  /* Create guest0 */
 			  "guest create guest0",
 

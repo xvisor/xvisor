@@ -64,14 +64,23 @@
 					compatible = "zero";
 				};
 
-				gic {
+				gic_dist {
 					manifest_type = "virtual";
 					address_type = "memory";
-					guest_physical_addr = <0x2C000000>;
-					physical_size = <0x3000>;
+					guest_physical_addr = <0x2C001000>;
+					physical_size = <0x1000>;
 					device_type = "pic";
-					compatible = "vexpress,gicv2";
+					compatible = "arm,vgic";
 					parent_irq = <6>;
+				};
+
+				gic_cpu {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x2C002000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x1000>;
+					device_type = "pic";
 				};
 
 				scc { /* No SCC */
