@@ -264,7 +264,8 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 	BUG_ON(src_id && irq >= 16);
 	BUG_ON(irq >= VGIC_MAX_NIRQ);
 
-	DPRINTF("%s: Queue IRQ%d\n", __func__, irq);
+	DPRINTF("%s: Queue IRQ%d to VCPU with SUBID=%d\n", 
+		__func__, irq, vs->vcpu->subid);
 
 	lr = VGIC_GET_LR_MAP(vs, irq);
 
@@ -1009,6 +1010,9 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 				continue;
 			}
 			s->vstate[i].sgi_source[irq] |= (1 << cpu);
+			if (s->vstate[i].vcpu->subid != vs->vcpu->subid) {
+				vmm_vcpu_irq_wait_resume(s->vstate[i].vcpu);
+			}
 		}
 	} else {
 		src_mask = ~src_mask;
