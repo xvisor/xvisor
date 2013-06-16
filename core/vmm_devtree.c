@@ -545,8 +545,9 @@ int vmm_devtree_getpath(char *out, struct vmm_devtree_node *node)
 struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 					      const char *path)
 {
+	u32 len;
 	bool found;
-	struct dlist *lentry;
+	struct dlist *l;
 	struct vmm_devtree_node *child;
 
 	if (!path || !node)
@@ -554,15 +555,18 @@ struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 
 	while (*path) {
 		found = FALSE;
-		list_for_each(lentry, &node->child_list) {
-			child = list_entry(lentry, struct vmm_devtree_node, head);
-			if (strncmp(child->name, path, strlen(child->name)) == 0) {
+		list_for_each(l, &node->child_list) {
+			child = list_entry(l, struct vmm_devtree_node, head);
+			len = strlen(child->name);
+			if (strncmp(child->name, path, len) == 0) {
 				found = TRUE;
-				path += strlen(child->name);
+				path += len;
 				if (*path) {
 					if (*path != VMM_DEVTREE_PATH_SEPARATOR
-					    && *(path + 1) != '\0')
-						return NULL;
+					    && *(path + 1) != '\0') {
+						path -= len;
+						continue;
+					}
 					if (*path == VMM_DEVTREE_PATH_SEPARATOR)
 						path++;
 				}
