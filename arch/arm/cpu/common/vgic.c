@@ -19,6 +19,9 @@
  * @file vgic.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Hardware assisted GICv2 emulator using GIC virt extensions.
+ *
+ * This source is based on GICv2 software emulator located at:
+ * emulators/pic/gic.c
  */
 
 #include <vmm_error.h>
@@ -114,9 +117,6 @@ struct vgic_vcpu_state {
 	/* Register state */
 	u32 hcr;
 	u32 vmcr;
-	u32 misr;
-	u32 eisr[2];
-	u32 elrsr[2];
 	u32 apr;
 	u32 lr[GICH_LR_MAX_COUNT];
 
@@ -214,11 +214,6 @@ static void __vgic_save_vcpu_hwstate(struct vgic_vcpu_state *vs)
 
 	vs->hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
 	vs->vmcr = vmm_readl((void *)vgich.hctrl_va + GICH_VMCR);
-	vs->misr = vmm_readl((void *)vgich.hctrl_va + GICH_MISR);
-	vs->eisr[0] = vmm_readl((void *)vgich.hctrl_va + GICH_EISR0);
-	vs->eisr[1] = vmm_readl((void *)vgich.hctrl_va + GICH_EISR1);
-	vs->elrsr[0] = vmm_readl((void *)vgich.hctrl_va + GICH_ELRSR0);
-	vs->elrsr[1] = vmm_readl((void *)vgich.hctrl_va + GICH_ELRSR1);
 	vs->apr = vmm_readl((void *)vgich.hctrl_va + GICH_APR);
 	vmm_writel(0x0, (void *)vgich.hctrl_va + GICH_HCR);
 	for (i = 0; i < vgich.lr_cnt; i++) {
@@ -239,30 +234,12 @@ static void __vgic_restore_vcpu_hwstate(struct vgic_vcpu_state *vs)
 	}
 }
 
-static u32 __vgic_find_free_lr(struct vgic_vcpu_state *vs)
-{
-	u32 lr;
-
-	for (lr = 0; lr < vgich.lr_cnt; lr++) {
-		if (!VGIC_TEST_LR_USED(vs, lr)) {
-			break;
-		}
-	}
-
-	return lr; 
-}
-
 /* Queue interrupt */
 static bool __vgic_queue_irq(struct vgic_guest_state *s,
 			     struct vgic_vcpu_state *vs,
 			     u8 src_id, u32 irq)
 {
 	u32 lr, lrval;
-
-	/* Sanity checks */
-	BUG_ON(src_id & ~7);
-	BUG_ON(src_id && irq >= 16);
-	BUG_ON(irq >= VGIC_MAX_NIRQ);
 
 	DPRINTF("%s: Queue IRQ%d to VCPU with SUBID=%d\n", 
 		__func__, irq, vs->vcpu->subid);
@@ -280,7 +257,11 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 	}
 
 	/* Try to use another LR for this interrupt */
-	lr = __vgic_find_free_lr(vs);
+	for (lr = 0; lr < vgich.lr_cnt; lr++) {
+		if (!VGIC_TEST_LR_USED(vs, lr)) {
+			break;
+		}
+	}
 	if (lr >= vgich.lr_cnt) {
 		return FALSE;
 	}
@@ -352,6 +333,88 @@ static bool __vgic_queue_hwirq(struct vgic_guest_state *s,
 	return FALSE;
 }
 
+/* Flush VGIC state to VGIC HW for IRQ on given VCPU */
+static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s, 
+					  struct vgic_vcpu_state *vs,
+					  u32 irq)
+{
+	bool overflow = FALSE;
+	u32 hcr, cm = (1 << vs->vcpu->subid);
+
+	DPRINTF("%s: vcpu = %s\n", __func__, vs->vcpu->name);
+
+	if (!s->enabled) {
+		return;
+	}
+
+	if (!VGIC_TEST_ENABLED(s, irq, cm) || 
+	    !VGIC_TEST_PENDING(s, irq, cm)) {
+		return;
+	}
+
+	if (irq < 16) {
+		if (!__vgic_queue_sgi(s, vs, irq)) {
+			overflow = TRUE;
+		}
+	} else {
+		if (!__vgic_queue_hwirq(s, vs, irq)) {
+			overflow = TRUE;
+		}
+	}
+
+	hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
+	if (overflow) {
+		hcr |= GICH_HCR_UIE;
+	} else {
+		hcr &= ~GICH_HCR_UIE;
+	}
+	vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
+}
+
+/* Flush VGIC state to VGIC HW for given VCPU */
+static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s, 
+				      struct vgic_vcpu_state *vs)
+{
+	bool overflow = FALSE;
+	u32 hcr, irq, cm = (1 << vs->vcpu->subid);
+
+	DPRINTF("%s: vcpu = %s\n", __func__, vs->vcpu->name);
+
+	if (!s->enabled) {
+		return;
+	}
+
+	for (irq = 0; irq < 16; irq++) {
+		if (!VGIC_TEST_ENABLED(s, irq, cm) || 
+		    !VGIC_TEST_PENDING(s, irq, cm)) {
+			continue;
+		}
+
+		if (!__vgic_queue_sgi(s, vs, irq)) {
+			overflow = TRUE;
+		}
+	}
+
+	for (irq = 16; irq < VGIC_NUM_IRQ(s); irq++) {
+		if (!VGIC_TEST_ENABLED(s, irq, cm) || 
+		    !VGIC_TEST_PENDING(s, irq, cm)) {
+			continue;
+		}
+
+		if (!__vgic_queue_hwirq(s, vs, irq)) {
+			overflow = TRUE;
+		}
+	}
+
+	hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
+	if (overflow) {
+		hcr |= GICH_HCR_UIE;
+	} else {
+		hcr &= ~GICH_HCR_UIE;
+	}
+	vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
+}
+
 /* Sync current VCPU VGIC state with HW state */
 static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s, 
 				     struct vgic_vcpu_state *vs)
@@ -361,23 +424,31 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 
 	hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
 	misr = vmm_readl((void *)vgich.hctrl_va + GICH_MISR);
-	eisr[0] = vmm_readl((void *)vgich.hctrl_va + GICH_EISR0);
-	eisr[1] = vmm_readl((void *)vgich.hctrl_va + GICH_EISR1);
 	elrsr[0] = vmm_readl((void *)vgich.hctrl_va + GICH_ELRSR0);
-	elrsr[1] = vmm_readl((void *)vgich.hctrl_va + GICH_ELRSR1);
+	if (32 < vgich.lr_cnt) {
+		elrsr[1] = vmm_readl((void *)vgich.hctrl_va + GICH_ELRSR1);
+	} else {
+		elrsr[1] = 0x0;
+	}
 
 	DPRINTF("%s: vcpu = %s\n", __func__, vs->vcpu->name);
 	DPRINTF("%s: MISR = %08x\n", __func__, misr);
-	DPRINTF("%s: EISR0 = %08x\n", __func__, eisr[0]);
-	DPRINTF("%s: EISR1 = %08x\n", __func__, eisr[1]);
 	DPRINTF("%s: ELRSR0 = %08x\n", __func__, elrsr[0]);
 	DPRINTF("%s: ELRSR1 = %08x\n", __func__, elrsr[1]);
 
 	if (misr & GICH_MISR_EOI) {
-		/* Some level interrupts have been EOIed. Clear their
-		 * active bit.
-		 */
+		eisr[0] = vmm_readl((void *)vgich.hctrl_va + GICH_EISR0);
+		if (32 < vgich.lr_cnt) {
+			eisr[1] = vmm_readl((void *)vgich.hctrl_va + GICH_EISR1);
+		} else {
+			eisr[1] = 0x0;
+		}
+		DPRINTF("%s: EISR0 = %08x\n", __func__, eisr[0]);
+		DPRINTF("%s: EISR1 = %08x\n", __func__, eisr[1]);
 
+		/* Some level interrupts have been EOIed. 
+		 * Clear their active bit.
+		 */
 		for (lr = 0; lr < vgich.lr_cnt; lr++) {
 			if (!VGIC_TEST_EISR(eisr, lr)) {
 				continue;
@@ -441,48 +512,6 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 	vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
 }
 
-/* Flush current VCPU VGIC state to HW */
-static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s, 
-				      struct vgic_vcpu_state *vs)
-{
-	bool overflow = FALSE;
-	u32 hcr, irq, cm = (1 << vs->vcpu->subid);
-
-	DPRINTF("%s: vcpu = %s\n", __func__, vs->vcpu->name);
-
-	if (!s->enabled) {
-		return;
-	}
-
-	/* Sync HW changes to VGIC VCPU state */
-	__vgic_sync_vcpu_hwstate(s, vs);
-
-	for (irq = 0; irq < VGIC_NUM_IRQ(s); irq++) {
-		if (!VGIC_TEST_ENABLED(s, irq, cm) || 
-		    !VGIC_TEST_PENDING(s, irq, cm)) {
-			continue;
-		}
-
-		if (irq < 16) {
-			if (!__vgic_queue_sgi(s, vs, irq)) {
-				overflow = TRUE;
-			}
-		} else {
-			if (!__vgic_queue_hwirq(s, vs, irq)) {
-				overflow = TRUE;
-			}
-		}
-	}
-
-	hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
-	if (overflow) {
-		hcr |= GICH_HCR_UIE;
-	} else {
-		hcr &= ~GICH_HCR_UIE;
-	}
-	vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
-}
-
 /* Process IRQ asserted by device emulation framework */
 static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 {
@@ -538,16 +567,13 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 		VGIC_CLEAR_LEVEL(s, irq, cm);
 	}
 
-done:
 	/* Directly updating VGIC HW for current VCPU */
 	if (vs->vcpu == vmm_scheduler_current_vcpu()) {
-		/* Flush IRQ state changes to VCPU state for 
-		 * reflecting latest changes while, the VCPU 
-		 * was not running.
-		 */
-		__vgic_flush_vcpu_hwstate(s, vs);
+		/* Flush IRQ state change to VGIC HW */
+		__vgic_flush_vcpu_hwstate_irq(s, vs, irq);
 	}
 
+done:
 	/* Unlock VGIC Guest state */
 	vmm_spin_unlock_irqrestore(&s->lock, flags);
 
@@ -605,6 +631,11 @@ static void vgic_save_vcpu_context(void *vcpu_ptr)
 	/* Lock VGIC Guest state */
 	vmm_spin_lock_irqsave(&s->lock, flags);
 
+	/* The VGIC HW state may have changed when the 
+	 * VCPU was running hence, sync VGIC VCPU state.
+	 */
+	__vgic_sync_vcpu_hwstate(s, vs);
+
 	/* Save VGIC HW registers */
 	__vgic_save_vcpu_hwstate(vs);
 
@@ -631,7 +662,7 @@ static void vgic_restore_vcpu_context(void *vcpu_ptr)
 	/* Restore VGIC HW registers */
 	__vgic_restore_vcpu_hwstate(vs);
 
-	/* Flush IRQ state changes to VCPU state for 
+	/* Flush VGIC state changes to VGIC HW for 
 	 * reflecting latest changes while, the VCPU 
 	 * was not running.
 	 */
@@ -1028,6 +1059,15 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 		}
 	}
 
+	/* The VGIC HW state may have changed when the 
+	 * VCPU was running hence, sync VGIC VCPU state.
+	 */
+	__vgic_sync_vcpu_hwstate(s, vs);
+
+	/* Flush VGIC state changes to VGIC HW for 
+	 * reflecting latest changes while, the VCPU 
+	 * was not running.
+	 */
 	__vgic_flush_vcpu_hwstate(s, vs);
 
 	vmm_spin_unlock_irqrestore(&s->lock, flags);
@@ -1136,11 +1176,6 @@ static int vgic_state_reset(struct vgic_guest_state *s)
 	for (i = 0; i < VGIC_NUM_CPU(s); i++) {
 		s->vstate[i].hcr = GICH_HCR_EN;
 		s->vstate[i].vmcr = 0;
-		s->vstate[i].misr = 0;
-		s->vstate[i].eisr[0] = 0;
-		s->vstate[i].eisr[1] = 0;
-		s->vstate[i].elrsr[0] = 0;
-		s->vstate[i].elrsr[1] = 0;
 		s->vstate[i].apr = 0;
 		for (j = 0; j < vgich.lr_cnt; j++) {
 			s->vstate[i].lr[j] = 0x0;
@@ -1277,6 +1312,10 @@ static int vgic_emulator_probe(struct vmm_guest *guest,
 	const char *attr;
 	u32 parent_irq;
 	struct vgic_guest_state *s;
+
+	if (!vgich.avail) {
+		return VMM_ENODEV;
+	}
 
 	attr = vmm_devtree_attrval(edev->node, "parent_irq");
 	if (!attr) {
