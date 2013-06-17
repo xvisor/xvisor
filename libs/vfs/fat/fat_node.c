@@ -538,7 +538,7 @@ int fatfs_node_read_dirent(struct fatfs_node *dnode,
 			    loff_t off, struct dirent *d)
 {
 	u32 i, rlen, len;
-	u8 lcsum, dcsum, check[11];
+	u8 lcsum = 0, dcsum = 0, check[11];
 	char lname[VFS_MAX_NAME];
 	struct fat_dirent dent;
 	struct fat_longname lfn;
@@ -661,7 +661,7 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 			   struct fat_dirent *dent, 
 			   u32 *dent_off, u32 *dent_len)
 {
-	u8 lcsum, dcsum, check[11];
+	u8 lcsum = 0, dcsum = 0, check[11];
 	u32 i, off, rlen, len, lfn_off, lfn_len;
 	struct fat_longname lfn;
 	char lname[VFS_MAX_NAME];
