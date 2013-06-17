@@ -79,47 +79,50 @@ static int l2x0_cc_emulator_read(struct vmm_emudev *edev,
 	struct l2x0_state *s = edev->priv;
 	int rc = VMM_OK;
 	u32 cache_data;
-	u32 regval = 0x0;
+	u32 regval;
 
 	offset &= 0xfff;
 	if (offset >= 0x730 && offset < 0x800) {
-		return rc; /* cache ops complete */
-	}
-	switch (offset) {
-	case 0:
-		regval = l2x0_cacheid[s->id];
-		break;
-	case 0x4:
-		/* aux_ctrl values affect cache_type values */
-		cache_data = (s->aux_ctrl & (7 << 17)) >> 15;
-		cache_data |= (s->aux_ctrl & (1 << 16)) >> 16;
-		regval = s->cache_type |= (cache_data << 18) | (cache_data << 6);
-		break;
-	case 0x100:
-		regval = s->ctrl;
-		break;
-	case 0x104:
-		regval = s->aux_ctrl;
-		break;
-	case 0x108:
-		regval = s->tag_ctrl;
-		break;
-	case 0x10C:
-		regval = s->data_ctrl;
-		break;
-	case 0xC00:
-		regval = s->filter_start;
-		break;
-	case 0xC04:
-		regval = s->filter_end;
-		break;
-	case 0xF40:
-	case 0xF60:
-	case 0xF80:
-		regval = 0;
-	default:
-		rc = VMM_EFAIL;
-		break;
+		regval = 0; /* cache ops complete */
+	} else {
+		switch (offset) {
+		case 0:
+			regval = l2x0_cacheid[s->id];
+			break;
+		case 0x4:
+			/* aux_ctrl values affect cache_type values */
+			cache_data = (s->aux_ctrl & (7 << 17)) >> 15;
+			cache_data |= (s->aux_ctrl & (1 << 16)) >> 16;
+			regval = s->cache_type |= (cache_data << 18)
+				 | (cache_data << 6);
+			break;
+		case 0x100:
+			regval = s->ctrl;
+			break;
+		case 0x104:
+			regval = s->aux_ctrl;
+			break;
+		case 0x108:
+			regval = s->tag_ctrl;
+			break;
+		case 0x10C:
+			regval = s->data_ctrl;
+			break;
+		case 0xC00:
+			regval = s->filter_start;
+			break;
+		case 0xC04:
+			regval = s->filter_end;
+			break;
+		case 0xF40:
+		case 0xF60:
+		case 0xF80:
+			regval = 0;
+			break;
+		default:
+			rc = VMM_EFAIL;
+			break;
+		}
 	}
 
 	if (!rc) {

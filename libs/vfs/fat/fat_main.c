@@ -64,31 +64,39 @@ static int fatfs_mount(struct mount *m, const char *dev, u32 flags)
 		goto fail;
 	}
 
-	/* Setup root node */
+	/* Get the root fatfs node */
 	root = m->m_root->v_data;
-	rc = fatfs_node_init(root);
+	rc = fatfs_node_init(ctrl, root);
 	if (rc) {
 		goto fail;
 	}
-	root->ctrl = ctrl;
+
+	/* Handcraft the root fatfs node */
 	root->parent = NULL;
-	root->parent_dirent_off = 0;
-	root->parent_dirent_len = 0;
-	memset(&root->dirent, 0, sizeof(struct fat_dirent));
+	root->parent_dent_off = 0;
+	root->parent_dent_len = sizeof(struct fat_dirent);
+	memset(&root->parent_dent, 0, sizeof(struct fat_dirent));
+	root->parent_dent.file_attributes = FAT_DIRENT_SUBDIR;
 	if (ctrl->type == FAT_TYPE_32) {
 		root->first_cluster = ctrl->first_root_cluster;
+		root->parent_dent.first_cluster_hi = 
+				__le16((root->first_cluster >> 16) & 0xFFFF);
+		root->parent_dent.first_cluster_lo = 
+					__le16(root->first_cluster & 0xFFFF);
+		root->parent_dent.file_size = 0x0;
 	} else {
-		root->first_cluster = 0;
+		root->first_cluster = 0x0;
+		root->parent_dent.first_cluster_hi = 0x0;
+		root->parent_dent.file_size = 0x0;
 	}
+	root->parent_dent_dirty = FALSE;
 
+	/* Handcraft the root vfs node */
 	m->m_root->v_type = VDIR;
-
 	m->m_root->v_mode =  S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
-
 	m->m_root->v_ctime = 0;
 	m->m_root->v_atime = 0;
 	m->m_root->v_mtime = 0;
-
 	m->m_root->v_size = fatfs_node_get_size(root);
 
 	/* Save control as mount point data */
@@ -132,13 +140,14 @@ static int fatfs_vget(struct mount *m, struct vnode *v)
 {
 	int rc;
 	struct fatfs_node *node;
+	struct fatfs_control *ctrl = m->m_data;
 
 	node = vmm_zalloc(sizeof(struct fatfs_node));
 	if (!node) {
 		return VMM_ENOMEM;
 	}
 
-	rc = fatfs_node_init(node);
+	rc = fatfs_node_init(ctrl, node);
 
 	v->v_data = node;
 
@@ -168,29 +177,62 @@ static int fatfs_vput(struct mount *m, struct vnode *v)
 static size_t fatfs_read(struct vnode *v, loff_t off, void *buf, size_t len)
 {
 	struct fatfs_node *node = v->v_data;
-	u64 filesize = fatfs_node_get_size(node);
+	u32 filesize = fatfs_node_get_size(node);
 
-	if (filesize <= off) {
+	if (filesize <= (u32)off) {
 		return 0;
 	}
 
-	if (filesize < (len + off)) {
+	if (filesize < (u32)(len + off)) {
 		len = filesize - off;
 	}
 
-	return fatfs_node_read(node, off, len, buf);
+	return fatfs_node_read(node, (u32)off, len, buf);
 }
 
-/* FIXME: */
 static size_t fatfs_write(struct vnode *v, loff_t off, void *buf, size_t len)
 {
-	return 0;
+	u32 wlen;
+	struct fatfs_node *node = v->v_data;
+
+	wlen = fatfs_node_write(node, (u32)off, len, buf);
+
+	/* Size and mtime might have changed */
+	v->v_size = fatfs_node_get_size(node);
+	v->v_mtime = fatfs_pack_timestamp(node->parent_dent.lmodify_date_year,
+					  node->parent_dent.lmodify_date_month,
+					  node->parent_dent.lmodify_date_day,
+					  node->parent_dent.lmodify_time_hours,
+					  node->parent_dent.lmodify_time_minutes,
+					  node->parent_dent.lmodify_time_seconds);
+
+	return wlen;
 }
 
-/* FIXME: */
 static int fatfs_truncate(struct vnode *v, loff_t off)
 {
-	return VMM_EFAIL;
+	int rc;
+	struct fatfs_node *node = v->v_data;
+
+	if ((u32)off <= fatfs_node_get_size(node)) {
+		return VMM_EINVALID;
+	}
+
+	rc = fatfs_node_truncate(node, (u32)off);
+	if (rc) {
+		return rc;
+	}
+
+	/* Size and mtime might have changed */
+	v->v_size = fatfs_node_get_size(node);
+	v->v_mtime = fatfs_pack_timestamp(node->parent_dent.lmodify_date_year,
+					  node->parent_dent.lmodify_date_month,
+					  node->parent_dent.lmodify_date_day,
+					  node->parent_dent.lmodify_time_hours,
+					  node->parent_dent.lmodify_time_minutes,
+					  node->parent_dent.lmodify_time_seconds);
+
+	return VMM_OK;
 }
 
 static int fatfs_sync(struct vnode *v)
@@ -214,21 +256,21 @@ static int fatfs_readdir(struct vnode *dv, loff_t off, struct dirent *d)
 static int fatfs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 {
 	int rc;
-	u32 dent_off, dent_len;
+	u32 off, len;
 	struct fat_dirent dent;
 	struct fatfs_node *node = v->v_data;
 	struct fatfs_node *dnode = dv->v_data;
 
-	rc = fatfs_node_find_dirent(dnode, name, &dent, &dent_off, &dent_len);
+	rc = fatfs_node_find_dirent(dnode, name, &dent, &off, &len);
 	if (rc) {
 		return rc;
 	}
 
 	node->ctrl = dnode->ctrl;
 	node->parent = dnode;
-	node->parent_dirent_off = dent_off;
-	node->parent_dirent_len = dent_len;
-	memcpy(&node->dirent, &dent, sizeof(struct fat_dirent));
+	node->parent_dent_off = off;
+	node->parent_dent_len = len;
+	memcpy(&node->parent_dent, &dent, sizeof(struct fat_dirent));
 	if (dnode->ctrl->type == FAT_TYPE_32) {
 		node->first_cluster = __le16(dent.first_cluster_hi);
 		node->first_cluster = node->first_cluster << 16;
@@ -274,41 +316,254 @@ static int fatfs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 	return VMM_OK;
 }
 
-/* FIXME: */
-static int fatfs_create(struct vnode *dv, const char *filename, u32 mode)
+static int fatfs_create(struct vnode *dv, const char *name, u32 mode)
 {
-	return VMM_EFAIL;
+	int rc;
+	u8 fileattr;
+	u32 off, len;
+	u32 year, mon, day, hour, min, sec;
+	struct fat_dirent dent;
+	struct fatfs_node *dnode = dv->v_data;
+
+	rc = fatfs_node_find_dirent(dnode, name, &dent, &off, &len);
+	if (rc != VMM_ENOENT) {
+		if (!rc) {
+			return VMM_EEXIST;
+		} else {
+			return rc;
+		}
+	}
+
+	fatfs_current_timestamp(&year, &mon, &day, &hour, &min, &sec);
+
+	fileattr = 0;
+	if (!(mode & (S_IWUSR|S_IWGRP|S_IWOTH))) {
+		fileattr |= FAT_DIRENT_READONLY;
+	}
+
+	memset(&dent, 0, sizeof(dent));
+	dent.file_attributes = fileattr;
+	dent.create_time_millisecs = 0;
+	dent.create_time_seconds = sec;
+	dent.create_time_minutes = min;
+	dent.create_time_hours = hour;
+	dent.create_date_day = day;
+	dent.create_date_month = mon;
+	dent.create_date_year = year;
+	dent.laccess_date_day = day;
+	dent.laccess_date_month = mon;
+	dent.laccess_date_year = year;
+	dent.first_cluster_hi = 0;
+	dent.lmodify_time_seconds = sec;
+	dent.lmodify_time_minutes = min;
+	dent.lmodify_time_hours = hour;
+	dent.lmodify_date_day = day;
+	dent.lmodify_date_month = mon;
+	dent.lmodify_date_year = year;
+	dent.first_cluster_lo = 0;
+	dent.file_size = 0;
+
+	rc = fatfs_node_add_dirent(dnode, name, &dent);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
-/* FIXME: */
 static int fatfs_remove(struct vnode *dv, struct vnode *v, const char *name)
 {
-	return VMM_EFAIL;
+	int rc;
+	u32 off, len, clust;
+	struct fat_dirent dent;
+	struct fatfs_node *dnode = dv->v_data;
+	struct fatfs_node *node = v->v_data;
+
+	rc = fatfs_node_find_dirent(dnode, name, &dent, &off, &len);
+	if (rc) {
+		return rc;
+	}
+
+	if (dnode->ctrl->type == FAT_TYPE_32) {
+		clust = __le16(dent.first_cluster_hi);
+		clust = clust << 16;
+	} else {
+		clust = 0;
+	}
+	clust |= __le16(dent.first_cluster_lo);
+
+	if (node->first_cluster != clust) {
+		return VMM_EINVALID;
+	}
+
+	rc = fatfs_node_del_dirent(dnode, name, off, len);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
-/* FIXME: */
 static int fatfs_rename(struct vnode *sv, const char *sname, struct vnode *v,
 			 struct vnode *dv, const char *dname)
 {
-	return VMM_EFAIL;
+	int rc;
+	u32 off, len;
+	struct fat_dirent dent;
+	struct fatfs_node *snode = sv->v_data;
+	struct fatfs_node *dnode = dv->v_data;
+
+	rc = fatfs_node_find_dirent(dnode, dname, &dent, &off, &len);
+	if (rc != VMM_ENOENT) {
+		if (!rc) {
+			return VMM_EEXIST;
+		} else {
+			return rc;
+		}
+	}
+
+	rc = fatfs_node_find_dirent(snode, sname, &dent, &off, &len);
+	if (rc) {
+		return rc;
+	}
+
+	rc = fatfs_node_del_dirent(snode, sname, off, len);
+	if (rc) {
+		return rc;
+	}
+
+	rc = fatfs_node_add_dirent(dnode, dname, &dent);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
-/* FIXME: */
 static int fatfs_mkdir(struct vnode *dv, const char *name, u32 mode)
 {
-	return VMM_EFAIL;
+	int rc;
+	u8 fileattr;
+	u32 off, len;
+	u32 year, mon, day, hour, min, sec;
+	struct fat_dirent dent;
+	struct fatfs_node *dnode = dv->v_data;
+
+	rc = fatfs_node_find_dirent(dnode, name, &dent, &off, &len);
+	if (rc != VMM_ENOENT) {
+		if (!rc) {
+			return VMM_EEXIST;
+		} else {
+			return rc;
+		}
+	}
+
+	fatfs_current_timestamp(&year, &mon, &day, &hour, &min, &sec);
+
+	fileattr = FAT_DIRENT_SUBDIR;
+	if (!(mode & (S_IWUSR|S_IWGRP|S_IWOTH))) {
+		fileattr |= FAT_DIRENT_READONLY;
+	}
+
+	memset(&dent, 0, sizeof(dent));
+	dent.file_attributes = fileattr;
+	dent.create_time_millisecs = 0;
+	dent.create_time_seconds = sec;
+	dent.create_time_minutes = min;
+	dent.create_time_hours = hour;
+	dent.create_date_day = day;
+	dent.create_date_month = mon;
+	dent.create_date_year = year;
+	dent.laccess_date_day = day;
+	dent.laccess_date_month = mon;
+	dent.laccess_date_year = year;
+	dent.first_cluster_hi = 0;
+	dent.lmodify_time_seconds = sec;
+	dent.lmodify_time_minutes = min;
+	dent.lmodify_time_hours = hour;
+	dent.lmodify_date_day = day;
+	dent.lmodify_date_month = mon;
+	dent.lmodify_date_year = year;
+	dent.first_cluster_lo = 0;
+	dent.file_size = 0;
+
+	rc = fatfs_node_add_dirent(dnode, name, &dent);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
-/* FIXME: */
 static int fatfs_rmdir(struct vnode *dv, struct vnode *v, const char *name)
 {
-	return VMM_EFAIL;
+	int rc;
+	u32 off, len, clust;
+	struct fat_dirent dent;
+	struct fatfs_node *dnode = dv->v_data;
+	struct fatfs_node *node = v->v_data;
+
+	rc = fatfs_node_find_dirent(dnode, name, &dent, &off, &len);
+	if (rc) {
+		return rc;
+	}
+
+	if (dnode->ctrl->type == FAT_TYPE_32) {
+		clust = __le16(dent.first_cluster_hi);
+		clust = clust << 16;
+	} else {
+		clust = 0;
+	}
+	clust |= __le16(dent.first_cluster_lo);
+
+	if (node->first_cluster != clust) {
+		return VMM_EINVALID;
+	}
+
+	rc = fatfs_control_truncate_clusters(node->ctrl, clust);
+	if (rc) {
+		return rc;
+	}
+
+	rc = fatfs_node_del_dirent(dnode, name, off, len);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
-/* FIXME: */
 static int fatfs_chmod(struct vnode *v, u32 mode)
 {
-	return VMM_EFAIL;
+	u8 fileattr;
+	u32 year, mon, day;
+	struct fatfs_node *node = v->v_data;
+
+	fatfs_current_timestamp(&year, &mon, &day, NULL, NULL, NULL);
+
+	fileattr = 0;
+	switch (v->v_type) {
+	case VDIR:
+		fileattr |= FAT_DIRENT_SUBDIR;
+		break;
+	default:
+		break;
+	};
+
+	if (!(mode & (S_IWUSR|S_IWGRP|S_IWOTH))) {
+		fileattr |= FAT_DIRENT_READONLY;
+	}
+
+	node->parent_dent.file_attributes = fileattr;
+	node->parent_dent.laccess_date_day = day;
+	node->parent_dent.laccess_date_month = day;
+	node->parent_dent.laccess_date_year = day;
+	node->parent_dent_dirty = TRUE;
+
+	v->v_mode &= ~(S_IRWXU|S_IRWXG|S_IRWXO);
+	v->v_mode |= mode;
+
+	return VMM_OK;
 }
 
 /* fatfs filesystem */

@@ -260,15 +260,15 @@ int cmd_memory_modify(struct vmm_chardev *cdev, physical_addr_t addr,
 		switch (wsz) {
 		case 1:
 			*((u8 *)(page_va + addr_offset)) = 
-						(u8)str2uint(valv[w], 10);
+						(u8)strtoul(valv[w], NULL, 0);
 			break;
 		case 2:
 			*((u16 *)(page_va + addr_offset)) = 
-						(u16)str2uint(valv[w], 10);
+						(u16)strtoul(valv[w], NULL, 0);
 			break;
 		case 4:
 			*((u32 *)(page_va + addr_offset)) = 
-						(u32)str2uint(valv[w], 10);
+						(u32)strtoul(valv[w], NULL, 0);
 			break;
 		default:
 			break;
@@ -384,18 +384,18 @@ int cmd_memory_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return VMM_EFAIL;
 		}
 	}
-	addr = (physical_addr_t)str2ulonglong(argv[2], 10);
+	addr = (physical_addr_t)strtoull(argv[2], NULL, 0);
 	if (strcmp(argv[1], "dump8") == 0) {
-		tmp = str2ulonglong(argv[3], 10);
+		tmp = strtoull(argv[3], NULL, 0);
 		return cmd_memory_dump(cdev, addr, 1, (u32)tmp);
 	} else if (strcmp(argv[1], "dump16") == 0) {
-		tmp = str2ulonglong(argv[3], 10);
+		tmp = strtoull(argv[3], NULL, 0);
 		return cmd_memory_dump(cdev, addr, 2, (u32)tmp);
 	} else if (strcmp(argv[1], "dump32") == 0) {
-		tmp = str2ulonglong(argv[3], 10);
+		tmp = strtoull(argv[3], NULL, 0);
 		return cmd_memory_dump(cdev, addr, 4, (u32)tmp);
 	} else if (strcmp(argv[1], "crc32") == 0) {
-		tmp = str2ulonglong(argv[3], 10);
+		tmp = strtoull(argv[3], NULL, 0);
 		return cmd_memory_crc32(cdev, addr, (u32)tmp);
 	} else if (strcmp(argv[1], "modify8") == 0) {
 		return cmd_memory_modify(cdev, addr, 1, argc - 3, &argv[3]);
@@ -404,8 +404,8 @@ int cmd_memory_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if (strcmp(argv[1], "modify32") == 0) {
 		return cmd_memory_modify(cdev, addr, 4, argc - 3, &argv[3]);
 	} else if (strcmp(argv[1], "copy") == 0 && argc > 4) {
-		src_addr = (physical_addr_t)str2ulonglong(argv[3], 10);
-		tmp = str2uint(argv[4], 10);
+		src_addr = (physical_addr_t)strtoull(argv[3], NULL, 0);
+		tmp = strtoul(argv[4], NULL, 0);
 		return cmd_memory_copy(cdev, addr, src_addr, tmp);
 	}
 	cmd_memory_usage(cdev);

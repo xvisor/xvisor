@@ -80,10 +80,10 @@ int vtemu_key2str(unsigned int code, u32 flags, char *out)
 	bool uc = FALSE;
 
 	if (flags & (VTEMU_KEYFLAG_LEFTSHIFT | VTEMU_KEYFLAG_RIGHTSHIFT)) {
-		uc = (uc) ? FALSE : TRUE;
+		uc = TRUE;
 	}
 	if (flags & VTEMU_KEYFLAG_CAPSLOCK) {
-		uc = (uc) ? FALSE : TRUE;
+		uc = TRUE;
 	}
 
 	switch (code) {
@@ -943,7 +943,10 @@ struct vtemu *vtemu_create(const char *name,
 	}
 
 	/* Setup pseudo character device */
-	strncpy(v->cdev.name, name, VMM_CHARDEV_NAME_SIZE);
+	if (strlcpy(v->cdev.name, name, sizeof(v->cdev.name)) >=
+	    sizeof(v->cdev.name)) {
+		goto free_vtemu;
+	}
 	v->cdev.dev = NULL; 
 	v->cdev.read = vtemu_read;
 	v->cdev.write = vtemu_write;

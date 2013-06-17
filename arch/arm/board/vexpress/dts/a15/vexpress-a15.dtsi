@@ -37,9 +37,12 @@
 	gic { /* Generic Interrupt Controller */
       		device_type = "pic";
       		compatible = "arm,cortex-a15-gic", "arm,cortex-a9-gic";
-      		reg = <0x0 0x2C001000 0x0 0x1000
-		       0x0 0x2C002000 0x0 0x1000>;
-		irq_start = <26>;
+      		reg = <0x0 0x2C001000 0x0 0x1000   /* Dist Interface */
+		       0x0 0x2C002000 0x0 0x1000   /* CPU Interface */
+		       0x0 0x2C004000 0x0 0x2000   /* VCPU Control Interface */
+		       0x0 0x2C006000 0x0 0x2000>; /* VCPU Interface */
+		irq_start = <16>;
+		interrupts = <25>; /* VGIC Maintanence IRQ */
 	};
 
 	gen-timer { /* Generic Timer */

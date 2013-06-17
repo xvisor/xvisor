@@ -27,10 +27,6 @@
 
 #include "fat_common.h"
 
-#define FAT_NODE_CACHE_SIZE		4
-#define FAT_NODE_CACHE_MASK		0x00000003
-#define FAT_NODE_CACHE_INDEX(num)	((num) & FAT_NODE_CACHE_MASK)
-
 #define FAT_NODE_LOOKUP_SIZE		4
 
 /* Information for accessing a FAT file/directory. */
@@ -38,20 +34,19 @@ struct fatfs_node {
 	/* Parent FAT control */
 	struct fatfs_control *ctrl;
 
-	/* Parent directory FAT node */
-	struct fatfs_node *parent;
-	u32 parent_dirent_off;
-	u32 parent_dirent_len;
-
 	/* Parent directory entry */
-	struct fat_dirent dirent;
+	struct fatfs_node *parent;
+	u32 parent_dent_off;
+	u32 parent_dent_len;
+	struct fat_dirent parent_dent;
+	bool parent_dent_dirty;
 
 	/* First cluster */
 	u32 first_cluster;
 
 	/* Cached clusters */
 	u8 *cached_data;
-	u32 cached_cluster;
+	u32 cached_clust;
 	bool cached_dirty;
 
 	/* Child directory entry lookup table */
@@ -62,13 +57,17 @@ struct fatfs_node {
 	struct fat_dirent lookup_dent[FAT_NODE_LOOKUP_SIZE];
 };
 
-u32 fatfs_node_read(struct fatfs_node *node, u64 pos, u32 len, char *buf);
+u32 fatfs_node_get_size(struct fatfs_node *node);
 
-u64 fatfs_node_get_size(struct fatfs_node *node);
+u32 fatfs_node_read(struct fatfs_node *node, u32 pos, u32 len, u8 *buf);
+
+u32 fatfs_node_write(struct fatfs_node *node, u32 pos, u32 len, u8 *buf);
+
+int fatfs_node_truncate(struct fatfs_node *node, u32 pos);
 
 int fatfs_node_sync(struct fatfs_node *node);
 
-int fatfs_node_init(struct fatfs_node *node);
+int fatfs_node_init(struct fatfs_control *ctrl, struct fatfs_node *node);
 
 int fatfs_node_exit(struct fatfs_node *node);
 
@@ -79,5 +78,13 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 			   const char *name,
 			   struct fat_dirent *dent, 
 			   u32 *dent_off, u32 *dent_len);
+
+int fatfs_node_add_dirent(struct fatfs_node *dnode, 
+			   const char *name,
+			   struct fat_dirent *ndent);
+
+int fatfs_node_del_dirent(struct fatfs_node *dnode, 
+			  const char *name,
+			  u32 dent_off, u32 dent_len);
 
 #endif

@@ -93,24 +93,31 @@ int vmm_chardev_register(struct vmm_chardev *cdev)
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_malloc(sizeof(struct vmm_classdev));
+	cd = vmm_zalloc(sizeof(struct vmm_classdev));
 	if (!cd) {
 		return VMM_EFAIL;
 	}
 
-	memset(cd, 0, sizeof(struct vmm_classdev));
-
 	INIT_LIST_HEAD(&cd->head);
-	strcpy(cd->name, cdev->name);
+	if (strlcpy(cd->name, cdev->name, sizeof(cd->name)) >=
+	    sizeof(cd->name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_classdev;
+	}
 	cd->dev = cdev->dev;
 	cd->priv = cdev;
 
 	rc = vmm_devdrv_register_classdev(VMM_CHARDEV_CLASS_NAME, cd);
 	if (rc != VMM_OK) {
-		vmm_free(cd);
+		goto free_classdev;
 	}
 
 	return rc;
+
+free_classdev:
+	vmm_free(cd);
+	return rc;
+
 }
 
 int vmm_chardev_unregister(struct vmm_chardev *cdev)
@@ -169,21 +176,27 @@ int __init vmm_chardev_init(void)
 	int rc;
 	struct vmm_class *c;
 
-	c = vmm_malloc(sizeof(struct vmm_class));
+	c = vmm_zalloc(sizeof(struct vmm_class));
 	if (!c) {
 		return VMM_EFAIL;
 	}
 
-	memset(c, 0, sizeof(struct vmm_class));
-
 	INIT_LIST_HEAD(&c->head);
-	strcpy(c->name, VMM_CHARDEV_CLASS_NAME);
+	if (strlcpy(c->name, VMM_CHARDEV_CLASS_NAME, sizeof(c->name)) >=
+	    sizeof(c->name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_class;
+	}
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);
 	if (rc != VMM_OK) {
-		vmm_free(c);
+		goto free_class;
 	}
 
+	return rc;
+
+free_class:
+	vmm_free(c);
 	return rc;
 }

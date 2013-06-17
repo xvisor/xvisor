@@ -244,9 +244,9 @@ void do_data_abort(arch_regs_t *regs)
 	if ((regs->cpsr & CPSR_MODE_MASK) != CPSR_MODE_USER) {
 		if (fs != DFSR_FS_TRANS_FAULT_SECTION &&
 		    fs != DFSR_FS_TRANS_FAULT_PAGE) {
-			vmm_panic("%s: unexpected data abort\n"
-				  "%s: pc = 0x%08x, dfsr = 0x%08x, dfar = 0x%08x\n", 
-				  __func__, __func__, regs->pc, dfsr, dfar);
+			vmm_panic("%s: unexpected data abort (pc = 0x%08x)\n"
+				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n", 
+				  __func__, regs->pc, __func__, dfsr, dfar);
 		}
 		rc = cpu_mmu_get_reserved_page(dfar, &pg);
 		if (rc) {
@@ -256,9 +256,9 @@ void do_data_abort(arch_regs_t *regs)
 			 */
 			if (vmm_scheduler_normal_context()) {
 				vcpu = vmm_scheduler_current_vcpu();
-				cpu_vcpu_cp15_trans_fault(vcpu, regs, 
-						dfar, fs, dom, wnr, 1, FALSE);
-				return;
+				if (!cpu_vcpu_cp15_trans_fault(vcpu, regs, 
+						dfar, fs, dom, wnr, 1, FALSE))
+					return;
 			}
 			vmm_panic("%s: cannot find reserved page\n"
 				  "%s: dfsr = 0x%08x, dfar = 0x%08x\n", 

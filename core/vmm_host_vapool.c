@@ -157,11 +157,6 @@ int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz)
 	return VMM_OK;
 }
 
-virtual_addr_t vmm_host_vapool_base(void)
-{
-	return vpctrl.vapool_start;
-}
-
 bool vmm_host_vapool_page_isfree(virtual_addr_t va)
 {
 	u32 bpos;
@@ -203,9 +198,23 @@ u32 vmm_host_vapool_total_page_count(void)
 	return vpctrl.vapool_page_count;
 }
 
+virtual_addr_t vmm_host_vapool_base(void)
+{
+	return vpctrl.vapool_start;
+}
+
 virtual_size_t vmm_host_vapool_size(void)
 {
 	return vpctrl.vapool_size;
+}
+
+bool vmm_host_vapool_isvalid(virtual_addr_t addr)
+{
+	if ((vpctrl.vapool_start <= addr) &&
+	    (addr < (vpctrl.vapool_start + vpctrl.vapool_size))) {
+		return TRUE;
+	}
+	return FALSE;
 }
 
 virtual_size_t vmm_host_vapool_estimate_hksize(virtual_size_t size)

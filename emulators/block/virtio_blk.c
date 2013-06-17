@@ -66,9 +66,7 @@ struct virtio_blk_dev {
 	struct virtio_blk_config 	config;
 	u32 				features;
 
-	char 				name[VIRTIO_DEVICE_MAX_NAME_LEN];
-
-	char				blk_name[VMM_BLOCKDEV_MAX_NAME_SIZE];
+	char				blk_name[VMM_FIELD_NAME_SIZE];
 	struct vmm_notifier_block	blk_client;
 	vmm_spinlock_t			blk_lock; /* Protect blk pointer */
 	struct vmm_blockdev 		*blk;
@@ -324,7 +322,7 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 			req->read_iov_cnt = 1;
 			req->read_iov[0].addr = bdev->iov[1].addr;
 			req->read_iov[0].len = bdev->iov[1].len;
-			strncpy(req->r.data, bdev->blk_name, req->len);
+			strlcpy(req->r.data, bdev->blk_name, req->len);
 			virtio_blk_req_done(req, VIRTIO_BLK_S_OK);
 			break;
 		default:
@@ -442,8 +440,6 @@ static int virtio_blk_connect(struct virtio_device *dev,
 	}
 	bdev->vdev = dev;
 
-	vmm_snprintf(bdev->name, VIRTIO_DEVICE_MAX_NAME_LEN, "%s", dev->name);
-
 	bdev->blk_client.notifier_call = &virtio_blk_notification;
 	bdev->blk_client.priority = 0;
 	rc = vmm_blockdev_register_client(&bdev->blk_client);
@@ -456,10 +452,14 @@ static int virtio_blk_connect(struct virtio_device *dev,
 
 	attr = vmm_devtree_attrval(dev->edev->node, "blkdev");
 	if (attr) {
-		strncpy(bdev->blk_name,attr, VMM_BLOCKDEV_MAX_NAME_SIZE);
+		if (strlcpy(bdev->blk_name,attr, sizeof(bdev->blk_name)) >=
+		    sizeof(bdev->blk_name)) {
+			vmm_free(bdev);
+			return VMM_EOVERFLOW;
+		}
 		bdev->blk = vmm_blockdev_find(bdev->blk_name);
 	} else {
-		strncpy(bdev->blk_name,"", VMM_BLOCKDEV_MAX_NAME_SIZE);
+		bdev->blk_name[0] = 0;
 		bdev->blk = NULL;
 	}
 

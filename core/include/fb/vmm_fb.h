@@ -873,7 +873,7 @@ static inline bool vmm_fb_be_math(struct vmm_fb_info *info)
 {
 #ifdef CONFIG_FB_FOREIGN_ENDIAN
 #if defined(CONFIG_FB_BOTH_ENDIAN)
-	return fb->flags & FBINFO_BE_MATH;
+	return info->flags & FBINFO_BE_MATH;
 #elif defined(CONFIG_FB_BIG_ENDIAN)
 	return TRUE;
 #elif defined(CONFIG_FB_LITTLE_ENDIAN)

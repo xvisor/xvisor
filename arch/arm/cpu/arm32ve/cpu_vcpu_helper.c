@@ -393,7 +393,7 @@ int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu,
 			 u32 new_spsr)
 {
 	/* Sanity check */
-	if (!vcpu && !vcpu->is_normal) {
+	if (!vcpu || !vcpu->is_normal) {
 		return VMM_EFAIL;
 	}
 	if (vcpu != vmm_scheduler_current_vcpu()) {
@@ -489,6 +489,10 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
+	if (!attr) {
+		return VMM_EFAIL;
+	}
+
 	if (strcmp(attr, "armv7a,cortex-a8") == 0) {
 		cpuid = ARM_CPUID_CORTEXA8;
 	} else if (strcmp(attr, "armv7a,cortex-a9") == 0) {

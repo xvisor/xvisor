@@ -428,20 +428,22 @@ int vmm_blockdev_register(struct vmm_blockdev *bdev)
 
 	cd = vmm_malloc(sizeof(struct vmm_classdev));
 	if (!cd) {
-		return VMM_EFAIL;
+		rc = VMM_ENOMEM;
+		goto fail;
 	}
 
 	INIT_LIST_HEAD(&cd->head);
-	strncpy(cd->name, bdev->name, VMM_BLOCKDEV_MAX_NAME_SIZE);
+	if (strlcpy(cd->name, bdev->name, sizeof(cd->name)) >=
+	    sizeof(cd->name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_classdev;
+	}
 	cd->dev = bdev->dev;
 	cd->priv = bdev;
 
 	rc = vmm_devdrv_register_classdev(VMM_BLOCKDEV_CLASS_NAME, cd);
 	if (rc) {
-		cd->dev = NULL;
-		cd->priv = NULL;
-		vmm_free(cd);
-		return rc;
+		goto free_classdev;
 	}
 
 	/* Broadcast register event */
@@ -452,6 +454,11 @@ int vmm_blockdev_register(struct vmm_blockdev *bdev)
 				   &event);
 
 	return VMM_OK;
+
+free_classdev:
+	vmm_free(cd);
+fail:
+	return rc;
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_register);
 
@@ -479,9 +486,13 @@ int vmm_blockdev_add_child(struct vmm_blockdev *bdev,
 	child_bdev = __blockdev_alloc(FALSE);
 	child_bdev->parent = bdev;
 	vmm_mutex_lock(&bdev->child_lock);
-	vmm_snprintf(child_bdev->name, VMM_BLOCKDEV_MAX_NAME_SIZE,
+	vmm_snprintf(child_bdev->name, sizeof(child_bdev->name),
 			"%sp%d", bdev->name, bdev->child_count);
-	strncpy(child_bdev->desc, bdev->desc, VMM_BLOCKDEV_MAX_DESC_SIZE);
+	if (strlcpy(child_bdev->desc, bdev->desc, sizeof(child_bdev->desc)) >=
+	    sizeof(child_bdev->desc)) {
+		rc = VMM_EOVERFLOW;
+		goto free_blockdev;
+	}
 	bdev->child_count++;
 	list_add_tail(&child_bdev->head, &bdev->child_list);
 	vmm_mutex_unlock(&bdev->child_lock);
@@ -493,12 +504,17 @@ int vmm_blockdev_add_child(struct vmm_blockdev *bdev,
 
 	rc = vmm_blockdev_register(child_bdev);
 	if (rc) {
-		vmm_mutex_lock(&bdev->child_lock);
-		list_del(&child_bdev->head);
-		vmm_mutex_unlock(&bdev->child_lock);
-		__blockdev_free(child_bdev, FALSE);
+		goto remove_from_list;
 	}
 
+	return rc;
+
+remove_from_list:
+	vmm_mutex_lock(&bdev->child_lock);
+	list_del(&child_bdev->head);
+	vmm_mutex_unlock(&bdev->child_lock);
+free_blockdev:
+	__blockdev_free(child_bdev, FALSE);
 	return rc;
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_add_child);
@@ -591,20 +607,31 @@ static int __init vmm_blockdev_init(void)
 
 	c = vmm_malloc(sizeof(struct vmm_class));
 	if (!c) {
-		return VMM_EFAIL;
+		rc = VMM_ENOMEM;
+		goto fail;
 	}
 
 	INIT_LIST_HEAD(&c->head);
-	strcpy(c->name, VMM_BLOCKDEV_CLASS_NAME);
+
+	if (strlcpy(c->name, VMM_BLOCKDEV_CLASS_NAME, sizeof(c->name)) >=
+	    sizeof(c->name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_class;
+	}
+
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);
 	if (rc) {
-		vmm_free(c);
-		return rc;
+		goto free_class;
 	}
 
 	return VMM_OK;
+
+free_class:
+	vmm_free(c);
+fail:
+	return rc;
 }
 
 static void __exit vmm_blockdev_exit(void)

@@ -274,14 +274,14 @@ int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
 		val_len = valc * sizeof(u32);
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
-			((u32 *)val)[i] = str2uint(valv[i], 10);
+			((u32 *)val)[i] = strtoul(valv[i], NULL, 0);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!strcmp(type, "uint64")) {
 		val_len = valc * sizeof(u64);
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
-			((u64 *)val)[i] = str2ulonglong(valv[i], 10);
+			((u64 *)val)[i] = strtoull(valv[i], NULL, 0);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_UINT64;
 	} else if (!strcmp(type, "physaddr")) {
@@ -289,7 +289,7 @@ int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
 			((physical_addr_t *)val)[i] = 
-			(physical_addr_t)str2ulonglong(valv[i], 10);
+			(physical_addr_t)strtoull(valv[i], NULL, 0);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
 	} else if (!strcmp(type, "physsize")) {
@@ -297,7 +297,7 @@ int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
 			((physical_size_t *)val)[i] = 
-			(physical_size_t)str2ulonglong(valv[i], 10);
+			(physical_size_t)strtoull(valv[i], NULL, 0);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
 	} else if (!strcmp(type, "virtaddr")) {
@@ -305,7 +305,7 @@ int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
 			((virtual_addr_t *)val)[i] = 
-			(virtual_addr_t)str2ulonglong(valv[i], 10);
+			(virtual_addr_t)strtoull(valv[i], NULL, 0);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
 	} else if (!strcmp(type, "virtsize")) {
@@ -313,7 +313,7 @@ int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
 		val = vmm_malloc(val_len);
 		for (i = 0; i < valc; i++) {
 			((virtual_size_t *)val)[i] = 
-			(virtual_size_t)str2ulonglong(valv[i], 10);
+			(virtual_size_t)strtoull(valv[i], NULL, 0);
 		}
 		val_type = VMM_DEVTREE_ATTRTYPE_VIRTSIZE;
 	} else {

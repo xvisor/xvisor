@@ -166,11 +166,12 @@ struct fat_dirent {
 	u32 file_size;
 } __packed;
 
-#define FAT_LONGNAME_ATTRIBUTE	0x0F
-#define FAT_LONGNAME_SEQNO(s)	((s) & ~0x40)
-#define FAT_LONGNAME_LASTSEQ(s) ((s) & 0x40)
-#define FAT_LONGNAME_MINSEQ	1
-#define FAT_LONGNAME_MAXSEQ	(VFS_MAX_NAME / 13)
+#define FAT_LONGNAME_ATTRIBUTE		0x0F
+#define FAT_LONGNAME_LASTSEQ_MASK	0x40
+#define FAT_LONGNAME_SEQNO(s)		((s) & ~0x40)
+#define FAT_LONGNAME_LASTSEQ(s) 	((s) & 0x40)
+#define FAT_LONGNAME_MINSEQ		1
+#define FAT_LONGNAME_MAXSEQ		(VFS_MAX_NAME / 13)
 
 /* Directory long filename information for FAT12/FAT16/FAT32 */
 struct fat_longname {

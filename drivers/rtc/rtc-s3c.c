@@ -139,7 +139,7 @@ static struct clk *clk_get(struct vmm_device *dev, const char *name)
 
 static bool is_power_of_2(unsigned long n)
 {
-	return (n != 0 && ((n & (n - 1)) == 0));
+	return (n && !(n & (n - 1)));
 }
 
 static void s3c_rtc_alarm_clk_enable(bool enable)

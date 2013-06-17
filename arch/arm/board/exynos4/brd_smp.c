@@ -23,8 +23,10 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
+#include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
 #include <vmm_compiler.h>
 #include <libs/libfdt.h>
@@ -118,6 +120,45 @@ int __init arch_smp_start_cpu(u32 cpu)
 
 	/* Wakeup target cpu from wfe/wfi by sending an IPI */
 	gic_raise_softirq(mask, 0);
+
+	return VMM_OK;
+}
+
+static vmm_irq_return_t smp_ipi_handler(int irq_no, void *dev)
+{
+	/* Call core code to handle IPI1 */
+	vmm_smp_ipi_exec();	
+
+	return VMM_IRQ_HANDLED;
+}
+
+void arch_smp_ipi_trigger(const struct vmm_cpumask *dest)
+{
+	/* Send IPI1 to other cores */
+	gic_raise_softirq(dest, 1);
+}
+
+int __cpuinit arch_smp_ipi_init(void)
+{
+	int rc;
+	u32 cpu = vmm_smp_processor_id();
+
+	if (!cpu) {
+		/* Register IPI1 interrupt handler */
+		rc = vmm_host_irq_register(1, "IPI1", &smp_ipi_handler, NULL);
+		if (rc) {
+			return rc;
+		}
+
+		/* Mark IPI1 interrupt as per-cpu */
+		rc = vmm_host_irq_mark_per_cpu(1);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	/* Explicitly enable IPI1 interrupt */
+	gic_enable_ppi(1);
 
 	return VMM_OK;
 }

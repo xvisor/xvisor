@@ -23,6 +23,7 @@
 #ifndef __VMM_DEVTREE_H_
 #define __VMM_DEVTREE_H_
 
+#include <vmm_limits.h>
 #include <vmm_types.h>
 #include <libs/list.h>
 
@@ -68,7 +69,6 @@
 #define VMM_DEVTREE_TIME_SLICE_ATTR_NAME	"time_slice"
 #define VMM_DEVTREE_ADDRSPACE_NODE_NAME		"aspace"
 #define VMM_DEVTREE_GUESTIRQCNT_ATTR_NAME	"guest_irq_count"
-#define VMM_DEVTREE_H2GIRQMAP_ATTR_NAME		"host2guest_irq_map"
 #define VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME	"manifest_type"
 #define VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL	"real"
 #define VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL	"virtual"
@@ -103,9 +103,9 @@ struct vmm_devtree_attr {
 };
 
 struct vmm_devtree_nodeid {
-	char name[32];
-	char type[32];
-	char compatible[128];
+	char name[VMM_FIELD_NAME_SIZE];
+	char type[VMM_FIELD_TYPE_SIZE];
+	char compatible[VMM_FIELD_COMPAT_SIZE];
 	void *data;
 };
 

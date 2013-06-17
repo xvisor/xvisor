@@ -24,6 +24,7 @@
 #define _VMM_MANAGER_H__
 
 #include <arch_regs.h>
+#include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
@@ -130,7 +131,7 @@ struct vmm_vcpu {
 	vmm_spinlock_t lock;
 	u32 id;
 	u32 subid;
-	char name[64];
+	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_devtree_node *node;
 	bool is_normal;
 	struct vmm_guest *guest;

@@ -45,7 +45,7 @@ struct vmm_vserial_receiver {
 /** Representation of a virtual serial port */
 struct vmm_vserial {
 	struct dlist head;
-	char name[64];
+	char name[VMM_FIELD_NAME_SIZE];
 
 	bool (*can_send) (struct vmm_vserial *vser);
 	int (*send) (struct vmm_vserial *vser, u8 data);

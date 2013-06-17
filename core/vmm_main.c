@@ -212,7 +212,7 @@ static void system_init_work(struct vmm_work *work)
 				vmm_printf("bootcmd: %s\n", str);
 #endif
 				/* Execute boot command */
-				strncpy(bcmd, str, BOOTCMD_WIDTH);
+				strlcpy(bcmd, str, sizeof(bcmd));
 				cdev = vmm_stdio_device();
 				vmm_cmdmgr_execute_cmdstr(cdev, bcmd, NULL);
 				/* Next boot command */
@@ -277,6 +277,15 @@ void vmm_init(void)
 	if (ret) {
 		vmm_hang();
 	}
+
+#if defined(CONFIG_SMP)
+	/* Initialize inter-processor interrupts */
+	vmm_printf("Initialize SMP IPIs\n")
+	ret = vmm_smp_ipi_init();
+	if (ret) {
+		vmm_hang();
+	}
+#endif
 
 	/* Initialize CPU early */
 	vmm_printf("Initialize CPU Early\n");
@@ -421,6 +430,12 @@ void vmm_init_secondary(void)
 
 	/* Initialize host interrupts */
 	ret = vmm_host_irq_init();
+	if (ret) {
+		vmm_hang();
+	}
+
+	/* Initialize inter-processor interrupts */
+	ret = vmm_smp_ipi_init();
 	if (ret) {
 		vmm_hang();
 	}

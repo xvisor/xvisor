@@ -413,7 +413,7 @@ static void idle_orphan(void)
 int __cpuinit vmm_scheduler_init(void)
 {
 	int rc;
-	char vcpu_name[32];
+	char vcpu_name[VMM_FIELD_NAME_SIZE];
 	u32 cpu = vmm_smp_processor_id();
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 

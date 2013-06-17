@@ -374,7 +374,7 @@ static int arm_inst_ldrht(u32 inst,
 	int rc;
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
 	u32 imm32, offset, offset_addr, address; u16 data;
-	bool regform, postindex, add;
+	bool regform, add;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -410,21 +410,17 @@ static int arm_inst_ldrht(u32 inst,
 		}
 		imm32 = arm_zero_extend((imm4H << 4) | imm4L, 32);
 	}
-	postindex = TRUE;
 	add = (U == 1) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
 		offset = (regform) ? cpu_vcpu_reg_read(vcpu, regs, Rm) : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : (address - offset);
-		address = (postindex) ? address : offset_addr;
 		data = 0x0;
 		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 2, TRUE))) {
 			return rc;
 		}
-		if (postindex) {
-			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
-		}
+		cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
 	}
 	arm_pc(regs) += 4;
@@ -500,7 +496,7 @@ static int arm_inst_strex(u32 inst,
 			return rc;
 		}
 
-		cpu_vcpu_reg_write(vcpu, regs, Rd, (!rc) ? 0 : 1);
+		cpu_vcpu_reg_write(vcpu, regs, Rd, 0);
 	}
 	arm_pc(regs) += 4;
 	return VMM_OK;
@@ -637,7 +633,7 @@ static int arm_inst_strht(u32 inst,
 	int rc;
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
 	u32 imm32, offset, offset_addr, address; u16 data;
-	bool regform, postindex, add;
+	bool regform, add;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -673,21 +669,17 @@ static int arm_inst_strht(u32 inst,
 		}
 		imm32 = arm_zero_extend((imm4H << 4) | imm4L, 32);
 	}
-	postindex = TRUE;
 	add = (U == 1) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
 		offset = (regform) ? cpu_vcpu_reg_read(vcpu, regs, Rm) : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : (address - offset);
-		address = (postindex) ? address : offset_addr;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt) & 0xFFFF;
 		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 2, TRUE))) {
 			return rc;
 		}
-		if (postindex) {
-			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
-		}
+		cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 	}
 	arm_pc(regs) += 4;
 	return VMM_OK;
@@ -872,7 +864,7 @@ static int arm_inst_ldrsht(u32 inst,
 	int rc;
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
 	u32 imm32, offset, offset_addr, address; u16 data;
-	bool regform, postindex, add;
+	bool regform, add;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -908,21 +900,17 @@ static int arm_inst_ldrsht(u32 inst,
 		}
 		imm32 = arm_zero_extend((imm4H << 4) | imm4L, 32);
 	}
-	postindex = TRUE;
 	add = (U == 1) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
 		offset = (regform) ? cpu_vcpu_reg_read(vcpu, regs, Rm) : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : (address - offset);
-		address = (postindex) ? address : offset_addr;
 		data = 0x0;
 		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 2, TRUE))) {
 			return rc;
 		}
-		if (postindex) {
-			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
-		}
+		cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		cpu_vcpu_reg_write(vcpu, regs, Rt, 
 					arm_sign_extend(data, 16, 32));
 	}
@@ -1109,7 +1097,7 @@ static int arm_inst_ldrsbt(u32 inst,
 	int rc;
 	u32 cond, U, Rn, Rt, Rm, imm4H, imm4L;
 	u32 imm32, offset, offset_addr, address; u8 data;
-	bool regform, postindex, add;
+	bool regform, add;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -1145,13 +1133,11 @@ static int arm_inst_ldrsbt(u32 inst,
 		}
 		imm32 = arm_zero_extend((imm4H << 4) | imm4L, 32);
 	}
-	postindex = TRUE;
 	add = (U == 1) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
 		offset = (regform) ? cpu_vcpu_reg_read(vcpu, regs, Rm) : imm32;
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : (address - offset);
-		address = (postindex) ? address : offset_addr;
 		data = 0x0;
 		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 1, TRUE))) {
@@ -1159,9 +1145,7 @@ static int arm_inst_ldrsbt(u32 inst,
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, 
 					arm_sign_extend(data, 8, 32));
-		if (postindex) {
-			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
-		}
+		cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 	}
 	arm_pc(regs) += 4;
 	return VMM_OK;
@@ -1949,7 +1933,7 @@ static int arm_inst_strt(u32 inst,
 	int rc;
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u32 data;
-	bool regform, postindex, add;
+	bool regform, add;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -1991,7 +1975,6 @@ static int arm_inst_strt(u32 inst,
 		shift_t = 0;
 		shift_n = 0;
 	}
-	postindex = TRUE;
 	add = (U == 1) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
 		offset = (regform) ? 
@@ -2003,15 +1986,12 @@ static int arm_inst_strt(u32 inst,
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
-		address = (postindex) ? address : offset_addr;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt);
 		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 4, TRUE))) {
 			return rc;
 		}
-		if (postindex) {
-			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
-		}
+		cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 	}
 	arm_pc(regs) += 4;
 	return VMM_OK;
@@ -2155,7 +2135,7 @@ static int arm_inst_strbt(u32 inst,
 	int rc;
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u8 data;
-	bool regform, postindex, add;
+	bool regform, add;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -2197,7 +2177,6 @@ static int arm_inst_strbt(u32 inst,
 		shift_t = 0;
 		shift_n = 0;
 	}
-	postindex = TRUE;
 	add = (U == 1) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
 		offset = (regform) ? 
@@ -2209,15 +2188,12 @@ static int arm_inst_strbt(u32 inst,
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
-		address = (postindex) ? address : offset_addr;
 		data = cpu_vcpu_reg_read(vcpu, regs, Rt) & 0xFF;
 		if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
 						  &data, 1, TRUE))) {
 			return rc;
 		}
-		if (postindex) {
-			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
-		}
+		cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 	}
 	arm_pc(regs) += 4;
 	return VMM_OK;
@@ -2385,7 +2361,7 @@ static int arm_inst_ldrt(u32 inst,
 	int rc;
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u32 data;
-	bool regform, postindex, add;
+	bool regform, add;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -2427,7 +2403,6 @@ static int arm_inst_ldrt(u32 inst,
 		shift_t = 0;
 		shift_n = 0;
 	}
-	postindex = TRUE;
 	add = (U == 1) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
 		offset = (regform) ? 
@@ -2439,10 +2414,7 @@ static int arm_inst_ldrt(u32 inst,
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
-		address = (postindex) ? address : offset_addr;
-		if (postindex) {
-			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
-		}
+		cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 		data = 0x0;
 		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 4, TRUE))) {
@@ -2633,7 +2605,7 @@ static int arm_inst_ldrbt(u32 inst,
 	int rc;
 	u32 cond, U, Rn, Rt, imm12, imm32, imm5, type, Rm;
 	u32 shift_t, shift_n, offset, offset_addr, address; u8 data;
-	bool regform, postindex, add;
+	bool regform, add;
 	cond = ARM_INST_DECODE(inst, ARM_INST_COND_MASK, ARM_INST_COND_SHIFT);
 	U = ARM_INST_BITS(inst,
 			  ARM_INST_LDRSTR_U_END,
@@ -2675,7 +2647,6 @@ static int arm_inst_ldrbt(u32 inst,
 		shift_t = 0;
 		shift_n = 0;
 	}
-	postindex = TRUE;
 	add = (U == 1) ? TRUE : FALSE;
 	if (arm_condition_passed(cond, regs)) {
 		offset = (regform) ? 
@@ -2687,16 +2658,13 @@ static int arm_inst_ldrbt(u32 inst,
 		address = cpu_vcpu_reg_read(vcpu, regs, Rn);
 		offset_addr = (add) ? (address + offset) : 
 					(address - offset);
-		address = (postindex) ? address : offset_addr;
 		data = 0x0;
 		if ((rc = cpu_vcpu_mem_read(vcpu, regs, address, 
 						 &data, 1, TRUE))) {
 			return rc;
 		}
 		cpu_vcpu_reg_write(vcpu, regs, Rt, arm_zero_extend(data, 32));
-		if (postindex) {
-			cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
-		}
+		cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
 	}
 	arm_pc(regs) += 4;
 	return VMM_OK;

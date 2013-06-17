@@ -202,14 +202,11 @@ u64 vmm_profiler_get_function_total_time(unsigned long addr)
 int __init vmm_profiler_init(void)
 {
 	pctrl.stat =
-	    vmm_malloc(sizeof(struct vmm_profiler_stat) * kallsyms_num_syms);
+	    vmm_zalloc(sizeof(struct vmm_profiler_stat) * kallsyms_num_syms);
 
 	if (pctrl.stat == NULL) {
 		return VMM_EFAIL;
 	}
-
-	memset(pctrl.stat, 0, sizeof(struct vmm_profiler_stat) *
-		   kallsyms_num_syms);
 
 	INIT_SPIN_LOCK(&pctrl.lock);
 

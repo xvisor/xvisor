@@ -180,7 +180,11 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	INIT_SPIN_LOCK(&vcpu->lock);
 	INIT_LIST_HEAD(&vcpu->head);
 	vcpu->subid = 0;
-	strcpy(vcpu->name, name);
+	if (strlcpy(vcpu->name, name, sizeof(vcpu->name)) >=
+	    sizeof(vcpu->name)) {
+		vcpu = NULL;
+		goto release_lock;
+	}
 	vcpu->node = NULL;
 	vcpu->is_normal = FALSE;
 	vcpu->state = VMM_VCPU_STATE_UNKNOWN;
@@ -224,7 +228,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	/* Increment vcpu count */
 	mngr.vcpu_count++;
 
-	mngr.vcpu_avail_array[vnum] = FALSE;
+	mngr.vcpu_avail_array[vcpu->id] = FALSE;
 
 release_lock:
 	/* Release lock */
@@ -461,20 +465,20 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	struct dlist *lentry;
 	struct vmm_devtree_node *vsnode;
 	struct vmm_devtree_node *vnode;
-	struct vmm_guest *guest = NULL;
-	struct vmm_vcpu *vcpu = NULL;
+	struct vmm_guest *guest;
+	struct vmm_vcpu *vcpu;
 
 	/* Sanity checks */
 	if (!gnode) {
-		return guest;
+		return NULL;
 	}
 	attrval = vmm_devtree_attrval(gnode,
 				      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
 	if (!attrval) {
-		return guest;
+		return NULL;
 	}
 	if (strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_GUEST) != 0) {
-		return guest;
+		return NULL;
 	}
 
 	/* Acquire lock */
@@ -491,13 +495,13 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			return NULL;
 		}
 	}
+
 	guest = NULL;
 
 	/* Find next available guest instance */
 	for (gnum = 0; gnum < CONFIG_MAX_GUEST_COUNT; gnum++) {
 		if (mngr.guest_avail_array[gnum]) {
 			guest = &mngr.guest_array[gnum];
-			mngr.guest_avail_array[gnum] = FALSE;
 			break;
 		}
 	}
@@ -505,7 +509,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	if (!guest) {
 		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
 		vmm_printf("%s: No available guest instance found\n", __func__);
-		return guest;
+		return NULL;
 	}
 
 	/* Initialize guest instance */
@@ -522,6 +526,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vmm_printf("%s: %s/vcpus node not found\n", __func__, gnode->name);
 		goto guest_create_error;
 	}
+
 	list_for_each(lentry, &vsnode->child_list) {
 		vnode = list_entry(lentry, struct vmm_devtree_node, head);
 
@@ -538,11 +543,12 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			continue;
 		}
 
+		vcpu = NULL;
+
 		/* Find next available vcpu instance */
 		for (vnum = 0; vnum < CONFIG_MAX_VCPU_COUNT; vnum++) {
 			if (mngr.vcpu_avail_array[vnum]) {
 				vcpu = &mngr.vcpu_array[vnum];
-				mngr.vcpu_avail_array[vnum] = FALSE;
 				break;
 			}
 		}
@@ -554,9 +560,13 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		/* Initialize vcpu instance */
 		INIT_SPIN_LOCK(&vcpu->lock);
 		vcpu->subid = guest->vcpu_count;
-		strcpy(vcpu->name, gnode->name);
-		strcat(vcpu->name, VMM_DEVTREE_PATH_SEPARATOR_STRING);
-		strcat(vcpu->name, vnode->name);
+		strlcpy(vcpu->name, gnode->name, sizeof(vcpu->name));
+		strlcat(vcpu->name, VMM_DEVTREE_PATH_SEPARATOR_STRING,
+			sizeof(vcpu->name));
+		if (strlcat(vcpu->name, vnode->name, sizeof(vcpu->name)) >=
+		    sizeof(vcpu->name)) {
+			continue;
+		}
 		vcpu->node = vnode;
 		vcpu->is_normal = TRUE;
 		vcpu->state = VMM_VCPU_STATE_UNKNOWN;
@@ -597,11 +607,14 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->guest = guest;
 		vcpu->arch_priv = NULL;
 		if (arch_vcpu_init(vcpu)) {
+			vmm_free((void *)vcpu->stack_va);
 			continue;
 		}
 
 		/* Initialize VCPU IRQs */
 		if (vmm_vcpu_irq_init(vcpu)) {
+			arch_vcpu_deinit(vcpu);
+			vmm_free((void *)vcpu->stack_va);
 			continue;
 		}
 
@@ -614,8 +627,10 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->sched_priv = NULL;
 		if (vmm_manager_vcpu_state_change(vcpu, 
 						VMM_VCPU_STATE_RESET)) {
-			mngr.vcpu_avail_array[vnum] = TRUE;
-			break;
+			vmm_vcpu_irq_deinit(vcpu);
+			arch_vcpu_deinit(vcpu);
+			vmm_free((void *)vcpu->stack_va);
+			continue;
 		}
 
 		/* Set wait queue context to NULL */
@@ -627,6 +642,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 		/* Add VCPU to Guest child list */
 		list_add_tail(&vcpu->head, &guest->vcpu_list);
+
+		mngr.vcpu_avail_array[vcpu->id] = FALSE;
 
 		/* Increment vcpu count */
 		mngr.vcpu_count++;
@@ -647,6 +664,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	if (arch_guest_init(guest)) {
 		goto guest_create_error;
 	}
+
+	mngr.guest_avail_array[guest->id] = FALSE;
 
 	/* Increment guest count */
 	mngr.guest_count++;
@@ -771,7 +790,7 @@ int __init vmm_manager_init(void)
 		INIT_LIST_HEAD(&mngr.vcpu_array[vnum].head);
 		INIT_SPIN_LOCK(&mngr.vcpu_array[vnum].lock);
 		mngr.vcpu_array[vnum].id = vnum;
-		strcpy(mngr.vcpu_array[vnum].name, "");
+		mngr.vcpu_array[vnum].name[0] = 0;
 		mngr.vcpu_array[vnum].node = NULL;
 		mngr.vcpu_array[vnum].is_normal = FALSE;
 		mngr.vcpu_array[vnum].state = VMM_VCPU_STATE_UNKNOWN;

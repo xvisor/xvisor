@@ -68,7 +68,7 @@ void do_hyp_trap(arch_regs_t *regs)
 	int rc = VMM_OK;
 	u32 hsr, ec, il, iss;
 	virtual_addr_t far;
-	physical_addr_t fipa;
+	physical_addr_t fipa = 0;
 	struct vmm_vcpu *vcpu;
 
 	hsr = read_hsr();

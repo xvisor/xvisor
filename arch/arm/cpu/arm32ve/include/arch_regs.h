@@ -180,6 +180,6 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_vgic_restore(vcpu)	if (arm_vgic_avail(vcpu)) { \
 					arm_priv(vcpu)->vgic_restore(vcpu); \
 				}
-#define arm_vgic_priv(vcpu)	(&(arm_priv(vcpu)->vgic_priv))
+#define arm_vgic_priv(vcpu)	(arm_priv(vcpu)->vgic_priv)
 
 #endif

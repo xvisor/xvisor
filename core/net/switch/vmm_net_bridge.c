@@ -250,14 +250,12 @@ vmm_netbridge_probe_done:
 
 static int vmm_netbridge_remove(struct vmm_device *dev)
 {
-	struct dlist *l;
-	struct vmm_netswitch *nsw;
-	struct vmm_netbridge_ctrl *nbctrl;
+	struct vmm_netswitch *nsw = dev->priv;
 
-        nsw = dev->priv;
-	nbctrl = nsw->priv;
 	if(nsw) {
+		struct vmm_netbridge_ctrl *nbctrl = nsw->priv;
 		if(nbctrl) {
+			struct dlist *l;
 			while(!list_empty(&nbctrl->mac_table)) {
 				l = list_pop(&nbctrl->mac_table);
 				vmm_free(l);

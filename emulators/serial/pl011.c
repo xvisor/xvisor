@@ -405,9 +405,12 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 		goto pl011_emulator_probe_freestate_fail;
 	}
 
-	strcpy(name, guest->node->name);
-	strcat(name, "/");
-	strcat(name, edev->node->name);
+	strlcpy(name, guest->node->name, sizeof(name));
+	strlcat(name, "/", sizeof(name));
+	if (strlcat(name, edev->node->name, sizeof(name)) >= sizeof(name)) {
+		rc = VMM_EOVERFLOW;
+		goto pl011_emulator_probe_freerbuf_fail;
+	}
 	s->vser = vmm_vserial_create(name, 
 				     &pl011_vserial_can_send, 
 				     &pl011_vserial_send, 
