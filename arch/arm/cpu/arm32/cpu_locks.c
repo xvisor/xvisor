@@ -26,44 +26,49 @@
 #include <vmm_types.h>
 #include <vmm_compiler.h>
 #include <arch_barrier.h>
+#include <vmm_smp.h>
 
 bool __lock arch_spin_lock_check(arch_spinlock_t * lock)
 {
-	return (lock->lock) ? TRUE : FALSE;
+	return (lock->lock == __ARCH_SPIN_UNLOCKED) ? TRUE : FALSE;
 }
 
 void __lock arch_spin_lock(arch_spinlock_t * lock)
 {
+	u32 cpu = vmm_smp_processor_id();
 	unsigned long tmp;
 
 	__asm__ __volatile__(
-"1:	ldrex	%0, [%1]\n"
-"	teq	%0, #0\n"
-"	strexeq	%0, %2, [%1]\n"
-"	teqeq	%0, #0\n"
-"	bne	1b"
+"1:	ldrex	%0, [%1]\n"	/* load the lock value */
+"	teq	%0, %3\n"	/* is the lock free */
+#ifdef CONFIG_SMP
+"	wfene\n"		/* if not, we sleep until some other core wake us up */
+#endif
+"	strexeq	%0, %2, [%1]\n" /* store (cpu) as a lock value */
+"	teqeq	%0, #0\n"	/* did we succeed */
+"	bne	1b"		/* if not try again */
 	: "=&r" (tmp)
-	: "r" (&lock->lock), "r" (1)
+	: "r" (&lock->lock), "r" (cpu), "r" (__ARCH_SPIN_UNLOCKED)
 	: "cc");
 
-	arch_smp_mb();
+	arch_smp_mb();		/* do a mb to sync everything */
 }
 
 int __lock arch_spin_trylock(arch_spinlock_t *lock)
 {
+	u32 cpu = vmm_smp_processor_id();
 	unsigned long tmp;
-	u32 slock;
 
 	__asm__ __volatile__(
-"	ldrex	%0, [%2]\n"
-"	teq	%0, #0\n"
-"	strexeq	%1, %3, [%2]"
-	: "=&r" (slock), "=&r" (tmp)
-	: "r" (&lock->lock), "r" (1)
+"	ldrex	%0, [%1]\n"	/* load the lock value */
+"	teq	%0, %3\n"	/* is the lock free */
+"	strexeq	%0, %2, [%1]"	/* store cpu as a lock value */
+	: "=&r" (tmp)
+	: "r" (&lock->lock), "r" (cpu), "r" (__ARCH_SPIN_UNLOCKED)
 	: "cc");
 
 	if (tmp == 0) {
-		arch_smp_mb();
+		arch_smp_mb();	/* do mb if we succeeded */
 		return 1;
 	} else {
 		return 0;
@@ -72,12 +77,13 @@ int __lock arch_spin_trylock(arch_spinlock_t *lock)
 
 void __lock arch_spin_unlock(arch_spinlock_t * lock)
 {
-	arch_smp_mb();
+	arch_smp_mb();		/* sync everything */
 
-	__asm__ __volatile__(
-"	str	%1, [%0]\n"
-	:
-	: "r" (&lock->lock), "r" (0)
-	: "cc");
+	lock->lock = __ARCH_SPIN_UNLOCKED;	/* free the lock */
+	dsb();			/* sync again */
+
+#ifdef CONFIG_SMP
+	sev();			/* notify all cores */
+#endif
 }
 
