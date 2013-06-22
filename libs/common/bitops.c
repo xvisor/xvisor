@@ -30,7 +30,12 @@
 #include <libs/bitops.h>
 
 #ifdef CONFIG_SMP
-arch_spinlock_t __atomic_hash[ATOMIC_HASH_SIZE] = {};
+arch_spinlock_t __atomic_hash[ATOMIC_HASH_SIZE] = {
+	ARCH_SPIN_LOCK_INITIALIZER,
+	ARCH_SPIN_LOCK_INITIALIZER,
+	ARCH_SPIN_LOCK_INITIALIZER,
+	ARCH_SPIN_LOCK_INITIALIZER,
+};
 #endif
 
 #define BITOP_WORD(nr)		((nr) / BITS_PER_LONG)
