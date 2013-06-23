@@ -60,8 +60,9 @@ int __lock arch_spin_trylock(arch_spinlock_t *lock)
 	__asm__ __volatile__(
 "	ldrex	%0, [%1]\n"	/* load the lock value */
 "	teq	%0, %3\n"	/* is the lock free */
+"	movne	%0, #1\n"	/* assume failure if lock not free */
 "	strexeq	%0, %2, [%1]"	/* store cpu as a lock value */
-	: "=&r" (tmp)
+	: "=&r" (tmp) 
 	: "r" (&lock->lock), "r" (cpu), "r" (__ARCH_SPIN_UNLOCKED)
 	: "cc");
 

@@ -40,17 +40,17 @@ void __lock arch_spin_lock(arch_spinlock_t * lock)
 	unsigned long tmp;
 
 	__asm__ __volatile__(
-"1:	ldrex	%0, [%1]\n"
-"	teq	%0, %3\n"
-"	wfene\n"
-"	strexeq	%0, %2, [%1]\n"
-"	teqeq	%0, #0\n"
-"	bne	1b"
+"1:	ldrex	%0, [%1]\n"	/* load the lock value */
+"	teq	%0, %3\n"	/* is the lock free */
+"	wfene\n"		/* if not, we sleep until some other core wake us up */
+"	strexeq	%0, %2, [%1]\n" /* store (cpu) as a lock value */
+"	teqeq	%0, #0\n"	/* did we succeed */
+"	bne	1b"		/* if not try again */
 	: "=&r" (tmp)
 	: "r" (&lock->lock), "r" (cpu), "r" (__ARCH_SPIN_UNLOCKED)
 	: "cc");
 
-	arch_smp_mb();
+	arch_smp_mb();		/* do a mb to sync everything */
 }
 
 int __lock arch_spin_trylock(arch_spinlock_t *lock)
@@ -59,15 +59,16 @@ int __lock arch_spin_trylock(arch_spinlock_t *lock)
 	unsigned long tmp;
 
 	__asm__ __volatile__(
-"	ldrex	%0, [%2]\n"
-"	teq	%0, %3\n"
-"	strexeq	%0, %2, [%1]"
-	: "=&r" (tmp)
+"	ldrex	%0, [%1]\n"	/* load the lock value */
+"	teq	%0, %3\n"	/* is the lock free */
+"	movne	%0, #1\n"	/* assume failure if lock not free */
+"	strexeq	%0, %2, [%1]"	/* store cpu as a lock value */
+	: "=&r" (tmp) 
 	: "r" (&lock->lock), "r" (cpu), "r" (__ARCH_SPIN_UNLOCKED)
 	: "cc");
 
 	if (tmp == 0) {
-		arch_smp_mb();
+		arch_smp_mb();	/* do mb if we succeeded */
 		return 1;
 	} else {
 		return 0;
@@ -76,10 +77,10 @@ int __lock arch_spin_trylock(arch_spinlock_t *lock)
 
 void __lock arch_spin_unlock(arch_spinlock_t * lock)
 {
-	arch_smp_mb();
+	arch_smp_mb();		/* sync everything */
 
-	lock->lock = __ARCH_SPIN_UNLOCKED;
-	dsb();
-	sev();
+	lock->lock = __ARCH_SPIN_UNLOCKED;	/* free the lock */
+	dsb();			/* sync again */
+	sev();			/* notify all cores */
 }
 
