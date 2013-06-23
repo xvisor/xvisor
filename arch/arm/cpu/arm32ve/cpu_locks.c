@@ -42,9 +42,7 @@ void __lock arch_spin_lock(arch_spinlock_t * lock)
 	__asm__ __volatile__(
 "1:	ldrex	%0, [%1]\n"
 "	teq	%0, %3\n"
-#ifdef CONFIG_SMP
 "	wfene\n"
-#endif
 "	strexeq	%0, %2, [%1]\n"
 "	teqeq	%0, #0\n"
 "	bne	1b"
@@ -82,9 +80,6 @@ void __lock arch_spin_unlock(arch_spinlock_t * lock)
 
 	lock->lock = __ARCH_SPIN_UNLOCKED;
 	dsb();
-
-#ifdef CONFIG_SMP
 	sev();
-#endif
 }
 

@@ -41,9 +41,7 @@ void __lock arch_spin_lock(arch_spinlock_t * lock)
 	__asm__ __volatile__(
 "1:	ldrex	%0, [%1]\n"	/* load the lock value */
 "	teq	%0, %3\n"	/* is the lock free */
-#ifdef CONFIG_SMP
 "	wfene\n"		/* if not, we sleep until some other core wake us up */
-#endif
 "	strexeq	%0, %2, [%1]\n" /* store (cpu) as a lock value */
 "	teqeq	%0, #0\n"	/* did we succeed */
 "	bne	1b"		/* if not try again */
@@ -81,9 +79,6 @@ void __lock arch_spin_unlock(arch_spinlock_t * lock)
 
 	lock->lock = __ARCH_SPIN_UNLOCKED;	/* free the lock */
 	dsb();			/* sync again */
-
-#ifdef CONFIG_SMP
 	sev();			/* notify all cores */
-#endif
 }
 
