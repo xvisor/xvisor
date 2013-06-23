@@ -40,7 +40,7 @@ typedef struct {
 
 #define ARCH_BITS_PER_LONG		32
 
-#define __ARCH_SPIN_UNLOCKED		0
+#define __ARCH_SPIN_UNLOCKED		0xffffffff
 
 /* FIXME: Need memory barrier for this. */
 #define ARCH_SPIN_LOCK_INIT(_lptr)		\

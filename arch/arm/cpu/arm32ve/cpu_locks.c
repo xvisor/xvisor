@@ -27,24 +27,29 @@
 #include <vmm_types.h>
 #include <vmm_compiler.h>
 #include <arch_barrier.h>
+#include <vmm_smp.h>
 
 bool __lock arch_spin_lock_check(arch_spinlock_t * lock)
 {
-	return (lock->lock) ? TRUE : FALSE;
+	return (lock->lock == __ARCH_SPIN_UNLOCKED) ? TRUE : FALSE;
 }
 
 void __lock arch_spin_lock(arch_spinlock_t * lock)
 {
+	u32 cpu = vmm_smp_processor_id();
 	unsigned long tmp;
 
 	__asm__ __volatile__(
 "1:	ldrex	%0, [%1]\n"
-"	teq	%0, #0\n"
+"	teq	%0, %3\n"
+#ifdef CONFIG_SMP
+"	wfene\n"
+#endif
 "	strexeq	%0, %2, [%1]\n"
 "	teqeq	%0, #0\n"
 "	bne	1b"
 	: "=&r" (tmp)
-	: "r" (&lock->lock), "r" (1)
+	: "r" (&lock->lock), "r" (cpu), "r" (__ARCH_SPIN_UNLOCKED)
 	: "cc");
 
 	arch_smp_mb();
@@ -52,15 +57,15 @@ void __lock arch_spin_lock(arch_spinlock_t * lock)
 
 int __lock arch_spin_trylock(arch_spinlock_t *lock)
 {
+	u32 cpu = vmm_smp_processor_id();
 	unsigned long tmp;
-	u32 slock;
 
 	__asm__ __volatile__(
 "	ldrex	%0, [%2]\n"
-"	teq	%0, #0\n"
-"	strexeq	%1, %3, [%2]"
-	: "=&r" (slock), "=&r" (tmp)
-	: "r" (&lock->lock), "r" (1)
+"	teq	%0, %3\n"
+"	strexeq	%0, %2, [%1]"
+	: "=&r" (tmp)
+	: "r" (&lock->lock), "r" (cpu), "r" (__ARCH_SPIN_UNLOCKED)
 	: "cc");
 
 	if (tmp == 0) {
@@ -75,10 +80,11 @@ void __lock arch_spin_unlock(arch_spinlock_t * lock)
 {
 	arch_smp_mb();
 
-	__asm__ __volatile__(
-"	str	%1, [%0]\n"
-	:
-	: "r" (&lock->lock), "r" (0)
-	: "cc");
+	lock->lock = __ARCH_SPIN_UNLOCKED;
+	dsb();
+
+#ifdef CONFIG_SMP
+	sev();
+#endif
 }
 
