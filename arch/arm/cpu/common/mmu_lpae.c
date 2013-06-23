@@ -802,6 +802,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	mmuctrl.hyp_ttbl->level = TTBL_FIRST_LEVEL;
 	mmuctrl.hyp_ttbl->map_ia = 0x0;
 	mmuctrl.hyp_ttbl->tbl_pa =  mmuctrl.ittbl_base_pa;
+	INIT_SPIN_LOCK(&mmuctrl.hyp_ttbl->tbl_lock);
 	mmuctrl.hyp_ttbl->tbl_va =  mmuctrl.ittbl_base_va;
 	mmuctrl.hyp_ttbl->tte_cnt = 0x0;
 	mmuctrl.hyp_ttbl->child_cnt = 0x0;
@@ -826,6 +827,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		ttbl->stage = parent->stage;
 		ttbl->level = parent->level + 1;
 		ttbl->tbl_pa = mmuctrl.ittbl_base_pa + i * TTBL_TABLE_SIZE;
+		INIT_SPIN_LOCK(&ttbl->tbl_lock);
 		ttbl->tbl_va = mmuctrl.ittbl_base_va + i * TTBL_TABLE_SIZE;
 		for (t = 0; t < TTBL_TABLE_ENTCNT; t++) {
 			if (!(((u64 *)parent->tbl_va)[t] & TTBL_VALID_MASK)) {
