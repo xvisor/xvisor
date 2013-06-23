@@ -2010,6 +2010,8 @@ static int __devinit smc_probe(struct net_device *dev, void __iomem *ioaddr,
 
 	tasklet_init(&lp->tx_task, smc_hardware_send_pkt, (unsigned long)dev);
 	INIT_WORK(&lp->phy_configure, smc_phy_configure);
+#else
+	INIT_WORK(&lp->phy_configure, NULL);
 #endif
 	lp->dev = dev;
 	lp->mii.phy_id_mask = 0x1f;
