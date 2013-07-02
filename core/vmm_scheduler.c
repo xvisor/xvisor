@@ -201,7 +201,9 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			/* Make sure VCPU is not in a ready queue */
 			if((schedp->current_vcpu != vcpu) &&
 			   (vcpu->state == VMM_VCPU_STATE_READY)) {
-				rc = vmm_schedalgo_rq_detach(schedp->rq, vcpu);
+				if ((rc = vmm_schedalgo_rq_detach(schedp->rq, vcpu))) {
+					break;
+				}
 			}
 			vcpu->reset_count++;
 			if ((rc = arch_vcpu_init(vcpu))) {
@@ -249,6 +251,9 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 
 	if (rc == VMM_OK) {
 		vcpu->state = new_state;
+#ifdef CONFIG_SMP
+		vcpu->hcpu = vmm_smp_processor_id();
+#endif
 	}
 
 	vmm_spin_unlock(&vcpu->lock);
@@ -440,7 +445,7 @@ int __cpuinit vmm_scheduler_init(void)
 	INIT_TIMER_EVENT(&schedp->ev, &vmm_scheduler_timer_event, schedp);
 
 	/* Create idle orphan vcpu with default time slice. (Per Host CPU) */
-	vmm_sprintf(vcpu_name, "idle/%d", cpu);
+	vmm_snprintf(vcpu_name, sizeof(vcpu_name), "idle/%d", cpu);
 	schedp->idle_vcpu = vmm_manager_vcpu_orphan_create(vcpu_name,
 						(virtual_addr_t)&idle_orphan,
 						IDLE_VCPU_STACK_SZ,
@@ -448,6 +453,12 @@ int __cpuinit vmm_scheduler_init(void)
 						IDLE_VCPU_TIMESLICE);
 	if (!schedp->idle_vcpu) {
 		return VMM_EFAIL;
+	}
+
+	/* The idle vcpu need to stay on this cpu */
+	if ((rc = vmm_manager_vcpu_set_affinity(schedp->idle_vcpu,
+						vmm_cpumask_of(cpu)))) {
+		return rc;
 	}
 
 	/* Kick idle orphan vcpu */

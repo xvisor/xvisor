@@ -31,6 +31,7 @@
 #include <vmm_manager.h>
 #include <vmm_stdio.h>
 #include <vmm_smp.h>
+#include <vmm_loadbal.h>
 #include <arch_vcpu.h>
 #include <arch_guest.h>
 #include <libs/stringlib.h>
@@ -70,14 +71,33 @@ struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id)
 	return NULL;
 }
 
+static void vmm_manager_ipi_state_change(void *vcpu, 
+					 void *new_state, void *dummy)
+{
+	vmm_scheduler_state_change(vcpu, (u32)new_state);
+}
+
 static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
-	/* For UP, we can call scheduler state change API directly.
-	 *
-	 * For SMP, we have to determine appropriate host CPU and call 
-	 * scheduler state change API on that host CPU
-	 */
-	return vmm_scheduler_state_change(vcpu, new_state);
+	u32 next_cpu;
+
+	if (new_state == VMM_VCPU_STATE_READY) {
+		next_cpu = vmm_loadbal_get_next_hcpu(vcpu);
+
+		vmm_smp_ipi_async_call(vmm_cpumask_of(next_cpu), 
+				       vmm_manager_ipi_state_change, vcpu, 
+				       (void *)new_state, NULL);
+	} else {
+#ifdef CONFIG_SMP
+		vmm_smp_ipi_async_call(vmm_cpumask_of(vcpu->hcpu),
+#else
+		vmm_smp_ipi_async_call(vmm_cpumask_of(0),
+#endif
+				       vmm_manager_ipi_state_change,
+				       vcpu, (void *)new_state, NULL);
+	}
+
+	return VMM_OK;
 }
 
 int vmm_manager_vcpu_reset(struct vmm_vcpu *vcpu)
@@ -133,6 +153,15 @@ int vmm_manager_vcpu_dumpstat(struct vmm_vcpu *vcpu)
 		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
 	}
 	return rc;
+}
+
+int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu, 
+				  const struct vmm_cpumask *cpu_mask)
+{
+#ifdef CONFIG_SMP
+	vcpu->cpu_affinity = cpu_mask;
+#endif
+	return VMM_OK;
 }
 
 struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
@@ -204,7 +233,10 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 
 #ifdef CONFIG_SMP
 	/* Set hcpu to current CPU */
-	vcpu->hcpu = vmm_smp_processor_id();
+	vcpu->hcpu = vmm_loadbal_get_new_hcpu(vcpu);
+
+	vmm_manager_vcpu_set_affinity(vcpu,
+				      vmm_cpumask_of(vcpu->hcpu));
 #endif
 
 	/* Notify scheduler about new VCPU */
@@ -221,6 +253,8 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 
 	/* Set device emulation context to NULL */
 	vcpu->devemu_priv = NULL;
+
+	vmm_manager_vcpu_set_affinity(vcpu, cpu_online_mask);
 
 	/* Add VCPU to orphan list */
 	list_add_tail(&vcpu->head, &mngr.orphan_vcpu_list);
@@ -620,7 +654,10 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 #ifdef CONFIG_SMP
 		/* Set hcpu to current CPU */
-		vcpu->hcpu = vmm_smp_processor_id();
+		vcpu->hcpu = vmm_loadbal_get_new_hcpu(vcpu);
+
+		vmm_manager_vcpu_set_affinity(vcpu,
+					      vmm_cpumask_of(vcpu->hcpu));
 #endif
 
 		/* Notify scheduler about new VCPU */
@@ -639,6 +676,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 		/* Set device emulation context to NULL */
 		vcpu->devemu_priv = NULL;
+
+		vmm_manager_vcpu_set_affinity(vcpu, cpu_online_mask);
 
 		/* Add VCPU to Guest child list */
 		list_add_tail(&vcpu->head, &guest->vcpu_list);

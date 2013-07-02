@@ -28,6 +28,7 @@
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
+#include <vmm_cpumask.h>
 #include <libs/list.h>
 
 enum vmm_region_flags {
@@ -148,7 +149,8 @@ struct vmm_vcpu {
 	struct vmm_vcpu_irqs irqs;
 
 #ifdef CONFIG_SMP
-	u8 hcpu; /**< Host cpu on where this is running or last ran */
+	const struct vmm_cpumask *cpu_affinity; /* Which cpus this vcpu can run on */
+	u32 hcpu; /**< Host cpu on where this is running or last ran */
 #endif
 
 	u8 priority; /**< Scheduling Parameter */
@@ -172,6 +174,10 @@ u32 vmm_manager_vcpu_count(void);
  *  Returns NULL if there is no vcpu associated with given ID.
  */
 struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id);
+
+/** Change host CPU affinity of given VCPU */
+int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu, 
+				  const struct vmm_cpumask *cpu_mask);
 
 /** Reset a vcpu */
 int vmm_manager_vcpu_reset(struct vmm_vcpu *vcpu);
