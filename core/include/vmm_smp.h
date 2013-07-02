@@ -25,6 +25,7 @@
 #define __VMM_SMP_H__
 
 #include <vmm_types.h>
+#include <vmm_error.h>
 #include <arch_smp.h>
 
 /** Get SMP processor ID
@@ -66,15 +67,16 @@ void vmm_smp_ipi_async_call(const struct vmm_cpumask *dest,
  */
 #if !defined(CONFIG_SMP)
 static inline
-void vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
+int vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 			   u32 timeout_msecs,
 			   void (*func)(void *, void *, void *),
 			   void *arg0, void *arg1, void *arg2)
 {
 	(func)(arg0, arg1, arg2);
+	return VMM_OK;
 }
 #else
-void vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
+int vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 			   u32 timeout_msecs,
 			   void (*func)(void *, void *, void *),
 			   void *arg0, void *arg1, void *arg2);

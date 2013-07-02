@@ -147,13 +147,13 @@ void vmm_smp_ipi_async_call(const struct vmm_cpumask *dest,
 
 	trig_count = 0;
 	for_each_cpu(c, dest) {
-		if (!vmm_cpu_online(c)) {
-			continue;
-		}
-
 		if (c == cpu) {
 			func(arg0, arg1, arg2);
 		} else {
+			if (!vmm_cpu_online(c)) {
+				continue;
+			}
+
 			ipic.func = func;
 			ipic.arg0 = arg0;
 			ipic.arg1 = arg1;
@@ -169,7 +169,7 @@ void vmm_smp_ipi_async_call(const struct vmm_cpumask *dest,
 	}
 }
 
-void vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
+int vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 			   u32 timeout_msecs,
 			   void (*func)(void *, void *, void *),
 			   void *arg0, void *arg1, void *arg2)
@@ -180,18 +180,18 @@ void vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 	struct smp_ipi_call ipic;
 
 	if (!dest || !func) {
-		return;
+		return VMM_EFAIL;
 	}
 
 	trig_count = 0;
 	for_each_cpu(c, dest) {
-		if (!vmm_cpu_online(c)) {
-			continue;
-		}
-
 		if (c == cpu) {
 			func(arg0, arg1, arg2);
 		} else {
+			if (!vmm_cpu_online(c)) {
+				continue;
+			}
+
 			ipic.func = func;
 			ipic.arg0 = arg0;
 			ipic.arg1 = arg1;
@@ -216,9 +216,12 @@ void vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 			}
 
 			if (check_count == trig_count) {
-				break;
+				return VMM_OK;
 			}
 		}
+		return VMM_ETIMEDOUT;
+	} else {
+		return VMM_OK;
 	}
 }
 
