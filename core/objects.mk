@@ -54,6 +54,5 @@ core-objs-y+= vmm_chardev.o
 core-objs-y+= vmm_vserial.o
 core-objs-y+= vmm_modules.o
 core-objs-y+= vmm_params.o
-core-objs-y+= vmm_loadbal.o
 core-objs-$(CONFIG_PROFILE)+= vmm_profiler.o
 
