@@ -198,4 +198,39 @@ extern void vmm_scheduler_preempt_enable(void);
 					} while (0)
 #endif
 
+/** Save irq flags and lock the spinlock without preempt disable
+ *  PROTOTYPE: irq_flags_t vmm_spin_lock_irqsave(vmm_spinlock_t *lock) 
+ */
+#if defined(CONFIG_SMP)
+#define vmm_spin_lock_irqsave_lite(lock, flags) \
+					do { \
+					arch_cpu_irq_save((flags)); \
+					arch_spin_lock(&(lock)->__tlock); \
+					} while (0)
+#else
+#define vmm_spin_lock_irqsave_lite(lock, flags) \
+					do { \
+					arch_cpu_irq_save((flags)); \
+					(void)(lock); \
+					} while (0)
+#endif
+
+/** Unlock the spinlock and restore irq flags without preempt enable
+ *  PROTOTYPE: void vmm_spin_unlock_irqrestore(vmm_spinlock_t *lock,
+						irq_flags_t flags)
+ */
+#if defined(CONFIG_SMP)
+#define vmm_spin_unlock_irqrestore_lite(lock, flags)	\
+					do { \
+					arch_spin_unlock(&(lock)->__tlock); \
+					arch_cpu_irq_restore(flags); \
+					} while (0)
+#else
+#define vmm_spin_unlock_irqrestore_lite(lock, flags) \
+					do { \
+					(void)(lock); \
+					arch_cpu_irq_restore(flags); \
+					} while (0)
+#endif
+
 #endif /* __VMM_SPINLOCKS_H__ */
