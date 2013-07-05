@@ -32,6 +32,7 @@ struct vmm_timer_event;
 struct vmm_timer_event {
 	struct dlist head;
 	bool active;
+	u32 active_hcpu;
 	u64 expiry_tstamp;
 	u64 duration_nsecs;
 	void (*handler) (struct vmm_timer_event *);
@@ -41,6 +42,7 @@ struct vmm_timer_event {
 #define INIT_TIMER_EVENT(ev, _hndl, _priv)	do { \
 						INIT_LIST_HEAD(&(ev)->head); \
 						(ev)->active = FALSE; \
+						(ev)->active_hcpu = 0; \
 						(ev)->expiry_tstamp = 0; \
 						(ev)->duration_nsecs = 0; \
 						(ev)->handler = _hndl; \
@@ -50,6 +52,7 @@ struct vmm_timer_event {
 #define __TIMER_EVENT_INITIALIZER(ev, _hndl, _priv)	{	\
 	.head	= { &(ev).head, &(ev).head },			\
 	.active = FALSE,					\
+	.active_hcpu = 0,					\
 	.expiry_tstamp = 0,					\
 	.duration_nsecs = 0,					\
 	.handler = _hndl,					\
