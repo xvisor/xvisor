@@ -110,29 +110,32 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu,
 		switch (mode) {
 		case CPSR_MODE_USER:
 		case CPSR_MODE_SYSTEM:
-			asm volatile (" mrs     %0, sp_usr\n\t" 
+			asm volatile (" mrs     %0, SP_usr\n\t" 
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->sp_usr = hwreg;
 			return arm_priv(vcpu)->sp_usr;
 		case CPSR_MODE_FIQ:
+			asm volatile (" mrs     %0, SP_fiq\n\t" 
+				      :"=r" (hwreg)::"memory", "cc");
+			arm_priv(vcpu)->sp_fiq = hwreg;
 			return arm_priv(vcpu)->sp_fiq;
 		case CPSR_MODE_IRQ:
-			asm volatile (" mrs     %0, sp_irq\n\t" 
+			asm volatile (" mrs     %0, SP_irq\n\t" 
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->sp_irq = hwreg;
 			return arm_priv(vcpu)->sp_irq;
 		case CPSR_MODE_SUPERVISOR:
-			asm volatile (" mrs     %0, sp_svc\n\t" 
+			asm volatile (" mrs     %0, SP_svc\n\t" 
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->sp_svc = hwreg;
 			return arm_priv(vcpu)->sp_svc;
 		case CPSR_MODE_ABORT:
-			asm volatile (" mrs     %0, sp_abt\n\t" 
+			asm volatile (" mrs     %0, SP_abt\n\t" 
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->sp_abt = hwreg;
 			return arm_priv(vcpu)->sp_abt;
 		case CPSR_MODE_UNDEFINED:
-			asm volatile (" mrs     %0, sp_und\n\t" 
+			asm volatile (" mrs     %0, SP_und\n\t" 
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->sp_und = hwreg;
 			return arm_priv(vcpu)->sp_und;
@@ -146,27 +149,27 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu,
 		case CPSR_MODE_SYSTEM:
 			return regs->lr;
 		case CPSR_MODE_FIQ:
-			asm volatile (" mrs     %0, lr_fiq\n\t" 
+			asm volatile (" mrs     %0, LR_fiq\n\t" 
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->lr_fiq = hwreg;
 			return arm_priv(vcpu)->lr_fiq;
 		case CPSR_MODE_IRQ:
-			asm volatile (" mrs     %0, lr_irq\n\t" 
+			asm volatile (" mrs     %0, LR_irq\n\t" 
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->lr_irq = hwreg;
 			return arm_priv(vcpu)->lr_irq;
 		case CPSR_MODE_SUPERVISOR:
-			asm volatile (" mrs     %0, lr_svc\n\t" 
+			asm volatile (" mrs     %0, LR_svc\n\t" 
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->lr_svc = hwreg;
 			return arm_priv(vcpu)->lr_svc;
 		case CPSR_MODE_ABORT:
-			asm volatile (" mrs     %0, lr_abt\n\t" 
+			asm volatile (" mrs     %0, LR_abt\n\t" 
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->lr_abt = hwreg;
 			return arm_priv(vcpu)->lr_abt;
 		case CPSR_MODE_UNDEFINED:
-			asm volatile (" mrs     %0, lr_und\n\t" 
+			asm volatile (" mrs     %0, LR_und\n\t" 
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->lr_und = hwreg;
 			return arm_priv(vcpu)->lr_und;
@@ -249,33 +252,32 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu *vcpu,
 		switch (mode) {
 		case CPSR_MODE_USER:
 		case CPSR_MODE_SYSTEM:
-			asm volatile (" msr     sp_usr, %0\n\t"
+			asm volatile (" msr     SP_usr, %0\n\t"
 				      ::"r" (reg_val) :"memory", "cc");
 			arm_priv(vcpu)->sp_usr = reg_val;
 			break;
 		case CPSR_MODE_FIQ:
-			/* FIXME:
-			asm volatile (" msr     sp_fiq, %0\n\t"
-				      ::"r" (reg_val) :"memory", "cc"); */
+			asm volatile (" msr     SP_fiq, %0\n\t"
+				      ::"r" (reg_val) :"memory", "cc"); 
 			arm_priv(vcpu)->sp_fiq = reg_val;
 			break;
 		case CPSR_MODE_IRQ:
-			asm volatile (" msr     sp_irq, %0\n\t"
+			asm volatile (" msr     SP_irq, %0\n\t"
 				      ::"r" (reg_val) :"memory", "cc");
 			arm_priv(vcpu)->sp_irq = reg_val;
 			break;
 		case CPSR_MODE_SUPERVISOR:
-			asm volatile (" msr     sp_svc, %0\n\t"
+			asm volatile (" msr     SP_svc, %0\n\t"
 				      ::"r" (reg_val) :"memory", "cc");
 			arm_priv(vcpu)->sp_svc = reg_val;
 			break;
 		case CPSR_MODE_ABORT:
-			asm volatile (" msr     sp_abt, %0\n\t"
+			asm volatile (" msr     SP_abt, %0\n\t"
 				      ::"r" (reg_val) :"memory", "cc");
 			arm_priv(vcpu)->sp_abt = reg_val;
 			break;
 		case CPSR_MODE_UNDEFINED:
-			asm volatile (" msr     sp_und, %0\n\t"
+			asm volatile (" msr     SP_und, %0\n\t"
 				      ::"r" (reg_val) :"memory", "cc");
 			arm_priv(vcpu)->sp_und = reg_val;
 			break;
@@ -290,27 +292,27 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu *vcpu,
 			regs->lr = reg_val;
 			break;
 		case CPSR_MODE_FIQ:
-			asm volatile (" msr     lr_fiq, %0\n\t"
+			asm volatile (" msr     LR_fiq, %0\n\t"
 				      ::"r" (reg_val) :"memory", "cc");
 			arm_priv(vcpu)->lr_fiq = reg_val;
 			break;
 		case CPSR_MODE_IRQ:
-			asm volatile (" msr     lr_irq, %0\n\t"
+			asm volatile (" msr     LR_irq, %0\n\t"
 				      ::"r" (reg_val) :"memory", "cc");
 			arm_priv(vcpu)->lr_irq = reg_val;
 			break;
 		case CPSR_MODE_SUPERVISOR:
-			asm volatile (" msr     lr_svc, %0\n\t"
+			asm volatile (" msr     LR_svc, %0\n\t"
 				      ::"r" (reg_val) :"memory", "cc");
 			arm_priv(vcpu)->lr_svc = reg_val;
 			break;
 		case CPSR_MODE_ABORT:
-			asm volatile (" msr     lr_abt, %0\n\t"
+			asm volatile (" msr     LR_abt, %0\n\t"
 				      ::"r" (reg_val) :"memory", "cc");
 			arm_priv(vcpu)->lr_abt = reg_val;
 			break;
 		case CPSR_MODE_UNDEFINED:
-			asm volatile (" msr     lr_und, %0\n\t"
+			asm volatile (" msr     LR_und, %0\n\t"
 				      ::"r" (reg_val) :"memory", "cc");
 			arm_priv(vcpu)->lr_und = reg_val;
 			break;
@@ -358,27 +360,27 @@ u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu *vcpu, u32 mode)
 	/* Find out correct SPSR */
 	switch (mode) {
 	case CPSR_MODE_ABORT:
-		asm volatile (" mrs     %0, spsr_abt\n\t" 
+		asm volatile (" mrs     %0, SPSR_abt\n\t" 
 			      :"=r" (hwreg)::"memory", "cc");
 		arm_priv(vcpu)->spsr_abt = hwreg;
 		return arm_priv(vcpu)->spsr_abt;
 	case CPSR_MODE_UNDEFINED:
-		asm volatile (" mrs     %0, spsr_und\n\t" 
+		asm volatile (" mrs     %0, SPSR_und\n\t" 
 			      :"=r" (hwreg)::"memory", "cc");
 		arm_priv(vcpu)->spsr_und = hwreg;
 		return arm_priv(vcpu)->spsr_und;
 	case CPSR_MODE_SUPERVISOR:
-		asm volatile (" mrs     %0, spsr_svc\n\t" 
+		asm volatile (" mrs     %0, SPSR_svc\n\t" 
 			      :"=r" (hwreg)::"memory", "cc");
 		arm_priv(vcpu)->spsr_svc = hwreg;
 		return arm_priv(vcpu)->spsr_svc;
 	case CPSR_MODE_IRQ:
-		asm volatile (" mrs     %0, spsr_irq\n\t" 
+		asm volatile (" mrs     %0, SPSR_irq\n\t" 
 			      :"=r" (hwreg)::"memory", "cc");
 		arm_priv(vcpu)->spsr_irq = hwreg;
 		return arm_priv(vcpu)->spsr_irq;
 	case CPSR_MODE_FIQ:
-		asm volatile (" mrs     %0, spsr_fiq\n\t" 
+		asm volatile (" mrs     %0, SPSR_fiq\n\t" 
 			      :"=r" (hwreg)::"memory", "cc");
 		arm_priv(vcpu)->spsr_fiq = hwreg;
 		return arm_priv(vcpu)->spsr_fiq;
@@ -403,27 +405,27 @@ int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu,
 	/* Update appropriate SPSR */
 	switch (mode) {
 	case CPSR_MODE_ABORT:
-		asm volatile (" msr     spsr_abt, %0\n\t"
+		asm volatile (" msr     SPSR_abt, %0\n\t"
 			      ::"r" (new_spsr) :"memory", "cc");
 		arm_priv(vcpu)->spsr_abt = new_spsr;
 		break;
 	case CPSR_MODE_UNDEFINED:
-		asm volatile (" msr     spsr_und, %0\n\t"
+		asm volatile (" msr     SPSR_und, %0\n\t"
 			      ::"r" (new_spsr) :"memory", "cc");
 		arm_priv(vcpu)->spsr_und = new_spsr;
 		break;
 	case CPSR_MODE_SUPERVISOR:
-		asm volatile (" msr     spsr_svc, %0\n\t"
+		asm volatile (" msr     SPSR_svc, %0\n\t"
 			      ::"r" (new_spsr) :"memory", "cc");
 		arm_priv(vcpu)->spsr_svc = new_spsr;
 		break;
 	case CPSR_MODE_IRQ:
-		asm volatile (" msr     spsr_irq, %0\n\t"
+		asm volatile (" msr     SPSR_irq, %0\n\t"
 			      ::"r" (new_spsr) :"memory", "cc");
 		arm_priv(vcpu)->spsr_irq = new_spsr;
 		break;
 	case CPSR_MODE_FIQ:
-		asm volatile (" msr     spsr_fiq, %0\n\t"
+		asm volatile (" msr     SPSR_fiq, %0\n\t"
 			      ::"r" (new_spsr) :"memory", "cc");
 		arm_priv(vcpu)->spsr_fiq = new_spsr;
 		break;
@@ -670,67 +672,77 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 
 static void cpu_vcpu_banked_regs_save(struct vmm_vcpu *vcpu)
 {
-	asm volatile (" mrs     %0, sp_usr\n\t" 
+	asm volatile (" mrs     %0, SP_usr\n\t" 
 		      :"=r" (arm_priv(vcpu)->sp_usr)::"memory", "cc");
-	asm volatile (" mrs     %0, sp_svc\n\t" 
+	asm volatile (" mrs     %0, SP_svc\n\t" 
 		      :"=r" (arm_priv(vcpu)->sp_svc)::"memory", "cc");
-	asm volatile (" mrs     %0, lr_svc\n\t" 
+	asm volatile (" mrs     %0, LR_svc\n\t" 
 		      :"=r" (arm_priv(vcpu)->lr_svc)::"memory", "cc");
-	asm volatile (" mrs     %0, spsr_svc\n\t" 
+	asm volatile (" mrs     %0, SPSR_svc\n\t" 
 		      :"=r" (arm_priv(vcpu)->spsr_svc)::"memory", "cc");
-	asm volatile (" mrs     %0, sp_abt\n\t" 
+	asm volatile (" mrs     %0, SP_abt\n\t" 
 		      :"=r" (arm_priv(vcpu)->sp_abt)::"memory", "cc");
-	asm volatile (" mrs     %0, lr_abt\n\t" 
+	asm volatile (" mrs     %0, LR_abt\n\t" 
 		      :"=r" (arm_priv(vcpu)->lr_abt)::"memory", "cc");
-	asm volatile (" mrs     %0, spsr_abt\n\t" 
+	asm volatile (" mrs     %0, SPSR_abt\n\t" 
 		      :"=r" (arm_priv(vcpu)->spsr_abt)::"memory", "cc");
-	asm volatile (" mrs     %0, sp_und\n\t" 
+	asm volatile (" mrs     %0, SP_und\n\t" 
 		      :"=r" (arm_priv(vcpu)->sp_und)::"memory", "cc");
-	asm volatile (" mrs     %0, lr_und\n\t" 
+	asm volatile (" mrs     %0, LR_und\n\t" 
 		      :"=r" (arm_priv(vcpu)->lr_und)::"memory", "cc");
-	asm volatile (" mrs     %0, spsr_und\n\t" 
+	asm volatile (" mrs     %0, SPSR_und\n\t" 
 		      :"=r" (arm_priv(vcpu)->spsr_und)::"memory", "cc");
-	asm volatile (" mrs     %0, sp_irq\n\t" 
+	asm volatile (" mrs     %0, SP_irq\n\t" 
 		      :"=r" (arm_priv(vcpu)->sp_irq)::"memory", "cc");
-	asm volatile (" mrs     %0, lr_irq\n\t" 
+	asm volatile (" mrs     %0, LR_irq\n\t" 
 		      :"=r" (arm_priv(vcpu)->lr_irq)::"memory", "cc");
-	asm volatile (" mrs     %0, spsr_irq\n\t" 
+	asm volatile (" mrs     %0, SPSR_irq\n\t" 
 		      :"=r" (arm_priv(vcpu)->spsr_irq)::"memory", "cc");
-	/* FIXME: asm volatile (" mrs     %0, sp_fiq\n\t" 
-		      :"=r" (arm_priv(vcpu)->sp_fiq)::"memory", "cc"); */
-	asm volatile (" mrs     %0, lr_fiq\n\t" 
+	asm volatile (" mrs     %0, r8_fiq\n\t" 
+		      :"=r" (arm_priv(vcpu)->gpr_fiq[0])::"memory", "cc");
+	asm volatile (" mrs     %0, r9_fiq\n\t" 
+		      :"=r" (arm_priv(vcpu)->gpr_fiq[1])::"memory", "cc");
+	asm volatile (" mrs     %0, r10_fiq\n\t" 
+		      :"=r" (arm_priv(vcpu)->gpr_fiq[2])::"memory", "cc");
+	asm volatile (" mrs     %0, r11_fiq\n\t" 
+		      :"=r" (arm_priv(vcpu)->gpr_fiq[3])::"memory", "cc");
+	asm volatile (" mrs     %0, r12_fiq\n\t" 
+		      :"=r" (arm_priv(vcpu)->gpr_fiq[4])::"memory", "cc");
+	asm volatile (" mrs     %0, SP_fiq\n\t" 
+		      :"=r" (arm_priv(vcpu)->sp_fiq)::"memory", "cc");
+	asm volatile (" mrs     %0, LR_fiq\n\t" 
 		      :"=r" (arm_priv(vcpu)->lr_fiq)::"memory", "cc");
-	asm volatile (" mrs     %0, spsr_fiq\n\t" 
+	asm volatile (" mrs     %0, SPSR_fiq\n\t" 
 		      :"=r" (arm_priv(vcpu)->spsr_fiq)::"memory", "cc");
 }
 
 static void cpu_vcpu_banked_regs_restore(struct vmm_vcpu *vcpu)
 {
-	asm volatile (" msr     sp_usr, %0\n\t"
+	asm volatile (" msr     SP_usr, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->sp_usr) :"memory", "cc");
-	asm volatile (" msr     sp_svc, %0\n\t"
+	asm volatile (" msr     SP_svc, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->sp_svc) :"memory", "cc");
-	asm volatile (" msr     lr_svc, %0\n\t"
+	asm volatile (" msr     LR_svc, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->lr_svc) :"memory", "cc");
-	asm volatile (" msr     spsr_svc, %0\n\t"
+	asm volatile (" msr     SPSR_svc, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->spsr_svc) :"memory", "cc");
-	asm volatile (" msr     sp_abt, %0\n\t"
+	asm volatile (" msr     SP_abt, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->sp_abt) :"memory", "cc");
-	asm volatile (" msr     lr_abt, %0\n\t"
+	asm volatile (" msr     LR_abt, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->lr_abt) :"memory", "cc");
-	asm volatile (" msr     spsr_abt, %0\n\t"
+	asm volatile (" msr     SPSR_abt, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->spsr_abt) :"memory", "cc");
-	asm volatile (" msr     sp_und, %0\n\t"
+	asm volatile (" msr     SP_und, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->sp_und) :"memory", "cc");
-	asm volatile (" msr     lr_und, %0\n\t"
+	asm volatile (" msr     LR_und, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->lr_und) :"memory", "cc");
-	asm volatile (" msr     spsr_und, %0\n\t"
+	asm volatile (" msr     SPSR_und, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->spsr_und) :"memory", "cc");
-	asm volatile (" msr     sp_irq, %0\n\t"
+	asm volatile (" msr     SP_irq, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->sp_irq) :"memory", "cc");
-	asm volatile (" msr     lr_irq, %0\n\t"
+	asm volatile (" msr     LR_irq, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->lr_irq) :"memory", "cc");
-	asm volatile (" msr     spsr_irq, %0\n\t"
+	asm volatile (" msr     SPSR_irq, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->spsr_irq) :"memory", "cc");
 	asm volatile (" msr     r8_fiq, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->gpr_fiq[0]) :"memory", "cc");
@@ -742,11 +754,11 @@ static void cpu_vcpu_banked_regs_restore(struct vmm_vcpu *vcpu)
 		      ::"r" (arm_priv(vcpu)->gpr_fiq[3]) :"memory", "cc");
 	asm volatile (" msr     r12_fiq, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->gpr_fiq[4]) :"memory", "cc");
-	/* FIXME: asm volatile (" msr     sp_fiq, %0\n\t"
-		      ::"r" (arm_priv(vcpu)->sp_fiq) :"memory", "cc");*/
-	asm volatile (" msr     lr_fiq, %0\n\t"
+	asm volatile (" msr     SP_fiq, %0\n\t"
+		      ::"r" (arm_priv(vcpu)->sp_fiq) :"memory", "cc");
+	asm volatile (" msr     LR_fiq, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->lr_fiq) :"memory", "cc");
-	asm volatile (" msr     spsr_fiq, %0\n\t"
+	asm volatile (" msr     SPSR_fiq, %0\n\t"
 		      ::"r" (arm_priv(vcpu)->spsr_fiq) :"memory", "cc");
 }
 
