@@ -183,9 +183,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		return VMM_EFAIL;
 	}
 
-	arch_cpu_irq_save(flags);
-
-	vmm_spin_lock(&vcpu->lock);
+	vmm_spin_lock_irqsave_lite(&vcpu->lock, flags);
 
 	switch(new_state) {
 	case VMM_VCPU_STATE_UNKNOWN:
@@ -256,7 +254,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 #endif
 	}
 
-	vmm_spin_unlock(&vcpu->lock);
+	vmm_spin_unlock_irqrestore_lite(&vcpu->lock, flags);
 
 	if (preempt && schedp->current_vcpu) {
 		if (schedp->current_vcpu->is_normal) {
@@ -269,8 +267,6 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			}
 		}
 	}
-
-	arch_cpu_irq_restore(flags);
 
 	return rc;
 }
