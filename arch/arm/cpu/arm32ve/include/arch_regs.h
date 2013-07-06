@@ -95,6 +95,8 @@ struct arm_priv {
 		u32 c3_dacr; /* MMU domain access control register */
 		u32 c5_ifsr; /* Fault status registers. */
 		u32 c5_dfsr; /* Fault status registers. */
+		u32 c5_aifsr; /* Auxillary Fault status registers. */
+		u32 c5_adfsr; /* Auxillary Fault status registers. */
 		u32 c6_ifar; /* Fault address registers. */
 		u32 c6_dfar; /* Fault address registers. */
 		u32 c7_par;  /* VA2PA Translation result. */
