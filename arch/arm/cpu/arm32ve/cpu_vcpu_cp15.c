@@ -23,12 +23,12 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
-#include <vmm_scheduler.h>
+#include <vmm_cache.h>
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
-#include <vmm_vcpu_irq.h>
 #include <libs/stringlib.h>
 #include <emulate_arm.h>
 #include <emulate_thumb.h>
@@ -310,6 +310,41 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			goto bad_reg;
 		};
 		break;
+	case 7: /* Cache control.  */
+		switch (CRm) {
+		case 6:		/* Upgrade DCISW to DCCISW, as per HCR.SWIO */
+		case 14:	/* DCCISW */
+			switch (opc2) {
+			case 2:
+				vmm_cpumask_setall(
+					&arm_priv(vcpu)->cp15.dflush_needed);
+				vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
+					&arm_priv(vcpu)->cp15.dflush_needed);
+				asm volatile("mcr p15, 0, %0, c7, c14, 2" 
+					: : "r" (data));
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 10:	/* DCCSW */
+			switch (opc2) {
+			case 2:
+				vmm_cpumask_setall(
+					&arm_priv(vcpu)->cp15.dflush_needed);
+				vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
+					&arm_priv(vcpu)->cp15.dflush_needed);
+				asm volatile("mcr p15, 0, %0, c7, c10, 2" 
+					: : "r" (data));
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		default:
+			goto bad_reg;
+		};
+		break;
 	case 9:
 		switch (CRm) {
 		case 0:	/* Cache lockdown.  */
@@ -502,6 +537,14 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu * tvcpu,
 		write_tpidrurw(arm_priv(vcpu)->cp15.c13_tls1);
 		write_tpidruro(arm_priv(vcpu)->cp15.c13_tls2);
 		write_tpidrprw(arm_priv(vcpu)->cp15.c13_tls3);
+		/* Check whether vcpu requires dcache to be flushed on
+		 * this host CPU. This is a consequence of doing dcache
+		 * operations by set/way.
+		 */
+		if (vmm_cpumask_test_and_clear_cpu(vmm_smp_processor_id(), 
+					&arm_priv(vcpu)->cp15.dflush_needed)) {
+			vmm_flush_cache_all();
+		}
 	}
 }
 
@@ -636,6 +679,9 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 			break;
 		};
 	}
+
+	/* Clear the dcache flush needed mask */
+	vmm_cpumask_clear(&arm_priv(vcpu)->cp15.dflush_needed);
 
 	return VMM_OK;
 }

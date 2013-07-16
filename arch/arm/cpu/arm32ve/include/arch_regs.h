@@ -24,6 +24,7 @@
 #define _ARCH_REGS_H__
 
 #include <vmm_types.h>
+#include <vmm_cpumask.h>
 #include <vmm_spinlocks.h>
 #include <cpu_defines.h>
 #include <generic_timer.h>
@@ -119,6 +120,8 @@ struct arm_priv {
 		u32 c13_tls3; /* Privileged Thread register. */
 		u32 c15_i_max; /* Maximum D-cache dirty line index. */
 		u32 c15_i_min; /* Minimum D-cache dirty line index. */
+		/* D-cache clean-invalidate by set/way mask */
+		vmm_cpumask_t dflush_needed;
 	} cp15;
 	/* Generic timer context */
 	struct generic_timer_context gentimer_context;

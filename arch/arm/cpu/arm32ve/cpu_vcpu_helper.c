@@ -533,6 +533,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	if (!vcpu->reset_count) {
 		/* Initialize Hypervisor Configuration */
 		arm_priv(vcpu)->hcr = (HCR_TAC_MASK |
+					HCR_TSW_MASK |
 					HCR_TIDCP_MASK |
 					HCR_TSC_MASK |
 					HCR_TWI_MASK |
@@ -549,7 +550,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		/* Initialize Hypervisor System Trap Register */
 		arm_priv(vcpu)->hstr = (HSTR_TJDBX_MASK |
 					HSTR_TTEE_MASK |
-					HSTR_T9_MASK);
+					HSTR_T9_MASK |
+					HSTR_T15_MASK);
 		/* Initialize VCPU features */
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
