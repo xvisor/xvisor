@@ -39,6 +39,65 @@ struct arch_regs {
 
 typedef struct arch_regs arch_regs_t;
 
+struct arm_priv_cp15 {
+	/* Coprocessor Registers */
+	u32 c0_cpuid;
+	u32 c0_cachetype;
+	u32 c0_pfr0;
+	u32 c0_pfr1;
+	u32 c0_dfr0;
+	u32 c0_afr0;
+	u32 c0_mmfr0;
+	u32 c0_mmfr1;
+	u32 c0_mmfr2;
+	u32 c0_mmfr3;
+	u32 c0_isar0;
+	u32 c0_isar1;
+	u32 c0_isar2;
+	u32 c0_isar3;
+	u32 c0_isar4;
+	u32 c0_isar5;
+	u32 c0_ccsid[16]; /* Cache size. */
+	u32 c0_clid; /* Cache level. */
+	u32 c0_cssel; /* Cache size selection. */
+	u32 c1_sctlr; /* System control register. */
+	u32 c1_cpacr; /* Coprocessor access register.  */
+	u32 c2_ttbr0; /* MMU translation table base 0. */
+	u32 c2_ttbr1; /* MMU translation table base 1. */
+	u32 c2_ttbcr; /* MMU translation table base control. */
+	u32 c3_dacr; /* MMU domain access control register */
+	u32 c5_ifsr; /* Fault status registers. */
+	u32 c5_dfsr; /* Fault status registers. */
+	u32 c5_aifsr; /* Auxillary Fault status registers. */
+	u32 c5_adfsr; /* Auxillary Fault status registers. */
+	u32 c6_ifar; /* Fault address registers. */
+	u32 c6_dfar; /* Fault address registers. */
+	u32 c7_par;  /* VA2PA Translation result. */
+	u64 c7_par64;  /* VA2PA Translation result. */
+	u32 c9_insn; /* Cache lockdown registers. */
+	u32 c9_data;
+	u32 c9_pmcr; /* performance monitor control register */
+	u32 c9_pmcnten; /* perf monitor counter enables */
+	u32 c9_pmovsr; /* perf monitor overflow status */
+	u32 c9_pmxevtyper; /* perf monitor event type */
+	u32 c9_pmuserenr; /* perf monitor user enable */
+	u32 c9_pminten; /* perf monitor interrupt enables */
+	u32 c10_prrr;
+	u32 c10_nmrr;
+	u32 c12_vbar; /* Vector base address register */
+	u32 c13_fcseidr; /* FCSE PID. */
+	u32 c13_contextidr; /* Context ID. */
+	u32 c13_tls1; /* User RW Thread register. */
+	u32 c13_tls2; /* User RO Thread register. */
+	u32 c13_tls3; /* Privileged Thread register. */
+	u32 c15_i_max; /* Maximum D-cache dirty line index. */
+	u32 c15_i_min; /* Minimum D-cache dirty line index. */
+	/* D-cache clean-invalidate by set/way mask */
+	vmm_cpumask_t dflush_needed;
+} cp15;
+
+typedef struct arm_priv_cp15 arm_priv_cp15_t;
+
 struct arm_priv {
 	/* Banked Registers */
 	u32 sp_usr;
@@ -67,62 +126,7 @@ struct arm_priv {
 	/* Internal CPU feature flags. */
 	u64 features;
 	/* System control coprocessor (cp15) */
-	struct {
-		/* Coprocessor Registers */
-		u32 c0_cpuid;
-		u32 c0_cachetype;
-		u32 c0_pfr0;
-		u32 c0_pfr1;
-		u32 c0_dfr0;
-		u32 c0_afr0;
-		u32 c0_mmfr0;
-		u32 c0_mmfr1;
-		u32 c0_mmfr2;
-		u32 c0_mmfr3;
-		u32 c0_isar0;
-		u32 c0_isar1;
-		u32 c0_isar2;
-		u32 c0_isar3;
-		u32 c0_isar4;
-		u32 c0_isar5;
-		u32 c0_ccsid[16]; /* Cache size. */
-		u32 c0_clid; /* Cache level. */
-		u32 c0_cssel; /* Cache size selection. */
-		u32 c1_sctlr; /* System control register. */
-		u32 c1_cpacr; /* Coprocessor access register.  */
-		u32 c2_ttbr0; /* MMU translation table base 0. */
-		u32 c2_ttbr1; /* MMU translation table base 1. */
-		u32 c2_ttbcr; /* MMU translation table base control. */
-		u32 c3_dacr; /* MMU domain access control register */
-		u32 c5_ifsr; /* Fault status registers. */
-		u32 c5_dfsr; /* Fault status registers. */
-		u32 c5_aifsr; /* Auxillary Fault status registers. */
-		u32 c5_adfsr; /* Auxillary Fault status registers. */
-		u32 c6_ifar; /* Fault address registers. */
-		u32 c6_dfar; /* Fault address registers. */
-		u32 c7_par;  /* VA2PA Translation result. */
-		u64 c7_par64;  /* VA2PA Translation result. */
-		u32 c9_insn; /* Cache lockdown registers. */
-		u32 c9_data;
-		u32 c9_pmcr; /* performance monitor control register */
-		u32 c9_pmcnten; /* perf monitor counter enables */
-		u32 c9_pmovsr; /* perf monitor overflow status */
-		u32 c9_pmxevtyper; /* perf monitor event type */
-		u32 c9_pmuserenr; /* perf monitor user enable */
-		u32 c9_pminten; /* perf monitor interrupt enables */
-		u32 c10_prrr;
-		u32 c10_nmrr;
-		u32 c12_vbar; /* Vector base address register */
-		u32 c13_fcseidr; /* FCSE PID. */
-		u32 c13_contextidr; /* Context ID. */
-		u32 c13_tls1; /* User RW Thread register. */
-		u32 c13_tls2; /* User RO Thread register. */
-		u32 c13_tls3; /* Privileged Thread register. */
-		u32 c15_i_max; /* Maximum D-cache dirty line index. */
-		u32 c15_i_min; /* Minimum D-cache dirty line index. */
-		/* D-cache clean-invalidate by set/way mask */
-		vmm_cpumask_t dflush_needed;
-	} cp15;
+	arm_priv_cp15_t cp15;
 	/* Generic timer context */
 	struct generic_timer_context gentimer_context;
 	/* VGIC context */
