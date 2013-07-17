@@ -44,7 +44,6 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 				    physical_addr_t fipa)
 {
 	int rc;
-	irq_flags_t f;
 	u32 reg_flags = 0x0;
 	struct cpu_page pg;
 	physical_addr_t inaddr, outaddr;
@@ -102,11 +101,7 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 		pg.memattr = 0x0;
 	}
 
-	vmm_spin_lock_irqsave(&arm_guest_priv(vcpu->guest)->ttbl_lock, f);
-	rc = mmu_lpae_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
-	vmm_spin_unlock_irqrestore(&arm_guest_priv(vcpu->guest)->ttbl_lock, f);
-
-	return rc;
+	return mmu_lpae_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
 }
 
 int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu *vcpu, 

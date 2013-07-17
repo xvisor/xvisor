@@ -441,11 +441,17 @@ int arch_guest_init(struct vmm_guest *guest)
 	if (!guest->reset_count) {
 		guest->arch_priv = vmm_malloc(sizeof(arm_guest_priv_t));
 		if (!guest->arch_priv) {
-			return VMM_EFAIL;
+			return VMM_ENOMEM;
 		}
-		INIT_SPIN_LOCK(&arm_guest_priv(guest)->ttbl_lock);
+
 		arm_guest_priv(guest)->ttbl = mmu_lpae_ttbl_alloc(TTBL_STAGE2);
+		if (!arm_guest_priv(guest)->ttbl) {
+			vmm_free(guest->arch_priv);
+			guest->arch_priv = NULL;
+			return VMM_ENOMEM;
+		}
 	}
+
 	return VMM_OK;
 }
 

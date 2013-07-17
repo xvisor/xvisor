@@ -139,8 +139,6 @@ struct arm_priv {
 typedef struct arm_priv arm_priv_t;
 
 struct arm_guest_priv {
-	/* Stage2 table lock */
-	vmm_spinlock_t ttbl_lock;
 	/* Stage2 table */
 	struct cpu_ttbl *ttbl;
 };
