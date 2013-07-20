@@ -28,12 +28,12 @@
 #include <arch_barrier.h>
 #include <vmm_smp.h>
 
-bool __lock arch_spin_lock_check(arch_spinlock_t * lock)
+bool __lock arch_spin_lock_check(arch_spinlock_t *lock)
 {
-	return (lock->lock == __ARCH_SPIN_UNLOCKED) ? TRUE : FALSE;
+	return (lock->lock == __ARCH_SPIN_UNLOCKED) ? FALSE : TRUE;
 }
 
-void __lock arch_spin_lock(arch_spinlock_t * lock)
+void __lock arch_spin_lock(arch_spinlock_t *lock)
 {
 	u32 cpu = vmm_smp_processor_id();
 	unsigned long tmp;
@@ -74,7 +74,7 @@ int __lock arch_spin_trylock(arch_spinlock_t *lock)
 	}
 }
 
-void __lock arch_spin_unlock(arch_spinlock_t * lock)
+void __lock arch_spin_unlock(arch_spinlock_t *lock)
 {
 	arch_smp_mb();		/* sync everything */
 
