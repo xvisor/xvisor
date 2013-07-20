@@ -35,7 +35,7 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	int irq_no;
 	irq_flags_t flags;
-	u32 i, irq_prio, irq_reas, tmp_prio, irq_count;
+	u32 i, state, irq_prio, irq_reas, tmp_prio, irq_count;
 
 	/* For non-normal vcpu dont do anything */
 	if (!vcpu || !vcpu->is_normal) {
@@ -43,7 +43,8 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 	}
 
 	/* If vcpu is not in interruptible state then dont do anything */
-	if (!(vcpu->state & VMM_VCPU_STATE_INTERRUPTIBLE)) {
+	state = vmm_manager_vcpu_state(vcpu);
+	if (!(state & VMM_VCPU_STATE_INTERRUPTIBLE)) {
 		return;
 	}
 
@@ -120,6 +121,7 @@ static void vcpu_irq_wfi_timeout(struct vmm_timer_event *ev)
 
 void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 {
+	u32 state;
 	irq_flags_t flags;
 
 	/* For non-normal vcpu dont do anything */
@@ -128,7 +130,8 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 	}
 
 	/* If vcpu is not in interruptible state then dont do anything */
-	if (!(vcpu->state & VMM_VCPU_STATE_INTERRUPTIBLE)) {
+	state = vmm_manager_vcpu_state(vcpu);
+	if (!(state & VMM_VCPU_STATE_INTERRUPTIBLE)) {
 		return;
 	}
 

@@ -129,39 +129,47 @@ enum vmm_vcpu_states {
 
 struct vmm_vcpu {
 	struct dlist head;
-	vmm_spinlock_t lock;
+
+	/* General information */
 	u32 id;
 	u32 subid;
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_devtree_node *node;
 	bool is_normal;
 	struct vmm_guest *guest;
-	u32 state;
-	u32 reset_count;
 
+	/* Start PC and stack */
 	virtual_addr_t start_pc;
 	virtual_addr_t stack_va;
 	virtual_size_t stack_sz;
 
+	/* Load balancing context */
+	vmm_spinlock_t loadbal_lock;
+	const struct vmm_cpumask *cpu_affinity;
+	u32 hcpu;
+
+	/* Scheduling context */
+	vmm_spinlock_t sched_lock;
+	u32 state;
+	u32 reset_count;
+	u8 priority;
+	u32 preempt_count;
+	u64 time_slice;
+	void *sched_priv;
+
+	/* Architecture specific context */
 	arch_regs_t regs;
 	void *arch_priv;
 
+	/* Virtual IRQ context */
 	struct vmm_vcpu_irqs irqs;
 
-#ifdef CONFIG_SMP
-	const struct vmm_cpumask *cpu_affinity; /* Which cpus this vcpu can run on */
-	u32 hcpu; /**< Host cpu on where this is running or last ran */
-#endif
+	/* Waitqueue parameters */
+	struct dlist wq_head;
+	void *wq_priv;
 
-	u8 priority; /**< Scheduling Parameter */
-	u32 preempt_count; /**< Scheduling Parameter */
-	u64 time_slice; /**< Scheduling Parameter (nano seconds) */
-	void *sched_priv; /**< Scheduling Context */
-
-	struct dlist wq_head; /**< Wait Queue List head */
-	void *wq_priv; /**< Wait Queue Context */
-
-	void *devemu_priv; /**< Device Emulation Context */
+	/* Device Emulation Context */
+	void *devemu_priv;
 };
 
 /** Maximum number of vcpus */
@@ -199,6 +207,9 @@ int vmm_manager_vcpu_dumpreg(struct vmm_vcpu *vcpu);
 
 /** Dump registers of a vcpu */
 int vmm_manager_vcpu_dumpstat(struct vmm_vcpu *vcpu);
+
+/** Get VCPU state */
+u32 vmm_manager_vcpu_state(struct vmm_vcpu *vcpu);
 
 /** Create an orphan vcpu */
 struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,

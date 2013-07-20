@@ -79,23 +79,22 @@ static void vmm_manager_ipi_state_change(void *vcpu,
 
 static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
-	u32 next_cpu;
+	u32 hcpu;
+	irq_flags_t flags;
+
+	vmm_spin_lock_irqsave_lite(&vcpu->loadbal_lock, flags);
 
 	if (new_state == VMM_VCPU_STATE_READY) {
-		next_cpu = vmm_loadbal_get_next_hcpu(vcpu);
-
-		vmm_smp_ipi_async_call(vmm_cpumask_of(next_cpu), 
-				       vmm_manager_ipi_state_change, vcpu, 
-				       (void *)new_state, NULL);
-	} else {
-#ifdef CONFIG_SMP
-		vmm_smp_ipi_async_call(vmm_cpumask_of(vcpu->hcpu),
-#else
-		vmm_smp_ipi_async_call(vmm_cpumask_of(0),
-#endif
-				       vmm_manager_ipi_state_change,
-				       vcpu, (void *)new_state, NULL);
+		vcpu->hcpu = vmm_loadbal_get_next_hcpu(vcpu);
 	}
+
+	hcpu = vcpu->hcpu;
+
+	vmm_spin_unlock_irqrestore_lite(&vcpu->loadbal_lock, flags);
+
+	vmm_smp_ipi_async_call(vmm_cpumask_of(hcpu),
+			       vmm_manager_ipi_state_change,
+			       vcpu, (void *)new_state, NULL);
 
 	return VMM_OK;
 }
@@ -130,12 +129,12 @@ int vmm_manager_vcpu_dumpreg(struct vmm_vcpu *vcpu)
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
 	if (vcpu) {
-		vmm_spin_lock_irqsave(&vcpu->lock, flags);
+		vmm_spin_lock_irqsave_lite(&vcpu->sched_lock, flags);
 		if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
 			arch_vcpu_regs_dump(vcpu);
 			rc = VMM_OK;
 		}
-		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 	}
 	return rc;
 }
@@ -145,22 +144,33 @@ int vmm_manager_vcpu_dumpstat(struct vmm_vcpu *vcpu)
 	int rc = VMM_EFAIL;
 	irq_flags_t flags;
 	if (vcpu) {
-		vmm_spin_lock_irqsave(&vcpu->lock, flags);
+		vmm_spin_lock_irqsave_lite(&vcpu->sched_lock, flags);
 		if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
 			arch_vcpu_stat_dump(vcpu);
 			rc = VMM_OK;
 		}
-		vmm_spin_unlock_irqrestore(&vcpu->lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 	}
 	return rc;
+}
+
+u32 vmm_manager_vcpu_state(struct vmm_vcpu *vcpu)
+{
+	u32 state = VMM_VCPU_STATE_UNKNOWN;
+	irq_flags_t flags;
+	if (vcpu) {
+		vmm_spin_lock_irqsave_lite(&vcpu->sched_lock, flags);
+		state = vcpu->state;
+		vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+	}
+	return state;
 }
 
 int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu, 
 				  const struct vmm_cpumask *cpu_mask)
 {
-#ifdef CONFIG_SMP
 	vcpu->cpu_affinity = cpu_mask;
-#endif
+
 	return VMM_OK;
 }
 
@@ -183,7 +193,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	}
 
 	/* Acquire lock */
-	vmm_spin_lock_irqsave(&mngr.lock, flags);
+	vmm_spin_lock_irqsave_lite(&mngr.lock, flags);
 
 	/* Find the next available vcpu */
 	for (vnum = 0; vnum < CONFIG_MAX_VCPU_COUNT; vnum++) {
@@ -197,17 +207,9 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 		goto release_lock;
 	}
 
-	/* Alloc stack pages */
-	vcpu->stack_va = (virtual_addr_t)vmm_malloc(stack_sz);
-	if (!vcpu->stack_va) {
-		vcpu = NULL;
-		goto release_lock;
-	}
-	vcpu->stack_sz = stack_sz;
-
-	/* Update vcpu attributes */
-	INIT_SPIN_LOCK(&vcpu->lock);
 	INIT_LIST_HEAD(&vcpu->head);
+
+	/* Update general info */
 	vcpu->subid = 0;
 	if (strlcpy(vcpu->name, name, sizeof(vcpu->name)) >=
 	    sizeof(vcpu->name)) {
@@ -216,44 +218,57 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	}
 	vcpu->node = NULL;
 	vcpu->is_normal = FALSE;
+	vcpu->guest = NULL;
+
+	/* Setup start program counter and stack */
+	vcpu->start_pc = start_pc;
+	vcpu->stack_va = (virtual_addr_t)vmm_malloc(stack_sz);
+	if (!vcpu->stack_va) {
+		vcpu = NULL;
+		goto release_lock;
+	}
+	vcpu->stack_sz = stack_sz;
+
+	/* Initialize load balancing context */
+	INIT_SPIN_LOCK(&vcpu->loadbal_lock);
+	vcpu->hcpu = vmm_loadbal_get_new_hcpu(vcpu);
+	vmm_manager_vcpu_set_affinity(vcpu,
+				      vmm_cpumask_of(vcpu->hcpu));
+
+	/* Intialize scheduling context */
+	INIT_SPIN_LOCK(&vcpu->sched_lock);
 	vcpu->state = VMM_VCPU_STATE_UNKNOWN;
 	vcpu->reset_count = 0;
 	vcpu->preempt_count = 0;
 	vcpu->priority = priority;
 	vcpu->time_slice = time_slice_nsecs;
-	vcpu->start_pc = start_pc;
-	vcpu->guest = NULL;
-	vcpu->arch_priv = NULL;
-
-	/* Initialize VCPU */
-	if (arch_vcpu_init(vcpu)) {
-		vcpu = NULL;
-		goto release_lock;
-	}
-
-#ifdef CONFIG_SMP
-	/* Set hcpu to current CPU */
-	vcpu->hcpu = vmm_loadbal_get_new_hcpu(vcpu);
-
-	vmm_manager_vcpu_set_affinity(vcpu,
-				      vmm_cpumask_of(vcpu->hcpu));
-#endif
-
-	/* Notify scheduler about new VCPU */
 	vcpu->sched_priv = NULL;
-	if (vmm_manager_vcpu_state_change(vcpu, 
-					VMM_VCPU_STATE_RESET)) {
+
+	/* Initialize architecture specific context */
+	vcpu->arch_priv = NULL;
+	if (arch_vcpu_init(vcpu)) {
+		vmm_free((void *)vcpu->stack_va);
 		vcpu = NULL;
 		goto release_lock;
 	}
 
-	/* Set wait queue context to NULL */
+	/* Initialize waitqueue context */
 	INIT_LIST_HEAD(&vcpu->wq_head);
 	vcpu->wq_priv = NULL;
 
-	/* Set device emulation context to NULL */
+	/* Initialize device emulation context */
 	vcpu->devemu_priv = NULL;
 
+	/* Notify scheduler about new VCPU */
+	if (vmm_manager_vcpu_state_change(vcpu, 
+					VMM_VCPU_STATE_RESET)) {
+		arch_vcpu_deinit(vcpu);
+		vmm_free((void *)vcpu->stack_va);
+		vcpu = NULL;
+		goto release_lock;
+	}
+
+	/* Update VCPU affinity */
 	vmm_manager_vcpu_set_affinity(vcpu, cpu_online_mask);
 
 	/* Add VCPU to orphan list */
@@ -262,11 +277,12 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	/* Increment vcpu count */
 	mngr.vcpu_count++;
 
+	/* Mark this VCPU as not available */
 	mngr.vcpu_avail_array[vcpu->id] = FALSE;
 
 release_lock:
 	/* Release lock */
-	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 
 	return vcpu;
 }
@@ -293,7 +309,7 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 	}
 
 	/* Acquire lock */
-	vmm_spin_lock_irqsave(&mngr.lock, flags);
+	vmm_spin_lock_irqsave_lite(&mngr.lock, flags);
 
 	/* Decrement vcpu count */
 	mngr.vcpu_count--;
@@ -306,24 +322,26 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 					VMM_VCPU_STATE_UNKNOWN))) {
 		goto release_lock;
 	}
-	vcpu->sched_priv = NULL;
 
-	/* Deinit VCPU */
+	/* Deinit architecture specific context */
 	if ((rc = arch_vcpu_deinit(vcpu))) {
 		goto release_lock;
 	}
+
+	/* Cleanup scheduling context */
+	vcpu->sched_priv = NULL;
 
 	/* Free stack pages */
 	if (vcpu->stack_va) {
 		vmm_free((void *)vcpu->stack_va);
 	}
 
-	/* Mark VCPU as available */
+	/* Mark this VCPU as available */
 	mngr.vcpu_avail_array[vcpu->id] = TRUE;
 
 release_lock:
 	/* Release lock */
-	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 
 	return rc;
 }
@@ -516,14 +534,14 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	}
 
 	/* Acquire lock */
-	vmm_spin_lock_irqsave(&mngr.lock, flags);
+	vmm_spin_lock_irqsave_lite(&mngr.lock, flags);
 
 	/* Ensure guest node uniqueness */
 	list_for_each(lentry, &mngr.guest_list) {
 		guest = list_entry(lentry, struct vmm_guest, head);
 		if ((guest->node == gnode) ||
 		    (strcmp(guest->node->name, gnode->name) == 0)) {
-			vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+			vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 			vmm_printf("%s: Duplicate guest \"%s\" detected\n", 
 					__func__, gnode->name);
 			return NULL;
@@ -541,7 +559,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	}
 
 	if (!guest) {
-		vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 		vmm_printf("%s: No available guest instance found\n", __func__);
 		return NULL;
 	}
@@ -579,7 +597,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 		vcpu = NULL;
 
-		/* Find next available vcpu instance */
+		/* Find next available VCPU instance */
 		for (vnum = 0; vnum < CONFIG_MAX_VCPU_COUNT; vnum++) {
 			if (mngr.vcpu_avail_array[vnum]) {
 				vcpu = &mngr.vcpu_array[vnum];
@@ -591,8 +609,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			break;
 		}
 
-		/* Initialize vcpu instance */
-		INIT_SPIN_LOCK(&vcpu->lock);
+		/* Initialize general info */
 		vcpu->subid = guest->vcpu_count;
 		strlcpy(vcpu->name, gnode->name, sizeof(vcpu->name));
 		strlcat(vcpu->name, VMM_DEVTREE_PATH_SEPARATOR_STRING,
@@ -603,6 +620,28 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		}
 		vcpu->node = vnode;
 		vcpu->is_normal = TRUE;
+		vcpu->guest = guest;
+
+		/* Setup start program counter and stack */
+		attrval = vmm_devtree_attrval(vnode,
+					      VMM_DEVTREE_START_PC_ATTR_NAME);
+		if (attrval) {
+			vcpu->start_pc = *((virtual_addr_t *) attrval);
+		}
+		vcpu->stack_va = 
+			(virtual_addr_t)vmm_malloc(CONFIG_IRQ_STACK_SIZE);
+		if (!vcpu->stack_va) {
+			continue;
+		}
+		vcpu->stack_sz = CONFIG_IRQ_STACK_SIZE;
+
+		/* Initialize load balancing context */
+		INIT_SPIN_LOCK(&vcpu->loadbal_lock);
+		vcpu->hcpu = vmm_loadbal_get_new_hcpu(vcpu);
+		vmm_manager_vcpu_set_affinity(vcpu, vmm_cpumask_of(vcpu->hcpu));
+
+		/* Initialize scheduling context */
+		INIT_SPIN_LOCK(&vcpu->sched_lock);
 		vcpu->state = VMM_VCPU_STATE_UNKNOWN;
 		vcpu->reset_count = 0;
 		vcpu->preempt_count = 0;
@@ -623,45 +662,30 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		} else {
 			vcpu->time_slice = VMM_VCPU_DEF_TIME_SLICE;
 		}
-		attrval = vmm_devtree_attrval(vnode,
-					      VMM_DEVTREE_START_PC_ATTR_NAME);
-		if (attrval) {
-			vcpu->start_pc = *((virtual_addr_t *) attrval);
-		}
+		vcpu->sched_priv = NULL;
 
-		/* Alloc stack pages */
-		vcpu->stack_va = 
-			(virtual_addr_t)vmm_malloc(CONFIG_IRQ_STACK_SIZE);
-		if (!vcpu->stack_va) {
-			continue;
-		}
-		vcpu->stack_sz = CONFIG_IRQ_STACK_SIZE;
-
-		/* Architecture specific VCPU initialization */
-		vcpu->guest = guest;
+		/* Initialize architecture specific context */
 		vcpu->arch_priv = NULL;
 		if (arch_vcpu_init(vcpu)) {
 			vmm_free((void *)vcpu->stack_va);
 			continue;
 		}
 
-		/* Initialize VCPU IRQs */
+		/* Initialize virtual IRQ context */
 		if (vmm_vcpu_irq_init(vcpu)) {
 			arch_vcpu_deinit(vcpu);
 			vmm_free((void *)vcpu->stack_va);
 			continue;
 		}
 
-#ifdef CONFIG_SMP
-		/* Set hcpu to current CPU */
-		vcpu->hcpu = vmm_loadbal_get_new_hcpu(vcpu);
+		/* Initialize waitqueue context */
+		INIT_LIST_HEAD(&vcpu->wq_head);
+		vcpu->wq_priv = NULL;
 
-		vmm_manager_vcpu_set_affinity(vcpu,
-					      vmm_cpumask_of(vcpu->hcpu));
-#endif
+		/* Initialize device emulation context */
+		vcpu->devemu_priv = NULL;
 
 		/* Notify scheduler about new VCPU */
-		vcpu->sched_priv = NULL;
 		if (vmm_manager_vcpu_state_change(vcpu, 
 						VMM_VCPU_STATE_RESET)) {
 			vmm_vcpu_irq_deinit(vcpu);
@@ -670,21 +694,16 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			continue;
 		}
 
-		/* Set wait queue context to NULL */
-		INIT_LIST_HEAD(&vcpu->wq_head);
-		vcpu->wq_priv = NULL;
-
-		/* Set device emulation context to NULL */
-		vcpu->devemu_priv = NULL;
-
+		/* Correct affinity */
 		vmm_manager_vcpu_set_affinity(vcpu, cpu_online_mask);
 
 		/* Add VCPU to Guest child list */
 		list_add_tail(&vcpu->head, &guest->vcpu_list);
 
+		/* Mark this VCPU instance as not available */
 		mngr.vcpu_avail_array[vcpu->id] = FALSE;
 
-		/* Increment vcpu count */
+		/* Increment VCPU count */
 		mngr.vcpu_count++;
 		guest->vcpu_count++;
 	}
@@ -710,12 +729,12 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	mngr.guest_count++;
 
 	/* Release lock */
-	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 
 	return guest;
 
 guest_create_error:
-	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 	vmm_manager_guest_destroy(guest);
 
 	return NULL;
@@ -737,7 +756,7 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 	vmm_manager_guest_reset(guest);
 
 	/* Acquire lock */
-	vmm_spin_lock_irqsave(&mngr.lock, flags);
+	vmm_spin_lock_irqsave_lite(&mngr.lock, flags);
 
 	/* Decrement guest count */
 	mngr.guest_count--;
@@ -768,22 +787,26 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 					VMM_VCPU_STATE_UNKNOWN))) {
 			goto release_lock;
 		}
-		vcpu->sched_priv = NULL;
 
-		/* Deinit VCPU */
-		if ((rc = arch_vcpu_deinit(vcpu))) {
-			goto release_lock;
-		}
+		/* Deinit Virtual IRQ context */
 		if ((rc = vmm_vcpu_irq_deinit(vcpu))) {
 			goto release_lock;
 		}
+
+		/* Deinit architecture specific context */
+		if ((rc = arch_vcpu_deinit(vcpu))) {
+			goto release_lock;
+		}
+
+		/* Cleanup scheduling context */
+		vcpu->sched_priv = NULL;
 
 		/* Free stack pages */
 		if (vcpu->stack_va) {
 			vmm_free((void *)vcpu->stack_va);
 		}
 
-		/* Mark VCPU as available */
+		/* Mark this VCPU as available */
 		mngr.vcpu_avail_array[vcpu->id] = TRUE;
 	}
 
@@ -795,7 +818,7 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 
 release_lock:
 	/* Release lock */
-	vmm_spin_unlock_irqrestore(&mngr.lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 
 	return rc;
 }
@@ -827,12 +850,13 @@ int __init vmm_manager_init(void)
 	/* Initialze memory for vcpu instances */
 	for (vnum = 0; vnum < CONFIG_MAX_VCPU_COUNT; vnum++) {
 		INIT_LIST_HEAD(&mngr.vcpu_array[vnum].head);
-		INIT_SPIN_LOCK(&mngr.vcpu_array[vnum].lock);
 		mngr.vcpu_array[vnum].id = vnum;
 		mngr.vcpu_array[vnum].name[0] = 0;
 		mngr.vcpu_array[vnum].node = NULL;
 		mngr.vcpu_array[vnum].is_normal = FALSE;
+		INIT_SPIN_LOCK(&mngr.vcpu_array[vnum].loadbal_lock);
 		mngr.vcpu_array[vnum].state = VMM_VCPU_STATE_UNKNOWN;
+		INIT_SPIN_LOCK(&mngr.vcpu_array[vnum].sched_lock);
 		mngr.vcpu_avail_array[vnum] = TRUE;
 	}
 

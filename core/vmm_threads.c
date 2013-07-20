@@ -131,18 +131,20 @@ int vmm_threads_get_name(char *dst, struct vmm_thread *tinfo)
 int vmm_threads_get_state(struct vmm_thread *tinfo)
 {
 	int rc = -1;
+	u32 state;
 
 	if (!tinfo) {
 		rc =  -1;
 	} else {
-		if (tinfo->tvcpu->state & VMM_VCPU_STATE_RESET) { 
+		state = vmm_manager_vcpu_state(tinfo->tvcpu);
+		if (state & VMM_VCPU_STATE_RESET) { 
 			rc = VMM_THREAD_STATE_CREATED;
-		} else if (tinfo->tvcpu->state & 
+		} else if (state & 
 			  (VMM_VCPU_STATE_READY | VMM_VCPU_STATE_RUNNING)) {
 			rc = VMM_THREAD_STATE_RUNNING;
-		} else if (tinfo->tvcpu->state & VMM_VCPU_STATE_PAUSED) {
+		} else if (state & VMM_VCPU_STATE_PAUSED) {
 			rc = VMM_THREAD_STATE_SLEEPING;
-		} else if (tinfo->tvcpu->state & VMM_VCPU_STATE_HALTED) {
+		} else if (state & VMM_VCPU_STATE_HALTED) {
 			rc = VMM_THREAD_STATE_STOPPED;
 		} else {
 			rc = -1;

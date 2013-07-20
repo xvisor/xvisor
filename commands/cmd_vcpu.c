@@ -77,7 +77,7 @@ static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 		if (!(vcpu = vmm_manager_vcpu(id))) {
 			continue;
 		}
-		switch (vcpu->state) {
+		switch (vmm_manager_vcpu_state(vcpu)) {
 		case VMM_VCPU_STATE_UNKNOWN:
 			strcpy(state, "Unknown");
 			break;
