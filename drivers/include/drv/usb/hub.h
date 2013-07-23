@@ -31,7 +31,6 @@
 /** Representation of Hub instance */
 struct usb_hub_device {
 	struct dlist head;
-	u32 hubnum;
 	bool configured;
 	struct usb_device *dev;
 	struct usb_hub_descriptor desc;

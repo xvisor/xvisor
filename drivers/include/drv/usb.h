@@ -69,6 +69,15 @@ struct usb_driver;
 struct usb_hcd;
 struct urb;
 
+/* device request (setup) */
+struct usb_devrequest {
+	u8	requesttype;
+	u8	request;
+	u16	value;
+	u16	index;
+	u16	length;
+} __attribute__ ((packed));
+
 /* Interface */
 struct usb_interface {
 	struct usb_interface_descriptor desc;
@@ -540,11 +549,6 @@ struct urb {
 	void *transfer_buffer;
 	u32 transfer_buffer_length;
 	u32 actual_length;
-	u8 requesttype;
-	u8 request;
-	u16 value;
-	u16 index;
-	u16 length;
 	int start_frame;
 	int number_of_packets;
 	int interval;
@@ -830,38 +834,34 @@ int usb_unlink_urb(struct urb *urb, int status);
 int usb_control_msg(struct usb_device *dev, u32 pipe,
 		    u8 request, u8 requesttype, u16 value, u16 index,
 		    void *data, u16 size, int timeout);
-int usb_interrupt_msg(struct usb_device *usb_dev, u32 pipe,
-		      void *data, int len, int *actual_length, int timeout);
-int usb_bulk_msg(struct usb_device *usb_dev, u32 pipe,
+int usb_interrupt_msg(struct usb_device *dev, u32 pipe,
+		      void *data, int len, int interval);
+int usb_bulk_msg(struct usb_device *dev, u32 pipe,
 		 void *data, int len, int *actual_length,int timeout);
 
-int usb_maxpacket(struct usb_device *dev, u32 pipe);
-
 /* wrappers around usb_control_msg() for the most common standard requests */
+int usb_maxpacket(struct usb_device *dev, u32 pipe);
 int usb_get_descriptor(struct usb_device *dev, u8 desctype, 
 		       u8 descindex, void *buf, int size);
-int usb_get_status(struct usb_device *dev, int type, int target, void *data);
 int usb_string(struct usb_device *dev, int index, char *buf, size_t size);
 
 /* wrappers that also update important state inside usbcore */
 int usb_set_protocol(struct usb_device *dev, int ifnum, int protocol);
 int usb_set_idle(struct usb_device *dev, int ifnum, 
 		 int duration, int report_id);
-int usb_disable_asynch(int disable);
+int usb_set_interface(struct usb_device *dev, int ifnum, int alternate);
 int usb_get_configuration_no(struct usb_device *dev, u8 *buffer, int cfgno);
 int usb_get_report(struct usb_device *dev, int ifnum, 
 		   u8 type, u8 id, void *buf, u32 size);
 int usb_get_class_descriptor(struct usb_device *dev, int ifnum,
 			     u8 type, u8 id, void *buf, u32 size);
 int usb_clear_halt(struct usb_device *dev, u32 pipe);
-int usb_reset_configuration(struct usb_device *dev);
-int usb_set_interface(struct usb_device *dev, int ifnum, int alternate);
-void usb_reset_endpoint(struct usb_device *dev, u32 epaddr);
 
-/* this request isn't really synchronous, but it belongs with the others */
-int usb_driver_set_configuration(struct usb_device *dev, int config);
+/*-------------------------------------------------------------------*
+ *                       NOTIFIER CLIENT SUPPORT                     *
+ *-------------------------------------------------------------------*/
 
-#if 0
+#if 0 /* FIXME: */
 /* Events from the usb core */
 #define USB_DEVICE_ADD		0x0001
 #define USB_DEVICE_REMOVE	0x0002
