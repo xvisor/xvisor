@@ -282,7 +282,7 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 			return VMM_ENOMEM;
 		}
 		vcpu->irqs.reason = vmm_zalloc(sizeof(u32) * irq_count);
-		if (!vcpu->irqs.assert) {
+		if (!vcpu->irqs.reason) {
 			vmm_free(vcpu->irqs.assert);
 			return VMM_ENOMEM;
 		}
