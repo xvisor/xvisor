@@ -38,7 +38,7 @@ extern unsigned char _code_end;
  * Expand a compressed symbol data into the resulting uncompressed string,
  * given the offset to where the symbol is in the compressed stream.
  */
-static __notrace unsigned int kallsyms_expand_symbol(unsigned int off,
+__notrace unsigned int kallsyms_expand_symbol(unsigned int off,
 						     char *result)
 {
 	int len, skipped_first = 0;
@@ -134,7 +134,7 @@ __notrace unsigned long kallsyms_get_symbol_pos(unsigned long addr, unsigned lon
  * Find the offset on the compressed stream given and index in the
  * kallsyms array.
  */
-static __notrace unsigned int kallsyms_get_symbol_offset(unsigned long pos)
+__notrace unsigned int kallsyms_get_symbol_offset(unsigned long pos)
 {
 	const unsigned char *name;
 	int i;
