@@ -74,7 +74,7 @@ struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id)
 static void vmm_manager_ipi_state_change(void *vcpu, 
 					 void *new_state, void *dummy)
 {
-	vmm_scheduler_state_change(vcpu, (u32)new_state);
+	vmm_scheduler_state_change(vcpu, (u32)(virtual_addr_t)new_state);
 }
 
 static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, u32 new_state)
@@ -94,7 +94,7 @@ static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 
 	vmm_smp_ipi_async_call(vmm_cpumask_of(hcpu),
 			       vmm_manager_ipi_state_change,
-			       vcpu, (void *)new_state, NULL);
+			       vcpu, (void *)(virtual_addr_t)new_state, NULL);
 
 	return VMM_OK;
 }
