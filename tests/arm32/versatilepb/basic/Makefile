@@ -35,8 +35,8 @@ common_dir=$(top_dir)/tests/arm32/common/basic
 board_arch       = v5
 board_text_start = 0x00010000
 board_objs       = $(obj_dir)/arm_board.o \
-                   $(obj_dir)/arm_timer.o \
                    $(obj_dir)/pic/pl190.o \
+                   $(obj_dir)/timer/sp804.o \
                    $(obj_dir)/serial/pl01x.o
 
 # Include common makefile for basic test

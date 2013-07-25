@@ -46,7 +46,7 @@ void arm_init(void)
 
 	arm_stdio_init();
 
-	arm_timer_init(10000, 1);
+	arm_timer_init(10000);
 
 	memory_size = arm_board_ram_size();
 
