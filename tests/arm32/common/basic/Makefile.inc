@@ -25,33 +25,33 @@
 -include $(build_dir)/.config
 
 ifdef CROSS_COMPILE
-ARM_CROSS_COMPILE=$(CROSS_COMPILE)
+FW_CROSS_COMPILE=$(CROSS_COMPILE)
 else
-ARM_CROSS_COMPILE=arm-none-eabi-
+FW_CROSS_COMPILE=arm-none-eabi-
 endif
-ARM_CPPFLAGS=-I. -I$(common_dir) -DTEXT_START=$(board_text_start)
-ARM_CFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm
-ARM_ASFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm -D__ASSEMBLY__
+FW_CPPFLAGS=-I. -I$(common_dir) -DTEXT_START=$(board_text_start)
+FW_CFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm
+FW_ASFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm -D__ASSEMBLY__
 ifeq ($(board_arch),v5)
-ARM_CPPFLAGS+=-DARM_ARCH_v5
-ARM_CFLAGS+=-march=armv5te $(ARM_CPPFLAGS)
-ARM_ASFLAGS+=-march=armv5te $(ARM_CPPFLAGS)
+FW_CPPFLAGS+=-DARM_ARCH_v5
+FW_CFLAGS+=-march=armv5te $(FW_CPPFLAGS)
+FW_ASFLAGS+=-march=armv5te $(FW_CPPFLAGS)
 endif
 ifeq ($(board_arch),v6)
-ARM_CPPFLAGS+=-DARM_ARCH_v6
-ARM_CFLAGS+=-march=armv6 $(ARM_CPPFLAGS)
-ARM_ASFLAGS+=-march=armv6 $(ARM_CPPFLAGS)
+FW_CPPFLAGS+=-DARM_ARCH_v6
+FW_CFLAGS+=-march=armv6 $(FW_CPPFLAGS)
+FW_ASFLAGS+=-march=armv6 $(FW_CPPFLAGS)
 endif
 ifeq ($(board_arch),v7)
-ARM_CPPFLAGS+=-DARM_ARCH_v7
-ARM_CFLAGS+=-march=armv7-a $(ARM_CPPFLAGS)
-ARM_ASFLAGS+=-march=armv7-a $(ARM_CPPFLAGS)
+FW_CPPFLAGS+=-DARM_ARCH_v7
+FW_CFLAGS+=-march=armv7-a $(FW_CPPFLAGS)
+FW_ASFLAGS+=-march=armv7-a $(FW_CPPFLAGS)
 endif
-ARM_LDFLAGS=$(ARM_CFLAGS)
-ARM_AS=$(ARM_CROSS_COMPILE)gcc
-ARM_CC=$(ARM_CROSS_COMPILE)gcc
-ARM_CPP=$(ARM_CROSS_COMPILE)cpp
-ARM_OBJCOPY=$(ARM_CROSS_COMPILE)objcopy
+FW_LDFLAGS=$(FW_CFLAGS)
+FW_AS=$(FW_CROSS_COMPILE)gcc
+FW_CC=$(FW_CROSS_COMPILE)gcc
+FW_CPP=$(FW_CROSS_COMPILE)cpp
+FW_OBJCOPY=$(FW_CROSS_COMPILE)objcopy
 
 ifeq ($(board_arch),v5)
 FIRMWARE_OBJS=$(obj_dir)/arm_entry_v5.o \
@@ -105,7 +105,7 @@ FIRMWARE_ASFLAGS=$(FIRMWARE_CPPFLAGS)
 FIRMWARE_LINK_SCRIPT=$(obj_dir)/firmware.lnk
 FIRMWARE_LDFLAGS=-Wl,-T$(FIRMWARE_LINK_SCRIPT) $(FIRMWARE_CPPFLAGS)
 
-ARM_COMMON_DEPS=$(common_dir)/arm_asm_macro.h \
+FIRMWARE_COMMON_DEPS=$(common_dir)/arm_asm_macro.h \
                 $(common_dir)/arm_math.h \
                 $(common_dir)/arm_defines.h \
                 $(common_dir)/arm_types.h \
@@ -119,7 +119,7 @@ ARM_COMMON_DEPS=$(common_dir)/arm_asm_macro.h \
                 $(common_dir)/arm_string.h
 
 ifeq ($(board_fdt_support),y)
-ARM_COMMON_DEPS+=$(common_dir)/libfdt/fdt.h \
+FIRMWARE_COMMON_DEPS+=$(common_dir)/libfdt/fdt.h \
                 $(common_dir)/libfdt/fdt_support.h \
                 $(common_dir)/libfdt/libfdt.h \
                 $(common_dir)/libfdt/libfdt_env.h \
@@ -129,7 +129,7 @@ endif
 CPATCH32=$(build_dir)/tools/cpatch/cpatch32
 ELF2CPATCH=$(top_dir)/arch/arm/cpu/arm32/elf2cpatch.py
 
-cmd_patch_elf = CROSS_COMPILE=$(ARM_CROSS_COMPILE) \
+cmd_patch_elf = CROSS_COMPILE=$(FW_CROSS_COMPILE) \
 		$(ELF2CPATCH) -f $@ | $(CPATCH32) $@ 0
 
 FIRMWARE_TARGETS = $(obj_dir)/firmware.bin
@@ -143,7 +143,7 @@ all: $(FIRMWARE_TARGETS)
 $(obj_dir)/firmware.bin.patched: $(obj_dir)/firmware.elf.patched
 	@mkdir -p `dirname $@`
 	@echo " (OBJCOPY)   $(subst $(obj_dir)/,,$@)"
-	@$(ARM_OBJCOPY) -O binary $< $@
+	@$(FW_OBJCOPY) -O binary $< $@
 
 $(obj_dir)/firmware.elf.patched: $(obj_dir)/firmware.elf
 	@mkdir -p `dirname $@`
@@ -154,37 +154,37 @@ $(obj_dir)/firmware.elf.patched: $(obj_dir)/firmware.elf
 $(obj_dir)/firmware.bin: $(obj_dir)/firmware.elf
 	@mkdir -p `dirname $@`
 	@echo " (OBJCOPY)   $(subst $(obj_dir)/,,$@)"
-	@$(ARM_OBJCOPY) -O binary $< $@
+	@$(FW_OBJCOPY) -O binary $< $@
 
 $(obj_dir)/firmware.elf: $(FIRMWARE_OBJS) $(FIRMWARE_LINK_SCRIPT)
 	@mkdir -p `dirname $@`
 	@echo " (LD)        $(subst $(obj_dir)/,,$@)"
-	@$(ARM_CC) $(FIRMWARE_OBJS) $(ARM_LDFLAGS) $(FIRMWARE_LDFLAGS) -o $@
+	@$(FW_CC) $(FIRMWARE_OBJS) $(FW_LDFLAGS) $(FIRMWARE_LDFLAGS) -o $@
 
 $(obj_dir)/%.lnk: $(common_dir)/%.ld
 	@mkdir -p `dirname $@`
 	@echo " (CPP)       $(subst $(obj_dir)/,,$@)"
-	@$(ARM_CPP) $(ARM_CPPFLAGS) $(FIRMWARE_CPPFLAGS) $< | grep -v "\#" > $@
+	@$(FW_CPP) $(FW_CPPFLAGS) $(FIRMWARE_CPPFLAGS) $< | grep -v "\#" > $@
 
-$(obj_dir)/%.o: %.c $(ARM_COMMON_DEPS)
+$(obj_dir)/%.o: %.c $(FIRMWARE_COMMON_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (CC)        $(subst $(obj_dir)/,,$@)"
-	@$(ARM_CC) $(ARM_CFLAGS) $(FIRMWARE_CFLAGS) -c $< -o $@
+	@$(FW_CC) $(FW_CFLAGS) $(FIRMWARE_CFLAGS) -c $< -o $@
 
-$(obj_dir)/%.o: $(common_dir)/%.c $(ARM_COMMON_DEPS)
+$(obj_dir)/%.o: $(common_dir)/%.c $(FIRMWARE_COMMON_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (CC)        $(subst $(obj_dir)/,,$@)"
-	@$(ARM_CC) $(ARM_CFLAGS) $(FIRMWARE_CFLAGS) -c $< -o $@
+	@$(FW_CC) $(FW_CFLAGS) $(FIRMWARE_CFLAGS) -c $< -o $@
 
-$(obj_dir)/%.o: %.S $(ARM_COMMON_DEPS)
+$(obj_dir)/%.o: %.S $(FIRMWARE_COMMON_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (AS)        $(subst $(obj_dir)/,,$@)"
-	@$(ARM_AS) $(ARM_ASFLAGS) $(FIRMWARE_ASFLAGS) -c $< -o $@
+	@$(FW_AS) $(FW_ASFLAGS) $(FIRMWARE_ASFLAGS) -c $< -o $@
 
-$(obj_dir)/%.o: $(common_dir)/%.S $(ARM_COMMON_DEPS)
+$(obj_dir)/%.o: $(common_dir)/%.S $(FIRMWARE_COMMON_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (AS)        $(subst $(obj_dir)/,,$@)"
-	@$(ARM_AS) $(ARM_ASFLAGS) $(FIRMWARE_ASFLAGS) -c $< -o $@
+	@$(FW_AS) $(FW_ASFLAGS) $(FIRMWARE_ASFLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:
