@@ -17,14 +17,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file test qemu atomthreads
+# @file qemu_test.tcl
 # @author Sanjeev Pandita (san.pandita@gmail.com)
 # @brief Automation script to test the atomthreads
 # */
 
 set qemu_img [lrange $argv 0 0] 
 set xvisor_prompt "XVisor#"
-set arm_prompt "arm-test#"
+set arm_prompt "basic#"
 set atomthreads_test_case_list "kern1 kern2 kern3 kern4 mutex1 mutex2 mutex3 mutex4 mutex5 mutex6 mutex7 mutex8 mutex9 queue1 queue2 queue3 queue4 queue5 queue6 queue7 queue8 queue9 queue10 sem1 sem2 sem3 sem4 sem5 sem6 sem7 sem8 sem9 timer1 timer2 timer3 timer4 timer5 timer6 timer7"
 
 # start the test 
@@ -44,7 +44,7 @@ if { [string first "guest0: Kicked" $guest_kick_out] > -1 } {
 send -- "vserial bind guest0/uart0\r"
 expect $arm_prompt
 set vserial_bind_out $expect_out(buffer)
-if { [string first "ARM Realview PB-A8 Basic Test" $vserial_bind_out] > -1 } {
+if { [string first "ARM Realview PB-A8 Basic Firmware" $vserial_bind_out] > -1 } {
         puts "\n :: VSERIAL BIND KICK TESTCASE PASS :: \n\n"
 } else {
         puts "\n :: VSERIAL BIND TESTCASE FAIL :: \n\n"

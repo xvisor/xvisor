@@ -18,7 +18,7 @@
  *
  * @file arm_irq.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief source code for handling ARM test code interrupts
+ * @brief source code for handling interrupts
  */
 
 #include <arm_board.h>

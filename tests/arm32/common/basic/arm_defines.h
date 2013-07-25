@@ -18,7 +18,7 @@
  *
  * @file arm_defines.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief  register related macros & defines for ARM test code
+ * @brief  register related defines
  */
 #ifndef __ARM_DEFINES_H__
 #define __ARM_DEFINES_H__

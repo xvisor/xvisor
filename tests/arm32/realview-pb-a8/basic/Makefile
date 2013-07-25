@@ -18,7 +18,7 @@
 #
 # @file Makefile
 # @author Anup Patel (anup@brainfault.org)
-# @brief toplevel makefile to build ARM test code
+# @brief toplevel makefile to build firmware
 # */
 
 # Determine the build directory
@@ -39,6 +39,6 @@ board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/timer/sp804.o \
                    $(obj_dir)/serial/pl01x.o
 
-# Include common makefile for basic test
+# Include common makefile for basic firmware
 include $(common_dir)/Makefile.inc
 

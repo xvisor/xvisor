@@ -19,7 +19,7 @@
  * @file arm_entry_v6.S
  * @author Anup Patel (anup@brainfault.org)
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief Entry point code for ARM test code
+ * @brief Entry point code for basic firmware
  */
 
 #include <arm_asm_macro.h>
@@ -27,7 +27,8 @@
 #include <arm_plat.h>
 
 	/* 
-	 * ARM Basic test could be loaded any where in memory by boot loaders.
+	 * Basic firmware could be loaded any where in memory by 
+	 * boot loaders.
 	 * The _start function ensures that it exectues from intended
 	 * base address provided at compile time.
 	 */

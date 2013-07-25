@@ -18,7 +18,7 @@
 #
 # @file Makefile
 # @author Sukanto Ghosh (sukantoghosh@gmail.com)
-# @brief toplevel makefile to build ARM test code
+# @brief toplevel makefile to build firmware
 # */
 
 # Determine the build directory
@@ -42,6 +42,6 @@ board_fdt_support = y
 board_secure_extn = y
 board_smp	  = y
 
-# Include common makefile for basic test
+# Include common makefile for basic firmware
 include $(common_dir)/Makefile.inc
 

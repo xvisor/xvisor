@@ -24,7 +24,7 @@ Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   [4. Build Xvisor]
   # make
 
-  [5. Build Basic Test Code]
+  [5. Build Basic Firmware]
   # make -C tests/arm32/realview-pb-a8/basic
 
   [6. GoTo Atomthreads source directory]
@@ -41,23 +41,23 @@ Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   [9. Rebuild Atomthreads to reflect changed object files]
   # make
 
-  [10. Create qemu.img (from vmm.bin, arm_test.bin.patched and all atomthreads testcases) for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x70010000 -o build/qemu.img <xvisor_source_directory>/build/vmm.bin@0x70010000 <xvisor_source_directory>/build/tests/arm32/realview-pb-a8/basic/arm_test.bin.patched@0x71000000 build/kern1.bin@0x71100000 build/kern2.bin@0x71120000 build/kern3.bin@0x71140000 build/kern4.bin@0x71160000 build/mutex1.bin@0x71180000 build/mutex2.bin@0x711A0000 build/mutex3.bin@0x711C0000 build/mutex4.bin@0x711E0000 build/mutex5.bin@0x71200000 build/mutex6.bin@0x71220000 build/mutex7.bin@0x71240000 build/mutex8.bin@0x71260000 build/mutex9.bin@0x71280000 build/queue1.bin@0x712A0000 build/queue2.bin@0x712C0000 build/queue3.bin@0x712E0000 build/queue4.bin@0x71300000 build/queue5.bin@0x71320000 build/queue6.bin@0x71340000 build/queue7.bin@0x71360000 build/queue8.bin@0x71380000 build/queue9.bin@0x713A0000 build/queue10.bin@0x713C0000 build/sem1.bin@0x713E0000 build/sem2.bin@0x71400000 build/sem3.bin@0x71420000 build/sem4.bin@0x71440000 build/sem5.bin@0x71460000 build/sem6.bin@0x71480000 build/sem7.bin@0x714A0000 build/sem8.bin@0x714C0000 build/sem9.bin@0x714E0000 build/timer1.bin@0x71500000 build/timer2.bin@0x71520000 build/timer3.bin@0x71540000 build/timer4.bin@0x71560000 build/timer5.bin@0x71580000 build/timer6.bin@0x715A0000 build/timer7.bin@0x715C0000
+  [10. Create qemu.img (from vmm.bin, firmware.bin.patched and all atomthreads testcases) for running it on QEMU]
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x70010000 -o build/qemu.img <xvisor_source_directory>/build/vmm.bin@0x70010000 <xvisor_source_directory>/build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched@0x71000000 build/kern1.bin@0x71100000 build/kern2.bin@0x71120000 build/kern3.bin@0x71140000 build/kern4.bin@0x71160000 build/mutex1.bin@0x71180000 build/mutex2.bin@0x711A0000 build/mutex3.bin@0x711C0000 build/mutex4.bin@0x711E0000 build/mutex5.bin@0x71200000 build/mutex6.bin@0x71220000 build/mutex7.bin@0x71240000 build/mutex8.bin@0x71260000 build/mutex9.bin@0x71280000 build/queue1.bin@0x712A0000 build/queue2.bin@0x712C0000 build/queue3.bin@0x712E0000 build/queue4.bin@0x71300000 build/queue5.bin@0x71320000 build/queue6.bin@0x71340000 build/queue7.bin@0x71360000 build/queue8.bin@0x71380000 build/queue9.bin@0x713A0000 build/queue10.bin@0x713C0000 build/sem1.bin@0x713E0000 build/sem2.bin@0x71400000 build/sem3.bin@0x71420000 build/sem4.bin@0x71440000 build/sem5.bin@0x71460000 build/sem6.bin@0x71480000 build/sem7.bin@0x714A0000 build/sem8.bin@0x714C0000 build/sem9.bin@0x714E0000 build/timer1.bin@0x71500000 build/timer2.bin@0x71520000 build/timer3.bin@0x71540000 build/timer4.bin@0x71560000 build/timer5.bin@0x71580000 build/timer6.bin@0x715A0000 build/timer7.bin@0x715C0000
 
   [11. Launch QEMU]
   # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel build/qemu.img
 
-  [12. Kick Guest for starting Basic Test]
+  [12. Kick Guest for starting Basic Firmware]
   XVisor# guest kick 0
 
   [13. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
   [14. Copy kern1.bin atomthreads test from NOR flash to DDR]
-  [guest0/uart0] arm-test# copy 0x100000 0x40100000 0x20000
+  [guest0/uart0] basic# copy 0x100000 0x40100000 0x20000
 
   [15. Start atomthreads]
-  [guest0/uart0] arm-test# go 0x100000
+  [guest0/uart0] basic# go 0x100000
 
   [16. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] 

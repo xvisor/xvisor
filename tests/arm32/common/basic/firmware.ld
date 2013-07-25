@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_test.ld
+ * @file firmware.ld
  * @author Anup Patel (anup@brainfault.org)
- * @brief Linker script for ARM test code
+ * @brief Linker script for Basic Firmware
  */
 
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")

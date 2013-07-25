@@ -31,7 +31,7 @@ RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   [5. Build Xvisor]
   # make
 
-  [6. Build Basic Test Code]
+  [6. Build Basic Firmware]
   # make -C tests/arm32/vexpress-a9/basic
 
   [7. Copy defconfig to Linux build directory]
@@ -66,26 +66,26 @@ RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   # cd <linux_build_directory>
 
   [17. Create xvisor_linux_qemu.img for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x60010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x60010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a9/basic/arm_test.bin.patched@0x61000000 <xvisor_source_directory>/tests/arm32/vexpress-a9/linux/cmdlist@0x610FF000 ./arch/arm/boot/zImage@0x61100000 <busybox_rootfs_directory>/rootfs.img@0x61400000
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x60010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x60010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a9/basic/firmware.bin.patched@0x61000000 <xvisor_source_directory>/tests/arm32/vexpress-a9/linux/cmdlist@0x610FF000 ./arch/arm/boot/zImage@0x61100000 <busybox_rootfs_directory>/rootfs.img@0x61400000
 
   [18. Launch QEMU 0.15.xx or higher]
   # qemu-system-arm -M vexpress-a9 -display none -serial stdio -kernel ./xvisor_linux_qemu.img
 
-  [19. Kick Guest0 for starting Basic Test]
+  [19. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick 0
 
   [20. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
   [21. Copy linux from NOR flash to RAM and start linux booting from RAM]
-  [guest0/uart0] arm-test# copy 0x60400000 0x40100000 0x300000
+  [guest0/uart0] basic# copy 0x60400000 0x40100000 0x300000
   (Note: This command will copy zImage to RAM)
-  [guest0/uart0] arm-test# copy 0x61000000 0x40400000 0x600000
+  [guest0/uart0] basic# copy 0x61000000 0x40400000 0x600000
   (Note: This command will copy rootfs.img to RAM)
-  [guest0/uart0] arm-test# start_linux 0x60400000 0x61000000 0x600000
+  [guest0/uart0] basic# start_linux 0x60400000 0x61000000 0x600000
   (Note: This command will start linux booting)
   OR
-  [guest0/uart0] arm-test# autoexec
+  [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command)
 
   [22. Wait for Linux prompt to come-up and then try out some commands]

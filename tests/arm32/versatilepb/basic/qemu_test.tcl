@@ -19,12 +19,12 @@
 #
 # @file qemu_test.tcl
 # @author Sanjeev Pandita (san.pandita@gmail.com)
-# @brief Automation script to test the Xvisor commands and Basic Test
+# @brief Automation script to test the Xvisor commands and Basic Firmware
 # */
 
 set qemu_img [lrange $argv 0 0] 
 set xvisor_prompt "XVisor#"
-set arm_prompt "arm-test#"
+set arm_prompt "basic#"
 
 # start the test 
 spawn qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel $qemu_img
@@ -199,7 +199,7 @@ expect $arm_prompt
 
 set vserial_bind_out $expect_out(buffer)
 #puts $vserial_bind_out
-if { [string first "ARM Versatile PB Basic Test" $vserial_bind_out] > -1 } {
+if { [string first "ARM VersatilePB Basic Firmware" $vserial_bind_out] > -1 } {
         puts "The vserial bind Command passed \n :: VSERIAL BIND KICK TESTCASE PASS :: \n\n"
 } else {
         puts "The vserial bind Command Failed \n :: VSERIAL BIND TESTCASE FAIL :: \n\n"

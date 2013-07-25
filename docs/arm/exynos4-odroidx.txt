@@ -29,7 +29,7 @@ from the same shell, otherwise you have to set toolchain prefix again (step 1):
   [4. Build Xvisor]
   # make
 
-  [5. Build Basic Test Code]
+  [5. Build Basic Firmware]
   # make -C tests/arm32/realview-pb-a8/basic
 
   [6. Copy defconfig to Linux build directory]
@@ -75,7 +75,7 @@ from the same shell, otherwise you have to set toolchain prefix again (step 1):
   # cp uImage /media/usb
   # cp <linux_build_directory>/arch/arm/boot/zImage /media/usb
   # cp tests/arm32/realview-pb-a8/linux/cmdlist /media/usb
-  # cp tests/arm32/realview-pb-a8/basic/arm_test.bin.patched /media/usb
+  # cp tests/arm32/realview-pb-a8/basic/firmware.bin.patched /media/usb
   # cp <busybox_rootfs_directory>/rootfs.img /media/usb
 
   [20. Unmount the partiton from your development machine]
@@ -87,7 +87,7 @@ from the same shell, otherwise you have to set toolchain prefix again (step 1):
 
   [23. Copy Xvisor from SD card to SDRAM]
   ODROIDX# fatload mmc 0:2 0x50000000 uImage
-  ODROIDX# fatload mmc 0:2 0x41000000 arm_test.bin.patched
+  ODROIDX# fatload mmc 0:2 0x41000000 firmware.bin.patched
   ODROIDX# fatload mmc 0:2 0x410FF000 cmdlist
   ODROIDX# fatload mmc 0:2 0x41100000 zImage
   ODROIDX# fatload mmc 0:2 0x41400000 rootfs.img
@@ -97,14 +97,15 @@ from the same shell, otherwise you have to set toolchain prefix again (step 1):
   ODROIDX# loados
   ODROIDX# bootm go 0x50000000
 
-  [25. Kick Guest for starting Basic Test]
+  [25. Kick Guest for starting Basic Firmware]
   XVisor# guest kick 0
 
   [26. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
   [27. Start Linux]
-  [guest0/uart0] arm-test# autoexec
+  [guest0/uart0] basic# autoexec
 
   [28. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
-  [guest0/uart0] arm-test# 
+  [guest0/uart0] basic# 
+

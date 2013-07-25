@@ -18,7 +18,7 @@
  *
  * @file arm_asm_macros.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief  common assembly macros for ARM test code
+ * @brief  common assembly macros
  */
 #ifndef __ARM_ASM_MACRO_H__
 #define __ARM_ASM_MACRO_H__
