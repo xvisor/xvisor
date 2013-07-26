@@ -25,8 +25,6 @@
 #ifndef __VMM_TYPES_H__
 #define __VMM_TYPES_H__
 
-#include <arch_types.h>
-
 typedef char s8;
 typedef short s16;
 typedef int s32;
@@ -45,8 +43,10 @@ typedef signed long long loff_t;
 /** Boolean macros */
 #define TRUE			1
 #define FALSE			0
-#define true			1
-#define false			0
+#define true			TRUE
+#define false			FALSE	
 #define NULL 			((void *)0)
+
+#include <arch_types.h>
 
 #endif /* __VMM_TYPES_H__ */
