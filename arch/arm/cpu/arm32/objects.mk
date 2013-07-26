@@ -49,6 +49,7 @@ cpu-ldflags += -msoft-float
 cpu-objs-y += cpu_entry.o
 cpu-objs-y += cpu_mmu.o
 cpu-objs-y += cpu_atomic.o
+cpu-objs-y += cpu_atomic64.o
 
 cpu-objs-$(CONFIG_CPU_ARM926T)+= cpu_proc_arm926.o
 cpu-objs-$(CONFIG_ARMV6)+= cpu_proc_v6.o

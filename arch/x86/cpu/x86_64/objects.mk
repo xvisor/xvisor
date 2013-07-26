@@ -32,6 +32,7 @@ cpu-objs-y+= start.o
 #list so that we know what is to be done.
 #
 cpu-objs-y+= cpu_atomic.o
+cpu-objs-y+= cpu_atomic64.o
 #ifdef CONFIG_SMP
 #cpu-objs-y+= cpu_locks.o
 #endif

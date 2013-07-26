@@ -35,6 +35,10 @@ typedef struct {
 } atomic_t;
 
 typedef struct {
+	volatile u64 counter;
+} atomic64_t;
+
+typedef struct {
 	volatile long lock;
 } arch_spinlock_t;
 
