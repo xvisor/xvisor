@@ -26,24 +26,18 @@
 #include <vmm_error.h>
 #include <vmm_timer.h>
 #include <vmm_stdio.h>
-#include <vmm_spinlocks.h>
+#include <vmm_smp.h>
 #include <arch_cpu.h>
+#include <arch_atomic.h>
+#include <arch_atomic64.h>
 #include <libs/stringlib.h>
 #include <libs/kallsyms.h>
 
 typedef void (*vmm_profile_callback_t) (void *, void *);
 
-struct vmm_profiler_stat {
-	u64 counter;
-	u64 time;
-	u64 time_in;
-	bool is_tracing;
-};
-
 struct vmm_profiler_ctrl {
 	bool is_active;
-	bool is_in_trace;
-	vmm_spinlock_t lock;
+	bool is_in_trace[CONFIG_CPU_COUNT];
 	struct vmm_profiler_stat *stat;
 };
 
@@ -69,100 +63,127 @@ void __notrace __cyg_profile_func_exit(void *ip, void *parent_ip)
 
 static void __notrace vmm_profile_enter(void *ip, void *parent_ip)
 {
-	int index;
-	irq_flags_t flags;
+	int index, parent_index, i;
+	struct vmm_profiler_counter *ptr;
+	int cpu_id = vmm_smp_processor_id();
 
-	if (pctrl.is_in_trace)
+	if (pctrl.is_in_trace[cpu_id])
 		return;
 
-	pctrl.is_in_trace = 1;
+	pctrl.is_in_trace[cpu_id] = TRUE;
 
 	index = kallsyms_get_symbol_pos((long unsigned int)ip, NULL, NULL);
+	parent_index =
+	    kallsyms_get_symbol_pos((long unsigned int)parent_ip, NULL, NULL);
 
-	if (pctrl.stat[index].is_tracing == 1) {
-		goto out;
+ retry:
+	i = 0;
+
+	while (pctrl.stat[index].counter[i].parent_index
+	       && (i < (VMM_PROFILE_OTHER_INDEX))) {
+		if (pctrl.stat[index].counter[i].parent_index == parent_index) {
+			break;
+		}
+		i++;
 	}
 
-	if (pctrl.stat[index].time_in != 0) {
-		goto out;
+	if (i < VMM_PROFILE_OTHER_INDEX) {
+		if (pctrl.stat[index].counter[i].parent_index == 0) {
+			pctrl.stat[index].counter[i].parent_index =
+			    parent_index;
+			goto retry;
+		} else {
+			ptr = &pctrl.stat[index].counter[i];
+		}
+	} else {
+		ptr = &pctrl.stat[index].counter[VMM_PROFILE_OTHER_INDEX];
 	}
 
-	vmm_spin_lock_irqsave(&pctrl.lock, flags);
+	arch_atomic_add(&ptr->count, 1);
+	/*
+	 * we use time_per_call as a temporary variable, it will be
+	 * filled in later on with a meaningfull value.
+	 */
+	arch_atomic64_add(&ptr->time_per_call, vmm_timer_timestamp_for_profile());
 
-	pctrl.stat[index].counter++;
-	pctrl.stat[index].is_tracing = 1;
-	pctrl.stat[index].time_in = vmm_timer_timestamp_for_profile();
-
-	vmm_spin_unlock_irqrestore(&pctrl.lock, flags);
-
- out:
-	pctrl.is_in_trace = 0;
+	pctrl.is_in_trace[cpu_id] = FALSE;
 }
 
 static void __notrace vmm_profile_exit(void *ip, void *parent_ip)
 {
-	int index;
-	u64 time;
-	irq_flags_t flags;
+	int index, parent_index, i;
+	u64 time, previous;
+	struct vmm_profiler_counter *ptr;
+	int cpu_id = vmm_smp_processor_id();
 
-	if (pctrl.is_in_trace) {
+	if (pctrl.is_in_trace[cpu_id])
 		return;
-	}
 
-	pctrl.is_in_trace = 1;
+	pctrl.is_in_trace[cpu_id] = TRUE;
 
 	index = kallsyms_get_symbol_pos((long unsigned int)ip, NULL, NULL);
+	parent_index =
+	    kallsyms_get_symbol_pos((long unsigned int)parent_ip, NULL, NULL);
 
-	// If this function was no traced yet ...
-	// we just return as we can't get the start timer
-	if (pctrl.stat[index].is_tracing != 1) {
-		goto out;
+	i = 0;
+
+	while (pctrl.stat[index].counter[i].parent_index
+	       && (i < (VMM_PROFILE_OTHER_INDEX))) {
+		if (pctrl.stat[index].counter[i].parent_index == parent_index) {
+			break;
+		}
+		i++;
 	}
 
-	if (pctrl.stat[index].time_in == 0) {
-		goto out;
+	if (i < VMM_PROFILE_OTHER_INDEX) {
+		if (pctrl.stat[index].counter[i].parent_index == 0) {
+			goto out;
+		} else {
+			ptr = &pctrl.stat[index].counter[i];
+		}
+	} else {
+		ptr = &pctrl.stat[index].counter[VMM_PROFILE_OTHER_INDEX];
 	}
-
-	vmm_spin_lock_irqsave(&pctrl.lock, flags);
 
 	time = vmm_timer_timestamp_for_profile();
+	previous = arch_atomic64_read(&ptr->time_per_call);
 
-	if (pctrl.stat[index].time_in < time) {
-		pctrl.stat[index].time += time - pctrl.stat[index].time_in;
+	/*
+	 * we use time_per_call as a temporary variable, it will be
+	 * filled in later on with a meaningfull value.
+	 */
+	if (time >= previous) {
+		arch_atomic64_add(&ptr->total_time, time - previous);
+		arch_atomic64_sub(&ptr->time_per_call, previous);
 	} else {
-		//vmm_printf("negative time\n");
+		arch_atomic64_sub(&ptr->time_per_call, time);
 	}
-	vmm_spin_unlock_irqrestore(&pctrl.lock, flags);
 
  out:
-	pctrl.stat[index].time_in = 0;
-
-	// OK we don't trace this function anymore
-	pctrl.stat[index].is_tracing = 0;
-
-	pctrl.is_in_trace = 0;
+	pctrl.is_in_trace[cpu_id] = FALSE;
 }
 
-bool vmm_profiler_isactive(void)
+bool __notrace vmm_profiler_isactive(void)
 {
 	return pctrl.is_active;
 }
 
-int vmm_profiler_start(void)
+int __notrace vmm_profiler_start(void)
 {
 	if (!vmm_profiler_isactive()) {
-		irq_flags_t flags; 
+		int i;
 
-		arch_cpu_irq_save(flags);
+		for (i = 0; i < CONFIG_CPU_COUNT; i++) {
+			pctrl.is_in_trace[i] = FALSE;
+		}
 
 		memset(pctrl.stat, 0,
-			sizeof(struct vmm_profiler_stat) *
-			kallsyms_num_syms);
+		       sizeof(struct vmm_profiler_stat) * kallsyms_num_syms);
+
 		_vmm_profile_enter = vmm_profile_enter;
 		_vmm_profile_exit = vmm_profile_exit;
-		pctrl.is_active = 1;
 
-		arch_cpu_irq_restore(flags);
+		pctrl.is_active = TRUE;
 	} else {
 		return VMM_EFAIL;
 	}
@@ -170,18 +191,13 @@ int vmm_profiler_start(void)
 	return VMM_OK;
 }
 
-int vmm_profiler_stop(void)
+int __notrace vmm_profiler_stop(void)
 {
 	if (vmm_profiler_isactive()) {
-		irq_flags_t flags; 
-
-		arch_cpu_irq_save(flags);
+		pctrl.is_active = FALSE;
 
 		_vmm_profile_enter = vmm_profile_none;
 		_vmm_profile_exit = vmm_profile_none;
-		pctrl.is_active = 0;
-
-		arch_cpu_irq_restore(flags);
 	} else {
 		return VMM_EFAIL;
 	}
@@ -189,14 +205,9 @@ int vmm_profiler_stop(void)
 	return VMM_OK;
 }
 
-u64 vmm_profiler_get_function_count(unsigned long addr)
+struct vmm_profiler_stat *vmm_profiler_get_stat_array(void)
 {
-	return pctrl.stat[kallsyms_get_symbol_pos(addr, NULL, NULL)].counter;
-}
-
-u64 vmm_profiler_get_function_total_time(unsigned long addr)
-{
-	return pctrl.stat[kallsyms_get_symbol_pos(addr, NULL, NULL)].time;
+	return pctrl.stat;
 }
 
 int __init vmm_profiler_init(void)
@@ -207,8 +218,6 @@ int __init vmm_profiler_init(void)
 	if (pctrl.stat == NULL) {
 		return VMM_EFAIL;
 	}
-
-	INIT_SPIN_LOCK(&pctrl.lock);
 
 	return VMM_OK;
 }
