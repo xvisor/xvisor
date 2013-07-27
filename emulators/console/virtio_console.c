@@ -22,10 +22,12 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_macros.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
 #include <vmm_vserial.h>
+#include <libs/fifo.h>
 #include <libs/stringlib.h>
 
 #include <emu/virtio.h>
@@ -56,12 +58,13 @@ struct virtio_console_dev {
 
 	char name[VIRTIO_DEVICE_MAX_NAME_LEN];
 	struct vmm_vserial *vser;
+	struct fifo *emerg_rd;
 };
 
 static u32 virtio_console_get_host_features(struct virtio_device *dev)
 {
-	/* No host features so, ignore it. */
-	return 0;
+	/* We support emergency write. */
+	return 1UL << VIRTIO_CONSOLE_F_EMERG_WRITE;
 }
 
 static void virtio_console_set_guest_features(struct virtio_device *dev,
@@ -182,13 +185,12 @@ static int virtio_console_notify_vq(struct virtio_device *dev, u32 vq)
 
 static bool virtio_console_vserial_can_send(struct vmm_vserial *vser)
 {
-	struct virtio_console_dev *cdev = vser->priv;
-	struct virtio_queue *vq = &cdev->vqs[VIRTIO_CONSOLE_RX_QUEUE];
-
-	if (!virtio_queue_available(vq)) {
-		return FALSE;
-	}
-
+	/* We always return TRUE because we always queue
+	 * send data to emergency read fifo.
+	 *
+	 * If VirtIO Rx Queue is available then we also queue
+	 * the send data to VirtIO Rx Queue.
+	 */
 	return TRUE;
 }
 
@@ -201,17 +203,18 @@ static int virtio_console_vserial_send(struct vmm_vserial *vser, u8 data)
 	struct virtio_iovec *iov = cdev->rx_iov;
 	struct virtio_device *dev = cdev->vdev;
 
+	fifo_enqueue(cdev->emerg_rd, &data, TRUE);
+
 	if (virtio_queue_available(vq)) {
 		head = virtio_queue_get_iovec(vq, iov, &iov_cnt, &total_len);
-	}
+		if (iov_cnt) {
+			virtio_buf_to_iovec_write(dev, &iov[0], 1, &data, 1);
 
-	if (iov_cnt) {
-		virtio_buf_to_iovec_write(dev, &iov[0], 1, &data, 1);
+			virtio_queue_set_used_elem(vq, head, 1);
 
-		virtio_queue_set_used_elem(vq, head, 1);
-
-		if (virtio_queue_should_signal(vq)) {
-			dev->tra->notify(dev, VIRTIO_CONSOLE_RX_QUEUE);
+			if (virtio_queue_should_signal(vq)) {
+				dev->tra->notify(dev, VIRTIO_CONSOLE_RX_QUEUE);
+			}
 		}
 	}
 
@@ -222,11 +225,33 @@ static int virtio_console_read_config(struct virtio_device *dev,
 				      u32 offset, void *dst, u32 dst_len)
 {
 	struct virtio_console_dev *cdev = dev->emu_data;
-	u8 *src = (u8 *)&cdev->config;
-	u32 i, src_len = sizeof(cdev->config);
+	u8 data8, *src = (u8 *)&cdev->config;
+	u32 i, data, src_len = sizeof(cdev->config);
 
-	for (i = 0; (i < dst_len) && ((offset + i) < src_len); i++) {
-		*((u8 *)dst + i) = src[offset + i];
+	if (offset == offsetof(struct virtio_console_config, emerg_wr)) {
+		if (fifo_dequeue(cdev->emerg_rd, &data8)) {
+			data = (1 << 31) | data8;
+		} else {
+			data = 0x0;
+		}
+		switch (src_len) {
+		case 1:
+			*(u8 *)dst = (u8)data;
+			break;
+		case 2:
+			*(u16 *)dst = (u16)data;
+			break;
+		case 4:
+			*(u32 *)dst = (u32)data;
+			break;
+		default:
+			data = 0x0;
+			break;
+		};
+	} else {
+		for (i = 0; (i < dst_len) && ((offset + i) < src_len); i++) {
+			*((u8 *)dst + i) = src[offset + i];
+		}
 	}
 
 	return VMM_OK;
@@ -235,7 +260,29 @@ static int virtio_console_read_config(struct virtio_device *dev,
 static int virtio_console_write_config(struct virtio_device *dev,
 				       u32 offset, void *src, u32 src_len)
 {
-	/* Ignore config writes. */
+	u8 data;
+	struct virtio_console_dev *cdev = dev->emu_data;
+
+	if (offset == offsetof(struct virtio_console_config, emerg_wr)) {
+		switch (src_len) {
+		case 1:
+			data = *(u8 *)src;
+			break;
+		case 2:
+			data = *(u16 *)src;
+			break;
+		case 4:
+			data = *(u32 *)src;
+			break;
+		default:
+			data = 0x0;
+			break;
+		};
+		vmm_vserial_receive(cdev->vser, &data, 1);
+	}
+
+	/* Ignore config writes to other parts of console config space */
+
 	return VMM_OK;
 }
 
@@ -277,6 +324,12 @@ static int virtio_console_connect(struct virtio_device *dev,
 	if (!cdev->vser) {
 		return VMM_EFAIL;
 	}
+
+	cdev->emerg_rd = fifo_alloc(1, VIRTIO_CONSOLE_VSERIAL_FIFO_SZ);
+	if (!cdev->emerg_rd) {
+		vmm_vserial_destroy(cdev->vser);
+		return VMM_ENOMEM;
+	}
 	
 	cdev->config.cols = 80;
 	cdev->config.rows = 24;
@@ -291,6 +344,7 @@ static void virtio_console_disconnect(struct virtio_device *dev)
 {
 	struct virtio_console_dev *cdev = dev->emu_data;
 
+	fifo_free(cdev->emerg_rd);
 	vmm_vserial_destroy(cdev->vser);
 	vmm_free(cdev);
 }
