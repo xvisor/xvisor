@@ -107,10 +107,6 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 		schedp->current_vcpu = next;
 		vmm_timer_event_start(ev, next->time_slice);
 	} else {
-		if (current->state == VMM_VCPU_STATE_READY) {
-			vmm_schedalgo_rq_enqueue(schedp->rq, current);
-		}
-
 		vmm_spin_unlock_irqrestore_lite(&current->sched_lock, cf);
 
 		next = vmm_schedalgo_rq_dequeue(schedp->rq);
@@ -124,7 +120,9 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 		next->state = VMM_VCPU_STATE_RUNNING;
 		vmm_spin_unlock_irqrestore_lite(&next->sched_lock, nf);
 
-		arch_vcpu_switch(NULL, next, regs);
+		if (next != current) {
+			arch_vcpu_switch(NULL, next, regs);
+		}
 		schedp->current_vcpu = next;
 		vmm_timer_event_start(ev, next->time_slice);
 	}
