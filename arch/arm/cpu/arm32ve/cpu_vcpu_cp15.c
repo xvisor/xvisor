@@ -303,6 +303,8 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 	case 1: /* System configuration.  */
 		switch (opc2) {
 		case 1: /* Auxiliary control register.  */
+			if (!arm_feature(vcpu, ARM_FEATURE_AUXCR))
+				goto bad_reg;
 			/* Not implemented.  */
 			break;
 		default:
