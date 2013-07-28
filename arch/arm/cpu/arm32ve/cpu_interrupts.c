@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_host_irq.h>
 #include <vmm_scheduler.h>
@@ -32,34 +33,68 @@
 
 void do_undef_inst(arch_regs_t *regs)
 {
-	vmm_printf("%s: unexpected exception\n", __func__);
+	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
+
+	vmm_printf("%s: CPU%d unexpected exception\n",
+		   __func__, vmm_smp_processor_id());
+	vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
+		   __func__, (vcpu) ? vcpu->name : "(NULL)", 
+		   read_hsr());
+
 	cpu_vcpu_dump_user_reg(regs);
+
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
 void do_soft_irq(arch_regs_t *regs)
 {
+	struct vmm_vcpu *vcpu;
+
 	if ((regs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_HYPERVISOR) {
 		vmm_scheduler_preempt_orphan(regs);
 		return;
 	} else {
-		vmm_printf("%s: unexpected exception\n", __func__);
+		vcpu = vmm_scheduler_current_vcpu();
+
+		vmm_printf("%s: CPU%d unexpected exception\n",
+			   __func__, vmm_smp_processor_id());
+		vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
+			   __func__, (vcpu) ? vcpu->name : "(NULL)", 
+			   read_hsr());
+
 		cpu_vcpu_dump_user_reg(regs);
+
 		vmm_panic("%s: please reboot ...\n", __func__);
 	}
 }
 
 void do_prefetch_abort(arch_regs_t *regs)
 {
-	vmm_printf("%s: unexpected exception\n", __func__);
+	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
+
+	vmm_printf("%s: CPU%d unexpected exception\n",
+		   __func__, vmm_smp_processor_id());
+	vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
+		   __func__, (vcpu) ? vcpu->name : "(NULL)", 
+		   read_hsr());
+
 	cpu_vcpu_dump_user_reg(regs);
+
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
 void do_data_abort(arch_regs_t *regs)
 {
-	vmm_printf("%s: unexpected exception\n", __func__);
+	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
+
+	vmm_printf("%s: CPU%d unexpected exception\n",
+		   __func__, vmm_smp_processor_id());
+	vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
+		   __func__, (vcpu) ? vcpu->name : "(NULL)", 
+		   read_hsr());
+
 	cpu_vcpu_dump_user_reg(regs);
+
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
@@ -76,12 +111,18 @@ void do_hyp_trap(arch_regs_t *regs)
 	il = (hsr & HSR_IL_MASK) >> HSR_IL_SHIFT;
 	iss = (hsr & HSR_ISS_MASK) >> HSR_ISS_SHIFT;
 
+	vcpu = vmm_scheduler_current_vcpu();
+
 	/* We dont expect any faults from hypervisor code itself 
 	 * so, any trap we get from hypervisor mode means something
 	 * unexpected has occured.
 	 */
 	if ((regs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_HYPERVISOR) {
-		vmm_printf("%s: unexpected exception\n", __func__);
+		vmm_printf("%s: CPU%d unexpected exception\n", 
+			   __func__, vmm_smp_processor_id());
+		vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
+			   __func__, (vcpu) ? vcpu->name : "(NULL)", 
+			   read_hsr());
 		vmm_printf("%s: ec=0x%x, il=0x%x, iss=0x%x\n", 
 			   __func__, ec, il, iss);
 		cpu_vcpu_dump_user_reg(regs);
@@ -89,8 +130,6 @@ void do_hyp_trap(arch_regs_t *regs)
 	}
 
 	vmm_scheduler_irq_enter(regs, TRUE);
-
-	vcpu = vmm_scheduler_current_vcpu();
 
 	switch (ec) {
 	case EC_UNKNOWN:
