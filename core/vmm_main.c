@@ -36,6 +36,7 @@
 #include <vmm_delay.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
+#include <vmm_loadbal.h>
 #include <vmm_threads.h>
 #include <vmm_profiler.h>
 #include <vmm_devdrv.h>
@@ -351,6 +352,13 @@ void vmm_init(void)
 	}
 
 #if defined(CONFIG_SMP)
+	/* Initialize hypervisor load balancer */
+	vmm_printf("Initialize Hypervisor Load Balancer\n");
+	ret = vmm_loadbal_init();
+	if (ret) {
+		vmm_hang();
+	}
+
 	/* Initialize secondary CPUs */
 	vmm_printf("Initialize Secondary CPUs\n");
 	ret = arch_smp_init_cpus();

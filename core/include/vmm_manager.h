@@ -92,13 +92,20 @@ struct vmm_vcpu_irqs {
 
 struct vmm_guest {
 	struct dlist head;
-	vmm_spinlock_t lock;
+
 	u32 id;
 	struct vmm_devtree_node *node;
 	u32 reset_count;
+
+	/* VCPU instances belonging to this Guest */
+	vmm_spinlock_t vcpu_lock;
 	u32 vcpu_count;
 	struct dlist vcpu_list;
+
+	/* Guest address space */
 	struct vmm_guest_aspace aspace;
+
+	/* Architecture specific context */
 	void *arch_priv;
 };
 
@@ -172,34 +179,34 @@ struct vmm_vcpu {
 	void *devemu_priv;
 };
 
-/** Maximum number of vcpus */
+/** Maximum number of VCPUs */
 u32 vmm_manager_max_vcpu_count(void);
 
-/** Current number of vcpus (orphan + normal) */
+/** Current number of VCPUs (orphan + normal) */
 u32 vmm_manager_vcpu_count(void);
 
-/** Retrieve vcpu with given ID. 
- *  Returns NULL if there is no vcpu associated with given ID.
+/** Retrieve VCPU with given ID. 
+ *  Returns NULL if there is no VCPU associated with given ID.
  */
 struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id);
 
-/** Change host CPU affinity of given VCPU */
-int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu, 
-				  const struct vmm_cpumask *cpu_mask);
+/** Iterate over each VCPU */
+int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *), 
+			     void *priv);
 
-/** Reset a vcpu */
+/** Reset a VCPU */
 int vmm_manager_vcpu_reset(struct vmm_vcpu *vcpu);
 
-/** Kick a vcpu out of reset state */
+/** Kick a VCPU out of reset state */
 int vmm_manager_vcpu_kick(struct vmm_vcpu *vcpu);
 
-/** Pause a vcpu */
+/** Pause a VCPU */
 int vmm_manager_vcpu_pause(struct vmm_vcpu *vcpu);
 
-/** Resume a vcpu */
+/** Resume a VCPU */
 int vmm_manager_vcpu_resume(struct vmm_vcpu *vcpu);
 
-/** Halt a vcpu */
+/** Halt a VCPU */
 int vmm_manager_vcpu_halt(struct vmm_vcpu *vcpu);
 
 /** Dump registers of a vcpu */
@@ -211,55 +218,73 @@ int vmm_manager_vcpu_dumpstat(struct vmm_vcpu *vcpu);
 /** Get VCPU state */
 u32 vmm_manager_vcpu_state(struct vmm_vcpu *vcpu);
 
-/** Create an orphan vcpu */
+/** Retrive host CPU assigned to given VCPU */
+int vmm_manager_vcpu_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu);
+
+/** Update host CPU assigned to given VCPU */
+int vmm_manager_vcpu_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu);
+
+/** Retrive host CPU affinity of given VCPU */
+const struct vmm_cpumask *vmm_manager_vcpu_get_affinity(struct vmm_vcpu *vcpu);
+
+/** Update host CPU affinity of given VCPU */
+int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu, 
+				  const struct vmm_cpumask *cpu_mask);
+
+/** Create an orphan VCPU */
 struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
 					    virtual_size_t stack_sz,
 					    u8 priority,
 					    u64 time_slice_nsecs);
 
-/** Destroy an orphan vcpu */
+/** Destroy an orphan VCPU */
 int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu);
 
-/** Maximum number of guests */
+/** Maximum number of Guests */
 u32 vmm_manager_max_guest_count(void);
 
-/** Current number of guests */
+/** Current number of Guests */
 u32 vmm_manager_guest_count(void);
 
-/** Retrieve guest with given ID. 
- *  Returns NULL if there is no guest associated with given ID.
+/** Retrieve Guest with given ID. 
+ *  Returns NULL if there is no Guest associated with given ID.
  */
 struct vmm_guest *vmm_manager_guest(u32 guest_id);
 
-/** Number of vcpus belonging to a given guest */
+/** Number of VCPUs belonging to a given Guest */
 u32 vmm_manager_guest_vcpu_count(struct vmm_guest *guest);
 
-/** Retrieve vcpu belonging to a given guest with particular subid */
+/** Retrieve VCPU belonging to a given Guest with particular subid */
 struct vmm_vcpu *vmm_manager_guest_vcpu(struct vmm_guest *guest, u32 subid);
 
-/** Reset a guest */
+/** Iterate over each VCPU of a given Guest */
+int vmm_manager_guest_vcpu_iterate(struct vmm_guest *guest,
+				   int (*iter)(struct vmm_vcpu *, void *), 
+				   void *priv);
+
+/** Reset a Guest */
 int vmm_manager_guest_reset(struct vmm_guest *guest);
 
-/** Kick a guest out of reset state */
+/** Kick a Guest out of reset state */
 int vmm_manager_guest_kick(struct vmm_guest *guest);
 
-/** Pause a guest */
+/** Pause a Guest */
 int vmm_manager_guest_pause(struct vmm_guest *guest);
 
-/** Resume a guest */
+/** Resume a Guest */
 int vmm_manager_guest_resume(struct vmm_guest *guest);
 
-/** Halt a guest */
+/** Halt a Guest */
 int vmm_manager_guest_halt(struct vmm_guest *guest);
 
-/** Dump registers of a guest */
+/** Dump registers of a Guest */
 int vmm_manager_guest_dumpreg(struct vmm_guest *guest);
 
-/** Create a guest based on device tree configuration */
+/** Create a Guest based on device tree configuration */
 struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode);
 
-/** Destroy a guest */
+/** Destroy a Guest */
 int vmm_manager_guest_destroy(struct vmm_guest *guest);
 
 /** Initialize manager */

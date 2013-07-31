@@ -21,9 +21,12 @@
  * @brief header file for hypervisor load balancer
  */
 
-#include <vmm_types.h>
-#include <vmm_manager.h>
-#include <vmm_smp.h>
+#ifndef __VMM_LOADBAL_H__
+#define __VMM_LOADBAL_H__
 
-u32 vmm_loadbal_get_new_hcpu(struct vmm_vcpu *vcpu);
-u32 vmm_loadbal_get_next_hcpu(struct vmm_vcpu *vcpu);
+#include <vmm_types.h>
+
+/** Initialize load balancer on each host CPU */
+int vmm_loadbal_init(void);
+
+#endif /* __VMM_LOADBAL_H__ */

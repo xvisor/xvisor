@@ -56,12 +56,58 @@ static int cmd_vcpu_help(struct vmm_chardev *cdev, int dummy)
 	return VMM_OK;
 }
 
-static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
+static int cmd_vcpu_list_iter(struct vmm_vcpu *vcpu, void *priv)
 {
-	int id, count;
 	char state[10];
 	char path[256];
-	struct vmm_vcpu *vcpu;
+#ifdef CONFIG_SMP
+	u32 hcpu;
+#endif
+	struct vmm_chardev *cdev = priv;
+
+	switch (vmm_manager_vcpu_state(vcpu)) {
+	case VMM_VCPU_STATE_UNKNOWN:
+		strcpy(state, "Unknown");
+		break;
+	case VMM_VCPU_STATE_RESET:
+		strcpy(state, "Reset");
+		break;
+	case VMM_VCPU_STATE_READY:
+		strcpy(state, "Ready");
+		break;
+	case VMM_VCPU_STATE_RUNNING:
+		strcpy(state, "Running");
+		break;
+	case VMM_VCPU_STATE_PAUSED:
+		strcpy(state, "Paused");
+		break;
+	case VMM_VCPU_STATE_HALTED:
+		strcpy(state, "Halted");
+		break;
+	default:
+		strcpy(state, "Invalid");
+		break;
+	}
+	vmm_cprintf(cdev, " %-6d", vcpu->id);
+#ifdef CONFIG_SMP
+	vmm_manager_vcpu_get_hcpu(vcpu, &hcpu);
+	vmm_cprintf(cdev, " %-6d", hcpu);
+#endif
+	vmm_cprintf(cdev, " %-7d %-10s %-17s", vcpu->priority, state, vcpu->name);
+	if (vcpu->node) {
+		vmm_devtree_getpath(path, vcpu->node);
+		vmm_cprintf(cdev, " %-35s\n", path); 
+	} else {
+		vmm_cprintf(cdev, " %-35s\n", "(NA)"); 
+	}
+
+	return VMM_OK;
+}
+
+static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
+{
+	int rc;
+
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	vmm_cprintf(cdev, " %-6s", "ID ");
@@ -72,49 +118,13 @@ static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 		    "Prio", "State", "Name", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	count = vmm_manager_max_vcpu_count();
-	for (id = 0; id < count; id++) {
-		if (!(vcpu = vmm_manager_vcpu(id))) {
-			continue;
-		}
-		switch (vmm_manager_vcpu_state(vcpu)) {
-		case VMM_VCPU_STATE_UNKNOWN:
-			strcpy(state, "Unknown");
-			break;
-		case VMM_VCPU_STATE_RESET:
-			strcpy(state, "Reset");
-			break;
-		case VMM_VCPU_STATE_READY:
-			strcpy(state, "Ready");
-			break;
-		case VMM_VCPU_STATE_RUNNING:
-			strcpy(state, "Running");
-			break;
-		case VMM_VCPU_STATE_PAUSED:
-			strcpy(state, "Paused");
-			break;
-		case VMM_VCPU_STATE_HALTED:
-			strcpy(state, "Halted");
-			break;
-		default:
-			strcpy(state, "Invalid");
-			break;
-		}
-		vmm_cprintf(cdev, " %-6d", id);
-#ifdef CONFIG_SMP
-		vmm_cprintf(cdev, " %-6d", vcpu->hcpu);
-#endif
-		vmm_cprintf(cdev, " %-7d %-10s %-17s", vcpu->priority, state, vcpu->name);
-		if (vcpu->node) {
-			vmm_devtree_getpath(path, vcpu->node);
-			vmm_cprintf(cdev, " %-35s\n", path); 
-		} else {
-			vmm_cprintf(cdev, " %-35s\n", "(NA)"); 
-		}
-	}
+
+	rc = vmm_manager_vcpu_iterate(cmd_vcpu_list_iter, cdev);
+
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	return VMM_OK;
+
+	return rc;
 }
 
 static int cmd_vcpu_reset(struct vmm_chardev *cdev, int id)
