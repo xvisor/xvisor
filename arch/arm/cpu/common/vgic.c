@@ -130,9 +130,6 @@ struct vgic_guest_state {
 	/* Guest to which this VGIC belongs */
 	struct vmm_guest *guest;
 
-	/* Lock to protect VGIC guest state */
-	vmm_spinlock_t lock;
-
 	/* Configuration */
 	u8 id[8];
 	u32 num_cpu;
@@ -140,6 +137,9 @@ struct vgic_guest_state {
 
 	/* Context of each VCPU */
 	struct vgic_vcpu_state vstate[VGIC_MAX_NCPU];
+
+	/* Lock to protect VGIC distributor state */
+	vmm_spinlock_t dist_lock;
 
 	/* Chip enable/disable */
 	u32 enabled;
@@ -234,7 +234,10 @@ static void __vgic_restore_vcpu_hwstate(struct vgic_vcpu_state *vs)
 	}
 }
 
-/* Queue interrupt */
+/* Queue interrupt to given VCPU
+ * Note: Must be called only when given VCPU is current VCPU
+ * Note: Must be called with VGIC distributor lock held
+ */
 static bool __vgic_queue_irq(struct vgic_guest_state *s,
 			     struct vgic_vcpu_state *vs,
 			     u8 src_id, u32 irq)
@@ -283,7 +286,10 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 	return TRUE;
 }
 
-/* Queue software generated interrupt */
+/* Queue software generated interrupt to given VCPU
+ * Note: Must be called only when given VCPU is current VCPU
+ * Note: Must be called with VGIC distributor lock held
+ */
 static bool __vgic_queue_sgi(struct vgic_guest_state *s, 
 			     struct vgic_vcpu_state *vs,
 			     u32 irq)
@@ -309,7 +315,10 @@ static bool __vgic_queue_sgi(struct vgic_guest_state *s,
 	return FALSE;
 }
 
-/* Queue hardware interrupt */
+/* Queue hardware interrupt to given VCPU
+ * Note: Must be called only when given VCPU is current VCPU
+ * Note: Must be called with VGIC distributor lock held
+ */
 static bool __vgic_queue_hwirq(struct vgic_guest_state *s, 
 			       struct vgic_vcpu_state *vs, 
 			       u32 irq)
@@ -333,7 +342,10 @@ static bool __vgic_queue_hwirq(struct vgic_guest_state *s,
 	return FALSE;
 }
 
-/* Flush VGIC state to VGIC HW for IRQ on given VCPU */
+/* Flush VGIC state to VGIC HW for IRQ on given VCPU 
+ * Note: Must be called only when given VCPU is current VCPU
+ * Note: Must be called with VGIC distributor lock held
+ */
 static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s, 
 					  struct vgic_vcpu_state *vs,
 					  u32 irq)
@@ -371,7 +383,10 @@ static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s,
 	vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
 }
 
-/* Flush VGIC state to VGIC HW for given VCPU */
+/* Flush VGIC state to VGIC HW for given VCPU
+ * Note: Must be called only when given VCPU is current VCPU
+ * Note: Must be called with VGIC distributor lock held
+ */
 static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s, 
 				      struct vgic_vcpu_state *vs)
 {
@@ -415,7 +430,9 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 	vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
 }
 
-/* Sync current VCPU VGIC state with HW state */
+/* Sync current VCPU VGIC state with HW state
+ * Note: Must be called with VGIC distributor lock held
+ */
 static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s, 
 				     struct vgic_vcpu_state *vs)
 {
@@ -523,8 +540,8 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 
 	DPRINTF("%s: irq=%d cpu=%d level=%d\n", __func__, irq, cpu, level);
 
-	/* Lock VGIC Guest state */
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	/* Lock VGIC distributor state */
+	vmm_spin_lock_irqsave(&s->dist_lock, flags);
 
 	if (irq < 32) {
 		/* In case of PPIs and SGIs */
@@ -539,7 +556,7 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 			}
 		}
 		if (VGIC_NUM_CPU(s) <= cpu) {
-			vmm_spin_unlock_irqrestore(&s->lock, flags);
+			vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 			return;
 		}
 	}
@@ -574,8 +591,8 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 	}
 
 done:
-	/* Unlock VGIC Guest state */
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	/* Unlock VGIC distributor state */
+	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 
 	/* Resume from WFI if required */
 	if (wfi_resume) {
@@ -601,16 +618,16 @@ static vmm_irq_return_t vgic_maint_irq(int irq_no, void *dev)
 	s = arm_vgic_priv(vcpu);
 	vs = &s->vstate[vcpu->subid];
 
-	/* Lock VGIC Guest state */
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	/* Lock VGIC distributor state */
+	vmm_spin_lock_irqsave(&s->dist_lock, flags);
 
 	/* The VGIC HW state may have changed when the 
 	 * VCPU was running hence, sync VGIC VCPU state.
 	 */
 	__vgic_sync_vcpu_hwstate(s, vs);
 
-	/* Unlock VGIC Guest state */
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	/* Unlock VGIC distributor state */
+	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 
 	return VMM_IRQ_HANDLED;
 }
@@ -628,19 +645,19 @@ static void vgic_save_vcpu_context(void *vcpu_ptr)
 	s = arm_vgic_priv(vcpu);
 	vs = &s->vstate[vcpu->subid];
 
-	/* Lock VGIC Guest state */
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	/* Lock VGIC distributor state */
+	vmm_spin_lock_irqsave(&s->dist_lock, flags);
 
 	/* The VGIC HW state may have changed when the 
 	 * VCPU was running hence, sync VGIC VCPU state.
 	 */
 	__vgic_sync_vcpu_hwstate(s, vs);
 
-	/* Save VGIC HW registers */
-	__vgic_save_vcpu_hwstate(vs);
+	/* Unlock VGIC distributor state */
+	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 
-	/* Unlock VGIC Guest state */
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	/* Save VGIC HW registers for VCPU */
+	__vgic_save_vcpu_hwstate(vs);
 }
 
 /* Restore VCPU context for current VCPU */
@@ -656,11 +673,11 @@ static void vgic_restore_vcpu_context(void *vcpu_ptr)
 	s = arm_vgic_priv(vcpu);
 	vs = &s->vstate[vcpu->subid];
 
-	/* Lock VGIC Guest state */
-	vmm_spin_lock_irqsave(&s->lock, flags);
-
-	/* Restore VGIC HW registers */
+	/* Restore VGIC HW registers for VCPU */
 	__vgic_restore_vcpu_hwstate(vs);
+
+	/* Lock VGIC distributor state */
+	vmm_spin_lock_irqsave(&s->dist_lock, flags);
 
 	/* Flush VGIC state changes to VGIC HW for 
 	 * reflecting latest changes while, the VCPU 
@@ -668,8 +685,8 @@ static void vgic_restore_vcpu_context(void *vcpu_ptr)
 	 */
 	__vgic_flush_vcpu_hwstate(s, vs);
 
-	/* Unlock VGIC Guest state */
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	/* Unlock VGIC distributor state */
+	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 }
 
 static int __vgic_dist_readb(struct vgic_guest_state *s, int cpu, 
@@ -988,7 +1005,7 @@ static int vgic_dist_read(struct vgic_guest_state *s, int cpu,
 		return VMM_EFAIL;
 	}
 
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	vmm_spin_lock_irqsave(&s->dist_lock, flags);
 
 	*dst = 0;
 	for (i = 0; i < 4; i++) {
@@ -998,7 +1015,7 @@ static int vgic_dist_read(struct vgic_guest_state *s, int cpu,
 		*dst |= val << (i * 8);
 	}
 
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 
 	return VMM_OK;
 }
@@ -1006,7 +1023,8 @@ static int vgic_dist_read(struct vgic_guest_state *s, int cpu,
 static int vgic_dist_write(struct vgic_guest_state *s, int cpu, 
 			   u32 offset, u32 src_mask, u32 src)
 {
-	int rc = VMM_OK, irq, mask, i;
+	int rc = VMM_OK;
+	u32 i, irq, sgi_mask;
 	irq_flags_t flags;
 	struct vgic_vcpu_state *vs;
 
@@ -1014,7 +1032,7 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 		return VMM_EFAIL;
 	}
 
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	vmm_spin_lock_irqsave(&s->dist_lock, flags);
 
 	vs = &s->vstate[cpu];
 
@@ -1023,29 +1041,33 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 		irq = src & 0x3ff;
 		switch ((src >> 24) & 3) {
 		case 0:
-			mask = (src >> 16) & VGIC_ALL_CPU_MASK(s);
+			sgi_mask = (src >> 16) & VGIC_ALL_CPU_MASK(s);
 			break;
 		case 1:
-			mask = VGIC_ALL_CPU_MASK(s) ^ (1 << cpu);
+			sgi_mask = VGIC_ALL_CPU_MASK(s) ^ (1 << cpu);
 			break;
 		case 2:
-			mask = 1 << cpu;
+			sgi_mask = 1 << cpu;
 			break;
 		default:
-			mask = VGIC_ALL_CPU_MASK(s);
+			sgi_mask = VGIC_ALL_CPU_MASK(s);
 			break;
 		};
-		VGIC_SET_PENDING(s, irq, mask);
+		VGIC_SET_PENDING(s, irq, sgi_mask);
 		for (i = 0; (irq < 16) && (i < VGIC_NUM_CPU(s)); i++) {
-			if (!(mask & (1 << i))) {
+			if (!(sgi_mask & (1 << i))) {
 				continue;
 			}
 			s->vstate[i].sgi_source[irq] |= (1 << cpu);
-			if (s->vstate[i].vcpu->subid != vs->vcpu->subid) {
-				vmm_vcpu_irq_wait_resume(s->vstate[i].vcpu);
+			if (s->vstate[i].vcpu->subid == vs->vcpu->subid) {
+				continue;
 			}
+			vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+			vmm_vcpu_irq_wait_resume(s->vstate[i].vcpu);
+			vmm_spin_lock_irqsave(&s->dist_lock, flags);
 		}
 	} else {
+		sgi_mask = 0x0;
 		src_mask = ~src_mask;
 		for (i = 0; i < 4; i++) {
 			if (src_mask & 0xFF) {
@@ -1070,7 +1092,7 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 	 */
 	__vgic_flush_vcpu_hwstate(s, vs);
 
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 
 	return rc;
 }
@@ -1166,7 +1188,7 @@ static int vgic_state_reset(struct vgic_guest_state *s)
 	u32 i, j;
 	irq_flags_t flags;
 
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	vmm_spin_lock_irqsave(&s->dist_lock, flags);
 
 	/* Reset context for all VCPUs
 	 *
@@ -1211,7 +1233,7 @@ static int vgic_state_reset(struct vgic_guest_state *s)
 
 	s->enabled = 0;
 
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 
 	return VMM_OK;
 }
@@ -1242,8 +1264,6 @@ static struct vgic_guest_state *vgic_state_alloc(const char *name,
 
 	s->guest = guest;
 
-	INIT_SPIN_LOCK(&s->lock);
-
 	s->num_cpu = num_cpu;
 	s->num_irq = num_irq;
 	s->id[0] = 0x90 /* id0 */;
@@ -1259,6 +1279,8 @@ static struct vgic_guest_state *vgic_state_alloc(const char *name,
 		s->vstate[i].vcpu = vmm_manager_guest_vcpu(guest, i);
 		s->vstate[i].parent_irq = parent_irq;
 	}
+
+	INIT_SPIN_LOCK(&s->dist_lock);
 
 	/* Register guest irq handler s*/
 	for (i = 0; i < s->num_irq; i++) {
