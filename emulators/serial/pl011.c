@@ -77,9 +77,9 @@ struct pl011_state {
 	struct fifo *rd_fifo;
 };
 
-static void pl011_set_irq(struct pl011_state *s)
+static void pl011_set_irq(struct pl011_state *s, u32 level, u32 enabled)
 {
-	if (s->int_level & s->int_enabled) {
+	if (level & enabled) {
 		vmm_devemu_emulate_irq(s->guest, s->irq, 1);
 	} else {
 		vmm_devemu_emulate_irq(s->guest, s->irq, 0);
@@ -104,7 +104,8 @@ static int pl011_reg_read(struct pl011_state *s, u32 offset, u32 *dst)
 {
 	int rc = VMM_OK;
 	u8 val = 0x0;
-	u32 read_count = 0x0;
+	bool set_irq = FALSE;
+	u32 read_count = 0x0, level, enabled;
 
 	vmm_spin_lock(&s->lock);
 
@@ -120,7 +121,9 @@ static int pl011_reg_read(struct pl011_state *s, u32 offset, u32 *dst)
 		if (read_count == (s->rd_trig - 1)) {
 			s->int_level &= ~PL011_INT_RX;
 		}
-		pl011_set_irq(s);
+		set_irq = TRUE;
+		level = s->int_level;
+		enabled = s->int_enabled;
 		break;
 	case 1: /* UARTCR */
 		*dst = 0;
@@ -169,14 +172,21 @@ static int pl011_reg_read(struct pl011_state *s, u32 offset, u32 *dst)
 
 	vmm_spin_unlock(&s->lock);
 
+	if (set_irq) {
+		pl011_set_irq(s, level, enabled);
+	}
+
 	return rc;
 }
 
 static int pl011_reg_write(struct pl011_state *s, u32 offset, 
 			   u32 src_mask, u32 src)
 {
-	int rc = VMM_OK;
 	u8 val;
+	int rc = VMM_OK;
+	bool set_irq = FALSE;
+	bool recv_char = FALSE;
+	u32 level, enabled;
 
 	vmm_spin_lock(&s->lock);
 
@@ -184,9 +194,11 @@ static int pl011_reg_write(struct pl011_state *s, u32 offset,
 	case 0: /* UARTDR */
 		/* ??? Check if transmitter is enabled.  */
 		val = src;
-		vmm_vserial_receive(s->vser, &val, 1);
+		recv_char = TRUE;
 		s->int_level |= PL011_INT_TX;
-		pl011_set_irq(s);
+		set_irq = TRUE;
+		level = s->int_level;
+		enabled = s->int_enabled;
 		break;
 	case 1: /* UARTCR */
 		s->cr = (s->cr & src_mask) | (src & ~src_mask);
@@ -218,11 +230,15 @@ static int pl011_reg_write(struct pl011_state *s, u32 offset,
 	case 14: /* UARTIMSC */
 		s->int_enabled = (s->int_enabled & src_mask) | 
 				 (src & ~src_mask);
-		pl011_set_irq(s);
+		set_irq = TRUE;
+		level = s->int_level;
+		enabled = s->int_enabled;
 		break;
 	case 17: /* UARTICR */
 		s->int_level &= ~(src & ~src_mask);
-		pl011_set_irq(s);
+		set_irq = TRUE;
+		level = s->int_level;
+		enabled = s->int_enabled;
 		break;
 	case 18: /* UARTDMACR */
 		/* ??? DMA not implemented */
@@ -236,12 +252,20 @@ static int pl011_reg_write(struct pl011_state *s, u32 offset,
 
 	vmm_spin_unlock(&s->lock);
 
+	if (recv_char) {
+		vmm_vserial_receive(s->vser, &val, 1);
+	}
+
+	if (set_irq) {
+		pl011_set_irq(s, level, enabled);
+	}
+
 	return rc;
 }
 
 static bool pl011_vserial_can_send(struct vmm_vserial *vser)
 {
-	struct pl011_state * s = vser->priv;
+	struct pl011_state *s = vser->priv;
 #if 0
 	u32 rd_count;
 
@@ -257,11 +281,13 @@ static bool pl011_vserial_can_send(struct vmm_vserial *vser)
 
 static int pl011_vserial_send(struct vmm_vserial *vser, u8 data)
 {
+	bool set_irq = FALSE;
+	u32 rd_count, level, enabled;
 	struct pl011_state *s = vser->priv;
-	u32 rd_count;
 
 	fifo_enqueue(s->rd_fifo, &data, TRUE);
 	rd_count = fifo_avail(s->rd_fifo);
+
 	vmm_spin_lock(&s->lock);
 	s->flags &= ~PL011_FLAG_RXFE;
 	if (s->cr & 0x10 || rd_count == s->fifo_sz) {
@@ -269,9 +295,15 @@ static int pl011_vserial_send(struct vmm_vserial *vser, u8 data)
 	}
 	if (rd_count >= s->rd_trig) {
 		s->int_level |= PL011_INT_RX;
-		pl011_set_irq(s);
+		set_irq = TRUE;
+		level = s->int_level;
+		enabled = s->int_enabled;
 	}
 	vmm_spin_unlock(&s->lock);
+
+	if (set_irq) {
+		pl011_set_irq(s, level, enabled);
+	}
 
 	return VMM_OK;
 }
@@ -285,7 +317,6 @@ static int pl011_emulator_read(struct vmm_emudev *edev,
 	struct pl011_state *s = edev->priv;
 
 	rc = pl011_reg_read(s, offset & ~0x3, &regval);
-
 	if (!rc) {
 		regval = (regval >> ((offset & 0x3) * 8));
 		switch (dst_len) {
