@@ -27,7 +27,7 @@
 #include <vmm_timer.h>
 #include <libs/fifo.h>
 
-#define MAX_SMP_IPI_PER_CPU		(CONFIG_CPU_COUNT)
+#define MAX_SMP_IPI_PER_CPU		(CONFIG_MAX_VCPU_COUNT)
 
 struct smp_ipi_call {
 	void (*func)(void *, void *, void *);
