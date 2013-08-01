@@ -60,16 +60,20 @@
 struct mptimer_state;
 
 struct timer_block {
+	/* Parent MPTimer block */
 	struct mptimer_state *mptimer;
-	u32 cpu;
-	vmm_spinlock_t lock;
+
+	/* Timer event for emulation */
 	struct vmm_timer_event event;
 
 	/* Configuration */
+	u32 cpu;
 	u32 irq;
 	bool is_wdt;
-
 	u32 freq;
+
+	/* Lock to protect registers */
+	vmm_spinlock_t lock;
 
 	/* Common Registers */
 	u32 load;
@@ -101,9 +105,11 @@ struct mptimer_state {
 #define TIMER_CTRL_RESVD	(0xFFFF00F8)
 
 /* TODO: Support Prescaling */
-#define timer_block_get_freq(timer)	(timer->mptimer->ref_freq)
+/* Note: Must hold the timer lock before calling this function. */
+#define __timer_block_get_freq(timer)	(timer->mptimer->ref_freq)
 
-static u32 timer_block_counter_value(struct timer_block *timer)
+/* Note: Must hold the timer lock before calling this function. */
+static u32 __timer_block_counter_value(struct timer_block *timer)
 {
 	u32 ret = 0;
 
@@ -156,19 +162,8 @@ static u32 timer_block_counter_value(struct timer_block *timer)
 	return ret;
 }
 
-static inline void timer_block_update_irq(struct timer_block *timer)
-{
-	if((timer->control & TIMER_CTRL_ENABLE) && 
-	   (timer->control & TIMER_CTRL_IE)) {
-		vmm_devemu_emulate_percpu_irq(timer->mptimer->guest, timer->irq, 
-					      timer->cpu, timer->status);
-	} else {
-		vmm_devemu_emulate_percpu_irq(timer->mptimer->guest, timer->irq, 
-					      timer->cpu, 0);
-	}
-}
-
-static void timer_block_reload(struct timer_block *timer)
+/* Note: Must hold the timer lock before calling this function. */
+static void __timer_block_reload(struct timer_block *timer)
 {
 	u64 nsecs;
 
@@ -182,33 +177,53 @@ static void timer_block_reload(struct timer_block *timer)
 	if (timer->freq == 1000000) {
 		nsecs *= 1000;
 	} else {
-		nsecs = udiv64((nsecs * 1000000000),
-					(u64) timer->freq);
+		nsecs = udiv64((nsecs * 1000000000), (u64)timer->freq);
 	}
 
 	vmm_timer_event_stop(&timer->event); 
 	vmm_timer_event_start(&timer->event, nsecs);
 }
 
+static inline void timer_block_update_irq(struct timer_block *timer, 
+					  u32 control)
+{
+	if ((control & TIMER_CTRL_ENABLE) && (control & TIMER_CTRL_IE)) {
+		vmm_devemu_emulate_percpu_irq(timer->mptimer->guest, 
+					      timer->irq, 
+					      timer->cpu, 
+					      timer->status);
+	} else {
+		vmm_devemu_emulate_percpu_irq(timer->mptimer->guest, 
+					      timer->irq, 
+					      timer->cpu, 0);
+	}
+}
+
 static void timer_block_event(struct vmm_timer_event *event)
 {
+	u32 control;
 	struct timer_block *timer = event->priv;
 
-	timer->status = 1;
+	vmm_spin_lock(&(timer->lock));
 
-	if(timer->control & TIMER_CTRL_WDM) {
+	timer->status = 1;
+	control = timer->control;
+
+	if (control & TIMER_CTRL_WDM) {
 		timer->wrst_status = 1;
 		/* TODO: Watchdog reset logic */
 	}
 
-	if(timer->control & TIMER_CTRL_ARELOAD) {
+	if (control & TIMER_CTRL_ARELOAD) {
 		timer->count = timer->load;
-		timer_block_reload(timer);
+		__timer_block_reload(timer);
 	} else {
 		timer->count = 0;
 	}
 
-	timer_block_update_irq(timer);
+	vmm_spin_unlock(&timer->lock);
+
+	timer_block_update_irq(timer, control);
 }
 
 int mptimer_reg_read(struct mptimer_state *s, u32 offset, u32 *dst)
@@ -243,12 +258,13 @@ int mptimer_reg_read(struct mptimer_state *s, u32 offset, u32 *dst)
 	}
 
 	vmm_spin_lock(&(timer->lock));
+
 	switch (offset) {
 		case 0x0: /* Load */
 			*dst = timer->load;
 			break;
 		case 0x4: /* Counter.  */
-			*dst = timer_block_counter_value(timer);
+			*dst = __timer_block_counter_value(timer);
 			break;
 		case 0x8: /* Control.  */
 			*dst = timer->control;
@@ -268,16 +284,18 @@ int mptimer_reg_read(struct mptimer_state *s, u32 offset, u32 *dst)
 	}
 
 	vmm_spin_unlock(&timer->lock);
+
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(mptimer_reg_read);
 
-int mptimer_reg_write(struct mptimer_state *s, u32 offset, u32 src_mask, 
-		      u32 src)
+int mptimer_reg_write(struct mptimer_state *s, 
+		      u32 offset, u32 src_mask, u32 src)
 {
+	bool update_irq = FALSE;
 	struct timer_block *timer;
 	struct vmm_vcpu *vcpu;
-	u32 cpu = 0, old;
+	u32 cpu = 0, old, control;
 
 	vcpu = vmm_scheduler_current_vcpu();
 	if (!vcpu || !vcpu->guest) {
@@ -318,7 +336,7 @@ int mptimer_reg_write(struct mptimer_state *s, u32 offset, u32 src_mask,
 			}
 			timer->count = src;
 			if (timer->control & TIMER_CTRL_ENABLE) {
-				timer_block_reload(timer);
+				__timer_block_reload(timer);
 			}
 			break;
 		case 0x8: /* Control.  */
@@ -327,19 +345,20 @@ int mptimer_reg_write(struct mptimer_state *s, u32 offset, u32 src_mask,
 			if(old & TIMER_CTRL_WDM) {
 				timer->control |= TIMER_CTRL_WDM;
 			}
-			timer->freq = timer_block_get_freq(timer);
+			timer->freq = __timer_block_get_freq(timer);
 			if (((old & TIMER_CTRL_ENABLE) == 0) && 
 			    (src & TIMER_CTRL_ENABLE)) {
 				if (timer->count == 0 && 
 				    (timer->control & TIMER_CTRL_ARELOAD)) {
 					timer->count = timer->load;
 				}
-				timer_block_reload(timer);
+				__timer_block_reload(timer);
 			}
 			break;
 		case 0xc: /* Interrupt status.  */
 			timer->status &= ~(src & 1);
-			timer_block_update_irq(timer);
+			update_irq = TRUE;
+			control = timer->control;
 			break;
 		case 0x10:
 			/* Watchdog Reset status */
@@ -357,7 +376,13 @@ int mptimer_reg_write(struct mptimer_state *s, u32 offset, u32 src_mask,
 			}
 			break;
 	}
+
 	vmm_spin_unlock(&timer->lock);
+
+	if (update_irq) {
+		timer_block_update_irq(timer, control);
+	}
+
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(mptimer_reg_write);
@@ -377,10 +402,11 @@ int mptimer_state_reset(struct mptimer_state *mpt)
 		timer->status = 0;
 		timer->tstamp = 0;
 		timer->wdisable = 0;
-		timer->freq = timer_block_get_freq(timer);
-		timer_block_update_irq(timer);
+		timer->freq = __timer_block_get_freq(timer);
 
 		vmm_spin_unlock(&timer->lock);
+
+		timer_block_update_irq(timer, 0x0);
 	}
 
 	return VMM_OK;
@@ -402,8 +428,7 @@ VMM_EXPORT_SYMBOL(mptimer_state_free);
 
 struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 					  struct vmm_emudev *edev, 
-					  u32 num_cpu,
-					  u32 periphclk,
+					  u32 num_cpu, u32 periphclk,
 					  u32 timer_irq, u32 wdt_irq)
 {
 	struct mptimer_state *s = NULL;
