@@ -40,6 +40,8 @@ void do_undef_inst(arch_regs_t *regs)
 	vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
 		   __func__, (vcpu) ? vcpu->name : "(NULL)", 
 		   read_hsr());
+	vmm_printf("%s: HPFAR=0x%08x HIFAR=0x%08x HDFAR=0x%08x\n",
+		   __func__, read_hpfar(), read_hifar(), read_hdfar());
 
 	cpu_vcpu_dump_user_reg(regs);
 
@@ -61,6 +63,8 @@ void do_soft_irq(arch_regs_t *regs)
 		vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
 			   __func__, (vcpu) ? vcpu->name : "(NULL)", 
 			   read_hsr());
+		vmm_printf("%s: HPFAR=0x%08x HIFAR=0x%08x HDFAR=0x%08x\n",
+			   __func__, read_hpfar(), read_hifar(), read_hdfar());
 
 		cpu_vcpu_dump_user_reg(regs);
 
@@ -77,6 +81,8 @@ void do_prefetch_abort(arch_regs_t *regs)
 	vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
 		   __func__, (vcpu) ? vcpu->name : "(NULL)", 
 		   read_hsr());
+	vmm_printf("%s: HPFAR=0x%08x HIFAR=0x%08x HDFAR=0x%08x\n",
+		   __func__, read_hpfar(), read_hifar(), read_hdfar());
 
 	cpu_vcpu_dump_user_reg(regs);
 
@@ -92,6 +98,8 @@ void do_data_abort(arch_regs_t *regs)
 	vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
 		   __func__, (vcpu) ? vcpu->name : "(NULL)", 
 		   read_hsr());
+	vmm_printf("%s: HPFAR=0x%08x HIFAR=0x%08x HDFAR=0x%08x\n",
+		   __func__, read_hpfar(), read_hifar(), read_hdfar());
 
 	cpu_vcpu_dump_user_reg(regs);
 
@@ -123,8 +131,8 @@ void do_hyp_trap(arch_regs_t *regs)
 		vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
 			   __func__, (vcpu) ? vcpu->name : "(NULL)", 
 			   read_hsr());
-		vmm_printf("%s: ec=0x%x, il=0x%x, iss=0x%x\n", 
-			   __func__, ec, il, iss);
+		vmm_printf("%s: HPFAR=0x%08x HIFAR=0x%08x HDFAR=0x%08x\n",
+			   __func__, read_hpfar(), read_hifar(), read_hdfar());
 		cpu_vcpu_dump_user_reg(regs);
 		vmm_panic("%s: please reboot ...\n", __func__);
 	}
