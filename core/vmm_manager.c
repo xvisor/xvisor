@@ -76,18 +76,78 @@ static void vmm_manager_ipi_state_change(void *vcpu,
 	vmm_scheduler_state_change(vcpu, (u32)(virtual_addr_t)new_state);
 }
 
-static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, u32 new_state)
+static void __vmm_manager_vcpu_state_change_doipi(struct vmm_vcpu *vcpu, 
+						  u32 hcpu, 
+						  u32 new_state, 
+						  bool async)
 {
+	if (async) {
+		vmm_smp_ipi_async_call(vmm_cpumask_of(hcpu),
+				       vmm_manager_ipi_state_change,
+				       vcpu, (void *)(virtual_addr_t)new_state,
+				       NULL);
+		return;
+	}
+
+	vmm_smp_ipi_sync_call(vmm_cpumask_of(hcpu), 1000,
+				      vmm_manager_ipi_state_change,
+				      vcpu, (void *)(virtual_addr_t)new_state,
+				      NULL);
+}
+
+static int __vmm_manager_vcpu_state_change_check(struct vmm_vcpu *vcpu,
+						 u32 new_state)
+{
+	int rc = VMM_OK;
+
+	switch (new_state) {
+	case VMM_VCPU_STATE_UNKNOWN:
+		break;
+	case VMM_VCPU_STATE_RESET:
+		if (vcpu->state == VMM_VCPU_STATE_RESET) {
+			rc = VMM_EINVALID;
+		}
+		break;
+	case VMM_VCPU_STATE_READY:
+		if ((vcpu->state != VMM_VCPU_STATE_RESET) &&
+		    (vcpu->state != VMM_VCPU_STATE_PAUSED)) {
+			rc = VMM_EINVALID;
+		}
+		break;
+	case VMM_VCPU_STATE_PAUSED:
+	case VMM_VCPU_STATE_HALTED:
+		if ((vcpu->state != VMM_VCPU_STATE_READY) &&
+		    (vcpu->state != VMM_VCPU_STATE_RUNNING)) {
+			rc = VMM_EINVALID;
+		}
+		break;
+	};
+
+	return rc;
+}
+
+static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, 
+					 u32 new_state, bool async)
+{
+	int rc;
 	u32 hcpu;
 	irq_flags_t flags;
 
+	/* Get host CPU assigned to this VCPU */
 	vmm_spin_lock_irqsave_lite(&vcpu->loadbal_lock, flags);
 	hcpu = vcpu->hcpu;
 	vmm_spin_unlock_irqrestore_lite(&vcpu->loadbal_lock, flags);
 
-	vmm_smp_ipi_sync_call(vmm_cpumask_of(hcpu), 1000,
-			      vmm_manager_ipi_state_change,
-			      vcpu, (void *)(virtual_addr_t)new_state, NULL);
+	/* Check on state transition to avoid */
+	vmm_spin_lock_irqsave_lite(&vcpu->sched_lock, flags);
+	rc = __vmm_manager_vcpu_state_change_check(vcpu, new_state);
+	vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+	if (rc) {
+		return rc;
+	}
+
+	/* Do IPI to change VCPU state on host CPU */
+	__vmm_manager_vcpu_state_change_doipi(vcpu, hcpu, new_state, async);
 
 	return VMM_OK;
 }
@@ -125,27 +185,32 @@ int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *),
 
 int vmm_manager_vcpu_reset(struct vmm_vcpu *vcpu)
 {
-	return vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_RESET);
+	return vmm_manager_vcpu_state_change(vcpu, 
+					VMM_VCPU_STATE_RESET, FALSE);
 }
 
 int vmm_manager_vcpu_kick(struct vmm_vcpu *vcpu)
 {
-	return vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_READY);
+	return vmm_manager_vcpu_state_change(vcpu, 
+					VMM_VCPU_STATE_READY, TRUE);
 }
 
 int vmm_manager_vcpu_pause(struct vmm_vcpu *vcpu)
 {
-	return vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_PAUSED);
+	return vmm_manager_vcpu_state_change(vcpu, 
+					VMM_VCPU_STATE_PAUSED, TRUE);
 }
 
 int vmm_manager_vcpu_resume(struct vmm_vcpu *vcpu)
 {
-	return vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_READY);
+	return vmm_manager_vcpu_state_change(vcpu, 
+					VMM_VCPU_STATE_READY, TRUE);
 }
 
 int vmm_manager_vcpu_halt(struct vmm_vcpu *vcpu)
 {
-	return vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_HALTED);
+	return vmm_manager_vcpu_state_change(vcpu, 
+					VMM_VCPU_STATE_HALTED, FALSE);
 }
 
 int vmm_manager_vcpu_dumpreg(struct vmm_vcpu *vcpu)
@@ -219,7 +284,6 @@ int vmm_manager_vcpu_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu)
 
 int vmm_manager_vcpu_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
 {
-	bool migrate;
 	u32 old_hcpu;
 	irq_flags_t flags, flags1;
 
@@ -227,7 +291,7 @@ int vmm_manager_vcpu_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
 		return VMM_EFAIL;
 	}
 
-	/* Lock load balancing */
+	/* Lock VCPU load balancing */
 	vmm_spin_lock_irqsave_lite(&vcpu->loadbal_lock, flags);
 
 	/* Current hcpu */
@@ -245,33 +309,34 @@ int vmm_manager_vcpu_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
 		return VMM_EINVALID;
 	}
 
-	/* Unlock load balancing */
-	vmm_spin_unlock_irqrestore_lite(&vcpu->loadbal_lock, flags);
-
-	/* Check if we need to migrate VCPU to new hcpu */
+	/* Lock VCPU scheduling */
 	vmm_spin_lock_irqsave_lite(&vcpu->sched_lock, flags1);
-	migrate = TRUE;
+
+	/* Check if we don't need to migrate VCPU to new hcpu */
 	if ((vcpu->state != VMM_VCPU_STATE_READY) &&
 	    (vcpu->state != VMM_VCPU_STATE_RUNNING)) {
-		migrate = FALSE;
 		vcpu->hcpu = hcpu;
-	}
-	vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags1);
-
-	/* If migration not required then do nothing */
-	if (!migrate) {
+		vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags1);
+		vmm_spin_unlock_irqrestore_lite(&vcpu->loadbal_lock, flags);
 		return VMM_OK;
 	}
 
-	/* Pause VCPU to remove it from old hcpu ready queue */
-	vmm_manager_vcpu_pause(vcpu);
+	/* Unlock VCPU scheduling */
+	vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags1);
 
-	vmm_spin_lock_irqsave_lite(&vcpu->loadbal_lock, flags);
+	/* Pause VCPU to remove it from old hcpu ready queue */
+	__vmm_manager_vcpu_state_change_doipi(vcpu, 
+				old_hcpu, VMM_VCPU_STATE_PAUSED, FALSE);
+
+	/* Change hcpu assigned to VCPU */
 	vcpu->hcpu = hcpu;
-	vmm_spin_unlock_irqrestore_lite(&vcpu->loadbal_lock, flags);
 
 	/* Resume VCPU to add it to new hcpu ready queue */
-	vmm_manager_vcpu_resume(vcpu);
+	__vmm_manager_vcpu_state_change_doipi(vcpu, 
+				hcpu, VMM_VCPU_STATE_READY, FALSE);
+
+	/* Unlock VCPU load balancing */
+	vmm_spin_unlock_irqrestore_lite(&vcpu->loadbal_lock, flags);
 
 	return VMM_OK;
 }
@@ -404,7 +469,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 
 	/* Notify scheduler about new VCPU */
 	if (vmm_manager_vcpu_state_change(vcpu, 
-					VMM_VCPU_STATE_RESET)) {
+				VMM_VCPU_STATE_RESET, FALSE)) {
 		arch_vcpu_deinit(vcpu);
 		vmm_free((void *)vcpu->stack_va);
 		vcpu = NULL;
@@ -447,7 +512,8 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 	vmm_waitqueue_forced_remove(vcpu);
 
 	/* Reset the VCPU */
-	if ((rc = vmm_manager_vcpu_state_change(vcpu, VMM_VCPU_STATE_RESET))) {
+	if ((rc = vmm_manager_vcpu_state_change(vcpu, 
+					VMM_VCPU_STATE_RESET, FALSE))) {
 		return rc;
 	}
 
@@ -462,7 +528,7 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 
 	/* Notify scheduler about VCPU state change */
 	if ((rc = vmm_manager_vcpu_state_change(vcpu, 
-					VMM_VCPU_STATE_UNKNOWN))) {
+					VMM_VCPU_STATE_UNKNOWN, FALSE))) {
 		goto release_lock;
 	}
 
@@ -837,7 +903,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 		/* Notify scheduler about new VCPU */
 		if (vmm_manager_vcpu_state_change(vcpu, 
-						VMM_VCPU_STATE_RESET)) {
+					VMM_VCPU_STATE_RESET, FALSE)) {
 			vmm_vcpu_irq_deinit(vcpu);
 			arch_vcpu_deinit(vcpu);
 			vmm_free((void *)vcpu->stack_va);
@@ -939,7 +1005,7 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 
 		/* Notify scheduler about VCPU state change */
 		if ((rc = vmm_manager_vcpu_state_change(vcpu, 
-					VMM_VCPU_STATE_UNKNOWN))) {
+					VMM_VCPU_STATE_UNKNOWN, FALSE))) {
 			goto release_lock;
 		}
 
