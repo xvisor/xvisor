@@ -78,9 +78,7 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 
 	/* If irq number found then execute it */
 	if (irq_no != -1) {
-		vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
 		rc = arch_vcpu_irq_execute(vcpu, regs, irq_no, irq_reas);
-		vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
 		if (rc == VMM_OK) {
 			vcpu->irqs.assert[irq_no] = FALSE;
 			vcpu->irqs.execute_pending--;
@@ -149,9 +147,7 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 
 	/* Assert the irq */
 	if (!vcpu->irqs.assert[irq_no]) {
-		vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
 		rc = arch_vcpu_irq_assert(vcpu, irq_no, reason);
-		vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
 		if (rc == VMM_OK) {
 			vcpu->irqs.reason[irq_no] = reason;
 			vcpu->irqs.assert[irq_no] = TRUE;
@@ -191,11 +187,7 @@ void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no)
 	reason = vcpu->irqs.reason[irq_no];
 
 	/* Call arch specific deassert */
-	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
 	rc = arch_vcpu_irq_deassert(vcpu, irq_no, reason);
-	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
-
-	/* Update deassert count */
 	if (rc == VMM_OK) {
 		vcpu->irqs.deassert_count++;
 	}
