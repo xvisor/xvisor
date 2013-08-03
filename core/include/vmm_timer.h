@@ -30,33 +30,40 @@
 struct vmm_timer_event;
 
 struct vmm_timer_event {
-	struct dlist head;
-	bool active;
-	u32 active_hcpu;
+	/* Publically accessible info */
 	u64 expiry_tstamp;
 	u64 duration_nsecs;
 	void (*handler) (struct vmm_timer_event *);
 	void *priv;
+	/* Internal house-keeping info */
+	vmm_spinlock_t active_lock;
+	bool active_state;
+	struct dlist active_head;
+	u32 active_hcpu;
 };
 
-#define INIT_TIMER_EVENT(ev, _hndl, _priv)	do { \
-						INIT_LIST_HEAD(&(ev)->head); \
-						(ev)->active = FALSE; \
-						(ev)->active_hcpu = 0; \
-						(ev)->expiry_tstamp = 0; \
-						(ev)->duration_nsecs = 0; \
-						(ev)->handler = _hndl; \
-						(ev)->priv = _priv; \
-						} while (0)
+#define INIT_TIMER_EVENT(ev, _hndl, _priv)	\
+				do { \
+					(ev)->expiry_tstamp = 0; \
+					(ev)->duration_nsecs = 0; \
+					(ev)->handler = _hndl; \
+					(ev)->priv = _priv; \
+					INIT_SPIN_LOCK(&(ev)->active_lock); \
+					INIT_LIST_HEAD(&(ev)->active_head); \
+					(ev)->active_state = FALSE; \
+					(ev)->active_hcpu = 0; \
+				} while (0)
 
-#define __TIMER_EVENT_INITIALIZER(ev, _hndl, _priv)	{	\
-	.head	= { &(ev).head, &(ev).head },			\
-	.active = FALSE,					\
-	.active_hcpu = 0,					\
-	.expiry_tstamp = 0,					\
-	.duration_nsecs = 0,					\
-	.handler = _hndl,					\
-	.priv = _priv,						\
+#define __TIMER_EVENT_INITIALIZER(ev, _hndl, _priv)	\
+	{ \
+		.expiry_tstamp = 0,					\
+		.duration_nsecs = 0,					\
+		.handler = _hndl,					\
+		.priv = _priv,						\
+		.active_lock = __SPINLOCK_INITIALIZER((ev).active_lock),\
+		.active_head = { &(ev).head, &(ev).head },		\
+		.active_state = FALSE,					\
+		.active_hcpu = 0,					\
 	}
 
 #define DECLARE_TIMER_EVENT(ev, _hndl, _priv)		\

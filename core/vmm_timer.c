@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_smp.h>
 #include <vmm_percpu.h>
-#include <vmm_spinlocks.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_clocksource.h>
@@ -66,7 +65,8 @@ u64 vmm_timer_timestamp(void)
 	return ret;
 }
 
-static void timer_schedule_next_event(struct vmm_timer_local_ctrl *tlcp)
+/* Note: This function must be called with tlcp->event_list_lock held. */
+static void __timer_schedule_next_event(struct vmm_timer_local_ctrl *tlcp)
 {
 	u64 tstamp;
 	struct vmm_timer_event *e;
@@ -84,7 +84,7 @@ static void timer_schedule_next_event(struct vmm_timer_local_ctrl *tlcp)
 	/* Retrieve first event from list of active events */
 	e = list_entry(list_first(&tlcp->event_list), 
 		       struct vmm_timer_event,
-		       head);
+		       active_head);
 
 	/* Configure clockevent device for first event */
 	tlcp->curr = e;
@@ -99,12 +99,33 @@ static void timer_schedule_next_event(struct vmm_timer_local_ctrl *tlcp)
 	}
 }
 
+/* Note: This function must be called with ev->active_lock held. */
+static void __timer_event_stop(struct vmm_timer_event *ev)
+{
+	irq_flags_t flags;
+	struct vmm_timer_local_ctrl *tlcp;
+
+	if (!ev->active_state) {
+		return;
+	}
+
+	tlcp = &per_cpu(tlc, ev->active_hcpu);
+
+	vmm_spin_lock_irqsave_lite(&tlcp->event_list_lock, flags);
+
+	ev->active_state = FALSE;
+	list_del(&ev->active_head);
+	ev->expiry_tstamp = 0;
+
+	vmm_spin_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
+}
+
 /* This is called from interrupt context. We need to protect the 
  * event list when manipulating it.
  */
 static void timer_clockchip_event_handler(struct vmm_clockchip *cc)
 {
-	irq_flags_t flags;
+	irq_flags_t flags, flags1;
 	struct vmm_timer_event *e;
 	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
 
@@ -112,23 +133,26 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc)
 
 	tlcp->inprocess = TRUE;
 
-	/* process expired active events */
+	/* Process expired active events */
 	while (!list_empty(&tlcp->event_list)) {
 		e = list_entry(list_first(&tlcp->event_list),
-			       struct vmm_timer_event, head);
+			       struct vmm_timer_event, active_head);
 		/* Current timestamp */
 		if (e->expiry_tstamp <= vmm_timer_timestamp()) {
+			/* Unlock event list for processing expired event */
+			vmm_spin_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
 			/* Set current CPU event to NULL */
 			tlcp->curr = NULL;
-			/* Consume expired active events */
-			list_del(&e->head);
-			e->expiry_tstamp = 0;
-			e->active = FALSE;
-			vmm_spin_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
+			/* Stop expired active event */
+			vmm_spin_lock_irqsave_lite(&e->active_lock, flags1);
+			__timer_event_stop(e);
+			vmm_spin_unlock_irqrestore_lite(&e->active_lock, flags1);
+			/* Call event handler */
 			e->handler(e);
+			/* Lock back event list */
 			vmm_spin_lock_irqsave_lite(&tlcp->event_list_lock, flags);
 		} else {
-			/* no more expired events */
+			/* No more expired events */
 			break;
 		}
 	}
@@ -136,71 +160,61 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc)
 	tlcp->inprocess = FALSE;
 
 	/* Schedule next timer event */
-	timer_schedule_next_event(tlcp);
+	__timer_schedule_next_event(tlcp);
 
 	vmm_spin_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
 }
 
 int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
 {
+	u32 hcpu;
 	u64 tstamp;
-	bool added;
-	irq_flags_t flags, flags1;
+	bool found_pos;
 	struct dlist *l;
+	irq_flags_t flags, flags1;
 	struct vmm_timer_event *e;
-	u32 hcpu = vmm_smp_processor_id();
-	struct vmm_timer_local_ctrl *tt, *tlcp = &per_cpu(tlc, hcpu);
+	struct vmm_timer_local_ctrl *tlcp;
 
 	if (!ev) {
 		return VMM_EFAIL;
 	}
 
-	vmm_spin_lock_irqsave_lite(&tlcp->event_list_lock, flags);
+	vmm_spin_lock_irqsave_lite(&ev->active_lock, flags);
 
-	if (ev->active) {
-		if (ev->active_hcpu != hcpu) {
-			tt = &per_cpu(tlc, ev->active_hcpu);
-			vmm_spin_lock_irqsave_lite(&tt->event_list_lock, 
-						   flags1);
-			list_del(&ev->head);
-			ev->active = FALSE;
-			ev->active_hcpu = 0;
-			ev->expiry_tstamp = 0;
-			vmm_spin_unlock_irqrestore_lite(&tt->event_list_lock, 
-							flags1);
-		} else {
-			list_del(&ev->head);
-			ev->active = FALSE;
-			ev->active_hcpu = 0;
-			ev->expiry_tstamp = 0;
-		}
-	}
+	__timer_event_stop(ev);
+
+	hcpu = vmm_smp_processor_id();
+	tlcp = &per_cpu(tlc, hcpu);
+
+	vmm_spin_lock_irqsave_lite(&tlcp->event_list_lock, flags1);
 
 	tstamp = vmm_timer_timestamp();
-
 	ev->expiry_tstamp = tstamp + duration_nsecs;
 	ev->duration_nsecs = duration_nsecs;
-	ev->active = TRUE;
-	ev->active_hcpu = hcpu;
-	added = FALSE;
-	e = NULL;
 
+	e = NULL;
+	found_pos = FALSE;
 	list_for_each(l, &tlcp->event_list) {
-		e = list_entry(l, struct vmm_timer_event, head);
+		e = list_entry(l, struct vmm_timer_event, active_head);
 		if (ev->expiry_tstamp < e->expiry_tstamp) {
-			list_add_tail(&ev->head, &e->head);
-			added = TRUE;
+			found_pos = TRUE;
 			break;
 		}
 	}
 
-	if (!added) {
-		list_add_tail(&ev->head, &tlcp->event_list);
+	ev->active_state = TRUE;
+	if (!found_pos) {
+		list_add_tail(&ev->active_head, &tlcp->event_list);
+	} else {
+		list_add_tail(&ev->active_head, &e->active_head);
 	}
+	ev->active_hcpu = hcpu;
 
-	timer_schedule_next_event(tlcp);
+	__timer_schedule_next_event(tlcp);
 
-	vmm_spin_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&tlcp->event_list_lock, flags1);
+
+	vmm_spin_unlock_irqrestore_lite(&ev->active_lock, flags);
 
 	return VMM_OK;
 }
@@ -217,23 +231,16 @@ int vmm_timer_event_restart(struct vmm_timer_event *ev)
 int vmm_timer_event_stop(struct vmm_timer_event *ev)
 {
 	irq_flags_t flags;
-	struct vmm_timer_local_ctrl *tlcp;
 
 	if (!ev) {
 		return VMM_EFAIL;
 	}
 
-	if (ev->active) {
-		tlcp = &per_cpu(tlc, ev->active_hcpu);
-		vmm_spin_lock_irqsave_lite(&tlcp->event_list_lock, flags);
+	vmm_spin_lock_irqsave_lite(&ev->active_lock, flags);
 
-		list_del(&ev->head);
-		ev->active = FALSE;
-		ev->active_hcpu = 0;
-		ev->expiry_tstamp = 0;
+	__timer_event_stop(ev);
 
-		vmm_spin_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
-	}
+	vmm_spin_unlock_irqrestore_lite(&ev->active_lock, flags);
 
 	return VMM_OK;
 }
