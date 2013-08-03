@@ -49,8 +49,16 @@ static struct vmm_loadbal_ctrl lbctrl;
 static u32 loadbal_get_next_hcpu(struct vmm_vcpu *vcpu, 
 				 u32 old_hcpu, const struct vmm_cpumask *mask)
 {
-	u32 cpu = old_hcpu + 1;
+	u32 cpu;
+	u64 tstamp;
 
+	/* FIXME: randomly change hcpu of VCPU */
+	tstamp = vmm_timer_timestamp();
+	if (tstamp & 0x1000) {
+		return old_hcpu;
+	}
+
+	cpu = old_hcpu + 1;
 	while (1) {
 		if (cpu >= CONFIG_CPU_COUNT) {
 			cpu = 0;
@@ -69,15 +77,8 @@ static u32 loadbal_get_next_hcpu(struct vmm_vcpu *vcpu,
 static int loadbal_iter(struct vmm_vcpu *vcpu, void *priv)
 {
 	int rc;
-	u64 tstamp;
 	u32 new_hcpu, old_hcpu;
 	const struct vmm_cpumask *mask;
-
-	/* FIXME: randomly change hcpu of VCPU */
-	tstamp = vmm_timer_timestamp();
-	if (tstamp & 0x1000) {
-		return VMM_OK;
-	}
 
 	rc = vmm_manager_vcpu_get_hcpu(vcpu, &old_hcpu);
 	if (rc) {
@@ -98,9 +99,6 @@ static int loadbal_iter(struct vmm_vcpu *vcpu, void *priv)
 	if (rc) {
 		return rc;
 	}
-
-//	vmm_printf("%s: migrated vcpu=%s from CPU%d to CPU%d",
-//		   __func__, vcpu->name, old_hcpu, next_hcpu);
 
 	return VMM_OK;
 }
