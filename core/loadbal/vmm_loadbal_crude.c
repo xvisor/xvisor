@@ -106,12 +106,22 @@ static int loadbal_iter(struct vmm_vcpu *vcpu, void *priv)
 static void loadbal_main(void)
 {
 	u64 tstamp;
+	u32 i, count;
+	struct vmm_vcpu *vcpu;
 
 	while (1) {
 		tstamp = LOADBAL_VCPU_PERIOD;
 		vmm_completion_wait_timeout(&lbctrl.loadbal_cmpl, &tstamp);
 
-		vmm_manager_vcpu_iterate(loadbal_iter, NULL);
+		count = vmm_manager_vcpu_count();
+		for (i = 0; i < count; i++) {
+			vcpu = vmm_manager_vcpu(i);
+			if (!vcpu) {
+				continue;
+			}
+
+			loadbal_iter(vcpu, NULL);
+		}
 	}
 }
 
