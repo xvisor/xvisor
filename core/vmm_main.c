@@ -356,7 +356,7 @@ void vmm_init(void)
 	vmm_printf("Initialize Hypervisor Load Balancer\n");
 	ret = vmm_loadbal_init();
 	if (ret) {
-		vmm_hang();
+		vmm_panic("Error %d\n", ret);
 	}
 
 	/* Initialize secondary CPUs */
