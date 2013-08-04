@@ -150,13 +150,10 @@ struct vmm_vcpu {
 	virtual_addr_t stack_va;
 	virtual_size_t stack_sz;
 
-	/* Load balancing context */
-	vmm_spinlock_t loadbal_lock;
-	const struct vmm_cpumask *cpu_affinity;
-	u32 hcpu;
-
-	/* Scheduling context */
+	/* Scheduling & load balancing context */
 	vmm_spinlock_t sched_lock;
+	u32 hcpu;
+	const struct vmm_cpumask *cpu_affinity;
 	u32 state;
 	u32 reset_count;
 	u8 priority;
