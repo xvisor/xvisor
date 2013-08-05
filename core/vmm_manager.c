@@ -310,6 +310,14 @@ int vmm_manager_vcpu_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
 		return VMM_OK;
 	}
 
+	/* TODO: We don't have a clean way to migrate a VCPU in
+	 * running state to another hcpu 
+	 */
+	if (vcpu->state == VMM_VCPU_STATE_RUNNING) {
+		vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+		return VMM_EINVALID;
+	}
+
 	/* Unlock VCPU scheduling */
 	vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 
