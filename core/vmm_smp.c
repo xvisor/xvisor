@@ -31,8 +31,18 @@
 #include <vmm_manager.h>
 #include <libs/fifo.h>
 
-#define SMP_IPI_MAX_SYNC_PER_CPU	(CONFIG_CPU_COUNT)
-#define SMP_IPI_MAX_ASYNC_PER_CPU	(CONFIG_MAX_VCPU_COUNT)
+/* Theoretically, number of host CPUs making Sync IPI 
+ * simultaneously to a host CPU should not be more than 
+ * maximum possible hardware CPUs but, we keep minimum
+ * Sync IPIs per host CPU to max possible VCPUs.
+ */
+#define SMP_IPI_MAX_SYNC_PER_CPU	(CONFIG_MAX_VCPU_COUNT)
+
+/* Various trials show that having minimum of 64 Async IPI
+ * per host CPU is good enough. If we require to increase 
+ * this limit then we should have a config option.
+ */
+#define SMP_IPI_MAX_ASYNC_PER_CPU	(64)
 
 #define SMP_IPI_WAIT_TRY_COUNT		100
 #define SMP_IPI_WAIT_UDELAY		1000
