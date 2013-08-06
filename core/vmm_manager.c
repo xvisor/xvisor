@@ -35,6 +35,14 @@
 #include <arch_guest.h>
 #include <libs/stringlib.h>
 
+#undef DEBUG
+
+#ifdef DEBUG
+#define DPRINTF(msg...)		vmm_printf(msg)
+#else
+#define DPRINTF(msg...)
+#endif
+
 /** Control structure for Scheduler */
 struct vmm_manager_ctrl {
 	vmm_spinlock_t lock;
@@ -74,25 +82,6 @@ static void vmm_manager_ipi_state_change(void *vcpu,
 					 void *new_state, void *dummy)
 {
 	vmm_scheduler_state_change(vcpu, (u32)(virtual_addr_t)new_state);
-}
-
-static void __vmm_manager_vcpu_state_change_doipi(struct vmm_vcpu *vcpu, 
-						  u32 hcpu, 
-						  u32 new_state, 
-						  bool async)
-{
-	if (async) {
-		vmm_smp_ipi_async_call(vmm_cpumask_of(hcpu),
-				       vmm_manager_ipi_state_change,
-				       vcpu, (void *)(virtual_addr_t)new_state,
-				       NULL);
-		return;
-	}
-
-	vmm_smp_ipi_sync_call(vmm_cpumask_of(hcpu), 1000,
-			      vmm_manager_ipi_state_change,
-			      vcpu, (void *)(virtual_addr_t)new_state,
-			      NULL);
 }
 
 static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, 
@@ -140,7 +129,17 @@ static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu,
 	}
 
 	/* Do IPI to change VCPU state on host CPU */
-	__vmm_manager_vcpu_state_change_doipi(vcpu, hcpu, new_state, async);
+	if (async) {
+		vmm_smp_ipi_async_call(vmm_cpumask_of(hcpu),
+				       vmm_manager_ipi_state_change,
+				       vcpu, (void *)(virtual_addr_t)new_state,
+				       NULL);
+	} else {
+		vmm_smp_ipi_sync_call(vmm_cpumask_of(hcpu), 1000,
+				      vmm_manager_ipi_state_change,
+				      vcpu, (void *)(virtual_addr_t)new_state,
+				      NULL);
+	}
 
 	return VMM_OK;
 }
@@ -275,6 +274,44 @@ int vmm_manager_vcpu_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu)
 	return VMM_OK;
 }
 
+static void vmm_manager_vcpu_set_hcpu_try_resume(void *vcpu_ptr, 
+					 void *dummy1, void *dummy2)
+{
+	int rc;
+	struct vmm_vcpu *vcpu = vcpu_ptr;
+	
+	rc = vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_READY);
+	if (rc) {
+		DPRINTF("%s: Failed to resume VCPU=%s on CPU%d (%d)\n",
+			__func__, vcpu->name, vmm_smp_processor_id(), rc);
+		return;
+	}
+}
+
+static void vmm_manager_vcpu_set_hcpu_try_pause(void *vcpu_ptr, 
+					 void *new_hcpu, void *dummy)
+{
+	int rc;
+	irq_flags_t flags;
+	u32 hcpu = (u32)(virtual_addr_t)new_hcpu;
+	struct vmm_vcpu *vcpu = vcpu_ptr;
+
+	rc = vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_PAUSED);
+	if (rc) {
+		DPRINTF("%s: Failed to pause VCPU=%s on CPU%d (%d)\n", 
+			__func__, vcpu->name, vmm_smp_processor_id(), rc);
+		return;
+	}
+
+	vmm_spin_lock_irqsave_lite(&vcpu->sched_lock, flags);
+	vcpu->hcpu = hcpu;
+	vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+
+	vmm_smp_ipi_async_call(vmm_cpumask_of(hcpu),
+			       vmm_manager_vcpu_set_hcpu_try_resume,
+			       vcpu, NULL, NULL);	
+}
+
 int vmm_manager_vcpu_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
 {
 	u32 old_hcpu;
@@ -310,28 +347,16 @@ int vmm_manager_vcpu_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
 		return VMM_OK;
 	}
 
-	/* TODO: We don't have a clean way to migrate a VCPU in
-	 * running state to another hcpu 
-	 */
-	if (vcpu->state == VMM_VCPU_STATE_RUNNING) {
-		vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-		return VMM_EINVALID;
-	}
-
 	/* Unlock VCPU scheduling */
 	vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 
-	/* Pause VCPU to remove it from old hcpu ready queue */
-	__vmm_manager_vcpu_state_change_doipi(vcpu, 
-				old_hcpu, VMM_VCPU_STATE_PAUSED, FALSE);
+	/* Try to migrate running/ready VCPU to new host CPU */
+	vmm_smp_ipi_async_call(vmm_cpumask_of(old_hcpu),
+			       vmm_manager_vcpu_set_hcpu_try_pause,
+			       vcpu, (void *)(virtual_addr_t)hcpu,
+			       NULL);
 
-	/* Change hcpu assigned to VCPU */
-	vmm_spin_lock_irqsave_lite(&vcpu->sched_lock, flags);
-	vcpu->hcpu = hcpu;
-	vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-
-	/* Resume VCPU to add it to new hcpu ready queue */
-	return vmm_manager_vcpu_resume(vcpu);
+	return VMM_OK;
 }
 
 const struct vmm_cpumask *vmm_manager_vcpu_get_affinity(struct vmm_vcpu *vcpu)
