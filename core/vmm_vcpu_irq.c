@@ -99,19 +99,26 @@ static void vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 		return;
 	}
 
+	/* Lock VCPU irqs */
 	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
+
+	/* If VCPU was in wfi state then update state. */
 	wfi_state = vcpu->irqs.wfi_state;
+	if (wfi_state) {
+		/* Clear wait for irq state */
+		vcpu->irqs.wfi_state = FALSE;
+
+		/* Stop wait for irq timeout event */
+		vmm_timer_event_stop(vcpu->irqs.wfi_priv);
+	}	
+
+	/* Unlock VCPU irqs */
 	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
 
-	/* If VCPU was wfi state then resume it. */
+	/* Try to resume the VCPU */
 	if (wfi_state) {
-		if (!(vmm_manager_vcpu_resume(vcpu))) {
-			vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
-			vcpu->irqs.wfi_state = FALSE;
-			vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
-			vmm_timer_event_stop(vcpu->irqs.wfi_priv);
-		}
-	}	
+		vmm_manager_vcpu_resume(vcpu);
+	}
 }
 
 static void vcpu_irq_wfi_timeout(struct vmm_timer_event *ev)
@@ -223,37 +230,35 @@ int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu)
 
 int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 {
-	int rc = VMM_EFAIL;
 	irq_flags_t flags;
 
 	/* Sanity Checks */
 	if (!vcpu || !vcpu->is_normal) {
-		return rc;
+		return VMM_EFAIL;
 	}
 
-	/* Pause the VCPU */
-	rc = vmm_manager_vcpu_pause(vcpu);
+	/* Try to pause the VCPU */
+	vmm_manager_vcpu_pause(vcpu);
 
 	/* Lock VCPU irqs */
 	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
 
-	/* If VCPU paused successfully then update state */
-	if (!rc) {
-		/* Set wait for irq state */
-		vcpu->irqs.wfi_state = TRUE;
-		/* Get timestamp for wait for irq */
-		vcpu->irqs.wfi_tstamp = vmm_timer_timestamp();
-		/* Start wait for irq timeout event */
-		if (!nsecs) {
-			nsecs = CONFIG_WFI_TIMEOUT_SECS*1000000000ULL;
-		}
-		vmm_timer_event_start(vcpu->irqs.wfi_priv, nsecs);
+	/* Set wait for irq state */
+	vcpu->irqs.wfi_state = TRUE;
+
+	/* Get timestamp for wait for irq */
+	vcpu->irqs.wfi_tstamp = vmm_timer_timestamp();
+
+	/* Start wait for irq timeout event */
+	if (!nsecs) {
+		nsecs = CONFIG_WFI_TIMEOUT_SECS*1000000000ULL;
 	}
+	vmm_timer_event_start(vcpu->irqs.wfi_priv, nsecs);
 
 	/* Unlock VCPU irqs */
 	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
 
-	return rc;
+	return VMM_OK;
 }
 
 int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
