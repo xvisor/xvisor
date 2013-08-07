@@ -146,7 +146,7 @@ char *strrchr(const char *s, int c)
 
 	/* search for the c char starting right */
 	for (; *p != (char)c && p != s; p--);
-	return p == s ? NULL : (char *)p;
+	return (*p != c) ? NULL : (char *)p;
 }
 
 char *strnchr(const char *s, size_t n, int c)
