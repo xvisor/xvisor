@@ -116,7 +116,6 @@ static u32 smp_ipi_sync_pending_count(u32 cpu)
 
 static void smp_ipi_main(void)
 {
-	u32 avail;
 	struct smp_ipi_call ipic;
 	struct smp_ipi_ctrl *ictlp = &this_cpu(ictl);
 
@@ -124,21 +123,16 @@ static void smp_ipi_main(void)
 		vmm_completion_wait(&ictlp->ipi_avail);
 
 		/* Process async IPIs */
-		avail = fifo_avail(ictlp->async_fifo);
-		while (avail && fifo_dequeue(ictlp->async_fifo, &ipic)) {
+		while (fifo_dequeue(ictlp->async_fifo, &ipic)) {
 			if (ipic.func) {
 				ipic.func(ipic.arg0, ipic.arg1, ipic.arg2);
 			}
-			avail--;
 		}
 	}
 }
 
 void vmm_smp_ipi_exec(void)
 {
-#if 0
-	u32 avail;
-#endif
 	struct smp_ipi_call ipic;
 	struct smp_ipi_ctrl *ictlp = &this_cpu(ictl);
 
@@ -149,20 +143,8 @@ void vmm_smp_ipi_exec(void)
 		}
 	}
 
-#if 0
-	avail = fifo_avail(ictlp->async_fifo);
-	while (avail) {
-		if (fifo_dequeue(ictlp->async_fifo, &ipic)) {
-			if (ipic.func) {
-				ipic.func(ipic.arg0, ipic.arg1, ipic.arg2);
-			}
-		}
-		avail--;
-	}
-#else
 	/* Signal IPI available event */
 	vmm_completion_complete(&ictlp->ipi_avail);
-#endif
 }
 
 void vmm_smp_ipi_async_call(const struct vmm_cpumask *dest,
