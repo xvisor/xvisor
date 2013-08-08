@@ -370,15 +370,74 @@ def convert_srs_inst(hxstr):
 #		inst_op[27:24] = 0xf
 #		inst_id[23:20] = 0
 #		inst_subid[19:17] = 6
+#		inst_ev[16:15] = 0
 def convert_wfi_inst(hxstr):
 	hx = int(hxstr, 16)
 	inst_id = 0
 	inst_subid = 6
+	inst_ev = 0
 	cond = (hx >> 28) & 0xF
 	rethx = 0x0F000000
 	rethx = rethx | (cond << 28)
 	rethx = rethx | (inst_id << 20)
 	rethx = rethx | (inst_subid << 17)
+	rethx = rethx | (inst_ev << 15)
+	return rethx
+
+# WFE
+#	Syntax:
+# 		wfe<c>
+#	Fields:
+#		cond = bits[31:28]
+#	Hypercall Fields:
+#		inst_cond[31:28] = cond
+#		inst_op[27:24] = 0xf
+#		inst_id[23:20] = 0
+#		inst_subid[19:17] = 6
+#		inst_ev[16:15] = 1
+def convert_wfe_inst(hxstr):
+	hx = int(hxstr, 16)
+	inst_id = 0
+	inst_subid = 6
+	inst_ev = 1
+	cond = (hx >> 28) & 0xF
+	rethx = 0x0F000000
+	rethx = rethx | (cond << 28)
+	rethx = rethx | (inst_id << 20)
+	rethx = rethx | (inst_subid << 17)
+	rethx = rethx | (inst_ev << 15)
+	return rethx
+
+# YIELD
+#	Syntax:
+# 		yield<c>
+#	Fields:
+#		cond = bits[31:28]
+#	Hypercall Fields:
+#		inst_cond[31:28] = cond
+#		inst_op[27:24] = 0xf
+#		inst_id[23:20] = 0
+#		inst_subid[19:17] = 6
+#		inst_ev[16:15] = 2
+def convert_yield_inst(hxstr):
+	hx = int(hxstr, 16)
+	inst_id = 0
+	inst_subid = 6
+	inst_ev = 2
+	cond = (hx >> 28) & 0xF
+	rethx = 0x0F000000
+	rethx = rethx | (cond << 28)
+	rethx = rethx | (inst_id << 20)
+	rethx = rethx | (inst_subid << 17)
+	rethx = rethx | (inst_ev << 15)
+	return rethx
+
+# SEV
+#	Syntax:
+# 		sev<c>
+#	Just an unconditionnal NOP
+def convert_sev_inst(hxstr):
+	rethx = 0xe1a00000
 	return rethx
 
 # LDM (exception return or user register)
@@ -518,9 +577,18 @@ for ln, l in enumerate(lines):
 			if (w[1]=="Address"):
 				continue
 		if (len(w)==3):
-			if (w[2]=="wfi"):
-				print "\t#", w[2] 
+			if (w[2].startswith("wfi")):
+				print "\t#", w[2]
 				print "\twrite32,0x%x,0x%08x" % (addr, convert_wfi_inst(w[1]))
+			elif (w[2].startswith("wfe")):
+				print "\t#", w[2]
+				print "\twrite32,0x%x,0x%08x" % (addr, convert_wfe_inst(w[1]))
+			elif (w[2].startswith("sev")):
+				print "\t#", w[2]
+				print "\twrite32,0x%x,0x%08x" % (addr, convert_sev_inst(w[1]))
+			elif (w[2].startswith("yield")):
+				print "\t#", w[2]
+				print "\twrite32,0x%x,0x%08x" % (addr, convert_yield_inst(w[1]))
 		elif (len(w)==4):
 			if (w[2]=="cps" or w[2]=="cpsie" or w[2]=="cpsid"):
 				print "\t#", w[2], w[3]

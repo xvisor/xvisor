@@ -131,6 +131,8 @@
 #define ARM_INST_HYPERCALL_ID_SHIFT		20
 #define ARM_INST_HYPERCALL_SUBID_MASK		0x000E0000
 #define ARM_INST_HYPERCALL_SUBID_SHIFT		17
+#define ARM_INST_HYPERCALL_WFX_MASK		0x00018000
+#define ARM_INST_HYPERCALL_WFX_SHIFT		15
 
 /** Emulate ARM hypercall instruction */
 int cpu_vcpu_hypercall_arm(struct vmm_vcpu *vcpu, arch_regs_t *regs, u32 inst);
