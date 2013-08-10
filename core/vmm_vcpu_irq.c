@@ -246,9 +246,6 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 	/* Set wait for irq state */
 	vcpu->irqs.wfi_state = TRUE;
 
-	/* Get timestamp for wait for irq */
-	vcpu->irqs.wfi_tstamp = vmm_timer_timestamp();
-
 	/* Start wait for irq timeout event */
 	if (!nsecs) {
 		nsecs = CONFIG_WFI_TIMEOUT_SECS*1000000000ULL;
@@ -333,7 +330,6 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 
 	/* Setup wait for irq context */
 	vcpu->irqs.wfi_state = FALSE;
-	vcpu->irqs.wfi_tstamp = 0;
 	rc = vmm_timer_event_stop(vcpu->irqs.wfi_priv);
 
 	/* Unlock VCPU irqs */
