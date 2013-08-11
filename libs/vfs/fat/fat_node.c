@@ -832,7 +832,7 @@ int fatfs_node_add_dirent(struct fatfs_node *dnode,
 		dent_off += sizeof(dent);
 	}
 
-	if (found) {
+	if (!found) {
 		return VMM_ENOENT;
 	}
 
@@ -858,7 +858,7 @@ int fatfs_node_add_dirent(struct fatfs_node *dnode,
 	dcsum = fatfs_node_lfn_checksum(check);
 
 	/* Write long filename enteries */
-	for (cnt = 0; 0 < (dent_cnt - 1); cnt++) {
+	for (cnt = 0; cnt < (dent_cnt - 1); cnt++) {
 		memset(&lfn, 0xFF, sizeof(lfn));
 		lfn.seqno = FAT_LONGNAME_SEQNO((dent_cnt - 1) - cnt);
 		if (cnt == 0) {
