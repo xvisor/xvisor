@@ -143,6 +143,8 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
 	} else if (!strcmp(name, VMM_DEVTREE_BLKDEV_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
+	} else if (!strcmp(name, VMM_DEVTREE_CPU_AFFINITY_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	}
 
 	return ret;
