@@ -23,11 +23,13 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
+#include <arch_barrier.h>
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_cp15.h>
@@ -539,6 +541,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		p->lr_fiq = 0x0;
 		p->spsr_fiq = 0x0;
 	}
+	p->last_hcpu = 0xFFFFFFFF;
 	if (!vcpu->reset_count) {
 		/* Initialize Hypervisor Configuration */
 		p->hcr = (HCR_TAC_MASK |
@@ -799,8 +802,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			}
 			/* Save general purpose banked registers */
 			cpu_vcpu_banked_regs_save(tvcpu);
-			/* Save hypervisor config */
-			arm_priv(tvcpu)->hcr = read_hcr();
+			/* Update last host CPU */
+			arm_priv(tvcpu)->last_hcpu = vmm_smp_processor_id();
 		}
 	}
 
@@ -816,6 +819,20 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	}
 	regs->cpsr = arm_regs(vcpu)->cpsr;
 	if (vcpu->is_normal) {
+		if (arm_priv(tvcpu)->last_hcpu != vmm_smp_processor_id()) {
+			/* Invalidate all guest TLB enteries because
+			 * we might have stale guest TLB enteries from
+			 * our previous run on new_hcpu host CPU 
+			 */
+			inv_tlb_guest_allis();
+			/* Invalidate i-cache due always fetch fresh
+			 * code after moving to new_hcpu host CPU
+			 */
+			invalidate_icache();
+			/* Ensure changes are visible */
+			dsb();
+			isb();
+		}
 		/* Restore hypervisor config */
 		write_hcr(arm_priv(vcpu)->hcr);
 		write_hcptr(arm_priv(vcpu)->hcptr);

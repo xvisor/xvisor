@@ -117,6 +117,8 @@ struct arm_priv {
 	u32 sp_fiq;
 	u32 lr_fiq;
 	u32 spsr_fiq;
+	/* Last host CPU on which this VCPU ran */
+	u32 last_hcpu;
 	/* Hypervisor Configuration */
 	u32 hcr;
 	/* Hypervisor Coprocessor Trap Register */
