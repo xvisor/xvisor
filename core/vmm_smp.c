@@ -48,10 +48,12 @@
 #define SMP_IPI_WAIT_UDELAY		1000
 
 #define IPI_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
-#define IPI_VCPU_PRIORITY 		VMM_VCPU_DEF_PRIORITY
+#define IPI_VCPU_PRIORITY 		VMM_VCPU_MAX_PRIORITY
 #define IPI_VCPU_TIMESLICE 		VMM_VCPU_DEF_TIME_SLICE
 
 struct smp_ipi_call {
+	u32 src_cpu;
+	u32 dst_cpu;
 	void (*func)(void *, void *, void *);
 	void *arg0;
 	void *arg1;
@@ -67,10 +69,10 @@ struct smp_ipi_ctrl {
 
 static DEFINE_PER_CPU(struct smp_ipi_ctrl, ictl);
 
-static void smp_ipi_sync_submit(u32 cpu, struct smp_ipi_call *ipic)
+static void smp_ipi_sync_submit(struct smp_ipi_ctrl *ictlp, 
+				struct smp_ipi_call *ipic)
 {
 	int try;
-	struct smp_ipi_ctrl *ictlp = &per_cpu(ictl, cpu);
 
 	if (!ipic || !ipic->func) {
 		return;
@@ -83,14 +85,14 @@ static void smp_ipi_sync_submit(u32 cpu, struct smp_ipi_call *ipic)
 	}
 
 	if (!try) {
-		WARN(1, "CPU%d: IPI sync fifo full\n", cpu);
+		WARN(1, "CPU%d: IPI sync fifo full\n", ipic->dst_cpu);
 	}
 }
 
-static void smp_ipi_async_submit(u32 cpu, struct smp_ipi_call *ipic)
+static void smp_ipi_async_submit(struct smp_ipi_ctrl *ictlp, 
+				 struct smp_ipi_call *ipic)
 {
 	int try;
-	struct smp_ipi_ctrl *ictlp = &per_cpu(ictl, cpu);
 
 	if (!ipic || !ipic->func) {
 		return;
@@ -103,15 +105,8 @@ static void smp_ipi_async_submit(u32 cpu, struct smp_ipi_call *ipic)
 	}
 
 	if (!try) {
-		WARN(1, "CPU%d: IPI async fifo full\n", cpu);
+		WARN(1, "CPU%d: IPI async fifo full\n", ipic->dst_cpu);
 	}
-}
-
-static u32 smp_ipi_sync_pending_count(u32 cpu)
-{
-	struct smp_ipi_ctrl *ictlp = &per_cpu(ictl, cpu);
-
-	return fifo_avail(ictlp->sync_fifo);
 }
 
 static void smp_ipi_main(void)
@@ -120,6 +115,7 @@ static void smp_ipi_main(void)
 	struct smp_ipi_ctrl *ictlp = &this_cpu(ictl);
 
 	while (1) {
+		/* Wait for some IPI to be available */
 		vmm_completion_wait(&ictlp->ipi_avail);
 
 		/* Process async IPIs */
@@ -168,11 +164,13 @@ void vmm_smp_ipi_async_call(const struct vmm_cpumask *dest,
 				continue;
 			}
 
+			ipic.src_cpu = cpu;
+			ipic.dst_cpu = c;
 			ipic.func = func;
 			ipic.arg0 = arg0;
 			ipic.arg1 = arg1;
 			ipic.arg2 = arg2;
-			smp_ipi_async_submit(c, &ipic);
+			smp_ipi_async_submit(&per_cpu(ictl, c), &ipic);
 			vmm_cpumask_set_cpu(c, &trig_mask);
 			trig_count++;
 		}
@@ -190,9 +188,10 @@ int vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 {
 	int rc = VMM_OK;
 	u64 timeout_tstamp;
-	u32 c, check_count, trig_count, cpu = vmm_smp_processor_id();
+	u32 c, trig_count, cpu = vmm_smp_processor_id();
 	struct vmm_cpumask trig_mask = VMM_CPU_MASK_NONE;
 	struct smp_ipi_call ipic;
+	struct smp_ipi_ctrl *ictlp;
 
 	if (!dest || !func) {
 		return VMM_EFAIL;
@@ -207,11 +206,13 @@ int vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 				continue;
 			}
 
+			ipic.src_cpu = cpu;
+			ipic.dst_cpu = c;
 			ipic.func = func;
 			ipic.arg0 = arg0;
 			ipic.arg1 = arg1;
 			ipic.arg2 = arg2;
-			smp_ipi_sync_submit(c, &ipic);
+			smp_ipi_sync_submit(&per_cpu(ictl, c), &ipic);
 			vmm_cpumask_set_cpu(c, &trig_mask);
 			trig_count++;
 		}
@@ -224,15 +225,17 @@ int vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 		timeout_tstamp = vmm_timer_timestamp();
 		timeout_tstamp += (u64)timeout_msecs * 1000000ULL;
 		while (vmm_timer_timestamp() < timeout_tstamp) {
-			check_count = 0;
 			for_each_cpu(c, &trig_mask) {
-				if (!smp_ipi_sync_pending_count(c)) {
-					check_count++;
+				ictlp = &per_cpu(ictl, c);
+				if (!fifo_avail(ictlp->sync_fifo)) {
+					vmm_cpumask_clear_cpu(c, &trig_mask);
+					trig_count--;
 				}
 			}
 
-			if (check_count == trig_count) {
+			if (!trig_count) {
 				rc = VMM_OK;
+				break;
 			}
 
 			vmm_udelay(SMP_IPI_WAIT_UDELAY);
