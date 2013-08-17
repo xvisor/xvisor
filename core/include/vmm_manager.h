@@ -94,6 +94,7 @@ struct vmm_guest {
 
 	u32 id;
 	struct vmm_devtree_node *node;
+	bool is_big_endian;
 	u32 reset_count;
 
 	/* VCPU instances belonging to this Guest */

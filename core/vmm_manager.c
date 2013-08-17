@@ -799,11 +799,27 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	/* Initialize guest instance */
 	list_add_tail(&guest->head, &mngr.guest_list);
 	guest->node = gnode;
+#ifdef CONFIG_CPU_BE
+	guest->is_big_endian = TRUE;
+#else
+	guest->is_big_endian = FALSE;
+#endif
 	guest->reset_count = 0;
 	INIT_SPIN_LOCK(&guest->vcpu_lock);
 	guest->vcpu_count = 0;
 	INIT_LIST_HEAD(&guest->vcpu_list);
 	guest->arch_priv = NULL;
+
+	/* Determine guest endianness from guest node */
+	attrval = vmm_devtree_attrval(gnode,
+				      VMM_DEVTREE_ENDIANNESS_ATTR_NAME);
+	if (attrval) {
+		if (!strcmp(attrval, VMM_DEVTREE_ENDIANNESS_VAL_LITTLE)) {
+			guest->is_big_endian = FALSE;
+		} else if (!strcmp(attrval, VMM_DEVTREE_ENDIANNESS_VAL_BIG)) {
+			guest->is_big_endian = TRUE;
+		}
+	}
 
 	vsnode = vmm_devtree_getchild(gnode, VMM_DEVTREE_VCPUS_NODE_NAME);
 	if (!vsnode) {

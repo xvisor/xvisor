@@ -67,8 +67,8 @@ void cmd_guest_list(struct vmm_chardev *cdev)
 	struct vmm_guest *guest;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-6s %-18s %-53s\n", 
-			 "ID ", "Name", "Device Path");
+	vmm_cprintf(cdev, " %-6s %-17s %-13s %-40s\n", 
+			 "ID ", "Name", "Endianness", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	count = vmm_manager_max_guest_count();
@@ -77,8 +77,10 @@ void cmd_guest_list(struct vmm_chardev *cdev)
 			continue;
 		}
 		vmm_devtree_getpath(path, guest->node);
-		vmm_cprintf(cdev, " %-6d %-18s %-53s\n", 
-				  id, guest->node->name, path);
+		vmm_cprintf(cdev, " %-6d %-17s %-13s %-40s\n", 
+				  id, guest->node->name, 
+				  (guest->is_big_endian) ? "big" : "little",
+				  path);
 	}
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
