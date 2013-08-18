@@ -92,7 +92,9 @@ struct vmm_vcpu_irqs {
 struct vmm_guest {
 	struct dlist head;
 
+	/* General information */
 	u32 id;
+	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_devtree_node *node;
 	bool is_big_endian;
 	u32 reset_count;
@@ -248,6 +250,11 @@ u32 vmm_manager_guest_count(void);
  *  Returns NULL if there is no Guest associated with given ID.
  */
 struct vmm_guest *vmm_manager_guest(u32 guest_id);
+
+/** Find Guest with given name. 
+ *  Returns NULL if there is no Guest with given name.
+ */
+struct vmm_guest *vmm_manager_guest_find(const char *guest_name);
 
 /** Number of VCPUs belonging to a given Guest */
 u32 vmm_manager_guest_vcpu_count(struct vmm_guest *guest);

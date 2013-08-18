@@ -78,7 +78,7 @@ void cmd_guest_list(struct vmm_chardev *cdev)
 		}
 		vmm_devtree_getpath(path, guest->node);
 		vmm_cprintf(cdev, " %-6d %-17s %-13s %-40s\n", 
-				  id, guest->node->name, 
+				  id, guest->name, 
 				  (guest->is_big_endian) ? "big" : "little",
 				  path);
 	}
@@ -119,7 +119,7 @@ int cmd_guest_destroy(struct vmm_chardev *cdev, int id)
 	char name[64];
 	struct vmm_guest *guest = vmm_manager_guest(id);
 	if (guest) {
-		strlcpy(name, guest->node->name, sizeof(name));
+		strlcpy(name, guest->name, sizeof(name));
 		if ((ret = vmm_manager_guest_destroy(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to destroy\n", name);
 		} else {
@@ -138,10 +138,10 @@ int cmd_guest_reset(struct vmm_chardev *cdev, int id)
 	if (guest) {
 		if ((ret = vmm_manager_guest_reset(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to reset\n", 
-					  guest->node->name);
+					  guest->name);
 		} else {
 			vmm_cprintf(cdev, "%s: Reset done\n", 
-					  guest->node->name);
+					  guest->name);
 		}
 	} else {
 		vmm_cprintf(cdev, "Failed to find guest\n");
@@ -156,10 +156,10 @@ int cmd_guest_kick(struct vmm_chardev *cdev, int id)
 	if (guest) {
 		if ((ret = vmm_manager_guest_kick(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to kick\n", 
-					  guest->node->name);
+					  guest->name);
 		} else {
 			vmm_cprintf(cdev, "%s: Kicked\n", 
-					  guest->node->name);
+					  guest->name);
 		}
 	} else {
 		vmm_cprintf(cdev, "Failed to find guest\n");
@@ -175,10 +175,10 @@ int cmd_guest_pause(struct vmm_chardev *cdev, int id)
 		;
 		if ((ret = vmm_manager_guest_pause(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to pause\n", 
-					  guest->node->name);
+					  guest->name);
 		} else {
 			vmm_cprintf(cdev, "%s: Paused\n", 
-					  guest->node->name);
+					  guest->name);
 		}
 	} else {
 		vmm_cprintf(cdev, "Failed to find guest\n");
@@ -193,10 +193,10 @@ int cmd_guest_resume(struct vmm_chardev *cdev, int id)
 	if (guest) {
 		if ((ret = vmm_manager_guest_resume(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to resume\n", 
-					  guest->node->name);
+					  guest->name);
 		} else {
 			vmm_cprintf(cdev, "%s: Resumed\n", 
-					  guest->node->name);
+					  guest->name);
 		}
 	} else {
 		vmm_cprintf(cdev, "Failed to find guest\n");
@@ -211,10 +211,10 @@ int cmd_guest_halt(struct vmm_chardev *cdev, int id)
 	if (guest) {
 		if ((ret = vmm_manager_guest_halt(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to halt\n", 
-					  guest->node->name);
+					  guest->name);
 		} else {
 			vmm_cprintf(cdev, "%s: Halted\n", 
-					  guest->node->name);
+					  guest->name);
 		}
 	} else {
 		vmm_cprintf(cdev, "Failed to find guest\n");
@@ -229,7 +229,7 @@ int cmd_guest_dumpreg(struct vmm_chardev *cdev, int id)
 	if (guest) {
 		if ((ret = vmm_manager_guest_dumpreg(guest))) {
 			vmm_cprintf(cdev, "%s: Failed to dumpreg\n", 
-					  guest->node->name);
+					  guest->name);
 		}
 	} else {
 		vmm_cprintf(cdev, "Failed to find guest\n");

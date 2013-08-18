@@ -590,6 +590,36 @@ struct vmm_guest *vmm_manager_guest(u32 guest_id)
 	return NULL;
 }
 
+struct vmm_guest *vmm_manager_guest_find(const char *guest_name)
+{
+	u32 g;
+	irq_flags_t flags;
+	struct vmm_guest *ret;
+
+	if (!guest_name) {
+		return NULL;
+	}
+
+	/* Acquire manager lock */
+	vmm_spin_lock_irqsave_lite(&mngr.lock, flags);
+
+	/* Iterate over each used VCPU instance */
+	ret = NULL;
+	for (g = 0; g < CONFIG_MAX_GUEST_COUNT; g++) {		
+		if (!mngr.guest_avail_array[g]) {
+			if (!strcmp(mngr.guest_array[g].name, guest_name)) {
+				ret = &mngr.guest_array[g];
+				break;
+			}
+		}
+	}
+
+	/* Release manager lock */
+	vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
+
+	return ret;	
+}
+
 u32 vmm_manager_guest_vcpu_count(struct vmm_guest *guest)
 {
 	if (!guest) {
@@ -772,7 +802,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	list_for_each(lentry, &mngr.guest_list) {
 		guest = list_entry(lentry, struct vmm_guest, head);
 		if ((guest->node == gnode) ||
-		    (strcmp(guest->node->name, gnode->name) == 0)) {
+		    (strcmp(guest->name, gnode->name) == 0)) {
 			vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 			vmm_printf("%s: Duplicate guest \"%s\" detected\n", 
 					__func__, gnode->name);
@@ -798,6 +828,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 	/* Initialize guest instance */
 	list_add_tail(&guest->head, &mngr.guest_list);
+	strlcpy(guest->name, gnode->name, sizeof(guest->name));
 	guest->node = gnode;
 #ifdef CONFIG_CPU_BE
 	guest->is_big_endian = TRUE;
@@ -1111,9 +1142,10 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 	vmm_spin_unlock_irqrestore_lite(&guest->vcpu_lock, flags1);
 
 	/* Reset guest instance members */
-	INIT_LIST_HEAD(&mngr.guest_array[guest->id].head);
-	mngr.guest_array[guest->id].node = NULL;
-	INIT_LIST_HEAD(&mngr.guest_array[guest->id].vcpu_list);
+	INIT_LIST_HEAD(&guest->head);
+	guest->node = NULL;
+	guest->name[0] = '\0';
+	INIT_LIST_HEAD(&guest->vcpu_list);
 	mngr.guest_avail_array[guest->id] = TRUE;
 
 release_lock:

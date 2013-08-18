@@ -1432,7 +1432,7 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 	INIT_SPIN_LOCK(&s->lock);
 	edev->priv = s;
 
-	vmm_sprintf(tname, "%s/%s", guest->node->name, edev->node->name);
+	vmm_sprintf(tname, "%s/%s", guest->name, edev->node->name);
 	s->port = vmm_netport_alloc(tname, VMM_NETPORT_DEF_QUEUE_SIZE);
 	if (!s->port) {
 		vmm_printf("%s: netport alloc failed\n", __func__);

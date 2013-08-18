@@ -436,7 +436,7 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 		goto pl011_emulator_probe_freestate_fail;
 	}
 
-	strlcpy(name, guest->node->name, sizeof(name));
+	strlcpy(name, guest->name, sizeof(name));
 	strlcat(name, "/", sizeof(name));
 	if (strlcat(name, edev->node->name, sizeof(name)) >= sizeof(name)) {
 		rc = VMM_EOVERFLOW;

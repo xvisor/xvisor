@@ -912,7 +912,7 @@ static int smc91c111_emulator_probe(struct vmm_guest *guest,
 	edev->priv = s;
 
 	vmm_sprintf(tname, "%s%s%s",
-			guest->node->name,
+			guest->name,
 			VMM_DEVTREE_PATH_SEPARATOR_STRING,
 			edev->node->name);
 	s->port = vmm_netport_alloc(tname, VMM_NETPORT_DEF_QUEUE_SIZE);

@@ -657,11 +657,11 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 			reg->devemu_priv = einst;
 #if defined(CONFIG_VERBOSE_MODE)
 			vmm_printf("Probe edevice %s/%s\n",
-				   guest->node->name, reg->node->name);
+				   guest->name, reg->node->name);
 #endif
 			if ((rc = emu->probe(guest, einst, match))) {
 				vmm_printf("%s: %s/%s probe error %d\n", 
-				__func__, guest->node->name, reg->node->name, rc);
+				__func__, guest->name, reg->node->name, rc);
 				vmm_free(einst);
 				reg->devemu_priv = NULL;
 				vmm_mutex_unlock(&dectrl.emu_lock);
@@ -669,7 +669,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 			}
 			if ((rc = emu->reset(einst))) {
 				vmm_printf("%s: %s/%s reset error %d\n", 
-				__func__, guest->node->name, reg->node->name, rc);
+				__func__, guest->name, reg->node->name, rc);
 				vmm_free(einst);
 				reg->devemu_priv = NULL;
 				vmm_mutex_unlock(&dectrl.emu_lock);
@@ -683,7 +683,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 
 	if (!found) {
 		vmm_printf("%s: No compatible emulator found for %s/%s\n", 
-		__func__, guest->node->name, reg->node->name);
+		__func__, guest->name, reg->node->name);
 		return VMM_ENOTAVAIL;
 	}
 
