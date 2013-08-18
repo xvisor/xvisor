@@ -96,8 +96,26 @@ void __lock arch_atomic64_sub(atomic64_t * atom, u64 value)
 
 bool __lock arch_atomic64_testnset(atomic64_t * atom, u64 test, u64 value)
 {
-	bool ret = FALSE;
-	return ret;
+	u64 oldval;
+	unsigned long res;
+
+	arch_smp_mb();
+
+	do {
+		__asm__ __volatile__("@ atomic64_testnset\n"
+		"ldrexd		%1, %H1, [%3]\n"	/* load oldval */
+		"mov		%0, #0\n"		/* init res with 0 */
+		"teq		%1, %4\n"		/* compare test and oldval low bytes */
+		"teqeq		%H1, %H4\n"		/* compare test and oldval high bytes */
+		"strexdeq	%0, %5, %H5, [%3]"	/* store value in atomic if equal */
+		: "=&r" (res), "=&r" (oldval), "+Qo" (atom->counter)
+		: "r" (&atom->counter), "r" (test), "r" (value)
+		: "cc");
+	} while (res);
+
+	arch_smp_mb();
+
+	return oldval == test;
 }
 
 u64 __lock arch_atomic64_add_return(atomic64_t * atom, u64 value)
