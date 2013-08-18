@@ -31,8 +31,8 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Realview-EB-MPCore Host:
   [7. Launch QEMU]
   # qemu-system-arm -M realview-eb-mpcore -display none -serial stdio -kernel build/qemu.img
 
-  [8. Kick Guest for starting Basic Firmware]
-  XVisor# guest kick -1
+  [8. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
 
   [9. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0

@@ -72,7 +72,7 @@ RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   # qemu-system-arm -M vexpress-a9 -display none -serial stdio -kernel ./xvisor_linux_qemu.img
 
   [19. Kick Guest0 for starting Basic Firmware]
-  XVisor# guest kick 0
+  XVisor# guest kick guest0
 
   [20. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0

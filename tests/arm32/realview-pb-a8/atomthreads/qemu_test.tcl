@@ -32,7 +32,7 @@ spawn qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel $qem
 
 expect $xvisor_prompt
 
-send -- "guest kick -1\r"
+send -- "guest kick guest0\r"
 expect $xvisor_prompt
 set guest_kick_out $expect_out(buffer)
 if { [string first "guest0: Kicked" $guest_kick_out] > -1 } {
@@ -57,7 +57,7 @@ foreach item $atomthreads_test_case_list {
 	puts "Executing the test case :$item:\n"
 	send "\033xq"
 	expect $xvisor_prompt
-	send -- "guest reset 0;guest kick 0 ; vserial bind guest0/uart0 \r"
+	send -- "guest reset guest0;guest kick guest0; vserial bind guest0/uart0 \r"
 	expect $arm_prompt
 	set cpy_str [format "copy 0x100000 0x%x 0x20000\r" $address ]	
 	send -- "$cpy_str"

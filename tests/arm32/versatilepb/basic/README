@@ -35,8 +35,8 @@ Guest with Xvisor running on QEMU VersatilePB Host:
   [7. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M versatilepb -display none -serial stdio -kernel build/qemu.img
 
-  [8. Kick Guest for starting Basic Firmware]
-  XVisor# guest kick 0
+  [8. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
 
   [9. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0

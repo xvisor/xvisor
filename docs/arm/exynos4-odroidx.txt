@@ -97,8 +97,8 @@ from the same shell, otherwise you have to set toolchain prefix again (step 1):
   ODROIDX# loados
   ODROIDX# bootm go 0x50000000
 
-  [25. Kick Guest for starting Basic Firmware]
-  XVisor# guest kick 0
+  [25. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
 
   [26. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0

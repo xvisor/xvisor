@@ -144,7 +144,7 @@ if { [string first "vmm" $devtree_node_dump_out] > -1 } {
         puts "\n :: DEVTREE NODE DUMP TESTCASE FAIL :: \n\n"
 }
 
-send -- "guest kick -1\r"
+send -- "guest kick guest0\r"
 expect $xvisor_prompt
 set guest_kick_out $expect_out(buffer)
 if { [string first "guest0: Kicked" $guest_kick_out] > -1 } {

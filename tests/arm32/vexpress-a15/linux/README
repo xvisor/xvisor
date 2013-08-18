@@ -64,8 +64,8 @@ RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
   [15. Launch ARM fast models 7.0 or higher]
   # model_shell <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<xxxx>/cadi_system_Linux-Debug-GCC-<xxxx>.so -C motherboard.smsc_91c111.enabled=1 -C motherboard.hostbridge.userNetworking=1 fast_model_boot.axf
 
-  [16. Kick Guest for starting Basic Firmware]
-  XVisor# guest kick -1
+  [16. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
 
   [17. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0

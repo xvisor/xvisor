@@ -89,8 +89,8 @@ A10:
   [18. Jump into Xvisor after disabling MMU, interrupts, etc]
   sun4i# bootm 0x40200000
 
-  [19. Kick Guest for starting Basic Firmware]
-  XVisor# guest kick 0
+  [19. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
 
   [20. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0

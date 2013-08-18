@@ -70,7 +70,7 @@ RootFS on Realview-PB-A8 Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel ./xvisor_linux_qemu.img
 
   [18. Kick Guest0 for starting Basic Firmware]
-  XVisor# guest kick 0
+  XVisor# guest kick guest0
 
   [19. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0

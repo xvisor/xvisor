@@ -183,7 +183,7 @@ if { [string first "vmm" $devtree_print_out] > -1 } {
         puts "The devtree print Command Failed \n :: DEVTREE PRINT TESTCASE FAIL :: \n\n"
 }
 
-send -- "guest kick -1\r"
+send -- "guest kick guest0\r"
 expect $xvisor_prompt
 
 set guest_kick_out $expect_out(buffer)

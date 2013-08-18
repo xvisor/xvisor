@@ -86,8 +86,8 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   [18. Jump into Xvisor after disabling MMU, interrupts, etc]
   OMAP3 beagleboard.org # bootm 0x80200000
 
-  [19. Kick Guest for starting Basic Firmware]
-  XVisor# guest kick 0
+  [19. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
 
   [20. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
@@ -226,8 +226,8 @@ follows:
   [16. Jump into Xvisor after disabling MMU, interrupts, etc]
   OMAP3 beagleboard.org # bootm 0x80200000
 
-  [16. Kick Guest for starting Basic Firmware]
-  XVisor# guest kick 0
+  [16. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
 
   [17. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0

@@ -47,8 +47,8 @@ Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   [11. Launch QEMU]
   # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel build/qemu.img
 
-  [12. Kick Guest for starting Basic Firmware]
-  XVisor# guest kick 0
+  [12. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
 
   [13. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
