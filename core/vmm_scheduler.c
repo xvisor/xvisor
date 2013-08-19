@@ -43,6 +43,7 @@
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
 	void *rq;
+	vmm_spinlock_t rq_lock;
 	struct vmm_vcpu *current_vcpu;
 	struct vmm_vcpu *idle_vcpu;
 	bool irq_context;
@@ -52,6 +53,68 @@ struct vmm_scheduler_ctrl {
 };
 
 static DEFINE_PER_CPU(struct vmm_scheduler_ctrl, sched);
+
+static struct vmm_vcpu *rq_dequeue(struct vmm_scheduler_ctrl *schedp)
+{
+	struct vmm_vcpu *ret;
+	irq_flags_t flags;
+	
+	vmm_spin_lock_irqsave_lite(&schedp->rq_lock, flags);
+	ret = vmm_schedalgo_rq_dequeue(schedp->rq);
+	vmm_spin_unlock_irqrestore_lite(&schedp->rq_lock, flags);
+
+	return ret;
+}
+
+static int rq_enqueue(struct vmm_scheduler_ctrl *schedp, 
+		      struct vmm_vcpu *vcpu)
+{
+	int ret;
+	irq_flags_t flags;
+	
+	vmm_spin_lock_irqsave_lite(&schedp->rq_lock, flags);
+	ret = vmm_schedalgo_rq_enqueue(schedp->rq, vcpu);
+	vmm_spin_unlock_irqrestore_lite(&schedp->rq_lock, flags);
+
+	return ret;
+}
+
+static int rq_detach(struct vmm_scheduler_ctrl *schedp, 
+		     struct vmm_vcpu *vcpu)
+{
+	int ret;
+	irq_flags_t flags;
+	
+	vmm_spin_lock_irqsave_lite(&schedp->rq_lock, flags);
+	ret = vmm_schedalgo_rq_detach(schedp->rq, vcpu);
+	vmm_spin_unlock_irqrestore_lite(&schedp->rq_lock, flags);
+
+	return ret;
+}
+
+static bool rq_prempt_needed(struct vmm_scheduler_ctrl *schedp)
+{
+	bool ret;
+	irq_flags_t flags;
+	
+	vmm_spin_lock_irqsave_lite(&schedp->rq_lock, flags);
+	ret = vmm_schedalgo_rq_prempt_needed(schedp->rq, schedp->current_vcpu);
+	vmm_spin_unlock_irqrestore_lite(&schedp->rq_lock, flags);
+
+	return ret;
+}
+
+static u32 rq_length(struct vmm_scheduler_ctrl *schedp, u32 priority)
+{
+	u32 ret;
+	irq_flags_t flags;
+	
+	vmm_spin_lock_irqsave_lite(&schedp->rq_lock, flags);
+	ret = vmm_schedalgo_rq_length(schedp->rq, priority);
+	vmm_spin_unlock_irqrestore_lite(&schedp->rq_lock, flags);
+
+	return ret;
+}
 
 static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 			       struct vmm_timer_event *ev, 
@@ -63,7 +126,7 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 
 	/* First time scheduling */
 	if (!current) {
-		next = vmm_schedalgo_rq_dequeue(schedp->rq);
+		next = rq_dequeue(schedp);
 		if (!next) {
 			/* This should never happen !!! */
 			vmm_panic("%s: no vcpu to switch to.\n", __func__);
@@ -87,12 +150,12 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 	if (current->state & VMM_VCPU_STATE_SAVEABLE) {
 		if (current->state == VMM_VCPU_STATE_RUNNING) {
 			current->state = VMM_VCPU_STATE_READY;
-			vmm_schedalgo_rq_enqueue(schedp->rq, current);
+			rq_enqueue(schedp, current);
 		}
 		tcurrent = current;
 	}
 
-	next = vmm_schedalgo_rq_dequeue(schedp->rq);
+	next = rq_dequeue(schedp);
 	if (!next) {
 		/* This should never happen !!! */
 		vmm_panic("%s: no vcpu to switch to.\n", 
@@ -188,18 +251,38 @@ void vmm_scheduler_preempt_orphan(arch_regs_t *regs)
 	vmm_scheduler_switch(schedp, regs);
 }
 
+static void scheduler_ipi_resched(void *dummy0, void *dummy1, void *dummy2)
+{
+	/* This async IPI is called when rescheduling 
+	 * is required on given host CPU. 
+	 *
+	 * The async IPIs are always called from IPI 
+	 * bottom-half VCPU with highest priority hence
+	 * when IPI bottom-half VCPU is done processing
+	 * IPIs appropriate VCPU will be picked up by 
+	 * scheduler.
+	 *
+	 * In other words, we don't need to do anything
+	 * here for rescheduling on given host CPU.
+	 */
+}
+
 int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
 	int rc = VMM_OK;
 	bool preempt = FALSE;
 	irq_flags_t flags;
-	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+	u32 chcpu = vmm_smp_processor_id(), vhcpu;
+	struct vmm_scheduler_ctrl *schedp;
 
 	if (!vcpu) {
 		return VMM_EFAIL;
 	}
 
 	vmm_spin_lock_irqsave_lite(&vcpu->sched_lock, flags);
+
+	vhcpu = vcpu->hcpu;
+	schedp = &per_cpu(sched, vhcpu);
 
 	switch(new_state) {
 	case VMM_VCPU_STATE_UNKNOWN:
@@ -215,7 +298,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			/* Make sure VCPU is not in a ready queue */
 			if((schedp->current_vcpu != vcpu) &&
 			   (vcpu->state == VMM_VCPU_STATE_READY)) {
-				if ((rc = vmm_schedalgo_rq_detach(schedp->rq, vcpu))) {
+				if ((rc = rq_detach(schedp, vcpu))) {
 					break;
 				}
 			}
@@ -234,11 +317,9 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		if ((vcpu->state == VMM_VCPU_STATE_RESET) ||
 		    (vcpu->state == VMM_VCPU_STATE_PAUSED)) {
 			/* Enqueue VCPU to ready queue */
-			rc = vmm_schedalgo_rq_enqueue(schedp->rq, vcpu);
+			rc = rq_enqueue(schedp, vcpu);
 			if (!rc && (schedp->current_vcpu != vcpu)) {
-				preempt = 
-				    vmm_schedalgo_rq_prempt_needed(schedp->rq, 
-							schedp->current_vcpu);
+				preempt = rq_prempt_needed(schedp);
 			}
 		} else {
 			rc = VMM_EFAIL;
@@ -255,7 +336,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 				preempt = TRUE;
 			} else if (vcpu->state == VMM_VCPU_STATE_READY) {
 				/* Make sure VCPU is not in a ready queue */
-				rc = vmm_schedalgo_rq_detach(schedp->rq, vcpu);
+				rc = rq_detach(schedp, vcpu);
 			}
 		} else {
 			rc = VMM_EFAIL;
@@ -270,14 +351,18 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 	vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 
 	if (preempt && schedp->current_vcpu) {
-		if (schedp->current_vcpu->is_normal) {
-			schedp->yield_on_irq_exit = TRUE;
-		} else {
-			if (schedp->irq_context) {
+		if (chcpu == vhcpu) {
+			if (schedp->current_vcpu->is_normal) {
+				schedp->yield_on_irq_exit = TRUE;
+			} else if (schedp->irq_context) {
 				vmm_scheduler_preempt_orphan(schedp->irq_regs);
 			} else {
 				arch_vcpu_preempt_orphan();
 			}
+		} else {
+			vmm_smp_ipi_async_call(vmm_cpumask_of(vhcpu),
+						scheduler_ipi_resched,
+						NULL, NULL, NULL);
 		}
 	}
 
@@ -415,9 +500,10 @@ void vmm_scheduler_yield(void)
 
 static void idle_orphan(void)
 {
-	while(1) {
-		if (vmm_schedalgo_rq_length(this_cpu(sched).rq, 
-					    IDLE_VCPU_PRIORITY) == 0) {
+	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+
+	while (1) {
+		if (rq_length(schedp, IDLE_VCPU_PRIORITY) == 0) {
 			arch_cpu_wait_for_irq();
 		}
 
@@ -440,6 +526,7 @@ int __cpuinit vmm_scheduler_init(void)
 	if (!schedp->rq) {
 		return VMM_EFAIL;
 	}
+	INIT_SPIN_LOCK(&schedp->rq_lock);
 
 	/* Initialize current VCPU. (Per Host CPU) */
 	schedp->current_vcpu = NULL;
