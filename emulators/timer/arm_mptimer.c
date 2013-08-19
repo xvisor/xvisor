@@ -180,7 +180,6 @@ static void __timer_block_reload(struct timer_block *timer)
 		nsecs = udiv64((nsecs * 1000000000), (u64)timer->freq);
 	}
 
-	vmm_timer_event_stop(&timer->event); 
 	vmm_timer_event_start(&timer->event, nsecs);
 }
 
@@ -214,12 +213,7 @@ static void timer_block_event(struct vmm_timer_event *event)
 		/* TODO: Watchdog reset logic */
 	}
 
-	if (control & TIMER_CTRL_ARELOAD) {
-		timer->count = timer->load;
-		__timer_block_reload(timer);
-	} else {
-		timer->count = 0;
-	}
+	timer->count = 0;
 
 	vmm_spin_unlock(&timer->lock);
 
@@ -293,6 +287,7 @@ int mptimer_reg_write(struct mptimer_state *s,
 		      u32 offset, u32 src_mask, u32 src)
 {
 	bool update_irq = FALSE;
+	bool try_reload = FALSE;
 	struct timer_block *timer;
 	struct vmm_vcpu *vcpu;
 	u32 cpu = 0, old, control;
@@ -358,6 +353,7 @@ int mptimer_reg_write(struct mptimer_state *s,
 		case 0xc: /* Interrupt status.  */
 			timer->status &= ~(src & 1);
 			update_irq = TRUE;
+			try_reload = TRUE;
 			control = timer->control;
 			break;
 		case 0x10:
@@ -381,6 +377,15 @@ int mptimer_reg_write(struct mptimer_state *s,
 
 	if (update_irq) {
 		timer_block_update_irq(timer, control);
+	}
+
+	if (try_reload) {
+		if (control & TIMER_CTRL_ARELOAD) {
+			vmm_spin_lock(&timer->lock);
+			timer->count = timer->load;
+			__timer_block_reload(timer);
+			vmm_spin_unlock(&timer->lock);
+		}
 	}
 
 	return VMM_OK;
