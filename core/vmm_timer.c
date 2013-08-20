@@ -40,7 +40,7 @@ struct vmm_timer_local_ctrl {
 	bool inprocess;
 	u64 next_event;
 	struct vmm_timer_event *curr;
-	vmm_spinlock_t event_list_lock;
+	vmm_rwlock_t event_list_lock;
 	struct dlist event_list;
 };
 
@@ -72,7 +72,7 @@ static void __timer_schedule_next_event(struct vmm_timer_local_ctrl *tlcp)
 	struct vmm_timer_event *e;
 
 	/* If not started yet or still processing events then we give up */
-	if (!tlcp->started || tlcp->inprocess) {
+	if ((tlcp->started == FALSE) || (tlcp->inprocess == TRUE)) {
 		return;
 	}
 
@@ -111,13 +111,13 @@ static void __timer_event_stop(struct vmm_timer_event *ev)
 
 	tlcp = &per_cpu(tlc, ev->active_hcpu);
 
-	vmm_spin_lock_irqsave_lite(&tlcp->event_list_lock, flags);
+	vmm_write_lock_irqsave_lite(&tlcp->event_list_lock, flags);
 
 	ev->active_state = FALSE;
 	list_del(&ev->active_head);
 	ev->expiry_tstamp = 0;
 
-	vmm_spin_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
+	vmm_write_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
 }
 
 /* This is called from interrupt context. We need to protect the 
@@ -129,7 +129,7 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc)
 	struct vmm_timer_event *e;
 	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
 
-	vmm_spin_lock_irqsave_lite(&tlcp->event_list_lock, flags);
+	vmm_read_lock_irqsave_lite(&tlcp->event_list_lock, flags);
 
 	tlcp->inprocess = TRUE;
 
@@ -140,7 +140,7 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc)
 		/* Current timestamp */
 		if (e->expiry_tstamp <= vmm_timer_timestamp()) {
 			/* Unlock event list for processing expired event */
-			vmm_spin_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
+			vmm_read_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
 			/* Set current CPU event to NULL */
 			tlcp->curr = NULL;
 			/* Stop expired active event */
@@ -150,7 +150,7 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc)
 			/* Call event handler */
 			e->handler(e);
 			/* Lock back event list */
-			vmm_spin_lock_irqsave_lite(&tlcp->event_list_lock, flags);
+			vmm_read_lock_irqsave_lite(&tlcp->event_list_lock, flags);
 		} else {
 			/* No more expired events */
 			break;
@@ -162,38 +162,38 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc)
 	/* Schedule next timer event */
 	__timer_schedule_next_event(tlcp);
 
-	vmm_spin_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
+	vmm_read_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
 }
 
 int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
 {
 	u32 hcpu;
 	u64 tstamp;
-	bool found_pos;
+	bool found_pos = FALSE;
 	struct dlist *l;
 	irq_flags_t flags, flags1;
-	struct vmm_timer_event *e;
+	struct vmm_timer_event *e = NULL;
 	struct vmm_timer_local_ctrl *tlcp;
 
 	if (!ev) {
 		return VMM_EFAIL;
 	}
 
+	hcpu = vmm_smp_processor_id();
+	tlcp = &per_cpu(tlc, hcpu);
+	tstamp = vmm_timer_timestamp();
+
 	vmm_spin_lock_irqsave_lite(&ev->active_lock, flags);
 
 	__timer_event_stop(ev);
 
-	hcpu = vmm_smp_processor_id();
-	tlcp = &per_cpu(tlc, hcpu);
-
-	vmm_spin_lock_irqsave_lite(&tlcp->event_list_lock, flags1);
-
-	tstamp = vmm_timer_timestamp();
 	ev->expiry_tstamp = tstamp + duration_nsecs;
 	ev->duration_nsecs = duration_nsecs;
+	ev->active_state = TRUE;
+	ev->active_hcpu = hcpu;
 
-	e = NULL;
-	found_pos = FALSE;
+	vmm_write_lock_irqsave_lite(&tlcp->event_list_lock, flags1);
+
 	list_for_each(l, &tlcp->event_list) {
 		e = list_entry(l, struct vmm_timer_event, active_head);
 		if (ev->expiry_tstamp < e->expiry_tstamp) {
@@ -202,17 +202,15 @@ int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
 		}
 	}
 
-	ev->active_state = TRUE;
 	if (!found_pos) {
 		list_add_tail(&ev->active_head, &tlcp->event_list);
 	} else {
 		list_add_tail(&ev->active_head, &e->active_head);
 	}
-	ev->active_hcpu = hcpu;
 
 	__timer_schedule_next_event(tlcp);
 
-	vmm_spin_unlock_irqrestore_lite(&tlcp->event_list_lock, flags1);
+	vmm_write_unlock_irqrestore_lite(&tlcp->event_list_lock, flags1);
 
 	vmm_spin_unlock_irqrestore_lite(&ev->active_lock, flags);
 
@@ -288,7 +286,7 @@ int __cpuinit vmm_timer_init(void)
 	tlcp->curr = NULL;
 
 	/* Initialize Per CPU event list */
-	INIT_SPIN_LOCK(&tlcp->event_list_lock);
+	INIT_RW_LOCK(&tlcp->event_list_lock);
 	INIT_LIST_HEAD(&tlcp->event_list);
 
 	/* Find suitable clockchip */
