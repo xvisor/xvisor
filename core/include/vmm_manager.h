@@ -103,7 +103,7 @@ struct vmm_guest {
 	u32 reset_count;
 
 	/* VCPU instances belonging to this Guest */
-	vmm_spinlock_t vcpu_lock;
+	vmm_rwlock_t vcpu_lock;
 	u32 vcpu_count;
 	struct dlist vcpu_list;
 
@@ -156,7 +156,7 @@ struct vmm_vcpu {
 	virtual_size_t stack_sz;
 
 	/* Scheduling & load balancing context */
-	vmm_spinlock_t sched_lock;
+	vmm_rwlock_t sched_lock;
 	u32 hcpu;
 	const struct vmm_cpumask *cpu_affinity;
 	u32 state;

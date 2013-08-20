@@ -132,20 +132,20 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 			vmm_panic("%s: no vcpu to switch to.\n", __func__);
 		}
 
-		vmm_spin_lock_irqsave_lite(&next->sched_lock, nf);
+		vmm_write_lock_irqsave_lite(&next->sched_lock, nf);
 
 		arch_vcpu_switch(NULL, next, regs);
 		next->state = VMM_VCPU_STATE_RUNNING;
 		schedp->current_vcpu = next;
 		vmm_timer_event_start(ev, next->time_slice);
 
-		vmm_spin_unlock_irqrestore_lite(&next->sched_lock, nf);
+		vmm_write_unlock_irqrestore_lite(&next->sched_lock, nf);
 
 		return;
 	}
 
 	/* Normal scheduling */
-	vmm_spin_lock_irqsave_lite(&current->sched_lock, cf);
+	vmm_write_lock_irqsave_lite(&current->sched_lock, cf);
 
 	if (current->state & VMM_VCPU_STATE_SAVEABLE) {
 		if (current->state == VMM_VCPU_STATE_RUNNING) {
@@ -163,7 +163,7 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 	}
 
 	if (next != current) {
-		vmm_spin_lock_irqsave_lite(&next->sched_lock, nf);
+		vmm_write_lock_irqsave_lite(&next->sched_lock, nf);
 		arch_vcpu_switch(tcurrent, next, regs);
 	}
 
@@ -172,10 +172,10 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 	vmm_timer_event_start(ev, next->time_slice);
 
 	if (next != current) {
-		vmm_spin_unlock_irqrestore_lite(&next->sched_lock, nf);
+		vmm_write_unlock_irqrestore_lite(&next->sched_lock, nf);
 	}
 
-	vmm_spin_unlock_irqrestore_lite(&current->sched_lock, cf);
+	vmm_write_unlock_irqrestore_lite(&current->sched_lock, cf);
 }
 
 static void vmm_scheduler_switch(struct vmm_scheduler_ctrl *schedp,
@@ -279,7 +279,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		return VMM_EFAIL;
 	}
 
-	vmm_spin_lock_irqsave_lite(&vcpu->sched_lock, flags);
+	vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
 
 	vhcpu = vcpu->hcpu;
 	schedp = &per_cpu(sched, vhcpu);
@@ -348,7 +348,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		vcpu->state = new_state;
 	}
 
-	vmm_spin_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 
 	if (preempt && schedp->current_vcpu) {
 		if (chcpu == vhcpu) {
