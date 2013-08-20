@@ -85,8 +85,11 @@ struct vmm_vcpu_irqs {
 	u64 assert_count;
 	u64 execute_count;
 	u64 deassert_count;
-	bool wfi_state;
-	void *wfi_priv;
+	struct {
+		vmm_spinlock_t lock;
+		bool state;
+		void *priv;
+	} wfi;
 };
 
 struct vmm_guest {

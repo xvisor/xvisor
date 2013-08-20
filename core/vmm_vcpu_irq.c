@@ -34,9 +34,10 @@
 void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	int rc;
-	int irq_no;
+	int irq_no = -1;
 	irq_flags_t flags;
-	u32 i, state, irq_prio, irq_reas, tmp_prio, irq_count;
+	u32 i, state, tmp_prio, irq_count;
+	u32 irq_prio = 0;
 
 	/* For non-normal vcpu dont do anything */
 	if (!vcpu || !vcpu->is_normal) {
@@ -62,23 +63,19 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 	irq_count = vcpu->irqs.irq_count;
 
 	/* Find the irq number to process */
-	irq_no = -1;
-	irq_prio = 0x0;
-	irq_reas = 0x0;
 	for (i = 0; i < irq_count; i++) {
 		if (vcpu->irqs.assert[i]) {
 			tmp_prio = arch_vcpu_irq_priority(vcpu, i);
 			if (tmp_prio > irq_prio) {
 				irq_no = i;
 				irq_prio = tmp_prio;
-				irq_reas = vcpu->irqs.reason[irq_no];
 			}
 		}
 	}
 
 	/* If irq number found then execute it */
 	if (irq_no != -1) {
-		rc = arch_vcpu_irq_execute(vcpu, regs, irq_no, irq_reas);
+		rc = arch_vcpu_irq_execute(vcpu, regs, irq_no, vcpu->irqs.reason[irq_no]);
 		if (rc == VMM_OK) {
 			vcpu->irqs.assert[irq_no] = FALSE;
 			vcpu->irqs.execute_pending--;
@@ -99,21 +96,21 @@ static void vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 		return;
 	}
 
-	/* Lock VCPU irqs */
-	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
+	/* Lock VCPU WFI */
+	vmm_spin_lock_irqsave(&vcpu->irqs.wfi.lock, flags);
 
 	/* If VCPU was in wfi state then update state. */
-	wfi_state = vcpu->irqs.wfi_state;
+	wfi_state = vcpu->irqs.wfi.state;
 	if (wfi_state) {
 		/* Clear wait for irq state */
-		vcpu->irqs.wfi_state = FALSE;
+		vcpu->irqs.wfi.state = FALSE;
 
 		/* Stop wait for irq timeout event */
-		vmm_timer_event_stop(vcpu->irqs.wfi_priv);
+		vmm_timer_event_stop(vcpu->irqs.wfi.priv);
 	}	
 
-	/* Unlock VCPU irqs */
-	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
+	/* Unlock VCPU WFI */
+	vmm_spin_unlock_irqrestore(&vcpu->irqs.wfi.lock, flags);
 
 	/* Try to resume the VCPU */
 	if (wfi_state) {
@@ -132,12 +129,12 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 	u32 state;
 	irq_flags_t flags;
 
-	/* For non-normal vcpu dont do anything */
+	/* For non-normal VCPU dont do anything */
 	if (!vcpu || !vcpu->is_normal) {
 		return;
 	}
 
-	/* If vcpu is not in interruptible state then dont do anything */
+	/* If VCPU is not in interruptible state then dont do anything */
 	state = vmm_manager_vcpu_state(vcpu);
 	if (!(state & VMM_VCPU_STATE_INTERRUPTIBLE)) {
 		return;
@@ -240,20 +237,20 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 	/* Try to pause the VCPU */
 	vmm_manager_vcpu_pause(vcpu);
 
-	/* Lock VCPU irqs */
-	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
+	/* Lock VCPU WFI */
+	vmm_spin_lock_irqsave(&vcpu->irqs.wfi.lock, flags);
 
 	/* Set wait for irq state */
-	vcpu->irqs.wfi_state = TRUE;
+	vcpu->irqs.wfi.state = TRUE;
 
 	/* Start wait for irq timeout event */
 	if (!nsecs) {
 		nsecs = CONFIG_WFI_TIMEOUT_SECS*1000000000ULL;
 	}
-	vmm_timer_event_start(vcpu->irqs.wfi_priv, nsecs);
+	vmm_timer_event_start(vcpu->irqs.wfi.priv, nsecs);
 
-	/* Unlock VCPU irqs */
-	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
+	/* Unlock VCPU WFI */
+	vmm_spin_unlock_irqrestore(&vcpu->irqs.wfi.lock, flags);
 
 	return VMM_OK;
 }
@@ -294,6 +291,7 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 		vcpu->irqs.reason = vmm_zalloc(sizeof(u32) * irq_count);
 		if (!vcpu->irqs.reason) {
 			vmm_free(vcpu->irqs.assert);
+			vcpu->irqs.assert = NULL;
 			return VMM_ENOMEM;
 		}
 
@@ -301,10 +299,17 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 		ev = vmm_zalloc(sizeof(struct vmm_timer_event));
 		if (!ev) {
 			vmm_free(vcpu->irqs.assert);
+			vcpu->irqs.assert = NULL;
 			vmm_free(vcpu->irqs.reason);
+			vcpu->irqs.reason = NULL;
 			return VMM_ENOMEM;
 		}
-		vcpu->irqs.wfi_priv = ev;
+		vcpu->irqs.wfi.priv = ev;
+
+		/* Initialize wfi lock */
+		INIT_SPIN_LOCK(&vcpu->irqs.wfi.lock);
+
+		/* Initialize wfi timeout event */
 		INIT_TIMER_EVENT(ev, vcpu_irq_wfi_timeout, vcpu);
 	}
 
@@ -329,8 +334,16 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	}
 
 	/* Setup wait for irq context */
-	vcpu->irqs.wfi_state = FALSE;
-	rc = vmm_timer_event_stop(vcpu->irqs.wfi_priv);
+	vcpu->irqs.wfi.state = FALSE;
+	rc = vmm_timer_event_stop(vcpu->irqs.wfi.priv);
+	if (rc != VMM_OK) {
+		vmm_free(vcpu->irqs.assert);
+		vcpu->irqs.assert = NULL;
+		vmm_free(vcpu->irqs.reason);
+		vcpu->irqs.reason = NULL;
+		vmm_free(vcpu->irqs.wfi.priv);
+		vcpu->irqs.wfi.priv = NULL;
+	}
 
 	/* Unlock VCPU irqs */
 	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
@@ -356,14 +369,17 @@ int vmm_vcpu_irq_deinit(struct vmm_vcpu *vcpu)
 	vmm_spin_lock_irqsave(&vcpu->irqs.lock, flags);
 
 	/* Stop wfi_timeout event */
-	vmm_timer_event_stop(vcpu->irqs.wfi_priv);
+	vmm_timer_event_stop(vcpu->irqs.wfi.priv);
 
 	/* Free wfi_timeout event */
-	vmm_free(vcpu->irqs.wfi_priv);
+	vmm_free(vcpu->irqs.wfi.priv);
+	vcpu->irqs.wfi.priv = NULL;
 
 	/* Free flags */
 	vmm_free(vcpu->irqs.assert);
+	vcpu->irqs.assert = NULL;
 	vmm_free(vcpu->irqs.reason);
+	vcpu->irqs.reason = NULL;
 
 	/* Unlock VCPU irqs */
 	vmm_spin_unlock_irqrestore(&vcpu->irqs.lock, flags);
