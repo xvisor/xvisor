@@ -44,6 +44,14 @@ struct vmm_spinlock {
 #define __SPINLOCK_INITIALIZER(_lock) 	\
 		{ .__tlock = ARCH_SPIN_LOCK_INITIALIZER, }
 
+struct vmm_rwlock {
+	arch_rwlock_t __tlock;
+};
+
+#define INIT_RW_LOCK(_lptr)		ARCH_RW_LOCK_INIT(&((_lptr)->__tlock))
+#define __RWLOCK_INITIALIZER(_lock) 	\
+		{ .__tlock = ARCH_RW_LOCK_INITIALIZER, }
+
 #else 
 
 struct vmm_spinlock {
@@ -53,14 +61,26 @@ struct vmm_spinlock {
 #define INIT_SPIN_LOCK(_lptr)		((_lptr)->__tlock = 0)
 #define __SPINLOCK_INITIALIZER(_lock) 	{ .__tlock = 0, }
 
+struct vmm_rwlock {
+	u32 __tlock;
+};
+
+#define INIT_RW_LOCK(_lptr)		((_lptr)->__tlock = 0)
+#define __RWLOCK_INITIALIZER(_lock) 	{ .__tlock = 0, }
+
 #endif
 
 #define DEFINE_SPINLOCK(_lock) 	vmm_spinlock_t _lock = __SPINLOCK_INITIALIZER(_lock)
 
 #define DECLARE_SPINLOCK(_lock)	vmm_spinlock_t _lock
 
-
 typedef struct vmm_spinlock vmm_spinlock_t;
+
+#define DEFINE_RWLOCK(_lock) 	vmm_rwlock_t _lock = __RWLOCK_INITIALIZER(_lock)
+
+#define DECLARE_RWLOCK(_lock)	vmm_rwlock_t _lock
+
+typedef struct vmm_rwlock vmm_rwlock_t;
 
 extern void vmm_scheduler_preempt_disable(void);
 extern void vmm_scheduler_preempt_enable(void);
@@ -70,8 +90,12 @@ extern void vmm_scheduler_preempt_enable(void);
  */
 #if defined(CONFIG_SMP)
 #define vmm_spin_lock_check(lock)	arch_spin_lock_check(&(lock)->__tlock)
+#define vmm_write_lock_check(lock)	arch_write_lock_check(&(lock)->__tlock)
+#define vmm_read_lock_check(lock)	arch_read_lock_check(&(lock)->__tlock)
 #else
 #define vmm_spin_lock_check(lock)	FALSE
+#define vmm_write_lock_check(lock)	vmm_spin_lock_check(lock)
+#define vmm_read_lock_check(lock)	vmm_spin_lock_check(lock)
 #endif
 
 /** Lock the spinlock 
@@ -82,11 +106,21 @@ extern void vmm_scheduler_preempt_enable(void);
 					vmm_scheduler_preempt_disable(); \
 					arch_spin_lock(&(lock)->__tlock); \
 					} while (0)
+#define vmm_write_lock(lock)		do { \
+					vmm_scheduler_preempt_disable(); \
+					arch_write_lock(&(lock)->__tlock); \
+					} while (0)
+#define vmm_read_lock(lock)		do { \
+					vmm_scheduler_preempt_disable(); \
+					arch_read_lock(&(lock)->__tlock); \
+					} while (0)
 #else
 #define vmm_spin_lock(lock)		do { \
 					vmm_scheduler_preempt_disable(); \
 					(void)(lock); \
 					} while (0)
+#define vmm_write_lock(lock)		vmm_spin_lock(lock)
+#define vmm_read_lock(lock)		vmm_spin_lock(lock)
 #endif
 
 /** Try to Lock the spinlock 
@@ -102,12 +136,32 @@ extern void vmm_scheduler_preempt_enable(void);
 					} \
 					ret; \
 					})
+#define vmm_write_trylock(lock)		({ \
+					int ret; \
+					vmm_scheduler_preempt_disable(); \
+					ret = arch_write_trylock(&(lock)->__tlock); \
+					if (!ret) { \
+						vmm_scheduler_preempt_enable(); \
+					} \
+					ret; \
+					})
+#define vmm_read_trylock(lock)		({ \
+					int ret; \
+					vmm_scheduler_preempt_disable(); \
+					ret = arch_read_trylock(&(lock)->__tlock); \
+					if (!ret) { \
+						vmm_scheduler_preempt_enable(); \
+					} \
+					ret; \
+					})
 #else
 #define vmm_spin_trylock(lock)		({ \
 					vmm_scheduler_preempt_disable(); \
 					(void)(lock); \
 					1; \
 					})
+#define vmm_write_trylock(lock)		vmm_spin_trylock(lock)
+#define vmm_read_trylock(lock)		vmm_spin_trylock(lock)
 #endif
 
 /** Unlock the spinlock 
@@ -118,11 +172,21 @@ extern void vmm_scheduler_preempt_enable(void);
 					arch_spin_unlock(&(lock)->__tlock); \
 					vmm_scheduler_preempt_enable(); \
 					} while (0)
+#define vmm_write_unlock(lock)		do { \
+					arch_write_unlock(&(lock)->__tlock); \
+					vmm_scheduler_preempt_enable(); \
+					} while (0)
+#define vmm_read_unlock(lock)		do { \
+					arch_read_unlock(&(lock)->__tlock); \
+					vmm_scheduler_preempt_enable(); \
+					} while (0)
 #else
 #define vmm_spin_unlock(lock)		do { \
 					(void)(lock); \
 					vmm_scheduler_preempt_enable(); \
 					} while (0)
+#define vmm_write_unlock(lock)		vmm_spin_unlock(lock)
+#define vmm_read_unlock(lock)		vmm_spin_unlock(lock)
 #endif
 
 /** Disable irq and lock the spinlock
@@ -134,12 +198,24 @@ extern void vmm_scheduler_preempt_enable(void);
 					vmm_scheduler_preempt_disable(); \
 					arch_spin_lock(&(lock)->__tlock); \
 					} while (0)
+#define vmm_write_lock_irq(lock) 	do { \
+					arch_cpu_irq_disable(); \
+					vmm_scheduler_preempt_disable(); \
+					arch_write_lock(&(lock)->__tlock); \
+					} while (0)
+#define vmm_read_lock_irq(lock) 	do { \
+					arch_cpu_irq_disable(); \
+					vmm_scheduler_preempt_disable(); \
+					arch_read_lock(&(lock)->__tlock); \
+					} while (0)
 #else
 #define vmm_spin_lock_irq(lock) 	do { \
 					arch_cpu_irq_disable(); \
 					vmm_scheduler_preempt_disable(); \
 					(void)(lock); \
 					} while (0)
+#define vmm_write_lock_irq(lock)	vmm_spin_lock_irq(lock)
+#define vmm_read_lock_irq(lock)		vmm_spin_lock_irq(lock)
 #endif
 
 /** Unlock the spinlock and enable irq 
@@ -151,12 +227,24 @@ extern void vmm_scheduler_preempt_enable(void);
 					vmm_scheduler_preempt_enable(); \
 					arch_cpu_irq_enable(); \
 					} while (0)
+#define vmm_write_unlock_irq(lock)	do { \
+					arch_write_unlock(&(lock)->__tlock); \
+					vmm_scheduler_preempt_enable(); \
+					arch_cpu_irq_enable(); \
+					} while (0)
+#define vmm_read_unlock_irq(lock)	do { \
+					arch_read_unlock(&(lock)->__tlock); \
+					vmm_scheduler_preempt_enable(); \
+					arch_cpu_irq_enable(); \
+					} while (0)
 #else
 #define vmm_spin_unlock_irq(lock) 	do { \
 					(void)(lock); \
 					vmm_scheduler_preempt_enable(); \
 					arch_cpu_irq_enable(); \
 					} while (0)
+#define vmm_read_unlock_irq(lock)	vmm_spin_unlock_irq(lock)
+#define vmm_write_unlock_irq(lock)	vmm_spin_unlock_irq(lock)
 #endif
 
 /** Save irq flags and lock the spinlock
@@ -169,6 +257,18 @@ extern void vmm_scheduler_preempt_enable(void);
 					vmm_scheduler_preempt_disable(); \
 					arch_spin_lock(&(lock)->__tlock); \
 					} while (0)
+#define vmm_write_lock_irqsave(lock, flags) \
+					do { \
+					arch_cpu_irq_save((flags)); \
+					vmm_scheduler_preempt_disable(); \
+					arch_write_lock(&(lock)->__tlock); \
+					} while (0)
+#define vmm_read_lock_irqsave(lock, flags) \
+					do { \
+					arch_cpu_irq_save((flags)); \
+					vmm_scheduler_preempt_disable(); \
+					arch_read_lock(&(lock)->__tlock); \
+					} while (0)
 #else
 #define vmm_spin_lock_irqsave(lock, flags) \
 					do { \
@@ -176,6 +276,8 @@ extern void vmm_scheduler_preempt_enable(void);
 					vmm_scheduler_preempt_disable(); \
 					(void)(lock); \
 					} while (0)
+#define vmm_write_lock_irqsave(lock, flags)	vmm_spin_lock_irqsave(lock, flags)
+#define vmm_read_lock_irqsave(lock, flags)	vmm_spin_lock_irqsave(lock, flags)
 #endif
 
 /** Unlock the spinlock and restore irq flags 
@@ -189,6 +291,18 @@ extern void vmm_scheduler_preempt_enable(void);
 					vmm_scheduler_preempt_enable(); \
 					arch_cpu_irq_restore(flags); \
 					} while (0)
+#define vmm_write_unlock_irqrestore(lock, flags)	\
+					do { \
+					arch_write_unlock(&(lock)->__tlock); \
+					vmm_scheduler_preempt_enable(); \
+					arch_cpu_irq_restore(flags); \
+					} while (0)
+#define vmm_read_unlock_irqrestore(lock, flags)	\
+					do { \
+					arch_read_unlock(&(lock)->__tlock); \
+					vmm_scheduler_preempt_enable(); \
+					arch_cpu_irq_restore(flags); \
+					} while (0)
 #else
 #define vmm_spin_unlock_irqrestore(lock, flags) \
 					do { \
@@ -196,6 +310,8 @@ extern void vmm_scheduler_preempt_enable(void);
 					vmm_scheduler_preempt_enable(); \
 					arch_cpu_irq_restore(flags); \
 					} while (0)
+#define vmm_write_unlock_irqrestore(lock, flags)	vmm_spin_unlock_irqrestore(lock, flags)
+#define vmm_read_unlock_irqrestore(lock, flags)	vmm_spin_unlock_irqrestore(lock, flags)
 #endif
 
 /** Save irq flags and lock the spinlock without preempt disable
@@ -207,12 +323,24 @@ extern void vmm_scheduler_preempt_enable(void);
 					arch_cpu_irq_save((flags)); \
 					arch_spin_lock(&(lock)->__tlock); \
 					} while (0)
+#define vmm_write_lock_irqsave_lite(lock, flags) \
+					do { \
+					arch_cpu_irq_save((flags)); \
+					arch_write_lock(&(lock)->__tlock); \
+					} while (0)
+#define vmm_read_lock_irqsave_lite(lock, flags) \
+					do { \
+					arch_cpu_irq_save((flags)); \
+					arch_read_lock(&(lock)->__tlock); \
+					} while (0)
 #else
 #define vmm_spin_lock_irqsave_lite(lock, flags) \
 					do { \
 					arch_cpu_irq_save((flags)); \
 					(void)(lock); \
 					} while (0)
+#define vmm_write_lock_irqsave_lite(lock, flags)	vmm_spin_lock_irqsave_lite(lock, flags)
+#define vmm_read_lock_irqsave_lite(lock, flags)	vmm_spin_lock_irqsave_lite(lock, flags)
 #endif
 
 /** Unlock the spinlock and restore irq flags without preempt enable
@@ -225,12 +353,24 @@ extern void vmm_scheduler_preempt_enable(void);
 					arch_spin_unlock(&(lock)->__tlock); \
 					arch_cpu_irq_restore(flags); \
 					} while (0)
+#define vmm_write_unlock_irqrestore_lite(lock, flags)	\
+					do { \
+					arch_write_unlock(&(lock)->__tlock); \
+					arch_cpu_irq_restore(flags); \
+					} while (0)
+#define vmm_read_unlock_irqrestore_lite(lock, flags)	\
+					do { \
+					arch_read_unlock(&(lock)->__tlock); \
+					arch_cpu_irq_restore(flags); \
+					} while (0)
 #else
 #define vmm_spin_unlock_irqrestore_lite(lock, flags) \
 					do { \
 					(void)(lock); \
 					arch_cpu_irq_restore(flags); \
 					} while (0)
+#define vmm_write_unlock_irqrestore_lite(lock, flags)	vmm_spin_unlock_irqrestore_lite(lock, flags)
+#define vmm_read_unlock_irqrestore_lite(lock, flags)	vmm_spin_unlock_irqrestore_lite(lock, flags)
 #endif
 
 #endif /* __VMM_SPINLOCKS_H__ */

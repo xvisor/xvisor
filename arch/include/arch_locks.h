@@ -25,10 +25,22 @@
 
 #include <vmm_types.h>
 
-/** Spinlock functions required by VMM core */
+/** Spin lock functions required by VMM core */
 bool arch_spin_lock_check(arch_spinlock_t *lock);
 void arch_spin_lock(arch_spinlock_t *lock);
 int  arch_spin_trylock(arch_spinlock_t *lock);
 void arch_spin_unlock(arch_spinlock_t *lock);
+
+/** Write lock functions required by VMM core */
+bool arch_write_lock_check(arch_rwlock_t *lock);
+void arch_write_lock(arch_rwlock_t *lock);
+int  arch_write_trylock(arch_rwlock_t *lock);
+void arch_write_unlock(arch_rwlock_t *lock);
+
+/** Read lock functions required by VMM core */
+bool arch_read_lock_check(arch_rwlock_t *lock);
+void arch_read_lock(arch_rwlock_t *lock);
+int  arch_read_trylock(arch_rwlock_t *lock);
+void arch_read_unlock(arch_rwlock_t *lock);
 
 #endif
