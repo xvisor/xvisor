@@ -96,7 +96,6 @@ do{									\
 
 static int vmm_netswitch_thread(void *param)
 {
-	u64 timeout;
 	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_netport *xfer_port;
@@ -111,17 +110,11 @@ static int vmm_netswitch_thread(void *param)
 	nsw = param;
 
 	while (1) {
-		/* Try to wait for xfer request with timeout 
-		 * NOTE: The timeout here is to ensure that netswitch thread
-		 * does not sleep endlessly.
-		 */
-		timeout = 20000000000ULL;
-		vmm_completion_wait_timeout(&nsw->rx_not_empty, &timeout);
-
-		/* Try to get xfer request from rx_list */
+		/* Try to wait for xfer request */
 		vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
 		if (list_empty(&nsw->rx_list)) {
 			vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
+			vmm_completion_wait(&nsw->rx_not_empty);
 			continue;
 		}
 		l = list_pop(&nsw->rx_list);
