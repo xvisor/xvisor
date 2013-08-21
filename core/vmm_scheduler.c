@@ -397,7 +397,7 @@ void vmm_scheduler_irq_exit(arch_regs_t *regs)
 	/* If current vcpu is not RUNNING or yield on exit is set
 	 * then context switch
 	 */
-	if ((vmm_manager_vcpu_state(vcpu) != VMM_VCPU_STATE_RUNNING) ||
+	if ((vmm_manager_vcpu_get_state(vcpu) != VMM_VCPU_STATE_RUNNING) ||
 	    schedp->yield_on_irq_exit) {
 		vmm_scheduler_next(schedp, &schedp->ev, schedp->irq_regs);
 		schedp->yield_on_irq_exit = FALSE;
@@ -484,7 +484,7 @@ void vmm_scheduler_yield(void)
 		 * Just enable yield on exit and rest will be taken care
 		 * by vmm_scheduler_irq_exit()
 		 */
-		if (vmm_manager_vcpu_state(schedp->current_vcpu) == 
+		if (vmm_manager_vcpu_get_state(schedp->current_vcpu) == 
 						VMM_VCPU_STATE_RUNNING) {
 			schedp->yield_on_irq_exit = TRUE;
 		}

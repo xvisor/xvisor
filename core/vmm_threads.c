@@ -136,7 +136,7 @@ int vmm_threads_get_state(struct vmm_thread *tinfo)
 	if (!tinfo) {
 		rc =  -1;
 	} else {
-		state = vmm_manager_vcpu_state(tinfo->tvcpu);
+		state = vmm_manager_vcpu_get_state(tinfo->tvcpu);
 		if (state & VMM_VCPU_STATE_RESET) { 
 			rc = VMM_THREAD_STATE_CREATED;
 		} else if (state & 

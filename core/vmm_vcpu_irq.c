@@ -45,7 +45,7 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 	}
 
 	/* If vcpu is not in interruptible state then dont do anything */
-	state = vmm_manager_vcpu_state(vcpu);
+	state = vmm_manager_vcpu_get_state(vcpu);
 	if (!(state & VMM_VCPU_STATE_INTERRUPTIBLE)) {
 		return;
 	}
@@ -135,7 +135,7 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 	}
 
 	/* If VCPU is not in interruptible state then dont do anything */
-	state = vmm_manager_vcpu_state(vcpu);
+	state = vmm_manager_vcpu_get_state(vcpu);
 	if (!(state & VMM_VCPU_STATE_INTERRUPTIBLE)) {
 		return;
 	}

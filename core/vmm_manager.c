@@ -84,30 +84,6 @@ static void manager_vcpu_ipi_reset(void *vcpu_ptr,
 	vmm_scheduler_state_change(vcpu_ptr, VMM_VCPU_STATE_RESET);
 }
 
-static int vmm_manager_vcpu_state_change(struct vmm_vcpu *vcpu, u32 new_state)
-{
-	u32 vhcpu;
-	irq_flags_t flags;
-
-	/* If new_state == VMM_VCPU_STATE_RESET then 
-	 * we use sync IPI for proper working of VCPU reset.
-	 * 
-	 * For all other states we can directly call 
-	 * scheduler state change
-	 */
-
-	if (new_state == VMM_VCPU_STATE_RESET) {
-		vmm_read_lock_irqsave_lite(&vcpu->sched_lock, flags);
-		vhcpu = vcpu->hcpu;
-		vmm_read_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-		return vmm_smp_ipi_sync_call(vmm_cpumask_of(vhcpu), 1000,
-					     manager_vcpu_ipi_reset,
-					     vcpu, NULL, NULL);
-	}
-
-	return vmm_scheduler_state_change(vcpu, new_state);
-}
-
 int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *), 
 			     void *priv)
 {
@@ -137,36 +113,6 @@ int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *),
 	vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 
 	return rc;
-}
-
-int vmm_manager_vcpu_reset(struct vmm_vcpu *vcpu)
-{
-	return vmm_manager_vcpu_state_change(vcpu, 
-					VMM_VCPU_STATE_RESET);
-}
-
-int vmm_manager_vcpu_kick(struct vmm_vcpu *vcpu)
-{
-	return vmm_manager_vcpu_state_change(vcpu, 
-					VMM_VCPU_STATE_READY);
-}
-
-int vmm_manager_vcpu_pause(struct vmm_vcpu *vcpu)
-{
-	return vmm_manager_vcpu_state_change(vcpu, 
-					VMM_VCPU_STATE_PAUSED);
-}
-
-int vmm_manager_vcpu_resume(struct vmm_vcpu *vcpu)
-{
-	return vmm_manager_vcpu_state_change(vcpu, 
-					VMM_VCPU_STATE_READY);
-}
-
-int vmm_manager_vcpu_halt(struct vmm_vcpu *vcpu)
-{
-	return vmm_manager_vcpu_state_change(vcpu, 
-					VMM_VCPU_STATE_HALTED);
 }
 
 int vmm_manager_vcpu_dumpreg(struct vmm_vcpu *vcpu)
@@ -207,7 +153,7 @@ int vmm_manager_vcpu_dumpstat(struct vmm_vcpu *vcpu)
 	return rc;
 }
 
-u32 vmm_manager_vcpu_state(struct vmm_vcpu *vcpu)
+u32 vmm_manager_vcpu_get_state(struct vmm_vcpu *vcpu)
 {
 	u32 state;
 	irq_flags_t flags;
@@ -221,6 +167,34 @@ u32 vmm_manager_vcpu_state(struct vmm_vcpu *vcpu)
 	vmm_read_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 
 	return state;
+}
+
+int vmm_manager_vcpu_set_state(struct vmm_vcpu *vcpu, u32 new_state)
+{
+	u32 vhcpu;
+	irq_flags_t flags;
+
+	if (!vcpu) {
+		return VMM_EFAIL;
+	}
+
+	/* If new_state == VMM_VCPU_STATE_RESET then 
+	 * we use sync IPI for proper working of VCPU reset.
+	 * 
+	 * For all other states we can directly call 
+	 * scheduler state change
+	 */
+
+	if (new_state == VMM_VCPU_STATE_RESET) {
+		vmm_read_lock_irqsave_lite(&vcpu->sched_lock, flags);
+		vhcpu = vcpu->hcpu;
+		vmm_read_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+		return vmm_smp_ipi_sync_call(vmm_cpumask_of(vhcpu), 1000,
+					     manager_vcpu_ipi_reset,
+					     vcpu, NULL, NULL);
+	}
+
+	return vmm_scheduler_state_change(vcpu, new_state);
 }
 
 int vmm_manager_vcpu_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu)
@@ -436,7 +410,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->devemu_priv = NULL;
 
 	/* Notify scheduler about new VCPU */
-	if (vmm_manager_vcpu_state_change(vcpu, 
+	if (vmm_manager_vcpu_set_state(vcpu, 
 					VMM_VCPU_STATE_RESET)) {
 		arch_vcpu_deinit(vcpu);
 		vmm_free((void *)vcpu->stack_va);
@@ -480,7 +454,7 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 	vmm_waitqueue_forced_remove(vcpu);
 
 	/* Reset the VCPU */
-	if ((rc = vmm_manager_vcpu_state_change(vcpu, 
+	if ((rc = vmm_manager_vcpu_set_state(vcpu, 
 					VMM_VCPU_STATE_RESET))) {
 		return rc;
 	}
@@ -495,7 +469,7 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 	list_del(&vcpu->head);
 
 	/* Notify scheduler about VCPU state change */
-	if ((rc = vmm_manager_vcpu_state_change(vcpu, 
+	if ((rc = vmm_manager_vcpu_set_state(vcpu, 
 					VMM_VCPU_STATE_UNKNOWN))) {
 		goto release_lock;
 	}
@@ -916,8 +890,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->devemu_priv = NULL;
 
 		/* Notify scheduler about new VCPU */
-		if (vmm_manager_vcpu_state_change(vcpu, 
-						VMM_VCPU_STATE_RESET)) {
+		if (vmm_manager_vcpu_set_state(vcpu, VMM_VCPU_STATE_RESET)) {
 			vmm_vcpu_irq_deinit(vcpu);
 			arch_vcpu_deinit(vcpu);
 			vmm_free((void *)vcpu->stack_va);
@@ -1061,7 +1034,7 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 		vmm_read_unlock_irqrestore_lite(&guest->vcpu_lock, flags1);
 
 		/* Notify scheduler about VCPU state change */
-		if ((rc = vmm_manager_vcpu_state_change(vcpu, 
+		if ((rc = vmm_manager_vcpu_set_state(vcpu, 
 						VMM_VCPU_STATE_UNKNOWN))) {
 			goto release_lock;
 		}

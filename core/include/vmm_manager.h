@@ -196,29 +196,39 @@ struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id);
 int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *), 
 			     void *priv);
 
-/** Reset a VCPU */
-int vmm_manager_vcpu_reset(struct vmm_vcpu *vcpu);
-
-/** Kick a VCPU out of reset state */
-int vmm_manager_vcpu_kick(struct vmm_vcpu *vcpu);
-
-/** Pause a VCPU */
-int vmm_manager_vcpu_pause(struct vmm_vcpu *vcpu);
-
-/** Resume a VCPU */
-int vmm_manager_vcpu_resume(struct vmm_vcpu *vcpu);
-
-/** Halt a VCPU */
-int vmm_manager_vcpu_halt(struct vmm_vcpu *vcpu);
-
-/** Dump registers of a vcpu */
-int vmm_manager_vcpu_dumpreg(struct vmm_vcpu *vcpu);
-
-/** Dump registers of a vcpu */
+/** Dump statistics of a VCPU */
 int vmm_manager_vcpu_dumpstat(struct vmm_vcpu *vcpu);
 
-/** Get VCPU state */
-u32 vmm_manager_vcpu_state(struct vmm_vcpu *vcpu);
+/** Dump arch specific registers of a VCPU */
+int vmm_manager_vcpu_dumpreg(struct vmm_vcpu *vcpu);
+
+/** Retriver VCPU state */
+u32 vmm_manager_vcpu_get_state(struct vmm_vcpu *vcpu);
+
+/** Update VCPU state 
+ *  Note: Avoid calling this function directly
+ */
+int vmm_manager_vcpu_set_state(struct vmm_vcpu *vcpu, u32 state);
+
+/** Reset a VCPU */
+#define vmm_manager_vcpu_reset(vcpu)	\
+		vmm_manager_vcpu_set_state((vcpu), VMM_VCPU_STATE_RESET)
+
+/** Kick a VCPU out of reset state */
+#define vmm_manager_vcpu_kick(vcpu)	\
+		vmm_manager_vcpu_set_state((vcpu), VMM_VCPU_STATE_READY)
+
+/** Pause a VCPU */
+#define vmm_manager_vcpu_pause(vcpu)	\
+		vmm_manager_vcpu_set_state((vcpu), VMM_VCPU_STATE_PAUSED)
+
+/** Resume a VCPU */
+#define vmm_manager_vcpu_resume(vcpu)	\
+		vmm_manager_vcpu_set_state((vcpu), VMM_VCPU_STATE_READY)
+
+/** Halt a VCPU */
+#define vmm_manager_vcpu_halt(vcpu)	\
+		vmm_manager_vcpu_set_state((vcpu), VMM_VCPU_STATE_HALTED)
 
 /** Retrive host CPU assigned to given VCPU */
 int vmm_manager_vcpu_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu);

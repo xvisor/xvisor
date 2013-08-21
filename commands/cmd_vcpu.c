@@ -65,7 +65,7 @@ static int cmd_vcpu_list_iter(struct vmm_vcpu *vcpu, void *priv)
 #endif
 	struct vmm_chardev *cdev = priv;
 
-	switch (vmm_manager_vcpu_state(vcpu)) {
+	switch (vmm_manager_vcpu_get_state(vcpu)) {
 	case VMM_VCPU_STATE_UNKNOWN:
 		strcpy(state, "Unknown");
 		break;
