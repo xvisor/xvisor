@@ -448,6 +448,10 @@ static int vfs_vnode_acquire(const char *path, struct vnode **vp)
 			p++;
 		}
 
+		if (*p == '\0') {
+			break;
+		}
+
 		node[i] = '/';
 		i++;
 		j = i;
