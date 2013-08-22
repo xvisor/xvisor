@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_compiler.h>
+#include <vmm_timer.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
@@ -115,42 +116,91 @@ int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *),
 	return rc;
 }
 
-int vmm_manager_vcpu_dumpreg(struct vmm_vcpu *vcpu)
+int vmm_manager_vcpu_stats(struct vmm_vcpu *vcpu,
+			   u32 *state,
+			   u8  *priority,
+			   u32 *hcpu,
+			   u32 *reset_count,
+			   u64 *last_reset_nsecs,
+			   u64 *ready_nsecs,
+			   u64 *running_nsecs,
+			   u64 *paused_nsecs,
+			   u64 *halted_nsecs)
 {
-	int rc = VMM_EFAIL;
 	irq_flags_t flags;
+	u64 current_tstamp;
 
 	if (!vcpu) {
-		return rc;
+		return VMM_EFAIL;
 	}
 
-	vmm_read_lock_irqsave_lite(&vcpu->sched_lock, flags);
-	if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
-		arch_vcpu_regs_dump(vcpu);
-		rc = VMM_OK;
+	/* Current timestamp */
+	current_tstamp = vmm_timer_timestamp();
+
+	/* Acquire scheduling lock */
+	vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
+
+	/* Retrive current state and current hcpu */
+	if (state) {
+		*state = vcpu->state;
 	}
-	vmm_read_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-
-	return rc;
-}
-
-int vmm_manager_vcpu_dumpstat(struct vmm_vcpu *vcpu)
-{
-	int rc = VMM_EFAIL;
-	irq_flags_t flags;
-
-	if (!vcpu) {
-		return rc;
+	if (priority) {
+		*priority = vcpu->priority;
+	}
+	if (hcpu) {
+		*hcpu = vcpu->hcpu;
 	}
 
-	vmm_read_lock_irqsave_lite(&vcpu->sched_lock, flags);
-	if (vcpu->state != VMM_VCPU_STATE_RUNNING) {
-		arch_vcpu_stat_dump(vcpu);
-		rc = VMM_OK;
+	/* Syncup statistics based on current timestamp */
+	switch (vcpu->state) {
+	case VMM_VCPU_STATE_READY:
+		vcpu->state_ready_nsecs += 
+				current_tstamp - vcpu->state_tstamp;
+		vcpu->state_tstamp = current_tstamp;
+		break;
+	case VMM_VCPU_STATE_RUNNING:
+		vcpu->state_running_nsecs += 
+				current_tstamp - vcpu->state_tstamp;
+		vcpu->state_tstamp = current_tstamp;
+		break;
+	case VMM_VCPU_STATE_PAUSED:
+		vcpu->state_paused_nsecs += 
+				current_tstamp - vcpu->state_tstamp;
+		vcpu->state_tstamp = current_tstamp;
+		break;
+	case VMM_VCPU_STATE_HALTED:
+		vcpu->state_halted_nsecs += 
+				current_tstamp - vcpu->state_tstamp;
+		vcpu->state_tstamp = current_tstamp;
+		break;
+	default:
+		break; 
 	}
-	vmm_read_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 
-	return rc;
+	/* Retrive statistics */
+	if (reset_count) {
+		*reset_count = vcpu->reset_count;
+	}
+	if (last_reset_nsecs) {
+		*last_reset_nsecs = current_tstamp - vcpu->reset_tstamp;
+	}
+	if (ready_nsecs) {
+		*ready_nsecs = vcpu->state_ready_nsecs;
+	}
+	if (running_nsecs) {
+		*running_nsecs = vcpu->state_running_nsecs;
+	}
+	if (paused_nsecs) {
+		*paused_nsecs = vcpu->state_paused_nsecs;
+	}
+	if (halted_nsecs) {
+		*halted_nsecs = vcpu->state_halted_nsecs;
+	}
+
+	/* Release scheduling lock */
+	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+
+	return VMM_OK;
 }
 
 u32 vmm_manager_vcpu_get_state(struct vmm_vcpu *vcpu)
@@ -388,7 +438,13 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->hcpu = vmm_smp_processor_id();
 	vcpu->cpu_affinity = vmm_cpumask_of(vcpu->hcpu);
 	vcpu->state = VMM_VCPU_STATE_UNKNOWN;
+	vcpu->state_tstamp = vmm_timer_timestamp();
+	vcpu->state_ready_nsecs = 0;
+	vcpu->state_running_nsecs = 0;
+	vcpu->state_paused_nsecs = 0;
+	vcpu->state_halted_nsecs = 0;
 	vcpu->reset_count = 0;
+	vcpu->reset_tstamp = 0;
 	vcpu->preempt_count = 0;
 	vcpu->priority = priority;
 	vcpu->time_slice = time_slice_nsecs;
@@ -685,17 +741,6 @@ int vmm_manager_guest_halt(struct vmm_guest *guest)
 					manager_guest_halt_iter, NULL);
 }
 
-static int manager_guest_dumpreg_iter(struct vmm_vcpu *vcpu, void *priv)
-{
-	return vmm_manager_vcpu_dumpreg(vcpu);
-}
-
-int vmm_manager_guest_dumpreg(struct vmm_guest *guest)
-{
-	return vmm_manager_guest_vcpu_iterate(guest,
-					manager_guest_dumpreg_iter, NULL);
-}
-
 static struct vmm_cpumask affinity_mask[CONFIG_MAX_VCPU_COUNT];
 
 struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
@@ -847,7 +892,13 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->hcpu = vmm_smp_processor_id();
 		vcpu->cpu_affinity = vmm_cpumask_of(vcpu->hcpu);
 		vcpu->state = VMM_VCPU_STATE_UNKNOWN;
+		vcpu->state_tstamp = vmm_timer_timestamp();
+		vcpu->state_ready_nsecs = 0;
+		vcpu->state_running_nsecs = 0;
+		vcpu->state_paused_nsecs = 0;
+		vcpu->state_halted_nsecs = 0;
 		vcpu->reset_count = 0;
+		vcpu->reset_tstamp = 0;
 		vcpu->preempt_count = 0;
 		attrval = vmm_devtree_attrval(vnode,
 					     VMM_DEVTREE_PRIORITY_ATTR_NAME);
@@ -1114,6 +1165,13 @@ int __init vmm_manager_init(void)
 		mngr.vcpu_array[vnum].node = NULL;
 		mngr.vcpu_array[vnum].is_normal = FALSE;
 		mngr.vcpu_array[vnum].state = VMM_VCPU_STATE_UNKNOWN;
+		mngr.vcpu_array[vnum].state_tstamp = 0;
+		mngr.vcpu_array[vnum].state_ready_nsecs = 0;
+		mngr.vcpu_array[vnum].state_running_nsecs = 0;
+		mngr.vcpu_array[vnum].state_paused_nsecs = 0;
+		mngr.vcpu_array[vnum].state_halted_nsecs = 0;
+		mngr.vcpu_array[vnum].reset_count = 0;
+		mngr.vcpu_array[vnum].reset_tstamp = 0;
 		INIT_RW_LOCK(&mngr.vcpu_array[vnum].sched_lock);
 		mngr.vcpu_avail_array[vnum] = TRUE;
 	}

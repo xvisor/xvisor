@@ -24,6 +24,7 @@
 #define _ARCH_VCPU_H__
 
 #include <vmm_types.h>
+#include <vmm_chardev.h>
 #include <vmm_manager.h>
 
 /** Architecture specific VCPU Initialization */
@@ -52,10 +53,10 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 void arch_vcpu_preempt_orphan(void);
 
 /** Print architecture specific registers of a VCPU */
-void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu);
+void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu);
 
 /** Print architecture specific stats for a VCPU */
-void arch_vcpu_stat_dump(struct vmm_vcpu *vcpu);
+void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu);
 
 /** Get count of VCPU interrupts */
 u32 arch_vcpu_irq_count(struct vmm_vcpu *vcpu);

@@ -911,7 +911,7 @@ void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu)
 	}
 }
 
-void arch_vcpu_stat_dump(struct vmm_vcpu *vcpu)
+void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
-	vmm_printf("No VCPU stats available\n");
+	/* For now no arch specific stats */
 }

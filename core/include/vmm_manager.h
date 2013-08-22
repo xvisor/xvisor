@@ -160,7 +160,13 @@ struct vmm_vcpu {
 	u32 hcpu;
 	const struct vmm_cpumask *cpu_affinity;
 	u32 state;
+	u64 state_tstamp;
+	u64 state_ready_nsecs;
+	u64 state_running_nsecs;
+	u64 state_paused_nsecs;
+	u64 state_halted_nsecs;
 	u32 reset_count;
+	u64 reset_tstamp;
 	u8 priority;
 	u32 preempt_count;
 	u64 time_slice;
@@ -196,11 +202,17 @@ struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id);
 int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *), 
 			     void *priv);
 
-/** Dump statistics of a VCPU */
-int vmm_manager_vcpu_dumpstat(struct vmm_vcpu *vcpu);
-
-/** Dump arch specific registers of a VCPU */
-int vmm_manager_vcpu_dumpreg(struct vmm_vcpu *vcpu);
+/** Retrive general VCPU statistics */
+int vmm_manager_vcpu_stats(struct vmm_vcpu *vcpu,
+			   u32 *state,
+			   u8  *priority,
+			   u32 *hcpu,
+			   u32 *reset_count,
+			   u64 *last_reset_nsecs,
+			   u64 *ready_nsecs,
+			   u64 *running_nsecs,
+			   u64 *paused_nsecs,
+			   u64 *halted_nsecs);
 
 /** Retriver VCPU state */
 u32 vmm_manager_vcpu_get_state(struct vmm_vcpu *vcpu);
@@ -294,9 +306,6 @@ int vmm_manager_guest_resume(struct vmm_guest *guest);
 
 /** Halt a Guest */
 int vmm_manager_guest_halt(struct vmm_guest *guest);
-
-/** Dump registers of a Guest */
-int vmm_manager_guest_dumpreg(struct vmm_guest *guest);
 
 /** Create a Guest based on device tree configuration */
 struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode);

@@ -50,7 +50,6 @@ void cmd_guest_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   guest pause   <guest_name>\n");
 	vmm_cprintf(cdev, "   guest resume  <guest_name>\n");
 	vmm_cprintf(cdev, "   guest halt    <guest_name>\n");
-	vmm_cprintf(cdev, "   guest dumpreg <guest_name>\n");
 	vmm_cprintf(cdev, "   guest dumpmem <guest_name> <gphys_addr> "
 			  "[mem_sz]\n");
 	vmm_cprintf(cdev, "Note:\n");
@@ -64,24 +63,24 @@ void cmd_guest_list(struct vmm_chardev *cdev)
 	char path[256];
 	struct vmm_guest *guest;
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-6s %-17s %-13s %-40s\n", 
+			  "---------------------------------------\n");
+	vmm_cprintf(cdev, " %-6s %-17s %-13s %-39s\n", 
 			 "ID ", "Name", "Endianness", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "----------------------------------------\n");
+			  "---------------------------------------\n");
 	count = vmm_manager_max_guest_count();
 	for (id = 0; id < count; id++) {
 		if (!(guest = vmm_manager_guest(id))) {
 			continue;
 		}
 		vmm_devtree_getpath(path, guest->node);
-		vmm_cprintf(cdev, " %-6d %-17s %-13s %-40s\n", 
+		vmm_cprintf(cdev, " %-6d %-17s %-13s %-39s\n", 
 				  id, guest->name, 
 				  (guest->is_big_endian) ? "big" : "little",
 				  path);
 	}
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "----------------------------------------\n");
+			  "---------------------------------------\n");
 }
 
 int cmd_guest_create(struct vmm_chardev *cdev, const char *name)
@@ -143,7 +142,7 @@ int cmd_guest_reset(struct vmm_chardev *cdev, const char *name)
 	if ((ret = vmm_manager_guest_reset(guest))) {
 		vmm_cprintf(cdev, "%s: Failed to reset\n", name);
 	} else {
-		vmm_cprintf(cdev, "%s: Reset done\n", name);
+		vmm_cprintf(cdev, "%s: Reset\n", name);
 	}
 
 	return ret;
@@ -220,23 +219,6 @@ int cmd_guest_halt(struct vmm_chardev *cdev, const char *name)
 		vmm_cprintf(cdev, "%s: Failed to halt\n", name);
 	} else {
 		vmm_cprintf(cdev, "%s: Halted\n", name);
-	}
-
-	return ret;
-}
-
-int cmd_guest_dumpreg(struct vmm_chardev *cdev, const char *name)
-{
-	int ret;
-	struct vmm_guest *guest = vmm_manager_guest_find(name);
-
-	if (!guest) {
-		vmm_cprintf(cdev, "Failed to find guest\n");
-		return VMM_ENOTAVAIL;
-	}
-
-	if ((ret = vmm_manager_guest_dumpreg(guest))) {
-		vmm_cprintf(cdev, "%s: Failed to dumpreg\n", name);
 	}
 
 	return ret;
@@ -322,8 +304,6 @@ int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_guest_resume(cdev, argv[2]);
 	} else if (strcmp(argv[1], "halt") == 0) {
 		return cmd_guest_halt(cdev, argv[2]);
-	} else if (strcmp(argv[1], "dumpreg") == 0) {
-		return cmd_guest_dumpreg(cdev, argv[2]);
 	} else if (strcmp(argv[1], "dumpmem") == 0) {
 		if (argc < 4) {
 			vmm_cprintf(cdev, "Error: Insufficient argument for "

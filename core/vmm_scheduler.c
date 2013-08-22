@@ -121,6 +121,7 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 			       arch_regs_t *regs)
 {
 	irq_flags_t cf, nf;
+	u64 tstamp = vmm_timer_timestamp();
 	struct vmm_vcpu *next = NULL; 
 	struct vmm_vcpu *tcurrent = NULL, *current = schedp->current_vcpu;
 
@@ -135,7 +136,9 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 		vmm_write_lock_irqsave_lite(&next->sched_lock, nf);
 
 		arch_vcpu_switch(NULL, next, regs);
+		next->state_ready_nsecs += tstamp - next->state_tstamp;
 		next->state = VMM_VCPU_STATE_RUNNING;
+		next->state_tstamp = tstamp;
 		schedp->current_vcpu = next;
 		vmm_timer_event_start(ev, next->time_slice);
 
@@ -149,7 +152,10 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 
 	if (current->state & VMM_VCPU_STATE_SAVEABLE) {
 		if (current->state == VMM_VCPU_STATE_RUNNING) {
+			current->state_running_nsecs += 
+				tstamp - current->state_tstamp;
 			current->state = VMM_VCPU_STATE_READY;
+			current->state_tstamp = tstamp;
 			rq_enqueue(schedp, current);
 		}
 		tcurrent = current;
@@ -167,7 +173,9 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 		arch_vcpu_switch(tcurrent, next, regs);
 	}
 
+	next->state_ready_nsecs += tstamp - next->state_tstamp;
 	next->state = VMM_VCPU_STATE_RUNNING;
+	next->state_tstamp = tstamp;
 	schedp->current_vcpu = next;
 	vmm_timer_event_start(ev, next->time_slice);
 
@@ -269,9 +277,10 @@ static void scheduler_ipi_resched(void *dummy0, void *dummy1, void *dummy2)
 
 int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
+	u64 tstamp;
 	int rc = VMM_OK;
-	bool preempt = FALSE;
 	irq_flags_t flags;
+	bool preempt = FALSE;
 	u32 chcpu = vmm_smp_processor_id(), vhcpu;
 	struct vmm_scheduler_ctrl *schedp;
 
@@ -345,7 +354,36 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 	}
 
 	if (rc == VMM_OK) {
+		tstamp = vmm_timer_timestamp();
+		switch (vcpu->state) {
+		case VMM_VCPU_STATE_READY:
+			vcpu->state_ready_nsecs += 
+					tstamp - vcpu->state_tstamp;
+			break;
+		case VMM_VCPU_STATE_RUNNING:
+			vcpu->state_running_nsecs += 
+					tstamp - vcpu->state_tstamp;
+			break;
+		case VMM_VCPU_STATE_PAUSED:
+			vcpu->state_paused_nsecs += 
+					tstamp - vcpu->state_tstamp;
+			break;
+		case VMM_VCPU_STATE_HALTED:
+			vcpu->state_halted_nsecs += 
+					tstamp - vcpu->state_tstamp;
+			break;
+		default:
+			break; 
+		}
+		if (new_state == VMM_VCPU_STATE_RESET) {
+			vcpu->state_ready_nsecs = 0;
+			vcpu->state_running_nsecs = 0;
+			vcpu->state_paused_nsecs = 0;
+			vcpu->state_halted_nsecs = 0;
+			vcpu->reset_tstamp = tstamp;
+		}
 		vcpu->state = new_state;
+		vcpu->state_tstamp = tstamp;
 	}
 
 	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
