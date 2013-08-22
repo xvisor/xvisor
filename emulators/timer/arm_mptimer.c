@@ -73,7 +73,7 @@ struct timer_block {
 	u32 freq;
 
 	/* Lock to protect registers */
-	vmm_spinlock_t lock;
+	vmm_rwlock_t lock;
 
 	/* Common Registers */
 	u32 load;
@@ -203,7 +203,7 @@ static void timer_block_event(struct vmm_timer_event *event)
 	u32 control;
 	struct timer_block *timer = event->priv;
 
-	vmm_spin_lock(&(timer->lock));
+	vmm_write_lock(&(timer->lock));
 
 	timer->status = 1;
 	control = timer->control;
@@ -215,7 +215,7 @@ static void timer_block_event(struct vmm_timer_event *event)
 
 	timer->count = 0;
 
-	vmm_spin_unlock(&timer->lock);
+	vmm_write_unlock(&timer->lock);
 
 	timer_block_update_irq(timer, control);
 }
@@ -251,7 +251,7 @@ int mptimer_reg_read(struct mptimer_state *s, u32 offset, u32 *dst)
 		offset -= 0x20;
 	}
 
-	vmm_spin_lock(&(timer->lock));
+	vmm_read_lock(&(timer->lock));
 
 	switch (offset) {
 		case 0x0: /* Load */
@@ -277,7 +277,7 @@ int mptimer_reg_read(struct mptimer_state *s, u32 offset, u32 *dst)
 			return 0;
 	}
 
-	vmm_spin_unlock(&timer->lock);
+	vmm_read_unlock(&timer->lock);
 
 	return VMM_OK;
 }
@@ -317,7 +317,7 @@ int mptimer_reg_write(struct mptimer_state *s,
 		offset -= 0x20;
 	}
 
-	vmm_spin_lock(&timer->lock);
+	vmm_write_lock(&timer->lock);
 
 	switch (offset) {
 		case 0x0: /* Load */
@@ -373,7 +373,7 @@ int mptimer_reg_write(struct mptimer_state *s,
 			break;
 	}
 
-	vmm_spin_unlock(&timer->lock);
+	vmm_write_unlock(&timer->lock);
 
 	if (update_irq) {
 		timer_block_update_irq(timer, control);
@@ -381,10 +381,10 @@ int mptimer_reg_write(struct mptimer_state *s,
 
 	if (try_reload) {
 		if (control & TIMER_CTRL_ARELOAD) {
-			vmm_spin_lock(&timer->lock);
+			vmm_write_lock(&timer->lock);
 			timer->count = timer->load;
 			__timer_block_reload(timer);
-			vmm_spin_unlock(&timer->lock);
+			vmm_write_unlock(&timer->lock);
 		}
 	}
 
@@ -399,7 +399,7 @@ int mptimer_state_reset(struct mptimer_state *mpt)
 	for (i=0; i < (2 * mpt->num_cpu); i++) {
 		struct timer_block *timer = &(mpt->timers[i]);
 
-		vmm_spin_lock(&timer->lock);
+		vmm_write_lock(&timer->lock);
 
 		vmm_timer_event_stop(&timer->event);
 		timer->load = 0;
@@ -409,7 +409,7 @@ int mptimer_state_reset(struct mptimer_state *mpt)
 		timer->wdisable = 0;
 		timer->freq = __timer_block_get_freq(timer);
 
-		vmm_spin_unlock(&timer->lock);
+		vmm_write_unlock(&timer->lock);
 
 		timer_block_update_irq(timer, 0x0);
 	}
@@ -460,7 +460,7 @@ struct mptimer_state *mptimer_state_alloc(struct vmm_guest *guest,
 		s->timers[i].irq = (i & 0x1) ? wdt_irq : timer_irq;
 		s->timers[i].cpu = (i >> 1);
 		s->timers[i].is_wdt = (i & 0x1);
-		INIT_SPIN_LOCK(&(s->timers[i].lock));
+		INIT_RW_LOCK(&(s->timers[i].lock));
 		INIT_TIMER_EVENT(&s->timers[i].event, 
 				 &timer_block_event,
 				 &(s->timers[i]));
