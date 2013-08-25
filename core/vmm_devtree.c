@@ -111,6 +111,10 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
 	} else if (!strcmp(name, VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
+	} else if (!strcmp(name, VMM_DEVTREE_ENABLE_METHOD_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_STRING;
+	} else if (!strcmp(name, VMM_DEVTREE_CPU_RELEASE_ADDR_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
 	} else if (!strcmp(name, VMM_DEVTREE_INTERRUPTS_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!strcmp(name, VMM_DEVTREE_ENDIANNESS_ATTR_NAME)) {
