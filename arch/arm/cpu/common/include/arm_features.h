@@ -50,6 +50,7 @@
 #define ARM_CPUID_CORTEXA9    0x410fc090
 #define ARM_CPUID_CORTEXA15   0x412fc0f1
 #define ARM_CPUID_CORTEXM3    0x410fc231
+#define ARM_CPUID_ARMV8	      0x000f0000
 #define ARM_CPUID_ANY         0xffffffff
 
 /* VCPU Feature related enumeration */
@@ -71,6 +72,7 @@ enum arm_features {
 	ARM_FEATURE_OMAPCP, /* OMAP specific CP15 ops handling.  */
 	ARM_FEATURE_THUMB2EE,
 	ARM_FEATURE_V7MP,    /* v7 Multiprocessing Extensions */
+	ARM_FEATURE_V8,
 	ARM_FEATURE_V4T,
 	ARM_FEATURE_V5,
 	ARM_FEATURE_STRONGARM,
