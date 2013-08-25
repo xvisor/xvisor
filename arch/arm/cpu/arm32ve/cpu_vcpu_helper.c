@@ -859,56 +859,64 @@ void arch_vcpu_preempt_orphan(void)
 	asm volatile ("hvc #0\t\n");
 }
 
-void cpu_vcpu_dump_user_reg(arch_regs_t *regs)
+static void __cpu_vcpu_dump_user_reg(struct vmm_chardev *cdev, 
+				     arch_regs_t *regs)
 {
 	u32 ite;
-	vmm_printf("  Core Registers\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       PC=0x%08x\n",
-		   regs->sp, regs->lr, regs->pc);
-	vmm_printf("    CPSR=0x%08x     \n", regs->cpsr);
-	vmm_printf("  General Purpose Registers");
+	vmm_cprintf(cdev, "  Core Registers\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       PC=0x%08x\n",
+		    regs->sp, regs->lr, regs->pc);
+	vmm_cprintf(cdev, "    CPSR=0x%08x     \n", regs->cpsr);
+	vmm_cprintf(cdev, "  General Purpose Registers");
 	for (ite = 0; ite < CPU_GPR_COUNT; ite++) {
 		if (ite % 3 == 0)
-			vmm_printf("\n");
-		vmm_printf("    R%02d=0x%08x  ", ite, regs->gpr[ite]);
+			vmm_cprintf(cdev, "\n");
+		vmm_cprintf(cdev, "    R%02d=0x%08x  ", ite, regs->gpr[ite]);
 	}
-	vmm_printf("\n");
+	vmm_cprintf(cdev, "\n");
 }
 
-void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu)
+void cpu_vcpu_dump_user_reg(arch_regs_t *regs)
+{
+	__cpu_vcpu_dump_user_reg(NULL, regs);
+}
+
+void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
 	u32 ite;
 	arm_priv_t *p;
 	/* For both Normal & Orphan VCPUs */
-	cpu_vcpu_dump_user_reg(arm_regs(vcpu));
+	__cpu_vcpu_dump_user_reg(cdev, arm_regs(vcpu));
 	/* For only Normal VCPUs */
 	if (!vcpu->is_normal) {
 		return;
 	}
 	p = arm_priv(vcpu);
-	vmm_printf("  User Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x\n",
-		   p->sp_usr, arm_regs(vcpu)->lr);
-	vmm_printf("  Supervisor Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   p->sp_svc, p->lr_svc, p->spsr_svc);
-	vmm_printf("  Abort Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   p->sp_abt, p->lr_abt, p->spsr_abt);
-	vmm_printf("  Undefined Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   p->sp_und, p->lr_und, p->spsr_und);
-	vmm_printf("  IRQ Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   p->sp_irq, p->lr_irq, p->spsr_irq);
-	vmm_printf("  FIQ Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x",
-		   p->sp_fiq, p->lr_fiq, p->spsr_fiq);
+	vmm_cprintf(cdev, "  User Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x\n",
+		    p->sp_usr, arm_regs(vcpu)->lr);
+	vmm_cprintf(cdev, "  Supervisor Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
+		    p->sp_svc, p->lr_svc, p->spsr_svc);
+	vmm_cprintf(cdev, "  Abort Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
+		    p->sp_abt, p->lr_abt, p->spsr_abt);
+	vmm_cprintf(cdev, "  Undefined Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
+		    p->sp_und, p->lr_und, p->spsr_und);
+	vmm_cprintf(cdev, "  IRQ Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
+		    p->sp_irq, p->lr_irq, p->spsr_irq);
+	vmm_cprintf(cdev, "  FIQ Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x",
+		    p->sp_fiq, p->lr_fiq, p->spsr_fiq);
 	for (ite = 0; ite < 5; ite++) {
 		if (ite % 3 == 0)
-			vmm_printf("\n");
-		vmm_printf("    R%02d=0x%08x  ", (ite + 8), p->gpr_fiq[ite]);
+			vmm_cprintf(cdev, "\n");
+		vmm_cprintf(cdev, "    R%02d=0x%08x  ", 
+			    (ite + 8), p->gpr_fiq[ite]);
 	}
+	vmm_cprintf(cdev, "\n");
 }
 
 void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
