@@ -37,56 +37,56 @@
 
 #if defined (CONFIG_SMP)
 /* 
- * We dn't have yet an atomic64 implementation for ARMV6 on SMP
+ * We don't have atomic64 implementation for ARMV6 SMP
  */
-u64 __lock arch_atomic64_read(atomic64_t * atom)
+u64 __lock arch_atomic64_read(atomic64_t *atom)
 {
 	return 0;
 }
 
-void __lock arch_atomic64_write(atomic64_t * atom, u64 value)
+void __lock arch_atomic64_write(atomic64_t *atom, u64 value)
 {
 }
 
-void __lock arch_atomic64_add(atomic64_t * atom, u64 value)
+void __lock arch_atomic64_add(atomic64_t *atom, u64 value)
 {
 }
 
-void __lock arch_atomic64_sub(atomic64_t * atom, u64 value)
+void __lock arch_atomic64_sub(atomic64_t *atom, u64 value)
 {
 }
 
-bool __lock arch_atomic64_testnset(atomic64_t * atom, u64 test, u64 value)
-{
-	return FALSE;
-}
-
-u64 __lock arch_atomic64_add_return(atomic64_t * atom, u64 value)
+u64 __lock arch_atomic64_add_return(atomic64_t *atom, u64 value)
 {
 	return 0;
 }
 
-u64 __lock arch_atomic64_sub_return(atomic64_t * atom, u64 value)
+u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
+{
+	return 0;
+}
+
+u64 __lock arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval)
 {
 	return 0;
 }
 
 #else // CONFIG_SMP
 
-u64 __lock arch_atomic64_read(atomic64_t * atom)
+u64 __lock arch_atomic64_read(atomic64_t *atom)
 {
 	u64 ret = atom->counter;
 	arch_rmb();
 	return ret;
 }
 
-void __lock arch_atomic64_write(atomic64_t * atom, u64 value)
+void __lock arch_atomic64_write(atomic64_t *atom, u64 value)
 {
 	atom->counter = value;
 	arch_wmb();
 }
 
-void __lock arch_atomic64_add(atomic64_t * atom, u64 value)
+void __lock arch_atomic64_add(atomic64_t *atom, u64 value)
 {
 	irq_flags_t flags;
 
@@ -95,7 +95,7 @@ void __lock arch_atomic64_add(atomic64_t * atom, u64 value)
 	arch_cpu_irq_restore(flags);
 }
 
-void __lock arch_atomic64_sub(atomic64_t * atom, u64 value)
+void __lock arch_atomic64_sub(atomic64_t *atom, u64 value)
 {
 	irq_flags_t flags;
 
@@ -104,45 +104,45 @@ void __lock arch_atomic64_sub(atomic64_t * atom, u64 value)
 	arch_cpu_irq_restore(flags);
 }
 
-bool __lock arch_atomic64_testnset(atomic64_t * atom, u64 test, u64 value)
+u64 __lock arch_atomic64_add_return(atomic64_t *atom, u64 value)
 {
-	bool ret = FALSE;
+	u64 temp;
 	irq_flags_t flags;
 
 	arch_cpu_irq_save(flags);
-	if (atom->counter == test) {
-		ret = TRUE;
-		atom->counter = value;
+	atom->counter += value;
+	temp = atom->counter;
+	arch_cpu_irq_restore(flags);
+
+	return temp;
+}
+
+u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
+{
+	u64 temp;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	atom->counter -= value;
+	temp = atom->counter;
+	arch_cpu_irq_restore(flags);
+
+	return temp;
+}
+
+u64 __lock arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval)
+{
+	u64 previous;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	previous = atom->counter;
+	if (previous == oldval) {
+		atom->counter = newval;
 	}
 	arch_cpu_irq_restore(flags);
 
-	return ret;
-}
-
-u64 __lock arch_atomic64_add_return(atomic64_t * atom, u64 value)
-{
-	u64 temp;
-	irq_flags_t flags;
-
-	arch_cpu_irq_save(flags);
-	atom->counter += value;
-	temp = atom->counter;
-	arch_cpu_irq_restore(flags);
-
-	return temp;
-}
-
-u64 __lock arch_atomic64_sub_return(atomic64_t * atom, u64 value)
-{
-	u64 temp;
-	irq_flags_t flags;
-
-	arch_cpu_irq_save(flags);
-	atom->counter -= value;
-	temp = atom->counter;
-	arch_cpu_irq_restore(flags);
-
-	return temp;
+	return previous;
 }
 
 #endif // CONFIG_SMP
@@ -193,7 +193,7 @@ void __lock arch_atomic64_add(atomic64_t *atom, u64 value)
 	: "cc");
 }
 
-void __lock arch_atomic64_sub(atomic64_t * atom, u64 value)
+void __lock arch_atomic64_sub(atomic64_t *atom, u64 value)
 {
 	u64 result;
 	unsigned long tmp;
@@ -210,31 +210,7 @@ void __lock arch_atomic64_sub(atomic64_t * atom, u64 value)
 	: "cc");
 }
 
-bool __lock arch_atomic64_testnset(atomic64_t * atom, u64 test, u64 value)
-{
-	u64 oldval;
-	unsigned long res;
-
-	arch_smp_mb();
-
-	do {
-		__asm__ __volatile__("@ atomic64_testnset\n"
-		"ldrexd		%1, %H1, [%3]\n"	/* load oldval */
-		"mov		%0, #0\n"		/* init res with 0 */
-		"teq		%1, %4\n"		/* compare test and oldval low bytes */
-		"teqeq		%H1, %H4\n"		/* compare test and oldval high bytes */
-		"strexdeq	%0, %5, %H5, [%3]"	/* store value in atomic if equal */
-		: "=&r" (res), "=&r" (oldval), "+Qo" (atom->counter)
-		: "r" (&atom->counter), "r" (test), "r" (value)
-		: "cc");
-	} while (res);
-
-	arch_smp_mb();
-
-	return oldval == test;
-}
-
-u64 __lock arch_atomic64_add_return(atomic64_t * atom, u64 value)
+u64 __lock arch_atomic64_add_return(atomic64_t *atom, u64 value)
 {
 	u64 result;
 	unsigned long tmp;
@@ -257,7 +233,7 @@ u64 __lock arch_atomic64_add_return(atomic64_t * atom, u64 value)
 	return result;
 }
 
-u64 __lock arch_atomic64_sub_return(atomic64_t * atom, u64 value)
+u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
 {
 	u64 result;
 	unsigned long tmp;
@@ -278,6 +254,30 @@ u64 __lock arch_atomic64_sub_return(atomic64_t * atom, u64 value)
 	arch_smp_mb();
 
 	return result;
+}
+
+u64 __lock arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval)
+{
+	u64 previous;
+	unsigned long res;
+
+	arch_smp_mb();
+
+	do {
+		__asm__ __volatile__("@ atomic64_cmpxchg\n"
+		"ldrexd		%1, %H1, [%3]\n"
+		"mov		%0, #0\n"
+		"teq		%1, %4\n"
+		"teqeq		%H1, %H4\n"
+		"strexdeq	%0, %5, %H5, [%3]"
+		: "=&r" (res), "=&r" (previous), "+Qo" (atom->counter)
+		: "r" (&atom->counter), "r" (oldval), "r" (newval)
+		: "cc");
+	} while (res);
+
+	arch_smp_mb();
+
+	return previous;
 }
 
 #endif // CONFIG_ARMV5 || CONFIG_ARMV6

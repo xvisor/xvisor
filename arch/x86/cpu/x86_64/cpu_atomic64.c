@@ -27,35 +27,41 @@
 #include <arch_atomic64.h>
 
 /* FIXME: Need memory barrier for this. */
-u64  __lock arch_atomic64_read(atomic64_t * atom)
+u64  __lock arch_atomic64_read(atomic64_t *atom)
 {
 	return atom->counter;
 }
 
 /* FIXME: Need memory barrier for this. */
-void  __lock arch_atomic64_write(atomic64_t * atom, u64 value)
+void  __lock arch_atomic64_write(atomic64_t *atom, u64 value)
 {
 	atom->counter = value;
 }
 
 /* FIXME: Implement This. */
-void __lock arch_atomic64_add(atomic64_t * atom, u64 value)
+void __lock arch_atomic64_add(atomic64_t *atom, u64 value)
 {
 }
 
 /* FIXME: Implement This. */
-void __lock arch_atomic64_sub(atomic64_t * atom, u64 value)
+void __lock arch_atomic64_sub(atomic64_t *atom, u64 value)
 {
 }
 
 /* FIXME: Implement This. */
-u64 __lock arch_atomic64_add_return(atomic64_t * atom, u64 value)
+u64 __lock arch_atomic64_add_return(atomic64_t *atom, u64 value)
 {
 	return 0;
 }
 
 /* FIXME: Implement This. */
-u64 __lock arch_atomic64_sub_return(atomic64_t * atom, u64 value)
+u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
+{
+	return 0;
+}
+
+/* FIXME: Implement This. */
+u64 __lock arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval)
 {
 	return 0;
 }

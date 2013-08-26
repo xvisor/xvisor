@@ -77,7 +77,7 @@ void __lock arch_atomic64_add(atomic64_t *atom, u64 value)
 	: "cc");
 }
 
-void __lock arch_atomic64_sub(atomic64_t * atom, u64 value)
+void __lock arch_atomic64_sub(atomic64_t *atom, u64 value)
 {
 	u64 result;
 	unsigned long tmp;
@@ -94,31 +94,7 @@ void __lock arch_atomic64_sub(atomic64_t * atom, u64 value)
 	: "cc");
 }
 
-bool __lock arch_atomic64_testnset(atomic64_t * atom, u64 test, u64 value)
-{
-	u64 oldval;
-	unsigned long res;
-
-	arch_smp_mb();
-
-	do {
-		__asm__ __volatile__("@ atomic64_testnset\n"
-		"ldrexd		%1, %H1, [%3]\n"	/* load oldval */
-		"mov		%0, #0\n"		/* init res with 0 */
-		"teq		%1, %4\n"		/* compare test and oldval low bytes */
-		"teqeq		%H1, %H4\n"		/* compare test and oldval high bytes */
-		"strexdeq	%0, %5, %H5, [%3]"	/* store value in atomic if equal */
-		: "=&r" (res), "=&r" (oldval), "+Qo" (atom->counter)
-		: "r" (&atom->counter), "r" (test), "r" (value)
-		: "cc");
-	} while (res);
-
-	arch_smp_mb();
-
-	return oldval == test;
-}
-
-u64 __lock arch_atomic64_add_return(atomic64_t * atom, u64 value)
+u64 __lock arch_atomic64_add_return(atomic64_t *atom, u64 value)
 {
 	u64 result;
 	unsigned long tmp;
@@ -141,7 +117,7 @@ u64 __lock arch_atomic64_add_return(atomic64_t * atom, u64 value)
 	return result;
 }
 
-u64 __lock arch_atomic64_sub_return(atomic64_t * atom, u64 value)
+u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
 {
 	u64 result;
 	unsigned long tmp;
@@ -163,3 +139,28 @@ u64 __lock arch_atomic64_sub_return(atomic64_t * atom, u64 value)
 
 	return result;
 }
+
+u64 __lock arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval)
+{
+	u64 previous;
+	unsigned long res;
+
+	arch_smp_mb();
+
+	do {
+		__asm__ __volatile__("@ atomic64_cmpxchg\n"
+		"ldrexd		%1, %H1, [%3]\n"
+		"mov		%0, #0\n"
+		"teq		%1, %4\n"
+		"teqeq		%H1, %H4\n"
+		"strexdeq	%0, %5, %H5, [%3]"
+		: "=&r" (res), "=&r" (previous), "+Qo" (atom->counter)
+		: "r" (&atom->counter), "r" (oldval), "r" (newval)
+		: "cc");
+	} while (res);
+
+	arch_smp_mb();
+
+	return previous;
+}
+
