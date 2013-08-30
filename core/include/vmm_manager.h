@@ -76,12 +76,16 @@ struct vmm_guest_aspace {
 #define list_for_each_region(curr, aspace)	\
 			list_for_each(curr, &(aspace->reg_list))
 
+struct vmm_vcpu_irq {
+	bool assert;
+	u32 reason;
+};
+
 struct vmm_vcpu_irqs {
 	vmm_spinlock_t lock;
 	u32 irq_count;
-	bool *assert;
-	u32 *reason;
-	int execute_pending;
+	struct vmm_vcpu_irq *irq;
+	u32 execute_pending;
 	u64 assert_count;
 	u64 execute_count;
 	u64 deassert_count;
