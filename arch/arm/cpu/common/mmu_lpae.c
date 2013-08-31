@@ -56,7 +56,7 @@ struct mmu_lpae_ctrl {
 
 static struct mmu_lpae_ctrl mmuctrl;
 
-u8 __attribute__ ((aligned(TTBL_TABLE_SIZE))) def_ttbl[TTBL_INITIAL_TABLE_SIZE];
+u8 __attribute__ ((aligned(TTBL_TABLE_SIZE))) def_ttbl[TTBL_INITIAL_TABLE_SIZE] = { 0 };
 int def_ttbl_tree[TTBL_INITIAL_TABLE_COUNT];
 
 static struct cpu_ttbl *mmu_lpae_ttbl_find(physical_addr_t tbl_pa)
@@ -163,10 +163,10 @@ static int mmu_lpae_ttbl_attach(struct cpu_ttbl *parent,
 	index = mmu_lpae_level_index(map_ia, parent->level);
 	tte = (u64 *)parent->tbl_va;
 
-	vmm_spin_lock_irqsave(&parent->tbl_lock, flags);
+	vmm_spin_lock_irqsave_lite(&parent->tbl_lock, flags);
 
 	if (tte[index] & TTBL_VALID_MASK) {
-		vmm_spin_unlock_irqrestore(&parent->tbl_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&parent->tbl_lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -182,7 +182,7 @@ static int mmu_lpae_ttbl_attach(struct cpu_ttbl *parent,
 	parent->child_cnt++;
 	list_add(&child->head, &parent->child_list);
 
-	vmm_spin_unlock_irqrestore(&parent->tbl_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&parent->tbl_lock, flags);
 
 	return VMM_OK;
 }
@@ -202,10 +202,10 @@ static int mmu_lpae_ttbl_deattach(struct cpu_ttbl *child)
 	index = mmu_lpae_level_index(child->map_ia, parent->level);
 	tte = (u64 *)parent->tbl_va;
 
-	vmm_spin_lock_irqsave(&parent->tbl_lock, flags);
+	vmm_spin_lock_irqsave_lite(&parent->tbl_lock, flags);
 
 	if (!(tte[index] & TTBL_VALID_MASK)) {
-		vmm_spin_unlock_irqrestore(&parent->tbl_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&parent->tbl_lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -217,7 +217,7 @@ static int mmu_lpae_ttbl_deattach(struct cpu_ttbl *child)
 	parent->child_cnt--;
 	list_del(&child->head);
 
-	vmm_spin_unlock_irqrestore(&parent->tbl_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&parent->tbl_lock, flags);
 
 	return VMM_OK;
 }
@@ -228,10 +228,10 @@ struct cpu_ttbl *mmu_lpae_ttbl_alloc(int stage)
 	struct dlist *l;
 	struct cpu_ttbl *ttbl;
 
-	vmm_spin_lock_irqsave(&mmuctrl.alloc_lock, flags);
+	vmm_spin_lock_irqsave_lite(&mmuctrl.alloc_lock, flags);
 
 	if (list_empty(&mmuctrl.free_ttbl_list)) {
-		vmm_spin_unlock_irqrestore(&mmuctrl.alloc_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&mmuctrl.alloc_lock, flags);
 		return NULL;
 	}
 
@@ -239,7 +239,7 @@ struct cpu_ttbl *mmu_lpae_ttbl_alloc(int stage)
 	ttbl = list_entry(l, struct cpu_ttbl, head);
 	mmuctrl.ttbl_alloc_count++;
 
-	vmm_spin_unlock_irqrestore(&mmuctrl.alloc_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&mmuctrl.alloc_lock, flags);
 
 	ttbl->parent = NULL;
 	ttbl->stage = stage;
@@ -281,18 +281,18 @@ int mmu_lpae_ttbl_free(struct cpu_ttbl *ttbl)
 		}
 	}
 
-	vmm_spin_lock_irqsave(&ttbl->tbl_lock, flags);
+	vmm_spin_lock_irqsave_lite(&ttbl->tbl_lock, flags);
 	ttbl->tte_cnt = 0;
 	memset((void *)ttbl->tbl_va, 0, TTBL_TABLE_SIZE);
-	vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 
 	ttbl->level = TTBL_FIRST_LEVEL;
 	ttbl->map_ia = 0;
 
-	vmm_spin_lock_irqsave(&mmuctrl.alloc_lock, flags);
+	vmm_spin_lock_irqsave_lite(&mmuctrl.alloc_lock, flags);
 	list_add_tail(&ttbl->head, &mmuctrl.free_ttbl_list);
 	mmuctrl.ttbl_alloc_count--;
-	vmm_spin_unlock_irqrestore(&mmuctrl.alloc_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&mmuctrl.alloc_lock, flags);
 
 	return VMM_OK;
 }
@@ -314,9 +314,9 @@ struct cpu_ttbl *mmu_lpae_ttbl_get_child(struct cpu_ttbl *parent,
 	index = mmu_lpae_level_index(map_ia, parent->level);
 	tte = (u64 *)parent->tbl_va;
 
-	vmm_spin_lock_irqsave(&parent->tbl_lock, flags);
+	vmm_spin_lock_irqsave_lite(&parent->tbl_lock, flags);
 	tte_val = tte[index];
-	vmm_spin_unlock_irqrestore(&parent->tbl_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&parent->tbl_lock, flags);
 
 	if (tte_val & TTBL_VALID_MASK) {
 		if (tte_val & TTBL_TABLE_MASK) {
@@ -380,21 +380,21 @@ int mmu_lpae_get_page(struct cpu_ttbl * ttbl,
 	index = mmu_lpae_level_index(ia, ttbl->level);
 	tte = (u64 *)ttbl->tbl_va;
 
-	vmm_spin_lock_irqsave(&ttbl->tbl_lock, flags);
+	vmm_spin_lock_irqsave_lite(&ttbl->tbl_lock, flags);
 
 	if (!(tte[index] & TTBL_VALID_MASK)) {
-		vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 		return VMM_EFAIL;
 	}
 	if ((ttbl->level == TTBL_LAST_LEVEL) &&
 	    !(tte[index] & TTBL_TABLE_MASK)) {
-		vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 		return VMM_EFAIL;
 	}
 
 	if ((ttbl->level < TTBL_LAST_LEVEL) && 
 	    (tte[index] & TTBL_TABLE_MASK)) {
-		vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 		child = mmu_lpae_ttbl_get_child(ttbl, ia, FALSE);
 		if (!child) {
 			return VMM_EFAIL;
@@ -442,7 +442,7 @@ int mmu_lpae_get_page(struct cpu_ttbl * ttbl,
 						TTBL_STAGE1_LOWER_AINDEX_SHIFT;
 	}
 
-	vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 
 	return VMM_OK;
 }
@@ -485,15 +485,15 @@ int mmu_lpae_unmap_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
 	index = mmu_lpae_level_index(pg->ia, ttbl->level);
 	tte = (u64 *)ttbl->tbl_va;
 
-	vmm_spin_lock_irqsave(&ttbl->tbl_lock, flags);
+	vmm_spin_lock_irqsave_lite(&ttbl->tbl_lock, flags);
 
 	if (!(tte[index] & TTBL_VALID_MASK)) {
-		vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 		return VMM_EFAIL;
 	}
 	if ((ttbl->level == TTBL_LAST_LEVEL) &&
 	    !(tte[index] & TTBL_TABLE_MASK)) {
-		vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -512,7 +512,7 @@ int mmu_lpae_unmap_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
 		free_ttbl = TRUE;
 	}
 
-	vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 
 	if (free_ttbl) {
 		mmu_lpae_ttbl_free(ttbl);
@@ -553,10 +553,10 @@ int mmu_lpae_map_page(struct cpu_ttbl * ttbl, struct cpu_page *pg)
 	index = mmu_lpae_level_index(pg->ia, ttbl->level);
 	tte = (u64 *)ttbl->tbl_va;
 
-	vmm_spin_lock_irqsave(&ttbl->tbl_lock, flags);
+	vmm_spin_lock_irqsave_lite(&ttbl->tbl_lock, flags);
 
 	if (tte[index] & TTBL_VALID_MASK) {
-		vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -610,7 +610,7 @@ int mmu_lpae_map_page(struct cpu_ttbl * ttbl, struct cpu_page *pg)
 
 	ttbl->tte_cnt++;
 
-	vmm_spin_unlock_irqrestore(&ttbl->tbl_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 
 	return VMM_OK;
 }
