@@ -34,14 +34,20 @@ extern int def_ttbl_tree[];
  * Note: This function cannot refer to any global variable &
  * functions to ensure that it can execute from anywhere.
  */
-#define to_load_pa(va)		((va) - exec_start + load_start)
+#define to_load_pa(va)	({ \
+			virtual_addr_t _tva = (va); \
+			if (exec_start <= _tva && _tva < exec_end) { \
+				_tva = _tva - exec_start + load_start; \
+			} \
+			_tva; \
+			})
 void __attribute__ ((section (".entry"))) 
 _setup_initial_ttbl(virtual_addr_t load_start,
 		    virtual_addr_t load_end,
 		    virtual_addr_t exec_start,
 		    virtual_addr_t exec_end)
 {
-	int * ttbl_tree;
+	int *ttbl_tree;
 	u32 i, index, map_exec;
 	u32 ttbl_count = 0;
 	u64 *ttbl, *nttbl;
