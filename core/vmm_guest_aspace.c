@@ -332,7 +332,7 @@ static bool is_region_overlapping(struct vmm_guest *guest,
 		if ((treg_start <= reg_start) && (reg_start < treg_end)) {
 			return TRUE;
 		}
-		if ((treg_start <= reg_end) && (reg_end < treg_end)) {
+		if ((treg_start < reg_end) && (reg_end < treg_end)) {
 			return TRUE;
 		}
 	}
