@@ -18,12 +18,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_locks.c
+ * @file arm_locks.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @author Anup Patel (anup@brainfault.org)
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
  * @author Jim Huang (jserv@0xlab.org)
- * @brief ARM specific synchronization mechanisms.
+ * @brief ARM32 and ARM32VE specific synchronization mechanisms.
  */
 
 #include <vmm_error.h>

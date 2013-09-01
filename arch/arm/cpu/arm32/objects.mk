@@ -65,7 +65,6 @@ cpu-objs-y+= cpu_string.o
 cpu-objs-y+= cpu_elf.o
 cpu-objs-$(CONFIG_ARM32_STACKTRACE)+= cpu_stacktrace.o
 cpu-objs-$(CONFIG_SMP)+= cpu_smp.o
-cpu-objs-$(CONFIG_SMP)+= cpu_locks.o
 cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_coproc.o

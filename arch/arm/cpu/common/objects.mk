@@ -27,4 +27,6 @@ cpu-common-objs-$(CONFIG_ARM_VGIC)+=vgic.o
 cpu-common-objs-$(CONFIG_ARM_GENERIC_TIMER)+=generic_timer.o
 cpu-common-objs-$(CONFIG_ARM_MMU_LPAE)+=mmu_lpae.o
 cpu-common-objs-$(CONFIG_ARM_MMU_LPAE)+=mmu_lpae_entry_ttbl.o
-
+#ifdef CONFIG_ARM32 || CONFIG_ARM32VE
+cpu-common-objs-$(CONFIG_SMP)+=arm_locks.o
+#endif
