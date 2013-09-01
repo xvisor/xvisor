@@ -234,7 +234,7 @@ static int virtio_console_read_config(struct virtio_device *dev,
 		} else {
 			data = 0x0;
 		}
-		switch (src_len) {
+		switch (dst_len) {
 		case 1:
 			*(u8 *)dst = (u8)data;
 			break;
