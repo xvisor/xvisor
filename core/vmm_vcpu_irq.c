@@ -41,7 +41,8 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 	}
 
 	/* If vcpu is not in interruptible state then dont do anything */
-	if (!(vmm_manager_vcpu_get_state(vcpu) & VMM_VCPU_STATE_INTERRUPTIBLE)) {
+	if (!(vmm_manager_vcpu_get_state(vcpu) & 
+					VMM_VCPU_STATE_INTERRUPTIBLE)) {
 		return;
 	}
 
@@ -67,9 +68,8 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 
 		/* If irq number found then execute it */
 		if (irq_no != -1) {
-			if (arch_vcpu_irq_execute
-			    (vcpu, regs, irq_no,
-			     vcpu->irqs.irq[irq_no].reason) == VMM_OK) {
+			if (arch_vcpu_irq_execute(vcpu, regs, irq_no,
+			     	vcpu->irqs.irq[irq_no].reason) == VMM_OK) {
 				vcpu->irqs.irq[irq_no].assert = FALSE;
 				if (vcpu->irqs.execute_pending != 0) {
 					vcpu->irqs.execute_pending--;
@@ -129,7 +129,8 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 	}
 
 	/* If VCPU is not in interruptible state then dont do anything */
-	if (!(vmm_manager_vcpu_get_state(vcpu) & VMM_VCPU_STATE_INTERRUPTIBLE)) {
+	if (!(vmm_manager_vcpu_get_state(vcpu) & 
+					VMM_VCPU_STATE_INTERRUPTIBLE)) {
 		return;
 	}
 
@@ -175,25 +176,23 @@ void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no)
 	/* Lock VCPU irqs */
 	vmm_spin_lock_irqsave_lite(&vcpu->irqs.lock, flags);
 
-	/* Adjust assert pending count */
-	if (vcpu->irqs.irq[irq_no].assert == TRUE) {
-
-		/* Call arch specific deassert */
-		if (arch_vcpu_irq_deassert
-		    (vcpu, irq_no, vcpu->irqs.irq[irq_no].reason) == VMM_OK) {
-			vcpu->irqs.deassert_count++;
-		}
-
-		if (vcpu->irqs.execute_pending != 0) {
-			vcpu->irqs.execute_pending--;
-		}
-
-		/* Ensure irq is not asserted */
-		vcpu->irqs.irq[irq_no].assert = FALSE;
-
-		/* Ensure irq reason is zeroed */
-		vcpu->irqs.irq[irq_no].reason = 0x0;
+	/* Call arch specific deassert */
+	if (arch_vcpu_irq_deassert(vcpu, irq_no, 
+			vcpu->irqs.irq[irq_no].reason) == VMM_OK) {
+		vcpu->irqs.deassert_count++;
 	}
+
+	/* Adjust assert pending count */
+	if (vcpu->irqs.irq[irq_no].assert &&
+	    vcpu->irqs.execute_pending != 0) {
+		vcpu->irqs.execute_pending--;
+	}
+
+	/* Ensure irq is not asserted */
+	vcpu->irqs.irq[irq_no].assert = FALSE;
+
+	/* Ensure irq reason is zeroed */
+	vcpu->irqs.irq[irq_no].reason = 0x0;
 
 	/* Unlock VCPU irqs */
 	vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.lock, flags);
