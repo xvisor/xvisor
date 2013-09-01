@@ -203,6 +203,25 @@ bool fifo_dequeue(struct fifo *f, void *dst)
 	return ret;
 }
 
+bool fifo_clear(struct fifo *f)
+{
+	irq_flags_t flags;
+
+	if (!f) {
+		return FALSE;
+	}
+
+	vmm_spin_lock_irqsave_lite(&f->lock, flags);
+
+	f->read_pos = 0;
+	f->write_pos = 0;
+	f->avail_count = 0;
+
+	vmm_spin_unlock_irqrestore_lite(&f->lock, flags);
+
+	return TRUE;
+}
+
 bool fifo_getelement(struct fifo *f, u32 index, void *dst)
 {
 	irq_flags_t flags;
