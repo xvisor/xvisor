@@ -291,6 +291,10 @@ static int virtio_console_reset(struct virtio_device *dev)
 	int rc;
 	struct virtio_console_dev *cdev = dev->emu_data;
 
+	if (!fifo_clear(cdev->emerg_rd)) {
+		return VMM_EFAIL;
+	}
+
 	rc = virtio_queue_cleanup(&cdev->vqs[VIRTIO_CONSOLE_RX_QUEUE]);
 	if (rc) {
 		return rc;
