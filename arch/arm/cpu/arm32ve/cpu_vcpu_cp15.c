@@ -68,7 +68,7 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 	pg.sz = size;
 	pg.oa = outaddr;
 
-	if (reg_flags & VMM_REGION_ISRAM) {
+	if (reg_flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) {
 		inaddr = fipa & TTBL_L2_MAP_MASK;
 		size = TTBL_L2_BLOCK_SIZE;
 		rc = vmm_guest_physical_map(vcpu->guest, inaddr, size, 
