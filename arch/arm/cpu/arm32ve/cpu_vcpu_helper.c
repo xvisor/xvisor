@@ -819,7 +819,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	}
 	regs->cpsr = arm_regs(vcpu)->cpsr;
 	if (vcpu->is_normal) {
-		if (arm_priv(tvcpu)->last_hcpu != vmm_smp_processor_id()) {
+		if (arm_priv(vcpu)->last_hcpu != vmm_smp_processor_id()) {
 			/* Invalidate all guest TLB enteries because
 			 * we might have stale guest TLB enteries from
 			 * our previous run on new_hcpu host CPU 
