@@ -43,7 +43,7 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 				    arch_regs_t *regs,
 				    physical_addr_t fipa)
 {
-	int rc;
+	int rc, rc1;
 	u32 reg_flags = 0x0;
 	struct cpu_page pg;
 	physical_addr_t inaddr, outaddr;
@@ -101,7 +101,26 @@ static int cpu_vcpu_cp15_stage2_map(struct vmm_vcpu *vcpu,
 		pg.memattr = 0x0;
 	}
 
-	return mmu_lpae_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
+	/* Try to map the page in Stage2 */
+	rc = mmu_lpae_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
+	if (rc) {
+		/* On SMP Guest, two different VCPUs may try to map same
+		 * Guest region in Stage2 at the same time. This may cause
+		 * mmu_lpae_map_page() to fail for one of the Guest VCPUs.
+		 *
+		 * To take care of this situation, we recheck Stage2 mapping
+		 * when mmu_lpae_map_page() fails.
+		 */
+		memset(&pg, 0, sizeof(pg));
+		rc1 = mmu_lpae_get_page(arm_guest_priv(vcpu->guest)->ttbl, 
+					fipa, &pg);
+		if (rc1) {
+			return rc1;
+		}
+		rc = VMM_OK;
+	}
+
+	return rc;
 }
 
 int cpu_vcpu_cp15_inst_abort(struct vmm_vcpu *vcpu, 
