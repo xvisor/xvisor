@@ -69,7 +69,7 @@ u32 arch_vcpu_irq_priority(struct vmm_vcpu *vcpu, u32 irq_no)
 	return ret;
 }
 
-int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
+int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
 	u32 hcr;
 	bool update_hcr;
@@ -112,7 +112,7 @@ int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 
 int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs, 
-			  u32 irq_no, u32 reason)
+			  u32 irq_no, u64 reason)
 {
 	int rc;
 
@@ -147,7 +147,7 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 	return rc;
 }
 
-int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
+int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
 	u32 hcr;
 	bool update_hcr;

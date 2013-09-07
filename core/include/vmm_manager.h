@@ -78,7 +78,7 @@ struct vmm_guest_aspace {
 
 struct vmm_vcpu_irq {
 	bool assert;
-	u32 reason;
+	u64 reason;
 };
 
 struct vmm_vcpu_irqs {

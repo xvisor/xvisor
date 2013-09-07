@@ -119,7 +119,7 @@ static void vcpu_irq_wfi_timeout(struct vmm_timer_event *ev)
 	vcpu_irq_wfi_resume(ev->priv);
 }
 
-void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
+void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
 	irq_flags_t flags;
 
