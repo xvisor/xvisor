@@ -154,7 +154,7 @@ static u32 __fatfs_control_read_fat_cache(struct fatfs_control *ctrl,
 static u32 __fatfs_control_write_fat_cache(struct fatfs_control *ctrl, 
 					   u8 *buf, u32 pos)
 {
-	int rc, index;
+	int rc, index, cache_buf_index;
 	u32 ret, sect_num, sect_off;
 
 	if ((ctrl->sectors_per_fat * ctrl->bytes_per_sector) <= pos) {
@@ -170,21 +170,21 @@ static u32 __fatfs_control_write_fat_cache(struct fatfs_control *ctrl,
 	}
 
 	index = __fatfs_control_find_fat_cache(ctrl, sect_num);
-	index = (index * ctrl->bytes_per_sector) + sect_off;
+	cache_buf_index = (index * ctrl->bytes_per_sector) + sect_off;
 
 	switch (ctrl->type) {
 	case FAT_TYPE_12:
 	case FAT_TYPE_16:
 		ret = 2;
-		ctrl->fat_cache_buf[index + 0] = buf[0];
-		ctrl->fat_cache_buf[index + 1] = buf[1];
+		ctrl->fat_cache_buf[cache_buf_index + 0] = buf[0];
+		ctrl->fat_cache_buf[cache_buf_index + 1] = buf[1];
 		break;
 	case FAT_TYPE_32:
 		ret = 4;
-		ctrl->fat_cache_buf[index + 0] = buf[0];
-		ctrl->fat_cache_buf[index + 1] = buf[1];
-		ctrl->fat_cache_buf[index + 2] = buf[2];
-		ctrl->fat_cache_buf[index + 3] = buf[3];
+		ctrl->fat_cache_buf[cache_buf_index + 0] = buf[0];
+		ctrl->fat_cache_buf[cache_buf_index + 1] = buf[1];
+		ctrl->fat_cache_buf[cache_buf_index + 2] = buf[2];
+		ctrl->fat_cache_buf[cache_buf_index + 3] = buf[3];
 		break;
 	default:
 		ret = 0;

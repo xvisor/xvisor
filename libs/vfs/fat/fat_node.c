@@ -307,6 +307,12 @@ u32 fatfs_node_write(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
 			return 0;
 		}
 		node->first_cluster = cl_num;
+
+		/* Update the first cluster */
+		node->parent_dent.first_cluster_hi = 
+				((node->first_cluster >> 16) & 0xFFFF);
+		node->parent_dent.first_cluster_lo = 
+				(node->first_cluster & 0xFFFF);
 	}
 
 	/* Make room for new data by appending free clusters */
@@ -681,7 +687,7 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 		rlen = fatfs_node_read(dnode, off, 
 				sizeof(struct fat_dirent), (u8 *)dent);
 		if (rlen != sizeof(struct fat_dirent)) {
-			return VMM_EIO;
+			return VMM_ENOENT;
 		}
 
 		if (dent->dos_file_name[0] == 0x0) {
@@ -808,6 +814,7 @@ int fatfs_node_add_dirent(struct fatfs_node *dnode,
 				sizeof(struct fat_dirent), (u8 *)&dent);
 		if (len != sizeof(struct fat_dirent)) {
 			cnt = 0;
+			found = TRUE;
 			break;
 		}
 
@@ -833,7 +840,7 @@ int fatfs_node_add_dirent(struct fatfs_node *dnode,
 	}
 
 	if (!found) {
-		return VMM_ENOENT;
+		return VMM_EEXIST;
 	}
 
 	/* Prepare final directory entry */
