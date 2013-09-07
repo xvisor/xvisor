@@ -72,6 +72,7 @@ u32 arch_vcpu_irq_priority(struct vmm_vcpu *vcpu, u32 irq_no)
 int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 {
 	u32 hcr;
+	bool update_hcr;
 
 	/* Skip IRQ & FIQ if VGIC available */
 	if (arm_vgic_avail(vcpu) &&
@@ -81,28 +82,28 @@ int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 	}
 
 	hcr = arm_priv(vcpu)->hcr;
+	update_hcr = FALSE;
 
 	switch(irq_no) {
-	case CPU_DATA_ABORT_IRQ:
-		hcr |= HCR_VA_MASK;
-		/* VA bit is auto-cleared */
-		break;
 	case CPU_EXTERNAL_IRQ:
 		hcr |= HCR_VI_MASK;
 		/* VI bit will be cleared on deassertion */
+		update_hcr = TRUE;
 		break;
 	case CPU_EXTERNAL_FIQ:
 		hcr |= HCR_VF_MASK;
 		/* VF bit will be cleared on deassertion */
+		update_hcr = TRUE;
 		break;
 	default:
-		return VMM_EFAIL;
 		break;
 	};
 
-	arm_priv(vcpu)->hcr = hcr;
-	if (vmm_scheduler_current_vcpu() == vcpu) {
-		write_hcr(hcr);
+	if (update_hcr) {
+		arm_priv(vcpu)->hcr = hcr;
+		if (vmm_scheduler_current_vcpu() == vcpu) {
+			write_hcr(hcr);
+		}
 	}
 
 	return VMM_OK;
@@ -113,6 +114,8 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs, 
 			  u32 irq_no, u32 reason)
 {
+	int rc;
+
 	/* Skip IRQ & FIQ if VGIC available */
 	if (arm_vgic_avail(vcpu) &&
 	    ((irq_no == CPU_EXTERNAL_IRQ) || 
@@ -120,14 +123,34 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 		return VMM_OK;
 	}
 
+	/* Undefined, Data abort, and Prefetch abort 
+	 * can only be emulated in normal context.
+	 */
+	switch(irq_no) {
+	case CPU_UNDEF_INST_IRQ:
+		rc = cpu_vcpu_inject_undef(vcpu, regs);
+		break;
+	case CPU_PREFETCH_ABORT_IRQ:
+		rc = cpu_vcpu_inject_pabt(vcpu, regs);
+		break;
+	case CPU_DATA_ABORT_IRQ:
+		rc = cpu_vcpu_inject_dabt(vcpu, regs, (virtual_addr_t)reason);
+		break;
+	default:
+		rc = VMM_OK;
+		break;
+	};
+
+	/* Update HCR in HW */
 	write_hcr(arm_priv(vcpu)->hcr);
 
-	return VMM_OK;
+	return rc;
 }
 
 int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 {
 	u32 hcr;
+	bool update_hcr;
 
 	/* Skip IRQ & FIQ if VGIC available */
 	if (arm_vgic_avail(vcpu) &&
@@ -137,22 +160,26 @@ int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason)
 	}
 
 	hcr = arm_priv(vcpu)->hcr;
+	update_hcr = FALSE;
 
 	switch(irq_no) {
 	case CPU_EXTERNAL_IRQ:
 		hcr &= ~HCR_VI_MASK;
+		update_hcr = TRUE;
 		break;
 	case CPU_EXTERNAL_FIQ:
 		hcr &= ~HCR_VF_MASK;
+		update_hcr = TRUE;
 		break;
 	default:
-		return VMM_EFAIL;
 		break;
 	};
 
-	arm_priv(vcpu)->hcr = hcr;
-	if (vmm_scheduler_current_vcpu() == vcpu) {
-		write_hcr(hcr);
+	if (update_hcr) {
+		arm_priv(vcpu)->hcr = hcr;
+		if (vmm_scheduler_current_vcpu() == vcpu) {
+			write_hcr(hcr);
+		}
 	}
 
 	return VMM_OK;
