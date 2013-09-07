@@ -25,7 +25,7 @@
 
 #include <vmm_types.h>
 
-/** Atomic operations required by VMM core */
+/** Atomic64 operations required by VMM core */
 u64 arch_atomic64_read(atomic64_t *atom);
 void arch_atomic64_write(atomic64_t *atom, u64 value);
 void arch_atomic64_add(atomic64_t *atom, u64 value);
@@ -33,5 +33,12 @@ u64 arch_atomic64_add_return(atomic64_t *atom, u64 value);
 void arch_atomic64_sub(atomic64_t *atom, u64 value);
 u64 arch_atomic64_sub_return(atomic64_t *atom, u64 value);
 u64 arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval);
+
+/** Derived Atomic64 operations required by VMM core 
+ *  NOTE: Architecture specific code does not provide
+ *  this operations.
+ */
+#define arch_atomic64_inc(atom)	arch_atomic64_add(atom, 1)
+#define arch_atomic64_dec(atom)	arch_atomic64_sub(atom, 1)
 
 #endif
