@@ -31,33 +31,32 @@
 #include <vmm_vcpu_irq.h>
 #include <libs/stringlib.h>
 
-void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
-{
-	irq_flags_t flags;
+#define ASSERTED	1
+#define DEASSERTED	0
+#define PENDING		2
 
+void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t * regs)
+{
 	/* For non-normal vcpu dont do anything */
 	if (!vcpu || !vcpu->is_normal) {
 		return;
 	}
 
 	/* If vcpu is not in interruptible state then dont do anything */
-	if (!(vmm_manager_vcpu_get_state(vcpu) & 
-					VMM_VCPU_STATE_INTERRUPTIBLE)) {
+	if (!(vmm_manager_vcpu_get_state(vcpu) & VMM_VCPU_STATE_INTERRUPTIBLE)) {
 		return;
 	}
 
-	/* Lock VCPU irqs */
-	vmm_spin_lock_irqsave_lite(&vcpu->irqs.lock, flags);
-
 	/* Proceed only if we have pending execute */
-	if (vcpu->irqs.execute_pending != 0) {
+	if (arch_atomic_dec_if_positive(&vcpu->irqs.execute_pending) >= 0) {
 		int irq_no = -1;
 		u32 i, tmp_prio, irq_count = vcpu->irqs.irq_count;
 		u32 irq_prio = 0;
 
 		/* Find the irq number to process */
 		for (i = 0; i < irq_count; i++) {
-			if (vcpu->irqs.irq[i].assert) {
+			if (arch_atomic_read(&vcpu->irqs.irq[i].assert) ==
+			    ASSERTED) {
 				tmp_prio = arch_vcpu_irq_priority(vcpu, i);
 				if (tmp_prio > irq_prio) {
 					irq_no = i;
@@ -68,19 +67,30 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 
 		/* If irq number found then execute it */
 		if (irq_no != -1) {
-			if (arch_vcpu_irq_execute(vcpu, regs, irq_no,
-			     	vcpu->irqs.irq[irq_no].reason) == VMM_OK) {
-				vcpu->irqs.irq[irq_no].assert = FALSE;
-				if (vcpu->irqs.execute_pending != 0) {
-					vcpu->irqs.execute_pending--;
+			if (arch_atomic_cmpxchg
+			    (&vcpu->irqs.irq[i].assert, ASSERTED,
+			     PENDING) == ASSERTED) {
+				if (arch_vcpu_irq_execute
+				    (vcpu, regs, irq_no,
+				     vcpu->irqs.irq[irq_no].reason) == VMM_OK) {
+					arch_atomic_write(&vcpu->irqs.
+							  irq[irq_no].assert,
+							  DEASSERTED);
+					arch_atomic64_inc(&vcpu->irqs.
+							  execute_count);
+				} else {
+					arch_atomic_inc(&vcpu->irqs.
+							execute_pending);
+					arch_atomic_write(&vcpu->irqs.
+							  irq[irq_no].assert,
+							  ASSERTED);
 				}
-				vcpu->irqs.execute_count++;
+			} else {
+				arch_atomic_inc(&vcpu->irqs.execute_pending);
+				vmm_vcpu_irq_process(vcpu, regs);
 			}
 		}
 	}
-
-	/* Unlock VCPU irqs */
-	vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.lock, flags);
 }
 
 static void vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
@@ -121,16 +131,13 @@ static void vcpu_irq_wfi_timeout(struct vmm_timer_event *ev)
 
 void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
-	irq_flags_t flags;
-
 	/* For non-normal VCPU dont do anything */
 	if (!vcpu || !vcpu->is_normal) {
 		return;
 	}
 
 	/* If VCPU is not in interruptible state then dont do anything */
-	if (!(vmm_manager_vcpu_get_state(vcpu) & 
-					VMM_VCPU_STATE_INTERRUPTIBLE)) {
+	if (!(vmm_manager_vcpu_get_state(vcpu) & VMM_VCPU_STATE_INTERRUPTIBLE)) {
 		return;
 	}
 
@@ -139,21 +146,21 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 		return;
 	}
 
-	/* Lock VCPU irqs */
-	vmm_spin_lock_irqsave_lite(&vcpu->irqs.lock, flags);
-
 	/* Assert the irq */
-	if (vcpu->irqs.irq[irq_no].assert == FALSE) {
+	if (arch_atomic_cmpxchg
+	    (&vcpu->irqs.irq[irq_no].assert, DEASSERTED,
+	     PENDING) == DEASSERTED) {
 		if (arch_vcpu_irq_assert(vcpu, irq_no, reason) == VMM_OK) {
 			vcpu->irqs.irq[irq_no].reason = reason;
-			vcpu->irqs.irq[irq_no].assert = TRUE;
-			vcpu->irqs.execute_pending++;
-			vcpu->irqs.assert_count++;
+			arch_atomic_write(&vcpu->irqs.irq[irq_no].assert,
+					  ASSERTED);
+			arch_atomic_inc(&vcpu->irqs.execute_pending);
+			arch_atomic64_inc(&vcpu->irqs.assert_count);
+		} else {
+			arch_atomic_write(&vcpu->irqs.irq[irq_no].assert,
+					  DEASSERTED);
 		}
 	}
-
-	/* Unlock VCPU irqs */
-	vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.lock, flags);
 
 	/* Resume VCPU from wfi */
 	vcpu_irq_wfi_resume(vcpu);
@@ -161,8 +168,6 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 
 void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no)
 {
-	irq_flags_t flags;
-
 	/* For non-normal vcpu dont do anything */
 	if (!vcpu || !vcpu->is_normal) {
 		return;
@@ -173,29 +178,21 @@ void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no)
 		return;
 	}
 
-	/* Lock VCPU irqs */
-	vmm_spin_lock_irqsave_lite(&vcpu->irqs.lock, flags);
-
 	/* Call arch specific deassert */
-	if (arch_vcpu_irq_deassert(vcpu, irq_no, 
-			vcpu->irqs.irq[irq_no].reason) == VMM_OK) {
-		vcpu->irqs.deassert_count++;
+	if (arch_vcpu_irq_deassert(vcpu, irq_no,
+				   vcpu->irqs.irq[irq_no].reason) == VMM_OK) {
+		arch_atomic64_inc(&vcpu->irqs.deassert_count);
 	}
 
 	/* Adjust assert pending count */
-	if (vcpu->irqs.irq[irq_no].assert &&
-	    vcpu->irqs.execute_pending != 0) {
-		vcpu->irqs.execute_pending--;
+	if (arch_atomic_cmpxchg
+	    (&vcpu->irqs.irq[irq_no].assert, ASSERTED,
+	     DEASSERTED) == ASSERTED) {
+		arch_atomic_dec_if_positive(&vcpu->irqs.execute_pending);
 	}
-
-	/* Ensure irq is not asserted */
-	vcpu->irqs.irq[irq_no].assert = FALSE;
 
 	/* Ensure irq reason is zeroed */
 	vcpu->irqs.irq[irq_no].reason = 0x0;
-
-	/* Unlock VCPU irqs */
-	vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.lock, flags);
 }
 
 int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu)
@@ -245,7 +242,6 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 {
 	int rc;
 	u32 ite, irq_count;
-	irq_flags_t flags;
 	struct vmm_timer_event *ev;
 
 	/* Sanity Checks */
@@ -265,9 +261,6 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	if (!vcpu->reset_count) {
 		/* Clear the memory of irq */
 		memset(&vcpu->irqs, 0, sizeof(struct vmm_vcpu_irqs));
-
-		/* Initialize irq lock */
-		INIT_SPIN_LOCK(&vcpu->irqs.lock);
 
 		/* Allocate memory for flags */
 		vcpu->irqs.irq =
@@ -292,24 +285,21 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 		INIT_TIMER_EVENT(ev, vcpu_irq_wfi_timeout, vcpu);
 	}
 
-	/* Lock VCPU irqs */
-	vmm_spin_lock_irqsave_lite(&vcpu->irqs.lock, flags);
-
 	/* Save irq count */
 	vcpu->irqs.irq_count = irq_count;
 
 	/* Set execute pending to zero */
-	vcpu->irqs.execute_pending = 0;
+	arch_atomic_write(&vcpu->irqs.execute_pending, 0);
 
 	/* Set default assert & deassert counts */
-	vcpu->irqs.assert_count = 0;
-	vcpu->irqs.execute_count = 0;
-	vcpu->irqs.deassert_count = 0;
+	arch_atomic64_write(&vcpu->irqs.assert_count, 0);
+	arch_atomic64_write(&vcpu->irqs.execute_count, 0);
+	arch_atomic64_write(&vcpu->irqs.deassert_count, 0);
 
 	/* Reset irq processing data structures for VCPU */
 	for (ite = 0; ite < irq_count; ite++) {
 		vcpu->irqs.irq[ite].reason = 0;
-		vcpu->irqs.irq[ite].assert = FALSE;
+		arch_atomic_write(&vcpu->irqs.irq[ite].assert, DEASSERTED);
 	}
 
 	/* Setup wait for irq context */
@@ -322,16 +312,11 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 		vcpu->irqs.wfi.priv = NULL;
 	}
 
-	/* Unlock VCPU irqs */
-	vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.lock, flags);
-
 	return rc;
 }
 
 int vmm_vcpu_irq_deinit(struct vmm_vcpu *vcpu)
 {
-	irq_flags_t flags;
-
 	/* Sanity Checks */
 	if (!vcpu) {
 		return VMM_EFAIL;
@@ -341,9 +326,6 @@ int vmm_vcpu_irq_deinit(struct vmm_vcpu *vcpu)
 	if (!vcpu->is_normal) {
 		return VMM_OK;
 	}
-
-	/* Lock VCPU irqs */
-	vmm_spin_lock_irqsave_lite(&vcpu->irqs.lock, flags);
 
 	/* Stop wfi_timeout event */
 	vmm_timer_event_stop(vcpu->irqs.wfi.priv);
@@ -355,9 +337,6 @@ int vmm_vcpu_irq_deinit(struct vmm_vcpu *vcpu)
 	/* Free flags */
 	vmm_free(vcpu->irqs.irq);
 	vcpu->irqs.irq = NULL;
-
-	/* Unlock VCPU irqs */
-	vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.lock, flags);
 
 	return VMM_OK;
 }

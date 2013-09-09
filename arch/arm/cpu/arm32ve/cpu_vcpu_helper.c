@@ -612,6 +612,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	u32 ite, cpuid = 0;
 	arm_priv_t *p;
 	const char *attr;
+	irq_flags_t flags;
 	/* Initialize User Mode Registers */
 	/* For both Orphan & Normal VCPUs */
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
@@ -677,8 +678,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		p->spsr_fiq = 0x0;
 	}
 	p->last_hcpu = 0xFFFFFFFF;
-	if (!vcpu->reset_count) {
+	if (vcpu->reset_count == 0) {
 		/* Initialize Hypervisor Configuration */
+		INIT_SPIN_LOCK(&p->hcr_lock);
 		p->hcr = (HCR_TAC_MASK |
 				HCR_TSW_MASK |
 				HCR_TIDCP_MASK |
@@ -777,7 +779,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		}
 	} else {
 		/* Clear virtual exception bits in HCR */
+		vmm_spin_lock_irqsave(&p->hcr_lock, flags);
 		p->hcr &= ~(HCR_VA_MASK | HCR_VI_MASK | HCR_VF_MASK);
+		vmm_spin_unlock_irqrestore(&p->hcr_lock, flags);
 	}
 	/* Intialize Generic timer */
 	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
@@ -918,6 +922,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		      arch_regs_t *regs)
 {
 	u32 ite;
+	irq_flags_t flags;
 	
 	if (tvcpu) {
 		/* Save general purpose registers */
@@ -969,7 +974,9 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			isb();
 		}
 		/* Restore hypervisor config */
+		vmm_spin_lock_irqsave(&arm_priv(vcpu)->hcr_lock, flags);
 		write_hcr(arm_priv(vcpu)->hcr);
+		vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
 		write_hcptr(arm_priv(vcpu)->hcptr);
 		write_hstr(arm_priv(vcpu)->hstr);
 		/* Restore general purpose banked registers */

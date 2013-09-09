@@ -120,6 +120,7 @@ struct arm_priv {
 	/* Last host CPU on which this VCPU ran */
 	u32 last_hcpu;
 	/* Hypervisor Configuration */
+	vmm_spinlock_t hcr_lock;
 	u32 hcr;
 	/* Hypervisor Coprocessor Trap Register */
 	u32 hcptr;

@@ -65,26 +65,38 @@ u32 arch_vcpu_irq_count(struct vmm_vcpu *vcpu);
 u32 arch_vcpu_irq_priority(struct vmm_vcpu *vcpu, u32 irq_no);
 
 /** Assert VCPU interrupt 
- *  NOTE: This functions is called asynchronusly in any context.
+ *  NOTE: This function is called asynchronusly in any context.
  *  NOTE: This function is usually useful to architectures having
  *  hardware virtualization support.
+ *  NOTE: This function needs to take action to protect any 
+ *  common ressource that could be used concurently by
+ *  arch_vcpu_irq_assert(), arch_vcpu_irq_execute() and
+ *  arch_vcpu_irq_deassert().
  */
 int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason);
 
 /** Execute VCPU interrupt 
- *  NOTE: This functions is always called in context of the VCPU (i.e.
+ *  NOTE: This function is always called in context of the VCPU (i.e.
  *  in Normal context).
  *  NOTE: This function is usually useful to architectures not having
  *  hardware virtualization support.
+ *  NOTE: This function needs to take action to protect any 
+ *  common ressource that could be used concurently by
+ *  arch_vcpu_irq_assert(), arch_vcpu_irq_execute() and
+ *  arch_vcpu_irq_deassert().
  */
 int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu, 
 			  arch_regs_t *regs,
 			  u32 irq_no, u64 reason);
 
 /** Deassert VCPU interrupt 
- *  NOTE: This functions is called asynchronusly in any context.
+ *  NOTE: This function is called asynchronusly in any context.
  *  NOTE: This function is usually useful to architectures having
  *  hardware virtualization support.
+ *  NOTE: This function needs to take action to protect any 
+ *  common ressource that could be used concurently by
+ *  arch_vcpu_irq_assert(), arch_vcpu_irq_execute() and
+ *  arch_vcpu_irq_deassert().
  */
 int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason);
 

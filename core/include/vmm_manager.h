@@ -24,6 +24,8 @@
 #define _VMM_MANAGER_H__
 
 #include <arch_regs.h>
+#include <arch_atomic64.h>
+#include <arch_atomic.h>
 #include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
@@ -77,18 +79,17 @@ struct vmm_guest_aspace {
 			list_for_each(curr, &(aspace->reg_list))
 
 struct vmm_vcpu_irq {
-	bool assert;
+	atomic_t assert;
 	u64 reason;
 };
 
 struct vmm_vcpu_irqs {
-	vmm_spinlock_t lock;
 	u32 irq_count;
 	struct vmm_vcpu_irq *irq;
-	u32 execute_pending;
-	u64 assert_count;
-	u64 execute_count;
-	u64 deassert_count;
+	atomic_t execute_pending;
+	atomic64_t assert_count;
+	atomic64_t execute_count;
+	atomic64_t deassert_count;
 	struct {
 		vmm_spinlock_t lock;
 		bool state;

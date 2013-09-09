@@ -73,6 +73,7 @@ int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
 	u32 hcr;
 	bool update_hcr;
+	irq_flags_t flags;
 
 	/* Skip IRQ & FIQ if VGIC available */
 	if (arm_vgic_avail(vcpu) &&
@@ -80,6 +81,8 @@ int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 	     (irq_no == CPU_EXTERNAL_FIQ))) {
 		return VMM_OK;
 	}
+
+	vmm_spin_lock_irqsave_lite(&arm_priv(vcpu)->hcr_lock, flags);
 
 	hcr = arm_priv(vcpu)->hcr;
 	update_hcr = FALSE;
@@ -106,6 +109,8 @@ int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 		}
 	}
 
+	vmm_spin_unlock_irqrestore_lite(&arm_priv(vcpu)->hcr_lock, flags);
+
 	return VMM_OK;
 }
 
@@ -115,6 +120,7 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 			  u32 irq_no, u64 reason)
 {
 	int rc;
+	irq_flags_t flags;
 
 	/* Skip IRQ & FIQ if VGIC available */
 	if (arm_vgic_avail(vcpu) &&
@@ -142,7 +148,9 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 	};
 
 	/* Update HCR in HW */
+	vmm_spin_lock_irqsave_lite(&arm_priv(vcpu)->hcr_lock, flags);
 	write_hcr(arm_priv(vcpu)->hcr);
+	vmm_spin_unlock_irqrestore_lite(&arm_priv(vcpu)->hcr_lock, flags);
 
 	return rc;
 }
@@ -151,6 +159,7 @@ int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
 	u32 hcr;
 	bool update_hcr;
+	irq_flags_t flags;
 
 	/* Skip IRQ & FIQ if VGIC available */
 	if (arm_vgic_avail(vcpu) &&
@@ -158,6 +167,8 @@ int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 	     (irq_no == CPU_EXTERNAL_FIQ))) {
 		return VMM_OK;
 	}
+
+	vmm_spin_lock_irqsave_lite(&arm_priv(vcpu)->hcr_lock, flags);
 
 	hcr = arm_priv(vcpu)->hcr;
 	update_hcr = FALSE;
@@ -181,6 +192,8 @@ int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 			write_hcr(hcr);
 		}
 	}
+
+	vmm_spin_unlock_irqrestore_lite(&arm_priv(vcpu)->hcr_lock, flags);
 
 	return VMM_OK;
 }
