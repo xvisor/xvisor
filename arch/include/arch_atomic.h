@@ -24,6 +24,7 @@
 #define _ARCH_ATOMIC_H__
 
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 
 /** Atomic operations required by VMM core */
 long arch_atomic_read(atomic_t *atom);

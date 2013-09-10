@@ -24,6 +24,7 @@
 #define _ARCH_ATOMIC64_H__
 
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 
 /** Atomic64 operations required by VMM core */
 u64 arch_atomic64_read(atomic64_t *atom);
