@@ -472,10 +472,9 @@ int cpu_vcpu_inject_undef(struct vmm_vcpu *vcpu,
 	}
 
 	/* Update CPSR, SPSR, LR and PC */
-	asm volatile (" msr     SPSR_und, %0\n\t"
-		      ::"r" (old_cpsr) :"memory", "cc");
-	arm_priv(vcpu)->spsr_und = old_cpsr;
-	regs->lr = regs->pc - ((old_cpsr & CPSR_THUMB_ENABLED) ? 2 : 4);
+	cpu_vcpu_spsr_update(vcpu, CPSR_MODE_UNDEFINED, old_cpsr);
+	cpu_vcpu_regmode_write(vcpu, regs, CPSR_MODE_UNDEFINED, 14, 
+		regs->pc - ((old_cpsr & CPSR_THUMB_ENABLED) ? 2 : 4));
 	if (sctlr & SCTLR_V_MASK) {
 		regs->pc = CPU_IRQ_HIGHVEC_BASE;
 	} else {
@@ -525,10 +524,9 @@ static int __cpu_vcpu_inject_abt(struct vmm_vcpu *vcpu,
 	}
 
 	/* Update CPSR, SPSR, LR and PC */
-	asm volatile (" msr     SPSR_abt, %0\n\t"
-		      ::"r" (old_cpsr) :"memory", "cc");
-	arm_priv(vcpu)->spsr_und = old_cpsr;
-	regs->lr = regs->pc - ((old_cpsr & CPSR_THUMB_ENABLED) ? 4 : 0);
+	cpu_vcpu_spsr_update(vcpu, CPSR_MODE_ABORT, old_cpsr);
+	cpu_vcpu_regmode_write(vcpu, regs, CPSR_MODE_ABORT, 14, 
+		regs->pc - ((old_cpsr & CPSR_THUMB_ENABLED) ? 4 : 0));
 	if (sctlr & SCTLR_V_MASK) {
 		regs->pc = CPU_IRQ_HIGHVEC_BASE;
 	} else {
