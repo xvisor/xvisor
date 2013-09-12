@@ -154,6 +154,43 @@ int vmm_threads_get_state(struct vmm_thread *tinfo)
 	return rc;
 }
 
+int vmm_threads_get_hcpu(struct vmm_thread *tinfo, u32 *hcpu)
+{
+	if (!tinfo || !hcpu) {
+		return VMM_EFAIL;
+	}
+
+	return vmm_manager_vcpu_get_hcpu(tinfo->tvcpu, hcpu);
+}
+
+int vmm_thread_set_hcpu(struct vmm_thread *tinfo, u32 hcpu)
+{
+	if (!tinfo) {
+		return VMM_EFAIL;
+	}
+
+	return vmm_manager_vcpu_set_hcpu(tinfo->tvcpu, hcpu);
+}
+
+const struct vmm_cpumask *vmm_threads_get_affinity(struct vmm_thread *tinfo)
+{
+	if (!tinfo) {
+		return NULL;
+	}
+
+	return vmm_manager_vcpu_get_affinity(tinfo->tvcpu);
+}
+
+int vmm_threads_set_affinity(struct vmm_thread *tinfo, 
+			     const struct vmm_cpumask *cpu_mask)
+{
+	if (!tinfo || !cpu_mask) {
+		return VMM_EFAIL;
+	}
+
+	return vmm_manager_vcpu_set_affinity(tinfo->tvcpu, cpu_mask);
+}
+
 struct vmm_thread *vmm_threads_id2thread(u32 tid)
 {
 	bool found;
