@@ -85,6 +85,7 @@ struct vmm_netport {
 	/* Callback to determine if the port can RX */
 	int (*can_receive) (struct vmm_netport *); 
 	/* Handle RX from switch to port */
+	vmm_spinlock_t switch2port_xfer_lock;
 	int (*switch2port_xfer) (struct vmm_netport *, struct vmm_mbuf *);
 	/* Port private data */
 	void *priv;

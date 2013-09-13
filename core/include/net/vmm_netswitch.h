@@ -27,10 +27,9 @@
 #define __VMM_NETSWITCH_H_
 
 #include <vmm_types.h>
+#include <vmm_limits.h>
 #include <vmm_devdrv.h>
-#include <vmm_mutex.h>
 #include <vmm_spinlocks.h>
-#include <vmm_completion.h>
 #include <libs/list.h>
 
 #define VMM_NETSWITCH_CLASS_NAME	"netswitch"
@@ -40,11 +39,11 @@ struct vmm_netport;
 struct vmm_mbuf;
 
 struct vmm_netswitch {
-	char *name;
+	char name[VMM_FIELD_NAME_SIZE];
 	int flags;
 	struct vmm_device *dev;
-	/* Mutex to protect net switch */
-	struct vmm_mutex lock;
+	/* Lock to protect port list */
+	vmm_rwlock_t port_list_lock;
 	/* List of ports */
 	struct dlist port_list;
 	/* Handle RX packets from port to switch */
@@ -59,15 +58,6 @@ struct vmm_netswitch {
 			    struct vmm_netport *);
 	/* Switch private data */
 	void *priv;
-
-	/* Additional fields for thread-based bottom-half of net switch
-	 * Note: this fields should not be accessed directly
-	 */
-	struct vmm_thread *thread;
-	struct vmm_completion rx_not_empty;
-	u32 rx_count;
-	struct dlist rx_list;
-	vmm_spinlock_t rx_list_lock;
 };
 
 /** Transfer packets from port to switch */
@@ -86,9 +76,8 @@ int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,
 
 /** Allocate new network switch 
  *  @name name of the network switch
- *  @thread_prio priority of the network switch thread
  */
-struct vmm_netswitch *vmm_netswitch_alloc(char *name, u32 thread_prio);
+struct vmm_netswitch *vmm_netswitch_alloc(char *name);
 
 /** Deallocate a network switch */
 void vmm_netswitch_free(struct vmm_netswitch *nsw);

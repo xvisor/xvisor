@@ -100,6 +100,8 @@ struct vmm_netport *vmm_netport_alloc(char *name, u32 queue_size)
 		list_add_tail(l, &port->free_list);
 	}
 
+	INIT_SPIN_LOCK(&port->switch2port_xfer_lock);
+
 	return port;
 }
 VMM_EXPORT_SYMBOL(vmm_netport_alloc);
