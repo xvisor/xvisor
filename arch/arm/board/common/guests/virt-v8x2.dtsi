@@ -1,0 +1,94 @@
+
+/ {
+	templates {
+		virt-v8x2 {
+			model = "virt-v8";
+			device_type = "guest";
+
+			vcpus {
+				vcpu0 {
+					device_type = "vcpu";
+					compatible = "armv8,generic";
+					start_pc = <0x00000000>;
+					gentimer_virt_irq = <27>;
+					gentimer_phys_irq = <30>;
+				};
+
+				vcpu1 {
+					device_type = "vcpu";
+					compatible = "armv8,generic";
+					start_pc = <0x00000000>;
+					gentimer_virt_irq = <27>;
+					gentimer_phys_irq = <30>;
+				};
+			};
+			
+			aspace {
+				guest_irq_count = <2048>;
+
+				mem0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x80000000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "ram";
+				};
+
+				gic {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x2C000000>;
+					physical_size = <0x3000>;
+					device_type = "pic";
+					compatible = "vexpress,gicv2";
+					parent_irq = <6>;
+				};
+
+				nor_flash0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x00000000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "rom";
+				};
+
+				virtio-net0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					device_type = "virtio";
+					compatible = "virtio,mmio";
+					virtio_type = <1>;
+					guest_physical_addr = <0x40200000>;
+					physical_size = <0x1000>;
+					switch = ""; /* To be set by DTS including this file */
+					interrupts = <40>;
+				};
+
+				virtio-blk0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					device_type = "virtio";
+					compatible = "virtio,mmio";
+					virtio_type = <2>;
+					guest_physical_addr = <0x40400000>;
+					physical_size = <0x1000>;
+					blkdev = ""; /* To be set by DTS including this file */
+					interrupts = <41>;
+				};
+
+				virtio-con0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					device_type = "virtio";
+					compatible = "virtio,mmio";
+					virtio_type = <3>;
+					guest_physical_addr = <0x40600000>;
+					physical_size = <0x1000>;
+					interrupts = <42>;
+				};
+			};
+		};
+	};
+};
