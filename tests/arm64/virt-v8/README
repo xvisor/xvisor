@@ -1,0 +1,29 @@
+			Virt-v8 Guest
+
+The Virt-v8 is a fully para-virtualized guest with ARMv8 CPUs.
+
+We only have memory mapped VirtIO devices for IO and this makes the 
+Guest as fully para-virtualized. 
+
+The memory map and irqs in Virt-v8 guest is as follows:
+0x0000000000000000-0x0000000000FFFFFF (16M) (NOR Flash)
+0x000000002C001000–0x000000002C001FFF (4K)  (GIC Distributor Interface)
+0x000000002C002000–0x000000002C002FFF (4K)  (GIC CPU Interface)
+0x0000000040200000–0x0000000040200FFF (4K)  (IRQ=40) (VirtIO Network Device)
+0x0000000040400000–0x0000000040400FFF (4K)  (IRQ=41) (VirtIO Block Device)
+0x0000000040600000–0x0000000040600FFF (4K)  (IRQ=42) (VirtIO Console Device)
+0x0000000080000000-0xFFFFFFFFFFFFFFFF (---) (RAM)
+
+In addition, we also have ARMv8 generic timer accessible to all VCPUs
+of the Guest with virtual timer irq 27 and physical timer irq 30.
+
+
+			Virt-v8 Guest OSes
+
+We have tested following guest OSes for this guest:
+
+  1. basic - Basic firmware/bootloader
+  2. linux - Linux Kernel 
+
+Please follow the README under specific guest OS directory for detailed 
+steps to configure, compile and run.
