@@ -1,0 +1,122 @@
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	model = "foundation-v8";
+
+	chosen { };
+	aliases { };
+		
+	cpus {
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		cpu0 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			model = "Cortex-A57";
+			reg = <0x0 0x0>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x84000000>;
+		};
+
+		cpu1 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			model = "Cortex-A57";
+			reg = <0x0 0x1>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x84000000>;
+		};
+
+		cpu2 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			model = "Cortex-A57";
+			reg = <0x0 0x2>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x84000000>;
+		};
+
+		cpu3 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			model = "Cortex-A57";
+			reg = <0x0 0x3>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x84000000>;
+		};
+	};
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x0 0x80000000 0x0 0x10000000>; /* 256 MB */
+	};
+
+	gic { /* Generic Interrupt Controller */
+		device_type = "pic";
+		compatible = "arm,cortex-a15-gic", "arm,cortex-a9-gic";
+      		reg = <0x0 0x2C001000 0x0 0x1000   /* Dist Interface */
+		       0x0 0x2C002000 0x0 0x1000   /* CPU Interface */
+		       0x0 0x2C004000 0x0 0x2000   /* VCPU Control Interface */
+		       0x0 0x2C006000 0x0 0x2000>; /* VCPU Interface */
+		irq_start = <16>;
+		interrupts = <25>; /* VGIC Maintanence IRQ */
+	};
+
+	gen-timer { /* Generic Timer */
+		device_type = "timer";
+		compatible = "arm,armv8-timer";
+		clock-frequency = <100000000>;
+		interrupts = <26 30 27>;
+	};
+
+	motherboard {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+
+		eth0 {
+			device_type = "nic";
+			compatible = "smc91x";
+			reg = <0x1A000000 0x10000>;
+			interrupts = <47>;
+			switch = "netbridge0";
+		};
+
+		sysreg { /* System Registers */
+			device_type = "sys";
+			compatible = "arm,vexpress-sysreg";
+			reg = <0x1C010000 0x1000>;
+		};
+
+		SERIAL0: uart0 {
+			device_type = "serial";
+			compatible = "arm,pl011";
+			reg = <0x1C090000 0x1000>;
+			clock-frequency = <24000000>;
+			baudrate = <115200>;
+			interrupts = <37>;
+		};
+	};
+
+	vmm {
+		net {
+			netbridge0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	/* Empty guests node */
+	guests {
+	};
+};
+
+/* Add guest templates */
+/include/ "../../../common/guests/realview-pb-a8.dtsi"
+/include/ "../../../common/guests/vexpress-a9x2.dtsi"
+/include/ "../../../common/guests/vexpress-a15x2.dtsi"
+/include/ "../../../common/guests/virt-v8x2.dtsi"
+
