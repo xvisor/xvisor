@@ -16,8 +16,8 @@ C:	ARM11
 V:	Broadcom Corporation (http://www.broadcom.com/)
 E:	Raspberry-Pi QEMU (https://github.com/Torlus/qemu)
 G:	Only Realview-EB-MPCore guest supported
-S:	Able to boot multiple Realview-EB-MPCore linux guest on 
-	Raspberry Pi hardware and Raspberry Pi emulated by QEMU 
+S:	Able to boot Realview-EB-MPCore linux guest on Raspberry Pi hardware
+	and Raspberry Pi emulated by QEMU 
 D:	docs/arm/bcm2835-raspi.txt
 
 M:	Exynos4210 SOC (SMDKC210 and NURI evaluation boards)
@@ -26,10 +26,8 @@ C:	Cortex-A9
 V:	Samsung (http://www.samsung.com)
 E:	QEMU (http://wiki.qemu.org/)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
-S:	Only supports Contex-A9 Uniprocessor. The Cortex-A9 Multiprocessor
-	(or SMP) suppport is Work-In-Progress.
-S:	Able to boot multiple Realview-PB-A8 linux guest on smdkc210
-	emulated by Linaro QEMU.
+S:	Able to boot Realview-PB-A8 linux guest on smdkc210 emulated by
+	Linaro QEMU.
 S:	Able to boot VExpress-A9 linux guest on smdkc210 emulated by
 	Linaro QEMU
 D:	docs/arm/exynos4-smdkc210.txt
@@ -43,9 +41,25 @@ E:	---
 G:	Realview-PB-A8 and VExpress-A9 guests supported
 S:	Only supports Contex-A9 Uniprocessor. The Cortex-A9 Multiprocessor
 	(or SMP) suppport is Work-In-Progress.
-S:	Able to boot multiple Realview-PB-A8 linux guest on ODroid-X board
+S:	Able to boot Realview-PB-A8 linux guest on ODroid-X board
 S:	Able to boot VExpress-A9 linux guest on ODroid-X board
 D:	docs/arm/exynos4-odroidx.txt
+
+M:	Foundation v8 Machine
+A:	ARM 64-bit (ARMv8a)
+C:	Foundation ARMv8 CPU
+V:	ARM Ltd. (http://www.arm.com/)
+E:	ARMv8 Foundation Model (http://www.arm.com/products/tools/models/fast-models/foundation-model.php)
+G:	Realview-PB-A8, VExpress-A9 VExpress-A15, and Virt-v8 guests supported
+S:	Able to boot Realview-PB-A8 linux guest on Foundation v8 Machine 
+	emulated by ARMv8 Foundation Model.
+S:	Able to boot VExpress-A9 linux guest on Foundation v8 Machine emulated
+	by ARMv8 Foundation Model.
+S:	Able to boot VExpress-A15 linux guest on Foundation v8 Machine emulated
+	by ARMv8 Foundation Model.
+S:	Able to boot Virt-v8 linux guest on Foundation v8 Machine emulated
+	by ARMv8 Foundation Model.
+D:	---
 
 M:	OMAP3 SOC (BeagleBoard-xM development board)
 A:	ARM 32-bit (ARMv7a)
@@ -53,8 +67,8 @@ C:	Cortex-A8
 V:	Texax Instruments (http://www.ti.com/)
 E:	QEMU Linaro (https://launchpad.net/qemu-linaro)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
-S:	Able to boot multiple Realview-PB-A8 linux guest on BeagleBoard-xM 
-	Hardware and BeagleBoard emulated by Linaro QEMU 
+S:	Able to boot Realview-PB-A8 linux guest on BeagleBoard-xM Hardware
+	and BeagleBoard emulated by Linaro QEMU 
 S:	Able to boot VExpress-A9 linux guest on BeagleBoard-xM Hardware and
 	BeagleBoard emulated by Linaro QEMU 
 D:	docs/arm/omap3-beagle.txt
@@ -65,8 +79,8 @@ C:	ARM11MPCore
 V:	ARM Ltd. (http://www.arm.com/)
 E:	QEMU (http://wiki.qemu.org/)
 G:	Only Realview-EB-MPCore guest supported
-S:	Able to boot multiple Realview-EB-MPCore linux guest on 
-	Realview-EB-MPCore emulated by QEMU 
+S:	Able to boot Realview-EB-MPCore linux guest on Realview-EB-MPCore
+	emulated by QEMU 
 D:	docs/arm/realview-eb-mpcore.txt
 
 M:	Realview-PB-A8
@@ -75,8 +89,8 @@ C:	Cortex-A8
 V:	ARM Ltd. (http://www.arm.com/)
 E:	QEMU (http://wiki.qemu.org/)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
-S:	Able to boot multiple Realview-PB-A8 linux guest on Realview-PB-A8
-	emulated by QEMU 
+S:	Able to boot Realview-PB-A8 linux guest on Realview-PB-A8 emulated by
+	QEMU 
 S:	Able to boot VExpress-A9 linux guest on Realview-PB-A8 emulated by QEMU
 D:	docs/arm/realview-pb-a8.txt
 
@@ -86,7 +100,7 @@ C:	Cortex-A8
 V:	Allwinner Technology Co. (http://www.allwinner.com/product/A10.php)
 E:	---
 G:	Realview-PB-A8 and VExpress-A9 guests supported
-S:	Able to boot multiple Realview-PB-A8 linux guest on Hackberry board
+S:	Able to boot Realview-PB-A8 linux guest on Hackberry board
 S:	Able to boot VExpress-A9 linux guest on Hackberry board
 D:	docs/arm/sun4i-hackberry.txt
 D:	docs/arm/sun4i-pcduino.txt
@@ -97,8 +111,7 @@ C:	ARM926
 V:	ARM Ltd. (http://www.arm.com/)
 E:	QEMU (http://wiki.qemu.org/)
 G:	Only VersatilePB guest supported
-S:	Able to boot multiple VersatilePB linux guests on VersatilePB
-	emulated by QEMU 
+S:	Able to boot VersatilePB linux guests on VersatilePB emulated by QEMU
 D:	docs/arm/versatilepb.txt
 
 M:	VExpress-A9
@@ -107,10 +120,8 @@ C:	Cortex-A9
 V:	ARM Ltd. (http://www.arm.com/)
 E:	QEMU (http://wiki.qemu.org/)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
-S:	Only supports Contex-A9 Uniprocessor. The Cortex-A9 Multiprocessor 
-	(or SMP) suppport is Work-In-Progress.
-S:	Able to boot multiple Realview-PB-A8 linux guest on VExpress-A9
-	emulated by Linaro QEMU.
+S:	Able to boot Realview-PB-A8 linux guest on VExpress-A9 emulated by
+	Linaro QEMU.
 S:	Able to boot VExpress-A9 linux guest on VExpress-A9 emulated by QEMU
 D:	docs/arm/vexpress-a9.txt
 
@@ -120,11 +131,11 @@ C:	Cortex-A15
 V:	ARM Ltd. (http://www.arm.com/)
 E:	ARM Fast Models 7.0 or higher (https://www.arm.com/)
 G:	Realview-PB-A8, VExpress-A9 and VExpress-A15 guests supported
-S:	Only supports Contex-A15 Uniprocessor. The Cortex-A15 Multiprocessor 
-	(or SMP) suppport is Work-In-Progress.
-S:	Able to boot multiple Realview-PB-A8 linux guest on VExpress-A15
-	emulated by ARM fast models.
+S:	Able to boot Realview-PB-A8 linux guest on VExpress-A15 emulated by 
+	ARM fast models.
 S:	Able to boot VExpress-A9 linux guest on VExpress-A15 emulated by 
+	ARM fast models.
+S:	Able to boot VExpress-A15 linux guest on VExpress-A15 emulated by 
 	ARM fast models.
 D:	docs/arm/vexpress-a15.txt
 
