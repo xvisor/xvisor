@@ -305,11 +305,16 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		} else if (vcpu->state != VMM_VCPU_STATE_RESET) {
 			/* Existing VCPU */
 			/* Make sure VCPU is not in a ready queue */
-			if((schedp->current_vcpu != vcpu) &&
-			   (vcpu->state == VMM_VCPU_STATE_READY)) {
+			if ((schedp->current_vcpu != vcpu) &&
+			    (vcpu->state == VMM_VCPU_STATE_READY)) {
 				if ((rc = rq_detach(schedp, vcpu))) {
 					break;
 				}
+			}
+			/* Make sure current VCPU is preempted */
+			if ((schedp->current_vcpu == vcpu) &&
+			    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
+				preempt = TRUE;
 			}
 			vcpu->reset_count++;
 			if ((rc = arch_vcpu_init(vcpu))) {
