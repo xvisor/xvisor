@@ -153,6 +153,7 @@ struct vmm_vcpu {
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_devtree_node *node;
 	bool is_normal;
+	bool is_poweroff;
 	struct vmm_guest *guest;
 
 	/* Start PC and stack */

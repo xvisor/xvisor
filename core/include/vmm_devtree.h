@@ -87,7 +87,8 @@
 #define VMM_DEVTREE_PHYS_SIZE_ATTR_NAME		"physical_size"
 #define VMM_DEVTREE_SWITCH_ATTR_NAME		"switch"
 #define VMM_DEVTREE_BLKDEV_ATTR_NAME		"blkdev"
-#define VMM_DEVTREE_CPU_AFFINITY_ATTR_NAME	"cpu_affinity"
+#define VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME	"affinity"
+#define VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME	"poweroff"
 
 enum vmm_devtree_attrypes {
 	VMM_DEVTREE_ATTRTYPE_UNKNOWN = 0,

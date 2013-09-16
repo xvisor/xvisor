@@ -422,6 +422,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	}
 	vcpu->node = NULL;
 	vcpu->is_normal = FALSE;
+	vcpu->is_poweroff = FALSE;
 	vcpu->guest = NULL;
 
 	/* Setup start program counter and stack */
@@ -699,6 +700,12 @@ int vmm_manager_guest_reset(struct vmm_guest *guest)
 
 static int manager_guest_kick_iter(struct vmm_vcpu *vcpu, void *priv)
 {
+	/* Do not kick VCPU with poweroff flag set 
+	 * when Guest is kicked.
+	 */
+	if (vcpu->is_poweroff) {
+		return VMM_OK;
+	}
 	return vmm_manager_vcpu_kick(vcpu);
 }
 
@@ -872,6 +879,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		}
 		vcpu->node = vnode;
 		vcpu->is_normal = TRUE;
+		vcpu->is_poweroff = FALSE;
 		vcpu->guest = guest;
 
 		/* Setup start program counter and stack */
@@ -948,29 +956,29 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			continue;
 		}
 
-		/* Setup CPU affinity mask */
+		/* Setup VCPU affinity mask */
 		attrval = vmm_devtree_attrval(vnode,
-				      VMM_DEVTREE_CPU_AFFINITY_ATTR_NAME);
+				      VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME);
 		if (attrval) {
 			u32 *cpu;
 			u32 i, num_cpu;
 
 			/* Get the number of assigned CPU */
 			num_cpu = vmm_devtree_attrlen(vnode,
-					VMM_DEVTREE_CPU_AFFINITY_ATTR_NAME);
+					VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME);
 			num_cpu /= sizeof(u32);
 
 			cpu = (u32 *)attrval;
 			affinity_mask[vcpu->id] = VMM_CPU_MASK_NONE;
 
 			/* set all assigned CPU in the mask */
-			for (i=0; i < num_cpu; i++) {
+			for (i = 0; i < num_cpu; i++) {
 				if (cpu[i] <= vmm_cpu_count) {
 					vmm_cpumask_set_cpu(cpu[i],
 						&affinity_mask[vcpu->id]);
 				} else {
 					vmm_printf(
-						"%s: CPU %d is out of bound"
+						"%s: CPU%d is out of bound"
 						" (%d) for vcpu %s\n",
 						__func__, cpu[i],
 						vmm_cpu_count, vcpu->name);
@@ -992,6 +1000,13 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 						&affinity_mask[vcpu->id]);
 		} else {
 			vmm_manager_vcpu_set_affinity(vcpu, cpu_online_mask);
+		}
+
+		/* Get poweroff flag from device tree */
+		attrval = vmm_devtree_attrval(vnode,
+					      VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME);
+		if (attrval) {
+			vcpu->is_poweroff = TRUE;
 		}
 
 		/* Increment VCPU count */
