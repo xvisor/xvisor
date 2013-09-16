@@ -19,8 +19,15 @@ get_cross_compiler() {
 
 	case $1 in
 	"arm")
+		if [ "$2" = "generic-v8-defconfig" ]
+		then
+			CROSS_COMPILE_LIST="aarch64-linux-gnu- aarch64-elf-"
+		else
+			CROSS_COMPILE_LIST="arm-unknown-linux-gnueabi- arm-none-linux-gnueabi- arm-linux-gnueabi-"
+		fi
+
 		# Try to find a reasonable CROSS_COMPILE for arm
-		for i in arm-unknown-linux-gnueabi- arm-none-linux-gnueabi- arm-linux-gnueabi-
+		for i in $CROSS_COMPILE_LIST
 		do
 			${i}gcc -dumpmachine > /dev/null 2>&1
 			if test $? -eq 0
@@ -92,10 +99,10 @@ mkdir cov-int
 # Build for all architecture
 for ARCH in x86 arm
 do
-	CROSS_COMPILE=`get_cross_compiler $ARCH`
 	# Build for all supported targets
 	for DEFCONFIG in `cd arch/$ARCH/configs; ls`
 	do
+		CROSS_COMPILE=`get_cross_compiler $ARCH $DEFCONFIG`
 		make clean
 		make ARCH=$ARCH $DEFCONFIG
 		cov-build --dir cov-int make CROSS_COMPILE=$CROSS_COMPILE -j 4
