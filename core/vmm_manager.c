@@ -1009,6 +1009,11 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		goto guest_create_error;
 	}
 
+	/* Fail if no VCPU is associated to the guest */
+	if (list_empty(&guest->vcpu_list)) {
+		goto guest_create_error;
+	}
+
 	/* Reset guest address space */
 	if (vmm_guest_aspace_reset(guest)) {
 		goto guest_create_error;
