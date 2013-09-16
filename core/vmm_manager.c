@@ -251,7 +251,7 @@ int vmm_manager_vcpu_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu)
 {
 	irq_flags_t flags;
 
-	if (!vcpu && !hcpu) {
+	if ((vcpu == NULL) || (hcpu == NULL)) {
 		return VMM_EFAIL;
 	}
 
