@@ -374,7 +374,6 @@ void arm_cmd_copy(int argc, char **argv)
 char linux_cmdline[1024];
 
 typedef void (* linux_entry_t) (u64 fdt_addr);
-extern void *__jump_addr;
 
 void dump_fdt(void *);
 
@@ -382,7 +381,6 @@ void arm_cmd_start_linux(int argc, char **argv)
 {
 	u64 kernel_addr, fdt_addr;
 	u64 initrd_addr, initrd_size;
-	u64 release_addr;
 	int err;
 	char cfg_str[10];
 	u64 meminfo[2];
@@ -424,9 +422,6 @@ void arm_cmd_start_linux(int argc, char **argv)
 				fdt_strerror(err));
 		return;
 	}
-	release_addr = cpu_to_be64(((u64)(__jump_addr)));
-	do_fixup_by_compat((void *)fdt_addr, "arm,armv8", "cpu-release-addr",
-				&release_addr, sizeof(release_addr), 1);
 
 	/* Disable interrupts and timer */
 	arm_board_timer_disable();

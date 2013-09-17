@@ -23,7 +23,6 @@
 
 #include <arm_asm_macro.h>
 #include <gic_config.h>
-#include <arm_plat.h>
 
 	/* 
 	 * Basic firmware could be loaded any where in memory.
@@ -61,31 +60,23 @@ _start:
 	mov	x1, #0xFF
 	str	w1, [x0, #0x4]			/* GIC CPU PMR */
 
-	/* Skip secondary spin for primary core */
+	/* Jump to primary core boot-up */
 	mrs	x0, mpidr_el1
 	ands	x0, x0, #15			/* CPU number */
 	cmp	x0, #0
 	b.eq	primary_cpu_boot
 
-	/* Secondary spin loop */
-	ldr	x0, __jump_addr
-	str	xzr, [x0]
-secondary_cpu_spin:
-	ldr	x1, [x0]
-	cbnz	x1, secondary_cpu_jump
-	wfe
-	b	secondary_cpu_spin
-secondary_cpu_jump:
-	br	x1
+	/* Secondary cores will stay in Power-OFF 
+	 * until Guest OS does PSCI Power-ON.
+	 *
+	 * If we reach here means secondary cores
+	 * are Power-ON due to some unknown event.
+	 */
+	b	.
 
 	.align 3
 __gic_cpu_base:
 	.dword	GIC_CPU_BASE
-
-	.align 3
-	.global __jump_addr
-__jump_addr:
-	.dword ARM_PLAT_SPIN_ADDR
 
 	/* Primary core boot-up sequence */
 primary_cpu_boot:
