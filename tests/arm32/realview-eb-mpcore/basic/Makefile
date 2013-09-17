@@ -40,6 +40,11 @@ board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/serial/pl01x.o
 board_smp        = y
 
+board_cppflags   =
+board_cflags     =
+board_asflags    =
+board_ldflags    =
+
 # Include common makefile for basic firmware
 include $(common_dir)/Makefile.inc
 
