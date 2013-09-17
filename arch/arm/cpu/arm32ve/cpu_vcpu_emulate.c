@@ -26,12 +26,13 @@
 #include <vmm_vcpu_irq.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devemu.h>
-#include <generic_timer.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_emulate.h>
+#include <generic_timer.h>
 #include <arm_features.h>
+#include <emulate_psci.h>
 
 /**
  * A conditional instruction can trap, even though its condition was
@@ -346,12 +347,41 @@ int cpu_vcpu_emulate_mrrc_cp14(struct vmm_vcpu *vcpu,
 	return VMM_EFAIL;
 }
 
-/* TODO: To be implemeted later */
+static int do_psci_call(struct vmm_vcpu *vcpu, 
+			arch_regs_t *regs, 
+			u32 il, u32 iss,
+			bool is_smc)
+{
+	int rc;
+
+	/* Check instruction condition */
+	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
+		/* Skip this instruction */
+		return VMM_OK;
+	}
+
+	/* Treat this as PSCI call and emulate it */
+	rc = emulate_psci_call(vcpu, regs, is_smc);
+	if (rc) {
+		/* Inject undefined exception */
+		cpu_vcpu_inject_undef(vcpu, regs);
+	}
+
+	return rc;
+}
+
 int cpu_vcpu_emulate_hvc(struct vmm_vcpu *vcpu, 
 			 arch_regs_t *regs, 
 			 u32 il, u32 iss)
 {
-	return VMM_EFAIL;
+	return do_psci_call(vcpu, regs, il, iss, FALSE);
+}
+
+int cpu_vcpu_emulate_smc(struct vmm_vcpu *vcpu, 
+			 arch_regs_t *regs, 
+			 u32 il, u32 iss)
+{
+	return do_psci_call(vcpu, regs, il, iss, TRUE);
 }
 
 static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)

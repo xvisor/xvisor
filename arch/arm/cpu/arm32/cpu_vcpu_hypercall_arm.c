@@ -27,11 +27,12 @@
 #include <vmm_scheduler.h>
 #include <arch_cpu.h>
 #include <arch_regs.h>
-#include <emulate_arm.h>
 #include <cpu_defines.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_mem.h>
 #include <cpu_vcpu_hypercall_arm.h>
+#include <emulate_arm.h>
+#include <emulate_psci.h>
 
 /** Emulate 'cps' hypercall */
 static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
@@ -231,6 +232,48 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 	return VMM_OK;
 }
 
+/** Emulate 'srs' hypercall */
+static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
+			 	arch_regs_t *regs, struct vmm_vcpu *vcpu)
+{
+	u32 data;
+	register int rc;
+	register u32 P, U, W, mode;
+	register u32 cpsr, base, address;
+	P = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_P_START);
+	U = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_U_START);
+	W = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_W_START);
+	mode = ARM_INST_BITS(inst,
+		     ARM_HYPERCALL_SRS_MODE_END,
+		     ARM_HYPERCALL_SRS_MODE_START);
+	cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
+	if ((cpsr == CPSR_MODE_USER) ||
+	    (cpsr == CPSR_MODE_SYSTEM)) {
+		arm_unpredictable(regs, vcpu, inst, __func__);
+		return VMM_EFAIL;
+	}
+	base = cpu_vcpu_regmode_read(vcpu, regs, mode, 13);
+	address = (U == 1) ? base : (base - 8);
+	address = (P == U) ? (address + 4) : address;
+	data = regs->lr;
+	if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
+					  &data, 4, FALSE))) {
+		return rc;
+	}
+	address += 4;
+	data = cpu_vcpu_spsr_retrieve(vcpu);
+	if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
+					  &data, 4, FALSE))) {
+		return rc;
+	}
+	if (W == 1) {
+		address = (U == 1) ? (base + 8) : (base - 8);
+		cpu_vcpu_regmode_write(vcpu, regs, mode, 13, address);
+	}
+	regs->pc += 4;
+	return VMM_OK;
+}
+
 /** Emulate 'wfi' hypercall */
 static int arm_hypercall_wfi(u32 id, u32 subid, u32 inst,
 			 	arch_regs_t *regs, struct vmm_vcpu *vcpu)
@@ -287,45 +330,24 @@ static int arm_hypercall_wfx(u32 id, u32 subid, u32 inst,
 	return wfx_funcs[subid] (id, subid, inst, regs, vcpu);
 }
 
-/** Emulate 'srs' hypercall */
-static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
-			 	arch_regs_t *regs, struct vmm_vcpu *vcpu)
+/** Emulate 'smc' hypercall */
+static int arm_hypercall_smc(u32 id, u32 subid, u32 inst,
+			     arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
-	u32 data;
-	register int rc;
-	register u32 P, U, W, mode;
-	register u32 cpsr, base, address;
-	P = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_P_START);
-	U = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_U_START);
-	W = ARM_INST_BIT(inst, ARM_HYPERCALL_SRS_W_START);
-	mode = ARM_INST_BITS(inst,
-		     ARM_HYPERCALL_SRS_MODE_END,
-		     ARM_HYPERCALL_SRS_MODE_START);
-	cpsr = arm_priv(vcpu)->cpsr & CPSR_MODE_MASK;
-	if ((cpsr == CPSR_MODE_USER) ||
-	    (cpsr == CPSR_MODE_SYSTEM)) {
-		arm_unpredictable(regs, vcpu, inst, __func__);
+	int rc;
+
+	/* Treat this as PSCI call and emulate it */
+	rc = emulate_psci_call(vcpu, regs, TRUE);
+	if (rc) {
+		/* Halt the VCPU */
+		vmm_printf("%s: VCPU=%s PSCI call failed\n", 
+			   __func__, vcpu->name);
+		cpu_vcpu_halt(vcpu, regs);
 		return VMM_EFAIL;
+	} else {
+		regs->pc += 4;
 	}
-	base = cpu_vcpu_regmode_read(vcpu, regs, mode, 13);
-	address = (U == 1) ? base : (base - 8);
-	address = (P == U) ? (address + 4) : address;
-	data = regs->lr;
-	if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
-					  &data, 4, FALSE))) {
-		return rc;
-	}
-	address += 4;
-	data = cpu_vcpu_spsr_retrieve(vcpu);
-	if ((rc = cpu_vcpu_mem_write(vcpu, regs, address, 
-					  &data, 4, FALSE))) {
-		return rc;
-	}
-	if (W == 1) {
-		address = (U == 1) ? (base + 8) : (base - 8);
-		cpu_vcpu_regmode_write(vcpu, regs, mode, 13, address);
-	}
-	regs->pc += 4;
+
 	return VMM_OK;
 }
 
@@ -693,7 +715,7 @@ static int (* const cps_and_co_funcs[]) (u32 id, u32 subid, u32 inst,
 	arm_hypercall_rfe,	/* ARM_HYPERCALL_RFE_SUBID */
 	arm_hypercall_srs,	/* ARM_HYPERCALL_SRS_SUBID */
 	arm_hypercall_wfx,	/* ARM_HYPERCALL_WFI_SUBID */
-	arm_hypercall_unused	/* not used yet */
+	arm_hypercall_smc	/* ARM_HYPERCALL_SMC_SUBID */
 };
 
 static int arm_hypercall_cps_and_co(u32 id, u32 inst, 

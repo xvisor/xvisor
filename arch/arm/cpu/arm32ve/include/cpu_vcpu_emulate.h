@@ -81,6 +81,11 @@ int cpu_vcpu_emulate_hvc(struct vmm_vcpu *vcpu,
 			 arch_regs_t *regs, 
 			 u32 il, u32 iss);
 
+/** Emulate SMC instruction (or Handle System Monitor Call) */
+int cpu_vcpu_emulate_smc(struct vmm_vcpu *vcpu, 
+			 arch_regs_t *regs, 
+			 u32 il, u32 iss);
+
 /** Emulate Load (HW assisted) instruction */
 int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu, 
 			  arch_regs_t *regs,

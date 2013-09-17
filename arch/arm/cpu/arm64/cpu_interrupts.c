@@ -143,17 +143,23 @@ void do_sync(arch_regs_t *regs, unsigned long mode)
 		break;
 	case EC_TRAP_SVC_A32:
 	case EC_TRAP_SVC_A64:
-	case EC_TRAP_SMC_A32:
-	case EC_TRAP_SMC_A64:
 		/* We dont expect to get these traps so error */
 		rc = VMM_EFAIL;
 		break;
+	case EC_TRAP_SMC_A32:
+		/* SMC emulation for A32 guest */
+		rc = cpu_vcpu_emulate_smc32(vcpu, regs, il, iss);
+		break;
+	case EC_TRAP_SMC_A64:
+		/* SMC emulation for A64 guest */
+		rc = cpu_vcpu_emulate_smc64(vcpu, regs, il, iss);
+		break;
 	case EC_TRAP_HVC_A32:
-		/* Hypercall or HVC emulation for A32 guest */
+		/* HVC emulation for A32 guest */
 		rc = cpu_vcpu_emulate_hvc32(vcpu, regs, il, iss);
 		break;
 	case EC_TRAP_HVC_A64:
-		/* Hypercall or HVC emulation for A64 guest */
+		/* HVC emulation for A64 guest */
 		rc = cpu_vcpu_emulate_hvc64(vcpu, regs, il, iss);
 		break;
 	case EC_TRAP_MSR_MRS_SYSTEM:

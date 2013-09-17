@@ -193,8 +193,8 @@ void do_hyp_trap(arch_regs_t *regs)
 		rc = cpu_vcpu_emulate_hvc(vcpu, regs, il, iss);
 		break;
 	case EC_TRAP_SMC:
-		/* We dont expect to get this trap so error */
-		rc = VMM_EFAIL;
+		/* System Monitor Call or SMC emulation */
+		rc = cpu_vcpu_emulate_smc(vcpu, regs, il, iss);
 		break;
 	case EC_TRAP_STAGE2_INST_ABORT:
 		/* Stage2 instruction abort */

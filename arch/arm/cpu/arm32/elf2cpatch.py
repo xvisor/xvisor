@@ -440,6 +440,31 @@ def convert_sev_inst(hxstr):
 	rethx = 0xe1a00000
 	return rethx
 
+# SMC
+#	Syntax:
+# 		smc<c><q> {#}<imm4>
+#	Fields:
+#		cond = bits[31:28]
+#		imm4 = bits[3:0]
+#	Hypercall Fields:
+#		inst_cond[31:28] = cond
+#		inst_op[27:24] = 0xf
+#		inst_id[23:20] = 0
+#		inst_subid[19:17] = 7
+#		inst_fields[16:13] = imm4
+def convert_smc_inst(hxstr):
+	hx = int(hxstr, 16)
+	inst_id = 0
+	inst_subid = 7
+	cond = (hx >> 28) & 0xF
+	imm4 = hx & 0xF
+	rethx = 0x0F000000
+	rethx = rethx | (cond << 28)
+	rethx = rethx | (inst_id << 20)
+	rethx = rethx | (inst_subid << 17)
+	rethx = rethx | (imm4 << 13)
+	return rethx
+
 # LDM (exception return or user register)
 #	Syntax:
 # 		ldm<amode><c> <Rn>{!}, <registers_with_or_without_pc>^
@@ -599,7 +624,10 @@ for ln, l in enumerate(lines):
 				w[2]=="rfeib" or 
 				w[2]=="rfe"):
 				print "\t#", w[2], w[3]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_rfe_inst(w[1]))				
+				print "\twrite32,0x%x,0x%08x" % (addr, convert_rfe_inst(w[1]))	
+			elif (w[2].startswith("smc")):
+				print "\t#", w[2], w[3]
+				print "\twrite32,0x%x,0x%08x" % (addr, convert_smc_inst(w[1]))	
 		elif len(w)>=5: 
 			if (w[2]=="mrs"):
 				print "\t#", w[2], w[3], w[4]
