@@ -3478,7 +3478,6 @@ static int arm_instgrp_coproc(u32 inst,
 		case 0B000001:
 			/* Undefined instructions */
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
-			arm_pc(regs) += 4;
 			return VMM_OK;
 		case 0B000010: /* 0xxxxx not 000x0x*/
 		case 0B000011:
@@ -3576,7 +3575,6 @@ static int arm_instgrp_coproc(u32 inst,
 		case 0B000001:
 			/* Undefined instructions */
 			vmm_vcpu_irq_assert(vcpu, CPU_UNDEF_INST_IRQ, 0x0);
-			arm_pc(regs) += 4;
 			return VMM_OK;
 		case 0B000010: /* 0xxxx0 not 000x00*/
 		case 0B000110:
