@@ -81,7 +81,7 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
    into guest NOR flash then use:
    OMAP3 beagleboard.org # fatload mmc 0 0x890FF000 cmdlist
    OMAP3 beagleboard.org # fatload mmc 0 0x89100000 zImage
-   OMAP3 beagleboard.org # fatload mmc 0 0x89400000 rootfs.img )
+   OMAP3 beagleboard.org # fatload mmc 0 0x89600000 rootfs.img )
 
   [18. Jump into Xvisor after disabling MMU, interrupts, etc]
   OMAP3 beagleboard.org # bootm 0x80200000
@@ -97,9 +97,9 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
 
   (Note: If you had linux images loaded in guest NOR flash then instead of 
    above step you can start booting linux,
-   basic# copy 0x70400000 0x40100000 0x300000
-   basic# copy 0x71000000 0x40400000 0x600000
-   basic# start_linux 0x70400000 0x71000000 0x600000 
+   basic# copy 0x70008000 0x40100000 0x4F8000
+   basic# copy 0x70500000 0x40600000 0x600000
+   basic# start_linux 0x70008000 0x70500000 0x600000
    OR
    basic# autoexec)
 
@@ -191,7 +191,7 @@ follows:
    can be appended to build/beagle.img using following additional arguments
    <xvisor_source>/tests/arm32/realview-pb-a8/linux/cmdlist@0x47F000
    <linux_build_dir>/arch/arm/boot/zImage@0x480000
-   <linux_build_dir>/rootfs.img@0x780000 
+   <linux_build_dir>/rootfs.img@0x980000 
    arguments appended to above step.)
   (Note: For more info on images required for linux on Realview-PB-A8 guest 
    refer to <xvisor_source>/tests/arm32/realview-pb-a8/linux/README.)
@@ -220,8 +220,8 @@ follows:
   (Note: For e.g. if we want to load cmdlist, patched zImage and rootfs image
    into guest NOR flash then use,
    OMAP3 beagleboard.org # nand read 0x890FF000 0x47F000 0x1000
-   OMAP3 beagleboard.org # nand read 0x89100000 0x480000 0x300000
-   OMAP3 beagleboard.org # nand read 0x89400000 0x780000 0x600000 )
+   OMAP3 beagleboard.org # nand read 0x89100000 0x480000 0x500000
+   OMAP3 beagleboard.org # nand read 0x89600000 0x980000 0x600000 )
 
   [16. Jump into Xvisor after disabling MMU, interrupts, etc]
   OMAP3 beagleboard.org # bootm 0x80200000
@@ -237,9 +237,9 @@ follows:
 
   (Note: If you had linux images loaded in guest NOR flash then instead of 
    then instead of above step you can start booting linux,
-   basic# copy 0x70400000 0x40100000 0x300000
-   basic# copy 0x71000000 0x40400000 0x600000
-   basic# start_linux 0x70400000 0x71000000 0x600000
+   basic# copy 0x70008000 0x40100000 0x4F8000
+   basic# copy 0x70500000 0x40600000 0x600000
+   basic# start_linux 0x70008000 0x70500000 0x600000
    OR
    basic# autoexec)
 

@@ -33,7 +33,7 @@ obj_dir=$(build_dir)/tests/arm32/vexpress-a9/basic
 common_dir=$(top_dir)/tests/arm32/common/basic
 
 board_arch       = v7
-board_text_start = 0x60010000
+board_text_start = 0x61000000
 board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/pic/gic.o \
                    $(obj_dir)/timer/sp804.o \

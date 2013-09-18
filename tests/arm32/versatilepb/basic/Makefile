@@ -33,7 +33,7 @@ obj_dir=$(build_dir)/tests/arm32/versatilepb/basic
 common_dir=$(top_dir)/tests/arm32/common/basic
 
 board_arch       = v5
-board_text_start = 0x00010000
+board_text_start = 0x01000000
 board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/pic/pl190.o \
                    $(obj_dir)/timer/sp804.o \

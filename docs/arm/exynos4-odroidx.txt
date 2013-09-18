@@ -90,7 +90,7 @@ from the same shell, otherwise you have to set toolchain prefix again (step 1):
   ODROIDX# fatload mmc 0:2 0x41000000 firmware.bin.patched
   ODROIDX# fatload mmc 0:2 0x410FF000 cmdlist
   ODROIDX# fatload mmc 0:2 0x41100000 zImage
-  ODROIDX# fatload mmc 0:2 0x41400000 rootfs.img
+  ODROIDX# fatload mmc 0:2 0x41600000 rootfs.img
 
   [24. Jump into Xvisor after disabling MMU, interrupts, etc]
   ODROIDX# bootm start 0x50000000
