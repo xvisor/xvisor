@@ -37,6 +37,7 @@
 			  "devtree attr set /guests/guest0/aspace/gic0_dist guest_physical_addr physaddr 0x1E001000",
 			  "devtree attr set /guests/guest0/aspace/gic0_dist physical_size physsize 0x1000",
 			  "devtree attr set /guests/guest0/aspace/gic0_dist compatible string arm,vgic",
+			  "devtree attr set /guests/guest0/aspace/gic0_dist num_irq uint32 96",
 			  "devtree node del /guests/guest0/aspace/gic0",
 
 			  /* Create guest0 */

@@ -38,7 +38,7 @@
 #include <arch_regs.h>
 #include <gic.h>
 
-#define MODULE_DESC			"vGIC Emulator"
+#define MODULE_DESC			"GICv2 HW-assisted Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
@@ -96,8 +96,8 @@ struct vgic_host_ctrl {
 
 static struct vgic_host_ctrl vgich;
 
-#define VGIC_MAX_NCPU			4
-#define VGIC_MAX_NIRQ			96
+#define VGIC_MAX_NCPU			8
+#define VGIC_MAX_NIRQ			128
 #define VGIC_LR_UNKNOWN			0xFF
 
 struct vgic_irq_state {
@@ -296,7 +296,7 @@ static bool __vgic_queue_sgi(struct vgic_guest_state *s,
 {
 	u32 c, source = vs->sgi_source[irq];
 
-	for (c = 0; c < VGIC_MAX_NCPU; c++) {
+	for (c = 0; c < VGIC_NUM_CPU(s); c++) {
 		if (!(source & (1 << c))) {
 			continue;
 		}
@@ -1332,10 +1332,13 @@ static int vgic_emulator_probe(struct vmm_guest *guest,
 				const struct vmm_devtree_nodeid *eid)
 {
 	const char *attr;
-	u32 parent_irq;
+	u32 parent_irq, num_irq;
 	struct vgic_guest_state *s;
 
 	if (!vgich.avail) {
+		return VMM_ENODEV;
+	}
+	if (guest->vcpu_count > VGIC_MAX_NCPU) {
 		return VMM_ENODEV;
 	}
 
@@ -1345,13 +1348,19 @@ static int vgic_emulator_probe(struct vmm_guest *guest,
 	}
 	parent_irq = *((u32 *)attr);
 
-	if (guest->vcpu_count > VGIC_MAX_NCPU) {
-		return VMM_EINVALID;
+	attr = vmm_devtree_attrval(edev->node, "num_irq");
+	if (!attr) {
+		num_irq = VGIC_MAX_NIRQ;
+	} else {
+		num_irq = *((u32 *)attr);
+		if (num_irq > VGIC_MAX_NIRQ) {
+			num_irq = VGIC_MAX_NIRQ;
+		}
 	}
 
 	s = vgic_state_alloc(edev->node->name,
 			     guest, guest->vcpu_count,
-			     VGIC_MAX_NIRQ, parent_irq);
+			     num_irq, parent_irq);
 	if (!s) {
 		return VMM_ENOMEM;
 	}
@@ -1364,6 +1373,10 @@ static int vgic_emulator_probe(struct vmm_guest *guest,
 static int vgic_emulator_remove(struct vmm_emudev *edev)
 {
 	struct vgic_guest_state *s = edev->priv;
+
+	if (!s) {
+		return VMM_EFAIL;
+	}
 
 	vgic_state_free(s);
 	edev->priv = NULL;

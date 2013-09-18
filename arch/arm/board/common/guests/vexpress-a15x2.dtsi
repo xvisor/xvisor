@@ -72,6 +72,7 @@
 					device_type = "pic";
 					compatible = "arm,vgic";
 					parent_irq = <6>;
+					num_irq = <96>;
 				};
 
 				gic_cpu {

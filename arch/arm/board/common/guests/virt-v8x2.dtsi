@@ -27,25 +27,6 @@
 			aspace {
 				guest_irq_count = <2048>;
 
-				mem0 {
-					manifest_type = "real";
-					address_type = "memory";
-					guest_physical_addr = <0x80000000>;
-					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
-					physical_size = <0x00000000>; /* To be set by DTS including this file */
-					device_type = "ram";
-				};
-
-				gic {
-					manifest_type = "virtual";
-					address_type = "memory";
-					guest_physical_addr = <0x2C000000>;
-					physical_size = <0x3000>;
-					device_type = "pic";
-					compatible = "vexpress,gicv2";
-					parent_irq = <6>;
-				};
-
 				nor_flash0 {
 					manifest_type = "real";
 					address_type = "memory";
@@ -53,6 +34,26 @@
 					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
 					physical_size = <0x00000000>; /* To be set by DTS including this file */
 					device_type = "rom";
+				};
+
+				gic_dist {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x2C001000>;
+					physical_size = <0x1000>;
+					device_type = "pic";
+					compatible = "arm,vgic";
+					parent_irq = <6>;
+					num_irq = <96>;
+				};
+
+				gic_cpu {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x2C002000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x1000>;
+					device_type = "pic";
 				};
 
 				virtio-net0 {
@@ -88,6 +89,15 @@
 					guest_physical_addr = <0x40600000>;
 					physical_size = <0x1000>;
 					interrupts = <42>;
+				};
+
+				mem0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x80000000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "ram";
 				};
 			};
 		};
