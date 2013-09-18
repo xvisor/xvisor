@@ -44,15 +44,15 @@
 #include <libs/stringlib.h>
 #include <emu/gic_emulator.h>
 
-#define MODULE_DESC			"Realview GIC Emulator"
+#define MODULE_DESC			"GICv2 Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
 #define	MODULE_INIT			gic_emulator_init
 #define	MODULE_EXIT			gic_emulator_exit
 
-#define GIC_MAX_NCPU			4
-#define GIC_MAX_NIRQ			96
+#define GIC_MAX_NCPU			8
+#define GIC_MAX_NIRQ			128
 
 struct gic_irq_state {
 	u32 enabled:GIC_MAX_NCPU;
@@ -1027,6 +1027,13 @@ struct gic_state *gic_state_alloc(const char *name,
 	u32 i;
 	struct gic_state *s = NULL;
 
+	if (guest->vcpu_count > GIC_MAX_NCPU) {
+		return NULL;
+	}
+	if (num_irq > GIC_MAX_NIRQ) {
+		return NULL;
+	}
+
 	s = vmm_zalloc(sizeof(struct gic_state));
 	if (!s) {
 		return NULL;
@@ -1071,16 +1078,17 @@ int gic_state_free(struct gic_state *s)
 {
 	u32 i;
 
-	if (s) {
-		for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
-			vmm_devemu_unregister_irq_handler(s->guest, i,
-							  gic_irq_handle, s);
-		}
-		vmm_free(s);
-		return VMM_OK;
-	} else {
+	if (!s) {
 		return VMM_EFAIL;
 	}
+
+	for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
+		vmm_devemu_unregister_irq_handler(s->guest, i,
+						  gic_irq_handle, s);
+	}
+	vmm_free(s);
+
+	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(gic_state_free);
 
@@ -1093,6 +1101,10 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 	bool is_child_pic;
 	enum gic_type type;
 	u32 parent_irq, base_irq, num_irq;
+
+	if (guest->vcpu_count > GIC_MAX_NCPU) {
+		return VMM_ENODEV;
+	}
 
 	attr = vmm_devtree_attrval(edev->node, "child_pic");
 	if (attr) {
@@ -1121,6 +1133,9 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 		num_irq = gic_configs[type][0];
 	} else {
 		num_irq = *((u32 *)attr);
+		if (num_irq > GIC_MAX_NIRQ) {
+			num_irq = GIC_MAX_NIRQ;
+		}
 	}
 	
 	s = gic_state_alloc(edev->node->name, guest, type, 
