@@ -205,7 +205,7 @@ void do_sync(arch_regs_t *regs, unsigned long mode)
 			   __func__, esr, ec, il, iss);
 		vmm_printf("%s: ELR=0x%016lx FAR=0x%016lx HPFAR=0x%016lx\n",
 			   __func__, elr, far, mrs(hpfar_el2));
-		if (vcpu->state != VMM_VCPU_STATE_HALTED) {
+		if (vmm_manager_vcpu_get_state(vcpu) != VMM_VCPU_STATE_HALTED) {
 			cpu_vcpu_halt(vcpu, regs);
 		}
 	}

@@ -165,7 +165,7 @@ struct vmm_vcpu {
 	vmm_rwlock_t sched_lock;
 	u32 hcpu;
 	const struct vmm_cpumask *cpu_affinity;
-	u32 state;
+	atomic_t state;
 	u64 state_tstamp;
 	u64 state_ready_nsecs;
 	u64 state_running_nsecs;

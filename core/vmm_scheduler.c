@@ -124,6 +124,7 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 	u64 tstamp = vmm_timer_timestamp();
 	struct vmm_vcpu *next = NULL; 
 	struct vmm_vcpu *tcurrent = NULL, *current = schedp->current_vcpu;
+	u32 current_state;
 
 	/* First time scheduling */
 	if (!current) {
@@ -137,7 +138,7 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 
 		arch_vcpu_switch(NULL, next, regs);
 		next->state_ready_nsecs += tstamp - next->state_tstamp;
-		next->state = VMM_VCPU_STATE_RUNNING;
+		arch_atomic_write(&next->state, VMM_VCPU_STATE_RUNNING);
 		next->state_tstamp = tstamp;
 		schedp->current_vcpu = next;
 		vmm_timer_event_start(ev, next->time_slice);
@@ -150,11 +151,13 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 	/* Normal scheduling */
 	vmm_write_lock_irqsave_lite(&current->sched_lock, cf);
 
-	if (current->state & VMM_VCPU_STATE_SAVEABLE) {
-		if (current->state == VMM_VCPU_STATE_RUNNING) {
+	current_state = arch_atomic_read(&current->state);
+
+	if (current_state & VMM_VCPU_STATE_SAVEABLE) {
+		if (current_state == VMM_VCPU_STATE_RUNNING) {
 			current->state_running_nsecs += 
 				tstamp - current->state_tstamp;
-			current->state = VMM_VCPU_STATE_READY;
+			arch_atomic_write(&current->state, VMM_VCPU_STATE_READY);
 			current->state_tstamp = tstamp;
 			rq_enqueue(schedp, current);
 		}
@@ -174,7 +177,7 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 	}
 
 	next->state_ready_nsecs += tstamp - next->state_tstamp;
-	next->state = VMM_VCPU_STATE_RUNNING;
+	arch_atomic_write(&next->state, VMM_VCPU_STATE_RUNNING);
 	next->state_tstamp = tstamp;
 	schedp->current_vcpu = next;
 	vmm_timer_event_start(ev, next->time_slice);
@@ -283,6 +286,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 	bool preempt = FALSE;
 	u32 chcpu = vmm_smp_processor_id(), vhcpu;
 	struct vmm_scheduler_ctrl *schedp;
+	u32 current_state;
 
 	if (!vcpu) {
 		return VMM_EFAIL;
@@ -293,27 +297,29 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 	vhcpu = vcpu->hcpu;
 	schedp = &per_cpu(sched, vhcpu);
 
+	current_state = arch_atomic_read(&vcpu->state);
+
 	switch(new_state) {
 	case VMM_VCPU_STATE_UNKNOWN:
 		/* Existing VCPU being destroyed */
 		rc = vmm_schedalgo_vcpu_cleanup(vcpu);
 		break;
 	case VMM_VCPU_STATE_RESET:
-		if (vcpu->state == VMM_VCPU_STATE_UNKNOWN) {
+		if (current_state == VMM_VCPU_STATE_UNKNOWN) {
 			/* New VCPU */
 			rc = vmm_schedalgo_vcpu_setup(vcpu);
-		} else if (vcpu->state != VMM_VCPU_STATE_RESET) {
+		} else if (current_state != VMM_VCPU_STATE_RESET) {
 			/* Existing VCPU */
 			/* Make sure VCPU is not in a ready queue */
 			if ((schedp->current_vcpu != vcpu) &&
-			    (vcpu->state == VMM_VCPU_STATE_READY)) {
+			    (current_state == VMM_VCPU_STATE_READY)) {
 				if ((rc = rq_detach(schedp, vcpu))) {
 					break;
 				}
 			}
 			/* Make sure current VCPU is preempted */
 			if ((schedp->current_vcpu == vcpu) &&
-			    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
+			    (current_state == VMM_VCPU_STATE_RUNNING)) {
 				preempt = TRUE;
 			}
 			vcpu->reset_count++;
@@ -328,8 +334,8 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		}
 		break;
 	case VMM_VCPU_STATE_READY:
-		if ((vcpu->state == VMM_VCPU_STATE_RESET) ||
-		    (vcpu->state == VMM_VCPU_STATE_PAUSED)) {
+		if ((current_state == VMM_VCPU_STATE_RESET) ||
+		    (current_state == VMM_VCPU_STATE_PAUSED)) {
 			/* Enqueue VCPU to ready queue */
 			rc = rq_enqueue(schedp, vcpu);
 			if (!rc && (schedp->current_vcpu != vcpu)) {
@@ -341,14 +347,14 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		break;
 	case VMM_VCPU_STATE_PAUSED:
 	case VMM_VCPU_STATE_HALTED:
-		if ((vcpu->state == VMM_VCPU_STATE_READY) ||
-		    (vcpu->state == VMM_VCPU_STATE_RUNNING)) {
+		if ((current_state == VMM_VCPU_STATE_READY) ||
+		    (current_state == VMM_VCPU_STATE_RUNNING)) {
 			/* Expire timer event if current VCPU 
 			 * is paused or halted 
 			 */
 			if (schedp->current_vcpu == vcpu) {
 				preempt = TRUE;
-			} else if (vcpu->state == VMM_VCPU_STATE_READY) {
+			} else if (current_state == VMM_VCPU_STATE_READY) {
 				/* Make sure VCPU is not in a ready queue */
 				rc = rq_detach(schedp, vcpu);
 			}
@@ -360,7 +366,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 
 	if (rc == VMM_OK) {
 		tstamp = vmm_timer_timestamp();
-		switch (vcpu->state) {
+		switch (current_state) {
 		case VMM_VCPU_STATE_READY:
 			vcpu->state_ready_nsecs += 
 					tstamp - vcpu->state_tstamp;
@@ -387,7 +393,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			vcpu->state_halted_nsecs = 0;
 			vcpu->reset_tstamp = tstamp;
 		}
-		vcpu->state = new_state;
+		arch_atomic_write(&vcpu->state, new_state);
 		vcpu->state_tstamp = tstamp;
 	}
 

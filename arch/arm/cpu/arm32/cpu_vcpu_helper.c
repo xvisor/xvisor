@@ -40,7 +40,7 @@ void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 		return;
 	}
 
-	if (vcpu->state != VMM_VCPU_STATE_HALTED) {
+	if (vmm_manager_vcpu_get_state(vcpu) != VMM_VCPU_STATE_HALTED) {
 		vmm_printf("\n");
 		cpu_vcpu_dump_user_reg(vcpu, regs);
 		vmm_manager_vcpu_halt(vcpu);
