@@ -26,5 +26,8 @@ board-objs-y+=brd_main.o
 board-objs-$(CONFIG_SMP)+=brd_smp.o
 board-objs-y+=dts/skeleton.o
 
+board-dtbs-$(CONFIG_FOUNDATION_V8_ONE_GUEST_PB_A8_DTS)+=dts/foundation-v8/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_FOUNDATION_V8_ONE_GUEST_VEXPRESS_A9_DTS)+=dts/foundation-v8/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_FOUNDATION_V8_ONE_GUEST_VEXPRESS_A15_DTS)+=dts/foundation-v8/one_guest_vexpress-a15.dtb
 board-dtbs-$(CONFIG_FOUNDATION_V8_ONE_GUEST_VIRT_V8_DTS)+=dts/foundation-v8/one_guest_virt_v8.dtb
 
