@@ -240,8 +240,6 @@ _start_mmu_init:
 	.align	3
 1:	.dword	.
 	.dword	secondary_holding_pen_release
-__leds_base:
-	.dword	0x1c010008
 
 #define MPIDR_HWID_BITMASK	0xff00ffffff
 
@@ -253,10 +251,6 @@ _start_secondary:
 	 * This provides a "holding pen" for platforms to hold all secondary
 	 * cores are held until we're ready for them to initialise.
 	 */
-	ldr	x15, __leds_base
-	mov	w14, #0
-	str	w14, [x15]
-
 	mrs	x0, mpidr_el1
 	ldr     x1, =MPIDR_HWID_BITMASK
 	and	x0, x0, x1
