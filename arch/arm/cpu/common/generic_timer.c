@@ -102,7 +102,7 @@ int __init generic_timer_clocksource_init(void)
 	return vmm_clocksource_register(cs);
 }
 
-static vmm_irq_return_t generic_timer_irq_handler(int irq, void *dev)
+static vmm_irq_return_t generic_hyp_timer_handler(int irq, void *dev)
 {
 	struct vmm_clockchip *cc = dev;
 	unsigned long ctrl;
@@ -297,11 +297,13 @@ int __cpuinit generic_timer_clockchip_init(void)
 	struct vmm_clockchip *cc;
 	struct vmm_devtree_node *node;
 
+	/* Find generic timer device tree node */
 	node = vmm_devtree_find_matching(NULL, generic_timer_match);
 	if (!node) {
 		return VMM_ENODEV;
 	}
 
+	/* Determine generic timer frequency */
 	if (generic_timer_hz == 0) {
 		rc =  vmm_devtree_clock_frequency(node, &generic_timer_hz);
 		if (rc) {
@@ -316,11 +318,11 @@ int __cpuinit generic_timer_clockchip_init(void)
 							generic_timer_hz);
 		}
 	}
-
 	if (generic_timer_hz == 0) {
 		return VMM_EFAIL;
 	}
 
+	/* Get hypervisor timer irq number */
 	rc = vmm_devtree_irq_get(node, 
 				 &irq[GENERIC_HYPERVISOR_TIMER], 
 				 GENERIC_HYPERVISOR_TIMER);
@@ -328,6 +330,7 @@ int __cpuinit generic_timer_clockchip_init(void)
 		return rc;
 	}
 
+	/* Get physical timer irq number */
 	rc = vmm_devtree_irq_get(node, 
 				 &irq[GENERIC_PHYSICAL_TIMER], 
 				 GENERIC_PHYSICAL_TIMER);
@@ -335,6 +338,7 @@ int __cpuinit generic_timer_clockchip_init(void)
 		return rc;
 	}
 
+	/* Get virtual timer irq number */
 	rc = vmm_devtree_irq_get(node, 
 				 &irq[GENERIC_VIRTUAL_TIMER], 
 				 GENERIC_VIRTUAL_TIMER);
@@ -342,19 +346,20 @@ int __cpuinit generic_timer_clockchip_init(void)
 		return rc;
 	}
 
+	/* Number of generic timer irqs */
 	num_irqs = vmm_devtree_irq_count(node);
 	if (!num_irqs) {
 		return VMM_EFAIL;
 	}
 
+	/* Ensure hypervisor timer is stopped */
 	generic_timer_stop();
 
-	/* Initialize generic hypervisor timer as clockchip */
+	/* Create generic hypervisor timer clockchip */
 	cc = vmm_zalloc(sizeof(struct vmm_clockchip));
 	if (!cc) {
 		return VMM_EFAIL;
 	}
-
 	cc->name = "gen-hyp-timer";
 	cc->hirq = irq[GENERIC_HYPERVISOR_TIMER];
 	cc->rating = 400;
@@ -368,61 +373,68 @@ int __cpuinit generic_timer_clockchip_init(void)
 	cc->set_next_event = &generic_timer_set_next_event;
 	cc->priv = NULL;
 
+	/* Register hypervisor timer clockchip */
+	rc = vmm_clockchip_register(cc);
+	if (rc) {
+		goto fail_free_cc;
+	}
+
 	if (!vmm_smp_processor_id()) {
-		/* Register irq for handling hypervisor timer */
+		/* Register irq handler for hypervisor timer */
 		rc = vmm_host_irq_register(irq[GENERIC_HYPERVISOR_TIMER],
 					   "gen-hyp-timer", 
-					   &generic_timer_irq_handler, cc);
+					   &generic_hyp_timer_handler, cc);
 		if (rc) {
-			return rc;
+			goto fail_unreg_cc;
 		}
 
+		/* Mark hypervisor timer irq as per-CPU */
 		if ((rc = vmm_host_irq_mark_per_cpu(cc->hirq))) {
-			return rc;
+			goto fail_unreg_htimer;
 		}
 
-		/* Register irq for handling physical timer */
 		if (num_irqs > 1) {
-			val = generic_timer_reg_read(GENERIC_TIMER_REG_HCTL);
-			val |= GENERIC_TIMER_HCTL_KERN_PCNT_EN;
-			val |= GENERIC_TIMER_HCTL_KERN_PTMR_EN;
-			generic_timer_reg_write(GENERIC_TIMER_REG_HCTL, val);
+			/* Register irq handler for physical timer */
 			rc = vmm_host_irq_register(irq[GENERIC_PHYSICAL_TIMER],
 						   "gen-phys-timer",
 						   &generic_phys_timer_handler,
 						   NULL);
 			if (rc) {
-				return rc;
+				goto fail_unreg_htimer;
 			}
 
+			/* Mark physical timer irq as per-CPU */
 			rc = vmm_host_irq_mark_per_cpu(
 						irq[GENERIC_PHYSICAL_TIMER]);
 			if (rc)	{
-				return rc;
+				goto fail_unreg_ptimer;
 			}
 		}
 
-		/* Register irq for handling virtual timer */
 		if (num_irqs > 2) {
+			/* Register irq handler for virtual timer */
 			rc = vmm_host_irq_register(irq[GENERIC_VIRTUAL_TIMER],
 						   "gen-virt-timer",
 						   &generic_virt_timer_handler,
 						   NULL);
 			if (rc) {
-				return rc;
+				goto fail_unreg_ptimer;
 			}
 
+			/* Mark virtual timer irq as per-CPU */
 			rc = vmm_host_irq_mark_per_cpu(
 						irq[GENERIC_VIRTUAL_TIMER]);
 			if (rc) {
-				return rc;
+				goto fail_unreg_vtimer;
 			}
 		}
 	}
 
-	rc = vmm_clockchip_register(cc);
-	if (rc) {
-		return rc;
+	if (num_irqs > 1) {
+		val = generic_timer_reg_read(GENERIC_TIMER_REG_HCTL);
+		val |= GENERIC_TIMER_HCTL_KERN_PCNT_EN;
+		val |= GENERIC_TIMER_HCTL_KERN_PTMR_EN;
+		generic_timer_reg_write(GENERIC_TIMER_REG_HCTL, val);
 	}
 
 	for (val = 0; val < num_irqs; val++) {
@@ -430,6 +442,27 @@ int __cpuinit generic_timer_clockchip_init(void)
 	}
 
 	return VMM_OK;
+
+fail_unreg_vtimer:
+	if (!vmm_smp_processor_id() && num_irqs > 2) {
+		vmm_host_irq_unregister(irq[GENERIC_HYPERVISOR_TIMER],
+					&generic_virt_timer_handler);
+	}
+fail_unreg_ptimer:
+	if (!vmm_smp_processor_id() && num_irqs > 1) {
+		vmm_host_irq_unregister(irq[GENERIC_PHYSICAL_TIMER],
+					&generic_phys_timer_handler);
+	}
+fail_unreg_htimer:
+	if (!vmm_smp_processor_id()) {
+		vmm_host_irq_unregister(irq[GENERIC_HYPERVISOR_TIMER],
+					&generic_hyp_timer_handler);
+	}
+fail_unreg_cc:
+	vmm_clockchip_register(cc);
+fail_free_cc:
+	vmm_free(cc);
+	return rc;
 }
 
 void generic_timer_vcpu_context_init(struct generic_timer_context *cntx)
