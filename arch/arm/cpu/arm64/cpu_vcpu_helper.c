@@ -98,7 +98,7 @@ static u32 __cpu_vcpu_regmode32_read(arch_regs_t *regs,
 		case CPSR_MODE_SYSTEM:
 			return regs->gpr[14];
 		case CPSR_MODE_FIQ:
-			return regs->gpr[30];
+			return regs->lr;
 		case CPSR_MODE_IRQ:
 			return regs->gpr[16];
 		case CPSR_MODE_SUPERVISOR:
@@ -181,7 +181,7 @@ static void __cpu_vcpu_regmode32_write(arch_regs_t *regs,
 		case CPSR_MODE_SYSTEM:
 			regs->gpr[14] = val;
 		case CPSR_MODE_FIQ:
-			regs->gpr[30] = val;
+			regs->lr = val;
 		case CPSR_MODE_IRQ:
 			regs->gpr[16] = val;
 		case CPSR_MODE_SUPERVISOR:
@@ -548,7 +548,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	u32 cpuid = 0;
 	const char *attr;
 	irq_flags_t flags;
-	/* Initialize User Mode Registers */
+
 	/* For both Orphan & Normal VCPUs */
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
 	arm_regs(vcpu)->pc = vcpu->start_pc;
@@ -558,6 +558,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_regs(vcpu)->pstate |= PSR_ASYNC_ABORT_DISABLED;
 		return VMM_OK;
 	}
+
 	/* Following initialization for normal VCPUs only */
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
@@ -590,52 +591,17 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	arm_regs(vcpu)->pstate |= PSR_ASYNC_ABORT_DISABLED;
 	arm_regs(vcpu)->pstate |= PSR_IRQ_DISABLED;
 	arm_regs(vcpu)->pstate |= PSR_FIQ_DISABLED;
+
 	if (!vcpu->reset_count) {
 		/* Alloc private context */
 		vcpu->arch_priv = vmm_zalloc(sizeof(arm_priv_t));
 		if (!vcpu->arch_priv) {
 			return VMM_ENOMEM;
 		}
-	} else {
-		/* No need to init the other SPRs as their 
-		 * state is unknown as per AArch64 spec
-		 */ 
-		arm_priv(vcpu)->sctlr = 0x0;
-		arm_priv(vcpu)->sp_el0 = 0x0;
-		arm_priv(vcpu)->sp_el1 = 0x0;
-		arm_priv(vcpu)->elr_el1 = 0x0;
-		arm_priv(vcpu)->spsr_el1 = 0x0;
-		arm_priv(vcpu)->spsr_abt = 0x0;
-		arm_priv(vcpu)->spsr_und = 0x0;
-		arm_priv(vcpu)->spsr_irq = 0x0;
-		arm_priv(vcpu)->spsr_fiq = 0x0;
-	}
-	arm_priv(vcpu)->last_hcpu = 0xFFFFFFFF;
-	generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
-	if (!vcpu->reset_count) {
-		/* Generic timer physical & virtual irq for the vcpu */
-		attr = vmm_devtree_attrval(vcpu->node, "gentimer_phys_irq");
-		arm_gentimer_context(vcpu)->phys_timer_irq = 
-						(attr) ? (*(u32 *)attr) : 0;
-		attr = vmm_devtree_attrval(vcpu->node, "gentimer_virt_irq");
-		arm_gentimer_context(vcpu)->virt_timer_irq = 
-						(attr) ? (*(u32 *)attr) : 0;
-		/* Initialize Hypervisor Configuration */
-		INIT_SPIN_LOCK(&arm_priv(vcpu)->hcr_lock);
-		arm_priv(vcpu)->hcr =  (HCR_TACR_MASK |
-					HCR_TIDCP_MASK |
-					HCR_TSC_MASK |
-					HCR_TWI_MASK |
-					HCR_AMO_MASK |
-					HCR_IMO_MASK |
-					HCR_FMO_MASK |
-					HCR_SWIO_MASK |
-					HCR_VM_MASK);
-		if (!(arm_regs(vcpu)->pstate & PSR_MODE32)) {
-			arm_priv(vcpu)->hcr |= HCR_RW_MASK;
-		}
-		/* Initialize Hypervisor System Trap Register */
-		arm_priv(vcpu)->hstr = 0;
+		/* Setup CPUID value expected by VCPU in MIDR register
+		 * as-per HW specifications.
+		 */
+		arm_priv(vcpu)->cpuid = cpuid;
 		/* Initialize VCPU features */
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
@@ -696,22 +662,87 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		default:
 			break;
 		};
-	} else {
-		/* Clear virtual exception bits in HCR */
-		vmm_spin_lock_irqsave(&arm_priv(vcpu)->hcr_lock, flags);
-		arm_priv(vcpu)->hcr &= ~(HCR_VSE_MASK | 
-					 HCR_VI_MASK | 
-					 HCR_VF_MASK);
-		vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
-	}
-
-	arm_priv(vcpu)->cpuid = cpuid;
-	arm_priv(vcpu)->tcr = 0x0;
-
-	if (!vcpu->reset_count) {
+		/* Initialize Hypervisor Configuration */
+		INIT_SPIN_LOCK(&arm_priv(vcpu)->hcr_lock);
+		arm_priv(vcpu)->hcr =  (HCR_TACR_MASK |
+					HCR_TIDCP_MASK |
+					HCR_TSC_MASK |
+					HCR_TWI_MASK |
+					HCR_AMO_MASK |
+					HCR_IMO_MASK |
+					HCR_FMO_MASK |
+					HCR_SWIO_MASK |
+					HCR_VM_MASK);
+		if (!(arm_regs(vcpu)->pstate & PSR_MODE32)) {
+			arm_priv(vcpu)->hcr |= HCR_RW_MASK;
+		}
+		/* Initialize Hypervisor System Trap Register */
+		arm_priv(vcpu)->hstr = 0;
+		/* Initialize VCPU MIDR and MPIDR registers */
+		switch (cpuid) {
+		case ARM_CPUID_CORTEXA9:
+			/* Guest ARM32 Linux running on Cortex-A9
+			 * tries to use few ARMv7 instructions which 
+			 * are removed in AArch32 instruction set.
+			 * 
+			 * To take care of this situation, we fake 
+			 * PartNum and Revison visible to Cortex-A9
+			 * Guest VCPUs.
+			 */
+			arm_priv(vcpu)->midr = cpuid;
+			arm_priv(vcpu)->midr &= 
+				~(MIDR_PARTNUM_MASK|MIDR_REVISON_MASK);
+			arm_priv(vcpu)->mpidr = (1 << 31) | vcpu->subid;
+			break;
+		case ARM_CPUID_CORTEXA15:
+			arm_priv(vcpu)->midr = cpuid;
+			arm_priv(vcpu)->mpidr = (1 << 31) | vcpu->subid;
+			break;
+		default:
+			arm_priv(vcpu)->midr = cpuid;
+			arm_priv(vcpu)->mpidr = vcpu->subid;
+			break;
+		};
+		/* Generic timer physical & virtual irq for the vcpu */
+		attr = vmm_devtree_attrval(vcpu->node, "gentimer_phys_irq");
+		arm_gentimer_context(vcpu)->phys_timer_irq = 
+						(attr) ? (*(u32 *)attr) : 0;
+		attr = vmm_devtree_attrval(vcpu->node, "gentimer_virt_irq");
+		arm_gentimer_context(vcpu)->virt_timer_irq = 
+						(attr) ? (*(u32 *)attr) : 0;
 		/* Cleanup VGIC context first time */
 		arm_vgic_cleanup(vcpu);
 	}
+
+	/* Clear virtual exception bits in HCR */
+	vmm_spin_lock_irqsave(&arm_priv(vcpu)->hcr_lock, flags);
+	arm_priv(vcpu)->hcr &= ~(HCR_VSE_MASK | 
+				 HCR_VI_MASK | 
+				 HCR_VF_MASK);
+	vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
+
+	/* Reset special registers which are required 
+	 * to have known values upon VCPU reset.
+	 *
+	 * No need to init the other SPRs as their 
+	 * state is unknown as per AArch64 spec
+	 */ 
+	arm_priv(vcpu)->sctlr = 0x0;
+	arm_priv(vcpu)->sp_el0 = 0x0;
+	arm_priv(vcpu)->sp_el1 = 0x0;
+	arm_priv(vcpu)->elr_el1 = 0x0;
+	arm_priv(vcpu)->spsr_el1 = 0x0;
+	arm_priv(vcpu)->spsr_abt = 0x0;
+	arm_priv(vcpu)->spsr_und = 0x0;
+	arm_priv(vcpu)->spsr_irq = 0x0;
+	arm_priv(vcpu)->spsr_fiq = 0x0;
+	arm_priv(vcpu)->tcr = 0x0;
+
+	/* Set last host CPU to invalid value */
+	arm_priv(vcpu)->last_hcpu = 0xFFFFFFFF;
+
+	/* Reset generic timer context */
+	generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
 
 	return VMM_OK;
 }
@@ -851,12 +882,9 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		/* Update Stage2 MMU context */
 		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
 				      arm_guest_priv(vcpu->guest)->ttbl);
-		msr(vpidr_el2, arm_priv(vcpu)->cpuid);
-		if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
-			msr(vmpidr_el2, (1 << 31) | vcpu->subid);
-		} else {
-			msr(vmpidr_el2, vcpu->subid);
-		}
+		/* Update VPIDR and VMPIDR */
+		msr(vpidr_el2, arm_priv(vcpu)->midr);
+		msr(vmpidr_el2, arm_priv(vcpu)->mpidr);
 		/* Flush TLB if moved to new host CPU */
 		if (arm_priv(vcpu)->last_hcpu != vmm_smp_processor_id()) {
 			/* Invalidate all guest TLB enteries because
@@ -951,7 +979,7 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	vmm_cprintf(cdev, "       SPSR_FIQ: 0x%08lX\n", 
 		    arm_priv(vcpu)->spsr_fiq);
 	vmm_cprintf(cdev, "       MIDR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->cpuid);
+		    arm_priv(vcpu)->midr);
 	vmm_cprintf(cdev, "      MPIDR_EL1: 0x%016lX\n", 
 		    arm_priv(vcpu)->mpidr);
 	vmm_cprintf(cdev, "      SCTLR_EL1: 0x%016lX\n", 

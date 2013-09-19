@@ -40,6 +40,7 @@ typedef struct arch_regs arch_regs_t;
 
 struct arm_priv {
 	/* Internal CPU feature flags. */
+	u64 cpuid;
 	u64 features;
 	/* Hypervisor context */
 	vmm_spinlock_t hcr_lock;
@@ -54,8 +55,8 @@ struct arm_priv {
 	u32 spsr_abt;
 	u32 spsr_und;
 	u32 spsr_irq;
-	u32 spsr_fiq;	
-	u64 cpuid;
+	u32 spsr_fiq;
+	u64 midr;	
 	u64 mpidr;
 	u64 sctlr; 	/* System control register. */
 	u64 actlr;	/* Auxillary control register. */
