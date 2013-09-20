@@ -528,12 +528,8 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu,
 		cp15 = &arm_priv(vcpu)->cp15;
 		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
 				      arm_guest_priv(vcpu->guest)->ttbl);
-		write_vpidr(cp15->c0_cpuid);
-		if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
-			write_vmpidr((1 << 31) | vcpu->subid);
-		} else {
-			write_vmpidr(vcpu->subid);
-		}
+		write_vpidr(cp15->c0_midr);
+		write_vmpidr(cp15->c0_mpidr);
 		write_csselr(cp15->c0_cssel);
 		write_sctlr(cp15->c1_sctlr);
 		write_cpacr(cp15->c1_cpacr);
@@ -582,7 +578,6 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	 * Due to this, quite a few CP15 registers initialized below are for
 	 * debugging purpose only.
 	 */
-	cp15->c0_cpuid = cpuid;
 	cp15->c2_ttbcr = 0x0;
 	cp15->c2_ttbr0 = 0x0;
 	cp15->c2_ttbr1 = 0x0;
@@ -592,6 +587,8 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	cp15->c12_vbar = 0x0;
 	switch (cpuid) {
 	case ARM_CPUID_CORTEXA8:
+		cp15->c0_midr = cpuid;
+		cp15->c0_mpidr = vcpu->subid;
 		cp15->c0_cachetype = 0x82048004;
 		cp15->c0_pfr0 = 0x1031;
 		cp15->c0_pfr1 = 0x11;
@@ -614,6 +611,17 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		cp15->c1_sctlr = 0x00c50078;
 		break;
 	case ARM_CPUID_CORTEXA9:
+		/* Guest ARM32 Linux running on Cortex-A9
+		 * tries to use few ARMv7 instructions which 
+		 * are removed in AArch32 instruction set.
+		 * 
+		 * To take care of this situation, we fake 
+		 * PartNum and Revison visible to Cortex-A9
+		 * Guest VCPUs.
+		 */
+		cp15->c0_midr = cpuid;
+		cp15->c0_midr &= ~(MIDR_PARTNUM_MASK|MIDR_REVISON_MASK);
+		cp15->c0_mpidr = (1 << 31) | vcpu->subid;
 		cp15->c0_cachetype = 0x80038003;
 		cp15->c0_pfr0 = 0x1031;
 		cp15->c0_pfr1 = 0x11;
@@ -635,6 +643,8 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		cp15->c1_sctlr = 0x00c50078;
 		break;
 	case ARM_CPUID_CORTEXA15:
+		cp15->c0_midr = cpuid;
+		cp15->c0_mpidr = (1 << 31) | vcpu->subid;
 		cp15->c0_cachetype = 0x8444c004;
 		cp15->c0_pfr0 = 0x00001131;
 		cp15->c0_pfr1 = 0x00011011;

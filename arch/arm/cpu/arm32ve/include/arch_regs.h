@@ -41,7 +41,8 @@ typedef struct arch_regs arch_regs_t;
 
 struct arm_priv_cp15 {
 	/* Coprocessor Registers */
-	u32 c0_cpuid;
+	u32 c0_midr;
+	u32 c0_mpidr;
 	u32 c0_cachetype;
 	u32 c0_pfr0;
 	u32 c0_pfr1;
@@ -99,6 +100,14 @@ struct arm_priv_cp15 {
 typedef struct arm_priv_cp15 arm_priv_cp15_t;
 
 struct arm_priv {
+	/* Internal CPU feature flags. */
+	u32 cpuid;
+	u64 features;
+	/* Hypervisor Configuration */
+	vmm_spinlock_t hcr_lock;
+	u32 hcr;
+	u32 hcptr;
+	u32 hstr;
 	/* Banked Registers */
 	u32 sp_usr;
 	u32 sp_svc; /* Supervisor Mode */
@@ -117,19 +126,10 @@ struct arm_priv {
 	u32 sp_fiq;
 	u32 lr_fiq;
 	u32 spsr_fiq;
-	/* Last host CPU on which this VCPU ran */
-	u32 last_hcpu;
-	/* Hypervisor Configuration */
-	vmm_spinlock_t hcr_lock;
-	u32 hcr;
-	/* Hypervisor Coprocessor Trap Register */
-	u32 hcptr;
-	/* Hypervisor System Trap Register */
-	u32 hstr;
-	/* Internal CPU feature flags. */
-	u64 features;
 	/* System control coprocessor (cp15) */
 	arm_priv_cp15_t cp15;
+	/* Last host CPU on which this VCPU ran */
+	u32 last_hcpu;
 	/* Generic timer context */
 	struct generic_timer_context gentimer_context;
 	/* VGIC context */
@@ -152,9 +152,11 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_priv(vcpu)		((arm_priv_t *)((vcpu)->arch_priv))
 #define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
 
-#define arm_cpuid(vcpu) (arm_priv(vcpu)->cp15.c0_cpuid)
-#define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1ULL << (feat)))
-#define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1ULL << (feat)))
+#define arm_cpuid(vcpu)		(arm_priv(vcpu)->cpuid)
+#define arm_set_feature(vcpu, feat) \
+			(arm_priv(vcpu)->features |= (0x1ULL << (feat)))
+#define arm_feature(vcpu, feat)	\
+			(arm_priv(vcpu)->features & (0x1ULL << (feat)))
 
 /**
  *  Instruction emulation support macros
@@ -171,12 +173,12 @@ typedef struct arm_guest_priv arm_guest_priv_t;
  *  VGIC support macros
  */
 #define arm_vgic_setup(vcpu, __save_func, __restore_func, __priv) \
-				do { \
-					arm_priv(vcpu)->vgic_avail = TRUE; \
-					arm_priv(vcpu)->vgic_save = __save_func; \
-					arm_priv(vcpu)->vgic_restore = __restore_func; \
-					arm_priv(vcpu)->vgic_priv = __priv; \
-				} while (0)
+			do { \
+				arm_priv(vcpu)->vgic_avail = TRUE; \
+				arm_priv(vcpu)->vgic_save = __save_func; \
+				arm_priv(vcpu)->vgic_restore = __restore_func;\
+				arm_priv(vcpu)->vgic_priv = __priv; \
+			} while (0)
 #define arm_vgic_cleanup(vcpu)	do { \
 					arm_priv(vcpu)->vgic_avail = FALSE; \
 					arm_priv(vcpu)->vgic_save = NULL; \

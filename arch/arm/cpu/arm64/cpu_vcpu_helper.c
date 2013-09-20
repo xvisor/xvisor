@@ -592,6 +592,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	arm_regs(vcpu)->pstate |= PSR_IRQ_DISABLED;
 	arm_regs(vcpu)->pstate |= PSR_FIQ_DISABLED;
 
+	/* First time initialization of private context */
 	if (!vcpu->reset_count) {
 		/* Alloc private context */
 		vcpu->arch_priv = vmm_zalloc(sizeof(arm_priv_t));

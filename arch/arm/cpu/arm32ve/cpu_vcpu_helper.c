@@ -607,11 +607,12 @@ int arch_guest_deinit(struct vmm_guest *guest)
 
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
-	u32 ite, cpuid = 0;
+	int rc, ite;
+	u32 cpuid = 0;
 	arm_priv_t *p;
 	const char *attr;
 	irq_flags_t flags;
-	/* Initialize User Mode Registers */
+
 	/* For both Orphan & Normal VCPUs */
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
 	arm_regs(vcpu)->pc = vcpu->start_pc;
@@ -627,11 +628,11 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_regs(vcpu)->cpsr |= CPSR_ASYNC_ABORT_DISABLED;
 		arm_regs(vcpu)->cpsr |= CPSR_MODE_HYPERVISOR;
 	}
-	/* Initialize Supervisor Mode Registers */
-	/* For only Normal VCPUs */
 	if (!vcpu->is_normal) {
 		return VMM_OK;
 	}
+
+	/* For only Normal VCPUs */
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
 	if (!attr) {
@@ -647,58 +648,19 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	} else {
 		return VMM_EFAIL;
 	}
+
+	/* First time initialization of private context */
 	if (!vcpu->reset_count) {
+		/* Alloc private context */
 		vcpu->arch_priv = vmm_zalloc(sizeof(arm_priv_t));
 		if (!vcpu->arch_priv) {
 			return VMM_EFAIL;
 		}
 		p = arm_priv(vcpu);
-	} else {
-		p = arm_priv(vcpu);
-		for (ite = 0; ite < CPU_FIQ_GPR_COUNT; ite++) {
-			p->gpr_fiq[ite] = 0x0;
-		}
-		p->sp_usr = 0x0;
-		p->sp_svc = 0x0;
-		p->lr_svc = 0x0;
-		p->spsr_svc = 0x0;
-		p->sp_abt = 0x0;
-		p->lr_abt = 0x0;
-		p->spsr_abt = 0x0;
-		p->sp_und = 0x0;
-		p->lr_und = 0x0;
-		p->spsr_und = 0x0;
-		p->sp_irq = 0x0;
-		p->lr_irq = 0x0;
-		p->spsr_irq = 0x0;
-		p->sp_fiq = 0x0;
-		p->lr_fiq = 0x0;
-		p->spsr_fiq = 0x0;
-	}
-	p->last_hcpu = 0xFFFFFFFF;
-	if (vcpu->reset_count == 0) {
-		/* Initialize Hypervisor Configuration */
-		INIT_SPIN_LOCK(&p->hcr_lock);
-		p->hcr = (HCR_TAC_MASK |
-				HCR_TSW_MASK |
-				HCR_TIDCP_MASK |
-				HCR_TSC_MASK |
-				HCR_TWI_MASK |
-				HCR_AMO_MASK |
-				HCR_IMO_MASK |
-				HCR_FMO_MASK |
-				HCR_SWIO_MASK |
-				HCR_VM_MASK);
-		/* Initialize Hypervisor Coprocessor Trap Register */
-		p->hcptr = (HCPTR_TCPAC_MASK |
-				 HCPTR_TTA_MASK |
-				 HCPTR_TASE_MASK |
-				 HCPTR_TCP_MASK);
-		/* Initialize Hypervisor System Trap Register */
-		p->hstr = (HSTR_TJDBX_MASK |
-				HSTR_TTEE_MASK |
-				HSTR_T9_MASK |
-				HSTR_T15_MASK);
+		/* Setup CPUID value expected by VCPU in MIDR register
+		 * as-per HW specifications.
+		 */
+		p->cpuid = cpuid;
 		/* Initialize VCPU features */
 		p->features = 0;
 		switch (cpuid) {
@@ -735,7 +697,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		default:
 			break;
 		};
-
 		/* Some features automatically imply others: */
 		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 			arm_set_feature(vcpu, ARM_FEATURE_VAPA);
@@ -775,25 +736,87 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		if (arm_feature(vcpu, ARM_FEATURE_LPAE)) {
 			arm_set_feature(vcpu, ARM_FEATURE_PXN);
 		}
-	} else {
-		/* Clear virtual exception bits in HCR */
-		vmm_spin_lock_irqsave(&p->hcr_lock, flags);
-		p->hcr &= ~(HCR_VA_MASK | HCR_VI_MASK | HCR_VF_MASK);
-		vmm_spin_unlock_irqrestore(&p->hcr_lock, flags);
-	}
-	/* Intialize Generic timer */
-	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-		attr = vmm_devtree_attrval(vcpu->node, "gentimer_phys_irq");
-		arm_gentimer_context(vcpu)->phys_timer_irq = (attr) ? (*(u32 *)attr) : 0;
-		attr = vmm_devtree_attrval(vcpu->node, "gentimer_virt_irq");
-		arm_gentimer_context(vcpu)->virt_timer_irq = (attr) ? (*(u32 *)attr) : 0;
-		generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
-	}
-	if (!vcpu->reset_count) {
+		/* Initialize Hypervisor Configuration */
+		INIT_SPIN_LOCK(&p->hcr_lock);
+		p->hcr = (HCR_TAC_MASK |
+				HCR_TSW_MASK |
+				HCR_TIDCP_MASK |
+				HCR_TSC_MASK |
+				HCR_TWI_MASK |
+				HCR_AMO_MASK |
+				HCR_IMO_MASK |
+				HCR_FMO_MASK |
+				HCR_SWIO_MASK |
+				HCR_VM_MASK);
+		p->hcptr = (HCPTR_TCPAC_MASK |
+				 HCPTR_TTA_MASK |
+				 HCPTR_TASE_MASK |
+				 HCPTR_TCP_MASK);
+		p->hstr = (HSTR_TJDBX_MASK |
+				HSTR_TTEE_MASK |
+				HSTR_T9_MASK |
+				HSTR_T15_MASK);
+		/* Intialize Generic timer */
+		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
+			attr = vmm_devtree_attrval(vcpu->node, 
+						   "gentimer_phys_irq");
+			arm_gentimer_context(vcpu)->phys_timer_irq = 
+						(attr) ? (*(u32 *)attr) : 0;
+			attr = vmm_devtree_attrval(vcpu->node, 
+						  "gentimer_virt_irq");
+			arm_gentimer_context(vcpu)->virt_timer_irq = 
+						(attr) ? (*(u32 *)attr) : 0;
+		}
 		/* Cleanup VGIC context first time */
 		arm_vgic_cleanup(vcpu);
 	}
-	return cpu_vcpu_cp15_init(vcpu, cpuid);
+
+	/* Get pointer to private context */
+	p = arm_priv(vcpu);
+
+	/* Clear virtual exception bits in HCR */
+	vmm_spin_lock_irqsave(&p->hcr_lock, flags);
+	p->hcr &= ~(HCR_VA_MASK | HCR_VI_MASK | HCR_VF_MASK);
+	vmm_spin_unlock_irqrestore(&p->hcr_lock, flags);
+
+	/* Reset banked registers which are required 
+	 * to have known values upon VCPU reset.
+	 */ 
+	for (ite = 0; ite < CPU_FIQ_GPR_COUNT; ite++) {
+		p->gpr_fiq[ite] = 0x0;
+	}
+	p->sp_usr = 0x0;
+	p->sp_svc = 0x0;
+	p->lr_svc = 0x0;
+	p->spsr_svc = 0x0;
+	p->sp_abt = 0x0;
+	p->lr_abt = 0x0;
+	p->spsr_abt = 0x0;
+	p->sp_und = 0x0;
+	p->lr_und = 0x0;
+	p->spsr_und = 0x0;
+	p->sp_irq = 0x0;
+	p->lr_irq = 0x0;
+	p->spsr_irq = 0x0;
+	p->sp_fiq = 0x0;
+	p->lr_fiq = 0x0;
+	p->spsr_fiq = 0x0;
+
+	/* Initialize VCPU CP15 context */
+	rc = cpu_vcpu_cp15_init(vcpu, cpuid);
+	if (rc) {
+		return rc;
+	}
+
+	/* Set last host CPU to invalid value */
+	p->last_hcpu = 0xFFFFFFFF;
+
+	/* Reset generic timer context */
+	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
+		generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
+	}
+
+	return VMM_OK;
 }
 
 int arch_vcpu_deinit(struct vmm_vcpu *vcpu)

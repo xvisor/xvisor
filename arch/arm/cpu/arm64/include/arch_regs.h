@@ -40,7 +40,7 @@ typedef struct arch_regs arch_regs_t;
 
 struct arm_priv {
 	/* Internal CPU feature flags. */
-	u64 cpuid;
+	u32 cpuid;
 	u64 features;
 	/* Hypervisor context */
 	vmm_spinlock_t hcr_lock;
@@ -111,8 +111,10 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
 
 #define arm_cpuid(vcpu)		(arm_priv(vcpu)->cpuid)
-#define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1ULL << (feat)))
-#define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1ULL << (feat)))
+#define arm_set_feature(vcpu, feat) \
+			(arm_priv(vcpu)->features |= (0x1ULL << (feat)))
+#define arm_feature(vcpu, feat)	\
+			(arm_priv(vcpu)->features & (0x1ULL << (feat)))
 
 /**
  *  Instruction emulation support macros
@@ -129,12 +131,12 @@ typedef struct arm_guest_priv arm_guest_priv_t;
  *  VGIC support macros
  */
 #define arm_vgic_setup(vcpu, __save_func, __restore_func, __priv) \
-				do { \
-					arm_priv(vcpu)->vgic_avail = TRUE; \
-					arm_priv(vcpu)->vgic_save = __save_func; \
-					arm_priv(vcpu)->vgic_restore = __restore_func; \
-					arm_priv(vcpu)->vgic_priv = __priv; \
-				} while (0)
+			do { \
+				arm_priv(vcpu)->vgic_avail = TRUE; \
+				arm_priv(vcpu)->vgic_save = __save_func; \
+				arm_priv(vcpu)->vgic_restore = __restore_func;\
+				arm_priv(vcpu)->vgic_priv = __priv; \
+			} while (0)
 #define arm_vgic_cleanup(vcpu)	do { \
 					arm_priv(vcpu)->vgic_avail = FALSE; \
 					arm_priv(vcpu)->vgic_save = NULL; \
