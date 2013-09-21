@@ -212,11 +212,11 @@ int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu,
 			rc = VMM_EFAIL;
 		}
 		if (!rc) {
-			cpu_vcpu_reg_write(vcpu, regs, Rt, t);
+			cpu_vcpu_reg64_write(vcpu, regs, Rt, t);
 		}
 	} else {
 		/* MCR CP15 */
-		t = cpu_vcpu_reg_read(vcpu, regs, Rt);
+		t = cpu_vcpu_reg64_read(vcpu, regs, Rt);
 		if (!cpu_vcpu_cp15_write(vcpu, regs, opc1, opc2, CRn, CRm, t)) {
 			rc = VMM_EFAIL;
 		}
@@ -262,7 +262,7 @@ int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu,
 	if (iss & ISS_MCR_MRC_DIR_MASK) {
 		/* MRC CP14 */
 		/* Read always zero. */
-		cpu_vcpu_reg_write(vcpu, regs, Rt, 0x0);
+		cpu_vcpu_reg64_write(vcpu, regs, Rt, 0x0);
 	} else {
 		/* MCR CP14 */
 		/* Ignore it. */
@@ -401,9 +401,9 @@ int cpu_vcpu_emulate_msr_mrs_system(struct vmm_vcpu *vcpu,
 			break;
 		case ISS_ACTLR_EL1:
 			if (read) {
-				cpu_vcpu_reg_write(vcpu, regs, rt, arm_priv(vcpu)->actlr);
+				cpu_vcpu_reg64_write(vcpu, regs, rt, arm_priv(vcpu)->actlr);
 			} else {
-				arm_priv(vcpu)->actlr = cpu_vcpu_reg_read(vcpu, regs, rt);
+				arm_priv(vcpu)->actlr = cpu_vcpu_reg64_read(vcpu, regs, rt);
 			}
 			regs->pc += 4;
 			return VMM_OK;
@@ -445,10 +445,10 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 					     &data8, sizeof(data8));
 		if (!rc) {
 			if (sse) {
-				cpu_vcpu_reg_write(vcpu, regs, srt, 
+				cpu_vcpu_reg64_write(vcpu, regs, srt, 
 					arm_sign_extend(data8, 8, 32));
 			} else {
-				cpu_vcpu_reg_write(vcpu, regs, srt, data8);
+				cpu_vcpu_reg64_write(vcpu, regs, srt, data8);
 			}
 		}
 		break;
@@ -457,10 +457,10 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 					     &data16, sizeof(data16));
 		if (!rc) {
 			if (sse) {
-				cpu_vcpu_reg_write(vcpu, regs, srt, 
+				cpu_vcpu_reg64_write(vcpu, regs, srt, 
 					arm_sign_extend(data16, 16, 32));
 			} else {
-				cpu_vcpu_reg_write(vcpu, regs, srt, data16);
+				cpu_vcpu_reg64_write(vcpu, regs, srt, data16);
 			}
 		}
 		break;
@@ -468,7 +468,7 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 		rc = vmm_devemu_emulate_read(vcpu, ipa, 
 					     &data32, sizeof(data32));
 		if (!rc) {
-			cpu_vcpu_reg_write(vcpu, regs, srt, data32);
+			cpu_vcpu_reg64_write(vcpu, regs, srt, data32);
 		}
 		break;
 	default:
@@ -503,17 +503,17 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 
 	switch (sas) {
 	case 0:
-		data8 = cpu_vcpu_reg_read(vcpu, regs, srt);
+		data8 = cpu_vcpu_reg64_read(vcpu, regs, srt);
 		rc = vmm_devemu_emulate_write(vcpu, ipa, 
 					      &data8, sizeof(data8));
 		break;
 	case 1:
-		data16 = cpu_vcpu_reg_read(vcpu, regs, srt);
+		data16 = cpu_vcpu_reg64_read(vcpu, regs, srt);
 		rc = vmm_devemu_emulate_write(vcpu, ipa, 
 					      &data16, sizeof(data16));
 		break;
 	case 2:
-		data32 = cpu_vcpu_reg_read(vcpu, regs, srt);
+		data32 = cpu_vcpu_reg64_read(vcpu, regs, srt);
 		rc = vmm_devemu_emulate_write(vcpu, ipa, 
 					      &data32, sizeof(data32));
 		break;

@@ -204,6 +204,47 @@ static void __cpu_vcpu_regmode32_write(arch_regs_t *regs,
 	};
 }
 
+u64 cpu_vcpu_reg64_read(struct vmm_vcpu *vcpu, 
+			arch_regs_t *regs, 
+			u32 reg) 
+{
+	u64 ret;
+
+	if (reg < CPU_GPR_COUNT) {
+		ret = regs->gpr[reg];
+	} else if (reg == 30) {
+		ret = regs->lr;
+	} else {
+		/* No such GPR */
+		ret = 0;
+	}
+
+	/* Truncate bits[63:32] for AArch32 mode */
+	if (regs->pstate & PSR_MODE32) {
+		ret = ret & 0xFFFFFFFFULL;
+	}
+
+	return ret;
+}
+
+void cpu_vcpu_reg64_write(struct vmm_vcpu *vcpu, 
+			  arch_regs_t *regs, 
+			  u32 reg, u64 val)
+{
+	/* Truncate bits[63:32] for AArch32 mode */
+	if (regs->pstate & PSR_MODE32) {
+		val = val & 0xFFFFFFFFULL;
+	}
+
+	if (reg < CPU_GPR_COUNT) {
+		regs->gpr[reg] = val;
+	} else if (reg == 30) {
+		regs->lr = val;
+	} else {
+		/* No such GPR */
+	}
+}
+
 u64 cpu_vcpu_reg_read(struct vmm_vcpu *vcpu, 
 		      arch_regs_t *regs, 
 		      u32 reg) 
@@ -212,7 +253,7 @@ u64 cpu_vcpu_reg_read(struct vmm_vcpu *vcpu,
 		return __cpu_vcpu_regmode32_read(regs, 
 				regs->pstate & PSR_MODE32_MASK, reg & 0xF);
 	} else {
-		return (regs->gpr[reg]);
+		return cpu_vcpu_reg64_read(vcpu, regs, reg);
 	}
 }
 
@@ -224,7 +265,7 @@ void cpu_vcpu_reg_write(struct vmm_vcpu *vcpu,
 		__cpu_vcpu_regmode32_write(regs, 
 			regs->pstate & PSR_MODE32_MASK, reg & 0xF, val);
 	} else {
-		regs->gpr[reg] = val;
+		cpu_vcpu_reg64_write(vcpu, regs, reg, val);
 	}
 }
 
