@@ -905,8 +905,11 @@ int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu *vcpu,
 
 	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1, far, &pg))) {
-		cpu_vcpu_halt(vcpu, regs);
-		return rc;
+		/* Remove fault address from VTLB and restart.
+		 * Doing this will force us to do TTBL walk If MMU 
+		 * is enabled then appropriate fault will be generated.
+		 */
+		return cpu_vcpu_cp15_vtlb_flush_va(vcpu, far);
 	}
 	if (((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) &&
 	    (pg.dom == TTBL_L1TBL_TTE_DOM_VCPU_SUPER)) {
