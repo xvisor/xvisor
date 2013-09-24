@@ -24,6 +24,7 @@
 #define _ARCH_TYPES_H__
 
 /** cpu specific types */
+typedef unsigned int size_t;
 typedef unsigned int irq_flags_t;
 typedef unsigned int virtual_addr_t;
 typedef unsigned int virtual_size_t;
