@@ -1,0 +1,54 @@
+			Xvisor v0.2.3
+		(Last Commit: ------------)
+		(Release Date: 29-Sep-2013)
+
+In this release, our prime focus has been code quality, SMP support,
+and newly introduced ARM64 (or ARMv8a or AArch64) port. In addition,
+we also have new drivers, features and emulators.
+
+New Features:
+ - Improved code quality using Coverity Scan
+ - Synchronous and Asynchronous IPIs for SMP Host (EXPERIMENTAL)
+ - Crude load balancer for SMP Host (EXPERIMENTAL)
+ - USB driver framework (EXPERIMENTAL)
+ - 64bit atomic operations
+ - Read-write spinlocks
+ - Statistics gathering for VCPU state transitions
+
+New Drivers:
+ - Sun4i MMC controller driver
+
+New Emulators:
+ - HW-assisted GICv2 (VGIC) emulator
+ - Power State and Coordination Interface (PSCI) emulator
+
+ARM 32-bit Port:
+ - Added hypercall instruction for WFE, YIELD and SEV instructions
+   to improve performance of SMP guests on SMP host
+ - Added hypercall instruction for SMC instruction based PSCI calls
+ - Use Image instead of zImage for booting Linux on VersatilePB,
+   Realview-EB-MPCore, Realview-PB-A8, and VExpress-A9 guests
+
+ARM 32-bit with VE Port:
+ - Enabled HW-assisted GICv2 (VGIC) emulation for Realview-PB-A8 and
+   VExpress-A15 guest on VExpress-A15 host
+ - Added data abort, prefetch abort and undefined expection injections
+ - Added support for HVC and SMC instruction based PSCI calls
+ - Use Image instead of zImage for booting Linux on VExpress-A15 guest
+
+ARM 64-bit Port:
+ - Introduced ARM64 port which is very similar to ARM32VE port because
+   of similarity in HW virtualization features supported by ARM32VE and
+   ARM64 CPUs
+ - Introduced complete DTB based Generic-v8 board support which will
+   enables us to boot same Xvisor binary on different ARM64 hosts
+ - Introduced fully para-virtualized Virt-v8 ARM64 guest having only 
+   VirtIO devices
+ - Supports both ARM32 and ARM64 guest on ARMv8 Foundation Model
+ - Supports HW-assisted GICv2 (VGIC) emulation for Realview-PB-A8,
+   VExpress-A15, and Virt-v8 guest on ARMv8 Foundation Model
+ - Supports HVC32, HVC64, SMC32 and SMC64 instructions based PSCI calls
+
+x86_64 Port:
+ - No significant updates
+
