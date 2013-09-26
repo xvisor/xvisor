@@ -32,22 +32,7 @@
  *  Copyright (C) 2009 emlix GmbH
  *  Author: Fabian Godehardt (added IrDA support for iMX)
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- * [29-Mar-2005] Mike Lee
- * Added hardware handshake
+ * The original source is licensed under GPL. 
  */
 
 #include <vmm_error.h>
@@ -252,8 +237,10 @@ void imx_lowlevel_putc(virtual_addr_t base, u8 ch)
 void imx_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 {
 	unsigned int temp = vmm_readl((void *)(base + UCR1));
+#if 0
 	unsigned int divider;
 	unsigned int remainder;
+#endif
 
 	/* First, disable everything */
 	temp &= ~UCR1_UARTEN;
