@@ -24,7 +24,7 @@
 # Current Version
 MAJOR = 0
 MINOR = 2
-RELEASE = 2
+RELEASE = 3
 
 # Find out source & build directories
 src_dir=$(CURDIR)
