@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.2
-# Sat Aug 24 21:09:30 2013
+# Version: 0.2.3
+# Fri Sep 27 22:57:08 2013
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -15,7 +15,7 @@ CONFIG_ARCH="arm"
 # CONFIG_CPU_CORTEX_A9 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
 CONFIG_CPU_GENERIC_V8=y
-CONFIG_CPU_COUNT=4
+CONFIG_CPU_COUNT=8
 # CONFIG_ARMV5 is not set
 # CONFIG_ARMV6 is not set
 # CONFIG_ARMV6K is not set
@@ -52,9 +52,11 @@ CONFIG_BOARD_GENERIC_V8=y
 CONFIG_BOARD="generic-v8"
 
 #
-# Generic-V8 Options
+# Generic-v8 Options
 #
-# CONFIG_FOUNDATION_V8_SKELETON_DTS is not set
+CONFIG_FOUNDATION_V8_ONE_GUEST_PB_A8_DTS=y
+CONFIG_FOUNDATION_V8_ONE_GUEST_VEXPRESS_A9_DTS=y
+CONFIG_FOUNDATION_V8_ONE_GUEST_VEXPRESS_A15_DTS=y
 CONFIG_FOUNDATION_V8_ONE_GUEST_VIRT_V8_DTS=y
 # CONFIG_ARM_VIC is not set
 CONFIG_ARM_GIC=y
