@@ -466,6 +466,9 @@ etharp_update_arp_entry(struct netif *netif, ip_addr_t *ipaddr, struct eth_addr 
   if (i < 0) {
     return (err_t)i;
   }
+  if (ARP_TABLE_SIZE <= i) {
+    return ERR_MEM;
+  }
 
 #if ETHARP_SUPPORT_STATIC_ENTRIES
   if (flags & ETHARP_FLAG_STATIC_ENTRY) {
