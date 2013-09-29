@@ -74,6 +74,19 @@ int vmm_threads_get_name(char *dst, struct vmm_thread *tinfo);
 /** Retrive thread state */
 int vmm_threads_get_state(struct vmm_thread *tinfo);
 
+/** Retrive host CPU assigned to given thread */
+int vmm_threads_get_hcpu(struct vmm_thread *tinfo, u32 *hcpu);
+
+/** Update host CPU assigned to given thread */
+int vmm_thread_set_hcpu(struct vmm_thread *tinfo, u32 hcpu);
+
+/** Retrive host CPU affinity of given thread */
+const struct vmm_cpumask *vmm_threads_get_affinity(struct vmm_thread *tinfo);
+
+/** Update host CPU affinity of given thread */
+int vmm_threads_set_affinity(struct vmm_thread *tinfo, 
+			     const struct vmm_cpumask *cpu_mask);
+
 /** Retrive thread instance from thread id */
 struct vmm_thread *vmm_threads_id2thread(u32 tid);
 

@@ -30,6 +30,10 @@
 					      : : "r" (0) : "memory")
 #define dmb()			asm volatile ("" : : : "memory")
 
+#define sev()
+#define wfe()
+#define wfi()
+
 #elif defined(CONFIG_ARMV6)
 
 #define isb()			asm volatile ("mcr p15, 0, %0, c7, c5, 4" \
@@ -39,11 +43,19 @@
 #define dmb()			asm volatile ("mcr p15, 0, %0, c7, c10, 5" \
 				    : : "r" (0) : "memory")
 
-#else
+#define sev()			asm volatile ("sev" : : : "memory")
+#define wfe()			asm volatile ("wfe" : : : "memory")
+#define wfi()			asm volatile ("wfi" : : : "memory")
+
+#else /* CONFIG_ARMV7 */
 
 #define isb() 			asm volatile ("isb" : : : "memory")
 #define dsb() 			asm volatile ("dsb" : : : "memory")
 #define dmb() 			asm volatile ("dmb" : : : "memory")
+
+#define sev()			asm volatile ("sev" : : : "memory")
+#define wfe()			asm volatile ("wfe" : : : "memory")
+#define wfi()			asm volatile ("wfi" : : : "memory")
 
 #endif
 

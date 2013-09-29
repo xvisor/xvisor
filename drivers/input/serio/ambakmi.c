@@ -151,8 +151,16 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 	io->write	= amba_kmi_write;
 	io->open	= amba_kmi_open;
 	io->close	= amba_kmi_close;
-	strncpy(io->name, dev->node->name, sizeof(io->name));
-	strncpy(io->phys, dev->node->name, sizeof(io->phys));
+	if (strlcpy(io->name, dev->node->name, sizeof(io->name)) >=
+	    sizeof(io->name)) {
+		ret = -EOVERFLOW;
+		goto out;
+	}
+	if (strlcpy(io->phys, dev->node->name, sizeof(io->phys)) >=
+	    sizeof(io->phys)) {
+		ret = -EOVERFLOW;
+		goto out;
+	}
 	io->port_data	= kmi;
 	io->dev		= dev;
 
@@ -184,8 +192,8 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
  unmap:
 	vmm_devtree_regunmap(dev->node, (virtual_addr_t)kmi->base, 0);
  out:
-	kfree(kmi);
-	kfree(io);
+	if (kmi) kfree(kmi);
+	if (io) kfree(io);
 	return ret;
 }
 

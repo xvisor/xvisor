@@ -91,6 +91,19 @@ static struct sdrc_params mt46h32m32lf6_sdrc_params[] = {
 	},
 };
 
+/*
+ * Print board information
+ */
+
+void arch_board_print_info(struct vmm_chardev *cdev)
+{
+	/* FIXME: To be implemented. */
+}
+
+/*
+ * Initialization functions
+ */
+
 int __init arch_board_early_init(void)
 {
 	int rc;

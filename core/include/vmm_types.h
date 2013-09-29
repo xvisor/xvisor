@@ -25,8 +25,6 @@
 #ifndef __VMM_TYPES_H__
 #define __VMM_TYPES_H__
 
-#include <arch_types.h>
-
 typedef char s8;
 typedef short s16;
 typedef int s32;
@@ -36,17 +34,18 @@ typedef unsigned int u32;
 typedef long long s64;
 typedef unsigned long long u64;
 
-typedef unsigned int size_t;
 typedef unsigned int bool;
-typedef unsigned int ulong;
+typedef unsigned long ulong;
 typedef signed int off_t;
 typedef signed long long loff_t;
 
 /** Boolean macros */
 #define TRUE			1
 #define FALSE			0
-#define true			1
-#define false			0
+#define true			TRUE
+#define false			FALSE	
 #define NULL 			((void *)0)
+
+#include <arch_types.h>
 
 #endif /* __VMM_TYPES_H__ */

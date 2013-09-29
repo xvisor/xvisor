@@ -33,7 +33,7 @@ RootFS for ARM Linux guest:
   # sudo chown -R root:root ./_install
 
   [8. Create RootFS image]
-  # fakeroot /bin/bash -c "genext2fs -b 5120 -N 1024 -D <xvisor_source_directory>/tests/arm32/busybox/busybox_dev.txt -d ./_install <busybox_rootfs_directory>/rootfs.img"
+  # fakeroot /bin/bash -c "genext2fs -b 5120 -N 1024 -D <xvisor_source_directory>/tests/arm32/common/busybox/busybox_dev.txt -d ./_install <busybox_rootfs_directory>/rootfs.img"
 
   (Note: <busybox_rootfs_directory>/rootfs.img is our final RAMDISK)
   (Note: replace all <> brackets based on your workspace)

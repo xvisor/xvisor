@@ -61,6 +61,11 @@ bool fifo_enqueue(struct fifo *f, void *src, bool overwrite);
  */
 bool fifo_dequeue(struct fifo *f, void *dst);
 
+/** Clear (or empty) the FIFO
+ *  @returns TRUE on success and FALSE on failure
+ */
+bool fifo_clear(struct fifo *f);
+
 /** Get element from given logical index
  *  @returns TRUE on success and FALSE on failure
  */

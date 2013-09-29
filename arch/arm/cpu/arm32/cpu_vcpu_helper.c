@@ -40,7 +40,7 @@ void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 		return;
 	}
 
-	if (vcpu->state != VMM_VCPU_STATE_HALTED) {
+	if (vmm_manager_vcpu_get_state(vcpu) != VMM_VCPU_STATE_HALTED) {
 		vmm_printf("\n");
 		cpu_vcpu_dump_user_reg(vcpu, regs);
 		vmm_manager_vcpu_halt(vcpu);
@@ -235,7 +235,7 @@ void cpu_vcpu_cpsr_update(struct vmm_vcpu *vcpu,
 	bool mode_change;
 
 	/* Sanity check */
-	if (!vcpu && !vcpu->is_normal && !regs) {
+	if (!vcpu || !vcpu->is_normal || !regs) {
 		return;
 	}
 	new_cpsr &= new_cpsr_mask;
@@ -297,7 +297,7 @@ int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu,
 			 u32 new_spsr_mask)
 {
 	/* Sanity check */
-	if (!vcpu && !vcpu->is_normal) {
+	if (!vcpu || !vcpu->is_normal) {
 		return VMM_EFAIL;
 	}
 	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
@@ -760,6 +760,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
+	if (!attr) {
+		return VMM_EFAIL;
+	}
 	if (strcmp(attr, "armv5te,arm926ej") == 0) {
 		cpuid = ARM_CPUID_ARM926;
 	} else if (strcmp(attr, "armv6,arm11mp") == 0) {
@@ -960,72 +963,78 @@ void arch_vcpu_preempt_orphan(void)
 	asm volatile ("svc #0\t\n");
 }
 
-void cpu_vcpu_dump_user_reg(struct vmm_vcpu *vcpu, arch_regs_t *regs)
+static void __cpu_vcpu_dump_user_reg(struct vmm_chardev *cdev, 
+				     struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	u32 ite;
-	vmm_printf("  Core Registers\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       PC=0x%08x\n",
-		   regs->sp, regs->lr, regs->pc);
-	vmm_printf("    CPSR=0x%08x     \n", 
-				cpu_vcpu_cpsr_retrieve(vcpu, regs));
-	vmm_printf("  General Purpose Registers");
+	vmm_cprintf(cdev, "  Core Registers\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       PC=0x%08x\n",
+		    regs->sp, regs->lr, regs->pc);
+	vmm_cprintf(cdev, "    CPSR=0x%08x     \n", 
+		    cpu_vcpu_cpsr_retrieve(vcpu, regs));
+	vmm_cprintf(cdev, "  General Purpose Registers");
 	for (ite = 0; ite < CPU_GPR_COUNT; ite++) {
 		if (ite % 3 == 0)
-			vmm_printf("\n");
-		vmm_printf("    R%02d=0x%08x  ", ite, regs->gpr[ite]);
+			vmm_cprintf(cdev, "\n");
+		vmm_cprintf(cdev, "    R%02d=0x%08x  ", ite, regs->gpr[ite]);
 	}
-	vmm_printf("\n");
+	vmm_cprintf(cdev, "\n");
 }
 
-void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu)
+void cpu_vcpu_dump_user_reg(struct vmm_vcpu *vcpu, arch_regs_t *regs)
+{
+	__cpu_vcpu_dump_user_reg(NULL, vcpu, regs);
+}
+
+void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
 	u32 ite;
 
 	/* For both Normal & Orphan VCPUs */
-	cpu_vcpu_dump_user_reg(vcpu, arm_regs(vcpu));
+	__cpu_vcpu_dump_user_reg(cdev, vcpu, arm_regs(vcpu));
 
 	/* For only Normal VCPUs */
 	if (!vcpu->is_normal) {
 		return;
 	}
 
-	vmm_printf("  User Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x\n",
-		   arm_priv(vcpu)->sp_usr, arm_priv(vcpu)->lr_usr);
-	vmm_printf("  Supervisor Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   arm_priv(vcpu)->sp_svc, arm_priv(vcpu)->lr_svc,
-		   arm_priv(vcpu)->spsr_svc);
-	vmm_printf("  Monitor Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   arm_priv(vcpu)->sp_mon, arm_priv(vcpu)->lr_mon,
-		   arm_priv(vcpu)->spsr_mon);
-	vmm_printf("  Abort Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   arm_priv(vcpu)->sp_abt, arm_priv(vcpu)->lr_abt,
-		   arm_priv(vcpu)->spsr_abt);
-	vmm_printf("  Undefined Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   arm_priv(vcpu)->sp_und, arm_priv(vcpu)->lr_und,
-		   arm_priv(vcpu)->spsr_und);
-	vmm_printf("  IRQ Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		   arm_priv(vcpu)->sp_irq, arm_priv(vcpu)->lr_irq,
-		   arm_priv(vcpu)->spsr_irq);
-	vmm_printf("  FIQ Mode Registers (Banked)\n");
-	vmm_printf("    SP=0x%08x       LR=0x%08x       SPSR=0x%08x",
-		   arm_priv(vcpu)->sp_fiq, arm_priv(vcpu)->lr_fiq,
-		   arm_priv(vcpu)->spsr_fiq);
+	vmm_cprintf(cdev, "  User Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x\n",
+		    arm_priv(vcpu)->sp_usr, arm_priv(vcpu)->lr_usr);
+	vmm_cprintf(cdev, "  Supervisor Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
+		    arm_priv(vcpu)->sp_svc, arm_priv(vcpu)->lr_svc,
+		    arm_priv(vcpu)->spsr_svc);
+	vmm_cprintf(cdev, "  Monitor Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
+		    arm_priv(vcpu)->sp_mon, arm_priv(vcpu)->lr_mon,
+		    arm_priv(vcpu)->spsr_mon);
+	vmm_cprintf(cdev, "  Abort Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
+		    arm_priv(vcpu)->sp_abt, arm_priv(vcpu)->lr_abt,
+		    arm_priv(vcpu)->spsr_abt);
+	vmm_cprintf(cdev, "  Undefined Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
+		    arm_priv(vcpu)->sp_und, arm_priv(vcpu)->lr_und,
+		    arm_priv(vcpu)->spsr_und);
+	vmm_cprintf(cdev, "  IRQ Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
+		    arm_priv(vcpu)->sp_irq, arm_priv(vcpu)->lr_irq,
+		    arm_priv(vcpu)->spsr_irq);
+	vmm_cprintf(cdev, "  FIQ Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x",
+		    arm_priv(vcpu)->sp_fiq, arm_priv(vcpu)->lr_fiq,
+		    arm_priv(vcpu)->spsr_fiq);
 	for (ite = 0; ite < 5; ite++) {
 		if (ite % 3 == 0)
-			vmm_printf("\n");
-		vmm_printf("    R%02d=0x%08x  ", (ite + 8),
-			   arm_priv(vcpu)->gpr_fiq[ite]);
+			vmm_cprintf(cdev, "\n");
+		vmm_cprintf(cdev, "    R%02d=0x%08x  ", (ite + 8),
+			    arm_priv(vcpu)->gpr_fiq[ite]);
 	}
-	vmm_printf("\n");
+	vmm_cprintf(cdev, "\n");
 }
 
-void arch_vcpu_stat_dump(struct vmm_vcpu * vcpu)
+void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
-	vmm_printf("No VCPU stats available.\n");
+	/* For now no arch specific stats */
 }

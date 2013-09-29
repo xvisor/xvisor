@@ -45,6 +45,14 @@ int arm_board_pic_eoi_irq(u32 irq);
 int arm_board_pic_mask(u32 irq);
 int arm_board_pic_unmask(u32 irq);
 
+void arm_board_timer_enable(void);
+void arm_board_timer_disable(void);
+u64 arm_board_timer_irqcount(void);
+u64 arm_board_timer_irqdelay(void);
+u64 arm_board_timer_timestamp(void);
+void arm_board_timer_change_period(u32 usecs);
+int arm_board_timer_init(u32 usecs);
+
 int arm_board_serial_init(void);
 void arm_board_serial_putc(char ch);
 char arm_board_serial_getc(void);

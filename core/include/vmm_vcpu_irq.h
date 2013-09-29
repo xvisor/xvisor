@@ -33,14 +33,18 @@
 void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs);
 
 /** Assert an irq to given vcpu */
-void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u32 reason);
+void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason);
 
 /** Deassert active irq of given vcpu */
 void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no);
 
-/** Wait for irq on given vcpu */
+/** Forcefully resume given VCPU if waiting for irq */
+int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu);
+
+/** Wait for irq on given vcpu with some timeout */
 int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs);
 
+/** Wait for irq on given vcpu indefinetly (no timeout) */
 #define vmm_vcpu_irq_wait(vcpu)	vmm_vcpu_irq_wait_timeout(vcpu, 0)
 
 /** Initialize interrupts for given vcpu */
@@ -48,6 +52,5 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu);
 
 /** Deinitialize interrupts for given vcpu */
 int vmm_vcpu_irq_deinit(struct vmm_vcpu *vcpu);
-
 
 #endif

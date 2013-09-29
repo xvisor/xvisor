@@ -32,6 +32,7 @@ cpu-objs-y+= start.o
 #list so that we know what is to be done.
 #
 cpu-objs-y+= cpu_atomic.o
+cpu-objs-y+= cpu_atomic64.o
 #ifdef CONFIG_SMP
 #cpu-objs-y+= cpu_locks.o
 #endif
@@ -42,8 +43,8 @@ cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_irq.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_mmu.o
-#cpu-objs-y+= cpu_vcpu_mmu.o
-#cpu-objs-y+= cpu_genex.o
-#cpu-objs-y+= cpu_vcpu_emulate.o
+cpu-objs-y+= dumpstack.o
+cpu-objs-y+= dumpstack_64.o
+cpu-objs-y+= stacktrace.o
 cpu-objs-y+= cpu_interrupt_handlers.o
 cpu-objs-$(CONFIG_LOCAL_APIC) += cpu_apic.o

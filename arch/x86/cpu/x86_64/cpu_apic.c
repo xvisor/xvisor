@@ -242,6 +242,9 @@ int detect_ioapics(unsigned int *nr_ioapics)
 
 	aval = vmm_devtree_attrval(node, VMM_DEVTREE_NR_IOAPIC_ATTR_NAME);
 
+	if (!aval)
+		return VMM_ENODEV;
+
 	if (nr_ioapics) *nr_ioapics = *aval;
 
 	while (n < *aval) {
@@ -257,6 +260,9 @@ int detect_ioapics(unsigned int *nr_ioapics)
 		BUG_ON(node == NULL);
 
 		base = vmm_devtree_attrval(node, VMM_DEVTREE_IOAPIC_PADDR_ATTR_NAME);
+
+		if (!base)
+			return VMM_ENODEV;
 
 		vmm_snprintf((char *)&io_apic[n].name, APIC_NAME_LEN, "IOAPIC-%d", n);
 		io_apic[n].id = n;

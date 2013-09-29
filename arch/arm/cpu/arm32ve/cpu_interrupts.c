@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_host_irq.h>
 #include <vmm_scheduler.h>
@@ -32,34 +33,76 @@
 
 void do_undef_inst(arch_regs_t *regs)
 {
-	vmm_printf("%s: unexpected exception\n", __func__);
+	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
+
+	vmm_printf("%s: CPU%d unexpected exception\n",
+		   __func__, vmm_smp_processor_id());
+	vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
+		   __func__, (vcpu) ? vcpu->name : "(NULL)", 
+		   read_hsr());
+	vmm_printf("%s: HPFAR=0x%08x HIFAR=0x%08x HDFAR=0x%08x\n",
+		   __func__, read_hpfar(), read_hifar(), read_hdfar());
+
 	cpu_vcpu_dump_user_reg(regs);
+
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
 void do_soft_irq(arch_regs_t *regs)
 {
+	struct vmm_vcpu *vcpu;
+
 	if ((regs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_HYPERVISOR) {
 		vmm_scheduler_preempt_orphan(regs);
 		return;
 	} else {
-		vmm_printf("%s: unexpected exception\n", __func__);
+		vcpu = vmm_scheduler_current_vcpu();
+
+		vmm_printf("%s: CPU%d unexpected exception\n",
+			   __func__, vmm_smp_processor_id());
+		vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
+			   __func__, (vcpu) ? vcpu->name : "(NULL)", 
+			   read_hsr());
+		vmm_printf("%s: HPFAR=0x%08x HIFAR=0x%08x HDFAR=0x%08x\n",
+			   __func__, read_hpfar(), read_hifar(), read_hdfar());
+
 		cpu_vcpu_dump_user_reg(regs);
+
 		vmm_panic("%s: please reboot ...\n", __func__);
 	}
 }
 
 void do_prefetch_abort(arch_regs_t *regs)
 {
-	vmm_printf("%s: unexpected exception\n", __func__);
+	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
+
+	vmm_printf("%s: CPU%d unexpected exception\n",
+		   __func__, vmm_smp_processor_id());
+	vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
+		   __func__, (vcpu) ? vcpu->name : "(NULL)", 
+		   read_hsr());
+	vmm_printf("%s: HPFAR=0x%08x HIFAR=0x%08x HDFAR=0x%08x\n",
+		   __func__, read_hpfar(), read_hifar(), read_hdfar());
+
 	cpu_vcpu_dump_user_reg(regs);
+
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
 void do_data_abort(arch_regs_t *regs)
 {
-	vmm_printf("%s: unexpected exception\n", __func__);
+	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
+
+	vmm_printf("%s: CPU%d unexpected exception\n",
+		   __func__, vmm_smp_processor_id());
+	vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
+		   __func__, (vcpu) ? vcpu->name : "(NULL)", 
+		   read_hsr());
+	vmm_printf("%s: HPFAR=0x%08x HIFAR=0x%08x HDFAR=0x%08x\n",
+		   __func__, read_hpfar(), read_hifar(), read_hdfar());
+
 	cpu_vcpu_dump_user_reg(regs);
+
 	vmm_panic("%s: please reboot ...\n", __func__);
 }
 
@@ -68,7 +111,7 @@ void do_hyp_trap(arch_regs_t *regs)
 	int rc = VMM_OK;
 	u32 hsr, ec, il, iss;
 	virtual_addr_t far;
-	physical_addr_t fipa;
+	physical_addr_t fipa = 0;
 	struct vmm_vcpu *vcpu;
 
 	hsr = read_hsr();
@@ -76,21 +119,25 @@ void do_hyp_trap(arch_regs_t *regs)
 	il = (hsr & HSR_IL_MASK) >> HSR_IL_SHIFT;
 	iss = (hsr & HSR_ISS_MASK) >> HSR_ISS_SHIFT;
 
+	vcpu = vmm_scheduler_current_vcpu();
+
 	/* We dont expect any faults from hypervisor code itself 
 	 * so, any trap we get from hypervisor mode means something
 	 * unexpected has occured.
 	 */
 	if ((regs->cpsr & CPSR_MODE_MASK) == CPSR_MODE_HYPERVISOR) {
-		vmm_printf("%s: unexpected exception\n", __func__);
-		vmm_printf("%s: ec=0x%x, il=0x%x, iss=0x%x\n", 
-			   __func__, ec, il, iss);
+		vmm_printf("%s: CPU%d unexpected exception\n", 
+			   __func__, vmm_smp_processor_id());
+		vmm_printf("%s: Current VCPU=%s HSR=0x%08x\n",
+			   __func__, (vcpu) ? vcpu->name : "(NULL)", 
+			   read_hsr());
+		vmm_printf("%s: HPFAR=0x%08x HIFAR=0x%08x HDFAR=0x%08x\n",
+			   __func__, read_hpfar(), read_hifar(), read_hdfar());
 		cpu_vcpu_dump_user_reg(regs);
 		vmm_panic("%s: please reboot ...\n", __func__);
 	}
 
 	vmm_scheduler_irq_enter(regs, TRUE);
-
-	vcpu = vmm_scheduler_current_vcpu();
 
 	switch (ec) {
 	case EC_UNKNOWN:
@@ -146,8 +193,8 @@ void do_hyp_trap(arch_regs_t *regs)
 		rc = cpu_vcpu_emulate_hvc(vcpu, regs, il, iss);
 		break;
 	case EC_TRAP_SMC:
-		/* We dont expect to get this trap so error */
-		rc = VMM_EFAIL;
+		/* System Monitor Call or SMC emulation */
+		rc = cpu_vcpu_emulate_smc(vcpu, regs, il, iss);
 		break;
 	case EC_TRAP_STAGE2_INST_ABORT:
 		/* Stage2 instruction abort */
@@ -183,7 +230,7 @@ void do_hyp_trap(arch_regs_t *regs)
 		vmm_printf("\n%s: ec=0x%x, il=0x%x, iss=0x%x,"
 			   " fipa=0x%x, error=%d\n", __func__,
 			   ec, il, iss, fipa, rc);
-		if (vcpu->state != VMM_VCPU_STATE_HALTED) {
+		if (vmm_manager_vcpu_get_state(vcpu) != VMM_VCPU_STATE_HALTED) {
 			cpu_vcpu_halt(vcpu, regs);
 		}
 	}

@@ -48,6 +48,15 @@ int arch_board_shutdown(void)
 }
 
 /*
+ * Print board information
+ */
+
+void arch_board_print_info(struct vmm_chardev *cdev)
+{
+	/* FIXME: To be implemented. */
+}
+
+/*
  * Initialization functions
  */
 

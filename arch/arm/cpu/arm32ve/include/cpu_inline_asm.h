@@ -134,6 +134,22 @@
 				" mcr     p15, 0, %0, c5, c0, 1\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
+#define read_adfsr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c5, c1, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_adfsr(val)	asm volatile(\
+				" mcr     p15, 0, %0, c5, c1, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_aifsr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c5, c1, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_aifsr(val)	asm volatile(\
+				" mcr     p15, 0, %0, c5, c1, 1\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
 #define read_dfar()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c6, c0, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})

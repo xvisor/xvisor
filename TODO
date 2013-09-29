@@ -2,7 +2,6 @@
 		High-Priority Features (For version 0.2.x)
 
  * Add support for SMP systems
- * Add block device virtualization
  * Add frame buffer virtualization
  * Add input device (mouse/keyboard) virtualization
  * Add libvirt tools support

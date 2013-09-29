@@ -639,12 +639,10 @@ struct vmm_input_dev *vmm_input_alloc_device(void)
 {
 	struct vmm_input_dev *idev;
 
-	idev = vmm_malloc(sizeof(struct vmm_input_dev));
+	idev = vmm_zalloc(sizeof(struct vmm_input_dev));
 	if (!idev) {
 		return NULL;
 	}
-
-	memset(idev, 0, sizeof(struct vmm_input_dev));
 
 	INIT_LIST_HEAD(&idev->head);
 	INIT_SPIN_LOCK(&idev->event_lock);
@@ -730,22 +728,23 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_malloc(sizeof(struct vmm_classdev));
+	cd = vmm_zalloc(sizeof(struct vmm_classdev));
 	if (!cd) {
 		return VMM_EFAIL;
 	}
 
-	memset(cd, 0, sizeof(struct vmm_classdev));
-
 	INIT_LIST_HEAD(&cd->head);
-	strcpy(cd->name, idev->phys);
+	if (strlcpy(cd->name, idev->phys, sizeof(cd->name)) >=
+	    sizeof(cd->name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_classdev;
+	}
 	cd->dev = idev->dev;
 	cd->priv = idev;
 
 	rc = vmm_devdrv_register_classdev(VMM_INPUT_DEV_CLASS_NAME, cd);
 	if (rc != VMM_OK) {
-		vmm_free(cd);
-		return rc;
+		goto free_classdev;
 	}
 
 	/* Every input device generates EV_SYN/SYN_REPORT events. */
@@ -798,6 +797,10 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 	list_add_tail(&idev->head, &ictrl.dev_list);
 	vmm_spin_unlock_irqrestore(&ictrl.dev_list_lock, flags);
 
+	return rc;
+
+free_classdev:
+	vmm_free(cd);
 	return rc;
 }
 VMM_EXPORT_SYMBOL(vmm_input_register_device);
@@ -1216,22 +1219,28 @@ static int __init vmm_input_init(void)
 		ictrl.hnd_conn_count[i] = 0;
 	}
 
-	c = vmm_malloc(sizeof(struct vmm_class));
+	c = vmm_zalloc(sizeof(struct vmm_class));
 	if (!c) {
 		return VMM_EFAIL;
 	}
 
-	memset(c, 0, sizeof(struct vmm_class));
-
 	INIT_LIST_HEAD(&c->head);
-	strcpy(c->name, VMM_INPUT_DEV_CLASS_NAME);
+	if (strlcpy(c->name, VMM_INPUT_DEV_CLASS_NAME, sizeof(c->name)) >=
+            sizeof(c->name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_class;
+	}
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);
 	if (rc != VMM_OK) {
-		vmm_free(c);
+		goto free_class;
 	}
 
+	return rc;
+
+free_class:
+	vmm_free(c);
 	return rc;
 }
 

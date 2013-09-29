@@ -49,10 +49,10 @@ int vmm_host_ram_alloc(physical_addr_t *pa, physical_size_t sz, bool aligned)
 
 	bcnt = VMM_SIZE_TO_PAGE(sz);
 
-	vmm_spin_lock_irqsave(&rctrl.ram_bmap_lock, flags);
+	vmm_spin_lock_irqsave_lite(&rctrl.ram_bmap_lock, flags);
 
 	if (rctrl.ram_bmap_free < bcnt) {
-		vmm_spin_unlock_irqrestore(&rctrl.ram_bmap_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -81,7 +81,7 @@ int vmm_host_ram_alloc(physical_addr_t *pa, physical_size_t sz, bool aligned)
 		}
 	}
 	if (!found) {
-		vmm_spin_unlock_irqrestore(&rctrl.ram_bmap_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -89,7 +89,7 @@ int vmm_host_ram_alloc(physical_addr_t *pa, physical_size_t sz, bool aligned)
 	bitmap_set(rctrl.ram_bmap, bpos, bcnt);
 	rctrl.ram_bmap_free -= bcnt;
 
-	vmm_spin_unlock_irqrestore(&rctrl.ram_bmap_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
 
 	return VMM_OK;
 }
@@ -106,10 +106,10 @@ int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz)
 
 	bcnt = VMM_SIZE_TO_PAGE(sz);
 
-	vmm_spin_lock_irqsave(&rctrl.ram_bmap_lock, flags);
+	vmm_spin_lock_irqsave_lite(&rctrl.ram_bmap_lock, flags);
 
 	if (rctrl.ram_bmap_free < bcnt) {
-		vmm_spin_unlock_irqrestore(&rctrl.ram_bmap_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
 		return VMM_EFAIL;
 	}
 
@@ -123,14 +123,14 @@ int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz)
 	}
 
 	if (bfree != bcnt) {
-		vmm_spin_unlock_irqrestore(&rctrl.ram_bmap_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
 		return VMM_EFAIL;
 	}
 
 	bitmap_set(rctrl.ram_bmap, bpos, bcnt);
 	rctrl.ram_bmap_free -= bcnt;
 
-	vmm_spin_unlock_irqrestore(&rctrl.ram_bmap_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
 
 	return VMM_OK;
 }
@@ -148,12 +148,12 @@ int vmm_host_ram_free(physical_addr_t pa, physical_size_t sz)
 	bcnt = VMM_SIZE_TO_PAGE(sz);
 	bpos = (pa - rctrl.ram_start) >> VMM_PAGE_SHIFT;
 
-	vmm_spin_lock_irqsave(&rctrl.ram_bmap_lock, flags);
+	vmm_spin_lock_irqsave_lite(&rctrl.ram_bmap_lock, flags);
 
 	bitmap_clear(rctrl.ram_bmap, bpos, bcnt);
 	rctrl.ram_bmap_free += bcnt;
 
-	vmm_spin_unlock_irqrestore(&rctrl.ram_bmap_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
 
 	return VMM_OK;
 }
@@ -176,13 +176,13 @@ bool vmm_host_ram_frame_isfree(physical_addr_t pa)
 
 	bpos = (pa - rctrl.ram_start) >> VMM_PAGE_SHIFT;
 
-	vmm_spin_lock_irqsave(&rctrl.ram_bmap_lock, flags);
+	vmm_spin_lock_irqsave_lite(&rctrl.ram_bmap_lock, flags);
 
 	if (bitmap_isset(rctrl.ram_bmap, bpos)) {
 		ret = FALSE;
 	}
 
-	vmm_spin_unlock_irqrestore(&rctrl.ram_bmap_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
 
 	return ret;
 }
@@ -192,9 +192,9 @@ u32 vmm_host_ram_free_frame_count(void)
 	u32 ret;
 	irq_flags_t flags;
 
-	vmm_spin_lock_irqsave(&rctrl.ram_bmap_lock, flags);
+	vmm_spin_lock_irqsave_lite(&rctrl.ram_bmap_lock, flags);
 	ret = rctrl.ram_bmap_free;
-	vmm_spin_unlock_irqrestore(&rctrl.ram_bmap_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
 
 	return ret;
 }

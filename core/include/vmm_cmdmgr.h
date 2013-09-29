@@ -23,14 +23,15 @@
 #ifndef _VMM_CMDMGR_H__
 #define _VMM_CMDMGR_H__
 
+#include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_chardev.h>
 #include <libs/list.h>
 
 struct vmm_cmd {
 	struct dlist head;
-	char name[32];
-	char desc[72];
+	char name[VMM_FIELD_NAME_SIZE];
+	char desc[VMM_FIELD_DESC_SIZE];
 	void (*usage) (struct vmm_chardev *);
 	int (*exec) (struct vmm_chardev *, int, char **);
 };

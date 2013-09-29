@@ -26,6 +26,8 @@
 #include <vmm_stdio.h>
 #include <vmm_timer.h>
 #include <vmm_devtree.h>
+#include <vmm_mutex.h>
+#include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <libs/netstack.h>
 

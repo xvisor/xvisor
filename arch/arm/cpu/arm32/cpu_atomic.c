@@ -27,23 +27,24 @@
 #include <vmm_compiler.h>
 #include <arch_cpu_irq.h>
 #include <arch_barrier.h>
+#include <arch_atomic.h>
 
 #if defined(CONFIG_ARMV5)
 
-long __lock arch_atomic_read(atomic_t * atom)
+long __lock arch_atomic_read(atomic_t *atom)
 {
 	long ret = atom->counter;
 	arch_rmb();
 	return ret;
 }
 
-void __lock arch_atomic_write(atomic_t * atom, long value)
+void __lock arch_atomic_write(atomic_t *atom, long value)
 {
 	atom->counter = value;
 	arch_wmb();
 }
 
-void __lock arch_atomic_add(atomic_t * atom, long value)
+void __lock arch_atomic_add(atomic_t *atom, long value)
 {
 	irq_flags_t flags;
 
@@ -52,7 +53,7 @@ void __lock arch_atomic_add(atomic_t * atom, long value)
 	arch_cpu_irq_restore(flags);
 }
 
-void __lock arch_atomic_sub(atomic_t * atom, long value)
+void __lock arch_atomic_sub(atomic_t *atom, long value)
 {
 	irq_flags_t flags;
 
@@ -61,63 +62,63 @@ void __lock arch_atomic_sub(atomic_t * atom, long value)
 	arch_cpu_irq_restore(flags);
 }
 
-bool __lock arch_atomic_testnset(atomic_t * atom, long test, long value)
+long __lock arch_atomic_add_return(atomic_t *atom, long value)
 {
-	bool ret = FALSE;
+	long temp;
 	irq_flags_t flags;
 
 	arch_cpu_irq_save(flags);
-        if (atom->counter == test) {
-		ret = TRUE;
-                atom->counter = value;
+	atom->counter += value;
+	temp = atom->counter;
+	arch_cpu_irq_restore(flags);
+
+	return temp;
+}
+
+long __lock arch_atomic_sub_return(atomic_t *atom, long value)
+{
+	long temp;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	atom->counter -= value;
+	temp = atom->counter;
+	arch_cpu_irq_restore(flags);
+
+	return temp;
+}
+
+long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
+{
+	long previous;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	previous = atom->counter;
+        if (previous == oldval) {
+                atom->counter = newval;
 	}
 	arch_cpu_irq_restore(flags);
 
-        return ret;
-}
-
-long __lock arch_atomic_add_return(atomic_t * atom, long value)
-{
-	long temp;
-	irq_flags_t flags;
-
-	arch_cpu_irq_save(flags);
-	atom->counter += value;
-	temp = atom->counter;
-	arch_cpu_irq_restore(flags);
-
-	return temp;
-}
-
-long __lock arch_atomic_sub_return(atomic_t * atom, long value)
-{
-	long temp;
-	irq_flags_t flags;
-
-	arch_cpu_irq_save(flags);
-	atom->counter -= value;
-	temp = atom->counter;
-	arch_cpu_irq_restore(flags);
-
-	return temp;
+        return previous;
 }
 
 #else
 
-long __lock arch_atomic_read(atomic_t * atom)
+long __lock arch_atomic_read(atomic_t *atom)
 {
 	long ret = atom->counter;
 	arch_rmb();
 	return ret;
 }
 
-void __lock arch_atomic_write(atomic_t * atom, long value)
+void __lock arch_atomic_write(atomic_t *atom, long value)
 {
 	atom->counter = value;
 	arch_wmb();
 }
 
-void __lock arch_atomic_add(atomic_t * atom, long value)
+void __lock arch_atomic_add(atomic_t *atom, long value)
 {
 	unsigned int tmp;
 	long result;
@@ -136,7 +137,7 @@ void __lock arch_atomic_add(atomic_t * atom, long value)
 	:"cc");
 }
 
-void __lock arch_atomic_sub(atomic_t * atom, long value)
+void __lock arch_atomic_sub(atomic_t *atom, long value)
 {
 	unsigned int tmp;
 	long result;
@@ -155,28 +156,7 @@ void __lock arch_atomic_sub(atomic_t * atom, long value)
 	:"cc");
 }
 
-bool __lock arch_atomic_testnset(atomic_t * atom, long test, long value)
-{
-	unsigned int tmp;
-	long previous;
-
-	__asm__ __volatile__("@ atomic_testnset\n"
-"1:	ldrex  %1, [%3]\n"	/* load atom->counter(%3) to previous (%1) */
-"	mov	%0, #0\n"	/* load 0 to tmp (%0) */
-"	teq	%1, %4\n"	/* compare previous (%1) and test (%4) */
-"	strexeq %0, %5, [%3]\n"	/* if equal, store value (%5) to atom->counter
-				 * result of the operation is in tmp (%0)
-				 */
-"	teq     %0, #0\n"	/* Compare tmp (%0) result with 0 */
-"	bne     1b"		/* If fails go back to 1 and retry */
-	:"=&r"(tmp), "=&r"(previous), "+Qo"(atom->counter)
-	:"r"(&atom->counter), "Ir"(test), "r"(value)
-	:"cc");
-
-	return (previous == test);
-}
-
-long __lock arch_atomic_add_return(atomic_t * atom, long value)
+long __lock arch_atomic_add_return(atomic_t *atom, long value)
 {
 	unsigned int tmp;
 	long result;
@@ -216,6 +196,28 @@ long __lock arch_atomic_sub_return(atomic_t * atom, long value)
 	:"cc");
 
 	return result;
+}
+
+long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
+{
+	long previous, res;
+
+	arch_smp_mb();
+
+	do {
+		__asm__ __volatile__("@ atomic_cmpxchg\n"
+		"ldrex	%1, [%3]\n"
+		"mov	%0, #0\n"
+		"teq	%1, %4\n"
+		"strexeq %0, %5, [%3]\n"
+		    : "=&r" (res), "=&r" (previous), "+Qo" (atom->counter)
+		    : "r" (&atom->counter), "Ir" (oldval), "r" (newval)
+		    : "cc");
+	} while (res);
+
+	arch_smp_mb();
+
+	return oldval;
 }
 
 #endif

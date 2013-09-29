@@ -18,6 +18,7 @@
  *
  * @file stringlib.h
  * @author Anup Patel (anup@brainfault.org)
+ * @author Jean-Christophe DUBOIS (jcd@tribudubois.net)
  * @brief header file for string library
  */
 #ifndef __STRINGLIB_H__
@@ -40,6 +41,8 @@
 
 size_t strlen(const char *s);
 
+size_t strnlen(const char *s, size_t n);
+
 char *strcpy(char *dest, const char *src);
 
 char *strncpy(char *dest, const char *src, size_t n);
@@ -49,6 +52,8 @@ size_t strlcpy(char *dest, const char *src, size_t n);
 char *strcat(char *dest, const char *src);
 
 char *strncat(char *dest, const char *src, size_t n);
+
+size_t strlcat(char *dest, const char *src, size_t n);
 
 int strcmp(const char *a, const char *b);
 
@@ -64,15 +69,15 @@ void str2lower(char * s);
 
 void str2upper(char * s);
 
-int str2int(const char *s, unsigned int base);
+int atoi(const char *s);
 
-long long str2longlong(const char *s, unsigned int base);
+long strtol(const char *s, char **endptr, int base);
 
-unsigned int str2uint(const char *s, unsigned int base);
+long long strtoll(const char *s, char **endptr, int base);
 
-unsigned long str2ulong(const char *s, unsigned int base);
+unsigned long strtoul(const char *s, char **endptr, int base);
 
-unsigned long long str2ulonglong(const char *s, unsigned int base);
+unsigned long long strtoull(const char *s, char **endptr, int base);
 
 int str2ipaddr(unsigned char *ipaddr, const char *str);
 

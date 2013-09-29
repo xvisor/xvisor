@@ -173,7 +173,10 @@ static int bcm2835_sdhci_driver_probe(struct vmm_device *dev,
 	}
 
 	bcm_host->irq = 0;
-	vmm_devtree_irq_get(dev->node, &bcm_host->irq, 0);
+	rc = vmm_devtree_irq_get(dev->node, &bcm_host->irq, 0);
+	if (rc) {
+		goto free_reg;
+	}
 
 	rc = vmm_devtree_clock_frequency(dev->node, &bcm_host->clock_freq);
 	if (rc) {

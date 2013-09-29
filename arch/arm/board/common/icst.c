@@ -68,9 +68,11 @@ icst_hz_to_vco(const struct icst_params *p, unsigned long freq)
 
 		if (f > p->vco_min && f <= p->vco_max)
 			break;
+
+		i++;
 	} while (i < 8);
 
-	if (i >= 8)
+	if (i == 8)
 		return vco;
 
 	vco.s = p->idx2s[i];

@@ -196,7 +196,7 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 	m->guest = guest;
 
 	vmm_snprintf(m->dev.name, VIRTIO_DEVICE_MAX_NAME_LEN, 
-		     "%s/%s", guest->node->name, edev->node->name); 
+		     "%s/%s", guest->name, edev->node->name); 
 	m->dev.edev = edev;
 	m->dev.tra = &mmio_tra;
 	m->dev.tra_data = m;

@@ -1,0 +1,95 @@
+		Linux on Xvisor Virt-v8 SMP Guest
+
+Linux is a computer operating system which is based on free and open source 
+software. the underlying source code can be used, freely modified, and 
+redistributed, both commercially and non-commercially, by anyone under 
+licenses such as the GNU General Public License. For more information on 
+Linux read the wiki page http://en.wikipedia.org/wiki/Linux
+
+Linux already contains a support for device-tree based boards. We can use 
+this kernel unmodified to run it as a xvisor guest. We have also provide 
+a defconfig for building kernel. To obtain Linux kernel sources visit the 
+following url: http://www.kernel.org
+
+Please follow the steps below to build & run Linux kernel with Busybox 
+RootFS on Virt-v8 (paravirtualized ARMv8) Guest with Xvisor running on 
+Foundation v8 model:
+
+  [1. Build environment for Xvisor]
+  # CROSS_COMPILE=aarch64-linux-gnu-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Configure Xvisor with Generic-V8 default settings]
+  # make ARCH=arm generic-v8-defconfig 
+
+  [4. Build Xvisor]
+  # make
+
+  [5. Build DTBs]
+  # make dtbs
+
+  [6. Build Basic Firmware]
+  # make -C tests/arm64/virt-v8/basic
+
+  [7. Copy Linux defconfig to Linux build directory]
+  # cp tests/arm64/virt-v8/linux/linux-<linux_version>_virt_v8_defconfig <linux_build_directory>/.config
+
+  [8. GoTo Linux source directory]
+  # cd <linux_source_directory>
+
+  [9. Apply patch for virtio-console earlyprintk support]
+  # patch -p1 < <xvisor_source_directory>/tests/arm64/virt-v8/linux/linux-3.11-virtio-console-earlyprintk.patch
+  (Note: This is an optional but recommended step. Without this earlyprintks will not work on virtio-console)
+
+  [10. Configure Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm64 oldconfig
+
+  [11. Build Linux in build directory to reflect changes in kernel image]
+  # make O=<linux_build_directory> ARCH=arm64 Image
+
+  [12. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs64.img)
+  (Note: Please refer tests/arm64/common/busybox/README for creating rootfs64.img using BusyBox)
+
+  [13. GoTo Linux build directory]
+  # cd <linux_build_directory>
+
+  [14. Build virt-v8.dtb for guest linux]
+  # ./scripts/dtc/dtc -I dts -O dtb -p 0x800 -o virt-v8.dtb <xvisor_source_directory>/tests/arm64/virt-v8/linux/virt-v8.dts
+
+  [15. Create foundation_v8_boot.axf for running it on Foundation v8 model]
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x80010000 -o foundation_v8_boot.img <xvisor_source_directory>/build/vmm.bin@0x80010000 <xvisor_source_directory>/build/tests/arm64/virt-v8/basic/firmware.bin@0x81000000 <xvisor_source_directory>/tests/arm64/virt-v8/linux/cmdlist@0x810FF000 <linux_build_directory>/arch/arm64/boot/Image@0x81100000 <linux_build_directory>/virt-v8.dtb@0x81600000 <busybox_rootfs_directory>/rootfs64.img@0x81700000
+  # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=foundation_v8_boot.img -DDTB=<xvisor_source_directory>/build/arch/arm/board/generic-v8/dts/foundation-v8/one_guest_virt_v8.dtb <xvisor_source_directory>/docs/arm/foundation_v8_boot.S -o foundation_v8_boot.axf
+
+  [16. Launch Foundation v8 Model]
+  # <foundation_v8_install_directory>/models/Linux64_GCC-4.1/Foundation_v8 --image foundation_v8_boot.axf --network=nat
+
+  [17. Kick Guest0 to start Basic Firmware]
+  XVisor# guest kick guest0
+
+  [18. Bind to VirtIO Console]
+  XVisor# vserial bind guest0/virtio-con0
+
+  [19. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/virtio-con0] basic# copy 0x80080000 0x00100000 0x500000
+  (Note: This command will copy Image to RAM)
+  [guest0/virtio-con0] basic# copy 0x80F00000 0x00600000 0x004000
+  (Note: This command will copy virt-v8.dtb to RAM)
+  [guest0/virtio-con0] basic# copy 0x82000000 0x00700000 0x600000
+  (Note: This command will copy rootfs64.img to RAM)
+  [guest0/virtio-con0] basic# start_linux 0x80080000 0x82000000 0x600000 0x80F00000
+  (Note: This command will start linux booting)
+  OR
+  [guest0/virtio-con0] basic# autoexec
+  (Note: "autoexec" is a short-cut command)
+
+  [20. Wait for Linux prompt to come-up and then try out some commands]
+  [guest0/virtio-con0] / # ls
+
+  [21. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/virtio-con0] / #
+
+  (Note: replace all <> brackets based on your workspace)
+

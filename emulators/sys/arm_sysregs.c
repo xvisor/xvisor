@@ -76,7 +76,7 @@
 
 struct arm_sysregs {
 	struct vmm_guest *guest;
-	vmm_spinlock_t lock;
+	vmm_rwlock_t lock;
 	u64 ref_100hz;
 	u64 ref_24mhz;
 	u32 mux_in_irq[2];
@@ -115,7 +115,7 @@ static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
 	u64 tdiff;
 	struct arm_sysregs *s = edev->priv;
 
-	vmm_spin_lock(&s->lock);
+	vmm_read_lock(&s->lock);
 
 	switch (offset & ~0x3) {
 	case 0x00: /* ID */
@@ -253,7 +253,7 @@ static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
 		break;
 	}
 
-	vmm_spin_unlock(&s->lock);
+	vmm_read_unlock(&s->lock);
 
 	if (!rc) {
 		regval = (regval >> ((offset & 0x3) * 8));
@@ -322,7 +322,7 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 	}
 	regval = (regval << ((offset & 0x3) * 8));
 
-	vmm_spin_lock(&s->lock);
+	vmm_write_lock(&s->lock);
 
 	switch (offset & ~0x3) {
 	case 0x08: /* LED */
@@ -501,7 +501,7 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 		break;
 	}
 
-	vmm_spin_unlock(&s->lock);
+	vmm_write_unlock(&s->lock);
 
 	return rc;
 }
@@ -510,7 +510,7 @@ static int arm_sysregs_emulator_reset(struct vmm_emudev *edev)
 {
 	struct arm_sysregs *s = edev->priv;
 
-	vmm_spin_lock(&s->lock);
+	vmm_write_lock(&s->lock);
 
 	s->ref_100hz = vmm_timer_timestamp();
 	s->ref_24mhz = s->ref_100hz;
@@ -529,7 +529,7 @@ static int arm_sysregs_emulator_reset(struct vmm_emudev *edev)
 		s->sys_clcd = 0x1f00;
 	}
 
-	vmm_spin_unlock(&s->lock);
+	vmm_write_unlock(&s->lock);
 
 	return VMM_OK;
 }
@@ -540,11 +540,12 @@ static void arm_sysregs_irq_handle(u32 irq, int cpu, int level, void *opaque)
 	int bit;
 	struct arm_sysregs *s = opaque;
 
+	vmm_write_lock(&s->lock);
+
 	if (s->mux_in_irq[0] == irq) {
 		/* For PB926 and EB write-protect is bit 2 of SYS_MCI;
 		 * for all later boards it is bit 1.
 		 */
-		vmm_spin_lock(&s->lock);
 		bit = 2;
 		if ((board_id(s) == BOARD_ID_PB926) || 
 		    (board_id(s) == BOARD_ID_EB)) {
@@ -554,15 +555,13 @@ static void arm_sysregs_irq_handle(u32 irq, int cpu, int level, void *opaque)
 		if (level) {
 			s->sys_mci |= bit;
 		}
-		vmm_spin_unlock(&s->lock);
 	} else if (s->mux_in_irq[1] == irq) {
-		vmm_spin_lock(&s->lock);
 		s->sys_mci &= ~1;
 		if (level) {
 			s->sys_mci |= 1;
 		}
-		vmm_spin_unlock(&s->lock);
 	}
+	vmm_write_unlock(&s->lock);
 }
 
 static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
@@ -580,7 +579,7 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 	}
 
 	s->guest = guest;
-	INIT_SPIN_LOCK(&s->lock);
+	INIT_RW_LOCK(&s->lock);
 	s->ref_100hz = vmm_timer_timestamp();
 	s->ref_24mhz = s->ref_100hz;
 

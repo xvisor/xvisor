@@ -795,7 +795,10 @@ int sdhci_add_host(struct sdhci_host *host)
 		break;
 	};
 
-	vmm_host_va2pa((virtual_addr_t)host->ioaddr, &iopaddr);
+	if ((rc = vmm_host_va2pa((virtual_addr_t)host->ioaddr, &iopaddr))) {
+		goto remove_host;
+	}
+
 	vmm_printf("%s: SDHCI controller %s at 0x%llx irq %d [%s]\n",
 		   mmc_hostname(mmc), ver, 
 		   (unsigned long long)iopaddr, host->irq,
@@ -804,6 +807,9 @@ int sdhci_add_host(struct sdhci_host *host)
 	sdhci_enable_card_detection(host);
 
 	return VMM_OK;
+
+remove_host:
+	mmc_remove_host(mmc);
 
 free_host_irq:
 	if (host->irq > 0) {

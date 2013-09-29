@@ -271,81 +271,9 @@ static int ext4fs_sync(struct vnode *v)
 
 static int ext4fs_readdir(struct vnode *dv, loff_t off, struct dirent *d)
 {
-	u32 readlen;
-	struct ext2_dirent dent;
 	struct ext4fs_node *dnode = dv->v_data;
-	u64 filesize = ext4fs_node_get_size(dnode);
-	u64 fileoff = off;
 
-	if (filesize <= fileoff) {
-		return VMM_ENOENT;
-	}
-
-	if (filesize < (sizeof(struct ext2_dirent) + fileoff)) {
-		return VMM_ENOENT;
-	}
-
-	d->d_reclen = 0;
-
-	do {
-		readlen = ext4fs_node_read(dnode, fileoff, 
-				sizeof(struct ext2_dirent), (char *)&dent);
-		if (readlen != sizeof(struct ext2_dirent)) {
-			return VMM_EIO;
-		}
-
-		if (dent.namelen > (VFS_MAX_NAME - 1)) {
-			dent.namelen = (VFS_MAX_NAME - 1);
-		}
-		readlen = ext4fs_node_read(dnode, 
-				fileoff + sizeof(struct ext2_dirent),
-				dent.namelen, d->d_name);
-		if (readlen != dent.namelen) {
-			return VMM_EIO;
-		}
-		d->d_name[dent.namelen] = '\0';
-
-		d->d_reclen += __le16(dent.direntlen);
-		fileoff += __le16(dent.direntlen);
-
-		if ((strcmp(d->d_name, ".") == 0) ||
-		    (strcmp(d->d_name, "..") == 0)) {
-			continue;
-		} else {
-			break;
-		}
-	} while (1);
-
-	d->d_off = off;
-
-	switch (dent.filetype) {
-	case EXT2_FT_REG_FILE:
-		d->d_type = DT_REG;
-		break;
-	case EXT2_FT_DIR:
-		d->d_type = DT_DIR;
-		break;
-	case EXT2_FT_CHRDEV:
-		d->d_type = DT_CHR;
-		break;
-	case EXT2_FT_BLKDEV:
-		d->d_type = DT_BLK;
-		break;
-	case EXT2_FT_FIFO:
-		d->d_type = DT_FIFO;
-		break;
-	case EXT2_FT_SOCK:
-		d->d_type = DT_SOCK;
-		break;
-	case EXT2_FT_SYMLINK:
-		d->d_type = DT_LNK;
-		break;
-	default:
-		d->d_type = DT_UNK;
-		break;
-	};
-
-	return VMM_OK;
+	return ext4fs_node_read_dirent(dnode, off, d);
 }
 
 static int ext4fs_lookup(struct vnode *dv, const char *name, struct vnode *v)

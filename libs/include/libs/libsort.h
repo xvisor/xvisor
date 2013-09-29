@@ -25,6 +25,7 @@
 #define __LIBSORT_H_
 
 #include <vmm_stdio.h>
+#include <libs/list.h>
 
 /** Sort array using smoothsort.
  *

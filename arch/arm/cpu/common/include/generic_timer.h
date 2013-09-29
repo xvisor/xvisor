@@ -72,8 +72,8 @@ struct generic_timer_context {
 	u32 virt_timer_irq;
 };
 
-void generic_timer_vcpu_context_init(struct generic_timer_context *context);
-void generic_timer_vcpu_context_save(struct generic_timer_context *context);
-void generic_timer_vcpu_context_restore(struct generic_timer_context *context);
+void generic_timer_vcpu_context_init(struct generic_timer_context *cntx);
+void generic_timer_vcpu_context_save(struct generic_timer_context *cntx);
+void generic_timer_vcpu_context_restore(struct generic_timer_context *cntx);
 
 #endif /* __GENERIC_TIMER_H__ */

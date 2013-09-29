@@ -1,0 +1,9 @@
+The following, in no specific order, are planned to be done:
+
+1. i8042 probe and detection based on ACPI tables.
+2. Support for IDE interface for hard drive.
+3. Complete the frame buffer support.
+4. All key handling (backspace, up-down, etc.)
+5. SMP Support.
+
+... and lots more.

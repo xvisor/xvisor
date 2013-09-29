@@ -27,7 +27,7 @@ The memory map and irq of VirtIO devices on Realivew-EB-MPCore guest is as follo
 
 We have tested following guest OSes for this guest:
 
-  1. basic       - Basic test/bootloader
+  1. basic       - Basic firmware/bootloader
   2. linux       - Linux Kernel 
 
 Please follow the README under specific guest OS directory for detailed

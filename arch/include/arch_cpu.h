@@ -23,6 +23,11 @@
 #ifndef _ARCH_CPU_H__
 #define _ARCH_CPU_H__
 
+#include <vmm_chardev.h>
+
+/** Print CPU information */
+void arch_cpu_print_info(struct vmm_chardev *cdev);
+
 /** CPU early init */
 int arch_cpu_early_init(void);
 

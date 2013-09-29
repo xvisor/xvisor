@@ -28,7 +28,7 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   [4. Build Xvisor]
   # make
 
-  [5. Build Basic Test Code]
+  [5. Build Basic Firmware]
   # make -C tests/arm32/versatilepb/basic
 
   [6. Copy defconfig to Linux build directory]
@@ -49,50 +49,44 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   [11. Build Linux in build directory to reflect changes in kernel image]
   # make O=<linux_build_directory> ARCH=arm zImage
 
-  [12. Patch Linux compressed kernel to replace sensitive non-priviledged instructions]
-  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/arch/arm/boot/compressed/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/arch/arm/boot/compressed/vmlinux 0
-
-  [13. Create final compressed kernel image]
-  # $(CROSS_COMPILE)objcopy -O binary <linux_build_directory>/arch/arm/boot/compressed/vmlinux <linux_build_directory>/arch/arm/boot/zImage
-
-  [14. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  [12. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
   (Note: Please refer tests/arm32/common/busybox/README for creating rootfs.img using BusyBox)
 
-  [15. GoTo Linux build directory]
+  [13. GoTo Linux build directory]
   # cd <linux_build_directory>
 
-  [16. Create xvisor_linux_qemu.img for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x00010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x00010000 <xvisor_source_directory>/build/tests/arm32/versatilepb/basic/arm_test.bin.patched@0x01000000 <xvisor_source_directory>/tests/arm32/versatilepb/linux/cmdlist@0x010FF000 ./arch/arm/boot/zImage@0x01100000 <busybox_rootfs_directory>/rootfs.img@0x01400000
-  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/versatilepb/basic/arm_test.bin.patched@0x08000000 <xvisor_source_directory>/tests/arm32/versatilepb/linux/cmdlist@0x080FF000 ./arch/arm/boot/zImage@0x08100000 <busybox_rootfs_directory>/rootfs.img@0x08400000")
+  [14. Create xvisor_linux_qemu.img for running it on QEMU]
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x00010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x00010000 <xvisor_source_directory>/build/tests/arm32/versatilepb/basic/firmware.bin.patched@0x01000000 <xvisor_source_directory>/tests/arm32/versatilepb/linux/cmdlist@0x010FF000 ./arch/arm/boot/Image@0x01100000 <busybox_rootfs_directory>/rootfs.img@0x01600000
+  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/versatilepb/basic/firmware.bin.patched@0x08000000 <xvisor_source_directory>/tests/arm32/versatilepb/linux/cmdlist@0x080FF000 ./arch/arm/boot/Image@0x08100000 <busybox_rootfs_directory>/rootfs.img@0x08600000")
 
-  [17. Launch QEMU 0.14.xx or higher]
+  [15. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M versatilepb -display none -serial stdio -kernel ./xvisor_linux_qemu.img
 
-  [18. Kick Guest0 for starting Basic Test]
-  XVisor# guest kick 0
+  [16. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
 
-  [19. Bind to virtual UART0 of Linux Guest]
+  [17. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
-  [20. Copy linux from NOR flash to RAM and start linux booting from RAM]
-  [guest0/uart0] arm-test# copy 0x00400000 0x34100000 0x300000
-  (Note: This command will copy zImage to RAM)
-  [guest0/uart0] arm-test# copy 0x01000000 0x34400000 0x600000
+  [18. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/uart0] basic# copy 0x00008000 0x34100000 0x4F8000
+  (Note: This command will copy Image to RAM)
+  [guest0/uart0] basic# copy 0x00500000 0x34600000 0x600000
   (Note: This command will copy rootfs.img to RAM)
-  [guest0/uart0] arm-test# start_linux 0x00400000 0x01000000 0x600000
+  [guest0/uart0] basic# start_linux 0x00008000 0x00500000 0x600000
   (Note: This command will start linux booting)
   OR
-  [guest0/uart0] arm-test# autoexec
+  [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command for executing commands from NOR flash)
   (Note: The <xvisor_source_directory>/tests/arm32/versatilepb/linux/cmdlist file 
    which we have added to guest NOR flash contains set of commands for booting 
    linux from NOR flash)
 
-  [21. Wait for Linux prompt to come-up and then try out some commands]
+  [19. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [22. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [20. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)

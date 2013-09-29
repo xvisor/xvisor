@@ -59,6 +59,17 @@
 			reg_align = <0x4>;
 			interrupts = <2>;
 		};
+
+		mmc0 { /* SD Card Controller */
+			device_type = "mmc";
+			compatible = "allwinner,sun4i-mmc";
+			reg =  <0x01C0F000 0x1000	/* registers */
+				0x01C20088 0x1000	/* mclkbase */
+				0x01C20060 0x1000	/* hclkbase */
+				0x01C20020 0x1000	/* pll5cfg */
+				0X01C20800 0x1000>;	/* gpiobase */
+			interrupts = <32>;
+		};
 	};
 
 	vmm {

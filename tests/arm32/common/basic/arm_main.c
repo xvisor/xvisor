@@ -18,7 +18,7 @@
  *
  * @file arm_main.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
- * @brief ARM test code main file
+ * @brief basic firmware main file
  */
 
 #include <arm_io.h>
@@ -46,7 +46,7 @@ void arm_init(void)
 
 	arm_stdio_init();
 
-	arm_timer_init(10000, 1);
+	arm_timer_init(10000);
 
 	memory_size = arm_board_ram_size();
 
@@ -59,21 +59,21 @@ void arm_cmd_help(int argc, char **argv)
 {
 	arm_puts("help        - List commands and their usage\n");
 	arm_puts("\n");
-	arm_puts("hi          - Say hi to ARM test code\n");
+	arm_puts("hi          - Say hi to basic firmware\n");
 	arm_puts("\n");
-	arm_puts("hello       - Say hello to ARM test code\n");
+	arm_puts("hello       - Say hello to basic firmware\n");
 	arm_puts("\n");
-	arm_puts("wfi_test    - Run wait for irq instruction test for ARM test code\n");
+	arm_puts("wfi_test    - Run wait for irq instruction test for basic firmware\n");
 	arm_puts("            Usage: wfi_test [<msecs>]\n");
 	arm_puts("            <msecs>  = delay in milliseconds to wait for\n");
 	arm_puts("\n");
-	arm_puts("mmu_setup   - Setup MMU for ARM test code\n");
+	arm_puts("mmu_setup   - Setup MMU for basic firmware\n");
 	arm_puts("\n");
-	arm_puts("mmu_state   - MMU is enabled/disabled for ARM test code\n");
+	arm_puts("mmu_state   - MMU is enabled/disabled for basic firmware\n");
 	arm_puts("\n");
-	arm_puts("mmu_test    - Run MMU test suite for ARM test code\n");
+	arm_puts("mmu_test    - Run MMU test suite for basic firmware\n");
 	arm_puts("\n");
-	arm_puts("mmu_cleanup - Cleanup MMU for ARM test code\n");
+	arm_puts("mmu_cleanup - Cleanup MMU for basic firmware\n");
 	arm_puts("\n");
 	arm_puts("timer       - Display timer information\n");
 	arm_puts("\n");
@@ -710,12 +710,12 @@ void arm_main(void)
 	arm_board_linux_default_cmdline(cmdline, sizeof(cmdline));
 
 	arm_puts(arm_board_name());
-	arm_puts(" Basic Test\n\n");
+	arm_puts(" Basic Firmware\n\n");
 
 	arm_board_init();
 
 	while(1) {
-		arm_puts("arm-test# ");
+		arm_puts("basic# ");
 
 		arm_gets(line, ARM_MAX_CMD_STR_SIZE, '\n');
 

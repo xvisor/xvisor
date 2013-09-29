@@ -238,7 +238,9 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue *wq,
 
 	vmm_spin_unlock_irqrestore(&work->lock, flags);
 
-	vmm_threads_wakeup(wq->thread);
+	if (vmm_threads_get_state(wq->thread) != VMM_THREAD_STATE_RUNNING) {
+		vmm_threads_wakeup(wq->thread);
+	}
 
 	return VMM_OK;
 }

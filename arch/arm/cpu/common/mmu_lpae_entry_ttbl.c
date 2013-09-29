@@ -34,16 +34,22 @@ extern int def_ttbl_tree[];
  * Note: This function cannot refer to any global variable &
  * functions to ensure that it can execute from anywhere.
  */
-#define to_load_pa(va)		((va) - exec_start + load_start)
+#define to_load_pa(va)	({ \
+			virtual_addr_t _tva = (va); \
+			if (exec_start <= _tva && _tva < exec_end) { \
+				_tva = _tva - exec_start + load_start; \
+			} \
+			_tva; \
+			})
 void __attribute__ ((section (".entry"))) 
 _setup_initial_ttbl(virtual_addr_t load_start,
 		    virtual_addr_t load_end,
 		    virtual_addr_t exec_start,
 		    virtual_addr_t exec_end)
 {
-	int * ttbl_tree;
+	int *ttbl_tree;
 	u32 i, index, map_exec;
-	u32 ttbl_count;
+	u32 ttbl_count = 0;
 	u64 *ttbl, *nttbl;
 	virtual_addr_t ttbl_base, page_addr;
 
@@ -54,12 +60,7 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	for (i = 0; i < TTBL_INITIAL_TABLE_COUNT; i++) {
 		ttbl_tree[i] = -1;
 	}
-	ttbl_count = 0;
 
-	/* Allocate level1 table */
-	if (ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
-		while(1); /* No initial table available */
-	}
 	for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
 		nttbl[i] = 0x0ULL;
 	}

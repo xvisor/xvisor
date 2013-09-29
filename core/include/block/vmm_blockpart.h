@@ -24,16 +24,15 @@
 #ifndef __VMM_BLOCKPART_H_
 #define __VMM_BLOCKPART_H_
 
+#include <vmm_limits.h>
 #include <block/vmm_blockdev.h>
 
 #define VMM_BLOCKPART_IPRIORITY		(VMM_BLOCKDEV_CLASS_IPRIORITY + 1)
 
-#define VMM_BLOCKPART_MANAGER_MAX_NAME	64
-
 struct vmm_blockpart_manager {
 	struct dlist head;
 	u32 sign;
-	char name[VMM_BLOCKPART_MANAGER_MAX_NAME];
+	char name[VMM_FIELD_NAME_SIZE];
 	int (*parse_part)(struct vmm_blockdev *bdev);
 	void (*cleanup_part)(struct vmm_blockdev *bdev);
 };

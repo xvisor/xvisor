@@ -25,11 +25,10 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_smp.h>
+#include <vmm_percpu.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
-#include <vmm_devdrv.h>
-#include <vmm_spinlocks.h>
-#include <vmm_scheduler.h>
 #include <vmm_threads.h>
 #include <vmm_completion.h>
 #include <net/vmm_mbuf.h>
@@ -94,43 +93,46 @@ do{									\
 #define DUMP_NETSWITCH_PKT(mbuf)
 #endif
 
-static int vmm_netswitch_thread(void *param)
+struct vmm_netswitch_bh_ctrl {
+	struct vmm_thread *thread;
+	struct vmm_completion xfer_not_empty;
+	u32 xfer_count;
+	struct dlist xfer_list;
+	vmm_spinlock_t xfer_list_lock;
+};
+
+static DEFINE_PER_CPU(struct vmm_netswitch_bh_ctrl, nbctrl);
+
+static int vmm_netswitch_bh_main(void *param)
 {
-	u64 timeout;
 	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_netport *xfer_port;
+	struct vmm_netswitch *xfer_nsw;
 	enum vmm_netport_xfer_type xfer_type;
 	struct vmm_mbuf *xfer_mbuf;
 	int xfer_lazy_budget;
 	void *xfer_lazy_arg;
 	void (*xfer_lazy_xfer)(struct vmm_netport *, void *, int);
 	struct vmm_netport_xfer *xfer;
-	struct vmm_netswitch *nsw;
-
-	nsw = param;
+	struct vmm_netswitch_bh_ctrl *nbp = param;
 
 	while (1) {
-		/* Try to wait for xfer request with timeout 
-		 * NOTE: The timeout here is to ensure that netswitch thread
-		 * does not sleep endlessly.
-		 */
-		timeout = 20000000000ULL;
-		vmm_completion_wait_timeout(&nsw->rx_not_empty, &timeout);
-
-		/* Try to get xfer request from rx_list */
-		vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
-		if (list_empty(&nsw->rx_list)) {
-			vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
+		/* Try to wait for xfer request */
+		vmm_spin_lock_irqsave(&nbp->xfer_list_lock, flags);
+		if (list_empty(&nbp->xfer_list)) {
+			vmm_spin_unlock_irqrestore(&nbp->xfer_list_lock, flags);
+			vmm_completion_wait(&nbp->xfer_not_empty);
 			continue;
 		}
-		l = list_pop(&nsw->rx_list);
-		nsw->rx_count--;
-		vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
+		l = list_pop(&nbp->xfer_list);
+		nbp->xfer_count--;
+		vmm_spin_unlock_irqrestore(&nbp->xfer_list_lock, flags);
 
 		/* Extract info from xfer request */
 		xfer = list_entry(l, struct vmm_netport_xfer, head);
 		xfer_port = xfer->port;
+		xfer_nsw = xfer->port->nsw;
 		xfer_type = xfer->type;
 		xfer_mbuf = xfer->mbuf;
 		xfer_lazy_budget = xfer->lazy_budget;
@@ -142,7 +144,7 @@ static int vmm_netswitch_thread(void *param)
 
 		/* Print debug info */
 		DPRINTF("%s: nsw=%s xfer_type=%d\n", __func__, 
-			nsw->name, xfer_type);
+			xfer_nsw->name, xfer_type);
 
 		/* Process xfer request */
 		switch (xfer_type) {
@@ -158,9 +160,7 @@ static int vmm_netswitch_thread(void *param)
 			DUMP_NETSWITCH_PKT(xfer_mbuf);
 
 			/* Call the rx function of net switch */
-			vmm_mutex_lock(&nsw->lock);
-			nsw->port2switch_xfer(nsw, xfer_port, xfer_mbuf);
-			vmm_mutex_unlock(&nsw->lock);
+			xfer_nsw->port2switch_xfer(xfer_nsw, xfer_port, xfer_mbuf);
 
 			/* Free mbuf in xfer request */
 			m_freem(xfer_mbuf);
@@ -179,6 +179,7 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	irq_flags_t flags;
 	struct vmm_netport_xfer *xfer;
 	struct vmm_netswitch *nsw;
+	struct vmm_netswitch_bh_ctrl *nbp;
 
 	if (!mbuf) {
 		return VMM_EFAIL;
@@ -189,6 +190,7 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 		return VMM_EFAIL;
 	}
 	nsw = src->nsw;
+	nbp = &this_cpu(nbctrl);
 
 	/* Print debug info */
 	DPRINTF("%s: nsw=%s src=%s\n", __func__, nsw->name, src->name);
@@ -207,14 +209,14 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	xfer->type = VMM_NETPORT_XFER_MBUF;
 	xfer->mbuf = mbuf;
 
-	/* Add xfer request to rx_list */
-	vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
-	list_add_tail(&xfer->head, &nsw->rx_list);
-	nsw->rx_count++;
-	vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
+	/* Add xfer request to xfer_list */
+	vmm_spin_lock_irqsave(&nbp->xfer_list_lock, flags);
+	list_add_tail(&xfer->head, &nbp->xfer_list);
+	nbp->xfer_count++;
+	vmm_spin_unlock_irqrestore(&nbp->xfer_list_lock, flags);
 
-	/* Signal completion to net switch bottom-half thread */
-	vmm_completion_complete(&nsw->rx_not_empty);
+	/* Signal completion to bottom-half thread */
+	vmm_completion_complete(&nbp->xfer_not_empty);
 
 	return VMM_OK;
 }
@@ -227,6 +229,7 @@ int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
 	irq_flags_t flags;
 	struct vmm_netport_xfer *xfer;
 	struct vmm_netswitch *nsw;
+	struct vmm_netswitch_bh_ctrl *nbp;
 
 	if (!lazy_xfer || !src || !src->nsw) {
 		vmm_printf("%s: invalid source port or xfer callback.\n", 
@@ -234,6 +237,7 @@ int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
 		return VMM_EFAIL;
 	}
 	nsw = src->nsw;
+	nbp = &this_cpu(nbctrl);
 
 	/* Print debug info */
 	DPRINTF("%s: nsw=%s src=%s\n", __func__, nsw->name, src->name);
@@ -253,14 +257,14 @@ int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
 	xfer->lazy_budget = lazy_budget;
 	xfer->lazy_xfer = lazy_xfer;
 
-	/* Add xfer request to rx_list */
-	vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
-	list_add_tail(&xfer->head, &nsw->rx_list);
-	nsw->rx_count++;
-	vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
+	/* Add xfer request to xfer_list */
+	vmm_spin_lock_irqsave(&nbp->xfer_list_lock, flags);
+	list_add_tail(&xfer->head, &nbp->xfer_list);
+	nbp->xfer_count++;
+	vmm_spin_unlock_irqrestore(&nbp->xfer_list_lock, flags);
 
-	/* Signal completion to net switch bottom-half thread */
-	vmm_completion_complete(&nsw->rx_not_empty);
+	/* Signal completion to bottom-half thread */
+	vmm_completion_complete(&nbp->xfer_not_empty);
 
 	return VMM_OK;
 }
@@ -270,6 +274,9 @@ int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,
 			      struct vmm_netport *dst, 
 			      struct vmm_mbuf *mbuf)
 {
+	int rc;
+	irq_flags_t f;
+
 	if (!nsw || !dst || !mbuf) {
 		return VMM_EFAIL;
 	}
@@ -277,19 +284,22 @@ int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,
 	/* Print debug info */
 	DPRINTF("%s: nsw=%s dst=%s\n", __func__, nsw->name, dst->name);
 
-	if (!dst->can_receive ||
-	    dst->can_receive(dst)) {
-		MADDREFERENCE(mbuf);
-		MCLADDREFERENCE(mbuf);
-
-		dst->switch2port_xfer(dst, mbuf);
+	if (dst->can_receive && !dst->can_receive(dst)) {
+		return VMM_OK;
 	}
 
-	return VMM_OK;
+	MADDREFERENCE(mbuf);
+	MCLADDREFERENCE(mbuf);
+
+	vmm_spin_lock_irqsave_lite(&dst->switch2port_xfer_lock, f);
+	rc = dst->switch2port_xfer(dst, mbuf);
+	vmm_spin_unlock_irqrestore_lite(&dst->switch2port_xfer_lock, f);
+
+	return rc;
 }
 VMM_EXPORT_SYMBOL(vmm_switch2port_xfer_mbuf);
 
-struct vmm_netswitch *vmm_netswitch_alloc(char *name, u32 thread_prio)
+struct vmm_netswitch *vmm_netswitch_alloc(char *name)
 {
 	struct vmm_netswitch *nsw;
 
@@ -299,40 +309,15 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name, u32 thread_prio)
 		goto vmm_netswitch_alloc_failed;
 	}
 
-	nsw->name = vmm_malloc(strlen(name)+1);
-	if (!nsw->name) {
-		vmm_printf("%s Failed to allocate for net switch\n", __func__);
-		goto vmm_netswitch_alloc_failed;
-	}
-	strcpy(nsw->name, name);
+	strncpy(nsw->name, name, VMM_FIELD_NAME_SIZE);
 
-	INIT_MUTEX(&nsw->lock);
+	INIT_RW_LOCK(&nsw->port_list_lock);
 	INIT_LIST_HEAD(&nsw->port_list);
-
-	nsw->thread = vmm_threads_create(nsw->name, vmm_netswitch_thread,
-					 nsw, thread_prio, 
-					 VMM_THREAD_DEF_TIME_SLICE);
-	if (!nsw->thread) {
-		vmm_printf("%s Failed to create thread for net switch\n",
-			   __func__);
-		goto vmm_netswitch_alloc_failed;
-	}
-
-	INIT_COMPLETION(&nsw->rx_not_empty);
-	nsw->rx_count = 0;
-	INIT_SPIN_LOCK(&nsw->rx_list_lock);
-	INIT_LIST_HEAD(&nsw->rx_list);
 
 	goto vmm_netswitch_alloc_done;
 
 vmm_netswitch_alloc_failed:
 	if(nsw) {
-		if(nsw->name) {
-			vmm_free(nsw->name);
-		}
-		if(nsw->thread) {
-			vmm_threads_destroy(nsw->thread);
-		}
 		vmm_free(nsw);
 		nsw = NULL;
 	}
@@ -344,12 +329,6 @@ VMM_EXPORT_SYMBOL(vmm_netswitch_alloc);
 void vmm_netswitch_free(struct vmm_netswitch *nsw)
 {
 	if (nsw) {
-		if (nsw->name) {
-			vmm_free(nsw->name);
-		}
-		if(nsw->thread) {
-			vmm_threads_destroy(nsw->thread);
-		}
 		vmm_free(nsw);
 	}
 }
@@ -359,26 +338,26 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 			   struct vmm_netport *port)
 {
 	int rc = VMM_OK;
+	irq_flags_t f;
 
 	if (!nsw || !port) {
 		return VMM_EFAIL;
 	}
-
-	port->nsw = nsw;
-
-	vmm_mutex_lock(&nsw->lock);
-
-	/* Add the port to the port_list */
-	list_add_tail(&port->head, &nsw->port_list);
 
 	/* Call the netswitch's port_add callback */
 	if (nsw->port_add) {
 		rc = nsw->port_add(nsw, port);
 	}
 
-	vmm_mutex_unlock(&nsw->lock);
-
 	if (rc == VMM_OK) {
+		/* Add the port to the port_list */
+		vmm_write_lock_irqsave_lite(&nsw->port_list_lock, f);
+		list_add_tail(&port->head, &nsw->port_list);
+		vmm_write_unlock_irqrestore_lite(&nsw->port_list_lock, f);
+
+		/* Mark this port to belong to the netswitch */
+		port->nsw = nsw;
+
 		/* Notify the port about the link-status change */
 		port->flags |= VMM_NETPORT_LINK_UP;
 		port->link_changed(port);
@@ -397,23 +376,66 @@ int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_port_add);
 
-static void __netswitch_port_remove(struct vmm_netswitch *nsw,
-				    struct vmm_netport *port)
+static void netswitch_port_remove(struct vmm_netswitch *nsw,
+				  struct vmm_netport *port)
 {
+	u32 c;
+	bool found;
+	irq_flags_t f;
+	struct dlist *l;
+	struct vmm_netport_xfer *xfer;
+	struct vmm_netswitch_bh_ctrl *nbp;
+
+	/* Notify the port about the link-status change */
+	port->flags &= ~VMM_NETPORT_LINK_UP;
+	port->link_changed(port);
+
+	/* Mark the port to belong to NULL netswitch */
+	port->nsw = NULL;
+
+	/* Free all xfer requests pertaining to the port */
+	for_each_online_cpu(c) {
+		nbp = &per_cpu(nbctrl, c);
+
+		vmm_spin_lock_irqsave_lite(&nbp->xfer_list_lock, f);
+
+		while (1) {
+			found = FALSE;
+			list_for_each(l, &nbp->xfer_list) {
+				xfer = 
+				list_entry(l, struct vmm_netport_xfer, head);
+				if (xfer->port == port) {
+					found = TRUE;
+					break;
+				}
+			}
+			if (!found) {
+				break;
+			}
+			list_del(&xfer->head);
+			if (xfer->type == VMM_NETPORT_XFER_MBUF) {
+				m_freem(xfer->mbuf);
+			}
+			vmm_netport_free_xfer(xfer->port, xfer);
+			nbp->xfer_count--;
+		}
+
+		vmm_spin_unlock_irqrestore_lite(&nbp->xfer_list_lock, f);
+	}
+
+	/* Remove the port from port_list */
+	vmm_write_lock_irqsave_lite(&nsw->port_list_lock, f);
+	list_del(&port->head);
+	vmm_write_unlock_irqrestore_lite(&nsw->port_list_lock, f);
+
 	/* Call the netswitch's port_remove handler */
 	if (nsw->port_remove) {
 		nsw->port_remove(nsw, port);
 	}
-
-	/* Remove the port from port_list */
-	port->nsw = NULL;
-	list_del(&port->head);
 }
 
 int vmm_netswitch_port_remove(struct vmm_netport *port)
 {
-	struct vmm_netswitch *nsw;
-
 	if (!port) {
 		return VMM_EFAIL;
 	}
@@ -422,20 +444,12 @@ int vmm_netswitch_port_remove(struct vmm_netport *port)
 		return VMM_OK;
 	}
 
-	nsw = port->nsw;
-
 #ifdef CONFIG_VERBOSE_MODE
 	vmm_printf("NET: Port(\"%s\") removed from Switch(\"%s\")\n",
 			port->name, port->nsw->name);
 #endif
 
-	/* Notify the port about the link-status change */
-	port->flags &= ~VMM_NETPORT_LINK_UP;
-	port->link_changed(port);
-
-	vmm_mutex_lock(&nsw->lock);
-	__netswitch_port_remove(nsw, port);
-	vmm_mutex_unlock(&nsw->lock);
+	netswitch_port_remove(port->nsw, port);
 
 	return VMM_OK;
 }
@@ -459,7 +473,11 @@ int vmm_netswitch_register(struct vmm_netswitch *nsw,
 	}
 
 	INIT_LIST_HEAD(&cd->head);
-	strcpy(cd->name, nsw->name);
+	if (strlcpy(cd->name, nsw->name, sizeof(cd->name)) >=
+	    sizeof(cd->name)) {
+		rc = VMM_EOVERFLOW;
+		goto fail_nsw_reg;
+	}
 	cd->dev = nsw->dev;
 	cd->priv = nsw;
 
@@ -473,8 +491,6 @@ int vmm_netswitch_register(struct vmm_netswitch *nsw,
 	nsw->dev = dev;
 	nsw->priv = priv;
 
-	vmm_threads_start(nsw->thread);
-
 #ifdef CONFIG_VERBOSE_MODE
 	vmm_printf("Successfully registered VMM net switch: %s\n", nsw->name);
 #endif
@@ -482,8 +498,6 @@ int vmm_netswitch_register(struct vmm_netswitch *nsw,
 	return rc;
 
 fail_nsw_reg:
-	cd->dev = NULL;
-	cd->priv = NULL;
 	vmm_free(cd);
 ret:
 	return rc;
@@ -493,7 +507,7 @@ VMM_EXPORT_SYMBOL(vmm_netswitch_register);
 int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 {
 	int rc;
-	struct dlist *list;
+	irq_flags_t f;
 	struct vmm_netport *port;
 	struct vmm_classdev *cd;
 
@@ -506,17 +520,17 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 		return VMM_EFAIL;
 	}
 
-	vmm_threads_stop(nsw->thread);
-
-	vmm_mutex_lock(&nsw->lock);
+	vmm_read_lock_irqsave_lite(&nsw->port_list_lock, f);
 
 	/* Remove any ports still attached to this nsw */
-	list_for_each(list, &nsw->port_list) {
-		port = list_port(list);
-		__netswitch_port_remove(nsw, port);
+	while (!list_empty(&nsw->port_list)) {
+		port = list_port(list_first(&nsw->port_list));
+		vmm_read_unlock_irqrestore_lite(&nsw->port_list_lock, f);
+		netswitch_port_remove(nsw, port);
+		vmm_read_lock_irqsave_lite(&nsw->port_list_lock, f);
 	}
 
-	vmm_mutex_unlock(&nsw->lock);
+	vmm_read_unlock_irqrestore_lite(&nsw->port_list_lock, f);
 
 	rc = vmm_devdrv_unregister_classdev(VMM_NETSWITCH_CLASS_NAME, cd);
 	if (!rc) {
@@ -559,6 +573,39 @@ u32 vmm_netswitch_count(void)
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_count);
 
+static void __init vmm_netswitch_percpu_init(void *a1, void *a2, void *a3)
+{
+	char name[VMM_FIELD_NAME_SIZE];
+	u32 cpu = vmm_smp_processor_id();
+	struct vmm_netswitch_bh_ctrl *nbp = &per_cpu(nbctrl, cpu);
+
+	vmm_snprintf(name, sizeof(name), "%s/%d",
+		     VMM_NETSWITCH_CLASS_NAME, cpu);
+
+	nbp->thread = vmm_threads_create(name, vmm_netswitch_bh_main,
+					 nbp, VMM_THREAD_DEF_PRIORITY, 
+					 VMM_THREAD_DEF_TIME_SLICE);
+	if (!nbp->thread) {
+		vmm_printf("%s: CPU%d: Failed to create thread\n",
+			   __func__, cpu);
+		return;
+	}
+
+	if (vmm_threads_set_affinity(nbp->thread, vmm_cpumask_of(cpu))) {
+		vmm_printf("%s: CPU%d: Failed to set thread affinity\n",
+			   __func__, cpu);
+		vmm_threads_destroy(nbp->thread);
+		return;
+	}
+
+	INIT_COMPLETION(&nbp->xfer_not_empty);
+	nbp->xfer_count = 0;
+	INIT_SPIN_LOCK(&nbp->xfer_list_lock);
+	INIT_LIST_HEAD(&nbp->xfer_list);
+
+	vmm_threads_start(nbp->thread);
+}
+
 int __init vmm_netswitch_init(void)
 {
 	int rc;
@@ -572,24 +619,48 @@ int __init vmm_netswitch_init(void)
 	}
 
 	INIT_LIST_HEAD(&c->head);
-	strcpy(c->name, VMM_NETSWITCH_CLASS_NAME);
+	if (strlcpy(c->name, VMM_NETSWITCH_CLASS_NAME, sizeof(c->name)) >=
+	    sizeof(c->name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_class;
+	}
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);
 	if (rc) {
 		vmm_printf("Failed to register %s class\n",
 			VMM_NETSWITCH_CLASS_NAME);
-		vmm_free(c);
-		return rc;
+		goto free_class;
 	}
 
+	vmm_smp_ipi_sync_call(cpu_online_mask, 1000,
+			      vmm_netswitch_percpu_init,
+			      NULL, NULL, NULL);
+
 	return VMM_OK;
+
+free_class:
+	vmm_free(c);
+	return rc;
+}
+
+static void __exit vmm_netswitch_percpu_exit(void *a1, void *a2, void *a3)
+{
+	struct vmm_netswitch_bh_ctrl *nbp = &this_cpu(nbctrl);
+
+	vmm_threads_stop(nbp->thread);
+
+	vmm_threads_destroy(nbp->thread);
 }
 
 void __exit vmm_netswitch_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
+
+	vmm_smp_ipi_sync_call(cpu_online_mask, 1000,
+			      vmm_netswitch_percpu_exit,
+			      NULL, NULL, NULL);
 
 	c = vmm_devdrv_find_class(VMM_NETSWITCH_CLASS_NAME);
 	if (!c) {

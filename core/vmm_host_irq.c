@@ -303,7 +303,7 @@ int vmm_host_irq_register(u32 hirq_num,
 		act = vmm_malloc(sizeof(struct vmm_host_irq_action));
 		if (!act) {
 			vmm_spin_unlock_irqrestore(&hirqctrl.lock, flags);
-			return VMM_EFAIL;
+			return VMM_ENOMEM;
 		}
 		INIT_LIST_HEAD(&act->head);
 		act->func = func;
@@ -363,6 +363,10 @@ int __cpuinit vmm_host_irq_init(void)
 		/* Allocate memory for irq array */
 		hirqctrl.irq = vmm_malloc(sizeof(struct vmm_host_irq) * 
 				  ARCH_HOST_IRQ_COUNT);
+
+		if (!hirqctrl.irq) {
+			return VMM_ENOMEM;
+		}
 
 		/* Reset the handler array */
 		for (ite = 0; ite < ARCH_HOST_IRQ_COUNT; ite++) {

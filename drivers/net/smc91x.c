@@ -2010,6 +2010,8 @@ static int __devinit smc_probe(struct net_device *dev, void __iomem *ioaddr,
 
 	tasklet_init(&lp->tx_task, smc_hardware_send_pkt, (unsigned long)dev);
 	INIT_WORK(&lp->phy_configure, smc_phy_configure);
+#else
+	INIT_WORK(&lp->phy_configure, NULL);
 #endif
 	lp->dev = dev;
 	lp->mii.phy_id_mask = 0x1f;
@@ -2474,7 +2476,12 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
 		ret = -ENOMEM;
 		goto out;
 	}
-	strcpy(ndev->name, pdev->node->name);
+
+	if (strlcpy(ndev->name, pdev->node->name, sizeof(ndev->name)) >=
+	    sizeof(ndev->name)) {
+		ret = VMM_EOVERFLOW;
+		goto out_free_netdev;
+	}
 	SET_NETDEV_DEV(ndev, pdev);
 
 	/* get configuration from platform data, only allow use of
@@ -2595,8 +2602,8 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
  out_release_io:
 #if 0
 	release_mem_region(res->start, SMC_IO_EXTENT);
- out_free_netdev:
 #endif
+ out_free_netdev:
  	/* TBD:: Add free_netdev support */
 	//free_netdev(ndev);
  out:

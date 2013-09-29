@@ -23,6 +23,7 @@
 #ifndef __VMM_DEVTREE_H_
 #define __VMM_DEVTREE_H_
 
+#include <vmm_limits.h>
 #include <vmm_types.h>
 #include <libs/list.h>
 
@@ -60,15 +61,19 @@
 #define VMM_DEVTREE_CPUS_NODE_NAME		"cpus"
 #define VMM_DEVTREE_CPU_FREQ_MHZ_ATTR_NAME	"cpu_freq_mhz"
 #define VMM_DEVTREE_INTERRUPTS_ATTR_NAME	"interrupts"
+#define VMM_DEVTREE_ENABLE_METHOD_ATTR_NAME	"enable-method"
+#define VMM_DEVTREE_CPU_RELEASE_ADDR_ATTR_NAME	"cpu-release-addr"
 
 #define VMM_DEVTREE_GUESTINFO_NODE_NAME		"guests"
 #define VMM_DEVTREE_VCPUS_NODE_NAME		"vcpus"
+#define VMM_DEVTREE_ENDIANNESS_ATTR_NAME	"endianness"
+#define VMM_DEVTREE_ENDIANNESS_VAL_BIG		"big"
+#define VMM_DEVTREE_ENDIANNESS_VAL_LITTLE	"little"
 #define VMM_DEVTREE_START_PC_ATTR_NAME		"start_pc"
 #define VMM_DEVTREE_PRIORITY_ATTR_NAME		"priority"
 #define VMM_DEVTREE_TIME_SLICE_ATTR_NAME	"time_slice"
 #define VMM_DEVTREE_ADDRSPACE_NODE_NAME		"aspace"
 #define VMM_DEVTREE_GUESTIRQCNT_ATTR_NAME	"guest_irq_count"
-#define VMM_DEVTREE_H2GIRQMAP_ATTR_NAME		"host2guest_irq_map"
 #define VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME	"manifest_type"
 #define VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL	"real"
 #define VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL	"virtual"
@@ -82,6 +87,8 @@
 #define VMM_DEVTREE_PHYS_SIZE_ATTR_NAME		"physical_size"
 #define VMM_DEVTREE_SWITCH_ATTR_NAME		"switch"
 #define VMM_DEVTREE_BLKDEV_ATTR_NAME		"blkdev"
+#define VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME	"affinity"
+#define VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME	"poweroff"
 
 enum vmm_devtree_attrypes {
 	VMM_DEVTREE_ATTRTYPE_UNKNOWN = 0,
@@ -103,9 +110,9 @@ struct vmm_devtree_attr {
 };
 
 struct vmm_devtree_nodeid {
-	char name[32];
-	char type[32];
-	char compatible[128];
+	char name[VMM_FIELD_NAME_SIZE];
+	char type[VMM_FIELD_TYPE_SIZE];
+	char compatible[VMM_FIELD_COMPAT_SIZE];
 	void *data;
 };
 

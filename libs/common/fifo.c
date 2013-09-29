@@ -75,9 +75,9 @@ bool fifo_isempty(struct fifo *f)
 		return TRUE;
 	}
 
-	vmm_spin_lock_irqsave(&f->lock, flags);
+	vmm_spin_lock_irqsave_lite(&f->lock, flags);
 	ret = __fifo_isempty(f);
-	vmm_spin_unlock_irqrestore(&f->lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&f->lock, flags);
 
 	return ret;
 }
@@ -94,9 +94,9 @@ bool fifo_isfull(struct fifo *f)
 		return FALSE;
 	}
 
-	vmm_spin_lock_irqsave(&f->lock, flags);
+	vmm_spin_lock_irqsave_lite(&f->lock, flags);
 	ret = __fifo_isfull(f);
-	vmm_spin_unlock_irqrestore(&f->lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&f->lock, flags);
 
 	return ret;
 }
@@ -110,7 +110,7 @@ bool fifo_enqueue(struct fifo *f, void *src, bool overwrite)
 		return FALSE;
 	}
 
-	vmm_spin_lock_irqsave(&f->lock, flags);
+	vmm_spin_lock_irqsave_lite(&f->lock, flags);
 
 	if (overwrite && __fifo_isfull(f)) {
 		f->read_pos++;
@@ -151,7 +151,7 @@ bool fifo_enqueue(struct fifo *f, void *src, bool overwrite)
 		ret = TRUE;
 	}
 
-	vmm_spin_unlock_irqrestore(&f->lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&f->lock, flags);
 
 	return ret;
 }
@@ -165,7 +165,7 @@ bool fifo_dequeue(struct fifo *f, void *dst)
 		return FALSE;
 	}
 
-	vmm_spin_lock_irqsave(&f->lock, flags);
+	vmm_spin_lock_irqsave_lite(&f->lock, flags);
 
 	if (!__fifo_isempty(f)) {
 		switch (f->element_size) {
@@ -198,9 +198,28 @@ bool fifo_dequeue(struct fifo *f, void *dst)
 		ret = TRUE;
 	}
 
-	vmm_spin_unlock_irqrestore(&f->lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&f->lock, flags);
 
 	return ret;
+}
+
+bool fifo_clear(struct fifo *f)
+{
+	irq_flags_t flags;
+
+	if (!f) {
+		return FALSE;
+	}
+
+	vmm_spin_lock_irqsave_lite(&f->lock, flags);
+
+	f->read_pos = 0;
+	f->write_pos = 0;
+	f->avail_count = 0;
+
+	vmm_spin_unlock_irqrestore_lite(&f->lock, flags);
+
+	return TRUE;
 }
 
 bool fifo_getelement(struct fifo *f, u32 index, void *dst)
@@ -215,7 +234,7 @@ bool fifo_getelement(struct fifo *f, u32 index, void *dst)
 		return FALSE;
 	}
 	
-	vmm_spin_lock_irqsave(&f->lock, flags);
+	vmm_spin_lock_irqsave_lite(&f->lock, flags);
 
 	index = (f->read_pos + index);
 	if (f->element_count <= index) {
@@ -242,7 +261,7 @@ bool fifo_getelement(struct fifo *f, u32 index, void *dst)
 		break;
 	};
 
-	vmm_spin_unlock_irqrestore(&f->lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&f->lock, flags);
 
 	return TRUE;
 }
@@ -256,9 +275,9 @@ u32 fifo_avail(struct fifo *f)
 		return 0;
 	}
 
-	vmm_spin_lock_irqsave(&f->lock, flags);
+	vmm_spin_lock_irqsave_lite(&f->lock, flags);
 	ret = f->avail_count;
-	vmm_spin_unlock_irqrestore(&f->lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&f->lock, flags);
 
 	return ret;
 }

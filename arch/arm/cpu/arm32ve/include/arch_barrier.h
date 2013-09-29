@@ -27,6 +27,10 @@
 #define dsb() 			asm volatile ("dsb" : : : "memory")
 #define dmb() 			asm volatile ("dmb" : : : "memory")
 
+#define wfi() 			asm volatile ("wfi" : : : "memory")
+#define wfe() 			asm volatile ("wfe" : : : "memory")
+#define sev() 			asm volatile ("sev" : : : "memory")
+
 /* Read & Write Memory barrier */
 #define arch_mb()			dsb()
 
