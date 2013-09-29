@@ -21,12 +21,11 @@
  * @brief Default packet switch implementation.
  */
 
-#include <vmm_heap.h>
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_timer.h>
 #include <vmm_devdrv.h>
-#include <vmm_threads.h>
 #include <vmm_modules.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
@@ -60,8 +59,8 @@ struct vmm_netbridge_mac_entry {
 
 #define VMM_NETBRIDGE_MAC_EXPIRY	60000000000LLU
 
-struct vmm_netbridge_ctrl
-{
+struct vmm_netbridge_ctrl {
+	vmm_spinlock_t mac_table_lock;
 	struct dlist mac_table;
 };
 
@@ -73,15 +72,17 @@ static int vmm_netbridge_rx_handler(struct vmm_netswitch *nsw,
 				    struct vmm_netport *src,
 				    struct vmm_mbuf *mbuf)
 {
-	struct dlist *l;
-	bool broadcast = TRUE, learn = TRUE;
-	const u8 *srcmac, *dstmac;
-	struct vmm_netport *dst = NULL, *port;
-	struct vmm_netbridge_mac_entry *mac_entry;
-	struct vmm_netbridge_ctrl *nbctrl = nsw->priv;
 #ifdef DEBUG_NETBRIDGE
 	char tname[30];
 #endif
+	u64 tstamp;
+	irq_flags_t f;
+	struct dlist *l, *l1;
+	const u8 *srcmac, *dstmac;
+	bool broadcast = TRUE, learn = TRUE;
+	struct vmm_netport *dst = NULL, *port;
+	struct vmm_netbridge_mac_entry *mac;
+	struct vmm_netbridge_ctrl *nbctrl = nsw->priv;
 
 	srcmac = ether_srcmac(mtod(mbuf, u8 *));
 	dstmac = ether_dstmac(mtod(mbuf, u8 *));
@@ -98,6 +99,7 @@ static int vmm_netbridge_rx_handler(struct vmm_netswitch *nsw,
 	 */
 	if (!is_broadcast_ether_addr(dstmac)) {
 		/* First check our immediate netports */
+		vmm_read_lock_irqsave_lite(&nsw->port_list_lock, f);
 		list_for_each(l, &nsw->port_list) {
 			port = list_port(l);
 			if (!compare_ether_addr(port->macaddr, dstmac)) {
@@ -108,58 +110,72 @@ static int vmm_netbridge_rx_handler(struct vmm_netswitch *nsw,
 				break;
 			}
 		}
+		vmm_read_unlock_irqrestore_lite(&nsw->port_list_lock, f);
 	}
 
+	/* Retrive current timestamp */
+	tstamp = vmm_timer_timestamp();
+
+	/* Lock mac_table */
+	vmm_spin_lock_irqsave_lite(&nbctrl->mac_table_lock, f);
+
 	/* Iterate over mac_table for new srcmac mapping and to search for dst */
-	list_for_each(l, &nbctrl->mac_table) {
+	list_for_each_safe(l, l1, &nbctrl->mac_table) {
 		if (!learn && dst) {
 			break;
 		}
 
-		mac_entry = list_mac_entry(l);
+		mac = list_mac_entry(l);
 
-		/* if possible update mac_table */
-		if (learn && !compare_ether_addr(mac_entry->macaddr, srcmac)) {
-			mac_entry->port = src;
-			mac_entry->timestamp = vmm_timer_timestamp();
+		/* If possible update mac_table */
+		if (learn && !compare_ether_addr(mac->macaddr, srcmac)) {
+			mac->port = src;
+			mac->timestamp = tstamp;
 			learn = FALSE;
-
-			/* purge this entry if too old */
-		} else if ((vmm_timer_timestamp() - mac_entry->timestamp) 
-						> VMM_NETBRIDGE_MAC_EXPIRY) {
-			l = mac_entry->head.next;
-			list_del(&mac_entry->head);
-			vmm_free(mac_entry);
+		/* Purge this entry if too old */
+		} else if ((tstamp - mac->timestamp) > 
+						VMM_NETBRIDGE_MAC_EXPIRY) {
+			l = mac->head.next;
+			list_del(&mac->head);
+			vmm_free(mac);
 			continue;
 		}
 
-		/* check dstmac */
-		if (broadcast && !compare_ether_addr(mac_entry->macaddr, dstmac)) {
-			dst = mac_entry->port;
+		/* Check dstmac */
+		if (broadcast && !compare_ether_addr(mac->macaddr, dstmac)) {
+			dst = mac->port;
 			broadcast = FALSE;
 		}
 	}
 
 	if (learn) {
-		mac_entry = vmm_malloc(sizeof(struct vmm_netbridge_mac_entry));
-		if (mac_entry) {
-			mac_entry->port = src;
-			memcpy(mac_entry->macaddr, srcmac, 6);
-			mac_entry->timestamp = vmm_timer_timestamp();
-			list_add_tail(&mac_entry->head, &nbctrl->mac_table);
+		mac = vmm_malloc(sizeof(struct vmm_netbridge_mac_entry));
+		if (mac) {
+			mac->port = src;
+			memcpy(mac->macaddr, srcmac, 6);
+			mac->timestamp = tstamp;
+			list_add_tail(&mac->head, &nbctrl->mac_table);
 		} else {
 			DPRINTF("%s: allocation failure\n", __func__);
 		}
 	}
 
+	/* Unlock mac_table */
+	vmm_spin_unlock_irqrestore_lite(&nbctrl->mac_table_lock, f);
+
 	if (broadcast) {
 		DPRINTF("%s: broadcasting\n", __func__);
-		list_for_each(l, &nsw->port_list) {
+		vmm_read_lock_irqsave_lite(&nsw->port_list_lock, f);
+		list_for_each_safe(l, l1, &nsw->port_list) {
 			port = list_port(l);
-			if (port != src) {
-				vmm_switch2port_xfer_mbuf(nsw, port, mbuf);
+			if (port == src) {
+				continue;
 			}
+			vmm_read_unlock_irqrestore_lite(&nsw->port_list_lock, f);
+			vmm_switch2port_xfer_mbuf(nsw, port, mbuf);
+			vmm_read_lock_irqsave_lite(&nsw->port_list_lock, f);
 		}
+		vmm_read_unlock_irqrestore_lite(&nsw->port_list_lock, f);
 	} else {
 		DPRINTF("%s: unicasting to \"%s\"\n", __func__, dst->name);
 		vmm_switch2port_xfer_mbuf(nsw, dst, mbuf);
@@ -180,25 +196,30 @@ static int vmm_netbridge_port_remove(struct vmm_netswitch *nsw,
 {
 	bool found;
 	struct dlist *l;
-	struct vmm_netbridge_mac_entry *mac_entry;
+	irq_flags_t f;
+	struct vmm_netbridge_mac_entry *mac;
 	struct vmm_netbridge_ctrl *nbctrl = nsw->priv;
 
 	/* Remove mactable enteries for this port */
 	while (1) {
 		found = FALSE;
-		mac_entry = NULL;
+		mac = NULL;
+
+		vmm_spin_lock_irqsave_lite(&nbctrl->mac_table_lock, f);
+
 		list_for_each(l, &nbctrl->mac_table) {
-			mac_entry = list_mac_entry(l);
-			if (mac_entry->port == port) {
+			mac = list_mac_entry(l);
+			if (mac->port == port) {
+				list_del(&mac->head);
+				vmm_free(mac);
 				found = TRUE;
 				break;
 			}
 		}
 
-		if (found) {
-			list_del(&mac_entry->head);
-			vmm_free(mac_entry);
-		} else {
+		vmm_spin_unlock_irqrestore_lite(&nbctrl->mac_table_lock, f);
+
+		if (!found) {
 			break;
 		}
 	}
@@ -213,8 +234,7 @@ static int vmm_netbridge_probe(struct vmm_device *dev,
 	struct vmm_netbridge_ctrl *nbctrl;
 	int rc = VMM_OK;
 
-	nsw = vmm_netswitch_alloc(dev->node->name,
-				  VMM_THREAD_DEF_PRIORITY);
+	nsw = vmm_netswitch_alloc(dev->node->name);
 	if(!nsw) {
 		rc = VMM_EFAIL;
 		goto vmm_netbridge_probe_failed;
@@ -231,6 +251,7 @@ static int vmm_netbridge_probe(struct vmm_device *dev,
 		goto vmm_netbridge_probe_failed;
 	}
 
+	INIT_SPIN_LOCK(&nbctrl->mac_table_lock);
 	INIT_LIST_HEAD(&nbctrl->mac_table);
 
 	if(vmm_netswitch_register(nsw, dev, nbctrl) == VMM_OK) {
@@ -251,22 +272,29 @@ vmm_netbridge_probe_done:
 static int vmm_netbridge_remove(struct vmm_device *dev)
 {
 	struct dlist *l;
-	struct vmm_netswitch *nsw;
+	irq_flags_t f;
+	struct vmm_netswitch *nsw = dev->priv;
 	struct vmm_netbridge_ctrl *nbctrl;
 
-        nsw = dev->priv;
-	nbctrl = nsw->priv;
-	if(nsw) {
-		if(nbctrl) {
-			while(!list_empty(&nbctrl->mac_table)) {
-				l = list_pop(&nbctrl->mac_table);
-				vmm_free(l);
-			}
-			vmm_free(nbctrl);
-		}
-		vmm_netswitch_unregister(nsw);
-		vmm_netswitch_free(nsw);
+	if (!nsw || !nsw->priv) {
+		return VMM_ENODEV;
 	}
+	nbctrl = nsw->priv;
+
+	vmm_spin_lock_irqsave_lite(&nbctrl->mac_table_lock, f);
+
+	while (!list_empty(&nbctrl->mac_table)) {
+		l = list_pop(&nbctrl->mac_table);
+		vmm_free(l);
+	}
+
+	vmm_spin_unlock_irqrestore_lite(&nbctrl->mac_table_lock, f);
+
+	vmm_free(nbctrl);
+
+	vmm_netswitch_unregister(nsw);
+	vmm_netswitch_free(nsw);
+
 	return VMM_OK;
 }
 

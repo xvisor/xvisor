@@ -235,7 +235,7 @@ int cmd_wallclock_set_time(struct vmm_chardev *cdev,
 		s++;
 	}
 	rc = 0;
-	ti.tm_mday = str2int(targv[1], 10);
+	ti.tm_mday = atoi(targv[1]);
 	str2lower(targv[2]);
 	if (strcmp(targv[2], "jan") == 0) {
 		ti.tm_mon = 0;
@@ -262,11 +262,11 @@ int cmd_wallclock_set_time(struct vmm_chardev *cdev,
 	} else if (strcmp(targv[2], "dec") == 0) {
 		ti.tm_mon = 11;
 	} else {
-		ti.tm_mon = str2int(targv[2], 10);
+		ti.tm_mon = atoi(targv[2]);
 		/* Directly entered month will have range 1-12. */
 		ti.tm_mon--;
 	}
-	ti.tm_year = str2int(targv[3], 10) - 1900;
+	ti.tm_year = atoi(targv[3]) - 1900;
 
 	tv.tv_sec = vmm_wallclock_mktime(ti.tm_year + 1900, 
 					 ti.tm_mon + 1, 

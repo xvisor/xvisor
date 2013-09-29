@@ -24,13 +24,15 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_vcpu_irq.h>
+#include <vmm_scheduler.h>
 #include <arch_cpu.h>
 #include <arch_regs.h>
-#include <emulate_arm.h>
 #include <cpu_defines.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_mem.h>
 #include <cpu_vcpu_hypercall_arm.h>
+#include <emulate_arm.h>
+#include <emulate_psci.h>
 
 /** Emulate 'cps' hypercall */
 static int arm_hypercall_cps(u32 id, u32 subid, u32 inst,
@@ -230,16 +232,6 @@ static int arm_hypercall_rfe(u32 id, u32 subid, u32 inst,
 	return VMM_OK;
 }
 
-/** Emulate 'wfi' hypercall */
-static int arm_hypercall_wfi(u32 id, u32 subid, u32 inst,
-			 	arch_regs_t *regs, struct vmm_vcpu *vcpu)
-{
-	/* Wait for irq on this vcpu */
-	vmm_vcpu_irq_wait(vcpu);
-	regs->pc += 4;
-	return VMM_OK;
-}
-
 /** Emulate 'srs' hypercall */
 static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 			 	arch_regs_t *regs, struct vmm_vcpu *vcpu)
@@ -279,6 +271,83 @@ static int arm_hypercall_srs(u32 id, u32 subid, u32 inst,
 		cpu_vcpu_regmode_write(vcpu, regs, mode, 13, address);
 	}
 	regs->pc += 4;
+	return VMM_OK;
+}
+
+/** Emulate 'wfi' hypercall */
+static int arm_hypercall_wfi(u32 id, u32 subid, u32 inst,
+			 	arch_regs_t *regs, struct vmm_vcpu *vcpu)
+{
+	/* Wait for irq on this vcpu */
+	vmm_vcpu_irq_wait(vcpu);
+	regs->pc += 4;
+	return VMM_OK;
+}
+
+/** Emulate 'wfe' hypercall */
+static int arm_hypercall_wfe(u32 id, u32 subid, u32 inst,
+			     arch_regs_t *regs, struct vmm_vcpu *vcpu)
+{
+	/* give up the cpu */
+	vmm_scheduler_yield();
+	regs->pc += 4;
+	return VMM_OK;
+}
+
+/** Emulate 'yield' hypercall */
+static int arm_hypercall_yield(u32 id, u32 subid, u32 inst,
+			       arch_regs_t *regs, struct vmm_vcpu *vcpu)
+{
+	/* give up the cpu */
+	vmm_scheduler_yield();
+	regs->pc += 4;
+	return VMM_OK;
+}
+
+static int arm_hypercall_unused(u32 id, u32 subid, u32 inst,
+				arch_regs_t *regs, struct vmm_vcpu *vcpu)
+{
+	return VMM_EFAIL;
+}
+
+static int (* const wfx_funcs[]) (u32 id, u32 subid, u32 inst,
+				arch_regs_t *regs, struct vmm_vcpu *vcpu) =
+{
+	arm_hypercall_wfi,	/* ARM_HYPERCALL_WFI_SUBID */
+	arm_hypercall_wfe,	/* ARM_HYPERCALL_WFE_SUBID */
+	arm_hypercall_yield,	/* ARM_HYPERCALL_YIELD_SUBID */
+	arm_hypercall_unused	/* not used yet */
+};
+
+/** Emulate 'wfi', 'wfe', 'sev', 'yield' hypercall */
+static int arm_hypercall_wfx(u32 id, u32 subid, u32 inst,
+			     arch_regs_t *regs, struct vmm_vcpu *vcpu)
+{
+	subid = ARM_INST_DECODE(inst,
+			ARM_INST_HYPERCALL_WFX_MASK,
+			ARM_INST_HYPERCALL_WFX_SHIFT);
+
+	return wfx_funcs[subid] (id, subid, inst, regs, vcpu);
+}
+
+/** Emulate 'smc' hypercall */
+static int arm_hypercall_smc(u32 id, u32 subid, u32 inst,
+			     arch_regs_t *regs, struct vmm_vcpu *vcpu)
+{
+	int rc;
+
+	/* Treat this as PSCI call and emulate it */
+	rc = emulate_psci_call(vcpu, regs, TRUE);
+	if (rc) {
+		/* Halt the VCPU */
+		vmm_printf("%s: VCPU=%s PSCI call failed\n", 
+			   __func__, vcpu->name);
+		cpu_vcpu_halt(vcpu, regs);
+		return VMM_EFAIL;
+	} else {
+		regs->pc += 4;
+	}
+
 	return VMM_OK;
 }
 
@@ -636,12 +705,6 @@ static int arm_hypercall_subs_rel(u32 id, u32 inst,
 	return VMM_OK;
 }
 
-static int arm_hypercall_subid(u32 id, u32 subid, u32 inst, 
-				arch_regs_t *regs, struct vmm_vcpu *vcpu)
-{
-	return VMM_EFAIL;
-}
-
 static int (* const cps_and_co_funcs[]) (u32 id, u32 subid, u32 inst, 
 				arch_regs_t *regs, struct vmm_vcpu *vcpu) = 
 {
@@ -651,8 +714,8 @@ static int (* const cps_and_co_funcs[]) (u32 id, u32 subid, u32 inst,
 	arm_hypercall_msr_r,	/* ARM_HYPERCALL_MSR_R_SUBID */
 	arm_hypercall_rfe,	/* ARM_HYPERCALL_RFE_SUBID */
 	arm_hypercall_srs,	/* ARM_HYPERCALL_SRS_SUBID */
-	arm_hypercall_wfi,	/* ARM_HYPERCALL_WFI_SUBID */
-	arm_hypercall_subid	/* not used yet */
+	arm_hypercall_wfx,	/* ARM_HYPERCALL_WFI_SUBID */
+	arm_hypercall_smc	/* ARM_HYPERCALL_SMC_SUBID */
 };
 
 static int arm_hypercall_cps_and_co(u32 id, u32 inst, 

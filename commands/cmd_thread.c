@@ -47,7 +47,7 @@ void cmd_thread_usage(struct vmm_chardev *cdev)
 void cmd_thread_list(struct vmm_chardev *cdev)
 {
 	int rc, index, count;
-	char state[10], name[64];
+	char state[10], name[VMM_FIELD_NAME_SIZE];
 	struct vmm_thread *tinfo;
 	vmm_cprintf(cdev, "----------------------------------------"
 		   	  "----------------------------------------\n");

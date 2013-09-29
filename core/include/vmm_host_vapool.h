@@ -37,9 +37,6 @@ int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz);
 /** Free virtual space to virtual address pool */
 int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz);
 
-/** Base address of virtual address pool */
-virtual_addr_t vmm_host_vapool_base(void);
-
 /** Check if a virtual address is free */
 bool vmm_host_vapool_page_isfree(virtual_addr_t va);
 
@@ -49,8 +46,16 @@ u32 vmm_host_vapool_free_page_count(void);
 /** Total page count of virtual address pool */
 u32 vmm_host_vapool_total_page_count(void);
 
+/** Base address of virtual address pool */
+virtual_addr_t vmm_host_vapool_base(void);
+
 /** Total size of virtual address pool */
 virtual_size_t vmm_host_vapool_size(void);
+
+/** Check whether given virtual address is a valid virtual
+ *  address pool address.
+ */
+bool vmm_host_vapool_isvalid(virtual_addr_t addr);
 
 /** Estimate house-keeping size of virtual address pool */
 virtual_size_t vmm_host_vapool_estimate_hksize(virtual_size_t size);

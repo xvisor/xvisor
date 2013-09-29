@@ -30,6 +30,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
+#include <vmm_host_vapool.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <arch_barrier.h>
@@ -677,7 +678,7 @@ int cpu_vcpu_cp15_assert_fault(struct vmm_vcpu *vcpu,
 }
 
 int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
-			      arch_regs_t * regs,
+			      arch_regs_t *regs,
 			      u32 far, u32 fs, u32 dom,
 			      u32 wnr, u32 xn, bool force_user)
 {
@@ -687,6 +688,14 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 	int rc, access_type;
 	struct cpu_page pg;
 	physical_size_t availsz;
+
+	/* If VCPU tried to access hypervisor space then 
+	 * halt the VCPU very early.
+	 */
+	if (vmm_host_vapool_isvalid(far)) {
+		vmm_manager_vcpu_halt(vcpu);
+		return VMM_EINVALID;
+	}
 
 	if (xn) {
 		if (wnr) {
@@ -866,6 +875,14 @@ int cpu_vcpu_cp15_access_fault(struct vmm_vcpu *vcpu,
 			       arch_regs_t * regs,
 			       u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
 {
+	/* If VCPU tried to access hypervisor space then 
+	 * halt the VCPU very early.
+	 */
+	if (vmm_host_vapool_isvalid(far)) {
+		vmm_manager_vcpu_halt(vcpu);
+		return VMM_EINVALID;
+	}
+
 	/* We don't do anything about access fault */
 	/* Assert fault to vcpu */
 	return cpu_vcpu_cp15_assert_fault(vcpu, regs, far, fs, dom, wnr, xn);
@@ -878,10 +895,21 @@ int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu *vcpu,
 	int rc = VMM_OK;
 	struct cpu_page pg;
 
+	/* If VCPU tried to access hypervisor space then 
+	 * halt the VCPU very early.
+	 */
+	if (vmm_host_vapool_isvalid(far)) {
+		vmm_manager_vcpu_halt(vcpu);
+		return VMM_EINVALID;
+	}
+
 	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1, far, &pg))) {
-		cpu_vcpu_halt(vcpu, regs);
-		return rc;
+		/* Remove fault address from VTLB and restart.
+		 * Doing this will force us to do TTBL walk If MMU 
+		 * is enabled then appropriate fault will be generated.
+		 */
+		return cpu_vcpu_cp15_vtlb_flush_va(vcpu, far);
 	}
 	if (((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) &&
 	    (pg.dom == TTBL_L1TBL_TTE_DOM_VCPU_SUPER)) {
@@ -898,11 +926,19 @@ int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu *vcpu,
 }
 
 int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu *vcpu,
-			     arch_regs_t * regs,
+			     arch_regs_t *regs,
 			     u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
 {
 	int rc = VMM_OK;
 	struct cpu_page *pg = &arm_priv(vcpu)->cp15.virtio_page;
+
+	/* If VCPU tried to access hypervisor space then 
+	 * halt the VCPU very early.
+	 */
+	if (vmm_host_vapool_isvalid(far)) {
+		vmm_manager_vcpu_halt(vcpu);
+		return VMM_EINVALID;
+	}
 
 	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1, far, pg))) {

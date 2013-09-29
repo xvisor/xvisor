@@ -193,22 +193,30 @@ static int cmd_vfs_ls(struct vmm_chardev *cdev, const char *path)
 		return fd;
 	}
 
-	strncpy(dpath, path, sizeof(dpath));
-	plen = strlen(dpath);
+	if ((plen = strlcpy(dpath, path, sizeof(dpath))) >= sizeof(dpath)) {
+		rc = VMM_EOVERFLOW;
+		goto closedir_fail;
+	}
+
 	if (path[plen-1] != '/') {
-		strncat(dpath, "/", sizeof(dpath));
-		plen++;
+		if ((plen = strlcat(dpath, "/", sizeof(dpath))) >=
+		    sizeof(dpath)) {
+			rc = VMM_EOVERFLOW;
+			goto closedir_fail;
+		}
 	}
 
 	total_ent = 0;
 	while (!vfs_readdir(fd, &d)) {
 		dpath[plen] = '\0';
-		strncat(dpath, d.d_name, sizeof(dpath));
+		if (strlcat(dpath, d.d_name, sizeof(dpath)) >= sizeof(dpath)) {
+			rc = VMM_EOVERFLOW;
+			goto closedir_fail;
+		}
 		rc = vfs_stat(dpath, &st);
 		if (rc) {
-			vfs_closedir(fd);
 			vmm_cprintf(cdev, "Failed to get %s stat\n", dpath);
-			return rc;
+			goto closedir_fail;
 		}
 		strcpy(type, "----------");
 		if (st.st_mode & S_IFDIR) {
@@ -304,6 +312,10 @@ static int cmd_vfs_ls(struct vmm_chardev *cdev, const char *path)
 	}
 
 	return VMM_OK;
+
+closedir_fail:
+	vfs_closedir(fd);
+	return rc;
 }
 
 static int cmd_vfs_cat(struct vmm_chardev *cdev, const char *path)
@@ -533,9 +545,9 @@ int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if ((strcmp(argv[1], "rmdir") == 0) && (argc == 3)) {
 		return cmd_vfs_rmdir(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "load") == 0) && (argc > 3)) {
-		pa = (physical_addr_t)str2ulonglong(argv[2], 10);
-		off = (argc > 4) ? str2uint(argv[4], 10) : 0;
-		len = (argc > 5) ? str2uint(argv[5], 10) : 0xFFFFFFFF;
+		pa = (physical_addr_t)strtoull(argv[2], NULL, 0);
+		off = (argc > 4) ? strtoul(argv[4], NULL, 0) : 0;
+		len = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0xFFFFFFFF;
 		return cmd_vfs_load(cdev, pa, argv[3], off, len);
 	}
 	cmd_vfs_usage(cdev);

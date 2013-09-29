@@ -24,6 +24,7 @@
 #define _ARCH_TYPES_H__
 
 /** cpu specific types */
+typedef unsigned int size_t;
 typedef unsigned int irq_flags_t;
 typedef unsigned int virtual_addr_t;
 typedef unsigned int virtual_size_t;
@@ -35,12 +36,14 @@ typedef struct {
 } atomic_t;
 
 typedef struct {
+	volatile long long counter;
+} atomic64_t;
+
+typedef struct {
 	volatile long lock;
 } arch_spinlock_t;
 
-#define ARCH_BITS_PER_LONG		32
-
-#define __ARCH_SPIN_UNLOCKED		0
+#define __ARCH_SPIN_UNLOCKED		0xffffffff
 
 /* FIXME: Need memory barrier for this. */
 #define ARCH_SPIN_LOCK_INIT(_lptr)		\
@@ -48,5 +51,21 @@ typedef struct {
 
 #define ARCH_SPIN_LOCK_INITIALIZER		\
 	{ .lock = __ARCH_SPIN_UNLOCKED, }
+
+typedef struct {
+	volatile long lock;
+} arch_rwlock_t;
+
+#define __ARCH_RW_LOCKED		0x80000000
+#define __ARCH_RW_UNLOCKED		0
+
+/* FIXME: Need memory barrier for this. */
+#define ARCH_RW_LOCK_INIT(_lptr)		\
+	(_lptr)->lock = __ARCH_RW_UNLOCKED
+
+#define ARCH_RW_LOCK_INITIALIZER		\
+	{ .lock = __ARCH_RW_UNLOCKED, }
+
+#define ARCH_BITS_PER_LONG		32
 
 #endif /* _ARCH_TYPES_H__ */

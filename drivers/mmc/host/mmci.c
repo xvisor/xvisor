@@ -143,7 +143,7 @@ static int mmci_read_bytes(struct mmc_host *mmc,
 			   u32 *dest, u32 blkcount, u32 blksize)
 {
 	u32 *tempbuff = dest;
-	u64 xfercount = blkcount * blksize;
+	u64 xfercount = (u64)blkcount * blksize;
 	struct mmci_host *host = mmc_priv(mmc);
 	u32 status, status_err;
 
@@ -204,7 +204,7 @@ static int mmci_write_bytes(struct mmc_host *mmc,
 {
 	int i;
 	u32 *tempbuff = src;
-	u64 xfercount = blkcount * blksize;
+	u64 xfercount = (u64)blkcount * blksize;
 	struct mmci_host *host = mmc_priv(mmc);
 	u32 status, status_err;
 
@@ -386,7 +386,7 @@ static void mmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	vmm_udelay(CLK_CHANGE_DELAY);
 }
 
-int mmci_init_card(struct mmc_host *mmc, struct mmc_card *card)
+static int mmci_init_card(struct mmc_host *mmc, struct mmc_card *card)
 {
 	struct mmci_host *host = mmc_priv(mmc);
 

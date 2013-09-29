@@ -1,0 +1,312 @@
+/**
+ * Copyright (c) 2010 Anup Patel.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file arm_defines.h
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief  register related macros & defines for ARM test code
+ */
+#ifndef __ARM_DEFINES_H__
+#define __ARM_DEFINES_H__
+
+/* Interrupt or Exception related macros & defines */
+#define EXC_SVC_SYNC_SP0			0
+#define EXC_SVC_IRQ_SP0				1
+#define EXC_SVC_FIQ_SP0				2
+#define EXC_SVC_SERROR_SP0			3
+#define EXC_SVC_SYNC_SPx			4
+#define EXC_SVC_IRQ_SPx				5
+#define EXC_SVC_FIQ_SPx				6
+#define EXC_SVC_SERROR_SPx			7
+#define EXC_USR_SYNC_A64			8
+#define EXC_USR_IRQ_A64				9
+#define EXC_USR_FIQ_A64				10
+#define EXC_USR_SERROR_A64			11
+#define EXC_USR_SYNC_A32			12
+#define EXC_USR_IRQ_A32				13
+#define EXC_USR_FIQ_A32				14
+#define EXC_USR_SERROR_A32			15
+
+/* PSR related macros & defines */
+#define PSR_EL_MASK				0x0000000C
+#define PSR_EL_0				0x00000000
+#define PSR_EL_1				0x00000004
+#define PSR_EL_2				0x00000008
+#define PSR_EL_3				0x0000000C
+#define PSR_MODE_MASK				0x0000000f
+#define PSR_MODE_EL0t				0x00000000
+#define PSR_MODE_EL1t				0x00000004
+#define PSR_MODE_EL1h				0x00000005
+#define PSR_MODE_EL2t				0x00000008
+#define PSR_MODE_EL2h				0x00000009
+#define PSR_MODE_EL3t				0x0000000c
+#define PSR_MODE_EL3h				0x0000000d
+
+#define PSR_FIQ_DISABLED			(1 << 6)
+#define PSR_IRQ_DISABLED			(1 << 7)
+#define PSR_ASYNC_ABORT_DISABLED		(1 << 8)
+#define PSR_BE_ENABLED				(1 << 9)
+
+#define PSR_COND_OVERFLOW			(1 << 28)
+#define PSR_COND_CARRY				(1 << 29)
+#define PSR_COND_ZERO				(1 << 30)
+#define PSR_COND_NEGATIVE			(1 << 31)
+
+/* SCTLR related macros & defines */
+#define SCTLR_TE_MASK				0x40000000
+#define SCTLR_AFE_MASK				0x20000000
+#define SCTLR_TRE_MASK				0x10000000
+#define SCTLR_NFI_MASK				0x08000000
+#define SCTLR_EE_MASK				0x02000000
+#define SCTLR_VE_MASK				0x01000000
+#define SCTLR_U_MASK				0x00400000
+#define SCTLR_FI_MASK				0x00200000
+#define SCTLR_HA_MASK				0x00020000
+#define SCTLR_RR_MASK				0x00004000
+#define SCTLR_V_MASK				0x00002000
+#define SCTLR_I_MASK				0x00001000
+#define SCTLR_Z_MASK				0x00000800
+#define SCTLR_SW_MASK				0x00000400
+#define SCTLR_B_MASK				0x00000080
+#define SCTLR_C_MASK				0x00000004
+#define SCTLR_A_MASK				0x00000002
+#define SCTLR_M_MASK				0x00000001
+
+/* TCR_EL1 */
+#define TCR_INITVAL					0x80800000
+#define TCR_TBI_MASK					0x00100000
+#define TCR_TBI_SHIFT					20
+#define TCR_PS_MASK					0x00070000
+#define TCR_PS_SHIFT					16
+#define TCR_TG0_MASK					0x00004000
+#define TCR_TG0_SHIFT					14
+#define TCR_SH0_MASK					0x00003000
+#define TCR_SH0_SHIFT					12
+#define TCR_ORGN0_MASK					0x00000C00
+#define TCR_ORGN0_SHIFT					10
+#define TCR_IRGN0_MASK					0x00000300
+#define TCR_IRGN0_SHIFT					8
+#define TCR_T0SZ_MASK					0x0000003f
+#define TCR_T0SZ_SHIFT					0
+
+/* MAIR_EL1 encodings */
+#define AINDEX_SO					0
+#define AINDEX_NORMAL_WT				1
+#define AINDEX_NORMAL_WB				2
+#define AINDEX_NORMAL_UC				3
+#define MAIR_INITVAL					0x0000000044FFBB00
+
+/* Translation table related macros & defines */
+#define TTBL_INITIAL_TABLE_COUNT			8
+#define TTBL_TABLE_SIZE					0x00001000
+#define TTBL_TABLE_SIZE_SHIFT				12
+#define TTBL_TABLE_ENTCNT				512
+#define TTBL_TABLE_ENTSZ				8
+#define TTBL_STAGE1					1
+#define TTBL_STAGE2					2
+#define TTBL_FIRST_LEVEL				1
+#define TTBL_LEVEL1					1
+#define TTBL_LEVEL2					2
+#define TTBL_LEVEL3					3
+#define TTBL_LAST_LEVEL					3
+/* L1 index Bit[39:30] */
+#define TTBL_L1_INDEX_MASK				0x000000FFC0000000ULL
+#define TTBL_L1_INDEX_SHIFT				30
+#define TTBL_L1_BLOCK_SIZE				0x0000000040000000ULL
+#define TTBL_L1_MAP_MASK				(~(TTBL_L1_BLOCK_SIZE - 1))
+/* L2 index Bit[29:21] */
+#define TTBL_L2_INDEX_MASK				0x000000003FE00000ULL
+#define TTBL_L2_INDEX_SHIFT				21
+#define TTBL_L2_BLOCK_SIZE				0x0000000000200000ULL
+#define TTBL_L2_MAP_MASK				(~(TTBL_L2_BLOCK_SIZE - 1))
+/* L3 index Bit[20:12] */
+#define TTBL_L3_INDEX_MASK				0x00000000001FF000ULL
+#define TTBL_L3_INDEX_SHIFT				12
+#define TTBL_L3_BLOCK_SIZE				0x0000000000001000ULL
+#define TTBL_L3_MAP_MASK				(~(TTBL_L3_BLOCK_SIZE - 1))
+#define TTBL_UPPER_MASK					0xFFF0000000000000ULL
+#define TTBL_UPPER_SHIFT				52
+#define TTBL_OUTADDR_MASK				0x000000FFFFFFF000ULL
+#define TTBL_OUTADDR_SHIFT				12
+#define TTBL_AP_SRW_U					0x0
+#define TTBL_AP_S_URW					0x1
+#define TTBL_AP_SR_U					0x2
+#define TTBL_AP_S_UR					0x3
+#define TTBL_HAP_NOACCESS				0x0
+#define TTBL_HAP_READONLY				0x1
+#define TTBL_HAP_WRITEONLY				0x2
+#define TTBL_HAP_READWRITE				0x3
+#define TTBL_LOWER_MASK					0x0000000000000FFCULL
+#define TTBL_LOWER_SHIFT				2
+#define TTBL_TABLE_MASK					0x0000000000000002ULL
+#define TTBL_TABLE_SHIFT				1
+#define TTBL_VALID_MASK					0x0000000000000001ULL
+#define TTBL_VALID_SHIFT				0
+
+/* TTBL Stage1 Table Attributes */
+#define TTBL_STAGE1_TABLE_NS_MASK			0x8000000000000000ULL
+#define TTBL_STAGE1_TABLE_NS_SHIFT			63
+#define TTBL_STAGE1_TABLE_AP_MASK			0x6000000000000000ULL
+#define TTBL_STAGE1_TABLE_AP_SHIFT			61
+#define TTBL_STAGE1_TABLE_XN_MASK			0x1000000000000000ULL
+#define TTBL_STAGE1_TABLE_XN_SHIFT			60
+#define TTBL_STAGE1_TABLE_PXN_MASK			0x0800000000000000ULL
+#define TTBL_STAGE1_TABLE_PXN_SHIFT			59
+
+/* TTBL Stage1 Block Upper Attributes */
+#define TTBL_STAGE1_UPPER_XN_MASK			0x0040000000000000ULL
+#define TTBL_STAGE1_UPPER_XN_SHIFT			54
+#define TTBL_STAGE1_UPPER_PXN_MASK			0x0020000000000000ULL
+#define TTBL_STAGE1_UPPER_PXN_SHIFT			53
+#define TTBL_STAGE1_UPPER_CONT_MASK			0x0010000000000000ULL
+#define TTBL_STAGE1_UPPER_CONT_SHIFT			52
+
+/* TTBL Stage1 Block Lower Attributes */
+#define TTBL_STAGE1_LOWER_NG_MASK			0x0000000000000800ULL
+#define TTBL_STAGE1_LOWER_NG_SHIFT			11
+#define TTBL_STAGE1_LOWER_AF_MASK			0x0000000000000400ULL
+#define TTBL_STAGE1_LOWER_AF_SHIFT			10
+#define TTBL_STAGE1_LOWER_SH_MASK			0x0000000000000300ULL
+#define TTBL_STAGE1_LOWER_SH_SHIFT			8
+#define TTBL_STAGE1_LOWER_AP_MASK			0x00000000000000C0ULL
+#define TTBL_STAGE1_LOWER_AP_SHIFT			6
+#define TTBL_STAGE1_LOWER_NS_MASK			0x0000000000000020ULL
+#define TTBL_STAGE1_LOWER_NS_SHIFT			5
+#define TTBL_STAGE1_LOWER_AINDEX_MASK			0x000000000000001CULL
+#define TTBL_STAGE1_LOWER_AINDEX_SHIFT			2
+
+/* ESR_EL1 */
+#define ESR_INITVAL					0x00000000LU
+#define ESR_EC_MASK					0xFC000000LU
+#define ESR_EC_SHIFT					26
+#define ESR_IL_MASK					0x02000000LU
+#define ESR_IL_SHIFT					25
+#define ESR_ISS_MASK					0x01FFFFFFLU
+#define ESR_ISS_SHIFT					0
+
+/* Exception Class (EC) Values */
+#define EC_UNKNOWN					0x00
+#define EC_TRAP_WFI_WFE					0x01
+#define EC_TRAP_MCR_MRC_CP15_A32			0x03
+#define EC_TRAP_MCRR_MRRC_CP15_A32			0x04
+#define EC_TRAP_MCR_MRC_CP14_A32			0x05
+#define EC_TRAP_LDC_STC_CP14_A32			0x06
+#define EC_SIMD_FPU					0x07
+#define EC_TRAP_MRC_VMRS_CP10_A32			0x08
+#define EC_TRAP_MCRR_MRRC_CP14_A32			0x0C
+#define EC_TRAP_IL					0x0E
+#define EC_TRAP_SVC_A32					0x11
+#define EC_TRAP_HVC_A32					0x12
+#define EC_TRAP_SMC_A32					0x13
+#define EC_TRAP_SVC_A64					0x15
+#define EC_TRAP_HVC_A64					0x16
+#define EC_TRAP_SMC_A64					0x17
+#define EC_TRAP_MSR_MRS_SYSTEM				0x18
+#define EC_TRAP_LWREL_INST_ABORT			0x20
+#define EC_CUREL_INST_ABORT				0x21
+#define EC_PC_UNALIGNED					0x22
+#define EC_TRAP_LWREL_DATA_ABORT			0x24
+#define EC_CUREL_DATA_ABORT				0x25
+#define EC_SP_UNALIGNED					0x26
+#define EC_FPEXC_A32					0x28
+#define EC_FPEXC_A64					0x2C
+#define EC_SERROR					0x2F
+#define EC_DBG_EXC_MASK					0x30
+
+/* Condition Field ISS Encodings */
+#define ISS_CV_MASK					0x01000000
+#define ISS_CV_SHIFT					24
+#define ISS_COND_MASK					0x00F00000
+#define ISS_COND_SHIFT					20
+
+/* WFI/WFE ISS Encodings */
+#define ISS_WFI_WFE_TRAPPED_MASK			0x00080000
+#define ISS_WFI_WFE_TRAPPED_SHIFT			19
+
+/* MCR/MRC ISS Encodings */
+#define ISS_MCR_MRC_OPC2_MASK				0x000E0000
+#define ISS_MCR_MRC_OPC2_SHIFT				17
+#define ISS_MCR_MRC_OPC1_MASK				0x0001C000
+#define ISS_MCR_MRC_OPC1_SHIFT				14
+#define ISS_MCR_MRC_CRN_MASK				0x00003C00
+#define ISS_MCR_MRC_CRN_SHIFT				10
+#define ISS_MCR_MRC_RT_MASK				0x000001E0
+#define ISS_MCR_MRC_RT_SHIFT				5
+#define ISS_MCR_MRC_CRM_MASK				0x0000001E
+#define ISS_MCR_MRC_CRM_SHIFT				1
+#define ISS_MCR_MRC_DIR_MASK				0x00000001
+#define ISS_MCR_MRC_DIR_SHIFT				0
+
+/* Instruction/Data Abort ISS Encodings */
+#define ISS_ABORT_ISV_MASK				0x01000000
+#define ISS_ABORT_ISV_SHIFT				24
+#define ISS_ABORT_SAS_MASK				0x00C00000
+#define ISS_ABORT_SAS_SHIFT				22
+#define ISS_ABORT_SSE_MASK				0x00200000
+#define ISS_ABORT_SSE_SHIFT				21
+#define ISS_ABORT_SRT_MASK				0x001F0000
+#define ISS_ABORT_SRT_SHIFT				16
+#define ISS_ABORT_SF_MASK				0x00008000
+#define ISS_ABORT_SF_SHIFT				15
+#define ISS_ABORT_AR_MASK				0x00004000
+#define ISS_ABORT_AR_SHIFT				14
+#define ISS_ABORT_EA_MASK				0x00000200
+#define ISS_ABORT_EA_SHIFT				9
+#define ISS_ABORT_CM_MASK				0x00000100
+#define ISS_ABORT_CM_SHIFT				8
+#define ISS_ABORT_S1PTW_MASK				0x00000080
+#define ISS_ABORT_S1PTW_SHIFT				7
+#define ISS_ABORT_WNR_MASK				0x00000040
+#define ISS_ABORT_WNR_SHIFT				6
+#define ISS_ABORT_FSC_MASK				0x0000003F
+#define ISS_ABORT_FSC_SHIFT				0
+
+/* Fault Status (IFSC/DFSC) Encodings */
+#define FSC_TRANS_FAULT_LEVEL0			0x04
+#define FSC_TRANS_FAULT_LEVEL1			0x05
+#define FSC_TRANS_FAULT_LEVEL2			0x06
+#define FSC_TRANS_FAULT_LEVEL3			0x07
+#define FSC_ACCESS_FAULT_LEVEL0			0x08
+#define FSC_ACCESS_FAULT_LEVEL1			0x09
+#define FSC_ACCESS_FAULT_LEVEL2			0x0A
+#define FSC_ACCESS_FAULT_LEVEL3			0x0B
+#define FSC_PERM_FAULT_LEVEL0			0x0C
+#define FSC_PERM_FAULT_LEVEL1			0x0D
+#define FSC_PERM_FAULT_LEVEL2			0x0E
+#define FSC_PERM_FAULT_LEVEL3			0x0F
+#define FSC_SYNC_EXTERNAL_ABORT			0x10
+#define FSC_ASYNC_EXTERNAL_ABORT		0x11
+#define FSC_SYNC_TWALK_EXTERNAL_ABORT_LEVEL0	0x14
+#define FSC_SYNC_TWALK_EXTERNAL_ABORT_LEVEL1	0x15
+#define FSC_SYNC_TWALK_EXTERNAL_ABORT_LEVEL2	0x16
+#define FSC_SYNC_TWALK_EXTERNAL_ABORT_LEVEL3	0x17
+#define FSC_SYNC_PARITY_ERROR			0x18
+#define FSC_ASYNC_PARITY_ERROR			0x19
+#define FSC_SYNC_TWALK_PARITY_ERROR_LEVEL0	0x1C
+#define FSC_SYNC_TWALK_PARITY_ERROR_LEVEL1	0x1D
+#define FSC_SYNC_TWALK_PARITY_ERROR_LEVEL2	0x1E
+#define FSC_SYNC_TWALK_PARITY_ERROR_LEVEL3	0x1F
+#define FSC_ALIGN_FAULT				0x21
+#define FSC_DEBUG_EVENT				0x22
+#define FSC_TLB_CONFLICT_ABORT			0x30
+#define FSC_DOMAIN_FAULT_LEVEL0			0x3C
+#define FSC_DOMAIN_FAULT_LEVEL1			0x3D
+#define FSC_DOMAIN_FAULT_LEVEL2			0x3E
+#define FSC_DOMAIN_FAULT_LEVEL3			0x3F
+
+
+#endif

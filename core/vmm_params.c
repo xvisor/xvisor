@@ -20,12 +20,12 @@
  * @brief source for boot time or early parameters.
  */
 
+#include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_compiler.h>
+#include <vmm_params.h>
 #include <libs/stringlib.h>
 #include <arch_cpu_irq.h>
-#include <asm/errno.h>
-#include <vmm_params.h>
 
 extern const struct vmm_setup_param __setup_start[], __setup_end[];
 
@@ -138,18 +138,11 @@ static int parse_args(const char *doing,
 		int ret;
 
 		args = next_arg(args, &param, &val);
-		if (unknown)
+		if (unknown) {
 			ret = unknown(param, val, doing);
 
-		switch (ret) {
-		case -VMM_ENOENT:
-			return ret;
-		case -VMM_ENOSPC:
-			return ret;
-		case 0:
-			break;
-		default:
-			return ret;
+			if (ret)
+				return ret;
 		}
 	}
 

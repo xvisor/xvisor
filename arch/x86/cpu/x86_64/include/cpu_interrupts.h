@@ -88,6 +88,22 @@ struct idt64_ptr {
 	u64 idt_base;
 } __packed;
 
+#define REGULAR_INT_STACK	0
+#define STACKFAULT_STACK	1
+#define DOUBLEFAULT_STACK	2
+#define NMI_STACK		3
+#define DEBUG_STACK		4
+#define MCE_STACK		5
+#define EXCEPTION_STACK		6
+#define N_EXCEPTION_STACKS	7
+
+/*
+ * Change any of the values below will entail a
+ * respective change in the linker script.
+ */
+#define IRQ_STACK_SIZE		0x1000UL
+#define EXEC_STACK_SIZE		0x2000UL
+
 /*
  * These values are just flag bits not the actual value of
  * type to be written to register.

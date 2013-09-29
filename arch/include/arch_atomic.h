@@ -24,14 +24,40 @@
 #define _ARCH_ATOMIC_H__
 
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 
 /** Atomic operations required by VMM core */
-long arch_atomic_read(atomic_t * atom);
-void arch_atomic_write(atomic_t * atom, long value);
-void arch_atomic_add(atomic_t * atom, long value);
-long arch_atomic_add_return(atomic_t * atom, long value);
-void arch_atomic_sub(atomic_t * atom, long value);
-long arch_atomic_sub_return(atomic_t * atom, long value);
-bool arch_atomic_testnset(atomic_t * atom, long test, long val);
+long arch_atomic_read(atomic_t *atom);
+void arch_atomic_write(atomic_t *atom, long value);
+void arch_atomic_add(atomic_t *atom, long value);
+long arch_atomic_add_return(atomic_t *atom, long value);
+void arch_atomic_sub(atomic_t *atom, long value);
+long arch_atomic_sub_return(atomic_t *atom, long value);
+long arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval);
+
+/** Derived Atomic operations required by VMM core 
+ *  NOTE: Architecture specific code does not provide
+ *  this operations.
+ */
+#define arch_atomic_inc(atom)	arch_atomic_add(atom, 1)
+#define arch_atomic_dec(atom)	arch_atomic_sub(atom, 1)
+
+static inline long arch_atomic_dec_if_positive(atomic_t * atom)
+{
+	long c, old, dec;
+	c = arch_atomic_read(atom);
+	while(1) {
+		dec = c - 1;
+		if (unlikely(dec < 0)) {
+			break;
+		}
+		old = arch_atomic_cmpxchg(atom, c, dec);
+		if (likely(old == c)) {
+			break;
+		}
+		c = old;
+	}
+	return dec;
+}
 
 #endif

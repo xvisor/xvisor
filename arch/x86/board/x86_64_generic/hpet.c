@@ -177,21 +177,15 @@ static struct hpet_timer *get_timer_from_id(timer_id_t timer_id)
 	list_for_each(clist, &hpet_devices.chip_list) {
 		chip = list_entry(clist, struct hpet_chip, head);
 
-		if (!chip) goto _err;
-
 		if (chip->chip_id != chip_no) continue;
 
 		list_for_each(blist, &chip->block_list) {
 			block = list_entry(blist, struct hpet_block, head);
 
-			if (!block) goto _err;
-
 			if (block->block_id != block_no) continue;
 
 			list_for_each(tlist, &block->timer_list) {
 				timer = list_entry(tlist, struct hpet_timer, head);
-
-				if (timer == NULL) goto _err;
 
 				if (timer->timer_id != timer_no) continue;
 
@@ -200,7 +194,6 @@ static struct hpet_timer *get_timer_from_id(timer_id_t timer_id)
 		}		
 	}
 
- _err:
 	return NULL;
 }
 
@@ -222,6 +215,8 @@ int __init hpet_init(void)
 
 	BUG_ON(node == NULL);
 	aval = vmm_devtree_attrval(node, VMM_DEVTREE_NR_HPET_ATTR_NAME);
+	BUG_ON(aval == NULL);
+
 	nr_hpet_chips = *aval;
 
 	/* Need at least one HPET as system timer */
@@ -256,6 +251,8 @@ int __init hpet_init(void)
 			BUG_ON(node == NULL);
 
 			base = vmm_devtree_attrval(node, VMM_DEVTREE_HPET_PADDR_ATTR_NAME);
+			BUG_ON(base == NULL);
+
 			block->pbase = *base;
 			BUG_ON(block->pbase == 0);
 

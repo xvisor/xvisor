@@ -226,9 +226,9 @@ int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds,
 						  "filtered\n", argv[0]);
 			} else {
 				ret = vmm_cmdmgr_execute_cmd(cdev, argc, argv);
+				if (ret)
+					return ret;
 			}
-			if (ret)
-				return ret;
 			argc = 0;
 			if (eos)
 				break;

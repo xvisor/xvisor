@@ -34,6 +34,8 @@
 #include <vmm_delay.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
+#include <arch_board.h>
+#include <arch_cpu.h>
 
 #define MODULE_DESC			"Command host"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -47,6 +49,7 @@ void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   host help\n");
 	vmm_cprintf(cdev, "   host info\n");
+	vmm_cprintf(cdev, "   host cpu info\n");
 	vmm_cprintf(cdev, "   host irq stats\n");
 	vmm_cprintf(cdev, "   host ram stats\n");
 	vmm_cprintf(cdev, "   host ram bitmap [<column count>]\n");
@@ -54,11 +57,30 @@ void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host vapool bitmap [<column count>]\n");
 }
 
+void cmd_host_cpu_info(struct vmm_chardev *cdev)
+{
+	u32 c, khz;
+	char name[25];
+
+	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Type", CONFIG_CPU);
+	vmm_cprintf(cdev, "%-25s: %d\n", "CPU Present Count", vmm_num_present_cpus());
+	vmm_cprintf(cdev, "%-25s: %d\n", "CPU Possible Count", vmm_num_possible_cpus());
+	vmm_cprintf(cdev, "%-25s: %u\n", "CPU Online Count", vmm_num_online_cpus());
+	for_each_online_cpu(c) {
+		khz = vmm_delay_estimate_cpu_khz(c);
+		vmm_sprintf(name, "CPU%d Speed", c);
+		vmm_cprintf(cdev, "%-25s: %d.%d MHz (Estimated)\n", name,
+			udiv32(khz, 1000), umod32(khz, 1000));
+	}
+
+	arch_cpu_print_info(cdev);
+}
+
 void cmd_host_info(struct vmm_chardev *cdev)
 {
 	char *attr;
 	struct vmm_devtree_node *node;
-	u32 c, khz;
+	u32 total = vmm_host_ram_total_frame_count();
 
 	attr = NULL;
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING);
@@ -66,30 +88,16 @@ void cmd_host_info(struct vmm_chardev *cdev)
 		attr = vmm_devtree_attrval(node, VMM_DEVTREE_MODEL_ATTR_NAME);
 	}
 	if (attr) {
-		vmm_cprintf(cdev, "Board Name          : %s\n", attr);
+		vmm_cprintf(cdev, "%-20s: %s\n", "Host Name", attr);
 	} else {
-		vmm_cprintf(cdev, "Board Name          : %s\n", CONFIG_BOARD);
+		vmm_cprintf(cdev, "%-20s: %s\n", "Host Name", CONFIG_BOARD);
 	}
-	vmm_cprintf(cdev, "CPU Name            : %s\n", CONFIG_CPU);
-	vmm_cprintf(cdev, "CPU Online Count    : %d\n", vmm_num_online_cpus());
-	vmm_cprintf(cdev, "CPU Present Count   : %d\n", vmm_num_present_cpus());
-	vmm_cprintf(cdev, "CPU Possible Count  : %d\n", vmm_num_possible_cpus());
-	for_each_online_cpu(c) {
-		khz = vmm_delay_estimate_cpu_khz(c);
-		if (c < 10) {
-			vmm_cprintf(cdev, "CPU%01d Speed          : "
-				  "%d.%d MHz (Estimated)\n", 
-				  c, udiv32(khz, 1000), umod32(khz, 1000));
-		} else if (c < 100) {
-			vmm_cprintf(cdev, "CPU%02d Speed         : "
-				  "%d.%d MHz (Estimated)\n", 
-				  c, udiv32(khz, 1000), umod32(khz, 1000));
-		} else {
-			vmm_cprintf(cdev, "CPU%03d Speed        : "
-				  "%d.%d MHz (Estimated)\n", 
-				  c, udiv32(khz, 1000), umod32(khz, 1000));
-		}
-	}
+
+	vmm_cprintf(cdev, "%-20s: %u\n", "Total Online CPUs", vmm_num_online_cpus());
+	vmm_cprintf(cdev, "%-20s: %u MB\n", "Total VAPOOL", CONFIG_VAPOOL_SIZE_MB);
+	vmm_cprintf(cdev, "%-20s: %u MB\n", "Total RAM", ((total *VMM_PAGE_SIZE) >> 20));
+
+	arch_board_print_info(cdev);
 }
 
 void cmd_host_irq_stats(struct vmm_chardev *cdev)
@@ -121,7 +129,7 @@ void cmd_host_irq_stats(struct vmm_chardev *cdev)
 		}
 		chip = vmm_host_irq_get_chip(irq);
 		vmm_cprintf(cdev, " %-7d %-15s %-10s", 
-				  num, irq->name, chip->name, stats);
+				  num, irq->name, chip->name);
 		for_each_online_cpu(cpu) {
 			stats = vmm_host_irq_get_count(irq, cpu);
 			vmm_cprintf(cdev, " %-11d", stats);
@@ -227,6 +235,9 @@ int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		} else if (strcmp(argv[1], "info") == 0) {
 			cmd_host_info(cdev);
 			return VMM_OK;
+		} else if (strcmp(argv[1], "cpu") == 0) {
+			cmd_host_cpu_info(cdev);
+			return VMM_OK;
 		} else if ((strcmp(argv[1], "irq") == 0) && (2 < argc)) {
 			if (strcmp(argv[2], "stats") == 0) {
 				cmd_host_irq_stats(cdev);
@@ -238,7 +249,7 @@ int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 				return VMM_OK;
 			} else if (strcmp(argv[2], "bitmap") == 0) {
 				if (3 < argc) {
-					colcnt = str2int(argv[3], 10);
+					colcnt = atoi(argv[3]);
 				} else {
 					colcnt = 64;
 				}
@@ -251,7 +262,7 @@ int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 				return VMM_OK;
 			} else if (strcmp(argv[2], "bitmap") == 0) {
 				if (3 < argc) {
-					colcnt = str2int(argv[3], 10);
+					colcnt = atoi(argv[3]);
 				} else {
 					colcnt = 64;
 				}

@@ -60,9 +60,13 @@ Xvisor on fast models.
 
 The docs/arm/ directory in Xvisor source contains file fast_model_boot.S which
 is an adapted version of the boot-wrapper provided by ARM Ltd. This updated
-boot-wrapper (i.e. fast_model_boot.S) can be compiled for any TEXT_BASE and it 
-will include fast_model_boot.img binary from current directory at location 
-TEXT_BASE+0x10000.
+boot-wrapper (i.e. fast_model_boot.S) can be compiled for any TEXT_BASE and it
+will include provided binary image (as -DIMAGE=<binary-image>) at location
+TEXT_BASE+0x10000. Optionally, one can also provide a device-tree blob (dtb),
+(as -DDTB=<path-to-dtb-file>) which gets included at location TEXT_BASE+0x1000.
+As per the dtb-based boot flow for Linux and Xvisor, this dtb gets passsed as
+third argument (in register r2) while jumping to input binary. Please note that
+no fixup of the dtb is done by the boot-code.
 
 As example, let us assume that we have a valid fast_model_boot.img in directory
 <your_test_dir> which we want to boot on Cortex-A15x1 fast model built using
@@ -73,7 +77,9 @@ steps provided in previous section:
   # CROSS_COMPILE=arm-none-linux-gnueabi-
 
   [2. Compile boot-wrapper]
-  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DVEXPRESS_A15 fast_model_boot.S -o fast_model_boot.axf
+  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=fast_model_boot.img -DVEXPRESS_A15 fast_model_boot.S -o fast_model_boot.axf
+  (Note: If you want to provide an external dtb (say device-tree.dtb), then use: 
+   # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=fast_model_boot.img -DDTB=device-tree.dtb -DVEXPRESS_A15 fast_model_boot.S -o fast_model_boot.axf)
 
   [3. Run fast models]
   # model_shell <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<xxxx>/cadi_system_Linux-Debug-GCC-<xxxx>.so fast_model_boot.axf

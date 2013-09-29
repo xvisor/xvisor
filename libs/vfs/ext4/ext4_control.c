@@ -43,7 +43,7 @@ int ext4fs_devread(struct ext4fs_control *ctrl,
 {
 	u64 off, len;
 
-	off = (blkno << (ctrl->log2_block_size + EXT2_SECTOR_BITS));
+	off = ((u64)blkno << (ctrl->log2_block_size + EXT2_SECTOR_BITS));
 	off += blkoff;
 	len = buf_len;
 	len = vmm_blockdev_read(ctrl->bdev, (u8 *)buf, off, len);
@@ -56,7 +56,7 @@ int ext4fs_devwrite(struct ext4fs_control *ctrl,
 {
 	u64 off, len;
 
-	off = (blkno << (ctrl->log2_block_size + EXT2_SECTOR_BITS));
+	off = ((u64)blkno << (ctrl->log2_block_size + EXT2_SECTOR_BITS));
 	off += blkoff;
 	len = buf_len;
 	len = vmm_blockdev_write(ctrl->bdev, (u8 *)buf, off, len);

@@ -107,3 +107,6 @@ int __init arch_board_final_init(void)
 	return VMM_OK;
 }
 
+void arch_board_print_info(struct vmm_chardev *cdev)
+{
+}

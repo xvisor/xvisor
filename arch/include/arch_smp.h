@@ -24,23 +24,40 @@
 #define _ARCH_SMP_H__
 
 #include <vmm_types.h>
+#include <vmm_cpumask.h>
 
-/** Retrive current processor id */
+/** Retrive current processor id 
+ *  Note: This function is called from any CPU at runtime
+ */
 u32 arch_smp_id(void);
 
 /** Initalize secondary CPUs 
+ *  Note: This function is called from primary CPU only at boot time
  *  Note: This function is supposed to inform about possible CPUs using
  *  vmm_set_cpu_possible() API
  */
 int arch_smp_init_cpus(void);
 
 /** Prepare possible secondary CPUs 
+ *  Note: This function is called from primary CPU only at boot time
  *  Note: This function is supposed to inform about present CPUs using
  *  vmm_set_cpu_present() API
  */
 int arch_smp_prepare_cpus(unsigned int max_cpus);
 
-/** Start a present secondary CPU */
+/** Start a present secondary CPU
+ *  Note: This function is called from primary CPU only at boot time
+ */
 int arch_smp_start_cpu(u32 cpu);
+
+/** Trigger inter-processor interrupt
+ *  Note: This function is called on any CPU at runtime
+ */
+void arch_smp_ipi_trigger(const struct vmm_cpumask *dest);
+
+/** Initialize inter-processor interrupts
+ *  Note: This function is called on all CPUs at boot time
+ */
+int arch_smp_ipi_init(void);
 
 #endif

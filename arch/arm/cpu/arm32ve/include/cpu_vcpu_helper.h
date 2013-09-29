@@ -27,41 +27,54 @@
 #include <vmm_manager.h>
 
 /* Function to halt VCPU */
-void cpu_vcpu_halt(struct vmm_vcpu * vcpu, arch_regs_t * regs);
+void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs);
 
 /* Function to read a VCPU register of given mode */
-u32 cpu_vcpu_regmode_read(struct vmm_vcpu * vcpu, 
+u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu, 
 			  arch_regs_t * regs, 
 			  u32 mode,
 			  u32 reg_num);
 
 /* Function to write a VCPU register of given mode */
-void cpu_vcpu_regmode_write(struct vmm_vcpu * vcpu, 
-			     arch_regs_t * regs, 
+void cpu_vcpu_regmode_write(struct vmm_vcpu *vcpu, 
+			     arch_regs_t *regs, 
 			     u32 mode,
 			     u32 reg_num,
 			     u32 reg_val);
 
 /* Function to read a VCPU register of current mode */
-u32 cpu_vcpu_reg_read(struct vmm_vcpu * vcpu, 
-		      arch_regs_t * regs, 
+u32 cpu_vcpu_reg_read(struct vmm_vcpu *vcpu, 
+		      arch_regs_t *regs, 
 		      u32 reg_num);
 
 /* Function to write a VCPU register of current mode */
-void cpu_vcpu_reg_write(struct vmm_vcpu * vcpu, 
-			arch_regs_t * regs, 
+void cpu_vcpu_reg_write(struct vmm_vcpu *vcpu, 
+			arch_regs_t *regs, 
 			u32 reg_num, 
 			u32 reg_val);
 
 /* Function to retrieve SPSR of a VCPU */
-u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu * vcpu, u32 mode);
+u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu *vcpu, u32 mode);
 
 /* Function to update SPSR of a VCPU */
-int cpu_vcpu_spsr_update(struct vmm_vcpu * vcpu, 
+int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu, 
 			 u32 mode,
 			 u32 new_spsr);
 
+/* Function to inject undef exception to a VCPU */
+int cpu_vcpu_inject_undef(struct vmm_vcpu *vcpu,
+			  arch_regs_t *regs);
+
+/* Function to inject prefetch abort exception to a VCPU */
+int cpu_vcpu_inject_pabt(struct vmm_vcpu *vcpu,
+			 arch_regs_t *regs);
+
+/* Function to inject data abort exception to a VCPU */
+int cpu_vcpu_inject_dabt(struct vmm_vcpu *vcpu,
+			 arch_regs_t *regs,
+			 virtual_addr_t addr);
+
 /* Function to dump user registers */
-void cpu_vcpu_dump_user_reg(arch_regs_t * regs);
+void cpu_vcpu_dump_user_reg(arch_regs_t *regs);
 
 #endif

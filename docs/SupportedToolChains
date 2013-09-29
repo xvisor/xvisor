@@ -1,0 +1,32 @@
+
+		Xvisor Supported toolchains
+
+There are many cross compiler toolchains out there, but we cannot
+guaranty that they would all work with Xvisor code.
+
+Therefore we do recommend to use the cross toolchains available
+from kernel.org as a reference.
+
+You can find them at https://www.kernel.org/pub/tools/crosstool/
+
+The reasons for preferring kernel.org cross toolchains are:
+1. Its unaltered open-source GCC compiled using crosstool
+2. No libc is present so if we accidently include any c library header
+   then compilation will fail
+
+The above is true to compile Xvisor itself (or the guest linux kernel
+for the matter).
+
+You will still need a glibc based cross toolchain to build the 
+RootFS user space image, but that's this should be a one time
+thing. For this purpose you could use proprietary tooolchain 
+(such as codesourcery) or the Linaro toolchain for example.
+ 
+Note however that We will not restrict users from using their favorite
+GCC flavour to compile Xvisor.
+
+Our stand on toolchains is as follows:
+1. Xvisor will always compile & work using vanilla GCC from
+   gcc.gnu.org or kernel.org without any c library.
+2. We will not entertain bugs or issues manifested by using a
+   particular flavour or modified GCC

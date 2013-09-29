@@ -18,7 +18,7 @@
 #
 # @file Makefile
 # @author Anup Patel (anup@brainfault.org)
-# @brief toplevel makefile to build ARM test code
+# @brief toplevel makefile to build firmware
 # */
 
 # Determine the build directory
@@ -33,12 +33,17 @@ obj_dir=$(build_dir)/tests/arm32/realview-pb-a8/basic
 common_dir=$(top_dir)/tests/arm32/common/basic
 
 board_arch       = v7
-board_text_start = 0x70010000
+board_text_start = 0x71000000
 board_objs       = $(obj_dir)/arm_board.o \
-                   $(obj_dir)/arm_timer.o \
                    $(obj_dir)/pic/gic.o \
+                   $(obj_dir)/timer/sp804.o \
                    $(obj_dir)/serial/pl01x.o
 
-# Include common makefile for basic test
+board_cppflags   =
+board_cflags     = -mcpu=cortex-a8
+board_asflags    = -mcpu=cortex-a8
+board_ldflags    =
+
+# Include common makefile for basic firmware
 include $(common_dir)/Makefile.inc
 

@@ -245,13 +245,13 @@ static int vesafb_setup(char *options)
 		else if (! strcmp(this_opt, "pmipal"))
 			pmi_setpal=1;
 		else if (! strncmp(this_opt, "mtrr:", 5))
-			mtrr = str2ulong(this_opt+5, 10);
+			mtrr = strtoull(this_opt+5, NULL, 0);
 		else if (! strcmp(this_opt, "nomtrr"))
 			mtrr=0;
 		else if (! strncmp(this_opt, "vtotal:", 7))
-			vram_total = str2ulong(this_opt+7, 10);
+			vram_total = strtoull(this_opt+7, NULL, 0);
 		else if (! strncmp(this_opt, "vremap:", 7))
-			vram_remap = str2ulong(this_opt+7, 10);
+			vram_remap = strtoull(this_opt+7, NULL, 0);
 	}
 	return 0;
 }

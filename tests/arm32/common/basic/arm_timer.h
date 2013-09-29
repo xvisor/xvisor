@@ -24,14 +24,41 @@
 #define _ARM_TIMER_H__
 
 #include <arm_types.h>
+#include <arm_board.h>
 
-void arm_timer_enable(void);
-void arm_timer_disable(void);
-void arm_timer_clearirq(void);
-u64 arm_timer_irqcount(void);
-u64 arm_timer_irqdelay(void);
-u64 arm_timer_timestamp(void);
-int arm_timer_init(u32 usecs, u32 ensel);
-void arm_timer_change_period(u32 usec);
+static inline void arm_timer_enable(void)
+{
+	arm_board_timer_enable();
+}
+
+static inline void arm_timer_disable(void)
+{
+	arm_board_timer_disable();
+}
+
+static inline u64 arm_timer_irqcount(void)
+{
+	return arm_board_timer_irqcount();
+}
+
+static inline u64 arm_timer_irqdelay(void)
+{
+	return arm_board_timer_irqdelay();
+}
+
+static inline u64 arm_timer_timestamp(void)
+{
+	return arm_board_timer_timestamp();
+}
+
+static inline int arm_timer_init(u32 usecs)
+{
+	return arm_board_timer_init(usecs);
+}
+
+static inline void arm_timer_change_period(u32 usecs)
+{
+	return arm_board_timer_change_period(usecs);
+}
 
 #endif

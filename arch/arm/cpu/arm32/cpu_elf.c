@@ -63,19 +63,23 @@ int arch_elf_apply_relocate(struct elf32_shdr *sechdrs,
 		s32 offset;
 
 		offset = ELF32_R_SYM(rel->r_info);
-		if (offset < 0 || offset > (symsec->sh_size / sizeof(Elf32_Sym))) {
-			vmm_printf("%s: section %u reloc %u: bad relocation sym offset\n",
-				mod->name, relindex, i);
+		if ((offset < 0) || 
+		    (offset > (symsec->sh_size / sizeof(Elf32_Sym)))) {
+			vmm_printf("%s: section %u reloc %u: "
+				   "bad relocation sym offset\n",
+				   mod->name, relindex, i);
 			return VMM_ENOEXEC;
 		}
 
 		sym = ((Elf32_Sym *)symsec->sh_addr) + offset;
 		symname = strtab + sym->st_name;
 
-		if (rel->r_offset < 0 || rel->r_offset > dstsec->sh_size - sizeof(u32)) {
-			vmm_printf("%s: section %u reloc %u sym '%s': out of bounds relocation, offset %d size %u\n",
-			       mod->name, relindex, i, symname,
-			       rel->r_offset, dstsec->sh_size);
+		if (((s32)rel->r_offset < 0) || 
+		    (rel->r_offset > dstsec->sh_size - sizeof(u32))) {
+			vmm_printf("%s: section %u reloc %u sym '%s': out of "
+				   "bounds relocation, offset %d size %u\n",
+				   mod->name, relindex, i, symname,
+				   rel->r_offset, dstsec->sh_size);
 			return VMM_ENOEXEC;
 		}
 
@@ -101,10 +105,11 @@ int arch_elf_apply_relocate(struct elf32_shdr *sechdrs,
 			if (offset & 3 ||
 			    offset <= (s32)0xfe000000 ||
 			    offset >= (s32)0x02000000) {
-				vmm_printf("%s: section %u reloc %u sym '%s': relocation %u out of range (%#lx -> %#x)\n",
-				       mod->name, relindex, i, symname,
-				       ELF32_R_TYPE(rel->r_info), loc,
-				       sym->st_value);
+				vmm_printf("%s: section %u reloc %u sym '%s': "
+				  "relocation %u out of range (%#lx -> %#x)\n",
+					   mod->name, relindex, i, symname,
+					   ELF32_R_TYPE(rel->r_info), loc,
+					   sym->st_value);
 				return VMM_ENOEXEC;
 			}
 

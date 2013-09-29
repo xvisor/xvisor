@@ -111,15 +111,19 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
 	} else if (!strcmp(name, VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
+	} else if (!strcmp(name, VMM_DEVTREE_ENABLE_METHOD_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_STRING;
+	} else if (!strcmp(name, VMM_DEVTREE_CPU_RELEASE_ADDR_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
 	} else if (!strcmp(name, VMM_DEVTREE_INTERRUPTS_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
+	} else if (!strcmp(name, VMM_DEVTREE_ENDIANNESS_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_STRING;
 	} else if (!strcmp(name, VMM_DEVTREE_START_PC_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
 	} else if (!strcmp(name, VMM_DEVTREE_PRIORITY_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!strcmp(name, VMM_DEVTREE_TIME_SLICE_ATTR_NAME)) {
-		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
-	} else if (!strcmp(name, VMM_DEVTREE_H2GIRQMAP_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	} else if (!strcmp(name, VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
@@ -145,6 +149,10 @@ u32 vmm_devtree_estimate_attrtype(const char *name)
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
 	} else if (!strcmp(name, VMM_DEVTREE_BLKDEV_ATTR_NAME)) {
 		ret = VMM_DEVTREE_ATTRTYPE_STRING;
+	} else if (!strcmp(name, VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
+	} else if (!strcmp(name, VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME)) {
+		ret = VMM_DEVTREE_ATTRTYPE_UINT32;
 	}
 
 	return ret;
@@ -430,20 +438,36 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 
 	if (!found) {
 		attr = vmm_malloc(sizeof(struct vmm_devtree_attr));
+		if (!attr) {
+			return VMM_ENOMEM;
+		}
 		INIT_LIST_HEAD(&attr->head);
 		attr->len = len;
 		attr->type = type;
 		len = strlen(name) + 1;
 		attr->name = vmm_malloc(len);
-		strncpy(attr->name, name, len);
+		if (!attr->name) {
+			vmm_free(attr);
+			return VMM_ENOMEM;
+		}
+		strcpy(attr->name, name);
 		attr->value = vmm_malloc(attr->len);
+		if (!attr->value) {
+			vmm_free(attr->name);
+			vmm_free(attr);
+			return VMM_ENOMEM;
+		}
 		memcpy(attr->value, value, attr->len);
 		list_add_tail(&attr->head, &node->attr_list);
 	} else {
 		if (attr->len != len) {
+			void *ptr = vmm_malloc(len);
+			if (!ptr) {
+				return VMM_ENOMEM;
+			}
 			attr->len = len;
 			vmm_free(attr->value);
-			attr->value = vmm_malloc(attr->len);
+			attr->value = ptr;
 		}
 		attr->type = type;
 		memcpy(attr->value, value, attr->len);
@@ -516,7 +540,7 @@ int vmm_devtree_getpath(char *out, struct vmm_devtree_node *node)
 	if (!node)
 		return VMM_EFAIL;
 
-	strcpy(out, "");
+	out[0] = 0;
 
 	recursive_getpath(&out_ptr, node);
 
@@ -531,8 +555,9 @@ int vmm_devtree_getpath(char *out, struct vmm_devtree_node *node)
 struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 					      const char *path)
 {
+	u32 len;
 	bool found;
-	struct dlist *lentry;
+	struct dlist *l;
 	struct vmm_devtree_node *child;
 
 	if (!path || !node)
@@ -540,15 +565,18 @@ struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 
 	while (*path) {
 		found = FALSE;
-		list_for_each(lentry, &node->child_list) {
-			child = list_entry(lentry, struct vmm_devtree_node, head);
-			if (strncmp(child->name, path, strlen(child->name)) == 0) {
+		list_for_each(l, &node->child_list) {
+			child = list_entry(l, struct vmm_devtree_node, head);
+			len = strlen(child->name);
+			if (strncmp(child->name, path, len) == 0) {
 				found = TRUE;
-				path += strlen(child->name);
+				path += len;
 				if (*path) {
 					if (*path != VMM_DEVTREE_PATH_SEPARATOR
-					    && *(path + 1) != '\0')
-						return NULL;
+					    && *(path + 1) != '\0') {
+						path -= len;
+						continue;
+					}
 					if (*path == VMM_DEVTREE_PATH_SEPARATOR)
 						path++;
 				}
@@ -632,10 +660,16 @@ struct vmm_devtree_node *vmm_devtree_find_compatible(
 	memset(id, 0, sizeof(id));
 
 	if (device_type) {
-		strncpy(id[0].type, device_type, sizeof(id[0].type));
+		if (strlcpy(id[0].type, device_type, sizeof(id[0].type)) >=
+		    sizeof(id[0].type)) {
+			return NULL;
+		}
 	}
 
-	strncpy(id[0].compatible, compatible, sizeof(id[0].compatible));
+	if (strlcpy(id[0].compatible, compatible, sizeof(id[0].compatible)) >=
+	    sizeof(id[0].compatible)) {
+		return NULL;
+	}
 
 	return vmm_devtree_find_matching(node, id);
 }
@@ -664,12 +698,19 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	}
 
 	node = vmm_malloc(sizeof(struct vmm_devtree_node));
+	if (!node) {
+		return NULL;
+	}
 	INIT_LIST_HEAD(&node->head);
 	INIT_LIST_HEAD(&node->attr_list);
 	INIT_LIST_HEAD(&node->child_list);
 	len = strlen(name) + 1;
 	node->name = vmm_malloc(len);
-	strncpy(node->name, name, len);
+	if (!node->name) {
+		vmm_free(node);
+		return NULL;
+	}
+	strcpy(node->name, name);
 	node->system_data = NULL;
 	node->priv = NULL;
 	node->parent = parent;

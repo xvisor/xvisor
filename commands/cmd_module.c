@@ -157,14 +157,14 @@ int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return VMM_EFAIL;
 	}
 	if (strcmp(argv[1], "info") == 0) {
-		index = str2int(argv[2], 10);
+		index = atoi(argv[2]);
 		return cmd_module_info(cdev, index);
 	} else if (strcmp(argv[1], "load") == 0 && argc == 4) {
-		addr = (physical_addr_t)str2ulonglong(argv[2], 10);
-		size = (physical_size_t)str2ulonglong(argv[3], 10);
+		addr = (physical_addr_t)strtoull(argv[2], NULL, 0);
+		size = (physical_size_t)strtoull(argv[3], NULL, 0);
 		return cmd_module_load(cdev, addr, size);
 	} else if (strcmp(argv[1], "unload") == 0) {
-		index = str2int(argv[2], 10);
+		index = atoi(argv[2]);
 		return cmd_module_unload(cdev, index);
 	} else {
 		cmd_module_usage(cdev);

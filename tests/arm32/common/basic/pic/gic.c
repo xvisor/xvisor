@@ -62,7 +62,6 @@ int gic_active_irq(u32 gic_nr)
 
 int gic_eoi_irq(u32 gic_nr, u32 irq)
 {
-	u32 mask = 1 << (irq % 32);
 	u32 gic_irq;
 
 	if (GIC_MAX_NR <= gic_nr) {
@@ -74,12 +73,7 @@ int gic_eoi_irq(u32 gic_nr, u32 irq)
 	}
 
 	gic_irq = irq - gic_data[gic_nr].irq_offset;
-
-	gic_write(mask, gic_data[gic_nr].dist_base + 
-				GIC_DIST_ENABLE_CLEAR + (gic_irq / 32) * 4);
 	gic_write(gic_irq, gic_data[gic_nr].cpu_base + GIC_CPU_EOI);
-	gic_write(mask, gic_data[gic_nr].dist_base + 
-				GIC_DIST_ENABLE_SET + (gic_irq / 32) * 4);
 
 	return 0;
 }

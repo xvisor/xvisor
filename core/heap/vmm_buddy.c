@@ -504,11 +504,13 @@ void vmm_free(void *pointer)
 
 int vmm_heap_allocator_name(char *name, int name_sz)
 {
-	if (!name && name_sz > 0) {
+	if (!name || name_sz <= 0) {
 		return VMM_EFAIL;
 	}
 
-	strncpy(name, "Buddy System", name_sz);
+	if (strlcpy(name, "Buddy System", name_sz) >= name_sz) {
+		return VMM_EOVERFLOW;
+	}
 
 	return VMM_OK;
 }

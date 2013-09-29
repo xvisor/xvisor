@@ -854,7 +854,7 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 			capacity = ext_csd[EXT_CSD_SEC_CNT] << 0
 					| ext_csd[EXT_CSD_SEC_CNT + 1] << 8
 					| ext_csd[EXT_CSD_SEC_CNT + 2] << 16
-					| ext_csd[EXT_CSD_SEC_CNT + 3] << 24;
+					| (u64)(ext_csd[EXT_CSD_SEC_CNT + 3]) << 24;
 			capacity *= 512;
 			if ((capacity >> 20) > 2 * 1024) {
 				card->capacity = capacity;
@@ -1129,9 +1129,8 @@ static int __mmc_detect_card_inserted(struct mmc_host *host)
 	bdev = card->bdev;
 
 	/* Setup block device instance */
-	vmm_snprintf(bdev->name, VMM_BLOCKDEV_MAX_NAME_SIZE,
-		     "mmc%d", host->host_num);
-	vmm_snprintf(bdev->desc, VMM_BLOCKDEV_MAX_DESC_SIZE,
+	vmm_snprintf(bdev->name, sizeof(bdev->name), "mmc%d", host->host_num);
+	vmm_snprintf(bdev->desc, sizeof(bdev->desc),
 		     "Manufacturer=%06x Serial=%04x%04x "
 		     "Product=%c%c%c%c%c%c Rev=%d.%d", 
 		     (card->cid[0] >> 24), (card->cid[2] & 0xffff),
@@ -1439,11 +1438,13 @@ static int mmc_make_request(struct vmm_request_queue *rq,
 {
 	irq_flags_t flags;
 	struct mmc_host_io *io;
-	struct mmc_host *host = rq->priv;
+	struct mmc_host *host;
 
-	if (!r || !rq || !host) {
+	if (!r || !rq || !rq->priv) {
 		return VMM_EFAIL;
 	}
+
+	host = rq->priv;
 
 	io = vmm_zalloc(sizeof(struct mmc_host_io));
 	if (!io) {
@@ -1471,11 +1472,13 @@ static int mmc_abort_request(struct vmm_request_queue *rq,
 	irq_flags_t flags;
 	struct dlist *l;
 	struct mmc_host_io *io;
-	struct mmc_host *host = rq->priv;
+	struct mmc_host *host;
 
-	if (!r || !rq || !host) {
+	if (!r || !rq || !rq->priv) {
 		return VMM_EFAIL;
 	}
+
+	host = rq->priv;
 
 	vmm_spin_lock_irqsave(&host->io_list_lock, flags);
 

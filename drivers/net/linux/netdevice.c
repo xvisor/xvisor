@@ -28,15 +28,19 @@ struct net_device *netdev_alloc(const char *name)
 {
 	struct net_device *ndev;
 
-	ndev = vmm_malloc(sizeof(struct net_device));
+	ndev = vmm_zalloc(sizeof(struct net_device));
 
 	if (!ndev) {
 		vmm_printf("%s Failed to allocate net device\n", __func__);
 		return NULL;
 	}
 
-	memset(ndev, 0, sizeof(struct net_device));
-	strcpy(ndev->name, name);
+	if (strlcpy(ndev->name, name, sizeof(ndev->name)) >=
+	    sizeof(ndev->name)) {
+		vmm_free(ndev);
+		return NULL;
+	}
+
 	ndev->state = NETDEV_UNINITIALIZED;
 
 	return ndev;
@@ -174,24 +178,20 @@ struct net_device *alloc_etherdev(int sizeof_priv)
 {
 	struct net_device *ndev;
 
-	ndev = vmm_malloc(sizeof(struct net_device));
+	ndev = vmm_zalloc(sizeof(struct net_device));
 
 	if (!ndev) {
 		vmm_printf("%s Failed to allocate net device\n", __func__);
 		return NULL;
 	}
 
-	memset(ndev, 0, sizeof(struct net_device));
-
-	ndev->priv = (void *) vmm_malloc(sizeof_priv);
+	ndev->priv = (void *) vmm_zalloc(sizeof_priv);
 	if (!ndev->priv) {
 		vmm_printf("%s Failed to allocate ndev->priv of size %d\n",
 				__func__, sizeof_priv);
 		vmm_free(ndev);
 		return NULL;
 	}
-
-	memset(ndev->priv, 0, sizeof_priv);
 
 	ndev->state = NETDEV_UNINITIALIZED;
 

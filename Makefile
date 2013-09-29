@@ -24,7 +24,7 @@
 # Current Version
 MAJOR = 0
 MINOR = 2
-RELEASE = 2
+RELEASE = 3
 
 # Find out source & build directories
 src_dir=$(CURDIR)
@@ -134,7 +134,7 @@ asflags+=$(cppflags)
 ar=$(CROSS_COMPILE)ar
 arflags=rcs
 ld=$(CROSS_COMPILE)gcc
-ldflags=-g -Wall -nostdlib 
+ldflags=-g -Wall -nostdlib -Wl,--build-id=none
 ldflags+=$(board-ldflags) 
 ldflags+=$(cpu-ldflags) 
 ldflags+=$(libs-ldflags-y) 
@@ -413,13 +413,3 @@ oldconfig:
 	./tools/openconf/conf -D $(src_dir)/arch/$(ARCH)/configs/$@ $(OPENCONF_INPUT)
 	./tools/openconf/conf -s $(OPENCONF_INPUT)
 
-.PHONY: tags
-tags:
-	$(V)ctags -R --c++-kinds=+p --fields=+iaS --extra=+q .
-	$(V)echo "Generating tags ..."
-
-.PHONY: cscope
-cscope:
-	$(V)echo "Generating cscope database ..."
-	$(V)find ./ -name "*.[CHSchs]" > cscope.files
-	$(V)cscope -bqk

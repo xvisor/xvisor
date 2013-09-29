@@ -57,10 +57,10 @@ int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return VMM_EFAIL;
 	}
 	if(argc > 2) {
-		count = str2int(argv[2], 10);
+		count = atoi(argv[2]);
 	}
 	if(argc > 3) {
-		size = str2int(argv[3], 10);
+		size = atoi(argv[3]);
 	}
 	str2ipaddr(ipaddr, argv[1]);
 

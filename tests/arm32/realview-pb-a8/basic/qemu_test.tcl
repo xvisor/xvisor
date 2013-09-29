@@ -19,12 +19,12 @@
 #
 # @file qemu_test.tcl
 # @author Sanjeev Pandita (san.pandita@gmail.com)
-# @brief Automation script to test the Xvisor commands and Basic Test
+# @brief Automation script to test the Xvisor commands and Basic Firmware
 # */
 
 set qemu_img [lrange $argv 0 0] 
 set xvisor_prompt "XVisor#"
-set arm_prompt "arm-test#"
+set arm_prompt "basic#"
 
 # start the test 
 spawn qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel $qemu_img
@@ -144,7 +144,7 @@ if { [string first "vmm" $devtree_node_dump_out] > -1 } {
         puts "\n :: DEVTREE NODE DUMP TESTCASE FAIL :: \n\n"
 }
 
-send -- "guest kick -1\r"
+send -- "guest kick guest0\r"
 expect $xvisor_prompt
 set guest_kick_out $expect_out(buffer)
 if { [string first "guest0: Kicked" $guest_kick_out] > -1 } {
@@ -156,7 +156,7 @@ if { [string first "guest0: Kicked" $guest_kick_out] > -1 } {
 send -- "vserial bind guest0/uart0\r"
 expect $arm_prompt
 set vserial_bind_out $expect_out(buffer)
-if { [string first "ARM Realview PB-A8 Basic Test" $vserial_bind_out] > -1 } {
+if { [string first "ARM Realview PB-A8 Basic Firmware" $vserial_bind_out] > -1 } {
         puts "\n :: VSERIAL BIND TESTCASE PASS :: \n\n"
 } else {
         puts "\n :: VSERIAL BIND TESTCASE FAIL :: \n\n"

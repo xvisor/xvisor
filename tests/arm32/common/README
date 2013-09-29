@@ -3,7 +3,7 @@
 This directory contains directories:
 
   1. busybox - Busybox based root filesystem for all ARM systems
-  2. basic - Some common code for the "basic test" environement
+  2. basic - Common code for the basic firmware
 
 Please follow the README under specific platform directory for detailed
 steps to configure, compile and run.

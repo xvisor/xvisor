@@ -24,6 +24,7 @@
 #ifndef __VMM_RTCDEV_H_
 #define __VMM_RTCDEV_H_
 
+#include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devdrv.h>
@@ -44,10 +45,8 @@ struct vmm_rtc_wkalrm {
 
 struct vmm_rtcdev;
 
-#define VMM_RTCDEV_NAME_SIZE				32
-
 struct vmm_rtcdev {
-	char name[VMM_RTCDEV_NAME_SIZE];
+	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_device *dev;
 	int (*set_time)(struct vmm_rtcdev *rdev, struct vmm_rtc_time *tm);
 	int (*get_time)(struct vmm_rtcdev *rdev, struct vmm_rtc_time *tm);

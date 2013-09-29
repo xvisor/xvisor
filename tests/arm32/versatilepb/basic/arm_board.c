@@ -23,10 +23,12 @@
 
 #include <arm_types.h>
 #include <arm_io.h>
+#include <arm_math.h>
+#include <arm_string.h>
 #include <arm_board.h>
 #include <arm_plat.h>
-#include <arm_string.h>
 #include <pic/pl190.h>
+#include <timer/sp804.h>
 #include <serial/pl01x.h>
 
 void arm_board_reset(void)
@@ -147,6 +149,60 @@ int arm_board_pic_mask(u32 irq)
 int arm_board_pic_unmask(u32 irq)
 {
 	return pl190_unmask(0, irq);
+}
+
+void arm_board_timer_enable(void)
+{
+	return sp804_enable();
+}
+
+void arm_board_timer_disable(void)
+{
+	return sp804_disable();
+}
+
+u64 arm_board_timer_irqcount(void)
+{
+	return sp804_irqcount();
+}
+
+u64 arm_board_timer_irqdelay(void)
+{
+	return sp804_irqdelay();
+}
+
+u64 arm_board_timer_timestamp(void)
+{
+	return sp804_timestamp();
+}
+
+void arm_board_timer_change_period(u32 usecs)
+{
+	return sp804_change_period(usecs);
+}
+
+int arm_board_timer_init(u32 usecs)
+{
+	u32 val, irq;
+	u64 counter_mult, counter_shift, counter_mask;
+
+	counter_mask = 0xFFFFFFFFULL;
+	counter_shift = 20;
+	counter_mult = ((u64)1000000) << counter_shift;
+	counter_mult += (((u64)1000) >> 1);
+	counter_mult = arm_udiv64(counter_mult, ((u64)1000));
+
+	irq = INT_TIMERINT0_1;
+
+	/* set clock frequency: 
+	 *      VERSATILE_REFCLK is 32KHz
+	 *      VERSATILE_TIMCLK is 1MHz
+	 */
+	val = arm_readl((void *)VERSATILE_SCTL_BASE) | (VERSATILE_TIMCLK << 1);
+	arm_writel(val, (void *)VERSATILE_SCTL_BASE);
+
+	return sp804_init(usecs, VERSATILE_TIMER0_1_BASE, irq, 
+			  counter_mask, counter_mult, counter_shift);
 }
 
 #define	VERSATILE_UART_BASE			0x101F1000

@@ -36,61 +36,61 @@
 
 void *virtio_queue_base(struct virtio_queue *vq)
 {
-	return vq->addr;
+	return (vq) ? vq->addr : NULL;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_base);
 
 struct vmm_guest *virtio_queue_guest(struct virtio_queue *vq)
 {
-	return vq->guest;
+	return (vq) ? vq->guest : NULL;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_guest);
 
 u32 virtio_queue_desc_count(struct virtio_queue *vq)
 {
-	return vq->desc_count;
+	return (vq) ? vq->desc_count : 0;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_desc_count);
 
 u32 virtio_queue_align(struct virtio_queue *vq)
 {
-	return vq->align;
+	return (vq) ? vq->align : 0;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_align);
 
 physical_addr_t virtio_queue_guest_pfn(struct virtio_queue *vq)
 {
-	return vq->guest_pfn;
+	return (vq) ? vq->guest_pfn : 0;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_guest_pfn);
 
 physical_size_t virtio_queue_guest_page_size(struct virtio_queue *vq)
 {
-	return vq->guest_page_size;
+	return (vq) ? vq->guest_page_size : 0;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_guest_page_size);
 
 physical_addr_t virtio_queue_guest_addr(struct virtio_queue *vq)
 {
-	return vq->guest_addr;
+	return (vq) ? vq->guest_addr : 0;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_guest_addr);
 
 physical_addr_t virtio_queue_host_addr(struct virtio_queue *vq)
 {
-	return vq->host_addr;
+	return (vq) ? vq->host_addr : 0;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_host_addr);
 
 physical_size_t virtio_queue_total_size(struct virtio_queue *vq)
 {
-	return vq->total_size;
+	return (vq) ? vq->total_size : 0;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_total_size);
 
 u16 virtio_queue_pop(struct virtio_queue *vq)
 {
-	if (!vq->addr) {
+	if (!vq || !vq->addr) {
 		return 0;
 	}
 
@@ -101,7 +101,7 @@ VMM_EXPORT_SYMBOL(virtio_queue_pop);
 
 struct vring_desc *virtio_queue_get_desc(struct virtio_queue *vq, u16 indx)
 {
-	if (!vq->addr) {
+	if (!vq || !vq->addr) {
 		return NULL;
 	}
 
@@ -111,7 +111,7 @@ VMM_EXPORT_SYMBOL(virtio_queue_get_desc);
 
 bool virtio_queue_available(struct virtio_queue *vq)
 {
-	if (!vq->addr || !vq->vring.avail) {
+	if (!vq || !vq->addr || !vq->vring.avail) {
 		return FALSE;
 	}
 
@@ -125,7 +125,7 @@ bool virtio_queue_should_signal(struct virtio_queue *vq)
 {
 	u16 old_idx, new_idx, event_idx;
 
-	if (!vq->addr) {
+	if (!vq || !vq->addr) {
 		return FALSE;
 	}
 
@@ -147,7 +147,7 @@ struct vring_used_elem *virtio_queue_set_used_elem(struct virtio_queue *vq,
 {
 	struct vring_used_elem *used_elem;
 
-	if (!vq->addr) {
+	if (!vq || !vq->addr) {
 		return NULL;
 	}
 
@@ -179,7 +179,7 @@ int virtio_queue_cleanup(struct virtio_queue *vq)
 {
 	int rc = VMM_OK;
 
-	if (!vq->addr) {
+	if (!vq || !vq->addr) {
 		goto done;
 	}
 
@@ -212,10 +212,14 @@ int virtio_queue_setup(struct virtio_queue *vq,
 			physical_size_t guest_page_size,
 			u32 desc_count, u32 align)
 {
-	int rc = 0;
+	int rc = VMM_OK;
 	u32 reg_flags;
 	physical_addr_t gphys_addr, hphys_addr;
 	physical_size_t gphys_size, avail_size;
+
+	if (!vq || !guest) {
+		return VMM_EFAIL;
+	}
 
 	if ((rc = virtio_queue_cleanup(vq))) {
 		return rc;
@@ -283,11 +287,11 @@ u16 virtio_queue_get_head_iovec(struct virtio_queue *vq,
 				u16 head, struct virtio_iovec *iov,
 				u32 *ret_iov_cnt, u32 *ret_total_len)
 {
-	struct vring_desc *desc;
+	int i;
 	u16 idx, max;
-	int i = 0;
+	struct vring_desc *desc;
 
-	if (!vq->addr) {
+	if (!vq || !vq->addr) {
 		*ret_iov_cnt = 0;
 		*ret_total_len = 0;
 		return 0;
@@ -308,6 +312,7 @@ u16 virtio_queue_get_head_iovec(struct virtio_queue *vq,
 #endif
 	}
 
+	i = 0;
 	do {
 		iov[i].addr = desc[idx].addr;
 		iov[i].len = desc[idx].len;

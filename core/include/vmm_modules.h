@@ -62,12 +62,14 @@ typedef void (*vmm_module_exit_t) (void);
  * 3.	So vendors can do likewise based on their own policies
  */
 
+#include <vmm_limits.h>
+
 struct vmm_module {
 	u32 signature;
-	char name[48];
-	char desc[128];
-	char author[32];
-	char license[32];
+	char name[VMM_FIELD_NAME_SIZE];
+	char desc[VMM_FIELD_DESC_SIZE];
+	char author[VMM_FIELD_AUTHOR_SIZE];
+	char license[VMM_FIELD_LICENSE_SIZE];
 	u32 ipriority;
 	vmm_module_init_t init;
 	vmm_module_exit_t exit;

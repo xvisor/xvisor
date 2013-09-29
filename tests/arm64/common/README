@@ -1,0 +1,9 @@
+			  ARM64 common code
+
+This directory contains directories:
+
+  1. busybox - Busybox based root filesystem for all ARM64 systems
+  2. basic - Common code for the basic firmware
+
+Please follow the README under specific platform directory for detailed
+steps to configure, compile and run.

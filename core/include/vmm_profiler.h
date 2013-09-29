@@ -26,9 +26,25 @@
 
 #include <vmm_types.h>
 
+#define VMM_PROFILE_ARRAY_SIZE		15
+#define VMM_PROFILE_OTHER_INDEX		(VMM_PROFILE_ARRAY_SIZE - 1)
+#define VMM_PROFILE_OTHER_PARENT	0xffffffff
+
+struct vmm_profiler_counter {
+        u32 index;
+        u32 parent_index;
+        atomic_t count;
+        atomic64_t total_time;
+        atomic64_t time_per_call;
+};
+
+struct vmm_profiler_stat {
+        struct vmm_profiler_counter counter[VMM_PROFILE_ARRAY_SIZE];
+};
+
 /**
  * Check status of function level profiling.
- * Called from some where (usually cmd_profile).
+ * Called from somewhere (usually cmd_profile).
  */
 bool vmm_profiler_isactive(void);
 
@@ -44,8 +60,10 @@ int vmm_profiler_start(void);
  */
 int vmm_profiler_stop(void); 
 
-u64 vmm_profiler_get_function_count(unsigned long addr);
-u64 vmm_profiler_get_function_total_time(unsigned long addr);
+/**
+ * Get the base of the stat data array
+ */
+struct vmm_profiler_stat *vmm_profiler_get_stat_array(void);
 
 /**
  * Initialize Profiler. 

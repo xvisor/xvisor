@@ -275,13 +275,13 @@ static int cpiofs_readdir(struct vnode *dv, loff_t off, struct dirent *d)
 		buf[8] = '\0';
 
 		memcpy(buf, &header.c_filesize, 8);
-		size = str2uint((const char *)buf, 16);
+		size = strtoul((const char *)buf, NULL, 16);
 
 		memcpy(buf, &header.c_namesize, 8);
-		name_size = str2uint((const char *)buf, 16);
+		name_size = strtoul((const char *)buf, NULL, 16);
 
 		memcpy(buf, &header.c_mode, 8);
-		mode = str2uint((const char *)buf, 16);
+		mode = strtoul((const char *)buf, NULL, 16);
 
 		rd = vmm_blockdev_read(dv->v_mount->m_dev, (u8 *)path, 
 		toff + sizeof(struct cpio_newc_header), name_size);
@@ -361,16 +361,16 @@ static int cpiofs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 		buf[8] = '\0';
 
 		memcpy(buf, &header.c_filesize, 8);
-		size = str2uint((const char *)buf, 16);
+		size = strtoul((const char *)buf, NULL, 16);
 
 		memcpy(buf, &header.c_namesize, 8);
-		name_size = str2uint((const char *)buf, 16);
+		name_size = strtoul((const char *)buf, NULL, 16);
 
 		memcpy(buf, &header.c_mode, 8);
-		mode = str2uint((const char *)buf, 16);
+		mode = strtoul((const char *)buf, NULL, 16);
 
 		memcpy(buf, &header.c_mtime, 8);
-		mtime = str2uint((const char *)buf, 16);
+		mtime = strtoul((const char *)buf, NULL, 16);
 
 		rd = vmm_blockdev_read(dv->v_mount->m_dev, (u8 *)path, 
 			off + sizeof(struct cpio_newc_header), name_size);

@@ -160,14 +160,14 @@ static inline void bitmap_zero(unsigned long *dst, int nbits)
 	if (small_const_nbits(nbits))
 		*dst = 0UL;
 	else {
-		int len = BIT_WORD(nbits) * sizeof(unsigned long);
+		int len = BITS_TO_LONGS(nbits) * sizeof(unsigned long);
 		memset(dst, 0, len);
 	}
 }
 
 static inline void bitmap_fill(unsigned long *dst, int nbits)
 {
-	size_t nlongs = BIT_WORD(nbits);
+	size_t nlongs = BITS_TO_LONGS(nbits);
 	if (!small_const_nbits(nbits)) {
 		int len = (nlongs - 1) * sizeof(unsigned long);
 		memset(dst, 0xff,  len);
@@ -180,7 +180,7 @@ static inline void bitmap_copy(unsigned long *dst, const unsigned long *src, int
 	if (small_const_nbits(nbits))
 		*dst = *src;
 	else {
-		int len = BIT_WORD(nbits) * sizeof(unsigned long);
+		int len = BITS_TO_LONGS(nbits) * sizeof(unsigned long);
 		memcpy(dst, src, len);
 	}
 }

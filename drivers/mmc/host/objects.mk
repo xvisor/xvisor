@@ -22,5 +22,6 @@
 # */
 
 drivers-objs-$(CONFIG_MMC_ARMMMCI) += mmc/host/mmci.o
+drivers-objs-$(CONFIG_MMC_SUNXI) += mmc/host/sunxi_mmc.o
 drivers-objs-$(CONFIG_MMC_SDHCI) += mmc/host/sdhci.o
 drivers-objs-$(CONFIG_MMC_SDHCI_BCM2835) += mmc/host/sdhci-bcm2835.o

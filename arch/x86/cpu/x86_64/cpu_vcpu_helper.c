@@ -69,16 +69,6 @@ int arch_vcpu_deinit(struct vmm_vcpu * vcpu)
 	return VMM_OK;
 }
 
-void dump_vcpu_regs(arch_regs_t *regs)
-{
-	vmm_printf("rax: %lx rbx: %lx rcx: %lx rdx: %lx\n", regs->rax, regs->rbx, regs->rcx, regs->rdx);
-	vmm_printf("rdi: %lx rsi: %lx rbp: %lx r8 : %lx\n", regs->rdi, regs->rsi, regs->rbp, regs->r8);
-	vmm_printf("r9 : %lx r10: %lx r11: %lx r12: %lx\n", regs->r9, regs->r10, regs->r11, regs->r12);
-	vmm_printf("r13: %lx r14: %lx r15: %lx\n", regs->r13, regs->r14, regs->r15);
-	vmm_printf("rip: %lx rsp: %lx rflags: %lx hwec: %lx\n", regs->rip, regs->rsp, regs->rflags, regs->hw_err_code);
-	vmm_printf("ss: %lx cs: %lx\n",regs->ss, regs->cs);
-}
-
 void arch_vcpu_switch(struct vmm_vcpu *tvcpu, 
 		      struct vmm_vcpu *vcpu,
 		      arch_regs_t *regs)
@@ -101,11 +91,33 @@ void arch_vcpu_preempt_orphan(void)
 	asm volatile ("int $0x80\t\n");
 }
 
-void arch_vcpu_regs_dump(struct vmm_vcpu *vcpu) 
+static void __dump_vcpu_regs(struct vmm_chardev *cdev, arch_regs_t *regs)
 {
-	dump_vcpu_regs(&vcpu->regs);
+	vmm_cprintf(cdev, "rax: %lx rbx: %lx rcx: %lx rdx: %lx\n", 
+		    regs->rax, regs->rbx, regs->rcx, regs->rdx);
+	vmm_cprintf(cdev, "rdi: %lx rsi: %lx rbp: %lx r8 : %lx\n",
+		    regs->rdi, regs->rsi, regs->rbp, regs->r8);
+	vmm_cprintf(cdev, "r9 : %lx r10: %lx r11: %lx r12: %lx\n", 
+		    regs->r9, regs->r10, regs->r11, regs->r12);
+	vmm_cprintf(cdev, "r13: %lx r14: %lx r15: %lx\n", 
+		    regs->r13, regs->r14, regs->r15);
+	vmm_cprintf(cdev, "rip: %lx rsp: %lx rflags: %lx hwec: %lx\n", 
+		    regs->rip, regs->rsp, regs->rflags, regs->hw_err_code);
+	vmm_cprintf(cdev, "ss: %lx cs: %lx\n", 
+		    regs->ss, regs->cs);
 }
 
-void arch_vcpu_stat_dump(struct vmm_vcpu *vcpu) 
+void dump_vcpu_regs(arch_regs_t *regs)
 {
+	__dump_vcpu_regs(NULL, regs);
+}
+
+void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu) 
+{
+	__dump_vcpu_regs(cdev, &vcpu->regs);
+}
+
+void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
+{
+	/* For now no arch specific stats */
 }

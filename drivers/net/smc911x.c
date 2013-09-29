@@ -1538,10 +1538,10 @@ smc911x_ethtool_setsettings(struct net_device *dev, struct ethtool_cmd *cmd)
 static void
 smc911x_ethtool_getdrvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
 {
-	strncpy(info->driver, CARDNAME, sizeof(info->driver));
-	strncpy(info->version, version, sizeof(info->version));
+	strlcpy(info->driver, CARDNAME, sizeof(info->driver));
+	strlcpy(info->version, version, sizeof(info->version));
 #if 0
-	strncpy(info->bus_info, dev_name(dev->dev.parent), sizeof(info->bus_info));
+	strlcpy(info->bus_info, dev_name(dev->dev.parent), sizeof(info->bus_info));
 #endif
 }
 
@@ -2050,7 +2050,11 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 
 	dev->priv = (void *) ndev;
 	ndev->vmm_dev = dev;
-	strcpy(ndev->name, dev->node->name);
+	if (strlcpy(ndev->name, dev->node->name, sizeof(ndev->name)) >=
+	    sizeof(ndev->name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_ndev;
+	}
 
 	lp = netdev_priv(ndev);
 	lp->netdev = ndev;
@@ -2090,8 +2094,9 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 	return rc;
 
 free_ioreamp_mem:
+	vmm_devtree_regunmap(dev->node, addr, 0);
 free_ndev:
-	vmm_free(lp);
+	if (ndev->priv) vmm_free(ndev->priv);
 	vmm_free(ndev);
 exit_probe:
 	return rc;

@@ -98,14 +98,14 @@ const u8_t tcp_persist_backoff[7] = { 3, 6, 12, 24, 48, 96, 120 };
 /* The TCP PCB lists. */
 
 /** List of all TCP PCBs bound but not yet (connected || listening) */
-struct tcp_pcb *tcp_bound_pcbs;
+struct tcp_pcb *tcp_bound_pcbs = NULL;
 /** List of all TCP PCBs in LISTEN state */
-union tcp_listen_pcbs_t tcp_listen_pcbs;
+union tcp_listen_pcbs_t tcp_listen_pcbs = { 0 };
 /** List of all TCP PCBs that are in a state in which
  * they accept or send data. */
-struct tcp_pcb *tcp_active_pcbs;
+struct tcp_pcb *tcp_active_pcbs = NULL;
 /** List of all TCP PCBs in TIME-WAIT state */
-struct tcp_pcb *tcp_tw_pcbs;
+struct tcp_pcb *tcp_tw_pcbs = NULL;
 
 #define NUM_TCP_PCB_LISTS               4
 #define NUM_TCP_PCB_LISTS_NO_TIME_WAIT  3
@@ -114,9 +114,9 @@ struct tcp_pcb ** const tcp_pcb_lists[] = {&tcp_listen_pcbs.pcbs, &tcp_bound_pcb
   &tcp_active_pcbs, &tcp_tw_pcbs};
 
 /** Only used for temporary storage. */
-struct tcp_pcb *tcp_tmp_pcb;
+struct tcp_pcb *tcp_tmp_pcb = NULL;
 
-u8_t tcp_active_pcbs_changed;
+u8_t tcp_active_pcbs_changed = 0;
 
 /** Timer counter to handle calling slow-timer from tcp_tmr() */ 
 static u8_t tcp_timer;

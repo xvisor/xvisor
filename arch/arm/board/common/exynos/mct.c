@@ -430,6 +430,7 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 				       const char *name, int rating,
 				       u32 freq_hz)
 {
+	int rc;
 	struct mct_clock_event_clockchip *mevt;
 	struct vmm_clockchip *evt;
 	u32 cpu = vmm_smp_processor_id();
@@ -464,23 +465,51 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 
 	if (mct_int_type == MCT_INT_SPI) {
 		if (cpu == 0) {
-			vmm_host_irq_register(EXYNOS4_IRQ_MCT_L0,
-					      "mct_tick0_irq",
-					      exynos4_mct_tick_isr, mevt);
-			vmm_host_irq_set_affinity(EXYNOS4_IRQ_MCT_L0,
-						  vmm_cpumask_of(cpu), TRUE);
+			rc = vmm_host_irq_register(EXYNOS4_IRQ_MCT_L0,
+						   "mct_tick0_irq",
+						    exynos4_mct_tick_isr, mevt);
+			if (rc) {
+				return rc;
+			}
+			rc = vmm_host_irq_set_affinity(EXYNOS4_IRQ_MCT_L0,
+						       vmm_cpumask_of(cpu),
+						       TRUE);
+			if (rc) {
+				vmm_host_irq_unregister(EXYNOS4_IRQ_MCT_L0,
+							mevt);
+				return rc;
+			}
 		} else {
-			vmm_host_irq_register(EXYNOS4_IRQ_MCT_L1,
-					      "mct_tick1_irq",
-					      exynos4_mct_tick_isr, mevt);
-			vmm_host_irq_set_affinity(EXYNOS4_IRQ_MCT_L1,
-						  vmm_cpumask_of(cpu), TRUE);
+			rc = vmm_host_irq_register(EXYNOS4_IRQ_MCT_L1,
+						   "mct_tick1_irq",
+						   exynos4_mct_tick_isr, mevt);
+			if (rc) {
+				return rc;
+			}
+			rc = vmm_host_irq_set_affinity(EXYNOS4_IRQ_MCT_L1,
+						       vmm_cpumask_of(cpu),
+						       TRUE);
+			if (rc) {
+				vmm_host_irq_unregister(EXYNOS4_IRQ_MCT_L1,
+							mevt);
+				return rc;
+			}
 		}
 	} else {
-		vmm_host_irq_register(EXYNOS_IRQ_MCT_LOCALTIMER,
-				      "mct_tick_irq",
-				      exynos4_mct_tick_isr, mevt);
-		vmm_host_irq_mark_per_cpu(EXYNOS_IRQ_MCT_LOCALTIMER);
+		rc = vmm_host_irq_register(EXYNOS_IRQ_MCT_LOCALTIMER,
+					   "mct_tick_irq",
+					   exynos4_mct_tick_isr, mevt);
+		if (rc) {
+			return rc;
+		}
+
+		rc = vmm_host_irq_mark_per_cpu(EXYNOS_IRQ_MCT_LOCALTIMER);
+		if (rc) {
+			vmm_host_irq_unregister(EXYNOS_IRQ_MCT_LOCALTIMER,
+						mevt);
+			return rc;
+		}
+
 		gic_enable_ppi(EXYNOS_IRQ_MCT_LOCALTIMER);
 	}
 

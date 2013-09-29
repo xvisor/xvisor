@@ -1130,7 +1130,7 @@ int cpu_mmu_unmap_reserved_page(struct cpu_page *pg)
 
 	list_for_each(l, &mmuctrl.l1tbl_list) {
 		l1 = list_entry(l, struct cpu_l1tbl, head);
-		cpu_mmu_unmap_page(l1, pg);
+		rc = cpu_mmu_unmap_page(l1, pg);
 	}
 
 	vmm_spin_unlock_irqrestore(&mmuctrl.l1_alloc_lock, flags);
@@ -1180,6 +1180,10 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 	}
 	nl1 = list_entry(list_first(&mmuctrl.free_l1tbl_list),
 			 struct cpu_l1tbl, head);
+	if (!nl1) {
+		vmm_spin_unlock_irqrestore(&mmuctrl.l1_alloc_lock, flags);
+		return NULL;
+	}
 	list_del(&nl1->head);
 	mmuctrl.l1_alloc_count++;
 	nl1->contextid = mmuctrl.l1_next_contextid;
@@ -1232,18 +1236,16 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 	return nl1;
 
 l1tbl_alloc_fail:
-	if (nl1) {
-		while (!list_empty(&nl1->l2tbl_list)) {
-			le = list_pop(&nl1->l2tbl_list);
-			nl2 = list_entry(le, struct cpu_l2tbl, head);
-			cpu_mmu_l2tbl_free(nl2);
-		}
-
-		vmm_spin_lock_irqsave(&mmuctrl.l1_alloc_lock, flags);
-		list_add_tail(&nl1->head, &mmuctrl.free_l1tbl_list);
-		mmuctrl.l1_alloc_count--;
-		vmm_spin_unlock_irqrestore(&mmuctrl.l1_alloc_lock, flags);
+	while (!list_empty(&nl1->l2tbl_list)) {
+		le = list_first(&nl1->l2tbl_list);
+		nl2 = list_entry(le, struct cpu_l2tbl, head);
+		cpu_mmu_l2tbl_free(nl2);
 	}
+
+	vmm_spin_lock_irqsave(&mmuctrl.l1_alloc_lock, flags);
+	list_add_tail(&nl1->head, &mmuctrl.free_l1tbl_list);
+	mmuctrl.l1_alloc_count--;
+	vmm_spin_unlock_irqrestore(&mmuctrl.l1_alloc_lock, flags);
 
 	return NULL;
 }
@@ -1391,8 +1393,10 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 	switch (len) {
 	case 1:
 		*((u8 *)dst) = *(u8 *)(tmp_va + (src & VMM_PAGE_MASK));
+		break;
 	case 2:
 		*((u16 *)dst) = *(u16 *)(tmp_va + (src & VMM_PAGE_MASK));
+		break;
 	case 4:
 		*((u32 *)dst) = *(u32 *)(tmp_va + (src & VMM_PAGE_MASK));
 		break;
@@ -1441,8 +1445,10 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 	switch (len) {
 	case 1:
 		*(u8 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u8 *)src);
+		break;
 	case 2:
 		*(u16 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u16 *)src);
+		break;
 	case 4:
 		*(u32 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u32 *)src);
 		break;
@@ -1549,8 +1555,10 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 	switch (len) {
 	case 1:
 		*((u8 *)dst) = *(u8 *)(tmp_va + (src & VMM_PAGE_MASK));
+		break;
 	case 2:
 		*((u16 *)dst) = *(u16 *)(tmp_va + (src & VMM_PAGE_MASK));
+		break;
 	case 4:
 		*((u32 *)dst) = *(u32 *)(tmp_va + (src & VMM_PAGE_MASK));
 		break;
@@ -1620,8 +1628,10 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 	switch (len) {
 	case 1:
 		*(u8 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u8 *)src);
+		break;
 	case 2:
 		*(u16 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u16 *)src);
+		break;
 	case 4:
 		*(u32 *)(tmp_va + (dst & VMM_PAGE_MASK)) = *((u32 *)src);
 		break;

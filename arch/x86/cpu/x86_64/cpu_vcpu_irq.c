@@ -25,33 +25,33 @@
 #include <vmm_error.h>
 #include <vmm_vcpu_irq.h>
 
-u32 arch_vcpu_irq_count(struct vmm_vcpu * vcpu)
+u32 arch_vcpu_irq_count(struct vmm_vcpu *vcpu)
 {
 	return 256;
 }
 
-u32 arch_vcpu_irq_priority(struct vmm_vcpu * vcpu, u32 irq_no)
+u32 arch_vcpu_irq_priority(struct vmm_vcpu *vcpu, u32 irq_no)
 {
 	/* all at same priority */
 	return 1;
 }
 
 /* FIXME: */
-int arch_vcpu_irq_assert(struct vmm_vcpu * vcpu, u32 irq_no, u32 reason)
+int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
 	return VMM_OK;
 }
 
 /* FIXME: */
-int arch_vcpu_irq_execute(struct vmm_vcpu * vcpu,
-			 arch_regs_t * regs, 
-			 u32 irq_no, u32 reason)
+int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
+			 arch_regs_t *regs, 
+			 u32 irq_no, u64 reason)
 {
 	return VMM_OK;
 }
 
 /* FIXME: */
-int arch_vcpu_irq_deassert(struct vmm_vcpu * vcpu, u32 irq_no, u32 reason)
+int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
 	return VMM_OK;
 }

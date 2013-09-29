@@ -24,6 +24,7 @@
 #ifndef __VMM_DEVDRV_H_
 #define __VMM_DEVDRV_H_
 
+#include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_devtree.h>
 #include <vmm_spinlocks.h>
@@ -40,7 +41,7 @@ struct vmm_device {
 
 struct vmm_classdev {
 	struct dlist head;
-	char name[32];
+	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_device *dev;
 	void *priv;
 };
@@ -48,13 +49,13 @@ struct vmm_classdev {
 struct vmm_class {
 	struct dlist head;
 	struct vmm_spinlock lock;
-	char name[32];
+	char name[VMM_FIELD_NAME_SIZE];
 	struct dlist classdev_list;
 };
 
 struct vmm_driver {
 	struct dlist head;
-	char name[32];
+	char name[VMM_FIELD_NAME_SIZE];
 	const struct vmm_devtree_nodeid *match_table;
 	int (*probe) (struct vmm_device *, const struct vmm_devtree_nodeid *);
 	int (*suspend) (struct vmm_device *, u32);

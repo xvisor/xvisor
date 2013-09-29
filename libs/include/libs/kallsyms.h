@@ -44,6 +44,9 @@ extern const unsigned long kallsyms_markers[] __attribute__ ((weak));
 /* Lookup the address for a symbol. Returns 0 if not found. */
 unsigned long kallsyms_lookup_name(const char *name);
 
+unsigned int kallsyms_expand_symbol(unsigned int off, char *result);
+unsigned int kallsyms_get_symbol_offset(unsigned long pos);
+
 unsigned long kallsyms_get_symbol_pos(unsigned long addr, unsigned long *symbolsize, unsigned long *offset);
 
 /* Call a function on each kallsyms symbol in the core kernel */

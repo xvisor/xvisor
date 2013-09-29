@@ -27,6 +27,8 @@
 #include <vmm_manager.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <arch_vcpu.h>
+#include <libs/mathlib.h>
 #include <libs/stringlib.h>
 
 #define MODULE_DESC			"Command vcpu"
@@ -56,176 +58,292 @@ static int cmd_vcpu_help(struct vmm_chardev *cdev, int dummy)
 	return VMM_OK;
 }
 
-static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
+static int cmd_vcpu_list_iter(struct vmm_vcpu *vcpu, void *priv)
 {
-	int id, count;
 	char state[10];
 	char path[256];
-	struct vmm_vcpu *vcpu;
+#ifdef CONFIG_SMP
+	u32 hcpu;
+#endif
+	struct vmm_chardev *cdev = priv;
+
+	switch (vmm_manager_vcpu_get_state(vcpu)) {
+	case VMM_VCPU_STATE_UNKNOWN:
+		strcpy(state, "Unknown");
+		break;
+	case VMM_VCPU_STATE_RESET:
+		strcpy(state, "Reset");
+		break;
+	case VMM_VCPU_STATE_READY:
+		strcpy(state, "Ready");
+		break;
+	case VMM_VCPU_STATE_RUNNING:
+		strcpy(state, "Running");
+		break;
+	case VMM_VCPU_STATE_PAUSED:
+		strcpy(state, "Paused");
+		break;
+	case VMM_VCPU_STATE_HALTED:
+		strcpy(state, "Halted");
+		break;
+	default:
+		strcpy(state, "Invalid");
+		break;
+	}
+	vmm_cprintf(cdev, " %-6d", vcpu->id);
+#ifdef CONFIG_SMP
+	vmm_manager_vcpu_get_hcpu(vcpu, &hcpu);
+	vmm_cprintf(cdev, " %-6d", hcpu);
+#endif
+	vmm_cprintf(cdev, " %-7d %-10s %-17s", vcpu->priority, state, vcpu->name);
+	if (vcpu->node) {
+		vmm_devtree_getpath(path, vcpu->node);
+		vmm_cprintf(cdev, " %-34s\n", path); 
+	} else {
+		vmm_cprintf(cdev, " %-34s\n", "(NA)"); 
+	}
+
+	return VMM_OK;
+}
+
+static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
+{
+	int rc;
+
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "----------------------------------------\n");
+			  "---------------------------------------\n");
 	vmm_cprintf(cdev, " %-6s", "ID ");
 #ifdef CONFIG_SMP
 	vmm_cprintf(cdev, " %-6s", "CPU ");
 #endif
-	vmm_cprintf(cdev, " %-7s %-10s %-17s %-35s\n", 
+	vmm_cprintf(cdev, " %-7s %-10s %-17s %-34s\n", 
 		    "Prio", "State", "Name", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "----------------------------------------\n");
-	count = vmm_manager_max_vcpu_count();
-	for (id = 0; id < count; id++) {
-		if (!(vcpu = vmm_manager_vcpu(id))) {
-			continue;
-		}
-		switch (vcpu->state) {
-		case VMM_VCPU_STATE_UNKNOWN:
-			strcpy(state, "Unknown");
-			break;
-		case VMM_VCPU_STATE_RESET:
-			strcpy(state, "Reset");
-			break;
-		case VMM_VCPU_STATE_READY:
-			strcpy(state, "Ready");
-			break;
-		case VMM_VCPU_STATE_RUNNING:
-			strcpy(state, "Running");
-			break;
-		case VMM_VCPU_STATE_PAUSED:
-			strcpy(state, "Paused");
-			break;
-		case VMM_VCPU_STATE_HALTED:
-			strcpy(state, "Halted");
-			break;
-		default:
-			strcpy(state, "Invalid");
-			break;
-		}
-		vmm_cprintf(cdev, " %-6d", id);
-#ifdef CONFIG_SMP
-		vmm_cprintf(cdev, " %-6d", vcpu->hcpu);
-#endif
-		vmm_cprintf(cdev, " %-7d %-10s %-17s", vcpu->priority, state, vcpu->name);
-		if (vcpu->node) {
-			vmm_devtree_getpath(path, vcpu->node);
-			vmm_cprintf(cdev, " %-35s\n", path); 
-		} else {
-			vmm_cprintf(cdev, " %-35s\n", "(NA)"); 
-		}
-	}
+			  "---------------------------------------\n");
+
+	rc = vmm_manager_vcpu_iterate(cmd_vcpu_list_iter, cdev);
+
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "----------------------------------------\n");
-	return VMM_OK;
+			  "---------------------------------------\n");
+
+	return rc;
 }
 
 static int cmd_vcpu_reset(struct vmm_chardev *cdev, int id)
 {
-	int ret = VMM_EFAIL;
+	int ret;
 	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
-	if (vcpu) {
-		if ((ret = vmm_manager_vcpu_reset(vcpu))) {
-			vmm_cprintf(cdev, "%s: Failed to reset\n", vcpu->name);
-		} else {
-			vmm_cprintf(cdev, "%s: Reset done\n", vcpu->name);
-		}
-	} else {
+
+	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
+		return VMM_EFAIL;
 	}
+
+	if ((ret = vmm_manager_vcpu_reset(vcpu))) {
+		vmm_cprintf(cdev, "%s: Failed to reset\n", vcpu->name);
+	} else {
+		vmm_cprintf(cdev, "%s: Reset\n", vcpu->name);
+	}
+
 	return ret;
 }
 
 static int cmd_vcpu_kick(struct vmm_chardev *cdev, int id)
 {
-	int ret = VMM_EFAIL;
+	int ret;
 	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
-	if (vcpu) {
-		if ((ret = vmm_manager_vcpu_kick(vcpu))) {
-			vmm_cprintf(cdev, "%s: Failed to kick\n", vcpu->name);
-		} else {
-			vmm_cprintf(cdev, "%s: Kicked\n", vcpu->name);
-		}
-	} else {
+
+	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
+		return VMM_EFAIL;
 	}
+
+	if ((ret = vmm_manager_vcpu_kick(vcpu))) {
+		vmm_cprintf(cdev, "%s: Failed to kick\n", vcpu->name);
+	} else {
+		vmm_cprintf(cdev, "%s: Kicked\n", vcpu->name);
+	}
+
 	return ret;
 }
 
 static int cmd_vcpu_pause(struct vmm_chardev *cdev, int id)
 {
-	int ret = VMM_EFAIL;
+	int ret;
 	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
-	if (vcpu) {
-		;
-		if ((ret = vmm_manager_vcpu_pause(vcpu))) {
-			vmm_cprintf(cdev, "%s: Failed to pause\n", vcpu->name);
-		} else {
-			vmm_cprintf(cdev, "%s: Paused\n", vcpu->name);
-		}
-	} else {
+
+	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
+		return VMM_EFAIL;
 	}
+
+	if ((ret = vmm_manager_vcpu_pause(vcpu))) {
+		vmm_cprintf(cdev, "%s: Failed to pause\n", vcpu->name);
+	} else {
+		vmm_cprintf(cdev, "%s: Paused\n", vcpu->name);
+	}
+
 	return ret;
 }
 
 static int cmd_vcpu_resume(struct vmm_chardev *cdev, int id)
 {
-	int ret = VMM_EFAIL;
+	int ret;
 	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
-	if (vcpu) {
-		if ((ret = vmm_manager_vcpu_resume(vcpu))) {
-			vmm_cprintf(cdev, "%s: Failed to resume\n", 
-					  vcpu->name);
-		} else {
-			vmm_cprintf(cdev, "%s: Resumed\n", vcpu->name);
-		}
-	} else {
+
+	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
+		return VMM_EFAIL;
 	}
+
+	if ((ret = vmm_manager_vcpu_resume(vcpu))) {
+		vmm_cprintf(cdev, "%s: Failed to resume\n", 
+				  vcpu->name);
+	} else {
+		vmm_cprintf(cdev, "%s: Resumed\n", vcpu->name);
+	}
+
 	return ret;
 }
 
 static int cmd_vcpu_halt(struct vmm_chardev *cdev, int id)
 {
-	int ret = VMM_EFAIL;
+	int ret;
 	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
-	if (vcpu) {
-		if ((ret = vmm_manager_vcpu_halt(vcpu))) {
-			vmm_cprintf(cdev, "%s: Failed to halt\n", vcpu->name);
-		} else {
-			vmm_cprintf(cdev, "%s: Halted\n", vcpu->name);
-		}
-	} else {
+
+	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
+		return VMM_EFAIL;
 	}
+
+	if ((ret = vmm_manager_vcpu_halt(vcpu))) {
+		vmm_cprintf(cdev, "%s: Failed to halt\n", vcpu->name);
+	} else {
+		vmm_cprintf(cdev, "%s: Halted\n", vcpu->name);
+	}
+
 	return ret;
 }
 
 static int cmd_vcpu_dumpreg(struct vmm_chardev *cdev, int id)
 {
-	int ret = VMM_EFAIL;
 	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
-	if (vcpu) {
-		if ((ret = vmm_manager_vcpu_dumpreg(vcpu))) {
-			vmm_cprintf(cdev, "%s: Failed to dumpreg\n", 
-					  vcpu->name);
-		}
-	} else {
+
+	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
+		return VMM_EFAIL;
 	}
-	return ret;
+
+	/* Architecture specific dumpreg */
+	arch_vcpu_regs_dump(cdev, vcpu);
+
+	return VMM_OK;
+}
+
+static void nsecs_to_hhmmsstt(u64 nsecs, 
+			u32 *hours, u32 *mins, u32 *secs, u32 *msecs)
+{
+	nsecs = udiv64(nsecs, 1000000ULL);
+
+	*msecs = umod64(nsecs, 1000ULL);
+	nsecs = udiv64(nsecs, 1000ULL);
+
+	*secs = umod64(nsecs, 60ULL);
+	nsecs = udiv64(nsecs, 60ULL);
+
+	*mins = umod64(nsecs, 60ULL);
+	nsecs = udiv64(nsecs, 60ULL);
+
+	*hours = umod64(nsecs, 60ULL);
+	nsecs = udiv64(nsecs, 60ULL);
 }
 
 static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev, int id)
 {
-	int ret = VMM_EFAIL;
+	int ret;
+	u8 priority;
+	u32 h, m, s, ms;
+	u32 state, hcpu, reset_count;
+	u64 last_reset_nsecs, total_nsecs;
+	u64 ready_nsecs, running_nsecs, paused_nsecs, halted_nsecs;
 	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
-	if (vcpu) {
-		if ((ret = vmm_manager_vcpu_dumpstat(vcpu))) {
-			vmm_cprintf(cdev, "%s: Failed to dumpstat\n", 
-					  vcpu->name);
-		}
-	} else {
+
+	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
+		return VMM_EFAIL;
 	}
+
+	/* Retrive general statistics*/
+	ret = vmm_manager_vcpu_stats(vcpu, &state, &priority, &hcpu,
+					&reset_count, &last_reset_nsecs,
+					&ready_nsecs, &running_nsecs,
+					&paused_nsecs, &halted_nsecs);
+	if (ret) {
+		vmm_cprintf(cdev, "%s: Failed to get stats\n", 
+				  vcpu->name);
+		return ret;
+	}
+
+	/* General statistics */
+	vmm_cprintf(cdev, "Name             : %s\n", vcpu->name);
+	vmm_cprintf(cdev, "State            : ");
+	switch (state) {
+	case VMM_VCPU_STATE_UNKNOWN:
+		vmm_cprintf(cdev, "Unknown\n");
+		break;
+	case VMM_VCPU_STATE_RESET:
+		vmm_cprintf(cdev, "Reset\n");
+		break;
+	case VMM_VCPU_STATE_READY:
+		vmm_cprintf(cdev, "Ready\n");
+		break;
+	case VMM_VCPU_STATE_RUNNING:
+		vmm_cprintf(cdev, "Running\n");
+		break;
+	case VMM_VCPU_STATE_PAUSED:
+		vmm_cprintf(cdev, "Paused\n");
+		break;
+	case VMM_VCPU_STATE_HALTED:
+		vmm_cprintf(cdev, "Halted\n");
+		break;
+	default:
+		vmm_cprintf(cdev, "Invalid\n");
+		break;
+	}
+	vmm_cprintf(cdev, "Priority         : %d\n", priority);
+#ifdef CONFIG_SMP
+	vmm_cprintf(cdev, "Host CPU         : %d\n", hcpu);
+#endif
+	vmm_cprintf(cdev, "\n");
+	nsecs_to_hhmmsstt(ready_nsecs, &h, &m, &s, &ms);
+	vmm_cprintf(cdev, "Ready Time       : %d:%02d:%02d:%03d\n", 
+			  h, m, s, ms);
+	nsecs_to_hhmmsstt(running_nsecs, &h, &m, &s, &ms);
+	vmm_cprintf(cdev, "Running Time     : %d:%02d:%02d:%03d\n", 
+			  h, m, s, ms);
+	nsecs_to_hhmmsstt(paused_nsecs, &h, &m, &s, &ms);
+	vmm_cprintf(cdev, "Paused Time      : %d:%02d:%02d:%03d\n", 
+			  h, m, s, ms);
+	nsecs_to_hhmmsstt(halted_nsecs, &h, &m, &s, &ms);
+	vmm_cprintf(cdev, "Halted Time      : %d:%02d:%02d:%03d\n", 
+			  h, m, s, ms);
+	total_nsecs =  ready_nsecs;
+	total_nsecs += running_nsecs;
+	total_nsecs += paused_nsecs;
+	total_nsecs += halted_nsecs;
+	nsecs_to_hhmmsstt(total_nsecs, &h, &m, &s, &ms);
+	vmm_cprintf(cdev, "Total Time       : %d:%02d:%02d:%03d\n", 
+			  h, m, s, ms);
+	vmm_cprintf(cdev, "\n");
+	vmm_cprintf(cdev, "Reset Count      : %d\n", reset_count);
+	nsecs_to_hhmmsstt(last_reset_nsecs, &h, &m, &s, &ms);
+	vmm_cprintf(cdev, "Last Reset Since : %d:%02d:%02d:%03d\n", 
+			  h, m, s, ms);
+	vmm_cprintf(cdev, "\n");
+
+	/* Architecture specific dumpstat */
+	arch_vcpu_stat_dump(cdev, vcpu);
+
 	return ret;
 }
 
@@ -256,7 +374,7 @@ static int cmd_vcpu_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	}
 
 	if (argc == 3) {
-		id = str2int(argv[2], 10);
+		id = atoi(argv[2]);
 	}
 	
 	while (command[index].name) {

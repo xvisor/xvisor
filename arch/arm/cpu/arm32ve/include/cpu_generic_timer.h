@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_generic_timer.c
+ * @file cpu_generic_timer.h
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief CPU specific functions for ARM architecture generic timers
  */

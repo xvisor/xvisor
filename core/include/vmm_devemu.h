@@ -23,6 +23,7 @@
 #ifndef _VMM_DEVEMU_H__
 #define _VMM_DEVEMU_H__
 
+#include <vmm_limits.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_manager.h>
@@ -32,7 +33,7 @@ struct vmm_emulator;
 
 struct vmm_emulator {
 	struct dlist head;
-	char name[32];
+	char name[VMM_FIELD_NAME_SIZE];
 	const struct vmm_devtree_nodeid *match_table;
 	int (*probe) (struct vmm_guest *guest,
 		      struct vmm_emudev *edev,
@@ -85,12 +86,6 @@ extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest,
 /** Emulate percpu irq for guest */
 #define vmm_devemu_emulate_percpu_irq(guest, irq, cpu, level)	\
 		__vmm_devemu_emulate_irq(guest, irq, cpu, level) 
-
-/** Signal completion of host-to-guest mapped irq 
- *  (Note: For proper functioning of host-to-guest mapped irq, the PIC 
- *  emulators must call this function upon completion/end-of interrupt)
- */
-int vmm_devemu_complete_host2guest_irq(struct vmm_guest *guest, u32 irq);
 
 /** Register guest irq handler */
 int vmm_devemu_register_irq_handler(struct vmm_guest *guest, u32 irq,
