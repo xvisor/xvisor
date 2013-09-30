@@ -20,7 +20,7 @@
  * @file vmm_netswitch.h
  * @author Pranav Sawargaonkar <pranav.sawargaonkar@gmail.com>
  * @author Sukanto Ghosh <sukantoghosh@gmail.com>
- * @brief Switch/Bridge layer for packet switching.
+ * @brief Generic netswitch interface header.
  */
 
 #ifndef __VMM_NETSWITCH_H_

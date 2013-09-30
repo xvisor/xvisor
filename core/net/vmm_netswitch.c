@@ -20,7 +20,7 @@
  * @file vmm_netswitch.c
  * @author Pranav Sawargaonkar <pranav.sawargaonkar@gmail.com>
  * @author Sukanto Ghosh <sukantoghosh@gmail.com>
- * @brief NetSwitch framework.
+ * @brief Generic netswitch implementation.
  */
 
 #include <vmm_error.h>

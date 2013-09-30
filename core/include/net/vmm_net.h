@@ -31,12 +31,13 @@ extern int vmm_mbufpool_init(void);
 extern void vmm_mbufpool_exit(void);
 extern int vmm_netswitch_init(void);
 extern void vmm_netswitch_exit(void);
-extern int vmm_netbridge_init(void);
-extern void vmm_netbridge_exit(void);
 extern int vmm_netport_init(void);
 extern void vmm_netport_exit(void);
 extern int vmm_netdev_init(void);
 extern void vmm_netdev_exit(void);
+
+extern int vmm_bridge_init(void);
+extern void vmm_bridge_exit(void);
 
 #endif
 
