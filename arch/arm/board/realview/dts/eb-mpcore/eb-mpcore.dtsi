@@ -36,7 +36,7 @@
 			reg = <0x4E000000 0x1000>;
 			smsc,irq-active-high;
 			interrupts = <41>;
-			switch = "netbridge0";
+			switch = "br0";
 		};
 
 		sbridge {
@@ -137,7 +137,7 @@
 
 	vmm {
 		net {
-			netbridge0 {
+			br0 {
 				device_type = "netswitch";
 				compatible = "bridge";
 			};

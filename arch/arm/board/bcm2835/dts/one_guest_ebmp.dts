@@ -13,15 +13,15 @@
 			  "devtree attr set /guests/guest0/aspace/mem0 host_physical_addr physaddr 0x02000000",
 			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
 
-			  /* Connect guest0/virtio-net0 netport to netbridge0 */
-			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string netbridge0",
+			  /* Connect guest0/virtio-net0 netport to br0 */
+			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string br0",
 
 			  /* Update guest0 flash region */
 			  "devtree attr set /guests/guest0/aspace/nor_flash host_physical_addr physaddr 0x01000000",
 			  "devtree attr set /guests/guest0/aspace/nor_flash physical_size physsize 0x01000000",
 
-			  /* Connect guest0/eth netport to netbridge0 */
-			  "devtree attr set /guests/guest0/aspace/eth switch string netbridge0",
+			  /* Connect guest0/eth netport to br0 */
+			  "devtree attr set /guests/guest0/aspace/eth switch string br0",
 
 			  /* Create guest0 */
 			  "guest create guest0";

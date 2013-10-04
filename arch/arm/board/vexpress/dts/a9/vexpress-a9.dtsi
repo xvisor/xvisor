@@ -56,7 +56,7 @@
 			reg = <0x4E000000 0x1000>;
 			smsc,irq-active-high;
 			interrupts = <47>;
-			switch = "netbridge0";
+			switch = "br0";
 		};
 
 		iofpga {
@@ -136,7 +136,7 @@
 
 	vmm {
 		net {
-			netbridge0 {
+			br0 {
 				device_type = "netswitch";
 				compatible = "bridge";
 			};

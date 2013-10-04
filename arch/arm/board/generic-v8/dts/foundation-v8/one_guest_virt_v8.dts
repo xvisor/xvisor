@@ -16,8 +16,8 @@
 			  /* Update guest0 vGIC CPU interface regions */
 			  "devtree attr set /guests/guest0/aspace/gic_cpu host_physical_addr physaddr 0x2C006000",
 
-			  /* Connect guest0/virtio-net0 netport to netbridge0 */
-			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string netbridge0",
+			  /* Connect guest0/virtio-net0 netport to br0 */
+			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string br0",
 
 			  /* Update guest0 memory regions */
 			  "devtree attr set /guests/guest0/aspace/mem0 host_physical_addr physaddr 0x82000000",

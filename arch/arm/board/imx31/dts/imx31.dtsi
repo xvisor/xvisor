@@ -92,6 +92,15 @@
 	      		baudrate = <115200>;
 			interrupts = <47>;
 		};
+
+		eth0 {
+			device_type = "nic";
+			compatible = "smc911x";
+			reg = <0xb6000000 0x1000>;
+			interrupts = <52>;
+			switch = ""; /* To be set by DTS file including this file */
+			smsc,irq-active-high;
+		};
 	};
 };
 

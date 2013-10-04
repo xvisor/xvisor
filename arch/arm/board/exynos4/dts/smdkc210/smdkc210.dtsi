@@ -20,13 +20,13 @@
 			compatible = "smc911x";
 			reg = <0x05000000 0x1000>;
 			interrupts = <53>;
-			switch = "netbridge0";
+			switch = "br0";
 		};
 	};
 
 	vmm {
 		net {
-			netbridge0 {
+			br0 {
 				device_type = "netswitch";
 				compatible = "bridge";
 			};

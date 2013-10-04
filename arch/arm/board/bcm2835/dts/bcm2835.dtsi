@@ -63,7 +63,7 @@
 
 	vmm {
 		net {
-			netbridge0 {
+			br0 {
 				device_type = "netswitch";
 				compatible = "bridge";
 			};

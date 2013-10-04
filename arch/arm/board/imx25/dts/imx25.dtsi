@@ -84,20 +84,5 @@
 			interrupts = <18>;
 		};
 	};
-
-	vmm {
-		net {
-			netbridge0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
-	/* Empty guests node */
-	guests {
-	};
 };
-
-/* FIXME: Add guest templates */
 
