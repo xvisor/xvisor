@@ -18,6 +18,7 @@
  *
  * @file cpu_atomic64.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
+ * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief Architecture specific 64bits synchronization mechanisms.
  */
 
@@ -25,43 +26,63 @@
 #include <vmm_types.h>
 #include <vmm_compiler.h>
 #include <arch_atomic64.h>
+#include <arch_barrier.h>
 
-/* FIXME: Need memory barrier for this. */
+#ifdef CONFIG_SMP
+#define LOCK_PREFIX "\n\tlock;\n"
+#else
+#define LOCK_PREFIX ""
+#endif
+
 u64  __lock arch_atomic64_read(atomic64_t *atom)
 {
-	return atom->counter;
+	u64 ret;
+	ret = atom->counter;
+	arch_rmb();
+	return ret;
 }
 
-/* FIXME: Need memory barrier for this. */
 void  __lock arch_atomic64_write(atomic64_t *atom, u64 value)
 {
 	atom->counter = value;
+	arch_wmb();
 }
 
-/* FIXME: Implement This. */
 void __lock arch_atomic64_add(atomic64_t *atom, u64 value)
 {
+	asm volatile(LOCK_PREFIX " addq %1,%0\n\t"
+		     :"+m"(atom->counter)
+		     :"ir"(value));
 }
 
-/* FIXME: Implement This. */
 void __lock arch_atomic64_sub(atomic64_t *atom, u64 value)
 {
+	asm volatile (LOCK_PREFIX " subq %1,%0\n\t"
+		      :"+m"(atom->counter)
+		      :"ir"(value));
 }
 
-/* FIXME: Implement This. */
 u64 __lock arch_atomic64_add_return(atomic64_t *atom, u64 value)
 {
-	return 0;
+	long oval;
+	asm volatile(LOCK_PREFIX " xaddq %0,%1\n\t"
+		     :"=r"(oval),"+m"(atom->counter)
+		     :"0"(value):"cc");
+
+	return value + oval;
 }
 
-/* FIXME: Implement This. */
 u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
 {
-	return 0;
+	return arch_atomic64_add_return(atom, -value);
 }
 
-/* FIXME: Implement This. */
 u64 __lock arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval)
 {
-	return 0;
+	long ret;
+	asm volatile(LOCK_PREFIX "cmpxchgq %2,%1\n\t"
+		     :"=a"(ret),"+m"(atom->counter)
+		     :"r"(newval), "0"(oldval)
+		     :"memory");
+	return ret;
 }

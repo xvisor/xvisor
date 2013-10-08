@@ -24,21 +24,21 @@
 #define __ARCH_BARRIER_H__
 
 /* FIXME: Read & Write Memory barrier */
-#define arch_mb()			
+#define arch_mb()	asm volatile("mfence\n");
 
 /* FIXME: Read Memory barrier */
-#define arch_rmb()			
+#define arch_rmb()	asm volatile("lfence\n");
 
 /* FIXME: Write Memory barrier */
-#define arch_wmb()			
+#define arch_wmb()	asm volatile("sfence\n");
 
 /* FIXME: SMP Read & Write Memory barrier */
-#define arch_smp_mb()			
+#define arch_smp_mb()	asm volatile("mfence":::"memory");
 
 /* FIXME: SMP Read Memory barrier */
-#define arch_smp_rmb()			
+#define arch_smp_rmb()	asm volatile("lfence":::"memory");
 
 /* FIXME: SMP Write Memory barrier */
-#define arch_smp_wmb()			
+#define arch_smp_wmb()	asm volatile("sfence":::"memory");
 
 #endif /* __ARCH_BARRIER_H__ */
