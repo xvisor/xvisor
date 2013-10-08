@@ -42,6 +42,7 @@ cpu-objs-y+= cpu_elf.o
 cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_irq.o
 cpu-objs-y+= cpu_vcpu_helper.o
+cpu-objs-y+= cpu_pgtbl_helper.o
 cpu-objs-y+= cpu_mmu.o
 cpu-objs-y+= dumpstack.o
 cpu-objs-y+= dumpstack_64.o

@@ -72,6 +72,12 @@
 #include <vmm_spinlocks.h>
 #include <libs/list.h>
 
+static inline void invalidate_vaddr_tlb(virtual_addr_t vaddr)
+{
+	__asm__ __volatile__("invlpg (%0)\n\t"
+			     ::"r"(vaddr):"memory");
+}
+
 union page {
 	u64 _val;
 	struct {
