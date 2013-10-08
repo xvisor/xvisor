@@ -24,4 +24,7 @@
 
 cpu-cflags +=-finline-functions -O0 -mcmodel=large
 
+cpu-common-objs-y += stacktrace.o
+cpu-common-objs-y += dumpstack.o
+cpu-common-objs-$(CONFIG_LOCAL_APIC) += cpu_apic.o
 cpu-common-objs-$(CONFIG_ACPI) += acpi.o
