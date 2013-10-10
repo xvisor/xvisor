@@ -36,16 +36,6 @@
 struct vtemu *x86_vt;
 #endif
 
-int arch_board_reset(void)
-{
-	return VMM_EFAIL;
-}
-
-int arch_board_shutdown(void)
-{
-	return VMM_EFAIL;
-}
-
 int __init arch_board_early_init(void)
 {
 	int rv;

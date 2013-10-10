@@ -31,21 +31,6 @@
 #include <sunxi/timer.h>
 
 /*
- * Reset & Shutdown
- */
-
-int arch_board_reset(void)
-{
-	return aw_timer_force_reset();
-}
-
-int arch_board_shutdown(void)
-{
-	/* FIXME: Don't know how to poweroff !!!!! */
-	return VMM_EFAIL;
-}
-
-/*
  * Print board information
  */
 

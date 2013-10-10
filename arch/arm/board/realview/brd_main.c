@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_main.h>
 #include <vmm_smp.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
@@ -68,7 +69,7 @@ void realview_flags_set(u32 addr)
  * Reset & Shutdown
  */
 
-int arch_board_reset(void)
+static int realview_reset(void)
 {
 	u32 board_id;
 	void *sys_id = (void *)realview_sys_base + REALVIEW_SYS_ID_OFFSET;
@@ -99,7 +100,7 @@ int arch_board_reset(void)
 	return VMM_OK;
 }
 
-int arch_board_shutdown(void)
+static int realview_shutdown(void)
 {
 	/* FIXME: TBD */
 	return VMM_OK;
@@ -309,6 +310,10 @@ int __init arch_board_early_init(void)
 	if (rc) {
 		return rc;
 	}
+
+	/* Register reset & shutdown callbacks */
+	vmm_register_system_reset(realview_reset);
+	vmm_register_system_shutdown(realview_shutdown);
 
 	/* Get address of 24mhz counter */
 	realview_sys_24mhz = realview_sys_base + REALVIEW_SYS_24MHz_OFFSET;

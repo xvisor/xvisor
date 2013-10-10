@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_main.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
@@ -42,7 +43,7 @@ static u32 versatile_sp804_irq;
  * Reset & Shutdown
  */
 
-int arch_board_reset(void)
+static int versatile_reset(void)
 {
 	vmm_writel(0x101, (void *)(versatile_sys_base +
 			   VERSATILE_SYS_RESETCTL_OFFSET));
@@ -50,10 +51,10 @@ int arch_board_reset(void)
 	return VMM_OK;
 }
 
-int arch_board_shutdown(void)
+static int versatile_shutdown(void)
 {
 	/* FIXME: TBD */
-	return VMM_OK;
+	return VMM_EFAIL;
 }
 
 /*
@@ -93,6 +94,10 @@ int __init arch_board_early_init(void)
 	if (rc) {
 		return rc;
 	}
+
+	/* Register reset & shutdown callbacks */
+	vmm_register_system_reset(versatile_reset);
+	vmm_register_system_shutdown(versatile_shutdown);
 
 	/* Map sysctl */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,versatile-sctl");

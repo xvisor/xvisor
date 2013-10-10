@@ -24,12 +24,6 @@
 #ifndef __BCM2835_PM_H
 #define __BCM2835_PM_H
 
-/** Reset SOC */
-void bcm2835_pm_reset(void);
-
-/** Poweroff SOC */
-void bcm2835_pm_poweroff(void);
-
 /** Initialize PM and Watchdog interface */
 int bcm2835_pm_init(void);
 

@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_main.h>
 #include <vmm_compiler.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
@@ -54,7 +55,7 @@ static virtual_addr_t pm_base_va;
 #define PM_RSTS_HADDRF_SET		0x00000002
 #define PM_RSTS_HADDRQ_SET		0x00000001
 
-void bcm2835_pm_reset(void)
+static int bcm2835_pm_reset(void)
 {
 	u32 pm_rstc, pm_wdog;
 	u32 timeout = 10;
@@ -73,9 +74,11 @@ void bcm2835_pm_reset(void)
 
 	vmm_writel(pm_wdog, PM_WDOG);
 	vmm_writel(pm_rstc, PM_RSTC);
+
+	return VMM_OK;
 }
 
-void bcm2835_pm_poweroff(void)
+static int bcm2835_pm_poweroff(void)
 {
 	/* we set the watchdog hard reset bit here to distinguish this reset 
 	 * from the normal (full) reset. bootcode.bin will not reboot after 
@@ -89,7 +92,7 @@ void bcm2835_pm_poweroff(void)
 
 	vmm_writel(pm_rsts, PM_RSTS);
 
-	bcm2835_pm_reset();
+	return bcm2835_pm_reset();
 }
 
 int __init bcm2835_pm_init(void)
@@ -107,6 +110,10 @@ int __init bcm2835_pm_init(void)
 	if (rc) {
 		return rc;
 	}
+
+	/* Register reset & shutdown callbacks */
+	vmm_register_system_reset(bcm2835_pm_reset);
+	vmm_register_system_shutdown(bcm2835_pm_poweroff);
 
 	return VMM_OK;
 }

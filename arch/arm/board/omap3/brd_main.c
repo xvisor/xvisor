@@ -36,22 +36,6 @@
 #include <omap/s32k-timer.h>
 
 /*
- * Reset & Shutdown
- */
-
-int arch_board_reset(void)
-{
-	/* FIXME: TBD */
-	return VMM_OK;
-}
-
-int arch_board_shutdown(void)
-{
-	/* FIXME: TBD */
-	return VMM_OK;
-}
-
-/*
  * Initialization functions
  */
 

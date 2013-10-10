@@ -39,9 +39,6 @@ enum aw_chip_ver {
 /** Get chip version */
 enum aw_chip_ver aw_timer_chip_ver(void);
 
-/** Force reset using Sunxi timer watchdog */
-int aw_timer_force_reset(void);
-
 /** Initialize Sunxi timer misc APIs */
 int aw_timer_misc_init(void);
 

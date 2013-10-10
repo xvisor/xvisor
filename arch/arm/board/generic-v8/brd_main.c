@@ -34,30 +34,12 @@
 #include <generic_timer.h>
 
 /*
- * Reset & Shutdown
- */
-
-int arch_board_reset(void)
-{
-	/* FIXME: To be implemented. */
-	vmm_printf("%s: not implemented\n", __func__);
-	return VMM_EFAIL;
-}
-
-/*
  * Print board information
  */
 
 void arch_board_print_info(struct vmm_chardev *cdev)
 {
 	/* FIXME: To be implemented. */
-}
-
-int arch_board_shutdown(void)
-{
-	/* FIXME: To be implemented. */
-	vmm_printf("%s: not implemented\n", __func__);
-	return VMM_EFAIL;
 }
 
 /*

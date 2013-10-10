@@ -32,22 +32,6 @@
 #include <imx/epit.h>
 
 /*
- * Reset & Shutdown
- */
-
-int arch_board_reset(void)
-{
-	/* FIXME: Don't know how to reset !!!!! */
-	return VMM_EFAIL;
-}
-
-int arch_board_shutdown(void)
-{
-	/* FIXME: Don't know how to poweroff !!!!! */
-	return VMM_EFAIL;
-}
-
-/*
  * Print board information
  */
 

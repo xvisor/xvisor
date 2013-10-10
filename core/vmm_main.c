@@ -18,7 +18,7 @@
  *
  * @file vmm_main.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief main file for core code
+ * @brief main source file to start, stop and reset hypervisor
  */
 
 #include <vmm_error.h>
@@ -478,40 +478,67 @@ void vmm_init_secondary(void)
 }
 #endif
 
-void vmm_reset(void)
+static void system_stop(void)
 {
-	int rc;
-
 	/* Stop scheduler */
 	vmm_printf("Stopping Hypervisor Timer\n");
 	vmm_timer_stop();
 
 	/* FIXME: Do other cleanup stuff. */
+}
 
-	/* Issue board reset */
-	vmm_printf("Issuing Board Reset\n");
-	if ((rc = arch_board_reset())) {
-		vmm_panic("Error: Board reset failed.\n");
+static int (*system_reset)() = NULL;
+
+void vmm_register_system_reset(int (*callback)())
+{
+	system_reset = callback;
+}
+
+void vmm_reset(void)
+{
+	int rc;
+
+	/* Stop the system */
+	system_stop();
+
+	/* Issue system reset */
+	if (!system_reset) {
+		vmm_printf("Error: no system reset callback.\n");
+		vmm_printf("Please reset system manually ...\n");
+	} else {
+		vmm_printf("Issuing System Reset\n");
+		if ((rc = system_reset())) {
+			vmm_printf("Error: reset failed (error %d)\n", rc);
+		}
 	}
 
 	/* Wait here. Nothing else to do. */
 	vmm_hang();
 }
 
+static int (*system_shutdown)() = NULL;
+
+void vmm_register_system_shutdown(int (*callback)())
+{
+	system_shutdown = callback;
+}
+
 void vmm_shutdown(void)
 {
 	int rc;
 
-	/* Stop scheduler */
-	vmm_printf("Stopping Hypervisor Timer Subsytem\n");
-	vmm_timer_stop();
+	/* Stop the system */
+	system_stop();
 
-	/* FIXME: Do other cleanup stuff. */
-
-	/* Issue board shutdown */
-	vmm_printf("Issuing Board Shutdown\n");
-	if ((rc = arch_board_shutdown())) {
-		vmm_panic("Error: Board shutdown failed.\n");
+	/* Issue system shutdown */
+	if (!system_shutdown) {
+		vmm_printf("Error: no system shutdown callback.\n");
+		vmm_printf("Please shutdown system manually ...\n");
+	} else {
+		vmm_printf("Issuing System Shutdown\n");
+		if ((rc = system_shutdown())) {
+			vmm_printf("Error: shutdown failed (error %d)\n", rc);
+		}
 	}
 
 	/* Wait here. Nothing else to do. */

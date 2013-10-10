@@ -21,8 +21,9 @@
  * @brief Allwinner Sunxi timer
  */
 
-#include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_types.h>
+#include <vmm_main.h>
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
@@ -365,7 +366,7 @@ enum aw_chip_ver aw_timer_chip_ver(void)
 	return AW_CHIP_VER_C;
 }
 
-int aw_timer_force_reset(void)
+static int aw_timer_force_reset(void)
 {
 	u32 mode;
 
@@ -401,6 +402,9 @@ int __init aw_timer_misc_init(void)
 	if (rc) {
 		return rc;
 	}
+
+	/* Register reset callbacks */
+	vmm_register_system_reset(aw_timer_force_reset);
 
 	return VMM_OK;
 }

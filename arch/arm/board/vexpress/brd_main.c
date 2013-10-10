@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_main.h>
 #include <vmm_smp.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
@@ -45,12 +46,12 @@
  * Global board context
  */
 
+static vmm_spinlock_t v2m_cfg_lock;
 static virtual_addr_t v2m_sys_base;
 static virtual_addr_t v2m_sys_24mhz;
 static virtual_addr_t v2m_sctl_base;
 static virtual_addr_t v2m_sp804_base;
 static u32 v2m_sp804_irq;
-static vmm_spinlock_t v2m_cfg_lock;
 
 #if defined(CONFIG_VTEMU)
 struct vtemu *v2m_vt;
@@ -114,7 +115,7 @@ int v2m_cfg_read(u32 devfn, u32 *data)
  * Reset & Shutdown
  */
 
-int arch_board_reset(void)
+static int v2m_reset(void)
 {
 	if (v2m_cfg_write(SYS_CFG_REBOOT | SYS_CFG_SITE_MB, 0)) {
 		vmm_panic("Unable to reboot\n");
@@ -122,7 +123,7 @@ int arch_board_reset(void)
 	return VMM_OK;
 }
 
-int arch_board_shutdown(void)
+static int v2m_shutdown(void)
 {
 	if (v2m_cfg_write(SYS_CFG_SHUTDOWN | SYS_CFG_SITE_MB, 0)) {
 		vmm_panic("Unable to shutdown\n");
@@ -246,6 +247,9 @@ int __init arch_board_early_init(void)
 	 * ....
 	 */
 
+	/* Init config lock */
+	INIT_SPIN_LOCK(&v2m_cfg_lock);
+
 	/* Map sysreg */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,vexpress-sysreg");
 	if (!node) {
@@ -255,6 +259,10 @@ int __init arch_board_early_init(void)
 	if (rc) {
 		return rc;
 	}
+
+	/* Register reset & shutdown callbacks */
+	vmm_register_system_reset(v2m_reset);
+	vmm_register_system_shutdown(v2m_shutdown);
 
 	/* Get address of 24mhz counter */
 	v2m_sys_24mhz = v2m_sys_base + V2M_SYS_24MHZ;
@@ -293,9 +301,6 @@ int __init arch_board_early_init(void)
 	if (rc) {
 		return rc;
 	}
-
-	/* Init config lock */
-	INIT_SPIN_LOCK(&v2m_cfg_lock);
 
 	/* Setup CLCD (before probing) */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");

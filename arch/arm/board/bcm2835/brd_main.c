@@ -31,24 +31,6 @@
 #include <bcm2835_timer.h>
 
 /*
- * Reset & Shutdown
- */
-
-int arch_board_reset(void)
-{
-	bcm2835_pm_reset();
-
-	return VMM_OK;
-}
-
-int arch_board_shutdown(void)
-{
-	bcm2835_pm_poweroff();
-
-	return VMM_OK;
-}
-
-/*
  * Print board information
  */
 
