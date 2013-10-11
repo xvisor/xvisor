@@ -18,27 +18,12 @@
  *
  * @file arch_host_irq.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief board specific host irq functions
+ * @brief architecture specific host irq functions
  */
 #ifndef _ARCH_HOST_IRQ_H__
 #define _ARCH_HOST_IRQ_H__
 
-#include <vmm_types.h>
-
-#include <bcm2835_intc.h>
-
-#define ARCH_HOST_IRQ_COUNT			BCM2835_INTC_MAX_IRQ
-
-/* Get current active host irq */
-static inline u32 arch_host_irq_active(u32 cpu_irq_no)
-{
-	return bcm2835_intc_active_irq();
-}
-
-/* Initialize board specifig host irq hardware (i.e PIC) */
-static inline int arch_host_irq_init(void)
-{
-	return bcm2835_intc_init();
-}
+/* Initialize host irq hardware (i.e. PIC) */
+int arch_host_irq_init(void);
 
 #endif

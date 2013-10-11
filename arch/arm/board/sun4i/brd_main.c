@@ -28,6 +28,8 @@
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
 #include <arch_timer.h>
+
+#include <sunxi/intc.h>
 #include <sunxi/timer.h>
 
 /*
@@ -42,6 +44,11 @@ void arch_board_print_info(struct vmm_chardev *cdev)
 /*
  * Initialization functions
  */
+
+int __cpuinit arch_host_irq_init(void)
+{
+	return aw_intc_devtree_init();
+}
 
 int __init arch_board_early_init(void)
 {

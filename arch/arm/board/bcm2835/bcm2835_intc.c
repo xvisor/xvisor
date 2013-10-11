@@ -90,7 +90,7 @@ static struct vmm_host_irq_chip bcm2835_intc_chip = {
 	.irq_unmask = bcm2835_intc_irq_unmask,
 };
 
-u32 bcm2835_intc_active_irq(void)
+static u32 bcm2835_intc_active_irq(u32 cpu_irq_no)
 {
 	register u32 stat, irq;
 
@@ -149,6 +149,8 @@ int __init bcm2835_intc_init(void)
 			vmm_host_irq_set_handler(irq, vmm_handle_level_irq);
 		}
 	}
+
+	vmm_host_irq_set_active_callback(bcm2835_intc_active_irq);
 
 	return 0;
 }

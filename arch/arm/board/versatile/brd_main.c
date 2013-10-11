@@ -27,11 +27,15 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
+#include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
 #include <arch_timer.h>
+
 #include <versatile_plat.h>
 #include <versatile_board.h>
+
+#include <vic.h>
 #include <sp804_timer.h>
 
 static virtual_addr_t versatile_sys_base;
@@ -69,6 +73,62 @@ void arch_board_print_info(struct vmm_chardev *cdev)
 /*
  * Initialization functions
  */
+
+/* This mask is used to route interrupts 21 to 31 on VIC */
+#define PIC_MASK			0xFFD00000
+
+static u32 versatile_active_irq(u32 cpu_irq_no)
+{
+	return vic_active_irq(0);
+}
+
+int __cpuinit arch_host_irq_init(void)
+{
+	int rc;
+	virtual_addr_t vic_base;
+	virtual_addr_t sic_base;
+	struct vmm_devtree_node *vnode, *snode;
+
+	vnode = vmm_devtree_find_compatible(NULL, NULL, "arm,versatile-vic");
+	if (!vnode) {
+		return VMM_ENODEV;
+	}
+
+	rc = vmm_devtree_regmap(vnode, &vic_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	snode = vmm_devtree_find_compatible(NULL, NULL, "arm,versatile-sic");
+	if (!snode) {
+		return VMM_ENODEV;
+	}
+
+	rc = vmm_devtree_regmap(snode, &sic_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	rc = vic_init(0, 0, vic_base);
+	if (rc) {
+		return rc;
+	}
+
+	vmm_writel(~0, (volatile void *)sic_base + SIC_IRQ_ENABLE_CLEAR);
+
+	/*
+	 * Using Linux Method: Interrupts on secondary controller from 0 to 8
+	 * are routed to source 31 on PIC.
+	 * Interrupts from 21 to 31 are routed directly to the VIC on
+	 * the corresponding number on primary controller. This is controlled
+	 * by setting PIC_ENABLEx.
+	 */
+	vmm_writel(PIC_MASK, (volatile void *)sic_base + SIC_INT_PIC_ENABLE);
+
+	vmm_host_irq_set_active_callback(versatile_active_irq);
+
+	return VMM_OK;
+}
 
 int __init arch_board_early_init(void)
 {

@@ -29,6 +29,7 @@
 
 #include <bcm2835_pm.h>
 #include <bcm2835_timer.h>
+#include <bcm2835_intc.h>
 
 /*
  * Print board information
@@ -42,6 +43,11 @@ void arch_board_print_info(struct vmm_chardev *cdev)
 /*
  * Initialization functions
  */
+
+int __cpuinit arch_host_irq_init(void)
+{
+	return bcm2835_intc_init();
+}
 
 int __init arch_board_early_init(void)
 {

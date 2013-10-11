@@ -31,7 +31,6 @@
 #include <libs/stringlib.h>
 #include <arch_cpu.h>
 #include <arch_io.h>
-#include <arch_host_irq.h>
 #include <cpu_mmu.h>
 #include <cpu_private.h>
 #include <cpu_interrupts.h>
@@ -200,7 +199,7 @@ static int ioapic_route_irq_to_vector(struct cpu_ioapic *ioapic, u32 irq, u32 ve
 	entry.bits.mask = 1;
 	entry.bits.dest = 0;
 
-	if (irq >= NR_IOAPIC_IRQ || vector >= ARCH_HOST_IRQ_COUNT)
+	if (irq >= NR_IOAPIC_IRQ || vector >= CONFIG_HOST_IRQ_COUNT)
 		return VMM_EFAIL;
 
 	if (ioapic_write_irt_entry(ioapic->vaddr, irq, entry.val) != VMM_OK)

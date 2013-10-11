@@ -39,7 +39,7 @@ struct gic_chip_data {
 };
 
 #ifndef GIC_MAX_NR
-#define GIC_MAX_NR	1
+#define GIC_MAX_NR	2
 #endif
 
 static struct gic_chip_data gic_data[GIC_MAX_NR];
@@ -65,14 +65,12 @@ static inline u32 gic_irq(struct vmm_host_irq *irq)
 	return irq->num - gic_data->irq_offset;
 }
 
-u32 gic_active_irq(u32 gic_nr)
+static u32 gic_active_irq(u32 cpu_irq_nr)
 {
 	u32 ret;
 
-	BUG_ON(gic_nr >= GIC_MAX_NR);
-
-	ret = gic_read(gic_data[gic_nr].cpu_base + GIC_CPU_INTACK) & 0x3FF;
-	ret += gic_data[gic_nr].irq_offset;
+	ret = gic_read(gic_data[0].cpu_base + GIC_CPU_INTACK) & 0x3FF;
+	ret += gic_data[0].irq_offset;
 
 	return ret;
 }
@@ -288,8 +286,8 @@ static void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)
 	 * Limit number of interrupts registered to the platform maximum
 	 */
 	irq_limit = gic->irq_offset + max_irq;
-	if (WARN_ON(irq_limit > GIC_NR_IRQS)) {
-		irq_limit = GIC_NR_IRQS;
+	if (WARN_ON(irq_limit > CONFIG_HOST_IRQ_COUNT)) {
+		irq_limit = CONFIG_HOST_IRQ_COUNT;
 	}
 
 	/*
@@ -397,6 +395,8 @@ int __init gic_devtree_init(struct vmm_devtree_node *node,
 		aval = vmm_devtree_attrval(node, "parent_irq");
 		irq = (aval) ? *aval : 1020;
 		gic_cascade_irq(gic_cnt, irq);
+	} else {
+		vmm_host_irq_set_active_callback(gic_active_irq);
 	}
 
 	gic_cnt++;

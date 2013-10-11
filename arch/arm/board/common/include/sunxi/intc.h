@@ -23,9 +23,6 @@
 #ifndef __SUNXI_INTC_H__
 #define __SUNXI_INTC_H__
 
-/** Get active irq number from Sunxi interrupt controller */
-u32 aw_intc_irq_active(u32 cpu_irq_no);
-
 /** Initialize Sunxi interrupt controller */
 int aw_intc_devtree_init(void);
 

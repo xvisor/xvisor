@@ -35,7 +35,7 @@ static u32 intc_nrirq;
 				(void *)(intc_base + (reg)))
 #define intc_read(reg)		vmm_readl((void *)(intc_base + (reg)))
 
-u32 intc_active_irq(u32 cpu_irq)
+static u32 intc_active_irq(u32 cpu_irq)
 {
 	u32 ret = 0xFFFFFFFF;
 	if (cpu_irq == CPU_EXTERNAL_IRQ) {	/* armv7a IRQ */
@@ -111,6 +111,9 @@ int __init intc_init(physical_addr_t base, u32 nrirq)
 		vmm_host_irq_set_chip(i, &intc_chip);
 		vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
 	}
+
+	/* Set active IRQ callback */
+	vmm_host_irq_set_active_callback(intc_active_irq);
 
 	return VMM_OK;
 }

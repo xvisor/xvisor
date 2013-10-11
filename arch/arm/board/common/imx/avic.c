@@ -62,7 +62,7 @@ static u32 avic_pending_int(u32 status)
 	return 0;
 }
 
-u32 avic_active_irq(void)
+static u32 avic_active_irq(u32 cpu_irq_no)
 {
 	u32 ret = 0;
 
@@ -140,6 +140,9 @@ int __init avic_init(virtual_addr_t base)
 		vmm_host_irq_set_chip(i, &avic_chip);
 		vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
 	}
+
+	/* Set active irq callback */
+	vmm_host_irq_set_active_callback(avic_active_irq);
 
 	return VMM_OK;
 }

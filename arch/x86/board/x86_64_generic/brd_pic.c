@@ -23,13 +23,14 @@
 
 #include <vmm_error.h>
 #include <vmm_compiler.h>
+#include <vmm_host_irq.h>
 #include <arch_host_irq.h>
 
 #if CONFIG_LOCAL_APIC
 #include <cpu_apic.h>
 #endif
 
-u32 arch_host_irq_active(u32 cpu_irq_no)
+static u32 x86_active_irq(u32 cpu_irq_no)
 {
 	return cpu_irq_no;
 }
@@ -39,6 +40,8 @@ int __cpuinit arch_host_irq_init(void)
 #if CONFIG_LOCAL_APIC
 	apic_init();
 #endif
+
+	vmm_host_irq_set_active_callback(x86_active_irq);	
 
 	return VMM_OK;
 }

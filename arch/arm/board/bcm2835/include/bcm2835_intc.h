@@ -120,9 +120,6 @@
 #define INTERRUPT_VC_ARASANSDIO		(ARM_IRQ2_BASE + 30)
 #define INTERRUPT_AVSPMON		(ARM_IRQ2_BASE + 31)
 
-/** Current active IRQ in bcm2835 intc */
-u32 bcm2835_intc_active_irq(void);
-
 /** Initialize bcm2835 intc */
 int bcm2835_intc_init(void);
 
