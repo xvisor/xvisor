@@ -261,6 +261,14 @@ bootstrap32:
  * 1 page for PML4, 1 page for PGPT, 1 page
  * for PGTI, 4 pages for Page tables.
  */
+/*
+ * !!!!! ATTENTION !!!!!
+ *
+ * Contrary to the original design, Xvisor uses these
+ * same set of page tables rather than starting afresh.
+ * So essentially when ever the VAPOOL changes, this
+ * has to be changed accordingly. - Himanshu 13/10/2013
+ */
 .section .bootstrap.bss,"aw",@progbits
         .globl __pml4
         .align 32
@@ -274,27 +282,27 @@ __pml4:
 	.align 32
         .globl __pgdp
 	.type	__pgdp, @object
-	.size	__pgdp, 4096
+	.size	__pgdp, 8192 /* two pages */
 __pgdp:
 	.long	0
 	.long	0
-	.zero	4088
+	.zero	8184
 
         .globl __pgdi
 	.align 32
 	.type	__pgdi, @object
-	.size	__pgdi, 4096
+	.size	__pgdi, 8192 /* two pages */
 __pgdi:
 	.long	0
 	.long	0
-	.zero	4088
+	.zero	8184
 
         .globl __pgti
 	.align 32
 	.type	__pgti, @object
-	.size	__pgti, 32768
+	.size	__pgti, 65536 /* sixteen pages */
 __pgti:
-	.zero	32768
+	.zero	65536 /* sixteen pages */
 
 .align 4
 	.type   _mboot_info, @object
