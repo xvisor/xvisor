@@ -28,6 +28,7 @@
 #include <vmm_devdrv.h>
 #include <vmm_stdio.h>
 #include <libs/vtemu.h>
+#include <libs/bitops.h>
 #include <arch_board.h>
 
 #include <hpet.h>
@@ -35,6 +36,41 @@
 #if defined(CONFIG_VTEMU)
 struct vtemu *x86_vt;
 #endif
+
+#define KBRD_INTFREG	0x64
+#define KBRD_BIT_KDATA	0 /* keyboard data is in buffer */
+#define KBRD_BIT_UDATA	1 /* user data is in buffer */
+#define KBRD_IO		0x60 /* IO Port */
+#define KBRD_RESET	0xfe /* RESET CPU command */
+
+int arch_board_reset(void)
+{
+	volatile unsigned long good;
+
+	arch_cpu_irq_disable();
+
+	/* clear all keyboard buffer (user & keyboard) */
+	do {
+		good = vmm_inb(KBRD_INTFREG); /* empty user data */
+		if (test_bit(KBRD_BIT_KDATA, &good) != 0)
+			vmm_inb(KBRD_IO); /* empty keyboard data */
+
+	} while (test_bit(KBRD_BIT_UDATA, &good));
+
+	/* toggle the CPU reset pin */
+	vmm_outb(KBRD_RESET, KBRD_INTFREG);
+
+	while (1) {
+		arch_cpu_wait_for_irq();
+	}
+
+	return VMM_EFAIL;
+}
+
+int arch_board_shutdown(void)
+{
+	return VMM_EFAIL;
+}
 
 int __init arch_board_early_init(void)
 {
