@@ -31,6 +31,7 @@ core-objs-y+= vmm_host_vapool.o
 core-objs-y+= vmm_host_aspace.o
 core-objs-y+= vmm_percpu.o
 core-objs-$(CONFIG_SMP)+= vmm_smp.o
+core-objs-$(CONFIG_SMP)+= vmm_loadbal.o
 core-objs-y+= vmm_clocksource.o
 core-objs-y+= vmm_clockchip.o
 core-objs-y+= vmm_timer.o

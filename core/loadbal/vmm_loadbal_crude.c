@@ -16,9 +16,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_loadbal.c
+ * @file vmm_loadbal_crude.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
- * @brief source file for hypervisor load balancer
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief source file for crude load balancing algo
  *
  * This is a very simple and crude "load balancer". For now it will
  * switch running vcpu from CPU to CPU depending on affinity setting.
@@ -28,26 +29,21 @@
  * CPU to CPU.
  */
 
-#include <vmm_smp.h>
-#include <vmm_timer.h>
+#include <vmm_error.h>
 #include <vmm_manager.h>
-#include <vmm_completion.h>
+#include <vmm_timer.h>
+#include <vmm_modules.h>
 #include <vmm_loadbal.h>
 
-#define LOADBAL_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
-#define LOADBAL_VCPU_PRIORITY 		VMM_VCPU_DEF_PRIORITY
-#define LOADBAL_VCPU_TIMESLICE 		VMM_VCPU_DEF_TIME_SLICE
-#define LOADBAL_VCPU_PERIOD		(5000000000ULL)
+#define MODULE_DESC			"Crude Load Balancer"
+#define MODULE_AUTHOR			"Jean-Christophe Dubois"
+#define MODULE_LICENSE			"GPL"
+#define MODULE_IPRIORITY		0
+#define	MODULE_INIT			crude_init
+#define	MODULE_EXIT			crude_exit
 
-struct vmm_loadbal_ctrl {
-	struct vmm_completion loadbal_cmpl;
-	struct vmm_vcpu *loadbal_vcpu;
-};
-
-static struct vmm_loadbal_ctrl lbctrl;
-
-static u32 loadbal_get_next_hcpu(struct vmm_vcpu *vcpu, 
-				 u32 old_hcpu, const struct vmm_cpumask *mask)
+static u32 crude_next_hcpu(struct vmm_vcpu *vcpu, 
+			   u32 old_hcpu, const struct vmm_cpumask *mask)
 {
 	u32 cpu;
 	u64 tstamp;
@@ -74,7 +70,7 @@ static u32 loadbal_get_next_hcpu(struct vmm_vcpu *vcpu,
 	return cpu;
 }
 
-static int loadbal_iter(struct vmm_vcpu *vcpu, void *priv)
+static int crude_iter(struct vmm_vcpu *vcpu, void *priv)
 {
 	int rc;
 	u32 new_hcpu, old_hcpu;
@@ -90,7 +86,7 @@ static int loadbal_iter(struct vmm_vcpu *vcpu, void *priv)
 		return VMM_EFAIL;
 	}
 
-	new_hcpu = loadbal_get_next_hcpu(vcpu, old_hcpu, mask);
+	new_hcpu = crude_next_hcpu(vcpu, old_hcpu, mask);
 	if (new_hcpu == old_hcpu) {
 		return VMM_OK;
 	}
@@ -103,56 +99,40 @@ static int loadbal_iter(struct vmm_vcpu *vcpu, void *priv)
 	return VMM_OK;
 }
 
-static void loadbal_main(void)
+static void crude_balance(struct vmm_loadbal_algo *algo)
 {
-	u64 tstamp;
 	u32 i, count;
 	struct vmm_vcpu *vcpu;
 
-	while (1) {
-		tstamp = LOADBAL_VCPU_PERIOD;
-		vmm_completion_wait_timeout(&lbctrl.loadbal_cmpl, &tstamp);
-
-		count = vmm_manager_vcpu_count();
-		for (i = 0; i < count; i++) {
-			vcpu = vmm_manager_vcpu(i);
-			if (!vcpu) {
-				continue;
-			}
-
-			loadbal_iter(vcpu, NULL);
+	count = vmm_manager_vcpu_count();
+	for (i = 0; i < count; i++) {
+		vcpu = vmm_manager_vcpu(i);
+		if (!vcpu) {
+			continue;
 		}
+		crude_iter(vcpu, NULL);
 	}
 }
 
-int __init vmm_loadbal_init(void)
+static struct vmm_loadbal_algo crude = {
+	.name = "Crude Load Balancer",
+	.rating = 1,
+	.balance = crude_balance,
+};
+
+static int __init crude_init(void)
 {
-	int rc;
-
-	/* Initalize loadbal completion */
-	INIT_COMPLETION(&lbctrl.loadbal_cmpl);
-
-	/* Create loadbal orphan vcpu with default time slice */
-	lbctrl.loadbal_vcpu = vmm_manager_vcpu_orphan_create("loadbal",
-						(virtual_addr_t)&loadbal_main,
-						LOADBAL_VCPU_STACK_SZ,
-						LOADBAL_VCPU_PRIORITY, 
-						LOADBAL_VCPU_TIMESLICE);
-	if (!lbctrl.loadbal_vcpu) {
-		return VMM_EFAIL;
-	}
-
-	/* The loadbal vcpu need to stay on this cpu */
-	if ((rc = vmm_manager_vcpu_set_affinity(lbctrl.loadbal_vcpu,
-				vmm_cpumask_of(vmm_smp_processor_id())))) {
-		return rc;
-	}
-
-	/* Kick loadbal orphan vcpu */
-	if ((rc = vmm_manager_vcpu_kick(lbctrl.loadbal_vcpu))) {
-		return rc;
-	}
-
-	return VMM_OK;
+	return vmm_loadbal_register_algo(&crude);
 }
 
+static void __exit crude_exit(void)
+{
+	vmm_loadbal_unregister_algo(&crude);
+}
+
+VMM_DECLARE_MODULE(MODULE_DESC, 
+			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);
