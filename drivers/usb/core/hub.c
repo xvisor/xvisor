@@ -1068,13 +1068,16 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	/* Find the port number we're at */
 	if (parent) {
 		int j;
+		irq_flags_t flags;
 
+		vmm_spin_lock_irqsave(&parent->children_lock, flags);
 		for (j = 0; j < parent->maxchild; j++) {
 			if (parent->children[j] == dev) {
 				port = j;
 				break;
 			}
 		}
+		vmm_spin_unlock_irqrestore(&parent->children_lock, flags);
 		if (port < 0) {
 			vmm_printf("%s: cannot locate device's port.\n");
 			dev->devnum = addr;
@@ -1214,17 +1217,22 @@ static void usb_hub_disconnect(struct usb_device *dev)
 static void recursively_disconnect(struct usb_device *dev)
 {
 	int i;
+	irq_flags_t flags;
 	struct usb_driver *drv;
 	struct usb_interface *intf;
 
 	/* Disconnect the child devices first */
+	vmm_spin_lock_irqsave(&dev->children_lock, flags);
 	for (i = 0; i < dev->maxchild; ++i) {
-		if (dev->children[i]) {
-			recursively_disconnect(dev->children[i]);
-			dev->children[i] = NULL;
+		if (!dev->children[i]) {
+			continue;
 		}
+		vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
+		recursively_disconnect(dev->children[i]);
+		vmm_spin_lock_irqsave(&dev->children_lock, flags);
 	}
 	dev->maxchild = 0;
+	vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
 
 	/* Now disconnect the device */
 	if (usb_hub_check_interface(dev)) {
@@ -1260,6 +1268,7 @@ static int usb_hub_disconnect_device(struct usb_device *dev)
 static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 {
 	u16 portstatus;
+	irq_flags_t flags;
 	struct usb_device *usb;
 	struct usb_device *dev = hub->dev;
 	struct usb_port_status *portsts;
@@ -1282,15 +1291,25 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 	/* Clear the connection change status */
 	usb_clear_port_feature(dev, port + 1, USB_PORT_FEAT_C_CONNECTION);
 
-	/* Disconnect any existing devices under this port */
-	if (((!(portstatus & USB_PORT_STAT_CONNECTION)) &&
-	     (!(portstatus & USB_PORT_STAT_ENABLE))) || (dev->children[port])) {
-		DPRINTF("%s: usb_disconnect(&hub->children[port]);\n");
+	/* Skip if no connection change */
+	if (!(portstatus & USB_PORT_STAT_CONNECTION) &&
+	    !(portstatus & USB_PORT_STAT_ENABLE)) {
 		/* Return now if nothing is connected */
 		if (!(portstatus & USB_PORT_STAT_CONNECTION)) {
 			goto done;
 		}
 	}
+
+	/* Disconnect any existing devices under this port */
+	vmm_spin_lock_irqsave(&dev->children_lock, flags);
+	if (dev->children[port] &&
+	    !(portstatus & USB_PORT_STAT_CONNECTION)) {
+		usb = dev->children[port];
+		vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
+		recursively_disconnect(usb);
+		goto done;
+	}
+	vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
 
 	vmm_mdelay(200);
 
@@ -1321,7 +1340,9 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 		break;
 	}
 
+	vmm_spin_lock_irqsave(&dev->children_lock, flags);
 	dev->children[port] = usb;
+	vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
 	usb->parent = dev;
 	usb->portnum = port + 1;
 
@@ -1329,7 +1350,9 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 	if (usb_hub_detect_new_device(dev, usb) < 0) {
 		/* Woops, disable the port */
 		usb_free_device(usb);
+		vmm_spin_lock_irqsave(&dev->children_lock, flags);
 		dev->children[port] = NULL;
+		vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
 		DPRINTF("%s: disabling port %d\n", __func__, port + 1);
 		usb_clear_port_feature(dev, port + 1, USB_PORT_FEAT_ENABLE);
 	}
@@ -1484,14 +1507,23 @@ VMM_EXPORT_SYMBOL(usb_get_device_state);
 static void recursively_mark_NOTATTACHED(struct usb_device *udev)
 {
 	int i;
+	irq_flags_t flags;
 
+	vmm_spin_lock_irqsave(&udev->children_lock, flags);
 	for (i = 0; i < udev->maxchild; ++i) {
-		if (udev->children[i])
-			recursively_mark_NOTATTACHED(udev->children[i]);
+		if (!udev->children[i]) {
+			continue;
+		}
+		vmm_spin_unlock_irqrestore(&udev->children_lock, flags);
+		recursively_mark_NOTATTACHED(udev->children[i]);
+		vmm_spin_lock_irqsave(&udev->children_lock, flags);
 	}
+	vmm_spin_unlock_irqrestore(&udev->children_lock, flags);
+
 	if (udev->state == USB_STATE_SUSPENDED) {
 		udev->active_duration -= vmm_timer_timestamp();
 	}
+
 	udev->state = USB_STATE_NOTATTACHED;
 }
 
@@ -1521,16 +1553,26 @@ VMM_EXPORT_SYMBOL(usb_set_device_state);
 struct usb_device *usb_alloc_device(struct usb_device *parent,
 				    struct usb_hcd *hcd, unsigned port)
 {
-	u32 i;
+	int i;
 	irq_flags_t flags;
 	struct dlist *l;
 	struct usb_device *dev, *tdev;
 
-	if ((USB_MAXCHILDREN <= port) ||
-	    (parent && parent->children[port])) {
+	/* Sanity checks */
+	if (USB_MAXCHILDREN <= port) {
 		return NULL;
 	}
+	if (parent) {
+		vmm_spin_lock_irqsave(&parent->children_lock, flags);
+		if (parent->children[port]) {
+			vmm_spin_unlock_irqrestore(&parent->children_lock,
+						   flags);
+			return NULL;
+		}
+		vmm_spin_unlock_irqrestore(&parent->children_lock, flags);
+	}
 
+	/* Alloc new device */
 	dev = vmm_zalloc(sizeof(*dev));
 	if (!dev) {
 		return NULL;
@@ -1585,24 +1627,47 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 
 		/* hub driver sets up TT records */
 
-		/* FIXME: protect children list */
+		/* Update parent device */
+		vmm_spin_lock_irqsave(&parent->children_lock, flags);
 		parent->children[port] = dev;
+		vmm_spin_lock_irqsave(&parent->children_lock, flags);
 	}
 
 	dev->portnum = port;
 	dev->hcd = hcd;
 	dev->parent = parent;
 	dev->maxchild = 0;
+	INIT_SPIN_LOCK(&dev->children_lock);
 	for (i = 0; i < USB_MAXCHILDREN; i++) {
 		dev->children[i] = NULL;
 	}
 
-	/* FIXME: Assign device number based on HCD device bitmap */
-	vmm_spin_lock_irqsave(&hcd->devnum_lock, flags);
-	dev->devnum = hcd->devnum_next;
-	hcd->devnum_next = hcd->devnum_next + 1;
-	set_bit(dev->devnum, hcd->devicemap);
-	vmm_spin_unlock_irqrestore(&hcd->devnum_lock, flags);
+	/* Increment parent reference count */
+	if (dev->parent) {
+		usb_ref_device(dev->parent);
+	}
+
+	/* Assign device number based on HCD device bitmap
+	 * Note: Device number starts from 1.
+	 * Note: Device number 0 is default device.
+	 */
+	vmm_spin_lock_irqsave(&hcd->devicemap_lock, flags);
+	dev->devnum = 0;
+	for (i = 0; i < USB_MAXCHILDREN; i++) {
+		if (!test_bit(i, hcd->devicemap)) {
+			__set_bit(i, hcd->devicemap);
+			dev->devnum = i + 1;
+			break;
+		}
+	}
+	i = dev->devnum;
+	vmm_spin_unlock_irqrestore(&hcd->devicemap_lock, flags);
+	if (i == 0) {
+		usb_destroy_hcd(hcd);
+		usb_free_device(dev->parent);
+		vmm_free(dev);
+		return NULL;
+	}
 
 	/* Add usb device to global list */
 	vmm_mutex_lock(&usb_dev_list_lock);
@@ -1613,6 +1678,7 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 				   hcd->dev->node->name, dev->name);
 			vmm_mutex_unlock(&usb_dev_list_lock);
 			usb_destroy_hcd(hcd);
+			usb_free_device(dev->parent);
 			vmm_free(dev);
 			return NULL;
 		}
@@ -1650,13 +1716,15 @@ void usb_free_device(struct usb_device *dev)
 	vmm_mutex_unlock(&usb_dev_list_lock);
 
 	/* Assign device number based on HCD device bitmap */
-	vmm_spin_lock_irqsave(&dev->hcd->devnum_lock, flags);
-	clear_bit(dev->devnum, dev->hcd->devicemap);
-	vmm_spin_unlock_irqrestore(&dev->hcd->devnum_lock, flags);
+	vmm_spin_lock_irqsave(&dev->hcd->devicemap_lock, flags);
+	__clear_bit(dev->devnum - 1, dev->hcd->devicemap);
+	vmm_spin_unlock_irqrestore(&dev->hcd->devicemap_lock, flags);
 
-	/* FIXME: protect children list */
+	/* Update parent device */
 	if (dev->parent) {
+		vmm_spin_lock_irqsave(&dev->parent->children_lock, flags);
 		dev->parent->children[dev->portnum] = NULL;
+		vmm_spin_unlock_irqrestore(&dev->parent->children_lock, flags);
 	}
 
 	/* Flush all HUB work related to this USB device */
@@ -1822,9 +1890,17 @@ VMM_EXPORT_SYMBOL(usb_hub_disconnect_driver);
 
 struct usb_device *usb_hub_find_child(struct usb_device *hdev, int port1)
 {
+	irq_flags_t flags;
+	struct usb_device *ret;
+
 	if (port1 < 1 || port1 > hdev->maxchild)
 		return NULL;
-	return hdev->children[port1 - 1];
+
+	vmm_spin_lock_irqsave(&hdev->children_lock, flags);
+	ret = hdev->children[port1 - 1];
+	vmm_spin_unlock_irqrestore(&hdev->children_lock, flags);
+
+	return ret;
 }
 VMM_EXPORT_SYMBOL(usb_hub_find_child);
 

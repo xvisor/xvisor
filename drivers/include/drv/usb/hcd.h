@@ -45,15 +45,12 @@ struct usb_hcd {
 	u32			bus_num;
 	const char		*bus_name;
 
-	vmm_spinlock_t		devnum_lock;
-	int			devnum_next;
+	vmm_spinlock_t		devicemap_lock;
 	unsigned long devicemap[128 / (8*sizeof(unsigned long))];
 
 	/*
 	 * root hub device
 	 */
-	struct vmm_timer_event	rh_timer;	/* drives root-hub polling */
-	struct urb		*status_urb;	/* the current status urb */
 	struct usb_device	*root_hub;
 
 	/*
@@ -154,13 +151,6 @@ struct hc_driver {
 				struct urb *urb);
 	int	(*urb_dequeue)(struct usb_hcd *hcd,
 				struct urb *urb, int status);
-
-	/* root hub support */
-	int	(*hub_status_data) (struct usb_hcd *hcd, char *buf);
-	int	(*hub_control) (struct usb_hcd *hcd,
-				u16 typeReq, u16 wValue, u16 wIndex,
-				char *buf, u16 wLength);
-	int	(*start_port_reset)(struct usb_hcd *, unsigned port_num);
 
 	/* xHCI specific functions */
 		/* Called by usb_alloc_dev to alloc HC device structures */
