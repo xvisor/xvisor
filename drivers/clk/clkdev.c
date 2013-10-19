@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_clkdev.c
+ * @file clkdev.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief Clock API helper functions
  *
@@ -35,15 +35,12 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
-
-#include <linux/clkdev.h>
-
-#include <stdarg.h>
-
 #include <arch_clk.h>
-
 #include <libs/list.h>
 #include <libs/stringlib.h>
+#include <drv/clkdev.h>
+
+#include <stdarg.h>
 
 static LIST_HEAD(clocks);
 static DEFINE_SPINLOCK(clocks_lock);
