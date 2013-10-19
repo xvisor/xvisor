@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_host_io.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
@@ -185,25 +186,24 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 					   struct vmm_devtree_node *node,
 					   char **data)
 {
-	u32 type, len, alen, addr_cells, size_cells;
-	void *attrval;
+	void *aval;
 	const char *name;
+	u32 type, len, alen, addr_cells, size_cells;
 	struct vmm_devtree_node *child;
-	struct vmm_devtree_attr *attr;
 
 	if (!fdt || !node) {
 		return;
 	}
 
-	attrval = vmm_devtree_attrval(node->parent, "#address-cells");
-	if (attrval) {
-		addr_cells = *((u32 *)attrval);
+	aval = vmm_devtree_attrval(node->parent, "#address-cells");
+	if (aval) {
+		addr_cells = *((u32 *)aval);
 	} else {
 		addr_cells = sizeof(physical_addr_t) / sizeof(fdt_cell_t);
 	}
-	attrval = vmm_devtree_attrval(node->parent, "#size-cells");
-	if (attrval) {
-		size_cells = *((u32 *)attrval);
+	aval = vmm_devtree_attrval(node->parent, "#size-cells");
+	if (aval) {
+		size_cells = *((u32 *)aval);
 	} else {
 		size_cells = sizeof(physical_size_t) / sizeof(fdt_cell_t);
 	}
@@ -219,10 +219,11 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 			type = vmm_devtree_estimate_attrtype(name);
 			alen = libfdt_property_len(name, addr_cells, 
 						   size_cells, len);
-			vmm_devtree_setattr(node, name, *data, type, alen);
-			attr = vmm_devtree_getattr(node, name);
-			libfdt_property_read(name, attr->value, *data,
+			aval = vmm_zalloc(alen);
+			libfdt_property_read(name, aval, *data,
 					     addr_cells, size_cells, len);
+			vmm_devtree_setattr(node, name, aval, type, alen);
+			vmm_free(aval);
 			*data += len;
 			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0)
 				(*data)++;
