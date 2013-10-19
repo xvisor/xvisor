@@ -117,15 +117,6 @@ if { [string first "devtree print" $devtree_help_out] > -1 } {
         puts "\n :: DEVTREE HELP TESTCASE FAIL :: \n\n"
 }
 
-send -- "devtree attr show /host/cpus\r"
-expect $xvisor_prompt
-set devtree_attr_show_out $expect_out(buffer)
-if { [string first "cpu_freq_mhz" $devtree_attr_show_out] > -1 } {
-        puts "\n :: DEVTREE ATTR SHOW TESTCASE PASS :: \n\n"
-} else {
-        puts "\n :: DEVTREE ATTR SHOW TESTCASE FAIL :: \n\n"
-}
-
 send -- "devtree node show /\r"
 expect $xvisor_prompt
 set devtree_node_show_out $expect_out(buffer)

@@ -161,17 +161,6 @@ if { [string first "/" $devtree_chpath_out] > -1 } {
         puts "The devtree chpath Command Failed \n :: DEVTREE CHPATH TESTCASE FAIL :: \n\n"
 }
 
-send -- "devtree attrib /host/cpus\r"
-expect $xvisor_prompt
-
-set devtree_attrib_out $expect_out(buffer)
-#puts $devtree_attrib_out
-if { [string first "cpu_freq_mhz" $devtree_attrib_out] > -1 } {
-        puts "The devtree attrib Command passed \n :: DEVTREE ATTRIB TESTCASE PASS :: \n\n"
-} else {
-        puts "The devtree attrib Command Failed \n :: DEVTREE ATTRIB TESTCASE FAIL :: \n\n"
-}
-
 send -- "devtree print /\r"
 expect $xvisor_prompt
 
