@@ -327,8 +327,8 @@ int vmm_devtree_delnode(struct vmm_devtree_node *node);
 
 /** Get device clock-frequency
  *  Note: This is based on 'clock-frequency' attribute of device tree node
- *  Note: This API if for hard-coding clcok frequency in device tree node 
- *  and it does not use arch_clk_xxxx() APIs
+ *  Note: This API if for hard-coding clock frequency in device tree node 
+ *  and it does not use clk_xxxx() APIs
  */
 int vmm_devtree_clock_frequency(struct vmm_devtree_node *node, 
 				u32 *clock_freq);

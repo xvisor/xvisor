@@ -31,8 +31,10 @@
 #include <arch_barrier.h>
 #include <arch_board.h>
 #include <arch_timer.h>
+#include <drv/clkdev.h>
 #include <libs/stringlib.h>
 #include <libs/vtemu.h>
+
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 
@@ -125,7 +127,7 @@ static const struct icst_params realview_oscvco_params = {
 	.idx2s		= icst307_idx2s,
 };
 
-static void realview_oscvco_set(struct arch_clk *clk, struct icst_vco vco)
+static void realview_oscvco_set(struct clk *clk, struct icst_vco vco)
 {
 	void *sys_lock = (void *)realview_sys_base + REALVIEW_SYS_LOCK_OFFSET;
 	u32 val;
@@ -138,49 +140,43 @@ static void realview_oscvco_set(struct arch_clk *clk, struct icst_vco vco)
 	vmm_writel(0, sys_lock);
 }
 
-static const struct arch_clk_ops oscvco_clk_ops = {
+static const struct clk_ops oscvco_clk_ops = {
 	.round	= icst_clk_round,
 	.set	= icst_clk_set,
 	.setvco	= realview_oscvco_set,
 };
 
-static struct arch_clk oscvco_clk = {
+static struct clk oscvco_clk = {
 	.ops	= &oscvco_clk_ops,
 	.params	= &realview_oscvco_params,
 };
 
-static struct arch_clk clk24mhz = {
+static struct clk clk24mhz = {
 	.rate	= 24000000,
 };
 
-int arch_clk_prepare(struct arch_clk *clk)
+int clk_prepare(struct clk *clk)
 {
 	/* Ignore it. */
 	return 0;
 }
 
-void arch_clk_unprepare(struct arch_clk *clk)
+void clk_unprepare(struct clk *clk)
 {
 	/* Ignore it. */
 }
 
-struct arch_clk *arch_clk_get(struct vmm_device *dev, const char *id)
-{
-	if (strcmp(dev->node->name, "clcd") == 0) {
-		return &oscvco_clk;
-	}
+static struct clk_lookup clcd_lookup = {
+	.dev_id = "clcd",
+	.con_id = NULL,
+	.clk = &oscvco_clk,
+};
 
-	if (strcmp(id, "KMIREFCLK") == 0) {
-		return &clk24mhz;
-	}
-
-	return NULL;
-}
-
-void arch_clk_put(struct arch_clk *clk)
-{
-	/* Ignore it. */
-}
+static struct clk_lookup kmi_lookup = {
+	.dev_id = NULL,
+	.con_id = "KMIREFCLK",
+	.clk = &clk24mhz,
+};
 
 /*
  * CLCD support.
@@ -325,6 +321,10 @@ int __init arch_board_early_init(void)
 	 * Setting-up system data in device tree nodes,
 	 * ....
 	 */
+
+	/* Register CLCD and KMI clocks */
+	clkdev_add(&clcd_lookup);
+	clkdev_add(&kmi_lookup);
 
 	/* Map sysreg */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,realview-sysreg");

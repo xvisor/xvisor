@@ -31,7 +31,9 @@
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
 #include <arch_timer.h>
+#include <drv/clkdev.h>
 #include <libs/vtemu.h>
+
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 
@@ -138,58 +140,52 @@ static int v2m_shutdown(void)
  * Clocking support
  */
 
-static long ct_round(struct arch_clk *clk, unsigned long rate)
+static long ct_round(struct clk *clk, unsigned long rate)
 {
 	return rate;
 }
 
-static int ct_set(struct arch_clk *clk, unsigned long rate)
+static int ct_set(struct clk *clk, unsigned long rate)
 {
 	return v2m_cfg_write(SYS_CFG_OSC | SYS_CFG_SITE_DB1 | 1, rate);
 }
 
-static const struct arch_clk_ops osc1_clk_ops = {
+static const struct clk_ops osc1_clk_ops = {
 	.round	= ct_round,
 	.set	= ct_set,
 };
 
-static struct arch_clk osc1_clk = {
+static struct clk osc1_clk = {
 	.ops	= &osc1_clk_ops,
 	.rate	= 24000000,
 };
 
-static struct arch_clk clk24mhz = {
+static struct clk clk24mhz = {
 	.rate	= 24000000,
 };
 
-int arch_clk_prepare(struct arch_clk *clk)
+int clk_prepare(struct clk *clk)
 {
 	/* Ignore it. */
 	return 0;
 }
 
-void arch_clk_unprepare(struct arch_clk *clk)
+void clk_unprepare(struct clk *clk)
 {
 	/* Ignore it. */
 }
 
-struct arch_clk *arch_clk_get(struct vmm_device *dev, const char *id)
-{
-	if (strcmp(dev->node->name, "clcd") == 0) {
-		return &osc1_clk;
-	}
+static struct clk_lookup clcd_lookup = {
+	.dev_id = "clcd",
+	.con_id = NULL,
+	.clk = &osc1_clk,
+};
 
-	if (strcmp(id, "KMIREFCLK") == 0) {
-		return &clk24mhz;
-	}
-
-	return NULL;
-}
-
-void arch_clk_put(struct arch_clk *clk)
-{
-	/* Ignore it. */
-}
+static struct clk_lookup kmi_lookup = {
+	.dev_id = NULL,
+	.con_id = "KMIREFCLK",
+	.clk = &clk24mhz,
+};
 
 /*
  * CLCD support.
@@ -271,6 +267,10 @@ int __init arch_board_early_init(void)
 	 * Setting-up system data in device tree nodes,
 	 * ....
 	 */
+
+	/* Register CLCD and KMI clocks */
+	clkdev_add(&clcd_lookup);
+	clkdev_add(&kmi_lookup);
 
 	/* Init config lock */
 	INIT_SPIN_LOCK(&v2m_cfg_lock);

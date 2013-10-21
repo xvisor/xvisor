@@ -1,25 +1,24 @@
 #ifndef VERSATILE_CLOCK_H
 #define VERSATILE_CLOCK_H
 
-#include <vmm_devdrv.h>
 #include <icst.h>
 
-struct arch_clk_ops;
+struct clk_ops;
 
-struct arch_clk {
+struct clk {
 	unsigned long			rate;
-	const struct arch_clk_ops	*ops;
+	const struct clk_ops		*ops;
 	const struct icst_params 	*params;
 	void 				*vcoreg;
 };
 
-struct arch_clk_ops {
-	long	(*round)(struct arch_clk *, unsigned long);
-	int	(*set)(struct arch_clk *, unsigned long);
-	void	(*setvco)(struct arch_clk *, struct icst_vco);
+struct clk_ops {
+	long	(*round)(struct clk *, unsigned long);
+	int	(*set)(struct clk *, unsigned long);
+	void	(*setvco)(struct clk *, struct icst_vco);
 };
 
-int icst_clk_set(struct arch_clk *, unsigned long);
-long icst_clk_round(struct arch_clk *, unsigned long);
+int icst_clk_set(struct clk *, unsigned long);
+long icst_clk_round(struct clk *, unsigned long);
 
 #endif

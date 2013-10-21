@@ -31,23 +31,23 @@
 
 #include <vmm_error.h>
 #include <versatile/clock.h>
-#include <arch_clk.h>
+#include <drv/clk.h>
 
-int arch_clk_enable(struct arch_clk *clk)
+int clk_enable(struct clk *clk)
 {
 	return 0;
 }
 
-void arch_clk_disable(struct arch_clk *clk)
+void clk_disable(struct clk *clk)
 {
 }
 
-unsigned long arch_clk_get_rate(struct arch_clk *clk)
+unsigned long clk_get_rate(struct clk *clk)
 {
 	return clk->rate;
 }
 
-long arch_clk_round_rate(struct arch_clk *clk, unsigned long rate)
+long clk_round_rate(struct clk *clk, unsigned long rate)
 {
 	long ret = VMM_EIO;
 	if (clk->ops && clk->ops->round)
@@ -55,7 +55,7 @@ long arch_clk_round_rate(struct arch_clk *clk, unsigned long rate)
 	return ret;
 }
 
-int arch_clk_set_rate(struct arch_clk *clk, unsigned long rate)
+int clk_set_rate(struct clk *clk, unsigned long rate)
 {
 	int ret = VMM_EIO;
 	if (clk->ops && clk->ops->set)
@@ -63,14 +63,14 @@ int arch_clk_set_rate(struct arch_clk *clk, unsigned long rate)
 	return ret;
 }
 
-long icst_clk_round(struct arch_clk *clk, unsigned long rate)
+long icst_clk_round(struct clk *clk, unsigned long rate)
 {
 	struct icst_vco vco;
 	vco = icst_hz_to_vco(clk->params, rate);
 	return icst_hz(clk->params, vco);
 }
 
-int icst_clk_set(struct arch_clk *clk, unsigned long rate)
+int icst_clk_set(struct clk *clk, unsigned long rate)
 {
 	struct icst_vco vco;
 
