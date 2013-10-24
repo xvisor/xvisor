@@ -60,18 +60,65 @@ static inline struct clk_lookup_alloc *__clkdev_alloc(size_t size)
 
 #if defined(CONFIG_COMMON_CLK)
 
-struct clk *of_clk_get(struct vmm_devtree_node *np, int index)
+struct clk *of_clk_get(struct vmm_devtree_node *node, int index)
 {
-	/* FIXME: */
-	return NULL;
-}
+	struct vmm_devtree_phandle_args clkspec;
+	struct clk *clk;
+	int rc;
 
-struct clk *of_clk_get_by_name(struct vmm_devtree_node *np, 
-					 const char *name)
-{
-	/* FIXME: */
-	return NULL;
+	if (index < 0)
+		return NULL;
+
+	rc = vmm_devtree_parse_phandle_with_args(node, "clocks", 
+				"#clock-cells", index, &clkspec);
+	if (rc)
+		return NULL;
+
+	clk = of_clk_get_from_provider(&clkspec);
+
+	return clk;
 }
+VMM_EXPORT_SYMBOL(of_clk_get);
+
+struct clk *of_clk_get_by_name(struct vmm_devtree_node *node, 
+				const char *name)
+{
+	struct clk *clk = NULL;
+
+	/* Walk up the tree of devices looking for a clock that matches */
+	while (node) {
+		int index = 0;
+
+		/*
+		 * For named clocks, first look up the name in the
+		 * "clock-names" property.  If it cannot be found, then
+		 * index will be an error code, and of_clk_get() will fail.
+		 */
+		if (name)
+			index = vmm_devtree_attrval_match_string(node, 
+							"clock-names", name);
+		clk = of_clk_get(node, index);
+		if (!clk)
+			break;
+		else if (name && index >= 0) {
+			vmm_printf("ERROR: could not get clock %s:%s(%i)\n",
+				node->name, name ? name : "", index);
+			return clk;
+		}
+
+		/*
+		 * No matching clock found on this node.  If the parent node
+		 * has a "clock-ranges" property, then we can try one of its
+		 * clocks.
+		 */
+		node = node->parent;
+		if (node && !vmm_devtree_attrval(node, "clock-ranges"))
+			break;
+	}
+
+	return clk;
+}
+VMM_EXPORT_SYMBOL(of_clk_get_by_name);
 
 #endif
 

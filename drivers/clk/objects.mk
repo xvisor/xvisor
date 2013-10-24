@@ -22,4 +22,5 @@
 # */
 
 drivers-objs-$(CONFIG_CLKDEV_LOOKUP) += clk/clkdev.o
+drivers-objs-$(CONFIG_COMMON_CLK) += clk/clk.o
 
