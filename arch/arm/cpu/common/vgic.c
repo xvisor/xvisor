@@ -166,7 +166,7 @@ struct vgic_guest_state {
 #define VGIC_SET_MODEL(s, irq) (s)->irq_state[irq].model = 1
 #define VGIC_CLEAR_MODEL(s, irq) (s)->irq_state[irq].model = 0
 #define VGIC_TEST_MODEL(s, irq) (s)->irq_state[irq].model
-#define VGIC_SET_LEVEL(s, irq, cm) (s)->irq_state[irq].level = (cm)
+#define VGIC_SET_LEVEL(s, irq, cm) (s)->irq_state[irq].level |= (cm)
 #define VGIC_CLEAR_LEVEL(s, irq, cm) (s)->irq_state[irq].level &= ~(cm)
 #define VGIC_TEST_LEVEL(s, irq, cm) ((s)->irq_state[irq].level & (cm))
 #define VGIC_SET_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 1
