@@ -71,6 +71,7 @@ struct gic_irq_state {
 };
 
 struct gic_cpu_state {
+	vmm_rwlock_t cpu_lock;
 	u8 parent_irq;
 	bool enabled;
 	u16 priority_mask;
@@ -134,30 +135,33 @@ struct gic_state {
 /* Update interrupt status after enabled or pending bits have been changed. */
 static void gic_update(struct gic_state *s)
 {
-	irq_flags_t flags;
+	irq_flags_t dist_flags, cpu_flags;
 	int best_irq, best_prio;
 	int irq, level, cpu, cm;
 	struct vmm_vcpu *vcpu;
 	struct gic_cpu_state *cpu_state;
 
-	vmm_write_lock_irqsave(&s->dist_lock, flags);
-
 	for (cpu = 0; cpu < GIC_NUM_CPU(s); cpu++) {
 		cpu_state = &s->cpu_state[cpu];
 		cm = 1 << cpu;
+
+		vmm_write_lock_irqsave(&cpu_state->cpu_lock, cpu_flags);
+
 		cpu_state->current_pending = 1023;
 		if (!s->enabled || !cpu_state->enabled) {
+			vmm_write_unlock_irqrestore(&cpu_state->cpu_lock, cpu_flags);
 			if (s->is_child_pic) {
-				vmm_write_unlock_irqrestore(&s->dist_lock, flags);
 				vmm_devemu_emulate_percpu_irq(s->guest, 
 						       cpu_state->parent_irq,
 						       cpu, 0);
-				vmm_write_lock_irqsave(&s->dist_lock, flags);
 			}
-			goto done;
+			break;
 		}
 		best_prio = 0x100;
 		best_irq = 1023;
+
+		vmm_read_lock_irqsave(&s->dist_lock, dist_flags);
+
 		for (irq = 0; irq < GIC_NUM_IRQ(s); irq++) {
 			if (GIC_TEST_ENABLED(s, irq, cm) && 
 			    GIC_TEST_PENDING(s, irq, cm)) {
@@ -168,6 +172,9 @@ static void gic_update(struct gic_state *s)
 				}
 			}
 		}
+
+		vmm_read_unlock_irqrestore(&s->dist_lock, dist_flags);
+
 		level = 0;
 		if (best_prio < cpu_state->priority_mask) {
 			cpu_state->current_pending = best_irq;
@@ -175,34 +182,28 @@ static void gic_update(struct gic_state *s)
 				level = 1;
 			}
 		}
+
+		vmm_write_unlock_irqrestore(&cpu_state->cpu_lock, cpu_flags);
+
 		if (s->is_child_pic) {
 			/* Assert irq to Parent PIC */
-			vmm_write_unlock_irqrestore(&s->dist_lock, flags);
 			vmm_devemu_emulate_percpu_irq(s->guest, 
 						      cpu_state->parent_irq,
 						      cpu, level);
-			vmm_write_lock_irqsave(&s->dist_lock, flags);
 		} else {
 			vcpu = vmm_manager_guest_vcpu(s->guest, cpu);
 			if (level && vcpu) {
 				/* Assert irq to VCPU */
-				vmm_write_unlock_irqrestore(&s->dist_lock, flags);
 				vmm_vcpu_irq_assert(vcpu, 
 						    cpu_state->parent_irq, 0x0);
-				vmm_write_lock_irqsave(&s->dist_lock, flags);
 			} 
 			if (!level && vcpu) {
 				/* Deassert irq to VCPU */
-				vmm_write_unlock_irqrestore(&s->dist_lock, flags);
 				vmm_vcpu_irq_deassert(vcpu, 
 						      cpu_state->parent_irq);
-				vmm_write_lock_irqsave(&s->dist_lock, flags);
 			}
 		}
 	}
-
-done:
-	vmm_write_unlock_irqrestore(&s->dist_lock, flags);
 }
 
 /* Process IRQ asserted via device emulation framework */
@@ -246,10 +247,7 @@ static void gic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 
 static void gic_set_running_irq(struct gic_state *s, int cpu, int irq)
 {
-	irq_flags_t flags;
 	struct gic_cpu_state *cpu_state = &s->cpu_state[cpu];
-
-	vmm_write_lock_irqsave(&s->dist_lock, flags);
 
 	cpu_state->running_irq = irq;
 	if (irq == 1023) {
@@ -257,37 +255,44 @@ static void gic_set_running_irq(struct gic_state *s, int cpu, int irq)
 	} else {
 		cpu_state->running_priority = GIC_GET_PRIORITY(s, irq, cpu);
 	}
-
-	vmm_write_unlock_irqrestore(&s->dist_lock, flags);
-
-	gic_update(s);
 }
 
 static u32 gic_acknowledge_irq(struct gic_state *s, int cpu)
 {
 	int new_irq;
 	int cm = 1 << cpu;
-	irq_flags_t flags;
+	irq_flags_t dist_flags, cpu_flags;
 	struct gic_cpu_state *cpu_state = &s->cpu_state[cpu];
 
+	vmm_write_lock_irqsave(&cpu_state->cpu_lock, cpu_flags);
+
 	new_irq = cpu_state->current_pending;
+
 	if ((new_irq == 1023) ||
 	    GIC_GET_PRIORITY(s, new_irq, cpu) >= cpu_state->running_priority) {
-		return 1023;
+		new_irq = 1023;
+		goto release_lock;
 	}
 
 	cpu_state->last_active[new_irq] = cpu_state->running_irq;
 
-	vmm_write_lock_irqsave(&s->dist_lock, flags);
+	vmm_write_lock_irqsave(&s->dist_lock, dist_flags);
 
 	/* Clear pending flags for both level and edge triggered interrupts.
 	 * Level triggered IRQs will be reasserted once they become inactive. */
 	GIC_CLEAR_PENDING(s, new_irq, 
 			  GIC_TEST_MODEL(s, new_irq) ? GIC_ALL_CPU_MASK(s) : cm);
 
-	vmm_write_unlock_irqrestore(&s->dist_lock, flags);
+	vmm_write_unlock_irqrestore(&s->dist_lock, dist_flags);
 
 	gic_set_running_irq(s, cpu, new_irq);
+
+ release_lock:
+	vmm_write_unlock_irqrestore(&cpu_state->cpu_lock, cpu_flags);
+
+	if (new_irq != 1023) {
+		gic_update(s);
+	}
 
 	return new_irq;
 }
@@ -296,13 +301,16 @@ static void gic_complete_irq(struct gic_state *s, int cpu, int irq)
 {
 	int update = 0;
 	int cm = 1 << cpu;
-	irq_flags_t flags;
+	irq_flags_t dist_flags, cpu_flags;
 	struct gic_cpu_state *cpu_state = &s->cpu_state[cpu];
 
-	if (cpu_state->running_irq == 1023)
-		return; /* No active IRQ.  */
+	vmm_write_lock_irqsave(&cpu_state->cpu_lock, cpu_flags);
 
-	vmm_write_lock_irqsave(&s->dist_lock, flags);
+	if (cpu_state->running_irq == 1023) {
+		goto release_lock;
+	}
+
+	vmm_write_lock_irqsave(&s->dist_lock, dist_flags);
 
 	/* Mark level triggered interrupts as pending if 
 	 * they are still raised. */
@@ -314,7 +322,7 @@ static void gic_complete_irq(struct gic_state *s, int cpu, int irq)
 		update = 1;
 	}
 
-	vmm_write_unlock_irqrestore(&s->dist_lock, flags);
+	vmm_write_unlock_irqrestore(&s->dist_lock, dist_flags);
 
 	if (irq != cpu_state->running_irq) {
 		/* Complete an IRQ that is not currently running.  */
@@ -328,12 +336,20 @@ static void gic_complete_irq(struct gic_state *s, int cpu, int irq)
 			tmp = cpu_state->last_active[tmp];
 		}
 		if (update) {
-			gic_update(s);
+			update = 2;
 		}
 	} else {
 		/* Complete the current running IRQ.  */
 		gic_set_running_irq(s, cpu, 
 				cpu_state->last_active[cpu_state->running_irq]);
+		update = 2;
+	}
+
+ release_lock:
+	vmm_write_unlock_irqrestore(&cpu_state->cpu_lock, cpu_flags);
+
+	if (update == 2) {
+		gic_update(s);
 	}
 }
 
@@ -1073,6 +1089,7 @@ struct gic_state *gic_state_alloc(const char *name,
 	s->is_child_pic = is_child_pic;
 
 	for (i = 0; i < s->num_cpu; i++) {
+		INIT_RW_LOCK(&s->cpu_state[i].cpu_lock);
 		s->cpu_state[i].parent_irq = parent_irq;
 	}
 
