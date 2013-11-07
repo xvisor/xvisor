@@ -79,6 +79,26 @@ int vmm_mutex_unlock(struct vmm_mutex *mut)
 	return rc;
 }
 
+int vmm_mutex_trylock(struct vmm_mutex *mut)
+{
+	int ret = 0;
+
+	BUG_ON(!mut);
+	BUG_ON(!vmm_scheduler_orphan_context());
+
+	vmm_spin_lock_irq(&mut->wq.lock);
+
+	if (!mut->lock) {
+		mut->lock = 1;
+		mut->owner = vmm_scheduler_current_vcpu();
+		ret = 1;
+	}
+
+	vmm_spin_unlock_irq(&mut->wq.lock);
+
+	return ret;
+}
+
 static int mutex_lock_common(struct vmm_mutex *mut, u64 *timeout)
 {
 	int rc = VMM_OK;
