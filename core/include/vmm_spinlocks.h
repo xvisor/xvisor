@@ -219,7 +219,7 @@ extern void vmm_scheduler_preempt_enable(void);
 #endif
 
 /** Unlock the spinlock and enable irq 
- *  PROTOTYPE: void vmm_spin_unlock_irq(vmm_spinlock_t * lock)
+ *  PROTOTYPE: void vmm_spin_unlock_irq(vmm_spinlock_t *lock)
  */
 #if defined(CONFIG_SMP)
 #define vmm_spin_unlock_irq(lock)	do { \
@@ -247,8 +247,64 @@ extern void vmm_scheduler_preempt_enable(void);
 #define vmm_write_unlock_irq(lock)	vmm_spin_unlock_irq(lock)
 #endif
 
+/** Try to Save irq flags and lock the spinlock 
+ *  PROTOTYPE: int vmm_spin_trylock_irqsave(vmm_spinlock_t *lock,
+					    irq_flags_t flags) 
+ */
+#if defined(CONFIG_SMP)
+#define vmm_spin_trylock_irqsave(lock, flags)	\
+					({ \
+					int ret; \
+					arch_cpu_irq_save((flags)); \
+					vmm_scheduler_preempt_disable(); \
+					ret = arch_spin_trylock(&(lock)->__tlock); \
+					if (!ret) { \
+						vmm_scheduler_preempt_enable(); \
+						arch_cpu_irq_restore(flags); \
+					} \
+					ret; \
+					})
+#define vmm_write_trylock_irqsave(lock, flags)	\
+					({ \
+					int ret; \
+					arch_cpu_irq_save((flags)); \
+					vmm_scheduler_preempt_disable(); \
+					ret = arch_write_trylock(&(lock)->__tlock); \
+					if (!ret) { \
+						vmm_scheduler_preempt_enable(); \
+						arch_cpu_irq_restore(flags); \
+					} \
+					ret; \
+					})
+#define vmm_read_trylock_irqsave(lock, flags)	\
+					({ \
+					int ret; \
+					arch_cpu_irq_save((flags)); \
+					vmm_scheduler_preempt_disable(); \
+					ret = arch_read_trylock(&(lock)->__tlock); \
+					if (!ret) { \
+						vmm_scheduler_preempt_enable(); \
+						arch_cpu_irq_restore(flags); \
+					} \
+					ret; \
+					})
+#else
+#define vmm_spin_trylock_irqsave(lock, flags)	\
+					({ \
+					arch_cpu_irq_save((flags)); \
+					vmm_scheduler_preempt_disable(); \
+					(void)(lock); \
+					1; \
+					})
+#define vmm_write_trylock_irqsave(lock, flags)	\
+					vmm_spin_trylock_irqsave(lock, flags)
+#define vmm_read_trylock_irqsave(lock, flags)	\
+					vmm_spin_trylock_irqsave(lock, flags)
+#endif
+
 /** Save irq flags and lock the spinlock
- *  PROTOTYPE: irq_flags_t vmm_spin_lock_irqsave(vmm_spinlock_t *lock) 
+ *  PROTOTYPE: void vmm_spin_lock_irqsave(vmm_spinlock_t *lock,
+					  irq_flags_t flags) 
  */
 #if defined(CONFIG_SMP)
 #define vmm_spin_lock_irqsave(lock, flags) \
