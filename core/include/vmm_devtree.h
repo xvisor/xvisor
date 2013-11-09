@@ -192,6 +192,15 @@ int vmm_devtree_attrval_match_string(struct vmm_devtree_node *node,
 int vmm_devtree_attrval_count_strings(struct vmm_devtree_node *node,
 				      const char *attrib);
 
+/** Retrive string in a list based on index
+ *
+ *  Returns size of string (0 <=) upon success and VMM_Exxxx (< 0)
+ *  upon failure
+ */
+int vmm_devtree_attrval_string_index(struct vmm_devtree_node *node,
+				     const char *attrib,
+				     int index, const char **out);
+
 /** Create a path string for a given node */
 int vmm_devtree_getpath(char *out, const struct vmm_devtree_node *node);
 
@@ -217,6 +226,16 @@ const struct vmm_devtree_nodeid *vmm_devtree_match_node(
 struct vmm_devtree_node *vmm_devtree_find_matching(
 				struct vmm_devtree_node *node,
 				const struct vmm_devtree_nodeid *matches);
+
+/** Iterate over all matching nodes 
+ *  Note: If node == NULL then node == root
+ */
+void vmm_devtree_iterate_matching(struct vmm_devtree_node *node,
+				  const struct vmm_devtree_nodeid *matches,
+				  void (*found)(struct vmm_devtree_node *node, 
+				      const struct vmm_devtree_nodeid *match,
+				      void *data),
+				  void *found_data);
 
 /** Find compatible node starting from given node 
  *  Note: If node == NULL then node == root 

@@ -381,6 +381,38 @@ int vmm_devtree_attrval_count_strings(struct vmm_devtree_node *node,
 	return i;
 }
 
+int vmm_devtree_attrval_string_index(struct vmm_devtree_node *node,
+				     const char *attrib,
+				     int index, const char **out)
+{
+	int i;
+	size_t l;
+	const char *p, *end;
+	struct vmm_devtree_attr *attr = vmm_devtree_getattr(node, attrib);
+
+	if (!attr || !out)
+		return VMM_EINVALID;
+	if (!attr->value)
+		return VMM_ENODATA;
+	if (index < 0)
+		return VMM_EILSEQ;
+
+	p = attr->value;
+	end = p + attr->len;
+
+	for (i = 0; p < end; i++, p += l) {
+		l = strlen(p) + 1;
+		if (p + l > end)
+			return VMM_EILSEQ;
+		if (i == index) {
+			*out = p;
+			return l - 1;
+		}
+	}
+
+	return VMM_ENODATA;
+}
+
 static void recursive_getpath(char **out, const struct vmm_devtree_node *node)
 {
 	if (!node)
@@ -538,6 +570,37 @@ struct vmm_devtree_node *vmm_devtree_find_matching(
 	}
 
 	return NULL;
+}
+
+void vmm_devtree_iterate_matching(struct vmm_devtree_node *node,
+				  const struct vmm_devtree_nodeid *matches,
+				  void (*found)(struct vmm_devtree_node *node, 
+				      const struct vmm_devtree_nodeid *match,
+				      void *data),
+				  void *found_data)
+{
+	struct dlist *lentry;
+	struct vmm_devtree_node *child;
+	const struct vmm_devtree_nodeid *mid;
+
+	if (!found || !matches) {
+		return;
+	}
+
+	if (!node) {
+		node = dtree_ctrl.root;
+	}
+
+	mid = vmm_devtree_match_node(matches, node);
+	if (mid) {
+		found(node, mid, found_data);
+	}
+
+	list_for_each(lentry, &node->child_list) {
+		child = list_entry(lentry, struct vmm_devtree_node, head);
+		vmm_devtree_iterate_matching(child, matches, 
+					     found, found_data);
+	}
 }
 
 struct vmm_devtree_node *vmm_devtree_find_compatible(
