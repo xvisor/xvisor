@@ -49,7 +49,7 @@ A10:
   [10. Copy firmware.bin.patched to boot partition of SD card]
   # cp build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched <path_to_mounted_boot_partition_of_sd_card>/arm.bin
 
-  (Note: If you want additional images like cmdlist, patched zImage, 
+  (Note: If you want additional images like cmdlist, patched Image, 
    rootfs.img etc. then you should copy these images to boot partition
    of SD card after above step.)
   (Note: For more info on images required for linux on Realview-PB-A8 guest 
@@ -72,19 +72,19 @@ A10:
   [17. Copy Guest image from SD card to SDRAM]
   sun4i# fatload mmc 0 0x41000000 arm.bin
 
-  (Note: If you want to load additional images like cmdlist, patched zImage, 
+  (Note: If you want to load additional images like cmdlist, patched Image, 
    rootfs.img, etc. from SD card then load these images at address 
    0x41000000 or higher using fatload command of U-Boot after above step.)
   (Note: The default DTS used by Xvisor for Sun4i has one pre-configured
    Realview-PB-A8 guest. The NOR flash of the guest is 16 MB in size and is 
    mapped to 0x41000000 host physical address. The guest boots from start of 
    NOR flash so we put Basic Firmware arm.bin at start of NOR flash and rest of
-   the guest images like cmdlist, patched zImage, rootfs.img, etc. after it.)
-  (Note: For e.g. if we want to load cmdlist, patched zImage and rootfs image
+   the guest images like cmdlist, patched Image, rootfs.img, etc. after it.)
+  (Note: For e.g. if we want to load cmdlist, patched Image and rootfs image
    into guest NOR flash then use:
    sun4i# fatload mmc 0 0x410FF000 cmdlist
-   sun4i# fatload mmc 0 0x41100000 zImage
-   sun4i# fatload mmc 0 0x41400000 rootfs.img )
+   sun4i# fatload mmc 0 0x41100000 Image
+   sun4i# fatload mmc 0 0x41600000 rootfs.img )
 
   [18. Jump into Xvisor after disabling MMU, interrupts, etc]
   sun4i# bootm 0x40200000

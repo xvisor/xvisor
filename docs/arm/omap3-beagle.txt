@@ -46,7 +46,7 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   [10. Copy firmware.bin.patched to boot partition of micro-SD card]
   # cp build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched <path_to_mounted_boot_partition_of_micro_sd_card>/arm.bin
 
-  (Note: If you want additional images like cmdlist, patched zImage, 
+  (Note: If you want additional images like cmdlist, patched Image, 
    rootfs.img etc. then you should copy these images to boot partition
    of micro-SD card after above step.)
   (Note: For more info on images required for linux on Realview-PB-A8 guest 
@@ -69,18 +69,18 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   [17. Copy Guest image from micro-SD card to SDRAM]
   OMAP3 beagleboard.org # fatload mmc 0 0x89000000 arm.bin
 
-  (Note: If you want to load additional images like cmdlist, patched zImage, 
+  (Note: If you want to load additional images like cmdlist, patched Image, 
    rootfs.img, etc. from micro-SD card then load these images at address 
    0x89100000 or higher using fatload command of U-Boot after above step.)
   (Note: The default DTS used by Xvisor for BeagleBoard has one pre-configured
    Realview-PB-A8 guest. The NOR flash of the guest is 16 MB in size and is 
    mapped to 0x89000000 host physical address. The guest boots from start of 
    NOR flash so we put Basic Firmware arm.bin at start of NOR flash and rest of
-   the guest images like cmdlist, patched zImage, rootfs.img, etc. after it.)
-  (Note: For e.g. if we want to load cmdlist, patched zImage and rootfs image
+   the guest images like cmdlist, patched Image, rootfs.img, etc. after it.)
+  (Note: For e.g. if we want to load cmdlist, patched Image and rootfs image
    into guest NOR flash then use:
    OMAP3 beagleboard.org # fatload mmc 0 0x890FF000 cmdlist
-   OMAP3 beagleboard.org # fatload mmc 0 0x89100000 zImage
+   OMAP3 beagleboard.org # fatload mmc 0 0x89100000 Image
    OMAP3 beagleboard.org # fatload mmc 0 0x89600000 rootfs.img )
 
   [18. Jump into Xvisor after disabling MMU, interrupts, etc]
@@ -185,12 +185,12 @@ follows:
   [11. Create a flat binary with all our binaries appended]
   # ./tools/scripts/memimg.py -a 0 -o build/beagle.img build/x-load.bin.ift@0x0 build/u-boot.bin@0x80000 build/uvmm.bin@0x280000 build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched@0x380000
 
-  (Note: If you want additional images like cmdlist, patched zImage, 
+  (Note: If you want additional images like cmdlist, patched Image, 
    rootfs image, etc. then you should above step to include them in 
-   build/beagle.img. For instance cmdlist, patched zImage, and rootfs.img
+   build/beagle.img. For instance cmdlist, patched Image, and rootfs.img
    can be appended to build/beagle.img using following additional arguments
    <xvisor_source>/tests/arm32/realview-pb-a8/linux/cmdlist@0x47F000
-   <linux_build_dir>/arch/arm/boot/zImage@0x480000
+   <linux_build_dir>/arch/arm/boot/Image@0x480000
    <linux_build_dir>/rootfs.img@0x980000 
    arguments appended to above step.)
   (Note: For more info on images required for linux on Realview-PB-A8 guest 
@@ -208,16 +208,16 @@ follows:
   [15. Copy Guest image from nand-flash to SDRAM]
   OMAP3 beagleboard.org # nand read 0x89000000 0x380000 0x100000
 
-  (Note: If you want to load additional images like cmdlist, patched zImage, 
+  (Note: If you want to load additional images like cmdlist, patched Image, 
    rootfs.img, etc. from NAND flash then load these images at address 0x89100000
    or higher using fatload command of U-Boot after above step.)
   (Note: The default DTS used by Xvisor for BeagleBoard has one pre-configured
    Realview-PB-A8 guest. The NOR flash of the guest is 16 MB in size and is 
    mapped to 0x89000000 host physical address. The guest boots from start of 
    NOR flash so we put Basic Firmware at start of NOR flash and rest of the 
-   guest images like cmdlist, patched zImage, rootfs.img, etc. after Basic 
+   guest images like cmdlist, patched Image, rootfs.img, etc. after Basic 
    Firmware arm.bin)
-  (Note: For e.g. if we want to load cmdlist, patched zImage and rootfs image
+  (Note: For e.g. if we want to load cmdlist, patched Image and rootfs image
    into guest NOR flash then use,
    OMAP3 beagleboard.org # nand read 0x890FF000 0x47F000 0x1000
    OMAP3 beagleboard.org # nand read 0x89100000 0x480000 0x500000
