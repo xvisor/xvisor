@@ -41,13 +41,13 @@ RootFS on Realview-PB-A8 Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   # make O=<linux_build_directory> ARCH=arm oldconfig
 
   [9. Build Linux in build directory]
-  # make O=<linux_build_directory> ARCH=arm zImage
+  # make O=<linux_build_directory> ARCH=arm Image
 
   [10. Patch Linux kernel to replace sensitive non-priviledged instructions]
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
 
   [11. Build Linux in build directory to reflect changes in kernel image]
-  # make O=<linux_build_directory> ARCH=arm zImage
+  # make O=<linux_build_directory> ARCH=arm Image
 
   [12. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
