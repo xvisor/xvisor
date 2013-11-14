@@ -24,6 +24,7 @@
 #define __VMM_DEVTREE_H_
 
 #include <vmm_limits.h>
+#include <vmm_compiler.h>
 #include <vmm_types.h>
 #include <libs/list.h>
 
@@ -118,6 +119,35 @@ struct vmm_devtree_nodeid {
 	char compatible[VMM_FIELD_COMPAT_SIZE];
 	void *data;
 };
+
+#define VMM_DEVTREE_NODEID_TABLE_SIGNATURE	0xDEADF001
+
+struct vmm_devtree_nodeid_table_entry {
+	u32 signature;
+	struct vmm_devtree_nodeid nodeid;
+};
+
+#ifdef __VMM_MODULES__
+
+#define VMM_DEVTREE_NODEID_TABLE_ENTRY(nid, _name, _type, _compat, _data) \
+static __unused __nidtbl struct vmm_devtree_nodeid_table_entry __##nid = { \
+	.signature = VMM_DEVTREE_NODEID_TABLE_SIGNATURE, \
+	.nodeid.name = (_name), \
+	.nodeid.type = (_type), \
+	.nodeid.compatible = (_compat), \
+	.nodeid.data = (_data), \
+}
+
+#else
+
+/**
+ * TODO: NodeID table enteries cannot be created from runtime pluggable 
+ * modules. This will be added in future because vmm_modules needs to be
+ * updated to support it.
+ */
+#define VMM_DEVTREE_NODEID_TABLE_ENTRY(nid, _name, _type, _compat, _data)
+
+#endif
 
 struct vmm_devtree_node {
 	struct dlist head;
@@ -390,6 +420,12 @@ int vmm_devtree_regaddr(struct vmm_devtree_node *node,
  */
 int vmm_devtree_regunmap(struct vmm_devtree_node *node, 
 			 virtual_addr_t addr, int regset);
+
+/** Count number of enteries in nodeid table */
+u32 vmm_devtree_nodeid_table_count(void);
+
+/** Get nodeid at given index from nodeid table */
+struct vmm_devtree_nodeid *vmm_devtree_nodeid_table_get(int index);
 
 /** Initialize device tree */
 int vmm_devtree_init(void);

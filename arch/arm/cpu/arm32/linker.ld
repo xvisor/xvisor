@@ -80,6 +80,11 @@ SECTIONS
 		. = ALIGN(4);
 		PROVIDE(_modtbl_end = .);
 
+		PROVIDE(_nidtbl_start = .);
+		*(.nidtbl)
+		. = ALIGN(4);
+		PROVIDE(_nidtbl_end = .);
+
 		. = ALIGN(4);
 		PROVIDE(__setup_start = .);
 		*(.setup.init);

@@ -27,11 +27,14 @@
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devtree.h>
+#include <arch_sections.h>
 #include <arch_devtree.h>
 #include <libs/stringlib.h>
 
 struct vmm_devtree_ctrl {
         struct vmm_devtree_node *root;
+	u32 nodeid_table_count;
+	struct vmm_devtree_nodeid *nodeid_table;
 };
 
 static struct vmm_devtree_ctrl dtree_ctrl;
@@ -1141,11 +1144,64 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 	return VMM_EFAIL;
 }
 
+u32 vmm_devtree_nodeid_table_count(void)
+{
+	return dtree_ctrl.nodeid_table_count;
+}
+
+struct vmm_devtree_nodeid *vmm_devtree_nodeid_table_get(int index)
+{
+	if ((index < 0) ||
+	    (dtree_ctrl.nodeid_table_count <= index)) {
+		return NULL;
+	}
+
+	return &dtree_ctrl.nodeid_table[index];
+}
+
 int __init vmm_devtree_init(void)
 {
+	int rc;
+	u32 nidtbl_cnt;
+	virtual_addr_t ca, nidtbl_va;
+	virtual_size_t nidtbl_sz;
+	struct vmm_devtree_nodeid *nid;
+	struct vmm_devtree_nodeid_table_entry *nidtbl;
+
 	/* Reset the control structure */
 	memset(&dtree_ctrl, 0, sizeof(dtree_ctrl));
 
 	/* Populate Board Specific Device Tree */
-	return arch_devtree_populate(&dtree_ctrl.root);
+	rc = arch_devtree_populate(&dtree_ctrl.root);
+	if (rc) {
+		return rc;
+	}
+
+	/* Populate nodeid table */
+	nidtbl_va = arch_nidtbl_vaddr();
+	nidtbl_sz = arch_nidtbl_size();
+	if (!nidtbl_sz) {
+		return VMM_OK;
+	}
+	nidtbl_cnt = nidtbl_sz / sizeof(*nidtbl);
+	dtree_ctrl.nodeid_table = vmm_zalloc(nidtbl_cnt * sizeof(*nid));
+	if (!dtree_ctrl.nodeid_table) {
+		return VMM_ENOMEM;
+	}
+	dtree_ctrl.nodeid_table_count = 0;
+	for (ca = nidtbl_va; ca < (nidtbl_va + nidtbl_sz); ) {
+		if (*(u32 *)ca != VMM_DEVTREE_NODEID_TABLE_SIGNATURE) {
+			ca += sizeof(u32);
+			continue;
+		}
+		nidtbl = (struct vmm_devtree_nodeid_table_entry *)ca;
+
+		nid = &dtree_ctrl.nodeid_table[dtree_ctrl.nodeid_table_count];
+		memcpy(nid, &nidtbl->nodeid, sizeof(*nid));
+
+		dtree_ctrl.nodeid_table_count++;
+		ca += sizeof(*nidtbl);
+	}
+
+	return VMM_OK;
 }
