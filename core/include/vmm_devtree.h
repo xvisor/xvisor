@@ -127,7 +127,7 @@ struct vmm_devtree_nodeid_table_entry {
 	struct vmm_devtree_nodeid nodeid;
 };
 
-#ifdef __VMM_MODULES__
+#ifndef __VMM_MODULES__
 
 #define VMM_DEVTREE_NODEID_TABLE_ENTRY(nid, _name, _type, _compat, _data) \
 static __unused __nidtbl struct vmm_devtree_nodeid_table_entry __##nid = { \
