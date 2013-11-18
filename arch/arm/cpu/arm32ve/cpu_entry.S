@@ -246,12 +246,8 @@ _start_secondary:
 	orr	r3, r3, r1
 	mcr     p15, 4, r3, c2, c1, 2
 	/* Setup Hypervisor System Control Register */
-	ldr	r1, __hsctlr_set
-	ldr	r2, __hsctlr_clear
-	mrc     p15, 4, r3, c1, c0, 0
-	and	r3, r3, r2
-	orr	r3, r3, r1
-	mcr     p15, 4, r3, c1, c0, 0
+	bl	proc_setup
+	mcr     p15, 4, r0, c1, c0, 0
 	/* Jump to reset code */
 	ldr	pc, __reset
 
@@ -280,10 +276,6 @@ __vtcr_clear:
 	.word ~(0x0)
 __vtcr_set:
 	.word ((0x1 << VTCR_SL0_SHIFT) | (0x3 << VTCR_ORGN0_SHIFT) | (0x3 << VTCR_IRGN0_SHIFT))
-__hsctlr_clear:
-	.word ~(HSCTLR_A_MASK)
-__hsctlr_set:
-	.word (HSCTLR_M_MASK | HSCTLR_C_MASK | HSCTLR_I_MASK)
 __boot_reg0:
 	.word _boot_reg0
 __boot_reg1:
