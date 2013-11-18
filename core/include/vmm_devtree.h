@@ -422,10 +422,20 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 			 virtual_addr_t addr, int regset);
 
 /** Count number of enteries in nodeid table */
-u32 vmm_devtree_nodeid_table_count(void);
+u32 vmm_devtree_nidtbl_count(void);
 
 /** Get nodeid at given index from nodeid table */
-struct vmm_devtree_nodeid *vmm_devtree_nodeid_table_get(int index);
+struct vmm_devtree_nodeid *vmm_devtree_nidtbl_get(int index);
+
+/** Create matches table from nodeid table enteries with given type 
+ *  Note: If type==NULL then matches table is created from all enteries
+ */
+const struct vmm_devtree_nodeid *
+		vmm_devtree_nidtbl_create_matches(const char *type);
+
+/** Destroy matches table created from nodeid table enteries */
+void vmm_devtree_nidtbl_destroy_matches(
+				const struct vmm_devtree_nodeid *matches);
 
 /** Initialize device tree */
 int vmm_devtree_init(void);

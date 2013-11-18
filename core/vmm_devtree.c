@@ -1144,12 +1144,12 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 	return VMM_EFAIL;
 }
 
-u32 vmm_devtree_nodeid_table_count(void)
+u32 vmm_devtree_nidtbl_count(void)
 {
 	return dtree_ctrl.nodeid_table_count;
 }
 
-struct vmm_devtree_nodeid *vmm_devtree_nodeid_table_get(int index)
+struct vmm_devtree_nodeid *vmm_devtree_nidtbl_get(int index)
 {
 	if ((index < 0) ||
 	    (dtree_ctrl.nodeid_table_count <= index)) {
@@ -1157,6 +1157,64 @@ struct vmm_devtree_nodeid *vmm_devtree_nodeid_table_get(int index)
 	}
 
 	return &dtree_ctrl.nodeid_table[index];
+}
+
+static bool devtree_compare_nid_for_matches(const char *type,
+					       struct vmm_devtree_nodeid *nid)
+{
+	if (!type) {
+		return TRUE;
+	}
+
+	return (strcmp(nid->type, type) == 0) ? TRUE : FALSE;
+}
+
+const struct vmm_devtree_nodeid *
+			vmm_devtree_nidtbl_create_matches(const char *type)
+{
+	u32 i, idx, count;
+	struct vmm_devtree_nodeid *nid, *matches;
+
+	/* Count number of enteries to be put in matches table */
+	count = 0;
+	for (i = 0; i < dtree_ctrl.nodeid_table_count; i++) {
+		nid = &dtree_ctrl.nodeid_table[i];
+		if (devtree_compare_nid_for_matches(type, nid)) {
+			count++;
+		}
+	}
+	if (!count) {
+		return NULL;
+	}
+
+	/* Alloc matches table with extra zero entry at the end */
+	matches = vmm_zalloc((count + 1) * sizeof(struct vmm_devtree_nodeid));
+	if (!matches) {
+		return NULL;
+	}
+
+	/* Prepare matches table */
+	idx = 0;
+	for (i = 0; i < dtree_ctrl.nodeid_table_count; i++) {
+		if (count <= idx) {
+			break;
+		}
+		nid = &dtree_ctrl.nodeid_table[i];
+		if (devtree_compare_nid_for_matches(type, nid)) {
+			memcpy(&matches[idx], nid, sizeof(*nid));
+			idx++;
+		}
+	}
+
+	return matches;
+}
+
+void vmm_devtree_nidtbl_destroy_matches(
+				const struct vmm_devtree_nodeid *matches)
+{
+	if (matches) {
+		vmm_free((void *)matches);
+	}
 }
 
 int __init vmm_devtree_init(void)
