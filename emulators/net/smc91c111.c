@@ -692,22 +692,21 @@ static int smc91c111_emulator_write(struct vmm_emudev *edev,
 	u32 regval = 0;
 
 	switch(src_len) {
-		case 1:
-			regval = *(u8 *) src;
-			smc91c111_writeb(opaque, offset, regval);
-			break;
-		case 2:
-			regval = *(u16 *) src;
-			smc91c111_writew(opaque, offset, regval);
-			break;
-		case 4:
-			regval = *(u32 *) src;
-			smc91c111_writel(opaque, offset, regval);
-			break;
-		default:
-			return VMM_EFAIL;
-
-	}
+	case 1:
+		regval = *(u8 *)src;
+		smc91c111_writeb(opaque, offset, regval);
+		break;
+	case 2:
+		regval = *(u16 *)src;
+		smc91c111_writew(opaque, offset, regval);
+		break;
+	case 4:
+		regval = *(u32 *)src;
+		smc91c111_writel(opaque, offset, regval);
+		break;
+	default:
+		return VMM_EFAIL;
+	};
 
 	return VMM_OK;
 
@@ -730,30 +729,24 @@ static u32 smc91c111_readl(void *opaque, physical_addr_t offset)
 }
 
 static int smc91c111_emulator_read(struct vmm_emudev *edev,
-		physical_addr_t offset,
-		void *dst, u32 dst_len)
+				   physical_addr_t offset,
+				   void *dst, u32 dst_len)
 {
 	struct smc91c111_state *opaque = edev->priv;
 
-
-	*(u32 *) dst = 0;
-
 	switch (dst_len) {
-		case 1:
-			*(u8 *) dst = smc91c111_readb(opaque, offset);
-			break;
-		case 2:
-			*(u16 *) dst = vmm_cpu_to_le16(smc91c111_readw(opaque, offset));
-			break;
-		case 4:
-			*(u32 *) dst = vmm_cpu_to_le32(
-					smc91c111_readl(opaque, offset));
-			break;
-		default:
-			return VMM_EFAIL;
+	case 1:
+		*(u8 *)dst = smc91c111_readb(opaque, offset);
+		break;
+	case 2:
+		*(u16 *)dst = vmm_cpu_to_le16(smc91c111_readw(opaque, offset));
+		break;
+	case 4:
+		*(u32 *)dst = vmm_cpu_to_le32(smc91c111_readl(opaque, offset));
+		break;
+	default:
+		return VMM_EFAIL;
 	}
-
-	//vmm_printf("%s: **************Returning 0x%x len %d offset 0x%x\n", __func__, *(u32 *) dst, dst_len, offset);
 
 	return VMM_OK;
 }
