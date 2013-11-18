@@ -35,6 +35,7 @@
 #include <vmm_types.h>
 #include <vmm_compiler.h>
 #include <vmm_host_io.h>
+#include <vmm_devtree.h>
 #include <drv/clk.h>
 
 #ifndef __iomem
@@ -489,10 +490,8 @@ struct clk_onecell_data {
 	unsigned int clk_num;
 };
 
-#define CLK_OF_DECLARE(name, compat, fn)			\
-	static const struct vmm_devtree_nodeid __clk_of_table_##name	\
-		__used __section(__clk_of_table)		\
-		= { .compatible = compat, .data = fn };
+#define CLK_OF_DECLARE(name, compat, fn)	\
+VMM_DEVTREE_NODEID_TABLE_ENTRY(name, #name, "clk-provider", compat, fn)
 
 int of_clk_add_provider(struct vmm_devtree_node *np,
 			struct clk *(*clk_src_get)(
