@@ -180,6 +180,11 @@
 #define __align_vmm(x, a)		__align_vmm_mask(x, (typeof(x))(a) - 1)
 #define __align_vmm_mask(x, mask)	(((x) + (mask)) & ~(mask))
 #define align(x, a)			__align_vmm((x), (a))
+#define __align_mask(x, mask)		__align_vmm_mask((x), (mask))
+#define ptr_align(p, a)			((typeof(p))align((unsigned long)(p), (a)))
+#define is_aligned(x, a)		(((x) & ((typeof(x))(a) - 1)) == 0)
+
+#define repeat_byte(x)			((~0ul / 0xff) * (x))
 
 /**
  * container_of - cast a member of a structure out to the containing structure
@@ -192,8 +197,8 @@
 	const typeof(((type *)0)->member) * __mptr = (ptr);	\
 	(type *)((char *)__mptr - offsetof(type, member)); })
 
-#define array_size(x) (sizeof(x) / sizeof((x)[0]))
+#define array_size(x) 			(sizeof(x) / sizeof((x)[0]))
 
-#define field_sizeof(t, f) (sizeof(((t*)0)->f))
+#define field_sizeof(t, f)		(sizeof(((t*)0)->f))
 
 #endif /* __VMM_MACROS_H__ */
