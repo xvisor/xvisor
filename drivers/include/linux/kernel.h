@@ -1,6 +1,10 @@
 #ifndef _LINUX_KERNEL_H
 #define _LINUX_KERNEL_H
 
+#include <vmm_limits.h>
+#include <vmm_macros.h>
+#include <libs/mathlib.h>
+
 #include <linux/err.h>
 #include <linux/bitops.h>
 
