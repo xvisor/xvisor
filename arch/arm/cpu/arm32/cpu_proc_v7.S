@@ -111,8 +111,6 @@ proc_setup:
 #ifdef CONFIG_SMP
 #if defined(CONFIG_CPU_CORTEX_A9)
 	mov	r10, #(1 << 0)			@ TLB ops broadcasting
-#elif defined(CONFIG_CPU_CORTEX_A15)
-	mov	r10, #0
 #endif
 	mrc	p15, 0, r0, c1, c0, 1
 #if 0
