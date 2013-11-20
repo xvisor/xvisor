@@ -407,7 +407,7 @@ static struct vmm_devtree_nodeid defterm_devid_table[] = {
 { /* end of list */ },
 };
 
-static struct defterm_ops *ops = NULL;
+static const struct defterm_ops *ops = NULL;
 
 int arch_defterm_putc(u8 ch)
 {
