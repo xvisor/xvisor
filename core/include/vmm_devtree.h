@@ -117,7 +117,7 @@ struct vmm_devtree_nodeid {
 	char name[VMM_FIELD_NAME_SIZE];
 	char type[VMM_FIELD_TYPE_SIZE];
 	char compatible[VMM_FIELD_COMPAT_SIZE];
-	void *data;
+	const void *data;
 };
 
 #define VMM_DEVTREE_NODEID_TABLE_SIGNATURE	0xDEADF001
