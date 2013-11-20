@@ -26,11 +26,7 @@
  * Copyright (C) 2011 Richard Zhao, Linaro <richard.zhao@linaro.org>
  * Copyright (C) 2011-2012 Mike Turquette, Linaro Ltd <mturquette@linaro.org>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Simple multiplexer clock implementation
+ * The original source is licensed under GPL.
  */
 
 #include <vmm_error.h>

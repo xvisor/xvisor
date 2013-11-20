@@ -24,11 +24,7 @@
  *
  * Copyright (C) 2013 Emilio López <emilio@elopez.com.ar>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Adjustable factor-based clock implementation
+ * The original source is licensed under GPL.
  */
 
 #include <vmm_error.h>

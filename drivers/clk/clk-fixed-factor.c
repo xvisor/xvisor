@@ -24,11 +24,9 @@
  *
  * Copyright (C) 2011 Sascha Hauer, Pengutronix <s.hauer@pengutronix.de>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
  * Standard functionality for the common clock API.
+ *
+ * The original source is licensed under GPL.
  */
 #include <vmm_error.h>
 #include <vmm_heap.h>

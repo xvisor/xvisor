@@ -25,11 +25,7 @@
  * Copyright (C) 2010-2011 Canonical Ltd <jeremy.kerr@canonical.com>
  * Copyright (C) 2011-2012 Linaro Ltd <mturquette@linaro.org>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Standard functionality for the common clock API.  See Documentation/clk.txt
+ * The original source is licensed under GPL.
  */
 
 #include <vmm_error.h>

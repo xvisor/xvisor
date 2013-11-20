@@ -25,9 +25,7 @@
  * Clock driver for the ARM Integrator/AP and Integrator/CP boards
  * Copyright (C) 2012 Linus Walleij
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * The original source is licensed under GPL.
  */
 #include <vmm_error.h>
 #include <vmm_compiler.h>
