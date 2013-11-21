@@ -21,8 +21,9 @@
 #define ERANGE			-(VMM_ERANGE)
 #define EILSEQ			-(VMM_EILSEQ)
 #define EOPNOTSUPP		-(VMM_EOPNOTSUPP)
-#define EFAULT			-(VMM_EUNKNOWN)
+#define EFAULT			-(VMM_EFAULT)
 #define ENOSYS			-(VMM_ENOSYS)
 #define ENOSPC			-(VMM_ENOSPC)
+#define ENODATA			-(VMM_ENODATA)
 
 #endif /* defined(_ASM_ERRNO_H) */

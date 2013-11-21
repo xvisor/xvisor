@@ -47,5 +47,6 @@
 #define VMM_EOPNOTSUPP		-20
 #define VMM_ENOSPC		-21
 #define VMM_ENODATA		-22
+#define VMM_EFAULT		-23
 
 #endif
