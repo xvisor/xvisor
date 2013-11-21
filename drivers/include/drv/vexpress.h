@@ -136,7 +136,7 @@ void vexpress_flags_set(u32 data);
 #define vexpress_get_site_by_dev(dev) __vexpress_get_site(dev, NULL)
 unsigned __vexpress_get_site(struct vmm_device *dev, struct vmm_devtree_node *node);
 
-void vexpress_sysreg_early_init(void __iomem *base);
+void vexpress_sysreg_early_init(void *base);
 void vexpress_sysreg_of_early_init(void);
 
 /* Clocks */
