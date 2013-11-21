@@ -120,18 +120,20 @@ struct vmm_devtree_nodeid {
 	const void *data;
 };
 
-#define VMM_DEVTREE_NODEID_TABLE_SIGNATURE	0xDEADF001
+#define VMM_DEVTREE_NIDTBL_SIGNATURE	0xDEADF001
 
-struct vmm_devtree_nodeid_table_entry {
+struct vmm_devtree_nidtbl_entry {
 	u32 signature;
+	char subsys[VMM_FIELD_NAME_SIZE];
 	struct vmm_devtree_nodeid nodeid;
 };
 
 #ifndef __VMM_MODULES__
 
-#define VMM_DEVTREE_NODEID_TABLE_ENTRY(nid, _name, _type, _compat, _data) \
-static __unused __nidtbl struct vmm_devtree_nodeid_table_entry __##nid = { \
-	.signature = VMM_DEVTREE_NODEID_TABLE_SIGNATURE, \
+#define VMM_DEVTREE_NIDTBL_ENTRY(nid, _subsys, _name, _type, _compat, _data) \
+static __unused __nidtbl struct vmm_devtree_nidtbl_entry __##nid = { \
+	.signature = VMM_DEVTREE_NIDTBL_SIGNATURE, \
+	.subsys = (_subsys), \
 	.nodeid.name = (_name), \
 	.nodeid.type = (_type), \
 	.nodeid.compatible = (_compat), \
@@ -145,7 +147,7 @@ static __unused __nidtbl struct vmm_devtree_nodeid_table_entry __##nid = { \
  * modules. This will be added in future because vmm_modules needs to be
  * updated to support it.
  */
-#define VMM_DEVTREE_NODEID_TABLE_ENTRY(nid, _name, _type, _compat, _data)
+#define VMM_DEVTREE_NIDTBL_ENTRY(nid, _subsys, _name, _type, _compat, _data)
 
 #endif
 
@@ -424,16 +426,16 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 /** Count number of enteries in nodeid table */
 u32 vmm_devtree_nidtbl_count(void);
 
-/** Get nodeid at given index from nodeid table */
-struct vmm_devtree_nodeid *vmm_devtree_nidtbl_get(int index);
+/** Get nodeid table entry at given index */
+struct vmm_devtree_nidtbl_entry *vmm_devtree_nidtbl_get(int index);
 
-/** Create matches table from nodeid table enteries with given type 
- *  Note: If type==NULL then matches table is created from all enteries
+/** Create matches table from nodeid table with given subsys 
+ *  Note: If subsys==NULL then matches table is created from all enteries
  */
 const struct vmm_devtree_nodeid *
-		vmm_devtree_nidtbl_create_matches(const char *type);
+		vmm_devtree_nidtbl_create_matches(const char *subsys);
 
-/** Destroy matches table created from nodeid table enteries */
+/** Destroy matches table created from nodeid table */
 void vmm_devtree_nidtbl_destroy_matches(
 				const struct vmm_devtree_nodeid *matches);
 

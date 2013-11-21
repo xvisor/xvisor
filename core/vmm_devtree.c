@@ -33,8 +33,8 @@
 
 struct vmm_devtree_ctrl {
         struct vmm_devtree_node *root;
-	u32 nodeid_table_count;
-	struct vmm_devtree_nodeid *nodeid_table;
+	u32 nidtbl_count;
+	struct vmm_devtree_nidtbl_entry *nidtbl;
 };
 
 static struct vmm_devtree_ctrl dtree_ctrl;
@@ -1146,40 +1146,41 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 
 u32 vmm_devtree_nidtbl_count(void)
 {
-	return dtree_ctrl.nodeid_table_count;
+	return dtree_ctrl.nidtbl_count;
 }
 
-struct vmm_devtree_nodeid *vmm_devtree_nidtbl_get(int index)
+struct vmm_devtree_nidtbl_entry *vmm_devtree_nidtbl_get(int index)
 {
 	if ((index < 0) ||
-	    (dtree_ctrl.nodeid_table_count <= index)) {
+	    (dtree_ctrl.nidtbl_count <= index)) {
 		return NULL;
 	}
 
-	return &dtree_ctrl.nodeid_table[index];
+	return &dtree_ctrl.nidtbl[index];
 }
 
-static bool devtree_compare_nid_for_matches(const char *type,
-					       struct vmm_devtree_nodeid *nid)
+static bool devtree_compare_nid_for_matches(const char *subsys,
+					    struct vmm_devtree_nidtbl_entry *nide)
 {
-	if (!type) {
+	if (!subsys) {
 		return TRUE;
 	}
 
-	return (strcmp(nid->type, type) == 0) ? TRUE : FALSE;
+	return (strcmp(nide->subsys, subsys) == 0) ? TRUE : FALSE;
 }
 
 const struct vmm_devtree_nodeid *
-			vmm_devtree_nidtbl_create_matches(const char *type)
+			vmm_devtree_nidtbl_create_matches(const char *subsys)
 {
 	u32 i, idx, count;
 	struct vmm_devtree_nodeid *nid, *matches;
+	struct vmm_devtree_nidtbl_entry *nide;
 
 	/* Count number of enteries to be put in matches table */
 	count = 0;
-	for (i = 0; i < dtree_ctrl.nodeid_table_count; i++) {
-		nid = &dtree_ctrl.nodeid_table[i];
-		if (devtree_compare_nid_for_matches(type, nid)) {
+	for (i = 0; i < dtree_ctrl.nidtbl_count; i++) {
+		nide = &dtree_ctrl.nidtbl[i];
+		if (devtree_compare_nid_for_matches(subsys, nide)) {
 			count++;
 		}
 	}
@@ -1195,12 +1196,13 @@ const struct vmm_devtree_nodeid *
 
 	/* Prepare matches table */
 	idx = 0;
-	for (i = 0; i < dtree_ctrl.nodeid_table_count; i++) {
+	for (i = 0; i < dtree_ctrl.nidtbl_count; i++) {
 		if (count <= idx) {
 			break;
 		}
-		nid = &dtree_ctrl.nodeid_table[i];
-		if (devtree_compare_nid_for_matches(type, nid)) {
+		nide = &dtree_ctrl.nidtbl[i];
+		nid = &nide->nodeid;
+		if (devtree_compare_nid_for_matches(subsys, nide)) {
 			memcpy(&matches[idx], nid, sizeof(*nid));
 			idx++;
 		}
@@ -1223,8 +1225,7 @@ int __init vmm_devtree_init(void)
 	u32 nidtbl_cnt;
 	virtual_addr_t ca, nidtbl_va;
 	virtual_size_t nidtbl_sz;
-	struct vmm_devtree_nodeid *nid;
-	struct vmm_devtree_nodeid_table_entry *nidtbl;
+	struct vmm_devtree_nidtbl_entry *nide, *tnide;
 
 	/* Reset the control structure */
 	memset(&dtree_ctrl, 0, sizeof(dtree_ctrl));
@@ -1241,24 +1242,25 @@ int __init vmm_devtree_init(void)
 	if (!nidtbl_sz) {
 		return VMM_OK;
 	}
-	nidtbl_cnt = nidtbl_sz / sizeof(*nidtbl);
-	dtree_ctrl.nodeid_table = vmm_zalloc(nidtbl_cnt * sizeof(*nid));
-	if (!dtree_ctrl.nodeid_table) {
+	nidtbl_cnt = nidtbl_sz / sizeof(*tnide);
+	dtree_ctrl.nidtbl = vmm_zalloc(nidtbl_cnt * sizeof(*tnide));
+	if (!dtree_ctrl.nidtbl) {
 		return VMM_ENOMEM;
 	}
-	dtree_ctrl.nodeid_table_count = 0;
+	dtree_ctrl.nidtbl_count = 0;
 	for (ca = nidtbl_va; ca < (nidtbl_va + nidtbl_sz); ) {
-		if (*(u32 *)ca != VMM_DEVTREE_NODEID_TABLE_SIGNATURE) {
+		if (*(u32 *)ca != VMM_DEVTREE_NIDTBL_SIGNATURE) {
 			ca += sizeof(u32);
 			continue;
 		}
-		nidtbl = (struct vmm_devtree_nodeid_table_entry *)ca;
 
-		nid = &dtree_ctrl.nodeid_table[dtree_ctrl.nodeid_table_count];
-		memcpy(nid, &nidtbl->nodeid, sizeof(*nid));
+		nide = (struct vmm_devtree_nidtbl_entry *)ca;
+		tnide = &dtree_ctrl.nidtbl[dtree_ctrl.nidtbl_count];
 
-		dtree_ctrl.nodeid_table_count++;
-		ca += sizeof(*nidtbl);
+		memcpy(tnide, nide, sizeof(*tnide));
+
+		dtree_ctrl.nidtbl_count++;
+		ca += sizeof(*nide);
 	}
 
 	return VMM_OK;

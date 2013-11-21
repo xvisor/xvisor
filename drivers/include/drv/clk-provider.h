@@ -491,7 +491,7 @@ struct clk_onecell_data {
 };
 
 #define CLK_OF_DECLARE(name, compat, fn)	\
-VMM_DEVTREE_NODEID_TABLE_ENTRY(name, #name, "clk-provider", compat, fn)
+VMM_DEVTREE_NIDTBL_ENTRY(name, "clk-provider", "", "", compat, fn)
 
 int of_clk_add_provider(struct vmm_devtree_node *np,
 			struct clk *(*clk_src_get)(
