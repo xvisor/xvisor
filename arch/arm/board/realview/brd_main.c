@@ -31,9 +31,10 @@
 #include <arch_barrier.h>
 #include <arch_board.h>
 #include <arch_timer.h>
-#include <drv/clkdev.h>
 #include <libs/stringlib.h>
 #include <libs/vtemu.h>
+#include <drv/clk-provider.h>
+#include <drv/platform_data/clk-realview.h>
 
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
@@ -44,7 +45,6 @@
 #include <sp804_timer.h>
 #include <smp_twd.h>
 #include <versatile/clcd.h>
-#include <versatile/clock.h>
 
 /*
  * Global board context
@@ -110,73 +110,6 @@ static int realview_shutdown(void)
 	/* FIXME: TBD */
 	return VMM_OK;
 }
-
-/*
- * Clocking support
- */
-
-static const struct icst_params realview_oscvco_params = {
-	.ref		= 24000000,
-	.vco_max	= ICST307_VCO_MAX,
-	.vco_min	= ICST307_VCO_MIN,
-	.vd_min		= 4 + 8,
-	.vd_max		= 511 + 8,
-	.rd_min		= 1 + 2,
-	.rd_max		= 127 + 2,
-	.s2div		= icst307_s2div,
-	.idx2s		= icst307_idx2s,
-};
-
-static void realview_oscvco_set(struct clk *clk, struct icst_vco vco)
-{
-	void *sys_lock = (void *)realview_sys_base + REALVIEW_SYS_LOCK_OFFSET;
-	u32 val;
-
-	val = vmm_readl(clk->vcoreg) & ~0x7ffff;
-	val |= vco.v | (vco.r << 9) | (vco.s << 16);
-
-	vmm_writel(REALVIEW_SYS_LOCKVAL, sys_lock);
-	vmm_writel(val, clk->vcoreg);
-	vmm_writel(0, sys_lock);
-}
-
-static const struct clk_ops oscvco_clk_ops = {
-	.round	= icst_clk_round,
-	.set	= icst_clk_set,
-	.setvco	= realview_oscvco_set,
-};
-
-static struct clk oscvco_clk = {
-	.ops	= &oscvco_clk_ops,
-	.params	= &realview_oscvco_params,
-};
-
-static struct clk clk24mhz = {
-	.rate	= 24000000,
-};
-
-int clk_prepare(struct clk *clk)
-{
-	/* Ignore it. */
-	return 0;
-}
-
-void clk_unprepare(struct clk *clk)
-{
-	/* Ignore it. */
-}
-
-static struct clk_lookup clcd_lookup = {
-	.dev_id = "clcd",
-	.con_id = NULL,
-	.clk = &oscvco_clk,
-};
-
-static struct clk_lookup kmi_lookup = {
-	.dev_id = NULL,
-	.con_id = "KMIREFCLK",
-	.clk = &clk24mhz,
-};
 
 /*
  * CLCD support.
@@ -322,10 +255,6 @@ int __init arch_board_early_init(void)
 	 * ....
 	 */
 
-	/* Register CLCD and KMI clocks */
-	clkdev_add(&clcd_lookup);
-	clkdev_add(&kmi_lookup);
-
 	/* Map sysreg */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,realview-sysreg");
 	if (!node) {
@@ -344,7 +273,7 @@ int __init arch_board_early_init(void)
 	realview_sys_24mhz = realview_sys_base + REALVIEW_SYS_24MHz_OFFSET;
 
 	/* Map sysctl */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp810");
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,realview,sp810");
 	if (!node) {
 		return VMM_ENODEV;
 	}
@@ -364,6 +293,10 @@ int __init arch_board_early_init(void)
 			(REALVIEW_TIMCLK << REALVIEW_TIMER4_EnSel);
 	vmm_writel(val, (void *)realview_sctl_base);
 
+	/* Intialize realview clocking */
+	of_clk_init(NULL);
+	realview_clk_init((void *)realview_sys_base, FALSE);
+
 	/* Map sp804 registers */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp804");
 	if (!node) {
@@ -379,9 +312,6 @@ int __init arch_board_early_init(void)
 	if (rc) {
 		return rc;
 	}
-
-	/* Setup Clocks (before probing) */
-	oscvco_clk.vcoreg = (void *)realview_sys_base + REALVIEW_SYS_OSC4_OFFSET;
 
 	/* Setup CLCD (before probing) */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");

@@ -72,7 +72,7 @@
 
 			sysctl0 { /* System Controller */
 		      		device_type = "sys";
-		      		compatible = "arm,sp810";
+		      		compatible = "arm,realview,sp810";
 		      		reg = <0x10001000 0x1000>;
 			};
 
@@ -129,7 +129,7 @@
 
 			sysctl1 { /* System Controller */
 		      		device_type = "sys";
-		      		compatible = "arm,sp810";
+		      		compatible = "arm,realview,sp810";
 		      		reg = <0x1001A000 0x1000>;
 			};
 		};

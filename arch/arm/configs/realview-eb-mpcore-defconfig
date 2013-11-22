@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Fri Sep 27 22:51:52 2013
+# Fri Nov 22 23:22:27 2013
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -30,6 +30,7 @@ CONFIG_ARM32=y
 # ARM Options
 #
 CONFIG_VAPOOL_SIZE_MB=12
+CONFIG_HOST_IRQ_COUNT=1024
 CONFIG_ARM_LOCKS=y
 # CONFIG_ARM_MMU_LPAE is not set
 CONFIG_ARM_MAX_DTB_SIZE=0xC000
@@ -60,9 +61,9 @@ CONFIG_REALVIEW_EBMP_ONE_GUEST_EBMP_DTS=y
 CONFIG_ARM_GIC=y
 CONFIG_ARM_TIMER_SP804=y
 CONFIG_ARM_TWD=y
-CONFIG_ICST=y
+# CONFIG_ICST is not set
 CONFIG_ARM_SCU=y
-CONFIG_VERSATILE_CLOCK=y
+# CONFIG_VERSATILE_CLOCK is not set
 CONFIG_VERSATILE_CLCD=y
 # CONFIG_OMAP is not set
 # CONFIG_SAMSUNG_MCT is not set
@@ -112,6 +113,7 @@ CONFIG_TSLICE_MS=10
 #
 # Load Balancer Configuration
 #
+CONFIG_LOADBAL_PERIOD_SECS=5
 CONFIG_LOADBAL_CRUDE=y
 
 #
@@ -279,7 +281,16 @@ CONFIG_ETHER_SMSC_91x=y
 #
 # Clock Drivers
 #
-# CONFIG_CLKDEV_LOOKUP is not set
+CONFIG_CLKDEV_LOOKUP=y
+CONFIG_COMMON_CLK=y
+CONFIG_COMMON_CLK_VERSATILE=y
+# CONFIG_COMMON_CLK_BCM2835 is not set
+# CONFIG_COMMON_CLK_SUNXI is not set
+
+#
+# Multifunction device drivers
+#
+# CONFIG_VEXPRESS_CONFIG is not set
 
 #
 # Device Emulators
