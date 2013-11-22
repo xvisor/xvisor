@@ -19,6 +19,14 @@
  * @file clk.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief generic interface for clocking framework
+ *
+ * Adapted from linux/include/linux/clk.h
+ *
+ *  Copyright (C) 2004 ARM Limited.
+ *  Written by Deep Blue Solutions Limited.
+ *  Copyright (C) 2011-2012 Linaro Ltd <mturquette@linaro.org>
+ *
+ * The original source is licensed under GPL.
  */
 #ifndef __CLK_H__
 #define __CLK_H__
@@ -119,6 +127,28 @@ int clk_set_parent(struct clk *clk, struct clk *parent);
 struct clk *clk_get_parent(struct clk *clk);
 
 struct clk *clk_get_sys(const char *dev_id, const char *con_id);
+
+/* clk_prepare_enable helps cases using clk_enable in non-atomic context. */
+static inline int clk_prepare_enable(struct clk *clk)
+{
+	int ret;
+
+	ret = clk_prepare(clk);
+	if (ret)
+		return ret;
+	ret = clk_enable(clk);
+	if (ret)
+		clk_unprepare(clk);
+
+	return ret;
+}
+
+/* clk_disable_unprepare helps cases using clk_disable in non-atomic context. */
+static inline void clk_disable_unprepare(struct clk *clk)
+{
+	clk_disable(clk);
+	clk_unprepare(clk);
+}
 
 int clk_add_alias(const char *alias, const char *alias_dev_name,
 		  char *id, struct vmm_device *dev);
