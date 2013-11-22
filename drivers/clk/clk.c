@@ -35,7 +35,6 @@
 #include <vmm_modules.h>
 #include <vmm_scheduler.h>
 #include <vmm_manager.h>
-#include <vmm_mutex.h>
 #include <vmm_spinlocks.h>
 #include <drv/clk-private.h>
 
@@ -48,10 +47,10 @@
 #endif
 
 static DEFINE_SPINLOCK(enable_lock);
-static DEFINE_MUTEX(prepare_lock);
+static DEFINE_SPINLOCK(prepare_lock);
 
-static struct vmm_vcpu *prepare_owner;
-static struct vmm_vcpu *enable_owner;
+static struct vmm_vcpu *prepare_owner = NULL;
+static struct vmm_vcpu *enable_owner = NULL;
 
 static int prepare_refcnt;
 static int enable_refcnt;
@@ -63,12 +62,12 @@ static LIST_HEAD(clk_notifier_list);
 /***           locking             ***/
 static void clk_prepare_lock(void)
 {
-	if (!vmm_mutex_trylock(&prepare_lock)) {
+	if (!vmm_spin_trylock(&prepare_lock)) {
 		if (prepare_owner == vmm_scheduler_current_vcpu()) {
 			prepare_refcnt++;
 			return;
 		}
-		vmm_mutex_lock(&prepare_lock);
+		vmm_spin_lock(&prepare_lock);
 	}
 	WARN_ON(prepare_owner != NULL);
 	WARN_ON(prepare_refcnt != 0);
@@ -84,7 +83,7 @@ static void clk_prepare_unlock(void)
 	if (--prepare_refcnt)
 		return;
 	prepare_owner = NULL;
-	vmm_mutex_unlock(&prepare_lock);
+	vmm_spin_unlock(&prepare_lock);
 }
 
 static irq_flags_t clk_enable_lock(void)
@@ -1610,7 +1609,7 @@ VMM_EXPORT_SYMBOL_GPL(clk_unregister);
  * notifier because we want it to block and notifier unregistrations are
  * uncommon.  The callbacks associated with the notifier must not
  * re-enter into the clk framework by calling any top-level clk APIs;
- * this will cause a nested prepare_lock mutex.
+ * this will cause a nested prepare_lock spinlock.
  *
  * Pre-change notifier callbacks will be passed the current, pre-change
  * rate of the clk via struct clk_notifier_data.old_rate.  The new,
@@ -1737,7 +1736,7 @@ struct of_clk_provider {
 };
 
 static LIST_HEAD(of_clk_providers);
-static DEFINE_MUTEX(of_clk_lock);
+static DEFINE_SPINLOCK(of_clk_lock);
 
 struct clk *of_clk_src_simple_get(struct vmm_devtree_phandle_args *clkspec,
 				  void *data)
@@ -1783,9 +1782,9 @@ int of_clk_add_provider(struct vmm_devtree_node *np,
 	cp->data = data;
 	cp->get = clk_src_get;
 
-	vmm_mutex_lock(&of_clk_lock);
+	vmm_spin_lock(&of_clk_lock);
 	list_add(&cp->link, &of_clk_providers);
-	vmm_mutex_unlock(&of_clk_lock);
+	vmm_spin_unlock(&of_clk_lock);
 	DPRINTF("Added clock from %s\n", np->full_name);
 
 	return 0;
@@ -1800,7 +1799,7 @@ void of_clk_del_provider(struct vmm_devtree_node *np)
 {
 	struct of_clk_provider *cp;
 
-	vmm_mutex_lock(&of_clk_lock);
+	vmm_spin_lock(&of_clk_lock);
 	list_for_each_entry(cp, &of_clk_providers, link) {
 		if (cp->node == np) {
 			list_del(&cp->link);
@@ -1808,7 +1807,7 @@ void of_clk_del_provider(struct vmm_devtree_node *np)
 			break;
 		}
 	}
-	vmm_mutex_unlock(&of_clk_lock);
+	vmm_spin_unlock(&of_clk_lock);
 }
 VMM_EXPORT_SYMBOL_GPL(of_clk_del_provider);
 
@@ -1818,14 +1817,14 @@ struct clk *of_clk_get_from_provider(struct vmm_devtree_phandle_args *clkspec)
 	struct clk *clk = NULL;
 
 	/* Check if we have such a provider in our array */
-	vmm_mutex_lock(&of_clk_lock);
+	vmm_spin_lock(&of_clk_lock);
 	list_for_each_entry(provider, &of_clk_providers, link) {
 		if (provider->node == clkspec->node)
 			clk = provider->get(clkspec, provider->data);
 		if (clk)
 			break;
 	}
-	vmm_mutex_unlock(&of_clk_lock);
+	vmm_spin_unlock(&of_clk_lock);
 
 	return clk;
 }

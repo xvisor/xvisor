@@ -96,7 +96,7 @@ struct clk *of_clk_get_by_name(struct vmm_devtree_node *node,
 			index = vmm_devtree_attrval_match_string(node, 
 							"clock-names", name);
 		clk = of_clk_get(node, index);
-		if (!clk)
+		if (clk)
 			break;
 		else if (name && index >= 0) {
 			vmm_printf("ERROR: could not get clock %s:%s(%i)\n",

@@ -121,7 +121,7 @@ void of_fixed_clk_setup(struct vmm_devtree_node *node)
 		clk_name = attrval;
 
 	clk = clk_register_fixed_rate(NULL, clk_name, NULL, CLK_IS_ROOT, rate);
-	if (!clk)
+	if (clk)
 		of_clk_add_provider(node, of_clk_src_simple_get, clk);
 }
 VMM_EXPORT_SYMBOL_GPL(of_fixed_clk_setup);

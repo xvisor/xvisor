@@ -157,7 +157,7 @@ void __init of_fixed_factor_clk_setup(struct vmm_devtree_node *node)
 
 	clk = clk_register_fixed_factor(NULL, clk_name, parent_name, 0,
 					mult, div);
-	if (!clk)
+	if (clk)
 		of_clk_add_provider(node, of_clk_src_simple_get, clk);
 }
 VMM_EXPORT_SYMBOL_GPL(of_fixed_factor_clk_setup);
