@@ -21,17 +21,19 @@
 # @brief list of ARM reference designe clocking objects
 # */
 
-drivers-objs-$(CONFIG_COMMON_CLK_VERSATILE)+= clk/versatile/clk-versatile.o
+drivers-objs-$(CONFIG_COMMON_CLK_VERSATILE)+= clk/versatile/clk-versatile-drv.o
 
-clk-versatile-y += clk-icst.o
-clk-versatile-y += clk-integrator.o
-clk-versatile-y += clk-impd1.o
-clk-versatile-y += clk-sp810.o
-clk-versatile-y += clk-realview.o
-clk-versatile-y += clk-vexpress.o
+clk-versatile-drv-y += icst.o
+clk-versatile-drv-y += clk-icst.o
+clk-versatile-drv-y += clk-integrator.o
+clk-versatile-drv-y += clk-impd1.o
+clk-versatile-drv-y += clk-sp810.o
+clk-versatile-drv-y += clk-realview.o
+clk-versatile-drv-y += clk-vexpress.o
+clk-versatile-drv-$(CONFIG_VEXPRESS_CONFIG) += clk-vexpress-osc.o
 
-%/clk-versatile.o: $(foreach obj,$(clk-versatile-y),%/$(obj))
+%/clk-versatile-drv.o: $(foreach obj,$(clk-versatile-drv-y),%/$(obj))
 	$(call merge_objs,$@,$^)
 
-%/clk-versatile.dep: $(foreach dep,$(clk-versatile-y:.o=.dep),%/$(dep))
+%/clk-versatile-drv.dep: $(foreach dep,$(clk-versatile-drv-y:.o=.dep),%/$(dep))
 	$(call merge_deps,$@,$^)
