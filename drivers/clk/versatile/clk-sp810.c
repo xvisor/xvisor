@@ -162,7 +162,7 @@ void __init clk_sp810_of_setup(struct vmm_devtree_node *node)
 	int i;
 
 	if (!sp810) {
-		vmm_printf("Failed to allocate memory for SP810!\n");
+		vmm_printf("%s: Failed to allocate memory for SP810!\n", __func__);
 		return;
 	}
 
@@ -175,7 +175,7 @@ void __init clk_sp810_of_setup(struct vmm_devtree_node *node)
 	parent_names[1] = of_clk_get_parent_name(node, sp810->timclk_index);
 
 	if (parent_names[0] <= 0 || parent_names[1] <= 0) {
-		vmm_printf("Failed to obtain parent clocks for SP810!\n");
+		vmm_printf("%s: Failed to obtain parent clocks for SP810!\n", __func__);
 		return;
 	}
 

@@ -99,11 +99,18 @@ void __init realview_clk_init(void *sysbase, bool is_pb1176)
 	} else
 		clk_register_clkdev(clk, NULL, "fpga:uart3");
 
+	/* FIXME: Dummy clocks to force match with device tree node names */
+	clk_register_clkdev(clk, NULL, "kmi0");
+	clk_register_clkdev(clk, NULL, "kmi1");
 
 	/* 1 MHz clock */
 	clk = clk_register_fixed_rate(NULL, "clk1mhz", NULL, CLK_IS_ROOT,
 				      1000000);
 	clk_register_clkdev(clk, NULL, "sp804");
+
+	/* FIXME: Dummy clocks to force match with device tree node names */
+	clk_register_clkdev(clk, NULL, "timer01");
+	clk_register_clkdev(clk, NULL, "timer23");
 
 	/* ICST VCO clock */
 	if (is_pb1176)
@@ -113,4 +120,7 @@ void __init realview_clk_init(void *sysbase, bool is_pb1176)
 
 	clk_register_clkdev(clk, NULL, "dev:clcd");
 	clk_register_clkdev(clk, NULL, "issp:clcd");
+
+	/* FIXME: Dummy clocks to force match with device tree node names */
+	clk_register_clkdev(clk, NULL, "clcd");
 }
