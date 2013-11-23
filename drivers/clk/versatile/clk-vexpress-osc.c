@@ -34,7 +34,7 @@
 #include <drv/clk-provider.h>
 #include <drv/vexpress.h>
 
-#define DEBUG
+#undef DEBUG
 
 #ifdef DEBUG
 #define DPRINTF(msg...)	vmm_printf(msg)
