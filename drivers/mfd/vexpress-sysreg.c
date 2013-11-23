@@ -52,6 +52,15 @@
 #define DPRINTF(msg...)
 #endif
 
+/* We really don't require fancy timer based 
+ * polling for vexpress_sysreg_config_func_exec()
+ * (like Linux) instead we use normal polling loop.
+ *
+ * Enable the below option for explicity using
+ * timer based polling loop.
+ */
+#undef USE_TIMER_BASED_CONFIG_EXEC
+
 #define SYS_ID			0x000
 #define SYS_SW			0x004
 #define SYS_LED			0x008
@@ -209,6 +218,7 @@ static void *vexpress_sysreg_config_func_get(struct vmm_device *dev,
 		if (aval) {
 			func_device[0] = ((u32 *)aval)[0];
 			func_device[1] = ((u32 *)aval)[1];
+			err = VMM_OK;
 		} else {
 			err = VMM_ENOENT;
 		}
@@ -269,7 +279,11 @@ static int vexpress_sysreg_config_func_exec(void *func, int offset,
 	vmm_writel(command, vexpress_sysreg_base + SYS_CFGCTRL);
 	arch_smp_mb();
 
+#ifdef USE_TIMER_BASED_CONFIG_EXEC
 	if (vexpress_sysreg_dev) {
+#else
+	if (0) {
+#endif
 		/* Schedule completion check */
 		if (!write)
 			vexpress_sysreg_config_data = data;
