@@ -31,7 +31,7 @@
 #include <vmm_compiler.h>
 #include <libs/libfdt.h>
 #include <libs/stringlib.h>
-#include <motherboard.h>
+#include <drv/vexpress.h>
 #include <smp_scu.h>
 #include <gic.h>
 
@@ -117,7 +117,7 @@ int __init arch_smp_prepare_cpus(unsigned int max_cpus)
 	}
 
 	/* Write the entry address for the secondary cpus */
-	v2m_flags_set((u32)_start_secondary_pa);
+	vexpress_flags_set((u32)_start_secondary_pa);
 
 	return VMM_OK;
 }
