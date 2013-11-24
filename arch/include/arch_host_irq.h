@@ -23,7 +23,12 @@
 #ifndef _ARCH_HOST_IRQ_H__
 #define _ARCH_HOST_IRQ_H__
 
-/* Initialize host irq hardware (i.e. PIC) */
+/* Initialize host irq hardware (i.e. PIC)
+ * Note: This function is optional.
+ * Note: The macros VMM_HOST_IRQ_INIT_DECLARE can also
+ * be used to provide device tree node based host irq
+ * initialization function.
+ */
 int arch_host_irq_init(void);
 
 #endif

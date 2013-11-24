@@ -32,6 +32,7 @@
 struct vmm_clockchip_ctrl {
 	vmm_spinlock_t lock;
 	struct dlist clkchip_list;
+	const struct vmm_devtree_nodeid *clkchip_matches;
 };
 
 static struct vmm_clockchip_ctrl ccctrl;
@@ -242,22 +243,66 @@ u32 vmm_clockchip_count(void)
 	return retval;
 }
 
+int __cpuinit __weak arch_clockchip_init(void)
+{
+	/* Default weak implementation in-case
+	 * architecture does not provide one.
+	 */
+	return VMM_OK;
+}
+
+static void __cpuinit clockchip_nidtbl_found(struct vmm_devtree_node *node,
+					const struct vmm_devtree_nodeid *match,
+					void *data)
+{
+	int err;
+	vmm_clockchip_init_t init_fn = match->data;
+
+	if (!init_fn) {
+		return;
+	}
+
+	err = init_fn(node);
+#ifdef CONFIG_VERBOSE_MODE
+	if (err) {
+		vmm_printf("%s: CPU%d Init %s node failed (error %d)\n", 
+			   __func__, vmm_smp_processor_id(), node->name, err);
+	}
+#else
+	(void)err;
+#endif
+}
+
 int __cpuinit vmm_clockchip_init(void)
 {
 	int rc;
 	u32 cpu = vmm_smp_processor_id();
 
 	if (!cpu) {
-		/* Initialize clock chip list lock */
+		/* Initialize clockchip list lock */
 		INIT_SPIN_LOCK(&ccctrl.lock);
 
-		/* Initialize clock chip list */
+		/* Initialize clockchip list */
 		INIT_LIST_HEAD(&ccctrl.clkchip_list);
+
+		/* Determine clockchip matches from nodeid table */
+		ccctrl.clkchip_matches = 
+			vmm_devtree_nidtbl_create_matches("clockchip");
 	}
 
-	/* Initialize arch specific clock chips */
+	/* Initialize arch specific clockchips */
 	if ((rc = arch_clockchip_init())) {
 		return rc;
+	}
+
+	/* Probe all device tree nodes matching 
+	 * clockchip nodeid table enteries.
+	 */
+	if (ccctrl.clkchip_matches) {
+		vmm_devtree_iterate_matching(NULL,
+					     ccctrl.clkchip_matches,
+					     clockchip_nidtbl_found,
+					     NULL);
 	}
 
 	return VMM_OK;

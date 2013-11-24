@@ -24,6 +24,7 @@
 #define _VMM_CLOCKSOURCE_H__
 
 #include <vmm_types.h>
+#include <vmm_devtree.h>
 #include <libs/mathlib.h>
 #include <libs/list.h>
 
@@ -79,6 +80,13 @@ struct vmm_clocksource {
 /* simplify initialization of mask field */
 #define VMM_CLOCKSOURCE_MASK(bits)	\
 			(u64)((bits) < 64 ? ((1ULL<<(bits))-1) : -1)
+
+/* nodeid table based clocksource initialization callback */
+typedef int (*vmm_clocksource_init_t)(struct vmm_devtree_node *);
+
+/* declare nodeid table based initialization for clocksource */
+#define VMM_CLOCKSOURCE_INIT_DECLARE(name, compat, fn)	\
+VMM_DEVTREE_NIDTBL_ENTRY(name, "clocksource", "", "", compat, fn)
 
 /**
  * Layer above a %struct vmm_clocksource which counts nanoseconds

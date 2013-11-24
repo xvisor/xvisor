@@ -22,9 +22,10 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_spinlocks.h>
 #include <vmm_smp.h>
 #include <vmm_heap.h>
+#include <vmm_stdio.h>
+#include <vmm_spinlocks.h>
 #include <vmm_host_irq.h>
 #include <arch_cpu_irq.h>
 #include <arch_host_irq.h>
@@ -34,6 +35,7 @@ struct vmm_host_irqs_ctrl {
 	vmm_spinlock_t lock;
 	struct vmm_host_irq *irq;
 	u32 (*active)(u32);
+	const struct vmm_devtree_nodeid *matches;
 };
 
 static struct vmm_host_irqs_ctrl hirqctrl;
@@ -364,6 +366,36 @@ int vmm_host_irq_unregister(u32 hirq_num, void *dev)
 	return VMM_EFAIL;
 }
 
+int __cpuinit __weak arch_host_irq_init(void)
+{
+	/* Default weak implementation in-case
+	 * architecture does not provide one.
+	 */
+	return VMM_OK;
+}
+
+static void __cpuinit host_irq_nidtbl_found(struct vmm_devtree_node *node,
+					const struct vmm_devtree_nodeid *match,
+					void *data)
+{
+	int err;
+	vmm_host_irq_init_t init_fn = match->data;
+
+	if (!init_fn) {
+		return;
+	}
+
+	err = init_fn(node);
+#ifdef CONFIG_VERBOSE_MODE
+	if (err) {
+		vmm_printf("%s: CPU%d Init %s node failed (error %d)\n", 
+			   __func__, vmm_smp_processor_id(), node->name, err);
+	}
+#else
+	(void)err;
+#endif
+}
+
 int __cpuinit vmm_host_irq_init(void)
 {
 	int ret;
@@ -399,11 +431,25 @@ int __cpuinit vmm_host_irq_init(void)
 			hirqctrl.irq[ite].handler = NULL;
 			INIT_LIST_HEAD(&hirqctrl.irq[ite].action_list);
 		}
+
+		/* Determine clockchip matches from nodeid table */
+		hirqctrl.matches = 
+			vmm_devtree_nidtbl_create_matches("host_irq");
 	}
 
 	/* Initialize board specific PIC */
 	if ((ret = arch_host_irq_init())) {
 		return ret;
+	}
+
+	/* Probe all device tree nodes matching 
+	 * host irq nodeid table enteries.
+	 */
+	if (hirqctrl.matches) {
+		vmm_devtree_iterate_matching(NULL,
+					     hirqctrl.matches,
+					     host_irq_nidtbl_found,
+					     NULL);
 	}
 
 	/* Setup interrupts in CPU */

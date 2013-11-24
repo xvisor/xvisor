@@ -25,6 +25,7 @@
 
 #include <vmm_types.h>
 #include <vmm_cpumask.h>
+#include <vmm_devtree.h>
 #include <libs/mathlib.h>
 #include <libs/list.h>
 
@@ -44,7 +45,7 @@ enum vmm_clockchip_mode {
 struct vmm_clockchip;
 
 /**
- * Hardware abstraction a clock chip device
+ * Hardware abstraction a clockchip device
  *
  * @head:		List head for registration
  * @name:		ptr to clockchip name
@@ -83,6 +84,13 @@ struct vmm_clockchip {
 };
 
 #define VMM_NSEC_PER_SEC	1000000000UL
+
+/* nodeid table based clockchip initialization callback */
+typedef int (*vmm_clockchip_init_t)(struct vmm_devtree_node *);
+
+/* declare nodeid table based initialization for clocksource */
+#define VMM_CLOCKCHIP_INIT_DECLARE(name, compat, fn)	\
+VMM_DEVTREE_NIDTBL_ENTRY(name, "clockchip", "", "", compat, fn)
 
 /**
  * clocks_calc_mult_shift - calculate mult/shift factors for scaled math of clocks
