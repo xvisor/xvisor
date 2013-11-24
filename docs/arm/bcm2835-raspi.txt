@@ -70,7 +70,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   U-Boot> mmc dev 0:0
 
   [16. Copy Xvisor from SD card to SDRAM]
-  U-Boot> fatload mmc 0 0x00200000 vmm.bin
+  U-Boot> fatload mmc 0 0x00200000 uvmm.bin
 
   [17. Copy Guest image from SD card to SDRAM]
   U-Boot> fatload mmc 0 0x01000000 arm.bin
