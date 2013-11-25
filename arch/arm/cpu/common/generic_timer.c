@@ -41,27 +41,15 @@
 
 static u32 generic_timer_hz = 0;
 
-static const struct vmm_devtree_nodeid generic_timer_match[] = {
-	{ .compatible	= "arm,armv7-timer",	},
-	{ .compatible	= "arm,armv8-timer",	},
-	{},
-};
-
 static u64 generic_counter_read(struct vmm_clocksource *cs)
 {
 	return generic_timer_pcounter_read();
 }
 
-int __init generic_timer_clocksource_init(void)
+static int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	struct vmm_clocksource *cs;
-	struct vmm_devtree_node *node;
-
-	node = vmm_devtree_find_matching(NULL, generic_timer_match);
-	if (!node) {
-		return VMM_ENODEV;
-	}
 
 	if (generic_timer_hz == 0) {
 		rc =  vmm_devtree_clock_frequency(node, &generic_timer_hz);
@@ -101,6 +89,8 @@ int __init generic_timer_clocksource_init(void)
 
 	return vmm_clocksource_register(cs);
 }
+VMM_CLOCKSOURCE_INIT_DECLARE(gtv7clksrc, "arm,armv7-timer", generic_timer_clocksource_init);
+VMM_CLOCKSOURCE_INIT_DECLARE(gtv8clksrc, "arm,armv8-timer", generic_timer_clocksource_init);
 
 static vmm_irq_return_t generic_hyp_timer_handler(int irq, void *dev)
 {
@@ -290,18 +280,11 @@ u64 generic_timer_wakeup_timeout(void)
 	return nsecs;
 }
 
-int __cpuinit generic_timer_clockchip_init(void)
+static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 irq[3], num_irqs, val;
 	struct vmm_clockchip *cc;
-	struct vmm_devtree_node *node;
-
-	/* Find generic timer device tree node */
-	node = vmm_devtree_find_matching(NULL, generic_timer_match);
-	if (!node) {
-		return VMM_ENODEV;
-	}
 
 	/* Determine generic timer frequency */
 	if (generic_timer_hz == 0) {
@@ -464,6 +447,8 @@ fail_free_cc:
 	vmm_free(cc);
 	return rc;
 }
+VMM_CLOCKCHIP_INIT_DECLARE(gtv7clkchip, "arm,armv7-timer", generic_timer_clockchip_init);
+VMM_CLOCKCHIP_INIT_DECLARE(gtv8clkchip, "arm,armv8-timer", generic_timer_clockchip_init);
 
 void generic_timer_vcpu_context_init(struct generic_timer_context *cntx)
 {

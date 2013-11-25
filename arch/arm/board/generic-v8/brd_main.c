@@ -33,7 +33,6 @@
 #include <arch_timer.h>
 
 #include <gic.h>
-#include <generic_timer.h>
 
 /*
  * Print board information
@@ -80,34 +79,6 @@ int __init arch_board_early_init(void)
 	 * Setting-up system data in device tree nodes,
 	 * ....
 	 */
-
-	return VMM_OK;
-}
-
-int __init arch_clocksource_init(void)
-{
-	int rc;
-
-	/* Initialize generic timer as clock source */
-	rc = generic_timer_clocksource_init();
-	if (rc) {
-		vmm_printf("%s: generic clocksource init failed (error %d)\n",
-			   __func__, rc);
-	}
-
-	return VMM_OK;
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
-	int rc;
-
-	/* Initialize generic timer as clock source */
-	rc = generic_timer_clockchip_init();
-	if (rc) {
-		vmm_printf("%s: generic clockchip init failed (error %d)\n", 
-			   __func__, rc);
-	}
 
 	return VMM_OK;
 }

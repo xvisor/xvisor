@@ -43,7 +43,6 @@
 #include <sp810.h>
 #include <sp804_timer.h>
 #include <smp_twd.h>
-#include <generic_timer.h>
 #include <versatile/clcd.h>
 
 /*
@@ -279,15 +278,6 @@ int __init arch_clocksource_init(void)
 			   __func__, rc);
 	}
 
-#if defined(CONFIG_ARM_GENERIC_TIMER)
-	/* Initialize generic timer as clock source */
-	rc = generic_timer_clocksource_init();
-	if (rc) {
-		vmm_printf("%s: generic clocksource init failed (error %d)\n",
-			   __func__, rc);
-	}
-#endif
-
 	return VMM_OK;
 }
 
@@ -313,15 +303,6 @@ int __cpuinit arch_clockchip_init(void)
 				24000000);
 	if (rc) {
 		vmm_printf("%s: local timer init failed (error %d)\n", 
-			   __func__, rc);
-	}
-#endif
-
-#if defined(CONFIG_ARM_GENERIC_TIMER)
-	/* Initialize generic timer as clock source */
-	rc = generic_timer_clockchip_init();
-	if (rc) {
-		vmm_printf("%s: generic clockchip init failed (error %d)\n", 
 			   __func__, rc);
 	}
 #endif
