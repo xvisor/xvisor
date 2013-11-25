@@ -55,7 +55,7 @@ int __cpuinit arch_host_irq_init(void)
 
 	if (!cpu) {
 		node = vmm_devtree_find_compatible(NULL, NULL, 
-						   "arm,cortex-a9-gic");
+						   "arm,cortex-a15-gic");
 		if (!node) {
 			return VMM_ENODEV;
 		}
