@@ -404,3 +404,21 @@ int __init gic_devtree_init(struct vmm_devtree_node *node,
 	return VMM_OK;
 }
 
+static int __cpuinit gic_init(struct vmm_devtree_node *node)
+{
+	int rc;
+	u32 cpu = vmm_smp_processor_id();
+
+	if (!cpu) {
+		rc = gic_devtree_init(node, NULL);
+	} else {
+		gic_secondary_init(0);
+		rc = VMM_OK;
+	}
+
+	return rc;
+}
+VMM_HOST_IRQ_INIT_DECLARE(rvgic, "arm,realview-gic", gic_init);
+VMM_HOST_IRQ_INIT_DECLARE(ca9gic, "arm,cortex-a9-gic", gic_init);
+VMM_HOST_IRQ_INIT_DECLARE(ca15gic, "arm,cortex-a15-gic", gic_init);
+

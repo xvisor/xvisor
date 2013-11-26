@@ -32,8 +32,6 @@
 #include <arch_board.h>
 #include <arch_timer.h>
 
-#include <gic.h>
-
 /*
  * Print board information
  */
@@ -46,28 +44,6 @@ void arch_board_print_info(struct vmm_chardev *cdev)
 /*
  * Initialization functions
  */
-
-int __cpuinit arch_host_irq_init(void)
-{
-	int rc;
-	u32 cpu = vmm_smp_processor_id();
-	struct vmm_devtree_node *node;
-
-	if (!cpu) {
-		node = vmm_devtree_find_compatible(NULL, NULL, 
-						   "arm,cortex-a15-gic");
-		if (!node) {
-			return VMM_ENODEV;
-		}
-
-		rc = gic_devtree_init(node, NULL);
-	} else {
-		gic_secondary_init(0);
-		rc = VMM_OK;
-	}
-
-	return rc;
-}
 
 int __init arch_board_early_init(void)
 {
