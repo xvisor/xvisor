@@ -108,10 +108,6 @@ void __init realview_clk_init(void *sysbase, bool is_pb1176)
 				      1000000);
 	clk_register_clkdev(clk, NULL, "sp804");
 
-	/* FIXME: Dummy clocks to force match with device tree node names */
-	clk_register_clkdev(clk, NULL, "timer01");
-	clk_register_clkdev(clk, NULL, "timer23");
-
 	/* ICST VCO clock */
 	if (is_pb1176)
 		clk = icst_clk_register(NULL, &realview_osc0_desc, sysbase);
