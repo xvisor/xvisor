@@ -39,8 +39,6 @@
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 
-#include <sp810.h>
-#include <sp804_timer.h>
 #include <smp_twd.h>
 #include <versatile/clcd.h>
 
@@ -52,8 +50,6 @@ static struct vexpress_config_func *reboot_func;
 static struct vexpress_config_func *shutdown_func;
 static struct vexpress_config_func *muxfpga_func;
 static struct vexpress_config_func *dvimode_func;
-static virtual_addr_t v2m_sp804_base;
-static u32 v2m_sp804_irq;
 
 #if defined(CONFIG_VTEMU)
 struct vtemu *v2m_vt;
@@ -129,9 +125,6 @@ void arch_board_print_info(struct vmm_chardev *cdev)
 
 int __init arch_board_early_init(void)
 {
-	int rc;
-	u32 val;
-	virtual_addr_t v2m_sctl_base;
 	struct vmm_devtree_node *node;
 
 	/* Host aspace, Heap, Device tree, and Host IRQ available.
@@ -193,47 +186,6 @@ int __init arch_board_early_init(void)
 	vmm_register_system_reset(v2m_reset);
 	vmm_register_system_shutdown(v2m_shutdown);
 
-	/* Map sysctl */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp810");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	rc = vmm_devtree_regmap(node, &v2m_sctl_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Select reference clock for sp804 timers: 
-	 *      REFCLK is 32KHz
-	 *      TIMCLK is 1MHz
-	 */
-	val = vmm_readl((void *)v2m_sctl_base) | 
-				SCCTRL_TIMEREN0SEL_TIMCLK |
-				SCCTRL_TIMEREN1SEL_TIMCLK;
-	vmm_writel(val, (void *)v2m_sctl_base);
-
-	/* Unmap sysctl */
-	rc = vmm_devtree_regunmap(node, v2m_sctl_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Map sp804 registers */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp804");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	rc = vmm_devtree_regmap(node, &v2m_sp804_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Get sp804 irq */
-	rc = vmm_devtree_irq_get(node, &v2m_sp804_irq, 0);
-	if (rc) {
-		return rc;
-	}
-
 	/* Setup CLCD (before probing) */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");
 	if (node) {
@@ -243,38 +195,11 @@ int __init arch_board_early_init(void)
 	return 0;
 }
 
-int __init arch_clocksource_init(void)
-{
-	int rc;
-
-	/* Initialize sp804 timer0 as clocksource */
-	rc = sp804_clocksource_init(v2m_sp804_base, 
-				    "sp804_timer0", 1000000);
-	if (rc) {
-		vmm_printf("%s: sp804 clocksource init failed (error %d)\n", 
-			   __func__, rc);
-	}
-
-	return VMM_OK;
-}
-
 int __cpuinit arch_clockchip_init(void)
 {
-	int rc;
-	u32 cpu = vmm_smp_processor_id();
-
-	if (!cpu) {
-		/* Initialize sp804 timer1 as clockchip */
-		rc = sp804_clockchip_init(v2m_sp804_base + 0x20, 
-					  "sp804_timer1", v2m_sp804_irq, 
-					  1000000, 0);
-		if (rc) {
-			vmm_printf("%s: sp804 clockchip init failed "
-				   "(error %d)\n", __func__, rc);
-		}
-	}
-
 #if defined(CONFIG_ARM_TWD)
+	int rc;
+
 	/* Initialize SMP twd local timer as clockchip */
 	rc = twd_clockchip_init((virtual_addr_t)vexpress_get_24mhz_clock_base(),
 				24000000);

@@ -41,7 +41,6 @@
 
 #include <realview_plat.h>
 
-#include <sp804_timer.h>
 #include <smp_twd.h>
 #include <versatile/clcd.h>
 
@@ -51,9 +50,6 @@
 
 static virtual_addr_t realview_sys_base;
 static virtual_addr_t realview_sys_24mhz;
-static virtual_addr_t realview_sctl_base;
-static virtual_addr_t realview_sp804_base;
-static u32 realview_sp804_irq;
 
 #if defined(CONFIG_VTEMU)
 struct vtemu *realview_vt;
@@ -220,7 +216,6 @@ void arch_board_print_info(struct vmm_chardev *cdev)
 int __init arch_board_early_init(void)
 {
 	int rc;
-	u32 val;
 	struct vmm_devtree_node *node;
 
 	/* Host aspace, Heap, Device tree, and Host IRQ available.
@@ -249,46 +244,9 @@ int __init arch_board_early_init(void)
 	/* Get address of 24mhz counter */
 	realview_sys_24mhz = realview_sys_base + REALVIEW_SYS_24MHz_OFFSET;
 
-	/* Map sysctl */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,realview,sp810");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	rc = vmm_devtree_regmap(node, &realview_sctl_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Select reference clock for sp804 timers: 
-	 *      REFCLK is 32KHz
-	 *      TIMCLK is 1MHz
-	 */
-	val = vmm_readl((void *)realview_sctl_base) | 
-			(REALVIEW_TIMCLK << REALVIEW_TIMER1_EnSel) |
-			(REALVIEW_TIMCLK << REALVIEW_TIMER2_EnSel) |
-			(REALVIEW_TIMCLK << REALVIEW_TIMER3_EnSel) |
-			(REALVIEW_TIMCLK << REALVIEW_TIMER4_EnSel);
-	vmm_writel(val, (void *)realview_sctl_base);
-
 	/* Intialize realview clocking */
 	of_clk_init(NULL);
 	realview_clk_init((void *)realview_sys_base, FALSE);
-
-	/* Map sp804 registers */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp804");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	rc = vmm_devtree_regmap(node, &realview_sp804_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Get sp804 irq */
-	rc = vmm_devtree_irq_get(node, &realview_sp804_irq, 0);
-	if (rc) {
-		return rc;
-	}
 
 	/* Setup CLCD (before probing) */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");
@@ -299,38 +257,11 @@ int __init arch_board_early_init(void)
 	return VMM_OK;
 }
 
-int __init arch_clocksource_init(void)
-{
-	int rc;
-
-	/* Initialize sp804 timer0 as clocksource */
-	rc = sp804_clocksource_init(realview_sp804_base, 
-				    "sp804_timer0", 1000000);
-	if (rc) {
-		vmm_printf("%s: sp804 clocksource init failed (error %d)\n", 
-			   __func__, rc);
-	}
-
-	return VMM_OK;
-}
-
 int __cpuinit arch_clockchip_init(void)
 {
-	int rc;
-	u32 cpu = vmm_smp_processor_id();
-
-	if (!cpu) {
-		/* Initialize sp804 timer1 as clockchip */
-		rc = sp804_clockchip_init(realview_sp804_base + 0x20, 
-					  "sp804_timer1", realview_sp804_irq, 
-					  1000000, 0);
-		if (rc) {
-			vmm_printf("%s: sp804 clockchip init failed "
-				   "(error %d)\n", __func__, rc);
-		}
-	}
-
 #if defined(CONFIG_ARM_TWD)
+	int rc;
+
 	/* Initialize SMP twd local timer as clockchip */
 	rc = twd_clockchip_init(realview_sys_24mhz, 24000000);
 	if (rc) {

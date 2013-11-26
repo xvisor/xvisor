@@ -31,17 +31,14 @@
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
 #include <arch_timer.h>
+#include <drv/clk-provider.h>
 
 #include <versatile_plat.h>
 #include <versatile_board.h>
 
 #include <vic.h>
-#include <sp804_timer.h>
 
 static virtual_addr_t versatile_sys_base;
-static virtual_addr_t versatile_sctl_base;
-static virtual_addr_t versatile_sp804_base;
-static u32 versatile_sp804_irq;
 
 /*
  * Reset & Shutdown
@@ -133,7 +130,6 @@ int __cpuinit arch_host_irq_init(void)
 int __init arch_board_early_init(void)
 {
 	int rc;
-	u32 val;
 	struct vmm_devtree_node *node;
 
 	/* Host aspace, Heap, Device tree, and Host IRQ available.
@@ -159,75 +155,10 @@ int __init arch_board_early_init(void)
 	vmm_register_system_reset(versatile_reset);
 	vmm_register_system_shutdown(versatile_shutdown);
 
-	/* Map sysctl */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,versatile-sctl");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	rc = vmm_devtree_regmap(node, &versatile_sctl_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Select reference clock for sp804 timers: 
-	 *      REFCLK is 32KHz
-	 *      TIMCLK is 1MHz
-	 */
-	val = vmm_readl((void *)versatile_sctl_base) | 
-			(VERSATILE_TIMCLK << VERSATILE_TIMER1_EnSel) |
-			(VERSATILE_TIMCLK << VERSATILE_TIMER2_EnSel) |
-			(VERSATILE_TIMCLK << VERSATILE_TIMER3_EnSel) |
-			(VERSATILE_TIMCLK << VERSATILE_TIMER4_EnSel);
-	vmm_writel(val, (void *)versatile_sctl_base);
-
-	/* Map sp804 registers */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp804");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	rc = vmm_devtree_regmap(node, &versatile_sp804_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Get sp804 irq */
-	rc = vmm_devtree_irq_get(node, &versatile_sp804_irq, 0);
-	if (rc) {
-		return rc;
-	}
+	/* Intialize clocking framework */
+	of_clk_init(NULL);
 
 	return 0;
-}
-
-int __init arch_clocksource_init(void)
-{
-	int rc;
-
-	/* Initialize sp804 timer0 as clocksource */
-	rc = sp804_clocksource_init(versatile_sp804_base, 
-				    "sp804_timer0", 1000000);
-	if (rc) {
-		vmm_printf("%s: sp804 clocksource init failed (error %d)\n", 
-			   __func__, rc);
-	}
-
-	return VMM_OK;
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
-	int rc;
-
-	/* Initialize sp804 timer1 as clockchip */
-	rc = sp804_clockchip_init(versatile_sp804_base + 0x20, 
-				  "sp804_timer1", versatile_sp804_irq, 
-				  1000000, 0);
-	if (rc) {
-		vmm_printf("%s: sp804 clockchip init failed (error %d)\n", 
-			   __func__, rc);
-	}
-
-	return VMM_OK;
 }
 
 int __init arch_board_final_init(void)

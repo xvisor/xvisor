@@ -22,19 +22,77 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
 #include <vmm_heap.h>
+#include <vmm_stdio.h>
 #include <vmm_host_io.h>
+#include <vmm_devtree.h>
 #include <vmm_host_irq.h>
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
-#include <sp804_timer.h>
+#include <drv/clk.h>
+
+#undef DEBUG
+
+#ifdef DEBUG
+#define DPRINTF(msg...)	vmm_printf(msg)
+#else
+#define DPRINTF(msg...)
+#endif
+
+#define TIMER_LOAD		0x00
+#define TIMER_VALUE		0x04
+#define TIMER_CTRL		0x08
+#define TIMER_CTRL_ONESHOT	(1 << 0)
+#define TIMER_CTRL_32BIT	(1 << 1)
+#define TIMER_CTRL_DIV1		(0 << 2)
+#define TIMER_CTRL_DIV16	(1 << 2)
+#define TIMER_CTRL_DIV256	(2 << 2)
+#define TIMER_CTRL_IE		(1 << 5)
+#define TIMER_CTRL_PERIODIC	(1 << 6)
+#define TIMER_CTRL_ENABLE	(1 << 7)
+#define TIMER_INTCLR		0x0c
+#define TIMER_RIS		0x10
+#define TIMER_MIS		0x14
+#define TIMER_BGLOAD		0x18
+
+static long __init sp804_get_clock_rate(struct clk *clk)
+{
+	long rate;
+	int err;
+
+	err = clk_prepare(clk);
+	if (err) {
+		vmm_printf("sp804: clock failed to prepare: %d\n", err);
+		clk_put(clk);
+		return err;
+	}
+
+	err = clk_enable(clk);
+	if (err) {
+		vmm_printf("sp804: clock failed to enable: %d\n", err);
+		clk_unprepare(clk);
+		clk_put(clk);
+		return err;
+	}
+
+	rate = clk_get_rate(clk);
+	if (rate < 0) {
+		vmm_printf("sp804: clock failed to get rate: %ld\n", rate);
+		clk_disable(clk);
+		clk_unprepare(clk);
+		clk_put(clk);
+	}
+
+	return rate;
+}
 
 struct sp804_clocksource {
 	virtual_addr_t base;
 	struct vmm_clocksource clksrc;
 };
 
-u64 sp804_clocksource_read(struct vmm_clocksource *cs)
+static u64 sp804_clocksource_read(struct vmm_clocksource *cs)
 {
 	u32 count;
 	struct sp804_clocksource *tcs = cs->priv;
@@ -44,12 +102,40 @@ u64 sp804_clocksource_read(struct vmm_clocksource *cs)
 	return ~count;
 }
 
-int __init sp804_clocksource_init(virtual_addr_t base, 
-				  const char *name, 
-				  u32 freq_hz)
+static int __init sp804_clocksource_init(struct vmm_devtree_node *node)
 {
-	u32 ctrl;
+	int rc;
+	long hz;
+	u32 ctrl, freq_hz;
+	virtual_addr_t base;
+	struct clk *clk;
 	struct sp804_clocksource *cs;
+
+	rc = vmm_devtree_regmap(node, &base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	clk = of_clk_get(node, 1);
+	if (!clk) {
+		clk = of_clk_get(node, 0);
+	}
+	if (!clk) {
+		clk = clk_get_sys("sp804", "arm,sp804");
+	}
+	if (!clk) {
+		vmm_devtree_regunmap(node, base, 0);
+		return VMM_ENODEV;
+	}
+	hz = sp804_get_clock_rate(clk);
+	if (hz < 0) {
+		vmm_devtree_regunmap(node, base, 0);
+		return (int)hz;
+	}
+	freq_hz = (u32)hz;
+
+	DPRINTF("%s: name=%s base=0x%08x freq_hz=%d\n", 
+		__func__, node->name, base, freq_hz);
 
 	cs = vmm_zalloc(sizeof(struct sp804_clocksource));
 	if (!cs) {
@@ -57,7 +143,7 @@ int __init sp804_clocksource_init(virtual_addr_t base,
 	}
 
 	cs->base = base;
-	cs->clksrc.name = name;
+	cs->clksrc.name = node->name;
 	cs->clksrc.rating = 300;
 	cs->clksrc.read = &sp804_clocksource_read;
 	cs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
@@ -72,6 +158,7 @@ int __init sp804_clocksource_init(virtual_addr_t base,
 
 	return vmm_clocksource_register(&cs->clksrc);
 }
+VMM_CLOCKSOURCE_INIT_DECLARE(sp804clksrc, "arm,sp804", sp804_clocksource_init);
 
 struct sp804_clockchip {
 	virtual_addr_t base;
@@ -128,29 +215,62 @@ static int sp804_clockchip_set_next_event(unsigned long next,
 	return 0;
 }
 
-int __cpuinit sp804_clockchip_init(virtual_addr_t base, 
-				   const char *name, 
-				   u32 hirq,
-				   u32 freq_hz,
-				   u32 target_cpu)
+static int __cpuinit sp804_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
+	long hz;
+	u32 hirq, freq_hz;
+	virtual_addr_t base;
+	struct clk *clk;
 	struct sp804_clockchip *cc;
+
+	if (vmm_smp_processor_id()) {
+		return VMM_ENODEV;
+	}
+
+	rc = vmm_devtree_irq_get(node, &hirq, 0);
+	if (rc) {
+		return rc;
+	}
+
+	rc = vmm_devtree_regmap(node, &base, 0);
+	if (rc) {
+		return rc;
+	}
+	base += 0x20;
+
+	clk = of_clk_get(node, 1);
+	if (!clk) {
+		clk = of_clk_get(node, 0);
+	}
+	if (!clk) {
+		clk = clk_get_sys("sp804", "arm,sp804");
+	}
+	if (!clk) {
+		vmm_devtree_regunmap(node, base, 0);
+		return VMM_ENODEV;
+	}
+	hz = sp804_get_clock_rate(clk);
+	if (hz < 0) {
+		vmm_devtree_regunmap(node, base, 0);
+		return (int)hz;
+	}
+	freq_hz = (u32)hz;
+
+	DPRINTF("%s: name=%s base=0x%08x freq_hz=%d\n",
+		__func__, node->name, base, freq_hz);
 
 	cc = vmm_zalloc(sizeof(struct sp804_clockchip));
 	if (!cc) {
+		vmm_devtree_regunmap(node, base, 0);
 		return VMM_EFAIL;
 	}
 
 	cc->base = base;
-	cc->clkchip.name = name;
+	cc->clkchip.name = node->name;
 	cc->clkchip.hirq = hirq;
 	cc->clkchip.rating = 300;
-#ifdef CONFIG_SMP
-	cc->clkchip.cpumask = vmm_cpumask_of(target_cpu);
-#else
 	cc->clkchip.cpumask = cpu_all_mask;
-#endif
 	cc->clkchip.features = 
 		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
 	vmm_clocks_calc_mult_shift(&cc->clkchip.mult, &cc->clkchip.shift, 
@@ -163,20 +283,12 @@ int __cpuinit sp804_clockchip_init(virtual_addr_t base,
 	cc->clkchip.priv = cc;
 
 	/* Register interrupt handler */
-	if ((rc = vmm_host_irq_register(hirq, name,
+	if ((rc = vmm_host_irq_register(hirq, node->name,
 					&sp804_clockchip_irq_handler, cc))) {
 		return rc;
 	}
 
-#ifdef CONFIG_SMP
-	/* Set host irq affinity to target cpu */
-	if ((rc = vmm_host_irq_set_affinity(hirq,
-					    vmm_cpumask_of(target_cpu), 
-					    TRUE))) {
-		return rc;
-	}
-#endif
-
 	return vmm_clockchip_register(&cc->clkchip);
 }
+VMM_CLOCKCHIP_INIT_DECLARE(sp804clkchip, "arm,sp804", sp804_clockchip_init);
 
