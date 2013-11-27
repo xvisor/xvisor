@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_main.h>
 #include <vmm_smp.h>
-#include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
@@ -40,8 +39,6 @@
 #include <linux/amba/clcd.h>
 
 #include <realview_plat.h>
-
-#include <smp_twd.h>
 #include <versatile/clcd.h>
 
 /*
@@ -49,7 +46,6 @@
  */
 
 static virtual_addr_t realview_sys_base;
-static virtual_addr_t realview_sys_24mhz;
 
 #if defined(CONFIG_VTEMU)
 struct vtemu *realview_vt;
@@ -241,9 +237,6 @@ int __init arch_board_early_init(void)
 	vmm_register_system_reset(realview_reset);
 	vmm_register_system_shutdown(realview_shutdown);
 
-	/* Get address of 24mhz counter */
-	realview_sys_24mhz = realview_sys_base + REALVIEW_SYS_24MHz_OFFSET;
-
 	/* Intialize realview clocking */
 	of_clk_init(NULL);
 	realview_clk_init((void *)realview_sys_base, FALSE);
@@ -253,22 +246,6 @@ int __init arch_board_early_init(void)
 	if (node) {
 		node->system_data = &clcd_system_data;
 	}
-
-	return VMM_OK;
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
-#if defined(CONFIG_ARM_TWD)
-	int rc;
-
-	/* Initialize SMP twd local timer as clockchip */
-	rc = twd_clockchip_init(realview_sys_24mhz, 24000000);
-	if (rc) {
-		vmm_printf("%s: local timer init failed (error %d)\n", 
-			   __func__, rc);
-	}
-#endif
 
 	return VMM_OK;
 }

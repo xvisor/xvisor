@@ -39,7 +39,6 @@
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 
-#include <smp_twd.h>
 #include <versatile/clcd.h>
 
 /*
@@ -193,23 +192,6 @@ int __init arch_board_early_init(void)
 	}
 
 	return 0;
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
-#if defined(CONFIG_ARM_TWD)
-	int rc;
-
-	/* Initialize SMP twd local timer as clockchip */
-	rc = twd_clockchip_init((virtual_addr_t)vexpress_get_24mhz_clock_base(),
-				24000000);
-	if (rc) {
-		vmm_printf("%s: local timer init failed (error %d)\n", 
-			   __func__, rc);
-	}
-#endif
-
-	return VMM_OK;
 }
 
 int __init arch_board_final_init(void)

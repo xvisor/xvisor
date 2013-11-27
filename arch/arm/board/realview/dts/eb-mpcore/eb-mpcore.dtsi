@@ -60,7 +60,9 @@
 			twd-timer { /* Local Timer */
 		      		device_type = "timer";
 		      		compatible = "arm,arm11mp-twd-timer";
-		      		reg = <0x10100600 0x1000>;
+		      		reg = <0x10100600 0x1000	/* Local timer registers */
+				       0x1000005C 0x1000>;	/* Reference counter address */
+				ref-counter-freq = <24000000>;	/* Reference counter frequency */
 				interrupts = <29>;
 			};
 
