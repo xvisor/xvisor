@@ -56,8 +56,34 @@
 	      		device_type = "mmc";
 			compatible = "brcm,bcm2835-sdhci";
 			reg = <0x20300000 0x1000>;
-			clock-frequency = <100000000>;
+			clocks = <&clk_mmc>;
 			interrupts = <94>;
+		};
+	};
+
+	clocks {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		clk_mmc: mmc {
+			compatible = "fixed-clock";
+			reg = <0>;
+			#clock-cells = <0>;
+			clock-frequency = <100000000>;
+		};
+
+		clk_i2c: i2c {
+			compatible = "fixed-clock";
+			reg = <1>;
+			#clock-cells = <0>;
+			clock-frequency = <250000000>;
+		};
+
+		clk_spi: spi {
+			compatible = "fixed-clock";
+			reg = <2>;
+			#clock-cells = <0>;
+			clock-frequency = <250000000>;
 		};
 	};
 

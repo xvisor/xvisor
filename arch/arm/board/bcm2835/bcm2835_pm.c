@@ -27,8 +27,14 @@
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
 #include <vmm_devtree.h>
+#include <vmm_modules.h>
 
-#include <bcm2835_pm.h>
+#define MODULE_DESC			"BCM2835 PM and Watchdog Driver"
+#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
+#define MODULE_IPRIORITY		0
+#define	MODULE_INIT			bcm2835_pm_init
+#define	MODULE_EXIT			bcm2835_pm_exit
 
 static virtual_addr_t pm_base_va;
 
@@ -95,18 +101,19 @@ static int bcm2835_pm_poweroff(void)
 	return bcm2835_pm_reset();
 }
 
-int __init bcm2835_pm_init(void)
+static int __init bcm2835_pm_driver_probe(struct vmm_device *dev,
+					  const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
-	struct vmm_devtree_node *node;
 
-	node = vmm_devtree_find_compatible(NULL, NULL, 
-					   "brcm,bcm2835-pm-wdt");
-	if (!node) {
-		return VMM_ENODEV;
+	/* Check if we already probed this driver */
+	if (pm_base_va) {
+		vmm_printf("%s: already probed\n", __func__);
+		return VMM_EEXIST;
 	}
 
-	rc = vmm_devtree_regmap(node, &pm_base_va, 0);
+	/* Map registers */
+	rc = vmm_devtree_regmap(dev->node, &pm_base_va, 0);
 	if (rc) {
 		return rc;
 	}
@@ -118,3 +125,47 @@ int __init bcm2835_pm_init(void)
 	return VMM_OK;
 }
 
+static int __exit bcm2835_pm_driver_remove(struct vmm_device *dev)
+{
+	int rc;
+
+	/* Unmap registers */
+	rc = vmm_devtree_regunmap(dev->node, pm_base_va, 0);
+	if (rc) {
+		return rc;
+	}
+
+	/* Clear the base va */
+	pm_base_va = 0;
+
+	return VMM_OK;
+}
+
+static struct vmm_devtree_nodeid bcm2835_pm_devid_table[] = {
+	{.compatible = "brcm,bcm2835-pm-wdt"},
+	{ /* end of list */ },
+};
+
+static struct vmm_driver bcm2835_pm_driver = {
+	.name = "bcm2835_pm",
+	.match_table = bcm2835_pm_devid_table,
+	.probe = bcm2835_pm_driver_probe,
+	.remove = bcm2835_pm_driver_remove,
+};
+
+static int __init bcm2835_pm_init(void)
+{
+	return vmm_devdrv_register_driver(&bcm2835_pm_driver);
+}
+
+static void __exit bcm2835_pm_exit(void)
+{
+	vmm_devdrv_unregister_driver(&bcm2835_pm_driver);
+}
+
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
+			MODULE_EXIT);

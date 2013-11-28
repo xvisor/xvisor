@@ -31,8 +31,6 @@
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
 
-#include <bcm2835_timer.h>
-
 #define REG_CONTROL	0x00
 #define REG_COUNTER_LO	0x04
 #define REG_COUNTER_HI	0x08
@@ -56,18 +54,11 @@ static u64 bcm2835_clksrc_read(struct vmm_clocksource *cs)
 	return vmm_readl(bcs->system_clock);
 }
 
-int __init bcm2835_clocksource_init(void)
+static int __init bcm2835_clocksource_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 clock;
-	struct vmm_devtree_node *node;
 	struct bcm2835_clocksource *bcs;
-
-	node = vmm_devtree_find_compatible(NULL, NULL, 
-					   "brcm,bcm2835-system-timer");
-	if (!node) {
-		return VMM_ENODEV;
-	}
 
 	/* Read clock frequency */
 	rc = vmm_devtree_clock_frequency(node, &clock);
@@ -108,6 +99,9 @@ int __init bcm2835_clocksource_init(void)
 
 	return VMM_OK;
 }
+VMM_CLOCKSOURCE_INIT_DECLARE(bcm2835clksrc,
+			     "brcm,bcm2835-system-timer",
+			     bcm2835_clocksource_init);
 
 struct bcm2835_clockchip {
 	void *system_clock;
@@ -161,18 +155,11 @@ static int bcm2835_clockchip_set_next_event(unsigned long next,
 	return VMM_OK;
 }
 
-int __cpuinit bcm2835_clockchip_init(void)
+static int __cpuinit bcm2835_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 clock, hirq;
-	struct vmm_devtree_node *node;
 	struct bcm2835_clockchip *bcc;
-
-	node = vmm_devtree_find_compatible(NULL, NULL, 
-					   "brcm,bcm2835-system-timer");
-	if (!node) {
-		return VMM_ENODEV;
-	}
 
 	/* Read clock frequency */
 	rc = vmm_devtree_clock_frequency(node, &clock);
@@ -247,4 +234,7 @@ int __cpuinit bcm2835_clockchip_init(void)
 
 	return VMM_OK;
 }
+VMM_CLOCKCHIP_INIT_DECLARE(bcm2835clkchip,
+			   "brcm,bcm2835-system-timer",
+			   bcm2835_clockchip_init);
 
