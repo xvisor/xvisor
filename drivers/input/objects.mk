@@ -16,14 +16,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for real-time clock support.
+# @brief list of core objects to be build
 # */
 
-config CONFIG_RTC
-	tristate "Real-Time Clock Framework"
-	default n
-	help
-	  Enable real-time clock support for hypervisor.
+drivers-objs-$(CONFIG_INPUT)+= input/input-core.o
 
+input-core-y += input.o
+input-core-y += input-mt.o
+
+%/input-core.o: $(foreach obj,$(input-core-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/input-core.dep: $(foreach dep,$(input-core-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)

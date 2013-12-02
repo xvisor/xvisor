@@ -31,8 +31,8 @@
 #define MODULE_DESC			"VTEMU library"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VMM_INPUT_IPRIORITY + \
-					 VMM_FB_CLASS_IPRIORITY + 1)
+#define MODULE_IPRIORITY		(INPUT_IPRIORITY + \
+					 FB_CLASS_IPRIORITY + 1)
 #define	MODULE_INIT			NULL
 #define	MODULE_EXIT			NULL
 
@@ -340,8 +340,8 @@ static int vtemu_add_input(struct vtemu *v, char *str)
 	return VMM_OK;
 }
 
-static int vtemu_key_event(struct vmm_input_handler *ihnd, 
-			   struct vmm_input_dev *idev, 
+static int vtemu_key_event(struct input_handler *ihnd, 
+			   struct input_dev *idev, 
 			   unsigned int type, unsigned int code, int value)
 {
 	int rc;
@@ -408,7 +408,7 @@ static u32 vtemu_read(struct vmm_chardev *cdev,
 
 static void vtemu_cell_draw(struct vtemu *v, struct vtemu_cell *vcell)
 {
-	struct vmm_fb_image img;
+	struct fb_image img;
 
 	if ((vcell->y < v->start_y) ||
 	    ((v->start_y + v->h) <= vcell->y)) {
@@ -456,7 +456,7 @@ static void vtemu_cursor_draw(struct vtemu *v)
 {
 	u8 *fbsrc;
 	u32 fboffset;
-	struct vmm_fb_fillrect rect;
+	struct fb_fillrect rect;
 
 	if ((v->start_y + v->h) <= v->y) {
 		return;
@@ -481,7 +481,7 @@ static void vtemu_cursor_draw(struct vtemu *v)
 static void vtemu_cursor_clear_down(struct vtemu *v)
 {
 	u32 pos, c;
-	struct vmm_fb_fillrect rect;
+	struct fb_fillrect rect;
 
 	if ((v->start_y + v->h) <= v->y) {
 		return;
@@ -514,8 +514,8 @@ static void vtemu_cursor_clear_down(struct vtemu *v)
 static void vtemu_scroll_down(struct vtemu *v, u32 lines)
 {
 	u32 c, pos;
-	struct vmm_fb_copyarea reg;
-	struct vmm_fb_fillrect rect;
+	struct fb_copyarea reg;
+	struct fb_fillrect rect;
 
 	if (!lines) {
 		return;
@@ -925,7 +925,7 @@ static u32 vtemu_write (struct vmm_chardev *cdev,
 }
 
 struct vtemu *vtemu_create(const char *name, 
-			   struct vmm_fb_info *info,
+			   struct fb_info *info,
 			   const char *font_name)
 {
 	u32 c;
@@ -960,23 +960,23 @@ struct vtemu *vtemu_create(const char *name,
 	v->hndl.evbit[0] |= BIT_MASK(EV_KEY);
 	v->hndl.event = vtemu_key_event;
 	v->hndl.priv = v;
-	if (vmm_input_register_handler(&v->hndl)) {
+	if (input_register_handler(&v->hndl)) {
 		goto free_vtemu;
 	}
 
 	/* Connect input handler */
-	if (vmm_input_connect_handler(&v->hndl)) {
+	if (input_connect_handler(&v->hndl)) {
 		goto unreg_ihndl;
 	}
 
 	/* Open frame buffer*/
 	v->info = info;
-	if (vmm_fb_open(v->info)) {
+	if (fb_open(v->info)) {
 		goto discon_ihndl;
 	}
 
 	/* Find video mode */
-	v->mode = vmm_fb_find_best_mode(&v->info->var, &v->info->modelist);
+	v->mode = fb_find_best_mode(&v->info->var, &v->info->modelist);
 	if (!v->mode) {
 		goto close_fb;
 	}
@@ -989,7 +989,7 @@ struct vtemu *vtemu_create(const char *name,
 	/* Find color map */
 	if (v->info->fix.visual == FB_VISUAL_TRUECOLOR ||
 	    v->info->fix.visual == FB_VISUAL_DIRECTCOLOR) {
-		if (vmm_fb_alloc_cmap(&v->cmap, 8, 0)) {
+		if (fb_alloc_cmap(&v->cmap, 8, 0)) {
 			goto close_fb;
 		}
 		v->cmap.red[VTEMU_COLOR_BLACK] = 0x0000;
@@ -1027,7 +1027,7 @@ struct vtemu *vtemu_create(const char *name,
 	/* Set color map (if required) */
 	if (v->info->fix.visual == FB_VISUAL_TRUECOLOR ||
 	    v->info->fix.visual == FB_VISUAL_DIRECTCOLOR) {
-		if (vmm_fb_set_cmap(&v->cmap, v->info)) {
+		if (fb_set_cmap(&v->cmap, v->info)) {
 			goto dealloc_cmap;
 		}
 	}
@@ -1103,13 +1103,13 @@ free_cursor_bkp:
 free_cells:
 	vmm_free(v->cell);
 dealloc_cmap:
-	vmm_fb_dealloc_cmap(&v->cmap);
+	fb_dealloc_cmap(&v->cmap);
 close_fb:
-	vmm_fb_close(v->info);
+	fb_close(v->info);
 discon_ihndl:
-	vmm_input_disconnect_handler(&v->hndl);
+	input_disconnect_handler(&v->hndl);
 unreg_ihndl:
-	vmm_input_unregister_handler(&v->hndl);
+	input_unregister_handler(&v->hndl);
 free_vtemu:
 	vmm_free(v);
 	return NULL;
@@ -1127,11 +1127,11 @@ int vtemu_destroy(struct vtemu *v)
 	fifo_free(v->in_fifo);
 	vmm_free(v->cursor_bkp);
 	vmm_free(v->cell);
-	vmm_fb_dealloc_cmap(&v->cmap);
-	rc = vmm_fb_close(v->info);
+	fb_dealloc_cmap(&v->cmap);
+	rc = fb_close(v->info);
 	rc1 = vmm_chardev_unregister(&v->cdev);
-	rc2 = vmm_input_disconnect_handler(&v->hndl);
-	rc3 = vmm_input_unregister_handler(&v->hndl);
+	rc2 = input_disconnect_handler(&v->hndl);
+	rc3 = input_unregister_handler(&v->hndl);
 	vmm_free(v);
 
 	if (rc) {

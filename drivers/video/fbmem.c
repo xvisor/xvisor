@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_fbmem.c
+ * @file fbmem.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Frame buffer managment framework
  *
@@ -37,20 +37,20 @@
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
 #include <arch_atomic.h>
-#include <fb/vmm_fb.h>
 #include <libs/stringlib.h>
 #include <libs/bitops.h>
+#include <drv/fb.h>
 
 #define MODULE_DESC			"Frame Buffer Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		VMM_FB_CLASS_IPRIORITY
-#define	MODULE_INIT			vmm_fb_init
-#define	MODULE_EXIT			vmm_fb_exit
+#define MODULE_IPRIORITY		FB_CLASS_IPRIORITY
+#define	MODULE_INIT			fb_init
+#define	MODULE_EXIT			fb_exit
 
 #define FBPIXMAPSIZE  (1024 * 8)
 
-static void get_fb_info(struct vmm_fb_info *fb_info)
+static void get_fb_info(struct fb_info *fb_info)
 {
 	if (!fb_info)
 		return;
@@ -58,7 +58,7 @@ static void get_fb_info(struct vmm_fb_info *fb_info)
 	arch_atomic_add(&fb_info->count, 1);
 }
 
-static void put_fb_info(struct vmm_fb_info *fb_info)
+static void put_fb_info(struct fb_info *fb_info)
 {
 	if (arch_atomic_sub_return(&fb_info->count, 1))
 		return;
@@ -66,7 +66,7 @@ static void put_fb_info(struct vmm_fb_info *fb_info)
 		fb_info->fbops->fb_destroy(fb_info);
 }
 
-static int vmm_fb_check_foreignness(struct vmm_fb_info *fi)
+static int fb_check_foreignness(struct fb_info *fi)
 {
 	const bool foreign_endian = fi->flags & FBINFO_FOREIGN_ENDIAN;
 
@@ -78,11 +78,11 @@ static int vmm_fb_check_foreignness(struct vmm_fb_info *fi)
 	fi->flags |= foreign_endian ? FBINFO_BE_MATH : 0;
 #endif /* CONFIG_CPU_BE */
 
-	if (fi->flags & FBINFO_BE_MATH && !vmm_fb_be_math(fi)) {
+	if (fi->flags & FBINFO_BE_MATH && !fb_be_math(fi)) {
 		vmm_printf("%s: enable CONFIG_FB_BIG_ENDIAN to "
 		       "support this framebuffer\n", fi->fix.id);
 		return VMM_ENOSYS;
-	} else if (!(fi->flags & FBINFO_BE_MATH) && vmm_fb_be_math(fi)) {
+	} else if (!(fi->flags & FBINFO_BE_MATH) && fb_be_math(fi)) {
 		vmm_printf("%s: enable CONFIG_FB_LITTLE_ENDIAN to "
 		       "support this framebuffer\n", fi->fix.id);
 		return VMM_ENOSYS;
@@ -91,8 +91,8 @@ static int vmm_fb_check_foreignness(struct vmm_fb_info *fi)
 	return VMM_OK;
 }
 
-static bool vmm_apertures_overlap(struct vmm_aperture *gen, 
-				  struct vmm_aperture *hw)
+static bool apertures_overlap(struct aperture *gen, 
+				  struct aperture *hw)
 {
 	/* is the generic aperture base the same as the HW one */
 	if (gen->base == hw->base)
@@ -103,8 +103,8 @@ static bool vmm_apertures_overlap(struct vmm_aperture *gen,
 	return false;
 }
 
-static bool vmm_fb_do_apertures_overlap(struct vmm_apertures_struct *gena,
-					struct vmm_apertures_struct *hwa)
+static bool fb_do_apertures_overlap(struct apertures_struct *gena,
+					struct apertures_struct *hwa)
 {
 	int i, j;
 
@@ -112,15 +112,15 @@ static bool vmm_fb_do_apertures_overlap(struct vmm_apertures_struct *gena,
 		return FALSE;
 
 	for (i = 0; i < hwa->count; ++i) {
-		struct vmm_aperture *h = &hwa->ranges[i];
+		struct aperture *h = &hwa->ranges[i];
 		for (j = 0; j < gena->count; ++j) {
-			struct vmm_aperture *g = &gena->ranges[j];
+			struct aperture *g = &gena->ranges[j];
 			vmm_printf("checking generic (%llx %llx) vs hw (%llx %llx)\n",
 				(unsigned long long)g->base,
 				(unsigned long long)g->size,
 				(unsigned long long)h->base,
 				(unsigned long long)h->size);
-			if (vmm_apertures_overlap(g, h))
+			if (apertures_overlap(g, h))
 				return TRUE;
 		}
 	}
@@ -128,12 +128,12 @@ static bool vmm_fb_do_apertures_overlap(struct vmm_apertures_struct *gena,
 	return FALSE;
 }
 
-static int vmm_fb_check_caps(struct vmm_fb_info *info, 
-			     struct vmm_fb_var_screeninfo *var,
+static int fb_check_caps(struct fb_info *info, 
+			     struct fb_var_screeninfo *var,
 			     u32 activate)
 {
-	struct vmm_fb_event event;
-	struct vmm_fb_blit_caps caps, fbcaps;
+	struct fb_event event;
+	struct fb_blit_caps caps, fbcaps;
 	int err = 0;
 
 	memset(&caps, 0, sizeof(caps));
@@ -141,7 +141,7 @@ static int vmm_fb_check_caps(struct vmm_fb_info *info,
 	caps.flags = (activate & FB_ACTIVATE_ALL) ? 1 : 0;
 	event.info = info;
 	event.data = &caps;
-	vmm_fb_notifier_call_chain(FB_EVENT_GET_REQ, &event);
+	fb_notifier_call_chain(FB_EVENT_GET_REQ, &event);
 	info->fbops->fb_get_caps(info, &fbcaps, var);
 
 	if (((fbcaps.x ^ caps.x) & caps.x) ||
@@ -152,36 +152,36 @@ static int vmm_fb_check_caps(struct vmm_fb_info *info,
 	return err;
 }
 
-int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
+int fb_set_var(struct fb_info *info, struct fb_var_screeninfo *var)
 {
 	int flags = info->flags;
 	int ret = 0;
 
 	if (var->activate & FB_ACTIVATE_INV_MODE) {
-		struct vmm_fb_videomode mode1, mode2;
+		struct fb_videomode mode1, mode2;
 
-		vmm_fb_var_to_videomode(&mode1, var);
-		vmm_fb_var_to_videomode(&mode2, &info->var);
+		fb_var_to_videomode(&mode1, var);
+		fb_var_to_videomode(&mode2, &info->var);
 		/* make sure we don't delete the videomode of current var */
-		ret = vmm_fb_mode_is_equal(&mode1, &mode2);
+		ret = fb_mode_is_equal(&mode1, &mode2);
 
 		if (!ret) {
-			struct vmm_fb_event event;
+			struct fb_event event;
 
 			event.info = info;
 			event.data = &mode1;
-			ret = vmm_fb_notifier_call_chain(FB_EVENT_MODE_DELETE, &event);
+			ret = fb_notifier_call_chain(FB_EVENT_MODE_DELETE, &event);
 		}
 
 		if (!ret)
-		    vmm_fb_delete_videomode(&mode1, &info->modelist);
+		    fb_delete_videomode(&mode1, &info->modelist);
 
 		ret = (ret) ? VMM_EINVALID : 0;
 		goto done;
 	}
 
 	if ((var->activate & FB_ACTIVATE_FORCE) ||
-	    memcmp(&info->var, var, sizeof(struct vmm_fb_var_screeninfo))) {
+	    memcmp(&info->var, var, sizeof(struct fb_var_screeninfo))) {
 		u32 activate = var->activate;
 
 		if (!info->fbops->fb_check_var) {
@@ -195,11 +195,11 @@ int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
 			goto done;
 
 		if ((var->activate & FB_ACTIVATE_MASK) == FB_ACTIVATE_NOW) {
-			struct vmm_fb_var_screeninfo old_var;
-			struct vmm_fb_videomode mode;
+			struct fb_var_screeninfo old_var;
+			struct fb_videomode mode;
 
 			if (info->fbops->fb_get_caps) {
-				ret = vmm_fb_check_caps(info, var, activate);
+				ret = fb_check_caps(info, var, activate);
 
 				if (ret)
 					goto done;
@@ -219,16 +219,16 @@ int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
 				}
 			}
 
-			vmm_fb_pan_display(info, &info->var);
-			vmm_fb_set_cmap(&info->cmap, info);
-			vmm_fb_var_to_videomode(&mode, &info->var);
+			fb_pan_display(info, &info->var);
+			fb_set_cmap(&info->cmap, info);
+			fb_var_to_videomode(&mode, &info->var);
 
 			if (info->modelist.prev && info->modelist.next &&
 			    !list_empty(&info->modelist))
-				ret = vmm_fb_add_videomode(&mode, &info->modelist);
+				ret = fb_add_videomode(&mode, &info->modelist);
 
 			if (!ret && (flags & FBINFO_MISC_USEREVENT)) {
-				struct vmm_fb_event event;
+				struct fb_event event;
 				int evnt = (activate & FB_ACTIVATE_ALL) ?
 					FB_EVENT_MODE_CHANGE_ALL :
 					FB_EVENT_MODE_CHANGE;
@@ -236,7 +236,7 @@ int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
 				info->flags &= ~FBINFO_MISC_USEREVENT;
 				event.info = info;
 				event.data = &mode;
-				vmm_fb_notifier_call_chain(evnt, &event);
+				fb_notifier_call_chain(evnt, &event);
 			}
 		}
 	}
@@ -244,11 +244,11 @@ int vmm_fb_set_var(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
  done:
 	return ret;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_set_var);
+VMM_EXPORT_SYMBOL(fb_set_var);
 
-int vmm_fb_pan_display(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *var)
+int fb_pan_display(struct fb_info *info, struct fb_var_screeninfo *var)
 {
-	struct vmm_fb_fix_screeninfo *fix = &info->fix;
+	struct fb_fix_screeninfo *fix = &info->fix;
 	unsigned int yres = info->var.yres;
 	int err = 0;
 
@@ -281,9 +281,9 @@ int vmm_fb_pan_display(struct vmm_fb_info *info, struct vmm_fb_var_screeninfo *v
 		info->var.vmode &= ~FB_VMODE_YWRAP;
 	return 0;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_pan_display);
+VMM_EXPORT_SYMBOL(fb_pan_display);
 
-int vmm_fb_blank(struct vmm_fb_info *info, int blank)
+int fb_blank(struct fb_info *info, int blank)
 {	
  	int ret = VMM_EINVALID;
 
@@ -294,18 +294,18 @@ int vmm_fb_blank(struct vmm_fb_info *info, int blank)
  		ret = info->fbops->fb_blank(blank, info);
 
  	if (!ret) {
-		struct vmm_fb_event event;
+		struct fb_event event;
 
 		event.info = info;
 		event.data = &blank;
-		vmm_fb_notifier_call_chain(FB_EVENT_BLANK, &event);
+		fb_notifier_call_chain(FB_EVENT_BLANK, &event);
 	}
 
 	return ret;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_blank);
+VMM_EXPORT_SYMBOL(fb_blank);
 
-int vmm_lock_fb_info(struct vmm_fb_info *info)
+int lock_fb_info(struct fb_info *info)
 {
 	vmm_mutex_lock(&info->lock);
 	if (!info->fbops) {
@@ -314,29 +314,29 @@ int vmm_lock_fb_info(struct vmm_fb_info *info)
 	}
 	return 1;
 }
-VMM_EXPORT_SYMBOL(vmm_lock_fb_info);
+VMM_EXPORT_SYMBOL(lock_fb_info);
 
-void vmm_unlock_fb_info(struct vmm_fb_info *info)
+void unlock_fb_info(struct fb_info *info)
 {
 	vmm_mutex_unlock(&info->lock);
 }
-VMM_EXPORT_SYMBOL(vmm_unlock_fb_info);
+VMM_EXPORT_SYMBOL(unlock_fb_info);
 
-void vmm_fb_set_suspend(struct vmm_fb_info *info, int state)
+void fb_set_suspend(struct fb_info *info, int state)
 {
-	if (!vmm_lock_fb_info(info))
+	if (!lock_fb_info(info))
 		return;
 	if (state) {
 		info->state = FBINFO_STATE_SUSPENDED;
 	} else {
 		info->state = FBINFO_STATE_RUNNING;
 	}
-	vmm_unlock_fb_info(info);
+	unlock_fb_info(info);
 }
-VMM_EXPORT_SYMBOL(vmm_fb_set_suspend);
+VMM_EXPORT_SYMBOL(fb_set_suspend);
 
-int vmm_fb_get_color_depth(struct vmm_fb_var_screeninfo *var,
-			   struct vmm_fb_fix_screeninfo *fix)
+int fb_get_color_depth(struct fb_var_screeninfo *var,
+			   struct fb_fix_screeninfo *fix)
 {
 	int depth = 0;
 
@@ -356,12 +356,12 @@ int vmm_fb_get_color_depth(struct vmm_fb_var_screeninfo *var,
 
 	return depth;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_get_color_depth);
+VMM_EXPORT_SYMBOL(fb_get_color_depth);
 
-int vmm_fb_open(struct vmm_fb_info *info)
+int fb_open(struct fb_info *info)
 {
 	int res = 0;
-	struct vmm_fb_event event;
+	struct fb_event event;
 
 	if (!info) {
 		return VMM_EFAIL;
@@ -369,7 +369,7 @@ int vmm_fb_open(struct vmm_fb_info *info)
 
 	vmm_mutex_lock(&info->lock);
 	event.info = info;
-	vmm_fb_notifier_call_chain(FB_EVENT_OPENED, &event);
+	fb_notifier_call_chain(FB_EVENT_OPENED, &event);
 	vmm_mutex_unlock(&info->lock);
 
 	get_fb_info(info);
@@ -389,11 +389,11 @@ int vmm_fb_open(struct vmm_fb_info *info)
 
 	return res;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_open);
+VMM_EXPORT_SYMBOL(fb_open);
 
-int vmm_fb_close(struct vmm_fb_info *info)
+int fb_close(struct fb_info *info)
 {
-	struct vmm_fb_event event;
+	struct fb_event event;
 
 	if (!info) {
 		return VMM_EFAIL;
@@ -412,19 +412,19 @@ int vmm_fb_close(struct vmm_fb_info *info)
 
 	vmm_mutex_lock(&info->lock);
 	event.info = info;
-	vmm_fb_notifier_call_chain(FB_EVENT_CLOSED, &event);
+	fb_notifier_call_chain(FB_EVENT_CLOSED, &event);
 	vmm_mutex_unlock(&info->lock);
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_close);
+VMM_EXPORT_SYMBOL(fb_close);
 
-struct vmm_fb_info *vmm_fb_alloc(size_t size, struct vmm_device *dev)
+struct fb_info *fb_alloc(size_t size, struct vmm_device *dev)
 {
 #define BYTES_PER_LONG (BITS_PER_LONG/8)
-#define PADDING (BYTES_PER_LONG - (sizeof(struct vmm_fb_info) % BYTES_PER_LONG))
-	int fb_info_size = sizeof(struct vmm_fb_info);
-	struct vmm_fb_info *info;
+#define PADDING (BYTES_PER_LONG - (sizeof(struct fb_info) % BYTES_PER_LONG))
+	int fb_info_size = sizeof(struct fb_info);
+	struct fb_info *info;
 	char *p;
 
 	if (size) {
@@ -436,7 +436,7 @@ struct vmm_fb_info *vmm_fb_alloc(size_t size, struct vmm_device *dev)
 		return NULL;
 	}
 
-	info = (struct vmm_fb_info *) p;
+	info = (struct fb_info *) p;
 
 	if (size) {
 		info->par = p + fb_info_size;
@@ -448,9 +448,9 @@ struct vmm_fb_info *vmm_fb_alloc(size_t size, struct vmm_device *dev)
 #undef PADDING
 #undef BYTES_PER_LONG
 }
-VMM_EXPORT_SYMBOL(vmm_fb_alloc);
+VMM_EXPORT_SYMBOL(fb_alloc);
 
-void vmm_fb_release(struct vmm_fb_info *info)
+void fb_release(struct fb_info *info)
 {
 	if (!info)
 		return;
@@ -459,38 +459,38 @@ void vmm_fb_release(struct vmm_fb_info *info)
 	}
 	vmm_free(info);
 }
-VMM_EXPORT_SYMBOL(vmm_fb_release);
+VMM_EXPORT_SYMBOL(fb_release);
 
 #define VGA_FB_PHYS 0xA0000
-void vmm_fb_remove_conflicting_framebuffers(struct vmm_apertures_struct *a,
+void fb_remove_conflicting_framebuffers(struct apertures_struct *a,
 					    const char *name, bool primary)
 {
 	u32 i, count;
 	bool not_removed;
-	struct vmm_fb_info *info;
+	struct fb_info *info;
 
 	/* check all firmware fbs and kick off if the base addr overlaps */
 	while (1) {
 		not_removed = TRUE;
-		count = vmm_fb_count();
+		count = fb_count();
 
 		for (i = 0 ; i < count; i++) {
-			struct vmm_apertures_struct *gen_aper;
+			struct apertures_struct *gen_aper;
 
-			info = vmm_fb_get(i);
+			info = fb_get(i);
 
 			if (!(info->flags & FBINFO_MISC_FIRMWARE))
 				continue;
 
 			gen_aper = info->apertures;
-			if (vmm_fb_do_apertures_overlap(gen_aper, a) ||
+			if (fb_do_apertures_overlap(gen_aper, a) ||
 				(primary && gen_aper && gen_aper->count &&
 				 gen_aper->ranges[0].base == VGA_FB_PHYS)) {
 
 				vmm_printf("fb: conflicting fb hw usage "
 				       "%s vs %s - removing generic driver\n",
 				       name, info->fix.id);
-				vmm_fb_unregister(info);
+				fb_unregister(info);
 				not_removed = FALSE;
 			}
 		}
@@ -500,13 +500,13 @@ void vmm_fb_remove_conflicting_framebuffers(struct vmm_apertures_struct *a,
 		}
 	}
 }
-VMM_EXPORT_SYMBOL(vmm_fb_remove_conflicting_framebuffers);
+VMM_EXPORT_SYMBOL(fb_remove_conflicting_framebuffers);
 
-int vmm_fb_register(struct vmm_fb_info *info)
+int fb_register(struct fb_info *info)
 {
 	int rc;
-	struct vmm_fb_event event;
-	struct vmm_fb_videomode mode;
+	struct fb_event event;
+	struct fb_videomode mode;
 	struct vmm_classdev *cd;
 
 	if (info == NULL) {
@@ -516,11 +516,11 @@ int vmm_fb_register(struct vmm_fb_info *info)
 		return VMM_EFAIL;
 	}
 
-	if ((rc = vmm_fb_check_foreignness(info))) {
+	if ((rc = fb_check_foreignness(info))) {
 		return rc;
 	}
 
-	vmm_fb_remove_conflicting_framebuffers(info->apertures, 
+	fb_remove_conflicting_framebuffers(info->apertures, 
 					       info->fix.id, FALSE);
 
 	arch_atomic_write(&info->count, 1);
@@ -548,8 +548,8 @@ int vmm_fb_register(struct vmm_fb_info *info)
 		INIT_LIST_HEAD(&info->modelist);
 	}
 
-	vmm_fb_var_to_videomode(&mode, &info->var);
-	vmm_fb_add_videomode(&mode, &info->modelist);
+	fb_var_to_videomode(&mode, &info->var);
+	fb_add_videomode(&mode, &info->modelist);
 
 	cd = vmm_malloc(sizeof(struct vmm_classdev));
 	if (!cd) {
@@ -566,14 +566,14 @@ int vmm_fb_register(struct vmm_fb_info *info)
 	cd->dev = info->dev;
 	cd->priv = info;
 
-	rc = vmm_devdrv_register_classdev(VMM_FB_CLASS_NAME, cd);
+	rc = vmm_devdrv_register_classdev(FB_CLASS_NAME, cd);
 	if (rc) {
 		goto free_classdev;
 	}
 
 	vmm_mutex_lock(&info->lock);
 	event.info = info;
-	vmm_fb_notifier_call_chain(FB_EVENT_FB_REGISTERED, &event);
+	fb_notifier_call_chain(FB_EVENT_FB_REGISTERED, &event);
 	vmm_mutex_unlock(&info->lock);
 
 	return VMM_OK;
@@ -588,12 +588,12 @@ free_pixmap:
 	}
 	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_register);
+VMM_EXPORT_SYMBOL(fb_register);
 
-int vmm_fb_unregister(struct vmm_fb_info *info)
+int fb_unregister(struct fb_info *info)
 {
 	int rc;
-	struct vmm_fb_event event;
+	struct fb_event event;
 	struct vmm_classdev *cd;
 
 	if (info == NULL) {
@@ -603,12 +603,12 @@ int vmm_fb_unregister(struct vmm_fb_info *info)
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_devdrv_find_classdev(VMM_FB_CLASS_NAME, info->dev->node->name);
+	cd = vmm_devdrv_find_classdev(FB_CLASS_NAME, info->dev->node->name);
 	if (!cd) {
 		return VMM_EFAIL;
 	}
 
-	rc = vmm_devdrv_unregister_classdev(VMM_FB_CLASS_NAME, cd);
+	rc = vmm_devdrv_unregister_classdev(FB_CLASS_NAME, cd);
 	if (!rc) {
 		vmm_free(cd);
 	}
@@ -617,48 +617,48 @@ int vmm_fb_unregister(struct vmm_fb_info *info)
 	    (info->pixmap.flags & FB_PIXMAP_DEFAULT)) {
 		vmm_free(info->pixmap.addr);
 	}
-	vmm_fb_destroy_modelist(&info->modelist);
+	fb_destroy_modelist(&info->modelist);
 
 	event.info = info;
-	vmm_fb_notifier_call_chain(FB_EVENT_FB_UNREGISTERED, &event);
+	fb_notifier_call_chain(FB_EVENT_FB_UNREGISTERED, &event);
 
 	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_unregister);
+VMM_EXPORT_SYMBOL(fb_unregister);
 
-struct vmm_fb_info *vmm_fb_find(const char *name)
+struct fb_info *fb_find(const char *name)
 {
 	struct vmm_classdev *cd;
 
-	cd = vmm_devdrv_find_classdev(VMM_FB_CLASS_NAME, name);
+	cd = vmm_devdrv_find_classdev(FB_CLASS_NAME, name);
 	if (!cd) {
 		return NULL;
 	}
 
 	return cd->priv;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_find);
+VMM_EXPORT_SYMBOL(fb_find);
 
-struct vmm_fb_info *vmm_fb_get(int num)
+struct fb_info *fb_get(int num)
 {
 	struct vmm_classdev *cd;
 
-	cd = vmm_devdrv_classdev(VMM_FB_CLASS_NAME, num);
+	cd = vmm_devdrv_classdev(FB_CLASS_NAME, num);
 	if (!cd) {
 		return NULL;
 	}
 
 	return cd->priv;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_get);
+VMM_EXPORT_SYMBOL(fb_get);
 
-u32 vmm_fb_count(void)
+u32 fb_count(void)
 {
-	return vmm_devdrv_classdev_count(VMM_FB_CLASS_NAME);
+	return vmm_devdrv_classdev_count(FB_CLASS_NAME);
 }
-VMM_EXPORT_SYMBOL(vmm_fb_count);
+VMM_EXPORT_SYMBOL(fb_count);
 
-static int __init vmm_fb_init(void)
+static int __init fb_init(void)
 {
 	int rc;
 	struct vmm_class *c;
@@ -671,7 +671,7 @@ static int __init vmm_fb_init(void)
 	}
 
 	INIT_LIST_HEAD(&c->head);
-	if (strlcpy(c->name, VMM_FB_CLASS_NAME, sizeof(c->name)) >=
+	if (strlcpy(c->name, FB_CLASS_NAME, sizeof(c->name)) >=
             sizeof(c->name)) {
 		rc = VMM_EOVERFLOW;
 		goto free_class;
@@ -690,12 +690,12 @@ free_class:
 	return rc;
 }
 
-static void __exit vmm_fb_exit(void)
+static void __exit fb_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
 
-	c = vmm_devdrv_find_class(VMM_FB_CLASS_NAME);
+	c = vmm_devdrv_find_class(FB_CLASS_NAME);
 	if (!c) {
 		return;
 	}

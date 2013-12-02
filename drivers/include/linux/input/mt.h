@@ -12,6 +12,6 @@
  */
 
 #include <linux/input.h>
-#include <input/vmm_input_mt.h>
+#include <drv/input/mt.h>
 
 #endif /* _INPUT_MT_H */

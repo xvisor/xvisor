@@ -27,9 +27,9 @@
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <vmm_params.h>
-#include <input/vmm_input.h>
 #include <libs/vtemu.h>
 #include <libs/fifo.h>
+#include <drv/input.h>
 
 /* 
  * These define our textpointer, our background and foreground
@@ -42,7 +42,7 @@ static u32 csr_x = 0, csr_y = 0;
 #if defined(CONFIG_VTEMU)
 static struct fifo *defterm_fifo;
 static u32 defterm_key_flags;
-static struct vmm_input_handler defterm_hndl;
+static struct input_handler defterm_hndl;
 static bool defterm_key_handler_registered;
 #endif
 
@@ -202,8 +202,8 @@ static void init_console(void)
 
 #if defined(CONFIG_VTEMU)
 
-static int defterm_key_event(struct vmm_input_handler *ihnd, 
-			     struct vmm_input_dev *idev, 
+static int defterm_key_event(struct input_handler *ihnd, 
+			     struct input_dev *idev, 
 			     unsigned int type, unsigned int code, int value)
 {
 	int rc, i, len;
@@ -253,12 +253,12 @@ int arch_defterm_getc(u8 *ch)
 		defterm_hndl.event = defterm_key_event;
 		defterm_hndl.priv = NULL;
 
-		rc = vmm_input_register_handler(&defterm_hndl); 
+		rc = input_register_handler(&defterm_hndl); 
 		if (rc) {
 			return rc;
 		}
 
-		rc = vmm_input_connect_handler(&defterm_hndl); 
+		rc = input_connect_handler(&defterm_hndl); 
 		if (rc) {
 			return rc;
 		}

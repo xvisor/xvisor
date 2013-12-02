@@ -46,7 +46,7 @@
 #define MODULE_DESC			"PL031 RTC Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VMM_RTCDEV_CLASS_IPRIORITY+1)
+#define MODULE_IPRIORITY		(RTC_DEVICE_CLASS_IPRIORITY+1)
 #define	MODULE_INIT			pl031_driver_init
 #define	MODULE_EXIT			pl031_driver_exit
 
@@ -387,7 +387,7 @@ static int pl031_driver_probe(struct vmm_device *dev,
 	}
 	ldata->rtc.priv = ldata;
 
-	rc = vmm_rtcdev_register(&ldata->rtc);
+	rc = rtc_device_register(&ldata->rtc);
 	if (rc) {
 		goto free_irq;
 	}
@@ -411,7 +411,7 @@ static int pl031_driver_remove(struct vmm_device *dev)
 	struct pl031_local *ldata = dev->priv;
 
 	if (ldata) {
-		vmm_rtcdev_unregister(&ldata->rtc);
+		rtc_device_unregister(&ldata->rtc);
 		vmm_host_irq_unregister(ldata->irq, ldata);
 		vmm_devtree_regunmap(dev->node, (virtual_addr_t)ldata->base, 0);
 		vmm_free(ldata);

@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_fbnotify.c
+ * @file fbnotify.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief frame buffer notification APIs
  * 
@@ -33,7 +33,7 @@
 
 #include <vmm_error.h>
 #include <vmm_modules.h>
-#include <fb/vmm_fb.h>
+#include <drv/fb.h>
 
 static BLOCKING_NOTIFIER_CHAIN(fb_notifier_list);
 
@@ -41,28 +41,28 @@ static BLOCKING_NOTIFIER_CHAIN(fb_notifier_list);
  *  Register a client notifier
  *  @nb notifier block to callback on events
  */
-int vmm_fb_register_client(struct vmm_notifier_block *nb)
+int fb_register_client(struct vmm_notifier_block *nb)
 {
 	return vmm_blocking_notifier_register(&fb_notifier_list, nb);
 }
-VMM_EXPORT_SYMBOL(vmm_fb_register_client);
+VMM_EXPORT_SYMBOL(fb_register_client);
 
 /**
  *  Unregister a client notifier
  *  @nb notifier block to callback on events
  */
-int vmm_fb_unregister_client(struct vmm_notifier_block *nb)
+int fb_unregister_client(struct vmm_notifier_block *nb)
 {
 	return vmm_blocking_notifier_unregister(&fb_notifier_list, nb);
 }
-VMM_EXPORT_SYMBOL(vmm_fb_unregister_client);
+VMM_EXPORT_SYMBOL(fb_unregister_client);
 
 /**
- * Notify clients of vmm_fb_events
+ * Notify clients of fb_events
  */
-int vmm_fb_notifier_call_chain(unsigned long val, void *v)
+int fb_notifier_call_chain(unsigned long val, void *v)
 {
 	return vmm_blocking_notifier_call(&fb_notifier_list, val, v);
 }
-VMM_EXPORT_SYMBOL(vmm_fb_notifier_call_chain);
+VMM_EXPORT_SYMBOL(fb_notifier_call_chain);
 

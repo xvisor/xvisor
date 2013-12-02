@@ -47,7 +47,7 @@
 #define MODULE_DESC			"VESA 2.0 Framebuffer Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VMM_FB_CLASS_IPRIORITY+1)
+#define MODULE_IPRIORITY		(FB_CLASS_IPRIORITY+1)
 #define	MODULE_INIT			vesafb_init
 #define	MODULE_EXIT			vesafb_exit
 

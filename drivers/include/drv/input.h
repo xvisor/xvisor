@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_input.h
+ * @file input.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief Input device framework header
  *
@@ -28,8 +28,8 @@
  * The original code is licensed under the GPL.
  */
 
-#ifndef __VMM_INPUT_H_
-#define __VMM_INPUT_H_
+#ifndef __DRV_INPUT_H_
+#define __DRV_INPUT_H_
 
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
@@ -39,14 +39,14 @@
 #include <libs/bitmap.h>
 
 /** Input module intialization priority */
-#define VMM_INPUT_IPRIORITY				1
+#define INPUT_IPRIORITY					1
 
 /** Input device class details */
-#define VMM_INPUT_DEV_CLASS_NAME			"input"
-#define VMM_INPUT_DEV_CLASS_IPRIORITY			VMM_INPUT_IPRIORITY
+#define INPUT_DEV_CLASS_NAME				"input"
+#define INPUT_DEV_CLASS_IPRIORITY			INPUT_IPRIORITY
 
 /** Input id structure */
-struct vmm_input_id {
+struct input_id {
 	u16 bustype;
 	u16 vendor;
 	u16 product;
@@ -54,7 +54,7 @@ struct vmm_input_id {
 };
 
 /**
- * struct vmm_input_absinfo - 
+ * struct input_absinfo - 
  * @value: latest reported value for the axis.
  * @minimum: specifies minimum value for the axis.
  * @maximum: specifies maximum value for the axis.
@@ -72,7 +72,7 @@ struct vmm_input_id {
  * units per millimeter (units/mm), resolution for rotational axes
  * (ABS_RX, ABS_RY, ABS_RZ) is reported in units per radian.
  */
-struct vmm_input_absinfo {
+struct input_absinfo {
 	s32 value;
 	s32 minimum;
 	s32 maximum;
@@ -82,7 +82,7 @@ struct vmm_input_absinfo {
 };
 
 /**
- * struct vmm_input_keymap_entry - keymap data
+ * struct input_keymap_entry - keymap data
  * @scancode: scancode represented in machine-endian form.
  * @len: length of the scancode that resides in @scancode buffer.
  * @index: index in the keymap, may be used instead of scancode
@@ -96,7 +96,7 @@ struct vmm_input_absinfo {
  * in keymap entry. EVIOCGKEYCODE will also return scancode or index
  * (depending on which element was used to perform lookup).
  */
-struct vmm_input_keymap_entry {
+struct input_keymap_entry {
 #define INPUT_KEYMAP_BY_INDEX	(1 << 0)
 	u8  flags;
 	u8  len;
@@ -922,12 +922,12 @@ struct vmm_input_keymap_entry {
 #define FF_CNT		(FF_MAX+1)
 
 /**
- * struct vmm_input_dev - represents an input device
+ * struct input_dev - represents an input device
  * @head: list head for global input handlers list
  * @name: unique name of the device
  * @phys: physical path to the device in the system hierarchy
  * @uniq: unique identification code for the device (if device has it)
- * @id: id of the device (struct vmm_input_id)
+ * @id: id of the device (struct input_id)
  * @propbit: bitmap of device properties and quirks
  * @evbit: bitmap of types of events supported by the device (EV_KEY,
  *	EV_REL, etc.)
@@ -955,7 +955,7 @@ struct vmm_input_keymap_entry {
  *	software autorepeat
  * @repeat_ev: timer event for software autorepeat
  * @rep: current values for autorepeat parameters (delay, rate)
- * @mt: pointer to array of struct vmm_input_mt_slot holding current values
+ * @mt: pointer to array of struct input_mt_slot holding current values
  *	of tracked contacts
  * @mtsize: number of MT slots the device uses
  * @slot: MT slot currently being transmitted
@@ -994,13 +994,13 @@ struct vmm_input_keymap_entry {
  * @dev: driver model's view of this device
  * @priv: driver specific data
  */
-struct vmm_input_dev {
+struct input_dev {
 	struct dlist head;
 
 	const char *name;
 	const char *phys;
 	const char *uniq;
-	struct vmm_input_id id;
+	struct input_id id;
 
 	unsigned long propbit[BITS_TO_LONGS(INPUT_PROP_CNT)];
 
@@ -1020,33 +1020,33 @@ struct vmm_input_dev {
 	unsigned int keycodesize;
 	void *keycode;
 
-	int (*setkeycode)(struct vmm_input_dev *idev,
-			  const struct vmm_input_keymap_entry *ke,
+	int (*setkeycode)(struct input_dev *idev,
+			  const struct input_keymap_entry *ke,
 			  unsigned int *old_keycode);
-	int (*getkeycode)(struct vmm_input_dev *idev,
-			  struct vmm_input_keymap_entry *ke);
+	int (*getkeycode)(struct input_dev *idev,
+			  struct input_keymap_entry *ke);
 
 	unsigned int repeat_key;
 	struct vmm_timer_event repeat_ev;
 
 	int rep[REP_CNT];
 
-	struct vmm_input_mt_slot *mt;
+	struct input_mt_slot *mt;
 	int mtsize;
 	int slot;
 	int trkid;
 
-	struct vmm_input_absinfo *absinfo;
+	struct input_absinfo *absinfo;
 
 	unsigned long key[BITS_TO_LONGS(KEY_CNT)];
 	unsigned long led[BITS_TO_LONGS(LED_CNT)];
 	unsigned long snd[BITS_TO_LONGS(SND_CNT)];
 	unsigned long sw[BITS_TO_LONGS(SW_CNT)];
 
-	int (*open)(struct vmm_input_dev *idev);
-	void (*close)(struct vmm_input_dev *idev);
-	int (*flush)(struct vmm_input_dev *idev);
-	int (*event)(struct vmm_input_dev *idev, 
+	int (*open)(struct input_dev *idev);
+	void (*close)(struct input_dev *idev);
+	int (*flush)(struct input_dev *idev);
+	int (*event)(struct input_dev *idev, 
 		     unsigned int type, unsigned int code, int value);
 
 	vmm_spinlock_t event_lock;
@@ -1062,7 +1062,7 @@ struct vmm_input_dev {
 };
 
 /**
- * struct vmm_input_handler - represents an input handler
+ * struct input_handler - represents an input handler
  * @head: list head for global input handlers list
  * @connected: flag showing whether input handler is connected to events
  * @conn_head: list heads for connected input handlers list
@@ -1072,7 +1072,7 @@ struct vmm_input_dev {
  * @event: callback function of input handler to handle events
  * @priv: handler specific data
  */
-struct vmm_input_handler 
+struct input_handler 
 {
 	struct dlist head;
 
@@ -1083,19 +1083,19 @@ struct vmm_input_handler
 
 	unsigned long evbit[BITS_TO_LONGS(EV_CNT)];
 
-	int (*event)(struct vmm_input_handler *ihnd, 
-		     struct vmm_input_dev *idev, 
+	int (*event)(struct input_handler *ihnd, 
+		     struct input_dev *idev, 
 		     unsigned int type, unsigned int code, int value);
 
 	void *priv;
 };
 
-static inline void *vmm_input_get_drvdata(struct vmm_input_dev *idev)
+static inline void *input_get_drvdata(struct input_dev *idev)
 {
 	return idev->priv;
 }
 
-static inline void vmm_input_set_drvdata(struct vmm_input_dev *idev, void *data)
+static inline void input_set_drvdata(struct input_dev *idev, void *data)
 {
 	idev->priv = data;
 }
@@ -1104,12 +1104,12 @@ static inline void vmm_input_set_drvdata(struct vmm_input_dev *idev, void *data)
  *
  * Returns prepared struct input_dev or NULL.
  */
-struct vmm_input_dev *vmm_input_alloc_device(void);
+struct input_dev *input_allocate_device(void);
 
 /** Free an input device 
  * @idev: input device to free
  */
-void vmm_input_free_device(struct vmm_input_dev *idev);
+void input_free_device(struct input_dev *idev);
 
 /** Register input device 
  * @idev: device to be registered
@@ -1118,7 +1118,7 @@ void vmm_input_free_device(struct vmm_input_dev *idev);
  * allocated with input_allocate_device() and all it's capabilities
  * set up before registering.
  */
-int vmm_input_register_device(struct vmm_input_dev *idev);
+int input_register_device(struct input_dev *idev);
 
 /** Unregister input device 
  * @idev: device to be unregistered
@@ -1126,7 +1126,7 @@ int vmm_input_register_device(struct vmm_input_dev *idev);
  * This function unregisters an input device. Once device is unregistered
  * the caller should not try to access it as it may get freed at any moment.
  */
-int vmm_input_unregister_device(struct vmm_input_dev *idev);
+int input_unregister_device(struct input_dev *idev);
 
 /** Reset/restore input device 
  * @idev: input device whose state needs to be reset
@@ -1135,44 +1135,44 @@ int vmm_input_unregister_device(struct vmm_input_dev *idev);
  * bring internal state and state if the hardware in sync with each other.
  * We mark all keys as released, restore LED state, repeat rate, etc.
  */
-void vmm_input_reset_device(struct vmm_input_dev *idev);
+void input_reset_device(struct input_dev *idev);
 
 /** Flush input device 
  * @idev: input device whose state needs to be reset
  *
  * This function tries to flush an input device.
  */
-int vmm_input_flush_device(struct vmm_input_dev *idev);
+int input_flush_device(struct input_dev *idev);
 
 /** Find a input device based on its physical name */
-struct vmm_input_dev *vmm_input_find_device(const char *phys);
+struct input_dev *input_find_device(const char *phys);
 
 /** Get input device with given index */
-struct vmm_input_dev *vmm_input_get_device(int index);
+struct input_dev *input_get_device(int index);
 
 /** Count number of input devices */
-u32 vmm_input_count_device(void);
+u32 input_count_device(void);
 
 /** Register input handler */
-int vmm_input_register_handler(struct vmm_input_handler *ihnd);
+int input_register_handler(struct input_handler *ihnd);
 
 /** Unregister input handler */
-int vmm_input_unregister_handler(struct vmm_input_handler *ihnd);
+int input_unregister_handler(struct input_handler *ihnd);
 
 /** Connect input handler to start receiving events */
-int vmm_input_connect_handler(struct vmm_input_handler *ihnd);
+int input_connect_handler(struct input_handler *ihnd);
 
 /** Disconnect input handler to stop receiving events */
-int vmm_input_disconnect_handler(struct vmm_input_handler *ihnd);
+int input_disconnect_handler(struct input_handler *ihnd);
 
 /** Find a input handler */
-struct vmm_input_handler *vmm_input_find_handler(const char *name);
+struct input_handler *input_find_handler(const char *name);
 
 /** Get input handler with given index */
-struct vmm_input_handler *vmm_input_get_handler(int index);
+struct input_handler *input_get_handler(int index);
 
 /** Count number of input handler */
-u32 vmm_input_count_handler(void);
+u32 input_count_handler(void);
 
 /** Report new input event 
  * @idev: device that generated the event
@@ -1183,54 +1183,54 @@ u32 vmm_input_count_handler(void);
  * This function should be used by drivers implementing various input
  * devices to report input events.
  */
-void vmm_input_event(struct vmm_input_dev *idev, 
+void input_event(struct input_dev *idev, 
 		     unsigned int type, unsigned int code, int value);
 
 /** Report EV_KEY from input device */
-static inline void vmm_input_report_key(struct vmm_input_dev *idev, 
+static inline void input_report_key(struct input_dev *idev, 
 					unsigned int code, int value)
 {
-	vmm_input_event(idev, EV_KEY, code, !!value);
+	input_event(idev, EV_KEY, code, !!value);
 }
 
 /** Report EV_REL from input device */
-static inline void vmm_input_report_rel(struct vmm_input_dev *idev, 
+static inline void input_report_rel(struct input_dev *idev, 
 					unsigned int code, int value)
 {
-	vmm_input_event(idev, EV_REL, code, value);
+	input_event(idev, EV_REL, code, value);
 }
 
 /** Report EV_ABS from input device */
-static inline void vmm_input_report_abs(struct vmm_input_dev *idev, 
+static inline void input_report_abs(struct input_dev *idev, 
 					unsigned int code, int value)
 {
-	vmm_input_event(idev, EV_ABS, code, value);
+	input_event(idev, EV_ABS, code, value);
 }
 
 /** Report EV_FF_STATUS from input device */
-static inline void vmm_input_report_ff_status(struct vmm_input_dev *idev, 
+static inline void input_report_ff_status(struct input_dev *idev, 
 					      unsigned int code, int value)
 {
-	vmm_input_event(idev, EV_FF_STATUS, code, value);
+	input_event(idev, EV_FF_STATUS, code, value);
 }
 
 /** Report EV_SW from input device */
-static inline void vmm_input_report_switch(struct vmm_input_dev *idev, 
+static inline void input_report_switch(struct input_dev *idev, 
 					   unsigned int code, int value)
 {
-	vmm_input_event(idev, EV_SW, code, !!value);
+	input_event(idev, EV_SW, code, !!value);
 }
 
 /** Report SYNC event */
-static inline void vmm_input_sync(struct vmm_input_dev *idev)
+static inline void input_sync(struct input_dev *idev)
 {
-	vmm_input_event(idev, EV_SYN, SYN_REPORT, 0);
+	input_event(idev, EV_SYN, SYN_REPORT, 0);
 }
 
 /** Report MultiTouch SYNC event */
-static inline void vmm_input_mt_sync(struct vmm_input_dev *idev)
+static inline void input_mt_sync(struct input_dev *idev)
 {
-	vmm_input_event(idev, EV_SYN, SYN_MT_REPORT, 0);
+	input_event(idev, EV_SYN, SYN_MT_REPORT, 0);
 }
 
 /** Set capability of input device to generate event of give type and code 
@@ -1241,7 +1241,7 @@ static inline void vmm_input_mt_sync(struct vmm_input_dev *idev)
  * In addition to setting up corresponding bit in appropriate capability
  * bitmap the function also adjusts idev->evbit.
  */
-void vmm_input_set_capability(struct vmm_input_dev *idev, 
+void input_set_capability(struct input_dev *idev, 
 			      unsigned int type, unsigned int code);
 
 /**
@@ -1254,7 +1254,7 @@ void vmm_input_set_capability(struct vmm_input_dev *idev,
  * to set up an appropriate buffer size for the event stream, in order
  * to minimize information loss.
  */
-static inline void vmm_input_set_events_per_packet(struct vmm_input_dev *idev,
+static inline void input_set_events_per_packet(struct input_dev *idev,
 						   int n_events)
 {
 	idev->hint_events_per_packet = n_events;
@@ -1267,32 +1267,32 @@ static inline void vmm_input_set_events_per_packet(struct vmm_input_dev *idev,
  * If the absinfo struct the caller asked for is already allocated, this
  * functions will not do anything.
  */
-void vmm_input_alloc_absinfo(struct vmm_input_dev *idev);
+void input_alloc_absinfo(struct input_dev *idev);
 
-void vmm_input_set_abs_params(struct vmm_input_dev *dev, unsigned int axis,
+void input_set_abs_params(struct input_dev *dev, unsigned int axis,
 			  int min, int max, int fuzz, int flat);
 
-#define VMM_INPUT_GENERATE_ABS_ACCESSORS(_suffix, _item)		\
-static inline int vmm_input_abs_get_##_suffix(struct vmm_input_dev *idev, \
+#define INPUT_GENERATE_ABS_ACCESSORS(_suffix, _item)			\
+static inline int input_abs_get_##_suffix(struct input_dev *idev,	\
 					  unsigned int axis)		\
 {									\
 	return idev->absinfo ? idev->absinfo[axis]._item : 0;		\
 }									\
 									\
-static inline void vmm_input_abs_set_##_suffix(struct vmm_input_dev *idev, \
+static inline void input_abs_set_##_suffix(struct input_dev *idev,	\
 					   unsigned int axis, int val)	\
 {									\
-	vmm_input_alloc_absinfo(idev);					\
+	input_alloc_absinfo(idev);					\
 	if (idev->absinfo)						\
 		idev->absinfo[axis]._item = val;			\
 }
 
-VMM_INPUT_GENERATE_ABS_ACCESSORS(val, value)
-VMM_INPUT_GENERATE_ABS_ACCESSORS(min, minimum)
-VMM_INPUT_GENERATE_ABS_ACCESSORS(max, maximum)
-VMM_INPUT_GENERATE_ABS_ACCESSORS(fuzz, fuzz)
-VMM_INPUT_GENERATE_ABS_ACCESSORS(flat, flat)
-VMM_INPUT_GENERATE_ABS_ACCESSORS(res, resolution)
+INPUT_GENERATE_ABS_ACCESSORS(val, value)
+INPUT_GENERATE_ABS_ACCESSORS(min, minimum)
+INPUT_GENERATE_ABS_ACCESSORS(max, maximum)
+INPUT_GENERATE_ABS_ACCESSORS(fuzz, fuzz)
+INPUT_GENERATE_ABS_ACCESSORS(flat, flat)
+INPUT_GENERATE_ABS_ACCESSORS(res, resolution)
 
 /** Convert input keymap scancode to scalar value 
  * @ke: keymap entry containing scancode to be converted.
@@ -1303,7 +1303,7 @@ VMM_INPUT_GENERATE_ABS_ACCESSORS(res, resolution)
  * into scalar form understood by legacy keymap handling methods. These
  * methods expect scancodes to be represented as 'unsigned int'.
  */
-int vmm_input_scancode_to_scalar(const struct vmm_input_keymap_entry *ke,
+int input_scancode_to_scalar(const struct input_keymap_entry *ke,
 				 unsigned int *scancode);
 
 /** Retrieve keycode currently mapped to a given scancode 
@@ -1313,8 +1313,8 @@ int vmm_input_scancode_to_scalar(const struct vmm_input_keymap_entry *ke,
  * This function should be called by anyone interested in retrieving current
  * keymap. Presently evdev handlers use it.
  */
-int vmm_input_get_keycode(struct vmm_input_dev *idev, 
-			  struct vmm_input_keymap_entry *ke);
+int input_get_keycode(struct input_dev *idev, 
+			  struct input_keymap_entry *ke);
 
 /** Attribute a keycode to a given scancode 
  * @idev: input device which keymap is being updated
@@ -1323,7 +1323,7 @@ int vmm_input_get_keycode(struct vmm_input_dev *idev,
  * This function should be called by anyone needing to update current
  * keymap. Presently keyboard and evdev handlers use it.
  */
-int vmm_input_set_keycode(struct vmm_input_dev *idev,
-			  const struct vmm_input_keymap_entry *ke);
+int input_set_keycode(struct input_dev *idev,
+			  const struct input_keymap_entry *ke);
 
-#endif /* __VMM_INPUT_H_ */
+#endif /* __DRV_INPUT_H_ */

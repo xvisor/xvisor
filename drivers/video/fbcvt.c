@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_fbcvt.c
+ * @file fbcvt.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief VESA(TM) Coordinated Video Timings
  *
@@ -36,8 +36,8 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
-#include <fb/vmm_fb.h>
 #include <libs/stringlib.h>
+#include <drv/fb.h>
 
 #define FB_CVT_CELLSIZE               8
 #define FB_CVT_GTF_C                 40
@@ -56,7 +56,7 @@
 #define FB_CVT_FLAG_MARGINS       2
 #define FB_CVT_FLAG_INTERLACED    4
 
-struct vmm_fb_cvt_data {
+struct fb_cvt_data {
 	u32 xres;
 	u32 yres;
 	u32 refresh;
@@ -82,7 +82,7 @@ struct vmm_fb_cvt_data {
 	u32 status;
 };
 
-static const unsigned char vmm_fb_cvt_vbi_tab[] = {
+static const unsigned char fb_cvt_vbi_tab[] = {
 	4,        /* 4:3      */
 	5,        /* 16:9     */
 	6,        /* 16:10    */
@@ -94,7 +94,7 @@ static const unsigned char vmm_fb_cvt_vbi_tab[] = {
 };
 
 /* returns hperiod * 1000 */
-static u32 vmm_fb_cvt_hperiod(struct vmm_fb_cvt_data *cvt)
+static u32 fb_cvt_hperiod(struct fb_cvt_data *cvt)
 {
 	u32 num = udiv32(1000000000, cvt->f_refresh);
 	u32 den;
@@ -112,7 +112,7 @@ static u32 vmm_fb_cvt_hperiod(struct vmm_fb_cvt_data *cvt)
 }
 
 /* returns ideal duty cycle * 1000 */
-static u32 vmm_fb_cvt_ideal_duty_cycle(struct vmm_fb_cvt_data *cvt)
+static u32 fb_cvt_ideal_duty_cycle(struct fb_cvt_data *cvt)
 {
 	u32 c_prime = (FB_CVT_GTF_C - FB_CVT_GTF_J) *
 		(FB_CVT_GTF_K) + 256 * FB_CVT_GTF_J;
@@ -122,14 +122,14 @@ static u32 vmm_fb_cvt_ideal_duty_cycle(struct vmm_fb_cvt_data *cvt)
 	return (1000 * c_prime  - ((m_prime * h_period_est)/1000))/256;
 }
 
-static u32 vmm_fb_cvt_hblank(struct vmm_fb_cvt_data *cvt)
+static u32 fb_cvt_hblank(struct fb_cvt_data *cvt)
 {
 	u32 hblank = 0;
 
 	if (cvt->flags & FB_CVT_FLAG_REDUCED_BLANK)
 		hblank = FB_CVT_RB_HBLANK;
 	else {
-		u32 ideal_duty_cycle = vmm_fb_cvt_ideal_duty_cycle(cvt);
+		u32 ideal_duty_cycle = fb_cvt_ideal_duty_cycle(cvt);
 		u32 active_pixels = cvt->active_pixels;
 
 		if (ideal_duty_cycle < 20000)
@@ -146,7 +146,7 @@ static u32 vmm_fb_cvt_hblank(struct vmm_fb_cvt_data *cvt)
 	return hblank;
 }
 
-static u32 vmm_fb_cvt_hsync(struct vmm_fb_cvt_data *cvt)
+static u32 fb_cvt_hsync(struct fb_cvt_data *cvt)
 {
 	u32 hsync;
 
@@ -159,7 +159,7 @@ static u32 vmm_fb_cvt_hsync(struct vmm_fb_cvt_data *cvt)
 	return hsync;
 }
 
-static u32 vmm_fb_cvt_vbi_lines(struct vmm_fb_cvt_data *cvt)
+static u32 fb_cvt_vbi_lines(struct fb_cvt_data *cvt)
 {
 	u32 vbi_lines, min_vbi_lines, act_vbi_lines;
 
@@ -183,17 +183,17 @@ static u32 vmm_fb_cvt_vbi_lines(struct vmm_fb_cvt_data *cvt)
 	return act_vbi_lines;
 }
 
-static u32 vmm_fb_cvt_vtotal(struct vmm_fb_cvt_data *cvt)
+static u32 fb_cvt_vtotal(struct fb_cvt_data *cvt)
 {
 	u32 vtotal = udiv32(cvt->yres, cvt->interlace);
 
-	vtotal += 2 * cvt->v_margin + cvt->interlace/2 + vmm_fb_cvt_vbi_lines(cvt);
+	vtotal += 2 * cvt->v_margin + cvt->interlace/2 + fb_cvt_vbi_lines(cvt);
 	vtotal |= cvt->interlace/2;
 
 	return vtotal;
 }
 
-static u32 vmm_fb_cvt_pixclock(struct vmm_fb_cvt_data *cvt)
+static u32 fb_cvt_pixclock(struct fb_cvt_data *cvt)
 {
 	u32 pixclock;
 
@@ -209,7 +209,7 @@ static u32 vmm_fb_cvt_pixclock(struct vmm_fb_cvt_data *cvt)
 	return pixclock;
 }
 
-static u32 vmm_fb_cvt_aspect_ratio(struct vmm_fb_cvt_data *cvt)
+static u32 fb_cvt_aspect_ratio(struct fb_cvt_data *cvt)
 {
 	u32 xres = cvt->xres;
 	u32 yres = cvt->yres;
@@ -234,7 +234,7 @@ static u32 vmm_fb_cvt_aspect_ratio(struct vmm_fb_cvt_data *cvt)
 	return aspect;
 }
 
-static void vmm_fb_cvt_print_name(struct vmm_fb_cvt_data *cvt)
+static void fb_cvt_print_name(struct fb_cvt_data *cvt)
 {
 	u32 pixcount, pixcount_mod;
 	int cnt = 255, offset = 0, read = 0;
@@ -290,8 +290,8 @@ static void vmm_fb_cvt_print_name(struct vmm_fb_cvt_data *cvt)
 	vmm_free(buf);
 }
 
-static void vmm_fb_cvt_convert_to_mode(struct vmm_fb_cvt_data *cvt,
-				   struct vmm_fb_videomode *mode)
+static void fb_cvt_convert_to_mode(struct fb_cvt_data *cvt,
+				   struct fb_videomode *mode)
 {
 	mode->refresh = cvt->f_refresh;
 	mode->pixclock = KHZ2PICOS(cvt->pixclock/1000);
@@ -312,7 +312,7 @@ static void vmm_fb_cvt_convert_to_mode(struct vmm_fb_cvt_data *cvt,
 
 /*
  * Calculate mode using VESA(TM) CVT
- * @mode: pointer to vmm_fb_videomode; xres, yres, refresh and vmode must be
+ * @mode: pointer to fb_videomode; xres, yres, refresh and vmode must be
  *        pre-filled with the desired values
  * @margins: add margin to calculation (1.8% of xres and yres)
  * @rb: compute with reduced blanking (for flatpanels)
@@ -325,9 +325,9 @@ static void vmm_fb_cvt_convert_to_mode(struct vmm_fb_cvt_data *cvt,
  * DESCRIPTION:
  * Computes video timings using VESA(TM) Coordinated Video Timings
  */
-int vmm_fb_find_mode_cvt(struct vmm_fb_videomode *mode, int margins, int rb)
+int fb_find_mode_cvt(struct fb_videomode *mode, int margins, int rb)
 {
-	struct vmm_fb_cvt_data cvt;
+	struct fb_cvt_data cvt;
 
 	memset(&cvt, 0, sizeof(cvt));
 
@@ -378,15 +378,15 @@ int vmm_fb_find_mode_cvt(struct vmm_fb_videomode *mode, int margins, int rb)
 		cvt.v_margin = (udiv32(cvt.yres, cvt.interlace)* 18)/1000;
 	}
 
-	cvt.aspect_ratio = vmm_fb_cvt_aspect_ratio(&cvt);
+	cvt.aspect_ratio = fb_cvt_aspect_ratio(&cvt);
 	cvt.active_pixels = cvt.xres + 2 * cvt.h_margin;
-	cvt.hperiod = vmm_fb_cvt_hperiod(&cvt);
-	cvt.vsync = vmm_fb_cvt_vbi_tab[cvt.aspect_ratio];
-	cvt.vtotal = vmm_fb_cvt_vtotal(&cvt);
-	cvt.hblank = vmm_fb_cvt_hblank(&cvt);
+	cvt.hperiod = fb_cvt_hperiod(&cvt);
+	cvt.vsync = fb_cvt_vbi_tab[cvt.aspect_ratio];
+	cvt.vtotal = fb_cvt_vtotal(&cvt);
+	cvt.hblank = fb_cvt_hblank(&cvt);
 	cvt.htotal = cvt.active_pixels + cvt.hblank;
-	cvt.hsync = vmm_fb_cvt_hsync(&cvt);
-	cvt.pixclock = vmm_fb_cvt_pixclock(&cvt);
+	cvt.hsync = fb_cvt_hsync(&cvt);
+	cvt.pixclock = fb_cvt_pixclock(&cvt);
 	cvt.hfreq = udiv32(cvt.pixclock, cvt.htotal);
 	cvt.h_back_porch = cvt.hblank/2 + cvt.h_margin;
 	cvt.h_front_porch = cvt.hblank - cvt.hsync - cvt.h_back_porch +
@@ -394,10 +394,10 @@ int vmm_fb_find_mode_cvt(struct vmm_fb_videomode *mode, int margins, int rb)
 	cvt.v_back_porch = 3 + cvt.v_margin;
 	cvt.v_front_porch = cvt.vtotal - udiv32(cvt.yres, cvt.interlace) -
 	    cvt.v_back_porch - cvt.vsync;
-	vmm_fb_cvt_print_name(&cvt);
-	vmm_fb_cvt_convert_to_mode(&cvt, mode);
+	fb_cvt_print_name(&cvt);
+	fb_cvt_convert_to_mode(&cvt, mode);
 
 	return 0;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_find_mode_cvt);
+VMM_EXPORT_SYMBOL(fb_find_mode_cvt);
 

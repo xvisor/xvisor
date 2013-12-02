@@ -21,6 +21,17 @@
 # @brief list of driver objects
 # */
 
+drivers-objs-$(CONFIG_RTC)+= rtc/rtc-core.o
+
+rtc-core-y += rtc-dev.o
+rtc-core-y += rtc-lib.o
+
+%/rtc-core.o: $(foreach obj,$(rtc-core-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/rtc-core.dep: $(foreach dep,$(rtc-core-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)
+
 drivers-objs-$(CONFIG_RTC_PL031)+= rtc/rtc-pl031.o
 drivers-objs-$(CONFIG_RTC_S3C)+= rtc/rtc-s3c.o
 

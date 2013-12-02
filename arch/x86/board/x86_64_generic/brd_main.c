@@ -99,7 +99,7 @@ int __init arch_board_final_init(void)
 	int rc;
 	struct vmm_devtree_node *node;
 #if defined(CONFIG_VTEMU)
-	struct vmm_fb_info *info;
+	struct fb_info *info;
 #endif
 
 	/* All VMM API's are available here */
@@ -121,7 +121,7 @@ int __init arch_board_final_init(void)
 	 * and make it our stdio device.
 	 */
 #if defined(CONFIG_VTEMU)
-	info = vmm_fb_get(0);
+	info = fb_get(0);
 	if (info) {
 		x86_vt = vtemu_create(info->dev->node->name, info, NULL);
 		if (x86_vt) {

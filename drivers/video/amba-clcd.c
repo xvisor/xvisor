@@ -49,7 +49,7 @@
 #define MODULE_DESC			"AMBA CLCD Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VMM_FB_CLASS_IPRIORITY+1)
+#define MODULE_IPRIORITY		(FB_CLASS_IPRIORITY+1)
 #define	MODULE_INIT			amba_clcdfb_init
 #define	MODULE_EXIT			amba_clcdfb_exit
 

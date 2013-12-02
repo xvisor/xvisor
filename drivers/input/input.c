@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_input.c
+ * @file input.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Input device framework source
  *
@@ -33,18 +33,18 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
-#include <input/vmm_input.h>
-#include <input/vmm_input_mt.h>
 #include <libs/stringlib.h>
+#include <drv/input.h>
+#include <drv/input/mt.h>
 
 #define MODULE_DESC			"Input Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		VMM_INPUT_IPRIORITY
-#define	MODULE_INIT			vmm_input_init
-#define	MODULE_EXIT			vmm_input_exit
+#define MODULE_IPRIORITY		INPUT_IPRIORITY
+#define	MODULE_INIT			input_init
+#define	MODULE_EXIT			input_exit
 
-struct vmm_input_ctrl {
+struct input_ctrl {
 	vmm_spinlock_t dev_list_lock;
 	struct dlist dev_list;
 	vmm_spinlock_t hnd_list_lock;
@@ -54,7 +54,7 @@ struct vmm_input_ctrl {
 	u32 hnd_conn_count[EV_CNT];
 };
 
-static struct vmm_input_ctrl ictrl;
+static struct input_ctrl ictrl;
 
 static inline int is_event_supported(unsigned int code,
 				     unsigned long *bm, unsigned int max)
@@ -98,7 +98,7 @@ static int input_defuzz_abs_event(int value, int old_val, int fuzz)
 		}							\
 	} while (0)
 
-static void input_dev_toggle(struct vmm_input_dev *idev, bool activate)
+static void input_dev_toggle(struct input_dev *idev, bool activate)
 {
 	if (!idev->event)
 		return;
@@ -115,17 +115,17 @@ static void input_dev_toggle(struct vmm_input_dev *idev, bool activate)
 /* Pass event to all relevant input handlers. This function is called with
  * idev->event_lock held and interrupts disabled.
  */
-static void input_pass_event(struct vmm_input_dev *idev,
+static void input_pass_event(struct input_dev *idev,
 			     unsigned int type, unsigned int code, int value)
 {
 	irq_flags_t flags;
 	struct dlist *l;
-	struct vmm_input_handler *handler;
+	struct input_handler *handler;
 
 	vmm_spin_lock_irqsave(&ictrl.hnd_conn_lock[type], flags);
 
 	list_for_each(l, &ictrl.hnd_conn[type]) {
-		handler = list_entry(l, struct vmm_input_handler, conn_head[type]);
+		handler = list_entry(l, struct input_handler, conn_head[type]);
 		handler->event(handler, idev, type, code, value);
 	}
 
@@ -141,7 +141,7 @@ static void input_repeat_key(struct vmm_timer_event *ev)
 {
 	u64 duration;
 	irq_flags_t flags;
-	struct vmm_input_dev *idev = (void *)ev->priv;
+	struct input_dev *idev = (void *)ev->priv;
 
 	vmm_spin_lock_irqsave(&idev->event_lock, flags);
 
@@ -170,7 +170,7 @@ static void input_repeat_key(struct vmm_timer_event *ev)
 	vmm_spin_unlock_irqrestore(&idev->event_lock, flags);
 }
 
-static void input_start_autorepeat(struct vmm_input_dev *idev, int code)
+static void input_start_autorepeat(struct input_dev *idev, int code)
 {
 	u32 duration;
 	if (test_bit(EV_REP, idev->evbit) &&
@@ -183,7 +183,7 @@ static void input_start_autorepeat(struct vmm_input_dev *idev, int code)
 	}
 }
 
-static void input_stop_autorepeat(struct vmm_input_dev *idev)
+static void input_stop_autorepeat(struct input_dev *idev)
 {
 	vmm_timer_event_stop(&idev->repeat_ev);
 }
@@ -193,7 +193,7 @@ static void input_stop_autorepeat(struct vmm_input_dev *idev)
 #define INPUT_PASS_TO_DEVICE	2
 #define INPUT_PASS_TO_ALL	(INPUT_PASS_TO_HANDLERS | INPUT_PASS_TO_DEVICE)
 
-static int input_handle_abs_event(struct vmm_input_dev *idev,
+static int input_handle_abs_event(struct input_dev *idev,
 				  unsigned int code, int *pval)
 {
 	bool is_mt_event;
@@ -215,7 +215,7 @@ static int input_handle_abs_event(struct vmm_input_dev *idev,
 	if (!is_mt_event) {
 		pold = &idev->absinfo[code].value;
 	} else if (idev->mt) {
-		struct vmm_input_mt_slot *mtslot = &idev->mt[idev->slot];
+		struct input_mt_slot *mtslot = &idev->mt[idev->slot];
 		pold = &mtslot->abs[code - ABS_MT_FIRST];
 	} else {
 		/*
@@ -235,15 +235,15 @@ static int input_handle_abs_event(struct vmm_input_dev *idev,
 	}
 
 	/* Flush pending "slot" event */
-	if (is_mt_event && idev->slot != vmm_input_abs_get_val(idev, ABS_MT_SLOT)) {
-		vmm_input_abs_set_val(idev, ABS_MT_SLOT, idev->slot);
+	if (is_mt_event && idev->slot != input_abs_get_val(idev, ABS_MT_SLOT)) {
+		input_abs_set_val(idev, ABS_MT_SLOT, idev->slot);
 		input_pass_event(idev, EV_ABS, ABS_MT_SLOT, idev->slot);
 	}
 
 	return INPUT_PASS_TO_HANDLERS;
 }
 
-static void input_handle_event(struct vmm_input_dev *idev,
+static void input_handle_event(struct input_dev *idev,
 			       unsigned int type, unsigned int code, int value)
 {
 	int disposition = INPUT_IGNORE_EVENT;
@@ -356,7 +356,7 @@ static void input_handle_event(struct vmm_input_dev *idev,
 		input_pass_event(idev, type, code, value);
 }
 
-void vmm_input_event(struct vmm_input_dev *idev, 
+void input_event(struct input_dev *idev, 
 		     unsigned int type, unsigned int code, int value)
 {
 	irq_flags_t flags;
@@ -367,9 +367,9 @@ void vmm_input_event(struct vmm_input_dev *idev,
 		vmm_spin_unlock_irqrestore(&idev->event_lock, flags);
 	}
 }
-VMM_EXPORT_SYMBOL(vmm_input_event);
+VMM_EXPORT_SYMBOL(input_event);
 
-void vmm_input_set_capability(struct vmm_input_dev *idev, 
+void input_set_capability(struct input_dev *idev, 
 			      unsigned int type, unsigned int code)
 {
 	switch (type) {
@@ -417,9 +417,9 @@ void vmm_input_set_capability(struct vmm_input_dev *idev,
 
 	__set_bit(type, idev->evbit);
 }
-VMM_EXPORT_SYMBOL(vmm_input_set_capability);
+VMM_EXPORT_SYMBOL(input_set_capability);
 
-int vmm_input_scancode_to_scalar(const struct vmm_input_keymap_entry *ke,
+int input_scancode_to_scalar(const struct input_keymap_entry *ke,
 				 unsigned int *scancode)
 {
 	switch (ke->len) {
@@ -441,9 +441,9 @@ int vmm_input_scancode_to_scalar(const struct vmm_input_keymap_entry *ke,
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_input_scancode_to_scalar);
+VMM_EXPORT_SYMBOL(input_scancode_to_scalar);
 
-static unsigned int input_fetch_keycode(struct vmm_input_dev *idev,
+static unsigned int input_fetch_keycode(struct input_dev *idev,
 					unsigned int index)
 {
 	switch (idev->keycodesize) {
@@ -458,8 +458,8 @@ static unsigned int input_fetch_keycode(struct vmm_input_dev *idev,
 	}
 }
 
-static int input_default_getkeycode(struct vmm_input_dev *idev,
-				    struct vmm_input_keymap_entry *ke)
+static int input_default_getkeycode(struct input_dev *idev,
+				    struct input_keymap_entry *ke)
 {
 	unsigned int index;
 	int error;
@@ -471,7 +471,7 @@ static int input_default_getkeycode(struct vmm_input_dev *idev,
 	if (ke->flags & INPUT_KEYMAP_BY_INDEX) {
 		index = ke->index;
 	} else {
-		error = vmm_input_scancode_to_scalar(ke, &index);
+		error = input_scancode_to_scalar(ke, &index);
 		if (error) {
 			return error;
 		}
@@ -488,8 +488,8 @@ static int input_default_getkeycode(struct vmm_input_dev *idev,
 	return 0;
 }
 
-static int input_default_setkeycode(struct vmm_input_dev *idev,
-				    const struct vmm_input_keymap_entry *ke,
+static int input_default_setkeycode(struct input_dev *idev,
+				    const struct input_keymap_entry *ke,
 				    unsigned int *old_keycode)
 {
 	unsigned int index;
@@ -503,7 +503,7 @@ static int input_default_setkeycode(struct vmm_input_dev *idev,
 	if (ke->flags & INPUT_KEYMAP_BY_INDEX) {
 		index = ke->index;
 	} else {
-		error = vmm_input_scancode_to_scalar(ke, &index);
+		error = input_scancode_to_scalar(ke, &index);
 		if (error) {
 			return error;
 		}
@@ -550,23 +550,23 @@ static int input_default_setkeycode(struct vmm_input_dev *idev,
 	return 0;
 }
 
-void vmm_input_alloc_absinfo(struct vmm_input_dev *idev)
+void input_alloc_absinfo(struct input_dev *idev)
 {
 	if (!idev->absinfo) {
 		idev->absinfo = 
-			vmm_malloc(ABS_CNT * sizeof(struct vmm_input_absinfo));
+			vmm_malloc(ABS_CNT * sizeof(struct input_absinfo));
 	}
 
 	BUG_ON(!idev->absinfo);
 }
-VMM_EXPORT_SYMBOL(vmm_input_alloc_absinfo);
+VMM_EXPORT_SYMBOL(input_alloc_absinfo);
 
-void vmm_input_set_abs_params(struct vmm_input_dev *idev, unsigned int axis,
+void input_set_abs_params(struct input_dev *idev, unsigned int axis,
 			  int min, int max, int fuzz, int flat)
 {
-	struct vmm_input_absinfo *absinfo;
+	struct input_absinfo *absinfo;
 
-	vmm_input_alloc_absinfo(idev);
+	input_alloc_absinfo(idev);
 	if (!idev->absinfo)
 		return;
 
@@ -578,10 +578,10 @@ void vmm_input_set_abs_params(struct vmm_input_dev *idev, unsigned int axis,
 
 	idev->absbit[BIT_WORD(axis)] |= BIT_MASK(axis);
 }
-VMM_EXPORT_SYMBOL(vmm_input_set_abs_params);
+VMM_EXPORT_SYMBOL(input_set_abs_params);
 
-int vmm_input_get_keycode(struct vmm_input_dev *idev, 
-			  struct vmm_input_keymap_entry *ke)
+int input_get_keycode(struct input_dev *idev, 
+			  struct input_keymap_entry *ke)
 {
 	irq_flags_t flags;
 	int rc;
@@ -592,10 +592,10 @@ int vmm_input_get_keycode(struct vmm_input_dev *idev,
 
 	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_input_get_keycode);
+VMM_EXPORT_SYMBOL(input_get_keycode);
 
-int vmm_input_set_keycode(struct vmm_input_dev *idev,
-			  const struct vmm_input_keymap_entry *ke)
+int input_set_keycode(struct input_dev *idev,
+			  const struct input_keymap_entry *ke)
 {
 	int rc;
 	irq_flags_t flags;
@@ -633,13 +633,13 @@ int vmm_input_set_keycode(struct vmm_input_dev *idev,
 
 	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_input_set_keycode);
+VMM_EXPORT_SYMBOL(input_set_keycode);
 
-struct vmm_input_dev *vmm_input_alloc_device(void)
+struct input_dev *input_allocate_device(void)
 {
-	struct vmm_input_dev *idev;
+	struct input_dev *idev;
 
-	idev = vmm_zalloc(sizeof(struct vmm_input_dev));
+	idev = vmm_zalloc(sizeof(struct input_dev));
 	if (!idev) {
 		return NULL;
 	}
@@ -650,17 +650,17 @@ struct vmm_input_dev *vmm_input_alloc_device(void)
 
 	return idev;
 }
-VMM_EXPORT_SYMBOL(vmm_input_alloc_device);
+VMM_EXPORT_SYMBOL(input_allocate_device);
 
-void vmm_input_free_device(struct vmm_input_dev *idev)
+void input_free_device(struct input_dev *idev)
 {
 	if (!idev) {
 		vmm_free(idev);
 	}
 }
-VMM_EXPORT_SYMBOL(vmm_input_free_device);
+VMM_EXPORT_SYMBOL(input_free_device);
 
-static unsigned int input_estimate_events_per_packet(struct vmm_input_dev *idev)
+static unsigned int input_estimate_events_per_packet(struct input_dev *idev)
 {
 	int mt_slots;
 	int i;
@@ -682,7 +682,7 @@ static unsigned int input_estimate_events_per_packet(struct vmm_input_dev *idev)
 
 	for (i = 0; i < ABS_CNT; i++) {
 		if (test_bit(i, idev->absbit)) {
-			if (vmm_input_is_mt_axis(i)) {
+			if (input_is_mt_axis(i)) {
 				events += mt_slots;
 			} else {
 				events++;
@@ -706,7 +706,7 @@ static unsigned int input_estimate_events_per_packet(struct vmm_input_dev *idev)
 				sizeof(dev->bits##bit));		\
 	} while (0)
 
-static void input_cleanse_bitmasks(struct vmm_input_dev *idev)
+static void input_cleanse_bitmasks(struct input_dev *idev)
 {
 	INPUT_CLEANSE_BITMASK(idev, KEY, key);
 	INPUT_CLEANSE_BITMASK(idev, REL, rel);
@@ -718,7 +718,7 @@ static void input_cleanse_bitmasks(struct vmm_input_dev *idev)
 	INPUT_CLEANSE_BITMASK(idev, SW, sw);
 }
 
-int vmm_input_register_device(struct vmm_input_dev *idev)
+int input_register_device(struct input_dev *idev)
 {
 	int i, rc;
 	irq_flags_t flags, flags1;
@@ -742,7 +742,7 @@ int vmm_input_register_device(struct vmm_input_dev *idev)
 	cd->dev = idev->dev;
 	cd->priv = idev;
 
-	rc = vmm_devdrv_register_classdev(VMM_INPUT_DEV_CLASS_NAME, cd);
+	rc = vmm_devdrv_register_classdev(INPUT_DEV_CLASS_NAME, cd);
 	if (rc != VMM_OK) {
 		goto free_classdev;
 	}
@@ -803,9 +803,9 @@ free_classdev:
 	vmm_free(cd);
 	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_input_register_device);
+VMM_EXPORT_SYMBOL(input_register_device);
 
-int vmm_input_unregister_device(struct vmm_input_dev *idev)
+int input_unregister_device(struct input_dev *idev)
 {
 	int rc;
 	irq_flags_t flags;
@@ -828,25 +828,25 @@ int vmm_input_unregister_device(struct vmm_input_dev *idev)
 	}
 	vmm_spin_unlock_irqrestore(&idev->ops_lock, flags);
 
-	cd = vmm_devdrv_find_classdev(VMM_INPUT_DEV_CLASS_NAME, idev->phys);
+	cd = vmm_devdrv_find_classdev(INPUT_DEV_CLASS_NAME, idev->phys);
 	if (!cd) {
 		return VMM_EFAIL;
 	}
 
-	rc = vmm_devdrv_unregister_classdev(VMM_INPUT_DEV_CLASS_NAME, cd);
+	rc = vmm_devdrv_unregister_classdev(INPUT_DEV_CLASS_NAME, cd);
 	if (rc == VMM_OK) {
 		vmm_free(cd);
 	}
 
 	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_input_unregister_device);
+VMM_EXPORT_SYMBOL(input_unregister_device);
 
 /*
  * Simulate keyup events for all keys that are marked as pressed.
  * The function must be called with dev->event_lock held.
  */
-static void input_dev_release_keys(struct vmm_input_dev *idev)
+static void input_dev_release_keys(struct input_dev *idev)
 {
 	int code;
 
@@ -861,7 +861,7 @@ static void input_dev_release_keys(struct vmm_input_dev *idev)
 	}
 }
 
-void vmm_input_reset_device(struct vmm_input_dev *idev)
+void input_reset_device(struct input_dev *idev)
 {
 	irq_flags_t flags, flags1;
 
@@ -880,9 +880,9 @@ void vmm_input_reset_device(struct vmm_input_dev *idev)
 
 	vmm_spin_unlock_irqrestore(&idev->ops_lock, flags);
 }
-VMM_EXPORT_SYMBOL(vmm_input_reset_device);
+VMM_EXPORT_SYMBOL(input_reset_device);
 
-int vmm_input_flush_device(struct vmm_input_dev *idev)
+int input_flush_device(struct input_dev *idev)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
@@ -899,47 +899,47 @@ int vmm_input_flush_device(struct vmm_input_dev *idev)
 
 	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_input_flush_device);
+VMM_EXPORT_SYMBOL(input_flush_device);
 
-struct vmm_input_dev *vmm_input_find_device(const char *phys)
+struct input_dev *input_find_device(const char *phys)
 {
 	struct vmm_classdev *cd;
 
-	cd = vmm_devdrv_find_classdev(VMM_INPUT_DEV_CLASS_NAME, phys);
+	cd = vmm_devdrv_find_classdev(INPUT_DEV_CLASS_NAME, phys);
 	if (!cd) {
 		return NULL;
 	}
 
 	return cd->priv;
 }
-VMM_EXPORT_SYMBOL(vmm_input_find_device);
+VMM_EXPORT_SYMBOL(input_find_device);
 
-struct vmm_input_dev *vmm_input_get_device(int index)
+struct input_dev *input_get_device(int index)
 {
 	struct vmm_classdev *cd;
 
-	cd = vmm_devdrv_classdev(VMM_INPUT_DEV_CLASS_NAME, index);
+	cd = vmm_devdrv_classdev(INPUT_DEV_CLASS_NAME, index);
 	if (!cd) {
 		return NULL;
 	}
 
 	return cd->priv;
 }
-VMM_EXPORT_SYMBOL(vmm_input_get_device);
+VMM_EXPORT_SYMBOL(input_get_device);
 
-u32 vmm_input_count_device(void)
+u32 input_count_device(void)
 {
-	return vmm_devdrv_classdev_count(VMM_INPUT_DEV_CLASS_NAME);
+	return vmm_devdrv_classdev_count(INPUT_DEV_CLASS_NAME);
 }
-VMM_EXPORT_SYMBOL(vmm_input_count_device);
+VMM_EXPORT_SYMBOL(input_count_device);
 
-int vmm_input_register_handler(struct vmm_input_handler *ihnd)
+int input_register_handler(struct input_handler *ihnd)
 {
 	int i;
 	bool found;
 	irq_flags_t flags;
 	struct dlist *l;
-	struct vmm_input_handler *ih;
+	struct input_handler *ih;
 
 	if (!(ihnd && ihnd->name && ihnd->event)) {
 		return VMM_EFAIL;
@@ -951,7 +951,7 @@ int vmm_input_register_handler(struct vmm_input_handler *ihnd)
 	vmm_spin_lock_irqsave(&ictrl.hnd_list_lock, flags);
 
 	list_for_each(l, &ictrl.hnd_list) {
-		ih = list_entry(l, struct vmm_input_handler, head);
+		ih = list_entry(l, struct input_handler, head);
 		if (strcmp(ih->name, ihnd->name) == 0) {
 			found = TRUE;
 			break;
@@ -975,14 +975,14 @@ int vmm_input_register_handler(struct vmm_input_handler *ihnd)
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_input_register_handler);
+VMM_EXPORT_SYMBOL(input_register_handler);
 
-int vmm_input_unregister_handler(struct vmm_input_handler *ihnd)
+int input_unregister_handler(struct input_handler *ihnd)
 {
 	bool found;
 	irq_flags_t flags;
 	struct dlist *l;
-	struct vmm_input_handler *ih;
+	struct input_handler *ih;
 
 	if (!ihnd) {
 		return VMM_EFAIL;
@@ -998,7 +998,7 @@ int vmm_input_unregister_handler(struct vmm_input_handler *ihnd)
 	ih = NULL;
 	found = FALSE;
 	list_for_each(l, &ictrl.hnd_list) {
-		ih = list_entry(l, struct vmm_input_handler, head);
+		ih = list_entry(l, struct input_handler, head);
 		if (strcmp(ih->name, ihnd->name) == 0) {
 			found = TRUE;
 			break;
@@ -1016,14 +1016,14 @@ int vmm_input_unregister_handler(struct vmm_input_handler *ihnd)
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_input_unregister_handler);
+VMM_EXPORT_SYMBOL(input_unregister_handler);
 
-int vmm_input_connect_handler(struct vmm_input_handler *ihnd)
+int input_connect_handler(struct input_handler *ihnd)
 {
 	int i, rc;
 	irq_flags_t flags, flags1;
 	struct dlist *l;
-	struct vmm_input_dev *idev;
+	struct input_dev *idev;
 
 	if (!ihnd || ihnd->connected) {
 		return VMM_EFAIL;
@@ -1042,7 +1042,7 @@ int vmm_input_connect_handler(struct vmm_input_handler *ihnd)
 
 		vmm_spin_lock_irqsave(&ictrl.dev_list_lock, flags);
 		list_for_each(l, &ictrl.dev_list) {
-			idev = list_entry(l, struct vmm_input_dev, head);
+			idev = list_entry(l, struct input_dev, head);
 			if (!test_bit(i, &idev->evbit[0])) {
 				continue;
 			}
@@ -1064,14 +1064,14 @@ int vmm_input_connect_handler(struct vmm_input_handler *ihnd)
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_input_connect_handler);
+VMM_EXPORT_SYMBOL(input_connect_handler);
 
-int vmm_input_disconnect_handler(struct vmm_input_handler *ihnd)
+int input_disconnect_handler(struct input_handler *ihnd)
 {
 	int i;
 	irq_flags_t flags, flags1;
 	struct dlist *l;
-	struct vmm_input_dev *idev;
+	struct input_dev *idev;
 
 	if (!ihnd || !ihnd->connected) {
 		return VMM_EFAIL;
@@ -1091,7 +1091,7 @@ int vmm_input_disconnect_handler(struct vmm_input_handler *ihnd)
 
 		vmm_spin_lock_irqsave(&ictrl.dev_list_lock, flags);
 		list_for_each(l, &ictrl.dev_list) {
-			idev = list_entry(l, struct vmm_input_dev, head);
+			idev = list_entry(l, struct input_dev, head);
 			if (!test_bit(i, &idev->evbit[0])) {
 				continue;
 			}
@@ -1111,14 +1111,14 @@ int vmm_input_disconnect_handler(struct vmm_input_handler *ihnd)
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_input_disconnect_handler);
+VMM_EXPORT_SYMBOL(input_disconnect_handler);
 
-struct vmm_input_handler *vmm_input_find_handler(const char *name)
+struct input_handler *input_find_handler(const char *name)
 {
 	bool found;
 	irq_flags_t flags;
 	struct dlist *l;
-	struct vmm_input_handler *ihnd;
+	struct input_handler *ihnd;
 
 	if (!name) {
 		return NULL;
@@ -1130,7 +1130,7 @@ struct vmm_input_handler *vmm_input_find_handler(const char *name)
 	vmm_spin_lock_irqsave(&ictrl.hnd_list_lock, flags);
 
 	list_for_each(l, &ictrl.hnd_list) {
-		ihnd = list_entry(l, struct vmm_input_handler, head);
+		ihnd = list_entry(l, struct input_handler, head);
 		if (strcmp(ihnd->name, name) == 0) {
 			found = TRUE;
 			break;
@@ -1145,14 +1145,14 @@ struct vmm_input_handler *vmm_input_find_handler(const char *name)
 
 	return ihnd;
 }
-VMM_EXPORT_SYMBOL(vmm_input_find_handler);
+VMM_EXPORT_SYMBOL(input_find_handler);
 
-struct vmm_input_handler *vmm_input_get_handler(int index)
+struct input_handler *input_get_handler(int index)
 {
 	bool found;
 	irq_flags_t flags;
 	struct dlist *l;
-	struct vmm_input_handler *ret;
+	struct input_handler *ret;
 
 	if (index < 0) {
 		return NULL;
@@ -1164,7 +1164,7 @@ struct vmm_input_handler *vmm_input_get_handler(int index)
 	vmm_spin_lock_irqsave(&ictrl.hnd_list_lock, flags);
 
 	list_for_each(l, &ictrl.hnd_list) {
-		ret = list_entry(l, struct vmm_input_handler, head);
+		ret = list_entry(l, struct input_handler, head);
 		if (!index) {
 			found = TRUE;
 			break;
@@ -1180,9 +1180,9 @@ struct vmm_input_handler *vmm_input_get_handler(int index)
 
 	return ret;
 }
-VMM_EXPORT_SYMBOL(vmm_input_get_handler);
+VMM_EXPORT_SYMBOL(input_get_handler);
 
-u32 vmm_input_count_handler(void)
+u32 input_count_handler(void)
 {
 	u32 retval = 0;
 	irq_flags_t flags;
@@ -1198,16 +1198,16 @@ u32 vmm_input_count_handler(void)
 
 	return retval;
 }
-VMM_EXPORT_SYMBOL(vmm_input_count_handler);
+VMM_EXPORT_SYMBOL(input_count_handler);
 
-static int __init vmm_input_init(void)
+static int __init input_init(void)
 {
 	int i, rc;
 	struct vmm_class *c;
 
 	vmm_printf("Initialize Input Device Framework\n");
 
-	memset(&ictrl, 0, sizeof(struct vmm_input_ctrl));
+	memset(&ictrl, 0, sizeof(struct input_ctrl));
 
 	INIT_SPIN_LOCK(&ictrl.dev_list_lock);
 	INIT_LIST_HEAD(&ictrl.dev_list);
@@ -1225,7 +1225,7 @@ static int __init vmm_input_init(void)
 	}
 
 	INIT_LIST_HEAD(&c->head);
-	if (strlcpy(c->name, VMM_INPUT_DEV_CLASS_NAME, sizeof(c->name)) >=
+	if (strlcpy(c->name, INPUT_DEV_CLASS_NAME, sizeof(c->name)) >=
             sizeof(c->name)) {
 		rc = VMM_EOVERFLOW;
 		goto free_class;
@@ -1244,12 +1244,12 @@ free_class:
 	return rc;
 }
 
-static void vmm_input_exit(void)
+static void input_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
 
-	c = vmm_devdrv_find_class(VMM_INPUT_DEV_CLASS_NAME);
+	c = vmm_devdrv_find_class(INPUT_DEV_CLASS_NAME);
 	if (!c) {
 		return;
 	}

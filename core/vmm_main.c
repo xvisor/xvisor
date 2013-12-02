@@ -51,7 +51,7 @@
 #include <arch_board.h>
 
 /* Optional includes */
-#include <rtc/vmm_rtcdev.h>
+#include <drv/rtc.h>
 
 void __noreturn vmm_hang(void)
 {
@@ -67,7 +67,7 @@ static void system_init_work(struct vmm_work *work)
 	u32 c, freed;
 	struct vmm_chardev *cdev;
 #if defined(CONFIG_RTC)
-	struct vmm_rtcdev *rdev;
+	struct rtc_device *rdev;
 #endif
 	struct vmm_devtree_node *node, *node1;
 
@@ -185,16 +185,16 @@ static void system_init_work(struct vmm_work *work)
 		}
 
 #if defined(CONFIG_RTC)
-		/* Find rtc device based on rtcdev attribute */
+		/* Find rtc device based on rtc_device attribute */
 		str = vmm_devtree_attrval(node, VMM_DEVTREE_RTCDEV_ATTR_NAME);
-		if (!(rdev = vmm_rtcdev_find(str))) {
+		if (!(rdev = rtc_device_find(str))) {
 			if ((node1 = vmm_devtree_getnode(str))) {
-				rdev = vmm_rtcdev_find(node1->name);
+				rdev = rtc_device_find(node1->name);
 			}
 		}
 		/* Syncup wallclock time with chosen rtc device */
 		if (rdev) {
-			ret = vmm_rtcdev_sync_wallclock(rdev);
+			ret = rtc_device_sync_wallclock(rdev);
 			vmm_printf("Syncup wallclock using %s", rdev->name);
 			if (ret) {
 				vmm_printf("(error %d)", ret);

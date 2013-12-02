@@ -21,6 +21,29 @@
 # @brief list of driver graphics objects
 # */
 
+drivers-objs-$(CONFIG_FB)+= video/fb.o
+
+fb-y += fbmem.o
+fb-y += fbnotify.o
+fb-y += fbcmap.o
+fb-y += fbmon.o
+fb-y += fbcvt.o
+fb-y += modedb.o
+
+fb-$(CONFIG_FB_CFB_COPYAREA)  += cfbcopyarea.o
+fb-$(CONFIG_FB_CFB_FILLRECT)  += cfbfillrect.o
+fb-$(CONFIG_FB_CFB_IMAGEBLIT) += cfbimgblt.o
+
+fb-$(CONFIG_FB_SYS_COPYAREA)  += syscopyarea.o
+fb-$(CONFIG_FB_SYS_FILLRECT)  += sysfillrect.o
+fb-$(CONFIG_FB_SYS_IMAGEBLIT) += sysimgblt.o
+
+%/fb.o: $(foreach obj,$(fb-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/fb.dep: $(foreach dep,$(fb-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)
+
 drivers-objs-$(CONFIG_FB_ARMCLCD)+= video/amba-clcd.o
 drivers-objs-$(CONFIG_FB_VESA)+= video/vesafb.o
 

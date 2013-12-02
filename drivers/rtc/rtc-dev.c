@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_rtcdev.c
+ * @file rtc-dev.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Real-Time Clock Device framework source
  */
@@ -27,19 +27,18 @@
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
 #include <vmm_wallclock.h>
-#include <rtc/vmm_rtcdev.h>
 #include <libs/list.h>
 #include <libs/stringlib.h>
+#include <drv/rtc.h>
 
 #define MODULE_DESC			"RTC Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		VMM_RTCDEV_CLASS_IPRIORITY
-#define	MODULE_INIT			vmm_rtcdev_init
-#define	MODULE_EXIT			vmm_rtcdev_exit
+#define MODULE_IPRIORITY		RTC_DEVICE_CLASS_IPRIORITY
+#define	MODULE_INIT			rtc_device_init
+#define	MODULE_EXIT			rtc_device_exit
 
-int vmm_rtcdev_get_time(struct vmm_rtcdev *rdev,
-			struct vmm_rtc_time *tm)
+int rtc_device_get_time(struct rtc_device *rdev, struct rtc_time *tm)
 {
 	if (rdev && tm && rdev->get_time) {
 		return rdev->get_time(rdev, tm);
@@ -47,10 +46,9 @@ int vmm_rtcdev_get_time(struct vmm_rtcdev *rdev,
 
 	return VMM_EFAIL;
 }
-VMM_EXPORT_SYMBOL(vmm_rtcdev_get_time);
+VMM_EXPORT_SYMBOL(rtc_device_get_time);
 
-int vmm_rtcdev_set_time(struct vmm_rtcdev *rdev,
-			struct vmm_rtc_time *tm)
+int rtc_device_set_time(struct rtc_device *rdev, struct rtc_time *tm)
 {
 	if (rdev && rdev->set_time) {
 		return rdev->set_time(rdev, tm);
@@ -58,20 +56,20 @@ int vmm_rtcdev_set_time(struct vmm_rtcdev *rdev,
 
 	return VMM_EFAIL;
 }
-VMM_EXPORT_SYMBOL(vmm_rtcdev_set_time);
+VMM_EXPORT_SYMBOL(rtc_device_set_time);
 
-int vmm_rtcdev_sync_wallclock(struct vmm_rtcdev *rdev)
+int rtc_device_sync_wallclock(struct rtc_device *rdev)
 {
 	int rc;
 	struct vmm_timezone tz, utc_tz;
 	struct vmm_timeval tv;
-	struct vmm_rtc_time tm;
+	struct rtc_time tm;
 
 	if (!rdev) {
 		return VMM_EFAIL;
 	}
 
-	if ((rc = vmm_rtcdev_get_time(rdev, &tm))) {
+	if ((rc = rtc_device_get_time(rdev, &tm))) {
 		return rc;
 	}
 
@@ -100,14 +98,14 @@ int vmm_rtcdev_sync_wallclock(struct vmm_rtcdev *rdev)
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_rtcdev_sync_wallclock);
+VMM_EXPORT_SYMBOL(rtc_device_sync_wallclock);
 
-int vmm_rtcdev_sync_device(struct vmm_rtcdev *rdev)
+int rtc_device_sync_device(struct rtc_device *rdev)
 {
 	int rc;
 	struct vmm_timezone tz;
 	struct vmm_timeval tv;
-	struct vmm_rtc_time tm;
+	struct rtc_time tm;
 
 	if (!rdev) {
 		return VMM_EFAIL;
@@ -118,17 +116,17 @@ int vmm_rtcdev_sync_device(struct vmm_rtcdev *rdev)
 	}
 
 	tv.tv_sec -= tz.tz_minuteswest * 60;
-	vmm_rtc_time_to_tm((unsigned long)tv.tv_sec, &tm);
+	rtc_time_to_tm((unsigned long)tv.tv_sec, &tm);
 
-	if ((rc = vmm_rtcdev_set_time(rdev, &tm))) {
+	if ((rc = rtc_device_set_time(rdev, &tm))) {
 		return rc;
 	}
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_rtcdev_sync_device);
+VMM_EXPORT_SYMBOL(rtc_device_sync_device);
 
-int vmm_rtcdev_register(struct vmm_rtcdev *rdev)
+int rtc_device_register(struct rtc_device *rdev)
 {
 	int rc;
 	struct vmm_classdev *cd;
@@ -153,7 +151,7 @@ int vmm_rtcdev_register(struct vmm_rtcdev *rdev)
 	cd->dev = rdev->dev;
 	cd->priv = rdev;
 
-	rc = vmm_devdrv_register_classdev(VMM_RTCDEV_CLASS_NAME, cd);
+	rc = vmm_devdrv_register_classdev(RTC_DEVICE_CLASS_NAME, cd);
 	if (rc) {
 		goto free_classdev;
 	}
@@ -165,9 +163,9 @@ free_classdev:
 	return rc;
 
 }
-VMM_EXPORT_SYMBOL(vmm_rtcdev_register);
+VMM_EXPORT_SYMBOL(rtc_device_register);
 
-int vmm_rtcdev_unregister(struct vmm_rtcdev *rdev)
+int rtc_device_unregister(struct rtc_device *rdev)
 {
 	int rc;
 	struct vmm_classdev *cd;
@@ -176,53 +174,53 @@ int vmm_rtcdev_unregister(struct vmm_rtcdev *rdev)
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_devdrv_find_classdev(VMM_RTCDEV_CLASS_NAME, rdev->name);
+	cd = vmm_devdrv_find_classdev(RTC_DEVICE_CLASS_NAME, rdev->name);
 	if (!cd) {
 		return VMM_EFAIL;
 	}
 
-	rc = vmm_devdrv_unregister_classdev(VMM_RTCDEV_CLASS_NAME, cd);
+	rc = vmm_devdrv_unregister_classdev(RTC_DEVICE_CLASS_NAME, cd);
 	if (rc == VMM_OK) {
 		vmm_free(cd);
 	}
 
 	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_rtcdev_unregister);
+VMM_EXPORT_SYMBOL(rtc_device_unregister);
 
-struct vmm_rtcdev *vmm_rtcdev_find(const char *name)
+struct rtc_device *rtc_device_find(const char *name)
 {
 	struct vmm_classdev *cd;
 
-	cd = vmm_devdrv_find_classdev(VMM_RTCDEV_CLASS_NAME, name);
+	cd = vmm_devdrv_find_classdev(RTC_DEVICE_CLASS_NAME, name);
 	if (!cd) {
 		return NULL;
 	}
 
 	return cd->priv;
 }
-VMM_EXPORT_SYMBOL(vmm_rtcdev_find);
+VMM_EXPORT_SYMBOL(rtc_device_find);
 
-struct vmm_rtcdev *vmm_rtcdev_get(int num)
+struct rtc_device *rtc_device_get(int num)
 {
 	struct vmm_classdev *cd;
 
-	cd = vmm_devdrv_classdev(VMM_RTCDEV_CLASS_NAME, num);
+	cd = vmm_devdrv_classdev(RTC_DEVICE_CLASS_NAME, num);
 	if (!cd) {
 		return NULL;
 	}
 
 	return cd->priv;
 }
-VMM_EXPORT_SYMBOL(vmm_rtcdev_get);
+VMM_EXPORT_SYMBOL(rtc_device_get);
 
-u32 vmm_rtcdev_count(void)
+u32 rtc_device_count(void)
 {
-	return vmm_devdrv_classdev_count(VMM_RTCDEV_CLASS_NAME);
+	return vmm_devdrv_classdev_count(RTC_DEVICE_CLASS_NAME);
 }
-VMM_EXPORT_SYMBOL(vmm_rtcdev_count);
+VMM_EXPORT_SYMBOL(rtc_device_count);
 
-static int __init vmm_rtcdev_init(void)
+static int __init rtc_device_init(void)
 {
 	int rc;
 	struct vmm_class *c;
@@ -236,7 +234,7 @@ static int __init vmm_rtcdev_init(void)
 
 	INIT_LIST_HEAD(&c->head);
 
-	if (strlcpy(c->name, VMM_RTCDEV_CLASS_NAME, sizeof(c->name)) >=
+	if (strlcpy(c->name, RTC_DEVICE_CLASS_NAME, sizeof(c->name)) >=
 	    sizeof(c->name)) {
 		rc = VMM_EOVERFLOW;
 		goto free_class;
@@ -256,12 +254,12 @@ free_class:
 	return rc;
 }
 
-static void __exit vmm_rtcdev_exit(void)
+static void __exit rtc_device_exit(void)
 {
 	int rc;
 	struct vmm_class *c;
 
-	c = vmm_devdrv_find_class(VMM_RTCDEV_CLASS_NAME);
+	c = vmm_devdrv_find_class(RTC_DEVICE_CLASS_NAME);
 	if (!c) {
 		return;
 	}

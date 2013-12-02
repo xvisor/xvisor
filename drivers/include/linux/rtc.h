@@ -11,8 +11,7 @@
 #ifndef _LINUX_RTC_H_
 #define _LINUX_RTC_H_
 
-#include <rtc/vmm_rtclib.h>
-#include <rtc/vmm_rtcdev.h>
+#include <drv/rtc.h>
 
 /* FIXME: interrupt event flags */
 #define RTC_IRQF 0x80	/* Any of the following is active */
@@ -22,15 +21,5 @@
 
 /* FIXME: report interrupt event */
 #define rtc_update_irq(rtc,count,events)
-
-#define rtc_time		vmm_rtc_time
-#define rtc_wkalrm		vmm_rtc_wkalrm
-#define rtc_device		vmm_rtcdev
-
-#define rtc_month_days		vmm_rtc_month_days
-#define rtc_year_days		vmm_rtc_year_days
-#define rtc_valid_tm		vmm_rtc_valid_tm
-#define rtc_time_to_tm		vmm_rtc_time_to_tm
-#define rtc_tm_to_time		vmm_rtc_tm_to_time
 
 #endif

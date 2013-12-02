@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_sysimgblt.c
+ * @file sysimgblt.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief 1-bit/8-bit to 1-32 bit color expansion (sys-to-sys)
  * 
@@ -37,7 +37,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
-#include <fb/vmm_fb.h>
+#include <drv/fb.h>
 
 #define DEBUG
 
@@ -73,7 +73,7 @@ static const u32 cfb_tab32[] = {
 	0x00000000, 0xffffffff
 };
 
-static void color_imageblit(const struct vmm_fb_image *image, struct vmm_fb_info *p,
+static void color_imageblit(const struct fb_image *image, struct fb_info *p,
 			    void *dst1, u32 start_index, u32 pitch_index)
 {
 	/* Draw the penguin */
@@ -132,7 +132,7 @@ static void color_imageblit(const struct vmm_fb_image *image, struct vmm_fb_info
 	}
 }
 
-static void slow_imageblit(const struct vmm_fb_image *image, struct vmm_fb_info *p,
+static void slow_imageblit(const struct fb_image *image, struct fb_info *p,
 				  void *dst1, u32 fgcolor, u32 bgcolor,
 				  u32 start_index, u32 pitch_index)
 {
@@ -207,7 +207,7 @@ static void slow_imageblit(const struct vmm_fb_image *image, struct vmm_fb_info 
  *           fix->line_legth is divisible by 4;
  *           beginning and end of a scanline is dword aligned
  */
-static void fast_imageblit(const struct vmm_fb_image *image, struct vmm_fb_info *p,
+static void fast_imageblit(const struct fb_image *image, struct fb_info *p,
 				  void *dst1, u32 fgcolor, u32 bgcolor)
 {
 	u32 fgx = fgcolor, bgx = bgcolor, bpp = p->var.bits_per_pixel;
@@ -220,10 +220,10 @@ static void fast_imageblit(const struct vmm_fb_image *image, struct vmm_fb_info 
 
 	switch (bpp) {
 	case 8:
-		tab = vmm_fb_be_math(p) ? cfb_tab8_be : cfb_tab8_le;
+		tab = fb_be_math(p) ? cfb_tab8_be : cfb_tab8_le;
 		break;
 	case 16:
-		tab = vmm_fb_be_math(p) ? cfb_tab16_be : cfb_tab16_le;
+		tab = fb_be_math(p) ? cfb_tab16_be : cfb_tab16_le;
 		break;
 	case 32:
 	default:
@@ -261,7 +261,7 @@ static void fast_imageblit(const struct vmm_fb_image *image, struct vmm_fb_info 
 	}
 }
 
-void vmm_sys_imageblit(struct vmm_fb_info *p, const struct vmm_fb_image *image)
+void sys_imageblit(struct fb_info *p, const struct fb_image *image)
 {
 	u32 fgcolor, bgcolor, start_index, bitstart, pitch_index = 0;
 	u32 bpl = sizeof(u32), bpp = p->var.bits_per_pixel;
@@ -303,5 +303,5 @@ void vmm_sys_imageblit(struct vmm_fb_info *p, const struct vmm_fb_image *image)
 	} else
 		color_imageblit(image, p, dst1, start_index, pitch_index);
 }
-VMM_EXPORT_SYMBOL(vmm_sys_imageblit);
+VMM_EXPORT_SYMBOL(sys_imageblit);
 

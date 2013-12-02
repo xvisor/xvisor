@@ -1,7 +1,7 @@
 #ifndef _FB_DRAW_H
 #define _FB_DRAW_H
 
-#include <fb/vmm_fb.h>
+#include <drv/fb.h>
 
     /*
      *  Compose two values, using a bitmask as decision value
@@ -93,7 +93,7 @@ static inline unsigned long fb_rev_pixels_in_long(unsigned long val,
 	return val;
 }
 
-static inline u32 fb_shifted_pixels_mask_u32(struct vmm_fb_info *p, u32 index,
+static inline u32 fb_shifted_pixels_mask_u32(struct fb_info *p, u32 index,
 					     u32 bswapmask)
 {
 	u32 mask;
@@ -114,7 +114,7 @@ static inline u32 fb_shifted_pixels_mask_u32(struct vmm_fb_info *p, u32 index,
 	return mask;
 }
 
-static inline unsigned long fb_shifted_pixels_mask_long(struct vmm_fb_info *p,
+static inline unsigned long fb_shifted_pixels_mask_long(struct fb_info *p,
 							u32 index,
 							u32 bswapmask)
 {
@@ -137,7 +137,7 @@ static inline unsigned long fb_shifted_pixels_mask_long(struct vmm_fb_info *p,
 }
 
 
-static inline u32 fb_compute_bswapmask(struct vmm_fb_info *info)
+static inline u32 fb_compute_bswapmask(struct fb_info *info)
 {
 	u32 bswapmask = 0;
 	unsigned bpp = info->var.bits_per_pixel;

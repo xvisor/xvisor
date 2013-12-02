@@ -59,7 +59,7 @@
 #define MODULE_DESC                     "S3C RTC Driver"
 #define MODULE_AUTHOR                   "Jean-Christophe Dubois"
 #define MODULE_LICENSE                  "GPL"
-#define MODULE_IPRIORITY                (VMM_RTCDEV_CLASS_IPRIORITY+1)
+#define MODULE_IPRIORITY                (RTC_DEVICE_CLASS_IPRIORITY+1)
 #define MODULE_INIT                     s3c_rtc_driver_init
 #define MODULE_EXIT                     s3c_rtc_driver_exit
 
@@ -473,7 +473,7 @@ static int s3c_rtc_driver_remove(struct vmm_device *dev)
 	vmm_host_irq_unregister(s3c_rtc_tickno, rtc);
 
 	dev->priv = NULL;
-	vmm_rtcdev_unregister(rtc);
+	rtc_device_unregister(rtc);
 
 	s3c_rtc_setaie(rtc, 0);
 
@@ -536,7 +536,7 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 
 	s3c_rtcops.dev = pdev;
 
-	rc = vmm_rtcdev_register(&s3c_rtcops);
+	rc = rtc_device_register(&s3c_rtcops);
 
 	if (rc) {
 		dev_err(pdev, "cannot attach rtc\n");
@@ -603,7 +603,7 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 
  err_alarm_irq:
 	pdev->priv = NULL;
-	vmm_rtcdev_unregister(&s3c_rtcops);
+	rtc_device_unregister(&s3c_rtcops);
 
  err_nortc:
 	s3c_rtc_enable(pdev, 0);

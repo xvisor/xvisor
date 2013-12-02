@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_fbcmap.c
+ * @file fbcmap.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Colormap handling for frame buffer devices
  *
@@ -35,8 +35,8 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
-#include <fb/vmm_fb.h>
 #include <libs/stringlib.h>
+#include <drv/fb.h>
 
 static u16 red2[] __read_mostly = {
     0x0000, 0xaaaa
@@ -81,16 +81,16 @@ static u16 blue16[] __read_mostly = {
     0x5555, 0xffff, 0x5555, 0xffff, 0x5555, 0xffff, 0x5555, 0xffff
 };
 
-static const struct vmm_fb_cmap default_2_colors = {
+static const struct fb_cmap default_2_colors = {
     .len=2, .red=red2, .green=green2, .blue=blue2
 };
-static const struct vmm_fb_cmap default_8_colors = {
+static const struct fb_cmap default_8_colors = {
     .len=8, .red=red8, .green=green8, .blue=blue8
 };
-static const struct vmm_fb_cmap default_4_colors = {
+static const struct fb_cmap default_4_colors = {
     .len=4, .red=red4, .green=green4, .blue=blue4
 };
-static const struct vmm_fb_cmap default_16_colors = {
+static const struct fb_cmap default_16_colors = {
     .len=16, .red=red16, .green=green16, .blue=blue16
 };
 
@@ -109,13 +109,13 @@ static const struct vmm_fb_cmap default_16_colors = {
  *
  */
 
-int vmm_fb_alloc_cmap(struct vmm_fb_cmap *cmap, int len, int transp)
+int fb_alloc_cmap(struct fb_cmap *cmap, int len, int transp)
 {
 	int size = len * sizeof(u16);
 	int ret = VMM_ENOMEM;
 
 	if (cmap->len != len) {
-		vmm_fb_dealloc_cmap(cmap);
+		fb_dealloc_cmap(cmap);
 		if (!len)
 			return 0;
 
@@ -138,16 +138,16 @@ int vmm_fb_alloc_cmap(struct vmm_fb_cmap *cmap, int len, int transp)
 	}
 	cmap->start = 0;
 	cmap->len = len;
-	ret = vmm_fb_copy_cmap(vmm_fb_default_cmap(len), cmap);
+	ret = fb_copy_cmap(fb_default_cmap(len), cmap);
 	if (ret)
 		goto fail;
 	return 0;
 
 fail:
-	vmm_fb_dealloc_cmap(cmap);
+	fb_dealloc_cmap(cmap);
 	return ret;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_alloc_cmap);
+VMM_EXPORT_SYMBOL(fb_alloc_cmap);
 
 /**
  *      Deallocate a colormap
@@ -158,7 +158,7 @@ VMM_EXPORT_SYMBOL(vmm_fb_alloc_cmap);
  *
  */
 
-void vmm_fb_dealloc_cmap(struct vmm_fb_cmap *cmap)
+void fb_dealloc_cmap(struct fb_cmap *cmap)
 {
 	if (!cmap->len) {
 		return;
@@ -172,7 +172,7 @@ void vmm_fb_dealloc_cmap(struct vmm_fb_cmap *cmap)
 	cmap->red = cmap->green = cmap->blue = cmap->transp = NULL;
 	cmap->len = 0;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_dealloc_cmap);
+VMM_EXPORT_SYMBOL(fb_dealloc_cmap);
 
 /**
  *	Copy a colormap
@@ -182,7 +182,7 @@ VMM_EXPORT_SYMBOL(vmm_fb_dealloc_cmap);
  *	Copy contents of colormap from @from to @to.
  */
 
-int vmm_fb_copy_cmap(const struct vmm_fb_cmap *from, struct vmm_fb_cmap *to)
+int fb_copy_cmap(const struct fb_cmap *from, struct fb_cmap *to)
 {
 	int tooff = 0, fromoff = 0;
 	int size;
@@ -205,7 +205,7 @@ int vmm_fb_copy_cmap(const struct vmm_fb_cmap *from, struct vmm_fb_cmap *to)
 		memcpy(to->transp+tooff, from->transp+fromoff, size);
 	return 0;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_copy_cmap);
+VMM_EXPORT_SYMBOL(fb_copy_cmap);
 
 /**
  *	Set the colormap
@@ -218,7 +218,7 @@ VMM_EXPORT_SYMBOL(vmm_fb_copy_cmap);
  *
  */
 
-int vmm_fb_set_cmap(struct vmm_fb_cmap *cmap, struct vmm_fb_info *info)
+int fb_set_cmap(struct fb_cmap *cmap, struct fb_info *info)
 {
 	int i, start, rc = 0;
 	u16 *red, *green, *blue, *transp;
@@ -249,11 +249,11 @@ int vmm_fb_set_cmap(struct vmm_fb_cmap *cmap, struct vmm_fb_info *info)
 		}
 	}
 	if (rc == 0)
-		vmm_fb_copy_cmap(cmap, &info->cmap);
+		fb_copy_cmap(cmap, &info->cmap);
 
 	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_set_cmap);
+VMM_EXPORT_SYMBOL(fb_set_cmap);
 
 /**
  *	Get default colormap
@@ -266,7 +266,7 @@ VMM_EXPORT_SYMBOL(vmm_fb_set_cmap);
  *
  */
 
-const struct vmm_fb_cmap *vmm_fb_default_cmap(int len)
+const struct fb_cmap *fb_default_cmap(int len)
 {
     if (len <= 2)
 	return &default_2_colors;
@@ -276,13 +276,13 @@ const struct vmm_fb_cmap *vmm_fb_default_cmap(int len)
 	return &default_8_colors;
     return &default_16_colors;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_default_cmap);
+VMM_EXPORT_SYMBOL(fb_default_cmap);
 
 /**
  *	Invert all defaults colormaps
  */
 
-void vmm_fb_invert_cmaps(void)
+void fb_invert_cmaps(void)
 {
     unsigned i;
 
@@ -307,5 +307,5 @@ void vmm_fb_invert_cmaps(void)
 	blue16[i] = ~blue16[i];
     }
 }
-VMM_EXPORT_SYMBOL(vmm_fb_invert_cmaps);
+VMM_EXPORT_SYMBOL(fb_invert_cmaps);
 

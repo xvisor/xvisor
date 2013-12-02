@@ -16,21 +16,20 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_cfbfillrect.c
+ * @file sysfillrect.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Generic software accelerated fill rectangle
- *
+ * @brief Generic fill rectangle (sys-to-sys)
+ * 
  * The source has been largely adapted from Linux 3.x or higher:
- * drivers/video/cfbfillrect.c
+ * drivers/video/sysfillrect.c
  *
- *  Generic fillrect for frame buffers with packed pixels of any depth.
+ *  Generic fillrect for frame buffers in system RAM with packed pixels of
+ *  any depth.
  *
- *      Copyright (C)  2000 James Simmons (jsimmons@linux-fbdev.org)
+ *  Based almost entirely from cfbfillrect.c (which is based almost entirely
+ *  on Geert Uytterhoeven's fillrect routine)
  *
- * NOTES:
- *
- *  Also need to add code to deal with cards endians that are different than
- *  the native cpu endians. I also need to deal with MSB position in the word.
+ *      Copyright (C)  2007 Antonino Daplas <adaplas@pol.net>
  *
  * The original code is licensed under the GPL.
  */
@@ -39,68 +38,60 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
-#include <fb/vmm_fb.h>
 #include <libs/bitops.h>
-#include "fb_draw.h"
+#include <drv/fb.h>
 
-#if BITS_PER_LONG == 32
-#  define FB_WRITEL fb_writel
-#  define FB_READL  fb_readl
-#else
-#  define FB_WRITEL fb_writeq
-#  define FB_READL  fb_readq
-#endif
+#include "fb_draw.h"
 
     /*
      *  Aligned pattern fill using 32/64-bit memory accesses
      */
 
 static void
-bitfill_aligned(struct vmm_fb_info *p, unsigned long *dst, int dst_idx,
-		unsigned long pat, unsigned n, int bits, u32 bswapmask)
+bitfill_aligned(struct fb_info *p, unsigned long *dst, int dst_idx,
+		unsigned long pat, unsigned n, int bits)
 {
 	unsigned long first, last;
 
 	if (!n)
 		return;
 
-	first = fb_shifted_pixels_mask_long(p, dst_idx, bswapmask);
-	last = ~fb_shifted_pixels_mask_long(p, umod32(dst_idx+n, bits), bswapmask);
+	first = FB_SHIFT_HIGH(p, ~0UL, dst_idx);
+	last = ~(FB_SHIFT_HIGH(p, ~0UL, umod32(dst_idx+n, bits)));
 
 	if (dst_idx+n <= bits) {
-		// Single word
+		/* Single word */
 		if (last)
 			first &= last;
-		FB_WRITEL(comp(pat, FB_READL(dst), first), dst);
+		*dst = comp(pat, *dst, first);
 	} else {
-		// Multiple destination words
+		/* Multiple destination words */
 
-		// Leading bits
-		if (first!= ~0UL) {
-			FB_WRITEL(comp(pat, FB_READL(dst), first), dst);
+		/* Leading bits */
+ 		if (first!= ~0UL) {
+			*dst = comp(pat, *dst, first);
 			dst++;
 			n -= bits - dst_idx;
 		}
 
-		// Main chunk
+		/* Main chunk */
 		n = udiv32(n, bits);
 		while (n >= 8) {
-			FB_WRITEL(pat, dst++);
-			FB_WRITEL(pat, dst++);
-			FB_WRITEL(pat, dst++);
-			FB_WRITEL(pat, dst++);
-			FB_WRITEL(pat, dst++);
-			FB_WRITEL(pat, dst++);
-			FB_WRITEL(pat, dst++);
-			FB_WRITEL(pat, dst++);
+			*dst++ = pat;
+			*dst++ = pat;
+			*dst++ = pat;
+			*dst++ = pat;
+			*dst++ = pat;
+			*dst++ = pat;
+			*dst++ = pat;
+			*dst++ = pat;
 			n -= 8;
 		}
 		while (n--)
-			FB_WRITEL(pat, dst++);
-
-		// Trailing bits
+			*dst++ = pat;
+		/* Trailing bits */
 		if (last)
-			FB_WRITEL(comp(pat, FB_READL(dst), last), dst);
+			*dst = comp(pat, *dst, last);
 	}
 }
 
@@ -113,7 +104,7 @@ bitfill_aligned(struct vmm_fb_info *p, unsigned long *dst, int dst_idx,
      */
 
 static void
-bitfill_unaligned(struct vmm_fb_info *p, unsigned long *dst, int dst_idx,
+bitfill_unaligned(struct fb_info *p, unsigned long *dst, int dst_idx,
 		  unsigned long pat, int left, int right, unsigned n, int bits)
 {
 	unsigned long first, last;
@@ -125,41 +116,41 @@ bitfill_unaligned(struct vmm_fb_info *p, unsigned long *dst, int dst_idx,
 	last = ~(FB_SHIFT_HIGH(p, ~0UL, umod32(dst_idx+n, bits)));
 
 	if (dst_idx+n <= bits) {
-		// Single word
+		/* Single word */
 		if (last)
 			first &= last;
-		FB_WRITEL(comp(pat, FB_READL(dst), first), dst);
+		*dst = comp(pat, *dst, first);
 	} else {
-		// Multiple destination words
-		// Leading bits
+		/* Multiple destination words */
+		/* Leading bits */
 		if (first) {
-			FB_WRITEL(comp(pat, FB_READL(dst), first), dst);
+			*dst = comp(pat, *dst, first);
 			dst++;
 			pat = pat << left | pat >> right;
 			n -= bits - dst_idx;
 		}
 
-		// Main chunk
+		/* Main chunk */
 		n = udiv32(n, bits);
 		while (n >= 4) {
-			FB_WRITEL(pat, dst++);
+			*dst++ = pat;
 			pat = pat << left | pat >> right;
-			FB_WRITEL(pat, dst++);
+			*dst++ = pat;
 			pat = pat << left | pat >> right;
-			FB_WRITEL(pat, dst++);
+			*dst++ = pat;
 			pat = pat << left | pat >> right;
-			FB_WRITEL(pat, dst++);
+			*dst++ = pat;
 			pat = pat << left | pat >> right;
 			n -= 4;
 		}
 		while (n--) {
-			FB_WRITEL(pat, dst++);
+			*dst++ = pat;
 			pat = pat << left | pat >> right;
 		}
 
-		// Trailing bits
+		/* Trailing bits */
 		if (last)
-			FB_WRITEL(comp(pat, FB_READL(dst), last), dst);
+			*dst = comp(pat, *dst, last);
 	}
 }
 
@@ -167,65 +158,50 @@ bitfill_unaligned(struct vmm_fb_info *p, unsigned long *dst, int dst_idx,
      *  Aligned pattern invert using 32/64-bit memory accesses
      */
 static void
-bitfill_aligned_rev(struct vmm_fb_info *p, unsigned long *dst,
-		    int dst_idx, unsigned long pat, unsigned n, int bits,
-		    u32 bswapmask)
+bitfill_aligned_rev(struct fb_info *p, unsigned long *dst, int dst_idx,
+		    unsigned long pat, unsigned n, int bits)
 {
-	unsigned long val = pat, dat;
+	unsigned long val = pat;
 	unsigned long first, last;
 
 	if (!n)
 		return;
 
-	first = fb_shifted_pixels_mask_long(p, dst_idx, bswapmask);
-	last = ~fb_shifted_pixels_mask_long(p, umod32(dst_idx+n, bits), bswapmask);
+	first = FB_SHIFT_HIGH(p, ~0UL, dst_idx);
+	last = ~(FB_SHIFT_HIGH(p, ~0UL, umod32(dst_idx+n, bits)));
 
 	if (dst_idx+n <= bits) {
-		// Single word
+		/* Single word */
 		if (last)
 			first &= last;
-		dat = FB_READL(dst);
-		FB_WRITEL(comp(dat ^ val, dat, first), dst);
+		*dst = comp(*dst ^ val, *dst, first);
 	} else {
-		// Multiple destination words
-		// Leading bits
+		/* Multiple destination words */
+		/* Leading bits */
 		if (first!=0UL) {
-			dat = FB_READL(dst);
-			FB_WRITEL(comp(dat ^ val, dat, first), dst);
+			*dst = comp(*dst ^ val, *dst, first);
 			dst++;
 			n -= bits - dst_idx;
 		}
 
-		// Main chunk
+		/* Main chunk */
 		n = udiv32(n, bits);
 		while (n >= 8) {
-			FB_WRITEL(FB_READL(dst) ^ val, dst);
-			dst++;
-			FB_WRITEL(FB_READL(dst) ^ val, dst);
-			dst++;
-			FB_WRITEL(FB_READL(dst) ^ val, dst);
-			dst++;
-			FB_WRITEL(FB_READL(dst) ^ val, dst);
-			dst++;
-			FB_WRITEL(FB_READL(dst) ^ val, dst);
-			dst++;
-			FB_WRITEL(FB_READL(dst) ^ val, dst);
-			dst++;
-			FB_WRITEL(FB_READL(dst) ^ val, dst);
-			dst++;
-			FB_WRITEL(FB_READL(dst) ^ val, dst);
-			dst++;
+			*dst++ ^= val;
+			*dst++ ^= val;
+			*dst++ ^= val;
+			*dst++ ^= val;
+			*dst++ ^= val;
+			*dst++ ^= val;
+			*dst++ ^= val;
+			*dst++ ^= val;
 			n -= 8;
 		}
-		while (n--) {
-			FB_WRITEL(FB_READL(dst) ^ val, dst);
-			dst++;
-		}
-		// Trailing bits
-		if (last) {
-			dat = FB_READL(dst);
-			FB_WRITEL(comp(dat ^ val, dat, last), dst);
-		}
+		while (n--)
+			*dst++ ^= val;
+		/* Trailing bits */
+		if (last)
+			*dst = comp(*dst ^ val, *dst, last);
 	}
 }
 
@@ -238,11 +214,11 @@ bitfill_aligned_rev(struct vmm_fb_info *p, unsigned long *dst,
      */
 
 static void
-bitfill_unaligned_rev(struct vmm_fb_info *p, unsigned long *dst,
-		      int dst_idx, unsigned long pat, int left, int right,
-		      unsigned n, int bits)
+bitfill_unaligned_rev(struct fb_info *p, unsigned long *dst, int dst_idx,
+		      unsigned long pat, int left, int right, unsigned n,
+		      int bits)
 {
-	unsigned long first, last, dat;
+	unsigned long first, last;
 
 	if (!n)
 		return;
@@ -251,55 +227,46 @@ bitfill_unaligned_rev(struct vmm_fb_info *p, unsigned long *dst,
 	last = ~(FB_SHIFT_HIGH(p, ~0UL, umod32(dst_idx+n, bits)));
 
 	if (dst_idx+n <= bits) {
-		// Single word
+		/* Single word */
 		if (last)
 			first &= last;
-		dat = FB_READL(dst);
-		FB_WRITEL(comp(dat ^ pat, dat, first), dst);
+		*dst = comp(*dst ^ pat, *dst, first);
 	} else {
-		// Multiple destination words
+		/* Multiple destination words */
 
-		// Leading bits
+		/* Leading bits */
 		if (first != 0UL) {
-			dat = FB_READL(dst);
-			FB_WRITEL(comp(dat ^ pat, dat, first), dst);
+			*dst = comp(*dst ^ pat, *dst, first);
 			dst++;
 			pat = pat << left | pat >> right;
 			n -= bits - dst_idx;
 		}
 
-		// Main chunk
+		/* Main chunk */
 		n = udiv32(n, bits);
 		while (n >= 4) {
-			FB_WRITEL(FB_READL(dst) ^ pat, dst);
-			dst++;
+			*dst++ ^= pat;
 			pat = pat << left | pat >> right;
-			FB_WRITEL(FB_READL(dst) ^ pat, dst);
-			dst++;
+			*dst++ ^= pat;
 			pat = pat << left | pat >> right;
-			FB_WRITEL(FB_READL(dst) ^ pat, dst);
-			dst++;
+			*dst++ ^= pat;
 			pat = pat << left | pat >> right;
-			FB_WRITEL(FB_READL(dst) ^ pat, dst);
-			dst++;
+			*dst++ ^= pat;
 			pat = pat << left | pat >> right;
 			n -= 4;
 		}
 		while (n--) {
-			FB_WRITEL(FB_READL(dst) ^ pat, dst);
-			dst++;
+			*dst ^= pat;
 			pat = pat << left | pat >> right;
 		}
 
-		// Trailing bits
-		if (last) {
-			dat = FB_READL(dst);
-			FB_WRITEL(comp(dat ^ pat, dat, last), dst);
-		}
+		/* Trailing bits */
+		if (last)
+			*dst = comp(*dst ^ pat, *dst, last);
 	}
 }
 
-void vmm_cfb_fillrect(struct vmm_fb_info *p, const struct vmm_fb_fillrect *rect)
+void sys_fillrect(struct fb_info *p, const struct fb_fillrect *rect)
 {
 	unsigned long pat, pat2, fg;
 	unsigned long width = rect->width, height = rect->height;
@@ -317,7 +284,7 @@ void vmm_cfb_fillrect(struct vmm_fb_info *p, const struct vmm_fb_fillrect *rect)
 	else
 		fg = rect->color;
 
-	pat = pixel_to_pat(bpp, fg);
+	pat = pixel_to_pat( bpp, fg);
 
 	dst = (unsigned long *)((unsigned long)p->screen_base & ~(bytes-1));
 	dst_idx = ((unsigned long)p->screen_base & (bytes - 1))*8;
@@ -327,11 +294,9 @@ void vmm_cfb_fillrect(struct vmm_fb_info *p, const struct vmm_fb_fillrect *rect)
 	if (p->fbops->fb_sync)
 		p->fbops->fb_sync(p);
 	if (!left) {
-		u32 bswapmask = fb_compute_bswapmask(p);
-		void (*fill_op32)(struct vmm_fb_info *p,
-				  unsigned long *dst, int dst_idx,
-		                  unsigned long pat, unsigned n, int bits,
-				  u32 bswapmask) = NULL;
+		void (*fill_op32)(struct fb_info *p, unsigned long *dst,
+				  int dst_idx, unsigned long pat, unsigned n,
+				  int bits) = NULL;
 
 		switch (rect->rop) {
 		case ROP_XOR:
@@ -341,20 +306,20 @@ void vmm_cfb_fillrect(struct vmm_fb_info *p, const struct vmm_fb_fillrect *rect)
 			fill_op32 = bitfill_aligned;
 			break;
 		default:
-			vmm_printf( "cfb_fillrect(): unknown rop, defaulting to ROP_COPY\n");
+			vmm_printf( "cfb_fillrect(): unknown rop, "
+				"defaulting to ROP_COPY\n");
 			fill_op32 = bitfill_aligned;
 			break;
 		}
 		while (height--) {
 			dst += dst_idx >> (ffs(bits) - 1);
 			dst_idx &= (bits - 1);
-			fill_op32(p, dst, dst_idx, pat, width*bpp, bits,
-				  bswapmask);
+			fill_op32(p, dst, dst_idx, pat, width*bpp, bits);
 			dst_idx += p->fix.line_length*8;
 		}
 	} else {
 		int right, r;
-		void (*fill_op)(struct vmm_fb_info *p, unsigned long *dst,
+		void (*fill_op)(struct fb_info *p, unsigned long *dst,
 				int dst_idx, unsigned long pat, int left,
 				int right, unsigned n, int bits) = NULL;
 #ifdef CONFIG_CPU_LE
@@ -371,7 +336,8 @@ void vmm_cfb_fillrect(struct vmm_fb_info *p, const struct vmm_fb_fillrect *rect)
 			fill_op = bitfill_unaligned;
 			break;
 		default:
-			vmm_printf("cfb_fillrect(): unknown rop, defaulting to ROP_COPY\n");
+			vmm_printf("sys_fillrect(): unknown rop, "
+				"defaulting to ROP_COPY\n");
 			fill_op = bitfill_unaligned;
 			break;
 		}
@@ -387,5 +353,4 @@ void vmm_cfb_fillrect(struct vmm_fb_info *p, const struct vmm_fb_fillrect *rect)
 		}
 	}
 }
-VMM_EXPORT_SYMBOL(vmm_cfb_fillrect);
-
+VMM_EXPORT_SYMBOL(sys_fillrect);

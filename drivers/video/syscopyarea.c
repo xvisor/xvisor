@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_syscopyarea.c
+ * @file syscopyarea.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Generic copyarea (sys-to-sys)
  * 
@@ -38,8 +38,9 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
-#include <fb/vmm_fb.h>
 #include <libs/bitops.h>
+#include <drv/fb.h>
+
 #include "fb_draw.h"
 
     /*
@@ -47,7 +48,7 @@
      */
 
 static void
-bitcpy(struct vmm_fb_info *p, unsigned long *dst, int dst_idx,
+bitcpy(struct fb_info *p, unsigned long *dst, int dst_idx,
 		const unsigned long *src, int src_idx, int bits, unsigned n)
 {
 	unsigned long first, last;
@@ -188,7 +189,7 @@ bitcpy(struct vmm_fb_info *p, unsigned long *dst, int dst_idx,
      */
 
 static void
-bitcpy_rev(struct vmm_fb_info *p, unsigned long *dst, int dst_idx,
+bitcpy_rev(struct fb_info *p, unsigned long *dst, int dst_idx,
 		const unsigned long *src, int src_idx, int bits, unsigned n)
 {
 	unsigned long first, last;
@@ -334,7 +335,7 @@ bitcpy_rev(struct vmm_fb_info *p, unsigned long *dst, int dst_idx,
 	}
 }
 
-void vmm_sys_copyarea(struct vmm_fb_info *p, const struct vmm_fb_copyarea *area)
+void sys_copyarea(struct fb_info *p, const struct fb_copyarea *area)
 {
 	u32 dx = area->dx, dy = area->dy, sx = area->sx, sy = area->sy;
 	u32 height = area->height, width = area->width;
@@ -390,5 +391,5 @@ void vmm_sys_copyarea(struct vmm_fb_info *p, const struct vmm_fb_copyarea *area)
 		}
 	}
 }
-VMM_EXPORT_SYMBOL(vmm_sys_copyarea);
+VMM_EXPORT_SYMBOL(sys_copyarea);
 

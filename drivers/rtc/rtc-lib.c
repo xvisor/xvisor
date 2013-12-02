@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_rtclib.c
+ * @file rtc-lib.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Real-Time Clock Library source
  *
@@ -33,7 +33,7 @@
 #include <vmm_error.h>
 #include <vmm_wallclock.h>
 #include <vmm_modules.h>
-#include <rtc/vmm_rtclib.h>
+#include <drv/rtc.h>
 
 static const unsigned char rtc_days_in_month[] = {
 	31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
@@ -48,32 +48,32 @@ static const unsigned short rtc_ydays[2][13] = {
 
 #define LEAPS_THRU_END_OF(y) ((y)/4 - (y)/100 + (y)/400)
 
-bool vmm_rtc_is_leap_year(unsigned int year)
+bool rtc_is_leap_year(unsigned int year)
 {
 	return (!(year % 4) && (year % 100)) || !(year % 400);
 }
-VMM_EXPORT_SYMBOL(vmm_rtc_is_leap_year);
+VMM_EXPORT_SYMBOL(rtc_is_leap_year);
 
-unsigned int vmm_rtc_month_days(unsigned int month, unsigned int year)
+unsigned int rtc_month_days(unsigned int month, unsigned int year)
 {
 	return rtc_days_in_month[month] + 
-		(vmm_rtc_is_leap_year(year) && month == 1);
+		(rtc_is_leap_year(year) && month == 1);
 }
-VMM_EXPORT_SYMBOL(vmm_rtc_month_days);
+VMM_EXPORT_SYMBOL(rtc_month_days);
 
-unsigned int vmm_rtc_year_days(unsigned int day, 
+unsigned int rtc_year_days(unsigned int day, 
 				unsigned int month, unsigned int year)
 {
-	return rtc_ydays[vmm_rtc_is_leap_year(year)][month] + day-1;
+	return rtc_ydays[rtc_is_leap_year(year)][month] + day-1;
 }
-VMM_EXPORT_SYMBOL(vmm_rtc_year_days);
+VMM_EXPORT_SYMBOL(rtc_year_days);
 
-bool vmm_rtc_valid_tm(struct vmm_rtc_time *tm)
+bool rtc_valid_tm(struct rtc_time *tm)
 {
 	if (tm->tm_year < 70
 		|| ((unsigned)tm->tm_mon) >= 12
 		|| tm->tm_mday < 1
-		|| tm->tm_mday > vmm_rtc_month_days(tm->tm_mon, tm->tm_year + 1900)
+		|| tm->tm_mday > rtc_month_days(tm->tm_mon, tm->tm_year + 1900)
 		|| ((unsigned)tm->tm_hour) >= 24
 		|| ((unsigned)tm->tm_min) >= 60
 		|| ((unsigned)tm->tm_sec) >= 60) {
@@ -81,12 +81,12 @@ bool vmm_rtc_valid_tm(struct vmm_rtc_time *tm)
 	}
 	return TRUE;
 }
-VMM_EXPORT_SYMBOL(vmm_rtc_valid_tm);
+VMM_EXPORT_SYMBOL(rtc_valid_tm);
 
 /* WARNING: this function will overflow on 2106-02-07 06:28:16 on
  * machines where long is 32-bit!
  */
-int vmm_rtc_tm_to_time(struct vmm_rtc_time *tm, unsigned long *time)
+int rtc_tm_to_time(struct rtc_time *tm, unsigned long *time)
 {
 	if (!tm || !time) {
 		return VMM_EFAIL;
@@ -101,9 +101,9 @@ int vmm_rtc_tm_to_time(struct vmm_rtc_time *tm, unsigned long *time)
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_rtc_tm_to_time);
+VMM_EXPORT_SYMBOL(rtc_tm_to_time);
 
-void vmm_rtc_time_to_tm(unsigned long time, struct vmm_rtc_time *tm)
+void rtc_time_to_tm(unsigned long time, struct rtc_time *tm)
 {
 	unsigned int month, year;
 	int days;
@@ -120,7 +120,7 @@ void vmm_rtc_time_to_tm(unsigned long time, struct vmm_rtc_time *tm)
 		- LEAPS_THRU_END_OF(1970 - 1);
 	if (days < 0) {
 		year -= 1;
-		days += 365 + vmm_rtc_is_leap_year(year);
+		days += 365 + rtc_is_leap_year(year);
 	}
 	tm->tm_year = year - 1900;
 	tm->tm_yday = days + 1;
@@ -128,7 +128,7 @@ void vmm_rtc_time_to_tm(unsigned long time, struct vmm_rtc_time *tm)
 	for (month = 0; month < 11; month++) {
 		int newdays;
 
-		newdays = days - vmm_rtc_month_days(month, year);
+		newdays = days - rtc_month_days(month, year);
 		if (newdays < 0)
 			break;
 		days = newdays;
@@ -141,5 +141,5 @@ void vmm_rtc_time_to_tm(unsigned long time, struct vmm_rtc_time *tm)
 	tm->tm_min = time / 60;
 	tm->tm_sec = time - tm->tm_min * 60;
 }
-VMM_EXPORT_SYMBOL(vmm_rtc_time_to_tm);
+VMM_EXPORT_SYMBOL(rtc_time_to_tm);
 

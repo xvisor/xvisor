@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_fbmon.c
+ * @file fbmon.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief EDID Parser & monitor helper routines
  *
@@ -50,8 +50,8 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
-#include <fb/vmm_fb.h>
 #include <libs/stringlib.h>
+#include <drv/fb.h>
 
 #include "edid.h"
 
@@ -313,7 +313,7 @@ static int edid_check_header(unsigned char *edid)
 	return err;
 }
 
-static void parse_vendor_block(unsigned char *block, struct vmm_fb_monspecs *specs)
+static void parse_vendor_block(unsigned char *block, struct fb_monspecs *specs)
 {
 	specs->manufacturer[0] = ((block[0] & 0x7c) >> 2) + '@';
 	specs->manufacturer[1] = ((block[0] & 0x03) << 3) +
@@ -332,7 +332,7 @@ static void parse_vendor_block(unsigned char *block, struct vmm_fb_monspecs *spe
 }
 
 static void get_dpms_capabilities(unsigned char flags,
-				  struct vmm_fb_monspecs *specs)
+				  struct fb_monspecs *specs)
 {
 	specs->dpms = 0;
 	if (flags & DPMS_ACTIVE_OFF)
@@ -347,7 +347,7 @@ static void get_dpms_capabilities(unsigned char flags,
 	       (flags & DPMS_STANDBY)    ? "yes" : "no");
 }
 
-static void get_chroma(unsigned char *block, struct vmm_fb_monspecs *specs)
+static void get_chroma(unsigned char *block, struct fb_monspecs *specs)
 {
 	int tmp;
 
@@ -403,16 +403,16 @@ static void get_chroma(unsigned char *block, struct vmm_fb_monspecs *specs)
 }
 
 static void calc_mode_timings(int xres, int yres, int refresh,
-			      struct vmm_fb_videomode *mode)
+			      struct fb_videomode *mode)
 {
-	struct vmm_fb_var_screeninfo *var;
+	struct fb_var_screeninfo *var;
 
-	var = vmm_zalloc(sizeof(struct vmm_fb_var_screeninfo));
+	var = vmm_zalloc(sizeof(struct fb_var_screeninfo));
 
 	if (var) {
 		var->xres = xres;
 		var->yres = yres;
-		vmm_fb_get_mode(FB_VSYNCTIMINGS | FB_IGNOREMON,
+		fb_get_mode(FB_VSYNCTIMINGS | FB_IGNOREMON,
 			    refresh, var, NULL);
 		mode->xres = xres;
 		mode->yres = yres;
@@ -430,7 +430,7 @@ static void calc_mode_timings(int xres, int yres, int refresh,
 	}
 }
 
-static int get_est_timing(unsigned char *block, struct vmm_fb_videomode *mode)
+static int get_est_timing(unsigned char *block, struct fb_videomode *mode)
 {
 	int num = 0;
 	unsigned char c;
@@ -515,7 +515,7 @@ static int get_est_timing(unsigned char *block, struct vmm_fb_videomode *mode)
 	return num;
 }
 
-static int get_std_timing(unsigned char *block, struct vmm_fb_videomode *mode)
+static int get_std_timing(unsigned char *block, struct fb_videomode *mode)
 {
 	int xres, yres = 0, refresh, ratio, i;
 
@@ -555,7 +555,7 @@ static int get_std_timing(unsigned char *block, struct vmm_fb_videomode *mode)
 }
 
 static int get_dst_timing(unsigned char *block,
-			  struct vmm_fb_videomode *mode)
+			  struct fb_videomode *mode)
 {
 	int j, num = 0;
 
@@ -566,7 +566,7 @@ static int get_dst_timing(unsigned char *block,
 }
 
 static void get_detailed_timing(unsigned char *block,
-				struct vmm_fb_videomode *mode)
+				struct fb_videomode *mode)
 {
 	mode->xres = H_ACTIVE;
 	mode->yres = V_ACTIVE;
@@ -610,19 +610,19 @@ static void get_detailed_timing(unsigned char *block,
  * @edid: EDID data
  * @dbsize: database size
  *
- * RETURNS: struct vmm_fb_videomode, @dbsize contains length of database
+ * RETURNS: struct fb_videomode, @dbsize contains length of database
  *
  * DESCRIPTION:
  * This function builds a mode database using the contents of the EDID
  * data
  */
-static struct vmm_fb_videomode *vmm_fb_create_modedb(unsigned char *edid, int *dbsize)
+static struct fb_videomode *fb_create_modedb(unsigned char *edid, int *dbsize)
 {
-	struct vmm_fb_videomode *mode, *m;
+	struct fb_videomode *mode, *m;
 	unsigned char *block;
 	int num = 0, i, first = 1;
 
-	mode = vmm_zalloc(50 * sizeof(struct vmm_fb_videomode));
+	mode = vmm_zalloc(50 * sizeof(struct fb_videomode));
 	if (mode == NULL)
 		return NULL;
 
@@ -669,10 +669,10 @@ static struct vmm_fb_videomode *vmm_fb_create_modedb(unsigned char *edid, int *d
 	}
 
 	*dbsize = num;
-	m = vmm_malloc(num * sizeof(struct vmm_fb_videomode));
+	m = vmm_malloc(num * sizeof(struct fb_videomode));
 	if (!m)
 		return mode;
-	memmove(m, mode, num * sizeof(struct vmm_fb_videomode));
+	memmove(m, mode, num * sizeof(struct fb_videomode));
 	vmm_free(mode);
 	return m;
 }
@@ -684,13 +684,13 @@ static struct vmm_fb_videomode *vmm_fb_create_modedb(unsigned char *edid, int *d
  * DESCRIPTION:
  * Destroy mode database created by fb_create_modedb
  */
-void vmm_fb_destroy_modedb(struct vmm_fb_videomode *modedb)
+void fb_destroy_modedb(struct fb_videomode *modedb)
 {
 	vmm_free(modedb);
 }
-VMM_EXPORT_SYMBOL(vmm_fb_destroy_modedb);
+VMM_EXPORT_SYMBOL(fb_destroy_modedb);
 
-static int fb_get_monitor_limits(unsigned char *edid, struct vmm_fb_monspecs *specs)
+static int fb_get_monitor_limits(unsigned char *edid, struct fb_monspecs *specs)
 {
 	int i, retval = 1;
 	unsigned char *block;
@@ -715,11 +715,11 @@ static int fb_get_monitor_limits(unsigned char *edid, struct vmm_fb_monspecs *sp
 
 	/* estimate monitor limits based on modes supported */
 	if (retval) {
-		struct vmm_fb_videomode *modes, *mode;
+		struct fb_videomode *modes, *mode;
 		int num_modes, hz, hscan, pixclock;
 		int vtotal, htotal;
 
-		modes = vmm_fb_create_modedb(edid, &num_modes);
+		modes = fb_create_modedb(edid, &num_modes);
 		if (!modes) {
 			DPRINTK("None Available\n");
 			return 1;
@@ -763,7 +763,7 @@ static int fb_get_monitor_limits(unsigned char *edid, struct vmm_fb_monspecs *sp
 				specs->vfmin = hz;
 		}
 		DPRINTK("Extrapolated\n");
-		vmm_fb_destroy_modedb(modes);
+		fb_destroy_modedb(modes);
 	}
 	DPRINTK("           H: %d-%dKHz V: %d-%dHz DCLK: %dMHz\n",
 		specs->hfmin/1000, specs->hfmax/1000, specs->vfmin,
@@ -771,7 +771,7 @@ static int fb_get_monitor_limits(unsigned char *edid, struct vmm_fb_monspecs *sp
 	return retval;
 }
 
-static void get_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
+static void get_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 {
 	unsigned char c, *block;
 
@@ -889,7 +889,7 @@ static void get_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
 	}
 }
 
-int vmm_fb_parse_edid(unsigned char *edid, struct vmm_fb_var_screeninfo *var)
+int fb_parse_edid(unsigned char *edid, struct fb_var_screeninfo *var)
 {
 	int i;
 	unsigned char *block;
@@ -931,9 +931,9 @@ int vmm_fb_parse_edid(unsigned char *edid, struct vmm_fb_var_screeninfo *var)
 	}
 	return 1;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_parse_edid);
+VMM_EXPORT_SYMBOL(fb_parse_edid);
 
-void vmm_fb_edid_to_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
+void fb_edid_to_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 {
 	unsigned char *block;
 	int i, found = 0;
@@ -947,7 +947,7 @@ void vmm_fb_edid_to_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
 	if (!(edid_check_header(edid)))
 		return;
 
-	memset(specs, 0, sizeof(struct vmm_fb_monspecs));
+	memset(specs, 0, sizeof(struct fb_monspecs));
 
 	specs->version = edid[EDID_STRUCT_VERSION];
 	specs->revision = edid[EDID_STRUCT_REVISION];
@@ -977,7 +977,7 @@ void vmm_fb_edid_to_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
 	DPRINTK("   Display Characteristics:\n");
 	get_monspecs(edid, specs);
 
-	specs->modedb = vmm_fb_create_modedb(edid, (int *)&specs->modedb_len);
+	specs->modedb = fb_create_modedb(edid, (int *)&specs->modedb_len);
 
 	/*
 	 * Workaround for buggy EDIDs that sets that the first
@@ -996,17 +996,17 @@ void vmm_fb_edid_to_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
 
 	DPRINTK("========================================\n");
 }
-VMM_EXPORT_SYMBOL(vmm_fb_edid_to_monspecs);
+VMM_EXPORT_SYMBOL(fb_edid_to_monspecs);
 
 /**
  * Add monitor video modes from E-EDID data
  * @edid:	128 byte array with an E-EDID block
  * @spacs:	monitor specs to be extended
  */
-void vmm_fb_edid_add_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
+void fb_edid_add_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 {
 	unsigned char *block;
-	struct vmm_fb_videomode *m;
+	struct fb_videomode *m;
 	int num = 0, i;
 	u8 svd[64], edt[(128 - 4) / DETAILED_TIMING_DESCRIPTION_SIZE];
 	u8 pos = 4, svd_n = 0;
@@ -1050,12 +1050,12 @@ void vmm_fb_edid_add_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs
 		return;
 
 	m = vmm_zalloc((specs->modedb_len + num + svd_n) *
-		       sizeof(struct vmm_fb_videomode));
+		       sizeof(struct fb_videomode));
 
 	if (!m)
 		return;
 
-	memcpy(m, specs->modedb, specs->modedb_len * sizeof(struct vmm_fb_videomode));
+	memcpy(m, specs->modedb, specs->modedb_len * sizeof(struct fb_videomode));
 
 	for (i = specs->modedb_len; i < specs->modedb_len + num; i++) {
 		get_detailed_timing(edid + edt[i - specs->modedb_len], &m[i]);
@@ -1081,7 +1081,7 @@ void vmm_fb_edid_add_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs
 	specs->modedb = m;
 	specs->modedb_len = specs->modedb_len + num + svd_n;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_edid_add_monspecs);
+VMM_EXPORT_SYMBOL(fb_edid_add_monspecs);
 
 /*
  * VESA Generalized Timing Formula (GTF)
@@ -1296,7 +1296,7 @@ static void fb_timings_dclk(struct __fb_timings *timings)
  * REQUIRES:
  * A valid info->monspecs, otherwise 'safe numbers' will be used.
  */
-int vmm_fb_get_mode(int flags, u32 val, struct vmm_fb_var_screeninfo *var, struct vmm_fb_info *info)
+int fb_get_mode(int flags, u32 val, struct fb_var_screeninfo *var, struct fb_info *info)
 {
 	struct __fb_timings *timings;
 	u32 interlace = 1, dscan = 1;
@@ -1390,35 +1390,35 @@ int vmm_fb_get_mode(int flags, u32 val, struct vmm_fb_var_screeninfo *var, struc
 	vmm_free(timings);
 	return err;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_get_mode);
+VMM_EXPORT_SYMBOL(fb_get_mode);
 #else
-int vmm_fb_parse_edid(unsigned char *edid, struct vmm_fb_var_screeninfo *var)
+int fb_parse_edid(unsigned char *edid, struct fb_var_screeninfo *var)
 {
 	return 1;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_parse_edid);
+VMM_EXPORT_SYMBOL(fb_parse_edid);
 
-void vmm_fb_edid_to_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
+void fb_edid_to_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 {
 }
-VMM_EXPORT_SYMBOL(vmm_fb_edid_to_monspecs);
+VMM_EXPORT_SYMBOL(fb_edid_to_monspecs);
 
-void vmm_fb_edid_add_monspecs(unsigned char *edid, struct vmm_fb_monspecs *specs)
+void fb_edid_add_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 {
 }
-VMM_EXPORT_SYMBOL(vmm_fb_edid_add_monspecs);
+VMM_EXPORT_SYMBOL(fb_edid_add_monspecs);
 
-void vmm_fb_destroy_modedb(struct vmm_fb_videomode *modedb)
+void fb_destroy_modedb(struct fb_videomode *modedb)
 {
 }
-VMM_EXPORT_SYMBOL(vmm_fb_destroy_modedb);
+VMM_EXPORT_SYMBOL(fb_destroy_modedb);
 
-int vmm_fb_get_mode(int flags, u32 val, struct vmm_fb_var_screeninfo *var,
-		struct vmm_fb_info *info)
+int fb_get_mode(int flags, u32 val, struct fb_var_screeninfo *var,
+		struct fb_info *info)
 {
 	return VMM_EINVALID;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_get_mode);
+VMM_EXPORT_SYMBOL(fb_get_mode);
 #endif /* CONFIG_FB_MODE_HELPERS */
 
 /*
@@ -1433,7 +1433,7 @@ VMM_EXPORT_SYMBOL(vmm_fb_get_mode);
  * REQUIRES:
  * A valid info->monspecs.
  */
-int vmm_fb_validate_mode(const struct vmm_fb_var_screeninfo *var, struct vmm_fb_info *info)
+int fb_validate_mode(const struct fb_var_screeninfo *var, struct fb_info *info)
 {
 	u32 hfreq, vfreq, htotal, vtotal, pixclock;
 	u32 hfmin, hfmax, vfmin, vfmax, dclkmin, dclkmax;
@@ -1483,5 +1483,5 @@ int vmm_fb_validate_mode(const struct vmm_fb_var_screeninfo *var, struct vmm_fb_
 		pixclock < dclkmin || pixclock > dclkmax) ?
 		VMM_EINVALID : 0;
 }
-VMM_EXPORT_SYMBOL(vmm_fb_validate_mode);
+VMM_EXPORT_SYMBOL(fb_validate_mode);
 

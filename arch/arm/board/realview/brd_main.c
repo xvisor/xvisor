@@ -255,7 +255,7 @@ int __init arch_board_final_init(void)
 	int rc;
 	struct vmm_devtree_node *node;
 #if defined(CONFIG_VTEMU)
-	struct vmm_fb_info *info;
+	struct fb_info *info;
 #endif
 
 	/* All VMM API's are available here */
@@ -279,7 +279,7 @@ int __init arch_board_final_init(void)
 	if (!node) {
 		return VMM_ENODEV;
 	}
-	info = vmm_fb_find(node->name);
+	info = fb_find(node->name);
 	if (info) {
 		realview_vt = vtemu_create(node->name, info, NULL);
 	}
