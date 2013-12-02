@@ -31,7 +31,8 @@
 #include <vmm_compiler.h>
 #include <libs/libfdt.h>
 #include <libs/stringlib.h>
-#include <realview_plat.h>
+#include <drv/realview.h>
+
 #include <smp_scu.h>
 #include <gic.h>
 

@@ -21,6 +21,7 @@
 # @brief list of driver objects
 # */
 
+drivers-objs-$(CONFIG_REALVIEW_CONFIG) += mfd/realview-sysreg.o
 drivers-objs-$(CONFIG_VEXPRESS_CONFIG) += mfd/vexpress-config.o
 drivers-objs-$(CONFIG_VEXPRESS_CONFIG) += mfd/vexpress-sysreg.o
 
