@@ -163,6 +163,12 @@ struct vmm_devtree_node {
 	struct dlist child_list;
 };
 
+#define devtree_for_each_attr(attr, node) \
+	list_for_each_entry(attr, &(node)->attr_list, head)
+
+#define devtree_for_each_node(child, node) \
+	list_for_each_entry(child, &(node)->child_list, head)
+
 #define VMM_MAX_PHANDLE_ARGS		8
 struct vmm_devtree_phandle_args {
 	struct vmm_devtree_node *node;
