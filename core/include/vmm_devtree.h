@@ -66,6 +66,7 @@
 #define VMM_DEVTREE_CPUS_NODE_NAME		"cpus"
 #define VMM_DEVTREE_INTERRUPTS_ATTR_NAME	"interrupts"
 #define VMM_DEVTREE_ENABLE_METHOD_ATTR_NAME	"enable-method"
+#define VMM_DEVTREE_CPU_CLEAR_ADDR_ATTR_NAME	"cpu-clear-addr"
 #define VMM_DEVTREE_CPU_RELEASE_ADDR_ATTR_NAME	"cpu-release-addr"
 
 #define VMM_DEVTREE_GUESTINFO_NODE_NAME		"guests"
