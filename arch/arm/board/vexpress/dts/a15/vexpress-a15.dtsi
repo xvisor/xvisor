@@ -15,24 +15,36 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
 			reg = <0>;
+			enable-method = "spin-table";
+			cpu-clear-addr = <0x1C010034>;
+			cpu-release-addr = <0x1C010030>;
 		};
 
 		cpu@1 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
 			reg = <1>;
+			enable-method = "spin-table";
+			cpu-clear-addr = <0x1C010034>;
+			cpu-release-addr = <0x1C010030>;
 		};
 
 		cpu@2 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
 			reg = <2>;
+			enable-method = "spin-table";
+			cpu-clear-addr = <0x1C010034>;
+			cpu-release-addr = <0x1C010030>;
 		};
 
 		cpu@3 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
 			reg = <3>;
+			enable-method = "spin-table";
+			cpu-clear-addr = <0x1C010034>;
+			cpu-release-addr = <0x1C010030>;
 		};
 	};
 

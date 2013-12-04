@@ -8,9 +8,43 @@
 	aliases { };
 
 	cpus {
-		cpu0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
 			device_type = "cpu";
 			model = "ARM11MPCore";
+			reg = <0>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			model = "ARM11MPCore";
+			reg = <1>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			model = "ARM11MPCore";
+			reg = <2>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			model = "ARM11MPCore";
+			reg = <3>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
 		};
 	};
 

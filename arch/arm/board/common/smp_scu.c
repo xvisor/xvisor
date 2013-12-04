@@ -25,15 +25,17 @@
  *  Copyright (C) 2002 ARM Ltd.
  *  All Rights Reserved
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * The original source is licensed under GPL.
  */
 
-#include <vmm_host_io.h>
-#include <vmm_cache.h>
 #include <vmm_error.h>
 #include <vmm_smp.h>
+#include <vmm_cache.h>
+#include <vmm_host_io.h>
+#include <vmm_host_aspace.h>
+
+#include <gic.h>
+#include <smp_ops.h>
 #include <smp_scu.h>
 
 #define SCU_CTRL		0x00
@@ -120,3 +122,121 @@ int scu_power_mode(void *scu_base, u32 mode)
 
 	return VMM_OK;
 }
+
+#if defined(CONFIG_ARM_SMP_OPS) && defined(CONFIG_ARM_GIC)
+
+static virtual_addr_t scu_base;
+static virtual_addr_t clear_addr[CONFIG_CPU_COUNT];
+static virtual_addr_t release_addr[CONFIG_CPU_COUNT];
+
+static struct vmm_devtree_nodeid scu_matches[] = {
+	{.compatible = "arm,arm11mp-scu"},
+	{.compatible = "arm,cortex-a9-scu"},
+	{ /* end of list */ },
+};
+
+static int __init scu_cpu_init(struct vmm_devtree_node *node,
+				unsigned int cpu)
+{
+	int rc;
+	u32 ncores;
+	physical_addr_t *pa;
+	struct vmm_devtree_node *scu_node;
+
+	/* Map SCU base */
+	if (!scu_base) {
+		scu_node = vmm_devtree_find_matching(NULL, scu_matches);
+		if (!scu_node) {
+			return VMM_ENODEV;
+		}
+		rc = vmm_devtree_regmap(scu_node, &scu_base, 0);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	/* Map clear address */
+	pa = vmm_devtree_attrval(node,
+				VMM_DEVTREE_CPU_CLEAR_ADDR_ATTR_NAME);
+	if (pa) {
+		clear_addr[cpu] = vmm_host_iomap(*pa, VMM_PAGE_SIZE);
+	} else {
+		clear_addr[cpu] = 0x0;
+	}
+
+	/* Map release address */
+	pa = vmm_devtree_attrval(node,
+				VMM_DEVTREE_CPU_RELEASE_ADDR_ATTR_NAME);
+	if (pa) {
+		release_addr[cpu] = vmm_host_iomap(*pa, VMM_PAGE_SIZE);
+	} else {
+		release_addr[cpu] = 0x0;
+	}
+
+	/* Check core count from SCU */
+	ncores = scu_get_core_count((void *)scu_base);
+	if (ncores <= cpu) {
+		return VMM_ENOSYS;
+	}
+
+	/* Check SCU status */
+	if (!scu_cpu_core_is_smp((void *)scu_base, cpu)) {
+		return VMM_ENOSYS;
+	}
+
+	return VMM_OK;
+}
+
+extern u8 _start_secondary_nopen;
+
+static int __init scu_cpu_prepare(unsigned int cpu)
+{
+	int rc;
+	physical_addr_t _start_secondary_pa;
+
+	/* Get physical address secondary startup code */
+	rc = vmm_host_va2pa((virtual_addr_t)&_start_secondary_nopen,
+			    &_start_secondary_pa);
+	if (rc) {
+		return rc;
+	}
+
+	/* Enable snooping through SCU */
+	if (scu_base) {
+		scu_enable((void *)scu_base);
+	}
+
+	/* Write to clear address */
+	if (clear_addr[cpu]) {
+		vmm_writel(~0x0, (void *)clear_addr[cpu]);
+	}
+
+	/* Write to release address */
+	if (release_addr[cpu]) {
+		vmm_writel((u32)_start_secondary_pa,
+					(void *)release_addr[cpu]);
+	}
+
+	return VMM_OK;
+}
+
+static int __init scu_cpu_boot(unsigned int cpu)
+{
+	const struct vmm_cpumask *mask = get_cpu_mask(cpu);
+
+	/* Wakeup target cpu from wfe/wfi by sending an IPI */
+	gic_raise_softirq(mask, 0);
+
+	return VMM_OK;
+}
+
+struct smp_operations smp_scu_ops = {
+	.name = "smp-scu",
+	.cpu_init = scu_cpu_init,
+	.cpu_prepare = scu_cpu_prepare,
+	.cpu_boot = scu_cpu_boot,
+};
+
+SMP_OPS_DECLARE(smp_scu, &smp_scu_ops);
+
+#endif

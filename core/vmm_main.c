@@ -470,6 +470,9 @@ void vmm_init_secondary(void)
 		vmm_hang();
 	}
 
+	/* Inform architecture code about secondary cpu */
+	arch_smp_postboot();
+
 	/* Start timer (Must be last step) */
 	vmm_timer_start();
 

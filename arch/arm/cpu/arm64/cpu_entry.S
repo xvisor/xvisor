@@ -26,6 +26,7 @@
 	/* 
 	 * _start: Primary CPU startup code
 	 * _start_secondary: Secondary CPU startup code
+	 * _start_secondary_nopen: Secondary CPU startup code without holding pen
 	 *
 	 * Note: Xvisor could be loaded any where in memory by boot loaders.
 	 * The _start ensures that Xvisor exectues from intended
@@ -34,6 +35,7 @@
 	.section .entry, "ax", %progbits
 	.globl _start
 	.globl _start_secondary
+	.globl _start_secondary_nopen
 _start:
 	/*
 	 * x4 -> load start
@@ -234,12 +236,13 @@ _start_mmu_init:
 	sub	x0, x0, x6
 	add	x0, x0, x4
 	str	x0, [x1]
-	b	_common_init
+	b	_start_secondary_nopen
 
 #ifdef CONFIG_SMP
 	.align	3
-1:	.dword	.
-	.dword	secondary_holding_pen_release
+__start_secondary_pen_release:
+	.dword	.
+	.dword	start_secondary_pen_release
 
 #define MPIDR_HWID_BITMASK	0xff00ffffff
 
@@ -256,7 +259,7 @@ _start_secondary:
 	and	x0, x0, x1
 
 	/* Calculate load address of secondary_holding_pen_release */
-	adr	x1, 1b
+	adr	x1, __start_secondary_pen_release
 	ldp	x2, x3, [x1]
 	sub	x1, x1, x2
 	add	x3, x3, x1
@@ -270,7 +273,7 @@ pen:	wfe
 	/*
 	 * Note: From this point primary CPU startup is same as secondary CPU
 	 */
-_common_init:
+_start_secondary_nopen:
 	/* Disable IRQ & FIQ */
 	msr	daifset, #3
 
