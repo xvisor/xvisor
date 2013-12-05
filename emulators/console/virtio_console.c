@@ -26,7 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
-#include <vmm_vserial.h>
+#include <vio/vmm_vserial.h>
 #include <libs/fifo.h>
 #include <libs/stringlib.h>
 
@@ -36,7 +36,8 @@
 #define MODULE_DESC			"VirtIO Console Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VIRTIO_IPRIORITY + 1)
+#define MODULE_IPRIORITY		(VMM_VSERIAL_IPRIORITY + \
+					 VIRTIO_IPRIORITY + 1)
 #define MODULE_INIT			virtio_console_init
 #define MODULE_EXIT			virtio_console_exit
 

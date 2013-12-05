@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Fri Sep 27 22:57:08 2013
+# Thu Dec  5 20:48:02 2013
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -30,6 +30,7 @@ CONFIG_ARM64=y
 # ARM Options
 #
 CONFIG_VAPOOL_SIZE_MB=16
+CONFIG_HOST_IRQ_COUNT=1024
 CONFIG_ARM_VGIC=y
 CONFIG_ARM_GENERIC_TIMER=y
 CONFIG_ARM_MMU_LPAE=y
@@ -62,6 +63,9 @@ CONFIG_FOUNDATION_V8_ONE_GUEST_VIRT_V8_DTS=y
 CONFIG_ARM_GIC=y
 # CONFIG_ARM_TIMER_SP804 is not set
 # CONFIG_ARM_TWD is not set
+CONFIG_ARM_SMP_OPS=y
+CONFIG_ARM_SMP_IPI=y
+CONFIG_ARM_SMP_SPIN_TABLE=y
 # CONFIG_ARM_SCU is not set
 # CONFIG_VERSATILE_CLCD is not set
 # CONFIG_OMAP is not set
@@ -112,20 +116,23 @@ CONFIG_TSLICE_MS=10
 #
 # Load Balancer Configuration
 #
+CONFIG_LOADBAL_PERIOD_SECS=5
 CONFIG_LOADBAL_CRUDE=y
 
 #
 # Device Support
 #
-CONFIG_RTC=y
-CONFIG_INPUT=y
-# CONFIG_FB is not set
 CONFIG_BLOCK=y
 CONFIG_BLOCKPART=y
 CONFIG_BLOCKPART_DOS=y
 CONFIG_NET=y
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
+
+#
+# Virtual IO Support
+#
+CONFIG_VSERIAL=y
 
 #
 # Command Options
@@ -190,6 +197,7 @@ CONFIG_SERIAL_PL01X=y
 #
 # RTC Drivers
 #
+CONFIG_RTC=y
 # CONFIG_RTC_PL031 is not set
 # CONFIG_RTC_S3C is not set
 
@@ -211,6 +219,7 @@ CONFIG_SERIAL_PL01X=y
 #
 # Input Device Support
 #
+CONFIG_INPUT=y
 
 #
 # Input Device Drivers
@@ -223,6 +232,11 @@ CONFIG_SERIAL_PL01X=y
 # CONFIG_SERIO is not set
 
 #
+# Graphics Drivers
+#
+# CONFIG_FB is not set
+
+#
 # Network Drivers
 #
 CONFIG_NET_DRIVERS=y
@@ -233,6 +247,13 @@ CONFIG_ETHER_SMSC_91x=y
 # Clock Drivers
 #
 # CONFIG_CLKDEV_LOOKUP is not set
+# CONFIG_COMMON_CLK is not set
+
+#
+# Multifunction device drivers
+#
+# CONFIG_REALVIEW_CONFIG is not set
+# CONFIG_VEXPRESS_CONFIG is not set
 
 #
 # Device Emulators

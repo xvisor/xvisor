@@ -29,6 +29,8 @@
 #include <libs/list.h>
 #include <libs/fifo.h>
 
+#define VMM_VSERIAL_IPRIORITY			0
+
 struct vmm_vserial_receiver;
 struct vmm_vserial;
 
@@ -104,8 +106,5 @@ struct vmm_vserial *vmm_vserial_get(int index);
 
 /** Count of available virtual serial ports */
 u32 vmm_vserial_count(void);
-
-/** Initialize virtual serial port framework */
-int vmm_vserial_init(void);
 
 #endif

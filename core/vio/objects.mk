@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Anup Patel.
+# Copyright (c) 2013 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,28 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for serial port emulators.
+# @brief list of core objects to be build
 # */
 
-menu "Serial Port Emulators"
-
-config CONFIG_EMU_SERIAL
-	tristate "Enable Serial Emulators"
-	depends on CONFIG_VSERIAL
-	default n
-	help
-		Enable/Disable Serial Port Emulators.
-
-if CONFIG_EMU_SERIAL
-
-config CONFIG_EMU_SERIAL_PL011
-	tristate "PL011"
-	default n
-	help
-		PrimeCell PL011 Serial Port.
-endif
-
-endmenu
+core-objs-$(CONFIG_VSERIAL)+= vio/vmm_vserial.o
 

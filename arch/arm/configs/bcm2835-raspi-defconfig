@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Thu Nov 28 10:58:54 2013
+# Thu Dec  5 20:19:37 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -61,7 +61,6 @@ CONFIG_BCM2835_ONE_GUEST_EBMP_DTS=y
 # CONFIG_ARM_GIC is not set
 # CONFIG_ARM_TIMER_SP804 is not set
 # CONFIG_ARM_TWD is not set
-# CONFIG_ARM_SCU is not set
 # CONFIG_VERSATILE_CLCD is not set
 # CONFIG_OMAP is not set
 # CONFIG_SAMSUNG_MCT is not set
@@ -116,15 +115,17 @@ CONFIG_LOADBAL_PERIOD_SECS=5
 #
 # Device Support
 #
-# CONFIG_RTC is not set
-# CONFIG_INPUT is not set
-# CONFIG_FB is not set
 CONFIG_BLOCK=y
 CONFIG_BLOCKPART=y
 CONFIG_BLOCKPART_DOS=y
 CONFIG_NET=y
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
+
+#
+# Virtual IO Support
+#
+CONFIG_VSERIAL=y
 
 #
 # Command Options
@@ -191,6 +192,7 @@ CONFIG_SERIAL_PL01X=y
 #
 # RTC Drivers
 #
+# CONFIG_RTC is not set
 
 #
 # Block Drivers
@@ -219,11 +221,17 @@ CONFIG_MMC_SDHCI_BCM2835=y
 #
 # Input Device Support
 #
+# CONFIG_INPUT is not set
 
 #
 # Hardware I/O ports
 #
 # CONFIG_SERIO is not set
+
+#
+# Graphics Drivers
+#
+# CONFIG_FB is not set
 
 #
 # Network Drivers
@@ -242,6 +250,7 @@ CONFIG_COMMON_CLK_BCM2835=y
 #
 # Multifunction device drivers
 #
+# CONFIG_REALVIEW_CONFIG is not set
 # CONFIG_VEXPRESS_CONFIG is not set
 
 #

@@ -24,15 +24,15 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
-#include <vmm_vserial.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vio/vmm_vserial.h>
 #include <libs/stringlib.h>
 
 #define MODULE_DESC			"Command vserial"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		0
+#define MODULE_IPRIORITY		(VMM_VSERIAL_IPRIORITY+1)
 #define	MODULE_INIT			cmd_vserial_init
 #define	MODULE_EXIT			cmd_vserial_exit
 

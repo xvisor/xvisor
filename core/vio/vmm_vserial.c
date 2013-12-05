@@ -25,8 +25,16 @@
 #include <vmm_compiler.h>
 #include <vmm_heap.h>
 #include <vmm_mutex.h>
-#include <vmm_vserial.h>
+#include <vmm_modules.h>
+#include <vio/vmm_vserial.h>
 #include <libs/stringlib.h>
+
+#define MODULE_DESC			"Virtual Serial Port Framework"
+#define MODULE_AUTHOR			"Anup Patel"
+#define MODULE_LICENSE			"GPL"
+#define MODULE_IPRIORITY		(VMM_VSERIAL_IPRIORITY)
+#define	MODULE_INIT			vmm_vserial_init
+#define	MODULE_EXIT			vmm_vserial_exit
 
 struct vmm_vserial_ctrl {
 	struct vmm_mutex vser_list_lock;
@@ -406,7 +414,7 @@ u32 vmm_vserial_count(void)
 	return retval;
 }
 
-int __init vmm_vserial_init(void)
+static int __init vmm_vserial_init(void)
 {
 	memset(&vsctrl, 0, sizeof(vsctrl));
 
@@ -416,3 +424,15 @@ int __init vmm_vserial_init(void)
 
 	return VMM_OK;
 }
+
+static void __exit vmm_vserial_exit(void)
+{
+	/* Nothing to do here. */
+}
+
+VMM_DECLARE_MODULE(MODULE_DESC, 
+			MODULE_AUTHOR, 
+			MODULE_LICENSE, 
+			MODULE_IPRIORITY, 
+			MODULE_INIT, 
+			MODULE_EXIT);

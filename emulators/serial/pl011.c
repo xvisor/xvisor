@@ -35,16 +35,16 @@
 #include <vmm_heap.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
-#include <vmm_vserial.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <vio/vmm_vserial.h>
 #include <libs/fifo.h>
 #include <libs/stringlib.h>
 
 #define MODULE_DESC			"PL011 Serial Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		0
+#define MODULE_IPRIORITY		(VMM_VSERIAL_IPRIORITY+1)
 #define	MODULE_INIT			pl011_emulator_init
 #define	MODULE_EXIT			pl011_emulator_exit
 
