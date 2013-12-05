@@ -140,6 +140,8 @@ ldflags+=$(cpu-ldflags)
 ldflags+=$(libs-ldflags-y) 
 merge=$(CROSS_COMPILE)ld
 mergeflags=-r
+data=$(CROSS_COMPILE)ld
+dataflags=-r -b binary
 objcopy=$(CROSS_COMPILE)objcopy
 nm=$(CROSS_COMPILE)nm
 
@@ -185,6 +187,12 @@ compile_as = $(V)mkdir -p `dirname $(1)`; \
 compile_ld = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (ld)        $(subst $(build_dir)/,,$(1))"; \
 	     $(ld) $(3) $(ldflags) -Wl,-T$(2) -o $(1)
+compile_data_dep = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (data-dep)  $(subst $(build_dir)/,,$(1))"; \
+	     touch $(1)
+compile_data = $(V)mkdir -p `dirname $(1)`; \
+	     echo " (data)      $(subst $(build_dir)/,,$(1))"; \
+	     $(data) $(dataflags) -o $(1) $(subst $(src_dir)/,,$(2))
 compile_nm = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (nm)        $(subst $(build_dir)/,,$(1))"; \
 	     $(nm) -n $(2) | grep -v '\( [aNUw] \)\|\(__crc_\)\|\( \$[adt]\)' > $(1)
@@ -360,6 +368,9 @@ $(build_dir)/%.dep: $(src_dir)/%.S
 $(build_dir)/%.dep: $(src_dir)/%.c
 	$(call compile_cc_dep,$@,$<)
 
+$(build_dir)/%.dep: $(src_dir)/%.data
+	$(call compile_data_dep,$@,$<)
+
 $(build_dir)/%.o: $(src_dir)/%.S
 	$(call compile_as,$@,$<)
 
@@ -371,6 +382,9 @@ $(build_dir)/%.o: $(src_dir)/%.c
 
 $(build_dir)/%.o: $(build_dir)/%.c
 	$(call compile_cp,$@,$<)
+
+$(build_dir)/%.o: $(src_dir)/%.data
+	$(call compile_data,$@,$<)
 
 $(build_dir)/%.xo: $(build_dir)/%.o
 	$(call copy_file,$@,$^)
