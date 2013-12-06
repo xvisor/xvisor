@@ -65,6 +65,8 @@ char *strrchr(const char *s, int c);
 
 char *strnchr(const char *s, size_t n, int c);
 
+const char *strstr(const char *string, const char *substring);
+
 void str2lower(char * s);
 
 void str2upper(char * s);
