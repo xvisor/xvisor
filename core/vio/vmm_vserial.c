@@ -48,11 +48,13 @@ int vmm_vserial_register_client(struct vmm_notifier_block *nb)
 {
 	return vmm_blocking_notifier_register(&vsctrl.notifier_chain, nb);
 }
+VMM_EXPORT_SYMBOL(vmm_vserial_register_client);
 
 int vmm_vserial_unregister_client(struct vmm_notifier_block *nb)
 {
 	return vmm_blocking_notifier_unregister(&vsctrl.notifier_chain, nb);
 }
+VMM_EXPORT_SYMBOL(vmm_vserial_unregister_client);
 
 u32 vmm_vserial_send(struct vmm_vserial *vser, u8 *src, u32 len)
 {
@@ -74,6 +76,7 @@ u32 vmm_vserial_send(struct vmm_vserial *vser, u8 *src, u32 len)
 
 	return i;
 }
+VMM_EXPORT_SYMBOL(vmm_vserial_send);
 
 u32 vmm_vserial_receive(struct vmm_vserial *vser, u8 *dst, u32 len)
 {
@@ -110,6 +113,7 @@ u32 vmm_vserial_receive(struct vmm_vserial *vser, u8 *dst, u32 len)
 
 	return i;
 }
+VMM_EXPORT_SYMBOL(vmm_vserial_receive);
 
 int vmm_vserial_register_receiver(struct vmm_vserial *vser, 
 		void (*recv) (struct vmm_vserial *, void *, u8), void *priv)
@@ -169,6 +173,7 @@ int vmm_vserial_register_receiver(struct vmm_vserial *vser,
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_vserial_register_receiver);
 
 int vmm_vserial_unregister_receiver(struct vmm_vserial *vser, 
 		void (*recv) (struct vmm_vserial *, void *, u8), void *priv)
@@ -208,6 +213,7 @@ int vmm_vserial_unregister_receiver(struct vmm_vserial *vser,
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_vserial_unregister_receiver);
 
 struct vmm_vserial *vmm_vserial_create(const char *name,
 				       bool (*can_send) (struct vmm_vserial *),
@@ -281,6 +287,7 @@ struct vmm_vserial *vmm_vserial_create(const char *name,
 
 	return vser;
 }
+VMM_EXPORT_SYMBOL(vmm_vserial_create);
 
 int vmm_vserial_destroy(struct vmm_vserial *vser)
 {
@@ -332,6 +339,7 @@ int vmm_vserial_destroy(struct vmm_vserial *vser)
 
 	return VMM_OK;
 }
+VMM_EXPORT_SYMBOL(vmm_vserial_destroy);
 
 struct vmm_vserial *vmm_vserial_find(const char *name)
 {
@@ -364,6 +372,7 @@ struct vmm_vserial *vmm_vserial_find(const char *name)
 
 	return vs;
 }
+VMM_EXPORT_SYMBOL(vmm_vserial_find);
 
 struct vmm_vserial *vmm_vserial_get(int index)
 {
@@ -397,6 +406,7 @@ struct vmm_vserial *vmm_vserial_get(int index)
 
 	return retval;
 }
+VMM_EXPORT_SYMBOL(vmm_vserial_get);
 
 u32 vmm_vserial_count(void)
 {
@@ -413,6 +423,7 @@ u32 vmm_vserial_count(void)
 
 	return retval;
 }
+VMM_EXPORT_SYMBOL(vmm_vserial_count);
 
 static int __init vmm_vserial_init(void)
 {
