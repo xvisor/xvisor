@@ -25,6 +25,7 @@ core-objs-$(CONFIG_VSERIAL)+= vio/vmm_vserial.o
 
 core-objs-$(CONFIG_VINPUT)+= vio/vmm_vinput_core.o
 
+vmm_vinput_core-y+= vmm_vinput.o
 vmm_vinput_core-y+= vmm_keymaps.o
 vmm_vinput_core-y+= keymaps/modifiers.o
 vmm_vinput_core-y+= keymaps/common.o
