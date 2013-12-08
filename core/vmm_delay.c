@@ -18,7 +18,7 @@
  *
  * @file vmm_delay.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for soft delay susbsystem
+ * @brief source file for soft delay subsystem
  */
 
 #include <vmm_error.h>
