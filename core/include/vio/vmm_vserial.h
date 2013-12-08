@@ -75,6 +75,12 @@ int vmm_vserial_register_client(struct vmm_notifier_block *nb);
 /** Unregister a notifier client to not receive virtual serial port events */
 int vmm_vserial_unregister_client(struct vmm_notifier_block *nb);
 
+/** Retrive private context of virtual serial port */
+static inline void *vmm_vserial_priv(struct vmm_vserial *vser)
+{
+	return (vser) ? vser->priv : NULL;
+}
+
 /** Send bytes to virtual serial port */
 u32 vmm_vserial_send(struct vmm_vserial *vser, u8 *src, u32 len);
 

@@ -199,7 +199,7 @@ static int virtio_console_vserial_send(struct vmm_vserial *vser, u8 data)
 {
 	u16 head = 0;
 	u32 iov_cnt = 0, total_len = 0;
-	struct virtio_console_dev *cdev = vser->priv;
+	struct virtio_console_dev *cdev = vmm_vserial_priv(vser);
 	struct virtio_queue *vq = &cdev->vqs[VIRTIO_CONSOLE_RX_QUEUE];
 	struct virtio_iovec *iov = cdev->rx_iov;
 	struct virtio_device *dev = cdev->vdev;

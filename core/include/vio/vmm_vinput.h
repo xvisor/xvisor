@@ -86,12 +86,18 @@ struct vmm_vkeyboard *vmm_vkeyboard_create(const char *name,
 /** Destroy a virtual keyboard */
 int vmm_vkeyboard_destroy(struct vmm_vkeyboard *vkbd);
 
+/** Retrive private context of virtual keyboard */
+static inline void *vmm_vkeyboard_priv(struct vmm_vkeyboard *vkbd)
+{
+	return (vkbd) ? vkbd->priv : NULL;
+}
+
 /** Trigger virtual keyboard event */
 int vmm_vkeyboard_event(struct vmm_vkeyboard *vkbd, int keycode);
 
 /** Add led handler to a virtual keyboard */
 int vmm_vkeyboard_add_led_handler(struct vmm_vkeyboard *vkbd,
-		void (*led_change) (struct vmm_vkeyboard *, int, void  *),
+		void (*led_change) (struct vmm_vkeyboard *, int, void *),
 		void *priv);
 
 /** Delete led handler from a virtual keyboard */
@@ -143,6 +149,12 @@ struct vmm_vmouse *vmm_vmouse_create(const char *name,
 
 /** Destroy a virtual mouse */
 int vmm_vmouse_destroy(struct vmm_vmouse *vmou);
+
+/** Retrive private context of virtual mouse */
+static inline void *vmm_vmouse_priv(struct vmm_vmouse *vmou)
+{
+	return (vmou) ? vmou->priv : NULL;
+}
 
 /** Trigger virtual mouse event */
 int vmm_vmouse_event(struct vmm_vmouse *vmou,

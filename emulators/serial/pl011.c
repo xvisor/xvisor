@@ -265,7 +265,7 @@ static int pl011_reg_write(struct pl011_state *s, u32 offset,
 
 static bool pl011_vserial_can_send(struct vmm_vserial *vser)
 {
-	struct pl011_state *s = vser->priv;
+	struct pl011_state *s = vmm_vserial_priv(vser);
 #if 0
 	u32 rd_count;
 
@@ -283,7 +283,7 @@ static int pl011_vserial_send(struct vmm_vserial *vser, u8 data)
 {
 	bool set_irq = FALSE;
 	u32 rd_count, level, enabled;
-	struct pl011_state *s = vser->priv;
+	struct pl011_state *s = vmm_vserial_priv(vser);
 
 	fifo_enqueue(s->rd_fifo, &data, TRUE);
 	rd_count = fifo_avail(s->rd_fifo);
