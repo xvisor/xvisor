@@ -39,18 +39,18 @@
 struct vmm_keymap_file {
 	const char name[32];
 	const char *start;
-	const char *end;
+	const unsigned long *size;
 };
 
 #define DECLARE_KEYMAP_FILE(__kf__) \
-extern const char _binary_core_vio_keymaps_##__kf__##_data_start[]; \
-extern const char _binary_core_vio_keymaps_##__kf__##_data_end[];
+extern const char core_vio_keymaps_##__kf__##_data_start[]; \
+extern const unsigned long core_vio_keymaps_##__kf__##_data_size;
 
 #define KEYMAP_FILE(__kf__, __kf_name__) \
 { \
 .name = __kf_name__, \
-.start = _binary_core_vio_keymaps_##__kf__##_data_start, \
-.end = _binary_core_vio_keymaps_##__kf__##_data_end, \
+.start = core_vio_keymaps_##__kf__##_data_start, \
+.size = &core_vio_keymaps_##__kf__##_data_size, \
 }
 
 DECLARE_KEYMAP_FILE(modifiers);
@@ -317,14 +317,14 @@ static const char *keymap_file_gets(struct vmm_keymap_file *kf,
 	if (!kf || !kf_pos || !buf) {
 		return NULL;
 	}
-	if ((kf_pos < kf->start) || (kf->end <= kf_pos)) {
+	if ((kf_pos < kf->start) || ((kf->start + *kf->size) <= kf_pos)) {
 		return NULL;
 	}
 
 	/* Fill the buffer */
 	i = 0;
 	done = FALSE;
-	while (!done && (kf_pos < kf->end) && (i < (bufsz - 1))) {
+	while (!done && (kf_pos < (kf->start + *kf->size)) && (i < (bufsz - 1))) {
 		if (keymap_file_end_of_line(*kf_pos)) {
 			done = TRUE;
 		} else {
@@ -339,7 +339,7 @@ static const char *keymap_file_gets(struct vmm_keymap_file *kf,
 	 * then ignore rest of the line
 	 */
 	if (!done && (i == (bufsz - 1))) {
-		while (kf_pos < kf->end) {
+		while (kf_pos < (kf->start + *kf->size)) {
 			if (keymap_file_end_of_line(*kf_pos)) {
 				break;
 			}
@@ -347,7 +347,7 @@ static const char *keymap_file_gets(struct vmm_keymap_file *kf,
 		}
 	}
 
-	return (kf_pos == kf->end) ? NULL : kf_pos;
+	return (kf_pos == (kf->start + *kf->size)) ? NULL : kf_pos;
 }
 
 static int get_keysym(const struct vmm_name2keysym *table,

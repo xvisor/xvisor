@@ -42,6 +42,17 @@ $(build_dir)/%.S: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)echo '.section ".devtree"' > $@
 	$(V)$(build_dir)/tools/dtc/dtc -I dts -O asm $< >> $@
 
+$(build_dir)/%.dep: $(src_dir)/%.data
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (d2c-dep)   $(subst $(build_dir)/,,$@)")
+	$(V)echo "$(@:.dep=.c): $<" > $@
+	$(V)echo "$(@:.dep=.o): $(@:.dep=.c)" >> $@
+
+$(build_dir)/%.c: $(src_dir)/%.data
+	$(V)mkdir -p `dirname $@`
+	$(if $(V), @echo " (d2c)       $(subst $(build_dir)/,,$@)")
+	$(V)$(src_dir)/tools/scripts/d2c.py $(subst $(src_dir)/,,$<) > $@
+
 ifdef CONFIG_CPATCH
 
 $(build_dir)/tools/cpatch/cpatch32: $(CURDIR)/tools/cpatch/Makefile
