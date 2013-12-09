@@ -111,18 +111,11 @@ static u64 aw_clksrc_read(struct vmm_clocksource *cs)
 	return (((u64)upper) << 32) | ((u64)lower);
 }
 
-int __init aw_timer_clocksource_init(void)
+static int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 tmp;
 	struct aw_clocksource *acs;
-	struct vmm_devtree_node *node;
-
-	node = vmm_devtree_find_compatible(NULL, NULL, 
-					   "allwinner,sunxi-timer");
-	if (!node) {
-		return VMM_ENODEV;
-	}
 
 	acs = vmm_zalloc(sizeof(struct aw_clocksource));
 	if (!acs) {
@@ -171,6 +164,10 @@ int __init aw_timer_clocksource_init(void)
 
 	return VMM_OK;
 }
+
+VMM_CLOCKSOURCE_INIT_DECLARE(sunxiclksrc,
+			     "allwinner,sunxi-timer",
+			     aw_timer_clocksource_init);
 
 struct aw_clockchip {
 	u32 num, off;
@@ -248,19 +245,12 @@ static int aw_clockchip_set_next_event(unsigned long next,
 	return VMM_OK;
 }
 
-int __cpuinit aw_timer_clockchip_init(void)
+static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 hirq, tmp;
 	void *attrval;
 	struct aw_clockchip *acc;
-	struct vmm_devtree_node *node;
-
-	node = vmm_devtree_find_compatible(NULL, NULL, 
-					   "allwinner,sunxi-timer");
-	if (!node) {
-		return VMM_ENODEV;
-	}
 
 	acc = vmm_zalloc(sizeof(struct aw_clockchip));
 	if (!acc) {
@@ -343,6 +333,10 @@ int __cpuinit aw_timer_clockchip_init(void)
 
 	return VMM_OK;
 }
+
+VMM_CLOCKCHIP_INIT_DECLARE(sunxiclkchip,
+			   "allwinner,sunxi-timer",
+			   aw_timer_clockchip_init);
 
 static virtual_addr_t aw_base = 0;
 

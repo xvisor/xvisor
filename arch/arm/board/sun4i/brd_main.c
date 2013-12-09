@@ -60,16 +60,6 @@ int __init arch_board_early_init(void)
 	return 0;
 }
 
-int __init arch_clocksource_init(void)
-{
-	return aw_timer_clocksource_init();
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
-	return aw_timer_clockchip_init();
-}
-
 int __init arch_board_final_init(void)
 {
 	int rc;
