@@ -378,7 +378,8 @@ void vmm_init(void)
 		}
 		ret = arch_smp_start_cpu(c);
 		if (ret) {
-			vmm_printf("Failed to start CPU%d\n", ret);
+			vmm_printf("Failed to start CPU%d (error %d)\n",
+				   c, ret);
 		}
 	}
 
