@@ -357,11 +357,11 @@ static int pl050_emulator_remove(struct vmm_emudev *edev)
 
 static struct vmm_devtree_nodeid pl050_emuid_table[] = {
 	{ .type = "input", 
-	  .compatible = "pl050,keyboard",
+	  .compatible = "primecell,arm,pl050,keyboard",
 	  .data = (const void *)NULL,
 	},
 	{ .type = "input", 
-	  .compatible = "pl050,mouse", 
+	  .compatible = "primecell,arm,pl050,mouse", 
 	  .data = (const void *)1,
 	},
 	{ /* end of list */ },
