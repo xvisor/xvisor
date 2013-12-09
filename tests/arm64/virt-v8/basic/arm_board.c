@@ -58,7 +58,7 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	arm_strcpy(cmdline, "root=/dev/ram rw "
 			    "earlyprintk=virtio-console,0x40600000 "
-			    "console=hvc0");
+			    "console=hvc0 swiotlb=4096");
 }
 
 physical_addr_t arm_board_flash_addr(void)
