@@ -28,7 +28,6 @@
 #include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
 #include <arch_host_irq.h>
-#include <sunxi/intc.h>
 
 static virtual_addr_t aw_vic_base;
 
@@ -168,16 +167,10 @@ static u32 aw_intc_irq_active(u32 cpu_irq_no)
 	return AW_NR_IRQS;
 }
 
-int __cpuinit aw_intc_devtree_init(void)
+static int __cpuinit aw_intc_devtree_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 i = 0;
-	struct vmm_devtree_node *node;
-
-	node = vmm_devtree_find_compatible(NULL, NULL, "allwinner,sunxi-ic");
-	if (!node) {
-		return VMM_ENODEV;
-	}
 
 	rc = vmm_devtree_regmap(node, &aw_vic_base, 0);
 	if (rc) {
@@ -216,3 +209,6 @@ int __cpuinit aw_intc_devtree_init(void)
 	return VMM_OK;
 }
 
+VMM_HOST_IRQ_INIT_DECLARE(sunxiintc,
+			  "allwinner,sunxi-ic",
+			  aw_intc_devtree_init);
