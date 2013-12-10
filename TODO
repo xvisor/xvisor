@@ -3,7 +3,6 @@
 
  * Add support for SMP systems
  * Add frame buffer virtualization
- * Add input device (mouse/keyboard) virtualization
  * Add libvirt tools support
 
 
