@@ -79,7 +79,7 @@
 					physical_size = <0x1000>;
 					device_type = "input";
 					compatible = "primecell,arm,pl050,keyboard";
-					interrupts = <44>;
+					interrupts = <39>;
 				};
 
 				kmi1 {
@@ -89,7 +89,7 @@
 					physical_size = <0x1000>;
 					device_type = "input";
 					compatible = "primecell,arm,pl050,mouse";
-					interrupts = <45>;
+					interrupts = <40>;
 				};
 
 				uart0 {
