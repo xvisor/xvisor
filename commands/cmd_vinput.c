@@ -26,6 +26,7 @@
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vio/vmm_keymaps.h>
 #include <vio/vmm_vinput.h>
 #include <libs/stringlib.h>
 
@@ -36,15 +37,19 @@
 #define	MODULE_INIT			cmd_vinput_init
 #define	MODULE_EXIT			cmd_vinput_exit
 
-void cmd_vinput_usage(struct vmm_chardev *cdev)
+static void cmd_vinput_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   vinput help\n");
 	vmm_cprintf(cdev, "   vinput keyboards\n");
+	vmm_cprintf(cdev, "   vinput keyboard_event <vkeyboard_name> "
+			  "<keycode>\n");
 	vmm_cprintf(cdev, "   vinput mouses\n");
+	vmm_cprintf(cdev, "   vinput mouse_event <vmouse_name> "
+			  "<dx> <dy> <dz> <left|right|middle|none>\n");
 }
 
-int cmd_vinput_keyboards(struct vmm_chardev *cdev)
+static int cmd_vinput_keyboards(struct vmm_chardev *cdev)
 {
 	int num, count, ledstate;
 	const char *num_lock, *caps_lock, *scroll_lock;
@@ -86,7 +91,80 @@ int cmd_vinput_keyboards(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
-int cmd_vinput_mouses(struct vmm_chardev *cdev)
+static int cmd_vinput_keyboard_event(struct vmm_chardev *cdev,
+				     const char *vkeyboard_name,
+				     int keyc, char **keyv)
+{
+	int k;
+	unsigned long keycode;
+	struct vmm_vkeyboard *vk = vmm_vkeyboard_find(vkeyboard_name);
+
+	if (!vk) {
+		vmm_cprintf(cdev, "Error: virtual keyboard %s not found\n",
+			    vkeyboard_name);
+		return VMM_ENODEV;
+	}
+
+	/* Press the Keys (or Key Down) */
+	for (k = 0; k < keyc; k++) {
+		keycode = strtoul(keyv[k], NULL, 0);
+		if (keycode & SCANCODE_GREY) {
+			vmm_vkeyboard_event(vk, SCANCODE_EMUL0);
+		}
+		vmm_vkeyboard_event(vk, keycode & SCANCODE_KEYCODEMASK);
+	}
+
+
+	/* Release the Keys (or Key Up) */
+	for (k = keyc - 1; 0 <= k; k--) {
+		keycode = strtoul(keyv[k], NULL, 0);
+		if (keycode & SCANCODE_GREY) {
+			vmm_vkeyboard_event(vk, SCANCODE_EMUL0);
+		}
+		vmm_vkeyboard_event(vk, keycode | SCANCODE_UP);
+	}
+
+	return VMM_OK;
+}
+
+static int cmd_vinput_mouse_event(struct vmm_chardev *cdev,
+				  const char *vmouse_name,
+				  const char *dxstr,
+				  const char *dystr,
+				  const char *dzstr,
+				  const char *button)
+{
+	int dx, dy, dz, buttons_state;
+	struct vmm_vmouse *vm = vmm_vmouse_find(vmouse_name);
+
+	if (!vm) {
+		vmm_cprintf(cdev, "Error: virtual mouse %s not found\n",
+			    vmouse_name);
+		return VMM_ENODEV;
+	}
+
+	/* Determine mouse displacement */
+	dx = atoi(dxstr);
+	dy = atoi(dystr);
+	dz = atoi(dzstr);
+
+	/* Determine button state */
+	buttons_state = 0;
+	if (strcmp(button, "left") == 0) {
+		buttons_state |= VMM_MOUSE_LBUTTON;
+	} else if (strcmp(button, "middle") == 0) {
+		buttons_state |= VMM_MOUSE_MBUTTON;
+	} else if (strcmp(button, "right") == 0) {
+		buttons_state |= VMM_MOUSE_RBUTTON;
+	}
+
+	/* Trigger mouse event */
+	vmm_vmouse_event(vm, dx, dy, dz, buttons_state);
+
+	return VMM_OK;
+}
+
+static int cmd_vinput_mouses(struct vmm_chardev *cdev)
 {
 	u32 gw, gh, gr;
 	int num, count;
@@ -121,7 +199,7 @@ int cmd_vinput_mouses(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
-int cmd_vinput_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_vinput_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {
@@ -131,6 +209,14 @@ int cmd_vinput_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return cmd_vinput_keyboards(cdev);
 		} else if (strcmp(argv[1], "mouses") == 0) {
 			return cmd_vinput_mouses(cdev);
+		}
+	} else if (argc > 2) {
+		if ((argc > 3) && strcmp(argv[1], "keyboard_event") == 0) {
+			return cmd_vinput_keyboard_event(cdev, argv[2], 
+							 argc - 3, &argv[3]);
+		} else if ((argc > 6) && strcmp(argv[1], "mouse_event") == 0) {
+			return cmd_vinput_mouse_event(cdev, argv[2],
+					argv[3], argv[4], argv[5], argv[6]);
 		}
 	}
 	cmd_vinput_usage(cdev);
