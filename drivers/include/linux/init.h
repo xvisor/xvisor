@@ -5,6 +5,7 @@
 #include <arch_barrier.h>
 
 #include <linux/types.h>
+#include <linux/bug.h>
 #include <linux/errno.h>
 #include <linux/printk.h>
 #include <linux/sched.h>

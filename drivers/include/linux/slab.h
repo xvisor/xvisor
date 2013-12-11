@@ -3,6 +3,8 @@
 
 #include <vmm_heap.h>
 
+#include <linux/bug.h>
+
 #define GFP_KERNEL		0x00000001
 #define GFP_ATOMIC		0x00000002
 
