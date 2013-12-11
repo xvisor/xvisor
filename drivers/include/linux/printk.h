@@ -21,18 +21,23 @@
 #define dev_dbg(...)
 #endif
 
-#define dev_info(dev, args...)	do { \
-				vmm_printf("%s: ", dev->node->name); \
-				vmm_printf(args); \
-				} while (0)
-#define dev_warn(dev, args...)	do { \
-				vmm_printf("WARNING: %s: ", dev->node->name); \
-				vmm_printf(args); \
-				} while (0)
-#define dev_err(dev, args...)	do { \
-				vmm_printf("ERROR: %s: ", dev->node->name); \
-				vmm_printf(args); \
-				} while (0)
+#define dev_info(dev, args...)		do { \
+					vmm_printf("%s: ", dev->node->name); \
+					vmm_printf(args); \
+					} while (0)
+#define dev_warn(dev, args...)		do { \
+					vmm_printf("WARNING: %s: ", dev->node->name); \
+					vmm_printf(args); \
+					} while (0)
+#define dev_err(dev, args...)		do { \
+					vmm_printf("ERROR: %s: ", dev->node->name); \
+					vmm_printf(args); \
+					} while (0)
+
+#define dev_notice(dev, args...)	do { \
+					vmm_printf("ERROR: %s: ", dev->node->name); \
+					vmm_printf(args); \
+					} while (0)
 
 #define printk_ratelimit()			0
 
