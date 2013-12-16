@@ -43,7 +43,7 @@ struct vtemu *x86_vt;
 #define KBRD_IO		0x60 /* IO Port */
 #define KBRD_RESET	0xfe /* RESET CPU command */
 
-int arch_board_reset(void)
+static int generic_reset(void)
 {
 	volatile unsigned long good;
 
@@ -67,7 +67,7 @@ int arch_board_reset(void)
 	return VMM_EFAIL;
 }
 
-int arch_board_shutdown(void)
+static int generic_shutdown(void)
 {
 	return VMM_EFAIL;
 }
@@ -79,7 +79,11 @@ int __init arch_board_early_init(void)
 	rv = hpet_init();
 	BUG_ON(rv != VMM_OK);
 
-        return VMM_OK;
+	/* Register reset & shutdown callbacks */
+	vmm_register_system_reset(generic_reset);
+	vmm_register_system_shutdown(generic_shutdown);
+
+	return VMM_OK;
 }
 
 int __init arch_clocksource_init(void)
