@@ -26,6 +26,7 @@
 #include <vmm_compiler.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
+#include <vmm_completion.h>
 #include <vmm_params.h>
 #include <libs/vtemu.h>
 #include <libs/fifo.h>
@@ -41,6 +42,7 @@ static u32 csr_x = 0, csr_y = 0;
 
 #if defined(CONFIG_VTEMU)
 static struct fifo *defterm_fifo;
+static struct vmm_completion defterm_fifo_cmpl;
 static u32 defterm_key_flags;
 static struct input_handler defterm_hndl;
 static bool defterm_key_handler_registered;
@@ -230,6 +232,7 @@ static int defterm_key_event(struct input_handler *ihnd,
 		len = strlen(str);
 		for (i = 0; i < len; i++) {
 			fifo_enqueue(defterm_fifo, &str[i], TRUE);
+			vmm_completion_complete(&defterm_fifo_cmpl);
 		}
 	} else { /* value=0 (key-down) */
 		/* Update input key flags */
@@ -266,7 +269,14 @@ int arch_defterm_getc(u8 *ch)
 		defterm_key_handler_registered = TRUE;
 	}
 
-	if (defterm_fifo && !fifo_isempty(defterm_fifo)) {
+	if (defterm_fifo) {
+		/* Assume that we are always called from
+		 * Orphan (or Thread) context hence we can
+		 * sleep waiting for input characters.
+		 */
+		vmm_completion_wait(&defterm_fifo_cmpl);
+
+		/* Try to dequeue from defterm fifo */
 		if (!fifo_dequeue(defterm_fifo, ch)) {
 			return VMM_ENOTAVAIL;
 		}
@@ -302,6 +312,7 @@ int __init arch_defterm_init(void)
 	if (!defterm_fifo) {
 		return VMM_ENOMEM;
 	}
+	INIT_COMPLETION(&defterm_fifo_cmpl);
 
 	defterm_key_flags = 0;
 	defterm_key_handler_registered = FALSE;
