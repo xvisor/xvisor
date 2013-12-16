@@ -31,6 +31,9 @@ void vmm_udelay(u32 usecs);
 /** Emulate soft delay in-terms of milliseconds */
 void vmm_mdelay(u32 msecs);
 
+/** Emulate soft delay in-terms of seconds */
+void vmm_sdelay(u32 secs);
+
 /** Get estimated speed of given host cpu in MHz */
 u32 vmm_delay_estimate_cpu_mhz(u32 cpu);
 

@@ -54,6 +54,20 @@ void vmm_mdelay(u32 msecs)
 	arch_cpu_irq_restore(flags);
 }
 
+void vmm_sdelay(u32 secs)
+{
+	u32 i;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+
+	for (i = 0; i < secs; i++) {
+		arch_delay_loop(1000 * loops_per_msec[vmm_smp_processor_id()]);
+	}
+
+	arch_cpu_irq_restore(flags);
+}
+
 u32 vmm_delay_estimate_cpu_mhz(u32 cpu)
 {
 	return arch_delay_loop_cycles(loops_per_usec[cpu]);
