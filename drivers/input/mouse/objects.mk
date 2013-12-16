@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2012 Anup Patel.
+# Copyright (c) 2013 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,30 +16,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for input device drivers.
+# @brief list of driver objects
 # */
 
-menu "Input Device Support"
+drivers-objs-$(CONFIG_MOUSE_PS2)+= input/mouse/psmouse.o
 
-config CONFIG_INPUT
-	tristate "Input Device Framework"
-	default n
-	help
-	  Enable input device support for Xvisor.
+psmouse-y += psmouse-base.o synaptics.o
+psmouse-$(CONFIG_MOUSE_PS2_ALPS)	+= alps.o
+psmouse-$(CONFIG_MOUSE_PS2_ELANTECH)	+= elantech.o
+psmouse-$(CONFIG_MOUSE_PS2_LOGIPS2PP)	+= logips2pp.o
+psmouse-$(CONFIG_MOUSE_PS2_SENTELIC)	+= sentelic.o
+psmouse-$(CONFIG_MOUSE_PS2_TRACKPOINT)	+= trackpoint.o
+psmouse-$(CONFIG_MOUSE_PS2_TOUCHKIT)	+= touchkit_ps2.o
 
-if CONFIG_INPUT
-     comment "Input Device Drivers"
+%/psmouse.o: $(foreach obj,$(psmouse-y),%/$(obj))
+	$(call merge_objs,$@,$^)
 
-     source "drivers/input/keyboard/openconf.cfg"
-
-     source "drivers/input/mouse/openconf.cfg"
-endif
-
-menu "Hardware I/O ports"
-     source "drivers/input/serio/openconf.cfg"
-endmenu
-
-endmenu
+%/psmouse.dep: $(foreach dep,$(psmouse-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)
 
