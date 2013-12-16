@@ -479,6 +479,7 @@ struct input_keymap_entry {
 #define BTN_TOOL_FINGER		0x145
 #define BTN_TOOL_MOUSE		0x146
 #define BTN_TOOL_LENS		0x147
+#define BTN_TOOL_QUINTTAP	0x148	/* Five fingers on trackpad */
 #define BTN_TOUCH		0x14a
 #define BTN_STYLUS		0x14b
 #define BTN_STYLUS2		0x14c
@@ -1020,10 +1021,10 @@ struct input_dev {
 	unsigned int keycodesize;
 	void *keycode;
 
-	int (*setkeycode)(struct input_dev *idev,
+	int (*setkeycode)(struct input_dev *dev,
 			  const struct input_keymap_entry *ke,
 			  unsigned int *old_keycode);
-	int (*getkeycode)(struct input_dev *idev,
+	int (*getkeycode)(struct input_dev *dev,
 			  struct input_keymap_entry *ke);
 
 	unsigned int repeat_key;
@@ -1031,11 +1032,7 @@ struct input_dev {
 
 	int rep[REP_CNT];
 
-	struct input_mt_slot *mt;
-	int mtsize;
-	int slot;
-	int trkid;
-
+	struct input_mt *mt;
 	struct input_absinfo *absinfo;
 
 	unsigned long key[BITS_TO_LONGS(KEY_CNT)];
@@ -1043,10 +1040,10 @@ struct input_dev {
 	unsigned long snd[BITS_TO_LONGS(SND_CNT)];
 	unsigned long sw[BITS_TO_LONGS(SW_CNT)];
 
-	int (*open)(struct input_dev *idev);
-	void (*close)(struct input_dev *idev);
-	int (*flush)(struct input_dev *idev);
-	int (*event)(struct input_dev *idev, 
+	int (*open)(struct input_dev *dev);
+	void (*close)(struct input_dev *dev);
+	int (*flush)(struct input_dev *dev);
+	int (*event)(struct input_dev *dev, 
 		     unsigned int type, unsigned int code, int value);
 
 	vmm_spinlock_t event_lock;
@@ -1084,20 +1081,20 @@ struct input_handler
 	unsigned long evbit[BITS_TO_LONGS(EV_CNT)];
 
 	int (*event)(struct input_handler *ihnd, 
-		     struct input_dev *idev, 
+		     struct input_dev *dev, 
 		     unsigned int type, unsigned int code, int value);
 
 	void *priv;
 };
 
-static inline void *input_get_drvdata(struct input_dev *idev)
+static inline void *input_get_drvdata(struct input_dev *dev)
 {
-	return idev->priv;
+	return dev->priv;
 }
 
-static inline void input_set_drvdata(struct input_dev *idev, void *data)
+static inline void input_set_drvdata(struct input_dev *dev, void *data)
 {
-	idev->priv = data;
+	dev->priv = data;
 }
 
 /** Allocate an input device 
@@ -1107,42 +1104,42 @@ static inline void input_set_drvdata(struct input_dev *idev, void *data)
 struct input_dev *input_allocate_device(void);
 
 /** Free an input device 
- * @idev: input device to free
+ * @dev: input device to free
  */
-void input_free_device(struct input_dev *idev);
+void input_free_device(struct input_dev *dev);
 
 /** Register input device 
- * @idev: device to be registered
+ * @dev: device to be registered
  *
  * This function registers device with input core. The device must be
  * allocated with input_allocate_device() and all it's capabilities
  * set up before registering.
  */
-int input_register_device(struct input_dev *idev);
+int input_register_device(struct input_dev *dev);
 
 /** Unregister input device 
- * @idev: device to be unregistered
+ * @dev: device to be unregistered
  *
  * This function unregisters an input device. Once device is unregistered
  * the caller should not try to access it as it may get freed at any moment.
  */
-int input_unregister_device(struct input_dev *idev);
+int input_unregister_device(struct input_dev *dev);
 
 /** Reset/restore input device 
- * @idev: input device whose state needs to be reset
+ * @dev: input device whose state needs to be reset
  *
  * This function tries to reset the state of an opened input device and
  * bring internal state and state if the hardware in sync with each other.
  * We mark all keys as released, restore LED state, repeat rate, etc.
  */
-void input_reset_device(struct input_dev *idev);
+void input_reset_device(struct input_dev *dev);
 
 /** Flush input device 
- * @idev: input device whose state needs to be reset
+ * @dev: input device whose state needs to be reset
  *
  * This function tries to flush an input device.
  */
-int input_flush_device(struct input_dev *idev);
+int input_flush_device(struct input_dev *dev);
 
 /** Find a input device based on its physical name */
 struct input_dev *input_find_device(const char *phys);
@@ -1175,7 +1172,7 @@ struct input_handler *input_get_handler(int index);
 u32 input_count_handler(void);
 
 /** Report new input event 
- * @idev: device that generated the event
+ * @dev: device that generated the event
  * @type: type of the event
  * @code: event code
  * @value: value of the event
@@ -1183,54 +1180,54 @@ u32 input_count_handler(void);
  * This function should be used by drivers implementing various input
  * devices to report input events.
  */
-void input_event(struct input_dev *idev, 
+void input_event(struct input_dev *dev, 
 		     unsigned int type, unsigned int code, int value);
 
 /** Report EV_KEY from input device */
-static inline void input_report_key(struct input_dev *idev, 
+static inline void input_report_key(struct input_dev *dev, 
 					unsigned int code, int value)
 {
-	input_event(idev, EV_KEY, code, !!value);
+	input_event(dev, EV_KEY, code, !!value);
 }
 
 /** Report EV_REL from input device */
-static inline void input_report_rel(struct input_dev *idev, 
+static inline void input_report_rel(struct input_dev *dev, 
 					unsigned int code, int value)
 {
-	input_event(idev, EV_REL, code, value);
+	input_event(dev, EV_REL, code, value);
 }
 
 /** Report EV_ABS from input device */
-static inline void input_report_abs(struct input_dev *idev, 
+static inline void input_report_abs(struct input_dev *dev, 
 					unsigned int code, int value)
 {
-	input_event(idev, EV_ABS, code, value);
+	input_event(dev, EV_ABS, code, value);
 }
 
 /** Report EV_FF_STATUS from input device */
-static inline void input_report_ff_status(struct input_dev *idev, 
+static inline void input_report_ff_status(struct input_dev *dev, 
 					      unsigned int code, int value)
 {
-	input_event(idev, EV_FF_STATUS, code, value);
+	input_event(dev, EV_FF_STATUS, code, value);
 }
 
 /** Report EV_SW from input device */
-static inline void input_report_switch(struct input_dev *idev, 
+static inline void input_report_switch(struct input_dev *dev, 
 					   unsigned int code, int value)
 {
-	input_event(idev, EV_SW, code, !!value);
+	input_event(dev, EV_SW, code, !!value);
 }
 
 /** Report SYNC event */
-static inline void input_sync(struct input_dev *idev)
+static inline void input_sync(struct input_dev *dev)
 {
-	input_event(idev, EV_SYN, SYN_REPORT, 0);
+	input_event(dev, EV_SYN, SYN_REPORT, 0);
 }
 
 /** Report MultiTouch SYNC event */
-static inline void input_mt_sync(struct input_dev *idev)
+static inline void input_mt_sync(struct input_dev *dev)
 {
-	input_event(idev, EV_SYN, SYN_MT_REPORT, 0);
+	input_event(dev, EV_SYN, SYN_MT_REPORT, 0);
 }
 
 /** Set capability of input device to generate event of give type and code 
@@ -1239,14 +1236,14 @@ static inline void input_mt_sync(struct input_dev *idev)
  * @code: event code
  *
  * In addition to setting up corresponding bit in appropriate capability
- * bitmap the function also adjusts idev->evbit.
+ * bitmap the function also adjusts dev->evbit.
  */
-void input_set_capability(struct input_dev *idev, 
+void input_set_capability(struct input_dev *dev, 
 			      unsigned int type, unsigned int code);
 
 /**
  * Tell handlers about the driver event rate
- * @idev: the input device used by the driver
+ * @dev: the input device used by the driver
  * @n_events: the average number of events between calls to input_sync()
  *
  * If the event rate sent from a device is unusually large, use this
@@ -1254,37 +1251,37 @@ void input_set_capability(struct input_dev *idev,
  * to set up an appropriate buffer size for the event stream, in order
  * to minimize information loss.
  */
-static inline void input_set_events_per_packet(struct input_dev *idev,
+static inline void input_set_events_per_packet(struct input_dev *dev,
 						   int n_events)
 {
-	idev->hint_events_per_packet = n_events;
+	dev->hint_events_per_packet = n_events;
 }
 
 /**
  * Allocates array of input_absinfo structs
- * @idev: the input device emitting absolute events
+ * @dev: the input device emitting absolute events
  *
  * If the absinfo struct the caller asked for is already allocated, this
  * functions will not do anything.
  */
-void input_alloc_absinfo(struct input_dev *idev);
+void input_alloc_absinfo(struct input_dev *dev);
 
 void input_set_abs_params(struct input_dev *dev, unsigned int axis,
 			  int min, int max, int fuzz, int flat);
 
 #define INPUT_GENERATE_ABS_ACCESSORS(_suffix, _item)			\
-static inline int input_abs_get_##_suffix(struct input_dev *idev,	\
+static inline int input_abs_get_##_suffix(struct input_dev *dev,	\
 					  unsigned int axis)		\
 {									\
-	return idev->absinfo ? idev->absinfo[axis]._item : 0;		\
+	return dev->absinfo ? dev->absinfo[axis]._item : 0;		\
 }									\
 									\
-static inline void input_abs_set_##_suffix(struct input_dev *idev,	\
+static inline void input_abs_set_##_suffix(struct input_dev *dev,	\
 					   unsigned int axis, int val)	\
 {									\
-	input_alloc_absinfo(idev);					\
-	if (idev->absinfo)						\
-		idev->absinfo[axis]._item = val;			\
+	input_alloc_absinfo(dev);					\
+	if (dev->absinfo)						\
+		dev->absinfo[axis]._item = val;			\
 }
 
 INPUT_GENERATE_ABS_ACCESSORS(val, value)
@@ -1307,23 +1304,23 @@ int input_scancode_to_scalar(const struct input_keymap_entry *ke,
 				 unsigned int *scancode);
 
 /** Retrieve keycode currently mapped to a given scancode 
- * @idev: input device which keymap is being queried
+ * @dev: input device which keymap is being queried
  * @ke: keymap entry
  *
  * This function should be called by anyone interested in retrieving current
  * keymap. Presently evdev handlers use it.
  */
-int input_get_keycode(struct input_dev *idev, 
+int input_get_keycode(struct input_dev *dev, 
 			  struct input_keymap_entry *ke);
 
 /** Attribute a keycode to a given scancode 
- * @idev: input device which keymap is being updated
+ * @dev: input device which keymap is being updated
  * @ke: new keymap entry
  *
  * This function should be called by anyone needing to update current
  * keymap. Presently keyboard and evdev handlers use it.
  */
-int input_set_keycode(struct input_dev *idev,
+int input_set_keycode(struct input_dev *dev,
 			  const struct input_keymap_entry *ke);
 
 #endif /* __DRV_INPUT_H_ */
