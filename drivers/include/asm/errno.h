@@ -25,5 +25,6 @@
 #define ENOSYS			-(VMM_ENOSYS)
 #define ENOSPC			-(VMM_ENOSPC)
 #define ENODATA			-(VMM_ENODATA)
+#define ENXIO			-(VMM_ENXIO)
 
 #endif /* defined(_ASM_ERRNO_H) */
