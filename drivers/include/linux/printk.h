@@ -35,7 +35,12 @@
 					} while (0)
 
 #define dev_notice(dev, args...)	do { \
-					vmm_printf("ERROR: %s: ", dev->node->name); \
+					vmm_printf("NOTICE: %s: ", dev->node->name); \
+					vmm_printf(args); \
+					} while (0)
+
+#define dev_printk(level, dev, args...)	do { \
+					vmm_printf("%s: ", dev->node->name); \
 					vmm_printf(args); \
 					} while (0)
 

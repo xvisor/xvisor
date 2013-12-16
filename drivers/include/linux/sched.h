@@ -6,6 +6,7 @@
 
 #include <linux/jiffies.h>
 #include <linux/kthread.h>
+#include <linux/timer.h>
 #include <linux/workqueue.h>
 #include <linux/completion.h>
 

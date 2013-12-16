@@ -2,6 +2,8 @@
 #define _LINUX_WORKQUEUE_H_
 
 #include <vmm_workqueue.h>
+
+#include <linux/timer.h>
 #include <linux/jiffies.h>
 
 #define work_struct			vmm_work

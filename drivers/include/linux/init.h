@@ -10,6 +10,7 @@
 #include <linux/printk.h>
 #include <linux/sched.h>
 #include <linux/io.h>
+#include <linux/mutex.h>
 #include <linux/kernel.h>
 
 #define snprintf(p1,p2,p3...)		vmm_snprintf(p1,p2,p3)
