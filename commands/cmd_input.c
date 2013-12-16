@@ -47,21 +47,23 @@ void cmd_input_usage(struct vmm_chardev *cdev)
 void cmd_input_devices(struct vmm_chardev *cdev)
 {
 	int num, count;
+	char id[27];
 	struct input_dev *idev;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-18s %-24s %-8s %-8s %-8s %-8s\n", 
-			  "Phys", "Name", "BusType", 
-			  "Vendor", "Product", "Version");
+	vmm_cprintf(cdev, " %-18s %-32s %-27s\n", 
+			  "Phys", "Name", "Bus:Vendor:Product:Version");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	count = input_count_device();
 	for (num = 0; num < count; num++) {
 		idev = input_get_device(num);
-		vmm_cprintf(cdev, " %-18s %-24s 0x%-6x 0x%-6x 0x%-6x 0x%-6x\n", 
-				  idev->phys, idev->name, 
-				  idev->id.bustype, idev->id.vendor, 
-				  idev->id.product, idev->id.version);
+		vmm_snprintf(id, sizeof(id),
+				"0x%02x:0x%02x:0x%02x:0x%04x",
+				idev->id.bustype, idev->id.vendor, 
+				idev->id.product, idev->id.version);
+		vmm_cprintf(cdev, " %-18s %-32s %-27s\n", 
+				  idev->phys, idev->name, id);
 	}
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
