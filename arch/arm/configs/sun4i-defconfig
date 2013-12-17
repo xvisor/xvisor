@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Mon Dec  9 21:16:25 2013
+# Tue Dec 17 19:35:07 2013
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -83,11 +83,13 @@ CONFIG_SUNXI=y
 #
 MODULES=y
 # CONFIG_VERBOSE_MODE is not set
-CONFIG_BANNER_NONE=y
+# CONFIG_BANNER_NONE is not set
+# CONFIG_BANNER_BANNER3 is not set
 # CONFIG_BANNER_BANNER4 is not set
 # CONFIG_BANNER_COLOSSAL is not set
+# CONFIG_BANNER_GRAFFITI is not set
 # CONFIG_BANNER_O8 is not set
-# CONFIG_BANNER_ROMAN is not set
+CONFIG_BANNER_ROMAN=y
 CONFIG_IRQ_STACK_SIZE=4096
 CONFIG_THREAD_STACK_SIZE=8192
 CONFIG_MAX_VCPU_COUNT=64
