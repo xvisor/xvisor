@@ -23,6 +23,8 @@
 
 core-objs-$(CONFIG_VSERIAL)+= vio/vmm_vserial.o
 
+core-objs-$(CONFIG_VDISPLAY)+= vio/vmm_vdisplay.o
+
 core-objs-$(CONFIG_VINPUT)+= vio/vmm_vinput_core.o
 
 vmm_vinput_core-y+= vmm_vinput.o
