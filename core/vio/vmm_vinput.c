@@ -156,7 +156,6 @@ int vmm_vkeyboard_destroy(struct vmm_vkeyboard *vkbd)
 
 	vk = NULL;
 	found = FALSE;
-
 	list_for_each(l, &victrl.vkbd_list) {
 		vk = list_entry(l, struct vmm_vkeyboard, head);
 		if (strcmp(vk->name, vkbd->name) == 0) {
@@ -164,14 +163,12 @@ int vmm_vkeyboard_destroy(struct vmm_vkeyboard *vkbd)
 			break;
 		}
 	}
-
 	if (!found) {
 		vmm_mutex_unlock(&victrl.vkbd_list_lock);
 		return VMM_ENOTAVAIL;
 	}
 
 	list_del(&vk->head);
-
 	vmm_free(vk);
 
 	vmm_mutex_unlock(&victrl.vkbd_list_lock);
@@ -381,6 +378,7 @@ struct vmm_vkeyboard *vmm_vkeyboard_get(int index)
 	return retval;
 }
 VMM_EXPORT_SYMBOL(vmm_vkeyboard_get);
+
 u32 vmm_vkeyboard_count(void)
 {
 	u32 retval = 0;
@@ -493,7 +491,6 @@ int vmm_vmouse_destroy(struct vmm_vmouse *vmou)
 
 	vm = NULL;
 	found = FALSE;
-
 	list_for_each(l, &victrl.vmou_list) {
 		vm = list_entry(l, struct vmm_vmouse, head);
 		if (strcmp(vm->name, vmou->name) == 0) {
@@ -501,14 +498,12 @@ int vmm_vmouse_destroy(struct vmm_vmouse *vmou)
 			break;
 		}
 	}
-
 	if (!found) {
 		vmm_mutex_unlock(&victrl.vmou_list_lock);
 		return VMM_ENOTAVAIL;
 	}
 
 	list_del(&vm->head);
-
 	vmm_free(vm);
 
 	vmm_mutex_unlock(&victrl.vmou_list_lock);

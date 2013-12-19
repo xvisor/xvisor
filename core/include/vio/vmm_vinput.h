@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_vinput.c
+ * @file vmm_vinput.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for virtual input subsystem
+ * @brief header file for virtual input subsystem
  */
 
 #ifndef __VMM_VINPUT_H_
