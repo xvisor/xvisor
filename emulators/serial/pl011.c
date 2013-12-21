@@ -324,10 +324,10 @@ static int pl011_emulator_read(struct vmm_emudev *edev,
 			*(u8 *)dst = regval & 0xFF;
 			break;
 		case 2:
-			*(u16 *)dst = arch_cpu_to_le16(regval & 0xFFFF);
+			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
 			break;
 		case 4:
-			*(u32 *)dst = arch_cpu_to_le32(regval);
+			*(u32 *)dst = vmm_cpu_to_le32(regval);
 			break;
 		default:
 			rc = VMM_EFAIL;
