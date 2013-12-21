@@ -25,6 +25,7 @@
 #include <vmm_macros.h>
 #include <vmm_mutex.h>
 #include <vmm_modules.h>
+#include <vmm_guest_aspace.h>
 #include <vio/vmm_vdisplay.h>
 #include <libs/mathlib.h>
 #include <libs/stringlib.h>
@@ -182,6 +183,88 @@ void vmm_pixelformat_init_different_endian(struct vmm_pixelformat *pf, int bpp)
 	};
 }
 VMM_EXPORT_SYMBOL(vmm_pixelformat_init_different_endian);
+
+void vmm_surface_update(struct vmm_surface *s,
+			struct vmm_guest *guest,
+			physical_addr_t src_gphys,
+			int cols, int rows,
+			int src_width,
+			int dst_row_pitch,
+			int dst_col_pitch,
+			void (*fn)(struct vmm_surface *s,
+				   void *priv, u8 *dst, const u8 *src,
+				   int width, int dststep),
+			void *fn_priv,
+			int *first_row,
+			int *last_row)
+{
+#define CHUNK_SIZE		256
+	u32 len;
+	int i, j;
+	int chunk_len, chunk_cols, chunk_dst_row_pitch;
+	u8 *dst, chunk[CHUNK_SIZE];
+
+	/* Sanity check */
+	if (!s || !guest || !first_row || !last_row) {
+		return;
+	}
+	if ((rows <= 0) || (cols <= 0)) {
+		return;
+	}
+	if ((src_width <= 0) || (dst_row_pitch == 0)) {
+		return;
+	}
+
+	/* Clip rows and cols to fit the surface */
+	rows = min(rows, vmm_surface_height(s));
+	cols = min(cols, vmm_surface_width(s));
+
+	/* Ensure that first_row is within limit */
+	if ((*first_row < 0) || (rows <= *first_row)) {
+		return;
+	}
+
+	/* Determine dst pointer */
+	dst = vmm_surface_data(s);
+	if (dst_col_pitch < 0) {
+		dst -= dst_col_pitch * (cols - 1);
+	}
+	if (dst_row_pitch < 0) {
+		dst -= dst_row_pitch * (rows - 1);
+	}
+	dst += (*first_row) * dst_row_pitch;
+
+	/* Determine src guest physical address */
+	src_gphys += (*first_row) * src_width;
+
+	/* Update surface data in chunks */
+	for (i = *first_row; i < rows; i++) {
+		j = 0;
+		while (j < src_width) {
+			chunk_len = min(src_width - j, CHUNK_SIZE);
+			chunk_cols = sdiv32((chunk_len * cols), src_width);
+			chunk_len = sdiv32((chunk_cols * src_width), cols);
+			chunk_dst_row_pitch =
+				sdiv32((chunk_len * dst_row_pitch), src_width);
+			
+			len = vmm_guest_memory_read(guest, src_gphys,
+						    chunk, chunk_len);
+			if (len != chunk_len) {
+				goto next_chunk;
+			}
+
+			fn(s, fn_priv, dst, chunk, chunk_cols, dst_col_pitch);
+
+next_chunk:
+			j += chunk_len;
+			src_gphys += chunk_len;
+			dst += chunk_dst_row_pitch;
+		}
+	}
+
+	*last_row = i;
+}
+VMM_EXPORT_SYMBOL(vmm_surface_update);
 
 int vmm_surface_init(struct vmm_surface *s,
 		     const char *name,
@@ -348,6 +431,35 @@ void vmm_vdisplay_surface_refresh(struct vmm_vdisplay *vdis)
 }
 VMM_EXPORT_SYMBOL(vmm_vdisplay_surface_refresh);
 
+static void __surface_gfx_clear(struct vmm_surface *s)
+{
+	if (s->ops && s->ops->gfx_clear) {
+		s->ops->gfx_clear(s);
+	}
+}
+
+void vmm_vdisplay_surface_gfx_clear(struct vmm_vdisplay *vdis)
+{
+	struct dlist *l;
+	irq_flags_t flags;
+	struct vmm_surface *s;
+
+	if (!vdis) {
+		return;
+	}
+
+	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
+
+	s = NULL;
+	list_for_each(l, &vdis->surface_list) {
+		s = list_entry(l, struct vmm_surface, head);
+		__surface_gfx_clear(s);
+	}
+
+	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
+}
+VMM_EXPORT_SYMBOL(vmm_vdisplay_surface_gfx_clear);
+
 static void __surface_gfx_update(struct vmm_surface *s,
 				 int x, int y, int w, int h)
 {
@@ -480,6 +592,35 @@ void vmm_vdisplay_surface_gfx_copy(struct vmm_vdisplay *vdis,
 	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
 }
 VMM_EXPORT_SYMBOL(vmm_vdisplay_surface_gfx_copy);
+
+static void __surface_text_clear(struct vmm_surface *s)
+{
+	if (s->ops && s->ops->text_clear) {
+		s->ops->text_clear(s);
+	}
+}
+
+void vmm_vdisplay_surface_text_clear(struct vmm_vdisplay *vdis)
+{
+	struct dlist *l;
+	irq_flags_t flags;
+	struct vmm_surface *s;
+
+	if (!vdis) {
+		return;
+	}
+
+	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
+
+	s = NULL;
+	list_for_each(l, &vdis->surface_list) {
+		s = list_entry(l, struct vmm_surface, head);
+		__surface_text_clear(s);
+	}
+
+	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
+}
+VMM_EXPORT_SYMBOL(vmm_vdisplay_surface_text_clear);
 
 static void __surface_text_cursor(struct vmm_surface *s, int x, int y)
 {

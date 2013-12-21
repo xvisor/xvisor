@@ -43,6 +43,7 @@
 #include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_notifier.h>
+#include <vmm_manager.h>
 #include <libs/list.h>
 
 #define VMM_VDISPLAY_IPRIORITY			0
@@ -92,13 +93,16 @@ struct vmm_surface;
  *  bottom-half work.
  */
 struct vmm_surface_ops {
-	void (*copyto_data)(struct vmm_surface *s,
-			u32 dest_off, void *src, u32 len);
-	void (*copyfrom_data)(struct vmm_surface *s,
-			void *dest, u32 src_off, u32 len);
+	void (*write8)(struct vmm_surface *s, u8 *dst, u8 val);
+	u8   (*read8)(struct vmm_surface *s, u8 *src);
+	void (*write16)(struct vmm_surface *s, u16 *dst, u16 val);
+	u16  (*read16)(struct vmm_surface *s, u16 *src);
+	void (*write32)(struct vmm_surface *s, u32 *dst, u16 val);
+	u16  (*read32)(struct vmm_surface *s, u32 *src);
 
 	void (*refresh)(struct vmm_surface *s);
 
+	void (*gfx_clear)(struct vmm_surface *s);
 	void (*gfx_update)(struct vmm_surface *s,
 			   int x, int y, int w, int h);
 	void (*gfx_resize)(struct vmm_surface *s, int w, int h);
@@ -107,6 +111,7 @@ struct vmm_surface_ops {
 			 int dst_x, int dst_y,
 			 int w, int h);
 
+	void (*text_clear)(struct vmm_surface *s);
 	void (*text_cursor)(struct vmm_surface *s,
 			    int x, int y);
 	void (*text_resize)(struct vmm_surface *s,
@@ -137,6 +142,82 @@ static inline void *vmm_surface_priv(struct vmm_surface *s)
 {
 	return (s) ? s->priv : NULL;
 }
+
+/** Write 8bit to surface data */
+static inline void vmm_surface_write8(struct vmm_surface *s, u8 *dst, u8 v)
+{
+	if (s && s->ops && s->ops->write8) {
+		s->ops->write8(s, dst, v);
+	} else {
+		*dst = v;
+	}
+}
+
+/** Read 8bit from surface data */
+static inline u8 vmm_surface_read8(struct vmm_surface *s, u8 *src)
+{
+	if (s && s->ops && s->ops->read8) {
+		return s->ops->read8(s, src);
+	} else {
+		return *src;
+	}
+}
+
+/** Write 16bit to surface data */
+static inline void vmm_surface_write16(struct vmm_surface *s, u16 *dst, u16 v)
+{
+	if (s && s->ops && s->ops->write16) {
+		s->ops->write16(s, dst, v);
+	} else {
+		*dst = v;
+	}
+}
+
+/** Read 16bit from surface data */
+static inline u16 vmm_surface_read16(struct vmm_surface *s, u16 *src)
+{
+	if (s && s->ops && s->ops->read16) {
+		return s->ops->read16(s, src);
+	} else {
+		return *src;
+	}
+}
+
+/** Write 32bit to surface data */
+static inline void vmm_surface_write32(struct vmm_surface *s, u32 *dst, u16 v)
+{
+	if (s && s->ops && s->ops->write32) {
+		s->ops->write32(s, dst, v);
+	} else {
+		*dst = v;
+	}
+}
+
+/** Read 32bit from surface data */
+static inline u32 vmm_surface_read32(struct vmm_surface *s, u32 *src)
+{
+	if (s && s->ops && s->ops->read32) {
+		return s->ops->read32(s, src);
+	} else {
+		return *src;
+	}
+}
+
+/** Update surface data from guest memory */
+void vmm_surface_update(struct vmm_surface *s,
+			struct vmm_guest *guest,
+			physical_addr_t gphys,
+			int cols,  /* Width in pixels. */
+			int rows, /* Height in pixels. */
+			int src_width, /* Length of source line, in bytes. */
+			int dest_row_pitch, /* Bytes between adjacent horizontal output pixels. */
+			int dest_col_pitch, /* Bytes between adjacent vertical output pixels. */
+			void (*fn)(struct vmm_surface *s,
+				   void *priv, u8 *dst, const u8 *src,
+				   int width, int deststep),
+			void *fn_priv,
+			int *first_row, /* Input and output. */
+			int *last_row); /* Output only. */
 
 /** Initialize a surface */
 int vmm_surface_init(struct vmm_surface *s,
@@ -230,6 +311,9 @@ void vmm_vdisplay_text_update(struct vmm_vdisplay *vdis,
 /** Refresh all surfaces for given virtual display */
 void vmm_vdisplay_surface_refresh(struct vmm_vdisplay *vdis);
 
+/** Clear all surfaces for given virtual display */
+void vmm_vdisplay_surface_gfx_clear(struct vmm_vdisplay *vdis);
+
 /** Update all surfaces for given virtual display */
 void vmm_vdisplay_surface_gfx_update(struct vmm_vdisplay *vdis,
 				     int x, int y, int w, int h);
@@ -243,6 +327,9 @@ void vmm_vdisplay_surface_gfx_copy(struct vmm_vdisplay *vdis,
 				   int src_x, int src_y,
 				   int dst_x, int dst_y,
 				   int w, int h);
+
+/** Clear text on all surfaces for given virtual display */
+void vmm_vdisplay_surface_text_clear(struct vmm_vdisplay *vdis);
 
 /** Set text cursor on all surfaces for given virtual display */
 void vmm_vdisplay_surface_text_cursor(struct vmm_vdisplay *vdis,
