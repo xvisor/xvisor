@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2012 Anup Patel.
+# Copyright (c) 2013 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,26 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for emulator options
+# @brief list of display emulator objects
 # */
 
-menu "Device Emulators"
-     source "emulators/virtio/openconf.cfg"
+emulators-objs-$(CONFIG_EMU_DISPLAY_PL110)+= display/pl110.o
 
-     source "emulators/sys/openconf.cfg"
-     source "emulators/pic/openconf.cfg"
-     source "emulators/timer/openconf.cfg"
-     source "emulators/cache/openconf.cfg"
-     source "emulators/misc/openconf.cfg"
-
-     source "emulators/net/openconf.cfg"
-     source "emulators/block/openconf.cfg"
-     source "emulators/display/openconf.cfg"
-     source "emulators/input/openconf.cfg"
-     source "emulators/serial/openconf.cfg"
-     source "emulators/console/openconf.cfg"
-     source "emulators/rtc/openconf.cfg"
-     source "emulators/gpio/openconf.cfg"
-endmenu
