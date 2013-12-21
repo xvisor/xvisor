@@ -395,11 +395,15 @@ void cmd_vserial_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	struct vmm_vserial *vser;
+	vmm_cprintf(cdev, "----------------------------------------\n");
+	vmm_cprintf(cdev, " %-39s\n", "Name");
+	vmm_cprintf(cdev, "----------------------------------------\n");
 	count = vmm_vserial_count();
 	for (num = 0; num < count; num++) {
 		vser = vmm_vserial_get(num);
-		vmm_cprintf(cdev, "%d: %s\n", num, vser->name);
+		vmm_cprintf(cdev, " %-39s\n", vser->name);
 	}
+	vmm_cprintf(cdev, "----------------------------------------\n");
 }
 
 int cmd_vserial_exec(struct vmm_chardev *cdev, int argc, char **argv)
