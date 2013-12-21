@@ -219,13 +219,14 @@
 					compatible = "zero";
 				};
 
-				clcd { /* No Color LCD */
+				clcd {
 					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x10020000>;
 					physical_size = <0x1000>;
-					device_type = "misc";
-					compatible = "zero";
+					device_type = "display";
+					compatible = "primecell,pl111";
+					interrupts = <46>;
 				};
 
 				dmc { /* No DMC */
