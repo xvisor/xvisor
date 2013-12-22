@@ -77,7 +77,7 @@ RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
   (Note: This command will copy dtb to RAM)
   [guest0/uart0] basic# copy 0x80600000 0x00700000 0x600000
   (Note: This command will copy rootfs.img to RAM)
-  [guest0/uart0] basic# start_linux_fdt 0x80008000 0x80600000 0x600000 0x80500000
+  [guest0/uart0] basic# start_linux_fdt 0x80008000 0x80500000 0x80600000 0x600000
   (Note: This command will start linux booting)
   OR
   [guest0/uart0] basic# autoexec
