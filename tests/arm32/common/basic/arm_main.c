@@ -26,6 +26,7 @@
 #include <arm_mmu.h>
 #include <arm_irq.h>
 #include <arm_timer.h>
+#include <arm_math.h>
 #include <arm_string.h>
 #include <arm_stdio.h>
 #include <arm_board.h>
@@ -92,26 +93,26 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("            <count> = byte count in hex\n");
 	arm_puts("\n");
 	arm_puts("start_linux - Start linux kernel (atags mechanism)\n");
-	arm_puts("            Usage: start_linux <kernel_addr> <initrd_addr> <initrd_size>\n");
+	arm_puts("            Usage: start_linux <kernel_addr> [<initrd_addr>] [<initrd_size>]\n");
 	arm_puts("            <kernel_addr>  = kernel load address\n");
-	arm_puts("            <initrd_addr>  = initrd load address\n");
-	arm_puts("            <initrd_size>  = initrd size\n");
+	arm_puts("            <initrd_addr>  = initrd load address (optional)\n");
+	arm_puts("            <initrd_size>  = initrd size (optional)\n");
 	arm_puts("\n");
 #ifdef BOARD_FDT_SUPPORT
 	arm_puts("start_linux_fdt - Start linux kernel (device-tree mechanism)\n");
-	arm_puts("            Usage: start_linux_fdt <kernel_addr> <initrd_addr> <initrd_size> <fdt_addr>\n");
+	arm_puts("            Usage: start_linux_fdt <kernel_addr> <fdt_addr> [<initrd_addr>] [<initrd_size>]\n");
 	arm_puts("            <kernel_addr>  = kernel load address\n");
-	arm_puts("            <initrd_addr>  = initrd load address\n");
-	arm_puts("            <initrd_size>  = initrd size\n");
-	arm_puts("            <fdt_size>     = fdt blob size\n");
+	arm_puts("            <fdt_addr>     = fdt blob address\n");
+	arm_puts("            <initrd_addr>  = initrd load address (optional)\n");
+	arm_puts("            <initrd_size>  = initrd size (optional)\n");
 	arm_puts("\n");
 #endif
 	arm_puts("linux_cmdline - Show/Update linux command line\n");
-	arm_puts("            Usage: linux_cmdline <new_linux_cmdline> \n");
+	arm_puts("            Usage: linux_cmdline [<new_linux_cmdline>]\n");
 	arm_puts("            <new_linux_cmdline>  = linux command line\n");
 	arm_puts("\n");
 	arm_puts("linux_memory_size - Show/Update linux memory size\n");
-	arm_puts("            Usage: linux_memory_size <memory_size> \n");
+	arm_puts("            Usage: linux_memory_size [<memory_size>]\n");
 	arm_puts("            <memory_size>  = memory size in hex\n");
 	arm_puts("\n");
 	arm_puts("autoexec    - autoexec command list from flash\n");
@@ -361,11 +362,12 @@ void arm_cmd_copy(int argc, char **argv)
 		dest[i] = src[i];
 	}
 	tstamp = arm_timer_timestamp() - tstamp;
+	tstamp = arm_udiv64(tstamp, 1000);
 	arm_timer_enable();
 	arm_ulonglong2str(time, tstamp);
 	arm_puts("copy took ");
 	arm_puts(time);
-	arm_puts(" ns for ");
+	arm_puts(" usecs for ");
 	arm_puts(argv[3]);
 	arm_puts(" bytes\n");
 }
@@ -381,15 +383,24 @@ void arm_cmd_start_linux(int argc, char **argv)
 	u32 cmdline_size, p;
 	u32 kernel_addr, initrd_addr, initrd_size;
 
-	if (argc != 4) {
-		arm_puts ("start_linux: must provide <kernel_addr>, <initrd_addr>, and <initrd_size>\n");
+	if (argc < 2) {
+		arm_puts ("start_linux: must provide <kernel_addr>\n");
+		arm_puts ("start_linux: <initrd_addr> and <initrd_size> are optional\n");
 		return;
 	}
 
 	/* Parse the arguments from command line */
 	kernel_addr = arm_hexstr2uint(argv[1]);
-	initrd_addr = arm_hexstr2uint(argv[2]);
-	initrd_size = arm_hexstr2uint(argv[3]);
+	if (argc > 2) {
+		initrd_addr = arm_hexstr2uint(argv[2]);
+	} else {
+		initrd_addr = 0;
+	}
+	if (argc > 3) {
+		initrd_size = arm_hexstr2uint(argv[3]);
+	} else {
+		initrd_size = 0;
+	}
 
 	/* Setup kernel args */
 	for (p = 0; p < 128; p++) {
@@ -408,10 +419,12 @@ void arm_cmd_start_linux(int argc, char **argv)
 	kernel_args[p++] = memory_size;
 	kernel_args[p++] = arm_board_ram_start();
 	/* ATAG_INITRD2 */
-	kernel_args[p++] = 4;
-	kernel_args[p++] = 0x54420005;
-	kernel_args[p++] = initrd_addr;
-	kernel_args[p++] = initrd_size;
+	if (initrd_size) {
+		kernel_args[p++] = 4;
+		kernel_args[p++] = 0x54420005;
+		kernel_args[p++] = initrd_addr;
+		kernel_args[p++] = initrd_size;
+	}
 
 	/* Pass memory size via kernel command line */
 	arm_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
@@ -455,16 +468,25 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	u32 initrd_addr, initrd_size;
 	char cfg_str[32];
 
-	if (argc != 5) {
-		arm_puts ("start_linux: must provide <kernel_addr>, <initrd_addr>, <initrd_size> and <fdt_addr>\n");
+	if (argc < 3) {
+		arm_puts ("start_linux_fdt: must provide <kernel_addr> and <fdt_addr>\n");
+		arm_puts ("start_linux_fdt: <initrd_addr> and <initrd_size> are optional\n");
 		return;
 	}
 
 	/* Parse the arguments from command line */
 	kernel_addr = arm_hexstr2uint(argv[1]);
-	fdt_addr = arm_hexstr2uint(argv[4]);
-	initrd_addr = arm_hexstr2uint(argv[2]);
-	initrd_size = arm_hexstr2uint(argv[3]);
+	fdt_addr = arm_hexstr2uint(argv[2]);
+	if (argc > 3) {
+		initrd_addr = arm_hexstr2uint(argv[3]);
+	} else {
+		initrd_addr = 0;
+	}
+	if (argc > 4) {
+		initrd_size = arm_hexstr2uint(argv[4]);
+	} else {
+		initrd_size = 0;
+	}
 
 	/* Pass memory size via kernel command line */
 	arm_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
@@ -475,7 +497,10 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	 * 		- kernel cmd line
 	 * 		- number of cpus   */
 	fdt_chosen((void *)fdt_addr, 1, cmdline);
-	fdt_initrd((void *)fdt_addr, initrd_addr, initrd_addr + initrd_size, 1);
+	if (initrd_size) {
+		fdt_initrd((void *)fdt_addr,
+			   initrd_addr, initrd_addr + initrd_size, 1);
+	}
 
 	/* Disable interrupts and timer */
 	arm_timer_disable();
