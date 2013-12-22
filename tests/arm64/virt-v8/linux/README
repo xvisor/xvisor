@@ -60,7 +60,7 @@ Foundation v8 model:
   # ./scripts/dtc/dtc -I dts -O dtb -p 0x800 -o virt-v8.dtb <xvisor_source_directory>/tests/arm64/virt-v8/linux/virt-v8.dts
 
   [15. Create foundation_v8_boot.axf for running it on Foundation v8 model]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x80010000 -o foundation_v8_boot.img <xvisor_source_directory>/build/vmm.bin@0x80010000 <xvisor_source_directory>/build/tests/arm64/virt-v8/basic/firmware.bin@0x81000000 <xvisor_source_directory>/tests/arm64/virt-v8/linux/cmdlist@0x810FF000 <linux_build_directory>/arch/arm64/boot/Image@0x81100000 <linux_build_directory>/virt-v8.dtb@0x81600000 <busybox_rootfs_directory>/rootfs64.img@0x81700000
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x80010000 -o foundation_v8_boot.img <xvisor_source_directory>/build/vmm.bin@0x80010000 <xvisor_source_directory>/build/tests/arm64/virt-v8/basic/firmware.bin@0x81000000 <xvisor_source_directory>/tests/arm64/virt-v8/linux/cmdlist@0x810FF000 <linux_build_directory>/arch/arm64/boot/Image@0x81100000 <linux_build_directory>/virt-v8.dtb@0x816F0000 <busybox_rootfs_directory>/rootfs64.img@0x81700000
   # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=foundation_v8_boot.img -DDTB=<xvisor_source_directory>/build/arch/arm/board/generic-v8/dts/foundation-v8/one_guest_virt_v8.dtb <xvisor_source_directory>/docs/arm/foundation_v8_boot.S -o foundation_v8_boot.axf
 
   [16. Launch Foundation v8 Model]
