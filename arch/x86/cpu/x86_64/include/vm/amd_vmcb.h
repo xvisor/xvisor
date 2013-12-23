@@ -390,15 +390,15 @@ struct vmcb {
 	u64 nextrip;			/* offset 0xC8 */
 	u64 res10a[102];		/* offset 0xD0 pad to save area */
 
-	struct seg_selector cs;		/* offset 1024 */
-	struct seg_selector gs;
+	struct seg_selector es;		/* offset 1024 */
+	struct seg_selector cs;
 	struct seg_selector ss;
-	struct seg_selector fs;
-	struct seg_selector es;
 	struct seg_selector ds;
+	struct seg_selector fs;
+	struct seg_selector gs;
 	struct seg_selector gdtr;
-	struct seg_selector idtr;
 	struct seg_selector ldtr;
+	struct seg_selector idtr;
 	struct seg_selector tr;
 	u64 res10[5];
 	u8 res11[3];
