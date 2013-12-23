@@ -85,7 +85,7 @@ void cpu_disable_vcpu_intercept(struct vcpu_hw_context *context, int flags)
 	if (flags & USER_SINGLE_STEPPING) {
 		VM_LOG(LVL_INFO, "Disable single stepping\n");
 		context->vmcb->rflags &= ~X86_EFLAGS_TF;
-		context->vmcb->exception_intercepts &= ~INTRCPT_DB;
+		context->vmcb->exception_intercepts &= ~INTRCPT_EXC_DB;
 	}
 }
 

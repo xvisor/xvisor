@@ -86,15 +86,53 @@ static struct vmcb *alloc_vmcb(void)
 static void set_control_params (struct vmcb *vmcb)
 {
 	/* Enable/disable nested paging (See AMD64 manual Vol. 2, p. 409) */
-	vmcb->np_enable = 1;
-	vmcb->tlb_control = 0;
+	vmcb->np_enable = 0;
+	vmcb->tlb_control = 1; /* Flush all TLBs global/local/asid wide */
 	vmcb->tsc_offset = 0;
 	vmcb->guest_asid = 1;
 
 	/* Intercept the VMRUN and VMMCALL instructions */
 	vmcb->general2_intercepts = (INTRCPT_VMRUN | INTRCPT_VMMCALL);
 
-	vmcb->general1_intercepts |= INTRCPT_INTN;
+	vmcb->general1_intercepts |= (INTRCPT_INTN       |
+				      INTRCPT_INTR       |
+				      INTRCPT_CR0_WR     |
+				      INTRCPT_IDTR_RD    |
+				      INTRCPT_IDTR_WR    |
+				      INTRCPT_GDTR_RD    |
+				      INTRCPT_GDTR_WR    |
+				      INTRCPT_LDTR_RD    |
+				      INTRCPT_LDTR_WR    |
+				      INTRCPT_TR_RD      |
+				      INTRCPT_TR_WR      |
+				      INTRCPT_RDTSC      |
+				      INTRCPT_PUSHF      |
+				      INTRCPT_POPF       |
+				      INTRCPT_CPUID      |
+				      INTRCPT_IRET       |
+				      INTRCPT_IOIO_PROT  |
+				      INTRCPT_MSR_PROT   |
+				      INTRCPT_TASKSWITCH |
+				      INTRCPT_SHUTDOWN   |
+				      INTRCPT_INVLPG     |
+				      INTRCPT_INVLPGA    |
+				      INTRCPT_HLT);
+
+	vmcb->exception_intercepts |= (INTRCPT_EXC_DIV_ERR   |
+				       INTRCPT_EXC_DB        |
+				       INTRCPT_EXC_NMI       |
+				       INTRCPT_EXC_BP        |
+				       INTRCPT_EXC_OV        |
+				       INTRCPT_EXC_BOUNDS    |
+				       INTRCPT_EXC_INV_OPC   |
+				       INTRCPT_EXC_NDEV      |
+				       INTRCPT_EXC_DFAULT    |
+				       INTRCPT_EXC_CP_OVRRUN |
+				       INTRCPT_EXC_INV_TSS   |
+				       INTRCPT_EXC_SEG_NP    |
+				       INTRCPT_EXC_NO_STK_SEG|
+				       INTRCPT_EXC_GPF       |
+				       INTRCPT_EXC_PF);
 }
 
 static void set_vm_to_powerup_state(struct vmcb *vmcb)
