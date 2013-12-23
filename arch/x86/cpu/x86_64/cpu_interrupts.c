@@ -248,6 +248,13 @@ int do_breakpoint(int intno, arch_regs_t *regs)
 	while(1);
 }
 
+int do_generic_exception_handler(int intno, arch_regs_t *regs)
+{
+	vmm_printf("Unhandled exception %d\n", intno);
+	do_panic_dump(regs, "Unhandled exception in VMM code.\n");
+	while(1);
+}
+
 int do_gpf(int intno, arch_regs_t *regs)
 {
 	do_panic_dump(regs, "(General Proctection Fault)\n");
