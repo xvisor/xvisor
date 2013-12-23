@@ -72,6 +72,7 @@ struct vcpu_hw_context {
 	int itc_flag;  /* flags specifying which interceptions were
 			  registered for this vm. */
 	int itc_skip_flag;
+	u64 guest_start_pc; /* Guest will start execution from here (comes from DTS) */
 
 	/* on & exit handler */
 	void (*vcpu_run) (struct vcpu_hw_context *context);

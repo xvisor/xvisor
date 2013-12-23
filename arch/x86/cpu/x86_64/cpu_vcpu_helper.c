@@ -177,6 +177,14 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 	}
 }
 
+static void arch_guest_vcpu_trampoline(struct vmm_vcpu *vcpu)
+{
+	VM_LOG(LVL_INFO, "Running VCPU %s\n", vcpu->name);
+	cpu_boot_vcpu(x86_vcpu_priv(vcpu)->hw_context);
+	VM_LOG(LVL_ERR, "ERROR: Guest VCPU exited from run loop!\n");
+	while(1); /* Should never come here! */
+}
+
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
 	u64 stack_start;
@@ -216,7 +224,34 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 			x86_vcpu_priv(vcpu)->hw_context = vmm_zalloc(sizeof(struct vcpu_hw_context));
 			x86_vcpu_priv(vcpu)->hw_context->assoc_vcpu = vcpu;
+
+			/*
+			 * !!KLUDGE!!
+			 * The Guest DTS tells the start PC for the guest. The core code
+			 * takes this start PC as the PC of the newly formed VCPU. This
+			 * address can not be used by the processor to run. The newly
+			 * formed VCPU has to run a trampoline code which will run in loop
+			 * and switch processor's mode to guest mode and then run the processor
+			 * from the address specified in DTS.
+			 *
+			 * So we save this start PC read from DTS in the VCPU hardware context
+			 * and when this VCPU switches to guest mode, it will make processor
+			 * run from this address.
+			 */
+			x86_vcpu_priv(vcpu)->hw_context->guest_start_pc = vcpu->start_pc;
 			cpu_init_vcpu_hw_context(&cpu_info, x86_vcpu_priv(vcpu)->hw_context);
+
+			/*
+			 * This vcpu has to run VMM code before and after guest mode
+			 * switch. Prepare for the same.
+			 */
+			stack_start = vcpu->stack_va + vcpu->stack_sz - sizeof(u64);
+			vcpu->regs.rip = arch_guest_vcpu_trampoline;
+			vcpu->regs.rsp = stack_start;
+			vcpu->regs.cs = VMM_CODE_SEG_SEL;
+			vcpu->regs.ss = VMM_DATA_SEG_SEL;
+			vcpu->regs.rdi = (u64)vcpu; /* this VCPU as parameter */
+			vcpu->regs.rflags = (X86_EFLAGS_IF | X86_EFLAGS_PF | X86_EFLAGS_CF);
 		}
 	}
 
