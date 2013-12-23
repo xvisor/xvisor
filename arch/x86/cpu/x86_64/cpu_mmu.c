@@ -37,6 +37,8 @@
 #define HOST_PGTBL_MAX_TABLE_SIZE		(HOST_PGTBL_MAX_TABLE_COUNT * \
 						 PGTBL_TABLE_SIZE)
 
+unsigned long __force_order;
+
 static struct pgtbl_ctrl host_pgtbl_ctl;
 
 /* initial bootstrap page tables */

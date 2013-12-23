@@ -27,15 +27,24 @@
 #include <vmm_manager.h>
 #include <vmm_guest_aspace.h>
 #include <cpu_mmu.h>
+#include <cpu_features.h>
 #include <libs/stringlib.h>
 
-extern char _stack_start;
+static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct vmm_vcpu *vcpu)
+{
+	switch(proc_gen) {
+	case x86_CPU_AMD_K6:
+	case x86_CPU_INTEL_PENTIUM:
+		break;
 
-#define VMM_REGION_TYPE_ROM	0
-#define VMM_REGION_TYPE_RAM	1
+	case x86_NR_GENERATIONS:
+		break;
+	}
+}
 
 int arch_guest_init(struct vmm_guest * guest)
 {
+	/* FIXME: VM: Create the VM here. */
 	return VMM_OK;
 }
 
@@ -47,6 +56,9 @@ int arch_guest_deinit(struct vmm_guest * guest)
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
 	u64 stack_start;
+	extern struct cpuinfo_x86 cpu_info;
+	const char *attr;
+	int cpuid;
 
 	if (!vcpu->is_normal) {
 		/* For orphan vcpu */
@@ -58,7 +70,29 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		vcpu->regs.ss = VMM_DATA_SEG_SEL;
 		vcpu->regs.rflags = (X86_EFLAGS_IF | X86_EFLAGS_PF | X86_EFLAGS_CF);
 	} else {
-		vmm_panic("Non orphan VCPU intialization not supported yet.\n");
+		attr = vmm_devtree_attrval(vcpu->node,
+					   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
+		if (!attr) {
+			return VMM_EFAIL;
+		}
+
+		if (strcmp(attr, "amd-k6") == 0) {
+			cpuid = x86_CPU_AMD_K6;
+		} else {
+			return VMM_EFAIL;
+		}
+
+		if (!vcpu->reset_count) {
+			vcpu->arch_priv = vmm_zalloc(sizeof(struct x86_vcpu_priv));
+
+			if (!vcpu->arch_priv)
+				return VMM_EFAIL;
+
+			init_cpu_capabilities(cpuid, vcpu);
+
+			x86_vcpu_priv(vcpu)->hw_context = vmm_zalloc(sizeof(struct vcpu_hw_context));
+			cpu_init_vcpu_hw_context(&cpu_info, x86_vcpu_priv(vcpu)->hw_context, 0,0);
+		}
 	}
 
 	return VMM_OK;

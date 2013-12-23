@@ -1,0 +1,73 @@
+
+/ {
+	templates {
+		x86_32_generic {
+			model = "x82_32_generic";
+			device_type = "guest";
+			guest_asid = <1>;
+
+			vcpus {
+				vcpu0 {
+					device_type = "vcpu";
+					compatible = "x86,i386,i486,i586,i686";
+					start_mode = "real"; /* real, proctected, long */
+					start_pc = <0xff00>;
+				};
+			};
+
+			aspace {
+				guest_irq_count = <256>;
+
+				mem0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x00000000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "ram";
+				};
+
+				pic {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x10140000>;
+					physical_size = <0x10000>;
+					device_type = "pic";
+					compatible = "apic";
+					parent_irq = <6>;
+				};
+
+				/* FIXME: VM: Give one free HPET timer to guest? */
+				timer0_1 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101E2000>;
+					physical_size = <0x1000>;
+					device_type = "timer";
+					compatible = "hpet";
+					interrupts = <4>;
+				};
+
+				uart0 {
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0x101F1000>;
+					physical_size = <0x1000>;
+					device_type = "serial";
+					compatible = "8250";
+					fifo_size = <1024>;
+					interrupts = <12>;
+				};
+
+				nor_flash {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x34000000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "rom";
+				};
+			};
+		};
+	};
+};

@@ -6,45 +6,35 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file processor.h
+ * @file amd_svm.h
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
- * @brief Header file for declaring CPU specific information.
+ * @brief Header file for SVM's definition.
  */
-#ifndef _PROCESSOR_H__
-#define _PROCESSOR_H__
+
+#ifndef _AMD_SVM_H__
+#define _AMD_SVM_H__
 
 #include <vmm_types.h>
-#include <arch_cache.h>
+#include <cpu_features.h>
+#include <cpu_vm.h>
+#include <vm/amd_vmcb.h>
 
-#define PROCESSOR_NAME_STRING_LEN	48
-#define PROCESSOR_VENDOR_ID_LEN		16
+#ifndef __ASSEMBLY__
 
-struct cpuinfo_x86 {
-	u8 family;
-	u8 model;
-	u8 stepping;
-	u8 vendor_string[PROCESSOR_VENDOR_ID_LEN];
-	u8 name_string[PROCESSOR_NAME_STRING_LEN];
-	u8 virt_bits;
-	u8 phys_bits;
-	u8 cpuid_level;
-	u8 l1_dcache_size;
-	u8 l1_dcache_line_size;
-	u8 l1_icache_size;
-	u8 l1_icache_line_size;
-	u16 l2_cache_size;
-	u16 l2_cache_line_size;
-	u8 hw_virt_available;
-}__aligned(ARCH_CACHE_LINE_SIZE);
+extern int amd_setup_vm_control(struct vcpu_hw_context *context);
+extern int init_amd(struct cpuinfo_x86 *cpuinfo);
+extern void svm_launch(void);
 
-#endif /* _PROCESSOR_H__ */
+#endif
+
+#endif /* _AMD_SVM_H__ */

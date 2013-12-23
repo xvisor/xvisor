@@ -113,6 +113,27 @@ struct page_table {
 	struct dlist child_list;
 };
 
+union seg_attrs {
+	u16 bytes;
+	struct {
+		u16 type:4;
+		u16 s:1;
+		u16 dpl:2;
+		u16 p:1;
+		u16 avl:1;
+		u16 l:1;
+		u16 db:1;
+		u16 g:1;
+	} fields;
+} __packed;
+
+struct seg_selector {
+	u16		sel;
+	union seg_attrs	attrs;
+	u32		limit;
+	u64		base;
+} __packed;
+
 #endif
 
 #endif /* __CPU_MMU_H_ */

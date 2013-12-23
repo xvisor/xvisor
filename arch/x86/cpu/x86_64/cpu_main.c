@@ -32,11 +32,10 @@
 #include <arch_cpu.h>
 #include <arch_devtree.h>
 #include <acpi.h>
-#include <processor.h>
-#include <cpu_private.h>
+#include <cpu_features.h>
 #include <linux/screen_info.h>
+#include <cpu_vm.h>
 
-struct cpuinfo_x86 cpu_info;
 struct multiboot_info boot_info;
 u8 boot_cmd_line[MAX_CMD_LINE];
 
@@ -118,7 +117,8 @@ int __init arch_cpu_early_init(void)
 	 * memory or boot time memory reservation here.
 	 */
 
-	return 0;
+	/* Enable and Initialize the VM specific things in CPU */
+	return cpu_enable_vm_extensions(&cpu_info);
 }
 
 int __init arch_cpu_final_init(void)
@@ -167,14 +167,10 @@ void arch_cpu_print_info(struct vmm_chardev *cdev)
 		cpu_info.l1_icache_size);
 	vmm_cprintf(cdev, "%-25s: %u KB\n", "L1 D-Cache Size",
 		cpu_info.l1_dcache_size);
-	vmm_cprintf(cdev, "%-25s: %u bytes\n", "L1 I-Cache Line Size",
-		cpu_info.l1_icache_line_size);
-	vmm_cprintf(cdev, "%-25s: %u bytes\n", "L1 D-Cache Line Size",
-		cpu_info.l1_dcache_line_size);
 	vmm_cprintf(cdev, "%-25s: %u KB\n", "L2 Cache Size",
 		cpu_info.l2_cache_size);
-	vmm_cprintf(cdev, "%-25s: %u bytes\n", "L2 Cache Line Size",
-		cpu_info.l2_cache_line_size);
+	vmm_cprintf(cdev, "%-25s: %u KB\n", "L3 Cache Size",
+		    cpu_info.l3_cache_size);
 	vmm_cprintf(cdev, "%-25s: %s\n", "Hardware Virtualization",
 		(cpu_info.hw_virt_available ? "Supported" : "Unsupported"));
 }

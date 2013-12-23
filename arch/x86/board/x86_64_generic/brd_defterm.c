@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -32,9 +32,9 @@
 #include <libs/fifo.h>
 #include <drv/input.h>
 
-/* 
+/*
  * These define our textpointer, our background and foreground
- * colors (attributes), and x and y cursor coordinates 
+ * colors (attributes), and x and y cursor coordinates
  */
 static u16 *textmemptr;
 static u32 attrib = 0x0E;
@@ -64,7 +64,7 @@ static u16 *memsetw(u16 *dest, u16 val, size_t count)
 static void update_cursor(void)
 {
 	u16 pos = (csr_y * 80) + csr_x;
- 
+
 	/* cursor LOW port to vga INDEX register */
 	vmm_outb(0x0F, 0x3D4);
 	vmm_outb((u8)(pos & 0xFF), 0x3D5);
@@ -74,33 +74,50 @@ static void update_cursor(void)
 	vmm_outb((u8)((pos >> 8) & 0xFF), 0x3D5);
 }
 
-/* Scrolls the screen */
-void scroll(void)
+static void scroll_up_byline(void)
 {
+	u8 *dest, *src;
+	u32 copylen;
 	u32 blank, temp;
 
-	/* 
+	/*
 	 * A blank is defined as a space... we need to give it
-	 * backcolor too 
+	 * backcolor too
 	 */
 	blank = (0x20 | (attrib << 8));
 
-	/* Row 25 is the end, this means we need to scroll up */
-	if (csr_y >= 25) {
-		/*
-		 * Move the current text chunk that makes up the screen
-		 * back in the buffer by a line.
-		 */
-		temp = csr_y - 25 + 1;
-		memcpy(textmemptr, textmemptr + temp * 80, ((25 - temp) * 80 * 2));
 
-		/* 
-		 * Finally, we set the chunk of memory that occupies
-		 *  the last line of text to our 'blank' character 
-		 */
-		memsetw(textmemptr + (25 - temp) * 80, blank, 80);
-		csr_y = 25 - 1;
+	/*
+	 * Move the current text chunk that makes up the screen
+	 * back in the buffer by a line.
+	 */
+	temp = csr_y - 25 + 1;
+
+	dest = (u8 *)textmemptr;
+	src = (u8 *)(textmemptr + temp * 80);
+	copylen = ((25 - temp) * 80 * 2);
+
+	while (copylen) {
+		*dest = *src;
+		copylen--;
+		dest++;
+		src++;
 	}
+
+	/*
+	 * Finally, we set the chunk of memory that occupies
+	 *  the last line of text to our 'blank' character
+	 */
+	memsetw(textmemptr + (25 - temp) * 80, blank, 80);
+	csr_y = 25 - 1;
+}
+
+/* Scrolls the screen */
+void scroll(void)
+{
+	/* Row 25 is the end, this means we need to scroll up */
+	if (csr_y >= 25)
+		scroll_up_byline();
 }
 
 /* Clears the screen */
@@ -108,9 +125,9 @@ static void cls()
 {
 	u32 i, blank;
 
-	/* 
+	/*
 	 * Again, we need the 'short' that will be used to
-	 *  represent a space with color 
+	 *  represent a space with color
 	 */
 	blank = 0x20 | (attrib << 8);
 
@@ -119,9 +136,9 @@ static void cls()
 		memsetw (textmemptr + i * 80, blank, 80);
 	}
 
-	/* 
+	/*
 	 * Update out virtual cursor, and then move the
-	 *  hardware cursor 
+	 *  hardware cursor
 	 */
 	csr_x = 0;
 	csr_y = 0;
@@ -171,40 +188,40 @@ static void putch(unsigned char c)
 			csr_x--;
 		}
 	} else if (c == '\t') {
-		/* 
+		/*
 		 * Handles a tab by incrementing the cursor's x, but only
-		 * to a point that will make it divisible by 8 
+		 * to a point that will make it divisible by 8
 		 */
 		csr_x = (csr_x + 8) & ~(8 - 1);
 	} else if (c == '\r') {
-		/* 
+		/*
 		 * Handles a 'Carriage Return', which simply brings the
-		 * cursor back to the margin 
+		 * cursor back to the margin
 		 */
 		csr_x = 0;
 	} else if (c == '\n') {
-		/* 
+		/*
 		 * We handle our newlines the way DOS and the BIOS do: we
 		 *  treat it as if a 'CR' was also there, so we bring the
-		 *  cursor to the margin and we increment the 'y' value 
+		 *  cursor to the margin and we increment the 'y' value
 		 */
 		csr_x = 0;
 		csr_y++;
 	} else if (c >= ' ') {
-		/* 
+		/*
 		 * Any character greater than and including a space, is a
 		 *  printable character. The equation for finding the index
 		 *  in a linear chunk of memory can be represented by:
-		 *  Index = [(y * width) + x] 
+		 *  Index = [(y * width) + x]
 		 */
 		where = textmemptr + (csr_y * 80 + csr_x);
 		*where = c | att;	/* Character AND attributes: color */
 		csr_x++;
-	} 
+	}
 
-	/* 
+	/*
 	 * If the cursor has reached the edge of the screen's width, we
-	 * insert a new line in there 
+	 * insert a new line in there
 	 */
 	if (csr_x >= 80) {
 		csr_x = 0;
@@ -222,17 +239,17 @@ done:
 /* Sets the forecolor and backcolor that we will use */
 static void settextcolor(u8 forecolor, u8 backcolor)
 {
-        /* 
+	/*
 	 * Top 4 bytes are the background, bottom 4 bytes
-	 * are the foreground color 
+	 * are the foreground color
 	 */
-        attrib = (backcolor << 4) | (forecolor & 0x0F);
+	attrib = (backcolor << 4) | (forecolor & 0x0F);
 }
 
 /* Sets our text-mode VGA pointer, then clears the screen for us */
 static void init_console(void)
 {
-        settextcolor(15 /* White foreground */, 0 /* Black background */);
+	settextcolor(15 /* White foreground */, 0 /* Black background */);
 	textmemptr = (u16 *)vmm_host_iomap(0xB8000, 0x4000);
 	cls();
 }
@@ -333,14 +350,14 @@ int arch_defterm_getc(u8 *ch)
 
 int arch_defterm_putc(u8 ch)
 {
-        putch(ch);
+	putch(ch);
 
 	return VMM_OK;
 }
 
 int __init arch_defterm_init(void)
 {
-        init_console();
+	init_console();
 
 #if defined(CONFIG_VTEMU)
 	defterm_fifo = fifo_alloc(sizeof(u8), 128);
@@ -359,7 +376,7 @@ int __init arch_defterm_init(void)
 #ifdef ARCH_HAS_DEFTERM_EARLY_PRINT
 int init_early_vga_console(void)
 {
-        settextcolor(15 /* White foreground */, 0 /* Black background */);
+	settextcolor(15 /* White foreground */, 0 /* Black background */);
 	textmemptr = (u16 *)(0xB8000UL);
 	cls();
 

@@ -300,9 +300,9 @@ __pgdi:
         .globl __pgti
 	.align 32
 	.type	__pgti, @object
-	.size	__pgti, 65536 /* sixteen pages */
+	.size	__pgti, 81920 /* twenty pages */
 __pgti:
-	.zero	65536 /* sixteen pages */
+	.zero	81920 /* twenty pages */
 
 .align 4
 	.type   _mboot_info, @object

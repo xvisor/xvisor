@@ -32,7 +32,7 @@
 #include <arch_cpu.h>
 #include <arch_io.h>
 #include <cpu_mmu.h>
-#include <cpu_private.h>
+#include <cpu_features.h>
 #include <cpu_interrupts.h>
 #include <cpu_apic.h>
 #include <acpi.h>
@@ -78,7 +78,7 @@ static u32 is_lapic_present(void)
 {
 	u32 a, b, c, d;
 
-	cpuid(CPUID_GETFEATURES,
+	cpuid(CPUID_BASE_FEATURES,
 	      &a, &b, &c, &d);
 
 	return (d & CPUID_FEAT_EDX_APIC);
@@ -380,11 +380,11 @@ static int setup_lapic(int cpu)
 	/* Configuration says that  support APIC but its not present! */
 	BUG_ON(!is_lapic_present());
 
-	this_cpu(lapic).msr = cpu_read_msr(MSR_APIC);
+	this_cpu(lapic).msr = cpu_read_msr(MSR_IA32_APICBASE);
 
 	if (!APIC_ENABLED(this_cpu(lapic).msr)) {
 		this_cpu(lapic).msr |= (0x1UL << 11);
-		cpu_write_msr(MSR_APIC, this_cpu(lapic).msr);
+		cpu_write_msr(MSR_IA32_APICBASE, this_cpu(lapic).msr);
 	}
 
 	this_cpu(lapic).pbase = (APIC_BASE(this_cpu(lapic).msr) << 12);
