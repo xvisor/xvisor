@@ -718,6 +718,11 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		if (!(arm_regs(vcpu)->pstate & PSR_MODE32)) {
 			arm_priv(vcpu)->hcr |= HCR_RW_MASK;
 		}
+		/* Initialize Coprocessor Trap Register */
+		arm_priv(vcpu)->cptr = CPTR_TTA_MASK;
+		if (!arm_feature(vcpu, ARM_FEATURE_VFP)) {
+			arm_priv(vcpu)->cptr |= CPTR_TFP_MASK;
+		}
 		/* Initialize Hypervisor System Trap Register */
 		arm_priv(vcpu)->hstr = 0;
 		/* Initialize VCPU MIDR and MPIDR registers */
@@ -780,6 +785,11 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	arm_priv(vcpu)->spsr_fiq = 0x0;
 	arm_priv(vcpu)->tcr = 0x0;
 
+	/* Reset floating point control */
+	arm_priv(vcpu)->fpexc32 = 0x0;
+	arm_priv(vcpu)->fpcr = 0x0;
+	arm_priv(vcpu)->fpsr = 0x0;
+
 	/* Set last host CPU to invalid value */
 	arm_priv(vcpu)->last_hcpu = 0xFFFFFFFF;
 
@@ -804,6 +814,104 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	vcpu->arch_priv = NULL;
 
 	return VMM_OK;
+}
+
+static void cpu_vcpu_vfp_simd_save_regs(struct vmm_vcpu *vcpu)
+{
+	void *addr;
+
+	/* Sanity check */
+	if (!vcpu) {
+		return;
+	}
+
+	/* Do nothing if:
+	 * 1. Floating point hardware not available
+	 * 2. VCPU does not have VFP feature
+	 * 3. Floating point access is disabled
+	 */
+	if (!cpu_supports_fpu() ||
+	    !arm_feature(vcpu, ARM_FEATURE_VFP) ||
+	    (mrs(cptr_el2) & CPTR_TFP_MASK)) {
+		return;
+	}
+
+	/* Save floating point registers */
+	addr = &arm_priv(vcpu)->fpregs;
+	asm volatile("stp	 q0,  q1, [%0, #0x00]\n\t"
+		     "stp	 q2,  q3, [%0, #0x20]\n\t"
+		     "stp	 q4,  q5, [%0, #0x40]\n\t"
+		     "stp	 q6,  q7, [%0, #0x60]\n\t"
+		     :: "r"((char *)(addr) + 0x000));
+	asm volatile("stp	 q8,  q9, [%0, #0x00]\n\t"
+		     "stp	q10, q11, [%0, #0x20]\n\t"
+		     "stp	q12, q13, [%0, #0x40]\n\t"
+		     "stp	q14, q15, [%0, #0x60]\n\t"
+		     :: "r"((char *)(addr) + 0x080));
+	asm volatile("stp	q16, q17, [%0, #0x00]\n\t"
+		     "stp	q18, q19, [%0, #0x20]\n\t"
+		     "stp	q20, q21, [%0, #0x40]\n\t"
+		     "stp	q22, q23, [%0, #0x60]\n\t"
+		     :: "r"((char *)(addr) + 0x100));
+	asm volatile("stp	q24, q25, [%0, #0x00]\n\t"
+		     "stp	q26, q27, [%0, #0x20]\n\t"
+		     "stp	q28, q29, [%0, #0x40]\n\t"
+		     "stp	q30, q31, [%0, #0x60]\n\t"
+		     :: "r"((char *)(addr) + 0x180));
+	arm_priv(vcpu)->fpsr = mrs(fpsr);
+	arm_priv(vcpu)->fpcr = mrs(fpcr);
+
+	/* Save 32bit floating point control */
+	arm_priv(vcpu)->fpexc32 = mrs(fpexc32_el2);
+}
+
+static void cpu_vcpu_vfp_simd_restore_regs(struct vmm_vcpu *vcpu)
+{
+	void *addr;
+
+	/* Sanity check */
+	if (!vcpu) {
+		return;
+	}
+
+	/* Do nothing if:
+	 * 1. Floating point hardware not available
+	 * 2. VCPU does not have VFP feature
+	 * 3. Floating point access is disabled
+	 */
+	if (!cpu_supports_fpu() ||
+	    !arm_feature(vcpu, ARM_FEATURE_VFP) ||
+	    (mrs(cptr_el2) & CPTR_TFP_MASK)) {
+		return;
+	}
+
+	/* Restore floating point registers */
+	addr = &arm_priv(vcpu)->fpregs;
+	asm volatile("ldp	 q0,  q1, [%0, #0x00]\n\t"
+		     "ldp	 q2,  q3, [%0, #0x20]\n\t"
+		     "ldp	 q4,  q5, [%0, #0x40]\n\t"
+		     "ldp	 q6,  q7, [%0, #0x60]\n\t"
+		     :: "r"((char *)(addr) + 0x000));
+	asm volatile("ldp	 q8,  q9, [%0, #0x00]\n\t"
+		     "ldp	q10, q11, [%0, #0x20]\n\t"
+		     "ldp	q12, q13, [%0, #0x40]\n\t"
+		     "ldp	q14, q15, [%0, #0x60]\n\t"
+		     :: "r"((char *)(addr) + 0x080));
+	asm volatile("ldp	q16, q17, [%0, #0x00]\n\t"
+		     "ldp	q18, q19, [%0, #0x20]\n\t"
+		     "ldp	q20, q21, [%0, #0x40]\n\t"
+		     "ldp	q22, q23, [%0, #0x60]\n\t"
+		     :: "r"((char *)(addr) + 0x100));
+	asm volatile("ldp	q24, q25, [%0, #0x00]\n\t"
+		     "ldp	q26, q27, [%0, #0x20]\n\t"
+		     "ldp	q28, q29, [%0, #0x40]\n\t"
+		     "ldp	q30, q31, [%0, #0x60]\n\t"
+		     :: "r"((char *)(addr) + 0x180));
+	msr(fpsr, arm_priv(vcpu)->fpsr);
+	msr(fpcr, arm_priv(vcpu)->fpcr);
+
+	/* Restore 32bit floating point control */
+	msr(fpexc32_el2, arm_priv(vcpu)->fpexc32);
 }
 
 static inline void cpu_vcpu_special_regs_save(struct vmm_vcpu *vcpu)
@@ -834,19 +942,11 @@ static inline void cpu_vcpu_special_regs_save(struct vmm_vcpu *vcpu)
 		arm_priv(vcpu)->teecr = mrs(teecr32_el1);
 		arm_priv(vcpu)->teehbr = mrs(teehbr32_el1);
 	}
-	if (cpu_supports_fpu()) {
-		if (!(mrs(cptr_el2) & CPTR_TFP_MASK)) {
-			arm_priv(vcpu)->fpexc = mrs(fpexc32_el2);
-			arm_priv(vcpu)->fpcr = mrs(fpcr);
-			arm_priv(vcpu)->fpsr = mrs(fpsr);
-			vfp_simd_save_regs(&arm_priv(vcpu)->fpregs);
-		}
-	}
 	arm_priv(vcpu)->dacr = mrs(dacr32_el2);
 	arm_priv(vcpu)->ifsr = mrs(ifsr32_el2);
 }
 
-static inline void cpu_vcpu_special_regs_restore(struct vmm_vcpu * vcpu)
+static inline void cpu_vcpu_special_regs_restore(struct vmm_vcpu *vcpu)
 {
 	msr(sp_el0, arm_priv(vcpu)->sp_el0);
 	msr(sp_el1, arm_priv(vcpu)->sp_el1);
@@ -874,11 +974,6 @@ static inline void cpu_vcpu_special_regs_restore(struct vmm_vcpu * vcpu)
 		msr(teecr32_el1, arm_priv(vcpu)->teecr);
 		msr(teehbr32_el1, arm_priv(vcpu)->teehbr);
 	}
-	/* Note that we just disable the FP access and 
-	 * do not restore the FP/SIMD state 
-	 * unless the guest accesses FP regs
-	 */
-	msr(cptr_el2, CPTR_TTA_MASK | CPTR_TFP_MASK | CPTR_RES1_MASK);
 	msr(dacr32_el2, arm_priv(vcpu)->dacr);
 	msr(ifsr32_el2, arm_priv(vcpu)->ifsr);
 }
@@ -899,7 +994,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			arm_regs(tvcpu)->gpr[ite] = regs->gpr[ite];
 		}
 		arm_regs(tvcpu)->pstate = regs->pstate;
-		if(tvcpu->is_normal) {
+		if (tvcpu->is_normal) {
 			/* Save VGIC registers */
 			arm_vgic_save(tvcpu);
 			/* Save generic timer */
@@ -908,6 +1003,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			}
 			/* Save special registers */
 			cpu_vcpu_special_regs_save(tvcpu);
+			/* Save VFP and SIMD register */
+			cpu_vcpu_vfp_simd_save_regs(tvcpu);
 			/* Update last host CPU */
 			arm_priv(tvcpu)->last_hcpu = vmm_smp_processor_id();
 		}
@@ -921,6 +1018,12 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	}
 	regs->pstate = arm_regs(vcpu)->pstate;
 	if (vcpu->is_normal) {
+		/* Restore hypervisor context */
+		vmm_spin_lock_irqsave(&arm_priv(vcpu)->hcr_lock, flags);
+		msr(hcr_el2, arm_priv(vcpu)->hcr);
+		vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
+		msr(cptr_el2, arm_priv(vcpu)->cptr);
+		msr(hstr_el2, arm_priv(vcpu)->hstr);
 		/* Update Stage2 MMU context */
 		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
 				      arm_guest_priv(vcpu->guest)->ttbl);
@@ -938,15 +1041,12 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			dsb();
 			isb();
 		}
-		/* Restore hypervisor context */
-		vmm_spin_lock_irqsave(&arm_priv(vcpu)->hcr_lock, flags);
-		msr(hcr_el2, arm_priv(vcpu)->hcr);
-		vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
-		msr(hstr_el2, arm_priv(vcpu)->hstr);
+		/* Restore VFP and SIMD register */
+		cpu_vcpu_vfp_simd_restore_regs(vcpu);
 		/* Restore special registers */
 		cpu_vcpu_special_regs_restore(vcpu);
 		/* Restore generic timer */
-		if(arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
+		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 			generic_timer_vcpu_context_restore(
 						arm_gentimer_context(vcpu));
 		}

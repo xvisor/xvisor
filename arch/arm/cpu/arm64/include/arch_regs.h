@@ -77,7 +77,7 @@ struct arm_priv {
 	u64 teecr;
 	u32 teehbr;
 	/* VFP & SMID registers */
-	u32 fpexc;
+	u32 fpexc32;
 	u32 fpcr;
 	u32 fpsr;
 	u64 fpregs[128]; /* 32x32 floating point registers. */

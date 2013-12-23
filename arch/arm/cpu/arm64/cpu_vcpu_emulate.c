@@ -257,7 +257,7 @@ int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu,
 	}
 
 	/* More MCR/MRC parameters */
-	Rt   = (iss & ISS_MCR_MRC_RT_MASK) >> ISS_MCR_MRC_RT_SHIFT;
+	Rt = (iss & ISS_MCR_MRC_RT_MASK) >> ISS_MCR_MRC_RT_SHIFT;
 
 	if (iss & ISS_MCR_MRC_DIR_MASK) {
 		/* MRC CP14 */
@@ -291,29 +291,20 @@ int cpu_vcpu_emulate_simd_fp_regs(struct vmm_vcpu *vcpu,
 				  arch_regs_t *regs, 
 				  u32 il, u32 iss)
 {
-	msr_sync(cptr_el2, CPTR_TTA_MASK | CPTR_RES1_MASK);
-	/* TFA bit should be removed before we try to restore the FP-state */
-	vfp_simd_restore_regs(arm_priv(vcpu)->fpregs);
-	msr(fpexc32_el2, arm_priv(vcpu)->fpexc);
-	msr(fpcr, arm_priv(vcpu)->fpcr);
-	msr(fpsr, arm_priv(vcpu)->fpsr);
-	return VMM_OK;
+	/* We don't trap SIMD & VFP access so, we should never reach here.
+	 * For now, just return failure so that VCPU is halted.
+	 */
+	return VMM_EFAIL;
 }
 
-/* TODO: Can we optimize this by determining the source and target registers
- * and avoid copying all the FPU-regs  */
 int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu, 
 			  arch_regs_t *regs, 
 			  u32 il, u32 iss)
 {
-	vmm_printf("\n\n%s\n", __func__);
-	msr(cptr_el2, CPTR_TTA_MASK | CPTR_RES1_MASK);
-	/* TFA bit should be removed before we try to restore the FP-state */
-	vfp_simd_restore_regs(arm_priv(vcpu)->fpregs);
-	msr(fpexc32_el2, arm_priv(vcpu)->fpexc);
-	msr(fpcr, arm_priv(vcpu)->fpcr);
-	msr(fpsr, arm_priv(vcpu)->fpsr);
-	return VMM_OK;
+	/* We don't trap SIMD & VFP access so, we should never reach here.
+	 * For now, just return failure so that VCPU is halted.
+	 */
+	return VMM_EFAIL;
 }
 
 /* TODO: To be implemented later */
@@ -369,50 +360,37 @@ int cpu_vcpu_emulate_smc64(struct vmm_vcpu *vcpu,
 	return do_psci_call(vcpu, regs, il, iss, TRUE);
 }
 
-/* TODO: To be implemented later */
 int cpu_vcpu_emulate_msr_mrs_system(struct vmm_vcpu *vcpu, 
 				    arch_regs_t *regs, 
 				    u32 il, u32 iss)
 {
+	u64 data;
+	int rc = VMM_OK;
+	int Xt = ((iss & ISS_RT_MASK) >> ISS_RT_SHIFT);
 	bool read = (!!(iss & ISS_SYSREG_READ));
-	int rt = ((iss & ISS_RT_MASK) >> ISS_RT_SHIFT);
 
-	switch (iss & ISS_SYSREG_MASK) {
-		case ISS_CPACR_EL1:
-			vmm_printf("Trying to access CPACR_EL1\n");
-			break;
-		case ISS_CNTFRQ_EL0:
-			vmm_printf("Trying to access CNTFRQ_EL0  \n");
-			break;
-		case ISS_CNTPCT_EL0:
-			vmm_printf("Trying to access CNTPCT_EL0  \n");
-			break;
-		case ISS_CNTKCTL_EL1:
-			vmm_printf("Trying to access CNTKCTL_EL1  \n");
-			break;
-		case ISS_CNTP_TVAL_EL0:
-			vmm_printf("Trying to access CNTP_TVAL_EL0  \n");
-			break;
-		case ISS_CNTP_CTL_EL0:
-			vmm_printf("Trying to access CNTP_CTL_EL0  \n");
-			break;
-		case ISS_CNTP_CVAL_EL0:
-			vmm_printf("Trying to access CNTP_CVAL_EL0  \n");
-			break;
-		case ISS_ACTLR_EL1:
-			if (read) {
-				cpu_vcpu_reg64_write(vcpu, regs, rt, arm_priv(vcpu)->actlr);
-			} else {
-				arm_priv(vcpu)->actlr = cpu_vcpu_reg64_read(vcpu, regs, rt);
-			}
-			regs->pc += 4;
-			return VMM_OK;
-			break;
-		default:
-			vmm_printf("Guest MSR/MRS Emulation @ PC:0x%X\n", regs->pc);
-			break;
+	if (read) {
+		if (!cpu_vcpu_spr_read(vcpu, regs,
+				iss & ISS_SYSREG_MASK, &data)) {
+			rc = VMM_ENOTAVAIL;
+		}
+		if (!rc) {
+			cpu_vcpu_reg64_write(vcpu, regs, Xt, data);
+		}
+	} else {
+		data = cpu_vcpu_reg64_read(vcpu, regs, Xt);
+		if (!cpu_vcpu_spr_write(vcpu, regs,
+				iss & ISS_SYSREG_MASK, data)) {
+			rc = VMM_ENOTAVAIL;
+		}
 	}
-	return VMM_EFAIL;
+
+	if (!rc) {
+		/* Next instruction */
+		regs->pc += 4;
+	}
+
+	return rc;
 }
 
 static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)

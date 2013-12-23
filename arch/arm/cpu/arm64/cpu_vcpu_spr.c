@@ -18,8 +18,7 @@
  *
  * @file cpu_vcpu_spr.c
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief VCPU SPR Emulation
- * @details This source file implements SPRs for each VCPU.
+ * @brief Source file for VCPU sysreg, cp15, and cp14 emulation
  */
 
 #include <vmm_heap.h>
@@ -204,6 +203,43 @@ int cpu_vcpu_data_abort(struct vmm_vcpu *vcpu,
 	return VMM_EFAIL;
 }
 
+bool cpu_vcpu_spr_read(struct vmm_vcpu *vcpu, 
+			arch_regs_t *regs,
+			u32 iss_sysreg, u64 *data)
+{
+	*data = 0;
+	switch (iss_sysreg) {
+	case ISS_ACTLR_EL1:
+		*data = arm_priv(vcpu)->actlr;
+		break;
+	default:
+		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%X\n", regs->pc);
+		goto bad_reg;
+	}
+	return TRUE;
+bad_reg:
+	vmm_printf("Unimplemented [mrs <Xt>, %d]\n", iss_sysreg);
+	return FALSE;
+}
+
+bool cpu_vcpu_spr_write(struct vmm_vcpu *vcpu, 
+			arch_regs_t *regs,
+			u32 iss_sysreg, u64 data)
+{
+	switch (iss_sysreg) {
+	case ISS_ACTLR_EL1:
+		arm_priv(vcpu)->actlr = data;
+		break;
+	default:
+		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%X\n", regs->pc);
+		goto bad_reg;
+	}
+	return TRUE;
+bad_reg:
+	vmm_printf("Unimplemented [msr %d, <Xt>]\n", iss_sysreg);
+	return FALSE;
+}
+
 bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu, 
 			arch_regs_t *regs,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
@@ -262,7 +298,6 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			goto bad_reg;
 		};
 		break;
-		break;
 	}
 	return TRUE;
 bad_reg:
@@ -301,23 +336,23 @@ bool cpu_vcpu_cp14_read(struct vmm_vcpu *vcpu,
 {
 	*data = 0x0;
 	switch (opc1) {
-		case 6: /* ThumbEE registers */
-			switch (CRn) {
-				case 0:	/* TEECR */
-					*data = arm_priv(vcpu)->teecr;
-					break;
-				case 1:	/* TEEHBR */
-					*data = arm_priv(vcpu)->teehbr;
-					break;
-				default:
-					goto bad_reg;
-			};
-			break;
-		case 0:	/* Debug registers */
-		case 1: /* Trace registers */
-		case 7: /* Jazelle registers */
-		default:
-			goto bad_reg;
+	case 6: /* ThumbEE registers */
+		switch (CRn) {
+			case 0:	/* TEECR */
+				*data = arm_priv(vcpu)->teecr;
+				break;
+			case 1:	/* TEEHBR */
+				*data = arm_priv(vcpu)->teehbr;
+				break;
+			default:
+				goto bad_reg;
+		};
+		break;
+	case 0:	/* Debug registers */
+	case 1: /* Trace registers */
+	case 7: /* Jazelle registers */
+	default:
+		goto bad_reg;
 	};
 	return TRUE;
 bad_reg:
@@ -332,23 +367,23 @@ bool cpu_vcpu_cp14_write(struct vmm_vcpu *vcpu,
 			 u64 data)
 {
 	switch (opc1) {
-		case 6: /* ThumbEE registers */
-			switch (CRn) {
-				case 0:	/* TEECR */
-					arm_priv(vcpu)->teecr = data;
-					break;
-				case 1:	/* TEEHBR */
-					arm_priv(vcpu)->teehbr = data;
-					break;
-				default:
-					goto bad_reg;
-			};
-			break;
-		case 0:	/* Debug registers */
-		case 1: /* Trace registers */
-		case 7: /* Jazelle registers */
-		default:
-			goto bad_reg;
+	case 6: /* ThumbEE registers */
+		switch (CRn) {
+			case 0:	/* TEECR */
+				arm_priv(vcpu)->teecr = data;
+				break;
+			case 1:	/* TEEHBR */
+				arm_priv(vcpu)->teehbr = data;
+				break;
+			default:
+				goto bad_reg;
+		};
+		break;
+	case 0:	/* Debug registers */
+	case 1: /* Trace registers */
+	case 7: /* Jazelle registers */
+	default:
+		goto bad_reg;
 	};
 	return TRUE;
 bad_reg:
