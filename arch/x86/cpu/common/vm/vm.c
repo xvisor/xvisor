@@ -113,7 +113,6 @@ int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 			     struct vcpu_hw_context *context)
 {
 	int ret = VMM_EFAIL;
-	struct x86_guest_priv *gpriv;
 
 	/*
 	 * FIXME: context->n_cr3.
