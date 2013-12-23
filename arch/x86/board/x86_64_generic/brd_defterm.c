@@ -39,6 +39,8 @@
 static u16 *textmemptr;
 static u32 attrib = 0x0E;
 static u32 csr_x = 0, csr_y = 0;
+static char esc_seq[16] = { 0 };
+static u32 esc_seq_count = 0;
 
 #if defined(CONFIG_VTEMU)
 static struct fifo *defterm_fifo;
@@ -131,8 +133,40 @@ static void putch(unsigned char c)
 	u16 *where;
 	u32 att = attrib << 8;
 
+	if (esc_seq_count) {
+		esc_seq[esc_seq_count] = c;
+		esc_seq_count++;
+		if ((esc_seq_count == 2) && (esc_seq[1] == '[')) {
+			/* Do nothing */
+		} else if ((esc_seq_count == 3) &&
+			   (esc_seq[1] == '[') &&
+			   (esc_seq[2] == 'D')) {
+			/* Move left */
+			if (csr_x != 0) {
+				csr_x--;
+			}
+			esc_seq_count = 0;
+		} else if ((esc_seq_count == 3) &&
+			   (esc_seq[1] == '[') &&
+			   (esc_seq[2] == 'C')) {
+			/* Move right */
+			if (csr_x != 0) {
+				csr_x++;
+			}
+			esc_seq_count = 0;
+		} else {
+			/* Ignore unknown escape sequences */
+			esc_seq_count = 0;
+		}
+		goto done;
+	}
+
 	/* Handle a backspace, by moving the cursor back one space */
-	if (c == '\b') {
+	if (c == '\e') {
+		esc_seq_count = 1;
+		esc_seq[0] = '\e';
+		goto done;
+	} else if (c == '\b') {
 		if (csr_x != 0) {
 			csr_x--;
 		}
@@ -177,6 +211,7 @@ static void putch(unsigned char c)
 		csr_y++;
 	}
 
+done:
 	/* Scroll the screen if needed, and finally move the cursor */
 	scroll();
 
