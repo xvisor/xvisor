@@ -75,7 +75,8 @@ static inline void gather_cpu_brandinfo(struct cpuinfo_x86 *cpu_info)
 
 	cpuid(CPUID_EXTENDED_FEATURES, &a, &b, &c, &d);
 	cpu_info->family = ((a >> CPUID_BASE_FAMILY_SHIFT) & CPUID_BASE_FAMILY_MASK);
-	cpu_info->family += ((a >> CPUID_EXTD_FAMILY_SHIFT) & CPUID_EXTD_FAMILY_MASK);
+	if (cpu_info->family == 0xf)
+		cpu_info->family += ((a >> CPUID_EXTD_FAMILY_SHIFT) & CPUID_EXTD_FAMILY_MASK);
 
 	cpu_info->model = ((a >> CPUID_BASE_MODEL_SHIFT) & CPUID_BASE_MODEL_MASK);
 	cpu_info->model <<= 4;
@@ -121,7 +122,7 @@ static inline void gather_amd_features(struct cpuinfo_x86 *cpu_info)
 
 	if (cpu_info->hw_virt_available) {
 		/* Check if nested paging is also available. */
-		cpuid(CPUID_VM_IDENTIFIER, &a, &b, &c, &d);
+		cpuid(CPUID_EXTENDED_SVM_IDENTIFIER, &a, &b, &c, &d);
 		cpu_info->hw_nested_paging = (d & 0x1UL);
 		cpu_info->hw_nr_asids = b;
 	}

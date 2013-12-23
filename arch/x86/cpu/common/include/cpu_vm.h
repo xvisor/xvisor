@@ -52,6 +52,7 @@ struct vcpu_intercept_table {
 struct vcpu_hw_context {
 	struct vmcb *vmcb;
 	struct vmcs *vmcs;
+	struct vmm_vcpu *assoc_vcpu; /**< vCPU associated to this hardware context */
 
 	unsigned int asid;
 	unsigned long n_cr3;  /* [Note] When #VMEXIT occurs with
@@ -98,9 +99,7 @@ extern physical_addr_t cpu_create_vcpu_intercept_table(size_t size, virtual_addr
 extern int cpu_free_vcpu_intercept_table(virtual_addr_t vaddr, size_t size);
 extern void cpu_disable_vcpu_intercept(struct vcpu_hw_context *context, int flags);
 extern void cpu_enable_vcpu_intercept(struct vcpu_hw_context *context, int flags);
-extern int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo, struct vcpu_hw_context *context,
-				    unsigned long vmm_pmem_start,
-				    unsigned long vmm_pmem_size);
+extern int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo, struct vcpu_hw_context *context);
 extern void cpu_boot_vcpu(struct vcpu_hw_context *context);
 
 extern int cpu_enable_vm_extensions(struct cpuinfo_x86 *cpuinfo);

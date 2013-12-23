@@ -29,13 +29,126 @@
 #include <cpu_mmu.h>
 #include <cpu_features.h>
 #include <cpu_vm.h>
+#include <arch_regs.h>
 #include <libs/stringlib.h>
 
+/*
+ * These are what we need to emulate in CPU:
+ *
+ * vendor_id: AuthenticAMD
+ * cpu family: 6
+ * model: 6
+ * model name: Xvisor Virtual CPU
+ * stepping: 3
+ * cpu MHz: 1662.454
+ * cache size: 512 KB
+ * fpu: yes
+ * fpu_exception: yes
+ * cpuid level: 4
+ * wp: yes
+ * flags: fpu  pse  tsc     msr        pae     mce
+ *        cx8  apic sep     mtrr       pge     mca
+ *        cmov pat  pse36   clflush    mmx     fxsr
+ *        sse  sse2 syscall nx         lm      nopl
+ *        pni  cx16 popcnt  hypervisor lahf_lm svm
+ *        abm  sse4a
+ * TLB size: 1024 4K pages
+ * clflush size: 64
+ * cache_alignment: 64
+ * address sizes: 40 bits physical, 48 bits virtual
+ */
 static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct vmm_vcpu *vcpu)
 {
+	u32 funcs;
+	struct x86_vcpu_priv *priv = x86_vcpu_priv(vcpu);
+	struct cpuid_response *func_response;
+
 	switch(proc_gen) {
 	case x86_CPU_AMD_K6:
+		for (funcs = CPUID_BASE_VENDORSTRING; funcs < CPUID_BASE_FUNC_LIMIT; funcs++) {
+			func_response = (struct cpuid_response *)&priv->standard_funcs[funcs];
+
+			switch (funcs) {
+			case CPUID_BASE_VENDORSTRING:
+				func_response->resp_eax = CPUID_BASE_FUNC_LIMIT;
+				func_response->resp_ebx = 0x41757468; /*htuA*/
+				func_response->resp_ecx = 0x63414d44; /*DMAc*/
+				func_response->resp_edx = 0x656e7469; /*itne*/
+				break;
+
+			case CPUID_BASE_FEATURES:
+				func_response->resp_eax = ((0x0 << CPUID_EXTD_FAMILY_SHIFT)
+							   | (0x6 << CPUID_EXTD_MODEL_SHIFT)
+							   | (0x6 << CPUID_BASE_FAMILY_SHIFT)
+							   | (0x9 << CPUID_BASE_MODEL_SHIFT)
+							   | (0x3));
+				func_response->resp_ebx = ((0x0 << 24) /* Local APIC ID */
+							   | (0x1 << 16) /* Logical Processor count */
+							   | (0x40 << 8)); /* 64 bytes CFFLUSH ? */
+				func_response->resp_ecx = 0x0; /* no SSE3, AES etc support */
+				func_response->resp_edx = (CPUID_FEAT_EDX_CLF
+							   | CPUID_FEAT_EDX_FPU
+							   | CPUID_FEAT_EDX_MSR
+							   | CPUID_FEAT_EDX_APIC);
+				break;
+			default:
+				break;
+			}
+		}
+
+		for (funcs = CPUID_EXTENDED_BASE; funcs < CPUID_EXTENDED_FUNC_LIMIT; funcs++) {
+			func_response = (struct cpuid_response *)&priv->extended_funcs[funcs - CPUID_EXTENDED_BASE];
+
+			switch (funcs) {
+			case CPUID_EXTENDED_BASE:
+				func_response->resp_eax = CPUID_EXTENDED_FUNC_LIMIT;
+				func_response->resp_ebx = 0x41757468; /*htuA*/
+				func_response->resp_ecx = 0x63414d44; /*DMAc*/
+				func_response->resp_edx = 0x656e7469; /*itne*/
+				break;
+
+			case CPUID_EXTENDED_FEATURES: /* replica of base features */
+				func_response->resp_eax = ((0x0 << CPUID_EXTD_FAMILY_SHIFT)
+							   | (0x6 << CPUID_EXTD_MODEL_SHIFT)
+							   | (0x6 << CPUID_BASE_FAMILY_SHIFT)
+							   | (0x9 << CPUID_BASE_MODEL_SHIFT)
+							   | (0x3));
+				func_response->resp_ebx = ((0x0 << 24) /* Local APIC ID */
+							   | (0x1 << 16) /* Logical Processor count */
+							   | (0x40 << 8)); /* 64 bytes CFFLUSH ? */
+				func_response->resp_ecx = 0x0; /* no SSE3, AES etc support */
+				func_response->resp_edx = (CPUID_FEAT_EDX_CLF
+							   | CPUID_FEAT_EDX_FPU
+							   | CPUID_FEAT_EDX_MSR
+							   | CPUID_FEAT_EDX_APIC);
+				break;
+
+			case CPUID_EXTENDED_BRANDSTRING:
+				memcpy((char *)&func_response->resp_eax, "Xvis", 4);
+				memcpy((char *)&func_response->resp_ebx, "or V", 4);
+				memcpy((char *)&func_response->resp_ecx, "irtu", 4);
+				memcpy((char *)&func_response->resp_edx, "al C", 4);
+				break;
+
+			case CPUID_EXTENDED_BRANDSTRINGMORE:
+				memcpy((char *)&func_response->resp_eax, "PU v", 4);
+				memcpy((char *)&func_response->resp_ebx, "ersi", 4);
+				memcpy((char *)&func_response->resp_ecx, "on 0", 4);
+				memcpy((char *)&func_response->resp_edx, ".1  ", 4);
+				break;
+
+			case CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
+				/* FIXME: Write where whatever Qemu spits out */
+				break;
+			default:
+				break;
+			}
+		}
+
+		break;
+
 	case x86_CPU_INTEL_PENTIUM:
+		VM_LOG(LVL_ERR, "ERROR: VCPU feature init on Intel. Intel chips not supported yet!\n");
 		break;
 
 	case x86_NR_GENERATIONS:
@@ -81,7 +194,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			init_cpu_capabilities(cpuid, vcpu);
 
 			x86_vcpu_priv(vcpu)->hw_context = vmm_zalloc(sizeof(struct vcpu_hw_context));
-			cpu_init_vcpu_hw_context(&cpu_info, x86_vcpu_priv(vcpu)->hw_context, 0,0);
+			x86_vcpu_priv(vcpu)->hw_context->assoc_vcpu = vcpu;
+			cpu_init_vcpu_hw_context(&cpu_info, x86_vcpu_priv(vcpu)->hw_context);
 		}
 	}
 

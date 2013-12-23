@@ -24,11 +24,13 @@
 #include <vmm_types.h>
 #include <vmm_host_aspace.h>
 #include <vmm_error.h>
+#include <vmm_manager.h>
 #include <libs/stringlib.h>
 #include <cpu_mmu.h>
 #include <cpu_vm.h>
 #include <cpu_features.h>
 #include <cpu_pgtbl_helper.h>
+#include <arch_guest_helper.h>
 #include <vm/amd_svm.h>
 #include <vm/amd_intercept.h>
 
@@ -108,11 +110,10 @@ void cpu_enable_vcpu_intercept(struct vcpu_hw_context *context, int flags)
 }
 
 int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
-			     struct vcpu_hw_context *context,
-			     unsigned long vmm_pmem_start,
-			     unsigned long vmm_pmem_size)
+			     struct vcpu_hw_context *context)
 {
 	int ret = VMM_EFAIL;
+	struct x86_guest_priv *gpriv;
 
 	memset((char *)context, 0, sizeof(struct vcpu_hw_context));
 
@@ -121,6 +122,9 @@ int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 	 * When we enable the usage of nested page tables we need to
 	 * set this cr3 based on what's created during guest init.
 	 */
+	gpriv = x86_guest_priv(context->assoc_vcpu->guest);
+	context->n_cr3 = (u64)gpriv->g_npt->tbl_pa;
+	VM_LOG(LVL_DEBUG, "Nested page table base: 0x%lx\n", context->n_cr3);
 
 	context->shadow_pgt = mmu_pgtbl_alloc(&host_pgtbl_ctl, PGTBL_STAGE_2);
 	if (!context->shadow_pgt) {

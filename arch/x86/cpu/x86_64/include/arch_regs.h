@@ -81,19 +81,11 @@ struct arch_regs {
 
 typedef struct arch_regs arch_regs_t;
 
-enum standard_cpuid_funcs{
-	MAX_STANDARD_CPUID_FUNCS
-};
-
-enum extended_cpuid_funcs {
-	MAX_EXTENDED_CPUID_FUNCS
-};
-
 struct cpuid_response {
-	u64 resp_rax;
-	u64 resp_rbx;
-	u64 resp_rcx;
-	u64 resp_rdx;
+	u32 resp_eax;
+	u32 resp_ebx;
+	u32 resp_ecx;
+	u32 resp_edx;
 };
 
 /*
@@ -102,8 +94,8 @@ struct cpuid_response {
  */
 struct x86_vcpu_priv {
 	u64 capabilities;
-	struct cpuid_response *extended_funcs;
-	struct cpuid_response *standard_funcs;
+	struct cpuid_response extended_funcs[CPUID_EXTENDED_FUNC_LIMIT];
+	struct cpuid_response standard_funcs[CPUID_BASE_FUNC_LIMIT];
 	struct vcpu_hw_context *hw_context;
 };
 
