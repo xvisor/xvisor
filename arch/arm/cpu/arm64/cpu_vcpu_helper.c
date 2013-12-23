@@ -648,54 +648,37 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_priv(vcpu)->features = 0;
 		switch (cpuid) {
 		case ARM_CPUID_CORTEXA8:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
-			arm_set_feature(vcpu, ARM_FEATURE_V6);
-			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
+			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA9:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
-			arm_set_feature(vcpu, ARM_FEATURE_V6);
-			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
 			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA15:
-			arm_set_feature(vcpu, ARM_FEATURE_V4T);
-			arm_set_feature(vcpu, ARM_FEATURE_V5);
-			arm_set_feature(vcpu, ARM_FEATURE_V6);
-			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_V7);
-			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
-			arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
-			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
-			arm_set_feature(vcpu, ARM_FEATURE_ARM_DIV);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP4);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
-			arm_set_feature(vcpu, ARM_FEATURE_LPAE);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_ARM_DIV);
+			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
 			arm_set_feature(vcpu, ARM_FEATURE_GENERIC_TIMER);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
+			arm_set_feature(vcpu, ARM_FEATURE_LPAE);
+			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_ARMV8:
 			arm_set_feature(vcpu, ARM_FEATURE_V8);
-			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP4);
 			arm_set_feature(vcpu, ARM_FEATURE_ARM_DIV);
 			arm_set_feature(vcpu, ARM_FEATURE_LPAE);
@@ -704,6 +687,45 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		default:
 			break;
 		};
+		/* Some features automatically imply others: */
+		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VAPA);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2);
+			arm_set_feature(vcpu, ARM_FEATURE_MPIDR);
+			if (!arm_feature(vcpu, ARM_FEATURE_M)) {
+				arm_set_feature(vcpu, ARM_FEATURE_V6K);
+			} else {
+				arm_set_feature(vcpu, ARM_FEATURE_V6);
+			}
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V6K)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V6);
+			arm_set_feature(vcpu, ARM_FEATURE_MVFR);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V6)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V5);
+			if (!arm_feature(vcpu, ARM_FEATURE_M)) {
+				arm_set_feature(vcpu, ARM_FEATURE_AUXCR);
+			}
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_V5)) {
+			arm_set_feature(vcpu, ARM_FEATURE_V4T);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_M)) {
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB_DIV);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_ARM_DIV)) {
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB_DIV);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_VFP4)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VFP3);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_VFP3)) {
+			arm_set_feature(vcpu, ARM_FEATURE_VFP);
+		}
+		if (arm_feature(vcpu, ARM_FEATURE_LPAE)) {
+			arm_set_feature(vcpu, ARM_FEATURE_PXN);
+		}
 		/* Initialize Hypervisor Configuration */
 		INIT_SPIN_LOCK(&arm_priv(vcpu)->hcr_lock);
 		arm_priv(vcpu)->hcr =  (HCR_TACR_MASK |
@@ -720,7 +742,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		}
 		/* Initialize Coprocessor Trap Register */
 		arm_priv(vcpu)->cptr = CPTR_TTA_MASK;
-		if (!arm_feature(vcpu, ARM_FEATURE_VFP)) {
+		if (!cpu_supports_fpu() ||
+		    !arm_feature(vcpu, ARM_FEATURE_VFP)) {
 			arm_priv(vcpu)->cptr |= CPTR_TFP_MASK;
 		}
 		/* Initialize Hypervisor System Trap Register */
