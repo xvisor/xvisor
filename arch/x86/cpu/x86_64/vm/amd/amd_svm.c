@@ -151,9 +151,13 @@ static void set_vm_to_powerup_state(struct vmcb *vmcb)
 	vmcb->rflags = 0x2;
 	vmcb->efer = EFER_SVME;
 
-	vmcb->rip = 0xFFF0;
+	/*
+	 * Make the CS.RIP point to 0xF0000 (960KB @ Low mem).
+	 * This is where the BIOS area is mapped.
+	 */
+	vmcb->rip = 0x0000;
 	vmcb->cs.sel = 0xF000;
-	vmcb->cs.base = 0xFFFF0000;
+	vmcb->cs.base = 0xF0000;
 	vmcb->cs.limit = 0xFFFF;
 
 	vmcb->ds.sel = 0;
