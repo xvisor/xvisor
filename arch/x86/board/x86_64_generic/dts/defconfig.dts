@@ -6,7 +6,6 @@
 	#size-cells = <2>;
 	model = "x86_64_generic";
 
-	chosen { };
 	aliases { };
 
 	cpus {
@@ -35,6 +34,14 @@
 	vmm {
 		#address-cells = <1>;
 		#size-cells = <0>;
+	};
+
+	chosen {
+		bootcmd = /* Copy guest0 device tree from templates */
+			  "devtree node copy /guests guest0 /templates/x86_64_generic",
+			  /* Create guest0 */
+			  "guest create guest0";
+
 	};
 
 	/* empty guest node */
