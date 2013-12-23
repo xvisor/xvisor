@@ -101,7 +101,12 @@ static void set_vm_to_powerup_state(struct vmcb *vmcb)
 {
 	memset(vmcb, 0, sizeof(vmcb));
 
-	vmcb->cr0 = 0x0000000060000010;
+	/*
+	 * NOTE: X86_CR0_PG with disabled PE is a new mode in SVM. Its
+	 * called Paged Real Mode. It helps virtualization of the
+	 * Real mode boot. AMD PACIFICA SPEC Section 2.15.
+	 */
+	vmcb->cr0 = (X86_CR0_PG | X86_CR0_ET | X86_CR0_CD | X86_CR0_NW);
 	vmcb->cr2 = 0;
 	vmcb->cr3 = 0;
 	vmcb->cr4 = 0;
@@ -234,12 +239,25 @@ static __unused void set_vm_to_mbr_start_state(struct vmcb* vmcb, enum svm_init_
 
 static void svm_run(struct vcpu_hw_context *context)
 {
-	/* Set the pointer to VMCB to %rax (vol. 2, p. 440) */
-	__asm__("pushq %%rax; movq %0, %%rax" :: "r" (context->vmcb));
+	physical_addr_t p_vmcb = 0;
+
+	if (vmm_host_va2pa((virtual_addr_t)context->vmcb, &p_vmcb) != VMM_OK)
+		vmm_panic("Critical conversion of VMCB VA=>PA failed!\n");
+
+	VM_LOG(LVL_DEBUG, "Running guest context(vmcb: va: 0x%lx pa: 0x%lx)\n", context->vmcb, p_vmcb);
+
+	/*
+	 * Pass on the vmcb physical address as parameter to svm_launch function.
+	 * For executing svm_launch(), assember will load its address in RAX
+	 * and do a callq, thus destructing the vmcb address if we load here.
+	 * So pass as parameter and let svm_launch load RAX with proper value
+	 * before executing vmload/vmrun.
+	 */
+	__asm__ __volatile__("pushq %%rdi; movq %0, %%rdi" :: "r" (p_vmcb));
 
 	svm_launch();
 
-	__asm__("popq %rax");
+	__asm__ __volatile__("popq %rdi");
 }
 
 static int enable_svme(void)

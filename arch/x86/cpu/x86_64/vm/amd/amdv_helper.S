@@ -71,4 +71,4 @@ svm_launch:
 
 	stgi
 
-	iret
+	ret
