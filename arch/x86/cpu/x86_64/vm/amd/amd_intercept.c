@@ -45,41 +45,26 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 	switch (context->vmcb->exitcode)
 	{
 	case VMEXIT_EXCEPTION_TS:
-		print_vmcb_state(context->vmcb);
 		break;
 
 	case VMEXIT_EXCEPTION_GP:
-		print_vmcb_state(context->vmcb);
-
-		/*
-		  context->vmcb->cs.sel = context->org_sysenter_cs;
-		  context->vmcb->ss.sel = context->org_sysenter_cs + 8;
-		  context->vmcb->rsp = context->vmcb->sysenter_esp;
-		  context->vmcb->rip = context->vmcb->sysenter_eip;
-		*/
 		return;
 
 	case VMEXIT_EXCEPTION_DB:
 		if (context->itc_skip_flag) {
 			cpu_enable_vcpu_intercept(context, context->itc_skip_flag);
 			context->itc_skip_flag = 0;
-
-			/*
-			  if (!context->btrackcurrent || !(context->itc_flag & USER_SINGLE_STEPPING))
-			  vm_disable_intercept(vm, USER_SINGLE_STEPPING);
-			*/
 		}
 
 		return;
 
-	case VMEXIT_EXCEPTION_PF: //VECTOR_PF
+	case VMEXIT_EXCEPTION_PF:
 		if ((context->vmcb->exitinfo1 & 1) && (context->vmcb->exitinfo1 & 2) && (context->itc_flag & USER_UNPACK))
 		{
 			//__skip_intercpt_cur_instr(vm, USER_UNPACK); //skip handling next instruction
 
 			return;
 		}
-		else print_page_errorcode(context->vmcb->exitinfo1);
 
 		context->vmcb->cr2 = context->vmcb->exitinfo2;
 		break;
@@ -143,7 +128,6 @@ void __handle_triple_fault(struct vcpu_hw_context *context)
 void handle_vcpuexit(struct vcpu_hw_context *context)
 {
 	VM_LOG(LVL_DEBUG, "**** #VMEXIT - exit code: %x\n", (u32) context->vmcb->exitcode);
-	print_vmcb_state(context->vmcb);
 
 	switch (context->vmcb->exitcode) {
 	case VMEXIT_MSR:
