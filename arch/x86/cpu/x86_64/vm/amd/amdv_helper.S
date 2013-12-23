@@ -21,18 +21,12 @@
  * @brief AMD SVM guest load/reload functions.
  */
 
-#define VMRUN  .byte 0x0F,0x01,0xD8
-#define VMLOAD .byte 0x0F,0x01,0xDA
-#define VMSAVE .byte 0x0F,0x01,0xDB
-#define STGI   .byte 0x0F,0x01,0xDC
-#define CLGI   .byte 0x0F,0x01,0xDD
-
 	.text
 	.code64
 
 	.global svm_launch
 svm_launch:
-	CLGI
+	clgi
 
 	/* save host state */
 	pushq %rbx
@@ -50,12 +44,14 @@ svm_launch:
 	pushq %r14
 	pushq %r15
 
+	mov %rdi, %rax
+
 	/* restore guest state */
-	VMLOAD
-	VMRUN
+	vmload
+	vmrun
 
 	/* save guest state */
-	VMSAVE
+	vmsave
 
 	/* restore host state */
 	popq %r15
@@ -73,6 +69,6 @@ svm_launch:
 	popq %rcx
 	popq %rbx
 
-	STGI
+	stgi
 
 	iret
