@@ -30,6 +30,8 @@
 #include <vm/amd_svm.h>
 #include <vm/amd_intercept.h>
 
+int vm_default_log_lvl = VM_LOG_LVL_INFO;
+
 physical_addr_t cpu_create_vcpu_intercept_table(size_t size)
 {
 	physical_addr_t phys = 0;
@@ -75,28 +77,28 @@ void cpu_disable_vcpu_intercept(struct vcpu_hw_context *context, int flags)
 {
 	/* disable taskswitch interception */
 	if (flags & USER_ITC_TASKSWITCH) {
-		vmm_printf("Disable taskswitch interception\n");
+		VM_LOG(LVL_INFO, "Disable taskswitch interception\n");
 		context->vmcb->cr_intercepts &= ~INTRCPT_WRITE_CR3;
 	}
 
 	if (flags & USER_ITC_SWINT) {
-		vmm_printf("Disable software interrupt interception\n");
+		VM_LOG(LVL_INFO, "Disable software interrupt interception\n");
 		context->vmcb->general1_intercepts &= ~INTRCPT_INTN;
 	}
 
 	if (flags & USER_ITC_IRET) {
-		vmm_printf("Enable software interrupt interception\n");
+		VM_LOG(LVL_INFO, "Enable software interrupt interception\n");
 		context->vmcb->general1_intercepts &= ~INTRCPT_IRET;
 	}
 
 	if (flags & USER_ITC_SYSCALL) {
-		vmm_printf("Disable syscall interception\n");
+		VM_LOG(LVL_INFO, "Disable syscall interception\n");
 		context->vmcb->general1_intercepts &= ~INTRCPT_INTN;
 	}
 
 	/* disable single stepping */
 	if (flags & USER_SINGLE_STEPPING) {
-		vmm_printf("Disable single stepping\n");
+		VM_LOG(LVL_INFO, "Disable single stepping\n");
 		context->vmcb->rflags &= ~X86_EFLAGS_TF;
 		context->vmcb->exception_intercepts &= ~INTRCPT_DB;
 	}
@@ -106,18 +108,18 @@ void cpu_enable_vcpu_intercept(struct vcpu_hw_context *context, int flags)
 {
 	/* enable taskswitch interception */
 	if (flags & USER_ITC_TASKSWITCH) {
-		vmm_printf("Enable taskswitch interception\n");
+		VM_LOG(LVL_INFO, "Enable taskswitch interception\n");
 		context->vmcb->cr_intercepts |= INTRCPT_WRITE_CR3;
 	}
 
 	/* enable software interrupt interception */
 	if (flags & USER_ITC_SWINT) {
-		vmm_printf("Enable software interrupt interception\n");
+		VM_LOG(LVL_INFO, "Enable software interrupt interception\n");
 		context->vmcb->general1_intercepts |= INTRCPT_INTN;
 	}
 
 	if (flags & USER_ITC_IRET) {
-		vmm_printf("Enable software interrupt interception\n");
+		VM_LOG(LVL_INFO, "Enable software interrupt interception\n");
 		context->vmcb->general1_intercepts |= INTRCPT_IRET;
 	}
 }
@@ -136,19 +138,24 @@ int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 						 vmm_pmem_size,
 						 21 /* 2mb page */);
 
-	if (!context->n_cr3)
+	if (!context->n_cr3) {
+		VM_LOG(LVL_DEBUG, "ERROR: Couldn't allocate nested page table.\n");
 		goto _error;
+	}
 
 	context->io_intercept_table = cpu_create_vcpu_intercept_table(IO_INTCPT_TBL_SZ);
 	context->msr_intercept_table = cpu_create_vcpu_intercept_table(MSR_INTCPT_TBL_SZ);
 
 	switch (cpuinfo->vendor) {
 	case x86_VENDOR_AMD:
-		if((ret = amd_setup_vm_control(context)) != VMM_OK)
+		if((ret = amd_setup_vm_control(context)) != VMM_OK) {
+			VM_LOG(LVL_ERR, "ERROR: Failed to setup VM control.\n");
 			goto _error;
+		}
 		break;
 
 	default:
+		VM_LOG(LVL_ERR, "ERROR: Invalid vendor %d\n", cpuinfo->vendor);
 		goto _error;
 		break;
 	}
@@ -170,7 +177,7 @@ int cpu_enable_vm_extensions(struct cpuinfo_x86 *cpuinfo)
 
 	switch (cpuinfo->vendor) {
 	case x86_VENDOR_AMD:
-		vmm_printf("initializing vm extensions for AMD.\n");
+		VM_LOG(LVL_VERBOSE, "Initializing SVM on AMD.\n");
 		ret = init_amd(cpuinfo);
 		break;
 

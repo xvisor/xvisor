@@ -28,6 +28,7 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <cpu_features.h>
+#include <cpu_vm.h>
 #include <vm/amd_svm.h>
 #include <vm/amd_intercept.h>
 
@@ -257,30 +258,32 @@ static int enable_svm (struct cpuinfo_x86 *c)
 	u64 phys_hsa;
 
 	if (!c->hw_virt_available) {
-		vmm_printf("%s: hardware virtualization is not support but xvisor needs it.\n", __func__);
+		VM_LOG(LVL_ERR, "ERROR: Hardware virtualization is not support but Xvisor needs it.\n");
 		return VMM_EFAIL;
 	}
 
 	if (!c->hw_nested_paging)
-		vmm_printf("%s: nested pagetables are not supported. Enabling software walking of page tables.\n", __func__);
+		VM_LOG(LVL_INFO, "Nested pagetables are not supported.\n"
+		       "Enabling software walking of page tables.\n");
 
 	/*
 	 * Before SVM instructions can be used, EFER.SVME must be set.
 	 */
 	enable_svme();
 
-	vmm_printf("allocating host save area.\n");
+	VM_LOG(LVL_VERBOSE, "Allocating host save area.\n");
+
 	/* Initialize the Host Save Area */
 	host_save_area = alloc_host_save_area();
 	if (vmm_host_va2pa(host_save_area, (physical_addr_t *)&phys_hsa) != VMM_OK) {
-		vmm_printf("host va2pa for host save area failed.\n");
+		VM_LOG(LVL_ERR, "Host va2pa for host save area failed.\n");
 		return VMM_EFAIL;
 	}
 
-	vmm_printf("write HSAVE PA.\n");
+	VM_LOG(LVL_VERBOSE, "Write HSAVE PA.\n");
 	cpu_write_msr(MSR_K8_VM_HSAVE_PA, phys_hsa);
 
-	vmm_printf("%s; all fine.\n", __func__);
+	VM_LOG(LVL_VERBOSE, "All fine.\n");
 	return VMM_OK;
 }
 
@@ -309,8 +312,12 @@ int amd_setup_vm_control(struct vcpu_hw_context *context)
 int init_amd(struct cpuinfo_x86 *cpuinfo)
 {
 	/* FIXME: SMP: This should be done by all CPUs? */
-	if (enable_svm (cpuinfo) != VMM_OK)
+	if (enable_svm (cpuinfo) != VMM_OK) {
+		VM_LOG(LVL_ERR, "ERROR: Failed to enable virtual machine.\n");
 		return VMM_EFAIL;
+	}
+
+	VM_LOG(LVL_VERBOSE, "AMD SVM enable success!\n");
 
 	return VMM_OK;
 }

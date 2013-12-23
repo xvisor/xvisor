@@ -7,6 +7,21 @@
 #include <cpu_features.h>
 #include <vmm_types.h>
 
+enum {
+	VM_LOG_LVL_ERR,
+	VM_LOG_LVL_INFO,
+	VM_LOG_LVL_DEBUG,
+	VM_LOG_LVL_VERBOSE
+};
+extern int vm_default_log_lvl;
+#define VM_LOG(lvl, fmt, args...)					\
+	do {								\
+		if (VM_LOG_##lvl <= vm_default_log_lvl) {		\
+			vmm_printf("(%s:%d)" # fmt, __func__,		\
+				   __LINE__, ##args);			\
+		}							\
+	}while(0);
+
 #define USER_CMD_ENABLE		0
 #define USER_CMD_DISABLE	1
 #define USER_CMD_TEST		9
