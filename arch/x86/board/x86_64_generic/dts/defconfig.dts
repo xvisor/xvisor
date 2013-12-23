@@ -36,4 +36,10 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 	};
+
+	/* empty guest node */
+	guests {
+	};
 };
+
+/include/ "../../common/guests/x86_64_guest.dtsi"

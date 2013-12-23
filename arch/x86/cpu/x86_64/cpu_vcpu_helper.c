@@ -65,8 +65,11 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 
 	switch(proc_gen) {
 	case x86_CPU_AMD_K6:
-		for (funcs = CPUID_BASE_VENDORSTRING; funcs < CPUID_BASE_FUNC_LIMIT; funcs++) {
-			func_response = (struct cpuid_response *)&priv->standard_funcs[funcs];
+		for (funcs = CPUID_BASE_VENDORSTRING;
+		     funcs < CPUID_BASE_FUNC_LIMIT; funcs++) {
+			func_response =
+				(struct cpuid_response *)
+				&priv->standard_funcs[funcs];
 
 			switch (funcs) {
 			case CPUID_BASE_VENDORSTRING:
@@ -77,27 +80,33 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 				break;
 
 			case CPUID_BASE_FEATURES:
-				func_response->resp_eax = ((0x0 << CPUID_EXTD_FAMILY_SHIFT)
-							   | (0x6 << CPUID_EXTD_MODEL_SHIFT)
-							   | (0x6 << CPUID_BASE_FAMILY_SHIFT)
-							   | (0x9 << CPUID_BASE_MODEL_SHIFT)
-							   | (0x3));
-				func_response->resp_ebx = ((0x0 << 24) /* Local APIC ID */
-							   | (0x1 << 16) /* Logical Processor count */
-							   | (0x40 << 8)); /* 64 bytes CFFLUSH ? */
+				func_response->resp_eax =
+					((0x0 << CPUID_EXTD_FAMILY_SHIFT)
+					 | (0x6 << CPUID_EXTD_MODEL_SHIFT)
+					 | (0x6 << CPUID_BASE_FAMILY_SHIFT)
+					 | (0x9 << CPUID_BASE_MODEL_SHIFT)
+					 | (0x3));
+				func_response->resp_ebx =
+					((0x0 << 24) /* Local APIC ID */
+					 | (0x1 << 16) /* Logical Processor count */
+					 | (0x40 << 8)); /* 64 bytes CFFLUSH ? */
 				func_response->resp_ecx = 0x0; /* no SSE3, AES etc support */
-				func_response->resp_edx = (CPUID_FEAT_EDX_CLF
-							   | CPUID_FEAT_EDX_FPU
-							   | CPUID_FEAT_EDX_MSR
-							   | CPUID_FEAT_EDX_APIC);
+				func_response->resp_edx =
+					(CPUID_FEAT_EDX_CLF
+					 | CPUID_FEAT_EDX_FPU
+					 | CPUID_FEAT_EDX_MSR
+					 | CPUID_FEAT_EDX_APIC);
 				break;
 			default:
 				break;
 			}
 		}
 
-		for (funcs = CPUID_EXTENDED_BASE; funcs < CPUID_EXTENDED_FUNC_LIMIT; funcs++) {
-			func_response = (struct cpuid_response *)&priv->extended_funcs[funcs - CPUID_EXTENDED_BASE];
+		for (funcs = CPUID_EXTENDED_BASE;
+		     funcs < CPUID_EXTENDED_FUNC_LIMIT; funcs++) {
+			func_response =
+				(struct cpuid_response *)
+				&priv->extended_funcs[funcs - CPUID_EXTENDED_BASE];
 
 			switch (funcs) {
 			case CPUID_EXTENDED_BASE:
@@ -108,33 +117,44 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 				break;
 
 			case CPUID_EXTENDED_FEATURES: /* replica of base features */
-				func_response->resp_eax = ((0x0 << CPUID_EXTD_FAMILY_SHIFT)
-							   | (0x6 << CPUID_EXTD_MODEL_SHIFT)
-							   | (0x6 << CPUID_BASE_FAMILY_SHIFT)
-							   | (0x9 << CPUID_BASE_MODEL_SHIFT)
-							   | (0x3));
-				func_response->resp_ebx = ((0x0 << 24) /* Local APIC ID */
-							   | (0x1 << 16) /* Logical Processor count */
-							   | (0x40 << 8)); /* 64 bytes CFFLUSH ? */
+				func_response->resp_eax =
+					((0x0 << CPUID_EXTD_FAMILY_SHIFT)
+					 | (0x6 << CPUID_EXTD_MODEL_SHIFT)
+					 | (0x6 << CPUID_BASE_FAMILY_SHIFT)
+					 | (0x9 << CPUID_BASE_MODEL_SHIFT)
+					 | (0x3));
+				func_response->resp_ebx =
+					((0x0 << 24) /* Local APIC ID */
+					 | (0x1 << 16) /* Logical Processor count */
+					 | (0x40 << 8)); /* 64 bytes CFFLUSH ? */
 				func_response->resp_ecx = 0x0; /* no SSE3, AES etc support */
-				func_response->resp_edx = (CPUID_FEAT_EDX_CLF
-							   | CPUID_FEAT_EDX_FPU
-							   | CPUID_FEAT_EDX_MSR
-							   | CPUID_FEAT_EDX_APIC);
+				func_response->resp_edx =
+					(CPUID_FEAT_EDX_CLF
+					 | CPUID_FEAT_EDX_FPU
+					 | CPUID_FEAT_EDX_MSR
+					 | CPUID_FEAT_EDX_APIC);
 				break;
 
 			case CPUID_EXTENDED_BRANDSTRING:
-				memcpy((char *)&func_response->resp_eax, "Xvis", 4);
-				memcpy((char *)&func_response->resp_ebx, "or V", 4);
-				memcpy((char *)&func_response->resp_ecx, "irtu", 4);
-				memcpy((char *)&func_response->resp_edx, "al C", 4);
+				memcpy((char *)&func_response->resp_eax,
+				       "Xvis", 4);
+				memcpy((char *)&func_response->resp_ebx,
+				       "or V", 4);
+				memcpy((char *)&func_response->resp_ecx,
+				       "irtu", 4);
+				memcpy((char *)&func_response->resp_edx,
+				       "al C", 4);
 				break;
 
 			case CPUID_EXTENDED_BRANDSTRINGMORE:
-				memcpy((char *)&func_response->resp_eax, "PU v", 4);
-				memcpy((char *)&func_response->resp_ebx, "ersi", 4);
-				memcpy((char *)&func_response->resp_ecx, "on 0", 4);
-				memcpy((char *)&func_response->resp_edx, ".1  ", 4);
+				memcpy((char *)&func_response->resp_eax,
+				       "PU v", 4);
+				memcpy((char *)&func_response->resp_ebx,
+				       "ersi", 4);
+				memcpy((char *)&func_response->resp_ecx,
+				       "on 0", 4);
+				memcpy((char *)&func_response->resp_edx,
+				       ".1  ", 4);
 				break;
 
 			case CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
@@ -148,7 +168,8 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 		break;
 
 	case x86_CPU_INTEL_PENTIUM:
-		VM_LOG(LVL_ERR, "ERROR: VCPU feature init on Intel. Intel chips not supported yet!\n");
+		VM_LOG(LVL_ERR, "ERROR: VCPU feature init on Intel."
+		       "Intel chips not supported yet!\n");
 		break;
 
 	case x86_NR_GENERATIONS:
