@@ -25,18 +25,20 @@
 #include <vmm_host_aspace.h>
 #include <vmm_error.h>
 #include <libs/stringlib.h>
+#include <cpu_mmu.h>
 #include <cpu_vm.h>
 #include <cpu_features.h>
+#include <cpu_pgtbl_helper.h>
 #include <vm/amd_svm.h>
 #include <vm/amd_intercept.h>
 
 int vm_default_log_lvl = VM_LOG_LVL_INFO;
 
-physical_addr_t cpu_create_vcpu_intercept_table(size_t size)
+physical_addr_t cpu_create_vcpu_intercept_table(size_t size, virtual_addr_t *tbl_vaddr)
 {
 	physical_addr_t phys = 0;
 
-	virtual_addr_t vaddr = vmm_host_alloc_pages(size >> VMM_PAGE_SHIFT,
+	virtual_addr_t vaddr = vmm_host_alloc_pages(VMM_SIZE_TO_PAGE(size),
 						    VMM_MEMORY_FLAGS_NORMAL);
 
 	if (vmm_host_va2pa(vaddr, &phys) != VMM_OK)
@@ -44,33 +46,14 @@ physical_addr_t cpu_create_vcpu_intercept_table(size_t size)
 
 	memset((void *)vaddr, 0x00, size);
 
+	*tbl_vaddr = vaddr;
+
 	return phys;
 }
 
-/*
- * Create the nested paging table that map guest physical to host physical
- * return the (host) physical base address of the table.
- * Note: Nested paging table must use the same paging mode as the host,
- * regardless of guest paging mode - See AMD man vol2:
- * The extra translation uses the same paging mode as the VMM used when it
- * executed the most recent VMRUN.
- *
- * Also, it is important to note that gCR3 and the guest page table entries
- * contain guest physical addresses, not system physical addresses.
- * Hence, before accessing a guest page table entry, the table walker first
- * translates that entry’s guest physical address into a system physical
- * address.
- */
-static unsigned long create_nested_pagetable (unsigned long vmm_pmem_start,
-					      unsigned long vmm_pmem_size,
-					      unsigned long page_shift)
+int cpu_free_vcpu_intercept_table(virtual_addr_t vaddr, size_t size)
 {
-
-	unsigned long g_cr3;
-
-	g_cr3 = 0;
-
-	return g_cr3;
+	return vmm_host_free_pages(vaddr, VMM_SIZE_TO_PAGE(size));
 }
 
 void cpu_disable_vcpu_intercept(struct vcpu_hw_context *context, int flags)
@@ -133,18 +116,33 @@ int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 
 	memset((char *)context, 0, sizeof(struct vcpu_hw_context));
 
-	/* create a guest phys -> host phys */
-	context->n_cr3 = create_nested_pagetable(vmm_pmem_start,
-						 vmm_pmem_size,
-						 21 /* 2mb page */);
+	/*
+	 * FIXME: context->n_cr3.
+	 * When we enable the usage of nested page tables we need to
+	 * set this cr3 based on what's created during guest init.
+	 */
 
-	if (!context->n_cr3) {
-		VM_LOG(LVL_DEBUG, "ERROR: Couldn't allocate nested page table.\n");
+	context->shadow_pgt = mmu_pgtbl_alloc(&host_pgtbl_ctl, PGTBL_STAGE_2);
+	if (!context->shadow_pgt) {
+		VM_LOG(LVL_DEBUG, "ERROR: Failed to allocate shadow page table for vcpu.\n");
 		goto _error;
 	}
 
-	context->io_intercept_table = cpu_create_vcpu_intercept_table(IO_INTCPT_TBL_SZ);
-	context->msr_intercept_table = cpu_create_vcpu_intercept_table(MSR_INTCPT_TBL_SZ);
+	context->icept_table.io_table_phys =
+		cpu_create_vcpu_intercept_table(IO_INTCPT_TBL_SZ,
+						&context->icept_table.io_table_virt);
+	if (!context->icept_table.io_table_phys) {
+		VM_LOG(LVL_ERR, "ERROR: Failed to create I/O intercept table\n");
+		goto _error;
+	}
+
+	context->icept_table.msr_table_phys =
+		cpu_create_vcpu_intercept_table(MSR_INTCPT_TBL_SZ,
+						&context->icept_table.msr_table_virt);
+	if (!context->icept_table.msr_table_phys) {
+		VM_LOG(LVL_ERR, "ERROR: Failed to create MSR intercept table for vcpu.\n");
+		goto _error;
+	}
 
 	switch (cpuinfo->vendor) {
 	case x86_VENDOR_AMD:
@@ -163,6 +161,14 @@ int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 	return VMM_OK;
 
  _error:
+	if (context->shadow_pgt) mmu_pgtbl_free(&host_pgtbl_ctl, context->shadow_pgt);
+
+	if (context->icept_table.io_table_virt)
+		cpu_free_vcpu_intercept_table(context->icept_table.io_table_virt, IO_INTCPT_TBL_SZ);
+
+	if (context->icept_table.msr_table_virt)
+		cpu_free_vcpu_intercept_table(context->icept_table.msr_table_virt, MSR_INTCPT_TBL_SZ);
+
 	/* FIXME: VM: Free nested page table pages. */
 	return VMM_EFAIL;
 }

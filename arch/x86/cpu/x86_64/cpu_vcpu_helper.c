@@ -28,6 +28,7 @@
 #include <vmm_guest_aspace.h>
 #include <cpu_mmu.h>
 #include <cpu_features.h>
+#include <cpu_vm.h>
 #include <libs/stringlib.h>
 
 static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct vmm_vcpu *vcpu)
@@ -40,17 +41,6 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 	case x86_NR_GENERATIONS:
 		break;
 	}
-}
-
-int arch_guest_init(struct vmm_guest * guest)
-{
-	/* FIXME: VM: Create the VM here. */
-	return VMM_OK;
-}
-
-int arch_guest_deinit(struct vmm_guest * guest)
-{
-	return VMM_OK;
 }
 
 int arch_vcpu_init(struct vmm_vcpu *vcpu)

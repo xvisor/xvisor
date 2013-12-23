@@ -35,6 +35,10 @@ struct page_table;
 #define PGTBL_TABLE_SIZE			4096
 #define PGTBL_TABLE_ENTCNT			512
 
+/* Stage 2 is for shadow */
+#define PGTBL_STAGE_1				0
+#define PGTBL_STAGE_2				1
+
 struct pgtbl_ctrl {
 	struct page_table *base_pgtbl;
 	virtual_addr_t pgtbl_base_va;
@@ -86,5 +90,7 @@ extern int mmu_get_page(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl,
 				physical_addr_t ia, union page *pg);
 extern int mmu_unmap_page(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl, physical_addr_t ia);
 extern int mmu_map_page(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl, physical_addr_t ia, union page *pg);
+extern struct page_table *mmu_pgtbl_alloc(struct pgtbl_ctrl *ctrl, int stage);
+extern int mmu_pgtbl_free(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl);
 
 #endif /* __CPU_PGTBL_HELPER_H_ */

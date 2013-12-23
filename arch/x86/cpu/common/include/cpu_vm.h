@@ -6,6 +6,7 @@
 #include <processor_flags.h>
 #include <cpu_features.h>
 #include <vmm_types.h>
+#include <cpu_pgtbl_helper.h>
 
 enum {
 	VM_LOG_LVL_ERR,
@@ -41,6 +42,13 @@ extern int vm_default_log_lvl;
 #define IO_INTCPT_TBL_SZ	(12 << 10)
 #define MSR_INTCPT_TBL_SZ	(8 << 10)
 
+struct vcpu_intercept_table {
+	physical_addr_t io_table_phys;
+	physical_addr_t msr_table_phys;
+	virtual_addr_t io_table_virt;
+	virtual_addr_t msr_table_virt;
+};
+
 struct vcpu_hw_context {
 	struct vmcb *vmcb;
 	struct vmcs *vmcs;
@@ -49,9 +57,9 @@ struct vcpu_hw_context {
 	unsigned long n_cr3;  /* [Note] When #VMEXIT occurs with
 			       * nested paging enabled, hCR3 is not
 			       * saved back into the VMCB (vol2 p. 409)???*/
+	struct page_table *shadow_pgt; /**< Shadow page table when EPT/NPT is not available in chip */
 
-	physical_addr_t io_intercept_table;
-	physical_addr_t msr_intercept_table;
+	struct vcpu_intercept_table icept_table;
 
 	/* Intel VMX only */
 	unsigned int		msr_count;
@@ -86,7 +94,8 @@ struct vcpu_hw_context {
 
 extern void print_page_errorcode(u64 errcode);
 
-extern physical_addr_t cpu_create_vcpu_intercept_table(size_t size);
+extern physical_addr_t cpu_create_vcpu_intercept_table(size_t size, virtual_addr_t *tbl_vaddr);
+extern int cpu_free_vcpu_intercept_table(virtual_addr_t vaddr, size_t size);
 extern void cpu_disable_vcpu_intercept(struct vcpu_hw_context *context, int flags);
 extern void cpu_enable_vcpu_intercept(struct vcpu_hw_context *context, int flags);
 extern int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo, struct vcpu_hw_context *context,

@@ -308,15 +308,21 @@ void vmx_set_control_params (struct vcpu_hw_context *context)
 	// IO bitmap
 	vmx_cpu_based_exec_control |= CPU_BASED_ACTIVATE_IO_BITMAP;
 
-	context->io_intercept_table = cpu_create_vcpu_intercept_table(8 << 10); // 8KB, 4KB each
-	__vmwrite(IO_BITMAP_A, context->io_intercept_table);
-	__vmwrite(IO_BITMAP_B, context->io_intercept_table + PAGE_SIZE);
+	context->icept_table.io_table_phys =
+		cpu_create_vcpu_intercept_table(VMM_SIZE_TO_PAGE(8 << 10),
+						&context->icept_table.io_table_virt);
+
+	__vmwrite(IO_BITMAP_A, context->icept_table.io_table_virt);
+	__vmwrite(IO_BITMAP_B, context->icept_table.io_table_virt + PAGE_SIZE);
 
 	// MSR bitmap
 	vmx_cpu_based_exec_control |= CPU_BASED_ACTIVATE_MSR_BITMAP;
 
-	context->msr_intercept_table = cpu_create_vcpu_intercept_table(4 << 10); // 4KB
-	__vmwrite(MSR_BITMAP, context->msr_intercept_table);
+	context->icept_table.msr_table_phys =
+		cpu_create_vcpu_intercept_table(VMM_SIZE_TO_PAGE(4 << 10),
+						&context->icept_table.msr_table_virt);
+
+	__vmwrite(MSR_BITMAP, context->icept_table.msr_table_virt);
 
 	__vmwrite(CPU_BASED_VM_EXEC_CONTROL, vmx_cpu_based_exec_control);
 
@@ -371,7 +377,7 @@ void vmx_save_host_state(struct vcpu_hw_context *context)
 
 void vmx_disable_intercept_for_msr(struct vcpu_hw_context *context, u32 msr)
 {
-    unsigned long *msr_bitmap = (unsigned long *)context->msr_intercept_table;
+    unsigned long *msr_bitmap = (unsigned long *)context->icept_table.msr_table_virt;
 
     /* VMX MSR bitmap supported? */
     if ( msr_bitmap == NULL )

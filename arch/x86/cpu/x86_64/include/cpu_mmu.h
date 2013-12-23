@@ -72,6 +72,8 @@
 #include <vmm_spinlocks.h>
 #include <libs/list.h>
 
+extern struct pgtbl_ctrl host_pgtbl_ctl;
+
 static inline void invalidate_vaddr_tlb(virtual_addr_t vaddr)
 {
 	__asm__ __volatile__("invlpg (%0)\n\t"

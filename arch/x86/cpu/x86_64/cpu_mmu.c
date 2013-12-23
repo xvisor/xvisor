@@ -39,7 +39,7 @@
 
 unsigned long __force_order;
 
-static struct pgtbl_ctrl host_pgtbl_ctl;
+struct pgtbl_ctrl host_pgtbl_ctl;
 
 /* initial bootstrap page tables */
 extern u64 __pml4[];

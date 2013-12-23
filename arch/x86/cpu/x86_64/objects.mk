@@ -46,6 +46,7 @@ cpu-objs-y+= cpu_pgtbl_helper.o
 cpu-objs-y+= cpu_mmu.o
 cpu-objs-y+= dumpstack_64.o
 cpu-objs-y+= cpu_interrupt_handlers.o
+cpu-objs-y+= arch_guest_helper.o
 cpu-objs-$(CONFIG_VEXT_AMD_SVM)+= vm/amd/amd_intercept.o
 cpu-objs-$(CONFIG_VEXT_AMD_SVM)+= vm/amd/amd_svm.o
 cpu-objs-$(CONFIG_VEXT_AMD_SVM)+= vm/amd/amd_vmcb.o
