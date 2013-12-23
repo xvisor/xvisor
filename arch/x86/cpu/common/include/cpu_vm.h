@@ -77,16 +77,7 @@ struct vcpu_hw_context {
 	/* on & exit handler */
 	void (*vcpu_run) (struct vcpu_hw_context *context);
 	void (*vcpu_exit) (struct vcpu_hw_context *context);
-
-	/* event handler pointer */
-	void (*vcpu_handle_wrmsr) (struct vcpu_hw_context *context);
-	void (*vcpu_handle_exception) (struct vcpu_hw_context *context);
-	void (*vcpu_handle_swint) (struct vcpu_hw_context *context);
-	void (*vcpu_handle_npf) (struct vcpu_hw_context *context);
-	void (*vcpu_handle_vmcall) (struct vcpu_hw_context *context);
-	void (*vcpu_handle_iret) (struct vcpu_hw_context *context);
-	void (*vcpu_handle_cr3_write) (struct vcpu_hw_context *context);
-	void (*vcpu_handle_popf) (struct vcpu_hw_context *context);
+	void (*vcpu_emergency_shutdown)(struct vcpu_hw_context *context);
 };
 
 #define VMM_CS32	8   /* entry 1 of gdt ?? Xvisor also uses it. FIXME: */

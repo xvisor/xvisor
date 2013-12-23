@@ -31,6 +31,9 @@
 #include <cpu_vm.h>
 #include <arch_regs.h>
 #include <libs/stringlib.h>
+#include <arch_guest_helper.h>
+
+void arch_vcpu_emergency_shutdown(struct vcpu_hw_context *context);
 
 /*
  * These are what we need to emulate in CPU:
@@ -179,7 +182,7 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 
 static void arch_guest_vcpu_trampoline(struct vmm_vcpu *vcpu)
 {
-	VM_LOG(LVL_INFO, "Running VCPU %s\n", vcpu->name);
+	VM_LOG(LVL_DEBUG, "Running VCPU %s\n", vcpu->name);
 	cpu_boot_vcpu(x86_vcpu_priv(vcpu)->hw_context);
 	VM_LOG(LVL_ERR, "ERROR: Guest VCPU exited from run loop!\n");
 	while(1); /* Should never come here! */
@@ -239,6 +242,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			 * run from this address.
 			 */
 			x86_vcpu_priv(vcpu)->hw_context->guest_start_pc = vcpu->start_pc;
+			x86_vcpu_priv(vcpu)->hw_context->vcpu_emergency_shutdown = arch_vcpu_emergency_shutdown;
 			cpu_init_vcpu_hw_context(&cpu_info, x86_vcpu_priv(vcpu)->hw_context);
 
 			/*
@@ -246,7 +250,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			 * switch. Prepare for the same.
 			 */
 			stack_start = vcpu->stack_va + vcpu->stack_sz - sizeof(u64);
-			vcpu->regs.rip = arch_guest_vcpu_trampoline;
+			vcpu->regs.rip = (u64)arch_guest_vcpu_trampoline;
 			vcpu->regs.rsp = stack_start;
 			vcpu->regs.cs = VMM_CODE_SEG_SEL;
 			vcpu->regs.ss = VMM_DATA_SEG_SEL;
@@ -314,4 +318,9 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
 	/* For now no arch specific stats */
+}
+
+void arch_vcpu_emergency_shutdown(struct vcpu_hw_context *context)
+{
+	arch_guest_halt(context->assoc_vcpu->guest);
 }

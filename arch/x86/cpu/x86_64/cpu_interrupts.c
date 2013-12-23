@@ -32,6 +32,7 @@
 #include <arch_sections.h>
 #include <cpu_interrupts.h>
 #include <stacktrace.h>
+#include <arch_guest_helper.h>
 
 #undef __DEBUG
 //#define __DEBUG
@@ -264,8 +265,14 @@ int do_gpf(int intno, arch_regs_t *regs)
 
 int do_generic_int_handler(int intno, arch_regs_t *regs)
 {
+	struct vmm_guest *guest;
 	if (intno == 0x80) {
-		vmm_scheduler_preempt_orphan(regs);
+		if (regs->rdi == GUEST_HALT_SW_CODE) {
+			guest = (struct vmm_guest *)regs->rsi;
+			vmm_manager_guest_halt(guest);
+		} else {
+			vmm_scheduler_preempt_orphan(regs);
+		}
 	} else {
 		/* Get interrupt number from Vector number */
 		intno -= USER_DEFINED_IRQ_BASE;

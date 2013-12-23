@@ -25,6 +25,8 @@
 
 #include <cpu_vm.h>
 
+#define GUEST_HALT_SW_CODE	0x80
+
 /*! \brief x86 Guest private information
  *
  * This contains the private information for x86
@@ -36,5 +38,7 @@ struct x86_guest_priv {
 
 /*!def x86_guest_priv(guest) is to access guest private information */
 #define x86_guest_priv(guest) ((struct x86_guest_priv *)(guest->arch_priv))
+
+extern void arch_guest_halt(struct vmm_guest *guest);
 
 #endif /* __ARCH_GUEST_HELPER_H_ */

@@ -85,3 +85,24 @@ int arch_guest_deinit(struct vmm_guest * guest)
 
 	return VMM_OK;
 }
+
+/**
+ * \brief Initiate a guest halt.
+ *
+ * This function is to be used by the vCPU which is
+ * currently active and running. Since that vCPU
+ * cannot destroy itself and associated guest,
+ * it gets itself out of execution and tells
+ * VMM by special opcode that it want to shutdown.
+ *
+ * @param guest
+ * The guest that needs to be shutdown in emergency.
+ */
+void arch_guest_halt(struct vmm_guest *guest)
+{
+	__asm__ __volatile__("movq %0, %%rdi\n"
+			     "movq %1, %%rsi\n"
+			     "int $0x80\n"
+			     ::"ri"(GUEST_HALT_SW_CODE), "r"(guest)
+			     :"rdi","rsi");
+}
