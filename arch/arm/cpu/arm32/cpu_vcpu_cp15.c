@@ -169,7 +169,7 @@ int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu *vcpu)
 {
 	int rc;
 	u32 vtlb, vtlb_last;
-	struct arm_vtlb_entry * e;
+	struct arm_vtlb_entry *e;
 
 	vtlb = CPU_VCPU_VTLB_ZONE_START(CPU_VCPU_VTLB_ZONE_NG);
 	vtlb_last = vtlb + CPU_VCPU_VTLB_ZONE_LEN(CPU_VCPU_VTLB_ZONE_NG);
@@ -193,12 +193,12 @@ int cpu_vcpu_cp15_vtlb_flush_ng(struct vmm_vcpu *vcpu)
 	return cpu_mmu_sync_ttbr(arm_priv(vcpu)->cp15.l1);
 }
 
-int cpu_vcpu_cp15_vtlb_flush_domain(struct vmm_vcpu * vcpu, 
+int cpu_vcpu_cp15_vtlb_flush_domain(struct vmm_vcpu *vcpu, 
 				    u32 dacr_xor_diff)
 {
 	int rc;
 	u32 vtlb;
-	struct arm_vtlb_entry * e;
+	struct arm_vtlb_entry *e;
 
 	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
 		if (arm_priv(vcpu)->cp15.vtlb.table[vtlb].valid) {
@@ -646,7 +646,7 @@ u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
 }
 
 int cpu_vcpu_cp15_assert_fault(struct vmm_vcpu *vcpu,
-			      arch_regs_t * regs,
+			      arch_regs_t *regs,
 			      u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
 {
 	u32 fsr;
@@ -872,7 +872,7 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 }
 
 int cpu_vcpu_cp15_access_fault(struct vmm_vcpu *vcpu,
-			       arch_regs_t * regs,
+			       arch_regs_t *regs,
 			       u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
 {
 	/* If VCPU tried to access hypervisor space then 
@@ -889,7 +889,7 @@ int cpu_vcpu_cp15_access_fault(struct vmm_vcpu *vcpu,
 }
 
 int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu *vcpu,
-			       arch_regs_t * regs,
+			       arch_regs_t *regs,
 			       u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
 {
 	int rc = VMM_OK;
@@ -969,9 +969,9 @@ int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu *vcpu,
 	return cpu_vcpu_cp15_vtlb_flush_va(vcpu, far);
 }
 
-bool cpu_vcpu_cp15_read(struct vmm_vcpu * vcpu,
-			arch_regs_t * regs,
-			u32 opc1, u32 opc2, u32 CRn, u32 CRm, u32 * data)
+bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
+			arch_regs_t *regs,
+			u32 opc1, u32 opc2, u32 CRn, u32 CRm, u32 *data)
 {
 	*data = 0x0;
 	switch (CRn) {
@@ -1398,8 +1398,8 @@ bad_reg:
 	return FALSE;
 }
 
-bool cpu_vcpu_cp15_write(struct vmm_vcpu * vcpu,
-			 arch_regs_t * regs,
+bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
+			 arch_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, u32 data)
 {
 	u32 tmp;
@@ -2026,7 +2026,7 @@ bad_reg:
 	return FALSE;
 }
 
-virtual_addr_t cpu_vcpu_cp15_vector_addr(struct vmm_vcpu * vcpu, u32 irq_no)
+virtual_addr_t cpu_vcpu_cp15_vector_addr(struct vmm_vcpu *vcpu, u32 irq_no)
 {
 	virtual_addr_t vaddr;
 	irq_no = irq_no % CPU_IRQ_NR;
