@@ -126,6 +126,13 @@ struct arm_priv {
 	u32 sp_fiq;
 	u32 lr_fiq;
 	u32 spsr_fiq;
+	/* VFP & SMID registers */
+	u32 fpexc;
+	u32 fpscr;
+	u32 fpinst;
+	u32 fpinst2;
+	u64 fpregs1[16];  /* {d0-d15} 64bit floating point registers.*/
+	u64 fpregs2[16];  /* {d16-d31} 64bit floating point registers.*/
 	/* System control coprocessor (cp15) */
 	arm_priv_cp15_t cp15;
 	/* Last host CPU on which this VCPU ran */

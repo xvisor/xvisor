@@ -279,47 +279,23 @@ int cpu_vcpu_emulate_ldc_stc_cp14(struct vmm_vcpu *vcpu,
 	return VMM_EFAIL;
 }
 
-/* Dummy implementation of CP0 to CP13 registers */
 int cpu_vcpu_emulate_cp0_cp13(struct vmm_vcpu *vcpu, 
 			      arch_regs_t *regs, 
 			      u32 il, u32 iss)
 {
-	u32 Rt;
-
-	/* Check instruction condition */
-	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
-		/* Skip this instruction */
-		goto done;
-	}
-
-	/* More MCR/MRC parameters */
-	Rt   = (iss & ISS_MCR_MRC_RT_MASK) >> ISS_MCR_MRC_RT_SHIFT;
-
-	if (iss & ISS_MCR_MRC_DIR_MASK) {
-		/* MRC CP0 to CP13 */
-		/* Read always zero. */
-		cpu_vcpu_reg_write(vcpu, regs, Rt, 0x0);
-	} else {
-		/* MCR CP0 to CP13 */
-		/* Ignore it. */
-	}
-
-done:
-	/* Next instruction */
-	regs->pc += (il) ? 4 : 2;
-	/* Update ITSTATE for Thumb mode */
-	if (regs->cpsr & CPSR_THUMB_ENABLED) {
-		cpu_vcpu_update_itstate(vcpu, regs);
-	}
-
-	return VMM_OK;
+	/* We don't trap SIMD & VFP access so, we should never reach here.
+	 * For now, just return failure so that VCPU is halted.
+	 */
+	return VMM_EFAIL;
 }
 
-/* TODO: To be implemeted later */
 int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu, 
 			  arch_regs_t *regs, 
 			  u32 il, u32 iss)
 {
+	/* We don't trap SIMD & VFP access so, we should never reach here.
+	 * For now, just return failure so that VCPU is halted.
+	 */
 	return VMM_EFAIL;
 }
 

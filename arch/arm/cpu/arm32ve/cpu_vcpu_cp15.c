@@ -503,6 +503,7 @@ void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu,
 		cp15 = &arm_priv(tvcpu)->cp15;
 		cp15->c0_cssel = read_csselr();
 		cp15->c1_sctlr = read_sctlr();
+		cp15->c1_cpacr = read_cpacr();
 		cp15->c2_ttbr0 = read_ttbr0();
 		cp15->c2_ttbr1 = read_ttbr1();
 		cp15->c2_ttbcr = read_ttbcr();

@@ -573,6 +573,56 @@
 #define MIDR_REVISON_MASK				0x0000000F
 #define MIDR_REVISON_SHIFT				0
 
+/* FPEXC */
+#define FPEXC_EX_MASK					(1u << 31)
+#define FPEXC_EX_SHIFT					31
+#define FPEXC_EN_MASK					(1u << 30)
+#define FPEXC_EN_SHIFT					30
+#define FPEXC_FP2V_MASK					(1u << 28)
+#define FPEXC_FP2V_SHIFT				28
+
+/* FPSID */
+#define FPSID_IMPLEMENTER_MASK				(0xff << 24)
+#define FPSID_IMPLEMENTER_SHIFT				(24)
+#define FPSID_SW_MASK					(0x1 << 23)
+#define FPSID_SW_SHIFT					(23)
+#define FPSID_ARCH_MASK					(0x7f << 16)
+#define FPSID_ARCH_SHIFT				(16)
+#define FPSID_PART_MASK					(0xff << 8)
+#define FPSID_PART_SHIFT				(8)
+#define FPSID_VARIANT_MASK				(0xf << 4)
+#define FPSID_VARIANT_SHIFT				(4)
+#define FPSID_REV_MASK					(0xf << 0)
+#define FPSID_REV_SHIFT					(0)
+
+/* MVFR0 */
+#define MVFR0_VFP_ROUND_MODES_MASK			(0xf << 28)
+#define MVFR0_VFP_ROUND_MODES_SHIFT			28
+#define MVFR0_SHORT_VECTORS_MASK			(0xf << 24)
+#define MVFR0_SHORT_VECTORS_SHIFT			24
+#define MVFR0_SQUARE_ROOT_MASK				(0xf << 20)
+#define MVFR0_SQUARE_ROOT_SHIFT				20
+#define MVFR0_DIVIDE_MASK				(0xf << 16)
+#define MVFR0_DIVIDE_SHIFT				16
+#define MVFR0_VFP_EXEC_TRAP_MASK			(0xf << 12)
+#define MVFR0_VFP_EXEC_TRAP_SHIFT			12
+#define MVFR0_DOUBLE_PREC_MASK				(0xf << 8)
+#define MVFR0_DOUBLE_PREC_SHIFT				8
+#define MVFR0_SINGLE_PREC_MASK				(0xf << 4)
+#define MVFR0_SINGLE_PREC_SHIFT				4
+#define MVFR0_A_SIMD_MASK				(0xf << 0)
+#define MVFR0_A_SIMD_SHIFT				0
+
+/* ID_PFR0 */
+#define ID_PFR0_STATE3_MASK				0x0000f000
+#define ID_PFR0_STATE3_SHIFT				12
+#define ID_PFR0_STATE2_MASK				0x00000f00
+#define ID_PFR0_STATE2_SHIFT				8
+#define ID_PFR0_STATE1_MASK				0x000000f0
+#define ID_PFR0_STATE1_SHIFT				4
+#define ID_PFR0_STATE0_MASK				0x00000000
+#define ID_PFR0_STATE0_SHIFT				0
+
 /* ID_PFR1 */
 #define ID_PFR1_GEN_TIMER_MASK				0x000f0000
 #define ID_PFR1_GEN_TIMER_SHIFT				16
@@ -584,4 +634,5 @@
 #define ID_PFR1_SECUREX_SHIFT				4
 #define ID_PFR1_PRG_MODEL_MASK				0x0000000f
 #define ID_PFR1_PRG_MODEL_SHIFT				0
+
 #endif
