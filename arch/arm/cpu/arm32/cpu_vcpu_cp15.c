@@ -1092,8 +1092,9 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			}
 			break;
 		case 1:
-			/* These registers aren't documented on arm11 cores.  However
-			 * Linux looks at them anyway.  */
+			/* These registers aren't documented on arm11 cores.
+			 * However Linux looks at them anyway.
+			 */
 			if (!arm_feature(vcpu, ARM_FEATURE_V6))
 				goto bad_reg;
 			if (CRm != 0)
@@ -1162,6 +1163,8 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			}
 			break;
 		case 2:	/* Coprocessor access register.  */
+			if (!arm_feature(vcpu, ARM_FEATURE_V6))
+				goto bad_reg;
 			*data = arm_priv(vcpu)->cp15.c1_coproc;
 			break;
 		default:
@@ -1451,6 +1454,8 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			/* Not implemented.  */
 			break;
 		case 2:
+			if (!arm_feature(vcpu, ARM_FEATURE_V6))
+				goto bad_reg;
 			if (arm_priv(vcpu)->cp15.c1_coproc != data) {
 				arm_priv(vcpu)->cp15.c1_coproc = data;
 			}
