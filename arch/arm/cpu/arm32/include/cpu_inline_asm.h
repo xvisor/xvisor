@@ -24,6 +24,7 @@
 #define __CPU_INLINE_ASM_H__
 
 #include <vmm_types.h>
+#include <cpu_defines.h>
 
 #if defined(CONFIG_ARMV5)
 
@@ -401,5 +402,74 @@ extern unsigned int *_ifar;
 				" mcr     p15, 0, %0, c13, c0, 4\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 #endif
+
+/* VFP Control Register Read/Write */
+#define read_fpexc()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c8, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_fpexc(val)	asm volatile(\
+				" mcr p10, 7, %0, c8, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_fpscr()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c1, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_fpscr(val)	asm volatile(\
+				" mcr p10, 7, %0, c1, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_fpsid()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_fpsid(val)	asm volatile(\
+				" mcr p10, 7, %0, c0, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_fpinst()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c9, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_fpinst(val)	asm volatile(\
+				" mcr p10, 7, %0, c9, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_fpinst2()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c10, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_fpinst2(val)	asm volatile(\
+				" mcr p10, 7, %0, c10, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_mvfr0()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c7, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_mvfr0(val)	asm volatile(\
+				" mcr p10, 7, %0, c7, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_mvfr1()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c6, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_mvfr1(val)	asm volatile(\
+				" mcr p10, 7, %0, c6, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+/* CPU feature checking macros */
+
+#define cpu_supports_securex()	({ u32 pfr1; asm volatile(\
+				" mrc p15, 0, %0, c0, c1, 1\n\t" \
+				: "=r"(pfr1) :: "memory", "cc"); \
+				(pfr1 & ID_PFR1_SECUREX_MASK); })
+
+#define cpu_supports_fpu()	({ u32 fpsid; asm volatile(\
+				" mrc p10, 7, %0, c0, c0, 0\n\t" \
+				: "=r"(fpsid) :: "memory", "cc"); \
+				!(fpsid & FPSID_SW_MASK); })
 
 #endif
