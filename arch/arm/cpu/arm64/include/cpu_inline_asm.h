@@ -24,6 +24,7 @@
 #define __CPU_INLINE_ASM_H__
 
 #include <vmm_types.h>
+#include <cpu_defines.h>
 
 #define rev16(val)		({ u16 rval; asm volatile(\
 				" rev16   %0, %1\n\t" : "=r" (rval) : \
@@ -101,8 +102,8 @@
 					"at " stage el rw ", %0" \
 					: : "r"(va) : "memory", "cc");
 
+/* CPU feature checking macros */
 
-/* Features */
 #define cpu_supports_thumbee()	({ u64 pfr0; \
 				   asm volatile("mrs %0, id_pfr0_el1" \
 						: "=r"(pfr0)); \

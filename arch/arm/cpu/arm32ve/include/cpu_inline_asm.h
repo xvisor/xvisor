@@ -24,6 +24,7 @@
 #define __CPU_INLINE_ASM_H__
 
 #include <vmm_types.h>
+#include <cpu_defines.h>
 
 #define rev32(val)		({ u32 rval; asm volatile(\
 				" rev     %0, %1\n\t" : "=r" (rval) : \
@@ -715,6 +716,8 @@
 				(((u64)v2 << 32) + (u64)v1);})
 
 #endif
+
+/* CPU feature checking macros */
 
 #define cpu_supports_securex()	({ u32 pfr1; asm volatile(\
 				" mrc p15, 0, %0, c0, c1, 1\n\t" \
