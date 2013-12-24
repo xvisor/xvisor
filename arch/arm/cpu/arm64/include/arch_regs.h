@@ -80,7 +80,7 @@ struct arm_priv {
 	u32 fpexc32;
 	u32 fpcr;
 	u32 fpsr;
-	u64 fpregs[128]; /* 32x32 floating point registers. */
+	u64 fpregs[64]; /* 32x 128bit floating point registers. */
 	/* 32bit only registers */
 	u32 cp15_c0_c1[8];  
 	u32 cp15_c0_c2[8];  

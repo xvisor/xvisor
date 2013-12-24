@@ -742,9 +742,10 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		}
 		/* Initialize Coprocessor Trap Register */
 		arm_priv(vcpu)->cptr = CPTR_TTA_MASK;
-		if (!cpu_supports_fpu() ||
-		    !arm_feature(vcpu, ARM_FEATURE_VFP)) {
-			arm_priv(vcpu)->cptr |= CPTR_TFP_MASK;
+		arm_priv(vcpu)->cptr |= CPTR_TFP_MASK;
+		if (cpu_supports_fpu() &&
+		    arm_feature(vcpu, ARM_FEATURE_VFP3)) {
+			arm_priv(vcpu)->cptr &= ~CPTR_TFP_MASK;
 		}
 		/* Initialize Hypervisor System Trap Register */
 		arm_priv(vcpu)->hstr = 0;
@@ -812,6 +813,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	arm_priv(vcpu)->fpexc32 = 0x0;
 	arm_priv(vcpu)->fpcr = 0x0;
 	arm_priv(vcpu)->fpsr = 0x0;
+	memset(&arm_priv(vcpu)->fpregs, 0, sizeof(arm_priv(vcpu)->fpregs));
 
 	/* Set last host CPU to invalid value */
 	arm_priv(vcpu)->last_hcpu = 0xFFFFFFFF;
@@ -843,18 +845,11 @@ static void cpu_vcpu_vfp_simd_save_regs(struct vmm_vcpu *vcpu)
 {
 	void *addr;
 
-	/* Sanity check */
-	if (!vcpu) {
-		return;
-	}
-
 	/* Do nothing if:
-	 * 1. Floating point hardware not available
-	 * 2. VCPU does not have VFP feature
-	 * 3. Floating point access is disabled
+	 * 1. VCPU does not have VFPv3 feature
+	 * 2. Floating point access is disabled
 	 */
-	if (!cpu_supports_fpu() ||
-	    !arm_feature(vcpu, ARM_FEATURE_VFP) ||
+	if (!arm_feature(vcpu, ARM_FEATURE_VFP3) ||
 	    (mrs(cptr_el2) & CPTR_TFP_MASK)) {
 		return;
 	}
@@ -892,18 +887,11 @@ static void cpu_vcpu_vfp_simd_restore_regs(struct vmm_vcpu *vcpu)
 {
 	void *addr;
 
-	/* Sanity check */
-	if (!vcpu) {
-		return;
-	}
-
 	/* Do nothing if:
-	 * 1. Floating point hardware not available
-	 * 2. VCPU does not have VFP feature
-	 * 3. Floating point access is disabled
+	 * 1. VCPU does not have VFPv3 feature
+	 * 2. Floating point access is disabled
 	 */
-	if (!cpu_supports_fpu() ||
-	    !arm_feature(vcpu, ARM_FEATURE_VFP) ||
+	if (!arm_feature(vcpu, ARM_FEATURE_VFP3) ||
 	    (mrs(cptr_el2) & CPTR_TFP_MASK)) {
 		return;
 	}
