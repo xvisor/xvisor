@@ -162,6 +162,8 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_cpuid(vcpu)		(arm_priv(vcpu)->cpuid)
 #define arm_set_feature(vcpu, feat) \
 			(arm_priv(vcpu)->features |= (0x1ULL << (feat)))
+#define arm_clear_feature(vcpu, feat) \
+			(arm_priv(vcpu)->features &= ~(0x1ULL << (feat)))
 #define arm_feature(vcpu, feat)	\
 			(arm_priv(vcpu)->features & (0x1ULL << (feat)))
 
