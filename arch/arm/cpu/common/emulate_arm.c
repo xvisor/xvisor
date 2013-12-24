@@ -3537,10 +3537,22 @@ static int arm_instgrp_coproc(u32 inst,
 		case 0B101111:
 			if (inst & ARM_INST_COPROC_OP_MASK) {
 				/* FIXME:
-				 * Advanced SIMD, VFP 8, 16, & 32-bit transfer
-				 * transfer between ARM core and extension 
-				 * registers 
+				 * Advanced SIMD, VFP 8, 16, & 32-bit
+				 * transfer between ARM core and extension
+				 * registers
 				 */
+				if (cpro == 10) {
+					switch (op1 & 0xF) {
+					case 0xF:
+						return arm_inst_mrcx(inst, 
+								regs, vcpu);
+					case 0xE:
+						return arm_inst_mcrx(inst, 
+								regs, vcpu);
+					default:
+						break;
+					};
+				}
 			} else {
 				/* FIXME:
 				 * VFP data-processing instructions 
