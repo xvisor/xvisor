@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Busybox version: 1.21.0
-# Thu May  2 16:57:45 2013
+# Wed Dec 25 03:04:01 2013
 #
 CONFIG_HAVE_DOT_CONFIG=y
 
@@ -64,7 +64,7 @@ CONFIG_STATIC=y
 CONFIG_LFS=y
 CONFIG_CROSS_COMPILER_PREFIX="arm-none-linux-gnueabi-"
 CONFIG_SYSROOT=""
-CONFIG_EXTRA_CFLAGS="-marm -msoft-float -mabi=aapcs-linux"
+CONFIG_EXTRA_CFLAGS="-marm -mabi=aapcs-linux"
 CONFIG_EXTRA_LDFLAGS=""
 CONFIG_EXTRA_LDLIBS=""
 
