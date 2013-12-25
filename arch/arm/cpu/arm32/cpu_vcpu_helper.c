@@ -30,6 +30,7 @@
 #include <libs/mathlib.h>
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
+#include <cpu_vcpu_vfp.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
 #include <arm_features.h>
@@ -734,11 +735,13 @@ int arch_guest_deinit(struct vmm_guest *guest)
 
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
+	int rc;
 	u32 ite, cpuid;
 	const char *attr;
 
 	/* Initialize User Mode Registers */
 	/* For both Orphan & Normal VCPUs */
+
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
 	arm_regs(vcpu)->pc = vcpu->start_pc;
 	arm_regs(vcpu)->sp_excp = vcpu->stack_va + vcpu->stack_sz - 4;
@@ -753,8 +756,10 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_regs(vcpu)->cpsr |= CPSR_MODE_SUPERVISOR;
 		arm_regs(vcpu)->sp = arm_regs(vcpu)->sp_excp;
 	}
+
 	/* Initialize Supervisor Mode Registers */
 	/* For only Normal VCPUs */
+
 	if (!vcpu->is_normal) {
 		return VMM_OK;
 	}
@@ -850,7 +855,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		default:
 			break;
 		};
-
 		/* Some features automatically imply others: */
 		if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 			arm_set_feature(vcpu, ARM_FEATURE_VAPA);
@@ -892,6 +896,11 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		}
 	}
 
+	rc = cpu_vcpu_vfp_init(vcpu);
+	if (rc) {
+		return rc;
+	}
+
 	return cpu_vcpu_cp15_init(vcpu, cpuid);
 }
 
@@ -909,6 +918,11 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 
 	/* Cleanup CP15 */
 	if ((rc = cpu_vcpu_cp15_deinit(vcpu))) {
+		return rc;
+	}
+
+	/* Cleanup VFP */
+	if ((rc = cpu_vcpu_vfp_deinit(vcpu))) {
 		return rc;
 	}
 
@@ -937,6 +951,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			cpu_vcpu_banked_regs_save(tvcpu, regs);
 		}
 	}
+	/* Switch VFP context */
+	cpu_vcpu_vfp_switch_context(tvcpu, vcpu);
 	/* Switch CP15 context */
 	cpu_vcpu_cp15_switch_context(tvcpu, vcpu);
 	/* Restore user registers & banked registers */

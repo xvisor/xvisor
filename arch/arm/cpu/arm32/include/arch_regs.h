@@ -79,7 +79,16 @@ struct arm_priv {
 	u32 spsr_fiq;
 	/* Internal CPU feature flags. */
 	u64 features;
-	/* System control coprocessor (cp15) */
+	/* VFP context (cp10 & cp11 coprocessors) */
+	struct {
+		u32 fpexc;
+		u32 fpscr;
+		u32 fpinst;
+		u32 fpinst2;
+		u64 fpregs1[16];  /* {d0-d15} 64bit floating point registers.*/
+		u64 fpregs2[16];  /* {d16-d31} 64bit floating point registers.*/
+	} vfp;
+	/* System control (cp15 coprocessor) */
 	struct {
 		/* Shadow L1 */
 		struct cpu_l1tbl *l1;
@@ -146,7 +155,6 @@ struct arm_priv {
 		u32 c15_i_max; /* Maximum D-cache dirty line index. */
 		u32 c15_i_min; /* Minimum D-cache dirty line index. */
 	} cp15;
-
 } __attribute((packed));
 
 typedef struct arm_priv arm_priv_t;
@@ -163,9 +171,11 @@ typedef struct arm_guest_priv arm_guest_priv_t;
 #define arm_priv(vcpu)		((arm_priv_t *)((vcpu)->arch_priv))
 #define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
 
-#define arm_cpuid(vcpu) (arm_priv(vcpu)->cp15.c0_cpuid)
-#define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1ULL << (feat)))
-#define arm_clear_feature(vcpu, feat) (arm_priv(vcpu)->features &= ~(0x1ULL << (feat)))
+#define arm_cpuid(vcpu)		(arm_priv(vcpu)->cp15.c0_cpuid)
+#define arm_set_feature(vcpu, feat) \
+				(arm_priv(vcpu)->features |= (0x1ULL << (feat)))
+#define arm_clear_feature(vcpu, feat) \
+				(arm_priv(vcpu)->features &= ~(0x1ULL << (feat)))
 #define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1ULL << (feat)))
 
 /**
