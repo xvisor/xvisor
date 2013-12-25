@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Anup Patel.
+# Copyright (c) 2014 Himanshu Chauhan.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,21 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
-# @author Anup Patel (anup@brainfault.org)
-# @brief config file for driver options
+# @file objects.mk
+# @author Himanshu Chauhan
+# @brief list of ide and ata core framework objects
 # */
 
-menu "Device Drivers"
-     source "drivers/serial/openconf.cfg"
-     source "drivers/rtc/openconf.cfg"
-     source "drivers/block/openconf.cfg"
-     source "drivers/mmc/openconf.cfg"
-     source "drivers/usb/openconf.cfg"
-     source "drivers/input/openconf.cfg"
-     source "drivers/video/openconf.cfg"
-     source "drivers/net/openconf.cfg"
-     source "drivers/clk/openconf.cfg"
-     source "drivers/mfd/openconf.cfg"
-     source "drivers/ide/openconf.cfg"
-endmenu
+drivers-objs-$(CONFIG_IDE) += ide/core/ide_core.o
+drivers-objs-$(CONFIG_IDE) += ide/core/ata_core.o

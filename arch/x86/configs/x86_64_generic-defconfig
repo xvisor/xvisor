@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Tue Dec 17 19:45:03 2013
+# Wed Dec 25 09:03:41 2013
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -91,7 +91,9 @@ CONFIG_LOADBAL_PERIOD_SECS=5
 #
 # Device Support
 #
-# CONFIG_BLOCK is not set
+CONFIG_BLOCK=y
+CONFIG_BLOCKPART=y
+CONFIG_BLOCKPART_DOS=y
 # CONFIG_NET is not set
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
@@ -100,6 +102,7 @@ CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
 # Virtual IO Support
 #
 # CONFIG_VSERIAL is not set
+# CONFIG_VDISPLAY is not set
 # CONFIG_VINPUT is not set
 
 #
@@ -121,6 +124,7 @@ CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
 CONFIG_CMD_INPUT=y
 CONFIG_CMD_FB=y
+CONFIG_CMD_BLOCKDEV=y
 
 #
 # Daemon Options
@@ -150,6 +154,11 @@ CONFIG_VTEMU_FONT_PEARL_8x8=y
 CONFIG_VTEMU_FONT_MINI_8x8=y
 
 #
+# Virtual FileSystem Options
+#
+# CONFIG_VFS is not set
+
+#
 # Device Drivers
 #
 
@@ -162,6 +171,16 @@ CONFIG_VTEMU_FONT_MINI_8x8=y
 # RTC Drivers
 #
 # CONFIG_RTC is not set
+
+#
+# Block Drivers
+#
+# CONFIG_BLOCK_RBD is not set
+
+#
+# MMC/SD/SDIO drivers
+#
+# CONFIG_MMC is not set
 
 #
 # USB drivers
@@ -222,6 +241,17 @@ CONFIG_FB_VESA=y
 # CONFIG_VEXPRESS_CONFIG is not set
 
 #
+# IDE Driver
+#
+CONFIG_IDE=y
+# CONFIG_ATAPI is not set
+
+#
+# IDE Host Controllers
+#
+CONFIG_PIIX3_IDE=y
+
+#
 # Device Emulators
 #
 
@@ -264,6 +294,10 @@ CONFIG_FB_VESA=y
 # Block Device Emulators
 #
 # CONFIG_EMU_BLOCK is not set
+
+#
+# Display Emulators
+#
 
 #
 # Input Device Emulators
