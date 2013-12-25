@@ -150,6 +150,16 @@
 							 SCTLR_AFE_MASK | \
 							 SCTLR_U_MASK)
 
+/* CPACR related macros & define */
+#define CPACR_ASEDIS_MASK				0x80000000
+#define CPACR_ASEDIS_SHIFT				31
+#define CPACR_D32DIS_MASK				0x40000000
+#define CPACR_D32DIS_SHIFT				30
+#define CPACR_TRCDIS_MASK				0x10000000
+#define CPACR_TRCDIS_SHIFT				28
+#define CPACR_CP_MASK(n)				(0x3 << ((n)*2))
+#define CPACR_CP_SHIFT(n)				((n)*2)
+
 /* CTR related macros & defines */
 #define CTR_FORMAT_MASK					0xE0000000
 #define CTR_FORMAT_SHIFT				29
