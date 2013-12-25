@@ -27,7 +27,7 @@
 #include <vmm_params.h>
 #include <vmm_devtree.h>
 #include <arch_cpu.h>
-#include <cpu_mmu.h>
+#include <cpu_inline_asm.h>
 
 extern u8 _code_start;
 extern u8 _code_end;
@@ -89,10 +89,15 @@ int __init arch_cpu_final_init(void)
 
 void __init cpu_init(void)
 {
-#if defined(CONFIG_SMP)
-	u32 cpu = vmm_smp_processor_id();
+#ifndef CONFIG_ARMV5
+	if (cpu_supports_fpu()) {
+		/* Allow full-access to cp10 & cp11 if CPU supports FPU */
+		write_cpacr(CPACR_CP_MASK(11) | CPACR_CP_MASK(10));
+	}
+#endif
 
-	if (!cpu) { /* Primary CPU */
+#if defined(CONFIG_SMP)
+	if (!vmm_smp_processor_id()) { /* Primary CPU */
 		vmm_init();
 	} else { /* Secondary CPUs */
 		vmm_init_secondary();
