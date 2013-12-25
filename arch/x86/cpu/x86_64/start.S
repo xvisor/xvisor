@@ -282,27 +282,27 @@ __pml4:
 	.align 32
         .globl __pgdp
 	.type	__pgdp, @object
-	.size	__pgdp, 8192 /* two pages */
+	.size	__pgdp, 16384 /* 4 pages */
 __pgdp:
 	.long	0
 	.long	0
-	.zero	8184
+	.zero	16376
 
         .globl __pgdi
 	.align 32
 	.type	__pgdi, @object
-	.size	__pgdi, 16384 /* four pages */
+	.size	__pgdi, 32768 /* 8 pages */
 __pgdi:
 	.long	0
 	.long	0
-	.zero	8184
+	.zero	32760
 
         .globl __pgti
 	.align 32
 	.type	__pgti, @object
-	.size	__pgti, 114688 /* twenty eight pages */
+	.size	__pgti, 131072 /* 32 pages */
 __pgti:
-	.zero	114688 /* twenty eight pages */
+	.zero	131072 /* 32 pages */
 
 .align 4
 	.type   _mboot_info, @object
