@@ -48,12 +48,12 @@
 
 static u8 uart_8250_in8(struct uart_8250_port *port, u32 offset)
 {
-	return vmm_in_8((u8 *)(port->base+(offset*port->reg_align)));
+	return vmm_inb((port->base+(offset*port->reg_align)));
 }
 
 static void uart_8250_out8(struct uart_8250_port *port, u32 offset, u8 val)
 {
-	vmm_out_8((u8 *)(port->base+(offset*port->reg_align)), val);
+	vmm_outb(val, (port->base+(offset*port->reg_align)));
 	if (offset == UART_LCR_OFFSET) {
 		port->lcr_last = val;
 	}
