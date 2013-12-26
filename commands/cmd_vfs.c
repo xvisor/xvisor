@@ -500,6 +500,7 @@ static int cmd_vfs_load(struct vmm_chardev *cdev, physical_addr_t pa,
 		vmm_host_memory_write(pa, buf, buf_rd);
 		len -= buf_rd;
 		rd_count += buf_rd;
+		pa += buf_rd;
 	}
 
 	vmm_cprintf(cdev, "Loaded %d bytes\n", rd_count);
