@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Thu Dec 26 17:12:02 2013
+# Thu Dec 26 22:14:09 2013
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -169,7 +169,12 @@ CONFIG_VFS_FAT=y
 #
 # Serial Port Drivers
 #
-# CONFIG_SERIAL is not set
+CONFIG_SERIAL=y
+CONFIG_SERIAL_8250_UART=y
+# CONFIG_SERIAL_OMAP_UART is not set
+# CONFIG_SERIAL_PL01X is not set
+# CONFIG_SERIAL_SAMSUNG is not set
+# CONFIG_SERIAL_IMX is not set
 
 #
 # RTC Drivers

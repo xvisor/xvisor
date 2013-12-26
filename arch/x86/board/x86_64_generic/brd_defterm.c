@@ -263,6 +263,21 @@ static void init_console(struct vmm_devtree_node *node)
 	cls();
 }
 
+static int unknown_defterm_putc(u8 ch)
+{
+	return VMM_EFAIL;
+}
+
+static int unknown_defterm_getc(u8 *ch)
+{
+	return VMM_EFAIL;
+}
+
+static int __init unknown_defterm_init(struct vmm_devtree_node *node)
+{
+	return VMM_ENODEV;
+}
+
 #if defined(CONFIG_VTEMU)
 
 static int defterm_key_event(struct input_handler *ihnd, 
@@ -486,21 +501,6 @@ static int __init set_default_console(char *buf)
 
 vmm_early_param("console", set_default_console);
 /*-------------- UART DEFTERM --------------- */
-static int unknown_defterm_putc(u8 ch)
-{
-	return VMM_EFAIL;
-}
-
-static int unknown_defterm_getc(u8 *ch)
-{
-	return VMM_EFAIL;
-}
-
-static int __init unknown_defterm_init(struct vmm_devtree_node *node)
-{
-	return VMM_ENODEV;
-}
-
 static struct vmm_devtree_nodeid defterm_devid_table[] = {
 	{.type = "serial",.compatible = "ns8250",.data = &uart8250_ops},
 	{.type = "serial",.compatible = "ns16450",.data = &uart8250_ops},
