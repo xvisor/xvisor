@@ -3102,6 +3102,7 @@ static int arm_inst_stcx(u32 inst,
 					return rc;
 				}
 				address += 4;
+				i++;
 			}
 			if (wback) {
 				cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
@@ -3171,6 +3172,7 @@ static int arm_inst_ldcx_i(u32 inst,
 				cp->ldcstc_write(vcpu, regs, i, D, 
 							CRd, uopt, imm8, data);
 				address += 4;
+				i++;
 			}
 			if (wback) {
 				cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
@@ -3237,6 +3239,7 @@ static int arm_inst_ldcx_l(u32 inst,
 				cp->ldcstc_write(vcpu, regs, i, D, 
 							CRd, uopt, imm8, data);
 				address += 4;
+				i++;
 			}
 		}
 	}
