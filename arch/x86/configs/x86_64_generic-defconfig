@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Wed Dec 25 09:03:41 2013
+# Thu Dec 26 17:12:02 2013
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -125,6 +125,7 @@ CONFIG_CMD_MODULE=y
 CONFIG_CMD_INPUT=y
 CONFIG_CMD_FB=y
 CONFIG_CMD_BLOCKDEV=y
+CONFIG_CMD_VFS=y
 
 #
 # Daemon Options
@@ -156,7 +157,10 @@ CONFIG_VTEMU_FONT_MINI_8x8=y
 #
 # Virtual FileSystem Options
 #
-# CONFIG_VFS is not set
+CONFIG_VFS=y
+# CONFIG_VFS_CPIO is not set
+# CONFIG_VFS_EXT4 is not set
+CONFIG_VFS_FAT=y
 
 #
 # Device Drivers

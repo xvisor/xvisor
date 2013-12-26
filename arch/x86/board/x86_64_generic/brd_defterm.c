@@ -32,6 +32,12 @@
 #include <libs/fifo.h>
 #include <drv/input.h>
 
+struct defterm_ops {
+	int (*putc)(u8 ch);
+	int (*getc)(u8 *ch);
+	int (*init)(struct vmm_devtree_node *node);
+};
+
 /*
  * These define our textpointer, our background and foreground
  * colors (attributes), and x and y cursor coordinates
@@ -49,6 +55,9 @@ static u32 defterm_key_flags;
 static struct input_handler defterm_hndl;
 static bool defterm_key_handler_registered;
 #endif
+
+/* If set to 1, Xvisor will use VGA and attached keyboard as console */
+static int use_stdio = 0;
 
 static u16 *memsetw(u16 *dest, u16 val, size_t count)
 {
@@ -247,7 +256,7 @@ static void settextcolor(u8 forecolor, u8 backcolor)
 }
 
 /* Sets our text-mode VGA pointer, then clears the screen for us */
-static void init_console(void)
+static void init_console(struct vmm_devtree_node *node)
 {
 	settextcolor(15 /* White foreground */, 0 /* Black background */);
 	textmemptr = (u16 *)vmm_host_iomap(0xB8000, 0x4000);
@@ -297,7 +306,7 @@ static int defterm_key_event(struct input_handler *ihnd,
 	return VMM_OK;
 }
 
-int arch_defterm_getc(u8 *ch)
+int arch_std_defterm_getc(u8 *ch)
 {
 	int rc;
 
@@ -341,23 +350,23 @@ int arch_defterm_getc(u8 *ch)
 
 #else
 
-int arch_defterm_getc(u8 *ch)
+int arch_std_defterm_getc(u8 *ch)
 {
 	return VMM_EFAIL;
 }
 
 #endif
 
-int arch_defterm_putc(u8 ch)
+int arch_std_defterm_putc(u8 ch)
 {
 	putch(ch);
 
 	return VMM_OK;
 }
 
-int __init arch_defterm_init(void)
+int __init arch_std_defterm_init(struct vmm_devtree_node *node)
 {
-	init_console();
+	init_console(node);
 
 #if defined(CONFIG_VTEMU)
 	defterm_fifo = fifo_alloc(sizeof(u8), 128);
@@ -372,6 +381,76 @@ int __init arch_defterm_init(void)
 
 	return VMM_OK;
 }
+
+static struct defterm_ops stdio_ops = {
+	.putc = arch_std_defterm_putc,
+	.getc = arch_std_defterm_getc,
+	.init = arch_std_defterm_init
+};
+
+#if defined(CONFIG_SERIAL_8250_UART)
+
+#include <drv/8250-uart.h>
+
+static struct uart_8250_port uart8250_port;
+
+static int uart8250_defterm_putc(u8 ch)
+{
+	if (!uart_8250_lowlevel_can_putc(&uart8250_port)) {
+		return VMM_EFAIL;
+	}
+	uart_8250_lowlevel_putc(&uart8250_port, ch);
+	return VMM_OK;
+}
+
+static int uart8250_defterm_getc(u8 *ch)
+{
+	if (!uart_8250_lowlevel_can_getc(&uart8250_port)) {
+		return VMM_EFAIL;
+	}
+	*ch = uart_8250_lowlevel_getc(&uart8250_port);
+	return VMM_OK;
+}
+
+static int __init uart8250_defterm_init(struct vmm_devtree_node *node)
+{
+	u32 *val;
+	int rc;
+
+	val = vmm_devtree_attrval(node, VMM_DEVTREE_REG_ATTR_NAME);
+	uart8250_port.base = (val) ? *val : 0x3f8;
+
+	rc = vmm_devtree_clock_frequency(node, &uart8250_port.input_clock);
+	if (rc) {
+		return rc;
+	}
+
+	val = vmm_devtree_attrval(node, "baudrate");
+	uart8250_port.baudrate = (val) ? *val : 115200;
+
+	val = vmm_devtree_attrval(node, "reg_align");
+	uart8250_port.reg_align = (val) ? *val : 4;
+
+	uart_8250_lowlevel_init(&uart8250_port);
+
+	return VMM_OK;
+}
+
+static struct defterm_ops uart8250_ops = {
+	.putc = uart8250_defterm_putc,
+	.getc = uart8250_defterm_getc,
+	.init = uart8250_defterm_init
+};
+
+#else
+
+static struct defterm_ops uart8250_ops = {
+	.putc = unknown_defterm_putc,
+	.getc = unknown_defterm_getc,
+	.init = unknown_defterm_init
+};
+
+#endif
 
 #ifdef ARCH_HAS_DEFTERM_EARLY_PRINT
 int init_early_vga_console(void)
@@ -397,3 +476,88 @@ static int __init setup_early_print(char *buf)
 
 vmm_early_param("earlyprint", setup_early_print);
 #endif
+
+static int __init set_default_console(char *buf)
+{
+	use_stdio = 1;
+
+	return 0;
+}
+
+vmm_early_param("console", set_default_console);
+/*-------------- UART DEFTERM --------------- */
+static int unknown_defterm_putc(u8 ch)
+{
+	return VMM_EFAIL;
+}
+
+static int unknown_defterm_getc(u8 *ch)
+{
+	return VMM_EFAIL;
+}
+
+static int __init unknown_defterm_init(struct vmm_devtree_node *node)
+{
+	return VMM_ENODEV;
+}
+
+static struct vmm_devtree_nodeid defterm_devid_table[] = {
+	{.type = "serial",.compatible = "ns8250",.data = &uart8250_ops},
+	{.type = "serial",.compatible = "ns16450",.data = &uart8250_ops},
+	{.type = "serial",.compatible = "ns16550a",.data = &uart8250_ops},
+	{.type = "serial",.compatible = "ns16550",.data = &uart8250_ops},
+	{.type = "serial",.compatible = "ns16750",.data = &uart8250_ops},
+	{.type = "serial",.compatible = "ns16850",.data = &uart8250_ops},
+	{ /* end of list */ },
+};
+
+static const struct defterm_ops *ops = NULL;
+
+int arch_defterm_putc(u8 ch)
+{
+	return (ops) ? ops->putc(ch) : unknown_defterm_putc(ch);
+}
+
+int arch_defterm_getc(u8 *ch)
+{
+	return (ops) ? ops->getc(ch) : unknown_defterm_getc(ch);
+}
+
+int __init arch_defterm_init(void)
+{
+	const char *attr;
+	struct vmm_devtree_node *node;
+	const struct vmm_devtree_nodeid *nodeid;
+
+	if (use_stdio) {
+		ops = &stdio_ops;
+		return ops->init(NULL);
+	}
+
+	/* Find choosen console node */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_CHOSEN_NODE_NAME);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	attr = vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
+	if (!attr) {
+		return VMM_ENODEV;
+	}
+
+	node = vmm_devtree_getnode(attr);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	/* Find appropriate defterm ops */
+	nodeid = vmm_devtree_match_node(defterm_devid_table, node);
+	if (nodeid) {
+		ops = nodeid->data;
+	} else {
+		return VMM_ENODEV;
+	}
+
+	return (ops) ? ops->init(node) : unknown_defterm_init(node);
+}
