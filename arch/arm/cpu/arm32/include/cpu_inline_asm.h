@@ -206,6 +206,8 @@ static inline u16 rev16(u16 v)
 				" mcr     p15, 0, %0, c1, c0, 1\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
+#ifndef CONFIG_ARMV5
+
 #define read_cpacr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c1, c0, 2\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
@@ -213,6 +215,14 @@ static inline u16 rev16(u16 v)
 #define write_cpacr(val)	asm volatile(\
 				" mcr     p15, 0, %0, c1, c0, 2\n\t" \
 				:: "r" ((val)) : "memory", "cc")
+
+#else
+
+#define read_cpacr()		0
+
+#define write_cpacr(val)
+
+#endif
 
 #define read_dacr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c3, c0, 0\n\t" \
@@ -483,9 +493,6 @@ extern unsigned int *_ifar;
 				: "=r"(pfr1) :: "memory", "cc"); \
 				(pfr1 & ID_PFR1_SECUREX_MASK); })
 
-#define cpu_supports_fpu()	({ u32 fpsid; asm volatile(\
-				" mrc p10, 7, %0, c0, c0, 0\n\t" \
-				: "=r"(fpsid) :: "memory", "cc"); \
-				!(fpsid & FPSID_SW_MASK); })
+#define cpu_supports_fpu()	(!(read_fpsid() & FPSID_SW_MASK))
 
 #endif

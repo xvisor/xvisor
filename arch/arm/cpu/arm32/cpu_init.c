@@ -88,12 +88,8 @@ int __init arch_cpu_final_init(void)
 
 void __init cpu_init(void)
 {
-#ifndef CONFIG_ARMV5
-	if (cpu_supports_fpu()) {
-		/* Allow full-access to cp10 & cp11 if CPU supports FPU */
-		write_cpacr(CPACR_CP_MASK(11) | CPACR_CP_MASK(10));
-	}
-#endif
+	/* Allow full-access to cp10 & cp11 if CPU supports FPU */
+	write_cpacr(CPACR_CP_MASK(11) | CPACR_CP_MASK(10));
 
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
