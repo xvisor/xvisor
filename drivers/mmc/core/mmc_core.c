@@ -355,7 +355,7 @@ static int __mmc_send_if_cond(struct mmc_host *host, struct mmc_card *card)
 static int __sd_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 {
 	int err;
-	int timeout = 1000;
+	int timeout = 10;
 	struct mmc_cmd cmd;
 
 	do {
@@ -370,6 +370,7 @@ static int __sd_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 
 		cmd.cmdidx = SD_CMD_APP_SEND_OP_COND;
 		cmd.resp_type = MMC_RSP_R3;
+		cmd.response[0] = 0;
 
 		/*
 		 * Most cards do not answer if some reserved bits
@@ -393,7 +394,8 @@ static int __sd_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 		/* If card is powered-up then check whether
 		 * it has any valid voltages as-per SD spec
 		 */
-		if ((cmd.response[0] & OCR_BUSY) &&
+		if (!mmc_host_is_spi(host) &&
+		    (cmd.response[0] & OCR_BUSY) &&
 		    !(cmd.response[0] & OCR_VOLTAGE_MASK)) {
 			/* No valid voltages hence this is not a SD card */
 			return VMM_ENODEV;
@@ -431,7 +433,7 @@ static int __sd_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 static int __mmc_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 {
 	int err;
-	int timeout = 1000;
+	int timeout = 10;
 	struct mmc_cmd cmd;
 
 	/* Some cards seem to need this */
@@ -441,13 +443,14 @@ static int __mmc_send_op_cond(struct mmc_host *host, struct mmc_card *card)
  	cmd.cmdidx = MMC_CMD_SEND_OP_COND;
  	cmd.resp_type = MMC_RSP_R3;
  	cmd.cmdarg = 0;
+	cmd.response[0] = 0;
 
  	err = __mmc_send_cmd(host, &cmd, NULL);
  	if (err) {
  		return err;
 	}
 
- 	vmm_udelay(1000);
+	vmm_udelay(1000);
 
 	do {
 		cmd.cmdidx = MMC_CMD_SEND_OP_COND;
@@ -456,10 +459,10 @@ static int __mmc_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 				(host->voltages &
 				(cmd.response[0] & OCR_VOLTAGE_MASK)) |
 				(cmd.response[0] & OCR_ACCESS_MODE));
-
 		if (host->caps & MMC_CAP_MODE_HC) {
 			cmd.cmdarg |= OCR_HCS;
 		}
+		cmd.response[0] = 0;
 
 		err = __mmc_send_cmd(host, &cmd, NULL);
 		if (err) {
