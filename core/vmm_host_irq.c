@@ -399,9 +399,9 @@ static void __cpuinit host_irq_nidtbl_found(struct vmm_devtree_node *node,
 int __cpuinit vmm_host_irq_init(void)
 {
 	int ret;
-	u32 ite, cpu = vmm_smp_processor_id();
+	u32 ite, cpu;
 
-	if (!cpu) {
+	if (vmm_smp_is_bootcpu()) {
 		/* Clear the memory of control structure */
 		memset(&hirqctrl, 0, sizeof(hirqctrl));
 

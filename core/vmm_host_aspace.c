@@ -251,7 +251,7 @@ u32 vmm_host_free_initmem(void)
 
 int __cpuinit vmm_host_aspace_init(void)
 {
-	int rc, cpu = vmm_smp_processor_id();
+	int rc, cpu;
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
 	physical_size_t ram_size;
 	virtual_addr_t vapool_start, core_resv_va = 0x0, arch_resv_va = 0x0;
@@ -259,8 +259,8 @@ int __cpuinit vmm_host_aspace_init(void)
 	virtual_size_t hk_total_size = 0x0;
 	virtual_size_t core_resv_sz = 0x0, arch_resv_sz = 0x0;
 
-	/* For secondary CPU just call arch code and return */
-	if (cpu) {
+	/* For Non-Boot CPU just call arch code and return */
+	if (!vmm_smp_is_bootcpu()) {
 		return arch_cpu_aspace_secondary_init();
 	}
 

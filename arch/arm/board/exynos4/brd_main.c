@@ -192,9 +192,9 @@ int __cpuinit arch_clockchip_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
-	u32 val, cpu = vmm_smp_processor_id();
+	u32 val;
 
-	if (!cpu) {
+	if (vmm_smp_is_bootcpu()) {
 		/* Map timer0 registers */
 		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 					   "mct");

@@ -276,9 +276,8 @@ static void __cpuinit clockchip_nidtbl_found(struct vmm_devtree_node *node,
 int __cpuinit vmm_clockchip_init(void)
 {
 	int rc;
-	u32 cpu = vmm_smp_processor_id();
 
-	if (!cpu) {
+	if (vmm_smp_is_bootcpu()) {
 		/* Initialize clockchip list lock */
 		INIT_SPIN_LOCK(&ccctrl.lock);
 

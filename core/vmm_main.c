@@ -216,18 +216,22 @@ static void system_init_work(struct vmm_work *work)
 	}
 }
 
-void vmm_init(void)
+static void __init init_bootcpu(void)
 {
 	int ret;
 #if defined(CONFIG_SMP)
 	u32 c;
 #endif
-	u32 cpu = vmm_smp_processor_id();
 	struct vmm_work sysinit;
 
+	/* Sanity check on SMP processor id */
+	if (CONFIG_CPU_COUNT <= vmm_smp_processor_id()) {
+		vmm_hang();
+	}
+
 	/* Mark this CPU possible & present */
-	vmm_set_cpu_possible(cpu, TRUE);
-	vmm_set_cpu_present(cpu, TRUE);
+	vmm_set_cpu_possible(vmm_smp_processor_id(), TRUE);
+	vmm_set_cpu_present(vmm_smp_processor_id(), TRUE);
 
 	/* Print version string */
 	vmm_printf("\n");
@@ -373,7 +377,7 @@ void vmm_init(void)
 
 	/* Start each present secondary CPUs */
 	for_each_present_cpu(c) {
-		if (c == cpu) {
+		if (c == vmm_smp_bootcpu_id()) {
 			continue;
 		}
 		ret = arch_smp_start_cpu(c);
@@ -417,9 +421,19 @@ void vmm_init(void)
 }
 
 #if defined(CONFIG_SMP)
-void vmm_init_secondary(void)
+static void __cpuinit init_secondary(void)
 {
 	int ret;
+
+	/* Sanity check on SMP processor ID */
+	if (CONFIG_CPU_COUNT <= vmm_smp_processor_id()) {
+		vmm_hang();
+	}
+
+	/* This function should not be called by Boot CPU */
+	if (vmm_smp_is_bootcpu()) {
+		vmm_hang();
+	}
 
 	/* Initialize host virtual address space */
 	ret = vmm_host_aspace_init();
@@ -473,6 +487,25 @@ void vmm_init_secondary(void)
 	vmm_hang();
 }
 #endif
+
+void __cpuinit vmm_init(void)
+{
+#if defined(CONFIG_SMP)
+	/* Mark this CPU as Boot CPU
+	 * Note: This will only work on first CPU.
+	 */
+	vmm_smp_set_bootcpu();
+
+	if (vmm_smp_is_bootcpu()) { /* Boot CPU */
+		init_bootcpu();
+	} else { /* Secondary CPUs */
+		init_secondary();
+	}
+#else
+	/* Boot CPU */
+	init_bootcpu();
+#endif
+}
 
 static void system_stop(void)
 {

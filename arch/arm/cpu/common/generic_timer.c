@@ -362,7 +362,7 @@ static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 		goto fail_free_cc;
 	}
 
-	if (!vmm_smp_processor_id()) {
+	if (vmm_smp_is_bootcpu()) {
 		/* Register irq handler for hypervisor timer */
 		rc = vmm_host_irq_register(irq[GENERIC_HYPERVISOR_TIMER],
 					   "gen-hyp-timer", 
@@ -427,17 +427,17 @@ static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 	return VMM_OK;
 
 fail_unreg_vtimer:
-	if (!vmm_smp_processor_id() && num_irqs > 2) {
+	if (vmm_smp_is_bootcpu() && num_irqs > 2) {
 		vmm_host_irq_unregister(irq[GENERIC_HYPERVISOR_TIMER],
 					&generic_virt_timer_handler);
 	}
 fail_unreg_ptimer:
-	if (!vmm_smp_processor_id() && num_irqs > 1) {
+	if (vmm_smp_is_bootcpu() && num_irqs > 1) {
 		vmm_host_irq_unregister(irq[GENERIC_PHYSICAL_TIMER],
 					&generic_phys_timer_handler);
 	}
 fail_unreg_htimer:
-	if (!vmm_smp_processor_id()) {
+	if (vmm_smp_is_bootcpu()) {
 		vmm_host_irq_unregister(irq[GENERIC_HYPERVISOR_TIMER],
 					&generic_hyp_timer_handler);
 	}

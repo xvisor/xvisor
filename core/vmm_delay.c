@@ -98,11 +98,11 @@ void vmm_delay_recaliberate(void)
 	arch_cpu_irq_restore(flags);
 }
 
-int vmm_delay_init(void)
+int __cpuinit vmm_delay_init(void)
 {
-	u32 i, cpu = vmm_smp_processor_id();
+	u32 i;
 
-	if (!cpu) {
+	if (vmm_smp_is_bootcpu()) {
 		for (i = 0; i < CONFIG_CPU_COUNT; i++) {
 			loops_per_msec[i] = 0;
 			loops_per_usec[i] = 0;

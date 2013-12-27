@@ -464,7 +464,7 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 			  mevt->timer_base + MCT_L_TCNTB_OFFSET);
 
 	if (mct_int_type == MCT_INT_SPI) {
-		if (cpu == 0) {
+		if (vmm_smp_is_bootcpu()) {
 			rc = vmm_host_irq_register(EXYNOS4_IRQ_MCT_L0,
 						   "mct_tick0_irq",
 						    exynos4_mct_tick_isr, mevt);

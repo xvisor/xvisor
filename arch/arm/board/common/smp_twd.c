@@ -231,7 +231,7 @@ static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 	cc->clkchip.set_next_event = &twd_clockchip_set_next_event;
 	cc->clkchip.priv = cc;
 
-	if (!cpu) {
+	if (vmm_smp_is_bootcpu()) {
 		/* Register interrupt handler */
 		if ((rc = vmm_host_irq_register(twd_ppi_irq, "twd",
 						&twd_clockchip_irq_handler, 
@@ -259,7 +259,7 @@ static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 	return VMM_OK;
 
 fail_unreg_irq:
-	if (!cpu) {
+	if (vmm_smp_is_bootcpu()) {
 		vmm_host_irq_unregister(twd_ppi_irq, cc);
 	}
 fail_regunmap:

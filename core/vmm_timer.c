@@ -298,7 +298,7 @@ int __cpuinit vmm_timer_init(void)
 	vmm_clockchip_set_event_handler(tlcp->cc, 
 					&timer_clockchip_event_handler);
 
-	if (!cpu) {
+	if (vmm_smp_is_bootcpu()) {
 		/* Find suitable clocksource */
 		if (!(cs = vmm_clocksource_best())) {
 			vmm_panic("%s: No clocksource found\n", __func__);

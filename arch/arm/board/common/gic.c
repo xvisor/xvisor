@@ -407,9 +407,8 @@ int __init gic_devtree_init(struct vmm_devtree_node *node,
 static int __cpuinit gic_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	u32 cpu = vmm_smp_processor_id();
 
-	if (!cpu) {
+	if (vmm_smp_is_bootcpu()) {
 		rc = gic_devtree_init(node, NULL);
 	} else {
 		gic_secondary_init(0);

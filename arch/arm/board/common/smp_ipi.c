@@ -46,9 +46,8 @@ void arch_smp_ipi_trigger(const struct vmm_cpumask *dest)
 int __cpuinit arch_smp_ipi_init(void)
 {
 	int rc;
-	u32 cpu = vmm_smp_processor_id();
 
-	if (!cpu) {
+	if (vmm_smp_is_bootcpu()) {
 		/* Register IPI1 interrupt handler */
 		rc = vmm_host_irq_register(1, "IPI1", &smp_ipi_handler, NULL);
 		if (rc) {

@@ -224,7 +224,7 @@ static int __cpuinit sp804_clockchip_init(struct vmm_devtree_node *node)
 	struct clk *clk;
 	struct sp804_clockchip *cc;
 
-	if (vmm_smp_processor_id()) {
+	if (!vmm_smp_is_bootcpu()) {
 		return VMM_ENODEV;
 	}
 
