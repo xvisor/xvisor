@@ -39,6 +39,17 @@ struct arch_regs {
 
 typedef struct arch_regs arch_regs_t;
 
+struct arm_priv_vfp {
+	/* Control Registers */
+	u32 fpexc;
+	u32 fpscr;
+	u32 fpinst;
+	u32 fpinst2;
+	/* General Purpose Registers */
+	u64 fpregs1[16]; /* {d0-d15} 64bit floating point registers.*/
+	u64 fpregs2[16]; /* {d16-d31} 64bit floating point registers.*/
+};
+
 struct arm_priv_cp15 {
 	/* Coprocessor Registers */
 	u32 c0_midr;
@@ -95,9 +106,7 @@ struct arm_priv_cp15 {
 	u32 c15_i_min; /* Minimum D-cache dirty line index. */
 	/* D-cache clean-invalidate by set/way mask */
 	vmm_cpumask_t dflush_needed;
-} cp15;
-
-typedef struct arm_priv_cp15 arm_priv_cp15_t;
+};
 
 struct arm_priv {
 	/* Internal CPU feature flags. */
@@ -126,15 +135,10 @@ struct arm_priv {
 	u32 sp_fiq;
 	u32 lr_fiq;
 	u32 spsr_fiq;
-	/* VFP & SMID registers */
-	u32 fpexc;
-	u32 fpscr;
-	u32 fpinst;
-	u32 fpinst2;
-	u64 fpregs1[16];  /* {d0-d15} 64bit floating point registers.*/
-	u64 fpregs2[16];  /* {d16-d31} 64bit floating point registers.*/
-	/* System control coprocessor (cp15) */
-	arm_priv_cp15_t cp15;
+	/* VFP & SMID registers (cp10 & cp11 coprocessors) */
+	struct arm_priv_vfp vfp;
+	/* System control (cp15 coprocessor) */
+	struct arm_priv_cp15 cp15;
 	/* Last host CPU on which this VCPU ran */
 	u32 last_hcpu;
 	/* Generic timer context */
@@ -146,18 +150,14 @@ struct arm_priv {
 	void *vgic_priv;
 } __attribute((packed));
 
-typedef struct arm_priv arm_priv_t;
-
 struct arm_guest_priv {
 	/* Stage2 table */
 	struct cpu_ttbl *ttbl;
 };
 
-typedef struct arm_guest_priv arm_guest_priv_t;
-
 #define arm_regs(vcpu)		(&((vcpu)->regs))
-#define arm_priv(vcpu)		((arm_priv_t *)((vcpu)->arch_priv))
-#define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
+#define arm_priv(vcpu)		((struct arm_priv *)((vcpu)->arch_priv))
+#define arm_guest_priv(guest)	((struct arm_guest_priv *)((guest)->arch_priv))
 
 #define arm_cpuid(vcpu)		(arm_priv(vcpu)->cpuid)
 #define arm_set_feature(vcpu, feat) \

@@ -32,6 +32,7 @@
 #include <arch_barrier.h>
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
+#include <cpu_vcpu_vfp.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
 #include <generic_timer.h>
@@ -574,7 +575,7 @@ int cpu_vcpu_inject_dabt(struct vmm_vcpu *vcpu,
 int arch_guest_init(struct vmm_guest *guest)
 {
 	if (!guest->reset_count) {
-		guest->arch_priv = vmm_malloc(sizeof(arm_guest_priv_t));
+		guest->arch_priv = vmm_malloc(sizeof(struct arm_guest_priv));
 		if (!guest->arch_priv) {
 			return VMM_ENOMEM;
 		}
@@ -608,8 +609,8 @@ int arch_guest_deinit(struct vmm_guest *guest)
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
 	int rc, ite;
-	u32 cpuid = 0, fpu;
-	arm_priv_t *p;
+	u32 cpuid = 0;
+	struct arm_priv *p;
 	const char *attr;
 	irq_flags_t flags;
 
@@ -652,7 +653,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	/* First time initialization of private context */
 	if (!vcpu->reset_count) {
 		/* Alloc private context */
-		vcpu->arch_priv = vmm_zalloc(sizeof(arm_priv_t));
+		vcpu->arch_priv = vmm_zalloc(sizeof(struct arm_priv));
 		if (!vcpu->arch_priv) {
 			return VMM_EFAIL;
 		}
@@ -751,11 +752,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		p->hcptr = (HCPTR_TTA_MASK |
 				 HCPTR_TASE_MASK |
 				 HCPTR_TCP_MASK);
-		fpu = (read_fpsid() & FPSID_ARCH_MASK) >>  FPSID_ARCH_SHIFT;
-		if (cpu_supports_fpu() && (fpu > 1) &&
-		    arm_feature(vcpu, ARM_FEATURE_VFP3)) {
-			p->hcptr &= ~(HCPTR_TCP11_MASK|HCPTR_TCP10_MASK);
-		}
 		p->hstr = (HSTR_TJDBX_MASK |
 				HSTR_TTEE_MASK |
 				HSTR_T9_MASK |
@@ -806,19 +802,17 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	p->lr_fiq = 0x0;
 	p->spsr_fiq = 0x0;
 
+	/* Initialize VCPU VFP context */
+	rc = cpu_vcpu_vfp_init(vcpu);
+	if (rc) {
+		return rc;
+	}
+
 	/* Initialize VCPU CP15 context */
 	rc = cpu_vcpu_cp15_init(vcpu, cpuid);
 	if (rc) {
 		return rc;
 	}
-
-	/* Reset VFP control registers */
-	p->fpexc = 0x0;
-	p->fpscr = 0x0;
-	p->fpinst = 0x0;
-	p->fpinst2 = 0x0;
-	memset(&p->fpregs1, 0, sizeof(p->fpregs1));
-	memset(&p->fpregs2, 0, sizeof(p->fpregs2));
 
 	/* Set last host CPU to invalid value */
 	p->last_hcpu = 0xFFFFFFFF;
@@ -854,105 +848,9 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	return VMM_OK;
 }
 
-static void cpu_vcpu_vfp_smid_regs_save(struct vmm_vcpu *vcpu)
-{
-	arm_priv_t *p = arm_priv(vcpu);
-
-	/* Do nothing if:
-	 * 1. VCPU does not have VFPv3 feature
-	 * 2. Floating point access is disabled
-	 */
-	if (!arm_feature(vcpu, ARM_FEATURE_VFP3) ||
-	    (read_hcptr() & (HCPTR_TCP11_MASK|HCPTR_TCP10_MASK))) {
-		return;
-	}
-
-	/* Save FPEXC */
-	p->fpexc = read_fpexc();
-
-	/* Force enable FPU */
-	write_fpexc(p->fpexc | FPEXC_EN_MASK);
-
-	/* Save FPSCR */
-	p->fpscr = read_fpscr();
-
-	/* Check for sub-architecture */
-	if (p->fpexc & FPEXC_EX_MASK) {
-		/* Save FPINST */
-		p->fpinst = read_fpinst();
-
-		/* Save FPINST2 */
-		if (p->fpexc & FPEXC_FP2V_MASK) {
-			p->fpinst2 = read_fpinst2();
-		}
-
-		/* Disable FPEXC_EX */
-		write_fpexc((p->fpexc | FPEXC_EN_MASK) & ~FPEXC_EX_MASK);
-	}
-
-	/* Save {d0-d15} */
-	asm volatile("stc p11, cr0, [%0], #32*4"
-		     : : "r" (p->fpregs1));
-
-	/* 32x 64 bits registers? */
-	if ((read_mvfr0() & MVFR0_A_SIMD_MASK) == 2) {
-		/* Save {d16-d31} */
-		asm volatile("stcl p11, cr0, [%0], #32*4"
-			     : : "r" (p->fpregs2));
-	}
-
-	/* Leave FPU in disabled state */
-	write_fpexc(p->fpexc & ~(FPEXC_EN_MASK));
-}
-
-static void cpu_vcpu_vfp_smid_regs_restore(struct vmm_vcpu *vcpu)
-{
-	arm_priv_t *p = arm_priv(vcpu);
-
-	/* Do nothing if:
-	 * 1. VCPU does not have VFPv3 feature
-	 * 2. Floating point access is disabled
-	 */
-	if (!arm_feature(vcpu, ARM_FEATURE_VFP3) ||
-	    (read_hcptr() & (HCPTR_TCP11_MASK|HCPTR_TCP10_MASK))) {
-		return;
-	}
-
-	/* Force enable FPU */
-	write_fpexc(read_fpexc() | FPEXC_EN_MASK);
-
-	/* Restore {d0-d15} */
-	asm volatile("ldc p11, cr0, [%0], #32*4"
-		     : : "r" (p->fpregs1));
-
-	/* 32x 64 bits registers? */
-	if ((read_mvfr0() & MVFR0_A_SIMD_MASK) == 2) {
-	        /* Restore {d16-d31} */
-        	asm volatile("ldcl p11, cr0, [%0], #32*4"
-			     : : "r" (p->fpregs2));
-	}
-
-	/* Check for sub-architecture */
-	if (p->fpexc & FPEXC_EX_MASK) {
-		/* Restore FPINST */
-		write_fpinst(p->fpinst);
-
-		/* Restore FPINST2 */
-		if (p->fpexc & FPEXC_FP2V_MASK) {
-			write_fpinst2(p->fpinst2);
-		}
-	}
-
-	/* Restore FPSCR */
-	write_fpscr(p->fpscr);
-
-	/* Restore FPEXC */
-	write_fpexc(p->fpexc);
-}
-
 static void cpu_vcpu_banked_regs_save(struct vmm_vcpu *vcpu)
 {
-	arm_priv_t *p = arm_priv(vcpu);
+	struct arm_priv *p = arm_priv(vcpu);
 
 	asm volatile (" mrs     %0, SP_usr\n\t" 
 		      :"=r" (p->sp_usr)::"memory", "cc");
@@ -1000,7 +898,7 @@ static void cpu_vcpu_banked_regs_save(struct vmm_vcpu *vcpu)
 
 static void cpu_vcpu_banked_regs_restore(struct vmm_vcpu *vcpu)
 {
-	arm_priv_t *p = arm_priv(vcpu);
+	struct arm_priv *p = arm_priv(vcpu);
 
 	asm volatile (" msr     SP_usr, %0\n\t"
 		      ::"r" (p->sp_usr) :"memory", "cc");
@@ -1063,23 +961,22 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		}
 		arm_regs(tvcpu)->cpsr = regs->cpsr;
 		if (tvcpu->is_normal) {
-			/* Save VGIC registers */
-			arm_vgic_save(tvcpu);
+			/* Update last host CPU */
+			arm_priv(tvcpu)->last_hcpu = vmm_smp_processor_id();
+			/* Save general purpose banked registers */
+			cpu_vcpu_banked_regs_save(tvcpu);
+			/* Save VFP and SIMD registers */
+			cpu_vcpu_vfp_regs_save(tvcpu);
+			/* Save CP15 registers */
+			cpu_vcpu_cp15_regs_save(tvcpu);
 			/* Save generic timer */
 			if (arm_feature(tvcpu, ARM_FEATURE_GENERIC_TIMER)) {
 				generic_timer_vcpu_context_save(arm_gentimer_context(tvcpu));
 			}
-			/* Save general purpose banked registers */
-			cpu_vcpu_banked_regs_save(tvcpu);
-			/* Save VFP and SIMD register */
-			cpu_vcpu_vfp_smid_regs_save(tvcpu);
-			/* Update last host CPU */
-			arm_priv(tvcpu)->last_hcpu = vmm_smp_processor_id();
+			/* Save VGIC registers */
+			arm_vgic_save(tvcpu);
 		}
 	}
-
-	/* Switch CP15 context */
-	cpu_vcpu_cp15_switch_context(tvcpu, vcpu);
 
 	/* Restore general purpose registers */
 	regs->pc = arm_regs(vcpu)->pc;
@@ -1096,6 +993,18 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
 		write_hcptr(arm_priv(vcpu)->hcptr);
 		write_hstr(arm_priv(vcpu)->hstr);
+		/* Restore VGIC registers */
+		arm_vgic_restore(vcpu);
+		/* Restore generic timer */
+		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
+			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
+		}
+		/* Restore CP15 registers */
+		cpu_vcpu_cp15_regs_restore(vcpu);
+		/* Restore VFP and SIMD registers */
+		cpu_vcpu_vfp_regs_restore(vcpu);
+		/* Restore general purpose banked registers */
+		cpu_vcpu_banked_regs_restore(vcpu);
 		/* Flush TLB if moved to new host CPU */
 		if (arm_priv(vcpu)->last_hcpu != vmm_smp_processor_id()) {
 			/* Invalidate all guest TLB enteries because
@@ -1111,16 +1020,6 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			dsb();
 			isb();
 		}
-		/* Restore VFP and SIMD register */
-		cpu_vcpu_vfp_smid_regs_restore(vcpu);
-		/* Restore general purpose banked registers */
-		cpu_vcpu_banked_regs_restore(vcpu);
-		/* Restore generic timer */
-		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
-		}
-		/* Restore VGIC registers */
-		arm_vgic_restore(vcpu);
 	}
 
 	/* Clear exclusive monitor */
@@ -1160,13 +1059,15 @@ void cpu_vcpu_dump_user_reg(arch_regs_t *regs)
 void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
 	u32 ite;
-	arm_priv_t *p;
+	struct arm_priv *p;
+
 	/* For both Normal & Orphan VCPUs */
 	__cpu_vcpu_dump_user_reg(cdev, arm_regs(vcpu));
 	/* For only Normal VCPUs */
 	if (!vcpu->is_normal) {
 		return;
 	}
+
 	p = arm_priv(vcpu);
 	vmm_cprintf(cdev, "  User Mode Registers (Banked)\n");
 	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x\n",

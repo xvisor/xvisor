@@ -198,13 +198,13 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			u32 *data)
 {
-	arm_priv_cp15_t *cp15 = &arm_priv(vcpu)->cp15;
+	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 
 	*data = 0x0;
 	switch (CRn) {
-	case 1: /* System configuration.  */
+	case 1: /* System configuration. */
 		switch (opc2) {
-		case 1: /* Auxiliary control register.  */
+		case 1: /* Auxiliary control register. */
 			if (!arm_feature(vcpu, ARM_FEATURE_AUXCR))
 				goto bad_reg;
 			switch (arm_cpuid(vcpu)) {
@@ -247,7 +247,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 		break;
 	case 9:
 		switch (opc1) {
-		case 0:	/* L1 cache.  */
+		case 0:	/* L1 cache. */
 			switch (opc2) {
 			case 0:
 				*data = cp15->c9_data;
@@ -262,14 +262,14 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 		case 1:	/* L2 cache */
 			if (CRm != 0)
 				goto bad_reg;
-			/* L2 Lockdown and Auxiliary control.  */
+			/* L2 Lockdown and Auxiliary control. */
 			*data = 0;
 			break;
 		default:
 			goto bad_reg;
 		};
 		break;
-	case 15:		/* Implementation specific.  */
+	case 15: /* Implementation specific. */
 		switch (opc1) {
 		case 0:
 			switch (arm_cpuid(vcpu)) {
@@ -316,12 +316,12 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data)
 {
-	arm_priv_cp15_t *cp15 = &arm_priv(vcpu)->cp15;
+	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 
 	switch (CRn) {
-	case 1: /* System configuration.  */
+	case 1: /* System configuration. */
 		switch (opc2) {
-		case 1: /* Auxiliary control register.  */
+		case 1: /* Auxiliary control register. */
 			if (!arm_feature(vcpu, ARM_FEATURE_AUXCR))
 				goto bad_reg;
 			/* Not implemented.  */
@@ -330,10 +330,10 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			goto bad_reg;
 		};
 		break;
-	case 7: /* Cache control.  */
+	case 7: /* Cache control. */
 		switch (CRm) {
-		case 6:		/* Upgrade DCISW to DCCISW, as per HCR.SWIO */
-		case 14:	/* DCCISW */
+		case 6:	/* Upgrade DCISW to DCCISW, as per HCR.SWIO */
+		case 14: /* DCCISW */
 			switch (opc2) {
 			case 2:
 				vmm_cpumask_setall(&cp15->dflush_needed);
@@ -346,7 +346,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 				goto bad_reg;
 			};
 			break;
-		case 10:	/* DCCSW */
+		case 10: /* DCCSW */
 			switch (opc2) {
 			case 2:
 				vmm_cpumask_setall(&cp15->dflush_needed);
@@ -365,7 +365,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 		break;
 	case 9:
 		switch (CRm) {
-		case 0:	/* Cache lockdown.  */
+		case 0:	/* Cache lockdown. */
 			switch (opc1) {
 			case 0:	/* L1 cache.  */
 				switch (opc2) {
@@ -379,20 +379,23 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 					goto bad_reg;
 				}
 				break;
-			case 1:	/* L2 cache.  */
-				/* Ignore writes to L2 lockdown/auxiliary registers.  */
+			case 1:	/* L2 cache. */
+				/* Ignore writes to
+				 * L2 lockdown/auxiliary registers.
+				 */
 				break;
 			default:
 				goto bad_reg;
 			}
 			break;
-		case 1:	/* TCM memory region registers.  */
+		case 1:	/* TCM memory region registers. */
 			/* Not implemented.  */
 			goto bad_reg;
-		case 12:	/* Performance monitor control */
-			/* Performance monitors are implementation defined in v7,
-			 * but with an ARM recommended set of registers, which we
-			 * follow (although we don't actually implement any counters)
+		case 12: /* Performance monitor control */
+			/* Performance monitors are implementation
+			 * defined in v7, but with an ARM recommended
+			 * set of registers, which we follow (although
+			 * we don't actually implement any counters)
 			 */
 			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
 				goto bad_reg;
@@ -415,24 +418,27 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 				cp15->c9_pmovsr &= ~data;
 				break;
 			case 4:	/* Software increment */
-				/* RAZ/WI since we don't implement 
-				 * the software-count event */
+				/* RAZ/WI since we don't implement the
+				 * software-count event
+				 */
 				break;
 			case 5:	/* Event counter selection register */
-				/* Since we don't implement any events, writing to this register
-				 * is actually UNPREDICTABLE. So we choose to RAZ/WI.
+				/* Since we don't implement any events,
+				 * writing to this register is actually
+				 * UNPREDICTABLE. So we choose to RAZ/WI.
 				 */
 				break;
 			default:
 				goto bad_reg;
 			}
 			break;
-		case 13:	/* Performance counters */
+		case 13: /* Performance counters */
 			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
 				goto bad_reg;
 			}
 			switch (opc2) {
-			case 0:	/* Cycle count register: not implemented, so RAZ/WI */
+			case 0:	/* Cycle count register */
+				/* Not implemented, so RAZ/WI */
 				break;
 			case 1:	/* Event type select */
 				cp15->c9_pmxevtyper = data & 0xff;
@@ -444,17 +450,18 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 				goto bad_reg;
 			}
 			break;
-		case 14:	/* Performance monitor control */
+		case 14: /* Performance monitor control */
 			if (!arm_feature(vcpu, ARM_FEATURE_V7)) {
 				goto bad_reg;
 			}
 			switch (opc2) {
 			case 0:	/* user enable */
 				cp15->c9_pmuserenr = data & 1;
-				/* changes access rights for cp registers, so flush tbs */
 				break;
 			case 1:	/* interrupt enable set */
-				/* We have no event counters so only the C bit can be changed */
+				/* We have no event counters so only
+				 * the C bit can be changed
+				 */
 				data &= (1 << 31);
 				cp15->c9_pminten |= data;
 				break;
@@ -468,7 +475,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			goto bad_reg;
 		}
 		break;
-	case 15:		/* Implementation specific.  */
+	case 15: /* Implementation specific. */
 		switch (opc1) {
 		case 0:
 			switch (arm_cpuid(vcpu)) {
@@ -495,89 +502,90 @@ bad_reg:
 	return FALSE;
 }
 
-void cpu_vcpu_cp15_switch_context(struct vmm_vcpu *tvcpu, 
-				  struct vmm_vcpu *vcpu)
+void cpu_vcpu_cp15_regs_save(struct vmm_vcpu *vcpu)
 {
-	arm_priv_cp15_t *cp15;
-	if (tvcpu && tvcpu->is_normal) {
-		cp15 = &arm_priv(tvcpu)->cp15;
-		cp15->c0_cssel = read_csselr();
-		cp15->c1_sctlr = read_sctlr();
-		cp15->c1_cpacr = read_cpacr();
-		cp15->c2_ttbr0 = read_ttbr0();
-		cp15->c2_ttbr1 = read_ttbr1();
-		cp15->c2_ttbcr = read_ttbcr();
-		cp15->c3_dacr = read_dacr();
-		cp15->c5_ifsr = read_ifsr();
-		cp15->c5_dfsr = read_dfsr();
-		cp15->c5_aifsr = read_aifsr();
-		cp15->c5_adfsr = read_adfsr();
-		cp15->c6_ifar = read_ifar();
-		cp15->c6_dfar = read_dfar();
-		cp15->c7_par = read_par();
-		cp15->c7_par64 = read_par64();
-		cp15->c10_prrr = read_prrr();
-		cp15->c10_nmrr = read_nmrr();
-		cp15->c12_vbar = read_vbar();
-		cp15->c13_fcseidr = read_fcseidr();
-		cp15->c13_contextidr = read_contextidr();
-		cp15->c13_tls1 = read_tpidrurw();
-		cp15->c13_tls2 = read_tpidruro();
-		cp15->c13_tls3 = read_tpidrprw();
-	}
-	if (vcpu->is_normal) {
-		cp15 = &arm_priv(vcpu)->cp15;
-		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
-				      arm_guest_priv(vcpu->guest)->ttbl);
-		write_vpidr(cp15->c0_midr);
-		write_vmpidr(cp15->c0_mpidr);
-		write_csselr(cp15->c0_cssel);
-		write_sctlr(cp15->c1_sctlr);
-		write_cpacr(cp15->c1_cpacr);
-		write_ttbr0(cp15->c2_ttbr0);
-		write_ttbr1(cp15->c2_ttbr1);
-		write_ttbcr(cp15->c2_ttbcr);
-		write_dacr(cp15->c3_dacr);
-		write_ifsr(cp15->c5_ifsr);
-		write_dfsr(cp15->c5_dfsr);
-		write_aifsr(cp15->c5_aifsr);
-		write_adfsr(cp15->c5_adfsr);
-		write_ifar(cp15->c6_ifar);
-		write_dfar(cp15->c6_dfar);
-		write_par(cp15->c7_par);
-		write_par64(cp15->c7_par64);
-		write_prrr(cp15->c10_prrr);
-		write_nmrr(cp15->c10_nmrr);
-		write_vbar(cp15->c12_vbar);
-		write_fcseidr(cp15->c13_fcseidr);
-		write_contextidr(cp15->c13_contextidr);
-		write_tpidrurw(cp15->c13_tls1);
-		write_tpidruro(cp15->c13_tls2);
-		write_tpidrprw(cp15->c13_tls3);
-		/* Check whether vcpu requires dcache to be flushed on
-		 * this host CPU. This is a consequence of doing dcache
-		 * operations by set/way.
-		 */
-		if (vmm_cpumask_test_and_clear_cpu(vmm_smp_processor_id(), 
-						   &cp15->dflush_needed)) {
-			vmm_flush_cache_all();
-		}
+	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
+
+	cp15->c0_cssel = read_csselr();
+	cp15->c1_sctlr = read_sctlr();
+	cp15->c1_cpacr = read_cpacr();
+	cp15->c2_ttbr0 = read_ttbr0();
+	cp15->c2_ttbr1 = read_ttbr1();
+	cp15->c2_ttbcr = read_ttbcr();
+	cp15->c3_dacr = read_dacr();
+	cp15->c5_ifsr = read_ifsr();
+	cp15->c5_dfsr = read_dfsr();
+	cp15->c5_aifsr = read_aifsr();
+	cp15->c5_adfsr = read_adfsr();
+	cp15->c6_ifar = read_ifar();
+	cp15->c6_dfar = read_dfar();
+	cp15->c7_par = read_par();
+	cp15->c7_par64 = read_par64();
+	cp15->c10_prrr = read_prrr();
+	cp15->c10_nmrr = read_nmrr();
+	cp15->c12_vbar = read_vbar();
+	cp15->c13_fcseidr = read_fcseidr();
+	cp15->c13_contextidr = read_contextidr();
+	cp15->c13_tls1 = read_tpidrurw();
+	cp15->c13_tls2 = read_tpidruro();
+	cp15->c13_tls3 = read_tpidrprw();
+}
+
+void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu)
+{
+	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
+
+	mmu_lpae_stage2_chttbl(vcpu->guest->id, 
+			       arm_guest_priv(vcpu->guest)->ttbl);
+	write_vpidr(cp15->c0_midr);
+	write_vmpidr(cp15->c0_mpidr);
+	write_csselr(cp15->c0_cssel);
+	write_sctlr(cp15->c1_sctlr);
+	write_cpacr(cp15->c1_cpacr);
+	write_ttbr0(cp15->c2_ttbr0);
+	write_ttbr1(cp15->c2_ttbr1);
+	write_ttbcr(cp15->c2_ttbcr);
+	write_dacr(cp15->c3_dacr);
+	write_ifsr(cp15->c5_ifsr);
+	write_dfsr(cp15->c5_dfsr);
+	write_aifsr(cp15->c5_aifsr);
+	write_adfsr(cp15->c5_adfsr);
+	write_ifar(cp15->c6_ifar);
+	write_dfar(cp15->c6_dfar);
+	write_par(cp15->c7_par);
+	write_par64(cp15->c7_par64);
+	write_prrr(cp15->c10_prrr);
+	write_nmrr(cp15->c10_nmrr);
+	write_vbar(cp15->c12_vbar);
+	write_fcseidr(cp15->c13_fcseidr);
+	write_contextidr(cp15->c13_contextidr);
+	write_tpidrurw(cp15->c13_tls1);
+	write_tpidruro(cp15->c13_tls2);
+	write_tpidrprw(cp15->c13_tls3);
+	/* Check whether vcpu requires dcache to be flushed on
+	 * this host CPU. This is a consequence of doing dcache
+	 * operations by set/way.
+	 */
+	if (vmm_cpumask_test_and_clear_cpu(vmm_smp_processor_id(), 
+					   &cp15->dflush_needed)) {
+		vmm_flush_cache_all();
 	}
 }
 
 int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	u32 i, cache_type, last_level;
-	arm_priv_cp15_t *cp15 = &arm_priv(vcpu)->cp15;
+	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 
 	/* Clear all CP15 registers */
-	memset(cp15, 0, sizeof(*cp15));
+	memset(cp15, 0, sizeof(struct arm_priv_cp15));
 
-	/* Reset values of important CP15 registers 
-	 * Note: Almost all CP15 registers would be same as underlying host
-	 * because Guest VCPU will directly access these without trapping.
-	 * Due to this, quite a few CP15 registers initialized below are for
-	 * debugging purpose only.
+	/* Reset values of all CP15 registers.
+	 *
+	 * Note: Almost all CP15 registers would be same as underlying
+	 * host because Guest VCPU will directly access these without
+	 * trapping. Due to this, quite a few CP15 registers initialized
+	 * below are for debugging purpose only.
 	 */
 	cp15->c2_ttbcr = 0x0;
 	cp15->c2_ttbr0 = 0x0;
@@ -670,10 +678,11 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		break;
 	}
 
-	/* Cache config register such as CTR, CLIDR, and CCSIDRx
-	 * should be same as that of underlying host.
-	 * Note: This for debugging purpose only. The Guest VCPU will 
-	 * directly access host registers without trapping.
+	/* Cache config register such as CTR, CLIDR, and
+	 * CCSIDRx should be same as that of underlying host.
+	 *
+	 * Note: This for debugging purpose only. The Guest VCPU
+	 * will directly access host registers without trapping.
 	 */
 	cp15->c0_cachetype = read_ctr();
 	cp15->c0_clid = read_clidr();
@@ -715,10 +724,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 
 int cpu_vcpu_cp15_deinit(struct vmm_vcpu *vcpu)
 {
-	arm_priv_cp15_t *cp15 = &arm_priv(vcpu)->cp15;
-
-	memset(cp15, 0, sizeof(*cp15));
-
+	/* For now nothing to do here. */
 	return VMM_OK;
 }
 
