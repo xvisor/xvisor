@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
+#include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 #include <cpu_mmu.h>
 #include <cpu_features.h>
@@ -323,4 +324,62 @@ void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 void arch_vcpu_emergency_shutdown(struct vcpu_hw_context *context)
 {
 	arch_guest_halt(context->assoc_vcpu->guest);
+}
+
+/*---------------------------------*
+ * Guest's vCPU's helper funstions *
+ *---------------------------------*/
+int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+			physical_addr_t paddr, size_t size)
+{
+	union page32 pde, pte;
+	union page32 *pde_addr;
+	physical_addr_t tpaddr, pte_addr;
+	virtual_addr_t tvaddr;
+	u32 index, boffs;
+
+	pde_addr = &context->shadow32_pgt[((vaddr >> 20) & 0xffc)];
+	pde = *pde_addr;
+
+	if (!pde.present) {
+		if (context->pgmap_free_cache) {
+			index = context->pgmap_free_cache;
+			context->pgmap_free_cache = 0;
+		} else {
+			boffs = bitmap_find_free_region(context->shadow32_pg_map,
+							NR_32BIT_PGLIST_PAGES, 0);
+			index = boffs;
+			context->pgmap_free_cache = boffs+1;
+		}
+
+		pde_addr->present = 1;
+		pde_addr->rw = 1;
+		tvaddr = (virtual_addr_t)(((virtual_addr_t)context->shadow32_pg_list) + (index * PAGE_SIZE));
+		if (vmm_host_va2pa(tvaddr, &tpaddr) != VMM_OK)
+			vmm_panic("%s: Failed to map vaddr to paddr for pde.\n",
+				  __func__);
+		pde_addr->paddr = (tpaddr >> PAGE_SHIFT);
+	}
+
+	pte_addr = ((pde_addr->paddr << PAGE_SHIFT) + ((vaddr >> 10) & 0xffc));
+	if (vmm_host_memory_read(pte_addr, (void *)&pte, sizeof(pte)) < sizeof(pte))
+		return VMM_EFAIL;
+
+	if (pte.present)
+		return VMM_EFAIL;
+
+	pte.present = 1;
+	pte.rw = 1;
+	pte.paddr = (paddr >> PAGE_SHIFT);
+
+	if (vmm_host_memory_write(pte_addr, (void *)&pte, sizeof(pte)) < sizeof(pte))
+		return VMM_EFAIL;
+
+	return VMM_OK;
+}
+
+int realmode_unmap_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+			  size_t size)
+{
+	return VMM_OK;
 }

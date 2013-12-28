@@ -113,6 +113,7 @@ int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 			     struct vcpu_hw_context *context)
 {
 	int ret = VMM_EFAIL;
+	int boffs;
 
 	/*
 	 * FIXME: context->n_cr3.
@@ -128,6 +129,23 @@ int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 		VM_LOG(LVL_DEBUG, "ERROR: Failed to allocate shadow page table for vcpu.\n");
 		goto _error;
 	}
+
+	context->shadow32_pg_list = (union page32 *)vmm_host_alloc_pages(NR_32BIT_PGLIST_PAGES,
+									 VMM_MEMORY_FLAGS_NORMAL);
+
+	if (!context->shadow32_pg_list) {
+		VM_LOG(LVL_ERR, "ERROR: Failed to allocated 32bit/paged real mode shadow table.\n");
+		goto _error;
+	}
+
+	memset(context->shadow32_pg_list, 0, (NR_32BIT_PGLIST_PAGES*PAGE_SIZE));
+
+	/* Mark all pages in list free */
+	bitmap_zero(context->shadow32_pg_map, NR_32BIT_PGLIST_PAGES);
+	boffs = bitmap_find_free_region(context->shadow32_pg_map, NR_32BIT_PGLIST_PAGES, 0);
+	context->shadow32_pgt = context->shadow32_pg_list + boffs;
+	memset(context->shadow32_pgt, 0, PAGE_SIZE);
+	context->pgmap_free_cache = boffs+1;
 
 	context->icept_table.io_table_phys =
 		cpu_create_vcpu_intercept_table(IO_INTCPT_TBL_SZ,
@@ -162,6 +180,8 @@ int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 	return VMM_OK;
 
  _error:
+	if (context->shadow32_pg_list) vmm_host_free_pages((virtual_addr_t)context->shadow32_pg_list,
+							   NR_32BIT_PGLIST_PAGES*PAGE_SIZE);
 	if (context->shadow_pgt) mmu_pgtbl_free(&host_pgtbl_ctl, context->shadow_pgt);
 
 	if (context->icept_table.io_table_virt)

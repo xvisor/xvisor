@@ -378,6 +378,7 @@ int mmu_map_page(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl, physical_add
 		if (!child) {
 			return VMM_EFAIL;
 		}
+
 		return mmu_map_page(ctrl, child, ia, pg);
 	}
 

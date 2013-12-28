@@ -7,6 +7,7 @@
 #include <cpu_features.h>
 #include <vmm_types.h>
 #include <cpu_pgtbl_helper.h>
+#include <libs/bitmap.h>
 
 enum {
 	VM_LOG_LVL_ERR,
@@ -42,6 +43,17 @@ extern int vm_default_log_lvl;
 #define IO_INTCPT_TBL_SZ	(12 << 10)
 #define MSR_INTCPT_TBL_SZ	(8 << 10)
 
+/**
+ * \define The list of pages which are used in page tables itself.
+ *
+ * This is a slab of pages to be used in 2 fold page tables for
+ * 32-bit guest. We just use 128 pages to map at most 512 mb of
+ * a 32-bit guest. If the working set of guest is more than this
+ * the thrashing will happen. We will kick off some used entries
+ * to make room for new ones.
+ */
+#define NR_32BIT_PGLIST_PAGES	(128)
+
 struct vcpu_intercept_table {
 	physical_addr_t io_table_phys;
 	physical_addr_t msr_table_phys;
@@ -59,6 +71,10 @@ struct vcpu_hw_context {
 			       * nested paging enabled, hCR3 is not
 			       * saved back into the VMCB (vol2 p. 409)???*/
 	struct page_table *shadow_pgt; /**< Shadow page table when EPT/NPT is not available in chip */
+	union page32 *shadow32_pg_list; /**< Page list for 32-bit guest and paged real mode. */
+	union page32 *shadow32_pgt; /**<32-bit page table */
+	DEFINE_BITMAP(shadow32_pg_map, NR_32BIT_PGLIST_PAGES);
+	u32 pgmap_free_cache;
 
 	struct vcpu_intercept_table icept_table;
 
@@ -73,6 +89,7 @@ struct vcpu_hw_context {
 			  registered for this vm. */
 	int itc_skip_flag;
 	u64 guest_start_pc; /* Guest will start execution from here (comes from DTS) */
+	physical_addr_t vmcb_pa;
 
 	/* on & exit handler */
 	void (*vcpu_run) (struct vcpu_hw_context *context);

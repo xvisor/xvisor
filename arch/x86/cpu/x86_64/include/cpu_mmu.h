@@ -80,6 +80,23 @@ static inline void invalidate_vaddr_tlb(virtual_addr_t vaddr)
 			     ::"r"(vaddr):"memory");
 }
 
+union page32 {
+	u32 _val;
+	struct {
+		u32 present:1;
+		u32 rw:1;
+		u32 priviledge:1;
+		u32 write_through:1;
+		u32 cache_disable:1;
+		u32 accessed:1;
+		u32 dirty:1;
+		u32 pat:1;
+		u32 global:1;
+		u32 avl:3;
+		u32 paddr:20;
+	};
+};
+
 union page {
 	u64 _val;
 	struct {

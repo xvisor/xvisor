@@ -23,6 +23,8 @@
 #include <vmm_types.h>
 #include <cpu_mmu.h> /* segment definitions */
 
+#define VALID_CRN_TRAP	(1ULL << 63)
+
 /* general 1 intercepts */
 enum generic_interrupt_1_bits {
 	GENERAL1_INTERCEPT_INTR		 = 1 << 0,

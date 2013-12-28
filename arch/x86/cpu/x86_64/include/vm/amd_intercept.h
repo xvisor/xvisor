@@ -31,6 +31,7 @@ extern void handle_vmexit (struct vcpu_hw_context *context);
 /* Flags for CRn access interception */
 #define _INTRCPT_WRITE_CR0_OFFSET	16
 #define INTRCPT_WRITE_CR3		(1 << (_INTRCPT_WRITE_CR0_OFFSET + 3))
+#define INTRCPT_WRITE_CR0		(1 << (_INTRCPT_WRITE_CR0_OFFSET))
 
 /*
  * Flags for exception intercept word

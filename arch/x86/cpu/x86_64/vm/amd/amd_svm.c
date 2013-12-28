@@ -83,13 +83,17 @@ static struct vmcb *alloc_vmcb(void)
 	return vmcb;
 }
 
-static void set_control_params (struct vmcb *vmcb)
+static void set_control_params (struct vcpu_hw_context *context)
 {
+	struct vmcb *vmcb = context->vmcb;
+
 	/* Enable/disable nested paging (See AMD64 manual Vol. 2, p. 409) */
 	vmcb->np_enable = 0;
 	vmcb->tlb_control = 1; /* Flush all TLBs global/local/asid wide */
 	vmcb->tsc_offset = 0;
 	vmcb->guest_asid = 1;
+
+	vmcb->cr_intercepts |= (INTRCPT_WRITE_CR3 | INTRCPT_WRITE_CR0);
 
 	/* Intercept the VMRUN and VMMCALL instructions */
 	vmcb->general2_intercepts = (INTRCPT_VMRUN | INTRCPT_VMMCALL);
@@ -97,10 +101,6 @@ static void set_control_params (struct vmcb *vmcb)
 	vmcb->general1_intercepts |= (INTRCPT_INTN       |
 				      INTRCPT_INTR       |
 				      INTRCPT_CR0_WR     |
-				      INTRCPT_IDTR_RD    |
-				      INTRCPT_IDTR_WR    |
-				      INTRCPT_GDTR_RD    |
-				      INTRCPT_GDTR_WR    |
 				      INTRCPT_LDTR_RD    |
 				      INTRCPT_LDTR_WR    |
 				      INTRCPT_TR_RD      |
@@ -135,9 +135,10 @@ static void set_control_params (struct vmcb *vmcb)
 				       INTRCPT_EXC_PF);
 }
 
-static void set_vm_to_powerup_state(struct vmcb *vmcb)
+static void set_vm_to_powerup_state(struct vcpu_hw_context *context)
 {
-	memset(vmcb, 0, sizeof(vmcb));
+	physical_addr_t gcr3_pa;
+	struct vmcb *vmcb = context->vmcb;
 
 	/*
 	 * NOTE: X86_CR0_PG with disabled PE is a new mode in SVM. Its
@@ -146,16 +147,25 @@ static void set_vm_to_powerup_state(struct vmcb *vmcb)
 	 */
 	vmcb->cr0 = (X86_CR0_PG | X86_CR0_ET | X86_CR0_CD | X86_CR0_NW);
 	vmcb->cr2 = 0;
-	vmcb->cr3 = 0;
 	vmcb->cr4 = 0;
 	vmcb->rflags = 0x2;
 	vmcb->efer = EFER_SVME;
 
+	if (vmm_host_va2pa((virtual_addr_t)context->shadow32_pgt, &gcr3_pa) != VMM_OK)
+		vmm_panic("ERROR: Couldn't convert guest shadow table virtual address to physical!\n");
+
+	/* Since this VCPU is in power-up stage, two-fold 32-bit page table apply to it */
+	vmcb->cr3 = gcr3_pa;
+
 	/*
-	 * Make the CS.RIP point to 0xF0000 (960KB @ Low mem).
-	 * This is where the BIOS area is mapped.
+	 * Make the CS.RIP point to 0xFFFF0. The reset vector. The Bios seems
+	 * to be linked in a fashion that the reset vectors lies at0x3fff0.
+	 * The guest physical address will be 0xFFFF0 when the first page fault
+	 * happens in paged real mode. Hence, the the bios is loaded at 0xc0c0000
+	 * so that 0xc0c0000 + 0x3fff0 becomes 0xc0ffff0 => The host physical
+	 * for reset vector. Everything else then just falls in place.
 	 */
-	vmcb->rip = 0x0000;
+	vmcb->rip = 0xFFF0;
 	vmcb->cs.sel = 0xF000;
 	vmcb->cs.base = 0xF0000;
 	vmcb->cs.limit = 0xFFFF;
@@ -281,13 +291,6 @@ static __unused void set_vm_to_mbr_start_state(struct vmcb* vmcb, enum svm_init_
 
 static void svm_run(struct vcpu_hw_context *context)
 {
-	physical_addr_t p_vmcb = 0;
-
-	if (vmm_host_va2pa((virtual_addr_t)context->vmcb, &p_vmcb) != VMM_OK)
-		vmm_panic("Critical conversion of VMCB VA=>PA failed!\n");
-
-	VM_LOG(LVL_DEBUG, "Running guest context(vmcb: va: 0x%lx pa: 0x%lx)\n", context->vmcb, p_vmcb);
-
 	/*
 	 * Pass on the vmcb physical address as parameter to svm_launch function.
 	 * For executing svm_launch(), assember will load its address in RAX
@@ -295,7 +298,7 @@ static void svm_run(struct vcpu_hw_context *context)
 	 * So pass as parameter and let svm_launch load RAX with proper value
 	 * before executing vmload/vmrun.
 	 */
-	__asm__ __volatile__("pushq %%rdi; movq %0, %%rdi" :: "r" (p_vmcb));
+	__asm__ __volatile__("pushq %%rdi; movq %0, %%rdi" :: "r" (context->vmcb_pa));
 
 	svm_launch();
 
@@ -352,8 +355,12 @@ int amd_setup_vm_control(struct vcpu_hw_context *context)
 	/* Allocate a new page inside host memory for storing VMCB. */
 	context->vmcb = alloc_vmcb();
 
+	if (vmm_host_va2pa((virtual_addr_t)context->vmcb, &context->vmcb_pa) != VMM_OK)
+		vmm_panic("Critical conversion of VMCB VA=>PA failed!\n");
+
+
 	/* Set control params for this VM */
-	set_control_params(context->vmcb);
+	set_control_params(context);
 
 	/*
 	 * FIXME: VM: What state to load should come from VMCB.
@@ -361,7 +368,7 @@ int amd_setup_vm_control(struct vcpu_hw_context *context)
 	 * be turned on with powerup state. Otherwise, it can
 	 * be configured to run the MBR code.
 	 */
-	set_vm_to_powerup_state(context->vmcb);
+	set_vm_to_powerup_state(context);
 
 	context->vcpu_run = svm_run;
 	context->vcpu_exit = handle_vcpuexit;
