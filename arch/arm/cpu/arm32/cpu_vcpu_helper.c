@@ -766,7 +766,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
 	if (!attr) {
-		return VMM_EFAIL;
+		rc = VMM_EFAIL;
+		goto fail;
 	}
 	if (strcmp(attr, "armv5te,arm926ej") == 0) {
 		cpuid = ARM_CPUID_ARM926;
@@ -777,7 +778,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	} else if (strcmp(attr, "armv7a,cortex-a9") == 0) {
 		cpuid = ARM_CPUID_CORTEXA9;
 	} else {
-		return VMM_EFAIL;
+		rc = VMM_EINVALID;
+		goto fail;
 	}
 	if (!vcpu->reset_count) {
 		vcpu->arch_priv = vmm_zalloc(sizeof(struct arm_priv));
@@ -898,10 +900,27 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	rc = cpu_vcpu_vfp_init(vcpu);
 	if (rc) {
-		return rc;
+		goto fail_vfp_init;
 	}
 
-	return cpu_vcpu_cp15_init(vcpu, cpuid);
+	rc = cpu_vcpu_cp15_init(vcpu, cpuid);
+	if (rc) {
+		goto fail_cp15_init;
+	}
+
+	return VMM_OK;
+
+fail_cp15_init:
+	if (!vcpu->reset_count) {
+		cpu_vcpu_vfp_deinit(vcpu);
+	}
+fail_vfp_init:
+	if (!vcpu->reset_count) {
+		vmm_free(vcpu->arch_priv);
+		vcpu->arch_priv = NULL;
+	}
+fail:
+	return rc;
 }
 
 int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
