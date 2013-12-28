@@ -38,9 +38,11 @@ bool cpu_vcpu_cp10_write(struct vmm_vcpu * vcpu,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data);
 
-/** Switch VFP context for given VCPU */
-void cpu_vcpu_vfp_switch_context(struct vmm_vcpu *tvcpu, 
-				  struct vmm_vcpu *vcpu);
+/** Save VFP registers for given VCPU */
+void cpu_vcpu_vfp_regs_save(struct vmm_vcpu *vcpu);
+
+/** Restore VFP registers for given VCPU */
+void cpu_vcpu_vfp_regs_restore(struct vmm_vcpu *vcpu);
 
 /** Initialize VFP subsystem for a VCPU */
 int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu);

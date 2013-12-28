@@ -32,6 +32,8 @@ bool cpu_vcpu_cp10_read(struct vmm_vcpu *vcpu,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			u32 *data)
 {
+	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
+
 	switch (opc1) {
 	case 7:
 		switch (CRn) {
@@ -44,9 +46,9 @@ bool cpu_vcpu_cp10_read(struct vmm_vcpu *vcpu,
 			break;
 		case 1: /* FPSCR */
 			if (arm_feature(vcpu, ARM_FEATURE_VFP) &&
-			    (arm_priv(vcpu)->vfp.fpexc & FPEXC_EN_MASK)) {
+			    (vfp->fpexc & FPEXC_EN_MASK)) {
 				*data = read_fpscr();
-				arm_priv(vcpu)->vfp.fpscr = *data;
+				vfp->fpscr = *data;
 			} else {
 				goto bad_reg;
 			}
@@ -68,25 +70,25 @@ bool cpu_vcpu_cp10_read(struct vmm_vcpu *vcpu,
 		case 8: /* FPEXC */
 			if (arm_feature(vcpu, ARM_FEATURE_VFP)) {
 				*data = read_fpexc();
-				arm_priv(vcpu)->vfp.fpexc = *data;
+				vfp->fpexc = *data;
 			} else {
 				goto bad_reg;
 			}
 			break;
 		case 9: /* FPINST */
 			if (arm_feature(vcpu, ARM_FEATURE_VFP) &&
-			    (arm_priv(vcpu)->vfp.fpexc & FPEXC_EN_MASK)) {
+			    (vfp->fpexc & FPEXC_EN_MASK)) {
 				*data = read_fpinst();
-				arm_priv(vcpu)->vfp.fpinst = *data;
+				vfp->fpinst = *data;
 			} else {
 				goto bad_reg;
 			}
 			break;
 		case 10: /* FPINST2 */
 			if (arm_feature(vcpu, ARM_FEATURE_VFP) &&
-			    (arm_priv(vcpu)->vfp.fpexc & FPEXC_EN_MASK)) {
+			    (vfp->fpexc & FPEXC_EN_MASK)) {
 				*data = read_fpinst2();
-				arm_priv(vcpu)->vfp.fpinst2 = *data;
+				vfp->fpinst2 = *data;
 			} else {
 				goto bad_reg;
 			}
@@ -110,6 +112,8 @@ bool cpu_vcpu_cp10_write(struct vmm_vcpu * vcpu,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data)
 {
+	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
+
 	switch (opc1) {
 	case 7:
 		switch (CRn) {
@@ -122,9 +126,9 @@ bool cpu_vcpu_cp10_write(struct vmm_vcpu * vcpu,
 			break;
 		case 1: /* FPSCR */
 			if (arm_feature(vcpu, ARM_FEATURE_VFP) &&
-			    (arm_priv(vcpu)->vfp.fpexc & FPEXC_EN_MASK)) {
+			    (vfp->fpexc & FPEXC_EN_MASK)) {
 				write_fpscr(data);
-				arm_priv(vcpu)->vfp.fpscr = data;
+				vfp->fpscr = data;
 			} else {
 				goto bad_reg;
 			}
@@ -146,25 +150,25 @@ bool cpu_vcpu_cp10_write(struct vmm_vcpu * vcpu,
 		case 8: /* FPEXC */
 			if (arm_feature(vcpu, ARM_FEATURE_VFP)) {
 				write_fpexc(data);
-				arm_priv(vcpu)->vfp.fpexc = data;
+				vfp->fpexc = data;
 			} else {
 				goto bad_reg;
 			}
 			break;
 		case 9: /* FPINST */
 			if (arm_feature(vcpu, ARM_FEATURE_VFP) &&
-			    (arm_priv(vcpu)->vfp.fpexc & FPEXC_EN_MASK)) {
+			    (vfp->fpexc & FPEXC_EN_MASK)) {
 				write_fpinst(data);
-				arm_priv(vcpu)->vfp.fpinst = data;
+				vfp->fpinst = data;
 			} else {
 				goto bad_reg;
 			}
 			break;
 		case 10: /* FPINST2 */
 			if (arm_feature(vcpu, ARM_FEATURE_VFP) &&
-			    (arm_priv(vcpu)->vfp.fpexc & FPEXC_EN_MASK)) {
+			    (vfp->fpexc & FPEXC_EN_MASK)) {
 				write_fpinst2(data);
-				arm_priv(vcpu)->vfp.fpinst2 = data;
+				vfp->fpinst2 = data;
 			} else {
 				goto bad_reg;
 			}
@@ -183,107 +187,102 @@ bad_reg:
 	return FALSE;
 }
 
-static void cpu_vcpu_vfp_regs_save(struct vmm_vcpu *vcpu)
+void cpu_vcpu_vfp_regs_save(struct vmm_vcpu *vcpu)
 {
-	arm_priv_t *p = arm_priv(vcpu);
+	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
+
+	/* VFP feature must be available */
+	if (!arm_feature(vcpu, ARM_FEATURE_VFP)) {
+		return;
+	}
 
 	/* Save FPEXC */
-	p->vfp.fpexc = read_fpexc();
+	vfp->fpexc = read_fpexc();
 
 	/* Force enable FPU */
-	write_fpexc(p->vfp.fpexc | FPEXC_EN_MASK);
+	write_fpexc(vfp->fpexc | FPEXC_EN_MASK);
 
 	/* Save FPSCR */
-	p->vfp.fpscr = read_fpscr();
+	vfp->fpscr = read_fpscr();
 
 	/* Check for sub-architecture */
-	if (p->vfp.fpexc & FPEXC_EX_MASK) {
+	if (vfp->fpexc & FPEXC_EX_MASK) {
 		/* Save FPINST */
-		p->vfp.fpinst = read_fpinst();
+		vfp->fpinst = read_fpinst();
 
 		/* Save FPINST2 */
-		if (p->vfp.fpexc & FPEXC_FP2V_MASK) {
-			p->vfp.fpinst2 = read_fpinst2();
+		if (vfp->fpexc & FPEXC_FP2V_MASK) {
+			vfp->fpinst2 = read_fpinst2();
 		}
 
 		/* Disable FPEXC_EX */
-		write_fpexc((p->vfp.fpexc | FPEXC_EN_MASK) & ~FPEXC_EX_MASK);
+		write_fpexc((vfp->fpexc | FPEXC_EN_MASK) & ~FPEXC_EX_MASK);
 	}
 
 	/* Save {d0-d15} */
 	asm volatile("stc p11, cr0, [%0], #32*4"
-		     : : "r" (p->vfp.fpregs1));
+		     : : "r" (vfp->fpregs1));
 
 	/* 32x 64 bits registers? */
 	if (arm_feature(vcpu, ARM_FEATURE_VFP3)) {
 		if ((read_mvfr0() & MVFR0_A_SIMD_MASK) == 2) {
 			/* Save {d16-d31} */
 			asm volatile("stcl p11, cr0, [%0], #32*4"
-				     : : "r" (p->vfp.fpregs2));
+				     : : "r" (vfp->fpregs2));
 		}
 	}
 
 	/* Leave FPU in disabled state */
-	write_fpexc(p->vfp.fpexc & ~(FPEXC_EN_MASK));
+	write_fpexc(vfp->fpexc & ~(FPEXC_EN_MASK));
 }
 
-static void cpu_vcpu_vfp_regs_restore(struct vmm_vcpu *vcpu)
+void cpu_vcpu_vfp_regs_restore(struct vmm_vcpu *vcpu)
 {
-	arm_priv_t *p = arm_priv(vcpu);
+	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
+
+	/* VFP feature must be available */
+	if (!arm_feature(vcpu, ARM_FEATURE_VFP)) {
+		return;
+	}
 
 	/* Force enable FPU */
 	write_fpexc(read_fpexc() | FPEXC_EN_MASK);
 
 	/* Restore {d0-d15} */
 	asm volatile("ldc p11, cr0, [%0], #32*4"
-		     : : "r" (p->vfp.fpregs1));
+		     : : "r" (vfp->fpregs1));
 
 	/* 32x 64 bits registers? */
 	if (arm_feature(vcpu, ARM_FEATURE_VFP3)) {
 		if ((read_mvfr0() & MVFR0_A_SIMD_MASK) == 2) {
 			/* Restore {d16-d31} */
 			asm volatile("ldcl p11, cr0, [%0], #32*4"
-				     : : "r" (p->vfp.fpregs2));
+				     : : "r" (vfp->fpregs2));
 		}
 	}
 
 	/* Check for sub-architecture */
-	if (p->vfp.fpexc & FPEXC_EX_MASK) {
+	if (vfp->fpexc & FPEXC_EX_MASK) {
 		/* Restore FPINST */
-		write_fpinst(p->vfp.fpinst);
+		write_fpinst(vfp->fpinst);
 
 		/* Restore FPINST2 */
-		if (p->vfp.fpexc & FPEXC_FP2V_MASK) {
-			write_fpinst2(p->vfp.fpinst2);
+		if (vfp->fpexc & FPEXC_FP2V_MASK) {
+			write_fpinst2(vfp->fpinst2);
 		}
 	}
 
 	/* Restore FPSCR */
-	write_fpscr(p->vfp.fpscr);
+	write_fpscr(vfp->fpscr);
 
 	/* Restore FPEXC */
-	write_fpexc(p->vfp.fpexc);
-}
-
-void cpu_vcpu_vfp_switch_context(struct vmm_vcpu *tvcpu, 
-				  struct vmm_vcpu *vcpu)
-{
-	if (tvcpu && tvcpu->is_normal) {
-		if (arm_feature(tvcpu, ARM_FEATURE_VFP)) {
-			cpu_vcpu_vfp_regs_save(tvcpu);
-		}
-	}
-	if (vcpu->is_normal) {
-		if (arm_feature(vcpu, ARM_FEATURE_VFP)) {
-			cpu_vcpu_vfp_regs_restore(vcpu);
-		}
-	}
+	write_fpexc(vfp->fpexc);
 }
 
 int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu)
 {
 	u32 vfp_arch = read_fpsid();
-	arm_priv_t *p = arm_priv(vcpu);
+	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
 
 	/* If host HW does not have VFP (i.e. software VFP) then 
 	 * clear all VFP feature flags so that VCPU always gets
@@ -295,18 +294,17 @@ int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu)
 
 	/* VCPU with VFP3 would requie host HW to have VFP3 or higher */
 	vfp_arch = (read_fpsid() & FPSID_ARCH_MASK) >> FPSID_ARCH_SHIFT;
-	if (arm_feature(vcpu, ARM_FEATURE_VFP3) &&
-	    (vfp_arch < 2)) {
+	if (arm_feature(vcpu, ARM_FEATURE_VFP3) && (vfp_arch < 2)) {
 		goto no_vfp_for_vcpu;
 	}
 
 	/* Reset VFP control registers */
-	p->vfp.fpexc = 0x0;
-	p->vfp.fpscr = 0x0;
-	p->vfp.fpinst = 0x0;
-	p->vfp.fpinst2 = 0x0;
-	memset(&p->vfp.fpregs1, 0, sizeof(p->vfp.fpregs1));
-	memset(&p->vfp.fpregs2, 0, sizeof(p->vfp.fpregs2));
+	vfp->fpexc = 0x0;
+	vfp->fpscr = 0x0;
+	vfp->fpinst = 0x0;
+	vfp->fpinst2 = 0x0;
+	memset(&vfp->fpregs1, 0, sizeof(vfp->fpregs1));
+	memset(&vfp->fpregs2, 0, sizeof(vfp->fpregs2));
 
 	return VMM_OK;
 

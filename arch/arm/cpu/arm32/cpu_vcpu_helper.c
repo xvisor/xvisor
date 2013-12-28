@@ -680,7 +680,7 @@ int arch_guest_init(struct vmm_guest *guest)
 	struct cpu_page pg;
 
 	if (!guest->reset_count) {
-		guest->arch_priv = vmm_malloc(sizeof(arm_guest_priv_t));
+		guest->arch_priv = vmm_malloc(sizeof(struct arm_guest_priv));
 		if (!guest->arch_priv) {
 			return VMM_EFAIL;
 		}
@@ -780,7 +780,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		return VMM_EFAIL;
 	}
 	if (!vcpu->reset_count) {
-		vcpu->arch_priv = vmm_zalloc(sizeof(arm_priv_t));
+		vcpu->arch_priv = vmm_zalloc(sizeof(struct arm_priv));
 		arm_priv(vcpu)->cpsr = CPSR_ASYNC_ABORT_DISABLED | 
 				   CPSR_IRQ_DISABLED |
 				   CPSR_FIQ_DISABLED | 
@@ -947,14 +947,14 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		}
 		arm_regs(tvcpu)->cpsr = regs->cpsr;
 		arm_regs(tvcpu)->sp_excp = regs->sp_excp;
-		if(tvcpu->is_normal) {
+		if (tvcpu->is_normal) {
 			cpu_vcpu_banked_regs_save(tvcpu, regs);
+			/* Save VFP regs */
+			cpu_vcpu_vfp_regs_save(tvcpu);
+			/* Save CP15 regs */
+			cpu_vcpu_cp15_regs_save(tvcpu);
 		}
 	}
-	/* Switch VFP context */
-	cpu_vcpu_vfp_switch_context(tvcpu, vcpu);
-	/* Switch CP15 context */
-	cpu_vcpu_cp15_switch_context(tvcpu, vcpu);
 	/* Restore user registers & banked registers */
 	regs->pc = arm_regs(vcpu)->pc;
 	regs->lr = arm_regs(vcpu)->lr;
@@ -965,7 +965,21 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	regs->cpsr = arm_regs(vcpu)->cpsr;
 	regs->sp_excp = arm_regs(vcpu)->sp_excp;
 	if (vcpu->is_normal) {
+		/* Restore VFP regs */
+		cpu_vcpu_vfp_regs_restore(vcpu);
+		/* Restore CP15 regs */
+		cpu_vcpu_cp15_regs_restore(vcpu);
+		/* Restore banked registers */
 		cpu_vcpu_banked_regs_restore(vcpu, regs);
+	} else {
+		/* Restore hypervisor TTBL for Orphan VCPUs */
+		if (tvcpu) {
+			if (tvcpu->is_normal) {
+				cpu_mmu_change_ttbr(cpu_mmu_l1tbl_default());
+			}
+		} else {
+			cpu_mmu_change_ttbr(cpu_mmu_l1tbl_default());
+		}
 	}
 	/* Clear exclusive monitor */
 	clrex();
