@@ -28,7 +28,7 @@
 #include <arch_vcpu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
-#include <cpu_defines.h>
+#include <cpu_vcpu_inject.h>
 
 u32 arch_vcpu_irq_count(struct vmm_vcpu *vcpu)
 {

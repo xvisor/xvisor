@@ -30,7 +30,8 @@
 #include <vmm_devemu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
-#include <cpu_vcpu_spr.h>
+#include <cpu_vcpu_sysregs.h>
+#include <cpu_vcpu_inject.h>
 #include <cpu_vcpu_emulate.h>
 #include <arm_features.h>
 #include <generic_timer.h>
@@ -370,7 +371,7 @@ int cpu_vcpu_emulate_msr_mrs_system(struct vmm_vcpu *vcpu,
 	bool read = (!!(iss & ISS_SYSREG_READ));
 
 	if (read) {
-		if (!cpu_vcpu_spr_read(vcpu, regs,
+		if (!cpu_vcpu_sysregs_read(vcpu, regs,
 				iss & ISS_SYSREG_MASK, &data)) {
 			rc = VMM_ENOTAVAIL;
 		}
@@ -379,7 +380,7 @@ int cpu_vcpu_emulate_msr_mrs_system(struct vmm_vcpu *vcpu,
 		}
 	} else {
 		data = cpu_vcpu_reg64_read(vcpu, regs, Xt);
-		if (!cpu_vcpu_spr_write(vcpu, regs,
+		if (!cpu_vcpu_sysregs_write(vcpu, regs,
 				iss & ISS_SYSREG_MASK, data)) {
 			rc = VMM_ENOTAVAIL;
 		}

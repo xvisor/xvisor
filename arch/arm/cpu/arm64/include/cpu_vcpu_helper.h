@@ -29,6 +29,16 @@
 /** Function to halt VCPU */
 void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs);
 
+/** Update SPSR of given mode for 32bit VCPU */
+void cpu_vcpu_spsr32_update(struct vmm_vcpu *vcpu, u32 mode, u32 new_spsr);
+
+/** Read register of given mode for 32bit VCPU */
+u32 cpu_vcpu_regmode32_read(arch_regs_t *regs, u32 mode, u32 reg);
+
+/** Write register of given mode for 32bit VCPU */
+void cpu_vcpu_regmode32_write(arch_regs_t *regs, 
+			      u32 mode, u32 reg, u32 val);
+
 /** Function to read a 64bit VCPU register
  *  Note: 0 <= reg_num <= 30
  *  Note: For AArch32 mode, bits[63:32] of return value are always zero
@@ -70,19 +80,6 @@ void cpu_vcpu_reg_write(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs, 
 			u32 reg_num, 
 			u64 reg_val);
-
-/** Function to inject undef exception to a VCPU */
-int cpu_vcpu_inject_undef(struct vmm_vcpu *vcpu,
-			  arch_regs_t *regs);
-
-/** Function to inject prefetch abort exception to a VCPU */
-int cpu_vcpu_inject_pabt(struct vmm_vcpu *vcpu,
-			 arch_regs_t *regs);
-
-/** Function to inject data abort exception to a VCPU */
-int cpu_vcpu_inject_dabt(struct vmm_vcpu *vcpu,
-			 arch_regs_t *regs,
-			 virtual_addr_t addr);
 
 /** Function to dump registers */
 void cpu_vcpu_dump_user_reg(arch_regs_t *regs);

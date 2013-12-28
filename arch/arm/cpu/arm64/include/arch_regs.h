@@ -38,6 +38,13 @@ struct arch_regs {
 
 typedef struct arch_regs arch_regs_t;
 
+struct arm_priv_vfp {
+	u32 fpexc32;
+	u32 fpcr;
+	u32 fpsr;
+	u64 fpregs[64]; /* 32x 128bit floating point registers. */
+};
+
 struct arm_priv {
 	/* Internal CPU feature flags. */
 	u32 cpuid;
@@ -47,7 +54,7 @@ struct arm_priv {
 	u64 hcr;	/* Hypervisor Configuration */
 	u64 cptr;	/* Coprocessor Trap Register */
 	u64 hstr;	/* Hypervisor System Trap Register */
-	/* EL1 Registers */
+	/* EL1 registers */
 	u64 sp_el0;
 	u64 sp_el1;
 	u64 elr_el1;
@@ -73,19 +80,16 @@ struct arm_priv {
 	u64 tpidr_el0; /* User RW Thread register. */
 	u64 tpidr_el1; /* Privileged Thread register. */
 	u64 tpidrro; 	/* User RO Thread register. */
-	/* ThumbEE registers */
-	u64 teecr;
-	u32 teehbr;
-	/* VFP & SMID registers */
-	u32 fpexc32;
-	u32 fpcr;
-	u32 fpsr;
-	u64 fpregs[64]; /* 32x 128bit floating point registers. */
 	/* 32bit only registers */
 	u32 cp15_c0_c1[8];  
 	u32 cp15_c0_c2[8];  
 	u32 dacr;	/* MMU domain access control register */
 	u32 ifsr; 	/* Fault status registers. */
+	/* ThumbEE registers */
+	u64 teecr;
+	u32 teehbr;
+	/* VFP & SMID registers */
+	struct arm_priv_vfp vfp;
 	/* Last host CPU on which this VCPU ran */
 	u32 last_hcpu;
 	/* Generic timer context */
@@ -97,18 +101,14 @@ struct arm_priv {
 	void *vgic_priv;
 } __attribute((packed));
 
-typedef struct arm_priv arm_priv_t;
-
 struct arm_guest_priv {
 	/* Stage2 table */
 	struct cpu_ttbl *ttbl;
 };
 
-typedef struct arm_guest_priv arm_guest_priv_t;
-
 #define arm_regs(vcpu)		(&((vcpu)->regs))
-#define arm_priv(vcpu)		((arm_priv_t *)((vcpu)->arch_priv))
-#define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
+#define arm_priv(vcpu)		((struct arm_priv *)((vcpu)->arch_priv))
+#define arm_guest_priv(guest)	((struct arm_guest_priv *)((guest)->arch_priv))
 
 #define arm_cpuid(vcpu)		(arm_priv(vcpu)->cpuid)
 #define arm_set_feature(vcpu, feat) \

@@ -22,7 +22,7 @@
  */
 
 #include <cpu_defines.h>
-#include <cpu_vcpu_spr.h>
+#include <cpu_vcpu_sysregs.h>
 #include <cpu_vcpu_coproc.h>
 
 static bool cpu_vcpu_cpx_ldcstc_accept_nop(struct vmm_vcpu *vcpu, 

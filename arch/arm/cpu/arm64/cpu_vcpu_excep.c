@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013 Sukanto Ghosh.
+ * Copyright (c) 2013 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,28 +16,24 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_vcpu_spr.c
- * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief Source file for VCPU sysreg, cp15, and cp14 emulation
+ * @file cpu_vcpu_excep.c
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief Source file for VCPU exception handling
  */
 
-#include <vmm_heap.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_devemu.h>
-#include <vmm_scheduler.h>
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
-#include <vmm_vcpu_irq.h>
 #include <libs/stringlib.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate.h>
-#include <cpu_vcpu_spr.h>
+#include <cpu_vcpu_excep.h>
+
 #include <mmu_lpae.h>
 #include <emulate_arm.h>
 #include <emulate_thumb.h>
-#include <arm_features.h>
 
 static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu, 
 			       arch_regs_t *regs,
@@ -201,194 +197,5 @@ int cpu_vcpu_data_abort(struct vmm_vcpu *vcpu,
 	};
 
 	return VMM_EFAIL;
-}
-
-bool cpu_vcpu_spr_read(struct vmm_vcpu *vcpu, 
-			arch_regs_t *regs,
-			u32 iss_sysreg, u64 *data)
-{
-	*data = 0;
-	switch (iss_sysreg) {
-	case ISS_ACTLR_EL1:
-		*data = arm_priv(vcpu)->actlr;
-		break;
-	default:
-		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%X\n", regs->pc);
-		goto bad_reg;
-	}
-	return TRUE;
-bad_reg:
-	vmm_printf("Unimplemented [mrs <Xt>, %d]\n", iss_sysreg);
-	return FALSE;
-}
-
-bool cpu_vcpu_spr_write(struct vmm_vcpu *vcpu, 
-			arch_regs_t *regs,
-			u32 iss_sysreg, u64 data)
-{
-	switch (iss_sysreg) {
-	case ISS_ACTLR_EL1:
-		arm_priv(vcpu)->actlr = data;
-		break;
-	default:
-		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%X\n", regs->pc);
-		goto bad_reg;
-	}
-	return TRUE;
-bad_reg:
-	vmm_printf("Unimplemented [msr %d, <Xt>]\n", iss_sysreg);
-	return FALSE;
-}
-
-bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu, 
-			arch_regs_t *regs,
-			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
-			u64 *data)
-{
-	*data = 0x0;
-	switch (CRn) {
-	case 1: /* System configuration.  */
-		switch (opc2) {
-		case 1: /* Auxiliary control register.  */
-			if (!arm_feature(vcpu, ARM_FEATURE_AUXCR))
-				goto bad_reg;
-			switch (arm_cpuid(vcpu)) {
-			case ARM_CPUID_CORTEXA8:
-				*data = 2;
-				break;
-			case ARM_CPUID_CORTEXA9:
-				*data = 0;
-				if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
-					*data |= (1 << 6);
-				} else {
-					*data &= ~(1 << 6);
-				}
-				break;
-			case ARM_CPUID_CORTEXA15:
-				*data = 0;
-				if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
-					*data |= (1 << 6);
-				} else {
-					*data &= ~(1 << 6);
-				}
-				break;
-			default:
-				goto bad_reg;
-			}
-			break;
-		default:
-			goto bad_reg;
-		};
-		break;
-	case 15:
-		switch (opc1) {
-		case 4:	/* CBAR: Configuration Base Address Register */
-			switch (arm_cpuid(vcpu)) {
-			case ARM_CPUID_CORTEXA9:
-				*data = 0x1e000000;
-				break;
-			case ARM_CPUID_CORTEXA15:
-				*data = 0x2c000000;
-				break;
-			default:
-				goto bad_reg;
-			};
-			break;
-		default:
-			goto bad_reg;
-		};
-		break;
-	}
-	return TRUE;
-bad_reg:
-	vmm_printf("Unimplemented [mrc p15, %d, <Rt>, c%d, c%d, %d]\n", 
-		   opc1, CRn, CRm, opc2);
-	return FALSE;
-}
-
-bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu, 
-			 arch_regs_t *regs,
-			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
-			 u64 data)
-{
-	switch (CRn) {
-	case 1: /* System configuration.  */
-		switch (opc2) {
-		case 1: /* Auxiliary control register.  */
-			/* Not implemented.  */
-			break;
-		default:
-			goto bad_reg;
-		};
-		break;
-	}
-	return TRUE;
-bad_reg:
-	vmm_printf("Unimplemented [mcr p15, %d, <Rt>, c%d, c%d, %d]\n", 
-		   opc1, CRn, CRm, opc2);
-	return FALSE;
-}
-
-bool cpu_vcpu_cp14_read(struct vmm_vcpu *vcpu, 
-			arch_regs_t *regs,
-			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
-			u64 *data)
-{
-	*data = 0x0;
-	switch (opc1) {
-	case 6: /* ThumbEE registers */
-		switch (CRn) {
-			case 0:	/* TEECR */
-				*data = arm_priv(vcpu)->teecr;
-				break;
-			case 1:	/* TEEHBR */
-				*data = arm_priv(vcpu)->teehbr;
-				break;
-			default:
-				goto bad_reg;
-		};
-		break;
-	case 0:	/* Debug registers */
-	case 1: /* Trace registers */
-	case 7: /* Jazelle registers */
-	default:
-		goto bad_reg;
-	};
-	return TRUE;
-bad_reg:
-	vmm_printf("Unimplemented [mrc p14, %d, <Rt>, c%d, c%d, %d]\n", 
-		   opc1, CRn, CRm, opc2);
-	return FALSE;
-}
-
-bool cpu_vcpu_cp14_write(struct vmm_vcpu *vcpu, 
-			 arch_regs_t *regs,
-			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
-			 u64 data)
-{
-	switch (opc1) {
-	case 6: /* ThumbEE registers */
-		switch (CRn) {
-			case 0:	/* TEECR */
-				arm_priv(vcpu)->teecr = data;
-				break;
-			case 1:	/* TEEHBR */
-				arm_priv(vcpu)->teehbr = data;
-				break;
-			default:
-				goto bad_reg;
-		};
-		break;
-	case 0:	/* Debug registers */
-	case 1: /* Trace registers */
-	case 7: /* Jazelle registers */
-	default:
-		goto bad_reg;
-	};
-	return TRUE;
-bad_reg:
-	vmm_printf("Unimplemented [mcr p14, %d, <Rt>, c%d, c%d, %d]\n", 
-		   opc1, CRn, CRm, opc2);
-	return FALSE;
 }
 
