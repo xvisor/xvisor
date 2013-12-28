@@ -338,17 +338,23 @@ static int hpet_clockchip_set_next_event(unsigned long next,
 	struct hpet_timer *timer = container_of(cc, struct hpet_timer, clkchip);
 	BUG_ON(timer == NULL);
 	u64 res;
+	u32 nr_tries = 5;
 
 	if (unlikely(!timer->armed)) {
 		timer->armed = 1;
 		hpet_arm_timer((void *)timer);
 	}
 
+ _tryagain:
 	res = hpet_read_main_counter(timer);
 	res += next;
 	hpet_write(timer->parent->vbase, HPET_TIMER_N_COMP_BASE(0), res);
 	next = hpet_read_main_counter(timer);
-	BUG_ON(next > res);
+	if (next > res) {
+		BUG_ON(!nr_tries);
+		nr_tries--;
+		goto _tryagain;
+	}
 
 	return 0;
 }
