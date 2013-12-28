@@ -637,7 +637,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	attr = vmm_devtree_attrval(vcpu->node, 
 				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
 	if (!attr) {
-		return VMM_EFAIL;
+		rc = VMM_EFAIL;
+		goto fail;
 	}
 
 	if (strcmp(attr, "armv7a,cortex-a8") == 0) {
@@ -647,7 +648,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	} else if (strcmp(attr, "armv7a,cortex-a15") == 0) {
 		cpuid = ARM_CPUID_CORTEXA15;
 	} else {
-		return VMM_EFAIL;
+		rc = VMM_EINVALID;
+		goto fail;
 	}
 
 	/* First time initialization of private context */
@@ -655,7 +657,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		/* Alloc private context */
 		vcpu->arch_priv = vmm_zalloc(sizeof(struct arm_priv));
 		if (!vcpu->arch_priv) {
-			return VMM_EFAIL;
+			rc = VMM_ENOMEM;
+			goto fail;
 		}
 		p = arm_priv(vcpu);
 		/* Setup CPUID value expected by VCPU in MIDR register
@@ -802,20 +805,20 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	p->lr_fiq = 0x0;
 	p->spsr_fiq = 0x0;
 
+	/* Set last host CPU to invalid value */
+	p->last_hcpu = 0xFFFFFFFF;
+
 	/* Initialize VCPU VFP context */
 	rc = cpu_vcpu_vfp_init(vcpu);
 	if (rc) {
-		return rc;
+		goto fail_vfp_init;
 	}
 
 	/* Initialize VCPU CP15 context */
 	rc = cpu_vcpu_cp15_init(vcpu, cpuid);
 	if (rc) {
-		return rc;
+		goto fail_cp15_init;
 	}
-
-	/* Set last host CPU to invalid value */
-	p->last_hcpu = 0xFFFFFFFF;
 
 	/* Reset generic timer context */
 	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
@@ -823,6 +826,18 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 
 	return VMM_OK;
+
+fail_cp15_init:
+	if (!vcpu->reset_count) {
+		cpu_vcpu_vfp_deinit(vcpu);
+	}
+fail_vfp_init:
+	if (!vcpu->reset_count) {
+		vmm_free(vcpu->arch_priv);
+		vcpu->arch_priv = NULL;
+	}
+fail:
+	return rc;
 }
 
 int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
@@ -839,6 +854,11 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 
 	/* Cleanup CP15 */
 	if ((rc = cpu_vcpu_cp15_deinit(vcpu))) {
+		return rc;
+	}
+
+	/* Cleanup VFP */
+	if ((rc = cpu_vcpu_vfp_deinit(vcpu))) {
 		return rc;
 	}
 
