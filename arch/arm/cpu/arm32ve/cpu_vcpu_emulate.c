@@ -28,10 +28,12 @@
 #include <vmm_devemu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
+#include <cpu_vcpu_inject.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_emulate.h>
-#include <generic_timer.h>
+
 #include <arm_features.h>
+#include <generic_timer.h>
 #include <emulate_psci.h>
 
 /**
@@ -79,27 +81,27 @@ static bool cpu_vcpu_condition_check(struct vmm_vcpu *vcpu,
 	case 4:
 		ret = (regs->cpsr & CPSR_CARRY_MASK) ? TRUE : FALSE;
 		ret = (ret && !(regs->cpsr & CPSR_ZERO_MASK)) ? 
-								TRUE : FALSE;
+							TRUE : FALSE;
 		break;
 	case 5:
 		if (regs->cpsr & CPSR_NEGATIVE_MASK) {
 			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
-								TRUE : FALSE;
+							TRUE : FALSE;
 		} else {
 			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
-								FALSE : TRUE;
+							FALSE : TRUE;
 		}
 		break;
 	case 6:
 		if (regs->cpsr & CPSR_NEGATIVE_MASK) {
 			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
-								TRUE : FALSE;
+							TRUE : FALSE;
 		} else {
 			ret = (regs->cpsr & CPSR_OVERFLOW_MASK) ? 
-								FALSE : TRUE;
+							FALSE : TRUE;
 		}
 		ret = (ret && !(regs->cpsr & CPSR_ZERO_MASK)) ? 
-								TRUE : FALSE;
+							TRUE : FALSE;
 		break;
 	case 7:
 		ret = TRUE;
