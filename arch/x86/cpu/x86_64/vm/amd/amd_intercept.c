@@ -88,7 +88,8 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 		 * know about it.
 		 */
 		if (unlikely(guest_in_realmode(context->vmcb))) {
-			vmm_printf("Guest fault: 0x%x (rIP: %x)\n", context->vmcb->exitinfo2, context->vmcb->rip);
+			VM_LOG(LVL_DEBUG, "Guest fault: 0x%x (rIP: %x)\n",
+			       context->vmcb->exitinfo2, context->vmcb->rip);
 
 			u64 fault_gphys = context->vmcb->exitinfo2;
 			/* Guest is in real mode so faulting guest virtual is
