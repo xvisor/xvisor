@@ -782,7 +782,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		if ((guest->node == gnode) ||
 		    (strcmp(guest->name, gnode->name) == 0)) {
 			vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
-			vmm_printf("%s: Duplicate guest \"%s\" detected\n", 
+			vmm_printf("%s: Duplicate Guest %s detected\n", 
 					__func__, gnode->name);
 			return NULL;
 		}
@@ -798,7 +798,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 	if (!guest) {
 		vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
-		vmm_printf("%s: No available guest instance found\n", __func__);
+		vmm_printf("%s: No available Guest instance found\n", 
+			   __func__);
 		return NULL;
 	}
 
@@ -830,7 +831,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 	vsnode = vmm_devtree_getchild(gnode, VMM_DEVTREE_VCPUS_NODE_NAME);
 	if (!vsnode) {
-		vmm_printf("%s: %s/vcpus node not found\n", __func__, gnode->name);
+		vmm_printf("%s: vcpus node not found for Guest %s\n",
+			   __func__, gnode->name);
 		goto guest_create_error;
 	}
 
@@ -839,15 +841,24 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 		/* Sanity checks */
 		if (CONFIG_MAX_VCPU_COUNT <= mngr.vcpu_count) {
-			break;
+			vmm_printf("%s: No more free VCPUs\n"
+				   "for Guest %s VCPU %s\n",
+				   __func__, gnode->name, vnode->name);
+			goto guest_create_error;
 		}
 		attrval = vmm_devtree_attrval(vnode,
 					      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
 		if (!attrval) {
-			continue;
+			vmm_printf("%s: No device_type attribute\n"
+				   "for Guest %s VCPU %s\n",
+				   __func__, gnode->name, vnode->name);
+			goto guest_create_error;
 		}
 		if (strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU) != 0) {
-			continue;
+			vmm_printf("%s: Invalid device_type attribute\n"
+				   "for Guest %s VCPU %s\n",
+				   __func__, gnode->name, vnode->name);
+			goto guest_create_error;
 		}
 
 		/* Find next available VCPU instance */
@@ -859,7 +870,10 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			}
 		}
 		if (!vcpu) {
-			break;
+			vmm_printf("%s: No available VCPU instance found \n"
+				   "for Guest %s VCPU %s\n",
+				   __func__, gnode->name, vnode->name);
+			goto guest_create_error;
 		}
 
 		/* Mark this VCPU instance as not available */
@@ -872,7 +886,11 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			sizeof(vcpu->name));
 		if (strlcat(vcpu->name, vnode->name, sizeof(vcpu->name)) >=
 		    sizeof(vcpu->name)) {
-			continue;
+			vmm_printf("%s: name concatination failed "
+				   "for Guest %s VCPU %s\n",
+				   __func__, gnode->name, vnode->name);
+			mngr.vcpu_avail_array[vcpu->id] = TRUE;
+			goto guest_create_error;
 		}
 		vcpu->node = vnode;
 		vcpu->is_normal = TRUE;
@@ -888,7 +906,10 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->stack_va = 
 			(virtual_addr_t)vmm_malloc(CONFIG_IRQ_STACK_SIZE);
 		if (!vcpu->stack_va) {
-			continue;
+			vmm_printf("%s: stack alloc failed "
+				   "for VCPU %s\n", __func__, vcpu->name);
+			mngr.vcpu_avail_array[vcpu->id] = TRUE;
+			goto guest_create_error;
 		}
 		vcpu->stack_sz = CONFIG_IRQ_STACK_SIZE;
 
@@ -928,14 +949,20 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->arch_priv = NULL;
 		if (arch_vcpu_init(vcpu)) {
 			vmm_free((void *)vcpu->stack_va);
-			continue;
+			vmm_printf("%s: arch_vcpu_init() failed "
+				   "for VCPU %s\n", __func__, vcpu->name);
+			mngr.vcpu_avail_array[vcpu->id] = TRUE;
+			goto guest_create_error;
 		}
 
 		/* Initialize virtual IRQ context */
 		if (vmm_vcpu_irq_init(vcpu)) {
 			arch_vcpu_deinit(vcpu);
 			vmm_free((void *)vcpu->stack_va);
-			continue;
+			vmm_printf("%s: vmm_vcpu_irq_init() failed "
+				   "for VCPU %s\n", __func__, vcpu->name);
+			mngr.vcpu_avail_array[vcpu->id] = TRUE;
+			goto guest_create_error;
 		}
 
 		/* Initialize waitqueue context */
@@ -950,7 +977,10 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_vcpu_irq_deinit(vcpu);
 			arch_vcpu_deinit(vcpu);
 			vmm_free((void *)vcpu->stack_va);
-			continue;
+			vmm_printf("%s: Setting RESET state failed "
+				   "for VCPU %s\n", __func__, vcpu->name);
+			mngr.vcpu_avail_array[vcpu->id] = TRUE;
+			goto guest_create_error;
 		}
 
 		/* Setup VCPU affinity mask */
@@ -970,25 +1000,33 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 			/* set all assigned CPU in the mask */
 			for (i = 0; i < num_cpu; i++) {
-				if (cpu[i] <= vmm_cpu_count) {
+				if (vmm_cpu_online(cpu[i])) {
 					vmm_cpumask_set_cpu(cpu[i],
 						&affinity_mask[vcpu->id]);
 				} else {
+					vmm_vcpu_irq_deinit(vcpu);
+					arch_vcpu_deinit(vcpu);
+					vmm_free((void *)vcpu->stack_va);
 					vmm_printf(
 						"%s: CPU%d is out of bound"
 						" (%d) for vcpu %s\n",
 						__func__, cpu[i],
 						vmm_cpu_count, vcpu->name);
+					mngr.vcpu_avail_array[vcpu->id] = TRUE;
 					goto guest_create_error;
 				}
 			}
 
 			/* Set hcpu as the first CPU in the mask */
 			vcpu->hcpu = vmm_cpumask_first(&affinity_mask[vcpu->id]);
-			if (vcpu->hcpu > vmm_cpu_count) {
+			if (vcpu->hcpu > CONFIG_CPU_COUNT) {
+				vmm_vcpu_irq_deinit(vcpu);
+				arch_vcpu_deinit(vcpu);
+				vmm_free((void *)vcpu->stack_va);
 				vmm_printf(
 					"%s: Can't find a valid CPU for"
 					" vcpu %s\n", __func__, vcpu->name);
+				mngr.vcpu_avail_array[vcpu->id] = TRUE;
 				goto guest_create_error;
 			}
 
