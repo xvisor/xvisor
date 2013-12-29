@@ -24,6 +24,7 @@
 #define _CPU_VCPU_SYSREGS_H__
 
 #include <vmm_types.h>
+#include <vmm_chardev.h>
 #include <vmm_manager.h>
 
 /** Read one CP15 register */
@@ -65,6 +66,10 @@ void cpu_vcpu_sysregs_save(struct vmm_vcpu *vcpu);
 
 /** Restore system registers */
 void cpu_vcpu_sysregs_restore(struct vmm_vcpu *vcpu);
+
+/** Print system registers for given VCPU */
+void cpu_vcpu_sysregs_dump(struct vmm_chardev *cdev,
+			   struct vmm_vcpu *vcpu);
 
 /** Initialize system registers for given VCPU */
 int cpu_vcpu_sysregs_init(struct vmm_vcpu *vcpu, u32 cpuid);

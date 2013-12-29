@@ -23,9 +23,11 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_stdio.h>
 #include <arch_regs.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_vfp.h>
+
 #include <arm_features.h>
 
 void cpu_vcpu_vfp_regs_save(struct vmm_vcpu *vcpu)
@@ -110,22 +112,80 @@ void cpu_vcpu_vfp_regs_restore(struct vmm_vcpu *vcpu)
 	msr(fpexc32_el2, vfp->fpexc32);
 }
 
+void cpu_vcpu_vfp_regs_dump(struct vmm_chardev *cdev,
+			    struct vmm_vcpu *vcpu)
+{
+	u32 i;
+	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
+
+	/* Do nothing if:
+	 * 1. VCPU does not have VFPv3 feature
+	 */
+	if (!arm_feature(vcpu, ARM_FEATURE_VFP3)) {
+		return;
+	}
+
+	vmm_cprintf(cdev, "VFP Feature Registers\n");
+	vmm_cprintf(cdev, " %11s=0x%08lx         %11s=0x%08lx\n",
+		    "MVFR0_EL1", vfp->mvfr0,
+		    "MVFR1_EL1", vfp->mvfr1);
+	vmm_cprintf(cdev, " %11s=0x%08lx\n",
+		    "MVFR2_EL1", vfp->mvfr2);
+	vmm_cprintf(cdev, "VFP System Registers\n");
+	vmm_cprintf(cdev, " %11s=0x%08lx         %11s=0x%08lx\n",
+		    "FPCR", vfp->fpcr,
+		    "FPSR", vfp->fpsr);
+	vmm_cprintf(cdev, "VFP Data Registers");
+	for (i = 0; i < 64; i++) {
+		if (i % 2 == 0) {
+			vmm_cprintf(cdev, "\n");
+		}
+		vmm_cprintf(cdev, " %9s%02d=0x%016lx",
+				  "D", (i), vfp->fpregs[i]);
+	}
+	vmm_cprintf(cdev, "\n");
+}
+
 int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv *p = arm_priv(vcpu);
 	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
 
+	/* If host HW does not have VFP (i.e. software VFP) then
+	 * clear all VFP feature flags so that VCPU always gets
+	 * undefined exception when accessing VFP registers.
+	 */
+	if (!cpu_supports_fpu()) {
+		goto no_vfp_for_vcpu;
+	}
+
 	/* If Host HW does not support VFPv3 or higher then
 	 * don't allow VFP access to VCPU using CPTR_EL2
 	 */
-	if (cpu_supports_fpu() &&
-	    arm_feature(vcpu, ARM_FEATURE_VFP3)) {
+	if (arm_feature(vcpu, ARM_FEATURE_VFP3)) {
 		p->cptr &= ~CPTR_TFP_MASK;
+	} else {
+		goto no_vfp_for_vcpu;
 	}
 
 	/* Clear VCPU VFP context */
 	memset(vfp, 0, sizeof(struct arm_priv_vfp));
 
+	/* Current strategy is to show VFP feature registers
+	 * same as underlying Host HW so that Guest sees same VFP
+	 * capabilities as Host HW.
+	 */
+	vfp->mvfr0 = mrs(mvfr0_el1);
+	vfp->mvfr1 = mrs(mvfr1_el1);
+	vfp->mvfr2 = mrs(mvfr2_el1);
+
+	return VMM_OK;
+
+no_vfp_for_vcpu:
+	arm_clear_feature(vcpu, ARM_FEATURE_MVFR);
+	arm_clear_feature(vcpu, ARM_FEATURE_VFP);
+	arm_clear_feature(vcpu, ARM_FEATURE_VFP3);
+	arm_clear_feature(vcpu, ARM_FEATURE_VFP4);
 	return VMM_OK;
 }
 

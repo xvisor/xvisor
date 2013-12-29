@@ -48,26 +48,28 @@ void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 
 void cpu_vcpu_spsr32_update(struct vmm_vcpu *vcpu, u32 mode, u32 new_spsr)
 {
+	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
+
 	switch (mode) {
 	case CPSR_MODE_ABORT:
 		msr(spsr_abt, new_spsr);
-		arm_priv(vcpu)->spsr_abt = new_spsr;
+		s->spsr_abt = new_spsr;
 		break;
 	case CPSR_MODE_UNDEFINED:
 		msr(spsr_und, new_spsr);
-		arm_priv(vcpu)->spsr_und = new_spsr;
+		s->spsr_und = new_spsr;
 		break;
 	case CPSR_MODE_SUPERVISOR:
 		msr(spsr_el1, new_spsr);
-		arm_priv(vcpu)->spsr_el1 = new_spsr;
+		s->spsr_el1 = new_spsr;
 		break;
 	case CPSR_MODE_IRQ:
 		msr(spsr_irq, new_spsr);
-		arm_priv(vcpu)->spsr_irq = new_spsr;
+		s->spsr_irq = new_spsr;
 		break;
 	case CPSR_MODE_FIQ:
 		msr(spsr_fiq, new_spsr);
-		arm_priv(vcpu)->spsr_fiq = new_spsr;
+		s->spsr_fiq = new_spsr;
 		break;
 	case CPSR_MODE_HYPERVISOR:
 		msr(spsr_el2, new_spsr);
@@ -622,6 +624,9 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
 		msr(cptr_el2, arm_priv(vcpu)->cptr);
 		msr(hstr_el2, arm_priv(vcpu)->hstr);
+		/* Restore Stage2 MMU context */
+		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
+			       arm_guest_priv(vcpu->guest)->ttbl);
 		/* Restore VGIC registers */
 		arm_vgic_restore(vcpu);
 		/* Restore generic timer */
@@ -660,17 +665,22 @@ void arch_vcpu_preempt_orphan(void)
 static void __cpu_vcpu_dump_user_reg(struct vmm_chardev *cdev, 
 				     arch_regs_t *regs)
 {
-	u32 ite;
-	vmm_cprintf(cdev, "  Core Registers\n");
-	vmm_cprintf(cdev, "    SP=0x%016lX       LR=0x%016lX\n",
-		    regs->sp, regs->lr);
-	vmm_cprintf(cdev, "    PC=0x%016lX       PSTATE=0x%08lX\n",
-		    regs->pc, (regs->pstate & 0xffffffff));
-	vmm_cprintf(cdev, "  General Purpose Registers");
-	for (ite = 0; ite < (CPU_GPR_COUNT); ite++) {
-		if (ite % 2 == 0)
+	u32 i;
+
+	vmm_cprintf(cdev, "Core Registers\n");
+	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+		    "SP", regs->sp,
+		    "LR", regs->lr);
+	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%08lx\n",
+		    "PC", regs->pc,
+		    "PSTATE", (regs->pstate & 0xffffffff));
+	vmm_cprintf(cdev, "General Purpose Registers");
+	for (i = 0; i < (CPU_GPR_COUNT); i++) {
+		if (i % 2 == 0) {
 			vmm_cprintf(cdev, "\n");
-		vmm_cprintf(cdev, "    X%02d=0x%016lX  ", ite, regs->gpr[ite]);
+		}
+		vmm_cprintf(cdev, " %9s%02d=0x%016lx",
+			    "X", i, regs->gpr[i]);
 	}
 	vmm_cprintf(cdev, "\n");
 }
@@ -682,69 +692,33 @@ void cpu_vcpu_dump_user_reg(arch_regs_t *regs)
 
 void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
+	struct arm_priv *p;
+
 	/* For both Normal & Orphan VCPUs */
 	__cpu_vcpu_dump_user_reg(cdev, arm_regs(vcpu));
+
 	/* For only Normal VCPUs */
 	if (!vcpu->is_normal) {
 		return;
 	}
-	vmm_cprintf(cdev, "       TTBR_EL2: 0x%016lX\n", 
-		    arm_guest_priv(vcpu->guest)->ttbl->tbl_pa);
-	vmm_cprintf(cdev, "        HCR_EL2: 0x%016lX\n", 
-		    arm_priv(vcpu)->hcr);
-	vmm_cprintf(cdev, "       CPTR_EL2: 0x%016lX\n", 
-		    arm_priv(vcpu)->cptr);
-	vmm_cprintf(cdev, "       HSTR_EL2: 0x%016lX\n", 
-		    arm_priv(vcpu)->hstr);
-	vmm_cprintf(cdev, "         SP_EL0: 0x%016lX\n", 
-		    arm_priv(vcpu)->sp_el0);
-	vmm_cprintf(cdev, "         SP_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->sp_el1);
-	vmm_cprintf(cdev, "        ELR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->elr_el1);
-	vmm_cprintf(cdev, "       SPSR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->spsr_el1);
-	vmm_cprintf(cdev, "       SPSR_ABT: 0x%08lX\n", 
-		    arm_priv(vcpu)->spsr_abt);
-	vmm_cprintf(cdev, "       SPSR_UND: 0x%08lX\n", 
-		    arm_priv(vcpu)->spsr_und);
-	vmm_cprintf(cdev, "       SPSR_IRQ: 0x%08lX\n", 
-		    arm_priv(vcpu)->spsr_irq);
-	vmm_cprintf(cdev, "       SPSR_FIQ: 0x%08lX\n", 
-		    arm_priv(vcpu)->spsr_fiq);
-	vmm_cprintf(cdev, "       MIDR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->midr);
-	vmm_cprintf(cdev, "      MPIDR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->mpidr);
-	vmm_cprintf(cdev, "      SCTLR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->sctlr);
-	vmm_cprintf(cdev, "      CPACR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->cpacr);
-	vmm_cprintf(cdev, "      TTBR0_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->ttbr0);
-	vmm_cprintf(cdev, "      TTBR1_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->ttbr1);
-	vmm_cprintf(cdev, "        TCR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->tcr);
-	vmm_cprintf(cdev, "        ESR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->esr);
-	vmm_cprintf(cdev, "        FAR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->far);
-	vmm_cprintf(cdev, "        PAR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->par);
-	vmm_cprintf(cdev, "       MAIR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->mair);
-	vmm_cprintf(cdev, "       VBAR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->vbar);
-	vmm_cprintf(cdev, " CONTEXTIDR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->contextidr);
-	vmm_cprintf(cdev, "      TPIDR_EL0: 0x%016lX\n", 
-		    arm_priv(vcpu)->tpidr_el0);
-	vmm_cprintf(cdev, "      TPIDR_EL1: 0x%016lX\n", 
-		    arm_priv(vcpu)->tpidr_el1);
-	vmm_cprintf(cdev, "        TPIDRRO: 0x%016lX\n", 
-		    arm_priv(vcpu)->tpidrro);
-	vmm_cprintf(cdev, "\n");
+
+	/* Get private context */
+	p = arm_priv(vcpu);
+
+	/* Hypervisor registers */
+	vmm_cprintf(cdev, "Hypervisor EL2 Registers\n");
+	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+		    "HCR_EL2", p->hcr,
+		    "CPTR_EL2", p->cptr);
+	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+		    "HSTR_EL2", p->hstr,
+		    "TTBR_EL2", arm_guest_priv(vcpu->guest)->ttbl->tbl_pa);
+
+	/* Print VFP registers */
+	cpu_vcpu_vfp_regs_dump(cdev, vcpu);
+
+	/* Print system registers */
+	cpu_vcpu_sysregs_dump(cdev, vcpu);
 }
 
 void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
