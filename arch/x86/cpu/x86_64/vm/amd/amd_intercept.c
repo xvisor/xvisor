@@ -200,6 +200,8 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 	case 0:
 		if (context->vmcb->exitinfo1 & VALID_CRN_TRAP) {
 			cr_gpr = (context->vmcb->exitinfo1 & 0xf);
+			vmm_printf("Guest writing 0x%lx to Cr0 from reg %d.\n",
+				   context->g_regs[cr_gpr], cr_gpr);
 		}
 		break;
 	case 3:

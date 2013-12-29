@@ -25,7 +25,6 @@
 
 #include <vmm_types.h>
 #include <cpu_mmu.h>
-#include <cpu_vm.h>
 
 /*
  * Stack State at the entry of exception.
@@ -80,25 +79,5 @@ struct arch_regs {
 } __packed;
 
 typedef struct arch_regs arch_regs_t;
-
-struct cpuid_response {
-	u32 resp_eax;
-	u32 resp_ebx;
-	u32 resp_ecx;
-	u32 resp_edx;
-};
-
-/*
- * Emulated CPU information for guest.
- * Contains MSR, related vm control block, etc.
- */
-struct x86_vcpu_priv {
-	u64 capabilities;
-	struct cpuid_response extended_funcs[CPUID_EXTENDED_FUNC_LIMIT-CPUID_EXTENDED_BASE];
-	struct cpuid_response standard_funcs[CPUID_BASE_FUNC_LIMIT];
-	struct vcpu_hw_context *hw_context;
-};
-
-#define x86_vcpu_priv(vcpu) ((struct x86_vcpu_priv *)((vcpu)->arch_priv))
 
 #endif

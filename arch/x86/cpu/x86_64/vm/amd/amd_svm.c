@@ -291,18 +291,69 @@ static __unused void set_vm_to_mbr_start_state(struct vmcb* vmcb, enum svm_init_
 
 static void svm_run(struct vcpu_hw_context *context)
 {
-	/*
-	 * Pass on the vmcb physical address as parameter to svm_launch function.
-	 * For executing svm_launch(), assember will load its address in RAX
-	 * and do a callq, thus destructing the vmcb address if we load here.
-	 * So pass as parameter and let svm_launch load RAX with proper value
-	 * before executing vmload/vmrun.
-	 */
-	__asm__ __volatile__("pushq %%rdi; movq %0, %%rdi" :: "r" (context->vmcb_pa));
+	clgi();
+	asm volatile ("push %%rbp \n\t"
+		      "mov %c[rbx](%[context]), %%rbx \n\t"
+		      "mov %c[rcx](%[context]), %%rcx \n\t"
+		      "mov %c[rdx](%[context]), %%rdx \n\t"
+		      "mov %c[rsi](%[context]), %%rsi \n\t"
+		      "mov %c[rdi](%[context]), %%rdi \n\t"
+		      "mov %c[rbp](%[context]), %%rbp \n\t"
+		      "mov %c[r8](%[context]),  %%r8  \n\t"
+		      "mov %c[r9](%[context]),  %%r9  \n\t"
+		      "mov %c[r10](%[context]), %%r10 \n\t"
+		      "mov %c[r11](%[context]), %%r11 \n\t"
+		      "mov %c[r12](%[context]), %%r12 \n\t"
+		      "mov %c[r13](%[context]), %%r13 \n\t"
+		      "mov %c[r14](%[context]), %%r14 \n\t"
+		      "mov %c[r15](%[context]), %%r15 \n\t"
 
-	svm_launch();
+		      /* Enter guest mode */
+		      "push %%rax \n\t"
+		      "mov %c[vmcb](%[context]), %%rax \n\t"
+		      "vmload\n\t"
+		      "vmrun\n\t"
+		      "vmsave\n\t"
+		      "pop %%rax \n\t"
 
-	__asm__ __volatile__("popq %rdi");
+		      /* Save guest registers, load host registers */
+		      "mov %%rbx, %c[rbx](%[context]) \n\t"
+		      "mov %%rcx, %c[rcx](%[context]) \n\t"
+		      "mov %%rdx, %c[rdx](%[context]) \n\t"
+		      "mov %%rsi, %c[rsi](%[context]) \n\t"
+		      "mov %%rdi, %c[rdi](%[context]) \n\t"
+		      "mov %%rbp, %c[rbp](%[context]) \n\t"
+		      "mov %%r8,  %c[r8](%[context])  \n\t"
+		      "mov %%r9,  %c[r9](%[context])  \n\t"
+		      "mov %%r10, %c[r10](%[context]) \n\t"
+		      "mov %%r11, %c[r11](%[context]) \n\t"
+		      "mov %%r12, %c[r12](%[context]) \n\t"
+		      "mov %%r13, %c[r13](%[context]) \n\t"
+		      "mov %%r14, %c[r14](%[context]) \n\t"
+		      "mov %%r15, %c[r15](%[context]) \n\t"
+		      "pop %%rbp\n\t"
+		      :
+		      : [context]"a"(context),
+		      [vmcb]"i"(offsetof(struct vcpu_hw_context, vmcb_pa)),
+		      [rbx]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RBX])),
+		      [rcx]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RCX])),
+		      [rdx]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RDX])),
+		      [rsi]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RSI])),
+		      [rdi]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RDI])),
+		      [rbp]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RBP])),
+		      [r8]"i"(offsetof(struct vcpu_hw_context,  g_regs[GUEST_REGS_R8])),
+		      [r9]"i"(offsetof(struct vcpu_hw_context,  g_regs[GUEST_REGS_R9])),
+		      [r10]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R10])),
+		      [r11]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R11])),
+		      [r12]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R12])),
+		      [r13]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R13])),
+		      [r14]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R14])),
+		      [r15]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R15]))
+		      : "cc", "memory"
+			, "rbx", "rcx", "rdx", "rsi", "rdi"
+			, "r8", "r9", "r10", "r11" , "r12", "r13", "r14", "r15"
+		      );
+	stgi();
 }
 
 static int enable_svme(void)

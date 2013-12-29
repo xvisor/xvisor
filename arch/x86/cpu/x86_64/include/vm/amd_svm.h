@@ -31,9 +31,18 @@
 
 #ifndef __ASSEMBLY__
 
+static inline void clgi(void)
+{
+	asm volatile("clgi\n\t");
+}
+
+static inline void stgi(void)
+{
+	asm volatile("stgi\n\t");
+}
+
 extern int amd_setup_vm_control(struct vcpu_hw_context *context);
 extern int init_amd(struct cpuinfo_x86 *cpuinfo);
-extern void svm_launch(void);
 
 #endif
 

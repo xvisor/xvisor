@@ -24,6 +24,27 @@ extern int vm_default_log_lvl;
 		}							\
 	}while(0);
 
+enum guest_regs {
+	GUEST_REGS_RAX = 0,
+	GUEST_REGS_RCX = 1,
+	GUEST_REGS_RDX = 2,
+	GUEST_REGS_RBX = 3,
+	GUEST_REGS_RSP = 4,
+	GUEST_REGS_RBP = 5,
+	GUEST_REGS_RSI = 6,
+	GUEST_REGS_RDI = 7,
+	GUEST_REGS_R8  = 8,
+	GUEST_REGS_R9  = 9,
+	GUEST_REGS_R10 = 10,
+	GUEST_REGS_R11 = 11,
+	GUEST_REGS_R12 = 12,
+	GUEST_REGS_R13 = 13,
+	GUEST_REGS_R14 = 14,
+	GUEST_REGS_R15 = 15,
+	GUEST_REGS_RIP,
+	NR_GUEST_REGS
+};
+
 #define USER_CMD_ENABLE		0
 #define USER_CMD_DISABLE	1
 #define USER_CMD_TEST		9
@@ -65,6 +86,7 @@ struct vcpu_hw_context {
 	struct vmcb *vmcb;
 	struct vmcs *vmcs;
 	struct vmm_vcpu *assoc_vcpu; /**< vCPU associated to this hardware context */
+	u64 g_regs[NR_GUEST_REGS];
 
 	unsigned int asid;
 	unsigned long n_cr3;  /* [Note] When #VMEXIT occurs with
@@ -101,6 +123,26 @@ struct vcpu_hw_context {
 #define VMM_DS32	16  /* entry 2 of gdt ?? Xvisor also uses it. FIXME: */
 #define VMM_CS64	40  /* entry 7 of gdt */
 #define VMM_DS64	56  /* entry 5 of gdt */
+
+struct cpuid_response {
+	u32 resp_eax;
+	u32 resp_ebx;
+	u32 resp_ecx;
+	u32 resp_edx;
+};
+
+/*
+ * Emulated CPU information for guest.
+ * Contains MSR, related vm control block, etc.
+ */
+struct x86_vcpu_priv {
+	u64 capabilities;
+	struct cpuid_response extended_funcs[CPUID_EXTENDED_FUNC_LIMIT-CPUID_EXTENDED_BASE];
+	struct cpuid_response standard_funcs[CPUID_BASE_FUNC_LIMIT];
+	struct vcpu_hw_context *hw_context;
+};
+
+#define x86_vcpu_priv(vcpu) ((struct x86_vcpu_priv *)((vcpu)->arch_priv))
 
 extern void print_page_errorcode(u64 errcode);
 
