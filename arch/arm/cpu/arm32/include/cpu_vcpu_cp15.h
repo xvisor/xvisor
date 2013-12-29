@@ -24,13 +24,15 @@
 #define _CPU_VCPU_CP15_H__
 
 #include <vmm_types.h>
+#include <vmm_chardev.h>
 #include <vmm_manager.h>
 
 /** Flush entire VTLB for a VCPU */
 int cpu_vcpu_cp15_vtlb_flush(struct arm_priv_cp15 *cp15);
 
 /** Flush given virtual address from VTLB for a VCPU */
-int cpu_vcpu_cp15_vtlb_flush_va(struct arm_priv_cp15 *cp15, virtual_addr_t va);
+int cpu_vcpu_cp15_vtlb_flush_va(struct arm_priv_cp15 *cp15,
+				virtual_addr_t va);
 
 /** Flush non-global pages from VTLB for a VCPU */
 int cpu_vcpu_cp15_vtlb_flush_ng(struct arm_priv_cp15 *cp15);
@@ -104,6 +106,10 @@ void cpu_vcpu_cp15_regs_save(struct vmm_vcpu *vcpu);
 
 /** Restore CP15 registers for given VCPU */
 void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu);
+
+/** Print CP15 registers for given VCPU */
+void cpu_vcpu_cp15_regs_dump(struct vmm_chardev *cdev,
+			     struct vmm_vcpu *vcpu);
 
 /** Initialize CP15 subsystem for a VCPU */
 int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid);

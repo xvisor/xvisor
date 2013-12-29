@@ -35,14 +35,15 @@
 #include <vmm_vcpu_irq.h>
 #include <arch_barrier.h>
 #include <libs/stringlib.h>
-#include <emulate_arm.h>
-#include <emulate_thumb.h>
 #include <cpu_mmu.h>
 #include <cpu_cache.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_cp15.h>
+
 #include <arm_features.h>
+#include <emulate_arm.h>
+#include <emulate_thumb.h>
 
 /* Update Virtual TLB */
 static int cpu_vcpu_cp15_vtlb_update(struct arm_priv_cp15 *cp15, 
@@ -139,7 +140,8 @@ int cpu_vcpu_cp15_vtlb_flush(struct arm_priv_cp15 *cp15)
 }
 
 
-int cpu_vcpu_cp15_vtlb_flush_va(struct arm_priv_cp15 *cp15, virtual_addr_t va)
+int cpu_vcpu_cp15_vtlb_flush_va(struct arm_priv_cp15 *cp15,
+				virtual_addr_t va)
 {
 	int rc;
 	u32 vtlb;
@@ -148,7 +150,8 @@ int cpu_vcpu_cp15_vtlb_flush_va(struct arm_priv_cp15 *cp15, virtual_addr_t va)
 	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
 		if (cp15->vtlb.table[vtlb].valid) {
 			e = &cp15->vtlb.table[vtlb];
-			if (e->page.va <= va && va < (e->page.va + e->page.sz)) {
+			if ((e->page.va <= va) && 
+			    (va < (e->page.va + e->page.sz))) {
 				rc = cpu_mmu_unmap_page(cp15->l1,
 							&e->page);
 				if (rc) {
@@ -344,7 +347,7 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		/* Section or page. */
 		pg->dom = (desc >> 5) & 0xF;
 	}
-	domain = (cp15->c3 >> (pg->dom << 1)) & 3;
+	domain = (cp15->c3_dacr >> (pg->dom << 1)) & 3;
 	if (domain == 0 || domain == 2) {
 		if (type == 2)
 			*fs = 9;	/* Section domain fault. */
@@ -465,7 +468,7 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	/* retreive domain info */
 	pg->dom = (desc & TTBL_L1TBL_TTE_DOM_MASK) >>
 						TTBL_L1TBL_TTE_DOM_SHIFT;
-	domain = (cp15->c3 >> (pg->dom << 1)) & 3;
+	domain = (cp15->c3_dacr >> (pg->dom << 1)) & 3;
 
 	switch (type) {
 	case TTBL_L1TBL_TTE_TYPE_SECTION: /* 1Mb section. */
@@ -643,7 +646,7 @@ u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
 		if (rc) {
 			/* FIXME: should be ORed with (pg->dom & 0xF) */
 			return (fs << 4) |
-				((cp15->c3 >> (pg->dom << 1)) & 0x3);
+				((cp15->c3_dacr >> (pg->dom << 1)) & 0x3);
 		}
 		pg->va = va;
 	} else {
@@ -1005,7 +1008,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			case 0:
 				switch (opc2) {
 				case 0:	/* Device ID. */
-					*data = cp15->c0_cpuid;
+					*data = cp15->c0_midr;
 					break;
 				case 1:	/* Cache Type. */
 					*data = cp15->c0_cachetype;
@@ -1024,20 +1027,10 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 					 * For all other pre-v7 cores
 					 * it does not exist.
 					 */
-					if (arm_feature(vcpu, ARM_FEATURE_MPIDR)) {
-						int mpidr = vcpu->subid;
-						/* We don't support setting
-						 * cluster ID ([8..11]) so
-						 * these bits always RAZ.
-						 */
-						if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
-							mpidr |= (1 << 31);
-						}
-						*data = mpidr;
+					if (!arm_feature(vcpu, ARM_FEATURE_MPIDR)) {
+						goto bad_reg;
 					}
-					/* otherwise fall through to the
-					 * unimplemented-reg case
-					 */
+					*data = cp15->c0_mpidr;
 					break;
 				default:
 					goto bad_reg;
@@ -1186,7 +1179,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 		case 2:	/* Coprocessor access register. */
 			if (!arm_feature(vcpu, ARM_FEATURE_V6))
 				goto bad_reg;
-			*data = cp15->c1_coproc;
+			*data = cp15->c1_cpacr;
 			break;
 		default:
 			goto bad_reg;
@@ -1208,17 +1201,35 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 		};
 		break;
 	case 3:		/* MMU Domain access control / MPU write buffer control. */
-		*data = cp15->c3;
+		*data = cp15->c3_dacr;
 		break;
 	case 4:		/* Reserved. */
 		goto bad_reg;
 	case 5:		/* MMU Fault status / MPU access permission. */
 		switch (opc2) {
 		case 0:
-			*data = cp15->c5_dfsr;
+			switch (CRm) {
+			case 0:
+				*data = cp15->c5_dfsr;
+				break;
+			case 1:
+				*data = cp15->c5_adfsr;
+				break;
+			default:
+				goto bad_reg;
+			};
 			break;
 		case 1:
-			*data = cp15->c5_ifsr;
+			switch (CRm) {
+			case 0:
+				*data = cp15->c5_ifsr;
+				break;
+			case 1:
+				*data = cp15->c5_aifsr;
+				break;
+			default:
+				goto bad_reg;
+			};
 			break;
 		default:
 			goto bad_reg;
@@ -1486,8 +1497,8 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 		case 2:
 			if (!arm_feature(vcpu, ARM_FEATURE_V6))
 				goto bad_reg;
-			if (cp15->c1_coproc != data) {
-				cp15->c1_coproc = data;
+			if (cp15->c1_cpacr != data) {
+				cp15->c1_cpacr = data;
 			}
 			break;
 		default:
@@ -1515,8 +1526,8 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 		};
 		break;
 	case 3:		/* MMU Domain access control / MPU write buffer control. */
-		tmp = cp15->c3;
-		cp15->c3 = data;
+		tmp = cp15->c3_dacr;
+		cp15->c3_dacr = data;
 
 		if (tmp != data) {
 			cpu_vcpu_cp15_vtlb_flush_domain(cp15, tmp ^ data);
@@ -1527,10 +1538,28 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 	case 5:		/* MMU Fault status / MPU access permission. */
 		switch (opc2) {
 		case 0:
-			cp15->c5_dfsr = data;
+			switch (CRm) {
+			case 0:
+				cp15->c5_dfsr = data;
+				break;
+			case 1:
+				cp15->c5_adfsr = data;
+				break;
+			default:
+				goto bad_reg;
+			};
 			break;
 		case 1:
-			cp15->c5_ifsr = data;
+			switch (CRm) {
+			case 0:
+				cp15->c5_ifsr = data;
+				break;
+			case 1:
+				cp15->c5_aifsr = data;
+				break;
+			default:
+				goto bad_reg;
+			};
 			break;
 		default:
 			goto bad_reg;
@@ -2159,6 +2188,98 @@ void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu)
 	isb();
 }
 
+void cpu_vcpu_cp15_regs_dump(struct vmm_chardev *cdev,
+			     struct vmm_vcpu *vcpu)
+{
+	u32 i;
+	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
+
+	vmm_cprintf(cdev, "CP15 Identification Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "MIDR", cp15->c0_midr,
+		    "MPIDR", cp15->c0_mpidr,
+		    "CTR", cp15->c0_cachetype);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "PFR0", cp15->c0_pfr0,
+		    "PFR1", cp15->c0_pfr1,
+		    "DFR0", cp15->c0_dfr0);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "AFR0", cp15->c0_afr0,
+		    "MMFR0", cp15->c0_mmfr0,
+		    "MMFR1", cp15->c0_mmfr1);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "MMFR2", cp15->c0_mmfr2,
+		    "MMFR3", cp15->c0_mmfr3,
+		    "ISAR0", cp15->c0_isar0);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "ISAR1", cp15->c0_isar1,
+		    "ISAR2", cp15->c0_isar2,
+		    "ISAR3", cp15->c0_isar3);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x",
+		    "ISAR4", cp15->c0_isar4,
+		    "ISAR5", cp15->c0_isar5,
+		    "CSSID00", cp15->c0_ccsid[0]);
+	for (i = 1; i < 16; i++) {
+		if (i % 3 == 1) {
+			vmm_cprintf(cdev, "\n");
+		}
+		vmm_cprintf(cdev, " %5s%02d=0x%08x",
+			    "CCSID", i, cp15->c0_ccsid[i]);
+	}
+	vmm_cprintf(cdev, "\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x\n",
+		    "CLID", cp15->c0_clid,
+		    "CSSEL", cp15->c0_cssel);
+	vmm_cprintf(cdev, "CP15 Control Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SCTLR", cp15->c1_sctlr,
+		    "CPACR", cp15->c1_cpacr,
+		    "VBAR", cp15->c12_vbar);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x\n",
+		    "FCSEIDR", cp15->c13_fcse,
+		    "CNTXIDR", cp15->c13_context);
+	vmm_cprintf(cdev, "CP15 MMU Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "TTBR0", cp15->c2_ttbr0,
+		    "TTBR1", cp15->c2_ttbr1,
+		    "TTBCR", cp15->c2_ttbcr);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "DACR", cp15->c3_dacr,
+		    "PRRR", cp15->c10_prrr,
+		    "NMRR", cp15->c10_nmrr);
+	vmm_cprintf(cdev, "CP15 Fault Status Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "IFSR", cp15->c5_ifsr,
+		    "DFSR", cp15->c5_dfsr,
+		    "AIFSR", cp15->c5_aifsr);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "ADFSR", cp15->c5_adfsr,
+		    "IFAR", cp15->c6_ifar,
+		    "DFAR", cp15->c6_dfar);
+	vmm_cprintf(cdev, "CP15 Address Translation Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%016llx\n",
+		    "PAR", cp15->c7_par,
+		    "PAR64", cp15->c7_par64);
+	vmm_cprintf(cdev, "CP15 Cache Lockdown Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x\n",
+		    "CILOCK", cp15->c9_insn,  /* ??? */
+		    "CDLOCK", cp15->c9_data); /* ??? */
+	vmm_cprintf(cdev, "CP15 Performance Monitor Control Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "PMCR", cp15->c9_pmcr,
+		    "PMCNTEN", cp15->c9_pmcnten,
+		    "PMOVSR", cp15->c9_pmovsr);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "PMXEVTY", cp15->c9_pmxevtyper,
+		    "PMUSREN", cp15->c9_pmuserenr,
+		    "PMINTEN", cp15->c9_pminten);
+	vmm_cprintf(cdev, "CP15 Thread Local Storage Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "TPIDURW", cp15->c13_tls1,
+		    "TPIDURO", cp15->c13_tls2,
+		    "TPIDPRW", cp15->c13_tls3);
+}
+
 int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	int rc = VMM_OK;
@@ -2194,7 +2315,14 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	memset(&cp15->virtio_page, 0,
 		   sizeof(struct cpu_page));
 
-	cp15->c0_cpuid = cpuid;
+	cp15->c0_midr = cpuid;
+	cp15->c0_mpidr = vcpu->subid;
+	/* We don't support setting cluster ID ([8..11]) so
+	 * these bits always RAZ.
+	 */
+	if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
+		cp15->c0_mpidr |= (1 << 31);
+	}
 	cp15->c2_ttbcr = 0x0;
 	cp15->c2_ttbr0 = 0x0;
 	cp15->c2_ttbr1 = 0x0;
@@ -2275,6 +2403,25 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 
 #if defined(CONFIG_ARMV7A)
 	if (arm_feature(vcpu, ARM_FEATURE_V7)) {
+		/* Current strategy is to show identification registers same
+		 * as underlying Host HW so that Guest sees same capabilities
+		 * as Host HW.
+		 */
+		cp15->c0_pfr0 = read_pfr0();
+		cp15->c0_pfr1 = read_pfr1();
+		cp15->c0_dfr0 = read_dfr0();
+		cp15->c0_afr0 = read_afr0();
+		cp15->c0_mmfr0 = read_mmfr0();
+		cp15->c0_mmfr1 = read_mmfr1();
+		cp15->c0_mmfr2 = read_mmfr2();
+		cp15->c0_mmfr3 = read_mmfr3();
+		cp15->c0_isar0 = read_isar0();
+		cp15->c0_isar1 = read_isar1();
+		cp15->c0_isar2 = read_isar2();
+		cp15->c0_isar3 = read_isar3();
+		cp15->c0_isar4 = read_isar4();
+		cp15->c0_isar5 = read_isar5();
+
 		/* Cache config register such as CTR, CLIDR, and CCSIDRx
 		 * should be same as that of underlying host.
 		 */

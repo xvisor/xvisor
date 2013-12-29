@@ -835,6 +835,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			arm_set_feature(vcpu, ARM_FEATURE_V6K);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP);
 			arm_set_feature(vcpu, ARM_FEATURE_VAPA);
+			arm_set_feature(vcpu, ARM_FEATURE_MPIDR);
 			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
 			break;
 		case ARM_CPUID_CORTEXA8:
@@ -1015,17 +1016,22 @@ void arch_vcpu_preempt_orphan(void)
 static void __cpu_vcpu_dump_user_reg(struct vmm_chardev *cdev, 
 				     struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
-	u32 ite;
-	vmm_cprintf(cdev, "  Core Registers\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       PC=0x%08x\n",
-		    regs->sp, regs->lr, regs->pc);
-	vmm_cprintf(cdev, "    CPSR=0x%08x     \n", 
-		    cpu_vcpu_cpsr_retrieve(vcpu, regs));
-	vmm_cprintf(cdev, "  General Purpose Registers");
-	for (ite = 0; ite < CPU_GPR_COUNT; ite++) {
-		if (ite % 3 == 0)
+	u32 i;
+
+	vmm_cprintf(cdev, "Core Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SP", regs->sp,
+		    "LR", regs->lr,
+		    "PC", regs->pc);
+	vmm_cprintf(cdev, " %7s=0x%08x\n",
+		    "CPSR", cpu_vcpu_cpsr_retrieve(vcpu, regs));
+	vmm_cprintf(cdev, "General Purpose Registers");
+	for (i = 0; i < CPU_GPR_COUNT; i++) {
+		if (i % 3 == 0) {
 			vmm_cprintf(cdev, "\n");
-		vmm_cprintf(cdev, "    R%02d=0x%08x  ", ite, regs->gpr[ite]);
+		}
+		vmm_cprintf(cdev, " %5s%02d=0x%08x",
+			    "R", i, regs->gpr[i]);
 	}
 	vmm_cprintf(cdev, "\n");
 }
@@ -1037,7 +1043,7 @@ void cpu_vcpu_dump_user_reg(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 
 void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
-	u32 ite;
+	u32 i;
 
 	/* For both Normal & Orphan VCPUs */
 	__cpu_vcpu_dump_user_reg(cdev, vcpu, arm_regs(vcpu));
@@ -1047,40 +1053,55 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 		return;
 	}
 
-	vmm_cprintf(cdev, "  User Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x\n",
-		    arm_priv(vcpu)->sp_usr, arm_priv(vcpu)->lr_usr);
-	vmm_cprintf(cdev, "  Supervisor Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		    arm_priv(vcpu)->sp_svc, arm_priv(vcpu)->lr_svc,
-		    arm_priv(vcpu)->spsr_svc);
-	vmm_cprintf(cdev, "  Monitor Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		    arm_priv(vcpu)->sp_mon, arm_priv(vcpu)->lr_mon,
-		    arm_priv(vcpu)->spsr_mon);
-	vmm_cprintf(cdev, "  Abort Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		    arm_priv(vcpu)->sp_abt, arm_priv(vcpu)->lr_abt,
-		    arm_priv(vcpu)->spsr_abt);
-	vmm_cprintf(cdev, "  Undefined Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		    arm_priv(vcpu)->sp_und, arm_priv(vcpu)->lr_und,
-		    arm_priv(vcpu)->spsr_und);
-	vmm_cprintf(cdev, "  IRQ Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		    arm_priv(vcpu)->sp_irq, arm_priv(vcpu)->lr_irq,
-		    arm_priv(vcpu)->spsr_irq);
-	vmm_cprintf(cdev, "  FIQ Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x",
-		    arm_priv(vcpu)->sp_fiq, arm_priv(vcpu)->lr_fiq,
-		    arm_priv(vcpu)->spsr_fiq);
-	for (ite = 0; ite < 5; ite++) {
-		if (ite % 3 == 0)
+	/* Print banked registers */
+	vmm_cprintf(cdev, "User Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x\n",
+		    "SP", arm_priv(vcpu)->sp_usr,
+		    "LR", arm_priv(vcpu)->lr_usr);
+	vmm_cprintf(cdev, "Supervisor Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SP", arm_priv(vcpu)->sp_svc,
+		    "LR", arm_priv(vcpu)->lr_svc,
+		    "SPSR", arm_priv(vcpu)->spsr_svc);
+	vmm_cprintf(cdev, "Monitor Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SP", arm_priv(vcpu)->sp_mon,
+		    "LR", arm_priv(vcpu)->lr_mon,
+		    "SPSR", arm_priv(vcpu)->spsr_mon);
+	vmm_cprintf(cdev, "Abort Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SP", arm_priv(vcpu)->sp_abt,
+		    "LR", arm_priv(vcpu)->lr_abt,
+		    "SPSR", arm_priv(vcpu)->spsr_abt);
+	vmm_cprintf(cdev, "Undefined Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SP", arm_priv(vcpu)->sp_und,
+		    "LR", arm_priv(vcpu)->lr_und,
+		    "SPSR", arm_priv(vcpu)->spsr_und);
+	vmm_cprintf(cdev, "IRQ Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SP", arm_priv(vcpu)->sp_irq,
+		    "LR", arm_priv(vcpu)->lr_irq,
+		    "SPSR", arm_priv(vcpu)->spsr_irq);
+	vmm_cprintf(cdev, "FIQ Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x",
+		    "SP", arm_priv(vcpu)->sp_fiq,
+		    "LR", arm_priv(vcpu)->lr_fiq,
+		    "SPSR", arm_priv(vcpu)->spsr_fiq);
+	for (i = 0; i < 5; i++) {
+		if (i % 3 == 0) {
 			vmm_cprintf(cdev, "\n");
-		vmm_cprintf(cdev, "    R%02d=0x%08x  ", (ite + 8),
-			    arm_priv(vcpu)->gpr_fiq[ite]);
+		}
+		vmm_cprintf(cdev, " %5s%02d=0x%08x",
+			   "R", (i + 8), arm_priv(vcpu)->gpr_fiq[i]);
 	}
 	vmm_cprintf(cdev, "\n");
+
+	/* Print VFP registers */
+	cpu_vcpu_vfp_regs_dump(cdev, vcpu);
+
+	/* Print CP15 registers */
+	cpu_vcpu_cp15_regs_dump(cdev, vcpu);
 }
 
 void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)

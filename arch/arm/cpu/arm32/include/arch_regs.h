@@ -75,7 +75,8 @@ struct arm_priv_cp15 {
 	/* Invalidate i-cache */
 	bool inv_icache;
 	/* Coprocessor Registers */
-	u32 c0_cpuid;
+	u32 c0_midr;
+	u32 c0_mpidr;
 	u32 c0_cachetype;
 	u32 c0_pfr0;
 	u32 c0_pfr1;
@@ -95,18 +96,21 @@ struct arm_priv_cp15 {
 	u32 c0_clid; /* Cache level. */
 	u32 c0_cssel; /* Cache size selection. */
 	u32 c1_sctlr; /* System control register. */
-	u32 c1_coproc; /* Coprocessor access register.  */
+	u32 c1_cpacr; /* Coprocessor access register.  */
 	u32 c2_ttbr0; /* MMU translation table base 0. */
 	u32 c2_ttbr1; /* MMU translation table base 1. */
 	u32 c2_ttbcr; /* MMU translation table base control. */
 	u32 c2_mask; /* MMU translation table base selection mask. */
 	u32 c2_base_mask; /* MMU translation table base 0 mask. */
-	u32 c3; /* MMU domain access control register */
+	u32 c3_dacr; /* MMU domain access control register */
 	u32 c5_ifsr; /* Fault status registers. */
 	u32 c5_dfsr; /* Fault status registers. */
+	u32 c5_aifsr; /* Auxillary fault status registers. */
+	u32 c5_adfsr; /* Auxillary fault status registers. */
 	u32 c6_ifar; /* Fault address registers. */
 	u32 c6_dfar; /* Fault address registers. */
 	u32 c7_par; /* Translation result. */
+	u32 c7_par64; /* Translation result. (To be used in future) */
 	u32 c9_insn; /* Cache lockdown registers. */
 	u32 c9_data;
 	u32 c9_pmcr; /* performance monitor control register */
@@ -170,7 +174,7 @@ struct arm_guest_priv {
 #define arm_priv(vcpu)		((struct arm_priv *)((vcpu)->arch_priv))
 #define arm_guest_priv(guest)	((struct arm_guest_priv *)((guest)->arch_priv))
 
-#define arm_cpuid(vcpu)		(arm_priv(vcpu)->cp15.c0_cpuid)
+#define arm_cpuid(vcpu)		(arm_priv(vcpu)->cp15.c0_midr)
 #define arm_set_feature(vcpu, feat) \
 				(arm_priv(vcpu)->features |= (0x1ULL << (feat)))
 #define arm_clear_feature(vcpu, feat) \
