@@ -25,6 +25,7 @@
 #define _CPU_VCPU_VFP_H__
 
 #include <vmm_types.h>
+#include <vmm_chardev.h>
 #include <vmm_manager.h>
 
 /** Save VFP registers for given VCPU */
@@ -32,6 +33,10 @@ void cpu_vcpu_vfp_regs_save(struct vmm_vcpu *vcpu);
 
 /** Restore VFP registers for given VCPU */
 void cpu_vcpu_vfp_regs_restore(struct vmm_vcpu *vcpu);
+
+/** Print VFP registers for given VCPU */
+void cpu_vcpu_vfp_regs_dump(struct vmm_chardev *cdev,
+			    struct vmm_vcpu *vcpu);
 
 /** Initialize VFP context for given VCPU */
 int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu);

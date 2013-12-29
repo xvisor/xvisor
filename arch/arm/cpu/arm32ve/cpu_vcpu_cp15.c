@@ -405,6 +405,7 @@ void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu)
 	write_tpidrurw(cp15->c13_tls1);
 	write_tpidruro(cp15->c13_tls2);
 	write_tpidrprw(cp15->c13_tls3);
+
 	/* Check whether vcpu requires dcache to be flushed on
 	 * this host CPU. This is a consequence of doing dcache
 	 * operations by set/way.
@@ -413,6 +414,98 @@ void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu)
 					   &cp15->dflush_needed)) {
 		vmm_flush_cache_all();
 	}
+}
+
+void cpu_vcpu_cp15_regs_dump(struct vmm_chardev *cdev,
+			     struct vmm_vcpu *vcpu)
+{
+	u32 i;
+	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
+
+	vmm_cprintf(cdev, "CP15 Identification Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "MIDR", cp15->c0_midr,
+		    "MPIDR", cp15->c0_mpidr,
+		    "CTR", cp15->c0_cachetype);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "PFR0", cp15->c0_pfr0,
+		    "PFR1", cp15->c0_pfr1,
+		    "DFR0", cp15->c0_dfr0);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "AFR0", cp15->c0_afr0,
+		    "MMFR0", cp15->c0_mmfr0,
+		    "MMFR1", cp15->c0_mmfr1);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "MMFR2", cp15->c0_mmfr2,
+		    "MMFR3", cp15->c0_mmfr3,
+		    "ISAR0", cp15->c0_isar0);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "ISAR1", cp15->c0_isar1,
+		    "ISAR2", cp15->c0_isar2,
+		    "ISAR3", cp15->c0_isar3);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x",
+		    "ISAR4", cp15->c0_isar4,
+		    "ISAR5", cp15->c0_isar5,
+		    "CSSID00", cp15->c0_ccsid[0]);
+	for (i = 1; i < 16; i++) {
+		if (i % 3 == 1) {
+			vmm_cprintf(cdev, "\n");
+		}
+		vmm_cprintf(cdev, " %5s%02d=0x%08x",
+			    "CCSID", i, cp15->c0_ccsid[i]);
+	}
+	vmm_cprintf(cdev, "\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x\n",
+		    "CLID", cp15->c0_clid,
+		    "CSSEL", cp15->c0_cssel);
+	vmm_cprintf(cdev, "CP15 Control Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SCTLR", cp15->c1_sctlr,
+		    "CPACR", cp15->c1_cpacr,
+		    "VBAR", cp15->c12_vbar);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x\n",
+		    "FCSEIDR", cp15->c13_fcseidr,
+		    "CNTXIDR", cp15->c13_contextidr);
+	vmm_cprintf(cdev, "CP15 MMU Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "TTBR0", cp15->c2_ttbr0,
+		    "TTBR1", cp15->c2_ttbr1,
+		    "TTBCR", cp15->c2_ttbcr);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "DACR", cp15->c3_dacr,
+		    "PRRR", cp15->c10_prrr,
+		    "NMRR", cp15->c10_nmrr);
+	vmm_cprintf(cdev, "CP15 Fault Status Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "IFSR", cp15->c5_ifsr,
+		    "DFSR", cp15->c5_dfsr,
+		    "AIFSR", cp15->c5_aifsr);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "ADFSR", cp15->c5_adfsr,
+		    "IFAR", cp15->c6_ifar,
+		    "DFAR", cp15->c6_dfar);
+	vmm_cprintf(cdev, "CP15 Address Translation Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%016llx\n",
+		    "PAR", cp15->c7_par,
+		    "PAR64", cp15->c7_par64);
+	vmm_cprintf(cdev, "CP15 Cache Lockdown Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x\n",
+		    "CILOCK", cp15->c9_insn,  /* ??? */
+		    "CDLOCK", cp15->c9_data); /* ??? */
+	vmm_cprintf(cdev, "CP15 Performance Monitor Control Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "PMCR", cp15->c9_pmcr,
+		    "PMCNTEN", cp15->c9_pmcnten,
+		    "PMOVSR", cp15->c9_pmovsr);
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "PMXEVTY", cp15->c9_pmxevtyper,
+		    "PMUSREN", cp15->c9_pmuserenr,
+		    "PMINTEN", cp15->c9_pminten);
+	vmm_cprintf(cdev, "CP15 Thread Local Storage Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "TPIDURW", cp15->c13_tls1,
+		    "TPIDURO", cp15->c13_tls2,
+		    "TPIDPRW", cp15->c13_tls3);
 }
 
 int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
@@ -520,6 +613,25 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	default:
 		break;
 	}
+
+	/* Current strategy is to show identification registers same
+	 * as underlying Host HW so that Guest sees same capabilities
+	 * as Host HW.
+	 */
+	cp15->c0_pfr0 = read_pfr0();
+	cp15->c0_pfr1 = read_pfr1();
+	cp15->c0_dfr0 = read_dfr0();
+	cp15->c0_afr0 = read_afr0();
+	cp15->c0_mmfr0 = read_mmfr0();
+	cp15->c0_mmfr1 = read_mmfr1();
+	cp15->c0_mmfr2 = read_mmfr2();
+	cp15->c0_mmfr3 = read_mmfr3();
+	cp15->c0_isar0 = read_isar0();
+	cp15->c0_isar1 = read_isar1();
+	cp15->c0_isar2 = read_isar2();
+	cp15->c0_isar3 = read_isar3();
+	cp15->c0_isar4 = read_isar4();
+	cp15->c0_isar5 = read_isar5();
 
 	/* Cache config register such as CTR, CLIDR, and
 	 * CCSIDRx should be same as that of underlying host.

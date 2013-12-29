@@ -920,16 +920,22 @@ void arch_vcpu_preempt_orphan(void)
 static void __cpu_vcpu_dump_user_reg(struct vmm_chardev *cdev,
 				     arch_regs_t *regs)
 {
-	u32 ite;
-	vmm_cprintf(cdev, "  Core Registers\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       PC=0x%08x\n",
-		    regs->sp, regs->lr, regs->pc);
-	vmm_cprintf(cdev, "    CPSR=0x%08x     \n", regs->cpsr);
-	vmm_cprintf(cdev, "  General Purpose Registers");
-	for (ite = 0; ite < CPU_GPR_COUNT; ite++) {
-		if (ite % 3 == 0)
+	u32 i;
+
+	vmm_cprintf(cdev, "Core Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SP", regs->sp,
+		    "LR", regs->lr,
+		    "PC", regs->pc);
+	vmm_cprintf(cdev, " %7s=0x%08x\n",
+		    "CPSR", regs->cpsr);
+	vmm_cprintf(cdev, "General Purpose Registers");
+	for (i = 0; i < CPU_GPR_COUNT; i++) {
+		if (i % 3 == 0) {
 			vmm_cprintf(cdev, "\n");
-		vmm_cprintf(cdev, "    R%02d=0x%08x  ", ite, regs->gpr[ite]);
+		}
+		vmm_cprintf(cdev, " %5s%02d=0x%08x",
+			    "R", i, regs->gpr[i]);
 	}
 	vmm_cprintf(cdev, "\n");
 }
@@ -941,7 +947,7 @@ void cpu_vcpu_dump_user_reg(arch_regs_t *regs)
 
 void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
-	u32 ite;
+	u32 i;
 	struct arm_priv *p;
 
 	/* For both Normal & Orphan VCPUs */
@@ -951,32 +957,51 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 		return;
 	}
 
+	/* Print banked registers */
 	p = arm_priv(vcpu);
-	vmm_cprintf(cdev, "  User Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x\n",
-		    p->sp_usr, arm_regs(vcpu)->lr);
-	vmm_cprintf(cdev, "  Supervisor Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		    p->sp_svc, p->lr_svc, p->spsr_svc);
-	vmm_cprintf(cdev, "  Abort Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		    p->sp_abt, p->lr_abt, p->spsr_abt);
-	vmm_cprintf(cdev, "  Undefined Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		    p->sp_und, p->lr_und, p->spsr_und);
-	vmm_cprintf(cdev, "  IRQ Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x\n",
-		    p->sp_irq, p->lr_irq, p->spsr_irq);
-	vmm_cprintf(cdev, "  FIQ Mode Registers (Banked)\n");
-	vmm_cprintf(cdev, "    SP=0x%08x       LR=0x%08x       SPSR=0x%08x",
-		    p->sp_fiq, p->lr_fiq, p->spsr_fiq);
-	for (ite = 0; ite < 5; ite++) {
-		if (ite % 3 == 0)
+	vmm_cprintf(cdev, "User Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x\n",
+		    "SP", p->sp_usr,
+		    "LR", arm_regs(vcpu)->lr);
+	vmm_cprintf(cdev, "Supervisor Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SP", p->sp_svc,
+		    "LR", p->lr_svc,
+		    "SPSR", p->spsr_svc);
+	vmm_cprintf(cdev, "Abort Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SP", p->sp_abt,
+		    "LR", p->lr_abt,
+		    "SPSR", p->spsr_abt);
+	vmm_cprintf(cdev, "Undefined Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SP", p->sp_und,
+		    "LR", p->lr_und,
+		    "SPSR", p->spsr_und);
+	vmm_cprintf(cdev, "IRQ Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "SP", p->sp_irq,
+		    "LR", p->lr_irq,
+		    "SPSR", p->spsr_irq);
+	vmm_cprintf(cdev, "FIQ Mode Registers (Banked)\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x",
+		    "SP", p->sp_fiq,
+		    "LR", p->lr_fiq,
+		    "SPSR", p->spsr_fiq);
+	for (i = 0; i < 5; i++) {
+		if (i % 3 == 0) {
 			vmm_cprintf(cdev, "\n");
-		vmm_cprintf(cdev, "    R%02d=0x%08x  ", 
-			    (ite + 8), p->gpr_fiq[ite]);
+		}
+		vmm_cprintf(cdev, " %5s%02d=0x%08x",
+			   "R", (i + 8), arm_priv(vcpu)->gpr_fiq[i]);
 	}
 	vmm_cprintf(cdev, "\n");
+
+	/* Print VFP registers */
+	cpu_vcpu_vfp_regs_dump(cdev, vcpu);
+
+	/* Print CP15 registers */
+	cpu_vcpu_cp15_regs_dump(cdev, vcpu);
 }
 
 void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)

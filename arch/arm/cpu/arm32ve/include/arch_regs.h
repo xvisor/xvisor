@@ -40,6 +40,10 @@ struct arch_regs {
 typedef struct arch_regs arch_regs_t;
 
 struct arm_priv_vfp {
+	/* ID Registers */
+	u32 fpsid;
+	u32 mvfr0;
+	u32 mvfr1;
 	/* Control Registers */
 	u32 fpexc;
 	u32 fpscr;

@@ -23,6 +23,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_stdio.h>
 #include <arch_regs.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_vfp.h>
@@ -124,11 +125,60 @@ void cpu_vcpu_vfp_regs_restore(struct vmm_vcpu *vcpu)
 	write_fpexc(vfp->fpexc);
 }
 
+void cpu_vcpu_vfp_regs_dump(struct vmm_chardev *cdev,
+			    struct vmm_vcpu *vcpu)
+{
+	u32 i;
+	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
+
+	/* Do nothing if:
+	 * 1. VCPU does not have VFPv3 feature
+	 */
+	if (!arm_feature(vcpu, ARM_FEATURE_VFP3)) {
+		return;
+	}
+
+	vmm_cprintf(cdev, "VFP Identification Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "FPSID", vfp->fpsid,
+		    "MVFR0", vfp->mvfr0,
+		    "MVFR1", vfp->mvfr1);
+	vmm_cprintf(cdev, "VFP System Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "FPEXC", vfp->fpexc,
+		    "FPSCR", vfp->fpscr,
+		    "FPINST", vfp->fpinst);
+	vmm_cprintf(cdev, " %7s=0x%08x\n",
+		    "FPINST2", vfp->fpinst2);
+	vmm_cprintf(cdev, "VFP Data Registers");
+	for (i = 0; i < 32; i++) {
+		if (i % 2 == 0) {
+			vmm_cprintf(cdev, "\n");
+		}
+		if (i < 16) {
+			vmm_cprintf(cdev, " %5s%02d=0x%016llx",
+				   "D", (i), vfp->fpregs1[i]);
+		} else {
+			vmm_cprintf(cdev, " %5s%02d=0x%016llx",
+				   "D", (i), vfp->fpregs2[i-16]);
+		}
+	}
+	vmm_cprintf(cdev, "\n");
+}
+
 int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu)
 {
 	u32 fpu;
 	struct arm_priv *p = arm_priv(vcpu);
 	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
+
+	/* If host HW does not have VFP (i.e. software VFP) then
+	 * clear all VFP feature flags so that VCPU always gets
+	 * undefined exception when accessing VFP registers.
+	 */
+	if (!cpu_supports_fpu()) {
+		goto no_vfp_for_vcpu;
+	}
 
 	/* If Host HW does not support VFPv3 or higher then
 	 * don't allow CP10 & CP11 access to VCPU using HCPTR
@@ -138,11 +188,28 @@ int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu)
 	    arm_feature(vcpu, ARM_FEATURE_VFP3)) {
 		p->hcptr &= ~(HCPTR_TASE_MASK);
 		p->hcptr &= ~(HCPTR_TCP11_MASK|HCPTR_TCP10_MASK);
+	} else {
+		goto no_vfp_for_vcpu;
 	}
 
 	/* Clear VCPU VFP context */
 	memset(vfp, 0, sizeof(struct arm_priv_vfp));
 
+	/* Current strategy is to show VFP identification registers
+	 * same as underlying Host HW so that Guest sees same VFP
+	 * capabilities as Host HW.
+	 */
+	vfp->fpsid = read_fpsid();
+	vfp->mvfr0 = read_mvfr0();
+	vfp->mvfr1 = read_mvfr1();
+
+	return VMM_OK;
+
+no_vfp_for_vcpu:
+	arm_clear_feature(vcpu, ARM_FEATURE_MVFR);
+	arm_clear_feature(vcpu, ARM_FEATURE_VFP);
+	arm_clear_feature(vcpu, ARM_FEATURE_VFP3);
+	arm_clear_feature(vcpu, ARM_FEATURE_VFP4);
 	return VMM_OK;
 }
 
