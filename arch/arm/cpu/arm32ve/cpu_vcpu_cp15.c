@@ -32,9 +32,6 @@
 #include <cpu_vcpu_cp15.h>
 
 #include <arm_features.h>
-#include <mmu_lpae.h>
-#include <emulate_arm.h>
-#include <emulate_thumb.h>
 
 bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu, 
 			arch_regs_t *regs,
@@ -378,8 +375,6 @@ void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 
-	mmu_lpae_stage2_chttbl(vcpu->guest->id, 
-			       arm_guest_priv(vcpu->guest)->ttbl);
 	write_vpidr(cp15->c0_midr);
 	write_vmpidr(cp15->c0_mpidr);
 	write_csselr(cp15->c0_cssel);

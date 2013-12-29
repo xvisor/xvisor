@@ -876,6 +876,9 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
 		write_hcptr(arm_priv(vcpu)->hcptr);
 		write_hstr(arm_priv(vcpu)->hstr);
+		/* Restore Stage2 MMU context */
+		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
+			       arm_guest_priv(vcpu->guest)->ttbl);
 		/* Restore VGIC registers */
 		arm_vgic_restore(vcpu);
 		/* Restore generic timer */
@@ -952,13 +955,25 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 
 	/* For both Normal & Orphan VCPUs */
 	__cpu_vcpu_dump_user_reg(cdev, arm_regs(vcpu));
+
 	/* For only Normal VCPUs */
 	if (!vcpu->is_normal) {
 		return;
 	}
 
-	/* Print banked registers */
+	/* Get private context */
 	p = arm_priv(vcpu);
+
+	/* Print hypervisor context */
+	vmm_cprintf(cdev, "Hypervisor Registers\n");
+	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "HCR", p->hcr,
+		    "HCPTR", p->hcptr,
+		    "HSTR", p->hstr);
+	vmm_cprintf(cdev, " %7s=0x%016llx\n", 
+		    "VTTBR", arm_guest_priv(vcpu->guest)->ttbl->tbl_pa);
+
+	/* Print banked registers */
 	vmm_cprintf(cdev, "User Mode Registers (Banked)\n");
 	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x\n",
 		    "SP", p->sp_usr,
