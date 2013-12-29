@@ -136,6 +136,7 @@ int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu)
 	fpu = (read_fpsid() & FPSID_ARCH_MASK) >>  FPSID_ARCH_SHIFT;
 	if (cpu_supports_fpu() && (fpu > 1) &&
 	    arm_feature(vcpu, ARM_FEATURE_VFP3)) {
+		p->hcptr &= ~(HCPTR_TASE_MASK);
 		p->hcptr &= ~(HCPTR_TCP11_MASK|HCPTR_TCP10_MASK);
 	}
 
