@@ -58,6 +58,7 @@ cpu-objs-y+= cpu_vcpu_excep.o
 cpu-objs-y+= cpu_vcpu_inject.o
 cpu-objs-y+= cpu_vcpu_emulate.o
 cpu-objs-y+= cpu_vcpu_coproc.o
+cpu-objs-y+= cpu_vcpu_cp14.o
 cpu-objs-y+= cpu_vcpu_cp15.o
 cpu-objs-y+= cpu_vcpu_vfp.o
 cpu-objs-y+= cpu_vcpu_mem.o

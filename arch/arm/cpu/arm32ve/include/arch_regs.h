@@ -54,6 +54,12 @@ struct arm_priv_vfp {
 	u64 fpregs2[16]; /* {d16-d31} 64bit floating point registers.*/
 };
 
+struct arm_priv_cp14 {
+	/* ThumbEE Registers */
+	u32 teecr;
+	u32 teehbr;
+};
+
 struct arm_priv_cp15 {
 	/* Coprocessor Registers */
 	u32 c0_midr;
@@ -141,6 +147,8 @@ struct arm_priv {
 	u32 spsr_fiq;
 	/* VFP & SMID registers (cp10 & cp11 coprocessors) */
 	struct arm_priv_vfp vfp;
+	/* Debug, Trace, and ThumbEE (cp14 coprocessor) */
+	struct arm_priv_cp14 cp14;
 	/* System control (cp15 coprocessor) */
 	struct arm_priv_cp15 cp15;
 	/* Last host CPU on which this VCPU ran */

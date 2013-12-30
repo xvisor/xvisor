@@ -47,6 +47,24 @@
 
 #define clrex()			asm volatile("clrex\n\t")
 
+/* General CP14 Register Read/Write */
+
+#define read_teecr()		({ u32 rval; asm volatile(\
+				" mrc     p14, 6, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_teecr(val)	asm volatile(\
+				" mcr     p14, 6, %0, c0, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_teehbr()		({ u32 rval; asm volatile(\
+				" mrc     p14, 6, %0, c1, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_teehbr(val)	asm volatile(\
+				" mcr     p14, 6, %0, c1, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
 /* General CP15 Register Read/Write */
 
 #define read_ctr()		({ u32 rval; asm volatile(\
@@ -778,14 +796,11 @@
 
 /* CPU feature checking macros */
 
-#define cpu_supports_securex()	({ u32 pfr1; asm volatile(\
-				" mrc p15, 0, %0, c0, c1, 1\n\t" \
-				: "=r"(pfr1) :: "memory", "cc"); \
-				(pfr1 & ID_PFR1_SECUREX_MASK); })
+#define cpu_supports_thumbee()	(((read_pfr0() & ID_PFR0_STATE3_MASK) \
+					>> ID_PFR0_STATE3_SHIFT) == 0x1)
 
-#define cpu_supports_fpu()	({ u32 fpsid; asm volatile(\
-				" mrc p10, 7, %0, c0, c0, 0\n\t" \
-				: "=r"(fpsid) :: "memory", "cc"); \
-				!(fpsid & FPSID_SW_MASK); })
+#define cpu_supports_securex()	(read_pfr1() & ID_PFR1_SECUREX_MASK)
+
+#define cpu_supports_fpu()	(!(read_fpsid() & FPSID_SW_MASK))
 
 #endif

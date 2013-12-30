@@ -29,6 +29,7 @@
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_inject.h>
+#include <cpu_vcpu_cp14.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_emulate.h>
 
@@ -161,7 +162,7 @@ int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu,
 	}
 
 	/* Estimate wakeup timeout if possible */
-	if(arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
+	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 		timeout_nsecs = generic_timer_wakeup_timeout();
 	}
 
@@ -237,12 +238,12 @@ int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu *vcpu,
 	return VMM_EFAIL;
 }
 
-/* Dummy implementation of CP14 registers */
 int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu, 
 				  arch_regs_t *regs, 
 				  u32 il, u32 iss)
 {
-	u32 Rt;
+	int rc = VMM_OK;
+	u32 opc2, opc1, CRn, Rt, CRm, t;
 
 	/* Check instruction condition */
 	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
@@ -251,26 +252,47 @@ int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu,
 	}
 
 	/* More MCR/MRC parameters */
+	opc2 = (iss & ISS_MCR_MRC_OPC2_MASK) >> ISS_MCR_MRC_OPC2_SHIFT;
+	opc1 = (iss & ISS_MCR_MRC_OPC1_MASK) >> ISS_MCR_MRC_OPC1_SHIFT;
+	CRn  = (iss & ISS_MCR_MRC_CRN_MASK) >> ISS_MCR_MRC_CRN_SHIFT;
 	Rt   = (iss & ISS_MCR_MRC_RT_MASK) >> ISS_MCR_MRC_RT_SHIFT;
+	CRm  = (iss & ISS_MCR_MRC_CRM_MASK) >> ISS_MCR_MRC_CRM_SHIFT;
 
 	if (iss & ISS_MCR_MRC_DIR_MASK) {
 		/* MRC CP14 */
-		/* Read always zero. */
-		cpu_vcpu_reg_write(vcpu, regs, Rt, 0x0);
+		if (!cpu_vcpu_cp14_read(vcpu, regs, opc1, opc2, CRn, CRm, &t)) {
+			rc = VMM_EFAIL;
+		}
+		if (!rc) {
+			cpu_vcpu_reg_write(vcpu, regs, Rt, t);
+		}
 	} else {
 		/* MCR CP14 */
-		/* Ignore it. */
+		t = cpu_vcpu_reg_read(vcpu, regs, Rt);
+		if (!cpu_vcpu_cp14_write(vcpu, regs, opc1, opc2, CRn, CRm, t)) {
+			rc = VMM_EFAIL;
+		}
 	}
 
 done:
-	/* Next instruction */
-	regs->pc += (il) ? 4 : 2;
-	/* Update ITSTATE for Thumb mode */
-	if (regs->cpsr & CPSR_THUMB_ENABLED) {
-		cpu_vcpu_update_itstate(vcpu, regs);
+	if (!rc) {
+		/* Next instruction */
+		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->cpsr & CPSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
 	}
 
-	return VMM_OK;
+	return rc;
+}
+
+/* TODO: To be implemeted later */
+int cpu_vcpu_emulate_mrrc_cp14(struct vmm_vcpu *vcpu, 
+			       arch_regs_t *regs, 
+			       u32 il, u32 iss)
+{
+	return VMM_EFAIL;
 }
 
 /* TODO: To be implemeted later */
@@ -285,7 +307,9 @@ int cpu_vcpu_emulate_cp0_cp13(struct vmm_vcpu *vcpu,
 			      arch_regs_t *regs, 
 			      u32 il, u32 iss)
 {
-	/* We don't trap SIMD & VFP access so, we should never reach here.
+	/* We don't trap SIMD & VFP access so, we should never
+	 * reach here.
+	 *
 	 * For now, just return failure so that VCPU is halted.
 	 */
 	return VMM_EFAIL;
@@ -295,7 +319,9 @@ int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs, 
 			  u32 il, u32 iss)
 {
-	/* We don't trap SIMD & VFP access so, we should never reach here.
+	/* We don't trap VMRS/VMSR instructions so, we should
+	 * never reach here.
+	 *
 	 * For now, just return failure so that VCPU is halted.
 	 */
 	return VMM_EFAIL;
@@ -313,14 +339,6 @@ int cpu_vcpu_emulate_jazelle(struct vmm_vcpu *vcpu,
 int cpu_vcpu_emulate_bxj(struct vmm_vcpu *vcpu, 
 			 arch_regs_t *regs, 
 			 u32 il, u32 iss)
-{
-	return VMM_EFAIL;
-}
-
-/* TODO: To be implemeted later */
-int cpu_vcpu_emulate_mrrc_cp14(struct vmm_vcpu *vcpu, 
-			       arch_regs_t *regs, 
-			       u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
