@@ -32,7 +32,7 @@
 bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm,
-			u64 *data)
+			u32 *data)
 {
 	*data = 0x0;
 	switch (CRn) {
@@ -100,7 +100,7 @@ bad_reg:
 bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			 arch_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm,
-			 u64 data)
+			 u32 data)
 {
 	switch (CRn) {
 	case 1: /* System configuration.  */
@@ -125,7 +125,7 @@ bad_reg:
 bool cpu_vcpu_cp14_read(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm,
-			u64 *data)
+			u32 *data)
 {
 	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
 
@@ -165,7 +165,7 @@ bad_reg:
 bool cpu_vcpu_cp14_write(struct vmm_vcpu *vcpu,
 			 arch_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm,
-			 u64 data)
+			 u32 data)
 {
 	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
 

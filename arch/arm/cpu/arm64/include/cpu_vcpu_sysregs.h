@@ -31,25 +31,25 @@
 bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm,
-			u64 *data);
+			u32 *data);
 
 /** Write one CP15 register */
 bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			 arch_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm,
-			 u64 data);
+			 u32 data);
 
 /** Read one CP14 register */
 bool cpu_vcpu_cp14_read(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
 			u32 opc1, u32 opc2, u32 CRn, u32 CRm,
-			u64 *data);
+			u32 *data);
 
 /** Write one CP14 register */
 bool cpu_vcpu_cp14_write(struct vmm_vcpu *vcpu,
 			 arch_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm,
-			 u64 data);
+			 u32 data);
 
 /** Read one system register */
 bool cpu_vcpu_sysregs_read(struct vmm_vcpu *vcpu,

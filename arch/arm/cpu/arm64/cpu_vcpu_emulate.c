@@ -191,8 +191,7 @@ int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu,
 				  u32 il, u32 iss)
 {
 	int rc = VMM_OK;
-	u32 opc2, opc1, CRn, Rt, CRm;
-	u64 t;
+	u32 opc2, opc1, CRn, Rt, CRm, t;
 
 	/* Check instruction condition */
 	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
@@ -249,8 +248,7 @@ int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu,
 				  u32 il, u32 iss)
 {
 	int rc = VMM_OK;
-	u32 opc2, opc1, CRn, Rt, CRm;
-	u64 t;
+	u32 opc2, opc1, CRn, Rt, CRm, t;
 
 	/* Check instruction condition */
 	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
