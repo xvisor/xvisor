@@ -40,12 +40,20 @@ struct arch_regs {
 typedef struct arch_regs arch_regs_t;
 
 struct arm_priv_vfp {
+	/* Control Registers */
 	u32 fpexc;
 	u32 fpscr;
 	u32 fpinst;
 	u32 fpinst2;
+	/* General Purpose Registers */
 	u64 fpregs1[16];  /* {d0-d15} 64bit floating point registers.*/
 	u64 fpregs2[16];  /* {d16-d31} 64bit floating point registers.*/
+};
+
+struct arm_priv_cp14 {
+	/* ThumbEE Registers */
+	u32 teecr;
+	u32 teehbr;
 };
 
 struct arm_vtlb_entry {
@@ -161,6 +169,8 @@ struct arm_priv {
 	u64 features;
 	/* VFP context (cp10 & cp11 coprocessors) */
 	struct arm_priv_vfp vfp;
+	/* Debug, Trace, and ThumbEE (cp14 coprocessor) */
+	struct arm_priv_cp14 cp14;
 	/* System control (cp15 coprocessor) */
 	struct arm_priv_cp15 cp15;
 } __attribute((packed));

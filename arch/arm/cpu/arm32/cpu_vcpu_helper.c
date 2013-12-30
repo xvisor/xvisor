@@ -31,6 +31,7 @@
 #include <cpu_defines.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_vfp.h>
+#include <cpu_vcpu_cp14.h>
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_helper.h>
 #include <arm_features.h>
@@ -904,6 +905,11 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		goto fail_vfp_init;
 	}
 
+	rc = cpu_vcpu_cp14_init(vcpu);
+	if (rc) {
+		goto fail_cp14_init;
+	}
+
 	rc = cpu_vcpu_cp15_init(vcpu, cpuid);
 	if (rc) {
 		goto fail_cp15_init;
@@ -912,6 +918,10 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	return VMM_OK;
 
 fail_cp15_init:
+	if (!vcpu->reset_count) {
+		cpu_vcpu_cp14_deinit(vcpu);
+	}
+fail_cp14_init:
 	if (!vcpu->reset_count) {
 		cpu_vcpu_vfp_deinit(vcpu);
 	}
@@ -938,6 +948,11 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 
 	/* Cleanup CP15 */
 	if ((rc = cpu_vcpu_cp15_deinit(vcpu))) {
+		return rc;
+	}
+
+	/* Cleanup CP14 */
+	if ((rc = cpu_vcpu_cp14_deinit(vcpu))) {
 		return rc;
 	}
 
@@ -971,6 +986,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			cpu_vcpu_banked_regs_save(tvcpu, regs);
 			/* Save VFP regs */
 			cpu_vcpu_vfp_regs_save(tvcpu);
+			/* Save CP14 regs */
+			cpu_vcpu_cp14_regs_save(tvcpu);
 			/* Save CP15 regs */
 			cpu_vcpu_cp15_regs_save(tvcpu);
 		}
@@ -987,6 +1004,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	if (vcpu->is_normal) {
 		/* Restore VFP regs */
 		cpu_vcpu_vfp_regs_restore(vcpu);
+		/* Restore CP14 regs */
+		cpu_vcpu_cp14_regs_restore(vcpu);
 		/* Restore CP15 regs */
 		cpu_vcpu_cp15_regs_restore(vcpu);
 		/* Restore banked registers */
@@ -1099,6 +1118,9 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 
 	/* Print VFP registers */
 	cpu_vcpu_vfp_regs_dump(cdev, vcpu);
+
+	/* Print CP14 registers */
+	cpu_vcpu_cp14_regs_dump(cdev, vcpu);
 
 	/* Print CP15 registers */
 	cpu_vcpu_cp15_regs_dump(cdev, vcpu);

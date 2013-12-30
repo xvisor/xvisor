@@ -106,9 +106,53 @@ static inline u16 rev16(u16 v)
 
 #endif
 
+/* General CP14 Register Read/Write */
+
+#define read_teecr()		({ u32 rval; asm volatile(\
+				" mrc     p14, 6, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_teecr(val)	asm volatile(\
+				" mcr     p14, 6, %0, c0, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_teehbr()		({ u32 rval; asm volatile(\
+				" mrc     p14, 6, %0, c1, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_teehbr(val)	asm volatile(\
+				" mcr     p14, 6, %0, c1, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+/* General CP15 Register Read/Write */
+
 #define read_midr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c0, c0, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_ctr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c0, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_mpidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c0, 5\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_ccsidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 1, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_clidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 1, %0, c0, c0, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_csselr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 2, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_csselr(val)	asm volatile(\
+				" mcr     p15, 2, %0, c0, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
 
 #define read_pfr0()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c0, c1, 0\n\t" \
@@ -164,30 +208,6 @@ static inline u16 rev16(u16 v)
 
 #define read_isar5()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c0, c2, 5\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define read_ccsidr()		({ u32 rval; asm volatile(\
-				" mrc     p15, 1, %0, c0, c0, 0\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define read_csselr()		({ u32 rval; asm volatile(\
-				" mrc     p15, 2, %0, c0, c0, 0\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define write_csselr(val)	asm volatile(\
-				" mcr     p15, 2, %0, c0, c0, 0\n\t" \
-				:: "r" ((val)) : "memory", "cc")
-
-#define read_clidr()		({ u32 rval; asm volatile(\
-				" mrc     p15, 1, %0, c0, c0, 1\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define read_ctr()		({ u32 rval; asm volatile(\
-				" mrc     p15, 0, %0, c0, c0, 1\n\t" \
-				: "=r" (rval) : : "memory", "cc"); rval;})
-
-#define read_mpidr()		({ u32 rval; asm volatile(\
-				" mrc     p15, 0, %0, c0, c0, 5\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
 #define read_sctlr()		({ u32 rval; asm volatile(\
@@ -488,10 +508,20 @@ extern unsigned int *_ifar;
 
 /* CPU feature checking macros */
 
-#define cpu_supports_securex()	({ u32 pfr1; asm volatile(\
-				" mrc p15, 0, %0, c0, c1, 1\n\t" \
-				: "=r"(pfr1) :: "memory", "cc"); \
-				(pfr1 & ID_PFR1_SECUREX_MASK); })
+#ifdef CONFIG_ARMV7
+
+#define cpu_supports_thumbee()	(((read_pfr0() & ID_PFR0_STATE3_MASK) \
+					>> ID_PFR0_STATE3_SHIFT) == 0x1)
+
+#define cpu_supports_securex()	(read_pfr1() & ID_PFR1_SECUREX_MASK)
+
+#else
+
+#define cpu_supports_thumbee()	0
+
+#define cpu_supports_securex()	0
+
+#endif
 
 #define cpu_supports_fpu()	(!(read_fpsid() & FPSID_SW_MASK))
 

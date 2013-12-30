@@ -69,6 +69,7 @@ cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_coproc.o
 cpu-objs-y+= cpu_vcpu_vfp.o
+cpu-objs-y+= cpu_vcpu_cp14.o
 cpu-objs-y+= cpu_vcpu_cp15.o
 cpu-objs-y+= cpu_vcpu_mem.o
 cpu-objs-y+= cpu_vcpu_irq.o
