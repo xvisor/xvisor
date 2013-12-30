@@ -32,14 +32,13 @@
 
 void cpu_vcpu_vfp_regs_save(struct vmm_vcpu *vcpu)
 {
+	struct arm_priv *p = arm_priv(vcpu);
 	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
 
 	/* Do nothing if:
-	 * 1. VCPU does not have VFPv3 feature
-	 * 2. Floating point access is disabled
+	 * 1. Floating point access is disabled
 	 */
-	if (!arm_feature(vcpu, ARM_FEATURE_VFP3) ||
-	    (mrs(cptr_el2) & CPTR_TFP_MASK)) {
+	if (p->cptr & CPTR_TFP_MASK) {
 		return;
 	}
 
@@ -73,14 +72,13 @@ void cpu_vcpu_vfp_regs_save(struct vmm_vcpu *vcpu)
 
 void cpu_vcpu_vfp_regs_restore(struct vmm_vcpu *vcpu)
 {
+	struct arm_priv *p = arm_priv(vcpu);
 	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
 
 	/* Do nothing if:
-	 * 1. VCPU does not have VFPv3 feature
-	 * 2. Floating point access is disabled
+	 * 1. Floating point access is disabled
 	 */
-	if (!arm_feature(vcpu, ARM_FEATURE_VFP3) ||
-	    (mrs(cptr_el2) & CPTR_TFP_MASK)) {
+	if (p->cptr & CPTR_TFP_MASK) {
 		return;
 	}
 
@@ -151,6 +149,9 @@ int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu)
 	struct arm_priv *p = arm_priv(vcpu);
 	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
 
+	/* Clear VCPU VFP context */
+	memset(vfp, 0, sizeof(struct arm_priv_vfp));
+
 	/* If host HW does not have VFP (i.e. software VFP) then
 	 * clear all VFP feature flags so that VCPU always gets
 	 * undefined exception when accessing VFP registers.
@@ -168,12 +169,9 @@ int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu)
 		goto no_vfp_for_vcpu;
 	}
 
-	/* Clear VCPU VFP context */
-	memset(vfp, 0, sizeof(struct arm_priv_vfp));
-
 	/* Current strategy is to show VFP feature registers
-	 * same as underlying Host HW so that Guest sees same VFP
-	 * capabilities as Host HW.
+	 * same as underlying Host HW so that Guest sees same
+	 * VFP capabilities as Host HW.
 	 */
 	vfp->mvfr0 = mrs(mvfr0_el1);
 	vfp->mvfr1 = mrs(mvfr1_el1);
