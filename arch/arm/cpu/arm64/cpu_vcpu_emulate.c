@@ -41,7 +41,7 @@
  * A conditional instruction can trap, even though its condition was
  * FALSE. Hence emulate condition checking in software!
  */
-static bool cpu_vcpu_condition_check(struct vmm_vcpu *vcpu, 
+static bool cpu_vcpu_condition_check(struct vmm_vcpu *vcpu,
 				     arch_regs_t *regs,
 				     u32 iss)
 {
@@ -124,7 +124,7 @@ static bool cpu_vcpu_condition_check(struct vmm_vcpu *vcpu,
  * When IO abort occurs from Thumb IF-THEN blocks, the ITSTATE field 
  * of the CPSR is not updated, so we do this manually.
  */
-static void cpu_vcpu_update_itstate(struct vmm_vcpu *vcpu, 
+static void cpu_vcpu_update_itstate(struct vmm_vcpu *vcpu,
 				    arch_regs_t *regs)
 {
 	u32 itbits, cond;
@@ -149,7 +149,7 @@ static void cpu_vcpu_update_itstate(struct vmm_vcpu *vcpu,
 	regs->pstate |= (itbits & 0x3) << 25;
 }
 
-int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu,
 			     arch_regs_t *regs,
 			     u32 il, u32 iss)
 {
@@ -186,8 +186,8 @@ done:
 	return VMM_OK;
 }
 
-int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu, 
-				  arch_regs_t *regs, 
+int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu,
+				  arch_regs_t *regs,
 				  u32 il, u32 iss)
 {
 	int rc = VMM_OK;
@@ -237,19 +237,20 @@ done:
 }
 
 /* TODO: To be implemented later */
-int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu *vcpu, 
-				    arch_regs_t *regs, 
+int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu *vcpu,
+				    arch_regs_t *regs,
 				    u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
 
-/* TODO: To be implemented later */
-int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu, 
-				  arch_regs_t * regs, 
+int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu,
+				  arch_regs_t * regs,
 				  u32 il, u32 iss)
 {
-	u32 Rt;
+	int rc = VMM_OK;
+	u32 opc2, opc1, CRn, Rt, CRm;
+	u64 t;
 
 	/* Check instruction condition */
 	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
@@ -258,66 +259,83 @@ int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu,
 	}
 
 	/* More MCR/MRC parameters */
-	Rt = (iss & ISS_MCR_MRC_RT_MASK) >> ISS_MCR_MRC_RT_SHIFT;
+	opc2 = (iss & ISS_MCR_MRC_OPC2_MASK) >> ISS_MCR_MRC_OPC2_SHIFT;
+	opc1 = (iss & ISS_MCR_MRC_OPC1_MASK) >> ISS_MCR_MRC_OPC1_SHIFT;
+	CRn  = (iss & ISS_MCR_MRC_CRN_MASK) >> ISS_MCR_MRC_CRN_SHIFT;
+	Rt   = (iss & ISS_MCR_MRC_RT_MASK) >> ISS_MCR_MRC_RT_SHIFT;
+	CRm  = (iss & ISS_MCR_MRC_CRM_MASK) >> ISS_MCR_MRC_CRM_SHIFT;
 
 	if (iss & ISS_MCR_MRC_DIR_MASK) {
 		/* MRC CP14 */
-		/* Read always zero. */
-		cpu_vcpu_reg64_write(vcpu, regs, Rt, 0x0);
+		if (!cpu_vcpu_cp14_read(vcpu, regs, opc1, opc2, CRn, CRm, &t)) {
+			rc = VMM_EFAIL;
+		}
+		if (!rc) {
+			cpu_vcpu_reg64_write(vcpu, regs, Rt, t);
+		}
 	} else {
 		/* MCR CP14 */
-		/* Ignore it. */
+		t = cpu_vcpu_reg64_read(vcpu, regs, Rt);
+		if (!cpu_vcpu_cp14_write(vcpu, regs, opc1, opc2, CRn, CRm, t)) {
+			rc = VMM_EFAIL;
+		}
 	}
 
 done:
-	/* Next instruction */
-	regs->pc += (il) ? 4 : 2;
-	/* Update ITSTATE for Thumb mode */
-	if (regs->pstate & PSR_THUMB_ENABLED) {
-		cpu_vcpu_update_itstate(vcpu, regs);
+	if (!rc) {
+		/* Next instruction */
+		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->pstate & PSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
 	}
 
-	return VMM_OK;
+	return rc;
 }
 
 /* TODO: To be implemented later */
-int cpu_vcpu_emulate_ldc_stc_cp14(struct vmm_vcpu *vcpu, 
-				  arch_regs_t *regs, 
-				  u32 il, u32 iss)
-{
-	return VMM_EFAIL;
-}
-
-int cpu_vcpu_emulate_simd_fp_regs(struct vmm_vcpu *vcpu, 
-				  arch_regs_t *regs, 
-				  u32 il, u32 iss)
-{
-	/* We don't trap SIMD & VFP access so, we should never reach here.
-	 * For now, just return failure so that VCPU is halted.
-	 */
-	return VMM_EFAIL;
-}
-
-int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu, 
-			  arch_regs_t *regs, 
-			  u32 il, u32 iss)
-{
-	/* We don't trap SIMD & VFP access so, we should never reach here.
-	 * For now, just return failure so that VCPU is halted.
-	 */
-	return VMM_EFAIL;
-}
-
-/* TODO: To be implemented later */
-int cpu_vcpu_emulate_mcrr_mrrc_cp14(struct vmm_vcpu *vcpu, 
-				    arch_regs_t *regs, 
+int cpu_vcpu_emulate_mcrr_mrrc_cp14(struct vmm_vcpu *vcpu,
+				    arch_regs_t *regs,
 				    u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
 
-static int do_psci_call(struct vmm_vcpu *vcpu, 
-			arch_regs_t *regs, 
+/* TODO: To be implemented later */
+int cpu_vcpu_emulate_ldc_stc_cp14(struct vmm_vcpu *vcpu,
+				  arch_regs_t *regs,
+				  u32 il, u32 iss)
+{
+	return VMM_EFAIL;
+}
+
+int cpu_vcpu_emulate_simd_fp_regs(struct vmm_vcpu *vcpu,
+				  arch_regs_t *regs,
+				  u32 il, u32 iss)
+{
+	/* We don't trap SIMD & VFP access so, we should never
+	 * reach here.
+	 *
+	 * For now, just return failure so that VCPU is halted.
+	 */
+	return VMM_EFAIL;
+}
+
+int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu,
+			  arch_regs_t *regs,
+			  u32 il, u32 iss)
+{
+	/* We don't trap VMRS/VMSR instructions so, we should
+	 * never reach here.
+	 *
+	 * For now, just return failure so that VCPU is halted.
+	 */
+	return VMM_EFAIL;
+}
+
+static int do_psci_call(struct vmm_vcpu *vcpu,
+			arch_regs_t *regs,
 			u32 il, u32 iss,
 			bool is_smc)
 {
@@ -333,36 +351,36 @@ static int do_psci_call(struct vmm_vcpu *vcpu,
 	return rc;
 }
 
-int cpu_vcpu_emulate_hvc32(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_hvc32(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss)
 {
 	return do_psci_call(vcpu, regs, il, iss, FALSE);
 }
 
-int cpu_vcpu_emulate_hvc64(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_hvc64(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss)
 {
 	return do_psci_call(vcpu, regs, il, iss, FALSE);
 }
 
-int cpu_vcpu_emulate_smc32(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_smc32(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss)
 {
 	return do_psci_call(vcpu, regs, il, iss, TRUE);
 }
 
-int cpu_vcpu_emulate_smc64(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_smc64(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss)
 {
 	return do_psci_call(vcpu, regs, il, iss, TRUE);
 }
 
-int cpu_vcpu_emulate_msr_mrs_system(struct vmm_vcpu *vcpu, 
-				    arch_regs_t *regs, 
+int cpu_vcpu_emulate_msr_mrs_system(struct vmm_vcpu *vcpu,
+				    arch_regs_t *regs,
 				    u32 il, u32 iss)
 {
 	u64 data;
@@ -402,7 +420,7 @@ static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
 	return imm & ((1 << bits) - 1);
 }
 
-int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs,
 			  u32 il, u32 iss,
 			  physical_addr_t ipa)
@@ -467,7 +485,7 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	return rc;
 }
 
-int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs,
 			   u32 il, u32 iss,
 			   physical_addr_t ipa)

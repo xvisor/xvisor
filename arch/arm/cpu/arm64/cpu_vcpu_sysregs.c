@@ -29,9 +29,9 @@
 
 #include <arm_features.h>
 
-bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu, 
+bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
-			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
+			u32 opc1, u32 opc2, u32 CRn, u32 CRm,
 			u64 *data)
 {
 	*data = 0x0;
@@ -97,9 +97,9 @@ bad_reg:
 	return FALSE;
 }
 
-bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu, 
+bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			 arch_regs_t *regs,
-			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
+			 u32 opc1, u32 opc2, u32 CRn, u32 CRm,
 			 u64 data)
 {
 	switch (CRn) {
@@ -122,9 +122,9 @@ bad_reg:
 	return FALSE;
 }
 
-bool cpu_vcpu_cp14_read(struct vmm_vcpu *vcpu, 
+bool cpu_vcpu_cp14_read(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
-			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
+			u32 opc1, u32 opc2, u32 CRn, u32 CRm,
 			u64 *data)
 {
 	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
@@ -132,15 +132,19 @@ bool cpu_vcpu_cp14_read(struct vmm_vcpu *vcpu,
 	*data = 0x0;
 	switch (opc1) {
 	case 6: /* ThumbEE registers */
+		if (!arm_feature(vcpu, ARM_FEATURE_THUMB2EE))
+			goto bad_reg;
 		switch (CRn) {
-			case 0:	/* TEECR */
-				*data = s->teecr32_el1;
-				break;
-			case 1:	/* TEEHBR */
-				*data = s->teehbr32_el1;
-				break;
-			default:
-				goto bad_reg;
+		case 0:	/* TEECR */
+			s->teecr32_el1 = mrs(teecr32_el1);
+			*data = s->teecr32_el1;
+			break;
+		case 1:	/* TEEHBR */
+			s->teehbr32_el1 = mrs(teehbr32_el1);
+			*data = s->teehbr32_el1;
+			break;
+		default:
+			goto bad_reg;
 		};
 		break;
 	case 0:	/* Debug registers */
@@ -158,24 +162,28 @@ bad_reg:
 	return FALSE;
 }
 
-bool cpu_vcpu_cp14_write(struct vmm_vcpu *vcpu, 
+bool cpu_vcpu_cp14_write(struct vmm_vcpu *vcpu,
 			 arch_regs_t *regs,
-			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
+			 u32 opc1, u32 opc2, u32 CRn, u32 CRm,
 			 u64 data)
 {
 	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
 
 	switch (opc1) {
 	case 6: /* ThumbEE registers */
+		if (!arm_feature(vcpu, ARM_FEATURE_THUMB2EE))
+			goto bad_reg;
 		switch (CRn) {
-			case 0:	/* TEECR */
-				s->teecr32_el1 = data;
-				break;
-			case 1:	/* TEEHBR */
-				s->teehbr32_el1 = data;
-				break;
-			default:
-				goto bad_reg;
+		case 0:	/* TEECR */
+			msr(teecr32_el1, data);
+			s->teecr32_el1 = data;
+			break;
+		case 1:	/* TEEHBR */
+			msr(teehbr32_el1, data);
+			s->teehbr32_el1 = data;
+			break;
+		default:
+			goto bad_reg;
 		};
 		break;
 	case 0:	/* Debug registers */
@@ -193,7 +201,7 @@ bad_reg:
 	return FALSE;
 }
 
-bool cpu_vcpu_sysregs_read(struct vmm_vcpu *vcpu, 
+bool cpu_vcpu_sysregs_read(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs,
 			   u32 iss_sysreg, u64 *data)
 {
@@ -216,7 +224,7 @@ bad_reg:
 	return FALSE;
 }
 
-bool cpu_vcpu_sysregs_write(struct vmm_vcpu *vcpu, 
+bool cpu_vcpu_sysregs_write(struct vmm_vcpu *vcpu,
 			    arch_regs_t *regs,
 			    u32 iss_sysreg, u64 data)
 {
@@ -360,7 +368,7 @@ void cpu_vcpu_sysregs_dump(struct vmm_chardev *cdev,
 	vmm_cprintf(cdev, " %11s=0x%08lx         %11s=0x%08lx\n",
 		    "DACR32_EL2", s->dacr32_el2,
 		    "IFSR32_EL2", s->ifsr32_el2);
-	if (!cpu_supports_thumbee()) {
+	if (!arm_feature(vcpu, ARM_FEATURE_THUMB2EE)) {
 		return;
 	}
 	vmm_cprintf(cdev, " %11s=0x%08lx         %11s=0x%08lx\n",
@@ -399,6 +407,14 @@ int cpu_vcpu_sysregs_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		s->mpidr_el1 = vcpu->subid;
 		break;
 	};
+
+	/* If host HW does not have ThumbEE then clear ThumbEE feature
+	 * flag so that VCPU undefined exception when accessing these
+	 * registers.
+	 */
+	if (!cpu_supports_thumbee()) {
+		arm_clear_feature(vcpu, ARM_FEATURE_THUMB2EE);
+	}
 
 	return VMM_OK;
 }
