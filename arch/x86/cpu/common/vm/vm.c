@@ -115,14 +115,7 @@ int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 	int ret = VMM_EFAIL;
 	int boffs;
 
-	/*
-	 * FIXME: context->n_cr3.
-	 * When we enable the usage of nested page tables we need to
-	 * set this cr3 based on what's created during guest init.
-	 */
-	//gpriv = x86_guest_priv(context->assoc_vcpu->guest);
-	//context->n_cr3 = (u64)gpriv->g_npt->tbl_pa;
-	//VM_LOG(LVL_DEBUG, "Nested page table base: 0x%lx\n", context->n_cr3);
+	context->cpuinfo = cpuinfo;
 
 	context->shadow_pgt = mmu_pgtbl_alloc(&host_pgtbl_ctl, PGTBL_STAGE_2);
 	if (!context->shadow_pgt) {

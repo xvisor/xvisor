@@ -24,6 +24,8 @@ extern int vm_default_log_lvl;
 		}							\
 	}while(0);
 
+#define MOV_CRn_INST_SZ		3
+
 enum guest_regs {
 	GUEST_REGS_RAX = 0,
 	GUEST_REGS_RCX = 1,
@@ -41,7 +43,16 @@ enum guest_regs {
 	GUEST_REGS_R13 = 13,
 	GUEST_REGS_R14 = 14,
 	GUEST_REGS_R15 = 15,
-	GUEST_REGS_RIP,
+	GUEST_REGS_RIP = 16,
+	GUEST_REGS_CR0 = 17,
+	GUEST_REGS_CR1 = 18,
+	GUEST_REGS_CR2 = 19,
+	GUEST_REGS_CR3 = 20,
+	GUEST_REGS_CR4 = 21,
+	GUEST_REGS_GDTR = 22,
+	GUEST_REGS_LDTR = 23,
+	GUEST_REGS_TR = 24,
+	GUEST_REGS_IDTR = 25,
 	NR_GUEST_REGS
 };
 
@@ -83,6 +94,7 @@ struct vcpu_intercept_table {
 };
 
 struct vcpu_hw_context {
+	struct cpuinfo_x86 *cpuinfo;
 	struct vmcb *vmcb;
 	struct vmcs *vmcs;
 	struct vmm_vcpu *assoc_vcpu; /**< vCPU associated to this hardware context */

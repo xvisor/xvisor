@@ -28,11 +28,20 @@
 
 extern void handle_vmexit (struct vcpu_hw_context *context);
 
+#define _INTRCPT_READ_CR0_OFFSET	0
+#define INTRCPT_READ_CR0		(1 << (_INTRCPT_READ_CR0_OFFSET))
+#define INTRCPT_READ_CR1		(1 << (_INTRCPT_READ_CR0_OFFSET + 1))
+#define INTRCPT_READ_CR2		(1 << (_INTRCPT_READ_CR0_OFFSET + 2))
+#define INTRCPT_READ_CR3		(1 << (_INTRCPT_READ_CR0_OFFSET + 3))
+#define INTRCPT_READ_CR4		(1 << (_INTRCPT_READ_CR0_OFFSET + 4))
+
 /* Flags for CRn access interception */
 #define _INTRCPT_WRITE_CR0_OFFSET	16
-#define INTRCPT_WRITE_CR3		(1 << (_INTRCPT_WRITE_CR0_OFFSET + 3))
 #define INTRCPT_WRITE_CR0		(1 << (_INTRCPT_WRITE_CR0_OFFSET))
-
+#define INTRCPT_WRITE_CR1		(1 << (_INTRCPT_WRITE_CR0_OFFSET + 1))
+#define INTRCPT_WRITE_CR2		(1 << (_INTRCPT_WRITE_CR0_OFFSET + 2))
+#define INTRCPT_WRITE_CR3		(1 << (_INTRCPT_WRITE_CR0_OFFSET + 3))
+#define INTRCPT_WRITE_CR4		(1 << (_INTRCPT_WRITE_CR0_OFFSET + 4))
 /*
  * Flags for exception intercept word
  * 1 << vector associated with the exception - VMCB + 8h

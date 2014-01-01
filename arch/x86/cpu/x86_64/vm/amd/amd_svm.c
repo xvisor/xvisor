@@ -93,7 +93,11 @@ static void set_control_params (struct vcpu_hw_context *context)
 	vmcb->tsc_offset = 0;
 	vmcb->guest_asid = 1;
 
-	vmcb->cr_intercepts |= (INTRCPT_WRITE_CR3 | INTRCPT_WRITE_CR0);
+	vmcb->cr_intercepts |= (INTRCPT_WRITE_CR3  | INTRCPT_READ_CR3 |
+				INTRCPT_WRITE_CR0  | INTRCPT_READ_CR0 |
+				INTRCPT_WRITE_CR2  | INTRCPT_READ_CR2 |
+				INTRCPT_WRITE_CR1  | INTRCPT_READ_CR1 |
+				INTRCPT_WRITE_CR4  | INTRCPT_READ_CR4);
 
 	/* Intercept the VMRUN and VMMCALL instructions */
 	vmcb->general2_intercepts = (INTRCPT_VMRUN | INTRCPT_VMMCALL);
@@ -101,13 +105,17 @@ static void set_control_params (struct vcpu_hw_context *context)
 	vmcb->general1_intercepts |= (INTRCPT_INTN       |
 				      INTRCPT_INTR       |
 				      INTRCPT_CR0_WR     |
+				      //INTRCPT_GDTR_RD    |
+				      //INTRCPT_GDTR_WR    |
+				      //INTRCPT_IDTR_RD    |
+				      //INTRCPT_IDTR_WR    |
 				      INTRCPT_LDTR_RD    |
 				      INTRCPT_LDTR_WR    |
 				      INTRCPT_TR_RD      |
 				      INTRCPT_TR_WR      |
 				      INTRCPT_RDTSC      |
-				      INTRCPT_PUSHF      |
-				      INTRCPT_POPF       |
+				      //INTRCPT_PUSHF      |
+				      //INTRCPT_POPF       |
 				      INTRCPT_CPUID      |
 				      INTRCPT_IRET       |
 				      INTRCPT_IOIO_PROT  |
@@ -133,6 +141,8 @@ static void set_control_params (struct vcpu_hw_context *context)
 				       INTRCPT_EXC_NO_STK_SEG|
 				       INTRCPT_EXC_GPF       |
 				       INTRCPT_EXC_PF);
+
+	vmcb->exception_intercepts = 0xffffffffUL;
 }
 
 static void set_vm_to_powerup_state(struct vcpu_hw_context *context)
@@ -145,7 +155,7 @@ static void set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	 * called Paged Real Mode. It helps virtualization of the
 	 * Real mode boot. AMD PACIFICA SPEC Section 2.15.
 	 */
-	vmcb->cr0 = (X86_CR0_PG | X86_CR0_ET | X86_CR0_CD | X86_CR0_NW);
+	vmcb->cr0 = (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW | X86_CR0_PG);
 	vmcb->cr2 = 0;
 	vmcb->cr4 = 0;
 	vmcb->rflags = 0x2;

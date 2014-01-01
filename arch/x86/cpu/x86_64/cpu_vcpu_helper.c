@@ -116,9 +116,9 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 			switch (funcs) {
 			case CPUID_EXTENDED_BASE:
 				func_response->resp_eax = CPUID_EXTENDED_FUNC_LIMIT;
-				func_response->resp_ebx = 0x41757468; /*htuA*/
-				func_response->resp_ecx = 0x63414d44; /*DMAc*/
-				func_response->resp_edx = 0x656e7469; /*itne*/
+				func_response->resp_ebx = 0x73697658; /*sivX*/
+				func_response->resp_ecx = 0x76586f72; /*vXor*/
+				func_response->resp_edx = 0x726f7369; /*rosi*/
 				break;
 
 			case CPUID_EXTENDED_FEATURES: /* replica of base features */
@@ -330,6 +330,45 @@ void arch_vcpu_emergency_shutdown(struct vcpu_hw_context *context)
 /*---------------------------------*
  * Guest's vCPU's helper funstions *
  *---------------------------------*/
+physical_addr_t guest_virtual_to_physical(struct vcpu_hw_context *context, virtual_addr_t vaddr)
+{
+	/* If guest is in real or paged real mode, virtual = physical. */
+	if (!(context->vmcb->cr0 & X86_CR0_PG)
+	    ||((context->vmcb->cr0 & X86_CR0_PG)
+	       && !(context->vmcb->cr0 & X86_CR0_PE)))
+		return vaddr;
+
+	/*
+	 * FIXME: Check if guest has moved to long mode, in which case
+	 * This page walk won't apply. This is only for 32-bit systems.
+	 *
+	 * FIXME: Here physical address extension and page size extention
+	 * is not accounted.
+	 */
+        u32 pde, pte;
+	physical_addr_t pte_addr, pde_addr;
+
+        /* page directory entry */
+        pde_addr = (context->vmcb->cr3 & ~0xfff) + ((vaddr >> 20) & 0xffc);
+	if (vmm_guest_memory_read(context->assoc_vcpu->guest, pde_addr, &pde,
+				  sizeof(pde)) < sizeof(pde))
+		return 0;
+
+        if (!(pde & 0x1))
+		return 0;
+
+	/* page directory entry */
+	pte_addr = ((pde & ~0xfff) + ((vaddr >> 10) & 0xffc));
+	if (vmm_guest_memory_read(context->assoc_vcpu->guest, pte_addr, &pte,
+				  sizeof(pte)) < sizeof(pte))
+		return 0;
+
+	if (!(pte & 0x1))
+		return 0;
+
+	return ((pte & PAGE_MASK) + (vaddr & ~PAGE_MASK));
+}
+
 int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 			physical_addr_t paddr, size_t size)
 {
