@@ -125,6 +125,7 @@ static inline void gather_amd_features(struct cpuinfo_x86 *cpu_info)
 		cpuid(CPUID_EXTENDED_SVM_IDENTIFIER, &a, &b, &c, &d);
 		cpu_info->hw_nested_paging = (d & 0x1UL);
 		cpu_info->hw_nr_asids = b;
+		cpu_info->decode_assist = ((d >> 7) & 0x1);
 	}
 }
 

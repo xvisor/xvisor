@@ -236,6 +236,7 @@ struct cpuinfo_x86 {
 	u16 l3_cache_size;
 	u8 hw_virt_available;
 	u8 hw_nested_paging;
+	u8 decode_assist;
 	u32 hw_nr_asids;
 }__aligned(ARCH_CACHE_LINE_SIZE);
 
