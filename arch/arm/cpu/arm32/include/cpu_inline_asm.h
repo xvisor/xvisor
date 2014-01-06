@@ -508,7 +508,7 @@ extern unsigned int *_ifar;
 
 /* CPU feature checking macros */
 
-#ifdef CONFIG_ARMV7
+#ifdef CONFIG_ARMV7A
 
 #define cpu_supports_thumbee()	(((read_pfr0() & ID_PFR0_STATE3_MASK) \
 					>> ID_PFR0_STATE3_SHIFT) == 0x1)
