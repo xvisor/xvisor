@@ -537,7 +537,8 @@ static void __clk_disable(struct clk *clk)
 	if (clk->ops->disable)
 		clk->ops->disable(clk->hw);
 
-	__clk_disable(clk->parent);
+	if (clk->parent)
+		__clk_disable(clk->parent);
 }
 
 /**
