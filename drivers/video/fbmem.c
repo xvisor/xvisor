@@ -152,6 +152,16 @@ static int fb_check_caps(struct fb_info *info,
 	return err;
 }
 
+int fb_check_var(struct fb_info *info, struct fb_var_screeninfo *var)
+{
+	if (!info->fbops->fb_check_var) {
+		return VMM_OK;
+	}
+
+	return info->fbops->fb_check_var(var, info);
+}
+VMM_EXPORT_SYMBOL(fb_check_var);
+
 int fb_set_var(struct fb_info *info, struct fb_var_screeninfo *var)
 {
 	int flags = info->flags;
@@ -358,66 +368,120 @@ int fb_get_color_depth(struct fb_var_screeninfo *var,
 }
 VMM_EXPORT_SYMBOL(fb_get_color_depth);
 
-int fb_open(struct fb_info *info)
+int fb_open(struct fb_info *info,
+	    void (*save)(struct fb_info *, void *),
+	    void (*restore)(struct fb_info *, void *),
+	    void *priv)
 {
 	int res = 0;
 	struct fb_event event;
+	struct fb_user *user;
 
 	if (!info) {
 		return VMM_EFAIL;
 	}
 
+	/* Lock frame buffer */
 	vmm_mutex_lock(&info->lock);
+
+	/* Call notifier chain */
 	event.info = info;
 	fb_notifier_call_chain(FB_EVENT_OPENED, &event);
-	vmm_mutex_unlock(&info->lock);
 
+	/* Call save routine of previous user */
+	if (!list_empty(&info->user_list)) {
+		user = list_first_entry(&info->user_list,
+					struct fb_user, head);
+		if (user->save) {
+			user->save(info, user->priv);
+		}
+	}
+
+	/* Increment open refcount */
 	get_fb_info(info);
 
-	vmm_mutex_lock(&info->lock);
+	/* Call driver specific open routine */
 	if (info->fbops->fb_open) {
 		/* Note: we don't have userspace so, 
 		 * always call fb_open with user=0
 		 */
 		res = info->fbops->fb_open(info, 0);
 	}
-	vmm_mutex_unlock(&info->lock);
+
+	if (!res) {
+		/* Add new user instance to user list */
+		user = vmm_zalloc(sizeof(struct fb_user));
+		if (!user) {
+			res = VMM_ENOMEM;
+		} else {
+			INIT_LIST_HEAD(&user->head);
+			user->save = save;
+			user->restore = restore;
+			user->priv = priv;
+			list_add(&user->head, &info->user_list);
+		}
+	}
 
 	if (res) {
+		/* Decrement open refcount */
 		put_fb_info(info);
 	}
+
+	/* Unlock frame buffer */
+	vmm_mutex_unlock(&info->lock);
 
 	return res;
 }
 VMM_EXPORT_SYMBOL(fb_open);
 
-int fb_close(struct fb_info *info)
+int fb_release(struct fb_info *info)
 {
 	struct fb_event event;
+	struct fb_user *user;
 
 	if (!info) {
 		return VMM_EFAIL;
 	}
 
+	/* Lock frame buffer */
 	vmm_mutex_lock(&info->lock);
+
+	/* Call driver specific release routine */
 	if (info->fbops->fb_release) {
 		/* Note: we don't have userspace so, 
 		 * always call fb_release with user=0
 		 */
 		info->fbops->fb_release(info, 0);
 	}
-	vmm_mutex_unlock(&info->lock);
 
+	/* Decrement open refcount */
 	put_fb_info(info);
 
-	vmm_mutex_lock(&info->lock);
+	/* Delete current user from user list */
+	if (!list_empty(&info->user_list)) {
+		user = list_entry(list_pop(&info->user_list),
+				  struct fb_user, head);
+		vmm_free(user);
+	}
+
+	/* Call restore routine of previous user */
+	if (!list_empty(&info->user_list)) {
+		user = list_first_entry(&info->user_list, struct fb_user, head);
+		if (user->restore) {
+			user->restore(info, user->priv);
+		}
+	}
+
+	/* Call notifier chain */
 	event.info = info;
-	fb_notifier_call_chain(FB_EVENT_CLOSED, &event);
+	fb_notifier_call_chain(FB_EVENT_RELEASED, &event);
+
+	/* Unlock frame buffer */
 	vmm_mutex_unlock(&info->lock);
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(fb_close);
+VMM_EXPORT_SYMBOL(fb_release);
 
 struct fb_info *fb_alloc(size_t size, struct vmm_device *dev)
 {
@@ -450,7 +514,7 @@ struct fb_info *fb_alloc(size_t size, struct vmm_device *dev)
 }
 VMM_EXPORT_SYMBOL(fb_alloc);
 
-void fb_release(struct fb_info *info)
+void fb_free(struct fb_info *info)
 {
 	if (!info)
 		return;
@@ -459,7 +523,7 @@ void fb_release(struct fb_info *info)
 	}
 	vmm_free(info);
 }
-VMM_EXPORT_SYMBOL(fb_release);
+VMM_EXPORT_SYMBOL(fb_free);
 
 #define VGA_FB_PHYS 0xA0000
 void fb_remove_conflicting_framebuffers(struct apertures_struct *a,
@@ -524,6 +588,7 @@ int fb_register(struct fb_info *info)
 					       info->fix.id, FALSE);
 
 	arch_atomic_write(&info->count, 1);
+	INIT_LIST_HEAD(&info->user_list);
 	INIT_MUTEX(&info->lock);
 
 	if (info->pixmap.addr == NULL) {

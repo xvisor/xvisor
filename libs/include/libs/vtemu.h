@@ -25,7 +25,6 @@
 #define __VTEMU_H_
 
 #include <vmm_types.h>
-#include <vmm_spinlocks.h>
 #include <vmm_completion.h>
 #include <vmm_chardev.h>
 #include <libs/fifo.h>
@@ -51,8 +50,7 @@ typedef enum {
 #define VTEMU_DEFAULT_FC	VTEMU_COLOR_WHITE
 #define VTEMU_DEFAULT_BC	VTEMU_COLOR_BLACK
 
-struct vtemu_cell
-{
+struct vtemu_cell {
 	/* char value */
 	u8 ch;
 
@@ -84,11 +82,14 @@ struct vtemu {
 	/* underlying input handler */
 	struct input_handler hndl;
 
-	/* underlying frame buffer*/
+	/* underlying frame buffer */
 	struct fb_info *info;
 
 	/* video mode to be used */
 	const struct fb_videomode *mode;
+
+	/* variable screen info */
+	struct fb_var_screeninfo var;
 
 	/* color map to be used */
 	struct fb_cmap cmap;

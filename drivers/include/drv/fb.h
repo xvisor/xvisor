@@ -495,10 +495,8 @@ struct fb_info;
 #define FB_EVENT_REMAP_ALL_CONSOLE      0x0F
 /*	Someone opened the frame buffer */
 #define FB_EVENT_OPENED			0x10
-/*	Someone closed the frame buffer */
-#define FB_EVENT_CLOSED			0x11
 /*	Someone released the frame buffer */
-#define FB_EVENT_RELEASED		0x12
+#define FB_EVENT_RELEASED		0x11
 
 struct fb_event {
 	struct fb_info *info;
@@ -744,24 +742,32 @@ struct fb_tile_ops {
    output like oopses */
 #define FBINFO_CAN_FORCE_OUTPUT     0x200000
 
+struct fb_user {
+	struct dlist head;
+	void (*save)(struct fb_info *info, void *priv);
+	void (*restore)(struct fb_info *info, void *priv);
+	void *priv;
+};
+
 struct fb_info {
 	atomic_t count;				/* Reference counting for open operation */
 	struct vmm_device *dev;			/* This is this fb device */
+	struct dlist user_list;			/* List of fb users who have opened fb */
 
 	int flags;
 	struct vmm_mutex lock;			/* Lock for open/release/ioctl funcs */
-	struct fb_var_screeninfo var;	/* Current var */
-	struct fb_fix_screeninfo fix;	/* Current fix */
-	struct fb_monspecs monspecs;	/* Current Monitor specs */
+	struct fb_var_screeninfo var;		/* Current var */
+	struct fb_fix_screeninfo fix;		/* Current fix */
+	struct fb_monspecs monspecs;		/* Current Monitor specs */
 	struct fb_pixmap pixmap;		/* Image hardware mapper */
 	struct fb_pixmap sprite;		/* Cursor hardware mapper */
-	struct fb_cmap cmap;		/* Current cmap */
+	struct fb_cmap cmap;			/* Current cmap */
 	struct dlist modelist;          	/* mode list */
 	struct fb_videomode *mode;		/* current mode */
 
 	struct fb_ops *fbops;
 #ifdef CONFIG_FB_TILEBLITTING
-	struct fb_tile_ops *tileops;        /* Tile Blitting */
+	struct fb_tile_ops *tileops;		/* Tile Blitting */
 #endif
 	char *screen_base;			/* Virtual address */
 	unsigned long screen_size;		/* Amount of ioremapped VRAM or 0 */ 
@@ -798,8 +804,9 @@ static inline struct apertures_struct *alloc_apertures(unsigned int max_num) {
 /*
  *  `Generic' versions of the frame buffer device operations
  */
-int fb_set_var(struct fb_info *info, struct fb_var_screeninfo *var); 
-int fb_pan_display(struct fb_info *info, struct fb_var_screeninfo *var); 
+int fb_check_var(struct fb_info *info, struct fb_var_screeninfo *var);
+int fb_set_var(struct fb_info *info, struct fb_var_screeninfo *var);
+int fb_pan_display(struct fb_info *info, struct fb_var_screeninfo *var);
 int fb_blank(struct fb_info *info, int blank);
 void cfb_fillrect(struct fb_info *info, const struct fb_fillrect *rect); 
 void cfb_copyarea(struct fb_info *info, const struct fb_copyarea *area); 
@@ -818,22 +825,31 @@ void sys_imageblit(struct fb_info *info, const struct fb_image *image);
 /** Open frame buffer. (Xvisor specific)
  *  Note: Must be called before accessing frame buffer
  */
-int fb_open(struct fb_info *info);
+int fb_open(struct fb_info *info,
+	    void (*save)(struct fb_info *, void *),
+	    void (*restore)(struct fb_info *, void *),
+	    void *priv);
 
-/** Close frame buffer. (Xvisor specific)
+/** Release frame buffer. (Xvisor specific)
  *  Note: Must be called after accessing frame buffer
  */
-int fb_close(struct fb_info *info);
+int fb_release(struct fb_info *info);
 
-/** Creates a new frame buffer info structure*/
+/** Alloc a new frame buffer info structure
+ *  NOTE: Generally frame buffer driver will allocate frame
+ *  buffer in-their own way.
+ */
 struct fb_info *fb_alloc(size_t size, struct vmm_device *dev);
 
-/** Free frame buffer info structure */
-void fb_release(struct fb_info *info);
+/** Free frame buffer info structure
+ *  NOTE: Generally frame buffer driver will free frame buffer
+ *  in-their own way.
+ */
+void fb_free(struct fb_info *info);
 
 /** Remove frame buffers conflicting with given apertures */
 void fb_remove_conflicting_framebuffers(struct apertures_struct *a,
-					    const char *name, bool primary);
+					const char *name, bool primary);
 
 /** Register frame buffer to device driver framework */
 int fb_register(struct fb_info *info);
@@ -850,12 +866,15 @@ struct fb_info *fb_get(int num);
 /** Count number of frame buffers */
 u32 fb_count(void);
 
+/** Acquire mutex lock on frame buffer info */
 int lock_fb_info(struct fb_info *info);
 
+/** Release mutex lock on frame buffer info */
 void unlock_fb_info(struct fb_info *info);
 
+/** Get color depth based on screen info */
 int fb_get_color_depth(struct fb_var_screeninfo *var,
-			   struct fb_fix_screeninfo *fix);
+			struct fb_fix_screeninfo *fix);
 
 /**
  *	Low level driver signals suspend
