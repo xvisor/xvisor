@@ -164,10 +164,14 @@ void fb_dealloc_cmap(struct fb_cmap *cmap)
 		return;
 	}
 
-	vmm_free(cmap->red);
-	vmm_free(cmap->green);
-	vmm_free(cmap->blue);
-	vmm_free(cmap->transp);
+	if (cmap->red)
+		vmm_free(cmap->red);
+	if (cmap->green)
+		vmm_free(cmap->green);
+	if (cmap->blue)
+		vmm_free(cmap->blue);
+	if (cmap->transp)
+		vmm_free(cmap->transp);
 
 	cmap->red = cmap->green = cmap->blue = cmap->transp = NULL;
 	cmap->len = 0;
