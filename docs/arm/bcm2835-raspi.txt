@@ -87,7 +87,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
    into guest NOR flash then use:
    U-Boot> fatload mmc 0 0x010FF000 cmdlist
    U-Boot> fatload mmc 0 0x01100000 Image
-   U-Boot> fatload mmc 0 0x01600000 rootfs.img )
+   U-Boot> fatload mmc 0 0x01900000 rootfs.img )
 
   [18. Jump into Xvisor after disabling MMU, interrupts, etc]
   U-Boot> bootm 0x00200000
@@ -107,9 +107,9 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
 
   (Note: If you had linux images loaded in guest NOR flash then instead of 
    above step you can start booting linux,
-   basic# copy 0x00008000 0x40100000 0x4F8000
-   basic# copy 0x00500000 0x40600000 0x600000
-   basic# start_linux 0x00008000 0x00500000 0x600000
+   basic# copy 0x00008000 0x40100000 0x7F8000
+   basic# copy 0x00800000 0x40900000 0x700000
+   basic# start_linux 0x00008000 0x00800000 0x700000
    OR
    basic# autoexec)
 

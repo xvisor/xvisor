@@ -73,13 +73,13 @@ Foundation v8 model:
   XVisor# vserial bind guest0/virtio-con0
 
   [19. Copy linux from NOR flash to RAM and start linux booting from RAM]
-  [guest0/virtio-con0] basic# copy 0x80080000 0x00100000 0x5F0000
+  [guest0/virtio-con0] basic# copy 0x80080000 0x00100000 0x7F0000
   (Note: This command will copy Image to RAM)
-  [guest0/virtio-con0] basic# copy 0x80F00000 0x006F0000 0x004000
+  [guest0/virtio-con0] basic# copy 0x80F00000 0x008F0000 0x010000
   (Note: This command will copy virt-v8.dtb to RAM)
-  [guest0/virtio-con0] basic# copy 0x82000000 0x00700000 0x600000
+  [guest0/virtio-con0] basic# copy 0x82000000 0x00900000 0x700000
   (Note: This command will copy rootfs64.img to RAM)
-  [guest0/virtio-con0] basic# start_linux 0x80080000 0x80F00000 0x82000000 0x600000
+  [guest0/virtio-con0] basic# start_linux 0x80080000 0x80F00000 0x82000000 0x700000
   (Note: This command will start linux booting)
   OR
   [guest0/virtio-con0] basic# autoexec

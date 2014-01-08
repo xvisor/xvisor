@@ -58,7 +58,7 @@ RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
   (Alternatively if you want a uniprocessor guest copy the vexpress_a15x1_guest.dts)
 
   [14. Create fast_model_boot.axf for running it on ARM Fast Models]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x80010000 -o fast_model_boot.img <xvisor_source_directory>/build/vmm.bin@0x80010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a15/basic/firmware.bin@0x81000000 <xvisor_source_directory>/tests/arm32/vexpress-a15/linux/cmdlist@0x810FF000 ./arch/arm/boot/Image@0x81100000 ./vexpress_a15_guest.dtb@0x81600000 <busybox_rootfs_directory>/rootfs.img@0x81700000
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x80010000 -o fast_model_boot.img <xvisor_source_directory>/build/vmm.bin@0x80010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a15/basic/firmware.bin@0x81000000 <xvisor_source_directory>/tests/arm32/vexpress-a15/linux/cmdlist@0x810FF000 ./arch/arm/boot/Image@0x81100000 ./vexpress_a15_guest.dtb@0x818F0000 <busybox_rootfs_directory>/rootfs.img@0x81900000
   # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DVEXPRESS_A15 <xvisor_source_directory>/docs/arm/fast_model_boot.S -o fast_model_boot.axf
 
   [15. Launch ARM fast models 7.0 or higher]
@@ -71,13 +71,13 @@ RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
   XVisor# vserial bind guest0/uart0
 
   [18. Copy linux from NOR flash to RAM and start linux booting from RAM]
-  [guest0/uart0] basic# copy 0x80008000 0x00100000 0x4F8000
+  [guest0/uart0] basic# copy 0x80008000 0x00100000 0x7F0000
   (Note: This command will copy Image to RAM)
-  [guest0/uart0] basic# copy 0x80500000 0x00600000 0x003000
+  [guest0/uart0] basic# copy 0x80800000 0x008F0000 0x010000
   (Note: This command will copy dtb to RAM)
-  [guest0/uart0] basic# copy 0x80600000 0x00700000 0x600000
+  [guest0/uart0] basic# copy 0x80900000 0x00900000 0x700000
   (Note: This command will copy rootfs.img to RAM)
-  [guest0/uart0] basic# start_linux_fdt 0x80008000 0x80500000 0x80600000 0x600000
+  [guest0/uart0] basic# start_linux_fdt 0x80008000 0x80800000 0x80900000 0x700000
   (Note: This command will start linux booting)
   OR
   [guest0/uart0] basic# autoexec

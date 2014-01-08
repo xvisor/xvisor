@@ -60,7 +60,7 @@ RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   # cd <linux_build_directory>
 
   [15. Create xvisor_linux_qemu.img for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x60010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x60010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a9/basic/firmware.bin.patched@0x61000000 <xvisor_source_directory>/tests/arm32/vexpress-a9/linux/cmdlist@0x610FF000 ./arch/arm/boot/Image@0x61100000 <busybox_rootfs_directory>/rootfs.img@0x61600000
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x60010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x60010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a9/basic/firmware.bin.patched@0x61000000 <xvisor_source_directory>/tests/arm32/vexpress-a9/linux/cmdlist@0x610FF000 ./arch/arm/boot/Image@0x61100000 <busybox_rootfs_directory>/rootfs.img@0x61900000
 
   [16. Launch QEMU 0.15.xx or higher]
   # qemu-system-arm -M vexpress-a9 -display none -serial stdio -kernel ./xvisor_linux_qemu.img
@@ -72,11 +72,11 @@ RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   XVisor# vserial bind guest0/uart0
 
   [19. Copy linux from NOR flash to RAM and start linux booting from RAM]
-  [guest0/uart0] basic# copy 0x60008000 0x40100000 0x4F8000
+  [guest0/uart0] basic# copy 0x60008000 0x40100000 0x7F8000
   (Note: This command will copy Image to RAM)
-  [guest0/uart0] basic# copy 0x60500000 0x40600000 0x600000
+  [guest0/uart0] basic# copy 0x60800000 0x40600000 0x700000
   (Note: This command will copy rootfs.img to RAM)
-  [guest0/uart0] basic# start_linux 0x60008000 0x60500000 0x600000
+  [guest0/uart0] basic# start_linux 0x60008000 0x60800000 0x700000
   (Note: This command will start linux booting)
   OR
   [guest0/uart0] basic# autoexec

@@ -84,7 +84,7 @@ A10:
    into guest NOR flash then use:
    sun4i# fatload mmc 0 0x410FF000 cmdlist
    sun4i# fatload mmc 0 0x41100000 Image
-   sun4i# fatload mmc 0 0x41600000 rootfs.img )
+   sun4i# fatload mmc 0 0x41900000 rootfs.img )
 
   [18. Jump into Xvisor after disabling MMU, interrupts, etc]
   sun4i# bootm 0x40200000
@@ -100,9 +100,9 @@ A10:
 
   (Note: If you had linux images loaded in guest NOR flash then instead of 
    above step you can start booting linux,
-   basic# copy 0x70008000 0x40100000 0x4F8000
-   basic# copy 0x70500000 0x40600000 0x600000
-   basic# start_linux 0x70008000 0x70500000 0x600000 
+   basic# copy 0x70008000 0x40100000 0x7F8000
+   basic# copy 0x70800000 0x40900000 0x700000
+   basic# start_linux 0x70008000 0x70800000 0x700000 
    OR
    basic# autoexec)
 

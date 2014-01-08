@@ -57,8 +57,8 @@ RootFS on Realview-PB-A8 Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   # cd <linux_build_directory>
 
   [14. Create xvisor_linux_qemu.img for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x70010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x70010000 <xvisor_source_directory>/build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched@0x71000000 <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist@0x710FF000 ./arch/arm/boot/Image@0x71100000 <busybox_rootfs_directory>/rootfs.img@0x71600000
-  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched@0x78000000 <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist@0x780FF000 ./arch/arm/boot/Image@0x78100000 <busybox_rootfs_directory>/rootfs.img@0x78600000")
+  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x70010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x70010000 <xvisor_source_directory>/build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched@0x71000000 <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist@0x710FF000 ./arch/arm/boot/Image@0x71100000 <busybox_rootfs_directory>/rootfs.img@0x71900000
+  (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched@0x78000000 <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist@0x780FF000 ./arch/arm/boot/Image@0x78100000 <busybox_rootfs_directory>/rootfs.img@0x78900000")
 
   [15. Launch QEMU 0.14.xx or higher]
   # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel ./xvisor_linux_qemu.img
@@ -70,11 +70,11 @@ RootFS on Realview-PB-A8 Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   XVisor# vserial bind guest0/uart0
 
   [18. Copy linux from NOR flash to RAM and start linux booting from RAM]
-  [guest0/uart0] basic# copy 0x70008000 0x40100000 0x4F8000
+  [guest0/uart0] basic# copy 0x70008000 0x40100000 0x7F8000
   (Note: This command will copy Image to RAM)
-  [guest0/uart0] basic# copy 0x70500000 0x40600000 0x600000
+  [guest0/uart0] basic# copy 0x70800000 0x40900000 0x700000
   (Note: This command will copy rootfs.img to RAM)
-  [guest0/uart0] basic# start_linux 0x70008000 0x70500000 0x600000
+  [guest0/uart0] basic# start_linux 0x70008000 0x70800000 0x700000
   (Note: This command will start linux booting)
   OR
   [guest0/uart0] basic# autoexec
