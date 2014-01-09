@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_mutex.h>
 #include <vmm_modules.h>
 #include <vio/vmm_vinput.h>

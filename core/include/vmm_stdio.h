@@ -25,9 +25,6 @@
 
 #include <vmm_types.h>
 #include <vmm_compiler.h>
-#include <vmm_spinlocks.h>
-#include <vmm_chardev.h>
-#include <vmm_heap.h>
 #include <libs/stacktrace.h>
 
 #define BUG_ON(x)							\
@@ -83,6 +80,8 @@ struct vmm_history {
 		}							\
 		(h)->tail = 0;						\
 	}								
+
+struct vmm_chardev;
 
 /** Check if a character is a control character */
 bool vmm_iscontrol(char c);
