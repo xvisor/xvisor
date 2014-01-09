@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_heap.h>
 #include <vmm_version.h>
 #include <vmm_devtree.h>
 #include <vmm_threads.h>
