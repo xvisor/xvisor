@@ -30,6 +30,7 @@
 #define __DRV_FB_H_
 
 #include <vmm_types.h>
+#include <vmm_heap.h>
 #include <vmm_mutex.h>
 #include <vmm_notifier.h>
 #include <vmm_host_io.h>

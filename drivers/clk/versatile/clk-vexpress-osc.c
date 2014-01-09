@@ -28,6 +28,7 @@
 #include <vmm_error.h>
 #include <vmm_macros.h>
 #include <vmm_compiler.h>
+#include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <drv/clkdev.h>
