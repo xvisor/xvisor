@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
 #include <vmm_guest_aspace.h>

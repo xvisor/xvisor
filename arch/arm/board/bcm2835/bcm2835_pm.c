@@ -27,6 +27,7 @@
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
 #include <vmm_devtree.h>
+#include <vmm_devdrv.h>
 #include <vmm_modules.h>
 
 #define MODULE_DESC			"BCM2835 PM and Watchdog Driver"

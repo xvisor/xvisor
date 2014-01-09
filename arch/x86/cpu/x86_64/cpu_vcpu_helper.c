@@ -21,8 +21,8 @@
  * @brief source of VCPU helper functions
  */
 
-#include <arch_cpu.h>
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
 #include <vmm_host_aspace.h>
@@ -30,6 +30,7 @@
 #include <cpu_mmu.h>
 #include <cpu_features.h>
 #include <cpu_vm.h>
+#include <arch_cpu.h>
 #include <arch_regs.h>
 #include <libs/stringlib.h>
 #include <arch_guest_helper.h>
