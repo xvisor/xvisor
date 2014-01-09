@@ -27,16 +27,20 @@
 #include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_devtree.h>
-#include <vmm_spinlocks.h>
+#include <vmm_mutex.h>
 #include <libs/list.h>
 
-struct vmm_device {
+struct vmm_class;
+struct vmm_classdev;
+struct vmm_bus;
+struct vmm_device;
+struct vmm_driver;
+
+struct vmm_class {
 	struct dlist head;
-	struct vmm_devtree_node *node;
-	struct vmm_class *class;
-	struct vmm_classdev *classdev;
-	struct vmm_driver *drv;
-	void *priv;
+	struct vmm_mutex lock;
+	char name[VMM_FIELD_NAME_SIZE];
+	struct dlist classdev_list;
 };
 
 struct vmm_classdev {
@@ -46,16 +50,34 @@ struct vmm_classdev {
 	void *priv;
 };
 
-struct vmm_class {
+struct vmm_bus {
 	struct dlist head;
-	struct vmm_spinlock lock;
+	struct vmm_mutex lock;
 	char name[VMM_FIELD_NAME_SIZE];
-	struct dlist classdev_list;
+	struct dlist device_list;
+	struct dlist driver_list;
+	int (*match) (struct vmm_device *dev, struct vmm_driver *drv);
+	int (*probe) (struct vmm_device *);
+	int (*remove) (struct vmm_device *);
+	int (*shutdown) (struct vmm_device *);
+};
+
+struct vmm_device {
+	struct dlist head;
+	char name[VMM_FIELD_NAME_SIZE];
+	struct vmm_bus *bus;
+	struct vmm_devtree_node *node;
+	struct vmm_device *parent;
+	struct vmm_class *class;
+	struct vmm_classdev *classdev;
+	struct vmm_driver *drv;
+	void *priv;
 };
 
 struct vmm_driver {
 	struct dlist head;
 	char name[VMM_FIELD_NAME_SIZE];
+	struct vmm_bus *bus;
 	const struct vmm_devtree_nodeid *match_table;
 	int (*probe) (struct vmm_device *, const struct vmm_devtree_nodeid *);
 	int (*suspend) (struct vmm_device *, u32);
@@ -65,9 +87,6 @@ struct vmm_driver {
 
 /** Probe device instances under a given device tree node */
 int vmm_devdrv_probe(struct vmm_devtree_node *node);
-
-/** Remove device instances under a given device tree node */
-int vmm_devdrv_remove(struct vmm_devtree_node *node);
 
 /** Register class */
 int vmm_devdrv_register_class(struct vmm_class *cls);
@@ -102,6 +121,36 @@ struct vmm_classdev *vmm_devdrv_classdev(const char *cname, int index);
 /** Count available class devices under a class */
 u32 vmm_devdrv_classdev_count(const char *cname);
 
+/** Register bus */
+int vmm_devdrv_register_bus(struct vmm_bus *bus);
+
+/** Unregister bus */
+int vmm_devdrv_unregister_bus(struct vmm_bus *bus);
+
+/** Find a registered bus */
+struct vmm_bus *vmm_devdrv_find_bus(const char *bname);
+
+/** Get a registered bus */
+struct vmm_bus *vmm_devdrv_bus(int index);
+
+/** Count available buses */
+u32 vmm_devdrv_bus_count(void);
+
+/** Register device */
+int vmm_devdrv_register_device(struct vmm_device *dev);
+
+/** Unregister device */
+int vmm_devdrv_unregister_device(struct vmm_device *dev);
+
+/** Find a registered device */
+struct vmm_device *vmm_devdrv_find_device(const char *dname);
+
+/** Get a registered device */
+struct vmm_device *vmm_devdrv_device(int index);
+
+/** Count available devices */
+u32 vmm_devdrv_device_count(void);
+
 /** Register device driver */
 int vmm_devdrv_register_driver(struct vmm_driver *drv);
 
@@ -109,7 +158,7 @@ int vmm_devdrv_register_driver(struct vmm_driver *drv);
 int vmm_devdrv_unregister_driver(struct vmm_driver *drv);
 
 /** Find a registered driver */
-struct vmm_driver *vmm_devdrv_find_driver(const char *name);
+struct vmm_driver *vmm_devdrv_find_driver(const char *dname);
 
 /** Get a registered driver */
 struct vmm_driver *vmm_devdrv_driver(int index);

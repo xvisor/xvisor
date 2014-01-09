@@ -22,25 +22,25 @@
 #endif
 
 #define dev_info(dev, args...)		do { \
-					vmm_printf("%s: ", dev->node->name); \
+					vmm_printf("%s: ", dev->name); \
 					vmm_printf(args); \
 					} while (0)
 #define dev_warn(dev, args...)		do { \
-					vmm_printf("WARNING: %s: ", dev->node->name); \
+					vmm_printf("WARNING: %s: ", dev->name); \
 					vmm_printf(args); \
 					} while (0)
 #define dev_err(dev, args...)		do { \
-					vmm_printf("ERROR: %s: ", dev->node->name); \
+					vmm_printf("ERROR: %s: ", dev->name); \
 					vmm_printf(args); \
 					} while (0)
 
 #define dev_notice(dev, args...)	do { \
-					vmm_printf("NOTICE: %s: ", dev->node->name); \
+					vmm_printf("NOTICE: %s: ", dev->name); \
 					vmm_printf(args); \
 					} while (0)
 
 #define dev_printk(level, dev, args...)	do { \
-					vmm_printf("%s: ", dev->node->name); \
+					vmm_printf("%s: ", dev->name); \
 					vmm_printf(args); \
 					} while (0)
 
