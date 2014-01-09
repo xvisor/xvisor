@@ -59,7 +59,7 @@ struct vmm_bus {
 	int (*match) (struct vmm_device *dev, struct vmm_driver *drv);
 	int (*probe) (struct vmm_device *);
 	int (*remove) (struct vmm_device *);
-	int (*shutdown) (struct vmm_device *);
+	void (*shutdown) (struct vmm_device *);
 };
 
 struct vmm_device {
@@ -70,7 +70,8 @@ struct vmm_device {
 	struct vmm_device *parent;
 	struct vmm_class *class;
 	struct vmm_classdev *classdev;
-	struct vmm_driver *drv;
+	struct vmm_driver *driver;
+	void (*release) (struct vmm_device *);
 	void *priv;
 };
 
@@ -84,6 +85,20 @@ struct vmm_driver {
 	int (*resume) (struct vmm_device *);
 	int (*remove) (struct vmm_device *);
 };
+
+/** Set driver data in device */
+static inline void *vmm_devdrv_get_data(struct vmm_device *dev)
+{
+	return (dev) ? dev->priv : NULL;
+}
+
+/** Get driver data from device */
+static inline void vmm_devdrv_set_data(struct vmm_device *dev, void *data)
+{
+	if (dev) {
+		dev->priv = data;
+	}
+}
 
 /** Probe device instances under a given device tree node */
 int vmm_devdrv_probe(struct vmm_devtree_node *node);
@@ -139,6 +154,12 @@ u32 vmm_devdrv_bus_count(void);
 /** Register device */
 int vmm_devdrv_register_device(struct vmm_device *dev);
 
+/** Force attach device with device driver */
+int vmm_devdrv_attach_device(struct vmm_device *dev);
+
+/** Force dettach device with device driver */
+int vmm_devdrv_dettach_device(struct vmm_device *dev);
+
 /** Unregister device */
 int vmm_devdrv_unregister_device(struct vmm_device *dev);
 
@@ -153,6 +174,12 @@ u32 vmm_devdrv_device_count(void);
 
 /** Register device driver */
 int vmm_devdrv_register_driver(struct vmm_driver *drv);
+
+/** Force attach device driver */
+int vmm_devdrv_attach_driver(struct vmm_driver *drv);
+
+/** Force dettach device driver */
+int vmm_devdrv_dettach_driver(struct vmm_driver *drv);
 
 /** Unregister device driver */
 int vmm_devdrv_unregister_driver(struct vmm_driver *drv);
