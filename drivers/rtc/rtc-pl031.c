@@ -348,12 +348,12 @@ static int pl031_driver_probe(struct vmm_device *dev,
 		rc = VMM_EFAIL;
 		goto free_reg;
 	}
-	if ((rc = vmm_host_irq_register(ldata->irq, dev->node->name,
+	if ((rc = vmm_host_irq_register(ldata->irq, dev->name,
 					pl031_irq_handler, ldata))) {
 		goto free_reg;
 	}
 
-	if (strlcpy(ldata->rtc.name, dev->node->name, sizeof(ldata->rtc.name))
+	if (strlcpy(ldata->rtc.name, dev->name, sizeof(ldata->rtc.name))
 	    >= sizeof(ldata->rtc.name)) {
 		rc = VMM_EOVERFLOW;
 		goto free_irq;

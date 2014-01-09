@@ -129,7 +129,7 @@ struct usb_hcd *usb_create_hcd(const struct hc_driver *driver,
 
 	hcd = vmm_zalloc(sizeof(*hcd) + driver->hcd_priv_size);
 	if (!hcd) {
-		vmm_printf("%s: hcd alloc failed\n", dev->node->name);
+		vmm_printf("%s: hcd alloc failed\n", dev->name);
 		return NULL;
 	}
 
@@ -162,18 +162,18 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
 					   &usb_hcd_irq, hcd);
 		if (rc != 0) {
 			vmm_printf("%s: request interrupt %d failed\n",
-				   hcd->dev->node->name, irqnum);
+				   hcd->dev->name, irqnum);
 			return rc;
 		}
 		hcd->irq = irqnum;
-		vmm_printf("%s: %s 0x%08llx\n", hcd->dev->node->name,
+		vmm_printf("%s: %s 0x%08llx\n", hcd->dev->name,
 				(hcd->driver->flags & HCD_MEMORY) ?
 					"io mem" : "io base",
 					(unsigned long long)hcd->rsrc_start);
 	} else {
 		hcd->irq = 0;
 		if (hcd->rsrc_start) {
-			vmm_printf("%s: %s 0x%08llx\n", hcd->dev->node->name,
+			vmm_printf("%s: %s 0x%08llx\n", hcd->dev->name,
 					(hcd->driver->flags & HCD_MEMORY) ?
 					"io mem" : "io base",
 					(unsigned long long)hcd->rsrc_start);
@@ -204,7 +204,7 @@ static int register_root_hub(struct usb_hcd *hcd)
 	retval = usb_new_device(usb_dev);
 	if (retval) {
 		vmm_printf("%s: can't register root hub for %s, %d\n",
-			   __func__, hcd->dev->node->name, retval);
+			   __func__, hcd->dev->name, retval);
 	} else {
 		vmm_spin_lock_irq (&hcd_root_hub_lock);
 		hcd->rh_registered = 1;
@@ -227,14 +227,14 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	struct usb_hcd *thcd;
 	struct usb_device *rhdev;
 
-	vmm_printf("%s: %s\n", hcd->dev->node->name, hcd->product_desc);
+	vmm_printf("%s: %s\n", hcd->dev->name, hcd->product_desc);
 
 	vmm_mutex_lock(&usb_hcd_list_lock);
 	list_for_each(l, &usb_hcd_list) {
 		thcd = list_entry(l, struct usb_hcd, head);
 		if (strcmp(hcd->bus_name, thcd->bus_name) == 0) {
 			vmm_printf("%s: bus_name=%s alread registered\n",
-				   hcd->dev->node->name, hcd->bus_name);
+				   hcd->dev->name, hcd->bus_name);
 			vmm_mutex_unlock(&usb_hcd_list_lock);
 			return VMM_EEXIST;
 		}
@@ -248,7 +248,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 
 	if ((rhdev = usb_alloc_device(NULL, hcd, 0)) == NULL) {
 		vmm_printf("%s: unable to allocate root hub\n", 
-			   hcd->dev->node->name);
+			   hcd->dev->name);
 		retval = VMM_ENOMEM;
 		goto err_allocate_root_hub;
 	}
@@ -279,7 +279,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	 * should already have been reset (and boot firmware kicked off etc).
 	 */
 	if (hcd->driver->reset && (retval = hcd->driver->reset(hcd)) < 0) {
-		vmm_printf("%s: can't setup\n", hcd->dev->node->name);
+		vmm_printf("%s: can't setup\n", hcd->dev->name);
 		goto err_hcd_driver_setup;
 	}
 	hcd->rh_pollable = 1;
@@ -295,8 +295,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	hcd->state = HC_STATE_RUNNING;
 	retval = hcd->driver->start(hcd);
 	if (retval < 0) {
-		vmm_printf("%s: startup error %d\n", 
-					hcd->dev->node->name, retval);
+		vmm_printf("%s: startup error %d\n", hcd->dev->name, retval);
 		goto err_hcd_driver_start;
 	}
 
@@ -329,7 +328,7 @@ void usb_hcd_died(struct usb_hcd *hcd)
 {
 	irq_flags_t flags;
 
-	vmm_printf("%s: HC died; cleaning up\n", hcd->dev->node->name);
+	vmm_printf("%s: HC died; cleaning up\n", hcd->dev->name);
 
 	vmm_spin_lock_irqsave (&hcd_root_hub_lock, flags);
 	clear_bit(HCD_FLAG_RH_RUNNING, &hcd->flags);
@@ -352,7 +351,7 @@ void usb_remove_hcd(struct usb_hcd *hcd)
 {
 	struct usb_device *rhdev = hcd->root_hub;
 
-	vmm_printf("%s: remove, state %x\n", hcd->dev->node->name, hcd->state);
+	vmm_printf("%s: remove, state %x\n", hcd->dev->name, hcd->state);
 
 	clear_bit(HCD_FLAG_RH_RUNNING, &hcd->flags);
 	if (HC_IS_RUNNING (hcd->state))

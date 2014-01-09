@@ -164,7 +164,7 @@ static int rbd_driver_probe(struct vmm_device *dev,
 		return rc;
 	}
 
-	dev->priv = __rbd_create(dev, dev->node->name, pa, sz);
+	dev->priv = __rbd_create(dev, dev->name, pa, sz);
 	if (!dev->priv) {
 		return VMM_EFAIL;
 	}

@@ -334,7 +334,7 @@ struct mmc_host {
 
 #define mmc_host_is_spi(mmc)	((mmc)->caps & MMC_CAP_MODE_SPI)
 
-#define mmc_hostname(mmc)	((mmc)->dev->node->name)
+#define mmc_hostname(mmc)	((mmc)->dev->name)
 
 /** Detect card status change
  *  Note: This function can be called from any context.

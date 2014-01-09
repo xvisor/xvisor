@@ -244,7 +244,7 @@ static int bridge_probe(struct vmm_device *dev,
 	struct bridge_ctrl *br;
 	struct vmm_netswitch *nsw = NULL;
 
-	nsw = vmm_netswitch_alloc(dev->node->name);
+	nsw = vmm_netswitch_alloc(dev->name);
 	if (!nsw) {
 		rc = VMM_ENOMEM;
 		goto bridge_netswitch_alloc_failed;

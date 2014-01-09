@@ -2477,7 +2477,7 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
 		goto out;
 	}
 
-	if (strlcpy(ndev->name, pdev->node->name, sizeof(ndev->name)) >=
+	if (strlcpy(ndev->name, pdev->name, sizeof(ndev->name)) >=
 	    sizeof(ndev->name)) {
 		ret = VMM_EOVERFLOW;
 		goto out_free_netdev;

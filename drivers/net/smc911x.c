@@ -2042,7 +2042,7 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 	ndev = alloc_etherdev(sizeof(struct smc911x_local));
 	if (!ndev) {
 		vmm_printf("%s Failed to allocate netdev for %s\n", __func__,
-				dev->node->name);
+				dev->name);
 		rc = VMM_EFAIL;
 		goto exit_probe;
 	}
@@ -2050,7 +2050,7 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 
 	dev->priv = (void *) ndev;
 	ndev->vmm_dev = dev;
-	if (strlcpy(ndev->name, dev->node->name, sizeof(ndev->name)) >=
+	if (strlcpy(ndev->name, dev->name, sizeof(ndev->name)) >=
 	    sizeof(ndev->name)) {
 		rc = VMM_EOVERFLOW;
 		goto free_ndev;

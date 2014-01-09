@@ -105,7 +105,7 @@ struct clk * __init vexpress_osc_setup(struct vmm_device *dev)
 		return NULL;
 	}
 
-	init.name = dev->node->name;
+	init.name = dev->name;
 	init.ops = &vexpress_osc_ops;
 	init.flags = CLK_IS_ROOT;
 	init.num_parents = 0;

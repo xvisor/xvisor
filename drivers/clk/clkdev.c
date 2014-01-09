@@ -184,7 +184,7 @@ VMM_EXPORT_SYMBOL(clk_get_sys);
 
 struct clk *clk_get(struct vmm_device *dev, const char *con_id)
 {
-	const char *dev_id = dev ? dev->node->name : NULL;
+	const char *dev_id = dev ? dev->name : NULL;
 	struct clk *clk;
 
 	if (dev) {

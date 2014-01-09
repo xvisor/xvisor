@@ -175,7 +175,7 @@ unsigned __vexpress_get_site(struct vmm_device *dev,
 
 	if (node) {
 		vexpress_sysreg_find_prop(node, "arm,vexpress,site", &site);
-	} else if (dev && strncmp(dev->node->name, "ct:", 3) == 0) {
+	} else if (dev && strncmp(dev->name, "ct:", 3) == 0) {
 		site = VEXPRESS_SITE_MASTER;
 	}
 
@@ -238,7 +238,7 @@ static void *vexpress_sysreg_config_func_get(struct vmm_device *dev,
 	config_func->device |= func_device[1];
 
 	DPRINTF("%s: func 0x%p = 0x%x, %d\n",
-		vexpress_sysreg_dev->node->name, config_func,
+		vexpress_sysreg_dev->name, config_func,
 		config_func->template, config_func->device);
 
 	return config_func;
@@ -273,7 +273,7 @@ static int vexpress_sysreg_config_func_exec(void *func, int offset,
 		*data = 0xdeadbeef;
 
 	DPRINTF("%s: command %x, data %x\n",
-		vexpress_sysreg_dev->node->name, command, *data);
+		vexpress_sysreg_dev->name, command, *data);
 	vmm_writel(*data, vexpress_sysreg_base + SYS_CFGDATA);
 	vmm_writel(0, vexpress_sysreg_base + SYS_CFGSTAT);
 	vmm_writel(command, vexpress_sysreg_base + SYS_CFGCTRL);
@@ -329,7 +329,7 @@ static void vexpress_sysreg_config_complete(struct vmm_timer_event *ev)
 
 	if (status < 0) {
 		vmm_printf("%s: error %d\n", 
-			   vexpress_sysreg_dev->node->name, status);
+			   vexpress_sysreg_dev->name, status);
 	} else if (!(cfgstat & SYS_CFGSTAT_COMPLETE)) {
 		vmm_timer_event_start(&vexpress_sysreg_config_timer, 50000);
 		return;
@@ -339,7 +339,7 @@ static void vexpress_sysreg_config_complete(struct vmm_timer_event *ev)
 		*vexpress_sysreg_config_data = 
 				vmm_readl(vexpress_sysreg_base + SYS_CFGDATA);
 		DPRINTF("%s: read data %x\n",
-			vexpress_sysreg_dev->node->name,
+			vexpress_sysreg_dev->name,
 			*vexpress_sysreg_config_data);
 		vexpress_sysreg_config_data = NULL;
 	}

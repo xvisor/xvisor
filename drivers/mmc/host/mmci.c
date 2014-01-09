@@ -437,14 +437,14 @@ static int mmci_driver_probe(struct vmm_device *dev,
 	if (rc) {
 		goto free_reg;
 	}
-	if ((rc = vmm_host_irq_register(host->irq0, dev->node->name, 
+	if ((rc = vmm_host_irq_register(host->irq0, dev->name, 
 					mmci_cmd_irq_handler, mmc))) {
 		goto free_reg;
 	}
 
 	rc = vmm_devtree_irq_get(dev->node, &host->irq1, 1);
 	if (!rc) {
-		if ((rc = vmm_host_irq_register(host->irq1, dev->node->name, 
+		if ((rc = vmm_host_irq_register(host->irq1, dev->name, 
 						mmci_pio_irq_handler, mmc))) {
 			goto free_irq0;
 		}
@@ -495,7 +495,7 @@ static int mmci_driver_probe(struct vmm_device *dev,
 
 	vmm_devtree_regaddr(dev->node, &basepa, 0);
 	vmm_printf("%s: PL%03x manf %x rev%u at 0x%08llx irq %d,%d (pio)\n",
-		   dev->node->name, amba_part(dev), amba_manf(dev),
+		   dev->name, amba_part(dev), amba_manf(dev),
 		   amba_rev(dev), (unsigned long long)basepa,
 		   host->irq0, host->irq1);
 

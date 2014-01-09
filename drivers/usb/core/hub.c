@@ -278,17 +278,17 @@ static void show_string(struct usb_device *udev, char *id, char *string)
 {
 	if (!string)
 		return;
-	DPRINTF("%s: %s = %s\n", udev->hcd->dev->node->name, id, string);
+	DPRINTF("%s: %s = %s\n", udev->hcd->dev->name, id, string);
 }
 
 static void announce_device(struct usb_device *udev)
 {
 	DPRINTF("%s: New USB device found, idVendor=%04x, idProduct=%04x\n",
-			udev->hcd->dev->node->name,
+			udev->hcd->dev->name,
 			vmm_le16_to_cpu(udev->descriptor.idVendor),
 			vmm_le16_to_cpu(udev->descriptor.idProduct));
 	DPRINTF("%s: New USB device strings: Mfr=%d, Product=%d, SerialNumber=%d\n",
-			udev->hcd->dev->node->name,
+			udev->hcd->dev->name,
 			udev->descriptor.iManufacturer,
 			udev->descriptor.iProduct,
 			udev->descriptor.iSerialNumber);
@@ -1675,7 +1675,7 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 		tdev = list_entry(l, struct usb_device, head);
 		if (strcmp(dev->name, tdev->name) == 0) {
 			vmm_printf("%s: device=%s alread registered\n",
-				   hcd->dev->node->name, dev->name);
+				   hcd->dev->name, dev->name);
 			vmm_mutex_unlock(&usb_dev_list_lock);
 			usb_destroy_hcd(hcd);
 			usb_free_device(dev->parent);

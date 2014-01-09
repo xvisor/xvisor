@@ -623,7 +623,7 @@ int fb_register(struct fb_info *info)
 	}
 
 	INIT_LIST_HEAD(&cd->head);
-	if (strlcpy(cd->name, info->dev->node->name, sizeof(cd->name)) >= 
+	if (strlcpy(cd->name, info->dev->name, sizeof(cd->name)) >= 
             sizeof(cd->name)) {
 		rc = VMM_EOVERFLOW;
 		goto free_classdev;
@@ -668,7 +668,7 @@ int fb_unregister(struct fb_info *info)
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_devdrv_find_classdev(FB_CLASS_NAME, info->dev->node->name);
+	cd = vmm_devdrv_find_classdev(FB_CLASS_NAME, info->dev->name);
 	if (!cd) {
 		return VMM_EFAIL;
 	}

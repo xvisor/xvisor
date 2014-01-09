@@ -753,7 +753,7 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 	if (rc) {
 		goto free_pdes;
 	}
-	if ((rc = vmm_host_irq_register(host->irq, dev->node->name, 
+	if ((rc = vmm_host_irq_register(host->irq, dev->name, 
 					sunxi_mmc_irq_handler, mmc))) {
 		goto free_pdes;
 	}
@@ -790,7 +790,7 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 
 	vmm_devtree_regaddr(dev->node, &basepa, 0);
 	vmm_printf("%s: Sunxi MMC at 0x%08llx irq %d (%s)\n",
-		   dev->node->name, (unsigned long long)basepa, host->irq,
+		   dev->name, (unsigned long long)basepa, host->irq,
 #ifdef SUNXI_USE_DMA
 		   "dma");
 #else

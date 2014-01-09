@@ -151,12 +151,12 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 	io->write	= amba_kmi_write;
 	io->open	= amba_kmi_open;
 	io->close	= amba_kmi_close;
-	if (strlcpy(io->name, dev->node->name, sizeof(io->name)) >=
+	if (strlcpy(io->name, dev->name, sizeof(io->name)) >=
 	    sizeof(io->name)) {
 		ret = -EOVERFLOW;
 		goto out;
 	}
-	if (strlcpy(io->phys, dev->node->name, sizeof(io->phys)) >=
+	if (strlcpy(io->phys, dev->name, sizeof(io->phys)) >=
 	    sizeof(io->phys)) {
 		ret = -EOVERFLOW;
 		goto out;

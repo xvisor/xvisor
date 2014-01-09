@@ -282,7 +282,7 @@ static int samsung_driver_probe(struct vmm_device *dev,
 		goto free_nothing;
 	}
 
-	if (strlcpy(port->cd.name, dev->node->name, sizeof(port->cd.name)) >=
+	if (strlcpy(port->cd.name, dev->name, sizeof(port->cd.name)) >=
 	    sizeof(port->cd.name)) {
 		rc = VMM_EOVERFLOW;
 		goto free_port;
@@ -332,8 +332,7 @@ static int samsung_driver_probe(struct vmm_device *dev,
 		goto free_reg;
 	}
 
-	if ((rc =
-	     vmm_host_irq_register(port->irq, dev->node->name,
+	if ((rc = vmm_host_irq_register(port->irq, dev->name,
 				   samsung_irq_handler, port))) {
 		goto free_reg;
 	}
