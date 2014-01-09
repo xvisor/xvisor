@@ -43,6 +43,18 @@ typedef struct {
 	volatile long lock;
 } arch_spinlock_t;
 
+#define ARCH_ATOMIC_INIT(_lptr, val)		\
+	(_lptr)->counter = (val)
+
+#define ARCH_ATOMIC_INITIALIZER(val)		\
+	{ .counter = (val), }
+
+#define ARCH_ATOMIC64_INIT(_lptr, val)		\
+	(_lptr)->counter = (val)
+
+#define ARCH_ATOMIC64_INITIALIZER(val)		\
+	{ .counter = (val), }
+
 #define __ARCH_SPIN_UNLOCKED		0xffffffffUL
 
 /* FIXME: Need memory barrier for this. */
