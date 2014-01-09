@@ -33,6 +33,7 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
@@ -51,7 +52,7 @@
 #define	MODULE_INIT			arm_sysregs_emulator_init
 #define	MODULE_EXIT			arm_sysregs_emulator_exit
 
-#define LOCK_VAL			0x0000a05f
+#define LOCK_VALUE			0x0000a05f
 
 #define REALVIEW_SYSID_PBA8		0x01780500
 #define REALVIEW_PROCID_PBA8		0x0e000000
@@ -98,6 +99,12 @@ struct arm_sysregs {
 	u32 sys_cfgctrl;
 	u32 sys_cfgstat;
 	u32 sys_clcd;
+	u32 mb_clock[6];
+	u32 *db_clock;
+	u32 db_num_vsensors;
+	u32 *db_voltage;
+	u32 db_num_clocks;
+	u32 *db_clock_reset;
 };
 
 static int board_id(struct arm_sysregs *s)
@@ -291,6 +298,165 @@ static void arm_sysregs_reboot(struct vmm_work *w)
 	vmm_manager_guest_kick(s->guest);
 }
 
+
+/* SYS_CFGCTRL functions */
+#define SYS_CFG_OSC 1
+#define SYS_CFG_VOLT 2
+#define SYS_CFG_AMP 3
+#define SYS_CFG_TEMP 4
+#define SYS_CFG_RESET 5
+#define SYS_CFG_SCC 6
+#define SYS_CFG_MUXFPGA 7
+#define SYS_CFG_SHUTDOWN 8
+#define SYS_CFG_REBOOT 9
+#define SYS_CFG_DVIMODE 11
+#define SYS_CFG_POWER 12
+#define SYS_CFG_ENERGY 13
+
+/* SYS_CFGCTRL site field values */
+#define SYS_CFG_SITE_MB 0
+#define SYS_CFG_SITE_DB1 1
+#define SYS_CFG_SITE_DB2 2
+
+/**
+ * Handle a VExpress SYS_CFGCTRL register read. On success, return true and
+ * write the read value to *val. On failure, return false (and val may
+ * or may not be written to).
+ *
+ * vexpress_cfgctrl_read:
+ * @s: arm_sysctl_state pointer
+ * @dcc, @function, @site, @position, @device: split out values from
+ * SYS_CFGCTRL register
+ * @val: pointer to where to put the read data on success
+ */
+static bool vexpress_cfgctrl_read(struct arm_sysregs *s, u32 dcc,
+                                  u32 function, u32 site,
+                                  u32 position, u32 device,
+                                  u32 *val)
+{
+	/* We don't support anything other than DCC 0, board stack position 0
+	 * or sites other than motherboard/daughterboard:
+	 */
+	if (dcc != 0 || position != 0 ||
+	   (site != SYS_CFG_SITE_MB && site != SYS_CFG_SITE_DB1)) {
+		goto cfgctrl_unimp;
+	}
+
+	switch (function) {
+	case SYS_CFG_VOLT:
+		if (site == SYS_CFG_SITE_DB1 && device < s->db_num_vsensors) {
+			*val = s->db_voltage[device];
+			return TRUE;
+		}
+		if (site == SYS_CFG_SITE_MB && device == 0) {
+			/* There is only one motherboard voltage sensor:
+			 * VIO : 3.3V : bus voltage between mother and
+			 * daughterboard
+			 */
+			*val = 3300000;
+			return TRUE;
+		}
+		break;
+	case SYS_CFG_OSC:
+		if (site == SYS_CFG_SITE_MB && device < sizeof(s->mb_clock)) {
+			/* motherboard clock */
+			*val = s->mb_clock[device];
+			return TRUE;
+		}
+		if (site == SYS_CFG_SITE_DB1 && device < s->db_num_clocks) {
+			/* daughterboard clock */
+			*val = s->db_clock[device];
+			return TRUE;
+		}
+		break;
+	default:
+		break;
+	};
+
+cfgctrl_unimp:
+	vmm_printf("%s: Unimplemented SYS_CFGCTRL read of function "
+		   "0x%x DCC 0x%x site 0x%x position 0x%x device 0x%x\n",
+		   __func__, function, dcc, site, position, device);
+	return FALSE;
+}
+
+/**
+ * Handle a VExpress SYS_CFGCTRL register write. On success, return true.
+ * On failure, return false.
+ *
+ * @s: arm_sysctl_state pointer
+ * @dcc, @function, @site, @position, @device: split out values from
+ * SYS_CFGCTRL register
+ * @val: data to write
+ */
+static bool vexpress_cfgctrl_write(struct arm_sysregs *s, u32 dcc,
+                                   u32 function, u32 site,
+                                   u32 position, u32 device,
+                                   u32 val)
+{
+	/* We don't support anything other than DCC 0, board stack position 0
+	 * or sites other than motherboard/daughterboard:
+	 */
+	if (dcc != 0 || position != 0 ||
+	    (site != SYS_CFG_SITE_MB && site != SYS_CFG_SITE_DB1)) {
+		goto cfgctrl_unimp;
+	}
+
+	switch (function) {
+	case SYS_CFG_OSC:
+		if (site == SYS_CFG_SITE_MB && device < sizeof(s->mb_clock)) {
+			/* motherboard clock */
+			s->mb_clock[device] = val;
+			return TRUE;
+		}
+		if (site == SYS_CFG_SITE_DB1 && device < s->db_num_clocks) {
+			/* daughterboard clock */
+			s->db_clock[device] = val;
+			return TRUE;
+		}
+		break;
+	case SYS_CFG_MUXFPGA:
+		if (site == SYS_CFG_SITE_MB && device == 0) {
+			/* Select whether video output comes from motherboard
+			 * or daughterboard: ignore it as Xvisor doesn't
+			 * support this.
+			 */
+			return TRUE;
+		}
+		break;
+	case SYS_CFG_SHUTDOWN:
+		if (site == SYS_CFG_SITE_MB && device == 0) {
+			vmm_workqueue_schedule_work(NULL, &s->shutdown);
+			return TRUE;
+		}
+		break;
+	case SYS_CFG_REBOOT:
+		if (site == SYS_CFG_SITE_MB && device == 0) {
+			vmm_workqueue_schedule_work(NULL, &s->reboot);
+			return TRUE;
+		}
+		break;
+	case SYS_CFG_DVIMODE:
+		if (site == SYS_CFG_SITE_MB && device == 0) {
+			/* Selecting DVI mode is meaningless for Xvisor:
+			 * we will always display the output correctly
+			 * according to the pixel height/width programmed
+			 * into the CLCD controller.
+			 */
+			return TRUE;
+		}
+		break;
+	default:
+		break;
+	};
+
+cfgctrl_unimp:
+	vmm_printf("%s: Unimplemented SYS_CFGCTRL write of function "
+		   "0x%x DCC 0x%x site 0x%x position 0x%x device 0x%x\n",
+		   __func__, function, dcc, site, position, device);
+	return FALSE;
+}
+
 static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 				      physical_addr_t offset, 
 				      void *src, u32 src_len)
@@ -338,7 +504,7 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 		break;
 	case 0x20: /* LOCK */
 		s->lockval &= regmask;
-		if (regval == LOCK_VAL) {
+		if (regval == LOCK_VALUE) {
 			s->lockval = regval;
 		} else {
 			s->lockval = regval & 0x7fff;
@@ -369,7 +535,7 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 	case 0x40: /* RESETCTL */
 		switch (board_id(s)) {
 		case BOARD_ID_PB926:
-			if (s->lockval == LOCK_VAL) {
+			if (s->lockval == LOCK_VALUE) {
 				s->resetlevel &= regmask;
 				s->resetlevel |= regval;
 				if (s->resetlevel & 0x100) {
@@ -380,7 +546,7 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 			break;
 		case BOARD_ID_PBX:
 		case BOARD_ID_PBA8:
-			if (s->lockval == LOCK_VAL) {
+			if (s->lockval == LOCK_VALUE) {
 				s->resetlevel &= regmask;
 				s->resetlevel |= regval;
 				if (s->resetlevel & 0x04) {
@@ -390,7 +556,7 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 			}
 			break;
 		case BOARD_ID_EB:
-			if (s->lockval == LOCK_VAL) {
+			if (s->lockval == LOCK_VALUE) {
 				s->resetlevel &= regmask;
 				s->resetlevel |= regval;
 				if (s->resetlevel & 0x08) {
@@ -472,19 +638,40 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 			rc =  VMM_EFAIL;
 			break;
 		}
+		/* Undefined bits [19:18] are RAZ/WI, and writing to
+		 * the start bit just triggers the action; it always
+		 * reads as zero.
+		 */
 		s->sys_cfgctrl &= regmask;
 		s->sys_cfgctrl |= regval & ~(3 << 18);
-		s->sys_cfgstat = 1;            /* complete */
-		switch (s->sys_cfgctrl) {
-		case 0xc0800000: /* SYS_CFG_SHUTDOWN to motherboard */
-			vmm_workqueue_schedule_work(NULL, &s->shutdown);
-			break;
-		case 0xc0900000: /* SYS_CFG_REBOOT to motherboard */
-			vmm_workqueue_schedule_work(NULL, &s->reboot);
-			break;
-		default:
-			s->sys_cfgstat |= 2;        /* error */
+		if (s->sys_cfgctrl & (1 << 31)) {
+			/* Start bit set -- actually do something */
+			u32 dcc = (s->sys_cfgctrl >> 26) & 0xF;
+			u32 function = (s->sys_cfgctrl >> 20) & 0x3F;
+			u32 site = (s->sys_cfgctrl >> 16) & 0x3;
+			u32 position = (s->sys_cfgctrl >> 12) & 0xF;
+			u32 device = (s->sys_cfgctrl >> 0) & 0xFFF;
+			s->sys_cfgstat = 1;			/* complete */
+			if (s->sys_cfgctrl & (1 << 30)) {
+				if (!vexpress_cfgctrl_write(s, dcc,
+							    function, site,
+							    position, device,
+							    s->sys_cfgdata)) {
+					s->sys_cfgstat |= 2;	/* error */
+				}
+			} else {
+				u32 val;
+				if (!vexpress_cfgctrl_read(s, dcc,
+							   function, site,
+							   position, device,
+							   &val)) {
+					s->sys_cfgstat |= 2;	/* error */
+				} else {
+					s->sys_cfgdata = val;
+				}
+			}
 		}
+		s->sys_cfgctrl &= ~(1 << 31);
 		break;
 	case 0xa8: /* SYS_CFGSTAT */
 		if (board_id(s) != BOARD_ID_VEXPRESS) {
@@ -508,6 +695,7 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 
 static int arm_sysregs_emulator_reset(struct vmm_emudev *edev)
 {
+	int i;
 	struct arm_sysregs *s = edev->priv;
 
 	vmm_write_lock(&s->lock);
@@ -516,11 +704,22 @@ static int arm_sysregs_emulator_reset(struct vmm_emudev *edev)
 	s->ref_24mhz = s->ref_100hz;
 
 	s->leds = 0;
-	s->lockval = 0x10000;
+	s->lockval = 0;
 	s->cfgdata1 = 0;
 	s->cfgdata2 = 0;
 	s->flags = 0;
 	s->resetlevel = 0;
+	/* Motherboard oscillators (in Hz) */
+	s->mb_clock[0] = 50000000; /* Static memory clock: 50MHz */
+	s->mb_clock[1] = 23750000; /* motherboard CLCD clock: 23.75MHz */
+	s->mb_clock[2] = 24000000; /* IO FPGA peripheral clock: 24MHz */
+	s->mb_clock[3] = 24000000; /* IO FPGA reserved clock: 24MHz */
+	s->mb_clock[4] = 24000000; /* System bus global clock: 24MHz */
+	s->mb_clock[5] = 24000000; /* IO FPGA reserved clock: 24MHz */
+	/* Daughterboard oscillators: reset from property values */
+	for (i = 0; i < s->db_num_clocks; i++) {
+		s->db_clock[i] = s->db_clock_reset[i];
+	}
 	if (board_id(s) == BOARD_ID_VEXPRESS) {
 		/* On VExpress this register will RAZ/WI */
 		s->sys_clcd = 0;
@@ -561,6 +760,7 @@ static void arm_sysregs_irq_handle(u32 irq, int cpu, int level, void *opaque)
 			s->sys_mci |= 1;
 		}
 	}
+
 	vmm_write_unlock(&s->lock);
 }
 
@@ -568,8 +768,8 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 				   struct vmm_emudev *edev,
 				   const struct vmm_devtree_nodeid *eid)
 {
-	int rc = VMM_OK;
-	const char * attr;
+	int i, j, rc = VMM_OK;
+	const char *attr;
 	struct arm_sysregs *s;
 
 	s = vmm_zalloc(sizeof(struct arm_sysregs));
@@ -584,8 +784,41 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 	s->ref_24mhz = s->ref_100hz;
 
 	if (eid->data) {
-		s->sys_id = ((u32 *)eid->data)[0];
-		s->proc_id = ((u32 *)eid->data)[1];
+		i = 0;
+		s->sys_id = ((u32 *)eid->data)[i++];
+		s->proc_id = ((u32 *)eid->data)[i++];
+		s->db_num_vsensors = ((u32 *)eid->data)[i++];
+		if (s->db_num_vsensors) {
+			s->db_voltage =
+				vmm_zalloc(sizeof(u32)*s->db_num_vsensors);
+			if (!s->db_voltage) {
+				rc = VMM_ENOMEM;
+				goto arm_sysregs_emulator_probe_freestate_fail;
+			}
+			for (j = 0; j < s->db_num_vsensors; j++) {
+				s->db_voltage[j] = ((u32 *)eid->data)[i++];
+			}
+		}
+		s->db_num_clocks = ((u32 *)eid->data)[i++];
+		if (s->db_num_clocks) {
+			s->db_clock =
+				vmm_zalloc(sizeof(u32)*s->db_num_clocks);
+			if (!s->db_clock) {
+				rc = VMM_ENOMEM;
+				goto arm_sysregs_emulator_probe_freevolt_fail;
+			}
+			s->db_clock_reset =
+				vmm_zalloc(sizeof(u32)*s->db_num_clocks);
+			if (!s->db_clock_reset) {
+				vmm_free(s->db_clock);
+				s->db_clock = NULL;
+				rc = VMM_ENOMEM;
+				goto arm_sysregs_emulator_probe_freevolt_fail;
+			}
+			for (j = 0; j < s->db_num_clocks; j++) {
+				s->db_clock_reset[j] = ((u32 *)eid->data)[i++];
+			}
+		}
 	}
 
 	attr = vmm_devtree_attrval(edev->node, "mux_in_irq");
@@ -594,7 +827,7 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 		s->mux_in_irq[1] = ((u32 *)attr)[1];
 	} else {
 		rc = VMM_EFAIL;
-		goto arm_sysregs_emulator_probe_freestate_fail;
+		goto arm_sysregs_emulator_probe_freeclock_fail;
 	}
 
 	attr = vmm_devtree_attrval(edev->node, "mux_out_irq");
@@ -602,7 +835,7 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 		s->mux_out_irq = ((u32 *)attr)[0];
 	} else {
 		rc = VMM_EFAIL;
-		goto arm_sysregs_emulator_probe_freestate_fail;
+		goto arm_sysregs_emulator_probe_freeclock_fail;
 	}
 
 	INIT_WORK(&s->shutdown, arm_sysregs_shutdown);
@@ -619,6 +852,17 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 
 	goto arm_sysregs_emulator_probe_done;
 
+arm_sysregs_emulator_probe_freeclock_fail:
+	if (s->db_clock) {
+		vmm_free(s->db_clock);
+	}
+	if (s->db_clock_reset) {
+		vmm_free(s->db_clock_reset);
+	}
+arm_sysregs_emulator_probe_freevolt_fail:
+	if (s->db_voltage) {
+		vmm_free(s->db_voltage);
+	}
 arm_sysregs_emulator_probe_freestate_fail:
 	vmm_free(s);
 arm_sysregs_emulator_probe_done:
@@ -629,46 +873,86 @@ static int arm_sysregs_emulator_remove(struct vmm_emudev *edev)
 {
 	struct arm_sysregs *s = edev->priv;
 
-	if (s) {
-		vmm_devemu_unregister_irq_handler(s->guest, s->mux_in_irq[0], 
-						  arm_sysregs_irq_handle, s);
-		vmm_devemu_unregister_irq_handler(s->guest, s->mux_in_irq[1], 
-						  arm_sysregs_irq_handle, s);
-		vmm_free(s);
-		edev->priv = NULL;
+	if (!s) {
+		return VMM_EFAIL;
 	}
+
+	vmm_devemu_unregister_irq_handler(s->guest, s->mux_in_irq[0], 
+					  arm_sysregs_irq_handle, s);
+	vmm_devemu_unregister_irq_handler(s->guest, s->mux_in_irq[1], 
+					  arm_sysregs_irq_handle, s);
+	if (s->db_clock) {
+		vmm_free(s->db_clock);
+	}
+	if (s->db_clock_reset) {
+		vmm_free(s->db_clock_reset);
+	}
+	if (s->db_voltage) {
+		vmm_free(s->db_voltage);
+	}
+	vmm_free(s);
+	edev->priv = NULL;
 
 	return VMM_OK;
 }
 
 static u32 versatilepb_sysids[] = {
 	/* === VersatilePB === */
-	/* sys_id */ VERSATILEPB_SYSID_ARM926, 
-	/* proc_id */ VERSATILEPB_PROCID_ARM926, 
+	/* sys_id */ VERSATILEPB_SYSID_ARM926,
+	/* proc_id */ VERSATILEPB_PROCID_ARM926,
+	/* len-db-voltage */ 0,
+	/* len-db-clock */ 0,
 };
 
 static u32 realview_ebmpcore_sysids[] = {
 	/* === Realview-EB-MPCore === */
-	/* sys_id */ REALVIEW_SYSID_EB11MP, 
-	/* proc_id */ REALVIEW_PROCID_EB11MP, 
+	/* sys_id */ REALVIEW_SYSID_EB11MP,
+	/* proc_id */ REALVIEW_PROCID_EB11MP,
+	/* len-db-voltage */ 0,
+	/* len-db-clock */ 0,
 };
 
 static u32 realview_pba8_sysids[] = {
 	/* === Realview-PB-aA8 === */
-	/* sys_id */ REALVIEW_SYSID_PBA8, 
-	/* proc_id */ REALVIEW_PROCID_PBA8, 
+	/* sys_id */ REALVIEW_SYSID_PBA8,
+	/* proc_id */ REALVIEW_PROCID_PBA8,
+	/* len-db-voltage */ 0,
+	/* len-db-clock */ 0,
 };
 
 static u32 vexpress_a9_sysids[] = {
 	/* === VExpress-A9 === */
-	/* sys_id */ VEXPRESS_SYSID_CA9, 
-	/* proc_id */ VEXPRESS_PROCID_CA9, 
+	/* sys_id */ VEXPRESS_SYSID_CA9,
+	/* proc_id */ VEXPRESS_PROCID_CA9,
+	/* len-db-voltage */ 6,
+	/* db-voltage */ 1000000, /* VD10 : 1.0V : SoC internal logic voltage */
+	/* db-voltage */ 1000000, /* VD10_S2 : 1.0V : PL310, L2 cache, RAM, non-PL310 logic */
+	/* db-voltage */ 1000000, /* VD10_S3 : 1.0V : Cortex-A9, cores, MPEs, SCU, PL310 logic */
+	/* db-voltage */ 1800000, /* VCC1V8 : 1.8V : DDR2 SDRAM, test chip DDR2 I/O supply */
+	/* db-voltage */ 900000, /* DDR2VTT : 0.9V : DDR2 SDRAM VTT termination voltage */
+	/* db-voltage */ 3300000, /* VCC3V3 : 3.3V : local board supply for misc external logic */
+	/* len-db-clock */ 3,
+	/* db-clock */ 45000000, /* AMBA AXI ACLK: 45MHz */
+	/* db-clock */ 23750000, /* daughterboard CLCD clock: 23.75MHz */
+	/* db-clock */ 66670000, /* Test chip reference clock: 66.67MHz */
 };
 
 static u32 vexpress_a15_sysids[] = {
 	/* === VExpress-A15 === */
-	/* sys_id */ VEXPRESS_SYSID_CA15, 
-	/* proc_id */ VEXPRESS_PROCID_CA15, 
+	/* sys_id */ VEXPRESS_SYSID_CA15,
+	/* proc_id */ VEXPRESS_PROCID_CA15,
+	/* len-db-voltage */ 1,
+	/* db-voltage */ 900000, /* Vcore: 0.9V : CPU core voltage */
+	/* len-db-clock */ 9,
+	/* db-clock */ 60000000, /* OSCCLK0: 60MHz : CPU_CLK reference */
+	/* db-clock */ 0, /* OSCCLK1: reserved */
+	/* db-clock */ 0, /* OSCCLK2: reserved */
+	/* db-clock */ 0, /* OSCCLK3: reserved */
+	/* db-clock */ 40000000, /* OSCCLK4: 40MHz : external AXI master clock */
+	/* db-clock */ 23750000, /* OSCCLK5: 23.75MHz : HDLCD PLL reference */
+	/* db-clock */ 50000000, /* OSCCLK6: 50MHz : static memory controller clock */
+	/* db-clock */ 60000000, /* OSCCLK7: 60MHz : SYSCLK reference */
+	/* db-clock */ 40000000, /* OSCCLK8: 40MHz : DDR2 PLL reference */
 };
 
 static struct vmm_devtree_nodeid arm_sysregs_emuid_table[] = {
