@@ -7,6 +7,7 @@
 
 #include <linux/err.h>
 #include <linux/bitops.h>
+#include <asm/atomic.h>
 
 #define ARRAY_SIZE	array_size
 
