@@ -18,6 +18,11 @@
 #define module_param_named(p1,p2,p3,p4)
 #define MODULE_PARM_DESC(p1,p2)
 
+#define THIS_MODULE			1
+#define try_module_get(x)		1
+#define __module_get(x)
+#define module_put(x)
+
 /* FIXME: This file is just a place holder in most cases. */
 
 #endif /* _LINUX_MODULE_H */

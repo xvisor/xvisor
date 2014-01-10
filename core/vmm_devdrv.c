@@ -90,6 +90,11 @@ static int default_bus_remove(struct vmm_device *dev)
 	return drv->remove(dev);
 }
 
+static void default_device_release(struct vmm_device *dev)
+{
+	vmm_free(dev);
+}
+
 /* Note: Must be called with bus->lock held */
 static int __bus_probe_device_driver(struct vmm_bus *bus,
 				     struct vmm_device *dev,
@@ -97,21 +102,36 @@ static int __bus_probe_device_driver(struct vmm_bus *bus,
 {
 	int rc = VMM_OK;
 
+	/* Device should be registered but not having any driver */
+	if (!dev->is_registered || dev->driver) {
+		/* Note: we return OK so that caller
+		 * does not try more drivers
+		 */
+		return VMM_OK;
+	}
+
+	/* Device should match the driver */
 	if (bus->match && !bus->match(dev, drv)) {
 		return VMM_ENODEV;
 	}
 
-	if (!bus->probe) {
-		dev->driver = drv;
-	} else {
+	/* If bus probe is available then device should
+	 * probe without failure
+	 */
+	dev->driver = drv;
+	if (bus->probe) {
 #if defined(CONFIG_VERBOSE_MODE)
-		vmm_printf("Probe device %s\n", dev->name);
+		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
+			   "try probe driver=\"%s\"\n",
+			   bus->name, dev->name, dev->driver->name);
 #endif
-		dev->driver = drv;
 		rc = bus->probe(dev);
 		if (rc) {
-			vmm_printf("%s: %s probe error %d\n", 
-				   __func__, dev->name, rc);
+#if defined(CONFIG_VERBOSE_MODE)
+			vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
+				   "probe error %d\n",
+				   bus->name, dev->name, rc);
+#endif
 			dev->driver = NULL;
 		}
 	}
@@ -120,26 +140,46 @@ static int __bus_probe_device_driver(struct vmm_bus *bus,
 }
 
 /* Note: Must be called with bus->lock held */
-static int __bus_remove_device_driver(struct vmm_bus *bus,
-				      struct vmm_device *dev)
+static void __bus_remove_device_driver(struct vmm_bus *bus,
+				       struct vmm_device *dev)
 {
 	int rc = VMM_OK;
 
+	/* Device should be registered and having a driver */
+	if (!dev->is_registered || !dev->driver) {
+		return;
+	}
+
 	if (bus->remove) {
 #if defined(CONFIG_VERBOSE_MODE)
-		vmm_printf("Remove device %s\n", dev->name);
+		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
+			   "remove driver=\"%s\"\n",
+			   bus->name, dev->name, dev->driver->name);
 #endif
 		rc = bus->remove(dev);
-		dev->driver = NULL;
 		if (rc) {
-			vmm_printf("%s: %s remove error %d\n", 
-				   __func__, dev->name, rc);
+			vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
+				   "remove error %d\n",
+				   bus->name, dev->name, rc);
 		}
+		dev->driver = NULL;
 	} else {
 		dev->driver = NULL;
 	}
+}
 
-	return rc;
+/* Note: Must be called with bus->lock held */
+static void __bus_shutdown_device_driver(struct vmm_bus *bus,
+					 struct vmm_device *dev)
+{
+	if (bus->shutdown) {
+#if defined(CONFIG_VERBOSE_MODE)
+		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
+			   "shutdown\n",
+			   bus->name, dev->name);
+#endif
+		bus->shutdown(dev);
+	}
 }
 
 /* Note: Must be called with bus->lock held */
@@ -149,11 +189,6 @@ static void __bus_probe_this_device(struct vmm_bus *bus,
 	int rc;
 	struct dlist *l;
 	struct vmm_driver *drv;
-
-	/* If device already probed then do nothing */
-	if (dev->driver) {
-		return;
-	}
 
 	/* Try each and every driver of this bus */
 	list_for_each(l, &bus->driver_list) {
@@ -170,12 +205,14 @@ static void __bus_probe_this_device(struct vmm_bus *bus,
 static void __bus_remove_this_device(struct vmm_bus *bus,
 				     struct vmm_device *dev)
 {
-	/* If device not probed then do nothing */
-	if (!dev->driver) {
-		return;
-	}
-
 	__bus_remove_device_driver(bus, dev);
+}
+
+/* Note: Must be called with bus->lock held */
+static void __bus_shutdown_this_device(struct vmm_bus *bus,
+				       struct vmm_device *dev)
+{
+	__bus_shutdown_device_driver(bus, dev);
 }
 
 /* Note: Must be called with bus->lock held */
@@ -218,6 +255,37 @@ static void __bus_remove_this_driver(struct vmm_bus *bus,
 	}
 }
 
+/* Note: Must be called with bus->lock held */
+void __bus_shutdown(struct vmm_bus *bus)
+{
+	struct dlist *l;
+	struct vmm_device *dev;
+
+	/* Forcefully destroy all devices */
+	while (!list_empty(&bus->device_list)) {
+		l = list_first(&bus->device_list);
+		dev = list_entry(l, struct vmm_device, head);
+
+		/* Bus shutdown/cleanup this device */
+		__bus_shutdown_this_device(bus, dev);
+
+		/* Unregister from device list */
+		list_del(&dev->head);
+		dev->is_registered = FALSE;
+
+		/* Update parent */
+		if (dev->parent) {
+			vmm_mutex_lock(&dev->parent->child_list_lock);
+			list_del(&dev->child_head);
+			vmm_mutex_unlock(&dev->parent->child_list_lock);
+			vmm_devdrv_free_device(dev->parent);
+		}
+
+		/* Decrement reference count of device */
+		vmm_devdrv_free_device(dev);
+	}
+}
+
 static int devdrv_probe(struct vmm_devtree_node *node,
 			struct vmm_device *parent)
 {
@@ -231,14 +299,22 @@ static int devdrv_probe(struct vmm_devtree_node *node,
 	}
 
 	dev = vmm_zalloc(sizeof(struct vmm_device));
+	if (!dev) {
+		return VMM_ENOMEM;
+	}
+
+	vmm_devdrv_initialize_device(dev);
+
 	strncpy(dev->name, node->name, sizeof(dev->name));
 	dev->node = node;
 	dev->parent = parent;
+	dev->release = default_device_release;
 	dev->priv = NULL;
 
 	rc = vmm_devdrv_register_device(dev);
 	if (rc) {
-		vmm_free(dev);
+		vmm_devdrv_free_device(dev);
+		return rc;
 	}
 
 	list_for_each(l, &node->child_list) {
@@ -644,7 +720,6 @@ int vmm_devdrv_unregister_bus(struct vmm_bus *bus)
 	bool found;
 	struct dlist *l;
 	struct vmm_bus *b;
-	struct vmm_device *d;
 
 	vmm_mutex_lock(&ddctrl.bus_lock);
 
@@ -670,13 +745,8 @@ int vmm_devdrv_unregister_bus(struct vmm_bus *bus)
 
 	vmm_mutex_lock(&b->lock);
 
-	while (!list_empty(&bus->device_list)) {
-		l = list_pop(&bus->device_list);
-		d = list_entry(l, struct vmm_device, head);
-
-		/* Bus remove this device */
-		__bus_remove_this_device(b, d);
-	}
+	/* Bus shutdown to nuke all devices */
+	__bus_shutdown(b);
 
 	vmm_mutex_unlock(&b->lock);
 
@@ -770,6 +840,55 @@ u32 vmm_devdrv_bus_count(void)
 	return retval;
 }
 
+void vmm_devdrv_initialize_device(struct vmm_device *dev)
+{
+	if (!dev) {
+		return;
+	}
+
+	INIT_LIST_HEAD(&dev->head);
+	arch_atomic_write(&dev->ref_count, 1);
+	INIT_LIST_HEAD(&dev->child_head);
+	INIT_MUTEX(&dev->child_list_lock);
+	INIT_LIST_HEAD(&dev->child_list);
+}
+
+void vmm_devdrv_ref_device(struct vmm_device *dev)
+{
+	if (!dev) {
+		return;
+	}
+
+	arch_atomic_inc(&dev->ref_count);
+}
+
+void vmm_devdrv_free_device(struct vmm_device *dev)
+{
+	if (!dev) {
+		return;
+	}
+
+	if (arch_atomic_sub_return(&dev->ref_count, 1)) {
+		return;
+	}
+
+	WARN_ON(!dev->release);
+
+	if (dev->release) {
+		dev->release(dev);
+	}
+}
+
+bool vmm_devdrv_isregistered_device(struct vmm_device *dev)
+{
+	return (dev) ? dev->is_registered : FALSE;
+}
+
+bool vmm_devdrv_isattached_device(struct vmm_device *dev)
+{
+	return (dev) ? ((dev->driver) ? TRUE : FALSE) : FALSE;
+}
+
 int vmm_devdrv_register_device(struct vmm_device *dev)
 {
 	bool found;
@@ -803,9 +922,16 @@ int vmm_devdrv_register_device(struct vmm_device *dev)
 		return VMM_EINVALID;
 	}
 
-	INIT_LIST_HEAD(&dev->head);
+	if (dev->parent) {
+		vmm_devdrv_ref_device(dev->parent);
+		vmm_mutex_lock(&dev->parent->child_list_lock);
+		list_add_tail(&dev->child_head, &dev->parent->child_list);
+		vmm_mutex_unlock(&dev->parent->child_list_lock);
+	}
 
+	INIT_LIST_HEAD(&dev->head);
 	list_add_tail(&dev->head, &bus->device_list);
+	dev->is_registered = TRUE;
 
 	/* Bus probe this device */
 	__bus_probe_this_device(bus, dev);
@@ -818,8 +944,9 @@ int vmm_devdrv_register_device(struct vmm_device *dev)
 int vmm_devdrv_attach_device(struct vmm_device *dev)
 {
 	struct vmm_bus *bus;
-	
-	if (!dev || !dev->bus) {
+
+	/* Device should be registered with a valid bus */
+	if (!dev || !dev->is_registered || !dev->bus) {
 		return VMM_EFAIL;
 	}
 	bus = dev->bus;
@@ -838,7 +965,8 @@ int vmm_devdrv_dettach_device(struct vmm_device *dev)
 {
 	struct vmm_bus *bus;
 	
-	if (!dev || !dev->bus) {
+	/* Device should be registered with a valid bus */
+	if (!dev || !dev->is_registered || !dev->bus) {
 		return VMM_EFAIL;
 	}
 	bus = dev->bus;
@@ -887,10 +1015,18 @@ int vmm_devdrv_unregister_device(struct vmm_device *dev)
 		return VMM_ENOTAVAIL;
 	}
 
-	list_del(&d->head);
-
 	/* Bus remove this device */
 	__bus_remove_this_device(bus, d);
+
+	list_del(&d->head);
+	d->is_registered = FALSE;
+
+	if (d->parent) {
+		vmm_mutex_lock(&d->parent->child_list_lock);
+		list_del(&d->child_head);
+		vmm_mutex_unlock(&d->parent->child_list_lock);
+		vmm_devdrv_free_device(d->parent);
+	}
 
 	vmm_mutex_unlock(&bus->lock);
 
@@ -1043,7 +1179,6 @@ int vmm_devdrv_register_driver(struct vmm_driver *drv)
 	}
 
 	INIT_LIST_HEAD(&drv->head);
-
 	list_add_tail(&drv->head, &bus->driver_list);
 
 	/* Bus probe this driver */

@@ -37,25 +37,31 @@ struct vmm_device;
 struct vmm_driver;
 
 struct vmm_class {
+	/* Private fields (for device driver framework) */
 	struct dlist head;
 	struct vmm_mutex lock;
-	char name[VMM_FIELD_NAME_SIZE];
 	struct dlist classdev_list;
+	/* Public fields */
+	char name[VMM_FIELD_NAME_SIZE];
 };
 
 struct vmm_classdev {
+	/* Private fields (for device driver framework) */
 	struct dlist head;
+	/* Public fields */
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_device *dev;
 	void *priv;
 };
 
 struct vmm_bus {
+	/* Private fields (for device driver framework) */
 	struct dlist head;
 	struct vmm_mutex lock;
-	char name[VMM_FIELD_NAME_SIZE];
 	struct dlist device_list;
 	struct dlist driver_list;
+	/* Public fields */
+	char name[VMM_FIELD_NAME_SIZE];
 	int (*match) (struct vmm_device *dev, struct vmm_driver *drv);
 	int (*probe) (struct vmm_device *);
 	int (*remove) (struct vmm_device *);
@@ -63,7 +69,14 @@ struct vmm_bus {
 };
 
 struct vmm_device {
+	/* Private fields (for device driver framework) */
 	struct dlist head;
+	atomic_t ref_count;
+	bool is_registered;
+	struct dlist child_head;
+	struct vmm_mutex child_list_lock;
+	struct dlist child_list;
+	/* Public fields */
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_bus *bus;
 	struct vmm_devtree_node *node;
@@ -76,7 +89,9 @@ struct vmm_device {
 };
 
 struct vmm_driver {
+	/* Private fields (for device driver framework) */
 	struct dlist head;
+	/* Public fields */
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_bus *bus;
 	const struct vmm_devtree_nodeid *match_table;
@@ -150,6 +165,21 @@ struct vmm_bus *vmm_devdrv_bus(int index);
 
 /** Count available buses */
 u32 vmm_devdrv_bus_count(void);
+
+/** Initialize device */
+void vmm_devdrv_initialize_device(struct vmm_device *dev);
+
+/** Increment reference count of device */
+void vmm_devdrv_ref_device(struct vmm_device *dev);
+
+/** Decrement reference count of device */
+void vmm_devdrv_free_device(struct vmm_device *dev);
+
+/** Check whether device is registered or not */
+bool vmm_devdrv_isregistered_device(struct vmm_device *dev);
+
+/** Check whether device is attached to driver or not */
+bool vmm_devdrv_isattached_device(struct vmm_device *dev);
 
 /** Register device */
 int vmm_devdrv_register_device(struct vmm_device *dev);

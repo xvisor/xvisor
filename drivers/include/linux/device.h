@@ -20,12 +20,12 @@
 #define bus_register(bus)		vmm_devdrv_register_bus(bus)
 #define bus_unregister(bus)		vmm_devdrv_unregister_bus(bus)
 
-#define get_device(dev)
-#define put_device(dev)
-#define device_is_registered(dev)	1
+#define get_device(dev)			vmm_devdrv_ref_device(dev)
+#define put_device(dev)			vmm_devdrv_free_device(dev)
+#define device_is_registered(dev)	vmm_devdrv_isregistered_device(dev)
 #define dev_name(dev)			(dev)->name
 #define dev_set_name(dev, msg...)	vmm_sprintf((dev)->name, msg)
-#define device_initialize(dev)
+#define device_initialize(dev)		vmm_devdrv_initialize_device(dev)
 #define device_add(dev)			vmm_devdrv_register_device(dev)
 #define device_attach(dev)		vmm_devdrv_attach_device(dev)
 #define device_bind_driver(dev)		vmm_devdrv_attach_device(dev)
