@@ -90,7 +90,7 @@ static int __init_ide_drive(struct ide_drive *drive)
 	vmm_snprintf(bdev->name, sizeof(bdev->name), "%s", drive_names[chan][did]);
 	vmm_snprintf(bdev->desc, sizeof(bdev->desc), "%s", drive->model);
 
-	bdev->dev = drive->dev;
+	bdev->dev.parent = drive->dev;
 	bdev->flags = VMM_BLOCKDEV_RW;
 	bdev->start_lba = 0;
 	bdev->block_size = 512;

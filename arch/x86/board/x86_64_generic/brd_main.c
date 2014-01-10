@@ -127,7 +127,7 @@ int __init arch_board_final_init(void)
 #if defined(CONFIG_VTEMU)
 	info = fb_get(0);
 	if (info) {
-		x86_vt = vtemu_create(info->dev->name, info, NULL);
+		x86_vt = vtemu_create(info->dev.name, info, NULL);
 		if (x86_vt) {
 			vmm_stdio_change_device(&x86_vt->cdev);
 		}

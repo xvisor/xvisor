@@ -304,7 +304,7 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 
-	port->cd.dev = dev;
+	port->cd.dev.parent = dev;
 	port->cd.ioctl = NULL;
 	port->cd.read = uart_8250_read;
 	port->cd.write = uart_8250_write;

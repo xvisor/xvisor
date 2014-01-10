@@ -1335,11 +1335,7 @@ static int psmouse_switch_protocol(struct psmouse *psmouse,
 	const struct psmouse_protocol *selected_proto;
 	struct input_dev *input_dev = psmouse->dev;
 
-#if 0
 	input_dev->dev.parent = &psmouse->ps2dev.serio->dev;
-#else
-	input_dev->dev = &psmouse->ps2dev.serio->dev;
-#endif
 
 	if (proto && (proto->detect || proto->init)) {
 		psmouse_apply_defaults(psmouse);

@@ -29,7 +29,6 @@
 #include <vmm_types.h>
 #include <vmm_limits.h>
 #include <vmm_devdrv.h>
-#include <vmm_spinlocks.h>
 #include <libs/list.h>
 
 #define VMM_NETSWITCH_CLASS_NAME	"netswitch"
@@ -41,7 +40,7 @@ struct vmm_mbuf;
 struct vmm_netswitch {
 	char name[VMM_FIELD_NAME_SIZE];
 	int flags;
-	struct vmm_device *dev;
+	struct vmm_device dev;
 	/* Lock to protect port list */
 	vmm_rwlock_t port_list_lock;
 	/* List of ports */
@@ -91,7 +90,7 @@ int vmm_netswitch_port_remove(struct vmm_netport *port);
 
 /** Register network switch to network switch framework */
 int vmm_netswitch_register(struct vmm_netswitch *nsw, 
-			   struct vmm_device *dev,
+			   struct vmm_device *parent,
 			   void *priv);
 
 /** Unregister network switch from network switch framework */

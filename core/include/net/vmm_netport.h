@@ -69,7 +69,7 @@ struct vmm_netport {
 	int mtu;
 	u8 macaddr[6];
 	struct vmm_netswitch *nsw;
-	struct vmm_device *dev;
+	struct vmm_device dev;
 
 	/* Per-port pool of xfer instances 
 	 * Having all these blocks contiguous eases alloc

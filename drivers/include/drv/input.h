@@ -1053,7 +1053,7 @@ struct input_dev {
 	bool going_away;
 	bool sync;
 
-	struct vmm_device *dev;
+	struct vmm_device dev;
 
 	void *priv;
 };

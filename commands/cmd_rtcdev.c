@@ -66,11 +66,11 @@ void cmd_rtcdev_list(struct vmm_chardev *cdev)
 	count = rtc_device_count();
 	for (num = 0; num < count; num++) {
 		rd = rtc_device_get(num);
-		if (!rd->dev) {
-			vmm_cprintf(cdev, "%s: ---\n", rd->name);
-		} else {
-			vmm_devtree_getpath(path, rd->dev->node);
+		if (rd->dev.parent && rd->dev.parent->node) {
+			vmm_devtree_getpath(path, rd->dev.parent->node);
 			vmm_cprintf(cdev, "%s: %s\n", rd->name, path);
+		} else {
+			vmm_cprintf(cdev, "%s: ---\n", rd->name);
 		}
 	}
 }

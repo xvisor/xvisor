@@ -537,7 +537,7 @@ static int vesafb_probe(struct vmm_device *dev,
 		goto err;
 	}
 	printk(KERN_INFO "vesafb: registered %s frame buffer device\n",
-	       info->dev->name);
+	       dev_name(&info->dev));
 	return 0;
 err:
 	if (info->screen_base)

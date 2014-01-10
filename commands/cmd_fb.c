@@ -58,9 +58,13 @@ void cmd_fb_list(struct vmm_chardev *cdev)
 	count = fb_count();
 	for (num = 0; num < count; num++) {
 		info = fb_get(num);
-		vmm_devtree_getpath(path, info->dev->node);
+		if (info->dev.parent && info->dev.parent->node) {
+			vmm_devtree_getpath(path, info->dev.parent->node);
+		} else {
+			strcpy(path, "-----");
+		}
 		vmm_cprintf(cdev, " %-16s %-20s %-40s\n", 
-				  info->dev->node->name, info->fix.id, path);
+				  info->name, info->fix.id, path);
 	}
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
@@ -77,7 +81,7 @@ int cmd_fb_info(struct vmm_chardev *cdev, const char *fb_name)
 		return VMM_EFAIL;
 	}
 
-	vmm_cprintf(cdev, "Name   : %s\n", info->dev->node->name);
+	vmm_cprintf(cdev, "Name   : %s\n", info->name);
 	vmm_cprintf(cdev, "ID     : %s\n", info->fix.id);
 
 	switch (info->fix.type) {

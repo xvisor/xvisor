@@ -133,7 +133,7 @@ static int pl031_stv2_tm_to_time(struct rtc_device *rd,
 
 	/* wday masking is not working in hardware so wday must be valid */
 	if (wday < -1 || wday > 6) {
-		dev_err(rd->dev, "invalid wday value %d\n", tm->tm_wday);
+		dev_err(&rd->dev, "invalid wday value %d\n", tm->tm_wday);
 		return -EINVAL;
 	} else if (wday == -1) {
 		/* wday is not provided, calculate it here */
@@ -358,7 +358,7 @@ static int pl031_driver_probe(struct vmm_device *dev,
 		rc = VMM_EOVERFLOW;
 		goto free_irq;
 	}
-	ldata->rtc.dev = dev;
+	ldata->rtc.dev.parent = dev;
 	periphid = amba_periphid(dev);
 	if ((periphid & 0x000fffff) == 0x00041031) {
 		/* ARM variant */

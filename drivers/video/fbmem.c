@@ -483,7 +483,7 @@ int fb_release(struct fb_info *info)
 }
 VMM_EXPORT_SYMBOL(fb_release);
 
-struct fb_info *fb_alloc(size_t size, struct vmm_device *dev)
+struct fb_info *fb_alloc(size_t size, struct vmm_device *parent)
 {
 #define BYTES_PER_LONG (BITS_PER_LONG/8)
 #define PADDING (BYTES_PER_LONG - (sizeof(struct fb_info) % BYTES_PER_LONG))
@@ -506,7 +506,7 @@ struct fb_info *fb_alloc(size_t size, struct vmm_device *dev)
 		info->par = p + fb_info_size;
 	}
 
-	info->dev = dev;
+	info->dev.parent = parent;
 
 	return info;
 #undef PADDING
@@ -566,12 +566,15 @@ void fb_remove_conflicting_framebuffers(struct apertures_struct *a,
 }
 VMM_EXPORT_SYMBOL(fb_remove_conflicting_framebuffers);
 
+static struct vmm_class fb_class = {
+	.name = FB_CLASS_NAME,
+};
+
 int fb_register(struct fb_info *info)
 {
 	int rc;
 	struct fb_event event;
 	struct fb_videomode mode;
-	struct vmm_classdev *cd;
 
 	if (info == NULL) {
 		return VMM_EFAIL;
@@ -616,24 +619,21 @@ int fb_register(struct fb_info *info)
 	fb_var_to_videomode(&mode, &info->var);
 	fb_add_videomode(&mode, &info->modelist);
 
-	cd = vmm_malloc(sizeof(struct vmm_classdev));
-	if (!cd) {
-		rc = VMM_EFAIL;
+	vmm_snprintf(info->name, sizeof(info->name), "fb%d",
+		     vmm_devdrv_class_device_count(&fb_class));
+
+	vmm_devdrv_initialize_device(&info->dev);
+	if (strlcpy(info->dev.name, info->name, sizeof(info->dev.name)) >=
+	    sizeof(info->dev.name)) {
+		rc = VMM_EOVERFLOW;
 		goto free_pixmap;
 	}
+	info->dev.class = &fb_class;
+	vmm_devdrv_set_data(&info->dev, info);
 
-	INIT_LIST_HEAD(&cd->head);
-	if (strlcpy(cd->name, info->dev->name, sizeof(cd->name)) >= 
-            sizeof(cd->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_classdev;
-	}
-	cd->dev = info->dev;
-	cd->priv = info;
-
-	rc = vmm_devdrv_register_classdev(FB_CLASS_NAME, cd);
+	rc = vmm_devdrv_class_register_device(&fb_class, &info->dev);
 	if (rc) {
-		goto free_classdev;
+		goto free_pixmap;
 	}
 
 	vmm_mutex_lock(&info->lock);
@@ -643,10 +643,6 @@ int fb_register(struct fb_info *info)
 
 	return VMM_OK;
 
-free_classdev:
-	cd->dev = NULL;
-	cd->priv = NULL;
-	vmm_free(cd);
 free_pixmap:
 	if (info->pixmap.flags & FB_PIXMAP_DEFAULT) {
 		vmm_free(info->pixmap.addr);
@@ -659,23 +655,14 @@ int fb_unregister(struct fb_info *info)
 {
 	int rc;
 	struct fb_event event;
-	struct vmm_classdev *cd;
 
 	if (info == NULL) {
 		return VMM_EFAIL;
 	}
-	if (info->dev == NULL) {
-		return VMM_EFAIL;
-	}
 
-	cd = vmm_devdrv_find_classdev(FB_CLASS_NAME, info->dev->name);
-	if (!cd) {
-		return VMM_EFAIL;
-	}
-
-	rc = vmm_devdrv_unregister_classdev(FB_CLASS_NAME, cd);
-	if (!rc) {
-		vmm_free(cd);
+	rc = vmm_devdrv_class_unregister_device(&fb_class, &info->dev);
+	if (rc) {
+		return rc;
 	}
 
 	if (info->pixmap.addr &&
@@ -693,84 +680,46 @@ VMM_EXPORT_SYMBOL(fb_unregister);
 
 struct fb_info *fb_find(const char *name)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_find_classdev(FB_CLASS_NAME, name);
-	if (!cd) {
+	dev = vmm_devdrv_class_find_device(&fb_class, name);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(fb_find);
 
 struct fb_info *fb_get(int num)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_classdev(FB_CLASS_NAME, num);
-	if (!cd) {
+	dev = vmm_devdrv_class_device(&fb_class, num);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(fb_get);
 
 u32 fb_count(void)
 {
-	return vmm_devdrv_classdev_count(FB_CLASS_NAME);
+	return vmm_devdrv_class_device_count(&fb_class);
 }
 VMM_EXPORT_SYMBOL(fb_count);
 
 static int __init fb_init(void)
 {
-	int rc;
-	struct vmm_class *c;
-
 	vmm_printf("Initialize Frame Buffer Framework\n");
 
-	c = vmm_malloc(sizeof(struct vmm_class));
-	if (!c) {
-		return VMM_EFAIL;
-	}
-
-	INIT_LIST_HEAD(&c->head);
-	if (strlcpy(c->name, FB_CLASS_NAME, sizeof(c->name)) >=
-            sizeof(c->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_class;
-	}
-	INIT_LIST_HEAD(&c->classdev_list);
-
-	rc = vmm_devdrv_register_class(c);
-	if (rc) {
-		goto free_class;
-	}
-
-	return VMM_OK;
-
-free_class:
-	vmm_free(c);
-	return rc;
+	return vmm_devdrv_register_class(&fb_class);
 }
 
 static void __exit fb_exit(void)
 {
-	int rc;
-	struct vmm_class *c;
-
-	c = vmm_devdrv_find_class(FB_CLASS_NAME);
-	if (!c) {
-		return;
-	}
-
-	rc = vmm_devdrv_unregister_class(c);
-	if (rc) {
-		return;
-	}
-
-	vmm_free(c);
+	vmm_devdrv_unregister_class(&fb_class);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,

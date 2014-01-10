@@ -26,14 +26,13 @@
 
 #include <vmm_limits.h>
 #include <vmm_types.h>
-#include <vmm_spinlocks.h>
 #include <vmm_devdrv.h>
 
 #define VMM_CHARDEV_CLASS_NAME				"char"
 
 struct vmm_chardev {
 	char name[VMM_FIELD_NAME_SIZE];
-	struct vmm_device *dev;
+	struct vmm_device dev;
 	int (*ioctl) (struct vmm_chardev *cdev,
 			int cmd, void *buf, u32 len);
 	u32 (*read) (struct vmm_chardev *cdev,

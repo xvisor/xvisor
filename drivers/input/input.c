@@ -636,6 +636,10 @@ int input_set_keycode(struct input_dev *dev,
 }
 VMM_EXPORT_SYMBOL(input_set_keycode);
 
+static struct vmm_class input_class = {
+	.name = INPUT_DEV_CLASS_NAME,
+};
+
 struct input_dev *input_allocate_device(void)
 {
 	struct input_dev *dev;
@@ -648,6 +652,8 @@ struct input_dev *input_allocate_device(void)
 	INIT_LIST_HEAD(&dev->head);
 	INIT_SPIN_LOCK(&dev->event_lock);
 	INIT_SPIN_LOCK(&dev->ops_lock);
+	vmm_devdrv_initialize_device(&dev->dev);
+	dev->dev.class = &input_class;
 
 	return dev;
 }
@@ -723,29 +729,20 @@ int input_register_device(struct input_dev *dev)
 {
 	int i, rc;
 	irq_flags_t flags, flags1;
-	struct vmm_classdev *cd;
 
 	if (!(dev && dev->phys && dev->name)) {
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_zalloc(sizeof(struct vmm_classdev));
-	if (!cd) {
-		return VMM_EFAIL;
+	if (strlcpy(dev->dev.name, dev->phys, sizeof(dev->dev.name)) >=
+	    sizeof(dev->dev.name)) {
+		return VMM_EOVERFLOW;
 	}
-
-	INIT_LIST_HEAD(&cd->head);
-	if (strlcpy(cd->name, dev->phys, sizeof(cd->name)) >=
-	    sizeof(cd->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_classdev;
-	}
-	cd->dev = dev->dev;
-	cd->priv = dev;
-
-	rc = vmm_devdrv_register_classdev(INPUT_DEV_CLASS_NAME, cd);
-	if (rc != VMM_OK) {
-		goto free_classdev;
+	vmm_devdrv_set_data(&dev->dev, dev);
+	
+	rc = vmm_devdrv_class_register_device(&input_class, &dev->dev);
+	if (rc) {
+		return rc;
 	}
 
 	/* Every input device generates EV_SYN/SYN_REPORT events. */
@@ -799,18 +796,12 @@ int input_register_device(struct input_dev *dev)
 	vmm_spin_unlock_irqrestore(&ictrl.dev_list_lock, flags);
 
 	return rc;
-
-free_classdev:
-	vmm_free(cd);
-	return rc;
 }
 VMM_EXPORT_SYMBOL(input_register_device);
 
 int input_unregister_device(struct input_dev *dev)
 {
-	int rc;
 	irq_flags_t flags;
-	struct vmm_classdev *cd;
 
 	if (!dev) {
 		return VMM_EFAIL;
@@ -829,17 +820,7 @@ int input_unregister_device(struct input_dev *dev)
 	}
 	vmm_spin_unlock_irqrestore(&dev->ops_lock, flags);
 
-	cd = vmm_devdrv_find_classdev(INPUT_DEV_CLASS_NAME, dev->phys);
-	if (!cd) {
-		return VMM_EFAIL;
-	}
-
-	rc = vmm_devdrv_unregister_classdev(INPUT_DEV_CLASS_NAME, cd);
-	if (rc == VMM_OK) {
-		vmm_free(cd);
-	}
-
-	return rc;
+	return vmm_devdrv_class_unregister_device(&input_class, &dev->dev);
 }
 VMM_EXPORT_SYMBOL(input_unregister_device);
 
@@ -904,33 +885,33 @@ VMM_EXPORT_SYMBOL(input_flush_device);
 
 struct input_dev *input_find_device(const char *phys)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_find_classdev(INPUT_DEV_CLASS_NAME, phys);
-	if (!cd) {
+	dev = vmm_devdrv_class_find_device(&input_class, phys);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(input_find_device);
 
 struct input_dev *input_get_device(int index)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_classdev(INPUT_DEV_CLASS_NAME, index);
-	if (!cd) {
+	dev = vmm_devdrv_class_device(&input_class, index);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(input_get_device);
 
 u32 input_count_device(void)
 {
-	return vmm_devdrv_classdev_count(INPUT_DEV_CLASS_NAME);
+	return vmm_devdrv_class_device_count(&input_class);
 }
 VMM_EXPORT_SYMBOL(input_count_device);
 
@@ -1203,8 +1184,7 @@ VMM_EXPORT_SYMBOL(input_count_handler);
 
 static int __init input_init(void)
 {
-	int i, rc;
-	struct vmm_class *c;
+	int i;
 
 	vmm_printf("Initialize Input Device Framework\n");
 
@@ -1220,47 +1200,12 @@ static int __init input_init(void)
 		ictrl.hnd_conn_count[i] = 0;
 	}
 
-	c = vmm_zalloc(sizeof(struct vmm_class));
-	if (!c) {
-		return VMM_EFAIL;
-	}
-
-	INIT_LIST_HEAD(&c->head);
-	if (strlcpy(c->name, INPUT_DEV_CLASS_NAME, sizeof(c->name)) >=
-            sizeof(c->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_class;
-	}
-	INIT_LIST_HEAD(&c->classdev_list);
-
-	rc = vmm_devdrv_register_class(c);
-	if (rc != VMM_OK) {
-		goto free_class;
-	}
-
-	return rc;
-
-free_class:
-	vmm_free(c);
-	return rc;
+	return vmm_devdrv_register_class(&input_class);
 }
 
 static void input_exit(void)
 {
-	int rc;
-	struct vmm_class *c;
-
-	c = vmm_devdrv_find_class(INPUT_DEV_CLASS_NAME);
-	if (!c) {
-		return;
-	}
-
-	rc = vmm_devdrv_unregister_class(c);
-	if (rc) {
-		return;
-	}
-
-	vmm_free(c);
+	vmm_devdrv_unregister_class(&input_class);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,

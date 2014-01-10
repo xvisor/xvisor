@@ -460,7 +460,7 @@ static int clcdfb_register(struct clcd_fb *fb)
 	if (ret)
 		goto free_clk;
 
-	fb->fb.dev		= fb->dev;
+	fb->fb.dev.parent	= fb->dev;
 
 	ret = vmm_devtree_regaddr(fb->dev->node, &mmio_pa, 0);
 	if (ret) {

@@ -287,7 +287,7 @@ static int samsung_driver_probe(struct vmm_device *dev,
 		rc = VMM_EOVERFLOW;
 		goto free_port;
 	}
-	port->cd.dev = dev;
+	port->cd.dev.parent = dev;
 	port->cd.ioctl = NULL;
 	port->cd.read = samsung_read;
 	port->cd.write = samsung_write;

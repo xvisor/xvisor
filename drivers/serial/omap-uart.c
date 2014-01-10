@@ -446,7 +446,7 @@ static int omap_uart_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 
-	port->cd.dev = dev;
+	port->cd.dev.parent = dev;
 	port->cd.ioctl = NULL;
 	port->cd.read = omap_uart_read;
 	port->cd.write = omap_uart_write;

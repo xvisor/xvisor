@@ -305,7 +305,7 @@ static int s3c_rtc_settime(struct rtc_device *dev, struct rtc_time *tm)
 	/* we get around y2k by simply not supporting it */
 
 	if (year < 0 || year >= 100) {
-		dev_err(dev->dev, "rtc only supports 100 years\n");
+		dev_err(&dev->dev, "rtc only supports 100 years\n");
 		return -EINVAL;
 	}
 
@@ -534,7 +534,7 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 
 	/* register RTC and exit */
 
-	s3c_rtcops.dev = pdev;
+	s3c_rtcops.dev.parent = pdev;
 
 	rc = rtc_device_register(&s3c_rtcops);
 

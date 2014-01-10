@@ -102,7 +102,7 @@ struct vmm_blockdev {
 
 	char name[VMM_FIELD_NAME_SIZE];
 	char desc[VMM_FIELD_DESC_SIZE];
-	struct vmm_device *dev;
+	struct vmm_device dev;
 
 	u32 flags;
 	u64 start_lba;

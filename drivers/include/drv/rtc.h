@@ -85,7 +85,7 @@ struct rtc_wkalrm {
 
 struct rtc_device {
 	char name[VMM_FIELD_NAME_SIZE];
-	struct vmm_device *dev;
+	struct vmm_device dev;
 	int (*set_time)(struct rtc_device *rdev, struct rtc_time *tm);
 	int (*get_time)(struct rtc_device *rdev, struct rtc_time *tm);
 	int (*set_alarm)(struct rtc_device *rdev, struct rtc_wkalrm *alrm);

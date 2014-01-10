@@ -126,150 +126,81 @@ int rtc_device_sync_device(struct rtc_device *rdev)
 }
 VMM_EXPORT_SYMBOL(rtc_device_sync_device);
 
+static struct vmm_class rtc_class = {
+	.name = RTC_DEVICE_CLASS_NAME,
+};
+
 int rtc_device_register(struct rtc_device *rdev)
 {
-	int rc;
-	struct vmm_classdev *cd;
-
 	if (!(rdev && rdev->set_time && rdev->get_time)) {
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_zalloc(sizeof(struct vmm_classdev));
-	if (!cd) {
-		return VMM_EFAIL;
+	vmm_devdrv_initialize_device(&rdev->dev);
+	if (strlcpy(rdev->dev.name, rdev->name, sizeof(rdev->dev.name)) >=
+	    sizeof(rdev->dev.name)) {
+		return VMM_EOVERFLOW;
 	}
+	rdev->dev.class = &rtc_class;
+	vmm_devdrv_set_data(&rdev->dev, rdev);
 
-	INIT_LIST_HEAD(&cd->head);
-
-	if (strlcpy(cd->name, rdev->name, sizeof(cd->name)) >=
-	    sizeof(cd->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_classdev;
-	}
-
-	cd->dev = rdev->dev;
-	cd->priv = rdev;
-
-	rc = vmm_devdrv_register_classdev(RTC_DEVICE_CLASS_NAME, cd);
-	if (rc) {
-		goto free_classdev;
-	}
-
-	return rc;
-
-free_classdev:
-	vmm_free(cd);
-	return rc;
+	return vmm_devdrv_class_register_device(&rtc_class, &rdev->dev);
 
 }
 VMM_EXPORT_SYMBOL(rtc_device_register);
 
 int rtc_device_unregister(struct rtc_device *rdev)
 {
-	int rc;
-	struct vmm_classdev *cd;
-
 	if (!rdev) {
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_devdrv_find_classdev(RTC_DEVICE_CLASS_NAME, rdev->name);
-	if (!cd) {
-		return VMM_EFAIL;
-	}
-
-	rc = vmm_devdrv_unregister_classdev(RTC_DEVICE_CLASS_NAME, cd);
-	if (rc == VMM_OK) {
-		vmm_free(cd);
-	}
-
-	return rc;
+	return vmm_devdrv_class_unregister_device(&rtc_class, &rdev->dev);
 }
 VMM_EXPORT_SYMBOL(rtc_device_unregister);
 
 struct rtc_device *rtc_device_find(const char *name)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_find_classdev(RTC_DEVICE_CLASS_NAME, name);
-	if (!cd) {
+	dev = vmm_devdrv_class_find_device(&rtc_class, name);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(rtc_device_find);
 
 struct rtc_device *rtc_device_get(int num)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_classdev(RTC_DEVICE_CLASS_NAME, num);
-	if (!cd) {
+	dev = vmm_devdrv_class_device(&rtc_class, num);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(rtc_device_get);
 
 u32 rtc_device_count(void)
 {
-	return vmm_devdrv_classdev_count(RTC_DEVICE_CLASS_NAME);
+	return vmm_devdrv_class_device_count(&rtc_class);
 }
 VMM_EXPORT_SYMBOL(rtc_device_count);
 
 static int __init rtc_device_init(void)
 {
-	int rc;
-	struct vmm_class *c;
-
 	vmm_printf("Initialize RTC Device Framework\n");
 
-	c = vmm_zalloc(sizeof(struct vmm_class));
-	if (!c) {
-		return VMM_EFAIL;
-	}
-
-	INIT_LIST_HEAD(&c->head);
-
-	if (strlcpy(c->name, RTC_DEVICE_CLASS_NAME, sizeof(c->name)) >=
-	    sizeof(c->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_class;
-	}
-
-	INIT_LIST_HEAD(&c->classdev_list);
-
-	rc = vmm_devdrv_register_class(c);
-	if (rc) {
-		goto free_class;
-	}
-
-	return rc;
-
-free_class:
-	vmm_free(c);
-	return rc;
+	return vmm_devdrv_register_class(&rtc_class);
 }
 
 static void __exit rtc_device_exit(void)
 {
-	int rc;
-	struct vmm_class *c;
-
-	c = vmm_devdrv_find_class(RTC_DEVICE_CLASS_NAME);
-	if (!c) {
-		return;
-	}
-
-	rc = vmm_devdrv_unregister_class(c);
-	if (rc) {
-		return;
-	}
-
-	vmm_free(c);
+	vmm_devdrv_unregister_class(&rtc_class);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,

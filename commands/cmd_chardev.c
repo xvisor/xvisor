@@ -57,10 +57,10 @@ void cmd_chardev_list(struct vmm_chardev *cdev)
 	count = vmm_chardev_count();
 	for (num = 0; num < count; num++) {
 		cd = vmm_chardev_get(num);
-		if (!cd->dev) {
-			strcpy(path, "-----");
+		if (cd->dev.parent && cd->dev.parent->node) {
+			vmm_devtree_getpath(path, cd->dev.parent->node);
 		} else {
-			vmm_devtree_getpath(path, cd->dev->node);
+			strcpy(path, "-----");
 		}
 		vmm_cprintf(cdev, " %-24s %-53s\n", cd->name, path);
 	}

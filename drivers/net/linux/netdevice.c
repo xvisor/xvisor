@@ -51,7 +51,7 @@ static int netdev_register_port(struct net_device *ndev)
         struct vmm_netport *port;
         const char *attr;
         struct vmm_netswitch *nsw;
-	struct vmm_device *vmm_dev = ndev->vmm_dev;
+	struct vmm_device *dev = ndev->vmm_dev;
 
         port = vmm_netport_alloc(ndev->name, VMM_NETPORT_DEF_QUEUE_SIZE);
 
@@ -60,6 +60,7 @@ static int netdev_register_port(struct net_device *ndev)
                 return VMM_ENOMEM;
         }
 
+	port->dev.parent = dev;
         port->mtu = ndev->mtu;
         port->link_changed = netdev_set_link;
         port->can_receive = netdev_can_receive;
@@ -71,9 +72,8 @@ static int netdev_register_port(struct net_device *ndev)
 
         vmm_netport_register(port);
 
-	if (vmm_dev) {
-
-		attr = vmm_devtree_attrval(vmm_dev->node, "switch");
+	if (dev) {
+		attr = vmm_devtree_attrval(dev->node, "switch");
 		if (attr) {
 			nsw = vmm_netswitch_find((char *)attr);
 			if(!nsw) {

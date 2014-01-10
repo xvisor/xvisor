@@ -1034,7 +1034,6 @@ struct vtemu *vtemu_create(const char *name,
 	    sizeof(v->cdev.name)) {
 		goto free_vtemu;
 	}
-	v->cdev.dev = NULL; 
 	v->cdev.read = vtemu_read;
 	v->cdev.write = vtemu_write;
 	v->cdev.priv = v;

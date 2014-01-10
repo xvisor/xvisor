@@ -99,7 +99,7 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 	strncpy(d->bdev->name, name, VMM_FIELD_NAME_SIZE);
 	strncpy(d->bdev->desc, "RAM backed block device", 
 		VMM_FIELD_DESC_SIZE);
-	d->bdev->dev = dev;
+	d->bdev->dev.parent = dev;
 	d->bdev->flags = VMM_BLOCKDEV_RW;
 	d->bdev->start_lba = 0;
 	d->bdev->num_blocks = udiv64(d->size, RBD_BLOCK_SIZE);

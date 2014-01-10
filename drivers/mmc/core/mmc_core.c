@@ -1196,7 +1196,7 @@ static int __mmc_detect_card_inserted(struct mmc_host *host)
 		     ((card->cid[1] >> 8) & 0xff), (card->cid[1] & 0xff),
 		     ((card->cid[2] >> 24) & 0xff), ((card->cid[2] >> 20) & 0xf),
 		     ((card->cid[2] >> 16) & 0xf));
-	bdev->dev = host->dev;
+	bdev->dev.parent = host->dev;
 	bdev->flags = VMM_BLOCKDEV_RW;
 	if (card->read_bl_len < card->write_bl_len) {
 		bdev->block_size = card->write_bl_len;
