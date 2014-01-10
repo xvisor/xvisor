@@ -69,8 +69,7 @@ struct serio {
 	struct serio_driver *drv;	/* accessed from interrupt, must be protected by serio->lock and serio->sem */
 	struct mutex drv_mutex;		/* protects serio->drv so attributes can pin driver */
 
-	struct vmm_device *dev;
-	void *priv;
+	struct device dev;
 
 	struct list_head node;
 };
@@ -90,7 +89,7 @@ struct serio_driver {
 	void (*disconnect)(struct serio *);
 	void (*cleanup)(struct serio *);
 
-	struct list_head node;
+	struct device_driver driver;
 };
 #define to_serio_driver(d)	container_of(d, struct serio_driver, driver)
 
@@ -136,12 +135,12 @@ static inline void serio_drv_write_wakeup(struct serio *serio)
  */
 static inline void *serio_get_drvdata(struct serio *serio)
 {
-	return serio->priv;
+	return dev_get_drvdata(&serio->dev);
 }
 
 static inline void serio_set_drvdata(struct serio *serio, void *data)
 {
-	serio->priv = data;
+	dev_set_drvdata(&serio->dev, data);
 }
 
 /*

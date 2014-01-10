@@ -165,7 +165,6 @@ static struct psmouse_attribute psmouse_attr_##_name = {			\
 #endif
 #endif
 
-#if 0
 #define psmouse_dbg(psmouse, format, ...)		\
 	dev_dbg(&(psmouse)->ps2dev.serio->dev,		\
 		psmouse_fmt(format), ##__VA_ARGS__)
@@ -185,26 +184,5 @@ static struct psmouse_attribute psmouse_attr_##_name = {			\
 	dev_printk(level,				\
 		   &(psmouse)->ps2dev.serio->dev,	\
 		   psmouse_fmt(format), ##__VA_ARGS__)
-#else
-#define psmouse_dbg(psmouse, format, ...)		\
-	dev_dbg((psmouse)->ps2dev.serio->dev,		\
-		psmouse_fmt(format), ##__VA_ARGS__)
-#define psmouse_info(psmouse, format, ...)		\
-	dev_info((psmouse)->ps2dev.serio->dev,		\
-		 psmouse_fmt(format), ##__VA_ARGS__)
-#define psmouse_warn(psmouse, format, ...)		\
-	dev_warn((psmouse)->ps2dev.serio->dev,		\
-		 psmouse_fmt(format), ##__VA_ARGS__)
-#define psmouse_err(psmouse, format, ...)		\
-	dev_err((psmouse)->ps2dev.serio->dev,		\
-		psmouse_fmt(format), ##__VA_ARGS__)
-#define psmouse_notice(psmouse, format, ...)		\
-	dev_notice((psmouse)->ps2dev.serio->dev,	\
-		   psmouse_fmt(format), ##__VA_ARGS__)
-#define psmouse_printk(level, psmouse, format, ...)	\
-	dev_printk(level,				\
-		   (psmouse)->ps2dev.serio->dev,	\
-		   psmouse_fmt(format), ##__VA_ARGS__)
-#endif
 
 #endif /* _PSMOUSE_H */

@@ -162,7 +162,7 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 		goto out;
 	}
 	io->port_data	= kmi;
-	io->dev		= dev;
+	io->dev.parent	= dev;
 
 	kmi->io		= io;
 	ret = vmm_devtree_regmap(dev->node, (virtual_addr_t *)&kmi->base, 0);
@@ -183,7 +183,7 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 		goto unmap;
 	}
 
-	dev->priv = kmi;
+	vmm_devdrv_set_data(dev, kmi);
 
 	serio_register_port(kmi->io);
 
@@ -199,11 +199,13 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 
 static int amba_kmi_driver_remove(struct vmm_device *dev)
 {
-	struct amba_kmi_port *kmi = (struct amba_kmi_port *)dev->priv;
+	struct amba_kmi_port *kmi =
+			(struct amba_kmi_port *)vmm_devdrv_get_data(dev);
 
-	dev->priv = NULL;
+	vmm_devdrv_set_data(dev, NULL);
 
 	serio_unregister_port(kmi->io);
+	clk_put(kmi->clk);
 	vmm_devtree_regunmap(dev->node, (virtual_addr_t)kmi->base, 0);
 	kfree(kmi);
 
