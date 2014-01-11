@@ -401,7 +401,7 @@ static int __sd_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 			return VMM_ENODEV;
 		}
 
-		vmm_udelay(1000);
+		vmm_udelay(10000);
 	} while ((!(cmd.response[0] & OCR_BUSY)) && timeout--);
 
 	if (timeout <= 0) {
