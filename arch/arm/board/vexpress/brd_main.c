@@ -219,13 +219,9 @@ int __init arch_board_final_init(void)
 
 	/* Create VTEMU instace if available*/
 #if defined(CONFIG_VTEMU)
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	info = fb_find(node->name);
+	info = fb_get(0);
 	if (info) {
-		v2m_vt = vtemu_create(node->name, info, NULL);
+		v2m_vt = vtemu_create(info->name, info, NULL);
 	}
 #endif
 
