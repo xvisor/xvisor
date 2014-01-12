@@ -129,13 +129,22 @@
 					device_type = "rom";
 				};
 
-				psram { /* No PSRAM */
-					manifest_type = "virtual";
+				sram {
+					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x14000000>;
-					physical_size = <0x00200000>;
-					device_type = "misc";
-					compatible = "zero";
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "ram";
+				};
+
+				videoram {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x18000000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "ram";
 				};
 
 				eth {

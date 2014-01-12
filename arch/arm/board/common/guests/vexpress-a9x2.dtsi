@@ -329,6 +329,24 @@
 					compatible = "zero";
 				};
 
+				sram {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x48000000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "ram";
+				};
+
+				videoram {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x4C000000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "ram";
+				};
+
 				lan9118 { /* Ethernet Controller */
 					manifest_type = "virtual";
 					address_type = "memory";
