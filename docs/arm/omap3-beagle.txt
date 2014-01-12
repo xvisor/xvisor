@@ -200,7 +200,7 @@ follows:
   # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc 
 
   [13. Launch QEMU Linaro]
-  # qemu-system-arm -M beagle -drive file=build/beagle-nand.bin,if=mtd -display none -serial stdio -s
+  # qemu-system-arm -M beagle -m 256M -drive file=build/beagle-nand.bin,if=mtd -display none -serial stdio -s
 
   [14. Copy Xvisor from nand-flash to SDRAM]
   OMAP3 beagleboard.org # nand read 0x80200000 0x280000 0x100000

@@ -27,6 +27,7 @@ CMDS=`sed -n -e 's/\(^[^#].*\)/\1/p' test.script`
 emulate () {
 	qemu-system-arm \
 		-M realview-pb-a8 \
+		-m 256M \
 		-kernel $1 \
 		-serial stdio \
 		-parallel none \

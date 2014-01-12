@@ -27,7 +27,7 @@ set xvisor_prompt "XVisor#"
 set arm_prompt "basic#"
 
 # start the test 
-spawn qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel $qemu_img
+spawn qemu-system-arm -M realview-pb-a8 -m 256M -display none -serial stdio -kernel $qemu_img
 
 expect $xvisor_prompt
 send -- "help\r"

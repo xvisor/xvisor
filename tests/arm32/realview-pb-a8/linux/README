@@ -61,7 +61,7 @@ RootFS on Realview-PB-A8 Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   (Note: If we have two preconfigured guests then we will have to add images for second guest. This can be done by appending following arguments to the above command: "<xvisor_source_directory>/build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched@0x78000000 <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist@0x780FF000 ./arch/arm/boot/Image@0x78100000 <busybox_rootfs_directory>/rootfs.img@0x78900000")
 
   [15. Launch QEMU 0.14.xx or higher]
-  # qemu-system-arm -M realview-pb-a8 -display none -serial stdio -kernel ./xvisor_linux_qemu.img
+  # qemu-system-arm -M realview-pb-a8 -m 256M -display none -serial stdio -kernel ./xvisor_linux_qemu.img
 
   [16. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

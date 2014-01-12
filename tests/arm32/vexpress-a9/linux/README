@@ -63,7 +63,7 @@ RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x60010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x60010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a9/basic/firmware.bin.patched@0x61000000 <xvisor_source_directory>/tests/arm32/vexpress-a9/linux/cmdlist@0x610FF000 ./arch/arm/boot/Image@0x61100000 <busybox_rootfs_directory>/rootfs.img@0x61900000
 
   [16. Launch QEMU 0.15.xx or higher]
-  # qemu-system-arm -M vexpress-a9 -display none -serial stdio -kernel ./xvisor_linux_qemu.img
+  # qemu-system-arm -M vexpress-a9 -m 256M -display none -serial stdio -kernel ./xvisor_linux_qemu.img
 
   [17. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

@@ -29,7 +29,7 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Realview-EB-MPCore Host:
   # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched@0x01000000
 
   [7. Launch QEMU]
-  # qemu-system-arm -M realview-eb-mpcore -display none -serial stdio -kernel build/qemu.img
+  # qemu-system-arm -M realview-eb-mpcore -m 256M -display none -serial stdio -kernel build/qemu.img
 
   [8. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
