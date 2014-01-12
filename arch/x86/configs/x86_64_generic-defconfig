@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Thu Dec 26 22:14:09 2013
+# Sat Jan 11 23:18:42 2014
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -101,7 +101,7 @@ CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
 #
 # Virtual IO Support
 #
-# CONFIG_VSERIAL is not set
+CONFIG_VSERIAL=y
 # CONFIG_VDISPLAY is not set
 # CONFIG_VINPUT is not set
 
@@ -122,6 +122,7 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_INPUT=y
 CONFIG_CMD_FB=y
 CONFIG_CMD_BLOCKDEV=y
@@ -315,6 +316,9 @@ CONFIG_PIIX3_IDE=y
 #
 # Serial Port Emulators
 #
+CONFIG_EMU_SERIAL=y
+# CONFIG_EMU_SERIAL_PL011 is not set
+CONFIG_EMU_SERIAL_NS16550=y
 
 #
 # Console Emulators

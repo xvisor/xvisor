@@ -29,7 +29,7 @@
 #include <asm/io.h>
 
 #define MODULE_DESC			"i8042 keyboard and mouse controller driver"
-#define MODULE_AUTHOR			"Vojtech Pavlik <vojtech@suse.cz>"
+#define MODULE_AUTHOR			"Himanshu Chauhan"
 #define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		(SERIO_IPRIORITY + 1)
 #define	MODULE_INIT			i8042_init

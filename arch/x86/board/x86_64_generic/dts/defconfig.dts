@@ -35,6 +35,9 @@
 			compatible = "piix3_ide";
 		};
 
+		STDOUT: vga {
+		};
+
 		SERIAL0: uart0 {
 			device_type = "serial";
 			compatible = "ns8250";
@@ -61,6 +64,7 @@
 
 	chosen {
 		console = &SERIAL0;
+		/*console = &STDOUT;*/
 		bootcmd = /* Copy guest0 device tree from templates */
 			  "devtree node copy /guests guest0 /templates/x86_64_generic",
 			  /* Create guest0 */

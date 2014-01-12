@@ -112,11 +112,19 @@ static u64 guest_read_fault_inst(struct vcpu_hw_context *context)
 void __handle_vm_npf (struct vcpu_hw_context *context)
 {
 	VM_LOG(LVL_INFO, "Unhandled Intercept: nested page fault.\n");
+	if (context->vcpu_emergency_shutdown)
+		context->vcpu_emergency_shutdown(context);
+
+	vmm_hang();
 }
 
 void __handle_vm_swint (struct vcpu_hw_context *context)
 {
 	VM_LOG(LVL_INFO, "Unhandled Intercept: software interrupt.\n");
+	if (context->vcpu_emergency_shutdown)
+		context->vcpu_emergency_shutdown(context);
+
+	vmm_hang();
 }
 
 void __handle_vm_exception (struct vcpu_hw_context *context)
@@ -172,21 +180,37 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 void __handle_vm_wrmsr (struct vcpu_hw_context *context)
 {
 	VM_LOG(LVL_INFO, "Unhandled Intercept: msr write.\n");
+	if (context->vcpu_emergency_shutdown)
+		context->vcpu_emergency_shutdown(context);
+
+	vmm_hang();
 }
 
 void __handle_popf(struct vcpu_hw_context *context)
 {
 	VM_LOG(LVL_INFO, "Unhandled Intercept: popf.\n");
+	if (context->vcpu_emergency_shutdown)
+		context->vcpu_emergency_shutdown(context);
+
+	vmm_hang();
 }
 
 void __handle_vm_vmmcall (struct vcpu_hw_context *context)
 {
 	VM_LOG(LVL_INFO, "Unhandled Intercept: vmmcall.\n");
+	if (context->vcpu_emergency_shutdown)
+		context->vcpu_emergency_shutdown(context);
+
+	vmm_hang();
 }
 
 void __handle_vm_iret(struct vcpu_hw_context *context)
 {
 	VM_LOG(LVL_INFO, "Unhandled Intercept: iret.\n");
+	if (context->vcpu_emergency_shutdown)
+		context->vcpu_emergency_shutdown(context);
+
+	vmm_hang();
 }
 
 void __handle_crN_read(struct vcpu_hw_context *context)
@@ -306,7 +330,44 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 
 void __handle_ioio(struct vcpu_hw_context *context)
 {
-	vmm_printf("RIP: %x exitinfo1: %x\n", context->vmcb->rip, context->vmcb->exitinfo1);
+	u32 io_port = (context->vmcb->exitinfo1 >> 16);
+	u8 in_inst = (context->vmcb->exitinfo1 & (0x1 << 0));
+	u8 str_op = (context->vmcb->exitinfo1 & (0x1 << 2));
+	u8 rep_access = (context->vmcb->exitinfo1 & (0x1 << 3));
+	u8 op_size = (context->vmcb->exitinfo1 & (0x1 << 4) ? 8
+		      : ((context->vmcb->exitinfo1 & (0x1 << 5)) ? 16
+			 : 32));
+	u8 seg_num = (context->vmcb->exitinfo1 >> 10) & 0x7;
+	u8 guest_rd;
+	u8 wval;
+
+	VM_LOG(LVL_VERBOSE, "RIP: %x exitinfo1: %x\n", context->vmcb->rip, context->vmcb->exitinfo1);
+	VM_LOG(LVL_VERBOSE, "IOPort: %d is accssed for %sput. Size is %d. Segment: %d String operation? %s Repeated access? %s\n",
+		io_port, (in_inst ? "in" : "out"), op_size,seg_num,(str_op ? "yes" : "no"),(rep_access ? "yes" : "no"));
+
+	if (in_inst) {
+		if (vmm_devemu_emulate_ioread(context->assoc_vcpu, io_port,
+					      &guest_rd, sizeof(guest_rd)) != VMM_OK) {
+			vmm_printf("Failed to emulate IO instruction in guest.\n");
+			goto _fail;
+		}
+
+		context->g_regs[GUEST_REGS_RAX] = guest_rd;
+		context->vmcb->rax = guest_rd;
+	} else {
+		wval = (u8)context->vmcb->rax;
+		if (vmm_devemu_emulate_iowrite(context->assoc_vcpu, io_port,
+					       &wval, sizeof(wval)) != VMM_OK) {
+			vmm_printf("Failed to emulate IO instruction in guest.\n");
+			goto _fail;
+		}
+	}
+
+	context->vmcb->rip += 1;
+
+	return;
+
+ _fail:
 	if (context->vcpu_emergency_shutdown){
 		context->vcpu_emergency_shutdown(context);
 	}
@@ -318,7 +379,7 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 	struct x86_vcpu_priv *priv = x86_vcpu_priv(context->assoc_vcpu);
 	struct cpuid_response *func;
 
-	switch(context->vmcb->rax) {
+	switch (context->vmcb->rax) {
 	case CPUID_BASE_VENDORSTRING:
 		func = &priv->standard_funcs[CPUID_BASE_VENDORSTRING];
 		context->vmcb->rax = func->resp_eax;
@@ -335,10 +396,30 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 		context->g_regs[GUEST_REGS_RDX] = func->resp_edx;
 		break;
 
-	default:
-		VM_LOG(LVL_ERR, "GCPUID/R: Func: %x\n", context->vmcb->rax);
+	case CPUID_EXTENDED_BASE:
+	case CPUID_EXTENDED_BRANDSTRING:
+	case CPUID_EXTENDED_BRANDSTRINGMORE:
+		func = &priv->extended_funcs[context->vmcb->rax - CPUID_EXTENDED_BASE];
+		context->vmcb->rax = func->resp_eax;
+		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
+		context->g_regs[GUEST_REGS_RCX] = func->resp_ecx;
+		context->g_regs[GUEST_REGS_RDX] = func->resp_edx;
 		break;
+
+	default:
+		VM_LOG(LVL_DEBUG, "GCPUID/R: Func: %x\n", context->vmcb->rax);
+		goto _fail;
 	}
+
+	context->vmcb->rip += 2;
+
+	return;
+
+ _fail:
+	if (context->vcpu_emergency_shutdown){
+		context->vcpu_emergency_shutdown(context);
+	}
+	vmm_hang();
 }
 
 /**

@@ -117,7 +117,7 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 			case CPUID_EXTENDED_BASE:
 				func_response->resp_eax = CPUID_EXTENDED_FUNC_LIMIT;
 				func_response->resp_ebx = 0x73697658; /*sivX*/
-				func_response->resp_ecx = 0x76586f72; /*vXor*/
+				func_response->resp_ecx = 0x7658726f; /*vXor*/
 				func_response->resp_edx = 0x726f7369; /*rosi*/
 				break;
 
