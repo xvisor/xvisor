@@ -25,7 +25,9 @@
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <vmm_wallclock.h>
+#include <vmm_manager.h>
 #include <vmm_host_aspace.h>
+#include <vmm_guest_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <libs/stringlib.h>
@@ -54,11 +56,13 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs rm <path_to_file>\n");
 	vmm_cprintf(cdev, "   vfs mkdir <path_to_dir>\n");
 	vmm_cprintf(cdev, "   vfs rmdir <path_to_dir>\n");	
-	vmm_cprintf(cdev, "   vfs load <phys_addr> <path_to_file> "
-			  "[<file_offset>] [<byte_count>]\n");
+	vmm_cprintf(cdev, "   vfs host_load <host_phys_addr> "
+			  "<path_to_file> [<file_offset>] [<byte_count>]\n");
+	vmm_cprintf(cdev, "   vfs guest_load <guest_name> <guest_phys_addr> "
+			  "<path_to_file> [<file_offset>] [<byte_count>]\n");
 }
 
-int cmd_vfs_fslist(struct vmm_chardev *cdev)
+static int cmd_vfs_fslist(struct vmm_chardev *cdev)
 {
 	int num, count;
 	struct filesystem *fs;
@@ -455,11 +459,15 @@ static int cmd_vfs_rmdir(struct vmm_chardev *cdev, const char *path)
 	return vfs_rmdir(path);
 }
 
-static int cmd_vfs_load(struct vmm_chardev *cdev, physical_addr_t pa, 
+static int cmd_vfs_load(struct vmm_chardev *cdev,
+			struct vmm_guest *guest,
+			physical_addr_t pa, 
 			const char *path, u32 off, u32 len)
 {
 	int fd, rc;
-	size_t buf_rd, rd_count;
+	loff_t rd_off;
+	physical_addr_t wr_pa;
+	size_t buf_wr, buf_rd, buf_count, wr_count;
 	char buf[VFS_LOAD_BUF_SZ];
 	struct stat st;
 
@@ -490,20 +498,40 @@ static int cmd_vfs_load(struct vmm_chardev *cdev, physical_addr_t pa,
 
 	len = ((st.st_size - off) < len) ? (st.st_size - off) : len;
 
-	rd_count = 0;
+	rd_off = 0;
+	wr_count = 0;
+	wr_pa = pa;
 	while (len) {
 		buf_rd = (len < VFS_LOAD_BUF_SZ) ? len : VFS_LOAD_BUF_SZ;
-		buf_rd = vfs_read(fd, buf, buf_rd);
-		if (buf_rd < 1) {
+		buf_count = vfs_read(fd, buf, buf_rd);
+		if (buf_count < 1) {
+			vmm_cprintf(cdev, "Failed to read "
+					  "%d bytes @ 0x%llx from %s\n",
+					   buf_rd, (u64)rd_off, path);
 			break;
 		}
-		vmm_host_memory_write(pa, buf, buf_rd);
-		len -= buf_rd;
-		rd_count += buf_rd;
-		pa += buf_rd;
+		rd_off += buf_count;
+		if (guest) {
+			buf_wr = vmm_guest_memory_write(guest, wr_pa,
+							buf, buf_count);
+		} else {
+			buf_wr = vmm_host_memory_write(wr_pa, buf, buf_count);
+		}
+		if (buf_wr != buf_count) {
+			vmm_cprintf(cdev, "Failed to write "
+					  "%d bytes @ 0x%llx (%s)\n",
+					  buf_count, (u64)wr_pa,
+					  (guest) ? (guest->name) : "host");
+			break;
+		}
+		len -= buf_wr;
+		wr_count += buf_wr;
+		wr_pa += buf_wr;
 	}
 
-	vmm_cprintf(cdev, "Loaded %d bytes\n", rd_count);
+	vmm_cprintf(cdev, "Loaded %d bytes @ 0x%llx (%s)\n",
+			  wr_count, (u64)pa,
+			  (guest) ? (guest->name) : "host");
 
 	rc = vfs_close(fd);
 	if (rc) {
@@ -514,10 +542,11 @@ static int cmd_vfs_load(struct vmm_chardev *cdev, physical_addr_t pa,
 	return VMM_OK;
 }
 
-int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u32 off, len;
 	physical_addr_t pa;
+	struct vmm_guest *guest;
 	if (argc < 2) {
 		cmd_vfs_usage(cdev);
 		return VMM_EFAIL;
@@ -545,11 +574,22 @@ int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vfs_mkdir(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "rmdir") == 0) && (argc == 3)) {
 		return cmd_vfs_rmdir(cdev, argv[2]);
-	} else if ((strcmp(argv[1], "load") == 0) && (argc > 3)) {
+	} else if ((strcmp(argv[1], "host_load") == 0) && (argc > 3)) {
 		pa = (physical_addr_t)strtoull(argv[2], NULL, 0);
 		off = (argc > 4) ? strtoul(argv[4], NULL, 0) : 0;
 		len = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0xFFFFFFFF;
-		return cmd_vfs_load(cdev, pa, argv[3], off, len);
+		return cmd_vfs_load(cdev, NULL, pa, argv[3], off, len);
+	} else if ((strcmp(argv[1], "guest_load") == 0) && (argc > 4)) {
+		guest = vmm_manager_guest_find(argv[2]);
+		if (!guest) {
+			vmm_cprintf(cdev, "Failed to find guest %s\n",
+				    argv[2]);
+			return VMM_ENOTAVAIL;
+		}
+		pa = (physical_addr_t)strtoull(argv[3], NULL, 0);
+		off = (argc > 4) ? strtoul(argv[5], NULL, 0) : 0;
+		len = (argc > 5) ? strtoul(argv[6], NULL, 0) : 0xFFFFFFFF;
+		return cmd_vfs_load(cdev, guest, pa, argv[4], off, len);
 	}
 	cmd_vfs_usage(cdev);
 	return VMM_EFAIL;
