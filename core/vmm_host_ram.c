@@ -49,7 +49,9 @@ physical_size_t vmm_host_ram_alloc(physical_addr_t *pa,
 	irq_flags_t flags;
 	u32 i, found, binc, bcnt, bpos, bfree;
 
-	if ((align_order < VMM_PAGE_SHIFT) || (BITS_PER_LONG <= align_order)) {
+	if ((sz == 0) ||
+	    (align_order < VMM_PAGE_SHIFT) ||
+	    (BITS_PER_LONG <= align_order)) {
 		return 0;
 	}
 
