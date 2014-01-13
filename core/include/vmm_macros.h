@@ -211,4 +211,22 @@
 #define round_up(x, y) ((((x)-1) | __round_mask(x, y))+1)
 #define round_down(x, y) ((x) & ~__round_mask(x, y))
 
+/** Size of 2^order sized chunk */
+#define order_size(order)		(0x01UL << (order))
+
+/** Mask of 2^order sized chunk */
+#define order_mask(order)		(order_size(order) - 1)
+
+/** Convert address x to 2^order aligned address */
+#define order_align(x, order)		((x) & ~order_mask(order))
+
+/** Roundup size x to multiple of 2^order */
+#define roundup2_order_size(x, order)	\
+			(((x) & order_mask(order)) ? \
+			 order_align(x, order) + order_size(order) : (x))
+
+/** Calulate number of 2^order sized chunks required to cover size x */
+#define size_to_order(x, order)		(((x) >> (order)) + \
+					 (((x) & order_mask(order)) ? 1:0))
+
 #endif /* __VMM_MACROS_H__ */

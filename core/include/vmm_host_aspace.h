@@ -26,38 +26,38 @@
 #define __VMM_HOST_ASPACE_H_
 
 #include <vmm_types.h>
+#include <vmm_macros.h>
 
-#define VMM_PAGE_SHIFT			12
-#define VMM_PAGE_SIZE			(0x01UL << VMM_PAGE_SHIFT)
-#define VMM_PAGE_MASK			(VMM_PAGE_SIZE - 1)
+/** Page shift (or order), mask, and size */
+#define VMM_PAGE_SHIFT		12
+#define VMM_PAGE_SIZE		order_size(VMM_PAGE_SHIFT)
+#define VMM_PAGE_MASK		order_mask(VMM_PAGE_SHIFT)
 
-/** Convert virtual address to page base virtual address */
-#define VMM_PAGE_BASE(x)		((x) & ~VMM_PAGE_MASK)
+/** Convert address to page aligned address */
+#define VMM_PAGE_ALIGN(x)	order_align(x, VMM_PAGE_SHIFT)
 
 /** Roundup size to multiple of page size */
-#define VMM_ROUNDUP2_PAGE_SIZE(x)	(((x) & VMM_PAGE_MASK) ? \
-					VMM_PAGE_BASE(x) + VMM_PAGE_SIZE : \
-					(x))
+#define VMM_ROUNDUP2_PAGE_SIZE(x)	\
+				roundup2_order_size(x, VMM_PAGE_SHIFT)
 
-/** Convert size to page count */
-#define VMM_SIZE_TO_PAGE(x)		(((x) >> VMM_PAGE_SHIFT) + \
-					(((x) & VMM_PAGE_MASK) ? 1:0))
+/** Calculate number of pages required to cover size x */
+#define VMM_SIZE_TO_PAGE(x)	size_to_order(x, VMM_PAGE_SHIFT)
 
 /** Convert pointer or virtual address 
  *  to valid page base virtual address 
  */
-#define VMM_PAGE_ADDR(ptr)		(((virtual_addr_t)(ptr)) & ~VMM_PAGE_MASK)
+#define VMM_PAGE_ADDR(ptr)	(((virtual_addr_t)(ptr)) & ~VMM_PAGE_MASK)
 
 /** Get page offset from pointer or virtual address */
-#define VMM_PAGE_OFFSET(ptr)		(((virtual_addr_t)(ptr)) & VMM_PAGE_MASK)
+#define VMM_PAGE_OFFSET(ptr)	(((virtual_addr_t)(ptr)) & VMM_PAGE_MASK)
 
 /** Get nth page base address starting from page
  *  to which given pointer or virtual address belongs
  *  (Note: Unlike Linux, we assume that pointer or 
  *   virtual address points to a contiguous memory)
  */
-#define VMM_PAGE_NTH(ptr, n)		((((virtual_addr_t)(ptr)) & ~VMM_PAGE_MASK) + \
-					((n) << VMM_PAGE_SHIFT))
+#define VMM_PAGE_NTH(ptr, n)	((((virtual_addr_t)(ptr)) & ~VMM_PAGE_MASK) + \
+				((n) << VMM_PAGE_SHIFT))
 enum vmm_host_memory_flags {
 	VMM_MEMORY_READABLE=0x00000001,
 	VMM_MEMORY_WRITEABLE=0x00000002,

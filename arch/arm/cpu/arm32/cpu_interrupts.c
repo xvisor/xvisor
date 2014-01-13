@@ -403,11 +403,10 @@ int __cpuinit arch_cpu_irq_setup(void)
 	vec_page = zero_filled_cpu_page;
 	rc = cpu_mmu_get_reserved_page((virtual_addr_t)vectors, &vec_page);
 	if (rc) {
-		rc = vmm_host_ram_alloc(&vec_page.pa, 
-					TTBL_L2TBL_SMALL_PAGE_SIZE, 
-					TRUE);
-		if (rc) {
-			return rc;
+		if (!vmm_host_ram_alloc(&vec_page.pa,
+					TTBL_L2TBL_SMALL_PAGE_SIZE,
+					VMM_PAGE_SHIFT)) {
+			return VMM_ENOMEM;
 		}
 
 		vec_page.va = (virtual_addr_t)vectors;

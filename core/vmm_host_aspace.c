@@ -89,11 +89,11 @@ int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
 
 virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags)
 {
-	int rc = VMM_OK;
 	physical_addr_t pa = 0x0;
 
-	rc = vmm_host_ram_alloc(&pa, page_count * VMM_PAGE_SIZE, FALSE);
-	if (rc) {
+	if (!vmm_host_ram_alloc(&pa,
+				page_count * VMM_PAGE_SIZE,
+				VMM_PAGE_SHIFT)) {
 		return 0x0;
 	}
 
