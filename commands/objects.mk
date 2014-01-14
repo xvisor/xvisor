@@ -36,16 +36,21 @@ commands-objs-$(CONFIG_CMD_HEAP)+= cmd_heap.o
 commands-objs-$(CONFIG_CMD_WALLCLOCK)+= cmd_wallclock.o
 commands-objs-$(CONFIG_CMD_MODULE)+= cmd_module.o
 commands-objs-$(CONFIG_CMD_PROFILE)+= cmd_profile.o
+
 commands-objs-$(CONFIG_CMD_VSERIAL)+= cmd_vserial.o
 commands-objs-$(CONFIG_CMD_VDISPLAY)+= cmd_vdisplay.o
 commands-objs-$(CONFIG_CMD_VINPUT)+= cmd_vinput.o
+
 commands-objs-$(CONFIG_CMD_RTCDEV)+= cmd_rtcdev.o
 commands-objs-$(CONFIG_CMD_INPUT)+= cmd_input.o
 commands-objs-$(CONFIG_CMD_FB)+= cmd_fb.o
 commands-objs-$(CONFIG_CMD_BLOCKDEV)+= cmd_blockdev.o
+commands-objs-$(CONFIG_CMD_RBD)+= cmd_rbd.o
+
 commands-objs-$(CONFIG_CMD_NET)+= cmd_net.o
 commands-objs-$(CONFIG_CMD_IPCONFIG)+= cmd_ipconfig.o
 commands-objs-$(CONFIG_CMD_PING)+= cmd_ping.o
+
 commands-objs-$(CONFIG_CMD_VSTELNET)+= cmd_vstelnet.o
 commands-objs-$(CONFIG_CMD_VFS)+= cmd_vfs.o
 
