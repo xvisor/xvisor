@@ -137,6 +137,7 @@ static int vfs_fd_alloc(void)
 
 	for (i = 0; i < VFS_MAX_FD; i++) {
 		if (!bitmap_isset(vfsc.fd_bmap, i)) {
+			bitmap_setbit(vfsc.fd_bmap, i);
 			ret = i;
 			break;
 		}
@@ -158,7 +159,7 @@ static void vfs_fd_free(int fd)
 			vfsc.fd[fd].f_offset = 0;
 			vfsc.fd[fd].f_vnode = NULL;
 			vmm_mutex_unlock(&vfsc.fd[fd].f_lock);
-			bitmap_clear(vfsc.fd_bmap, fd, 1);
+			bitmap_clearbit(vfsc.fd_bmap, fd);
 		}
 
 		vmm_mutex_unlock(&vfsc.fd_bmap_lock);
