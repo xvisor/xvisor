@@ -101,10 +101,10 @@ struct filesystem;
 
 /** file status structure */
 struct stat {
-	u32	st_ino;			/* file serial number */
+	u64	st_ino;			/* file serial number */
 	loff_t	st_size;     		/* file size */
 	u32	st_mode;		/* file mode */
-	u32	st_dev;			/* id of device containing file */
+	u64	st_dev;			/* id of device containing file */
 	u32	st_uid;			/* user ID of the file owner */
 	u32	st_gid;			/* group ID of the file's group */
 	u64	st_ctime;		/* file create time */
