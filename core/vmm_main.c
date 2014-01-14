@@ -198,12 +198,11 @@ static void system_init_work(struct vmm_work *work)
 		/* Execute boot commands */
 		str = vmm_devtree_attrval(node, VMM_DEVTREE_BOOTCMD_ATTR_NAME);
 		if (str) {
-			c = vmm_devtree_attrlen(node, VMM_DEVTREE_BOOTCMD_ATTR_NAME);
+			c = vmm_devtree_attrlen(node,
+						VMM_DEVTREE_BOOTCMD_ATTR_NAME);
 			while (c) {
-#if defined(CONFIG_VERBOSE_MODE)
 				/* Print boot command */
 				vmm_printf("bootcmd: %s\n", str);
-#endif
 				/* Execute boot command */
 				strlcpy(bcmd, str, sizeof(bcmd));
 				cdev = vmm_stdio_device();
