@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Sat Dec 21 14:25:15 2013
+# Tue Jan 14 18:27:10 2014
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -174,6 +174,10 @@ CONFIG_VINPUT_KEYMAP_TR=y
 #
 # Command Options
 #
+
+#
+# General Commands
+#
 CONFIG_CMD_VERSION=y
 CONFIG_CMD_RESET=y
 CONFIG_CMD_SHUTDOWN=y
@@ -188,14 +192,31 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+
+#
+# Virtual I/O Commands
+#
 CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_VDISPLAY=y
 CONFIG_CMD_VINPUT=y
+
+#
+# Device Driver Commands
+#
 CONFIG_CMD_RTCDEV=y
 CONFIG_CMD_INPUT=y
 CONFIG_CMD_FB=y
 CONFIG_CMD_BLOCKDEV=y
+CONFIG_CMD_RBD=y
+
+#
+# Networking Commands
+#
 CONFIG_CMD_NET=y
+
+#
+# Miscellenous Commands
+#
 CONFIG_CMD_VFS=y
 
 #
@@ -263,7 +284,7 @@ CONFIG_RTC_PL031=y
 #
 # Block Drivers
 #
-# CONFIG_BLOCK_RBD is not set
+CONFIG_BLOCK_RBD=y
 
 #
 # MMC/SD/SDIO drivers
@@ -348,6 +369,11 @@ CONFIG_COMMON_CLK_VERSATILE=y
 #
 CONFIG_REALVIEW_CONFIG=y
 # CONFIG_VEXPRESS_CONFIG is not set
+
+#
+# IDE Driver
+#
+# CONFIG_IDE is not set
 
 #
 # Device Emulators

@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Sat Dec 21 21:05:59 2013
+# Tue Jan 14 18:51:26 2014
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -176,6 +176,10 @@ CONFIG_VINPUT_KEYMAP_TR=y
 #
 # Command Options
 #
+
+#
+# General Commands
+#
 CONFIG_CMD_VERSION=y
 CONFIG_CMD_RESET=y
 CONFIG_CMD_SHUTDOWN=y
@@ -190,11 +194,29 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+
+#
+# Virtual I/O Commands
+#
 CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_VDISPLAY=y
 CONFIG_CMD_VINPUT=y
+
+#
+# Device Driver Commands
+#
 CONFIG_CMD_BLOCKDEV=y
+CONFIG_CMD_RBD=y
+
+#
+# Networking Commands
+#
 CONFIG_CMD_NET=y
+
+#
+# Miscellenous Commands
+#
+CONFIG_CMD_VFS=y
 
 #
 # Daemon Options
@@ -217,7 +239,10 @@ CONFIG_NET_STACK_LWIP=y
 #
 # Virtual FileSystem Options
 #
-# CONFIG_VFS is not set
+CONFIG_VFS=y
+# CONFIG_VFS_CPIO is not set
+CONFIG_VFS_EXT4=y
+CONFIG_VFS_FAT=y
 
 #
 # Device Drivers
@@ -241,7 +266,7 @@ CONFIG_SERIAL_OMAP_UART=y
 #
 # Block Drivers
 #
-# CONFIG_BLOCK_RBD is not set
+CONFIG_BLOCK_RBD=y
 
 #
 # MMC/SD/SDIO drivers
@@ -284,6 +309,11 @@ CONFIG_SERIAL_OMAP_UART=y
 #
 # CONFIG_REALVIEW_CONFIG is not set
 # CONFIG_VEXPRESS_CONFIG is not set
+
+#
+# IDE Driver
+#
+# CONFIG_IDE is not set
 
 #
 # Device Emulators

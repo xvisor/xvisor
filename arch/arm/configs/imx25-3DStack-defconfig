@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Sat Dec 21 20:00:45 2013
+# Tue Jan 14 18:46:20 2014
 #
 # CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
@@ -118,7 +118,9 @@ CONFIG_LOADBAL_PERIOD_SECS=5
 #
 # Device Support
 #
-# CONFIG_BLOCK is not set
+CONFIG_BLOCK=y
+CONFIG_BLOCKPART=y
+CONFIG_BLOCKPART_DOS=y
 CONFIG_NET=y
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
@@ -168,6 +170,10 @@ CONFIG_VINPUT_KEYMAP_TR=y
 #
 # Command Options
 #
+
+#
+# General Commands
+#
 CONFIG_CMD_VERSION=y
 CONFIG_CMD_RESET=y
 CONFIG_CMD_SHUTDOWN=y
@@ -182,10 +188,29 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+
+#
+# Virtual I/O Commands
+#
 CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_VDISPLAY=y
 CONFIG_CMD_VINPUT=y
+
+#
+# Device Driver Commands
+#
+CONFIG_CMD_BLOCKDEV=y
+CONFIG_CMD_RBD=y
+
+#
+# Networking Commands
+#
 CONFIG_CMD_NET=y
+
+#
+# Miscellenous Commands
+#
+CONFIG_CMD_VFS=y
 
 #
 # Daemon Options
@@ -206,6 +231,14 @@ CONFIG_MTERM_HISTORY_SIZE=10
 CONFIG_NET_STACK_LWIP=y
 
 #
+# Virtual FileSystem Options
+#
+CONFIG_VFS=y
+# CONFIG_VFS_CPIO is not set
+CONFIG_VFS_EXT4=y
+CONFIG_VFS_FAT=y
+
+#
 # Device Drivers
 #
 
@@ -223,6 +256,16 @@ CONFIG_SERIAL_IMX=y
 # RTC Drivers
 #
 # CONFIG_RTC is not set
+
+#
+# Block Drivers
+#
+CONFIG_BLOCK_RBD=y
+
+#
+# MMC/SD/SDIO drivers
+#
+# CONFIG_MMC is not set
 
 #
 # USB drivers
@@ -260,6 +303,11 @@ CONFIG_SERIAL_IMX=y
 #
 # CONFIG_REALVIEW_CONFIG is not set
 # CONFIG_VEXPRESS_CONFIG is not set
+
+#
+# IDE Driver
+#
+# CONFIG_IDE is not set
 
 #
 # Device Emulators
