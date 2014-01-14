@@ -58,8 +58,11 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs rmdir <path_to_dir>\n");	
 	vmm_cprintf(cdev, "   vfs host_load <host_phys_addr> "
 			  "<path_to_file> [<file_offset>] [<byte_count>]\n");
+	vmm_cprintf(cdev, "   vfs host_load_list <path_to_list_file>\n");
 	vmm_cprintf(cdev, "   vfs guest_load <guest_name> <guest_phys_addr> "
 			  "<path_to_file> [<file_offset>] [<byte_count>]\n");
+	vmm_cprintf(cdev, "   vfs guest_load_list <guest_name> "
+			  "<path_to_list_file>\n");
 }
 
 static int cmd_vfs_fslist(struct vmm_chardev *cdev)
@@ -492,7 +495,7 @@ static int cmd_vfs_load(struct vmm_chardev *cdev,
 
 	if (off >= st.st_size) {
 		vfs_close(fd);
-		vmm_cprintf(cdev, "Offset greater than file size\n", path);
+		vmm_cprintf(cdev, "Offset greater than file size\n");
 		return VMM_EINVALID;
 	}
 
@@ -529,9 +532,114 @@ static int cmd_vfs_load(struct vmm_chardev *cdev,
 		wr_pa += buf_wr;
 	}
 
-	vmm_cprintf(cdev, "Loaded %d bytes @ 0x%llx (%s)\n",
-			  wr_count, (u64)pa,
-			  (guest) ? (guest->name) : "host");
+	vmm_cprintf(cdev, "%s: Loaded %d bytes @ 0x%llx\n",
+			  (guest) ? (guest->name) : "host",
+			  wr_count, (u64)pa);
+
+	rc = vfs_close(fd);
+	if (rc) {
+		vmm_cprintf(cdev, "Failed to close %s\n", path);
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+static int cmd_vfs_load_list(struct vmm_chardev *cdev,
+			     struct vmm_guest *guest,
+			     const char *path)
+{
+	loff_t rd_off;
+	struct stat st;
+	int fd, rc, pos;
+	physical_addr_t pa;
+	char c, *addr, *file, buf[VFS_LOAD_BUF_SZ+1];
+
+	fd = vfs_open(path, O_RDONLY, 0);
+	if (fd < 0) {
+		vmm_cprintf(cdev, "Failed to open %s\n", path);
+		return fd;
+	}
+
+	rc = vfs_fstat(fd, &st);
+	if (rc) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Failed to stat %s\n", path);
+		return rc;
+	}
+
+	if (!(st.st_mode & S_IFREG)) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Cannot read %s\n", path);
+		return VMM_EINVALID;
+	}
+
+	rd_off = 0;
+	pos = 0;
+	while (vfs_read(fd, &c, 1) == 1) {
+		if (pos == VFS_LOAD_BUF_SZ) {
+			vmm_cprintf(cdev, "Line exceeds limit of "
+				    "%d chars at offset 0x%llx\n",
+				    VFS_LOAD_BUF_SZ, (u64)rd_off);
+			break;
+		}
+		if (c == '\n' || c == '\r') {
+			buf[pos] = '\0';
+			while ((pos > 0) &&
+			       ((buf[pos - 1] == ' ') ||
+				(buf[pos - 1] == '\t'))) {
+				pos--;
+				buf[pos] = '\0';
+			}
+
+			addr = &buf[0];
+			while ((*addr == ' ') || (*addr == '\t')) {
+				addr++;
+			}
+			if (*addr == '\0') {
+				goto skip_line;
+			}
+
+			file = addr;
+			while ((*file != ' ') &&
+			       (*file != '\t') &&
+			       (*file != '\0')) {
+				file++;
+			}
+			if (*file == '\0') {
+				goto skip_line;
+			}
+
+			while ((*file == ' ') || (*file == '\t')) {
+				*file = '\0';
+				file++;
+			}
+			if (*file == '\0') {
+				goto skip_line;
+			}
+
+			pa = (physical_addr_t)strtoull(addr, NULL, 0);
+			vmm_cprintf(cdev, "%s: Loading %s @ 0x%llx\n",
+				    (guest) ? (guest->name) : "host",
+				    file, (u64)pa);
+			rc = cmd_vfs_load(cdev, guest, pa,
+					  file, 0, 0xFFFFFFFF);
+			if (rc) {
+				vmm_cprintf(cdev, "error %d\n", rc);
+				break;
+			}
+skip_line:
+			pos = 0;
+		} else if (vmm_isprintable(c)) {
+			buf[pos] = c;
+			pos++;
+		} else {
+			vmm_cprintf(cdev, "Non-printable char at "
+				    "offset 0x%llx\n", (u64)rd_off);
+			break;
+		}
+		rd_off++;
+	}
 
 	rc = vfs_close(fd);
 	if (rc) {
@@ -579,6 +687,8 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		off = (argc > 4) ? strtoul(argv[4], NULL, 0) : 0;
 		len = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0xFFFFFFFF;
 		return cmd_vfs_load(cdev, NULL, pa, argv[3], off, len);
+	} else if ((strcmp(argv[1], "host_load_list") == 0) && (argc == 3)) {
+		return cmd_vfs_load_list(cdev, NULL, argv[2]);
 	} else if ((strcmp(argv[1], "guest_load") == 0) && (argc > 4)) {
 		guest = vmm_manager_guest_find(argv[2]);
 		if (!guest) {
@@ -590,6 +700,14 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		off = (argc > 4) ? strtoul(argv[5], NULL, 0) : 0;
 		len = (argc > 5) ? strtoul(argv[6], NULL, 0) : 0xFFFFFFFF;
 		return cmd_vfs_load(cdev, guest, pa, argv[4], off, len);
+	} else if ((strcmp(argv[1], "guest_load_list") == 0) && (argc == 4)) {
+		guest = vmm_manager_guest_find(argv[2]);
+		if (!guest) {
+			vmm_cprintf(cdev, "Failed to find guest %s\n",
+				    argv[2]);
+			return VMM_ENOTAVAIL;
+		}
+		return cmd_vfs_load_list(cdev, guest, argv[3]);
 	}
 	cmd_vfs_usage(cdev);
 	return VMM_EFAIL;
