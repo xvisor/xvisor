@@ -768,7 +768,6 @@ static int ns16550_emulator_write(struct vmm_emudev *edev,
 				  physical_addr_t offset, 
 				  void *src, u32 src_len)
 {
-	int i;
 	u32 regmask = 0x0, regval = 0x0;
 	struct ns16550_state *s = edev->priv;
 
