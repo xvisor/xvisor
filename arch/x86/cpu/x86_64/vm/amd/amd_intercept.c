@@ -29,8 +29,10 @@
 #include <cpu_features.h>
 #include <cpu_mmu.h>
 #include <cpu_pgtbl_helper.h>
+#include <arch_guest_helper.h>
 #include <vm/amd_intercept.h>
 #include <vm/amd_svm.h>
+#include <vmm_devemu.h>
 #include <vmm_manager.h>
 #include <vmm_main.h>
 

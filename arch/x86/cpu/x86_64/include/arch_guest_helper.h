@@ -39,6 +39,12 @@ struct x86_guest_priv {
 /*!def x86_guest_priv(guest) is to access guest private information */
 #define x86_guest_priv(guest) ((struct x86_guest_priv *)(guest->arch_priv))
 
+extern physical_addr_t guest_virtual_to_physical(struct vcpu_hw_context *context,
+						 virtual_addr_t vaddr);
+extern int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+			       physical_addr_t paddr, size_t size);
+extern int realmode_unmap_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+				 size_t size);
 extern void arch_guest_halt(struct vmm_guest *guest);
 
 #endif /* __ARCH_GUEST_HELPER_H_ */
