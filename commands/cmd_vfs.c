@@ -532,9 +532,9 @@ static int cmd_vfs_load(struct vmm_chardev *cdev,
 		wr_pa += buf_wr;
 	}
 
-	vmm_cprintf(cdev, "%s: Loaded %d bytes @ 0x%llx\n",
+	vmm_cprintf(cdev, "%s: Loaded 0x%llx with %d bytes\n",
 			  (guest) ? (guest->name) : "host",
-			  wr_count, (u64)pa);
+			  (u64)pa, wr_count);
 
 	rc = vfs_close(fd);
 	if (rc) {
@@ -619,9 +619,9 @@ static int cmd_vfs_load_list(struct vmm_chardev *cdev,
 			}
 
 			pa = (physical_addr_t)strtoull(addr, NULL, 0);
-			vmm_cprintf(cdev, "%s: Loading %s @ 0x%llx\n",
+			vmm_cprintf(cdev, "%s: Loading 0x%llx with file %s\n",
 				    (guest) ? (guest->name) : "host",
-				    file, (u64)pa);
+				    (u64)pa, file);
 			rc = cmd_vfs_load(cdev, guest, pa,
 					  file, 0, 0xFFFFFFFF);
 			if (rc) {
