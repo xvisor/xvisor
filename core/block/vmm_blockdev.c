@@ -116,9 +116,9 @@ int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 
 	if (bdev->rq->make_request) {
 		r->bdev = bdev;
-		vmm_spin_lock_irqsave(&r->bdev->rq->lock, flags);
-		rc = r->bdev->rq->make_request(r->bdev->rq, r);
-		vmm_spin_unlock_irqrestore(&r->bdev->rq->lock, flags);
+		vmm_spin_lock_irqsave(&bdev->rq->lock, flags);
+		rc = bdev->rq->make_request(bdev->rq, r);
+		vmm_spin_unlock_irqrestore(&bdev->rq->lock, flags);
 		if (rc) {
 			r->bdev = NULL;
 			return rc;
@@ -140,15 +140,17 @@ int vmm_blockdev_abort_request(struct vmm_request *r)
 {
 	int rc;
 	irq_flags_t flags;
+	struct vmm_blockdev *bdev;
 
 	if (!r || !r->bdev || !r->bdev->rq) {
 		return VMM_EFAIL;
 	}
+	bdev = r->bdev;
 
-	if (r->bdev->rq->abort_request) {
-		vmm_spin_lock_irqsave(&r->bdev->rq->lock, flags);
-		rc = r->bdev->rq->abort_request(r->bdev->rq, r);
-		vmm_spin_unlock_irqrestore(&r->bdev->rq->lock, flags);
+	if (bdev->rq->abort_request) {
+		vmm_spin_lock_irqsave(&bdev->rq->lock, flags);
+		rc = bdev->rq->abort_request(bdev->rq, r);
+		vmm_spin_unlock_irqrestore(&bdev->rq->lock, flags);
 		if (rc) {
 			return rc;
 		}
