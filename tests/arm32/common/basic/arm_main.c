@@ -560,11 +560,12 @@ void arm_exec(char *line);
 
 void arm_cmd_autoexec(int argc, char **argv)
 {
+#define ARM_CMD_AUTOEXEC_BUF_SIZE	4096
 	static int lock = 0;
-	int len;
+	int len, pos = 0;
 	/* commands to execute are stored in NOR flash */
 	char *ptr = (char *)(arm_board_flash_addr() + 0xFF000);
-	char buffer[4096];
+	char buffer[ARM_CMD_AUTOEXEC_BUF_SIZE];
 
 	if (argc != 1) {
 		arm_puts ("autoexec: no parameters required\n");
@@ -579,33 +580,46 @@ void arm_cmd_autoexec(int argc, char **argv)
 
 	lock = 1;
 
-	if ((len = arm_strlen(ptr))) {
-		int pos = 0;
+	/* determine length of command list */
+	len = 0;
+	while ((len < ARM_CMD_AUTOEXEC_BUF_SIZE) &&
+	       arm_isprintable(ptr[len])) {
+		len++;
+	}
 
-		/* copy commands from NOR flash */
-		arm_strcpy(buffer, ptr);
+	/* sanity check on command list */
+	if (!len) {
+		arm_puts("command list not found !!!\n");
+		return;
+	}
+	if (len >= ARM_CMD_AUTOEXEC_BUF_SIZE) {
+		arm_printf("command list len=%d too big !!!\n", len);
+		return;
+	}
 
-		/* now we process them */
-		while (pos < len) {
-			ptr = &buffer[pos];
+	/* copy commands from NOR flash */
+	arm_memcpy(buffer, ptr, len);
+	buffer[len] = '\0';
 
-			/* We need to separate the commands */
-			while ((buffer[pos] != '\r') &&
-				(buffer[pos] != '\n') &&
-				(buffer[pos] != 0)) {
-				pos++;
-			}
-			buffer[pos] = '\0';
+	/* now we process them */
+	while (pos < len) {
+		ptr = &buffer[pos];
+
+		/* We need to separate the commands */
+		while ((buffer[pos] != '\r') &&
+			(buffer[pos] != '\n') &&
+			(buffer[pos] != 0)) {
 			pos++;
-
-			/* print the command */
-			arm_puts("autoexec(");
-			arm_puts(ptr);
-			arm_puts(")\n");
-			/* execute it */
-			arm_exec(ptr);
 		}
+		buffer[pos] = '\0';
+		pos++;
 
+		/* print the command */
+		arm_puts("autoexec(");
+		arm_puts(ptr);
+		arm_puts(")\n");
+		/* execute it */
+		arm_exec(ptr);
 	}
 
 	lock = 0;

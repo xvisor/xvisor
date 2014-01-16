@@ -35,6 +35,18 @@ void arm_stdio_init(void)
 	}
 }
 
+bool arm_isprintable(char c)
+{
+	if (((31 < c) && (c < 127)) ||
+	   (c == '\f') ||
+	   (c == '\r') ||
+	   (c == '\n') ||
+	   (c == '\t')) {
+		return TRUE;
+	}
+	return FALSE;
+}
+
 void arm_puts(const char * str)
 {
 	while (*str) {
