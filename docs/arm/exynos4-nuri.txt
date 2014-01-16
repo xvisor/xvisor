@@ -1,17 +1,17 @@
 		Xvisor on Linaro QEMU NURI Host
 
-This section of readme explains how to build & run Xvisor for NURI 
-emulated by QEMU. 
+This section of readme explains how to build & run Xvisor for NURI emulated
+by QEMU.
 
-By default, Xvisor for NURI supports Realview-PB-A8 guest so we will
-show how to run Basic Firmware on Realview-PB-A8 guest. For more info
-refer, <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
+By default, Xvisor for NURI supports Realview-PB-A8 guest so we will show
+how to run Basic Firmware on Realview-PB-A8 guest. For more info refer,
+<xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
 
-Please follow the steps below to build & run Basic Firmware on Realview-PB-A8 
+Please follow the steps below to build & run Basic Firmware on Realview-PB-A8
 guest with Xvisor running on QEMU NURI Host:
 
   [1. Build environment for Xvisor]
-  # CROSS_COMPILE=arm-none-linux-gnueabi-
+  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
@@ -25,28 +25,34 @@ guest with Xvisor running on QEMU NURI Host:
   [5. Build Basic Firmware]
   # make -C tests/arm32/realview-pb-a8/basic
 
-  [6. Create qemu.img for running it on QEMU]
-  # ./tools/scripts/memimg.py -a 0x40010000 -o build/qemu.img build/vmm.bin@0x40010000 build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched@0x41000000
+  [6. Create disk image for Xvisor]
+  # mkdir -p ./build/disk/images/arm32/realview-pb-a8
+  # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
+  # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [7. Launch QEMU]
+  [7. Create qemu.img for running it on QEMU]
+  # ./tools/scripts/memimg.py -a 0x40010000 -o build/qemu.img build/vmm.bin@0x40010000 build/disk.img@0x41000000
+
+  [8. Launch QEMU]
   # qemu-system-arm -M nuri -m 256M -display none -serial stdio -kernel build/qemu.img
 
-  [8. Kick Guest0 for starting Basic Firmware]
+  [9. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [9. Bind to virtual UART]
+  [10. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [10. Say 'hi' to Basic Firmware]
+  [11. Say 'hi' to Basic Firmware]
   [guest0/uart0] basic# hi
 
-  [11. Say 'hello' to Basic Firmware]
+  [12. Say 'hello' to Basic Firmware]
   [guest0/uart0] basic# hello
 
-  [12. Check various commands of Basic Firmware]
+  [13. Check various commands of Basic Firmware]
   [guest0/uart0] basic# help
 
-  [13. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [14. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)

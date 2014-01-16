@@ -7,23 +7,29 @@
 	chosen {
 		console = &SERIAL0;
 		rtcdev = &RTC0;
-		bootcmd = /* Copy guest0 device tree from templates */
+		bootcmd = /* Create rbd0 device */
+			  "rbd create rbd0 0x81000000 0x01000000",
+
+			  /* Mount rbd0 device */
+			  "vfs mount rbd0 /",
+
+			  /* Copy guest0 device tree from templates */
 			  "devtree node copy /guests guest0 /templates/vexpress-a15x2",
 
 			  /* Update guest0 flash region */
-			  "devtree attr set /guests/guest0/aspace/nor_flash0 host_physical_addr physaddr 0x81000000",
+			  "devtree attr set /guests/guest0/aspace/nor_flash0 host_physical_addr physaddr 0x82000000",
 			  "devtree attr set /guests/guest0/aspace/nor_flash0 physical_size physsize 0x01000000",
 
 			  /* Update guest0 sram regions */
-			  "devtree attr set /guests/guest0/aspace/sram host_physical_addr physaddr 0x82000000",
+			  "devtree attr set /guests/guest0/aspace/sram host_physical_addr physaddr 0x83000000",
 			  "devtree attr set /guests/guest0/aspace/sram physical_size physsize 0x02000000",
 
 			  /* Update guest0 videoram regions */
-			  "devtree attr set /guests/guest0/aspace/videoram host_physical_addr physaddr 0x84000000",
+			  "devtree attr set /guests/guest0/aspace/videoram host_physical_addr physaddr 0x85000000",
 			  "devtree attr set /guests/guest0/aspace/videoram physical_size physsize 0x00800000",
 
 			  /* Update guest0 memory regions */
-			  "devtree attr set /guests/guest0/aspace/mem0 host_physical_addr physaddr 0x84800000",
+			  "devtree attr set /guests/guest0/aspace/mem0 host_physical_addr physaddr 0x85800000",
 			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
 
 			  /* Update guest0 vGIC CPU interface regions */
@@ -36,6 +42,9 @@
 			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string br0",
 
 			  /* Create guest0 */
-			  "guest create guest0";
+			  "guest create guest0",
+
+			  /* Load guest0 images */
+			  "vfs guest_load_list guest0 /images/arm32/vexpress-a15/nor_flash.list";
 	};
 };

@@ -1,0 +1,5 @@
+0x00000000 /images/arm32/vexpress-a15/firmware.bin
+0x000FF000 /images/arm32/vexpress-a15/cmdlist
+0x00100000 /images/arm32/vexpress-a15/Image
+0x008F0000 /images/arm32/vexpress-a15/vexpress-a15.dtb
+0x00900000 /images/arm32/rootfs.img

@@ -4,31 +4,29 @@ This section of readme explains how to build & run Xvisor on actual Allwinner
 A10 boards (Hackberry or pcduino for example) using SD booting feature of
 Sun4i SOC.
 
-By default, Xvisor for Sun4i supports Realview-PB-A8 guest so we will show 
-how to run Basic Firmware on Realview-PB-A8 guest. For more info refer,
-<xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
+By default, Xvisor for Sun4i supports Realview-PB-A8 guest so we will show
+how to run Basic Firmware (and/or Linux) on Realview-PB-A8 guest.
 
-As first step of SD booting on Sun4i SOC, we need to re-partition and programme 
-a SD card (> 4GB card) with Uboot. For detailed info on preparing SD card for 
+As first step of SD booting on Sun4i SOC, we need to re-partition and programme
+a SD card (> 4GB card) with Uboot. For detailed info on preparing SD card for
 booting refer: http://rhombus-tech.net/allwinner_a10/a10_mmc_boot
 
-Once we have SD card prepared for SD booting, we add 2 images to the boot 
+Once we have SD card prepared for SD booting, we add 2 images to the boot
 partition of SD card:
  1) U-Boot compatible Xvisor binary (uvmm.bin).
- 2) Patched guest binary 
-    (Patched Realview-pb-a8 Basic Firmware image, firmware.bin.patched)
+ 2) Disk image containing guest binaries (disk.img).
 
 Following are steps to create these images and then boot Xvisor on Allwinner
 A10:
 
   [1. Build environment]
-  # CROSS_COMPILE=arm-none-linux-gnueabi-
+  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with Sun4i host default settings]
-  # make ARCH=arm sun4i-defconfig 
+  # make ARCH=arm sun4i-defconfig
 
   [4. Build Xvisor, this creates vmm.bin]
   # make
@@ -39,80 +37,75 @@ A10:
   [6. Build Basic Firmware for Realview-PB-A8 Guest, this creates firmware.bin.patched]
   # make -C tests/arm32/realview-pb-a8/basic
   
-  [7. Unplug bootable SD card from the A10 board and plug it on your development machine]
+  [7. Create disk image for Xvisor]
+  # mkdir -p ./build/disk/images/arm32/realview-pb-a8
+  # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
+  # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+  OR
+  # mkdir -p ./build/disk/images/arm32/realview-pb-a8
+  # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
+  # cp -f ./tests/arm32/realview-pb-a8/linux/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # cp -f ./tests/arm32/realview-pb-a8/linux/cmdlist ./build/disk/images/arm32/realview-pb-a8/cmdlist
+  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-pb-a8/Image
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [8. Mount boot partition (or partition 0) of SD card on your development machine]
+  (Note: For creating <linux_build_directory>/arch/arm/boot/Image refer
+   <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/README)
+  (Note: For creating <busybox_rootfs_directory>/rootfs.img refer
+   <xvisor_source_directory>/tests/arm32/common/busybox/README)
 
-  [9. Copy uvmm.bin to boot partition of SD card]
-  # cp uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
+  [8. Unplug bootable SD card from the A10 board and plug it on your development machine]
 
-  [10. Copy firmware.bin.patched to boot partition of SD card]
-  # cp build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched <path_to_mounted_boot_partition_of_sd_card>/arm.bin
+  [9. Mount boot partition (or partition 0) of SD card on your development machine]
 
-  (Note: If you want additional images like cmdlist, patched Image, 
-   rootfs.img etc. then you should copy these images to boot partition
-   of SD card after above step.)
-  (Note: For more info on images required for linux on Realview-PB-A8 guest 
-   refer to <xvisor_source>/tests/arm32/realview-pb-a8/linux/README.)
+  [10. Copy uvmm.bin to boot partition of SD card]
+  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
 
-  [11. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [11. Copy disk image to boot partition of SD card]
+  # cp -f build/disk.img <path_to_mounted_boot_partition_of_sd_card>
 
-  [12. Unplug SD card from your development machine and plug it back on A10 board]
+  [12. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [13. Connect to serial port of A10 board using Putty or Minicom]
+  [13. Unplug SD card from your development machine and plug it back on A10 board]
 
-  [14. Power-up or Reset A10 board and press any key when U-Boot shows auto-boot count down]
+  [14. Connect to serial port of A10 board using Putty or Minicom]
 
-  [15. Enable MMC interface from U-Boot command line]
+  [15. Power-up or Reset A10 board and press any key when U-Boot shows auto-boot count down]
+
+  [16. Enable MMC interface from U-Boot command line]
   sun4i# mmc dev 0:0
 
-  [16. Copy Xvisor from SD card to SDRAM]
+  [17. Copy Xvisor from SD card to SDRAM]
   sun4i# fatload mmc 0 0x40200000 uvmm.bin
 
-  [17. Copy Guest image from SD card to SDRAM]
-  sun4i# fatload mmc 0 0x41000000 arm.bin
+  [18. Copy disk image from SD card to SDRAM]
+  sun4i# fatload mmc 0 0x41000000 disk.img
 
-  (Note: If you want to load additional images like cmdlist, patched Image, 
-   rootfs.img, etc. from SD card then load these images at address 
-   0x41000000 or higher using fatload command of U-Boot after above step.)
-  (Note: The default DTS used by Xvisor for Sun4i has one pre-configured
-   Realview-PB-A8 guest. The NOR flash of the guest is 16 MB in size and is 
-   mapped to 0x41000000 host physical address. The guest boots from start of 
-   NOR flash so we put Basic Firmware arm.bin at start of NOR flash and rest of
-   the guest images like cmdlist, patched Image, rootfs.img, etc. after it.)
-  (Note: For e.g. if we want to load cmdlist, patched Image and rootfs image
-   into guest NOR flash then use:
-   sun4i# fatload mmc 0 0x410FF000 cmdlist
-   sun4i# fatload mmc 0 0x41100000 Image
-   sun4i# fatload mmc 0 0x41900000 rootfs.img )
-
-  [18. Jump into Xvisor after disabling MMU, interrupts, etc]
+  [19. Jump into Xvisor after disabling MMU, interrupts, etc]
   sun4i# bootm 0x40200000
 
-  [19. Kick Guest0 for starting Basic Firmware]
+  [20. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [20. Bind to virtual UART]
+  [21. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [21. Say 'hi' to Basic Firmware]
+  [22. Say 'hi' to Basic Firmware]
   [guest0/uart0] basic# hi
 
-  (Note: If you had linux images loaded in guest NOR flash then instead of 
-   above step you can start booting linux,
-   basic# copy 0x70008000 0x40100000 0x7F8000
-   basic# copy 0x70800000 0x40900000 0x700000
-   basic# start_linux 0x70008000 0x70800000 0x700000 
-   OR
+  (Note: If you had linux images loaded in guest NOR flash then
+   instead of above step you can start booting linux,
    basic# autoexec)
 
-  [22. Say 'hello' to Basic Firmware]
+  [23. Say 'hello' to Basic Firmware]
   [guest0/uart0] basic# hello
 
-  [23. Check various commands of Basic Firmware]
+  [24. Check various commands of Basic Firmware]
   [guest0/uart0] basic# help
 
-  [24. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [25. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)

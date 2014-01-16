@@ -1,0 +1,4 @@
+0x40000000 /images/arm32/realview-eb-mpcore/firmware.bin
+0x400FF000 /images/arm32/realview-eb-mpcore/cmdlist
+0x40100000 /images/arm32/realview-eb-mpcore/Image
+0x40900000 /images/arm32/rootfs.img

@@ -4,28 +4,23 @@ This section of readme explains how to build & run Xvisor on real hardware
 BeagleBoard-xM using SD booting feature of OMAP3 SOC.
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
-show how to run Basic Firmware on Realview-PB-A8 guest. For more info 
-refer, <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
+show how to run Basic Firmware (and/or Linux) on Realview-PB-A8 guest.
 
-We need to add 2 images in boot partition of micro-SD card that is shipped with
+We need to add 2 images in boot partition of SD card that is shipped with
 BeagleBoard-xM:
- 1) U-Boot compatible Xvisor binary (uvmm.bin). Newer u-boot enables MMU and 
-    interrupts. These are disabled before booting linux when bootm command is 
-    used, so a simple go command will not work. We add the u-boot header to 
-    make it appear as a linux image.
- 2) Patched guest binary 
-    (Patched Realview-pb-a8 Basic Firmware image, firmware.bin.patched)
+ 1) U-Boot compatible Xvisor binary (uvmm.bin).
+ 2) Disk image containing guest binaries (disk.img).
 
 Following steps to create these images and then boot Xvisor on Beagleboard-xM:
 
   [1. Build environment]
-  # CROSS_COMPILE=arm-none-linux-gnueabi-
+  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with Beagleboard (or OMAP3) host default settings]
-  # make ARCH=arm omap3-beagle-defconfig 
+  # make ARCH=arm omap3-beagle-defconfig
 
   [4. Build Xvisor, this creates vmm.bin]
   # make
@@ -36,80 +31,75 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
   [6. Build Basic Firmware for Realview-PB-A8 Guest, this creates firmware.bin.patched]
   # make -C tests/arm32/realview-pb-a8/basic
   
-  [7. Unplug micro-SD card from BeagleBoard-xM and plug it on your development machine]
+  [7. Create disk image for Xvisor]
+  # mkdir -p ./build/disk/images/arm32/realview-pb-a8
+  # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
+  # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+  OR
+  # mkdir -p ./build/disk/images/arm32/realview-pb-a8
+  # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
+  # cp -f ./tests/arm32/realview-pb-a8/linux/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # cp -f ./tests/arm32/realview-pb-a8/linux/cmdlist ./build/disk/images/arm32/realview-pb-a8/cmdlist
+  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-pb-a8/Image
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [8. Mount boot partition (or partition 0) of micro-SD card on your development machine]
+  (Note: For creating <linux_build_directory>/arch/arm/boot/Image refer
+   <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/README)
+  (Note: For creating <busybox_rootfs_directory>/rootfs.img refer
+   <xvisor_source_directory>/tests/arm32/common/busybox/README)
 
-  [9. Copy uvmm.bin to boot partition of micro-SD card]
-  # cp uvmm.bin <path_to_mounted_boot_partition_of_micro_sd_card>
+  [8. Unplug SD card from BeagleBoard-xM and plug it on your development machine]
 
-  [10. Copy firmware.bin.patched to boot partition of micro-SD card]
-  # cp build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched <path_to_mounted_boot_partition_of_micro_sd_card>/arm.bin
+  [9. Mount boot partition (or partition 0) of SD card on your development machine]
 
-  (Note: If you want additional images like cmdlist, patched Image, 
-   rootfs.img etc. then you should copy these images to boot partition
-   of micro-SD card after above step.)
-  (Note: For more info on images required for linux on Realview-PB-A8 guest 
-   refer to <xvisor_source>/tests/arm32/realview-pb-a8/linux/README.)
+  [10. Copy uvmm.bin to boot partition of SD card]
+  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
 
-  [11. Unmount boot partition (or partition 0) of micro-SD card from your development machine]
+  [11. Copy disk image to boot partition of SD card]
+  # cp -f build/disk.img <path_to_mounted_boot_partition_of_sd_card>
 
-  [12. Unplug micro-SD card from your development machine and plug it back on BeagleBoard-xM]
+  [12. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [13. Connect to serial port of BeagleBoard-xM using Putty or Minicom]
+  [13. Unplug SD card from your development machine and plug it back on BeagleBoard-xM]
 
-  [14. Power-up or Reset BeagleBoard-xM and press any key when U-Boot shows auto-boot count down]
+  [14. Connect to serial port of BeagleBoard-xM using Putty or Minicom]
 
-  [15. Enabled MMC interface from U-Boot command line interface]
+  [15. Power-up or Reset BeagleBoard-xM and press any key when U-Boot shows auto-boot count down]
+
+  [16. Enabled MMC interface from U-Boot command line interface]
   OMAP3 beagleboard.org # mmc dev 0:0
 
-  [16. Copy Xvisor from micro-SD card to SDRAM]
+  [17. Copy Xvisor from SD card to SDRAM]
   OMAP3 beagleboard.org # fatload mmc 0 0x80200000 uvmm.bin
 
-  [17. Copy Guest image from micro-SD card to SDRAM]
-  OMAP3 beagleboard.org # fatload mmc 0 0x89000000 arm.bin
+  [18. Copy disk image from SD card to SDRAM]
+  OMAP3 beagleboard.org # fatload mmc 0 0x89000000 disk.img
 
-  (Note: If you want to load additional images like cmdlist, patched Image, 
-   rootfs.img, etc. from micro-SD card then load these images at address 
-   0x89100000 or higher using fatload command of U-Boot after above step.)
-  (Note: The default DTS used by Xvisor for BeagleBoard has one pre-configured
-   Realview-PB-A8 guest. The NOR flash of the guest is 16 MB in size and is 
-   mapped to 0x89000000 host physical address. The guest boots from start of 
-   NOR flash so we put Basic Firmware arm.bin at start of NOR flash and rest of
-   the guest images like cmdlist, patched Image, rootfs.img, etc. after it.)
-  (Note: For e.g. if we want to load cmdlist, patched Image and rootfs image
-   into guest NOR flash then use:
-   OMAP3 beagleboard.org # fatload mmc 0 0x890FF000 cmdlist
-   OMAP3 beagleboard.org # fatload mmc 0 0x89100000 Image
-   OMAP3 beagleboard.org # fatload mmc 0 0x89900000 rootfs.img )
-
-  [18. Jump into Xvisor after disabling MMU, interrupts, etc]
+  [19. Jump into Xvisor after disabling MMU, interrupts, etc]
   OMAP3 beagleboard.org # bootm 0x80200000
 
-  [19. Kick Guest0 for starting Basic Firmware]
+  [20. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [20. Bind to virtual UART]
+  [21. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [21. Say 'hi' to Basic Firmware]
+  [22. Say 'hi' to Basic Firmware]
   [guest0/uart0] basic# hi
 
-  (Note: If you had linux images loaded in guest NOR flash then instead of 
-   above step you can start booting linux,
-   basic# copy 0x70008000 0x40100000 0x7F8000
-   basic# copy 0x70800000 0x40900000 0x700000
-   basic# start_linux 0x70008000 0x70800000 0x700000
-   OR
+  (Note: If you had linux images loaded in guest NOR flash then
+   instead of above step you can start booting linux,
    basic# autoexec)
 
-  [22. Say 'hello' to Basic Firmware]
+  [23. Say 'hello' to Basic Firmware]
   [guest0/uart0] basic# hello
 
-  [23. Check various commands of Basic Firmware]
+  [24. Check various commands of Basic Firmware]
   [guest0/uart0] basic# help
 
-  [24. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [25. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)
@@ -117,28 +107,23 @@ Following steps to create these images and then boot Xvisor on Beagleboard-xM:
 
 	Xvisor on Linaro QEMU BeagleBoard (or OMAP3) using NAND Booting 
 
-This section of readme explains how to build & run Xvisor from nand-flash on 
+This section of readme explains how to build & run Xvisor from nand-flash on
 BeagleBoard emulated by QEMU Linaro. 
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
-show how to run Basic Firmware on Realview-PB-A8 guest. For more info 
-refer, <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
+show how to run Basic Firmware (and/or Linux) on Realview-PB-A8 guest.
 
 We need to have 4 images to create the nand-flash image:
- a) X-loader for OMAP3 (2nd stage bootloader for OMAP3)
- b) U-Boot binary for OMAP3 (3rd stage bootloader)
- c) U-Boot compatible Xvisor binary (uvmm.bin). Newer U-Boot enables MMU and 
-    interrupts. These are disabled before booting linux when bootm command is 
-    used, so a simple go command will not work. We add the U-Boot header to 
-    make it appear as a linux image.
- d) Patched guest binary 
-    (Patched Realview-pb-a8 Basic Firmware image, firmware.bin.patched)
+ 1) X-loader for OMAP3 (2nd stage bootloader for OMAP3).
+ 2) U-Boot binary for OMAP3 (3rd stage bootloader).
+ 3) U-Boot compatible Xvisor binary (uvmm.bin).
+ 4) Disk image containing guest binaries (disk.img).
 
-The steps to create these images and boot Xvisor on Beagleboard QEMU are as 
+The steps to create these images and boot Xvisor on Beagleboard QEMU are as
 follows:
 
   [1. Build environment]
-  # CROSS_COMPILE=arm-none-linux-gnueabi-
+  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
 
   (Note: Follow step 2 to get the prebuilt X-loader and U-Boot binaries, or 
    steps 3-4 to build those images from source)
@@ -168,7 +153,7 @@ follows:
   # cd <xvisor_source_directory>
 
   [6. Configure Xvisor with Beagleboard (or OMAP3) host default settings]
-  # make ARCH=arm omap3-beagle-defconfig 
+  # make ARCH=arm omap3-beagle-defconfig
 
   [7. Build Xvisor, this creates vmm.bin]
   # make
@@ -182,74 +167,63 @@ follows:
   [10. Copy the X-loader and U-Boot binaries (from step 2 or 3-4) into Xvisor build-directory]
   # cp <path-to-x-loader-binary>/x-load.bin.ift <path-to-u-boot-binary>/u-boot.bin build/
 
-  [11. Create a flat binary with all our binaries appended]
-  # ./tools/scripts/memimg.py -a 0 -o build/beagle.img build/x-load.bin.ift@0x0 build/u-boot.bin@0x80000 build/uvmm.bin@0x280000 build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched@0x380000
+  [11. Create disk image for Xvisor]
+  # mkdir -p ./build/disk/images/arm32/realview-pb-a8
+  # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
+  # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+  OR
+  # mkdir -p ./build/disk/images/arm32/realview-pb-a8
+  # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
+  # cp -f ./tests/arm32/realview-pb-a8/linux/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # cp -f ./tests/arm32/realview-pb-a8/linux/cmdlist ./build/disk/images/arm32/realview-pb-a8/cmdlist
+  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-pb-a8/Image
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  (Note: If you want additional images like cmdlist, patched Image, 
-   rootfs image, etc. then you should above step to include them in 
-   build/beagle.img. For instance cmdlist, patched Image, and rootfs.img
-   can be appended to build/beagle.img using following additional arguments
-   <xvisor_source>/tests/arm32/realview-pb-a8/linux/cmdlist@0x47F000
-   <linux_build_dir>/arch/arm/boot/Image@0x480000
-   <linux_build_dir>/rootfs.img@0xC80000 
-   arguments appended to above step.)
-  (Note: For more info on images required for linux on Realview-PB-A8 guest 
-   refer to <xvisor_source>/tests/arm32/realview-pb-a8/linux/README.)
+  (Note: For creating <linux_build_directory>/arch/arm/boot/Image refer
+   <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/README)
+  (Note: For creating <busybox_rootfs_directory>/rootfs.img refer
+   <xvisor_source_directory>/tests/arm32/common/busybox/README)
 
-  [12. Build the beagleboard nand-flash image from the flat binary created]
+  [12. Create a flat binary with all our binaries appended]
+  # ./tools/scripts/memimg.py -a 0 -o build/beagle.img build/x-load.bin.ift@0x0 build/u-boot.bin@0x80000 build/uvmm.bin@0x280000 build/disk.img@0x380000
+
+  [13. Build the beagleboard nand-flash image from the flat binary created]
   # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc 
 
-  [13. Launch QEMU Linaro]
+  [14. Launch QEMU Linaro]
   # qemu-system-arm -M beagle -m 256M -drive file=build/beagle-nand.bin,if=mtd -display none -serial stdio -s
 
-  [14. Copy Xvisor from nand-flash to SDRAM]
+  [15. Copy Xvisor from nand-flash to SDRAM]
   OMAP3 beagleboard.org # nand read 0x80200000 0x280000 0x100000
 
-  [15. Copy Guest image from nand-flash to SDRAM]
-  OMAP3 beagleboard.org # nand read 0x89000000 0x380000 0x100000
+  [16. Copy disk image from nand-flash to SDRAM]
+  OMAP3 beagleboard.org # nand read 0x89000000 0x380000 0x1000000
 
-  (Note: If you want to load additional images like cmdlist, patched Image, 
-   rootfs.img, etc. from NAND flash then load these images at address 0x89100000
-   or higher using fatload command of U-Boot after above step.)
-  (Note: The default DTS used by Xvisor for BeagleBoard has one pre-configured
-   Realview-PB-A8 guest. The NOR flash of the guest is 16 MB in size and is 
-   mapped to 0x89000000 host physical address. The guest boots from start of 
-   NOR flash so we put Basic Firmware at start of NOR flash and rest of the 
-   guest images like cmdlist, patched Image, rootfs.img, etc. after Basic 
-   Firmware arm.bin)
-  (Note: For e.g. if we want to load cmdlist, patched Image and rootfs image
-   into guest NOR flash then use,
-   OMAP3 beagleboard.org # nand read 0x890FF000 0x47F000 0x1000
-   OMAP3 beagleboard.org # nand read 0x89100000 0x480000 0x800000
-   OMAP3 beagleboard.org # nand read 0x89900000 0xC80000 0x700000 )
-
-  [16. Jump into Xvisor after disabling MMU, interrupts, etc]
+  [17. Jump into Xvisor after disabling MMU, interrupts, etc]
   OMAP3 beagleboard.org # bootm 0x80200000
 
-  [16. Kick Guest0 for starting Basic Firmware]
+  [18. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [17. Bind to virtual UART]
+  [19. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [18. Say 'hi' to Basic Firmware]
+  [20. Say 'hi' to Basic Firmware]
   [guest0/uart0] basic# hi
 
-  (Note: If you had linux images loaded in guest NOR flash then instead of 
-   then instead of above step you can start booting linux,
-   basic# copy 0x70008000 0x40100000 0x7F8000
-   basic# copy 0x70800000 0x40900000 0x700000
-   basic# start_linux 0x70008000 0x70800000 0x700000
-   OR
+  (Note: If you had linux images loaded in guest NOR flash then
+   instead of above step you can start booting linux,
    basic# autoexec)
 
-  [19. Say 'hello' to Basic Firmware]
+  [21. Say 'hello' to Basic Firmware]
   [guest0/uart0] basic# hello
 
-  [20. Check various commands of Basic Firmware]
+  [22. Check various commands of Basic Firmware]
   [guest0/uart0] basic# help
 
-  [21. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [23. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)

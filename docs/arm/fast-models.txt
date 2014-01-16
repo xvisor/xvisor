@@ -37,13 +37,15 @@ Linux system:
   [10. Start system canvas tool to build required emulation model (lets assume Cortex-A15x1)]
   # sgcanvas
 
-  [11. OPEN <your_fastmodel_dir>/FastModelsPortfolio_xxxx/examples/RTSM_VE/Build_Cortex-A15x1/RTSM_VE_Cortex-A15x1.sgproj]
+  [11. OPEN <your_fastmodel_dir>/FastModelsPortfolio_xxxx/examples/FVP_VE/Build_Cortex-A15x1/RTSM_VE_Cortex-A15x1.sgproj]
 
   [12. SELECT Integrated Simulator & Cadilibrary from PROJECT -> PROJECT SETTINGS -> PARAMETER CATEGORY -> TARGETS]
 
   [13. COMPILE (this will start system canvas build process)]
-  (The output emulation model will be shared library named cadi_system_Linux-Debug-GCC-<xxxx>.so located in 
-   <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<xxxx>)
+  (The output emulation model will be a shared library named as: 
+   <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/FVP_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<yyyy>/cadi_system_Linux-Debug-GCC-<yyyy>.so
+   OR
+   <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/FVP_VE/Build_Cortex-A15x1/Linux64-Debug-GCC-<yyyy>/cadi_system_Linux64-Debug-GCC-<yyyy>.so)
 
   (Note: replace all <> brackets based on your workspace)
   (Note: to build a different emulation model redo steps 10 to 13 and 
@@ -74,15 +76,17 @@ steps provided in previous section:
 
   [1. Build environment for boot-wrapper]
   # cd <your_test_dir>
-  # CROSS_COMPILE=arm-none-linux-gnueabi-
+  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
 
   [2. Compile boot-wrapper]
-  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=fast_model_boot.img -DVEXPRESS_A15 fast_model_boot.S -o fast_model_boot.axf
-  (Note: If you want to provide an external dtb (say device-tree.dtb), then use: 
-   # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=fast_model_boot.img -DDTB=device-tree.dtb -DVEXPRESS_A15 fast_model_boot.S -o fast_model_boot.axf)
+  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DVEXPRESS_A15 -DIMAGE=fast_model_boot.img <xvisor_source_directory>/docs/arm/fast_model_boot.S -o fast_model_boot.axf
+  OR
+  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DVEXPRESS_A15 -DIMAGE=fast_model_boot.img -DDTB=device-tree.dtb <xvisor_source_directory>/docs/arm/fast_model_boot.S -o fast_model_boot.axf
 
   [3. Run fast models]
-  # model_shell <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/RTSM_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<xxxx>/cadi_system_Linux-Debug-GCC-<xxxx>.so fast_model_boot.axf
+  # model_shell <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/FVP_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<yyyy>/cadi_system_Linux-Debug-GCC-<yyyy>.so fast_model_boot.axf
+  OR
+  # model_shell64 <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/FVP_VE/Build_Cortex-A15x1/Linux64-Debug-GCC-<yyyy>/cadi_system_Linux64-Debug-GCC-<yyyy>.so fast_model_boot.axf
 
   (Note: replace all <> brackets based on your workspace)
 

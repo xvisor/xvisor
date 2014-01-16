@@ -7,20 +7,26 @@
 	chosen {
 		console = &SERIAL0;
 		rtcdev = &RTC0;
-		bootcmd = /* Copy guest0 device tree from templates */
+		bootcmd = /* Create rbd0 device */
+			  "rbd create rbd0 0x81000000 0x01000000",
+
+			  /* Mount rbd0 device */
+			  "vfs mount rbd0 /",
+
+			  /* Copy guest0 device tree from templates */
 			  "devtree node copy /guests guest0 /templates/realview-pb-a8",
+
+			  /* Update guest0 flash region */
+			  "devtree attr set /guests/guest0/aspace/nor_flash host_physical_addr physaddr 0x82000000",
+			  "devtree attr set /guests/guest0/aspace/nor_flash physical_size physsize 0x01000000",
 
 			  /* Update guest0 memory regions */
 			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
-			  "devtree attr set /guests/guest0/aspace/mem1 host_physical_addr physaddr 0x82000000",
+			  "devtree attr set /guests/guest0/aspace/mem1 host_physical_addr physaddr 0x83000000",
 			  "devtree attr set /guests/guest0/aspace/mem1 physical_size physsize 0x06000000",
 
 			  /* Connect guest0/virtio-net0 netport to br0 */
 			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string br0",
-
-			  /* Update guest0 flash region */
-			  "devtree attr set /guests/guest0/aspace/nor_flash host_physical_addr physaddr 0x81000000",
-			  "devtree attr set /guests/guest0/aspace/nor_flash physical_size physsize 0x01000000",
 
 			  /* Connect guest0/lan9118 netport to br0 */
 			  "devtree attr set /guests/guest0/aspace/lan9118 switch string br0",
@@ -43,25 +49,31 @@
 			  /* Create guest0 */
 			  "guest create guest0",
 
+			  /* Load guest0 images */
+			  "vfs guest_load_list guest0 /images/arm32/realview-pb-a8/nor_flash.list",
+
 			  /* Copy guest1 device tree from templates */
 			  "devtree node copy /guests guest1 /templates/realview-pb-a8",
 
+			  /* Update guest1 flash region */
+			  "devtree attr set /guests/guest1/aspace/nor_flash host_physical_addr physaddr 0x89000000",
+			  "devtree attr set /guests/guest1/aspace/nor_flash physical_size physsize 0x01000000",
+
 			  /* Update guest1 memory regions */
 			  "devtree attr set /guests/guest1/aspace/mem0 physical_size physsize 0x06000000",
-			  "devtree attr set /guests/guest1/aspace/mem1 host_physical_addr physaddr 0x89000000",
+			  "devtree attr set /guests/guest1/aspace/mem1 host_physical_addr physaddr 0x8A000000",
 			  "devtree attr set /guests/guest1/aspace/mem1 physical_size physsize 0x06000000",
 
 			  /* Connect guest1/virtio-net0 netport to br0 */
 			  "devtree attr set /guests/guest1/aspace/virtio-net0 switch string br0",
 
-			  /* Update guest1 flash region */
-			  "devtree attr set /guests/guest1/aspace/nor_flash host_physical_addr physaddr 0x88000000",
-			  "devtree attr set /guests/guest1/aspace/nor_flash physical_size physsize 0x01000000",
-
 			  /* Connect guest1/lan9118 netport to br0 */
 			  "devtree attr set /guests/guest1/aspace/lan9118 switch string br0",
 
 			  /* Create guest1 */
-			  "guest create guest1";
+			  "guest create guest1",
+
+			  /* Load guest1 images */
+			  "vfs guest_load_list guest1 /images/arm32/realview-pb-a8/nor_flash.list";
 	};
 };

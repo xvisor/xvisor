@@ -12,17 +12,17 @@ VExpress-A9 defconfig for various linux kernel versions for ease in
 building kernel. To obtain Linux kernel sources visit the following 
 url: http://www.kernel.org
 
-Please follow the steps below to build & run Linux kernel with Busybox 
-RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
+Follow the steps below to build & run Linux kernel with Busybox RootFS on
+VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
 
   [1. Build environment for Xvisor]
-  # CROSS_COMPILE=arm-none-linux-gnueabi-
+  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with VExpress-A9 default settings]
-  # make ARCH=arm vexpress-a9-defconfig 
+  # make ARCH=arm vexpress-a9-defconfig
 
   [4. Enable VExpress-A9 Guest from menuconfig]
   # make menuconfig
@@ -56,36 +56,41 @@ RootFS on VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
   (Note: Please refer tests/arm32/common/busybox/README for creating rootfs.img using BusyBox)
 
-  [14. GoTo Linux build directory]
-  # cd <linux_build_directory>
+  [14. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
 
-  [15. Create xvisor_linux_qemu.img for running it on QEMU]
-  # <xvisor_source_directory>/tools/scripts/memimg.py -a 0x60010000 -o xvisor_linux_qemu.img <xvisor_source_directory>/build/vmm.bin@0x60010000 <xvisor_source_directory>/build/tests/arm32/vexpress-a9/basic/firmware.bin.patched@0x61000000 <xvisor_source_directory>/tests/arm32/vexpress-a9/linux/cmdlist@0x610FF000 ./arch/arm/boot/Image@0x61100000 <busybox_rootfs_directory>/rootfs.img@0x61900000
+  [15. Create disk image for Xvisor]
+  # mkdir -p ./build/disk/images/arm32/vexpress-a9
+  # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
+  # cp -f ./tests/arm32/vexpress-a9/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
+  # cp -f ./tests/arm32/vexpress-a9/linux/cmdlist ./build/disk/images/arm32/vexpress-a9/cmdlist
+  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a9/Image
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [16. Launch QEMU 0.15.xx or higher]
-  # qemu-system-arm -M vexpress-a9 -m 256M -display none -serial stdio -kernel ./xvisor_linux_qemu.img
+  [16. Create qemu.img for running it on QEMU]
+  # ./tools/scripts/memimg.py -a 0x60010000 -o build/qemu.img build/vmm.bin@0x60010000 build/disk.img@0x61000000
 
-  [17. Kick Guest0 for starting Basic Firmware]
+  [17. Launch QEMU 0.15.xx or higher]
+  # qemu-system-arm -M vexpress-a9 -m 256M -display none -serial stdio -kernel build/qemu.img
+
+  [18. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [18. Bind to virtual UART0 of Linux Guest]
+  [19. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
-  [19. Copy linux from NOR flash to RAM and start linux booting from RAM]
-  [guest0/uart0] basic# copy 0x60008000 0x40100000 0x7F8000
-  (Note: This command will copy Image to RAM)
-  [guest0/uart0] basic# copy 0x60800000 0x40600000 0x700000
-  (Note: This command will copy rootfs.img to RAM)
-  [guest0/uart0] basic# start_linux 0x60008000 0x60800000 0x700000
-  (Note: This command will start linux booting)
-  OR
+  [20. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command)
+  (Note: The <xvisor_source_directory>/tests/arm32/vexpress-a9/linux/cmdlist file
+   which we have added to guest NOR flash contains set of commands for booting
+   linux from NOR flash)
 
-  [20. Wait for Linux prompt to come-up and then try out some commands]
+  [21. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [21. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [22. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
