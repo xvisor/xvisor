@@ -175,6 +175,12 @@ struct vring_used_elem *virtio_queue_set_used_elem(struct virtio_queue *vq,
 }
 VMM_EXPORT_SYMBOL(virtio_queue_set_used_elem);
 
+bool virtio_queue_setup_done(struct virtio_queue *vq)
+{
+	return (vq) ? ((vq->addr) ? TRUE : FALSE) : FALSE;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_setup_done);
+
 int virtio_queue_cleanup(struct virtio_queue *vq)
 {
 	int rc = VMM_OK;
