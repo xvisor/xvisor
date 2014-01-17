@@ -53,6 +53,14 @@
  */
 #undef CONFIG_MMC_TRACE
 
+#undef DEBUG
+
+#ifdef DEBUG
+#define DPRINTF(msg...)			vmm_printf(msg)
+#else
+#define DPRINTF(msg...)
+#endif
+
 /* 
  * Set block count limit because of 16 bit register limit on some hardware
  */
@@ -1254,6 +1262,8 @@ static u32 __mmc_write_blocks(struct mmc_host *host, struct mmc_card *card,
 	struct mmc_data data;
 	int timeout = 1000;
 
+	DPRINTF("%s: start=0x%llx blkcnt=%d\n", __func__, start, blkcnt);
+
 	if (blkcnt > 1) {
 		cmd.cmdidx = MMC_CMD_WRITE_MULTIPLE_BLOCK;
 	} else {
@@ -1324,6 +1334,8 @@ static u32 __mmc_read_blocks(struct mmc_host *host, struct mmc_card *card,
 {
 	struct mmc_cmd cmd;
 	struct mmc_data data;
+
+	DPRINTF("%s: start=0x%llx blkcnt=%d\n", __func__, start, blkcnt);
 
 	if (blkcnt > 1) {
 		cmd.cmdidx = MMC_CMD_READ_MULTIPLE_BLOCK;
