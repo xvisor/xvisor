@@ -461,7 +461,8 @@ static int mmci_driver_probe(struct vmm_device *dev,
 	host->clock_in = ((const u32 *)devid->data)[4];
 	host->clock_min = ((const u32 *)devid->data)[5];
 	host->clock_max = ((const u32 *)devid->data)[6];
-	host->version2 = ((const u32 *)devid->data)[7];
+	host->b_max = ((const u32 *)devid->data)[7];
+	host->version2 = ((const u32 *)devid->data)[8];
 
 	/* Initialize power and clock divider */
 	vmm_writel(host->pwr_init, &host->base->power);
@@ -548,6 +549,7 @@ static u32 mmci_v1[]= {
 	ARM_MCLK, /* clock_in */
 	ARM_MCLK / (2 * (SDI_CLKCR_CLKDIV_INIT_V1 + 1)), /* clock_min */
 	6250000, /* clock_max */
+	128, /* b_max */
 	0, /* version2 */
 };
 
@@ -559,6 +561,7 @@ static u32 mmci_v2[]= {
 	ARM_MCLK, /* clock_in */
 	ARM_MCLK / (2 + SDI_CLKCR_CLKDIV_INIT_V2), /* clock_min */
 	ARM_MCLK / 2, /* clock_max */
+	128, /* b_max */
 	1, /* version2 */
 };
 
