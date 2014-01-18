@@ -34,13 +34,13 @@
 #define	MODULE_INIT			cmd_version_init
 #define	MODULE_EXIT			cmd_version_exit
 
-void cmd_version_usage(struct vmm_chardev *cdev)
+static void cmd_version_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage: ");
 	vmm_cprintf(cdev, "   version\n");
 }
 
-int cmd_version_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_version_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	vmm_cprintf(cdev, "%s v%d.%d.%d (%s %s)\n", VMM_NAME, 
 		    VMM_VERSION_MAJOR, VMM_VERSION_MINOR, VMM_VERSION_RELEASE,

@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_fb_init
 #define	MODULE_EXIT			cmd_fb_exit
 
-void cmd_fb_usage(struct vmm_chardev *cdev)
+static void cmd_fb_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   fb help\n");
@@ -44,7 +44,7 @@ void cmd_fb_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   fb info <fb_name>\n");
 }
 
-void cmd_fb_list(struct vmm_chardev *cdev)
+static void cmd_fb_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	char path[1024];
@@ -70,7 +70,7 @@ void cmd_fb_list(struct vmm_chardev *cdev)
 			  "----------------------------------------\n");
 }
 
-int cmd_fb_info(struct vmm_chardev *cdev, const char *fb_name)
+static int cmd_fb_info(struct vmm_chardev *cdev, const char *fb_name)
 {
 	struct fb_info *info;
 	const char *str;
@@ -138,7 +138,7 @@ int cmd_fb_info(struct vmm_chardev *cdev, const char *fb_name)
 	return VMM_OK;
 }
 
-int cmd_fb_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_fb_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_rbd_init
 #define	MODULE_EXIT			cmd_rbd_exit
 
-void cmd_rbd_usage(struct vmm_chardev *cdev)
+static void cmd_rbd_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   rbd help\n");
@@ -45,7 +45,7 @@ void cmd_rbd_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   rbd destroy <name>\n");
 }
 
-int cmd_rbd_list(struct vmm_chardev *cdev)
+static int cmd_rbd_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	char addr[32], size[32];
@@ -83,8 +83,8 @@ int cmd_rbd_list(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
-int cmd_rbd_create(struct vmm_chardev *cdev, const char *name,
-		   physical_addr_t addr, physical_size_t size)
+static int cmd_rbd_create(struct vmm_chardev *cdev, const char *name,
+			  physical_addr_t addr, physical_size_t size)
 {
 	struct rbd *d;
 
@@ -99,7 +99,7 @@ int cmd_rbd_create(struct vmm_chardev *cdev, const char *name,
 	return VMM_OK;
 }
 
-int cmd_rbd_destroy(struct vmm_chardev *cdev, const char *name)
+static int cmd_rbd_destroy(struct vmm_chardev *cdev, const char *name)
 {
 	struct rbd *d = rbd_find(name);
 
@@ -115,7 +115,7 @@ int cmd_rbd_destroy(struct vmm_chardev *cdev, const char *name)
 	return VMM_OK;
 }
 
-int cmd_rbd_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_rbd_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	physical_addr_t addr;
 	physical_size_t size;

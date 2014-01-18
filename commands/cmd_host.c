@@ -45,7 +45,7 @@
 #define	MODULE_INIT			cmd_host_init
 #define	MODULE_EXIT			cmd_host_exit
 
-void cmd_host_usage(struct vmm_chardev *cdev)
+static void cmd_host_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   host help\n");
@@ -58,7 +58,7 @@ void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host vapool bitmap [<column count>]\n");
 }
 
-void cmd_host_cpu_info(struct vmm_chardev *cdev)
+static void cmd_host_cpu_info(struct vmm_chardev *cdev)
 {
 	u32 c, khz;
 	char name[25];
@@ -77,7 +77,7 @@ void cmd_host_cpu_info(struct vmm_chardev *cdev)
 	arch_cpu_print_info(cdev);
 }
 
-void cmd_host_info(struct vmm_chardev *cdev)
+static void cmd_host_info(struct vmm_chardev *cdev)
 {
 	char *attr;
 	struct vmm_devtree_node *node;
@@ -102,7 +102,7 @@ void cmd_host_info(struct vmm_chardev *cdev)
 	arch_board_print_info(cdev);
 }
 
-void cmd_host_irq_stats(struct vmm_chardev *cdev)
+static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 {
 	u32 num, cpu, stats, count = vmm_host_irq_count();
 	struct vmm_host_irq *irq;
@@ -145,7 +145,7 @@ void cmd_host_irq_stats(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "\n");
 }
 
-void cmd_host_ram_stats(struct vmm_chardev *cdev)
+static void cmd_host_ram_stats(struct vmm_chardev *cdev)
 {
 	u32 free = vmm_host_ram_free_frame_count();
 	u32 total = vmm_host_ram_total_frame_count();
@@ -161,7 +161,7 @@ void cmd_host_ram_stats(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Total Frames : %d (0x%08x)\n", total, total);
 }
 
-void cmd_host_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
+static void cmd_host_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
 {
 	u32 ite, total = vmm_host_ram_total_frame_count();
 	physical_addr_t base = vmm_host_ram_base();
@@ -186,7 +186,7 @@ void cmd_host_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "\n");
 }
 
-void cmd_host_vapool_stats(struct vmm_chardev *cdev)
+static void cmd_host_vapool_stats(struct vmm_chardev *cdev)
 {
 	u32 free = vmm_host_vapool_free_page_count();
 	u32 total = vmm_host_vapool_total_page_count();
@@ -202,7 +202,7 @@ void cmd_host_vapool_stats(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Total Pages  : %d (0x%08x)\n", total, total);
 }
 
-void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
+static void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 {
 	u32 ite, total = vmm_host_vapool_total_page_count();
 	virtual_addr_t base = vmm_host_vapool_base();
@@ -227,7 +227,7 @@ void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "\n");
 }
 
-int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int colcnt;
 	if (1 < argc) {

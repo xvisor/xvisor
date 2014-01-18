@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_rtcdev_init
 #define	MODULE_EXIT			cmd_rtcdev_exit
 
-void cmd_rtcdev_usage(struct vmm_chardev *cdev)
+static void cmd_rtcdev_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   rtcdev help\n");
@@ -58,7 +58,7 @@ void cmd_rtcdev_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   <year>    = any value greater than 1970\n");
 }
 
-void cmd_rtcdev_list(struct vmm_chardev *cdev)
+static void cmd_rtcdev_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	char path[1024];
@@ -75,7 +75,8 @@ void cmd_rtcdev_list(struct vmm_chardev *cdev)
 	}
 }
 
-int cmd_rtcdev_sync_wallclock(struct vmm_chardev *cdev, const char * name)
+static int cmd_rtcdev_sync_wallclock(struct vmm_chardev *cdev,
+				     const char * name)
 {
 	int rc;
 	struct rtc_device *rtc = rtc_device_find(name);
@@ -95,7 +96,7 @@ int cmd_rtcdev_sync_wallclock(struct vmm_chardev *cdev, const char * name)
 	return VMM_OK;
 }
 
-int cmd_rtcdev_sync_device(struct vmm_chardev *cdev, const char * name)
+static int cmd_rtcdev_sync_device(struct vmm_chardev *cdev, const char *name)
 {
 	int rc;
 	struct rtc_device *rtc = rtc_device_find(name);
@@ -107,15 +108,15 @@ int cmd_rtcdev_sync_device(struct vmm_chardev *cdev, const char * name)
 
 	rc = rtc_device_sync_device(rtc);
 	if (rc) {
-		vmm_cprintf(cdev, "Error: sync_device failed for rtc %s\n", 
-									 name);
+		vmm_cprintf(cdev, "Error: sync_device failed for rtc %s\n",
+			    name);
 		return rc;
 	}
 
 	return VMM_OK;
 }
 
-int cmd_rtcdev_get_time(struct vmm_chardev *cdev, const char * name)
+static int cmd_rtcdev_get_time(struct vmm_chardev *cdev, const char *name)
 {
 	int rc;
 	struct rtc_time tm;
@@ -208,8 +209,8 @@ int cmd_rtcdev_get_time(struct vmm_chardev *cdev, const char * name)
 	return VMM_OK;
 }
 
-int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
-			int targc, char **targv)
+static int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char *name,
+				int targc, char **targv)
 {
 	int rc;
 	char * s;
@@ -292,7 +293,7 @@ int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
 	return VMM_OK;
 }
 
-int cmd_rtcdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_rtcdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

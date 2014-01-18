@@ -34,13 +34,13 @@
 #define	MODULE_INIT			cmd_shutdown_init
 #define	MODULE_EXIT			cmd_shutdown_exit
 
-void cmd_shutdown_usage(struct vmm_chardev *cdev)
+static void cmd_shutdown_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage: ");
 	vmm_cprintf(cdev, "   shutdown\n");
 }
 
-int cmd_shutdown_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_shutdown_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	/* Shutdown the hypervisor */
 	vmm_shutdown();

@@ -81,7 +81,7 @@ static u32 crc32_tab[] = {
 	0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d
 };
 
-void cmd_memory_usage(struct vmm_chardev *cdev)
+static void cmd_memory_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage: ");
 	vmm_cprintf(cdev, "   memory help\n");
@@ -99,8 +99,9 @@ void cmd_memory_usage(struct vmm_chardev *cdev)
 						"<byte_count>\n");
 }
 
-int cmd_memory_dump(struct vmm_chardev *cdev, physical_addr_t addr, 
-		    u32 wsz, u32 wcnt)
+static int cmd_memory_dump(struct vmm_chardev *cdev,
+			   physical_addr_t addr, 
+			   u32 wsz, u32 wcnt)
 {
 	int rc;
 	u32 w;
@@ -175,7 +176,8 @@ int cmd_memory_dump(struct vmm_chardev *cdev, physical_addr_t addr,
 	return VMM_OK;
 }
 
-int cmd_memory_crc32(struct vmm_chardev *cdev, physical_addr_t addr, u32 wcnt)
+static int cmd_memory_crc32(struct vmm_chardev *cdev,
+			    physical_addr_t addr, u32 wcnt)
 {
 	int rc;
 	u32 w, crc = 0;
@@ -230,8 +232,9 @@ int cmd_memory_crc32(struct vmm_chardev *cdev, physical_addr_t addr, u32 wcnt)
 }
 
 
-int cmd_memory_modify(struct vmm_chardev *cdev, physical_addr_t addr, 
-		      u32 wsz, int valc, char **valv)
+static int cmd_memory_modify(struct vmm_chardev *cdev,
+			     physical_addr_t addr, 
+			     u32 wsz, int valc, char **valv)
 {
 	int rc, w = 0;
 	bool page_mapped;
@@ -287,8 +290,9 @@ int cmd_memory_modify(struct vmm_chardev *cdev, physical_addr_t addr,
 	return VMM_OK;
 }
 
-int cmd_memory_copy(struct vmm_chardev *cdev, physical_addr_t daddr, 
-		    physical_addr_t saddr, u32 bcnt)
+static int cmd_memory_copy(struct vmm_chardev *cdev,
+			   physical_addr_t daddr, 
+			   physical_addr_t saddr, u32 bcnt)
 {
 	int rc;
 	u32 b = 0, b2copy;
@@ -363,7 +367,7 @@ int cmd_memory_copy(struct vmm_chardev *cdev, physical_addr_t daddr,
 	return VMM_OK;
 }
 
-int cmd_memory_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_memory_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u32 tmp;
 	physical_addr_t addr, src_addr;

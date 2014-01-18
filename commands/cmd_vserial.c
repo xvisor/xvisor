@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_vserial_init
 #define	MODULE_EXIT			cmd_vserial_exit
 
-void cmd_vserial_usage(struct vmm_chardev *cdev)
+static void cmd_vserial_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   vserial bind <name>\n");
@@ -199,7 +199,7 @@ unhandled:
 	return VMM_OK;
 }
 
-void cmd_vserial_recv(struct vmm_vserial *vser, void *priv, u8 ch)
+static void cmd_vserial_recv(struct vmm_vserial *vser, void *priv, u8 ch)
 {
 	struct cmd_vserial_recvcntx *v;
 	v = (struct cmd_vserial_recvcntx *)priv;
@@ -225,7 +225,7 @@ void cmd_vserial_recv(struct vmm_vserial *vser, void *priv, u8 ch)
 	}
 }
 
-int cmd_vserial_bind(struct vmm_chardev *cdev, const char *name)
+static int cmd_vserial_bind(struct vmm_chardev *cdev, const char *name)
 {
 	int rc = VMM_OK;
 	u32 tmp, ecount, eattrib[2], eacount;
@@ -355,7 +355,8 @@ send_break:
 	return VMM_OK;
 }
 
-int cmd_vserial_dump(struct vmm_chardev *cdev, const char *name, int bcount)
+static int cmd_vserial_dump(struct vmm_chardev *cdev,
+			    const char *name, int bcount)
 {
 	int rc = VMM_OK;
 	struct vmm_vserial *vser = vmm_vserial_find(name);
@@ -391,7 +392,7 @@ int cmd_vserial_dump(struct vmm_chardev *cdev, const char *name, int bcount)
 	return VMM_OK;
 }
 
-void cmd_vserial_list(struct vmm_chardev *cdev)
+static void cmd_vserial_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	struct vmm_vserial *vser;
@@ -406,7 +407,7 @@ void cmd_vserial_list(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "----------------------------------------\n");
 }
 
-int cmd_vserial_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_vserial_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int bcount = -1;
 	if (argc == 2) {

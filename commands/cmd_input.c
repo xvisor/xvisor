@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_input_init
 #define	MODULE_EXIT			cmd_input_exit
 
-void cmd_input_usage(struct vmm_chardev *cdev)
+static void cmd_input_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   input help\n");
@@ -44,7 +44,7 @@ void cmd_input_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   input handlers\n");
 }
 
-void cmd_input_devices(struct vmm_chardev *cdev)
+static void cmd_input_devices(struct vmm_chardev *cdev)
 {
 	int num, count;
 	char id[27];
@@ -69,7 +69,7 @@ void cmd_input_devices(struct vmm_chardev *cdev)
 			  "----------------------------------------\n");
 }
 
-void cmd_input_handlers(struct vmm_chardev *cdev)
+static void cmd_input_handlers(struct vmm_chardev *cdev)
 {
 	int num, count;
 	struct input_handler *ihnd;
@@ -90,7 +90,7 @@ void cmd_input_handlers(struct vmm_chardev *cdev)
 			  "----------------------------------------\n");
 }
 
-int cmd_input_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_input_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_wallclock_init
 #define	MODULE_EXIT			cmd_wallclock_exit
 
-void cmd_wallclock_usage(struct vmm_chardev *cdev)
+static void cmd_wallclock_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   wallclock help\n");
@@ -57,7 +57,7 @@ void cmd_wallclock_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   <tz_min>  = timezone minutes\n");
 }
 
-int cmd_wallclock_get_time(struct vmm_chardev *cdev)
+static int cmd_wallclock_get_time(struct vmm_chardev *cdev)
 {
 	int rc;
 	struct vmm_timeinfo ti;
@@ -159,8 +159,8 @@ int cmd_wallclock_get_time(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
-int cmd_wallclock_set_time(struct vmm_chardev *cdev, 
-				int targc, char **targv)
+static int cmd_wallclock_set_time(struct vmm_chardev *cdev, 
+				  int targc, char **targv)
 {
 	int rc;
 	char * s;
@@ -284,7 +284,7 @@ int cmd_wallclock_set_time(struct vmm_chardev *cdev,
 	return VMM_OK;
 }
 
-int cmd_wallclock_get_timezone(struct vmm_chardev *cdev)
+static int cmd_wallclock_get_timezone(struct vmm_chardev *cdev)
 {
 	int rc;
 	struct vmm_timezone tz;
@@ -308,7 +308,7 @@ int cmd_wallclock_get_timezone(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
-int cmd_wallclock_set_timezone(struct vmm_chardev *cdev, char *tzstr)
+static int cmd_wallclock_set_timezone(struct vmm_chardev *cdev, char *tzstr)
 {
 	int rc;
 	char * s;
@@ -356,7 +356,7 @@ int cmd_wallclock_set_timezone(struct vmm_chardev *cdev, char *tzstr)
 	return VMM_OK;
 }
 
-int cmd_wallclock_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_wallclock_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

@@ -37,14 +37,14 @@
 #define	MODULE_INIT			cmd_thread_init
 #define	MODULE_EXIT			cmd_thread_exit
 
-void cmd_thread_usage(struct vmm_chardev *cdev)
+static void cmd_thread_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   thread help\n");
 	vmm_cprintf(cdev, "   thread list\n");
 }
 
-void cmd_thread_list(struct vmm_chardev *cdev)
+static void cmd_thread_list(struct vmm_chardev *cdev)
 {
 	int rc, index, count;
 	char state[10], name[VMM_FIELD_NAME_SIZE];
@@ -87,7 +87,7 @@ void cmd_thread_list(struct vmm_chardev *cdev)
 			  "----------------------------------------\n");
 }
 
-int cmd_thread_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_thread_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

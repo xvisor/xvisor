@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_blockdev_init
 #define	MODULE_EXIT			cmd_blockdev_exit
 
-void cmd_blockdev_usage(struct vmm_chardev *cdev)
+static void cmd_blockdev_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   blockdev help\n");
@@ -44,7 +44,7 @@ void cmd_blockdev_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   blockdev list\n");
 }
 
-int cmd_blockdev_info(struct vmm_chardev *cdev, const char *name)
+static int cmd_blockdev_info(struct vmm_chardev *cdev, const char *name)
 {
 	struct vmm_blockdev *bdev = vmm_blockdev_find(name);
 
@@ -66,7 +66,7 @@ int cmd_blockdev_info(struct vmm_chardev *cdev, const char *name)
 	return VMM_OK;
 }
 
-void cmd_blockdev_list(struct vmm_chardev *cdev)
+static void cmd_blockdev_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	struct vmm_blockdev *bdev;
@@ -91,7 +91,7 @@ void cmd_blockdev_list(struct vmm_chardev *cdev)
 
 }
 
-int cmd_blockdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_blockdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

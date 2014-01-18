@@ -36,14 +36,14 @@
 #define	MODULE_INIT			cmd_chardev_init
 #define	MODULE_EXIT			cmd_chardev_exit
 
-void cmd_chardev_usage(struct vmm_chardev *cdev)
+static void cmd_chardev_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   chardev help\n");
 	vmm_cprintf(cdev, "   chardev list\n");
 }
 
-void cmd_chardev_list(struct vmm_chardev *cdev)
+static void cmd_chardev_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	char path[1024];
@@ -68,7 +68,7 @@ void cmd_chardev_list(struct vmm_chardev *cdev)
 			  "----------------------------------------\n");
 }
 
-int cmd_chardev_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_chardev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

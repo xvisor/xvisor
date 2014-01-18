@@ -40,7 +40,7 @@
 #define	MODULE_INIT			cmd_net_init
 #define	MODULE_EXIT			cmd_net_exit
 
-void cmd_net_usage(struct vmm_chardev *cdev)
+static void cmd_net_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   net help\n");
@@ -48,7 +48,7 @@ void cmd_net_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   net switches\n");
 }
 
-int cmd_net_port_list(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_net_port_list(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int num, count;
 	struct vmm_netport *port;
@@ -80,7 +80,7 @@ int cmd_net_port_list(struct vmm_chardev *cdev, int argc, char **argv)
 	return VMM_OK;
 }
 
-int cmd_net_switch_list(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_net_switch_list(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int num, count;
 	struct vmm_netswitch *nsw;
@@ -106,7 +106,7 @@ int cmd_net_switch_list(struct vmm_chardev *cdev, int argc, char **argv)
 	return VMM_OK;
 }
 
-int cmd_net_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_net_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (strcmp(argv[1], "help") == 0) {
 		cmd_net_usage(cdev);

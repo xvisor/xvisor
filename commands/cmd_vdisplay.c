@@ -36,14 +36,14 @@
 #define	MODULE_INIT			cmd_vdisplay_init
 #define	MODULE_EXIT			cmd_vdisplay_exit
 
-void cmd_vdisplay_usage(struct vmm_chardev *cdev)
+static void cmd_vdisplay_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   vdisplay help\n");
 	vmm_cprintf(cdev, "   vdisplay list\n");
 }
 
-void cmd_vdisplay_list(struct vmm_chardev *cdev)
+static void cmd_vdisplay_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	struct vmm_vdisplay *vdis;
@@ -58,7 +58,7 @@ void cmd_vdisplay_list(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "----------------------------------------\n");
 }
 
-int cmd_vdisplay_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_vdisplay_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {
