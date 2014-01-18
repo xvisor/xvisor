@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Tue Jan 14 18:56:50 2014
+# Fri Jan 17 22:34:06 2014
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -211,6 +211,7 @@ CONFIG_CMD_MODULE=y
 CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_VDISPLAY=y
 CONFIG_CMD_VINPUT=y
+CONFIG_CMD_VSCREEN=y
 
 #
 # Device Driver Commands
@@ -242,6 +243,7 @@ CONFIG_MTERM_HISTORY_SIZE=10
 #
 # Library Options
 #
+CONFIG_VSCREEN=y
 
 #
 # Network Stack Options
