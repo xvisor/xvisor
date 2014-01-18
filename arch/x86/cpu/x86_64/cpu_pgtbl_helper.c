@@ -45,7 +45,7 @@ static struct page_table *mmu_pgtbl_find(struct pgtbl_ctrl *ctrl, physical_addr_
 		return &ctrl->pgtbl_pgdp;
 	} else if (tbl_pa == ctrl->pgtbl_pgdi.tbl_pa) {
 		return &ctrl->pgtbl_pgdi;
-	} else if (tbl_pa == ctrl->pgtbl_pgti.tbl_pa) {
+	} else if (tbl_pa >= ctrl->pgtbl_pgti.tbl_pa) {
 		return &ctrl->pgtbl_pgti;
 	}
 
@@ -273,17 +273,24 @@ struct page_table *mmu_pgtbl_get_child(struct pgtbl_ctrl *ctrl,
 
 int mmu_get_page(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl, physical_addr_t ia, union page *pg)
 {
-	int index;
+	int index, pre_index;
 	irq_flags_t flags;
 	union page *pgt;
 	struct page_table *child;
+	virtual_addr_t pgt_va;
 
 	if (!pgtbl || !pg) {
 		return VMM_EFAIL;
 	}
 
 	index = mmu_level_index(ia, pgtbl->level);
-	pgt = &((union page *)pgtbl->tbl_va)[index];
+	if (pgtbl->level == PGTBL_LAST_LEVEL) {
+		pre_index = mmu_level_index(ia, (pgtbl->level - 1));
+		pgt_va = pgtbl->tbl_va + (pre_index * PAGE_SIZE);
+	} else
+		pgt_va = pgtbl->tbl_va;
+
+	pgt = &((union page *)pgt_va)[index];
 
 	vmm_spin_lock_irqsave(&pgtbl->tbl_lock, flags);
 
@@ -310,11 +317,12 @@ int mmu_get_page(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl, physical_add
 
 int mmu_unmap_page(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl, physical_addr_t ia)
 {
-	int index, rc;
+	int index, rc, pre_index;
 	bool free_pgtbl;
 	union page *pgt;
 	irq_flags_t flags;
 	struct page_table *child;
+	virtual_addr_t pgt_va;
 
 	if (!pgtbl) {
 		return VMM_EFAIL;
@@ -334,7 +342,9 @@ int mmu_unmap_page(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl, physical_a
 	}
 
 	index = mmu_level_index(ia, pgtbl->level);
-	pgt = &((union page *)pgtbl->tbl_va)[index];
+	pre_index = mmu_level_index(ia, (pgtbl->level - 1));
+	pgt_va = pgtbl->tbl_va + (pre_index * PAGE_SIZE);
+	pgt = &((union page *)pgt_va)[index];
 
 	vmm_spin_lock_irqsave(&pgtbl->tbl_lock, flags);
 
@@ -364,10 +374,11 @@ int mmu_unmap_page(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl, physical_a
 
 int mmu_map_page(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl, physical_addr_t ia, union page *pg)
 {
-	int index;
+	int index, pre_index;
 	union page *pgt;
 	irq_flags_t flags;
 	struct page_table *child;
+	virtual_addr_t pgt_va;
 
 	if (!pgtbl || !pg) {
 		return VMM_EFAIL;
@@ -383,7 +394,9 @@ int mmu_map_page(struct pgtbl_ctrl *ctrl, struct page_table *pgtbl, physical_add
 	}
 
 	index = mmu_level_index(ia, pgtbl->level);
-	pgt = &((union page *)pgtbl->tbl_va)[index];
+	pre_index = mmu_level_index(ia, (pgtbl->level - 1));
+	pgt_va = pgtbl->tbl_va + (pre_index * PAGE_SIZE);
+	pgt = &((union page *)pgt_va)[index];
 
 	vmm_spin_lock_irqsave(&pgtbl->tbl_lock, flags);
 

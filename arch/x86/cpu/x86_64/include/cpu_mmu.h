@@ -23,6 +23,11 @@
 #ifndef __CPU_MMU_H_
 #define __CPU_MMU_H_
 
+#define NR_PML4_PAGES		1
+#define NR_PGDP_PAGES		4
+#define NR_PGDI_PAGES		8
+#define NR_PGTI_PAGES		32
+
 #define VMM_CODE_SEG_SEL	0x08
 #define VMM_DATA_SEG_SEL	0x10
 #define VMM_TSS_SEG_SEL		0x18

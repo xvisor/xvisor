@@ -49,6 +49,25 @@ extern u64 __pgti[];
 
 struct page_table host_pgtbl_array[HOST_PGTBL_MAX_TABLE_COUNT];
 
+static void arch_preinit_pgtable_entries(void)
+{
+	int i;
+	char *pgdp_base, *pgdi_base, *pgti_base;
+
+	pgdp_base = (char *)__pgdp;
+	pgdi_base = (char *)__pgdi;
+	pgti_base = (char *)__pgti;
+
+	for (i = 0; i < NR_PGDP_PAGES; i++)
+		__pml4[i] = ((u64)(pgdp_base + (PAGE_SIZE * i)) & PAGE_MASK) + 3;
+
+	for (i = 0; i < NR_PGDI_PAGES; i++)
+		__pgdp[i] = ((u64)(pgdi_base + (PAGE_SIZE * i)) & PAGE_MASK) + 3;
+
+	for (i = 0; i < NR_PGTI_PAGES; i++)
+		__pgdi[i] = ((u64)(pgti_base + (PAGE_SIZE * i)) & PAGE_MASK) + 3;
+}
+
 /* mmu inline asm routines */
 int arch_cpu_aspace_map(virtual_addr_t page_va,
 			physical_addr_t page_pa,
@@ -104,6 +123,15 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	union page *pg;
 	union page hyppg;
 	struct page_table *pgtbl;
+
+	/*
+	 * Boot code didn't populate all the entries in the
+	 * page tables. Initialize all of them now so that
+	 * later we only have to handle PTE mappings. This
+	 * means that the code can map uptil PTEs for all
+	 * code and vapool addresses.
+	 */
+	arch_preinit_pgtable_entries();
 
 	/* Check & setup core reserved space and update the 
 	 * core_resv_pa, core_resv_va, and core_resv_sz parameters

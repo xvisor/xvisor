@@ -112,10 +112,20 @@ create_page_table_entry:
 
 __fill_IMP_table:
         /* Populate pgti */
+	/* Get the base of the page of PTEs */
+	movl    -4(%ebp), %edx
+	shrl    $PGDI_SHIFT, %edx
+	andl    $(~PGTREE_MASK), %edx /* ebx now has pgdi index */
+	movl    $PAGE_SIZE, %eax
+	mull    %edx /* PAGE SIZE * page index in edx */
+	movl    %eax, %edx
+	shrl	$3, %edx
+
         movl    -4(%ebp), %ebx
         shrl    $PGTI_SHIFT, %ebx
         andl    $(~PGTREE_MASK), %ebx /* ebx now has pgti index. */
 	movl	%ebx, %eax
+	addl	%edx, %eax
         movl    -8(%ebp), %ecx
         andl    $PAGE_MASK, %ecx
         or      $0x3, %ecx /* page table entry present and its r/w */
@@ -273,36 +283,31 @@ bootstrap32:
         .globl __pml4
         .align 32
 	.type	__pml4, @object
-	.size	__pml4, 4096
+	.size	__pml4, (PAGE_SIZE * NR_PML4_PAGES)
 __pml4:
-	.long	0
-	.long	0
-	.zero	4088
+	.zero   (PAGE_SIZE * NR_PML4_PAGES)
 
 	.align 32
         .globl __pgdp
 	.type	__pgdp, @object
-	.size	__pgdp, 16384 /* 4 pages */
+	.size	__pgdp, (PAGE_SIZE * NR_PGDP_PAGES)
 __pgdp:
-	.long	0
-	.long	0
-	.zero	16376
+	.zero	(PAGE_SIZE * NR_PGDP_PAGES)
 
         .globl __pgdi
 	.align 32
 	.type	__pgdi, @object
-	.size	__pgdi, 32768 /* 8 pages */
+	.size	__pgdi, (PAGE_SIZE * NR_PGDI_PAGES)
 __pgdi:
-	.long	0
-	.long	0
-	.zero	32760
+	.zero	(PAGE_SIZE * NR_PGDI_PAGES)
 
         .globl __pgti
 	.align 32
 	.type	__pgti, @object
-	.size	__pgti, 131072 /* 32 pages */
+	.size	__pgti, (PAGE_SIZE * NR_PGTI_PAGES)
 __pgti:
-	.zero	131072 /* 32 pages */
+	.zero	(PAGE_SIZE * NR_PGTI_PAGES)
+
 
 .align 4
 	.type   _mboot_info, @object
