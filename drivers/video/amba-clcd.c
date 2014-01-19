@@ -343,6 +343,23 @@ static int clcdfb_set_par(struct fb_info *info)
 	return 0;
 }
 
+static int clcdfb_set_smem(struct fb_info *info,
+			   unsigned long start, u32 len)
+{
+	struct clcd_fb *fb = to_clcd(info);
+
+	if (info->var.xres_virtual * info->var.bits_per_pixel / 8 *
+	    info->var.yres_virtual > len)
+		return -EINVAL;
+
+	fb->fb.fix.smem_start = start;
+	fb->fb.fix.smem_len = len;
+
+	clcdfb_set_start(fb);
+
+	return 0;
+}
+
 static inline u32 convert_bitfield(int val, struct fb_bitfield *bf)
 {
 	unsigned int mask = (1 << bf->length) - 1;
@@ -420,6 +437,7 @@ static int clcdfb_blank(int blank_mode, struct fb_info *info)
 static struct fb_ops clcdfb_ops = {
 	.fb_check_var	= clcdfb_check_var,
 	.fb_set_par	= clcdfb_set_par,
+	.fb_set_smem	= clcdfb_set_smem,
 	.fb_setcolreg	= clcdfb_setcolreg,
 	.fb_blank	= clcdfb_blank,
 	.fb_fillrect	= cfb_fillrect,

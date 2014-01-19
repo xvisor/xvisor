@@ -256,6 +256,30 @@ int fb_set_var(struct fb_info *info, struct fb_var_screeninfo *var)
 }
 VMM_EXPORT_SYMBOL(fb_set_var);
 
+int fb_get_smem(struct fb_info *info, unsigned long *start, u32 *len)
+{
+	if (!info || !start || !len)
+		return VMM_EINVALID;
+
+	*start = info->fix.smem_start;
+	*len = info->fix.smem_len;
+
+	return 0;
+}
+VMM_EXPORT_SYMBOL(fb_get_smem);
+
+int fb_set_smem(struct fb_info *info, unsigned long start, u32 len)
+{
+	if (!info)
+		return VMM_EINVALID;
+
+	if (info->fbops->fb_set_smem)
+		return info->fbops->fb_set_smem(info, start, len);
+
+	return VMM_EOPNOTSUPP;
+}
+VMM_EXPORT_SYMBOL(fb_set_smem);
+
 int fb_pan_display(struct fb_info *info, struct fb_var_screeninfo *var)
 {
 	struct fb_fix_screeninfo *fix = &info->fix;

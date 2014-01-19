@@ -560,6 +560,9 @@ struct fb_ops {
 	/* set the video mode according to info->var */
 	int (*fb_set_par)(struct fb_info *info);
 
+	/* set shared memory base address and length */
+	int (*fb_set_smem)(struct fb_info *info, unsigned long start, u32 len);
+
 	/* set color register */
 	int (*fb_setcolreg)(unsigned regno, unsigned red, unsigned green,
 			    unsigned blue, unsigned transp, struct fb_info *info);
@@ -808,6 +811,8 @@ static inline struct apertures_struct *alloc_apertures(unsigned int max_num) {
  */
 int fb_check_var(struct fb_info *info, struct fb_var_screeninfo *var);
 int fb_set_var(struct fb_info *info, struct fb_var_screeninfo *var);
+int fb_get_smem(struct fb_info *info, unsigned long *start, u32 *len);
+int fb_set_smem(struct fb_info *info, unsigned long start, u32 len);
 int fb_pan_display(struct fb_info *info, struct fb_var_screeninfo *var);
 int fb_blank(struct fb_info *info, int blank);
 void cfb_fillrect(struct fb_info *info, const struct fb_fillrect *rect); 
