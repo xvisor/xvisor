@@ -280,6 +280,10 @@ struct vmm_vdisplay;
 /** Representation of a virtual display operations */
 struct vmm_vdisplay_ops {
 	void (*invalidate)(struct vmm_vdisplay *vdis);
+	int  (*gfx_pixeldata)(struct vmm_vdisplay *vdis,
+			      struct vmm_pixelformat *pf,
+			      u32 *rows, u32 *cols,
+			      physical_addr_t *pa);
 	void (*gfx_update)(struct vmm_vdisplay *vdis, struct vmm_surface *s);
 	void (*text_update)(struct vmm_vdisplay *vdis, unsigned long *text);
 };
@@ -293,6 +297,14 @@ struct vmm_vdisplay {
 	const struct vmm_vdisplay_ops *ops;
 	void *priv;
 };
+
+/** Retreive pixel format and host physical address
+ *  of given virtual display
+ */
+int vmm_vdisplay_get_pixeldata(struct vmm_vdisplay *vdis,
+			       struct vmm_pixelformat *pf,
+			       u32 *rows, u32 *cols,
+			       physical_addr_t *pa);
 
 /** Update a particular surface for given virtual display */
 void vmm_vdisplay_one_update(struct vmm_vdisplay *vdis,

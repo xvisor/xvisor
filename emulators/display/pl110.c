@@ -36,6 +36,7 @@
 #include <vmm_modules.h>
 #include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <vmm_guest_aspace.h>
 #include <vio/vmm_pixel_ops.h>
 #include <vio/vmm_vdisplay.h>
 
@@ -124,7 +125,66 @@ static int pl110_enabled(struct pl110_state *s)
 	return ret;
 }
 
-static void pl110_update_display(struct vmm_vdisplay *vdis,
+static void pl110_display_invalidate(struct vmm_vdisplay *vdis)
+{
+	struct pl110_state *s = vmm_vdisplay_priv(vdis);
+
+	if (pl110_enabled(s)) {
+		vmm_vdisplay_surface_gfx_clear(vdis);
+	}
+}
+
+static int pl110_display_pixeldata(struct vmm_vdisplay *vdis,
+				   struct vmm_pixelformat *pf,
+				   u32 *rows, u32 *cols,
+				   physical_addr_t *pa)
+{
+	u32 flags;
+	physical_addr_t gpa, hpa;
+	physical_size_t gsz, hsz;
+	int rc, bits_per_pixel, bytes_per_pixel;
+	struct pl110_state *s = vmm_vdisplay_priv(vdis);
+
+	if (!pl110_enabled(s)) {
+		return VMM_ENOTAVAIL;
+	}
+
+	switch (s->bpp) {
+	case BPP_16:
+	case BPP_16_565:
+		bits_per_pixel = 16;
+		bytes_per_pixel = 2;
+		break;
+	case BPP_32:
+		bits_per_pixel = 32;
+		bytes_per_pixel = 4;
+		break;
+	default:
+		return VMM_EINVALID;
+	};
+
+	gpa = s->upbase;
+	gsz = (s->cols * s->rows) * bytes_per_pixel;
+	rc = vmm_guest_physical_map(s->guest, gpa, gsz, &hpa, &hsz, &flags);
+	if (rc) {
+		return rc;
+	}
+
+	if (!(flags & VMM_REGION_REAL) ||
+	    !(flags & VMM_REGION_MEMORY) ||
+	    !(flags & VMM_REGION_ISRAM)) {
+		return VMM_EINVALID;
+	}
+
+	vmm_pixelformat_init_default(pf, bits_per_pixel);
+	*rows = s->rows;
+	*cols = s->cols;
+	*pa = hpa;
+
+	return VMM_OK;
+}
+
+static void pl110_display_update(struct vmm_vdisplay *vdis,
 				 struct vmm_surface *sf)
 {
 	drawfn fn;
@@ -257,15 +317,6 @@ static void pl110_update_display(struct vmm_vdisplay *vdis,
 	}
 }
 
-static void pl110_invalidate_display(struct vmm_vdisplay *vdis)
-{
-	struct pl110_state *s = vmm_vdisplay_priv(vdis);
-
-	if (pl110_enabled(s)) {
-		vmm_vdisplay_surface_gfx_clear(vdis);
-	}
-}
-
 /* Process IRQ asserted via device emulation framework */
 static void pl110_mux_in_irq_handle(u32 irq, int cpu, int level, void *opaque)
 {
@@ -279,7 +330,7 @@ static void pl110_mux_in_irq_handle(u32 irq, int cpu, int level, void *opaque)
 }
 
 /* Note: This function must be called with state lock held */
-static void __pl110_update_palette(struct pl110_state *s, int bpp, int n)
+static void __pl110_palette_update(struct pl110_state *s, int bpp, int n)
 {
 	int i;
 	u32 raw;
@@ -430,10 +481,10 @@ static int pl110_reg_write(struct pl110_state *s, u32 offset,
 		val = s->raw_palette[(offset - 0x200) >> 2];
 		val = (val & src_mask) | (src & ~src_mask);
 		s->raw_palette[(offset - 0x200) >> 2] = val;
-		__pl110_update_palette(s, 8, n);
-		__pl110_update_palette(s, 15, n);
-		__pl110_update_palette(s, 16, n);
-		__pl110_update_palette(s, 32, n);
+		__pl110_palette_update(s, 8, n);
+		__pl110_palette_update(s, 15, n);
+		__pl110_palette_update(s, 16, n);
+		__pl110_palette_update(s, 32, n);
 		goto done;
 	}
 
@@ -506,7 +557,7 @@ done:
 	/* For simplicity clear the surface whenever
 	 * a control register is written to.
 	 */
-	pl110_invalidate_display(s->vdis);
+	pl110_display_invalidate(s->vdis);
 
 	return rc;
 }
@@ -597,8 +648,9 @@ static int pl110_emulator_reset(struct vmm_emudev *edev)
 }
 
 static struct vmm_vdisplay_ops pl110_ops = {
-	.invalidate = pl110_invalidate_display,
-	.gfx_update = pl110_update_display,
+	.invalidate = pl110_display_invalidate,
+	.gfx_pixeldata = pl110_display_pixeldata,
+	.gfx_update = pl110_display_update,
 };
 
 static int pl110_emulator_probe(struct vmm_guest *guest,

@@ -343,6 +343,23 @@ void vmm_surface_free(struct vmm_surface *s)
 }
 VMM_EXPORT_SYMBOL(vmm_surface_free);
 
+int vmm_vdisplay_get_pixeldata(struct vmm_vdisplay *vdis,
+			       struct vmm_pixelformat *pf,
+			       u32 *rows, u32 *cols,
+			       physical_addr_t *pa)
+{
+	if (!vdis || !pf || !rows || !cols || !pa) {
+		return VMM_EFAIL;
+	}
+
+	if (vdis->ops && vdis->ops->gfx_pixeldata) {
+		return vdis->ops->gfx_pixeldata(vdis, pf, rows, cols, pa);
+	}
+
+	return VMM_EOPNOTSUPP;
+}
+VMM_EXPORT_SYMBOL(vmm_vdisplay_get_pixeldata);
+
 void vmm_vdisplay_one_update(struct vmm_vdisplay *vdis,
 			     struct vmm_surface *s)
 {
