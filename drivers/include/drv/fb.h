@@ -1066,4 +1066,11 @@ struct fb_modelist {
 	struct fb_videomode mode;
 };
 
+int fb_find_mode(struct fb_var_screeninfo *var,
+		 struct fb_info *info, const char *mode_option,
+		 const struct fb_videomode *db,
+		 unsigned int dbsize,
+		 const struct fb_videomode *default_mode,
+		 unsigned int default_bpp);
+
 #endif /* __DRV_FB_H_ */
