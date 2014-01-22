@@ -352,10 +352,14 @@ static int clcdfb_set_smem(struct fb_info *info,
 	    info->var.yres_virtual > len)
 		return -EINVAL;
 
+	clcdfb_disable(fb);
+
 	fb->fb.fix.smem_start = start;
 	fb->fb.fix.smem_len = len;
 
 	clcdfb_set_start(fb);
+
+	clcdfb_enable(fb, fb->clcd_cntl);
 
 	return 0;
 }
