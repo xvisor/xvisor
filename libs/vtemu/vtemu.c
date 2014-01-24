@@ -349,7 +349,7 @@ static int vtemu_key_event(struct input_handler *ihnd,
 	u32 key_flags;
 	struct vtemu *v = ihnd->priv;
 
-	if (value) { /* value=1 (key-up) or value=2 (auto-repeat) */
+	if (value) { /* value=1 (key-press) or value=2 (auto-repeat) */
 		/* Update input key flags */
 		key_flags = vtemu_key2flags(code);
 		if ((key_flags & VTEMU_KEYFLAG_LOCKS) &&
@@ -367,7 +367,7 @@ static int vtemu_key_event(struct input_handler *ihnd,
 
 		/* Add input key string to input buffer */
 		vtemu_add_input(v, str);
-	} else { /* value=0 (key-down) */
+	} else { /* value=0 (key-release) */
 		/* Update input key flags */
 		key_flags = vtemu_key2flags(code);
 		if (!(key_flags & VTEMU_KEYFLAG_LOCKS)) {
