@@ -39,24 +39,45 @@
 #define VSCREEN_REFRESH_RATE_GOOD	25
 #define VSCREEN_REFRESH_RATE_MAX	100
 
+/** Generic virtual screen capturing on frame buffer device */
+int vscreen_bind(bool is_hard,
+		 u32 refresh_rate,
+		 u32 esc_key_code0,
+		 u32 esc_key_code1,
+		 u32 esc_key_code2,
+		 struct fb_info *info,
+		 struct vmm_vdisplay *vdis,
+		 struct vmm_vkeyboard *vkbd,
+		 struct vmm_vmouse *vmou);
+
 /** Software emulated virtual screen capturing on frame buffer device */
-int vscreen_soft_bind(u32 refresh_rate,
-		      u32 esc_key_code0,
-		      u32 esc_key_code1,
-		      u32 esc_key_code2,
-		      struct fb_info *info,
-		      struct vmm_vdisplay *vdis,
-		      struct vmm_vkeyboard *vkbd,
-		      struct vmm_vmouse *vmou);
+static inline int vscreen_soft_bind(u32 refresh_rate,
+				    u32 esc_key_code0,
+				    u32 esc_key_code1,
+				    u32 esc_key_code2,
+				    struct fb_info *info,
+				    struct vmm_vdisplay *vdis,
+				    struct vmm_vkeyboard *vkbd,
+				    struct vmm_vmouse *vmou)
+{
+	return vscreen_bind(FALSE, refresh_rate,
+			    esc_key_code0, esc_key_code1, esc_key_code2,
+			    info, vdis, vkbd, vmou);
+}
 
 /** Hardware assisted virtual screen capturing on frame buffer device */
-int vscreen_hard_bind(u32 esc_key_code0,
-		      u32 esc_key_code1,
-		      u32 esc_key_code2,
-		      struct fb_info *info,
-		      struct vmm_vdisplay *vdis,
-		      struct vmm_vkeyboard *vkbd,
-		      struct vmm_vmouse *vmou);
+static inline int vscreen_hard_bind(u32 esc_key_code0,
+				    u32 esc_key_code1,
+				    u32 esc_key_code2,
+				    struct fb_info *info,
+				    struct vmm_vdisplay *vdis,
+				    struct vmm_vkeyboard *vkbd,
+				    struct vmm_vmouse *vmou)
+{
+	return vscreen_bind(TRUE, VSCREEN_REFRESH_RATE_MIN,
+			    esc_key_code0, esc_key_code1, esc_key_code2,
+			    info, vdis, vkbd, vmou);
+}
 
 #endif /* __VSCREEN_H__ */
 
