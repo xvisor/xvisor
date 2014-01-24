@@ -541,11 +541,11 @@ static void vscreen_keyboard_event(struct vscreen_context *cntx,
 			continue;
 		}
 		switch (value) {
-		case 0: /* key-down */
-			cntx->esc_key_state |= (1 << i);
-			break;
-		case 1: /* key-up */
+		case 0: /* key-release */
 			cntx->esc_key_state &= ~(1 << i);
+			break;
+		case 1: /* key-press */
+			cntx->esc_key_state |= (1 << i);
 			break;
 		case 2: /* auto-repeat */
 		default:
@@ -942,6 +942,9 @@ static void vscreen_save(struct fb_info *info, void *priv)
 static void vscreen_restore(struct fb_info *info, void *priv)
 {
 	struct vscreen_context *cntx = priv;
+
+	/* Clear escape key state */
+	cntx->esc_key_state = 0;
 
 	/* Set current variable screen info */
 	fb_set_var(cntx->info, &cntx->var);
