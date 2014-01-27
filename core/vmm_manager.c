@@ -803,8 +803,16 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		return NULL;
 	}
 
-	/* Initialize guest instance */
+	/* Add guest instance to guest list */
 	list_add_tail(&guest->head, &mngr.guest_list);
+
+	/* Mark this guest instance as not available */
+	mngr.guest_avail_array[guest->id] = FALSE;
+
+	/* Increment guest count */
+	mngr.guest_count++;
+
+	/* Initialize guest instance */
 	strlcpy(guest->name, gnode->name, sizeof(guest->name));
 	guest->node = gnode;
 #ifdef CONFIG_CPU_BE
@@ -833,7 +841,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	if (!vsnode) {
 		vmm_printf("%s: vcpus node not found for Guest %s\n",
 			   __func__, gnode->name);
-		goto guest_create_error;
+		goto fail_release_lock;
 	}
 
 	list_for_each(lentry, &vsnode->child_list) {
@@ -844,7 +852,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_printf("%s: No more free VCPUs\n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
-			goto guest_create_error;
+			goto fail_release_lock;
 		}
 		attrval = vmm_devtree_attrval(vnode,
 					      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
@@ -852,13 +860,13 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_printf("%s: No device_type attribute\n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
-			goto guest_create_error;
+			goto fail_release_lock;
 		}
 		if (strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU) != 0) {
 			vmm_printf("%s: Invalid device_type attribute\n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
-			goto guest_create_error;
+			goto fail_release_lock;
 		}
 
 		/* Find next available VCPU instance */
@@ -873,7 +881,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_printf("%s: No available VCPU instance found \n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
-			goto guest_create_error;
+			goto fail_release_lock;
 		}
 
 		/* Mark this VCPU instance as not available */
@@ -890,7 +898,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
-			goto guest_create_error;
+			goto fail_release_lock;
 		}
 		vcpu->node = vnode;
 		vcpu->is_normal = TRUE;
@@ -909,7 +917,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_printf("%s: stack alloc failed "
 				   "for VCPU %s\n", __func__, vcpu->name);
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
-			goto guest_create_error;
+			goto fail_release_lock;
 		}
 		vcpu->stack_sz = CONFIG_IRQ_STACK_SIZE;
 
@@ -952,7 +960,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_printf("%s: arch_vcpu_init() failed "
 				   "for VCPU %s\n", __func__, vcpu->name);
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
-			goto guest_create_error;
+			goto fail_release_lock;
 		}
 
 		/* Initialize virtual IRQ context */
@@ -962,7 +970,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_printf("%s: vmm_vcpu_irq_init() failed "
 				   "for VCPU %s\n", __func__, vcpu->name);
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
-			goto guest_create_error;
+			goto fail_release_lock;
 		}
 
 		/* Initialize waitqueue context */
@@ -980,7 +988,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_printf("%s: Setting RESET state failed "
 				   "for VCPU %s\n", __func__, vcpu->name);
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
-			goto guest_create_error;
+			goto fail_release_lock;
 		}
 
 		/* Setup VCPU affinity mask */
@@ -1013,7 +1021,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 						__func__, cpu[i],
 						vmm_cpu_count, vcpu->name);
 					mngr.vcpu_avail_array[vcpu->id] = TRUE;
-					goto guest_create_error;
+					goto fail_release_lock;
 				}
 			}
 
@@ -1027,7 +1035,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 					"%s: Can't find a valid CPU for"
 					" vcpu %s\n", __func__, vcpu->name);
 				mngr.vcpu_avail_array[vcpu->id] = TRUE;
-				goto guest_create_error;
+				goto fail_release_lock;
 			}
 
 			/* Set the affinity mask */
@@ -1054,42 +1062,34 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vmm_write_unlock_irqrestore_lite(&guest->vcpu_lock, flags1);
 	}
 
-	/* Initialize guest address space */
-	if (vmm_guest_aspace_init(guest)) {
-		goto guest_create_error;
-	}
-
 	/* Fail if no VCPU is associated to the guest */
 	if (list_empty(&guest->vcpu_list)) {
-		goto guest_create_error;
+		goto fail_release_lock;
 	}
-
-	if (list_empty(&guest->vcpu_list)) {
-		goto guest_create_error;
-	}
-
-	/* Reset guest address space */
-	if (vmm_guest_aspace_reset(guest)) {
-		goto guest_create_error;
-	}
-
-	/* Initialize arch guest context */
-	if (arch_guest_init(guest)) {
-		goto guest_create_error;
-	}
-
-	mngr.guest_avail_array[guest->id] = FALSE;
-
-	/* Increment guest count */
-	mngr.guest_count++;
 
 	/* Release manager lock */
 	vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 
+	/* Initialize guest address space */
+	if (vmm_guest_aspace_init(guest)) {
+		goto fail_destroy_guest;
+	}
+
+	/* Reset guest address space */
+	if (vmm_guest_aspace_reset(guest)) {
+		goto fail_destroy_guest;
+	}
+
+	/* Initialize arch guest context */
+	if (arch_guest_init(guest)) {
+		goto fail_destroy_guest;
+	}
+
 	return guest;
 
-guest_create_error:
+fail_release_lock:
 	vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
+fail_destroy_guest:
 	vmm_manager_guest_destroy(guest);
 
 	return NULL;
@@ -1110,15 +1110,6 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 	/* For sanity reset guest (ignore reture value) */
 	vmm_manager_guest_reset(guest);
 
-	/* Acquire manager lock */
-	vmm_spin_lock_irqsave_lite(&mngr.lock, flags);
-
-	/* Decrement guest count */
-	mngr.guest_count--;
-
-	/* Remove from guest list */
-	list_del(&guest->head);
-
 	/* Deinit arch guest context */
 	if ((rc = arch_guest_deinit(guest))) {
 		goto release_lock;
@@ -1128,6 +1119,9 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 	if ((rc = vmm_guest_aspace_deinit(guest))) {
 		goto release_lock;
 	}
+
+	/* Acquire manager lock */
+	vmm_spin_lock_irqsave_lite(&mngr.lock, flags);
 
 	/* Acquire Guest VCPU lock */
 	vmm_read_lock_irqsave_lite(&guest->vcpu_lock, flags1);
@@ -1178,11 +1172,19 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 	vmm_read_unlock_irqrestore_lite(&guest->vcpu_lock, flags1);
 
 	/* Reset guest instance members */
-	INIT_LIST_HEAD(&guest->head);
 	guest->node = NULL;
 	guest->name[0] = '\0';
 	INIT_LIST_HEAD(&guest->vcpu_list);
+
+	/* Decrement guest count */
+	mngr.guest_count--;
+
+	/* Mark this guest instance as available */
 	mngr.guest_avail_array[guest->id] = TRUE;
+
+	/* Remove from guest list */
+	list_del(&guest->head);
+	INIT_LIST_HEAD(&guest->head);
 
 release_lock:
 	/* Release manager lock */
