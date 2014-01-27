@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_completion.h>
+#include <arch_cpu_irq.h>
 
 bool vmm_completion_done(struct vmm_completion *cmpl)
 {
@@ -48,6 +49,7 @@ static int completion_wait_common(struct vmm_completion *cmpl, u64 *timeout)
 	int rc = VMM_OK;
 
 	BUG_ON(!cmpl);
+	BUG_ON(arch_cpu_irq_disabled());
 	BUG_ON(!vmm_scheduler_orphan_context());
 
 	vmm_spin_lock_irq(&cmpl->wq.lock);

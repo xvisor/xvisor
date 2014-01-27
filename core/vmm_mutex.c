@@ -25,6 +25,7 @@
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
 #include <vmm_mutex.h>
+#include <arch_cpu_irq.h>
 
 bool vmm_mutex_avail(struct vmm_mutex *mut)
 {
@@ -104,6 +105,7 @@ static int mutex_lock_common(struct vmm_mutex *mut, u64 *timeout)
 	int rc = VMM_OK;
 
 	BUG_ON(!mut);
+	BUG_ON(arch_cpu_irq_disabled());
 	BUG_ON(!vmm_scheduler_orphan_context());
 
 	vmm_spin_lock_irq(&mut->wq.lock);
