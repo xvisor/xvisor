@@ -26,7 +26,6 @@
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
-#include <vmm_host_io.h>
 #include <emu/virtio.h>
 #include <emu/virtio_queue.h>
 #include <emu/virtio_mmio.h>
@@ -82,19 +81,16 @@ int virtio_mmio_config_read(struct virtio_mmio_dev *m,
 	return rc;
 }
 
-static int virtio_mmio_read(struct vmm_emudev *edev,
-			    physical_addr_t offset,
-			    void *dst, u32 dst_len)
+static int virtio_mmio_read(struct virtio_mmio_dev *m,
+			    u32 offset, u32 *dst)
 {
-	struct virtio_mmio_dev *m = edev->priv;
-
 	/* Device specific config write */
 	if (offset >= VIRTIO_MMIO_CONFIG) {
 		offset -= VIRTIO_MMIO_CONFIG;
-		return virtio_config_read(&m->dev, (u32)offset, dst, dst_len);
+		return virtio_config_read(&m->dev, offset, dst, 4);
 	}
 
-	return virtio_mmio_config_read(m, (u32)offset, dst, dst_len);
+	return virtio_mmio_config_read(m, offset, dst, 4);
 }
 
 static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
@@ -102,7 +98,7 @@ static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
 				    void *src, u32 src_len)
 {
 	int rc = VMM_OK;
-	u32 val = vmm_cpu_to_le32(*(u32 *)(src));
+	u32 val = *(u32 *)(src);
 
 	switch (offset) {
 	case VIRTIO_MMIO_HOST_FEATURES_SEL:
@@ -149,19 +145,76 @@ static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
 	return rc;
 }
 
-static int virtio_mmio_write(struct vmm_emudev *edev,
-			     physical_addr_t offset,
-			     void *src, u32 src_len)
+static int virtio_mmio_write(struct virtio_mmio_dev *m,
+			     u32 offset, u32 src_mask, u32 src)
 {
-	struct virtio_mmio_dev *m = edev->priv;
+	src = src & ~src_mask;
 
 	/* Device specific config write */
 	if (offset >= VIRTIO_MMIO_CONFIG) {
 		offset -= VIRTIO_MMIO_CONFIG;
-		return virtio_config_write(&m->dev, (u32)offset, src, src_len);
+		return virtio_config_write(&m->dev, (u32)offset, &src, 4);
 	}
 
-	return virtio_mmio_config_write(m, (u32)offset, src, src_len);
+	return virtio_mmio_config_write(m, (u32)offset, &src, 4);
+}
+
+static int virtio_mmio_read8(struct vmm_emudev *edev,
+			     physical_addr_t offset, 
+			     u8 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = virtio_mmio_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFF;
+	}
+
+	return rc;
+}
+
+static int virtio_mmio_read16(struct vmm_emudev *edev,
+			      physical_addr_t offset, 
+			      u16 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = virtio_mmio_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
+	}
+
+	return rc;
+}
+
+static int virtio_mmio_read32(struct vmm_emudev *edev,
+			      physical_addr_t offset, 
+			      u32 *dst)
+{
+	return virtio_mmio_read(edev->priv, offset, dst);
+}
+
+static int virtio_mmio_write8(struct vmm_emudev *edev,
+			      physical_addr_t offset, 
+			      u8 src)
+{
+	return virtio_mmio_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int virtio_mmio_write16(struct vmm_emudev *edev,
+			       physical_addr_t offset, 
+			       u16 src)
+{
+	return virtio_mmio_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int virtio_mmio_write32(struct vmm_emudev *edev,
+			       physical_addr_t offset, 
+			       u32 src)
+{
+	return virtio_mmio_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int virtio_mmio_reset(struct vmm_emudev *edev)
@@ -261,9 +314,14 @@ static struct vmm_devtree_nodeid virtio_mmio_emuid_table[] = {
 static struct vmm_emulator virtio_mmio = {
 	.name = "virtio_mmio",
 	.match_table = virtio_mmio_emuid_table,
+	.endian = VMM_EMULATOR_LITTLE_ENDIAN,
 	.probe = virtio_mmio_probe,
-	.read = virtio_mmio_read,
-	.write = virtio_mmio_write,
+	.read8 = virtio_mmio_read8,
+	.write8 = virtio_mmio_write8,
+	.read16 = virtio_mmio_read16,
+	.write16 = virtio_mmio_write16,
+	.read32 = virtio_mmio_read32,
+	.write32 = virtio_mmio_write32,
 	.reset = virtio_mmio_reset,
 	.remove = virtio_mmio_remove,
 };

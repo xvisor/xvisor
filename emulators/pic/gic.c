@@ -36,8 +36,6 @@
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_vcpu_irq.h>
-#include <vmm_host_irq.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
 #include <libs/stringlib.h>
 #include <emu/gic_emulator.h>
@@ -860,68 +858,62 @@ int gic_reg_write(struct gic_state *s, physical_addr_t offset,
 }
 VMM_EXPORT_SYMBOL(gic_reg_write);
 
-static int gic_emulator_read(struct vmm_emudev *edev,
-			     physical_addr_t offset, 
-			     void *dst, u32 dst_len)
+static int gic_emulator_read8(struct vmm_emudev *edev,
+			      physical_addr_t offset, 
+			      u8 *dst)
 {
-	int rc = VMM_OK;
+	int rc;
 	u32 regval = 0x0;
-	struct gic_state *s = edev->priv;
 
-	rc = gic_reg_read(s, offset, &regval);
+	rc = gic_reg_read(edev->priv, offset, &regval);
 	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *)dst = vmm_cpu_to_le32(regval);
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
+		*dst = regval & 0xFF;
 	}
 
 	return rc;
 }
 
-static int gic_emulator_write(struct vmm_emudev *edev,
-			      physical_addr_t offset, 
-			      void *src, u32 src_len)
+static int gic_emulator_read16(struct vmm_emudev *edev,
+			       physical_addr_t offset, 
+			       u16 *dst)
 {
-	int i;
-	u32 regmask = 0x0, regval = 0x0;
-	struct gic_state *s = edev->priv;
+	int rc;
+	u32 regval = 0x0;
 
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
+	rc = gic_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
 	}
-	regval = (regval << ((offset & 0x3) * 8));
 
-	return gic_reg_write(s, offset, regmask, regval);
+	return rc;
+}
+
+static int gic_emulator_read32(struct vmm_emudev *edev,
+			       physical_addr_t offset, 
+			       u32 *dst)
+{
+	return gic_reg_read(edev->priv, offset, dst);
+}
+
+static int gic_emulator_write8(struct vmm_emudev *edev,
+			       physical_addr_t offset, 
+			       u8 src)
+{
+	return gic_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int gic_emulator_write16(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u16 src)
+{
+	return gic_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int gic_emulator_write32(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u32 src)
+{
+	return gic_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 int gic_state_reset(struct gic_state *s)
@@ -1209,9 +1201,14 @@ static struct vmm_devtree_nodeid gic_emuid_table[] = {
 static struct vmm_emulator gic_emulator = {
 	.name = "gic",
 	.match_table = gic_emuid_table,
+	.endian = VMM_EMULATOR_LITTLE_ENDIAN,
 	.probe = gic_emulator_probe,
-	.read = gic_emulator_read,
-	.write = gic_emulator_write,
+	.read8 = gic_emulator_read8,
+	.write8 = gic_emulator_write8,
+	.read16 = gic_emulator_read16,
+	.write16 = gic_emulator_write16,
+	.read32 = gic_emulator_read32,
+	.write32 = gic_emulator_write32,
 	.reset = gic_emulator_reset,
 	.remove = gic_emulator_remove,
 };

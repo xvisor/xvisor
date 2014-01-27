@@ -34,9 +34,6 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
-#include <vmm_manager.h>
-#include <vmm_scheduler.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
 #include <libs/stringlib.h>
 
@@ -72,52 +69,49 @@ struct l2x0_state {
 	u32 filter_end;
 };
 
-static int l2x0_cc_emulator_read(struct vmm_emudev *edev,
-				 physical_addr_t offset, 
-				 void *dst, u32 dst_len)
+static int l2x0_cc_reg_read(struct l2x0_state *s,
+			    u32 offset, u32 *dst)
 {
-	struct l2x0_state *s = edev->priv;
 	int rc = VMM_OK;
 	u32 cache_data;
-	u32 regval;
 
 	offset &= 0xfff;
 	if (offset >= 0x730 && offset < 0x800) {
-		regval = 0; /* cache ops complete */
+		*dst = 0; /* cache ops complete */
 	} else {
 		switch (offset) {
 		case 0:
-			regval = l2x0_cacheid[s->id];
+			*dst = l2x0_cacheid[s->id];
 			break;
 		case 0x4:
 			/* aux_ctrl values affect cache_type values */
 			cache_data = (s->aux_ctrl & (7 << 17)) >> 15;
 			cache_data |= (s->aux_ctrl & (1 << 16)) >> 16;
-			regval = s->cache_type |= (cache_data << 18)
+			*dst = s->cache_type |= (cache_data << 18)
 				 | (cache_data << 6);
 			break;
 		case 0x100:
-			regval = s->ctrl;
+			*dst = s->ctrl;
 			break;
 		case 0x104:
-			regval = s->aux_ctrl;
+			*dst = s->aux_ctrl;
 			break;
 		case 0x108:
-			regval = s->tag_ctrl;
+			*dst = s->tag_ctrl;
 			break;
 		case 0x10C:
-			regval = s->data_ctrl;
+			*dst = s->data_ctrl;
 			break;
 		case 0xC00:
-			regval = s->filter_start;
+			*dst = s->filter_start;
 			break;
 		case 0xC04:
-			regval = s->filter_end;
+			*dst = s->filter_end;
 			break;
 		case 0xF40:
 		case 0xF60:
 		case 0xF80:
-			regval = 0;
+			*dst = 0;
 			break;
 		default:
 			rc = VMM_EFAIL;
@@ -125,57 +119,13 @@ static int l2x0_cc_emulator_read(struct vmm_emudev *edev,
 		}
 	}
 
-	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = regval & 0xFFFF;
-			break;
-		case 4:
-			*(u32 *)dst = regval;
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
-	}
-
 	return rc;
 }
 
-static int l2x0_cc_emulator_write(struct vmm_emudev *edev,
-				  physical_addr_t offset, 
-				  void *src, u32 src_len)
+static int l2x0_cc_reg_write(struct l2x0_state *s,
+			     u32 offset, u32 regmask, u32 regval)
 {
-	struct l2x0_state *s = edev->priv;
-	int rc = VMM_OK, i;
-	u32 regmask = 0x0, regval = 0x0;
-
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = *(u16 *)src;
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = *(u32 *)src;
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
-	}
-	regval = (regval << ((offset & 0x3) * 8));
+	int rc = VMM_OK;
 
 	offset &= 0xfff;
 	if (offset >= 0x730 && offset < 0x800) {
@@ -214,6 +164,64 @@ static int l2x0_cc_emulator_write(struct vmm_emudev *edev,
 	}
 
 	return rc;
+}
+
+static int l2x0_cc_emulator_read8(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u8 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = l2x0_cc_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFF;
+	}
+
+	return rc;
+}
+
+static int l2x0_cc_emulator_read16(struct vmm_emudev *edev,
+				   physical_addr_t offset, 
+				   u16 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = l2x0_cc_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
+	}
+
+	return rc;
+}
+
+static int l2x0_cc_emulator_read32(struct vmm_emudev *edev,
+				   physical_addr_t offset, 
+				   u32 *dst)
+{
+	return l2x0_cc_reg_read(edev->priv, offset, dst);
+}
+
+static int l2x0_cc_emulator_write8(struct vmm_emudev *edev,
+				   physical_addr_t offset, 
+				   u8 src)
+{
+	return l2x0_cc_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int l2x0_cc_emulator_write16(struct vmm_emudev *edev,
+				    physical_addr_t offset, 
+				    u16 src)
+{
+	return l2x0_cc_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int l2x0_cc_emulator_write32(struct vmm_emudev *edev,
+				    physical_addr_t offset, 
+				    u32 src)
+{
+	return l2x0_cc_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int l2x0_cc_emulator_reset(struct vmm_emudev *edev)
@@ -285,9 +293,14 @@ static struct vmm_devtree_nodeid l2x0_cc_emuid_table[] = {
 static struct vmm_emulator l2x0_cc_emulator = {
 	.name = "l2x0_cc",
 	.match_table = l2x0_cc_emuid_table,
+	.endian = VMM_EMULATOR_LITTLE_ENDIAN,
 	.probe = l2x0_cc_emulator_probe,
-	.read = l2x0_cc_emulator_read,
-	.write = l2x0_cc_emulator_write,
+	.read8 = l2x0_cc_emulator_read8,
+	.write8 = l2x0_cc_emulator_write8,
+	.read16 = l2x0_cc_emulator_read16,
+	.write16 = l2x0_cc_emulator_write16,
+	.read32 = l2x0_cc_emulator_read32,
+	.write32 = l2x0_cc_emulator_write32,
 	.reset = l2x0_cc_emulator_reset,
 	.remove = l2x0_cc_emulator_remove,
 };

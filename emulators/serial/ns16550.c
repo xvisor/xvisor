@@ -32,7 +32,6 @@
 #include <vmm_heap.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
 #include <vmm_timer.h>
 #include <vio/vmm_vserial.h>
@@ -736,67 +735,62 @@ void ns16550_set_frequency(struct ns16550_state *s, u32 frequency)
 	ns16550_update_parameters(s);
 }
 
-static int ns16550_emulator_read(struct vmm_emudev *edev, physical_addr_t offset, 
-				 void *dst, u32 dst_len)
+static int ns16550_emulator_read8(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u8 *dst)
 {
-	int rc = VMM_OK;
+	int rc;
 	u32 regval = 0x0;
-	struct ns16550_state *s = edev->priv;
 
-	rc = ns16550_reg_read(s, offset, &regval);
+	rc = ns16550_reg_read(edev->priv, offset, &regval);
 	if (!rc) {
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *)dst = vmm_cpu_to_le32(regval);
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
+		*dst = regval & 0xFF;
 	}
 
 	return rc;
 }
 
-static int ns16550_emulator_write(struct vmm_emudev *edev,
-				  physical_addr_t offset, 
-				  void *src, u32 src_len)
+static int ns16550_emulator_read16(struct vmm_emudev *edev,
+				   physical_addr_t offset, 
+				   u16 *dst)
 {
-	u32 regmask = 0x0, regval = 0x0;
-	struct ns16550_state *s = edev->priv;
+	int rc;
+	u32 regval = 0x0;
 
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-#if 0
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
+	rc = ns16550_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
 	}
-	regval = (regval << ((offset) * 8));
-#endif
 
-	return ns16550_reg_write(s, offset, regmask, regval);
+	return rc;
+}
+
+static int ns16550_emulator_read32(struct vmm_emudev *edev,
+				   physical_addr_t offset, 
+				   u32 *dst)
+{
+	return ns16550_reg_read(edev->priv, offset, dst);
+}
+
+static int ns16550_emulator_write8(struct vmm_emudev *edev,
+				   physical_addr_t offset, 
+				   u8 src)
+{
+	return ns16550_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int ns16550_emulator_write16(struct vmm_emudev *edev,
+				    physical_addr_t offset, 
+				    u16 src)
+{
+	return ns16550_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int ns16550_emulator_write32(struct vmm_emudev *edev,
+				    physical_addr_t offset, 
+				    u32 src)
+{
+	return ns16550_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int ns16550_emulator_probe(struct vmm_guest *guest,
@@ -927,9 +921,14 @@ static struct vmm_devtree_nodeid ns16550_emuid_table[] = {
 static struct vmm_emulator ns16550_emulator = {
 	.name = "ns16550_emulator",
 	.match_table = ns16550_emuid_table,
+	.endian = VMM_EMULATOR_LITTLE_ENDIAN,
 	.probe = ns16550_emulator_probe,
-	.read = ns16550_emulator_read,
-	.write = ns16550_emulator_write,
+	.read8 = ns16550_emulator_read8,
+	.write8 = ns16550_emulator_write8,
+	.read16 = ns16550_emulator_read16,
+	.write16 = ns16550_emulator_write16,
+	.read32 = ns16550_emulator_read32,
+	.write32 = ns16550_emulator_write32,
 	.reset = ns16550_emulator_reset,
 	.remove = ns16550_emulator_remove,
 };

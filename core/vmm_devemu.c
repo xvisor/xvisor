@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
+#include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_mutex.h>
 #include <vmm_guest_aspace.h>
@@ -68,6 +69,198 @@ struct vmm_devemu_ctrl {
 
 static struct vmm_devemu_ctrl dectrl;
 
+static int devemu_doread(struct vmm_emudev *edev, 
+			 physical_addr_t offset,
+			 void *dst, u32 dst_len)
+{
+	int rc;
+	u16 data16;
+	u32 data32;
+	u64 data64;
+
+	if (!edev) {
+		return VMM_EFAIL;
+	}
+
+	switch (dst_len) {
+	case 1:
+		if (edev->emu->read8) {
+			rc = edev->emu->read8(edev, offset, dst);
+		} else {
+			vmm_printf("%s: edev=%s does not have read8()\n",
+				   __func__, edev->node->name);
+			rc = VMM_ENOTAVAIL;
+		}
+		break;
+	case 2:
+		if (edev->emu->read16) {
+			rc = edev->emu->read16(edev, offset, &data16);
+		} else {
+			vmm_printf("%s: edev=%s does not have read16()\n",
+				   __func__, edev->node->name);
+			rc = VMM_ENOTAVAIL;
+		}
+		if (!rc) {
+			switch (edev->emu->endian) {
+			case VMM_EMULATOR_LITTLE_ENDIAN:
+				*(u16 *)dst = vmm_cpu_to_le16(data16);
+				break;
+			case VMM_EMULATOR_BIG_ENDIAN:
+				*(u16 *)dst = vmm_cpu_to_be16(data16);
+				break;
+			default:
+				*(u16 *)dst = data16;
+				break;
+			};
+		}
+		break;
+	case 4:
+		if (edev->emu->read32) {
+			rc = edev->emu->read32(edev, offset, &data32);
+		} else {
+			vmm_printf("%s: edev=%s does not have read32()\n",
+				   __func__, edev->node->name);
+			rc = VMM_ENOTAVAIL;
+		}
+		if (!rc) {
+			switch (edev->emu->endian) {
+			case VMM_EMULATOR_LITTLE_ENDIAN:
+				*(u32 *)dst = vmm_cpu_to_le32(data32);
+				break;
+			case VMM_EMULATOR_BIG_ENDIAN:
+				*(u32 *)dst = vmm_cpu_to_be32(data32);
+				break;
+			default:
+				*(u32 *)dst = data32;
+				break;
+			};
+		}
+		break;
+	case 8:
+		if (edev->emu->read64) {
+			rc = edev->emu->read64(edev, offset, &data64);
+		} else {
+			vmm_printf("%s: edev=%s does not have read64()\n",
+				   __func__, edev->node->name);
+			rc = VMM_ENOTAVAIL;
+		}
+		if (!rc) {
+			switch (edev->emu->endian) {
+			case VMM_EMULATOR_LITTLE_ENDIAN:
+				*(u64 *)dst = vmm_cpu_to_le32(data64);
+				break;
+			case VMM_EMULATOR_BIG_ENDIAN:
+				*(u64 *)dst = vmm_cpu_to_be64(data64);
+				break;
+			default:
+				*(u64 *)dst = data64;
+				break;
+			};
+		}
+		break;
+	default:
+		vmm_printf("%s: edev=%s invalid len=%d\n",
+			   __func__, edev->node->name, dst_len);
+		rc = VMM_EINVALID;
+		break;
+	};
+
+	return rc;
+}
+
+static int devemu_dowrite(struct vmm_emudev *edev, 
+			  physical_addr_t offset,
+			  void *src, u32 src_len)
+{
+	int rc;
+	u16 data16;
+	u32 data32;
+	u64 data64;
+
+	if (!edev) {
+		return VMM_EFAIL;
+	}
+
+	switch (src_len) {
+	case 1:		
+		if (edev->emu->write8) {
+			rc = edev->emu->write8(edev, offset, *((u8 *)src));
+		} else {
+			vmm_printf("%s: edev=%s does not have write8()\n",
+				   __func__, edev->node->name);
+			rc = VMM_ENOTAVAIL;
+		}
+		break;
+	case 2:
+		switch (edev->emu->endian) {
+		case VMM_EMULATOR_LITTLE_ENDIAN:
+			data16 = vmm_cpu_to_le16(*(u16 *)src);
+			break;
+		case VMM_EMULATOR_BIG_ENDIAN:
+			data16 = vmm_cpu_to_be16(*(u16 *)src);
+			break;
+		default:
+			data16 = *(u16 *)src;
+			break;
+		};
+		if (edev->emu->write16) {
+			rc = edev->emu->write16(edev, offset, data16);
+		} else {
+			vmm_printf("%s: edev=%s does not have write16()\n",
+				   __func__, edev->node->name);
+			rc = VMM_ENOTAVAIL;
+		}
+		break;
+	case 4:
+		switch (edev->emu->endian) {
+		case VMM_EMULATOR_LITTLE_ENDIAN:
+			data32 = vmm_cpu_to_le32(*(u32 *)src);
+			break;
+		case VMM_EMULATOR_BIG_ENDIAN:
+			data32 = vmm_cpu_to_be32(*(u32 *)src);
+			break;
+		default:
+			data32 = *(u32 *)src;
+			break;
+		};
+		if (edev->emu->write32) {
+			rc = edev->emu->write32(edev, offset, data32);
+		} else {
+			vmm_printf("%s: edev=%s does not have write32()\n",
+				   __func__, edev->node->name);
+			rc = VMM_ENOTAVAIL;
+		}
+		break;
+	case 8:
+		switch (edev->emu->endian) {
+		case VMM_EMULATOR_LITTLE_ENDIAN:
+			data64 = vmm_cpu_to_le64(*(u64 *)src);
+			break;
+		case VMM_EMULATOR_BIG_ENDIAN:
+			data64 = vmm_cpu_to_be64(*(u64 *)src);
+			break;
+		default:
+			data64 = *(u64 *)src;
+			break;
+		};
+		if (edev->emu->write64) {
+			rc = edev->emu->write64(edev, offset, data64);
+		} else {
+			vmm_printf("%s: edev=%s does not have write64()\n",
+				   __func__, edev->node->name);
+			rc = VMM_ENOTAVAIL;
+		}
+		break;
+	default:
+		vmm_printf("%s: edev=%s invalid len=%d\n",
+			   __func__, edev->node->name, src_len);
+		rc = VMM_EINVALID;
+		break;
+	};
+
+	return rc;
+}
+
 int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu, 
 			    physical_addr_t gphys_addr,
 			    void *dst, u32 dst_len)
@@ -75,7 +268,6 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 	u32 ite;
 	bool found;
 	struct vmm_devemu_vcpu_context *ev;
-	struct vmm_emudev *edev;
 	struct vmm_region *reg;
 
 	if (!vcpu || !(vcpu->guest)) {
@@ -111,13 +303,9 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	edev = (struct vmm_emudev *)reg->devemu_priv;
-	if (!edev || !edev->emu->read) {
-		return VMM_EFAIL;
-	}
-
-	return edev->emu->read(edev, gphys_addr - reg->gphys_addr, 
-				dst, dst_len);
+	return devemu_doread(reg->devemu_priv,
+			     gphys_addr - reg->gphys_addr,
+			     dst, dst_len);
 }
 
 int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu, 
@@ -127,7 +315,6 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 	u32 ite;
 	bool found;
 	struct vmm_devemu_vcpu_context *ev;
-	struct vmm_emudev *edev;
 	struct vmm_region *reg;
 
 	if (!vcpu || !(vcpu->guest)) {
@@ -163,13 +350,9 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	edev = (struct vmm_emudev *)reg->devemu_priv;
-	if (!edev || !edev->emu->write) {
-		return VMM_EFAIL;
-	}
-
-	return edev->emu->write(edev, gphys_addr - reg->gphys_addr, 
-				src, src_len);
+	return devemu_dowrite(reg->devemu_priv,
+			      gphys_addr - reg->gphys_addr,
+			      src, src_len);
 }
 
 int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu, 
@@ -179,7 +362,6 @@ int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu,
 	u32 ite;
 	bool found;
 	struct vmm_devemu_vcpu_context *ev;
-	struct vmm_emudev *edev;
 	struct vmm_region *reg;
 
 	if (!vcpu || !(vcpu->guest)) {
@@ -215,13 +397,9 @@ int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	edev = (struct vmm_emudev *)reg->devemu_priv;
-	if (!edev || !edev->emu->read) {
-		return VMM_EFAIL;
-	}
-
-	return edev->emu->read(edev, gphys_addr - reg->gphys_addr, 
-				dst, dst_len);
+	return devemu_doread(reg->devemu_priv,
+			     gphys_addr - reg->gphys_addr,
+			     dst, dst_len);
 }
 
 int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu, 
@@ -231,7 +409,6 @@ int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu,
 	u32 ite;
 	bool found;
 	struct vmm_devemu_vcpu_context *ev;
-	struct vmm_emudev *edev;
 	struct vmm_region *reg;
 
 	if (!vcpu || !(vcpu->guest)) {
@@ -267,13 +444,9 @@ int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	edev = (struct vmm_emudev *)reg->devemu_priv;
-	if (!edev || !edev->emu->write) {
-		return VMM_EFAIL;
-	}
-
-	return edev->emu->write(edev, gphys_addr - reg->gphys_addr, 
-				src, src_len);
+	return devemu_dowrite(reg->devemu_priv,
+			      gphys_addr - reg->gphys_addr,
+			      src, src_len);
 }
 
 int __vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq, int cpu, int level)
@@ -410,7 +583,9 @@ int vmm_devemu_register_emulator(struct vmm_emulator *emu)
 	struct dlist *l;
 	struct vmm_emulator *e;
 
-	if (emu == NULL) {
+	if (!emu ||
+	    (emu->endian == VMM_EMULATOR_UNKNOWN_ENDIAN) ||
+	    (VMM_EMULATOR_MAX_ENDIAN <= emu->endian)) {
 		return VMM_EFAIL;
 	}
 

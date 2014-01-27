@@ -34,8 +34,8 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
+#include <vmm_host_io.h>
 #include <vmm_guest_aspace.h>
 #include <vio/vmm_pixel_ops.h>
 #include <vio/vmm_vdisplay.h>
@@ -562,68 +562,62 @@ done:
 	return rc;
 }
 
-static int pl110_emulator_read(struct vmm_emudev *edev,
-			       physical_addr_t offset, 
-			       void *dst, u32 dst_len)
+static int pl110_emulator_read8(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u8 *dst)
 {
-	int rc = VMM_OK;
+	int rc;
 	u32 regval = 0x0;
-	struct pl110_state *s = edev->priv;
 
-	rc = pl110_reg_read(s, offset & ~0x3, &regval);
+	rc = pl110_reg_read(edev->priv, offset, &regval);
 	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *)dst = vmm_cpu_to_le32(regval);
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
+		*dst = regval & 0xFF;
 	}
 
 	return rc;
 }
 
-static int pl110_emulator_write(struct vmm_emudev *edev,
-				physical_addr_t offset, 
-				void *src, u32 src_len)
+static int pl110_emulator_read16(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u16 *dst)
 {
-	int i;
-	u32 regmask = 0x0, regval = 0x0;
-	struct pl110_state *s = edev->priv;
+	int rc;
+	u32 regval = 0x0;
 
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
+	rc = pl110_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
 	}
-	regval = (regval << ((offset & 0x3) * 8));
 
-	return pl110_reg_write(s, offset & ~0x3, regmask, regval);
+	return rc;
+}
+
+static int pl110_emulator_read32(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u32 *dst)
+{
+	return pl110_reg_read(edev->priv, offset, dst);
+}
+
+static int pl110_emulator_write8(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u8 src)
+{
+	return pl110_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int pl110_emulator_write16(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u16 src)
+{
+	return pl110_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int pl110_emulator_write32(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u32 src)
+{
+	return pl110_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int pl110_emulator_reset(struct vmm_emudev *edev)
@@ -797,9 +791,14 @@ static struct vmm_devtree_nodeid pl110_emuid_table[] = {
 static struct vmm_emulator pl110_emulator = {
 	.name = "pl110",
 	.match_table = pl110_emuid_table,
+	.endian = VMM_EMULATOR_LITTLE_ENDIAN,
 	.probe = pl110_emulator_probe,
-	.read = pl110_emulator_read,
-	.write = pl110_emulator_write,
+	.read8 = pl110_emulator_read8,
+	.write8 = pl110_emulator_write8,
+	.read16 = pl110_emulator_read16,
+	.write16 = pl110_emulator_write16,
+	.read32 = pl110_emulator_read32,
+	.write32 = pl110_emulator_write32,
 	.reset = pl110_emulator_reset,
 	.remove = pl110_emulator_remove,
 };

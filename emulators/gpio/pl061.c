@@ -34,9 +34,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <libs/stringlib.h>
 
 #define MODULE_DESC			"PL061 GPIO Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -104,98 +102,75 @@ static void pl061_update(struct pl061_state *s)
 	/* FIXME: Implement input interrupts.  */
 }
 
-static int pl061_emulator_read(struct vmm_emudev *edev,
-			       physical_addr_t offset, 
-			       void *dst, u32 dst_len)
+static int pl061_reg_read(struct pl061_state *s,
+			  u32 offset, u32 *dst)
 {
 	int rc = VMM_OK;
-	u32 regval = 0x0;
-	struct pl061_state *s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
 	if (offset >= 0xfd0 && offset < 0x1000) {
-		regval = *((u32 *)&s->id[(offset - 0xfd0) >> 2]);
+		*dst = *((u32 *)&s->id[(offset - 0xfd0) >> 2]);
 	} else if (offset < 0x400) {
-		regval = s->data & (offset >> 2);
+		*dst = s->data & (offset >> 2);
 	} else {
 		switch (offset & ~0x3) {
 		case 0x400: /* Direction */
-			regval = s->dir;
+			*dst = s->dir;
 			break;
 		case 0x404: /* Interrupt sense */
-			regval = s->isense;
+			*dst = s->isense;
 			break;
 		case 0x408: /* Interrupt both edges */
-			regval = s->ibe;
+			*dst = s->ibe;
 			break;
 		case 0x40c: /* Interrupt event */
-			regval = s->iev;
+			*dst = s->iev;
 			break;
 		case 0x410: /* Interrupt mask */
-			regval = s->im;
+			*dst = s->im;
 			break;
 		case 0x414: /* Raw interrupt status */
-			regval = s->istate;
+			*dst = s->istate;
 			break;
 		case 0x418: /* Masked interrupt status */
-			regval = s->istate | s->im;
+			*dst = s->istate | s->im;
 			break;
 		case 0x420: /* Alternate function select */
-			regval = s->afsel;
+			*dst = s->afsel;
 			break;
 		case 0x500: /* 2mA drive */
-			regval = s->dr2r;
+			*dst = s->dr2r;
 			break;
 		case 0x504: /* 4mA drive */
-			regval = s->dr4r;
+			*dst = s->dr4r;
 			break;
 		case 0x508: /* 8mA drive */
-			regval = s->dr8r;
+			*dst = s->dr8r;
 			break;
 		case 0x50c: /* Open drain */
-			regval = s->odr;
+			*dst = s->odr;
 			break;
 		case 0x510: /* Pull-up */
-			regval = s->pur;
+			*dst = s->pur;
 			break;
 		case 0x514: /* Pull-down */
-			regval = s->pdr;
+			*dst = s->pdr;
 			break;
 		case 0x518: /* Slew rate control */
-			regval = s->slr;
+			*dst = s->slr;
 			break;
 		case 0x51c: /* Digital enable */
-			regval = s->den;
+			*dst = s->den;
 			break;
 		case 0x520: /* Lock */
-			regval = s->locked;
+			*dst = s->locked;
 			break;
 		case 0x524: /* Commit */
-			regval = s->cr;
+			*dst = s->cr;
 			break;
 		case 0x528: /* Analog mode select */
-			regval = s->amsel;
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		}
-	}
-
-	vmm_spin_unlock(&s->lock);
-
-	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *)dst = vmm_cpu_to_le32(regval);
+			*dst = s->amsel;
 			break;
 		default:
 			rc = VMM_EFAIL;
@@ -203,40 +178,16 @@ static int pl061_emulator_read(struct vmm_emudev *edev,
 		};
 	}
 
+	vmm_spin_unlock(&s->lock);
+
 	return rc;
 }
 
-static int pl061_emulator_write(struct vmm_emudev *edev,
-				physical_addr_t offset, 
-				void *src, u32 src_len)
+static int pl061_reg_write(struct pl061_state *s,
+			   u32 offset, u32 regmask, u32 regval)
 {
 	u8 mask;
-	int rc = VMM_OK, i;
-	u32 regmask = 0x0, regval = 0x0;
-	struct pl061_state *s = edev->priv;
-
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
-	}
-	regval = (regval << ((offset & 0x3) * 8));
+	int rc = VMM_OK;
 
 	vmm_spin_lock(&s->lock);
 
@@ -329,6 +280,64 @@ static int pl061_emulator_write(struct vmm_emudev *edev,
 	vmm_spin_unlock(&s->lock);
 
 	return rc;
+}
+
+static int pl061_emulator_read8(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u8 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = pl061_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFF;
+	}
+
+	return rc;
+}
+
+static int pl061_emulator_read16(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u16 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = pl061_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
+	}
+
+	return rc;
+}
+
+static int pl061_emulator_read32(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u32 *dst)
+{
+	return pl061_reg_read(edev->priv, offset, dst);
+}
+
+static int pl061_emulator_write8(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u8 src)
+{
+	return pl061_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int pl061_emulator_write16(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u16 src)
+{
+	return pl061_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int pl061_emulator_write32(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u32 src)
+{
+	return pl061_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int pl061_emulator_reset(struct vmm_emudev *edev)
@@ -539,9 +548,14 @@ static struct vmm_devtree_nodeid pl061_emuid_table[] = {
 static struct vmm_emulator pl061_emulator = {
 	.name = "pl061",
 	.match_table = pl061_emuid_table,
+	.endian = VMM_EMULATOR_LITTLE_ENDIAN,
 	.probe = pl061_emulator_probe,
-	.read = pl061_emulator_read,
-	.write = pl061_emulator_write,
+	.read8 = pl061_emulator_read8,
+	.write8 = pl061_emulator_write8,
+	.read16 = pl061_emulator_read16,
+	.write16 = pl061_emulator_write16,
+	.read32 = pl061_emulator_read32,
+	.write32 = pl061_emulator_write32,
 	.reset = pl061_emulator_reset,
 	.remove = pl061_emulator_remove,
 };

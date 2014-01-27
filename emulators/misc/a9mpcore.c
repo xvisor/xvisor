@@ -36,11 +36,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
-#include <vmm_manager.h>
-#include <vmm_scheduler.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <libs/stringlib.h>
 #include <emu/arm_mptimer_emulator.h>
 #include <emu/gic_emulator.h>
 
@@ -175,76 +171,29 @@ static int a9_scu_write(struct a9mp_priv_state *s, u32 offset,
 	return rc;
 }
 
-static int a9mpcore_emulator_read(struct vmm_emudev *edev,
-		physical_addr_t offset, 
-		void *dst, u32 dst_len)
+static int a9mpcore_reg_read(struct a9mp_priv_state *s,
+			     u32 offset, u32 *dst)
 {
-	struct a9mp_priv_state *s = edev->priv;
 	int rc = VMM_OK;
-	u32 regval = 0x0;
 
 	if (offset < 0x100) {
 		/* Read SCU block */
-		rc = a9_scu_read(s, offset & 0xFC, &regval);
+		rc = a9_scu_read(s, offset & 0xFC, dst);
 	} else if (offset >= 0x600 && offset < 0x700) {
 		/* Read Private & Watchdog Timer blocks */
-		rc = mptimer_reg_read(s->mpt, offset & 0xFC, &regval);
+		rc = mptimer_reg_read(s->mpt, offset & 0xFC, dst);
 	} else {
 		/* Read GIC */
-		rc = gic_reg_read(s->gic, offset, &regval);
-	}
-
-	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *)dst = vmm_cpu_to_le32(regval);
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
+		rc = gic_reg_read(s->gic, offset, dst);
 	}
 
 	return rc;
 }
 
-static int a9mpcore_emulator_write(struct vmm_emudev *edev,
-			      physical_addr_t offset, 
-			      void *src, u32 src_len)
+static int a9mpcore_reg_write(struct a9mp_priv_state *s,
+			      u32 offset, u32 regmask, u32 regval)
 {
-	struct a9mp_priv_state *s = edev->priv;
-	int rc = VMM_OK, i;
-	u32 regmask = 0x0, regval = 0x0;
-
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
-	}
-	regval = (regval << ((offset & 0x3) * 8));
+	int rc = VMM_OK;
 
 	if (offset < 0x100) {
 		/* Write SCU */
@@ -258,6 +207,64 @@ static int a9mpcore_emulator_write(struct vmm_emudev *edev,
 	}
 
 	return rc;
+}
+
+static int a9mpcore_emulator_read8(struct vmm_emudev *edev,
+				   physical_addr_t offset, 
+				   u8 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = a9mpcore_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFF;
+	}
+
+	return rc;
+}
+
+static int a9mpcore_emulator_read16(struct vmm_emudev *edev,
+				    physical_addr_t offset, 
+				    u16 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = a9mpcore_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
+	}
+
+	return rc;
+}
+
+static int a9mpcore_emulator_read32(struct vmm_emudev *edev,
+				    physical_addr_t offset, 
+				    u32 *dst)
+{
+	return a9mpcore_reg_read(edev->priv, offset, dst);
+}
+
+static int a9mpcore_emulator_write8(struct vmm_emudev *edev,
+				    physical_addr_t offset, 
+				    u8 src)
+{
+	return a9mpcore_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int a9mpcore_emulator_write16(struct vmm_emudev *edev,
+				     physical_addr_t offset, 
+				     u16 src)
+{
+	return a9mpcore_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int a9mpcore_emulator_write32(struct vmm_emudev *edev,
+				     physical_addr_t offset, 
+				     u32 src)
+{
+	return a9mpcore_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int a9mpcore_emulator_reset(struct vmm_emudev *edev)
@@ -367,9 +374,14 @@ static struct vmm_devtree_nodeid a9mpcore_emuid_table[] = {
 static struct vmm_emulator a9mpcore_emulator = {
 	.name = "a9mpcore",
 	.match_table = a9mpcore_emuid_table,
+	.endian = VMM_EMULATOR_LITTLE_ENDIAN,
 	.probe = a9mpcore_emulator_probe,
-	.read = a9mpcore_emulator_read,
-	.write = a9mpcore_emulator_write,
+	.read8 = a9mpcore_emulator_read8,
+	.write8 = a9mpcore_emulator_write8,
+	.read16 = a9mpcore_emulator_read16,
+	.write16 = a9mpcore_emulator_write16,
+	.read32 = a9mpcore_emulator_read32,
+	.write32 = a9mpcore_emulator_write32,
 	.reset = a9mpcore_emulator_reset,
 	.remove = a9mpcore_emulator_remove,
 };

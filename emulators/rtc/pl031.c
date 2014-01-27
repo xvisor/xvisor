@@ -36,9 +36,7 @@
 #include <vmm_devtree.h>
 #include <vmm_timer.h>
 #include <vmm_wallclock.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <libs/stringlib.h>
 #include <libs/mathlib.h>
 
 #define MODULE_DESC			"PL031 RTC Emulator"
@@ -81,7 +79,7 @@ static void pl031_update(struct pl031_state *s)
 	vmm_devemu_emulate_irq(s->guest, s->irq, s->is & s->im);
 }
 
-static void pl031_timer_event(struct vmm_timer_event * event)
+static void pl031_timer_event(struct vmm_timer_event *event)
 {
 	struct pl031_state *s = (struct pl031_state *)event->priv;
 
@@ -91,10 +89,7 @@ static void pl031_timer_event(struct vmm_timer_event * event)
 
 static u32 pl031_get_count(struct pl031_state *s)
 {
-	/* This assumes qemu_get_clock_ns returns the time since 
-	 * the machine was created.
-	 */
-	return s->tick_offset + 
+	return s->tick_offset +
 	(u32)udiv64(vmm_timer_timestamp() - s->tick_tstamp, 1000000000);
 }
 
@@ -102,8 +97,10 @@ static void pl031_set_alarm(struct pl031_state *s)
 {
 	u32 ticks = pl031_get_count(s);
 
-	/* If timer wraps around then subtraction also wraps in the same way,
-	 * and gives correct results when alarm < now_ticks.  */
+	/* If timer wraps around then subtraction also
+	 * wraps in the same way, and gives correct results
+	 * when alarm < now_ticks.
+	 */
 	ticks = s->mr - ticks;
 	if (ticks == 0) {
 		vmm_timer_event_stop(&s->event);
@@ -159,7 +156,7 @@ static int pl031_reg_read(struct pl031_state *s, u32 offset, u32 *dst)
 	return rc;
 }
 
-static int pl031_reg_write(struct pl031_state *s, u32 offset, 
+static int pl031_reg_write(struct pl031_state *s, u32 offset,
 			   u32 src_mask, u32 src)
 {
 	int rc = VMM_OK;
@@ -207,69 +204,62 @@ static int pl031_reg_write(struct pl031_state *s, u32 offset,
 	return rc;
 }
 
-static int pl031_emulator_read(struct vmm_emudev *edev,
-			       physical_addr_t offset, 
-			       void *dst, u32 dst_len)
+static int pl031_emulator_read8(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u8 *dst)
 {
-	int rc = VMM_OK;
+	int rc;
 	u32 regval = 0x0;
-	struct pl031_state *s = edev->priv;
 
-	rc = pl031_reg_read(s, offset & ~0x3, &regval);
-
+	rc = pl031_reg_read(edev->priv, offset, &regval);
 	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *)dst = vmm_cpu_to_le32(regval);
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
+		*dst = regval & 0xFF;
 	}
 
 	return rc;
 }
 
-static int pl031_emulator_write(struct vmm_emudev *edev,
-				physical_addr_t offset, 
-				void *src, u32 src_len)
+static int pl031_emulator_read16(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u16 *dst)
 {
-	int i;
-	u32 regmask = 0x0, regval = 0x0;
-	struct pl031_state *s = edev->priv;
+	int rc;
+	u32 regval = 0x0;
 
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
+	rc = pl031_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
 	}
-	regval = (regval << ((offset & 0x3) * 8));
 
-	return pl031_reg_write(s, offset & ~0x3, regmask, regval);
+	return rc;
+}
+
+static int pl031_emulator_read32(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u32 *dst)
+{
+	return pl031_reg_read(edev->priv, offset, dst);
+}
+
+static int pl031_emulator_write8(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u8 src)
+{
+	return pl031_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int pl031_emulator_write16(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u16 src)
+{
+	return pl031_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int pl031_emulator_write32(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u32 src)
+{
+	return pl031_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int pl031_emulator_reset(struct vmm_emudev *edev)
@@ -354,9 +344,14 @@ static struct vmm_devtree_nodeid pl031_emuid_table[] = {
 static struct vmm_emulator pl031_emulator = {
 	.name = "pl031",
 	.match_table = pl031_emuid_table,
+	.endian = VMM_EMULATOR_LITTLE_ENDIAN,
 	.probe = pl031_emulator_probe,
-	.read = pl031_emulator_read,
-	.write = pl031_emulator_write,
+	.read8 = pl031_emulator_read8,
+	.write8 = pl031_emulator_write8,
+	.read16 = pl031_emulator_read16,
+	.write16 = pl031_emulator_write16,
+	.read32 = pl031_emulator_read32,
+	.write32 = pl031_emulator_write32,
 	.reset = pl031_emulator_reset,
 	.remove = pl031_emulator_remove,
 };

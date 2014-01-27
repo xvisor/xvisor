@@ -35,14 +35,8 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
-#include <vmm_manager.h>
-#include <vmm_scheduler.h>
 #include <vmm_vcpu_irq.h>
-#include <vmm_host_irq.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <vmm_stdio.h>
-#include <libs/stringlib.h>
 
 #define MODULE_DESC			"ARM PL190 Emulator"
 #define MODULE_AUTHOR			"Jean-Christophe Dubois"
@@ -169,8 +163,8 @@ static void pl190_update_vectors(struct pl190_emulator_state *s)
 	pl190_update(s);
 }
 
-static int pl190_emulator_read(struct pl190_emulator_state *s, u32 offset,
-			       u32 * dst)
+static int pl190_reg_read(struct pl190_emulator_state *s,
+			  u32 offset, u32 *dst)
 {
 	int i;
 
@@ -246,8 +240,8 @@ static int pl190_emulator_read(struct pl190_emulator_state *s, u32 offset,
 	return VMM_OK;
 }
 
-static int pl190_emulator_write(struct pl190_emulator_state *s, u32 offset,
-				u32 src_mask, u32 src)
+static int pl190_reg_write(struct pl190_emulator_state *s,
+			   u32 offset, u32 src_mask, u32 src)
 {
 	if (!s) {
 		return VMM_EFAIL;
@@ -317,89 +311,62 @@ static int pl190_emulator_write(struct pl190_emulator_state *s, u32 offset,
 	return VMM_OK;
 }
 
-static int pl190_emulator_device_read(struct vmm_emudev *edev,
-					physical_addr_t offset, void *dst,
-					u32 dst_len)
+static int pl190_emulator_read8(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u8 *dst)
 {
-	struct vmm_vcpu *vcpu = NULL;
-	int rc = VMM_OK;
+	int rc;
 	u32 regval = 0x0;
-	struct pl190_emulator_state *s = edev->priv;
 
-	vcpu = vmm_scheduler_current_vcpu();
-	if (!vcpu || !vcpu->guest) {
-		return VMM_EFAIL;
-	}
-	if (s->guest->id != vcpu->guest->id) {
-		return VMM_EFAIL;
-	}
-
-	rc = pl190_emulator_read(s, offset & 0xFFC, &regval);
-
+	rc = pl190_reg_read(edev->priv, offset, &regval);
 	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *) dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *) dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *) dst = vmm_cpu_to_le32(regval);
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
+		*dst = regval & 0xFF;
 	}
 
 	return rc;
 }
 
-static int pl190_emulator_device_write(struct vmm_emudev *edev,
-					 physical_addr_t offset, void *src,
-					 u32 src_len)
+static int pl190_emulator_read16(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u16 *dst)
 {
-	struct vmm_vcpu *vcpu = NULL;
-	int rc = VMM_OK, i;
-	u32 regmask = 0x0, regval = 0x0;
-	struct pl190_emulator_state *s = edev->priv;
+	int rc;
+	u32 regval = 0x0;
 
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *) src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *) src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *) src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
+	rc = pl190_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
 	}
-	regval = (regval << ((offset & 0x3) * 8));
-
-	vcpu = vmm_scheduler_current_vcpu();
-	if (!vcpu || !vcpu->guest) {
-		return VMM_EFAIL;
-	}
-	if (s->guest->id != vcpu->guest->id) {
-		return VMM_EFAIL;
-	}
-
-	rc = pl190_emulator_write(s, offset & 0xFFC, regmask, regval);
 
 	return rc;
+}
+
+static int pl190_emulator_read32(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u32 *dst)
+{
+	return pl190_reg_read(edev->priv, offset, dst);
+}
+
+static int pl190_emulator_write8(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u8 src)
+{
+	return pl190_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int pl190_emulator_write16(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u16 src)
+{
+	return pl190_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int pl190_emulator_write32(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u32 src)
+{
+	return pl190_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int pl190_emulator_reset(struct vmm_emudev *edev)
@@ -540,9 +507,14 @@ static struct vmm_devtree_nodeid pl190_emulator_emuid_table[] = {
 static struct vmm_emulator pl190_emulator = {
 	.name = "pl190",
 	.match_table = pl190_emulator_emuid_table,
+	.endian = VMM_EMULATOR_LITTLE_ENDIAN,
 	.probe = pl190_emulator_probe,
-	.read = pl190_emulator_device_read,
-	.write = pl190_emulator_device_write,
+	.read8 = pl190_emulator_read8,
+	.write8 = pl190_emulator_write8,
+	.read16 = pl190_emulator_read16,
+	.write16 = pl190_emulator_write16,
+	.read32 = pl190_emulator_read32,
+	.write32 = pl190_emulator_write32,
 	.reset = pl190_emulator_reset,
 	.remove = pl190_emulator_remove,
 };

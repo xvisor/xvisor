@@ -40,9 +40,7 @@
 #include <vmm_timer.h>
 #include <vmm_workqueue.h>
 #include <vmm_manager.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <libs/stringlib.h>
 #include <libs/mathlib.h>
 
 #define MODULE_DESC			"Realview Sysctl Emulator"
@@ -113,85 +111,82 @@ static int board_id(struct arm_sysregs *s)
     return (s->sys_id >> 16) & 0xfff;
 }
 
-static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
-			    	     physical_addr_t offset, 
-				     void *dst, u32 dst_len)
+static int arm_sysregs_reg_read(struct arm_sysregs *s,
+				u32 offset, u32 *dst)
 {
 	int rc = VMM_OK;
-	u32 regval = 0x0;
 	u64 tdiff;
-	struct arm_sysregs *s = edev->priv;
 
 	vmm_read_lock(&s->lock);
 
 	switch (offset & ~0x3) {
 	case 0x00: /* ID */
-		regval = s->sys_id;
+		*dst = s->sys_id;
 		break;
 	case 0x04: /* SW */
 		/* General purpose hardware switches.
 		We don't have a useful way of exposing these to the user.  */
-		regval = 0;
+		*dst = 0;
 		break;
 	case 0x08: /* LED */
-		regval = s->leds;
+		*dst = s->leds;
 		break;
 	case 0x20: /* LOCK */
-		regval = s->lockval;
+		*dst = s->lockval;
 		break;
 	case 0x0c: /* OSC0 */
 	case 0x10: /* OSC1 */
 	case 0x14: /* OSC2 */
 	case 0x18: /* OSC3 */
 	case 0x1c: /* OSC4 */
-		regval = 0;
+		*dst = 0;
 		break;
 	case 0x24: /* 100HZ */
 		tdiff = vmm_timer_timestamp() - s->ref_100hz;
-		regval = udiv64(tdiff, 10000000);
+		*dst = udiv64(tdiff, 10000000);
 		break;
 	case 0x28: /* CFGDATA1 */
-		regval = s->cfgdata1;
+		*dst = s->cfgdata1;
 		break;
 	case 0x2c: /* CFGDATA2 */
-		regval = s->cfgdata2;
+		*dst = s->cfgdata2;
 		break;
 	case 0x30: /* FLAGS */
-		regval = s->flags;
+		*dst = s->flags;
 		break;
 	case 0x38: /* NVFLAGS */
-		regval = s->nvflags;
+		*dst = s->nvflags;
 		break;
 	case 0x40: /* RESETCTL */
 		if (board_id(s) == BOARD_ID_VEXPRESS) {
 			/* reserved: RAZ/WI */
-			regval = 0;
+			*dst = 0;
 		} else {
-			regval = s->resetlevel;
+			*dst = s->resetlevel;
 		}
 		break;
 	case 0x44: /* PCICTL */
-		regval = 1;
+		*dst = 1;
 		break;
 	case 0x48: /* MCI */
-		regval = s->sys_mci;
+		*dst = s->sys_mci;
 		break;
 	case 0x4c: /* FLASH */
-		regval = 0;
+		*dst = 0;
 		break;
 	case 0x50: /* CLCD */
-		regval = s->sys_clcd;
+		*dst = s->sys_clcd;
 		break;
 	case 0x54: /* CLCDSER */
-		regval = 0;
+		*dst = 0;
 		break;
 	case 0x58: /* BOOTCS */
-		regval = 0;
+		*dst = 0;
 		break;
 	case 0x5c: /* 24MHz */
 		tdiff = vmm_timer_timestamp() - s->ref_100hz;
 		/* Note: What we want is the below value 
-		 * regval = udiv64(tdiff * 24, 1000);
+		 * *dst = udiv64(tdiff * 24, 1000);
 		 * In integer arithmetic division by constant can be simplified
 		 * (a * 24) / 1000
 		 * = a * (24 / 1000)
@@ -202,16 +197,16 @@ static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
 		 * ~ (a * 3) >> 7 + (a * 9) >> 14 
 		 */
 		tdiff = ((tdiff * 3) >> 7) + ((tdiff * 9) >> 14);
-		regval = tdiff;
+		*dst = tdiff;
 		break;
 	case 0x60: /* MISC */
-		regval = 0;
+		*dst = 0;
 		break;
 	case 0x84: /* PROCID0 */
-		regval = s->proc_id;
+		*dst = s->proc_id;
 		break;
 	case 0x88: /* PROCID1 */
-		regval = 0xff000000;
+		*dst = 0xff000000;
 		break;
 	case 0x64: /* DMAPSR0 */
 	case 0x68: /* DMAPSR1 */
@@ -229,31 +224,31 @@ static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
 	case 0xc8: /* SYS_TEST_OSC2 */
 	case 0xcc: /* SYS_TEST_OSC3 */
 	case 0xd0: /* SYS_TEST_OSC4 */
-		regval = 0;
+		*dst = 0;
 		break;
 	case 0xa0: /* SYS_CFGDATA */
 		if (board_id(s) != BOARD_ID_VEXPRESS) {
 			rc = VMM_EFAIL;
 		} else {
-			regval = s->sys_cfgdata;
+			*dst = s->sys_cfgdata;
 		}
 		break;
 	case 0xa4: /* SYS_CFGCTRL */
 		if (board_id(s) != BOARD_ID_VEXPRESS) {
 			rc = VMM_EFAIL;
 		} else {
-			regval = s->sys_cfgctrl;
+			*dst = s->sys_cfgctrl;
 		}
 		break;
 	case 0xa8: /* SYS_CFGSTAT */
 		if (board_id(s) != BOARD_ID_VEXPRESS) {
 			rc = VMM_EFAIL;
 		} else {
-			regval = s->sys_cfgstat;
+			*dst = s->sys_cfgstat;
 		}
 		break;
 	case 0xd8: /* PLDCTL1 */
-		regval = 0;
+		*dst = 0;
 		break;
 	default:
 		rc = VMM_EFAIL;
@@ -261,24 +256,6 @@ static int arm_sysregs_emulator_read(struct vmm_emudev *edev,
 	}
 
 	vmm_read_unlock(&s->lock);
-
-	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *)dst = vmm_cpu_to_le32(regval);
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
-	}
 
 	return rc;
 }
@@ -297,7 +274,6 @@ static void arm_sysregs_reboot(struct vmm_work *w)
 	vmm_manager_guest_reset(s->guest);
 	vmm_manager_guest_kick(s->guest);
 }
-
 
 /* SYS_CFGCTRL functions */
 #define SYS_CFG_OSC 1
@@ -457,36 +433,10 @@ cfgctrl_unimp:
 	return FALSE;
 }
 
-static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
-				      physical_addr_t offset, 
-				      void *src, u32 src_len)
+static int arm_sysregs_reg_write(struct arm_sysregs *s,
+				 u32 offset, u32 regmask, u32 regval)
 {
-	int rc = VMM_OK, i;
-	u32 regmask = 0x0, regval = 0x0;
-	struct arm_sysregs *s = edev->priv;
-
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
-	}
-	regval = (regval << ((offset & 0x3) * 8));
+	int rc = VMM_OK;
 
 	vmm_write_lock(&s->lock);
 
@@ -691,6 +641,64 @@ static int arm_sysregs_emulator_write(struct vmm_emudev *edev,
 	vmm_write_unlock(&s->lock);
 
 	return rc;
+}
+
+static int arm_sysregs_emulator_read8(struct vmm_emudev *edev,
+				      physical_addr_t offset, 
+				      u8 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = arm_sysregs_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFF;
+	}
+
+	return rc;
+}
+
+static int arm_sysregs_emulator_read16(struct vmm_emudev *edev,
+				       physical_addr_t offset, 
+				       u16 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = arm_sysregs_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
+	}
+
+	return rc;
+}
+
+static int arm_sysregs_emulator_read32(struct vmm_emudev *edev,
+				       physical_addr_t offset, 
+				       u32 *dst)
+{
+	return arm_sysregs_reg_read(edev->priv, offset, dst);
+}
+
+static int arm_sysregs_emulator_write8(struct vmm_emudev *edev,
+				       physical_addr_t offset, 
+				       u8 src)
+{
+	return arm_sysregs_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int arm_sysregs_emulator_write16(struct vmm_emudev *edev,
+					physical_addr_t offset, 
+					u16 src)
+{
+	return arm_sysregs_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int arm_sysregs_emulator_write32(struct vmm_emudev *edev,
+					physical_addr_t offset, 
+					u32 src)
+{
+	return arm_sysregs_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int arm_sysregs_emulator_reset(struct vmm_emudev *edev)
@@ -982,9 +990,14 @@ static struct vmm_devtree_nodeid arm_sysregs_emuid_table[] = {
 static struct vmm_emulator arm_sysregs_emulator = {
 	.name = "arm_sysregs",
 	.match_table = arm_sysregs_emuid_table,
+	.endian = VMM_EMULATOR_LITTLE_ENDIAN,
 	.probe = arm_sysregs_emulator_probe,
-	.read = arm_sysregs_emulator_read,
-	.write = arm_sysregs_emulator_write,
+	.read8 = arm_sysregs_emulator_read8,
+	.write8 = arm_sysregs_emulator_write8,
+	.read16 = arm_sysregs_emulator_read16,
+	.write16 = arm_sysregs_emulator_write16,
+	.read32 = arm_sysregs_emulator_read32,
+	.write32 = arm_sysregs_emulator_write32,
 	.reset = arm_sysregs_emulator_reset,
 	.remove = arm_sysregs_emulator_remove,
 };

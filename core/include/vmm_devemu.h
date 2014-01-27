@@ -31,19 +31,46 @@
 struct vmm_emudev;
 struct vmm_emulator;
 
+enum vmm_emulator_endianness {
+	VMM_EMULATOR_UNKNOWN_ENDIAN=0,
+	VMM_EMULATOR_NATIVE_ENDIAN=1,
+	VMM_EMULATOR_LITTLE_ENDIAN=2,
+	VMM_EMULATOR_BIG_ENDIAN=3,
+	VMM_EMULATOR_MAX_ENDIAN=4,
+};
+
 struct vmm_emulator {
 	struct dlist head;
 	char name[VMM_FIELD_NAME_SIZE];
 	const struct vmm_devtree_nodeid *match_table;
+	enum vmm_emulator_endianness endian;
 	int (*probe) (struct vmm_guest *guest,
 		      struct vmm_emudev *edev,
 		      const struct vmm_devtree_nodeid *nodeid);
-	int (*read) (struct vmm_emudev *edev,
-		     physical_addr_t offset, 
-		     void *dst, u32 dst_len);
-	int (*write) (struct vmm_emudev *edev,
-		      physical_addr_t offset, 
-		      void *src, u32 src_len);
+	int (*read8) (struct vmm_emudev *edev,
+		      physical_addr_t offset,
+		      u8 *dst);
+	int (*write8) (struct vmm_emudev *edev,
+		       physical_addr_t offset,
+		       u8 src);
+	int (*read16) (struct vmm_emudev *edev,
+		       physical_addr_t offset,
+		       u16 *dst);
+	int (*write16) (struct vmm_emudev *edev,
+		        physical_addr_t offset,
+		        u16 src);
+	int (*read32) (struct vmm_emudev *edev,
+		       physical_addr_t offset,
+		       u32 *dst);
+	int (*write32) (struct vmm_emudev *edev,
+		        physical_addr_t offset,
+		        u32 src);
+	int (*read64) (struct vmm_emudev *edev,
+		       physical_addr_t offset,
+		       u64 *dst);
+	int (*write64) (struct vmm_emudev *edev,
+		        physical_addr_t offset,
+		        u64 src);
 	int (*reset) (struct vmm_emudev *edev);
 	int (*remove) (struct vmm_emudev *edev);
 };

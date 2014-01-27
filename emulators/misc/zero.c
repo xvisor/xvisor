@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
 
 #define MODULE_DESC			"Zero Device Emulator"
@@ -34,34 +33,54 @@
 #define	MODULE_INIT			zero_emulator_init
 #define	MODULE_EXIT			zero_emulator_exit
 
-static int zero_emulator_read(struct vmm_emudev *edev,
+static int zero_emulator_read8(struct vmm_emudev *edev,
 			       physical_addr_t offset, 
-			       void *dst, u32 dst_len)
+			       u8 *dst)
 {
-	int rc = VMM_OK;
-
-	switch (dst_len) {
-	case 1:
-		*(u8 *)dst = 0x0;
-		break;
-	case 2:
-		*(u16 *)dst = 0x0;
-		break;
-	case 4:
-		*(u32 *)dst = 0x0;
-		break;
-	default:
-		rc = VMM_EFAIL;
-		break;
-	};
-
-	return rc;
+	/* Always read zero */
+	*dst = 0x0;
+	return VMM_OK;
 }
 
-static int zero_emulator_write(struct vmm_emudev *edev,
+static int zero_emulator_read16(struct vmm_emudev *edev,
 				physical_addr_t offset, 
-				void *src, u32 src_len)
+				u16 *dst)
 {
+	/* Always read zero */
+	*dst = 0x0;
+	return VMM_OK;
+}
+
+static int zero_emulator_read32(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u32 *dst)
+{
+	/* Always read zero */
+	*dst = 0x0;
+	return VMM_OK;
+}
+
+static int zero_emulator_write8(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u8 src)
+{
+	/* Ignore it. */
+	return VMM_OK;
+}
+
+static int zero_emulator_write16(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u16 src)
+{
+	/* Ignore it. */
+	return VMM_OK;
+}
+
+static int zero_emulator_write32(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u32 src)
+{
+	/* Ignore it. */
 	return VMM_OK;
 }
 
@@ -94,9 +113,14 @@ static struct vmm_devtree_nodeid zero_emuid_table[] = {
 static struct vmm_emulator zero_emulator = {
 	.name = "zero",
 	.match_table = zero_emuid_table,
+	.endian = VMM_EMULATOR_LITTLE_ENDIAN,
 	.probe = zero_emulator_probe,
-	.read = zero_emulator_read,
-	.write = zero_emulator_write,
+	.read8 = zero_emulator_read8,
+	.write8 = zero_emulator_write8,
+	.read16 = zero_emulator_read16,
+	.write16 = zero_emulator_write16,
+	.read32 = zero_emulator_read32,
+	.write32 = zero_emulator_write32,
 	.reset = zero_emulator_reset,
 	.remove = zero_emulator_remove,
 };
