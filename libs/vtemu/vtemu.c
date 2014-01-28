@@ -1189,6 +1189,9 @@ struct vtemu *vtemu_create(const char *name,
 	}
 	INIT_COMPLETION(&v->in_done);
 
+	/* Erase everything */
+	vtemu_blank_display(v);
+
 	/* Draw cursor */
 	vtemu_cursor_draw(v);
 
