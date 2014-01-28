@@ -239,6 +239,8 @@
 			      		reg = <0x1C1F0000 0x1000>;
 					clocks = <&v2m_oscclk1>, <&smbclk>;
 					clock-names = "clcdclk", "apb_pclk";
+					use_dma = <0>;
+					framebuffer = <0x18000000 0x00180000>;
 				};
 			};
 

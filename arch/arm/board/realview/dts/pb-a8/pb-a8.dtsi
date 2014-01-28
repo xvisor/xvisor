@@ -28,6 +28,7 @@
 	      		device_type = "fb";
 	      		compatible = "arm,pl111";
 	      		reg = <0x10020000 0x1000>;
+			use_dma = <1>;
 		};
 
 		eth0 {

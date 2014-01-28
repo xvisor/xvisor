@@ -155,25 +155,61 @@ struct clcd_panel *versatile_clcd_get_panel(const char *name)
 int versatile_clcd_setup(struct clcd_fb *fb, unsigned long framesize)
 {
 	int rc;
+	u32 use_dma;
+	const char *attr;
+	void *screen_base;
+	unsigned long smem_len;
 	physical_addr_t smem_pa;
 
-	fb->fb.screen_base = (void *)vmm_host_alloc_pages(
-						  VMM_SIZE_TO_PAGE(framesize),
-						  VMM_MEMORY_READABLE | 
-						  VMM_MEMORY_WRITEABLE);
-
-	if (!fb->fb.screen_base) {
-		vmm_printf("CLCD: unable to map framebuffer\n");
-		return VMM_ENOMEM;
+	if (!fb->dev->node) {
+		return VMM_EINVALID;
 	}
 
-	rc = vmm_host_va2pa((virtual_addr_t)fb->fb.screen_base, &smem_pa);
-	if (rc) {
-		return rc;
+	attr = vmm_devtree_attrval(fb->dev->node, "use_dma");
+	if (!attr) {
+		use_dma = 0;
+	} else {
+		use_dma = *((u32 *)attr);
+	}
+	
+	if (use_dma) {
+		smem_len = framesize;
+
+		screen_base = (void *)vmm_host_alloc_pages(
+				VMM_SIZE_TO_PAGE(smem_len),
+				VMM_MEMORY_READABLE | VMM_MEMORY_WRITEABLE);
+		if (!screen_base) {
+			vmm_printf("CLCD: unable to alloc framebuffer\n");
+			return VMM_ENOMEM;
+		}
+
+		rc = vmm_host_va2pa((virtual_addr_t)screen_base, &smem_pa);
+		if (rc) {
+			return rc;
+		}
+	} else {
+		attr = vmm_devtree_attrval(fb->dev->node, "framebuffer");
+		if (!attr) {
+			return VMM_ENODEV;
+		}
+
+		smem_pa = ((u32 *)attr)[0];
+		smem_len = ((u32 *)attr)[1];
+
+		if (smem_len < framesize) {
+			return VMM_ENOMEM;
+		}
+
+		screen_base = (void *)vmm_host_iomap(smem_pa, smem_len);
+		if (!screen_base) {
+			vmm_printf("CLCD: unable to map framebuffer\n");
+			return VMM_ENOMEM;
+		}
 	}
 
+	fb->fb.screen_base	= screen_base;
 	fb->fb.fix.smem_start	= smem_pa;
-	fb->fb.fix.smem_len	= framesize;
+	fb->fb.fix.smem_len	= smem_len;
 
 	return 0;
 }
