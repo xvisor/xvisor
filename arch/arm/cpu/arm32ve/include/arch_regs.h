@@ -84,8 +84,8 @@ struct arm_priv_cp15 {
 	u32 c0_cssel; /* Cache size selection. */
 	u32 c1_sctlr; /* System control register. */
 	u32 c1_cpacr; /* Coprocessor access register.  */
-	u32 c2_ttbr0; /* MMU translation table base 0. */
-	u32 c2_ttbr1; /* MMU translation table base 1. */
+	u64 c2_ttbr0; /* MMU translation table base 0. */
+	u64 c2_ttbr1; /* MMU translation table base 1. */
 	u32 c2_ttbcr; /* MMU translation table base control. */
 	u32 c3_dacr; /* MMU domain access control register */
 	u32 c5_ifsr; /* Fault status registers. */
@@ -104,8 +104,8 @@ struct arm_priv_cp15 {
 	u32 c9_pmxevtyper; /* perf monitor event type */
 	u32 c9_pmuserenr; /* perf monitor user enable */
 	u32 c9_pminten; /* perf monitor interrupt enables */
-	u32 c10_prrr;
-	u32 c10_nmrr;
+	u32 c10_prrr;  /* For Long-descriptor format this is MAIR0 */
+	u32 c10_nmrr;  /* For Long-descriptor format this is MAIR1 */
 	u32 c12_vbar; /* Vector base address register */
 	u32 c13_fcseidr; /* FCSE PID. */
 	u32 c13_contextidr; /* Context ID. */

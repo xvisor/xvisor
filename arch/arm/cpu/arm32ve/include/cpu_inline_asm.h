@@ -179,6 +179,16 @@
 				" mcr     p15, 0, %0, c2, c0, 0\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
+#define read_ttbr0_long()	({ u32 v1, v2; asm volatile(\
+				" mrrc     p15, 0, %0, %1, c2\n\t" \
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
+
+#define write_ttbr0_long(val)	asm volatile(\
+				" mcrr     p15, 0, %0, %1, c2\n\t" \
+				:: "r" ((val) & 0xFFFFFFFF), "r" ((val) >> 32) \
+				: "memory", "cc")
+
 #define read_ttbr1()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c2, c0, 1\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
@@ -186,6 +196,16 @@
 #define write_ttbr1(val)	asm volatile(\
 				" mcr     p15, 0, %0, c2, c0, 1\n\t" \
 				:: "r" ((val)) : "memory", "cc")
+
+#define read_ttbr1_long()	({ u32 v1, v2; asm volatile(\
+				" mrrc     p15, 1, %0, %1, c2\n\t" \
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
+
+#define write_ttbr1_long(val)	asm volatile(\
+				" mcrr     p15, 1, %0, %1, c2\n\t" \
+				:: "r" ((val) & 0xFFFFFFFF), "r" ((val) >> 32) \
+				: "memory", "cc")
 
 #define read_ttbcr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c2, c0, 2\n\t" \

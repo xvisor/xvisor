@@ -349,8 +349,8 @@ void cpu_vcpu_cp15_regs_save(struct vmm_vcpu *vcpu)
 	cp15->c0_cssel = read_csselr();
 	cp15->c1_sctlr = read_sctlr();
 	cp15->c1_cpacr = read_cpacr();
-	cp15->c2_ttbr0 = read_ttbr0();
-	cp15->c2_ttbr1 = read_ttbr1();
+	cp15->c2_ttbr0 = read_ttbr0_long();
+	cp15->c2_ttbr1 = read_ttbr1_long();
 	cp15->c2_ttbcr = read_ttbcr();
 	cp15->c3_dacr = read_dacr();
 	cp15->c5_ifsr = read_ifsr();
@@ -380,8 +380,8 @@ void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu)
 	write_csselr(cp15->c0_cssel);
 	write_sctlr(cp15->c1_sctlr);
 	write_cpacr(cp15->c1_cpacr);
-	write_ttbr0(cp15->c2_ttbr0);
-	write_ttbr1(cp15->c2_ttbr1);
+	write_ttbr0_long(cp15->c2_ttbr0);
+	write_ttbr1_long(cp15->c2_ttbr1);
 	write_ttbcr(cp15->c2_ttbcr);
 	write_dacr(cp15->c3_dacr);
 	write_ifsr(cp15->c5_ifsr);
@@ -462,13 +462,14 @@ void cpu_vcpu_cp15_regs_dump(struct vmm_chardev *cdev,
 		    "FCSEIDR", cp15->c13_fcseidr,
 		    "CNTXIDR", cp15->c13_contextidr);
 	vmm_cprintf(cdev, "CP15 MMU Registers\n");
-	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+	vmm_cprintf(cdev, " %7s=0x%016llx %7s=0x%016llx\n",
 		    "TTBR0", cp15->c2_ttbr0,
-		    "TTBR1", cp15->c2_ttbr1,
-		    "TTBCR", cp15->c2_ttbcr);
+		    "TTBR1", cp15->c2_ttbr1);
 	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
+		    "TTBCR", cp15->c2_ttbcr,
 		    "DACR", cp15->c3_dacr,
-		    "PRRR", cp15->c10_prrr,
+		    "PRRR", cp15->c10_prrr);
+	vmm_cprintf(cdev, " %7s=0x%08x\n",
 		    "NMRR", cp15->c10_nmrr);
 	vmm_cprintf(cdev, "CP15 Fault Status Registers\n");
 	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x %7s=0x%08x\n",
