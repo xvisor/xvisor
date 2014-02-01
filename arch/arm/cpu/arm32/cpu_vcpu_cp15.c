@@ -2080,7 +2080,6 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			}
 			/* TPIDRPRW */
 			cp15->c13_tls3 = data;
-			write_tpidrprw(data);
 			break;
 		default:
 			goto bad_reg;
@@ -2166,7 +2165,6 @@ void cpu_vcpu_cp15_regs_save(struct vmm_vcpu *vcpu)
 
 	cp15->c13_tls1 = read_tpidrurw();
 	cp15->c13_tls2 = read_tpidruro();
-	cp15->c13_tls3 = read_tpidrprw();
 }
 
 void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu)
@@ -2177,7 +2175,6 @@ void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu)
 	cpu_mmu_change_ttbr(cp15->l1);
 	write_tpidrurw(cp15->c13_tls1);
 	write_tpidruro(cp15->c13_tls2);
-	write_tpidrprw(cp15->c13_tls3);
 	if (cp15->inv_icache) {
 		cp15->inv_icache = FALSE;
 		invalidate_icache();
