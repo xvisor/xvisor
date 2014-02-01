@@ -134,7 +134,8 @@ int vmm_host_va2pa(virtual_addr_t va, physical_addr_t *pa)
 	return VMM_OK;
 }
 
-u32 vmm_host_memory_read(physical_addr_t hpa, void *dst, u32 len)
+u32 vmm_host_memory_read(physical_addr_t hpa,
+			 void *dst, u32 len, bool cacheable)
 {
 	int rc;
 	irq_flags_t flags;
@@ -155,7 +156,9 @@ u32 vmm_host_memory_read(physical_addr_t hpa, void *dst, u32 len)
 
 #if !defined(ARCH_HAS_MEMORY_READ)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
-					 VMM_MEMORY_FLAGS_NORMAL);
+					 (cacheable) ?
+					 VMM_MEMORY_FLAGS_NORMAL :
+					 VMM_MEMORY_FLAGS_NORMAL_NOCACHE);
 		if (rc) {
 			break;
 		}
@@ -167,7 +170,8 @@ u32 vmm_host_memory_read(physical_addr_t hpa, void *dst, u32 len)
 			break;
 		}
 #else
-		rc = arch_cpu_aspace_memory_read(tmp_va, hpa, dst, len);
+		rc = arch_cpu_aspace_memory_read(tmp_va, hpa,
+						 dst, len, cacheable);
 		if (rc) {
 			break;
 		}
@@ -183,7 +187,8 @@ u32 vmm_host_memory_read(physical_addr_t hpa, void *dst, u32 len)
 	return bytes_read;
 }
 
-u32 vmm_host_memory_write(physical_addr_t hpa, void *src, u32 len)
+u32 vmm_host_memory_write(physical_addr_t hpa,
+			  void *src, u32 len, bool cacheable)
 {
 	int rc;
 	irq_flags_t flags;
@@ -204,7 +209,9 @@ u32 vmm_host_memory_write(physical_addr_t hpa, void *src, u32 len)
 
 #if !defined(ARCH_HAS_MEMORY_WRITE)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
-					 VMM_MEMORY_FLAGS_NORMAL);
+					 (cacheable) ?
+					 VMM_MEMORY_FLAGS_NORMAL :
+					 VMM_MEMORY_FLAGS_NORMAL_NOCACHE);
 		if (rc) {
 			break;
 		}
@@ -216,7 +223,8 @@ u32 vmm_host_memory_write(physical_addr_t hpa, void *src, u32 len)
 			break;
 		}
 #else
-		rc = arch_cpu_aspace_memory_write(tmp_va, hpa, src, page_write);
+		rc = arch_cpu_aspace_memory_write(tmp_va, hpa,
+						  src, page_write, cacheable);
 		if (rc) {
 			break;
 		}

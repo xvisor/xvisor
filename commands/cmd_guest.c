@@ -249,7 +249,7 @@ static int cmd_guest_dumpmem(struct vmm_chardev *cdev, const char *name,
 	}
 	while (total_loaded < len) {
 		loaded = vmm_guest_memory_read(guest, gphys_addr,
-					       buf, BYTES_PER_LINE);
+					       buf, BYTES_PER_LINE, FALSE);
 		if (loaded != BYTES_PER_LINE) {
 			break;
 		}

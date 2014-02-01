@@ -162,8 +162,9 @@ int cpu_vcpu_data_abort(struct vmm_vcpu *vcpu,
 			inst_pa |= (regs->pc & 0x00000FFF);
 
 			/* Read the faulting instruction */
-			read_count = 
-			    vmm_host_memory_read(inst_pa, &inst, sizeof(inst));
+			/* FIXME: Should this be cacheable memory access ? */
+			read_count = vmm_host_memory_read(inst_pa,
+						&inst, sizeof(inst), TRUE);
 			if (read_count != sizeof(inst)) {
 				return VMM_EFAIL;
 			}

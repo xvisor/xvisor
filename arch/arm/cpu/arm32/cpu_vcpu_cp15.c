@@ -330,8 +330,9 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	table = get_level1_table_pa(cp15, va);
 
 	table |= (va >> 18) & 0x3ffc;
+	/* FIXME: Should this be cacheable memory access ? */
 	if (!vmm_guest_memory_read(vcpu->guest, table, 
-				   &desc, sizeof(desc))) {
+				   &desc, sizeof(desc), TRUE)) {
 		return VMM_EFAIL;
 	}
 	type = (desc & 3);
@@ -377,8 +378,9 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		/* Lookup l2 entry. */
 		table = (desc & 0xfffffc00);
 		table |= ((va >> 10) & 0x3fc);
+		/* FIXME: Should this be cacheable memory access ? */
 		if (!vmm_guest_memory_read(vcpu->guest, table, 
-					   &desc, sizeof(desc))) {
+					   &desc, sizeof(desc), TRUE)) {
 			return VMM_EFAIL;
 		}
 		switch (desc & 3) {
@@ -457,8 +459,9 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	table |= (va >> 18) & 0x3ffc;
 
 	/* get it */
+	/* FIXME: Should this be cacheable memory access ? */
 	if (!vmm_guest_memory_read(vcpu->guest, table, 
-				   &desc, sizeof(desc))) {
+				   &desc, sizeof(desc), TRUE)) {
 		goto do_fault;
 	}
 
@@ -509,8 +512,9 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		table |= ((va >> 10) & 0x3fc);
 
 		/* get it */
+		/* FIXME: Should this be cacheable memory access ? */
 		if (!vmm_guest_memory_read(vcpu->guest, table,
-					   &desc, sizeof(desc))) {
+					   &desc, sizeof(desc), TRUE)) {
 			goto do_fault;
 		}
 
@@ -552,8 +556,9 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		table = (desc & 0xfffff000);
 		table |= ((va >> 8) & 0xffc);
 
+		/* FIXME: Should this be cacheable memory access ? */
 		if (!vmm_guest_memory_read(vcpu->guest, table,
-					   &desc, sizeof(desc))) {
+					   &desc, sizeof(desc), TRUE)) {
 			goto do_fault;
 		}
 

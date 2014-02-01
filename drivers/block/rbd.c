@@ -54,11 +54,11 @@ static int rbd_make_request(struct vmm_request_queue *rq,
 
 	switch (r->type) {
 	case VMM_REQUEST_READ:
-		vmm_host_memory_read(pa, r->data, sz);
+		vmm_host_memory_read(pa, r->data, sz, TRUE);
 		vmm_blockdev_complete_request(r);
 		break;
 	case VMM_REQUEST_WRITE:
-		vmm_host_memory_write(pa, r->data, sz);
+		vmm_host_memory_write(pa, r->data, sz, TRUE);
 		vmm_blockdev_complete_request(r);
 		break;
 	default:

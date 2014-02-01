@@ -96,8 +96,9 @@ static u64 guest_read_fault_inst(struct vcpu_hw_context *context)
 	physical_addr_t rip_phys = guest_virtual_to_physical(context, context->vmcb->rip);
 	if (rip_phys) {
 		rip_phys = (context->vmcb->cs.sel << 4) | rip_phys;
+		/* FIXME: Should we always do cacheable memory access here ?? */
 		if (vmm_guest_memory_read(context->assoc_vcpu->guest, rip_phys,
-					  &g_ins, sizeof(g_ins)) < sizeof(g_ins)) {
+					  &g_ins, sizeof(g_ins), TRUE) < sizeof(g_ins)) {
 			VM_LOG(LVL_ERR, "Failed to read instruction at intercepted "
 			       "instruction pointer. (%x)\n", rip_phys);
 			return 0;

@@ -72,6 +72,10 @@ enum vmm_host_memory_flags {
 					 VMM_MEMORY_CACHEABLE | \
 					 VMM_MEMORY_BUFFERABLE)
 
+#define VMM_MEMORY_FLAGS_NORMAL_NOCACHE	(VMM_MEMORY_READABLE | \
+					 VMM_MEMORY_WRITEABLE | \
+					 VMM_MEMORY_EXECUTABLE)
+
 #define VMM_MEMORY_FLAGS_NORMAL_WT	(VMM_MEMORY_READABLE | \
 					 VMM_MEMORY_WRITEABLE | \
 					 VMM_MEMORY_EXECUTABLE | \
@@ -115,12 +119,14 @@ int vmm_host_va2pa(virtual_addr_t va, physical_addr_t *pa);
 /** Read from host memory
  *  Note: We assume non-IO (or non-device) physical address
  */
-u32 vmm_host_memory_read(physical_addr_t hpa, void *dst, u32 len);
+u32 vmm_host_memory_read(physical_addr_t hpa,
+			 void *dst, u32 len, bool cacheable);
 
 /** Write to host memory
  *  Note: We assume non-IO (or non-device) physical address
  */
-u32 vmm_host_memory_write(physical_addr_t hpa, void *src, u32 len);
+u32 vmm_host_memory_write(physical_addr_t hpa,
+			  void *src, u32 len, bool cacheable);
 
 /** Free memory used by initialization functions */
 u32 vmm_host_free_initmem(void);

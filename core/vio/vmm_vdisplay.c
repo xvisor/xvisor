@@ -249,7 +249,7 @@ void vmm_surface_update(struct vmm_surface *s,
 				sdiv32((chunk_len * dst_row_pitch), src_width);
 			
 			len = vmm_guest_memory_read(guest, src_gphys,
-						    chunk, chunk_len);
+						    chunk, chunk_len, FALSE);
 			if (len != chunk_len) {
 				goto next_chunk;
 			}

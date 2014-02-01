@@ -516,9 +516,10 @@ static int cmd_vfs_load(struct vmm_chardev *cdev,
 		rd_off += buf_count;
 		if (guest) {
 			buf_wr = vmm_guest_memory_write(guest, wr_pa,
-							buf, buf_count);
+							buf, buf_count, FALSE);
 		} else {
-			buf_wr = vmm_host_memory_write(wr_pa, buf, buf_count);
+			buf_wr = vmm_host_memory_write(wr_pa,
+						       buf, buf_count, FALSE);
 		}
 		if (buf_wr != buf_count) {
 			vmm_cprintf(cdev, "Failed to write "

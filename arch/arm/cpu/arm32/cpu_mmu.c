@@ -1362,7 +1362,7 @@ int cpu_mmu_sync_ttbr_va(struct cpu_l1tbl *l1, virtual_addr_t va)
 
 int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va, 
 			   	physical_addr_t src, 
-				void *dst, u32 len)
+				void *dst, u32 len, bool cacheable)
 {
 	int rc;
 	struct cpu_page p;
@@ -1381,8 +1381,8 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 	p.ap = TTBL_AP_SRW_U;
 	p.xn = 1;
 	p.tex = 0;
-	p.c = 1;
-	p.b = 1;
+	p.c = (cacheable) ? 1 : 0;
+	p.b = (cacheable) ? 1 : 0;
 	p.ng = 0;
 	p.s = 0;
 
@@ -1414,7 +1414,7 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 
 int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va, 
 				 physical_addr_t dst, 
-				 void *src, u32 len)
+				 void *src, u32 len, bool cacheable)
 {
 	int rc;
 	struct cpu_page p;
@@ -1433,8 +1433,8 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 	p.ap = TTBL_AP_SRW_U;
 	p.xn = 1;
 	p.tex = 0;
-	p.c = 1;
-	p.b = 1;
+	p.c = (cacheable) ? 1 : 0;
+	p.b = (cacheable) ? 1 : 0;
 	p.ng = 0;
 	p.s = 0;
 
@@ -1486,11 +1486,17 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 			  TTBL_L1TBL_TTE_IMP_MASK)		|	\
 			 ((0x0 << TTBL_L1TBL_TTE_XN_SHIFT) &		\
 			  TTBL_L1TBL_TTE_XN_MASK)		|	\
-			 ((0x1 << TTBL_L1TBL_TTE_C_SHIFT) &		\
-			  TTBL_L1TBL_TTE_C_MASK)		|	\
-			 ((0x1 << TTBL_L1TBL_TTE_B_SHIFT) &		\
-			  TTBL_L1TBL_TTE_B_MASK)		|	\
 			 (TTBL_L1TBL_TTE_TYPE_SECTION))
+
+#define PHYS_RW_L1_TTE_NOCACHE	\
+			 (PHYS_RW_L1_TTE)
+
+#define PHYS_RW_L1_TTE_CACHE	\
+			 (PHYS_RW_L1_TTE |				\
+			  ((0x1 << TTBL_L1TBL_TTE_C_SHIFT) &		\
+			    TTBL_L1TBL_TTE_C_MASK)		|	\
+			  ((0x1 << TTBL_L1TBL_TTE_B_SHIFT) &		\
+			    TTBL_L1TBL_TTE_B_MASK))
 
 #define PHYS_RW_L2_TTE	((TTBL_L2TBL_TTE_TYPE_SMALL_XN)		|	\
 			 ((0x0 << TTBL_L2TBL_TTE_STEX_SHIFT) &		\
@@ -1502,15 +1508,21 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 			 ((TTBL_AP_SRW_U << (TTBL_L2TBL_TTE_AP2_SHIFT - 2)) & \
 			    TTBL_L2TBL_TTE_AP2_MASK)		|	\
 			 ((TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP_SHIFT) &	\
-			    TTBL_L2TBL_TTE_AP_MASK)		|	\
-			 ((0x1 << TTBL_L2TBL_TTE_C_SHIFT) &		\
-			    TTBL_L2TBL_TTE_C_MASK)		|	\
-			 ((0x1 << TTBL_L2TBL_TTE_B_SHIFT) &		\
-			    TTBL_L2TBL_TTE_B_MASK))
+			    TTBL_L2TBL_TTE_AP_MASK))
+
+#define PHYS_RW_L2_TTE_NOCACHE	\
+			 (PHYS_RW_L2_TTE)
+
+#define PHYS_RW_L2_TTE_CACHE	\
+			 (PHYS_RW_L2_TTE |				\
+			  ((0x1 << TTBL_L2TBL_TTE_C_SHIFT) &		\
+			     TTBL_L2TBL_TTE_C_MASK)		|	\
+			  ((0x1 << TTBL_L2TBL_TTE_B_SHIFT) &		\
+			     TTBL_L2TBL_TTE_B_MASK))
 
 int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va, 
 				physical_addr_t src, 
-				void *dst, u32 len)
+				void *dst, u32 len, bool cacheable)
 {
 	u32 *l1_tte = NULL, *l2_tte = NULL;
 	u32 l1_tte_type;
@@ -1543,11 +1555,19 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 	}
 
 	if (l2_tte) {
-		*l2_tte = PHYS_RW_L2_TTE;
+		if (cacheable) {
+			*l2_tte = PHYS_RW_L2_TTE_CACHE;
+		} else {
+			*l2_tte = PHYS_RW_L2_TTE_NOCACHE;
+		}
 		*l2_tte |= (src & TTBL_L2TBL_TTE_BASE12_MASK);
 		cpu_mmu_sync_tte(l2_tte);
 	} else {
-		*l1_tte = PHYS_RW_L1_TTE;
+		if (cacheable) {
+			*l1_tte = PHYS_RW_L1_TTE_CACHE;
+		} else {
+			*l1_tte = PHYS_RW_L1_TTE_NOCACHE;
+		}
 		*l1_tte |= (src & TTBL_L1TBL_TTE_BASE20_MASK);
 		cpu_mmu_sync_tte(l1_tte);
 	}
@@ -1583,7 +1603,7 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 
 int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va, 
 				 physical_addr_t dst, 
-				 void *src, u32 len)
+				 void *src, u32 len, bool cacheable)
 {
 	u32 *l1_tte = NULL, *l2_tte = NULL;
 	u32 l1_tte_type;
