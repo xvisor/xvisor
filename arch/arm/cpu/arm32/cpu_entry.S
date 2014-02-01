@@ -300,6 +300,11 @@ _start_secondary_nopen:
 	ldr	r1, __dacr_mmu_val
 	mcr	p15, 0, r1, c3, c0, 0
 
+#ifdef CONFIG_SMP
+	/* Setup SMP ID for current processor */
+	bl	proc_setup_smp_id
+#endif
+
 	/* Setup System Control Register */
 	bl	proc_setup
 	mcr	p15, 0, r0, c1, c0, 0
@@ -525,8 +530,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_SUPERVISOR
 	ldr	sp, __svc_stack_end
 #ifdef CONFIG_SMP
-	mrc	p15, 0, r10, c0, c0, 5
-	ands	r10, r10, #0xFF
+	bl	arch_smp_id
+	mov	r10, r0
 	mov	r9, #CONFIG_IRQ_STACK_SIZE
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -535,8 +540,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_UNDEFINED
 	ldr	sp, __und_stack_end
 #ifdef CONFIG_SMP
-	mrc	p15, 0, r10, c0, c0, 5
-	ands	r10, r10, #0xFF
+	bl	arch_smp_id
+	mov	r10, r0
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -545,8 +550,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_ABORT
 	ldr	sp, __abt_stack_end
 #ifdef CONFIG_SMP
-	mrc	p15, 0, r10, c0, c0, 5
-	ands	r10, r10, #0xFF
+	bl	arch_smp_id
+	mov	r10, r0
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -555,8 +560,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_IRQ
 	ldr	sp, __irq_stack_end
 #ifdef CONFIG_SMP
-	mrc	p15, 0, r10, c0, c0, 5
-	ands	r10, r10, #0xFF
+	bl	arch_smp_id
+	mov	r10, r0
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -565,8 +570,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_FIQ
 	ldr	sp, __fiq_stack_end
 #ifdef CONFIG_SMP
-	mrc	p15, 0, r10, c0, c0, 5
-	ands	r10, r10, #0xFF
+	bl	arch_smp_id
+	mov	r10, r0
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9

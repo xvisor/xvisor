@@ -278,6 +278,10 @@ _start_secondary_nopen:
 	and	r3, r3, r2
 	orr	r3, r3, r1
 	mcr     p15, 4, r3, c2, c1, 2
+#ifdef CONFIG_SMP
+	/* Setup SMP ID for current processor */
+	bl	proc_setup_smp_id
+#endif
 	/* Setup Hypervisor System Control Register */
 	bl	proc_setup
 	mcr     p15, 4, r0, c1, c0, 0
@@ -471,8 +475,7 @@ _reset:
 	/* Set Hypervisor Mode Stack */
 	ldr	sp, __hvc_stack_end
 #ifdef CONFIG_SMP
-	mrc     p15, 0, r0, c0, c0, 5
-	ands	r0, r0, #0xFF
+	bl	arch_smp_id
 	mov	r1, #CONFIG_IRQ_STACK_SIZE
 	mul	r1, r1, r0
 	sub	sp, sp, r1

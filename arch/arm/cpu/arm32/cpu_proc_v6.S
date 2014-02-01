@@ -157,3 +157,44 @@ v6_crval:
 	.word	0x01e0fb7f /* clear */
 	.word	0x00c0187d /* mmuset */
 
+#ifdef CONFIG_SMP
+	/* 
+	 * Retrive SMP ID of current processor
+	 */
+	.globl arch_smp_id
+arch_smp_id:
+	mrc	p15, 0, r0, c13, c0, 4
+	bx 	lr
+
+	/* 
+	 * Setup SMP ID of current processor
+	 */
+	.globl proc_setup_smp_id
+proc_setup_smp_id:
+	/* SMP ID computation for:
+	 *   ARM11MP
+	 * MPIDR fields:
+	 *   Cluster ID = MPIDR[11:8]
+	 *   CPU ID = MPIDR[3:0]
+	 */
+	mrc     p15, 0, r0, c0, c0, 5
+	mov	r1, r0
+	lsr	r1, r1, #8
+	and	r1, r1, #0xF
+	lsl	r1, r1, #4
+	and	r0, r0, #0xF
+	orr	r0, r1, r0
+
+setup_smp_id_check:
+	/* Ensure that SMP ID in r0
+	 * is less than CONFIG_CPU_COUNT
+	 */
+	ldr	r1, =CONFIG_CPU_COUNT
+	cmp	r0, r1
+	blt	setup_smp_id_done
+	b	.
+
+setup_smp_id_done:
+	mcr	p15, 0, r0, c13, c0, 4
+	bx	lr
+#endif
