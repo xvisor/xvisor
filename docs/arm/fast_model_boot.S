@@ -47,7 +47,7 @@ __gentimer_freq_next:
 
 	/* GIC Distributor Interface Init */
 	mrc	p15, 0, r4, c0, c0, 5		/* MPIDR (ARMv7 only) */
-	and	r4, r4, #0xF			/* CPU number */
+	and	r4, r4, #0xFFFFFF		/* CPU affinity */
 	ldr	r0, __dist_gic_base		/* Dist GIC base */
 	b 	__dist_gic_base_next
 __dist_gic_base:
@@ -102,7 +102,7 @@ __cpu_gic_base_next:
 
 	/* Skip secondary loop for Primary core */
 	mrc	p15, 0, r0, c0, c0, 5		/* MPIDR (ARMv7 only) */
-	and	r0, r0, #15			/* CPU number */
+	and	r0, r0, #0xFFFFFF		/* CPU affinity */
 	cmp	r0, #0				/* primary CPU? */
 	beq	secondary_loop_skip
 

@@ -54,7 +54,8 @@ _start:
 
 	/* GIC Distributor Interface Init */
 	mrs	x4, mpidr_el1
-	and	x4, x4, #0xffff			/* CPU number */
+	ldr	x5, __mpidr_mask
+	and	x4, x4, x5			/* CPU affinity */
 __gic_dist_init:
 	ldr	x0, __gic_dist_base		/* Dist GIC base */
 	mov	x1, #0				/* non-0 cpus should at least */						
@@ -101,7 +102,8 @@ __start_el2:
 _start_el2:
 	/* Skip secondary loop for Primary core */
 	mrs	x4, mpidr_el1
-	ands	x4, x4, #0xffff
+	ldr	x5, __mpidr_mask
+	ands	x4, x4, x5
 	beq	__secondary_spin_skip
 
 	/* Copy the secondary_spin(start, end) to SPIN_LOOP_ADDR */
@@ -123,6 +125,8 @@ __secondary_spin_code_start:
 	.dword	0x0
 __secondary_spin_loc:
 	.dword	SPIN_LOOP_ADDR
+__mpidr_mask:
+	.dword	0xff00ffffff
 __leds_base:
 	.dword	0x1c010008
 #ifdef DTB
