@@ -397,6 +397,13 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	u8 data8;
 	u16 data16;
 	u32 data32, sas, sse, srt;
+	enum vmm_devemu_endianness data_endian;
+
+	if (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_EE_MASK) {
+		data_endian = VMM_DEVEMU_BIG_ENDIAN;
+	} else {
+		data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+	}
 
 	sas = (iss & ISS_ABORT_SAS_MASK) >> ISS_ABORT_SAS_SHIFT;
 	sse = (iss & ISS_ABORT_SSE_MASK) >> ISS_ABORT_SSE_SHIFT;
@@ -406,8 +413,9 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 
 	switch (sas) {
 	case 0:
-		rc = vmm_devemu_emulate_read(vcpu, ipa, 
-					     &data8, sizeof(data8));
+		rc = vmm_devemu_emulate_read(vcpu, ipa,
+					     &data8, sizeof(data8),
+					     data_endian);
 		if (!rc) {
 			if (sse) {
 				cpu_vcpu_reg_write(vcpu, regs, srt, 
@@ -418,8 +426,9 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 		}
 		break;
 	case 1:
-		rc = vmm_devemu_emulate_read(vcpu, ipa, 
-					     &data16, sizeof(data16));
+		rc = vmm_devemu_emulate_read(vcpu, ipa,
+					     &data16, sizeof(data16),
+					     data_endian);
 		if (!rc) {
 			if (sse) {
 				cpu_vcpu_reg_write(vcpu, regs, srt, 
@@ -430,8 +439,9 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 		}
 		break;
 	case 2:
-		rc = vmm_devemu_emulate_read(vcpu, ipa, 
-					     &data32, sizeof(data32));
+		rc = vmm_devemu_emulate_read(vcpu, ipa,
+					     &data32, sizeof(data32),
+					     data_endian);
 		if (!rc) {
 			cpu_vcpu_reg_write(vcpu, regs, srt, data32);
 		}
@@ -462,6 +472,13 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu,
 	u8 data8;
 	u16 data16;
 	u32 data32, sas, srt;
+	enum vmm_devemu_endianness data_endian;
+
+	if (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_EE_MASK) {
+		data_endian = VMM_DEVEMU_BIG_ENDIAN;
+	} else {
+		data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+	}
 
 	sas = (iss & ISS_ABORT_SAS_MASK) >> ISS_ABORT_SAS_SHIFT;
 	srt = (iss & ISS_ABORT_SRT_MASK) >> ISS_ABORT_SRT_SHIFT;
@@ -469,18 +486,21 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu,
 	switch (sas) {
 	case 0:
 		data8 = cpu_vcpu_reg_read(vcpu, regs, srt);
-		rc = vmm_devemu_emulate_write(vcpu, ipa, 
-					      &data8, sizeof(data8));
+		rc = vmm_devemu_emulate_write(vcpu, ipa,
+					      &data8, sizeof(data8),
+					      data_endian);
 		break;
 	case 1:
 		data16 = cpu_vcpu_reg_read(vcpu, regs, srt);
-		rc = vmm_devemu_emulate_write(vcpu, ipa, 
-					      &data16, sizeof(data16));
+		rc = vmm_devemu_emulate_write(vcpu, ipa,
+					      &data16, sizeof(data16),
+					      data_endian);
 		break;
 	case 2:
 		data32 = cpu_vcpu_reg_read(vcpu, regs, srt);
-		rc = vmm_devemu_emulate_write(vcpu, ipa, 
-					      &data32, sizeof(data32));
+		rc = vmm_devemu_emulate_write(vcpu, ipa,
+					      &data32, sizeof(data32),
+					      data_endian);
 		break;
 	default:
 		rc = VMM_EFAIL;

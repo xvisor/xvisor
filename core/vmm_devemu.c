@@ -63,6 +63,7 @@ struct vmm_devemu_guest_context {
 };
 
 struct vmm_devemu_ctrl {
+	enum vmm_devemu_endianness host_endian;
 	struct vmm_mutex emu_lock;
         struct dlist emu_list;
 };
@@ -71,14 +72,18 @@ static struct vmm_devemu_ctrl dectrl;
 
 static int devemu_doread(struct vmm_emudev *edev, 
 			 physical_addr_t offset,
-			 void *dst, u32 dst_len)
+			 void *dst, u32 dst_len,
+			 enum vmm_devemu_endianness dst_endian)
 {
 	int rc;
 	u16 data16;
 	u32 data32;
 	u64 data64;
+	enum vmm_devemu_endianness data_endian;
 
-	if (!edev) {
+	if (!edev ||
+	    (dst_endian <= VMM_DEVEMU_UNKNOWN_ENDIAN) ||
+	    (VMM_DEVEMU_MAX_ENDIAN <= dst_endian)) {
 		return VMM_EFAIL;
 	}
 
@@ -102,16 +107,31 @@ static int devemu_doread(struct vmm_emudev *edev,
 		}
 		if (!rc) {
 			switch (edev->emu->endian) {
-			case VMM_EMULATOR_LITTLE_ENDIAN:
-				*(u16 *)dst = vmm_cpu_to_le16(data16);
+			case VMM_DEVEMU_LITTLE_ENDIAN:
+				data16 = vmm_cpu_to_le16(data16);
+				data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
 				break;
-			case VMM_EMULATOR_BIG_ENDIAN:
-				*(u16 *)dst = vmm_cpu_to_be16(data16);
+			case VMM_DEVEMU_BIG_ENDIAN:
+				data16 = vmm_cpu_to_be16(data16);
+				data_endian = VMM_DEVEMU_BIG_ENDIAN;
 				break;
 			default:
-				*(u16 *)dst = data16;
+				data_endian = VMM_DEVEMU_NATIVE_ENDIAN;
 				break;
 			};
+			if (data_endian != dst_endian) {
+				switch (dst_endian) {
+				case VMM_DEVEMU_LITTLE_ENDIAN:
+					data16 = vmm_cpu_to_le16(data16);
+					break;
+				case VMM_DEVEMU_BIG_ENDIAN:
+					data16 = vmm_cpu_to_be16(data16);
+					break;
+				default:
+					break;
+				};
+			}
+			*(u16 *)dst = data16;
 		}
 		break;
 	case 4:
@@ -124,16 +144,31 @@ static int devemu_doread(struct vmm_emudev *edev,
 		}
 		if (!rc) {
 			switch (edev->emu->endian) {
-			case VMM_EMULATOR_LITTLE_ENDIAN:
-				*(u32 *)dst = vmm_cpu_to_le32(data32);
+			case VMM_DEVEMU_LITTLE_ENDIAN:
+				data32 = vmm_cpu_to_le32(data32);
+				data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
 				break;
-			case VMM_EMULATOR_BIG_ENDIAN:
-				*(u32 *)dst = vmm_cpu_to_be32(data32);
+			case VMM_DEVEMU_BIG_ENDIAN:
+				data32 = vmm_cpu_to_be32(data32);
+				data_endian = VMM_DEVEMU_BIG_ENDIAN;
 				break;
 			default:
-				*(u32 *)dst = data32;
+				data_endian = VMM_DEVEMU_NATIVE_ENDIAN;
 				break;
 			};
+			if (data_endian != dst_endian) {
+				switch (dst_endian) {
+				case VMM_DEVEMU_LITTLE_ENDIAN:
+					data32 = vmm_cpu_to_le32(data32);
+					break;
+				case VMM_DEVEMU_BIG_ENDIAN:
+					data32 = vmm_cpu_to_be32(data32);
+					break;
+				default:
+					break;
+				};
+			}
+			*(u32 *)dst = data32;
 		}
 		break;
 	case 8:
@@ -146,16 +181,31 @@ static int devemu_doread(struct vmm_emudev *edev,
 		}
 		if (!rc) {
 			switch (edev->emu->endian) {
-			case VMM_EMULATOR_LITTLE_ENDIAN:
-				*(u64 *)dst = vmm_cpu_to_le32(data64);
+			case VMM_DEVEMU_LITTLE_ENDIAN:
+				data64 = vmm_cpu_to_le64(data64);
+				data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
 				break;
-			case VMM_EMULATOR_BIG_ENDIAN:
-				*(u64 *)dst = vmm_cpu_to_be64(data64);
+			case VMM_DEVEMU_BIG_ENDIAN:
+				data64 = vmm_cpu_to_be64(data64);
+				data_endian = VMM_DEVEMU_BIG_ENDIAN;
 				break;
 			default:
-				*(u64 *)dst = data64;
+				data_endian = VMM_DEVEMU_NATIVE_ENDIAN;
 				break;
 			};
+			if (data_endian != dst_endian) {
+				switch (dst_endian) {
+				case VMM_DEVEMU_LITTLE_ENDIAN:
+					data64 = vmm_cpu_to_le64(data64);
+					break;
+				case VMM_DEVEMU_BIG_ENDIAN:
+					data64 = vmm_cpu_to_be32(data64);
+					break;
+				default:
+					break;
+				};
+			}
+			*(u64 *)dst = data64;
 		}
 		break;
 	default:
@@ -170,14 +220,17 @@ static int devemu_doread(struct vmm_emudev *edev,
 
 static int devemu_dowrite(struct vmm_emudev *edev, 
 			  physical_addr_t offset,
-			  void *src, u32 src_len)
+			  void *src, u32 src_len,
+			  enum vmm_devemu_endianness src_endian)
 {
 	int rc;
 	u16 data16;
 	u32 data32;
 	u64 data64;
 
-	if (!edev) {
+	if (!edev ||
+	    (src_endian <= VMM_DEVEMU_UNKNOWN_ENDIAN) ||
+	    (VMM_DEVEMU_MAX_ENDIAN <= src_endian)) {
 		return VMM_EFAIL;
 	}
 
@@ -192,15 +245,25 @@ static int devemu_dowrite(struct vmm_emudev *edev,
 		}
 		break;
 	case 2:
-		switch (edev->emu->endian) {
-		case VMM_EMULATOR_LITTLE_ENDIAN:
-			data16 = vmm_cpu_to_le16(*(u16 *)src);
+		data16 = *(u16 *)src;
+		switch (src_endian) {
+		case VMM_DEVEMU_LITTLE_ENDIAN:
+			data16 = vmm_le16_to_cpu(data16);
 			break;
-		case VMM_EMULATOR_BIG_ENDIAN:
-			data16 = vmm_cpu_to_be16(*(u16 *)src);
+		case VMM_DEVEMU_BIG_ENDIAN:
+			data16 = vmm_be16_to_cpu(data16);
 			break;
 		default:
-			data16 = *(u16 *)src;
+			break;
+		};
+		switch (edev->emu->endian) {
+		case VMM_DEVEMU_LITTLE_ENDIAN:
+			data16 = vmm_cpu_to_le16(data16);
+			break;
+		case VMM_DEVEMU_BIG_ENDIAN:
+			data16 = vmm_cpu_to_be16(data16);
+			break;
+		default:
 			break;
 		};
 		if (edev->emu->write16) {
@@ -212,15 +275,25 @@ static int devemu_dowrite(struct vmm_emudev *edev,
 		}
 		break;
 	case 4:
-		switch (edev->emu->endian) {
-		case VMM_EMULATOR_LITTLE_ENDIAN:
-			data32 = vmm_cpu_to_le32(*(u32 *)src);
+		data32 = *(u32 *)src;
+		switch (src_endian) {
+		case VMM_DEVEMU_LITTLE_ENDIAN:
+			data32 = vmm_le32_to_cpu(data32);
 			break;
-		case VMM_EMULATOR_BIG_ENDIAN:
-			data32 = vmm_cpu_to_be32(*(u32 *)src);
+		case VMM_DEVEMU_BIG_ENDIAN:
+			data32 = vmm_be32_to_cpu(data32);
 			break;
 		default:
-			data32 = *(u32 *)src;
+			break;
+		};
+		switch (edev->emu->endian) {
+		case VMM_DEVEMU_LITTLE_ENDIAN:
+			data32 = vmm_cpu_to_le32(data32);
+			break;
+		case VMM_DEVEMU_BIG_ENDIAN:
+			data32 = vmm_cpu_to_be32(data32);
+			break;
+		default:
 			break;
 		};
 		if (edev->emu->write32) {
@@ -232,15 +305,25 @@ static int devemu_dowrite(struct vmm_emudev *edev,
 		}
 		break;
 	case 8:
-		switch (edev->emu->endian) {
-		case VMM_EMULATOR_LITTLE_ENDIAN:
-			data64 = vmm_cpu_to_le64(*(u64 *)src);
+		data64 = *(u64 *)src;
+		switch (src_endian) {
+		case VMM_DEVEMU_LITTLE_ENDIAN:
+			data64 = vmm_le64_to_cpu(data64);
 			break;
-		case VMM_EMULATOR_BIG_ENDIAN:
-			data64 = vmm_cpu_to_be64(*(u64 *)src);
+		case VMM_DEVEMU_BIG_ENDIAN:
+			data64 = vmm_be64_to_cpu(data64);
 			break;
 		default:
-			data64 = *(u64 *)src;
+			break;
+		};
+		switch (edev->emu->endian) {
+		case VMM_DEVEMU_LITTLE_ENDIAN:
+			data64 = vmm_cpu_to_le64(data64);
+			break;
+		case VMM_DEVEMU_BIG_ENDIAN:
+			data64 = vmm_cpu_to_be64(data64);
+			break;
+		default:
 			break;
 		};
 		if (edev->emu->write64) {
@@ -263,7 +346,8 @@ static int devemu_dowrite(struct vmm_emudev *edev,
 
 int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu, 
 			    physical_addr_t gphys_addr,
-			    void *dst, u32 dst_len)
+			    void *dst, u32 dst_len,
+			    enum vmm_devemu_endianness dst_endian)
 {
 	u32 ite;
 	bool found;
@@ -305,12 +389,13 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 
 	return devemu_doread(reg->devemu_priv,
 			     gphys_addr - reg->gphys_addr,
-			     dst, dst_len);
+			     dst, dst_len, dst_endian);
 }
 
 int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu, 
 			     physical_addr_t gphys_addr,
-			     void *src, u32 src_len)
+			     void *src, u32 src_len,
+			     enum vmm_devemu_endianness src_endian)
 {
 	u32 ite;
 	bool found;
@@ -352,12 +437,13 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 
 	return devemu_dowrite(reg->devemu_priv,
 			      gphys_addr - reg->gphys_addr,
-			      src, src_len);
+			      src, src_len, src_endian);
 }
 
 int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu, 
 			      physical_addr_t gphys_addr,
-			      void *dst, u32 dst_len)
+			      void *dst, u32 dst_len,
+			      enum vmm_devemu_endianness dst_endian)
 {
 	u32 ite;
 	bool found;
@@ -399,12 +485,13 @@ int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu,
 
 	return devemu_doread(reg->devemu_priv,
 			     gphys_addr - reg->gphys_addr,
-			     dst, dst_len);
+			     dst, dst_len, dst_endian);
 }
 
 int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu, 
 			       physical_addr_t gphys_addr,
-			       void *src, u32 src_len)
+			       void *src, u32 src_len,
+			       enum vmm_devemu_endianness src_endian)
 {
 	u32 ite;
 	bool found;
@@ -446,10 +533,11 @@ int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu,
 
 	return devemu_dowrite(reg->devemu_priv,
 			      gphys_addr - reg->gphys_addr,
-			      src, src_len);
+			      src, src_len, src_endian);
 }
 
-int __vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq, int cpu, int level)
+int __vmm_devemu_emulate_irq(struct vmm_guest *guest,
+			     u32 irq, int cpu, int level)
 {
 	struct dlist *l;
 	struct vmm_devemu_guest_irq *gi;
@@ -474,9 +562,9 @@ int __vmm_devemu_emulate_irq(struct vmm_guest *guest, u32 irq, int cpu, int leve
 }
 
 int vmm_devemu_register_irq_handler(struct vmm_guest *guest, u32 irq,
-				    const char *name, 
-				    void (*handle) (u32 irq, int cpu, int level, void *opaque),
-				    void *opaque)
+		const char *name,
+		void (*handle) (u32 irq, int cpu, int level, void *opaque),
+		void *opaque)
 {
 	bool found;
 	struct dlist *l;
@@ -528,8 +616,8 @@ int vmm_devemu_register_irq_handler(struct vmm_guest *guest, u32 irq,
 }
 
 int vmm_devemu_unregister_irq_handler(struct vmm_guest *guest, u32 irq,
-				      void (*handle) (u32 irq, int cpu, int level, void *opaque),
-				      void *opaque)
+		void (*handle) (u32 irq, int cpu, int level, void *opaque),
+		void *opaque)
 {
 	bool found;
 	struct dlist *l;
@@ -584,8 +672,8 @@ int vmm_devemu_register_emulator(struct vmm_emulator *emu)
 	struct vmm_emulator *e;
 
 	if (!emu ||
-	    (emu->endian == VMM_EMULATOR_UNKNOWN_ENDIAN) ||
-	    (VMM_EMULATOR_MAX_ENDIAN <= emu->endian)) {
+	    (emu->endian == VMM_DEVEMU_UNKNOWN_ENDIAN) ||
+	    (VMM_DEVEMU_MAX_ENDIAN <= emu->endian)) {
 		return VMM_EFAIL;
 	}
 
@@ -921,51 +1009,51 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 	eg->g_irq_count = 0;
 	attr = vmm_devtree_attrval(guest->aspace.node, 
 				   VMM_DEVTREE_GUESTIRQCNT_ATTR_NAME);
-	if (attr) {
-		eg->g_irq_count = *((u32 *)attr);
-		eg->g_irq = vmm_zalloc(sizeof(struct dlist) * eg->g_irq_count);
-		if (!eg->g_irq) {
-			rc = VMM_ENOMEM;
-			goto devemu_init_context_free;
-		}
-		for (ite = 0; ite < eg->g_irq_count; ite++) {
-			INIT_LIST_HEAD(&eg->g_irq[ite]);
-		}
-	} else {
+	if (!attr) {
 		rc = VMM_EFAIL;
 		goto devemu_init_context_free;
+	}
+	eg->g_irq_count = *((u32 *)attr);
+	eg->g_irq = vmm_zalloc(sizeof(struct dlist) * eg->g_irq_count);
+	if (!eg->g_irq) {
+		rc = VMM_ENOMEM;
+		goto devemu_init_context_free;
+	}
+	for (ite = 0; ite < eg->g_irq_count; ite++) {
+		INIT_LIST_HEAD(&eg->g_irq[ite]);
 	}
 
 	list_for_each(l, &guest->vcpu_list) {
 		vcpu = list_entry(l, struct vmm_vcpu, head);
-		if (!vcpu->devemu_priv) {
-			ev = vmm_zalloc(sizeof(struct vmm_devemu_vcpu_context));
-			if (!ev) {
-				rc = VMM_ENOMEM;
-				goto devemu_init_context_free_g;
-			}
-			ev->rd_mem_victim = 0;
-			ev->wr_mem_victim = 0;
-			ev->rd_io_victim = 0;
-			ev->wr_io_victim = 0;
-			for (ite = 0; 
-			     ite < CONFIG_VGPA2REG_CACHE_SIZE; 
-			     ite++) {
-				ev->rd_mem_gstart[ite] = 0;
-				ev->rd_mem_gend[ite] = 0;
-				ev->rd_mem_reg[ite] = NULL;
-				ev->wr_mem_gstart[ite] = 0;
-				ev->wr_mem_gend[ite] = 0;
-				ev->wr_mem_reg[ite] = NULL;
-				ev->rd_io_gstart[ite] = 0;
-				ev->rd_io_gend[ite] = 0;
-				ev->rd_io_reg[ite] = NULL;
-				ev->wr_io_gstart[ite] = 0;
-				ev->wr_io_gend[ite] = 0;
-				ev->wr_io_reg[ite] = NULL;
-			}
-			vcpu->devemu_priv = ev;
+		if (vcpu->devemu_priv) {
+			continue;
 		}
+		ev = vmm_zalloc(sizeof(struct vmm_devemu_vcpu_context));
+		if (!ev) {
+			rc = VMM_ENOMEM;
+			goto devemu_init_context_free_g;
+		}
+		ev->rd_mem_victim = 0;
+		ev->wr_mem_victim = 0;
+		ev->rd_io_victim = 0;
+		ev->wr_io_victim = 0;
+		for (ite = 0; 
+		     ite < CONFIG_VGPA2REG_CACHE_SIZE; 
+		     ite++) {
+			ev->rd_mem_gstart[ite] = 0;
+			ev->rd_mem_gend[ite] = 0;
+			ev->rd_mem_reg[ite] = NULL;
+			ev->wr_mem_gstart[ite] = 0;
+			ev->wr_mem_gend[ite] = 0;
+			ev->wr_mem_reg[ite] = NULL;
+			ev->rd_io_gstart[ite] = 0;
+			ev->rd_io_gend[ite] = 0;
+			ev->rd_io_reg[ite] = NULL;
+			ev->wr_io_gstart[ite] = 0;
+			ev->wr_io_gend[ite] = 0;
+			ev->wr_io_reg[ite] = NULL;
+		}
+		vcpu->devemu_priv = ev;
 	}
 
 	guest->aspace.devemu_priv = eg;
@@ -1026,6 +1114,12 @@ int vmm_devemu_deinit_context(struct vmm_guest *guest)
 int __init vmm_devemu_init(void)
 {
 	memset(&dectrl, 0, sizeof(dectrl));
+
+#ifdef CONFIG_CPU_BE
+	dectrl.host_endian = VMM_DEVEMU_BIG_ENDIAN;
+#else
+	dectrl.host_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+#endif
 
 	INIT_MUTEX(&dectrl.emu_lock);
 	INIT_LIST_HEAD(&dectrl.emu_list);

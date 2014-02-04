@@ -350,7 +350,8 @@ void __handle_ioio(struct vcpu_hw_context *context)
 
 	if (in_inst) {
 		if (vmm_devemu_emulate_ioread(context->assoc_vcpu, io_port,
-					      &guest_rd, sizeof(guest_rd)) != VMM_OK) {
+					      &guest_rd, sizeof(guest_rd),
+					      VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
 			vmm_printf("Failed to emulate IO instruction in guest.\n");
 			goto _fail;
 		}
@@ -360,7 +361,8 @@ void __handle_ioio(struct vcpu_hw_context *context)
 	} else {
 		wval = (u8)context->vmcb->rax;
 		if (vmm_devemu_emulate_iowrite(context->assoc_vcpu, io_port,
-					       &wval, sizeof(wval)) != VMM_OK) {
+					       &wval, sizeof(wval),
+					       VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
 			vmm_printf("Failed to emulate IO instruction in guest.\n");
 			goto _fail;
 		}

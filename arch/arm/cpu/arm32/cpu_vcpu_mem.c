@@ -107,7 +107,8 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 		case TTBL_AP_SRW_U:
 			return vmm_devemu_emulate_read(vcpu,
 						       (addr - pgp->va) +
-						       pgp->pa, dst, dst_len);
+						       pgp->pa, dst, dst_len,
+						       VMM_DEVEMU_NATIVE_ENDIAN);
 			break;
 		case TTBL_AP_SRW_UR:
 		case TTBL_AP_SRW_URW:
@@ -224,7 +225,8 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 		case TTBL_AP_SRW_U:
 			return vmm_devemu_emulate_write(vcpu,
 							(addr - pgp->va) +
-							pgp->pa, src, src_len);
+							pgp->pa, src, src_len,
+							VMM_DEVEMU_NATIVE_ENDIAN);
 			break;
 		case TTBL_AP_SRW_URW:
 			switch (src_len) {
