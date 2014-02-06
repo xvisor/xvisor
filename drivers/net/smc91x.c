@@ -86,7 +86,7 @@ static const char version[] =
 #define tasklet_schedule(x)
 #define tasklet_hi_schedule(x)
 #define tasklet_kill(x)
-#define platform_set_drvdata(pdev, data) pdev->priv = (void *) data
+#define platform_set_drvdata(pdev, data) pdev->priv = (void *)data
 
 #ifndef SMC_NOWAIT
 # define SMC_NOWAIT		0
@@ -530,9 +530,9 @@ static inline void  smc_rcv(struct net_device *dev)
 #define smc_special_lock(lock, flags)		spin_lock_irqsave(lock, flags)
 #define smc_special_unlock(lock, flags) 	spin_unlock_irqrestore(lock, flags)
 #else
-#define smc_special_trylock(lock, flags)	(1)
-#define smc_special_lock(lock, flags)   	do { } while (0)
-#define smc_special_unlock(lock, flags)	do { } while (0)
+#define smc_special_trylock(lock, flags)	({ (void)(flags); 1; })
+#define smc_special_lock(lock, flags)   	do { (void)(flags); } while (0)
+#define smc_special_unlock(lock, flags)		do { (void)(flags); } while (0)
 #endif
 
 /*
@@ -724,6 +724,7 @@ static void smc_tx(struct net_device *dev)
 	/* read the first word (status word) from this packet */
 	SMC_SET_PTR(lp, PTR_AUTOINC | PTR_READ);
 	SMC_GET_PKT_HDR(lp, tx_status, pkt_len);
+	(void)pkt_len; /* suppress compile warning */
 	DBG(2, "%s: TX STATUS 0x%04x PNR 0x%02x\n",
 		dev->name, tx_status, packet_no);
 
@@ -1116,6 +1117,7 @@ static void smc_phy_configure(struct work_struct *work)
 	 * the link does not come up.
 	 */
 	status = smc_phy_read(dev, phyaddr, MII_ADVERTISE);
+	(void)status; /* suppress compile warning */
 
 	DBG(2, "%s: phy caps=%x\n", dev->name, my_phy_caps);
 	DBG(2, "%s: phy advertised caps=%x\n", dev->name, my_ad_caps);
@@ -1534,6 +1536,7 @@ static int smc_close(struct net_device *dev)
 {
 	struct smc_local *lp = netdev_priv(dev);
 
+	(void)lp; /* suppress compile warning */
 	DBG(2, "%s: %s\n", dev->name, __func__);
 
 	netif_stop_queue(dev);
