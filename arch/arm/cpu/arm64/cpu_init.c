@@ -49,7 +49,7 @@ virtual_size_t arch_code_size(void)
 
 int __init arch_cpu_early_init(void)
 {
-	char *attr;
+	const char *attr;
 	struct vmm_devtree_node *node;
 
 	/*

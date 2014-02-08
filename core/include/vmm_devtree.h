@@ -192,8 +192,8 @@ u32 vmm_devtree_literal_size(u32 attrtype);
 u32 vmm_devtree_estimate_attrtype(const char *name);
 
 /** Get attribute value */
-void *vmm_devtree_attrval(const struct vmm_devtree_node *node, 
-			  const char *attrib);
+const void *vmm_devtree_attrval(const struct vmm_devtree_node *node,
+				const char *attrib);
 
 /** Get length of attribute value */
 u32 vmm_devtree_attrlen(const struct vmm_devtree_node *node, 
@@ -201,10 +201,7 @@ u32 vmm_devtree_attrlen(const struct vmm_devtree_node *node,
 
 /** Set an attribute for a device tree node */
 int vmm_devtree_setattr(struct vmm_devtree_node *node,
-			const char *name,
-			void *value,
-			u32 type,
-			u32 len);
+			const char *name, void *value, u32 type, u32 len);
 
 /** Get an attribute from a device tree node */
 struct vmm_devtree_attr *vmm_devtree_getattr(

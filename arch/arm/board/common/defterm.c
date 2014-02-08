@@ -80,7 +80,7 @@ static int pl011_defterm_getc(u8 *ch)
 static int __init pl011_defterm_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	u32 *val;
+	const u32 *val;
 
 	rc = vmm_devtree_regmap(node, &pl011_defterm_base, 0);
 	if (rc) {
@@ -145,7 +145,7 @@ static int uart8250_defterm_getc(u8 *ch)
 static int __init uart8250_defterm_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	u32 *val;
+	const u32 *val;
 
 	rc = vmm_devtree_regmap(node, &uart8250_port.base, 0);
 	if (rc) {
@@ -213,7 +213,7 @@ static int omap_defterm_getc(u8 *ch)
 static int __init omap_defterm_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	u32 *val;
+	const u32 *val;
 
 	rc = vmm_devtree_regmap(node, &omap_defterm_base, 0);
 	if (rc) {
@@ -280,7 +280,7 @@ static int imx_defterm_getc(u8 *ch)
 static int __init imx_defterm_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	u32 *val;
+	const u32 *val;
 
 	rc = vmm_devtree_regmap(node, &imx_defterm_base, 0);
 	if (rc) {
@@ -347,7 +347,7 @@ static int samsung_defterm_getc(u8 *ch)
 static int __init samsung_defterm_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	u32 *val;
+	const u32 *val;
 
 	/* map this console device */
 	rc = vmm_devtree_regmap(node, &samsung_defterm_base, 0);

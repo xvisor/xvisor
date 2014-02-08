@@ -152,12 +152,12 @@ void *vexpress_get_24mhz_clock_base(void)
 static void vexpress_sysreg_find_prop(struct vmm_devtree_node *node,
 					const char *name, u32 *val)
 {
-	void *aval;
+	const void *aval;
 
 	while (node) {
 		aval = vmm_devtree_attrval(node, name);
 		if (aval) {
-			*val = *((u32 *)aval);
+			*val = *((const u32 *)aval);
 			return;
 		}
 		node = node->parent;
@@ -203,7 +203,7 @@ static void *vexpress_sysreg_config_func_get(struct vmm_device *dev,
 	u32 position = 0;
 	u32 dcc = 0;
 	u32 func_device[2];
-	void *aval;
+	const void *aval;
 	int err = VMM_EFAULT;
 
 	if (dev && !node)
@@ -216,8 +216,8 @@ static void *vexpress_sysreg_config_func_get(struct vmm_device *dev,
 		vexpress_sysreg_find_prop(node, "arm,vexpress,dcc", &dcc);
 		aval = vmm_devtree_attrval(node, "arm,vexpress-sysreg,func");
 		if (aval) {
-			func_device[0] = ((u32 *)aval)[0];
-			func_device[1] = ((u32 *)aval)[1];
+			func_device[0] = ((const u32 *)aval)[0];
+			func_device[1] = ((const u32 *)aval)[1];
 			err = VMM_OK;
 		} else {
 			err = VMM_ENOENT;

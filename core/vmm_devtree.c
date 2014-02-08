@@ -193,8 +193,8 @@ static int devtree_node_is_compatible(const struct vmm_devtree_node *node,
 	return 0;
 }
 
-void *vmm_devtree_attrval(const struct vmm_devtree_node *node, 
-			  const char *attrib)
+const void *vmm_devtree_attrval(const struct vmm_devtree_node *node, 
+				const char *attrib)
 {
 	struct vmm_devtree_attr *attr;
 	struct dlist *l;
@@ -233,10 +233,7 @@ u32 vmm_devtree_attrlen(const struct vmm_devtree_node *node, const char *attrib)
 }
 
 int vmm_devtree_setattr(struct vmm_devtree_node *node,
-			const char *name,
-			void *value,
-			u32 type,
-			u32 len)
+			const char *name, void *value, u32 type, u32 len)
 {
 	bool found;
 	struct dlist *l;
@@ -642,7 +639,7 @@ static struct vmm_devtree_node *recursive_find_node_by_phandle(
 					struct vmm_devtree_node *node,
 					u32 phandle)
 {
-	u32 *aval;
+	const u32 *aval;
 	struct dlist *lentry;
 	struct vmm_devtree_node *child, *ret;
 

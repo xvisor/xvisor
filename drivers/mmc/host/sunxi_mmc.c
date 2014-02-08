@@ -679,7 +679,7 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 				  const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
-	char *attr;
+	const char *attr;
 	virtual_addr_t base;
 	physical_addr_t basepa;
 	struct mmc_host *mmc;

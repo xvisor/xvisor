@@ -108,13 +108,13 @@ void of_fixed_clk_setup(struct vmm_devtree_node *node)
 {
 	struct clk *clk;
 	const char *clk_name = node->name;
-	void *attrval;
+	const void *attrval;
 	u32 rate;
 
 	attrval = vmm_devtree_attrval(node, "clock-frequency");
 	if (!attrval)
 		return;
-	rate = *((u32 *)attrval);
+	rate = *((const u32 *)attrval);
 
 	attrval = vmm_devtree_attrval(node, "clock-output-names");
 	if (attrval)

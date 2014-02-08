@@ -372,7 +372,8 @@ int __init gic_devtree_init(struct vmm_devtree_node *node,
 			    struct vmm_devtree_node *parent)
 {
 	int rc;
-	u32 *aval, irq;
+	u32 irq;
+	const u32 *aval;
 	virtual_addr_t cpu_base;
 	virtual_addr_t dist_base;
 

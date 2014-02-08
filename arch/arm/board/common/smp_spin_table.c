@@ -43,7 +43,7 @@ static virtual_addr_t release_addr[CONFIG_CPU_COUNT];
 static int __init smp_spin_table_cpu_init(struct vmm_devtree_node *node,
 				unsigned int cpu)
 {
-	physical_addr_t *pa;
+	const physical_addr_t *pa;
 
 	/* Map release address */
 	pa = vmm_devtree_attrval(node,

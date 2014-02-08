@@ -140,7 +140,7 @@ static int __init scu_cpu_init(struct vmm_devtree_node *node,
 {
 	int rc;
 	u32 ncores;
-	physical_addr_t *pa;
+	const physical_addr_t *pa;
 	struct vmm_devtree_node *scu_node;
 
 	/* Map SCU base */

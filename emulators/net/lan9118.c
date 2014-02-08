@@ -1400,7 +1400,7 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 {
 	int i, rc = VMM_OK;
 	char tname[64];
-	void *attr;
+	const void *attr;
 	struct vmm_netswitch *nsw;
 	struct lan9118_state *s = NULL;
 

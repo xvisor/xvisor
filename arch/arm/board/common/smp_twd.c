@@ -156,7 +156,7 @@ static void __cpuinit twd_caliberate_freq(virtual_addr_t base,
 static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	void *aval;
+	const void *aval;
 	u32 ref_cnt_freq;
 	virtual_addr_t ref_cnt_addr;
 	u32 cpu = vmm_smp_processor_id();

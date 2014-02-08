@@ -119,7 +119,7 @@ void __init vexpress_osc_of_setup(struct vmm_devtree_node *node)
 	struct clk_init_data init;
 	struct vexpress_osc *osc;
 	struct clk *clk;
-	u32 *range;
+	const u32 *range;
 
 	osc = vmm_zalloc(sizeof(*osc));
 	if (!osc)

@@ -199,14 +199,15 @@ static struct hpet_timer *get_timer_from_id(timer_id_t timer_id)
 
 int __init hpet_init(void)
 {
-	u32 nr_hpet_chips = 0, *aval;
+	const u32 *aval;
+	u32 nr_hpet_chips = 0;
 	struct hpet_chip *chip;
 	struct hpet_block *block;
 	struct hpet_timer *timer;
 	int i, j, k;
 	struct vmm_devtree_node *node;
 	char hpet_nm[512];
-	physical_addr_t *base;
+	const physical_addr_t *base;
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				VMM_DEVTREE_MOTHERBOARD_NODE_NAME

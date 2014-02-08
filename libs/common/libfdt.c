@@ -186,7 +186,8 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 					   struct vmm_devtree_node *node,
 					   char **data)
 {
-	void *aval;
+	void *val;
+	const void *aval;
 	const char *name;
 	u32 type, len, alen, addr_cells, size_cells;
 	struct vmm_devtree_node *child;
@@ -197,13 +198,13 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 
 	aval = vmm_devtree_attrval(node->parent, "#address-cells");
 	if (aval) {
-		addr_cells = *((u32 *)aval);
+		addr_cells = *((const u32 *)aval);
 	} else {
 		addr_cells = sizeof(physical_addr_t) / sizeof(fdt_cell_t);
 	}
 	aval = vmm_devtree_attrval(node->parent, "#size-cells");
 	if (aval) {
-		size_cells = *((u32 *)aval);
+		size_cells = *((const u32 *)aval);
 	} else {
 		size_cells = sizeof(physical_size_t) / sizeof(fdt_cell_t);
 	}
@@ -219,11 +220,11 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 			type = vmm_devtree_estimate_attrtype(name);
 			alen = libfdt_property_len(name, addr_cells, 
 						   size_cells, len);
-			aval = vmm_zalloc(alen);
-			libfdt_property_read(name, aval, *data,
+			val = vmm_zalloc(alen);
+			libfdt_property_read(name, val, *data,
 					     addr_cells, size_cells, len);
-			vmm_devtree_setattr(node, name, aval, type, alen);
-			vmm_free(aval);
+			vmm_devtree_setattr(node, name, val, type, alen);
+			vmm_free(val);
 			*data += len;
 			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0)
 				(*data)++;

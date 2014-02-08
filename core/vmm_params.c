@@ -150,7 +150,7 @@ static int parse_args(const char *doing,
 	return 0;
 }
 
-void __init vmm_parse_early_options(char *cmdline)
+void __init vmm_parse_early_options(const char *cmdline)
 {
-        parse_args("early options", cmdline, 0, 0, 0, do_early_param);
+        parse_args("early options", (char *)cmdline, 0, 0, 0, do_early_param);
 }

@@ -54,7 +54,7 @@ void arch_cpu_print_info(struct vmm_chardev *cdev)
 
 int __init arch_cpu_early_init(void)
 {
-	char *attr;
+	const char *attr;
 	struct vmm_devtree_node *node;
 
 	/*

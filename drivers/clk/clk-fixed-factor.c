@@ -128,7 +128,7 @@ VMM_EXPORT_SYMBOL_GPL(clk_register_fixed_factor);
 void __init of_fixed_factor_clk_setup(struct vmm_devtree_node *node)
 {
 	struct clk *clk;
-	void *attrval;
+	const void *attrval;
 	const char *clk_name = node->name;
 	const char *parent_name;
 	u32 div, mult;
@@ -139,7 +139,7 @@ void __init of_fixed_factor_clk_setup(struct vmm_devtree_node *node)
 			__func__, node->name);
 		return;
 	}
-	div = *((u32 *)attrval);
+	div = *((const u32 *)attrval);
 
 	attrval = vmm_devtree_attrval(node, "clock-mult");
 	if (!attrval) {
@@ -147,7 +147,7 @@ void __init of_fixed_factor_clk_setup(struct vmm_devtree_node *node)
 			__func__, node->name);
 		return;
 	}
-	mult = *((u32 *)attrval);
+	mult = *((const u32 *)attrval);
 
 	attrval = vmm_devtree_attrval(node, "clock-output-names");
 	if (attrval)

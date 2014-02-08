@@ -303,7 +303,8 @@ static vmm_irq_return_t epit_timer_interrupt(int irq, void *dev)
 int __cpuinit epit_clockchip_init(void)
 {
 	int rc = VMM_ENODEV;
-	u32 clock, hirq, timer_num, *val;
+	const u32 *val;
+	u32 clock, hirq, timer_num;
 	struct vmm_devtree_node *node;
 	struct epit_clockchip *ecc;
 

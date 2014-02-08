@@ -429,8 +429,8 @@ static int uart8250_defterm_getc(u8 *ch)
 
 static int __init uart8250_defterm_init(struct vmm_devtree_node *node)
 {
-	u32 *val;
 	int rc;
+	const u32 *val;
 
 	val = vmm_devtree_attrval(node, VMM_DEVTREE_REG_ATTR_NAME);
 	uart8250_port.base = (val) ? *val : 0x3f8;

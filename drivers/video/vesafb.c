@@ -261,7 +261,7 @@ static int vesafb_probe(struct vmm_device *dev,
 {
 	struct fb_info *info;
 	int i, err;
-	char *options = NULL;
+	const char *options = NULL;
 	unsigned int size_vmode;
 	unsigned int size_remap;
 	unsigned int size_total;
@@ -273,7 +273,7 @@ static int vesafb_probe(struct vmm_device *dev,
 	if (!options) {
 		return -ENODEV;
 	}
-	err = vesafb_setup(options);
+	err = vesafb_setup((char *)options);
 	if (err) {
 		return err;
 	}

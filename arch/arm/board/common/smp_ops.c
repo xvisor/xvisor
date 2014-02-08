@@ -135,9 +135,9 @@ static int __init smp_read_ops(struct vmm_devtree_node *dn, int cpu)
 
 int __init arch_smp_init_cpus(void)
 {
-	physical_addr_t *reg;
 	unsigned int i, cpu = 1;
 	bool bootcpu_valid = false;
+	const physical_addr_t *reg;
 	struct vmm_devtree_node *dn, *cpus;
 
 	cpus = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "cpus");

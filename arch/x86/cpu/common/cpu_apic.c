@@ -225,10 +225,10 @@ void ioapic_enable(void)
 int detect_ioapics(unsigned int *nr_ioapics)
 {
 	int ret = VMM_OK;
-	u32 *aval;
+	const u32 *aval;
 	struct vmm_devtree_node *node;
 	char apic_nm[512];
-	physical_addr_t *base;
+	const physical_addr_t *base;
 	unsigned int n = 0;
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
@@ -259,7 +259,6 @@ int detect_ioapics(unsigned int *nr_ioapics)
 		BUG_ON(node == NULL);
 
 		base = vmm_devtree_attrval(node, VMM_DEVTREE_IOAPIC_PADDR_ATTR_NAME);
-
 		if (!base)
 			return VMM_ENODEV;
 

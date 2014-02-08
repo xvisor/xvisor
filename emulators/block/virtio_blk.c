@@ -460,7 +460,7 @@ static int virtio_blk_connect(struct virtio_device *dev,
 			      struct virtio_emulator *emu)
 {
 	int rc;
-	char *attr;
+	const char *attr;
 	struct virtio_blk_dev *bdev;
 
 	bdev = vmm_zalloc(sizeof(struct virtio_blk_dev));
@@ -482,7 +482,7 @@ static int virtio_blk_connect(struct virtio_device *dev,
 
 	attr = vmm_devtree_attrval(dev->edev->node, "blkdev");
 	if (attr) {
-		if (strlcpy(bdev->blk_name,attr, sizeof(bdev->blk_name)) >=
+		if (strlcpy(bdev->blk_name, attr, sizeof(bdev->blk_name)) >=
 		    sizeof(bdev->blk_name)) {
 			vmm_free(bdev);
 			return VMM_EOVERFLOW;

@@ -249,7 +249,7 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 hirq, tmp;
-	void *attrval;
+	const void *attrval;
 	struct aw_clockchip *acc;
 
 	acc = vmm_zalloc(sizeof(struct aw_clockchip));
@@ -263,7 +263,7 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 		vmm_free(acc);
 		return VMM_ENOTAVAIL;
 	}
-	acc->num = *((u32 *)attrval);
+	acc->num = *((const u32 *)attrval);
 	acc->off = 0x10 + 0x10 * acc->num;
 
 	/* Read irq attribute */

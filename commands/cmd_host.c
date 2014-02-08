@@ -79,7 +79,7 @@ static void cmd_host_cpu_info(struct vmm_chardev *cdev)
 
 static void cmd_host_info(struct vmm_chardev *cdev)
 {
-	char *attr;
+	const char *attr;
 	struct vmm_devtree_node *node;
 	u32 total = vmm_host_ram_total_frame_count();
 
