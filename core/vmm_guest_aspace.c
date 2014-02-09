@@ -252,11 +252,11 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 	const char *aval;
 	bool is_real = FALSE;
 	bool is_alias = FALSE;
+	physical_addr_t addr;
 	physical_size_t size;
 
-	aval = vmm_devtree_attrval(rnode, 
-				VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME);
-	if (!aval) {
+	if (vmm_devtree_read_string(rnode, 
+			VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME, &aval)) {
 		return FALSE;
 	}
 	if (strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) != 0 &&
@@ -271,9 +271,8 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 		is_alias = TRUE;
 	}
 
-	aval = vmm_devtree_attrval(rnode,
-				VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME);
-	if (!aval) {
+	if (vmm_devtree_read_string(rnode,
+			VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME, &aval)) {
 		return FALSE;
 	}
 	if (strcmp(aval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO) != 0 &&
@@ -281,37 +280,32 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 		return FALSE;
 	}
 
-	aval = vmm_devtree_attrval(rnode, VMM_DEVTREE_GUEST_PHYS_ATTR_NAME);
-	if (!aval) {
+	if (vmm_devtree_read_physaddr(rnode,
+			VMM_DEVTREE_GUEST_PHYS_ATTR_NAME, &addr)) {
 		return FALSE;
 	}
 
 	if (is_real) {
-		aval = vmm_devtree_attrval(rnode,
-					VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
-		if (!aval) {
+		if (vmm_devtree_read_physaddr(rnode,
+			VMM_DEVTREE_HOST_PHYS_ATTR_NAME, &addr)) {
 			return FALSE;
 		}
 	}
 
 	if (is_alias) {
-		aval = vmm_devtree_attrval(rnode, 
-					VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME);
-		if (!aval) {
+		if (vmm_devtree_read_physaddr(rnode, 
+			VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME, &addr)) {
 			return FALSE;
 		}
 	}
 
-	aval = vmm_devtree_attrval(rnode, VMM_DEVTREE_PHYS_SIZE_ATTR_NAME);
-	if (!aval) {
+	if (vmm_devtree_read_physsize(rnode,
+			VMM_DEVTREE_PHYS_SIZE_ATTR_NAME, &size)) {
 		return FALSE;
 	}
-	size = *((physical_size_t *)aval);
 
-	aval = vmm_devtree_attrval(rnode, VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME);
-	if (aval) {
-		order = *((u32 *)aval);
-	} else {
+	if (vmm_devtree_read_u32(rnode,
+			VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME, &order)) {
 		order = 0;
 	}
 
@@ -420,10 +414,10 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 		reg->aspace = &guest->aspace;
 		reg->flags = 0x0;
 
-		aval = vmm_devtree_attrval(rnode,
-					VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME);
-		if (!aval) {
-			return VMM_EINVALID;
+		rc = vmm_devtree_read_string(rnode,
+				VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME, &aval);
+		if (rc) {
+			return rc;
 		}
 
 		if (!strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL)) {
@@ -435,10 +429,10 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 			reg->flags |= VMM_REGION_VIRTUAL;
 		}
 
-		aval = vmm_devtree_attrval(rnode,
-					VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME);
-		if (!aval) {
-			return VMM_EINVALID;
+		rc = vmm_devtree_read_string(rnode,
+				VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME, &aval);
+		if (rc) {
+			return rc;
 		}
 
 		if (!strcmp(aval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO)) {
@@ -447,10 +441,10 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 			reg->flags |= VMM_REGION_MEMORY;
 		}
 
-		aval = vmm_devtree_attrval(rnode,
-					VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
-		if (!aval) {
-			return VMM_EINVALID;
+		rc = vmm_devtree_read_string(rnode,
+				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &aval);
+		if (rc) {
+			return rc;
 		}
 
 		if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) ||
@@ -481,46 +475,43 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 			reg->flags |= VMM_REGION_BUFFERABLE;
 		}
 
-		aval = vmm_devtree_attrval(rnode,
-					VMM_DEVTREE_GUEST_PHYS_ATTR_NAME);
-		if (!aval) {
-			return VMM_EINVALID;
+		rc = vmm_devtree_read_physaddr(rnode,
+				VMM_DEVTREE_GUEST_PHYS_ATTR_NAME,
+				&reg->gphys_addr);
+		if (rc) {
+			return rc;
 		}
-		reg->gphys_addr = *((physical_addr_t *)aval);
 
 		if (reg->flags & VMM_REGION_REAL) {
-			aval = vmm_devtree_attrval(rnode,
-					VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
-			if (!aval) {
-				return VMM_EINVALID;
+			rc = vmm_devtree_read_physaddr(rnode,
+					VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
+					&reg->hphys_addr);
+			if (rc) {
+				return rc;
 			}
-
-			reg->hphys_addr = *((physical_addr_t *)aval);
 		} else if (reg->flags & VMM_REGION_ALIAS){
-			aval = vmm_devtree_attrval(rnode,
-					VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME);
-			if (!aval) {
-				return VMM_EINVALID;
+			rc = vmm_devtree_read_physaddr(rnode,
+					VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME,
+					&reg->hphys_addr);
+			if (rc) {
+				return rc;
 			}
-
-			reg->hphys_addr = *((physical_addr_t *)aval);
 		} else {
 			reg->hphys_addr = reg->gphys_addr;
 		}
 
-		aval = vmm_devtree_attrval(rnode,
-					VMM_DEVTREE_PHYS_SIZE_ATTR_NAME);
-		if (!aval) {
-			return VMM_EINVALID;
+		rc = vmm_devtree_read_physsize(rnode,
+				VMM_DEVTREE_PHYS_SIZE_ATTR_NAME,
+				&reg->phys_size);
+		if (rc) {
+			return rc;
 		}
-		reg->phys_size = *((physical_size_t *)aval);
 
-		aval = vmm_devtree_attrval(rnode,
-					VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME);
-		if (!aval) {
+		rc = vmm_devtree_read_u32(rnode,
+				VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME,
+				&reg->align_order);
+		if (rc) {
 			reg->align_order = 0;
-		} else {
-			reg->align_order = *((u32 *)aval);
 		}
 
 		reg->devemu_priv = NULL;

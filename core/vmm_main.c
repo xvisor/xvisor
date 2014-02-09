@@ -164,7 +164,9 @@ static void system_init_work(struct vmm_work *work)
 				   VMM_DEVTREE_CHOSEN_NODE_NAME);
 	if (node) {
 		/* Find character device based on console attribute */
-		str = vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
+		str = NULL;
+		vmm_devtree_read_string(node,
+					VMM_DEVTREE_CONSOLE_ATTR_NAME, &str);
 		if (!(cdev = vmm_chardev_find(str))) {
 			if ((node1 = vmm_devtree_getnode(str))) {
 				cdev = vmm_chardev_find(node1->name);
@@ -178,7 +180,9 @@ static void system_init_work(struct vmm_work *work)
 
 #if defined(CONFIG_RTC)
 		/* Find rtc device based on rtc_device attribute */
-		str = vmm_devtree_attrval(node, VMM_DEVTREE_RTCDEV_ATTR_NAME);
+		str = NULL;
+		vmm_devtree_read_string(node,
+					VMM_DEVTREE_RTCDEV_ATTR_NAME, &str);
 		if (!(rdev = rtc_device_find(str))) {
 			if ((node1 = vmm_devtree_getnode(str))) {
 				rdev = rtc_device_find(node1->name);
@@ -196,8 +200,8 @@ static void system_init_work(struct vmm_work *work)
 #endif
 
 		/* Execute boot commands */
-		str = vmm_devtree_attrval(node, VMM_DEVTREE_BOOTCMD_ATTR_NAME);
-		if (str) {
+		if (vmm_devtree_read_string(node,
+			VMM_DEVTREE_BOOTCMD_ATTR_NAME, &str) == VMM_OK) {
 			c = vmm_devtree_attrlen(node,
 						VMM_DEVTREE_BOOTCMD_ATTR_NAME);
 			while (c) {

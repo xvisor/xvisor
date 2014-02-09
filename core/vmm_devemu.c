@@ -985,7 +985,6 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 	int rc = VMM_OK;
 	u32 ite;
 	struct dlist *l;
-	const char *attr;
 	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_devemu_guest_context *eg;
 	struct vmm_vcpu *vcpu;
@@ -1007,13 +1006,11 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 
 	eg->g_irq = NULL;
 	eg->g_irq_count = 0;
-	attr = vmm_devtree_attrval(guest->aspace.node, 
-				   VMM_DEVTREE_GUESTIRQCNT_ATTR_NAME);
-	if (!attr) {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32(guest->aspace.node, 
+			VMM_DEVTREE_GUESTIRQCNT_ATTR_NAME, &eg->g_irq_count);
+	if (rc) {
 		goto devemu_init_context_free;
 	}
-	eg->g_irq_count = *((u32 *)attr);
 	eg->g_irq = vmm_zalloc(sizeof(struct dlist) * eg->g_irq_count);
 	if (!eg->g_irq) {
 		rc = VMM_ENOMEM;

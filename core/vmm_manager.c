@@ -384,8 +384,8 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 					    u8 priority,
 					    u64 time_slice_nsecs)
 {
+	u32 vnum;
 	struct vmm_vcpu *vcpu = NULL;
-	int vnum;
 	irq_flags_t flags;
 
 	/* Sanity checks */
@@ -751,8 +751,8 @@ static struct vmm_cpumask affinity_mask[CONFIG_MAX_VCPU_COUNT];
 
 struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 {
-	int vnum, gnum;
-	const char *attrval;
+	u32 val, vnum, gnum;
+	const char *str;
 	irq_flags_t flags, flags1;
 	struct dlist *lentry;
 	struct vmm_devtree_node *vsnode;
@@ -764,12 +764,11 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	if (!gnode) {
 		return NULL;
 	}
-	attrval = vmm_devtree_attrval(gnode,
-				      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
-	if (!attrval) {
+	if (vmm_devtree_read_string(gnode,
+				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &str)) {
 		return NULL;
 	}
-	if (strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_GUEST) != 0) {
+	if (strcmp(str, VMM_DEVTREE_DEVICE_TYPE_VAL_GUEST) != 0) {
 		return NULL;
 	}
 
@@ -827,12 +826,11 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	guest->arch_priv = NULL;
 
 	/* Determine guest endianness from guest node */
-	attrval = vmm_devtree_attrval(gnode,
-				      VMM_DEVTREE_ENDIANNESS_ATTR_NAME);
-	if (attrval) {
-		if (!strcmp(attrval, VMM_DEVTREE_ENDIANNESS_VAL_LITTLE)) {
+	if (vmm_devtree_read_string(gnode,
+			VMM_DEVTREE_ENDIANNESS_ATTR_NAME, &str) == VMM_OK) {
+		if (!strcmp(str, VMM_DEVTREE_ENDIANNESS_VAL_LITTLE)) {
 			guest->is_big_endian = FALSE;
-		} else if (!strcmp(attrval, VMM_DEVTREE_ENDIANNESS_VAL_BIG)) {
+		} else if (!strcmp(str, VMM_DEVTREE_ENDIANNESS_VAL_BIG)) {
 			guest->is_big_endian = TRUE;
 		}
 	}
@@ -854,15 +852,14 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 				   __func__, gnode->name, vnode->name);
 			goto fail_release_lock;
 		}
-		attrval = vmm_devtree_attrval(vnode,
-					      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
-		if (!attrval) {
+		if (vmm_devtree_read_string(vnode,
+				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &str)) {
 			vmm_printf("%s: No device_type attribute\n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
 			goto fail_release_lock;
 		}
-		if (strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU) != 0) {
+		if (strcmp(str, VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU) != 0) {
 			vmm_printf("%s: Invalid device_type attribute\n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
@@ -906,11 +903,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->guest = guest;
 
 		/* Setup start program counter and stack */
-		attrval = vmm_devtree_attrval(vnode,
-					      VMM_DEVTREE_START_PC_ATTR_NAME);
-		if (attrval) {
-			vcpu->start_pc = *((virtual_addr_t *) attrval);
-		}
+		vmm_devtree_read_virtaddr(vnode,
+			VMM_DEVTREE_START_PC_ATTR_NAME, &vcpu->start_pc);
 		vcpu->stack_va = 
 			(virtual_addr_t)vmm_malloc(CONFIG_IRQ_STACK_SIZE);
 		if (!vcpu->stack_va) {
@@ -934,21 +928,17 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->reset_count = 0;
 		vcpu->reset_tstamp = 0;
 		vcpu->preempt_count = 0;
-		attrval = vmm_devtree_attrval(vnode,
-					     VMM_DEVTREE_PRIORITY_ATTR_NAME);
-		if (attrval) {
-			vcpu->priority = *((u32 *) attrval);
-			if (VMM_VCPU_MAX_PRIORITY < vcpu->priority) {
-				vcpu->priority = VMM_VCPU_MAX_PRIORITY;
-			}
-		} else {
+		if (vmm_devtree_read_u32(vnode,
+			VMM_DEVTREE_PRIORITY_ATTR_NAME, &val)) {
 			vcpu->priority = VMM_VCPU_DEF_PRIORITY;
-		}
-		attrval = vmm_devtree_attrval(vnode,
-					     VMM_DEVTREE_TIME_SLICE_ATTR_NAME);
-		if (attrval) {
-			vcpu->time_slice = *((u32 *) attrval);
 		} else {
+			vcpu->priority = val;
+		}
+		if (VMM_VCPU_MAX_PRIORITY < vcpu->priority) {
+			vcpu->priority = VMM_VCPU_MAX_PRIORITY;
+		}
+		if (vmm_devtree_read_u64(vnode,
+			VMM_DEVTREE_TIME_SLICE_ATTR_NAME, &vcpu->time_slice)) {
 			vcpu->time_slice = VMM_VCPU_DEF_TIME_SLICE;
 		}
 		vcpu->sched_priv = NULL;
@@ -992,10 +982,10 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		}
 
 		/* Setup VCPU affinity mask */
-		attrval = vmm_devtree_attrval(vnode,
+		str = vmm_devtree_attrval(vnode,
 				      VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME);
-		if (attrval) {
-			u32 *cpu;
+		if (str) {
+			const u32 *cpu;
 			u32 i, num_cpu;
 
 			/* Get the number of assigned CPU */
@@ -1003,7 +993,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 					VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME);
 			num_cpu /= sizeof(u32);
 
-			cpu = (u32 *)attrval;
+			cpu = (const u32 *)str;
 			affinity_mask[vcpu->id] = VMM_CPU_MASK_NONE;
 
 			/* set all assigned CPU in the mask */
@@ -1046,9 +1036,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		}
 
 		/* Get poweroff flag from device tree */
-		attrval = vmm_devtree_attrval(vnode,
-					      VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME);
-		if (attrval) {
+		if (vmm_devtree_read_u32(vnode,
+			VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME, &val) == VMM_OK) {
 			vcpu->is_poweroff = TRUE;
 		}
 
