@@ -211,6 +211,106 @@ struct vmm_devtree_attr *vmm_devtree_getattr(
 /** Delete an attribute from a device tree node */
 int vmm_devtree_delattr(struct vmm_devtree_node *node, const char *name);
 
+/** Read an array of u8 from attribute */
+int vmm_devtree_read_u8_array(const struct vmm_devtree_node *node,
+			      const char *attrib, u8 *out, size_t sz);
+
+/** Read u8 from attribute */
+static inline int vmm_devtree_read_u8(const struct vmm_devtree_node *node,
+				      const char *attrib, u8 *out)
+{
+	return vmm_devtree_read_u8_array(node, attrib, out, 1);
+}
+
+/** Read an array of u16 from attribute */
+int vmm_devtree_read_u16_array(const struct vmm_devtree_node *node,
+			       const char *attrib, u16 *out, size_t sz);
+
+/** Read u16 from attribute */
+static inline int vmm_devtree_read_u16(const struct vmm_devtree_node *node,
+				       const char *attrib, u16 *out)
+{
+	return vmm_devtree_read_u16_array(node, attrib, out, 1);
+}
+
+/** Read an array of u32 from attribute */
+int vmm_devtree_read_u32_array(const struct vmm_devtree_node *node,
+			       const char *attrib, u32 *out, size_t sz);
+
+/** Read u32 from attribute */
+static inline int vmm_devtree_read_u32(const struct vmm_devtree_node *node,
+				       const char *attrib, u32 *out)
+{
+	return vmm_devtree_read_u32_array(node, attrib, out, 1);
+}
+
+/** Read an array of u64 from attribute */
+int vmm_devtree_read_u64_array(const struct vmm_devtree_node *node,
+			       const char *attrib, u64 *out, size_t sz);
+
+/** Read u64 from attribute */
+static inline int vmm_devtree_read_u64(const struct vmm_devtree_node *node,
+				       const char *attrib, u64 *out)
+{
+	return vmm_devtree_read_u64_array(node, attrib, out, 1);
+}
+
+/** Read an array of physical address from attribute */
+int vmm_devtree_read_physaddr_array(const struct vmm_devtree_node *node,
+				    const char *attrib, physical_addr_t *out,
+				    size_t sz);
+
+/** Read physical address from attribute */
+static inline int vmm_devtree_read_physaddr(const struct vmm_devtree_node *node,
+					    const char *attrib,
+					    physical_addr_t *out)
+{
+	return vmm_devtree_read_physaddr_array(node, attrib, out, 1);
+}
+
+/** Read an array of physical size from attribute */
+int vmm_devtree_read_physsize_array(const struct vmm_devtree_node *node,
+				    const char *attrib, physical_size_t *out,
+				    size_t sz);
+
+/** Read physical size from attribute */
+static inline int vmm_devtree_read_physsize(const struct vmm_devtree_node *node,
+					    const char *attrib,
+					    physical_size_t *out)
+{
+	return vmm_devtree_read_physsize_array(node, attrib, out, 1);
+}
+
+/** Read an array of virtual address from attribute */
+int vmm_devtree_read_virtaddr_array(const struct vmm_devtree_node *node,
+				    const char *attrib, virtual_addr_t *out,
+				    size_t sz);
+
+/** Read virtual address from attribute */
+static inline int vmm_devtree_read_virtaddr(const struct vmm_devtree_node *node,
+					    const char *attrib,
+					    virtual_addr_t *out)
+{
+	return vmm_devtree_read_virtaddr_array(node, attrib, out, 1);
+}
+
+/** Read an array of virtual size from attribute */
+int vmm_devtree_read_virtsize_array(const struct vmm_devtree_node *node,
+				    const char *attrib, virtual_size_t *out,
+				    size_t sz);
+
+/** Read virtual size from attribute */
+static inline int vmm_devtree_read_virtsize(const struct vmm_devtree_node *node,
+					    const char *attrib,
+					    virtual_size_t *out)
+{
+	return vmm_devtree_read_virtsize_array(node, attrib, out, 1);
+}
+
+/** Read string from attribute */
+int vmm_devtree_read_string(const struct vmm_devtree_node *node,
+			    const char *attrib, const char **out);
+
 /** Find string in a list and return index
  *
  *  This function searches a string list property and returns the index
