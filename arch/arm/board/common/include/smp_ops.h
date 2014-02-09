@@ -32,7 +32,7 @@
 #define MPIDR_HWID_BITMASK	0xFFFFFF
 #endif
 
-extern u64 __smp_logical_map[];
+extern physical_addr_t __smp_logical_map[];
 #define smp_logical_map(cpu)	__smp_logical_map[(cpu)]
 
 /**

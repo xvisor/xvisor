@@ -373,7 +373,6 @@ int __init gic_devtree_init(struct vmm_devtree_node *node,
 {
 	int rc;
 	u32 irq;
-	const u32 *aval;
 	virtual_addr_t cpu_base;
 	virtual_addr_t dist_base;
 
@@ -387,14 +386,16 @@ int __init gic_devtree_init(struct vmm_devtree_node *node,
 	rc = vmm_devtree_regmap(node, &cpu_base, 1);
 	WARN(rc, "unable to map gic cpu registers\n");
 
-	aval = vmm_devtree_attrval(node, "irq_start");
-	WARN(!aval, "unable to get gic irq_start\n");
-	irq = (aval) ? *aval : 0;
+	if (vmm_devtree_read_u32(node, "irq_start", &irq)) {
+		WARN(1, "unable to get gic irq_start\n");
+		irq = 0;
+	}
 	gic_init_bases(gic_cnt, irq, cpu_base, dist_base);
 
 	if (parent) {
-		aval = vmm_devtree_attrval(node, "parent_irq");
-		irq = (aval) ? *aval : 1020;
+		if (vmm_devtree_read_u32(node, "parent_irq", &irq)) {
+			irq = 1020;
+		}
 		gic_cascade_irq(gic_cnt, irq);
 	} else {
 		vmm_host_irq_set_active_callback(gic_active_irq);

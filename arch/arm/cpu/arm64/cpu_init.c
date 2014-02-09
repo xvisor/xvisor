@@ -49,7 +49,7 @@ virtual_size_t arch_code_size(void)
 
 int __init arch_cpu_early_init(void)
 {
-	const char *attr;
+	const char *options;
 	struct vmm_devtree_node *node;
 
 	/*
@@ -64,9 +64,9 @@ int __init arch_cpu_early_init(void)
 		return VMM_ENODEV;
 	}
 
-	attr = vmm_devtree_attrval(node, VMM_DEVTREE_BOOTARGS_ATTR_NAME);
-	if (attr) {
-		vmm_parse_early_options(attr);
+	if (vmm_devtree_read_string(node,
+		VMM_DEVTREE_BOOTARGS_ATTR_NAME, &options) == VMM_OK) {
+		vmm_parse_early_options(options);
 	}
 
 	return VMM_OK;

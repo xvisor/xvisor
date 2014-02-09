@@ -80,20 +80,22 @@ static int pl011_defterm_getc(u8 *ch)
 static int __init pl011_defterm_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	const u32 *val;
 
 	rc = vmm_devtree_regmap(node, &pl011_defterm_base, 0);
 	if (rc) {
 		return rc;
 	}
 
-	rc = vmm_devtree_clock_frequency(node, &pl011_defterm_inclk);
+	rc = vmm_devtree_clock_frequency(node,
+				&pl011_defterm_inclk);
 	if (rc) {
 		return rc;
 	}
 
-	val = vmm_devtree_attrval(node, "baudrate");
-	pl011_defterm_baud = (val) ? *val : 115200;
+	if (vmm_devtree_read_u32(node, "baudrate",
+				&pl011_defterm_baud)) {
+		pl011_defterm_baud = 115200;
+	}
 
 	pl011_lowlevel_init(pl011_defterm_base,
 			    pl011_defterm_baud, 
@@ -145,23 +147,27 @@ static int uart8250_defterm_getc(u8 *ch)
 static int __init uart8250_defterm_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	const u32 *val;
 
 	rc = vmm_devtree_regmap(node, &uart8250_port.base, 0);
 	if (rc) {
 		return rc;
 	}
 
-	rc = vmm_devtree_clock_frequency(node, &uart8250_port.input_clock);
+	rc = vmm_devtree_clock_frequency(node,
+				&uart8250_port.input_clock);
 	if (rc) {
 		return rc;
 	}
 
-	val = vmm_devtree_attrval(node, "baudrate");
-	uart8250_port.baudrate = (val) ? *val : 115200;
+	if (vmm_devtree_read_u32(node, "baudrate",
+				&uart8250_port.baudrate)) {
+		uart8250_port.baudrate = 115200;
+	}
 
-	val = vmm_devtree_attrval(node, "reg_align");
-	uart8250_port.reg_align = (val) ? *val : 4;
+	if (vmm_devtree_read_u32(node, "reg_align",
+				&uart8250_port.reg_align)) {
+		uart8250_port.reg_align = 4;
+	}
 
 	uart_8250_lowlevel_init(&uart8250_port);
 
@@ -213,20 +219,22 @@ static int omap_defterm_getc(u8 *ch)
 static int __init omap_defterm_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	const u32 *val;
 
 	rc = vmm_devtree_regmap(node, &omap_defterm_base, 0);
 	if (rc) {
 		return rc;
 	}
 
-	rc = vmm_devtree_clock_frequency(node, &omap_defterm_inclk);
+	rc = vmm_devtree_clock_frequency(node,
+				&omap_defterm_inclk);
 	if (rc) {
 		return rc;
 	}
 
-	val = vmm_devtree_attrval(node, "baudrate");
-	omap_defterm_baud = (val) ? *val : 115200;
+	if (vmm_devtree_read_u32(node, "baudrate",
+				&omap_defterm_baud)) {
+		omap_defterm_baud = 115200;
+	}
 
 	omap_uart_lowlevel_init(omap_defterm_base, 4, 
 				omap_defterm_baud, 
@@ -280,20 +288,22 @@ static int imx_defterm_getc(u8 *ch)
 static int __init imx_defterm_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	const u32 *val;
 
 	rc = vmm_devtree_regmap(node, &imx_defterm_base, 0);
 	if (rc) {
 		return rc;
 	}
 
-	rc = vmm_devtree_clock_frequency(node, &imx_defterm_inclk);
+	rc = vmm_devtree_clock_frequency(node,
+				&imx_defterm_inclk);
 	if (rc) {
 		return rc;
 	}
 
-	val = vmm_devtree_attrval(node, "baudrate");
-	imx_defterm_baud = (val) ? *val : 115200;
+	if (vmm_devtree_read_u32(node, "baudrate",
+				&imx_defterm_baud)) {
+		imx_defterm_baud = 115200;
+	}
 
 	imx_lowlevel_init(imx_defterm_base,
 			  imx_defterm_baud, 
@@ -347,7 +357,6 @@ static int samsung_defterm_getc(u8 *ch)
 static int __init samsung_defterm_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	const u32 *val;
 
 	/* map this console device */
 	rc = vmm_devtree_regmap(node, &samsung_defterm_base, 0);
@@ -356,14 +365,17 @@ static int __init samsung_defterm_init(struct vmm_devtree_node *node)
 	}
 
 	/* retrieve clock frequency */
-	rc = vmm_devtree_clock_frequency(node, &samsung_defterm_inclk);
+	rc = vmm_devtree_clock_frequency(node,
+				&samsung_defterm_inclk);
 	if (rc) {
 		return rc;
 	}
 	
 	/* retrieve baud rate */
-	val = vmm_devtree_attrval(node, "baudrate");
-	samsung_defterm_baud = (val) ? *val : 115200;
+	if (vmm_devtree_read_u32(node, "baudrate",
+				&samsung_defterm_baud)) {
+		samsung_defterm_baud = 115200;
+	}
 
 	/* initialize the console port */
 	samsung_lowlevel_init(samsung_defterm_base,
@@ -421,6 +433,7 @@ int arch_defterm_getc(u8 *ch)
 
 int __init arch_defterm_init(void)
 {
+	int rc;
 	const char *attr;
 	struct vmm_devtree_node *node;
 	const struct vmm_devtree_nodeid *nodeid;
@@ -432,9 +445,10 @@ int __init arch_defterm_init(void)
 		return VMM_ENODEV;
 	}
 
-	attr = vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
-	if (!attr) {
-		return VMM_ENODEV;
+	rc = vmm_devtree_read_string(node,
+				VMM_DEVTREE_CONSOLE_ATTR_NAME, &attr);
+	if (rc) {
+		return rc;
 	}
    
 	node = vmm_devtree_getnode(attr);

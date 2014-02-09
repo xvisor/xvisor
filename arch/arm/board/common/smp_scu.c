@@ -140,7 +140,7 @@ static int __init scu_cpu_init(struct vmm_devtree_node *node,
 {
 	int rc;
 	u32 ncores;
-	const physical_addr_t *pa;
+	physical_addr_t pa;
 	struct vmm_devtree_node *scu_node;
 
 	/* Map SCU base */
@@ -156,21 +156,21 @@ static int __init scu_cpu_init(struct vmm_devtree_node *node,
 	}
 
 	/* Map clear address */
-	pa = vmm_devtree_attrval(node,
-				VMM_DEVTREE_CPU_CLEAR_ADDR_ATTR_NAME);
-	if (pa) {
-		clear_addr[cpu] = vmm_host_iomap(*pa, VMM_PAGE_SIZE);
-	} else {
+	rc = vmm_devtree_read_physaddr(node,
+			VMM_DEVTREE_CPU_CLEAR_ADDR_ATTR_NAME, &pa);
+	if (rc) {
 		clear_addr[cpu] = 0x0;
+	} else {
+		clear_addr[cpu] = vmm_host_iomap(pa, VMM_PAGE_SIZE);
 	}
 
 	/* Map release address */
-	pa = vmm_devtree_attrval(node,
-				VMM_DEVTREE_CPU_RELEASE_ADDR_ATTR_NAME);
-	if (pa) {
-		release_addr[cpu] = vmm_host_iomap(*pa, VMM_PAGE_SIZE);
-	} else {
+	rc = vmm_devtree_read_physaddr(node,
+			VMM_DEVTREE_CPU_RELEASE_ADDR_ATTR_NAME, &pa);
+	if (rc) {
 		release_addr[cpu] = 0x0;
+	} else {
+		release_addr[cpu] = vmm_host_iomap(pa, VMM_PAGE_SIZE);
 	}
 
 	/* Check core count from SCU */

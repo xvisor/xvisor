@@ -224,11 +224,10 @@ void ioapic_enable(void)
 
 int detect_ioapics(unsigned int *nr_ioapics)
 {
+	u32 val;
 	int ret = VMM_OK;
-	const u32 *aval;
 	struct vmm_devtree_node *node;
 	char apic_nm[512];
-	const physical_addr_t *base;
 	unsigned int n = 0;
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
@@ -239,14 +238,14 @@ int detect_ioapics(unsigned int *nr_ioapics)
 		return VMM_ENODEV;
 	}
 
-	aval = vmm_devtree_attrval(node, VMM_DEVTREE_NR_IOAPIC_ATTR_NAME);
+	ret = vmm_devtree_read_u32(node,
+			VMM_DEVTREE_NR_IOAPIC_ATTR_NAME, &val);
+	if (ret)
+		return ret;
 
-	if (!aval)
-		return VMM_ENODEV;
+	if (nr_ioapics) *nr_ioapics = val;
 
-	if (nr_ioapics) *nr_ioapics = *aval;
-
-	while (n < *aval) {
+	while (n < val) {
 		vmm_sprintf(apic_nm, VMM_DEVTREE_PATH_SEPARATOR_STRING
 			VMM_DEVTREE_MOTHERBOARD_NODE_NAME
 			VMM_DEVTREE_PATH_SEPARATOR_STRING
@@ -258,14 +257,15 @@ int detect_ioapics(unsigned int *nr_ioapics)
 		node = vmm_devtree_getnode(apic_nm);
 		BUG_ON(node == NULL);
 
-		base = vmm_devtree_attrval(node, VMM_DEVTREE_IOAPIC_PADDR_ATTR_NAME);
-		if (!base)
-			return VMM_ENODEV;
+		ret = vmm_devtree_read_physaddr(node,
+				VMM_DEVTREE_IOAPIC_PADDR_ATTR_NAME,
+				&io_apic[n].paddr);
+		if (ret)
+			return ret;
 
 		vmm_snprintf((char *)&io_apic[n].name, APIC_NAME_LEN, "IOAPIC-%d", n);
 		io_apic[n].id = n;
-		io_apic[n].vaddr = vmm_host_iomap(*base, PAGE_SIZE);
-		io_apic[n].paddr = *base;
+		io_apic[n].vaddr = vmm_host_iomap(io_apic[n].paddr, PAGE_SIZE);
 		io_apic[n].pins = ((ioapic_read(io_apic[n].vaddr,
 				IOAPIC_VERSION) & 0xff0000) >> 16)+1;
 		ioapic_set_id(io_apic[n].vaddr, n);

@@ -155,8 +155,7 @@ struct clcd_panel *versatile_clcd_get_panel(const char *name)
 int versatile_clcd_setup(struct clcd_fb *fb, unsigned long framesize)
 {
 	int rc;
-	u32 use_dma;
-	const char *attr;
+	u32 use_dma, val[2];
 	void *screen_base;
 	unsigned long smem_len;
 	physical_addr_t smem_pa;
@@ -165,11 +164,8 @@ int versatile_clcd_setup(struct clcd_fb *fb, unsigned long framesize)
 		return VMM_EINVALID;
 	}
 
-	attr = vmm_devtree_attrval(fb->dev->node, "use_dma");
-	if (!attr) {
+	if (vmm_devtree_read_u32(fb->dev->node, "use_dma", &use_dma)) {
 		use_dma = 0;
-	} else {
-		use_dma = *((u32 *)attr);
 	}
 	
 	if (use_dma) {
@@ -188,13 +184,14 @@ int versatile_clcd_setup(struct clcd_fb *fb, unsigned long framesize)
 			return rc;
 		}
 	} else {
-		attr = vmm_devtree_attrval(fb->dev->node, "framebuffer");
-		if (!attr) {
-			return VMM_ENODEV;
+		rc = vmm_devtree_read_u32_array(fb->dev->node,
+						"framebuffer", val, 2);
+		if (rc) {
+			return rc;
 		}
 
-		smem_pa = ((u32 *)attr)[0];
-		smem_len = ((u32 *)attr)[1];
+		smem_pa = val[0];
+		smem_len = val[1];
 
 		if (smem_len < framesize) {
 			return VMM_ENOMEM;

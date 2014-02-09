@@ -192,10 +192,10 @@ static void arch_guest_vcpu_trampoline(struct vmm_vcpu *vcpu)
 
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
+	int rc, cpuid;
 	u64 stack_start;
-	extern struct cpuinfo_x86 cpu_info;
 	const char *attr;
-	int cpuid;
+	extern struct cpuinfo_x86 cpu_info;
 
 	if (!vcpu->is_normal) {
 		/* For orphan vcpu */
@@ -207,10 +207,10 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		vcpu->regs.ss = VMM_DATA_SEG_SEL;
 		vcpu->regs.rflags = (X86_EFLAGS_IF | X86_EFLAGS_PF | X86_EFLAGS_CF);
 	} else {
-		attr = vmm_devtree_attrval(vcpu->node,
-					   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
-		if (!attr) {
-			return VMM_EFAIL;
+		rc = vmm_devtree_read_string(vcpu->node,
+				VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
+		if (rc) {
+			return rc;
 		}
 
 		if (strcmp(attr, "amd-k6") == 0) {

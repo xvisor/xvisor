@@ -56,7 +56,8 @@
 #endif
 
 volatile unsigned long start_secondary_pen_release = INVALID_HWID;
-u64 __smp_logical_map[CONFIG_CPU_COUNT] = { [0 ... CONFIG_CPU_COUNT-1] = INVALID_HWID };
+physical_addr_t __smp_logical_map[CONFIG_CPU_COUNT] =
+				{ [0 ... CONFIG_CPU_COUNT-1] = INVALID_HWID };
 
 static LIST_HEAD(smp_ops_list);
 static const struct smp_operations *smp_cpu_ops[CONFIG_CPU_COUNT];
@@ -108,10 +109,12 @@ static const struct smp_operations * __init smp_get_ops(const char *name)
  */
 static int __init smp_read_ops(struct vmm_devtree_node *dn, int cpu)
 {
-	const char *enable_method = vmm_devtree_attrval(dn,
-					VMM_DEVTREE_ENABLE_METHOD_ATTR_NAME);
+	int rc;
+	const char *enable_method;
 
-	if (!enable_method) {
+	rc = vmm_devtree_read_string(dn,
+		VMM_DEVTREE_ENABLE_METHOD_ATTR_NAME, &enable_method);
+	if (rc) {
 		/*
 		 * The boot CPU may not have an enable method (e.g. when
 		 * spin-table is used for secondaries). Don't warn spuriously.
@@ -120,7 +123,7 @@ static int __init smp_read_ops(struct vmm_devtree_node *dn, int cpu)
 			vmm_printf("%s: missing enable-method property\n",
 				   dn->name);
 		}
-		return VMM_ENOENT;
+		return rc;
 	}
 
 	smp_cpu_ops[cpu] = smp_get_ops(enable_method);
@@ -135,9 +138,9 @@ static int __init smp_read_ops(struct vmm_devtree_node *dn, int cpu)
 
 int __init arch_smp_init_cpus(void)
 {
+	int rc;
 	unsigned int i, cpu = 1;
 	bool bootcpu_valid = false;
-	const physical_addr_t *reg;
 	struct vmm_devtree_node *dn, *cpus;
 
 	cpus = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "cpus");
@@ -157,30 +160,30 @@ int __init arch_smp_init_cpus(void)
 		return VMM_ENODEV;
 	}
 
-	reg = vmm_devtree_attrval(dn, VMM_DEVTREE_REG_ATTR_NAME);
-	if (!reg) {
+	rc = vmm_devtree_read_physaddr(dn,
+			VMM_DEVTREE_REG_ATTR_NAME, &smp_logical_map(0));
+	if (rc) {
 		vmm_printf("%s: Failed to find reg property for boot cpu\n",
 			   __func__);
-		return VMM_ENODEV;
+		return rc;
 	}
-	smp_logical_map(0) = reg[0];
 	smp_read_ops(dn, 0);
 
 	dn = NULL;
 	devtree_for_each_node(dn, cpus) {
-		u64 hwid;
+		physical_addr_t hwid;
 
 		/*
 		 * A cpu node with missing "reg" property is
 		 * considered invalid to build a smp_logical_map
 		 * entry.
 		 */
-		reg = vmm_devtree_attrval(dn, VMM_DEVTREE_REG_ATTR_NAME);
-		if (!reg) {
+		rc = vmm_devtree_read_physaddr(dn,
+					VMM_DEVTREE_REG_ATTR_NAME, &hwid);
+		if (rc) {
 			vmm_printf("%s: missing reg property\n", dn->name);
 			goto next;
 		}
-		hwid = reg[0];
 
 		/*
 		 * Non affinity bits must be set to 0 in the DT

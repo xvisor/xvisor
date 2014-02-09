@@ -303,7 +303,6 @@ static vmm_irq_return_t epit_timer_interrupt(int irq, void *dev)
 int __cpuinit epit_clockchip_init(void)
 {
 	int rc = VMM_ENODEV;
-	const u32 *val;
 	u32 clock, hirq, timer_num;
 	struct vmm_devtree_node *node;
 	struct epit_clockchip *ecc;
@@ -321,12 +320,10 @@ int __cpuinit epit_clockchip_init(void)
 	}
 
 	/* Read timer_num attribute */
-	val = vmm_devtree_attrval(node, "timer_num");
-	if (!val) {
-		rc = VMM_ENOTAVAIL;
+	rc = vmm_devtree_read_u32(node, "timer_num", &timer_num);
+	if (rc) {
 		goto fail;
 	}
-	timer_num = *val;
 
 	/* Read irq attribute */
 	rc = vmm_devtree_irq_get(node, &hirq, 0);

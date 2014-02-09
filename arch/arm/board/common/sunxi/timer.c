@@ -249,7 +249,6 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 hirq, tmp;
-	const void *attrval;
 	struct aw_clockchip *acc;
 
 	acc = vmm_zalloc(sizeof(struct aw_clockchip));
@@ -258,12 +257,11 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 	}
 
 	/* Read reg_offset attribute */
-	attrval = vmm_devtree_attrval(node, "timer_num");
-	if (!attrval) {
+	rc = vmm_devtree_read_u32(node, "timer_num", &acc->num);
+	if (rc) {
 		vmm_free(acc);
 		return VMM_ENOTAVAIL;
 	}
-	acc->num = *((const u32 *)attrval);
 	acc->off = 0x10 + 0x10 * acc->num;
 
 	/* Read irq attribute */

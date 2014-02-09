@@ -430,21 +430,30 @@ static int uart8250_defterm_getc(u8 *ch)
 static int __init uart8250_defterm_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	const u32 *val;
+	physical_addr_t addr;
 
-	val = vmm_devtree_attrval(node, VMM_DEVTREE_REG_ATTR_NAME);
-	uart8250_port.base = (val) ? *val : 0x3f8;
+	if (vmm_devtree_read_physaddr(node,
+			VMM_DEVTREE_REG_ATTR_NAME, &addr)) {
+		uart8250_port.base = 0x3f8;
+	} else {
+		uart8250_port.base = (virtual_addr_t)addr;
+	}
 
-	rc = vmm_devtree_clock_frequency(node, &uart8250_port.input_clock);
+	rc = vmm_devtree_clock_frequency(node,
+				&uart8250_port.input_clock);
 	if (rc) {
 		return rc;
 	}
 
-	val = vmm_devtree_attrval(node, "baudrate");
-	uart8250_port.baudrate = (val) ? *val : 115200;
+	if (vmm_devtree_read_u32(node, "baudrate",
+				 &uart8250_port.baudrate)) {
+		uart8250_port.baudrate = 115200;
+	}
 
-	val = vmm_devtree_attrval(node, "reg_align");
-	uart8250_port.reg_align = (val) ? *val : 4;
+	if (vmm_devtree_read_u32(node, "reg_align",
+				 &uart8250_port.reg_align)) {
+		uart8250_port.reg_align = 4;
+	}
 
 	uart_8250_lowlevel_init(&uart8250_port);
 
@@ -525,6 +534,7 @@ int arch_defterm_getc(u8 *ch)
 
 int __init arch_defterm_init(void)
 {
+	int rc;
 	const char *attr;
 	struct vmm_devtree_node *node;
 	const struct vmm_devtree_nodeid *nodeid;
@@ -541,9 +551,10 @@ int __init arch_defterm_init(void)
 		return VMM_ENODEV;
 	}
 
-	attr = vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
-	if (!attr) {
-		return VMM_ENODEV;
+	rc = vmm_devtree_read_string(node,
+			VMM_DEVTREE_CONSOLE_ATTR_NAME, &attr);
+	if (rc) {
+		return rc;
 	}
 
 	node = vmm_devtree_getnode(attr);

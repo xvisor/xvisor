@@ -764,10 +764,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	if (!vcpu->is_normal) {
 		return VMM_OK;
 	}
-	attr = vmm_devtree_attrval(vcpu->node, 
-				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
-	if (!attr) {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_string(vcpu->node, 
+			VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
+	if (rc) {
 		goto fail;
 	}
 	if (strcmp(attr, "armv5te,arm926ej") == 0) {

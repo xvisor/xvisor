@@ -43,24 +43,25 @@ static virtual_addr_t release_addr[CONFIG_CPU_COUNT];
 static int __init smp_spin_table_cpu_init(struct vmm_devtree_node *node,
 				unsigned int cpu)
 {
-	const physical_addr_t *pa;
+	int rc;
+	physical_addr_t pa;
 
 	/* Map release address */
-	pa = vmm_devtree_attrval(node,
-				VMM_DEVTREE_CPU_RELEASE_ADDR_ATTR_NAME);
-	if (pa) {
-		release_addr[cpu] = vmm_host_iomap(*pa, VMM_PAGE_SIZE);
-	} else {
+	rc = vmm_devtree_read_physaddr(node,
+			VMM_DEVTREE_CPU_RELEASE_ADDR_ATTR_NAME, &pa);
+	if (rc) {
 		release_addr[cpu] = 0x0;
+	} else {
+		release_addr[cpu] = vmm_host_iomap(pa, VMM_PAGE_SIZE);
 	}
 
 	/* Map clear address */
-	pa = vmm_devtree_attrval(node,
-				VMM_DEVTREE_CPU_CLEAR_ADDR_ATTR_NAME);
-	if (pa) {
-		clear_addr[cpu] = vmm_host_iomap(*pa, VMM_PAGE_SIZE);
-	} else {
+	rc = vmm_devtree_read_physaddr(node,
+			VMM_DEVTREE_CPU_CLEAR_ADDR_ATTR_NAME, &pa);
+	if (rc) {
 		clear_addr[cpu] = 0x0;
+	} else {
+		clear_addr[cpu] = vmm_host_iomap(pa, VMM_PAGE_SIZE);
 	}
 
 	return VMM_OK;

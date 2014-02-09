@@ -199,15 +199,13 @@ static struct hpet_timer *get_timer_from_id(timer_id_t timer_id)
 
 int __init hpet_init(void)
 {
-	const u32 *aval;
+	int rc, i, j, k;
 	u32 nr_hpet_chips = 0;
 	struct hpet_chip *chip;
 	struct hpet_block *block;
 	struct hpet_timer *timer;
-	int i, j, k;
 	struct vmm_devtree_node *node;
 	char hpet_nm[512];
-	const physical_addr_t *base;
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				VMM_DEVTREE_MOTHERBOARD_NODE_NAME
@@ -215,10 +213,9 @@ int __init hpet_init(void)
 				"HPET");
 
 	BUG_ON(node == NULL);
-	aval = vmm_devtree_attrval(node, VMM_DEVTREE_NR_HPET_ATTR_NAME);
-	BUG_ON(aval == NULL);
-
-	nr_hpet_chips = *aval;
+	rc = vmm_devtree_read_u32(node,
+			VMM_DEVTREE_NR_HPET_ATTR_NAME, &nr_hpet_chips);
+	BUG_ON(rc != VMM_OK);
 
 	/* Need at least one HPET as system timer */
 	BUG_ON(nr_hpet_chips == 0);
@@ -251,10 +248,9 @@ int __init hpet_init(void)
 			node = vmm_devtree_getnode(hpet_nm);
 			BUG_ON(node == NULL);
 
-			base = vmm_devtree_attrval(node, VMM_DEVTREE_HPET_PADDR_ATTR_NAME);
-			BUG_ON(base == NULL);
-
-			block->pbase = *base;
+			rc = vmm_devtree_read_physaddr(node,
+				VMM_DEVTREE_HPET_PADDR_ATTR_NAME, &block->pbase);
+			BUG_ON(rc != VMM_OK);
 			BUG_ON(block->pbase == 0);
 
 			/* Make the block and its timer accessible to us. */

@@ -156,7 +156,6 @@ static void __cpuinit twd_caliberate_freq(virtual_addr_t base,
 static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	const void *aval;
 	u32 ref_cnt_freq;
 	virtual_addr_t ref_cnt_addr;
 	u32 cpu = vmm_smp_processor_id();
@@ -200,12 +199,11 @@ static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 				vmm_devtree_regunmap(node, ref_cnt_addr, 1);
 				goto fail_regunmap;
 			}
-			aval = vmm_devtree_attrval(node, "ref-counter-freq");
-			if (!aval) {
+			if (vmm_devtree_read_u32(node, "ref-counter-freq",
+						 &ref_cnt_freq)) {
 				vmm_devtree_regunmap(node, ref_cnt_addr, 1);
 				goto fail_regunmap;
 			}
-			ref_cnt_freq = *((u32 *)aval);
 			twd_caliberate_freq(twd_base, 
 					ref_cnt_addr, ref_cnt_freq);
 			vmm_devtree_regunmap(node, ref_cnt_addr, 1);

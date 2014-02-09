@@ -1330,7 +1330,7 @@ static int vgic_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
 				const struct vmm_devtree_nodeid *eid)
 {
-	const char *attr;
+	int rc;
 	u32 parent_irq, num_irq;
 	struct vgic_guest_state *s;
 
@@ -1341,20 +1341,16 @@ static int vgic_emulator_probe(struct vmm_guest *guest,
 		return VMM_ENODEV;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "parent_irq");
-	if (!attr) {
-		return VMM_EFAIL;
+	rc = vmm_devtree_read_u32(edev->node, "parent_irq", &parent_irq);
+	if (rc) {
+		return rc;
 	}
-	parent_irq = *((u32 *)attr);
 
-	attr = vmm_devtree_attrval(edev->node, "num_irq");
-	if (!attr) {
+	if (vmm_devtree_read_u32(edev->node, "num_irq", &num_irq)) {
 		num_irq = VGIC_MAX_NIRQ;
-	} else {
-		num_irq = *((u32 *)attr);
-		if (num_irq > VGIC_MAX_NIRQ) {
-			num_irq = VGIC_MAX_NIRQ;
-		}
+	}
+	if (num_irq > VGIC_MAX_NIRQ) {
+		num_irq = VGIC_MAX_NIRQ;
 	}
 
 	s = vgic_state_alloc(edev->node->name,

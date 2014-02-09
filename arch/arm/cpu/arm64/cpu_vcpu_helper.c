@@ -343,10 +343,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 
 	/* Following initialization for normal VCPUs only */
-	attr = vmm_devtree_attrval(vcpu->node, 
-				   VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
-	if (!attr) {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_string(vcpu->node, 
+			VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
+	if (rc) {
 		goto fail;
 	}
 	if (strcmp(attr, "armv7a,cortex-a8") == 0) {
@@ -495,12 +494,12 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		/* Initialize Hypervisor System Trap Register */
 		arm_priv(vcpu)->hstr = 0;
 		/* Generic timer physical & virtual irq for the vcpu */
-		attr = vmm_devtree_attrval(vcpu->node, "gentimer_phys_irq");
-		arm_gentimer_context(vcpu)->phys_timer_irq = 
-						(attr) ? (*(u32 *)attr) : 0;
-		attr = vmm_devtree_attrval(vcpu->node, "gentimer_virt_irq");
-		arm_gentimer_context(vcpu)->virt_timer_irq = 
-						(attr) ? (*(u32 *)attr) : 0;
+		arm_gentimer_context(vcpu)->phys_timer_irq = 0;
+		vmm_devtree_read_u32(vcpu->node, "gentimer_phys_irq",
+				&arm_gentimer_context(vcpu)->phys_timer_irq);
+		arm_gentimer_context(vcpu)->virt_timer_irq = 0;
+		vmm_devtree_read_u32(vcpu->node, "gentimer_virt_irq",
+				&arm_gentimer_context(vcpu)->virt_timer_irq);
 		/* Cleanup VGIC context first time */
 		arm_vgic_cleanup(vcpu);
 	}
