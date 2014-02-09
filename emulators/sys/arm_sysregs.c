@@ -777,12 +777,11 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 				   const struct vmm_devtree_nodeid *eid)
 {
 	int i, j, rc = VMM_OK;
-	const char *attr;
 	struct arm_sysregs *s;
 
 	s = vmm_zalloc(sizeof(struct arm_sysregs));
 	if (!s) {
-		rc = VMM_EFAIL;
+		rc = VMM_ENOMEM;
 		goto arm_sysregs_emulator_probe_done;
 	}
 
@@ -829,20 +828,16 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 		}
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "mux_in_irq");
-	if (attr) {
-		s->mux_in_irq[0] = ((u32 *)attr)[0];
-		s->mux_in_irq[1] = ((u32 *)attr)[1];
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32_array(edev->node, "mux_in_irq",
+					s->mux_in_irq,
+					array_size(s->mux_in_irq));
+	if (rc) {
 		goto arm_sysregs_emulator_probe_freeclock_fail;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "mux_out_irq");
-	if (attr) {
-		s->mux_out_irq = ((u32 *)attr)[0];
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32(edev->node, "mux_out_irq",
+				    &s->mux_out_irq);
+	if (rc) {
 		goto arm_sysregs_emulator_probe_freeclock_fail;
 	}
 

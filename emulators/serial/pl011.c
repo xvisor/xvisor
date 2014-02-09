@@ -387,7 +387,6 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	char name[64];
-	const char *attr;
 	struct pl011_state *s;
 
 	s = vmm_zalloc(sizeof(struct pl011_state));
@@ -415,11 +414,8 @@ static int pl011_emulator_probe(struct vmm_guest *guest,
 		goto pl011_emulator_probe_freestate_fail;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "fifo_size");
-	if (attr) {
-		s->fifo_sz = *((u32 *)attr);
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32(edev->node, "fifo_size", &s->fifo_sz);
+	if (rc) {
 		goto pl011_emulator_probe_freestate_fail;
 	}
 

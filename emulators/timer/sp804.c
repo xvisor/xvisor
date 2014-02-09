@@ -562,12 +562,11 @@ static int sp804_emulator_probe(struct vmm_guest *guest,
 	int rc = VMM_OK;
 	u32 irq;
 	bool mrate;
-	const char *attr;
 	struct sp804_state *s;
 
 	s = vmm_zalloc(sizeof(struct sp804_state));
 	if (!s) {
-		rc = VMM_EFAIL;
+		rc = VMM_ENOMEM;
 		goto sp804_emulator_probe_done;
 	}
 
@@ -582,16 +581,13 @@ static int sp804_emulator_probe(struct vmm_guest *guest,
 		s->id[7] = ((u8 *)eid->data)[7];
 	}
 
+	irq = 0;
+	vmm_devtree_read_u32(edev->node, "maintain_irq_rate", &irq);
+	mrate = (irq) ? TRUE : FALSE;
+
 	rc = vmm_devtree_irq_get(edev->node, &irq, 0);
 	if (rc) {
 		goto sp804_emulator_probe_freestate_fail;
-	}
-
-	attr = vmm_devtree_attrval(edev->node, "maintain_irq_rate");
-	if (attr) {
-		mrate = (*((u32 *) attr)) ? TRUE : FALSE;
-	} else {
-		mrate = FALSE;
 	}
 
 	/* ??? The timers are actually configurable between 32kHz and 1MHz, 

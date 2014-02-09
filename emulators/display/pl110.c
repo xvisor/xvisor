@@ -653,7 +653,6 @@ static int pl110_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	char name[64];
-	const char *attr;
 	struct pl110_state *s;
 
 	s = vmm_zalloc(sizeof(struct pl110_state));
@@ -676,10 +675,7 @@ static int pl110_emulator_probe(struct vmm_guest *guest,
 	if (rc) {
 		goto pl110_emulator_probe_freestate_fail;
 	}
-	attr = vmm_devtree_attrval(edev->node, "mux_in");
-	if (attr) {
-		s->mux_in = ((u32 *)attr)[0];
-	} else {
+	if (vmm_devtree_read_u32(edev->node, "mux_in", &s->mux_in)) {
 		s->mux_in = UINT_MAX;
 	}
 	INIT_SPIN_LOCK(&s->lock);

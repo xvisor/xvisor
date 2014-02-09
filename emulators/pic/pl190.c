@@ -391,43 +391,32 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 					 struct vmm_emudev *edev,
 					 const struct vmm_devtree_nodeid *eid)
 {
-	int rc = VMM_OK;
 	u32 i;
-	const char *attr;
+	int rc = VMM_OK;
 	struct pl190_emulator_state *s;
 
 	s = vmm_zalloc(sizeof(struct pl190_emulator_state));
 	if (!s) {
-		rc = VMM_EFAIL;
+		rc = VMM_ENOMEM;
 		goto pl190_emulator_probe_done;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "parent_irq");
-	if (attr) {
-		s->parent_irq = *(u32 *)attr;
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32(edev->node, "parent_irq", &s->parent_irq);
+	if (rc) {
 		goto pl190_emulator_probe_freestate_fail;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "child_pic");
-	if (attr) {
+	if (vmm_devtree_read_u32(edev->node, "child_pic", &i) == VMM_OK) {
 		s->is_child_pic = TRUE;
 	} else {
 		s->is_child_pic = FALSE;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "base_irq");
-	if (attr) {
-		s->base_irq = *(u32 *)attr;
-	} else {
+	if (vmm_devtree_read_u32(edev->node, "base_irq", &s->base_irq)) {
 		s->base_irq = ((u32 *)eid->data)[1];
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "num_irq");
-	if (attr) {
-		s->num_irq = *(u32 *)attr;
-	} else {
+	if (vmm_devtree_read_u32(edev->node, "num_irq", &s->num_irq)) {
 		s->num_irq = ((u32 *)eid->data)[0];
 	}
 		

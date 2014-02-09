@@ -1117,7 +1117,7 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 			      struct vmm_emudev *edev,
 			      const struct vmm_devtree_nodeid *eid)
 {
-	const char *attr;
+	int rc;
 	struct gic_state *s;
 	bool is_child_pic;
 	enum gic_type type;
@@ -1127,41 +1127,37 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 		return VMM_ENODEV;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "child_pic");
-	if (attr) {
+	if (vmm_devtree_read_u32(edev->node,
+				 "child_pic", &parent_irq) == VMM_OK) {
 		is_child_pic = TRUE;
 	} else {
 		is_child_pic = FALSE;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "parent_irq");
-	if (!attr) {
-		return VMM_EFAIL;
+	rc = vmm_devtree_read_u32(edev->node, "parent_irq", &parent_irq);
+	if (rc) {
+		return rc;
 	}
-	parent_irq = *((u32 *)attr);
 	
 	type = (enum gic_type)(eid->data);
 
-	attr = vmm_devtree_attrval(edev->node, "base_irq");
-	if (!attr) {
+	if (vmm_devtree_read_u32(edev->node, "base_irq", &base_irq)) {
 		base_irq = gic_configs[type][1];
-	} else {
-		base_irq = *((u32 *)attr);
 	}
 	
-	attr = vmm_devtree_attrval(edev->node, "num_irq");
-	if (!attr) {
+	if (vmm_devtree_read_u32(edev->node, "num_irq", &num_irq)) {
 		num_irq = gic_configs[type][0];
-	} else {
-		num_irq = *((u32 *)attr);
-		if (num_irq > GIC_MAX_NIRQ) {
-			num_irq = GIC_MAX_NIRQ;
-		}
+	}
+	if (num_irq > GIC_MAX_NIRQ) {
+		num_irq = GIC_MAX_NIRQ;
 	}
 	
 	s = gic_state_alloc(edev->node->name, guest, type, 
 			    guest->vcpu_count, is_child_pic,
 			    base_irq, num_irq, parent_irq);
+	if (!s) {
+		return VMM_ENOMEM;
+	}
 
 	edev->priv = s;
 

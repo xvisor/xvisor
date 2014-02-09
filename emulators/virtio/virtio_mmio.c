@@ -237,12 +237,11 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 			     const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
-	const char *attr;
 	struct virtio_mmio_dev *m;
 
 	m = vmm_zalloc(sizeof(struct virtio_mmio_dev));
 	if (!m) {
-		rc = VMM_EFAIL;
+		rc = VMM_ENOMEM;
 		goto virtio_mmio_probe_done;
 	}
 
@@ -262,11 +261,9 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 		     .queue_num_max  = 256,
 	};
 
-	attr = vmm_devtree_attrval(edev->node, "virtio_type");
-	if (attr) {
-		m->config.device_id = *((u32 *)attr);
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32(edev->node, "virtio_type",
+				  &m->config.device_id);
+	if (rc) {
 		goto virtio_mmio_probe_freestate_fail;
 	}
 

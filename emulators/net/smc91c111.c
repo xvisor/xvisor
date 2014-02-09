@@ -973,7 +973,7 @@ static int smc91c111_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK, i = 0;
 	char tname[64];
-	const void *attr;
+	const char *attr;
 	struct vmm_netswitch *nsw;
 	smc91c111_state *s = NULL;
 
@@ -1016,8 +1016,8 @@ static int smc91c111_emulator_probe(struct vmm_guest *guest,
 		goto smc91c111_probe_netport_failed;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "switch");
-	if (attr) {
+	if (vmm_devtree_read_string(edev->node,
+				    "switch", &attr) == VMM_OK) {
 		nsw = vmm_netswitch_find(attr);
 		if(!nsw) {
 			vmm_panic("smc91c111: Cannot find netswitch \"%s\"\n",

@@ -480,8 +480,8 @@ static int virtio_blk_connect(struct virtio_device *dev,
 
 	INIT_SPIN_LOCK(&bdev->blk_lock);
 
-	attr = vmm_devtree_attrval(dev->edev->node, "blkdev");
-	if (attr) {
+	if (vmm_devtree_read_string(dev->edev->node,
+				    "blkdev", &attr) == VMM_OK) {
 		if (strlcpy(bdev->blk_name, attr, sizeof(bdev->blk_name)) >=
 		    sizeof(bdev->blk_name)) {
 			vmm_free(bdev);

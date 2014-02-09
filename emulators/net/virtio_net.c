@@ -328,8 +328,8 @@ static int virtio_net_connect(struct virtio_device *dev,
 		return rc;
 	}
 
-	attr = vmm_devtree_attrval(dev->edev->node, "switch");
-	if (attr) {
+	if (vmm_devtree_read_string(dev->edev->node,
+				    "switch", &attr) == VMM_OK) {
 		nsw = vmm_netswitch_find(attr);
 		if (!nsw) {
 			vmm_printf("%s: Cannot find netswitch \"%s\"\n",

@@ -1400,7 +1400,7 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 {
 	int i, rc = VMM_OK;
 	char tname[64];
-	const void *attr;
+	const char *attr;
 	struct vmm_netswitch *nsw;
 	struct lan9118_state *s = NULL;
 
@@ -1441,8 +1441,8 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 		goto lan9118_emulator_probe_freeport_failed;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "switch");
-	if (attr) {
+	if (vmm_devtree_read_string(edev->node,
+				    "switch", &attr) == VMM_OK) {
 		nsw = vmm_netswitch_find((char *)attr);
 		if (!nsw) {
 			vmm_panic("%s: Cannot find netswitch \"%s\"\n", 

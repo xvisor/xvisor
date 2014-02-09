@@ -160,7 +160,7 @@ struct ns16550_state {
 	u32 irq;
 	int last_break_enable;
 	int it_shift;
-	int baudbase;
+	u32 baudbase;
 	int tsr_retry;
 	u32 wakeup;
 
@@ -799,7 +799,6 @@ static int ns16550_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	char name[64];
-	const char *attr;
 	struct ns16550_state *s;
 
 	SERIAL_LOG(LVL_VERBOSE, "enter\n");
@@ -820,20 +819,15 @@ static int ns16550_emulator_probe(struct vmm_guest *guest,
 		goto uart16550a_emulator_probe_freestate_fail;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "fifo_size");
-	if (attr) {
-		s->fifo_sz = *((u32 *)attr);
-		SERIAL_LOG(LVL_VERBOSE, "Serial FIFO size is %d bytes.\n", s->fifo_sz);
-	} else {
+	rc = vmm_devtree_read_u32(edev->node, "fifo_size", &s->fifo_sz);
+	if (rc) {
 		SERIAL_LOG(LVL_ERR, "Failed to get fifo size in guest DTS.\n");
-		rc = VMM_EFAIL;
 		goto uart16550a_emulator_probe_freestate_fail;
+	} else {
+		SERIAL_LOG(LVL_VERBOSE, "Serial FIFO size is %d bytes.\n", s->fifo_sz);
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "baudbase");
-	if (attr) {
-		s->baudbase = *((u32 *)attr);
-	} else {
+	if (vmm_devtree_read_u32(edev->node, "baudbase", &s->baudbase)) {
 		s->baudbase = 9600;
 	}
 

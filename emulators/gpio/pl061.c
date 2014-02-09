@@ -394,7 +394,6 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 				const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
-	const char *attr;
 	struct pl061_state *s;
 
 	s = vmm_zalloc(sizeof(struct pl061_state));
@@ -404,18 +403,18 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 	}
 
 	if (eid->data) {
-		s->id[0] = ((u8 *)eid->data)[0];
-		s->id[1] = ((u8 *)eid->data)[1];
-		s->id[2] = ((u8 *)eid->data)[2];
-		s->id[3] = ((u8 *)eid->data)[3];
-		s->id[4] = ((u8 *)eid->data)[4];
-		s->id[5] = ((u8 *)eid->data)[5];
-		s->id[6] = ((u8 *)eid->data)[6];
-		s->id[7] = ((u8 *)eid->data)[7];
-		s->id[8] = ((u8 *)eid->data)[8];
-		s->id[9] = ((u8 *)eid->data)[9];
-		s->id[10] = ((u8 *)eid->data)[10];
-		s->id[11] = ((u8 *)eid->data)[11];
+		s->id[0] = ((const u8 *)eid->data)[0];
+		s->id[1] = ((const u8 *)eid->data)[1];
+		s->id[2] = ((const u8 *)eid->data)[2];
+		s->id[3] = ((const u8 *)eid->data)[3];
+		s->id[4] = ((const u8 *)eid->data)[4];
+		s->id[5] = ((const u8 *)eid->data)[5];
+		s->id[6] = ((const u8 *)eid->data)[6];
+		s->id[7] = ((const u8 *)eid->data)[7];
+		s->id[8] = ((const u8 *)eid->data)[8];
+		s->id[9] = ((const u8 *)eid->data)[9];
+		s->id[10] = ((const u8 *)eid->data)[10];
+		s->id[11] = ((const u8 *)eid->data)[11];
 	}
 
 	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
@@ -423,48 +422,21 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 		goto pl061_emulator_probe_freestate_failed;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "gpio_in_invert");
-	if (attr) {
-		s->in_invert[0] = ((u32 *)attr)[0];
-		s->in_invert[1] = ((u32 *)attr)[1];
-		s->in_invert[2] = ((u32 *)attr)[2];
-		s->in_invert[3] = ((u32 *)attr)[3];
-		s->in_invert[4] = ((u32 *)attr)[4];
-		s->in_invert[5] = ((u32 *)attr)[5];
-		s->in_invert[6] = ((u32 *)attr)[6];
-		s->in_invert[7] = ((u32 *)attr)[7];
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32_array(edev->node, "gpio_in_invert",
+				s->in_invert, array_size(s->in_invert));
+	if (rc) {
 		goto pl061_emulator_probe_freestate_failed;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "gpio_in_irq");
-	if (attr) {
-		s->in_irq[0] = ((u32 *)attr)[0];
-		s->in_irq[1] = ((u32 *)attr)[1];
-		s->in_irq[2] = ((u32 *)attr)[2];
-		s->in_irq[3] = ((u32 *)attr)[3];
-		s->in_irq[4] = ((u32 *)attr)[4];
-		s->in_irq[5] = ((u32 *)attr)[5];
-		s->in_irq[6] = ((u32 *)attr)[6];
-		s->in_irq[7] = ((u32 *)attr)[7];
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32_array(edev->node, "gpio_in_irq",
+				s->in_irq, array_size(s->in_irq));
+	if (rc) {
 		goto pl061_emulator_probe_freestate_failed;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "gpio_out_irq");
-	if (attr) {
-		s->out_irq[0] = ((u32 *)attr)[0];
-		s->out_irq[1] = ((u32 *)attr)[1];
-		s->out_irq[2] = ((u32 *)attr)[2];
-		s->out_irq[3] = ((u32 *)attr)[3];
-		s->out_irq[4] = ((u32 *)attr)[4];
-		s->out_irq[5] = ((u32 *)attr)[5];
-		s->out_irq[6] = ((u32 *)attr)[6];
-		s->out_irq[7] = ((u32 *)attr)[7];
-	} else {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32_array(edev->node, "gpio_out_irq",
+				s->out_irq, array_size(s->out_irq));
+	if (rc) {
 		goto pl061_emulator_probe_freestate_failed;
 	}
 
