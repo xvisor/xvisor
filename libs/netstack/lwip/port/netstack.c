@@ -809,7 +809,7 @@ static int __init lwip_netstack_init(void)
 	int rc;
 	struct vmm_netswitch *nsw;
 	struct vmm_devtree_node *node;
-	const char *attrval;
+	const char *str;
 	u8 ip[] = {192, 168, 0, 1};
 	u8 mask[] = {255, 255, 255, 0};
 
@@ -825,22 +825,19 @@ static int __init lwip_netstack_init(void)
 				   VMM_DEVTREE_NETSTACK_NODE_NAME);
 
 	/* Retrive preferred IP address */
-	attrval = vmm_devtree_attrval(node, "ipaddr");
-	if (attrval) {
+	if (vmm_devtree_read_string(node, "ipaddr", &str) == VMM_OK) {
 		/* Read ip address from netstack node */
-		str2ipaddr(ip, attrval);
+		str2ipaddr(ip, str);
 	}
 
 	/* Retrive preferred IP address */
-	attrval = vmm_devtree_attrval(node, "netmask");
-	if (attrval) {
+	if (vmm_devtree_read_string(node, "netmask", &str) == VMM_OK) {
 		/* Read network mask from netstack node */
 		str2ipaddr(mask, attrval);
 	}
 
 	/* Retrive preferred netswitch */
-	attrval = vmm_devtree_attrval(node, "netswitch");
-	if (attrval) {
+	if (vmm_devtree_read_string(node, "netswitch", &str) == VMM_OK) {
 		/* Find netswitch with given name */
 		nsw = vmm_netswitch_find(attrval);
 	} else {

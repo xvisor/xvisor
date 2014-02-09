@@ -187,7 +187,6 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 					   char **data)
 {
 	void *val;
-	const void *aval;
 	const char *name;
 	u32 type, len, alen, addr_cells, size_cells;
 	struct vmm_devtree_node *child;
@@ -196,16 +195,12 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 		return;
 	}
 
-	aval = vmm_devtree_attrval(node->parent, "#address-cells");
-	if (aval) {
-		addr_cells = *((const u32 *)aval);
-	} else {
+	if (vmm_devtree_read_u32(node->parent,
+				 "#address-cells", &addr_cells)) {
 		addr_cells = sizeof(physical_addr_t) / sizeof(fdt_cell_t);
 	}
-	aval = vmm_devtree_attrval(node->parent, "#size-cells");
-	if (aval) {
-		size_cells = *((const u32 *)aval);
-	} else {
+	if (vmm_devtree_read_u32(node->parent,
+				 "#size-cells", &size_cells)) {
 		size_cells = sizeof(physical_size_t) / sizeof(fdt_cell_t);
 	}
 
