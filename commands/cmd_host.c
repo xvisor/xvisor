@@ -86,7 +86,8 @@ static void cmd_host_info(struct vmm_chardev *cdev)
 	attr = NULL;
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING);
 	if (node) {
-		attr = vmm_devtree_attrval(node, VMM_DEVTREE_MODEL_ATTR_NAME);
+		vmm_devtree_read_string(node,
+					VMM_DEVTREE_MODEL_ATTR_NAME, &attr);
 	}
 	if (attr) {
 		vmm_cprintf(cdev, "%-20s: %s\n", "Host Name", attr);
@@ -94,10 +95,14 @@ static void cmd_host_info(struct vmm_chardev *cdev)
 		vmm_cprintf(cdev, "%-20s: %s\n", "Host Name", CONFIG_BOARD);
 	}
 
-	vmm_cprintf(cdev, "%-20s: %u\n", "Boot CPU", vmm_smp_bootcpu_id());
-	vmm_cprintf(cdev, "%-20s: %u\n", "Total Online CPUs", vmm_num_online_cpus());
-	vmm_cprintf(cdev, "%-20s: %u MB\n", "Total VAPOOL", CONFIG_VAPOOL_SIZE_MB);
-	vmm_cprintf(cdev, "%-20s: %u MB\n", "Total RAM", ((total *VMM_PAGE_SIZE) >> 20));
+	vmm_cprintf(cdev, "%-20s: %u\n", "Boot CPU",
+		    vmm_smp_bootcpu_id());
+	vmm_cprintf(cdev, "%-20s: %u\n", "Total Online CPUs",
+		    vmm_num_online_cpus());
+	vmm_cprintf(cdev, "%-20s: %u MB\n", "Total VAPOOL",
+		    CONFIG_VAPOOL_SIZE_MB);
+	vmm_cprintf(cdev, "%-20s: %u MB\n", "Total RAM",
+		    ((total *VMM_PAGE_SIZE) >> 20));
 
 	arch_board_print_info(cdev);
 }
