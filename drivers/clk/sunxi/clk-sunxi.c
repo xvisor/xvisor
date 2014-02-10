@@ -58,6 +58,10 @@ static void __init sun4i_osc_clk_setup(struct vmm_devtree_node *node)
 	const char *clk_name = node->name;
 	u32 rate;
 
+	if (vmm_devtree_read_u32(node, "clock-frequency", &rate)) {
+		return;
+	}
+
 	/* allocate fixed-rate and gate clock structs */
 	fixed = vmm_zalloc(sizeof(struct clk_fixed_rate));
 	if (!fixed)
@@ -67,14 +71,6 @@ static void __init sun4i_osc_clk_setup(struct vmm_devtree_node *node)
 		vmm_free(fixed);
 		return;
 	}
-
-	attrval = vmm_devtree_attrval(node, "clock-frequency");
-	if (!attrval) {
-		vmm_free(gate);
-		vmm_free(fixed);
-		return;
-	}
-	rate = *(u32 *)attrval;
 
 	/* set up gate and fixed rate properties */
 	if (vmm_devtree_regmap(node, &reg_va, 0)) {

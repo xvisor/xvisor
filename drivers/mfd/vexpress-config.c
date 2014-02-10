@@ -134,11 +134,11 @@ struct vexpress_config_func *__vexpress_config_func_get(struct vmm_device *dev,
 
 	bridge_node = node;
 	while (bridge_node) {
-		const u32 *prop = vmm_devtree_attrval(bridge_node,
-						"arm,vexpress,config-bridge");
+		u32 prop;
 
-		if (prop) {
-			bridge_node = vmm_devtree_find_node_by_phandle(*prop);
+		if (vmm_devtree_read_u32(bridge_node,
+			"arm,vexpress,config-bridge", &prop) == VMM_OK) {
+			bridge_node = vmm_devtree_find_node_by_phandle(prop);
 			break;
 		}
 

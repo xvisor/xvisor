@@ -110,7 +110,7 @@ struct clk *of_clk_get_by_name(struct vmm_devtree_node *node,
 		 * clocks.
 		 */
 		node = node->parent;
-		if (node && !vmm_devtree_attrval(node, "clock-ranges"))
+		if (node && !vmm_devtree_getattr(node, "clock-ranges"))
 			break;
 	}
 

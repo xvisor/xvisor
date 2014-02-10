@@ -119,7 +119,7 @@ void __init vexpress_osc_of_setup(struct vmm_devtree_node *node)
 	struct clk_init_data init;
 	struct vexpress_osc *osc;
 	struct clk *clk;
-	const u32 *range;
+	u32 range[2];
 
 	osc = vmm_zalloc(sizeof(*osc));
 	if (!osc)
@@ -132,13 +132,14 @@ void __init vexpress_osc_of_setup(struct vmm_devtree_node *node)
 		goto error;
 	}
 
-	range = vmm_devtree_attrval(node, "freq-range");
-	if (range) {
+	if (vmm_devtree_read_u32_array(node, "freq-range", range,
+				array_size(range)) == VMM_OK) {
 		osc->rate_min = range[0];
 		osc->rate_max = range[1];
 	}
 
-	init.name = vmm_devtree_attrval(node, "clock-output-names");
+	init.name = NULL;
+	vmm_devtree_read_string(node, "clock-output-names", &init.name);
 	if (!init.name)
 		init.name = node->name;
 

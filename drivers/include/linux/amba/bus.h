@@ -24,15 +24,13 @@
 static inline u32 amba_periphid(struct vmm_device *dev)
 {
 	u32 pid = 0x0, val;
-	const u32 *periphid;
 	virtual_addr_t dev_base;
 
 	if (!dev || !dev->node) {
 		return 0;
 	}
 
-	periphid = vmm_devtree_attrval(dev->node, AMBA_PERIPHID_ATTR_NAME);
-	if (!periphid) {
+	if (vmm_devtree_read_u32(dev->node, AMBA_PERIPHID_ATTR_NAME, &pid)) {
 		if (vmm_devtree_regmap(dev->node, &dev_base, 0)) {
 			return 0;
 		}
@@ -47,8 +45,6 @@ static inline u32 amba_periphid(struct vmm_device *dev)
 		vmm_devtree_regunmap(dev->node, dev_base, 0);
 		vmm_devtree_setattr(dev->node, AMBA_PERIPHID_ATTR_NAME, 
 			    &pid, VMM_DEVTREE_ATTRTYPE_UINT32, sizeof(pid));
-	} else {
-		pid = *periphid;
 	}
 
 	return pid;

@@ -73,12 +73,12 @@ static int netdev_register_port(struct net_device *ndev)
         vmm_netport_register(port);
 
 	if (dev) {
-		attr = vmm_devtree_attrval(dev->node, "switch");
-		if (attr) {
-			nsw = vmm_netswitch_find((char *)attr);
-			if(!nsw) {
+		if (vmm_devtree_read_string(dev->node,
+					"switch", &attr) == VMM_OK) {
+			nsw = vmm_netswitch_find(attr);
+			if (!nsw) {
 				vmm_panic("%s: Cannot find netswitch \"%s\"\n",
-						ndev->name, (char *)attr);
+						ndev->name, attr);
 			}
 			vmm_netswitch_port_add(nsw, port);
 		}

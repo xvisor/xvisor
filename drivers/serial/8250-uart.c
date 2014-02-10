@@ -289,7 +289,7 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 				  const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
-	const char *attr;
+	u32 reg_offset;
 	struct uart_8250_port *port;
 	
 	port = vmm_zalloc(sizeof(struct uart_8250_port));
@@ -317,28 +317,24 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 
-	attr = vmm_devtree_attrval(dev->node, "reg_align");
-	if (attr) {
-		port->reg_align = *((u32 *)attr);
-	} else {
+	if (vmm_devtree_read_u32(dev->node, "reg_align",
+				 &port->reg_align)) {
 		port->reg_align = 1;
 	}
 
-	attr = vmm_devtree_attrval(dev->node, "reg_offset");
-	if (attr) {
-		port->base += *((u32 *)attr);
+	if (vmm_devtree_read_u32(dev->node, "reg_offset",
+				 &reg_offset) == VMM_OK) {
+		port->base += reg_offset;
 	}
 
-	attr = vmm_devtree_attrval(dev->node, "baudrate");
-	if(!attr) {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32(dev->node, "baudrate",
+				  &port->baudrate);
+	if (rc) {
 		goto free_reg;
 	}
-	port->baudrate = *((u32 *)attr);
 
 	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
 	if (rc) {
-		rc = VMM_EFAIL;
 		goto free_reg;
 	}
 
@@ -359,7 +355,6 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 
 	rc = vmm_devtree_irq_get(dev->node, &port->irq, 0);
 	if (rc) {
-		rc = VMM_EFAIL;
 		goto free_all;
 	}
 	if ((rc = vmm_host_irq_register(port->irq, dev->name,

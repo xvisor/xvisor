@@ -679,7 +679,6 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 				  const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
-	const char *attr;
 	virtual_addr_t base;
 	physical_addr_t basepa;
 	struct mmc_host *mmc;
@@ -694,10 +693,7 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 	host = mmc_priv(mmc);
 
 	/* Setup host type specific info */
-	attr = vmm_devtree_attrval(dev->node, "mmc_no");
-	if (attr) {
-		host->mmc_no = *((u32 *)attr);
-	} else {
+	if (vmm_devtree_read_u32(dev->node, "mmc_no", &host->mmc_no)) {
 		host->mmc_no = 0;
 	}
 

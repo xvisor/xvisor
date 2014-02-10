@@ -273,7 +273,6 @@ static int samsung_driver_probe(struct vmm_device *dev,
 				const struct vmm_devtree_nodeid *devid)
 {
 	int rc = VMM_EFAIL;
-	const char *attr = NULL;
 	struct samsung_port *port = NULL;
 
 	port = vmm_zalloc(sizeof(struct samsung_port));
@@ -313,27 +312,24 @@ static int samsung_driver_probe(struct vmm_device *dev,
 
 	vmm_out_le16((void *)(port->base + S3C64XX_UINTM), port->mask);
 
-	attr = vmm_devtree_attrval(dev->node, "baudrate");
-	if (!attr) {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32(dev->node, "baudrate",
+				  &port->baudrate);
+	if (rc) {
 		goto free_reg;
 	}
-	port->baudrate = *((u32 *) attr);
 
 	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
-	if (!attr) {
-		rc = VMM_EFAIL;
+	if (rc) {
 		goto free_reg;
 	}
 
 	rc = vmm_devtree_irq_get(dev->node, &port->irq, 0);
 	if (rc) {
-		rc = VMM_EFAIL;
 		goto free_reg;
 	}
 
 	if ((rc = vmm_host_irq_register(port->irq, dev->name,
-				   samsung_irq_handler, port))) {
+					samsung_irq_handler, port))) {
 		goto free_reg;
 	}
 

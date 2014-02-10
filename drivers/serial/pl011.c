@@ -284,7 +284,6 @@ static int pl011_driver_probe(struct vmm_device *dev,
 			      const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
-	const char *attr;
 	struct pl011_port *port;
 
 	port = vmm_zalloc(sizeof(struct pl011_port));
@@ -312,22 +311,19 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 
-	attr = vmm_devtree_attrval(dev->node, "baudrate");
-	if (!attr) {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32(dev->node, "baudrate",
+				  &port->baudrate);
+	if (rc) {
 		goto free_reg;
 	}
-	port->baudrate = *((u32 *) attr);
 
 	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
 	if (rc) {
-		rc = VMM_EFAIL;
 		goto free_reg;
 	}
 
 	rc = vmm_devtree_irq_get(dev->node, &port->irq, 0);
 	if (rc) {
-		rc = VMM_EFAIL;
 		goto free_reg;
 	}
 	if ((rc = vmm_host_irq_register(port->irq, dev->name,
