@@ -26,12 +26,10 @@
 #include <vmm_stdio.h>
 #include <vmm_timer.h>
 #include <vmm_devdrv.h>
-#include <vmm_modules.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
-#include <libs/list.h>
 #include <libs/stringlib.h>
 
 #undef DEBUG_BRIDGE
@@ -43,120 +41,173 @@
 #define DPRINTF(fmt, ...) do {} while(0)
 #endif
 
-#define BRIDGE_MAC_EXPIRY	60000000000LLU
+#define BRIDGE_MAC_TABLE_SZ	32
+#define BRIDGE_MAC_EXPIRY	30000000000LLU
 
 /* We maintain a table of learned mac addresses 
  * (please note that the mac of the immediate netports are not 
  * kept in this table) */
 struct bridge_mac_entry {
-	struct dlist head;
-	u8 macaddr[6];
 	struct vmm_netport *port;
+	u8 macaddr[6];
 	u64 timestamp;
 };
 
-#define list_mac_entry(l) list_entry(l, struct bridge_mac_entry, head)
-
 struct bridge_ctrl {
-	vmm_spinlock_t mac_table_lock;
-	struct dlist mac_table;
+	struct vmm_netswitch *nsw;
+	struct vmm_timer_event ev;
+	vmm_rwlock_t mac_table_lock;
+	u32 mac_table_sz;
+	struct bridge_mac_entry *mac_table;
 };
-
-static void bridge_mactable_learn(struct bridge_ctrl *br,
-				  const u8 *mac, struct vmm_netport *port)
-{
-	bool learn;
-	u64 tstamp;
-	irq_flags_t f;
-	struct dlist *l, *l1;
-	struct bridge_mac_entry *m;
-
-	/* Retrive current timestamp */
-	learn = TRUE;
-	tstamp = vmm_timer_timestamp();
-
-	/* Learn the (mac, port) mapping */
-	vmm_spin_lock_irqsave_lite(&br->mac_table_lock, f);
-	list_for_each_safe(l, l1, &br->mac_table) {
-		m = list_mac_entry(l);
-
-		/* Match mac */
-		if (!compare_ether_addr(m->macaddr, mac)) {
-			m->port = port;
-			m->timestamp = tstamp;
-			learn = FALSE;
-			break;
-		/* Purge this entry if too old */
-		} else if ((tstamp - m->timestamp) > BRIDGE_MAC_EXPIRY) {
-			l = m->head.next;
-			list_del(&m->head);
-			vmm_free(m);
-		}
-	}
-	if (learn) {
-		m = vmm_malloc(sizeof(struct bridge_mac_entry));
-		if (m) {
-			m->port = port;
-			memcpy(m->macaddr, mac, 6);
-			m->timestamp = tstamp;
-			list_add_tail(&m->head, &br->mac_table);
-		} else {
-			DPRINTF("%s: allocation failure\n", __func__);
-		}
-	}
-	vmm_spin_unlock_irqrestore_lite(&br->mac_table_lock, f);
-}
-
-static struct vmm_netport *bridge_mactable_find_port(struct bridge_ctrl *br,
-						     const u8 *mac)
-{
-	irq_flags_t f;
-	struct dlist *l, *l1;
-	struct vmm_netport *port = NULL;
-	struct bridge_mac_entry *m;
-
-	vmm_spin_lock_irqsave_lite(&br->mac_table_lock, f);
-	list_for_each_safe(l, l1, &br->mac_table) {
-		m = list_mac_entry(l);
-		if (!compare_ether_addr(m->macaddr, mac)) {
-			port = m->port;
-			break;
-		}
-	}
-	vmm_spin_unlock_irqrestore_lite(&br->mac_table_lock, f);
-
-	return port;
-}
 
 static void bridge_mactable_cleanup_port(struct bridge_ctrl *br,
 					 struct vmm_netport *port)
 {
+	u32 m;
 	irq_flags_t f;
-	struct dlist *l, *l1;
-	struct bridge_mac_entry *m;
 
-	vmm_spin_lock_irqsave_lite(&br->mac_table_lock, f);
-	list_for_each_safe(l, l1, &br->mac_table) {
-		m = list_mac_entry(l);
-		if (m->port == port) {
-			list_del(&m->head);
-			vmm_free(m);
+	vmm_write_lock_irqsave_lite(&br->mac_table_lock, f);
+	for (m = 0; m < br->mac_table_sz; m++) {
+		if (br->mac_table[m].port == port) {
+			br->mac_table[m].port = NULL;
 		}
 	}
-	vmm_spin_unlock_irqrestore_lite(&br->mac_table_lock, f);
+	vmm_write_unlock_irqrestore_lite(&br->mac_table_lock, f);
 }
 
-static void bridge_mactable_flush(struct bridge_ctrl *br)
+static struct vmm_netport *bridge_mactable_learn_find(struct bridge_ctrl *br,
+						      const u8 *dstmac,
+						      const u8 *srcmac,
+						      struct vmm_netport *src)
 {
+	u32 i;
+	u64 tstamp;
 	irq_flags_t f;
-	struct dlist *l;
+	bool learn, update, found;
+	struct vmm_netport *dst;
+	struct bridge_mac_entry *m;
 
-	vmm_spin_lock_irqsave_lite(&br->mac_table_lock, f);
-	while (!list_empty(&br->mac_table)) {
-		l = list_pop(&br->mac_table);
-		vmm_free(l);
+	/* Acquire read lock */
+	vmm_read_lock_irqsave_lite(&br->mac_table_lock, f);
+
+	/* Check for for dstmac and whether we need
+	 * to Learn (srcmac, src) mapping ??
+	 */
+	learn = TRUE;
+	dst = NULL;
+	for (i = 0; i < br->mac_table_sz; i++) {
+		m = &br->mac_table[i];
+		/* If mac table entry is unused then continue */
+		if (!m->port) {
+			continue;
+		}
+		/* Match (srcmac, srcport) */
+		if (learn &&
+		    !compare_ether_addr(m->macaddr, srcmac) &&
+		    (m->port == src)) {
+			learn = FALSE;
+		}
+		/* Match (dstmac) */
+		if (!dst &&
+		    !compare_ether_addr(m->macaddr, dstmac)) {
+			dst = m->port;
+		}
+		/* If no need to learn and found
+		 * destination port then break
+		 */
+		if (!learn && dst) {
+			break;
+		}
 	}
-	vmm_spin_unlock_irqrestore_lite(&br->mac_table_lock, f);
+
+	/* Release read lock */
+	vmm_read_unlock_irqrestore_lite(&br->mac_table_lock, f);
+
+	/* If leaning required then update mac table */
+	if (learn) {
+		/* Retrive current timestamp */
+		tstamp = vmm_timer_timestamp();
+
+		/* Acquire write lock */
+		vmm_write_lock_irqsave_lite(&br->mac_table_lock, f);
+
+		/* If mac entry already exist then
+		 * update only port and timestamp
+		 */
+		update = TRUE;
+		for (i = 0; i < br->mac_table_sz; i++) {
+			m = &br->mac_table[i];
+			if (!compare_ether_addr(m->macaddr, srcmac)) {
+				m->port = src;
+				m->timestamp = tstamp;
+				update = FALSE;
+				break;
+			}
+		}
+
+		/* If mac entry does not exist then
+		 * save (mac, port, timestamp) in a
+		 * free mac table entry.
+		 */
+		if (update) {
+			found = FALSE;
+			for (i = 0; i < br->mac_table_sz; i++) {
+				m = &br->mac_table[i];
+				if (m->port == NULL) {
+					found = TRUE;
+					break;
+				}
+			}
+			if (found) {
+				m->port = src;
+				memcpy(m->macaddr, srcmac, 6);
+				m->timestamp = tstamp;
+			}
+		}
+
+		/* Release write lock */
+		vmm_write_unlock_irqrestore_lite(&br->mac_table_lock, f);
+	}
+
+	return dst;
+}
+
+static void bridge_timer_event(struct vmm_timer_event *ev)
+{
+	u32 i;
+	u64 tstamp;
+	irq_flags_t f;
+	struct bridge_ctrl *br = ev->priv;
+	struct bridge_mac_entry *m;
+
+	DPRINTF("%s: bridge expiry event nsw=%s\n",
+		__func__, br->nsw->name);
+
+	/* Retrive current timestamp */
+	tstamp = vmm_timer_timestamp();
+
+	/* Acquire write lock */
+	vmm_write_lock_irqsave_lite(&br->mac_table_lock, f);
+
+	/* Purge old enteries */
+	for (i = 0; i < br->mac_table_sz; i++) {
+		m = &br->mac_table[i];
+		if (m->port &&
+		    ((m->timestamp - tstamp) > BRIDGE_MAC_EXPIRY)) {
+			DPRINTF("%s: purge port=%s\n",
+				__func__, m->port->name);
+			m->port = NULL;
+			memset(m->macaddr, 0, 6);
+			m->timestamp = 0;
+		}
+	}
+
+	/* Release write lock */
+	vmm_write_unlock_irqrestore_lite(&br->mac_table_lock, f);
+
+	/* Again start the bridge timer event */
+	vmm_timer_event_start(&br->ev, BRIDGE_MAC_EXPIRY);
 }
 
 /**
@@ -167,34 +218,30 @@ static int bridge_rx_handler(struct vmm_netswitch *nsw,
 			     struct vmm_netport *src,
 			     struct vmm_mbuf *mbuf)
 {
-#ifdef DEBUG_BRIDGE
-	char tname[30];
-#endif
 	irq_flags_t f;
 	const u8 *srcmac, *dstmac;
 	bool broadcast = TRUE;
 	struct dlist *l, *l1;
-	struct vmm_netport *dst = NULL, *port;
+	struct vmm_netport *dst, *port;
 	struct bridge_ctrl *br = nsw->priv;
 
 	/* Get source and destination mac addresses */
 	srcmac = ether_srcmac(mtod(mbuf, u8 *));
 	dstmac = ether_dstmac(mtod(mbuf, u8 *));
 
-	/* Learn source mac address */
-	bridge_mactable_learn(br, srcmac, src);
-
-	/* Find if the frame should be unicast because it satisfies 
-	 * both of these:
-	 * Case 1: It is not a broadcast MAC address, and
-	 * Case 2: We do have the MAC->port mapping
+	/* Learn source mac address and find port
+	 * matching destination mac address
 	 */
-	if (!is_broadcast_ether_addr(dstmac)) {
+	dst = bridge_mactable_learn_find(br, dstmac, srcmac, src);
+
+	/* If the frame below cases then it should be unicast.
+	 * 
+	 * Case 1: destination MAC address is not broadcast address
+	 * Case 2: We found port matching destination mac address
+	 */
+	if (!is_broadcast_ether_addr(dstmac) && dst) {
 		/* Find port fordestination mac address */
-		dst = bridge_mactable_find_port(br, dstmac);
-		if (dst) {
-			broadcast = FALSE;
-		}
+		broadcast = FALSE;
 	}
 
 	/* Transfer mbuf to appropriate ports */
@@ -261,17 +308,28 @@ static int bridge_probe(struct vmm_device *dev,
 		goto bridge_alloc_failed;
 	}
 
-	INIT_SPIN_LOCK(&br->mac_table_lock);
-	INIT_LIST_HEAD(&br->mac_table);
+	br->nsw = nsw;
+	INIT_TIMER_EVENT(&br->ev, bridge_timer_event, br);
+	INIT_RW_LOCK(&br->mac_table_lock);
+	br->mac_table_sz = BRIDGE_MAC_TABLE_SZ;
+	br->mac_table = vmm_zalloc(sizeof(struct bridge_mac_entry) *
+				   br->mac_table_sz);
+	if (!br->mac_table) {
+		rc = VMM_ENOMEM;
+		goto bridge_alloc_mac_table_fail;
+	}
 
 	rc = vmm_netswitch_register(nsw, dev, br);
 	if (rc) {
 		goto bridge_netswitch_register_fail;
 	}
 
+	vmm_timer_event_start(&br->ev, BRIDGE_MAC_EXPIRY);
+
 	return VMM_OK;
 
 bridge_netswitch_register_fail:
+bridge_alloc_mac_table_fail:
 	vmm_free(br);
 bridge_alloc_failed:
 	vmm_netswitch_free(nsw);
@@ -289,10 +347,11 @@ static int bridge_remove(struct vmm_device *dev)
 	}
 	br = nsw->priv;
 
-	bridge_mactable_flush(br);
+	vmm_timer_event_stop(&br->ev);
 
 	vmm_netswitch_unregister(nsw);
 
+	vmm_free(br->mac_table);
 	vmm_free(br);
 
 	vmm_netswitch_free(nsw);
