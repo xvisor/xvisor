@@ -127,6 +127,10 @@ static u32 __fatfs_control_read_fat_cache(struct fatfs_control *ctrl,
 	}
 
 	index = __fatfs_control_find_fat_cache(ctrl, sect_num);
+	if (index < 0) {
+		return 0;
+	}
+
 	index = (index * ctrl->bytes_per_sector) + sect_off;
 
 	switch (ctrl->type) {
@@ -170,6 +174,10 @@ static u32 __fatfs_control_write_fat_cache(struct fatfs_control *ctrl,
 	}
 
 	index = __fatfs_control_find_fat_cache(ctrl, sect_num);
+	if (index < 0) {
+		return 0;
+	}
+
 	cache_buf_index = (index * ctrl->bytes_per_sector) + sect_off;
 
 	switch (ctrl->type) {
