@@ -17,6 +17,9 @@
 #define device_driver			vmm_driver
 #define device_node			vmm_devtree_node
 
+#define class_register(cls)		vmm_devdrv_register_class(cls)
+#define class_unregister(cls)		vmm_devdrv_unregister_class(cls)
+
 #define bus_register(bus)		vmm_devdrv_register_bus(bus)
 #define bus_unregister(bus)		vmm_devdrv_unregister_bus(bus)
 
@@ -31,6 +34,8 @@
 #define device_bind_driver(dev)		vmm_devdrv_attach_device(dev)
 #define device_release_driver(dev)	vmm_devdrv_dettach_device(dev)
 #define device_del(dev)			vmm_devdrv_unregister_device(dev)
+#define device_register(dev)		vmm_devdrv_register_device(dev)
+#define device_unregister(dev)		vmm_devdrv_unregister_device(dev)
 
 #define driver_register(drv)		vmm_devdrv_register_driver(drv)
 #define driver_attach(drv)		vmm_devdrv_attach_driver(drv)
@@ -40,6 +45,16 @@
 #define dev_get_drvdata(dev)		vmm_devdrv_get_data(dev)
 #define dev_set_drvdata(dev, data)	vmm_devdrv_set_data(dev, data)
 
+static inline struct device *bus_find_device_by_name(struct bus_type *bus,
+					struct device *start,
+					const char *name)
+{
+	return vmm_devdrv_bus_find_device(bus, name);
+
+}
+
+
 /* FIXME: This file is just a place holder in most cases. */
+/* interface for exporting device attributes */
 
 #endif /* _LINUX_DEVICE_H */
