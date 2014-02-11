@@ -87,8 +87,10 @@ static int __init_ide_drive(struct ide_drive *drive)
 	did = drive->drive;
 
 	/* Setup block device instance */
-	vmm_snprintf(bdev->name, sizeof(bdev->name), "%s", drive_names[chan][did]);
-	vmm_snprintf(bdev->desc, sizeof(bdev->desc), "%s", drive->model);
+	vmm_snprintf(bdev->name, sizeof(bdev->name),
+		     "%s", drive_names[chan][did]);
+	vmm_snprintf(bdev->desc, sizeof(bdev->desc),
+		     "%s", drive->model);
 
 	bdev->dev.parent = drive->dev;
 	bdev->flags = VMM_BLOCKDEV_RW;
@@ -129,7 +131,7 @@ static u32 __ide_bread(struct ide_drive *drive, u64 start,
 }
 
 static int __ide_blockdev_request(struct ide_drive *drive,
-				  struct vmm_request_queue *rq, 
+				  struct vmm_request_queue *rq,
 				  struct vmm_request *r)
 {
 	int rc;
@@ -176,7 +178,7 @@ static int __ide_blockdev_request(struct ide_drive *drive,
 
 static int ide_io_thread(void *tdata)
 {
-	irq_flags_t flags;
+	irq_flags_t f;
 	struct dlist *l;
 	struct ide_drive_io *io;
 	struct ide_drive *drive = (struct ide_drive *)tdata;
@@ -184,13 +186,13 @@ static int ide_io_thread(void *tdata)
 	while (1) {
 		vmm_completion_wait(&drive->io_avail);
 
-		vmm_spin_lock_irqsave(&drive->io_list_lock, flags);
+		vmm_spin_lock_irqsave(&drive->io_list_lock, f);
 		if (list_empty(&drive->io_list)) {
-			vmm_spin_unlock_irqrestore(&drive->io_list_lock, flags);
+			vmm_spin_unlock_irqrestore(&drive->io_list_lock, f);
 			continue;
 		}
 		l = list_pop(&drive->io_list);
-		vmm_spin_unlock_irqrestore(&drive->io_list_lock, flags);
+		vmm_spin_unlock_irqrestore(&drive->io_list_lock, f);
 
 		io = list_entry(l, struct ide_drive_io, head);
 
@@ -204,10 +206,10 @@ static int ide_io_thread(void *tdata)
 	return VMM_OK;
 }
 
-static int ide_make_request(struct vmm_request_queue *rq, 
+static int ide_make_request(struct vmm_request_queue *rq,
 			    struct vmm_request *r)
 {
-	irq_flags_t flags;
+	irq_flags_t f;
 	struct ide_drive_io *io;
 	struct ide_drive *drive;
 
@@ -226,20 +228,20 @@ static int ide_make_request(struct vmm_request_queue *rq,
 	io->rq = rq;
 	io->r = r;
 
-	vmm_spin_lock_irqsave(&drive->io_list_lock, flags);
+	vmm_spin_lock_irqsave(&drive->io_list_lock, f);
 	list_add_tail(&io->head, &drive->io_list);
-	vmm_spin_unlock_irqrestore(&drive->io_list_lock, flags);
+	vmm_spin_unlock_irqrestore(&drive->io_list_lock, f);
 
 	vmm_completion_complete(&drive->io_avail);
 
 	return VMM_OK;
 }
 
-static int ide_abort_request(struct vmm_request_queue *rq, 
+static int ide_abort_request(struct vmm_request_queue *rq,
 			     struct vmm_request *r)
 {
 	bool found;
-	irq_flags_t flags;
+	irq_flags_t f;
 	struct dlist *l;
 	struct ide_drive_io *io;
 	struct ide_drive *drive;
@@ -250,7 +252,7 @@ static int ide_abort_request(struct vmm_request_queue *rq,
 
 	drive = rq->priv;
 
-	vmm_spin_lock_irqsave(&drive->io_list_lock, flags);
+	vmm_spin_lock_irqsave(&drive->io_list_lock, f);
 
 	found = FALSE;
 	list_for_each(l, &drive->io_list) {
@@ -265,7 +267,7 @@ static int ide_abort_request(struct vmm_request_queue *rq,
 		vmm_free(io);
 	}
 
-	vmm_spin_unlock_irqrestore(&drive->io_list_lock, flags);
+	vmm_spin_unlock_irqrestore(&drive->io_list_lock, f);
 	
 	return VMM_OK;
 }
@@ -294,8 +296,9 @@ int ide_add_drive(struct ide_drive *drive)
 		return VMM_EFAIL;
 	}
 
-	vmm_snprintf(name, 32, "%s", drive_names[drive->channel->id][drive->drive]);
-	drive->io_thread = vmm_threads_create(name, ide_io_thread, drive, 
+	vmm_snprintf(name, 32, "%s",
+		     drive_names[drive->channel->id][drive->drive]);
+	drive->io_thread = vmm_threads_create(name, ide_io_thread, drive,
 					      VMM_THREAD_DEF_PRIORITY,
 					      VMM_THREAD_DEF_TIME_SLICE);
 	if (!drive->io_thread) {

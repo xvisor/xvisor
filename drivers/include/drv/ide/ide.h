@@ -101,8 +101,10 @@ struct ide_host_controller {
 /*
  * Function Prototypes
  */
-extern u32 ide_write_sectors(struct ide_drive *drive, u64 lba, u32 numsects, const void *buffer);
-extern u32 ide_read_sectors(struct ide_drive *drive, u64 lba, u32 numsects, void *buffer);
+extern u32 ide_write_sectors(struct ide_drive *drive,
+			     u64 lba, u32 numsects, const void *buffer);
+extern u32 ide_read_sectors(struct ide_drive *drive,
+			    u64 lba, u32 numsects, void *buffer);
 extern int ide_initialize(struct ide_host_controller *controller);
 extern int ide_add_drive(struct ide_drive *drive);
 
