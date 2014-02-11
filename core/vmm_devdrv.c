@@ -357,7 +357,10 @@ static int devdrv_probe(struct vmm_devtree_node *node,
 
 	vmm_devdrv_initialize_device(dev);
 
-	strncpy(dev->name, node->name, sizeof(dev->name));
+	if (strlcpy(dev->name, node->name, sizeof(dev->name)) >=
+	    sizeof(dev->name)) {
+		return VMM_EOVERFLOW;
+	}
 	dev->node = node;
 	dev->parent = parent;
 	dev->bus = &ddctrl.default_bus;
