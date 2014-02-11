@@ -26,5 +26,6 @@
 #define ENOSPC			-(VMM_ENOSPC)
 #define ENODATA			-(VMM_ENODATA)
 #define ENXIO			-(VMM_ENXIO)
+#define EPROTONOSUPPORT		-(VMM_EPROTONOSUPPORT)
 
 #endif /* defined(_ASM_ERRNO_H) */
