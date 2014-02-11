@@ -596,8 +596,13 @@ static int i8042_enable_mux_ports(void)
 	int i;
 
 	for (i = 0; i < I8042_NUM_MUX_PORTS; i++) {
-		i8042_command(&param, I8042_CMD_MUX_PFX + i);
-		i8042_command(&param, I8042_CMD_AUX_ENABLE);
+		if (i8042_command(&param, I8042_CMD_MUX_PFX + i)) {
+			pr_err("Failed to set port %d in MUX\n", i);
+			continue;
+		}
+		if (i8042_command(&param, I8042_CMD_AUX_ENABLE)) {
+			pr_err("Failed to enable port %d\n", i);
+		}
 	}
 
 	return i8042_enable_aux_port();
