@@ -52,10 +52,10 @@ static int generic_reset(void)
 	/* clear all keyboard buffer (user & keyboard) */
 	do {
 		good = vmm_inb(KBRD_INTFREG); /* empty user data */
-		if (test_bit(KBRD_BIT_KDATA, &good) != 0)
+		if (good & (1 << KBRD_BIT_KDATA))
 			vmm_inb(KBRD_IO); /* empty keyboard data */
 
-	} while (test_bit(KBRD_BIT_UDATA, &good));
+	} while (good & (1 << KBRD_BIT_UDATA));
 
 	/* toggle the CPU reset pin */
 	vmm_outb(KBRD_RESET, KBRD_INTFREG);
