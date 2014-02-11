@@ -122,18 +122,26 @@ static int __bus_probe_device_driver(struct vmm_bus *bus,
 	if (bus->probe) {
 #if defined(CONFIG_VERBOSE_MODE)
 		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
-			   "try probe driver=\"%s\"\n",
+			   "driver=\"%s\" bus probe.\n",
 			   bus->name, dev->name, dev->driver->name);
 #endif
 		rc = bus->probe(dev);
-		if (rc) {
+	} else if (drv->probe) {
 #if defined(CONFIG_VERBOSE_MODE)
-			vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
-				   "probe error %d\n",
-				   bus->name, dev->name, rc);
+		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
+			   "driver=\"%s\" probe.\n",
+			   bus->name, dev->name, dev->driver->name);
 #endif
-			dev->driver = NULL;
-		}
+		rc = drv->probe(dev, NULL);
+	}
+
+	if (rc) {
+#if defined(CONFIG_VERBOSE_MODE)
+		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
+			   "probe error %d\n",
+			   bus->name, dev->name, rc);
+#endif
+		dev->driver = NULL;
 	}
 
 	return rc;
@@ -153,19 +161,26 @@ static void __bus_remove_device_driver(struct vmm_bus *bus,
 	if (bus->remove) {
 #if defined(CONFIG_VERBOSE_MODE)
 		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
-			   "remove driver=\"%s\"\n",
+			   "driver=\"%s\" bus remove.\n",
 			   bus->name, dev->name, dev->driver->name);
 #endif
 		rc = bus->remove(dev);
-		if (rc) {
-			vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
-				   "remove error %d\n",
-				   bus->name, dev->name, rc);
-		}
-		dev->driver = NULL;
-	} else {
-		dev->driver = NULL;
+	} else if (dev->driver->remove) {
+#if defined(CONFIG_VERBOSE_MODE)
+		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
+			   "driver=\"%s\" remove.\n",
+			   bus->name, dev->name, dev->driver->name);
+#endif
+		rc = dev->driver->remove(dev);
 	}
+
+	if (rc) {
+		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
+			   "remove error %d\n",
+			   bus->name, dev->name, rc);
+	}
+
+	dev->driver = NULL;
 }
 
 /* Note: Must be called with bus->lock held */
