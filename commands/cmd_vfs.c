@@ -698,8 +698,8 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return VMM_ENOTAVAIL;
 		}
 		pa = (physical_addr_t)strtoull(argv[3], NULL, 0);
-		off = (argc > 4) ? strtoul(argv[5], NULL, 0) : 0;
-		len = (argc > 5) ? strtoul(argv[6], NULL, 0) : 0xFFFFFFFF;
+		off = (argc > 5) ? strtoul(argv[5], NULL, 0) : 0;
+		len = (argc > 6) ? strtoul(argv[6], NULL, 0) : 0xFFFFFFFF;
 		return cmd_vfs_load(cdev, guest, pa, argv[4], off, len);
 	} else if ((strcmp(argv[1], "guest_load_list") == 0) && (argc == 4)) {
 		guest = vmm_manager_guest_find(argv[2]);
