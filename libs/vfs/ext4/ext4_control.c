@@ -132,7 +132,7 @@ int ext4fs_control_alloc_block(struct ext4fs_control *ctrl,
 			       u32 inode_no, u32 *blkno) 
 {
 	bool found;
-	u32 g, group_count, b, bmask, blocks_per_group;
+	u32 g, group_count, b, blocks_per_group;
 	struct ext4fs_group *group;
 
 	/* inodes are addressed from 1 onwards */
@@ -153,22 +153,22 @@ int ext4fs_control_alloc_block(struct ext4fs_control *ctrl,
 		vmm_mutex_lock(&group->grp_lock);
 		if (__le16(group->grp.free_blocks)) {
 			for (b = 0; b < blocks_per_group; b++) {
-				bmask = 1 << (b & 0x7);
-				if (!(group->block_bmap[b] & bmask)) {
-					break;
+				if (group->block_bmap[b >> 3] &
+				    (1 << (b & 0x7))) {
+					continue;
 				}
+				break;
 			}
-			if (b == blocks_per_group) {
-				vmm_mutex_unlock(&group->grp_lock);
-				return VMM_ENOTAVAIL;
+			if (b >= blocks_per_group) {
+				goto next_group;
 			}
 			group->grp.free_blocks = 
 				__le16((__le16(group->grp.free_blocks) - 1));
-			group->block_bmap[b >> 3] |= bmask;
+			group->block_bmap[b >> 3] |= (1 << (b & 0x7));
 			group->grp_dirty = TRUE;
 			found = TRUE;
 			*blkno = b + g * blocks_per_group + 
-					__le32(ctrl->sblock.first_data_block);
+				 __le32(ctrl->sblock.first_data_block);
 		}
 		vmm_mutex_unlock(&group->grp_lock);
 
@@ -176,6 +176,7 @@ int ext4fs_control_alloc_block(struct ext4fs_control *ctrl,
 			break;
 		}
 
+next_group:
 		g++;
 		if (g >= ctrl->group_count) {
 			g = 0;
@@ -234,13 +235,13 @@ int ext4fs_control_alloc_inode(struct ext4fs_control *ctrl,
 			       u32 parent_inode_no, u32 *inode_no) 
 {
 	bool found;
-	u32 g, group_count, i, imask, inodes_per_group;
+	u32 g, group_count, i, inodes_per_group;
 	struct ext4fs_group *group;
 
 	/* inodes are addressed from 1 onwards */
 	parent_inode_no--;
 
-	/* alloc free indoe from a block group */
+	/* alloc free inode from a block group */
 	inodes_per_group = __le32(ctrl->sblock.inodes_per_group); 
 	g = udiv32(parent_inode_no, inodes_per_group);
 	if (g >= ctrl->group_count) {
@@ -255,18 +256,18 @@ int ext4fs_control_alloc_inode(struct ext4fs_control *ctrl,
 		vmm_mutex_lock(&group->grp_lock);
 		if (__le16(group->grp.free_inodes)) {
 			for (i = 0; i < inodes_per_group; i++) {
-				imask = 1 << (i & 0x7);
-				if (!(group->inode_bmap[i] & imask)) {
-					break;
+				if (group->inode_bmap[i >> 3] & 
+				    (1 << (i & 0x7))) {
+					continue;
 				}
+				break;
 			}
-			if (i == inodes_per_group) {
-				vmm_mutex_unlock(&group->grp_lock);
-				return VMM_ENOTAVAIL;
+			if (i >= inodes_per_group) {
+				goto next_group;
 			}
-			group->grp.free_inodes = 
+			group->grp.free_inodes =
 				__le16((__le16(group->grp.free_inodes) - 1));
-			group->inode_bmap[i >> 3] |= imask;
+			group->inode_bmap[i >> 3] |= (1 << (i & 0x7));
 			group->grp_dirty = TRUE;
 			found = TRUE;
 			*inode_no = i + g * inodes_per_group + 1;
@@ -277,6 +278,7 @@ int ext4fs_control_alloc_inode(struct ext4fs_control *ctrl,
 			break;
 		}
 
+next_group:
 		g++;
 		if (g >= ctrl->group_count) {
 			g = 0;
