@@ -193,7 +193,7 @@ struct eth_header {
 	u8 payload[0];
 } __packed;
 
-#define ETH_HLEN	(sizeof(struct eth_header))
+#define ETHER_HLEN	(sizeof(struct eth_header))
 
 #define ether_srcmac(ether_frame)	(((struct eth_header *)(ether_frame))->srcmac)
 #define ether_dstmac(ether_frame)	(((struct eth_header *)(ether_frame))->dstmac)
