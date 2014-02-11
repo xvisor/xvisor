@@ -1036,8 +1036,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		}
 
 		/* Get poweroff flag from device tree */
-		if (vmm_devtree_read_u32(vnode,
-			VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME, &val) == VMM_OK) {
+		if (vmm_devtree_getattr(vnode,
+				VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME)) {
 			vcpu->is_poweroff = TRUE;
 		}
 
