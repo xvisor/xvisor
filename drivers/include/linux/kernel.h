@@ -7,9 +7,11 @@
 
 #include <linux/err.h>
 #include <linux/bitops.h>
+#include <linux/sched.h>
 #include <asm/atomic.h>
 
 #define ARRAY_SIZE	array_size
+#define ALIGN(x, y)	align(x, y)
 
 /* FIXME: This file just a place holder for most cases */
 

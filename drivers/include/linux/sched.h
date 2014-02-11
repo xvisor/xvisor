@@ -11,6 +11,8 @@
 #include <linux/completion.h>
 
 #define in_atomic()			1
+#define in_interrupt()  vmm_scheduler_irq_context()
+
 
 typedef struct vmm_waitqueue wait_queue_head_t;
 
