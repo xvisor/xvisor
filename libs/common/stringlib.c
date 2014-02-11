@@ -24,6 +24,7 @@
 
 #include <vmm_types.h>
 #include <vmm_host_io.h>
+#include <libs/ctype.h>
 #include <libs/stringlib.h>
 
 size_t strlen(const char *s)
@@ -131,6 +132,17 @@ int strncmp(const char *a, const char *b, size_t n)
 	} else {
 		return 0;
 	}
+}
+
+int strcasecmp(const char *s1, const char *s2)
+{
+	int c1, c2;
+
+	do {
+		c1 = tolower(*s1++);
+		c2 = tolower(*s2++);
+	} while (c1 == c2 && c1 != 0);
+	return c1 - c2;
 }
 
 char *strchr(const char *s, int c)
