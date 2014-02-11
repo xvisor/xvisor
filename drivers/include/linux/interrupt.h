@@ -31,6 +31,18 @@ static inline void synchronize_irq(unsigned int irq)
 	/* For now do nothing. */
 }
 
+static inline void enable_irq(unsigned int irq)
+{
+	vmm_host_irq_enable(irq);
+}
+
+static inline void disable_irq(unsigned int irq)
+{
+	vmm_host_irq_disable(irq);
+}
+
+#define disable_irq_nosync disable_irq
+
 #define local_irq_save(flags) \
 		arch_cpu_irq_save(flags)
 #define local_irq_restore(flags) \
