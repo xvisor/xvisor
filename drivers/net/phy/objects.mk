@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Himanshu Chauhan.
+# Copyright (c) 2014 Pranav Sawargaonkar.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,15 +17,18 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Himanshu Chauhan (hschauhan@nulltrace.org)
+# @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
 # @brief list of driver objects
 # */
 
-drivers-objs-$(CONFIG_NET_DRIVERS)+= net/mdio.o
-drivers-objs-$(CONFIG_NET_DRIVERS)+= net/mii.o
-drivers-objs-$(CONFIG_NET_DRIVERS)+= net/netdevice.o
-drivers-objs-$(CONFIG_NET_DRIVERS)+= net/ethtool.o
-drivers-objs-$(CONFIG_NET_DRIVERS)+= net/of_net.o
+drivers-objs-$(CONFIG_PHYLIB)+= net/phy/libphy.o
 
-drivers-objs-$(CONFIG_ETHER_SMSC_911x)+= net/smc911x.o
-drivers-objs-$(CONFIG_ETHER_SMSC_91x)+= net/smc91x.o
+libphy-y += phy.o
+libphy-y += mdio_bus.o
+libphy-y += phy_device.o
+
+%/libphy.o: $(foreach obj,$(libphy-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/libphy.dep: $(foreach dep,$(libphy-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)

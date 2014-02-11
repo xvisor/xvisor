@@ -32,21 +32,14 @@
 #include <net/vmm_net.h>
 #include <net/vmm_netport.h>
 #include <net/vmm_netswitch.h>
+
 #include <linux/interrupt.h>
 #include <linux/skbuff.h>
-#include <linux/ethtool.h>
+#include <linux/device.h>
+#include <uapi/linux/if_ether.h>
 
 #define MAX_NETDEV_NAME_LEN			32
 #define MAX_NDEV_HW_ADDRESS			32
-
-#undef ETH_HLEN
-
-#define ETH_ALEN	6	/* Octets in one ethernet addr	*/
-#define ETH_HLEN	14	/* Total octets in header.	*/
-#define ETH_ZLEN	60	/* Min. octets in frame sans FCS */
-#define ETH_DATA_LEN	1500	/* Max. octets in payload	*/
-#define ETH_FRAME_LEN	1514	/* Max. octets in frame sans FCS */
-#define ETH_FCS_LEN	4	/* Octets in the FCS		*/
 
 #define	net_ratelimit()	1
 #define NETIF_MSG_LINK	0
@@ -71,6 +64,7 @@ enum netdev_tx {
 
 typedef enum netdev_tx netdev_tx_t;
 
+struct phy_device;
 struct net_device;
 
 struct net_device_ops {
@@ -133,8 +127,13 @@ struct net_device {
 	physical_addr_t base_addr;
 	unsigned char	dma;	/* DMA channel		*/
 	struct net_device_stats stats;
+	struct phy_device *phydev;
 	struct vmm_device *vmm_dev;
 };
+
+#define NETDEV_ALIGN            32
+
+#include <linux/ethtool.h>
 
 static inline int netif_carrier_ok(const struct net_device *dev)
 {
