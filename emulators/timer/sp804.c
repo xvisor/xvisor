@@ -581,9 +581,8 @@ static int sp804_emulator_probe(struct vmm_guest *guest,
 		s->id[7] = ((u8 *)eid->data)[7];
 	}
 
-	irq = 0;
-	vmm_devtree_read_u32(edev->node, "maintain_irq_rate", &irq);
-	mrate = (irq) ? TRUE : FALSE;
+	mrate = (vmm_devtree_getattr(edev->node,
+				     "maintain_irq_rate")) ? TRUE : FALSE;
 
 	rc = vmm_devtree_irq_get(edev->node, &irq, 0);
 	if (rc) {

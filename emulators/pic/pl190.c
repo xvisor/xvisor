@@ -406,7 +406,7 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 		goto pl190_emulator_probe_freestate_fail;
 	}
 
-	if (vmm_devtree_read_u32(edev->node, "child_pic", &i) == VMM_OK) {
+	if (vmm_devtree_getattr(edev->node, "child_pic")) {
 		s->is_child_pic = TRUE;
 	} else {
 		s->is_child_pic = FALSE;

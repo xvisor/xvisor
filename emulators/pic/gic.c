@@ -1127,8 +1127,7 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 		return VMM_ENODEV;
 	}
 
-	if (vmm_devtree_read_u32(edev->node,
-				 "child_pic", &parent_irq) == VMM_OK) {
+	if (vmm_devtree_getattr(edev->node, "child_pic")) {
 		is_child_pic = TRUE;
 	} else {
 		is_child_pic = FALSE;
