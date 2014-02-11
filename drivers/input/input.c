@@ -847,9 +847,13 @@ void input_reset_device(struct input_dev *dev)
 {
 	irq_flags_t flags, flags1;
 
+	if (!dev) {
+		return;
+	}
+
 	vmm_spin_lock_irqsave(&dev->ops_lock, flags);
 
-	if (dev && dev->users) {
+	if (dev->users) {
 		input_dev_toggle(dev, TRUE);
 
 		/* Keys that have been pressed at suspend time are unlikely
