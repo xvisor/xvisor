@@ -429,6 +429,7 @@ int ide_initialize(struct ide_host_controller *controller)
 	/* Detect ATA-ATAPI Devices: */
 	for (i = 0; i < MAX_IDE_CHANNELS; i++) {
 		for (j = 0; j < MAX_IDE_DRIVES_PER_CHAN; j++) {
+
 			/* Assuming that no drive here. */
 			controller->ide_drives[count].present = 0;
 
@@ -456,6 +457,7 @@ int ide_initialize(struct ide_host_controller *controller)
 			}
 
 			while(1) {
+				err = 0;
 				status = ide_read(&controller->ide_channels[i],
 						  ATA_REG_STATUS);
 				if ((status & ATA_SR_ERR)) {
