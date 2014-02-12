@@ -160,6 +160,7 @@ int ext4fs_control_alloc_block(struct ext4fs_control *ctrl,
 				break;
 			}
 			if (b >= blocks_per_group) {
+				vmm_mutex_unlock(&group->grp_lock);
 				goto next_group;
 			}
 			group->grp.free_blocks = 
@@ -263,6 +264,7 @@ int ext4fs_control_alloc_inode(struct ext4fs_control *ctrl,
 				break;
 			}
 			if (i >= inodes_per_group) {
+				vmm_mutex_unlock(&group->grp_lock);
 				goto next_group;
 			}
 			group->grp.free_inodes =
