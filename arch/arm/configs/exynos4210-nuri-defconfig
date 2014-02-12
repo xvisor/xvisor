@@ -308,7 +308,7 @@ CONFIG_BLOCK_RBD=y
 #
 # Network Drivers
 #
-# CONFIG_NET_DRIVERS is not set
+# CONFIG_NET_DEVICES is not set
 
 #
 # Clock Drivers

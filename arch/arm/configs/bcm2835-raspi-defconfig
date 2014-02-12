@@ -298,7 +298,7 @@ CONFIG_MMC_SDHCI_BCM2835=y
 #
 # Network Drivers
 #
-# CONFIG_NET_DRIVERS is not set
+# CONFIG_NET_DEVICES is not set
 
 #
 # Clock Drivers

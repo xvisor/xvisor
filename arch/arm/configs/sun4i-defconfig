@@ -301,7 +301,7 @@ CONFIG_MMC_SUNXI=y
 #
 # Network Drivers
 #
-# CONFIG_NET_DRIVERS is not set
+# CONFIG_NET_DEVICES is not set
 
 #
 # Clock Drivers
