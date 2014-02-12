@@ -41,7 +41,7 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 	enum vmm_devemu_endianness data_endian;
 
 	/* Determine data endianness */
-	if (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_EE_MASK) {
+	if (regs->cpsr & CPSR_BE_ENABLED) {
 		data_endian = VMM_DEVEMU_BIG_ENDIAN;
 	} else {
 		data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
@@ -95,7 +95,7 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 	enum vmm_devemu_endianness data_endian;
 
 	/* Determine data endianness */
-	if (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_EE_MASK) {
+	if (regs->cpsr & CPSR_BE_ENABLED) {
 		data_endian = VMM_DEVEMU_BIG_ENDIAN;
 	} else {
 		data_endian = VMM_DEVEMU_LITTLE_ENDIAN;

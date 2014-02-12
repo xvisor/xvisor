@@ -429,10 +429,18 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	u32 data32, sas, sse, srt;
 	enum vmm_devemu_endianness data_endian;
 
-	if (arm_priv(vcpu)->sysregs.sctlr_el1 & SCTLR_EE_MASK) {
-		data_endian = VMM_DEVEMU_BIG_ENDIAN;
-	} else {
-		data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+	if (regs->pstate & PSR_MODE32) { /* Aarch32 VCPU */
+		if (regs->pstate & CPSR_BE_ENABLED) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
+	} else { /* Aarch64 VCPU */
+		if (arm_priv(vcpu)->sysregs.sctlr_el1 & SCTLR_EE_MASK) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
 	}
 
 	sas = (iss & ISS_ABORT_SAS_MASK) >> ISS_ABORT_SAS_SHIFT;
@@ -504,10 +512,18 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 	u32 data32, sas, srt;
 	enum vmm_devemu_endianness data_endian;
 
-	if (arm_priv(vcpu)->sysregs.sctlr_el1 & SCTLR_EE_MASK) {
-		data_endian = VMM_DEVEMU_BIG_ENDIAN;
-	} else {
-		data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+	if (regs->pstate & PSR_MODE32) { /* Aarch32 VCPU */
+		if (regs->pstate & CPSR_BE_ENABLED) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
+	} else { /* Aarch64 VCPU */
+		if (arm_priv(vcpu)->sysregs.sctlr_el1 & SCTLR_EE_MASK) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
 	}
 
 	sas = (iss & ISS_ABORT_SAS_MASK) >> ISS_ABORT_SAS_SHIFT;

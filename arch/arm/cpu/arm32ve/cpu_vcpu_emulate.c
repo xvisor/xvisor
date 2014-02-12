@@ -399,7 +399,7 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	u32 data32, sas, sse, srt;
 	enum vmm_devemu_endianness data_endian;
 
-	if (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_EE_MASK) {
+	if (regs->cpsr & CPSR_BE_ENABLED) {
 		data_endian = VMM_DEVEMU_BIG_ENDIAN;
 	} else {
 		data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
@@ -463,8 +463,8 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	return rc;
 }
 
-int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu, 
-			   arch_regs_t * regs,
+int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu, 
+			   arch_regs_t *regs,
 			   u32 il, u32 iss,
 			   physical_addr_t ipa)
 {
@@ -474,7 +474,7 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu * vcpu,
 	u32 data32, sas, srt;
 	enum vmm_devemu_endianness data_endian;
 
-	if (arm_priv(vcpu)->cp15.c1_sctlr & SCTLR_EE_MASK) {
+	if (regs->cpsr & CPSR_BE_ENABLED) {
 		data_endian = VMM_DEVEMU_BIG_ENDIAN;
 	} else {
 		data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
