@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Himanshu Chauhan.
+# Copyright (c) 2014 Pranavkumar Sawargaonkar.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,25 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
-# @author Himanshu Chauhan (hschauhan@nulltrace.org)
-# @brief config file for serial console drivers supported by xvisor.
+# @file objects.mk
+# @author Pranavkumar Sawargaonkar (pranav.sawargaonkar@gmail.com)
+# @brief list of driver objects
 # */
 
-menu "Network Device Support"
-
-config CONFIG_NET_DEVICES
-        bool "Enable Network Device Support"
-	default n
-	depends on CONFIG_NET
-	help
-		Select networking drivers TCP, Bluetooth etc.
-
-if CONFIG_NET_DEVICES
-
-source "drivers/net/ethernet/openconf.cfg"
-source "drivers/net/phy/openconf.cfg"
-endif
-
-endmenu
-
+drivers-objs-$(CONFIG_ETHER_SMSC_911x)+= net/ethernet/smsc/smc911x.o
+drivers-objs-$(CONFIG_ETHER_SMSC_91x)+= net/ethernet/smsc/smc91x.o
