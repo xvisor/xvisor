@@ -49,6 +49,7 @@ struct vmm_manager_ctrl {
 	vmm_spinlock_t lock;
 	u32 vcpu_count;
 	u32 guest_count;
+	struct vmm_cpumask vcpu_affinity_mask[CONFIG_MAX_VCPU_COUNT];
 	struct vmm_vcpu vcpu_array[CONFIG_MAX_VCPU_COUNT];
 	bool vcpu_avail_array[CONFIG_MAX_VCPU_COUNT];
 	struct vmm_guest guest_array[CONFIG_MAX_GUEST_COUNT];
@@ -747,8 +748,6 @@ int vmm_manager_guest_halt(struct vmm_guest *guest)
 					manager_guest_halt_iter, NULL);
 }
 
-static struct vmm_cpumask affinity_mask[CONFIG_MAX_VCPU_COUNT];
-
 struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 {
 	u32 val, vnum, gnum;
@@ -823,6 +822,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	INIT_RW_LOCK(&guest->vcpu_lock);
 	guest->vcpu_count = 0;
 	INIT_LIST_HEAD(&guest->vcpu_list);
+	memset(&guest->aspace, 0, sizeof(guest->aspace));
+	INIT_LIST_HEAD(&guest->aspace.reg_list);
 	guest->arch_priv = NULL;
 
 	/* Determine guest endianness from guest node */
@@ -982,25 +983,25 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		}
 
 		/* Setup VCPU affinity mask */
-		str = vmm_devtree_attrval(vnode,
-				      VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME);
-		if (str) {
-			const u32 *cpu;
-			u32 i, num_cpu;
+		if (vmm_devtree_getattr(vnode,
+				VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME)) {
+			int index;
+			u32 cpu;
+			struct vmm_cpumask *affinity_mask =
+					&mngr.vcpu_affinity_mask[vcpu->id];
 
-			/* Get the number of assigned CPU */
-			num_cpu = vmm_devtree_attrlen(vnode,
-					VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME);
-			num_cpu /= sizeof(u32);
+			/* Start with empty affinity mask */
+			*affinity_mask = VMM_CPU_MASK_NONE;
 
-			cpu = (const u32 *)str;
-			affinity_mask[vcpu->id] = VMM_CPU_MASK_NONE;
-
-			/* set all assigned CPU in the mask */
-			for (i = 0; i < num_cpu; i++) {
-				if (vmm_cpu_online(cpu[i])) {
-					vmm_cpumask_set_cpu(cpu[i],
-						&affinity_mask[vcpu->id]);
+			/* Set all assigned CPU in the mask */
+			index = 0;
+			while (vmm_devtree_read_u32_atindex(vnode,
+				VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME,
+				&cpu, index) == VMM_OK) {
+				if ((cpu < CONFIG_CPU_COUNT) &&
+				    vmm_cpu_online(cpu)) {
+					vmm_cpumask_set_cpu(cpu,
+							    affinity_mask);
 				} else {
 					vmm_vcpu_irq_deinit(vcpu);
 					arch_vcpu_deinit(vcpu);
@@ -1008,15 +1009,16 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 					vmm_printf(
 						"%s: CPU%d is out of bound"
 						" (%d) for vcpu %s\n",
-						__func__, cpu[i],
-						vmm_cpu_count, vcpu->name);
+						__func__, cpu, vmm_cpu_count,
+						vcpu->name);
 					mngr.vcpu_avail_array[vcpu->id] = TRUE;
 					goto fail_release_lock;
 				}
+				index++;
 			}
 
 			/* Set hcpu as the first CPU in the mask */
-			vcpu->hcpu = vmm_cpumask_first(&affinity_mask[vcpu->id]);
+			vcpu->hcpu = vmm_cpumask_first(affinity_mask);
 			if (vcpu->hcpu > CONFIG_CPU_COUNT) {
 				vmm_vcpu_irq_deinit(vcpu);
 				arch_vcpu_deinit(vcpu);
@@ -1029,8 +1031,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			}
 
 			/* Set the affinity mask */
-			vmm_manager_vcpu_set_affinity(vcpu,
-						&affinity_mask[vcpu->id]);
+			vmm_manager_vcpu_set_affinity(vcpu, affinity_mask);
 		} else {
 			vmm_manager_vcpu_set_affinity(vcpu, cpu_online_mask);
 		}

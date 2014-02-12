@@ -1844,10 +1844,10 @@ const char *of_clk_get_parent_name(struct vmm_devtree_node *np, int index)
 	if (rc)
 		return NULL;
 
-	if (vmm_devtree_attrval_string_index(clkspec.node,
-				"clock-output-names",
-				clkspec.args_count ? clkspec.args[0] : 0,
-				&clk_name) < 0)
+	if (vmm_devtree_string_index(clkspec.node,
+				     "clock-output-names",
+				     clkspec.args_count ? clkspec.args[0] : 0,
+				     &clk_name) < 0)
 		clk_name = clkspec.node->name;
 
 	return clk_name;

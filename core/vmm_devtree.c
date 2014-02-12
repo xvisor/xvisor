@@ -335,6 +335,31 @@ int vmm_devtree_delattr(struct vmm_devtree_node *node, const char *name)
 	return VMM_OK;
 }
 
+int vmm_devtree_read_u8_atindex(const struct vmm_devtree_node *node,
+			        const char *attrib, u8 *out, int index)
+{
+	u32 asz;
+	const u8 *aval;
+
+	if (!node || !attrib || !out || (index<0)) {
+		return VMM_EINVALID;
+	}
+
+	aval = vmm_devtree_attrval(node, attrib);
+	if (!aval) {
+		return VMM_ENOTAVAIL;
+	}
+
+	asz = vmm_devtree_attrlen(node, attrib);
+	if (asz <= index) {
+		return VMM_ENOTAVAIL;
+	}
+
+	*out = aval[index];
+
+	return VMM_OK;
+}
+
 int vmm_devtree_read_u8_array(const struct vmm_devtree_node *node,
 			      const char *attrib, u8 *out, size_t sz)
 {
@@ -357,6 +382,55 @@ int vmm_devtree_read_u8_array(const struct vmm_devtree_node *node,
 
 	for (i = 0; i < asz; i++) {
 		out[i] = aval[i];
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devtree_read_u16_atindex(const struct vmm_devtree_node *node,
+			         const char *attrib, u16 *out, int index)
+{
+	bool found;
+	u32 i, s, asz;
+	const void *aval;
+
+	if (!node || !attrib || !out || (index<0)) {
+		return VMM_EINVALID;
+	}
+
+	aval = vmm_devtree_attrval(node, attrib);
+	if (!aval) {
+		return VMM_ENOTAVAIL;
+	}
+
+	i = 0;
+	found = FALSE;
+	asz = vmm_devtree_attrlen(node, attrib);
+	while (asz) {
+		s = (asz < sizeof(u16)) ? asz : sizeof(u16);
+
+		if (i == index) {
+			switch (s) {
+			case 1:
+				*out = *((const u8 *)aval);
+				break;
+			case 2:
+				*out = *((const u16 *)aval);
+				break;
+			default:
+				return VMM_EFAIL;
+			};
+			found = TRUE;
+			break;
+		}
+
+		aval += s;
+		asz -= s;
+		i++;
+	}
+
+	if (!found) {
+		return VMM_ENOTAVAIL;
 	}
 
 	return VMM_OK;
@@ -405,6 +479,58 @@ int vmm_devtree_read_u16_array(const struct vmm_devtree_node *node,
 	return VMM_OK;
 }
 
+int vmm_devtree_read_u32_atindex(const struct vmm_devtree_node *node,
+			         const char *attrib, u32 *out, int index)
+{
+	bool found;
+	u32 i, s, asz;
+	const void *aval;
+
+	if (!node || !attrib || !out || (index<0)) {
+		return VMM_EINVALID;
+	}
+
+	aval = vmm_devtree_attrval(node, attrib);
+	if (!aval) {
+		return VMM_ENOTAVAIL;
+	}
+
+	i = 0;
+	found = FALSE;
+	asz = vmm_devtree_attrlen(node, attrib);
+	while (asz) {
+		s = (asz < sizeof(u32)) ? asz : sizeof(u32);
+
+		if (i == index) {
+			switch (s) {
+			case 1:
+				*out = *((const u8 *)aval);
+				break;
+			case 2:
+				*out = *((const u16 *)aval);
+				break;
+			case 4:
+				*out = *((const u32 *)aval);
+				break;
+			default:
+				return VMM_EFAIL;
+			};
+			found = TRUE;
+			break;
+		}
+
+		aval += s;
+		asz -= s;
+		i++;
+	}
+
+	if (!found) {
+		return VMM_ENOTAVAIL;
+	}
+
+	return VMM_OK;
+}
+
 int vmm_devtree_read_u32_array(const struct vmm_devtree_node *node,
 			       const char *attrib, u32 *out, size_t sz)
 {
@@ -445,6 +571,61 @@ int vmm_devtree_read_u32_array(const struct vmm_devtree_node *node,
 	}
 
 	if (i < sz) {
+		return VMM_ENOTAVAIL;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devtree_read_u64_atindex(const struct vmm_devtree_node *node,
+			         const char *attrib, u64 *out, int index)
+{
+	bool found;
+	u32 i, s, asz;
+	const void *aval;
+
+	if (!node || !attrib || !out || (index<0)) {
+		return VMM_EINVALID;
+	}
+
+	aval = vmm_devtree_attrval(node, attrib);
+	if (!aval) {
+		return VMM_ENOTAVAIL;
+	}
+
+	i = 0;
+	found = FALSE;
+	asz = vmm_devtree_attrlen(node, attrib);
+	while (asz) {
+		s = (asz < sizeof(u64)) ? asz : sizeof(u64);
+
+		if (i == index) {
+			switch (s) {
+			case 1:
+				*out = *((const u8 *)aval);
+				break;
+			case 2:
+				*out = *((const u16 *)aval);
+				break;
+			case 4:
+				*out = *((const u32 *)aval);
+				break;
+			case 8:
+				*out = *((const u64 *)aval);
+				break;
+			default:
+				return VMM_EFAIL;
+			};
+			found = TRUE;
+			break;
+		}
+
+		aval += s;
+		asz -= s;
+		i++;
+	}
+
+	if (!found) {
 		return VMM_ENOTAVAIL;
 	}
 
@@ -500,6 +681,21 @@ int vmm_devtree_read_u64_array(const struct vmm_devtree_node *node,
 	return VMM_OK;
 }
 
+int vmm_devtree_read_physaddr_atindex(const struct vmm_devtree_node *node,
+				      const char *attrib, physical_addr_t *out,
+				      int index)
+{
+	if (sizeof(physical_addr_t) == sizeof(u32)) {
+		return vmm_devtree_read_u32_atindex(node, attrib,
+						    (u32 *)out, index);
+	} else if (sizeof(physical_addr_t) == sizeof(u64)) {
+		return vmm_devtree_read_u64_atindex(node, attrib,
+						    (u64 *)out, index);
+	}
+
+	return VMM_EFAIL;
+}
+
 int vmm_devtree_read_physaddr_array(const struct vmm_devtree_node *node,
 				    const char *attrib, physical_addr_t *out,
 				    size_t sz)
@@ -510,6 +706,21 @@ int vmm_devtree_read_physaddr_array(const struct vmm_devtree_node *node,
 	} else if (sizeof(physical_addr_t) == sizeof(u64)) {
 		return vmm_devtree_read_u64_array(node, attrib,
 						  (u64 *)out, sz);
+	}
+
+	return VMM_EFAIL;
+}
+
+int vmm_devtree_read_physsize_atindex(const struct vmm_devtree_node *node,
+				      const char *attrib, physical_size_t *out,
+				      int index)
+{
+	if (sizeof(physical_size_t) == sizeof(u32)) {
+		return vmm_devtree_read_u32_atindex(node, attrib,
+						    (u32 *)out, index);
+	} else if (sizeof(physical_size_t) == sizeof(u64)) {
+		return vmm_devtree_read_u64_atindex(node, attrib,
+						    (u64 *)out, index);
 	}
 
 	return VMM_EFAIL;
@@ -530,6 +741,21 @@ int vmm_devtree_read_physsize_array(const struct vmm_devtree_node *node,
 	return VMM_EFAIL;
 }
 
+int vmm_devtree_read_virtaddr_atindex(const struct vmm_devtree_node *node,
+				      const char *attrib, virtual_addr_t *out,
+				      int index)
+{
+	if (sizeof(virtual_addr_t) == sizeof(u32)) {
+		return vmm_devtree_read_u32_atindex(node, attrib,
+						    (u32 *)out, index);
+	} else if (sizeof(virtual_addr_t) == sizeof(u64)) {
+		return vmm_devtree_read_u64_atindex(node, attrib,
+						    (u64 *)out, index);
+	}
+
+	return VMM_EFAIL;
+}
+
 int vmm_devtree_read_virtaddr_array(const struct vmm_devtree_node *node,
 				    const char *attrib, virtual_addr_t *out,
 				    size_t sz)
@@ -540,6 +766,21 @@ int vmm_devtree_read_virtaddr_array(const struct vmm_devtree_node *node,
 	} else if (sizeof(virtual_addr_t) == sizeof(u64)) {
 		return vmm_devtree_read_u64_array(node, attrib,
 						  (u64 *)out, sz);
+	}
+
+	return VMM_EFAIL;
+}
+
+int vmm_devtree_read_virtsize_atindex(const struct vmm_devtree_node *node,
+				      const char *attrib, virtual_size_t *out,
+				      int index)
+{
+	if (sizeof(virtual_size_t) == sizeof(u32)) {
+		return vmm_devtree_read_u32_atindex(node, attrib,
+						    (u32 *)out, index);
+	} else if (sizeof(virtual_size_t) == sizeof(u64)) {
+		return vmm_devtree_read_u64_atindex(node, attrib,
+						    (u64 *)out, index);
 	}
 
 	return VMM_EFAIL;
@@ -579,9 +820,8 @@ int vmm_devtree_read_string(const struct vmm_devtree_node *node,
 	return VMM_OK;
 }
 
-int vmm_devtree_attrval_match_string(struct vmm_devtree_node *node,
-				     const char *attrib,
-				     const char *string)
+int vmm_devtree_match_string(struct vmm_devtree_node *node,
+			     const char *attrib, const char *string)
 {
 	int i;
 	size_t l;
@@ -607,8 +847,8 @@ int vmm_devtree_attrval_match_string(struct vmm_devtree_node *node,
 	return VMM_ENODATA;
 }
 
-int vmm_devtree_attrval_count_strings(struct vmm_devtree_node *node,
-				      const char *attrib)
+int vmm_devtree_count_strings(struct vmm_devtree_node *node,
+			      const char *attrib)
 {
 	int i = 0;
 	const char *p;
@@ -630,9 +870,9 @@ int vmm_devtree_attrval_count_strings(struct vmm_devtree_node *node,
 	return i;
 }
 
-int vmm_devtree_attrval_string_index(struct vmm_devtree_node *node,
-				     const char *attrib,
-				     int index, const char **out)
+int vmm_devtree_string_index(struct vmm_devtree_node *node,
+			     const char *attrib,
+			     int index, const char **out)
 {
 	int i;
 	size_t l;

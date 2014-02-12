@@ -93,8 +93,8 @@ struct clk *of_clk_get_by_name(struct vmm_devtree_node *node,
 		 * index will be an error code, and of_clk_get() will fail.
 		 */
 		if (name)
-			index = vmm_devtree_attrval_match_string(node, 
-							"clock-names", name);
+			index = vmm_devtree_match_string(node,
+							 "clock-names", name);
 		clk = of_clk_get(node, index);
 		if (clk)
 			break;

@@ -577,8 +577,8 @@ static void __init sunxi_gates_clk_setup(struct vmm_devtree_node *node,
 	}
 
 	for_each_set_bit(i, data->mask, SUNXI_GATES_MAX_SIZE) {
-		vmm_devtree_attrval_string_index(node, "clock-output-names",
-						 j, &clk_name);
+		vmm_devtree_string_index(node, "clock-output-names",
+					 j, &clk_name);
 
 		/* No driver claims this clock, but it should remain gated */
 		ignore = !strcmp("ahb_sdram", clk_name) ? CLK_IGNORE_UNUSED : 0;

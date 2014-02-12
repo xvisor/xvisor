@@ -166,11 +166,11 @@ void __init clk_sp810_of_setup(struct vmm_devtree_node *node)
 		return;
 	}
 
-	sp810->refclk_index = vmm_devtree_attrval_match_string(node,
+	sp810->refclk_index = vmm_devtree_match_string(node,
 						"clock-names", "refclk");
 	parent_names[0] = of_clk_get_parent_name(node, sp810->refclk_index);
 
-	sp810->timclk_index = vmm_devtree_attrval_match_string(node,
+	sp810->timclk_index = vmm_devtree_match_string(node,
 						"clock-names", "timclk");
 	parent_names[1] = of_clk_get_parent_name(node, sp810->timclk_index);
 
