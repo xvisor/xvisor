@@ -1097,13 +1097,15 @@ int vmm_devemu_deinit_context(struct vmm_guest *guest)
 	eg = guest->aspace.devemu_priv;
 	guest->aspace.devemu_priv = NULL;
 
-	if (eg->g_irq) {
-		vmm_free(eg->g_irq);
-		eg->g_irq = NULL;
-		eg->g_irq_count = 0;
-	}
+	if (eg) {
+		if (eg->g_irq) {
+			vmm_free(eg->g_irq);
+			eg->g_irq = NULL;
+			eg->g_irq_count = 0;
+		}
 
-	vmm_free(eg);
+		vmm_free(eg);
+	}
 
 	return rc;
 }
