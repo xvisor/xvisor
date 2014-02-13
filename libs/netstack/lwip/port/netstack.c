@@ -833,13 +833,13 @@ static int __init lwip_netstack_init(void)
 	/* Retrive preferred IP address */
 	if (vmm_devtree_read_string(node, "netmask", &str) == VMM_OK) {
 		/* Read network mask from netstack node */
-		str2ipaddr(mask, attrval);
+		str2ipaddr(mask, str);
 	}
 
 	/* Retrive preferred netswitch */
 	if (vmm_devtree_read_string(node, "netswitch", &str) == VMM_OK) {
 		/* Find netswitch with given name */
-		nsw = vmm_netswitch_find(attrval);
+		nsw = vmm_netswitch_find(str);
 	} else {
 		/* Get the first netswitch */
 		nsw = vmm_netswitch_get(0);
@@ -852,7 +852,7 @@ static int __init lwip_netstack_init(void)
 	lns.port = vmm_netport_alloc("lwip-netport", VMM_NETPORT_DEF_QUEUE_SIZE);
 	if (!lns.port) {
 		vmm_printf("lwIP netport_alloc() failed\n");
-		rc = VMM_EFAIL;
+		rc = VMM_ENOMEM;
 		goto fail;
 	}
 
