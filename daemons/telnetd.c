@@ -238,9 +238,13 @@ static void telnetd_fill_rx_buffer(void)
 
 	/* Recieve netstack socket buffer */
 	rc = netstack_socket_recv(tdctrl.active_sk, &buf, -1);
-	if (rc) {
+	if (rc == VMM_ETIMEDOUT) {
+		TELNETD_DPRINTF("%s: Socket read timedout\n", __func__);
+		return;
+	} else if (rc) {
 		telnetd_set_disconnected();
-		TELNETD_DPRINTF("%s: Socket read failed\n", __func__);
+		TELNETD_DPRINTF("%s: Socket read failed (error %d)\n",
+				__func__, rc);
 		return;
 	}
 
@@ -530,10 +534,8 @@ static int __init daemon_telnetd_init(void)
 	tdctrl.cdev_ingets = FALSE;
 	tdctrl.cdev_incmdexec = FALSE;
 	strcpy(tdctrl.cdev.name, "telnetd");
-	tdctrl.cdev.dev = NULL;
 	tdctrl.cdev.read = telnetd_chardev_read;
 	tdctrl.cdev.write = telnetd_chardev_write;
-	tdctrl.cdev.ioctl = NULL;
 
 	/* Note: We don't register telnetd dummy character device so that
 	 * it is not visible to other part of hypervisor. This way we can
