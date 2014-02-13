@@ -90,6 +90,7 @@ int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *),
 			     void *priv)
 {
 	int rc, v;
+	struct vmm_vcpu *vcpu;
 	irq_flags_t flags;
 
 	/* If no iteration callback then return */
@@ -97,22 +98,22 @@ int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *),
 		return VMM_EINVALID;
 	}
 
-	/* Acquire manager lock */
-	vmm_spin_lock_irqsave_lite(&mngr.lock, flags);
-
 	/* Iterate over each used VCPU instance */
 	rc = VMM_OK;
 	for (v = 0; v < CONFIG_MAX_VCPU_COUNT; v++) {		
-		if (!mngr.vcpu_avail_array[v]) {
-			rc = iter(&mngr.vcpu_array[v], priv);
-			if (rc) {
-				break;
-			}
+		vmm_spin_lock_irqsave_lite(&mngr.lock, flags);
+		if (mngr.vcpu_avail_array[v]) {
+			vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
+			continue;
+		}
+		vcpu = &mngr.vcpu_array[v];
+		vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
+
+		rc = iter(vcpu, priv);
+		if (rc) {
+			break;
 		}
 	}
-
-	/* Release manager lock */
-	vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 
 	return rc;
 }
