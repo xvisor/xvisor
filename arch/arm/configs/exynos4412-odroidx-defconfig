@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.3
-# Tue Jan 14 18:44:51 2014
+# Version: 0.2.4
+# Thu Feb 13 01:51:59 2014
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -307,7 +307,7 @@ CONFIG_BLOCK_RBD=y
 # CONFIG_FB is not set
 
 #
-# Network Drivers
+# Network Device Support
 #
 # CONFIG_NET_DEVICES is not set
 
@@ -403,6 +403,7 @@ CONFIG_EMU_INPUT_PL050=y
 #
 CONFIG_EMU_SERIAL=y
 CONFIG_EMU_SERIAL_PL011=y
+# CONFIG_EMU_SERIAL_NS16550 is not set
 
 #
 # Console Emulators

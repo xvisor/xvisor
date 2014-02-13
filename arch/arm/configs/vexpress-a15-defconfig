@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.3
-# Fri Jan 17 22:27:15 2014
+# Version: 0.2.4
+# Thu Feb 13 01:52:45 2014
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -356,12 +356,13 @@ CONFIG_FB_CFB_IMAGEBLIT=y
 CONFIG_FB_ARMCLCD=y
 
 #
-# Network Drivers
+# Network Device Support
 #
 CONFIG_NET_DEVICES=y
 CONFIG_ETHERNET_DRIVERS=y
 # CONFIG_ETHER_SMSC_911x is not set
 CONFIG_ETHER_SMSC_91x=y
+# CONFIG_PHYLIB is not set
 
 #
 # Clock Drivers
@@ -458,6 +459,7 @@ CONFIG_EMU_INPUT_PL050=y
 #
 CONFIG_EMU_SERIAL=y
 CONFIG_EMU_SERIAL_PL011=y
+# CONFIG_EMU_SERIAL_NS16550 is not set
 
 #
 # Console Emulators
