@@ -145,7 +145,6 @@ static void blockpart_del_work(enum blockpart_work_type type,
 static int blockpart_thread_main(void *udata)
 {
 	int rc, i, cnt;
-	bool parsed;
 	struct blockpart_work *w;
 	struct vmm_blockpart_manager *m;
 
@@ -159,7 +158,6 @@ static int blockpart_thread_main(void *udata)
 
 		switch(w->type) {
 		case BLOCKPART_WORK_PARSE:
-			parsed = FALSE;
 			cnt = vmm_blockpart_manager_count();
 			for (i = 0; i < cnt; i++) {
 				m = vmm_blockpart_manager_get(i);
@@ -169,12 +167,8 @@ static int blockpart_thread_main(void *udata)
 				rc = m->parse_part(w->bdev);
 				if (!rc) {
 					w->bdev->part_manager_sign = m->sign;
-					parsed = TRUE;
 					break;
 				}
-			}
-			if (!parsed) {
-				blockpart_add_work(w->type, w->bdev);
 			}
 			break;
 		default:
