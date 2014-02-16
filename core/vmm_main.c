@@ -70,6 +70,40 @@ static void system_init_work(struct vmm_work *work)
 #endif
 	struct vmm_devtree_node *node, *node1;
 
+#if defined(CONFIG_SMP)
+	/* Initialize secondary CPUs */
+	vmm_printf("Initialize Secondary CPUs\n");
+	ret = arch_smp_init_cpus();
+	if (ret) {
+		vmm_panic("Error %d\n", ret);
+	}
+
+	/* Prepare secondary CPUs */
+	ret = arch_smp_prepare_cpus(vmm_num_possible_cpus());
+	if (ret) {
+		vmm_panic("Error %d\n", ret);
+	}
+
+	/* Start each present secondary CPUs */
+	for_each_present_cpu(c) {
+		if (c == vmm_smp_bootcpu_id()) {
+			continue;
+		}
+		ret = arch_smp_start_cpu(c);
+		if (ret) {
+			vmm_printf("Failed to start CPU%d (error %d)\n",
+				   c, ret);
+		}
+	}
+
+	/* Initialize hypervisor load balancer */
+	vmm_printf("Initialize Hypervisor Load Balancer\n");
+	ret = vmm_loadbal_init();
+	if (ret) {
+		vmm_panic("Error %d\n", ret);
+	}
+#endif
+
 	/* Initialize command manager */
 	vmm_printf("Initialize Command Manager\n");
 	ret = vmm_cmdmgr_init();
@@ -222,9 +256,6 @@ static void system_init_work(struct vmm_work *work)
 static void __init init_bootcpu(void)
 {
 	int ret;
-#if defined(CONFIG_SMP)
-	u32 c;
-#endif
 	struct vmm_work sysinit;
 
 	/* Sanity check on SMP processor id */
@@ -363,38 +394,6 @@ static void __init init_bootcpu(void)
 	ret = vmm_smp_ipi_init();
 	if (ret) {
 		vmm_hang();
-	}
-
-	/* Initialize secondary CPUs */
-	vmm_printf("Initialize Secondary CPUs\n");
-	ret = arch_smp_init_cpus();
-	if (ret) {
-		vmm_panic("Error %d\n", ret);
-	}
-
-	/* Prepare secondary CPUs */
-	ret = arch_smp_prepare_cpus(vmm_num_possible_cpus());
-	if (ret) {
-		vmm_panic("Error %d\n", ret);
-	}
-
-	/* Start each present secondary CPUs */
-	for_each_present_cpu(c) {
-		if (c == vmm_smp_bootcpu_id()) {
-			continue;
-		}
-		ret = arch_smp_start_cpu(c);
-		if (ret) {
-			vmm_printf("Failed to start CPU%d (error %d)\n",
-				   c, ret);
-		}
-	}
-
-	/* Initialize hypervisor load balancer */
-	vmm_printf("Initialize Hypervisor Load Balancer\n");
-	ret = vmm_loadbal_init();
-	if (ret) {
-		vmm_panic("Error %d\n", ret);
 	}
 #endif
 
