@@ -37,6 +37,11 @@ struct vmm_clockchip_ctrl {
 
 static struct vmm_clockchip_ctrl ccctrl;
 
+static void default_event_handler(struct vmm_clockchip *cc)
+{
+	/* Just ignore. Do nothing. */
+}
+
 void vmm_clockchip_set_event_handler(struct vmm_clockchip *cc, 
 		void (*event_handler) (struct vmm_clockchip *))
 {
@@ -119,6 +124,7 @@ int vmm_clockchip_register(struct vmm_clockchip *cc)
 	}
 
 	INIT_LIST_HEAD(&cc->head);
+	cc->event_handler = default_event_handler;
 	list_add_tail(&cc->head, &ccctrl.clkchip_list);
 
 	vmm_spin_unlock_irqrestore(&ccctrl.lock, flags);
