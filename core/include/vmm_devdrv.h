@@ -161,9 +161,9 @@ int vmm_devdrv_bus_register_device(struct vmm_bus *bus,
 int vmm_devdrv_bus_unregister_device(struct vmm_bus *bus,
 				     struct vmm_device *dev);
 
-/** Find device on a bus */
-struct vmm_device *vmm_devdrv_bus_find_device(struct vmm_bus *bus,
-					      const char *dname);
+/** Find device on a bus by name */
+struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
+					              const char *dname);
 
 /** Get device on a bus */
 struct vmm_device *vmm_devdrv_bus_device(struct vmm_bus *bus, int index);

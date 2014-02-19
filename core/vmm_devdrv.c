@@ -1006,8 +1006,8 @@ int vmm_devdrv_bus_unregister_device(struct vmm_bus *bus,
 	return VMM_OK;
 }
 
-struct vmm_device *vmm_devdrv_bus_find_device(struct vmm_bus *bus,
-					      const char *dname)
+struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
+					              const char *dname)
 {
 	bool found;
 	struct dlist *l;

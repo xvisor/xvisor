@@ -49,7 +49,7 @@ static inline struct device *bus_find_device_by_name(struct bus_type *bus,
 					struct device *start,
 					const char *name)
 {
-	return vmm_devdrv_bus_find_device(bus, name);
+	return vmm_devdrv_bus_find_device_by_name(bus, name);
 
 }
 
