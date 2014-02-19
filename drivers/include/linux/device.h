@@ -45,6 +45,15 @@
 #define dev_get_drvdata(dev)		vmm_devdrv_get_data(dev)
 #define dev_set_drvdata(dev, data)	vmm_devdrv_set_data(dev, data)
 
+static inline struct device *bus_find_device(struct bus_type *bus,
+					struct device *start,
+					void *data,
+					int (*match) (struct device *, void *))
+{
+	return vmm_devdrv_bus_find_device(bus, data, match);
+
+}
+
 static inline struct device *bus_find_device_by_name(struct bus_type *bus,
 					struct device *start,
 					const char *name)

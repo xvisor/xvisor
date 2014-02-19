@@ -1006,6 +1006,39 @@ int vmm_devdrv_bus_unregister_device(struct vmm_bus *bus,
 	return VMM_OK;
 }
 
+struct vmm_device *vmm_devdrv_bus_find_device(struct vmm_bus *bus,
+			void *data, int (*match) (struct vmm_device *, void *))
+{
+	bool found;
+	struct dlist *l;
+	struct vmm_device *dev;
+
+	if (!bus || !match) {
+		return NULL;
+	}
+
+	found = FALSE;
+	dev = NULL;
+
+	vmm_mutex_lock(&bus->lock);
+
+	list_for_each(l, &bus->device_list) {
+		dev = list_entry(l, struct vmm_device, bus_head);
+		if (match(dev, data)) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	vmm_mutex_unlock(&bus->lock);
+
+	if (!found) {
+		return NULL;
+	}
+
+	return dev;
+}
+
 struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
 					              const char *dname)
 {
