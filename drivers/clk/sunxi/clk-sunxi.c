@@ -53,7 +53,6 @@ static void __init sun4i_osc_clk_setup(struct vmm_devtree_node *node)
 	struct clk *clk;
 	struct clk_fixed_rate *fixed;
 	struct clk_gate *gate;
-	void *attrval;
 	virtual_addr_t reg_va;
 	const char *clk_name = node->name;
 	u32 rate;
